@@ -268,8 +268,12 @@ class LauncherGateTests(unittest.TestCase):
             code, output, error = launch(directory, *PREREQUISITES, '--original-fill', '0.05'); self.assertEqual(code, 0, error)
             env = json.loads(output)['env']
             self.assertEqual(env['X3M_ORIGINAL_FILL'], '0.05')
-            self.assertEqual({k: v for k, v in env.items() if k != 'X3M_ORIGINAL_FILL'},
-                             {k: v for k, v in baseline.items() if k != 'X3M_ORIGINAL_FILL'})
+            # An explicit value also carries the launcher's marker 0 (test_original_fill_default); nothing else changes.
+            self.assertEqual(env['X3M_ORIGINAL_FILL_DEFAULT'], '0')
+            self.assertNotIn('X3M_ORIGINAL_FILL_DEFAULT', baseline)
+            fill_keys = ('X3M_ORIGINAL_FILL', 'X3M_ORIGINAL_FILL_DEFAULT')
+            self.assertEqual({k: v for k, v in env.items() if k not in fill_keys},
+                             {k: v for k, v in baseline.items() if k not in fill_keys})
             linear = ['--hdr-tonemap', '--linear-materials']
             for bad in (('--motion-output', '--original-fill', '0.05'),
                         (*PREREQUISITES, *linear, '--original-fill', '0.05'),

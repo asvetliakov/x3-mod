@@ -171,3 +171,19 @@ acceptance criterion (median `frame_end` delta with 0.05 on versus off in the sa
 and will be measured over a like-for-like window with `--frame-timing`
 ([sampling-profiler.md](sampling-profiler.md), commit `8954cff`), which reports per-window frame and
 Present time with the slowest frames.
+
+### Original fill 0.02 as the launcher default, 2026-09-25
+
+User decision 2026-09-25, accepted in flight: `--original-fill 0.02` is the launcher default on every
+modded `--hdr` launch, following the `--taa-box-resolution` pattern (commit `c2aa8d4e`). Omitted with
+`--hdr` (and without `--linear-materials` or `--vanilla`), the launcher sends `X3M_ORIGINAL_FILL=0.02`
+with `X3M_ORIGINAL_FILL_DEFAULT=1`; an explicit value is sent with marker 0, and explicit
+`--original-fill 0` stays the opt-out (byte-identical original programs). Under `--linear-materials`
+(its `--material-fill` applies), without `--hdr` and under `--vanilla` no default applies: the variable
+stays an explicit `0.0` against a stale shell value and no marker is sent. Parser errors are unchanged.
+The DLL default when the variable is unset stays 0 (fixtures unchanged); it reads the marker (exactly
+`1`, counted only with an enabled fill) and logs it as `default=` on the `original_fill_mode` row;
+`run_motion_output.py` drops an inherited marker. Host test `test_original_fill_default` (8 tests);
+dry runs (`verification/results/original-fill-default/dry_runs.py`): modded `--hdr` 0.02/1,
+`--original-fill 0` 0.0/0, `--hdr --linear-materials` 0.0/none (material fill 0.05), `--vanilla`
+0.0/none. No Wine run (DLL default unchanged).

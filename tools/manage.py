@@ -133,6 +133,7 @@ def collide_default(explicit, args):
 # its pose; first person and every other view keep the game's bolts.
 BOLT_FOOTPRINT_DEFAULT = '3,12'
 BOLT_FOOTPRINT_DEFAULT_L = 12.0
+ORIGINAL_FILL_DEFAULT = 0.02  # --original-fill on modded --hdr launches (user decision 2026-09-25, original-shading-critique.md 1a)
 
 
 def bolt_footprint_values(text):
@@ -663,7 +664,7 @@ def main():
     parser.add_argument('--material-emissive-gain', type=float, default=None, help='Linear scaled material-emissive gain, finite 0..16, default 1 (requires --linear-materials)')
     parser.add_argument('--lightmap-emissive-gain', type=float, default=None, help='Linear lightmap-emissive gain, finite 0..16, default 1 (requires --linear-materials)')
     parser.add_argument('--material-fill', type=float, default=None, metavar='K', help='Constant hemispherical fill inside the converted material law, finite 0..0.5, default 0.05 with --linear-materials (X3M_MATERIAL_FILL; requires --linear-materials): every converted pixel program adds k*decode(LightDir_Color0)*g_direct to its lobe sum before the albedo multiply, so faces that face no light source keep a floor tinted by the sector sun. Explicit 0 disables fill and keeps the generated programs byte-identical to a build without the option (docs/architecture/fill-light.md)')
-    parser.add_argument('--original-fill', type=float, default=None, metavar='K', help='Fill in linear light inside the ORIGINAL hull pixel programs, finite 0..0.5, default 0 = off (X3M_ORIGINAL_FILL; requires --hdr; excludes --linear-materials, whose converted programs take --material-fill instead; needs neither --taa nor --hdr-tonemap): the 108 reviewed hull/asteroid/palette/glass/XT pixel programs get sum = encode(decode(sum) + K*decode(LightDir_Color0)) at their lobe-sum site before the albedo multiply, with the exact 2.2 power law and everything else in the program untouched, so shadow sides keep a floor tinted by the sector sun on original shading. K=0 creates no variant and is byte-identical to a build without the option (docs/architecture/original-shading-critique.md, 1a "Implemented")')
+    parser.add_argument('--original-fill', type=float, default=None, metavar='K', help='Fill in linear light inside the ORIGINAL hull pixel programs, finite 0..0.5, default 0.02 on every modded --hdr launch since 2026-09-25 by user decision (accepted in flight), marked X3M_ORIGINAL_FILL_DEFAULT=1; an explicit value is sent with marker 0 and explicit 0 is the opt-out that restores the byte-identical original programs; without --hdr, under --linear-materials or under --vanilla no default applies (the variable stays an explicit 0.0 against a stale shell value, no marker); the DLL default when the variable is unset stays 0 = off (X3M_ORIGINAL_FILL; requires --hdr; excludes --linear-materials, whose converted programs take --material-fill instead; needs neither --taa nor --hdr-tonemap): the 108 reviewed hull/asteroid/palette/glass/XT pixel programs get sum = encode(decode(sum) + K*decode(LightDir_Color0)) at their lobe-sum site before the albedo multiply, with the exact 2.2 power law and everything else in the program untouched, so shadow sides keep a floor tinted by the sector sun on original shading. K=0 creates no variant and is byte-identical to a build without the option (docs/architecture/original-shading-critique.md, 1a "Implemented")')
     parser.add_argument('--hull-lightmap-gain', type=float, default=None, metavar='G', help='Gain on the self-illumination (light-map) term inside the ORIGINAL hull pixel programs, finite 1..8, launcher default 4 with --hdr, 1 = off (X3M_HULL_LIGHTMAP_GAIN; requires --hdr; excludes --linear-materials, whose converted programs take --lightmap-emissive-gain instead; composes with --original-fill): 100 of the 108 reviewed hull/palette/XT pixel programs fetch a light map (station windows, hull lights) as their last texture read and add its RGB unscaled to the lit colour, so each gets one variant with one MUL of that sample by G right after the fetch, keeping the alpha, the lit colour and every other word native (docs/reverse-engineering/hull-self-illumination.md); the four glass and four asteroid programs have no such term and stay native. Every opaque draw of those programs carries it (placeholder black light maps multiply to zero). G=1 creates no variant. With --hdr the launcher forwards 4 unless another value is given (the DLL default stays 1); --hull-lightmap-gain 1 turns it off. Ctrl+Shift+F4 switches this gain alone between G and native during play (one hull_emission_gain_toggle line per press, key=ctrl_shift_f4); the guide lights moved to Ctrl+Shift+F6')
     light_map_fade = parser.add_mutually_exclusive_group()
     light_map_fade.add_argument('--light-map-far-fade', default=None, metavar='P0,P1[,G]', help='Fade the hull light-map gain with distance: a routed hull draw keeps --hull-lightmap-gain while its pixel footprint (world units per pixel at the object origin, the --taa-far-stabiliser measure) is below P0 and falls linearly to G (default 1 = the game\'s own brightness, within [0, gain]) at P1, so sub-pixel glowing windows of distant objects stop shimmering under TAA. 0 < P0 < P1 <= 1e6; launcher default 80,220,1. The option latches the camera projection itself (no --taa needed). Enabled by default with an active original-hull light-map gain; --no-light-map-far-fade disables it. Requires an active light-map gain (--hdr, not --linear-materials, gain above 1).')
@@ -1313,6 +1314,14 @@ def main():
         parser.error('--original-fill excludes --linear-materials (the converted programs take --material-fill instead).')
     if args.original_fill is not None and not (math.isfinite(args.original_fill) and 0.0 <= args.original_fill <= 0.5):
         parser.error('--original-fill must be finite and within [0, 0.5].')
+    # 2026-09-25 default (user decision, accepted in flight; docs/architecture/original-shading-critique.md 1a): 0.02 on every
+    # modded --hdr launch unless given; explicit 0 is the opt-out (the byte-identical original programs). Not under
+    # --linear-materials (the converted programs take --material-fill), not without --hdr, not under --vanilla.
+    # X3M_ORIGINAL_FILL_DEFAULT tells the DLL's original_fill_mode row where the value came from.
+    args.original_fill_default = False
+    if args.hdr and not args.linear_materials and not args.vanilla and args.original_fill is None:
+        args.original_fill = ORIGINAL_FILL_DEFAULT
+        args.original_fill_default = True
     if args.hull_lightmap_gain is not None and not args.hdr:
         parser.error('--hull-lightmap-gain requires --hdr.')
     if args.hull_lightmap_gain is not None and args.linear_materials:
@@ -1728,6 +1737,10 @@ def main():
         env['X3M_MATERIAL_FILL'] = repr(args.material_fill if args.material_fill is not None else (0.05 if args.linear_materials else 0.0))
         # Explicit off value so a stale shell value cannot enable the original fill.
         env['X3M_ORIGINAL_FILL'] = repr(args.original_fill if args.original_fill is not None else 0.0)
+        if args.original_fill is None:
+            env.pop('X3M_ORIGINAL_FILL_DEFAULT', None)
+        else:
+            env['X3M_ORIGINAL_FILL_DEFAULT'] = '1' if args.original_fill_default else '0'
         # Always explicit so a stale shell value can neither change nor enable
         # the light-map gain: the production default (4) in HDR mode without
         # the converted route, 1.0 (off) everywhere else, and an explicit

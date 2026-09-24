@@ -3302,7 +3302,9 @@ void initialize_log(HMODULE module) {
      if(!gain_valid||value!=1.f)log("hull_emission_gain_mode requested=1 enabled=%u source_gain=%g gain=%g gain_valid=%u%s",hull_emission_gain!=1.f,double(emission_source_gain),double(hull_emission_gain),unsigned(gain_valid),excluded?" refused=hdr":"");}
     // X3M_ORIGINAL_FILL=<k>: fill in linear light inside the ORIGINAL hull
     // pixel programs (docs/architecture/original-shading-critique.md 1a,
-    // option C): finite 0..0.5, 0 (the launcher default) is off. The variant
+    // option C): finite 0..0.5, 0 (unset) is off; the launcher sends 0.02 on
+    // modded --hdr launches since 2026-09-25 with X3M_ORIGINAL_FILL_DEFAULT=1
+    // (explicit values: 0), logged as default= on the mode row. The variant
     // is the ordinary motion/depth program plus the fill block, so it needs
     // the motion-output registry and the FP16 scene (X3M_HDR=1); no TAA,
     // ownership or tonemap prerequisite. Unparsable or out of range keeps 0
@@ -3318,7 +3320,9 @@ void initialize_log(HMODULE module) {
      // options, the DLL refuses with the reason logged.
      const bool excluded=linear_material_requested;
      if(!hdr_requested||excluded)original_fill=0.f;
-     if(!fill_valid||value!=0.f)log("original_fill_mode requested=1 enabled=%u hdr=%u linear_materials=%u fill=%g fill_valid=%u%s",original_fill!=0.f,hdr_requested,unsigned(excluded),double(original_fill),unsigned(fill_valid),excluded?" refused=linear_materials":"");}
+     // The launcher's marker counts only with an enabled fill and only as exactly "1".
+     const bool fill_default=original_fill!=0.f&&GetEnvironmentVariableW(L"X3M_ORIGINAL_FILL_DEFAULT",setting,32)==1&&setting[0]==L'1';
+     if(!fill_valid||value!=0.f)log("original_fill_mode requested=1 enabled=%u hdr=%u linear_materials=%u fill=%g fill_valid=%u default=%u%s",original_fill!=0.f,hdr_requested,unsigned(excluded),double(original_fill),unsigned(fill_valid),unsigned(fill_default),excluded?" refused=linear_materials":"");}
     // X3M_HULL_LIGHTMAP_GAIN=<g>: a gain on the light-map (self-illumination)
     // term inside the ORIGINAL hull pixel programs (station windows and hull
     // lights; docs/reverse-engineering/hull-self-illumination.md 5): finite
