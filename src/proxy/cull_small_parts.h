@@ -7,7 +7,8 @@
 // computes its effective size limit (docs/reverse-engineering/lod-selection.md,
 // "Cull small parts site"; docs/architecture/engine-frame-time.md 2.3). Per
 // frame the proxy converts the pixel setting into the pass's own `s = r*640/D`
-// units from the live projection (P[0], camera_state) and the back-buffer
+// units from the scene view's projection (P[0] and F, latched at the motion
+// route's scene Clear; the registry F as the fallback) and the back-buffer
 // width, exactly as the census summariser buckets nodes; a node whose `s`
 // is below that threshold takes the engine's own size-cull instruction at
 // 0x0047d2c3 (renderable bit cleared, nothing queued), every other node runs
@@ -45,19 +46,26 @@ bool set_px(double px);             // the setting without a relaunch (fixture a
 // this frame from the given projection scale, width and the engine's base FOV
 // (binary angle, 0x4000 = the game's default; the engine's s shrinks with it)
 // (0 = vanilla frame) and tells the census the value so its rows can name the
-// verdict. The production begin_frame() reads camera_state (P[0] and P[5]),
-// the recorded back-buffer width, derives the view's focus from the
-// projection (core::focus_from_projection: the camera's +0x298, zoom
-// included, no engine read) and calls publish(); only when P[5] is unusable
-// while P[0] is valid does it fall back to fov::current_focus()
-// (registry+0x24, else the --fov value).
-std::int32_t publish(float m00, unsigned width, std::uint32_t focus = 0x4000);
+// verdict; scene names the source on the value and frame rows (fallback=none). The production
+// begin_frame() requires a valid live projection (camera_state) and the
+// recorded back-buffer width; P[0] and the view's focus
+// (core::focus_from_projection: the camera's +0x298, zoom included, no engine
+// read) come from the scene view's projection latched by
+// note_scene_projection() within core::scene_max_age frames, else from
+// fov::current_focus() (registry+0x24, else the --fov value) with the live
+// projection rescaled to it (core::fallback_m00).
+std::int32_t publish(float m00, unsigned width, std::uint32_t focus = 0x4000, bool scene = false);
+// The motion route's scene-phase Clear (MotionOutput::read_camera, the read
+// behind the camera_state rows): the scene view's P[0]/P[5], consumed by the
+// next begin_frame(). Render thread only; ignored while nothing is patched.
+bool wants_scene_projection();
+void note_scene_projection(float m00, float m11);
 void begin_frame();
 void set_backbuffer_width(unsigned width);
 void after_reset(unsigned width);   // disarms until the next begin_frame
 // Emits the cull_small_parts_frame row for a captured frame and clears the count.
 void present(unsigned long long device, unsigned long long frame, bool captured);
-struct Stats { std::int32_t threshold; std::uint32_t culled, exempt; float m00; unsigned width; std::uint32_t focus; };
+struct Stats { std::int32_t threshold; std::uint32_t culled, exempt; float m00; unsigned width; std::uint32_t focus; bool scene; unsigned fallback; };  // fallback: core::Fallback (0 none, 1 no_scene, 2 reset, 3 aged)
 Stats stats();
 }
 // The words the stub reads and writes: the frame's threshold in `s` units

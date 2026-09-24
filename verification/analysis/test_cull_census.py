@@ -354,6 +354,19 @@ class CullCensusSummary(unittest.TestCase):
         self.assertEqual(summary.summarize(summary.parse(SYNTHETIC_LOG.splitlines()))['frames'][3494]['focus'], 0x4000)
         self.assertAlmostEqual(summary.summarize(summary.parse(SYNTHETIC_LOG.splitlines()), focus=0x2000)['frames'][3494]['px_per_s'], 0.4, places=6)
         self.assertIn('focus=0x3470', summary.render(summary.summarize(summary.parse(with_value.splitlines()))))
+        # The frame's own cull_small_parts_frame focus (the F the cull applied) wins over the last value row and the projection rows;
+        # a frame without one falls back to the value row.
+        frame_row = ('cull_small_parts_frame device=1 frame=3494 px=4 threshold=3 culled=12 m00=0.3147 width=5120 scope=all projectiles=on '
+                     'exempt_bullet=0 focus=0x471c source=scene\n')
+        with_frame = with_value + frame_row
+        self.assertEqual(summary.summarize(summary.parse(with_frame.splitlines()))['frames'][3494]['focus'], 0x471c)
+        self.assertEqual(summary.summarize(summary.parse((log + frame_row).splitlines()), width=5120)['frames'][3494]['focus'], 0x471c)
+        other_frame = with_value + frame_row.replace('frame=3494', 'frame=3495')
+        self.assertEqual(summary.summarize(summary.parse(other_frame.splitlines()))['frames'][3494]['focus'], 0x3470)
+        self.assertEqual(summary.summarize(summary.parse(with_frame.splitlines()), focus=0x2000)['frames'][3494]['focus'], 0x2000)
+        # run309's vanilla projection (m00 0.3750374, m11 1.333461) is 16383.0 unrounded: snapped to the default like the core.
+        self.assertEqual((summary.focus_from_projection(0.3750374, 1.333461), small.focus_from_projection(0.3750374, 1.333461)), (0x4000, 0x4000))
+        self.assertEqual((summary.focus_from_projection(0.3685, 1.3103), small.focus_from_projection(0.3685, 1.3103)), (0x40b6, 0x40b6))
 
     def test_view_and_frame_selection(self):
         summary = load_summariser()

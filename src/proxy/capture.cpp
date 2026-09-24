@@ -1686,7 +1686,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
     ctx.key_down=down; ctx.capture=ctx.remaining>0;
     point_light_admission::begin_frame(ctx.capture); // option on only: enables the per-node sample for a capture frame
     cull_census::begin_frame(ctx.capture); // X3M_CULL_CENSUS=1 only: arms the two pass stubs for a capture frame
-    cull_small_parts::begin_frame(); // X3M_CULL_SMALL_PARTS_PX only: this frame's threshold from the live projection scale and the back-buffer width
+    cull_small_parts::begin_frame(); // X3M_CULL_SMALL_PARTS_PX only: this frame's threshold from the scene view's projection (else the registry F) and the back-buffer width
     ctx.scene_depth.begin_frame(d,ctx.id,ctx.frame,ctx.capture);
     ctx.motion_output.begin_frame(ctx.frame,ctx.capture);
     comparison_begin_frame(ctx);

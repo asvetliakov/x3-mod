@@ -260,9 +260,9 @@ class FovCore(unittest.TestCase):
         self.assertNotIn('windows.h', header)
         self.assertNotIn('push_front', module)
         small = (ROOT / 'src/proxy/cull_small_parts.cpp').read_text()
-        self.assertIn('std::uint32_t focus = core::focus_from_projection(m00, m11);', small)   # the view's F, zoom included, no engine read
-        self.assertIn('if (!focus) focus = core::threshold_for(px_, m00, width_) ? fov::current_focus() : core::focus_default;', small)
-        self.assertIn('publish(m00, width_, focus);', small)
+        # the scene view's F (zoom included) from the latched scene projection; the registry only as the fallback
+        self.assertIn('core::choose(scene_, sample.state.m00, sample.state.m11, scene_.usable() ? 0u : fov::current_focus())', small)
+        self.assertIn('apply(choice.m00, width_, choice.focus, choice.source, choice.fallback);', small)
 
 
 @unittest.skipUnless(EXE.is_file(), 'installed executable not present')

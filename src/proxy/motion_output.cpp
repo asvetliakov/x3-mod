@@ -14,6 +14,7 @@
 #include "engine_memory.h"
 #include "object_capture.h"
 #include "camera_state.h"
+#include "cull_small_parts.h"
 #include "sun_light_poll.h"
 #include "chase_camera.h"
 #include "sun_occlusion.h"
@@ -6687,13 +6688,22 @@ void MotionOutput::read_camera(bool scene) noexcept {
     if (!(taa_enabled_ || candidates_requested_)) {
         // The far fade alone: its private P[0], so camera_scene_ (the fade-band
         // arm's origin rule, the resolve, the candidates) is exactly as without the option.
-        if (lightmap_far_fade_ && scene) { camera_state::Sample sample{}; lightmap_fade_m00_ = camera_state::read(&sample) ? sample.state.m00 : 0.f; }
+        // The small-parts cull alone: the scene view's P[0]/P[5] for the next frame's threshold.
+        const bool cull = scene && cull_small_parts::wants_scene_projection();
+        if ((lightmap_far_fade_ && scene) || cull) {
+            camera_state::Sample sample{};
+            const bool valid = camera_state::read(&sample);
+            if (lightmap_far_fade_ && scene) lightmap_fade_m00_ = valid ? sample.state.m00 : 0.f;
+            if (cull && valid) cull_small_parts::note_scene_projection(sample.state.m00, sample.state.m11);
+        }
         return;
     }
     camera_state::Sample sample{};
     const bool valid = camera_state::read(&sample);
     ++counters_.camera_reads;
     if (scene) {
+        // The small-parts cull's FOV source: this scene view, not the live buffer at Present (the frame's last view).
+        if (valid) cull_small_parts::note_scene_projection(sample.state.m00, sample.state.m11);
         camera_scene_ = sample.state;
         lightmap_fade_m00_ = valid ? sample.state.m00 : 0.f;
         counters_.camera_scene_valid = valid;

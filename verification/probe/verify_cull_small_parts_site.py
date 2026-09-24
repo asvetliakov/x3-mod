@@ -67,10 +67,11 @@ LOG_RE = re.compile(r'\bcull_small_parts requested=(?P<requested>\S+) px=(?P<px>
                     r'site=0x(?P<site>[0-9a-f]{8}) cull=0x(?P<cull>[0-9a-f]{8}) write=(?P<write>none|atomic|plain) stub=0x(?P<stub>[0-9a-f]{8}) camera=(?P<camera>\S+)(?: scope=(?P<scope>bodies|all|invalid))?'
                     r'(?: projectiles=(?P<projectiles>on|off|marker_mismatch|invalid))?')
 VALUE_RE = re.compile(r'\bcull_small_parts_value px=(?P<px>[0-9.e+-]+) m00=(?P<m00>[0-9.e+-]+) width=(?P<width>\d+) threshold=(?P<threshold>-?\d+)'
-                      r'(?: focus=0x(?P<focus>[0-9a-f]+))?')
+                      r'(?: focus=0x(?P<focus>[0-9a-f]+))?(?: source=(?P<source>scene|registry))?(?: fallback=(?P<fallback>none|no_scene|reset|aged))?')
 FRAME_RE = re.compile(r'\bcull_small_parts_frame device=(?P<device>\d+) frame=(?P<frame>\d+) px=(?P<px>[0-9.e+-]+) threshold=(?P<threshold>-?\d+) '
                       r'culled=(?P<culled>\d+) m00=(?P<m00>[0-9.e+-]+) width=(?P<width>\d+)(?: scope=(?P<scope>bodies|all))?'
-                      r'(?: projectiles=(?P<projectiles>on|off) exempt_bullet=(?P<exempt>\d+))?')
+                      r'(?: projectiles=(?P<projectiles>on|off) exempt_bullet=(?P<exempt>\d+))?'
+                      r'(?: focus=0x(?P<focus>[0-9a-f]+) source=(?P<source>scene|registry))?(?: fallback=(?P<fallback>none|no_scene|reset|aged))?')
 
 
 def encode_stub(at, threshold, culled, exempt, cull_target, next_slot, scope='all', projectiles=True):
@@ -108,7 +109,10 @@ def focus_from_projection(m00, m11):
     import math
     if not (math.isfinite(m00) and math.isfinite(m11) and m00 > 0 and m11 > 0):
         return 0
-    focus = math.floor(65536 / math.pi * math.atan(1 / max(0.75 * m11, m00)) + 0.5)
+    exact = 65536 / math.pi * math.atan(1 / max(0.75 * m11, m00))
+    if abs(exact - 0x4000) <= 2.0:   # focus_snap: the engine's projection is about one unit of F off at the default
+        return 0x4000
+    focus = math.floor(exact + 0.5)
     return focus if 0x106 <= focus <= 0x8000 else 0
 
 
@@ -143,7 +147,7 @@ def parse_value_line(line):
         return None
     row = match.groupdict()
     return {'px': float(row['px']), 'm00': float(row['m00']), 'width': int(row['width']), 'threshold': int(row['threshold']),
-            'focus': int(row['focus'], 16) if row['focus'] else None}
+            'focus': int(row['focus'], 16) if row['focus'] else None, 'source': row['source'], 'fallback': row['fallback']}
 
 
 def parse_frame_line(line):
@@ -153,7 +157,8 @@ def parse_frame_line(line):
     row = match.groupdict()
     return {'device': int(row['device']), 'frame': int(row['frame']), 'px': float(row['px']), 'threshold': int(row['threshold']),
             'culled': int(row['culled']), 'm00': float(row['m00']), 'width': int(row['width']), 'scope': row['scope'],
-            'projectiles': row['projectiles'], 'exempt_bullet': int(row['exempt']) if row['exempt'] is not None else None}
+            'projectiles': row['projectiles'], 'exempt_bullet': int(row['exempt']) if row['exempt'] is not None else None,
+            'focus': int(row['focus'], 16) if row['focus'] else None, 'source': row['source'], 'fallback': row['fallback']}
 
 
 def scope_stub_ok():

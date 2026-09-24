@@ -574,7 +574,8 @@ int main() {
     check(x3m_cull_small_parts_threshold == 0, "begin_frame with an invalid projection: vanilla frame");
     fixture_camera_valid = true; small::begin_frame();
     check(x3m_cull_small_parts_threshold == 3 && small::stats().threshold == 3 && small::stats().width == kRowsWidth, "begin_frame with the run131 projection at 1280: threshold 3");
-    check(small_lines.size() == 1 && small_lines[0].find("cull_small_parts_value px=2 m00=0.799999952 width=1280 threshold=3") == 0, "one cull_small_parts_value line on the first valid frame");
+    check(small_lines.size() == 1 && small_lines[0].find("cull_small_parts_value px=2 m00=0.799999952 width=1280 threshold=3") == 0 &&
+          small_lines[0].find(" source=registry fallback=no_scene") != std::string::npos, "one cull_small_parts_value line on the first valid frame (registry: nothing latched since install)");
     small::after_reset(1920);
     check(x3m_cull_small_parts_threshold == 0 && small::stats().width == 1920, "after_reset: disarmed, new width");
     small::begin_frame();
@@ -610,17 +611,48 @@ int main() {
               "focus from the projection: 0x4000, 0x3470 (5120x1440), 0x1a38 (zoom x2)");
         check(score::focus_from_projection(1.0f, 1.25f) == 0x4000 && score::focus_from_projection(0.0f, 1.3f) == 0 && score::focus_from_projection(0.8f, 0.0f) == 0 &&
               score::focus_from_projection(0.8f, 500.0f) == 0, "focus from the projection: 5:4 plane (W = 1), unusable terms and F below 0x106 give 0");
+        // ---- whose projection: run309 at 5120x1440 with --fov 0x3470. The live buffer at Present (begin_frame) holds
+        // the HUD view (P[0] 0.375, F 0x4000); the motion route's scene Clear latches the scene view (P[0] 0.5,
+        // F 0x3470). 8 px tells the three readings apart: scene 5, HUD at 0x4000 6, HUD P[0] at 0x3470 7. ----
+        check(score::threshold_for(8.0, 0.5f, 5120, 0x3470) == 5 && score::threshold_for(8.0, 0.375f, 5120, 0x4000) == 6 && score::threshold_for(8.0, 0.375f, 5120, 0x3470) == 7,
+              "8 px at 5120: scene 5, HUD 6, HUD P[0] with the scene F 7");
         const unsigned reads = fixture_focus_reads;
-        fixture_focus = 0x4000; fixture_camera_m11 = m11_3470; small::begin_frame();
-        check(x3m_cull_small_parts_threshold == 4 && small::stats().focus == 0x3470 && fixture_focus_reads == reads,
-              "begin_frame: F 0x3470 from P[5] wins over the registry base 0x4000, no registry read");
-        fixture_camera_m11 = m11_zoom; small::begin_frame();
-        std::printf("REPLAY zoom=2 px=2 threshold=%ld focus=0x%lx value_row=%s\n", static_cast<long>(x3m_cull_small_parts_threshold), static_cast<unsigned long>(small::stats().focus), small_lines.back().c_str());
-        check(x3m_cull_small_parts_threshold == score::threshold_for(2.0, m00, kRowsWidth, 0x1a38) && x3m_cull_small_parts_threshold == 7 &&
-              small::stats().focus == 0x1a38 && fixture_focus_reads == reads && small_lines.back().find(" threshold=7 focus=0x1a38") != std::string::npos,
-              "begin_frame at zoom x2: the view's 0x1a38 (not the base) scales the threshold to 7");
-        fixture_camera_m11 = 0; small::begin_frame();
-        check(x3m_cull_small_parts_threshold == 3 && small::stats().focus == 0x4000 && fixture_focus_reads == reads + 1, "begin_frame without P[5]: the registry fallback, one read");
+        check(small::set_px(8.0), "8 px for the projection-source cases");
+        small::after_reset(5120);
+        fixture_camera_m00 = 0.375f; fixture_camera_m11 = m11_4000; fixture_focus = 0x3470; small::begin_frame();
+        check(x3m_cull_small_parts_threshold == 5 && small::stats().focus == 0x3470 && !small::stats().scene && std::fabs(small::stats().m00 - 0.5f) < 1e-4f &&
+              fixture_focus_reads == reads + 1 && small_lines.back().find(" threshold=5 focus=0x3470 source=registry fallback=reset") != std::string::npos && small::stats().fallback == 2,
+              "no scene latch: the registry F 0x3470 on the HUD projection's aspect (P[0] 0.5), 8 px -> 5, one registry read");
+        small::note_scene_projection(0.5f, m11_3470); fixture_focus = 0x4000; small::begin_frame();
+        check(x3m_cull_small_parts_threshold == 5 && small::stats().focus == 0x3470 && small::stats().scene && small::stats().m00 == 0.5f && fixture_focus_reads == reads + 1 &&
+              small_lines.back().find("m00=0.5 width=5120 threshold=5 focus=0x3470 source=scene fallback=none") != std::string::npos && small::stats().fallback == 0,
+              "HUD live, scene latched after it: the scene's P[0] 0.5 and F 0x3470 (5, not 6 or 7), no registry read, a value row naming the source");
+        for (unsigned i = 0; i < score::scene_max_age; ++i) small::begin_frame();
+        check(small::stats().scene && x3m_cull_small_parts_threshold == 5 && fixture_focus_reads == reads + 1, "the scene latch holds for scene_max_age frames without a scene Clear");
+        small::begin_frame();
+        check(!small::stats().scene && small::stats().focus == 0x4000 && x3m_cull_small_parts_threshold == 6 && fixture_focus_reads == reads + 2 &&
+              small::stats().fallback == 3 && small_lines.back().find(" source=registry fallback=aged") != std::string::npos,
+              "aged out: the registry (0x4000 now) on the live HUD projection, 6");
+        const double cot_zoom = 1.0 / std::tan(0x1a38 * 3.14159265358979323846 / 65536.0);   // 0x3470 base, zoom x2: +0x298 = 0x1a38
+        const float zoom00 = float(cot_zoom / (0.75 * 5120.0 / 1440.0)), zoom11 = float(cot_zoom / 0.75);
+        small::note_scene_projection(zoom00, zoom11); small::begin_frame();
+        std::printf("REPLAY scene zoom=2 px=8 width=5120 threshold=%ld focus=0x%lx value_row=%s\n", static_cast<long>(x3m_cull_small_parts_threshold), static_cast<unsigned long>(small::stats().focus), small_lines.back().c_str());
+        check(small::stats().scene && small::stats().focus == 0x1a38 && x3m_cull_small_parts_threshold == score::threshold_for(8.0, zoom00, 5120, 0x1a38) && fixture_focus_reads == reads + 2 &&
+              small_lines.back().find(" focus=0x1a38 source=scene") != std::string::npos, "scene view at zoom x2: F 0x1a38 from its P[5] (zoom included), no registry read");
+        small::after_reset(5120);
+        check(x3m_cull_small_parts_threshold == 0, "after_reset: disarmed");
+        small::begin_frame();
+        check(!small::stats().scene && fixture_focus_reads == reads + 3, "after_reset drops the scene latch: the registry until the next scene Clear");
+        small::note_scene_projection(0.8f, 0.0f); small::begin_frame();
+        check(!small::stats().scene && fixture_focus_reads == reads + 4, "a scene projection without a usable P[5] is not latched");
+        small::note_scene_projection(0.5f, m11_3470); fixture_camera_available = false; small::begin_frame();
+        check(x3m_cull_small_parts_threshold == 0 && fixture_focus_reads == reads + 4, "a scene latch without a valid live projection: vanilla frame, nothing read");
+        fixture_camera_available = true; fixture_camera_valid = false; small::begin_frame();
+        check(x3m_cull_small_parts_threshold == 0, "a scene latch with an invalid live projection: vanilla frame");
+        fixture_camera_valid = true;
+        check(small::set_px(2.0), "back to 2 px");
+        small::after_reset(kRowsWidth); fixture_camera_m00 = m00; fixture_camera_m11 = 0; fixture_focus = 0x4000; small::begin_frame();
+        check(x3m_cull_small_parts_threshold == 3 && small::stats().focus == 0x4000 && !small::stats().scene && fixture_focus_reads == reads + 5, "back to the run131 frame: registry 0x4000, threshold 3");
     }
     small_lines.resize(3);  // the rows below count from the three value lines above
 

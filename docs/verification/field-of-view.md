@@ -8,8 +8,10 @@ The imm32 of the registry constructor's `MOV dword [ESI+0x24],0x4000` at `0x0041
 `+0x24` gets one validated `InterlockedCompareExchange`. The launcher default is 58.7155° (`F = 0x3470`),
 which is 90° horizontal on 16:9, by user decision 2026-09-24. `game` and 73.74 patch nothing. The
 small-parts cull threshold carries `F/0x4000`, with F the view's own FOV (base divided by the zoom, the
-camera's `+0x298`) taken from the latched projection, `cot(F/2) = max(0.75·m11, m00)`. That needs no
-engine read. `registry+0x24` is only the fallback when P[0] is valid but P[5] is not.
+camera's `+0x298`) taken from the scene view's projection the motion route latches at the scene Clear,
+`cot(F/2) = max(0.75·m11, m00)`. That needs no engine read. Without that latch (motion output off, a
+multisampled main target, after a Reset, or more than 8 frames without a scene Clear), `registry+0x24` is
+the fallback (2026-09-24 entry at the end).
 `tools/analysis/cull_census.py` buckets with the same factor.
 
 | Date | Check | Command | Result |
@@ -119,3 +121,51 @@ bounds, off, non-finite input, the boom distance in the elevated and legacy geom
 explicit value (measured); `launch --dry-run --direct --camera chase` sends `X3M_CHASE_FOV_COMPENSATE=1`,
 `--chase-fov-compensate off` sends `0`, `--vanilla` none; d3d9 build 0 warnings, no-x87 684/0; Wine
 `run_chase_fire` (includes the changed `chase_camera.h`) 4 cases / 307 checks passed (measured). Not yet flown.
+
+**2026-09-24 cull_small_parts FOV source fix (not flown; worktree build, not installed).** The cull's P[0] and F now
+come from the scene view's projection. The motion route latches it when it reads the camera at the Background → Scene
+Clear (the read behind the `camera_state` rows; `cull_small_parts::note_scene_projection` from `MotionOutput::read_camera`).
+That works only while the motion output is on and its selector reaches the scene phase; otherwise (motion output off, or a
+multisampled main target) the cull uses the registry fallback. `begin_frame` runs in the Present hook, where the live
+buffer holds the frame's last view (the HUD in run309). The latch is used for up to 8 frames (`core::SceneLatch`,
+`scene_max_age`), is dropped on Reset, and never replaces the gate: a frame without a valid live projection stays vanilla.
+Without a usable latch the registry F (`fov::current_focus()`) is the fallback, with the live projection rescaled to that F
+(`core::fallback_m00`: only the aspect is taken from the live view). `cull_small_parts_value` is logged on each change of
+threshold, focus, width, source or fallback reason (cap 128, was 16 and also on any m00 change). Both it and
+`cull_small_parts_frame` end in `focus=0x.... source=scene|registry fallback=none|no_scene|reset|aged`. `no_scene` means
+nothing has been latched since install; `reset` means nothing since a Reset; `aged` means no scene Clear for more than
+8 frames.
+
+`focus_from_projection` snaps to 0x4000 within 2 units, because the engine's own projection is about 1e-4 off: run309
+vanilla m00 0.3750374 / m11 1.333461 is 16383.0 unrounded. Other F values keep their nearest integer, and the menu's
+1-degree steps are 182 units apart. `tools/analysis/cull_census.py` takes each frame's F from its own
+`cull_small_parts_frame focus=` row first, then the projection rows, then the last value row.
+
+Per draw: nothing added. Per frame: the unchanged live read, plus one registry read on the fallback path only.
+
+Evidence (all measured):
+
+- Host `test_cull_small_parts` + `test_cull_census`: 31 tests OK. They include:
+  - the run309 case: the HUD view (m00 0.375, F 0x4000) is live, then the scene view (0.5, 0x3470) is latched, and the
+    scene wins (8 px at 5120 gives 5, not 6);
+  - the fallback reasons;
+  - the snap (0x3ffc and 0x4003 stay);
+  - frame-row focus precedence in the census tool;
+  - a source-text check that `read_camera` hands the scene projection over on both camera paths and only at the
+    Background → Scene Clear; removing the TAA-path call makes it fail.
+- Cull CPU fixture: 153/0 (was 142). It covers HUD-then-scene, `fallback=no_scene|reset|aged`, zoom ×2 on the scene
+  (F 0x1a38, 8 px → 5), Reset, an unusable P[5] and an invalid live projection.
+- Motion case `seam-taa-camera-on`: exit 0, 177 checks, 85 s including the runner's clean rebuild. It covers the scene
+  camera read. The fixture cannot patch the cull site, so it cannot show `source=scene`.
+- Worktree build: 0 warnings (incremental and the runner's clean rebuild); no-x87: 684 functions, 0 violations on both
+  DLLs (sha256 `a2a1da89…` incremental, `f7d18934…` after the clean rebuild).
+
+The run309 re-evaluation (`verification/results/run309-run81a-launch1/cull_factor_by_fov.py` →
+`cull_factor_by_fov_out.txt`, measured) covers 72 scene-projection runs:
+
+- At run309's px 4, every threshold stays 3.
+- F 0x3470 (m00 0.5): factor 0.8193, thresholds 2/3/5 at px 2/4/8 against the 2/3/6 applied.
+- F 0x471c (m00 0.3147): factor 1.1111, thresholds 2/3/6, as applied.
+- F 0x4000 (the vanilla frames 191..316): factor 1.0000.
+- Only F ≤ 0x3777 changes the 8 px threshold, in 18 runs.
+- All 40 `cull_small_parts_frame` rows applied m00 0.375 at 0x4000.

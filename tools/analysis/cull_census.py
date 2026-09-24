@@ -10,7 +10,8 @@ main view (the view with the most rows, or --view) by `s` in the engine's
 m00 from the frame's projection row, width from the rt0 surface row, F the
 view's binary-angle FOV: the engine's s uses D' = D*F/0x4000 at 0x0047d1ce, so
 the factor is exactly the one cull_small_parts applies. F comes from the
-frame's projection rows (cot(F/2) = max(0.75*m11, m00), zoom included), else
+frame's own `cull_small_parts_frame ... focus=` row (the F the cull applied), else its
+projection rows (cot(F/2) = max(0.75*m11, m00), zoom included), else
 the last `cull_small_parts_value ... focus=` row, else 0x4000; --focus
 overrides. All of m00, width and F are overridable),
 joins the frame's `object_context`/`draw` rows on the node pointer to count
@@ -45,7 +46,8 @@ SURFACE_RE = re.compile(r'\bsurface role=rt0 .*?\bwidth=(\d+) height=(\d+)')
 PROJECTION_RE = re.compile(r'\bobject_matrix role=projection row=0 bits=([0-9a-f]{8}),')
 PROJECTION1_RE = re.compile(r'\bobject_matrix role=projection row=1 bits=[0-9a-f]{8},([0-9a-f]{8}),')
 VALUE_FOCUS_RE = re.compile(r'\bcull_small_parts_value .*?\bfocus=0x([0-9a-f]+)')
-FOCUS_DEFAULT, FOCUS_MIN, FOCUS_MAX = 0x4000, 0x106, 0x8000
+SMALL_FRAME_FOCUS_RE = re.compile(r'\bcull_small_parts_frame device=\d+ frame=(\d+) .*?\bfocus=0x([0-9a-f]+)')
+FOCUS_DEFAULT, FOCUS_MIN, FOCUS_MAX, FOCUS_SNAP = 0x4000, 0x106, 0x8000, 2.0
 
 
 def bucket_of(value):
@@ -64,7 +66,10 @@ def focus_from_projection(m00, m11):
     import math
     if not (m00 and m11 and math.isfinite(m00) and math.isfinite(m11) and m00 > 0 and m11 > 0):
         return None
-    focus = math.floor(65536 / math.pi * math.atan(1 / max(0.75 * m11, m00)) + 0.5)
+    exact = 65536 / math.pi * math.atan(1 / max(0.75 * m11, m00))
+    if abs(exact - FOCUS_DEFAULT) <= FOCUS_SNAP:   # the engine's projection is about one unit of F off at the default
+        return FOCUS_DEFAULT
+    focus = math.floor(exact + 0.5)
     return focus if FOCUS_MIN <= focus <= FOCUS_MAX else None
 
 
@@ -75,7 +80,7 @@ def parse(lines):
     context = {}          # (frame, index) -> node
     primitives = {}       # (frame, index) -> primitives
     width, m00, m11, focus = None, None, None, None
-    m00_by_frame, m11_by_frame = {}, {}
+    m00_by_frame, m11_by_frame, focus_by_frame = {}, {}, {}
     current_frame = None
     for line in lines:
         if 'cull_census' in line:
@@ -103,6 +108,10 @@ def parse(lines):
             m = SURFACE_RE.search(line)
             if m and width is None:
                 width = int(m.group(1))
+        elif 'cull_small_parts_frame' in line:
+            m = SMALL_FRAME_FOCUS_RE.search(line)
+            if m:
+                focus_by_frame[int(m.group(1))] = int(m.group(2), 16)
         elif 'cull_small_parts_value' in line:
             m = VALUE_FOCUS_RE.search(line)
             if m:
@@ -124,7 +133,7 @@ def parse(lines):
                 if current_frame is not None and current_frame not in m00_by_frame:
                     m00_by_frame[current_frame] = value
     return {'frames': frames, 'rows': dict(rows), 'context': context, 'primitives': primitives, 'width': width, 'm00': m00, 'm00_by_frame': m00_by_frame,
-            'm11': m11, 'm11_by_frame': m11_by_frame, 'focus': focus}
+            'm11': m11, 'm11_by_frame': m11_by_frame, 'focus': focus, 'focus_by_frame': focus_by_frame}
 
 
 def summarize(parsed, frames=None, view=None, us_per_draw=23.7, width=None, m00=None, bodies_px=4.0, focus=None):
@@ -139,7 +148,7 @@ def summarize(parsed, frames=None, view=None, us_per_draw=23.7, width=None, m00=
             by_view[r['view']] += 1
         main_view = view if view is not None else max(by_view, key=by_view.get)
         frame_m00 = m00 or parsed['m00_by_frame'].get(frame) or parsed['m00'] or 1.0
-        frame_focus = (focus or focus_from_projection(parsed['m00_by_frame'].get(frame) or parsed['m00'],
+        frame_focus = (focus or parsed.get('focus_by_frame', {}).get(frame) or focus_from_projection(parsed['m00_by_frame'].get(frame) or parsed['m00'],
                                                       parsed.get('m11_by_frame', {}).get(frame) or parsed.get('m11'))
                        or parsed.get('focus') or FOCUS_DEFAULT)
         px_per_s = frame_m00 * width / 1280.0 * (frame_focus / FOCUS_DEFAULT)
@@ -257,7 +266,7 @@ def main(argv=None):
     parser.add_argument('--width', type=int, default=None, help='viewport width (default: the rt0 surface row, else 1280)')
     parser.add_argument('--m00', type=float, default=None, help='projection m00 (default: the frame\'s projection row, else 1.0)')
     parser.add_argument('--focus', type=lambda v: int(v, 0), default=None,
-                        help='the view\'s binary-angle FOV, e.g. 0x3470 (default: from the frame\'s projection rows, else the cull_small_parts_value focus, else 0x4000)')
+                        help='the view\'s binary-angle FOV, e.g. 0x3470 (default: the frame\'s cull_small_parts_frame focus, else its projection rows, else the cull_small_parts_value focus, else 0x4000)')
     parser.add_argument('--bodies-px', type=float, default=4.0, help='list the models of kept/culled_small nodes under this many pixels (default 4)')
     parser.add_argument('--json', action='store_true')
     args = parser.parse_args(argv)

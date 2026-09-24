@@ -51,6 +51,42 @@ int main() {
           focus_from_projection(m00, 3.9999745f) == 0x1a38 && focus_from_projection(1.0f, 1.25f) == 0x4000, "focus from P[0]/P[5]: 0x4000, 5120x1440 0x3470, zoom x2 0x1a38, 5:4");
     check(focus_from_projection(0.0f, 1.3f) == 0 && focus_from_projection(0.8f, 0.0f) == 0 && focus_from_projection(0.8f, -1.0f) == 0 && focus_from_projection(0.8f, 500.0f) == 0,
           "focus from the projection: unusable terms or F below 0x106 give 0");
+    {
+        // run309's vanilla projection is 16383.0 unrounded (the engine's own ~1e-4 error): the default within focus_snap, factor exactly 1.
+        const float m11_3ffc = static_cast<float>(1.0 / std::tan(0x3ffc * 3.14159265358979323846 / 65536.0) / 0.75);
+        const float m11_4003 = static_cast<float>(1.0 / std::tan(0x4003 * 3.14159265358979323846 / 65536.0) / 0.75);
+        check(focus_from_projection(0.3750374f, 1.333461f) == 0x4000 && focus_from_projection(0.3750014f, 1.333333f) == 0x4000 && focus_snap == 2.0,
+              "run309 vanilla projection (m00 0.3750374, m11 1.333461) and the menu's 0x4000 both give 0x4000");
+        check(focus_from_projection(0.375f, m11_3ffc) == 0x3ffc && focus_from_projection(0.375f, m11_4003) == 0x4003, "outside focus_snap the nearest F stays (0x3ffc, 0x4003)");
+        SceneLatch latch; latch.note(0.3750374f, 1.333461f);
+        check(latch.focus == 0x4000 && threshold_for(4.0, 0.3750374f, 5120, latch.focus) == threshold_for(4.0, 0.3750374f, 5120), "a vanilla latch applies factor 1.0");
+    }
+    {
+        // run309 (5120x1440, --fov 0x3470): the live buffer at Present (begin_frame) holds the HUD view (P[0] 0.375, F 0x4000);
+        // the scene Clear latches the scene view (P[0] 0.5, F 0x3470) after it. The factor follows the scene.
+        const float hud00 = 0.375f, hud11 = 1.33333337f, scene00 = 0.5f, scene11 = 1.7777636f;
+        SceneLatch latch;
+        Choice c = choose(latch, hud00, hud11, 0x3470);
+        check(!latch.usable() && c.source == Source::registry && c.focus == 0x3470 && c.m00 > 0.49995f && c.m00 < 0.50005f && c.fallback == Fallback::no_scene,
+              "no scene latch: the registry F, the HUD projection rescaled to it (0.5), fallback no_scene");
+        latch.note(scene00, scene11);
+        c = choose(latch, hud00, hud11, 0x4000);
+        check(latch.usable() && c.source == Source::scene && c.m00 == scene00 && c.focus == 0x3470 && c.fallback == Fallback::none, "HUD live, scene latched: the scene's P[0] and F 0x3470");
+        check(threshold_for(8.0, c.m00, 5120, c.focus) == 5 && threshold_for(8.0, hud00, 5120, 0x4000) == 6 && threshold_for(4.0, c.m00, 5120, c.focus) == 3,
+              "8 px at 5120: 5 from the scene (6 from the HUD's 0x4000); 4 px: 3 either way");
+        latch.note(0.8f, 0.0f);
+        check(latch.usable() && latch.m00 == scene00 && latch.focus == 0x3470, "an unusable projection leaves the latch");
+        for (unsigned i = 0; i < scene_max_age; ++i) latch.advance();
+        check(latch.usable(), "the latch holds for scene_max_age frames");
+        latch.advance(); c = choose(latch, hud00, hud11, 0x471c);
+        check(!latch.usable() && c.source == Source::registry && c.focus == 0x471c && c.m00 < 0.3148f && c.m00 > 0.3146f, "aged out: the registry F (0x471c, P[0] 0.3147)");
+        check(c.fallback == Fallback::aged, "aged out: fallback aged");
+        latch.note(scene00, scene11); latch.clear();
+        check(latch.fallback() == Fallback::reset && !std::strcmp(fallback_name(Fallback::reset), "reset") && !std::strcmp(fallback_name(Fallback::no_scene), "no_scene") &&
+              !std::strcmp(fallback_name(Fallback::aged), "aged") && !std::strcmp(fallback_name(Fallback::none), "none"), "clear (Reset): fallback reset; names");
+        check(!latch.usable() && fallback_m00(0.8f, 0.0f, 0x3470) == 0.8f && fallback_m00(0.8f, 1.0f, 0x105) == 0.8f, "clear (Reset); no P[5] or F outside the band: the live P[0]");
+        check(!std::strcmp(source_name(Source::scene), "scene") && !std::strcmp(source_name(Source::registry), "registry"), "source names");
+    }
     double px = 0;
     check(parse_px("2", &px) && px == 2.0 && parse_px("+2.5", &px) && px == 2.5 && parse_px(".5", &px) && px == 0.5 && !parse_px("2,5", &px) && !parse_px("1e1", &px) && !parse_px("", &px) && !parse_px(nullptr, &px), "parser");
     check(valid_px(64.0) && !valid_px(64.01) && !valid_px(0.0), "band");
@@ -228,8 +264,14 @@ class CullSmallPartsSite(unittest.TestCase):
                          'marker_mismatch')
         self.assertEqual(probe.parse_log_line(' cull_small_parts requested=2 px=2 patched=1 reason=ok site=0x0047d2a2 cull=0x0047d2c3 write=atomic stub=0x0a100000 camera=active scope=bodies')['scope'], 'bodies')
         self.assertIsNone(probe.parse_log_line('cull_small_parts requested=2 px=0 patched=0 reason=bytes_mismatch'))
-        self.assertEqual(probe.parse_value_line('cull_small_parts_value px=2 m00=0.799999952 width=1280 threshold=3'), {'px': 2.0, 'm00': 0.799999952, 'width': 1280, 'threshold': 3, 'focus': None})
+        self.assertEqual(probe.parse_value_line('cull_small_parts_value px=2 m00=0.799999952 width=1280 threshold=3'), {'px': 2.0, 'm00': 0.799999952, 'width': 1280, 'threshold': 3, 'focus': None,
+                                                                                                                      'source': None, 'fallback': None})
         self.assertEqual(probe.parse_value_line('cull_small_parts_value px=2 m00=0.5 width=5120 threshold=1 focus=0x3470')['focus'], 0x3470)
+        value = probe.parse_value_line('cull_small_parts_value px=4 m00=0.5 width=5120 threshold=3 focus=0x3470 source=scene fallback=none')
+        self.assertEqual((value['focus'], value['source'], value['fallback']), (0x3470, 'scene', 'none'))
+        frame = probe.parse_frame_line('cull_small_parts_frame device=1 frame=900 px=4 threshold=3 culled=12 m00=0.5 width=5120 scope=all projectiles=on exempt_bullet=0 focus=0x3470 '
+                                       'source=registry fallback=no_scene')
+        self.assertEqual((frame['focus'], frame['source'], frame['fallback'], frame['exempt_bullet']), (0x3470, 'registry', 'no_scene', 0))
         frame = probe.parse_frame_line('cull_small_parts_frame device=1 frame=4991 px=2 threshold=3 culled=1147 m00=0.799999952 width=1280')
         self.assertEqual((frame['frame'], frame['threshold'], frame['culled'], frame['width']), (4991, 3, 1147, 1280))
         self.assertIsNone(frame['scope'])
@@ -252,6 +294,37 @@ class CullSmallPartsSite(unittest.TestCase):
             run = subprocess.run([str(executable)], capture_output=True, text=True)
             self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
             self.assertEqual(run.stdout, 'cull_small_parts_core checks_failed=0\n')
+
+    def test_scene_projection_hand_over(self):
+        # The cull's FOV source is the motion route's scene-phase camera read (run309: the live buffer at Present is the HUD view).
+        # The motion fixture cannot patch the cull site, so the hand-over is pinned in the source: dropping either call, or
+        # reading the camera for the scene anywhere but the Background -> Scene Clear, fails here.
+        source = (ROOT / 'src/proxy/motion_output.cpp').read_text()
+
+        def body(signature):
+            start = source.index(signature)
+            depth, i = 0, source.index('{', start)
+            for j in range(i, len(source)):
+                depth += {'{': 1, '}': -1}.get(source[j], 0)
+                if depth == 0:
+                    return source[i:j + 1]
+            self.fail(signature)
+
+        read_camera = body('void MotionOutput::read_camera(bool scene) noexcept')
+        call = 'cull_small_parts::note_scene_projection(sample.state.m00, sample.state.m11)'
+        self.assertEqual(read_camera.count(call), 2, 'both camera paths (TAA/candidates and the cull alone) hand the scene projection over')
+        no_taa, taa = read_camera.split('camera_state::Sample sample{};\n    const bool valid = camera_state::read(&sample);\n    ++counters_.camera_reads;')
+        self.assertIn('const bool cull = scene && cull_small_parts::wants_scene_projection();', no_taa)
+        self.assertIn('if (cull && valid) ' + call, no_taa)
+        self.assertIn('if (scene) {', taa)
+        self.assertLess(taa.index('if (scene) {'), taa.index(call))
+        self.assertIn('if (valid) ' + call, taa)
+        after_clear = body('void MotionOutput::after_clear(HRESULT result) noexcept')
+        self.assertEqual(after_clear.count('read_camera(true)'), 1)
+        self.assertIn('if (before == renderer::BoundaryState::Background && selector_.state() == renderer::BoundaryState::Scene) read_camera(true);', after_clear)
+        self.assertEqual(source.count('read_camera(true)'), 1, 'the scene read happens only at the scene-phase Clear')
+        self.assertIn('#include "cull_small_parts.h"', source)
+        self.assertIn('cull_small_parts::begin_frame();', (ROOT / 'src/proxy/capture.cpp').read_text())
 
     @unittest.skipUnless(probe.DEFAULT_EXE.is_file(), 'installed executable not present')
     def test_installed_executable(self):

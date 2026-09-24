@@ -79,3 +79,7 @@ frames (min / median / max), D between 15.42 M and 15.53 M; `usc_dock_e_upper_co
 213, gaps down to 3 frames). One pop per crossing, made visible by the record swap changing the material constants and
 the sun-shadow casters together (lod-overlay.md, sun-shadow ledger). Fix direction: make the records match visually
 (baker shading classes, alpha-tested casters) before any hysteresis patch of the size loop.
+
+2026-09-24: `cull_small_parts` takes P[0] and F from the scene view latched at the motion route's scene Clear (registry F
+as fallback); value and frame rows now end in `focus=… source=scene|registry fallback=…`; `cull_census.py` takes a frame's F
+from its own frame row first; run309 re-evaluation and fixture 153/0 in `docs/verification/field-of-view.md`.

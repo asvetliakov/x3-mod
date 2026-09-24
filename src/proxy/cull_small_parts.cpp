@@ -11,10 +11,10 @@
 
 // Nothing here runs inside the engine's pass: the stub is straight-line
 // integer code emitted from cull_small_parts_core.h (no call into this
-// module), so this file is compiled with the ordinary proxy flags. begin_frame,
-// present and after_reset run on the proxy's own frame path (the thread that
-// issues BeginScene/Present and runs the pass), where the other frame-scoped
-// modules already use SSE.
+// module), so this file is compiled with the ordinary proxy flags. begin_frame
+// and present run in the proxy's Present hook, after_reset in its Reset hook,
+// on the application's render thread (the one that runs the pass), where the
+// other frame-scoped modules already use SSE.
 static_assert(sizeof(void*) == 4, "x86 code patching only");
 namespace {
 namespace core = x3m::cull_small_parts::core;
@@ -27,8 +27,16 @@ double px_ = 0;
 unsigned width_ = 0;
 float last_m00_ = 0;
 std::uint32_t last_focus_ = core::focus_default;
+core::Source last_source_ = core::Source::registry;
+core::Fallback last_fallback_ = core::Fallback::no_scene;
 std::int32_t last_threshold_ = 0;
 unsigned value_lines_ = 0;
+constexpr unsigned value_line_cap = 128;  // cull_small_parts_value rows per process (a menu FOV sweep is about 70 steps)
+// The scene view's P[0]/P[5] from the motion route's scene-phase Clear
+// (note_scene_projection); written and read on the engine's render thread
+// only (the Clear hook and the Present hook that calls begin_frame run
+// there), so no synchronisation.
+core::SceneLatch scene_{};
 core::Scope scope_ = core::Scope::all;
 bool projectiles_ = true;               // the installed stub exempts marked projectile nodes
 const char* projectiles_state_ = "on";  // install-line value: on, off, marker_mismatch, invalid
@@ -164,47 +172,59 @@ bool projectiles_exempt() { return patched_ && projectiles_; }
 std::uintptr_t stub_address() { return patched_ ? stub_ : 0; }
 double requested_px() { return patched_ ? px_ : 0.0; }
 bool set_px(double px) { if (!core::valid_px(px)) return false; px_ = px; return true; }
-std::int32_t publish(float m00, unsigned width, std::uint32_t focus) {
+namespace {
+std::int32_t apply(float m00, unsigned width, std::uint32_t focus, core::Source source, core::Fallback fallback) {
     if (!patched_) return 0;
     const std::int32_t threshold = core::threshold_for(px_, m00, width, focus);
     x3m_cull_small_parts_threshold = threshold;
     cull_census::note_small_threshold(threshold, scope_ == core::Scope::bodies, projectiles_);
-    if (threshold != last_threshold_ || m00 != last_m00_ || width != width_ || focus != last_focus_) {
-        last_threshold_ = threshold; last_m00_ = m00; width_ = width; last_focus_ = focus;
-        // The projection scale changes with the FOV and the width with a Reset:
-        // a bounded line per change keeps the applied threshold visible.
-        if (value_lines_ < 16) {
+    last_m00_ = m00;
+    if (threshold != last_threshold_ || width != width_ || focus != last_focus_ || source != last_source_ || fallback != last_fallback_) {
+        last_threshold_ = threshold; width_ = width; last_focus_ = focus; last_source_ = source; last_fallback_ = fallback;
+        // The view's FOV changes the focus (and P[0]), a Reset the width, the
+        // first scene latch the source: a bounded line per change keeps the
+        // applied threshold visible.
+        if (value_lines_ < value_line_cap) {
             ++value_lines_;
-            log("cull_small_parts_value px=%.4g m00=%.9g width=%u threshold=%ld focus=0x%04lx", px_, static_cast<double>(m00), width, static_cast<long>(threshold),
-                static_cast<unsigned long>(focus));
+            log("cull_small_parts_value px=%.4g m00=%.9g width=%u threshold=%ld focus=0x%04lx source=%s fallback=%s", px_, static_cast<double>(m00), width, static_cast<long>(threshold),
+                static_cast<unsigned long>(focus), core::source_name(source), core::fallback_name(fallback));
         }
     }
     return threshold;
 }
+}
+std::int32_t publish(float m00, unsigned width, std::uint32_t focus, bool scene) {
+    return apply(m00, width, focus, scene ? core::Source::scene : core::Source::registry, core::Fallback::none);
+}
+bool wants_scene_projection() { return patched_; }
+void note_scene_projection(float m00, float m11) { if (patched_) scene_.note(m00, m11); }
 void begin_frame() {
     if (!patched_) return;
     const DWORD error = GetLastError();
     x3m_cull_small_parts_culled = 0; x3m_cull_small_parts_exempt = 0;
-    // The engine's live projection (P[0]) through the read-only camera latch;
-    // an unreadable or non-perspective matrix (menus, loading) leaves the
-    // frame vanilla. The width is the back buffer's from CreateDevice/Reset.
-    float m00 = 0, m11 = 0;
-    camera_state::Sample sample{};
-    if (camera_state::available() && camera_state::read(&sample) && sample.state.valid) { m00 = sample.state.m00; m11 = sample.state.m11; }
+    // The engine's live projection through the read-only camera latch gates
+    // the frame: an unreadable or non-perspective matrix (menus, loading)
+    // leaves it vanilla. The width is the back buffer's from CreateDevice/Reset.
     // The view's FOV: s = r*640/D' with D' = D * F/0x4000, F the view camera's
-    // +0x298 (base / zoom), so the pixel scale of s carries F/0x4000. F comes
-    // from the same latched projection (cot(F/2) = max(0.75*m11, m00)), zoom
-    // included, without an engine read. Only a valid P[0] with an unusable
-    // P[5] falls back to the registry base; without P[0] the frame is vanilla
-    // whatever F is, so nothing is read.
-    std::uint32_t focus = core::focus_from_projection(m00, m11);
-    if (!focus) focus = core::threshold_for(px_, m00, width_) ? fov::current_focus() : core::focus_default;
-    publish(m00, width_, focus);
+    // +0x298 (base / zoom), so the pixel scale of s carries F/0x4000. P[0] and
+    // F (cot(F/2) = max(0.75*m11, m00), zoom included) come from the scene
+    // view's projection the motion route latched at the scene Clear, not from
+    // the live buffer, which in the Present hook holds the last view of the
+    // frame just presented (core::SceneLatch). Without a usable latch: the registry base F
+    // (one registry read), P[0] the live projection rescaled to it.
+    // A vanilla frame (no valid live projection) keeps the latch's state in its row.
+    core::Choice choice{0.0f, core::focus_default, core::Source::registry, scene_.fallback()};
+    camera_state::Sample sample{};
+    if (camera_state::available() && camera_state::read(&sample) && sample.state.valid)
+        choice = core::choose(scene_, sample.state.m00, sample.state.m11, scene_.usable() ? 0u : fov::current_focus());
+    scene_.advance();
+    apply(choice.m00, width_, choice.focus, choice.source, choice.fallback);
     SetLastError(error);
 }
 void set_backbuffer_width(unsigned width) { width_ = width; }
 void after_reset(unsigned width) {
     width_ = width;
+    scene_.clear();   // a Reset can change the aspect: the next scene Clear latches again
     x3m_cull_small_parts_threshold = 0;
     if (patched_) cull_census::note_small_threshold(0);
 }
@@ -212,16 +232,17 @@ void present(unsigned long long device, unsigned long long frame, bool captured)
     if (!patched_) return;
     if (captured) {
         const DWORD error = GetLastError();
-        log("cull_small_parts_frame device=%llu frame=%llu px=%.4g threshold=%ld culled=%lu m00=%.9g width=%u scope=%s projectiles=%s exempt_bullet=%lu",
+        log("cull_small_parts_frame device=%llu frame=%llu px=%.4g threshold=%ld culled=%lu m00=%.9g width=%u scope=%s projectiles=%s exempt_bullet=%lu focus=0x%04lx source=%s fallback=%s",
             device, frame, px_, static_cast<long>(x3m_cull_small_parts_threshold), static_cast<unsigned long>(x3m_cull_small_parts_culled), static_cast<double>(last_m00_), width_, core::scope_name(scope_),
-            projectiles_ ? "on" : "off", static_cast<unsigned long>(x3m_cull_small_parts_exempt));
+            projectiles_ ? "on" : "off", static_cast<unsigned long>(x3m_cull_small_parts_exempt), static_cast<unsigned long>(last_focus_), core::source_name(last_source_),
+            core::fallback_name(last_fallback_));
         SetLastError(error);
     }
     x3m_cull_small_parts_culled = 0; x3m_cull_small_parts_exempt = 0;
 }
 Stats stats() {
     Stats s{};
-    s.threshold = x3m_cull_small_parts_threshold; s.culled = x3m_cull_small_parts_culled; s.exempt = x3m_cull_small_parts_exempt; s.m00 = last_m00_; s.width = width_; s.focus = last_focus_;
+    s.threshold = x3m_cull_small_parts_threshold; s.culled = x3m_cull_small_parts_culled; s.exempt = x3m_cull_small_parts_exempt; s.m00 = last_m00_; s.width = width_; s.focus = last_focus_; s.scene = last_source_ == core::Source::scene; s.fallback = unsigned(last_fallback_);
     return s;
 }
 }

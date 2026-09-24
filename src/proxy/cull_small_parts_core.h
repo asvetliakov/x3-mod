@@ -111,13 +111,75 @@ constexpr std::uint32_t focus_default = 0x4000, focus_min = 0x106, focus_max = 0
 // (field-of-view.md section 1). m00/m11 = h/w, so H = max(0.75, m00/m11) and
 // cot(F/2) = max(0.75*m11, m00); F = 65536/pi * atan(1 / cot(F/2)), rounded.
 // This is the camera's own +0x298, zoom included. 0 when either term is
-// unusable or F falls outside [focus_min, focus_max].
+// unusable or F falls outside [focus_min, focus_max]. The engine's own
+// projection is about 1e-4 off (run309 vanilla: m00 0.3750374, m11 1.333461
+// give F = 16383.0), about one unit of F, so a value within focus_snap of
+// the default is the default (factor exactly 1); the menu's 1-degree steps
+// are 182 units apart and every other F keeps its nearest integer.
+constexpr double focus_snap = 2.0;
 inline std::uint32_t focus_from_projection(float m00, float m11) {
     if (!std::isfinite(m00) || !std::isfinite(m11) || !(m00 > 0.0f) || !(m11 > 0.0f)) return 0;
     const double cot = std::fmax(0.75 * static_cast<double>(m11), static_cast<double>(m00));
-    const double focus = std::floor(65536.0 / 3.14159265358979323846 * std::atan(1.0 / cot) + 0.5);
+    const double exact = 65536.0 / 3.14159265358979323846 * std::atan(1.0 / cot);
+    if (std::fabs(exact - static_cast<double>(focus_default)) <= focus_snap) return focus_default;
+    const double focus = std::floor(exact + 0.5);
     if (!(focus >= focus_min) || !(focus <= focus_max)) return 0;
     return static_cast<std::uint32_t>(focus);
+}
+// Whose projection the frame's threshold uses (Run 81 A launch 1, run309,
+// docs/verification/field-of-view.md). begin_frame runs in the Present hook,
+// where the engine's buffer holds the view the frame just presented
+// activated last (a cockpit/HUD view whose
+// F stays 0x4000 whatever --fov or the menu set), so P[0]/P[5] come from the
+// scene view as the motion route latches them at the scene phase's Clear
+// (the read behind the camera_state rows; the cull/LOD pass runs for that
+// view right after its activation), at most scene_max_age frames old. Without
+// a usable latch (the route off, a Reset, a menu without a scene phase) the
+// registry base F is the fallback, applied to the live projection's aspect.
+constexpr unsigned scene_max_age = 8;
+enum class Source : unsigned char { registry = 0, scene = 1 };
+inline const char* source_name(Source source) { return source == Source::scene ? "scene" : "registry"; }
+// Why the registry: no_scene = nothing latched since install (the motion
+// output is off, or its selector never reached the scene phase, e.g. a
+// multisampled main target), reset = nothing since a Reset dropped the
+// latch, aged = no scene Clear for more than scene_max_age frames.
+enum class Fallback : unsigned char { none = 0, no_scene = 1, reset = 2, aged = 3 };
+inline const char* fallback_name(Fallback fallback) {
+    return fallback == Fallback::no_scene ? "no_scene" : fallback == Fallback::reset ? "reset" : fallback == Fallback::aged ? "aged" : "none";
+}
+struct SceneLatch {
+    float m00 = 0, m11 = 0;
+    std::uint32_t focus = 0;             // focus_from_projection of the latched terms; 0 = nothing latched
+    unsigned age = scene_max_age + 1;    // begin_frame calls since the latch
+    Fallback empty = Fallback::no_scene; // why focus is 0
+    // A projection whose focus is unusable leaves the previous latch (it ages out).
+    void note(float p00, float p11) {
+        const std::uint32_t f = focus_from_projection(p00, p11);
+        if (!f) return;
+        m00 = p00; m11 = p11; focus = f; age = 0;
+    }
+    bool usable() const { return focus != 0 && age <= scene_max_age; }
+    Fallback fallback() const { return usable() ? Fallback::none : focus == 0 ? empty : Fallback::aged; }
+    void advance() { if (age <= scene_max_age) ++age; }
+    void clear() { *this = SceneLatch{}; empty = Fallback::reset; }
+};
+// The registry fallback's P[0]: the live projection rescaled to the base F,
+// cot(F/2)/W with W = cot_live/m00_live (cot_live = max(0.75*m11, m00), as in
+// focus_from_projection), so only the aspect is taken from the live view. The
+// live P[0] unchanged when its P[5] is unusable or F is outside the band.
+inline float fallback_m00(float live_m00, float live_m11, std::uint32_t focus) {
+    if (!std::isfinite(live_m00) || !std::isfinite(live_m11) || !(live_m00 > 0.0f) || !(live_m11 > 0.0f) || focus < focus_min || focus > focus_max) return live_m00;
+    const double cot_live = std::fmax(0.75 * static_cast<double>(live_m11), static_cast<double>(live_m00));
+    const double cot = 1.0 / std::tan(static_cast<double>(focus) * 3.14159265358979323846 / 65536.0);
+    return static_cast<float>(static_cast<double>(live_m00) * cot / cot_live);
+}
+// The frame's P[0] and F from a valid live projection: the scene latch when
+// usable, else registry_focus (read by the caller only in that case) applied
+// to the live projection.
+struct Choice { float m00; std::uint32_t focus; Source source; Fallback fallback; };
+inline Choice choose(const SceneLatch& scene, float live_m00, float live_m11, std::uint32_t registry_focus) {
+    if (scene.usable()) return Choice{scene.m00, scene.focus, Source::scene, Fallback::none};
+    return Choice{fallback_m00(live_m00, live_m11, registry_focus), registry_focus, Source::registry, scene.fallback()};
 }
 inline std::int32_t threshold_for(double px, float m00, unsigned width, std::uint32_t focus = focus_default) {
     if (!valid_px(px) || !std::isfinite(m00) || !(m00 > 0.05f) || !(m00 < 20.0f) || width < 64 || width > 16384) return 0;
