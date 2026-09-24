@@ -1054,6 +1054,44 @@ the very large Terran scenes [i].
 1,081 Terran census rows where the loop would pick a different record; how much finer or coarser
 the vanilla switch becomes, and its draw cost, has not been measured.
 
-**Unknown.** In-process confirmation (census field `branch=[esp+0x18]`) after a patch; whether any
+**Unknown.** In-process confirmation after the patch (flight with the `flag31=` census field, section 5); whether any
 installed mod `Effects.txt` or KC script sets bit 31; the record transport of `+0x194` inside the
 save stream.
+
+### 5. Patch as built (2026-09-24, not flown)
+
+`src/proxy/terran_station_lod.cpp` with the site header `src/proxy/terran_lod_sites.h`: the reader
+patch of section 3, nothing else. On the backend-load path inside the `engine_patch` install window
+(after the first Present it is refused, `late_claim`), after the structural executable check, it
+compares the 17 bytes at `0x0047d012` with the engine's (`bytes_mismatch` otherwise, nothing
+written), writes `eb 05` over `74 05` at `0x0047d01c` with `engine_patch::write_code` (the two bytes
+sit at offset 4 of the aligned word `0x0047d018`, so one `lock cmpxchg8b`), flushes, reads the two
+bytes back and on any failure restores `74 05`, judged by a read-back; if that rollback fails the site
+stays registered and the row says `status=patched_unverified reason=rollback_failed`. `shutdown()`
+runs on a dynamic unload only (loader `DLL_PROCESS_DETACH` with `reserved == NULL`): it writes `74 05`
+back whatever the site holds, reads it back and logs one
+`terran_station_lod_restore site=0047d01c status=restored|restore_not_owned|restore_failed found=<2 bytes>|-- registered=0|1`
+row straight to the log handle (no capture lock inside DllMain); `restore_not_owned` = the site held
+bytes other than `eb 05`/`74 05` and `74 05` was written anyway; `restore_failed` keeps the site
+registered. The instruction boundaries are the same in both states. No stub, no pointer into the DLL, no per-frame work; LastError is
+preserved. Selection: `X3M_TERRAN_STATION_LOD` unset, empty or `size` = patched (the DLL default);
+`distance` = nothing patched; 32 characters or more (`too_long`) or any other value
+(`invalid_setting`) = refused, nothing patched. Launcher: `--terran-station-lod size|distance`,
+always exported on a modded launch (default `size`), refused with `--vanilla`. One log row:
+`terran_station_lod site=0047d01c status=patched|patched_unverified|off|refused reason=… mode=size|distance|- setting=… write=none|atomic|plain`.
+
+Census: every `cull_census` row now ends in ` flag31=0|1|-`, bit 31 of `+0x12c` of the row's
+parentless ancestor. It needs no extra engine read: the exit site (before the child loop) pushes
+(node, flag) on a 16-deep stack, a parentless node restarts it with its own bit, a child takes its
+parent's entry; `-` when the parent is not on the stack. With the patch a Terran part shows
+`flag31=1` and a `lod` that follows the size loop.
+
+Checks: `verification/probe/verify_terran_lod_site.py` (window and context bytes, whole-instruction
+boundaries over the 373 instructions of the pass, no direct branch into the window, no raw rel8/rel32
+encoding in `.text` or aligned dword in the image pointing into `0x0047d013..0x0047d022`, the three
+sources of `0x0047d023`, the patched window decoded as `jmp 0x0047d023` with every other instruction
+unchanged, the atomic-word rule, no other DLL claim on the window, the header's constants), run on the
+identity variants by `verification/results/executable-identity/run_verifiers.py`; host test
+`verification/analysis/test_terran_lod_site.py`, which also drives the write, read-back, rollback and
+restore sequence (`install()`/`restore()` in the site header, shared with the DLL) against a copied
+window in a buffer. No Wine fixture runs it on real code pages.

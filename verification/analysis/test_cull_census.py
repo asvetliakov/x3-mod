@@ -90,7 +90,7 @@ int main() {
     check(!format_ladder(text, 10, true, 3, 3, thr) && std::strlen(text) == 9, "ladder suffix: truncation reported, terminated");
     check(std::memcmp(measure_window + measure_site_offset, measure_site, site_length) == 0 && std::memcmp(exit_window + exit_site_offset, exit_site, site_length) == 0, "site bytes inside the windows");
     check(measure_window_va + measure_site_offset == measure_site_va && measure_site_va + site_length == measure_next_va && exit_window_va + exit_site_offset == exit_site_va && exit_site_va + site_length == exit_next_va, "address relations");
-    check(sizeof(Entry) == 68 && ring_size == 8192, "entry size and ring bound (the parent link, model pointer and +0x130 included)");
+    check(sizeof(Entry) == 72 && ring_size == 8192, "entry size and ring bound (the parent link, model pointer, +0x130 and flag31 included)");
     std::printf("cull_census_core checks_failed=%u\n", failures);
     return failures ? 1 : 0;
 }

@@ -406,6 +406,15 @@ static bool parse_row(const std::string& line, Row& r) {
                        &r.device, &r.frame, &r.view, &r.node, &r.model, &r.s, &r.measure, &r.d, &r.radius, &r.thr_1dc, &r.thr_1d8, &r.limit, &r.flags_in, &r.flags_out, &r.lod, r.verdict) == 16
         && ladder && std::sscanf(ladder, " lods=%15s thr=%127s", r.lods, r.thr) == 2;
 }
+// Rows end in " flag31=<v>" (bit 31 of the root's +0x12c): true when every line carries exactly v there.
+static bool every_flag31(const std::vector<std::string>& lines, const char* v) {
+    if (lines.empty()) return false;
+    for (const std::string& line : lines) {
+        const char* at = std::strstr(line.c_str(), " flag31=");
+        if (!at || std::strcmp(at + 8, v)) return false;
+    }
+    return true;
+}
 static bool ladder_is(const Row* r, const char* lods, const char* thr) { return r && !std::strcmp(r->lods, lods) && !std::strcmp(r->thr, thr); }
 static const Row* row_of(const std::vector<Row>& rows, const Node& n) { for (const Row& r : rows) if (r.node == addr(&n)) return &r; return nullptr; }
 static bool row_matches(const Row* r, const Node& n, const Node& reference, const Expected& e, const char* verdict) {
@@ -577,8 +586,23 @@ int main() {
         check(ladder_is(row_of(rows, gA1), "-", "-") && row_of(rows, gA1) && !std::strcmp(row_of(rows, gA1)->verdict, "kept"), "null model (EBX 0): no ladder, kept");
         check(ladder_is(row_of(rows, J), "0", "-"), "count-0 model: count, no thresholds");
         check(ladder_is(row_of(rows, I), "2", "-"), "unreadable record 0: count, no thresholds, no fault");
+        check(every_flag31(entry_lines, "0"), "flag31: every row, grandchildren gA1/gA2 included, resolves to the root's clear bit 31 (no '-')");
     }
     frame_lines.clear(); entry_lines.clear();
+
+    // ---- root bit 31 set (Terran station root): every row of the subtree carries flag31=1 ----
+    {
+        reset_tree();
+        put(R.bytes, core::flags12c_offset, get(R.bytes, core::flags12c_offset) | 0x80000000u);
+        census::begin_frame(true);
+        const Result pat = run(R, view);
+        census::present(7, 43, true);
+        check(pat.preserved && pat.x87_empty && entry_lines.size() == 10 && every_flag31(entry_lines, "1"),
+              "flag31: root bit 31 set -> all ten rows flag31=1 through two levels, registers and x87 preserved");
+        check(!(get(gA1.bytes, core::flags12c_offset) & 0x80000000u), "flag31 comes from the root, not the child's own word");
+        frame_lines.clear(); entry_lines.clear();
+        reset_tree();
+    }
 
     // ---- env-map view: the < 20 zeroing path, culled_other ----
     {

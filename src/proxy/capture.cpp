@@ -9,6 +9,7 @@
 #include "cull_census.h"
 #include "collide_box_cull.h"
 #include "pause_key_only.h"
+#include "terran_station_lod.h"
 #include "music_keep.h"
 #include "collide_narrow_census.h"
 #include "collide_sat_sse2.h"
@@ -3619,6 +3620,7 @@ void initialize_log(HMODULE module) {
     voice_dmo_fallback::initialize(); // X3M_VOICE_DMO_FALLBACK=1 only; one claim, same window
     frame_timing::initialize(); // X3M_FRAME_TIMING=1 only; one environment read, no allocation afterwards
     lod_scale::initialize(); // X3M_LOD_SCALE=<factor> only; same-length FMUL replacement, same window
+    terran_station_lod::initialize(); // X3M_TERRAN_STATION_LOD=size|distance, unset = size: the bit-31 reader's je at 0x0047d01c becomes jmp (two bytes), same window, disjoint from the other cull/LOD pass claims
     point_light_admission::initialize(); // X3M_POINT_LIGHT_ROOT_ADMISSION=1 only; six-byte JG site at 0x004c27af, same window
     collide_box_cull::initialize(); // X3M_COLLIDE_BOX_CULL=1 only; two box early-out trampolines on the sector collision pair tests (0x0045d58e, 0x0045cc7c), same window
     collide_narrow_census::initialize(); // X3M_COLLIDE_NARROW_CENSUS=1 only; narrow-phase census: two call redirects (0x0045d665, 0x0048a9a5) and one entry trampoline (0x004e2530), same window, disjoint from the box-cull claims

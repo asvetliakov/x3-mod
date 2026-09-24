@@ -79,7 +79,38 @@ struct Entry {
     std::uint32_t parent;   // node+0x18 at the measure site (0 = a parentless node: a body for cull_small_parts' scope)
     std::uint32_t model_ptr; // the model pointer at the exit site (exit_model_pointer), 0 when the pass had none for this node
     std::uint32_t flags130;  // node+0x130 at the measure site (projectile_flag: the small-parts stub's exemption)
+    std::uint32_t flag31;    // bit 31 of the root's +0x12c (Terran-station LOD branch bit), flag31_unknown when not resolved
 };
+// The row's flag31 field: bit 31 of +0x12c of the node's parentless ancestor
+// (the one bit that sends a Terran TDocks/TFactories subtree to the
+// fixed-distance LOD branch, lod-selection.md "Terran stations and bit 31"),
+// without reading any memory the pass has not just read. The pass visits a
+// node's children from the exit site onwards (depth first), so a stack of
+// (node, flag) pushed at the exit site holds the ancestors of the node being
+// measured: a parentless node restarts it with its own bit; any other node
+// takes its parent's entry. A parent not on the stack (a pass entered below
+// the root, or more than ancestor_cap levels) gives flag31_unknown ("-").
+constexpr unsigned ancestor_cap = 16;
+constexpr std::uint32_t flag31_unknown = 2;
+struct AncestorStack {
+    std::uint32_t node[ancestor_cap]{}, flag[ancestor_cap]{};
+    unsigned depth = 0;
+    void clear() { depth = 0; }
+    // The flag for a node with this parent link and +0x12c word; drops the
+    // entries above the parent (finished subtrees) only when the parent is found.
+    std::uint32_t resolve(std::uint32_t parent, std::uint32_t own_flags) {
+        if (!parent) { depth = 0; return own_flags >> 31; }
+        for (unsigned i = depth; i > 0; --i)
+            if (node[i - 1] == parent) { depth = i; return flag[i - 1]; }
+        return flag31_unknown;
+    }
+    void push(std::uint32_t n, std::uint32_t f) {
+        if (depth < ancestor_cap) { node[depth] = n; flag[depth] = f; ++depth; }
+    }
+};
+inline const char* flag31_suffix(std::uint32_t flag) {
+    return flag == 0 ? " flag31=0" : flag == 1 ? " flag31=1" : " flag31=-";
+}
 // At the exit site EBX is the model pointer only on the LOD path: after the
 // measure site EBX is written solely at 0x0047d2f6 (0: negative model id),
 // 0x0047d303 (the 0x004863c0 result, also stored to [ESP+0x14] at 0x0047d30a,

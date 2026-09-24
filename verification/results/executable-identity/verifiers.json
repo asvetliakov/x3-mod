@@ -1,5 +1,5 @@
 {
- "commit": "70cd9d92e13096541332c9a27d1ef2aebf7f6a31-dirty",
+ "commit": "1e8cb570741526e5c95679beb90c02cc253b4433-dirty",
  "anchors": 41,
  "shipped": {
   "info": {
@@ -127,6 +127,12 @@
     "known": null
    },
    "verify_sun_occlusion_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": true,
+    "known": "shipped (LAA set, CheckSum 0)"
+   },
+   "verify_terran_lod_site": {
     "result": "PASS",
     "rc": 0,
     "laa": true,
@@ -283,6 +289,12 @@
     "laa": false,
     "known": "LAA cleared (CheckSum 0)"
    },
+   "verify_terran_lod_site": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": false,
+    "known": "LAA cleared (CheckSum 0)"
+   },
    "verify_light_phase_sites": {
     "result": "PASS",
     "rc": 0,
@@ -429,6 +441,12 @@
     "known": null
    },
    "verify_sun_occlusion_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": true,
+    "known": "NTCore 4gb_patch.exe output (LAA set, CheckSum 0x0021bd66)"
+   },
+   "verify_terran_lod_site": {
     "result": "PASS",
     "rc": 0,
     "laa": true,
@@ -585,6 +603,12 @@
     "laa": true,
     "known": null
    },
+   "verify_terran_lod_site": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": true,
+    "known": null
+   },
    "verify_light_phase_sites": {
     "result": "PASS",
     "rc": 0,
@@ -616,6 +640,14 @@
   },
   "verify_lod_scale_site": {
    "va": "0x0047d44d",
+   "identity_ok": true,
+   "result": "FAIL",
+   "rc": 1,
+   "laa": true,
+   "known": null
+  },
+  "verify_terran_lod_site": {
+   "va": "0x0047d01c",
    "identity_ok": true,
    "result": "FAIL",
    "rc": 1,
@@ -746,6 +778,12 @@
     "laa": true,
     "known": null
    },
+   "verify_terran_lod_site": {
+    "result": "FAIL",
+    "rc": 1,
+    "laa": true,
+    "known": null
+   },
    "verify_light_phase_sites": {
     "result": "FAIL",
     "rc": 0,
@@ -771,29 +809,29 @@
    "sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
    "known": "shipped (LAA set, CheckSum 0)",
    "laa": true,
-   "pass": 23,
-   "total": 23
+   "pass": 24,
+   "total": 24
   },
   "laa_cleared": {
    "sha256": "9d8ddf43f06031f4fb21e5e700d55a2df8881c76bd8c5ce4a9af0866d6dc38c8",
    "known": "LAA cleared (CheckSum 0)",
    "laa": false,
-   "pass": 23,
-   "total": 23
+   "pass": 24,
+   "total": 24
   },
   "ntcore_4gb": {
    "sha256": "5d6b741e7269b40e2a7df850fc274d593d0b39ac647e0b0205b64737c93190c3",
    "known": "NTCore 4gb_patch.exe output (LAA set, CheckSum 0x0021bd66)",
    "laa": true,
-   "pass": 23,
-   "total": 23
+   "pass": 24,
+   "total": 24
   },
   "unknown_hash": {
    "sha256": "712693d9452a6144fe4aec404e5d7243e733000c2a57316e1e76ba3f17d2c8af",
    "known": null,
    "laa": true,
-   "pass": 23,
-   "total": 23
+   "pass": 24,
+   "total": 24
   }
  },
  "result": "PASS"

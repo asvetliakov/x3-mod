@@ -39,7 +39,7 @@ NOT_READ = {0x0059695f: 'collide_memo_core.h: end of the root block comment',
 # Modules that call executable_verified() and patch nothing: they only read
 # engine globals, which the gate anchors.
 READ_ONLY = {'camera_state.cpp', 'capture.cpp', 'sun_light_poll.cpp', 'motion_output_shadow_adaptive_inc.h'}
-SITE_CHECK = re.compile(r'engine_patch::claim\(|engine_patch::claim_call\(|verify_bytes\(|memcmp\(|install_group\(')
+SITE_CHECK = re.compile(r'engine_patch::claim\(|engine_patch::claim_call\(|verify_bytes\(|memcmp\(|install_group\(|sites::install\(')
 
 
 def synthetic(laa=False, checksum=0, filler=0x90):

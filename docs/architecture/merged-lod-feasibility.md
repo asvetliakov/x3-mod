@@ -1393,6 +1393,16 @@ with the fixed-distance branch, which never draws record 1 of an overlay ladder.
   trading station part or a `station_scenes/tech` part) below `s/T_pad` 0.7: expected `branch=1`, lod 0
   for the Terran parts and `branch=0`, lod 1 for the control.
 
+**Fix (built 2026-09-24, not flown).** User decision: Terran stations use the size loop.
+`src/proxy/terran_station_lod.cpp` rewrites the bit-31 reader's `je` at `0x0047d01c` (`74 05`) into
+`jmp` to the same target (`eb 05`) after comparing the 17-byte window at `0x0047d012` (fail closed),
+so no subtree gets the distance-branch flag; stations built or loaded from a save alike, saves
+unchanged ([LOD selection](../reverse-engineering/lod-selection.md), "Terran stations and bit 31", §5).
+Default on (`X3M_TERRAN_STATION_LOD` unset or `size`; launcher `--terran-station-lod size|distance`,
+`distance` = engine behaviour). The census row gains `flag31=` (bit 31 of the root's `+0x12c`), so an
+F8 burst shows the bit still set while `lod` follows the size loop. Flight still to do: a USC dock or
+SPP XL burst below `s/T_pad` 0.7 expecting `flag31=1` and lod 1 on the overlay parts.
+
 Scripts and outputs: `verification/results/run295-298-run78a/slot06/` (`type_race.py`,
 `race18_parts.py` -> `race18_parts.txt`, `branch_test.py` -> `branch_test_out.txt` over
 `census_logs.txt`, `race18_overlay_reach.py` -> `race18_overlay_reach_out.txt`,
