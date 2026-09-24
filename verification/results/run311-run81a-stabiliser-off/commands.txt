@@ -1,0 +1,17 @@
+Run 81 A launch 3 triage: run311 (/tmp/x3-bottleX3-run311, session-20260924-224938-212.log), Run81 DLL b4e945ed, stand command
++ --taa-sentinel-stabiliser 0 (fade owner + thin vote on by default). Logs/dumps read-only, no Wine, no build. Run from this directory.
+exit_rows.py, abnormal_rows.py copied from ../run309-run81a-launch1; fade_owner_frames.py, burst_frames.py, owner_pixels.py, rt2_alpha.py from ../run307-run80a-fade-owner.
+L=/tmp/x3-bottleX3-run311/session-20260924-224938-212.log
+grep -anE '^(fade_rt2_owner_configured|motion_output_taa|motion_output_taa_box_resolution|gpu_sync_timing_mode) ' $L      # Q1 config: sentinel_stabiliser=0.000, fade owner requested=1 enabled=1 default=1 lane=1
+python3 exit_rows.py 311 > exit_rows_out.txt; python3 abnormal_rows.py 311 > abnormal_rows_out.txt                          # Q1 exit/errors
+python3 fade_owner_frames.py 311 > fade_owner_frames_out.txt                                                               # Q1 fade_route_frame totals
+python3 burst_frames.py 311 > burst_frames_out.txt; python3 burst_frames.py 309 > burst_frames_run309_out.txt              # Q2 bursts rest/pan
+python3 window_rows.py 311 16268-16575 16540-16575 15826-16133 > window_rows_out.txt                                        # Q1/Q4 cond. 1 on the stand windows
+python3 route_rows.py 311 16568 16575 > route_rows_16568_out.txt; python3 route_rows.py 307 3552 4613 > route_rows_run307_out.txt; python3 route_rows.py 309 6075 7910 8710 10364 11748 > route_rows_run309_out.txt   # Q2 draw classes
+python3 draw_table.py 311 16568 > draw_table_16568_out.txt; python3 draw_table.py 311 16126 > draw_table_16126_out.txt     # Q2 per-node classes (prepass / arm owner / cutout no_zwrite)
+python3 owner_pixels.py 311 3905 4489 6562 6569 16126 16133 16568 ... 16575 > owner_pixels_out.txt                        # Q2 (.a==1 includes thin-vote 1-thin=1 routed opaque; use w>20000 for fade owners)
+python3 station_pixels.py 311 380 120 900 480 16568 ... 16575 > station_pixels_16568_out.txt                              # Q2/Q4 cond. 2 primary (distant plant + ring)
+python3 station_pixels.py 311 2500 160 2940 480 16126 ... 16133 > station_pixels_16126_out.txt                            # Q2/Q4 cond. 2 secondary (two dish plants, paused)
+python3 station_pixels.py 307 1920 540 2300 830 3552 ... 3559 > station_pixels_run307_3552_out.txt                        # run307: far owner there is an asteroid, not comparable
+python3 shimmer.py 311 2500 160 2940 480 16126 8 > shimmer_16126_out.txt; python3 shimmer.py 311 400 140 880 460 16568 8 > shimmer_16568_out.txt   # Q3 input-side only (hdr_ = pre-resolve)
+Source: fade_route::state requires alpha_test == 0 (src/proxy/fade_route_core.h:63-67), called at src/proxy/motion_output.cpp:1076; the refusal is labelled no_zwrite at motion_output.cpp:5549.

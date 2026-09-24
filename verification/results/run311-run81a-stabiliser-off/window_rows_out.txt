@@ -1,0 +1,42 @@
+window 16268-16575 frames 308
+  fade.fade_evicted: min 0 median 0 max 0 nonzero 0
+  fade.fade_owner_masked: min 0 median 0 max 0 nonzero 0
+  fade.fade_refused: min 0 median 0 max 0 nonzero 0
+  fade.fade_routed: min 16 median 24 max 26 nonzero 308
+  fade.overlay_refused: min 0 median 0 max 0 nonzero 0
+  moti.camera_rotation_deg: min 0 median 0.11265 max 0.3929 nonzero 198
+  moti.routed: min 52 median 60 max 79 nonzero 308
+  moti.taa_resolved: min 1 median 1 max 1 nonzero 308
+  moti.unjittered_depth_writers: min 0 median 0 max 1 nonzero 5
+  thin.draws: min 52 median 60 max 79 nonzero 308
+  thin.min_alpha: min 0.1038 median 0.2762 max 0.2765 nonzero 308
+  thin.refused: min 0 median 0 max 0 nonzero 0
+  thin.voted: min 3 median 5 max 18 nonzero 308
+window 16540-16575 frames 36
+  fade.fade_evicted: min 0 median 0 max 0 nonzero 0
+  fade.fade_owner_masked: min 0 median 0 max 0 nonzero 0
+  fade.fade_refused: min 0 median 0 max 0 nonzero 0
+  fade.fade_routed: min 26 median 26 max 26 nonzero 36
+  fade.overlay_refused: min 0 median 0 max 0 nonzero 0
+  moti.camera_rotation_deg: min 0 median 0.1669 max 0.3929 nonzero 29
+  moti.routed: min 62 median 62 max 79 nonzero 36
+  moti.taa_resolved: min 1 median 1 max 1 nonzero 36
+  moti.unjittered_depth_writers: min 0 median 0 max 1 nonzero 5
+  thin.draws: min 62 median 62 max 79 nonzero 36
+  thin.min_alpha: min 0.1038 median 0.13405 max 0.1491 nonzero 36
+  thin.refused: min 0 median 0 max 0 nonzero 0
+  thin.voted: min 10 median 10 max 18 nonzero 36
+window 15826-16133 frames 308
+  fade.fade_evicted: min 0 median 0 max 0 nonzero 0
+  fade.fade_owner_masked: min 0 median 0 max 0 nonzero 0
+  fade.fade_refused: min 0 median 0 max 0 nonzero 0
+  fade.fade_routed: min 14 median 14 max 14 nonzero 308
+  fade.overlay_refused: min 0 median 0 max 0 nonzero 0
+  moti.camera_rotation_deg: min 0.0619 median 0.0619 max 0.0619 nonzero 308
+  moti.routed: min 50 median 50 max 50 nonzero 308
+  moti.taa_resolved: min 1 median 1 max 1 nonzero 308
+  moti.unjittered_depth_writers: min 0 median 0 max 0 nonzero 0
+  thin.draws: min 50 median 50 max 50 nonzero 308
+  thin.min_alpha: min 0.2762 median 0.2762 max 0.2762 nonzero 308
+  thin.refused: min 0 median 0 max 0 nonzero 0
+  thin.voted: min 2 median 2 max 2 nonzero 308

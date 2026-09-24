@@ -1,0 +1,48 @@
+3905 fade_routed 0 rot_deg 0.1764
+3906 fade_routed 0 rot_deg 0.1764
+3907 fade_routed 0 rot_deg 0.1764
+3908 fade_routed 0 rot_deg 0.1764
+3909 fade_routed 0 rot_deg 0.1764
+3910 fade_routed 0 rot_deg 0.1764
+3911 fade_routed 0 rot_deg 0.1764
+3912 fade_routed 0 rot_deg 0.1764
+4489 fade_routed 0 rot_deg 0.0
+4490 fade_routed 0 rot_deg 0.0
+4491 fade_routed 0 rot_deg 0.0
+4492 fade_routed 0 rot_deg 0.0
+4493 fade_routed 0 rot_deg 0.0
+4494 fade_routed 0 rot_deg 0.0
+4495 fade_routed 0 rot_deg 0.0
+4496 fade_routed 0 rot_deg 0.0
+6562 fade_routed 22 rot_deg 0.0
+6563 fade_routed 22 rot_deg 0.0
+6564 fade_routed 22 rot_deg 0.0
+6565 fade_routed 22 rot_deg 0.0
+6566 fade_routed 22 rot_deg 0.0
+6567 fade_routed 22 rot_deg 0.0
+6568 fade_routed 22 rot_deg 0.0
+6569 fade_routed 22 rot_deg 0.0
+16126 fade_routed 14 rot_deg 0.0619
+16127 fade_routed 14 rot_deg 0.0619
+16128 fade_routed 14 rot_deg 0.0619
+16129 fade_routed 14 rot_deg 0.0619
+16130 fade_routed 14 rot_deg 0.0619
+16131 fade_routed 14 rot_deg 0.0619
+16132 fade_routed 14 rot_deg 0.0619
+16133 fade_routed 14 rot_deg 0.0619
+16568 fade_routed 26 rot_deg 0.0
+16569 fade_routed 26 rot_deg 0.2807
+16570 fade_routed 26 rot_deg 0.32
+16571 fade_routed 26 rot_deg 0.3596
+16572 fade_routed 26 rot_deg 0.3585
+16573 fade_routed 26 rot_deg 0.3929
+16574 fade_routed 26 rot_deg 0.3866
+16575 fade_routed 26 rot_deg 0.3873
+burst 3905 pre30 rot median 0.1764 max 0.1764 fade_routed pre30 median 0.0
+burst 4489 pre30 rot median 0.0 max 0.0 fade_routed pre30 median 0.0
+burst 6562 pre30 rot median 0.0 max 0.0 fade_routed pre30 median 22.0
+burst 16126 pre30 rot median 0.0619 max 0.0619 fade_routed pre30 median 14.0
+burst 16568 pre30 rot median 0.14489999999999997 max 0.2875 fade_routed pre30 median 26.0
+taa_invalidate rows 2653
+[('taa_invalidate device= frame= site=', 2653)]
+['taa_invalidate device=1 frame=0 site=not_resolved', 'taa_invalidate device=1 frame=0 site=fog_transition', 'taa_invalidate device=1 frame=1 site=not_resolved']

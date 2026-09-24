@@ -1,0 +1,14 @@
+16126 owner 155830 other 361 other_a==w(|d|<1e-3) 0.0000 owner_w min/p50/max 54/74/214824 bbox x2112-3963 y0-1311 other_in_bbox_same_w 361 other_w_max 105
+16133 owner 155838 other 364 other_a==w(|d|<1e-3) 0.0000 owner_w min/p50/max 54/74/214811 bbox x2112-3962 y0-1311 other_in_bbox_same_w 364 other_w_max 105
+16568 owner 298068 other 5439 other_a==w(|d|<1e-3) 0.0000 owner_w min/p50/max 54/2337/338570 bbox x431-3350 y0-1335 other_in_bbox_same_w 5439 other_w_max 11445
+16569 owner 303681 other 5720 other_a==w(|d|<1e-3) 0.0000 owner_w min/p50/max 54/2408/339443 bbox x425-3348 y0-1339 other_in_bbox_same_w 5720 other_w_max 11446
+16570 owner 309579 other 6093 other_a==w(|d|<1e-3) 0.0000 owner_w min/p50/max 54/2595/339832 bbox x420-3348 y0-1345 other_in_bbox_same_w 6093 other_w_max 11470
+16571 owner 315356 other 6347 other_a==w(|d|<1e-3) 0.0000 owner_w min/p50/max 54/2633/339891 bbox x413-3348 y0-1351 other_in_bbox_same_w 6347 other_w_max 11461
+16572 owner 322824 other 6650 other_a==w(|d|<1e-3) 0.0000 owner_w min/p50/max 54/2665/340143 bbox x406-3348 y0-1358 other_in_bbox_same_w 6650 other_w_max 11474
+16573 owner 330525 other 7036 other_a==w(|d|<1e-3) 0.0000 owner_w min/p50/max 54/2692/340597 bbox x396-3346 y0-1366 other_in_bbox_same_w 7036 other_w_max 11474
+16574 owner 337032 other 9632 other_a==w(|d|<1e-3) 0.0000 owner_w min/p50/max 54/2703/340828 bbox x388-3346 y0-1373 other_in_bbox_same_w 9632 other_w_max 11498
+16575 owner 346173 other 11251 other_a==w(|d|<1e-3) 0.0000 owner_w min/p50/max 54/2727/341127 bbox x377-3345 y0-1382 other_in_bbox_same_w 11251 other_w_max 11487
+3905 owner 454924 other 26712 other_a==w(|d|<1e-3) 0.0000 owner_w min/p50/max 126/95652/202834 bbox x0-5119 y311-1439 other_in_bbox_same_w 26712 other_w_max 149594
+4489 owner 180958 other 105980 other_a==w(|d|<1e-3) 0.0000 owner_w min/p50/max 126/20566/131735 bbox x1121-4750 y103-1375 other_in_bbox_same_w 105412 other_w_max 79795
+6562 owner 251175 other 20338 other_a==w(|d|<1e-3) 0.0000 owner_w min/p50/max 126/176105/847668 bbox x1009-5119 y214-1439 other_in_bbox_same_w 17501 other_w_max 412004
+6569 owner 247217 other 20542 other_a==w(|d|<1e-3) 0.0000 owner_w min/p50/max 126/176639/847168 bbox x1021-5119 y213-1439 other_in_bbox_same_w 17680 other_w_max 410999

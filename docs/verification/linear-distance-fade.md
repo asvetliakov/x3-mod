@@ -27,3 +27,19 @@ taken from run307's owner box (x 1979-3109, y 583-950). Open: 27.6k same-depth u
 4613 cannot be attributed per draw from the dump.
 
 **Run 81 default (not flown):** `--fade-rt2-owner` defaults on with `--taa --motion-output --hdr` (else not sent, one launcher line); `fade_rt2_owner_configured` now logs for on and off with `default=1|0` (host test `test_fade_region`). Wine (measured, X3): `seam-taa-fade-route-routed` 5100 checks with `requested=0 enabled=0 default=0`, `seam-taa-fade-route-routed-owner` 5185 with `requested=1 enabled=1 default=0`.
+
+**2026-09-24 Run 81 A launch 3 (run311, `--taa-sentinel-stabiliser 0`, owner and vote on): removal rejected for now.**
+`sentinel_stabiliser=0.000`, owner on every frame (masked/refused 0), 17,130 frames, clean exit (measured,
+`verification/results/run311-run81a-stabiliser-off/`). The user sees the fade-band stations "a little shimmering". Cause:
+on every fade-band station node the hull draws are routed and owned, but the alpha-tested cutout draws (solar panels of
+the dish plants `4944d81dfe531b37/5e0a10fe752b6140`, truss lines of the three-arm plant `53a0a641107ed76c/63f96eba9eea7880`;
+engine state blend + alpha test + Z-write off) stay sentinel-class: `fade_route::state` requires `alpha_test == 0`
+(`src/proxy/fade_route_core.h:63-67`) and the opaque chain labels them `unmatched=no_zwrite` (`motion_output.cpp:5549`), so
+no fade counter sees them. Stand burst 16568-16575 (rest, then a 4-6 px/frame pan): 24 owner draws and 16 unowned cutout
+draws per frame; station detail pixels 3,144 owned / 3,673 sentinel (valid depth 0.46); burst 16126 (static) 2,288 / 10,859
+(0.17). Input-side change per frame at rest: owned thin parts 26.2 codes, unowned panels 5.35, jitter-cycle aliasing
+(inferred). §5: condition 1 met on the stand windows, condition 2 fails (valid depth 0.17-0.48 vs 0.9), condition 3
+undecidable (no `taa_` dumps; the replay tool is 1280x768 only), condition 4 fails. **Decision: `sentinel_stabiliser` stays
+0.7.** Retry S = 0 only after the alpha-tested cutout pairs become RT2 owners (a fade-arm extension for alpha-tested,
+Z-write-off draws: design question; the sun-shadow alpha-caster lease shows the texture is reachable). A future S = 0 vs
+0.7 comparison needs `--taa-debug` dumps of `taa_`/`present_` at the stand and a 5120x1440-capable replay.

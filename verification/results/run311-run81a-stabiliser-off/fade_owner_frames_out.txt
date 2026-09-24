@@ -1,0 +1,12 @@
+run311 fade_route_frame rows 17130
+  fade_routed: nonzero_frames 9158 (0.535) sum 232233 max 169 distinct [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]
+  fade_refused: nonzero_frames 0 (0.000) sum 0 max 0 distinct [0.0]
+  fade_held: nonzero_frames 0 (0.000) sum 0 max 0 distinct [0.0]
+  fade_route: nonzero_frames 17130 (1.000) sum 8565000 max 500 distinct [500.0]
+  cutout_caps: nonzero_frames 17130 (1.000) sum 17130 max 1 distinct [1.0]
+  overlay_routed: nonzero_frames 0 (0.000) sum 0 max 0 distinct [0.0]
+  overlay_refused: nonzero_frames 1214 (0.071) sum 2030 max 3 distinct [0.0, 1.0, 2.0, 3.0]
+  fade_evicted: nonzero_frames 521 (0.030) sum 18340 max 118 distinct [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]
+  fade_owner: nonzero_frames 17130 (1.000) sum 17130 max 1 distinct [1.0]
+  fade_owner_masked: nonzero_frames 0 (0.000) sum 0 max 0 distinct [0.0]
+  motion_output_frame 17130 frames with unjittered_depth_writers>0: 2554; lines containing overlay_node: 0
