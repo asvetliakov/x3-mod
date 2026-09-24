@@ -1,0 +1,50 @@
+{
+ "candidate": {
+  "dll": "/tmp/x3-run82-candidate/build/d3d9.dll",
+  "sha256": "cd8ef8e4674d17d359b4a21bbb0b3d2a245e859db78819097eb1698ab2ba6279",
+  "bytes": 56777721,
+  "commit": "d1a4e360",
+  "qualification": "verification/results/run82-candidate-qualification.json"
+ },
+ "command": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3-run82-candidate/build/d3d9.dll",
+ "cwd": "/Users/asvetl/x3-mod",
+ "exit": 0,
+ "installed_at": "2026-09-25T00:26+04:00",
+ "installed": {
+  "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
+  "sha256": "cd8ef8e4674d17d359b4a21bbb0b3d2a245e859db78819097eb1698ab2ba6279",
+  "bytes": 56777721,
+  "verified": "sha256 and size read back after install"
+ },
+ "unchanged": {
+  "X3AP.exe": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+  "cxbottle.conf": "cc5d6c00a8afccaf88cbae1a7c46040db513eb163a52693287a3d29aca828e0c"
+ },
+ "previous": {
+  "dll": "/tmp/x3-run81-candidate/build/d3d9.dll",
+  "sha256": "b4e945ed9e1f1c9273e9e028475551cf7c34ff61792b72f3d4a90185643ae3b4",
+  "bytes": 56719270,
+  "commit": "9e1645be"
+ },
+ "rollback": {
+  "dll": "/tmp/x3-run81-candidate/build/d3d9.dll",
+  "sha256": "b4e945ed9e1f1c9273e9e028475551cf7c34ff61792b72f3d4a90185643ae3b4",
+  "bytes": 56719270,
+  "records": [
+   "verification/results/run81-candidate-qualification.json",
+   "verification/results/run81-candidate-install.json"
+  ],
+  "then": "/tmp/x3-run80-candidate/build/d3d9.dll 593112dc\u2026"
+ },
+ "game_running_at_install": false,
+ "game_data": "fleet overlay install-fleet3 unchanged (620 bodies)",
+ "changes_vs_previous": [
+  "--fov remap: N in game units (default 90 = 90 horizontal on 16:9), constructor immediate + INS_SetFocus stub with an 81-entry table for N 50..130 (250cc48d)",
+  "--sun-flare-fix on: saturating stub at 0x0047e391 for the lens-flare collector's 32-bit overflow (72439e2c)",
+  "--chase-fov-compensate on: proxy chase boom x 0.75/half_vfov_tan (7187771f)",
+  "cull_small_parts takes the scene view's projection (5a81df27)",
+  "--taa-box-resolution half is the launcher default (c2aa8d4e)",
+  "--taa-thin-region-source both|screen|vote opt-in (4855dc5f)",
+  "fade RT2 owner admits alpha-tested station cutouts (d1a4e360)"
+ ]
+}
