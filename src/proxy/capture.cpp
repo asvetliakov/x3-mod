@@ -283,6 +283,10 @@ float taa_sky_history_exit_px = 0.f;
 // X3M_TAA_HISTORY_TAPS (5 default, 16; docs/architecture/taa-high-resolution.md S3): the resolve's history
 // reconstruction, 5-tap bilinear Catmull-Rom or the 16-tap point form of the earlier builds (in-flight A/B).
 unsigned taa_history_taps = 5;
+// X3M_TAA_REGION_HOLD (on default, off; docs/architecture/taa-plan-lifted-slot-cap.md step 1): A' of the thin region's camera
+// gate (the mask's dilation draws dropped, the region and closure holds carried in the age target); off keeps the dilations
+// for an in-flight A/B. Invalid or oversized: stays on, logged. Inert without the camera gate.
+bool taa_region_hold = true;
 // X3M_TAA_MOTION_WEIGHT=F[,V0,V1] (F 0 off, else 0.5..0.99; 0 <= V0 < V1 <= 64 px/frame, default 2,8;
 // absent: 0.7,2,8 since 2026-09-23 after Run 70 A with the TAA route, an age program and X3M_TAA_SENTINEL other
 // than 1, else off; invalid or oversized: off, logged; docs/architecture/taa-motion-history-weight.md): the age programs cap the history
@@ -2505,6 +2509,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_unmatched_static(taa_unmatched_static);
     hooked.motion_output.configure_sky_history(taa_sky_history_strict,taa_sky_history_band_px,taa_sky_history_exit_px);
     hooked.motion_output.configure_history_taps(taa_history_taps);
+    hooked.motion_output.configure_region_hold(taa_region_hold);
     hooked.motion_output.configure_motion_weight(taa_motion_weight[0],taa_motion_weight[1],taa_motion_weight[2]);
     // Render-state configuration (hybrid unhook): the reasons that keep the
     // SetRenderState/SetSamplerState hooks installed, then the capability
@@ -3587,6 +3592,11 @@ void initialize_log(HMODULE module) {
     else if(n>0){
         if(!wcscmp(setting,L"16"))taa_history_taps=16;
         else if(wcscmp(setting,L"5")!=0)log("taa_history_taps_setting invalid=1");
+    }
+    if(const DWORD n=GetEnvironmentVariableW(L"X3M_TAA_REGION_HOLD",setting,32);n>=32)log("taa_region_hold_setting invalid=1 reason=too_long length=%lu",n); // oversized: invalid, stays on
+    else if(n>0){
+        if(!wcscmp(setting,L"off"))taa_region_hold=false;
+        else if(wcscmp(setting,L"on")!=0)log("taa_region_hold_setting invalid=1");
     }
     // X3M_TAA_MOTION_WEIGHT=<F>[,<V0>,<V1>]: the whole string must parse (1 or 3 fields) and lie in range; anything else keeps the option off.
     if(const DWORD n=GetEnvironmentVariableW(L"X3M_TAA_MOTION_WEIGHT",setting,32);n>=32)log("taa_motion_weight_setting invalid=1 reason=too_long length=%lu",n); // oversized: invalid, stays off

@@ -78,6 +78,22 @@ inline constexpr std::uint32_t temporal_resolve_far_taps16_words[] = {
 inline constexpr std::uint32_t temporal_resolve_far_camera_taps16_words[] = {
 #include "temporal_resolve_far_camera_taps16_program_inc.h"
 };
+// A' (docs/architecture/taa-plan-lifted-slot-cap.md step 1): the camera-gate resolve with the region and closure holds, which
+// composes the region from the mask's tests target itself (src/temporal/resolve_far_camera_hold.hlsl), and the three box
+// programs gated on that target (thin_box{,_rows,_columns}_hold_ps.hlsl; manifests
+// verification/results/temporal-{resolve-far-camera,thin-box,thin-box-rows,thin-box-columns}-hold-program.json).
+inline constexpr std::uint32_t temporal_resolve_far_camera_hold_words[] = {
+#include "temporal_resolve_far_camera_hold_program_inc.h"
+};
+inline constexpr std::uint32_t temporal_thin_box_hold_words[] = {
+#include "temporal_thin_box_hold_program_inc.h"
+};
+inline constexpr std::uint32_t temporal_thin_box_rows_hold_words[] = {
+#include "temporal_thin_box_rows_hold_program_inc.h"
+};
+inline constexpr std::uint32_t temporal_thin_box_columns_hold_words[] = {
+#include "temporal_thin_box_columns_hold_program_inc.h"
+};
 }
 // Complete ps_3_0 program of src/temporal/resolve.hlsl (sampler and constant
 // contract in src/temporal/README.md), the resolve the live route runs at the
@@ -115,4 +131,9 @@ inline constexpr const auto& temporal_resolve_thin_taps16_program() noexcept { r
 inline constexpr const auto& temporal_resolve_age_taps16_program() noexcept { return detail::temporal_resolve_age_taps16_words; }
 inline constexpr const auto& temporal_resolve_far_taps16_program() noexcept { return detail::temporal_resolve_far_taps16_words; }
 inline constexpr const auto& temporal_resolve_far_camera_taps16_program() noexcept { return detail::temporal_resolve_far_camera_taps16_words; }
+// The region-hold programs configure_far creates on top of the camera-gate programs (optional: a refusal keeps the dilations).
+inline constexpr const auto& temporal_resolve_far_camera_hold_program() noexcept { return detail::temporal_resolve_far_camera_hold_words; }
+inline constexpr const auto& temporal_thin_box_hold_program() noexcept { return detail::temporal_thin_box_hold_words; }
+inline constexpr const auto& temporal_thin_box_rows_hold_program() noexcept { return detail::temporal_thin_box_rows_hold_words; }
+inline constexpr const auto& temporal_thin_box_columns_hold_program() noexcept { return detail::temporal_thin_box_columns_hold_words; }
 } // namespace x3m::renderer

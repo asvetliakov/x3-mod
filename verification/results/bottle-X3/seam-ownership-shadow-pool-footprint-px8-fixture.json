@@ -10,9 +10,9 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "binaries": {
-  "verification/probe/build/motion_output_fixture.exe": "322ad0470672f26af844368b9bf22a82a61784b8fca8cce0fe9a7a23dca0d36a",
-  "verification/probe/build/motion-output-seam/d3d9.dll": "d16b84546f508fa99b47dcb0c33791b802701ea89b47b956d076167abf287405",
-  "build/d3d9.dll": "b88088cfb5b1d092425f367a5e20db3babc0373503472e5143450787e919cebc"
+  "verification/probe/build/motion_output_fixture.exe": "4b5da1d83936680219aeedf1e3ee2703c2116bf3035fadb998bcd891d2166a1b",
+  "verification/probe/build/motion-output-seam/d3d9.dll": "8ea3e85e927856773b76b8ff89ac5d5d69592e5c57a5d8853a65290c677e4a14",
+  "build/d3d9.dll": "c3e5c1023d7e0ef4180c34c341e82684985b421e77760d8563feadc7328d3862"
  },
  "script": "footprint",
  "store": 0,
@@ -241,9 +241,9 @@
  },
  "us": {
   "frames": 6,
-  "min": 46.5,
-  "median": 59.3,
-  "max": 1882.8
+  "min": 44.1,
+  "median": 48.5,
+  "max": 1738.3
  },
  "footprint": {
   "px": 8.0,
@@ -266,10 +266,10 @@
   ]
  },
  "exit": 0,
- "directory": "verification/probe/build/motion-output-seam-ownership-shadow-pool-footprint-px8-20260923-015843-360322",
- "trace_sha256": "27908443a83430b7e0dbb1e23d243d62fc87aa39fce2d1968cff24d5e93fdce5",
- "dll_sha256": "d16b84546f508fa99b47dcb0c33791b802701ea89b47b956d076167abf287405",
- "exe_sha256": "322ad0470672f26af844368b9bf22a82a61784b8fca8cce0fe9a7a23dca0d36a",
+ "directory": "verification/probe/build/motion-output-seam-ownership-shadow-pool-footprint-px8-20260924-074657-133688",
+ "trace_sha256": "9f46e0a2d6ca616f9f06077c002c453950e8b9ddaf5b10db875e19f028145798",
+ "dll_sha256": "8ea3e85e927856773b76b8ff89ac5d5d69592e5c57a5d8853a65290c677e4a14",
+ "exe_sha256": "4b5da1d83936680219aeedf1e3ee2703c2116bf3035fadb998bcd891d2166a1b",
  "presented_identical_to": [
   "seam-ownership-shadow-pool-footprint-off"
  ]

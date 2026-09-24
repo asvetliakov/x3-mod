@@ -182,9 +182,10 @@ Slots are D3DXDisassembleShader's count (native `d3dx9_37`, the fixture's `RESOL
 rolled, so its body counts once; the five unrolled fetches with their weights cost about as much, and far_camera gains
 1 slot, not 30-50 (3 before the texel-centre bias below, which costs 2 per program). The saving is dynamic: per pixel under motion 5 fetches and one division instead of 16 fetches, 16
 finite tests and 16 divisions in a loop (inferred from the listings; unmeasured on the GPU until flown). The rest
-branch stays in the plain program only: in the thin / age / far variants it costs about 20 slots (far_camera 522 of
-512, measured on a scratch compile), so they rest on the filter returning the exact texel at a texel centre, which the
-fixture's `FILTER_PROBE` shows on this backend. Filtering is a second binding of the same textures (s11 colour, s12
+branch stayed in the plain program only: in the thin / age / far variants it cost about 20 slots (far_camera 522 of
+512, measured on a scratch compile), so they rested on the filter returning the exact texel at a texel centre, which the
+fixture's `FILTER_PROBE` shows on this backend. *History since the A' re-baseline (below): every 5-tap program has the
+point read at rest again; the texel-centre bias stays for the moving lookups that still sit on centres along one axis.* Filtering is a second binding of the same textures (s11 colour, s12
 mask, LINEAR) rather than LINEAR on s2 / s6 or a manual 2x2 blend: the manual form needs the 12 non-corner texels as
 point fetches (24 slots of `texldl` alone against 10), and the second binding costs no slot (a `dcl`) while s2 keeps the
 point read at rest. The weights use the closed forms s = f(1-f)/2 (w0 = -s(1-f), w3 = -sf, w1 + w2 = 1 + s, total
@@ -451,3 +452,32 @@ need the share moved elsewhere (a fourth render target or a packed encoding), wh
 this step. The fog pass also refuses any RT2 that is not `A32B32G32R32F` (`fog_pass.cpp:726`). The 8 B/px and
 59 MB at 5120x1440 stay on the table only with such a redesign.
 
+
+## A' re-baseline implemented (taa-plan-lifted-slot-cap.md step 1; 2026-09-24, fixture, not flown)
+
+One re-baseline of the TAA programs under the lifted slot cap; the ledger entry is
+[temporal-resolve.md](../verification/temporal-resolve.md) "A' region hold".
+
+- **Mask chain.** With `--taa-region-hold on` (the DLL default; `off` is the A/B) and the camera gate, the chain is the
+  tests draw alone: `taa_mask` should read `taa_mask_tests` under `--gpu-sync-timing` (the x and y draws cost 1.33 ms
+  of 8.76 at 5120x1440 in run290, measured). The second mask target (29.5 MB at 5120x1440) is released.
+- **Resolve.** `resolve_far_camera_hold.hlsl` composes the region from the tests target with a region hold and a peak
+  hold of the camera gate's closure, both one jitter cycle long (L = the jitter sample count, 8 by default), the gate's own
+  openness taken as the smaller of the pixel's and its nearest-depth 3x3 neighbour's, carried in 16 fraction bits of the
+  R32F age count (no new lane). The screen gate is not held, so the region reopens the frame a pan stops (fixture: the
+  step after a stop equals the dilated gate's, 1.983 codes). The plan's linear 4-frame reopen failed the fixture's
+  motion-start bounds; with the peak hold and the neighbour term the trail is +0.0295 over the plain resolve (bound 0.04;
+  dilated gate +0.0298) and rest ripple equals the dilated gate's (1.0000).
+- **Box.** The box programs gated on the composed mask (`b > a`), which the hold no longer draws; three twins gate on the
+  tests texel inside the region (camera openness above screen openness, and this frame's flag or the previous frame's
+  region hold at the same texel; or the class code with the stabiliser) and mark the texels they computed; the resolve
+  takes the 3x3 clip for the added strength elsewhere. Fixture, arm scene under a 0.5 px/frame pan: the box runs on 0.546
+  of the frame (dilated chain 0.719, the ungated tests test 1.000). The `taa_box` cost under a pan at 5120x1440 is the
+  number the flight must read.
+- **Consolidations.** The exact point read at rest is back in every 5-tap program (S3's rest dependence on the filter
+  returning texel centres is gone; the centre bias stays for one-axis motion), and the HDR route weighs each of the five
+  history blocks before the sum.
+- **Cost, inferred from the listings** (`verification/results/taa-high-resolution/aprime_slots.py`): the hold resolve
+  executes +22 instructions per pixel at rest and +90 moving against the S3 `far_camera` (0.02 / 0.10 ms at 5120x1440
+  at 1.07 us per executed instruction per frame), 4 fewer bilinear fetches at rest and one more 4-byte fetch; slots
+  616 (S3 504), within the 2,048 ceiling. Net expected: about -1.2 to -1.3 ms of `taa` at 5120x1440, less whatever the wider box gate adds under pans.

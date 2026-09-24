@@ -126,6 +126,22 @@ struct FrameInputs {
     // The box pair exists only while the gate runs: the first run without it
     // releases the pair (a configuration change, never per frame).
     bool thin_region_camera_gate = false;
+    // A' (docs/architecture/taa-plan-lifted-slot-cap.md step 1; --taa-region-hold), camera gate only, off by default
+    // (every target bit for bit the camera-gate run's). On: the mask chain is its tests draw alone (the x / y dilation
+    // draws and the second mask target go) and the camera-gate resolve composes the region itself from that target,
+    // with the region held thin_region_hold_frames after the pixel was last flagged and the camera gate's closure held as
+    // long (its own openness the smaller of the pixel's and its nearest-depth 3x3 neighbour's; the screen gate is not held),
+    // both carried along the reprojection in the fraction of the age count (resolve.hlsl X3M_REGION_HOLD). The box programs
+    // gate on the tests target inside the region (camera openness above screen openness, or the sentinel class) and mark
+    // what they computed; the resolve takes the 3x3 clip where they did not run. Needs
+    // configure_region_hold() (region_hold_available(), and with the sentinel stabiliser on region_hold_sentinel_available());
+    // anything else refuses the run. The hold program is 5-tap only: with 16 taps drawn (configure_history_taps(16) or no
+    // filter caps) the run keeps the dilations (Diagnostics::region_hold names what ran). Ignored without the camera gate.
+    // A run that turns the hold off after a held run restarts the history (the other age programs read whole counts).
+    bool thin_region_hold = false;
+    // The hold length in frames: the jitter period (a pixel flagged in any phase stays in the region the whole cycle). 1..64,
+    // read with thin_region_hold only; anything else refuses the run.
+    unsigned thin_region_hold_frames = 8;
     // Sentinel stabiliser (docs/architecture/temporal-integration.md "Distant
     // unrouted stations under a pan"), off by default (0: every target bit for
     // bit the camera-gate run's). S in (0, 1]: an UNROUTED pixel on the depth
@@ -288,6 +304,8 @@ struct Diagnostics {
     // History reconstruction of the program the last run drew (docs/architecture/taa-high-resolution.md S3): 5 (the
     // 5-tap bilinear Catmull-Rom programs), 16 (the 16-tap point programs), 0 when no resolve was drawn.
     unsigned history_taps = 0;
+    // A' (FrameInputs::thin_region_hold): the last run drew the tests draw alone and the hold resolve.
+    bool region_hold = false;
     // CPU-side QueryPerformanceCounter ticks of the last run's phases, taken
     // only with configure_timing(true); zero otherwise. Wall clock around the
     // device calls (submission cost, driver work, any blocking), never GPU
@@ -365,6 +383,19 @@ public:
     bool sentinel_failed() const noexcept { return box_rows_failed_; }
     HRESULT sentinel_result() const noexcept { return box_rows_result_; }
     HRESULT camera_gate_result() const noexcept { return boxes_result_; }
+    // A' (FrameInputs::thin_region_hold): the hold resolve and the box programs gated on the tests target, created only on
+    // request on top of the camera-gate programs (a session that never asks holds none). Needs camera_gate_available() and
+    // the 5-tap programs (bilinear_history_available(): the hold program has no 16-tap form); the separable box's hold
+    // twins are created here when configure_sentinel() already ran, else by configure_sentinel(). A failure leaves the
+    // pass usable with the dilations.
+    HRESULT configure_region_hold() noexcept;
+    bool region_hold_available() const noexcept { return camera_gate_available() && far_camera_hold_ != nullptr && thin_box_hold_ != nullptr; }
+    bool region_hold_sentinel_available() const noexcept { return region_hold_available() && thin_box_rows_hold_ != nullptr && thin_box_columns_hold_ != nullptr; }
+    // D3DCAPS9::MaxPixelShader30InstructionSlots as initialize read it, for the caller's one log row (AGENTS.md "Shader slot
+    // budget": the programs are created whatever the figure; a device that refuses one takes that program's failure path).
+    unsigned ps30_instruction_slots() const noexcept { return ps30_slots_; }
+    // The owned A8R8G8B8 mask targets currently allocated (0..2): a hold run keeps one, the dilated chain two. Diagnostic.
+    unsigned line_mask_targets() const noexcept { return (line_masks_[0] ? 1u : 0u) + (line_masks_[1] ? 1u : 0u); }
     // The mask targets could not be created (not a lost device): the far
     // stabiliser and the thin region are off for the rest of the session, runs
     // that ask for them proceed without (history kept), and this holds the
@@ -440,10 +471,11 @@ private:
     HRESULT line_masks_result_ = S_OK;
     IDirect3DPixelShader9* far_ = nullptr;
     IDirect3DPixelShader9 *line_mask_ = nullptr;
-    // Mask targets (A8R8G8B8, default pool, released with the histories; line_mask_ps.hlsl's modes decide the layout).
+    // Mask targets (A8R8G8B8, default pool, released with the histories; line_mask_ps.hlsl's modes decide the layout). A
+    // region-hold run needs [0] only and releases [1] (a configuration change, never per frame).
     IDirect3DTexture9* line_masks_[2]{};
     IDirect3DSurface9* line_mask_surfaces_[2]{};
-    HRESULT ensure_line_masks() noexcept;
+    HRESULT ensure_line_masks(bool both) noexcept;
     // Camera-relative gate (section 32.1): its mask and resolve programs, the 7x7 box pass and its two A16B16G16R16F targets
     // ([0] minimum, [1] maximum; default pool, released with the histories, allocated on the first camera-gate run).
     IDirect3DPixelShader9 *line_mask_camera_ = nullptr, *far_camera_ = nullptr, *thin_box_ = nullptr;
@@ -459,6 +491,10 @@ private:
     // Sentinel stabiliser: the separable box programs and the row targets ([0] row minimum + raw luma maximum, [1] row
     // maximum; A16B16G16R16F, default pool, released with the histories and by the first run without the stabiliser).
     IDirect3DPixelShader9 *thin_box_rows_ = nullptr, *thin_box_columns_ = nullptr;
+    // A' (configure_region_hold): the hold resolve and the box programs gated on the tests target.
+    IDirect3DPixelShader9 *far_camera_hold_ = nullptr, *thin_box_hold_ = nullptr, *thin_box_rows_hold_ = nullptr, *thin_box_columns_hold_ = nullptr;
+    bool hold_history_ = false; // the current age target carries hold fractions (written by the hold program)
+    unsigned ps30_slots_ = 0;
     IDirect3DTexture9* box_rows_[2]{};
     IDirect3DSurface9* box_row_surfaces_[2]{};
     bool box_rows_failed_ = false;

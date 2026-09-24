@@ -2072,3 +2072,154 @@ back from an A32B32G32R32F target and counts the instructions the GPU executed.
 | first draw (measured) | draw + sync of the first draw, dominated by the backend shader compile. Cold (first time the backend compiles the program): 39 ms at 513 slots, 88 ms at 1,025, 219 ms at 2,049, 651 ms at 4,097, 2.2 s at 8,193, 8.6 s at 16,385, 46 s at 32,770 raw. Warm (the next run, identical bytecode): 10 / 21 / 55 / 141 / 475 / 1,784 / 7,122 ms. Both runs gave the same words, slots, HRESULTs and executed counts on all 28 shared cases. The cold figures come from the first run, stopped by hand before its 65k raw draw; that log is kept at `build/shader_slot_budget/shader-slot-budget.run1.stdout` and merged into the record with `--first-run-log`. The drop is attributed to the backend's shader cache (inferred). A raw 65,538-slot draw was still not done after 120 s |
 
 The budget policy is in `docs/architecture/platform-portability.md` ("Shader slot budget").
+
+## 2026-09-24 A' region hold, exact rest read, per-block weighing (taa-plan-lifted-slot-cap.md step 1; fixture, not flown)
+
+Step 1 of the ratified plan, one re-baseline, revised after two reviews (Opus, Fable). Bottle X3, native `d3dx9_37`,
+measured unless marked.
+
+- **A' (`--taa-region-hold on|off`, `X3M_TAA_REGION_HOLD`, DLL default on).** With the thin region's camera gate the mask
+  chain is its tests draw alone and the second mask target is released; `resolve_far_camera_hold.hlsl` (`X3M_REGION_HOLD`)
+  reads the tests target at s8 and composes the region itself. L = `FrameInputs::thin_region_hold_frames`, the jitter
+  period (`motion_output` passes its `jitter_samples_`, 2..64; c11.w):
+  - region: in the region for L frames after the pixel was last flagged;
+  - closure: a peak hold of the camera gate for L frames, of the smaller of the pixel's and its nearest-depth 3x3
+    neighbour's camera openness (the texel whose correspondence the resolve's dilation follows);
+  - the screen gate is not held: `openS = min(own screen, openC)`; its closure beyond the camera gate's is the camera's own
+    motion, which must release the frame the camera stops;
+  - `b = max(region * openC, class * S * openC)`, `a = region * openS`, far weights `g * c11.yz`.
+  The box programs run through three twins (`thin_box{,_rows,_columns}_hold_ps.hlsl`, `X3M_REGION_HOLD_MASK`) gated on the
+  tests texel inside the region: `a > r` and (this frame's flag, or the previous frame's region hold at the same texel from
+  the age target at s7, unreprojected), or the sentinel class with the stabiliser. They mark computed texels in the box's
+  alpha (1, else 0); the resolve uses the box only where marked and gives the added strength the 3x3 clip elsewhere.
+- **Fallback, as an A/B option only.** `off`, `--taa-history-taps 16`, a device without FP16 / R32F filtering, or a refused
+  hold program keep the dilation draws and the dilated `far_camera` program (`Diagnostics::region_hold`; the refusal logs
+  `motion_output_taa_region_hold ... fallback=dilated`). The dilated program is the `--taa-region-hold off` A/B option, not a
+  cap-fallback program set (AGENTS.md "Shader slot budget"): it goes away with the option once a flight accepts A', and a
+  refused hold program then turns the thin region off. A run that turns the hold off restarts the history once.
+- **Exact rest read** in thin / age / far / far_camera (S3 had it in plain only): rest takes one point fetch of s2. The
+  +1/1024 centre bias stays for moving lookups on texel centres (one-axis motion), which the point read does not cover.
+- **Per-block weighing** on the HDR route: each of the five bilinear fetches is weighed before the sum (S3 weighed after).
+- **Slot cap log:** `motion_output_taa ... region_hold=%u ps30_slots=%u` once per pass creation
+  (`TemporalPass::ps30_instruction_slots()`); 512 on this bottle.
+
+As built, against the plan's section 3.1 (deviations, stated; the plan note points here):
+
+1. The closure is a peak hold for one jitter cycle, not the linear 4-frame reopen `carried = max(open - 1/4, 0)` sketched
+   there, which decays monotonically as written and, read as a linear reopen, failed the design's own motion-start bounds
+   (trail +0.082 against 0.04, and 0.2075 against 2 codes 24 frames after the motion starts; a 4-frame peak hold +0.061 /
+   0.156; an 8-frame one +0.061 / 0.00195: the background between 0.8-px struts moving 0.4 px/frame stays uncovered up to
+   about 6.4 frames under the ±0.5 px jitter, inferred).
+2. Each gate reads the smaller of the pixel's and its nearest-depth neighbour's openness (one more 4-byte fetch): with the
+   8-frame hold alone the trail stayed at +0.061, the worst pixel (3, 5) on frame 73, a background pixel that was not
+   itself covered and kept its rest-stabilised history (an unrouted pixel casts no camera vote of its own; the dilated
+   gate closed it through the 17x17 minimum).
+3. The screen gate is not held (second review, item 9): a held screen closure kept the whole region on the 3x3 clip for 8
+   frames after every stop of a pan, where the dilated chain reopened at once. Content-motion closure is in the camera
+   gate's hold already.
+4. The hold length follows the jitter period (second review, item 7): with a fixed 8 and more than 8 phases a pixel
+   flagged in one phase left the region for (samples - 8) frames per cycle. Encoding `(h + 128 (q (L + 1) + t)) / 65536`,
+   16 fraction bits beside counts up to 64 (h <= 64 in 7 bits, the pair <= 5 L + 4 in 9), exact in FP32; the plan had 10.
+5. The box twins and their region gate (first review, item 4; second review, item 8): the plan kept the box draws
+   unchanged, but they gated on the composed mask the hold no longer draws, and `a > r` alone opens the whole frame under
+   any camera motion above 0.03 px/frame.
+
+Known limit (first review, item 3): the hold keeps one level per texel. A lower closure that arrives while a higher one is
+held is released with the higher level, up to L - 1 frames early (7 at L = 8), only down to its own level (the pixel's
+current openness still applies), and only where no content motion closes it again. Holding a second level needs 13 more
+fraction bits (5 levels x (L + 1) timers per gate); the count leaves 17.
+
+| program | slots S3 (ee3bbf88) | slots now | outside-loop instructions rest / moving, S3 -> now |
+| --- | ---: | ---: | --- |
+| plain | 425 | 455 | 230 / 274 -> 230 / 298 |
+| thin | 469 | 517 | 316 / 316 -> 277 / 344 |
+| age | 495 | 544 | 345 / 345 -> 306 / 374 |
+| far | 493 | 545 | 347 / 347 -> 310 / 378 |
+| far_camera | 504 | 555 | 356 / 356 -> 318 / 386 |
+| far_camera_hold | - | 616 (629 before the review fixes) | - -> 378 / 446 |
+| thin_box / rows / columns | 51 / 77 / 94 | same (bytecode unchanged) | |
+| hold twins box / rows / columns | - | 70 / 155 / 121 | outside loops 31 / 48 / 63 (ps3 table) |
+
+Slots: D3DX's count, the lattice report's `RESOLVE_BUDGET` rows, all within the 2,048 ceiling the runner gates
+(`within_ceiling_2048`); `device_limit` 512 recorded. Instructions: `taa-high-resolution/aprime_slots.py` (and
+`_out.txt`), ps3 table, straight-line instructions outside loops on the rest and moving paths of the history lookup (the
+loops are unchanged code). Executed-instruction delta per pixel, inferred from those counts: far_camera -38 at rest, +30
+moving; the hold program against S3 far_camera +22 at rest and +90 moving, plus one 4-byte fetch (the neighbour's tests
+texel); about 0.02 / 0.10 ms at 5120x1440 at the plan's 1.07 us per executed instruction per frame, against the two
+dilation draws' 1.33 ms (run290, measured). Review items 7 and 9 together: the hold program 13 instructions shorter on
+both paths than with the screen hold (391 / 459); the hold length costs a reciprocal and two multiplies. The box twins add
+one 4-byte age fetch per tested texel inside the region gate (the rows twin tests up to 7 texels per pixel).
+
+Age lane (census): the fraction of the R32F count, no new lane. Readers of the age target: the resolve programs (the
+hold program floors; the other age programs are never fed a held target: a hold-to-no-hold change restarts the history);
+the box twins (the region hold, low 7 bits); the capture dump `taa_age` (`motion_output.cpp`), whose two host readers
+(`taa_sentinel_pan_replay.py`, `taa_sentinel_pan_variants.py`) seeded counts with `abs()` and now take `floor(abs())`
+(identical on integer dumps); the fixture's age oracles and exact age comparisons (`THIN_REGION*`, `SENTINEL_STABILISER`,
+`FAR_STABILISER`, `DEPTH_FOLD`, `SETA_EXIT` negative marks, `MOTION_WEIGHT` age_diff) run hold-off, so they read whole
+counts; the exit reset's sign survives the fraction. No exact-compare reader breaks; G32R32F not needed.
+
+Evidence (`run_temporal_pass.py`, lattice mode):
+- `REGION_HOLD_IDENTITY` (direct draws, 32x32 synthetic: sentinel 217, rest 264, moving 278, unrouted geometry 265
+  pixels; k 0 / 0.5 x S 0 / 1): the hold program with whole counts in the previous age (holds reading 0) equals the
+  camera program on the one-pixel composition of the same tests texels (openness the smaller of the pixel's and its
+  nearest-depth neighbour's, the dilation replicated on the CPU), colour 0 of 1,024 pixels differing, age = count + the
+  CPU-encoded holds on 1,024 of 1,024, four configurations (box marker 1 everywhere).
+- `REGION_HOLD_STATE`: refusal without `configure_region_hold`, ignored without the camera gate, hostile state (c11
+  included) restored with and without the separable box, failed rows and resolve draws publish nothing and recover,
+  Reset, hold off restarts the history once, hold on keeps it, 16 taps keep the dilations. Mask targets
+  (`line_mask_targets()`): 1 on a hold run, 2 after hold off, 1 on again, 2 with 16 taps, 1 with 5, 0 across Reset and 1
+  after it, 2 when the box targets are refused on a hold run (the camera gate falls back to the screen gate), and the hold
+  re-armed with 1 after the next Reset.
+- Thin-region rows with the hold against the CPU oracle extended by the holds (`line_model` with `LineConfig::hold`, fed
+  each frame's published tests target, the box twins' gate included; colour within the FP16 bound 0.02, age exact, tests
+  target within 0.5 code):
+
+  | row | oracle / age | result | dilated camera gate (same run) |
+  | --- | --- | --- | --- |
+  | shards at rest | 0.0083 / 0 | ripple 1.416 codes, 0.0866 of the plain resolve; square bit-identical | 1.416 (hold / dilated 1.0000) |
+  | drift 0.12 px/frame (inside the gate) | 0.0054 / 0 | 16.238 codes | 14.756 (1.1004) |
+  | drift 0.30 (past HI) | 0.0024 / 0 | 20.936 codes | 20.936 (1.0000) |
+  | motion start, 0.4 px/frame after 64 static frames | - | 24 frames on: 0.00024 (bound 2 codes); trail 0.2483, +0.0295 over the plain 0.2188 (bound 0.04) | trail 0.2485 (+0.0298) |
+  | pan 0.5 px/frame | 0.0093 / 0 | 1.416 codes, 0.0866 of the screen gate | 1.416 (1.0000) |
+  | stop after a 0.5 px/frame pan (frame 64) | - | frame-to-frame step 1.983 codes over the 8 frames after the stop, 1.995 over the next 24 | 1.983 / 1.995 (plain 21.07 / 21.22) |
+  | pan + bright mover + stale patch | 0.0088 / 0 | no ghost after the mover; patch +0.727 at frame 101 (screen gate 0.623) | +0.727 |
+  | pan, k = 0.5, a non-finite tap | 0.0103 / 0 | | |
+  | sentinel facets S = 0.7, rest / reversing 2 px | 0.0029 / 0 | flicker 0.392 / 0.384 of the S = 0 hold run | |
+
+- Box-open fraction under a camera pan (`THIN_REGION_HOLD_BOX_OPEN`: the arm scene carried by a 0.5 px/frame pan, last of 24
+  frames, share of the 32x32 frame where the box programs run): the dilated chain 0.7188, the tests gate alone (`a > r`,
+  the first build) 1.0000, the region-gated twins 0.5459. The fixture's scene is small and lattice-heavy; the 5120x1440
+  `taa_box` cost under a pan is the flight's number.
+- Hold-off identity against ee3bbf88 (`taa-high-resolution/aprime_identity.py`, outputs `aprime_identity_pass_out.txt`
+  and `aprime_identity_lattice_out.txt`; every existing row runs with the hold off): equal to ee3bbf88 at k = 0 within
+  float32 last bits (largest move 2.2e-6 px, 0.001 codes), and different by design at k > 0 (per-fetch weighing; 8 of 118
+  motion-output cases with colour hashes moved). `temporal-pass.txt` 11,782 of 11,784 lines identical; `temporal-lattice.txt` 4,848 of 4,872 identical (the rest: 18 budget-check labels, 512 -> the 2,048 ceiling; four `LINE_TIMING*` wall-clock rows; the `RESULT` line; one `FLICKER_DRIFT` row). The two
+  moved k = 0 rows: the camera-yaw drift sample of both generations, 0.066310668 -> 0.066308508 px, and one `FLICKER_DRIFT`
+  row (age program, v = 0.60, narrow gate: `pixel_p4_8` 4.600 -> 4.601, `block_p2_4` 1.333 -> 1.334, `block_p8_32` 1.743
+  -> 1.744). Cause unidentified, last-bit: the accumulation chain of the listing is unchanged at k = 0, only the fetch
+  issue order moved; not isolated by a build.
+- `run_temporal_pass.py`: PASS, base 744 / 278 / 2 generations, 546 samples (counts unchanged), lattice 566 / 91 (528 / 89 + the 38 / 2 A' checks; `report_sha256` base `e2719f09…`, lattice `10759488…`); every
+  `RESOLVE_BUDGET` row `within_ceiling_2048=1`. Generator: all 61 current records regenerated natively (one generator hash
+  `52b8729a…`; the six sourceless records of removed variants untouched; the bloom tool's nine regenerated as well, since
+  they pin this generator's hash); the 16-tap twins and the three hold-off box programs keep their bytecode.
+- Commands (through `wine_lock.py`, `X3M_FIXTURE_BOTTLE=X3`): `run_temporal_pass.py` 144 s, full `run_motion_output.py` 518 s,
+  lock wait 0 s each (`--timings-json`).
+- `run_motion_output.py`, full suite before the review fixes: PASS, 197 of 197 cases (the four dither cases added since the
+  committed summary, plus `seam-taa-region-hold-off` and `seam-taa-region-hold-too-long`: both byte-identical to
+  `seam-taa-on`, colour hashes and the eight FP16 history files, device references unchanged; the too-long value logs one
+  `taa_region_hold_setting invalid=1 reason=too_long length=41`, "off" none). Against the committed summary 110 of the 118
+  shared cases with colour hashes are identical; the eight that moved are the HDR-route cases (`seam-taa-hdr-tonemap-*`,
+  `seam-taa-hdr-sharpen-on`, the ownership and hook tonemap twins), with their fixture error unchanged (`max_code_error`
+  0.49998 -> 0.49998, 0.49999 -> 0.50004 on `-auto`). After the fixes, selected cases (`motion-output-partial.json`): `seam-taa-on`, `seam-taa-region-hold-off`, `seam-taa-region-hold-too-long`, `seam-taa-thin-hold-on`, `seam-taa-thin-hold-off` PASS. The two thin cases run the thin region (0.97) with its camera gate and the sentinel stabiliser (0.7) through the DLL, every seam frame equal to the fixture's reference pass byte for byte (the reference mirrors the settings): device references 18 with the hold on (base 5 + far / camera programs 7 + separable box 2 + hold resolve and box twins 4) and 14 off, `region_hold=1` / `0` in `motion_output_taa` and `motion_output_taa_history_taps`, no `motion_output_taa_region_hold` refusal row, two extra capture readbacks per frame (the far programs' age and mask dumps). The full suite was not rerun after the fixes.
+- Scratch DLL (MinGW i686, RelWithDebInfo), after the review fixes: 0 warnings; `check_no_x87.py` PASS, 673 reachable
+  functions, 0 violations. Embedded program words +4,903 (19,612 B: the five resolve programs +949, the hold program 2,479
+  and its three box twins 1,475; inferred DLL growth, not measured against a stripped baseline). Host suite: 250 modules,
+  2,561 tests, 0 failing (`test_taa_region_hold.py`: launcher forwarding and refusals, the DLL parse, the records).
+
+Look risks only a flight settles (plan section 3.4), the flight items: crawl at rest on hot pixels more than 3 px from any
+class change (the fixture's shards match the dilated gate, 1.0000; the section-32 replay's run148 / 161 / 177 / 209 dumps
+are no longer on disk, so it was not run); trails behind movers (peak hold one jitter cycle); **pan flicker at
+silhouettes** (the closure arrives one frame late instead of 8 px early; no fixture row covers it); **popping shards** (the
+8-px halo of the region goes; no fixture row covers it); `taa_box` under a pan (region-gated twins); slow drift inside the
+gate (1.10 x the dilated gate's ripple: the carried closure is quantised to quarters, rounded to nearest, so a 0.41 closure
+holds as 0.5).

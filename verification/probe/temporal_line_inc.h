@@ -5,7 +5,7 @@
 // with the option on 2026-09-23, cleanup batch 6.)
 constexpr double lineDrift=.3;
 constexpr float lineDepth=.99f,squareDepth=.98f;
-struct LineConfig { const char* name; float thin,wmax; float farW=0,farA=0,thinW=0,relax=1; bool camera=false; float sentS=0,sentE=1,emisE=0; }; // sentS / sentE: the sentinel stabiliser (temporal-integration.md), camera gate only; emisE: the thin region's emissive vote (thin-glow-lines.md 8.3 R3)
+struct LineConfig { const char* name; float thin,wmax; float farW=0,farA=0,thinW=0,relax=1; bool camera=false; float sentS=0,sentE=1,emisE=0; bool hold=false; }; // sentS / sentE: the sentinel stabiliser (temporal-integration.md), camera gate only; emisE: the thin region's emissive vote (thin-glow-lines.md 8.3 R3)
 // Far stabiliser gate of the far cases (temporal_far_inc.h) and the scene hooks the shared oracle uses.
 float farD0=0,farInv=0,farLo=x3::temporal::kFarSpeedLo,farHi=x3::temporal::kFarSpeedHi;
 double line_velocity_default(double nearest){return nearest==double(lineDepth)?lineDrift:0;}
@@ -34,6 +34,16 @@ double oracle_unweigh(double v){return oracleK>0?v/std::max(1-oracleK*std::max(v
 bool oracle_finite(double v){return std::fabs(v)<=65000;}
 // History reconstruction the oracle models (docs/architecture/taa-high-resolution.md S3): 5 (the default programs) or 16 (the 16-tap twins).
 unsigned oracleHistoryTaps=5;
+// A' (resolve.hlsl X3M_REGION_HOLD; LineConfig::hold): the camera gate's L-frame peak hold (closureHold) and the hold fraction of the
+// age count, (h + 128 code) / 65536 with code = q (L + 1) + t; L = oracleHoldFrames (FrameInputs::thin_region_hold_frames). The closed
+// quarters k = floor(4.5 - 4 open) in float32 as the program computes them (never near a floor boundary for UNORM8 openness).
+unsigned oracleHoldFrames=8;
+float closure_hold(float own,double held,double& code){const double period=oracleHoldFrames+1.,q=std::floor((held+.5)/period),t=held-period*q,carried=t>0?q:0,k=std::floor(4.5f-4*own);
+    code=k>=carried?period*k+(k>0?double(oracleHoldFrames):0.):held-1;return float(1-.25*carried);}
+double hold_code(double h,double codeC){return (h+128*codeC)/65536;}
+double fresh_code(bool flagged,float a){double c;closure_hold(a,0,c);return hold_code(flagged?double(oracleHoldFrames):0.,c);}
+bool held_region(double age){const double v=std::fabs(age);const double held=v<=65?(v-std::floor(v))*65536:0;return held-128*std::floor(held/128)>0;} // the previous region hold at a texel
+bool hold_class(float code){return code>.5f/255&&(code<1.5f/255||code>254.5f/255);} // the tests draw's sentinel-class code (1/255 or 1)
 float quantise8(double v){return float(std::lround(std::min(std::max(v,0.),1.)*255.))/255.f;} // as the A8R8G8B8 mask stores it
 // Thin-region gate exactly as line_mask_ps.hlsl computes it (clamped addressing): b = (11x11 maximum of FRAGMENTED) * (1 - 17x17 maximum
 // of the 8-bit speed closure); FRAGMENTED = some 7-tap line through the pixel changes depth class at least twice; the closure uses the
@@ -76,19 +86,27 @@ float far_gate_weight(float depth){if(!(depth>=0&&depth<=1))return 0;const float
 // (cameraPanX, 0)), the disocclusion proof over the 2x2 footprint, Catmull-Rom history with the snap (the 5-tap form: the 4x4
 // without its corners, renormalised; oracleHistoryTaps 16: the full 4x4), the 3x3 clip, the thin
 // soft clip and age weight of the variants, the camera gate's 7x7 box clip by the share of the strength the camera term added,
-// and the far stabiliser's exp(-A d^2) current sample by the far gate. FP16 rounding per frame.
-FlickerModel line_model(const FlickerRun& run,const LineConfig& c){constexpr UINT S=EdgeScene::S;const unsigned N=unsigned(run.current.size());FlickerModel m;m.color.resize(N);m.age.resize(N);
+// and the far stabiliser's exp(-A d^2) current sample by the far gate. FP16 rounding per frame. The 5-tap form weighs each of
+// its five blocks (the texels one bilinear fetch blends) before the sum. c.hold (A'): the gates are composed per pixel from the
+// published tests target of each frame (run.mask[n]: r screen openness, g far weight, b flag / class code, a camera openness)
+// and the holds carried in the fraction of the model's own age (hold_code), exactly as resolve.hlsl X3M_REGION_HOLD does; the
+// box term applies only where the box programs opened (camera openness above screen openness, or the class with S > 0).
+FlickerModel line_model(const FlickerRun& run,const LineConfig& c,const std::vector<std::vector<float>>* masks=nullptr){constexpr UINT S=EdgeScene::S;const unsigned N=unsigned(run.current.size());FlickerModel m;m.color.resize(N);m.age.resize(N);
     auto valid=[](float d){return d>=0&&d<=1;};auto sentinel=[](float d){return d<=-.5f;};const double w=.9;
     oracleSkipped=0;
     for(unsigned n=0;n<N;++n){if(cameraPanAlternates)(cameraPanVertical?cameraPanY:cameraPanX)=camera_pan_at(n);m.color[n].assign(S*S,0);m.age[n].assign(S*S,1);const unsigned index=n%latticePhases+1;const double jx=halton(index,2)-.5,jy=halton(index,3)-.5;
         for(UINT y=0;y<S;++y)for(UINT x=0;x<S;++x){m.color[n][y*S+x]=px(run.output[n],x,y);if(!run.age.empty())m.age[n][y*S+x]=px(run.age[n],x,y);}
         if(n&&n-1==oracleInjectFrame)for(int y=oracleInjectRect[1];y<oracleInjectRect[3];++y)for(int x=oracleInjectRect[0];x<oracleInjectRect[2];++x)m.color[n-1][UINT(y)*S+UINT(x)]=oracleInjectValue; // after frame n-1 was modelled
         if(!n)continue;
+        const bool hold=c.hold&&c.camera&&c.thinW>0;
+        if(hold&&(!masks||masks->size()!=N))throw std::runtime_error("line_model: a hold run passes its tests target of every frame");
         for(UINT y=3;y+3<S;++y)for(UINT x=3;x+3<S;++x){const UINT i=y*S+x;const double cur=px(run.current[n],x,y);const float centre=px(run.depth[n],x,y);
-            if(!oracle_finite(cur)){m.color[n][i]=0;m.age[n][i]=1;continue;}
+            const float testR=hold?px((*masks)[n],x,y,0):0,testB=hold?px((*masks)[n],x,y,2):0,testA=hold?px((*masks)[n],x,y,3):0;const bool flagged=testB>.5f;
+            const float fresh=hold?float(1+fresh_code(flagged,testA)):1.f; // what a current-only return writes
+            if(!oracle_finite(cur)){m.color[n][i]=0;m.age[n][i]=fresh;continue;}
             const double wcur=oracle_weigh(cur);unsigned finiteCount=0;
-            bool sawValid=valid(centre),sawSentinel=sentinel(centre);double nearest=sentinel(centre)?1:centre,lo=wcur,hi=wcur,m1=0,m2=0,sum=0,total=0;
-            for(int dy=-1;dy<=1;++dy)for(int dx=-1;dx<=1;++dx){const float d=px(run.depth[n],x+dx,y+dy);if(valid(d)){sawValid=true;if(d<nearest)nearest=d;}if(sentinel(d))sawSentinel=true;
+            bool sawValid=valid(centre),sawSentinel=sentinel(centre);double nearest=sentinel(centre)?1:centre,lo=wcur,hi=wcur,m1=0,m2=0,sum=0,total=0;int nearX=0,nearY=0;
+            for(int dy=-1;dy<=1;++dy)for(int dx=-1;dx<=1;++dx){const float d=px(run.depth[n],x+dx,y+dy);if(valid(d)){sawValid=true;if(d<nearest){nearest=d;nearX=dx;nearY=dy;}}if(sentinel(d))sawSentinel=true;
                 const double raw=px(run.current[n],x+dx,y+dy);if(!oracle_finite(raw))continue;
                 const double q=oracle_weigh(raw);++finiteCount;lo=std::min(lo,q);hi=std::max(hi,q);m1+=q;m2+=q*q;const double g=std::exp(-double(c.farA)*((dx-jx)*(dx-jx)+(dy-jy)*(dy-jy)));sum+=q*g;total+=g;}
             m1/=finiteCount;m2/=finiteCount;const double sigma=std::sqrt(std::max(m2-m1*m1,0.));lo=std::max(lo,m1-1.25*sigma);hi=std::min(hi,m1+1.25*sigma);
@@ -96,35 +114,49 @@ FlickerModel line_model(const FlickerRun& run,const LineConfig& c){constexpr UIN
             auto snap=[](double position,double& base,double& f){base=std::floor(position);f=position-base;if(f>1-1e-4){base+=1;f=0;}else if(f<1e-4)f=0;};
             double bx,fx,by,fy;snap(x-vx,bx,fx);snap(y-vy,by,fy);
             if(bx<1||by<1||bx+2>=S||by+2>=S){++oracleSkipped;continue;} // history footprint outside the frame (fast pans only): the shader's output stands
+            // (A' leaves those pixels' age to the shader too: m.age was initialised from the shader's output above.)
             const double tolerance=std::max(.0001,.02*nearest);bool proven=true;
             for(int ty=0;ty<2;++ty)for(int tx=0;tx<2;++tx){const double weight=(tx?fx:1-fx)*(ty?fy:1-fy);if(weight>.01){const float p=px(run.depth[n-1],UINT(bx+tx),UINT(by+ty));if(!((valid(p)&&p>=nearest-tolerance)||sentinel(p)))proven=false;}}
-            if(!proven){m.color[n][i]=float(cur);m.age[n][i]=1;continue;}
+            if(!proven){m.color[n][i]=float(cur);m.age[n][i]=fresh;continue;}
             auto keys=[](double f,double* cr){const double f2=f*f,f3=f2*f;cr[0]=-.5*f+f2-.5*f3;cr[1]=1-2.5*f2+1.5*f3;cr[2]=.5*f+2*f2-1.5*f3;cr[3]=-.5*f2+.5*f3;};
             double crx[4],cry[4];keys(fx,crx);keys(fy,cry);
             double old=0,weights=0;
             if(oracleHistoryTaps==16){for(int t=0;t<4;++t)for(int u=0;u<4;++u){const double cr=crx[u]*cry[t];if(cr!=0){const double tap=m.color[n-1][UINT(by+t-1)*S+UINT(bx+u-1)];if(oracle_finite(tap)){old+=cr*oracle_weigh(tap);weights+=cr;}}}
                 old/=weights;}
-            else{ // S3: the 5-tap bilinear form is the 4x4 filter without its four corner texels, renormalised, weighed after the filter;
-                // a non-finite contributing texel or result refuses the lookup (current only).
-                bool finite=true;for(int t=0;t<4;++t)for(int u=0;u<4;++u){if((t==0||t==3)&&(u==0||u==3))continue;const double cr=crx[u]*cry[t];if(cr!=0){const double tap=m.color[n-1][UINT(by+t-1)*S+UINT(bx+u-1)];finite=finite&&oracle_finite(tap);old+=cr*tap;weights+=cr;}}
-                old/=weights;if(!finite||!oracle_finite(old)){m.color[n][i]=float(cur);m.age[n][i]=1;continue;}
-                old=oracle_weigh(old);}
+            else{ // S3: the 5-tap bilinear form is the 4x4 filter without its four corner texels, renormalised. Since A' each of the
+                // five blocks (per axis {0}, {1, 2}, {3}; the corners dropped) is weighed before the sum; a non-finite contributing texel
+                // or result refuses the lookup (current only). At rest (f = 0) that is the point read of the one texel.
+                bool finite=true;const int block[4]={0,1,1,2};
+                for(int P=0;P<3;++P)for(int Q=0;Q<3;++Q){if(P!=1&&Q!=1)continue;double value=0,mass=0;
+                    for(int t=0;t<4;++t)for(int u=0;u<4;++u){if(block[u]!=P||block[t]!=Q)continue;const double cr=crx[u]*cry[t];if(cr!=0){const double tap=m.color[n-1][UINT(by+t-1)*S+UINT(bx+u-1)];finite=finite&&oracle_finite(tap);value+=cr*tap;mass+=cr;}}
+                    if(mass!=0){old+=mass*oracle_weigh(value/mass);weights+=mass;}}
+                old/=weights;if(!finite||!oracle_finite(old)){m.color[n][i]=float(cur);m.age[n][i]=fresh;continue;}}
             const bool farOn=c.farW>0||c.farA>0||c.thinW>0; // the far program has no 3x3 sentinel soft clip
-            const double gate=c.thinW>0?quantise8(thin_region_strength(run.depth[n],int(x),int(y),c.camera,run.motion.empty()?nullptr:&run.motion[n],c.sentS)):0,screenGate=c.camera?quantise8(thin_region_strength(run.depth[n],int(x),int(y),false)):gate;
+            const UINT ageIndex=UINT(by+(fy>=.5?1:0))*S+UINT(bx+(fx>=.5?1:0));
+            double gate=0,screenGate=0,holdFraction=0,heldCount=0;bool boxOpen=true;
+            if(hold){const double stored=m.age[n-1][ageIndex],magnitude=std::fabs(stored);const double held=magnitude<=65?(magnitude-std::floor(magnitude))*65536:0;heldCount=std::floor(magnitude);
+                const double heldC=std::floor(held/128);const double regionHold=flagged?double(oracleHoldFrames):std::max(held-128*heldC-1,0.);
+                const UINT bx_=UINT(int(x)+nearX),by_=UINT(int(y)+nearY); // the resolve's dilation: the nearest-depth neighbour's tests texel
+                const float ownS=std::min(testR,px((*masks)[n],bx_,by_,0)),ownC=std::min(testA,px((*masks)[n],bx_,by_,3));
+                double codeC;const float openC=std::min(ownC,closure_hold(ownC,heldC,codeC)),openS=std::min(ownS,openC);
+                const bool region=regionHold>0,sentinelTerm=c.sentS>0&&hold_class(testB);
+                gate=std::max(double(region?openC:0.f),double(sentinelTerm?c.sentS*openC:0.f));screenGate=region?openS:0.f;
+                holdFraction=hold_code(regionHold,codeC);boxOpen=sentinelTerm||(testA>testR&&(flagged||held_region(m.age[n-1][i])));} // the box twins' gate: same texel, last frame's region
+            else{gate=c.thinW>0?quantise8(thin_region_strength(run.depth[n],int(x),int(y),c.camera,run.motion.empty()?nullptr:&run.motion[n],c.sentS)):0;screenGate=c.camera?quantise8(thin_region_strength(run.depth[n],int(x),int(y),false)):gate;}
             const double clamped=std::min(std::max(old,lo),hi),soft=farOn?screenGate*c.relax:sawValid&&sawSentinel?c.thin*(1-std::min(std::max((speed-2)*.5,0.),1.)):0;
             double boxTerm=0;
-            if(c.camera&&gate>screenGate){ // the strength the camera term added takes the history clipped to the 7x7 box of the current colour (clamped addressing)
+            if(c.camera&&gate>screenGate&&boxOpen){ // the strength the camera term added takes the history clipped to the 7x7 box of the current colour (clamped addressing)
                 double boxLo=wcur,boxHi=wcur,innerLo=wcur,innerHi=wcur,rawMax=0;for(int dy=-3;dy<=3;++dy)for(int dx=-3;dx<=3;++dx){const double raw=px(run.current[n],UINT(std::min(std::max(int(x)+dx,0),int(S)-1)),UINT(std::min(std::max(int(y)+dy,0),int(S)-1)));if(!oracle_finite(raw))continue;const double q=oracle_weigh(raw);boxLo=std::min(boxLo,q);boxHi=std::max(boxHi,q);rawMax=std::max(rawMax,std::max(raw,0.));
                     if(std::abs(dx)<=1&&std::abs(dy)<=1){innerLo=std::min(innerLo,q);innerHi=std::max(innerHi,q);}}
                 if(c.sentS>0&&c.sentE>0&&rawMax>double(c.sentE)&&sentinel(centre)){boxLo=innerLo;boxHi=innerHi;} // the emitter bound: the inner 3x3
                 boxTerm=(gate-screenGate)*c.relax*(std::min(std::max(old,boxLo),boxHi)-clamped);}
             old=clamped+soft*(old-clamped)+boxTerm;
-            double keep=w;const double farw=farOn?far_gate_weight(centre):0;const UINT ageIndex=UINT(by+(fy>=.5?1:0))*S+UINT(bx+(fx>=.5?1:0));
-            if(farOn){double a=m.age[n-1][ageIndex];if(!(a>=1&&a<=64))a=1;
+            double keep=w;const double farw=hold?double(px((*masks)[n],x,y,1)):farOn?far_gate_weight(centre):0;
+            if(farOn){double a=hold?heldCount:m.age[n-1][ageIndex];if(!(a>=1&&a<=64))a=1;
                 const double ramp=a/(a+1),slow=1-std::min(std::max((speed-double(farLo))/(double(farHi)-double(farLo)),0.),1.);
                 const double farKeep=w+(c.farW>0?double(far_gate_weight(centre))*slow*(std::min(ramp,double(c.farW))-w):0.);
                 keep=gate>0?std::max(farKeep,w+gate*(std::min(ramp,double(c.thinW))-w)):farKeep;
-                m.age[n][i]=float(std::min(a+1,64.));}
+                m.age[n][i]=float(std::min(a+1,64.)+holdFraction);}
             if(c.wmax>0){double a=m.age[n-1][ageIndex];if(!(a>=1&&a<=64))a=1;const double t=std::min(std::max((speed-.1)/.4,0.),1.);keep=std::min(a/(a+1),c.wmax+t*(w-c.wmax));m.age[n][i]=float(std::min(a+1,64.));}
             const double filterWeight=c.farA>0?farw:0.;
             const double blend=farOn?wcur+filterWeight*(sum/total-wcur):wcur;

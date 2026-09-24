@@ -87,6 +87,10 @@ double thinPanX=0,thinPatchV=0;unsigned thinPatchFrom=~0u,thinInjectFrame=~0u;co
 // injected patch. thinBadMotion != 0: a routed 2x2 object on the static arm with that x velocity (1e30: the speed overflows to a non-finite value
 // inside the mask program; NaN: a NaN correspondence). thinK: luminance k.
 bool thinBadTap=false;double thinBadMotion=0;float thinK=0;
+// A' rows (temporal_region_hold_inc.h): thinPanStop, the frame from which the pan scene's camera and shards stand still;
+// armPanX, the arm scene (shards and square) carried by a camera pan of that many px/frame (the box-open fraction row).
+unsigned thinPanStop=~0u;double armPanX=0;
+double pan_x_at(unsigned n){return n>=thinPanStop?0.:thinPanX;}
 // Section 32.5: thinPatchGlass / thinBadGlass give the pan scene's mover / the bad-motion object the depth SENTINEL (routed blended
 // glass: motion alpha 1, no depth write), drawn over the shards.
 bool thinPatchGlass=false,thinBadGlass=false;
@@ -142,13 +146,14 @@ std::vector<EdgeObject> thin_objects(unsigned n){std::vector<EdgeObject> o;const
         for(double top=2.31;top<30;top+=2.37)if(top>=2&&!(top<16&&top+.8>15.5)){const bool lower=top>=16;o.push_back({0,top,S,top+.8,1,lower?forwardDepth2:lineDepth,v[lower],0});}
         if(thinForwardMover)o.push_back({6,9,8,11,1,lineDepth,v[0]+2,0});
         return o;}
-    if(thinPanX!=0){for(double top=2.31;top<30;top+=2.37)if(top>=2)o.push_back({0,top,S,top+.8,1,lineDepth,thinPanX,0});
+    if(thinPanX!=0){for(double top=2.31;top<30;top+=2.37)if(top>=2)o.push_back({0,top,S,top+.8,1,lineDepth,pan_x_at(n),0});
         if(thinBadTap)o.push_back({23,12,24,13,65504.f,lineDepth,thinPanX,0});
         if(thinPatchFrom!=~0u&&n>=thinPatchFrom){const double l=-8+thinPatchV*(n-thinPatchFrom);if(l<S&&l+6>0)o.push_back({l,8,l+6,14,patchValue,thinPatchGlass?-1.f:patchDepth,thinPatchV,0});}
         return o;}
     const double moved=n>thinMoveFrom?thinDrift*(n-thinMoveFrom):thinMoveFrom==~0u?thinDrift*n:0,phase=std::fmod(2.31+moved,2.37);
-    for(double top=phase;top<30;top+=2.37)if(top>=2)o.push_back({2,top,11,top+.8,1,lineDepth,0,n>thinMoveFrom||thinMoveFrom==~0u?thinDrift:0});
-    o.push_back({21,12,29,20,1,squareDepth,0,0});if(thinBadMotion!=0)o.push_back({6,13,8,15,1,thinBadGlass?-1.f:lineDepth,thinBadMotion,0});return o;}
+    const double shift=armPanX*n;
+    for(double top=phase;top<30;top+=2.37)if(top>=2)o.push_back({2+shift,top,11+shift,top+.8,1,lineDepth,armPanX,n>thinMoveFrom||thinMoveFrom==~0u?thinDrift:0});
+    o.push_back({21+shift,12,29+shift,20,1,squareDepth,armPanX,0});if(thinBadMotion!=0)o.push_back({6,13,8,15,1,thinBadGlass?-1.f:lineDepth,thinBadMotion,0});return o;}
 double thin_velocity(double nearest){return nearest==double(lineDepth)?thinDrift:nearest==1.?cameraPanY:0;} // nearest 1: the sentinel, on the camera path
 double thin_velocity_x(double nearest){return nearest==double(patchDepth)?thinPatchV:cameraPanX;}
 // Fails the creation of A16B16G16R16F render-target textures (the box targets of the camera gate) while alive.
@@ -165,12 +170,13 @@ struct BoxCreationFault {
 // creation failure; the pass falls back to the screen gate for the session.
 FarRun thin_sequence(EdgeScene& s,const DWORD* resolver,const LineConfig& c,unsigned frames,bool failMasks=false,bool failBoxes=false){
     TemporalPass pass;check("thin initialize",thinFlight&&flight.lane?pass.initialize(s.d,nullptr,resolver,nullptr,nullptr,reinterpret_cast<const DWORD*>(x3m::renderer::hdr_writeback_program())):pass.initialize(s.d,nullptr,resolver));const bool on=c.thinW>0||c.farW>0;constexpr UINT S=EdgeScene::S;
-    if(on){check("thin configure",pass.configure_far());if(c.sentS>0){require(!pass.sentinel_available(),"separable box programs are not created by configure_far");check("thin configure sentinel",pass.configure_sentinel());}require(pass.far_available(),"thin-region program created on this device");if(c.camera)require(pass.camera_gate_available(),"camera-gate programs created on this device");}
+    if(on){check("thin configure",pass.configure_far());if(c.sentS>0){require(!pass.sentinel_available(),"separable box programs are not created by configure_far");check("thin configure sentinel",pass.configure_sentinel());}require(pass.far_available(),"thin-region program created on this device");if(c.camera)require(pass.camera_gate_available(),"camera-gate programs created on this device");
+        if(c.hold){require(!pass.region_hold_available(),"hold programs are not created by configure_far");check("thin configure region hold",pass.configure_region_hold());require(pass.region_hold_available()&&(c.sentS<=0||pass.region_hold_sentinel_available()),"hold programs created on this device");}}
     const FlickerConfig f{c.name,0,0,.1f,.5f,false,.9f};FarRun run;bool sequence=true;
     for(unsigned n=0;n<frames;++n){const unsigned index=n%latticePhases+1;const double jx=halton(index,2)-.5,jy=halton(index,3)-.5;
-        s.render(thin_objects(n),sentinelBackground,jx,jy);run.current.push_back(s.read(s.color.p));run.depth.push_back(s.read(s.depth32.p));if(thinSentinel||thinEmissive)run.motion.push_back(s.read(s.motion.p));
+        s.render(thin_objects(n),sentinelBackground,jx,jy);run.current.push_back(s.read(s.color.p));run.depth.push_back(s.read(s.depth32.p));if(thinSentinel||thinEmissive||c.hold)run.motion.push_back(s.read(s.motion.p));
         auto in=flicker_inputs(s,f,jx,jy,true);in.sentinel_strength=thinFailRows&&n==0?0.f:c.sentS;in.sentinel_emitter=c.sentE;in.camera_cut=n==thinCutFrame;in.thin_region_weight=c.thinW;in.thin_region_relax=c.relax;in.far_weight=c.farW;in.far_d0=farD0;in.far_inv=farInv;in.far_speed_lo=farLo;in.far_speed_hi=farHi;
-        in.luminance_k=thinK;in.thin_region_emissive=c.emisE;in.thin_region_camera_gate=c.camera&&!(failBoxes&&n==0);{const double vx=cameraPanAlternates&&!cameraPanVertical?camera_pan_at(n):thinPanX,vy=!cameraPanVertical?0:cameraPanAlternates?camera_pan_at(n):cameraPanY;
+        in.luminance_k=thinK;in.thin_region_emissive=c.emisE;in.thin_region_camera_gate=c.camera&&!(failBoxes&&n==0);in.thin_region_hold=c.hold;{const double vx=cameraPanAlternates&&!cameraPanVertical?camera_pan_at(n):thinPanX!=0?pan_x_at(n):armPanX,vy=!cameraPanVertical?0:cameraPanAlternates?camera_pan_at(n):cameraPanY;
             if(vx!=0){in.clip_to_previous[3]=float(-2*vx/S);}
             if(vy!=0){in.clip_to_previous[7]=float(2*vy/S);}} // content moved down by vy px: previous clip y = y + 2 vy / S // previous clip x = x - 2 pan / S: content moved right by pan px
         if(thinForward){const auto now=forward_camera(-5000-forward_dz()*n),before=forward_camera(-5000-forward_dz()*(double(n)-1)); // view z of a world point falls by dz per frame: t_z = -camera z
@@ -188,7 +194,9 @@ FarRun thin_sequence(EdgeScene& s,const DWORD* resolver,const LineConfig& c,unsi
         else check(c.name,pass.run(in,&out));
         check("thin End resolve",s.d->EndScene());
         sequence=sequence&&out.color&&pass.diagnostics().history_valid&&out.used_history==(n>0&&n!=thinCutFrame);
-        run.output.push_back(s.read(out.color));if(out.age)run.age.push_back(s.read(out.age));if(out.stabiliser_mask&&n+1==frames)run.mask.push_back(s.read(out.stabiliser_mask));
+        // A' (c.hold): the published mask is the tests target, recorded every frame for the oracle (line_model); the hold ran unless the box targets failed.
+        if(c.hold)sequence=sequence&&pass.diagnostics().region_hold==(c.camera&&!pass.camera_gate_failed()&&!(failBoxes&&n==0));
+        run.output.push_back(s.read(out.color));if(out.age)run.age.push_back(s.read(out.age));if(out.stabiliser_mask&&(c.hold||n+1==frames))run.mask.push_back(s.read(out.stabiliser_mask));
         if(n==thinInjectFrame){ // stale history: the bright patch written into the history the next frame reads (the oracle injects the same values)
             Com<IDirect3DSurface9> level;check("thin inject level",out.color->GetSurfaceLevel(0,&level.p));s.target(level.p);check("thin inject Begin",s.d->BeginScene());check("thin inject flat",s.d->SetPixelShader(s.flat.p));
             s.constant(patchValue,patchValue,patchValue,1);s.quad(injectRect[0],injectRect[1],injectRect[2],injectRect[3],0,0);check("thin inject End",s.d->EndScene());s.target(s.colorSurface.p);}}

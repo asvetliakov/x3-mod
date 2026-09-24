@@ -703,6 +703,22 @@ QUAD_TWINS = {'seam-taa-quad-fvf': 'seam-taa-on'}
 HISTORY_TAPS16_CASE = 'seam-taa-taps16'
 CASES += [case(HISTORY_TAPS16_CASE, 'seam', jitter=True, taa=True, hdr_env=dict(X3M_TAA_HISTORY_TAPS='16'))]
 COPY_TWINS = {'seam-taa-copy-draw': 'seam-taa-on'}
+# A' (docs/architecture/taa-plan-lifted-slot-cap.md step 1): X3M_TAA_REGION_HOLD acts only through the thin region's camera gate,
+# which no case here configures, so both cases are seam-taa-on byte for byte with the pass's device references unchanged; they
+# prove the parse: "off" is accepted silently, a 40-character value logs too_long once and keeps the default. The runner pins
+# X3M_TAA_REGION_HOLD=on (the DLL default) for every other case.
+REGION_HOLD_TWINS = {'seam-taa-region-hold-off': ('seam-taa-on', 'off'), 'seam-taa-region-hold-too-long': ('seam-taa-on', 'x' * 40)}
+CASES += [case(name, 'seam', jitter=True, taa=True, hdr_env=dict(X3M_TAA_REGION_HOLD=value)) for name, (_, value) in REGION_HOLD_TWINS.items()]
+# The DLL path of A' itself: the thin region (0.97) with its default camera gate and the sentinel stabiliser (0.7), hold on and off.
+# The fixture's reference pass mirrors the same settings (motion_output_fixture.cpp, Reference::create), so every seam frame still
+# equals its reference resolve byte for byte. The pass then holds the far / camera-gate programs (7: line mask, far, camera mask,
+# far camera, 49-tap box, the two depth-folding masks) and the separable box (2) on top of the base references, and with the hold
+# on the hold resolve and its three box twins (4); ensure_taa's hold setup runs, including the separable-twin check, and the
+# first completed run logs region_hold=1.
+THIN_HOLD_CASES = {'seam-taa-thin-hold-on': 'on', 'seam-taa-thin-hold-off': 'off'}
+THIN_HOLD_REFERENCES = {'on': 7 + 2 + 4, 'off': 7 + 2}
+CASES += [case(name, 'seam', jitter=True, taa=True, hdr_env=dict(X3M_TAA_THIN_REGION='0.97', X3M_TAA_SENTINEL_STABILISER='0.7', X3M_TAA_REGION_HOLD=value))
+          for name, value in THIN_HOLD_CASES.items()]
 CASES += [case('seam-taa-quad-fvf', 'seam', jitter=True, taa=True, hdr_env=dict(X3M_FIXTURE_QUAD_FVF='1')),
           case('seam-taa-copy-draw', 'seam', jitter=True, taa=True, hdr_env=dict(X3M_FIXTURE_STRETCH_FAULT='1')),
           case('seam-msaa', 'msaa', jitter=True, taa=True)]
@@ -3439,7 +3455,8 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
         # shader); after Reset only that reference remains until the next run.
         # The pass holds one device reference per created program: the resolve, plus the sharpen program with the switch on.
         # S3: the 16-tap twin of the resolve joins with --taa-history-taps 16 (created only then).
-        taa_references = str(TAA_BASE_REFERENCES + (1 if sharpen else 0) + (1 if history_taps == 16 else 0))
+        thin_hold = THIN_HOLD_CASES.get(name)
+        taa_references = str(TAA_BASE_REFERENCES + (1 if sharpen else 0) + (1 if history_taps == 16 else 0) + (THIN_HOLD_REFERENCES[thin_hold] if thin_hold else 0))
         assert [t['initialize'] for t in taa_lines_log] == ['00000000'] and taa_lines_log[0]['references'] == taa_references, (name, taa_lines_log)
         # One line per attachment beside the depth-fold line, on its first completed run (a case whose runs never complete
         # logs neither): the reconstruction drawn (both filter queries pass on this backend).
@@ -3447,6 +3464,15 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
         fold_lines = [l for l in tl if l.startswith('motion_output_taa_depth_fold ')]
         assert len(taps_lines) == len(fold_lines) and (history_taps == 5 or taps_lines) and all((t['requested'], t['drawn'], t['bilinear'], t['reason']) == (str(history_taps), str(history_taps), '1', 'ok') for t in taps_lines), (name, taps_lines)
         assert taa_lines_log[0]['copy'] == ('draw' if copy_draw else 'stretch'), (name, taa_lines_log)
+        # The slot cap is logged once per pass creation (AGENTS.md "Shader slot budget"); the region hold resolves on only in the
+        # THIN_HOLD_CASES hold-on case (the only camera-gate configuration here), and its first completed run draws it.
+        held = '1' if thin_hold == 'on' else '0'
+        assert int(taa_lines_log[0]['ps30_slots']) > 0 and taa_lines_log[0]['region_hold'] == held, (name, taa_lines_log)
+        assert taps_lines if thin_hold else True, (name, taps_lines)
+        assert all(t.get('region_hold', '0') == held for t in taps_lines), (name, taps_lines)
+        assert not any(l.startswith('motion_output_taa_region_hold ') for l in tl), (name, 'hold refused')
+        if thin_hold:
+            assert taa_lines_log[0]['thin_gate'] == 'camera' and float(taa_lines_log[0]['thin_region']) == .97 and float(taa_lines_log[0]['sentinel_stabiliser']) == .7, (name, taa_lines_log)
         assert f'generation=2 taa_references={taa_references}' in trace, name
     else:
         assert not taa_lines_log and not taa_readbacks and not color_readbacks and not present_readbacks
@@ -3469,7 +3495,9 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
         assert int(summary['lazy_flushes']) == (int(summary['routed']) if lazy else 0), (name, frame, summary)
         assert int(summary['jitter_writes']) == 2 * int(summary['jittered']), (name, frame, summary)
         # Motion + depth; with X3M_TAA_DEBUG the pre-resolve colour, the resolved FP16 image and the presented main target; the FP16 readback of the HDR path adds one.
-        assert int(summary['readbacks']) == (0 if frame == 0 else (5 if taa and not strict_skip else 2) + int(hdr and hdr_fault is None)), (name, frame, summary)
+        # THIN_HOLD_CASES: the far programs' capture dumps add the age target and the mask (taa_age, taa_mask) on every resolved frame.
+        assert int(summary['readbacks']) == (0 if frame == 0 else (5 if taa and not strict_skip else 2) + int(hdr and hdr_fault is None)
+                                             + (2 if taa and not strict_skip and name in THIN_HOLD_CASES else 0)), (name, frame, summary)
         # Render-state shadow: every route query is a shadow hit except after a
         # resynchronization (at most one native read per shadowed state); the
         # native reads are those misses plus the fill's touched-state save. Off:
@@ -5660,6 +5688,7 @@ def main(argv=None):
                        X3M_TAA_SKY_HISTORY='loose', X3M_TAA_SKY_HISTORY_EXIT_PX='0',
                        X3M_TAA_MOTION_WEIGHT='0',  # DLL default 0.7,2,8 under an age program since Run 70 A; no case here runs one, pinned off so a shell value cannot reach the DLL
                        X3M_TAA_HISTORY_TAPS='5',  # S3 default, pinned; HISTORY_TAPS16_CASE sets 16
+                       X3M_TAA_REGION_HOLD='on',  # A' default, pinned (inert without the camera gate); REGION_HOLD_TWINS set their own
                        X3M_TAA_SENTINEL_STABILISER='0',
                        X3M_TELEMETRY_DRAW='1',  # per-draw metrics (gate_us, route_draw_us, ...) are gated behind this switch since a8d4309; the validators require them
                        X3M_FIXTURE_CAMERA='rotate' if camera else 'none', X3M_TAA_SENTINEL=sentinel or 'auto', X3M_FIXTURE_WRAP='0',
@@ -5968,6 +5997,13 @@ def main(argv=None):
             case = finish_case(name, mode, variant, enabled == '1', jitter, taa, text, trace, directory, lazy, camera, sentinel, shadow, hdr, hdr_fault, mip_bias, sharpen,
                                copy_draw=hdr_env.get('X3M_FIXTURE_STRETCH_FAULT') == '1', quad_fvf=hdr_env.get('X3M_FIXTURE_QUAD_FVF') == '1',
                                history_taps=int(hdr_env.get('X3M_TAA_HISTORY_TAPS', '5')))
+            if name in REGION_HOLD_TWINS:
+                value = REGION_HOLD_TWINS[name][1]
+                parse_rows = [l for l in trace.splitlines() if 'taa_region_hold_setting' in l]
+                # GetEnvironmentVariableW reports the buffer it needs, the terminating null included: 41 for 40 characters.
+                expected = [f'reason=too_long length={len(value) + 1}'] if len(value) >= 32 else []
+                assert len(parse_rows) == len(expected) and all(e in r for e, r in zip(expected, parse_rows)), (name, parse_rows)
+                case['region_hold_parse'] = {'value_length': len(value), 'rows': len(parse_rows)}
             if hdr_env.get('X3M_SHADOW_REPLAY_CANDIDATES') == '1':
                 case['shadow_replay_candidates'] = validate_shadow_replay_candidates(name, trace)
                 case['checks'] += case['shadow_replay_candidates']['checks']
@@ -6082,6 +6118,13 @@ def main(argv=None):
             assert files_a and files_a == files_b, f'{twin_name}: readback files differ from {twin}'
             assert a['taa_copy'] == b['taa_copy'] == 'stretch', (twin_name, a['taa_copy'])
             result['native_windows'][twin_name] = {'twin': twin, 'identical': True, 'readback_files': len(files_a), 'history_files': 8, 'quad': 'xyzrhw_fixed_function'}
+        for twin_name, (twin, _) in REGION_HOLD_TWINS.items():
+            a, b = result['cases'][twin_name], result['cases'][twin]
+            assert a['color_hashes'] == b['color_hashes'] and a['color_hashes_before_boundary'] == b['color_hashes_before_boundary'], (twin_name, twin)
+            assert (a['checks'], a['restorations'], a['motion_pixels'], a['matched_pixels'], a['depth_written_pixels']) == \
+                   (b['checks'], b['restorations'], b['motion_pixels'], b['matched_pixels'], b['depth_written_pixels']), (twin_name, twin)
+            assert history_files(twin_name) == history_files(twin), f'{twin_name}: resolved FP16 history differs from {twin}'
+            result['native_windows'][twin_name] = {'twin': twin, 'identical': True, 'history_files': 8, 'region_hold_parse': a['region_hold_parse']}
         for twin_name, twin in COPY_TWINS.items():
             a, b = result['cases'][twin_name], result['cases'][twin]
             assert a['taa_copy'] == 'draw' and b['taa_copy'] == 'stretch', (twin_name, a['taa_copy'], b['taa_copy'])

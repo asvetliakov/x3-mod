@@ -84,6 +84,12 @@ this note changes them).
 
 ### 3.1 Mechanism, as it lands in `resolve_far_camera`
 
+*As built (2026-09-24), the mechanism below differs in five places: the closure is a peak hold of the camera gate for one
+jitter cycle (the linear 4-frame reopen written here failed the fixture's motion-start bound), the screen gate is not held,
+each gate reads the smaller of the pixel's and its nearest-depth neighbour's openness, the hold state takes 16 fraction bits
+with the hold length set by the jitter period, and the box programs gate on the tests target inside the region. See
+[temporal-resolve.md](../verification/temporal-resolve.md), "A' region hold".*
+
 The tests draw stays and becomes the only mask draw (mode 0: r = screen openness, g = far weight, b = flag + class code,
 a = camera openness, plus the S1 depth as COLOR1). The x and y draws go; the resolve reads the tests target at s8 and does
 the composition itself with two temporal holds carried in the age target:

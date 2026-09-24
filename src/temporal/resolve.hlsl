@@ -126,6 +126,51 @@ float4 luminance : register(c22); // k, current-filter A, alpha history (X3M_THI
 // and the history, the weight and every other term are the far program's
 // exactly. No branch and no division; the box targets hold finite values at
 // every pixel (0 where the box pass skipped one). The weight target follows b.
+// X3M_REGION_HOLD (resolve_far_camera_hold.hlsl; A' of docs/architecture/
+// taa-plan-lifted-slot-cap.md section 3 and taa-thin-geometry-alternatives.md
+// section 3.1; as built: docs/verification/temporal-resolve.md "A' region
+// hold"): the camera-gate program without the mask's two dilation draws. s8 is
+// the mask's TESTS target (line_mask_ps.hlsl, c7.z = 0: r = screen openness,
+// g = farw, b = the flag / sentinel-class code, a = camera openness) and the
+// composition the y draw did over its 11x11 / 17x17 windows is done here per
+// pixel, with two temporal holds carried in the fraction of the age count and
+// read at the same reprojected texel as the count. L = c11.w is the hold length
+// in frames, the jitter period (1..64):
+//   region: h = flag ? L : max(h' - 1, 0), in the region while h > 0, so a pixel
+//   flagged in any phase stays in it the whole cycle;
+//   closure, a peak hold of the camera gate: k = floor(4.5 - 4 own), the closed
+//   quarters of this frame (4 = closed); the carried level is q' while its timer
+//   t' > 0; openC = min(own, 1 - carried / 4); the stored pair is (k, k > 0 ? L :
+//   0) where k reaches the carried level, else (q', t' - 1). A pixel a mover
+//   covered stays closed for L frames after it was uncovered (a 4-frame reopen
+//   let the background between 0.8-px struts moving 0.4 px/frame reopen between
+//   coverings: the fixture's motion-start rows). A lower closure that arrives
+//   while a higher one is held is not held itself: it is released with the
+//   higher level, up to L - 1 frames early (a known limit: one level per texel).
+//   The screen gate is not held: openS = min(own screen, openC). Its closure
+//   beyond the camera gate's is the camera's own motion, which must release the
+//   frame the camera stops (the fixture's stop-after-pan row), and every
+//   content-motion closure it would hold is in openC already, so a <= b.
+//   "own" is the smaller of this pixel's tests texel and that of the
+//   nearest-depth 3x3 neighbour whose correspondence the resolve follows (the
+//   dilation below): a background pixel beside a mover closes with it (an
+//   unrouted pixel casts no camera vote of its own);
+//   composition: b = max(region * openC, class * S * openC), a = region * openS,
+//   r / g = farw * c11.yz (the mask's farGate.zw), S = c11.x.
+// The fraction is (h + 128 (qC (L + 1) + tC)) / 65536: 16 bits beside counts up
+// to 64, exact in FP32 (h <= 64 in 7 bits, the pair <= 5 L + 4 in 9). The count
+// is floor(|age|), its sign the exit mark as before. A current-only return
+// writes the pixel's own holds (h' = q' = t' = 0: the history that carried them
+// is gone). The box targets (s9 / s10) hold the 7x7 box where the box programs
+// (thin_box*_hold_ps.hlsl) opened them, marked by boxLow.a = 1 (0 where they did
+// not run): the camera term can add strength on the tests texel (a > r) inside
+// the region (this frame's flag, or the previous frame's region hold at the same
+// texel, unreprojected), or the sentinel class with S > 0. Where b > a and the
+// marker is 0 the added strength (b - a) takes the 3x3 clip: the tighter bound.
+#ifdef X3M_REGION_HOLD
+#define X3M_CAMERA_GATE 1
+float4 holdGate : register(c11); // x = S of the sentinel stabiliser, yz = the far components' scales (the mask's c5.zw), w = L, the hold length (frames)
+#endif
 #ifdef X3M_CAMERA_GATE
 #define X3M_FAR_STABILIZE 1
 sampler2D boxLow : register(s9);
@@ -214,6 +259,29 @@ float3 cleanColor(float3 v) { return finiteColor(v) ? v : float3(0, 0, 0); }
 bool maskSafe(float v) { return v >= 0 && v <= 0; }
 float3 weigh(float3 c) { return c * (luminance.x > 0 ? 1 / (1 + luminance.x * lumaFloored(c)) : 1); }
 float3 unweigh(float3 c) { return c * (luminance.x > 0 ? 1 / max(1 - luminance.x * lumaFloored(c), unweighFloor) : 1); }
+#ifdef X3M_THIN_CLIP
+float4 weighColour(float4 c) { return float4(weigh(c.rgb), c.a); } // the 5-tap history's per-block weighing; alpha is never weighed
+#endif
+#ifdef X3M_REGION_HOLD
+// The tests draw's b code (line_mask_ps.hlsl classCode): 1/255 or 1 carries the sentinel class, above 0.5 the flag.
+bool carriesClass(float code) { return code > 0.5 / 255 && (code < 1.5 / 255 || code > 254.5 / 255); }
+// The camera gate's L-frame peak hold: `own` this frame's openness, `held` the stored pair q (L + 1) + t of the reprojected
+// texel (q the held closed quarters 0..4, t the frames it still holds 0..L; the +0.5 keeps the floor clear of the integers
+// whatever the rounding of the reciprocal). Returns the openness bound the hold leaves; `code` receives the pair to store.
+float closureHold(float own, float held, out float code) {
+    float period = holdGate.w + 1;
+    float q = floor((held + 0.5) * (1 / period)), t = held - period * q;
+    float carried = t > 0 ? q : 0;
+    float k = floor(4.5 - 4 * own);
+    code = k >= carried ? period * k + (k > 0 ? holdGate.w : 0) : held - 1;
+    return 1 - 0.25 * carried;
+}
+// The hold fraction of the age count: the region hold h (0..L) and the camera gate's stored pair.
+float holdCode(float h, float codeC) { return (h + 128 * codeC) * (1.0 / 65536); }
+#define X3M_FRESH_AGE (1 + fresh)
+#else
+#define X3M_FRESH_AGE 1
+#endif
 float snapFraction(inout float base, float f) {
     if (f > 1 - snapEpsilon) { base += 1; return 0; }
     return f < snapEpsilon ? 0 : f;
@@ -264,6 +332,14 @@ ResolveOutput main(float2 uv : TEXCOORD0) {
 float4 main(float2 uv : TEXCOORD0) : COLOR0 {
 #endif
     // The mask-snapshot modes (options.z) live in resolve_snapshot.hlsl.
+#ifdef X3M_REGION_HOLD
+    // A': this pixel's tests texel. Its own holds are what a current-only return writes.
+    float4 tests = fetch(lineMask, uv);
+    float flagged = tests.b > 0.5 ? holdGate.w : 0;
+    float freshC;
+    closureHold(tests.a, 0, freshC);
+    float fresh = holdCode(flagged, freshC);
+#endif
     float4 current = fetch(currentColor, uv);
     float3 raw = current.rgb;
     float3 color = cleanColor(raw);
@@ -287,15 +363,15 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     bool farPlane = false;
     float farPlaneTerm = 0; // farPlane as the band term's select operand (one cmp)
     if (options.w > 0.5 && depth <= -0.5) {
-        if (options.w < 1.5) return emit(float4(color, alpha), 1);
+        if (options.w < 1.5) return emit(float4(color, alpha), X3M_FRESH_AGE);
         depth = 1;
         farPlane = true;
         farPlaneTerm = 1;
     }
     if (history.w < 0.5 || history.z <= 0 || !finiteColor(raw) || !validDepth(depth))
-        return emit(float4(color, alpha), 1);
+        return emit(float4(color, alpha), X3M_FRESH_AGE);
     if (options.y > 0.5 && !maskSafe(fetch(currentReactive, uv).r))
-        return emit(float4(color, alpha), 1);
+        return emit(float4(color, alpha), X3M_FRESH_AGE);
 
     // Closest-depth dilation: the correspondence (camera reprojection or the
     // producer's motion) is taken from the closest valid pixel of the 3x3
@@ -436,7 +512,7 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     // NaN fails it and the lookup is refused as before).
     float3 lookup = float3(previousUV, expectedDepth);
     if (dot(step(0, lookup), step(lookup, 1)) + validity < 6.5)
-        return emit(float4(color, alpha), 1);
+        return emit(float4(color, alpha), X3M_FRESH_AGE);
 
     float2 position = previousUV / sizeJitter.xy - 0.5;
     float2 base = floor(position);
@@ -531,7 +607,7 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
             }
         }
     }
-    if (proven < considered - 0.001) return emit(float4(color, alpha), 1);
+    if (proven < considered - 0.001) return emit(float4(color, alpha), X3M_FRESH_AGE);
 
 #ifdef X3M_HISTORY_TAPS16
     // History color: Catmull-Rom over the 4x4 texel neighborhood (16 point
@@ -564,7 +640,7 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
                 historyTap(tap + float2(i - 1, j - 1) * sizeJitter.xy, loopWeight(wx, i) * loopWeight(wy, j), accumulated, total, reactive);
         }
     }
-    if (reactive || total < 0.5) return emit(float4(color, alpha), 1);
+    if (reactive || total < 0.5) return emit(float4(color, alpha), X3M_FRESH_AGE);
     float3 old = accumulated.rgb / total;
 #else
     // History color: Catmull-Rom (a = -0.5) through five hardware-bilinear taps
@@ -591,9 +667,12 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     //     weigh()ed after, where the 16-tap form weighed every tap before the sum. At k = 0
     //     identical; at k > 0 a bright texel pulls the filtered history harder (weigh() is
     //     concave in luma, so with non-negative weights the average of the weighed taps is
-    //     at most the weighed average), bounded by the unchanged 3x3 clip. Weighing each of the five fetches instead (per block, still not per tap)
-    //     costs 24-30 slots per program (age 517, far 518, far_camera 526 of 512; measured),
-    //     so it does not fit.
+    //     at most the weighed average), bounded by the unchanged 3x3 clip. Since the A' re-baseline (taa-plan-lifted-slot-cap.md
+    //     step 1, the 512-slot cap lifted) each of the five fetches is weighed before the sum instead (per block: the two or four
+    //     texels one bilinear fetch blends are still filtered first), which restores the 16-tap form's weighing up to that blend.
+    //     At k = 0 every product is the same (weigh multiplies by 1 exactly); two fixture rows at k = 0 still moved in their
+    //     last bits against S3 (cause unidentified: the accumulation chain of the listing is unchanged, only the fetch issue
+    //     order moved; docs/verification/temporal-resolve.md).
     // (b) The mask test sees the twelve texels of the five blocks only: a reactive texel
     //     whose only contribution is a dropped corner block no longer rejects the history.
     // (c) Out-of-range texels are no longer dropped one by one with the rest renormalised:
@@ -601,10 +680,14 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     //     refuses the whole lookup (current only); a finite texel above rejection.z (65000,
     //     below FP16's 65504) is averaged in, and the lookup is refused only when the
     //     filtered result itself exceeds rejection.z.
-    // On the texel grid (f = 0, static content) the plain program reads
-    // one exact point texel from s2 under a real branch, as the 16-tap program did. The history is this
-    // program's own output, finite by construction, so a nonfinite or out-of-range
-    // filtered result refuses the lookup (current only) instead of renormalising per tap.
+    // On the texel grid (f = 0, static content) every 5-tap program reads one exact point texel
+    // from s2 under a real branch, as the 16-tap program did (S3 had dropped the branch from the
+    // thin / age / far / far_camera programs for the 512-slot cap; restored with the A' re-baseline),
+    // so the rest identity does not depend on the filter unit returning texel centres exactly.
+    // The history is this program's own output, finite by construction, so a nonfinite or
+    // out-of-range weighed result refuses the lookup (current only) instead of renormalising per
+    // tap: at k = 0 that is the filtered colour's own test; at k > 0 a finite block above
+    // rejection.z is weighed into range and kept, while a NaN or infinite one still refuses.
     // Mask policy: the five bilinear samples of the previous (0 / 1, owned) mask at the
     // same positions, each scaled by the magnitude of its weight: the sum is nonzero
     // exactly when some texel of nonzero weight in a fetched block is reactive (every
@@ -613,16 +696,14 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     float total = 1;
     bool reactive = false;
 #ifdef X3M_THIN_CLIP
-    // Slot budget: as in the 16-tap form the variants have no rest branch (it costs them
-    // about 20 slots and far_camera 522 of 512). On the texel grid s = w2 = 0, so t12 is
-    // the texel centre, the centre weight 1, the edge weights 0 and the total 1.
-    {
+#define X3M_HISTORY_FETCH(sampler, uv) weighColour(fetch(sampler, uv))
 #else
+#define X3M_HISTORY_FETCH(sampler, uv) weigh(fetch(sampler, uv).rgb)
+#endif
     [branch] if (all(f == 0)) {
         reactive = options.y > 0.5 && !maskSafe(fetch(previousReactive, tap).r);
-        accumulated = fetch(previousColor, tap).rgb;
+        accumulated = X3M_HISTORY_FETCH(previousColor, tap);
     } else {
-#endif
         // s = -(w0 + w3) = f (1 - f) / 2, so w0 = -s (1 - f), w3 = -s f, w12 = 1 + s, and the five weights sum to
         // w12x w12y + (w0x + w3x) w12y + w12x (w0y + w3y) = 1 - sx sy.
         float2 g = 1 - f;
@@ -633,9 +714,10 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
         // [-1.2e-4, +2.4e-4] texel of it for W = 1280 .. 5120 (float32 emulation,
         // verification/results/taa-high-resolution/s3_centre_error.py; negative at W = 3440), so a filter unit that
         // truncates its 8-bit sub-texel fraction instead of rounding would take 1/256 of the left / upper neighbour
-        // at every exact centre and the history feedback would compound it. t0 and t3 always sit on centres, t12
-        // does where w2 / w12 is 0 (f = 0 on that axis: the rest of the thin / age / far programs, which have no point
-        // branch); with the bias those errors are in [+8.5e-4, +1.3e-3], positive and below 1/512, which rounding and
+        // at every exact centre and the history feedback would compound it. Rest (f = 0 on both axes) never gets
+        // here: it takes the point read above. Motion still does: t0 and t3 always sit on centres along their own
+        // axis, and t12 does along an axis where w2 / w12 is 0 (f = 0 there: a pan or drift along the other axis
+        // only); with the bias those errors are in [+8.5e-4, +1.3e-3], positive and below 1/512, which rounding and
         // truncation both map to fraction 0. t12 takes max(w2 / w12, 1/1024) rather than an added bias, so every
         // fraction the filter resolves (>= 1/512) is unchanged and no systematic sub-texel shift enters the history.
         float2 centred = tap + sizeJitter.xy * (1.0 / 1024);
@@ -644,24 +726,36 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
         float centre = w12.x * w12.y;
         float4 edge = -float4(s.x * g.x, s.x * f.x, s.y * g.y, s.y * f.y) * float4(w12.y, w12.y, w12.x, w12.x);
         total = 1 - s.x * s.y;
-#ifdef X3M_THIN_CLIP
-#define X3M_HISTORY_FETCH(uv) fetch(previousColorLinear, uv)
-#else
-#define X3M_HISTORY_FETCH(uv) fetch(previousColorLinear, uv).rgb
-#endif
-        accumulated = X3M_HISTORY_FETCH(t12) * centre + X3M_HISTORY_FETCH(float2(t0.x, t12.y)) * edge.x +
-                      X3M_HISTORY_FETCH(float2(t3.x, t12.y)) * edge.y + X3M_HISTORY_FETCH(float2(t12.x, t0.y)) * edge.z +
-                      X3M_HISTORY_FETCH(float2(t12.x, t3.y)) * edge.w;
-#undef X3M_HISTORY_FETCH
+        accumulated = X3M_HISTORY_FETCH(previousColorLinear, t12) * centre + X3M_HISTORY_FETCH(previousColorLinear, float2(t0.x, t12.y)) * edge.x +
+                      X3M_HISTORY_FETCH(previousColorLinear, float2(t3.x, t12.y)) * edge.y + X3M_HISTORY_FETCH(previousColorLinear, float2(t12.x, t0.y)) * edge.z +
+                      X3M_HISTORY_FETCH(previousColorLinear, float2(t12.x, t3.y)) * edge.w;
         if (options.y > 0.5) {
             float4 marks = float4(fetch(previousReactiveLinear, float2(t0.x, t12.y)).r, fetch(previousReactiveLinear, float2(t3.x, t12.y)).r,
                                   fetch(previousReactiveLinear, float2(t12.x, t0.y)).r, fetch(previousReactiveLinear, float2(t12.x, t3.y)).r);
             reactive = !maskSafe(fetch(previousReactiveLinear, t12).r * centre - dot(marks, edge));
         }
     }
-    float3 filteredHistory = accumulated.rgb / total;
-    if (reactive || !finiteColor(filteredHistory)) return emit(float4(color, alpha), 1);
-    float3 old = weigh(filteredHistory);
+#undef X3M_HISTORY_FETCH
+    float3 old = accumulated.rgb / total;
+    if (reactive || !finiteColor(old)) return emit(float4(color, alpha), X3M_FRESH_AGE);
+#endif
+#ifdef X3M_REGION_HOLD
+    // A': the holds of the reprojected age texel (the one the count is read from below) and the composition the y draw of
+    // the mask chain did. Read here because stabilise gates the clip below; the other age programs read the texel after
+    // the filter, which keeps their instruction order. A fraction beyond the counts this program writes reads as no hold.
+    float ageRaw = fetch(previousAge, tap + float2(f.x >= 0.5 ? 1 : 0, f.y >= 0.5 ? 1 : 0) * sizeJitter.xy).r;
+    float ageHeld = abs(ageRaw);
+    float held = ageHeld <= 65 ? frac(ageHeld) * 65536 : 0; // <=: a NaN reads as no hold (the file's compare rule)
+    float heldC = floor(held * (1.0 / 128));
+    float regionHold = flagged > 0 ? flagged : max(held - 128 * heldC - 1, 0);
+    float4 beside = fetch(lineMask, dilatedUV); // the nearest-depth neighbour's tests texel (this pixel's own when it is nearest)
+    float ownS = min(tests.r, beside.r), ownC = min(tests.a, beside.a);
+    float codeC;
+    float openC = min(ownC, closureHold(ownC, heldC, codeC));
+    float openS = min(ownS, openC);
+    float region = regionHold > 0 ? 1 : 0;
+    float4 stabilise = float4(tests.gg * holdGate.yz, max(region * openC, (carriesClass(tests.b) ? holdGate.x : 0) * openC), region * openS);
+    float holds = holdCode(regionHold, codeC);
 #endif
     // From here on every colour is in the weighted domain (identity at k = 0);
     // the early returns above hand the unweighted current colour through.
@@ -713,7 +807,9 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     // carry the current jitter). S = 0 or thin = 0 is the clamp exactly.
     float speed = length((previousUV - uv) / sizeJitter.xy);
 #ifdef X3M_FAR_STABILIZE
+#ifndef X3M_REGION_HOLD
     float4 stabilise = fetch(lineMask, uv);
+#endif
     float soft = stabilise.b * flicker.x;
 #else
     // saturate(2 - 0.5 speed) is 1 - saturate((speed - 2) * 0.5) for the finite speed (one mad_sat).
@@ -722,7 +818,14 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
 #ifdef X3M_CAMERA_GATE
     // The strength the camera term added (b - a) takes the history clipped to the current 7x7 box; the screen gate's own share (a) the unclipped one.
     float3 clipped = clamp(old, low, high);
+#ifdef X3M_REGION_HOLD
+    // The box programs mark the texels they computed (boxLow.a = 1, thin_box_ps.hlsl X3M_REGION_HOLD_MASK); elsewhere the added
+    // strength takes the 3x3 clip (a select: the box read is exact where marked).
+    float4 boxLowTexel = fetch(boxLow, uv);
+    float3 boxed = boxLowTexel.a > 0.5 ? clamp(old, boxLowTexel.rgb, fetch(boxHigh, uv).rgb) : clipped;
+#else
     float3 boxed = clamp(old, fetch(boxLow, uv).rgb, fetch(boxHigh, uv).rgb);
+#endif
     old = lerp(clipped, old, stabilise.a * flicker.x) + (stabilise.b - stabilise.a) * flicker.x * (boxed - clipped);
 #else
     old = lerp(clamp(old, low, high), old, soft);
@@ -747,8 +850,12 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     // the lower bound of the old [1, 64] test is not needed: this program writes counts
     // of 1..64 only, 0 never, and s7 is bound only behind a valid history every pixel
     // of which this program wrote, so no |age| below 1 can be read (slot budget).
+#ifdef X3M_REGION_HOLD
+    float age = floor(ageHeld); // the count below the hold fraction (the texel was read above)
+#else
     float ageRaw = fetch(previousAge, tap + float2(f.x >= 0.5 ? 1 : 0, f.y >= 0.5 ? 1 : 0) * sizeJitter.xy).r;
     float age = abs(ageRaw);
+#endif
     age = age <= 64 ? age : 1;
     // Exit reset (seta-sky-hull-share-decay.md section 4): a strict-sky pixel under
     // strict whose texel was marked keeps nothing this frame, its count restarted (age
@@ -808,6 +915,9 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     // The count continues (1 after a reset); a marked band pixel writes it negated (the
     // exit mark: -exiting >= 0 is "not exiting", one cmp with a negate modifier).
     float aged = min(age + 1, 64);
+#ifdef X3M_REGION_HOLD
+    aged += holds; // the count and this frame's holds; the sign below stays the exit mark
+#endif
     return emit(float4(unweigh(lerp(weighted, old, keep)), alpha), -exiting >= 0 ? aged : -aged);
 #else
     return emit(float4(unweigh(lerp(weighted, old, keep)), alpha), min(age + 1, 64));

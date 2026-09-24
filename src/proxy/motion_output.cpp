@@ -1571,6 +1571,18 @@ bool MotionOutput::ensure_taa() noexcept {
         log("motion_output_taa_sentinel device=%llu unavailable=1 reason=%s requested=%.3f", id_, !taa_thin_camera_gate_ ? "camera_gate_off" : "box_program", double(taa_sentinel_strength_));
         taa_sentinel_strength_ = 0.f;
     }
+    // A' (taa-plan-lifted-slot-cap.md step 1): the hold programs exist only when the camera gate runs and the hold is asked
+    // for; a refusal (no 5-tap programs, or a program the device refuses) keeps the dilation draws (one log line). The dilated
+    // program is the --taa-region-hold off A/B option, not a cap fallback set: it goes with the option once A' is accepted,
+    // and a refusal then turns the thin region off.
+    if (SUCCEEDED(hr) && taa_region_hold_ && taa_thin_camera_gate_) {
+        HRESULT held = E_FAIL;
+        taa_call([&] { held = taa_->configure_region_hold(); });
+        if (FAILED(held) || !taa_->region_hold_available() || (taa_sentinel_strength_ > 0.f && !taa_->region_hold_sentinel_available())) {
+            log("motion_output_taa_region_hold device=%llu unavailable=1 create=%08lx bilinear=%u fallback=dilated", id_, held, unsigned(taa_->bilinear_history_available()));
+            taa_region_hold_ = false;
+        }
+    }
     // Exit reset of the strict sky history (seta-sky-hull-share-decay.md): carried in the age target, so it needs one of the
     // age programs to be in effect on this device (the far stabiliser's rule: one log line, option off otherwise).
     if (SUCCEEDED(hr) && sky_history_exit_px_ > 0.f && !(taa_far_weight_ > 0.f || taa_far_filter_ > 0.f || taa_thin_weight_ > 0.f)) {
@@ -1583,8 +1595,10 @@ bool MotionOutput::ensure_taa() noexcept {
         motion_weight_[0] = 0.f;
     }
     taa_failed_ = FAILED(hr);
-    log("motion_output_taa device=%llu initialize=%08lx references=%u sharpen=%.3f history_weight=%.3f copy=%s alpha_history=%u age_bytes_per_pixel=%u far_weight=%.4f far_filter=%.3f far_f0=%.1f far_f1=%.1f far_speed_lo=%.3f far_speed_hi=%.3f thin_region=%.4f thin_relax=%.3f thin_gate=%s thin_emissive=%.3f sentinel_stabiliser=%.3f sentinel_emitter=%.3f", id_, hr, taa_references_, double(taa_sharpen_), double(taa_history_weight_), taa_copy_draw_ ? "draw" : "stretch",
-        unsigned(taa_alpha_history_), taa_far_weight_ > 0.f || taa_far_filter_ > 0.f || taa_thin_weight_ > 0.f ? 8u : 0u, double(taa_far_weight_), double(taa_far_filter_), double(taa_far_f0_), double(taa_far_f1_), double(taa_far_lo_), double(taa_far_hi_), double(taa_thin_weight_), double(taa_thin_relax_), taa_thin_camera_gate_ ? "camera" : "screen", double(taa_thin_emissive_), double(taa_sentinel_strength_), double(taa_sentinel_emitter_));
+    // ps30_slots: D3DCAPS9::MaxPixelShader30InstructionSlots at initialize (AGENTS.md "Shader slot budget": logged, never a gate).
+    log("motion_output_taa device=%llu initialize=%08lx references=%u sharpen=%.3f history_weight=%.3f copy=%s alpha_history=%u age_bytes_per_pixel=%u far_weight=%.4f far_filter=%.3f far_f0=%.1f far_f1=%.1f far_speed_lo=%.3f far_speed_hi=%.3f thin_region=%.4f thin_relax=%.3f thin_gate=%s thin_emissive=%.3f sentinel_stabiliser=%.3f sentinel_emitter=%.3f region_hold=%u ps30_slots=%u", id_, hr, taa_references_, double(taa_sharpen_), double(taa_history_weight_), taa_copy_draw_ ? "draw" : "stretch",
+        unsigned(taa_alpha_history_), taa_far_weight_ > 0.f || taa_far_filter_ > 0.f || taa_thin_weight_ > 0.f ? 8u : 0u, double(taa_far_weight_), double(taa_far_filter_), double(taa_far_f0_), double(taa_far_f1_), double(taa_far_lo_), double(taa_far_hi_), double(taa_thin_weight_), double(taa_thin_relax_), taa_thin_camera_gate_ ? "camera" : "screen", double(taa_thin_emissive_), double(taa_sentinel_strength_), double(taa_sentinel_emitter_),
+        unsigned(taa_region_hold_ && taa_thin_camera_gate_), taa_ ? taa_->ps30_instruction_slots() : 0u);
     return !taa_failed_;
 }
 // The whole resolve at the bloom copy: RT1/RT2 containers as inputs, the
@@ -1628,6 +1642,8 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
             in.far_weight = taa_far_weight_; in.far_filter = taa_far_filter_; in.far_speed_lo = taa_far_lo_; in.far_speed_hi = taa_far_hi_;
             in.thin_region_weight = taa_thin_weight_; in.thin_region_relax = taa_thin_relax_; in.thin_region_camera_gate = taa_thin_camera_gate_; in.thin_region_emissive = taa_thin_emissive_;
             in.sentinel_strength = taa_sentinel_strength_; in.sentinel_emitter = taa_sentinel_emitter_;
+            in.thin_region_hold = taa_region_hold_; // A': inert without the camera gate
+            in.thin_region_hold_frames = jitter_samples_; // the hold covers one jitter cycle (2..64)
             if ((taa_far_weight_ > 0.f || taa_far_filter_ > 0.f) && camera_scene_.valid)
                 x3::temporal::far_gate(camera_scene_.m00, camera_scene_.m22, camera_scene_.m32, main_.width, taa_far_f0_, taa_far_f1_, in.far_d0, in.far_inv);
             in.current_depth = depth; in.motion = motion;
@@ -1717,8 +1733,8 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
                 taa_fold_logged_ = true;
                 log("motion_output_taa_depth_fold device=%llu depth_fold=%u reason=%s", id_, unsigned(diagnostics.depth_folded), diagnostics.depth_fold_reason);
                 // S3: the history reconstruction the first run drew (16 without the FP16 / R32F filter caps whatever was asked).
-                log("motion_output_taa_history_taps device=%llu requested=%u drawn=%u bilinear=%u reason=%s", id_, taa_history_taps_, diagnostics.history_taps,
-                    unsigned(taa_->bilinear_history_available()), taa_->bilinear_history_reason());
+                log("motion_output_taa_history_taps device=%llu requested=%u drawn=%u bilinear=%u reason=%s region_hold=%u", id_, taa_history_taps_, diagnostics.history_taps,
+                    unsigned(taa_->bilinear_history_available()), taa_->bilinear_history_reason(), unsigned(diagnostics.region_hold));
             }
             auto& c = counters_;
             c.taa_run_ticks += run_ticks; c.taa_capture_ticks += diagnostics.ticks_capture;
@@ -1748,7 +1764,9 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
                     }
                 }
                 // The final stabiliser mask the resolve read at s8 (r filter weight, g far gate, b camera-gated and a
-                // screen-gated thin-region strength; the sentinel stabiliser shows in b).
+                // screen-gated thin-region strength; the sentinel stabiliser shows in b). Under the region hold (A') it is
+                // the tests target instead (r screen openness, g far weight, b flag / class code, a camera openness), and the
+                // taa_age dump carries the holds in its fraction: floor(|age|) is the count.
                 if (capture_ && taa_debug_ && out.stabiliser_mask) {
                     IDirect3DSurface9* mask = nullptr;
                     if (SUCCEEDED(out.stabiliser_mask->GetSurfaceLevel(0, &mask)) && mask) {

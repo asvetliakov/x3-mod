@@ -189,19 +189,22 @@ Per output pixel `p` (unjittered grid), in this order:
    `w1 + w2`, the centre block and the four edge blocks are five fetches of
    s11, the four corner blocks (at most 1/64 of the filter mass, at f = 1/2)
    are dropped and the five weights renormalised by `1 - (w0x + w3x)(w0y + w3y)`
-   (derivation in `resolve.hlsl`). Three semantic changes against the 16-tap
-   form: the filtered colour is weighed after the filter (identical at k = 0;
-   at k > 0, the HDR route, a bright texel pulls the history harder, bounded by
-   the 3x3 clip); a reactive texel whose only contribution is a dropped corner
-   no longer rejects; a NaN / Inf texel of nonzero weight refuses the lookup
-   (current only) and a finite texel above `rejection.z` is averaged in, the
-   lookup refused only when the filtered result exceeds it. Fetch positions on
-   texel centres carry a +1/1024 texel bias so a truncating filter unit reads
-   fraction 0 there. The plain program reads the one texel
-   under a real branch on the texel grid; the thin / age / far variants have no
-   such branch (slot budget) and rely on the bilinear fetch at an exact texel
-   centre returning that texel, which the fixture's FILTER_PROBE verifies on
-   FP16 and R32F at 32, 1280 and 5120 texels. With the mask policy the five
+   (derivation in `resolve.hlsl`). Each of the five fetches is weighed before
+   the sum (per block: the two or four texels one bilinear fetch blends are
+   still filtered first; identical to filtering first at k = 0; since the A'
+   re-baseline, `docs/architecture/taa-plan-lifted-slot-cap.md` step 1, S3 had
+   weighed after the filter). Semantic changes against the 16-tap form: a
+   reactive texel whose only contribution is a dropped corner no longer rejects;
+   a NaN / Inf texel of nonzero weight refuses the lookup (current only), and at
+   k > 0 a finite block above `rejection.z` is weighed into range and kept. Every
+   5-tap program reads the one texel of s2 under a real branch on the texel grid
+   (the point read at rest; S3 had it in the plain program only), so rest never
+   depends on the filter unit returning a texel centre exactly. Moving lookups
+   still place fetches on texel centres along an axis (the edge taps always, the
+   centre tap where that axis's fraction is 0), which carry a +1/1024 texel bias
+   so a truncating filter unit reads fraction 0 there; the fixture's FILTER_PROBE
+   verifies centre exactness on FP16 and R32F at 32, 1280 and 5120 texels on
+   this backend. With the mask policy the five
    bilinear mask samples, each scaled by the magnitude of its weight, must sum
    to exactly zero. The 16-tap twins keep the earlier form: 16 point taps,
    nonfinite taps renormalised away, rejected below half the weight.
@@ -277,7 +280,16 @@ the mask's `b` (strength, speed-gated in the mask program: `c6`, `s4` motion, `c
 this variant compiles no 3x3 sentinel soft clip. On a two- or four-channel current depth (the sun-shadow lane's RT2) the
 mask chain's first draw uses `line_mask_depth_ps.hlsl` / `line_mask_camera_depth_ps.hlsl` instead (`X3M_MASK_DEPTH_OUT`:
 `s1` = that depth itself, `COLOR1` = its texel into the R32F next depth history, which then needs no copy draw;
-`docs/architecture/taa-high-resolution.md` S1). Ordinary resolve uses zero;
+`docs/architecture/taa-high-resolution.md` S1). The region hold (A', `resolve_far_camera_hold.hlsl`, `X3M_REGION_HOLD`;
+`docs/architecture/taa-plan-lifted-slot-cap.md` step 1, `--taa-region-hold`, default on) drops the two dilation draws:
+s8 is then the tests target (r screen openness, g far weight, b flag / class code, a camera openness), `c11` = (S, the far
+components' scales, the hold length L = the jitter period), and the program composes the region itself with an L-frame
+region hold and an L-frame peak hold of the camera gate (its own openness the smaller of this pixel's tests texel and its
+nearest-depth 3x3 neighbour's; the screen gate is not held) carried in the fraction of the age count ((h + 128 code) /
+65536, code = q (L + 1) + t; the count is `floor(|age|)`, its sign the exit mark); its box programs
+(`thin_box*_hold_ps.hlsl`, `X3M_REGION_HOLD_MASK`) open where camera openness exceeds screen openness inside the region
+(this frame's flag, or last frame's region hold at the same texel, read from the age target at `s7`) or, with the
+stabiliser, on the class code, and mark computed texels in the box alpha, which the resolve checks. Ordinary resolve uses zero;
 `prepare` initializes the mode and reserved component to zero. Runtime code must
 not use snapshot mode as a color resolve. `TemporalPass` uses this third GPU draw
 only under `ReactivePolicy::RequiredMask` and owns the resulting ping-pong masks.

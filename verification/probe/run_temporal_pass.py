@@ -11,7 +11,10 @@ exe=root/'verification/probe/build/temporal_pass_fixture.exe'
 paths=[root/name for name in ('src/renderer/temporal_pass.h','src/renderer/temporal_pass.cpp','src/temporal/resolve.h','src/temporal/resolve.hlsl','src/temporal/resolve_snapshot.hlsl','src/renderer/temporal_resolve_snapshot_program_inc.h','src/renderer/temporal_resolve_program.h','src/temporal/resolve_thin.hlsl','src/renderer/temporal_resolve_thin_program_inc.h','src/temporal/resolve_age.hlsl','src/renderer/temporal_resolve_age_program_inc.h','verification/probe/temporal_flicker_inc.h','verification/probe/temporal_line_inc.h','verification/probe/temporal_far_inc.h','verification/probe/temporal_thin_region_inc.h','src/temporal/line_mask_camera_ps.hlsl','src/renderer/temporal_line_mask_camera_program_inc.h','src/temporal/resolve_far_camera.hlsl','src/renderer/temporal_resolve_far_camera_program_inc.h','src/temporal/thin_box_ps.hlsl','src/renderer/temporal_thin_box_program_inc.h','src/temporal/thin_box_rows_ps.hlsl','src/renderer/temporal_thin_box_rows_program_inc.h','src/temporal/thin_box_columns_ps.hlsl','src/renderer/temporal_thin_box_columns_program_inc.h','verification/probe/temporal_resolve_far_reference_inc.h','src/temporal/resolve_far.hlsl','src/renderer/temporal_resolve_far_program_inc.h','src/temporal/line_mask_ps.hlsl','src/renderer/temporal_line_mask_program_inc.h','src/temporal/line_mask_depth_ps.hlsl','src/renderer/temporal_line_mask_depth_program_inc.h','src/temporal/line_mask_camera_depth_ps.hlsl','src/renderer/temporal_line_mask_camera_depth_program_inc.h','verification/probe/temporal_depth_fold_inc.h','verification/probe/temporal_history_taps_inc.h',
     'src/temporal/resolve_taps16.hlsl','src/renderer/temporal_resolve_taps16_program_inc.h','src/temporal/resolve_thin_taps16.hlsl','src/renderer/temporal_resolve_thin_taps16_program_inc.h',
     'src/temporal/resolve_age_taps16.hlsl','src/renderer/temporal_resolve_age_taps16_program_inc.h','src/temporal/resolve_far_taps16.hlsl','src/renderer/temporal_resolve_far_taps16_program_inc.h',
-    'src/temporal/resolve_far_camera_taps16.hlsl','src/renderer/temporal_resolve_far_camera_taps16_program_inc.h','src/temporal/depth_decode.hlsl','src/temporal/sharpen.h','src/temporal/rcas.hlsl','src/temporal/taa_sharpen_ps.hlsl','verification/probe/temporal_pass_fixture.cpp','verification/probe/build_temporal_pass.sh','verification/probe/run_temporal_pass.py')]
+    'src/temporal/resolve_far_camera_taps16.hlsl','src/renderer/temporal_resolve_far_camera_taps16_program_inc.h',
+    'src/temporal/resolve_far_camera_hold.hlsl','src/renderer/temporal_resolve_far_camera_hold_program_inc.h','src/temporal/thin_box_hold_ps.hlsl','src/renderer/temporal_thin_box_hold_program_inc.h',
+    'src/temporal/thin_box_rows_hold_ps.hlsl','src/renderer/temporal_thin_box_rows_hold_program_inc.h','src/temporal/thin_box_columns_hold_ps.hlsl','src/renderer/temporal_thin_box_columns_hold_program_inc.h',
+    'verification/probe/temporal_region_hold_inc.h','src/temporal/depth_decode.hlsl','src/temporal/sharpen.h','src/temporal/rcas.hlsl','src/temporal/taa_sharpen_ps.hlsl','verification/probe/temporal_pass_fixture.cpp','verification/probe/build_temporal_pass.sh','verification/probe/run_temporal_pass.py')]
 sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
 hashes=lambda:{str(p.relative_to(root)):sha(p) for p in paths}
 d3dx=bottle.game_dir() / 'd3dx9_37.dll'
@@ -232,6 +235,9 @@ try:
     assert int(fold_rows[('camera_sentinel','negative_control')]['depth_bytes_differ'])>0,fold_rows[('camera_sentinel','negative_control')]
     assert [r['kind'] for r in report['depth_fold_fault']]==['rt1_bind','fold_draw'] and all(r['hr']==r['operation']=='80004005' and r['reached']=='1' and r['folded']=='0' and r['rt1_unbound_after_bind']=='1' and r['recovered_hr']=='00000000' and r['recovered_folded']=='1' and r['recovered_history']=='0' for r in report['depth_fold_fault']),report['depth_fold_fault']
     assert len(report['depth_fold_reset'])==1 and report['depth_fold_reset'][0]['bytes_differ']=='0,0,0,0' and report['depth_fold_reset'][0]['after_folded']=='2',report['depth_fold_reset']
+    # A' (taa-plan-lifted-slot-cap.md step 1): 38 numerical and 2 state checks on top of S3's 528 / 89 (the four identity
+    # configurations, the state rows (history and mask targets) and their two restorations, the stop-after-pan and box-open rows, 13 thin-region, 2 motion-start, 4 pan, 3 stale, 2 box-domain and
+    # 6 sentinel checks).
     # S3 (taa-high-resolution.md): 20 numerical checks on top of the fold's 508 / 89: the filter probe (8: every texel centre
     # exact at 32 / 1280 / 5120 and the fraction ramp, FP16 and R32F), the tap setting (1), four scenes (two each: the program
     # drawn and the rest / drift verdict), two fallbacks and the Reset.
@@ -242,10 +248,25 @@ try:
     assert len(taps['filter_probe'])==8 and all(r['mismatched']=='0' for r in taps['filter_probe'] if r['mode']=='centre'),taps['filter_probe']
     assert len(taps['scenes'])==4 and all(r['drawn']=='1' and r['caller_16_identical']=='1' and r['bound_exceeded']=='0' for r in taps['scenes']) and all(float(r['max_ulps'])<=1 for r in taps['scenes'] if r['motion']=='rest'),taps['scenes']
     assert [(r['bilinear'],r['reason'],r['drawn_16'],r['identical_to_16']) for r in taps['fallback']]==[('0','adapter_query','1','1')]*2 and taps['reset'][0]['identical_to_fresh']=='1',taps
-    assert lattice.returncode==0 and 'LATTICE_BASE numerical=10 state_restorations=0' in lattice_text and 'FLICKER_BASE numerical=190 state_restorations=4' in lattice_text and 'LINE_BASE numerical=190 state_restorations=4' in lattice_text and 'DEPTH_FOLD_BASE numerical=508 state_restorations=89' in lattice_text and 'RESULT PASS numerical=528 state_restorations=89 lattice=1' in lattice_text and 'FAIL' not in lattice_text,lattice_text[-1500:]
-    assert len(report['flicker']['drift'])==64 and len(report['flicker']['near_depth'])==8 and all(float(v['instruction_slots'])<=512 for k,v in report['lattice']['budget'].items()),report['lattice']['budget']
+    # A' (taa-plan-lifted-slot-cap.md step 1, --taa-region-hold): the identity of the hold program with holds reading 0 against the
+    # camera program on the 1x1 composition (colour bit for bit, age = count + encoded holds; four k / S configurations), the state
+    # rows, and the thin-region rows with the hold against the CPU oracle extended by the holds.
+    report['region_hold']={'identity':fields('REGION_HOLD_IDENTITY '),'state':fields('REGION_HOLD_STATE '),'thin':fields('THIN_REGION_HOLD drift='),
+                           'motion_start':fields('THIN_REGION_HOLD_MOTION_START '),'pan':fields('THIN_REGION_HOLD_PAN '),'stale':fields('THIN_REGION_HOLD_STALE '),
+                           'box_domain':fields('THIN_REGION_HOLD_BOX_DOMAIN '),'sentinel':fields('THIN_REGION_HOLD_SENTINEL '),
+                           'pan_stop':fields('THIN_REGION_HOLD_PAN_STOP '),'box_open':fields('THIN_REGION_HOLD_BOX_OPEN ')}
+    hold=report['region_hold']
+    assert len(hold['identity'])==4 and all(r['colour_differs']==r['age_differs']==r['count_differs']=='0' and int(r['blended'])>256 for r in hold['identity']),hold['identity']
+    assert len(hold['state'])==1 and all(hold['state'][0][k]=='1' for k in ('hold_off_restarts','hold_off_continues','hold_on_keeps','taps16_dilations','taps5_hold','box_fallback','rearmed')),hold['state']
+    assert [hold['state'][0][k] for k in ('masks_hold','masks_off','masks_on','masks_taps16','masks_taps5','masks_at_reset','masks_after_reset','masks_box_fallback')]==['1','2','1','2','1','0','1','2'],hold['state']
+    assert len(hold['thin'])==3 and all(r['square_differs']=='0' and float(r['age_oracle_error'])==0 for r in hold['thin']) and len(hold['motion_start'])==1 and len(hold['pan'])==1 and len(hold['stale'])==1 and len(hold['box_domain'])==1 and len(hold['sentinel'])==2 and len(hold['pan_stop'])==1 and len(hold['box_open'])==1,hold
+    assert lattice.returncode==0 and 'LATTICE_BASE numerical=10 state_restorations=0' in lattice_text and 'FLICKER_BASE numerical=190 state_restorations=4' in lattice_text and 'LINE_BASE numerical=190 state_restorations=4' in lattice_text and 'DEPTH_FOLD_BASE numerical=508 state_restorations=89' in lattice_text and 'HISTORY_TAPS_BASE numerical=528 state_restorations=89' in lattice_text and 'RESULT PASS numerical=566 state_restorations=91 lattice=1' in lattice_text and 'FAIL' not in lattice_text,lattice_text[-1500:]
+    # The 2,048-slot ceiling per TAA program (docs/architecture/taa-plan-lifted-slot-cap.md section 2; AGENTS.md "Shader slot
+    # budget": 512 is the spec minimum, not a limit). device_limit stays a record.
+    assert len(report['flicker']['drift'])==64 and len(report['flicker']['near_depth'])==8 and all(float(v['instruction_slots'])<=2048 and v['within_ceiling_2048']==1 for k,v in report['lattice']['budget'].items()),report['lattice']['budget']
+    assert {'embedded_far_camera_hold','embedded_thin_box_hold','embedded_thin_box_rows_hold','embedded_thin_box_columns_hold'}<=set(report['lattice']['budget']),report['lattice']['budget']
     ripple=report['lattice']['ripple']
-    assert len(ripple)==4 and report['lattice']['budget']['plain']['instruction_slots']<=512,report['lattice']
+    assert len(ripple)==4 and report['lattice']['budget']['plain']['instruction_slots']<=2048,report['lattice']
     assert hashes()==report['sources_before_build'],'Source changed during the lattice cases'
     report['passed']=True
 finally:

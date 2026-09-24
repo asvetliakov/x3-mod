@@ -647,6 +647,9 @@ public:
     // X3M_TAA_HISTORY_TAPS (5 default, 16; docs/architecture/taa-high-resolution.md S3): the resolve's history
     // reconstruction, TemporalPass::configure_history_taps; anything else is the default.
     void configure_history_taps(unsigned taps) noexcept { taa_history_taps_ = taps == 16 ? 16u : 5u; }
+    // X3M_TAA_REGION_HOLD (on default, off; docs/architecture/taa-plan-lifted-slot-cap.md step 1): A' of the thin region's
+    // camera gate, TemporalPass::FrameInputs::thin_region_hold; inert without the camera gate. Off keeps the dilation draws.
+    void configure_region_hold(bool on) noexcept { taa_region_hold_ = on; }
     void configure_sky_history(bool strict, float band_px = 3.f, float exit_px = 0.f) noexcept {
         sky_history_strict_ = strict; sky_history_band_px_ = band_px >= 1.f && band_px <= 16.f ? band_px : 3.f;
         sky_history_exit_px_ = strict && x3::temporal::valid_sky_history_exit(exit_px, sky_history_band_px_) ? exit_px : 0.f;
@@ -2294,6 +2297,7 @@ private:
     bool taa_masks_logged_ = false;           // the one line for TemporalPass::line_masks_failed()
     bool taa_fold_logged_ = false;            // the one line for TemporalPass::Diagnostics::depth_folded (taa-high-resolution.md S1), per attachment
     unsigned taa_history_taps_ = 5;           // X3M_TAA_HISTORY_TAPS: TemporalPass::configure_history_taps (taa-high-resolution.md S3); logged with the fold line
+    bool taa_region_hold_ = true;             // X3M_TAA_REGION_HOLD: A' (FrameInputs::thin_region_hold); dropped without the camera gate or its programs
     bool taa_alpha_history_ = false;          // X3M_TAA_ALPHA_HISTORY (HDR route only)
     float taa_history_weight_ = .9f;          // X3M_TAA_HISTORY_WEIGHT
     // 8-bit route: failed sharpened draws (the pass kept the resolve, the

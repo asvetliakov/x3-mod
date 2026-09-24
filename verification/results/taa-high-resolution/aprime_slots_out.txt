@@ -1,0 +1,15 @@
+program slots_before slots_after outside_before outside_after rest_before rest_after rest_delta moving_before moving_after moving_delta rest_branch_after
+temporal_resolve 395 425 283 313 230 230 0 274 298 24 True
+temporal_resolve_thin 442 488 316 360 316 277 -39 316 344 28 True
+temporal_resolve_age 471 518 345 390 345 306 -39 345 374 29 True
+temporal_resolve_far 471 521 347 394 347 310 -37 347 378 31 True
+temporal_resolve_far_camera 482 531 356 402 356 318 -38 356 386 30 True
+temporal_resolve_far_camera_hold - 592 - 462 - 378 - - 446 - True
+temporal_thin_box 47 47 15 15 15 15 0 15 15 0 False
+temporal_thin_box_hold - 64 - 31 - 31 - - 31 - False
+temporal_thin_box_rows 71 71 25 25 25 25 0 25 25 0 False
+temporal_thin_box_rows_hold - 143 - 48 - 48 - - 48 - False
+temporal_thin_box_columns 87 87 39 39 39 39 0 39 39 0 False
+temporal_thin_box_columns_hold - 112 - 63 - 63 - - 63 - False
+temporal_line_mask_camera 387 387 246 246 246 246 0 246 246 0 False
+temporal_resolve_far_camera_taps16 481 481 310 310 310 310 0 310 310 0 False

@@ -411,6 +411,28 @@ concrete remaining gates, removal status and the separate depth-adapter gap.
 
 - music-keep skip_all: native alt-tab with a blocked loop unverified (DirectSound ring unserviced without GLOBALFOCUS, DirectShow audible in background) ([music-restart.md](../reverse-engineering/music-restart.md) §6 "Alt-tab").
 
+## 2026-09-24: TAA region hold (A', `--taa-region-hold`, default on)
+
+[taa-plan-lifted-slot-cap.md](taa-plan-lifted-slot-cap.md) step 1; ledger `docs/verification/temporal-resolve.md`
+"A' region hold". Documented D3D9 only, no new capability query: the hold programs are created with the camera-gate
+programs' contract (two render targets with `MRTINDEPENDENTBITDEPTHS`, the 5-tap programs' filter caps), the tests
+draw is the existing first mask draw, and the resolve writes the same R32F age target. What the hold adds is arithmetic:
+the region and closure holds are the fraction of the R32F age count, 16 bits beside counts up to 64 (23 significant
+bits), decoded with `frc` / `floor` on exact values (the hold length, the jitter period, enters through a reciprocal whose
+rounding the decode keeps half a step clear of every integer). That needs full-precision float in the pixel shader and an exact
+R32F render-target store: ps_3_0 requires full precision (s23e8), and R32F stores the shader's float32. A part that
+rounded either would misread the holds (not a crash; the region or a closure would be off by a step). Verified on
+CrossOver only (the fixture's age oracle is exact on every hold row); native drivers inferred.
+
+Slot figures under the committed budget rule (section below): `far_camera` 555, the hold program 616 D3DX slots, the
+other four resolve programs 455-545 (measured, `RESOLVE_BUDGET`), all under the 2,048 ceiling and all above the 512
+this runtime reports. A native device that refuses one at `CreatePixelShader` takes the existing paths: the far
+programs refused turn the far stabiliser and thin region off (one `motion_output_taa_far` row), the hold programs
+refused keep the dilation draws (one `motion_output_taa_region_hold unavailable=1 ... fallback=dilated` row; the dilated
+program is the `--taa-region-hold off` A/B option, not a cap-fallback set, and goes with the option once A' is accepted). A device that accepts a
+program above its cap and fails the draw (the slot-budget fixture's 65,538-slot case) would hit the per-frame resolve
+failure path instead; not expected at these sizes, unverified.
+
 ## Shader slot budget
 
 User decision 2026-09-24: programs are sized against `MaxPixelShader30InstructionSlots` as the device reports it.
@@ -694,8 +716,10 @@ display format (`GetDirect3D` / `GetCreationParameters` / `GetDisplayMode`). Any
 (the pre-S3 bytecode, still embedded) in every program slot, so the worst case is the old cost, never a failure; the
 fixture forces that path by refusing `GetDirect3D`. Measured on CrossOver only: both formats filter, a fetch at an
 exact texel centre returns the texel bit for bit at 32, 1280 and 5120 texels, and sub-texel weights have 8 bits (max
-error 1/512). Unverified natively: R32F filtering (D3D10-class; a D3D9-class driver refusing it takes the 16-tap path),
-the centre exactness the thin / age / far programs rely on at rest (they have no point branch). The float32 error of
+error 1/512). Unverified natively: R32F filtering (D3D10-class; a D3D9-class driver refusing it takes the 16-tap path).
+*Since the A' re-baseline (entry below) every 5-tap program reads rest (fraction 0 on both axes) by an exact point
+fetch of s2, so the rest identity no longer depends on the filter returning texel centres exactly; that paragraph of S3
+is history.* Moving lookups still place fetches on texel centres along one axis, so the bias below stays. The float32 error of
 `(i + 0.5) / W` at a texel centre is below 2.5e-4 texel and negative at some widths (-1.2e-4 at 3440; float32 emulation,
 `verification/results/taa-high-resolution/s3_centre_error.py`), which a truncating 8-bit sub-texel unit would turn into
 1/256 of the neighbour. The fetch positions that sit on texel centres (the edge taps always, the centre tap where

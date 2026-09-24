@@ -10,9 +10,9 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "binaries": {
-  "verification/probe/build/motion_output_fixture.exe": "322ad0470672f26af844368b9bf22a82a61784b8fca8cce0fe9a7a23dca0d36a",
-  "verification/probe/build/motion-output-seam/d3d9.dll": "d16b84546f508fa99b47dcb0c33791b802701ea89b47b956d076167abf287405",
-  "build/d3d9.dll": "b88088cfb5b1d092425f367a5e20db3babc0373503472e5143450787e919cebc"
+  "verification/probe/build/motion_output_fixture.exe": "4b5da1d83936680219aeedf1e3ee2703c2116bf3035fadb998bcd891d2166a1b",
+  "verification/probe/build/motion-output-seam/d3d9.dll": "8ea3e85e927856773b76b8ff89ac5d5d69592e5c57a5d8853a65290c677e4a14",
+  "build/d3d9.dll": "c3e5c1023d7e0ef4180c34c341e82684985b421e77760d8563feadc7328d3862"
  },
  "checks": 2880,
  "fixture_checks": 2784,
@@ -51,8 +51,8 @@
    "ambiguous": 238,
    "plane_shadowed": 885,
    "plane_edge_beyond_one": 0,
-   "us": 12830.9,
-   "replay_us": 17609.6
+   "us": 17211.6,
+   "replay_us": 17839.8
   },
   "1": {
    "frame": 1,
@@ -70,8 +70,8 @@
    "ambiguous": 228,
    "plane_shadowed": 883,
    "plane_edge_beyond_one": 0,
-   "us": 1851.2,
-   "replay_us": 7826.9
+   "us": 2048.8,
+   "replay_us": 7916.6
   },
   "2": {
    "frame": 2,
@@ -89,8 +89,8 @@
    "ambiguous": 199,
    "plane_shadowed": 886,
    "plane_edge_beyond_one": 0,
-   "us": 1991.3,
-   "replay_us": 6640.7
+   "us": 1872.9,
+   "replay_us": 6674.7
   },
   "3": {
    "frame": 3,
@@ -108,8 +108,8 @@
    "ambiguous": 209,
    "plane_shadowed": 882,
    "plane_edge_beyond_one": 0,
-   "us": 1794.2,
-   "replay_us": 6692.9
+   "us": 1922.5,
+   "replay_us": 6729.6
   },
   "4": {
    "frame": 4,
@@ -127,8 +127,8 @@
    "ambiguous": 206,
    "plane_shadowed": 885,
    "plane_edge_beyond_one": 0,
-   "us": 1824.9,
-   "replay_us": 6665.1
+   "us": 1491.5,
+   "replay_us": 6380.6
   },
   "5": {
    "frame": 5,
@@ -146,8 +146,8 @@
    "ambiguous": 207,
    "plane_shadowed": 882,
    "plane_edge_beyond_one": 0,
-   "us": 1858.9,
-   "replay_us": 6972.6
+   "us": 1830.1,
+   "replay_us": 6201.7
   },
   "6": {
    "frame": 6,
@@ -165,8 +165,8 @@
    "ambiguous": 234,
    "plane_shadowed": 863,
    "plane_edge_beyond_one": 0,
-   "us": 1894.4,
-   "replay_us": 6302.6
+   "us": 1728.1,
+   "replay_us": 6046.6
   },
   "7": {
    "frame": 7,
@@ -184,8 +184,8 @@
    "ambiguous": 198,
    "plane_shadowed": 883,
    "plane_edge_beyond_one": 0,
-   "us": 1957.2,
-   "replay_us": 6442.0
+   "us": 1803.1,
+   "replay_us": 6491.6
   },
   "8": {
    "frame": 8,
@@ -203,8 +203,8 @@
    "ambiguous": 259,
    "plane_shadowed": 870,
    "plane_edge_beyond_one": 22,
-   "us": 1779.4,
-   "replay_us": 6352.3
+   "us": 1814.8,
+   "replay_us": 6247.8
   },
   "9": {
    "frame": 9,
@@ -222,8 +222,8 @@
    "ambiguous": 246,
    "plane_shadowed": 869,
    "plane_edge_beyond_one": 21,
-   "us": 722.5,
-   "replay_us": 764.4
+   "us": 934.6,
+   "replay_us": 567.3
   },
   "10": {
    "frame": 10,
@@ -241,8 +241,8 @@
    "ambiguous": 218,
    "plane_shadowed": 868,
    "plane_edge_beyond_one": 19,
-   "us": 819.0,
-   "replay_us": 844.4
+   "us": 764.7,
+   "replay_us": 567.0
   },
   "11": {
    "frame": 11,
@@ -260,8 +260,8 @@
    "ambiguous": 233,
    "plane_shadowed": 864,
    "plane_edge_beyond_one": 20,
-   "us": 806.2,
-   "replay_us": 759.1
+   "us": 5713.5,
+   "replay_us": 799.8
   },
   "12": {
    "frame": 12,
@@ -279,8 +279,8 @@
    "ambiguous": 229,
    "plane_shadowed": 871,
    "plane_edge_beyond_one": 24,
-   "us": 682.0,
-   "replay_us": 738.5
+   "us": 775.7,
+   "replay_us": 844.3
   },
   "13": {
    "frame": 13,
@@ -298,8 +298,8 @@
    "ambiguous": 226,
    "plane_shadowed": 872,
    "plane_edge_beyond_one": 21,
-   "us": 678.3,
-   "replay_us": 773.9
+   "us": 796.1,
+   "replay_us": 918.9
   },
   "14": {
    "frame": 14,
@@ -317,8 +317,8 @@
    "ambiguous": 253,
    "plane_shadowed": 847,
    "plane_edge_beyond_one": 21,
-   "us": 794.3,
-   "replay_us": 800.1
+   "us": 943.8,
+   "replay_us": 811.4
   },
   "15": {
    "frame": 15,
@@ -336,20 +336,20 @@
    "ambiguous": 222,
    "plane_shadowed": 872,
    "plane_edge_beyond_one": 24,
-   "us": 728.0,
-   "replay_us": 820.9
+   "us": 594.8,
+   "replay_us": 982.8
   }
  },
  "worst_codes": 0.9999976605176926,
  "ambiguous_max": 259,
  "edge_mismatch": null,
  "us": {
-  "median": 1794.2
+  "median": 1803.1
  },
  "exit": 0,
- "directory": "verification/probe/build/motion-output-sun-shadow-apply-cascades-5-faces-slope-20260923-015923-667141",
- "trace_sha256": "790935de1cc51e6dbe9a9473592da80cb512baecdfa9c6ed8a823d0fc39d605a",
- "dll_sha256": "b88088cfb5b1d092425f367a5e20db3babc0373503472e5143450787e919cebc",
- "exe_sha256": "322ad0470672f26af844368b9bf22a82a61784b8fca8cce0fe9a7a23dca0d36a",
+ "directory": "verification/probe/build/motion-output-sun-shadow-apply-cascades-5-faces-slope-20260924-074737-402875",
+ "trace_sha256": "4b16d54830104dbbec4f487afaad9a4cfff3d9177e983a7d3699b6856c1c2e10",
+ "dll_sha256": "c3e5c1023d7e0ef4180c34c341e82684985b421e77760d8563feadc7328d3862",
+ "exe_sha256": "4b5da1d83936680219aeedf1e3ee2703c2116bf3035fadb998bcd891d2166a1b",
  "depth_encoding": "linear"
 }

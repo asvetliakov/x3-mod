@@ -4701,7 +4701,7 @@ CAMERA_FRAME label=yaw-builder frame=24 shift_px=0.028,-0.047 baseline_px=-0.032
 CAMERA_FRAME label=yaw-builder frame=32 shift_px=0.042,-0.040 baseline_px=-0.024,-0.041 drift_px=0.0650 error=0.00629 used=1 policy=2
 CAMERA_FRAME label=yaw-builder frame=40 shift_px=0.032,-0.039 baseline_px=-0.033,-0.040 drift_px=0.0656 error=0.00627 used=1 policy=2
 CAMERA label=yaw-builder frames=48 from=16 drift_px=0.0663 error=0.00863 baseline=1
-SAMPLE camera yaw: resolved background tracks the current render (drift px against the static control) actual=0.066310668 expected=0.000000000 tolerance=0.200000000 PASS
+SAMPLE camera yaw: resolved background tracks the current render (drift px against the static control) actual=0.066308508 expected=0.000000000 tolerance=0.200000000 PASS
 SAMPLE camera yaw: mean absolute error against the unjittered render actual=0.008631287 expected=0.000000000 tolerance=0.030000000 PASS
 CHECK camera pose validates PASS
 CHECK camera sequence keeps a history PASS
@@ -10603,7 +10603,7 @@ CAMERA_FRAME label=yaw-builder frame=24 shift_px=0.028,-0.047 baseline_px=-0.032
 CAMERA_FRAME label=yaw-builder frame=32 shift_px=0.042,-0.040 baseline_px=-0.024,-0.041 drift_px=0.0650 error=0.00629 used=1 policy=2
 CAMERA_FRAME label=yaw-builder frame=40 shift_px=0.032,-0.039 baseline_px=-0.033,-0.040 drift_px=0.0656 error=0.00627 used=1 policy=2
 CAMERA label=yaw-builder frames=48 from=16 drift_px=0.0663 error=0.00863 baseline=1
-SAMPLE camera yaw: resolved background tracks the current render (drift px against the static control) actual=0.066310668 expected=0.000000000 tolerance=0.200000000 PASS
+SAMPLE camera yaw: resolved background tracks the current render (drift px against the static control) actual=0.066308508 expected=0.000000000 tolerance=0.200000000 PASS
 SAMPLE camera yaw: mean absolute error against the unjittered render actual=0.008631287 expected=0.000000000 tolerance=0.030000000 PASS
 CHECK camera pose validates PASS
 CHECK camera sequence keeps a history PASS

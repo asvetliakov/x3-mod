@@ -1,61 +1,73 @@
 MODULE C:\windows\system32\d3d9.dll
 MODULE C:\X3\d3dx9_37.dll
-RESOLVE_BUDGET variant=plain dwords=1661 instruction_slots=425 device_limit=512 headroom=87 within_guaranteed_512=1
+RESOLVE_BUDGET variant=plain dwords=1786 instruction_slots=455 device_limit=512 headroom=57 within_ceiling_2048=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
-RESOLVE_BUDGET variant=embedded_plain dwords=1661 instruction_slots=425 device_limit=512 headroom=87 within_guaranteed_512=1
+RESOLVE_BUDGET variant=embedded_plain dwords=1786 instruction_slots=455 device_limit=512 headroom=57 within_ceiling_2048=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
-CHECK embedded_plain within the guaranteed 512 slots PASS
-RESOLVE_BUDGET variant=embedded_snapshot dwords=187 instruction_slots=46 device_limit=512 headroom=466 within_guaranteed_512=1
+CHECK embedded_plain within the 2048-slot ceiling PASS
+RESOLVE_BUDGET variant=embedded_snapshot dwords=187 instruction_slots=46 device_limit=512 headroom=466 within_ceiling_2048=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
-CHECK embedded_snapshot within the guaranteed 512 slots PASS
-RESOLVE_BUDGET variant=embedded_thin dwords=1814 instruction_slots=469 device_limit=512 headroom=43 within_guaranteed_512=1
+CHECK embedded_snapshot within the 2048-slot ceiling PASS
+RESOLVE_BUDGET variant=embedded_thin dwords=2013 instruction_slots=517 device_limit=512 headroom=-5 within_ceiling_2048=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
-CHECK embedded_thin within the guaranteed 512 slots PASS
-RESOLVE_BUDGET variant=embedded_age dwords=1940 instruction_slots=495 device_limit=512 headroom=17 within_guaranteed_512=1
+CHECK embedded_thin within the 2048-slot ceiling PASS
+RESOLVE_BUDGET variant=embedded_age dwords=2143 instruction_slots=544 device_limit=512 headroom=-32 within_ceiling_2048=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
-CHECK embedded_age within the guaranteed 512 slots PASS
-RESOLVE_BUDGET variant=embedded_line_mask dwords=1574 instruction_slots=428 device_limit=512 headroom=84 within_guaranteed_512=1
+CHECK embedded_age within the 2048-slot ceiling PASS
+RESOLVE_BUDGET variant=embedded_line_mask dwords=1574 instruction_slots=428 device_limit=512 headroom=84 within_ceiling_2048=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
-CHECK embedded_line_mask within the guaranteed 512 slots PASS
-RESOLVE_BUDGET variant=embedded_far dwords=1931 instruction_slots=493 device_limit=512 headroom=19 within_guaranteed_512=1
+CHECK embedded_line_mask within the 2048-slot ceiling PASS
+RESOLVE_BUDGET variant=embedded_far dwords=2144 instruction_slots=545 device_limit=512 headroom=-33 within_ceiling_2048=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
-CHECK embedded_far within the guaranteed 512 slots PASS
-RESOLVE_BUDGET variant=embedded_line_mask_camera dwords=1579 instruction_slots=427 device_limit=512 headroom=85 within_guaranteed_512=1
+CHECK embedded_far within the 2048-slot ceiling PASS
+RESOLVE_BUDGET variant=embedded_line_mask_camera dwords=1579 instruction_slots=427 device_limit=512 headroom=85 within_ceiling_2048=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
-CHECK embedded_line_mask_camera within the guaranteed 512 slots PASS
-RESOLVE_BUDGET variant=embedded_line_mask_depth dwords=1554 instruction_slots=420 device_limit=512 headroom=92 within_guaranteed_512=1
+CHECK embedded_line_mask_camera within the 2048-slot ceiling PASS
+RESOLVE_BUDGET variant=embedded_line_mask_depth dwords=1554 instruction_slots=420 device_limit=512 headroom=92 within_ceiling_2048=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
-CHECK embedded_line_mask_depth within the guaranteed 512 slots PASS
-RESOLVE_BUDGET variant=embedded_line_mask_camera_depth dwords=1533 instruction_slots=407 device_limit=512 headroom=105 within_guaranteed_512=1
+CHECK embedded_line_mask_depth within the 2048-slot ceiling PASS
+RESOLVE_BUDGET variant=embedded_line_mask_camera_depth dwords=1533 instruction_slots=407 device_limit=512 headroom=105 within_ceiling_2048=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
-CHECK embedded_line_mask_camera_depth within the guaranteed 512 slots PASS
-RESOLVE_BUDGET variant=embedded_far_camera dwords=1987 instruction_slots=504 device_limit=512 headroom=8 within_guaranteed_512=1
+CHECK embedded_line_mask_camera_depth within the 2048-slot ceiling PASS
+RESOLVE_BUDGET variant=embedded_far_camera dwords=2196 instruction_slots=555 device_limit=512 headroom=-43 within_ceiling_2048=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
-CHECK embedded_far_camera within the guaranteed 512 slots PASS
-RESOLVE_BUDGET variant=embedded_thin_box dwords=238 instruction_slots=51 device_limit=512 headroom=461 within_guaranteed_512=1
+CHECK embedded_far_camera within the 2048-slot ceiling PASS
+RESOLVE_BUDGET variant=embedded_thin_box dwords=238 instruction_slots=51 device_limit=512 headroom=461 within_ceiling_2048=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
-CHECK embedded_thin_box within the guaranteed 512 slots PASS
-RESOLVE_BUDGET variant=embedded_thin_box_rows dwords=335 instruction_slots=77 device_limit=512 headroom=435 within_guaranteed_512=1
+CHECK embedded_thin_box within the 2048-slot ceiling PASS
+RESOLVE_BUDGET variant=embedded_thin_box_rows dwords=335 instruction_slots=77 device_limit=512 headroom=435 within_ceiling_2048=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
-CHECK embedded_thin_box_rows within the guaranteed 512 slots PASS
-RESOLVE_BUDGET variant=embedded_thin_box_columns dwords=420 instruction_slots=94 device_limit=512 headroom=418 within_guaranteed_512=1
+CHECK embedded_thin_box_rows within the 2048-slot ceiling PASS
+RESOLVE_BUDGET variant=embedded_thin_box_columns dwords=420 instruction_slots=94 device_limit=512 headroom=418 within_ceiling_2048=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
-CHECK embedded_thin_box_columns within the guaranteed 512 slots PASS
-RESOLVE_BUDGET variant=embedded_plain_taps16 dwords=1681 instruction_slots=432 device_limit=512 headroom=80 within_guaranteed_512=1
+CHECK embedded_thin_box_columns within the 2048-slot ceiling PASS
+RESOLVE_BUDGET variant=embedded_plain_taps16 dwords=1681 instruction_slots=432 device_limit=512 headroom=80 within_ceiling_2048=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
-CHECK embedded_plain_taps16 within the guaranteed 512 slots PASS
-RESOLVE_BUDGET variant=embedded_thin_taps16 dwords=1818 instruction_slots=465 device_limit=512 headroom=47 within_guaranteed_512=1
+CHECK embedded_plain_taps16 within the 2048-slot ceiling PASS
+RESOLVE_BUDGET variant=embedded_thin_taps16 dwords=1818 instruction_slots=465 device_limit=512 headroom=47 within_ceiling_2048=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
-CHECK embedded_thin_taps16 within the guaranteed 512 slots PASS
-RESOLVE_BUDGET variant=embedded_age_taps16 dwords=1947 instruction_slots=494 device_limit=512 headroom=18 within_guaranteed_512=1
+CHECK embedded_thin_taps16 within the 2048-slot ceiling PASS
+RESOLVE_BUDGET variant=embedded_age_taps16 dwords=1947 instruction_slots=494 device_limit=512 headroom=18 within_ceiling_2048=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
-CHECK embedded_age_taps16 within the guaranteed 512 slots PASS
-RESOLVE_BUDGET variant=embedded_far_taps16 dwords=1948 instruction_slots=493 device_limit=512 headroom=19 within_guaranteed_512=1
+CHECK embedded_age_taps16 within the 2048-slot ceiling PASS
+RESOLVE_BUDGET variant=embedded_far_taps16 dwords=1948 instruction_slots=493 device_limit=512 headroom=19 within_ceiling_2048=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
-CHECK embedded_far_taps16 within the guaranteed 512 slots PASS
-RESOLVE_BUDGET variant=embedded_far_camera_taps16 dwords=2006 instruction_slots=505 device_limit=512 headroom=7 within_guaranteed_512=1
+CHECK embedded_far_taps16 within the 2048-slot ceiling PASS
+RESOLVE_BUDGET variant=embedded_far_camera_taps16 dwords=2006 instruction_slots=505 device_limit=512 headroom=7 within_ceiling_2048=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
-CHECK embedded_far_camera_taps16 within the guaranteed 512 slots PASS
+CHECK embedded_far_camera_taps16 within the 2048-slot ceiling PASS
+RESOLVE_BUDGET variant=embedded_far_camera_hold dwords=2479 instruction_slots=616 device_limit=512 headroom=-104 within_ceiling_2048=1
+CHECK resolve instruction budget parsed for ps_3_0 PASS
+CHECK embedded_far_camera_hold within the 2048-slot ceiling PASS
+RESOLVE_BUDGET variant=embedded_thin_box_hold dwords=314 instruction_slots=70 device_limit=512 headroom=442 within_ceiling_2048=1
+CHECK resolve instruction budget parsed for ps_3_0 PASS
+CHECK embedded_thin_box_hold within the 2048-slot ceiling PASS
+RESOLVE_BUDGET variant=embedded_thin_box_rows_hold dwords=628 instruction_slots=155 device_limit=512 headroom=357 within_ceiling_2048=1
+CHECK resolve instruction budget parsed for ps_3_0 PASS
+CHECK embedded_thin_box_rows_hold within the 2048-slot ceiling PASS
+RESOLVE_BUDGET variant=embedded_thin_box_columns_hold dwords=533 instruction_slots=121 device_limit=512 headroom=391 within_ceiling_2048=1
+CHECK resolve instruction budget parsed for ps_3_0 PASS
+CHECK embedded_thin_box_columns_hold within the 2048-slot ceiling PASS
 LATTICE_CASES
 LATTICE_MARGIN 0.0600
 CHECK lattice geometry keeps jittered edges off the sample centers PASS
@@ -978,7 +990,7 @@ FLICKER_DRIFT width=1.25 pitch=2.37 v=0.60 config=soft-0.75 pixel_p2_4=10.915 pi
 SAMPLE flicker soft-0.75: shader matches the CPU oracle within the FP16 bound actual=0.003906250 expected=0.000000000 tolerance=0.005999999 PASS
 CHECK flicker programs available PASS
 CHECK flicker history and age output follow the sequence PASS
-FLICKER_DRIFT width=1.25 pitch=2.37 v=0.60 config=soft-0.75+w-0.97-narrow pixel_p2_4=10.827 pixel_p4_8=4.600 pixel_p8_32=3.215 block_p2_4=1.333 block_p4_8=0.951 block_p8_32=1.743 contrast=0.2110 oracle_error=0.003418 age_oracle_error=0.000000
+FLICKER_DRIFT width=1.25 pitch=2.37 v=0.60 config=soft-0.75+w-0.97-narrow pixel_p2_4=10.827 pixel_p4_8=4.601 pixel_p8_32=3.215 block_p2_4=1.334 block_p4_8=0.951 block_p8_32=1.744 contrast=0.2110 oracle_error=0.003418 age_oracle_error=0.000000
 SAMPLE flicker soft-0.75+w-0.97-narrow: shader matches the CPU oracle within the FP16 bound actual=0.003417969 expected=0.000000000 tolerance=0.020000019 PASS
 SAMPLE flicker soft-0.75+w-0.97-narrow: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 CHECK flicker programs available PASS
@@ -1150,12 +1162,12 @@ LINE_CASES
 CHECK line timing: camera-gate programs created PASS
 CHECK line timing: camera-gate programs created PASS
 CHECK line timing: camera-gate programs created PASS
-LINE_TIMING width=1280 height=768 content=all_geometry rounds=6 plain_ms=0.5293 far_stabiliser_ms=0.6956 thin_region_ms=1.1968 far_delta_ms=0.1663 thin_region_delta_ms=0.6675 scope=cpu_wall_with_event_query_drain
-LINE_TIMING_CAMERA width=1280 height=768 rounds=6 no_region_thin_ms=1.1968 no_region_camera_ms=1.3128 no_region_camera_delta_ms=0.1159 fragmented_pan_thin_ms=0.9521 fragmented_pan_camera_ms=1.4775 fragmented_pan_camera_delta_ms=0.5255 scope=cpu_wall_with_event_query_drain
-LINE_TIMING_CAMERA_LANE width=1280 height=768 rounds=6 r32f_camera_ms=1.4775 lane_input_law_ms=1.4799 lane_input_lane_ms=1.4813 lane_fetch_delta_ms=0.0014 lane_input_over_r32f_ms=0.0024 scope=cpu_wall_with_event_query_drain
+LINE_TIMING width=1280 height=768 content=all_geometry rounds=6 plain_ms=0.6174 far_stabiliser_ms=0.7426 thin_region_ms=1.2055 far_delta_ms=0.1252 thin_region_delta_ms=0.5882 scope=cpu_wall_with_event_query_drain
+LINE_TIMING_CAMERA width=1280 height=768 rounds=6 no_region_thin_ms=1.2055 no_region_camera_ms=1.3660 no_region_camera_delta_ms=0.1605 fragmented_pan_thin_ms=1.0584 fragmented_pan_camera_ms=1.5164 fragmented_pan_camera_delta_ms=0.4580 scope=cpu_wall_with_event_query_drain
+LINE_TIMING_CAMERA_LANE width=1280 height=768 rounds=6 r32f_camera_ms=1.5164 lane_input_law_ms=1.2707 lane_input_lane_ms=1.2836 lane_fetch_delta_ms=0.0130 lane_input_over_r32f_ms=-0.2458 scope=cpu_wall_with_event_query_drain
 CHECK sentinel timing: separable box programs created PASS
 CHECK sentinel timing: separable box programs created PASS
-LINE_TIMING_SENTINEL width=1280 height=768 rounds=6 content=all_unrouted_sentinel_pan strength_off_ms=1.2746 strength_on_separable_ms=1.4808 sentinel_delta_ms=0.2062 scope=cpu_wall_with_event_query_drain
+LINE_TIMING_SENTINEL width=1280 height=768 rounds=6 content=all_unrouted_sentinel_pan strength_off_ms=1.0903 strength_on_separable_ms=1.2962 sentinel_delta_ms=0.2059 scope=cpu_wall_with_event_query_drain
 LINE_BASE numerical=190 state_restorations=4
 FAR_CASES
 FAR_GATE ok=1 d0=0.99985647 inv=17734.900 expected_d0=0.99985652 expected_inv=17749.280
@@ -4890,4 +4902,175 @@ CHECK taps: history follows the sequence PASS
 CHECK taps: history follows the sequence PASS
 HISTORY_TAPS_RESET before_frames=2 drawn_5=1 identical_to_fresh=1
 CHECK history taps: a 5-tap pass across a device Reset resumes from an empty history, byte-identical to a fresh pass PASS
-RESULT PASS numerical=528 state_restorations=89 lattice=1
+HISTORY_TAPS_BASE numerical=528 state_restorations=89
+REGION_HOLD_CASES
+REGION_HOLD_IDENTITY k=0.00 strength=0.00 pixels=1024 sentinel=217 rest=264 moving=278 unrouted_geometry=265 blended=1024 colour_differs=0 age_differs=0 count_differs=0
+CHECK holds reading 0: the hold program is the camera program on the 1x1 composition, colour bit for bit, the age its count plus the encoded holds PASS
+REGION_HOLD_IDENTITY k=0.00 strength=1.00 pixels=1024 sentinel=217 rest=264 moving=278 unrouted_geometry=265 blended=1024 colour_differs=0 age_differs=0 count_differs=0
+CHECK holds reading 0: the hold program is the camera program on the 1x1 composition, colour bit for bit, the age its count plus the encoded holds PASS
+REGION_HOLD_IDENTITY k=0.50 strength=0.00 pixels=1024 sentinel=217 rest=264 moving=278 unrouted_geometry=265 blended=1024 colour_differs=0 age_differs=0 count_differs=0
+CHECK holds reading 0: the hold program is the camera program on the 1x1 composition, colour bit for bit, the age its count plus the encoded holds PASS
+REGION_HOLD_IDENTITY k=0.50 strength=1.00 pixels=1024 sentinel=217 rest=264 moving=278 unrouted_geometry=265 blended=1024 colour_differs=0 age_differs=0 count_differs=0
+CHECK holds reading 0: the hold program is the camera program on the 1x1 composition, colour bit for bit, the age its count plus the encoded holds PASS
+CHECK region hold without configure_region_hold is refused PASS
+CHECK region hold is ignored without the camera gate PASS
+CHECK configure_region_hold needs the camera-gate programs PASS
+CHECK hold programs created; the separable twins only with the sentinel programs PASS
+CHECK configure_sentinel creates the separable box's hold twins after the hold PASS
+CHECK hold run publishes the tests target and the age target PASS
+CHECK hold run continues the history PASS
+CHECK hold run restores c0..c7, c11, c22, c24, c25, samplers 0 and 7..12, RT1 and COLORWRITEENABLE1 PASS
+CHECK hold run with the separable box restores state PASS
+CHECK hold with the sentinel stabiliser PASS
+CHECK failed box / resolve draw of a hold run publishes nothing PASS
+CHECK after a failed hold run the resolve restarts without history PASS
+CHECK failed box / resolve draw of a hold run publishes nothing PASS
+CHECK after a failed hold run the resolve restarts without history PASS
+CHECK Reset keeps the hold programs and restarts the history PASS
+REGION_HOLD_STATE hold_off_restarts=1 hold_off_continues=1 hold_on_keeps=1 taps16_dilations=1 taps5_hold=1 masks_hold=1 masks_off=2 masks_on=1 masks_taps16=2 masks_taps5=1 masks_at_reset=0 masks_after_reset=1 box_fallback=1 masks_box_fallback=2 rearmed=1
+CHECK hold off restarts the history once, hold on keeps it; 16 taps keep the dilations PASS
+CHECK mask targets: one on a hold run (the second released), two again on every fallback to the dilations (hold off, 16 taps, refused box targets), none across Reset, one after it PASS
+CHECK thin-region history follows the sequence PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK hold programs are not created by configure_far PASS
+CHECK hold programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+THIN_REGION_HOLD drift=0.00 config=thin-region-0.97-camera-gate-hold oracle_error=0.008301 age_oracle_error=0.000000 tests_mask_error=0.000000 shard_rms_codes=1.416 shard_p2p_codes=6.6 rms_ratio=0.0866 dilated_rms_codes=1.416 dilated_p2p_codes=6.6 hold_over_dilated=1.0000 square_px=29952 square_differs=0
+SAMPLE region hold: shader matches the 2-D CPU oracle with the holds within the FP16 bound actual=0.008300781 expected=0.000000000 tolerance=0.020000000 PASS
+SAMPLE region hold: age target (count and holds) matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE region hold: the published tests target equals the CPU tests draw actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
+CHECK region hold: plain silhouette (x >= 20) bit-identical to the plain resolve PASS
+CHECK region hold, static shards: ripple <= 0.35 x and peak-to-peak <= 0.5 x the installed resolve (the dilated gate's bound) PASS
+CHECK thin-region history follows the sequence PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK hold programs are not created by configure_far PASS
+CHECK hold programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+THIN_REGION_HOLD drift=0.12 config=thin-region-0.97-camera-gate-hold oracle_error=0.005371 age_oracle_error=0.000000 tests_mask_error=0.000000 shard_rms_codes=16.238 shard_p2p_codes=95.6 rms_ratio=0.6742 dilated_rms_codes=14.756 dilated_p2p_codes=86.2 hold_over_dilated=1.1004 square_px=29952 square_differs=0
+SAMPLE region hold: shader matches the 2-D CPU oracle with the holds within the FP16 bound actual=0.005371094 expected=0.000000000 tolerance=0.020000000 PASS
+SAMPLE region hold: age target (count and holds) matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE region hold: the published tests target equals the CPU tests draw actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
+CHECK region hold: plain silhouette (x >= 20) bit-identical to the plain resolve PASS
+CHECK thin-region history follows the sequence PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK hold programs are not created by configure_far PASS
+CHECK hold programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+THIN_REGION_HOLD drift=0.30 config=thin-region-0.97-camera-gate-hold oracle_error=0.002441 age_oracle_error=0.000000 tests_mask_error=0.000000 shard_rms_codes=20.936 shard_p2p_codes=95.3 rms_ratio=1.0000 dilated_rms_codes=20.936 dilated_p2p_codes=95.3 hold_over_dilated=1.0000 square_px=29952 square_differs=0
+SAMPLE region hold: shader matches the 2-D CPU oracle with the holds within the FP16 bound actual=0.002441406 expected=0.000000000 tolerance=0.020000000 PASS
+SAMPLE region hold: age target (count and holds) matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE region hold: the published tests target equals the CPU tests draw actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
+CHECK region hold: plain silhouette (x >= 20) bit-identical to the plain resolve PASS
+CHECK thin-region history follows the sequence PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK hold programs are not created by configure_far PASS
+CHECK hold programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+THIN_REGION_HOLD_MOTION_START first_frame_difference=0.640137 after_24_frames=0.000244 after_24_at=10,11 background_trail=0.248291 trail_at=3,5,73 dilated_background_trail=0.248535 base_background_trail=0.218750
+SAMPLE region hold: 24 frames after motion starts the output is the installed resolve's actual=0.000244141 expected=0.000000000 tolerance=0.007843137 PASS
+SAMPLE region hold: from 8 frames after motion starts, uncovered background carries at most 0.04 more shard colour than the plain resolve actual=0.029541016 expected=0.000000000 tolerance=0.040000000 PASS
+CHECK thin-region program created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK hold programs are not created by configure_far PASS
+CHECK hold programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+THIN_REGION_HOLD_PAN pan=0.50 oracle_error=0.009277 age_oracle_error=0.000000 tests_mask_error=0.000000 screen_rms_codes=16.340 dilated_rms_codes=1.416 hold_rms_codes=1.416 hold_over_screen=0.0866 hold_over_dilated=1.0000 screen_p2p_codes=99.4 dilated_p2p_codes=6.6 hold_p2p_codes=6.6
+SAMPLE region hold, pan: shader matches the oracle actual=0.009277344 expected=0.000000000 tolerance=0.020000000 PASS
+SAMPLE region hold, pan: age matches the oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE region hold, pan: tests target equals the CPU tests draw actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
+CHECK region hold, pan past HI: the held camera gate halves the shard ripple (rms <= 0.5 x, peak-to-peak <= 0.6 x the screen gate) PASS
+CHECK thin-region program created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK hold programs are not created by configure_far PASS
+CHECK hold programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+THIN_REGION_HOLD_STALE pan=0.50 mover_px_per_frame=2 excess_after_mover=0.000000 screen_added_frame101=0.622559 dilated_added_frame101=0.727051 hold_added_frame101=0.727051 hold_over_screen=1.1678 oracle_error=0.008789 age_oracle_error=0.000000
+SAMPLE region hold, pan + bright mover: no ghost above the scene's maximum after the mover left actual=0.000000000 expected=0.000000000 tolerance=0.007843137 PASS
+SAMPLE region hold, pan + stale patch: shader matches the oracle on the injected history actual=0.008789062 expected=0.000000000 tolerance=0.020000000 PASS
+CHECK region hold, stale patch: the 7x7 box bounds it to at most 2 x the screen gate's clipped value PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK hold programs are not created by configure_far PASS
+CHECK hold programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+THIN_REGION_HOLD_BOX_DOMAIN pan=0.50 k=0.5 oracle_error=0.010254 age_oracle_error=0.000000
+SAMPLE region hold, k = 0.5 and a non-finite current tap: shader matches the oracle actual=0.010253906 expected=0.000000000 tolerance=0.020000000 PASS
+SAMPLE region hold, k = 0.5: age matches the oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CHECK thin-region history follows the sequence PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK hold programs are not created by configure_far PASS
+CHECK hold programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+THIN_REGION_HOLD_PAN_STOP pan=0.50 stop_frame=64 step_rms_codes_first8=1.983 dilated_first8=1.983 base_first8=21.072 step_rms_codes_next24=1.995 dilated_next24=1.995 base_next24=21.220
+CHECK stop after a pan: the held region settles like the dilated gate (step rms within 1.25 x + 0.5 code, the 8 frames after the stop and the 24 after) PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK hold programs are not created by configure_far PASS
+CHECK hold programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+THIN_REGION_HOLD_BOX_OPEN pan=0.50 frames=24 pixels=1024 dilated_chain=0.7188 tests_gate_alone=1.0000 region_gated=0.5459
+CHECK box twins under a pan: the region gate runs the box on fewer pixels than the tests gate alone PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK hold programs are not created by configure_far PASS
+CHECK hold programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK separable box programs are not created by configure_far PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK hold programs are not created by configure_far PASS
+CHECK hold programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+THIN_REGION_HOLD_SENTINEL pan=0.00 pan_mode=rest strength=0.70 oracle_error=0.002930 age_oracle_error=0.000000 oracle_skipped_px=0 base_flicker_codes=13.156 flicker_codes=5.155 flicker_ratio=0.3918
+SAMPLE region hold, sentinel stabiliser: shader matches the oracle actual=0.002929688 expected=0.000000000 tolerance=0.020000000 PASS
+SAMPLE region hold, sentinel stabiliser: age matches the oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CHECK region hold, sentinel facets: flicker below 0.6 x the S = 0 hold run PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK hold programs are not created by configure_far PASS
+CHECK hold programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK separable box programs are not created by configure_far PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK hold programs are not created by configure_far PASS
+CHECK hold programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+THIN_REGION_HOLD_SENTINEL pan=2.00 pan_mode=reversing strength=0.70 oracle_error=0.002930 age_oracle_error=0.000000 oracle_skipped_px=1638 base_flicker_codes=15.762 flicker_codes=6.049 flicker_ratio=0.3838
+SAMPLE region hold, sentinel stabiliser: shader matches the oracle actual=0.002929688 expected=0.000000000 tolerance=0.020000000 PASS
+SAMPLE region hold, sentinel stabiliser: age matches the oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CHECK region hold, sentinel facets: flicker below 0.6 x the S = 0 hold run PASS
+RESULT PASS numerical=566 state_restorations=91 lattice=1

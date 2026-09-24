@@ -1,0 +1,39 @@
+# reference: ee3bbf88 verification/results/bottle-X3/temporal-lattice.txt; new: this tree's
+reference_lines=4872 new_lines=4879 identical=4848 differing=24 new_only=31
+reference_only CHECK count=18
+reference_only FLICKER_DRIFT config=soft-0.75+w-0.97-narrow count=1
+reference_only LINE_TIMING count=1
+reference_only LINE_TIMING_CAMERA count=1
+reference_only LINE_TIMING_CAMERA_LANE count=1
+reference_only LINE_TIMING_SENTINEL count=1
+reference_only RESULT count=1
+new_only CHECK count=26
+new_only FLICKER_DRIFT config=soft-0.75+w-0.97-narrow count=1
+new_only LINE_TIMING count=1
+new_only LINE_TIMING_CAMERA count=1
+new_only LINE_TIMING_CAMERA_LANE count=1
+new_only LINE_TIMING_SENTINEL count=1
+REF CHECK embedded_plain within the guaranteed 512 slots PASS
+REF CHECK embedded_snapshot within the guaranteed 512 slots PASS
+REF CHECK embedded_thin within the guaranteed 512 slots PASS
+REF CHECK embedded_age within the guaranteed 512 slots PASS
+REF CHECK embedded_line_mask within the guaranteed 512 slots PASS
+REF CHECK embedded_far within the guaranteed 512 slots PASS
+REF CHECK embedded_line_mask_camera within the guaranteed 512 slots PASS
+REF CHECK embedded_line_mask_depth within the guaranteed 512 slots PASS
+REF CHECK embedded_line_mask_camera_depth within the guaranteed 512 slots PASS
+REF CHECK embedded_far_camera within the guaranteed 512 slots PASS
+REF CHECK embedded_thin_box within the guaranteed 512 slots PASS
+REF CHECK embedded_thin_box_rows within the guaranteed 512 slots PASS
+REF CHECK embedded_thin_box_columns within the guaranteed 512 slots PASS
+REF CHECK embedded_plain_taps16 within the guaranteed 512 slots PASS
+REF CHECK embedded_thin_taps16 within the guaranteed 512 slots PASS
+REF CHECK embedded_age_taps16 within the guaranteed 512 slots PASS
+REF CHECK embedded_far_taps16 within the guaranteed 512 slots PASS
+REF CHECK embedded_far_camera_taps16 within the guaranteed 512 slots PASS
+REF FLICKER_DRIFT width=1.25 pitch=2.37 v=0.60 config=soft-0.75+w-0.97-narrow pixel_p2_4=10.827 pixel_p4_8=4.600 pixel_p8_32=3.215 block_p2_4=1.333 block_p4_8=0.951 block_p8_32=1.743 contrast=0.2110 oracle_error=0.003418 age_oracle_error=0.000000
+REF LINE_TIMING width=1280 height=768 content=all_geometry rounds=6 plain_ms=0.5293 far_stabiliser_ms=0.6956 thin_region_ms=1.1968 far_delta_ms=0.1663 thin_region_delta_ms=0.6675 scope=cpu_wall_with_event_query_drain
+REF LINE_TIMING_CAMERA width=1280 height=768 rounds=6 no_region_thin_ms=1.1968 no_region_camera_ms=1.3128 no_region_camera_delta_ms=0.1159 fragmented_pan_thin_ms=0.9521 fragmented_pan_camera_ms=1.4775 fragmented_pan_camera_delta_ms=0.5255 scope=cpu_wall_with_event_query_drain
+REF LINE_TIMING_CAMERA_LANE width=1280 height=768 rounds=6 r32f_camera_ms=1.4775 lane_input_law_ms=1.4799 lane_input_lane_ms=1.4813 lane_fetch_delta_ms=0.0014 lane_input_over_r32f_ms=0.0024 scope=cpu_wall_with_event_query_drain
+REF LINE_TIMING_SENTINEL width=1280 height=768 rounds=6 content=all_unrouted_sentinel_pan strength_off_ms=1.2746 strength_on_separable_ms=1.4808 sentinel_delta_ms=0.2062 scope=cpu_wall_with_event_query_drain
+REF RESULT PASS numerical=528 state_restorations=89 lattice=1

@@ -1,0 +1,6 @@
+# reference: ee3bbf88 verification/results/bottle-X3/temporal-pass.txt; new: this tree's
+reference_lines=11784 new_lines=11784 identical=11782 differing=2 new_only=2
+reference_only SAMPLE count=2
+new_only SAMPLE count=2
+REF SAMPLE camera yaw: resolved background tracks the current render (drift px against the static control) actual=0.066310668 expected=0.000000000 tolerance=0.200000000 PASS
+REF SAMPLE camera yaw: resolved background tracks the current render (drift px against the static control) actual=0.066310668 expected=0.000000000 tolerance=0.200000000 PASS
