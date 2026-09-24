@@ -20,7 +20,13 @@ not re-parse equal is text_parse_error); a stem with both a binary
 and a text member is ambiguous_body_ext (bob1.resolve_body). Bodies with up to
 lod_overlay.MAX_TRAILING stray bytes after /BOB parse with a warning column (trailing); more
 is trailing_bytes. Each row carries inputs_sha256 (the decoded body plus every texture the
-tiles read) for lod_overlay.py --batch --sync.
+tiles read) for lod_overlay.py --batch --sync. A body with a lod_recipes.RECIPES entry has its atlas
+estimate (collapse, layout, texel rule, c_drawn) computed on the recipe's source record with its ops applied;
+r0_*, aspect_k, t_class and t_pad stay computed from record 0. The row keys recipe, source_record and
+recipe_ops (also fields of the batch record's bodies, not printed in census.txt or eligible_bodies.txt) name
+it, and the recipe digest joins inputs_sha256. When its geometry does not match the recipe's expect block, or
+an op fails on it in any other way (a mod body of the same stem), the row key recipe_skipped carries the
+reason and the body is censused and baked plainly (record 0, hash unchanged).
 
 Switch-size rule (parameters --ship-min/--ship-factor/--station-t/--t-cap, --aspect-cap, --no-aspect):
   ships:    T_class = min(200, max(80, 2.5 * T_1))   (T_1 = record 1 threshold; 80 for a single-LOD body)
@@ -90,6 +96,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import bob1            # noqa: E402
 import lod_atlas       # noqa: E402
 import lod_overlay     # noqa: E402
+import lod_recipes     # noqa: E402
 
 RULE = dict(ship_min=80.0, ship_factor=2.5, station_t=150.0, t_cap=200.0, aspect=True, aspect_ship=1.5,
             aspect_station=2.0)
@@ -402,10 +409,25 @@ def census_body(assets, textures, entry, opts):
         row['refuse'].append('material_outside_table')      # a visible negative index animated_record could not map
     if {'mat3', 'material_outside_table', 'texture_animation_unsupported'} & set(row['refuse']) or anim_error:
         return row
+    src, src_alpha, recipe_hash = r0, alpha, None       # the record C is built from (a recipe may name another)
+    hit = lod_recipes.lookup(name)
+    if hit:
+        try:
+            n, src, rep = lod_recipes.prepare(hit[0], hit[1], ladder)
+            if mat_tag in ('MAT5', 'MAT6'):
+                src = lod_atlas.animated_record(mats, src, assets)[0]
+        except Exception as exc:        # a mismatch, or any failure of an op on a foreign (mod) body of the stem
+            row['recipe_skipped'] = (f'{hit[0]}: {exc}' if isinstance(exc, lod_recipes.RecipeMismatch)
+                                     else f'{hit[0]}: {type(exc).__name__}: {exc}')[:200]   # baked plainly
+            src = r0
+        else:
+            row.update(recipe=hit[0], source_record=n, recipe_ops=rep['ops'])
+            src_alpha = lod_overlay.alpha_materials(mats, assets, record=src)
+            recipe_hash = lod_recipes.digest(*hit)
     stem = lod_overlay.qualified_stem(path)
     row['atlas_stem'] = stem
     min_texels, floor_share, w_target = texel_opts(opts)
-    collapse = lambda t: lod_atlas.collapse(assets, stem, list(mats), r0, alpha, t * opts['widths'][0] / 1280,
+    collapse = lambda t: lod_atlas.collapse(assets, stem, list(mats), src, src_alpha, t * opts['widths'][0] / 1280,
                                             opts['sizes'], specular=True, synth=True, textures=textures, bump=True)
     try:
         res = collapse(tp)
@@ -417,7 +439,7 @@ def census_body(assets, textures, entry, opts):
     x0 = lod_atlas.texel_floor(lod_atlas.tile_rows(lay), min_texels, floor_share)
     if x0['refuse'] and w_target > 0:              # texel fallback: a lower switch size (the body appears farther out)
         def texel_at(t):
-            L = lod_atlas.plan_layout(r0, mats, alpha, textures, t * opts['widths'][0] / 1280, opts['sizes'],
+            L = lod_atlas.plan_layout(src, mats, src_alpha, textures, t * opts['widths'][0] / 1280, opts['sizes'],
                                       lod_atlas.GUTTER, res['slots'], keep=frozenset(res['kept_effects']))
             return lod_atlas.texel_floor(lod_atlas.tile_rows(L), min_texels, floor_share), L['size']
         fb = texel_fallback(texel_at, tp, th[0] if th else None, x0, min_texels, floor_share, w_target)
@@ -435,12 +457,13 @@ def census_body(assets, textures, entry, opts):
         row['kept_effects'] = list(res['kept_effects'])     # own groups in C (lod_atlas.KEPT_EFFECTS)
     tex_shas = sorted({(textures.source(v) or {}).get('decoded_sha256') or 'unresolved:' + v.decode('latin1').lower()
                        for t in lay['tiles'] for v in t['names'].values() if v is not None})
-    row['inputs_sha256'] = hashlib.sha256('\n'.join([row['source_decoded_sha256']] + tex_shas).encode()).hexdigest()
+    row['inputs_sha256'] = hashlib.sha256('\n'.join([row['source_decoded_sha256']] + tex_shas
+                                                   + ([f'recipe:{recipe_hash}'] if recipe_hash else [])).encode()).hexdigest()
     row['texture_sources'] = sorted({v.split(':', 1)[-1] for t in lay['tiles'] for v in t['sources'].values() if v})
     row['radius_body'] = lay['radius']
     layouts = {opts['widths'][0]: lay}
     for w in opts['widths'][1:]:
-        layouts[w] = lod_atlas.plan_layout(r0, mats, alpha, textures, tp * w / 1280, opts['sizes'],
+        layouts[w] = lod_atlas.plan_layout(src, mats, src_alpha, textures, tp * w / 1280, opts['sizes'],
                                            lod_atlas.GUTTER, res['slots'], keep=frozenset(res['kept_effects']))
     row['atlas'] = {}
     for w, L in layouts.items():

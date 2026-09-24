@@ -262,7 +262,10 @@ non-zero start UV offset, an animated group left out of the atlas), texture_gene
 Materials row, drawn at run time), pil_missing (a jpg/tga texture without
 Pillow), and the lod_atlas reasons. Mixed effects and the second UV set are handled, not refused
 (lod_atlas notes). A change to lod_atlas.py or this file changes tool_sha256, so the next --sync
-rebuilds every body.
+rebuilds every body. Per-body recipes (lod_recipes.py, not in TOOL_FILES) choose the source record of C and
+apply geometry ops after a geometric self-check (the Terran solar-plant louvre weld,
+docs/architecture/lattice-baker-fix.md); the census row carries recipe or recipe_skipped, the recipe digest
+joins that body's inputs_sha256, so a recipe-only change rebuilds only the bodies with a recipe.
 Atlas member names are dds/x3m_lod_<stem>_<hash6>_<slot>.pck with the hash from the member
 path (qualified_stem), unique within an overlay and stable across runs.
 
@@ -327,6 +330,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import bob1  # noqa: E402
+import lod_recipes  # noqa: E402
 from inspect_x3 import read_catalogue  # noqa: E402
 from sector_fog_census import Assets, unpack, write_catalogue  # noqa: E402
 
@@ -1046,7 +1050,11 @@ def atlas_collapse(assets, name, entry, mats, record, alpha, threshold, synth, o
 
 def plan_body(assets, name, threshold, placement=None, force_threshold=False, collapse='glow', force_mat3=False,
               glow_luma=GLOW_LUMA, glow_share=GLOW_SHARE, area_percent=None, synth=True, atlas_opts=None,
-              source_record=None):
+              source_record=None, recipe=None):
+    """recipe: (key, recipe) from lod_recipes.lookup; its source record and ops replace source_record (the
+    batch passes the census row's source_record, which must agree); a body that does not match refuses
+    (recipe_mismatch: the census already sent a mismatching body plain). Only --batch passes a recipe: the
+    single-body path (NAME=T@N) bakes every body plainly, a recipe body included."""
     entry = bob1.resolve_body(assets, name)
     if 'loose' in entry:
         raise SystemExit(f'{name}: winning resource is loose file {entry["path"]}; a catalogue cannot override it')
@@ -1088,6 +1096,15 @@ def plan_body(assets, name, threshold, placement=None, force_threshold=False, co
     if not 0 <= src_index < len(ladder):
         raise SystemExit(f'{name}: --source-record {source_record} outside the body\'s records 0..{len(ladder) - 1}')
     source = ladder[src_index]
+    recipe_report = None
+    if recipe is not None:
+        try:
+            n, source, recipe_report = lod_recipes.prepare(recipe[0], recipe[1], ladder)
+        except lod_recipes.RecipeMismatch as exc:
+            raise SystemExit(f'{name}: recipe_mismatch: {exc}') from None
+        if source_record is not None and n != source_record:
+            raise SystemExit(f'{name}: recipe_mismatch: recipe source record {n}, row source record {source_record}')
+        src_index = n
     mats = bob1.materials(tree)
     if collapse == 'atlas' and any(t in ('MAT5', 'MAT6') for t, _ in tree['sections']):
         import lod_atlas               # face groups -N are texture animations: mapped onto their material, atlased
@@ -1158,7 +1175,7 @@ def plan_body(assets, name, threshold, placement=None, force_threshold=False, co
                 alpha=alpha | {s['index'] for s in synth_report if s['dominant'] in alpha and not s.get('atlas')},
                 area_kept=area_kept, area=area, synth=synth_report, source_materials=n_mats,
                 pad_index=pad_index, placement=placement, atlas_build=atlas, extra_members=extra,
-                source_record=src_index, pad_source=pad_source, trailing_bytes=trailing,
+                source_record=src_index, pad_source=pad_source, trailing_bytes=trailing, recipe=recipe_report,
                 guard_waived=guard_waived, atlas=atlas and atlas['summary'],
                 source_decoded_sha256=hashlib.sha256(data).hexdigest(),
                 overlay_decoded_sha256=hashlib.sha256(out).hexdigest(),
@@ -1210,6 +1227,10 @@ def describe(plan, out=None):
         print(f'  compact guard waived: T_pad {plan["ladder"][plan["pad_index"]]["value"]} is below T_1'
               f' {plan["before"][1]["value"]}; C is the full LOD 0 geometry, so C drawing at Low..High in the'
               ' band above T_pad is harmless', file=out)
+    if plan.get('recipe'):
+        r = plan['recipe']
+        print(f'  recipe {r["recipe"]}: C from record {r["source_record"]}; '
+              + '; '.join(', '.join(f'{k} {v}' for k, v in op.items()) for op in r['ops']), file=out)
     print(f'  ladder before: {ladder_text(plan["before"])}', file=out)
     print(f'  ladder after:  {ladder_text(plan["ladder"])}', file=out)
     groups = [group_label(plan, g) for p in plan['new']['parts'] for g in p['groups']]
@@ -1617,6 +1638,7 @@ def body_manifest(p):
         placement=p['placement'], collapse=p['collapse'],
         glow=sorted(p['glow']), area_kept=sorted(p['area_kept']), new_lod=p['new_index'], pad_lod=p['pad_index'],
         source_materials=p['source_materials'], source_record=p['source_record'], pad_source=p['pad_source'],
+        **({'recipe': p['recipe']} if p.get('recipe') else {}),
         trailing_bytes=p.get('trailing_bytes', 0), guard_waived=bool(p.get('guard_waived')),
         synth=[dict(index=s['index'], dominant=s['dominant'], absorbed=s['absorbed'],
                     params=[dict(name=n, dominant=d, mean=round(m, 1), written=w) for n, d, m, w in s['params']],
@@ -1796,14 +1818,16 @@ def parse_only(path):
 
 
 def bake_body(assets, row, atlas_opts):
-    """Plan and bake one census-eligible body for the batch (compact, atlas, source record 0, T_pad
-    from the row); returns a compact dict (no records) or dict(name, refused=reason)."""
+    """Plan and bake one census-eligible body for the batch (compact, atlas, T_pad from the row; source
+    record 0, or the row's recipe and source record when the census matched a lod_recipes entry); returns a
+    compact dict (no records) or dict(name, refused=reason)."""
     import lod_atlas
     t0 = time.time()
     out = io.StringIO()
     try:
         p = plan_body(assets, row['name'], row['t_pad'], 'compact', False, 'atlas', False, GLOW_LUMA, GLOW_SHARE,
-                      None, True, atlas_opts, 0)
+                      None, True, atlas_opts, row.get('source_record', 0),
+                      lod_recipes.lookup(row['name']) if row.get('recipe') else None)
         describe(p, out)
     except SystemExit as exc:
         return dict(name=row['name'], refused=str(exc), seconds=time.time() - t0)
@@ -1853,7 +1877,7 @@ def _bake_work(row):
     return bake_safely(_BAKE['assets'], row, _BAKE['atlas_opts'])
 
 
-BAKE_REASONS = (('texel_floor', 'texel_floor'), ('trailing bytes', 'trailing_bytes'), ('text_parse_error', 'text_parse_error'),
+BAKE_REASONS = (('recipe_mismatch', 'recipe_mismatch'), ('texel_floor', 'texel_floor'), ('trailing bytes', 'trailing_bytes'), ('text_parse_error', 'text_parse_error'),
                 ('writer does not reproduce', 'writer_mismatch'), ('MAT3 body', 'mat3'),
                 ('outside the material table', 'material_outside_table'), ('loose file', 'loose_winner'),
                 ('already exists in', 'atlas_name_taken'), ('references', 'group_too_large'),
@@ -1972,6 +1996,12 @@ def batch(a, game, root, markers):
     rows.sort(key=lambda r: r['name'].lower())
     if skipped:
         notes.append(f'source bodies read without the overlay catalogue(s) {skipped}')
+    for r in rows:                         # lod_recipes: applied on the census row, or skipped (plain bake)
+        if r.get('recipe'):
+            notes.append(f'recipe {r["recipe"]}: C from record {r["source_record"]} with '
+                         + ', '.join(op['op'] for op in r['recipe_ops']))
+        elif r.get('recipe_skipped'):
+            notes.append(f'recipe_skipped {r["recipe_skipped"]}; baked plainly from record 0')
     floor, starved = [], {}                # texel floor: refused before baking, ratio kept in the record
     for r in rows:
         est = (r.get('atlas') or {}).get(width, {})
@@ -2232,7 +2262,8 @@ def batch(a, game, root, markers):
                      estimate=({k: v for k, v in r['atlas'][width].items() if k != 'tiles'}
                                if (r.get('atlas') or {}).get(width) else None), **r.get('baked', {}),
                      **{k: r[k] for k in ('thresholds', 't_class', 'aspect_k', 'threshold_aspect', 'aspect_note',
-                                          'radius_body', 'radius_world', 'switch_km', 'switch_km_class') if k in r},
+                                          'radius_body', 'radius_world', 'switch_km', 'switch_km_class', 'recipe',
+                                          'source_record', 'recipe_ops', 'recipe_skipped') if k in r},
                      **({'texel': r['texel']} if r.get('texel') else {}),
                      **({'texel_fallback': r['texel_fallback']} if r.get('texel_fallback') else {}),
                      **({'error': r['atlas_error']} if r.get('atlas_error') else {}),

@@ -12,3 +12,8 @@ No Wine, no build, no install, no game. Run from the repository root:
   python3 verification/results/lattice-baker-fix/records.py    > records_out.txt     # vanilla records 1-3: record 2 flattens the panes to y = 0, keeps the beams
   python3 verification/results/lattice-baker-fix/pixels.py     > pixels_out.txt      # feature sizes in px against s (inferred arithmetic)
 Flight evidence used: verification/results/run315-run82a-lattice-crawl/*_out.txt (Run 82 A, run315 burst 4443-4450).
+
+Implementation check (2026-09-25, lod_recipes weld; game not running, game_guard.game_running() == []):
+  python3 tools/analysis/lod_overlay.py --batch --only <file: stations/x3tc/terran_spp_panel> --out <scratch> --jobs 1   # exit 0, 9 s wall
+  python3 verification/results/lattice-baker-fix/bake_check.py <scratch> > bake_check_out.txt   # PASS; the bake log's timing/draws/recipe lines appended
+  python3 verification/results/lattice-baker-fix/weldgeo.py > weldgeo_out.txt   # reviewer: 0 zero-area faces, 0 winding flips on the welded pane

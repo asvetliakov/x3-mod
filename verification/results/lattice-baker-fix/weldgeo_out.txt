@@ -1,0 +1,10 @@
+op {'op': 'weld_strips', 'material': 21, 'plane_y': 105, 'strips': 132, 'pitch': 1222.75, 'abutting': 110, 'width_min': 1220, 'width_max': 1225, 'across_scale': 0.8912, 'points': 5016}
+faces 4752 zero-area after 0 min area after 939.0 min area before 1083.2724726494253
+ny sign before +/- 4752 0 after +/- 4752 0
+orientation flips 0
+thickness max 1.191637741709544 tilt range 14.60224335899176 14.60873933694318
+across range 1371.366080424609 1372.3788817220034 long set [6495, 6496, 6834, 7851]
+point tuple len 10 (27, 10537, 105, -30654, 126846, -381176, 16576, 63405, 0, 1)
+before y range -135.0 211.0 girder/other max y 3322
+positions mapped to >1 new position 0
+distinct x values after per strip (first 3) [19, 19, 19] [19, 19, 19]

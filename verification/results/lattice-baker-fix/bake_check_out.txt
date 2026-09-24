@@ -1,0 +1,14 @@
+installed overlay member: addon/06.cat
+ladder after [2169156, 250, 266] source_record 1 recipe stations/x3tc/terran_spp_panel draws (marker) 3
+  vanilla record 0: {'points': 125998, 'faces': 54412, 'groups': 22}
+  vanilla record 1: {'points': 25678, 'faces': 14284, 'groups': 22}
+  installed C (fleet3, from record 0): {'points': 128336, 'faces': 54412, 'groups': 4}
+  scratch C (recipe): {'points': 25816, 'faces': 14284, 'groups': 3}
+pane (material 21) in C: faces 4752, points 5016, strips 132, y values [105], faces below y 105 - 0.5: 0
+  strip widths 1220..1225; bit-identical shared edges 110; other neighbour steps (segment gaps) 16, min 1204
+poke-through over the pane footprint (20-unit cells): vanilla record 1 142538/2912102 = 0.0489 (max 234.7); scratch C 0/2836023 = 0.0000 (max -5.0)
+drawn groups of C 3; split_groups []; widest group points 13732; pad record (index 2) equals vanilla record 3 except its threshold: True
+checks {'planar': True, 'no_face_below': True, 'strips_132': True, 'no_poke': True, 'draws_3': True, 'no_split': True, 'under_60000': True, 'pad_vanilla': True} -> PASS
+draws below T_pad per instance, summed over the overlay bodies: 22 -> 3 (drawn groups of record 0 -> of C, hidden parts excluded, alpha groups included); bodies with one atlas material per effect (0): ; second UV set passed through (0): ; stray trailing bytes tolerated: 0
+timing: census 1.9 s, baking 5.8 s for 1 bodies with 1 jobs (5.84 s per body wall); extrapolated full set: 6 s (this run x 1 enumerated / 1 built; upper bound, every candidate baked); total 7.8 s
+recipe stations/x3tc/terran_spp_panel: C from record 1 with weld_strips

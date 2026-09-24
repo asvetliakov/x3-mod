@@ -1,12 +1,16 @@
 # Terran solar-panel lattice crawl: fix in the merged-LOD baker
 
-Status: design note for ratification (2026-09-25). No code, build, Wine or game run. Tags: **[M]** measured this
+Status: ratified and implemented 2026-09-25 (section 1); the design text below is unchanged apart from the implementation notes in section 5. Tags: **[M]** measured this
 session on the parsed `objects/stations/x3tc/terran_spp_panel.pbb` (bottle X3 vanilla catalogues, read through the
 baker's reader; scripts and outputs in `verification/results/lattice-baker-fix/`) or cited from
 `verification/results/run315-run82a-lattice-crawl/`; **[I]** inferred (arithmetic from measured inputs); **[A]** assumed.
 Constraint (user, 2026-09-25): no per-frame band-aid; the crawl is visible under every TAA setting flown.
 
 ## 1. Decision
+
+Ratified 2026-09-25 (orchestrator). Implemented 2026-09-25 (section 5 and host checks 1-2; host bake only,
+not installed, not flown): `tools/analysis/lod_recipes.py`, ledger `docs/verification/lod-overlay.md`
+("baker recipe: Terran solar-plant louvre weld").
 
 Recommended: a per-body **baker recipe** for `stations/x3tc/terran_spp_panel` that builds the coarse record from vanilla
 record 1 (record 0 without the 40,128 frame-rim faces, which Egosoft already dropped) and **welds the 132 tilted solar
@@ -108,6 +112,20 @@ No global threshold change: the other 619 overlay bodies are untouched by the re
 cap 2.0 rule stands).
 
 ## 5. Recommendation (Q4)
+
+**Implemented** as below, with these differences: the recipe table and `weld_strips` live in
+`tools/analysis/lod_recipes.py`, which is not in `TOOL_FILES`; its source hash and the recipe enter only the
+recipe body's `inputs_sha256`, so a later recipe-only change rebuilds only recipe bodies (this first commit
+changes `lod_overlay.py` and `lod_batch_census.py`, so install-fleet4 still rebakes the fleet). The census
+runs the self-check and censuses the body on the recipe's record (`recipe`, `source_record`, `recipe_ops`, or
+`recipe_skipped` with a plain record-0 bake and an unchanged hash); `strip_size` is checked as (longest strip,
+every strip's across width), since 36 of the 132 strips are 6,495 or 6,834 long; the strip edges snap to the
+midpoint of neighbouring strip centres (widths 1,220-1,225), and a strip without a neighbour on one side
+takes half the measured pitch there. The part bounds are kept (the welded strips stay inside the strips' old
+box). An op that fails on a same-stem body in any other way (an exception, not only a mismatch) also gives
+`recipe_skipped` and a plain bake. Only `--batch` applies recipes: the single-body path (`NAME=T@N`) bakes
+this body plainly. Host checks 1 and 2: `verification/analysis/test_lod_recipes.py`,
+`verification/results/lattice-baker-fix/bake_check.py`.
 
 Rule, per body, in a `RECIPES` table keyed by body stem (a small module beside the baker, or a section of
 `lod_overlay.py`):

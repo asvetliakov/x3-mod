@@ -229,3 +229,34 @@ then a full rebake.
 coarse record, which defeats the single-draw goal; the user accepts the small colour change of the one synthesised
 material instead. The shading-classes change was stopped before it landed; the finding above stays as the
 explanation of the coarse/fine brightness difference. No rebake for this.
+
+## 2026-09-25: baker recipe: Terran solar-plant louvre weld (host bake, not installed)
+
+Implements [lattice-baker-fix.md](../architecture/lattice-baker-fix.md) section 5 (ratified 2026-09-25):
+`tools/analysis/lod_recipes.py` holds the per-body recipe (`stations/x3tc/terran_spp_panel`: C from vanilla
+record 1, `weld_strips` material 21 at y = 105 about z, `expect` 132 strips / 7,851 x 1,372 / pitch 1,222.6 /
+tilt 14.6 deg / tol 0.02). The census applies the self-check and censuses the body on the welded record 1
+(row keys and batch-record fields `recipe`, `source_record`, `recipe_ops`, not printed in census.txt; r0_*,
+aspect_k and T_pad stay from record 0; a mismatch or any exception in an op gives `recipe_skipped` and a plain
+record-0 bake); `bake_body` passes the row's source record and recipe to `plan_body` (the batch no longer hard-codes
+record 0 for such a row); the marker body carries `recipe`. The recipe and the `lod_recipes.py` source join
+only that body's `inputs_sha256`; every other body keeps its hash formula. `lod_recipes.py` is not in
+`TOOL_FILES`, so a later recipe-only change rebuilds only recipe bodies under `--sync`; this change itself edits
+`lod_overlay.py` and `lod_batch_census.py`, so `tool_sha256` changes (installed a8dde023 -> bd0855e6 on the
+worktree, measured) and install-fleet4 rebuilds all 620 bodies.
+
+| check | command | result |
+|---|---|---|
+| unit + batch tests (measured) | `PYTHONPATH=verification/probe:verification/analysis:. python3 -m unittest test_lod_overlay_batch test_lod_recipes` | 55 OK (49 + 6); `test_lod_batch_census test_bob1` 50 OK, 1 skipped. Synthetic louvre (12 strips over box girders): poke-through share > 0.01 before, 0 cells after (max 5 units below the plate); every strip point at y = 105, shared edges bit-identical, widths within 2 of the pitch; faces, parts, tangent records, z, UV, normal and flags unchanged; serialise/parse equal; strip count, pitch, tilt, length, flat body and a shared point each refuse; batch: the recipe body bakes from record 1 with the recipe digest in its hash, a mismatching body and a body whose op raises (KeyError) get `recipe_skipped`, source record 0 and the plain hash, a plain body's marker entry is identical with and without recipes |
+| one-body bake (measured) | `lod_overlay.py --batch --only <terran_spp_panel> --out <scratch> --jobs 1` (game not running) | exit 0, 9 s wall (census 1.9 s, bake 5.8 s); T_pad 266, atlas 1024, min texels/px 2.04; draws below T_pad 22 -> 3 |
+| geometry self-check (measured) | [`bake_check.py`](../../verification/results/lattice-baker-fix/bake_check.py) on the scratch bake, [`_out.txt`](../../verification/results/lattice-baker-fix/bake_check_out.txt) | PASS. C before (installed fleet3, from record 0): 128,336 points, 54,412 faces, 4 groups; after: 25,816 points, 14,284 faces, 3 groups (vanilla record 1: 25,678 / 14,284). Pane: 132 strips, 4,752 faces, every point at y = 105, 0 faces below 104.5; widths 1,220-1,225, 110 bit-identical shared edges, 16 segment gaps (min 1,204 units); poke-through over the pane footprint (20-unit cells) 142,538 / 2,912,102 = 4.9 % (max 234.7 units) on vanilla record 1 -> 0 / 2,836,023 (max -5.0); split_groups empty, widest group 13,732 points; pad record = vanilla record 3 apart from its threshold |
+| face areas and winding (measured, reviewer) | [`weldgeo.py`](../../verification/results/lattice-baker-fix/weldgeo.py), [`_out.txt`](../../verification/results/lattice-baker-fix/weldgeo_out.txt) on the welded record 1 | 4,752 pane faces: 0 zero-area (min area 939 after, 1,083 before), 0 winding flips (ny > 0 on all before and after), 0 positions split; with `bake_check.py`: 110 bit-identical shared edges |
+
+Free edges: a strip without a neighbour on one side (the 16 segment gaps and the row ends) ends at centre ±
+pitch / 2, about 53 units inboard of vanilla's projected half-width (1,372 cos 14.6 deg / 2 = 664 vs 611;
+inferred arithmetic); whether that narrowing is visible is part of the flight check.
+
+Fleet install (not run; install-fleet4, the orchestrator's): `python3 tools/analysis/lod_overlay.py --batch --sync
+--install --replace --jobs 2` with the game closed; `reuse_previous` rebuilds every body because the settings'
+`tool_sha256` differs, about 48-50 min wall (install-fleet3 took 48.5 min; inferred). Expected result: 620 bodies
+as in fleet3, only `terran_spp_panel` differs in geometry (inferred: the plain path is unchanged code). Not flown: the flight check of design section 5 is open.
