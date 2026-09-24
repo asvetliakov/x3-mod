@@ -1344,6 +1344,60 @@ which the pilot overlay targets; the two earlier worked examples
 (`argon_L_solarpowerplant`, `argon_dock_center`) already end in a one-group LOD,
 so collapsing them saves no draws.
 
+### Slot 06 LOD switch: Terran stations take the distance branch (2026-09-24, run297)
+
+Symptom (Run 78 A, run297, fleet overlay `install-fleet2`): every addon/06 body seen in the four F8
+bursts (USC dock c/e parts, `usc_small_station_d`, Terran SPP XL `terran_spp_*`) stayed at lod 0 with the
+06 ladder in memory, while addon/05 bodies in the same bursts switched. **Cause: not the slot. Every one
+of those bodies is a part of a Terran (race 18) station, and the engine selects LOD for Terran stations
+with the fixed-distance branch, which never draws record 1 of an overlay ladder.**
+
+- **Code [s].** Station construction `0x004415fe..0x00441644` (TFactories, table `*0x00606fd0`) and
+  `0x00441653..0x00441684` (TDocks, `*0x00606fcc`, joins at `0x0044162f`) tests `row+0x5c == 0x12` on the
+  type row `table + subtype(obj+0x4a)*0xdb8` and then sets `node+0x12c |= 0x80000000` on the root node.
+  With 4-byte fields from `row+0x28`, `row+0x54` (loaded at `0x0044160d`) is field [11], the scene, and
+  `row+0x5c` is field [13], the **race**; 0x12 = 18 = Terran (measured on the installed
+  `addon/types/TDocks.pck`/`TFactories.pck`: 37 race-18 rows, 35 scenes, among them every USC dock, the
+  USC small stations, `terran_spp_{,s_,l_}scene`, the torus and the lost-colony scenes; ATF rows are 17
+  and do not get the bit). That bit sends the whole subtree into the distance branch
+  `0047d36d..0047d427` ([LOD selection](../reverse-engineering/lod-selection.md) §1): `k` = 4/3/2/1/0
+  for `D - R` above 28.5M/21M/15.5M/7M, clamped to `n-1`, one step finer if `T_k < 2` or
+  `points_k < points_{k-1}/3`, then the Very High `-1`. It never reads `s` or `+0x760`.
+- **Why the overlay record is unreachable there [m].** The baked ladder is `[full, merged, pad]`. The
+  merged record has more points than the full one (welded atlas vertices: `usc_dock_c_core_bottom`
+  108,660 / 121,616 / 17,562; `terran_spp_center` 129,309 / 141,852 / 4,391; `terran_spp_panel`
+  125,998 / 128,336 / 9,407). So `k = 1` draws 0 after the tail, and `k = 2` fails the point guard
+  (pad < merged/3), steps to 1 and draws 0. Over all 70 overlay bodies that are race-18 scene parts
+  (60 in 06, 9 in 05: seven lost-colony parts, `argon_dock_center`, `argon_minea_ore_s`), 69 give
+  final 0 in every band; only `torus_decals_fighterdock` (three equal records) reaches 1 at `D - R > 15.5M`.
+- **Log rows [m].** Across the 24 census sessions in `/tmp` (run260..run297), 1,081 kept rows of
+  race-18 parts with n >= 3: 0 contradict the distance branch; 528 contradict the metric loop (overlay
+  and vanilla ladders). Positive witness: run273 f15495 `usc_small_station_d`, vanilla 30/15, s = 40
+  and 47, drawn **lod 1** at `D - r` 21.0M / 17.8M, which the loop cannot produce (s >= 30 gives 0).
+  Non-Terran rows: 4,406 match the loop; the distance model fails 1,992 of them. The 16 non-Terran
+  loop misses are all `argon_newdock_center` rows logged right after the USC dock c parts (docking
+  ports attached under the Terran root, inferred from traversal order).
+- **Hypotheses excluded.** (a) The DLL reads no overlay marker (`src/` has no `x3m-lod`/`overlay_slots`
+  reader; overlays are engine assets only). (b) Texture binding cannot change the index: the pass reads
+  only `+0x34` and `+0x00` of a record, and lod 1 was never selected, so the atlas never bound.
+  (c) 05 and 06 ladders have the same shape (3 records, `new_lod` 1, `pad_lod` 2 in all 611). (e) The
+  census `lod` is `node+0x14c` at the pass exit and the draws agree (2,816 lod-0 `spp_panel` draws);
+  run297 has no `lod_scale` row, and `+0x760` is not read in this branch anyway.
+- **Confound status.** Since addon/06 existed (run287..run297) no non-Terran 06 body appeared in a
+  census row, so no 06 body has been seen on the loop path yet (measured). The mechanism does not
+  depend on the slot: the nine race-18 bodies in 05 are predicted to behave the same way.
+- **Not verified in process.** The census does not log the propagated flag byte `[esp+0x18]` or the
+  subtree radius `R = 0x00488170(node)`; `D - r` uses `node+0xa0` as a proxy. A flight that settles it
+  directly needs the census to add `branch=[esp+0x18]` and `R=[esp+0x20]` and one F8 burst each on a
+  USC dock or SPP XL at `D - R` in (7M, 15.5M] and above 15.5M, plus a non-Terran 06 body (an Argon
+  trading station part or a `station_scenes/tech` part) below `s/T_pad` 0.7: expected `branch=1`, lod 0
+  for the Terran parts and `branch=0`, lod 1 for the control.
+
+Scripts and outputs: `verification/results/run295-298-run78a/slot06/` (`type_race.py`,
+`race18_parts.py` -> `race18_parts.txt`, `branch_test.py` -> `branch_test_out.txt` over
+`census_logs.txt`, `race18_overlay_reach.py` -> `race18_overlay_reach_out.txt`,
+`slot06_nonterran_rows.py` -> `slot06_nonterran_rows_out.txt`, `commands.txt`).
+
 ### Effort against existing machinery
 
 - Archive read/write: mostly present. `tools/analysis/inspect_x3.py`

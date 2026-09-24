@@ -1,0 +1,13 @@
+run260 stations/trading_stations/argon_trading_station_parta vanilla lod=0 loop=0 8
+run260 stations/trading_stations/argon_trading_station_partb vanilla lod=0 loop=0 8
+run260 stations/x3ap/stockmarketboardm vanilla lod=0 loop=0 8
+run272 stations/trading_stations/argon_trading_station_parta vanilla lod=1 loop=1 8
+run272 stations/trading_stations/argon_trading_station_partb vanilla lod=1 loop=1 8
+run272 stations/x3ap/stockmarketboardm vanilla lod=1 loop=1 8
+run284 stations/trading_stations/argon_trading_station_parta overlay lod=1 loop=1 8
+run284 stations/trading_stations/argon_trading_station_partb overlay lod=1 loop=1 8
+run285 stations/trading_stations/argon_trading_station_parta overlay lod=1 loop=1 8
+run285 stations/trading_stations/argon_trading_station_partb overlay lod=1 loop=1 8
+run286 stations/trading_stations/argon_trading_station_parta overlay lod=1 loop=1 8
+run286 stations/trading_stations/argon_trading_station_partb overlay lod=1 loop=1 8
+rows 96

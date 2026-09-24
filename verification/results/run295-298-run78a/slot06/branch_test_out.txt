@@ -1,0 +1,82 @@
+class loop dist -> rows (kept rows, n>=3, main+other views)
+  ('other', 'loop_ok', 'dist_ok') 2414
+  ('other', 'loop_ok', 'dist_x') 1992
+  ('other', 'loop_x', 'dist_ok') 16
+  ('race18', 'loop_ok', 'dist_ok') 553
+  ('race18', 'loop_x', 'dist_ok') 528
+examples (loop mismatches, and every race18 key)
+  ('other', 'loop_x', 'dist_ok') run297 f8275 stations/docks/argon_newdock_center s=9 D=2165519 r=30842 thr=100000,30,150 lod=0 loop=1 dist=0..0
+  ('other', 'loop_x', 'dist_ok') run297 f8275 stations/docks/argon_newdock_center s=5 D=3577850 r=30842 thr=100000,30,150 lod=0 loop=1 dist=0..0
+  ('other', 'loop_x', 'dist_ok') run297 f8276 stations/docks/argon_newdock_center s=9 D=2151913 r=30842 thr=100000,30,150 lod=0 loop=1 dist=0..0
+  ('other', 'loop_x', 'dist_ok') run297 f8276 stations/docks/argon_newdock_center s=5 D=3564244 r=30842 thr=100000,30,150 lod=0 loop=1 dist=0..0
+  ('other', 'loop_x', 'dist_ok') run297 f8277 stations/docks/argon_newdock_center s=9 D=2138308 r=30842 thr=100000,30,150 lod=0 loop=1 dist=0..0
+  ('other', 'loop_x', 'dist_ok') run297 f8277 stations/docks/argon_newdock_center s=5 D=3550639 r=30842 thr=100000,30,150 lod=0 loop=1 dist=0..0
+  ('race18', 'loop_ok', 'dist_ok') run260 f9868 stations/x3ap/stockmarketboardxl s=14 D=11307259 r=251345 thr=100000,25,5 lod=0 loop=0 dist=0..0
+  ('race18', 'loop_ok', 'dist_ok') run260 f9868 stations/x3ap/stockmarketboardxl s=14 D=11339681 r=251345 thr=100000,25,5 lod=0 loop=0 dist=0..0
+  ('race18', 'loop_ok', 'dist_ok') run260 f9869 stations/x3ap/stockmarketboardxl s=14 D=11307259 r=251345 thr=100000,25,5 lod=0 loop=0 dist=0..0
+  ('race18', 'loop_ok', 'dist_ok') run260 f9869 stations/x3ap/stockmarketboardxl s=14 D=11339681 r=251345 thr=100000,25,5 lod=0 loop=0 dist=0..0
+  ('race18', 'loop_ok', 'dist_ok') run260 f9870 stations/x3ap/stockmarketboardxl s=14 D=11307259 r=251345 thr=100000,25,5 lod=0 loop=0 dist=0..0
+  ('race18', 'loop_ok', 'dist_ok') run260 f9870 stations/x3ap/stockmarketboardxl s=14 D=11339681 r=251345 thr=100000,25,5 lod=0 loop=0 dist=0..0
+  ('race18', 'loop_x', 'dist_ok') run271 f2116 stations/x3tc/terran_spp_panel s=99 D=13896148 r=2169156 thr=100000,250,150,80 lod=0 loop=1 dist=0..0
+  ('race18', 'loop_x', 'dist_ok') run271 f2116 stations/x3tc/terran_spp_panel s=108 D=12841216 r=2169156 thr=100000,250,150,80 lod=0 loop=1 dist=0..0
+  ('race18', 'loop_x', 'dist_ok') run271 f2116 stations/x3tc/terran_spp_panel s=111 D=12425120 r=2169156 thr=100000,250,150,80 lod=0 loop=1 dist=0..0
+  ('race18', 'loop_x', 'dist_ok') run271 f2116 stations/x3tc/terran_spp_panel s=107 D=12901397 r=2169156 thr=100000,250,150,80 lod=0 loop=1 dist=0..0
+  ('race18', 'loop_x', 'dist_ok') run271 f2116 stations/x3tc/terran_spp_panel s=99 D=13987527 r=2169156 thr=100000,250,150,80 lod=0 loop=1 dist=0..0
+  ('race18', 'loop_x', 'dist_ok') run271 f2116 stations/x3tc/terran_spp_panel s=92 D=15044042 r=2169156 thr=100000,250,150,80 lod=0 loop=1 dist=0..0
+race18 (+newdock) bodies: (observed, loop, dist_hi) -> rows
+  environments/asteroids/asteroid_a_classmine thr=100000,20,5 {(0, 0, 0): 33, (0, 0, 1): 8}
+  stations/docks/argon_newdock_center thr=100000,30,15,5 {(0, 0, 0): 8}
+  stations/docks/argon_newdock_center thr=100000,30,150 {(1, 1, 0): 42, (0, 1, 0): 16}
+  stations/station_scenes/terran/usc_dock_c_core_bottom thr=100000,30,15 {(0, 0, 0): 16, (0, 0, 1): 16}
+  stations/station_scenes/terran/usc_dock_c_core_bottom thr=100000,30,189 {(0, 1, 1): 8, (0, 0, 0): 8}
+  stations/station_scenes/terran/usc_dock_c_core_top thr=100000,30,15 {(0, 0, 0): 16, (0, 0, 1): 16}
+  stations/station_scenes/terran/usc_dock_c_core_top thr=100000,30,239 {(0, 1, 1): 8, (0, 0, 0): 8}
+  stations/station_scenes/terran/usc_dock_c_left_arm thr=100000,30,15 {(0, 0, 1): 8}
+  stations/station_scenes/terran/usc_dock_c_left_arm thr=100000,30,204 {(0, 1, 1): 8, (0, 0, 0): 8}
+  stations/station_scenes/terran/usc_dock_c_left_rings thr=100000,30,15 {(0, 0, 1): 16, (0, 0, 0): 8}
+  stations/station_scenes/terran/usc_dock_c_left_rings thr=100000,30,199 {(0, 1, 1): 8, (0, 1, 0): 8}
+  stations/station_scenes/terran/usc_dock_c_right_arm thr=100000,30,15 {(0, 0, 1): 24, (0, 0, 0): 8}
+  stations/station_scenes/terran/usc_dock_c_right_arm thr=100000,30,205 {(0, 1, 1): 8, (0, 0, 0): 8}
+  stations/station_scenes/terran/usc_dock_c_right_rings thr=100000,30,15 {(0, 0, 1): 8}
+  stations/station_scenes/terran/usc_dock_c_right_rings thr=100000,30,186 {(0, 1, 1): 8, (0, 0, 0): 8}
+  stations/station_scenes/terran/usc_dock_c_tower thr=100000,30,15 {(0, 0, 1): 8, (0, 0, 0): 8}
+  stations/station_scenes/terran/usc_dock_c_tower thr=100000,30,258 {(0, 1, 1): 8, (0, 0, 0): 8}
+  stations/station_scenes/terran/usc_dock_e_left_rings thr=100000,30,15 {(0, 0, 0): 24}
+  stations/station_scenes/terran/usc_dock_e_lower_core thr=100000,30,15 {(0, 0, 0): 32}
+  stations/station_scenes/terran/usc_dock_e_lower_core thr=100000,30,207 {(0, 0, 0): 8}
+  stations/station_scenes/terran/usc_dock_e_right_rings thr=100000,30,15 {(0, 0, 0): 16}
+  stations/station_scenes/terran/usc_dock_e_right_rings thr=100000,30,192 {(0, 1, 0): 8}
+  stations/station_scenes/terran/usc_dock_e_tower thr=100000,30,15 {(0, 0, 0): 40}
+  stations/station_scenes/terran/usc_dock_e_tower thr=100000,30,197 {(0, 0, 0): 8}
+  stations/station_scenes/terran/usc_dock_e_upper_core thr=100000,30,15 {(0, 0, 0): 32}
+  stations/station_scenes/terran/usc_dock_e_upper_core thr=100000,30,213 {(0, 1, 0): 8, (0, 0, 0): 8}
+  stations/station_scenes/terran/usc_small_station_d thr=100000,30,15 {(0, 0, 0): 32, (1, 0, 1): 16}
+  stations/station_scenes/terran/usc_small_station_d thr=100000,30,150 {(0, 1, 1): 16}
+  stations/x3ap/stockmarketboardxl thr=100000,25,5 {(0, 0, 0): 80}
+  stations/x3tc/terran_spp_bottom thr=100000,30,15,5 {(0, 0, 0): 8}
+  stations/x3tc/terran_spp_bottom thr=100000,30,150 {(0, 1, 0): 8, (0, 1, 1): 8}
+  stations/x3tc/terran_spp_center thr=100000,30,15,5 {(0, 0, 0): 8}
+  stations/x3tc/terran_spp_center thr=100000,30,155 {(0, 1, 0): 8, (0, 1, 1): 8}
+  stations/x3tc/terran_spp_panel thr=100000,250,150,80 {(0, 0, 0): 16, (0, 1, 0): 120, (0, 2, 0): 8}
+  stations/x3tc/terran_spp_panel thr=100000,250,266 {(0, 1, 0): 176, (0, 1, 1): 80}
+race18 rows with D-r > 7M (dist_hi > 0): 20
+  run270 f9010 stations/station_scenes/terran/usc_dock_c_right_arm s=71 D=19426282 r=2178722 D-r=17247560 thr=100000,30,15 lod=0 loop=0 dist=0..1
+  run270 f9011 stations/station_scenes/terran/usc_dock_c_right_arm s=71 D=19412688 r=2178722 D-r=17233966 thr=100000,30,15 lod=0 loop=0 dist=0..1
+  run270 f9012 stations/station_scenes/terran/usc_dock_c_right_arm s=71 D=19399095 r=2178722 D-r=17220373 thr=100000,30,15 lod=0 loop=0 dist=0..1
+  run270 f9013 stations/station_scenes/terran/usc_dock_c_right_arm s=71 D=19385500 r=2178722 D-r=17206778 thr=100000,30,15 lod=0 loop=0 dist=0..1
+  run270 f9014 stations/station_scenes/terran/usc_dock_c_right_arm s=71 D=19371904 r=2178722 D-r=17193182 thr=100000,30,15 lod=0 loop=0 dist=0..1
+  run270 f9015 stations/station_scenes/terran/usc_dock_c_right_arm s=72 D=19358308 r=2178722 D-r=17179586 thr=100000,30,15 lod=0 loop=0 dist=0..1
+  run270 f9016 stations/station_scenes/terran/usc_dock_c_right_arm s=72 D=19344712 r=2178722 D-r=17165990 thr=100000,30,15 lod=0 loop=0 dist=0..1
+  run270 f9017 stations/station_scenes/terran/usc_dock_c_right_arm s=72 D=19331115 r=2178722 D-r=17152393 thr=100000,30,15 lod=0 loop=0 dist=0..1
+  run273 f15495 stations/station_scenes/terran/usc_dock_c_tower s=76 D=28049688 r=3354613 D-r=24695075 thr=100000,30,15 lod=0 loop=0 dist=0..1
+  run273 f15495 stations/station_scenes/terran/usc_dock_c_core_top s=136 D=28960323 r=6159976 D-r=22800347 thr=100000,30,15 lod=0 loop=0 dist=0..1
+  run273 f15495 stations/station_scenes/terran/usc_dock_c_core_bottom s=83 D=29213384 r=3795280 D-r=25418104 thr=100000,30,15 lod=0 loop=0 dist=0..1
+  run273 f15495 stations/station_scenes/terran/usc_dock_c_right_arm s=45 D=30827608 r=2178722 D-r=28648886 thr=100000,30,15 lod=0 loop=0 dist=0..1
+  run273 f15495 stations/station_scenes/terran/usc_dock_c_left_arm s=53 D=27332336 r=2276748 D-r=25055588 thr=100000,30,15 lod=0 loop=0 dist=0..1
+  run273 f15495 stations/station_scenes/terran/usc_dock_c_left_rings s=42 D=31961330 r=2113798 D-r=29847532 thr=100000,30,15 lod=0 loop=0 dist=0..1
+  run273 f15495 stations/station_scenes/terran/usc_dock_c_right_rings s=54 D=26151690 r=2221694 D-r=23929996 thr=100000,30,15 lod=0 loop=0 dist=0..1
+  run273 f15495 stations/station_scenes/terran/usc_small_station_d s=40 D=22437564 r=1427154 D-r=21010410 thr=100000,30,15 lod=1 loop=0 dist=0..1
+  run273 f15495 stations/station_scenes/terran/usc_small_station_d s=47 D=19178197 r=1427154 D-r=17751043 thr=100000,30,15 lod=1 loop=0 dist=0..1
+  run273 f15496 stations/station_scenes/terran/usc_dock_c_tower s=76 D=28036095 r=3354613 D-r=24681482 thr=100000,30,15 lod=0 loop=0 dist=0..1
+  run273 f15496 stations/station_scenes/terran/usc_dock_c_core_top s=136 D=28946730 r=6159976 D-r=22786754 thr=100000,30,15 lod=0 loop=0 dist=0..1
+  run273 f15496 stations/station_scenes/terran/usc_dock_c_core_bottom s=83 D=29199792 r=3795280 D-r=25404512 thr=100000,30,15 lod=0 loop=0 dist=0..1

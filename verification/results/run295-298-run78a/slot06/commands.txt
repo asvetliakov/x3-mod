@@ -1,0 +1,9 @@
+Slot 06 LOD switch (run297). No Wine, no game launch; archives and markers read-only.
+G="$HOME/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3"
+python3 type_race.py "$G" spp usc_ catapult                                  # field [13] = race, 18 on Terran rows
+python3 race18_parts.py "$G" race18_parts.txt                                # 35 race-18 scenes -> 84 part bodies
+for l in /tmp/x3-bottleX3-run*/session-*.log; do grep -q -m1 '^cull_census device' "$l" && echo "$l"; done > census_logs.txt   # 24 logs
+xargs python3 branch_test.py race18_parts.txt < census_logs.txt > branch_test_out.txt
+python3 race18_overlay_reach.py "$G" race18_parts.txt > race18_overlay_reach_out.txt
+xargs python3 slot06_nonterran_rows.py "$G/addon/06.x3m-lod.json" race18_parts.txt < census_logs.txt > slot06_nonterran_rows_out.txt
+i686-w64-mingw32-objdump -d --start-address=0x4415fe --stop-address=0x441686 "$G/X3AP.exe"   # race test and 0x80000000 OR
