@@ -1,6 +1,6 @@
 # Project status
 
-Updated 2026-09-24 04:40 (handoff-2026-09-24.md authoritative; scale 4 default + crash fix + baker on main beyond the DLL; dither and TAA S3 agents in flight; fleet rebake running). Earlier 03:10: Run77 DLL `268db207…` from bc47873b installed (fog step C, TAA S1 + mask split, alpha-test admission, mask cut) with the two-slot fleet overlay; Run 77 A-D queued; translation no-go measured, DXVK fork blocked on MoltenVK; thin-geometry design ratified (A' + S4 after S3). Earlier: Run76 installed; Run 76 A-D flown (overlay, bolts accepted; docked load pinned to alpha test, fix on main; far bins 24 not worth it); fleet overlay bake running; D3D11 post chain closed by probe, TAA high-res plan ratified; three agents in flight (fog step C, translation design, TAA S1/S2); see the [handoff](handoff-2026-09-24.md); earlier: the Run76 candidate is installed (projectile cull exemption, docked-load fog card admission with the state diagnostic, --fog-far-bins 40|24 variant, fog sub-boundaries and repair census); Run 76 A-D queued; earlier: the Run75 candidate is installed (fog hand-over fixes from Run 73 B with sector-id transit identity, bolt visibility rule 3,12, TAA shader cuts, timing sub-boundaries for the TAA span and the fog route, repair census); Run 75 A/B/C queued, Run 74 A open; earlier: the Run73 candidate is installed (fog hand-over R1-R3 with the docked walk, bolt footprint 3,8 default, on top of everything in Run72); Run 73 A flew on the Run72 DLL with the batch overlay (overlay bodies 2-4 draws; the remaining 200+ draws are refused texel_floor bodies, single-LOD pipes and signs; baker fix in progress); Run 73 B/C queued; earlier: the Run72 candidate is installed (box cull, forward reticle, 1.05 boom, pause key-only, decoder discovery, identity without a file hash, music trace/keep opt-in, data-driven fog families); Run 72 A/B queued; Run 71 accepted the merged-LOD atlas overlay built from the LOD 0 meshes (no visible transition; ships 2 draws, outpost 4); next is the fleet batch with mod support; earlier the Run70 candidate was installed (motion weight 0.7,2,8 and dust motes 1300,3 as defaults, both accepted in Run 70 A/B); Run 68 and Run 69 A-D flew: the SETA exit reset accepted and made default with strict sky history, the fog shadow pass stays off, the merged-LOD pilot overlay works (engine glows and lighting recovered step by step, atlas build next); earlier, Run 67 flew: footprint 8 accepted as the default, the SETA residual diagnosed and fixed behind an option, no cullable draw bucket left, fog pass needs its A/B; the merged-LOD pilot is tooled (bob1.py, lod_overlay.py); lod-scale stays off by user decision; Run 65 accepted the sun edge fix, core dimming, widening 4 with the emissive vote and the fog regression; Run 59 accepted the camera-relative gate for pans. Run56 (run200) is accepted for media stability: the user
+Updated 2026-09-24 07:00 (handoff-2026-09-24.md authoritative): Run78 DLL `d4ba9f05…` from ee3bbf88 installed (exit fix, scale 4 default, dither, TAA S3) with the 611-body fleet overlay; Run 78 A queued; the ps_3_0 slot budget measured (512 is a floor; plan against 32768, AGENTS.md); lifted-cap TAA plan ratified, A' in flight. Earlier 04:40: scale 4 default + crash fix + baker on main beyond the DLL; dither and TAA S3 agents in flight; fleet rebake running. Earlier 03:10: Run77 DLL `268db207…` from bc47873b installed (fog step C, TAA S1 + mask split, alpha-test admission, mask cut) with the two-slot fleet overlay; Run 77 A-D queued; translation no-go measured, DXVK fork blocked on MoltenVK; thin-geometry design ratified (A' + S4 after S3). Earlier: Run76 installed; Run 76 A-D flown (overlay, bolts accepted; docked load pinned to alpha test, fix on main; far bins 24 not worth it); fleet overlay bake running; D3D11 post chain closed by probe, TAA high-res plan ratified; three agents in flight (fog step C, translation design, TAA S1/S2); see the [handoff](handoff-2026-09-24.md); earlier: the Run76 candidate is installed (projectile cull exemption, docked-load fog card admission with the state diagnostic, --fog-far-bins 40|24 variant, fog sub-boundaries and repair census); Run 76 A-D queued; earlier: the Run75 candidate is installed (fog hand-over fixes from Run 73 B with sector-id transit identity, bolt visibility rule 3,12, TAA shader cuts, timing sub-boundaries for the TAA span and the fog route, repair census); Run 75 A/B/C queued, Run 74 A open; earlier: the Run73 candidate is installed (fog hand-over R1-R3 with the docked walk, bolt footprint 3,8 default, on top of everything in Run72); Run 73 A flew on the Run72 DLL with the batch overlay (overlay bodies 2-4 draws; the remaining 200+ draws are refused texel_floor bodies, single-LOD pipes and signs; baker fix in progress); Run 73 B/C queued; earlier: the Run72 candidate is installed (box cull, forward reticle, 1.05 boom, pause key-only, decoder discovery, identity without a file hash, music trace/keep opt-in, data-driven fog families); Run 72 A/B queued; Run 71 accepted the merged-LOD atlas overlay built from the LOD 0 meshes (no visible transition; ships 2 draws, outpost 4); next is the fleet batch with mod support; earlier the Run70 candidate was installed (motion weight 0.7,2,8 and dust motes 1300,3 as defaults, both accepted in Run 70 A/B); Run 68 and Run 69 A-D flew: the SETA exit reset accepted and made default with strict sky history, the fog shadow pass stays off, the merged-LOD pilot overlay works (engine glows and lighting recovered step by step, atlas build next); earlier, Run 67 flew: footprint 8 accepted as the default, the SETA residual diagnosed and fixed behind an option, no cullable draw bucket left, fog pass needs its A/B; the merged-LOD pilot is tooled (bob1.py, lod_overlay.py); lod-scale stays off by user decision; Run 65 accepted the sun edge fix, core dimming, widening 4 with the emissive vote and the fog regression; Run 59 accepted the camera-relative gate for pans. Run56 (run200) is accepted for media stability: the user
 reports no crash and no media-related stutter. The accepted production baseline
 is merged to main. Run57 accepts the station-flash default correction. Fog-range and moving-lattice
 work remain open. The agent never launches the game. See the [run queue](verification/user-runs.md) and the current
@@ -8,33 +8,31 @@ work remain open. The agent never launches the game. See the [run queue](verific
 
 ## Installed build
 
-Bottle **X3**, **CrossOver Preview.app**. Run77 DLL SHA-256:
-`268db207d9cee13c20ff8d0d61c6ccb058b8ef967bc505c3c1ca786d6f887f6f`
-(56,145,284 bytes), built once from clean reviewed main `bc47873b` in a detached worktree. Retained DLL:
-`/tmp/x3-run77-candidate/build/d3d9.dll`. Installed 2026-09-24 03:05
-([qualification](../verification/results/run77-candidate-qualification.json), [install](../verification/results/run77-candidate-install.json)).
-Rollback: Run76 `57a7830d…` at `/tmp/x3-run76-candidate/build/d3d9.dll`.
+Bottle **X3**, **CrossOver Preview.app**. Run78 DLL SHA-256:
+`d4ba9f0556714fa3d760e553987e79e301e217e25dd1ef3f2babe8cf84e7eedd`
+(56,270,679 bytes), built once from clean reviewed main `ee3bbf88` in a detached worktree. Retained DLL:
+`/tmp/x3-run78-candidate/build/d3d9.dll`. Installed 2026-09-24 06:58
+([qualification](../verification/results/run78-candidate-qualification.json), [install](../verification/results/run78-candidate-install.json)).
+Rollback: Run77 `268db207…` at `/tmp/x3-run77-candidate/build/d3d9.dll` (crashes on game exit), then Run76 `57a7830d…`.
 
-Changes against Run76 (`57a7830d…`): the TAA mask-chain cut (c694e6df, output-identical); the fog card gate admits
-`ALPHATESTENABLE` 1, the docked-at-load card measured in Run 76 C (058fab39, [note](architecture/fog-handover.md));
-fog step C `--fog-march-scale 2|4` (default 2 byte-identical; 4 = quarter-resolution march with the needs-repair
-census, [note](architecture/fog-gpu-cost.md)); TAA S1: the depth copy folded into the first mask draw behind the MRT
-capability, and the three-draw mask split `taa_mask_tests/x/y` under `--gpu-sync-timing`
-([note](architecture/taa-high-resolution.md)). Game data: fleet overlay across `addon/05` (488 bodies, 1.998 GB) and
+Changes against Run77 (`268db207…`): the engine-memory reader no longer reads a freed engine block at exit (c45c5dc0;
+expect a normal exit and one `engine_memory_read_refused` row); fog march scale 4 is the default, 2 the opt-out
+(483411b6, [note](architecture/fog-gpu-cost.md)); output dither at every HDR-route 8-bit write, `--hdr-dither on|off`
+default on (3d9e4145, [ledger](verification/hdr-scene-path.md) "Display dither"; the run291 rings are 8-bit contours);
+TAA S3 5-tap bilinear Catmull-Rom history, `--taa-history-taps 5|16` default 5 (ee3bbf88,
+[ledger](verification/temporal-resolve.md)). Game data: fleet overlay across `addon/05` (488 bodies, 1.998 GB) and
 `addon/06` (123 bodies, 716 MB), all 611 eligible vanilla bodies after the refusal-class lift (33aba284), split by the
 baker at the 2 GB fseek limit; installed 04:57, unflown; engine acceptance of the second slot unflown
-([record](../verification/results/lod-overlay-batch/install-fleet2/install.json));
-fog families file absent.
+([record](../verification/results/lod-overlay-batch/install-fleet2/install.json)); fog families file absent.
 
-[Qualification](../verification/results/run76-candidate-qualification.json): x87 116 roots / 673 reachable / zero
-violations; imports/exports unchanged vs Run75; temporal pass RESULT PASS 744 / 278, 546 samples (report byte-identical);
-motion output 190 cases / 271,369 checks identical (rerun from a detached worktree at `02b34ace` after main moved);
-fog pass 142 checks, 37/37 gates (30 default incl. pass_off_bit_identical + 7 far24), HANDOVER ready 617.6 ms, census
-125 = 125; route bridge 110 names PASS (36,651 checks), legacy bit-identical to the baseline; fog family 67 cases;
-GPU sync 32/32 (22 passes / 44 queries + census); identity 23/23 on four EXE variants; pause/music/cull site verifiers
-PASS, cull fixture 132 checks with 381 exempt rows; six dry runs exit 0. Not a native Windows execution. The
-[install record](../verification/results/run76-candidate-install.json) verifies installed bytes and unchanged X3AP.exe
-`fdbf3418…` and cxbottle.conf `cc5d6c00…`. Rollback: Run75 `/tmp/x3-run75-candidate/build/d3d9.dll`, then Run73.
+Qualification at `ee3bbf88` (route bridge harness fix 026d24ac, fixture only): host suite 249 modules / 2,556 tests;
+x87 116 roots / 673 reachable / zero violations; imports/exports unchanged vs Run77; temporal pass RESULT PASS 744 / 278
+(report byte-identical), lattice 528 / 89; motion output 195 cases (9 dither cases match the ledger); fog pass 52/52
+gates (30 default at scale 4, 7 far24, 3 q4, 12 s2); route bridge 110 names PASS (42,315 checks; the first run failed
+on the harness, which compared the shadow pass at scale 2 against a scale-4 reference); fog family 67 cases; GPU sync
+32/32; cull fixture 132; bloom 47 images max 1 code; identity 41 anchors; pause/music/cull site verifiers PASS; five dry
+runs exit 0. Not a native Windows execution. The install record verifies installed bytes and unchanged X3AP.exe
+`fdbf3418…` and cxbottle.conf `cc5d6c00…`.
 
 ## Current work and pending acceptance
 
