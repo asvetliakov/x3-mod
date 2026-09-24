@@ -1,0 +1,110 @@
+{
+ "installed_at": "2026-09-25T03:13:46",
+ "command": "python3 tools/analysis/lod_overlay.py --batch --sync --install --replace --jobs 2 (nohup, started 2026-09-25T02:23:38, 50m08s wall)",
+ "commit": "9a7de6f2",
+ "slots": [
+  "addon/05",
+  "addon/06"
+ ],
+ "display": "1920x1080 (reference width 1800)",
+ "rule": "ships T_class=min(200,max(80,2.5*T_1)), stations 150; aspect k capped 1.5/2.0; texel floor 0.5 area-weighted, share 0.10; light-bleed guard (max 4/255 at L = ceil(log2 texels/px) + 2, repack within 15 % scale loss else kept group); surface-share gate 0.02; per-body recipe terran_spp_panel (record 1, louvres welded to flat plates at y = 105)",
+ "tool_sha256": "cfe5697e39fd4b16a1e6e61f47a0d4ec6b2c1b73a1768cb560159a535f62fe33",
+ "summary": {
+  "enumerated": "bodies enumerated 2453: other 1322, station 575, ship 556; eligible 620; built 620 + reused 0 = 620 overlay bodies",
+  "refused": "refused by reason (a body counts once per reason): no_opaque 648, non_effect_material 295, texture_animation_unsupported 168, mat3 158, ambiguous_body_ext 47, excluded_effect 32, material_outside_table 16, text_parse_error 6, no_diffuse 5, texel_floor 5, occlusion_mismatch 4, parse_error 1, texture_generated 1",
+  "sync": "--sync: the previous overlay addon/05/06 was built with different settings (rule, width or atlas options); every body is rebuilt",
+  "real": "real\t50m7.980s"
+ },
+ "files": {
+  "addon/05.cat": {
+   "bytes": 133529,
+   "mtime": "2026-09-25T03:12:36",
+   "sha256": "d8c06e161ca80df8bd334c07dc4219514ef84c3e63fdb5f7e942a5b85409bffe"
+  },
+  "addon/05.dat": {
+   "bytes": 1992076927,
+   "mtime": "2026-09-25T03:13:26",
+   "sha256": "7fce90cf8b036fdd6293052e4b1fe9b1e97d449261aa0e585512dabdca91128e"
+  },
+  "addon/05.x3m-lod.json": {
+   "bytes": 12442944,
+   "mtime": "2026-09-25T03:13:27",
+   "sha256": "7b3d50c05e4b78280e7b999ef093c0c8a10df915e2312d406988fcda1fd6ac77"
+  },
+  "addon/06.cat": {
+   "bytes": 37345,
+   "mtime": "2026-09-25T03:13:27",
+   "sha256": "346d22cc7718d55839714dc7904e40aa1d000c468520f2ec6f4ca9913f639d96"
+  },
+  "addon/06.dat": {
+   "bytes": 730760949,
+   "mtime": "2026-09-25T03:13:46",
+   "sha256": "df969a6e049491889a37763735c7fb8c249fd05fd8e21d1fd7a003bbb5872ae4"
+  },
+  "addon/06.x3m-lod.json": {
+   "bytes": 2195753,
+   "mtime": "2026-09-25T03:13:46",
+   "sha256": "dc4bf6b833ca2c38b3f891e8487dee486356b6368a38f70f0ac9d1562fdd64a2"
+  }
+ },
+ "recipe_bodies": [
+  {
+   "body": "stations/x3tc/terran_spp_panel",
+   "draws": 3,
+   "source_record": 1,
+   "recipe_ops": [
+    {
+     "op": "weld_strips",
+     "material": 21,
+     "plane_y": 105,
+     "strips": 132,
+     "abutting": 110,
+     "points": 5016
+    }
+   ]
+  }
+ ],
+ "exe_sha256_unchanged": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab (after; before per install-fleet3)",
+ "game_running_at_install": "[] before the bake (game_guard) and at the record",
+ "replaces": {
+  "previous_record": "verification/results/lod-overlay-batch/install-fleet3/install.json",
+  "previous_files": {
+   "addon/05.cat": {
+    "bytes": 133529,
+    "mtime": "2026-09-24T20:14:44",
+    "sha256": "d8c06e161ca80df8bd334c07dc4219514ef84c3e63fdb5f7e942a5b85409bffe"
+   },
+   "addon/05.dat": {
+    "bytes": 1992076927,
+    "mtime": "2026-09-24T20:15:32",
+    "sha256": "7fce90cf8b036fdd6293052e4b1fe9b1e97d449261aa0e585512dabdca91128e"
+   },
+   "addon/05.x3m-lod.json": {
+    "bytes": 12442944,
+    "mtime": "2026-09-24T20:15:33",
+    "sha256": "7e1c8ea9f9ebeb871212589d8122c22b44ecbc51881a0d87886d2b7a51162845"
+   },
+   "addon/06.cat": {
+    "bytes": 37345,
+    "mtime": "2026-09-24T20:15:33",
+    "sha256": "8401d4ab2855de0e6bdc9b2749b0001524290153f200e1a995af7d60256efb0b"
+   },
+   "addon/06.dat": {
+    "bytes": 732092975,
+    "mtime": "2026-09-24T20:15:50",
+    "sha256": "429c3f1679ad61624cd5b86944c5cd2cb208f89a5f3730382a2b1966d4a65a9f"
+   },
+   "addon/06.x3m-lod.json": {
+    "bytes": 2195506,
+    "mtime": "2026-09-24T20:15:51",
+    "sha256": "4ae6e6332cc3579a25e159b322db3450b24e315953412833fb7b1aec400bfd05"
+   }
+  }
+ },
+ "checks": {
+  "script": "verification/results/lod-overlay-batch/install-fleet4/installed_checks.py",
+  "out": [
+   "verification/results/lod-overlay-batch/install-fleet4/installed_checks_out.txt"
+  ]
+ }
+}
