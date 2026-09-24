@@ -14,6 +14,14 @@ After acquiring the lease, one shared preflight refuses a running game or
 competing fixture/runner. No separate shell process scan is needed.
 ``--timings-json PATH`` optionally records lock wait and child elapsed seconds.
 
+A fixture that crashed under Wine can survive its runner as an orphan (PPID 1,
+image under ``verification/probe/build/``) with ``winedbg --auto`` attached.
+The preflight names it and keeps refusing; ``--clean-orphans`` (after taking
+the lease, so no live runner owns it) ends exactly those orphans, their
+``winedbg --auto`` descendants and, while no game runs, any PPID-1
+``winedbg --auto`` (SIGTERM, then SIGKILL after 10 s) and reports what remains.
+It may be given alone or before a command.
+
 The wrapper waits for the lock (printing a note every 30 s with the holder's
 description), runs the command, and exits with its status. ``--holder TEXT``
 labels the holder for those notes; ``--timeout SECONDS`` gives up (exit 75)
@@ -31,6 +39,7 @@ import time
 from pathlib import Path
 
 from game_guard import WINE_COMMANDS, VALUE_OPTIONS, is_game_line
+import fixture_process
 
 LOCK_PATH = '/tmp/x3-wine-runner.lock'
 
@@ -111,16 +120,7 @@ def preflight(pid=None):
     processes are waiting for our lease and are not competing executions. This
     advisory check cannot prevent an uncooperative process starting afterward.
     """
-    inventory = subprocess.run(['ps', '-axww', '-o', 'pid=,ppid=,args='],
-                               capture_output=True, text=True, check=True, timeout=10)
-    rows = {}
-    for line in inventory.stdout.splitlines():
-        if not line.strip():
-            continue
-        fields = line.strip().split(None, 2)
-        if len(fields) != 3 or not all(value.isdigit() for value in fields[:2]):
-            raise RuntimeError('process inventory malformed')
-        rows[int(fields[0])] = (int(fields[1]), fields[2])
+    rows = fixture_process.process_table()
     current = os.getpid() if pid is None else pid
     if current not in rows:
         raise RuntimeError('process inventory missing this lock process')
@@ -132,7 +132,55 @@ def preflight(pid=None):
                  if process not in ancestors and
                  (is_game_line(f'{process} {arguments}') or is_runner(arguments))]
     if conflicts:
-        raise RuntimeError('game or competing Wine runner/fixture active: ' + '; '.join(conflicts))
+        raise RuntimeError('game or competing Wine runner/fixture active: ' + '; '.join(conflicts)
+                           + orphan_note(rows))
+
+
+def orphan_note(rows):
+    """Explain orphaned crashed fixtures among the conflicts; never ends them."""
+    found = fixture_process.orphans(rows)
+    if not found:
+        return ''
+    notes = []
+    for pid, arguments, debuggers in found:
+        attached = ', '.join(f'winedbg --auto PID {child}' for child, _ in debuggers) or 'no winedbg --auto descendant'
+        notes.append(f'PID {pid} is an orphaned fixture (PPID 1, image {fixture_process.image(arguments)}; {attached})')
+    paired = {pid for pid, _, debuggers in found for pid in [pid] + [child for child, _ in debuggers]}
+    strays = fixture_process.orphan_debuggers(rows, paired)
+    if strays:
+        notes.append('orphaned winedbg --auto (PPID 1, no game running): '
+                     + ', '.join(f'PID {pid}' for pid, _ in strays))
+    pids = ' '.join(str(pid) for pid in sorted(paired | {pid for pid, _ in strays}))
+    return ('. ' + '; '.join(notes) + '. It is left running for its owner to examine; end it with '
+            f'`python3 verification/probe/wine_lock.py --clean-orphans` (or kill -9 {pids})')
+
+
+def clean_orphans(table=None, wait=None):
+    """End orphaned fixtures and their winedbg --auto descendants; return survivors."""
+    table = table or fixture_process.process_table
+    wait = fixture_process.WAIT_SECONDS if wait is None else wait
+    rows = table()
+    found = fixture_process.orphans(rows)
+    pids = {pid for pid, _, debuggers in found for pid in [pid] + [child for child, _ in debuggers]}
+    strays = fixture_process.orphan_debuggers(rows, pids)
+    pids |= {pid for pid, _ in strays}
+    for pid, arguments in strays:
+        print(f'wine_lock: ending orphaned winedbg --auto PID {pid} [{arguments[:160]}] (PPID 1, no game running)',
+              file=sys.stderr)
+    for pid, arguments, debuggers in found:
+        print(f'wine_lock: ending orphaned fixture PID {pid} [{arguments[:160]}]'
+              + ''.join(f' and winedbg --auto PID {child}' for child, _ in debuggers), file=sys.stderr)
+    for pid, arguments in fixture_process.unpaired_debuggers(rows, pids):
+        print(f'wine_lock: left winedbg --auto PID {pid} [{arguments[:160]}]: not paired with an orphaned fixture '
+              'and not a PPID-1 debugger while no game runs', file=sys.stderr)
+    if not pids:
+        print('wine_lock: no orphaned fixture found', file=sys.stderr)
+        return set()
+    survivors, refused = fixture_process.end(pids, rows, table, wait)
+    print(f'wine_lock: ended {len(pids - survivors - refused)} process(es); still alive after SIGTERM, {wait:.0f} s '
+          f'and SIGKILL: {" ".join(map(str, sorted(survivors))) or "none"}; refused (this process or an ancestor): '
+          f'{" ".join(map(str, sorted(refused))) or "none"}', file=sys.stderr)
+    return survivors | refused
 
 
 def main(argv=None):
@@ -141,11 +189,15 @@ def main(argv=None):
     parser.add_argument('--timeout', type=float, default=None, help='seconds to wait for the lock before giving up')
     parser.add_argument('command', nargs=argparse.REMAINDER, help='command to run (prefix with -- if it starts with -)')
     parser.add_argument('--timings-json', type=Path, help='optional lock-wait and child elapsed time record')
+    parser.add_argument('--clean-orphans', action='store_true',
+                        help='after taking the lease, end orphaned fixtures (PPID 1, image under verification/probe/build/), '
+                             'their winedbg --auto descendants and, while no game runs, any PPID-1 winedbg --auto; '
+                             'then run the preflight (and the command, if given)')
     args = parser.parse_args(argv)
     command = args.command[1:] if args.command[:1] == ['--'] else args.command
-    if not command:
+    if not command and not args.clean_orphans:
         parser.error('no command given')
-    holder = args.holder or ' '.join(command)[:120]
+    holder = args.holder or (' '.join(command)[:120] if command else 'wine_lock --clean-orphans')
     fd = os.open(LOCK_PATH, os.O_RDWR | os.O_CREAT, 0o666)
     started = time.monotonic()
     last_note = started
@@ -178,9 +230,14 @@ def main(argv=None):
         os.lseek(fd, 0, os.SEEK_SET)
         os.write(fd, f'{os.getpid()} {time.strftime("%H:%M:%S")} {holder}'.encode('utf-8', 'replace'))
         try:
+            if args.clean_orphans and clean_orphans():
+                return status
             preflight()
         except (RuntimeError, OSError, subprocess.SubprocessError) as error:
             print(f'wine_lock: preflight refused: {error}', file=sys.stderr)
+            return status
+        if not command:
+            status = 0
             return status
         try:
             child_started = time.monotonic()

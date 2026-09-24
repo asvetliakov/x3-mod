@@ -78,3 +78,34 @@ about seventy times on the same 55 MB image, and each call re-scanned the whole
 (two 128³ grids filled node by node in the deterministic stepped worker), not
 waiting; its two binaries are already compiled once per class in `setUpClass`.
 It was left as it is.
+
+## Wine lock: orphaned fixtures
+
+A fixture that crashes under Wine gets `winedbg --auto` attached; if its runner
+then times out, the fixture can survive as an orphan and `wine_lock.py`'s
+preflight refuses every later Wine command (exit 75). The preflight names such
+an orphan (PPID 1, image path under a `verification/probe/build/` directory on
+any drive letter, worktree trees included, not `X3AP.exe`) and how to end it,
+but never ends it, since its owner may still be examining it. A native
+command (`less`, `tail`, `python3`) naming a fixture path never matches: the
+line must start with a drive-letter DOS path or be a Wine launcher line. In the
+2026-09-24 incident the fixture showed as a `Y:\` worktree path and its
+`winedbg --auto` had PPID 1 as well, not a Unix child of the fixture (ps rows
+quoted in `verification/analysis/test_wine_lock.py`).
+`python3 verification/probe/wine_lock.py --clean-orphans` takes the lease (so no
+live runner owns the orphan), sends SIGTERM to exactly those orphans, their
+`winedbg --auto` descendants and, only while no `X3AP.exe` runs, every PPID-1
+`winedbg --auto`, then SIGKILL to any still alive after 10 s; it never signals
+PID 1 or less, itself or its ancestors, and reports what remains. Given alone
+it exits 0 when the preflight then passes and 75 otherwise; given before a
+command, a refused preflight exits 75 and otherwise the exit status is the
+command's. Ending every PPID-1 `winedbg --auto` while the game is down is by
+design under the lock contract: every Wine command runs under `wine_lock.py`,
+so while the lease is held no other fixture can own such a debugger; a Wine
+program started outside the lock is not protected. The game, a debugger while the game is up and fixtures
+outside the build tree are reported or refused, never killed. Runners
+that start fixtures through `fixture_process.run` (today `run_motion_output.py`)
+end the case's own fixture processes (the same SIGTERM, then SIGKILL) on a
+per-case timeout, plus any PPID-1
+`winedbg --auto` that was not up when the case started (none while the game
+runs), and put the cleanup line into the case's failure output (`verification/probe/fixture_process.py`).

@@ -5,10 +5,12 @@ import json
 from pathlib import Path
 import struct
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
 
+import fixture_process
 import run_motion_output as runner
 
 
@@ -147,6 +149,10 @@ class MotionOutputRunnerTests(unittest.TestCase):
             stack.enter_context(patch.object(runner, 'sources', return_value={'source': 'stable'}))
             stack.enter_context(patch.object(runner.bottle, 'describe', return_value={'name': 'host mock'}))
             stack.enter_context(patch.object(runner.subprocess, 'run', side_effect=execute))
+            def fixture(command, *, build_dir, timeout, **kwargs):
+                self.assertEqual((Path(build_dir), timeout), (Path(command[command.index('--workdir') + 1]), 360))
+                return execute(command, **kwargs)
+            stack.enter_context(patch.object(runner.fixture_process, 'run', side_effect=fixture))
             stack.enter_context(patch.object(runner, 'validate_burst', side_effect=validate))
             with contextlib.redirect_stdout(io.StringIO()):
                 if mutate:
@@ -428,6 +434,143 @@ class MotionOutputRunnerTests(unittest.TestCase):
         with self.assertRaises(AssertionError):
             runner.validate_fade_route('host', 'masked', True, text.replace(sample, wrong), trace, masked)
 
+
+
+class FixtureTimeoutCleanupTests(unittest.TestCase):
+    """The per-case timeout ends only the fixture case's own processes."""
+    CASE = '/Users/dev/x3-mod/verification/probe/build/motion-output-seam-on-1'
+    WINE = '/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine'
+
+    def table(self):
+        dos = 'Z:' + self.CASE.replace('/', '\\')
+        return {1: (0, '/sbin/launchd'),
+                10: (1, 'python3 verification/probe/run_motion_output.py'),
+                100: (10, f'{self.WINE} --bottle X3 --no-update --dll d3d9=n,b --workdir {self.CASE} {self.CASE}/motion_output_fixture.exe Z:/tmp/a.fxo hook'),
+                101: (100, f'{dos}\\motion_output_fixture.exe Z:\\tmp\\a.fxo hook'),
+                102: (101, r'C:\windows\system32\winedbg.exe --auto 212 8820'),
+                103: (100, '/usr/bin/some-helper --flag'),        # a descendant that is not this fixture
+                104: (1, f'{dos}\\motion_output_fixture.exe'),     # the same case's fixture, reparented
+                200: (1, r'C:\X3\X3AP.exe'),
+                201: (200, r'C:\windows\system32\winedbg.exe --auto 300 99'),
+                300: (1, f'{dos}-other\\motion_output_fixture.exe'),  # another case's directory (prefix)
+                301: (1, f'tail -f {self.CASE}/wine.log'),           # mentions the directory only
+                400: (1, r'C:\windows\system32\winedevice.exe')}
+
+    def test_split_kills_only_the_case(self):
+        kill, skipped = fixture_process.fixture_processes(self.table(), 100, self.CASE)
+        self.assertEqual(kill, {100, 101, 102, 104})
+        self.assertEqual(skipped, {103, 301})
+
+    def test_cleanup_kills_descendants_waits_and_reports(self):
+        state = self.table()
+        killed = []
+
+        class Child:
+            pid = 100
+            def kill(self):
+                killed.append(100); state.pop(100, None)
+            def wait(self, timeout=None):
+                return -9
+
+        def kill(pid, signal):
+            killed.append(pid); state.pop(pid, None)
+
+        with patch.object(fixture_process.os, 'kill', side_effect=kill):
+            report = fixture_process.cleanup_after_timeout(Child(), self.CASE, table=lambda: dict(state), wait=1)
+        self.assertEqual(sorted(killed), [100, 101, 102, 104])
+        self.assertIn('ended 3: 101 ', report)
+        self.assertIn('still alive after SIGTERM, 1 s and SIGKILL: none', report)
+        self.assertRegex(report, r'not ours, left running: 103 .*301 ')
+        self.assertTrue({200, 201, 300, 301, 103, 400} <= set(state))
+
+    def test_witness_y_drive_fixture_and_new_ppid1_debugger_are_ended(self):
+        case = ('/Users/dev/x3-mod/.claude/worktrees/agent-a/verification/probe/build/'
+                'motion-output-seam-ownership-bolt-shape-prims-20260924-101010-000001')
+        dos = 'Y:' + case[len('/Users/dev'):].replace('/', '\\')
+        rows = {1: (0, '/sbin/launchd'),
+                100: (10, f'{self.WINE} --bottle X3 --workdir {case} {case}/motion_output_fixture.exe Z:/tmp/a hook'),
+                51295: (1, f'{dos}/motion_output_fixture.exe Z:'),                   # the witness's mixed separators
+                51303: (1, 'winedbg --auto 204 212'),                                # verbatim witness debugger
+                51400: (1, 'winedbg --auto 90 91'),                                  # already up before the case
+                51500: (1, dos.replace('agent-a', 'agent-b') + r'\motion_output_fixture.exe'),  # another worktree
+                51600: (1, dos + r'-other\motion_output_fixture.exe')}               # another case
+        baseline = {51400: 'winedbg --auto 90 91'}
+        kill, skipped = fixture_process.fixture_processes(rows, 100, case, baseline)
+        self.assertEqual(kill, {100, 51295, 51303})
+        self.assertNotIn(51400, kill | skipped)
+        self.assertFalse({51500, 51600} & kill)
+        # No baseline (ps failed before the case) or the game up: no PPID-1 debugger is ended.
+        self.assertEqual(fixture_process.fixture_processes(rows, 100, case, None)[0], {100, 51295})
+        rows[600] = (1, r'C:\X3\X3AP.exe')
+        self.assertEqual(fixture_process.fixture_processes(rows, 100, case, baseline)[0], {100, 51295})
+        del rows[600]
+        state = dict(rows)
+
+        class Child:
+            pid = 100
+            def kill(self):
+                state.pop(100, None)
+            def wait(self, timeout=None):
+                return -9
+
+        with patch.object(fixture_process.os, 'kill', side_effect=lambda pid, signal: state.pop(pid, None)):
+            report = fixture_process.cleanup_after_timeout(Child(), case, table=lambda: dict(state), wait=1, baseline=baseline)
+        self.assertIn('ended 2: 51295 ', report)
+        self.assertIn('PPID-1 winedbg --auto that appeared during the case: 51303', report)
+        self.assertEqual(set(state), {1, 51400, 51500, 51600})
+
+    def test_command_must_name_its_build_directory(self):
+        with self.assertRaises(ValueError), patch.object(fixture_process.subprocess, 'Popen') as popen:
+            fixture_process.run(['wine', '/tmp/other/fixture.exe'], build_dir=self.CASE, timeout=1)
+        popen.assert_not_called()
+
+    def test_real_timeout_raises_with_cleanup(self):
+        # A real child under a fake process table; os.kill may reach only that child.
+        real_popen, real_kill = subprocess.Popen, fixture_process.os.kill
+        children, faked = [], []
+
+        def popen(*args, **kwargs):
+            children.append(real_popen(*args, **kwargs))
+            return children[-1]
+
+        def kill(pid, number):
+            if children and pid == children[0].pid:
+                return real_kill(pid, number)
+            faked.append(pid)
+            state.pop(pid, None)
+
+        state = {1: (0, '/sbin/launchd')}
+
+        def table():
+            if children and children[0].poll() is None:
+                # The runner's child is the Wine launcher in production; show it in that form.
+                state.setdefault(children[0].pid, (fixture_process.os.getpid(), f'/opt/wine/bin/wine --workdir {case} {command[-1]}'))
+                state.setdefault(999001, (children[0].pid, r'C:\windows\system32\winedbg.exe --auto 1 2'))
+            else:
+                state.pop(children[0].pid if children else 0, None)
+            return dict(state)
+
+        with tempfile.TemporaryDirectory() as temporary:
+            case = Path(temporary) / 'build' / 'case'
+            command = [sys.executable, '-c', 'import time; time.sleep(30)', str(case / 'fixture.exe')]
+            with patch.object(fixture_process.subprocess, 'Popen', side_effect=popen), \
+                    patch.object(fixture_process.os, 'kill', side_effect=kill), \
+                    self.assertRaises(fixture_process.FixtureTimeout) as error:
+                fixture_process.run(command, build_dir=case, timeout=0.5, table=table, stdout=subprocess.PIPE, text=True)
+        self.assertIsNotNone(children[0].poll())
+        self.assertEqual(faked, [999001])
+        self.assertIsInstance(error.exception, subprocess.TimeoutExpired)
+        self.assertIn('ended 1: 999001 ', error.exception.cleanup)
+        self.assertIn('fixture cleanup', repr(error.exception))
+
+    def test_non_timeout_exception_kills_the_child(self):
+        process = unittest.mock.MagicMock(pid=4242, stdin=None, stdout=None, stderr=None)
+        process.communicate.side_effect = KeyboardInterrupt
+        with patch.object(fixture_process.subprocess, 'Popen', return_value=process), \
+                self.assertRaises(KeyboardInterrupt):
+            fixture_process.run(['wine', self.CASE + '/x.exe'], build_dir=self.CASE, timeout=5, table=lambda: {})
+        process.kill.assert_called_once_with()
+        process.wait.assert_called_once_with(timeout=fixture_process.WAIT_SECONDS)
 
 if __name__ == '__main__':
     unittest.main()

@@ -173,6 +173,7 @@ import shadow_retention as retention_analysis  # noqa: E402  (caster-retention f
 import sun_shadow_apply as sun_apply  # noqa: E402  (the CPU twin of the sun-shadow apply quad)
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from game_guard import game_running  # noqa: E402
+import fixture_process  # noqa: E402  (per-case timeout: ends the fixture, its Wine processes and winedbg)
 import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bottle results directory
 PROBE = ROOT / 'verification/probe'
 BUILD = PROBE / 'build'
@@ -5799,7 +5800,12 @@ def main(argv=None):
                 env['X3M_CAPTURE_START'] = str(EXPOSURE_HAZARD_FRAMES[0]) if mode == 'hdrexposure' else '1'; env['X3M_CAPTURE_FRAMES'] = '8'
             no_game()
             wine_log.write(f'==== {name}\n'); wine_log.flush()
-            completed = subprocess.run(command, env=env, stdout=subprocess.PIPE, stderr=wine_log, text=True, timeout=360)
+            try:
+                completed = fixture_process.run(command, build_dir=directory, env=env, stdout=subprocess.PIPE, stderr=wine_log, text=True, timeout=360)
+            except fixture_process.FixtureTimeout as timeout:
+                report.append(f'==== {name} timeout after {timeout.timeout} s\n{timeout.output or ""}\n{timeout.cleanup}\n')
+                wine_log.write(timeout.cleanup + '\n'); wine_log.flush()
+                raise
             text = completed.stdout
             (directory / 'fixture-stdout.txt').write_text(text)  # the script's own lines beside its maps (untracked; the validators read `text`)
             report.append(f'==== {name} exit={completed.returncode}\n{text}')
