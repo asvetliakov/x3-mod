@@ -260,3 +260,15 @@ Fleet install (not run; install-fleet4, the orchestrator's): `python3 tools/anal
 --install --replace --jobs 2` with the game closed; `reuse_previous` rebuilds every body because the settings'
 `tool_sha256` differs, about 48-50 min wall (install-fleet3 took 48.5 min; inferred). Expected result: 620 bodies
 as in fleet3, only `terran_spp_panel` differs in geometry (inferred: the plain path is unchanged code). Not flown: the flight check of design section 5 is open.
+
+## 2026-09-25 run321: the louvre recipe in flight (install-fleet4, Run82 DLL)
+
+User report: the Terran solar-plant lattice crawl is gone, no issues seen. Log evidence
+([`run321-lattice-fix/`](../../verification/results/run321-lattice-fix/), measured): `terran_spp_panel` draws at lod 1
+with 3 draws per node (48 per plant, was 64), s 108-202; on the rest burst 8932-8939 (jitter-only motion 0.17-0.59 px)
+the share of plant-region pixels changing class between frames is 0.326 (run315 before the fix: 0.497), the
+always-line per-pixel std 11.7 (was 26.6) and the plant's frame-to-frame luma rms 18-29 (was 29-42); not an exact A/B
+(the plant is closer and larger than in run315). The LOD switch, the brightness step at s 250/266 and the free-edge
+narrowing were not captured (no lod-0 census frames; `cull_census_lod_switch state=off`): the flight report is the only
+evidence, and the user noticed nothing. The session still carried the shell's `X3M_TAA_THIN_REGION_SOURCE=vote` and
+`X3M_TAA_SENTINEL_STABILISER=0` exports.

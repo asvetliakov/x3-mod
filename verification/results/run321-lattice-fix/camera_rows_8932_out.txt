@@ -1,0 +1,8 @@
+8932 t -16336.69,-283.6098,-66078.11 step 0.00 rot_deg 0.1765 cut 0 jit 0.125000 0.277778 draws 95 routed 67 taa_weight 0.900 taa_k 0.89940 hist 1 voted 19 opaque 31 known 31 min_alpha 0.1496
+8933 t -16336.69,-283.6098,-66078.11 step 0.00 rot_deg 0.1765 cut 0 jit -0.125000 -0.277778 draws 92 routed 67 taa_weight 0.900 taa_k 0.89957 hist 1 voted 19 opaque 31 known 31 min_alpha 0.1496
+8934 t -16336.69,-283.6098,-66078.11 step 0.00 rot_deg 0.1765 cut 0 jit 0.375000 0.055556 draws 94 routed 67 taa_weight 0.900 taa_k 0.89968 hist 1 voted 19 opaque 31 known 31 min_alpha 0.1496
+8935 t -16336.69,-283.6098,-66078.11 step 0.00 rot_deg 0.1765 cut 0 jit -0.437500 0.388889 draws 88 routed 67 taa_weight 0.900 taa_k 0.89974 hist 1 voted 19 opaque 31 known 31 min_alpha 0.1496
+8936 t -16336.69,-283.6098,-66078.11 step 0.00 rot_deg 0.1765 cut 0 jit 0.000000 -0.166667 draws 88 routed 67 taa_weight 0.900 taa_k 0.89978 hist 1 voted 19 opaque 31 known 31 min_alpha 0.1496
+8937 t -16336.69,-283.6098,-66078.11 step 0.00 rot_deg 0.1765 cut 0 jit -0.250000 0.166667 draws 91 routed 67 taa_weight 0.900 taa_k 0.89981 hist 1 voted 19 opaque 31 known 31 min_alpha 0.1496
+8938 t -16336.69,-283.6098,-66078.11 step 0.00 rot_deg 0.1765 cut 0 jit 0.250000 -0.388889 draws 95 routed 67 taa_weight 0.900 taa_k 0.89982 hist 1 voted 19 opaque 31 known 31 min_alpha 0.1496
+8939 t -16336.69,-283.6098,-66078.11 step 0.00 rot_deg 0.1765 cut 0 jit -0.375000 -0.055556 draws 93 routed 68 taa_weight 0.900 taa_k 0.89983 hist 1 voted 19 opaque 32 known 32 min_alpha 0.1496

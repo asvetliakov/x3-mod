@@ -1,0 +1,13 @@
+Run 82 lattice-fix confirmation (2026-09-25): run321 (/tmp/x3-bottleX3-run321, session-20260925-031753-212.log), Run82 DLL cd8ef8e4 (source d1a4e360), overlay install-fleet4.
+Scripts copied unchanged from ../run315-run82a-lattice-crawl (run number is an argument). Logs/dumps read-only, no Wine. Bursts 8932-8939 (rest) and 9680-9687 (pan).
+L=/tmp/x3-bottleX3-run321/session-20260925-031753-212.log
+grep -anE '^(taa_thin_region_source|thin_vote_mode|taa_thin_vote_configured|motion_output_taa|motion_output_taa_box_resolution|terran_station_lod|lod_occlusion|fov|proxy_identity|volumetric_fog_sector|cull_census_lod_switch) ' $L   # Q1/Q4
+grep -a '^cull_census ' $L | grep -a terran_spp_panel | python3 (count by frame,lod,verdict; s min/max; distinct nodes)   # Q2: 256 rows, 16 nodes x 16 frames, lod 1 kept, s 108-202
+grep -a '^motion_route ' $L | grep -a model=000054b3 (lod histogram)   # Q2: 768 rows all lod 1 = 16 frames x 48
+python3 camera_rows.py 321 8932 8 > camera_rows_8932_out.txt; python3 camera_rows.py 321 9680 8 > camera_rows_9680_out.txt
+python3 plant_motion.py 321 8932 8 000054b3 > plant_motion_8932_out.txt; python3 plant_motion.py 321 9680 8 000054b3 > plant_motion_9680_out.txt
+python3 plant_draws.py 321 8932 > plant_draws_8932_out.txt; python3 plant_draws.py 321 9680 > plant_draws_9680_out.txt   # Q2: 3 groups x 16 nodes
+python3 draw_table.py 321 8932 > draw_table_8932_out.txt
+python3 thumbs.py 321 8932 <scratch> 4   # visual: plant box 2229,14-3186,1207, dome ~2460,440-2600,540, ship below y~990
+python3 rest_lattice.py 321 8932 8 2229 14 3186 950 2460 440 2600 540 > rest_lattice_8932_out.txt   # Q3 flip share 0.326 (run315 0.497)
+python3 hull_std.py 321 8932 8 dome:2460,440,2600,540 ship_mid:2540,1060,2680,1150 > hull_std_8932_out.txt   # Q3 hull controls

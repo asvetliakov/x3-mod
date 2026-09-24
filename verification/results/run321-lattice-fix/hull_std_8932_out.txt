@@ -1,0 +1,2 @@
+dome 2460,440-2600,540 always-routed n 13233: std mean 5.54 p50 0.92 p95 25.97 frac>4 0.295 frac>10 0.206 mean c 143.9; rms dc 18.84 19.13 19.81 13.60 11.12 14.73 18.01
+ship_mid 2540,1060-2680,1150 always-routed n 12600: std mean 2.49 p50 0.79 p95 12.19 frac>4 0.142 frac>10 0.057 mean c 86.7; rms dc 8.90 9.44 10.36 9.93 8.40 10.62 9.78

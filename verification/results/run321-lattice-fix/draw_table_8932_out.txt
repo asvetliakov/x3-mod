@@ -1,0 +1,109 @@
+6 23af9368 37c34a74/5f82ecac b0:2/1 z1 at0 R1 arm0 p0 none 0.0,0.0-0.0,0.0 z0.999850
+7 23a0d4b0 37c34a74/5f82ecac b0:2/1 z1 at0 R1 arm0 p0 none 934.8,1125.1-1351.7,1360.6 z0.999945
+8 2b9eeb08 37c34a74/5f82ecac b0:2/1 z1 at0 R1 arm0 p0 none 2574.2,518.4-2814.1,781.3 z0.999949
+9 2b9eeb08 37c34a74/5f82ecac b0:2/1 z1 at0 R1 arm0 p0 none 2576.7,521.0-2805.2,773.3 z0.999949
+10 2b9eeb08 37c34a74/5f82ecac b0:5/6 z1 at1 R1 arm0 p0 none 2630.6,585.5-2774.2,718.8 z0.999952
+11 2b9eed88 4944d81d/ca6bfa4a b0:2/1 z1 at0 R1 arm0 p0 none 2452.9,657.5-2601.8,930.4 z0.999937
+12 2b9eed88 4944d81d/5e0a10fe b0:5/6 z1 at1 R1 arm0 p0 none 2450.4,653.7-2607.6,930.4 z0.999937
+13 2b9ef008 4944d81d/ca6bfa4a b0:2/1 z1 at0 R1 arm0 p0 none 2605.0,530.2-2814.8,690.6 z0.999931
+14 2b9ef008 4944d81d/5e0a10fe b0:5/6 z1 at1 R1 arm0 p0 none 2601.2,522.3-2819.0,701.0 z0.999932
+15 2b9ef288 4944d81d/ca6bfa4a b0:2/1 z1 at0 R1 arm0 p0 none 2686.3,258.7-2908.6,515.3 z0.999937
+16 2b9ef288 4944d81d/5e0a10fe b0:5/6 z1 at1 R1 arm0 p0 none 2687.6,257.9-2904.1,521.7 z0.999936
+17 2b9ef508 4944d81d/ca6bfa4a b0:2/1 z1 at0 R1 arm0 p0 none 2657.2,217.9-2846.9,436.4 z0.999950
+18 2b9ef508 4944d81d/5e0a10fe b0:5/6 z1 at1 R1 arm0 p0 none 2656.1,221.2-2849.1,435.6 z0.999950
+19 2b9ef788 4944d81d/ca6bfa4a b0:2/1 z1 at0 R1 arm0 p0 none 2580.8,320.2-2684.9,503.2 z0.999955
+20 2b9ef788 4944d81d/5e0a10fe b0:5/6 z1 at1 R1 arm0 p0 none 2577.5,317.4-2689.3,507.7 z0.999955
+21 2b9efa08 4944d81d/ca6bfa4a b0:2/1 z1 at0 R1 arm0 p0 none 2467.2,506.2-2578.4,603.2 z0.999958
+22 2b9efa08 4944d81d/5e0a10fe b0:5/6 z1 at1 R1 arm0 p0 none 2465.4,500.9-2582.4,610.2 z0.999958
+23 2b9efc88 4944d81d/ca6bfa4a b0:2/1 z1 at0 R1 arm0 p0 none 2369.2,615.7-2514.6,785.5 z0.999955
+24 2b9efc88 4944d81d/5e0a10fe b0:5/6 z1 at1 R1 arm0 p0 none 2370.4,610.9-2515.4,790.4 z0.999955
+25 2b9eff08 4944d81d/ca6bfa4a b0:2/1 z1 at0 R1 arm0 p0 none 2352.2,698.1-2518.1,930.0 z0.999951
+26 2b9eff08 4944d81d/5e0a10fe b0:5/6 z1 at1 R1 arm0 p0 none 2355.5,697.9-2519.3,930.0 z0.999950
+27 2b9f0188 37c34a74/5f82ecac b0:2/1 z1 at0 R1 arm0 p0 none 2316.9,263.8-2771.8,805.3 z0.999938
+28 2b9f0188 37c34a74/5f82ecac b0:2/1 z1 at0 R1 arm0 p0 none 2330.0,284.9-2768.4,775.5 z0.999940
+29 2b9f0188 37c34a74/5f82ecac b0:2/1 z1 at0 R1 arm0 p0 none 2360.3,330.0-2729.8,744.0 z0.999943
+30 2b9f0188 37c34a74/5f82ecac b0:5/6 z1 at1 R1 arm0 p0 none 2410.7,385.8-2700.9,705.5 z0.999945
+31 33577d30 4944d81d/ca6bfa4a b0:2/1 z1 at0 R1 arm0 p0 none 2615.3,226.9-2707.9,387.8 z0.999960
+32 33577d30 4944d81d/5e0a10fe b0:5/6 z1 at1 R1 arm0 p0 none 2612.1,223.9-2712.0,392.3 z0.999960
+33 33577fb0 4944d81d/ca6bfa4a b0:2/1 z1 at0 R1 arm0 p0 none 2433.7,500.6-2525.9,584.1 z0.999964
+34 33577fb0 4944d81d/5e0a10fe b0:5/6 z1 at1 R1 arm0 p0 none 2432.0,495.9-2529.4,590.2 z0.999964
+35 33578230 4944d81d/ca6bfa4a b0:2/1 z1 at0 R1 arm0 p0 none 2781.8,13.6-2981.2,249.2 z0.999950
+36 33578230 4944d81d/5e0a10fe b0:5/6 z1 at1 R1 arm0 p0 none 2779.7,15.5-2984.6,249.6 z0.999950
+37 335784b0 4944d81d/ca6bfa4a b0:2/1 z1 at0 R1 arm0 p0 none 2281.9,711.6-2408.7,860.3 z0.999960
+38 335784b0 4944d81d/5e0a10fe b0:5/6 z1 at1 R1 arm0 p0 none 2282.6,706.8-2409.9,865.1 z0.999960
+39 33578730 4944d81d/ca6bfa4a b0:2/1 z1 at0 R1 arm0 p0 none 2228.7,885.3-2384.9,1130.7 z0.999951
+40 33578730 4944d81d/5e0a10fe b0:5/6 z1 at1 R1 arm0 p0 none 2232.9,883.6-2385.0,1132.4 z0.999950
+41 335789b0 4944d81d/ca6bfa4a b0:2/1 z1 at0 R1 arm0 p0 none 2369.8,869.8-2549.7,1207.1 z0.999924
+42 335789b0 4944d81d/5e0a10fe b0:5/6 z1 at1 R1 arm0 p0 none 2367.8,866.7-2555.9,1204.4 z0.999924
+43 33578c30 4944d81d/ca6bfa4a b0:2/1 z1 at0 R1 arm0 p0 none 2887.3,24.2-3185.9,344.2 z0.999924
+44 33578c30 4944d81d/5e0a10fe b0:5/6 z1 at1 R1 arm0 p0 none 2890.1,26.0-3181.5,350.3 z0.999924
+45 33578eb0 4944d81d/ca6bfa4a b0:2/1 z1 at0 R1 arm0 p0 none 2708.8,547.7-3017.9,764.8 z0.999908
+46 33578eb0 4944d81d/5e0a10fe b0:5/6 z1 at1 R1 arm0 p0 none 2704.0,537.8-3022.8,778.3 z0.999909
+47 427f5418 37c34a74/5f82ecac b0:2/1 z1 at0 R1 arm0 p0 none 2286.6,920.2-2833.4,1410.8 z0.992062
+48 427f5418 37c34a74/5f82ecac b0:2/1 z1 at0 R1 arm0 p0 none 2285.2,920.4-2834.8,1413.3 z0.992022
+49 427f5418 37c34a74/5f82ecac b0:5/6 z1 at1 R1 arm0 p0 none 2289.7,946.1-2830.3,1339.3 z0.992024
+50 427f5418 37c34a74/5f82ecac b0:5/6 z1 at1 R1 arm0 p0 none 2286.4,938.0-2833.6,1339.6 z0.992021
+51 427f5418 37c34a74/f1b0e820 b0:2/1 z1 at0 R1 arm0 p0 none 2317.8,944.8-2802.2,1326.9 z0.992156
+52 427f5418 37c34a74/5f82ecac b0:2/1 z1 at0 R1 arm0 p0 none 2401.1,1242.4-2718.9,1284.6 z0.992050
+53 427f5698 37c34a74/5f82ecac b0:2/1 z1 at0 R1 arm0 p0 none 2411.0,1139.5-2431.1,1160.9 z0.992949
+54 427f5918 37c34a74/5f82ecac b0:2/1 z1 at0 R1 arm0 p0 none 2691.3,1141.4-2711.4,1162.9 z0.992914
+55 4279c310 494fe349/fffdabd9 b0:2/1 z1 at0 R1 arm0 p0 none 4259.4,681.7-4285.6,692.1 z0.999874
+56 7012e8e0 494fe349/fffdabd9 b0:2/1 z1 at0 R1 arm0 p0 none 1126.3,1366.5-1144.2,1373.4 z0.999886
+57 33577fb0 4944d81d/64bac8bb b1:5/6 z0 at0 R1 arm1 p1000 none -
+58 335784b0 4944d81d/64bac8bb b1:5/6 z0 at0 R1 arm1 p1000 none -
+59 33577d30 4944d81d/64bac8bb b1:5/6 z0 at0 R1 arm1 p1000 none -
+60 2b9efa08 4944d81d/64bac8bb b1:5/6 z0 at0 R1 arm1 p1000 none -
+61 2b9efc88 4944d81d/64bac8bb b1:5/6 z0 at0 R1 arm1 p1000 none -
+62 2b9ef788 4944d81d/64bac8bb b1:5/6 z0 at0 R1 arm1 p1000 none -
+63 33578730 4944d81d/64bac8bb b1:5/6 z0 at0 R1 arm1 p1000 none -
+64 2b9eff08 4944d81d/64bac8bb b1:5/6 z0 at0 R1 arm1 p1000 none -
+65 2b9ef508 4944d81d/64bac8bb b1:5/6 z0 at0 R1 arm1 p1000 none -
+66 33578230 4944d81d/64bac8bb b1:5/6 z0 at0 R1 arm1 p1000 none -
+67 2b9eed88 4944d81d/64bac8bb b1:5/6 z0 at0 R1 arm1 p1000 none -
+68 2b9ef288 4944d81d/64bac8bb b1:5/6 z0 at0 R1 arm1 p1000 none -
+69 2b9ef008 4944d81d/64bac8bb b1:5/6 z0 at0 R1 arm1 p1000 none -
+70 335789b0 4944d81d/64bac8bb b1:5/6 z0 at0 R1 arm1 p1000 none -
+71 33578c30 4944d81d/64bac8bb b1:5/6 z0 at0 R1 arm1 p1000 none -
+72 42cc62a0 494fe349/7c83ed50 b1:2/2 z0 at0 R0 arm0 p0 no_zwrite -
+73 42cc6020 494fe349/7c83ed50 b1:2/2 z0 at0 R0 arm0 p0 no_zwrite -
+74 42cc5da0 494fe349/7c83ed50 b1:2/2 z0 at0 R0 arm0 p0 no_zwrite -
+75 42cc5b20 494fe349/7c83ed50 b1:2/2 z0 at0 R0 arm0 p0 no_zwrite -
+76 42cc80a0 494fe349/7c83ed50 b1:2/2 z0 at0 R0 arm0 p0 no_zwrite -
+77 42cc7e20 494fe349/7c83ed50 b1:2/2 z0 at0 R0 arm0 p0 no_zwrite -
+78 42cc7ba0 494fe349/7c83ed50 b1:2/2 z0 at0 R0 arm0 p0 no_zwrite -
+79 33578eb0 4944d81d/64bac8bb b1:5/6 z0 at0 R1 arm1 p1000 none -
+80 00000000 5e484a06/0a523f33 b1:5/6 z0 at0 R0 arm0 p0 unregistered -
+--- per node
+23af9368 {'37c34a74/5f82ecac z1at0 R1arm0 none': 1}
+23a0d4b0 {'37c34a74/5f82ecac z1at0 R1arm0 none': 1}
+2b9eeb08 {'37c34a74/5f82ecac z1at0 R1arm0 none': 2, '37c34a74/5f82ecac z1at1 R1arm0 none': 1}
+2b9eed88 {'4944d81d/ca6bfa4a z1at0 R1arm0 none': 1, '4944d81d/5e0a10fe z1at1 R1arm0 none': 1, '4944d81d/64bac8bb z0at0 R1arm1 none': 1}
+2b9ef008 {'4944d81d/ca6bfa4a z1at0 R1arm0 none': 1, '4944d81d/5e0a10fe z1at1 R1arm0 none': 1, '4944d81d/64bac8bb z0at0 R1arm1 none': 1}
+2b9ef288 {'4944d81d/ca6bfa4a z1at0 R1arm0 none': 1, '4944d81d/5e0a10fe z1at1 R1arm0 none': 1, '4944d81d/64bac8bb z0at0 R1arm1 none': 1}
+2b9ef508 {'4944d81d/ca6bfa4a z1at0 R1arm0 none': 1, '4944d81d/5e0a10fe z1at1 R1arm0 none': 1, '4944d81d/64bac8bb z0at0 R1arm1 none': 1}
+2b9ef788 {'4944d81d/ca6bfa4a z1at0 R1arm0 none': 1, '4944d81d/5e0a10fe z1at1 R1arm0 none': 1, '4944d81d/64bac8bb z0at0 R1arm1 none': 1}
+2b9efa08 {'4944d81d/ca6bfa4a z1at0 R1arm0 none': 1, '4944d81d/5e0a10fe z1at1 R1arm0 none': 1, '4944d81d/64bac8bb z0at0 R1arm1 none': 1}
+2b9efc88 {'4944d81d/ca6bfa4a z1at0 R1arm0 none': 1, '4944d81d/5e0a10fe z1at1 R1arm0 none': 1, '4944d81d/64bac8bb z0at0 R1arm1 none': 1}
+2b9eff08 {'4944d81d/ca6bfa4a z1at0 R1arm0 none': 1, '4944d81d/5e0a10fe z1at1 R1arm0 none': 1, '4944d81d/64bac8bb z0at0 R1arm1 none': 1}
+2b9f0188 {'37c34a74/5f82ecac z1at0 R1arm0 none': 3, '37c34a74/5f82ecac z1at1 R1arm0 none': 1}
+33577d30 {'4944d81d/ca6bfa4a z1at0 R1arm0 none': 1, '4944d81d/5e0a10fe z1at1 R1arm0 none': 1, '4944d81d/64bac8bb z0at0 R1arm1 none': 1}
+33577fb0 {'4944d81d/ca6bfa4a z1at0 R1arm0 none': 1, '4944d81d/5e0a10fe z1at1 R1arm0 none': 1, '4944d81d/64bac8bb z0at0 R1arm1 none': 1}
+33578230 {'4944d81d/ca6bfa4a z1at0 R1arm0 none': 1, '4944d81d/5e0a10fe z1at1 R1arm0 none': 1, '4944d81d/64bac8bb z0at0 R1arm1 none': 1}
+335784b0 {'4944d81d/ca6bfa4a z1at0 R1arm0 none': 1, '4944d81d/5e0a10fe z1at1 R1arm0 none': 1, '4944d81d/64bac8bb z0at0 R1arm1 none': 1}
+33578730 {'4944d81d/ca6bfa4a z1at0 R1arm0 none': 1, '4944d81d/5e0a10fe z1at1 R1arm0 none': 1, '4944d81d/64bac8bb z0at0 R1arm1 none': 1}
+335789b0 {'4944d81d/ca6bfa4a z1at0 R1arm0 none': 1, '4944d81d/5e0a10fe z1at1 R1arm0 none': 1, '4944d81d/64bac8bb z0at0 R1arm1 none': 1}
+33578c30 {'4944d81d/ca6bfa4a z1at0 R1arm0 none': 1, '4944d81d/5e0a10fe z1at1 R1arm0 none': 1, '4944d81d/64bac8bb z0at0 R1arm1 none': 1}
+33578eb0 {'4944d81d/ca6bfa4a z1at0 R1arm0 none': 1, '4944d81d/5e0a10fe z1at1 R1arm0 none': 1, '4944d81d/64bac8bb z0at0 R1arm1 none': 1}
+427f5418 {'37c34a74/5f82ecac z1at0 R1arm0 none': 3, '37c34a74/5f82ecac z1at1 R1arm0 none': 2, '37c34a74/f1b0e820 z1at0 R1arm0 none': 1}
+427f5698 {'37c34a74/5f82ecac z1at0 R1arm0 none': 1}
+427f5918 {'37c34a74/5f82ecac z1at0 R1arm0 none': 1}
+4279c310 {'494fe349/fffdabd9 z1at0 R1arm0 none': 1}
+7012e8e0 {'494fe349/fffdabd9 z1at0 R1arm0 none': 1}
+42cc62a0 {'494fe349/7c83ed50 z0at0 R0arm0 no_zwrite': 1}
+42cc6020 {'494fe349/7c83ed50 z0at0 R0arm0 no_zwrite': 1}
+42cc5da0 {'494fe349/7c83ed50 z0at0 R0arm0 no_zwrite': 1}
+42cc5b20 {'494fe349/7c83ed50 z0at0 R0arm0 no_zwrite': 1}
+42cc80a0 {'494fe349/7c83ed50 z0at0 R0arm0 no_zwrite': 1}
+42cc7e20 {'494fe349/7c83ed50 z0at0 R0arm0 no_zwrite': 1}
+42cc7ba0 {'494fe349/7c83ed50 z0at0 R0arm0 no_zwrite': 1}
+00000000 {'5e484a06/0a523f33 z0at0 R0arm0 unregistered': 1}

@@ -1,0 +1,7 @@
+frame 8933: nodes 16 box-centre shift px p50 0.00 min 0.00 max 0.00; plant centre 2617,579
+frame 8934: nodes 16 box-centre shift px p50 0.00 min 0.00 max 0.00; plant centre 2617,579
+frame 8935: nodes 16 box-centre shift px p50 0.00 min 0.00 max 0.00; plant centre 2617,579
+frame 8936: nodes 16 box-centre shift px p50 0.00 min 0.00 max 0.00; plant centre 2617,579
+frame 8937: nodes 16 box-centre shift px p50 0.00 min 0.00 max 0.00; plant centre 2617,579
+frame 8938: nodes 16 box-centre shift px p50 0.00 min 0.00 max 0.00; plant centre 2617,579
+frame 8939: nodes 16 box-centre shift px p50 0.00 min 0.00 max 0.00; plant centre 2617,579
