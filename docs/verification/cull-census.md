@@ -60,3 +60,12 @@ loses culled nodes; the `cull_small_parts_value` line is capped at 16 and `m00` 
 `camera_state::reset()` is unreachable with only that option on. The small-parts site verifier is 19/19
 (18/18 before the scope check; "16/16" in earlier small-parts records was stale). Host:
 `verification.analysis.test_cull_census` + `test_cull_small_parts` 26 tests OK.
+
+**2026-09-24 Run 79 A (run299/300/302/303): Terran station LOD patch flown.** Every session logs
+`terran_station_lod site=0047d01c status=patched reason=ok mode=size setting=size write=atomic` (measured). In run299's
+three F8 bursts (frames 5885, 7308, 8417) all 16 slot-06 bodies carry `flag31=1`; every census row with s/T_pad in
+0.1..0.99 is lod 1 and every row at >= 1.0 is lod 0 (`usc_dock_e_tower` lod 1 at 0.99, lod 0 at 1.05/1.12; the SPP
+panel/center/bottom at 0.15..0.34 draw lod 1). The user confirms the coarse record on the Orbital Defence Station
+(screenshots/terran-lod1.png vs -lod2.png) but the coarse record loses the station's red colouring and one part
+flickers under motion (triage under `verification/results/run299-303-run79a/terran-colour/` and `ods-flicker/`).
+`--terran-station-lod distance` was not flown. Script: `run299-303-run79a/overlay_bursts.py` (`_run299_out.txt`).

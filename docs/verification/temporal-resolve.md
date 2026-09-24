@@ -2573,3 +2573,31 @@ re-pinned; `production-zonly` / `seam-zonly` unchanged. Not proven here: the cli
 and the fade VS compute bit-identical depths (x/8 is exact); with the engine's arbitrary rows the two programs may round
 the depth differently by an ulp, which would drop isolated pixels in colour and RT2 alike (parity holds per pixel, holes
 would not be 0); native-driver behaviour (section 8) is unverified.
+
+## 2026-09-24 Run 79 A: A' region hold accepted (run299/300/302/303, 5120x1440)
+
+User report: no visible difference between `--taa-region-hold on` (run299, run302) and `off` (run300, run303) on the
+lattice stand, under slow pans, at silhouettes, on popping shards or in the frames after a pan stops; the known problem
+areas (solar-panel lattice crawl, distant-object smear) are fine on both. A flicker of one Terran station part under
+motion is present on both settings (triaged separately: `run299-303-run79a/ods-flicker/`), so it is not an A' regression.
+
+Cost (`--gpu-sync-timing`, run302 hold on vs run303 hold off; median over windows of each window's median/p90, us,
+measured; windows classed rest or pan by `camera_rotation_deg`; one rest window per run):
+
+| stage | on, rest | on, pan | off, rest | off, pan |
+|---|---|---|---|---|
+| taa_mask | 1542/1557 | 1544/1564 | 2926/2958 | 2925/2969 |
+| taa_mask_x / _y | absent | absent | 674 / 664 | 674 / 664 |
+| taa_box | 2337/2359 | 2341/2417 | 2106/2224 | 2107/2225 |
+| taa_resolve | 2550/2566 | 2563/2679 | 2450/2565 | 2551/2569 |
+| TAA total | 6586/6698 | 6667/6820 | 7724/7867 | 7754/7899 |
+
+The two dilation draws are gone with the hold on (mask 2.93 -> 1.54 ms), the box costs +0.23 ms at rest and under a
+pan alike (the region-gated twins), the resolve +0.1 ms; net -1.1 ms per frame at 5120x1440. `motion_output_taa`
+logs `region_hold=1|0 ps30_slots=512` (the wined3d figure; programs above it run), no TAA refusal row. The second mask
+target's release is shown only by the absent stages (no row logs `line_mask_targets()`; open). Abnormal rows on the
+run277/287/298 pattern, no fault on exit, `engine_memory_read_refused` 0. Scripts: `verification/results/run299-303-run79a/`
+(`gpu_taa.py`, `gpu_rest_pan.py`, `pan_windows.py`, `taa_frames.py`, `summary.md`).
+
+**Decision (user report + these rows):** A' accepted. Next per taa-plan-lifted-slot-cap.md: remove `--taa-region-hold off`
+and the dilated `far_camera` chain (the refusal path becomes region off), then S4 (half-resolution box).

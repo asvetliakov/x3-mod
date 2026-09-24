@@ -1,0 +1,100 @@
+== burst frames 5885..5892 p00 0.3750014
+slot05 others/terran_catapult_gate rows=24 views={'47314c60': 24} flag31={'0': 24} lod={1: 16, 0: 8} ladder=[('3', '100000,30,203')] marker_thr=[1797099, 30, 203] s=33..205 px=50..308 T_pad=203 s/T_pad=0.16..1.01 draws_by_lod={1: 16, 0: 16} MERGED
+slot05 ships/terran/atf_m6m rows=32 views={'47314c60': 32} flag31={'0': 32} lod={1: 32} ladder=[('3', '100000,30,94')] marker_thr=[45416, 30, 94] s=4..4 px=6..6 T_pad=94 s/T_pad=0.04..0.04 draws_by_lod={1: 64} MERGED
+slot05 ships/terran/atf_m7m rows=8 views={'47314c60': 8} flag31={'0': 8} lod={1: 8} ladder=[('3', '100000,30,102')] marker_thr=[161739, 30, 102] s=15..15 px=23..23 T_pad=102 s/T_pad=0.15..0.15 draws_by_lod={1: 16} MERGED
+slot05 ships/terran/terran_tl_atmolifter rows=8 views={'47314c60': 8} flag31={'0': 8} lod={1: 8} ladder=[('3', '100000,30,90')] marker_thr=[372590, 30, 90] s=3..3 px=5..5 T_pad=90 s/T_pad=0.03..0.03 draws_by_lod={1: 24} MERGED
+slot05 ships/usc/terran_m1 rows=8 views={'47314c60': 8} flag31={'0': 8} lod={1: 8} ladder=[('3', '100000,30,120')] marker_thr=[975836, 30, 120] s=17..17 px=26..26 T_pad=120 s/T_pad=0.14..0.14 draws_by_lod={1: 24} MERGED
+slot05 ships/usc/terran_m4 rows=48 views={'47314c60': 48} flag31={'0': 48} lod={0: 48} ladder=[('-', '-')] marker_thr=[6121, 30, 108] s=1..1 px=2..2 T_pad=108 s/T_pad=0.01..0.01 draws_by_lod={} full
+slot05 ships/usc/terran_m5 rows=72 views={'47314c60': 72} flag31={'0': 72} lod={0: 72} ladder=[('-', '-')] marker_thr=[5392, 30, 110] s=1..1 px=2..2 T_pad=110 s/T_pad=0.01..0.01 draws_by_lod={} full
+slot05 ships/usc/terran_m6 rows=40 views={'47314c60': 40} flag31={'0': 40} lod={0: 32, 1: 8} ladder=[('-', '-'), ('3', '100000,30,120')] marker_thr=[41218, 30, 120] s=1..310 px=2..465 T_pad=120 s/T_pad=0.01..2.58 draws_by_lod={0: 48, 1: 16} MERGED
+slot05 ships/usc/terran_tp rows=96 views={'47314c60': 96} flag31={'0': 96} lod={0: 96} ladder=[('-', '-')] marker_thr=[20808, 30, 99] s=1..1 px=2..2 T_pad=99 s/T_pad=0.01..0.01 draws_by_lod={} full
+slot05 ships/usc/terran_ts rows=104 views={'47314c60': 104} flag31={'0': 104} lod={0: 104} ladder=[('-', '-')] marker_thr=[26810, 30, 112] s=1..1 px=2..2 T_pad=112 s/T_pad=0.01..0.01 draws_by_lod={} full
+slot05 stations/docks/argon_newdock_center rows=72 views={'47314c60': 72} flag31={'1': 72} lod={0: 64, 1: 8} ladder=[('-', '-'), ('3', '100000,30,150')] marker_thr=[30842, 30, 150] s=1..3 px=2..5 T_pad=150 s/T_pad=0.01..0.02 draws_by_lod={1: 16} MERGED
+slot06 stations/station_scenes/terran/usc_dock_c_core_bottom rows=8 views={'47314c60': 8} flag31={'1': 8} lod={1: 8} ladder=[('3', '100000,30,189')] marker_thr=[3795280, 30, 189] s=74..74 px=111..111 T_pad=189 s/T_pad=0.39..0.39 draws_by_lod={1: 24} MERGED
+slot06 stations/station_scenes/terran/usc_dock_c_core_top rows=8 views={'47314c60': 8} flag31={'1': 8} lod={1: 8} ladder=[('3', '100000,30,239')] marker_thr=[6159976, 30, 239] s=121..121 px=182..182 T_pad=239 s/T_pad=0.51..0.51 draws_by_lod={1: 16} MERGED
+slot06 stations/station_scenes/terran/usc_dock_c_left_arm rows=8 views={'47314c60': 8} flag31={'1': 8} lod={1: 8} ladder=[('3', '100000,30,204')] marker_thr=[2276748, 30, 204] s=43..43 px=65..65 T_pad=204 s/T_pad=0.21..0.21 draws_by_lod={1: 24} MERGED
+slot06 stations/station_scenes/terran/usc_dock_c_left_rings rows=8 views={'47314c60': 8} flag31={'1': 8} lod={1: 8} ladder=[('3', '100000,30,199')] marker_thr=[2113798, 30, 199] s=37..37 px=56..56 T_pad=199 s/T_pad=0.19..0.19 draws_by_lod={1: 16} MERGED
+slot06 stations/station_scenes/terran/usc_dock_c_right_arm rows=8 views={'47314c60': 8} flag31={'1': 8} lod={1: 8} ladder=[('3', '100000,30,205')] marker_thr=[2178722, 30, 205] s=44..44 px=66..66 T_pad=205 s/T_pad=0.21..0.21 draws_by_lod={1: 16} MERGED
+slot06 stations/station_scenes/terran/usc_dock_c_right_rings rows=8 views={'47314c60': 8} flag31={'1': 8} lod={1: 8} ladder=[('3', '100000,30,186')] marker_thr=[2221694, 30, 186] s=49..49 px=74..74 T_pad=186 s/T_pad=0.26..0.26 draws_by_lod={1: 16} MERGED
+slot06 stations/station_scenes/terran/usc_dock_c_tower rows=8 views={'47314c60': 8} flag31={'1': 8} lod={1: 8} ladder=[('3', '100000,30,258')] marker_thr=[3354613, 30, 258] s=67..67 px=101..101 T_pad=258 s/T_pad=0.26..0.26 draws_by_lod={1: 16} MERGED
+slot06 stations/station_scenes/terran/usc_dock_e_left_rings rows=8 views={'47314c60': 8} flag31={'1': 8} lod={1: 8} ladder=[('3', '100000,30,173')] marker_thr=[1702749, 30, 173] s=66..66 px=99..99 T_pad=173 s/T_pad=0.38..0.38 draws_by_lod={1: 16} MERGED
+slot06 stations/station_scenes/terran/usc_dock_e_lower_core rows=8 views={'47314c60': 8} flag31={'1': 8} lod={1: 8} ladder=[('3', '100000,30,207')] marker_thr=[3176240, 30, 207] s=112..112 px=168..168 T_pad=207 s/T_pad=0.54..0.54 draws_by_lod={1: 24} MERGED
+slot06 stations/station_scenes/terran/usc_dock_e_right_rings rows=8 views={'47314c60': 8} flag31={'1': 8} lod={1: 8} ladder=[('3', '100000,30,192')] marker_thr=[1822910, 30, 192] s=57..57 px=86..86 T_pad=192 s/T_pad=0.30..0.30 draws_by_lod={1: 16} MERGED
+slot06 stations/station_scenes/terran/usc_dock_e_tower rows=8 views={'47314c60': 8} flag31={'1': 8} lod={1: 8} ladder=[('3', '100000,30,197')] marker_thr=[4763793, 30, 197] s=195..195 px=293..293 T_pad=197 s/T_pad=0.99..0.99 draws_by_lod={1: 24} MERGED
+slot06 stations/station_scenes/terran/usc_dock_e_upper_core rows=8 views={'47314c60': 8} flag31={'1': 8} lod={1: 8} ladder=[('3', '100000,30,213')] marker_thr=[3929343, 30, 213] s=135..135 px=203..203 T_pad=213 s/T_pad=0.63..0.63 draws_by_lod={1: 16} MERGED
+slot06 stations/station_scenes/terran/usc_small_station_d rows=24 views={'47314c60': 24} flag31={'1': 24} lod={0: 8, 1: 16} ladder=[('3', '100000,30,150')] marker_thr=[1427154, 30, 150] s=27..206 px=41..309 T_pad=150 s/T_pad=0.18..1.37 draws_by_lod={0: 40, 1: 48} MERGED
+slot06 stations/x3tc/terran_spp_bottom rows=8 views={'47314c60': 8} flag31={'1': 8} lod={1: 8} ladder=[('3', '100000,30,150')] marker_thr=[769047, 30, 150] s=23..23 px=35..35 T_pad=150 s/T_pad=0.15..0.15 draws_by_lod={1: 24} MERGED
+slot06 stations/x3tc/terran_spp_center rows=8 views={'47314c60': 8} flag31={'1': 8} lod={1: 8} ladder=[('3', '100000,30,155')] marker_thr=[1592846, 30, 155] s=50..50 px=75..75 T_pad=155 s/T_pad=0.32..0.32 draws_by_lod={1: 24} MERGED
+slot06 stations/x3tc/terran_spp_panel rows=128 views={'47314c60': 128} flag31={'1': 128} lod={1: 128} ladder=[('3', '100000,250,266')] marker_thr=[2169156, 250, 266] s=58..80 px=87..120 T_pad=266 s/T_pad=0.22..0.30 draws_by_lod={1: 512} MERGED
+== burst frames 7308..7315 p00 0.3750014
+slot05 others/terran_catapult_gate rows=24 views={'47314c60': 24} flag31={'0': 24} lod={1: 16, 0: 8} ladder=[('3', '100000,30,203')] marker_thr=[1797099, 30, 203] s=33..240 px=50..360 T_pad=203 s/T_pad=0.16..1.18 draws_by_lod={1: 16, 0: 16} MERGED
+slot05 ships/terran/atf_m6m rows=32 views={'47314c60': 32} flag31={'0': 32} lod={1: 32} ladder=[('3', '100000,30,94')] marker_thr=[45416, 30, 94] s=4..4 px=6..6 T_pad=94 s/T_pad=0.04..0.04 draws_by_lod={1: 64} MERGED
+slot05 ships/terran/atf_m7m rows=8 views={'47314c60': 8} flag31={'0': 8} lod={1: 8} ladder=[('3', '100000,30,102')] marker_thr=[161739, 30, 102] s=15..15 px=23..23 T_pad=102 s/T_pad=0.15..0.15 draws_by_lod={1: 16} MERGED
+slot05 ships/terran/terran_tl_atmolifter rows=8 views={'47314c60': 8} flag31={'0': 8} lod={1: 8} ladder=[('3', '100000,30,90')] marker_thr=[372590, 30, 90] s=4..4 px=6..6 T_pad=90 s/T_pad=0.04..0.04 draws_by_lod={1: 24} MERGED
+slot05 ships/usc/terran_m1 rows=8 views={'47314c60': 8} flag31={'0': 8} lod={1: 8} ladder=[('3', '100000,30,120')] marker_thr=[975836, 30, 120] s=17..17 px=26..26 T_pad=120 s/T_pad=0.14..0.14 draws_by_lod={1: 24} MERGED
+slot05 ships/usc/terran_m4 rows=48 views={'47314c60': 48} flag31={'0': 48} lod={0: 48} ladder=[('-', '-')] marker_thr=[6121, 30, 108] s=1..1 px=2..2 T_pad=108 s/T_pad=0.01..0.01 draws_by_lod={} full
+slot05 ships/usc/terran_m5 rows=64 views={'47314c60': 64} flag31={'0': 64} lod={0: 64} ladder=[('-', '-')] marker_thr=[5392, 30, 110] s=1..1 px=2..2 T_pad=110 s/T_pad=0.01..0.01 draws_by_lod={} full
+slot05 ships/usc/terran_m6 rows=40 views={'47314c60': 40} flag31={'0': 40} lod={0: 32, 1: 8} ladder=[('-', '-'), ('3', '100000,30,120')] marker_thr=[41218, 30, 120] s=1..310 px=2..465 T_pad=120 s/T_pad=0.01..2.58 draws_by_lod={0: 48, 1: 16} MERGED
+slot05 ships/usc/terran_tp rows=96 views={'47314c60': 96} flag31={'0': 96} lod={0: 96} ladder=[('-', '-')] marker_thr=[20808, 30, 99] s=1..2 px=2..3 T_pad=99 s/T_pad=0.01..0.02 draws_by_lod={} full
+slot05 ships/usc/terran_ts rows=104 views={'47314c60': 104} flag31={'0': 104} lod={0: 104} ladder=[('-', '-')] marker_thr=[26810, 30, 112] s=1..1 px=2..2 T_pad=112 s/T_pad=0.01..0.01 draws_by_lod={} full
+slot05 stations/docks/argon_newdock_center rows=72 views={'47314c60': 72} flag31={'1': 72} lod={0: 64, 1: 8} ladder=[('-', '-'), ('3', '100000,30,150')] marker_thr=[30842, 30, 150] s=1..4 px=2..6 T_pad=150 s/T_pad=0.01..0.03 draws_by_lod={1: 16} MERGED
+slot06 stations/station_scenes/terran/usc_dock_c_core_bottom rows=8 views={'47314c60': 8} flag31={'1': 8} lod={1: 8} ladder=[('3', '100000,30,189')] marker_thr=[3795280, 30, 189] s=74..74 px=111..111 T_pad=189 s/T_pad=0.39..0.39 draws_by_lod={1: 24} MERGED
+slot06 stations/station_scenes/terran/usc_dock_c_core_top rows=8 views={'47314c60': 8} flag31={'1': 8} lod={1: 8} ladder=[('3', '100000,30,239')] marker_thr=[6159976, 30, 239] s=121..121 px=182..182 T_pad=239 s/T_pad=0.51..0.51 draws_by_lod={1: 16} MERGED
+slot06 stations/station_scenes/terran/usc_dock_c_left_arm rows=8 views={'47314c60': 8} flag31={'1': 8} lod={1: 8} ladder=[('3', '100000,30,204')] marker_thr=[2276748, 30, 204] s=43..43 px=65..65 T_pad=204 s/T_pad=0.21..0.21 draws_by_lod={1: 24} MERGED
+slot06 stations/station_scenes/terran/usc_dock_c_left_rings rows=8 views={'47314c60': 8} flag31={'1': 8} lod={1: 8} ladder=[('3', '100000,30,199')] marker_thr=[2113798, 30, 199] s=37..37 px=56..56 T_pad=199 s/T_pad=0.19..0.19 draws_by_lod={1: 16} MERGED
+slot06 stations/station_scenes/terran/usc_dock_c_right_arm rows=8 views={'47314c60': 8} flag31={'1': 8} lod={1: 8} ladder=[('3', '100000,30,205')] marker_thr=[2178722, 30, 205] s=44..44 px=66..66 T_pad=205 s/T_pad=0.21..0.21 draws_by_lod={1: 16} MERGED
+slot06 stations/station_scenes/terran/usc_dock_c_right_rings rows=8 views={'47314c60': 8} flag31={'1': 8} lod={1: 8} ladder=[('3', '100000,30,186')] marker_thr=[2221694, 30, 186] s=49..49 px=74..74 T_pad=186 s/T_pad=0.26..0.26 draws_by_lod={1: 16} MERGED
+slot06 stations/station_scenes/terran/usc_dock_c_tower rows=8 views={'47314c60': 8} flag31={'1': 8} lod={1: 8} ladder=[('3', '100000,30,258')] marker_thr=[3354613, 30, 258] s=67..67 px=101..101 T_pad=258 s/T_pad=0.26..0.26 draws_by_lod={1: 16} MERGED
+slot06 stations/station_scenes/terran/usc_dock_e_left_rings rows=8 views={'47314c60': 8} flag31={'1': 8} lod={1: 8} ladder=[('3', '100000,30,173')] marker_thr=[1702749, 30, 173] s=69..69 px=104..104 T_pad=173 s/T_pad=0.40..0.40 draws_by_lod={1: 16} MERGED
+slot06 stations/station_scenes/terran/usc_dock_e_lower_core rows=8 views={'47314c60': 8} flag31={'1': 8} lod={1: 8} ladder=[('3', '100000,30,207')] marker_thr=[3176240, 30, 207] s=116..116 px=174..174 T_pad=207 s/T_pad=0.56..0.56 draws_by_lod={1: 24} MERGED
+slot06 stations/station_scenes/terran/usc_dock_e_right_rings rows=8 views={'47314c60': 8} flag31={'1': 8} lod={1: 8} ladder=[('3', '100000,30,192')] marker_thr=[1822910, 30, 192] s=59..59 px=89..89 T_pad=192 s/T_pad=0.31..0.31 draws_by_lod={1: 16} MERGED
+slot06 stations/station_scenes/terran/usc_dock_e_tower rows=8 views={'47314c60': 8} flag31={'1': 8} lod={0: 8} ladder=[('3', '100000,30,197')] marker_thr=[4763793, 30, 197] s=206..206 px=309..309 T_pad=197 s/T_pad=1.05..1.05 draws_by_lod={0: 40} full
+slot06 stations/station_scenes/terran/usc_dock_e_upper_core rows=8 views={'47314c60': 8} flag31={'1': 8} lod={1: 8} ladder=[('3', '100000,30,213')] marker_thr=[3929343, 30, 213] s=143..143 px=215..215 T_pad=213 s/T_pad=0.67..0.67 draws_by_lod={1: 16} MERGED
+slot06 stations/station_scenes/terran/usc_small_station_d rows=24 views={'47314c60': 24} flag31={'1': 24} lod={0: 8, 1: 16} ladder=[('3', '100000,30,150')] marker_thr=[1427154, 30, 150] s=28..256 px=42..384 T_pad=150 s/T_pad=0.19..1.71 draws_by_lod={0: 40, 1: 48} MERGED
+slot06 stations/x3tc/terran_spp_bottom rows=8 views={'47314c60': 8} flag31={'1': 8} lod={1: 8} ladder=[('3', '100000,30,150')] marker_thr=[769047, 30, 150] s=24..24 px=36..36 T_pad=150 s/T_pad=0.16..0.16 draws_by_lod={1: 24} MERGED
+slot06 stations/x3tc/terran_spp_center rows=8 views={'47314c60': 8} flag31={'1': 8} lod={1: 8} ladder=[('3', '100000,30,155')] marker_thr=[1592846, 30, 155] s=52..52 px=78..78 T_pad=155 s/T_pad=0.34..0.34 draws_by_lod={1: 24} MERGED
+slot06 stations/x3tc/terran_spp_panel rows=128 views={'47314c60': 128} flag31={'1': 128} lod={1: 128} ladder=[('3', '100000,250,266')] marker_thr=[2169156, 250, 266] s=60..83 px=90..125 T_pad=266 s/T_pad=0.23..0.31 draws_by_lod={1: 512} MERGED
+== burst frames 8417..8424 p00 0.3750014
+slot05 others/terran_catapult_gate rows=8 views={'47314c60': 8} flag31={'0': 8} lod={1: 8} ladder=[('3', '100000,30,203')] marker_thr=[1797099, 30, 203] s=34..34 px=51..51 T_pad=203 s/T_pad=0.17..0.17 draws_by_lod={1: 8} MERGED
+slot05 ships/terran/atf_m6m rows=32 views={'47314c60': 32} flag31={'0': 32} lod={1: 32} ladder=[('3', '100000,30,94')] marker_thr=[45416, 30, 94] s=4..5 px=6..8 T_pad=94 s/T_pad=0.04..0.05 draws_by_lod={1: 64} MERGED
+slot05 ships/terran/atf_m7m rows=8 views={'47314c60': 8} flag31={'0': 8} lod={1: 8} ladder=[('3', '100000,30,102')] marker_thr=[161739, 30, 102] s=16..16 px=24..24 T_pad=102 s/T_pad=0.16..0.16 draws_by_lod={1: 16} MERGED
+slot05 ships/terran/terran_tl_atmolifter rows=8 views={'47314c60': 8} flag31={'0': 8} lod={1: 8} ladder=[('3', '100000,30,90')] marker_thr=[372590, 30, 90] s=4..4 px=6..6 T_pad=90 s/T_pad=0.04..0.04 draws_by_lod={1: 24} MERGED
+slot05 ships/usc/terran_m1 rows=8 views={'47314c60': 8} flag31={'0': 8} lod={1: 8} ladder=[('3', '100000,30,120')] marker_thr=[975836, 30, 120] s=18..18 px=27..27 T_pad=120 s/T_pad=0.15..0.15 draws_by_lod={1: 24} MERGED
+slot05 ships/usc/terran_m4 rows=48 views={'47314c60': 48} flag31={'0': 48} lod={0: 48} ladder=[('-', '-')] marker_thr=[6121, 30, 108] s=1..1 px=2..2 T_pad=108 s/T_pad=0.01..0.01 draws_by_lod={} full
+slot05 ships/usc/terran_m5 rows=88 views={'47314c60': 88} flag31={'0': 88} lod={0: 88} ladder=[('-', '-')] marker_thr=[5392, 30, 110] s=1..1 px=2..2 T_pad=110 s/T_pad=0.01..0.01 draws_by_lod={} full
+slot05 ships/usc/terran_m6 rows=40 views={'47314c60': 40} flag31={'0': 40} lod={0: 32, 1: 8} ladder=[('-', '-'), ('3', '100000,30,120')] marker_thr=[41218, 30, 120] s=1..310 px=2..465 T_pad=120 s/T_pad=0.01..2.58 draws_by_lod={0: 48, 1: 16} MERGED
+slot05 ships/usc/terran_tp rows=96 views={'47314c60': 96} flag31={'0': 96} lod={0: 96} ladder=[('-', '-')] marker_thr=[20808, 30, 99] s=1..2 px=2..3 T_pad=99 s/T_pad=0.01..0.02 draws_by_lod={} full
+slot05 ships/usc/terran_ts rows=88 views={'47314c60': 88} flag31={'0': 88} lod={0: 88} ladder=[('-', '-')] marker_thr=[26810, 30, 112] s=1..1 px=2..2 T_pad=112 s/T_pad=0.01..0.01 draws_by_lod={} full
+slot05 stations/docks/argon_newdock_center rows=64 views={'47314c60': 64} flag31={'1': 64} lod={0: 64} ladder=[('-', '-')] marker_thr=[30842, 30, 150] s=1..1 px=2..2 T_pad=150 s/T_pad=0.01..0.01 draws_by_lod={} full
+slot06 stations/station_scenes/terran/usc_dock_c_core_bottom rows=8 views={'47314c60': 8} flag31={'1': 8} lod={1: 8} ladder=[('3', '100000,30,189')] marker_thr=[3795280, 30, 189] s=73..73 px=110..110 T_pad=189 s/T_pad=0.39..0.39 draws_by_lod={1: 24} MERGED
+slot06 stations/station_scenes/terran/usc_dock_c_core_top rows=8 views={'47314c60': 8} flag31={'1': 8} lod={1: 8} ladder=[('3', '100000,30,239')] marker_thr=[6159976, 30, 239] s=119..119 px=179..179 T_pad=239 s/T_pad=0.50..0.50 draws_by_lod={1: 16} MERGED
+slot06 stations/station_scenes/terran/usc_dock_c_left_arm rows=8 views={'47314c60': 8} flag31={'1': 8} lod={1: 8} ladder=[('3', '100000,30,204')] marker_thr=[2276748, 30, 204] s=42..42 px=63..63 T_pad=204 s/T_pad=0.21..0.21 draws_by_lod={1: 24} MERGED
+slot06 stations/station_scenes/terran/usc_dock_c_left_rings rows=8 views={'47314c60': 8} flag31={'1': 8} lod={1: 8} ladder=[('3', '100000,30,199')] marker_thr=[2113798, 30, 199] s=37..37 px=56..56 T_pad=199 s/T_pad=0.19..0.19 draws_by_lod={1: 16} MERGED
+slot06 stations/station_scenes/terran/usc_dock_c_right_arm rows=8 views={'47314c60': 8} flag31={'1': 8} lod={1: 8} ladder=[('3', '100000,30,205')] marker_thr=[2178722, 30, 205] s=43..43 px=65..65 T_pad=205 s/T_pad=0.21..0.21 draws_by_lod={1: 16} MERGED
+slot06 stations/station_scenes/terran/usc_dock_c_right_rings rows=8 views={'47314c60': 8} flag31={'1': 8} lod={1: 8} ladder=[('3', '100000,30,186')] marker_thr=[2221694, 30, 186] s=48..48 px=72..72 T_pad=186 s/T_pad=0.26..0.26 draws_by_lod={1: 16} MERGED
+slot06 stations/station_scenes/terran/usc_dock_c_tower rows=8 views={'47314c60': 8} flag31={'1': 8} lod={1: 8} ladder=[('3', '100000,30,258')] marker_thr=[3354613, 30, 258] s=65..65 px=98..98 T_pad=258 s/T_pad=0.25..0.25 draws_by_lod={1: 16} MERGED
+slot06 stations/station_scenes/terran/usc_dock_e_left_rings rows=8 views={'47314c60': 8} flag31={'1': 8} lod={1: 8} ladder=[('3', '100000,30,173')] marker_thr=[1702749, 30, 173] s=74..75 px=111..113 T_pad=173 s/T_pad=0.43..0.43 draws_by_lod={1: 16} MERGED
+slot06 stations/station_scenes/terran/usc_dock_e_lower_core rows=8 views={'47314c60': 8} flag31={'1': 8} lod={1: 8} ladder=[('3', '100000,30,207')] marker_thr=[3176240, 30, 207] s=123..124 px=185..186 T_pad=207 s/T_pad=0.59..0.60 draws_by_lod={1: 24} MERGED
+slot06 stations/station_scenes/terran/usc_dock_e_right_rings rows=8 views={'47314c60': 8} flag31={'1': 8} lod={1: 8} ladder=[('3', '100000,30,192')] marker_thr=[1822910, 30, 192] s=62..63 px=93..95 T_pad=192 s/T_pad=0.32..0.33 draws_by_lod={1: 16} MERGED
+slot06 stations/station_scenes/terran/usc_dock_e_tower rows=8 views={'47314c60': 8} flag31={'1': 8} lod={0: 8} ladder=[('3', '100000,30,197')] marker_thr=[4763793, 30, 197] s=220..221 px=330..332 T_pad=197 s/T_pad=1.12..1.12 draws_by_lod={0: 40} full
+slot06 stations/station_scenes/terran/usc_dock_e_upper_core rows=8 views={'47314c60': 8} flag31={'1': 8} lod={1: 8} ladder=[('3', '100000,30,213')] marker_thr=[3929343, 30, 213] s=151..152 px=227..228 T_pad=213 s/T_pad=0.71..0.71 draws_by_lod={1: 16} MERGED
+slot06 stations/station_scenes/terran/usc_small_station_d rows=24 views={'47314c60': 24} flag31={'1': 24} lod={0: 8, 1: 16} ladder=[('3', '100000,30,150')] marker_thr=[1427154, 30, 150] s=29..304 px=44..456 T_pad=150 s/T_pad=0.19..2.03 draws_by_lod={0: 40, 1: 48} MERGED
+slot06 stations/x3tc/terran_spp_bottom rows=8 views={'47314c60': 8} flag31={'1': 8} lod={1: 8} ladder=[('3', '100000,30,150')] marker_thr=[769047, 30, 150] s=24..24 px=36..36 T_pad=150 s/T_pad=0.16..0.16 draws_by_lod={1: 24} MERGED
+slot06 stations/x3tc/terran_spp_center rows=8 views={'47314c60': 8} flag31={'1': 8} lod={1: 8} ladder=[('3', '100000,30,155')] marker_thr=[1592846, 30, 155] s=53..53 px=80..80 T_pad=155 s/T_pad=0.34..0.34 draws_by_lod={1: 24} MERGED
+slot06 stations/x3tc/terran_spp_panel rows=128 views={'47314c60': 128} flag31={'1': 128} lod={1: 128} ladder=[('3', '100000,250,266')] marker_thr=[2169156, 250, 266] s=62..86 px=93..129 T_pad=266 s/T_pad=0.23..0.32 draws_by_lod={1: 512} MERGED
+== all overlay census rows in the bursts: s/T_pad bucket (0.1 wide) -> lod counts
+  s/T_pad 0.0: {0: 1216, 1: 160}
+  s/T_pad 0.1: {1: 144}
+  s/T_pad 0.2: {1: 440}
+  s/T_pad 0.3: {1: 152}
+  s/T_pad 0.4: {1: 16}
+  s/T_pad 0.5: {1: 56}
+  s/T_pad 0.6: {1: 16}
+  s/T_pad 0.7: {1: 8}
+  s/T_pad 0.9: {1: 8}
+  s/T_pad 1.0: {0: 16}
+  s/T_pad 1.1: {0: 16}
+  s/T_pad 1.3: {0: 8}
+  s/T_pad 1.7: {0: 8}
+  s/T_pad 2.0: {0: 8}
+  s/T_pad 2.5: {0: 24}

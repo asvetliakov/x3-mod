@@ -1,0 +1,18 @@
+== /tmp/x3-bottleX3-run299/session-20260924-165153-212.log
+tower        node=28d95608 frames=24 consecutive_pairs=21 changed: basis=0 world_basis=0 world=0 node_pos=0  basis0=['00001917,00000000,ffff013c', '00000000,0000ffff,00000000', '0000fec4,00000000,00001917']
+upper_core   node=28d95888 frames=24 consecutive_pairs=21 changed: basis=0 world_basis=0 world=0 node_pos=0  basis0=['00001917,00000000,ffff013c', '00000000,0000ffff,00000000', '0000fec4,00000000,00001917']
+lower_core   node=28d95b08 frames=24 consecutive_pairs=21 changed: basis=0 world_basis=0 world=0 node_pos=0  basis0=['00001917,00000000,ffff013c', '00000000,0000ffff,00000000', '0000fec4,00000000,00001917']
+left_rings   node=28d95d88 frames=24 consecutive_pairs=21 changed: basis=0 world_basis=0 world=0 node_pos=0  basis0=['00001917,00000000,ffff013c', '00000000,0000ffff,00000000', '0000fec4,00000000,00001917']
+right_rings  node=28d96008 frames=24 consecutive_pairs=21 changed: basis=0 world_basis=0 world=0 node_pos=0  basis0=['00001917,00000000,ffff013c', '00000000,0000ffff,00000000', '0000fec4,00000000,00001917']
+== /tmp/x3-bottleX3-run300/session-20260924-171416-212.log
+tower        node=32f56490 frames=24 consecutive_pairs=21 changed: basis=0 world_basis=0 world=0 node_pos=0  basis0=['00001917,00000000,ffff013c', '00000000,0000ffff,00000000', '0000fec4,00000000,00001917']
+upper_core   node=32f56710 frames=24 consecutive_pairs=21 changed: basis=0 world_basis=0 world=0 node_pos=0  basis0=['00001917,00000000,ffff013c', '00000000,0000ffff,00000000', '0000fec4,00000000,00001917']
+lower_core   node=32f56990 frames=24 consecutive_pairs=21 changed: basis=0 world_basis=0 world=0 node_pos=0  basis0=['00001917,00000000,ffff013c', '00000000,0000ffff,00000000', '0000fec4,00000000,00001917']
+left_rings   node=32f56c10 frames=24 consecutive_pairs=21 changed: basis=0 world_basis=0 world=0 node_pos=0  basis0=['00001917,00000000,ffff013c', '00000000,0000ffff,00000000', '0000fec4,00000000,00001917']
+right_rings  node=32f56e90 frames=24 consecutive_pairs=21 changed: basis=0 world_basis=0 world=0 node_pos=0  basis0=['00001917,00000000,ffff013c', '00000000,0000ffff,00000000', '0000fec4,00000000,00001917']
+== /tmp/x3-bottleX3-run302/session-20260924-172543-212.log
+tower        node=297f2920 frames=16 consecutive_pairs=14 changed: basis=0 world_basis=0 world=0 node_pos=0  basis0=['00001917,00000000,ffff013c', '00000000,0000ffff,00000000', '0000fec4,00000000,00001917']
+upper_core   node=297f2ba0 frames=16 consecutive_pairs=14 changed: basis=0 world_basis=0 world=0 node_pos=0  basis0=['00001917,00000000,ffff013c', '00000000,0000ffff,00000000', '0000fec4,00000000,00001917']
+lower_core   node=297f2e20 frames=16 consecutive_pairs=14 changed: basis=0 world_basis=0 world=0 node_pos=0  basis0=['00001917,00000000,ffff013c', '00000000,0000ffff,00000000', '0000fec4,00000000,00001917']
+left_rings   node=297f30a0 frames=16 consecutive_pairs=14 changed: basis=0 world_basis=0 world=0 node_pos=0  basis0=['00001917,00000000,ffff013c', '00000000,0000ffff,00000000', '0000fec4,00000000,00001917']
+right_rings  node=297f3320 frames=16 consecutive_pairs=14 changed: basis=0 world_basis=0 world=0 node_pos=0  basis0=['00001917,00000000,ffff013c', '00000000,0000ffff,00000000', '0000fec4,00000000,00001917']

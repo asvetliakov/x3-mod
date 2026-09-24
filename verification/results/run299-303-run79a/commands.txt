@@ -1,0 +1,13 @@
+Run 79 A triage (run299-303, DLL d3683ced from df01f23b, 5120x1440). No Wine; logs read-only; run from this directory.
+ADDON="$HOME/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/addon"
+grep -hE '^(motion_output_taa |motion_output_taa_history_taps|terran_station_lod|gpu_sync_timing_mode)' /tmp/x3-bottleX3-run30[0-3]/session-*.log /tmp/x3-bottleX3-run299/session-*.log   # Q1/Q3 config rows
+python3 gpu_taa.py 302 303 > gpu_taa_out.txt              # Q2 per-window gpu_sync taa stages
+python3 pan_windows.py 302 303 > pan_windows_out.txt      # Q2 rest/pan class per window (camera_rotation_deg)
+python3 gpu_rest_pan.py > gpu_rest_pan_out.txt            # Q2 aggregate by class
+python3 overlay_bursts.py /tmp/x3-bottleX3-run299/session-20260924-165153-212.log "$ADDON" > overlay_bursts_run299_out.txt   # Q3 (flag31 added)
+python3 dt_windows.py 298 299 300 301 302 303 > dt_windows_out.txt   # Q4
+python3 taa_frames.py 298 299 300 301 302 303 > taa_frames_out.txt   # Q4
+python3 abnormal_rows.py 298 299 300 301 302 303 > abnormal_rows_out.txt   # Q5
+python3 exit_rows.py 299 300 301 302 303 > exit_rows_out.txt   # Q5
+python3 bolt_rows.py 299 300 301 302 303 > bolt_rows_out.txt   # Q6
+row-type diff vs run287/297/298: awk '{c[$1]++} END{for(k in c) print k, c[k]}' LOG | sort ; join -v1 against the union   # Q7

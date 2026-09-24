@@ -1,0 +1,50 @@
+== /tmp/x3-bottleX3-run302/session-20260924-172543-212.log
+frame 2845 rot_deg=0.0000 cut=0 ods_draws=17 left_rings:r1m1x2 lower_core:r1m1x3 right_rings:r1m1x2 tower:r1m1x5 upper_core:r1m1x5
+frame 2845 rot_deg=0.0000 cut=0 routed=59/97 left_rings:s77/lod1/Tpad173 lower_core:s176/lod1/Tpad207 right_rings:s130/lod1/Tpad192 tower:s267/lod0/Tpad197 upper_core:s231/lod0/Tpad213
+    1 x part=left_rings lod=1 gate=0 routed=1 matched=1 unmatched=none blend=0 atest=0 zwrite=1 ps=5f82ecac prims=20930
+    1 x part=left_rings lod=1 gate=0 routed=1 matched=1 unmatched=none blend=0 atest=1 zwrite=1 ps=5f82ecac prims=5470
+    1 x part=lower_core lod=1 gate=0 routed=1 matched=1 unmatched=none blend=0 atest=0 zwrite=1 ps=5f82ecac prims=11391
+    1 x part=lower_core lod=1 gate=0 routed=1 matched=1 unmatched=none blend=0 atest=0 zwrite=1 ps=5f82ecac prims=34590
+    1 x part=lower_core lod=1 gate=0 routed=1 matched=1 unmatched=none blend=0 atest=1 zwrite=1 ps=5f82ecac prims=15396
+    1 x part=right_rings lod=1 gate=0 routed=1 matched=1 unmatched=none blend=0 atest=0 zwrite=1 ps=5f82ecac prims=27174
+    1 x part=right_rings lod=1 gate=0 routed=1 matched=1 unmatched=none blend=0 atest=1 zwrite=1 ps=5f82ecac prims=7991
+    1 x part=tower lod=0 gate=0 routed=1 matched=1 unmatched=none blend=0 atest=0 zwrite=1 ps=5f82ecac prims=40164
+    1 x part=tower lod=0 gate=0 routed=1 matched=1 unmatched=none blend=0 atest=1 zwrite=1 ps=5f82ecac prims=11388
+    1 x part=tower lod=0 gate=0 routed=1 matched=1 unmatched=none blend=0 atest=1 zwrite=1 ps=5f82ecac prims=3036
+    1 x part=tower lod=0 gate=0 routed=1 matched=1 unmatched=none blend=0 atest=1 zwrite=1 ps=5f82ecac prims=6340
+    1 x part=tower lod=0 gate=0 routed=1 matched=1 unmatched=none blend=0 atest=1 zwrite=1 ps=f1b0e820 prims=390
+    1 x part=upper_core lod=0 gate=0 routed=1 matched=1 unmatched=none blend=0 atest=0 zwrite=1 ps=5f82ecac prims=28431
+    1 x part=upper_core lod=0 gate=0 routed=1 matched=1 unmatched=none blend=0 atest=1 zwrite=1 ps=5f82ecac prims=1786
+    1 x part=upper_core lod=0 gate=0 routed=1 matched=1 unmatched=none blend=0 atest=1 zwrite=1 ps=5f82ecac prims=2021
+    1 x part=upper_core lod=0 gate=0 routed=1 matched=1 unmatched=none blend=0 atest=1 zwrite=1 ps=5f82ecac prims=8526
+    1 x part=upper_core lod=0 gate=0 routed=1 matched=1 unmatched=none blend=0 atest=1 zwrite=1 ps=f1b0e820 prims=174
+frame 2846 rot_deg=0.0000 cut=0 ods_draws=17 left_rings:r1m1x2 lower_core:r1m1x3 right_rings:r1m1x2 tower:r1m1x5 upper_core:r1m1x5  (same census+route rows as previous frame)
+frame 2847 rot_deg=0.0000 cut=0 ods_draws=17 left_rings:r1m1x2 lower_core:r1m1x3 right_rings:r1m1x2 tower:r1m1x5 upper_core:r1m1x5  (same census+route rows as previous frame)
+frame 2848 rot_deg=0.0000 cut=0 ods_draws=17 left_rings:r1m1x2 lower_core:r1m1x3 right_rings:r1m1x2 tower:r1m1x5 upper_core:r1m1x5  (same census+route rows as previous frame)
+frame 2849 rot_deg=0.0000 cut=0 ods_draws=17 left_rings:r1m1x2 lower_core:r1m1x3 right_rings:r1m1x2 tower:r1m1x5 upper_core:r1m1x5  (same census+route rows as previous frame)
+frame 2850 rot_deg=0.0000 cut=0 ods_draws=17 left_rings:r1m1x2 lower_core:r1m1x3 right_rings:r1m1x2 tower:r1m1x5 upper_core:r1m1x5  (same census+route rows as previous frame)
+frame 2851 rot_deg=0.0000 cut=0 ods_draws=17 left_rings:r1m1x2 lower_core:r1m1x3 right_rings:r1m1x2 tower:r1m1x5 upper_core:r1m1x5  (same census+route rows as previous frame)
+frame 2852 rot_deg=0.0000 cut=0 ods_draws=17 left_rings:r1m1x2 lower_core:r1m1x3 right_rings:r1m1x2 tower:r1m1x5 upper_core:r1m1x5  (same census+route rows as previous frame)
+frame 3512 rot_deg=0.1747 cut=0 ods_draws=14 left_rings:r1m1x2 lower_core:r1m1x3 right_rings:r1m1x2 tower:r1m1x5 upper_core:r1m1x2
+frame 3512 rot_deg=0.1747 cut=0 routed=66/104 left_rings:s70/lod1/Tpad173 lower_core:s154/lod1/Tpad207 right_rings:s105/lod1/Tpad192 tower:s304/lod0/Tpad197 upper_core:s204/lod1/Tpad213
+    1 x part=left_rings lod=1 gate=0 routed=1 matched=1 unmatched=none blend=0 atest=0 zwrite=1 ps=5f82ecac prims=20930
+    1 x part=left_rings lod=1 gate=0 routed=1 matched=1 unmatched=none blend=0 atest=1 zwrite=1 ps=5f82ecac prims=5470
+    1 x part=lower_core lod=1 gate=0 routed=1 matched=1 unmatched=none blend=0 atest=0 zwrite=1 ps=5f82ecac prims=11391
+    1 x part=lower_core lod=1 gate=0 routed=1 matched=1 unmatched=none blend=0 atest=0 zwrite=1 ps=5f82ecac prims=34590
+    1 x part=lower_core lod=1 gate=0 routed=1 matched=1 unmatched=none blend=0 atest=1 zwrite=1 ps=5f82ecac prims=15396
+    1 x part=right_rings lod=1 gate=0 routed=1 matched=1 unmatched=none blend=0 atest=0 zwrite=1 ps=5f82ecac prims=27174
+    1 x part=right_rings lod=1 gate=0 routed=1 matched=1 unmatched=none blend=0 atest=1 zwrite=1 ps=5f82ecac prims=7991
+    1 x part=tower lod=0 gate=0 routed=1 matched=1 unmatched=none blend=0 atest=0 zwrite=1 ps=5f82ecac prims=40164
+    1 x part=tower lod=0 gate=0 routed=1 matched=1 unmatched=none blend=0 atest=1 zwrite=1 ps=5f82ecac prims=11388
+    1 x part=tower lod=0 gate=0 routed=1 matched=1 unmatched=none blend=0 atest=1 zwrite=1 ps=5f82ecac prims=3036
+    1 x part=tower lod=0 gate=0 routed=1 matched=1 unmatched=none blend=0 atest=1 zwrite=1 ps=5f82ecac prims=6340
+    1 x part=tower lod=0 gate=0 routed=1 matched=1 unmatched=none blend=0 atest=1 zwrite=1 ps=f1b0e820 prims=390
+    1 x part=upper_core lod=1 gate=0 routed=1 matched=1 unmatched=none blend=0 atest=0 zwrite=1 ps=5f82ecac prims=28431
+    1 x part=upper_core lod=1 gate=0 routed=1 matched=1 unmatched=none blend=0 atest=1 zwrite=1 ps=5f82ecac prims=12507
+frame 3513 rot_deg=0.1747 cut=0 ods_draws=14 left_rings:r1m1x2 lower_core:r1m1x3 right_rings:r1m1x2 tower:r1m1x5 upper_core:r1m1x2  (same census+route rows as previous frame)
+frame 3514 rot_deg=0.1747 cut=0 ods_draws=14 left_rings:r1m1x2 lower_core:r1m1x3 right_rings:r1m1x2 tower:r1m1x5 upper_core:r1m1x2  (same census+route rows as previous frame)
+frame 3515 rot_deg=0.1747 cut=0 ods_draws=14 left_rings:r1m1x2 lower_core:r1m1x3 right_rings:r1m1x2 tower:r1m1x5 upper_core:r1m1x2  (same census+route rows as previous frame)
+frame 3516 rot_deg=0.1747 cut=0 ods_draws=14 left_rings:r1m1x2 lower_core:r1m1x3 right_rings:r1m1x2 tower:r1m1x5 upper_core:r1m1x2  (same census+route rows as previous frame)
+frame 3517 rot_deg=0.1747 cut=0 ods_draws=14 left_rings:r1m1x2 lower_core:r1m1x3 right_rings:r1m1x2 tower:r1m1x5 upper_core:r1m1x2  (same census+route rows as previous frame)
+frame 3518 rot_deg=0.1747 cut=0 ods_draws=14 left_rings:r1m1x2 lower_core:r1m1x3 right_rings:r1m1x2 tower:r1m1x5 upper_core:r1m1x2  (same census+route rows as previous frame)
+frame 3519 rot_deg=0.1747 cut=0 ods_draws=14 left_rings:r1m1x2 lower_core:r1m1x3 right_rings:r1m1x2 tower:r1m1x5 upper_core:r1m1x2  (same census+route rows as previous frame)
