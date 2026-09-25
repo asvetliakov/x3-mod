@@ -1,0 +1,26 @@
+crop x2480-2810 y560-1220 frames 6599..6606 MG=6.0 JUMP=4.0 DET=4.0
+motion disp (to previous frame, px dy,dx): 6599:(-0.98,+0.13) 6600:(-8.25,-0.37) 6601:(-9.62,+0.45) 6602:(-10.06,-0.02) 6603:(-10.89,+0.36) 6604:(-9.90,+0.13) 6605:(-9.10,+0.99) 6606:(-8.05,+0.65)
+shifts (i->i+1): 6599:(8, 0) 6600:(10, 0) 6601:(10, 0) 6602:(11, 0) 6603:(10, 0) 6604:(9, -1) 6605:(8, -1)
+[hdr] mean over pairs: edge_mean_min3 1.883 edge_jump_frac 0.094 edge_mean_direct 8.398 edge_jump>8 0.048 edge_jump>16 0.024 owned_min3 1.710 owned_jump 0.080 thin_min3 nan thin_jump nan other_min3 nan other_jump nan remainder_min3 0.117 remainder_jump 0.006 | edge_jump_frac per pair 0.094 0.097 0.097 0.092 0.090 0.094 0.092
+[taa] mean over pairs: edge_mean_min3 0.437 edge_jump_frac 0.009 edge_mean_direct 1.293 edge_jump>8 0.002 edge_jump>16 0.001 owned_min3 0.342 owned_jump 0.006 thin_min3 nan thin_jump nan other_min3 nan other_jump nan remainder_min3 0.200 remainder_jump 0.005 | edge_jump_frac per pair 0.001 0.003 0.006 0.009 0.014 0.016 0.012
+[present] mean over pairs: edge_mean_min3 0.334 edge_jump_frac 0.008 edge_mean_direct 1.141 edge_jump>8 0.002 edge_jump>16 0.001 owned_min3 0.212 owned_jump 0.004 thin_min3 nan thin_jump nan other_min3 nan other_jump nan remainder_min3 0.441 remainder_jump 0.008 | edge_jump_frac per pair 0.004 0.006 0.007 0.008 0.010 0.011 0.009
+[hdr] sparkles (plant px, margin 6.0) per interior frame [342, 370, 341, 392, 352, 354] total 2151; score p99 6.00 p99.9 59.13 max 104.8
+[taa] sparkles (plant px, margin 6.0) per interior frame [2, 2, 2, 8, 14, 18] total 46; score p99 0.01 p99.9 1.06 max 29.2
+[present] sparkles (plant px, margin 6.0) per interior frame [2, 1, 2, 8, 16, 20] total 49; score p99 0.00 p99.9 0.43 max 48.6
+taa tabulation (sum over interior frames): base class | flag8 held1-7 out_border2 out_far block_box(marker) inplace7x7(no marker) clip3x3
+  sparkle  owned      |       0       0       0      46       0       0      46
+  sparkle  thin       |       0       0       0       0       0       0       0
+  sparkle  other      |       0       0       0       0       0       0       0
+  sparkle  remainder  |       0       0       0       0       0       0       0
+  edge     owned      |       0       0       0  109855       0       0  109855
+  edge     thin       |       0       0       0       0       0       0       0
+  edge     other      |       0       0       0       0       0       0       0
+  edge     remainder  |       0       0       0   32464       0       0   32464
+  plant    owned      |       0       0       0  163747       0       0  163747
+  plant    thin       |       0       0       0       0       0       0       0
+  plant    other      |       0       0       0       0       0       0       0
+  plant    remainder  |       0       0       0   51173       0       0   51173
+farw (f0 60 f1 68) on owned out-of-region plant px: p50 1.000 ==1 1.000; on taa sparkles (n 46): p50 1.000
+taa sparkle rate per 10k owned out-of-region plant px by farw bin [0,.25) [.25,.5) [.5,.75) [.75,1]: 0/0=0.00 0/0=0.00 0/0=0.00 46/163747=2.81
+on the taa sparkles (screen-gate figures valid under a pan only: at rest |disp| is the jitter): screen speed |disp| p50 10.56 px/frame; keep under the screen gate (Run83) p50 0.9000, under the camera gate with openC=1 (Run84, world-static, inferred) p50 0.9846; current share (1-keep) 0.1000 vs 0.0154
+camera-gate closure q (openC <= 1 - q/4, decoded from taa_age): owned out-of-region plant px q=0 0.998 q>=1 0.002; taa sparkles q=0 45 q>=1 1; sparkles in farw bin 3 with q>=1 1 of 46

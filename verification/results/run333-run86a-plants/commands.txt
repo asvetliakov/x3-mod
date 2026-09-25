@@ -1,0 +1,12 @@
+Run 86 A launch 1 (run333, /tmp/x3-bottleX3-run333, Run86 DLL, --taa-debug) fog-band plants. Read-only, no Wine.
+Log facts (grep on session-20260925-164350-212.log): motion_output_taa row far_f0=60.0 far_f1=68.0 far_clip=7x7 far_clip_default=1
+far_gate=camera default=1. Bursts: 5527..5534 rest (camera_state view r** and t identical at 5527/5530/5534, k=1.68647);
+6599..6606 pan (r** rotate and t moves 8837->7742 over the burst, k=1.46188; motion disp -8..-11 px/frame dy). p32 -6.00001812, p00 0.4999979.
+Crops from ../run327-run83b-sparkles/locate_plants.py 333 {5527,6599,6606} (main plant cluster x2571-2764 y429-923 at rest; x2555-2756 y609-1181 in the pan).
+run_sparkles.py = copy of ../run329-run84a-rest-sparkles/run_sparkles.py (unchanged).
+export RUN=333 AGEDIR=/tmp/x3-bottleX3-run333 F0=60 F1=68
+python3 run_sparkles.py 2500 380 2830 960 5527 8 > sparkles_333_rest_5527_out.txt
+EXSHIP=8 python3 run_sparkles.py 2480 560 2810 1220 6599 8 > sparkles_333_pan_6599_exship8_out.txt
+python3 edge_dim.py 333 2500 380 2830 960 5527 8; python3 edge_dim.py 332 2940 300 3270 880 2826 8;
+python3 edge_dim.py 333 2480 560 2810 1220 6599 8; python3 edge_dim.py 332 2480 450 2810 1045 3631 8   > edge_dim_out.txt
+(stderr dropped: numpy overflow warnings on sentinel texels). Burst-mean lines of edge_dim are valid at rest only (pan frames unaligned).

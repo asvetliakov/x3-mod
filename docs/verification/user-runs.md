@@ -48,6 +48,7 @@ carries an empty table, so the launch line reads ok). Launch lines to expect on 
    clear of the ship. Then the Terran lattice stand and a hull with masts under a pan, and one far ship crossing in front of a far
    station (trail behind the mover?). Exit through the menu.
    Rows: `motion_output_taa ... far_clip=7x7 default=1 far_f0=60.0 far_f1=68.0`, `thin_vote_frame ... max_unvoted_fraction=`.
+   **Done (run333): sparkles fixed, no issues (user); measured rest 120 -> 1, pan 65 -> 46 (unexplained remainder, invisible).**
 2. **Combat capture + effects look** (launch 2: stand command + `--effects-stage --effects-shields --effects-census`): a sector where
    you can pick a fight. Chase view. First say how the new bolts and shield hits look (too bright, too big, flicker, trails behind
    bolts, exposure pumping when a shell fills the screen), then the five F8s the design asks for

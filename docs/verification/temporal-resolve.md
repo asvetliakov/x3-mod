@@ -3257,3 +3257,16 @@ the screen gate the 0.4 px line's one-frame margin is 19.17 codes at 10.5 px/fra
 Reason: at the base weight 0.9 each frame that samples a sub-pixel line puts 10 % of it into the output, which no history clip removes; the camera gate holds 0.985 for world-static content under a pan, a 1.5 % leak. Pins: the
 0.4 px screen row at 10.5 px/frame is asserted above the 6-code margin (expected 1); the other five screen rows are
 informational. Lattice 597 -> 598 numerical expected [I] (not rerun with this pin set).
+
+## 2026-09-25 Run 86 A launch 1 (run333, Run86 DLL 27881669, far clip 7x7 + far ramp 60/68 default): plants accepted
+
+User: "Shimmering/sparkles are fixed. No issues noticed." Measured on the resolved dumps (scripts and outputs in
+`verification/results/run333-run86a-plants/`, same crops/margin as run327/run332): rest burst (frames 5527-5534) TAA sparkles
+120 -> **1** (4.68 -> 0.05 per 10k owned plant pixels), farw 1.0 on every plant pixel (keep 0.985 inferred, camera closure
+q=0 on 99.8-100 %); pan burst (frames 6599-6606, 8-11 px/frame) 65 -> **46** (3.28 -> 2.81 per 10k, per frame 2,2,2,8,14,18:
+the second half of the pan), all at farw=1, unexplained (the open pan class from run332; not visible to the user). Edge dimming
+(output minus input, owned plant edge pixels, p10): rest single frame -6.21 vs -5.67, 8-frame mean -0.80 vs -1.54, pan -5.58 vs
+-5.58: the 7x7 clip's cost is bounded at about 1 code at p10 (different views/exposures, k 1.69 vs 1.94; a same-view A/B would
+need a launch with `--taa-far-clip 3x3`). Rows: `far_f0=60.0 far_f1=68.0 far_clip=7x7 far_clip_default=1 far_gate=camera default=1`,
+`max_unvoted_fraction=0.0000` (the plant draws' thin fraction is 0: the vote could never have covered them). Accepted; the far
+clip and ramp stay the defaults.

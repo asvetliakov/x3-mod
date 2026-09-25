@@ -1,0 +1,8 @@
+run333 x2500-2830 y380-960 5527..5534 per-frame taa-hdr on edge px n=169366: p10 -6.21 p25 -1.90 p50 -0.31 mean 0.45
+  burst-mean taa-hdr on edge px present in all frames n=12721: p10 -0.80 p50 -0.39 mean 0.54; on bright line side (mean hdr above local mean by >4) n=2075: p10 -0.65 p50 2.08
+run332 x2940-3270 y300-880 2826..2833 per-frame taa-hdr on edge px n=272276: p10 -5.67 p25 -1.65 p50 0.07 mean -0.15
+  burst-mean taa-hdr on edge px present in all frames n=23353: p10 -1.54 p50 -0.03 mean -0.19; on bright line side (mean hdr above local mean by >4) n=3749: p10 -11.33 p50 -1.23
+run333 x2480-2810 y560-1220 6599..6606 per-frame taa-hdr on edge px n=153334: p10 -5.58 p25 -1.75 p50 0.45 mean 1.41
+  burst-mean taa-hdr on edge px present in all frames n=137: p10 -5.51 p50 1.98 mean 1.00; on bright line side (mean hdr above local mean by >4) n=22: p10 -12.21 p50 -7.21
+run332 x2480-2810 y450-1045 3631..3638 per-frame taa-hdr on edge px n=196084: p10 -5.58 p25 -1.58 p50 0.39 mean 0.60
+  burst-mean taa-hdr on edge px present in all frames n=26: p10 -3.15 p50 4.50 mean 3.88; on bright line side (mean hdr above local mean by >4) n=4: p10 -10.30 p50 -6.44
