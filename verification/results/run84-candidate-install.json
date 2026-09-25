@@ -1,0 +1,47 @@
+{
+ "candidate": {
+  "dll": "/tmp/x3-run84-candidate/build/d3d9.dll",
+  "sha256": "189a34f08b0b2bacf53286e0b2d284a4303ac87713e0b0e90af68805ef23e75d",
+  "bytes": 56854000,
+  "commit": "46cd4f9d",
+  "qualification": "verification/results/run84-candidate-qualification.json"
+ },
+ "command": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3-run84-candidate/build/d3d9.dll",
+ "cwd": "/Users/asvetl/x3-mod",
+ "exit": 0,
+ "installed_at": "2026-09-25T07:15+04:00",
+ "installed": {
+  "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
+  "sha256": "189a34f08b0b2bacf53286e0b2d284a4303ac87713e0b0e90af68805ef23e75d",
+  "bytes": 56854000,
+  "verified": "sha256 and size read back after install"
+ },
+ "unchanged": {
+  "X3AP.exe": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+  "cxbottle.conf": "cc5d6c00a8afccaf88cbae1a7c46040db513eb163a52693287a3d29aca828e0c"
+ },
+ "previous": {
+  "dll": "/tmp/x3-run83-candidate/build/d3d9.dll",
+  "sha256": "f0259ceb6ef3eac7a407c49762dda9a182898d27ae4e32eb242ec922c1a52b8e",
+  "bytes": 56846411,
+  "commit": "80394271"
+ },
+ "rollback": {
+  "dll": "/tmp/x3-run83-candidate/build/d3d9.dll",
+  "sha256": "f0259ceb6ef3eac7a407c49762dda9a182898d27ae4e32eb242ec922c1a52b8e",
+  "bytes": 56846411,
+  "records": [
+   "verification/results/run83-candidate-qualification.json",
+   "verification/results/run83-candidate-install.json"
+  ],
+  "then": "/tmp/x3-run82-candidate/build/d3d9.dll cd8ef8e4\u2026"
+ },
+ "game_running_at_install": false,
+ "game_data": "fleet overlay install-fleet4 (620 bodies) unchanged",
+ "changes_vs_previous": [
+  "--cursor-reassert arms once at launch; --window-trace records from the first Present (b45b3735)",
+  "--sun-occlusion launcher default with the core dimming; sun_occlusion_config row gains default= (50a5f98e)",
+  "--taa-far-gate camera|screen, default camera: the far stabiliser weight follows the camera-relative openness (46cd4f9d; Run 84 A A/B decides)",
+  "--original-fill launcher default 0.01 (07cdeb45; launcher only)"
+ ]
+}

@@ -36,7 +36,7 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 
 ## Run 84 (open)
 
-**Run 84 A (queued 2026-09-25; Run84 DLL from main after the far-gate merge; overlay install-fleet4 unchanged).**
+**Run 84 A (queued 2026-09-25 07:15; Run84 DLL `189a34f0…` from 46cd4f9d installed 07:15; overlay install-fleet4 unchanged).**
 New in this build: `--taa-far-gate camera|screen` (default camera: the far stabiliser's 0.985 weight follows the camera-relative
 test instead of screen speed, which removes the one-frame sparkles on far plant edges under a pan and softens far static content
 during fractional pans; `screen` = the Run83 behaviour), `--sun-occlusion` on by default with the core dimming (`--no-sun-occlusion`
@@ -66,4 +66,4 @@ env -u CX_DEBUGMSG X3M_FIXTURE_BOTTLE=X3 X3M_MOTION_FRAME_LOG=1 /Users/asvetl/x3
 
 To remove the overlay: delete `addon/05.cat`, `05.dat`, `05.x3m-lod.json`, `06.*` and `x3m-lod-batch*.json/txt`; the originals are untouched.
 
-Run 84 A is the only queued run (it flies once the Run84 candidate is installed). Completed instructions for Runs 73-83 are in the [archive](../archive/user-runs-completed.md). Completed instructions for Runs 73-82 are in the [archive](../archive/user-runs-completed.md).
+Run 84 A is the only queued run. Completed instructions for Runs 73-83 are in the [archive](../archive/user-runs-completed.md). Completed instructions for Runs 73-82 are in the [archive](../archive/user-runs-completed.md).
