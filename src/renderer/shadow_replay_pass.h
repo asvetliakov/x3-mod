@@ -1,20 +1,22 @@
 #pragma once
-// One-cascade depth replay of the frame's own caster candidates into a private
-// sun-space map (docs/architecture/shadow-replay-gates.md, section 2). The
-// class owns the map (R32F render target, or an unreadable X8R8G8B8 target
-// with colour writes off when R32F is not a render-target format), the depth
-// attachment (D24X8, else D16), the two authored programs and a D3DSBT_ALL
-// state block, and re-issues the candidates' draws with their own buffers,
-// declaration and cull mode under an authored vertex program. Nothing samples
-// the map; the caller (MotionOutput) decides the frame, proves the leases and
-// serializes rendering, Reset and teardown. Documented D3D9 only.
-// Cascades (docs/architecture/shadow-cascades.md): attach_cascades gives the
-// pass up to five maps (shadow_replay_maps_max) of their own sizes and one depth attachment of the
-// largest size (a depth-stencil surface larger than the render target is
-// documented D3D9); execute_cascades fills any subset of them in one
-// transaction (one block capture/apply); per map the pass keeps the basis the
-// owner retained for it, cleared by before_reset, detach and at the start of a
-// transaction that rewrites the map, so a stale or partial map is never applied.
+// Depth replay of the frame's own caster candidates into private sun-space
+// cascade maps (docs/architecture/shadow-replay-gates.md, section 2;
+// docs/architecture/shadow-cascades.md). The class owns the maps (R32F render
+// targets, or unreadable X8R8G8B8 targets with colour writes off when R32F is
+// not a render-target format), the depth attachment (D24X8, else D16), the
+// authored programs and a D3DSBT_ALL state block, and re-issues the
+// candidates' draws with their own buffers, declaration and cull mode under an
+// authored vertex program. The caller (MotionOutput) decides the frame, proves
+// the leases and serializes rendering, Reset and teardown. Documented D3D9 only.
+// attach_cascades gives the pass up to five maps (shadow_replay_maps_max) of
+// their own sizes and one depth attachment of the largest size (a
+// depth-stencil surface larger than the render target is documented D3D9);
+// execute_cascades fills any subset of them in one transaction (one block
+// capture/apply); per map the pass keeps the basis the owner retained for it,
+// cleared by before_reset, detach and at the start of a transaction that
+// rewrites the map, so a stale or partial map is never applied. The single
+// camera-centred map (attach/execute) was removed on 2026-09-25
+// (docs/architecture/directional-shadows.md, "Single map removed").
 #include <cstdint>
 #include <d3d9.h>
 #include "shadow_replay_projection.h"
@@ -30,7 +32,6 @@ struct ShadowReplayDraw {
     INT base_vertex = 0;
     bool indexed = false;
     DWORD cull_mode = D3DCULL_NONE;
-    float light_rows[16]{}; // shadow_replay_light_rows output: c0-c3 of the authored program
     // Alpha-tested caster (X3M_SHADOW_ALPHA_CASTERS; docs/architecture/shadow-replay-gates.md,
     // "Alpha-tested casters"): the draw's own stage-0 texture (borrowed: the caller holds
     // the lease) sampled at the declaration's TEXCOORD0.xy, the pixel discarded where its
@@ -64,8 +65,8 @@ struct ShadowReplayResult {
     ShadowReplayStage failed = ShadowReplayStage::None;
     unsigned drawn = 0; // draws re-issued before the first failure
     unsigned drawn_map[shadow_replay_maps_max]{}; // execute_cascades: per map
-    // Native non-draw device calls the pass made per map (execute_cascades; the
-    // single map counts in [0]): the map's bind, viewport and Clear, then per
+    // Native non-draw device calls the pass made per map (execute_cascades):
+    // the map's bind, viewport and Clear, then per
     // issue the declaration, stream, indices, cull mode and constant rows. The
     // transaction's block capture/restore and scene calls are not counted. The
     // engine's per-draw state calls (frame_timing state_calls) never include
@@ -79,12 +80,11 @@ public:
     ShadowReplayPass(const ShadowReplayPass&) = delete;
     ShadowReplayPass& operator=(const ShadowReplayPass&) = delete;
     // Device and native table borrowed (no AddRef). Qualifies the formats with
-    // CheckDeviceFormat / CheckDepthStencilMatch and creates the two programs
-    // (surviving Reset). A refusal leaves the pass detached with caps().reason.
-    HRESULT attach(IDirect3DDevice9*, void* const* native, const D3DCAPS9&, D3DFORMAT adapter_format, unsigned size) noexcept;
-    // The same with `count` (1..4) maps of their own sizes. A size above
-    // MaxTextureWidth/Height is halved until it fits (caps().halved counts the
-    // maps affected; size(i) is what was kept), and refused below 64.
+    // CheckDeviceFormat / CheckDepthStencilMatch and creates the programs
+    // (surviving Reset) for `count` (1..shadow_replay_maps_max) maps of their
+    // own sizes. A size above MaxTextureWidth/Height is halved until it fits
+    // (caps().halved counts the maps affected; size(i) is what was kept), and
+    // refused below 64. A refusal leaves the pass detached with caps().reason.
     HRESULT attach_cascades(IDirect3DDevice9*, void* const* native, const D3DCAPS9&, D3DFORMAT adapter_format, const unsigned* sizes, unsigned count) noexcept;
     // Whether the next attach also creates the alpha-tested caster programs (kept across
     // detach and attach; default off, then nothing differs from the depth-only pass).
@@ -93,14 +93,12 @@ public:
     // The map and its depth attachment (default pool), created lazily and
     // rebuilt after Reset; a failure releases every partial object.
     HRESULT prepare() noexcept;
-    // One transaction: capture the block and the bindings, bind the map,
-    // Clear, replay every draw, restore. A failed step restores and reports
-    // its stage; a lost device stops restoration as the other passes do.
-    HRESULT execute(const ShadowReplayDraw* draws, unsigned count, bool caller_scene_open, bool caller_stateblock_recording,
-                    ShadowReplayResult*) noexcept;
-    // One transaction over several maps: per list bind the map (the shared
-    // depth attachment stays), Clear, issue its draws. Every listed map's
-    // retained basis is invalidated first; the owner retains again on success.
+    // One transaction over the listed maps: capture the block and the
+    // bindings, per list bind the map (the shared depth attachment stays),
+    // Clear, issue its draws, restore. Every listed map's retained basis is
+    // invalidated first; the owner retains again on success. A failed step
+    // restores and reports its stage; a lost device stops restoration as the
+    // other passes do.
     HRESULT execute_cascades(const ShadowReplayDraw* draws, unsigned draw_count, const ShadowReplayMapList* lists, unsigned list_count,
                              bool caller_scene_open, bool caller_stateblock_recording, ShadowReplayResult*) noexcept;
     void before_reset() noexcept;
@@ -117,10 +115,7 @@ public:
     IDirect3DSurface9* map_surface(unsigned map = 0) const noexcept { return map < shadow_replay_maps_max ? map_surfaces_[map] : nullptr; } // borrowed; null until prepared
     // What the scene-end apply quad consumes (legacy-sun-application.md,
     // section 2): the map as a texture (borrowed; null until prepared or
-    // after before_reset) and the frame's view -> sun-space rows
-    // (shadow_replay_view_rows), which the owner records per frame beside
-    // the draws it replays; the rows are invalidated by before_reset and
-    // detach so a stale frame can never be applied.
+    // after before_reset).
     IDirect3DTexture9* map_texture(unsigned map = 0) const noexcept { return map < shadow_replay_maps_max ? maps_[map] : nullptr; }
     // The basis a map was last replayed with (the apply composes it with the
     // current camera); null while the map is absent: never replayed, rewritten
@@ -129,22 +124,16 @@ public:
     void retain(unsigned map, const ShadowReplayBasis& basis, std::uint64_t frame, unsigned draws) noexcept {
         if (map < count_ && basis.valid && maps_[map]) { retained_[map].basis = basis; retained_[map].frame = frame; retained_[map].draws = draws; retained_[map].valid = true; }
     }
-    // Everything a past replay published: the per-cascade bases and the single
-    // map's view rows, so no consumer (the apply quad, the F8 dump) can read a
-    // map the current state no longer stands behind.
-    void invalidate_retained() noexcept { for (auto& r : retained_) r.valid = false; view_rows_valid_ = false; }
+    // Everything a past replay published (the per-cascade bases), so no
+    // consumer (the apply quad, the F8 dump) can read a map the current state
+    // no longer stands behind.
+    void invalidate_retained() noexcept { for (auto& r : retained_) r.valid = false; }
     void invalidate_retained(unsigned map) noexcept { if (map < shadow_replay_maps_max) retained_[map].valid = false; }
-    const float* view_rows() const noexcept { return view_rows_valid_ ? view_rows_ : nullptr; }
-    void set_view_rows(const float rows[12]) noexcept {
-        view_rows_valid_ = rows != nullptr;
-        if (rows) for (unsigned i = 0; i < 12; ++i) view_rows_[i] = rows[i];
-    }
 private:
     struct SavedState;
     template<class Fn> Fn call(unsigned slot) const noexcept {
         return reinterpret_cast<Fn>((vtable_ ? vtable_ : *reinterpret_cast<void* const* const*>(device_))[slot]);
     }
-    HRESULT attach_maps(IDirect3DDevice9*, void* const* native, const D3DCAPS9&, D3DFORMAT adapter_format, const unsigned* sizes, unsigned count, bool halve) noexcept;
     HRESULT ensure_block() noexcept;
     HRESULT bind() noexcept;
     HRESULT bind_map(unsigned map) noexcept;
@@ -170,8 +159,6 @@ private:
     IDirect3DSurface9* depth_ = nullptr;
     unsigned sizes_[shadow_replay_maps_max]{}, count_ = 0, depth_size_ = 0, render_targets_ = 0, allocations_ = 0;
     ShadowReplayRetained retained_[shadow_replay_maps_max]{};
-    float view_rows_[12]{};
-    bool view_rows_valid_ = false;
     bool reset_pending_ = false;
 };
 } // namespace x3m::renderer

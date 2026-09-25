@@ -48,8 +48,8 @@ inline void quad_vertices(UINT width, UINT height, QuadVertex (&out)[4]) noexcep
 // uv = ((i + 1/2) / W, (j + 1/2) / H) (right for point-sampling the texel),
 // so uv * 2 - 1 lies half a pixel right of and below the pixel: (+1/W, -1/H)
 // in NDC. A program forming the view position as ((ndc.x - m20) z / m00,
-// (ndc.y - m21) z / m11) from ndc = uv * 2 - 1 (sun_shadow_apply_ps.hlsl,
-// sun_shadow_cascade_apply_ps.hlsl) removes it by adding these two terms to
+// (ndc.y - m21) z / m11) from ndc = uv * 2 - 1
+// (sun_shadow_cascade_apply_ps.hlsl) removes it by adding these two terms to
 // the m20 / m21 it latches. Without them every receiver sits z / (W m00)
 // beside the surface RT2 sampled, an error that grows with view distance
 // (directional-shadows.md, "Run 39 A (run115) diagnosis").

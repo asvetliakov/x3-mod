@@ -40,6 +40,9 @@ NEW = {'X3M_MUSIC_KEEP': '1', 'X3M_SHADOW_ALPHA_CASTERS': '1'}
 # Intended functional difference: the promoted map sizes (user decision 2026-09-25) differ from the Run 84 A stand's
 # explicit 2048 x5, which an explicit --shadow-cascade-sizes still selects.
 SIZES = {'X3M_SHADOW_CASCADE_SIZES': ['2048,2048,2048,2048,2048', '2048,4096,4096,4096,2048']}
+# The single map and its four variables were removed on 2026-09-25 (docs/architecture/directional-shadows.md, "Single map
+# removed"): the recorded Run 84 A stand still carried them, the launcher no longer sends them.
+REMOVED = {'X3M_SHADOW_REPLAY_SIZE': '1024', 'X3M_SHADOW_REPLAY_EXTENT': '250.0', 'X3M_SHADOW_REPLAY_DEPTH_HALF': '512.0', 'X3M_SHADOW_REPLAY_CAP': '512'}
 
 
 def dry_run(arguments, frame_log):
@@ -75,8 +78,9 @@ def main():
     checks = {
         'empty_vs_stand only telemetry/debug + the promoted map sizes': set(result['empty_vs_stand']) <= TELEMETRY | set(SIZES)
             and result['empty_vs_stand'].get('X3M_SHADOW_CASCADE_SIZES') == SIZES['X3M_SHADOW_CASCADE_SIZES'][::-1],
-        'stand vs recorded only the two new defaults': result['stand_vs_recorded_stand'] == {k: [None if k == 'X3M_MUSIC_KEEP' else '0', v] for k, v in NEW.items()},
-        'empty vs recorded: telemetry/debug + the two new defaults + the map sizes': set(result['empty_vs_recorded_stand']) <= TELEMETRY | set(NEW) | set(SIZES)
+        'stand vs recorded only the two new defaults and the removed single-map variables': result['stand_vs_recorded_stand'] == {**{k: [None if k == 'X3M_MUSIC_KEEP' else '0', v] for k, v in NEW.items()}, **{k: [v, None] for k, v in REMOVED.items()}},
+        'empty vs recorded: telemetry/debug + the two new defaults + the map sizes + the removed single-map variables': set(result['empty_vs_recorded_stand']) <= TELEMETRY | set(NEW) | set(SIZES) | set(REMOVED)
+            and all(result['empty_vs_recorded_stand'][k] == [v, None] for k, v in REMOVED.items())
             and all(result['empty_vs_recorded_stand'][k][1] == v for k, v in NEW.items())
             and result['empty_vs_recorded_stand'].get('X3M_SHADOW_CASCADE_SIZES') == SIZES['X3M_SHADOW_CASCADE_SIZES'],
         'same X3AP switches': empty_switches == stand_switches == short_switches == recorded['exe_switches'],

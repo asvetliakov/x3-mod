@@ -4,7 +4,7 @@
 // free of D3D types: the caller passes the draw's clip rows (the rows the
 // same-draw motion output latches: clip.x = rows[0..3] . (x, y, z, 1), clip.y =
 // rows[4..7], clip.z = rows[8..11], clip.w = rows[12..15], the same convention
-// shadow_replay_bounds_verdict reads) and the box the shadow route already
+// shadow_cascade_bounds_mask reads) and the box the shadow route already
 // computed, so nothing here transforms geometry a second time.
 #include <cmath>
 

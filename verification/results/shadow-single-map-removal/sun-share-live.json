@@ -1,0 +1,48 @@
+{
+ "passed": true,
+ "bottle": {
+  "name": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+   "FEX_X87REDUCEDPRECISION": "1",
+   "WINEMSYNC": "1"
+  },
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "inputs": {
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a48228908a47c2357/verification/probe/build/motion_output_fixture.exe": "5d48006dc294eb4931b198ded4286860cfa605611ecedc99412854587164f341",
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a48228908a47c2357/verification/probe/build/motion-output-seam/d3d9.dll": "81d729bebc1c6375cf9f80bdefe61dcf544a9728663a32e791935d078aa3affa",
+  "/private/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin": "bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c",
+  "/private/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin": "9fd15484fe419295cfb3534bd4f978efc8855c1e3e6a06e776533497dad48dc0"
+ },
+ "cases": {
+  "shadow_apply_cascades": {
+   "frames": 6,
+   "exact_taa_frames": 6,
+   "refusal_frames": 1,
+   "apply_frames": 4,
+   "receiver_depth": "linear",
+   "rt2_format": 116,
+   "params_lines_linear": 2,
+   "apply_skipped": {
+    "0": "replay",
+    "2": "lane"
+   },
+   "shadowed_pixels_min": 3969,
+   "elapsed_seconds": 4.732221833,
+   "cascades": {}
+  },
+  "shadow_apply_no_cascades": {
+   "frames": 6,
+   "exact_taa_frames": 6,
+   "refusal_frames": 1,
+   "apply_frames": 0,
+   "apply_attempts": 0,
+   "no_map": true,
+   "receiver_depth": "linear",
+   "rt2_format": 116,
+   "params_lines_linear": 0,
+   "elapsed_seconds": 1.8109775409999997
+  }
+ }
+}

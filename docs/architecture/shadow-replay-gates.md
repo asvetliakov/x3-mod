@@ -241,7 +241,8 @@ all-zero line):
   128-entry direct-mapped table, so a repeated binding costs a table probe.
 - `leased`: managed candidates whose buffer-lock views were `known` at the draw and were
   recorded (1024 records of storage since 2026-09-17, fixed arrays; the per-frame cap `X3M_SHADOW_REPLAY_CAP`,
-  1..1024, default 512, `--shadow-replay-cap`, is the replay budget: `capped` counts managed candidates beyond it, and
+  1..1024, default 512, `--shadow-replay-cap`, was the single map's replay budget (removed 2026-09-25 with the single
+  map: without cascades the counter keeps the fixed cap 512, a cascade set has its own caps): `capped` counts managed candidates beyond it, and
   `overflow` those beyond the storage, always 0 while the cap is at most the storage).
   Drop order is submission order: the first `cap` managed candidates of the frame are
   recorded and the later ones dropped, whatever their bounds, so a frame over the cap
@@ -318,7 +319,9 @@ triangles; production keeps 6). Evidence: [directional-shadows.md](../verificati
 ### Implemented: cascade-0 depth replay fixture (2026-09-16)
 
 Option `--shadow-replay-depth` (`X3M_SHADOW_REPLAY_DEPTH=1`; default off) with
-`--shadow-replay-size N` (`X3M_SHADOW_REPLAY_SIZE`, 64..4096, default 1024). It implies the
+`--shadow-replay-size N` (`X3M_SHADOW_REPLAY_SIZE`, 64..4096, default 1024; removed 2026-09-25 with
+the single map: the depth replay now replays into the cascade set alone, [directional-shadows.md](directional-shadows.md),
+"Single map removed"). It implies the
 counter above and shares its two prerequisites, `--motion-output --ownership`; no TAA, HDR,
 linear-material or lane prerequisite. Funded after user run 26 (`/tmp/x3-bottleX3-run65`)
 passed the four §3 predicates (slice0 p50 8, `managed == slice0` and `quiet == leased` on

@@ -1,9 +1,9 @@
 // Scene-end sun-shadow application over up to five cascades
-// (docs/architecture/shadow-cascades.md, section 2). The single-map quad
-// (sun_shadow_apply_ps.hlsl) with the map chosen per pixel: RT2 read, view
-// depth (RT2.b, the interpolated clip w of the A32B32G32R32F lane,
-// docs/architecture/shadow-receiver-depth.md) and view
-// position as there; the sun-space position of every cascade
+// (docs/architecture/shadow-cascades.md, section 2; the only apply program
+// since the single-map one was removed on 2026-09-25) with the map chosen per
+// pixel: RT2 read, view depth (RT2.b, the interpolated clip w of the
+// A32B32G32R32F lane, docs/architecture/shadow-receiver-depth.md) and view
+// position; the sun-space position of every cascade
 // (three dp4 each) and ddx/ddy of the *view position* once, before any branch
 // (the sun rows are affine in the view position, so each cascade's map-UV and
 // depth derivatives are arithmetic on those six values, valid inside a
@@ -14,7 +14,7 @@
 // cascade contains the pixel, 1 (lit) for the last cascade (the distance
 // fade), and f_i itself otherwise. An absent cascade (flag valid = 0: not
 // replayed, or retained from before a Reset or a refused frame) counts as lit.
-// Each cascade's 3x3 PCF is the single-map kernel (rotated by the jitter
+// Each cascade's 3x3 PCF is one kernel (rotated by the jitter
 // index, taps snapped to texel centres, receiver-plane bias clamped, constant
 // bias) with its own size and bias constants; the taps are texldl (no
 // gradient instruction inside a branch) under a ps_3_0 dynamic branch, so a

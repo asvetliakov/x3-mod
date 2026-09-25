@@ -2671,18 +2671,25 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     // Caster-candidate counter (shadow-replay-gates.md section 3): the route
     // plus the ownership wrapper (loader.cpp enables the lock bookends on the
     // same switch); no TAA, HDR, linear-material or lane prerequisite.
-    // The one-cascade depth replay (same note, "Implemented: cascade-0 depth
-    // replay fixture") rides the counter with the same two prerequisites;
-    // X3M_SHADOW_REPLAY_SIZE (64..4096, default 1024) sizes the map.
+    // The depth replay (same note, "Implemented: cascade-0 depth replay
+    // fixture") rides the counter with the same two prerequisites and replays
+    // into the sun-shadow cascades (X3M_SHADOW_CASCADES below); without a
+    // cascade set there is no map. The single camera-centred map and its four
+    // variables (X3M_SHADOW_REPLAY_SIZE/_EXTENT/_DEPTH_HALF/_CAP) were removed on
+    // 2026-09-25 (docs/architecture/directional-shadows.md, "Single map
+    // removed"): a set variable is ignored and named in one row per process.
     { wchar_t setting[4]{};
       const bool asked=GetEnvironmentVariableW(L"X3M_SHADOW_REPLAY_CANDIDATES",setting,4)==1&&setting[0]==L'1';
       const bool depth_asked=GetEnvironmentVariableW(L"X3M_SHADOW_REPLAY_DEPTH",setting,4)==1&&setting[0]==L'1';
       const bool wrapped=GetEnvironmentVariableW(L"X3M_OWNERSHIP",setting,4)==1&&setting[0]==L'1';
       const bool enabled=(asked||depth_asked)&&motion_output_requested&&wrapped;
+      { static LONG removed_logged=0;
+        const unsigned size_set=GetEnvironmentVariableW(L"X3M_SHADOW_REPLAY_SIZE",nullptr,0)>0, extent_set=GetEnvironmentVariableW(L"X3M_SHADOW_REPLAY_EXTENT",nullptr,0)>0;
+        const unsigned half_set=GetEnvironmentVariableW(L"X3M_SHADOW_REPLAY_DEPTH_HALF",nullptr,0)>0, cap_set=GetEnvironmentVariableW(L"X3M_SHADOW_REPLAY_CAP",nullptr,0)>0;
+        if((size_set|extent_set|half_set|cap_set)&&InterlockedExchange(&removed_logged,1)==0)
+            log("shadow_replay_config size=%u extent=%u depth_half=%u cap=%u single_map=removed ignored=1",size_set,extent_set,half_set,cap_set); }
       if(asked||depth_asked)log("shadow_replay_candidates_mode requested=1 enabled=%u motion_output=%u ownership=%u",enabled,motion_output_requested,wrapped);
-      unsigned cap=shadow_replay::default_cap; // X3M_SHADOW_REPLAY_CAP (1..record_capacity, default 512): managed candidates recorded per frame
-      { wchar_t text[16]{}; if(GetEnvironmentVariableW(L"X3M_SHADOW_REPLAY_CAP",text,16)>0){ const unsigned long v=wcstoul(text,nullptr,10); if(v>=1&&v<=shadow_replay::record_capacity)cap=unsigned(v); } }
-      hooked.motion_output.configure_shadow_replay_candidates(enabled,enabled?ownership::process_admission_monitor():nullptr,cap);
+      hooked.motion_output.configure_shadow_replay_candidates(enabled,enabled?ownership::process_admission_monitor():nullptr);
       // Object bounds log (docs/architecture/engine-frame-time.md, "Object bounds log";
       // X3M_OBJECT_BOUNDS_LOG=1, default off): on F8 capture frames only, one object_bounds
       // line per routed draw whose object box the candidate route already computed, with the
@@ -2697,16 +2704,10 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
             log("object_bounds_mode requested=1 enabled=%u candidates=%u object_trace=%u",bounds_enabled,enabled,traced);
             hooked.motion_output.configure_object_bounds_log(bounds_enabled);
         } }
+      bool cascades_configured=false; // a valid cascade set for the depth replay: the sun-shadow apply needs its maps
       if(depth_asked){
-          // The cascade-0 box, read once here (shadow_replay_projection.h ranges):
-          // X3M_SHADOW_REPLAY_SIZE (64..4096, default 1024), X3M_SHADOW_REPLAY_EXTENT
-          // (half-extent, 50..4000, default 250), X3M_SHADOW_REPLAY_DEPTH_HALF (128..8192, default 512).
-          unsigned size=renderer::shadow_replay_size_default; float extent=renderer::shadow_replay_extent_default, depth_half=renderer::shadow_replay_depth_half_default; wchar_t text[32]{}; wchar_t* end=nullptr;
-          if(GetEnvironmentVariableW(L"X3M_SHADOW_REPLAY_SIZE",text,32)>0){ const unsigned long v=wcstoul(text,nullptr,10); if(v>=renderer::shadow_replay_size_min&&v<=renderer::shadow_replay_size_max)size=unsigned(v); }
-          if(GetEnvironmentVariableW(L"X3M_SHADOW_REPLAY_EXTENT",text,32)>0){ end=nullptr; const float v=wcstof(text,&end); if(end!=text&&*end==L'\0'&&v>=renderer::shadow_replay_extent_min&&v<=renderer::shadow_replay_extent_max)extent=v; }
-          if(GetEnvironmentVariableW(L"X3M_SHADOW_REPLAY_DEPTH_HALF",text,32)>0){ end=nullptr; const float v=wcstof(text,&end); if(end!=text&&*end==L'\0'&&v>=renderer::shadow_replay_depth_half_min&&v<=renderer::shadow_replay_depth_half_max)depth_half=v; }
-          log("shadow_replay_depth_mode requested=1 enabled=%u size=%u extent=%.9g depth_half=%.9g cap=%u motion_output=%u ownership=%u",enabled,size,double(extent),double(depth_half),cap,motion_output_requested,wrapped);
-          hooked.motion_output.configure_shadow_replay_depth(enabled,size,extent,depth_half);
+          log("shadow_replay_depth_mode requested=1 enabled=%u motion_output=%u ownership=%u",enabled,motion_output_requested,wrapped);
+          hooked.motion_output.configure_shadow_replay_depth(enabled);
           // Alpha-tested casters (shadow-replay-gates.md, "Alpha-tested casters"):
           // X3M_SHADOW_ALPHA_CASTERS=1 (default off) lets alpha-tested routed draws
           // cast with their own alpha test; rides the depth replay.
@@ -2717,7 +2718,8 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
             } }
           // Sun-shadow cascades (docs/architecture/shadow-cascades.md): X3M_SHADOW_CASCADES
           // is the ascending half-extent list (1..5 values, 50..150000 units); absent,
-          // empty or "0" keeps the single map above. X3M_SHADOW_CASCADE_SIZES (one
+          // empty or "0" is no map: the replayed sun shadows are off (one
+          // shadow_cascades_mode row with reason=off). X3M_SHADOW_CASCADE_SIZES (one
           // value for all or one per cascade, 64..4096, default 4096),
           // X3M_SHADOW_CASCADE_CAPS (likewise, 1..4096, defaults 128,512,1024,1024,1024)
           // and X3M_SHADOW_CASCADE_BUDGET (issues per frame, 1..4096, default 640).
@@ -2728,14 +2730,16 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
           // (world units, 0..1e6, default 0: a static-only cascade also admits moving casters of that extent).
           // X3M_SHADOW_CASCADE_BACKFACE_FROM (0..count-1 | none; absent: every cascade whose world texel is
           // 8 u or more) selects the cascades that replay back faces.
-          // A malformed list leaves the cascades off (the single map stays).
+          // A malformed list leaves the cascades off (no map).
           { wchar_t list[128]{};
             const auto parse=[](const wchar_t* text,double* out,unsigned capacity)->unsigned{
                 unsigned count=0; const wchar_t* cursor=text;
                 while(*cursor){ if(count>=capacity)return 0; wchar_t* end=nullptr; const double v=wcstod(cursor,&end); if(end==cursor)return 0; out[count++]=v; if(*end==L',')cursor=end+1; else if(*end==L'\0')break; else return 0; if(!*cursor)return 0; }
                 return count; };
             const DWORD length=GetEnvironmentVariableW(L"X3M_SHADOW_CASCADES",list,128);
-            if(length>0&&length<128&&!(length==1&&list[0]==L'0')){
+            if(!(length>0&&length<128&&!(length==1&&list[0]==L'0')))
+                log("shadow_cascades_mode requested=0 enabled=0 reason=%s cascades=0",length>=128?"extents":"off");
+            else {
                 double values[renderer::shadow_cascade_max]{}; float extents[renderer::shadow_cascade_max]{};
                 unsigned sizes[renderer::shadow_cascade_max], caps[renderer::shadow_cascade_max], budget=renderer::shadow_cascade_budget_default;
                 for(unsigned i=0;i<renderer::shadow_cascade_max;++i){ sizes[i]=renderer::shadow_cascade_size_default; caps[i]=renderer::shadow_cascade_cap_defaults[i]; }
@@ -2805,6 +2809,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
                     set.records[0],set.records[1],set.records[2],set.records[3],set.records[4],set.static_from<set.count?static_text:"none",set.importance?"importance":"submission",double(set.large_min),double(adaptive_k),double(ladder_ratio),
                     !set.count?"none":set.backface_from==renderer::shadow_cascade_backface_from_texel?"texel":set.backface_from<set.count?backface_text:"none",unsigned(set.count?set.backface_mask():0u),double(set.min_footprint_px));
                 hooked.motion_output.configure_shadow_cascades(set);
+                cascades_configured=set.count!=0;
                 hooked.motion_output.configure_shadow_cascade_adaptive(adaptive_k,ladder_ratio);
                 // Per-frame sun trace (X3M_SHADOW_SUN_TRACE=1, default off): one
                 // shadow_sun_frame line per frame while the cascades are on, for the
@@ -2828,14 +2833,16 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
                 log("shadow_retention_mode requested=1 enabled=%u mode=%s age_cap=%u eps=%.9g",enabled,!enabled?"off":live?"live":"census",unsigned(age),eps);
                 hooked.motion_output.configure_shadow_retention(mode,age,eps,flag(L"X3M_SHADOW_RETENTION_TIMING")); } } }
       // Scene-end sun-shadow application (legacy-sun-application.md section 2;
-      // X3M_SUN_SHADOW_APPLY=1): the lane and the depth replay of the same
+      // X3M_SUN_SHADOW_APPLY=1): the lane and the cascade maps of the same
       // frame; exponent 1 on original shading, 1 / 2.2 with linear materials.
+      // Without a cascade set there is no map to sample: the apply stays off
+      // (its mode row says cascades=0) and the lighting is the lane's alone.
       // X3M_SUN_SHADOW_BIAS_UNITS (world units, 0..1000, default 0.53571875)
       // is the constant compare bias and X3M_SUN_SHADOW_BIAS_CLAMP_TEXELS
       // (1..64, default 20.97152) the receiver-plane clamp and non-planar
       // fallback in world texels, both resolved per frame with the cascade.
       { const bool apply_asked=GetEnvironmentVariableW(L"X3M_SUN_SHADOW_APPLY",setting,4)==1&&setting[0]==L'1';
-        const bool apply_enabled=apply_asked&&sun_lane_enabled&&depth_asked&&enabled;
+        const bool apply_enabled=apply_asked&&sun_lane_enabled&&depth_asked&&enabled&&cascades_configured;
         // X3M_SUN_SHADOW_BIAS_SLOPE_TEXELS (0..8, default 0.2) is the cascade
         // program's slope-scaled margin in texels of the receiver plane's
         // depth slope (sun_shadow_apply_pass.h).
@@ -2843,7 +2850,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
         if(GetEnvironmentVariableW(L"X3M_SUN_SHADOW_BIAS_UNITS",text,32)>0){ end=nullptr; const double v=wcstod(text,&end); if(end!=text&&*end==L'\0'&&v>=renderer::sun_shadow_bias_units_min&&v<=renderer::sun_shadow_bias_units_max)bias_units=v; }
         if(GetEnvironmentVariableW(L"X3M_SUN_SHADOW_BIAS_CLAMP_TEXELS",text,32)>0){ end=nullptr; const double v=wcstod(text,&end); if(end!=text&&*end==L'\0'&&v>=renderer::sun_shadow_bias_clamp_texels_min&&v<=renderer::sun_shadow_bias_clamp_texels_max)clamp_texels=v; }
         { wchar_t slope_text[32]{}; if(GetEnvironmentVariableW(L"X3M_SUN_SHADOW_BIAS_SLOPE_TEXELS",slope_text,32)>0){ end=nullptr; const double v=wcstod(slope_text,&end); if(end!=slope_text&&*end==L'\0'&&v>=renderer::sun_shadow_bias_slope_texels_min&&v<=renderer::sun_shadow_bias_slope_texels_max)slope_texels=v; } }
-        if(apply_asked)log("sun_shadow_apply_mode requested=1 enabled=%u lane=%u replay=%u linear_materials=%u bias_units=%.9g clamp_texels=%.9g slope_texels=%.9g",apply_enabled,sun_lane_enabled,depth_asked&&enabled,linear_material_requested,bias_units,clamp_texels,slope_texels);
+        if(apply_asked)log("sun_shadow_apply_mode requested=1 enabled=%u lane=%u replay=%u linear_materials=%u bias_units=%.9g clamp_texels=%.9g slope_texels=%.9g cascades=%u",apply_enabled,sun_lane_enabled,depth_asked&&enabled,linear_material_requested,bias_units,clamp_texels,slope_texels,unsigned(cascades_configured));
         sun_shadow_apply_requested=sun_shadow_apply_requested||apply_enabled; // opens the Ctrl+Shift+F12 sampler
         hooked.motion_output.configure_sun_shadow_apply(apply_enabled,bias_units,clamp_texels,slope_texels); } }
     hooked.motion_output.configure_volumetric_fog(volumetric_fog_requested,volumetric_fog_strength,volumetric_fog_anisotropy,volumetric_fog_everywhere,volumetric_fog_timing,volumetric_fog_cards_replace);

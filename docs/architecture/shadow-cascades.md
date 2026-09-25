@@ -13,7 +13,9 @@ sketch), [legacy-sun-application.md](legacy-sun-application.md) §2 (the apply q
 `z/768` at 1920. Implemented default-off on 2026-09-17 (see "Implemented" at the end; when
 written nothing was); the run-38 options (`--shadow-replay-extent`,
 `--shadow-replay-depth-half`, `--shadow-replay-cap`, `--shadow-replay-size` ≤ 4096, bias in
-world units with a texel term) are assumed present.
+world units with a texel term) are assumed present. Since 2026-09-25 the cascades are the only
+replay geometry: the single map and those four options were removed
+([directional-shadows.md](directional-shadows.md), "Single map removed"); the bias options stay.
 
 ## Decision
 

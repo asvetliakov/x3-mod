@@ -1,5 +1,6 @@
 // Cascade-0 depth replay script ("shadowreplay" mode; docs/architecture/
-// shadow-replay-gates.md, "Implemented: cascade-0 depth replay fixture").
+// shadow-replay-gates.md, "Implemented: cascade-0 depth replay fixture"; the
+// cascades are the only replay geometry since 2026-09-25, so cascade 0 of a set).
 // The seam camera script with N managed casters (X3M_FIXTURE_SHADOW_CASTERS,
 // default 2) drawn every frame at fixed rows under a fixed world sun
 // direction uploaded as LightDir_Dir0 (PS c4); the DLL replays the quiet
@@ -33,7 +34,7 @@
 // casters' planes inside their triangles), F behind the camera (w < 0). The
 // DLL learns every extent at frame 0's scene end; frame 0 admits the casters
 // alone (origin rule), later frames L and the casters by bounds, and the
-// per-frame cap X3M_SHADOW_REPLAY_CAP = casters drops the last caster on
+// cascade-0 cap X3M_SHADOW_CASCADE_CAPS = casters drops the last caster on
 // those frames (capped=1). After every Present the map is read back through the
 // seam export and written beside the executable (shadow_<frame>.r32f) with the
 // projection basis, for the runner's CPU projection of the same geometry. The

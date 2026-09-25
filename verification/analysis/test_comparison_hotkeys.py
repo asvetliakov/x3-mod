@@ -66,17 +66,19 @@ class ComparisonHotkeys(unittest.TestCase):
         self.assertIn('if (!sun_apply_requested_ && !depth_replay_requested_) {', toggle)
         self.assertIn('return -1;', toggle)
         self.assertLess(toggle.index('return -1;'), toggle.index('sun_shadow_enabled_ = !sun_shadow_enabled_;'))
-        # The single map's publication goes with the retained cascade bases,
-        # and the frame back on replays every cascade whatever the budget says.
-        self.assertIn('depth_basis_ = {};', toggle)
+        # The retained cascade bases go (the single map and its published view
+        # rows were removed on 2026-09-25), and the frame back on replays every
+        # cascade whatever the budget says.
+        self.assertIn('depth_replayed_ = 0; depth_cascade_frame_ok_ = false;', toggle)
         self.assertIn('sun_shadow_force_replay_ = sun_shadow_enabled_;', toggle)
-        self.assertIn('view_rows_valid_ = false; }', (ROOT / 'src/renderer/shadow_replay_pass.h').read_text())
+        self.assertIn('void invalidate_retained() noexcept { for (auto& r : retained_) r.valid = false; }', (ROOT / 'src/renderer/shadow_replay_pass.h').read_text())
         cascades = extract_function(replay, 'void MotionOutput::run_shadow_replay_cascades(')
         self.assertIn('(sun_shadow_force_replay_ || renderer::shadow_cascade_replays(', cascades)
         self.assertIn('sun_shadow_force_replay_ = false;', cascades)
-        # An F8 while off dumps no stale map (the basis line still reports valid=0).
+        # An F8 while off dumps no stale map (the basis line still reports valid=0):
+        # only a retained cascade map is read back.
         dump = extract_function(motion_source, 'void MotionOutput::readback(')
-        self.assertIn('if (rows && depth_replayed_frame_ == frame_ && depth_replayed_)', dump)
+        self.assertIn('if (kept && depth_replay_->map_surface(i)) readback_surface(', dump)
         for absent in ('CreateTexture', 'execute', 'Clear'):
             self.assertNotIn(absent, toggle)
         # The scene end: one boolean test, both the replay transaction and the
@@ -88,8 +90,8 @@ class ComparisonHotkeys(unittest.TestCase):
         self.assertEqual(motion_source.count('run_sun_shadow_apply();'), 2)
         self.assertEqual(motion_source.count('sun_apply_requested_&&sun_shadow_enabled_)run_sun_shadow_apply();')
                          + motion_source.count('sun_apply_requested_ && sun_shadow_enabled_) run_sun_shadow_apply();'), 2)
-        # The per-frame shadow line carries the state it ran under.
-        self.assertEqual(replay.count('us=%.1f shadow_toggle=%u'), 2)  # the single map and the cascades
+        # The per-frame shadow line carries the state it ran under (the cascades' line alone).
+        self.assertEqual(replay.count('us=%.1f shadow_toggle=%u'), 1)
         self.assertEqual(replay.count('us=%.1f shadow_toggle=%u%s far_replayed='), 1)
 
     def test_fog_shadow_pass_key_and_frame_boundary(self):

@@ -951,3 +951,65 @@ lifetime, as before this lane. An immutable-byte recovery design may improve
 this separately; Reset does not invent replacement shader source.
 
 Cascade layout (2026-09-17): see [shadow-cascades.md](shadow-cascades.md), ratified; the one-cascade replay and apply are in game since run 37 B.
+
+## Single map removed (2026-09-25)
+
+User decision 2026-09-25: the pre-cascade single map (one camera-centred box
+set by `--shadow-replay-size`, `--shadow-replay-extent`,
+`--shadow-replay-depth-half` and `--shadow-replay-cap`, variables
+`X3M_SHADOW_REPLAY_SIZE/_EXTENT/_DEPTH_HALF/_CAP`) is gone. The sun-shadow
+cascades ([shadow-cascades.md](shadow-cascades.md); `--shadow-cascades`, a
+launcher default since 2026-09-25) are the only replay geometry, and cascade 0
+is the near map. Every cascade option stays.
+
+Removed code: the single-map transaction (`run_shadow_replay_depth`), its box
+(`depth_cascade_`, the seam's `X3M_FIXTURE_SHADOW_EXTENT`), the draw-time box test
+against it (`shadow_replay_bounds_verdict`), `ShadowReplayPass::attach(size)` /
+`execute` and the published view rows, the F8 single-map readback, and the apply
+pass's single-map program (`sun_shadow_apply_ps.hlsl`, `SunShadowApplyPass::execute`,
+`SunShadowApplyFrame`). The apply pass now creates the cascade program only; a device
+whose `MaxPixelShader30InstructionSlots` is below it refuses the attach and the apply stays
+off with one `sun_shadow_apply_device` row, as before (with cascades on the pass was already
+refused whole; only the reason name changed, `cascade_ps_slots` -> `ps_slots`; no second
+program set: [platform-portability.md](platform-portability.md)).
+
+Behaviour without a cascade set (`X3M_SHADOW_CASCADES` absent, `0` or malformed; the
+launcher's `--no-shadow-cascades` sends `0` and refuses nothing):
+
+- `X3M_SHADOW_REPLAY_DEPTH=1`: one `shadow_cascades_mode requested=0 enabled=0 reason=off
+  cascades=0` row (`reason=extents` for a list of 128 characters or more). No map is attached,
+  no geometry lease is taken, no transaction runs and no `shadow_replay_depth` line is written.
+  The caster-candidate counter that serves the replay does not run on such a device either
+  (one `shadow_replay_candidates_device enabled=0 reason=no_cascades` row; no vertex-extent
+  read, record, `shadow_replay_candidates` or `shadow_alpha_casters` row, and so no object
+  bounds log). `X3M_SHADOW_REPLAY_CANDIDATES=1` without the depth replay stays the counter
+  diagnostic (the slice-0 origin rule, no box).
+- `X3M_SUN_SHADOW_APPLY=1` is configured off: one `sun_shadow_apply_mode requested=1
+  enabled=0 ... cascades=0` row, no attach, no per-frame row, no quad. The lighting is the
+  lane's own, as with the shadows switched off (proved byte-for-byte by the
+  `shadow_apply_no_cascades` live case of `run_sun_share_live.py`). A cascade set refused at
+  device attach (allocation) keeps the existing per-frame `skip_reason=replay` rows.
+- A removed variable in the environment is ignored and named once per process:
+  `shadow_replay_config size=<0|1> extent=<0|1> depth_half=<0|1> cap=<0|1>
+  single_map=removed ignored=1`. The launcher refuses the four options as unrecognized
+  arguments (exit 2) and drops inherited values of the variables.
+
+The candidate counter's per-frame record cap without cascades stays the former default
+512 (`shadow_replay::default_cap`); a cascade set brings its own caps
+(`--shadow-cascade-caps`). Native Windows: documented D3D9 only, as before; nothing new
+is required of the device, and one fewer program is created.
+
+Fixture mapping (evidence and counts: [../verification/directional-shadows.md](../verification/directional-shadows.md),
+"Single map removed"):
+
+| Former single-map case | Now |
+|---|---|
+| `seam-ownership-shadow-replay-on`, `-taa-…-on`, `-casters-2/8/20`, `-sun-programs`, `-toggle-single` | moved: the same script and validator on a one-cascade set narrowed to the same 8-unit box (`X3M_FIXTURE_SHADOW_CASCADES=8`, depth 16 either side); a refused frame now also voids the retained basis (valid=0), the map byte-identical |
+| `seam-ownership-shadow-replay-wide`, `-far-refused` | moved: production-scale one-cascade sets 1000 (2048²) and 250 (1024²); in the wide set L and F are also admitted by cascade 0's origin rule on frame 0 |
+| `seam-ownership-shadow-replay-off`, `-taa-…-off` | kept (option-off twins) |
+| — | added: `seam-ownership-shadow-replay-no-cascades` (depth on, no cascade set: no map, no replay or counter line, the counter-off row, the removed variables' row, presented frames equal to the off twin) |
+| `seam-ownership-shadow-alpha-route`, `-less` | moved to the one-cascade set (8-unit cascade 0) |
+| `shadow-alpha-casters` (pass script) | moved: one-map `attach_cascades`/`execute_cascades` transactions (the issue path's native calls count the map's bind and Clear) |
+| `sun-shadow-apply`, `sun-shadow-apply-wide` | deleted with the single-map program; the cascade apply cases cover the law, Reset and hostile state, and the single script's skip paths (missing RT2 or target, R32F RT2, A8R8G8B8 target, width/height mismatch, another device's RT2) moved into the cascade script |
+| `run_sun_share_live.py` `shadow_apply` | replaced by `shadow_apply_no_cascades`; `shadow_apply_cascades` runs the same script and validation |
+| `run_route_bench.py` `perdraw-depth`, `lazy-depth` | moved to a one-cascade set (the per-draw lease cost) |

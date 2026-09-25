@@ -23,7 +23,7 @@ namespace x3m::gpu_sync_timing {
 enum Pass : unsigned {
     Scene = 0,        // first proxy work after the frame's first BeginScene .. just before the native Present
     Engine,           // the frame's first BeginScene .. the scene end (the engine's own draw span; nests FogFill and HdrReadback)
-    ShadowDepth,      // the shadow depth replay (cascades or single map)
+    ShadowDepth,      // the shadow depth replay (the cascades)
     SunApply,         // the sun-shadow apply quad
     Retention,        // the caster retention's scene-end walk
     FogFill,          // the stored-density upload/prepare at the HDR latch

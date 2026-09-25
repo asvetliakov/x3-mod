@@ -1,9 +1,10 @@
 #pragma once
-// Cascade-0 light projection of the one-cascade depth replay
-// (docs/architecture/shadow-replay-gates.md, section 2, "Target and projection").
-// Pure arithmetic on the route's CameraState latch, the submitted clip rows
-// and the world sun direction; no device access. Row convention throughout:
-// a 4x4 is four dp4 rows applied to (x, y, z, 1) as the vertex program does.
+// Sun-space light projection of the cascade replay (docs/architecture/
+// shadow-replay-gates.md, section 2, "Target and projection";
+// docs/architecture/shadow-cascades.md). Pure arithmetic on the route's
+// CameraState latch, the submitted clip rows and the world sun direction; no
+// device access. Row convention throughout: a 4x4 is four dp4 rows applied to
+// (x, y, z, 1) as the vertex program does.
 #include <cmath>
 #include <cstdint>
 #if defined(__SSE2__)
@@ -13,23 +14,24 @@
 #include "shadow_cascade_footprint_core.h"
 
 namespace x3m::renderer {
-// The own-ship cascade: centred on the camera position plus forward x
+// One cascade box: centred on the camera position plus forward x
 // forward_offset, half-extent in sun-space x/y, z within the depth range,
 // texel-snapped in sun space (the sun is world-fixed, so snapping removes
-// camera-translation swim). Production defaults per the note; half_extent
-// (X3M_SHADOW_REPLAY_EXTENT), the depth half range (X3M_SHADOW_REPLAY_DEPTH_HALF)
-// and size (X3M_SHADOW_REPLAY_SIZE) are read once at device creation within
-// the ranges below; the seam fixture narrows them to its unit-size geometry.
-// The world texel is 2 half_extent / size (legacy-sun-application.md, section 2).
-constexpr float shadow_replay_extent_default = 250.f, shadow_replay_extent_min = 50.f, shadow_replay_extent_max = 4000.f;
-constexpr float shadow_replay_depth_half_default = 512.f, shadow_replay_depth_half_min = 128.f, shadow_replay_depth_half_max = 8192.f;
+// camera-translation swim). The cascades are the only replay geometry since
+// 2026-09-25 (docs/architecture/directional-shadows.md, "Single map removed");
+// the constants below are the reference box the cascade set is derived from
+// (shadow_cascade_set: cascade 0's forward offset scales 128 / 250 with its
+// extent, and no cascade reaches less than 512 units behind its centre) and
+// the map size range. The world texel is 2 half_extent / size
+// (legacy-sun-application.md, section 2).
+constexpr float shadow_replay_extent_default = 250.f;
+constexpr float shadow_replay_depth_half_default = 512.f;
 constexpr unsigned shadow_replay_size_default = 1024, shadow_replay_size_min = 64, shadow_replay_size_max = 4096;
 constexpr float shadow_replay_forward_offset_default = 128.f;
 // The sun-space depth range is asymmetric (docs/architecture/shadow-cascades.md,
 // "Depth range towards the light"): z = 0 lies depth_toward_light units from
-// the centre towards the light, z = 1 depth_behind units beyond it. The
-// single-map path keeps both at the half range (set_depth_half), which is
-// bit-identical to the former symmetric law (L + R = 2 D exactly in double).
+// the centre towards the light, z = 1 depth_behind units beyond it.
+// set_depth_half puts both at one half range (the fixtures' symmetric box).
 struct ShadowReplayCascade {
     float half_extent = shadow_replay_extent_default, forward_offset = shadow_replay_forward_offset_default;
     float depth_toward_light = shadow_replay_depth_half_default, depth_behind = shadow_replay_depth_half_default;
@@ -190,35 +192,6 @@ inline bool shadow_replay_view_rows(const CameraState& camera, const ShadowRepla
     }
     return true;
 }
-// Draw-time caster test (shadow-replay-gates.md, "Casters by bounds"): the
-// eight corners of the draw's object-space AABB through the draw's clip rows
-// (x, y, w only: p_view = (clip.x / m00, clip.y / m11, clip.w)) and the
-// frame's view -> sun rows (shadow_replay_view_rows); the corners' sun-space
-// AABB meets the map box when it overlaps [-1, 1]^2 and does not lie wholly
-// beyond z = 1: the light side is open, because the replay pancakes a caster
-// nearer the light than the near plane onto it (it still shadows the box).
-// Conservative for a rotated box. 1 meets, 0 misses, -1 unknown (nonfinite input).
-inline int shadow_replay_bounds_verdict(const CameraState& camera, const float rows[16], const float view_rows[12],
-                                        const float lo[3], const float hi[3]) noexcept {
-    if (!camera.valid || !rows || !view_rows || !lo || !hi || !(camera.m00 > 0.f) || !(camera.m11 > 0.f)) return -1;
-    float smin[3] = {3.4028235e38f, 3.4028235e38f, 3.4028235e38f}, smax[3] = {-3.4028235e38f, -3.4028235e38f, -3.4028235e38f};
-    for (unsigned corner = 0; corner < 8; ++corner) {
-        const float x = (corner & 1) ? hi[0] : lo[0], y = (corner & 2) ? hi[1] : lo[1], z = (corner & 4) ? hi[2] : lo[2];
-        const float cx = rows[0] * x + rows[1] * y + rows[2] * z + rows[3];
-        const float cy = rows[4] * x + rows[5] * y + rows[6] * z + rows[7];
-        const float cw = rows[12] * x + rows[13] * y + rows[14] * z + rows[15];
-        const float v[3] = {cx / camera.m00, cy / camera.m11, cw};
-        for (unsigned a = 0; a < 3; ++a) {
-            const float s = view_rows[a * 4] * v[0] + view_rows[a * 4 + 1] * v[1] + view_rows[a * 4 + 2] * v[2] + view_rows[a * 4 + 3];
-            if (!std::isfinite(s)) return -1;
-            if (s < smin[a]) smin[a] = s;
-            if (s > smax[a]) smax[a] = s;
-        }
-    }
-    const bool meets = smax[0] >= -1.f && smin[0] <= 1.f && smax[1] >= -1.f && smin[1] <= 1.f && smin[2] <= 1.f;
-    return meets ? 1 : 0;
-}
-
 // ---- cascades (docs/architecture/shadow-cascades.md) --------------------------
 // N <= 5 camera-centred, texel-snapped cascades sharing the sun basis. Every
 // default is a single named constant; the launcher options override them
@@ -226,7 +199,7 @@ inline int shadow_replay_bounds_verdict(const CameraState& camera, const float r
 // own-ship forward offset scaled to its extent; the others centre on the
 // camera. Every cascade's depth range reaches depth_light_factor x the largest
 // extent towards the light (so the smallest cascade containing a pixel contains
-// every occluder of it) and max(the single-map half range, depth_behind_factor
+// every occluder of it) and max(the reference half range 512, depth_behind_factor
 // x its own extent) behind its centre. The default set stays the four-cascade
 // one; the fifth slot is for a 150,000-unit reach (250 / 1,500 / 7,500 / 37,500
 // / 150,000: docs/architecture/shadow-cascade-extents.md, section 3).
@@ -259,7 +232,7 @@ constexpr float shadow_cascade_depth_light_factor = 2.f, shadow_cascade_depth_be
 constexpr float shadow_cascade_select_margin = .95f; // a pixel belongs to the first cascade with max(|x|, |y|) <= margin (room for the 3x3 kernel)
 constexpr float shadow_cascade_blend_band = .10f;    // the outer band of that margin blends into the next cascade (the last one fades to lit)
 struct ShadowCascadeSet {
-    unsigned count = 0; // 0: the single-map path
+    unsigned count = 0; // 0: no cascades, no map (the sun shadows are off)
     ShadowReplayCascade cascades[shadow_cascade_max]{};
     unsigned caps[shadow_cascade_max]{};
     unsigned budget = shadow_cascade_budget_default;
@@ -627,8 +600,11 @@ inline bool shadow_cascade_bounds(const CameraState& camera, const float sun[4],
     return shadow_cascade_bounds_suns(camera, sun ? suns : nullptr, set, out);
 }
 // Bit i set: the draw's object-space AABB (eight corners through its clip rows,
-// as shadow_replay_bounds_verdict) meets cascade i's box, whose light side is
-// open as there. -1: unknown.
+// x, y, w only: p_view = (clip.x / m00, clip.y / m11, clip.w), then the
+// frame's view -> sun rows) meets cascade i's box: its sun-space AABB overlaps
+// [-1, 1]^2 and does not lie wholly beyond z = 1. The light side is open,
+// because the replay pancakes a caster nearer the light than the near plane
+// onto it (it still shadows the box). Conservative for a rotated box. -1: unknown.
 // The draw's projected size at the camera from the sun-space AABB the mask
 // test built: its diagonal over the distance of its centre from the camera
 // (the rows are relative to the camera position, so |centre| is that distance;

@@ -254,50 +254,29 @@ class LauncherGate(unittest.TestCase):
             for args in (['--shadow-replay-depth'], ['--shadow-replay-depth', '--motion-output'], ['--shadow-replay-depth', '--ownership']):
                 code, _, error = launch(directory, *args)
                 self.assertNotEqual(code, 0, args); self.assertIn('--shadow-replay-depth requires --motion-output --ownership', error)
-            code, _, error = launch(directory, '--motion-output', '--ownership', '--shadow-replay-size', '512')
-            self.assertNotEqual(code, 0); self.assertIn('--shadow-replay-size requires --shadow-replay-depth', error)
-            code, _, error = launch(directory, '--motion-output', '--ownership', '--shadow-replay-depth', '--shadow-replay-size', '32')
-            self.assertNotEqual(code, 0); self.assertIn('--shadow-replay-size must be within [64, 4096]', error)
             code, output, _ = launch(directory, '--motion-output', '--ownership', '--shadow-replay-depth')
             self.assertEqual(code, 0)
             env = json.loads(output)['env']
-            self.assertEqual(env['X3M_SHADOW_REPLAY_DEPTH'], '1'); self.assertEqual(env['X3M_SHADOW_REPLAY_SIZE'], '1024')
+            self.assertEqual(env['X3M_SHADOW_REPLAY_DEPTH'], '1'); self.assertNotIn('X3M_SHADOW_REPLAY_SIZE', env)
             self.assertEqual(env['X3M_SHADOW_REPLAY_CANDIDATES'], '1'); self.assertEqual(env['X3M_OWNERSHIP'], '1'); self.assertEqual(env['X3M_MOTION_OUTPUT'], '1')
             self.assertEqual(env.get('X3M_LINEAR_MATERIALS', '0'), '0'); self.assertEqual(env.get('X3M_TAA', '0'), '0')
-            code, output, _ = launch(directory, '--motion-output', '--ownership', '--shadow-replay-depth', '--shadow-replay-size', '512')
-            self.assertEqual(code, 0); self.assertEqual(json.loads(output)['env']['X3M_SHADOW_REPLAY_SIZE'], '512')
             code, output, _ = launch(directory, '--motion-output', '--ownership')
             self.assertEqual(code, 0); env = json.loads(output)['env']
             self.assertEqual(env['X3M_SHADOW_REPLAY_DEPTH'], '0'); self.assertEqual(env['X3M_SHADOW_REPLAY_CANDIDATES'], '0')
 
-    def test_cascade_box_options(self):
-        # --shadow-replay-extent / --shadow-replay-depth-half: the defaults are
-        # explicit (an inherited value cannot leak), the values are carried,
-        # the ranges and the --shadow-replay-depth prerequisite are enforced.
+    def test_single_map_options_removed(self):
+        # The single camera-centred map was removed on 2026-09-25 (docs/architecture/
+        # directional-shadows.md, "Single map removed"): its four options are refused
+        # as unknown and an inherited value of their variables is dropped, never forwarded.
         with tempfile.TemporaryDirectory() as directory:
             base = ['--motion-output', '--ownership', '--shadow-replay-depth']
-            code, output, _ = launch(directory, *base, inherited={'X3M_SHADOW_REPLAY_EXTENT': '3000', 'X3M_SHADOW_REPLAY_DEPTH_HALF': '9', 'X3M_SHADOW_REPLAY_CAP': '3'})
-            self.assertEqual(code, 0); env = json.loads(output)['env']
-            self.assertEqual((env['X3M_SHADOW_REPLAY_EXTENT'], env['X3M_SHADOW_REPLAY_DEPTH_HALF'], env['X3M_SHADOW_REPLAY_CAP'], env['X3M_SHADOW_REPLAY_SIZE']), ('250.0', '512.0', '512', '1024'))
-            code, output, _ = launch(directory, *base, '--shadow-replay-extent', '1500', '--shadow-replay-depth-half', '3000', '--shadow-replay-size', '4096', '--shadow-replay-cap', '1024')
-            self.assertEqual(code, 0); env = json.loads(output)['env']
-            self.assertEqual((env['X3M_SHADOW_REPLAY_EXTENT'], env['X3M_SHADOW_REPLAY_DEPTH_HALF'], env['X3M_SHADOW_REPLAY_SIZE'], env['X3M_SHADOW_REPLAY_CAP']), ('1500.0', '3000.0', '4096', '1024'))
-            for option, value, message in (('--shadow-replay-extent', '49', '--shadow-replay-extent must be within [50, 4000]'),
-                                           ('--shadow-replay-extent', '4001', '--shadow-replay-extent must be within [50, 4000]'),
-                                           ('--shadow-replay-extent', 'nan', '--shadow-replay-extent must be within [50, 4000]'),
-                                           ('--shadow-replay-depth-half', '127', '--shadow-replay-depth-half must be within [128, 8192]'),
-                                           ('--shadow-replay-depth-half', '8193', '--shadow-replay-depth-half must be within [128, 8192]'),
-                                           ('--shadow-replay-cap', '0', '--shadow-replay-cap must be within [1, 1024]'),
-                                           ('--shadow-replay-cap', '1025', '--shadow-replay-cap must be within [1, 1024]')):
+            for option, value in (('--shadow-replay-size', '1024'), ('--shadow-replay-extent', '250'), ('--shadow-replay-depth-half', '512'), ('--shadow-replay-cap', '512')):
                 code, _, error = launch(directory, *base, option, value)
-                self.assertNotEqual(code, 0, (option, value)); self.assertIn(message, error)
-            for option, value in (('--shadow-replay-extent', '1000'), ('--shadow-replay-depth-half', '2048')):
-                code, _, error = launch(directory, '--motion-output', '--ownership', option, value)
-                self.assertNotEqual(code, 0, option); self.assertIn('--shadow-replay-extent and --shadow-replay-depth-half require --shadow-replay-depth', error)
-            code, _, error = launch(directory, '--motion-output', '--ownership', '--shadow-replay-cap', '8')
-            self.assertNotEqual(code, 0); self.assertIn('--shadow-replay-cap requires --shadow-replay-candidates or --shadow-replay-depth', error)
-            code, output, _ = launch(directory, '--motion-output', '--ownership', '--shadow-replay-candidates', '--shadow-replay-cap', '8')
-            self.assertEqual(code, 0); self.assertEqual(json.loads(output)['env']['X3M_SHADOW_REPLAY_CAP'], '8')
+                self.assertEqual(code, 2, option); self.assertIn('unrecognized arguments', error)
+            removed = ('X3M_SHADOW_REPLAY_SIZE', 'X3M_SHADOW_REPLAY_EXTENT', 'X3M_SHADOW_REPLAY_DEPTH_HALF', 'X3M_SHADOW_REPLAY_CAP')
+            code, output, _ = launch(directory, *base, inherited={name: '3000' for name in removed})
+            self.assertEqual(code, 0); env = json.loads(output)['env']
+            self.assertFalse(set(removed) & set(env), sorted(set(removed) & set(env)))
 
     def test_bias_units_option(self):
         # --sun-shadow-bias-units rides --sun-shadow-apply (which needs the

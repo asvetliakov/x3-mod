@@ -3831,3 +3831,30 @@ promoted 72 (the store works: run336 had static=0 after frame 906). `sizes=2048,
 ALPHA_CASTERS=1. Replay `us=` p50 251.4 / p90 359.8 / p99 527.7 (run336: 124.2 / 165.4 / 371.0): about +0.13 ms per frame for the
 two 4096 maps plus the now-live retention (not separated). User decision after the flight: cascade 3 to 4096 as well ->
 launcher default `2048,4096,4096,4096,2048` (+144 MB vs 2048x5), unflown.
+
+## Single map removed (2026-09-25, worktree `agent-a48228908a47c2357`)
+
+User decision 2026-09-25: the single camera-centred map and `--shadow-replay-size/-extent/-depth-half/-cap`
+are removed; the cascades are the only replay geometry (design and behaviour:
+[directional-shadows.md](../architecture/directional-shadows.md), "Single map removed"). Without a cascade
+set (`--no-shadow-cascades`) the depth replay has no map, the caster counter serving it does not run
+(one `shadow_replay_candidates_device enabled=0 reason=no_cascades` row; no extent read or per-frame
+counter row), and the apply is configured off with one `sun_shadow_apply_mode ... enabled=0 ... cascades=0`
+row; the lighting is the lane's alone. The apply pass on a device below the cascade program's slot count
+was already refused whole before (reason `cascade_ps_slots`, now `ps_slots`): no fallback was lost.
+
+| Check | Result |
+|---|---|
+| Build / audit | `cmake --build build` 0 compiler warnings; `check_no_x87.py build/d3d9.dll` 119 roots / 687 reachable / 0 violations [M] (690 in the 79aafc8b record: the removed single-map functions) [I] |
+| Motion-output shadow subset (rerun after the review fixes, same figures except the added case) | `run_motion_output.py` with the 58 shadow cases (every `seam-ownership-shadow-*`, `-taa-shadow-replay-*`, `shadow-alpha-casters`, `sun-shadow-apply-cascades*`, `seam-ownership-taa-camera-candidates-on`): 58/58 exit 0, status PARTIAL by design, 214.6 s / 214.3 s under the lock; the on/off twins `shadow-replay-on`, `taa-shadow-replay-on` and the new `shadow-replay-no-cascades` present byte-identical frames to their off twin (8 frames each) [M] |
+| Counts against the Run 87 suite (the committed `motion-output-summary.json` at e17fd2ca, equal to the Run 87 candidate's copy) | 39 kept cases 43,728 -> 52,341 checks (the four retention cases carry 79aafc8b's `n_route_lifecycle` case: 9,740 -> 12,052 etc.; the two off twins +1 each, the removed-variables row check; every other kept case equal); 12 moved to a one-cascade set 2,021 -> 2,345 (each single-map `shadowreplay` case +36: the cascade mode row, the per-cascade counter groups and the retained-basis loss on refusals; alpha route 66, pass script 26 unchanged); 6 cascade apply cases extended 20,778 -> 21,600 (the single script's skip paths moved in); 1 added (`shadow-replay-no-cascades`, 103 after the review fix that stops the counter without a map; 126 before); 2 deleted (`sun-shadow-apply` 175, `-wide` 179: the single-map program) [M] |
+| Sun cascade apply program | comment edit re-generated under the lock (`generate_rigid_motion_pixel.py --shader sun_shadow_cascade_apply`, then `--check` PASS): header byte-identical, bytecode `f6be2867…` unchanged, the record's `source_sha256` and generator digest updated [M] |
+| Sun occlusion | `run_sun_occlusion.py`: hook 74 checks / 0 failures, GPU 128 checks / 0 failed (Run 84 record: 74 / 128) [M] |
+| Live apply (`run_sun_share_live.py`) | `shadow_apply_cascades` passed (6 exact TAA frames, the quad on 4); `shadow_apply_no_cascades` passed (rerun after the review fixes): one mode row with `enabled=0 cascades=0`, the counter-off row, no apply/replay/device/counter line, 0 attempts, 6/6 TAA frames byte-exact against the unshadowed reference [M] |
+| Launcher | dry runs before/after (`compare_dry_runs.py`, 11 checks): the default command and `--no-shadow-cascades` differ from e17fd2ca only by the four removed variables; `--no-shadow-cascades` is accepted and sends `X3M_SHADOW_CASCADES=0` with the depth replay and the apply requested; each removed option exits 2 (unrecognized); inherited values are dropped [M] |
+| Host | full suite 272 modules / 2,824 tests / 0 failing (after `test_gpu_sync_timing`'s SunApply span count 2 -> 1 and the provenance refresh the generator edit needs, as at 479cd036: `generate_rigid_motion_pixel.py` 56 programs (191.8 s under the lock) and `generate_bloom_programs.py` 9 programs regenerated natively, every header byte-identical, 65 records changed by their one `tool_sources` generator digest line) [M] |
+
+Producers and records: `verification/results/shadow-single-map-removal/` (`fixture_counts.py` -> `fixture_counts.json`,
+`compare_dry_runs.py` -> `comparison.json`, `compact_sun_share_live.py` -> `sun-share-live.json`). Not run:
+`run_route_bench.py` (its two depth configurations moved to a one-cascade set; a benchmark, not an acceptance
+check). Not flown.

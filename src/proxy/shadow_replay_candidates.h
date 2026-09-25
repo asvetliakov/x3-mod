@@ -12,7 +12,7 @@
 namespace x3m::shadow_replay {
 constexpr unsigned record_capacity = 1024; // inline storage (fixed arrays in MotionOutput, no allocation); the per-frame cap is at most this unless a cascade set asks for more records
 constexpr unsigned record_capacity_max = 4096; // X3M_SHADOW_CASCADE_RECORDS: the largest per-cascade record capacity; storage beyond record_capacity is allocated once at attach
-constexpr unsigned default_cap = 512;       // X3M_SHADOW_REPLAY_CAP default (1..record_capacity): managed candidates recorded and replayed per frame
+constexpr unsigned default_cap = 512;       // the counter's per-frame record cap without cascades (the former X3M_SHADOW_REPLAY_CAP default, removed 2026-09-25); a cascade set brings its own caps
 constexpr unsigned cascade_capacity = 5;    // = renderer::shadow_cascade_max (docs/architecture/shadow-cascades.md); this header stays D3D- and renderer-free
 constexpr unsigned witness_capacity = 16;  // per device, section 3
 constexpr float slice0_near = 6.f, slice0_far = 250.f; // own-ship slice of cascade 0 (origin distance, view units)
@@ -107,7 +107,7 @@ struct Record {
     std::uint64_t serial = 0; // the node's lifetime serial (0 unknown): the importance order's tie-break
     std::uint64_t key = 0;    // caster_key of the draw: the importance order's kept-last-frame identity
     float size = 0.f;         // projected size at the camera (renderer::shadow_cascade_projected_size; 0 without an extent)
-    std::uint8_t cascades = 1; // bit i: the draw is replayed into cascade i (the single map is cascade 0)
+    std::uint8_t cascades = 1; // bit i: the draw is replayed into cascade i
     std::uint8_t verdict = 0;  // VerdictSource: what admitted the draw (capture-frame diagnostics)
 };
 // What decided a record's admission: the draw-time box test on the range's own

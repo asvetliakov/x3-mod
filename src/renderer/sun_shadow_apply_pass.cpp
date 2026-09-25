@@ -49,9 +49,6 @@ using CreatePsFn = HRESULT(WINAPI*)(D, const DWORD*, IDirect3DPixelShader9**);
 using SetPsFn = HRESULT(WINAPI*)(D, IDirect3DPixelShader9*);
 using SetPsConstantsFn = HRESULT(WINAPI*)(D, UINT, const float*, UINT);
 // Only our authored program is embedded (tools/shaders/generate_rigid_motion_pixel.py).
-constexpr DWORD apply_words[] = {
-#include "sun_shadow_apply_program_inc.h"
-};
 constexpr DWORD cascade_apply_words[] = {
 #include "sun_shadow_cascade_apply_program_inc.h"
 };
@@ -71,13 +68,6 @@ template<class Resource> HRESULT same_device(IDirect3DDevice9* device, Resource*
 // docs/architecture/shadow-receiver-depth.md, flipped 2026-09-18). Gated per
 // frame from the bound texture's format: an R32F or G32R32F RT2 skips the quad.
 bool depth_share_format(D3DFORMAT format) noexcept { return format == D3DFMT_A32B32G32R32F; }
-bool finite_params(const SunShadowApplyParams& p) noexcept {
-    for (float v : {p.m00, p.m11, p.m20, p.m21, p.m22, p.m32, p.exponent, p.bias_constant, p.bias_max, p.planar_step})
-        if (!std::isfinite(v)) return false;
-    for (float v : p.rows) if (!std::isfinite(v)) return false;
-    return p.m00 > 0.f && p.m11 > 0.f && p.m22 > 1.f && p.m32 < 0.f && std::isfinite(1.f / std::fabs(p.m32)) &&
-           p.exponent > 0.f && p.exponent <= 1.f && p.bias_constant >= 0.f && p.bias_max >= 0.f && p.planar_step > 0.f;
-}
 } // namespace
 // Everything the quad touches beyond the state block: the target and depth
 // bindings, viewport and scissor (SetRenderTarget resets the latter two), and
@@ -136,31 +126,27 @@ struct SunShadowApplyPass::SavedState {
 SunShadowApplyPass::~SunShadowApplyPass() { detach(); }
 unsigned SunShadowApplyPass::references() const noexcept {
     unsigned n = 0;
-    for (const void* p : {static_cast<const void*>(block_), static_cast<const void*>(apply_), static_cast<const void*>(quad_vs_),
+    for (const void* p : {static_cast<const void*>(block_), static_cast<const void*>(quad_vs_),
                           static_cast<const void*>(quad_declaration_), static_cast<const void*>(cascade_apply_)})
         n += p != nullptr;
     return n;
 }
 void SunShadowApplyPass::detach() noexcept {
-    drop(block_); drop(apply_); drop(cascade_apply_); drop(quad_vs_); drop(quad_declaration_);
+    drop(block_); drop(cascade_apply_); drop(quad_vs_); drop(quad_declaration_);
     device_ = nullptr; vtable_ = nullptr; render_targets_ = streams_ = 0; reset_pending_ = false;
     caps_ = {}; target_format_ = D3DFMT_UNKNOWN;
 }
 void SunShadowApplyPass::before_reset() noexcept { drop(block_); reset_pending_ = device_ != nullptr; }
 void SunShadowApplyPass::after_reset(HRESULT result) noexcept { if (SUCCEEDED(result)) reset_pending_ = false; }
 HRESULT SunShadowApplyPass::attach(IDirect3DDevice9* d, void* const* native, const D3DCAPS9& caps, D3DFORMAT adapter_format,
-                                   D3DFORMAT target_format, bool cascades) noexcept {
+                                   D3DFORMAT target_format) noexcept {
     detach();
     if (!d) { caps_.reason = "device"; return E_INVALIDARG; }
     device_ = d; vtable_ = native;
     auto refuse = [&](const char* reason, HRESULT hr) { caps_.reason = reason; device_ = nullptr; vtable_ = nullptr; return hr; };
     if ((caps.VertexShaderVersion & 0xffffu) < 0x0300u || (caps.PixelShaderVersion & 0xffffu) < 0x0300u) return refuse("shader_model", D3DERR_NOTAVAILABLE);
-    caps_.program_slots = ps3_program_slots(reinterpret_cast<const std::uint32_t*>(apply_words), std::size(apply_words));
+    caps_.program_slots = ps3_program_slots(reinterpret_cast<const std::uint32_t*>(cascade_apply_words), std::size(cascade_apply_words));
     if (caps_.program_slots == 0 || caps.MaxPixelShader30InstructionSlots < caps_.program_slots) return refuse("ps_slots", D3DERR_NOTAVAILABLE);
-    if (cascades) {
-        caps_.cascade_slots = ps3_program_slots(reinterpret_cast<const std::uint32_t*>(cascade_apply_words), std::size(cascade_apply_words));
-        if (caps_.cascade_slots == 0 || caps.MaxPixelShader30InstructionSlots < caps_.cascade_slots) return refuse("cascade_ps_slots", D3DERR_NOTAVAILABLE);
-    }
     if (!(caps.SrcBlendCaps & D3DPBLENDCAPS_ZERO) || !(caps.DestBlendCaps & D3DPBLENDCAPS_SRCCOLOR)) return refuse("blend_caps", D3DERR_NOTAVAILABLE);
     IDirect3D9* api = nullptr;
     D3DDEVICE_CREATION_PARAMETERS creation{};
@@ -182,11 +168,10 @@ HRESULT SunShadowApplyPass::attach(IDirect3DDevice9* d, void* const* native, con
     render_targets_ = caps.NumSimultaneousRTs ? caps.NumSimultaneousRTs : 1; streams_ = caps.MaxStreams; target_format_ = target_format;
     hr = call<CreateVsFn>(CreateVertexShader)(d, reinterpret_cast<const DWORD*>(quad_vertex_program()), &quad_vs_);
     if (SUCCEEDED(hr)) hr = call<CreateDeclarationFn>(CreateVertexDeclaration)(d, quad_declaration, &quad_declaration_);
-    if (SUCCEEDED(hr)) hr = call<CreatePsFn>(CreatePixelShader)(d, apply_words, &apply_);
-    if (SUCCEEDED(hr) && cascades) hr = call<CreatePsFn>(CreatePixelShader)(d, cascade_apply_words, &cascade_apply_);
+    if (SUCCEEDED(hr)) hr = call<CreatePsFn>(CreatePixelShader)(d, cascade_apply_words, &cascade_apply_);
     caps_.programs = hr;
     if (FAILED(hr)) { const SunShadowApplyCaps kept = caps_; detach(); caps_ = kept; caps_.reason = "programs"; return hr; }
-    caps_.enabled = true; caps_.reason = ""; caps_.cascades = cascades;
+    caps_.enabled = true; caps_.reason = "";
     return S_OK;
 }
 HRESULT SunShadowApplyPass::ensure_block() noexcept {
@@ -198,7 +183,7 @@ HRESULT SunShadowApplyPass::ensure_block() noexcept {
 // The quad's whole device state: the target alone (depth and the other
 // targets unbound, RT0 bound before its full viewport: a viewport must fit
 // the bound target), the quad program pair, the multiply blend, point/clamp
-// samplers 0-1 (0-5 for the cascade program).
+// samplers 0-5.
 HRESULT SunShadowApplyPass::normalize(IDirect3DSurface9* target, UINT w, UINT h, IDirect3DPixelShader9* program, UINT samplers) noexcept {
     D d = device_;
 #define STEP(call) do { const HRESULT hresult = (call); if (FAILED(hresult)) return hresult; } while (false)
@@ -243,77 +228,11 @@ HRESULT SunShadowApplyPass::normalize(IDirect3DSurface9* target, UINT w, UINT h,
 #undef STEP
     return S_OK;
 }
-HRESULT SunShadowApplyPass::execute(const SunShadowApplyFrame& in, SunShadowApplyResult* out) noexcept {
-    if (!out) return E_INVALIDARG;
-    *out = {};
-    // Missing or invalid inputs skip the quad and touch nothing (S_FALSE).
-    auto skip = [&](const char* reason) { out->skipped = true; out->skipped_reason = reason; out->operation = S_FALSE; return S_FALSE; };
-    if (!device_ || !caps_.enabled) return skip("detached");
-    if (reset_pending_) return skip("reset_pending");
-    if (!in.depth_share || !in.map || !in.target || !in.width || !in.height || in.caller_stateblock_recording) return skip("input");
-    if (!finite_params(in.params)) return skip("params");
-    D3DSURFACE_DESC desc{};
-    if (FAILED(in.depth_share->GetLevelDesc(0, &desc)) || desc.Width != in.width || desc.Height != in.height || !depth_share_format(desc.Format) ||
-        desc.MultiSampleType != D3DMULTISAMPLE_NONE)
-        return skip("format");
-    if (FAILED(in.map->GetLevelDesc(0, &desc)) || desc.Width != desc.Height || desc.Width < 64 || desc.Format != D3DFMT_R32F ||
-        desc.MultiSampleType != D3DMULTISAMPLE_NONE)
-        return skip("format");
-    const UINT map_size = desc.Width;
-    if (FAILED(in.target->GetDesc(&desc)) || desc.Width != in.width || desc.Height != in.height || desc.Format != target_format_ ||
-        desc.MultiSampleType != D3DMULTISAMPLE_NONE || !(desc.Usage & D3DUSAGE_RENDERTARGET))
-        return skip("format");
-    if (FAILED(same_device(device_, in.depth_share)) || FAILED(same_device(device_, in.map)) || FAILED(same_device(device_, in.target)))
-        return skip("device");
-    auto fail = [&](SunShadowApplyStage stage, HRESULT hr) { out->failed = stage; out->operation = hr; return hr; };
-    HRESULT hr = ensure_block();
-    if (FAILED(hr)) return fail(SunShadowApplyStage::Block, hr);
-    SavedState saved(*this, block_, render_targets_);
-    hr = saved.capture();
-    if (FAILED(hr)) return fail(SunShadowApplyStage::Capture, hr);
-    D d = device_;
-    const SunShadowApplyParams& p = in.params;
-    SunShadowApplyStage stage = SunShadowApplyStage::Normalize;
-    bool own_scene = false;
-    auto step = [&](SunShadowApplyStage s, HRESULT value) { stage = s; hr = value; return SUCCEEDED(hr); };
-    hr = normalize(in.target, in.width, in.height, apply_, 2);
-    if (SUCCEEDED(hr) && !in.caller_scene_open) own_scene = step(SunShadowApplyStage::Scene, call<SceneFn>(BeginScene)(d));
-    // c0..c6 of sun_shadow_apply_ps.hlsl, one upload.
-    const unsigned rotation = p.jitter_index & 7u;
-    const float block[7][4] = {
-        {p.m00, p.m11, p.m20, p.m21},
-        {p.m22, p.m32, p.exponent, p.bias_constant},
-        {p.rows[0], p.rows[1], p.rows[2], p.rows[3]},
-        {p.rows[4], p.rows[5], p.rows[6], p.rows[7]},
-        {p.rows[8], p.rows[9], p.rows[10], p.rows[11]},
-        {float(map_size), 1.f / float(map_size), kernel_cos[rotation], kernel_sin[rotation]},
-        {p.bias_max, p.planar_step, 0.f, 0.f},
-    };
-    if (SUCCEEDED(hr)) step(SunShadowApplyStage::Constants, call<SetPsConstantsFn>(SetPixelShaderConstantF)(d, 0, &block[0][0], 7));
-    if (SUCCEEDED(hr)) step(SunShadowApplyStage::Apply, call<SetTextureFn>(SetTexture)(d, 0, in.depth_share));
-    if (SUCCEEDED(hr)) step(SunShadowApplyStage::Apply, call<SetTextureFn>(SetTexture)(d, 1, in.map));
-    bool applied = false;
-    if (SUCCEEDED(hr)) {
-        QuadVertex vertices[4];
-        quad_vertices(in.width, in.height, vertices);
-        applied = step(SunShadowApplyStage::Apply, call<DrawUpFn>(DrawPrimitiveUP)(d, D3DPT_TRIANGLESTRIP, 2, vertices, sizeof(QuadVertex)));
-    }
-    if (own_scene && !lost(hr)) { const HRESULT end = call<SceneFn>(EndScene)(d); if (SUCCEEDED(hr) || lost(end)) { if (FAILED(end)) stage = SunShadowApplyStage::EndScene; hr = end; } }
-    out->operation = hr;
-    out->restore = lost(hr) ? hr : saved.restore();
-    if (FAILED(hr) || FAILED(out->restore)) {
-        out->failed = FAILED(hr) ? stage : SunShadowApplyStage::Restore;
-        return FAILED(out->restore) ? out->restore : hr;
-    }
-    out->applied = applied; out->map_size = map_size;
-    return S_OK;
-}
 HRESULT SunShadowApplyPass::execute_cascades(const SunShadowCascadeFrame& in, SunShadowApplyResult* out) noexcept {
     if (!out) return E_INVALIDARG;
     *out = {};
     auto skip = [&](const char* reason) { out->skipped = true; out->skipped_reason = reason; out->operation = S_FALSE; return S_FALSE; };
-    if (!device_ || !caps_.enabled) return skip("detached");
-    if (!caps_.cascades || !cascade_apply_) return skip("cascades");
+    if (!device_ || !caps_.enabled || !cascade_apply_) return skip("detached");
     if (reset_pending_) return skip("reset_pending");
     if (!in.depth_share || !in.target || !in.width || !in.height || !in.count || in.count > shadow_cascade_max || in.caller_stateblock_recording) return skip("input");
     for (float v : {in.m00, in.m11, in.m20, in.m21, in.m22, in.m32, in.exponent, in.planar_step}) if (!std::isfinite(v)) return skip("params");
@@ -328,8 +247,8 @@ HRESULT SunShadowApplyPass::execute_cascades(const SunShadowCascadeFrame& in, Su
         desc.MultiSampleType != D3DMULTISAMPLE_NONE || !(desc.Usage & D3DUSAGE_RENDERTARGET))
         return skip("format");
     if (FAILED(same_device(device_, in.depth_share)) || FAILED(same_device(device_, in.target))) return skip("device");
-    // c0-c3, the nine rotated kernel offsets (c4-c12, row-major as the
-    // single-map program's j, i loops) and five constants per cascade from
+    // c0-c3, the nine rotated kernel offsets (c4-c12, row-major over the
+    // program's j, i loops) and five constants per cascade from
     // c13 (c13-c37 for five cascades); an unused cascade keeps zero rows with
     // row 0 w = 2, so it never contains a pixel.
     const unsigned rotation = in.jitter_index & 7u;

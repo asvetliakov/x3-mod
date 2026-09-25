@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "source": "src/temporal/sun_shadow_cascade_apply_ps.hlsl",
-  "source_sha256": "f1c19e4307ce928b977233704badc2c568a466266a53a5d2ad9a82e9ebd6c701",
+  "source_sha256": "6bff04e9ec334422181a060eea8ea36ef8687ad0267669402d6368c604025fe9",
   "compiler": "native d3dx9_37.dll D3DXCompileShader",
   "compiler_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "entry": "main",
@@ -15,7 +15,7 @@
   "header_sha256": "2d3272acbb53d29c5b25501556e32933c1cd726fcb28139be14e33d9d60c5130",
   "tool_sources": {
     "tools/shaders/compile_rigid_motion_pixel.cpp": "f9587d9f1c066bce58bf36536b09d3f3ad58a5a1f6dbd59834e31628787d6bc3",
-    "tools/shaders/generate_rigid_motion_pixel.py": "56a9abf4f3a4bd75d3d70d116f886548d1d1ad6a0df1d45be067f55cefca2d2c"
+    "tools/shaders/generate_rigid_motion_pixel.py": "566935b2c756226b4bb3b7f85078753af5fc7e88cff4e097fe2823d078d9b118"
   },
   "copyright_scope": "Original authored project shader; no game shader bytes",
   "creates_d3d_device": false

@@ -19,7 +19,11 @@ void run_sun_lane(const char* bootstrap_vertex) {
     // receiver's) shadows every receiver pixel (f = 0: C (1 - s)); frame 0
     // READONLY-locks the geometry after its draw (lease refused: map
     // unavailable, quad skipped), frame 2 has the untracked writer (lane
-    // unavailable, quad skipped), a Reset precedes frame 4.
+    // unavailable, quad skipped), a Reset precedes frame 4. With
+    // X3M_FIXTURE_SUN_APPLY_NO_MAP=1 the same script runs without a cascade set
+    // (X3M_SHADOW_CASCADES=0, the launcher's --no-shadow-cascades): the DLL
+    // has no map, so the apply stays off (never attempted), nothing replays
+    // and every frame's TAA output is the unshadowed reference.
     // original_share_refused: the share producer refused for the reviewed pair
     // (X3M_FIXTURE_SUN_LANE_FAULT=original_share) under --original-fill 0.05:
     // the draw keeps its fill variant (the fill is never dropped), writes no
@@ -32,6 +36,8 @@ void run_sun_lane(const char* bootstrap_vertex) {
     const bool original_lane=!std::strcmp(mode,"original_lane")||lightmap,shadow_apply=!std::strcmp(mode,"shadow_apply"),share_refused=!std::strcmp(mode,"original_share_refused");
     if(lightmap)require(hull_toggle!=nullptr,"hull toggle export");
     const bool untracked=!std::strcmp(mode,"untracked")||shadow_apply;
+    char no_map_text[4]{};
+    const bool no_map=shadow_apply&&GetEnvironmentVariableA("X3M_FIXTURE_SUN_APPLY_NO_MAP",no_map_text,sizeof no_map_text)==1&&no_map_text[0]=='1';
     const bool refused=!std::strcmp(mode,"caps")||!std::strcmp(mode,"cutout_drop")||!std::strcmp(mode,"alpha_mask");
     const bool allocation=!std::strcmp(mode,"allocation");
     const bool fallback=refused||allocation;
@@ -446,11 +452,11 @@ void run_sun_lane(const char* bootstrap_vertex) {
         // The mask file names, per pixel, 0 exact / 1 within one FP16 code
         // (the GPU's pow/multiply rounding and the history of an earlier
         // shadowed frame) / 2 excluded (unused here), for the runner.
-        const bool apply_frame=shadow_apply&&step!=0&&step!=2;
+        const bool apply_frame=shadow_apply&&!no_map&&step!=0&&step!=2;
         unsigned apply_inner=0,apply_band=0,apply_changed=0;
         if(shadow_apply){
             unsigned w=0,h=0;auto image=hdr_image(&w,&h);require(w==W&&h==H,"apply colour dimensions");
-            std::vector<unsigned char> apply_mask(std::size_t(W)*H,step>=3?1:0);
+            std::vector<unsigned char> apply_mask(std::size_t(W)*H,step>=3&&!no_map?1:0);
             for(unsigned y=0;y<H;++y)for(unsigned x=0;x<W;++x){
                 const std::size_t pixel=std::size_t(y)*W+x;
                 const float share=expected_lane?lane[pixel*lane_stride+1]:0.f,depth_value=lane[pixel*lane_stride];
@@ -465,7 +471,8 @@ void run_sun_lane(const char* bootstrap_vertex) {
             char mask_name[64];std::snprintf(mask_name,sizeof mask_name,"apply_mask_%llu.u8",frame);
             FILE* mask_file=std::fopen(mask_name,"wb");require(mask_file!=nullptr,"apply mask file");
             const auto mask_written=std::fwrite(apply_mask.data(),1,apply_mask.size(),mask_file);std::fclose(mask_file);require(mask_written==apply_mask.size(),"apply mask complete");
-            if(step>=3)require(apply_inner>=400&&apply_changed>=400,"the shadowed footprint really darkens the reference by at least one FP16 code");
+            if(step>=3&&!no_map)require(apply_inner>=400&&apply_changed>=400,"the shadowed footprint really darkens the reference by at least one FP16 code");
+            if(no_map)require(apply_inner==0&&apply_changed==0,"without a map the reference is the unshadowed scene");
             if(step==1)require(apply_changed==0,"the zero-sun frame's shares leave the reference unchanged");
         }
         api(d->SetDepthStencilSurface(nullptr),"sun scene-end detach depth");
@@ -487,8 +494,8 @@ void run_sun_lane(const char* bootstrap_vertex) {
         if(shadow_apply){
             const unsigned applied=emission_status(d.p,70),attempted=emission_status(d.p,71),replayed=emission_status(d.p,72);
             std::printf("SUN_APPLY frame=%llu step=%u applied=%u attempted=%u replayed=%u expect_applied=%u inner=%u band=%u changed=%u\n",frame,step,applied,attempted,replayed,unsigned(apply_frame),apply_inner,apply_band,apply_changed);
-            require(attempted==1,"the apply gate ran at this scene end");
-            require((replayed>0)==(step!=0),"the depth replay produced this frame's map on every frame with a sun");
+            require(attempted==unsigned(!no_map),no_map?"without a map the apply never runs":"the apply gate ran at this scene end");
+            require((replayed>0)==(!no_map&&step!=0),no_map?"without a map nothing replays":"the depth replay produced this frame's map on every frame with a sun");
             require(applied==unsigned(apply_frame),"the apply quad drew exactly on the frames with the lane available, the map and the owner");
         }
         std::vector<DWORD> image;std::vector<unsigned char> expected;

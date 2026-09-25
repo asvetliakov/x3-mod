@@ -181,7 +181,9 @@ shadows span tens of units. The quad's NDC → view law now subtracts the route'
 jitter through `m20/m21` (the latch carries none); capture frames log the pass inputs
 (`sun_shadow_apply_params`) so the CPU twin runs on the run's data without assumptions.
 
-**Cascade-0 coverage, resolution and the bias (2026-09-17).** The map box is tunable:
+**Cascade-0 coverage, resolution and the bias (2026-09-17).** (The single-map options below were
+removed on 2026-09-25 with the single map; cascade 0 of `--shadow-cascades` is the near map:
+[directional-shadows.md](directional-shadows.md), "Single map removed".) The map box is tunable:
 `--shadow-replay-extent E` (half-extent in the sun basis, 50–4000, default 250),
 `--shadow-replay-depth-half D` (128–8192, default 512) and `--shadow-replay-size N`
 (64–4096, default 1024), read once at device creation; the candidate box test, the replay

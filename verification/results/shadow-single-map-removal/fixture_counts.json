@@ -1,0 +1,398 @@
+{
+ "before": "e17fd2ca",
+ "run87_copy_equal": true,
+ "partial_status": "PARTIAL",
+ "case_exits_nonzero": [],
+ "rows": [
+  {
+   "case": "seam-ownership-shadow-alpha-route",
+   "status": "moved",
+   "before": 66,
+   "after": 66
+  },
+  {
+   "case": "seam-ownership-shadow-alpha-route-less",
+   "status": "moved",
+   "before": 66,
+   "after": 66
+  },
+  {
+   "case": "seam-ownership-shadow-pool-cycle-census",
+   "status": "kept",
+   "before": 193,
+   "after": 193
+  },
+  {
+   "case": "seam-ownership-shadow-pool-cycle-live",
+   "status": "kept",
+   "before": 193,
+   "after": 193
+  },
+  {
+   "case": "seam-ownership-shadow-pool-footprint-off",
+   "status": "kept",
+   "before": 78,
+   "after": 78
+  },
+  {
+   "case": "seam-ownership-shadow-pool-footprint-px24",
+   "status": "kept",
+   "before": 78,
+   "after": 78
+  },
+  {
+   "case": "seam-ownership-shadow-pool-footprint-px8",
+   "status": "kept",
+   "before": 78,
+   "after": 78
+  },
+  {
+   "case": "seam-ownership-shadow-pool-footprint-retained-off",
+   "status": "kept",
+   "before": 166,
+   "after": 166
+  },
+  {
+   "case": "seam-ownership-shadow-pool-footprint-retained-px8",
+   "status": "kept",
+   "before": 166,
+   "after": 166
+  },
+  {
+   "case": "seam-ownership-shadow-pool-hull",
+   "status": "kept",
+   "before": 77,
+   "after": 77
+  },
+  {
+   "case": "seam-ownership-shadow-pool-importance",
+   "status": "kept",
+   "before": 99,
+   "after": 99
+  },
+  {
+   "case": "seam-ownership-shadow-pool-jitter-live",
+   "status": "kept",
+   "before": 192,
+   "after": 192
+  },
+  {
+   "case": "seam-ownership-shadow-pool-jitter-off",
+   "status": "kept",
+   "before": 143,
+   "after": 143
+  },
+  {
+   "case": "seam-ownership-shadow-pool-records",
+   "status": "kept",
+   "before": 53,
+   "after": 53
+  },
+  {
+   "case": "seam-ownership-shadow-pool-static-census",
+   "status": "kept",
+   "before": 182,
+   "after": 182
+  },
+  {
+   "case": "seam-ownership-shadow-pool-static-live",
+   "status": "kept",
+   "before": 182,
+   "after": 182
+  },
+  {
+   "case": "seam-ownership-shadow-pool-static-off",
+   "status": "kept",
+   "before": 165,
+   "after": 165
+  },
+  {
+   "case": "seam-ownership-shadow-pool-static-strict",
+   "status": "kept",
+   "before": 165,
+   "after": 165
+  },
+  {
+   "case": "seam-ownership-shadow-replay-adaptive-big",
+   "status": "kept",
+   "before": 333,
+   "after": 333
+  },
+  {
+   "case": "seam-ownership-shadow-replay-adaptive-reuse",
+   "status": "kept",
+   "before": 336,
+   "after": 336
+  },
+  {
+   "case": "seam-ownership-shadow-replay-adaptive-small",
+   "status": "kept",
+   "before": 333,
+   "after": 333
+  },
+  {
+   "case": "seam-ownership-shadow-replay-adaptive-swap",
+   "status": "kept",
+   "before": 336,
+   "after": 336
+  },
+  {
+   "case": "seam-ownership-shadow-replay-cascades",
+   "status": "kept",
+   "before": 278,
+   "after": 278
+  },
+  {
+   "case": "seam-ownership-shadow-replay-cascades-alpha-on",
+   "status": "kept",
+   "before": 283,
+   "after": 283
+  },
+  {
+   "case": "seam-ownership-shadow-replay-cascades-casters-20",
+   "status": "kept",
+   "before": 278,
+   "after": 278
+  },
+  {
+   "case": "seam-ownership-shadow-replay-cascades-poll-agree",
+   "status": "kept",
+   "before": 281,
+   "after": 281
+  },
+  {
+   "case": "seam-ownership-shadow-replay-cascades-poll-disagree",
+   "status": "kept",
+   "before": 281,
+   "after": 281
+  },
+  {
+   "case": "seam-ownership-shadow-replay-cascades-poll-null",
+   "status": "kept",
+   "before": 281,
+   "after": 281
+  },
+  {
+   "case": "seam-ownership-shadow-replay-cascades-poll-refusals",
+   "status": "kept",
+   "before": 281,
+   "after": 281
+  },
+  {
+   "case": "seam-ownership-shadow-replay-cascades-toggle",
+   "status": "kept",
+   "before": 283,
+   "after": 283
+  },
+  {
+   "case": "seam-ownership-shadow-replay-casters-2",
+   "status": "moved",
+   "before": 203,
+   "after": 239
+  },
+  {
+   "case": "seam-ownership-shadow-replay-casters-20",
+   "status": "moved",
+   "before": 203,
+   "after": 239
+  },
+  {
+   "case": "seam-ownership-shadow-replay-casters-8",
+   "status": "moved",
+   "before": 203,
+   "after": 239
+  },
+  {
+   "case": "seam-ownership-shadow-replay-far-refused",
+   "status": "moved",
+   "before": 203,
+   "after": 239
+  },
+  {
+   "case": "seam-ownership-shadow-replay-ladder-corvette",
+   "status": "kept",
+   "before": 373,
+   "after": 373
+  },
+  {
+   "case": "seam-ownership-shadow-replay-ladder-corvette-static",
+   "status": "kept",
+   "before": 373,
+   "after": 373
+  },
+  {
+   "case": "seam-ownership-shadow-replay-ladder-destroyer",
+   "status": "kept",
+   "before": 373,
+   "after": 373
+  },
+  {
+   "case": "seam-ownership-shadow-replay-ladder-shrink",
+   "status": "kept",
+   "before": 376,
+   "after": 376
+  },
+  {
+   "case": "seam-ownership-shadow-replay-no-cascades",
+   "status": "added",
+   "before": null,
+   "after": 103
+  },
+  {
+   "case": "seam-ownership-shadow-replay-off",
+   "status": "kept",
+   "before": 99,
+   "after": 100
+  },
+  {
+   "case": "seam-ownership-shadow-replay-on",
+   "status": "moved",
+   "before": 203,
+   "after": 239
+  },
+  {
+   "case": "seam-ownership-shadow-replay-sun-programs",
+   "status": "moved",
+   "before": 205,
+   "after": 241
+  },
+  {
+   "case": "seam-ownership-shadow-replay-toggle-single",
+   "status": "moved",
+   "before": 214,
+   "after": 250
+  },
+  {
+   "case": "seam-ownership-shadow-replay-wide",
+   "status": "moved",
+   "before": 203,
+   "after": 239
+  },
+  {
+   "case": "seam-ownership-shadow-retention-census",
+   "status": "kept",
+   "before": 9740,
+   "after": 12052
+  },
+  {
+   "case": "seam-ownership-shadow-retention-live",
+   "status": "kept",
+   "before": 9743,
+   "after": 12055
+  },
+  {
+   "case": "seam-ownership-shadow-retention-live-poll",
+   "status": "kept",
+   "before": 9890,
+   "after": 12202
+  },
+  {
+   "case": "seam-ownership-shadow-retention-off",
+   "status": "kept",
+   "before": 6629,
+   "after": 8304
+  },
+  {
+   "case": "seam-ownership-taa-camera-candidates-on",
+   "status": "kept",
+   "before": 216,
+   "after": 216
+  },
+  {
+   "case": "seam-ownership-taa-shadow-replay-off",
+   "status": "kept",
+   "before": 122,
+   "after": 123
+  },
+  {
+   "case": "seam-ownership-taa-shadow-replay-on",
+   "status": "moved",
+   "before": 226,
+   "after": 262
+  },
+  {
+   "case": "shadow-alpha-casters",
+   "status": "moved",
+   "before": 26,
+   "after": 26
+  },
+  {
+   "case": "sun-shadow-apply",
+   "status": "deleted",
+   "before": 175,
+   "after": null
+  },
+  {
+   "case": "sun-shadow-apply-cascades",
+   "status": "extended",
+   "before": 4374,
+   "after": 4570
+  },
+  {
+   "case": "sun-shadow-apply-cascades-5",
+   "status": "extended",
+   "before": 3135,
+   "after": 3239
+  },
+  {
+   "case": "sun-shadow-apply-cascades-5-faces",
+   "status": "extended",
+   "before": 2880,
+   "after": 2991
+  },
+  {
+   "case": "sun-shadow-apply-cascades-5-faces-slope",
+   "status": "extended",
+   "before": 2880,
+   "after": 2991
+  },
+  {
+   "case": "sun-shadow-apply-cascades-5-slope",
+   "status": "extended",
+   "before": 3135,
+   "after": 3239
+  },
+  {
+   "case": "sun-shadow-apply-cascades-slope",
+   "status": "extended",
+   "before": 4374,
+   "after": 4570
+  },
+  {
+   "case": "sun-shadow-apply-wide",
+   "status": "deleted",
+   "before": 179,
+   "after": null
+  }
+ ],
+ "totals": {
+  "kept": {
+   "cases": 39,
+   "before": 43728,
+   "after": 52341
+  },
+  "moved": {
+   "cases": 12,
+   "before": 2021,
+   "after": 2345
+  },
+  "extended": {
+   "cases": 6,
+   "before": 20778,
+   "after": 21600
+  },
+  "added": {
+   "cases": 1,
+   "before": 0,
+   "after": 103
+  },
+  "deleted": {
+   "cases": 2,
+   "before": 354,
+   "after": 0
+  }
+ },
+ "failures": [],
+ "before_total": 66881,
+ "after_total": 76389
+}

@@ -456,7 +456,7 @@ launcher choice covers the interim without code.
 ## 7. Cost on the hot path and native Windows
 
 None of this changes per-draw code: the four-cascade bounds mask is 44.6 ns per z-writing draw
-against 45.0 for the single verdict (**M**) whatever the extents; the extents only change how
+against 45.0 for the single verdict (**M**; that verdict and its bench field went with the single map on 2026-09-25) whatever the extents; the extents only change how
 many records meet each box. Native Windows: the same documented D3D9 as shadow-cascades.md
 §6; a 2048² far map is within every device's `MaxTextureWidth`; unverified natively.
 

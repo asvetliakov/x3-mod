@@ -26,21 +26,26 @@ APPLY_SKIP_REASONS = frozenset(('none', 'lane', 'replay', 'owner', 'depth', 'rec
                                 'reset_pending', 'depth_container', 'bias', 'failed', 'detached', 'input', 'params', 'format', 'device',
                                 'sun', 'basis', 'rows', 'cascades', 'absent'))  # the cascade branch's own
 CASES = ('positive', 'caps', 'cutout_drop', 'alpha_mask', 'allocation', 'late_shader', 'bind', 'untracked', 'composition', 'composition_missing', 'composition_failed',
-         'xt_state', 'effects', 'xt_state_lane_off', 'cutout_pair', 'cutout_pair_bias', 'original_lane', 'shadow_apply', 'original_share_refused', 'hull_emission',
+         'xt_state', 'effects', 'xt_state_lane_off', 'cutout_pair', 'cutout_pair_bias', 'original_lane', 'shadow_apply_no_cascades', 'original_share_refused', 'hull_emission',
          'shadow_apply_cascades', 'original_lane_lightmap', 'unregistered', 'unregistered_fault', 'unregistered_mid')
-# shadow_apply / shadow_apply_cascades run on the lane's A32B32G32R32F RT2 (116; the params lines say
-# depth_encoding=linear), the only encoding since 2026-09-18 (docs/architecture/shadow-receiver-depth.md);
-# the former G32R32F (115, device) cases and their -linear siblings are gone with the option.
-APPLY_CASES = ('shadow_apply', 'shadow_apply_cascades')
+# shadow_apply_cascades / shadow_apply_no_cascades run the shadow_apply script on the lane's A32B32G32R32F
+# RT2 (116; the params lines say depth_encoding=linear), the only encoding since 2026-09-18
+# (docs/architecture/shadow-receiver-depth.md); the former G32R32F (115, device) cases and their -linear
+# siblings are gone with the option. The single-map shadow_apply case went with the single shadow map
+# (2026-09-25, docs/architecture/directional-shadows.md, "Single map removed"): shadow_apply_cascades runs
+# the same script and validation on the cascades, and shadow_apply_no_cascades proves the apply without a
+# map (X3M_SHADOW_CASCADES=0: one sun_shadow_apply_mode row with enabled=0 cascades=0, no quad, no
+# replay, every frame the unshadowed reference byte for byte).
+APPLY_CASES = ('shadow_apply_cascades', 'shadow_apply_no_cascades')
 
 
 def apply_base(case):
-    """The script a case runs (the former -linear siblings are gone; the name is the script)."""
-    return case
+    """The script a case's options derive from (the former -linear siblings are gone)."""
+    return 'shadow_apply' if case == 'shadow_apply_no_cascades' else case
 # shadow_apply_cascades (docs/architecture/shadow-cascades.md): the shadow_apply
 # script and its validation unchanged, with two cascades through the DLL's own
-# wiring (the seam narrows them to 32 and 256 units; cascade 0 is the single
-# map's box, so the CPU-shadowed reference stands) and the capture window open:
+# wiring (the seam narrows them to 32 and 256 units; cascade 0 centred on the
+# camera holds the receiver and the caster, so the CPU-shadowed reference stands) and the capture window open:
 # one shadow_map<i> readback and one shadow_replay_map_basis line per cascade,
 # the sun_shadow_apply_params line with per-cascade rows, bias and texel, and
 # the cascade twin on those dumps.
@@ -100,7 +105,7 @@ def fp16_codes(data):
     # FP16 bit patterns as signed code indices (monotonic in value, so one code = one ULP).
     return [(c ^ 0x7fff) - 0x8000 if c & 0x8000 else c for c in struct.unpack(f'<{len(data)//2}H', data)]
 
-def compare_taa(readbacks, work, case):
+def compare_taa(readbacks, work, case, no_map=False):
     # Returns the number of frames whose every pixel matched the reference byte for byte.
     # Every frame's TAA output must equal the independent R32 reference byte for
     # byte. shadow_apply: the reference is the CPU-shadowed scene and the
@@ -116,6 +121,7 @@ def compare_taa(readbacks, work, case):
         exact += actual == expected
         if case == 'shadow_apply':
             mask = (work/f'apply_mask_{frame}.u8').read_bytes()
+            assert not no_map or not any(mask), (case, frame, 'without a map every pixel is exact')
             assert len(mask) == 64*64, (case, frame, 'mask size')
             a, e = fp16_codes(actual), fp16_codes(expected)
             worst = 0
@@ -133,7 +139,7 @@ def compare_taa(readbacks, work, case):
         assert sum(any(v > 0 for v in pixel[:3]) for pixel in values) > 3600
     return exact
 
-def validate_original(text, trace, case, publications):
+def validate_original(text, trace, case, publications, no_map=False):
     # No converted material anywhere: the share comes from the original share
     # producer (one sun_shadow_original_variant line per registered original,
     # share_applied=1), the lane line reports the producer totals.
@@ -163,6 +169,29 @@ def validate_original(text, trace, case, publications):
     assert all((r['frame'], r['ps'], r['test'], r['mask'], r['routed'], r['gate4'], r['opaque_routed'], r['opaque_lane'], r['opaque_refused'], r['untracked'], r['refused'])
                == ('2', '63f96eba9eea7880', '1', '7', '1', '0', '1', '1', '0', '0', '0') for r in cutouts), cutouts
     if case != 'shadow_apply': return {}
+    if no_map:
+        # No cascade set (X3M_SHADOW_CASCADES=0): the depth replay is requested but has no map, so
+        # the apply is configured off with one mode row (cascades=0), attaches nothing, runs no gate
+        # and logs no frame row; nothing replays and the caster counter serving the replay does not
+        # run (one shadow_replay_candidates_device row, no counter line); the fixture's SUN_APPLY
+        # witnesses say so per frame.
+        modes = [l for l in lines if l.startswith('sun_shadow_apply_mode ')]
+        assert len(modes) == 1 and modes[0].startswith('sun_shadow_apply_mode requested=1 enabled=0 lane=1 replay=1 linear_materials=0') \
+            and fields(modes[0]).get('cascades') == '0', modes
+        cascade_modes = [fields(l) for l in lines if l.startswith('shadow_cascades_mode ')]
+        assert len(cascade_modes) == 1 and (cascade_modes[0]['requested'], cascade_modes[0]['enabled'], cascade_modes[0]['reason']) == ('0', '0', 'off'), cascade_modes
+        counter_off = [fields(l) for l in lines if l.startswith('shadow_replay_candidates_device ')]
+        assert counter_off and all((r['enabled'], r['reason']) == ('0', 'no_cascades') for r in counter_off), counter_off
+        for prefix in ('sun_shadow_apply_device ', 'sun_shadow_apply_frame ', 'sun_shadow_apply_params ', 'shadow_replay_depth ', 'shadow_replay_depth_device ',
+                       'shadow_replay_cascades_device ', 'shadow_replay_depth_refused ', 'shadow_replay_depth_target ', 'shadow_replay_candidates '):
+            assert not any(l.startswith(prefix) for l in lines), (prefix, 'a line without a map')
+        witnesses = [fields(l) for l in text.splitlines() if l.startswith('SUN_APPLY ')]
+        assert [int(r['frame']) for r in witnesses] == list(range(6)), witnesses
+        assert all((r['applied'], r['attempted'], r['replayed'], r['expect_applied'], r['inner'], r['changed']) == ('0', '0', '0', '0', '0', '0') for r in witnesses), witnesses
+        lane_frames = [fields(l) for l in lines if l.startswith('sun_shadow_lane_frame ')]
+        formats = sorted({r['format'] for r in lane_frames if 'format' in r})
+        assert formats in ([], ['116']), formats
+        return dict(apply_frames=0, apply_attempts=0, no_map=True, receiver_depth='linear', rt2_format=int(formats[0]) if formats else None, params_lines_linear=0)
     # The apply quad: attached once per device epoch (two epochs: the Reset),
     # one line per frame, drawn exactly on the frames with the lane available,
     # a replayed map and the owner; frame 0 (no sun: replay refused) and frame
@@ -215,7 +244,7 @@ def validate_original(text, trace, case, publications):
                 bias=dict(bias_units=bias_units, clamp_texels=clamp_texels, cascade=dict(extent=32.0, depth_half=64.0, size=512),
                           resolved_by_law=sun_apply.resolve_bias(bias_units, 32.0, 64.0, 512, clamp_texels)))
 
-def validate(text, trace, work, case):
+def validate(text, trace, work, case, no_map=False):
     rows = [fields(line) for line in text.splitlines() if line.startswith('SUN_LIVE ')]
     assert len(rows) == 6 and [int(r['step']) for r in rows] == list(range(6))
     assert [int(r['frame']) for r in rows] == list(range(6))
@@ -403,9 +432,9 @@ def validate(text, trace, work, case):
         assert (w['test'], w['mask'], w['srgb'], w['cutout_pair'], w['arm']) == (('0', '7', '0', '1', '1') if case == 'cutout_pair' else ('-1', '-1', '-1', '0', '0' if case in ORIGINAL_CASES else '1')), (case, w)
     signatures = {(w['vs'], w['ps'], w['reason'], w['declaration'], w['stride'], w['z'], w['zwrite'], w['registered']) for w in writers}
     assert len(signatures) == len(writers), 'signature logged twice'
-    exact_frames = compare_taa(readbacks, work, case)
-    assert exact_frames >= (3 if case == 'shadow_apply' else 6), (case, exact_frames)  # shadow_apply: frames 0-2 exact, 3-5 within one code
-    original = validate_original(text, trace, case, publications) if case in ORIGINAL_CASES else {}
+    exact_frames = compare_taa(readbacks, work, case, no_map)
+    assert exact_frames >= (3 if case == 'shadow_apply' and not no_map else 6), (case, exact_frames)  # shadow_apply: frames 0-2 exact, 3-5 within one code; without a map every frame exact
+    original = validate_original(text, trace, case, publications, no_map) if case in ORIGINAL_CASES else {}
     return dict(frames=6, histories=2 if failed_coverage else 4, resets=1, exact_taa_frames=exact_frames,
                 refusal_frames=len(refusals), writer_signatures=len(writers),
                 composition_frames=len(masks), mask_union_pixels=sum(int(r['excluded']) for r in masks),
@@ -610,11 +639,14 @@ def main():
             if case == 'original_lane_lightmap':
                 env['X3M_HULL_LIGHTMAP_GAIN'] = repr(LIGHTMAP_GAIN)
             if case in APPLY_CASES:
-                # The depth replay (ownership bookends, rotating camera seam, a
-                # 512^2 map over a 32-unit half-extent centred on the camera so
-                # the receiver at view depth 12 and the caster at 16 lie inside cascade 0) and the quad.
-                env.update(X3M_OWNERSHIP='1', X3M_FIXTURE_CAMERA='rotate', X3M_SHADOW_REPLAY_DEPTH='1', X3M_SHADOW_REPLAY_SIZE='512',
-                           X3M_FIXTURE_SLICE_NEAR='0.5', X3M_FIXTURE_SHADOW_EXTENT='32', X3M_SUN_SHADOW_APPLY='1', X3M_FIXTURE_SUN_LIVE_CASE='shadow_apply')
+                # The depth replay (ownership bookends, rotating camera seam) and the quad;
+                # the maps come from CASCADE_LIVE_ENV (cascade 0 narrowed to a 32-unit half-extent
+                # centred on the camera, so the receiver at view depth 12 and the caster at 16 lie
+                # inside it), or none (shadow_apply_no_cascades: X3M_SHADOW_CASCADES=0).
+                env.update(X3M_OWNERSHIP='1', X3M_FIXTURE_CAMERA='rotate', X3M_SHADOW_REPLAY_DEPTH='1',
+                           X3M_FIXTURE_SLICE_NEAR='0.5', X3M_SUN_SHADOW_APPLY='1', X3M_FIXTURE_SUN_LIVE_CASE='shadow_apply')
+            if case == 'shadow_apply_no_cascades':
+                env.update(X3M_SHADOW_CASCADES='0', X3M_FIXTURE_SUN_APPLY_NO_MAP='1')
             if apply_base(case) == 'shadow_apply_cascades':
                 env.update(CASCADE_LIVE_ENV)  # the same script; only the DLL's options differ
             command = [bottle.WINE, *bottle.wine_args(), '--dll', 'd3d9=n,b', '--workdir', str(work), str(work/'fixture.exe'),
@@ -625,7 +657,7 @@ def main():
             assert completed.returncode == 0, (case, completed.returncode, str(work))
             logs = list((work/'x3-modern-captures').glob('session-*.log')); assert len(logs) == 1
             script = 'shadow_apply' if apply_base(case) == 'shadow_apply_cascades' else 'original_lane' if case == 'original_lane_lightmap' else apply_base(case)
-            check = validate((work/'stdout.txt').read_text(), logs[0].read_text(), work, script)
+            check = validate((work/'stdout.txt').read_text(), logs[0].read_text(), work, script, no_map=case == 'shadow_apply_no_cascades')
             if case == 'original_lane_lightmap':
                 check['lightmap'] = validate_lightmap((work/'stdout.txt').read_text(), logs[0].read_text())
             if case in APPLY_CASES:

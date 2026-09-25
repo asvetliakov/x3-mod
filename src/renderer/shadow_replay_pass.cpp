@@ -187,20 +187,13 @@ void ShadowReplayPass::release_targets() noexcept {
 void ShadowReplayPass::detach() noexcept {
     release_targets(); drop(block_); drop(vs_); drop(ps_); drop(vs_alpha_); drop(ps_alpha_);
     alpha_bound_ = alpha_sampler_ = false; alpha_texture_ = nullptr; alpha_threshold_ = -1.f;
-    device_ = nullptr; vtable_ = nullptr; count_ = depth_size_ = render_targets_ = 0; reset_pending_ = false; caps_ = {}; view_rows_valid_ = false;
+    device_ = nullptr; vtable_ = nullptr; count_ = depth_size_ = render_targets_ = 0; reset_pending_ = false; caps_ = {};
     for (unsigned& size : sizes_) size = 0;
 }
-void ShadowReplayPass::before_reset() noexcept { release_targets(); drop(block_); view_rows_valid_ = false; reset_pending_ = device_ != nullptr; }
+void ShadowReplayPass::before_reset() noexcept { release_targets(); drop(block_); reset_pending_ = device_ != nullptr; }
 void ShadowReplayPass::after_reset(HRESULT result) noexcept { if (SUCCEEDED(result)) reset_pending_ = false; }
-HRESULT ShadowReplayPass::attach(IDirect3DDevice9* d, void* const* native, const D3DCAPS9& caps, D3DFORMAT adapter_format, unsigned size) noexcept {
-    return attach_maps(d, native, caps, adapter_format, &size, 1, false);
-}
 HRESULT ShadowReplayPass::attach_cascades(IDirect3DDevice9* d, void* const* native, const D3DCAPS9& caps, D3DFORMAT adapter_format,
                                           const unsigned* sizes, unsigned count) noexcept {
-    return attach_maps(d, native, caps, adapter_format, sizes, count, true);
-}
-HRESULT ShadowReplayPass::attach_maps(IDirect3DDevice9* d, void* const* native, const D3DCAPS9& caps, D3DFORMAT adapter_format,
-                                      const unsigned* sizes, unsigned count, bool halve) noexcept {
     detach();
     if (!d || !sizes || count < 1 || count > shadow_replay_maps_max) { caps_.reason = "arguments"; return E_INVALIDARG; }
     for (unsigned i = 0; i < count; ++i) if (sizes[i] < 64 || sizes[i] > 4096) { caps_.reason = "arguments"; return E_INVALIDARG; }
@@ -211,13 +204,13 @@ HRESULT ShadowReplayPass::attach_maps(IDirect3DDevice9* d, void* const* native, 
         return hr;
     };
     if ((caps.VertexShaderVersion & 0xffffu) < 0x0300u || (caps.PixelShaderVersion & 0xffffu) < 0x0300u) return refuse("shader_model", D3DERR_NOTAVAILABLE);
-    // MaxTextureWidth/Height: the single map refuses; a cascade map is halved
-    // until it fits (its texel doubles; the owner reads size(i) back).
+    // MaxTextureWidth/Height: a map is halved until it fits (its texel
+    // doubles; the owner reads size(i) back).
     unsigned halved = 0;
     for (unsigned i = 0; i < count; ++i) {
         unsigned size = sizes[i];
         const auto fits = [&](unsigned v) { return caps.MaxTextureWidth >= v && caps.MaxTextureHeight >= v; };
-        if (halve && !fits(size)) { ++halved; while (size >= 64 && !fits(size)) size /= 2; }
+        if (!fits(size)) { ++halved; while (size >= 64 && !fits(size)) size /= 2; }
         if (size < 64 || !fits(size)) return refuse("size", D3DERR_NOTAVAILABLE);
         sizes_[i] = size; if (size > depth_size_) depth_size_ = size;
     }
@@ -438,46 +431,6 @@ HRESULT ShadowReplayPass::execute_cascades(const ShadowReplayDraw* draws, unsign
             if (!step(ShadowReplayStage::Draw, issue(draws[list.issues[i].draw], list.issues[i].rows, 3, list.invert_cull, &out->state_calls_map[list.map]))) break;
             ++out->drawn; ++out->drawn_map[list.map];
         }
-    }
-    if (own_scene && !lost(hr)) { const HRESULT end = call<SceneFn>(EndScene)(d); if (SUCCEEDED(hr) || lost(end)) { if (FAILED(end)) stage = ShadowReplayStage::EndScene; hr = end; } }
-    out->operation = hr;
-    out->restore = lost(hr) ? hr : saved.restore();
-    if (FAILED(hr) || FAILED(out->restore)) {
-        out->failed = FAILED(hr) ? stage : ShadowReplayStage::Restore;
-        return FAILED(out->restore) ? out->restore : hr;
-    }
-    return S_OK;
-}
-HRESULT ShadowReplayPass::execute(const ShadowReplayDraw* draws, unsigned count, bool caller_scene_open, bool caller_stateblock_recording,
-                                  ShadowReplayResult* out) noexcept {
-    if (!out) return E_INVALIDARG;
-    *out = {};
-    auto fail = [&](ShadowReplayStage stage, HRESULT hr) { out->failed = stage; out->operation = hr; return hr; };
-    if (!device_ || !caps_.enabled || !draws || !count || caller_stateblock_recording) return fail(ShadowReplayStage::Validate, E_INVALIDARG);
-    if (reset_pending_) return fail(ShadowReplayStage::Validate, D3DERR_DEVICENOTRESET);
-    for (unsigned i = 0; i < count; ++i) {
-        const auto& r = draws[i];
-        if (!r.vertex_buffer || !r.declaration || !r.stride || !r.primitives || (r.indexed && !r.index_buffer) || (r.alpha_texture && !caps_.alpha))
-            return fail(ShadowReplayStage::Validate, E_INVALIDARG);
-    }
-    HRESULT hr = prepare();
-    if (FAILED(hr)) return fail(ShadowReplayStage::Targets, hr);
-    hr = ensure_block();
-    if (FAILED(hr)) return fail(ShadowReplayStage::Block, hr);
-    SavedState saved(*this, block_, render_targets_);
-    hr = saved.capture();
-    if (FAILED(hr)) return fail(ShadowReplayStage::Capture, hr);
-    D d = device_;
-    ShadowReplayStage stage = ShadowReplayStage::Scene;
-    bool own_scene = false;
-    auto step = [&](ShadowReplayStage s, HRESULT value) { stage = s; hr = value; return SUCCEEDED(hr); };
-    if (!caller_scene_open) own_scene = step(ShadowReplayStage::Scene, call<SceneFn>(BeginScene)(d));
-    if (SUCCEEDED(hr)) step(ShadowReplayStage::Bind, bind());
-    // Far depth everywhere (1.0 in the R32F .r and in the depth attachment).
-    if (SUCCEEDED(hr)) step(ShadowReplayStage::Clear, call<ClearFn>(Clear)(d, 0, nullptr, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, 0xffffffffu, 1.f, 0));
-    for (unsigned i = 0; i < count && SUCCEEDED(hr); ++i) {
-        if (!step(ShadowReplayStage::Draw, issue(draws[i], draws[i].light_rows, 4, false, &out->state_calls_map[0]))) break;
-        ++out->drawn;
     }
     if (own_scene && !lost(hr)) { const HRESULT end = call<SceneFn>(EndScene)(d); if (SUCCEEDED(hr) || lost(end)) { if (FAILED(end)) stage = ShadowReplayStage::EndScene; hr = end; } }
     out->operation = hr;

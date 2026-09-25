@@ -395,8 +395,8 @@ the issue loop in `run_shadow_replay_cascades`; the launcher options `--shadow-r
 `--shadow-caster-retention`, `--shadow-caster-retention-age`, `--shadow-caster-retention-eps`,
 `--shadow-retention-timing` (`X3M_SHADOW_RETENTION_CENSUS`, `X3M_SHADOW_CASTER_RETENTION`, `…_AGE`,
 `…_EPS`; `X3M_SHADOW_RETENTION_TIMING=1` adds the per-draw cost to the frame line); the parser and census
-summary `tools/analysis/shadow_retention.py`. Both modes need `--shadow-cascades` (the single map
-is unchanged); `shadow_retention_device … enabled=0 reason=cascades|lifetime|allocation|journal`
+summary `tools/analysis/shadow_retention.py`. Both modes need `--shadow-cascades` (the only
+replay geometry since the single map was removed on 2026-09-25); `shadow_retention_device … enabled=0 reason=cascades|lifetime|allocation|journal`
 names a refusal. Evidence: [directional-shadows.md](../verification/directional-shadows.md),
 "Caster retention, stages 1 and 2".
 
@@ -628,8 +628,8 @@ holds RT2, `16` otherwise). Hardening: `taa_call` clamps `taa_references_` at ze
 logs one `taa_references_underflow device= frame= site= delta= references=` row per session (the lens
 sites are named, other sites `unnamed`); the hook's probe sum is 64-bit, so a wrapped term could never
 satisfy `now <= sum` again. The other two container acquisitions were already symmetric: the TAA resolve
-acquires and releases both containers inside one `taa_call`; the single-map sun apply acquires and releases
-outside any. No other term drifts: every `device_references()` member is an enumerated object; bloom and
+acquires and releases both containers inside one `taa_call`; the sun apply acquires and releases
+outside any (its single-map path, removed on 2026-09-25, did the same). No other term drifts: every `device_references()` member is an enumerated object; bloom and
 gpu_sync count their own objects and zero them before releasing; `retained` is the store's resource-table
 size, decremented on every release (`free_resource`).
 

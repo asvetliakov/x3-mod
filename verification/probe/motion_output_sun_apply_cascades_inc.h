@@ -225,22 +225,30 @@ void run_sun_apply_cascades(Fixture& f, const unsigned cascade_count) {
     require(r::shadow_cascade_replays(0, 3, 9999, 1, 1) && r::shadow_cascade_replays(2, 3, 640, 640, 1) && !r::shadow_cascade_replays(2, 3, 641, 640, 1) && r::shadow_cascade_replays(2, 3, 641, 640, 2) &&
             r::shadow_cascade_replays(0, 1, 9999, 1, 1) && r::shadow_cascade_replays(3, 5, 9999, 1, 1) && !r::shadow_cascade_replays(4, 5, 641, 640, 1) && r::shadow_cascade_replays(4, 5, 641, 640, 2),
             "only the far cascade of a set yields to the budget, on odd frames");
-    // The passes. The apply pass without the cascade program refuses the cascade frame.
+    // The passes. A detached pass skips every frame; a device whose ps_3_0 slot cap is below the
+    // program's refuses it at attach and the pass stays off, holding nothing (no fallback program;
+    // the reason was cascade_ps_slots while the single-map program existed, until 2026-09-25).
     {
-        r::SunShadowApplyPass plain; r::SunShadowApplyResult refused{}; r::SunShadowCascadeFrame none{};
-        api(plain.attach(f.d.p, nullptr, caps, D3DFMT_X8R8G8B8, D3DFMT_A16B16G16R16F), "plain apply attach");
-        require(!plain.caps().cascades && plain.references() == 3 && plain.execute_cascades(none, &refused) == S_FALSE && refused.skipped && !std::strcmp(refused.skipped_reason, "cascades"),
-                "a pass attached without the cascade program skips a cascade frame");
-        D3DCAPS9 few = caps; few.MaxPixelShader30InstructionSlots = 256; // between the two programs' slot counts
+        r::SunShadowApplyPass detached; r::SunShadowApplyResult refused{}; r::SunShadowCascadeFrame none{};
+        require(detached.execute_cascades(none, &refused) == S_FALSE && refused.skipped && !std::strcmp(refused.skipped_reason, "detached") && detached.references() == 0,
+                "a detached pass skips the quad");
+        D3DCAPS9 few = caps; few.MaxPixelShader30InstructionSlots = 64; // below the cascade program's slot count
         r::SunShadowApplyPass small;
-        require(small.attach(f.d.p, nullptr, few, D3DFMT_X8R8G8B8, D3DFMT_A16B16G16R16F, true) == D3DERR_NOTAVAILABLE && !std::strcmp(small.caps().reason, "cascade_ps_slots") && small.references() == 0,
-                "a device with too few ps_3_0 slots refuses the cascade program");
-        require(SUCCEEDED(small.attach(f.d.p, nullptr, few, D3DFMT_X8R8G8B8, D3DFMT_A16B16G16R16F)) && small.caps().enabled, "the same device keeps the single-map program");
+        require(small.attach(f.d.p, nullptr, few, D3DFMT_X8R8G8B8, D3DFMT_A16B16G16R16F) == D3DERR_NOTAVAILABLE && !std::strcmp(small.caps().reason, "ps_slots") && !small.caps().enabled && small.references() == 0 &&
+                small.execute_cascades(none, &refused) == S_FALSE && !std::strcmp(refused.skipped_reason, "detached"),
+                "a device with too few ps_3_0 slots refuses the program and the pass stays off");
     }
-    const HRESULT attached = s.pass.attach(f.d.p, nullptr, caps, D3DFMT_X8R8G8B8, D3DFMT_A16B16G16R16F, true);
-    std::printf("SUNAPPLY_DEVICE attached=%u result=%08lx reason=%s slots=%u cascade_slots=%u references=%u max_texture=%lux%lu ps30_slots=%lu\n", SUCCEEDED(attached), attached, s.pass.caps().reason,
-                s.pass.caps().program_slots, s.pass.caps().cascade_slots, s.pass.references(), caps.MaxTextureWidth, caps.MaxTextureHeight, caps.MaxPixelShader30InstructionSlots);
-    require(SUCCEEDED(attached) && s.pass.caps().enabled && s.pass.caps().cascades && s.pass.references() == 4, "the apply pass attaches with the cascade program");
+    const HRESULT attached = s.pass.attach(f.d.p, nullptr, caps, D3DFMT_X8R8G8B8, D3DFMT_A16B16G16R16F);
+    std::printf("SUNAPPLY_DEVICE attached=%u result=%08lx reason=%s slots=%u references=%u max_texture=%lux%lu ps30_slots=%lu\n", SUCCEEDED(attached), attached, s.pass.caps().reason,
+                s.pass.caps().program_slots, s.pass.references(), caps.MaxTextureWidth, caps.MaxTextureHeight, caps.MaxPixelShader30InstructionSlots);
+    require(SUCCEEDED(attached) && s.pass.caps().enabled && s.pass.references() == 3, "the apply pass attaches with the cascade program");
+    // A second device of the same window for the same_device refusal (moved from the single-map script).
+    Com<IDirect3DDevice9> other; Com<IDirect3DTexture9> other_rt2;
+    {
+        D3DPRESENT_PARAMETERS pp = f.pp;
+        api(f.factory->CreateDevice(0, D3DDEVTYPE_HAL, f.window, D3DCREATE_HARDWARE_VERTEXPROCESSING, &pp, &other.p), "CreateDevice other");
+        api(other->CreateTexture(sun_apply_w, sun_apply_h, 1, 0, sun_apply_rt2_format(), D3DPOOL_DEFAULT, &other_rt2.p, nullptr), "CreateTexture RT2 other device");
+    }
     r::ShadowReplayPass replay;
     {   // MaxTextureWidth below the request: every map is halved to fit; below 64 the attach is refused.
         D3DCAPS9 narrow = caps; narrow.MaxTextureWidth = narrow.MaxTextureHeight = 128;
@@ -293,7 +301,7 @@ void run_sun_apply_cascades(Fixture& f, const unsigned cascade_count) {
         if (script.reset_before) {
             sun_apply_release_targets(s); map_copy.reset();
             s.pass.before_reset(); replay.before_reset();
-            require(s.pass.reset_pending() && s.pass.references() == 4 && replay.reset_pending() && replay.references() == 2, "before_reset releases the blocks, the maps and the attachment, keeps the programs");
+            require(s.pass.reset_pending() && s.pass.references() == 3 && replay.reset_pending() && replay.references() == 2, "before_reset releases the blocks, the maps and the attachment, keeps the programs");
             for (unsigned c = 0; c < cascade_count; ++c) require(replay.retained(c) == nullptr && replay.map_texture(c) == nullptr, "before_reset voids every retained basis");
             r::SunShadowApplyResult refused{}; r::SunShadowCascadeFrame pending{};
             require(s.pass.execute_cascades(pending, &refused) == S_FALSE && refused.skipped && !std::strcmp(refused.skipped_reason, "reset_pending"), "the cascade quad is refused while the Reset is pending");
@@ -413,18 +421,12 @@ void run_sun_apply_cascades(Fixture& f, const unsigned cascade_count) {
             require(masks[1] >> script.owner & 1u, "the box meets its owning cascade");
             require(!(masks[1] & ((1u << script.owner) - 1u)), "the box meets no nearer cascade than its owner");
         }
-        int legacy_high = -2;
         if (script.high_box > 0.) {
             // The sun-column occluder is a cascade-0 caster: inside the asymmetric
             // range at 2,000 units, and beyond it at 16,000 because the box test's
-            // light side is open (the replay pancakes it). The single map's box
-            // test admits it by the same rule.
+            // light side is open (the replay pancakes it).
             require((masks[2] & 1u) != 0, "the occluder towards the light is a cascade-0 caster");
             require((script.high_box > double(set.cascades[0].depth_toward_light)) == (script.name == 'f'), "only case f lies beyond the light-side range");
-            r::ShadowReplayCascade single{}; r::ShadowReplayBasis single_basis{}; float single_rows[12];
-            require(r::shadow_replay_basis(s.camera, sun, single, single_basis) && r::shadow_replay_view_rows(s.camera, single_basis, single, single_rows), "the single-map box builds");
-            legacy_high = r::shadow_replay_bounds_verdict(s.camera, clip, single_rows, high.lo, high.hi);
-            require(legacy_high == 1, "the single-map box test admits the sun-column occluder (open light side)");
             // An object wholly behind every cascade (away from the light) is still refused.
             const float below_lo[3] = {-20.f, -40000.f, -20.f}, below_hi[3] = {20.f, -39000.f, 20.f};
             require(r::shadow_cascade_bounds_mask(s.camera, clip, bounds, below_lo, below_hi) == 0, "an object beyond every cascade's far side is no caster");
@@ -458,7 +460,7 @@ void run_sun_apply_cascades(Fixture& f, const unsigned cascade_count) {
                 auto& issue = issue_store[used++];
                 issue.draw = std::uint16_t(o);
                 require(r::shadow_cascade_light_rows(base, bases[c], set.cascades[c], issue.rows), "the cascade light rows build");
-                // The shared-product rows equal the single-map helper's within float rounding.
+                // The shared-product rows equal the reference helper's (shadow_replay_light_rows) within float rounding.
                 float reference[16];
                 require(r::shadow_replay_light_rows(s.camera, clip, bases[c], set.cascades[c], reference), "the reference light rows build");
                 for (unsigned k = 0; k < 12; ++k) require(std::fabs(reference[k] - issue.rows[k]) <= 1e-5f * std::max(1.f, std::fabs(reference[k])), "cascade light rows equal shadow_replay_light_rows");
@@ -544,6 +546,15 @@ void run_sun_apply_cascades(Fixture& f, const unsigned cascade_count) {
         { auto wrong = in; wrong.count = 6; require(s.pass.execute_cascades(wrong, &skipped) == S_FALSE && !std::strcmp(skipped.skipped_reason, "input"), "six cascades skip the quad"); }
         { auto wrong = in; wrong.caller_stateblock_recording = true; require(s.pass.execute_cascades(wrong, &skipped) == S_FALSE && skipped.skipped, "a recording caller skips the quad"); }
         { auto wrong = in; wrong.m22 = .5f; require(s.pass.execute_cascades(wrong, &skipped) == S_FALSE && !std::strcmp(skipped.skipped_reason, "params"), "an invalid projection skips the quad"); }
+        // Moved from the single-map script (2026-09-25): a missing RT2 or target, an R32F RT2, a target of
+        // another format or size, and another device's RT2 each skip the quad with nothing touched.
+        { auto wrong = in; wrong.depth_share = nullptr; require(s.pass.execute_cascades(wrong, &skipped) == S_FALSE && skipped.skipped && !std::strcmp(skipped.skipped_reason, "input"), "a missing RT2 skips the quad"); }
+        { auto wrong = in; wrong.target = nullptr; require(s.pass.execute_cascades(wrong, &skipped) == S_FALSE && skipped.skipped && !std::strcmp(skipped.skipped_reason, "input"), "a missing target skips the quad"); }
+        { auto wrong = in; wrong.depth_share = s.map.p; require(s.pass.execute_cascades(wrong, &skipped) == S_FALSE && skipped.skipped && !std::strcmp(skipped.skipped_reason, "format"), "an R32F RT2 skips the quad"); }
+        { auto wrong = in; wrong.target = f.back.p; require(s.pass.execute_cascades(wrong, &skipped) == S_FALSE && skipped.skipped && !std::strcmp(skipped.skipped_reason, "format"), "an A8R8G8B8 target skips the quad"); }
+        { auto wrong = in; wrong.width = sun_apply_w / 2; require(s.pass.execute_cascades(wrong, &skipped) == S_FALSE && skipped.skipped && !std::strcmp(skipped.skipped_reason, "format"), "a width mismatch skips the quad"); }
+        { auto wrong = in; wrong.height = sun_apply_h - 1; require(s.pass.execute_cascades(wrong, &skipped) == S_FALSE && skipped.skipped && !std::strcmp(skipped.skipped_reason, "format"), "a height mismatch skips the quad"); }
+        { auto foreign = in; foreign.depth_share = other_rt2.p; require(s.pass.execute_cascades(foreign, &skipped) == S_FALSE && skipped.skipped && !std::strcmp(skipped.skipped_reason, "device"), "another device's RT2 skips the quad"); }
         require(sun_apply_read(f, s) == s.before, "the skipped executions leave the target byte-identical");
         f.compare(before_state, f.snapshot(), "cascade_apply_skipped");
         const bool caller_scene_open = (frame % 2) == 0;
@@ -599,13 +610,13 @@ void run_sun_apply_cascades(Fixture& f, const unsigned cascade_count) {
         // The record: shared inputs, the scene, per cascade what the twin needs and the counters.
         std::printf("SUNAPPLY_CASCADES frame=%u case=%c depth_encoding=%s width=%u height=%u cascades=%u scale=%.9g elevation=%g jitter_index=%u exponent=%.9g planar_step=%.9g budget=%u issues=%u far_replayed=%u far_frame=%lld "
                     "m00=%.9g m11=%.9g m20=%.9g m21=%.9g m22=%.9g m32=%.9g camera=%.9g,%.9g,%.9g cam_right=%.9g,%.9g,%.9g cam_up=%.9g,%.9g,%.9g cam_forward=%.9g,%.9g,%.9g sun=%.9g,%.9g,%.9g "
-                    "right=%.9g,%.9g,%.9g up=%.9g,%.9g,%.9g receivers=%u share_free=%u sentinels=%u masks=%u,%u,%u legacy_high=%d raster_m20=%.9g raster_m21=%.9g legacy_latch=%u boxes=%.9g,%.9g,%.9g,%.9g,%.9g,%.9g",
+                    "right=%.9g,%.9g,%.9g up=%.9g,%.9g,%.9g receivers=%u share_free=%u sentinels=%u masks=%u,%u,%u raster_m20=%.9g raster_m21=%.9g legacy_latch=%u boxes=%.9g,%.9g,%.9g,%.9g,%.9g,%.9g",
                     frame, script.name, sun_apply_encoding_name(), sun_apply_w, sun_apply_h, cascade_count, scale, double(script.elevation_deg), script.jitter_index, double(script.exponent), .05, script.budget, issues,
                     unsigned(replays[cascade_count - 1]), far_kept || replays[cascade_count - 1] ? static_cast<long long>(map_frames[cascade_count - 1]) : -1ll,
                     double(s.camera.m00), double(s.camera.m11), double(m20), double(m21), double(s.m22), double(s.m32),
                     s.position.x, s.position.y, s.position.z, s.right.x, s.right.y, s.right.z, s.up.x, s.up.y, s.up.z, s.forward.x, s.forward.y, s.forward.z, double(sun[0]), double(sun[1]), double(sun[2]),
                     double(bases[0].right[0]), double(bases[0].right[1]), double(bases[0].right[2]), double(bases[0].up[0]), double(bases[0].up[1]), double(bases[0].up[2]),
-                    receivers, share_free, sentinels, masks[0], masks[1], masks[2], legacy_high, double(latch.raster_m20), double(latch.raster_m21), unsigned(latch.legacy),
+                    receivers, share_free, sentinels, masks[0], masks[1], masks[2], double(latch.raster_m20), double(latch.raster_m21), unsigned(latch.legacy),
                     boxes[0].lo[0], boxes[0].lo[1], boxes[0].lo[2], boxes[0].hi[0], boxes[0].hi[1], boxes[0].hi[2]);
         for (unsigned b = 1; b < box_count; ++b) std::printf(";%.9g,%.9g,%.9g,%.9g,%.9g,%.9g", boxes[b].lo[0], boxes[b].lo[1], boxes[b].lo[2], boxes[b].hi[0], boxes[b].hi[1], boxes[b].hi[2]);
         if (point) {
@@ -638,25 +649,22 @@ void run_sun_apply_cascades(Fixture& f, const unsigned cascade_count) {
         api(f.d->Present(nullptr, nullptr, nullptr, nullptr), "Present");
         ++f.frame; ++f.frames_since_reset;
     }
-    // The bounds pass per draw: the single-map verdict against the cascade mask
-    // (one corner transform either way, then 6 compares per cascade).
+    // The bounds pass per draw: the cascade mask (one corner transform, then
+    // 6 compares per cascade).
     {
-        r::ShadowCascadeBounds bounds{}; r::ShadowReplayCascade single{}; r::ShadowReplayBasis basis{}; float rows[12];
+        r::ShadowCascadeBounds bounds{};
         const float sun[4] = {.30151134f, .90453403f, -.30151134f, 0.f};
         float clip[16] = {s.camera.m00, 0, 0, 0, 0, s.camera.m11, 0, 0, 0, 0, 1, 0, 0, 0, 1, 5};
         r::ShadowCascadeSet four{};
-        require(r::shadow_cascade_set(r::shadow_cascade_extent_defaults, 4, nullptr, nullptr, 640, four) && r::shadow_cascade_bounds(s.camera, sun, four, bounds) &&
-                r::shadow_replay_basis(s.camera, sun, single, basis) && r::shadow_replay_view_rows(s.camera, basis, single, rows), "the bench inputs build");
+        require(r::shadow_cascade_set(r::shadow_cascade_extent_defaults, 4, nullptr, nullptr, 640, four) && r::shadow_cascade_bounds(s.camera, sun, four, bounds), "the bench inputs build");
         constexpr unsigned rounds = 2000000;
         const float lo[3] = {-3, -2, -1}, hi[3] = {4, 5, 6};
         // The same four cascades under four different suns (per-cascade rows: the corners transformed once per cascade).
         r::ShadowCascadeBounds split{};
         float split_suns[16]; for (unsigned c = 0; c < 4; ++c) { std::memcpy(split_suns + c * 4, sun, sizeof sun); split_suns[c * 4] += .001f * float(c); }
         require(r::shadow_cascade_bounds_suns(s.camera, split_suns, four, split) && !split.shared && bounds.shared, "the per-cascade bench bounds build");
-        long long verdicts = 0, masks = 0, split_masks = 0;
-        LARGE_INTEGER t0, t1, t2, t3;
-        QueryPerformanceCounter(&t0);
-        for (unsigned i = 0; i < rounds; ++i) { clip[3] = float(i & 1023u); verdicts += r::shadow_replay_bounds_verdict(s.camera, clip, rows, lo, hi); }
+        long long masks = 0, split_masks = 0;
+        LARGE_INTEGER t1, t2, t3;
         QueryPerformanceCounter(&t1);
         for (unsigned i = 0; i < rounds; ++i) { clip[3] = float(i & 1023u); masks += r::shadow_cascade_bounds_mask(s.camera, clip, bounds, lo, hi); }
         QueryPerformanceCounter(&t2);
@@ -705,8 +713,8 @@ void run_sun_apply_cascades(Fixture& f, const unsigned cascade_count) {
             QueryPerformanceCounter(&t9);
             mask5_ns = 1e9 * double(t9.QuadPart - t8.QuadPart) / double(frequency.QuadPart) / rounds;
         }
-        std::printf("SUNAPPLY_BOUNDS_BENCH rounds=%u verdict_ns=%.1f mask_ns=%.1f cascades=4 verdicts=%lld masks=%lld split_mask_ns=%.1f split_masks=%lld sized_mask_ns=%.1f sized_masks=%lld size_sum=%.6g class_ns=%.1f select_4096_half_us=%.2f select_4096_one_us=%.2f", rounds,
-                    1e9 * double(t1.QuadPart - t0.QuadPart) / double(frequency.QuadPart) / rounds, 1e9 * double(t2.QuadPart - t1.QuadPart) / double(frequency.QuadPart) / rounds, verdicts, masks,
+        std::printf("SUNAPPLY_BOUNDS_BENCH rounds=%u mask_ns=%.1f cascades=4 masks=%lld split_mask_ns=%.1f split_masks=%lld sized_mask_ns=%.1f sized_masks=%lld size_sum=%.6g class_ns=%.1f select_4096_half_us=%.2f select_4096_one_us=%.2f", rounds,
+                    1e9 * double(t2.QuadPart - t1.QuadPart) / double(frequency.QuadPart) / rounds, masks,
                     1e9 * double(t3.QuadPart - t2.QuadPart) / double(frequency.QuadPart) / rounds, split_masks,
                     1e9 * double(t4.QuadPart - t3.QuadPart) / double(frequency.QuadPart) / rounds, sized_masks, sizes, 1e9 * double(t5.QuadPart - t4.QuadPart) / double(frequency.QuadPart) / rounds,
                     select_half_us / select_rounds, select_one_us / select_rounds);
@@ -714,6 +722,7 @@ void run_sun_apply_cascades(Fixture& f, const unsigned cascade_count) {
         std::printf("\n");
     }
     sun_apply_release_targets(s); map_copy.reset();
+    other_rt2.reset(); other.reset();
     replay.detach(); s.pass.detach();
     require(s.pass.references() == 0 && replay.references() == 0, "detach releases everything");
 }

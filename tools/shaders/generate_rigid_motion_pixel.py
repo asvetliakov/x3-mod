@@ -152,11 +152,8 @@ SHADERS = {
                         header=ROOT / 'src/renderer/quad_vertex_program_inc.h',
                         provenance=ROOT / 'verification/results/quad-vertex-program.json',
                         target='vs_3_0'),
-    # The scene-end sun-shadow apply quad (docs/architecture/legacy-sun-application.md, section 2).
-    'sun_shadow_apply': dict(source=ROOT / 'src/temporal/sun_shadow_apply_ps.hlsl',
-                             header=ROOT / 'src/renderer/sun_shadow_apply_program_inc.h',
-                             provenance=ROOT / 'verification/results/sun-shadow-apply-program.json'),
-    # The same quad over up to five cascades (docs/architecture/shadow-cascades.md, section 2).
+    # The scene-end sun-shadow apply quad over up to five cascades (docs/architecture/shadow-cascades.md,
+    # section 2; legacy-sun-application.md, section 2). The single-map program was removed on 2026-09-25.
     'sun_shadow_cascade_apply': dict(source=ROOT / 'src/temporal/sun_shadow_cascade_apply_ps.hlsl',
                                      header=ROOT / 'src/renderer/sun_shadow_cascade_apply_program_inc.h',
                                      provenance=ROOT / 'verification/results/sun-shadow-cascade-apply-program.json'),

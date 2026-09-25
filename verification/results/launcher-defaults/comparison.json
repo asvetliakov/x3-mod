@@ -61,6 +61,22 @@
   "X3M_SHADOW_ALPHA_CASTERS": [
    "0",
    "1"
+  ],
+  "X3M_SHADOW_REPLAY_CAP": [
+   "512",
+   null
+  ],
+  "X3M_SHADOW_REPLAY_DEPTH_HALF": [
+   "512.0",
+   null
+  ],
+  "X3M_SHADOW_REPLAY_EXTENT": [
+   "250.0",
+   null
+  ],
+  "X3M_SHADOW_REPLAY_SIZE": [
+   "1024",
+   null
   ]
  },
  "empty_vs_recorded_stand": {
@@ -112,6 +128,22 @@
    "2048,2048,2048,2048,2048",
    "2048,4096,4096,4096,2048"
   ],
+  "X3M_SHADOW_REPLAY_CAP": [
+   "512",
+   null
+  ],
+  "X3M_SHADOW_REPLAY_DEPTH_HALF": [
+   "512.0",
+   null
+  ],
+  "X3M_SHADOW_REPLAY_EXTENT": [
+   "250.0",
+   null
+  ],
+  "X3M_SHADOW_REPLAY_SIZE": [
+   "1024",
+   null
+  ],
   "X3M_SHADOW_RETENTION_CENSUS": [
    "1",
    "0"
@@ -149,14 +181,14 @@
   ]
  },
  "counts": {
-  "empty": 179,
-  "stand": 182,
+  "empty": 175,
+  "stand": 178,
   "recorded": 181
  },
  "checks": {
   "empty_vs_stand only telemetry/debug + the promoted map sizes": true,
-  "stand vs recorded only the two new defaults": true,
-  "empty vs recorded: telemetry/debug + the two new defaults + the map sizes": true,
+  "stand vs recorded only the two new defaults and the removed single-map variables": true,
+  "empty vs recorded: telemetry/debug + the two new defaults + the map sizes + the removed single-map variables": true,
   "same X3AP switches": true,
   "short stand command == old stand command but the map sizes": true
  }

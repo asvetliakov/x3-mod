@@ -570,12 +570,7 @@ int main(int argc, char** argv) {
         CHECK(mask_of(100, 50 + 60000, 103, 10) == 15);    // beyond depth_toward_light: the light side is open (pancaked)
         CHECK(mask_of(100, 50 - 600, 103, 10) == 14);      // behind cascade 0's 512 units
         CHECK(mask_of(100, 50 - 60000, 103, 10) == 0);     // beyond every far side
-        // The single-map verdict shares the open light side.
-        ShadowReplayCascade single{}; ShadowReplayBasis basis{}; float view_rows[12];
-        CHECK(shadow_replay_basis(c, sun, single, basis) && shadow_replay_view_rows(c, basis, single, view_rows));
-        auto verdict_of = [&](float y) { const float lo[3] = {90, y - 10, 93}, hi[3] = {110, y + 10, 113}; return shadow_replay_bounds_verdict(c, rows, view_rows, lo, hi); };
-        CHECK(verdict_of(50) == 1 && verdict_of(50 + 2000) == 1 && verdict_of(50 - 600) == 0);
-        // Shared-product light rows against the single-map helper, per cascade, and the asymmetric depth law.
+        // Shared-product light rows against the reference helper (shadow_replay_light_rows), per cascade, and the asymmetric depth law.
         for (unsigned k = 0; k < 4; ++k) {
             ShadowReplayBasis b{}; CHECK(shadow_replay_basis(c, sun, set.cascades[k], b));
             double base[3][4]; float got[12], reference[16];
@@ -611,7 +606,7 @@ int main(int argc, char** argv) {
             std::printf("CENTRE rows_error_ndc=%.3g float_centre_error_ndc=%.3g\n", worst, worst_float_centre);
             CHECK(worst < 1e-6 && worst * 10. < worst_float_centre); // the float centre alone costs more than ten times the whole row set's error
         }
-        // The single map's symmetric range is the same law with both sides at the half range.
+        // A symmetric range (the fixtures' box) is the same law with both sides at the half range.
         ShadowReplayCascade symmetric{}; symmetric.set_depth_half(512.f);
         CHECK(symmetric.depth_range() == 1024. && symmetric.depth_half() == 512. && symmetric.depth_toward_light == 512.f && symmetric.depth_behind == 512.f);
     }
@@ -931,8 +926,9 @@ class LauncherOptions(unittest.TestCase):
             self.assertEqual(env['X3M_SHADOW_SUN_POLL'], '0')  # the poll exists only with the cascades; an inherited 1 cannot leak
             for name in ('X3M_SHADOW_CASCADE_SIZES', 'X3M_SHADOW_CASCADE_CAPS', 'X3M_SHADOW_CASCADE_BUDGET'):
                 self.assertNotIn(name, env)
-            # The single-map variables are untouched by the new options.
-            self.assertEqual((env['X3M_SHADOW_REPLAY_EXTENT'], env['X3M_SHADOW_REPLAY_DEPTH_HALF'], env['X3M_SHADOW_REPLAY_SIZE'], env['X3M_SHADOW_REPLAY_CAP']), ('250.0', '512.0', '1024', '512'))
+            # The single-map variables are gone (2026-09-25): none is forwarded.
+            for name in ('X3M_SHADOW_REPLAY_EXTENT', 'X3M_SHADOW_REPLAY_DEPTH_HALF', 'X3M_SHADOW_REPLAY_SIZE', 'X3M_SHADOW_REPLAY_CAP'):
+                self.assertNotIn(name, env)
 
     def test_values(self):
         with tempfile.TemporaryDirectory() as directory:

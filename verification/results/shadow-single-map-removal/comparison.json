@@ -1,0 +1,104 @@
+{
+ "before": "3947f3d8",
+ "cases": {
+  "default": {
+   "diff_before_after": {
+    "X3M_SHADOW_REPLAY_CAP": [
+     "512",
+     null
+    ],
+    "X3M_SHADOW_REPLAY_DEPTH_HALF": [
+     "512.0",
+     null
+    ],
+    "X3M_SHADOW_REPLAY_EXTENT": [
+     "250.0",
+     null
+    ],
+    "X3M_SHADOW_REPLAY_SIZE": [
+     "1024",
+     null
+    ]
+   },
+   "after_shadow_variables": {
+    "X3M_FOG_SHADOW_PASS": "0",
+    "X3M_SHADOW_ALPHA_CASTERS": "1",
+    "X3M_SHADOW_CASCADES": "250.0,1500.0,7500.0,37500.0,150000.0",
+    "X3M_SHADOW_CASCADE_ADAPTIVE_C0": "1.5",
+    "X3M_SHADOW_CASCADE_DROP_ORDER": "importance",
+    "X3M_SHADOW_CASCADE_MIN_FOOTPRINT": "8.0",
+    "X3M_SHADOW_CASCADE_RECORDS": "1024,1024,2048,4096,4096",
+    "X3M_SHADOW_CASCADE_SIZES": "2048,4096,4096,4096,2048",
+    "X3M_SHADOW_CASTER_RETENTION": "1",
+    "X3M_SHADOW_REPLAY_CANDIDATES": "1",
+    "X3M_SHADOW_REPLAY_DEPTH": "1",
+    "X3M_SHADOW_RETENTION_CENSUS": "0",
+    "X3M_SHADOW_SUN_POLL": "1",
+    "X3M_SHADOW_SUN_TRACE": "0",
+    "X3M_SUN_SHADOW_APPLY": "1",
+    "X3M_SUN_SHADOW_BIAS_CLAMP_TEXELS": "20.97152",
+    "X3M_SUN_SHADOW_BIAS_SLOPE_TEXELS": "0.2",
+    "X3M_SUN_SHADOW_BIAS_UNITS": "0.53571875",
+    "X3M_SUN_SHADOW_LANE": "1"
+   },
+   "x3m_variables_after": 175
+  },
+  "no-shadow-cascades": {
+   "diff_before_after": {
+    "X3M_SHADOW_REPLAY_CAP": [
+     "512",
+     null
+    ],
+    "X3M_SHADOW_REPLAY_DEPTH_HALF": [
+     "512.0",
+     null
+    ],
+    "X3M_SHADOW_REPLAY_EXTENT": [
+     "250.0",
+     null
+    ],
+    "X3M_SHADOW_REPLAY_SIZE": [
+     "1024",
+     null
+    ]
+   },
+   "after_shadow_variables": {
+    "X3M_FOG_SHADOW_PASS": "0",
+    "X3M_SHADOW_ALPHA_CASTERS": "1",
+    "X3M_SHADOW_CASCADES": "0",
+    "X3M_SHADOW_CASTER_RETENTION": "0",
+    "X3M_SHADOW_REPLAY_CANDIDATES": "1",
+    "X3M_SHADOW_REPLAY_DEPTH": "1",
+    "X3M_SHADOW_RETENTION_CENSUS": "0",
+    "X3M_SHADOW_SUN_POLL": "0",
+    "X3M_SHADOW_SUN_TRACE": "0",
+    "X3M_SUN_SHADOW_APPLY": "1",
+    "X3M_SUN_SHADOW_BIAS_CLAMP_TEXELS": "20.97152",
+    "X3M_SUN_SHADOW_BIAS_SLOPE_TEXELS": "0.2",
+    "X3M_SUN_SHADOW_BIAS_UNITS": "0.53571875",
+    "X3M_SUN_SHADOW_LANE": "1"
+   },
+   "x3m_variables_after": 169
+  }
+ },
+ "removed_options_refused": {
+  "--shadow-replay-size": {
+   "exit": 2,
+   "stderr_last_line": "manage.py: error: unrecognized arguments: --shadow-replay-size 1024"
+  },
+  "--shadow-replay-extent": {
+   "exit": 2,
+   "stderr_last_line": "manage.py: error: unrecognized arguments: --shadow-replay-extent 250"
+  },
+  "--shadow-replay-depth-half": {
+   "exit": 2,
+   "stderr_last_line": "manage.py: error: unrecognized arguments: --shadow-replay-depth-half 512"
+  },
+  "--shadow-replay-cap": {
+   "exit": 2,
+   "stderr_last_line": "manage.py: error: unrecognized arguments: --shadow-replay-cap 512"
+  }
+ },
+ "inherited_removed_variables_dropped": true,
+ "checks": 11
+}

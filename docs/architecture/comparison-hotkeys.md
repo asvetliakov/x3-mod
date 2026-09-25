@@ -98,7 +98,7 @@ one. Nothing is created or released by a press, and there is no per-draw cost:
 the gate is one bool test at the scene end.
 
 Both edges void everything a past replay published — the retained per-cascade
-bases, the single map's view rows and its basis — as a Reset and a refusal do,
+bases — as a Reset and a refusal do,
 so an off interval can never leave a stale map for the apply quad or for an F8
 dump: while off the map reports itself invalid and is not dumped at all, and
 the first frame back on replays every cascade in full, the far one included
