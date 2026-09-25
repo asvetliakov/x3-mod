@@ -1,5 +1,7 @@
 /build/
 /build-ownership/
+# x3m-regenerate bundles (tools/regenerate/build.py); its work tree is under /build/.
+/dist/
 /artifacts/
 **/__pycache__/
 *.pyc

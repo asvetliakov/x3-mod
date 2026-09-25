@@ -1914,6 +1914,33 @@ def _bake_work(row):
     return bake_safely(_BAKE['assets'], row, _BAKE['atlas_opts'])
 
 
+progress = None   # optional callable(name, done, total, package, result): tools/regenerate's per-body console line
+
+
+def bake_rows(game, markers, rows, atlas_opts, jobs, mods, package, offset, total):
+    """bake_safely over rows (serial for one job or one row, else a spawn pool, one task per worker), results in
+    the order of rows; calls progress(name, offset + i, total, package, result) as each body finishes."""
+    if not rows:
+        return []
+    done = {}
+
+    def finished(res):
+        done[res['name']] = res
+        if progress is not None:
+            progress(res['name'], offset + len(done), total, package, res)
+    if jobs <= 1 or len(rows) == 1:
+        assets, _ = original_assets(game, markers, mods=mods)
+        for r in rows:
+            finished(bake_safely(assets, r, atlas_opts))
+    else:
+        with multiprocessing.get_context('spawn').Pool(min(jobs, len(rows)), _bake_init,
+                                                       (str(game), atlas_opts, [str(m) for m in mods]),
+                                                       maxtasksperchild=1) as pool:
+            for res in pool.imap_unordered(_bake_work, rows, chunksize=1):
+                finished(res)
+    return [done[r['name']] for r in rows]
+
+
 BAKE_REASONS = (('recipe_mismatch', 'recipe_mismatch'), ('texel_floor', 'texel_floor'), ('trailing bytes', 'trailing_bytes'), ('text_parse_error', 'text_parse_error'),
                 ('writer does not reproduce', 'writer_mismatch'), ('MAT3 body', 'mat3'),
                 ('outside the material table', 'material_outside_table'), ('loose file', 'loose_winner'),
@@ -2338,25 +2365,9 @@ def batch(a, game, root, markers):
     to_bake = [r for r in eligible if r['name'] not in reused]
     pkg_to_bake = [r for r in pkg_eligible if r['name'] not in pkg_reused]
     t0 = time.time()
-    if a.jobs <= 1 or len(to_bake) <= 1:
-        assets, _ = original_assets(game, markers)
-        results = [bake_safely(assets, r, a.atlas_opts) for r in to_bake]
-    elif to_bake:
-        with multiprocessing.get_context('spawn').Pool(min(a.jobs, len(to_bake)), _bake_init,
-                                                       (str(game), a.atlas_opts), maxtasksperchild=1) as pool:
-            results = pool.map(_bake_work, to_bake, chunksize=1)
-    else:
-        results = []
-    if len(pkg_to_bake) == 1 or (pkg_to_bake and a.jobs <= 1):
-        passets, _ = original_assets(game, markers, mods=[pkg_cat])
-        pkg_results = [bake_safely(passets, r, a.atlas_opts) for r in pkg_to_bake]
-    elif pkg_to_bake:
-        with multiprocessing.get_context('spawn').Pool(min(a.jobs, len(pkg_to_bake)), _bake_init,
-                                                       (str(game), a.atlas_opts, [str(pkg_cat)]),
-                                                       maxtasksperchild=1) as pool:
-            pkg_results = pool.map(_bake_work, pkg_to_bake, chunksize=1)
-    else:
-        pkg_results = []
+    total = len(to_bake) + len(pkg_to_bake)
+    results = bake_rows(game, markers, to_bake, a.atlas_opts, a.jobs, (), None, 0, total)
+    pkg_results = bake_rows(game, markers, pkg_to_bake, a.atlas_opts, a.jobs, [pkg_cat], package, len(to_bake), total)
     bake_s = time.time() - t0
     by_name = {r['name']: r for r in rows}
     plans = []

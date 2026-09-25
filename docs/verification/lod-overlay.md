@@ -285,3 +285,34 @@ no bake or census over a real tree; the bottle was only read by the launch check
 | launcher modules (measured) | the 53 `test_*.py` that load `tools/manage.py` and capture stderr | 738 OK, 1 skipped, after splitting the `fog-families` wrapper with a pre-parser instead of `sys.argv` (the 19 errors of `test_fps_overlay`, `test_hdr_dither_launch`, `test_comparison_hotkeys` since 89f4b014 are gone) |
 | real bottle line (measured) | [`launch_line_cost.py`](../../verification/results/lod-overlay-mods/launch_line_cost.py), [`_out.txt`](../../verification/results/lod-overlay-mods/launch_line_cost_out.txt) | `lod overlay: ok (620 bodies in slots 05/06, 2.72 GB; sources unchanged; no package: ModName empty)`; 59.6 / 52.5 / 47.9 ms; opened 19 cats, 2 markers, user.reg, 0 dats |
 | launcher dry run (measured) | `python3 tools/manage.py launch --dry-run --bottle X3 --direct --camera chase <Run 84 A stand args>`; `... --dry-run --vanilla --bottle X3` | exit 0, stderr and JSON carry the line above; `--vanilla`: exit 0, no line, JSON `lod_overlay: null` |
+
+## 2026-09-25 x3m-regenerate: one executable for the fog families and the LOD overlay (synthetic roots)
+
+Implements [lod-overlay-mods.md](../architecture/lod-overlay-mods.md), "Implementation: the regenerate executable";
+user guide [docs/user/regenerate.md](../user/regenerate.md). No bake over the bottle or `/tmp/x3m-mod1`/`2`; Wine only
+in the new build bottle `X3M-Build` (the game bottle untouched). Synthetic root:
+`verification/analysis/test_regenerate.py` `make_root` (X3AP.exe stub, 01.cat textures + TBackgrounds + one nebula
+family, 02.cat two ships, a station, a bad text body, `addon/mods/Big.cat` selected in a `user.reg`).
+
+| check | command | result (measured) |
+|---|---|---|
+| new tests | `PYTHONPATH=verification/probe python3 -m unittest test_regenerate` (from `verification/analysis`) | 8 OK (after the two follow-up fixes below): full run + rerun (fog table, `addon/01` 2 bodies, derived `Big-x3m-lod`, per-item lines teed into the log, second run 0 baked + 2 unchanged with identical dat, `.previous` fog pair, no `.x3m-replaced`/`.tmp` left), running-game and unreadable-process-table and missing-EXE refusals (exit 1, nothing written), injected `bake_rows` exception (exit 1, traceback in the log, fog step done, no slot written), `--no-wait`/key wait, frozen path, Windows tasklist parse, LOD job memory cap |
+| affected modules | `test_lod_overlay_batch`, `test_lod_overlay_check`, `test_fog_families` | 55 OK; 19 OK |
+| acceptance | [`verification/results/regenerate/acceptance.py --windows`](../../verification/results/regenerate/acceptance.py) ([out](../../verification/results/regenerate/acceptance_out.txt)) | source script, macOS bundle and Windows exe (Wine, X3M-Build) each exit 0 with the same 27 console lines (the `(i/n)` of `processing model` masked: completion order), every console line in the log; source wall 6.2 s, bundle 23.7 s, Windows 25.1 s |
+| macOS bundle | `python3 tools/regenerate/build.py` (PyInstaller 6.22.3, `pip install --user pyinstaller`, host Python 3.9.6, NumPy 2.0.2, Pillow 11.3.0) | `dist/x3m-regenerate` 12,185,232 B; start to exit on a directory without X3AP.exe cold 8.54 s, warm 7.72 s at 0.2 s CPU (a onedir build: 7.7 s first run, 0.04 s after, so the wait is macOS's first-execution assessment of the freshly unpacked files, inferred); the first NumPy import adds about 6 s per run |
+| Windows exe | `python3 tools/regenerate/build.py --windows` (bottle `X3M-Build` from `cxbottle --bottle X3M-Build --create --template win10_64`, python.org 3.12.10 amd64 `/quiet InstallAllUsers=0 PrependPath=1`, pip `pyinstaller numpy==2.0.2 pillow` = PyInstaller 6.22.3, NumPy 2.0.2, Pillow 12.3.0; x64 under FEX) | `dist/x3m-regenerate.exe` 29,631,215 B; start under Wine cold 1.56 s, warm 1.38 s; smoke test exit 0; `tasklist` under Wine read without error; on a root outside `drive_c` ModName came from HKCU (winreg): `selected mod: none (HKCU)`. Not run on native Windows |
+| frozen hashes | records of the source and the bundle runs | `tool_sha256` e8ef3996…, fog tool/baker/recipe hashes equal; overlay and fog bytes identical between source and macOS bundle; Windows exe vs macOS: fog identical, 4 DXT bytes per diffuse/light atlas and the bump atlas gzip stream differ, geometry identical |
+
+Follow-up fixes (same day): (1) interrupted-write recovery at start (test: previous `addon/01` and
+`Big-x3m-lod` files moved aside with partial new ones in place; the run logs `recovered interrupted write of
+addon/01.cat` and `... addon/mods/Big-x3m-lod.cat`, exits 0, reuses both bodies with the original dat bytes, no
+aside left); (2) the selected package is a fog layer (synthetic `Big.cat` carries its own TBackgrounds with a
+family `zzpkg`: `fog layers: 01.cat, 02.cat, addon/mods/Big.cat`, 2 families baked, record `mod_cats` = the
+package). Rebuilt: macOS bundle 12,185,568 B (start cold 7.55 s, warm 7.28 s), Windows exe 29,632,637 B (under
+Wine cold 15.36 s after the rebuild, warm 1.73 s); acceptance source / bundle / Windows exit 0, 29 identical
+console lines each (measured). The Python installer download was deleted; the bottle X3M-Build is kept as the
+reusable build bottle.
+
+Changing `lod_overlay.py` (the progress hook) changes `tool_sha256`, so the first `--sync` after this change,
+including the first x3m-regenerate run on the installed fleet, rebuilds every body (about 50 min; inferred from
+install-fleet3's 48.5 min).

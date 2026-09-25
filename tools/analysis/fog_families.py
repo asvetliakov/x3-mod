@@ -600,11 +600,19 @@ def parse_overrides(values):
     return overrides
 
 
+progress = None  # optional callable(name, done, total, result): tools/regenerate's per-family console line
+
+
 def derive(assets, plans, jobs, bake):
     """Runs family_job for every plan that needs a palette; returns {name: result}."""
     todo = [p for p in plans if p['status'] in ('ok', 'covered_by_build')]
     shared = baker.bake_fields() if bake and any(p['status'] == 'ok' for p in todo) else None
     results = {}
+
+    def finished(result):
+        results[result['name']] = result
+        if progress is not None:
+            progress(result['name'], len(results), len(todo), result)
 
     def job(plan):
         return dict(name=plan['name'], textures=texture_payload(assets, plan), bake=bake and plan['status'] == 'ok',
@@ -612,7 +620,7 @@ def derive(assets, plans, jobs, bake):
     if jobs <= 1:
         _init_worker(shared)
         for plan in todo:
-            results[plan['name']] = family_job(job(plan))
+            finished(family_job(job(plan)))
         return results
     context = multiprocessing.get_context('spawn')
     with concurrent.futures.ProcessPoolExecutor(max_workers=jobs, mp_context=context, initializer=_init_worker,
@@ -623,8 +631,7 @@ def derive(assets, plans, jobs, bake):
                 pending.add(pool.submit(family_job, job(queue.pop(0))))
             done, pending = concurrent.futures.wait(pending, return_when=concurrent.futures.FIRST_COMPLETED)
             for future in done:
-                result = future.result()
-                results[result['name']] = result
+                finished(future.result())
     return results
 
 

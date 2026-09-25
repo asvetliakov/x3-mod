@@ -65,6 +65,20 @@ markers, catalogue stats, the small `.cat` hashes and `ModName` (about 50 ms,
 no `.dat` read), with the rebake command when stale
 ([lod-overlay-mods.md](lod-overlay-mods.md), "Implementation (2026-09-25)").
 
+## User flow: the regenerate executable
+
+For players the two tools above collapse into one step: with the mods installed,
+run `x3m-regenerate` (one bundled file, no Python needed) from the game
+directory. It rolls back an interrupted previous overlay write, runs the fog families install (with the
+selected package as an extra layer), the LOD batch with `--sync --mod
+auto --install` and a fog `--check` that refreshes the fog record's launch
+fingerprint after the overlay changed the numbered catalogues, overwriting the
+previous results; console and `x3m-regenerate.log` carry one line per family and
+per baked body, the refusals, the slot plan and the totals. User guide:
+[docs/user/regenerate.md](../user/regenerate.md); implementation:
+[lod-overlay-mods.md](lod-overlay-mods.md), "Implementation: the regenerate
+executable".
+
 ## Mayhem 3 (`Install_540`)
 
 The eight CAT listings (`05`–`12.cat`, rolling-XOR decoded, 6,152 entries)

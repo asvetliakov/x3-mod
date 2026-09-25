@@ -1,0 +1,52 @@
+source: exit 0, wall 6.4 s, 29 console lines, all in the log True, log lines 143, same line set as source True
+  x3m-regenerate: game directory <game>
+  log file <game>/x3m-regenerate.log
+  == fog families
+  fog families: reading TBackgrounds and the nebula catalogues (with the selected package addon/mods/Big.cat)
+  processing fog zzmod (1/2) baked
+  processing fog zzpkg (2/2) baked
+  fog layers: 01.cat, 02.cat, addon/mods/Big.cat
+  refused fog zznobody: no_dust_bodies
+  fog summary: 2 families added (2 packets, 4562568 B), 0 covered by the built-in profiles, 1 refused; wrote x3m/fog-families.bin
+  fog families: done in <t> s
+  == LOD overlay
+  selected mod: Big (<root>/user.reg); its changed bodies go into addon/mods/Big-x3m-lod
+  LOD overlay: scanning the ship and station bodies, then baking with 2 job(s)
+  processing model ships/x/mixed (i/n)
+  processing model ships/x/good (i/n)
+  processing model ships/x/newship (i/n) [mod Big]
+  processing model ships/x/good (i/n) [mod Big]
+  refused model environments/nebulae/zzmod/nebula_zzmod_dust_part01: text_parse_error
+  refused model environments/nebulae/zzmod/nebula_zzmod_dust_part02: text_parse_error
+  refused model ships/x/badtext: text_parse_error
+  refused model stations/y/good: texel_floor
+  --mod auto: ModName Big (<root>/user.reg)
+  package Big: addon/mods/Big.cat 6 members, 3 body stems; affected 3 (held 3, texture overrides 0); package view enumerated 3, eligible 2; built 2 + reused 0 = 2 merged, restored 0 original; derived addon/mods/Big-x3m-lod.cat/.dat: 4 of 6 package members kept, 2 body members replaced, 8 members added, dat 14859 B; select Big-x3m-lod in the start menu
+  slot plan: addon/01 2 bodies 14030 B
+  LOD summary: 6 bodies found, 2 eligible, 2 baked + 0 unchanged = 2 in the overlay, 4 refused; mod Big: 2 baked + 0 unchanged
+  LOD overlay: done in <t> s
+  == fog families check
+  fog families: check passed after the LOD overlay (launch fingerprint current)
+  all done: fog families and LOD overlay regenerated in <t> min
+bundle: exit 0, wall 25.2 s, 29 console lines, all in the log True, log lines 59, same line set as source True
+  source-log detail lines not in the bundle log: 93, of which 84 are the sector census report (repository result files, not bundled)
+    other:   | {"counts": {"ok": 2, "refused:no_dust_bodies": 1}, "families": 3, "file_bytes": 4562568, "jobs": 2, "packets": 2, "tbackgrounds": "addon/mods/Big.
+    other: processing model ships/x/mixed (1/4)
+    other: processing model ships/x/good (2/4)
+    other: processing model ships/x/newship (3/4) [mod Big]
+    other: processing model ships/x/good (4/4) [mod Big]
+    other:   | timing: census 0.2 s, baking 1.5 s for 2 bodies with 2 jobs (0.76 s per body wall); extrapolated full set: 2 s (this run is the full set); total 1
+    other:   |   eligible 0; resident atlas estimate (one set per distinct body, added to the source textures): 1800 wide 0.00 MB (cap 2048: 0.00 MB)
+    other:   |   eligible 0; resident atlas estimate (one set per distinct body, added to the source textures): 1800 wide 0.00 MB (cap 2048: 0.00 MB)
+    other:   |   eligible 0; resident atlas estimate (one set per distinct body, added to the source textures): 1800 wide 0.00 MB (cap 2048: 0.00 MB)
+windows: exit 0, wall 25.8 s, 29 console lines, all in the log True, log lines 59, same line set as source True
+  source-log detail lines not in the windows log: 93, of which 84 are the sector census report (repository result files, not bundled)
+    other:   | {"counts": {"ok": 2, "refused:no_dust_bodies": 1}, "families": 3, "file_bytes": 4562568, "jobs": 2, "packets": 2, "tbackgrounds": "addon/mods/Big.
+    other: processing model ships/x/mixed (1/4)
+    other: processing model ships/x/good (2/4)
+    other: processing model ships/x/newship (3/4) [mod Big]
+    other: processing model ships/x/good (4/4) [mod Big]
+    other:   | timing: census 0.2 s, baking 1.5 s for 2 bodies with 2 jobs (0.76 s per body wall); extrapolated full set: 2 s (this run is the full set); total 1
+    other:   |   eligible 0; resident atlas estimate (one set per distinct body, added to the source textures): 1800 wide 0.00 MB (cap 2048: 0.00 MB)
+    other:   |   eligible 0; resident atlas estimate (one set per distinct body, added to the source textures): 1800 wide 0.00 MB (cap 2048: 0.00 MB)
+    other:   |   eligible 0; resident atlas estimate (one set per distinct body, added to the source textures): 1800 wide 0.00 MB (cap 2048: 0.00 MB)

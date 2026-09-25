@@ -348,3 +348,60 @@ Ledger: [lod-overlay.md](../verification/lod-overlay.md), "2026-09-25 selected p
 - **Rebake policy**: `--trust-tool` (with `--sync`) reuses bodies whose settings differ only in `tool_sha256`;
   `--budget-bytes N` applies after baking on the actual member bytes (numbered and package bodies in one
   priority order; a body that does not fit is skipped and the next tried), so it saves disk, not bake time.
+
+## Implementation: the regenerate executable
+
+User requirement (2026-09-25): the whole mod flow is one bundled executable in the game root that regenerates
+everything and overwrites the previous results. `tools/regenerate/x3m_regenerate.py` (importable, `main()`), user
+guide [docs/user/regenerate.md](../user/regenerate.md), ledger [lod-overlay.md](../verification/lod-overlay.md),
+"2026-09-25 x3m-regenerate".
+
+- **Flow.** Game directory = the executable's directory when frozen (`sys.frozen`), else `--game-dir` or the
+  current directory. Refuses (exit 1, nothing written) without an `X3AP.exe` there or while the game runs
+  (`tasklist /FO CSV /NH` on Windows, `game_guard` over `ps` elsewhere; an unreadable process table refuses too);
+  the same check replaces both tools' `running_game`, so their pre-write re-checks use it. Steps: (1)
+  `fog_families.main(--install --replace)`; (2) `lod_overlay.main(--batch --sync --mod auto --install)`; (3)
+  `fog_families --check`, which passes and refreshes the fog record's `launch_inputs` after step 2 changed the
+  numbered catalogues (without it every run would end with the launcher's `fog families: stale`). A failing step
+  is logged with its traceback and the next step still runs; step 3 only after both succeeded. Exit 0 only
+  when every step succeeded; the run always ends at the key wait (`msvcrt.getch`, a raw tty read, else
+  `input()`) unless `--no-wait`.
+- **Console and log.** Each console line is timestamped and teed into `<game>/x3m-regenerate.log` (rewritten
+  per run); the tools' own stdout/stderr (fog family table, the LOD batch summary with its per-body texel rows)
+  goes to the log only, prefixed `|`. Per-item lines come from two progress hooks added for this:
+  `fog_families.progress(name, done, total, result)` in `derive` and `lod_overlay.progress(name, done, total,
+  package, result)` in the new `lod_overlay.bake_rows`, which replaces the two `pool.map` calls with
+  `imap_unordered` (results returned in row order, so the batch output is unchanged) and also serves the serial
+  path. `processing model <body> (i/n)` is printed as each body finishes; bake refusals follow at once,
+  census refusals, the package/ModName notes, the slot plan and the totals are read back from
+  `addon/x3m-lod-batch.json`.
+- **Selected mod.** `lod_overlay_check.read_mod_name(None, game)`, the function `--mod auto` uses: the bottle's
+  `user.reg` when the game directory is under a `drive_c`, else `winreg` HKCU\Software\EGOSOFT\X3AP on Windows;
+  unknown is said on the console and bakes no package. The same package (for a selected `<src>-x3m-lod` copy,
+  its source from the copy's marker) is passed to the fog step as `--mod-cat addon/mods/<name>.cat`, so a
+  nebula family only the package defines is covered; the console prints `fog layers: ...` from the record.
+- **Jobs.** `--jobs` defaults to CPU count - 1 (fog). The LOD bake takes `min(jobs, lod_overlay.default_jobs(),
+  RAM // 7 GiB - 1)`: a worker on the largest stations peaks near 7 GB, and `lod_overlay.host_memory_bytes`
+  (sysconf) has no Windows form, so the executable reads RAM with `GlobalMemoryStatusEx` there.
+- **Interrupted writes.** Not temp-and-rename for the overlay: `commit_outputs` moves the previous slot files
+  aside (`.x3m-replaced`), writes the new catalogues in place and restores on any exception, including
+  Ctrl+C. A hard kill during the write (closing the console window mid-write, power loss) leaves the asides;
+  the executable's first step puts every `addon/*.x3m-replaced` and `addon/mods/*.x3m-replaced` back over its
+  original name (replacing a partial new file, as the in-process rollback does), logs `recovered interrupted
+  write of addon/NN.cat` and proceeds; the restored overlay is then reused by `--sync`. Not covered: a new slot
+  above the previous overlay (no aside) that was half written stays and reads as an orphan or mod catalogue
+  until the next run replaces it. The fog pair is
+  written as `.tmp` + `os.replace` with the previous pair moved to `.previous` and restored on failure.
+- **Bundle.** `tools/regenerate/x3m_regenerate.spec` (PyInstaller one-file, console) with the tool modules as
+  hidden imports and the hashed sources (`lod_overlay.TOOL_FILES`, `lod_recipes.py`, `fog_families.py`,
+  `bake_fog_fields.py`, `fog_field_recipe.py`) as data beside them, so the frozen tool records the same
+  `tool_sha256` / baker / recipe hashes as a source checkout (measured: identical records and outputs on the
+  synthetic root, so `--sync` reuses across source and bundle). Not bundled: the flight radius logs and sector
+  censuses under `verification/results/` (informational rows of the batch summary only). `tools/regenerate/
+  build.py` builds and smoke-tests the host bundle; `--windows` builds `x3m-regenerate.exe` with Windows
+  Python 3.12.10 x64 + PyInstaller in the dedicated CrossOver bottle `X3M-Build` (win10_64 template) and runs
+  the smoke test there.
+- **Cross-platform bytes.** On the synthetic root the Windows exe's overlay differs from the macOS one in 4
+  bytes of each DXT diffuse/light atlas and in the gzip stream of the bump atlas (identical decoded bytes);
+  geometry members and the fog file are identical (measured). Reuse compares inputs and settings, not outputs,
+  so this does not trigger rebakes.

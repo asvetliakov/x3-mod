@@ -160,6 +160,11 @@ Uninstall removes only the owned proxy and its manifest. Logs are retained. Ordi
 CrossOver launching may ignore the proxy unless its DLL override selects native;
 use the supplied launcher for reproducible tests.
 
+After installing, updating or removing a mod, run `x3m-regenerate` from the game
+directory (one bundled executable, no Python needed): it rebuilds the fog
+families and the merged-LOD overlay for the installed mods
+([user guide](docs/user/regenerate.md)).
+
 ## Scope of instrumentation
 
 Targets X3AP's imported `Direct3DCreate9` path. Shader bytecode is FNV-1a 64 hashed
