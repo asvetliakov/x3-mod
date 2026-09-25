@@ -144,3 +144,18 @@ a launch arm with the gates holding fired once `armed_by=launch up=0 down=-1 bal
 end state and last error unchanged, no second fire; a later `WM_ACTIVATE` replaced a pending
 launch arm (fresh 120-frame window) and fired `armed_by=activate`; real-gate witness fired
 balanced. `dry_runs.py`: unchanged mapping (trace+reassert 1/1 with both variables).
+
+## 2026-09-25 Run 84 A (run329 5120x1440, run330 1920x1080): launch arm fires, arrow stays; parked
+
+The launch arm fired at frame 1 on both runs and every alt-tab cycle fired (17/17 on run330), each with the balanced
+sequence (count -1 -> 0 -> -1, previous NULL, pointer in client), measured. The user still sees the desktop arrow from
+launch and, sometimes, the double cursor after alt-tab. The game itself makes no SetCursor/ShowCursor/SetCursorPos calls
+(0 `cursor_call` rows with the IAT hooks installed) and receives no WM_SETCURSOR or WM_MOUSEMOVE while active; the cursor
+is hidden between frames 0 and 1 by dinput's exclusive acquire (inferred from 3/18 unacquire pointer restores), and our
+fire lands one Present later (250-350 ms). The only Win32-visible activity afterwards is pointer motion. The cause is
+therefore inside the Cocoa driver's hidden state, not observable from Win32 (`excludes=cocoa` in the trace). Ring
+coverage complete to frame 2442 (run329) and 4174 (run330), expired 0, overwritten 0. Scripts and outputs:
+`verification/results/run329-run84a-cursor/`. Side finding: the design note's §1.2 "WM_SETCURSOR always returns 1"
+is contradicted by the two observed returns (0, inactive state).
+Candidate fix (not built): one bounded repeat fire at the first pointer motion after each arm, plus a diagnostic
+schedule of fires. **User decision 2026-09-25: parked, not a big deal.** `--cursor-reassert` stays opt-in.
