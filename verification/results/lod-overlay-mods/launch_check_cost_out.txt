@@ -1,0 +1,8 @@
+markers: 2 files 14638697 B parsed in 48 ms; slots [5, 6] bodies [493, 127] originals [34, 34] mode ['fingerprint', 'fingerprint']
+stat 38 cat/dat files + sha256 of 19 cats (677527 B): 8.6 ms
+registry: "ModName"="" (0.5 ms, user.reg 84518 chars)
+exe string b'ModName\x00': file offset 0x14be1e va 0x0054bd6b (.rdata)
+exe string b'addon\\mods\\%s.cat\x00': file offset 0x14c0c0 va 0x0054c00d (.rdata)
+exe string b'Software\\EGOSOFT\\%s\x00': file offset 0x1617b8 va 0x00561705 (.rdata)
+exe string b'addon\\mods\x00': file offset 0x1626cc va 0x00562619 (.rdata)
+exe string b'*.cat\x00': file offset 0x1626c4 va 0x00562611 (.rdata)
