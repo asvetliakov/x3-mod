@@ -217,7 +217,6 @@ class TerranLodCore(unittest.TestCase):
         capture = (ROOT / 'src/proxy/capture.cpp').read_text()
         self.assertEqual(capture.count('terran_station_lod::initialize();'), 1)
         self.assertLess(capture.index('game_phases::initialize();'), capture.index('terran_station_lod::initialize();'))
-        self.assertLess(capture.index('lod_scale::initialize();'), capture.index('terran_station_lod::initialize();'))
         self.assertIn('if (reserved == nullptr) x3m::terran_station_lod::shutdown();', (ROOT / 'src/proxy/loader.cpp').read_text())
         self.assertIn('src/proxy/terran_station_lod.cpp', (ROOT / 'CMakeLists.txt').read_text())
         module = (ROOT / 'src/proxy/terran_station_lod.cpp').read_text()

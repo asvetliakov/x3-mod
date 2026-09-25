@@ -16,11 +16,10 @@
 namespace x3 { namespace temporal { enum class AgxDecode {none,gamma22}; } }
 namespace x3m {
 namespace sun_light_poll { enum class Status {Ok};struct Sample {Status status=Status::Ok;std::int32_t colour[3]{256,256,256};};inline const char* status_name(Status){return "synthetic";} }
-// The fog shadow-pass A/B witness reads back the last frame row and toggle row the production fragment logged.
-inline char last_frame_row[2048]{},last_toggle_row[512]{},last_motes_row[512]{};inline unsigned frame_rows=0,toggle_rows=0,motes_rows=0;
+// The dust motes' A/B witness reads back the last frame row and toggle row the production fragment logged.
+inline char last_frame_row[2048]{},last_motes_row[512]{};inline unsigned frame_rows=0,motes_rows=0;
 inline void log(const char* format,...){char line[2048];va_list args;va_start(args,format);std::vsnprintf(line,sizeof line,format,args);va_end(args);std::puts(line);
     if(!std::strncmp(line,"volumetric_fog_frame ",21)){++frame_rows;std::snprintf(last_frame_row,sizeof last_frame_row,"%s",line);}
-    else if(!std::strncmp(line,"fog_shadow_pass_toggle ",23)){++toggle_rows;std::snprintf(last_toggle_row,sizeof last_toggle_row,"%s",line);}
     else if(!std::strncmp(line,"fog_dust_motes_toggle ",22)){++motes_rows;std::snprintf(last_motes_row,sizeof last_motes_row,"%s",line);}}
 template<class T>void release(T*& value){if(value)value->Release();value=nullptr;}
 constexpr unsigned GetDisplayMode=8,GetRenderTarget=38,SetRenderState=57,GetStreamSourceFreq=103;
@@ -80,12 +79,7 @@ struct MotionOutput {
 #ifndef X3M_ROUTE_BRIDGE_BASELINE
     // Stored-density range: the production members, verbatim defaults.
     bool fog_density_requested_=false,fog_density_refused_=false,fog_density_prepared_=false,fog_density_camera_valid_=false;
-    bool fog_density_config_logged_=false,fog_density_ready_logged_[2]{},fog_shadow_pass_refused_logged_=false,fog_far_bins_refused_logged_=false,fog_march_scale_refused_logged_=false;
-    // The grid pass A/B (fog-shadow-pass.md): the production members, verbatim defaults; set both as
-    // configure_volumetric_fog_shadow_pass(true) does to launch with the pass.
-    bool fog_shadow_pass_launch_=false;const char* fog_grid_last_march_="none";std::uint64_t fog_grid_logged_frame_=0;
-    static constexpr std::uint64_t fog_grid_change_frames=60;static constexpr unsigned fog_grid_change_cap=16;unsigned fog_grid_change_logs_=0;
-    int volumetric_fog_shadow_pass_toggle()noexcept;
+    bool fog_density_config_logged_=false,fog_density_ready_logged_[2]{},fog_march_scale_refused_logged_=false;
     // The dust motes' A/B (fog-dust-motes.md): the production members, verbatim defaults; set the launch flag and the
     // config's motes as configure_volumetric_fog_dust_motes does to launch with the option.
     bool fog_dust_motes_launch_=false,fog_motes_refused_logged_=false,fog_motes_drawn_=false;long long fog_motes_epoch_qpc_=0;

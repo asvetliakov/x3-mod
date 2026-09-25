@@ -216,9 +216,7 @@ void state_cases(EdgeScene& s,const DWORD* resolver){
     in.thin_region_camera_gate=false;check("screen gate",pass.run(in,&out));const bool restarted=!out.used_history&&!pass.diagnostics().region_hold;const unsigned masksScreen=pass.line_mask_targets();
     check("screen gate again",pass.run(in,&out));const bool continued=out.used_history;
     in.thin_region_camera_gate=true;check("camera gate again",pass.run(in,&out));const bool kept=out.used_history&&pass.diagnostics().region_hold;const unsigned masksOn=pass.line_mask_targets();
-    // 16 taps: the camera gate has no 16-tap program; a camera-gate run is refused, 5 taps run it again.
-    check("hold taps16",pass.configure_history_taps(16));const bool taps16=!pass.camera_gate_available()&&pass.run(in,&out)==E_INVALIDARG;
-    check("hold taps5",pass.configure_history_taps(5));check("hold taps5 run",pass.run(in,&out));const bool taps5=pass.camera_gate_available()&&pass.diagnostics().region_hold&&pass.diagnostics().history_taps==5;
+    check("hold 5 taps run",pass.run(in,&out));const bool taps5=pass.camera_gate_available()&&pass.diagnostics().region_hold&&pass.diagnostics().history_taps==5;
     // Reset: every default-pool target goes; the first camera-gate run after it allocates no mask target.
     pass.before_reset();const unsigned masksReset=pass.line_mask_targets();pass.after_reset(S_OK);check("hold run after second Reset",pass.run(in,&out));const unsigned masksAfterReset=pass.line_mask_targets();
     // Box-target creation failure on a camera-gate run: the thin region off for the session (no fallback program set; this
@@ -241,12 +239,12 @@ void state_cases(EdgeScene& s,const DWORD* resolver){
             IDirect3DVertexBuffer9* b0=nullptr;IDirect3DVertexBuffer9* b1=nullptr;UINT o0=0,o1=0,s0=0,s1=0;check("streams get 0",d->GetStreamSource(0,&b0,&o0,&s0));check("streams get 1",d->GetStreamSource(1,&b1,&o1,&s1));
             streamsRestored=b0==vb.p&&b1==vb.p&&o0==24&&o1==48&&s0==24&&s1==24&&fresh.diagnostics().region_hold;if(b0)b0->Release();if(b1)b1->Release();}
         check("streams unbind 0",d->SetStreamSource(0,nullptr,0,0));check("streams unbind 1",d->SetStreamSource(1,nullptr,0,0));}
-    std::printf("REGION_HOLD_STATE refused_path=%u refused_create=%08lx two_targets_refused=%u rt2_restored=%u streams_restored=%u screen_restarts=%u screen_continues=%u camera_keeps=%u taps16_refused=%u taps5_camera=%u masks_camera=%u masks_screen=%u masks_on=%u masks_at_reset=%u masks_after_reset=%u box_refused_region_off=%u masks_box_refused=%u rearmed=%u\n",
-        unsigned(refusedPath),(unsigned long)refusedResult,unsigned(twoTargets),unsigned(rt2Restored),unsigned(streamsRestored),unsigned(restarted),unsigned(continued),unsigned(kept),unsigned(taps16),unsigned(taps5),masksCamera,masksScreen,masksOn,masksReset,masksAfterReset,unsigned(boxRefused),masksBoxRefused,unsigned(rearmed));
+    std::printf("REGION_HOLD_STATE refused_path=%u refused_create=%08lx two_targets_refused=%u rt2_restored=%u streams_restored=%u screen_restarts=%u screen_continues=%u camera_keeps=%u taps5_camera=%u masks_camera=%u masks_screen=%u masks_on=%u masks_at_reset=%u masks_after_reset=%u box_refused_region_off=%u masks_box_refused=%u rearmed=%u\n",
+        unsigned(refusedPath),(unsigned long)refusedResult,unsigned(twoTargets),unsigned(rt2Restored),unsigned(streamsRestored),unsigned(restarted),unsigned(continued),unsigned(kept),unsigned(taps5),masksCamera,masksScreen,masksOn,masksReset,masksAfterReset,unsigned(boxRefused),masksBoxRefused,unsigned(rearmed));
     ++numeric_checks;require(refusedPath,"hold resolve refused at creation: no camera-gate program, a camera-gate run refused, the screen gate runs");
     ++numeric_checks;require(twoTargets,"two simultaneous render targets: no camera-gate path (the folded resolve writes three), a camera-gate run refused, the screen gate runs");
     ++numeric_checks;require(rt2Restored&&streamsRestored,"RT2 and its colour-write mask restored; stream offsets restored from a non-hostile start");
-    ++numeric_checks;require(restarted&&continued&&kept&&taps16&&taps5,"leaving the camera gate restarts the history once, coming back keeps it; 16 taps refuse a camera-gate run");
+    ++numeric_checks;require(restarted&&continued&&kept&&taps5,"leaving the camera gate restarts the history once, coming back keeps it; the camera gate draws 5 taps");
     ++numeric_checks;require(masksCamera==0&&masksScreen==2&&masksOn==0&&masksReset==0&&masksAfterReset==0&&masksBoxRefused==0&&rearmed,
         "mask targets: none on a camera-gate run (both released: the mask fold), two on the screen gate, none across Reset or after it");
     ++numeric_checks;require(boxRefused,"box targets refused on a camera-gate run: the thin region off for the session (plain resolve, no mask, history kept), no retry until Reset");

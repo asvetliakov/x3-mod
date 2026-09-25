@@ -1,5 +1,7 @@
 # Volumetric fog: the sun-shadow lookup in its own pass
 
+**Removed 2026-09-25** (user decision): the pass (`--fog-shadow-pass`, `X3M_FOG_SHADOW_PASS`), its visibility, march, repair and mote programs, the grid target and the Ctrl+Shift+F11 toggle are gone; this note is history (`docs/verification/launcher-options-inventory.md`, "4. Removed 2026-09-25").
+
 Design note, 2026-09-22, for the stored-density fog (L2 law only; the look presets are being
 collapsed to L2 concurrently). Built the same day behind `X3M_FOG_SHADOW_PASS=1` (launcher
 `--fog-shadow-pass on`, default off): the section "As built" at the end records what differs from

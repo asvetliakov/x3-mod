@@ -577,3 +577,5 @@ violations; launch `--dry-run` rc 0. Not verified: the Wine loading fixtures
 `capture.cpp` calls `loading_trace::initialize()` only with telemetry,
 gz-buffer or crypt-cache; a `fast`-only launch needs
 `loading_trace::mesh_adjacency_requested()` in that condition.
+
+Fixture after the cache removal (2026-09-25, bottle X3): `run_loading_trace.py` PASS, `mesh-adjacency` 36,091 checks (the former `mesh-adjacency-cache-off` case, 36,093 before; the cache-on case, 36,150, went with the cache), `loading-trace` 112 and `loading-mesh` 123 unchanged; `run_crypt_cache.py` passed (measured).

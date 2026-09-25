@@ -8,7 +8,6 @@
 #include "engine_memory.h"
 #include "object_trace.h"
 #include "telemetry.h"
-#include "sampling_profiler.h"
 #include "capture.h"
 #include <atomic>
 #include <cstdio>
@@ -24,18 +23,6 @@ bool initialized=false,reporting=false;
 DWORD seen_epoch=0;
 detail::Core core;
 engine_patch::Site patches[sites::Count];
-unsigned site_count=sites::PhaseCount; // sites::Count when X3M_AUDIO_SITES=1 adds the audio witnesses
-// Audio-path witnesses: main-thread writer (every site is on the main thread,
-// docs/reverse-engineering/voice-startup-sequence.md section 1), any-thread
-// reader. Plain atomics, no ownership gate: the two pre-loop manager sites
-// run before LoopSetup establishes the owner. Indexed by site index; only
-// Services (403b04, the sixth 498370 call site) and the audio indices are used.
-bool audio_enabled=false;
-struct AudioCounter { std::atomic<std::uint32_t> total{0},frame{0},last{0}; };
-AudioCounter audio_counts[sites::Count];
-std::atomic<std::uint32_t> audio_loops{0},audio_poll_ok{0},audio_poll_pending{0},audio_poll_eos{0},audio_poll_other{0};
-std::atomic<std::uint32_t> audio_last_poll{0},audio_last_update{0},audio_last_setstate{0},audio_last_pause{0};
-bool audio_poll_armed=false; // main thread only: PollCall seen, its PollAfter pending
 detail::Metric handler_cost,query_cost,bridge_cost;
 std::uint64_t read_failures=0,cpu_failures=0,publisher_entries=0,publisher_filtered=0;
 #ifdef X3M_GAME_PHASE_FIXTURE
@@ -75,36 +62,8 @@ bool read_word(std::uintptr_t at,std::uint32_t& value) noexcept {
     if(at&&engine_memory::read(at,&value,sizeof value))return true;
     ++read_failures;core.invalidate();return false;
 }
-void audio_hit(unsigned index,const std::uint32_t* regs) noexcept {
-    auto& c=audio_counts[index];
-    c.total.fetch_add(1,std::memory_order_relaxed);c.frame.fetch_add(1,std::memory_order_relaxed);
-    const std::uint32_t eax=regs[7]; // PUSHAD: EAX is the last pushed
-    switch(index){
-    case sites::AudioSetStateAfter:audio_last_setstate.store(eax,std::memory_order_relaxed);break;
-    case sites::AudioPauseAfter:audio_last_pause.store(eax,std::memory_order_relaxed);break;
-    case sites::AudioPollCall:audio_poll_armed=true;break;
-    case sites::AudioPollAfter:
-        // 4d0774 is also reached from the state!=2 branch at 4d0758; only a
-        // hit paired with the call setup carries CompletionStatus in EAX.
-        if(!audio_poll_armed)break;
-        audio_poll_armed=false;audio_last_poll.store(eax,std::memory_order_relaxed);
-        (eax==0?audio_poll_ok:eax==0x40001?audio_poll_pending:eax==0x40003?audio_poll_eos:audio_poll_other).fetch_add(1,std::memory_order_relaxed);
-        break;
-    case sites::AudioUpdateAfter:audio_last_update.store(eax,std::memory_order_relaxed);break;
-    default:break;
-    }
-}
-void audio_rollover() noexcept { // LoopSetup: the previous main-loop frame is complete
-    audio_loops.fetch_add(1,std::memory_order_relaxed);
-    for(auto& c:audio_counts){c.last.store(c.frame.load(std::memory_order_relaxed),std::memory_order_relaxed);c.frame.store(0,std::memory_order_relaxed);}
-}
 void handle(unsigned index,const std::uint32_t* regs) noexcept {
     if(!active.load(std::memory_order_acquire))return;
-    if(audio_enabled){
-        if(index>=sites::PhaseCount||index==sites::Services)audio_hit(index,regs);
-        else if(index==sites::LoopSetup)audio_rollover();
-        if(index>=sites::PhaseCount)return;
-    }
     if(!owner(index))return;
     const auto at=stamp(index<detail::phase_count||index==sites::InputBody||index==sites::InputAfter);
     // A lifecycle event between admission and the clock must revoke the old
@@ -193,24 +152,21 @@ void* emit(unsigned index,void*** next_out);
 bool install_group(const char*& status) {
     active.store(false,std::memory_order_release);
     if(!engine_patch::install_window_open()){status="install_window_closed";return false;}
-    for(unsigned i=0;i<site_count;++i)
+    for(unsigned i=0;i<sites::Count;++i)
         if(!engine_patch::verify_bytes(sites::kSites[i].address,sites::kSites[i].expected,sites::kSites[i].length)){
             status="preflight_bytes";return false;
         }
-    for(unsigned i=0;i<site_count;++i){
+    for(unsigned i=0;i<sites::Count;++i){
         if(engine_patch::claim(patches[i],sites::kSites[i])){
             void** next=nullptr;void* stub=emit(i,&next);
             if(stub&&next&&engine_patch::store_pointer(next,*patches[i].entry)&&engine_patch::push_front(patches[i],stub))continue;
             status="stub_chain_failed";
         }else status="claim_failed";
         bool restored=true;
-        for(unsigned j=site_count;j-->0;)if(patches[j].patched_in&&!engine_patch::restore(patches[j]))restored=false;
+        for(unsigned j=sites::Count;j-->0;)if(patches[j].patched_in&&!engine_patch::restore(patches[j]))restored=false;
         if(!restored)status="rollback_failed_inert";
         return false;
     }
-    // The audio flag is published before activation so an audio-site hit
-    // never reaches the phase switch default (which would invalidate the core).
-    audio_enabled=site_count>sites::PhaseCount;
     status="ok";active.store(true,std::memory_order_release);return true;
 }
 }
@@ -252,9 +208,6 @@ bool initialize() {
     initialized=true;wchar_t value[4]{};
     const bool wanted=GetEnvironmentVariableW(L"X3M_GAME_PHASES",value,4)==1&&value[0]==L'1';
     if(!wanted)return false;
-    wchar_t audio[4]{};
-    const bool audio_wanted=GetEnvironmentVariableW(L"X3M_AUDIO_SITES",audio,4)==1&&audio[0]==L'1';
-    site_count=audio_wanted?sites::Count:sites::PhaseCount;
     const char* status="telemetry_off";
     // Segment-tape threshold in milliseconds (default 20; the built-in used to
     // be 50). Out-of-range or unparsable values keep the default.
@@ -273,12 +226,8 @@ bool initialize() {
         else if(!object_trace::executable_verified())status="executable_unverified";
         else install_group(status);
     }
-    audio_enabled=audio_enabled&&active.load(std::memory_order_acquire);
-    // Timed emission while frame progression is stopped: the sampler thread
-    // (X3M_PROFILE=1) runs the callback every 2 s outside its suspended window.
-    if(audio_enabled)sampling_profiler::set_periodic([](std::uint64_t qpc_stamp){audio_report("timed",qpc_stamp);},2);
-    log("game_phase_mode requested=1 enabled=%u status=%s sites=%u audio_sites_requested=%u audio_sites=%u owner=main_loop frame_threshold_ms=%u call_threshold_ms=10 tape=96 nesting=8 first=4 recent=4 qpc_frequency=%llu cpu_clock=GetThreadTimes",
-        unsigned(active.load()),status,site_count,unsigned(audio_wanted),unsigned(audio_enabled),threshold_ms,core.frequency);
+    log("game_phase_mode requested=1 enabled=%u status=%s sites=%u owner=main_loop frame_threshold_ms=%u call_threshold_ms=10 tape=96 nesting=8 first=4 recent=4 qpc_frequency=%llu cpu_clock=GetThreadTimes",
+        unsigned(active.load()),status,unsigned(sites::Count),threshold_ms,core.frequency);
     for(unsigned i=0;i<sites::Count;++i)log("game_phase_site index=%u address=%08lx length=%u rel32=%u patched=%u status=%s",i,
         static_cast<unsigned long>(sites::kSites[i].address),sites::kSites[i].length,sites::kSites[i].rel32_offset,unsigned(patches[i].patched_in),patches[i].status);
     return active.load(std::memory_order_acquire);
@@ -314,39 +263,17 @@ bool loading_phase_present(std::uint64_t device,std::uint64_t reset,std::uint64_
     bool save_loaded=false;
     for(unsigned i=0;i<count;++i){
         const auto& m=markers[i];
-        if(m.name==detail::LoadingPhases::SaveLoadComplete){
-            loading_trace::intervals_freeze(m.qpc-m.stall,m.qpc,device,reset,m.frame,GetCurrentThreadId());
-            save_loaded=true;
-        }
+        if(m.name==detail::LoadingPhases::SaveLoadComplete)save_loaded=true;
         const auto origin=static_cast<std::uint64_t>(dll_load_qpc);
         log("loading_phase name=%s frame=%llu elapsed_ms=%llu stall_ms=%llu device=%llu qpc=%llu",loading_phase_names[m.name],m.frame,
             m.qpc>=origin?(m.qpc-origin)*1000ull/loading_frequency:0,m.stall*1000ull/loading_frequency,device,m.qpc);
     }
     return save_loaded;
 }
-bool audio_active() noexcept {return audio_enabled&&active.load(std::memory_order_acquire);}
 bool last_input_us(std::uint64_t* out) noexcept {
     if(!out||!active.load(std::memory_order_acquire)||GetCurrentThreadId()!=owner_thread.load(std::memory_order_acquire))return false;
     if(!core.frequency||!core.input_valid)return false;
     *out=core.input_last*1000000ull/core.frequency;return true;
-}
-void audio_report(const char* scope,std::uint64_t qpc_stamp) {
-    if(!audio_active())return;
-    ErrorGuard error;
-    // One line, integers only: cumulative total, count inside the current
-    // (possibly stuck) main-loop frame and the last completed frame's count.
-    char sites_text[sites::Count*48];unsigned used=0;
-    const auto add=[&](const char* name,const AudioCounter& c){
-        const int n=std::snprintf(sites_text+used,sizeof sites_text-used,"%s%s=%u/%u/%u",used?" ":"",name,
-            c.total.load(std::memory_order_relaxed),c.frame.load(std::memory_order_relaxed),c.last.load(std::memory_order_relaxed));
-        if(n>0&&unsigned(n)<sizeof sites_text-used)used+=unsigned(n);
-    };
-    add("manager_loop",audio_counts[sites::Services]);
-    for(unsigned i=sites::PhaseCount;i<sites::Count;++i)add(sites::kSites[i].name+sizeof("game_phase_audio_")-1,audio_counts[i]);
-    log("game_phase_audio scope=%s qpc=%llu loops=%u poll_ok=%u poll_pending=%u poll_eos=%u poll_other=%u last_poll_hr=%08x last_update_hr=%08x last_setstate_hr=%08x last_pause_hr=%08x %s",
-        scope,qpc_stamp,audio_loops.load(std::memory_order_relaxed),audio_poll_ok.load(std::memory_order_relaxed),audio_poll_pending.load(std::memory_order_relaxed),
-        audio_poll_eos.load(std::memory_order_relaxed),audio_poll_other.load(std::memory_order_relaxed),audio_last_poll.load(std::memory_order_relaxed),
-        audio_last_update.load(std::memory_order_relaxed),audio_last_setstate.load(std::memory_order_relaxed),audio_last_pause.load(std::memory_order_relaxed),sites_text);
 }
 void report(std::uint64_t reporting_frame) {
     if(!active.load(std::memory_order_acquire)||GetCurrentThreadId()!=owner_thread.load(std::memory_order_acquire)||reporting)return;
@@ -355,7 +282,6 @@ void report(std::uint64_t reporting_frame) {
         reporting_frame,owner_thread.load(),core.loop,core.frame_count,core.frame_max,core.frame_max_begin,core.frame_max_end,core.frame_max_device,core.frame_max_id,
         core.invalidated,core.unmatched,core.overflow,core.order_errors,core.clock_errors,foreign_hits.exchange(0),suppressed.exchange(0),read_failures,cpu_failures,
         core.slow_frames.count,core.slow_frames.first_used+core.slow_frames.recent_used,core.slow_calls.count,core.slow_calls.first_used+core.slow_calls.recent_used,core.ignored_joins,publisher_entries,publisher_filtered);
-    audio_report("window",qpc());
     const auto metric=[](const char* category,unsigned index,const detail::Metric& m){
         if(m.count)log("game_phase_metric category=%s index=%u count=%llu ticks=%llu max_ticks=%llu max_begin=%llu max_end=%llu cpu_valid=%llu user_100ns=%llu kernel_100ns=%llu",category,index,m.count,m.total,m.maximum,m.begin,m.end,m.cpu_valid,m.user,m.kernel);
     };

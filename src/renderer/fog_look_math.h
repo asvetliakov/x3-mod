@@ -11,16 +11,12 @@ constexpr unsigned fog_look_first_register = 25; // c25..c35
 constexpr unsigned fog_look_rows = 11;
 // Shaft cascades the look program reads (the two coarsest current maps; the unshaped reference law reads three).
 constexpr unsigned fog_look_cascades = 2;
-// Far march bins over [12000, cap] (FOG_FAR_BINS; docs/architecture/fog-gpu-cost.md, step B): the accepted 40, or 24 with
-// the separately compiled *_look_far24 march/repair (X3M_FOG_FAR_BINS=24). No other count has programs.
-constexpr unsigned fog_far_bins_default = 40, fog_far_bins_coarse = 24;
-constexpr bool fog_far_bins_valid(unsigned bins) { return bins == fog_far_bins_default || bins == fog_far_bins_coarse; }
-// 24 bins is one sample per 4096-unit far node at the 112,500 cap (ds 4187.5); a larger column cap (X3M_FOG_LOOK_SKY_CAP up
-// to 200,000: ds 7833, 1.9 nodes) would skip nodes and alias, so the 24-bin variant is refused above this cap.
-constexpr float fog_far_bins_coarse_cap_max = 120000.f;
+// Far march bins over [12000, cap] (FOG_FAR_BINS; docs/architecture/fog-gpu-cost.md, step B): the accepted 40, the only count
+// with programs since the 24-bin variant (X3M_FOG_FAR_BINS) was removed on 2026-09-25.
+constexpr unsigned fog_far_bins = 40;
 // The march spacing in full pixels (FOG_MARCH_SCALE; docs/architecture/fog-gpu-cost.md, step C): 4 (quarter resolution,
 // the separately compiled *_q4 march/repair/composite) is the default since Run 77 C2 (2026-09-24); 2 (half resolution) is
-// the opt-out (X3M_FOG_MARCH_SCALE=2) and the fallback of every refusal of 4 (shadow pass, programs, target). No other
+// the opt-out (X3M_FOG_MARCH_SCALE=2) and the fallback of every refusal of 4 (programs, target). No other
 // spacing has programs. The march target of a W x H scene is fog_march_extent(W, scale) x fog_march_extent(H, scale).
 constexpr unsigned fog_march_scale_half = 2, fog_march_scale_quarter = 4, fog_march_scale_default = fog_march_scale_quarter;
 constexpr bool fog_march_scale_valid(unsigned scale) { return scale == fog_march_scale_half || scale == fog_march_scale_quarter; }
@@ -44,9 +40,6 @@ struct FogLookTuning {
     float tap_distance = 3000.f, tap_length = 9000.f;                 // one sun-ward tap and the path it stands for
     float shadow_jitter = 1.f;                                        // offset of the shaft lookup alone (bins) while TAA
                                                                       // resolves it; 0 = bin centres (also without a resolve).
-    // The visibility grid pass (fog_shadow_grid.h, X3M_FOG_SHADOW_PASS=1 only): penumbra kernel radius in texels of
-    // the sampled map = clamp(blocker distance x half sun angle x penumbra / texel, min, max); penumbra 0 fixes it at min.
-    float penumbra = 1.f, penumbra_min = 1.f, penumbra_max = 16.f;
 };
 struct FogLookField { const char* name; float FogLookTuning::* field; float minimum, maximum; };
 constexpr FogLookField fog_look_fields[] = {
@@ -64,8 +57,6 @@ constexpr FogLookField fog_look_fields[] = {
     {"WARP_CYCLES_NEAR", &FogLookTuning::warp_cycles_near, 1.f, 64.f}, {"WARP_NEAR", &FogLookTuning::warp_near, 0.f, 500.f},
     {"WARP_CYCLES_FAR", &FogLookTuning::warp_cycles_far, 1.f, 64.f}, {"WARP_FAR", &FogLookTuning::warp_far, 0.f, 1500.f},
     {"SHADOW_JITTER", &FogLookTuning::shadow_jitter, 0.f, 1.f},
-    {"PENUMBRA", &FogLookTuning::penumbra, 0.f, 4.f}, {"PENUMBRA_MIN", &FogLookTuning::penumbra_min, 0.f, 16.f},
-    {"PENUMBRA_MAX", &FogLookTuning::penumbra_max, 0.f, 64.f},
 };
 // A value outside its range (or NaN) keeps the default; true when it was taken.
 inline bool fog_look_set(FogLookTuning& tuning, const FogLookField& field, float value) noexcept {

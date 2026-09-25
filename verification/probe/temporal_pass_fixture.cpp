@@ -2069,8 +2069,6 @@ int main(int argc,char** argv){std::setvbuf(stdout,nullptr,_IONBF,0);int result=
                 X3M_BUDGET(temporal_line_mask_depth_program,"embedded_line_mask_depth");
                 // Thin vote (taa-thin-geometry-alternatives.md section 3.2): the screen-gate chain's twin, with the vote-only source's c10.y branch.
                 X3M_BUDGET(temporal_line_mask_depth_thin_program,"embedded_line_mask_depth_thin");
-                // S3: the 16-tap point twins (--taa-history-taps 16), the bytecode of the earlier four resolve programs (the camera gate has none).
-                X3M_BUDGET(temporal_resolve_taps16_program,"embedded_plain_taps16");X3M_BUDGET(temporal_resolve_thin_taps16_program,"embedded_thin_taps16");X3M_BUDGET(temporal_resolve_age_taps16_program,"embedded_age_taps16");X3M_BUDGET(temporal_resolve_far_taps16_program,"embedded_far_taps16");
                 // A' with the mask fold (the camera gate's only path): the folded hold resolve (the tests, the holds, RT2 depth) and its
                 // 49-tap box; the fixture's X3M_FOLD_TESTS_OUT twin beside it (not embedded).
                 X3M_BUDGET(temporal_resolve_far_camera_hold_program,"embedded_far_camera_hold");X3M_BUDGET(temporal_thin_box_hold_program,"embedded_thin_box_hold");

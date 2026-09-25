@@ -10,7 +10,6 @@
 #include <d3d9.h>
 #include "../../src/renderer/quad_vertex_program.h"
 #include "../../src/renderer/fog_look_math.h"
-#include "../../src/renderer/fog_shadow_grid.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -50,58 +49,29 @@ constexpr DWORD look_composite_words[]={
 constexpr DWORD look_repair_words[]={
 #include "../../src/renderer/fog_density_repair_look_program_inc.h"
 };
-// The look with 24 far bins (docs/architecture/fog-gpu-cost.md step B): drawn for the variant reference's cases (far=24).
-constexpr DWORD look_march_far24_words[]={
-#include "../../src/renderer/fog_density_march_look_far24_program_inc.h"
-};
-constexpr DWORD look_repair_far24_words[]={
-#include "../../src/renderer/fog_density_repair_look_far24_program_inc.h"
-};
 // The look marched at quarter resolution (fog-gpu-cost.md step C): drawn for the scale-4 reference's cases (scale=4) into a
 // 64x36 target of the 256x144 screen, the split and the depth-edge chain; composite and repair read samples 4 px apart.
 constexpr DWORD look_march_q4_words[]={
 #include "../../src/renderer/fog_density_march_look_q4_program_inc.h"
 };
-constexpr DWORD look_march_far24_q4_words[]={
-#include "../../src/renderer/fog_density_march_look_far24_q4_program_inc.h"
-};
 constexpr DWORD look_repair_q4_words[]={
 #include "../../src/renderer/fog_density_repair_look_q4_program_inc.h"
-};
-constexpr DWORD look_repair_far24_q4_words[]={
-#include "../../src/renderer/fog_density_repair_look_far24_q4_program_inc.h"
 };
 constexpr DWORD look_composite_q4_words[]={
 #include "../../src/renderer/fog_density_composite_look_q4_program_inc.h"
 };
-// The sun-visibility slice grid (docs/architecture/fog-shadow-pass.md, X3M_FOG_SHADOW_PASS=1): the pass and the
-// look's march/repair reading it. Grid cases draw the pass into an RGBA8 atlas first and dump it for the host twin.
-constexpr DWORD grid_pass_words[]={
-#include "../../src/renderer/fog_density_visibility_grid_program_inc.h"
-};
-constexpr DWORD grid_march_words[]={
-#include "../../src/renderer/fog_density_march_grid_program_inc.h"
-};
-constexpr DWORD grid_repair_words[]={
-#include "../../src/renderer/fog_density_repair_grid_program_inc.h"
-};
-constexpr unsigned kRows=x3m::renderer::fog_grid_first_register+x3m::renderer::fog_grid_rows; // c0..c41 (the grid rows stay zero for the in-march programs, which never read them)
+// (The 24-far-bin programs of step B and the visibility-grid pass went with --fog-far-bins and --fog-shadow-pass on 2026-09-25.)
+constexpr unsigned kRows=x3m::renderer::fog_look_first_register+x3m::renderer::fog_look_rows; // c0..c35
 constexpr double kTan30=0.5773502691896257;
-// Synthetic cascades of the grid cases, mirrored by tools/analysis/fog_density_shader_reference.py grid_cascades():
-// shadow 3 (seam): one row-patterned map bound twice, cascade 0 (x = 1e-5 z) hands over to cascade 1 (x = 5e-6 z) at
-// z = 85 km, each sampling between texel rows 20/21 at a different fraction (v .3 against .8); shadow 4 (penumbra):
-// an edge map (columns >= 32 hold a slab at depth .1), x from screen rows with a column tilt, the blocker distance
-// from screen columns (p.z = .28 + 1.7e-6 view x, range 200000 units, texel 36.6).
-constexpr float kSeamRowY[2]={1.f-2.f*20.7f/64.f,1.f-2.f*20.2f/64.f},kStripeTexel=36.6f,kStripeRange=1000.f,kPenumbraTexel=36.6f,kPenumbraRange=200000.f,kPenumbraSlab=.1f,kPenumbraZ0=.28f,kPenumbraDz=1.7e-6f;
-struct Case{std::string name;double cam[3],r[3],u[3],f[3];std::string mode,value;bool look=false;unsigned phase=0,shadow=0;float span=120000.f,map=64.f;bool resolved=true;bool grid=false;float pen[3]={1.f,1.f,16.f};bool far24=false;unsigned scale=2;}; // scale: the march spacing (option scale=4, step C) // far24: the step B programs (option far=24) // look: the production look programs instead of the unshaped parity ones // span, map: view depth across and texels of the striped map // shadow 1: dark map, 2: striped occluder along view depth, 3: seam, 4: penumbra // grid: the visibility pass and its march (pen: penumbra, min, max)
+struct Case{std::string name;double cam[3],r[3],u[3],f[3];std::string mode,value;bool look=false;unsigned phase=0,shadow=0;float span=120000.f,map=64.f;bool resolved=true;unsigned scale=2;}; // scale: the march spacing (option scale=4, step C) // look: the production look programs instead of the unshaped parity ones // span, map: view depth across and texels of the striped map // shadow 1: dark map, 2: striped occluder along view depth
 struct Window{HWND handle=nullptr;~Window(){if(handle)DestroyWindow(handle);}};
 LONGLONG ticks(){LARGE_INTEGER v{};QueryPerformanceCounter(&v);return v.QuadPart;}
 
 struct Fixture{
     IDirect3DDevice9* d=nullptr;
     Com<IDirect3DVertexShader9> vs;Com<IDirect3DVertexDeclaration9> declaration;
-    Com<IDirect3DPixelShader9> march,exact,composite,repair,look_march,look_repair,look_composite,grid_pass,grid_march,grid_repair,look_march_far24,look_repair_far24;
-    Com<IDirect3DPixelShader9> look_march_q4,look_march_far24_q4,look_repair_q4,look_repair_far24_q4,look_composite_q4;
+    Com<IDirect3DPixelShader9> march,exact,composite,repair,look_march,look_repair,look_composite;
+    Com<IDirect3DPixelShader9> look_march_q4,look_repair_q4,look_composite_q4;
     Com<IDirect3DTexture9> atlas_sys[2],atlas_gpu[2];
     NodeKey origin[2]{};bool resident[2]{};bool empty=false;
     float sigma=0;float chroma[3]{};
@@ -114,11 +84,8 @@ struct Fixture{
         check(d->CreatePixelShader(composite_words,&composite.p),"composite program");check(d->CreatePixelShader(repair_words,&repair.p),"repair program");
         check(d->CreatePixelShader(look_march_words,&look_march.p),"look march");check(d->CreatePixelShader(look_repair_words,&look_repair.p),"look repair");
         check(d->CreatePixelShader(look_composite_words,&look_composite.p),"look composite");
-        check(d->CreatePixelShader(look_march_far24_words,&look_march_far24.p),"look march far24");check(d->CreatePixelShader(look_repair_far24_words,&look_repair_far24.p),"look repair far24");
-        check(d->CreatePixelShader(look_march_q4_words,&look_march_q4.p),"look march q4");check(d->CreatePixelShader(look_march_far24_q4_words,&look_march_far24_q4.p),"look march far24 q4");
-        check(d->CreatePixelShader(look_repair_q4_words,&look_repair_q4.p),"look repair q4");check(d->CreatePixelShader(look_repair_far24_q4_words,&look_repair_far24_q4.p),"look repair far24 q4");
+        check(d->CreatePixelShader(look_march_q4_words,&look_march_q4.p),"look march q4");check(d->CreatePixelShader(look_repair_q4_words,&look_repair_q4.p),"look repair q4");
         check(d->CreatePixelShader(look_composite_q4_words,&look_composite_q4.p),"look composite q4");
-        check(d->CreatePixelShader(grid_pass_words,&grid_pass.p),"grid pass");check(d->CreatePixelShader(grid_march_words,&grid_march.p),"grid march");check(d->CreatePixelShader(grid_repair_words,&grid_repair.p),"grid repair");
         for(int level=0;level<2;++level){
             check(d->CreateTexture(kAtlasWidth,kAtlasHeight,1,0,D3DFMT_A16B16G16R16F,D3DPOOL_SYSTEMMEM,&atlas_sys[level].p,nullptr),"atlas staging");
             check(d->CreateTexture(kAtlasWidth,kAtlasHeight,1,0,D3DFMT_A16B16G16R16F,D3DPOOL_DEFAULT,&atlas_gpu[level].p,nullptr),"atlas default");
@@ -141,10 +108,8 @@ struct Fixture{
         }
         empty=want_empty;
     }
-    IDirect3DPixelShader9* march_for(bool look,bool grid=false,bool far24=false,bool q4=false)const{
-        return grid?grid_march.p:q4?(far24?look_march_far24_q4.p:look_march_q4.p):far24?look_march_far24.p:look?look_march.p:march.p;}
-    IDirect3DPixelShader9* repair_for(bool look,bool grid=false,bool far24=false,bool q4=false)const{
-        return grid?grid_repair.p:q4?(far24?look_repair_far24_q4.p:look_repair_q4.p):far24?look_repair_far24.p:look?look_repair.p:repair.p;}
+    IDirect3DPixelShader9* march_for(bool look,bool q4=false)const{return q4?look_march_q4.p:look?look_march.p:march.p;}
+    IDirect3DPixelShader9* repair_for(bool look,bool q4=false)const{return q4?look_repair_q4.p:look?look_repair.p:repair.p;}
     IDirect3DPixelShader9* composite_for(bool look,bool q4=false)const{return q4?look_composite_q4.p:look?look_composite.p:composite.p;}
     // c0..c24 for a pose, c25..c35 from the production look constants (default tuning); rays equal the
     // host screen's (x+.5)/half pixel law. `half_w` x `half_h` is the march target, `scale` its spacing (step C: 4 for
@@ -166,22 +131,8 @@ struct Fixture{
         if(c.look)k[2][3]*=x3m::renderer::fog_look_constants(x3m::renderer::FogLookTuning{},chroma,k[8],c.phase,k+x3m::renderer::fog_look_first_register,c.resolved);
         if(c.shadow==2){ // tools/analysis/fog_density_shader_reference.py stripe_visibility: x = 2 z / 120000 - 1, y = 0, depth .5
             k[9][0]=1.f;k[9][1]=.95f;k[9][2]=.85f;k[9][3]=10.f;k[10][2]=2.f/c.span;k[10][3]=-1.f;k[12][3]=.5f;k[13][0]=c.map;k[13][1]=1.f/c.map;k[13][2]=.001f;k[13][3]=1.f;
-        }else if(c.shadow==3){ // seam: two cascades over one row-patterned map
-            k[9][0]=1.f;k[9][1]=.95f;k[9][2]=.85f;k[9][3]=10.f;
-            k[10][2]=1e-5f;k[11][3]=kSeamRowY[0];k[12][3]=.5f;k[13][0]=64.f;k[13][1]=1.f/64.f;k[13][2]=.001f;k[13][3]=1.f;
-            k[14][2]=5e-6f;k[15][3]=kSeamRowY[1];k[16][3]=.5f;k[17][0]=64.f;k[17][1]=1.f/64.f;k[17][2]=.001f;k[17][3]=1.f;
-        }else if(c.shadow==4){ // penumbra: the edge map, x from view y (tilted by view x), the blocker distance from view x
-            k[9][0]=1.f;k[9][1]=.95f;k[9][2]=.85f;k[9][3]=10.f;
-            k[10][0]=1e-6f;k[10][1]=1e-5f;k[11][2]=1e-9f;k[12][0]=kPenumbraDz;k[12][3]=kPenumbraZ0;k[13][0]=64.f;k[13][1]=1.f/64.f;k[13][2]=.001f;k[13][3]=1.f;
         }else if(c.shadow){ // every view position maps to the centre of cascade 0 at depth .5; the bound map holds 0: shaft visibility 0
             k[9][0]=1.f;k[9][1]=.95f;k[9][2]=.85f;k[9][3]=10.f;k[12][3]=.5f;k[13][0]=64.f;k[13][1]=1.f/64.f;k[13][2]=.001f;k[13][3]=1.f;
-        }
-        if(c.grid){ // rows c36..c41 of the visibility grid (renderer::fog_grid_constants), the fixture's default look tuning plus the case's kernel
-            x3m::renderer::FogLookTuning tuning{};tuning.penumbra=c.pen[0];tuning.penumbra_min=c.pen[1];tuning.penumbra_max=c.pen[2];
-            x3m::renderer::FogGridCascade cascades[3]{};
-            if(c.shadow==2){cascades[0].texel_world=kStripeTexel;cascades[0].range_world=kStripeRange;}
-            else if(c.shadow==4){cascades[0].texel_world=kPenumbraTexel;cascades[0].range_world=kPenumbraRange;}
-            x3m::renderer::fog_grid_constants(tuning,k[x3m::renderer::fog_look_first_register][3],scale*half_w,scale*half_h,cascades,c.phase,c.resolved,k+x3m::renderer::fog_grid_first_register);
         }
     }
     void state(bool exact_texels){
@@ -208,18 +159,6 @@ void upload(IDirect3DDevice9* d,UINT w,UINT h,D3DFORMAT format,UINT stride,const
     D3DLOCKED_RECT lock{};check(sys->LockRect(0,&lock,nullptr,0),"upload lock");
     for(UINT y=0;y<h;++y)std::memcpy(static_cast<char*>(lock.pBits)+y*lock.Pitch,static_cast<const char*>(bytes)+std::size_t(y)*w*stride,std::size_t(w)*stride);
     check(sys->UnlockRect(0),"upload unlock");check(d->CreateTexture(w,h,1,0,format,D3DPOOL_DEFAULT,out,nullptr),"input texture");check(d->UpdateTexture(sys.p,*out),"update input");
-}
-// Raw bytes of an A8R8G8B8 target (the visibility grid atlas): B,G,R,A per texel in memory.
-std::vector<std::uint8_t> readback_bytes(IDirect3DDevice9* d,IDirect3DSurface9* rt){
-    D3DSURFACE_DESC desc{};check(rt->GetDesc(&desc),"atlas desc");
-    Com<IDirect3DSurface9> sys;check(d->CreateOffscreenPlainSurface(desc.Width,desc.Height,desc.Format,D3DPOOL_SYSTEMMEM,&sys.p,nullptr),"atlas readback surface");
-    check(d->GetRenderTargetData(rt,sys.p),"atlas readback");D3DLOCKED_RECT lock{};check(sys->LockRect(&lock,nullptr,D3DLOCK_READONLY),"atlas lock");
-    std::vector<std::uint8_t> out(std::size_t(desc.Width)*desc.Height*4);
-    for(UINT y=0;y<desc.Height;++y)std::memcpy(out.data()+std::size_t(y)*desc.Width*4,static_cast<const std::uint8_t*>(lock.pBits)+std::size_t(y)*lock.Pitch,std::size_t(desc.Width)*4);
-    check(sys->UnlockRect(),"atlas unlock");return out;
-}
-void write_bytes(const std::vector<std::uint8_t>& bytes,const std::string& file){
-    std::ofstream out(file,std::ios::binary|std::ios::trunc);out.write(reinterpret_cast<const char*>(bytes.data()),std::streamsize(bytes.size()));out.close();if(!out)throw std::runtime_error("write "+file);
 }
 // Float image of a 16F or 32F target.
 std::vector<float> readback(IDirect3DDevice9* d,IDirect3DSurface9* rt){
@@ -298,42 +237,31 @@ std::vector<Case> read_cases(const std::string& cases_file,float& sigma,float ch
             unsigned value=0;
             if(option=="look")c.look=true;
             else if(std::sscanf(option.c_str(),"phase=%u",&value)==1)c.phase=value;
-            else if(std::sscanf(option.c_str(),"shadow=%u",&value)==1&&value<=4)c.shadow=value;
+            else if(std::sscanf(option.c_str(),"shadow=%u",&value)==1&&value<=2)c.shadow=value;
             else if(std::sscanf(option.c_str(),"resolved=%u",&value)==1)c.resolved=value!=0;
-            else if(option=="grid")c.grid=true;
-            else if(std::sscanf(option.c_str(),"pen=%f,%f,%f",&c.pen[0],&c.pen[1],&c.pen[2])==3){}
-            else if(option=="far=24")c.far24=true;
             else if(option=="scale=4")c.scale=4;
             else throw std::runtime_error("case option "+option);
         }
-        if(c.far24&&(!c.look||c.grid))throw std::runtime_error("far=24 is a look case option (no grid variant): "+head);
-        if(c.scale!=2&&(!c.look||c.grid))throw std::runtime_error("scale=4 is a look case option (no grid variant): "+head);
+        if(c.scale!=2&&!c.look)throw std::runtime_error("scale=4 is a look case option: "+head);
         cases.push_back(c);
     }
     return cases;
 }
-// variant_files (optional, each at most once): the step B reference's cases, every one far=24, drawn with the 24-far-bin
-// programs into <case>.far24_<variant>.f32, plus the look repair split with those programs (repair_shafts_far24.full.f32);
-// the step C reference's cases, every one scale=4, drawn with the quarter-resolution programs into a 64x36 target as
-// <case>.q4_<variant>.f32, the look repair split at spacing 4 (repair_shafts_q4.full.f32) and the depth-edge chain at
-// both spacings (edge.*.f32, fog-gpu-cost.md step C); the default look's far-bins variant, every case far=24 scale=4 (the
-// default spacing since Run 77 C2), drawn with the far24 quarter-resolution programs into <case>.far24_q4_<variant>.f32 and
-// the look repair split with them (repair_shafts_far24_q4.full.f32).
+// scale4_file (optional): the step C reference's cases, every one scale=4, drawn with the quarter-resolution programs into
+// a 64x36 target as <case>.q4_<variant>.f32, the look repair split at spacing 4 (repair_shafts_q4.full.f32) and the
+// depth-edge chain at both spacings (edge.*.f32, fog-gpu-cost.md step C).
 void run(const std::string& cases_file,const std::string& out,const std::vector<std::string>& variant_files){
     Fixture fx;std::vector<Case> cases=read_cases(cases_file,fx.sigma,fx.chroma);
     if(cases.empty()||!(fx.sigma>0))throw std::runtime_error("no cases");
-    for(const Case& c:cases)if(c.far24||c.scale!=2)throw std::runtime_error("variant case in the default cases file: "+c.name);
-    bool variant=false,variant_q4=false,variant_far24_q4=false;
+    for(const Case& c:cases)if(c.scale!=2)throw std::runtime_error("variant case in the default cases file: "+c.name);
+    bool variant_q4=false;
     for(const std::string& variant_file:variant_files){
         float sigma=0,chroma[3]{};std::vector<Case> extra=read_cases(variant_file,sigma,chroma);
         if(sigma!=fx.sigma||chroma[0]!=fx.chroma[0]||chroma[1]!=fx.chroma[1]||chroma[2]!=fx.chroma[2])throw std::runtime_error("variant cases: another family");
         if(extra.empty())continue;
-        const bool q4=extra.front().scale==4,far24=extra.front().far24;
-        for(const Case& c:extra)if((c.scale==4)!=q4||c.far24!=far24||(!q4&&!far24))throw std::runtime_error("variant file mixes variants: "+c.name);
-        if(q4&&far24){if(variant_far24_q4)throw std::runtime_error("two far=24 scale=4 files");variant_far24_q4=true;}
-        else if(q4){if(variant_q4)throw std::runtime_error("two scale=4 files");variant_q4=true;}
-        else{if(variant)throw std::runtime_error("two far=24 files");variant=true;}
-        cases.insert(cases.end(),extra.begin(),extra.end());
+        for(const Case& c:extra)if(c.scale!=4)throw std::runtime_error("variant file holds a scale-2 case: "+c.name);
+        if(variant_q4)throw std::runtime_error("two scale=4 files");
+        variant_q4=true;cases.insert(cases.end(),extra.begin(),extra.end());
     }
     WNDCLASSA cls{};cls.lpfnWndProc=DefWindowProcA;cls.hInstance=GetModuleHandleA(nullptr);cls.lpszClassName="x3m-fog-density-shader";RegisterClassA(&cls);
     Window window;window.handle=CreateWindowA(cls.lpszClassName,"Detached stored-density fog shaders",WS_OVERLAPPEDWINDOW,0,0,128,128,nullptr,nullptr,cls.hInstance,nullptr);
@@ -347,7 +275,7 @@ void run(const std::string& cases_file,const std::string& out,const std::vector<
     require(caps.MaxTextureWidth>=unsigned(kAtlasWidth)&&caps.MaxTextureHeight>=unsigned(kAtlasHeight)&&!(caps.TextureCaps&D3DPTEXTURECAPS_POW2),"caps_npot_1032x516");
     require(SUCCEEDED(api->CheckDeviceFormat(0,D3DDEVTYPE_HAL,D3DFMT_X8R8G8B8,D3DUSAGE_QUERY_FILTER,D3DRTYPE_TEXTURE,D3DFMT_A16B16G16R16F)),"format_fp16_linear_filter");
     require(SUCCEEDED(api->CheckDeviceFormat(0,D3DDEVTYPE_HAL,D3DFMT_X8R8G8B8,D3DUSAGE_RENDERTARGET,D3DRTYPE_TEXTURE,D3DFMT_A32B32G32R32F)),"format_fp32_target_fixture_only");
-    fx.d=device.p;fx.create();require(true,"programs_created");require(fx.grid_pass.p&&fx.grid_march.p&&fx.grid_repair.p,"grid_programs_created");
+    fx.d=device.p;fx.create();require(true,"programs_created");
     const UINT hw=128,hh=72;
     Com<IDirect3DTexture9> st32,st16;check(device->CreateTexture(hw,hh,1,D3DUSAGE_RENDERTARGET,D3DFMT_A32B32G32R32F,D3DPOOL_DEFAULT,&st32.p,nullptr),"st32");check(device->CreateTexture(hw,hh,1,D3DUSAGE_RENDERTARGET,D3DFMT_A16B16G16R16F,D3DPOOL_DEFAULT,&st16.p,nullptr),"st16");
     Com<IDirect3DSurface9> st32s,st16s;check(st32->GetSurfaceLevel(0,&st32s.p),"st32 surface");check(st16->GetSurfaceLevel(0,&st16s.p),"st16 surface");
@@ -362,38 +290,21 @@ void run(const std::string& cases_file,const std::string& out,const std::vector<
     // The repair split uses the 1024-texel one (47-unit pairs over its 20000-unit columns, whose far bins are 200 units).
     Com<IDirect3DTexture9> stripe_map,fine_stripe_map;
     for(const int n:{64,1024}){std::vector<float> stripes(std::size_t(n)*n);for(std::size_t i=0;i<stripes.size();++i){const int x=int(i%n);stripes[i]=(x>=n/8&&x<n-n/8&&(x/2)%2==1)?0.f:1.f;}upload(device.p,n,n,D3DFMT_R32F,4,stripes.data(),n==64?&stripe_map.p:&fine_stripe_map.p);}
-    // The grid cases' seam map (rows >= 21 dark) and penumbra edge map (columns >= 32 a slab at depth .1), and the
-    // 4x4-tile RGBA8 atlas of the 256x144 target (64x36 tiles): the pass writes it, march and repair read it at s4 LINEAR.
-    Com<IDirect3DTexture9> seam_map,edge_map,atlas;Com<IDirect3DSurface9> atlas_surface;
-    {std::vector<float> seam(64*64),edge(64*64);for(int y=0;y<64;++y)for(int x=0;x<64;++x){seam[y*64+x]=y>=21?0.f:1.f;edge[y*64+x]=x>=32?kPenumbraSlab:1.f;}
-     upload(device.p,64,64,D3DFMT_R32F,4,seam.data(),&seam_map.p);upload(device.p,64,64,D3DFMT_R32F,4,edge.data(),&edge_map.p);}
-    const UINT grid_w=4*x3m::renderer::fog_grid_extent(2*hw),grid_h=4*x3m::renderer::fog_grid_extent(2*hh);
-    check(device->CreateTexture(grid_w,grid_h,1,D3DUSAGE_RENDERTARGET,D3DFMT_A8R8G8B8,D3DPOOL_DEFAULT,&atlas.p,nullptr),"atlas");check(atlas->GetSurfaceLevel(0,&atlas_surface.p),"atlas surface");
-    require(SUCCEEDED(api->CheckDeviceFormat(0,D3DDEVTYPE_HAL,D3DFMT_X8R8G8B8,D3DUSAGE_RENDERTARGET,D3DRTYPE_TEXTURE,D3DFMT_A8R8G8B8)),"format_rgba8_render_target");
-    auto grid_filter=[&](bool linear){for(auto s:{D3DSAMP_MINFILTER,D3DSAMP_MAGFILTER})check(device->SetSamplerState(4,s,linear?D3DTEXF_LINEAR:D3DTEXF_POINT),"grid filter");};
-    // The pass over the atlas with the case's maps at s4..s6 (POINT), dumped for the host twin; leaves the atlas at s4 LINEAR.
-    auto draw_grid=[&](const Case& c,const float k[kRows][4],IDirect3DTexture9* map0,IDirect3DTexture9* map1,const std::string& file){
-        check(device->BeginScene(),"begin");fx.state(false);check(device->SetTexture(4,map0),"grid map0");check(device->SetTexture(5,map1),"grid map1");check(device->SetTexture(6,nullptr),"grid map2");
-        fx.draw(atlas_surface.p,fx.grid_pass.p,k);check(device->EndScene(),"end");write_bytes(readback_bytes(device.p,atlas_surface.p),file);
-        check(device->SetTexture(5,nullptr),"grid map1 unbind");check(device->SetTexture(6,nullptr),"grid map2 unbind");check(device->SetTexture(4,atlas.p),"atlas bind");grid_filter(true);(void)c;
-    };
     bool identity=true,empty_identity=true,shadowed_coloured=true;unsigned shadowed_fogged=0,look_cases=0;
     for(const Case& c:cases){
         const bool q4=c.scale==4;const UINT mw=q4?qw:hw,mh=q4?qh:hh;
         fx.fill(c.cam,c.mode=="empty");float k[kRows][4];fx.constants(c,mw,mh,k,c.scale);
         const auto depth=depth_image(c,mw,mh,c.scale);Com<IDirect3DTexture9> depth_texture;upload(device.p,c.scale*mw,c.scale*mh,D3DFMT_A32B32G32R32F,16,depth.data(),&depth_texture.p);
-        IDirect3DTexture9* map0=c.shadow==2?stripe_map.p:c.shadow==3?seam_map.p:c.shadow==4?edge_map.p:c.shadow?dark_map.p:nullptr;
+        IDirect3DTexture9* map0=c.shadow==2?stripe_map.p:c.shadow?dark_map.p:nullptr;
         check(device->SetTexture(0,depth_texture.p),"depth bind");check(device->SetTexture(4,map0),"shadow map bind");
-        if(c.grid&&c.shadow)draw_grid(c,k,map0,c.shadow==3?seam_map.p:nullptr,out+"\\"+c.name+".atlas.rgba8");
-        else if(c.grid)check(device->SetTexture(4,nullptr),"no grid"); // no cascade: shadow_select.x = 0, the march never reads s4
         look_cases+=c.look;
         struct Variant{const char* name;IDirect3DPixelShader9* program;IDirect3DSurface9* target;bool exact;};
         const bool plain=!c.look&&!c.shadow; // the texel-exact parity program has no look or shaft variant
-        const Variant variants[]={{"bilinear32",fx.march_for(c.look,c.grid,c.far24,q4),q4?st32qs.p:st32s.p,false},{"exact32",fx.exact.p,st32s.p,true},{"bilinear16",fx.march_for(c.look,c.grid,c.far24,q4),q4?st16qs.p:st16s.p,false}};
+        const Variant variants[]={{"bilinear32",fx.march_for(c.look,q4),q4?st32qs.p:st32s.p,false},{"exact32",fx.exact.p,st32s.p,true},{"bilinear16",fx.march_for(c.look,q4),q4?st16qs.p:st16s.p,false}};
         for(const Variant& v:variants){
             if(v.exact&&!plain)continue;
-            check(device->BeginScene(),"begin");fx.state(v.exact);if(c.grid&&c.shadow)grid_filter(true);fx.draw(v.target,v.program,k);check(device->EndScene(),"end");
-            const auto image=readback(device.p,v.target);write(image,out+"\\"+c.name+"."+(c.far24?"far24_":"")+(q4?"q4_":"")+v.name+".f32");
+            check(device->BeginScene(),"begin");fx.state(v.exact);fx.draw(v.target,v.program,k);check(device->EndScene(),"end");
+            const auto image=readback(device.p,v.target);write(image,out+"\\"+c.name+"."+(q4?"q4_":"")+v.name+".f32");
             if(c.mode=="invalid"||c.mode=="empty")for(std::size_t i=0;i<image.size();i+=4){
                 const bool same=image[i]==0.f&&image[i+1]==0.f&&image[i+2]==0.f&&image[i+3]==1.f;
                 (c.mode=="empty"?empty_identity:identity)&=same;
@@ -406,8 +317,8 @@ void run(const std::string& cases_file,const std::string& out,const std::vector<
                 shadowed_coloured&=image[i]>0.f&&image[i+1]>0.f&&image[i+2]>0.f;
             }
         }
-        check(device->SetTexture(0,nullptr),"depth unbind");check(device->SetTexture(4,nullptr),"shadow map unbind");grid_filter(false);
-        std::printf("CASE %s mode=%s look=%u shadow=%u grid=%u far=%u scale=%u\n",c.name.c_str(),c.mode.c_str(),unsigned(c.look),unsigned(c.shadow),unsigned(c.grid),c.far24?24u:40u,c.scale);
+        check(device->SetTexture(0,nullptr),"depth unbind");check(device->SetTexture(4,nullptr),"shadow map unbind");
+        std::printf("CASE %s mode=%s look=%u shadow=%u scale=%u\n",c.name.c_str(),c.mode.c_str(),unsigned(c.look),unsigned(c.shadow),c.scale);
     }
     require(identity,"invalid_depth_zero_nan_inf_exact_identity");require(empty_identity,"zero_cache_exact_identity");
     std::printf("SHADOWED look_fogged_pixels=%u look_cases=%u\n",shadowed_fogged,look_cases);
@@ -427,26 +338,21 @@ void run(const std::string& cases_file,const std::string& out,const std::vector<
         // Once for the unshaped parity programs and once for the look programs (tinted extinction T^k, no sample
         // offset). Then with the striped occluder bound (47-unit stripe pairs over the 20000-unit columns): the look
         // repair program keeps the bin centres (FOG_LOOK_NO_OFFSET) while its march offsets the shaft lookup.
-        // The grid split (`_grid_shafts`): the pass over the 1024-texel stripes first, then the FOG_SHADOW_PASS march
-        // and repair reading its atlas; the host checker owns parity (image repair_grid_shafts.full and its atlas).
-        // With the variant cases: the look split once more with the 24-far-bin march and repair (`_look_shafts_far24`), and
-        // with the quarter-resolution march, composite and repair (`_look_shafts_q4`: samples at columns 4q are sky, so the
-        // same odd geometry columns are repaired and every even column is served).
-        struct Split{bool look;unsigned shadow;const char* tag;bool grid;bool far24;bool q4;};
-        std::vector<Split> splits{Split{false,0,"",false,false,false},Split{true,0,"_look",false,false,false},Split{true,2,"_look_shafts",false,false,false},Split{true,2,"_grid_shafts",true,false,false}};
-        if(variant)splits.push_back(Split{true,2,"_look_shafts_far24",false,true,false});
-        if(variant_q4)splits.push_back(Split{true,2,"_look_shafts_q4",false,false,true});
-        if(variant_far24_q4)splits.push_back(Split{true,2,"_look_shafts_far24_q4",false,true,true});
+        // With the variant cases: the look split once more with the quarter-resolution march, composite and repair
+        // (`_look_shafts_q4`: samples at columns 4q are sky, so the same odd geometry columns are repaired and every even
+        // column is served).
+        struct Split{bool look;unsigned shadow;const char* tag;bool q4;};
+        std::vector<Split> splits{Split{false,0,"",false},Split{true,0,"_look",false},Split{true,2,"_look_shafts",false}};
+        if(variant_q4)splits.push_back(Split{true,2,"_look_shafts_q4",true});
         for(const Split& split:splits){
-        const bool look=split.look,grid=split.grid,far24=split.far24,q4=split.q4;c.look=look;c.grid=grid;c.far24=far24;c.shadow=split.shadow;c.phase=split.shadow?5u:0u;c.span=24000.f;c.map=1024.f;const std::string tag=split.tag;
+        const bool look=split.look,q4=split.q4;c.look=look;c.shadow=split.shadow;c.phase=split.shadow?5u:0u;c.span=24000.f;c.map=1024.f;const std::string tag=split.tag;
         IDirect3DTexture9* const st_texture=q4?st16q.p:st16.p;IDirect3DSurface9* const st_surface=q4?st16qs.p:st16s.p;
         check(device->SetTexture(4,split.shadow?fine_stripe_map.p:nullptr),"shaft map");
         auto chain=[&](bool want_empty,std::vector<float>& composited,std::vector<float>& repaired){
             fx.fill(c.cam,want_empty);if(q4)fx.constants(c,qw,qh,k,4);else fx.constants(c,hw,hh,k);
-            if(grid)draw_grid(c,k,fine_stripe_map.p,nullptr,out+"\\repair_grid_shafts.atlas.rgba8");
-            check(device->BeginScene(),"begin");fx.state(false);if(grid)grid_filter(true);check(device->SetTexture(0,depth_texture.p),"depth");check(device->SetTexture(2,scene_texture.p),"scene");check(device->SetTexture(3,nullptr),"st unbind");
-            fx.draw(st_surface,fx.march_for(look,grid,far24,q4),k);check(device->SetTexture(3,st_texture),"st");fx.draw(target_surface.p,fx.composite_for(look,q4),k);check(device->EndScene(),"end");composited=readback(device.p,target_surface.p);
-            check(device->BeginScene(),"begin");fx.draw(target_surface.p,fx.repair_for(look,grid,far24,q4),k);check(device->EndScene(),"end");repaired=readback(device.p,target_surface.p);check(device->SetTexture(3,nullptr),"st unbind");
+            check(device->BeginScene(),"begin");fx.state(false);check(device->SetTexture(0,depth_texture.p),"depth");check(device->SetTexture(2,scene_texture.p),"scene");check(device->SetTexture(3,nullptr),"st unbind");
+            fx.draw(st_surface,fx.march_for(look,q4),k);check(device->SetTexture(3,st_texture),"st");fx.draw(target_surface.p,fx.composite_for(look,q4),k);check(device->EndScene(),"end");composited=readback(device.p,target_surface.p);
+            check(device->BeginScene(),"begin");fx.draw(target_surface.p,fx.repair_for(look,q4),k);check(device->EndScene(),"end");repaired=readback(device.p,target_surface.p);check(device->SetTexture(3,nullptr),"st unbind");
         };
         std::vector<float> composited,repaired;chain(true,composited,repaired);bool untouched=true;
         for(std::size_t i=0;i<composited.size();i+=4)for(int j=0;j<4;++j){const float expect=half_to_float(colour[j]);untouched&=composited[i+j]==expect&&repaired[i+j]==expect;}
@@ -460,10 +366,10 @@ void run(const std::string& cases_file,const std::string& out,const std::vector<
         // With shafts the host checker owns parity too (image repair_shafts.full). The march below checks the repair
         // program's bin-centre lookup, which is the march's unresolved constants (c32.zw = 0).
         if(split.shadow){
-            write(repaired,out+(grid?"\\repair_grid_shafts.full.f32":far24&&q4?"\\repair_shafts_far24_q4.full.f32":far24?"\\repair_shafts_far24.full.f32":q4?"\\repair_shafts_q4.full.f32":"\\repair_shafts.full.f32"));
+            write(repaired,out+(q4?"\\repair_shafts_q4.full.f32":"\\repair_shafts.full.f32"));
             Case held=c;held.resolved=false;float kh[kRows][4];if(q4)fx.constants(held,qw,qh,kh,4);else fx.constants(held,hw,hh,kh);std::memcpy(full[x3m::renderer::fog_look_first_register+7],kh[x3m::renderer::fog_look_first_register+7],16);
         }
-        check(device->BeginScene(),"begin");fx.state(false);if(grid)grid_filter(true);fx.draw(full_surface.p,fx.march_for(look,grid,far24),full);check(device->EndScene(),"end");const auto st=readback(device.p,full_surface.p);
+        check(device->BeginScene(),"begin");fx.state(false);fx.draw(full_surface.p,fx.march_for(look),full);check(device->EndScene(),"end");const auto st=readback(device.p,full_surface.p);
         unsigned changed=0,fogged=0;bool even_kept=true,odd_composite_scene=true,alpha=true;double worst=0;
         for(std::size_t i=0;i<std::size_t(w)*h;++i){
             const bool odd=(i%w)%2;const float* a=&composited[4*i];const float* b=&repaired[4*i];const float* s=&st[4*i];
@@ -473,17 +379,12 @@ void run(const std::string& cases_file,const std::string& out,const std::vector<
             const bool has_fog=!(s[0]==0.f&&s[1]==0.f&&s[2]==0.f&&s[3]==1.f);fogged+=has_fog;changed+=std::memcmp(a,b,16)!=0;
             for(int j=0;j<3;++j){const double T=look?std::pow(double(s[3]),double(k[x3m::renderer::fog_look_first_register+8][j])):double(s[3]);const double expect=has_fog?double(half_to_float(colour[j]))*T+s[j]:half_to_float(colour[j]);worst=std::max(worst,std::fabs(expect-b[j]));}
         }
-        if(grid)std::printf("REPAIR_GRID_SHAFTS odd_pixels=%u fogged=%u changed=%u worst_vs_full_res_grid_march=%.9g\n",w/2*h,fogged,changed,worst);
-        else if(split.shadow)std::printf("REPAIR_SHAFTS%s odd_pixels=%u fogged=%u changed=%u worst_vs_bin_centre_march=%.9g\n",far24&&q4?"_FAR24_Q4":far24?"_FAR24":q4?"_Q4":"",w/2*h,fogged,changed,worst);
+        if(split.shadow)std::printf("REPAIR_SHAFTS%s odd_pixels=%u fogged=%u changed=%u worst_vs_bin_centre_march=%.9g\n",q4?"_Q4":"",w/2*h,fogged,changed,worst);
         else std::printf("REPAIR%s odd_pixels=%u fogged=%u changed=%u worst_vs_full_march=%.9g\n",look?"_LOOK":"",w/2*h,fogged,changed,worst);
         require(even_kept,("repair_leaves_compatible_pixels_bit_identical"+tag).c_str());require(odd_composite_scene,("composite_keeps_scene_on_zero_weight"+tag).c_str());
         require(alpha,("source_alpha_exact"+tag).c_str());
-        // The full-resolution march drive reads the grid a quarter texel beside the repair's read ((P+.25)/4 against (P+.5)/4),
-        // so for the grid split this is a structural check only (fogged, changed); the host checker owns its parity.
-        if(grid)require(fogged>0&&changed<=fogged,("repair_grid_marches_the_repaired_pixels"+tag).c_str());
-        else require(fogged>0&&changed<=fogged&&worst<=1e-3,("repair_program_consistent_with_march_program"+tag).c_str());
+        require(fogged>0&&changed<=fogged&&worst<=1e-3,("repair_program_consistent_with_march_program"+tag).c_str());
         }
-        grid_filter(false);c.grid=false;
         check(device->SetTexture(4,nullptr),"shaft map unbind");
         check(device->SetTexture(0,nullptr),"unbind");check(device->SetTexture(2,nullptr),"unbind");
     }
@@ -495,7 +396,7 @@ void run(const std::string& cases_file,const std::string& out,const std::vector<
     // the truth's through the pixel itself. No shadow map (shadow_select.x = 0), so the lookup offset plays no part. The host
     // checker measures how far spacing 4 moves the image from spacing 2 on the depth edges (edge.*.f32, edge.depth.f32).
     if(variant_q4){
-        Case c=cases.front();c.look=true;c.shadow=0;c.phase=0;c.grid=false;c.far24=false;c.resolved=true;c.scale=2;
+        Case c=cases.front();c.look=true;c.shadow=0;c.phase=0;c.resolved=true;c.scale=2;
         const UINT w=2*hw,h=2*hh;std::vector<float> depth(std::size_t(w)*h*4,0.f);
         for(std::size_t i=0;i<std::size_t(w)*h;++i)depth[4*i]=2.f; // sky
         auto geometry=[&](UINT x0,UINT y0,UINT x1,UINT y1,float z){for(UINT y=y0;y<y1&&y<h;++y)for(UINT x=x0;x<x1&&x<w;++x){float* p=&depth[(std::size_t(y)*w+x)*4];p[0]=.5f;p[2]=z;}};
@@ -524,9 +425,9 @@ void run(const std::string& cases_file,const std::string& out,const std::vector<
             std::vector<float> composited[2];
             for(int s=0;s<2;++s){
                 check(device->BeginScene(),"begin");fx.state(false);check(device->SetTexture(0,depth_texture.p),"depth");check(device->SetTexture(2,scenes[s].p),"scene");check(device->SetTexture(3,nullptr),"st unbind");
-                fx.draw(st_surface,fx.march_for(true,false,false,q4),k);check(device->SetTexture(3,st_texture),"st");fx.draw(target_surface.p,fx.composite_for(true,q4),k);check(device->EndScene(),"end");
+                fx.draw(st_surface,fx.march_for(true,q4),k);check(device->SetTexture(3,st_texture),"st");fx.draw(target_surface.p,fx.composite_for(true,q4),k);check(device->EndScene(),"end");
                 composited[s]=readback(device.p,target_surface.p);
-                check(device->BeginScene(),"begin");fx.draw(target_surface.p,fx.repair_for(true,false,false,q4),k);check(device->EndScene(),"end");
+                check(device->BeginScene(),"begin");fx.draw(target_surface.p,fx.repair_for(true,q4),k);check(device->EndScene(),"end");
                 const auto repaired=readback(device.p,target_surface.p);check(device->SetTexture(3,nullptr),"st unbind");
                 write(repaired,out+"\\edge.s"+std::to_string(scale)+".scene"+std::to_string(s)+".f32");
                 if(s==0)for(std::size_t i=0;i<repaired.size();i+=4)changed[q4]+=std::memcmp(&repaired[i],&composited[s][i],16)!=0;
@@ -572,26 +473,6 @@ void run(const std::string& cases_file,const std::string& out,const std::vector<
             check(device->SetTexture(0,depth),"depth");check(device->SetTexture(3,nullptr),"st unbind");double ms[2];int n=0;
             for(int repeat:{1,10})ms[n++]=synced_median(device.p,st_surface.p,[&]{for(int i=0;i<repeat;++i)fx.draw(st_surface.p,fx.march_for(true),lk);});
             std::printf("FIXTURE_SLOPE_TIMING march_%s_look width=%u height=%u one_march_ms=%.4f ten_marches_ms=%.4f per_march_slope_ms=%.4f not_game_fps=1\n",depth==depth_sky.p?"sky":"depth29300",w,h,ms[0],ms[1],(ms[1]-ms[0])/9.0);
-            if(!variant)continue; // the 24-far-bin march, same method (step B; fixture GPU time, not game FPS)
-            n=0;for(int repeat:{1,10})ms[n++]=synced_median(device.p,st_surface.p,[&]{for(int i=0;i<repeat;++i)fx.draw(st_surface.p,fx.march_for(true,false,true),lk);});
-            std::printf("FIXTURE_SLOPE_TIMING march_%s_look_far24 width=%u height=%u one_march_ms=%.4f ten_marches_ms=%.4f per_march_slope_ms=%.4f not_game_fps=1\n",depth==depth_sky.p?"sky":"depth29300",w,h,ms[0],ms[1],(ms[1]-ms[0])/9.0);
-        }
-        // The visibility grid at 1280x768 (320x192 tiles, a 1280x768 RGBA8 atlas) with the striped map: the pass alone
-        // and the grid march alone (its atlas bound), same slope method; fixture GPU time, not game FPS.
-        {
-            Case gc=c;gc.look=true;gc.grid=true;gc.shadow=2;gc.phase=3;float gk[kRows][4];fx.constants(gc,w/2,h/2,gk);
-            const UINT gw=4*x3m::renderer::fog_grid_extent(w),gh=4*x3m::renderer::fog_grid_extent(h);Com<IDirect3DTexture9> big;Com<IDirect3DSurface9> big_surface;
-            check(device->CreateTexture(gw,gh,1,D3DUSAGE_RENDERTARGET,D3DFMT_A8R8G8B8,D3DPOOL_DEFAULT,&big.p,nullptr),"timing atlas");check(big->GetSurfaceLevel(0,&big_surface.p),"timing atlas surface");
-            check(device->SetTexture(4,stripe_map.p),"timing map");double ms[2];int n=0;
-            for(int repeat:{1,10})ms[n++]=synced_median(device.p,big_surface.p,[&]{for(int i=0;i<repeat;++i)fx.draw(big_surface.p,fx.grid_pass.p,gk);});
-            std::printf("FIXTURE_SLOPE_TIMING visibility_grid_%ux%u width=%u height=%u one_march_ms=%.4f ten_marches_ms=%.4f per_march_slope_ms=%.4f not_game_fps=1\n",gw/4,gh/4,w,h,ms[0],ms[1],(ms[1]-ms[0])/9.0);
-            check(device->SetTexture(4,big.p),"timing atlas bind");grid_filter(true);
-            for(IDirect3DTexture9* depth:{depth_sky.p,depth_near.p}){
-                check(device->SetTexture(0,depth),"depth");check(device->SetTexture(3,nullptr),"st unbind");n=0;
-                for(int repeat:{1,10})ms[n++]=synced_median(device.p,st_surface.p,[&]{for(int i=0;i<repeat;++i)fx.draw(st_surface.p,fx.grid_march.p,gk);});
-                std::printf("FIXTURE_SLOPE_TIMING march_%s_grid width=%u height=%u one_march_ms=%.4f ten_marches_ms=%.4f per_march_slope_ms=%.4f not_game_fps=1\n",depth==depth_sky.p?"sky":"depth29300",w,h,ms[0],ms[1],(ms[1]-ms[0])/9.0);
-            }
-            grid_filter(false);check(device->SetTexture(4,nullptr),"timing atlas unbind");
         }
         report("march_sky_132_reads",depth_sky.p,false);report("march_depth29300_172_reads",depth_near.p,false);report("transaction_sky_march_composite_repair",depth_sky.p,true);
         for(DWORD i:{0u,2u,3u})check(device->SetTexture(i,nullptr),"unbind");
@@ -600,6 +481,6 @@ void run(const std::string& cases_file,const std::string& out,const std::vector<
 }
 }
 int main(int argc,char** argv){
-    if(argc<3||argc>6){std::printf("usage: fog_density_shader_fixture cases.txt output-directory [far24-cases.txt] [scale4-cases.txt] [far24-scale4-cases.txt]\n");return 2;}
+    if(argc<3||argc>4){std::printf("usage: fog_density_shader_fixture cases.txt output-directory [scale4-cases.txt]\n");return 2;}
     try{run(argv[1],argv[2],std::vector<std::string>(argv+3,argv+argc));return 0;}catch(const std::exception& e){std::printf("RESULT FAIL %s\n",e.what());return 1;}
 }

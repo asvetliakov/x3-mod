@@ -259,12 +259,14 @@ class OriginalFillTransformerTests(unittest.TestCase):
 
 
 class LauncherGateTests(unittest.TestCase):
-    def test_default_off_requires_hdr_and_excludes_linear_materials(self):
+    def test_default_off_requires_hdr(self):
+        # The launcher's --linear-materials / --material-fill went on 2026-09-25 (docs/verification/launcher-options-inventory.md,
+        # "Removed 2026-09-25"); the DLL still excludes the fill under X3M_LINEAR_MATERIALS (test below).
         with tempfile.TemporaryDirectory() as directory:
             code, output, error = launch(directory, *PREREQUISITES); self.assertEqual(code, 0, error)
             baseline = json.loads(output)['env']
             self.assertEqual(baseline['X3M_ORIGINAL_FILL'], '0.0')
-            self.assertEqual((baseline['X3M_LINEAR_MATERIALS'], baseline['X3M_MATERIAL_FILL']), ('0', '0.0'))
+            self.assertNotIn('X3M_LINEAR_MATERIALS', baseline); self.assertNotIn('X3M_MATERIAL_FILL', baseline)
             code, output, error = launch(directory, *PREREQUISITES, '--original-fill', '0.05'); self.assertEqual(code, 0, error)
             env = json.loads(output)['env']
             self.assertEqual(env['X3M_ORIGINAL_FILL'], '0.05')
@@ -274,20 +276,13 @@ class LauncherGateTests(unittest.TestCase):
             fill_keys = ('X3M_ORIGINAL_FILL', 'X3M_ORIGINAL_FILL_DEFAULT')
             self.assertEqual({k: v for k, v in env.items() if k not in fill_keys},
                              {k: v for k, v in baseline.items() if k not in fill_keys})
-            linear = ['--hdr-tonemap', '--linear-materials']
             for bad in (('--motion-output', '--original-fill', '0.05'),
-                        (*PREREQUISITES, *linear, '--original-fill', '0.05'),
-                        (*PREREQUISITES, *linear, '--original-fill', '0'),
                         (*PREREQUISITES, '--original-fill', '-0.01'), (*PREREQUISITES, '--original-fill', '0.51'),
                         (*PREREQUISITES, '--original-fill', 'nan'), (*PREREQUISITES, '--original-fill', 'inf')):
                 code, _, error = launch(directory, *bad); self.assertEqual(code, 2, bad); self.assertIn('--original-fill', error)
             for boundary in ('0', '0.5'):
                 code, output, error = launch(directory, *PREREQUISITES, '--original-fill', boundary); self.assertEqual(code, 0, error)
                 self.assertEqual(json.loads(output)['env']['X3M_ORIGINAL_FILL'], repr(float(boundary)))
-            # With linear materials the converted route's --material-fill applies instead.
-            code, output, error = launch(directory, *PREREQUISITES, *linear, '--material-fill', '0.05'); self.assertEqual(code, 0, error)
-            env = json.loads(output)['env']
-            self.assertEqual((env['X3M_ORIGINAL_FILL'], env['X3M_MATERIAL_FILL']), ('0.0', '0.05'))
 
     def test_dll_gate_reads_the_variable_and_needs_hdr_without_linear_materials(self):
         source = (ROOT / 'src/proxy/capture.cpp').read_text()

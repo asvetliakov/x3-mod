@@ -128,3 +128,5 @@ launcher modules 739 tests OK; build 0 warnings, `check_no_x87` 684 / 0.
 Superseded the same day by the TAA mask fold (`docs/verification/temporal-resolve.md`, "Mask fold"): the stabiliser is removed,
 `--taa-sentinel-stabiliser` is a launcher parser error and neither variable is sent; `test_taa_sentinel_stabiliser_default`
 was deleted with it.
+
+**Removed 2026-09-25** (user decision): `--linear-materials`, `--material-fill`, `--material-direct-gain`, `--material-emissive-gain`, `--lightmap-emissive-gain` and `--linear-distance-fade` from the launcher only (the converted-material and fade code stays for the fixtures and the shared fill / light-map gain); `docs/verification/launcher-options-inventory.md`, "4. Removed 2026-09-25".

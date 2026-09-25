@@ -304,16 +304,13 @@ struct Reference {
         api(pass.initialize(d.p, nullptr, reinterpret_cast<const DWORD*>(x3m::renderer::temporal_resolve_program()), nullptr, nullptr,
                             reinterpret_cast<const DWORD*>(x3m::renderer::hdr_writeback_program())), "reference initialize");
         pass.configure_copy(copy_by_draw);
-        // The DLL's X3M_TAA_HISTORY_TAPS parse (capture.cpp): 16 exactly selects the 16-tap programs, anything else 5.
-        { char taps[8]{}; const DWORD n = GetEnvironmentVariableA("X3M_TAA_HISTORY_TAPS", taps, sizeof taps);
-          api(pass.configure_history_taps(n > 0 && n < sizeof taps && !std::strcmp(taps, "16") ? 16 : 5), "reference history taps"); }
-        // The DLL's thin-region parse (capture.cpp), for the cases that set it: X3M_TAA_THIN_REGION=W (first field), the camera
-        // gate unless X3M_TAA_THIN_REGION_GATE=screen. The camera gate runs A' with the mask fold only (X3M_TAA_REGION_HOLD is
-        // ignored since 2026-09-24, the sentinel stabiliser retired 2026-09-25); without its programs (16 taps, no filter caps, a
-        // refused program) the DLL turns the thin region off, and so does this mirror. Unset: none of it, the pass as before.
-        { char setting[32]{}; DWORD n = GetEnvironmentVariableA("X3M_TAA_THIN_REGION", setting, sizeof setting);
+        // The DLL's thin-region parse (capture.cpp), for the cases that set it: X3M_TAA_THIN_REGION=W (first field), always the
+        // camera gate (the screen gate's option went on 2026-09-25). The camera gate runs A' with the mask fold only; without its
+        // programs (no filter caps, a refused program) the DLL turns the thin region off, and so does this mirror. Unset: none
+        // of it, the pass as before.
+        { char setting[32]{}; const DWORD n = GetEnvironmentVariableA("X3M_TAA_THIN_REGION", setting, sizeof setting);
           thin_weight = n > 0 && n < sizeof setting ? std::strtof(setting, nullptr) : 0.f;
-          n = GetEnvironmentVariableA("X3M_TAA_THIN_REGION_GATE", setting, sizeof setting); thin_camera = !(n > 0 && n < sizeof setting && !std::strcmp(setting, "screen")); }
+          thin_camera = true; }
         if (thin_weight > 0.f) {
             api(pass.configure_far(), "reference configure far");
             if (thin_camera && !pass.camera_gate_available()) { thin_weight = 0.f; thin_camera = false; } // motion_output.cpp: region off
@@ -329,8 +326,6 @@ struct Reference {
             api(shadow.initialize(d.p, nullptr, reinterpret_cast<const DWORD*>(x3m::renderer::temporal_resolve_program()), nullptr, nullptr,
                                   reinterpret_cast<const DWORD*>(x3m::renderer::hdr_writeback_program())), "shadow initialize");
             shadow.configure_copy(copy_by_draw);
-            { char taps[8]{}; const DWORD n = GetEnvironmentVariableA("X3M_TAA_HISTORY_TAPS", taps, sizeof taps);
-              api(shadow.configure_history_taps(n > 0 && n < sizeof taps && !std::strcmp(taps, "16") ? 16 : 5), "shadow history taps"); }
             api(shadow.configure_far(), "shadow configure far");
         }
     }
@@ -472,7 +467,7 @@ struct Fixture {
     HRESULT (*readback)(IDirect3DDevice9*, float*, unsigned, unsigned*, unsigned*) = nullptr;
     HRESULT (*readback_depth)(IDirect3DDevice9*, float*, unsigned, unsigned*, unsigned*) = nullptr;
     HRESULT (*last_pixel_abi)(IDirect3DDevice9*, float*, unsigned) = nullptr;
-    bool seam = false, enabled = false, jitter = false, taa = false, bench = false, burst = false, lazy = false, envmap = false;
+    bool seam = false, enabled = false, jitter = false, taa = false, taa_filter_fault = false, bench = false, burst = false, lazy = false, envmap = false;
     bool routebench = false; unsigned routebench_draws = 400; // "routebench [draws]": per-routed-draw CPU cost (run_route_bench.py)
     float sharpen = 0.f;   // X3M_TAA_SHARPEN: the presented image is RCAS of the resolved one (the runner compares it against the Python reference)
     bool hdr_dither = false; // X3M_HDR_DITHER=1: the presented cells carry the +-0.5 code display dither (the runner checks it per pixel)
@@ -3228,6 +3223,10 @@ int main(int argc, char** argv) {
         f.taa = f.enabled && GetEnvironmentVariableA("X3M_TAA", setting, sizeof setting) == 1 && setting[0] == '1';
         // The DLL implies the jitter with the resolve on.
         f.jitter = f.enabled && (f.taa || (GetEnvironmentVariableA("X3M_MOTION_JITTER", setting, sizeof setting) == 1 && setting[0] == '1'));
+        // X3M_FIXTURE_TAA_FILTER_FAULT=1 (seam only): the DLL's history filter query refuses at attach, so TAA and its jitter
+        // are off for the whole run although both were requested; the oracles expect the TAA-off, unjittered script (seam-on).
+        f.taa_filter_fault = f.enabled && GetEnvironmentVariableA("X3M_FIXTURE_TAA_FILTER_FAULT", setting, sizeof setting) == 1 && setting[0] == '1';
+        if (f.taa_filter_fault) { std::printf("TAA_FILTER_FAULT requested_taa=%u requested_jitter=%u expected_taa=0 expected_jitter=0\n", unsigned(f.taa), unsigned(f.jitter)); f.taa = false; f.jitter = false; }
         if (f.bench) f.taa = true; // The bench always runs the game-like boundary; the resolve follows X3M_TAA.
         if (GetEnvironmentVariableA("X3M_MOTION_JITTER_SAMPLES", setting, sizeof setting) > 0) { const unsigned n = unsigned(std::atoi(setting)); if (n >= 2 && n <= 64) f.jitter_samples = n; }
         char rt_mode[8]{}; f.lazy = GetEnvironmentVariableA("X3M_MOTION_RT_MODE", rt_mode, sizeof rt_mode) == 4 && !std::strcmp(rt_mode, "lazy");

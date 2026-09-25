@@ -736,17 +736,14 @@ CASES += [case(f'bench-{size}-taa-sharpen-on', 'bench', jitter=True, taa=True, b
 # 2-sample back buffer: the route must refuse the frame (msaa=2, routed 0,
 # no jitter, taa_skip 11) with one motion_output_msaa_refused line.
 QUAD_TWINS = {'seam-taa-quad-fvf': 'seam-taa-on'}
-# S3 (docs/architecture/taa-high-resolution.md): --taa-history-taps 16 draws the 16-tap point programs, whose twins the
-# pass creates only while 16 is set: one device reference more than the default (the plain resolve's twin; no case here
-# configures the flicker or far programs). The runner pins X3M_TAA_HISTORY_TAPS=5 for every other case.
-HISTORY_TAPS16_CASE = 'seam-taa-taps16'
-CASES += [case(HISTORY_TAPS16_CASE, 'seam', jitter=True, taa=True, hdr_env=dict(X3M_TAA_HISTORY_TAPS='16'))]
 COPY_TWINS = {'seam-taa-copy-draw': 'seam-taa-on'}
-# A' (docs/architecture/taa-plan-lifted-slot-cap.md step 1) is the camera gate's only path since 2026-09-24: X3M_TAA_REGION_HOLD was
-# removed. A stale value is ignored with one taa_region_hold_setting ignored=1 row and the case is seam-taa-on byte for byte (no
-# case here but THIN_HOLD_CASES configures the thin region). The runner sets the variable for no other case.
-REGION_HOLD_TWINS = {'seam-taa-region-hold-ignored': ('seam-taa-on', 'off')}
-CASES += [case(name, 'seam', jitter=True, taa=True, hdr_env=dict(X3M_TAA_REGION_HOLD=value)) for name, (_, value) in REGION_HOLD_TWINS.items()]
+# A device without FP16 / R32F history filtering (TemporalPass S3; no fallback program set since the 16-tap programs went on
+# 2026-09-25): X3M_FIXTURE_TAA_FILTER_FAULT makes the seam's filter query refuse at attach, so TAA is refused before the first
+# frame and neither the jitter nor the mip bias is applied on any draw. The fixture expects the TAA-off, unjittered script
+# (its coverage oracle and pixel-ABI check see every draw); the presented frames equal seam-on's (the TAA-off twin) byte for
+# byte; the trace holds exactly one motion_output_taa row (initialize=8876086a references=0 reason=fp16_filter).
+TAA_REFUSED_TWINS = {'seam-taa-no-filter-refused': 'seam-on'}
+CASES += [case(name, 'seam', jitter=True, taa=True, hdr_env={'X3M_FIXTURE_TAA_FILTER_FAULT': '1'}) for name in TAA_REFUSED_TWINS]
 # The DLL path of A' with the mask fold: the thin region (0.97) with its default camera gate. The fixture's reference pass mirrors
 # the same settings (motion_output_fixture.cpp, Reference::create), so every seam frame still equals its reference resolve byte for
 # byte. The pass then holds the far / camera-gate programs (5: line mask, far, the folded hold resolve, its 49-tap box, the
@@ -763,14 +760,6 @@ BOX_DEFAULT_MARKED = ('seam-taa-thin-hold-half',)
 CASES += [case(name, 'seam', jitter=True, taa=True, hdr_env=dict(X3M_TAA_THIN_REGION='0.97', X3M_TAA_BOX_RESOLUTION='half' if value == 'half' else 'full',
                                                                  **({'X3M_TAA_BOX_RESOLUTION_DEFAULT': '1'} if name in BOX_DEFAULT_MARKED else {})))
           for name, value in THIN_HOLD_CASES.items()]
-# The refusal path: the camera gate has no 16-tap program, so the thin region with its camera gate under --taa-history-taps 16 is
-# turned off at pass creation with one motion_output_taa_region_hold row (reason=history_taps16, effect=thin_region_off; no
-# fallback program set). The pass still holds what configure_far created (the 5 above) and the far program's 16-tap twin (1)
-# beside the resolve's (1); every seam frame is the 16-tap case's byte for byte (the reference mirrors the rule).
-REGION_OFF_TWINS = {'seam-taa-thin-taps16-refused': 'seam-taa-taps16'}
-REGION_OFF_REFERENCES = 5 + 1
-CASES += [case(name, 'seam', jitter=True, taa=True, hdr_env=dict(X3M_TAA_HISTORY_TAPS='16', X3M_TAA_THIN_REGION='0.97'))
-          for name in REGION_OFF_TWINS]
 # Thin vote (X3M_TAA_THIN_VOTE; docs/architecture/taa-thin-geometry-alternatives.md section 3.2, "Implemented"): the
 # "thinvote" script (motion_output_thin_vote_inc.h) through the ownership wrapper with TAA, the FP16 scene and the
 # sun-share lane (the four-channel RT2), the thin region (0.97) with its camera gate and A' with the mask fold (the flag of a
@@ -799,13 +788,13 @@ CASES += [case(name, 'thinvote', 'ownership', jitter=True, taa=True, hdr=True, h
           for name, (vote, scale, script) in THIN_VOTE_CASES.items()]
 CASES += [case('seam-thin-vote-far-on-owner', 'thinvote', 'ownership', jitter=True, taa=True, hdr=True,
                hdr_env=dict(THIN_VOTE_ENV, X3M_TAA_THIN_VOTE='on', X3M_FIXTURE_THIN_SCALE='far', X3M_FIXTURE_THIN_SCRIPT='plain', X3M_FADE_RT2_OWNER='on'))]
-# X3M_TAA_THIN_REGION_SOURCE (taa-thin-geometry-alternatives.md section 3.2; the launcher's default vote since the mask fold,
-# taa-mask-fold.md): far-on with the source given, one case per value. both: far-on's flags. screen: refused under the camera
-# gate (the folded resolve has no plain program): configured both with reason=screen_refused_camera_gate, the run is both's.
-# vote: the struts keep their flag and no unvoted pixel is flagged anywhere (the search is skipped). One configured row each.
-THIN_VOTE_SOURCE_CASES = {f'seam-thin-vote-far-on-source-{source}': source for source in ('both', 'screen', 'vote')}
+# The thin region's flag source (taa-thin-geometry-alternatives.md section 3.2): the vote alone whenever the vote and the thin
+# region are on, the DLL's own rule since X3M_TAA_THIN_REGION_SOURCE (both / screen) was removed on 2026-09-25; every vote-on
+# case logs one configured row. This case is far-on with the vote-only verdict checked per frame: the struts keep their flag
+# and no unvoted pixel is flagged anywhere (the search is skipped).
+THIN_VOTE_SOURCE_CASES = {'seam-thin-vote-far-on-source-vote': 'vote'}
 CASES += [case(name, 'thinvote', 'ownership', jitter=True, taa=True, hdr=True,
-               hdr_env=dict(THIN_VOTE_ENV, X3M_TAA_THIN_VOTE='on', X3M_FIXTURE_THIN_SCALE='far', X3M_FIXTURE_THIN_SCRIPT='plain', X3M_TAA_THIN_REGION_SOURCE=source))
+               hdr_env=dict(THIN_VOTE_ENV, X3M_TAA_THIN_VOTE='on', X3M_FIXTURE_THIN_SCALE='far', X3M_FIXTURE_THIN_SCRIPT='plain'))
           for name, source in THIN_VOTE_SOURCE_CASES.items()]
 CASES += [case('seam-taa-quad-fvf', 'seam', jitter=True, taa=True, hdr_env=dict(X3M_FIXTURE_QUAD_FVF='1')),
           case('seam-taa-copy-draw', 'seam', jitter=True, taa=True, hdr_env=dict(X3M_FIXTURE_STRETCH_FAULT='1')),
@@ -3594,7 +3583,9 @@ def mip_bias_text(mip_bias):
     return '%g' % float(mip_bias or 0)
 
 
-def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, directory, lazy=False, camera=False, sentinel=None, shadow=True, hdr=False, hdr_fault=None, mip_bias=None, sharpen=0.0, copy_draw=False, quad_fvf=False, history_taps=5):
+def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, directory, lazy=False, camera=False, sentinel=None, shadow=True, hdr=False, hdr_fault=None, mip_bias=None, sharpen=0.0, copy_draw=False, quad_fvf=False, history_taps=5, taa_refused=False):
+    # taa_refused (TAA_REFUSED_TWINS): TAA and the jitter were requested, the DLL refused TAA at attach; `jitter` and `taa` are
+    # then the effective (off) behaviour the fixture's oracles model, and the trace's request fields read 1.
     lines = text.splitlines()
     assert lines and lines[-1].startswith('RESULT PASS '), f'{name}: fixture did not pass'
     assert 'FAIL' not in text and text.count('RESULT ') == 1, f'{name}: failures reported'
@@ -3736,7 +3727,8 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
     tl = trace.splitlines()
     assert sum(l.startswith('device_hooked ') for l in tl) == sum(l.startswith('device_destroy ') for l in tl) == 1
     modes = [fields(l) for l in tl if l.startswith('motion_output_mode ')]
-    assert len(modes) == 1 and modes[0]['requested'] == str(int(enabled)) and modes[0]['temporal_consumer'] == modes[0]['taa'] == str(int(taa)) and modes[0]['taa_debug'] == str(int(taa))
+    requested_taa = taa or taa_refused
+    assert len(modes) == 1 and modes[0]['requested'] == str(int(enabled)) and modes[0]['temporal_consumer'] == modes[0]['taa'] == str(int(requested_taa)) and modes[0]['taa_debug'] == str(int(requested_taa))
     devices = [fields(l) for l in tl if l.startswith('motion_output_device ')]
     variants = [fields(l) for l in tl if l.startswith('motion_output_variant ')]
     targets = [l for l in tl if l.startswith('motion_output_target ')]
@@ -3746,7 +3738,7 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
     cuts = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('motion_output_cut ')}
     routes = [fields(l) for l in tl if l.startswith('motion_route ')]
     modes = [fields(l) for l in tl if l.startswith('motion_output_mode ')]
-    assert modes[0]['jitter'] == str(int(jitter)) and modes[0]['jitter_samples'] == str(JITTER_SAMPLES), (name, modes)
+    assert modes[0]['jitter'] == str(int(jitter or taa_refused)) and modes[0]['jitter_samples'] == str(JITTER_SAMPLES), (name, modes)
     assert modes[0]['rt_mode'] == rt_mode and modes[0]['frame_log'] == '60', (name, modes)
     assert modes[0]['state_shadow'] == shadow_request(shadow) and modes[0]['scene_hook'] == '0' and modes[0]['hdr'] == str(int(hdr)), (name, modes)
     taa_readbacks = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('motion_output_taa_readback ')}
@@ -3769,8 +3761,8 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
     # Three-format self test (A8R8G8B8 + A32B32G32R32F + R32F) on this backend.
     assert devices[0]['depth'] == '1' and devices[0]['depth_reason'] == 'ok' and devices[0]['r32f'] == '00000000', (name, devices)
     assert devices[0]['detail'] == 'stage=compare' and 'color_errors=0 motion_errors=0 depth_errors=0 targets=3' in trace
-    assert devices[0]['jitter'] == str(int(jitter)) and devices[0]['jitter_samples'] == str(JITTER_SAMPLES)
-    assert devices[0]['taa'] == str(int(taa)) and devices[0]['taa_reason'] == ('ok' if taa else 'off') and devices[0]['taa_debug'] == str(int(taa)), (name, devices)
+    assert devices[0]['jitter'] == str(int(jitter or taa_refused)) and devices[0]['jitter_samples'] == str(JITTER_SAMPLES)
+    assert devices[0]['taa'] == str(int(taa)) and devices[0]['taa_reason'] == ('ok' if taa else 'no_filter' if taa_refused else 'off') and devices[0]['taa_debug'] == str(int(requested_taa)), (name, devices)
     # D1: the copy mode and its attach-time round trip (the adapter query is
     # accepted unconditionally on Wine, so the stretch mode is the outcome
     # unless the seam faulted the round trip); D2: the quad twin switch.
@@ -3780,7 +3772,7 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
     result['taa_copy'] = devices[0]['taa_copy']
     # The camera read is gated on the exact executable (never this synthetic
     # process) unless the seam installed the fixture's globals; the switch is parsed.
-    assert devices[0]['camera'] == ('fixture' if camera else 'executable_mismatch' if taa else 'disabled'), (name, devices)
+    assert devices[0]['camera'] == ('fixture' if camera else 'executable_mismatch' if requested_taa else 'disabled'), (name, devices)  # the read is armed by the TAA request
     assert (devices[0]['sentinel'], devices[0]['camera_cut_deg'], devices[0]['camera_log']) == (sentinel_mode, '20.00', '300'), (name, devices)
     assert (modes[0]['sentinel'], modes[0]['camera_cut_deg'], modes[0]['camera_log']) == ({'0': 'auto', '1': '1', '2': '2'}[sentinel_mode], '20.00', '300'), (name, modes)
     assert [(v['kind'], v['transform'], v['create'], v['depth']) for v in variants] == [('vs', '0', '00000000', '1'), ('ps', '0', '00000000', '1')] * 2, (name, variants)
@@ -3792,11 +3784,8 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
         # One lazy initialization holding one device reference (the resolve
         # shader); after Reset only that reference remains until the next run.
         # The pass holds one device reference per created program: the resolve, plus the sharpen program with the switch on.
-        # S3: the 16-tap twin of the resolve joins with --taa-history-taps 16 (created only then).
         thin_hold = THIN_HOLD_CASES.get(name)
-        region_off = name in REGION_OFF_TWINS
-        taa_references = str(TAA_BASE_REFERENCES + (1 if sharpen else 0) + (1 if history_taps == 16 else 0) + (THIN_HOLD_REFERENCES[thin_hold] if thin_hold else 0)
-                             + (REGION_OFF_REFERENCES if region_off else 0))
+        taa_references = str(TAA_BASE_REFERENCES + (1 if sharpen else 0) + (THIN_HOLD_REFERENCES[thin_hold] if thin_hold else 0))
         assert [t['initialize'] for t in taa_lines_log] == ['00000000'] and taa_lines_log[0]['references'] == taa_references, (name, taa_lines_log)
         # One line per attachment beside the depth-fold line, on its first completed run (a case whose runs never complete
         # logs neither): the reconstruction drawn (both filter queries pass on this backend).
@@ -3812,12 +3801,7 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
         assert taps_lines if thin_hold else True, (name, taps_lines)
         assert all(t['region_hold'] == held and t['mask_targets'] == '0' for t in taps_lines), (name, taps_lines)
         refusals = [fields(l) for l in tl if l.startswith('motion_output_taa_region_hold ')]
-        if region_off:
-            assert [(r['unavailable'], r['reason'], r['create'], r['bilinear'], r['history_taps'], r['thin_region'], r['effect']) for r in refusals] == \
-                   [('1', 'history_taps16', '00000000', '1', '16', '0.9700', 'thin_region_off')], (name, refusals)
-            assert float(taa_lines_log[0]['thin_region']) == 0 and taa_lines_log[0]['thin_gate'] == 'screen' and 'sentinel_stabiliser' not in taa_lines_log[0], (name, taa_lines_log)
-        else:
-            assert not refusals, (name, 'hold refused')
+        assert not refusals, (name, 'hold refused')
         if thin_hold:
             assert taa_lines_log[0]['thin_gate'] == 'camera' and float(taa_lines_log[0]['thin_region']) == .97 and 'sentinel_stabiliser' not in taa_lines_log[0], (name, taa_lines_log)
         # S4: rows only when half is asked (creation, then what the first run drew); the reference's per-pixel containment.
@@ -3831,6 +3815,13 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
         else:
             assert not box_rows and not containment, (name, box_rows, containment)
         assert f'generation=2 taa_references={taa_references}' in trace, name
+    elif taa_refused:
+        # Exactly one refusal row at attach, no pass created (no device reference), and nothing the pass would draw or read back.
+        assert [(t['initialize'], t['references'], t['reason'], t['effect'], t['jitter'], t['mip_bias']) for t in taa_lines_log] == \
+               [('8876086a', '0', 'fp16_filter', 'taa_off', '0', '0')], (name, taa_lines_log)
+        assert not taa_readbacks and not color_readbacks and not present_readbacks, name
+        assert not any(l.startswith(('motion_output_taa_history_taps ', 'motion_output_taa_depth_fold ')) for l in tl), name
+        assert 'taa_references=0' in trace or 'taa_references=' not in trace, name
     else:
         assert not taa_lines_log and not taa_readbacks and not color_readbacks and not present_readbacks
     assert sum(l.startswith('motion_output_release ') for l in tl) == 1, 'owned objects released before the final device Release'
@@ -4053,8 +4044,8 @@ THIN_REGION_SOURCES = ('both', 'screen', 'vote')
 
 
 def thin_region_source_rows(trace):
-    """The DLL's taa_thin_region_source rows (motion_output.cpp: one per device, only when X3M_TAA_THIN_REGION_SOURCE was
-    given): requested / configured / reason, the prerequisites the device saw and default= (the launcher's marker). Malformed
+    """The DLL's taa_thin_region_source rows (motion_output.cpp: one per device whenever the thin vote and the thin region
+    are on): requested / configured / reason, the prerequisites the device saw and default= (the launcher's marker). Malformed
     rows fail."""
     rows = []
     for line in trace.splitlines():
@@ -4084,16 +4075,19 @@ def validate_thin_vote(name, text, trace, directory, env):
     vote = env['X3M_TAA_THIN_VOTE'] == 'on'
     near = env['X3M_FIXTURE_THIN_SCALE'] == 'near'
     hostile = env.get('X3M_FIXTURE_THIN_SCRIPT') == 'hostile'
-    source = env.get('X3M_TAA_THIN_REGION_SOURCE')  # None: not given (the DLL's both, no configured row)
+    # The DLL's source rule (capture.cpp, since X3M_TAA_THIN_REGION_SOURCE was removed on 2026-09-25): vote whenever the vote is on
+    # (every case here runs the thin region), both (no row) otherwise. `source` names the case whose per-frame vote-only verdict is
+    # counted; the rows are checked for every case.
+    derived = 'vote' if vote else None
+    source = THIN_VOTE_SOURCE_CASES.get(name)
     lines = text.splitlines()
     assert 'THIN PASS' in lines, f'{name}: script did not finish'
     source_rows = thin_region_source_rows(trace)
-    if source is None:
+    if derived is None:
         assert not source_rows, (name, source_rows)
     else:
-        want = ('screen', 'both', 'screen_refused_camera_gate') if source == 'screen' else (source, source, 'ok')
         assert [(r['requested'], r['configured'], r['reason'], r['thin_vote'], r['twins'], r['camera_gate'], r['default']) for r in source_rows] == \
-            [want + ('1', '1', '1', env.get('X3M_TAA_THIN_REGION_SOURCE_DEFAULT', '0'))], (name, source_rows)
+            [('vote', 'vote', 'ok', '1', '1', '1', env.get('X3M_TAA_THIN_VOTE_DEFAULT', '0'))], (name, source_rows)
     mode = fields([l for l in lines if l.startswith('THIN_MODE ')][0])
     assert mode['vote'] == str(int(vote)) and abs(float(mode['strut_px']) - (5.6 if near else 1.4)) < 1e-3, (name, mode)
     rt2 = {(int(r['step']), r['subset']): r for r in (fields(l) for l in lines if l.startswith('THIN_RT2 '))}
@@ -4249,9 +4243,6 @@ def validate_thin_vote(name, text, trace, directory, env):
         unvoted_flagged[frame] = sum(1 for p in range(size * size) if mask[p] >= 254 and not (0 <= lanes[p * 4 + 3] < 1 and 0 <= lanes[p * 4] <= 1))
         if source == 'vote':  # the vote alone: nothing the route did not vote for is flagged, the fill's silhouette corners included
             assert unvoted_flagged[frame] == 0, (name, frame, unvoted_flagged[frame])
-            checks += 1
-        elif source is not None:  # both / screen: the search's own flags exist (60 per frame measured), so vote's 0 is a removal
-            assert unvoted_flagged[frame] > 0, (name, frame, unvoted_flagged[frame])
             checks += 1
     return {'passed': True, 'checks': checks, 'vote': vote, 'scale': 'near' if near else 'far', 'script': 'hostile' if hostile else 'plain',
             'source': source, 'source_rows': source_rows, 'unvoted_flagged': unvoted_flagged,
@@ -5534,8 +5525,8 @@ def validate_envmap(name, text, trace, directory, hdr=False):
             'color_hashes': {int(fields(l)['frame']): fields(l)['hash'] for l in lines if l.startswith('COLOR ')}, 'hdr': hdr_summary}
 
 
-def finish_case(name, mode, variant, enabled, jitter, taa, text, trace, directory, lazy=False, camera=False, sentinel=None, shadow=True, hdr=False, hdr_fault=None, mip_bias=None, sharpen=0.0, copy_draw=False, quad_fvf=False, history_taps=5):
-    result = validate_case(name, mode, variant, enabled, jitter, taa, text, trace, directory, lazy, camera, sentinel, shadow, hdr, hdr_fault, mip_bias, sharpen, copy_draw, quad_fvf, history_taps)
+def finish_case(name, mode, variant, enabled, jitter, taa, text, trace, directory, lazy=False, camera=False, sentinel=None, shadow=True, hdr=False, hdr_fault=None, mip_bias=None, sharpen=0.0, copy_draw=False, quad_fvf=False, history_taps=5, taa_refused=False):
+    result = validate_case(name, mode, variant, enabled, jitter, taa, text, trace, directory, lazy, camera, sentinel, shadow, hdr, hdr_fault, mip_bias, sharpen, copy_draw, quad_fvf, history_taps, taa_refused)
     result['variant'] = variant
     result['ownership'] = validate_ownership(name, variant, enabled, trace)
     if mip_bias is not None:
@@ -6485,7 +6476,6 @@ def main(argv=None):
                        # fixture's mirror of the parse reads the same variable.
                        X3M_TAA_SKY_HISTORY='loose', X3M_TAA_SKY_HISTORY_EXIT_PX='0',
                        X3M_TAA_MOTION_WEIGHT='0',  # DLL default 0.7,2,8 under an age program since Run 70 A; no case here runs one, pinned off so a shell value cannot reach the DLL
-                       X3M_TAA_HISTORY_TAPS='5',  # S3 default, pinned; HISTORY_TAPS16_CASE sets 16
                        X3M_TAA_BOX_RESOLUTION='full',  # S4 default (logs nothing), pinned so a shell value cannot reach the DLL; the -thin-hold-half case sets half
                        X3M_FADE_RT2_OWNER='off',  # DLL default off, pinned so a shell value cannot reach the DLL; the -owner cases set on
                        X3M_TELEMETRY_DRAW='1',  # per-draw metrics (gate_us, route_draw_us, ...) are gated behind this switch since a8d4309; the validators require them
@@ -6518,7 +6508,6 @@ def main(argv=None):
                 env.pop(inherited, None)
             env.update(VARIANTS[variant])
             env.pop('X3M_SUN_SHADOW_RECEIVER_DEPTH', None)  # the former option: the DLL and the fixtures read no such variable
-            env.pop('X3M_TAA_REGION_HOLD', None)  # removed 2026-09-24 (A' only): the DLL logs a stale value; only REGION_HOLD_TWINS set it
             env.pop('X3M_TAA_FAR_GATE', None)  # DLL default camera when unset (logs nothing extra); a shell value cannot reach the DLL
             env.pop('X3M_TAA_FAR_CLIP', None)  # DLL default 7x7 when unset (logs nothing extra); a shell value cannot reach the DLL
             for marker in ('X3M_TAA_THIN_VOTE_DEFAULT', 'X3M_FADE_RT2_OWNER_DEFAULT', 'X3M_LOD_OCCLUSION_DEFAULT', 'X3M_TAA_BOX_RESOLUTION_DEFAULT',
@@ -6880,16 +6869,10 @@ def main(argv=None):
                 save()
                 print(f'{name}: exit={completed.returncode} checks={case["checks"]} set_rt={case["set_rt_per_frame"]}', flush=True)
                 continue
-            case = finish_case(name, mode, variant, enabled == '1', jitter, taa, text, trace, directory, lazy, camera, sentinel, shadow, hdr, hdr_fault, mip_bias, sharpen,
+            refused = name in TAA_REFUSED_TWINS  # TAA and the jitter requested, refused at attach: the oracles model both off
+            case = finish_case(name, mode, variant, enabled == '1', jitter and not refused, taa and not refused, text, trace, directory, lazy, camera, sentinel, shadow, hdr, hdr_fault, mip_bias, sharpen,
                                copy_draw=hdr_env.get('X3M_FIXTURE_STRETCH_FAULT') == '1', quad_fvf=hdr_env.get('X3M_FIXTURE_QUAD_FVF') == '1',
-                               history_taps=int(hdr_env.get('X3M_TAA_HISTORY_TAPS', '5')))
-            parse_rows = [l for l in trace.splitlines() if 'taa_region_hold_setting' in l]
-            if name in REGION_HOLD_TWINS:
-                value = REGION_HOLD_TWINS[name][1]
-                assert len(parse_rows) == 1 and 'taa_region_hold_setting ignored=1 reason=removed' in parse_rows[0], (name, parse_rows)
-                case['region_hold_parse'] = {'value_length': len(value), 'rows': len(parse_rows)}
-            else:
-                assert not parse_rows, (name, parse_rows)
+                               history_taps=5, taa_refused=refused)
             if hdr_env.get('X3M_SHADOW_REPLAY_CANDIDATES') == '1':
                 case['shadow_replay_candidates'] = validate_shadow_replay_candidates(name, trace)
                 case['checks'] += case['shadow_replay_candidates']['checks']
@@ -7057,18 +7040,6 @@ def main(argv=None):
             assert files_a and files_a == files_b, f'{twin_name}: readback files differ from {twin}'
             assert a['taa_copy'] == b['taa_copy'] == 'stretch', (twin_name, a['taa_copy'])
             result['native_windows'][twin_name] = {'twin': twin, 'identical': True, 'readback_files': len(files_a), 'history_files': 8, 'quad': 'xyzrhw_fixed_function'}
-        for twin_name, (twin, _) in REGION_HOLD_TWINS.items():
-            a, b = result['cases'][twin_name], result['cases'][twin]
-            assert a['color_hashes'] == b['color_hashes'] and a['color_hashes_before_boundary'] == b['color_hashes_before_boundary'], (twin_name, twin)
-            assert (a['checks'], a['restorations'], a['motion_pixels'], a['matched_pixels'], a['depth_written_pixels']) == \
-                   (b['checks'], b['restorations'], b['motion_pixels'], b['matched_pixels'], b['depth_written_pixels']), (twin_name, twin)
-            assert history_files(twin_name) == history_files(twin), f'{twin_name}: resolved FP16 history differs from {twin}'
-            result['native_windows'][twin_name] = {'twin': twin, 'identical': True, 'history_files': 8, 'region_hold_parse': a['region_hold_parse']}
-        for twin_name, twin in REGION_OFF_TWINS.items():
-            a, b = result['cases'][twin_name], result['cases'][twin]
-            assert a['color_hashes'] == b['color_hashes'] and a['color_hashes_before_boundary'] == b['color_hashes_before_boundary'], (twin_name, twin)
-            assert history_files(twin_name) == history_files(twin), f'{twin_name}: resolved FP16 history differs from {twin}'
-            result['native_windows'][twin_name] = {'twin': twin, 'identical': True, 'history_files': 8, 'effect': 'thin_region_off'}
         for twin_name, twin in COPY_TWINS.items():
             a, b = result['cases'][twin_name], result['cases'][twin]
             assert a['taa_copy'] == 'draw' and b['taa_copy'] == 'stretch', (twin_name, a['taa_copy'], b['taa_copy'])
@@ -7083,6 +7054,15 @@ def main(argv=None):
             result['native_windows'][twin_name] = {'twin': twin, 'history_identical': history_identical, 'presented': presented,
                                                    'presented_identical': presented['identical'], 'copy': 'staging_stretch_plus_identity_draws'}
         result['native_windows']['seam-msaa'] = result['cases']['seam-msaa']['refused']
+        # A device without FP16 / R32F history filtering: TAA refused at attach, no jittered draw, the TAA-off twin's frames.
+        for twin_name, twin in TAA_REFUSED_TWINS.items():
+            a, b = result['cases'][twin_name], result['cases'][twin]
+            assert a['color_hashes'] == b['color_hashes'], f'{twin_name}: colour differs from {twin}'
+            assert (a['checks'], a['restorations'], a['motion_pixels'], a['matched_pixels'], a['depth_written_pixels'], a['coverage_pixels']) == \
+                   (b['checks'], b['restorations'], b['motion_pixels'], b['matched_pixels'], b['depth_written_pixels'], b['coverage_pixels']), (twin_name, twin)
+            presented = compare_presented(twin_name, twin, ROOT / a['directory'], ROOT / b['directory'], range(12))
+            assert presented['identical'], f'{twin_name}: presented frames differ from {twin}: {presented}'
+            result['native_windows'][twin_name] = {'twin': twin, 'presented_identical': True, 'taa': 'refused_at_attach', 'reason': 'fp16_filter'}
         equivalence = {'regular': {}, 'burst': {}}
         for lazy_name, twin in (('production-lazy-on', 'production-on'), ('seam-lazy-on', 'seam-on'),
                                 ('seam-ownership-lazy-on', 'seam-ownership-on'), ('seam-taa-lazy-on', 'seam-taa-on')):

@@ -107,21 +107,15 @@ def emitter_fixture_source():
 
 class SourceAndReplay(unittest.TestCase):
     def test_exact_production_order_and_spec_fields(self):
-        self.assertEqual(len(probe.SITES),47)
+        self.assertEqual(len(probe.SITES),33)
         self.assertEqual(probe.PHASE_COUNT,33)
-        self.assertEqual([s.va for s in probe.SITES[probe.PHASE_COUNT:]],
-                         [0x4d03f7,0x4d0409,0x4d34b0,0x4d3532,0x403a7f,0x403a98,0x49729b,0x486809,
-                          0x492dbe,0x4d0700,0x4d0762,0x4d0774,0x4d0a63,0x498e30])
+        self.assertEqual(probe.SITES[-1].va,0x498f5a)
         self.assertTrue(probe.source_checks(probe.SOURCE.read_text()))
 
     def test_ret_pop_and_relocation_fields_cannot_swap(self):
         text=probe.SOURCE.read_text()
         self.assertIn(',5,0,1}',text)
         self.assertFalse(probe.source_checks(text.replace(',5,0,1}',',5,1,0}',1)))
-        self.assertIn('"game_phase_audio_poll_after",0x004d0774',text)
-        self.assertIn('},10,0,6}',text)
-        self.assertFalse(probe.source_checks(text.replace('},10,0,6}','},10,0,1}',1)))
-        self.assertFalse(probe.source_checks(text.replace('},8,0,4}','},8,0,0}',1)))
         self.assertIn('"game_phase_publisher_begin",0x00425a10',text)
         self.assertIn('},5,4,0}',text)
         self.assertIn('"game_phase_publisher_end",0x00425c79',text)
@@ -210,7 +204,7 @@ class SourceAndReplay(unittest.TestCase):
         # chase_transition carries 16 rows since 123f98d added the seven
         # byte-verified chase view restore sites.
         self.assertEqual({name:len(value) for name,value in families.items()},
-                         {'resource_reader':1,'game_phases':47,'frame_phases':10,'pass_phases':4,'loop_phases':6,'residual_phases':2,'submit_phases':22,'media_cue':1,'chase_camera':1,
+                         {'resource_reader':1,'game_phases':33,'frame_phases':10,'pass_phases':4,'loop_phases':6,'residual_phases':2,'submit_phases':22,'media_cue':1,'chase_camera':1,
                           'chase_transition':16,'chase_lead':9,'chase_aim_trace':4,'chase_fire':1,'voice_dmo_fallback':1,
                           'loading_probes':12})
         lead_rows=probe.common.parse_source_specs((ROOT/'src/proxy/chase_lead.cpp').read_text())
@@ -249,12 +243,11 @@ class SourceAndReplay(unittest.TestCase):
             return True,cursor
 
         accepted,used=admit(capacity)
-        # 11792 for the 47-site phase group and the chase set; the ten frame
-        # stamps add 10 * (24 + 128) with X3M_FRAME_PHASES=1 (13312); the four
-        # pass stamps add 100 (claims of 6/7/8/7 bytes) + 4 * 124 with
-        # X3M_PASS_PHASES=1 (13908).
-        self.assertTrue(accepted);self.assertEqual(used,13908)
-        self.assertEqual(capacity-used,10668)
+        # 13908 with the 47-site phase group, the frame and pass stamps and the
+        # chase set; the 14 audio witnesses (X3M_AUDIO_SITES, removed
+        # 2026-09-25) took 2144 of it, so 11764 now.
+        self.assertTrue(accepted);self.assertEqual(used,11764)
+        self.assertEqual(capacity-used,12812)
         self.assertGreaterEqual(capacity-used,max(reserve for reserve,_ in operations))
         self.assertEqual(admit(8192)[0],False)
         # Every optional group on: the six loop stamps (claims of 6/6/6/5/6/5
@@ -278,20 +271,16 @@ class SourceAndReplay(unittest.TestCase):
         for length in families['loading_probes']:
             everything.extend(((length+23,claim_used(length)),emitted['loading_probes']))
         accepted_all,used_all=admit(capacity,everything)
-        self.assertTrue(accepted_all);self.assertEqual(used_all,19752)
-        self.assertEqual(capacity-used_all,4824)
+        self.assertTrue(accepted_all);self.assertEqual(used_all,17608)
+        self.assertEqual(capacity-used_all,6968)
         self.assertEqual(sum(used for _,used in everything)-sum(used for _,used in operations),5844)
-        # 4,824 B left. The arena grew by one page for the media-cue gate
-        # (16,076 would have left 308 B in 16,384, below the 320-byte largest
-        # reservation) and by another with the residual group as headroom for
-        # later groups; the submit group (3,372 B) is the first to use it:
-        # 19,752 would leave 728 B in 20,480, less than a further six-site
-        # lean group needs, while 24,576 still holds two such groups with a
-        # second gate each.
+        # 6,968 B left since the audio witnesses went (2026-09-25; 4,824 B
+        # before). The arena grew by one page for the media-cue gate and by
+        # another with the residual group as headroom for later groups;
+        # 24,576 holds two further six-site lean groups with a second gate each.
         self.assertGreaterEqual(capacity-used_all,max(reserve for reserve,_ in everything))
         self.assertGreaterEqual(capacity-used_all,2*(6*(24+124)+(24+300))+max(reserve for reserve,_ in everything))
         self.assertLess(16384-used_all,max(reserve for reserve,_ in everything))
-        self.assertLess(20480-used_all,6*(24+124)+max(reserve for reserve,_ in everything))
         old_game=23
         old_operations=[]
         for name in ('resource_reader','game_phases','chase_camera','chase_transition',
@@ -319,10 +308,10 @@ class NativeSites(unittest.TestCase):
     def report(self,image=None,decoded=None):
         return probe.inspect(image or self.image,decoded or self.decoded,self.source)
 
-    def test_actual_executable_and_all_47_spans(self):
+    def test_actual_executable_and_all_33_spans(self):
         report=probe.verify()
         self.assertEqual(report['result'],'PASS',report['checks'])
-        self.assertEqual(len(report['sites']),47)
+        self.assertEqual(len(report['sites']),33)
 
     def test_corrupted_byte_refused_at_every_site(self):
         for site in probe.SITES:

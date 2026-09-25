@@ -1018,9 +1018,7 @@ class LauncherOption(unittest.TestCase):
                 self.assertEqual(code, 2, missing)
                 if missing != '--motion-output':  # --hdr's own prerequisite error comes first without it
                     self.assertIn('--bolt-footprint requires --motion-output --hdr --ownership', error)
-            code, _, error = self.launch(directory, '--taa', '--object-trace', '--object-lifetime', '--hdr-tonemap', '--hdr-decode', 'gamma2.2', *self.PREREQUISITES, '--screen-emission', '--bolt-footprint', '3,12')
-            self.assertEqual(code, 2)
-            self.assertIn('--bolt-footprint needs the additive bullets', error)
+            # (The packed route that excluded the additive bullets has no launcher option since 2026-09-25.)
             self.assertEqual(self.env(directory, '--bolt-footprint', '0')['X3M_BOLT_FOOTPRINT'], '0', 'the off value needs nothing')
 
     def test_malformed_values_are_refused(self):

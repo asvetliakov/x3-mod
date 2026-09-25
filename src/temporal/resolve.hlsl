@@ -6,15 +6,12 @@ sampler2D previousDepth : register(s3);
 sampler2D motionOverride : register(s4);
 sampler2D currentReactive : register(s5);
 sampler2D previousReactive : register(s6);
-#ifndef X3M_HISTORY_TAPS16
-// The 5-tap history reconstruction (the default; X3M_HISTORY_TAPS16 compiles the
-// 16-tap point form of the earlier programs, resolve_*taps16.hlsl): the previous
-// colour and the previous reactive mask bound a second time, s11 / s12 with LINEAR
-// min / mag (TemporalPass, only for these programs); s2 / s6 stay point-sampled
-// for the exact texel read at rest.
+// The 5-tap history reconstruction (the only one since the 16-tap point form was removed on
+// 2026-09-25): the previous colour and the previous reactive mask bound a second time,
+// s11 / s12 with LINEAR min / mag (TemporalPass); s2 / s6 stay point-sampled for the exact
+// texel read at rest.
 sampler2D previousColorLinear : register(s11);
 sampler2D previousReactiveLinear : register(s12);
-#endif
 float4 reprojection0 : register(c0);
 float4 reprojection1 : register(c1);
 float4 reprojection2 : register(c2);
@@ -389,41 +386,11 @@ float snapFraction(inout float base, float f) {
     if (f > 1 - snapEpsilon) { base += 1; return 0; }
     return f < snapEpsilon ? 0 : f;
 }
-// One Catmull-Rom history tap of the 16-tap form (X3M_HISTORY_TAPS16). Nonfinite
-// taps contribute no energy and the remaining weights renormalize; a nonzero-weight
-// tap with reactive previous coverage (mask policy) rejects the whole lookup.
 #ifdef X3M_THIN_CLIP
 #define HISTORY_SUM float4
 #else
 #define HISTORY_SUM float3
 #endif
-void historyTap(float2 uv, float weight, inout HISTORY_SUM sum, inout float total, inout bool reactive) {
-    if (weight != 0) {
-        if (options.y > 0.5 && !maskSafe(fetch(previousReactive, uv).r)) reactive = true;
-#ifdef X3M_THIN_CLIP
-        float4 color = fetch(previousColor, uv);
-        if (finiteColor(color.rgb)) {
-            // History alpha is this program's own output; a nonfinite one is
-            // refused by the range test at the blend.
-            sum += float4(weigh(color.rgb), color.a) * weight;
-            total += weight;
-        }
-#else
-        float3 color = fetch(previousColor, uv).rgb;
-        if (finiteColor(color)) {
-            sum += weigh(color) * weight;
-            total += weight;
-        }
-#endif
-    }
-}
-// Keep the bounded neighborhood loops rolled to fit the ps_3_0 static
-// instruction budget. Traversal and arithmetic order stay unchanged. SM3 has
-// no dynamic temporary-component indexing: select the exact Catmull-Rom weight
-// for the loop index in [0,3] without changing its value.
-float loopWeight(float4 weights, int index) {
-    return index == 0 ? weights.x : (index == 1 ? weights.y : (index == 2 ? weights.z : weights.w));
-}
 #ifdef X3M_AGE_WEIGHT
 #ifdef X3M_REGION_HOLD
 // COLOR2: the next R32F depth history, the centre lane's .r (set first in main), on every return.
@@ -748,40 +715,6 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     }
     if (proven < considered - 0.001) return emit(float4(color, alpha), X3M_FRESH_AGE);
 
-#ifdef X3M_HISTORY_TAPS16
-    // History color: Catmull-Rom over the 4x4 texel neighborhood (16 point
-    // taps; the samplers are point-filtered by contract, so the 9-tap form that
-    // relies on hardware bilinear filtering is unavailable). Its negative lobes
-    // keep detail that repeated bilinear resampling would blur away at
-    // fractional velocities; the neighborhood clip bounds the overshoot. A
-    // lookup on the texel grid (static content) reads that texel only.
-    HISTORY_SUM accumulated = 0;
-    float total = 0;
-    bool reactive = false;
-#ifdef X3M_THIN_CLIP
-    // Slot budget: the variants drop the single-tap branch. On the texel grid
-    // the weights are exactly (0, 1, 0, 0) and zero-weight taps are skipped,
-    // so the loop reads that texel only and yields the same value.
-    {
-#else
-    [branch] if (all(f == 0)) {
-        historyTap(tap, 1, accumulated, total, reactive);
-    } else {
-#endif
-        float2 f2 = f * f, f3 = f2 * f;
-        float2 w0 = -0.5 * f + f2 - 0.5 * f3;
-        float2 w1 = 1 - 2.5 * f2 + 1.5 * f3;
-        float2 w2 = 0.5 * f + 2 * f2 - 1.5 * f3;
-        float2 w3 = -0.5 * f2 + 0.5 * f3;
-        float4 wx = float4(w0.x, w1.x, w2.x, w3.x), wy = float4(w0.y, w1.y, w2.y, w3.y);
-        [loop] for (int j = 0; j < 4; ++j) {
-            [loop] for (int i = 0; i < 4; ++i)
-                historyTap(tap + float2(i - 1, j - 1) * sizeJitter.xy, loopWeight(wx, i) * loopWeight(wy, j), accumulated, total, reactive);
-        }
-    }
-    if (reactive || total < 0.5) return emit(float4(color, alpha), X3M_FRESH_AGE);
-    float3 old = accumulated.rgb / total;
-#else
     // History color: Catmull-Rom (a = -0.5) through five hardware-bilinear taps
     // (Jimenez, "Filmic SMAA", SIGGRAPH 2016; Karis, UE4 TAA). Per axis, with t the
     // centre of texel 1 of the 4x4 neighbourhood (`tap`, texels 0..3 at t - 1 .. t + 2)
@@ -877,7 +810,6 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
 #undef X3M_HISTORY_FETCH
     float3 old = accumulated.rgb / total;
     if (reactive || !finiteColor(old)) return emit(float4(color, alpha), X3M_FRESH_AGE);
-#endif
 #ifdef X3M_REGION_HOLD
     // A': the holds of the reprojected age texel (the one the count is read from below) and the composition the y draw of
     // the mask chain did. Read here because stabilise gates the clip below; the other age programs read the texel after

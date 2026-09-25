@@ -76,3 +76,5 @@ that has it on. With `--cull-small-parts 4` the stub culled 30–33 of the 51–
 were the cull-off count (`docs/verification/bolt-footprint.md`, Run 75 B). Projectile nodes are now exempt by
 default (`--cull-small-parts-projectiles`, `docs/reverse-engineering/lod-selection.md` "Projectile nodes"). Plausible fix (inferred): a minimum on-screen footprint for the bullet draws in the additive route
 (design note pending); a per-effect gain would only brighten a 1 px dot under the bloom clamp.
+
+**Removed 2026-09-25** (user decision): `--screen-emission`, `--screen-emission-gain`, `--screen-emission-timing`, `--fade-witness`, `--hull-emitters`, `--hull-emission-gain`, `--linear-emissions` and `--emission-gain` from the launcher only (the DLL paths stay for the live runner and the shared composition pass; the guide lights take `--emission-source-gain`); `docs/verification/launcher-options-inventory.md`, "4. Removed 2026-09-25".

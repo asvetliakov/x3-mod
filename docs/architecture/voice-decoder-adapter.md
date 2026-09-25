@@ -231,9 +231,13 @@ updated.
 
 ## Load hang witness build
 
-One consolidated diagnostic build records, from inside the process, where the
-main thread loops during the hang. Both mechanisms are default-off and change
-nothing when unset. `--profile --profile-raw` (`X3M_PROFILE_RAW=1`) makes the
+**Removed 2026-09-25** (user decision; `docs/verification/launcher-options-inventory.md`, "4. Removed 2026-09-25"): the load
+hang's cause was found (above), and `--profile-raw` / `X3M_PROFILE_RAW` and `--audio-sites` / `X3M_AUDIO_SITES` with their
+fourteen audio sites are gone; the launch command below no longer parses. What follows is the history of that build.
+
+One consolidated diagnostic build recorded, from inside the process, where the
+main thread looped during the hang. Both mechanisms were default-off and changed
+nothing when unset. `--profile --profile-raw` (`X3M_PROFILE_RAW=1`) made the
 sampling profiler log, once per thread per report period, the raw
 `Eip/Esp/Ebp/SegCs`, `ContextFlags` and 32 stack dwords (each with module
 index + RVA when it falls in a pinned executable range) whenever a sampled
@@ -241,7 +245,7 @@ thread's EIP resolves to no pinned module (the constant `module=0xffff
 rva=0x10000` leaf of runs 29–35), plus `profile_raw_failure` lines with the
 `SuspendThread`/`GetThreadContext` error codes and per-report failure counts on
 `profile_thread` (`docs/verification/sampling-profiler.md`).
-`--game-phases --audio-sites` (`X3M_AUDIO_SITES=1`) adds fourteen byte-verified
+`--game-phases --audio-sites` (`X3M_AUDIO_SITES=1`) added fourteen byte-verified
 markers to the game-phase group (`src/proxy/game_phase_sites.h`, indices 33–46,
 qualified by `verification/probe/verify_game_phase_sites.py`): the returns of
 `SetState(RUN)` (`4d03f5`) and `Pause` (`4d0407`) with their HRESULTs, the pump
@@ -256,7 +260,7 @@ transactionally and rolls back on any byte or claim mismatch, exactly as the
 phase markers do. One `game_phase_audio scope=window` line accompanies each
 `game_phase_window` report and, because the hang stops frame progression at
 session frame 3, the sampler thread also writes `scope=timed` every 2 s
-(`--profile` required for the timed line). Launch:
+(`--profile` required for the timed line). Launch (history; both options were removed on 2026-09-25):
 `python3 tools/manage.py launch --direct --telemetry --game-phases --audio-sites --profile --profile-raw --voice-decoder DIR`.
 
 ## DMO fallback hook (2026-09-14)

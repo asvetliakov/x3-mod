@@ -7,17 +7,15 @@ namespace x3m {
 // The emitter keys (F4/F5/F6) only flip which prebuilt pixel-shader variant
 // the per-draw path binds; they create nothing. F7 is the telemetry marker
 // and F8 the capture key. F12 is the sun-shadow A/B: it flips one scene-end
-// boolean (the cascade replay and the apply quad), nothing per draw. F11 is
-// the fog shadow-pass A/B: it flips the grid variant the next owner latch
-// hands to the fog pass, nothing per draw; Ctrl+Alt+F11 (Shift up, its own raw latch) is the fog dust motes' on/off.
+// boolean (the cascade replay and the apply quad), nothing per draw.
+// Ctrl+Alt+F11 (Shift up, its own raw latch) is the fog dust motes' on/off.
 struct ComparisonKeys {
     bool foreground = false, control = false, shift = false;
     bool exposure = false, bloom = false; // F9, F10
     bool screen_additive = false, source_gain = false; // F5, F6
     bool hull_gain = false; // F4
     bool sun_shadow = false; // F12
-    bool fog_shadow_pass = false; // F11 (with --fog-shadow-pass on)
-    bool fog_dust_motes = false; // F11 raw (with --fog-dust-motes): fires on Ctrl+Alt with Shift up, disjoint from Ctrl+Shift+F11
+    bool fog_dust_motes = false; // F11 raw (with --fog-dust-motes): fires on Ctrl+Alt with Shift up
     bool fog_toggle = false, fog_step = false; // F9, F10 raw (with --volumetric-fog): fire on Ctrl+Alt with Shift up, disjoint from Ctrl+Shift+F9/F10
     bool alt = false; // polled with --fps-overlay only
     bool fps_overlay = false; // F7 (with --fps-overlay): fires on Ctrl+Alt with Shift up, disjoint from the Ctrl+Shift+F7 telemetry marker
@@ -27,7 +25,6 @@ struct ComparisonActions {
     bool screen_additive = false, source_gain = false;
     bool hull_gain = false;
     bool sun_shadow = false;
-    bool fog_shadow_pass = false;
     bool fog_dust_motes = false;
     bool fog_toggle = false, fog_step = false;
     bool fps_overlay = false;
@@ -49,7 +46,6 @@ public:
             result.screen_additive = keys.screen_additive && !screen_additive_down_;
             result.source_gain = keys.source_gain && !source_gain_down_;
             result.hull_gain = keys.hull_gain && !hull_gain_down_;
-            result.fog_shadow_pass = keys.fog_shadow_pass && !fog_shadow_pass_down_;
             result.sun_shadow = keys.sun_shadow && !sun_shadow_down_;
         }
         // The overlay chord is Ctrl+Alt with Shift up, edged here outside the
@@ -69,12 +65,12 @@ private:
     void latch(const ComparisonKeys& keys) noexcept {
         exposure_down_ = keys.exposure; bloom_down_ = keys.bloom;
         screen_additive_down_ = keys.screen_additive; source_gain_down_ = keys.source_gain; hull_gain_down_ = keys.hull_gain;
-        sun_shadow_down_ = keys.sun_shadow; fog_shadow_pass_down_ = keys.fog_shadow_pass; fps_overlay_down_ = keys.fps_overlay; fog_toggle_down_ = keys.fog_toggle; fog_step_down_ = keys.fog_step;
+        sun_shadow_down_ = keys.sun_shadow; fps_overlay_down_ = keys.fps_overlay; fog_toggle_down_ = keys.fog_toggle; fog_step_down_ = keys.fog_step;
         fog_dust_motes_down_ = keys.fog_dust_motes;
         modifiers_down_ = keys.control && keys.shift;
     }
     bool focused_ = false, exposure_down_ = false, bloom_down_ = false, modifiers_down_ = false;
-    bool screen_additive_down_ = false, source_gain_down_ = false, hull_gain_down_ = false, sun_shadow_down_ = false, fog_shadow_pass_down_ = false;
+    bool screen_additive_down_ = false, source_gain_down_ = false, hull_gain_down_ = false, sun_shadow_down_ = false;
     bool fps_overlay_down_ = false, fog_toggle_down_ = false, fog_step_down_ = false, fog_dust_motes_down_ = false;
 };
 } // namespace x3m

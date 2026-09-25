@@ -13,8 +13,9 @@ these materials is diffuse-authored with the lightmap slot (the r0 sample)
 black (archive check, 2026-09-17). Every other original word and the native
 alpha MUL are retained in order, so the alpha lane and a black pixel are
 bit-identical. Blend law: only ADD ONE/ONE admits; screen is never substituted
-in this population. Launcher: --hull-emitters applies the existing
---emission-source-gain G to this population and requires it and --hdr.
+in this population. Launcher: an --emission-source-gain G above 1 applies
+to this population as well (X3M_HULL_EMISSION_GAIN; the --hull-emitters and
+--hull-emission-gain options were removed on 2026-09-25).
 No game assets bundled.
 """
 import contextlib
@@ -220,62 +221,34 @@ class LauncherGateTests(unittest.TestCase):
             baseline = json.loads(output)['env']
             self.assertEqual(baseline['X3M_HULL_EMISSION_GAIN'], '1.0')
             # The guide lights follow the effects gain and its key: an
-            # --emission-source-gain above 1 implies --hull-emitters and hands
-            # them its value, so the user selects both with one option.
+            # --emission-source-gain above 1 hands them its value, so the user
+            # selects both with one option.
             code, output, error = launch(directory, *PREREQUISITES, '--emission-source-gain', '2')
             self.assertEqual(code, 0, error)
             implied = json.loads(output)['env']
             self.assertEqual((implied['X3M_HULL_EMISSION_GAIN'], implied['X3M_EMISSION_SOURCE_GAIN']), ('2.0', '2.0'))
-            code, output, error = launch(directory, *PREREQUISITES, '--emission-source-gain', '2', '--hull-emitters')
-            self.assertEqual(code, 0, error)
-            env = json.loads(output)['env']
-            self.assertEqual((env['X3M_HULL_EMISSION_GAIN'], env['X3M_EMISSION_SOURCE_GAIN']), ('2.0', '2.0'))
-            self.assertEqual(env, implied, 'the explicit switch adds nothing to the implied population')
             # Gain 1 is off: no variant, so nothing is implied either.
             code, output, error = launch(directory, *PREREQUISITES, '--emission-source-gain', '1')
             self.assertEqual(code, 0, error)
             self.assertEqual(json.loads(output)['env']['X3M_HULL_EMISSION_GAIN'], '1.0')
-            # The converted route takes the same implication: the guide lights
-            # are the effects family (the twelve programs are original hull
-            # programs either way), so --linear-materials changes nothing here.
-            code, output, error = launch(directory, *PREREQUISITES, '--hdr-tonemap', '--linear-materials',
-                                         '--emission-source-gain', '2')
+            # --hull-emitters and --hull-emission-gain were removed on 2026-09-25 (docs/verification/launcher-options-inventory.md,
+            # "Removed 2026-09-25"): the guide lights take the effects gain only, and an inherited value never survives.
+            for bad in (PREREQUISITES + ['--hull-emitters'], PREREQUISITES + ['--emission-source-gain', '2', '--hull-emission-gain', '3']):
+                code, _, error = launch(directory, *bad); self.assertEqual(code, 2, bad); self.assertIn('unrecognized arguments', error)
+            with contextlib.ExitStack() as stack:
+                stack.enter_context(mock.patch.dict(os.environ, {"X3M_HULL_EMISSION_GAIN": "8"}))
+                code, output, error = launch(directory, *PREREQUISITES, '--emission-source-gain', '3')
             self.assertEqual(code, 0, error)
-            self.assertEqual(json.loads(output)['env']['X3M_HULL_EMISSION_GAIN'], '2.0')
-            # An explicit hull gain still overrides the effects gain's value,
-            # with or without the switch.
-            code, output, error = launch(directory, *PREREQUISITES, '--emission-source-gain', '2', '--hull-emission-gain', '3')
-            self.assertEqual(code, 0, error)
-            env = json.loads(output)['env']
-            self.assertEqual((env['X3M_HULL_EMISSION_GAIN'], env['X3M_EMISSION_SOURCE_GAIN']), ('3.0', '2.0'))
-            # Own gain: --hull-emission-gain G stands without the effects gain
-            # (the hull population is bracketed alone) and wins over it.
-            code, output, error = launch(directory, *PREREQUISITES, '--hull-emitters', '--hull-emission-gain', '4')
-            self.assertEqual(code, 0, error)
-            env = json.loads(output)['env']
-            self.assertEqual((env['X3M_HULL_EMISSION_GAIN'], env['X3M_EMISSION_SOURCE_GAIN']), ('4.0', '1.0'))
-            code, output, error = launch(directory, *PREREQUISITES, '--emission-source-gain', '2', '--hull-emitters', '--hull-emission-gain', '8')
-            self.assertEqual(code, 0, error)
-            env = json.loads(output)['env']
-            self.assertEqual((env['X3M_HULL_EMISSION_GAIN'], env['X3M_EMISSION_SOURCE_GAIN']), ('8.0', '2.0'))
-            for bad, message in ((PREREQUISITES + ['--hull-emitters'], '--emission-source-gain'),
-                                 (PREREQUISITES + ['--hull-emitters'], '--hull-emission-gain'),
-                                 (['--motion-output', '--emission-source-gain', '2', '--hull-emitters'], '--emission-source-gain requires --hdr'),
-                                 (['--motion-output', '--hull-emitters', '--hull-emission-gain', '2'], '--hull-emitters requires --hdr'),
-                                 (PREREQUISITES + ['--emission-source-gain', '9', '--hull-emitters'], '--emission-source-gain'),
-                                 (PREREQUISITES + ['--hull-emission-gain', '2'], '--hull-emission-gain requires --hull-emitters'),
-                                 (PREREQUISITES + ['--hull-emitters', '--hull-emission-gain', '9'], '--hull-emission-gain must be finite'),
-                                 (PREREQUISITES + ['--hull-emitters', '--hull-emission-gain', '0.5'], '--hull-emission-gain must be finite'),
-                                 (PREREQUISITES + ['--hull-emitters', '--hull-emission-gain', '1'], 'must be above 1')):
+            self.assertEqual(json.loads(output)['env']['X3M_HULL_EMISSION_GAIN'], '3.0')
+            for bad, message in ((['--motion-output', '--emission-source-gain', '2'], '--emission-source-gain requires --hdr'),
+                                 (PREREQUISITES + ['--emission-source-gain', '9'], '--emission-source-gain')):
                 code, _, error = launch(directory, *bad); self.assertEqual(code, 2, bad); self.assertIn(message, error)
             for boundary in ('1', '8'):
-                code, _, error = launch(directory, *PREREQUISITES, '--emission-source-gain', boundary, '--hull-emitters')
+                code, output, error = launch(directory, *PREREQUISITES, '--emission-source-gain', boundary)
                 self.assertEqual(code, 0, error)
-            for boundary in ('1.5', '8'):
-                code, _, error = launch(directory, *PREREQUISITES, '--hull-emitters', '--hull-emission-gain', boundary)
-                self.assertEqual(code, 0, error)
+                self.assertEqual(json.loads(output)['env']['X3M_HULL_EMISSION_GAIN'], repr(float(boundary)))
         help_text = launch_help()
-        self.assertIn('--hull-emitters', help_text); self.assertIn('--hull-emission-gain', help_text)
+        self.assertNotIn('--hull-emitters', help_text); self.assertNotIn('--hull-emission-gain', help_text)
         self.assertIn('Ctrl+Shift+F6', help_text)  # the guide lights moved to the effects key
 
 

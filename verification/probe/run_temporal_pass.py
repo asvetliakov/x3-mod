@@ -8,9 +8,7 @@ sys.path.insert(0,str(root/'tools/analysis'))
 import analyze_iteration09_run2 as it09  # noqa: E402  the run-2 sharpness metrics (gradient energy, edge spread / MTF50)
 results=bottle.results_dir(root)
 exe=root/'verification/probe/build/temporal_pass_fixture.exe'
-paths=[root/name for name in ('src/renderer/temporal_pass.h','src/renderer/temporal_pass.cpp','src/temporal/resolve.h','src/temporal/resolve.hlsl','src/temporal/resolve_snapshot.hlsl','src/renderer/temporal_resolve_snapshot_program_inc.h','src/renderer/temporal_resolve_program.h','src/temporal/resolve_thin.hlsl','src/renderer/temporal_resolve_thin_program_inc.h','src/temporal/resolve_age.hlsl','src/renderer/temporal_resolve_age_program_inc.h','verification/probe/temporal_flicker_inc.h','verification/probe/temporal_line_inc.h','verification/probe/temporal_far_inc.h','verification/probe/temporal_thin_region_inc.h','src/temporal/thin_box_ps.hlsl','verification/probe/temporal_resolve_far_reference_inc.h','src/temporal/resolve_far.hlsl','src/renderer/temporal_resolve_far_program_inc.h','src/temporal/line_mask_ps.hlsl','src/renderer/temporal_line_mask_program_inc.h','src/temporal/line_mask_depth_ps.hlsl','src/renderer/temporal_line_mask_depth_program_inc.h','verification/probe/temporal_depth_fold_inc.h','verification/probe/temporal_history_taps_inc.h',
-    'src/temporal/resolve_taps16.hlsl','src/renderer/temporal_resolve_taps16_program_inc.h','src/temporal/resolve_thin_taps16.hlsl','src/renderer/temporal_resolve_thin_taps16_program_inc.h',
-    'src/temporal/resolve_age_taps16.hlsl','src/renderer/temporal_resolve_age_taps16_program_inc.h','src/temporal/resolve_far_taps16.hlsl','src/renderer/temporal_resolve_far_taps16_program_inc.h',
+paths=[root/name for name in ('src/renderer/temporal_pass.h','src/renderer/temporal_pass.cpp','src/temporal/resolve.h','src/temporal/resolve.hlsl','src/temporal/resolve_snapshot.hlsl','src/renderer/temporal_resolve_snapshot_program_inc.h','src/renderer/temporal_resolve_program.h','src/temporal/resolve_thin.hlsl','src/renderer/temporal_resolve_thin_program_inc.h','src/temporal/resolve_age.hlsl','src/renderer/temporal_resolve_age_program_inc.h','verification/probe/temporal_flicker_inc.h','verification/probe/temporal_line_inc.h','verification/probe/temporal_far_inc.h','verification/probe/temporal_thin_region_inc.h','src/temporal/thin_box_ps.hlsl','src/temporal/resolve_far.hlsl','src/renderer/temporal_resolve_far_program_inc.h','src/temporal/line_mask_ps.hlsl','src/renderer/temporal_line_mask_program_inc.h','src/temporal/line_mask_depth_ps.hlsl','src/renderer/temporal_line_mask_depth_program_inc.h','verification/probe/temporal_depth_fold_inc.h','verification/probe/temporal_history_taps_inc.h',
     'src/temporal/resolve_far_camera_hold.hlsl','src/renderer/temporal_resolve_far_camera_hold_program_inc.h','src/temporal/thin_box_hold_ps.hlsl','src/renderer/temporal_thin_box_hold_program_inc.h',
     'verification/probe/temporal_fold_timing_inc.h',
     'verification/probe/temporal_far_camera_inc.h',
@@ -211,7 +209,7 @@ try:
     # taa-mask-fold.md section 7, 2026-09-25).
     assert not fields('SENTINEL_STABILISER ') and not fields('LINE_TIMING_SENTINEL '),'retired sentinel rows printed'
     # 18 THIN_REGION rows: six configurations x three drifts (the camera gate's are THIN_REGION_HOLD's since 2026-09-24).
-    assert 'FAR_BASE numerical=299 state_restorations=6' in lattice_text and len(report['thin_region']['cases'])==18 and all(c['square_differs']=='0' for c in report['thin_region']['cases']),report['thin_region']
+    assert 'FAR_BASE numerical=295 state_restorations=6' in lattice_text and len(report['thin_region']['cases'])==18 and all(c['square_differs']=='0' for c in report['thin_region']['cases']),report['thin_region']
     assert len(report['pass_timing'])==1,report['pass_timing']
     # Cleanup batch 6 (2026-09-23): 10 / 0 are the run-139 history-weight cases (LATTICE_BASE; the filtered-sample rows and
     # their refusals, 18 and 9, went with --taa-current-filter); the flicker cases add 180 numerical and 4 state checks
@@ -252,15 +250,17 @@ try:
     # exact at 32 / 1280 / 5120 and the fraction ramp, FP16 and R32F), the tap setting (1), four scenes (two each: the program
     # drawn and the rest / drift verdict; the far program on the screen gate: the camera gate has no 16-tap form), two
     # fallbacks, no camera-gate program without the filter query, and the Reset.
-    report['history_taps']={'filter_probe':fields('FILTER_PROBE '),'config':fields('HISTORY_TAPS_CONFIG '),'scenes':fields('HISTORY_TAPS program='),
-                            'fallback':fields('HISTORY_TAPS_FALLBACK '),'reset':fields('HISTORY_TAPS_RESET '),'far_idle':fields('HISTORY_TAPS_FAR_IDLE '),
-                            'no_filter_camera':fields('HISTORY_TAPS_NO_FILTER_CAMERA ')}
+    # 2026-09-25: the 16-tap point programs were removed (--taa-history-taps went): the tap setting, the four 5 / 16 scenes and
+    # the two 16-tap fallbacks went with them; a device without the filter query now refuses initialize (no fallback set).
+    # Measured totals after it (2026-09-25): FAR_BASE 299 -> 295 (the far scenes' 16-tap reference identities), the history-taps
+    # block 21 -> 10 numerical checks, RESULT 598 -> 583 / 90; the standalone filter query (HISTORY_FILTER_QUERY, MotionOutput's
+    # attach-time decision) adds 1: 584 / 90.
+    report['history_taps']={'filter_probe':fields('FILTER_PROBE '),'reset':fields('HISTORY_TAPS_RESET '),'no_filter':fields('HISTORY_TAPS_NO_FILTER '),'query':fields('HISTORY_FILTER_QUERY ')}
     taps=report['history_taps']
-    assert len(taps['far_idle'])==2,taps['far_idle'] # report only: whether the far rows are independent of the plain ones
-    assert [(r['bilinear'],r['far'],r['camera_gate'],r['create'],r['camera_run_refused']) for r in taps['no_filter_camera']]==[('0','1','0','8876086a','1')],taps['no_filter_camera']
+    assert [(r['bilinear'],r['reason'],r['initialize'],r['references']) for r in taps['no_filter']]==[('0','adapter_query','8876086a','0')],taps['no_filter']
+    assert [(r['refused_reason'],r['passed'],r['passed_reason'],r['references']) for r in taps['query']]==[('adapter_query','00000000','ok','0')],taps['query']
     assert len(taps['filter_probe'])==8 and all(r['mismatched']=='0' for r in taps['filter_probe'] if r['mode']=='centre'),taps['filter_probe']
-    assert len(taps['scenes'])==4 and all(r['drawn']=='1' and r['caller_16_identical']=='1' and r['bound_exceeded']=='0' for r in taps['scenes']) and all(float(r['max_ulps'])<=1 for r in taps['scenes'] if r['motion']=='rest'),taps['scenes']
-    assert [(r['bilinear'],r['reason'],r['drawn_16'],r['identical_to_16']) for r in taps['fallback']]==[('0','adapter_query','1','1')]*2 and taps['reset'][0]['identical_to_fresh']=='1',taps
+    assert len(taps['reset'])==1 and taps['reset'][0]['identical_to_fresh']=='1',taps
     # A' (taa-plan-lifted-slot-cap.md step 1; the camera gate's only path since 2026-09-24): the identity of the hold program with
     # holds reading 0 against the removed camera program (compiled from resolve.hlsl, word for word the removed embedded program) on
     # the 1x1 composition (colour bit for bit, age = count + encoded holds; four k / S configurations), the state rows, and the
@@ -280,11 +280,11 @@ try:
     # colour, age and RT2 depth identical, the flag and the camera term exercised; the state row with RT2, the stream offsets from
     # a non-hostile start and the 2-RT refusal; FOLD_FALLBACK: the in-place 7x7 against the oracle on its pixels (full and half).
     assert len(hold['identity'])==2 and all(r['colour_differs']==r['age_differs']==r['count_differs']==r['depth_differs']=='0' and int(r['blended'])>256 and int(r['flagged'])>0 and int(r['camera_adds'])>0 for r in hold['identity']),hold['identity']
-    assert len(hold['state'])==1 and all(hold['state'][0][k]=='1' for k in ('refused_path','two_targets_refused','rt2_restored','streams_restored','screen_restarts','screen_continues','camera_keeps','taps16_refused','taps5_camera','box_refused_region_off','rearmed')),hold['state']
+    assert len(hold['state'])==1 and all(hold['state'][0][k]=='1' for k in ('refused_path','two_targets_refused','rt2_restored','streams_restored','screen_restarts','screen_continues','camera_keeps','taps5_camera','box_refused_region_off','rearmed')),hold['state']
     assert [hold['state'][0][k] for k in ('masks_camera','masks_screen','masks_on','masks_at_reset','masks_after_reset','masks_box_refused')]==['0','2','0','0','0','0'],hold['state']
     assert len(hold['thin'])==3 and all(r['square_differs']=='0' and float(r['age_oracle_error'])==0 for r in hold['thin']) and len(hold['motion_start'])==1 and len(hold['pan'])==1 and len(hold['stale'])==1 and len(hold['box_domain'])==1 and len(hold['pan_stop'])==1 and len(hold['box_open'])==1,hold
     assert [(r['scene'],r['box']) for r in hold['fold_fallback']]==[(s,b) for s in ('pan_arm_bars','gap_lattice_7.5px') for b in ('full','half')] and all(int(r['fallback_px_frames'])>0 and float(r['error_in_place_7x7'])<=float(r['bound']) for r in hold['fold_fallback']),hold['fold_fallback']
-    assert lattice.returncode==0 and 'LATTICE_BASE numerical=10 state_restorations=0' in lattice_text and 'FLICKER_BASE numerical=190 state_restorations=4' in lattice_text and 'LINE_BASE numerical=190 state_restorations=4' in lattice_text and 'DEPTH_FOLD_BASE numerical=452 state_restorations=72' in lattice_text and 'HISTORY_TAPS_BASE numerical=473 state_restorations=72' in lattice_text and 'REGION_HOLD_BASE numerical=525 state_restorations=75' in lattice_text and 'BOX_HALF_BASE numerical=548 state_restorations=76' in lattice_text and 'THIN_SOURCE_BASE numerical=561 state_restorations=90' in lattice_text and 'FOLD_TIMING_BASE numerical=561 state_restorations=90' in lattice_text and 'FAR_CAMERA_PAN_BASE numerical=581 state_restorations=90' in lattice_text and 'RESULT PASS numerical=598 state_restorations=90 lattice=1' in lattice_text and 'FAIL' not in lattice_text,lattice_text[-1500:]
+    assert lattice.returncode==0 and 'LATTICE_BASE numerical=10 state_restorations=0' in lattice_text and 'FLICKER_BASE numerical=190 state_restorations=4' in lattice_text and 'LINE_BASE numerical=190 state_restorations=4' in lattice_text and 'DEPTH_FOLD_BASE numerical=448 state_restorations=72' in lattice_text and 'HISTORY_TAPS_BASE numerical=459 state_restorations=72' in lattice_text and 'REGION_HOLD_BASE numerical=511 state_restorations=75' in lattice_text and 'BOX_HALF_BASE numerical=534 state_restorations=76' in lattice_text and 'THIN_SOURCE_BASE numerical=547 state_restorations=90' in lattice_text and 'FOLD_TIMING_BASE numerical=547 state_restorations=90' in lattice_text and 'FAR_CAMERA_PAN_BASE numerical=567 state_restorations=90' in lattice_text and 'RESULT PASS numerical=584 state_restorations=90 lattice=1' in lattice_text and 'FAIL' not in lattice_text,lattice_text[-1500:]
     # The 2,048-slot ceiling per TAA program (docs/architecture/taa-plan-lifted-slot-cap.md section 2; AGENTS.md "Shader slot
     # budget": 512 is the spec minimum, not a limit). device_limit stays a record.
     assert len(report['flicker']['drift'])==64 and len(report['flicker']['near_depth'])==8 and all(float(v['instruction_slots'])<=2048 and v['within_ceiling_2048']==1 for k,v in report['lattice']['budget'].items()),report['lattice']['budget']

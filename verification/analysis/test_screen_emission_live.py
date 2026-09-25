@@ -1,5 +1,5 @@
 """Steps C and E of docs/architecture/screen-emission-region.md, host side:
-the launcher options (--screen-emission, --screen-emission-gain), the shared
+the packed route's launcher options are gone (--screen-emission, --screen-emission-gain, removed 2026-09-25), the shared
 admission table (nine SM1 pairs, the bullet scan allowlist), the live
 runner's counter/sample parser with the step E law, the overlap-chain twin
 comparison and the witness union with packed rectangles. Never executes
@@ -9,6 +9,7 @@ import importlib.util
 import io
 import json
 import math
+import os
 from pathlib import Path
 import re
 import shutil
@@ -23,7 +24,7 @@ ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/'verification/probe'))
 import run_linear_distance_fade_live as live
 
-PREREQUISITES=['--ownership','--object-trace','--object-lifetime','--motion-output','--taa','--hdr','--hdr-tonemap','--linear-materials']
+PREREQUISITES=['--ownership','--object-trace','--object-lifetime','--motion-output','--taa','--hdr','--hdr-tonemap']
 SM1_PAIRS={('5e484a06672e28fb','ec1f5c4a2f4e1445'),('1b6863a088a177af','84d3de8887c963c5'),('21a2c13be7f989c3','d4a26efb7c603931'),
            ('0d44b36d48d24f7a','078494828322bcca'),('637dadcb5efa3288','078494828322bcca'),('6da1b1b6ed63ec82','2ea025492d370c8e'),
            ('ed42e0742e47dca4','2ea025492d370c8e'),('88620f88d6e0a00e','a5c3495e27270b4a'),('f9755e1154244f58','a5c3495e27270b4a')}
@@ -148,35 +149,19 @@ def timing_report(screen,width,height):
 
 
 class LauncherOption(unittest.TestCase):
-    def test_option_sets_both_variables_only_when_requested(self):
+    def test_packed_route_options_are_removed(self):
+        # --screen-emission, --screen-emission-gain and --screen-emission-timing left the launcher on 2026-09-25
+        # (docs/verification/launcher-options-inventory.md, "Removed 2026-09-25"); the DLL keeps the packed route for the
+        # live runner (run_linear_distance_fade_live.py sets the variables itself). No variable is sent or inherited.
+        variables=('X3M_SCREEN_EMISSION','X3M_SCREEN_EMISSION_BOUND','X3M_SCREEN_EMISSION_GAIN','X3M_SCREEN_EMISSION_TIMING')
         with tempfile.TemporaryDirectory() as directory:
-            code,output,error=launch(directory,*PREREQUISITES);self.assertEqual(code,0,error)
-            baseline=json.loads(output)['env']
-            self.assertEqual((baseline['X3M_SCREEN_EMISSION'],baseline['X3M_SCREEN_EMISSION_BOUND']),('0','0'))
-            code,output,error=launch(directory,*PREREQUISITES,'--screen-emission');self.assertEqual(code,0,error)
+            with mock.patch.dict(os.environ,{name:'1' for name in variables}):
+                code,output,error=launch(directory,*PREREQUISITES);self.assertEqual(code,0,error)
             env=json.loads(output)['env']
-            self.assertEqual((env['X3M_SCREEN_EMISSION'],env['X3M_SCREEN_EMISSION_BOUND']),('1','1'))
-            self.assertEqual({k:v for k,v in env.items() if k not in ('X3M_SCREEN_EMISSION','X3M_SCREEN_EMISSION_BOUND')},
-                             {k:v for k,v in baseline.items() if k not in ('X3M_SCREEN_EMISSION','X3M_SCREEN_EMISSION_BOUND')})
-
-    def test_prerequisites_are_required(self):
-        with tempfile.TemporaryDirectory() as directory:
-            for missing in ('--ownership','--hdr-tonemap','--taa'):
-                args=[a for a in PREREQUISITES if a!=missing]
-                if missing=='--taa':args=[a for a in args if a not in ('--object-trace','--object-lifetime')]
-                code,_,error=launch(directory,*args,'--screen-emission')
-                self.assertEqual(code,2,missing);self.assertIn('--screen-emission',error)
-            code,_,error=launch(directory,*[a for a in PREREQUISITES if a!='--hdr-tonemap'],'--screen-emission','--hdr-tonemap','--hdr-decode','srgb')
-            self.assertEqual(code,2,'gamma2.2 decode');self.assertIn('--screen-emission',error)
-
-    def test_linear_materials_are_not_required(self):
-        # docs/architecture/linear-material-decoupling.md: the packed route
-        # composes on the native-encoded FP16 scene with or without linear hulls.
-        with tempfile.TemporaryDirectory() as directory:
-            args=[a for a in PREREQUISITES if a!='--linear-materials']
-            code,output,error=launch(directory,*args,'--screen-emission');self.assertEqual(code,0,error)
-            env=json.loads(output)['env']
-            self.assertEqual((env['X3M_SCREEN_EMISSION'],env['X3M_SCREEN_EMISSION_BOUND'],env['X3M_LINEAR_MATERIALS'],env['X3M_LINEAR_DISTANCE_FADE']),('1','1','0','0'))
+            for name in variables:self.assertNotIn(name,env)
+            for bad in (('--screen-emission',),('--screen-emission-gain','2'),('--screen-emission-timing',)):
+                code,_,error=launch(directory,*PREREQUISITES,*bad);self.assertEqual(code,2,bad)
+                self.assertTrue('unrecognized arguments' in error or 'ambiguous option' in error,bad)  # --screen-emission: a prefix of --screen-emission-additive*
 
 
 class DllGate(unittest.TestCase):
@@ -192,14 +177,14 @@ class DllGate(unittest.TestCase):
         self.assertNotIn('linear_material_requested &&',block)
         self.assertIn('ownership=%u',source[source.index('screen_emission_mode requested=1'):][:200])
         with tempfile.TemporaryDirectory() as directory:
-            code,output,error=launch(directory,*[a for a in PREREQUISITES if a!='--linear-materials'],'--screen-emission');self.assertEqual(code,0,error)
+            code,output,error=launch(directory,*PREREQUISITES);self.assertEqual(code,0,error)
             self.assertEqual(json.loads(output)['env']['X3M_OWNERSHIP'],'1')
 
 
 class AdditiveOption(unittest.TestCase):
     """--screen-emission-additive G (docs/architecture/screen-emission-region.md,
-    "Additive option"): --motion-output --hdr only, exclusive with the packed
-    route, G finite in [1, 8], an explicit off value otherwise."""
+    "Additive option"): --motion-output --hdr only (the packed route it excluded has no launcher option since
+    2026-09-25; the DLL still lets the packed variable win a conflict), G finite in [1, 8], an explicit off value otherwise."""
     MINIMUM=['--motion-output','--hdr']
 
     def test_option_needs_motion_output_and_hdr_only(self):
@@ -208,20 +193,14 @@ class AdditiveOption(unittest.TestCase):
             baseline=json.loads(output)['env'];self.assertEqual(baseline['X3M_SCREEN_EMISSION_ADDITIVE'],'0')
             code,output,error=launch(directory,*self.MINIMUM,'--screen-emission-additive','2');self.assertEqual(code,0,error)
             env=json.loads(output)['env']
-            self.assertEqual((env['X3M_SCREEN_EMISSION_ADDITIVE'],env['X3M_SCREEN_EMISSION'],env['X3M_SCREEN_EMISSION_BOUND'],env['X3M_LINEAR_MATERIALS'],env['X3M_TAA']),('2.0','0','0','0','0'))
+            self.assertEqual((env['X3M_SCREEN_EMISSION_ADDITIVE'],env['X3M_TAA']),('2.0','0'))
+            for name in ('X3M_SCREEN_EMISSION','X3M_SCREEN_EMISSION_BOUND','X3M_LINEAR_MATERIALS'):self.assertNotIn(name,env)
             self.assertEqual({k:v for k,v in env.items() if k!='X3M_SCREEN_EMISSION_ADDITIVE'},{k:v for k,v in baseline.items() if k!='X3M_SCREEN_EMISSION_ADDITIVE'})
             for missing in self.MINIMUM:
                 code,_,error=launch(directory,*[a for a in self.MINIMUM if a!=missing],'--screen-emission-additive','2')
                 self.assertEqual(code,2,missing);self.assertIn('--screen-emission-additive',error) if missing=='--hdr' else None
-            code,output,error=launch(directory,*[a for a in PREREQUISITES if a!='--linear-materials'],'--screen-emission-additive','1');self.assertEqual(code,0,error)
+            code,output,error=launch(directory,*PREREQUISITES,'--screen-emission-additive','1');self.assertEqual(code,0,error)
             self.assertEqual(json.loads(output)['env']['X3M_SCREEN_EMISSION_ADDITIVE'],'1.0')
-
-    def test_exclusive_with_the_packed_route(self):
-        with tempfile.TemporaryDirectory() as directory:
-            code,_,error=launch(directory,*PREREQUISITES,'--screen-emission','--screen-emission-additive','2')
-            self.assertEqual(code,2);self.assertIn('--screen-emission-additive',error);self.assertIn('mutually exclusive',error)
-            code,_,error=launch(directory,*PREREQUISITES,'--screen-emission-additive','2','--screen-emission-gain','2')
-            self.assertEqual(code,2);self.assertIn('--screen-emission-gain requires --screen-emission',error)
 
     def test_gain_range(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -424,15 +403,6 @@ class RunnerParser(unittest.TestCase):
                 with self.assertRaises(AssertionError):live.validate_screen_chain(root/'bad',root/'off',root/'gain2')
             _,_,unscaled=images(1.);write(root/'gain1',before,unscaled)
             with self.assertRaises(AssertionError):live.validate_screen_chain(root/'on',root/'off',root/'gain1')
-
-    def test_gain_option(self):
-        with tempfile.TemporaryDirectory() as directory:
-            code,output,error=launch(directory,*PREREQUISITES,'--screen-emission');self.assertEqual(code,0,error)
-            self.assertEqual(json.loads(output)['env']['X3M_SCREEN_EMISSION_GAIN'],'1.0')
-            code,output,error=launch(directory,*PREREQUISITES,'--screen-emission','--screen-emission-gain','2');self.assertEqual(code,0,error)
-            self.assertEqual(json.loads(output)['env']['X3M_SCREEN_EMISSION_GAIN'],'2.0')
-            for bad in (('--screen-emission-gain','2'),('--screen-emission','--screen-emission-gain','0.25'),('--screen-emission','--screen-emission-gain','9'),('--screen-emission','--screen-emission-gain','nan')):
-                code,_,error=launch(directory,*PREREQUISITES,*bad);self.assertEqual(code,2,bad);self.assertIn('--screen-emission-gain',error)
 
     def test_mutations_are_refused(self):
         output,trace=screen_report()

@@ -5,7 +5,6 @@
 #include "telemetry.h"
 #include "game_phases.h"
 #include "voice_dmo_fallback.h"
-#include "lod_scale.h"
 #include "cull_census.h"
 #include "collide_box_cull.h"
 #include "pause_key_only.h"
@@ -125,7 +124,7 @@ float taa_far[6] = {0.f, 0.f, 60.f, 68.f, .03f, .25f}; // X3M_TAA_FAR_STABILISER
 float taa_thin_region[4] = {0.f, 1.f, .03f, .25f}; // X3M_TAA_THIN_REGION=W[,RELAX[,LO,HI]]
 bool taa_thin_gate_given = false;
 float taa_thin_emissive = 0.f; // X3M_TAA_THIN_REGION_EMISSIVE=E (thin-glow-lines.md 8.3 R3): emissive vote of the thin region (0 off)
-bool taa_thin_camera_gate = false; // X3M_TAA_THIN_REGION_GATE=camera (taa-lattice-crawl.md section 32.1)
+bool taa_thin_camera_gate = false; // the camera-relative gate (taa-lattice-crawl.md section 32.1): on whenever the thin region is
 bool taa_alpha_history = false;  // X3M_TAA_ALPHA_HISTORY=1
 float taa_history_weight = .9f;  // X3M_TAA_HISTORY_WEIGHT (0.5..0.98)
 // X3M_HDR=1 (default off; requires X3M_MOTION_OUTPUT=1): the FP16 HDR scene
@@ -134,7 +133,7 @@ float taa_history_weight = .9f;  // X3M_TAA_HISTORY_WEIGHT (0.5..0.98)
 // X3M_HDR_DECODE=gamma2.2|pow22|srgb|none, X3M_HDR_LOOK=none|golden|punchy,
 // X3M_HDR_CLAMP=<float>, X3M_HDR_DITHER=1|on (display dither, default off),
 // X3M_HDR_EXPOSURE=auto|manual|fixed, X3M_HDR_EV_MANUAL=<ev>
-// (implies manual), X3M_HDR_EV=<offset> (alias X3M_HDR_EV_OFFSET),
+// (implies manual), X3M_HDR_EV=<offset>,
 // X3M_HDR_KEY, X3M_HDR_EV_MIN/MAX, X3M_HDR_ADAPT_UP/DOWN (seconds),
 // X3M_HDR_METER_BG (tile background floor, scene units), X3M_HDR_METER_MIN_LIT
 // (lit fraction below which the target is neutral), X3M_HDR_WHITE_TARGET
@@ -168,7 +167,6 @@ bool screen_emission_additive_alpha_requested = false; // X3M_SCREEN_EMISSION_AD
 float screen_emission_additive_alpha = 1.f;      // K, finite 0..1; absent or invalid keeps the native alpha law a + D.a
 unsigned fade_witness_frames = 0; // X3M_FADE_WITNESS=<k>, 0 = off
 unsigned fade_route_threshold = 500; // X3M_FADE_ROUTE=<permille>|off: fade-band motion arm threshold (fade_route_core.h), default 500
-bool shimmer_trace_requested = false; // X3M_SHIMMER_TRACE=1, needs the route and TAA
 // Ctrl+Shift+F12 (comparison-hotkeys.md, "Sun shadows at rest"): true once a
 // device enabled the scene-end sun-shadow application, so the A/B key is
 // polled only then; without --sun-shadow-apply the press is ignored.
@@ -184,7 +182,6 @@ bool fps_overlay_requested = false;
 bool gpu_sync_timing_requested = false;
 // X3M_VOLUMETRIC_FOG=1 (default off; docs/architecture/volumetric-fog.md, "Stage 1
 // implementation"): X3M_VOLUMETRIC_FOG_STRENGTH=<tau_max> (0..0.1, default 0.02),
-// X3M_VOLUMETRIC_FOG_ANISOTROPY=<g> (0..0.9, default 0.3),
 // X3M_VOLUMETRIC_FOG_EVERYWHERE=1 (the sector rule forced on),
 // X3M_VOLUMETRIC_FOG_TIMING=1 (one volumetric_fog_frame line per frame).
 // Ctrl+Alt+F9 toggles the pass, Ctrl+Alt+F10 steps the strength (Shift up).
@@ -194,19 +191,10 @@ bool volumetric_fog_requested = false, volumetric_fog_everywhere = false, volume
 // X3M_VOLUMETRIC_FOG_RANGE=legacy|stored (default legacy; fog-density-runtime-integration.md):
 // stored selects the two-level stored-density field with its 30-40 km horizon. Anything else is legacy.
 bool volumetric_fog_range_stored = false;
-// X3M_FOG_SHADOW_PASS=1 (docs/architecture/fog-shadow-pass.md; launcher --fog-shadow-pass on, default off): the stored
-// range's sun-shadow shaft visibility in its own quarter-resolution pass before the march. Stored range only.
-bool volumetric_fog_shadow_pass = false;
-// X3M_FOG_FAR_BINS=24|40 (docs/architecture/fog-gpu-cost.md, step B; launcher --fog-far-bins, default 40): the stored
-// look's far march bins. Exactly "24" selects the 24-bin programs; "40", absent, the legacy range, the shadow pass (its
-// grid programs have no 24-bin variant) or a column cap above fog_far_bins_coarse_cap_max keep the accepted 40, and any
-// other value is logged as invalid and keeps 40.
-unsigned volumetric_fog_far_bins = x3m::renderer::fog_far_bins_default;
 // X3M_FOG_MARCH_SCALE=2|4 (docs/architecture/fog-gpu-cost.md, step C; launcher --fog-march-scale, default 4 since Run 77
 // C2): the stored look's march spacing in full pixels. Absent or exactly "4" selects the quarter-resolution programs (the
 // default); exactly "2" keeps the half-resolution march (the opt-out); any other value is logged as invalid and keeps the
-// default. The shadow pass (its grid programs exist at spacing 2 only) clamps 4 to 2, logged as refused=shadow_pass. The
-// legacy range never reads the variable.
+// default. The legacy range never reads the variable.
 unsigned volumetric_fog_march_scale = x3m::renderer::fog_march_scale_default;
 // X3M_FOG_HANDOVER_STEP / X3M_FOG_HANDOVER_COLDFILL (docs/architecture/fog-handover.md, "Implementation"; launcher
 // --fog-handover-step / --fog-handover-coldfill, default on, exactly "0" is off): the stored range's cold-start
@@ -224,8 +212,7 @@ bool volumetric_fog_prefill = false;
 // near-camera dust motes, drawn after the repair; tunables X3M_FOG_MOTES_<NAME>. Stored range only.
 x3m::renderer::FogMoteTuning volumetric_fog_motes{};
 // X3M_FOG_LOOK_<NAME>=<float> tuning of the single stored-range look (renderer::fog_look_fields;
-// X3M_FOG_LOOK_AMBIENT_SUN / _AWAY = r,g,b): read once here, stored range only. The preset selector
-// X3M_VOLUMETRIC_FOG_LOOK was retired with L0/L1/L3 on 2026-09-22 and is ignored with one log line.
+// X3M_FOG_LOOK_AMBIENT_SUN / _AWAY = r,g,b): read once here, stored range only.
 x3m::renderer::FogLookTuning volumetric_fog_look_tuning{};
 float volumetric_fog_strength = x3m::renderer::fog_strength_default, volumetric_fog_anisotropy = x3m::renderer::fog_anisotropy_default;
 float emission_gain = 1.f;
@@ -290,9 +277,6 @@ float taa_sky_history_band_px = 3.f;
 // target and dropped the frame it leaves the band. Refused without strict; needs an age
 // program (far stabiliser or thin region), which motion_output judges.
 float taa_sky_history_exit_px = 0.f;
-// X3M_TAA_HISTORY_TAPS (5 default, 16; docs/architecture/taa-high-resolution.md S3): the resolve's history
-// reconstruction, 5-tap bilinear Catmull-Rom or the 16-tap point form of the earlier builds (in-flight A/B).
-unsigned taa_history_taps = 5;
 // X3M_TAA_BOX_RESOLUTION (full|half; unset is full here, the launcher sends half by default on --taa launches since Run 82;
 // docs/architecture/taa-high-resolution.md S4): the camera gate's box at full or half resolution
 // (TemporalPass::configure_box_resolution). Invalid or oversized: stays full, logged.
@@ -315,12 +299,9 @@ bool taa_far_clip_7x7 = true, taa_far_clip_given = false, taa_far_clip_default =
 // X3M_TAA_THIN_VOTE_DEFAULT=1 marks a value the launcher filled in from its default (the configured row's default=1).
 bool taa_thin_vote = false;
 bool taa_thin_vote_given = false, taa_thin_vote_default = false;
-// X3M_TAA_THIN_REGION_SOURCE (both|screen|vote; unset is both, the search on; the launcher sends vote by default since the
-// mask fold, docs/architecture/taa-mask-fold.md, with X3M_TAA_THIN_REGION_SOURCE_DEFAULT=1; docs/architecture/
-// taa-thin-geometry-alternatives.md section 3.2): what feeds the thin region's flag, 0 both (the fragmented-depth search and
-// the vote), 1 the search alone (the screen-gate chain only: refused with one row under the camera gate), 2 the thin vote
-// alone (needs the vote). Invalid or oversized: stays both, logged. motion_output resolves and logs it per device
-// (taa_thin_region_source requested= configured= reason= default=).
+// The thin region's flag source (docs/architecture/taa-thin-geometry-alternatives.md section 3.2): 0 both (the fragmented-depth
+// search and the vote), 2 the thin vote alone. Derived from X3M_TAA_THIN_VOTE since X3M_TAA_THIN_REGION_SOURCE was removed
+// (2026-09-25); motion_output resolves and logs it per device (taa_thin_region_source requested= configured= reason= default=).
 unsigned taa_thin_region_source = 0;
 bool taa_thin_region_source_given = false, taa_thin_region_source_default = false;
 // X3M_FADE_RT2_OWNER (on|off; unset is off here, the launcher sends on by default since Run 81;
@@ -1503,14 +1484,9 @@ void comparison_begin_frame(Device& ctx) noexcept {
     // without it never queries the key; no notice and no report, one
     // sun_shadow_toggle line per accepted press.
     keys.sun_shadow=sun_shadow_apply_requested && (GetAsyncKeyState(VK_F12)&0x8000)!=0;
-    // Ctrl+Shift+F11: the fog shadow-pass A/B (comparison-hotkeys.md, "Fog
-    // shadow pass"). Polled only when the pass was enabled at launch; one
-    // fog_shadow_pass_toggle line per accepted press, no notice.
     // Ctrl+Alt+F11 with Shift up: the dust motes on/off (comparison-hotkeys.md, "Fog dust motes"), polled only with
     // --fog-dust-motes, on F11's own raw latch; one fog_dust_motes_toggle line per accepted press, no notice.
-    const bool f11=(volumetric_fog_shadow_pass || volumetric_fog_motes.count) && (GetAsyncKeyState(VK_F11)&0x8000)!=0;
-    keys.fog_shadow_pass=volumetric_fog_shadow_pass && f11;
-    keys.fog_dust_motes=volumetric_fog_motes.count && f11;
+    keys.fog_dust_motes=volumetric_fog_motes.count && (GetAsyncKeyState(VK_F11)&0x8000)!=0;
     // Ctrl+Alt+F9 / F10 with Shift up: the volumetric fog on/off and its strength ladder, polled only with
     // --volumetric-fog (raw F9/F10 latches of their own; Ctrl+Shift+F9/F10 stay exposure and bloom).
     keys.fog_toggle=volumetric_fog_requested && (GetAsyncKeyState(VK_F9)&0x8000)!=0;
@@ -1523,7 +1499,6 @@ void comparison_begin_frame(Device& ctx) noexcept {
     keys.fps_overlay=fps_overlay_requested && (GetAsyncKeyState(VK_F7)&0x8000)!=0;
     const auto action=ctx.comparison.sample(keys);
     if(action.sun_shadow)ctx.motion_output.sun_shadow_toggle();
-    if(action.fog_shadow_pass)ctx.motion_output.volumetric_fog_shadow_pass_toggle();
     if(action.fog_dust_motes)ctx.motion_output.volumetric_fog_dust_motes_toggle();
     if(action.fog_toggle)ctx.motion_output.volumetric_fog_toggle();
     if(action.fog_step)ctx.motion_output.volumetric_fog_step();
@@ -1643,7 +1618,6 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
     game_phases::present_endpoint(reinterpret_cast<std::uintptr_t>(d),ctx.id,ctx.reset_generation,ctx.frame,ctx.capture,end,static_cast<std::uint32_t>(hr));
     const bool save_loaded=game_phases::loading_phase_present(ctx.id,ctx.reset_generation,ctx.frame); // cadence-derived loading_phase lines, every mode
     voice_dmo_fallback::report(); // one atomic load per Present; lines only after an activation
-    lod_scale::refresh(); // X3M_LOD_SCALE only: two bounded reads per Present, one store when the game value changed
     point_light_admission::present(ctx.id,ctx.frame,ctx.capture); // option on only: one point_light_admission_frame line, point_light_node samples on capture frames, memo serial bump
     cull_census::present(ctx.id,ctx.frame,ctx.capture); // X3M_CULL_CENSUS=1 only: the cull_census_frame row and the entry rows of a captured frame, then the ring is cleared
     collide_box_cull::present(ctx.id,ctx.frame,ctx.capture); // X3M_COLLIDE_BOX_CULL=1 only: reads and zeroes the four pair counters; one collide_census line per 300 frames, one collide_census_frame line per capture frame
@@ -1807,7 +1781,6 @@ HRESULT reset_common(IDirect3DDevice9* d,D3DPRESENT_PARAMETERS* p,D3DDISPLAYMODE
     presentation_parameters("reset_after",ctx.id,ctx.stats.focus_window,p);
     ctx.motion_output.after_reset(hr);
     gpu_sync_after_reset(ctx,hr); // recreated after a successful Reset
-    lod_scale::refresh(); // the multiplier may be rewritten if the device bring-up path re-runs
     point_light_admission::next_frame(); // a Reset also retires the frame's root verdicts
     cull_census::reset(); // a Reset disarms the census stubs, drops the partial frame and re-seeds the LOD-switch table
     sun_occlusion::device_reset(); // the 1x1 visibility targets went with the Reset: vanilla until a pass has run again
@@ -2076,7 +2049,6 @@ HRESULT WINAPI begin_scene(IDirect3DDevice9* d){
     if(SUCCEEDED(hr)&&ctx.gpu_sync){ctx.gpu_sync->begin(gpu_sync_timing::Scene);ctx.gpu_sync->begin(gpu_sync_timing::Engine);} // --gpu-sync-timing only: the frame's first BeginScene opens both (first per frame only)
     if(SUCCEEDED(hr)&&(sector_background_requested || volumetric_fog_requested))sector_background_context(ctx,true);
     ctx.motion_output.after_begin_scene(hr);
-    lod_scale::refresh(); // X3M_LOD_SCALE only: catches the bring-up write before the first frame's LOD pass
     if(SUCCEEDED(hr)) {
         ctx.scene_thread=GetCurrentThreadId(); ctx.composition_scene_owner=false; ctx.composition_scene_frame=ctx.frame;
         if(ctx.motion_output.composition_requested() && scene_hook::active()) {
@@ -2592,7 +2564,6 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_sentinel(taa_sentinel_mode,camera_cut_degrees,camera_log_frames);
     hooked.motion_output.configure_unmatched_static(taa_unmatched_static);
     hooked.motion_output.configure_sky_history(taa_sky_history_strict,taa_sky_history_band_px,taa_sky_history_exit_px);
-    hooked.motion_output.configure_history_taps(taa_history_taps);
     hooked.motion_output.configure_box_resolution(taa_box_half,taa_box_resolution_default);
     hooked.motion_output.configure_far_gate(taa_far_camera_gate,taa_far_gate_given,taa_far_gate_default);
     hooked.motion_output.configure_far_clip(taa_far_clip_7x7,taa_far_clip_given,taa_far_clip_default);
@@ -2639,7 +2610,6 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_bolt_footprint(bolt_footprint_requested,bolt_footprint_w,bolt_footprint_l);
     hooked.motion_output.configure_fade_witness(fade_witness_frames);
     hooked.motion_output.configure_fade_route(fade_route_threshold);
-    hooked.motion_output.configure_shimmer_trace(shimmer_trace_requested);
     // Sun-share lane (directional-shadows.md section 2; legacy-sun-application.md
     // section 4.1): the route, TAA and the FP16 scene; no linear-material
     // prerequisite since the original share producer (original shading binds
@@ -2859,8 +2829,6 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_volumetric_fog(volumetric_fog_requested,volumetric_fog_strength,volumetric_fog_anisotropy,volumetric_fog_everywhere,volumetric_fog_timing,volumetric_fog_cards_replace);
     hooked.motion_output.configure_volumetric_fog_range(volumetric_fog_range_stored);
     hooked.motion_output.configure_volumetric_fog_look(volumetric_fog_look_tuning);
-    hooked.motion_output.configure_volumetric_fog_shadow_pass(volumetric_fog_shadow_pass);
-    hooked.motion_output.configure_volumetric_fog_far_bins(volumetric_fog_far_bins);
     hooked.motion_output.configure_volumetric_fog_march_scale(volumetric_fog_march_scale);
     hooked.motion_output.configure_volumetric_fog_dust_motes(volumetric_fog_motes);
     hooked.motion_output.configure_volumetric_fog_handover(volumetric_fog_handover_step,volumetric_fog_handover_coldfill);
@@ -3155,17 +3123,9 @@ void initialize_log(HMODULE module) {
         if(length>0&&length<32){wchar_t* end=nullptr;const float v=wcstof(emissive_setting,&end);
             if(end!=emissive_setting&&*end==L'\0'&&v>=0.f&&v<=65000.f)taa_thin_emissive=v;else log("taa_thin_region_emissive_setting invalid=1");}
         else if(length>=32)log("taa_thin_region_emissive_setting invalid=1 reason=too_long length=%lu",length);}
-    // X3M_TAA_THIN_REGION_GATE=screen|camera (section 32.1): "camera" gates the region on min(screen speed, camera-relative
-    // speed) with the 7x7 box clip where the camera term alone opens it; "screen" is the screen-speed gate the thin region
-    // originally had. Anything else keeps the screen gate and is logged. Meaningful only with X3M_TAA_THIN_REGION on.
-    // Absent is the Run59-accepted default: camera whenever the thin region is on.
-    {wchar_t gate_setting[16];const DWORD length=taa_requested?GetEnvironmentVariableW(L"X3M_TAA_THIN_REGION_GATE",gate_setting,16):0;
-        if(length>0&&length<16){if(wcscmp(gate_setting,L"camera")==0)taa_thin_camera_gate=true;else if(wcscmp(gate_setting,L"screen")!=0)log("taa_thin_region_gate_setting invalid=1");}
-        else if(length>=16)log("taa_thin_region_gate_setting invalid=1 reason=too_long length=%lu",length);
-        else if(taa_requested&&taa_thin_region[0]>0.f)taa_thin_camera_gate=true;}
-    // X3M_TAA_SENTINEL_STABILISER was retired with the mask fold (2026-09-25, docs/architecture/taa-mask-fold.md section 7): the
-    // launcher refuses the option and never sets the variable; one line when a caller sets it by hand, no effect.
-    {wchar_t sentinel_setting[32];if(GetEnvironmentVariableW(L"X3M_TAA_SENTINEL_STABILISER",sentinel_setting,32)>0)log("taa_sentinel_stabiliser_setting ignored=1 reason=retired");}
+    // The camera-relative gate (section 32.1, Run 59): the thin region's only gate since the screen-speed gate's option
+    // (X3M_TAA_THIN_REGION_GATE) was removed on 2026-09-25; on whenever the thin region is.
+    taa_thin_camera_gate=taa_requested&&taa_thin_region[0]>0.f;
     // X3M_TAA_HISTORY_WEIGHT=<w> (0.5 <= w <= 0.98; unset: 0.9): the resolve's history weight (docs/verification/
     // motion-output.md, "Run 139"). The whole string must parse; an invalid value keeps the default.
     if(taa_requested&&GetEnvironmentVariableW(L"X3M_TAA_HISTORY_WEIGHT",setting,32)>0){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&*end==L'\0'&&v>=.5f&&v<=.98f)taa_history_weight=v;}
@@ -3205,7 +3165,7 @@ void initialize_log(HMODULE module) {
     if(exposure_length>0)hdr_config.exposure=(exposure_length<32 && !wcscmp(setting,L"auto"))
         ? x3m::renderer::ExposureMode::Auto : x3m::renderer::ExposureMode::Manual;
     if(GetEnvironmentVariableW(L"X3M_HDR_EV_MANUAL",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>=-16.f&&v<=16.f){hdr_config.exposure=x3m::renderer::ExposureMode::Manual;hdr_config.ev_manual=v;}}
-    if(GetEnvironmentVariableW(L"X3M_HDR_EV",setting,32)>0||GetEnvironmentVariableW(L"X3M_HDR_EV_OFFSET",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>=-16.f&&v<=16.f)hdr_config.params.ev_offset=v;}
+    if(GetEnvironmentVariableW(L"X3M_HDR_EV",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>=-16.f&&v<=16.f)hdr_config.params.ev_offset=v;}
     if(GetEnvironmentVariableW(L"X3M_HDR_KEY",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>0&&v<=64.f)hdr_config.params.key=v;}
     if(GetEnvironmentVariableW(L"X3M_HDR_EV_MIN",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>=-16.f&&v<=16.f)hdr_config.params.ev_min=v;}
     if(GetEnvironmentVariableW(L"X3M_HDR_EV_MAX",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>=-16.f&&v<=16.f)hdr_config.params.ev_max=v;}
@@ -3524,11 +3484,6 @@ void initialize_log(HMODULE module) {
         const unsigned long n=digits?wcstoul(setting,nullptr,10):0ul;if(digits&&n>=1&&n<=100000)fade_witness_frames=unsigned(n);
         log("fade_witness_mode requested=%lu digits=%u enabled=%u fade=%u screen=%u",n,digits,fade_witness_frames&&(linear_distance_fade_requested||screen_emission_requested),linear_distance_fade_requested,screen_emission_requested);}
      else if(length)log("fade_witness_mode requested=overlong enabled=0 fade=%u screen=%u",linear_distance_fade_requested,screen_emission_requested);}
-    // X3M_SHIMMER_TRACE=1: per-frame distant-shimmer diagnostic (off by
-    // default; needs the motion route and TAA; no other behaviour changes).
-    {const bool asked=GetEnvironmentVariableW(L"X3M_SHIMMER_TRACE",setting,32)==1 && setting[0]==L'1';
-     shimmer_trace_requested=asked && motion_output_requested && taa_requested;
-     if(asked)log("shimmer_trace_mode requested=1 enabled=%u motion_output=%u taa=%u",shimmer_trace_requested,motion_output_requested,taa_requested);}
     bloom_requested=GetEnvironmentVariableW(L"X3M_HDR_BLOOM",setting,32)==1 && setting[0]==L'1';
     // X3M_BLOOM_SOURCE_CLAMP=C (finite, >0, at most 64): decoded-space ceiling
     // on the bloom extraction source only. Needs the bloom replacement; absent,
@@ -3554,7 +3509,6 @@ void initialize_log(HMODULE module) {
      const bool asked=fog_env(L"X3M_VOLUMETRIC_FOG")==1 && setting[0]==L'1';
      volumetric_fog_strength=renderer::fog_strength_default;volumetric_fog_anisotropy=renderer::fog_anisotropy_default;
      if(fog_env(L"X3M_VOLUMETRIC_FOG_STRENGTH")){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&*end==L'\0'&&v>=renderer::fog_strength_min&&v<=renderer::fog_strength_max)volumetric_fog_strength=v;}
-     if(fog_env(L"X3M_VOLUMETRIC_FOG_ANISOTROPY")){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&*end==L'\0'&&v>=renderer::fog_anisotropy_min&&v<=renderer::fog_anisotropy_max)volumetric_fog_anisotropy=v;}
      // The launcher's prerequisites (tools/manage.py), so a hand-set environment cannot arm a pass that would
      // skip every frame: the FP16 scene path, the depth replay and a cascade list (validated per device later).
      const bool fog_replay=fog_env(L"X3M_SHADOW_REPLAY_DEPTH")==1 && setting[0]==L'1';
@@ -3564,8 +3518,6 @@ void initialize_log(HMODULE module) {
      volumetric_fog_timing=volumetric_fog_requested && fog_env(L"X3M_VOLUMETRIC_FOG_TIMING")==1 && setting[0]==L'1';
      volumetric_fog_cards_replace=volumetric_fog_requested && fog_env(L"X3M_VOLUMETRIC_FOG_CARDS")==7 && !wcscmp(setting,L"replace");
      volumetric_fog_range_stored=volumetric_fog_requested && fog_env(L"X3M_VOLUMETRIC_FOG_RANGE")==6 && !wcscmp(setting,L"stored");
-     volumetric_fog_shadow_pass=volumetric_fog_range_stored && fog_env(L"X3M_FOG_SHADOW_PASS")==1 && setting[0]==L'1';
-     volumetric_fog_far_bins=renderer::fog_far_bins_default;
      volumetric_fog_march_scale=renderer::fog_march_scale_default;
      // Default on: absent or anything but exactly "0" keeps the switch (fog-handover.md, "Implementation").
      const auto fog_default_on=[&](const wchar_t* name){return !(fog_env(name)==1 && setting[0]==L'0');};
@@ -3576,9 +3528,6 @@ void initialize_log(HMODULE module) {
      if(asked)log("volumetric_fog_handover_mode step=%u coldfill=%u prefill=%u docked=%u walk_limit=%u stored=%u",unsigned(volumetric_fog_handover_step),
         unsigned(volumetric_fog_handover_coldfill),unsigned(volumetric_fog_prefill),unsigned(volumetric_fog_docked),sector_background::anchor_walk_limit,unsigned(volumetric_fog_range_stored));
      volumetric_fog_look_tuning={};
-     // The retired preset selector: accepted from an older launcher or a stale environment, never acted on,
-     // and reported whatever the fog state is (the variable says the caller expected a preset).
-     if(fog_env(L"X3M_VOLUMETRIC_FOG_LOOK"))log("volumetric_fog_look_ignored variable=X3M_VOLUMETRIC_FOG_LOOK reason=single_look_since_2026_09_22");
      if(volumetric_fog_range_stored){
         unsigned overrides=0;
         for(const auto& field:renderer::fog_look_fields){
@@ -3602,26 +3551,9 @@ void initialize_log(HMODULE module) {
             used+=n;
         }
         log("volumetric_fog_look_mode look=single overrides=%u%s",overrides,values);
-        log("volumetric_fog_shadow_pass enabled=%u grid=quarter slices=64 tiles=4x4 format=A8R8G8B8 cascades=3 taps=4 penumbra=%g,%g,%g",unsigned(volumetric_fog_shadow_pass),
-            double(volumetric_fog_look_tuning.penumbra),double(volumetric_fog_look_tuning.penumbra_min),double(volumetric_fog_look_tuning.penumbra_max));
-        // X3M_FOG_FAR_BINS after the look tuning (the cap rule reads sky_cap). The value is echoed with anything outside
-        // [0-9A-Za-z._+-] as '?', so a hand-set string cannot break the row.
-        char far_bins_value[40]="40";const char* far_bins_refusal="none";bool far_bins_asked=false;
-        const DWORD far_bins_length=GetEnvironmentVariableW(L"X3M_FOG_FAR_BINS",setting,32);
-        if(far_bins_length>=32){std::snprintf(far_bins_value,sizeof far_bins_value,"overlong_%lu",static_cast<unsigned long>(far_bins_length));far_bins_refusal="invalid";}
-        else if(far_bins_length>0){
-            for(DWORD i=0;i<far_bins_length;++i){const wchar_t c=setting[i];
-                far_bins_value[i]=(c>=L'0'&&c<=L'9')||(c>=L'A'&&c<=L'Z')||(c>=L'a'&&c<=L'z')||c==L'.'||c==L'_'||c==L'+'||c==L'-'?char(c):'?';}
-            far_bins_value[far_bins_length]='\0';
-            far_bins_asked=!wcscmp(setting,L"24");
-            if(!far_bins_asked&&wcscmp(setting,L"40"))far_bins_refusal="invalid";
-        }
-        if(far_bins_asked)far_bins_refusal=volumetric_fog_shadow_pass?"shadow_pass":
-            !(volumetric_fog_look_tuning.sky_cap<=renderer::fog_far_bins_coarse_cap_max)?"cap":"none";
-        if(far_bins_asked&&!std::strcmp(far_bins_refusal,"none"))volumetric_fog_far_bins=renderer::fog_far_bins_coarse;
-        log("volumetric_fog_far_bins bins=%u requested=%s refused=%s sky_cap=%g",volumetric_fog_far_bins,far_bins_value,far_bins_refusal,double(volumetric_fog_look_tuning.sky_cap));
-        // X3M_FOG_MARCH_SCALE (step C), echoed the same way: 4 (absent, "4" or invalid) under the stored range unless the shadow
-        // pass clamps it; exactly "2" is the half-resolution opt-out. The echo of an absent variable is the default, "4".
+        // X3M_FOG_MARCH_SCALE (step C), echoed with anything outside [0-9A-Za-z._+-] as '?' (a hand-set string cannot break the
+        // row): 4 (absent, "4" or invalid) under the stored range; exactly "2" is the half-resolution opt-out. The echo of an
+        // absent variable is the default, "4".
         char march_scale_value[40]="4";const char* march_scale_refusal="none";bool march_scale_half=false;
         const DWORD march_scale_length=GetEnvironmentVariableW(L"X3M_FOG_MARCH_SCALE",setting,32);
         if(march_scale_length>=32){std::snprintf(march_scale_value,sizeof march_scale_value,"overlong_%lu",static_cast<unsigned long>(march_scale_length));march_scale_refusal="invalid";}
@@ -3632,8 +3564,7 @@ void initialize_log(HMODULE module) {
             march_scale_half=!wcscmp(setting,L"2");
             if(!march_scale_half&&wcscmp(setting,L"4"))march_scale_refusal="invalid";
         }
-        if(!march_scale_half&&volumetric_fog_shadow_pass&&!std::strcmp(march_scale_refusal,"none"))march_scale_refusal="shadow_pass";
-        volumetric_fog_march_scale=march_scale_half||volumetric_fog_shadow_pass?renderer::fog_march_scale_half:renderer::fog_march_scale_quarter;
+        volumetric_fog_march_scale=march_scale_half?renderer::fog_march_scale_half:renderer::fog_march_scale_quarter;
         log("volumetric_fog_march_scale scale=%u requested=%s refused=%s",volumetric_fog_march_scale,march_scale_value,march_scale_refusal);
      }
      // X3M_FOG_DUST_MOTES=N,SIZE,STREAK: the whole string must parse (N 0 or 64..8192, SIZE 2..16, STREAK 0..512), anything
@@ -3713,11 +3644,6 @@ void initialize_log(HMODULE module) {
         else taa_sky_history_exit_px=v;
     }
     else if(taa_sky_history_strict)taa_sky_history_exit_px=.25f; // Run 68 A (2026-09-23): the default under strict (0 is the opt-out); motion_output drops it without an age program
-    if(const DWORD n=GetEnvironmentVariableW(L"X3M_TAA_HISTORY_TAPS",setting,32);n>=32)log("taa_history_taps_setting invalid=1 reason=too_long length=%lu",n); // oversized: invalid, stays 5
-    else if(n>0){
-        if(!wcscmp(setting,L"16"))taa_history_taps=16;
-        else if(wcscmp(setting,L"5")!=0)log("taa_history_taps_setting invalid=1");
-    }
     if(const DWORD n=GetEnvironmentVariableW(L"X3M_TAA_BOX_RESOLUTION",setting,32);n>=32)log("taa_box_resolution_setting invalid=1 reason=too_long length=%lu",n); // oversized: invalid, stays full
     else if(n>0){
         if(!wcscmp(setting,L"half"))taa_box_half=true;
@@ -3738,10 +3664,6 @@ void initialize_log(HMODULE module) {
         else log("taa_far_clip_setting invalid=1");
         taa_far_clip_default=taa_far_clip_given&&taa_far_clip_7x7&&GetEnvironmentVariableW(L"X3M_TAA_FAR_CLIP_DEFAULT",setting,32)==1&&setting[0]==L'1';
     }
-    // X3M_TAA_REGION_HOLD was removed with the dilated camera-gate chain (2026-09-24, docs/architecture/
-    // taa-plan-lifted-slot-cap.md step 1): the region hold (A') is the camera gate's only path. A value that is still set,
-    // of any length, is ignored with this one line.
-    if(GetEnvironmentVariableW(L"X3M_TAA_REGION_HOLD",setting,32)>0)log("taa_region_hold_setting ignored=1 reason=removed");
     if(const DWORD n=GetEnvironmentVariableW(L"X3M_TAA_THIN_VOTE",setting,32);n>=32)log("taa_thin_vote_setting invalid=1 reason=too_long length=%lu",n); // oversized: invalid, stays off
     else if(n>0){
         if(!wcscmp(setting,L"on"))taa_thin_vote=taa_thin_vote_given=true;
@@ -3749,14 +3671,12 @@ void initialize_log(HMODULE module) {
         else log("taa_thin_vote_setting invalid=1");
         taa_thin_vote_default=taa_thin_vote_given&&GetEnvironmentVariableW(L"X3M_TAA_THIN_VOTE_DEFAULT",setting,32)==1&&setting[0]==L'1';
     }
-    if(const DWORD n=GetEnvironmentVariableW(L"X3M_TAA_THIN_REGION_SOURCE",setting,32);n>=32)log("taa_thin_region_source_setting invalid=1 reason=too_long length=%lu",n); // oversized: invalid, stays both
-    else if(n>0){
-        if(!wcscmp(setting,L"both"))taa_thin_region_source_given=true;
-        else if(!wcscmp(setting,L"screen")){taa_thin_region_source=1;taa_thin_region_source_given=true;}
-        else if(!wcscmp(setting,L"vote")){taa_thin_region_source=2;taa_thin_region_source_given=true;}
-        else log("taa_thin_region_source_setting invalid=1");
-        taa_thin_region_source_default=taa_thin_region_source_given&&GetEnvironmentVariableW(L"X3M_TAA_THIN_REGION_SOURCE_DEFAULT",setting,32)==1&&setting[0]==L'1';
-    }
+    // The thin region's flag source follows the vote since X3M_TAA_THIN_REGION_SOURCE was removed on 2026-09-25: the vote alone
+    // (2) whenever it and the thin region are on (what the launcher sent by default), marked default= as the vote's own row is;
+    // otherwise both (the fragmented-depth search), no row.
+    taa_thin_region_source_given=taa_thin_vote&&taa_thin_region[0]>0.f;
+    taa_thin_region_source=taa_thin_region_source_given?2u:0u;
+    taa_thin_region_source_default=taa_thin_region_source_given&&taa_thin_vote_default;
     if(const DWORD n=GetEnvironmentVariableW(L"X3M_FADE_RT2_OWNER",setting,32);n>=32)log("fade_rt2_owner_setting invalid=1 reason=too_long length=%lu",n); // oversized: invalid, stays off
     else if(n>0){
         if(!wcscmp(setting,L"on"))fade_rt2_owner=fade_rt2_owner_given=true;
@@ -3803,7 +3723,6 @@ void initialize_log(HMODULE module) {
     }
     voice_dmo_fallback::initialize(); // X3M_VOICE_DMO_FALLBACK=1 only; one claim, same window
     frame_timing::initialize(); // X3M_FRAME_TIMING=1 only; one environment read, no allocation afterwards
-    lod_scale::initialize(); // X3M_LOD_SCALE=<factor> only; same-length FMUL replacement, same window
     terran_station_lod::initialize(); // X3M_TERRAN_STATION_LOD=size|distance, unset = size: the bit-31 reader's je at 0x0047d01c becomes jmp (two bytes), same window, disjoint from the other cull/LOD pass claims
     lod_occlusion::initialize(); // X3M_LOD_OCCLUSION=record0|all, unset = record0: all sets the rel32 of the LOD-0 occlusion gate's jne at 0x004c34f7 to 0 (four bytes), same window, disjoint from the point-light site in the same function
     fov::initialize(); // X3M_FOV=game|N (the game's degrees 70..100, horizontal on 16:9), unset = game: the registry constructor's imm32 at 0x0041c9dc becomes F'(N) and INS_SetFocus's MOV EDX at 0x0042dbf8 is claimed for the remap stub (both or neither), plus a one-off registry+0x24 write when the registry already exists, same window, disjoint from every other claim
@@ -4066,14 +3985,6 @@ extern "C" __declspec(dllexport) int x3m_sun_shadow_fixture_toggle(IDirect3DDevi
     x3m::CaptureLock lock;
     const auto it=x3m::devices.find(device);
     return it==x3m::devices.end()?-1:it->second->motion_output.sun_shadow_toggle();
-}
-// The fog shadow-pass A/B (comparison-hotkeys.md, "Fog shadow pass"): the
-// Ctrl+Shift+F11 action without the key, at the same frame boundary. Returns
-// the new state (1 on / 0 off), -1 without the pass or for an unknown device.
-extern "C" __declspec(dllexport) int x3m_fog_shadow_pass_fixture_toggle(IDirect3DDevice9* device) {
-    x3m::CaptureLock lock;
-    const auto it=x3m::devices.find(device);
-    return it==x3m::devices.end()?-1:it->second->motion_output.volumetric_fog_shadow_pass_toggle();
 }
 // The dust motes' on/off (comparison-hotkeys.md, "Fog dust motes"): the Ctrl+Alt+F11 action without the key, at the
 // same frame boundary. Returns the new state (1 on / 0 off), -1 without the option or for an unknown device.

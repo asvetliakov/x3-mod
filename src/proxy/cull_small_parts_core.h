@@ -76,20 +76,6 @@ inline bool parse_px(const char* text, double* out) {
     if (*p != '\0' || digits == 0) return false;
     *out = value; return true;
 }
-// Scope of the cull (X3M_CULL_SMALL_PARTS_SCOPE): `all` (the default since
-// 2026-09-19, also when the variable is unset) culls every node below the
-// threshold; `bodies` culls only nodes without a parent link
-// (`[node+0x18] == 0`, the test the displaced instruction performs: whole
-// objects), which saves almost nothing because nearly every small node has a
-// parent (docs/verification/cull-small-parts.md, run 43 B). Anything else is
-// refused.
-enum class Scope : unsigned char { bodies = 0, all = 1 };
-inline bool parse_scope(const char* text, Scope* out) {
-    if (!text || !*text || !std::strcmp(text, "all")) { *out = Scope::all; return true; }
-    if (!std::strcmp(text, "bodies")) { *out = Scope::bodies; return true; }
-    return false;
-}
-inline const char* scope_name(Scope scope) { return scope == Scope::all ? "all" : "bodies"; }
 inline bool valid_px(double px) { return std::isfinite(px) && px > px_min && px <= px_max; }
 // The pixel scale of `s`: px = s * m00 * width / 1280 * focus / 0x4000
 // (s is the projected radius at a 640-wide reference, m00 the projection's
@@ -255,22 +241,9 @@ inline bool parse_projectiles(const char* text, bool* exempt) {
 // Projectiles `off` replaces bytes 22..33 with `eb 0a` (JMP 34) and int3
 // padding: the marker is not read and the exempt block is unreachable.
 //
-// Scope `bodies` keeps the layout and replaces bytes 39..58: the replayed
-// parent test decides, a parented node continues, a parentless one is culled
-// with EAX/ECX exactly as the engine's JE path leaves them (ECX = 0, EAX = own):
-//   34  8b 4f 18            MOV  ECX,[EDI+0x18]
-//   37  85 c9               TEST ECX,ECX
-//   39  75 23               JNE  continue               ; has a parent: the engine's own compare. The tail
-//                                                       ;   re-executes the displaced MOV+TEST, so ECX and
-//                                                       ;   EFLAGS reach 0x0047d2a7 as native; EAX untouched
-//   41  8b 87 d8 01 00 00   MOV  EAX,[EDI+0x1d8]
-//   47  eb 0a               JMP  cull
-//   49  cc * 10
-// One extra taken-or-not branch on nodes already below the threshold only.
-// The projectile test precedes the scope's parent test, so it applies to both scopes.
-constexpr unsigned stub_length = 82, stub_projectile = 22, stub_replay = 34, stub_cull = 59, stub_exempt = 70, stub_continue = 76, stub_scope_branch = 39;
+constexpr unsigned stub_length = 82, stub_projectile = 22, stub_replay = 34, stub_cull = 59, stub_exempt = 70, stub_continue = 76;
 inline void encode_stub(std::uint32_t at, std::uint32_t threshold, std::uint32_t culled, std::uint32_t exempt, std::uint32_t cull_target, std::uint32_t next_slot,
-                        unsigned char out[stub_length], Scope scope, bool exempt_projectiles) {
+                        unsigned char out[stub_length], bool exempt_projectiles) {
     out[0] = 0x83; out[1] = 0x3d; std::memcpy(out + 2, &threshold, 4); out[6] = 0x00;
     out[7] = 0x7e; out[8] = static_cast<unsigned char>(stub_continue - 9);
     out[9] = 0x50;
@@ -296,12 +269,6 @@ inline void encode_stub(std::uint32_t at, std::uint32_t threshold, std::uint32_t
     if (!exempt_projectiles) {
         out[22] = 0xeb; out[23] = static_cast<unsigned char>(stub_replay - 24);
         std::memset(out + 24, 0xcc, stub_replay - 24);
-    }
-    if (scope == Scope::bodies) {
-        out[39] = 0x75; out[40] = static_cast<unsigned char>(stub_continue - 41);
-        out[41] = 0x8b; out[42] = 0x87; out[43] = 0xd8; out[44] = 0x01; out[45] = 0x00; out[46] = 0x00;
-        out[47] = 0xeb; out[48] = static_cast<unsigned char>(stub_cull - 49);
-        std::memset(out + 49, 0xcc, stub_cull - 49);
     }
 }
 }

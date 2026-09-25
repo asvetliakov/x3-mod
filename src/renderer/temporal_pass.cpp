@@ -219,7 +219,7 @@ void TemporalPass::release_history() noexcept {
     reactive_policy_=ReactivePolicy::Unavailable;
     width_=height_=current_=0;
 }
-void TemporalPass::shutdown() noexcept {release_history();drop(block_);drop(decoder_);drop(resolve_);drop(snapshot_);drop(thin_);drop(age_);drop(far_);drop(resolve16_);drop(thin16_);drop(age16_);drop(far16_);bilinear_history_=false;bilinear_history_reason_="not_initialized";drop(line_mask_depth_);drop(line_mask_depth_thin_);drop(far_camera_hold_);drop(thin_box_hold_);drop(thin_box_rows_half_);drop(thin_box_columns_half_);box_divisor_=1;box_half_failed_=false;box_half_result_=S_OK;camera_programs_result_=S_OK;hold_history_=false;ps30_slots_=0;line_masks_failed_=false;line_masks_result_=S_OK;boxes_failed_=false;boxes_result_=S_OK;drop(line_mask_);mrt_age_=false;drop(sharpen_);drop(copy_);drop(quad_vs_);drop(quad_declaration_);device_=nullptr;vtable_=nullptr;render_targets_=streams_=0;diagnostics_.reset_pending=false;}
+void TemporalPass::shutdown() noexcept {release_history();drop(block_);drop(decoder_);drop(resolve_);drop(snapshot_);drop(thin_);drop(age_);drop(far_);bilinear_history_=false;bilinear_history_reason_="not_initialized";drop(line_mask_depth_);drop(line_mask_depth_thin_);drop(far_camera_hold_);drop(thin_box_hold_);drop(thin_box_rows_half_);drop(thin_box_columns_half_);box_divisor_=1;box_half_failed_=false;box_half_result_=S_OK;camera_programs_result_=S_OK;hold_history_=false;ps30_slots_=0;line_masks_failed_=false;line_masks_result_=S_OK;boxes_failed_=false;boxes_result_=S_OK;drop(line_mask_);mrt_age_=false;drop(sharpen_);drop(copy_);drop(quad_vs_);drop(quad_declaration_);device_=nullptr;vtable_=nullptr;render_targets_=streams_=0;diagnostics_.reset_pending=false;}
 // Every owned texture and the state block must not exist across Reset; the
 // compiled shaders survive it. Runs are refused until after_reset succeeds.
 void TemporalPass::before_reset() noexcept {line_masks_failed_=false;line_masks_result_=S_OK;boxes_failed_=false;boxes_result_=S_OK;box_half_failed_=false;box_half_result_=S_OK;release_history();drop(block_);diagnostics_.reset_pending=device_!=nullptr;}
@@ -232,13 +232,14 @@ HRESULT TemporalPass::initialize(IDirect3DDevice9* d,const DWORD* decoder,const 
     if(FAILED(hr)){device_=nullptr;vtable_=nullptr;return hr;}
     render_targets_=caps.NumSimultaneousRTs;streams_=caps.MaxStreams;ps30_slots_=caps.MaxPixelShader30InstructionSlots;
     mrt_age_=caps.NumSimultaneousRTs>=2&&(caps.PrimitiveMiscCaps&D3DPMISCCAPS_MRTINDEPENDENTBITDEPTHS);
-    // S3: the 5-tap programs filter the FP16 colour and R32F mask histories; without that every slot takes the 16-tap words.
+    // S3: the 5-tap programs filter the FP16 colour and R32F mask histories; a device that cannot is refused (no fallback set).
     bilinear_history_=SUCCEEDED(query_bilinear_history(caps));
+    if(!bilinear_history_){device_=nullptr;vtable_=nullptr;return D3DERR_NOTAVAILABLE;}
     // The quad's vertex program and declaration survive Reset like the pixel programs.
     hr=call<CreateVsFn>(CreateVertexShader)(d,reinterpret_cast<const DWORD*>(quad_vertex_program()),&quad_vs_);
     if(SUCCEEDED(hr))hr=call<CreateDeclarationFn>(CreateVertexDeclaration)(d,quad_declaration,&quad_declaration_);
     if(SUCCEEDED(hr)&&decoder)hr=call<CreatePsFn>(CreatePixelShader)(d,decoder,&decoder_);
-    if(SUCCEEDED(hr))hr=call<CreatePsFn>(CreatePixelShader)(d,bilinear_history_?resolve:reinterpret_cast<const DWORD*>(temporal_resolve_taps16_program()),&resolve_);
+    if(SUCCEEDED(hr))hr=call<CreatePsFn>(CreatePixelShader)(d,resolve,&resolve_);
     // The mask-snapshot modes are their own embedded program (resolve_snapshot.hlsl).
     // Optional: a device that refuses it keeps the resolve; only the mask policies that draw snapshots are refused at run.
     if(SUCCEEDED(hr)){snapshot_result_=call<CreatePsFn>(CreatePixelShader)(d,reinterpret_cast<const DWORD*>(temporal_resolve_snapshot_program()),&snapshot_);if(FAILED(snapshot_result_))drop(snapshot_);}
@@ -249,49 +250,42 @@ HRESULT TemporalPass::initialize(IDirect3DDevice9* d,const DWORD* decoder,const 
 }
 // S3: the 5-tap programs' LINEAR samplers read the FP16 colour history (s11) and the R32F mask history (s12). Documented
 // D3D9 capability checks only: the min / mag filter caps and D3DUSAGE_QUERY_FILTER of both formats against the adapter's
-// current display format (a format without filter support samples LINEAR undefined, so a refusal selects the 16-tap
-// programs, which point-sample everything).
-HRESULT TemporalPass::query_bilinear_history(const D3DCAPS9& caps) noexcept {
+// current display format (a format without filter support samples LINEAR undefined, so a refusal refuses the pass).
+static HRESULT history_filtering(IDirect3DDevice9* d,void* const* table,const D3DCAPS9& caps,const char*& reason) noexcept {
     constexpr DWORD filters=D3DPTFILTERCAPS_MINFLINEAR|D3DPTFILTERCAPS_MAGFLINEAR;
-    if((caps.TextureFilterCaps&filters)!=filters){bilinear_history_reason_="filter_caps";return D3DERR_NOTAVAILABLE;}
+    if((caps.TextureFilterCaps&filters)!=filters){reason="filter_caps";return D3DERR_NOTAVAILABLE;}
     IDirect3D9* api=nullptr;D3DDEVICE_CREATION_PARAMETERS creation{};D3DDISPLAYMODE mode{};
-    HRESULT hr=call<GetD3DFn>(GetDirect3D)(device_,&api);
+    HRESULT hr=reinterpret_cast<GetD3DFn>(table[GetDirect3D])(d,&api);
     if(SUCCEEDED(hr)&&!api)hr=E_FAIL;
-    if(SUCCEEDED(hr))hr=call<GetCreationFn>(GetCreationParameters)(device_,&creation);
-    if(SUCCEEDED(hr))hr=call<GetDisplayModeFn>(GetDisplayMode)(device_,0,&mode);
-    if(FAILED(hr)){drop(api);bilinear_history_reason_="adapter_query";return hr;}
-    bilinear_history_reason_="ok";
-    if(api->CheckDeviceFormat(creation.AdapterOrdinal,creation.DeviceType,mode.Format,D3DUSAGE_QUERY_FILTER,D3DRTYPE_TEXTURE,D3DFMT_A16B16G16R16F)!=D3D_OK)bilinear_history_reason_="fp16_filter";
-    else if(api->CheckDeviceFormat(creation.AdapterOrdinal,creation.DeviceType,mode.Format,D3DUSAGE_QUERY_FILTER,D3DRTYPE_TEXTURE,D3DFMT_R32F)!=D3D_OK)bilinear_history_reason_="r32f_filter";
+    if(SUCCEEDED(hr))hr=reinterpret_cast<GetCreationFn>(table[GetCreationParameters])(d,&creation);
+    if(SUCCEEDED(hr))hr=reinterpret_cast<GetDisplayModeFn>(table[GetDisplayMode])(d,0,&mode);
+    if(FAILED(hr)){drop(api);reason="adapter_query";return hr;}
+    reason="ok";
+    if(api->CheckDeviceFormat(creation.AdapterOrdinal,creation.DeviceType,mode.Format,D3DUSAGE_QUERY_FILTER,D3DRTYPE_TEXTURE,D3DFMT_A16B16G16R16F)!=D3D_OK)reason="fp16_filter";
+    else if(api->CheckDeviceFormat(creation.AdapterOrdinal,creation.DeviceType,mode.Format,D3DUSAGE_QUERY_FILTER,D3DRTYPE_TEXTURE,D3DFMT_R32F)!=D3D_OK)reason="r32f_filter";
     drop(api);
-    return std::strcmp(bilinear_history_reason_,"ok")==0?S_OK:D3DERR_NOTAVAILABLE;
+    return std::strcmp(reason,"ok")==0?S_OK:D3DERR_NOTAVAILABLE;
 }
-HRESULT TemporalPass::configure_history_taps(unsigned taps) noexcept {
-    if(taps!=5&&taps!=16)return E_INVALIDARG;
-    history_taps_=taps;create_taps16(nullptr);
-    return S_OK;
+HRESULT TemporalPass::query_bilinear_history(const D3DCAPS9& caps) noexcept {
+    return history_filtering(device_,vtable_?vtable_:*reinterpret_cast<void* const* const*>(device_),caps,bilinear_history_reason_);
 }
-// S3: the 16-tap twins of the programs created so far, only while 16 taps are configured on a device that draws the
-// 5-tap programs (without the filter caps the primary slots already hold the 16-tap words), so a default session holds
-// no extra program. Each twin is optional: a refusal leaves that configuration on 5 taps (Diagnostics::history_taps).
-void TemporalPass::create_taps16(const DWORD* far_reference) noexcept {
-    if(!device_||!bilinear_history_||history_taps_!=16)return;
-    auto make=[&](const DWORD* words,IDirect3DPixelShader9** out){if(!*out&&FAILED(call<CreatePsFn>(CreatePixelShader)(device_,words,out)))drop(*out);};
-    auto words=[](const auto& program){return reinterpret_cast<const DWORD*>(program);};
-    if(resolve_)make(words(temporal_resolve_taps16_program()),&resolve16_);
-    if(thin_)make(words(temporal_resolve_thin_taps16_program()),&thin16_);
-    if(age_)make(words(temporal_resolve_age_taps16_program()),&age16_);
-    if(far_)make(far_reference?far_reference:words(temporal_resolve_far_taps16_program()),&far16_);
+HRESULT TemporalPass::query_history_filtering(IDirect3DDevice9* d,void* const* native_vtable,const char** reason) noexcept {
+    const char* why="device_caps";
+    if(!d){if(reason)*reason=why;return E_INVALIDARG;}
+    void* const* table=native_vtable?native_vtable:*reinterpret_cast<void* const* const*>(d);
+    D3DCAPS9 caps{};HRESULT hr=reinterpret_cast<CapsFn>(table[GetDeviceCaps])(d,&caps);
+    if(SUCCEEDED(hr))hr=history_filtering(d,table,caps,why);
+    if(reason)*reason=why;
+    return hr;
 }
 HRESULT TemporalPass::configure_flicker() noexcept {
     if(!device_||!resolve_)return E_FAIL;
     if(thin_)return S_OK;
     auto make=[&](const std::uint32_t* words,IDirect3DPixelShader9** out){return call<CreatePsFn>(CreatePixelShader)(device_,reinterpret_cast<const DWORD*>(words),out);};
-    HRESULT hr=make(bilinear_history_?temporal_resolve_thin_program():temporal_resolve_thin_taps16_program(),&thin_);
+    HRESULT hr=make(temporal_resolve_thin_program(),&thin_);
     if(FAILED(hr)){drop(thin_);return hr;}
     // The age variant is optional on top: a refusal leaves the thin clip usable.
-    if(mrt_age_&&FAILED(make(bilinear_history_?temporal_resolve_age_program():temporal_resolve_age_taps16_program(),&age_)))drop(age_);
-    create_taps16(nullptr);
+    if(mrt_age_&&FAILED(make(temporal_resolve_age_program(),&age_)))drop(age_);
     return S_OK;
 }
 HRESULT TemporalPass::configure_far(const DWORD* reference_program,const DWORD* camera_program) noexcept {
@@ -300,7 +294,7 @@ HRESULT TemporalPass::configure_far(const DWORD* reference_program,const DWORD* 
     auto make=[&](const std::uint32_t* words,IDirect3DPixelShader9** out){return call<CreatePsFn>(CreatePixelShader)(device_,reinterpret_cast<const DWORD*>(words),out);};
     const bool own_mask=!line_mask_;
     HRESULT hr=line_mask_?S_OK:make(temporal_line_mask_program(),&line_mask_);
-    if(SUCCEEDED(hr))hr=reference_program?call<CreatePsFn>(CreatePixelShader)(device_,reference_program,&far_):make(bilinear_history_?temporal_resolve_far_program():temporal_resolve_far_taps16_program(),&far_);
+    if(SUCCEEDED(hr))hr=reference_program?call<CreatePsFn>(CreatePixelShader)(device_,reference_program,&far_):make(temporal_resolve_far_program(),&far_);
     if(FAILED(hr)){drop(far_);if(own_mask)drop(line_mask_);return hr;}
     // The camera-gate programs (section 32.1 with A' and the mask fold, taa-mask-fold.md): the folded hold resolve and its
     // region-gated 7x7 box. Optional on top: a refusal leaves no camera-gate path and a run asking for the camera gate is
@@ -312,7 +306,6 @@ HRESULT TemporalPass::configure_far(const DWORD* reference_program,const DWORD* 
     camera_programs_result_=camera;
     // S1 (taa-high-resolution.md): the screen-gate chain's depth-folding first draw, optional; a refusal keeps the copy draw.
     if(!line_mask_depth_&&FAILED(make(temporal_line_mask_depth_program(),&line_mask_depth_)))drop(line_mask_depth_);
-    create_taps16(reference_program); // a fixture's reference program stands for both tap counts
     return hr;
 }
 // S4: the half-resolution pair, created only on request; a refusal drops both and keeps the full-resolution box.
@@ -570,11 +563,8 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     const bool lane=camera&&four_channel&&in.camera_lane_parallax[3]==1.f&&std::isfinite(lane_constants[0])&&std::isfinite(lane_constants[1])&&std::isfinite(lane_constants[2]);
     if(!lane)lane_constants[0]=lane_constants[1]=lane_constants[2]=lane_constants[3]=0.f;
     const bool thin_bound=flicker&&thin_; // after a mask fallback of a far run the thin variants may not exist: plain then
-    // S3: the 16-tap twin when asked for and created; without the filter caps the 5-tap slots hold the 16-tap words.
-    // The camera gate has no 16-tap program (a camera-gate run with 16 taps is refused above).
-    IDirect3DPixelShader9* const program16=history_taps_==16?(far_on?(camera?nullptr:far16_):aged?age16_:thin_bound?thin16_:resolve16_):nullptr;
-    IDirect3DPixelShader9* const program=program16?program16:far_on?(camera?far_camera_hold_:far_):aged?age_:thin_bound?thin_:resolve_;
-    const bool bilinear=bilinear_history_&&!program16; // the 5-tap program: its LINEAR samplers s11 / s12 are bound for the draw
+    IDirect3DPixelShader9* const program=far_on?(camera?far_camera_hold_:far_):aged?age_:thin_bound?thin_:resolve_;
+    const bool bilinear=bilinear_history_; // the 5-tap program: its LINEAR samplers s11 / s12 are bound for the draw
     const bool used=history_.valid&&in.weight>0;
     auto stamp=[&]()->std::uint64_t{if(!timing_)return 0;LARGE_INTEGER t{};QueryPerformanceCounter(&t);return std::uint64_t(t.QuadPart);};
     std::uint64_t mark=stamp();
@@ -778,7 +768,7 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
                  step(call<SetTextureFn>(SetTexture)(d,7,history_.valid?ages_[current_]:nullptr))&&
                  step(call<SetRtFn>(SetRenderTarget)(d,1,age_surfaces_[next]))))&&
         (!camera||(step(call<SetRsFn>(SetRenderState)(d,D3DRS_COLORWRITEENABLE2,15))&&step(call<SetRtFn>(SetRenderTarget)(d,2,depth_surfaces_[next])))))hr=quad(in.width,in.height);
-    if(SUCCEEDED(hr)){diagnostics_.history_taps=bilinear?5u:16u;diagnostics_.region_hold=camera;diagnostics_.box_half=half;if(camera)diagnostics_.depth_folded=true;}
+    if(SUCCEEDED(hr)){diagnostics_.history_taps=5u;diagnostics_.region_hold=camera;diagnostics_.box_half=half;if(camera)diagnostics_.depth_folded=true;}
     if(camera&&!lost(hr)){const HRESULT unbind=call<SetRtFn>(SetRenderTarget)(d,2,nullptr);if(SUCCEEDED(hr))hr=unbind;}
     if(aged&&!lost(hr)){const HRESULT unbind=call<SetRtFn>(SetRenderTarget)(d,1,nullptr);if(SUCCEEDED(hr))hr=unbind;}
     if(SUCCEEDED(hr)&&in.reactive_policy==ReactivePolicy::RequiredMask){

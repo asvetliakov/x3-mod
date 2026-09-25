@@ -24,10 +24,6 @@
    "0",
    "1"
   ],
-  "X3M_LOADING_INTERVALS": [
-   "0",
-   "1"
-  ],
   "X3M_MOTION_FRAME_LOG": [
    null,
    "1"
@@ -54,9 +50,93 @@
   ]
  },
  "stand_vs_recorded_stand": {
+  "X3M_CULL_SMALL_PARTS_SCOPE": [
+   "all",
+   null
+  ],
+  "X3M_DEPTH_COPY": [
+   "0",
+   null
+  ],
+  "X3M_EMISSION_GAIN": [
+   "1.0",
+   null
+  ],
+  "X3M_FINITE_POSITIONS": [
+   "0",
+   null
+  ],
+  "X3M_FOG_FAR_BINS": [
+   "40",
+   null
+  ],
+  "X3M_FOG_SHADOW_PASS": [
+   "0",
+   null
+  ],
+  "X3M_LIGHTMAP_EMISSIVE_GAIN": [
+   "1.0",
+   null
+  ],
+  "X3M_LINEAR_DISTANCE_FADE": [
+   "0",
+   null
+  ],
+  "X3M_LINEAR_EMISSIONS": [
+   "0",
+   null
+  ],
+  "X3M_LINEAR_MATERIALS": [
+   "0",
+   null
+  ],
+  "X3M_LOADING_INTERVALS": [
+   "1",
+   null
+  ],
+  "X3M_MATERIAL_DIRECT_GAIN": [
+   "1.0",
+   null
+  ],
+  "X3M_MATERIAL_EMISSIVE_GAIN": [
+   "1.0",
+   null
+  ],
+  "X3M_MATERIAL_FILL": [
+   "0.0",
+   null
+  ],
+  "X3M_MESH_CACHE": [
+   "0",
+   null
+  ],
+  "X3M_MOTION_CAPTURE": [
+   "0",
+   null
+  ],
   "X3M_MUSIC_KEEP": [
    null,
    "1"
+  ],
+  "X3M_SCENE_DEPTH_CAPTURE": [
+   "0",
+   null
+  ],
+  "X3M_SCREEN_EMISSION": [
+   "0",
+   null
+  ],
+  "X3M_SCREEN_EMISSION_BOUND": [
+   "0",
+   null
+  ],
+  "X3M_SCREEN_EMISSION_GAIN": [
+   "1.0",
+   null
+  ],
+  "X3M_SCREEN_EMISSION_TIMING": [
+   "0",
+   null
   ],
   "X3M_SHADOW_ALPHA_CASTERS": [
    "0",
@@ -81,6 +161,18 @@
   "X3M_TAA_SENTINEL": [
    "auto",
    null
+  ],
+  "X3M_TAA_THIN_REGION_GATE": [
+   "camera",
+   null
+  ],
+  "X3M_TAA_THIN_REGION_SOURCE": [
+   "vote",
+   null
+  ],
+  "X3M_TAA_THIN_REGION_SOURCE_DEFAULT": [
+   "1",
+   null
   ]
  },
  "empty_vs_recorded_stand": {
@@ -90,6 +182,30 @@
   ],
   "X3M_CULL_CENSUS": [
    "1",
+   null
+  ],
+  "X3M_CULL_SMALL_PARTS_SCOPE": [
+   "all",
+   null
+  ],
+  "X3M_DEPTH_COPY": [
+   "0",
+   null
+  ],
+  "X3M_EMISSION_GAIN": [
+   "1.0",
+   null
+  ],
+  "X3M_FINITE_POSITIONS": [
+   "0",
+   null
+  ],
+  "X3M_FOG_FAR_BINS": [
+   "40",
+   null
+  ],
+  "X3M_FOG_SHADOW_PASS": [
+   "0",
    null
   ],
   "X3M_FPS_OVERLAY": [
@@ -108,9 +224,45 @@
    "1",
    "0"
   ],
+  "X3M_LIGHTMAP_EMISSIVE_GAIN": [
+   "1.0",
+   null
+  ],
+  "X3M_LINEAR_DISTANCE_FADE": [
+   "0",
+   null
+  ],
+  "X3M_LINEAR_EMISSIONS": [
+   "0",
+   null
+  ],
+  "X3M_LINEAR_MATERIALS": [
+   "0",
+   null
+  ],
   "X3M_LOADING_INTERVALS": [
    "1",
-   "0"
+   null
+  ],
+  "X3M_MATERIAL_DIRECT_GAIN": [
+   "1.0",
+   null
+  ],
+  "X3M_MATERIAL_EMISSIVE_GAIN": [
+   "1.0",
+   null
+  ],
+  "X3M_MATERIAL_FILL": [
+   "0.0",
+   null
+  ],
+  "X3M_MESH_CACHE": [
+   "0",
+   null
+  ],
+  "X3M_MOTION_CAPTURE": [
+   "0",
+   null
   ],
   "X3M_MOTION_FRAME_LOG": [
    "1",
@@ -122,6 +274,26 @@
   ],
   "X3M_OBJECT_BOUNDS_LOG": [
    "1",
+   null
+  ],
+  "X3M_SCENE_DEPTH_CAPTURE": [
+   "0",
+   null
+  ],
+  "X3M_SCREEN_EMISSION": [
+   "0",
+   null
+  ],
+  "X3M_SCREEN_EMISSION_BOUND": [
+   "0",
+   null
+  ],
+  "X3M_SCREEN_EMISSION_GAIN": [
+   "1.0",
+   null
+  ],
+  "X3M_SCREEN_EMISSION_TIMING": [
+   "0",
    null
   ],
   "X3M_SHADOW_ALPHA_CASTERS": [
@@ -156,6 +328,18 @@
    "auto",
    null
   ],
+  "X3M_TAA_THIN_REGION_GATE": [
+   "camera",
+   null
+  ],
+  "X3M_TAA_THIN_REGION_SOURCE": [
+   "vote",
+   null
+  ],
+  "X3M_TAA_THIN_REGION_SOURCE_DEFAULT": [
+   "1",
+   null
+  ],
   "X3M_TELEMETRY": [
    "1",
    "0"
@@ -169,6 +353,10 @@
   "X3M_SHADOW_CASCADE_SIZES": [
    "2048,2048,2048,2048,2048",
    "2048,4096,4096,4096,2048"
+  ],
+  "X3M_SHADOW_RETENTION_CENSUS": [
+   "1",
+   "0"
   ]
  },
  "switches": {
@@ -189,15 +377,15 @@
   ]
  },
  "counts": {
-  "empty": 174,
-  "stand": 177,
+  "empty": 150,
+  "stand": 153,
   "recorded": 181
  },
  "checks": {
   "empty_vs_stand only telemetry/debug + the promoted map sizes": true,
-  "stand vs recorded only the two new defaults and the removed variables (single map, sentinel)": true,
-  "empty vs recorded: telemetry/debug + the two new defaults + the map sizes + the removed variables (single map, sentinel)": true,
+  "stand vs recorded only the two new defaults and the removed variables": true,
+  "empty vs recorded: telemetry/debug + the two new defaults + the map sizes + the removed variables": true,
   "same X3AP switches": true,
-  "short stand command == old stand command but the map sizes": true
+  "short stand command == old stand command but the map sizes and the census": true
  }
 }

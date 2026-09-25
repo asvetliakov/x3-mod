@@ -11,8 +11,11 @@ sys.path.insert(0, str(ROOT / 'verification/probe'))
 import fog_density_shader_slots as slots  # noqa: E402
 
 BASE = ('fog_density_march', 'fog_density_composite', 'fog_density_repair', 'fog_density_march_exact')
-# The single look (FOG_LOOK), its 24-far-bin, quarter-resolution (step C) and visibility-grid variants, and the needs-repair census.
-NAMES = BASE + tuple(slots.LOOK_PROGRAMS) + tuple(slots.FAR24_PROGRAMS) + tuple(slots.Q4_PROGRAMS) + tuple(slots.CENSUS_PROGRAMS) + tuple(slots.GRID_PROGRAMS)
+# The single look (FOG_LOOK), its quarter-resolution variant (step C) and the needs-repair census. (The 24-far-bin and
+# visibility-grid variants were removed on 2026-09-25 with --fog-far-bins and --fog-shadow-pass.)
+NAMES = BASE + tuple(slots.LOOK_PROGRAMS) + tuple(slots.Q4_PROGRAMS) + tuple(slots.CENSUS_PROGRAMS)
+REMOVED = ('fog_density_march_look_far24', 'fog_density_repair_look_far24', 'fog_density_march_look_far24_q4', 'fog_density_repair_look_far24_q4',
+           'fog_density_visibility_grid', 'fog_density_march_grid', 'fog_density_repair_grid', 'fog_dust_motes_grid')
 
 
 def digest(path):
@@ -31,7 +34,7 @@ class FogDensityShaders(unittest.TestCase):
             r = record(name); header = slots.PROGRAMS[name]
             self.assertEqual(r['source_sha256'], digest(ROOT / r['source']), name)
             self.assertEqual(r['header_sha256'], digest(header), name)
-            self.assertIn('src/fog/fog_shadow_grid_inc.h' if name == 'fog_density_visibility_grid' else 'src/fog/fog_density_field_inc.h', r['includes'], name)
+            self.assertIn('src/fog/fog_density_field_inc.h', r['includes'], name)
             for path, value in r['includes'].items():
                 self.assertEqual(value, digest(ROOT / path), (name, path))
             words = slots.words_of(header)
@@ -54,14 +57,6 @@ class FogDensityShaders(unittest.TestCase):
         # The look: depth + 2x2 atlas fetches + 2 cascades x 4 shaft taps + the sun-ward tap's two far fetches (15);
         # composite 1+1+4+4; repair adds four footprint taps and the scene. The 64-bin march stays one loop.
         self.assertEqual([counts[n]['texture_instructions'] for n in slots.LOOK_PROGRAMS], [15, 10, 20])
-        # Step B (fog-gpu-cost.md): 24 far bins change the loop count only; the same fetches, one loop, slots within a few.
-        self.assertEqual([counts[n]['texture_instructions'] for n in slots.FAR24_PROGRAMS], [15, 20])
-        for name in slots.FAR24_PROGRAMS:
-            self.assertLessEqual(abs(counts[name]['slots'] - counts[name.replace('_far24', '')]['slots']), 4, name)
-        # The visibility grid: the pass reads 3 cascades x 4 depths; its march and repair drop the shaft taps for one
-        # grid fetch (depth + 2x2 atlas + grid + 2 sun-ward = 8; repair adds four footprint taps and the scene).
-        self.assertEqual([counts[n]['texture_instructions'] for n in slots.GRID_PROGRAMS], [12, 8, 13])
-        self.assertEqual(counts['fog_density_visibility_grid']['loops'], 2)  # slices x taps, both static loops
         # Step C: the quarter-resolution programs are the scale-2 ones with other sample spacings: the same fetches, one loop
         # (composite none), slots within a few. The census quad: depth + four footprint depths, no loop.
         for name in slots.Q4_PROGRAMS:
@@ -71,16 +66,13 @@ class FogDensityShaders(unittest.TestCase):
             self.assertLessEqual(abs(counts[name]['slots'] - counts[default]['slots']), 4, name)
         self.assertEqual([counts[n]['texture_instructions'] for n in slots.CENSUS_PROGRAMS], [5, 5])
         for name in NAMES:
-            if name in slots.GRID_PROGRAMS:
-                continue
             self.assertEqual(counts[name]['loops'], 0 if 'composite' in name or name in slots.CENSUS_PROGRAMS else 1, name)
-        self.assertEqual([counts[n]['loops'] for n in ('fog_density_march_grid', 'fog_density_repair_grid')], [1, 1])
         with self.assertRaises(ValueError):
             slots.count([0xffff0300])  # no END token
 
     def test_dust_mote_programs(self):
-        # fog-dust-motes.md: the capsule pixel program in the in-march and grid variants over the shared field include, and
-        # its vs_3_0 vertex program; recorded compilations, a fresh 512-slot budget, and the drawn programs untouched.
+        # fog-dust-motes.md: the capsule pixel program over the shared field include (the grid variant went with the shadow
+        # pass on 2026-09-25) and its vs_3_0 vertex program; recorded compilations, a fresh 512-slot budget.
         text = (ROOT / 'tools/shaders/generate_rigid_motion_pixel.py').read_text()
         for name, path in list(slots.MOTE_PROGRAMS.items()) + list(slots.MOTE_VERTEX.items()):
             r = record(name)
@@ -97,15 +89,15 @@ class FogDensityShaders(unittest.TestCase):
         for name, row in counts.items():
             self.assertLess(row['slots'], 512, name); self.assertEqual(row['loops'], 0, name)
             self.assertIn('src/fog/fog_density_field_inc.h', record(name)['includes'], name)
-        # In-march: depth + 2x2 level fetches + 2 cascades x 4 shaft taps (13); grid: depth + 2x2 + one grid fetch (6).
-        self.assertEqual([counts[n]['texture_instructions'] for n in ('fog_dust_motes_look', 'fog_dust_motes_grid')], [13, 6])
+        # In-march: depth + 2x2 level fetches + 2 cascades x 4 shaft taps (13).
+        self.assertEqual([counts[n]['texture_instructions'] for n in ('fog_dust_motes_look',)], [13])
         self.assertEqual(vertex['texture_instructions'], 0)  # no vertex texture fetch
         self.assertLess(vertex['slots'], 512)
-        self.assertIn('#define FOG_SHADOW_PASS\n', (ROOT / record('fog_dust_motes_grid')['source']).read_text())
         self.assertNotIn('FOG_SHADOW_PASS', (ROOT / record('fog_dust_motes_look')['source']).read_text())
         pass_source = (ROOT / 'src/renderer/fog_pass.cpp').read_text()
-        for name in ('vertex', 'look', 'grid'):
+        for name in ('vertex', 'look'):
             self.assertIn('#include "fog_dust_motes_%s_program_inc.h"' % name, pass_source)
+        self.assertNotIn('fog_dust_motes_grid', pass_source)
 
     def test_programs_are_registered_with_the_generator_and_use_inc_h(self):
         text = (ROOT / 'tools/shaders/generate_rigid_motion_pixel.py').read_text()
@@ -113,23 +105,25 @@ class FogDensityShaders(unittest.TestCase):
             self.assertIn("'%s': dict(" % name, text)
             self.assertTrue(slots.PROGRAMS[name].name.endswith('_program_inc.h'))
         self.assertEqual(slots.PROGRAMS['fog_density_march_exact'].parent, ROOT / 'verification/probe')
+        # The removed variants are gone from the generator, the tree and the provenance records.
+        for name in REMOVED:
+            self.assertNotIn("'%s': dict(" % name, text)
+            self.assertFalse((ROOT / ('src/renderer/%s_program_inc.h' % name)).exists(), name)
+            self.assertFalse((ROOT / ('verification/results/%s-program.json' % name.replace('_', '-'))).exists(), name)
 
     def test_one_look_and_an_unshaped_parity_reference(self):
         # The look is the only law the renderer draws; the unshaped law survives behind #ifndef FOG_LOOK as the
         # fixture's parity reference (the presets L0/L1/L3 were retired on 2026-09-22, and no preset level remains).
         text = (ROOT / 'src/fog/fog_density_field_inc.h').read_text()
         guards = [line.split('//')[0].strip() for line in text.splitlines() if line.startswith(('#if', '#ifdef', '#ifndef')) and 'FOG_LOOK' in line]
-        self.assertEqual(sorted(guards), sorted(['#ifdef FOG_LOOK'] * 3 + ['#if defined(FOG_LOOK) && !defined(FOG_SHADOW_PASS)', '#ifndef FOG_LOOK', '#ifndef FOG_LOOK_NO_OFFSET']))
+        self.assertEqual(sorted(guards), sorted(['#ifdef FOG_LOOK'] * 3 + ['#if defined(FOG_LOOK)', '#ifndef FOG_LOOK', '#ifndef FOG_LOOK_NO_OFFSET']))
+        self.assertNotIn('FOG_SHADOW_PASS', text); self.assertNotIn('FOG_GRID_PASS', text)
         self.assertNotIn('FOG_LOOK >=', text)
         for name in BASE:
             self.assertNotIn('FOG_LOOK', (ROOT / record(name)['source']).read_text(), name)
-        for name in list(slots.LOOK_PROGRAMS) + ['fog_density_march_grid', 'fog_density_repair_grid']:
+        for name in slots.LOOK_PROGRAMS:
             self.assertIn('#define FOG_LOOK\n', (ROOT / record(name)['source']).read_text(), name)
-        # The 24-far-bin variants are the look sources with FOG_FAR_BINS 24 (default 40 in the include, look law only).
-        for name in slots.FAR24_PROGRAMS:
-            source = (ROOT / record(name)['source']).read_text()
-            self.assertIn('#define FOG_FAR_BINS 24\n', source, name)
-            self.assertIn('#include "%s_ps.hlsl"' % name.replace('_far24', ''), source, name)
+        # 40 far bins, the only count since the 24-bin variants went (default in the include, look law only).
         self.assertIn('#ifndef FOG_FAR_BINS\n#define FOG_FAR_BINS 40\n#endif', text)
         # Step C: the quarter-resolution variants define FOG_MARCH_SCALE 4 over the scale-2 sources; the default expands to the
         # literals it replaced (2.0 / 0.5), so the scale-2 programs keep their bytes (pinned below and by the fixture hashes).
@@ -138,30 +132,22 @@ class FogDensityShaders(unittest.TestCase):
             self.assertIn('#define FOG_MARCH_SCALE 4\n', source, name)
             self.assertIn('#include "%s_ps.hlsl"' % name.replace('_q4', ''), source, name)
         self.assertIn('#ifndef FOG_MARCH_SCALE\n#define FOG_MARCH_SCALE 2\n#endif\n#if FOG_MARCH_SCALE == 2\n#define FOG_MARCH_STEP 2.0\n#define FOG_MARCH_INVERSE 0.5\n', text)
-        self.assertIn('#if FOG_MARCH_SCALE != 2\n#error', text)  # the grid programs exist at spacing 2 only
         self.assertNotIn('pixel*0.5', text); self.assertNotIn('q*2.0+0.5', text)
         self.assertIn('[loop] for (int i=0; i<24+FOG_FAR_BINS; ++i) {', text)
         self.assertIn('max(distance-12000.0,0.0)/float(FOG_FAR_BINS)', text)
-        # The grid variants are the look plus FOG_SHADOW_PASS; the pass program is its own source over the shared include.
-        for name in ('fog_density_march_grid', 'fog_density_repair_grid'):
-            self.assertIn('#define FOG_SHADOW_PASS\n', (ROOT / record(name)['source']).read_text(), name)
-        self.assertIn('#define FOG_GRID_PASS\n', (ROOT / record('fog_density_visibility_grid')['source']).read_text())
-        self.assertIn('src/fog/fog_shadow_grid_inc.h', record('fog_density_visibility_grid')['includes'])
         # The unshaped parity programs and the look programs are unchanged by the retirement: pinned bytecode.
         for name, digest in (('fog_density_march', '4dacf7e4d3ffa909cbd8b8a75352b44d55a471d36ba3222d977662cf6afda60f'),
                              ('fog_density_march_look', '6a347ac2c07d4be702c8b267f704b1aad2cdde16cd729565a2f01a0acf83ed25'),
                              ('fog_density_composite_look', '6c6a78b9fb72c4086e0a169ac249940d8eb4821a2eb457381e4333588e8ef369'),
                              ('fog_density_repair_look', '155a82e2833141db22e2f0688eb11c4aef2a614f612127a348fc739a49b85056')):
             self.assertEqual(record(name)['bytecode_sha256'], digest, name)
-        # The renderer creates the three look programs and no unshaped one; the grid variants beside them on request.
+        # The renderer creates the three look programs and no unshaped one, and neither removed variant.
         pass_source = (ROOT / 'src/renderer/fog_pass.cpp').read_text()
         for name in ('march', 'composite', 'repair'):
             self.assertIn('#include "fog_density_%s_look_program_inc.h"' % name, pass_source)
             self.assertNotIn('#include "fog_density_%s_program_inc.h"' % name, pass_source)
-        for name in ('visibility', 'march', 'repair'):
-            self.assertIn('#include "fog_density_%s_grid_program_inc.h"' % name, pass_source)
-        for name in ('march', 'repair'):
-            self.assertIn('#include "fog_density_%s_look_far24_program_inc.h"' % name, pass_source)
+        for name in REMOVED:
+            self.assertNotIn('%s_program_inc.h' % name, pass_source)
         for name in slots.Q4_PROGRAMS:
             self.assertIn('#include "%s_program_inc.h"' % name, pass_source)
         for name in slots.CENSUS_PROGRAMS:
@@ -190,7 +176,7 @@ class FogDensityShaders(unittest.TestCase):
         for gate in ('look_cases', 'look_shaft_offset_exercised', 'repair_shaft_lookup', 'look_shadowed_coloured', 'pass_off_bit_identical', 'march_loops_kept', 'slots_below_512'):
             self.assertIs(s['gates'][gate], True, gate)
         self.assertNotIn('look0_shadowed_black', s['gates'])
-        hashes = s['visibility_grid']['pass_off_hashes']
+        hashes = s['pass_off_hashes']
         self.assertEqual(hashes['measured'], hashes['expected']); self.assertEqual(len(hashes['expected']), 11)
         self.assertTrue(all('q4_' in k or k == 'repair_shafts_q4.full' for k in hashes['expected']))
         looks = s['look_versus_host']
@@ -211,27 +197,23 @@ class FogDensityShaders(unittest.TestCase):
         self.assertEqual(p['fill']['nodes'], 2 * 128 ** 3)
         self.assertEqual(p['reset_reupload']['regenerated_nodes'], 0)
         self.assertGreater(p['repair']['half_pixel_shift_control'], 3 * p['repair']['worst_vs_cpu'])
-        # Each set's record beside the summary, which stays under 50 KB and carries every gate: 25 spacing-independent,
-        # 5 default look, 3 q4, 7 far24 (default spacing), 12 s2 (the scale-2 opt-out: 5 look, 7 far24) = 52.
+        # Each set's record beside the summary, which stays under 50 KB and carries every gate: 15 spacing-independent,
+        # 5 default look, 3 q4, 5 s2 (the scale-2 opt-out's look) = 28 (52 before the 7 far24_*, 7 s2_far24_* and 10 grid_*
+        # gates went with their variants on 2026-09-25).
         self.assertLess((ROOT / 'verification/results/fog-density-shader/summary.json').stat().st_size, 50_000)
-        self.assertEqual((s['far_bins_variant_file'], s['march_scale_record_file'], s['scale2_variant_file']), ('far24.json', 'q4.json', 's2.json'))
-        self.assertGreaterEqual(len(s['gates']), 52)
+        self.assertEqual((s['march_scale_record_file'], s['scale2_variant_file']), ('q4.json', 's2.json'))
+        self.assertNotIn('far_bins_variant_file', s); self.assertNotIn('visibility_grid', s)
+        self.assertFalse(any(k.startswith(('far24_', 's2_far24_', 'grid_')) for k in s['gates']))
+        self.assertEqual(len(s['gates']), 28)
+        self.assertFalse((ROOT / 'verification/results/fog-density-shader/far24.json').exists())
         records = {}
-        for name, prefix, count in (('far24.json', 'far24_', 7), ('q4.json', 'q4_', 3), ('s2.json', 's2_', 12)):
+        for name, prefix, count in (('q4.json', 'q4_', 3), ('s2.json', 's2_', 5)):
             r = records[name] = json.loads((ROOT / 'verification/results/fog-density-shader' / name).read_text())
             self.assertEqual(r['result'], 'PASS', name); self.assertEqual(r['bottle']['name'], 'X3', name)
             self.assertEqual(r['gates'], {k: v for k, v in s['gates'].items() if k.startswith(prefix)}, name); self.assertEqual(len(r['gates']), count, name)
-        # Step B at the default spacing: the 24-far-bin look marched at spacing 4 against its own reference.
-        f = records['far24.json']
-        self.assertEqual((f['march_scale'], f['reference']['far_bins'], f['reference']['march_scale']), (4, 24, 4))
-        self.assertEqual(sorted(f['deviation_from_40_bins']), sorted(looks))
-        for label, row in f['look_versus_host'].items():
-            for variant in ('bilinear32', 'bilinear16'):
-                self.assertLessEqual(row[variant]['T']['max'], .003, label); self.assertLessEqual(row[variant]['S']['max'], .003, label)
-        self.assertGreaterEqual(len(f['pass_fixture_checks']), 16); self.assertTrue(all(v == 'PASS' for v in f['pass_fixture_checks'].values()))
         # Step C, the spacing: how far 4 moves the image from 2, the depth-edge chain, the quarter programs and pass checks.
         q = records['q4.json']
-        self.assertEqual((q['reference']['march_scale'], q['reference']['far_bins']), (4, 40))
+        self.assertEqual((q['reference']['march_scale'], q['reference'].get('far_bins', 40)), (4, 40))
         self.assertEqual(sorted(q['deviation_from_scale_2']), sorted(looks))
         e = q['depth_edges']
         self.assertGreater(e['needs_repair']['4'], e['needs_repair']['2']); self.assertLessEqual(e['repaired_gpu']['4'], e['needs_repair']['4'])
@@ -239,7 +221,7 @@ class FogDensityShaders(unittest.TestCase):
         self.assertEqual(q['pass_fixture_checks']['march_scale_default_is_quarter'], 'PASS')
         for name in slots.Q4_PROGRAMS:
             self.assertEqual(s['shaders'][name.replace('_', '-')]['slots'], q['programs'][name.replace('_', '-')]['slots'])
-        # The scale-2 opt-out: the former default look, byte for byte (its 11 accepted-look hashes), and its far-bins variant.
+        # The scale-2 opt-out: the former default look, byte for byte (its 11 accepted-look hashes).
         o = records['s2.json']
         self.assertEqual(o['march_scale'], 2); self.assertNotIn('march_scale', o['reference'])
         self.assertEqual(sorted(o['look_versus_host']), sorted(looks))
@@ -248,8 +230,7 @@ class FogDensityShaders(unittest.TestCase):
         for label, row in o['look_versus_host'].items():
             for variant in ('bilinear32', 'bilinear16'):
                 self.assertLessEqual(row[variant]['T']['max'], .003, label); self.assertLessEqual(row[variant]['S']['max'], .003, label)
-        self.assertEqual((o['far24']['march_scale'], o['far24']['reference']['far_bins']), (2, 24)); self.assertNotIn('march_scale', o['far24']['reference'])
-        self.assertEqual(sorted(o['far24']['deviation_from_40_bins']), sorted(looks))
+        self.assertNotIn('far24', o)
 
 if __name__ == '__main__':
     unittest.main()

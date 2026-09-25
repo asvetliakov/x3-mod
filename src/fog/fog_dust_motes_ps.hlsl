@@ -1,9 +1,9 @@
 // Dust motes inside the stored-density fog (docs/architecture/fog-dust-motes.md): the capsule's pixel program, drawn
 // ONE/ONE on the fogged FP16 scene after the repair with the constants and samplers the repair leaves bound. The
 // fog's own law at the mote centre: the look's remapped density (warp, coverage waves, taper), the two-lobe phase on
-// the mote direction, the two-colour ambient and the sun visibility with its floor (the in-march lookup, or one grid
-// fetch at the slice of |q| under FOG_SHADOW_PASS), times the capsule falloff and the RT2 occlusion of the pixel.
-// Alpha 0: the scene's alpha is untouched. Included by fog_dust_motes_look_ps.hlsl and fog_dust_motes_grid_ps.hlsl.
+// the mote direction, the two-colour ambient and the sun visibility with its floor (the in-march lookup), times the
+// capsule falloff and the RT2 occlusion of the pixel. Alpha 0: the scene's alpha is untouched. Included by
+// fog_dust_motes_look_ps.hlsl.
 #include "fog_density_field_inc.h"
 float4 main(float4 raster : TEXCOORD0, float4 world : TEXCOORD1, float4 view : TEXCOORD2, float4 capsule : TEXCOORD3) : COLOR0 {
     float2 e = float2(raster.z - clamp(raster.z,0.0,capsule.x), raster.w);
@@ -29,16 +29,7 @@ float4 main(float4 raster : TEXCOORD0, float4 world : TEXCOORD1, float4 view : T
             float2 lobe = float2(look_lobe0.x - look_lobe0.y*cosine,look_lobe1.x - look_lobe1.y*cosine);
             float phase = look_lobe0.z/(lobe.x*sqrt(lobe.x)) + look_lobe1.z/(lobe.y*sqrt(lobe.y));
             float visibility = 1.0;
-#ifdef FOG_SHADOW_PASS
-            // The grid texel under the mote centre (the repair's law: full pixel f reads (f + .5) / 4), the slice of |q|.
-            [branch] if (shadow_select.x > 0.0) {
-                float3 tile = grid_tile(grid_slice(distance));
-                float2 at = clamp((capsule.zw + 0.5)*0.25,0.5,grid_layout.xy - 0.5);
-                visibility = dot(tex2Dlod(visibility_atlas,float4((tile.xy + at)*grid_layout.zw,0,0)),saturate(1.0 - abs(float4(0,1,2,3) - tile.z)));
-            }
-#else
             [branch] if (shadow_select.x > 0.0) visibility = fog_look_visibility(view.xyz);
-#endif
             float3 ambient = lerp(look_ambient0.rgb,look_ambient1.rgb,0.5 + 0.5*cosine);
             colour = look_albedo.rgb*(radiance_encode.rgb*phase*lerp(look_albedo.w,1.0,visibility) + ambient)*scale;
         }

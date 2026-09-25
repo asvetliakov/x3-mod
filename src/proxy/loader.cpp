@@ -1,7 +1,6 @@
 #include "capture.h"
 #include "proxy_identity.h"
 #include "voice_dmo_fallback.h"
-#include "lod_scale.h"
 #include "cull_census.h"
 #include "collide_box_cull.h"
 #include "pause_key_only.h"
@@ -384,13 +383,12 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
         // the window-thread hooks go before their procedures' code does; at process exit (reserved != NULL) the
         // threads are gone and no user32 call is made from the loader lock.
         if (reserved == nullptr) x3m::window_trace::shutdown();
-        // Dynamic unload only (reserved == NULL, FreeLibrary): the six original
-        // bytes go back before the operand's storage disappears. The module is
-        // pinned once the patch is live, so this path is unreachable then; at
+        // Dynamic unload only (reserved == NULL, FreeLibrary): the original
+        // bytes go back before the stub's storage disappears. The module is
+        // pinned once a patch is live, so this path is unreachable then; at
         // process exit (reserved != NULL) the threads are already gone and no
-        // code is rewritten (docs/architecture/lod-scale.md, "Lifetime").
-        if (reserved == nullptr) x3m::lod_scale::shutdown();
-        if (reserved == nullptr) x3m::point_light_admission::shutdown(); // same rule: six bytes back only on FreeLibrary
+        // code is rewritten.
+        if (reserved == nullptr) x3m::point_light_admission::shutdown(); // six bytes back only on FreeLibrary
         if (reserved == nullptr) x3m::collide_box_cull::shutdown(); // same rule: the two collide sites back only on FreeLibrary
         if (reserved == nullptr) x3m::pause_key_only::shutdown(); // same rule: the 12 pause-loop bytes back only on FreeLibrary
         if (reserved == nullptr) x3m::terran_station_lod::shutdown(); // same rule: the two reader bytes back only on FreeLibrary

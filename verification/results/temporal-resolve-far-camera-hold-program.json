@@ -10,14 +10,14 @@
   "flags_name": "D3DXSHADER_OPTIMIZATION_LEVEL3",
   "defines": null,
   "includes": {
-    "src/temporal/resolve.hlsl": "563ad6f2d551e79bf1af3543a4bbec4a8c9346197a11289f3db9e90b854bc120"
+    "src/temporal/resolve.hlsl": "370dcddd4fe3012058ddf301ae6ed741e86e08cd509053e1e5dad3b2060ceca9"
   },
   "word_count": 3878,
   "bytecode_sha256": "0e49efcf9741e4de20149b2e502ff8bb88b010ee2ca991954516273f6c807f25",
   "header_sha256": "5c4797a0dd2ed54043ff79861d9fefd9f99aa4b1cf9a25216615111c60d3618a",
   "tool_sources": {
     "tools/shaders/compile_rigid_motion_pixel.cpp": "f9587d9f1c066bce58bf36536b09d3f3ad58a5a1f6dbd59834e31628787d6bc3",
-    "tools/shaders/generate_rigid_motion_pixel.py": "566935b2c756226b4bb3b7f85078753af5fc7e88cff4e097fe2823d078d9b118"
+    "tools/shaders/generate_rigid_motion_pixel.py": "f8c223558759dd1e2d6869b378e08b039b4be16bd776bdb6a9610d3f537b89a9"
   },
   "copyright_scope": "Original authored project shader; no game shader bytes",
   "creates_d3d_device": false

@@ -99,8 +99,8 @@ class TaaImageDefaultsLaunch(unittest.TestCase):
 
     def test_retired_resolve_variants_are_refused_by_name(self):
         # Cleanup batch 6 (2026-09-23; docs/architecture/cleanup-inventory-2026-09-22.md): the four
-        # rejected / superseded resolve variants are refused by name, and a stale shell value of
-        # their variables never reaches the DLL (which no longer reads them either).
+        # rejected / superseded resolve variants were retired; their refusal stubs went on 2026-09-25, so they are plain
+        # unknown arguments, and a stale shell value of their variables never reaches the DLL (which no longer reads them either).
         retired = {'--taa-current-filter': 'X3M_TAA_CURRENT_FILTER', '--taa-line-filter': 'X3M_TAA_LINE_FILTER',
                    '--taa-thin-clip': 'X3M_TAA_THIN_CLIP', '--taa-adaptive-weight': 'X3M_TAA_ADAPTIVE_WEIGHT'}
         with tempfile.TemporaryDirectory() as directory:
@@ -111,7 +111,7 @@ class TaaImageDefaultsLaunch(unittest.TestCase):
                 for extra in ((), ('1',)):
                     code, _, error = self.launch(directory, *TAA, option, *extra)
                     self.assertEqual(code, 2, (option, extra))
-                    self.assertIn(f'{option} was removed on 2026-09-23', error)
+                    self.assertIn('unrecognized arguments', error)
         source = (ROOT / 'src/proxy/capture.cpp').read_text()
         for name in retired.values():
             self.assertNotIn(f'L"{name}"', source)
@@ -217,29 +217,17 @@ class TaaImageDefaultsLaunch(unittest.TestCase):
             self.assertEqual(code, 2)
             self.assertIn('--taa-thin-region requires --taa', error)
 
-    def test_thin_region_gate_defaults_to_camera_when_the_region_is_on(self):
-        # --taa-thin-region-gate screen|camera (docs/architecture/taa-lattice-crawl.md section 32.1). Run 59
-        # (run207 screen / run208 camera) accepted the camera gate, so it is the default whenever the thin
-        # region is active.
+    def test_thin_region_gate_is_not_a_launcher_variable(self):
+        # The camera gate (docs/architecture/taa-lattice-crawl.md section 32.1, accepted in Run 59) is the only gate since
+        # --taa-thin-region-gate and X3M_TAA_THIN_REGION_GATE were removed on 2026-09-25: the DLL gates whenever the thin
+        # region is on. The variable is never sent and an inherited value is dropped; the option is unknown.
         with tempfile.TemporaryDirectory() as directory:
-            env = self.env(directory, *TAA, '--taa-thin-region', '0.97')
-            self.assertEqual((env['X3M_TAA_THIN_REGION'], env['X3M_TAA_THIN_REGION_GATE']), ('0.97,1', 'camera'))
-            # A stale shell value cannot select a different gate than the resolved default.
-            self.assertEqual(self.env(directory, *TAA, '--taa-thin-region', '0.97', inherited={'X3M_TAA_THIN_REGION_GATE': 'screen'})['X3M_TAA_THIN_REGION_GATE'], 'camera')
-            self.assertEqual(self.env(directory, *TAA, '--taa-thin-region', '0.97', '--taa-thin-region-gate', 'screen')['X3M_TAA_THIN_REGION_GATE'], 'screen')
-            env = self.env(directory, *TAA, '--taa-thin-region', '0.97', '--taa-thin-region-gate', 'camera')
-            self.assertEqual(env['X3M_TAA_THIN_REGION_GATE'], 'camera')
-            env = self.env(directory, *TAA, '--taa-thin-region', '0.97', '--taa-far-stabiliser', '0.985', '--taa-thin-region-gate', 'camera')
-            self.assertEqual(env['X3M_TAA_THIN_REGION_GATE'], 'camera')
-            # Without the thin region (absent or W 0) no gate variable is emitted, inherited or not.
-            for args in ((), ('--taa-thin-region', '0')):
-                for inherited in (None, {'X3M_TAA_THIN_REGION_GATE': 'camera'}):
+            for args in ((), ('--taa-thin-region', '0.97'), ('--taa-thin-region', '0')):
+                for inherited in (None, {'X3M_TAA_THIN_REGION_GATE': 'screen'}):
                     self.assertNotIn('X3M_TAA_THIN_REGION_GATE', self.env(directory, *TAA, *args, inherited=inherited))
-            for args in (('--taa-thin-region-gate', 'camera'), ('--taa-thin-region', '0', '--taa-thin-region-gate', 'camera'),
-                         ('--taa-thin-region', '0.97', '--taa-thin-region-gate', 'wide')):
-                code, _, error = self.launch(directory, *TAA, *args)
-                self.assertEqual(code, 2, args)
-                self.assertIn('--taa-thin-region-gate', error)
+            code, _, error = self.launch(directory, *TAA, '--taa-thin-region', '0.97', '--taa-thin-region-gate', 'screen')
+            self.assertEqual(code, 2)
+            self.assertIn('unrecognized arguments', error)
 
     def test_thin_region_emissive_vote_defaults_to_one_on_the_hdr_route(self):
         # User-accepted run236/run237 default, 2026-09-22 (docs/architecture/taa-lattice-crawl.md section
@@ -274,9 +262,6 @@ class TaaImageDefaultsLaunch(unittest.TestCase):
             for given, forwarded in (('1', '1'), ('1.0', '1'), ('0', '0'), ('0.5', '0.5'), ('3.7', '3.7')):
                 env = self.env(directory, *TAA, '--taa-thin-region', '0.97', '--taa-thin-region-emissive', given)
                 self.assertEqual(env['X3M_TAA_THIN_REGION_EMISSIVE'], forwarded, given)
-            # It rides the screen gate as well as the camera one: the vote is in the mask's fragmentation channel.
-            env = self.env(directory, *TAA, '--taa-thin-region', '0.97', '--taa-thin-region-gate', 'screen', '--taa-thin-region-emissive', '1')
-            self.assertEqual((env['X3M_TAA_THIN_REGION_GATE'], env['X3M_TAA_THIN_REGION_EMISSIVE']), ('screen', '1'))
             for args in (('--taa-thin-region-emissive', '1'), ('--taa-thin-region', '0', '--taa-thin-region-emissive', '1'),
                          ('--taa-thin-region', '0.97', '--taa-thin-region-emissive', '-1'),
                          ('--taa-thin-region', '0.97', '--taa-thin-region-emissive', '65001'),
@@ -304,21 +289,21 @@ class TaaImageDefaultsLaunch(unittest.TestCase):
 
     def test_sentinel_stabiliser_is_retired(self):
         # --taa-sentinel-stabiliser was removed with the TAA mask fold (2026-09-25, docs/architecture/taa-mask-fold.md
-        # section 7): any value is a parser error naming the removal, and X3M_TAA_SENTINEL_STABILISER is never sent or
-        # inherited, with or without --taa. The DLL logs one ignored line for a stale variable and has no stabiliser field.
+        # section 7); its refusal stub went the same day, so any value is an unknown argument, and X3M_TAA_SENTINEL_STABILISER
+        # is never sent or inherited, with or without --taa. The DLL neither reads the variable nor has a stabiliser field.
         with tempfile.TemporaryDirectory() as directory:
             for args in ((*TAA, '--taa-thin-region', '0.97', '--taa-sentinel-stabiliser', '0.7'), (*TAA, '--taa-sentinel-stabiliser', '0'),
                          (*TAA, '--taa-sentinel-stabiliser', 'off'), (*TAA, '--taa-sentinel-stabiliser'), ('--motion-output', '--taa-sentinel-stabiliser', '0.7')):
                 code, _, error = self.launch(directory, *args)
                 self.assertEqual(code, 2, args)
-                self.assertIn('--taa-sentinel-stabiliser was removed on 2026-09-25', error)
+                self.assertIn('unrecognized arguments', error)
             for args in ((*TAA,), (*TAA, '--taa-thin-region', '0.97'), ('--motion-output',)):
                 env = self.env(directory, *args, inherited={'X3M_TAA_SENTINEL_STABILISER': '0.7', 'X3M_TAA_SENTINEL_STABILISER_DEFAULT': '1'})
                 self.assertNotIn('X3M_TAA_SENTINEL_STABILISER', env, args)
                 self.assertNotIn('X3M_TAA_SENTINEL_STABILISER_DEFAULT', env, args)
         source = (ROOT / 'src/proxy/capture.cpp').read_text()
         self.assertNotIn('float taa_sentinel[2]', source)
-        self.assertIn('log("taa_sentinel_stabiliser_setting ignored=1 reason=retired");', source)
+        self.assertNotIn('X3M_TAA_SENTINEL_STABILISER', source)
         self.assertNotIn('sentinel_stabiliser=%.3f', source)
         self.assertNotIn('sentinel_stabiliser=', (ROOT / 'src/proxy/motion_output.cpp').read_text())
         self.assertNotIn('sentinel_strength', (ROOT / 'src/renderer/temporal_pass.h').read_text())
@@ -345,17 +330,28 @@ class TaaImageDefaultsDll(unittest.TestCase):
             line = next(l for l in source.splitlines() if f'GetEnvironmentVariableW(L"{name}"' in l)
             self.assertIn("*end==L'\\0'", line)
 
-    def test_thin_region_gate_native_fallback_defaults_to_camera(self):
-        # Absent X3M_TAA_THIN_REGION_GATE mirrors the launcher: camera when the thin region is on,
-        # and untouched when the region is off or TAA is not requested.
+    def test_no_filter_device_refuses_taa_at_attach_and_never_jitters(self):
+        # Without FP16 / R32F history filtering (no fallback program set since 2026-09-25) TAA is refused at attach, before the
+        # first latch, with one row naming the missing filter; the jitter (and the mip bias that follows it) runs only while the
+        # resolve is available. The behaviour is the motion-output case seam-taa-no-filter-refused.
+        motion = (ROOT / 'src/proxy/motion_output.cpp').read_text()
+        self.assertIn('HRESULT filtering = renderer::TemporalPass::query_history_filtering(device_, native_, &filter);', motion)
+        self.assertIn('taa_reason = "no_filter"; taa_enabled_ = false; taa_failed_ = true; jitter_active_ = false;', motion)
+        self.assertIn('initialize=%08lx references=0 reason=%s effect=taa_off jitter=0 mip_bias=0', motion)
+        self.assertIn('jitter_active_ = jitter_requested_ && (!taa_requested_ || (taa_enabled_ && !taa_failed_));', motion)
+        self.assertIn('if (mip_bias_bits_ && jitter_active_)', motion)
+        self.assertLess(motion.index('query_history_filtering(device_'), motion.index('jitter_active_ = jitter_requested_ &&'))
+
+    def test_thin_region_gate_is_the_camera_gate_whenever_the_region_is_on(self):
+        # The DLL reads no gate variable since 2026-09-25: camera whenever the thin region is on, off when the region is off
+        # or TAA is not requested.
         source = (ROOT / 'src/proxy/capture.cpp').read_text()
-        self.assertIn('else if(taa_requested&&taa_thin_region[0]>0.f)taa_thin_camera_gate=true;', source)
-        # The default is resolved after both values are parsed, so it sees the final settings.
-        gate = source.index('GetEnvironmentVariableW(L"X3M_TAA_THIN_REGION_GATE"')
-        self.assertLess(source.index('GetEnvironmentVariableW(L"X3M_TAA_THIN_REGION"'), gate)
-        # An explicit value still decides. A configure-time refusal of the camera-gate programs turns the thin region off
-        # (A' only since 2026-09-24: no fallback program set), and so does a box-target allocation failure (in the pass).
-        self.assertIn('if(wcscmp(gate_setting,L"camera")==0)taa_thin_camera_gate=true;', source)
+        self.assertIn('taa_thin_camera_gate=taa_requested&&taa_thin_region[0]>0.f;', source)
+        self.assertNotIn('GetEnvironmentVariableW(L"X3M_TAA_THIN_REGION_GATE"', source)
+        # The gate is resolved after the thin region is parsed, so it sees the final settings.
+        self.assertLess(source.index('GetEnvironmentVariableW(L"X3M_TAA_THIN_REGION"'), source.index('taa_thin_camera_gate=taa_requested&&'))
+        # A configure-time refusal of the camera-gate programs turns the thin region off (A' only since 2026-09-24: no fallback
+        # program set), and so does a box-target allocation failure (in the pass).
         self.assertIn('taa_thin_camera_gate_ = false;', (ROOT / 'src/proxy/motion_output.cpp').read_text())
         self.assertIn('camera_requested&&(!camera_gate_available()', (ROOT / 'src/renderer/temporal_pass.cpp').read_text())
         self.assertIn('taa_thin_weight_ = 0.f; taa_thin_camera_gate_ = false;', (ROOT / 'src/proxy/motion_output.cpp').read_text())
@@ -397,8 +393,10 @@ class TaaAgeProgramDefaultsLaunch(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             env, _ = self.run_env(directory, *TAA, '--hdr', inherited={'X3M_TAA_FAR_STABILISER': '0', 'X3M_TAA_THIN_REGION': '0'})
             self.assertEqual((env['X3M_TAA_FAR_STABILISER'], env['X3M_TAA_THIN_REGION']), ('0.985,0,60,68,0.03,0.25', '0.97,1'))
-            # The derived defaults see the defaulted thin region: camera gate, emissive vote 1 (HDR); the sentinel stabiliser is retired.
-            self.assertEqual((env['X3M_TAA_THIN_REGION_GATE'], env['X3M_TAA_THIN_REGION_EMISSIVE']), ('camera', '1'))
+            # The derived defaults see the defaulted thin region: emissive vote 1 (HDR; the camera gate follows the region in the DLL);
+            # the sentinel stabiliser is retired.
+            self.assertEqual(env['X3M_TAA_THIN_REGION_EMISSIVE'], '1')
+            self.assertNotIn('X3M_TAA_THIN_REGION_GATE', env)
             self.assertNotIn('X3M_TAA_SENTINEL_STABILISER', env)
             # An explicit value still wins; the other keeps its default.
             env, _ = self.run_env(directory, *TAA, '--taa-thin-region', '0.95')

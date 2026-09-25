@@ -23,9 +23,8 @@ falls back to fixed.
 
 Hold **Ctrl+Shift**, then press **F9** for AUTO ↔ fixed EV 0 or **F10** for bloom
 ON ↔ OFF (**F12** switches the sun shadows off and on with `--sun-shadow-apply`,
-"Sun shadows at rest" below; **F11** switches the fog's sun-visibility grid pass off and on
-with `--fog-shadow-pass on`, "Fog shadow pass" below; it was the ambient-occlusion toggle until
-that chain was removed on 2026-09-22). Three more keys switch one emitter gain between its configured
+"Sun shadows at rest" below; **F11** was the fog shadow-pass A/B until that pass was removed on 2026-09-25, and the
+ambient-occlusion toggle before 2026-09-22). Three more keys switch one emitter gain between its configured
 gain and native, without recreating anything: **F4** the hull light-map gain
 alone (`--hull-lightmap-gain G`, the self-illumination term of the 100 opaque
 hull programs, `linear-emission-cost.md` "Hull light-map gain"), **F5** the
@@ -220,9 +219,8 @@ has one look (`fog-density-runtime-integration.md`, "The look"). Since
 (`fog-dust-motes.md`) off and on while they were enabled at launch
 (`--fog-dust-motes N[,SIZE[,STREAK]]`, `X3M_FOG_DUST_MOTES`; on by default under
 `--volumetric-fog-range stored` since 2026-09-23, `--fog-dust-motes 0` opts out); otherwise the key
-is not polled for them. The overlay's Alt rule on F11's own raw latch: the one
-`GetAsyncKeyState(VK_F11)` read feeds both the shadow-pass key (Ctrl+Shift) and
-this one, so Ctrl+Shift+F11 stays the shadow pass and a held F11 never becomes a
+is not polled for them. The overlay's Alt rule on F11's own raw latch (the one
+`GetAsyncKeyState(VK_F11)` read, only with the motes on): Ctrl+Shift+F11 is no press and a held F11 never becomes a
 press by changing modifiers. The press flips the proxy's copy of the mote
 toggle; the fog pass latches it at the next owner latch, so a frame draws the
 motes whole or not at all. Off is the launch-off transaction; the mote programs
@@ -235,20 +233,8 @@ press. In-game and native Windows behavior are unverified.
 
 ## Fog shadow pass
 
-**Ctrl+Shift+F11** switches the stored fog's sun-visibility grid pass
-(`fog-shadow-pass.md`, "A/B toggle and log row") off and on while the pass was
-enabled at launch (`--fog-shadow-pass on`, `X3M_FOG_SHADOW_PASS=1`); otherwise
-the key is not polled. The Ctrl+Shift chord, edge and focus rules are the
-sampler's, on F11's own latch. The press flips the proxy's copy of the variant;
-the fog pass latches it at the next owner latch (`prepare_density`), so every
-frame draws one variant. Off is the launch-off path: the in-march programs and
-their shadow lookup, no grid pass; the grid target and programs stay allocated
-(a Reset while off releases the target with the other targets, and the next
-latch after switching back on re-creates it). One
-`fog_shadow_pass_toggle device= frame= enabled=0|1 refused=<reason|none>
-key=ctrl_shift_f11` line per press; no notice, no overlay text. The fixture
-export `x3m_fog_shadow_pass_fixture_toggle` stands in for the press in the
-motion-output fixture build. In-game and native Windows behavior are unverified.
+Removed 2026-09-25 with `--fog-shadow-pass` (user decision; `docs/verification/launcher-options-inventory.md`,
+"4. Removed 2026-09-25"): **Ctrl+Shift+F11** is no press, and F11 is read only for the dust motes.
 
 ## Exposure handoff and capability preparation
 

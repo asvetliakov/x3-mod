@@ -1,6 +1,5 @@
 #include "loading_trace.h"
 #include "capture.h"
-#include "mesh_adjacency_cache.h"
 #include "mesh_adjacency_fast.h"
 #include "../ownership/d3d9_ownership.h"
 #include "../ownership/application_admission_abi.h"
@@ -37,18 +36,9 @@ SRWLOCK mesh_lock=SRWLOCK_INIT;
 std::atomic<bool> mesh_observation_enabled{false};
 HMODULE mesh_module=nullptr; // Factory implementation lifetime is pinned, not version qualified.
 bool mesh_module_checked=false;
-namespace adjacency_cache=mesh_adjacency_cache;
-// Off is the existing direct dispatch path: no construction or acquisition.
-bool cache_requested=false;
-std::atomic<bool> cache_enabled{false},cache_faulted{false};
-alignas(adjacency_cache::Cache) unsigned char cache_storage[sizeof(adjacency_cache::Cache)];
-// Immutable process-lifetime publication; reports need not acquire mesh_lock.
-std::atomic<adjacency_cache::Cache*> cache_instance{nullptr};
-adjacency_cache::RuntimeIdentity cache_runtime;
-std::atomic<uint64_t> cache_native_outcomes{0},cache_hit_outcomes{0},cache_cleanup_outcomes{0},cache_blocked{0};
-std::atomic<uint64_t> cache_gate_rejections{0},cache_gate_ticks{0};
-std::atomic<HRESULT> cache_cleanup_hr{S_OK};
-uint64_t cache_last_report_calls=0,cache_last_report_blocked=0,cache_last_report_rejected=0;
+// The public buffer qualification of the adjacency service (fast/verify); its
+// rejection reasons are counted per reason (the adjacency cache that first used
+// it was removed on 2026-09-25).
 enum class GateReason : unsigned {
     Unavailable, Input, MeshObject, MeshTable, MeshMethod, MeshPool, MeshOptions,
     VertexAcquire, IndexAcquire, BufferMissing, Tracker,
@@ -69,9 +59,6 @@ struct GateDetail {
 struct GateCounter {std::atomic<uint64_t> count{0};std::atomic<unsigned> publication{0};GateDetail first{};};
 GateCounter cache_gate_reasons[gate_reason_count];
 uint64_t cache_gate_last_counts[gate_reason_count]{};
-bool cache_gate_detail_reported[gate_reason_count]{};
-uint64_t cache_bypass_last_counts[adjacency_cache::bypass_reason_count]{};
-bool cache_fp_detail_reported=false,cache_fp_incoming_reported=false;
 bool reject_gate(GateReason reason,const GateDetail& detail={}){
     auto& row=cache_gate_reasons[static_cast<unsigned>(reason)];row.count.fetch_add(1,std::memory_order_relaxed);
     unsigned empty=0;if(row.publication.compare_exchange_strong(empty,1,std::memory_order_acquire)){
@@ -91,12 +78,8 @@ void restore_computational_state(const ComputationalState& value){
 // whatever the caller's state (the game enters with 0x9fc0); callers restore theirs.
 void set_default_mxcsr(){static const DWORD value=0x1f80;asm volatile("ldmxcsr %0"::"m"(value):"memory");}
 bool cache_buffer_contract(ID3DXMesh* mesh);
-void cache_fault(HRESULT hr);
-void cache_report();
 #ifdef X3M_LOADING_TRACE_FIXTURE
 unsigned fail_mesh_patch=0,fail_protection_restore=0;
-std::atomic<HRESULT> forced_cache_cleanup{S_OK};
-thread_local bool cache_reentry_once=false;
 #endif
 void observe_mesh(ID3DXMesh* mesh);
 void restore_mesh_hooks();
@@ -119,18 +102,9 @@ using OptimizeFn=HRESULT (WINAPI*)(ID3DXMesh*,DWORD,const DWORD*,DWORD*,DWORD*,I
 static_assert(std::is_same_v<decltype(&ID3DXMesh::GenerateAdjacency),HRESULT (STDMETHODCALLTYPE ID3DXMesh::*)(FLOAT,DWORD*)>);
 static_assert(std::is_same_v<decltype(&ID3DXMesh::ConvertPointRepsToAdjacency),HRESULT (STDMETHODCALLTYPE ID3DXMesh::*)(const DWORD*,DWORD*)>);
 static_assert(std::is_same_v<decltype(&ID3DXMesh::OptimizeInplace),HRESULT (STDMETHODCALLTYPE ID3DXMesh::*)(DWORD,const DWORD*,DWORD*,DWORD*,ID3DXBuffer**)>);
-#ifdef X3M_LOADING_TRACE_FIXTURE
-thread_local AdjacencyFn cache_reentry_original=nullptr;
-HRESULT WINAPI fixture_reentry_call(ID3DXMesh* mesh,FLOAT epsilon,DWORD* adjacency){
-    const DWORD error=GetLastError();const auto fp=computational_state();
-    if(cache_reentry_once){cache_reentry_once=false;DWORD nested[12]{};if(mesh->GetNumFaces()<=4)mesh->GenerateAdjacency(epsilon,nested);}
-    restore_computational_state(fp);SetLastError(error);return cache_reentry_original(mesh,epsilon,adjacency);
-}
-#endif
 template<unsigned Index> HRESULT WINAPI mesh_point_reps(ID3DXMesh* mesh,const DWORD* reps,DWORD* adjacency) {
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    if(cache_requested&&cache_faulted.load(std::memory_order_acquire)){cache_blocked.fetch_add(1);return E_FAIL;}
     Span span(Operation::MeshPointReps);
     cpu.before_original();
     const HRESULT hr=reinterpret_cast<PointRepsFn>(mesh_tables[Index].slots[0].original)(mesh,reps,adjacency);cpu.after_original();
@@ -139,9 +113,8 @@ template<unsigned Index> HRESULT WINAPI mesh_point_reps(ID3DXMesh* mesh,const DW
 // X3M_MESH_ADJACENCY=native|verify|fast: exact-equality replacement of the
 // D3DX epsilon welding (docs/verification/mesh-adjacency-fast.md). Verify runs
 // the native method, recomputes and compares; fast answers from the module and
-// falls through to native on any qualification failure. Both reuse the cache
-// hook's public buffer qualification and serve as the "original" callable of
-// the adjacency cache, so the order stays cache lookup -> compute -> admission.
+// falls through to native on any qualification failure. Both use the public
+// buffer qualification (cache_buffer_contract).
 namespace adjacency_fast=mesh_adjacency_fast;
 using AdjacencyMode=adjacency_fast::Mode; // parse/arming policy is host-tested (mesh_adjacency_fast.h)
 std::atomic<AdjacencyMode> adjacency_mode{AdjacencyMode::Native};
@@ -437,7 +410,7 @@ void adjacency_report(){
     if(!adjacency_fp_reported&&c.fp_publication.load(std::memory_order_acquire)==2){adjacency_fp_reported=true;const auto& f=c.first_fp;
         log("mesh_adjacency_fp_first control=%08lx status=%08lx tag=%08lx mxcsr=%08lx compute_mxcsr=00001f80 restored=1",f.x87.control,f.x87.status,f.x87.tag,f.mxcsr);
     }
-    if(!cache_requested)for(unsigned i=0;i<gate_reason_count;++i){ // otherwise cache_report prints the shared gate counters
+    for(unsigned i=0;i<gate_reason_count;++i){
         auto& row=cache_gate_reasons[i];const auto count=row.count.load(std::memory_order_relaxed);
         if(count!=cache_gate_last_counts[i]){cache_gate_last_counts[i]=count;log("mesh_adjacency_gate cumulative=1 reason=%s count=%llu",gate_reason_name(i),count);}
     }
@@ -445,48 +418,19 @@ void adjacency_report(){
 template<unsigned Index> HRESULT WINAPI mesh_adjacency(ID3DXMesh* mesh,FLOAT epsilon,DWORD* adjacency) {
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    if(cache_requested&&cache_faulted.load(std::memory_order_acquire)){cache_blocked.fetch_add(1);return E_FAIL;}
     const auto native=reinterpret_cast<AdjacencyFn>(mesh_tables[Index].slots[1].original);
-    // The fast/verify services fall through to this table's own original; the
-    // thread-local carries it because the cache calls the service as "original".
+    // The fast/verify services fall through to this table's own original,
+    // carried by the thread-local.
     const auto mode=adjacency_mode.load(std::memory_order_acquire);
     adjacency_thread_original=native;
     const AdjacencyFn original=mode==AdjacencyMode::Fast?&adjacency_fast_service:mode==AdjacencyMode::Verify?&adjacency_verify_service:native;
-    if(!cache_requested||!cache_enabled.load(std::memory_order_acquire)){
-        Span span(Operation::MeshAdjacency);cpu.before_original();
-        const HRESULT hr=original(mesh,epsilon,adjacency);cpu.after_original();
-        const DWORD error=GetLastError();const auto end=tick();span.finish(end,error,FAILED(hr));return hr;
-    }
-    Span span(Operation::MeshAdjacency);const auto gate_begin=tick();
-    auto* const instance=cache_instance.load(std::memory_order_acquire);
-    const bool eligible=!instance?reject_gate(GateReason::Unavailable):(!mesh||!adjacency)?reject_gate(GateReason::Input):cache_buffer_contract(mesh);
-    cache_gate_ticks.fetch_add(tick()-gate_begin,std::memory_order_relaxed);
-    cpu.before_original();
-    adjacency_cache::Outcome outcome;
-    if(eligible){
-#ifdef X3M_LOADING_TRACE_FIXTURE
-        const HRESULT forced=forced_cache_cleanup.exchange(S_OK);
-        if(FAILED(forced))outcome={forced,adjacency_cache::Origin::AcquisitionCleanupFailure};
-        else{
-            auto invoke=original;if(cache_reentry_once){cache_reentry_original=original;invoke=fixture_reentry_call;}
-            outcome=instance->generate(mesh,epsilon,adjacency,invoke,cache_runtime);
-        }
-#else
-        outcome=instance->generate(mesh,epsilon,adjacency,original,cache_runtime);
-#endif
-    }
-    else{cache_gate_rejections.fetch_add(1,std::memory_order_relaxed);outcome={original(mesh,epsilon,adjacency),adjacency_cache::Origin::Native};}
-    cpu.after_original();
-    const DWORD error=GetLastError();const auto end=tick();
-    if(outcome.origin==adjacency_cache::Origin::CacheHit)cache_hit_outcomes.fetch_add(1,std::memory_order_relaxed);
-    else if(outcome.origin==adjacency_cache::Origin::Native)cache_native_outcomes.fetch_add(1,std::memory_order_relaxed);
-    else cache_fault(outcome.hr);
-    span.finish(end,error,FAILED(outcome.hr));return outcome.hr;
+    Span span(Operation::MeshAdjacency);cpu.before_original();
+    const HRESULT hr=original(mesh,epsilon,adjacency);cpu.after_original();
+    const DWORD error=GetLastError();const auto end=tick();span.finish(end,error,FAILED(hr));return hr;
 }
 template<unsigned Index> HRESULT WINAPI mesh_optimize(ID3DXMesh* mesh,DWORD flags,const DWORD* in,DWORD* out,DWORD* faces,ID3DXBuffer** vertices) {
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    if(cache_requested&&cache_faulted.load(std::memory_order_acquire)){cache_blocked.fetch_add(1);return E_FAIL;}
     Span span(Operation::MeshOptimize);
     cpu.before_original();
     const HRESULT hr=reinterpret_cast<OptimizeFn>(mesh_tables[Index].slots[2].original)(mesh,flags,in,out,faces,vertices);cpu.after_original();
@@ -678,7 +622,6 @@ HRESULT WINAPI mesh_create(DWORD faces,DWORD vertices,DWORD options,const D3DVER
 HRESULT WINAPI mesh_clean(D3DXCLEANTYPE type,ID3DXMesh* input,const DWORD* adjacency_in,ID3DXMesh** output,DWORD* adjacency_out,ID3DXBuffer** errors) {
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    if(cache_requested&&cache_faulted.load(std::memory_order_acquire)){cache_blocked.fetch_add(1);return E_FAIL;}
     Span span(Operation::MeshClean);
     cpu.before_original();
     HRESULT result=original<decltype(&D3DXCleanMesh)>(span.op)(type,input,adjacency_in,output,adjacency_out,errors);cpu.after_original();
@@ -849,42 +792,6 @@ bool cache_buffer_contract(ID3DXMesh* mesh) {
     if(vb)vb->Release();
     return okay;
 }
-void cache_fault(HRESULT hr) {
-    cache_cleanup_outcomes.fetch_add(1,std::memory_order_relaxed);
-    bool expected=false;
-    if(cache_faulted.compare_exchange_strong(expected,true,std::memory_order_acq_rel)){
-        cache_cleanup_hr.store(hr,std::memory_order_release);cache_enabled.store(false,std::memory_order_release);
-        log("mesh_cache_fault origin=acquisition_cleanup_failure hr=%08lx restart_required=1 policy=reject_our_hooked_preparation_only native_fallback=0 lock_repaired=0",hr);
-    }
-}
-void cache_report() {
-    if(!cache_requested)return;
-    auto* const instance=cache_instance.load(std::memory_order_acquire);
-    const auto stats=instance?instance->statistics():adjacency_cache::Statistics{};
-    for(unsigned i=0;i<gate_reason_count;++i){
-        auto& row=cache_gate_reasons[i];const auto count=row.count.load(std::memory_order_relaxed);
-        if(count!=cache_gate_last_counts[i]){cache_gate_last_counts[i]=count;log("mesh_cache_gate cumulative=1 reason=%s count=%llu",gate_reason_name(i),count);}
-        if(!cache_gate_detail_reported[i]&&row.publication.load(std::memory_order_acquire)==2){
-            cache_gate_detail_reported[i]=true;const auto& d=row.first;
-            log("mesh_cache_gate_first reason=%s scope=%u options=%08lx slot=%lu actual_entry=%08lx expected_entry=%08lx status=%08lx pool=%lu usage=%08lx format=%lu required_bytes=%llu size_bytes=%llu known=%u pending=%llu",gate_reason_name(i),d.scope,d.options,d.slot,d.actual_entry,d.expected_entry,d.status,d.pool,d.usage,d.format,d.required_bytes,d.size_bytes,d.known,d.pending);
-        }
-    }
-    for(unsigned i=0;i<adjacency_cache::bypass_reason_count;++i)if(stats.bypass_reasons[i]!=cache_bypass_last_counts[i]){
-        cache_bypass_last_counts[i]=stats.bypass_reasons[i];log("mesh_cache_bypass cumulative=1 reason=%s count=%llu",adjacency_cache::bypass_reason_name(i),stats.bypass_reasons[i]);
-    }
-    if(stats.first_fp_available&&!cache_fp_incoming_reported){cache_fp_incoming_reported=true;const auto& f=stats.first_fp;
-        log("mesh_cache_fp_incoming control=%08lx status=%08lx tag=%08lx mxcsr=%08lx supported=%u keyed=1 normalized=0",f.control,f.status,f.tag,f.mxcsr,unsigned(stats.first_fp_supported));
-    }
-    if(stats.unsupported_fp_available&&!cache_fp_detail_reported){cache_fp_detail_reported=true;const auto& f=stats.unsupported_fp;
-        log("mesh_cache_fp_first control=%08lx status=%08lx tag=%08lx mxcsr=%08lx",f.control,f.status,f.tag,f.mxcsr);
-    }
-    const auto blocked=cache_blocked.load(),rejected=cache_gate_rejections.load();
-    if(stats.calls==cache_last_report_calls&&blocked==cache_last_report_blocked&&rejected==cache_last_report_rejected)return;
-    cache_last_report_calls=stats.calls;cache_last_report_blocked=blocked;cache_last_report_rejected=rejected;
-    log("mesh_cache_metric cumulative=1 qpc=%llu dispatch_enabled=%u buffer_contract=public_systemmem_readonly faulted=%u calls=%llu hits=%llu misses=%llu bypasses=%llu contention=%llu admissions=%llu evictions=%llu allocation_failures=%llu acquisition_failures=%llu unrecoverable_unlocks=%llu native_calls=%llu native_failures=%llu retained_bytes=%llu retained_entries=%llu acquired_bytes=%llu copied_bytes=%llu evicted_bytes=%llu acquisition_ticks=%llu lookup_ticks=%llu copy_ticks=%llu native_ticks=%llu total_ticks=%llu gate_rejections=%llu gate_ticks=%llu native_outcomes=%llu hit_outcomes=%llu cleanup_outcomes=%llu blocked=%llu cleanup_hr=%08lx rejected_result=%llu rejected_last_error=%llu rejected_fp=%llu",
-        tick(),unsigned(cache_enabled.load()),unsigned(cache_faulted.load()),stats.calls,stats.hits,stats.misses,stats.bypasses,stats.contention,stats.admissions,stats.evictions,stats.allocation_failures,stats.acquisition_failures,stats.unrecoverable_unlocks,stats.native_calls,stats.native_failures,stats.retained_bytes,stats.retained_entries,stats.acquired_bytes,stats.copied_bytes,stats.evicted_bytes,stats.acquisition_ticks,stats.lookup_ticks,stats.copy_ticks,stats.native_ticks,stats.total_ticks,rejected,cache_gate_ticks.load(),cache_native_outcomes.load(),cache_hit_outcomes.load(),cache_cleanup_outcomes.load(),blocked,cache_cleanup_hr.load(),stats.rejected_result,stats.rejected_last_error,stats.rejected_fp);
-}
-
 bool pin_address(const void* address,bool executable) {
     if(!readable(address,1,nullptr,executable))return false;
     HMODULE pinned=nullptr;
@@ -898,16 +805,6 @@ bool pin_mesh_module() {
     if(!create||!readable(create,1,nullptr,true)||
        !GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|GET_MODULE_HANDLE_EX_FLAG_PIN,
            reinterpret_cast<LPCSTR>(create),&mesh_module))return false;
-    // This token separates this process-local adapter generation; it is not a
-    // code fingerprint. Each key additionally includes the actual saved method.
-    if(cache_requested){
-        cache_runtime.algorithm_token=reinterpret_cast<uintptr_t>(mesh_module);cache_runtime.generation=1;
-        cache_runtime.public_contract=true;
-        cache_runtime.systemmem_dynamic_readonly_verified=true;
-        auto* const instance=new(cache_storage) adjacency_cache::Cache();
-        cache_instance.store(instance,std::memory_order_release);cache_enabled.store(true,std::memory_order_release);
-        log("mesh_cache ready=1 buffer_contract_required=1 identity=process_local generation=1 retained_budget=16777216 scratch_budget=4194304 entries=512 buffer_contract=public_systemmem_readonly file_fingerprint_required=0 serialized_application_calls=1 dynamic_systemmem_contract=1 dynamic_options=990,991,18990,18991");
-    }
     log("mesh_trace module_pinned=1 version_gate=0 scope=shared_public_com_vtables table_limit=%u objects_retained=0",mesh_table_limit);
     return true;
 }
@@ -1093,10 +990,6 @@ bool install(HMODULE target) {
     LARGE_INTEGER frequency{};if(!QueryPerformanceFrequency(&frequency)||frequency.QuadPart<=0)return false;
     for(auto& hook:hooks){const auto i=&hook-hooks;hook.slot=slots[i];hook.original=originals[i];light::set_original(unsigned(i),originals[i]);}
     const bool nesting=light::initialize();
-    wchar_t interval_setting[8]{};
-    const bool interval_requested=GetEnvironmentVariableW(L"X3M_LOADING_INTERVALS",interval_setting,8)==1&&interval_setting[0]==L'1';
-    const auto interval_flags=light::intervals_initialize(interval_requested&&trace,uint64_t(frequency.QuadPart));
-    if(interval_requested)log("loading_intervals_start requested=1 telemetry=%u slots=16 capacity=65536 record_bytes=24 payload_bytes=25165824 flags=%u requires=save_load_complete",trace,interval_flags);
     if(buffer) {
         gz_buffer::Originals real;
         real.open=trace?light::gz_open_traced:original<GzOpenFn>(Operation::GzOpen);
@@ -1150,8 +1043,6 @@ bool install(HMODULE target) {
         log_adjacency_config(adjacency_request,trace);
         return installed.load();
     }
-    wchar_t cache_setting[8]{};cache_requested=GetEnvironmentVariableW(L"X3M_MESH_CACHE",cache_setting,8)==1&&cache_setting[0]==L'1';
-    log("mesh_cache requested=%u enabled=0 activation=await_public_mesh_and_buffer_contract adjacency_metric_scope=hook_service restart_on_cleanup_failure=1",cache_requested);
     const AdjacencyMode requested_mode=adjacency_armed; // with telemetry every parsed mode arms
     adjacency_mode.store(requested_mode,std::memory_order_release);
     wchar_t dump_setting[8]{};adjacency_dump_requested.store(GetEnvironmentVariableW(L"X3M_MESH_ADJACENCY_DUMP",dump_setting,8)==1&&dump_setting[0]==L'1',std::memory_order_relaxed);
@@ -1186,48 +1077,6 @@ Snapshot take_snapshot() {
     for(unsigned i=0;i<count;++i)light::take(i,result[i]);
     return result;
 }
-void intervals_freeze(uint64_t begin,uint64_t end,uint64_t device,uint64_t reset,uint64_t frame,DWORD tid) noexcept {
-    light::intervals_freeze(begin,end,device,reset,frame,tid);
-}
-namespace {
-void intervals_report(bool final=false) {
-    const intervals::Header* header=nullptr;const intervals::Ring* rings=nullptr;const intervals::Record* records=nullptr;
-    LONG outstanding=0;
-    const auto state=light::intervals_snapshot(header,rings,records,outstanding);
-    if(state!=3){
-        if(state==1&&final)log("loading_intervals incomplete=missing_endpoint payload_read=0");
-        static std::atomic<bool> warned{false};
-        if(state==2&&!warned.exchange(true))log("loading_intervals incomplete=outstanding_tokens active=%ld payload_read=0",outstanding);
-        return;
-    }
-    const uint64_t start=tick();
-    wchar_t name[96]{},path[MAX_PATH]{};
-    std::swprintf(name,96,L"loading-intervals-%lu-%llu.bin",GetCurrentProcessId(),header->initialized);
-#ifdef X3M_LOADING_TRACE_FIXTURE
-    const wchar_t* directory=L".";
-#else
-    const wchar_t* directory=capture_directory();
-#endif
-    const int length=std::swprintf(path,MAX_PATH,L"%ls\\%ls",directory,name);
-    HANDLE file=length>0&&length<MAX_PATH?CreateFileW(path,GENERIC_WRITE,0,nullptr,CREATE_NEW,FILE_ATTRIBUTE_NORMAL,nullptr):INVALID_HANDLE_VALUE;
-    uint64_t bytes=0,rows=0,overwritten=0;unsigned thread_flags=0;
-    for(unsigned i=0;i<header->slots;++i){thread_flags|=rings[i].flags;overwritten+=uint64_t(rings[i].completed)-rings[i].count;}
-    auto put=[&](const void* data,DWORD size){
-        DWORD done=0;const bool ok=WriteFile(file,data,size,&done,nullptr)&&done==size;
-        bytes+=done;return ok;
-    };
-    bool written=file!=INVALID_HANDLE_VALUE;
-    if(written)written=put(header,sizeof(*header));
-    for(unsigned i=0;written&&i<header->slots;++i){
-        const auto& ring=rings[i];written=put(&ring,sizeof(ring));
-        if(written&&ring.count)written=put(records+i*intervals::capacity,ring.count*sizeof(intervals::Record));
-        rows+=ring.count;
-    }
-    if(file!=INVALID_HANDLE_VALUE){if(!CloseHandle(file))written=false;}
-    const auto duration=tick()-start;
-    log("loading_intervals_file schema=1 file=%ls written=%u bytes=%llu rows=%llu flags=%u thread_flags=%u overwritten=%llu begin=%llu end=%llu present_tid=%u device=%llu reset=%llu frame=%llu export_ticks=%llu frequency=%llu",name,written,bytes,rows,header->flags,thread_flags,overwritten,header->begin,header->end,header->present_tid,header->device,header->reset,header->frame,duration,header->frequency);
-}
-}
 void report() {
     if(!active())return;
     const DWORD error=GetLastError();const auto fp=computational_state();const auto data=take_snapshot();const auto end=tick();
@@ -1235,7 +1084,7 @@ void report() {
         log("loading_metric op=%s qpc=%llu count=%llu failures=%llu pending=%llu ambiguous=%llu bytes=%llu inclusive_ticks=%llu exclusive_ticks=%llu max_ticks=%llu wrapper_tail_ticks=%llu total_us=%.3f exclusive_us=%.3f max_us=%.3f wrapper_tail_us=%.3f",
             operation_name(i),end,s.count,s.failures,s.pending,s.ambiguous,s.bytes,s.inclusive_ticks,s.exclusive_ticks,s.maximum_ticks,s.overhead_ticks,
             double(s.inclusive_ticks)*1e6/clock_frequency,double(s.exclusive_ticks)*1e6/clock_frequency,double(s.maximum_ticks)*1e6/clock_frequency,double(s.overhead_ticks)*1e6/clock_frequency);
-    }intervals_report();cache_report();adjacency_report();loading_probes::report();resource_reader::report();crypt_cache_report("window");restore_computational_state(fp);SetLastError(error);
+    }adjacency_report();loading_probes::report();resource_reader::report();crypt_cache_report("window");restore_computational_state(fp);SetLastError(error);
 }
 namespace {
 crypt_cache::Statistics crypt_reported; // the cumulative totals at the last window line
@@ -1264,11 +1113,8 @@ void crypt_cache_report(const char* scope) {
 bool crypt_cache_enabled(){return crypt_cache_active;}
 void shutdown() {
     const DWORD error=GetLastError();
-    {const auto fp=computational_state();intervals_report(true);restore_computational_state(fp);}
     if(crypt_cache_active){crypt_cache_report("session");log("crypt_cache_shutdown released=%u",unsigned(crypt_cache::shutdown()));}
     loading_probes::shutdown();
-    cache_enabled.store(false,std::memory_order_release);
-    if(auto* instance=cache_instance.load(std::memory_order_acquire))instance->clear();
     restore_mesh_hooks();
     for(auto& hook:hooks)if(hook.slot){
         const bool owned=*hook.slot==hook.replacement;
@@ -1290,15 +1136,6 @@ bool fixture_crypt_site(const void* caller,Operation operation){return crypt_sit
 void fixture_fail_mesh_patch(unsigned step){fail_mesh_patch=step;}
 void fixture_fail_protection_restores(unsigned calls){fail_protection_restore=calls;}
 unsigned fixture_protection_debts(){return protection_debts.load();}
-mesh_adjacency_cache::Statistics fixture_cache_statistics(){auto* instance=cache_instance.load(std::memory_order_acquire);return instance?instance->statistics():mesh_adjacency_cache::Statistics{};}
-bool fixture_cache_constructed(){return cache_instance.load(std::memory_order_acquire)!=nullptr;}
-bool fixture_cache_faulted(){return cache_faulted.load();}
-uint64_t fixture_cache_gate_rejections(){return cache_gate_rejections.load();}
-uint64_t fixture_cache_blocked(){return cache_blocked.load();}
-void fixture_cache_cleanup_failure(HRESULT hr){forced_cache_cleanup.store(hr);}
-void fixture_cache_reenter_once(){cache_reentry_once=true;}
-bool fixture_cache_contract(ID3DXMesh* mesh){return cache_buffer_contract(mesh);}
-uint64_t fixture_cache_gate_reason(const char* reason){for(unsigned i=0;i<gate_reason_count;++i)if(!std::strcmp(reason,gate_reason_name(i)))return cache_gate_reasons[i].count.load();return 0;}
 void fixture_adjacency_math_table(int table){adjacency_fixture_math_table=table;}
 bool fixture_adjacency_registry_dword(LSTATUS status,DWORD type,DWORD size){return adjacency_registry_dword(status,type,size);}
 bool fixture_adjacency_registry_ambiguous(LSTATUS status,DWORD type,DWORD size){return adjacency_registry_ambiguous(status,type,size);}

@@ -20,8 +20,7 @@
 // stub is straight-line integer code, LastError and the x87 stack untouched.
 // Installed on the backend-load path inside the engine_patch install window
 // after the exact-executable and window-byte checks, with this module pinned.
-// The claim is disjoint from the census's 0x0047d258/0x0047d528 and the
-// lod_scale's 0x0047d44b; all three coexist.
+// The claim is disjoint from the census's 0x0047d258/0x0047d528; both coexist.
 namespace x3m::cull_small_parts {
 bool initialize();  // backend-load path only; logs one cull_small_parts line when the variable is set
 bool shutdown();    // restores the site (dynamic-unload detach only); true when nothing is installed
@@ -29,15 +28,12 @@ bool shutdown();    // restores the site (dynamic-unload detach only); true when
 // copy of the engine bytes), claims it, emits the stub and chains it in; the
 // production initialize() passes the engine site. cull_target is the address
 // of the engine's `and [edi+0x12c],~2` (window offset 47).
-// bodies_only: the stub culls only parentless nodes (`[node+0x18] == 0`;
-// X3M_CULL_SMALL_PARTS_SCOPE=bodies); false = every node (`all`, the default).
 // exempt_projectiles: a node carrying the engine's class-0 marker
 // (+0x130 & 0x20000000: bolts, beams) runs the vanilla compare
 // (X3M_CULL_SMALL_PARTS_PROJECTILES=on, the default; initialize() turns it off
 // when the marker's two engine instructions are not the verified bytes).
-bool install_at(std::uintptr_t site, std::uintptr_t cull_target, bool bodies_only, bool exempt_projectiles);
+bool install_at(std::uintptr_t site, std::uintptr_t cull_target, bool exempt_projectiles);
 const char* state();
-const char* scope();                // "bodies" or "all": the installed stub's scope (the default before an install)
 bool projectiles_exempt();          // the installed stub exempts marked projectile nodes
 std::uintptr_t stub_address();
 double requested_px();

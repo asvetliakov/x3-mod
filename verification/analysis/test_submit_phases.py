@@ -223,7 +223,7 @@ class NativeSites(unittest.TestCase):
         self.assertEqual(report['result'], 'PASS', report['checks'])
         self.assertTrue(report['source_present'])
         self.assertEqual(len(report['sites']), 22)
-        self.assertGreaterEqual(report['other_claims_checked'], 47 + 10 + 4 + 2 + 6 + len(probe.FIXED_CLAIMS))
+        self.assertGreaterEqual(report['other_claims_checked'], 33 + 10 + 4 + 2 + 6 + len(probe.FIXED_CLAIMS))
         self.assertEqual(report['raw_real_hits'], [])
         self.assertEqual(report['callers'], {'0x0047e620': ['0x004722af', '0x0047248b', '0x0047e8f0'],
                                              '0x004c0150': ['0x004c5228'], '0x004bdee0': ['0x0047e002', '0x0047e70c']})

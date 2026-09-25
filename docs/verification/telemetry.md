@@ -370,3 +370,5 @@ destruction can still see the outer device root; its subsequent device record
 must retire that root in the serial fixture. Other concurrently active callers
 can also appear in a real snapshot. See [entry coverage and verification
 limits](proxy-application-admission.md).
+
+**Removed 2026-09-25** (user decision): `--depth-copy`, `--scene-depth-capture`, `--motion-capture` and `--finite-positions` from the launcher only (the DLL paths stay for the ownership-integration and motion fixtures, which set the variables); `docs/verification/launcher-options-inventory.md`, "4. Removed 2026-09-25".

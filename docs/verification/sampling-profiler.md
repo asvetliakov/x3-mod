@@ -2466,3 +2466,7 @@ per frame in the hooked configuration and lose ~1.1 ms in production, where
 the hooks it needs are not installed; `--state-elide` was not implemented.
 Analysis and the reading of the 0.32 µs figure: state-call-fast-path.md
 "Elision revisited under FEX".
+
+**Removed 2026-09-25** (user decision): `--profile-raw` (the raw witness and periodic callback) and `--audio-sites` (the 14 audio game-phase sites; 33 remain); `--profile` and `--profile-interval-us` stay; `docs/verification/launcher-options-inventory.md`, "4. Removed 2026-09-25".
+
+Fixture after the removal (2026-09-25, bottle X3): `run_game_phase_cpu.py` PASS, 33 marker stubs (47 with the audio sites), 12,025 checks, 0 failures (measured).

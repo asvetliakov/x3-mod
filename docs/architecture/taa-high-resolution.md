@@ -1,5 +1,7 @@
 # TAA at 5120x1440 on the D3D9 post chain
 
+**Removed 2026-09-25** (user decision): S3's 16-tap point fallback (`--taa-history-taps 16`, `X3M_TAA_HISTORY_TAPS`, `resolve*_taps16.hlsl`) is gone; without FP16 and R32F filtering `TemporalPass::initialize` refuses and the device runs without TAA (`platform-portability.md`, entry of that date) (`docs/verification/launcher-options-inventory.md`, "4. Removed 2026-09-25").
+
 Question: the D3D11 route is closed ([d3d11-post-chain-feasibility.md](d3d11-post-chain-feasibility.md): cross-API
 sharing carries no pixels on the CrossOver target, and compute would have cut only the mask dilation, 2x). The TAA
 stage is the seven-draw SM3 chain in `src/renderer/temporal_pass.cpp` (`taa_copy`, `taa_mask` x3, `taa_box` x2,

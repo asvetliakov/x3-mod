@@ -37,12 +37,11 @@
       200001.0
     ],
     "screen_sha256": "1b946e1f15c71366ef973778fae5e3982285228a66bb5a1876ec2200bafdaeed",
-    "exporter_sha256": "50968bbb704d672e469acbf785c45ac121e0153e239f50e609c0432e091246f0",
+    "exporter_sha256": "f13f0ad71bece010d06a120a35d77a25a742c835cd753485c86d0e275c92987b",
     "cases_sha256": "fe7c6cf092dcf3f27cf620fec883a5dbb03a29e1a36acef4a7fde34b4707bc0f",
     "reference_sha256": "0d6b8e09f39a27c9059e86069c185e20dd748cc4a41c4c7f12ef5019d31944ee",
     "manifest_sha256": "db0a8dd1db2d538872b1930f2a8dcd7ca763760a70c3d72c8b3cd4b2c1500a30",
     "packet_sha256": "014d586109e5968dbd0358969ab7082e7fc3e670335a59d889f6e2ba649d87f8",
-    "far_bins": 40,
     "march_scale": 4
   },
   "deviation_from_scale_2": {
@@ -358,25 +357,11 @@
       "words": 1850,
       "loops": 1
     },
-    "fog-density-march-look-far24-q4": {
-      "bytecode_sha256": "bda884a01193a9d4087e84bf62ff1ccf948c13c7c946e9e363d4103a521a0e4d",
-      "slots": 425,
-      "texture_instructions": 15,
-      "words": 1850,
-      "loops": 1
-    },
     "fog-density-repair-look-q4": {
       "bytecode_sha256": "07cbb4c8110f56276e27ee20acbd58cd4932d73155382034be28aec90e26b99a",
       "slots": 510,
       "texture_instructions": 20,
       "words": 2170,
-      "loops": 1
-    },
-    "fog-density-repair-look-far24-q4": {
-      "bytecode_sha256": "63bb711067b6194a0ffa8a5b9cabff1a7d693726eb158511c2e14725f2e7b84d",
-      "slots": 510,
-      "texture_instructions": 20,
-      "words": 2164,
       "loops": 1
     },
     "fog-density-composite-look-q4": {
@@ -409,22 +394,8 @@
       "words": 1850,
       "loops": 1
     },
-    "fog-density-march-look-far24-q4": {
-      "bytecode_sha256": "49063184d00dbf482dc6e844e878cc5df5cdf575c491288de9a7c3662b044680",
-      "slots": 425,
-      "texture_instructions": 15,
-      "words": 1850,
-      "loops": 1
-    },
     "fog-density-repair-look-q4": {
       "bytecode_sha256": "155a82e2833141db22e2f0688eb11c4aef2a614f612127a348fc739a49b85056",
-      "slots": 510,
-      "texture_instructions": 20,
-      "words": 2164,
-      "loops": 1
-    },
-    "fog-density-repair-look-far24-q4": {
-      "bytecode_sha256": "dfe1bf8c3ed1020a79fca0f18f3f0a43db88c15784cc4f5cbd0803cd49d526c3",
       "slots": 510,
       "texture_instructions": 20,
       "words": 2164,
@@ -451,8 +422,6 @@
     "q4_scene_differs_from_the_half_resolution_scene": "PASS",
     "q4_again_byte_identical_target_recreated": "PASS",
     "march_scale_other_than_2_or_4_refused_at_prepare": "PASS",
-    "q4_far24_combination_matches_cpu_reference_at_24_far_bins": "PASS",
-    "q4_far_bins_back_to_40_byte_identical": "PASS",
     "q4_settles_after_reset": "PASS",
     "q4_after_reset_byte_identical_target_recreated": "PASS",
     "q4_program_failure_keeps_the_working_set": "PASS",
@@ -466,8 +435,6 @@
     "q4_refused_target_detach_releases_everything": "PASS",
     "q4_refused_program_draws_the_half_resolution_march_and_stays_refused": "PASS",
     "q4_refused_program_detach_releases_everything": "PASS",
-    "q4_refused_shadow_pass_draws_the_half_resolution_march_and_stays_refused": "PASS",
-    "q4_refused_shadow_pass_detach_releases_everything": "PASS",
     "q4_refused_device_refcount_balanced": "PASS",
     "needs_census_one_bracket_per_frame_at_the_drawn_spacing": "PASS",
     "needs_census_counts_the_pixels_the_repair_marches_at_both_spacings": "PASS",

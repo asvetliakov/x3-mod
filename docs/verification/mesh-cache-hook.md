@@ -237,3 +237,5 @@ and 0.3088 ms for wrapped-on-normal (10 MHz QPC). Each had 38 core calls and 20
 hits. These are small synthetic-suite totals, not game loading or per-frame
 performance estimates. Lifetime pinning runs once per observed shared table;
 subsequent observations reuse pinned originals and check current slot ownership.
+
+**Removed 2026-09-25** (user decision): `--mesh-cache` with its hook fixture and runner (see `mesh-adjacency-cache.md`); `docs/verification/launcher-options-inventory.md`, "4. Removed 2026-09-25".

@@ -324,7 +324,7 @@ struct Diagnostics {
     // decision).
     const char* depth_fold_reason = "not_run";
     // History reconstruction of the program the last run drew (docs/architecture/taa-high-resolution.md S3): 5 (the
-    // 5-tap bilinear Catmull-Rom programs), 16 (the 16-tap point programs), 0 when no resolve was drawn.
+    // 5-tap bilinear Catmull-Rom programs, the only form), 0 when no resolve was drawn.
     unsigned history_taps = 0;
     // A' (FrameInputs::thin_region_camera_gate): the last run drew the folded hold resolve (no mask draw).
     bool region_hold = false;
@@ -402,29 +402,26 @@ public:
     // as the colour); production passes neither.
     HRESULT configure_far(const DWORD* reference_program = nullptr, const DWORD* camera_program = nullptr) noexcept;
     bool far_available() const noexcept { return mrt_age_ && line_mask_ != nullptr && far_ != nullptr; }
-    // S3 (docs/architecture/taa-high-resolution.md), a session setting: 5 (the default) draws the 5-tap bilinear
-    // Catmull-Rom programs (the caller's `resolve` and the embedded temporal_resolve*_program() words), which sample the
-    // previous colour and reactive mask a second time at s11 / s12 with LINEAR min / mag filtering; 16 draws the 16-tap
-    // point programs of the earlier builds (temporal_resolve*_taps16_program()). Their twins are created only while 16
-    // is set: by this call for the programs that exist, and by configure_flicker / configure_far afterwards (call it
-    // before them; a fixture's reference far program then stands for both). A refused twin leaves that configuration
-    // on 5 taps. Anything else is E_INVALIDARG and changes nothing. The history targets are shared, so a change keeps
-    // the history. The 5-tap programs need linear filtering of A16B16G16R16F and R32F textures (TextureFilterCaps
-    // MINFLINEAR | MAGFLINEAR and CheckDeviceFormat D3DUSAGE_QUERY_FILTER of both, read at initialize); without it every
-    // program slot holds the 16-tap program and every run draws 16 taps (the caller's `resolve` is then not used).
-    // Diagnostics::history_taps names what the last run drew.
-    HRESULT configure_history_taps(unsigned taps) noexcept;
-    unsigned history_taps() const noexcept { return history_taps_; }
+    // S3 (docs/architecture/taa-high-resolution.md): the resolve reconstructs the history with the 5-tap bilinear Catmull-Rom
+    // form, which samples the previous colour and reactive mask a second time at s11 / s12 with LINEAR min / mag filtering.
+    // That needs linear filtering of A16B16G16R16F and R32F textures (TextureFilterCaps MINFLINEAR | MAGFLINEAR and
+    // CheckDeviceFormat D3DUSAGE_QUERY_FILTER of both, read at initialize); a device without it refuses initialize with
+    // D3DERR_NOTAVAILABLE (the 16-tap point programs were removed on 2026-09-25: no fallback program set).
     bool bilinear_history_available() const noexcept { return bilinear_history_; }
-    // Why the 5-tap programs are unusable: "ok", "not_initialized", "filter_caps" (TextureFilterCaps), "adapter_query"
+    // Why the 5-tap programs are unusable (initialize refused): "ok", "not_initialized", "filter_caps" (TextureFilterCaps), "adapter_query"
     // (GetDirect3D / GetCreationParameters / GetDisplayMode failed), "fp16_filter" or "r32f_filter" (the format query).
     const char* bilinear_history_reason() const noexcept { return bilinear_history_reason_; }
+    // The same filter requirement as a standalone query, before any pass exists (MotionOutput decides at device attach whether
+    // TAA, and with it the jitter, can run at all): GetDeviceCaps through `native_vtable` (the device's own table when null),
+    // then the checks initialize runs. S_OK, or the refusal with *reason set as bilinear_history_reason() would be (plus
+    // "device_caps" when GetDeviceCaps itself failed). Creates nothing and keeps no reference.
+    static HRESULT query_history_filtering(IDirect3DDevice9* device, void* const* native_vtable, const char** reason) noexcept;
     // The camera-gate programs configure_far creates on top (the folded hold resolve and its 49-tap box; the hold resolve is
     // 5-tap only, so none without bilinear_history_available()), a history drawn with 5 taps and three simultaneous render
     // targets (the resolve writes colour, age and depth: NumSimultaneousRTs >= 3, read at initialize): the camera gate can run. Optional: a refusal leaves no camera-gate path (AGENTS.md "Shader slot budget": no fallback program
     // set) and the caller decides what runs instead. camera_programs_result() holds the first failed creation
     // (D3DERR_NOTAVAILABLE without the filter caps, S_OK when every program was created).
-    bool camera_gate_available() const noexcept { return far_available() && far_camera_hold_ != nullptr && thin_box_hold_ != nullptr && history_taps_ != 16 && render_targets_ >= 3; }
+    bool camera_gate_available() const noexcept { return far_available() && far_camera_hold_ != nullptr && thin_box_hold_ != nullptr && render_targets_ >= 3; }
     HRESULT camera_programs_result() const noexcept { return camera_programs_result_; }
     // D3DCAPS9::NumSimultaneousRTs as initialize read it (the camera gate needs 3), for the caller's refusal row.
     unsigned simultaneous_render_targets() const noexcept { return render_targets_; }
@@ -519,14 +516,9 @@ private:
     IDirect3DPixelShader9 *decoder_ = nullptr, *resolve_ = nullptr, *snapshot_ = nullptr, *sharpen_ = nullptr, *copy_ = nullptr;
     HRESULT snapshot_result_ = S_FALSE;
     IDirect3DPixelShader9 *thin_ = nullptr, *age_ = nullptr;
-    // S3: the 16-tap point twins of the 5-tap programs above and below, created only while 16 taps are configured (null
-    // otherwise, when refused, or when the 5-tap members already hold the 16-tap words: bilinear_history_ false).
-    IDirect3DPixelShader9 *resolve16_ = nullptr, *thin16_ = nullptr, *age16_ = nullptr, *far16_ = nullptr;
-    unsigned history_taps_ = 5;
     bool bilinear_history_ = false;
     const char* bilinear_history_reason_ = "not_initialized";
     HRESULT query_bilinear_history(const D3DCAPS9& caps) noexcept;
-    void create_taps16(const DWORD* far_reference) noexcept;
     bool line_masks_failed_ = false;
     HRESULT line_masks_result_ = S_OK;
     IDirect3DPixelShader9* far_ = nullptr;

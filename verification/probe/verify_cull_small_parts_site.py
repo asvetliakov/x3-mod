@@ -16,8 +16,7 @@ in the function lands inside the displaced span, that the site's incoming
 branches are exactly the documented ones, that every branch inside the window
 stays inside it or lands on its end, that the frame prologue and the three `[esp+0x2c]` stores that make that
 slot `s` are the expected bytes, that the claim is disjoint from the
-cull-census sites (0x0047d258, 0x0047d528) and the lod_scale site
-(0x0047d44b), that the function ends in `ret 8`, that the engine's class-0
+cull-census sites (0x0047d258, 0x0047d528), that the function ends in `ret 8`, that the engine's class-0
 projectile marker is established by the pinned instructions (0x004401ae
 stores 0x20800000, 0x0044123b..0x00441248 ORs it into the root node's +0x130)
 and consumed as 0x20000000 by the occluder filter at 0x00488b00, and that
@@ -49,15 +48,14 @@ CULL = bytes.fromhex('83a72c010000fd')
 WINDOW_INSTRUCTIONS = [0x47d294, 0x47d297, 0x47d299, 0x47d29b, 0x47d2a2, 0x47d2a5, 0x47d2a7, 0x47d2ad, 0x47d2af, 0x47d2b5, 0x47d2b7,
                        0x47d2b9, 0x47d2bb, 0x47d2bd, 0x47d2bf, 0x47d2c1, 0x47d2c3, 0x47d2ca]
 SITE_SOURCES = [0x47d28c, 0x47d297]
-# Claims this stub must not overlap: the census's two six-byte sites and the lod_scale's six-byte site.
-OTHER_CLAIMS = {'cull_census_measure': (0x47d258, 6), 'cull_census_exit': (0x47d528, 6), 'lod_scale': (0x47d44b, 6)}
+# Claims this stub must not overlap: the census's two six-byte sites (the lod_scale site was removed on 2026-09-25).
+OTHER_CLAIMS = {'cull_census_measure': (0x47d258, 6), 'cull_census_exit': (0x47d528, 6)}
 RET_VA = 0x47d54f
 # The stub reads `s` at [ESP+0x2c] with the site's ESP: the frame is `sub esp,0x14` plus four pushes (cdecl calls
 # before the site rebalance with `add esp`), and these are the three final writers of that slot before the site.
 PROLOGUE = bytes.fromhex('83ec14 8a44241c 53 55 56 57'.replace(' ', ''))
 S_STORES = {0x47d229: bytes.fromhex('c744242c00000007'), 0x47d24a: bytes.fromhex('8944242c'), 0x47d250: bytes.fromhex('c744242c01000000')}
-STUB_LENGTH, STUB_PROJECTILE, STUB_REPLAY, STUB_CULL, STUB_EXEMPT, STUB_CONTINUE, STUB_SCOPE_BRANCH = 82, 22, 34, 59, 70, 76, 39
-SCOPES = ('bodies', 'all')
+STUB_LENGTH, STUB_PROJECTILE, STUB_REPLAY, STUB_CULL, STUB_EXEMPT, STUB_CONTINUE = 82, 22, 34, 59, 70, 76
 # The engine's class-0 (TBullets) root-node marker the stub's exemption tests (docs/reverse-engineering/lod-selection.md, "Projectile nodes").
 FLAGS130_OFFSET, PROJECTILE_FLAG = 0x130, 0x20000000
 MARKER_STORE_VA, MARKER_STORE = 0x4401ae, bytes.fromhex('c744242000008020')              # mov dword [esp+0x20],0x20800000 (class-0 case)
@@ -74,15 +72,12 @@ FRAME_RE = re.compile(r'\bcull_small_parts_frame device=(?P<device>\d+) frame=(?
                       r'(?: focus=0x(?P<focus>[0-9a-f]+) source=(?P<source>scene|registry))?(?: fallback=(?P<fallback>none|no_scene|reset|aged))?')
 
 
-def encode_stub(at, threshold, culled, exempt, cull_target, next_slot, scope='all', projectiles=True):
+def encode_stub(at, threshold, culled, exempt, cull_target, next_slot, projectiles=True):
     """cmp dword [threshold],0; jle continue; push eax; mov eax,[threshold]; cmp [esp+0x30],eax; pop eax; jge continue;
     test dword [edi+0x130],0x20000000; jne exempt;
     mov ecx,[edi+0x18]; test ecx,ecx; mov eax,[edi+0x1d8]; je cull; mov ecx,[ecx+0x1d8]; cmp ecx,eax; jle cull; mov eax,ecx;
     cull: inc dword [culled]; jmp cull_target; exempt: inc dword [exempt]; continue: jmp [next]. Projectiles off replaces
-    bytes 22..33 with jmp 34 and int3 padding. Scope `bodies` replaces bytes 39..58 with jne continue; mov eax,[edi+0x1d8];
-    jmp cull; int3 padding (a parented node runs the engine's own compare). The C++ encoder's contract."""
-    if scope not in SCOPES:
-        raise ValueError('scope must be bodies or all')
+    bytes 22..33 with jmp 34 and int3 padding (the scope `bodies` variant was removed on 2026-09-25). The C++ encoder's contract."""
     for value in (at, threshold, culled, exempt, cull_target, next_slot):
         if not 0 <= value <= 0xffffffff:
             raise ValueError('addresses must be 32-bit VAs')
@@ -97,9 +92,6 @@ def encode_stub(at, threshold, culled, exempt, cull_target, next_slot, scope='al
     if not projectiles:
         skip = b'\xeb' + bytes([STUB_REPLAY - 24])
         code = code[:STUB_PROJECTILE] + skip + b'\xcc' * (STUB_REPLAY - STUB_PROJECTILE - len(skip)) + code[STUB_REPLAY:]
-    if scope == 'bodies':
-        body = b'\x75' + bytes([STUB_CONTINUE - 41]) + b'\x8b\x87\xd8\x01\x00\x00' + b'\xeb' + bytes([STUB_CULL - 49])
-        code = code[:STUB_SCOPE_BRANCH] + body + b'\xcc' * (STUB_CULL - STUB_SCOPE_BRANCH - len(body)) + code[STUB_CULL:]
     assert len(code) == STUB_LENGTH
     return code
 
@@ -161,27 +153,17 @@ def parse_frame_line(line):
             'focus': int(row['focus'], 16) if row['focus'] else None, 'source': row['source'], 'fallback': row['fallback']}
 
 
-def scope_stub_ok():
-    args = (0x10000000, 0x10002000, 0x10002004, 0x10002008, CULL_VA, 0x10000054)
-    every, bodies = encode_stub(*args, scope='all'), encode_stub(*args, scope='bodies')
-    return (len(bodies) == STUB_LENGTH and bodies[:STUB_SCOPE_BRANCH] == every[:STUB_SCOPE_BRANCH] and bodies[STUB_CULL:] == every[STUB_CULL:]
-            and bodies[STUB_REPLAY:STUB_REPLAY + 5] == SITE and bodies[39] == 0x75 and 41 + bodies[40] == STUB_CONTINUE
-            and bodies[41:47] == bytes.fromhex('8b87d8010000') and bodies[47] == 0xeb and 49 + bodies[48] == STUB_CULL
-            and bodies[49:STUB_CULL] == b'\xcc' * (STUB_CULL - 49))
-
-
 def projectile_stub_ok():
     """The marker test sits on the below-threshold path only (after the jge), reads node+0x130 against 0x20000000 and branches to
-    the exempt count, which falls through into the continue jump; `off` jumps over it to the replay; both scopes keep it."""
+    the exempt count, which falls through into the continue jump; `off` jumps over it to the replay."""
     args = (0x10000000, 0x10002000, 0x10002004, 0x10002008, CULL_VA, 0x10000054)
-    on, off, bodies = encode_stub(*args), encode_stub(*args, projectiles=False), encode_stub(*args, scope='bodies')
+    on, off = encode_stub(*args), encode_stub(*args, projectiles=False)
     return (on[STUB_PROJECTILE:STUB_PROJECTILE + 2] == b'\xf7\x87' and struct.unpack_from('<II', on, STUB_PROJECTILE + 2) == (FLAGS130_OFFSET, PROJECTILE_FLAG)
             and on[32] == 0x75 and 34 + on[33] == STUB_EXEMPT and on[STUB_EXEMPT:STUB_EXEMPT + 2] == b'\xff\x05'
             and struct.unpack_from('<I', on, STUB_EXEMPT + 2)[0] == 0x10002008 and STUB_EXEMPT + 6 == STUB_CONTINUE
             and 22 + on[21] == STUB_CONTINUE and 9 + on[8] == STUB_CONTINUE and on[STUB_REPLAY:STUB_REPLAY + 5] == SITE
             and off[:STUB_PROJECTILE] == on[:STUB_PROJECTILE] and off[STUB_REPLAY:] == on[STUB_REPLAY:]
-            and off[22] == 0xeb and 24 + off[23] == STUB_REPLAY and off[24:STUB_REPLAY] == b'\xcc' * (STUB_REPLAY - 24)
-            and bodies[STUB_PROJECTILE:STUB_REPLAY] == on[STUB_PROJECTILE:STUB_REPLAY])
+            and off[22] == 0xeb and 24 + off[23] == STUB_REPLAY and off[24:STUB_REPLAY] == b'\xcc' * (STUB_REPLAY - 24))
 
 
 def source_constants(text):
@@ -193,7 +175,7 @@ def source_constants(text):
         match = re.search(rf'\b{name}\[\w+\]\s*=\s*\{{([^}}]*)\}}', text)
         return bytes(int(b, 0) for b in re.findall(r'0x[0-9a-fA-F]{2}', match.group(1))) if match else b''
     names = ('function_va', 'function_end_va', 'window_va', 'site_va', 'next_va', 'je_va', 'cull_va', 'after_cull_va', 'window_length', 'site_offset',
-             'site_length', 'cull_offset', 'ret_pop', 'parent_offset', 'threshold_1d8_offset', 'stub_length', 'stub_cull', 'stub_continue', 'stub_scope_branch',
+             'site_length', 'cull_offset', 'ret_pop', 'parent_offset', 'threshold_1d8_offset', 'stub_length', 'stub_cull', 'stub_continue',
              'stub_projectile', 'stub_replay', 'stub_exempt', 'flags130_offset', 'projectile_flag', 'marker_store_va', 'marker_or_va',
              'marker_store_length', 'marker_or_length')
     return {name: value(name) for name in names} | {'window': array('window'), 'site': array('site'),
@@ -203,7 +185,7 @@ def source_constants(text):
 EXPECTED_CONSTANTS = {'function_va': FUNCTION[0], 'function_end_va': FUNCTION[1], 'window_va': WINDOW_VA, 'site_va': SITE_VA, 'next_va': NEXT_VA, 'je_va': JE_VA,
                       'cull_va': CULL_VA, 'after_cull_va': AFTER_CULL_VA, 'window_length': len(WINDOW), 'site_offset': SITE_VA - WINDOW_VA, 'site_length': 5,
                       'cull_offset': CULL_VA - WINDOW_VA, 'ret_pop': 8, 'parent_offset': 0x18, 'threshold_1d8_offset': 0x1d8,
-                      'stub_length': STUB_LENGTH, 'stub_cull': STUB_CULL, 'stub_continue': STUB_CONTINUE, 'stub_scope_branch': STUB_SCOPE_BRANCH, 'window': WINDOW, 'site': SITE,
+                      'stub_length': STUB_LENGTH, 'stub_cull': STUB_CULL, 'stub_continue': STUB_CONTINUE, 'window': WINDOW, 'site': SITE,
                       'stub_projectile': STUB_PROJECTILE, 'stub_replay': STUB_REPLAY, 'stub_exempt': STUB_EXEMPT, 'flags130_offset': FLAGS130_OFFSET,
                       'projectile_flag': PROJECTILE_FLAG, 'marker_store_va': MARKER_STORE_VA, 'marker_or_va': MARKER_OR_VA,
                       'marker_store_length': len(MARKER_STORE), 'marker_or_length': len(MARKER_OR), 'marker_store': MARKER_STORE, 'marker_or': MARKER_OR}
@@ -251,9 +233,6 @@ def inspect(data, instructions, core_text):
         'projectile_marker': image.read(MARKER_STORE_VA, len(MARKER_STORE)) == MARKER_STORE and image.read(MARKER_OR_VA, len(MARKER_OR)) == MARKER_OR
                              and image.read(MARKER_USE_VA, len(MARKER_USE)) == MARKER_USE,
         'encoder_projectiles': projectile_stub_ok(),
-        # Scope bodies: the stub's parent test is the displaced span itself (same bytes, so the tail's replay leaves ECX/EFLAGS
-        # as native on the continue path), its branches land on the stub's cull and continue labels, and only bytes 39..58 differ.
-        'encoder_bodies': scope_stub_ok(),
         'threshold_rule': (threshold_for(2, struct.unpack('<f', struct.pack('<I', 0x3f4ccccc))[0], 1280), threshold_for(4, struct.unpack('<f', struct.pack('<I', 0x3f4ccccc))[0], 1280),
                            threshold_for(8, struct.unpack('<f', struct.pack('<I', 0x3f4ccccc))[0], 1280)) == (3, 6, 11),
     }

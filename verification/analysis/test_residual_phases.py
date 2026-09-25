@@ -175,7 +175,7 @@ class NativeSites(unittest.TestCase):
         report = probe.verify()
         self.assertEqual(report['result'], 'PASS', report['checks'])
         self.assertTrue(report['source_present'])
-        self.assertEqual(report['installed_sites_checked'], 47 + 10 + 4)
+        self.assertEqual(report['installed_sites_checked'], 33 + 10 + 4)  # 33 game-phase sites since the audio sites went (2026-09-25)
         self.assertEqual(len(report['sites']), 2)
         for row in report['sites']:
             self.assertEqual(row['incoming_sources'], sorted(f'{s:#010x}' for s in probe.INCOMING[int(row['va'], 16)]), row['name'])

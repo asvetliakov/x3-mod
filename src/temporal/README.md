@@ -27,13 +27,12 @@ resolve performs its own history reconstruction and its own depth footprint
 test; every fetch is an explicit LOD-0 `tex2Dlod`. The default programs
 (`docs/architecture/taa-high-resolution.md` S3) reconstruct the history with
 five hardware-bilinear fetches of s11 (and, under a mask policy, of s12); a
-point read of s2 on the texel grid in the plain program. The 16-tap twins
-(`resolve*_taps16.hlsl`, `X3M_HISTORY_TAPS16`, `--taa-history-taps 16`) gather
-16 point taps of s2 / s6 and never read s11 / s12. Hardware bilinear filtering
-on any other input would violate this contract. `TemporalPass` binds the
-filtered pair only for a 5-tap program and only when the device reports
+point read of s2 on the texel grid in the plain program (the 16-tap point
+twins went with `--taa-history-taps` on 2026-09-25). Hardware bilinear filtering
+on any other input would violate this contract. `TemporalPass` requires
 `D3DPTFILTERCAPS_MINFLINEAR | MAGFLINEAR` and `D3DUSAGE_QUERY_FILTER` for
-A16B16G16R16F and R32F; otherwise every program slot holds the 16-tap words. Output is a distinct FP16 target, never simultaneously
+A16B16G16R16F and R32F; without them `initialize` refuses and the device runs
+without TAA. Output is a distinct FP16 target, never simultaneously
 bound as an input; alpha is the current color's alpha (the game's main-target
 alpha survives the copy-back; history alpha is never blended; a NaN alpha
 becomes one). Disable depth, blending, alpha test, fog and

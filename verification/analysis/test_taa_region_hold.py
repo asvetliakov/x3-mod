@@ -18,7 +18,9 @@ REMOVED = ('temporal-resolve-far-camera', 'temporal-resolve-far-camera-taps16', 
            'temporal-thin-box-columns',
            # The mask fold (2026-09-25): the camera mask's three programs and the stabiliser's separable twins.
            'temporal-line-mask-camera', 'temporal-line-mask-camera-depth', 'temporal-line-mask-camera-depth-thin',
-           'temporal-thin-box-rows-hold', 'temporal-thin-box-columns-hold')
+           'temporal-thin-box-rows-hold', 'temporal-thin-box-columns-hold',
+           # The 16-tap history (--taa-history-taps 16, removed 2026-09-25): its four resolve programs.
+           'temporal-resolve-taps16', 'temporal-resolve-far-taps16', 'temporal-resolve-age-taps16', 'temporal-resolve-thin-taps16')
 HOLD = ('temporal-resolve-far-camera-hold', 'temporal-thin-box-hold', 'temporal-thin-box-rows-half', 'temporal-thin-box-columns-half')
 
 
@@ -32,20 +34,21 @@ class RegionHoldLaunch(unittest.TestCase):
             self.assertNotIn('X3M_TAA_REGION_HOLD', self.env(directory, *TAA, inherited={'X3M_TAA_REGION_HOLD': 'off'}))
             self.assertNotIn('X3M_TAA_REGION_HOLD', self.env(directory, '--motion-output', inherited={'X3M_TAA_REGION_HOLD': 'on'}))
 
-    def test_the_removed_option_is_refused_by_name(self):
+    def test_the_removed_option_is_unknown(self):
+        # Refused by name from 2026-09-24; the refusal stub itself went on 2026-09-25 (a plain unknown argument since).
         with tempfile.TemporaryDirectory() as directory:
             for args in ((*TAA, '--taa-region-hold', 'on'), (*TAA, '--taa-region-hold', 'off'), (*TAA, '--taa-region-hold'),
                          ('--motion-output', '--taa-region-hold', 'off')):
                 code, _, error = self.launch(directory, *args)
                 self.assertNotEqual(code, 0, args)
-                self.assertIn('--taa-region-hold was removed on 2026-09-24', error)
+                self.assertIn('unrecognized arguments', error)
 
 
 class RegionHoldSource(unittest.TestCase):
-    def test_dll_ignores_a_stale_value_and_configures_no_hold_switch(self):
+    def test_dll_reads_no_hold_variable_and_configures_no_hold_switch(self):
         capture = (ROOT / 'src/proxy/capture.cpp').read_text()
-        self.assertIn('if(GetEnvironmentVariableW(L"X3M_TAA_REGION_HOLD",setting,32)>0)log("taa_region_hold_setting ignored=1 reason=removed");', capture)
-        self.assertNotIn('taa_region_hold', capture.replace('taa_region_hold_setting', ''))
+        self.assertNotIn('X3M_TAA_REGION_HOLD', capture)  # the ignore line went with the launcher stub on 2026-09-25
+        self.assertNotIn('taa_region_hold', capture)
         motion = (ROOT / 'src/proxy/motion_output.cpp').read_text()
         self.assertNotIn('configure_region_hold', motion)
         self.assertNotIn('thin_region_hold =', motion)
@@ -67,10 +70,10 @@ class RegionHoldSource(unittest.TestCase):
         for gone in (r'\bconfigure_region_hold\b', r'\bregion_hold_available\b', r'\bfar_camera_\b', r'\bfar_camera16_\b', r'\bthin_box_\b',
                      r'\bthin_box_rows_\b', r'\bthin_box_columns_\b', r'\bbool thin_region_hold\b'):
             self.assertIsNone(re.search(gone, header + source), gone)
-        self.assertIn('history_taps_ != 16', header)  # the camera gate has no 16-tap program
+        self.assertNotIn('history_taps_', header)  # the 16-tap history went on 2026-09-25: 5 taps is the only resolve
         self.assertIn('const UINT draws=thin_on?3:1;final_mask=thin_on?0:1;', source)  # the screen-gate chain; the camera gate draws no mask
         self.assertIn('const bool mask_draws=far_on&&!camera;', source)
-        self.assertIn('camera_gate_available() const noexcept { return far_available() && far_camera_hold_ != nullptr && thin_box_hold_ != nullptr && history_taps_ != 16 && render_targets_ >= 3; }', header)
+        self.assertIn('camera_gate_available() const noexcept { return far_available() && far_camera_hold_ != nullptr && thin_box_hold_ != nullptr && render_targets_ >= 3; }', header)
         self.assertIn('if(camera_requested&&boxes_failed_)region_off();', source)
         self.assertIn('boxes_failed_=true;boxes_result_=boxes;camera=false;region_off();', source)
         for gone in ('configure_sentinel', 'sentinel_available', 'line_mask_camera_', 'thin_box_rows_hold_', 'sentinel_strength'):

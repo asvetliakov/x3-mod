@@ -90,9 +90,9 @@ int main() {
     double px = 0;
     check(parse_px("2", &px) && px == 2.0 && parse_px("+2.5", &px) && px == 2.5 && parse_px(".5", &px) && px == 0.5 && !parse_px("2,5", &px) && !parse_px("1e1", &px) && !parse_px("", &px) && !parse_px(nullptr, &px), "parser");
     check(valid_px(64.0) && !valid_px(64.01) && !valid_px(0.0), "band");
-    unsigned char s[stub_length]; encode_stub(0x10000000, 0x20000000, 0x20000004, 0x20000008, 0x0047d2c3, 0x10000054, s, Scope::all, true);
+    unsigned char s[stub_length]; encode_stub(0x10000000, 0x20000000, 0x20000004, 0x20000008, 0x0047d2c3, 0x10000054, s, true);
     std::uint32_t v = 0;
-    check(stub_length == 82 && stub_projectile == 22 && stub_replay == 34 && stub_cull == 59 && stub_exempt == 70 && stub_continue == 76 && stub_scope_branch == 39, "stub layout");
+    check(stub_length == 82 && stub_projectile == 22 && stub_replay == 34 && stub_cull == 59 && stub_exempt == 70 && stub_continue == 76, "stub layout");
     std::memcpy(&v, s + 2, 4); check(s[0] == 0x83 && s[1] == 0x3d && v == 0x20000000 && s[6] == 0 && s[7] == 0x7e && s[8] == stub_continue - 9, "cmp dword [threshold],0; jle continue");
     std::memcpy(&v, s + 11, 4); check(s[9] == 0x50 && s[10] == 0xa1 && v == 0x20000000 && !std::memcmp(s + 15, "\x39\x44\x24\x30\x58\x7d", 6) && s[21] == stub_continue - 22, "push eax; mov eax,[threshold]; cmp [esp+0x30],eax; pop eax; jge continue");
     check(!std::memcmp(s + 22, "\xf7\x87\x30\x01\x00\x00\x00\x00\x00\x20\x75", 11) && s[33] == stub_exempt - 34 && flags130_offset == 0x130 && projectile_flag == 0x20000000u, "test dword [edi+0x130],0x20000000; jne exempt");
@@ -101,17 +101,11 @@ int main() {
     std::memcpy(&v, s + 66, 4); check(s[65] == 0xe9 && 0x10000046 + v == 0x0047d2c3, "jmp cull target");
     std::memcpy(&v, s + 72, 4); check(s[70] == 0xff && s[71] == 0x05 && v == 0x20000008, "inc dword [exempt]");
     std::memcpy(&v, s + 78, 4); check(s[76] == 0xff && s[77] == 0x25 && v == 0x10000054, "jmp [next]");
-    unsigned char o[stub_length]; encode_stub(0x10000000, 0x20000000, 0x20000004, 0x20000008, 0x0047d2c3, 0x10000054, o, Scope::all, false);
+    unsigned char o[stub_length]; encode_stub(0x10000000, 0x20000000, 0x20000004, 0x20000008, 0x0047d2c3, 0x10000054, o, false);
     check(!std::memcmp(o, s, stub_projectile) && !std::memcmp(o + stub_replay, s + stub_replay, stub_length - stub_replay) && o[22] == 0xeb && 24 + o[23] == stub_replay && o[24] == 0xcc && o[33] == 0xcc, "projectiles off: jmp over the marker test, int3 padding, nothing else differs");
-    unsigned char b[stub_length]; encode_stub(0x10000000, 0x20000000, 0x20000004, 0x20000008, 0x0047d2c3, 0x10000054, b, Scope::bodies, true);
-    check(!std::memcmp(b, s, stub_scope_branch) && !std::memcmp(b + stub_cull, s + stub_cull, stub_length - stub_cull), "bodies stub: only bytes 39..58 differ");
-    check(!std::memcmp(b + 34, site, site_length) && b[39] == 0x75 && 41 + b[40] == stub_continue && !std::memcmp(b + 41, "\x8b\x87\xd8\x01\x00\x00\xeb", 7) && 49 + b[48] == stub_cull && b[49] == 0xcc && b[58] == 0xcc, "bodies stub: displaced test; jne continue; mov eax,[edi+0x1d8]; jmp cull");
     bool ex = false;
     check(parse_projectiles(nullptr, &ex) && ex && parse_projectiles("", &ex) && ex && parse_projectiles("off", &ex) && !ex && parse_projectiles("on", &ex) && ex && !parse_projectiles("On", &ex) && !parse_projectiles("0", &ex), "projectiles parser: on (default), off, nothing else");
     check(!std::memcmp(marker_store, "\xc7\x44\x24\x20\x00\x00\x80\x20", marker_store_length) && !std::memcmp(marker_or + 7, "\x09\x90\x30\x01\x00\x00", 6) && marker_or_length == 13, "marker instructions");
-    Scope sc = Scope::bodies;
-    check(parse_scope(nullptr, &sc) && sc == Scope::all && parse_scope("bodies", &sc) && sc == Scope::bodies && !parse_scope("All", &sc) && !parse_scope("parts", &sc) && parse_scope("all", &sc) && sc == Scope::all, "scope parser");
-    check(!std::strcmp(scope_name(Scope::bodies), "bodies") && !std::strcmp(scope_name(Scope::all), "all"), "scope names");
     check(std::memcmp(window + site_offset, site, site_length) == 0 && window[cull_offset] == 0x83 && window[cull_offset + 1] == 0xa7 && window[window_length - 2] == 0xeb && window[window_length - 1] == 0x05, "site and cull bytes inside the window");
     check(window_va + site_offset == site_va && site_va + site_length == next_va && window_va + cull_offset == cull_va && window_va + window_length + 5 == after_cull_va, "address relations");
     using namespace x3m::cull_census::core;
@@ -120,13 +114,12 @@ int main() {
     e.limit = 8; check(classify(e, 3) == Verdict::culled_size, "census: the engine's size cull named first");
     e.limit = 0; e.measure = 0; e.s = 1; check(classify(e, 3) == Verdict::culled_min, "census: the engine's degenerate cull named first");
     e.flags_in = 0x4001002; check(classify(e, 3) == Verdict::culled_small, "census: a 0x4000000 node below the threshold is the stub's");
-    check(classify(e, 3, true) == Verdict::culled_small, "census, scope bodies: a parentless node below the threshold is the stub's");
-    e.parent = 0x1000; check(classify(e, 3, true) == Verdict::culled_other && classify(e, 3, false) == Verdict::culled_small, "census, scope bodies: a parented node is never the stub's");
+    e.parent = 0x1000; check(classify(e, 3) == Verdict::culled_small, "census: a parented node below the threshold is the stub's too (scope all)");
     e.parent = 0;
     e.flags130 = x3m::cull_census::core::projectile_flag;
-    check(classify(e, 3, false, true) == Verdict::culled_other && classify(e, 3, false, false) == Verdict::culled_small && classify(e, 3, true, true) == Verdict::culled_other, "census: an exempt projectile below the threshold is never the stub's");
+    check(classify(e, 3, true) == Verdict::culled_other && classify(e, 3, false) == Verdict::culled_small, "census: an exempt projectile below the threshold is never the stub's");
     check(small_exempt(e, 3, true) && !small_exempt(e, 3, false) && !small_exempt(e, 1, true) && !small_exempt(e, 0, true), "census: the exempt count needs the exemption on and s below the threshold");
-    e.flags130 = 0x00800000; check(classify(e, 3, false, true) == Verdict::culled_small && !small_exempt(e, 3, true), "census: bit 0x800000 alone is not the marker");
+    e.flags130 = 0x00800000; check(classify(e, 3, true) == Verdict::culled_small && !small_exempt(e, 3, true), "census: bit 0x800000 alone is not the marker");
     check(x3m::cull_census::core::projectile_flag == x3m::cull_small_parts::core::projectile_flag && x3m::cull_census::core::flags130_offset == x3m::cull_small_parts::core::flags130_offset, "census and stub share the marker");
     e.flags130 = 0;
     e.flags_out = 0x1002; check(classify(e, 3) == Verdict::kept, "census: kept stays kept");
@@ -164,7 +157,7 @@ class CullSmallPartsSite(unittest.TestCase):
         self.assertFalse(report['checks']['exe_identity'])
         self.assertEqual(report['site_sources'], ['0x47d28c', '0x47d297'])
         self.assertEqual(report['interior_branches'], [])
-        self.assertEqual(len(report['checks']), 21)
+        self.assertEqual(len(report['checks']), 20)
 
     def test_changed_bytes_and_branches_refused(self):
         cases = {
@@ -212,18 +205,12 @@ class CullSmallPartsSite(unittest.TestCase):
         self.assertEqual(struct.unpack('<i', stub[66:70])[0], probe.CULL_VA - (0x10000000 + 70))
         self.assertEqual(stub[70:76], b'\xff\x05' + struct.pack('<I', 0x20000008))
         self.assertEqual(stub[76:82], b'\xff\x25' + struct.pack('<I', 0x10000054))
-        bodies = probe.encode_stub(0x10000000, 0x20000000, 0x20000004, 0x20000008, probe.CULL_VA, 0x10000054, scope='bodies')
-        self.assertEqual((bodies[:39], bodies[59:]), (stub[:39], stub[59:]))
-        self.assertEqual(bodies[39:59], bytes.fromhex('7523 8b87d8010000 eb0a'.replace(' ', '')) + b'\xcc' * 10)
         off = probe.encode_stub(0x10000000, 0x20000000, 0x20000004, 0x20000008, probe.CULL_VA, 0x10000054, projectiles=False)
         self.assertEqual((off[:22], off[34:]), (stub[:22], stub[34:]))
         self.assertEqual(off[22:34], b'\xeb\x0a' + b'\xcc' * 10)
-        self.assertTrue(probe.scope_stub_ok())
         self.assertTrue(probe.projectile_stub_ok())
         with self.assertRaises(ValueError):
             probe.encode_stub(1 << 32, 0, 0, 0, 0, 0)
-        with self.assertRaises(ValueError):
-            probe.encode_stub(0, 0, 0, 0, 0, 0, scope='parts')
         m00 = struct.unpack('<f', struct.pack('<I', 0x3f4ccccc))[0]
         self.assertEqual((probe.threshold_for(2, m00, 1280), probe.threshold_for(4, m00, 1280), probe.threshold_for(8, m00, 1280)), (3, 6, 11))
         self.assertEqual(probe.threshold_for(2, 0.8, 1920), 2)
@@ -355,11 +342,10 @@ class CullSmallPartsLaunchOption(unittest.TestCase):
     def test_absent_or_zero_drops_the_variable_even_when_inherited(self):
         with tempfile.TemporaryDirectory() as directory:
             for args in ((), ('--cull-small-parts', '0')):
-                code, output, _ = self.launch(directory, *args, inherited={'X3M_CULL_SMALL_PARTS_PX': '2', 'X3M_CULL_SMALL_PARTS_SCOPE': 'all',
+                code, output, _ = self.launch(directory, *args, inherited={'X3M_CULL_SMALL_PARTS_PX': '2',
                                                                           'X3M_CULL_SMALL_PARTS_PROJECTILES': 'off'})
                 self.assertEqual(code, 0)
                 self.assertNotIn('X3M_CULL_SMALL_PARTS_PX', json.loads(output)['env'])
-                self.assertNotIn('X3M_CULL_SMALL_PARTS_SCOPE', json.loads(output)['env'])
                 self.assertNotIn('X3M_CULL_SMALL_PARTS_PROJECTILES', json.loads(output)['env'])
 
     def test_dry_run_carries_the_value(self):
@@ -370,24 +356,17 @@ class CullSmallPartsLaunchOption(unittest.TestCase):
             delivered = json.loads(output)
             self.assertEqual(delivered['command'], baseline['command'])
             self.assertEqual({k: v for k, v in delivered['env'].items() if k not in baseline['env']},
-                             {'X3M_CULL_SMALL_PARTS_PX': '2.0000', 'X3M_CULL_SMALL_PARTS_SCOPE': 'all', 'X3M_CULL_SMALL_PARTS_PROJECTILES': 'on'})
+                             {'X3M_CULL_SMALL_PARTS_PX': '2.0000', 'X3M_CULL_SMALL_PARTS_PROJECTILES': 'on'})
 
-    def test_scope_forwarded_and_default_overrides_inherited(self):
+    def test_scope_option_removed_and_inherited_scope_dropped(self):
+        # --cull-small-parts-scope (the `bodies` A/B) was removed on 2026-09-25: the stub always culls every node.
         with tempfile.TemporaryDirectory() as directory:
-            for args, expected in ((('--cull-small-parts-scope', 'all'), 'all'), (('--cull-small-parts-scope', 'bodies'), 'bodies'), ((), 'all')):
-                code, output, error = self.launch(directory, '--cull-small-parts', '2', *args, inherited={'X3M_CULL_SMALL_PARTS_SCOPE': 'all'})
-                self.assertEqual(code, 0, error)
-                self.assertEqual(json.loads(output)['env']['X3M_CULL_SMALL_PARTS_SCOPE'], expected)
-
-    def test_scope_refused_without_the_cull_or_with_an_unknown_value(self):
-        with tempfile.TemporaryDirectory() as directory:
-            for args in (('--cull-small-parts-scope', 'all'), ('--cull-small-parts', '0', '--cull-small-parts-scope', 'bodies')):
-                code, _, error = self.launch(directory, *args)
-                self.assertEqual(code, 2, args)
-                self.assertIn('--cull-small-parts-scope requires a non-zero --cull-small-parts', error)
-            code, _, error = self.launch(directory, '--cull-small-parts', '2', '--cull-small-parts-scope', 'parts')
+            code, _, error = self.launch(directory, '--cull-small-parts', '2', '--cull-small-parts-scope', 'all')
             self.assertEqual(code, 2)
-            self.assertIn('invalid choice', error)
+            self.assertIn('unrecognized arguments', error)
+            code, output, error = self.launch(directory, '--cull-small-parts', '2', inherited={'X3M_CULL_SMALL_PARTS_SCOPE': 'bodies'})
+            self.assertEqual(code, 0, error)
+            self.assertNotIn('X3M_CULL_SMALL_PARTS_SCOPE', json.loads(output)['env'])
 
     def test_projectiles_forwarded_default_on_and_refused_without_the_cull(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -433,27 +412,22 @@ class CullSmallPartsLaunchOption(unittest.TestCase):
                 return exit_error.code, output.getvalue(), error.getvalue()
         return 0, output.getvalue(), error.getvalue()
 
-    def test_modded_launch_defaults_to_four_px_scope_all(self):
+    def test_modded_launch_defaults_to_four_px(self):
         """Run 43 B default at 2 px, raised to 4 px on 2026-09-25 (stand-command promotion): every modded
         launch culls over all nodes; an explicit 0 is the off switch and --vanilla forwards nothing."""
         with tempfile.TemporaryDirectory() as directory:
             code, output, error = self.modded_launch(directory)
             self.assertEqual(code, 0, error)
             env = json.loads(output)['env']
-            self.assertEqual((env['X3M_CULL_SMALL_PARTS_PX'], env['X3M_CULL_SMALL_PARTS_SCOPE']), ('4.0000', 'all'))
-            # An explicit value and an explicit scope still win.
-            env = json.loads(self.modded_launch(directory, '--cull-small-parts', '2', '--cull-small-parts-scope', 'bodies')[1])['env']
-            self.assertEqual((env['X3M_CULL_SMALL_PARTS_PX'], env['X3M_CULL_SMALL_PARTS_SCOPE']), ('2.0000', 'bodies'))
-            # The scope alone is enough on a modded launch: the cull is on by default.
-            code, output, error = self.modded_launch(directory, '--cull-small-parts-scope', 'bodies')
-            self.assertEqual(code, 0, error)
-            self.assertEqual(json.loads(output)['env']['X3M_CULL_SMALL_PARTS_SCOPE'], 'bodies')
-            # Explicit off, even with the variables inherited.
-            env = json.loads(self.modded_launch(directory, '--cull-small-parts', '0',
-                                                inherited={'X3M_CULL_SMALL_PARTS_PX': '8', 'X3M_CULL_SMALL_PARTS_SCOPE': 'bodies'})[1])['env']
-            self.assertNotIn('X3M_CULL_SMALL_PARTS_PX', env)
+            self.assertEqual(env['X3M_CULL_SMALL_PARTS_PX'], '4.0000')
             self.assertNotIn('X3M_CULL_SMALL_PARTS_SCOPE', env)
-            # --vanilla sets nothing and still refuses a bare scope.
+            # An explicit value still wins.
+            env = json.loads(self.modded_launch(directory, '--cull-small-parts', '2')[1])['env']
+            self.assertEqual(env['X3M_CULL_SMALL_PARTS_PX'], '2.0000')
+            # Explicit off, even with the variable inherited.
+            env = json.loads(self.modded_launch(directory, '--cull-small-parts', '0', inherited={'X3M_CULL_SMALL_PARTS_PX': '8'})[1])['env']
+            self.assertNotIn('X3M_CULL_SMALL_PARTS_PX', env)
+            # --vanilla sets nothing.
             self.assertNotIn('X3M_CULL_SMALL_PARTS_PX', json.loads(self.launch(directory)[1])['env'])
 
     def test_out_of_range_refused(self):

@@ -59,7 +59,7 @@ Stats stats();
 // not cull are reported as `culled_small`, except a node the stub exempts as
 // a projectile (+0x130 & 0x20000000 with the exemption on), which the frame
 // row counts as `culled_small_exempt_bullet=`. One plain store per frame.
-void note_small_threshold(std::int32_t threshold, bool bodies_only = false, bool exempt_projectiles = false);   // bodies_only: the stub's scope (parentless nodes only)
+void note_small_threshold(std::int32_t threshold, bool exempt_projectiles = false);
 #ifdef X3M_CULL_CENSUS_FIXTURE
 // Fixture build only: the image global holding the body manager pointer
 // (production reads the constant core::body_global_va); the CPU fixture points

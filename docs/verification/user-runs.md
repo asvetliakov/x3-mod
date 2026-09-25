@@ -37,7 +37,11 @@ turns the replayed sun shadows off entirely; the four `--shadow-replay-*` option
 4096** (launcher default `--shadow-cascade-sizes 2048,4096,4096,4096,2048`, your decision after Run 88 A; unflown). On a normal
 launch the removal must be invisible: same shadows as run337. Please name the sector of each stand.
 
-Launch 1, at 5120x1440, the short stand command below (telemetry on):
+Launch 1, at 5120x1440, this command (telemetry on):
+
+```sh
+env -u CX_DEBUGMSG X3M_FIXTURE_BOTTLE=X3 X3M_MOTION_FRAME_LOG=1 /Users/asvetl/x3-mod/x3run --direct --telemetry --camera-log 1 --fps-overlay --frame-end-stride 1 --volumetric-fog-timing --frame-timing --frame-phases --object-bounds-log --cull-census
+```
 
 1. **Shadows unchanged**: the run337 station stand: shadows present on hulls and station parts as in run337, no pop, no new
    black or missing shadows; an alt-tab and back. Rows: `shadow_replay_config` must not appear (it only appears with an inherited
@@ -59,10 +63,11 @@ Run 89 A is the only queued run. Completed instructions for Runs 73-88 are in th
 
 Since 2026-09-25 the functional options of the Run 84 A stand command, `--music-keep` and `--shadow-alpha-casters on`
 are launcher defaults ([inventory](launcher-options-inventory.md#defaults-promoted-2026-09-25)); the stand command
-carries only the telemetry/debug options:
+carries only the telemetry/debug options (without `--loading-intervals`, removed with its recorder on 2026-09-25, and
+`--shadow-retention-census`, which the caster retention overrides):
 
 ```sh
-env -u CX_DEBUGMSG X3M_FIXTURE_BOTTLE=X3 X3M_MOTION_FRAME_LOG=1 /Users/asvetl/x3-mod/x3run --direct --telemetry --camera-log 1 --loading-intervals --shadow-retention-census --fps-overlay --frame-end-stride 1 --volumetric-fog-timing --frame-timing --frame-phases --object-bounds-log --cull-census
+env -u CX_DEBUGMSG X3M_FIXTURE_BOTTLE=X3 X3M_MOTION_FRAME_LOG=1 /Users/asvetl/x3-mod/x3run --direct --telemetry --camera-log 1 --fps-overlay --frame-end-stride 1 --volumetric-fog-timing --frame-timing --frame-phases --object-bounds-log --cull-census
 ```
 
 ```sh

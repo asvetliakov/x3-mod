@@ -46,7 +46,7 @@ constexpr Anchor anchors[] = {
     {0x0042760b, 0x006069ac, 2, {0x8b, 0x0d}},       // chase_lead
     {0x004275fa, 0x006069b0, 3, {0x0f, 0xbf, 0x05}}, // chase_lead
     {0x004275f3, 0x006069b4, 3, {0x0f, 0xbf, 0x15}}, // chase_lead
-    {0x00401c19, 0x00606f34, 1, {0xa1}},             // sector_background, lod_scale, sun_occlusion
+    {0x00401c19, 0x00606f34, 1, {0xa1}},             // sector_background, sun_occlusion
     {0x00401bb0, 0x00606f38, 2, {0x8b, 0x0d}},       // chase_camera/aim/fire/lead, sun_occlusion
     {0x0040258b, 0x00606f3c, 1, {0xa1}},             // game_phases
     {0x004971d3, 0x00606f44, 1, {0xa1}},             // music_keep (media record list head; outside the music patch sites)

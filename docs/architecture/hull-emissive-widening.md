@@ -336,8 +336,8 @@ Implemented as designed with these concrete choices and measured facts:
   `hull_lightmap_widen_frame` (widened / unity counts, k range, camera), detach line `hull_lightmap_widen_summary`
   (session k range). Ctrl+Shift+F4 drops the widened variant with the gain. No new API call or allocation per draw.
 - **Option**: `X3M_HULL_EMISSIVE_WIDENING=K,Q0,Q1` parsed in `capture.cpp` (logs `hull_emissive_widening_mode` /
-  `_configured`), launcher `--hull-emissive-widening K,Q0,Q1` (requires the active light-map gain: `--hdr`, not
-  `--linear-materials`, gain above 1; no `--taa` requirement: the option latches the camera projection itself, as
+  `_configured`), launcher `--hull-emissive-widening K,Q0,Q1` (requires the active light-map gain: `--hdr`, gain above 1
+  (`--linear-materials`, which excluded it, left the launcher on 2026-09-25); no `--taa` requirement: the option latches the camera projection itself, as
   the far fade does); no default (first flight off).
 - **Measured** (fixture, CrossOver/FEX, ledger): `CreatePixelShader` accepts every widened program with `dsx`/`dsy`
   on `v1` (no `mov` fallback needed); `texldd` with k = 1 is bit-identical to `texld` on 11 family programs;

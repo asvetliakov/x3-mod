@@ -1,7 +1,7 @@
 """Host tests of the --original-fill launcher default (X3M_ORIGINAL_FILL, docs/architecture/original-shading-critique.md 1a):
 0.01 on every modded --hdr launch since 2026-09-25 (0.02 for a few hours) (user decision, accepted in flight) with X3M_ORIGINAL_FILL_DEFAULT=1; an
-explicit value (0 = the opt-out, the byte-identical original programs) is sent with marker 0; no default and no marker under
---linear-materials (its --material-fill applies instead), without --hdr or under --vanilla, where the variable stays an explicit
+explicit value (0 = the opt-out, the byte-identical original programs) is sent with marker 0 (--linear-materials, which
+excluded it, went on 2026-09-25); no default and no marker without --hdr or under --vanilla, where the variable stays an explicit
 0.0 against a stale shell value; an inherited value or marker never survives; the parser errors are unchanged. The DLL default
 when the variable is unset stays 0, and the DLL logs the marker as default= on its original_fill_mode row.
 No game, no Wine."""
@@ -13,7 +13,6 @@ import test_taa_thin_vote as vote
 
 ROOT = sky.ROOT
 HDR = ('--motion-output', '--hdr')
-LINEAR = ('--hdr-tonemap', '--linear-materials')
 MARKER = 'X3M_ORIGINAL_FILL_DEFAULT'
 STALE = {'X3M_ORIGINAL_FILL': '0.3', MARKER: '1'}
 
@@ -35,12 +34,6 @@ class OriginalFillDefaultLaunch(unittest.TestCase):
                 env = self.env(directory, *HDR, '--original-fill', value, inherited=STALE)
                 self.assertEqual((env['X3M_ORIGINAL_FILL'], env[MARKER]), (sent, '0'), value)
 
-    def test_linear_materials_keep_their_own_fill_and_send_no_default(self):
-        with tempfile.TemporaryDirectory() as directory:
-            env = self.env(directory, *HDR, *LINEAR, inherited=STALE)
-            self.assertEqual((env['X3M_ORIGINAL_FILL'], env['X3M_MATERIAL_FILL']), ('0.0', '0.05'))
-            self.assertNotIn(MARKER, env)
-
     def test_without_hdr_no_default_is_sent(self):
         with tempfile.TemporaryDirectory() as directory:
             env = self.env(directory, '--motion-output', '--no-hdr', inherited=STALE)  # --hdr: launcher default since 2026-09-25
@@ -57,7 +50,6 @@ class OriginalFillDefaultLaunch(unittest.TestCase):
     def test_parser_errors_are_unchanged(self):
         with tempfile.TemporaryDirectory() as directory:
             for args, message in ((('--motion-output', '--no-hdr', '--original-fill', '0.05'), '--original-fill requires --hdr'),
-                                  ((*HDR, *LINEAR, '--original-fill', '0'), '--original-fill excludes --linear-materials'),
                                   ((*HDR, '--original-fill', '0.51'), '--original-fill must be finite'),
                                   ((*HDR, '--original-fill', 'nan'), '--original-fill must be finite')):
                 code, _, error = self.launch(directory, *args)

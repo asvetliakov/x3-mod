@@ -47,11 +47,8 @@ struct SiteSpec {
 
 namespace sites {
 constexpr unsigned Count=33;
-constexpr unsigned PhaseCount=33;
 engine_patch::SiteSpec kSites[Count];
 }
-unsigned site_count=sites::Count;   // production: PhaseCount, or Count with X3M_AUDIO_SITES=1
-bool audio_enabled=false;
 
 engine_patch::Site patches[sites::Count];
 void* originals[sites::Count]{};

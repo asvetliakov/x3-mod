@@ -147,7 +147,7 @@ class CollideSites(unittest.TestCase):
     def test_claims_and_overlap_detection(self):
         claims = probe.other_claims()
         addresses = {address for _, address, _ in claims}
-        for expected in (0x47d258, 0x47d528, 0x47d44b, 0x498140, 0x4c27af, 0x43a38e, 0x445a41, 0x4a3ffd):
+        for expected in (0x47d258, 0x47d528, 0x498140, 0x4c27af, 0x43a38e, 0x445a41, 0x4a3ffd):
             self.assertIn(expected, addresses)
         self.assertEqual(probe.overlaps(claims), [])
         self.assertEqual(probe.overlaps([('x', probe.P1_SITE + 5, 5)]), [('x', hex(probe.P1_SITE + 5))])

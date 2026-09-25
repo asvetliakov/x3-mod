@@ -33,7 +33,6 @@ Entry* ring_ = nullptr;
 std::atomic<std::uint32_t> count_{0}, overflow_{0}, unmeasured_{0}, exited_{0};
 std::uint32_t pending_node_ = 0, pending_index_ = no_index;
 AncestorStack ancestors_{};       // flag31 of the nodes whose children the pass is visiting (render thread only)
-bool small_bodies_only_ = false;   // cull_small_parts' scope for the frame being recorded
 bool small_exempt_projectiles_ = false; // cull_small_parts' projectile exemption for the frame being recorded
 std::int32_t small_threshold_ = 0; // cull_small_parts' threshold for the frame being recorded (0 = none)
 // The LOD ladder of each model a captured frame's rows name, read at Present
@@ -371,8 +370,8 @@ bool set_lod_switch_log(unsigned cap) {
 #ifdef X3M_CULL_CENSUS_FIXTURE
 void set_body_table_global(std::uintptr_t va) { body_global_ = va; }
 #endif
-void note_small_threshold(std::int32_t threshold, bool bodies_only, bool exempt_projectiles) {
-    small_threshold_ = threshold; small_bodies_only_ = bodies_only; small_exempt_projectiles_ = exempt_projectiles;
+void note_small_threshold(std::int32_t threshold, bool exempt_projectiles) {
+    small_threshold_ = threshold; small_exempt_projectiles_ = exempt_projectiles;
 }
 Stats stats() {
     Stats s{};
@@ -404,14 +403,14 @@ void present(unsigned long long device, unsigned long long frame, bool captured)
             const Entry& e = ring_[i];
             // A culled_small row names the scope that culled it, then the model's LOD ladder
             // and the body name of its id, then flag31 (appended: the row parsers anchor on the fields before them).
-            const Verdict verdict = classify(e, small_threshold_, small_bodies_only_, small_exempt_projectiles_);
+            const Verdict verdict = classify(e, small_threshold_, small_exempt_projectiles_);
             char ladder[8 + 12 + 5 + ladder_cap * 12 + 1];
             const Ladder& l = ladder_of(e.model_ptr);
             format_ladder(ladder, sizeof ladder, e.model_ptr && l.known, l.count, l.thresholds, l.thr);
             log("cull_census device=%llu frame=%llu view=%08lx node=%08lx model=%08lx s=%ld measure=%ld d=%ld radius=%ld thr_1dc=%ld thr_1d8=%ld limit=%ld flags_in=%08lx flags_out=%08lx lod=%ld verdict=%s%s%s%s%s",
                 device, frame, (unsigned long)e.view, (unsigned long)e.node, (unsigned long)e.model, (long)e.s, (long)e.measure, (long)e.d, (long)e.radius,
                 (long)e.thr_1dc, (long)e.thr_1d8, (long)e.limit, (unsigned long)e.flags_in, (unsigned long)e.flags_out, (long)e.lod, verdict_name(verdict),
-                verdict == Verdict::culled_small ? (small_bodies_only_ ? " scope=bodies" : " scope=all") : "", ladder, body_of(e.model), flag31_suffix(e.flag31));
+                verdict == Verdict::culled_small ? " scope=all" : "", ladder, body_of(e.model), flag31_suffix(e.flag31));
         }
     }
     if (lod_switch_cap_ && track_ && ring_ && armed) {

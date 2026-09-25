@@ -34,7 +34,7 @@ compiled into the DLL whether or not its option is ever passed.
 | A2 | `--sun-shadow-receiver-depth` | DEAD, removed 2026-09-22 | `tools/manage.py:371` "Deprecated no-op"; goals #8 (linear is the only encoding) | ~12 (launcher) | low |
 | B | `--d3dx`, `--fex-tso`, `--wined3d` | REJECTED (closed experiments), removed 2026-09-22 | goals.md #14: run 36 closed D3DX (builtin +32 %), run 37 closed FEX TSO and wined3d CSMT | ~70 (launcher only) | low |
 | C | GTAO/SSAO chain: `--ambient-occlusion`, `--ao-radius`, `--ao-strength`, `--ao-debug`, `--ao-timing`, hotkey Ctrl+Shift+F11 | REJECTED | goals.md #7 "Closed … the user closed it on 2026-09-15"; user-runs rows 19/21 (invisible at radius 100) | src 1,212 + tests 385 + probe 1,313 + 5 result manifests ≈ **2,910** | medium |
-| D | `--lod-scale` | REJECTED (closed) | goals.md cross-cutting: "`--lod-scale` is closed default-off"; `docs/architecture/lod-scale.md` | src 248 + probe 111 + tests 193 = **552** | low‑medium |
+| D | `--lod-scale` | REJECTED (closed), removed 2026-09-25 | goals.md cross-cutting: "`--lod-scale` is closed default-off"; `docs/architecture/lod-scale.md` | src 248 + probe 111 + tests 193 = **552** | low‑medium |
 | E1 | `--taa-current-filter` | REJECTED | `taa-flicker-suppression.md:184` "the global form was flown and rejected"; `taa-lattice-crawl.md:138` "filter A = 1 everywhere (rejected by the user)" | see E‑total | medium |
 | E2 | `--taa-line-filter` | SUPERSEDED by `--taa-thin-region` + camera gate | user-runs row 46 B (run157–159) "filter engaged, beads ×0.32, but the user sees no change"; `taa-lattice-crawl.md:357` "keep … as an option, not a default"; `:1819` the camera gate silently forces `screen` when the line filter is on | see E‑total | medium |
 | E3 | `--taa-adaptive-weight` | REJECTED | user-runs row 45 B (run153/154) "adaptive weight does not fix the lattice crawl … **rejected**, stays default-off" | see E‑total | medium |
@@ -44,8 +44,8 @@ compiled into the DLL whether or not its option is ever passed.
 | F3 | `tools/media_transcode.py`, `tools/prepare_media_package.py` (+ `test_media_transcode.py` 248) | RETIRED, removed 2026-09-22 | same ledger ("Launch no longer requires old LAV payloads"); H.264 cue transcoding belonged to replacement playback | 618 + 248 = **866** | low |
 | G1 | 23 retired host test modules (`retired_tests.py`) | RETIRED | `docs/verification/host-suite.md` retired table; `--linear-materials` and the `--linear-emissions` bracket | **8,131** | low (already hidden) |
 | G2 | Retired-only linear-material/exposure probe assets (11 files) | RETIRED | referenced only by G1 modules | **~4,100** of 7,640 (see §3 G2) | medium |
-| H | `--linear-materials` and dependents (`--material-fill`, `--material-direct-gain`, `--material-emissive-gain`, `--lightmap-emissive-gain`, `--linear-distance-fade`/`--no-linear-distance-fade`) production code | RETIRED subject, **entangled** | host-suite retired table; goals #3/#6 "the user plays original hulls" | ~900–1,000 inside `linear_material.cpp` only | **high** — see §3 H |
-| I | `--linear-emissions` full-surface bracket production code | REJECTED | goals.md cross-cutting: "`--linear-emissions` in its full-surface bracket shape rejected 2026-09-15" | ~0 cleanly; `linear_emission_pass.cpp` (1,211) + `linear_emission.cpp` (509) are load-bearing for the flown SM1/source-gain path | **high** |
+| H | `--linear-materials` and dependents (`--material-fill`, `--material-direct-gain`, `--material-emissive-gain`, `--lightmap-emissive-gain`, `--linear-distance-fade`/`--no-linear-distance-fade`) production code | RETIRED subject, **entangled**; launcher options removed 2026-09-25, DLL code kept | host-suite retired table; goals #3/#6 "the user plays original hulls" | ~900–1,000 inside `linear_material.cpp` only | **high** — see §3 H |
+| I | `--linear-emissions` full-surface bracket production code | REJECTED; launcher options removed 2026-09-25, DLL code kept | goals.md cross-cutting: "`--linear-emissions` in its full-surface bracket shape rejected 2026-09-15" | ~0 cleanly; `linear_emission_pass.cpp` (1,211) + `linear_emission.cpp` (509) are load-bearing for the flown SM1/source-gain path | **high** |
 | J | `--volumetric-fog-anisotropy` | SUPERSEDED (inert), removed 2026-09-22 | its own help: "no effect under `--volumetric-fog-look 1-3`"; look default is 2 and Run 61 B accepted the looks with **L2 preferred** | ~15 (launcher + one constant path) | low |
 
 Clean, low-risk total (A+B+C+D+F+G1): **≈ 15,300 lines**, of which only
@@ -350,8 +350,10 @@ fixtures green on its own.
    modules. `run_host_suite.py --include-retired` stays as a no-op; the 23
    stale duration hints are gone. Host suite before and after: **233 modules /
    2,311 tests green**; the seven harness-sharing modules 68 tests green.
-4. **Batch 4 — `--lod-scale`** (D). Check: `test_cull_small_parts*`,
-   `verify_lod_scale_site.py` removal, one dry-run. ~550 lines.
+4. **Batch 4 — `--lod-scale`** (D) — **done 2026-09-25** with the obsolete-option removal
+   (`docs/verification/launcher-options-inventory.md`, "4. Removed 2026-09-25"): `src/proxy/lod_scale.*`,
+   `lod_scale_core.h`, `verify_lod_scale_site.py` and `test_lod_scale_patch.py` deleted; `--lod-scale` is an unknown
+   argument and `X3M_LOD_SCALE` is dropped from an inherited environment.
 5. **Batch 5 — GTAO/SSAO chain** (C) — **done 2026-09-22.**
    24 files deleted: the pass, its four programs (HLSL and `*_inc.h`), the four
    host test modules, the five probe files, the four program provenance JSONs and
@@ -406,10 +408,11 @@ fixtures green on its own.
    **Deferred to the next shader change of those files** (editing them now would change the kept manifests' source
    hashes): the stale variant comments in `resolve.hlsl` (lines 71-87, 137) and the dead mode-4 / `options.w` line-width
    path of `line_mask_ps.hlsl` (lines 189, 248-252).
-7. **Not scheduled** — H (retired converted-material law inside
-   `linear_material.cpp`) and I (`--linear-emissions` bracket). Both need a
-   deliberate split of shared code first; propose separately if the user wants
-   the DLL smaller.
+7. **Launcher surface done 2026-09-25, DLL not scheduled** — H (retired converted-material law inside
+   `linear_material.cpp`) and I (`--linear-emissions` bracket): their launcher options were removed with the
+   obsolete-option removal (inventory section 4); the DLL code stays, since it is shared with the flown fill, light-map
+   gain and source gain and the motion and live fixtures drive it through the variables. A DLL removal still needs a
+   deliberate split of shared code first; propose separately if the user wants the DLL smaller.
 8. **Verdicts received 2026-09-22** — `--point-light-root-admission` and
    `--taa-alpha-history` are **kept**; `X3M_ENGINE_READS=rpm` and the lattice
    state/geometry/upload-hook diagnostic are **removed** (batch 7).
@@ -474,6 +477,11 @@ fixtures green on its own.
    **Bit-identity:** the six reused L2 fixture cases and the repair-with-shafts image are byte-for-byte
    equal before and after, and all seven stored-density programs keep their bytecode hashes.
    Evidence: `docs/verification/volumetric-fog.md`, "Single look" section (2026-09-22).
+
+11. **Batch 9 - obsolete launcher options** - **done 2026-09-25** (user decision): every row of the options
+   inventory's former section 4 except the kept ones, with the eight refusal stubs, the three ignored reads,
+   `X3M_VOLUMETRIC_FOG_ANISOTROPY` and the `X3M_HDR_EV_OFFSET` alias; H and I lost their launcher options only (item 7).
+   List, keeps and reasons: `docs/verification/launcher-options-inventory.md`, "4. Removed 2026-09-25".
 
 ## 5. Caveats
 

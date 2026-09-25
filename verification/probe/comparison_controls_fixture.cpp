@@ -145,36 +145,17 @@ int main(){
     g.control=true;g.fog_toggle=false;fog.sample(g);g.foreground=false;g.fog_toggle=true;CHECK(!fog.sample(g).fog_toggle);
     g.foreground=true;CHECK(!fog.sample(g).fog_toggle); // held through alt-tab
     g.fog_toggle=false;fog.sample(g);g.fog_toggle=true;CHECK(fog.sample(g).fog_toggle);
-    // F11 (the fog shadow-pass A/B, --fog-shadow-pass on only): the Ctrl+Shift chord, edge and focus rules on
-    // its own latch, independent of F12 and of the Ctrl+Alt fog chords. (The retired Ctrl+Alt+F11 look cycle
-    // stays retired: Ctrl+Alt+F11 is no press.)
-    x3m::ComparisonControls grid;
-    x3m::ComparisonKeys q{};q.foreground=true;q.control=q.shift=true;grid.sample(q);
-    q.fog_shadow_pass=true;{const auto a=grid.sample(q);CHECK(a.fog_shadow_pass&&!a.sun_shadow&&!a.fog_toggle&&!a.exposure&&!a.bloom&&!a.fps_overlay);}
-    for(unsigned i=0;i<1000;++i)CHECK(!grid.sample(q).fog_shadow_pass); // held is not a second press
-    q.fog_shadow_pass=false;grid.sample(q);q.sun_shadow=true;{const auto a=grid.sample(q);CHECK(a.sun_shadow&&!a.fog_shadow_pass);} // F12 does not fire F11
-    q.sun_shadow=false;grid.sample(q);q.fog_shadow_pass=true;CHECK(grid.sample(q).fog_shadow_pass);
-    q.foreground=false;CHECK(!grid.sample(q).fog_shadow_pass);
-    q.foreground=true;CHECK(!grid.sample(q).fog_shadow_pass); // held through alt-tab
-    q.fog_shadow_pass=false;grid.sample(q);q.shift=false;q.alt=true;grid.sample(q);q.fog_shadow_pass=true;
-    CHECK(!grid.sample(q).fog_shadow_pass); // Ctrl+Alt+F11: no press
-    q.fog_shadow_pass=false;q.alt=false;grid.sample(q);q.shift=true;q.fog_shadow_pass=true;
-    CHECK(!grid.sample(q).fog_shadow_pass); // the chord must be armed in the previous sample
-    q.fog_shadow_pass=false;grid.sample(q);q.fog_shadow_pass=true;CHECK(grid.sample(q).fog_shadow_pass);
-    grid.reset_focus();CHECK(!grid.sample(q).fog_shadow_pass);
-    {x3m::ComparisonControls first;x3m::ComparisonKeys h{};h.foreground=true;h.control=h.shift=h.fog_shadow_pass=true;
-     CHECK(!first.sample(h).fog_shadow_pass);CHECK(!first.sample(h).fog_shadow_pass);} // held before the first foreground sample
-    // Ctrl+Alt+F11 (the fog dust motes, --fog-dust-motes only): the Alt rule on F11's own raw latch. The physical F11 raises
-    // both raw keys when both options are on; Ctrl+Shift+F11 stays the shadow pass, Ctrl+Alt+F11 is the motes only.
+    // Ctrl+Alt+F11 (the fog dust motes, --fog-dust-motes only): the Alt rule on F11's own raw latch; Ctrl+Shift+F11 is no
+    // press (the fog shadow-pass A/B that used it was removed on 2026-09-25).
     x3m::ComparisonControls motes;
     x3m::ComparisonKeys u{};u.foreground=true;motes.sample(u);
     u.control=u.alt=true;motes.sample(u);
-    u.fog_dust_motes=u.fog_shadow_pass=true;{const auto a=motes.sample(u);CHECK(a.fog_dust_motes&&!a.fog_shadow_pass&&!a.fog_toggle&&!a.fps_overlay&&!a.sun_shadow);}
+    u.fog_dust_motes=true;{const auto a=motes.sample(u);CHECK(a.fog_dust_motes&&!a.fog_toggle&&!a.fps_overlay&&!a.sun_shadow);}
     for(unsigned i=0;i<1000;++i)CHECK(!motes.sample(u).fog_dust_motes); // held is not a second press
-    u.fog_dust_motes=u.fog_shadow_pass=false;motes.sample(u);u.alt=false;u.shift=true;motes.sample(u);
-    u.fog_dust_motes=u.fog_shadow_pass=true;{const auto a=motes.sample(u);CHECK(a.fog_shadow_pass&&!a.fog_dust_motes);} // Ctrl+Shift+F11 stays the shadow pass
+    u.fog_dust_motes=false;motes.sample(u);u.alt=false;u.shift=true;motes.sample(u);
+    u.fog_dust_motes=true;CHECK(!motes.sample(u).fog_dust_motes); // Ctrl+Shift+F11: no press
     u.shift=false;u.alt=true;CHECK(!motes.sample(u).fog_dust_motes); // swapping Shift for Alt on a held F11 is not a press
-    u.fog_dust_motes=u.fog_shadow_pass=false;motes.sample(u);u.shift=true;u.fog_dust_motes=true;CHECK(!motes.sample(u).fog_dust_motes); // Ctrl+Alt+Shift+F11
+    u.fog_dust_motes=false;motes.sample(u);u.shift=true;u.fog_dust_motes=true;CHECK(!motes.sample(u).fog_dust_motes); // Ctrl+Alt+Shift+F11
     u.shift=false;u.fog_dust_motes=false;motes.sample(u);u.control=false;u.fog_dust_motes=true;CHECK(!motes.sample(u).fog_dust_motes); // Alt+F11 without Ctrl
     u.control=true;u.fog_dust_motes=false;motes.sample(u);u.foreground=false;u.fog_dust_motes=true;CHECK(!motes.sample(u).fog_dust_motes);
     u.foreground=true;CHECK(!motes.sample(u).fog_dust_motes); // held through alt-tab
@@ -185,9 +166,9 @@ int main(){
     {x3m::ComparisonControls alone;x3m::ComparisonKeys only{};only.foreground=true;alone.sample(only);
      for(unsigned i=0;i<50;++i){
         only.control=only.alt=true;only.shift=(i%5==0);only.fps_overlay=true;const auto a=alone.sample(only);
-        CHECK(a.fps_overlay==!only.shift&&!a.exposure&&!a.bloom&&!a.screen_additive&&!a.source_gain&&!a.hull_gain&&!a.sun_shadow&&!a.fog_shadow_pass);
+        CHECK(a.fps_overlay==!only.shift&&!a.exposure&&!a.bloom&&!a.screen_additive&&!a.source_gain&&!a.hull_gain&&!a.sun_shadow);
         only.fps_overlay=false;const auto b=alone.sample(only);
-        CHECK(!b.fps_overlay&&!b.exposure&&!b.bloom&&!b.screen_additive&&!b.source_gain&&!b.hull_gain&&!b.sun_shadow&&!b.fog_shadow_pass);
+        CHECK(!b.fps_overlay&&!b.exposure&&!b.bloom&&!b.screen_additive&&!b.source_gain&&!b.hull_gain&&!b.sun_shadow);
      }}
     x3m::ComparisonControls marker;x3m::ComparisonKeys m{};m.foreground=true;m.control=m.shift=m.fps_overlay=true;marker.sample(m);
     m.fps_overlay=false;marker.sample(m);m.fps_overlay=true;CHECK(!marker.sample(m).fps_overlay); // the marker chord alone, Alt up: never the overlay

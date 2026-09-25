@@ -48,15 +48,16 @@ class SunShareLane(unittest.TestCase):
         result = subprocess.run(base + ['--no-shadow-replay-depth'], text=True, capture_output=True, env=NO_REPO_DECODER)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn('"X3M_SUN_SHADOW_LANE": "1"', result.stdout)
-        self.assertIn('"X3M_LINEAR_MATERIALS": "0"', result.stdout)
+        self.assertNotIn('X3M_LINEAR_MATERIALS', result.stdout)  # the launcher option went on 2026-09-25
         self.assertIn('"X3M_SUN_SHADOW_APPLY": "0"', result.stdout)
         result = subprocess.run(base + ['--no-shadow-replay-depth', '--sun-shadow-apply'], text=True, capture_output=True, env=NO_REPO_DECODER)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('--sun-shadow-apply requires --sun-shadow-lane --shadow-replay-depth.', result.stderr)
         result = subprocess.run(base + ['--shadow-replay-depth', '--sun-shadow-apply'], text=True, capture_output=True, env=NO_REPO_DECODER)
         self.assertEqual(result.returncode, 0, result.stderr)
-        for line in ('"X3M_SUN_SHADOW_LANE": "1"', '"X3M_SHADOW_REPLAY_DEPTH": "1"', '"X3M_SUN_SHADOW_APPLY": "1"', '"X3M_LINEAR_MATERIALS": "0"'):
+        for line in ('"X3M_SUN_SHADOW_LANE": "1"', '"X3M_SHADOW_REPLAY_DEPTH": "1"', '"X3M_SUN_SHADOW_APPLY": "1"'):
             self.assertIn(line, result.stdout)
+        self.assertNotIn('X3M_LINEAR_MATERIALS', result.stdout)
 
     def test_latch_has_no_linear_material_prerequisite(self):
         # Source contract of the latch (legacy-sun-application.md 4.1-4.2): the

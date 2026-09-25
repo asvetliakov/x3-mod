@@ -390,7 +390,7 @@ void MotionOutput::release_resources() noexcept {
     shadow_.ps_xt_default_ordinary = nullptr;
     shadow_.ps_sun_motion=shadow_.ps_sun_material=shadow_.ps_sun_xt=nullptr;shadow_.ps_sun_extraction=false; shadow_.ps_sun_original=nullptr;shadow_.ps_sun_original_lightmap=nullptr;shadow_.ps_sun_original_lightmap_widen=nullptr;shadow_.ps_hull_lightmap_widen=nullptr;shadow_.hull_lightmap_stage=0; shadow_.original_share_pair=false; shadow_.original_share_refused=false;
     shadow_.material_contract = {};
-    shadow_.cutout_pair = false; shadow_.asteroid_pair = false;
+    shadow_.cutout_pair = false;
     shadow_.fade_sampler_mask = 0; shadow_.emission_pair = false; shadow_.emission_eligible_variant = nullptr; shadow_.ps_emission_variant = nullptr;
     shadow_.ps_source_gain_variant = nullptr; shadow_.source_gain_eligible_variant = nullptr; shadow_.source_gain_pair = renderer::linear_emission_pair_count; shadow_.ps_hull_program = false; shadow_.ps_hull_gain_variant = nullptr; shadow_.ps_original_fill_variant = nullptr; shadow_.ps_hull_lightmap_variant = nullptr; shadow_.original_fill_pair = false; shadow_.hull_lightmap_pair = false; shadow_.original_share_pair = false; shadow_.original_share_refused = false;
     shadow_.screen_pair = false; shadow_.screen_eligible_variant = nullptr; shadow_.ps_screen_variant = nullptr;
@@ -427,7 +427,7 @@ void MotionOutput::release_resources() noexcept {
     shadow_.vs_variant = nullptr; shadow_.ps_variant = nullptr;
     shadow_.vs_material_variant = nullptr; shadow_.ps_material_variant = nullptr;
     shadow_.material_contract = {};
-    shadow_.cutout_pair = false; shadow_.asteroid_pair = false;
+    shadow_.cutout_pair = false;
     history_.invalidate();
     fill_pending_ = false;
     // Final retirement already owns the full logging/CPU-state boundary; do
@@ -726,10 +726,6 @@ void MotionOutput::configure_fade_route(unsigned threshold_permille) noexcept {
 void MotionOutput::configure_fade_witness(unsigned frames) noexcept {
     if (device_) return;
     fade_witness_interval_ = distance_fade_requested_ || screen_emission_requested_ ? frames : 0u;
-}
-void MotionOutput::configure_shimmer_trace(bool requested) noexcept {
-    if (device_) return;
-    shimmer_trace_ = requested;
 }
 void MotionOutput::configure_screen_emission_timing(bool requested) noexcept {
     if (device_) return; // Process-start diagnostic configuration only.
@@ -1535,9 +1531,6 @@ bool MotionOutput::ensure_taa() noexcept {
                                          taa_sharpen_ > 0.f ? reinterpret_cast<const DWORD*>(renderer::taa_sharpen_program()) : nullptr,
                                          reinterpret_cast<const DWORD*>(renderer::hdr_writeback_program())); });
     if (SUCCEEDED(hr)) taa_->configure_copy(taa_copy_draw_);
-    // 5 or 16 by construction; 16 creates the 16-tap twin of each program (here and in the configure calls below), inside
-    // taa_call so the pass's device references stay counted.
-    if (SUCCEEDED(hr)) taa_call([&] { taa_->configure_history_taps(taa_history_taps_); });
     if (SUCCEEDED(hr) && !taa_->snapshot_available())
         log("motion_output_taa_snapshot device=%llu unavailable=1 create=%08lx", id_, taa_->snapshot_result());
     // Alpha history: the thin variant program exists only when it is asked for; a device
@@ -1576,18 +1569,17 @@ bool MotionOutput::ensure_taa() noexcept {
     }
     // Camera-relative gate of the thin region (section 32.1) with the region hold, its only form since Run 79 A (A',
     // taa-plan-lifted-slot-cap.md step 1) and the mask fold (taa-mask-fold.md): the folded hold resolve and its region-gated
-    // box are created by configure_far above. A device that refuses one of them, cannot filter the FP16 / R32F histories (the
-    // hold resolve is 5-tap only) or has fewer than three simultaneous render targets, or a session drawing 16 taps, turns the
-    // thin region off: one line, no fallback program set (AGENTS.md
+    // box are created by configure_far above. A device that refuses one of them or has fewer than three simultaneous render
+    // targets turns the thin region off: one line, no fallback program set (AGENTS.md
     // "Shader slot budget"). Without the thin region the gate is dropped with its own line.
     if (SUCCEEDED(hr) && taa_thin_camera_gate_ && taa_thin_weight_ <= 0.f) {
         log("motion_output_taa_thin_region device=%llu camera_gate_unavailable=1 reason=thin_region_off thin_region=%.4f", id_, double(taa_thin_weight_));
         taa_thin_camera_gate_ = false;
     } else if (SUCCEEDED(hr) && taa_thin_camera_gate_ && !taa_->camera_gate_available()) {
-        const char* reason = !taa_->bilinear_history_available() ? "no_filter" : taa_->history_taps() == 16 ? "history_taps16" :
-            taa_->simultaneous_render_targets() < 3 ? "render_targets" : "program"; // the folded resolve writes three targets
+        // (A device without the history filters never gets here: initialize refuses it, and the attach refuses TAA first.)
+        const char* reason = taa_->simultaneous_render_targets() < 3 ? "render_targets" : "program"; // the folded resolve writes three targets
         log("motion_output_taa_region_hold device=%llu unavailable=1 reason=%s create=%08lx bilinear=%u history_taps=%u thin_region=%.4f effect=thin_region_off",
-            id_, reason, taa_->camera_programs_result(), unsigned(taa_->bilinear_history_available()), taa_->history_taps(), double(taa_thin_weight_));
+            id_, reason, taa_->camera_programs_result(), unsigned(taa_->bilinear_history_available()), 5u, double(taa_thin_weight_));
         taa_thin_weight_ = 0.f; taa_thin_camera_gate_ = false;
     }
     // The emissive vote (thin-glow-lines.md 8.3 R3) lives in the thin region's own mask: without the region it has nowhere to land.
@@ -1612,10 +1604,10 @@ bool MotionOutput::ensure_taa() noexcept {
         taa_call([&] { created = taa_->configure_thin_vote(); });
         if (FAILED(created) || !taa_->thin_vote_available()) log("thin_vote_tests device=%llu unavailable=1 create=%08lx", id_, created);
     }
-    // Thin-region source (X3M_TAA_THIN_REGION_SOURCE; vote is the launcher's default since the mask fold): screen and vote need
-    // the thin region; vote also the vote (the route's .a) and a program that reads it (the camera-gate resolve, or the
-    // screen-gate chain's twin); screen is refused under the camera gate (its resolve has no plain program since the mask
-    // fold, taa-mask-fold.md). Anything missing configures both. One row, only when the variable was given.
+    // Thin-region source: capture.cpp asks for vote whenever the thin vote and the thin region are on (the variable and its
+    // both / screen values were removed on 2026-09-25); vote needs the vote (the route's .a) and a program that reads it (the
+    // camera-gate resolve, or the screen-gate chain's twin). The screen value (1) stays in the enum for the pass and the
+    // fixtures and is refused under the camera gate. Anything missing configures both. One row whenever vote was asked.
     taa_thin_source_configured_ = 0;
     if (SUCCEEDED(hr) && taa_thin_source_given_) {
         static const char* const names[3] = {"both", "screen", "vote"};
@@ -1653,11 +1645,15 @@ bool MotionOutput::ensure_taa() noexcept {
         log("motion_output_taa_far_clip device=%llu requested=7x7 configured=3x3 reason=%s", id_,
             !far_gate_on ? "far_off" : taa_thin_weight_ > 0.f ? "screen_gate" : "thin_region_off");
     taa_failed_ = FAILED(hr);
+    // reason: why initialize refused (the missing history filter as TemporalPass reports it, "device_caps" when the caps check
+    // refused first, "program" for a failed creation), "ok" otherwise. From the next latched frame the jitter and mip bias stop.
+    const char* initialize_reason = SUCCEEDED(hr) ? "ok" : !taa_->bilinear_history_available()
+        ? (std::strcmp(taa_->bilinear_history_reason(), "not_initialized") ? taa_->bilinear_history_reason() : "device_caps") : "program";
     // ps30_slots: D3DCAPS9::MaxPixelShader30InstructionSlots at initialize (AGENTS.md "Shader slot budget": logged, never a gate).
-    log("motion_output_taa device=%llu initialize=%08lx references=%u sharpen=%.3f history_weight=%.3f copy=%s alpha_history=%u age_bytes_per_pixel=%u far_weight=%.4f far_filter=%.3f far_f0=%.1f far_f1=%.1f far_speed_lo=%.3f far_speed_hi=%.3f thin_region=%.4f thin_relax=%.3f thin_gate=%s thin_emissive=%.3f ps30_slots=%u far_gate=%s default=%u far_clip=%s far_clip_default=%u", id_, hr, taa_references_, double(taa_sharpen_), double(taa_history_weight_), taa_copy_draw_ ? "draw" : "stretch",
+    log("motion_output_taa device=%llu initialize=%08lx references=%u sharpen=%.3f history_weight=%.3f copy=%s alpha_history=%u age_bytes_per_pixel=%u far_weight=%.4f far_filter=%.3f far_f0=%.1f far_f1=%.1f far_speed_lo=%.3f far_speed_hi=%.3f thin_region=%.4f thin_relax=%.3f thin_gate=%s thin_emissive=%.3f ps30_slots=%u far_gate=%s default=%u far_clip=%s far_clip_default=%u reason=%s", id_, hr, taa_references_, double(taa_sharpen_), double(taa_history_weight_), taa_copy_draw_ ? "draw" : "stretch",
         unsigned(taa_alpha_history_), taa_far_weight_ > 0.f || taa_far_filter_ > 0.f || taa_thin_weight_ > 0.f ? 8u : 0u, double(taa_far_weight_), double(taa_far_filter_), double(taa_far_f0_), double(taa_far_f1_), double(taa_far_lo_), double(taa_far_hi_), double(taa_thin_weight_), double(taa_thin_relax_), taa_thin_camera_gate_ ? "camera" : "screen", double(taa_thin_emissive_),
         taa_ ? taa_->ps30_instruction_slots() : 0u, far_camera_gate ? "camera" : "screen", unsigned(far_camera_gate && taa_far_gate_default_),
-        far_clip ? "7x7" : "3x3", unsigned(far_clip && taa_far_clip_default_));
+        far_clip ? "7x7" : "3x3", unsigned(far_clip && taa_far_clip_default_), initialize_reason);
     return !taa_failed_;
 }
 // The whole resolve at the bloom copy: RT1/RT2 containers as inputs, the
@@ -1791,7 +1787,7 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
                 taa_box_refused_logged_ = taa_->camera_gate_failed();
                 if (taa_box_refused_logged_)
                     log("motion_output_taa_region_hold device=%llu unavailable=1 reason=box_target create=%08lx bilinear=%u history_taps=%u thin_region=%.4f effect=thin_region_off far_gate=screen far_clip=3x3",
-                        id_, taa_->camera_gate_result(), unsigned(taa_->bilinear_history_available()), taa_->history_taps(), double(taa_thin_weight_));
+                        id_, taa_->camera_gate_result(), unsigned(taa_->bilinear_history_available()), 5u, double(taa_thin_weight_));
             }
             release(composition_mask);
             const std::uint64_t run_ticks = stamp() - run_begin;
@@ -1801,10 +1797,10 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
             if (!taa_fold_logged_ && !injected && SUCCEEDED(diagnostics.operation)) {
                 taa_fold_logged_ = true;
                 log("motion_output_taa_depth_fold device=%llu depth_fold=%u reason=%s", id_, unsigned(diagnostics.depth_folded), diagnostics.depth_fold_reason);
-                // S3: the history reconstruction the first run drew (16 without the FP16 / R32F filter caps whatever was asked);
+                // S3: the history reconstruction the first run drew (always 5 taps: requested=5 since the 16-tap form went);
                 // region_hold: that run was a camera-gate run (A'); mask_targets: the owned mask targets it left allocated (none
                 // for a camera-gate run since the mask fold, two for the screen-gate chain or the far stabiliser alone, 0 without a far run).
-                log("motion_output_taa_history_taps device=%llu requested=%u drawn=%u bilinear=%u reason=%s region_hold=%u mask_targets=%u", id_, taa_history_taps_, diagnostics.history_taps,
+                log("motion_output_taa_history_taps device=%llu requested=%u drawn=%u bilinear=%u reason=%s region_hold=%u mask_targets=%u", id_, 5u, diagnostics.history_taps,
                     unsigned(taa_->bilinear_history_available()), taa_->bilinear_history_reason(), unsigned(diagnostics.region_hold), taa_->line_mask_targets());
             }
             // Thin vote: once per attachment, the first completed run that could not read the vote (the lane-off R32F RT2 has no
@@ -2435,6 +2431,7 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
     { char setting[8]{}; locked_prefix_log_ = GetEnvironmentVariableA("X3M_LOCKED_PREFIX_LOG", setting, sizeof setting) == 1 && setting[0] == '1'; }
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     { char setting[8]{}; fixture_stretch_fault_ = GetEnvironmentVariableA("X3M_FIXTURE_STRETCH_FAULT", setting, sizeof setting) == 1 && setting[0] == '1'; }
+    { char setting[8]{}; fixture_taa_filter_fault_ = GetEnvironmentVariableA("X3M_FIXTURE_TAA_FILTER_FAULT", setting, sizeof setting) == 1 && setting[0] == '1'; }
     {
         char setting[64]{}; long l = 0, t = 0, r = 0, b = 0;
         fixture_fade_rect_set_ = GetEnvironmentVariableA("X3M_FIXTURE_FADE_RECT", setting, sizeof setting) > 0
@@ -2543,6 +2540,21 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
         else if (!jitter_requested_) taa_reason = "jitter";
     }
     taa_enabled_ = taa_requested_ && !std::strcmp(taa_reason, "ok");
+    // The resolve's 5-tap history needs linear filtering of FP16 and R32F textures (TemporalPass S3; no fallback program set
+    // since the 16-tap programs went on 2026-09-25). Decided here, before the first frame latches, so a device that cannot
+    // filter never jitters a draw it would not resolve: TAA and its jitter and mip bias are off from the first frame, one
+    // motion_output_taa row with the missing filter, no pass created (no device reference held). Documented D3D9 queries only.
+    if (taa_enabled_) {
+        const char* filter = "ok";
+        HRESULT filtering = renderer::TemporalPass::query_history_filtering(device_, native_, &filter);
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+        if (fixture_taa_filter_fault_) { filtering = D3DERR_NOTAVAILABLE; filter = "fp16_filter"; }
+#endif
+        if (FAILED(filtering)) {
+            taa_reason = "no_filter"; taa_enabled_ = false; taa_failed_ = true; jitter_active_ = false;
+            log("motion_output_taa device=%llu initialize=%08lx references=0 reason=%s effect=taa_off jitter=0 mip_bias=0", id_, filtering, filter);
+        }
+    }
     // Thin vote (X3M_TAA_THIN_VOTE): the histogram cache once per enabled device (fixed storage, never per draw); a
     // failed allocation keeps the upload (c218.x = 1, no vote) and measures nothing.
     if (thin_vote_upload_ && enabled_ && depth_enabled_ && !thin_vote_cache_) thin_vote_cache_.reset(new (std::nothrow) thin_vote::Cache());
@@ -2906,7 +2918,7 @@ void MotionOutput::before_reset() noexcept {
     hull_gain_program_logged_ = 0;
     shadow_.xt_default_pair = shadow_.xt_default_ready = false;
     shadow_.material_contract = {};
-    shadow_.cutout_pair = false; shadow_.asteroid_pair = false;
+    shadow_.cutout_pair = false;
     shadow_.fade_sampler_mask = 0; shadow_.emission_pair = false; shadow_.emission_eligible_variant = nullptr; shadow_.ps_emission_variant = nullptr;
     shadow_.ps_source_gain_variant = nullptr; shadow_.source_gain_eligible_variant = nullptr; shadow_.source_gain_pair = renderer::linear_emission_pair_count; shadow_.ps_hull_program = false; shadow_.ps_hull_gain_variant = nullptr; shadow_.ps_original_fill_variant = nullptr; shadow_.ps_hull_lightmap_variant = nullptr; shadow_.original_fill_pair = false; shadow_.hull_lightmap_pair = false; shadow_.original_share_pair = false; shadow_.original_share_refused = false;
     shadow_.vs_registered = false; shadow_.vs_fade_variant = nullptr; shadow_.ps_registered = false; shadow_.ps_fade_variant = nullptr;
@@ -2980,7 +2992,7 @@ void MotionOutput::register_vertex_shader(IDirect3DVertexShader9* shader, const 
     if (shader && shadow_.vs == shader) {
         shadow_.fade_sampler_mask = 0; shadow_.emission_pair = false; shadow_.emission_eligible_variant = nullptr; shadow_.source_gain_eligible_variant = nullptr; shadow_.source_gain_pair = renderer::linear_emission_pair_count; shadow_.original_fill_pair = false; shadow_.hull_lightmap_pair = false; shadow_.original_share_pair = false; shadow_.original_share_refused = false; shadow_.screen_pair = false; shadow_.screen_eligible_variant = nullptr; shadow_.screen_additive_pair = false; shadow_.screen_additive_index = screen_emission::pair_count; shadow_.vs_registered = false; shadow_.vs_fade_variant = nullptr;
         shadow_.material_contract = {};
-    shadow_.cutout_pair = false; shadow_.asteroid_pair = false;
+    shadow_.cutout_pair = false;
         shadow_.xt_default_pair = shadow_.xt_default_ready = false;
         shadow_.vs_xt_default_ordinary = shadow_.vs_xt_default_linear = nullptr;
         shadow_.vs_hash = 0; shadow_.vs_variant = nullptr; shadow_.vs_material_variant = nullptr; shadow_.vs_row = nullptr; shadow_.vs_prepass = nullptr;
@@ -3078,7 +3090,7 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
     if (shader && shadow_.ps == shader) {
         shadow_.fade_sampler_mask = 0; shadow_.emission_pair = false; shadow_.emission_eligible_variant = nullptr; shadow_.screen_pair = false; shadow_.screen_eligible_variant = nullptr; shadow_.screen_additive_pair = false; shadow_.screen_additive_index = screen_emission::pair_count; shadow_.ps_screen_additive_variant = nullptr; shadow_.ps_registered = false; shadow_.ps_fade_variant = nullptr; shadow_.ps_emission_variant = nullptr; shadow_.ps_source_gain_variant = nullptr; shadow_.source_gain_eligible_variant = nullptr; shadow_.source_gain_pair = renderer::linear_emission_pair_count; shadow_.ps_hull_program = false; shadow_.ps_hull_gain_variant = nullptr; shadow_.ps_original_fill_variant = nullptr; shadow_.ps_hull_lightmap_variant = nullptr; shadow_.original_fill_pair = false; shadow_.hull_lightmap_pair = false; shadow_.original_share_pair = false; shadow_.original_share_refused = false; shadow_.ps_screen_variant = nullptr;
         shadow_.material_contract = {};
-    shadow_.cutout_pair = false; shadow_.asteroid_pair = false;
+    shadow_.cutout_pair = false;
         shadow_.xt_default_pair = shadow_.xt_default_ready = false;
         shadow_.ps_xt_default_ordinary = nullptr;
         shadow_.ps_hash = 0; shadow_.ps_variant = nullptr; shadow_.ps_material_variant = nullptr;
@@ -3436,7 +3448,7 @@ void MotionOutput::set_vertex_shader(IDirect3DVertexShader9* shader) noexcept {
     if (!enabled_ || shadow_.recording) return;
     shadow_.fade_sampler_mask = 0; shadow_.emission_pair = false; shadow_.emission_eligible_variant = nullptr; shadow_.source_gain_eligible_variant = nullptr; shadow_.source_gain_pair = renderer::linear_emission_pair_count; shadow_.original_fill_pair = false; shadow_.hull_lightmap_pair = false; shadow_.original_share_pair = false; shadow_.original_share_refused = false; shadow_.screen_pair = false; shadow_.screen_eligible_variant = nullptr; shadow_.screen_additive_pair = false; shadow_.screen_additive_index = screen_emission::pair_count; shadow_.vs_registered = false; shadow_.vs_fade_variant = nullptr;
     shadow_.material_contract = {};
-    shadow_.cutout_pair = false; shadow_.asteroid_pair = false;
+    shadow_.cutout_pair = false;
     shadow_.xt_default_pair = shadow_.xt_default_ready = false;
     shadow_.vs_xt_default_ordinary = shadow_.vs_xt_default_linear = nullptr;
     shadow_.fog_card_pair = false;
@@ -3461,7 +3473,7 @@ void MotionOutput::set_pixel_shader(IDirect3DPixelShader9* shader) noexcept {
     if (!enabled_ || shadow_.recording) return;
     shadow_.fade_sampler_mask = 0; shadow_.emission_pair = false; shadow_.emission_eligible_variant = nullptr; shadow_.screen_pair = false; shadow_.screen_eligible_variant = nullptr; shadow_.screen_additive_pair = false; shadow_.screen_additive_index = screen_emission::pair_count; shadow_.ps_screen_additive_variant = nullptr; shadow_.ps_registered = false; shadow_.ps_fade_variant = nullptr; shadow_.ps_emission_variant = nullptr; shadow_.ps_source_gain_variant = nullptr; shadow_.source_gain_eligible_variant = nullptr; shadow_.source_gain_pair = renderer::linear_emission_pair_count; shadow_.ps_hull_program = false; shadow_.ps_hull_gain_variant = nullptr; shadow_.ps_original_fill_variant = nullptr; shadow_.ps_hull_lightmap_variant = nullptr; shadow_.original_fill_pair = false; shadow_.hull_lightmap_pair = false; shadow_.original_share_pair = false; shadow_.original_share_refused = false; shadow_.ps_screen_variant = nullptr;
     shadow_.material_contract = {};
-    shadow_.cutout_pair = false; shadow_.asteroid_pair = false;
+    shadow_.cutout_pair = false;
     shadow_.xt_default_pair = shadow_.xt_default_ready = false;
     shadow_.ps_xt_default_ordinary = nullptr;
     shadow_.ps_sun_motion=nullptr; shadow_.ps_sun_material=nullptr; shadow_.ps_sun_xt=nullptr; shadow_.ps_sun_extraction=false; shadow_.ps_sun_original=nullptr;shadow_.ps_sun_original_lightmap=nullptr;shadow_.ps_sun_original_lightmap_widen=nullptr;shadow_.ps_hull_lightmap_widen=nullptr;shadow_.hull_lightmap_stage=0; shadow_.original_share_pair=false; shadow_.original_share_refused=false;
@@ -3736,7 +3748,7 @@ void MotionOutput::begin_frame(std::uint64_t frame, bool capture) noexcept {
         w.count = w.prepared_count = w.logged = 0; w.last = FadeWitness::rect_capacity; w.overflow = false;
         std::memset(w.f_hist, 0, sizeof w.f_hist);
     }
-    shimmer_count_ = 0; fade_refused_count_ = 0;
+    fade_refused_count_ = 0;
     counters_.cut_median_bound_px = cut_median_bound_; counters_.cut_missing_bound = cut_missing_bound_;
     sequence_ = 0; pending_valid_ = false; fill_pending_ = false; jitter_active_ = false; cut_finished_ = false;
     displacements_.clear();
@@ -3814,7 +3826,10 @@ void MotionOutput::after_clear(HRESULT result) noexcept {
         // latched frame's jitter is what routed draws report in PS c216.zw.
         jitter_previous_[0] = jitter_[0]; jitter_previous_[1] = jitter_[1];
         const unsigned index = jitter_latched_++ % jitter_samples_;
-        jitter_active_ = jitter_requested_;
+        // With TAA requested the jitter (and the mip bias that follows it) runs only while the resolve is available: a device
+        // whose pass was refused (the filter query at attach, or initialize) presents unjittered frames. Without TAA the
+        // jitter follows its own switch (X3M_MOTION_JITTER, a motion-output diagnostic).
+        jitter_active_ = jitter_requested_ && (!taa_requested_ || (taa_enabled_ && !taa_failed_));
         jitter_[0] = jitter_active_ ? motion_jitter_sample(index + 1, 0) : 0.f;
         jitter_[1] = jitter_active_ ? motion_jitter_sample(index + 1, 1) : 0.f;
         counters_.jitter_active = jitter_active_; counters_.jitter_index = index;
@@ -4984,7 +4999,6 @@ void MotionOutput::refresh_linear_material_contract() noexcept {
     shadow_.cutout_pair = (linear_material_requested_ || sun_lane_requested_) && cutout::pair(shadow_.vs_hash, shadow_.ps_hash);
     // Diagnostic only, and only while the trace is on: integer table lookup at
     // the shader setter, never at a draw.
-    shadow_.asteroid_pair = shimmer_trace_ && renderer::linear_material_asteroid_pair(shadow_.vs_hash, shadow_.ps_hash);
     if (shadow_.xt_default_pair && !shadow_.xt_default_ready && !xt_default_unavailable_.seen) {
         // Called by lightweight shader hooks: even integer-only printf formats
         // can reach the CRT's x87 formatter. Keep this path integer-only.
@@ -6324,7 +6338,6 @@ void MotionOutput::after_draw(MotionRoute& route, HRESULT result) noexcept {
     if (!state_hooks_ && sampler_biased_mask_) restore_mip_bias();
     if (route.jittered && !composition_state_lost_) restore_jitter(route);
     if (pending_valid_) { pending_valid_ = false; observe(pending_, result); }
-    if (shimmer_trace_ && route.scene && shadow_.asteroid_pair) record_shimmer_draw(route);
     if (capture_ && route.scene) {
         const auto& k = route.key;
         log("motion_route device=%llu frame=%llu index=%lu gate=%u routed=%u matched=%u depth=%u jittered=%u vs=%016llx ps=%016llx node=%p camera=%p node_handle=%lu camera_handle=%lu node_serial=%llu camera_serial=%llu load_epoch=%llu registry_epoch=%llu model=%08lx lod=%08lx vb=%llu ib=%llu declaration=%016llx offset=%u stride=%u position_offset=%u position_type=%u topology=%u first=%u primitives=%u base_vertex=%d min_vertex=%u vertex_count=%u indexed=%u pass=%lu rows_hash=%016llx result=%08lx"
@@ -6929,72 +6942,6 @@ void MotionOutput::release_fade_witness() noexcept {
     release(w.copy); w.copy = nullptr; w.copy_width = w.copy_height = 0;
     delete[] w.row; w.row = nullptr; w.row_width = 0;
 }
-// Distant-shimmer trace (X3M_SHIMMER_TRACE=1, docs/architecture/
-// linear-distance-fade-region.md, "Shimmer trace (diagnostic)"): the draw
-// hook copies integers into a fixed per-frame array (no formatting, no
-// allocation, no locking, no floating point); the whole frame is formatted
-// once after Present, where the full CPU boundary already holds.
-void MotionOutput::record_shimmer_draw(const MotionRoute& route) noexcept {
-    const unsigned slot = shimmer_count_++;
-    if (slot >= shimmer_draw_capacity) return;   // beyond the capacity the frame only counts
-    auto& r = shimmer_draws_[slot];
-    const auto& k = route.key;
-    r.node = k.node;
-    r.index = std::uint32_t(counters_.draws);
-    r.model = std::uint32_t(k.model); r.lod = std::uint32_t(k.lod);
-    r.vertex_count = std::uint32_t(k.vertex_count); r.primitives = std::uint32_t(k.primitives);
-    r.topology = std::uint32_t(k.topology);
-    r.vertex_buffer = k.vertex_buffer; r.index_buffer = k.index_buffer;
-    r.gate = std::uint8_t(route.gate);
-    r.routed = route.routed; r.composition = route.composition; r.indexed = k.indexed != 0;
-    r.f_permille = route.fade_region_evaluated ? std::int32_t(route.fade_region_permille) : -1;
-    r.region_known = route.fade_region_evaluated && route.fade_region.bound;
-    r.rect[0] = route.fade_region.rect.left; r.rect[1] = route.fade_region.rect.top;
-    r.rect[2] = route.fade_region.rect.right; r.rect[3] = route.fade_region.rect.bottom;
-}
-namespace {
-// Indices a D3D9 primitive count consumes; 0 for a non-indexed draw.
-unsigned shimmer_index_count(unsigned topology, unsigned primitives) noexcept {
-    switch (topology) {
-    case D3DPT_POINTLIST: return primitives;
-    case D3DPT_LINELIST: return primitives * 2u;
-    case D3DPT_LINESTRIP: return primitives + 1u;
-    case D3DPT_TRIANGLELIST: return primitives * 3u;
-    case D3DPT_TRIANGLESTRIP:
-    case D3DPT_TRIANGLEFAN: return primitives + 2u;
-    default: return 0u;
-    }
-}
-} // namespace
-void MotionOutput::log_shimmer_frame(unsigned history_previous, unsigned history_current, unsigned committed) noexcept {
-    const auto& t = counters_.taa;
-    const auto& c = camera_scene_;
-    // Scaled integers, never a formatted float. float*float and the 32-bit
-    // truncation are SSE (cvttss2si); a 64-bit truncation would be x87 here.
-    const long p00 = c.valid ? long(std::int32_t(c.m00 * 10000.f)) : 0l;
-    const long p11 = c.valid ? long(std::int32_t(c.m11 * 10000.f)) : 0l;
-    const unsigned logged = shimmer_count_ < shimmer_draw_capacity ? shimmer_count_ : shimmer_draw_capacity;
-    log("shimmer_frame device=%llu frame=%llu draws=%lu asteroid=%u logged=%u truncated=%u taa=%u taa_attempted=%u"
-        " taa_resolved=%u taa_history=%u taa_skip=%lu cut=%u camera_cut=%u jitter=%u jitter_index=%u"
-        " history_previous=%u history_current=%u committed=%u camera_valid=%u p00_e4=%ld p11_e4=%ld",
-        id_, frame_, static_cast<unsigned long>(counters_.draws), shimmer_count_, logged, shimmer_count_ - logged,
-        taa_enabled_, t.attempted, t.resolved, t.used_history, static_cast<unsigned long>(t.skip),
-        counters_.cut, t.camera_cut, counters_.jitter_active, counters_.jitter_index,
-        history_previous, history_current, committed, c.valid, p00, p11);
-    for (unsigned i = 0; i < logged; ++i) {
-        const auto& r = shimmer_draws_[i];
-        log("shimmer_draw device=%llu frame=%llu index=%lu gate=%u routed=%u composition=%u node=%llu model=%08lx lod=%08lx"
-            " vb=%llu ib=%llu topology=%u indexed=%u vertex_count=%lu index_count=%lu primitives=%lu f_permille=%ld"
-            " region=%u rect=%ld,%ld,%ld,%ld",
-            id_, frame_, static_cast<unsigned long>(r.index), unsigned(r.gate), unsigned(r.routed), unsigned(r.composition),
-            r.node, static_cast<unsigned long>(r.model), static_cast<unsigned long>(r.lod),
-            r.vertex_buffer, r.index_buffer, r.topology, unsigned(r.indexed),
-            static_cast<unsigned long>(r.vertex_count),
-            static_cast<unsigned long>(r.indexed ? shimmer_index_count(r.topology, r.primitives) : 0u),
-            static_cast<unsigned long>(r.primitives), static_cast<long>(r.f_permille), unsigned(r.region_known),
-            long(r.rect[0]), long(r.rect[1]), long(r.rect[2]), long(r.rect[3]));
-    }
-}
 // One diagnostic line per Present with X3M_SCREEN_EMISSION_TIMING=1 (the
 // screen-emission option's opt-in timing): this frame's packed admissions and
 // bracket pixels with the wall-clock time since the previous Present. One
@@ -7027,7 +6974,6 @@ void MotionOutput::after_present(HRESULT result) noexcept {
     if (FAILED(result)) invalidate_taa(TaaInvalidateSite::PresentFailed);
     const bool committed = history_.commit(SUCCEEDED(result) && counters_.filled);
     const auto stats = history_.stats();
-    if (shimmer_trace_) log_shimmer_frame(unsigned(stats.previous), unsigned(stats.current), unsigned(committed));
     if (screen_emission_timing_) log_screen_emission_frame();
     if (screen_additive_requested_) {
         if (telemetry_) log_screen_additive_frame();

@@ -76,9 +76,6 @@ const char* MotionOutput::fog_frame_parameters(renderer::FogFrame& in, float wei
             !renderer::sun_shadow_apply_bias(sun_apply_bias_units_, sun_apply_clamp_texels_,
                 double(cascade.half_extent), cascade.depth_half(), depth_replay_->size(i), bias)) continue;
         k.map = depth_replay_->map_texture(i); k.bias = bias.constant; k.frame = kept->frame; k.valid = true;
-        // The visibility pass's penumbra: the map's world texel (2 E / N of the map actually bound) and its depth range.
-        const unsigned size = depth_replay_->size(i);
-        k.texel_world = size ? float(2. * double(cascade.half_extent) / double(size)) : 0.f; k.depth_range = float(cascade.depth_range());
     }
     if (!skip && !renderer::fog_valid_params(q)) skip = "parameters";
     return skip;
@@ -210,24 +207,13 @@ void MotionOutput::prepare_volumetric_fog_density(UINT width, UINT height) noexc
     }
     if (!fog_density_config_logged_) {
         fog_density_config_logged_ = true;
-        log("volumetric_fog_cache device=%llu frame=%llu event=config mode=stored result=%08lx profile=%u sigma=%.4g chroma=%.4f,%.4f,%.4f atlas_bytes=%u upload_budget_bytes=%u upload_rects=%u ramp_frames=%u shadow_pass=%u far_bins=%u march_scale=%u",
+        log("volumetric_fog_cache device=%llu frame=%llu event=config mode=stored result=%08lx profile=%u sigma=%.4g chroma=%.4f,%.4f,%.4f atlas_bytes=%u upload_budget_bytes=%u upload_rects=%u ramp_frames=%u march_scale=%u",
             id_, frame_, hr, fog_sector_.profile, double(fog_density_config_.sigma), double(fog_density_config_.chroma[0]), double(fog_density_config_.chroma[1]), double(fog_density_config_.chroma[2]),
-            unsigned(fog::kAtlasBytes), unsigned(fog::kDefaultUploadBudget), fog::kDefaultUploadRects, fog::kReadinessRampFrames, unsigned(fog_density_config_.shadow_pass), fog_density_config_.far_bins, fog_density_config_.march_scale);
-    }
-    if (status.shadow_pass_refused && !fog_shadow_pass_refused_logged_) {
-        // The grid could not be built (or its column cap is unusable): the stored fog draws with the in-march programs.
-        fog_shadow_pass_refused_logged_ = true;
-        log("fog_shadow_pass_refused device=%llu frame=%llu reason=%s fallback=in_march_lookup", id_, frame_, status.shadow_pass_refused);
-    }
-    if (status.far_bins_refused && !fog_far_bins_refused_logged_) {
-        // 24 far bins were asked but 40 draw (shadow pass, column cap, or the pair could not be built; fog-gpu-cost.md step B).
-        fog_far_bins_refused_logged_ = true;
-        log("fog_far_bins_refused device=%llu frame=%llu reason=%s requested=%u drawn=%u", id_, frame_, status.far_bins_refused,
-            fog_density_config_.far_bins, fog_ ? fog_->density_far_bins() : 0u);
+            unsigned(fog::kAtlasBytes), unsigned(fog::kDefaultUploadBudget), fog::kDefaultUploadRects, fog::kReadinessRampFrames, fog_density_config_.march_scale);
     }
     if (status.march_scale_refused && !fog_march_scale_refused_logged_) {
-        // The quarter-resolution march was asked but the half-resolution one draws (shadow pass, programs or the quarter
-        // target could not be built; fog-gpu-cost.md step C).
+        // The quarter-resolution march was asked but the half-resolution one draws (programs or the quarter target could
+        // not be built; fog-gpu-cost.md step C).
         fog_march_scale_refused_logged_ = true;
         log("fog_march_scale_refused device=%llu frame=%llu reason=%s requested=%u drawn=%u", id_, frame_, status.march_scale_refused,
             fog_density_config_.march_scale, fog_ ? fog_->density_march_scale() : 0u);
@@ -534,16 +520,6 @@ int MotionOutput::volumetric_fog_toggle() noexcept {
     log("volumetric_fog_toggle device=%llu frame=%llu enabled=%u strength=%.4f density_scale=%.3f anisotropy=%.2f disabled=%u", id_, frame_, unsigned(fog_enabled_), double(fog_strength_), double(fog_strength_ / .02f), double(fog_anisotropy_), unsigned(fog_disabled_));
     return fog_enabled_ ? 1 : 0;
 }
-int MotionOutput::volumetric_fog_shadow_pass_toggle() noexcept {
-    if (!fog_shadow_pass_launch_) return -1;
-    // Only the proxy's copy changes here, at the frame boundary; FogPass latches it at the next prepare_density, so a
-    // frame never mixes the variants. Off draws the in-march programs exactly as a launch without the pass; the grid
-    // target and programs stay allocated (a Reset while off releases the target with the others, on re-creates it).
-    fog_density_config_.shadow_pass = !fog_density_config_.shadow_pass;
-    const char* refused = fog_ && fog_->grid_refused() ? fog_->density_status().shadow_pass_refused : nullptr;
-    log("fog_shadow_pass_toggle device=%llu frame=%llu enabled=%u refused=%s key=ctrl_shift_f11", id_, frame_, unsigned(fog_density_config_.shadow_pass), refused ? refused : "none");
-    return fog_density_config_.shadow_pass ? 1 : 0;
-}
 int MotionOutput::volumetric_fog_dust_motes_toggle() noexcept {
     if (!fog_dust_motes_launch_) return -1;
     // The proxy's copy only, at the frame boundary; FogPass latches it at the next prepare_density. Off skips the stage
@@ -671,37 +647,9 @@ void MotionOutput::run_volumetric_fog() noexcept {
     const char* reason = skip ? skip : "ok";
     // A change of state is one line (bounded); timing mode logs every frame.
     const bool changed = std::strcmp(reason, fog_last_reason_) != 0;
-    // Launched with the grid pass (fog-shadow-pass.md, "A/B toggle and log row"): which march variant this frame drew
-    // and why, from FogPass's own latch and its per-frame grid report. A frame whose density transaction issued no
-    // device call (skipped, refused at validation, or the zero-call S_FALSE exit) reads march=none
-    // fallback=not_executed whatever the variant. A variant change forces a line at most once per
-    // fog_grid_change_frames frames and at most fog_grid_change_cap times a session (its own counter, never the density
-    // lines' budget); timing mode logs every frame anyway.
-    const char* grid_march = "none"; const char* grid_fallback = "none"; const renderer::FogGridReport* grid = nullptr;
-    bool grid_changed = false;
-    if (fog_shadow_pass_launch_) {
-        if (!fog_ || !in.density || out.device_calls == 0) grid_fallback = "not_executed";
-        else if (fog_->grid_refused()) { grid_march = "in_march"; grid_fallback = "refused"; }
-        else if (!fog_->grid_variant()) { grid_march = "in_march"; grid_fallback = "toggled_off"; }
-        else if (fog_->grid_report().frame == frame_) { grid = &fog_->grid_report(); grid_march = grid->drawn ? "grid" : "grid_unshadowed"; grid_fallback = grid->unshadowed; }
-        else grid_fallback = "not_executed";
-        grid_changed = !fog_timing_ && std::strcmp(grid_march, fog_grid_last_march_) != 0 &&
-            frame_ - fog_grid_logged_frame_ >= fog_grid_change_frames && fog_grid_change_logs_ < fog_grid_change_cap;
-    }
     const bool periodic = fog_timing_ || changed || frame_ % 600u == 0u;
-    if (periodic || grid_changed) {
+    if (periodic) {
         if (!fog_timing_) ++fog_logs_;
-        if (grid_changed && !periodic) { ++fog_grid_change_logs_; fog_grid_logged_frame_ = frame_; }
-        if (fog_shadow_pass_launch_) fog_grid_last_march_ = grid_march; // the variant the last line printed
-        char grid_fields[320]; grid_fields[0] = '\0';
-        if (fog_shadow_pass_launch_) {
-            const renderer::FogGridReport none{};
-            const auto& g = grid ? *grid : none;
-            const char* refused = fog_ && fog_->grid_refused() ? fog_->density_status().shadow_pass_refused : nullptr;
-            std::snprintf(grid_fields, sizeof grid_fields, " grid_pass=%u grid_built=%u grid_bind=%08lx march=%s fallback=%s grid_refused=%s grid_cascades=%u grid_kernel=%.3g,%.3g,%.3g grid_far_width=%.1f grid_frame_term=%.4f grid_calls=%u grid_net_calls=%d",
-                unsigned(fog_density_config_.shadow_pass), unsigned(g.drawn), static_cast<unsigned long>(g.bind), grid_march, grid_fallback, refused ? refused : "none", g.cascades,
-                double(g.kernel[0]), double(g.kernel[1]), double(g.kernel[2]), double(g.far_width), double(g.frame_term), g.calls, g.net_calls);
-        }
         // Launched with the dust motes (fog-dust-motes.md section 4): the stage's report of this frame, zeros when the
         // density transaction did not take the stage (toggled off, refused, not executed).
         char mote_fields[200]; mote_fields[0] = '\0';
@@ -712,9 +660,9 @@ void MotionOutput::run_volumetric_fog() noexcept {
             std::snprintf(mote_fields, sizeof mote_fields, " motes=%u mote_count=%u mote_calls=%u mote_shift_px=%.1f mote_streak=%u mote_shadow=%s mote_refused=%s",
                 unsigned(!skip && out.motes), m.count, m.calls, double(m.shift_px), unsigned(m.streak), m.shadow, refused ? refused : "none");
         }
-        log("volumetric_fog_frame device=%llu frame=%llu applied=%u reason=%s strength=%.4f density_scale=%.3f cards=%u profile=%u field_generation=%llu sun=%s shadow_maps=%u cpu_us=%.1f calls=%u result=%08lx restore=%08lx stage=%u%s%s",
+        log("volumetric_fog_frame device=%llu frame=%llu applied=%u reason=%s strength=%.4f density_scale=%.3f cards=%u profile=%u field_generation=%llu sun=%s shadow_maps=%u cpu_us=%.1f calls=%u result=%08lx restore=%08lx stage=%u%s",
             id_, frame_, unsigned(!skip && out.applied), reason, double(fog_strength_), double(fog_sector_.density_scale), unsigned(fog_latch_.cards_recent(frame_)), fog_sector_.profile, fog_sector_.field_generation,
-            skip ? "none" : sun_tracked ? "tracked" : "fallback", out.cascades_bound, us, out.device_calls, out.operation, out.restore, unsigned(out.failed), grid_fields, mote_fields);
+            skip ? "none" : sun_tracked ? "tracked" : "fallback", out.cascades_bound, us, out.device_calls, out.operation, out.restore, unsigned(out.failed), mote_fields);
     }
     if (fog_timing_ && fog_density_requested_ && fog_) {
         const auto& d = fog_->density_status();

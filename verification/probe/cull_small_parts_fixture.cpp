@@ -10,12 +10,8 @@
 // threshold at 0 the patched pass leaves every node and EAX/ECX/EDX/EFLAGS as
 // native; at 2 px exactly the 403-draw class of kept nodes under the threshold
 // flips to culled and nothing else changes, at 4 px the 458-draw class, at 8 px
-// 479 (scope `all`); with scope `bodies` only the parentless subset flips (the
-// rows carry no parent link: a row whose limit exceeds its own threshold
-// provably has one, the rest get a synthetic parent when they carry no body
-// flag 0x09000000 -- 89 nodes / 395 draws at 2 px, 120 / 450 at 4 px) and a
-// parented node below the threshold reaches the engine's compare with the
-// native registers and flags; the census armed together with the stub reports
+// 479 (scope `all`, the only scope since `bodies` was removed on 2026-09-25);
+// the census armed together with the stub reports
 // the flipped nodes as renderable=0 with verdict culled_small and the scope;
 // rows marked as projectiles (+0x130 |= 0x20000000, the engine's class-0 marker)
 // below the threshold run the vanilla compare with the exemption on (counted in
@@ -423,14 +419,13 @@ static Flip replay_compare(const Node* reference) {
     return f;
 }
 // Rows the stub sends down the cull path: every measured node with s below the threshold, whether or not the engine's own tests would have culled it.
-static bool row_parentless(const Node* reference, unsigned i) { return get(reference[1 + i].bytes, ccore::parent_offset) == 0; }
-static unsigned rows_below(std::int32_t threshold, bool bodies_only = false) { unsigned n = 0; for (unsigned i = 0; i < kRowCount; ++i) if (kRows[i].s < threshold && !(bodies_only && !row_parentless(replay_native, i))) ++n; return n; }
-// Whether the flipped set is exactly {kept rows with s < threshold} (scope bodies: the parentless ones of them).
-static bool replay_flipped_exactly(const Node* reference, std::int32_t threshold, bool bodies_only = false) {
+static unsigned rows_below(std::int32_t threshold) { unsigned n = 0; for (unsigned i = 0; i < kRowCount; ++i) if (kRows[i].s < threshold) ++n; return n; }
+// Whether the flipped set is exactly {kept rows with s < threshold}.
+static bool replay_flipped_exactly(const Node* reference, std::int32_t threshold) {
     for (unsigned i = 0; i < kRowCount; ++i) {
         const bool kept_native = (get(reference[1 + i].bytes, ccore::flags12c_offset) & 2u) != 0;
         const bool kept_now = (get(replay[1 + i].bytes, ccore::flags12c_offset) & 2u) != 0;
-        const bool expect_flip = kept_native && kRows[i].s < threshold && !(bodies_only && !row_parentless(reference, i));
+        const bool expect_flip = kept_native && kRows[i].s < threshold;
         if (kept_now != (kept_native && !expect_flip)) return false;
     }
     return true;
@@ -520,15 +515,8 @@ int main() {
     SetEnvironmentVariableW(L"X3M_CULL_SMALL_PARTS_PX", L"65");
     check(!small::initialize() && !std::strcmp(small::state(), "invalid_px"), "65 px: invalid_px (band)");
     SetEnvironmentVariableW(L"X3M_CULL_SMALL_PARTS_PX", L"2");
-    SetEnvironmentVariableW(L"X3M_CULL_SMALL_PARTS_SCOPE", L"parts");
-    check(!small::initialize() && !std::strcmp(small::state(), "invalid_scope") && small::stub_address() == 0, "unknown scope: invalid_scope, nothing patched");
-    check(!install_lines.empty() && install_lines.back().find(" scope=invalid") != std::string::npos, "unknown scope: the install line says scope=invalid");
-    SetEnvironmentVariableW(L"X3M_CULL_SMALL_PARTS_SCOPE", L"all");
-    check(!small::initialize() && !std::strcmp(small::state(), "bytes_mismatch") && install_lines.back().find(" scope=all") != std::string::npos, "scope all: parsed and logged");
-    SetEnvironmentVariableW(L"X3M_CULL_SMALL_PARTS_SCOPE", nullptr);
-    { score::Scope sc = score::Scope::bodies; check(score::parse_scope("", &sc) && sc == score::Scope::all && score::parse_scope("bodies", &sc) && sc == score::Scope::bodies && !score::parse_scope("ALL", &sc) && !score::parse_scope("body", &sc) && score::parse_scope("all", &sc) && sc == score::Scope::all, "scope parser: all (default), bodies, nothing else"); }
     check(!small::initialize() && !std::strcmp(small::state(), "bytes_mismatch") && small::stub_address() == 0, "engine site absent in this process: bytes_mismatch, nothing patched");
-    check(install_lines.back().find(" scope=all") != std::string::npos, "unset scope: the install line says scope=all (default)");
+    check(install_lines.back().find(" scope=all") != std::string::npos, "the install line says scope=all (the only scope)");
     check(install_lines.back().find(" projectiles=marker_mismatch") != std::string::npos, "unset projectiles: on by default, turned off when the engine's marker instructions are absent (this process)");
     SetEnvironmentVariableW(L"X3M_CULL_SMALL_PARTS_PROJECTILES", L"missiles");
     check(!small::initialize() && !std::strcmp(small::state(), "invalid_projectiles") && small::stub_address() == 0 && install_lines.back().find(" projectiles=invalid") != std::string::npos, "unknown projectiles value: invalid_projectiles, nothing patched");
@@ -537,25 +525,25 @@ int main() {
     SetEnvironmentVariableW(L"X3M_CULL_SMALL_PARTS_PROJECTILES", nullptr);
     const std::uintptr_t site = addr(small_site()), cull = addr(small_cull());
     synthetic_small_window[2] ^= 1;
-    check(!small::install_at(site, cull, false, true) && !std::strcmp(small::state(), "bytes_mismatch") && small_window_original() == false, "changed window byte: bytes_mismatch");
+    check(!small::install_at(site, cull, true) && !std::strcmp(small::state(), "bytes_mismatch") && small_window_original() == false, "changed window byte: bytes_mismatch");
     synthetic_small_window[2] ^= 1;
     check(small_window_original(), "window byte restored");
-    check(!small::install_at(0, cull, false, true) && !std::strcmp(small::state(), "invalid_site"), "null site refused");
-    check(!small::install_at(site, cull + 1, false, true) && !std::strcmp(small::state(), "invalid_site"), "cull target not at window offset 47 refused");
+    check(!small::install_at(0, cull, true) && !std::strcmp(small::state(), "invalid_site"), "null site refused");
+    check(!small::install_at(site, cull + 1, true) && !std::strcmp(small::state(), "invalid_site"), "cull target not at window offset 47 refused");
 
     // ---- install ----
-    check(small::install_at(site, cull, false, true) && !std::strcmp(small::state(), "ok") && small::projectiles_exempt(), "install_at synthetic site (projectiles exempt)");
+    check(small::install_at(site, cull, true) && !std::strcmp(small::state(), "ok") && small::projectiles_exempt(), "install_at synthetic site (projectiles exempt)");
     if (!small::stub_address()) { std::printf("FAIL install state=%s\nCULL SMALL PARTS CPU checks=%u failures=%u\n", small::state(), checks, failures + 1); return 1; }
     check(small_site()[0] == 0xe9 && !std::memcmp(synthetic_small_window, score::window, score::site_offset) && !std::memcmp(synthetic_small_window + score::site_offset + 5, score::window + score::site_offset + 5, score::window_length - score::site_offset - 5), "site is jmp dispatcher; every other window byte untouched");
     {
         const std::uint32_t at = std::uint32_t(small::stub_address()), slot = (at + score::stub_length + 3) & ~3u;
         unsigned char want[score::stub_length];
         score::encode_stub(at, addr(const_cast<std::int32_t*>(&x3m_cull_small_parts_threshold)), addr(const_cast<std::uint32_t*>(&x3m_cull_small_parts_culled)),
-                           addr(const_cast<std::uint32_t*>(&x3m_cull_small_parts_exempt)), std::uint32_t(cull), slot, want, score::Scope::all, true);
-        check(!std::memcmp(reinterpret_cast<const void*>(at), want, score::stub_length) && !std::strcmp(small::scope(), "all"), "stub bytes as encoded (scope all, projectiles on)");
+                           addr(const_cast<std::uint32_t*>(&x3m_cull_small_parts_exempt)), std::uint32_t(cull), slot, want, true);
+        check(!std::memcmp(reinterpret_cast<const void*>(at), want, score::stub_length), "stub bytes as encoded (projectiles on)");
         check(*reinterpret_cast<void**>(slot) != nullptr, "continuation slot points at the tail");
     }
-    check(!small::install_at(site, cull, false, true) && !std::strcmp(small::state(), "already_installed"), "second install refused");
+    check(!small::install_at(site, cull, true) && !std::strcmp(small::state(), "already_installed"), "second install refused");
     check(x3m_cull_small_parts_threshold == 0 && small::stats().threshold == 0, "installed with the threshold at 0");
     check(small::requested_px() == 2.0, "requested px carried from the setting");
 
@@ -813,12 +801,12 @@ int main() {
                 native_us, disarmed_us, armed_us);
     // ---- re-install, restore, then the closed window refuses ----
     // ---- projectiles off: marked nodes are culled like any node ----
-    check(small::install_at(site, cull, false, false) && !std::strcmp(small::state(), "ok") && !small::projectiles_exempt(), "re-install with projectiles off");
+    check(small::install_at(site, cull, false) && !std::strcmp(small::state(), "ok") && !small::projectiles_exempt(), "re-install with projectiles off");
     {
         const std::uint32_t at = std::uint32_t(small::stub_address()), slot = (at + score::stub_length + 3) & ~3u;
         unsigned char want[score::stub_length];
         score::encode_stub(at, addr(const_cast<std::int32_t*>(&x3m_cull_small_parts_threshold)), addr(const_cast<std::uint32_t*>(&x3m_cull_small_parts_culled)),
-                           addr(const_cast<std::uint32_t*>(&x3m_cull_small_parts_exempt)), std::uint32_t(cull), slot, want, score::Scope::all, false);
+                           addr(const_cast<std::uint32_t*>(&x3m_cull_small_parts_exempt)), std::uint32_t(cull), slot, want, false);
         check(!std::memcmp(reinterpret_cast<const void*>(at), want, score::stub_length) && want[22] == 0xeb && want[23] == score::stub_replay - 24, "projectiles off: stub bytes as encoded (jmp over the marker test)");
         small::after_reset(kRowsWidth); check(small::set_px(2.0), "projectiles off: 2 px"); small::begin_frame();
         std::memcpy(replay, replay_initial, sizeof(Node) * (kRowCount + 1)); mark_rows(replay);
@@ -832,72 +820,8 @@ int main() {
         check(!small_lines.empty() && small_lines.back().find("scope=all projectiles=off exempt_bullet=0") != std::string::npos, "projectiles off: the frame row says so");
     }
     check(small::shutdown() && small_window_original(), "projectiles off: restore, rollback bytes exact");
-    // ---- scope bodies: only parentless nodes are culled ----
-    check(small::install_at(site, cull, true, true) && !std::strcmp(small::state(), "ok") && !std::strcmp(small::scope(), "bodies"), "re-install with scope bodies");
-    {
-        const std::uint32_t at = std::uint32_t(small::stub_address()), slot = (at + score::stub_length + 3) & ~3u;
-        unsigned char want[score::stub_length], all_stub[score::stub_length];
-        const std::uint32_t exempt_word = addr(const_cast<std::uint32_t*>(&x3m_cull_small_parts_exempt));
-        score::encode_stub(at, addr(const_cast<std::int32_t*>(&x3m_cull_small_parts_threshold)), addr(const_cast<std::uint32_t*>(&x3m_cull_small_parts_culled)), exempt_word, std::uint32_t(cull), slot, want, score::Scope::bodies, true);
-        score::encode_stub(at, addr(const_cast<std::int32_t*>(&x3m_cull_small_parts_threshold)), addr(const_cast<std::uint32_t*>(&x3m_cull_small_parts_culled)), exempt_word, std::uint32_t(cull), slot, all_stub, score::Scope::all, true);
-        check(!std::memcmp(reinterpret_cast<const void*>(at), want, score::stub_length), "bodies stub bytes as encoded");
-        check(!std::memcmp(want, all_stub, score::stub_scope_branch) && !std::memcmp(want + score::stub_cull, all_stub + score::stub_cull, score::stub_length - score::stub_cull) && want[39] == 0x75 && want[40] == score::stub_continue - 41 && want[47] == 0xeb && want[48] == score::stub_cull - 49,
-              "bodies stub differs from the all stub only in bytes 39..58: jne continue, mov eax,[edi+0x1d8], jmp cull");
-    }
-    small::after_reset(kRowsWidth);
-    for (unsigned k = 0; k < kRowsExpectedCount; ++k) {
-        check(small::set_px(kRowsExpected[k].px), "bodies: set_px in band");
-        small::begin_frame();
-        const std::int32_t threshold = kRowsExpected[k].threshold_s;
-        check(x3m_cull_small_parts_threshold == threshold, "bodies: threshold for the px class");
-        std::memcpy(replay, replay_initial, sizeof(Node) * (kRowCount + 1));
-        SetLastError(0x5151);
-        patched = run(replay[0], view);
-        check(GetLastError() == 0x5151, "bodies: LastError preserved across the armed pass");
-        const Flip f = replay_compare(replay_native);
-        check(patched.preserved && patched.x87_empty && same_outputs(patched, native) && f.other_changes == 0 && replay_flipped_exactly(replay_native, threshold, true), "bodies: only parentless kept nodes below the threshold flip, and every one of them");
-        check(f.flipped == kRowsExpected[k].bodies_nodes && f.draws == kRowsExpected[k].bodies_draws && f.flipped < kRowsExpected[k].nodes, "bodies: node and draw counts as tracked, fewer than scope all");
-        check(x3m_cull_small_parts_culled == rows_below(threshold, true) && rows_below(threshold, true) < rows_below(threshold), "bodies: the stub's count is every parentless node below the threshold");
-        std::printf("REPLAY scope=bodies px=%g threshold=%ld flipped=%u draws=%u other_changes=%u culled_count=%lu parented_below=%u\n", kRowsExpected[k].px, (long)threshold, f.flipped, f.draws, f.other_changes,
-                    (unsigned long)x3m_cull_small_parts_culled, rows_below(threshold) - rows_below(threshold, true));
-        small::present(7, 6000 + k, false);
-    }
-    check(kRowsExpected[0].bodies_nodes == 89 && kRowsExpected[0].bodies_draws == 395 && kRowsExpected[1].bodies_nodes == 120 && kRowsExpected[1].bodies_draws == 450, "bodies: 89 nodes / 395 draws at 2 px, 120 / 450 at 4 px");
-    // bodies beside the census: the rows name the scope, a parented node below the threshold keeps the engine's verdict
-    check(census::install_at(addr(synthetic_measure_window + ccore::measure_site_offset), addr(synthetic_exit_window + ccore::exit_site_offset)), "census re-installed beside the bodies stub");
-    check(small::set_px(2.0), "bodies: back to 2 px");
-    census::begin_frame(true); small::begin_frame();
-    std::memcpy(replay, replay_initial, sizeof(Node) * (kRowCount + 1));
-    run(replay[0], view);
-    census::present(7, 4994, true); small::present(7, 4994, true);
-    {
-        unsigned small_verdicts = 0, scoped = 0, scoped_all = 0, kept = 0;
-        for (const std::string& line : census_entry_lines) {
-            if (line.find("verdict=culled_small") != std::string::npos) { ++small_verdicts; if (line.find("verdict=culled_small scope=bodies") != std::string::npos) ++scoped; }
-            if (line.find(" scope=all") != std::string::npos) ++scoped_all;
-            if (line.find("verdict=kept") != std::string::npos) ++kept;
-        }
-        check(census_entry_lines.size() == kRowCount && small_verdicts == 89 && scoped == 89 && scoped_all == 0 && kept == 164 - 89, "bodies beside the census: 89 rows `culled_small scope=bodies`, the 8 parented ones kept");
-        check(!small_lines.empty() && small_lines.back().find(" scope=bodies") != std::string::npos, "bodies: the frame row carries the scope");
-        census_frame_lines.clear(); census_entry_lines.clear();
-    }
-    check(census::shutdown() && census_windows_original(), "census restored again");
-    // the bench tree: every node below threshold 20 is parented, so the bodies stub leaves the tree native
-    {
-        reset_tree(); run(R, bench_view);
-        Node native_tree[all_count]; for (unsigned i = 0; i < all_count; ++i) native_tree[i] = *all[i];
-        x3m_cull_small_parts_threshold = 20; x3m_cull_small_parts_culled = 0;
-        reset_tree(); const Result bodies_bench = run(R, bench_view);
-        x3m_cull_small_parts_threshold = 0; reset_tree(); const Result native_bench_patched = run(R, bench_view);
-        bool same = true; x3m_cull_small_parts_threshold = 20; reset_tree(); run(R, bench_view);
-        for (unsigned i = 0; i < all_count; ++i) if (std::memcmp(all[i]->bytes, native_tree[i].bytes, sizeof(Node))) same = false;
-        x3m_cull_small_parts_threshold = 0;
-        check(same && (get(E.bytes, 0x12c) & 2) && (get(F.bytes, 0x12c) & 2) && (get(J.bytes, 0x12c) & 2), "bodies, bench tree at threshold 20: parented E, F, J stay; every node as native");
-        check(bodies_bench.preserved && bodies_bench.x87_empty && same_outputs(bodies_bench, native_bench_patched), "bodies, bench tree: registers, ESP, x87 and EAX/ECX/EDX/EFLAGS as the disarmed pass");
-    }
-    check(small::shutdown() && small_window_original(), "bodies: restore, rollback bytes exact");
     x3m::engine_patch::close_install_window("fixture");
-    check(!small::install_at(site, cull, false, true) && !std::strcmp(small::state(), "late_claim") && small_window_original(), "closed install window: late_claim, site untouched");
+    check(!small::install_at(site, cull, true) && !std::strcmp(small::state(), "late_claim") && small_window_original(), "closed install window: late_claim, site untouched");
     std::printf("CULL SMALL PARTS CPU checks=%u failures=%u\n", checks, failures);
     return failures ? 1 : 0;
 }

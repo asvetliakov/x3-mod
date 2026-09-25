@@ -12,15 +12,15 @@
   "includes": {
     "src/fog/fog_density_composite_look_ps.hlsl": "19d77a5b36545372beb9bf19f643ef48c40f0add677fe6ca21f196856be05fd7",
     "src/fog/fog_density_composite_ps.hlsl": "651475a2d3a49cf75bce2883974b0aed2eb347e8d08edb6e2a67f836f7193164",
-    "src/fog/fog_density_field_inc.h": "ea48e44db21a65d656d3d22098ea7c277889963ac90a9eb58a0915e49fe6895d",
-    "src/fog/fog_shadow_grid_inc.h": "fae5df8acfe6e4c969678093fa9d5fe750180f22a572df017d59cebe0f927f96"
+    "src/fog/fog_density_field_inc.h": "0d4c67a2e69abf25d1cd244f2e66403f60da19d1dd88b4f10fbe3fb532e8a2ed",
+    "src/fog/fog_shadow_grid_inc.h": "f9cce9dcaec2e43faf51cf633d933d676ebc19c5a63cba977f04f07eb048ab6c"
   },
   "word_count": 922,
   "bytecode_sha256": "c787967e49f66a4475a62f03ff66948f55190d190a4c39444588199b62f5d6e0",
   "header_sha256": "27d30d885d25ab38e50e9fe0b8eece79ed7916b5c77f4c4c991d6535004f0f73",
   "tool_sources": {
     "tools/shaders/compile_rigid_motion_pixel.cpp": "f9587d9f1c066bce58bf36536b09d3f3ad58a5a1f6dbd59834e31628787d6bc3",
-    "tools/shaders/generate_rigid_motion_pixel.py": "566935b2c756226b4bb3b7f85078753af5fc7e88cff4e097fe2823d078d9b118"
+    "tools/shaders/generate_rigid_motion_pixel.py": "f8c223558759dd1e2d6869b378e08b039b4be16bd776bdb6a9610d3f537b89a9"
   },
   "copyright_scope": "Original authored project shader; no game shader bytes",
   "creates_d3d_device": false

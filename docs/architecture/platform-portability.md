@@ -155,10 +155,8 @@ its `scan`/`scan_log` never raise on log content and report unparsable lines in
   benchmark and the motion-output fixture; the native runtime's Get* on the
   game's actual device flags is unverified like the rest.
 
-- The [loading interval recorder](../verification/loading-intervals.md) uses
-  documented Windows QPC, TLS, interlocked, allocation and file APIs. Its x86
-  build, CPU audit and CrossOver fixture qualification pass; native Windows
-  execution and actual game recorder/export overhead remain unverified.
+- The [loading interval recorder](../verification/loading-intervals.md) was removed on 2026-09-25 (no native
+  question left).
 
 - The locked-prefix bullet bound (step D,
   [screen-emission-bullet-bound.md](screen-emission-bullet-bound.md)) writes a
@@ -430,11 +428,11 @@ programs 455-545 (measured, `RESOLVE_BUDGET`), all under the 2,048 ceiling and a
 A native device that refuses one at `CreatePixelShader` takes the existing paths: the far programs refused turn the far
 stabiliser and thin region off (one `motion_output_taa_far` row). Since the dilated chain was removed (A' only; ledger
 "A' only: dilated chain removed") there is no fallback program set for the camera gate: a refused camera mask, hold
-resolve or hold box, a device without FP16 / R32F filtering (the hold resolve is 5-tap only) or `--taa-history-taps 16`
-turns the thin region off with one `motion_output_taa_region_hold unavailable=1 reason=program|no_filter|history_taps16
-create=... effect=thin_region_off` row, and refused box targets at the first camera-gate run do the same in the pass
-(`reason=box_target`) (fixture: `REGION_HOLD_STATE refused_path`, `HISTORY_TAPS_NO_FILTER_CAMERA`, the
-motion-output case `seam-taa-thin-taps16-refused`; CrossOver only, the refusals injected). A device that accepts a
+resolve or hold box turns the thin region off with one `motion_output_taa_region_hold unavailable=1 reason=program
+create=... effect=thin_region_off` row (since 2026-09-25 a device without FP16 / R32F filtering has no TAA at all, entry
+"2026-09-25: obsolete options removed" below), and refused box targets at the first camera-gate run do the same in the pass
+(`reason=box_target`) (fixture: `REGION_HOLD_STATE refused_path`; the filter refusal: `HISTORY_TAPS_NO_FILTER`,
+`HISTORY_FILTER_QUERY` and the motion-output case `seam-taa-no-filter-refused`; CrossOver only, the refusals injected). A device that accepts a
 program above its cap and fails the draw (the slot-budget fixture's 65,538-slot case) would hit the per-frame resolve
 failure path instead; not expected at these sizes, unverified.
 
@@ -801,6 +799,9 @@ backend; documented as implementation-defined).
 
 ## 2026-09-24: TAA 5-tap bilinear history (`--taa-history-taps`, default 5)
 
+*Superseded on 2026-09-25 for the refusal: the 16-tap fallback below no longer exists; see "2026-09-25: obsolete options
+removed" for what a device without the filters gets now.*
+
 The default resolve programs read the previous colour (and, under a mask policy, the previous R32F mask) a second time
 at s11 / s12 with `D3DTEXF_LINEAR` min / mag ([taa-high-resolution.md](taa-high-resolution.md) S3). Documented D3D9
 capability checks only, at `TemporalPass::initialize`: `D3DPTFILTERCAPS_MINFLINEAR | MAGFLINEAR` in
@@ -834,3 +835,24 @@ now also reads every stream's source and frequency with `GetStreamSource` / `Get
 the state block's `Apply` (a block created under other stream offsets did not take the later offsets at `Capture` on this
 backend; legal on the non-pure device the proxy creates). Unverified natively: the mixed-format three-target write and the
 program's cost; cross-compiled only.
+
+## 2026-09-25: obsolete options removed (TAA needs FP16 and R32F filtering)
+
+The removal of `--taa-history-taps 16` (user decision; `docs/verification/launcher-options-inventory.md`, "4. Removed
+2026-09-25") dropped the 16-tap point resolve programs that were the fallback of the 5-tap bilinear history (entry
+"2026-09-24: TAA 5-tap bilinear history"). The documented checks (`D3DPTFILTERCAPS_MINFLINEAR | MAGFLINEAR`,
+`CheckDeviceFormat(D3DUSAGE_QUERY_FILTER)` of A16B16G16R16F and R32F against the display format) now run at device attach
+(`TemporalPass::query_history_filtering`, before the first frame latches) as well as in `TemporalPass::initialize`, which
+returns `D3DERR_NOTAVAILABLE` on a refusal. A device that refuses gets one clean off state for the whole session: TAA is
+off (`motion_output_device ... taa=0 taa_reason=no_filter`), no pass is created and no device reference held, and neither
+the per-draw jitter nor the TAA mip bias is applied on any draw (the jitter runs only while the resolve is available);
+one `motion_output_taa ... initialize=8876086a references=0 reason=fp16_filter|r32f_filter|filter_caps|adapter_query
+effect=taa_off` row says which filter is missing. Its presented frames equal the TAA-off launch's (fixture: the
+motion-output case `seam-taa-no-filter-refused` against `seam-on`, the refusal injected; the temporal fixture's
+`HISTORY_FILTER_QUERY` and `HISTORY_TAPS_NO_FILTER`). A later initialize failure for another reason logs its own
+`reason=` on the same row and stops the jitter from the next frame. FP16 filtering is common on D3D9-class hardware; R32F
+filtering is D3D10-class. CrossOver filters both (measured 2026-09-24); native Windows remains unverified, now with TAA
+off as the consequence of a refusal. The fog visibility-grid pass
+(`--fog-shadow-pass`, entry "2026-09-22") and its `A8R8G8B8` target left with the pass; the 24-far-bin fog programs
+left with `--fog-far-bins`. No other native requirement changed: the launcher-only removals keep their DLL paths as
+they were.

@@ -23,27 +23,19 @@ PROGRAMS = {
 LOOK_PROGRAMS = {name: ROOT / ('src/renderer/%s_program_inc.h' % name) for name in (
     'fog_density_march_look', 'fog_density_composite_look', 'fog_density_repair_look')}
 PROGRAMS.update(LOOK_PROGRAMS)
-# The look with 24 far bins (docs/architecture/fog-gpu-cost.md step B, --fog-far-bins 24): march and repair only
-# (composite never marches); the renderer creates this pair instead of the default one when asked.
-FAR24_PROGRAMS = {name: ROOT / ('src/renderer/%s_program_inc.h' % name) for name in (
-    'fog_density_march_look_far24', 'fog_density_repair_look_far24')}
-PROGRAMS.update(FAR24_PROGRAMS)
-# The look marched at quarter resolution (docs/architecture/fog-gpu-cost.md step C, --fog-march-scale 4): march and repair
-# at both far-bin counts and the composite, samples 4 px apart; the renderer creates these instead of the scale-2 set.
+# The look marched at quarter resolution (docs/architecture/fog-gpu-cost.md step C, --fog-march-scale 4): march, repair
+# and composite, samples 4 px apart; the renderer creates these instead of the scale-2 set. (The 24-far-bin variants of
+# step B were removed on 2026-09-25 with --fog-far-bins.)
 Q4_PROGRAMS = {name: ROOT / ('src/renderer/%s_program_inc.h' % name) for name in (
-    'fog_density_march_look_q4', 'fog_density_march_look_far24_q4', 'fog_density_repair_look_q4', 'fog_density_repair_look_far24_q4',
-    'fog_density_composite_look_q4')}
+    'fog_density_march_look_q4', 'fog_density_repair_look_q4', 'fog_density_composite_look_q4')}
 PROGRAMS.update(Q4_PROGRAMS)
 # --gpu-sync-timing only: the needs-repair census quad at spacing 2 and 4 (no march, no loop).
 CENSUS_PROGRAMS = {name: ROOT / ('src/renderer/%s_program_inc.h' % name) for name in ('fog_density_needs_census', 'fog_density_needs_census_q4')}
 PROGRAMS.update(CENSUS_PROGRAMS)
-# The sun-visibility slice grid (X3M_FOG_SHADOW_PASS=1): the pass and the look's march/repair reading it.
-GRID_PROGRAMS = {name: ROOT / ('src/renderer/%s_program_inc.h' % name) for name in (
-    'fog_density_visibility_grid', 'fog_density_march_grid', 'fog_density_repair_grid')}
-PROGRAMS.update(GRID_PROGRAMS)
-# Dust motes (X3M_FOG_DUST_MOTES, fog-dust-motes.md): the capsule pixel program in the in-march and grid variants, and
-# its vs_3_0 vertex program (counted with the same table; vs_3_0 offers at least 512 slots as well).
-MOTE_PROGRAMS = {name: ROOT / ('src/renderer/%s_program_inc.h' % name) for name in ('fog_dust_motes_look', 'fog_dust_motes_grid')}
+# Dust motes (X3M_FOG_DUST_MOTES, fog-dust-motes.md): the capsule pixel program (the in-march variant; the grid one went
+# with the visibility-grid pass on 2026-09-25) and its vs_3_0 vertex program (counted with the same table; vs_3_0 offers at
+# least 512 slots as well).
+MOTE_PROGRAMS = {name: ROOT / ('src/renderer/%s_program_inc.h' % name) for name in ('fog_dust_motes_look',)}
 PROGRAMS.update(MOTE_PROGRAMS)
 MOTE_VERTEX = {'fog_dust_motes_vertex': ROOT / 'src/renderer/fog_dust_motes_vertex_program_inc.h'}
 ZERO = {31, 48, 81, 47, 30}                    # dcl, defi, def, defb, label

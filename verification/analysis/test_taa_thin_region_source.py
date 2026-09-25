@@ -1,8 +1,8 @@
-"""Host tests of --taa-thin-region-source (X3M_TAA_THIN_REGION_SOURCE, docs/architecture/taa-thin-geometry-alternatives.md
-section 3.2, taa-mask-fold.md): vote by default on a modded --taa launch whose thin vote and thin region are on (marked
-X3M_TAA_THIN_REGION_SOURCE_DEFAULT=1), not sent otherwise (the DLL default is both); both / screen / vote only, screen refused
-with the camera gate (the default gate), requires --taa and the thin region (its 0.97 default counts), vote also the thin vote
-(its default counts), refused under --vanilla, an inherited shell value never survives; the runner's parser of the DLL's
+"""Host tests of the thin region's flag source (docs/architecture/taa-thin-geometry-alternatives.md section 3.2,
+taa-mask-fold.md). --taa-thin-region-source and X3M_TAA_THIN_REGION_SOURCE(_DEFAULT) were removed on 2026-09-25 (user
+decision, docs/verification/launcher-options-inventory.md "Removed 2026-09-25"): the DLL configures the vote alone whenever
+the thin vote and the thin region are on (both otherwise), marked default when the vote was the launcher's default. Covered:
+the option is unknown and the variables are neither sent nor inherited; the runner's parser of the DLL's
 taa_thin_region_source row; the source contract of the DLL, the pass and the shaders (the folded resolve reads c10.y / c10.z;
 the screen-gate chain's plain programs never read c10.y). No game, no Wine."""
 import json
@@ -22,54 +22,21 @@ class ThinRegionSourceLaunch(unittest.TestCase):
     launch = vote.ThinVoteLaunch.launch
     env = vote.ThinVoteLaunch.env
 
-    def test_default_vote_with_the_thin_vote_and_an_inherited_value_never_survives(self):
+    def test_the_option_is_unknown_and_the_variables_never_survive(self):
+        inherited = {'X3M_TAA_THIN_REGION_SOURCE': 'both', 'X3M_TAA_THIN_REGION_SOURCE_DEFAULT': '0'}
         with tempfile.TemporaryDirectory() as directory:
-            inherited = {'X3M_TAA_THIN_REGION_SOURCE': 'both', 'X3M_TAA_THIN_REGION_SOURCE_DEFAULT': '0'}
-            for extra in ({}, inherited):
-                env = self.env(directory, *TAA, *LANE, inherited=extra)
-                self.assertEqual((env['X3M_TAA_THIN_REGION_SOURCE'], env['X3M_TAA_THIN_REGION_SOURCE_DEFAULT'], env['X3M_TAA_THIN_VOTE']), ('vote', '1', 'on'))
-            # Not sent without the thin vote (off, or no lane), without the thin region, or without --taa.
-            # The lane and --taa are launcher defaults since 2026-09-25: "no lane" / "no --taa" are explicit opt-outs.
-            for args in ((*TAA, *LANE, '--taa-thin-vote', 'off'), (*TAA, '--no-sun-shadow-lane'), (*TAA, *LANE, '--taa-thin-region', 'off'), ('--motion-output', '--no-taa')):
-                env = self.env(directory, *args, inherited=inherited)
-                self.assertNotIn('X3M_TAA_THIN_REGION_SOURCE', env, args)
-                self.assertNotIn('X3M_TAA_THIN_REGION_SOURCE_DEFAULT', env, args)
+            for args in ((*TAA, *LANE), (*TAA, *LANE, '--taa-thin-vote', 'off'), (*TAA, '--no-sun-shadow-lane'), ('--motion-output', '--no-taa')):
+                for extra in (None, inherited):
+                    env = self.env(directory, *args, inherited=extra)
+                    self.assertNotIn('X3M_TAA_THIN_REGION_SOURCE', env, args)
+                    self.assertNotIn('X3M_TAA_THIN_REGION_SOURCE_DEFAULT', env, args)
             code, output, error = self.launch(directory, '--vanilla', inherited=inherited)
             self.assertEqual(code, 0, error)
             self.assertNotIn('X3M_TAA_THIN_REGION_SOURCE', json.loads(output)['env'])
-
-    def test_values_are_forwarded_with_the_defaults(self):
-        with tempfile.TemporaryDirectory() as directory:
-            for value in ('both', 'vote'):  # the thin region (0.97) and the vote (on) from their Run 81 defaults
-                env = self.env(directory, *TAA, *LANE, '--taa-thin-region-source', value)
-                self.assertEqual((env['X3M_TAA_THIN_REGION_SOURCE'], env['X3M_TAA_THIN_REGION_SOURCE_DEFAULT']), (value, '0'))
-                self.assertEqual(env['X3M_TAA_THIN_VOTE'], 'on')
-            # both needs no vote: the explicit off and the lane-less launch keep it; screen only with the screen gate.
-            for args in ((*TAA, *LANE, '--taa-thin-vote', 'off'), (*TAA,)):
-                self.assertEqual(self.env(directory, *args, '--taa-thin-region-source', 'both')['X3M_TAA_THIN_REGION_SOURCE'], 'both')
-                self.assertEqual(self.env(directory, *args, '--taa-thin-region-gate', 'screen', '--taa-thin-region-source', 'screen')['X3M_TAA_THIN_REGION_SOURCE'], 'screen')
-            env = self.env(directory, *TAA, *LANE, '--taa-thin-region', '0.95', '--taa-thin-vote', 'on', '--taa-thin-region-source', 'vote')
-            self.assertEqual((env['X3M_TAA_THIN_REGION'], env['X3M_TAA_THIN_REGION_SOURCE']), ('0.95,1', 'vote'))
-
-    def test_refusals(self):
-        with tempfile.TemporaryDirectory() as directory:
-            for value in ('Both', 'union', '1', ''):
+            for value in ('both', 'vote', 'screen'):
                 code, _, error = self.launch(directory, *TAA, *LANE, '--taa-thin-region-source', value)
-                self.assertNotEqual(code, 0, value)
-                self.assertIn('--taa-thin-region-source', error)
-            cases = (
-                (('--motion-output', '--no-taa', '--taa-thin-region-source', 'both'), '--taa-thin-region-source requires --taa'),
-                ((*TAA, *LANE, '--taa-thin-region', 'off', '--taa-thin-region-source', 'screen'), '--taa-thin-region-source requires --taa-thin-region with W > 0'),
-                ((*TAA, *LANE, '--taa-thin-region', '0', '--taa-thin-region-source', 'both'), '--taa-thin-region-source requires --taa-thin-region with W > 0'),
-                ((*TAA, *LANE, '--taa-thin-vote', 'off', '--taa-thin-region-source', 'vote'), '--taa-thin-region-source vote requires --taa-thin-vote on'),
-                ((*TAA, '--no-sun-shadow-lane', '--taa-thin-region-source', 'vote'), '--taa-thin-region-source vote requires --taa-thin-vote on'),  # no lane: the vote's default is not sent
-                (('--vanilla', '--taa-thin-region-source', 'both'), '--taa-thin-region-source cannot be combined with --vanilla'),
-                ((*TAA, *LANE, '--taa-thin-region-source', 'screen'), '--taa-thin-region-source screen is refused with the camera gate'),
-                ((*TAA, '--taa-thin-region-gate', 'camera', '--taa-thin-region-source', 'screen'), '--taa-thin-region-source screen is refused with the camera gate'))
-            for args, message in cases:
-                code, _, error = self.launch(directory, *args)
-                self.assertNotEqual(code, 0, args)
-                self.assertIn(message, error, args)
+                self.assertEqual(code, 2, value)
+                self.assertIn('unrecognized arguments', error)
 
 
 def row(**values):
@@ -101,22 +68,25 @@ class ThinRegionSourceRow(unittest.TestCase):
         text = row()
         self.assertEqual(len(runner.thin_region_source_rows(text.replace(' default=1', ' default=1 extra=7'))), 1)
 
-    def test_one_case_per_source_value(self):
-        # The motion runner's source cases run the camera gate: screen is its refusal case (configured both).
-        self.assertEqual(sorted(runner.THIN_VOTE_SOURCE_CASES.values()), ['both', 'screen', 'vote'])
+    def test_one_vote_source_case(self):
+        # The motion runner keeps the vote case (the DLL's own rule); its both / screen twins went with the variable.
+        self.assertEqual(runner.THIN_VOTE_SOURCE_CASES, {'seam-thin-vote-far-on-source-vote': 'vote'})
         names = {entry['name']: entry for entry in runner.CASES}
-        for name, source in runner.THIN_VOTE_SOURCE_CASES.items():
-            env = names[name]['hdr_env']
-            self.assertEqual((names[name]['mode'], env['X3M_TAA_THIN_REGION_SOURCE'], env['X3M_TAA_THIN_VOTE']), ('thinvote', source, 'on'))
+        env = names['seam-thin-vote-far-on-source-vote']['hdr_env']
+        self.assertEqual((names['seam-thin-vote-far-on-source-vote']['mode'], env['X3M_TAA_THIN_VOTE']), ('thinvote', 'on'))
+        self.assertNotIn('X3M_TAA_THIN_REGION_SOURCE', env)
+        for gone in ('seam-thin-vote-far-on-source-both', 'seam-thin-vote-far-on-source-screen'):
+            self.assertNotIn(gone, names)
 
 
 class ThinRegionSourceContract(unittest.TestCase):
-    def test_dll_parses_resolves_and_logs(self):
+    def test_dll_derives_resolves_and_logs(self):
         capture = (ROOT / 'src/proxy/capture.cpp').read_text()
-        self.assertIn('GetEnvironmentVariableW(L"X3M_TAA_THIN_REGION_SOURCE",setting,32)', capture)
-        self.assertIn('log("taa_thin_region_source_setting invalid=1");', capture)
+        self.assertNotIn('GetEnvironmentVariableW(L"X3M_TAA_THIN_REGION_SOURCE', capture)
+        self.assertIn('taa_thin_region_source_given=taa_thin_vote&&taa_thin_region[0]>0.f;', capture)
+        self.assertIn('taa_thin_region_source=taa_thin_region_source_given?2u:0u;', capture)
+        self.assertIn('taa_thin_region_source_default=taa_thin_region_source_given&&taa_thin_vote_default;', capture)
         self.assertIn('configure_thin_region_source(taa_thin_region_source,taa_thin_region_source_given,taa_thin_region_source_default)', capture)
-        self.assertIn('GetEnvironmentVariableW(L"X3M_TAA_THIN_REGION_SOURCE_DEFAULT",setting,32)==1', capture)
         motion = (ROOT / 'src/proxy/motion_output.cpp').read_text()
         self.assertIn('if (SUCCEEDED(hr) && taa_thin_source_given_) {', motion)  # logged only when given: the default log is unchanged
         self.assertIn('log("taa_thin_region_source device=%llu requested=%s configured=%s reason=%s ', motion)

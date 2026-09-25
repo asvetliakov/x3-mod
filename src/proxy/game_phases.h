@@ -17,11 +17,6 @@ void report(std::uint64_t reporting_frame); // existing periodic report, owner t
 // The register-saving stub that enters x3m_game_phase_enter with `index`;
 // indices at or above sites::Count are routed to frame_phases::stamp.
 void* emit_stub(unsigned index,void*** next);
-// Audio-path witnesses (X3M_AUDIO_SITES=1 with X3M_GAME_PHASES=1): counters
-// only, readable from any thread; the line is written by report() per window
-// and by the sampling profiler's periodic callback every 2 s.
-bool audio_active() noexcept;
-void audio_report(const char* scope,std::uint64_t qpc);
 // The Input phase (site game_phase_input, 0x00403b09) of the last completed
 // main-loop iteration in microseconds; false when the group is off, on any
 // thread but the owner, or before the first completed Input phase. Read by the

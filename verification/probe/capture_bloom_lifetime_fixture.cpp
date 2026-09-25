@@ -398,7 +398,6 @@ namespace window_mode { static void apply(const char*, HWND, HWND, bool, UINT, U
 namespace window_trace { static void detach(unsigned long long) noexcept {} } // the window-thread hooks' removal at the final Release (src/proxy/window_trace.h); no-op on the host
 namespace collide_memo { static void device_reset() noexcept {} } // memo table drop on Reset (src/proxy/collide_memo.h); no-op on the host
 namespace sun_occlusion { static void device_reset() noexcept {} } // X3M_SUN_OCCLUSION visibility-target drop on Reset (src/proxy/sun_occlusion.h); no-op on the host
-namespace lod_scale { static void refresh() noexcept {} } // X3M_LOD_SCALE mirror refresh called from the Reset/Present paths (src/proxy/lod_scale.h); no-op on the host
 namespace resource_reader { static void report() noexcept {} }
 namespace loading_trace { static void crypt_cache_report(const char*) noexcept {} }
 namespace voice_dmo_fallback { static void shutdown() noexcept {} } // disarms the fault witness at the last device destroy (capture.cpp, voice DMO fallback hook)

@@ -84,3 +84,7 @@ At the F8 capture frames (4672-4679): `motion_output_frame` shows `draws=478 rou
 Shadow cost: `sun_shadow_apply_frame` at 4672-4679 gives `applied=1 skip_reason=none us=` 1323.0, 207.3, 99.2, 98.6, 112.3, 104.7, 101.1, 87.1 (first F8 frame elevated, rest ~90-110 µs, `result=00000000 restore=00000000` throughout — no apply/restore failure). Session-wide `sun_shadow_apply_frame` count 7832, mean `us`≈68.3, max 5226.0 (isolated spike, not at the capture frames).
 
 No anomalies: `motion_direct_loss_code` — 0 occurrences; `apply_failures`/`restore_failures` — 0 on all 154 `motion_output_frame` lines; no `refused`/error lines tied to `motion_direct` or `cull_small_parts` (the 49053 `refused` hits are unrelated frame types — `screen_emission_additive_frame`, `fade_route_frame`, `chase_camera` — all `refused=0`/`refused_*=0` in the sampled lines).
+
+**Removed 2026-09-25** (user decision): `--cull-small-parts-scope` (every node is a candidate; the `bodies` branch went from the stub encoder and the census); `docs/verification/launcher-options-inventory.md`, "4. Removed 2026-09-25".
+
+Fixture after the removal (2026-09-25, bottle X3): `run_cull_small_parts.py` 119 checks, 0 failures (153 with the scope section; `verification/results/cull-small-parts-cpu.json`) (measured).

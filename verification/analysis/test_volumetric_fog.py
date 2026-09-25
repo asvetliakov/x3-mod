@@ -286,74 +286,30 @@ class FogLauncherTests(unittest.TestCase):
         self.assertIn('fog_env(L"X3M_VOLUMETRIC_FOG_RANGE")==6 && !wcscmp(setting,L"stored")', capture)
         self.assertIn('volumetric_fog_range_stored=volumetric_fog_requested &&', capture)
 
-    def test_shadow_pass_option(self):
-        # --fog-shadow-pass {on,off} -> X3M_FOG_SHADOW_PASS, default off (the flight A/B keeps the accepted look), on only with the stored range.
+    def test_shadow_pass_and_far_bins_options_are_removed(self):
+        # --fog-shadow-pass (the visibility grid, fog-shadow-pass.md) and --fog-far-bins (step B's 24 bins, fog-gpu-cost.md)
+        # were removed on 2026-09-25 (docs/verification/launcher-options-inventory.md, "Removed 2026-09-25"): both are
+        # unknown arguments, their variables are neither sent nor inherited, and the DLL reads neither.
         stored = ('--volumetric-fog', '--volumetric-fog-range', 'stored')
-        status, output, error = self.launch(*self.BASE, *stored)
-        self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_SHADOW_PASS": "0"', output)
-        status, output, error = self.launch(*self.BASE, *stored, '--fog-shadow-pass', 'on')
-        self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_SHADOW_PASS": "1"', output)
-        status, output, error = self.launch(*self.BASE, *stored, '--fog-shadow-pass', 'off')
-        self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_SHADOW_PASS": "0"', output)
-        status, output, error = self.launch(*self.BASE, '--volumetric-fog', '--fog-shadow-pass', 'off')
-        self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_SHADOW_PASS": "0"', output)
-        status, _, error = self.launch(*self.BASE, '--volumetric-fog', '--fog-shadow-pass', 'on')
-        self.assertEqual(status, 2); self.assertIn('requires --volumetric-fog-range stored', error)
-        self.assertEqual(self.launch(*self.BASE, '--fog-shadow-pass', 'on')[0], 2)
-        self.assertEqual(self.launch(*self.BASE, *stored, '--fog-shadow-pass', 'auto')[0], 2)
-        # An inherited variable never turns the pass on; the DLL reads it for the stored range only.
-        status, output, error = self.launch(*self.BASE, *stored, environment={'X3M_FOG_SHADOW_PASS': '1'})
-        self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_SHADOW_PASS": "0"', output)
+        for extra in (('--fog-shadow-pass', 'on'), ('--fog-shadow-pass', 'off'), ('--fog-far-bins', '24'), ('--fog-far-bins', '40')):
+            status, _, error = self.launch(*self.BASE, *stored, *extra)
+            self.assertEqual(status, 2, extra); self.assertIn('unrecognized arguments', error)
+        status, output, error = self.launch(*self.BASE, *stored, environment={'X3M_FOG_SHADOW_PASS': '1', 'X3M_FOG_FAR_BINS': '24'})
+        self.assertEqual(status, 0, error); self.assertNotIn('X3M_FOG_SHADOW_PASS', output); self.assertNotIn('X3M_FOG_FAR_BINS', output)
         capture = (ROOT / 'src/proxy/capture.cpp').read_text()
-        self.assertIn('volumetric_fog_shadow_pass=volumetric_fog_range_stored && fog_env(L"X3M_FOG_SHADOW_PASS")==1 && setting[0]==L\'1\';', capture)
-        self.assertIn('hooked.motion_output.configure_volumetric_fog_shadow_pass(volumetric_fog_shadow_pass);', capture)
-        self.assertIn('fog_density_config_.shadow_pass = on;', (ROOT / 'src/proxy/motion_output.h').read_text())
-        fragment = (ROOT / 'src/proxy/motion_output_fog_inc.h').read_text()
-        self.assertIn('k.texel_world = size ? float(2. * double(cascade.half_extent) / double(size)) : 0.f; k.depth_range = float(cascade.depth_range());', fragment)
-
-    def test_far_bins_option(self):
-        # --fog-far-bins {40,24} -> X3M_FOG_FAR_BINS (fog-gpu-cost.md step B), default 40 (the accepted look), 24 only with the
-        # stored range and never with the shadow pass (its grid programs keep 40); an inherited value never picks the variant.
-        stored = ('--volumetric-fog', '--volumetric-fog-range', 'stored')
-        status, output, error = self.launch(*self.BASE, *stored)
-        self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_FAR_BINS": "40"', output)
-        status, output, error = self.launch(*self.BASE, *stored, '--fog-far-bins', '24')
-        self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_FAR_BINS": "24"', output)
-        status, output, error = self.launch(*self.BASE, *stored, '--fog-far-bins', '40')
-        self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_FAR_BINS": "40"', output)
-        status, output, error = self.launch(*self.BASE, '--volumetric-fog', '--fog-far-bins', '40')
-        self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_FAR_BINS": "40"', output)
-        status, _, error = self.launch(*self.BASE, '--volumetric-fog', '--fog-far-bins', '24')
-        self.assertEqual(status, 2); self.assertIn('--fog-far-bins 24 requires --volumetric-fog-range stored', error)
-        status, _, error = self.launch(*self.BASE, *stored, '--fog-far-bins', '24', '--fog-shadow-pass', 'on')
-        self.assertEqual(status, 2); self.assertIn('cannot be combined with --fog-shadow-pass on', error)
-        self.assertEqual(self.launch(*self.BASE, *stored, '--fog-far-bins', '32')[0], 2)
-        status, output, error = self.launch(*self.BASE, *stored, environment={'X3M_FOG_FAR_BINS': '24'})
-        self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_FAR_BINS": "40"', output)
-        # The DLL: exactly "24" under the stored range, without the shadow pass and at a cap <= 120,000; any other value is
-        # echoed as invalid (review 2026-09-23); FogPass refuses a count other than 40/24 and clamps 24 itself as well.
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
-        self.assertIn('far_bins_asked=!wcscmp(setting,L"24");', capture)
-        self.assertIn('if(!far_bins_asked&&wcscmp(setting,L"40"))far_bins_refusal="invalid";', capture)
-        self.assertIn('if(far_bins_asked)far_bins_refusal=volumetric_fog_shadow_pass?"shadow_pass":', capture)
-        self.assertIn('!(volumetric_fog_look_tuning.sky_cap<=renderer::fog_far_bins_coarse_cap_max)?"cap":"none";', capture)
-        self.assertIn('log("volumetric_fog_far_bins bins=%u requested=%s refused=%s sky_cap=%g"', capture)
-        self.assertLess(capture.index('volumetric_fog_look_tuning={};'), capture.index('far_bins_asked=!wcscmp(setting,L"24");'))
-        self.assertIn('hooked.motion_output.configure_volumetric_fog_far_bins(volumetric_fog_far_bins);', capture)
-        self.assertIn('fog_density_config_.far_bins = bins;', (ROOT / 'src/proxy/motion_output.h').read_text())
-        self.assertIn('log("fog_far_bins_refused device=%llu frame=%llu reason=%s requested=%u drawn=%u"', (ROOT / 'src/proxy/motion_output_fog_inc.h').read_text())
-        fog_pass = (ROOT / 'src/renderer/fog_pass.cpp').read_text()
-        self.assertIn('if(!fog_far_bins_valid(config.far_bins))return E_INVALIDARG;', fog_pass)
-        self.assertIn('far_bins_shadow_clamp_=far_bins_shadow_clamp_||config.shadow_pass;', fog_pass)
-        self.assertIn('!(config.look.sky_cap<=fog_far_bins_coarse_cap_max)?"cap":nullptr;', fog_pass)
-        for name in ('march', 'repair'):
-            self.assertIn('#include "fog_density_%s_look_far24_program_inc.h"' % name, fog_pass)
+        for gone in ('X3M_FOG_SHADOW_PASS', 'X3M_FOG_FAR_BINS', 'volumetric_fog_shadow_pass', 'volumetric_fog_far_bins'):
+            self.assertNotIn(gone, capture, gone)
+        fog_pass = (ROOT / 'src/renderer/fog_pass.cpp').read_text(); header = (ROOT / 'src/renderer/fog_pass.h').read_text()
+        for gone in ('shadow_pass=', 'far_bins=', 'far_bins_', 'grid_', 'FogGridReport', 'fog_shadow_grid', '_far24_', '_grid_program_inc.h'):
+            self.assertNotIn(gone, fog_pass, gone); self.assertNotIn(gone, header, gone)
+        self.assertIn('constexpr unsigned fog_far_bins = 40;', (ROOT / 'src/renderer/fog_look_math.h').read_text())
+        self.assertFalse((ROOT / 'src/renderer/fog_shadow_grid.h').exists())
+        self.assertNotIn('shadow_pass', (ROOT / 'src/proxy/motion_output_fog_inc.h').read_text())
 
     def test_march_scale_option(self):
         # --fog-march-scale {2,4} -> X3M_FOG_MARCH_SCALE (fog-gpu-cost.md step C), default 4 since Run 77 C2 (the quarter-resolution
-        # march), 2 the opt-out; the variable is always written. An explicit 4 needs the stored range and never goes with the
-        # shadow pass (its grid programs keep spacing 2), which clamps the default to 2 with one launcher line; combines with
-        # --fog-far-bins; an inherited value never decides it.
+        # march), 2 the opt-out; the variable is always written. An explicit 4 needs the stored range; an inherited value never
+        # decides it.
         stored = ('--volumetric-fog', '--volumetric-fog-range', 'stored')
         status, output, error = self.launch(*self.BASE, *stored)
         self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_MARCH_SCALE": "4"', output); self.assertNotIn('fog march scale:', error)
@@ -361,29 +317,22 @@ class FogLauncherTests(unittest.TestCase):
         self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_MARCH_SCALE": "4"', output)
         status, output, error = self.launch(*self.BASE, *stored, '--fog-march-scale', '2')
         self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_MARCH_SCALE": "2"', output)
-        status, output, error = self.launch(*self.BASE, *stored, '--fog-march-scale', '4', '--fog-far-bins', '24')
-        self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_MARCH_SCALE": "4"', output); self.assertIn('"X3M_FOG_FAR_BINS": "24"', output)
+        status, output, error = self.launch(*self.BASE, *stored, '--fog-march-scale', '4')
+        self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_MARCH_SCALE": "4"', output)
         status, output, error = self.launch(*self.BASE, '--volumetric-fog', '--fog-march-scale', '2')
         self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_MARCH_SCALE": "2"', output)
         status, _, error = self.launch(*self.BASE, '--volumetric-fog', '--fog-march-scale', '4')
         self.assertEqual(status, 2); self.assertIn('--fog-march-scale 4 requires --volumetric-fog-range stored', error)
-        status, _, error = self.launch(*self.BASE, *stored, '--fog-march-scale', '4', '--fog-shadow-pass', 'on')
-        self.assertEqual(status, 2); self.assertIn('--fog-march-scale 4 cannot be combined with --fog-shadow-pass on', error)
-        status, output, error = self.launch(*self.BASE, *stored, '--fog-shadow-pass', 'on')
-        self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_MARCH_SCALE": "2"', output)
-        self.assertIn('fog march scale: 2 (the default 4 is clamped to 2: --fog-shadow-pass on keeps spacing 2)', error)
         self.assertEqual(self.launch(*self.BASE, *stored, '--fog-march-scale', '3')[0], 2)
         status, output, error = self.launch(*self.BASE, *stored, environment={'X3M_FOG_MARCH_SCALE': '2'})
         self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_MARCH_SCALE": "4"', output)
         # The DLL: absent, "4" or an invalid value draw the default 4 under the stored range, exactly "2" the half-resolution
-        # march; the shadow pass clamps 4 to 2 (refused=shadow_pass). FogPass defaults to 4, refuses a spacing other than 2/4
-        # at prepare and falls back to 2 itself (shadow pass, programs, target).
+        # march. FogPass defaults to 4, refuses a spacing other than 2/4 at prepare and falls back to 2 itself (programs, target).
         capture = (ROOT / 'src/proxy/capture.cpp').read_text()
         self.assertIn('char march_scale_value[40]="4";', capture)
         self.assertIn('march_scale_half=!wcscmp(setting,L"2");', capture)
         self.assertIn('if(!march_scale_half&&wcscmp(setting,L"4"))march_scale_refusal="invalid";', capture)
-        self.assertIn('if(!march_scale_half&&volumetric_fog_shadow_pass&&!std::strcmp(march_scale_refusal,"none"))march_scale_refusal="shadow_pass";', capture)
-        self.assertIn('volumetric_fog_march_scale=march_scale_half||volumetric_fog_shadow_pass?renderer::fog_march_scale_half:renderer::fog_march_scale_quarter;', capture)
+        self.assertIn('volumetric_fog_march_scale=march_scale_half?renderer::fog_march_scale_half:renderer::fog_march_scale_quarter;', capture)
         self.assertIn('log("volumetric_fog_march_scale scale=%u requested=%s refused=%s"', capture)
         self.assertIn('hooked.motion_output.configure_volumetric_fog_march_scale(volumetric_fog_march_scale);', capture)
         self.assertIn('needs_px=%u', capture)
@@ -393,69 +342,15 @@ class FogLauncherTests(unittest.TestCase):
         self.assertIn('unsigned march_scale=fog_march_scale_default;', (ROOT / 'src/renderer/fog_pass.h').read_text())
         fragment = (ROOT / 'src/proxy/motion_output_fog_inc.h').read_text()
         self.assertIn('log("fog_march_scale_refused device=%llu frame=%llu reason=%s requested=%u drawn=%u"', fragment)
-        self.assertIn('far_bins=%u march_scale=%u"', fragment)
+        self.assertIn('ramp_frames=%u march_scale=%u"', fragment)
         fog_pass = (ROOT / 'src/renderer/fog_pass.cpp').read_text()
         self.assertIn('if(!fog_march_scale_valid(config.march_scale))return E_INVALIDARG;', fog_pass)
-        self.assertIn('march_scale_shadow_clamp_=march_scale_shadow_clamp_||config.shadow_pass;', fog_pass)
         self.assertNotIn('fog_march_scale_default', fog_pass)  # every refusal falls back to fog_march_scale_half
         resources = extract_function(fog_pass, 'HRESULT FogPass::density_resources(')
         # The quarter target before the programs that draw into it; it lives only while they draw.
         self.assertLess(resources.index('if(density_config_.march_scale==fog_march_scale_quarter&&!quarter_&&width_&&height_){'), resources.index('auto make_set='))
         self.assertIn('if(density_march_scale_!=fog_march_scale_quarter)release_quarter();', resources)
         self.assertIn('release_quarter();', extract_function(fog_pass, 'void FogPass::release_targets('))
-
-    def test_shadow_pass_ab_toggle_and_frame_row(self):
-        # fog-shadow-pass.md "A/B toggle and log row": toggled off, FogPass latches shadow_pass=false at prepare_density
-        # and draws the launch-off in-march path; the grid stays allocated (only refuse_grid and release_targets drop it).
-        source = (ROOT / 'src/renderer/fog_pass.cpp').read_text()
-        header = (ROOT / 'src/renderer/fog_pass.h').read_text()
-        prepare = extract_function(source, 'HRESULT FogPass::prepare_density(')
-        self.assertIn('density_config_=config;', prepare)
-        resources = extract_function(source, 'HRESULT FogPass::density_resources(')
-        self.assertIn('if(density_config_.shadow_pass&&!grid_&&width_&&height_){', resources)
-        # The grid target goes only with the targets, the DEFAULT density resources, a refusal or a lost creation; never with the variant.
-        self.assertEqual(source.count('release_grid();'), 4)
-        self.assertNotIn('release_grid', prepare)
-        self.assertIn('(!density_config_.shadow_pass||(density_visibility_&&density_march_grid_&&density_repair_grid_&&grid_surface_))', header)
-        self.assertIn('bool grid_variant() const noexcept { return density_config_.shadow_pass; }', header)
-        # The per-frame grid report: written only under the grid variant, so the pass-off path does no extra work.
-        execute = extract_function(source, 'HRESULT FogPass::execute(')
-        self.assertIn('const bool grid=density&&density_config_.shadow_pass;', execute)
-        self.assertIn('grid_report_=FogGridReport{};grid_report_.frame=f.frame;', execute)
-        self.assertLess(execute.index('if(grid){\n        grid_report_=FogGridReport{};'), execute.index('fog_grid_constants('))
-        self.assertIn('if(grid)grid_calls_start=calls_;', execute)
-        self.assertIn('if(grid&&slot>4){', execute)
-        self.assertIn('grid_report_.net_calls=int(grid_report_.calls)-int(constants_set);', execute)
-        self.assertIn('grid_report_.net_calls+=int(calls_-march_start)-(reached?3:0);', execute)
-        self.assertIn('grid_replaced_repair=std::min(r.cascades_bound,fog_look_cascades);', execute)
-        # The row: the frame line carries the grid fields only when the pass was enabled at launch; a variant change forces a line.
-        fragment = (ROOT / 'src/proxy/motion_output_fog_inc.h').read_text()
-        run = extract_function(fragment, 'void MotionOutput::run_volumetric_fog(')
-        # A variant change forces at most one row per fog_grid_change_frames (60) frames and 16 a session, on its own counter.
-        self.assertIn('const bool periodic = fog_timing_ || changed || frame_ % 600u == 0u;', run)
-        self.assertIn('if (periodic || grid_changed) {', run)
-        self.assertIn('frame_ - fog_grid_logged_frame_ >= fog_grid_change_frames && fog_grid_change_logs_ < fog_grid_change_cap;', run)
-        self.assertIn('if (grid_changed && !periodic) { ++fog_grid_change_logs_; fog_grid_logged_frame_ = frame_; }', run)
-        self.assertNotIn('fog_density_logs_', run[run.index('bool grid_changed = false;'):run.index('char grid_fields[320];')])
-        motion_header = (ROOT / 'src/proxy/motion_output.h').read_text()
-        self.assertIn('static constexpr std::uint64_t fog_grid_change_frames = 60;', motion_header)
-        self.assertIn('static constexpr unsigned fog_grid_change_cap = 16;', motion_header)
-        toggle = extract_function(fragment, 'int MotionOutput::volumetric_fog_shadow_pass_toggle(')
-        self.assertNotIn('logs_', toggle)  # the toggle row is not budgeted
-        # A frame whose density transaction issued no device call reads not_executed in every variant, before any variant test.
-        first = 'if (!fog_ || !in.density || out.device_calls == 0) grid_fallback = "not_executed";'
-        self.assertIn(first, run)
-        self.assertLess(run.index(first), run.index('grid_fallback = "refused"'))
-        self.assertLess(run.index(first), run.index('grid_fallback = "toggled_off"'))
-        self.assertIn('restore=%08lx stage=%u%s%s",', run)  # the grid fields, then the dust motes' fields
-        self.assertLess(run.index('if (fog_shadow_pass_launch_) {\n            const renderer::FogGridReport none{};'), run.index('std::snprintf(grid_fields'))
-        for field in ('grid_pass=%u', 'grid_built=%u', 'grid_bind=%08lx', 'march=%s', 'fallback=%s', 'grid_refused=%s', 'grid_cascades=%u',
-                      'grid_kernel=%.3g,%.3g,%.3g', 'grid_far_width=%.1f', 'grid_frame_term=%.4f', 'grid_calls=%u', 'grid_net_calls=%d'):
-            self.assertIn(field, run)
-        for value in ('"in_march"; grid_fallback = "refused"', '"in_march"; grid_fallback = "toggled_off"',
-                      'grid->drawn ? "grid" : "grid_unshadowed"', 'grid_fallback = "not_executed"'):
-            self.assertIn(value, run)
-        self.assertIn('else if (fog_->grid_report().frame == frame_)', run)
 
     def test_dust_motes_option(self):
         # --fog-dust-motes N[,SIZE[,STREAK]] -> X3M_FOG_DUST_MOTES=N,SIZE,STREAK (fog-dust-motes.md section 4): omitted under
@@ -534,7 +429,7 @@ class FogLauncherTests(unittest.TestCase):
         prepare = extract_function(source, 'HRESULT FogPass::prepare_density(')
         self.assertIn('if(motes_refused_||density_config_.motes.count==0)density_config_.dust_motes=false;', prepare)
         # Released with the targets (Reset, resize, detach), counted in allocations().
-        self.assertIn('release_grid();release_motes();', source)
+        self.assertIn('drop(block_);release_motes();release_quarter();', source)
         self.assertIn('mote_built_count_=n;mote_built_seed_=seed;++allocations_;return S_OK;', source)
         fragment = (ROOT / 'src/proxy/motion_output_fog_inc.h').read_text()
         run = extract_function(fragment, 'void MotionOutput::run_volumetric_fog(')
@@ -554,26 +449,28 @@ class FogLauncherTests(unittest.TestCase):
         status, output, error = self.launch(*self.BASE, *stored)
         self.assertEqual(status, 0, error)
         self.assertNotIn('X3M_VOLUMETRIC_FOG_LOOK', output)  # the launcher no longer sets the selector at all
+        # Its refusal stub went on 2026-09-25: a plain unknown argument since.
         for extra in (('--volumetric-fog-look', '2'), ('--volumetric-fog-look', '0'), ('--volumetric-fog-look',)):
             status, _, error = self.launch(*self.BASE, *stored, *extra)
             self.assertEqual(status, 2, extra)
-            self.assertIn('--volumetric-fog-look was removed on 2026-09-22', error)
-            self.assertIn('single look', error)
+            self.assertIn('unrecognized arguments', error)
         self.assertEqual(self.launch(*self.BASE, '--volumetric-fog', '--volumetric-fog-look', '1')[0], 2)
-        # An inherited variable is ignored by the DLL with one log line, and no preset level is left in the source.
+        # An inherited variable is dropped by the launcher and not read by the DLL (its ignore line went on 2026-09-25), and no
+        # preset level is left in the source.
         status, output, error = self.launch(*self.BASE, *stored, environment={'X3M_VOLUMETRIC_FOG_LOOK': '1'})
         self.assertEqual(status, 0, error); self.assertNotIn('X3M_VOLUMETRIC_FOG_LOOK', output)
         capture = (ROOT / 'src/proxy/capture.cpp').read_text()
-        self.assertIn('volumetric_fog_look_ignored variable=X3M_VOLUMETRIC_FOG_LOOK reason=single_look_since_2026_09_22', capture)
+        self.assertNotIn('X3M_VOLUMETRIC_FOG_LOOK"', capture)
         self.assertNotIn('volumetric_fog_look_step', capture)  # the Ctrl+Alt+F11 cycle is gone with the presets
         self.assertNotIn('" L%d"', capture)                    # and so is the overlay L-readout
         look_math = (ROOT / 'src/renderer/fog_look_math.h').read_text()
         for gone in ('fog_look_default', 'fog_look_count', 'fog_look_next', 'jitter_near', 'JITTER_NEAR'):
             self.assertNotIn(gone, look_math, gone)
-        # Every tuning variable the look reads is still available, the L3-only ones are not.
+        # Every tuning variable the look reads is still available; the L3-only ones are not, nor the grid pass's penumbra.
         self.assertIn('X3M_FOG_LOOK_', capture)
-        for kept in ('COVERAGE', 'EXPONENT', 'SIGMA_SCALE', 'SELF_SHADOW', 'POWDER', 'TAP_DISTANCE', 'TAP_LENGTH', 'SHADOW_JITTER', 'PENUMBRA', 'PENUMBRA_MIN', 'PENUMBRA_MAX'):
+        for kept in ('COVERAGE', 'EXPONENT', 'SIGMA_SCALE', 'SELF_SHADOW', 'POWDER', 'TAP_DISTANCE', 'TAP_LENGTH', 'SHADOW_JITTER'):
             self.assertIn('"%s"' % kept, look_math, kept)
+        self.assertNotIn('PENUMBRA', look_math)
 
     def test_ambient_occlusion_options_are_removed(self):
         # GTAO/SSAO left the source on 2026-09-22 (cleanup batch 5): argparse refuses every former

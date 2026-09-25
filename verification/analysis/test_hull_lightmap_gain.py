@@ -9,7 +9,7 @@ fetch (`texld rL, vN, s{2|3}`, the last texture read of the program), every
 other word retained in order; the four glass and four asteroid programs have
 no such term and keep the fill variant byte for byte
 (docs/reverse-engineering/hull-self-illumination.md 5). Launcher gate:
-requires --hdr, excludes --linear-materials, composes with --original-fill.
+requires --hdr, composes with --original-fill (--linear-materials, which excluded it, left the launcher on 2026-09-25).
 Ctrl+Shift+F4 toggles the gain together with the hull emitters. No game
 assets bundled.
 """
@@ -258,7 +258,7 @@ class LauncherAndProxyGateTests(unittest.TestCase):
             with mock.patch.dict(os.environ, {'X3M_LIGHT_MAP_FAR_FADE': '1,2'}):
                 code, output, error = launch(directory, *PREREQUISITES); self.assertEqual(code, 0, error)
                 self.assertEqual(json.loads(output)['env'], baseline)  # an inherited value is dropped
-            for args in (PREREQUISITES + ['--no-light-map-far-fade'], PREREQUISITES + ['--hull-lightmap-gain', '1'], PREREQUISITES + ['--linear-materials', '--hdr-tonemap'], ['--motion-output']):
+            for args in (PREREQUISITES + ['--no-light-map-far-fade'], PREREQUISITES + ['--hull-lightmap-gain', '1'], ['--motion-output']):
                 with mock.patch.dict(os.environ, {'X3M_LIGHT_MAP_FAR_FADE': '1,2'}):
                     code, output, error = launch(directory, *args)
                 self.assertEqual(code, 0, error)
@@ -273,7 +273,7 @@ class LauncherAndProxyGateTests(unittest.TestCase):
             for value in ('', '60', '60,120,1,2', '120,60', '0,60', '60,60', '60,120,4.5', '60,120,-1', 'a,b', '60,nan', '60,2e6'):
                 code, _, error = launch(directory, *PREREQUISITES, '--light-map-far-fade', value)
                 self.assertEqual(code, 2, value); self.assertIn('--light-map-far-fade', error)
-            for extra in (['--hull-lightmap-gain', '1'], ['--linear-materials']):
+            for extra in (['--hull-lightmap-gain', '1'],):
                 code, _, error = launch(directory, *PREREQUISITES, *extra, '--light-map-far-fade', '60,120')
                 self.assertEqual(code, 2, extra)
             code, _, error = launch(directory, '--motion-output', '--light-map-far-fade', '60,120'); self.assertEqual(code, 2)
@@ -310,7 +310,7 @@ class LauncherAndProxyGateTests(unittest.TestCase):
         configure = extract_function(motion, 'bool MotionOutput::configure_lightmap_far_fade(')
         self.assertIn('if (device_) return lightmap_far_fade_;', configure)
 
-    def test_default_off_requires_hdr_excludes_linear_materials_and_composes_with_the_fill(self):
+    def test_default_off_requires_hdr_and_composes_with_the_fill(self):
         with tempfile.TemporaryDirectory() as directory:
             # Launcher default (user selection after run 41 C): 4 in HDR mode,
             # the same environment an explicit --hull-lightmap-gain 4 writes;
@@ -329,10 +329,7 @@ class LauncherAndProxyGateTests(unittest.TestCase):
             # An explicit 1 turns the default off again.
             code, output, error = launch(directory, *PREREQUISITES, '--hull-lightmap-gain', '1'); self.assertEqual(code, 0, error)
             self.assertEqual(json.loads(output)['env']['X3M_HULL_LIGHTMAP_GAIN'], '1.0')
-            linear = ['--hdr-tonemap', '--linear-materials']
             for bad in (('--motion-output', '--hull-lightmap-gain', '4'),
-                        (*PREREQUISITES, *linear, '--hull-lightmap-gain', '4'),
-                        (*PREREQUISITES, *linear, '--hull-lightmap-gain', '1'),
                         (*PREREQUISITES, '--hull-lightmap-gain', '0.5'), (*PREREQUISITES, '--hull-lightmap-gain', '8.5'),
                         (*PREREQUISITES, '--hull-lightmap-gain', 'nan'), (*PREREQUISITES, '--hull-lightmap-gain', 'inf')):
                 code, _, error = launch(directory, *bad); self.assertEqual(code, 2, bad); self.assertIn('--hull-lightmap-gain', error)
@@ -342,10 +339,6 @@ class LauncherAndProxyGateTests(unittest.TestCase):
             code, output, error = launch(directory, *PREREQUISITES, '--hull-lightmap-gain', '4', '--original-fill', '0.05'); self.assertEqual(code, 0, error)
             env = json.loads(output)['env']
             self.assertEqual((env['X3M_HULL_LIGHTMAP_GAIN'], env['X3M_ORIGINAL_FILL']), ('4.0', '0.05'))
-            # With linear materials the converted route's --lightmap-emissive-gain applies instead.
-            code, output, error = launch(directory, *PREREQUISITES, *linear, '--lightmap-emissive-gain', '4'); self.assertEqual(code, 0, error)
-            env = json.loads(output)['env']
-            self.assertEqual((env['X3M_HULL_LIGHTMAP_GAIN'], env['X3M_LIGHTMAP_EMISSIVE_GAIN']), ('1.0', '4.0'))
 
     def test_dll_gate_creation_selection_and_the_shared_f4_toggle(self):
         source = (ROOT / 'src/proxy/capture.cpp').read_text()

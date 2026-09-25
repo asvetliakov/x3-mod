@@ -13,7 +13,7 @@ std::uint32_t linear_distance_fade_sampler_mask(std::uint64_t vs, std::uint64_t 
 // Fade admission set: the six Asteroid pairs plus the standard BUMPMAP hull pair
 // 4944d81dfe531b37/64bac8bb307eb896 captured only in source-over state (seven
 // pairs). Distinct from linear_material_asteroid_pair, which stays the
-// six-pair Asteroid family classifier used by the shimmer trace.
+// six-pair Asteroid family classifier (the shimmer trace that used it went on 2026-09-25).
 bool linear_distance_fade_pair(std::uint64_t vs, std::uint64_t ps) noexcept;
 LinearMaterialResult linear_distance_fade_vertex_variant(
     const std::uint32_t *original, std::size_t words,

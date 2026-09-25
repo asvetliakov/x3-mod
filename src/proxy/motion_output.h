@@ -648,9 +648,6 @@ public:
     // exit_px: X3M_TAA_SKY_HISTORY_EXIT_PX (0 off, else 0.125..band_px; the caller's default 0.25 under strict since Run 68 A), the exit reset's parallax floor
     // (docs/architecture/seta-sky-hull-share-decay.md); needs strict (the caller refuses it otherwise) and an age program
     // (the far stabiliser or the thin region: taa_initialize logs it unavailable and drops it otherwise).
-    // X3M_TAA_HISTORY_TAPS (5 default, 16; docs/architecture/taa-high-resolution.md S3): the resolve's history
-    // reconstruction, TemporalPass::configure_history_taps; anything else is the default.
-    void configure_history_taps(unsigned taps) noexcept { taa_history_taps_ = taps == 16 ? 16u : 5u; }
     // X3M_TAA_BOX_RESOLUTION (full|half, DLL default full when the variable is unset; the launcher sends half on --taa launches
     // since Run 82; docs/architecture/taa-high-resolution.md S4): the camera gate's box at half resolution,
     // TemporalPass::configure_box_resolution(2); full is the pass without the call, bit for bit and log for log.
@@ -924,12 +921,6 @@ public:
     // the threshold. Configure before attach.
     void configure_fade_route(unsigned threshold_permille) noexcept;
     unsigned fade_route_threshold() const noexcept { return fade_route_threshold_; }
-    // Diagnostic distant-shimmer trace (X3M_SHIMMER_TRACE=1, off by default;
-    // docs/architecture/linear-distance-fade-region.md, "Shimmer trace"):
-    // every frame records the identity of the Asteroid-class scene draws into
-    // a fixed per-frame array and logs them plus the frame's TAA state after
-    // Present. Off costs one predicate per draw and nothing else.
-    void configure_shimmer_trace(bool requested) noexcept;
     // X3M_SCREEN_EMISSION_TIMING=1 with the screen-emission route: one
     // screen_emission_frame diagnostic line per Present (packed admissions,
     // bracket pixels and the wall-clock frame time). Off costs one predicate
@@ -1015,8 +1006,8 @@ public:
     // section 13), off by default: history weight W on fragmented-depth regions
     // (0 off), clip relaxation RELAX (1 = clip off there), speed gate LO < HI
     // px/frame. Runs on the far-stabiliser program and shares its speed gate.
-    // camera_gate: X3M_TAA_THIN_REGION_GATE=camera (section 32.1), the
-    // camera-relative gate with the 7x7 box clip; off = the screen-speed gate.
+    // camera_gate: the camera-relative gate with the 7x7 box clip (section 32.1), on
+    // whenever the thin region is (the gate variable was removed on 2026-09-25).
     // emissive: X3M_TAA_THIN_REGION_EMISSIVE=E (thin-glow-lines.md 8.3 R3;
     // taa-lattice-crawl.md section 32.7), the emissive vote in the mask (0 off);
     // turned off at initialisation with the thin region off, and the mask is then
@@ -1045,18 +1036,9 @@ public:
     void configure_volumetric_fog_look(const renderer::FogLookTuning& tuning) noexcept {
         fog_density_config_.look = tuning;
     }
-    // X3M_FOG_SHADOW_PASS=1 (fog-shadow-pass.md): the sun-visibility grid pass of the stored range, read once at init.
-    void configure_volumetric_fog_shadow_pass(bool on) noexcept { fog_shadow_pass_launch_ = on; fog_density_config_.shadow_pass = on; }
-    // X3M_FOG_FAR_BINS (fog-gpu-cost.md step B): 40 or 24 far march bins of the stored look, read once at init; FogPass
-    // creates the matching march/repair pair at prepare_density and refuses any other count.
-    void configure_volumetric_fog_far_bins(unsigned bins) noexcept { fog_density_config_.far_bins = bins; }
     // X3M_FOG_MARCH_SCALE (fog-gpu-cost.md step C): the march spacing 2 or 4 of the stored look, read once at init; FogPass
     // creates the matching programs and quarter target at prepare_density and refuses any other spacing.
     void configure_volumetric_fog_march_scale(unsigned scale) noexcept { fog_density_config_.march_scale = scale; }
-    // Ctrl+Shift+F11 (comparison-hotkeys.md; launched with the pass only): flips the grid variant the next owner latch
-    // hands to FogPass::prepare_density, so every frame draws one variant and off is the launch-off in-march path (the
-    // grid target stays allocated). One fog_shadow_pass_toggle line per press; returns the new state, -1 without the pass.
-    int volumetric_fog_shadow_pass_toggle() noexcept;
     // X3M_FOG_DUST_MOTES (fog-dust-motes.md): the stored range's dust motes, read once at init; count 0 is off.
     void configure_volumetric_fog_dust_motes(const renderer::FogMoteTuning& motes) noexcept {
         fog_dust_motes_launch_ = motes.count > 0; fog_density_config_.motes = motes; fog_density_config_.dust_motes = motes.count > 0;
@@ -1380,10 +1362,6 @@ private:
         // validate the four objects. An incomplete pair stays native-forward.
         bool xt_default_pair = false, xt_default_ready = false;
         bool cutout_pair = false; // identity (cutout::pair) independent of variant, capability and linear-material availability
-        // Asteroid-family pair identity for the shimmer trace only (the six
-        // distance-fade pairs of the material tables). Refreshed with the
-        // other pair identities, never at a draw, and only while the trace is on.
-        bool asteroid_pair = false;
         const renderer::MotionOutputProfile* vs_row = nullptr;
         const renderer::DepthPrepassProfile* vs_prepass = nullptr; // jitter-only clip rows (no pair, never routes)
         float rows[motion_matrix_windows_max][16]{}; // Each window's four rows as submitted
@@ -2189,28 +2167,9 @@ private:
         unsigned char* row = nullptr;
         UINT row_width = 0;
     } fade_witness_;
-    // Shimmer trace: integer-only per-draw records, formatted once after
-    // Present. No allocation, formatting or locking on the draw path.
-    bool shimmer_trace_ = false;
     bool screen_emission_timing_ = false;
     std::uint64_t present_qpc_ = 0, qpc_frequency_ = 0; // previous Present's stamp for screen_emission_frame
     void log_screen_emission_frame() noexcept;
-    struct ShimmerDraw {
-        std::uint64_t node = 0;
-        std::uint32_t index = 0;          // draw index within the frame
-        std::uint32_t model = 0, lod = 0;
-        std::uint32_t vertex_count = 0, primitives = 0, topology = 0;
-        std::uint64_t vertex_buffer = 0, index_buffer = 0;
-        std::int32_t f_permille = -1;     // -1: not fade-admitted (no region derived)
-        std::int32_t rect[4]{};           // fade_region rectangle; valid with region_known
-        std::uint8_t gate = 0;
-        bool routed = false, composition = false, region_known = false, indexed = false;
-    };
-    static constexpr unsigned shimmer_draw_capacity = 32;
-    ShimmerDraw shimmer_draws_[shimmer_draw_capacity]{};
-    unsigned shimmer_count_ = 0;   // qualifying draws this frame; beyond the capacity only counted
-    void record_shimmer_draw(const MotionRoute& route) noexcept;
-    void log_shimmer_frame(unsigned history_previous, unsigned history_current, unsigned committed) noexcept;
     // Capture-only pixel proof of the station source-over split
     // (docs/architecture/linear-station-source-over.md, section 4): a
     // recognised source-over draw of a fade pair that admission refused gets
@@ -2380,12 +2339,11 @@ private:
     float taa_sharpen_ = 0.f;                 // X3M_TAA_SHARPEN (0: off)
     float taa_far_weight_ = 0.f, taa_far_filter_ = 0.f, taa_far_f0_ = 60.f, taa_far_f1_ = 68.f, taa_far_lo_ = .03f, taa_far_hi_ = .25f; // X3M_TAA_FAR_STABILISER (F0 / F1 80 / 130 before 2026-09-25)
     float taa_thin_weight_ = 0.f, taa_thin_relax_ = 1.f; // X3M_TAA_THIN_REGION
-    bool taa_thin_camera_gate_ = false; // X3M_TAA_THIN_REGION_GATE=camera
+    bool taa_thin_camera_gate_ = false; // camera gate, on with the thin region
     float taa_thin_emissive_ = 0.f;     // X3M_TAA_THIN_REGION_EMISSIVE=E: emissive vote of the thin region (thin-glow-lines.md 8.3 R3)
     bool taa_masks_logged_ = false;           // the one line for TemporalPass::line_masks_failed()
     bool taa_box_refused_logged_ = false;     // the one line per TemporalPass::camera_gate_failed() episode (box targets refused: thin region off)
     bool taa_fold_logged_ = false;            // the one line for TemporalPass::Diagnostics::depth_folded (taa-high-resolution.md S1), per attachment
-    unsigned taa_history_taps_ = 5;           // X3M_TAA_HISTORY_TAPS: TemporalPass::configure_history_taps (taa-high-resolution.md S3); logged with the fold line
     bool taa_box_half_ = false;               // X3M_TAA_BOX_RESOLUTION=half (S4): requested; the pass decides per run (logged only when requested)
     bool taa_box_default_ = false;            // that half came from the launcher's default (X3M_TAA_BOX_RESOLUTION_DEFAULT=1): default=1 on the creation row
     bool taa_far_camera_gate_ = true;         // X3M_TAA_FAR_GATE: camera (default) or screen; FrameInputs::far_camera_gate
@@ -2430,13 +2388,7 @@ private:
     const char* fog_card_fault_reason_ = "none";
     // Stored-density range. The camera is the previous scene end's (read after the owner latch).
     bool fog_density_requested_ = false, fog_density_refused_ = false, fog_density_prepared_ = false, fog_density_camera_valid_ = false;
-    bool fog_density_config_logged_ = false, fog_density_ready_logged_[2]{}, fog_shadow_pass_refused_logged_ = false, fog_far_bins_refused_logged_ = false, fog_march_scale_refused_logged_ = false;
-    bool fog_shadow_pass_launch_ = false; // X3M_FOG_SHADOW_PASS=1 at launch: arms the F11 toggle and the grid fields of volumetric_fog_frame
-    const char* fog_grid_last_march_ = "none"; // the march variant the last frame row printed (a change forces a throttled row)
-    std::uint64_t fog_grid_logged_frame_ = 0; // the last change-driven frame row
-    static constexpr std::uint64_t fog_grid_change_frames = 60; // at most one change-driven row per 60 frames (the card row's spacing)
-    static constexpr unsigned fog_grid_change_cap = 16; // change-driven rows per session; the toggle row is not budgeted
-    unsigned fog_grid_change_logs_ = 0;
+    bool fog_density_config_logged_ = false, fog_density_ready_logged_[2]{}, fog_march_scale_refused_logged_ = false;
     // X3M_FOG_DUST_MOTES at launch: arms the Ctrl+Alt+F11 toggle and the mote fields of volumetric_fog_frame.
     bool fog_dust_motes_launch_ = false, fog_motes_refused_logged_ = false, fog_motes_drawn_ = false;
     long long fog_motes_epoch_qpc_ = 0; // the drift clock's origin (first mote frame)
@@ -2482,6 +2434,7 @@ private:
     MotionOutputFixtureConfig fixture_{};
     bool fixture_configured_ = false, fixture_abi_known_ = false;
     bool fixture_stretch_fault_ = false; // X3M_FIXTURE_STRETCH_FAULT=1: the round-trip self test "fails" (taa_copy=draw)
+    bool fixture_taa_filter_fault_ = false; // X3M_FIXTURE_TAA_FILTER_FAULT=1: the history filter query "refuses" at attach (fp16_filter)
     // X3M_FIXTURE_FADE_RECT=l,t,r,b (fixture seam only): every admitted fade
     // draw reports this rectangle as its bound-derived region, so the witness
     // sees a sub-viewport rectangle (and a deliberately wrong one) although the

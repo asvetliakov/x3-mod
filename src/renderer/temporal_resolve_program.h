@@ -43,22 +43,6 @@ inline constexpr std::uint32_t temporal_line_mask_depth_words[] = {
 inline constexpr std::uint32_t temporal_line_mask_depth_thin_words[] = {
 #include "temporal_line_mask_depth_thin_program_inc.h"
 };
-// S3 (docs/architecture/taa-high-resolution.md): the four resolve programs above reconstruct the history with the 5-tap
-// bilinear Catmull-Rom form; these keep the 16-tap point form of the earlier builds (X3M_HISTORY_TAPS16,
-// src/temporal/resolve*_taps16.hlsl; manifests verification/results/temporal-resolve*-taps16-program.json) for
-// --taa-history-taps 16 and for devices that cannot filter the FP16 / R32F histories.
-inline constexpr std::uint32_t temporal_resolve_taps16_words[] = {
-#include "temporal_resolve_taps16_program_inc.h"
-};
-inline constexpr std::uint32_t temporal_resolve_thin_taps16_words[] = {
-#include "temporal_resolve_thin_taps16_program_inc.h"
-};
-inline constexpr std::uint32_t temporal_resolve_age_taps16_words[] = {
-#include "temporal_resolve_age_taps16_program_inc.h"
-};
-inline constexpr std::uint32_t temporal_resolve_far_taps16_words[] = {
-#include "temporal_resolve_far_taps16_program_inc.h"
-};
 // A' (docs/architecture/taa-plan-lifted-slot-cap.md step 1, the only camera-gate path since Run 79 A) with the mask fold
 // (docs/architecture/taa-mask-fold.md): the camera-gate resolve with the region and closure holds, which computes the per-pixel
 // tests and composes the region itself and writes the depth history as RT2 (src/temporal/resolve_far_camera_hold.hlsl), and
@@ -105,13 +89,7 @@ inline constexpr const auto& temporal_resolve_far_program() noexcept { return de
 // (configure_thin_vote).
 inline constexpr const auto& temporal_line_mask_depth_program() noexcept { return detail::temporal_line_mask_depth_words; }
 inline constexpr const auto& temporal_line_mask_depth_thin_program() noexcept { return detail::temporal_line_mask_depth_thin_words; }
-// The 16-tap point twins TemporalPass creates beside the 5-tap programs (configure_history_taps).
-inline constexpr const auto& temporal_resolve_taps16_program() noexcept { return detail::temporal_resolve_taps16_words; }
-inline constexpr const auto& temporal_resolve_thin_taps16_program() noexcept { return detail::temporal_resolve_thin_taps16_words; }
-inline constexpr const auto& temporal_resolve_age_taps16_program() noexcept { return detail::temporal_resolve_age_taps16_words; }
-inline constexpr const auto& temporal_resolve_far_taps16_program() noexcept { return detail::temporal_resolve_far_taps16_words; }
-// The camera-gate resolve and box configure_far creates (optional: a refusal leaves no camera-gate path; the camera gate has
-// no 16-tap form).
+// The camera-gate resolve and box configure_far creates (optional: a refusal leaves no camera-gate path).
 inline constexpr const auto& temporal_resolve_far_camera_hold_program() noexcept { return detail::temporal_resolve_far_camera_hold_words; }
 inline constexpr const auto& temporal_thin_box_hold_program() noexcept { return detail::temporal_thin_box_hold_words; }
 // The half-resolution pair TemporalPass::configure_box_resolution(2) creates (S4; none in a session that never asks).

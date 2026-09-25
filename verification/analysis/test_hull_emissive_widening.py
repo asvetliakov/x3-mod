@@ -430,7 +430,7 @@ class LauncherAndProxyTests(unittest.TestCase):
                 code, output, error = launch(directory, *PREREQUISITES); self.assertEqual(code, 0, error)
                 self.assertEqual(json.loads(output)['env']['X3M_HULL_EMISSIVE_WIDENING'], '4,4')
             # The default never enables the route itself: without an active gain it resolves to off, not to an error.
-            for extra in ([], ['--hull-lightmap-gain', '1'], ['--linear-materials', '--hdr-tonemap']):
+            for extra in ([], ['--hull-lightmap-gain', '1']):
                 args = (PREREQUISITES + extra) if extra else ['--motion-output']
                 code, output, error = launch(directory, *args); self.assertEqual(code, 0, error)
                 self.assertNotIn('X3M_HULL_EMISSIVE_WIDENING', json.loads(output)['env'], extra)
@@ -443,7 +443,7 @@ class LauncherAndProxyTests(unittest.TestCase):
             for value in ('', '3,3,1', '1', '1,1', '0.5', '8.5', '3,0.5', '3,3.5', '3,0', '3,-1', 'a', '3,b', 'nan', '3,nan', 'inf', '3,inf'):
                 code, _, error = launch(directory, *PREREQUISITES, '--hull-emissive-widening', value)
                 self.assertEqual(code, 2, value); self.assertIn('--hull-emissive-widening', error)
-            for extra in (['--hull-lightmap-gain', '1'], ['--linear-materials', '--hdr-tonemap']):
+            for extra in (['--hull-lightmap-gain', '1'],):
                 code, _, error = launch(directory, *PREREQUISITES, *extra, '--hull-emissive-widening', '3')
                 self.assertEqual(code, 2, extra); self.assertIn('--hull-emissive-widening', error)
             code, _, error = launch(directory, '--motion-output', '--hull-emissive-widening', '3'); self.assertEqual(code, 2)

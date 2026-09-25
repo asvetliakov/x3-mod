@@ -23,7 +23,7 @@ struct Setup {
     // Null selects the unshaped law, which only the shader fixture's parity programs still draw. The look rows
     // must come from `resolved=false` constants: this twin samples bin centres and carries no pixel noise.
     const float (*look)[4] = nullptr;
-    unsigned far_bins = 40; // the look's far bins (FogDensityConfig::far_bins: 40 or 24); the unshaped law keeps 40
+    unsigned far_bins = 40; // the far bins of both laws (fog_far_bins; the 24-bin variant was removed on 2026-09-25)
     std::function<double(const double view_position[3])> visibility; // empty: 1
     mutable unsigned seam_xy_samples[kLevelCount]{}, lane_wrap_samples[kLevelCount]{}; // base node at storage 127
 };

@@ -7,7 +7,6 @@
 #include <d3d9.h>
 #include "fog_pass_math.h"
 #include "fog_look_math.h"
-#include "fog_shadow_grid.h"
 #include "fog_mote_math.h"
 #include "fog_volume_math.h"
 #include "fog_field_assets.h"
@@ -32,12 +31,8 @@ struct FogDensityConfig {
     float chroma[3]{1,1,1};     // family mean chroma
     unsigned upload_budget_bytes=0; // per prepare_density; 0 selects 8 tiles (1,065,024 B)
     FogLookTuning look{};       // the single look's tuning; read once at init by the caller
-    // X3M_FOG_SHADOW_PASS=1 (docs/architecture/fog-shadow-pass.md): the sun-visibility slice grid drawn before the
-    // march; march and repair read it instead of the in-march lookup. Programs and the RGBA8 grid target of the
-    // requested variant are created at prepare_density, never on a draw path; off keeps today's programs untouched.
-    bool shadow_pass=false;
     // X3M_FOG_DUST_MOTES (docs/architecture/fog-dust-motes.md): motes.count > 0 is the launch option; dust_motes is its
-    // toggle (Ctrl+Alt+F11), latched here like shadow_pass. The mote programs and the static DEFAULT VB/IB are created at
+    // toggle (Ctrl+Alt+F11), latched here. The mote programs and the static DEFAULT VB/IB are created at
     // prepare_density while it is on, never on a draw path; count 0 creates, queries and draws nothing.
     FogMoteTuning motes{};
     bool dust_motes=false;
@@ -45,19 +40,12 @@ struct FogDensityConfig {
     // X3M_FOG_HANDOVER_COLDFILL, launcher default on): the far readiness steps to 1 when the far need box is
     // resident, and the far level fills its need box first and goes up in one whole-atlas latch. Off: legacy.
     bool handover_step=false,handover_coldfill=false;
-    // X3M_FOG_FAR_BINS (docs/architecture/fog-gpu-cost.md, step B; launcher --fog-far-bins, default 40): the look's far
-    // march bins over [12000, cap], 40 (the accepted look) or 24 (one sample per 4096-unit far node). prepare_density
-    // refuses any other value; the march/repair pair of the requested variant is created there, never on a draw path.
-    // 24 falls back to 40 (FogDensityStatus::far_bins_refused) when the shadow pass was ever requested on this attachment
-    // (its grid programs have no 24-bin variant, so grid and toggled-off frames must agree), when look.sky_cap exceeds
-    // fog_far_bins_coarse_cap_max, or when its programs could not be built; the launcher refuses the first two as well.
-    unsigned far_bins=fog_far_bins_default;
     // X3M_FOG_MARCH_SCALE (docs/architecture/fog-gpu-cost.md, step C; launcher --fog-march-scale, default 4 since Run 77 C2):
     // the look's march spacing in full pixels, 4 (the default: a quarter-resolution march target, composite and repair reading
     // their samples 4 px apart) or 2 (the half-resolution march, the opt-out). prepare_density refuses any other value; the march/repair/composite of the
-    // requested (far_bins, march_scale) and the quarter target are created there, never on a draw path. 4 falls back to 2
-    // (FogDensityStatus::march_scale_refused) when the shadow pass was ever requested on this attachment (its grid programs
-    // exist at spacing 2 only), or when its programs or its target could not be built; the launcher refuses the first too.
+    // requested spacing and the quarter target are created there, never on a draw path. 4 falls back to 2
+    // (FogDensityStatus::march_scale_refused) when its programs or its target could not be built. The look marches 40 far
+    // bins (fog_far_bins; the 24-bin variant and the visibility-grid shadow pass were removed on 2026-09-25).
     unsigned march_scale=fog_march_scale_default;
 };
 struct FogDensityStatus {
@@ -65,17 +53,10 @@ struct FogDensityStatus {
     float ready_fine=0,ready_far=0;          // 90-frame ramps: lambda weight, density weight
     unsigned upload_bytes=0,upload_rects=0;  // last prepare_density
     std::uint64_t upload_bytes_total=0,upload_rects_total=0,nodes_generated=0,worker_busy_us=0,missed_locks=0;
-    // The visibility grid could not be built (program, target, extent) or its column cap is unusable: the stored fog
-    // keeps drawing with the in-march programs; sticky until detach. The proxy logs it once (fog_shadow_pass_refused).
-    const char* shadow_pass_refused=nullptr;
     // The mote stage could not be built or drawn (capability, program, buffer, a failed draw): the fog keeps drawing
     // without it; sticky until detach. The proxy logs it once (fog_dust_motes_refused).
     const char* motes_refused=nullptr;
-    // FogDensityConfig::far_bins 24 was asked but 40 draws: "shadow_pass" (sticky until detach), "cap" (column cap above
-    // fog_far_bins_coarse_cap_max) or "program" (the pair could not be built; the working pair keeps drawing, sticky).
-    // Null when the requested count draws. The proxy logs it once (fog_far_bins_refused).
-    const char* far_bins_refused=nullptr;
-    // FogDensityConfig::march_scale 4 was asked but 2 draws: "shadow_pass" (sticky until detach), "program" (the set could
+    // FogDensityConfig::march_scale 4 was asked but 2 draws: "program" (the set could
     // not be built; the working set keeps drawing, sticky) or "target" (the quarter target could not be created, sticky).
     // Null when the requested spacing draws. The proxy logs it once (fog_march_scale_refused).
     const char* march_scale_refused=nullptr;
@@ -87,27 +68,8 @@ struct FogDensityStatus {
 struct FogCascadeInput {
     IDirect3DTexture9* map=nullptr; float rows[12]{}; float bias=0; bool valid=false;
     std::uint64_t frame=~std::uint64_t(0);
-    // The visibility pass's penumbra: the map's world texel and its sun-space depth range in world units
-    // (0: unknown, the pass keeps its minimum kernel for that cascade).
-    float texel_world=0,depth_range=0;
 };
 constexpr unsigned fog_cascade_max=3;
-// The visibility grid's per-frame report (docs/architecture/fog-shadow-pass.md, "A/B toggle and log row"). execute
-// writes it only on a density frame that takes the grid variant (FogDensityConfig::shadow_pass after prepare_density),
-// so the pass-off path does no extra work; `frame` is the FogFrame::frame it describes (stale otherwise).
-struct FogGridReport {
-    std::uint64_t frame=~std::uint64_t(0);
-    bool drawn=false;                 // the visibility quad was drawn (FogResult::grid)
-    HRESULT bind=S_FALSE;             // the visibility stage's bind_target; S_FALSE: not attempted
-    const char* unshadowed="none";    // why the grid march read no grid: no_cascade, grid_column_cap, failed
-    unsigned cascades=0;              // bit i: cascade i admitted and read by the pass
-    float kernel[fog_cascade_max]{};  // range_world / texel_world per cascade (c36..c38 .z); 0: the fixed minimum kernel
-    float far_width=0,frame_term=0;   // c39.y (slice width past the near range, world units) and c41.w (strata/rotation)
-    unsigned calls=0;                 // device calls issued for the grid: visibility stage, march s4 filter and bind, repair bind
-    // Against the in-march path of the same frame (derived, exact on a completed frame): calls minus the march constant
-    // upload, the three march map binds and the repair map binds (min(admitted, 2)) that the grid variant replaces.
-    int net_calls=0;
-};
 // The mote stage's per-frame report (fog-dust-motes.md section 4), written by execute only on a density frame that
 // takes the stage (FogDensityConfig::dust_motes after prepare_density); `frame` is the FogFrame::frame it describes.
 struct FogMoteReport {
@@ -116,7 +78,7 @@ struct FogMoteReport {
     bool streak=false;                // previous basis valid: consecutive fog frame, |delta| <= R, rotation under 30 degrees
     unsigned count=0,calls=0;         // N; device calls issued by the stage
     float shift_px=0;                 // |camera delta| / R x (H/2 x m11): the perpendicular displacement at the wrap radius
-    const char* shadow="none";        // sun visibility the motes read: in_march, grid, none (no cascade)
+    const char* shadow="none";        // sun visibility the motes read: in_march, none (no cascade)
 };
 struct FogParams {
     // Already corrected exactly once for raster jitter and quad pixel centres.
@@ -157,7 +119,7 @@ struct FogFrame {
 };
 enum class FogStage : unsigned {
     None,Validate,Targets,Block,Capture,Normalize,Scene,March,Copy,SkyLevel,SkyReduce,Composite,EndScene,Restore,
-    Field,CloseScene,ReopenScene,RecoverScene,Repair,Visibility,Motes,Census
+    Field,CloseScene,ReopenScene,RecoverScene,Repair,Visibility,Motes,Census // Visibility: unused since the grid pass went (2026-09-25); values unchanged
 };
 struct FogResult {
     HRESULT operation=S_FALSE,restore=S_FALSE,scene_recovery=S_FALSE;
@@ -166,7 +128,6 @@ struct FogResult {
     bool scene_known=false,scene_open=false,scene_write_started=false;
     bool caller_state_restored=false,route_poisoned=false;
     bool sky_updated=false; unsigned cascades_bound=0; // actual current maps admitted
-    bool grid=false; // the visibility grid was drawn this frame (shadow pass on with a cascade bound)
     bool motes=false; // the dust motes were drawn this frame (after the repair)
     unsigned device_calls=0; // native methods + block Capture/Apply; excludes Releases/resource validation
     IDirect3DTexture9* lit=nullptr; // borrowed FP16 (S.rgb,T), invalidated by resize/Reset/detach
@@ -214,10 +175,6 @@ public:
     // False without a decoded field or for a profile neither table knows.
     bool field_family(float chroma[3],float* sigma) const noexcept;
     const FogDensityStatus& density_status() const noexcept { return density_status_; }
-    const FogGridReport& grid_report() const noexcept { return grid_report_; }
-    bool grid_refused() const noexcept { return grid_refused_; } // sticky until detach; the in-march programs draw
-    bool grid_variant() const noexcept { return density_config_.shadow_pass; } // the variant the last prepare_density latched
-    unsigned density_far_bins() const noexcept { return density_far_bins_; } // far bins of the created march/repair pair (0: none)
     unsigned density_march_scale() const noexcept { return density_march_scale_; } // march spacing of the created programs (0: none)
     const FogMoteReport& mote_report() const noexcept { return mote_report_; }
     bool motes_refused() const noexcept { return motes_refused_; } // sticky until detach; the fog draws without motes
@@ -251,8 +208,7 @@ public:
     }
     bool density_ready(UINT w,UINT h) const noexcept {
         return caps_.enabled&&!reset_pending_&&density_&&density_march_&&density_composite_&&density_repair_&&density_atlas_surface_[0]&&density_atlas_surface_[1]&&
-            block_&&w&&h&&w==width_&&h==height_&&lit_surface_&&scratch_surface_&&(density_march_scale_!=fog_march_scale_quarter||quarter_surface_)&&
-            (!density_config_.shadow_pass||(density_visibility_&&density_march_grid_&&density_repair_grid_&&grid_surface_));
+            block_&&w&&h&&w==width_&&h==height_&&lit_surface_&&scratch_surface_&&(density_march_scale_!=fog_march_scale_quarter||quarter_surface_);
     }
     fog_field::Profile field_profile() const noexcept { return active_profile_; }
     std::uint32_t field_recipe() const noexcept { return active_profile_==fog_field::Profile::None?0:field_recipe_; }
@@ -267,7 +223,6 @@ public:
     IDirect3DSurface9* fixture_st() const noexcept { return density_march_scale_==fog_march_scale_quarter&&quarter_surface_?quarter_surface_:lit_surface_; }
     std::size_t fixture_cpu_bytes() const noexcept { return atlas_bytes_.size()*sizeof(std::uint16_t); }
     IDirect3DTexture9* fixture_density_atlas(unsigned level) const noexcept { return density_atlas_[level]; }
-    IDirect3DTexture9* fixture_grid() const noexcept { return grid_; }
     IDirect3DVertexBuffer9* fixture_mote_vertices() const noexcept { return mote_vb_; }
     const fog::DensityCache* fixture_density_cache() const noexcept { return density_; }
 #endif
@@ -279,7 +234,6 @@ private:
     HRESULT density_resources() noexcept;
     HRESULT density_uploads(unsigned budget) noexcept;
     void release_density_default() noexcept;
-    void release_grid() noexcept;
     void release_motes() noexcept;
     void release_quarter() noexcept;
     const char* mote_capabilities() noexcept;
@@ -309,30 +263,23 @@ private:
     fog::DensityCache* density_=nullptr;
     // The single look's programs (FOG_LOOK); created once, never on a draw path.
     IDirect3DPixelShader9 *density_march_=nullptr,*density_composite_=nullptr,*density_repair_=nullptr;
-    unsigned density_far_bins_=0; // FogDensityConfig::far_bins of the pair above (0: not created)
-    bool far_bins_shadow_clamp_=false; unsigned far_bins_unbuildable_=0; // sticky far-bin refusals until detach
     // The march spacing of the three programs above (FogDensityConfig::march_scale; 0: not created), its sticky refusals
     // (the reason of an unbuildable spacing: "program" or "target"), and the quarter-resolution march target, which exists
     // only while the quarter programs draw (sized from the targets, released with them and re-created at prepare_density).
-    unsigned density_march_scale_=0; bool march_scale_shadow_clamp_=false; unsigned march_scale_unbuildable_=0; const char* march_scale_unbuildable_reason_=nullptr;
+    unsigned density_march_scale_=0; unsigned march_scale_unbuildable_=0; const char* march_scale_unbuildable_reason_=nullptr;
     IDirect3DTexture9* quarter_=nullptr; IDirect3DSurface9* quarter_surface_=nullptr; UINT quarter_width_=0,quarter_height_=0;
     // --gpu-sync-timing only: the needs-repair census program at spacing density_needs_scale_ (fog-gpu-cost.md step C);
     // a failed creation (not a lost device) leaves the census without it until detach.
     IDirect3DPixelShader9* density_needs_=nullptr; unsigned density_needs_scale_=0; bool needs_refused_=false;
     IDirect3DTexture9 *density_staging_[2]{},*density_atlas_[2]{};
     IDirect3DSurface9 *density_staging_surface_[2]{},*density_atlas_surface_[2]{};
-    // The visibility grid (FogDensityConfig::shadow_pass): its pass and reader programs, created once with the
-    // look programs, and the RGBA8 4x4-tile target, sized from the current targets and released with them.
-    IDirect3DPixelShader9 *density_visibility_=nullptr,*density_march_grid_=nullptr,*density_repair_grid_=nullptr;
-    IDirect3DTexture9* grid_=nullptr; IDirect3DSurface9* grid_surface_=nullptr; UINT grid_width_=0,grid_height_=0;
     FogDensityConfig density_config_{}; FogDensityStatus density_status_{};
-    FogGridReport grid_report_{};
-    unsigned ps30_slots_=0; bool density_refused_=false,prefill_refused_=false,grid_refused_=false;
-    // Dust motes (FogDensityConfig::motes): one vs_3_0 program, its declaration, the pixel program in the in-march and
-    // grid variants (created once, surviving Reset) and the static DEFAULT VB/IB (released with the targets, re-created
-    // by the next prepare_density). The previous drawn fog frame's basis feeds the streak; Reset and any gap drop it.
+    unsigned ps30_slots_=0; bool density_refused_=false,prefill_refused_=false;
+    // Dust motes (FogDensityConfig::motes): one vs_3_0 program, its declaration, the pixel program (created once,
+    // surviving Reset) and the static DEFAULT VB/IB (released with the targets, re-created by the next prepare_density).
+    // The previous drawn fog frame's basis feeds the streak; Reset and any gap drop it.
     IDirect3DVertexShader9* mote_vs_=nullptr; IDirect3DVertexDeclaration9* mote_declaration_=nullptr;
-    IDirect3DPixelShader9 *mote_ps_=nullptr,*mote_ps_grid_=nullptr;
+    IDirect3DPixelShader9 *mote_ps_=nullptr;
     IDirect3DVertexBuffer9* mote_vb_=nullptr; IDirect3DIndexBuffer9* mote_ib_=nullptr;
     unsigned mote_built_count_=0; std::uint32_t mote_built_seed_=0;
     bool mote_caps_=false,motes_refused_=false; DWORD mote_max_index_=0,mote_max_primitives_=0; D3DFORMAT adapter_format_=D3DFMT_UNKNOWN;

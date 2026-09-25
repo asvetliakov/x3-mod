@@ -94,39 +94,12 @@ class ComparisonHotkeys(unittest.TestCase):
         self.assertEqual(replay.count('us=%.1f shadow_toggle=%u'), 1)
         self.assertEqual(replay.count('us=%.1f shadow_toggle=%u%s far_replayed='), 1)
 
-    def test_fog_shadow_pass_key_and_frame_boundary(self):
-        """Ctrl+Shift+F11 (comparison-hotkeys.md, "Fog shadow pass"): polled
-        only when --fog-shadow-pass on armed the pass at launch; the toggle
-        flips the proxy's copy of the variant, which FogPass latches at the
-        next prepare_density, and logs one fog_shadow_pass_toggle row."""
+    def test_fog_shadow_pass_key_is_removed(self):
+        """Ctrl+Shift+F11 (the fog shadow-pass A/B) went with --fog-shadow-pass on 2026-09-25: no key field, no poll, no toggle."""
         capture = (ROOT / 'src/proxy/capture.cpp').read_text()
-        controls = (ROOT / 'src/proxy/comparison_controls.h').read_text()
-        header = (ROOT / 'src/proxy/motion_output.h').read_text()
-        fragment = (ROOT / 'src/proxy/motion_output_fog_inc.h').read_text()
-        self.assertIn('bool fog_shadow_pass = false;', controls)
-        self.assertIn('result.fog_shadow_pass = keys.fog_shadow_pass && !fog_shadow_pass_down_;', controls)
-        self.assertIn('fog_shadow_pass_down_ = keys.fog_shadow_pass;', controls)
-        polling = extract_function(capture, 'void comparison_begin_frame(')
-        # F11 is read once, only with the shadow pass or the dust motes launched; each option takes its own raw key.
-        self.assertIn('const bool f11=(volumetric_fog_shadow_pass || volumetric_fog_motes.count) && (GetAsyncKeyState(VK_F11)&0x8000)!=0;', polling)
-        self.assertIn('keys.fog_shadow_pass=volumetric_fog_shadow_pass && f11;', polling)
+        for path in ('src/proxy/comparison_controls.h', 'src/proxy/capture.cpp', 'src/proxy/motion_output.h', 'src/proxy/motion_output_fog_inc.h'):
+            self.assertNotIn('fog_shadow_pass', (ROOT / path).read_text(), path)
         self.assertEqual(capture.count('GetAsyncKeyState(VK_F11)'), 1, 'one owner per function key')
-        self.assertIn('if(action.fog_shadow_pass)ctx.motion_output.volumetric_fog_shadow_pass_toggle();', polling)
-        # The pass implies the fog option, so the sampler's early return still covers it.
-        self.assertIn('volumetric_fog_shadow_pass=volumetric_fog_range_stored &&', capture)
-        self.assertIn('volumetric_fog_range_stored=volumetric_fog_requested &&', capture)
-        # The action runs at the frame boundary (the comparison sampler after Present), before the next owner latch.
-        present = extract_function(capture, 'HRESULT WINAPI present(')
-        self.assertLess(present.index('const HRESULT hr=fn('), present.index('comparison_begin_frame(ctx)'))
-        self.assertIn('void configure_volumetric_fog_shadow_pass(bool on) noexcept { fog_shadow_pass_launch_ = on; fog_density_config_.shadow_pass = on; }', header)
-        toggle = extract_function(fragment, 'int MotionOutput::volumetric_fog_shadow_pass_toggle(')
-        self.assertLess(toggle.index('if (!fog_shadow_pass_launch_) return -1;'), toggle.index('fog_density_config_.shadow_pass = !fog_density_config_.shadow_pass;'))
-        self.assertIn('fog_shadow_pass_toggle device=%llu frame=%llu enabled=%u refused=%s key=ctrl_shift_f11', toggle)
-        # Off never releases the grid: the toggle touches no FogPass resource and no device.
-        code = '\n'.join(line.split('//')[0] for line in toggle.splitlines())
-        for forbidden in ('release', 'detach', 'fog_->prepare', 'native<', 'invalidate'):
-            self.assertNotIn(forbidden, code)
-        self.assertIn('x3m_fog_shadow_pass_fixture_toggle', capture)
 
     def test_fog_dust_motes_key_and_frame_boundary(self):
         """Ctrl+Alt+F11 with Shift up (comparison-hotkeys.md, "Fog dust motes"): polled whenever the motes are on (by default under the stored range since 2026-09-23, or with --fog-dust-motes), on
@@ -140,7 +113,7 @@ class ComparisonHotkeys(unittest.TestCase):
         self.assertIn('result.fog_dust_motes = keys.control && keys.alt && !keys.shift && keys.fog_dust_motes && !fog_dust_motes_down_;', controls)
         self.assertIn('fog_dust_motes_down_ = keys.fog_dust_motes;', controls)
         polling = extract_function(capture, 'void comparison_begin_frame(')
-        self.assertIn('keys.fog_dust_motes=volumetric_fog_motes.count && f11;', polling)
+        self.assertIn('keys.fog_dust_motes=volumetric_fog_motes.count && (GetAsyncKeyState(VK_F11)&0x8000)!=0;', polling)
         self.assertIn('if(action.fog_dust_motes)ctx.motion_output.volumetric_fog_dust_motes_toggle();', polling)
         # The motes imply the stored range and so the fog option: the sampler's early return and the Alt poll cover them.
         # Parsed only past the overlong and stored-range refusals; absent under the stored range the default 1300,3,128

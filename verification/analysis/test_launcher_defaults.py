@@ -19,10 +19,11 @@ from pathlib import Path
 from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
+# The Run 84 A stand command without --loading-intervals, which was removed on 2026-09-25 (its recorder with it).
 STAND = ('--direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa '
          '--telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 '
          '--crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --screen-emission-additive 2 '
-         '--screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --sun-shadow-lane '
+         '--screen-emission-additive-alpha 0 --emission-source-gain 2 --sun-shadow-lane '
          '--shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay '
          '--shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance '
          '--shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 '
@@ -37,12 +38,10 @@ EXPECTED_EMPTY = {
     'X3M_CHASE_DISTANCE_SCALE': '1.05', 'X3M_CHASE_FOV_COMPENSATE': '1', 'X3M_CHASE_HUD_ANCHOR': 'forward',
     'X3M_CHASE_OFFSET_Y': '0.5', 'X3M_CHASE_PITCH_DOWN_DEG': '0.5', 'X3M_CHASE_SCENE_FIX': '0',
     'X3M_CHASE_VIEW_RESTORE': '1', 'X3M_COLLIDE_BOX_CULL': '1', 'X3M_COLLIDE_MEMO': '1', 'X3M_COLLIDE_SAT_SSE2': '1',
-    'X3M_CRYPT_CACHE': '1', 'X3M_CULL_SMALL_PARTS_PROJECTILES': 'on', 'X3M_CULL_SMALL_PARTS_PX': '4.0000',
-    'X3M_CULL_SMALL_PARTS_SCOPE': 'all', 'X3M_DAT_HANDLES': '1', 'X3M_DEPTH_COPY': '0', 'X3M_EMISSION_GAIN': '1.0',
-    'X3M_EMISSION_SOURCE_GAIN': '2.0', 'X3M_FADE_RT2_OWNER': 'on', 'X3M_FADE_RT2_OWNER_DEFAULT': '1',
-    'X3M_FINITE_POSITIONS': '0', 'X3M_FOG_DOCKED': '1', 'X3M_FOG_DUST_MOTES': '1300,3,128', 'X3M_FOG_FAR_BINS': '40',
+    'X3M_CRYPT_CACHE': '1', 'X3M_CULL_SMALL_PARTS_PROJECTILES': 'on', 'X3M_CULL_SMALL_PARTS_PX': '4.0000', 'X3M_DAT_HANDLES': '1',
+    'X3M_EMISSION_SOURCE_GAIN': '2.0', 'X3M_FADE_RT2_OWNER': 'on', 'X3M_FADE_RT2_OWNER_DEFAULT': '1', 'X3M_FOG_DOCKED': '1', 'X3M_FOG_DUST_MOTES': '1300,3,128',
     'X3M_FOG_HANDOVER_COLDFILL': '1', 'X3M_FOG_HANDOVER_PREFILL': '1', 'X3M_FOG_HANDOVER_STEP': '1',
-    'X3M_FOG_MARCH_SCALE': '4', 'X3M_FOG_MOTES_MAX_PX': '8', 'X3M_FOG_SHADOW_PASS': '0', 'X3M_FOV': '90',
+    'X3M_FOG_MARCH_SCALE': '4', 'X3M_FOG_MOTES_MAX_PX': '8', 'X3M_FOV': '90',
     'X3M_FPS_OVERLAY': '0', 'X3M_FRAME_END_STRIDE': '300', 'X3M_FRAME_PHASES': '0', 'X3M_FRAME_TIMING': '0',
     'X3M_FRAME_TIMING_STATE_STAMPS': '0', 'X3M_GAME_PHASES': '0', 'X3M_GAME_PHASE_THRESHOLD_MS': '20',
     'X3M_GPU_SYNC_TIMING': '0', 'X3M_GZ_BUFFER': '1', 'X3M_GZ_BUFFER_KB': '256', 'X3M_HDR': '1', 'X3M_HDR_BLOOM': '1',
@@ -50,20 +49,15 @@ EXPECTED_EMPTY = {
     'X3M_HDR_EV_DEADBAND': '0.25', 'X3M_HDR_EV_MANUAL': '', 'X3M_HDR_EV_MAX': '1.3', 'X3M_HDR_EV_MIN': '-3.0',
     'X3M_HDR_EXPOSURE': 'auto', 'X3M_HDR_KEY_PULL': '0.25', 'X3M_HDR_LOOK': 'none', 'X3M_HDR_METER_BG': '0.001953125',
     'X3M_HDR_METER_EDGE_WEIGHT': '0.35', 'X3M_HDR_TONEMAP': 'agx', 'X3M_HDR_WHITE_TARGET': '0.9',
-    'X3M_HULL_EMISSION_GAIN': '2.0', 'X3M_HULL_EMISSIVE_WIDENING': '4,4', 'X3M_HULL_LIGHTMAP_GAIN': '4.0',
-    'X3M_LIGHTMAP_EMISSIVE_GAIN': '1.0', 'X3M_LIGHT_MAP_FAR_FADE': '80,220,1', 'X3M_LIGHT_PHASES': '0',
-    'X3M_LINEAR_DISTANCE_FADE': '0', 'X3M_LINEAR_EMISSIONS': '0', 'X3M_LINEAR_MATERIALS': '0', 'X3M_LOADING_INTERVALS': '0',
+    'X3M_HULL_EMISSION_GAIN': '2.0', 'X3M_HULL_EMISSIVE_WIDENING': '4,4', 'X3M_HULL_LIGHTMAP_GAIN': '4.0', 'X3M_LIGHT_MAP_FAR_FADE': '80,220,1', 'X3M_LIGHT_PHASES': '0',
     'X3M_LOADING_PROBES': '0', 'X3M_LOD_OCCLUSION': 'all', 'X3M_LOD_OCCLUSION_DEFAULT': '1', 'X3M_LOOP_PHASES': '0',
-    'X3M_MATERIAL_DIRECT_GAIN': '1.0', 'X3M_MATERIAL_EMISSIVE_GAIN': '1.0', 'X3M_MATERIAL_FILL': '0.0',
     'X3M_MEDIA_CUE_CACHE': '1', 'X3M_MEDIA_CUE_RETRY_S': '30', 'X3M_MEDIA_CUE_TRACE': '0', 'X3M_MESH_ADJACENCY': 'fast',
-    'X3M_MESH_ADJACENCY_DUMP': '0', 'X3M_MESH_CACHE': '0', 'X3M_MOTION_CAPTURE': '0', 'X3M_MOTION_CUT_MEDIAN_PX': '1e30',
+    'X3M_MESH_ADJACENCY_DUMP': '0', 'X3M_MOTION_CUT_MEDIAN_PX': '1e30',
     'X3M_MOTION_CUT_MISSING': '1', 'X3M_MOTION_JITTER': '1', 'X3M_MOTION_OUTPUT': '1', 'X3M_MOTION_RT_MODE': 'lazy',
     'X3M_MUSIC_KEEP': '1', 'X3M_OBJECT_LIFETIME': '1', 'X3M_OBJECT_TRACE': '1', 'X3M_ORIGINAL_FILL': '0.01',
     'X3M_ORIGINAL_FILL_DEFAULT': '1', 'X3M_OWNERSHIP': '1', 'X3M_PASS_PHASES': '0', 'X3M_PAUSE_KEY_ONLY': '1',
-    'X3M_PROFILE': '0', 'X3M_PROFILE_INTERVAL_US': '2000', 'X3M_RESIDUAL_PHASES': '0', 'X3M_RESOURCE_READ': 'fast',
-    'X3M_SCENE_DEPTH_CAPTURE': '0', 'X3M_SCENE_HOOK': '1', 'X3M_SCREEN_EMISSION': '0',
-    'X3M_SCREEN_EMISSION_ADDITIVE': '2.0', 'X3M_SCREEN_EMISSION_ADDITIVE_ALPHA': '0.0', 'X3M_SCREEN_EMISSION_BOUND': '0',
-    'X3M_SCREEN_EMISSION_GAIN': '1.0', 'X3M_SCREEN_EMISSION_TIMING': '0', 'X3M_SECTOR_BACKGROUND': '0',
+    'X3M_PROFILE': '0', 'X3M_PROFILE_INTERVAL_US': '2000', 'X3M_RESIDUAL_PHASES': '0', 'X3M_RESOURCE_READ': 'fast', 'X3M_SCENE_HOOK': '1',
+    'X3M_SCREEN_EMISSION_ADDITIVE': '2.0', 'X3M_SCREEN_EMISSION_ADDITIVE_ALPHA': '0.0', 'X3M_SECTOR_BACKGROUND': '0',
     'X3M_SHADOW_ALPHA_CASTERS': '1', 'X3M_SHADOW_CASCADES': '250.0,1500.0,7500.0,37500.0,150000.0',
     'X3M_SHADOW_CASCADE_ADAPTIVE_C0': '1.5', 'X3M_SHADOW_CASCADE_DROP_ORDER': 'importance',
     'X3M_SHADOW_CASCADE_MIN_FOOTPRINT': '8.0', 'X3M_SHADOW_CASCADE_RECORDS': '1024,1024,2048,4096,4096',
@@ -77,8 +71,7 @@ EXPECTED_EMPTY = {
     'X3M_TAA_FAR_GATE': 'camera', 'X3M_TAA_FAR_GATE_DEFAULT': '1', 'X3M_TAA_FAR_STABILISER': '0.985,0,60,68,0.03,0.25',
     'X3M_TAA_MIP_BIAS': '-0.5', 'X3M_TAA_MOTION_WEIGHT': '0.7,2,8', 'X3M_TAA_SHARPEN': '0.75',
     'X3M_TAA_SKY_HISTORY': 'strict', 'X3M_TAA_SKY_HISTORY_EXIT_PX': '0.25', 'X3M_TAA_THIN_REGION': '0.97,1',
-    'X3M_TAA_THIN_REGION_EMISSIVE': '1', 'X3M_TAA_THIN_REGION_GATE': 'camera', 'X3M_TAA_THIN_REGION_SOURCE': 'vote',
-    'X3M_TAA_THIN_REGION_SOURCE_DEFAULT': '1', 'X3M_TAA_THIN_VOTE': 'on', 'X3M_TAA_THIN_VOTE_DEFAULT': '1',
+    'X3M_TAA_THIN_REGION_EMISSIVE': '1', 'X3M_TAA_THIN_VOTE': 'on', 'X3M_TAA_THIN_VOTE_DEFAULT': '1',
     'X3M_TAA_UNMATCHED_STATIC': 'node', 'X3M_TELEMETRY': '0', 'X3M_TELEMETRY_DRAW': '0', 'X3M_TERRAN_STATION_LOD': 'size',
     'X3M_VOICE_DMO_FALLBACK': '1', 'X3M_VOLUMETRIC_FOG': '1', 'X3M_VOLUMETRIC_FOG_CARDS': 'replace',
     'X3M_VOLUMETRIC_FOG_EVERYWHERE': '0', 'X3M_VOLUMETRIC_FOG_RANGE': 'stored', 'X3M_VOLUMETRIC_FOG_STRENGTH': '0.02',
@@ -87,7 +80,7 @@ EXPECTED_EMPTY = {
 STAND_TELEMETRY = {
     'X3M_CAMERA_LOG': '1',
     'X3M_CULL_CENSUS': '1', 'X3M_FPS_OVERLAY': '1', 'X3M_FRAME_END_STRIDE': '1', 'X3M_FRAME_PHASES': '1',
-    'X3M_FRAME_TIMING': '1', 'X3M_LOADING_INTERVALS': '1', 'X3M_MOTION_FRAME_LOG': '1', 'X3M_OBJECT_BOUNDS_LOG': '1',
+    'X3M_FRAME_TIMING': '1', 'X3M_MOTION_FRAME_LOG': '1', 'X3M_OBJECT_BOUNDS_LOG': '1',
     'X3M_SHADOW_RETENTION_CENSUS': '1', 'X3M_TELEMETRY': '1', 'X3M_VOLUMETRIC_FOG_TIMING': '1',
 }
 # The one functional difference of the old stand command: it passes the Run 84 A map sizes explicitly, while the
@@ -233,22 +226,41 @@ class LauncherDefaults(unittest.TestCase):
     def test_taa_k_and_sentinel_options_removed(self):
         # --taa-k / X3M_TAA_K and --taa-sentinel / X3M_TAA_SENTINEL were removed on 2026-09-25
         # (user decisions; docs/architecture/temporal-integration.md, "Derivation of k" and
-        # "Policy selection per frame"): the options are refused (--taa-k as unknown, --taa-sentinel by a stub) and an inherited
-        # value of the variables is dropped, never forwarded (k derived only, policy always auto).
+        # "Policy selection per frame"): the options are unknown and an inherited value of the variables is dropped,
+        # never forwarded (k derived only, policy always auto). The --taa-sentinel refusal stub went with the
+        # --taa-sentinel-stabiliser stub it guarded against abbreviation (both plain unknown options since 2026-09-25).
         for value in ('1', '0'):
             code, _, error = self.launch('--taa-k', value)
             self.assertEqual(code, 2, value); self.assertIn('unrecognized arguments', error)
-        # --taa-sentinel is a refusal stub (it would otherwise abbreviate --taa-sentinel-stabiliser).
-        for args in (('--taa-sentinel', '1'), ('--taa-sentinel', '2'), ('--taa-sentinel', 'auto'), ('--taa-sentinel',)):
+        for args in (('--taa-sentinel', '1'), ('--taa-sentinel', 'auto'), ('--taa-sentinel',), ('--taa-sentinel-stabiliser', '1')):
             code, _, error = self.launch(*args)
-            self.assertEqual(code, 2, args); self.assertIn('--taa-sentinel was removed on 2026-09-25', error)
+            self.assertEqual(code, 2, args); self.assertIn('unrecognized arguments', error)
         for vanilla in (False, True):
             code, data, error = self.launch(vanilla=vanilla, inherited={'X3M_TAA_K': '0', 'X3M_TAA_SENTINEL': '1'})
             self.assertEqual(code, 0, error)
             self.assertNotIn('X3M_TAA_K', data['env']); self.assertNotIn('X3M_TAA_SENTINEL', data['env'])
-        # The stabiliser refusal stub is unaffected.
-        code, _, error = self.launch('--taa-sentinel-stabiliser', '1')
-        self.assertEqual(code, 2); self.assertIn('--taa-sentinel-stabiliser was removed', error)
+
+    def test_removed_options_are_unknown_and_their_variables_dropped(self):
+        # docs/verification/launcher-options-inventory.md, "Removed 2026-09-25": every removed option is a plain unknown
+        # argument (exit 2), and none of their variables survives from an inherited shell environment.
+        for args in (('--taa-current-filter',), ('--taa-line-filter',), ('--taa-thin-clip',), ('--taa-adaptive-weight',), ('--taa-region-hold',),
+                     ('--volumetric-fog-look', 'L1'), ('--lod-scale', '2'), ('--linear-materials',), ('--material-fill', '0.05'),
+                     ('--material-direct-gain', '1'), ('--material-emissive-gain', '1'), ('--lightmap-emissive-gain', '1'),
+                     ('--linear-distance-fade',), ('--no-linear-distance-fade',), ('--linear-emissions',), ('--emission-gain', '1'),
+                     ('--screen-emission',), ('--screen-emission-gain', '2'), ('--screen-emission-timing',), ('--fade-witness',), ('--shimmer-trace',),
+                     ('--hull-emitters',), ('--hull-emission-gain', '2'), ('--fog-shadow-pass', 'on'), ('--fog-far-bins', '24'),
+                     ('--taa-history-taps', '16'), ('--taa-thin-region-gate', 'screen'), ('--taa-thin-region-source', 'both'),
+                     ('--mesh-cache',), ('--depth-copy',), ('--scene-depth-capture',), ('--motion-capture',), ('--finite-positions',),
+                     ('--loading-intervals',), ('--audio-sites',), ('--profile-raw',), ('--cull-small-parts-scope', 'bodies')):
+            with self.subTest(args=args):
+                code, _, error = self.launch(*args)
+                self.assertEqual(code, 2, args)
+                self.assertTrue('unrecognized arguments' in error or 'ambiguous option' in error, error[-200:])
+        inherited = {name: '1' for name in self.module.REMOVED_VARIABLES}
+        for vanilla in (False, True):
+            code, data, error = self.launch(vanilla=vanilla, inherited=inherited)
+            self.assertEqual(code, 0, error)
+            self.assertFalse(set(self.module.REMOVED_VARIABLES) & set(data['env']), vanilla)
 
 
 if __name__ == '__main__':

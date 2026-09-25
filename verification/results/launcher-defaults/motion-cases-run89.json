@@ -1,0 +1,937 @@
+{
+"cases": {
+"production-admission-off": {
+"checks": 43,
+"exit": 0
+},
+"production-admission-on": {
+"checks": 43,
+"exit": 0
+},
+"production-burst-lazy": {
+"checks": 41,
+"exit": 0
+},
+"production-burst-lazy-mask": {
+"checks": 68,
+"exit": 0
+},
+"production-burst-perdraw": {
+"checks": 41,
+"exit": 0
+},
+"production-burst-perdraw-mask": {
+"checks": 68,
+"exit": 0
+},
+"production-depth-off": {
+"checks": 43,
+"exit": 0
+},
+"production-depth-on": {
+"checks": 43,
+"exit": 0
+},
+"production-hdr-on": {
+"checks": 43,
+"exit": 0
+},
+"production-hdr-ramp-none": {
+"checks": 11,
+"exit": 0
+},
+"production-jitter-on": {
+"checks": 43,
+"exit": 0
+},
+"production-lazy-on": {
+"checks": 43,
+"exit": 0
+},
+"production-mipbias-off": {
+"checks": 165,
+"exit": 0
+},
+"production-mipbias-on": {
+"checks": 165,
+"exit": 0
+},
+"production-mipbias-on1": {
+"checks": 165,
+"exit": 0
+},
+"production-mipbias-zero": {
+"checks": 165,
+"exit": 0
+},
+"production-off": {
+"checks": 43,
+"exit": 0
+},
+"production-on": {
+"checks": 43,
+"exit": 0
+},
+"production-ownership-hdr-on": {
+"checks": 43,
+"exit": 0
+},
+"production-ownership-off": {
+"checks": 43,
+"exit": 0
+},
+"production-ownership-on": {
+"checks": 43,
+"exit": 0
+},
+"production-ownership-taa-on": {
+"checks": 83,
+"exit": 0
+},
+"production-shadow-off": {
+"checks": 43,
+"exit": 0
+},
+"production-taa-hdr-on": {
+"checks": 83,
+"exit": 0
+},
+"production-taa-hdr-tonemap-on": {
+"checks": 59,
+"exit": 0
+},
+"production-taa-mipbias-on": {
+"checks": 95,
+"exit": 0
+},
+"production-taa-on": {
+"checks": 83,
+"exit": 0
+},
+"production-zonly": {
+"checks": 73,
+"exit": 0
+},
+"seam-admission-off": {
+"checks": 43,
+"exit": 0
+},
+"seam-admission-on": {
+"checks": 103,
+"exit": 0
+},
+"seam-burst-lazy": {
+"checks": 86,
+"exit": 0
+},
+"seam-burst-lazy-mask": {
+"checks": 113,
+"exit": 0
+},
+"seam-burst-lazy-mask-shadow": {
+"checks": 113,
+"exit": 0
+},
+"seam-burst-lazy-shadow-off": {
+"checks": 86,
+"exit": 0
+},
+"seam-burst-perdraw": {
+"checks": 86,
+"exit": 0
+},
+"seam-burst-perdraw-mask": {
+"checks": 113,
+"exit": 0
+},
+"seam-burst-perdraw-shadow-off": {
+"checks": 86,
+"exit": 0
+},
+"seam-depth-off": {
+"checks": 43,
+"exit": 0
+},
+"seam-depth-on": {
+"checks": 103,
+"exit": 0
+},
+"seam-hdr-caps-absent": {
+"checks": 103,
+"exit": 0
+},
+"seam-hdr-exposure": {
+"checks": 245,
+"exit": 0
+},
+"seam-hdr-exposure-offset": {
+"checks": 245,
+"exit": 0
+},
+"seam-hdr-fault": {
+"checks": 119,
+"exit": 0
+},
+"seam-hdr-meter-selftest-unlock": {
+"checks": 23,
+"exit": 0
+},
+"seam-hdr-on": {
+"checks": 103,
+"exit": 0
+},
+"seam-hdr-ramp-clamp4": {
+"checks": 11,
+"exit": 0
+},
+"seam-hdr-ramp-decode-none": {
+"checks": 11,
+"exit": 0
+},
+"seam-hdr-ramp-decode-srgb": {
+"checks": 11,
+"exit": 0
+},
+"seam-hdr-ramp-dither": {
+"checks": 11,
+"exit": 0
+},
+"seam-hdr-ramp-ev-minus2": {
+"checks": 11,
+"exit": 0
+},
+"seam-hdr-ramp-ev-plus1-punchy": {
+"checks": 11,
+"exit": 0
+},
+"seam-hdr-ramp-golden": {
+"checks": 11,
+"exit": 0
+},
+"seam-hdr-ramp-identity": {
+"checks": 11,
+"exit": 0
+},
+"seam-hdr-ramp-identity-dither": {
+"checks": 11,
+"exit": 0
+},
+"seam-hdr-ramp-none": {
+"checks": 11,
+"exit": 0
+},
+"seam-hdr-ramp-punchy": {
+"checks": 11,
+"exit": 0
+},
+"seam-hdr-selftest-absent": {
+"checks": 103,
+"exit": 0
+},
+"seam-hdr-tonemap-fault": {
+"checks": 59,
+"exit": 0
+},
+"seam-hdr-tonemap-shader-absent": {
+"checks": 23,
+"exit": 0
+},
+"seam-hdr-values": {
+"checks": 26,
+"exit": 0
+},
+"seam-jitter-mipbias-zero": {
+"checks": 103,
+"exit": 0
+},
+"seam-jitter-on": {
+"checks": 103,
+"exit": 0
+},
+"seam-lazy-on": {
+"checks": 103,
+"exit": 0
+},
+"seam-lazy-shadow-off": {
+"checks": 103,
+"exit": 0
+},
+"seam-lightmap-far-fade-floor2": {
+"checks": 56,
+"exit": 0
+},
+"seam-lightmap-far-fade-off": {
+"checks": 56,
+"exit": 0
+},
+"seam-lightmap-far-fade-on": {
+"checks": 56,
+"exit": 0
+},
+"seam-lightmap-widen-k2": {
+"checks": 498,
+"exit": 0
+},
+"seam-lightmap-widen-k3": {
+"checks": 503,
+"exit": 0
+},
+"seam-lightmap-widen-k3-aniso": {
+"checks": 503,
+"exit": 0
+},
+"seam-lightmap-widen-k3b1": {
+"checks": 503,
+"exit": 0
+},
+"seam-lightmap-widen-k4": {
+"checks": 508,
+"exit": 0
+},
+"seam-lightmap-widen-off": {
+"checks": 472,
+"exit": 0
+},
+"seam-lightmap-widen-programs": {
+"checks": 80,
+"exit": 0
+},
+"seam-mipbias-lazy-on": {
+"checks": 205,
+"exit": 0
+},
+"seam-mipbias-on": {
+"checks": 205,
+"exit": 0
+},
+"seam-msaa": {
+"checks": 5,
+"exit": 0
+},
+"seam-off": {
+"checks": 43,
+"exit": 0
+},
+"seam-on": {
+"checks": 103,
+"exit": 0
+},
+"seam-ownership-bolt-shape-decl": {
+"checks": 1,
+"exit": 0
+},
+"seam-ownership-bolt-shape-prims": {
+"checks": 1,
+"exit": 0
+},
+"seam-ownership-burst-lazy-mask": {
+"checks": 113,
+"exit": 0
+},
+"seam-ownership-hdr-exposure": {
+"checks": 245,
+"exit": 0
+},
+"seam-ownership-hdr-on": {
+"checks": 103,
+"exit": 0
+},
+"seam-ownership-lazy-on": {
+"checks": 103,
+"exit": 0
+},
+"seam-ownership-lightmap-far-fade-on": {
+"checks": 56,
+"exit": 0
+},
+"seam-ownership-off": {
+"checks": 43,
+"exit": 0
+},
+"seam-ownership-on": {
+"checks": 103,
+"exit": 0
+},
+"seam-ownership-shadow-alpha-route": {
+"checks": 66,
+"exit": 0
+},
+"seam-ownership-shadow-alpha-route-less": {
+"checks": 66,
+"exit": 0
+},
+"seam-ownership-shadow-pool-cycle-census": {
+"checks": 193,
+"exit": 0
+},
+"seam-ownership-shadow-pool-cycle-live": {
+"checks": 193,
+"exit": 0
+},
+"seam-ownership-shadow-pool-footprint-off": {
+"checks": 78,
+"exit": 0
+},
+"seam-ownership-shadow-pool-footprint-px24": {
+"checks": 78,
+"exit": 0
+},
+"seam-ownership-shadow-pool-footprint-px8": {
+"checks": 78,
+"exit": 0
+},
+"seam-ownership-shadow-pool-footprint-retained-off": {
+"checks": 166,
+"exit": 0
+},
+"seam-ownership-shadow-pool-footprint-retained-px8": {
+"checks": 166,
+"exit": 0
+},
+"seam-ownership-shadow-pool-hull": {
+"checks": 77,
+"exit": 0
+},
+"seam-ownership-shadow-pool-importance": {
+"checks": 99,
+"exit": 0
+},
+"seam-ownership-shadow-pool-jitter-live": {
+"checks": 192,
+"exit": 0
+},
+"seam-ownership-shadow-pool-jitter-off": {
+"checks": 143,
+"exit": 0
+},
+"seam-ownership-shadow-pool-records": {
+"checks": 53,
+"exit": 0
+},
+"seam-ownership-shadow-pool-static-census": {
+"checks": 182,
+"exit": 0
+},
+"seam-ownership-shadow-pool-static-live": {
+"checks": 182,
+"exit": 0
+},
+"seam-ownership-shadow-pool-static-off": {
+"checks": 165,
+"exit": 0
+},
+"seam-ownership-shadow-pool-static-strict": {
+"checks": 165,
+"exit": 0
+},
+"seam-ownership-shadow-replay-adaptive-big": {
+"checks": 333,
+"exit": 0
+},
+"seam-ownership-shadow-replay-adaptive-reuse": {
+"checks": 336,
+"exit": 0
+},
+"seam-ownership-shadow-replay-adaptive-small": {
+"checks": 333,
+"exit": 0
+},
+"seam-ownership-shadow-replay-adaptive-swap": {
+"checks": 336,
+"exit": 0
+},
+"seam-ownership-shadow-replay-cascades": {
+"checks": 278,
+"exit": 0
+},
+"seam-ownership-shadow-replay-cascades-alpha-on": {
+"checks": 283,
+"exit": 0
+},
+"seam-ownership-shadow-replay-cascades-casters-20": {
+"checks": 278,
+"exit": 0
+},
+"seam-ownership-shadow-replay-cascades-poll-agree": {
+"checks": 281,
+"exit": 0
+},
+"seam-ownership-shadow-replay-cascades-poll-disagree": {
+"checks": 281,
+"exit": 0
+},
+"seam-ownership-shadow-replay-cascades-poll-null": {
+"checks": 281,
+"exit": 0
+},
+"seam-ownership-shadow-replay-cascades-poll-refusals": {
+"checks": 281,
+"exit": 0
+},
+"seam-ownership-shadow-replay-cascades-toggle": {
+"checks": 283,
+"exit": 0
+},
+"seam-ownership-shadow-replay-casters-2": {
+"checks": 239,
+"exit": 0
+},
+"seam-ownership-shadow-replay-casters-20": {
+"checks": 239,
+"exit": 0
+},
+"seam-ownership-shadow-replay-casters-8": {
+"checks": 239,
+"exit": 0
+},
+"seam-ownership-shadow-replay-far-refused": {
+"checks": 239,
+"exit": 0
+},
+"seam-ownership-shadow-replay-ladder-corvette": {
+"checks": 373,
+"exit": 0
+},
+"seam-ownership-shadow-replay-ladder-corvette-static": {
+"checks": 373,
+"exit": 0
+},
+"seam-ownership-shadow-replay-ladder-destroyer": {
+"checks": 373,
+"exit": 0
+},
+"seam-ownership-shadow-replay-ladder-shrink": {
+"checks": 376,
+"exit": 0
+},
+"seam-ownership-shadow-replay-no-cascades": {
+"checks": 103,
+"exit": 0
+},
+"seam-ownership-shadow-replay-off": {
+"checks": 100,
+"exit": 0
+},
+"seam-ownership-shadow-replay-on": {
+"checks": 239,
+"exit": 0
+},
+"seam-ownership-shadow-replay-sun-programs": {
+"checks": 241,
+"exit": 0
+},
+"seam-ownership-shadow-replay-toggle-single": {
+"checks": 250,
+"exit": 0
+},
+"seam-ownership-shadow-replay-wide": {
+"checks": 239,
+"exit": 0
+},
+"seam-ownership-shadow-retention-census": {
+"checks": 12052,
+"exit": 0
+},
+"seam-ownership-shadow-retention-live": {
+"checks": 12055,
+"exit": 0
+},
+"seam-ownership-shadow-retention-live-poll": {
+"checks": 12202,
+"exit": 0
+},
+"seam-ownership-shadow-retention-off": {
+"checks": 8304,
+"exit": 0
+},
+"seam-ownership-taa-camera-candidates-on": {
+"checks": 216,
+"exit": 0
+},
+"seam-ownership-taa-hdr-tonemap-on": {
+"checks": 140,
+"exit": 0
+},
+"seam-ownership-taa-on": {
+"checks": 164,
+"exit": 0
+},
+"seam-ownership-taa-shadow-replay-off": {
+"checks": 123,
+"exit": 0
+},
+"seam-ownership-taa-shadow-replay-on": {
+"checks": 262,
+"exit": 0
+},
+"seam-shadow-off": {
+"checks": 103,
+"exit": 0
+},
+"seam-taa-camera-on": {
+"checks": 177,
+"exit": 0
+},
+"seam-taa-camera-sentinel1-on": {
+"checks": 176,
+"exit": 0
+},
+"seam-taa-camera-sentinel2-on": {
+"checks": 177,
+"exit": 0
+},
+"seam-taa-copy-draw": {
+"checks": 164,
+"exit": 0
+},
+"seam-taa-cutout-blended": {
+"checks": 49624,
+"exit": 0
+},
+"seam-taa-cutout-opaque": {
+"checks": 49612,
+"exit": 0
+},
+"seam-taa-cutout-opaque-get": {
+"checks": 49612,
+"exit": 0
+},
+"seam-taa-envmap": {
+"checks": 67,
+"exit": 0
+},
+"seam-taa-envmap-hdr": {
+"checks": 67,
+"exit": 0
+},
+"seam-taa-fade-route-behind": {
+"checks": 3461,
+"exit": 0
+},
+"seam-taa-fade-route-behind-owner": {
+"checks": 3558,
+"exit": 0
+},
+"seam-taa-fade-route-cutout-mip-nobias-owner": {
+"checks": 450,
+"exit": 0
+},
+"seam-taa-fade-route-cutout-mip-owner": {
+"checks": 462,
+"exit": 0
+},
+"seam-taa-fade-route-cutout-order-owner": {
+"checks": 450,
+"exit": 0
+},
+"seam-taa-fade-route-cutout-owner": {
+"checks": 450,
+"exit": 0
+},
+"seam-taa-fade-route-cutout-refused": {
+"checks": 449,
+"exit": 0
+},
+"seam-taa-fade-route-foreign": {
+"checks": 397,
+"exit": 0
+},
+"seam-taa-fade-route-foreign-owner": {
+"checks": 410,
+"exit": 0
+},
+"seam-taa-fade-route-hover": {
+"checks": 3536,
+"exit": 0
+},
+"seam-taa-fade-route-hover-age": {
+"checks": 3536,
+"exit": 0
+},
+"seam-taa-fade-route-hover-owner": {
+"checks": 3621,
+"exit": 0
+},
+"seam-taa-fade-route-hull": {
+"checks": 397,
+"exit": 0
+},
+"seam-taa-fade-route-hull-owner": {
+"checks": 5126,
+"exit": 0
+},
+"seam-taa-fade-route-masked": {
+"checks": 408,
+"exit": 0
+},
+"seam-taa-fade-route-original": {
+"checks": 3461,
+"exit": 0
+},
+"seam-taa-fade-route-original-age": {
+"checks": 3461,
+"exit": 0
+},
+"seam-taa-fade-route-original-owner": {
+"checks": 3558,
+"exit": 0
+},
+"seam-taa-fade-route-original-owner-age": {
+"checks": 3558,
+"exit": 0
+},
+"seam-taa-fade-route-overlay": {
+"checks": 5101,
+"exit": 0
+},
+"seam-taa-fade-route-overlay-lightmap": {
+"checks": 5101,
+"exit": 0
+},
+"seam-taa-fade-route-overlay-lightmap-far-fade": {
+"checks": 5101,
+"exit": 0
+},
+"seam-taa-fade-route-overlay-owner": {
+"checks": 5114,
+"exit": 0
+},
+"seam-taa-fade-route-routed": {
+"checks": 5100,
+"exit": 0
+},
+"seam-taa-fade-route-routed-owner": {
+"checks": 5185,
+"exit": 0
+},
+"seam-taa-fade-route-routed-owner-lane": {
+"checks": 5185,
+"exit": 0
+},
+"seam-taa-fade-route-routed-perdraw": {
+"checks": 5100,
+"exit": 0
+},
+"seam-taa-fade-route-routed-perdraw-owner": {
+"checks": 5185,
+"exit": 0
+},
+"seam-taa-fade-route-sentinel": {
+"checks": 5100,
+"exit": 0
+},
+"seam-taa-fade-route-sentinel-owner": {
+"checks": 5197,
+"exit": 0
+},
+"seam-taa-fade-route-zonly-owner": {
+"checks": 5067,
+"exit": 0
+},
+"seam-taa-fade-route-zonly-unjit-owner": {
+"checks": 3496,
+"exit": 0
+},
+"seam-taa-hdr-on": {
+"checks": 164,
+"exit": 0
+},
+"seam-taa-hdr-sharpen-dither": {
+"checks": 134,
+"exit": 0
+},
+"seam-taa-hdr-sharpen-on": {
+"checks": 158,
+"exit": 0
+},
+"seam-taa-hdr-tonemap-auto": {
+"checks": 140,
+"exit": 0
+},
+"seam-taa-hdr-tonemap-ev1": {
+"checks": 140,
+"exit": 0
+},
+"seam-taa-hdr-tonemap-fault": {
+"checks": 132,
+"exit": 0
+},
+"seam-taa-hdr-tonemap-k0": {
+"checks": 140,
+"exit": 0
+},
+"seam-taa-hdr-tonemap-on": {
+"checks": 140,
+"exit": 0
+},
+"seam-taa-hdr-tonemap-sharpen-dither": {
+"checks": 134,
+"exit": 0
+},
+"seam-taa-hdr-tonemap-sharpen-on": {
+"checks": 134,
+"exit": 0
+},
+"seam-taa-hook-default": {
+"checks": 141,
+"exit": 0
+},
+"seam-taa-hook-hdr-on": {
+"checks": 141,
+"exit": 0
+},
+"seam-taa-hook-hdr-tonemap-on": {
+"checks": 127,
+"exit": 0
+},
+"seam-taa-hook-on": {
+"checks": 141,
+"exit": 0
+},
+"seam-taa-hook-unpatched": {
+"checks": 126,
+"exit": 0
+},
+"seam-taa-lazy-mipbias-on": {
+"checks": 176,
+"exit": 0
+},
+"seam-taa-lazy-on": {
+"checks": 164,
+"exit": 0
+},
+"seam-taa-mipbias-on": {
+"checks": 176,
+"exit": 0
+},
+"seam-taa-on": {
+"checks": 164,
+"exit": 0
+},
+"seam-taa-quad-fvf": {
+"checks": 164,
+"exit": 0
+},
+"seam-taa-region-hold-ignored": {
+"checks": 164,
+"exit": 0
+},
+"seam-taa-sentinel2-nocamera-on": {
+"checks": 158,
+"exit": 0
+},
+"seam-taa-shadow-off": {
+"checks": 164,
+"exit": 0
+},
+"seam-taa-sharpen-half": {
+"checks": 158,
+"exit": 0
+},
+"seam-taa-sharpen-off": {
+"checks": 164,
+"exit": 0
+},
+"seam-taa-sharpen-on": {
+"checks": 158,
+"exit": 0
+},
+"seam-taa-taps16": {
+"checks": 164,
+"exit": 0
+},
+"seam-taa-thin-hold-half": {
+"checks": 164,
+"exit": 0
+},
+"seam-taa-thin-hold-on": {
+"checks": 164,
+"exit": 0
+},
+"seam-taa-thin-taps16-refused": {
+"checks": 164,
+"exit": 0
+},
+"seam-taa-unmatched-static-all": {
+"checks": 95,
+"exit": 0
+},
+"seam-taa-unmatched-static-node": {
+"checks": 95,
+"exit": 0
+},
+"seam-taa-unmatched-static-off": {
+"checks": 95,
+"exit": 0
+},
+"seam-taa-unmatched-static-unset": {
+"checks": 95,
+"exit": 0
+},
+"seam-thin-vote-far-off": {
+"checks": 47,
+"exit": 0
+},
+"seam-thin-vote-far-on": {
+"checks": 56,
+"exit": 0
+},
+"seam-thin-vote-far-on-owner": {
+"checks": 56,
+"exit": 0
+},
+"seam-thin-vote-far-on-source-both": {
+"checks": 61,
+"exit": 0
+},
+"seam-thin-vote-far-on-source-screen": {
+"checks": 61,
+"exit": 0
+},
+"seam-thin-vote-far-on-source-vote": {
+"checks": 61,
+"exit": 0
+},
+"seam-thin-vote-hostile": {
+"checks": 95,
+"exit": 0
+},
+"seam-thin-vote-near-on": {
+"checks": 56,
+"exit": 0
+},
+"seam-zonly": {
+"checks": 109,
+"exit": 0
+},
+"shadow-alpha-casters": {
+"checks": 26,
+"exit": 0
+},
+"sun-shadow-apply-cascades": {
+"checks": 4570,
+"exit": 0
+},
+"sun-shadow-apply-cascades-5": {
+"checks": 3239,
+"exit": 0
+},
+"sun-shadow-apply-cascades-5-faces": {
+"checks": 2991,
+"exit": 0
+},
+"sun-shadow-apply-cascades-5-faces-slope": {
+"checks": 2991,
+"exit": 0
+},
+"sun-shadow-apply-cascades-5-slope": {
+"checks": 3239,
+"exit": 0
+},
+"sun-shadow-apply-cascades-slope": {
+"checks": 4570,
+"exit": 0
+}
+},
+"status": "PASS"
+}

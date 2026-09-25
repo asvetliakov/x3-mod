@@ -156,19 +156,20 @@ class LauncherGateTests(unittest.TestCase):
             code, output, error = launch(directory, *PREREQUISITES); self.assertEqual(code, 0, error)
             baseline = json.loads(output)['env']
             self.assertEqual(baseline['X3M_EMISSION_SOURCE_GAIN'], '1.0')
-            self.assertEqual((baseline['X3M_LINEAR_EMISSIONS'], baseline['X3M_LINEAR_MATERIALS'], baseline['X3M_TAA']), ('0', '0', '0'))
+            # --linear-emissions / --linear-materials left the launcher on 2026-09-25: neither variable is sent.
+            self.assertNotIn('X3M_LINEAR_EMISSIONS', baseline); self.assertNotIn('X3M_LINEAR_MATERIALS', baseline)
+            self.assertEqual(baseline['X3M_TAA'], '0')
             code, output, error = launch(directory, *PREREQUISITES, '--emission-source-gain', '2'); self.assertEqual(code, 0, error)
             env = json.loads(output)['env']
             self.assertEqual(env['X3M_EMISSION_SOURCE_GAIN'], '2.0')
             # The guide lights follow this gain and its key, so a gain above 1
-            # also arms them (--hull-emitters implied, same value); nothing else
+            # also arms them (X3M_HULL_EMISSION_GAIN, same value); nothing else
             # in the environment moves.
             self.assertEqual(env['X3M_HULL_EMISSION_GAIN'], '2.0')
             self.assertEqual({k: v for k, v in env.items() if k not in ('X3M_EMISSION_SOURCE_GAIN', 'X3M_HULL_EMISSION_GAIN')},
                              {k: v for k, v in baseline.items() if k not in ('X3M_EMISSION_SOURCE_GAIN', 'X3M_HULL_EMISSION_GAIN')})
             self.assertEqual(baseline['X3M_HULL_EMISSION_GAIN'], '1.0')
             for bad in (('--motion-output', '--emission-source-gain', '2'),
-                        (*PREREQUISITES, '--taa', '--hdr-tonemap', '--linear-emissions', '--emission-source-gain', '2'),
                         (*PREREQUISITES, '--emission-source-gain', '0.5'), (*PREREQUISITES, '--emission-source-gain', '9'),
                         (*PREREQUISITES, '--emission-source-gain', 'nan'), (*PREREQUISITES, '--emission-source-gain', 'inf')):
                 code, _, error = launch(directory, *bad); self.assertEqual(code, 2, bad); self.assertIn('--emission-source-gain', error)

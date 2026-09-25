@@ -83,7 +83,7 @@ class FarClipSource(unittest.TestCase):
         header = (ROOT / 'src/proxy/motion_output.h').read_text()
         self.assertIn('taa_far_f0_ = 60.f, taa_far_f1_ = 68.f', header)
         motion = (ROOT / 'src/proxy/motion_output.cpp').read_text()
-        self.assertIn('ps30_slots=%u far_gate=%s default=%u far_clip=%s far_clip_default=%u"', motion)
+        self.assertIn('ps30_slots=%u far_gate=%s default=%u far_clip=%s far_clip_default=%u reason=%s"', motion)  # reason: initialize's refusal (2026-09-25)
         self.assertIn('far_clip ? "7x7" : "3x3", unsigned(far_clip && taa_far_clip_default_)', motion)
         self.assertIn('const bool far_clip = taa_far_clip_7x7_ && taa_thin_camera_gate_ && taa_thin_weight_ > 0.f && far_gate_on;', motion)
         # The ignore row only for an explicit 7x7 (marker 0), never for the launcher's default.

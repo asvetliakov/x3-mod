@@ -89,21 +89,8 @@ SHADERS = {
     'temporal_line_mask_depth_thin': dict(source=ROOT / 'src/temporal/line_mask_depth_thin_ps.hlsl',
         header=ROOT / 'src/renderer/temporal_line_mask_depth_thin_program_inc.h',
         provenance=ROOT / 'verification/results/temporal-line-mask-depth-thin-program.json'),
-    # S3 (docs/architecture/taa-high-resolution.md): the resolve programs above use the 5-tap bilinear Catmull-Rom history;
-    # these four keep the 16-tap point form (X3M_HISTORY_TAPS16, bytecode of the earlier programs) for --taa-history-taps 16.
-    # The camera gate has none: its only resolve is the A' program below (the dilated camera chain was removed 2026-09-24).
-    'temporal_resolve_taps16': dict(source=ROOT / 'src/temporal/resolve_taps16.hlsl',
-        header=ROOT / 'src/renderer/temporal_resolve_taps16_program_inc.h',
-        provenance=ROOT / 'verification/results/temporal-resolve-taps16-program.json'),
-    'temporal_resolve_thin_taps16': dict(source=ROOT / 'src/temporal/resolve_thin_taps16.hlsl',
-        header=ROOT / 'src/renderer/temporal_resolve_thin_taps16_program_inc.h',
-        provenance=ROOT / 'verification/results/temporal-resolve-thin-taps16-program.json'),
-    'temporal_resolve_age_taps16': dict(source=ROOT / 'src/temporal/resolve_age_taps16.hlsl',
-        header=ROOT / 'src/renderer/temporal_resolve_age_taps16_program_inc.h',
-        provenance=ROOT / 'verification/results/temporal-resolve-age-taps16-program.json'),
-    'temporal_resolve_far_taps16': dict(source=ROOT / 'src/temporal/resolve_far_taps16.hlsl',
-        header=ROOT / 'src/renderer/temporal_resolve_far_taps16_program_inc.h',
-        provenance=ROOT / 'verification/results/temporal-resolve-far-taps16-program.json'),
+    # S3 (docs/architecture/taa-high-resolution.md): the resolve programs above use the 5-tap bilinear Catmull-Rom history,
+    # the only form since the 16-tap point programs went with --taa-history-taps on 2026-09-25.
     # A' (docs/architecture/taa-plan-lifted-slot-cap.md step 1; the only camera-gate path since 2026-09-24) with the mask fold
     # (docs/architecture/taa-mask-fold.md): the camera-gate resolve computing the per-pixel tests and composing the region with
     # temporal holds (depth history as RT2), and the 49-tap box gated on this frame's vote and last frame's region hold.
@@ -198,27 +185,14 @@ SHADERS = {
     'fog_density_repair_look': dict(source=ROOT / 'src/fog/fog_density_repair_look_ps.hlsl',
                               header=ROOT / 'src/renderer/fog_density_repair_look_program_inc.h',
                               provenance=ROOT / 'verification/results/fog-density-repair-look-program.json'),
-    # Step B of docs/architecture/fog-gpu-cost.md (--fog-far-bins 24): the look's march and repair with 24 far bins.
-    'fog_density_march_look_far24': dict(source=ROOT / 'src/fog/fog_density_march_look_far24_ps.hlsl',
-                              header=ROOT / 'src/renderer/fog_density_march_look_far24_program_inc.h',
-                              provenance=ROOT / 'verification/results/fog-density-march-look-far24-program.json'),
-    'fog_density_repair_look_far24': dict(source=ROOT / 'src/fog/fog_density_repair_look_far24_ps.hlsl',
-                              header=ROOT / 'src/renderer/fog_density_repair_look_far24_program_inc.h',
-                              provenance=ROOT / 'verification/results/fog-density-repair-look-far24-program.json'),
-    # Step C (--fog-march-scale 4): the look's march / repair / composite at the quarter-resolution sample spacing (both far-bin
-    # counts; composite never marches), and the --gpu-sync-timing needs-repair census at either spacing.
+    # Step C (--fog-march-scale 4): the look's march / repair / composite at the quarter-resolution sample spacing (composite
+    # never marches), and the --gpu-sync-timing needs-repair census at either spacing.
     'fog_density_march_look_q4': dict(source=ROOT / 'src/fog/fog_density_march_look_q4_ps.hlsl',
                               header=ROOT / 'src/renderer/fog_density_march_look_q4_program_inc.h',
                               provenance=ROOT / 'verification/results/fog-density-march-look-q4-program.json'),
-    'fog_density_march_look_far24_q4': dict(source=ROOT / 'src/fog/fog_density_march_look_far24_q4_ps.hlsl',
-                              header=ROOT / 'src/renderer/fog_density_march_look_far24_q4_program_inc.h',
-                              provenance=ROOT / 'verification/results/fog-density-march-look-far24-q4-program.json'),
     'fog_density_repair_look_q4': dict(source=ROOT / 'src/fog/fog_density_repair_look_q4_ps.hlsl',
                               header=ROOT / 'src/renderer/fog_density_repair_look_q4_program_inc.h',
                               provenance=ROOT / 'verification/results/fog-density-repair-look-q4-program.json'),
-    'fog_density_repair_look_far24_q4': dict(source=ROOT / 'src/fog/fog_density_repair_look_far24_q4_ps.hlsl',
-                              header=ROOT / 'src/renderer/fog_density_repair_look_far24_q4_program_inc.h',
-                              provenance=ROOT / 'verification/results/fog-density-repair-look-far24-q4-program.json'),
     'fog_density_composite_look_q4': dict(source=ROOT / 'src/fog/fog_density_composite_look_q4_ps.hlsl',
                               header=ROOT / 'src/renderer/fog_density_composite_look_q4_program_inc.h',
                               provenance=ROOT / 'verification/results/fog-density-composite-look-q4-program.json'),
@@ -228,19 +202,8 @@ SHADERS = {
     'fog_density_needs_census_q4': dict(source=ROOT / 'src/fog/fog_density_needs_census_q4_ps.hlsl',
                               header=ROOT / 'src/renderer/fog_density_needs_census_q4_program_inc.h',
                               provenance=ROOT / 'verification/results/fog-density-needs-census-q4-program.json'),
-    # The sun-visibility slice grid (docs/architecture/fog-shadow-pass.md, X3M_FOG_SHADOW_PASS=1): the pass and the
-    # look's march and repair reading it (FOG_SHADOW_PASS) instead of the in-march lookup; the *_look pair stays the control.
-    'fog_density_visibility_grid': dict(source=ROOT / 'src/fog/fog_density_visibility_grid_ps.hlsl',
-                              header=ROOT / 'src/renderer/fog_density_visibility_grid_program_inc.h',
-                              provenance=ROOT / 'verification/results/fog-density-visibility-grid-program.json'),
-    'fog_density_march_grid': dict(source=ROOT / 'src/fog/fog_density_march_grid_ps.hlsl',
-                              header=ROOT / 'src/renderer/fog_density_march_grid_program_inc.h',
-                              provenance=ROOT / 'verification/results/fog-density-march-grid-program.json'),
-    'fog_density_repair_grid': dict(source=ROOT / 'src/fog/fog_density_repair_grid_ps.hlsl',
-                              header=ROOT / 'src/renderer/fog_density_repair_grid_program_inc.h',
-                              provenance=ROOT / 'verification/results/fog-density-repair-grid-program.json'),
     # Dust motes of the stored fog (docs/architecture/fog-dust-motes.md, X3M_FOG_DUST_MOTES): the capsule vertex
-    # program and the pixel program in the in-march and grid variants, drawn after the repair.
+    # program and the pixel program, drawn after the repair.
     'fog_dust_motes_vertex': dict(source=ROOT / 'src/fog/fog_dust_motes_vs.hlsl',
                               header=ROOT / 'src/renderer/fog_dust_motes_vertex_program_inc.h',
                               provenance=ROOT / 'verification/results/fog-dust-motes-vertex-program.json',
@@ -248,9 +211,6 @@ SHADERS = {
     'fog_dust_motes_look': dict(source=ROOT / 'src/fog/fog_dust_motes_look_ps.hlsl',
                               header=ROOT / 'src/renderer/fog_dust_motes_look_program_inc.h',
                               provenance=ROOT / 'verification/results/fog-dust-motes-look-program.json'),
-    'fog_dust_motes_grid': dict(source=ROOT / 'src/fog/fog_dust_motes_grid_ps.hlsl',
-                              header=ROOT / 'src/renderer/fog_dust_motes_grid_program_inc.h',
-                              provenance=ROOT / 'verification/results/fog-dust-motes-grid-program.json'),
     'fog_density_march_exact': dict(source=ROOT / 'verification/probe/fog_density_march_exact_ps.hlsl',
                                     header=ROOT / 'verification/probe/fog_density_march_exact_program_inc.h',
                                     provenance=ROOT / 'verification/results/fog-density-march-exact-program.json'),

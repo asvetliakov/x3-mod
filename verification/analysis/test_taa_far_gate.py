@@ -71,7 +71,7 @@ class FarGateSource(unittest.TestCase):
         self.assertIn('configure_far_gate(taa_far_camera_gate,taa_far_gate_given,taa_far_gate_default)', capture)
         motion = (ROOT / 'src/proxy/motion_output.cpp').read_text()
         # The creation row: the configured gate (camera only on the camera-gate resolve) and the launcher default.
-        self.assertIn('ps30_slots=%u far_gate=%s default=%u far_clip=%s far_clip_default=%u"', motion)
+        self.assertIn('ps30_slots=%u far_gate=%s default=%u far_clip=%s far_clip_default=%u reason=%s"', motion)  # reason: initialize's refusal (2026-09-25)
         self.assertIn('far_camera_gate ? "camera" : "screen", unsigned(far_camera_gate && taa_far_gate_default_)', motion)
         self.assertIn('const bool far_camera_gate = taa_far_camera_gate_ && taa_thin_camera_gate_ && taa_thin_weight_ > 0.f;', motion)
         # The ignore row only for an explicit camera (marker 0), never for the launcher's default.

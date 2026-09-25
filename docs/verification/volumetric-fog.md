@@ -2993,3 +2993,7 @@ The Run78 gate (candidate ee3bbf88) ran the bridge for the first time since the 
   /tmp/x3-run78-candidate/route-fixed/bridge.log` ->
   [bridge-scale4-shadow-ab-fix-vs-run77.json](../../verification/results/fog-density-route/bridge-scale4-shadow-ab-fix-vs-run77.json).
 - Still open: the DLL's `refused=shadow_pass` row for an absent variable has no flight evidence.
+
+**Removed 2026-09-25** (user decision): `--fog-shadow-pass`, `--fog-far-bins` (only the 40-bin programs remain), the `--volumetric-fog-look` refusal stub with its DLL ignore line, and the `X3M_VOLUMETRIC_FOG_ANISOTROPY` read; `docs/verification/launcher-options-inventory.md`, "4. Removed 2026-09-25".
+
+Fixtures after the removal (2026-09-25, bottle X3): `fog_density_shader_run.py` PASS 28 / 28 gates (52 before: the 7 `far24_*`, 7 `s2_far24_*` and 10 `grid_*` gates went), the pass fixture 130 checks (178; the grid, far-bins and shadow-pass clamp sections), motes 26 cases (29), both accepted-look hash sets byte-identical (11 at spacing 4, 11 at spacing 2), references regenerated without the grid cases (`verification/results/fog-density-shader/`); `fog_route_bridge` PASS 31,907 bridge checks, 4 exit checks (41,877 at Run89: the 34 `shadow_ab_*` checks and the shadow A/B section's 1,656 frames of the six per-frame checks, 9,936) (measured).

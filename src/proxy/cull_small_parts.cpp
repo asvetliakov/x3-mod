@@ -37,7 +37,6 @@ constexpr unsigned value_line_cap = 128;  // cull_small_parts_value rows per pro
 // only (the Clear hook and the Present hook that calls begin_frame run
 // there), so no synchronisation.
 core::SceneLatch scene_{};
-core::Scope scope_ = core::Scope::all;
 bool projectiles_ = true;               // the installed stub exempts marked projectile nodes
 const char* projectiles_state_ = "on";  // install-line value: on, off, marker_mismatch, invalid
 
@@ -62,7 +61,7 @@ bool read_setting(const wchar_t* name, char* out, unsigned capacity) {
     out[length] = 0; return true;
 }
 // Emits the stub followed by its 4-aligned continuation slot; 0 when the arena is full.
-std::uintptr_t emit_stub(std::uint32_t cull_target, core::Scope scope, bool exempt_projectiles, void*** slot_out) {
+std::uintptr_t emit_stub(std::uint32_t cull_target, bool exempt_projectiles, void*** slot_out) {
     engine_patch::Emitter e(core::stub_length + 8);
     if (!e.ok()) return 0;
     const std::uintptr_t at = reinterpret_cast<std::uintptr_t>(e.here());
@@ -70,7 +69,7 @@ std::uintptr_t emit_stub(std::uint32_t cull_target, core::Scope scope, bool exem
     unsigned char code[core::stub_length];
     core::encode_stub(std::uint32_t(at), std::uint32_t(reinterpret_cast<std::uintptr_t>(&x3m_cull_small_parts_threshold)),
                       std::uint32_t(reinterpret_cast<std::uintptr_t>(&x3m_cull_small_parts_culled)),
-                      std::uint32_t(reinterpret_cast<std::uintptr_t>(&x3m_cull_small_parts_exempt)), cull_target, std::uint32_t(slot), code, scope, exempt_projectiles);
+                      std::uint32_t(reinterpret_cast<std::uintptr_t>(&x3m_cull_small_parts_exempt)), cull_target, std::uint32_t(slot), code, exempt_projectiles);
     e.bytes(code, core::stub_length);
     while (e.ok() && reinterpret_cast<std::uintptr_t>(e.here()) < slot) e.byte(0xcc);
     e.dword(0);
@@ -85,16 +84,15 @@ volatile std::uint32_t x3m_cull_small_parts_culled = 0;
 volatile std::uint32_t x3m_cull_small_parts_exempt = 0;
 
 namespace x3m::cull_small_parts {
-bool install_at(std::uintptr_t site, std::uintptr_t cull_target, bool bodies_only, bool exempt_projectiles) {
+bool install_at(std::uintptr_t site, std::uintptr_t cull_target, bool exempt_projectiles) {
     if (patched_) { state_ = "already_installed"; return false; }
-    const core::Scope scope = bodies_only ? core::Scope::bodies : core::Scope::all;
     const char* reason = nullptr;
     if (!site || site < core::site_offset || cull_target != site - core::site_offset + core::cull_offset) reason = "invalid_site";
     else if (!engine_patch::install_window_open()) reason = "late_claim";
     else if (!bytes_match(site - core::site_offset, core::window, core::window_length)) reason = "bytes_mismatch";
     else if (!pin_self()) reason = "pin_failed";
     std::uintptr_t stub = 0; void** slot = nullptr;
-    if (!reason && !(stub = emit_stub(std::uint32_t(cull_target), scope, exempt_projectiles, &slot))) reason = "arena_full";
+    if (!reason && !(stub = emit_stub(std::uint32_t(cull_target), exempt_projectiles, &slot))) reason = "arena_full";
     if (!reason) {
         x3m_cull_small_parts_threshold = 0; x3m_cull_small_parts_culled = 0; x3m_cull_small_parts_exempt = 0;
         engine_patch::SiteSpec spec{};
@@ -112,7 +110,7 @@ bool install_at(std::uintptr_t site, std::uintptr_t cull_target, bool bodies_onl
             if (!engine_patch::restore(site_)) { patched_ = true; stub_ = 0; state_ = "rollback_failed"; return false; }
             patched_ = false; stub_ = 0; site_ = engine_patch::Site{};
         } else {
-            patched_ = true; stub_ = stub; scope_ = scope; projectiles_ = exempt_projectiles; reason = "ok";
+            patched_ = true; stub_ = stub; projectiles_ = exempt_projectiles; reason = "ok";
         }
     }
     state_ = reason;
@@ -123,10 +121,6 @@ bool initialize() {
     if (patched_) { SetLastError(error); return true; }
     char setting[32]{};
     if (!read_setting(L"X3M_CULL_SMALL_PARTS_PX", setting, sizeof setting)) { state_ = "disabled"; SetLastError(error); return false; }
-    char scope_text[32]{};
-    read_setting(L"X3M_CULL_SMALL_PARTS_SCOPE", scope_text, sizeof scope_text);   // unset = the default, all
-    core::Scope scope = core::Scope::all;
-    const bool scope_ok = core::parse_scope(scope_text, &scope);
     char projectiles_text[32]{};
     read_setting(L"X3M_CULL_SMALL_PARTS_PROJECTILES", projectiles_text, sizeof projectiles_text);   // unset = the default, on
     bool exempt = true;
@@ -137,7 +131,6 @@ bool initialize() {
     bool applied = false;
     if (parsed && px == 0.0) state_ = "disabled";                     // an explicit 0 is the documented off
     else if (!parsed || !core::valid_px(px)) state_ = "invalid_px";
-    else if (!scope_ok) state_ = "invalid_scope";                     // fail closed: nothing patched
     else if (!projectiles_ok) state_ = "invalid_projectiles";         // fail closed: nothing patched
     else if (!object_trace::executable_verified()) state_ = "executable_mismatch";
     else {
@@ -146,11 +139,11 @@ bool initialize() {
         if (exempt && !(bytes_match(core::marker_store_va, core::marker_store, core::marker_store_length) && bytes_match(core::marker_or_va, core::marker_or, core::marker_or_length))) {
             exempt = false; projectiles_state_ = "marker_mismatch";
         }
-        px_ = px; applied = install_at(core::site_va, core::cull_va, scope == core::Scope::bodies, exempt);
+        px_ = px; applied = install_at(core::site_va, core::cull_va, exempt);
     }
     log("cull_small_parts requested=%s px=%.4g patched=%u reason=%s site=0x%08lx cull=0x%08lx write=%s stub=0x%08lx camera=%s scope=%s projectiles=%s",
         setting, applied ? px : 0.0, patched_ ? 1u : 0u, state_, static_cast<unsigned long>(core::site_va), static_cast<unsigned long>(core::cull_va),
-        site_.patched_in ? (site_.atomic_write ? "atomic" : "plain") : "none", static_cast<unsigned long>(stub_), camera_state::status(), scope_ok ? core::scope_name(scope) : "invalid",
+        site_.patched_in ? (site_.atomic_write ? "atomic" : "plain") : "none", static_cast<unsigned long>(stub_), camera_state::status(), "all",
         projectiles_state_);
     SetLastError(error);
     return applied;
@@ -167,7 +160,6 @@ bool shutdown() {
     return ok;
 }
 const char* state() { return state_; }
-const char* scope() { return core::scope_name(scope_); }
 bool projectiles_exempt() { return patched_ && projectiles_; }
 std::uintptr_t stub_address() { return patched_ ? stub_ : 0; }
 double requested_px() { return patched_ ? px_ : 0.0; }
@@ -177,7 +169,7 @@ std::int32_t apply(float m00, unsigned width, std::uint32_t focus, core::Source 
     if (!patched_) return 0;
     const std::int32_t threshold = core::threshold_for(px_, m00, width, focus);
     x3m_cull_small_parts_threshold = threshold;
-    cull_census::note_small_threshold(threshold, scope_ == core::Scope::bodies, projectiles_);
+    cull_census::note_small_threshold(threshold, projectiles_);
     last_m00_ = m00;
     if (threshold != last_threshold_ || width != width_ || focus != last_focus_ || source != last_source_ || fallback != last_fallback_) {
         last_threshold_ = threshold; width_ = width; last_focus_ = focus; last_source_ = source; last_fallback_ = fallback;
@@ -233,7 +225,7 @@ void present(unsigned long long device, unsigned long long frame, bool captured)
     if (captured) {
         const DWORD error = GetLastError();
         log("cull_small_parts_frame device=%llu frame=%llu px=%.4g threshold=%ld culled=%lu m00=%.9g width=%u scope=%s projectiles=%s exempt_bullet=%lu focus=0x%04lx source=%s fallback=%s",
-            device, frame, px_, static_cast<long>(x3m_cull_small_parts_threshold), static_cast<unsigned long>(x3m_cull_small_parts_culled), static_cast<double>(last_m00_), width_, core::scope_name(scope_),
+            device, frame, px_, static_cast<long>(x3m_cull_small_parts_threshold), static_cast<unsigned long>(x3m_cull_small_parts_culled), static_cast<double>(last_m00_), width_, "all",
             projectiles_ ? "on" : "off", static_cast<unsigned long>(x3m_cull_small_parts_exempt), static_cast<unsigned long>(last_focus_), core::source_name(last_source_),
             core::fallback_name(last_fallback_));
         SetLastError(error);

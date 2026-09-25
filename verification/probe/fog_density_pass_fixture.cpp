@@ -41,36 +41,26 @@ void* table[119];
 using UpdateSurfaceFn=HRESULT(WINAPI*)(Device,IDirect3DSurface9*,const RECT*,IDirect3DSurface9*,const POINT*);
 UpdateSurfaceFn real_update=nullptr;unsigned update_calls=0,lose_updates=0;
 using CreateTextureFn=HRESULT(WINAPI*)(Device,UINT,UINT,UINT,DWORD,D3DFORMAT,D3DPOOL,IDirect3DTexture9**,HANDLE*);
-CreateTextureFn real_create_texture=nullptr;bool refuse_rgba8_targets=false; // the visibility grid's target: injected creation failure
+CreateTextureFn real_create_texture=nullptr;
 UINT refuse_fp16_target_width=0; // the quarter march target (step C): an FP16 render target of this width fails when set
 HRESULT WINAPI create_texture_stub(Device d,UINT w,UINT h,UINT levels,DWORD usage,D3DFORMAT format,D3DPOOL pool,IDirect3DTexture9** out,HANDLE* handle){
-    if(refuse_rgba8_targets&&format==D3DFMT_A8R8G8B8&&(usage&D3DUSAGE_RENDERTARGET)){SetLastError(0xbad23);return D3DERR_INVALIDCALL;}
     if(refuse_fp16_target_width&&w==refuse_fp16_target_width&&format==D3DFMT_A16B16G16R16F&&(usage&D3DUSAGE_RENDERTARGET)){SetLastError(0xbad25);return D3DERR_OUTOFVIDEOMEMORY;}
     return real_create_texture(d,w,h,levels,usage,format,pool,out,handle);
 }
-// CreatePixelShader counted, and refused for the 24-far-bin march when injected (fog-gpu-cost.md step B: a pair that
-// cannot be built must leave the working pair drawing).
-constexpr DWORD far24_march_words[]={
-#include "../../src/renderer/fog_density_march_look_far24_program_inc.h"
-};
-// The quarter-resolution march programs (step C), refused when injected: both far-bin counts.
+// CreatePixelShader counted. The quarter-resolution march program (step C), refused when injected.
 constexpr DWORD q4_march_words[]={
 #include "../../src/renderer/fog_density_march_look_q4_program_inc.h"
-};
-constexpr DWORD far24_q4_march_words[]={
-#include "../../src/renderer/fog_density_march_look_far24_q4_program_inc.h"
 };
 // The default (scale 2, 40 far bins) march, refused when injected: the double failure after a Reset (step C).
 constexpr DWORD default_march_words[]={
 #include "../../src/renderer/fog_density_march_look_program_inc.h"
 };
 using CreatePixelShaderFn=HRESULT(WINAPI*)(Device,const DWORD*,IDirect3DPixelShader9**);
-CreatePixelShaderFn real_create_pixel_shader=nullptr;bool refuse_far24_programs=false,refuse_q4_programs=false,refuse_default_march=false;unsigned pixel_shader_creates=0;
+CreatePixelShaderFn real_create_pixel_shader=nullptr;bool refuse_q4_programs=false,refuse_default_march=false;unsigned pixel_shader_creates=0;
 HRESULT WINAPI create_pixel_shader_stub(Device d,const DWORD* words,IDirect3DPixelShader9** out){
     ++pixel_shader_creates;
-    if(refuse_far24_programs&&words&&!std::memcmp(words,far24_march_words,sizeof far24_march_words)){SetLastError(0xbad24);return E_OUTOFMEMORY;}
     if(refuse_default_march&&words&&!std::memcmp(words,default_march_words,sizeof default_march_words)){SetLastError(0xbad27);return E_OUTOFMEMORY;}
-    if(refuse_q4_programs&&words&&(!std::memcmp(words,q4_march_words,sizeof q4_march_words)||!std::memcmp(words,far24_q4_march_words,sizeof far24_q4_march_words))){SetLastError(0xbad26);return E_OUTOFMEMORY;}
+    if(refuse_q4_programs&&words&&!std::memcmp(words,q4_march_words,sizeof q4_march_words)){SetLastError(0xbad26);return E_OUTOFMEMORY;}
     return real_create_pixel_shader(d,words,out);
 }
 HRESULT WINAPI update_stub(Device d,IDirect3DSurface9* s,const RECT* r,IDirect3DSurface9* t,const POINT* p){
@@ -195,7 +185,7 @@ fog_cpu::Setup cpu_setup(const FogFrame& f,const FogDensityConfig& config){
     if(f.look_resolved)throw std::runtime_error("cpu twin needs bin centres (look_resolved=false)");
     const float radiance[3]={float(s.radiance[0]),float(s.radiance[1]),float(s.radiance[2])}; // c8.rgb = E/pi of the frame
     s.sigma*=double(x3m::renderer::fog_look_constants(config.look,config.chroma,radiance,f.look_phase,cpu_look_rows,false));
-    s.look=cpu_look_rows;s.far_bins=config.far_bins;return s;
+    s.look=cpu_look_rows;return s; // 40 far bins (fog_far_bins), the only count
 }
 
 struct Harness{
@@ -330,7 +320,7 @@ void dust_motes(Device d,const D3DCAPS9& caps,D3DPRESENT_PARAMETERS& pp,const Fo
     Com<IDirect3DTexture9> dark_texture;{const std::vector<float> dark(64*64,0.f);upload(d,64,64,D3DFMT_R32F,4,dark.data(),0,&dark_texture.p);}
     auto shade=[&](Harness& h,Scene& s,const Case& c,bool on,IDirect3DTexture9* map,FogResult& r,bool cut=false){
         h.config.dust_motes=on;check(h.prepare(c.cam),"motes prepare");FogFrame f=frame_of(c,s,h.frame);f.mote_cut=cut;
-        if(map){f.count=1;auto& k=f.cascades[0];k.map=map;k.valid=true;k.frame=h.frame;k.bias=0;k.rows[0]=1e-9f;k.rows[5]=1e-9f;k.rows[10]=1e-9f;k.rows[11]=.5f;k.texel_world=36.6f;k.depth_range=200000.f;}
+        if(map){f.count=1;auto& k=f.cascades[0];k.map=map;k.valid=true;k.frame=h.frame;k.bias=0;k.rows[0]=1e-9f;k.rows[5]=1e-9f;k.rows[10]=1e-9f;k.rows[11]=.5f;}
         if(h.execute(c,s,r,false,&f)!=S_OK||!r.applied)throw std::runtime_error("motes transaction");
         return target(s);
     };
@@ -503,20 +493,6 @@ void dust_motes(Device d,const D3DCAPS9& caps,D3DPRESENT_PARAMETERS& pp,const Fo
         require(again_on==on&&again_off==off&&pass.allocations()==after&&after==before+4,"M_motes_after_reset_byte_identical_created_once");
         const std::vector<float> dark(64*64,0.f);upload(d,64,64,D3DFMT_R32F,4,dark.data(),0,&dark_texture.p);
     }
-    // The grid variant (X3M_FOG_SHADOW_PASS on): the mote program reads the grid; no cascade is lit, the dark map the floor.
-    {
-        FogDensityConfig gconfig=config;gconfig.shadow_pass=true;
-        FogPass grid;check(grid.attach(d,table,caps,D3DFMT_X8R8G8B8),"motes grid attach");Harness hg(d,caps,grid,gconfig);check(grid.prepare_targets(W,H),"motes grid targets");
-        require(hg.settle(dense.cam)&&grid.fixture_grid()&&grid.fixture_mote_vertices(),"motes grid pose settles");
-        FogResult a,b,c,e;const auto lit_off=shade(hg,scene,dense,false,nullptr,a);const auto lit_on=shade(hg,scene,dense,true,nullptr,b);const char* lit_shadow=grid.mote_report().shadow;
-        const auto dark_off=shade(hg,scene,dense,false,dark_texture.p,c);const auto dark_on=shade(hg,scene,dense,true,dark_texture.p,e);const char* dark_shadow=grid.mote_report().shadow;
-        const Versus lit=versus(difference(lit_on,lit_off),fog_motes_cpu::image(sky_list,W,H,nullptr,t.soft));
-        const Versus dark=versus(difference(dark_on,dark_off),fog_motes_cpu::image(list_of(twin_of(f_dense,0),f_dense),W,H,nullptr,t.soft));
-        std::printf("MOTES_SHAFTS variant=grid lit_shadow=%s dark_shadow=%s lit_worst_vs_twin=%.4f dark_worst_vs_twin=%.4f grid_drawn=%u\n",lit_shadow,dark_shadow,lit.worst,dark.worst,unsigned(e.grid));
-        require(std::string(lit_shadow)=="none"&&lit.worst<=1&&b.motes,"M_motes_grid_variant_unshadowed_matches_twin");
-        require(std::string(dark_shadow)=="grid"&&e.grid&&e.motes&&dark.worst<=1,"M_motes_shadow_floor_law_grid");
-        scene.release();grid.detach();require(grid.references()==0,"M_motes_grid_detach_releases_everything");scene.create();
-    }
     // A device without an explicit blend operation refuses the mote stage only: the frame is the launch-off one.
     {
         D3DCAPS9 limited=caps;limited.PrimitiveMiscCaps&=~DWORD(D3DPMISCCAPS_BLENDOP);
@@ -533,7 +509,7 @@ void dust_motes(Device d,const D3DCAPS9& caps,D3DPRESENT_PARAMETERS& pp,const Fo
 }
 void run(const std::string& cases_file){
     // The production default is the quarter-resolution march (fog-gpu-cost.md step C, default since Run 77 C2); this
-    // fixture's base frames stay at spacing 2, the opt-out whose CPU twin, grid and shared machinery the checks below use,
+    // fixture's base frames stay at spacing 2, the opt-out whose CPU twin and shared machinery the checks below use,
     // and the quarter section sets 4 explicitly.
     require(FogDensityConfig{}.march_scale==x3m::renderer::fog_march_scale_quarter,"march_scale_default_is_quarter");
     FogDensityConfig config;config.enabled=true;config.sector_key=0x5ec7;config.recipe=1;config.march_scale=x3m::renderer::fog_march_scale_half;
@@ -548,7 +524,7 @@ void run(const std::string& cases_file){
     real_create_texture=reinterpret_cast<CreateTextureFn>(table[23]);table[23]=reinterpret_cast<void*>(&create_texture_stub);
     real_create_pixel_shader=reinterpret_cast<CreatePixelShaderFn>(table[106]);table[106]=reinterpret_cast<void*>(&create_pixel_shader_stub);
     auto device_references=[&]{d->AddRef();return unsigned(d->Release());};const unsigned references_before=device_references();
-    std::vector<std::uint8_t> off_none,off_split; // the in-march programs' no-map and split-map frames, for the visibility grid below
+    std::vector<std::uint8_t> off_none,off_split; // the no-map and split-map frames of the first instance, for the spacing checks below
     {
         FogPass pass;check(pass.attach(d,table,caps,D3DFMT_X8R8G8B8),"attach");Harness hx(d,caps,pass,config);
         Scene scene(d,caps,128,72);scene.create();check(pass.prepare_targets(scene.w,scene.h),"targets");
@@ -832,170 +808,14 @@ void run(const std::string& cases_file){
             hx.upload_calls?hx.upload_us_total/hx.upload_calls:0.,unsigned(hx.prepare_idle_us.size()),percentile(hx.prepare_idle_us,.5),percentile(hx.prepare_idle_us,.95),percentile(hx.prepare_idle_us,1),hx.max_upload_bytes,hx.max_upload_rects,unsigned(kDefaultUploadBudget),kDefaultUploadRects);
         std::printf("STATIC_GENERATION nodes=%llu seconds=%.3f nodes_per_second=%.0f\n",(unsigned long long)hx.static_nodes,hx.static_seconds,hx.static_seconds?hx.static_nodes/hx.static_seconds:0.);
     }
-    // --- The visibility grid refused (an injected RGBA8 target failure): the stored fog keeps drawing with the in-march
-    // programs, byte-identical to the first instance's split frame, and says why once ---
-    {
-        FogDensityConfig gconfig=config;gconfig.shadow_pass=true;refuse_rgba8_targets=true;
-        FogPass pass;check(pass.attach(d,table,caps,D3DFMT_X8R8G8B8),"refused grid attach");Harness hx(d,caps,pass,gconfig);
-        Scene scene(d,caps,128,72);scene.create();check(pass.prepare_targets(scene.w,scene.h),"refused grid targets");
-        require(hx.settle(A.cam)&&!pass.fixture_grid()&&pass.density_status().available,"refused_grid_keeps_the_stored_path_available");
-        const char* reason=pass.density_status().shadow_pass_refused;
-        require(reason&&std::string(reason)=="density_grid_target","refused_grid_reports_density_grid_target");
-        const UINT N=64;std::vector<float> split_map(N*N);for(UINT y=0;y<N;++y)for(UINT x=0;x<N;++x)split_map[y*N+x]=x<N/2?1.f:0.f;
-        Com<IDirect3DTexture9> split_texture;upload(d,N,N,D3DFMT_R32F,4,split_map.data(),0,&split_texture.p);
-        check(hx.prepare(A.cam),"refused grid prepare");FogFrame f=make_frame(A,scene,hx.frame,true);
-        f.count=1;auto& k=f.cascades[0];k.map=split_texture.p;k.valid=true;k.frame=hx.frame;k.bias=0;k.rows[0]=1e-5f;k.rows[5]=1e-9f;k.rows[10]=1e-9f;k.rows[11]=.5f;k.texel_world=36.6f;k.depth_range=200000.f;
-        FogResult r;const HRESULT hr=hx.execute(A,scene,r,false,&f);
-        require(hr==S_OK&&r.applied&&!r.grid&&r.cascades_bound==1&&surface_bytes(d,pass.fixture_st())==off_split,"refused_grid_draws_the_in_march_split_frame_byte_identical");
-        refuse_rgba8_targets=false;check(hx.prepare(A.cam),"prepare after the injection ends");
-        require(!pass.fixture_grid()&&pass.density_status().shadow_pass_refused==reason,"refused_grid_stays_refused_until_detach");
-        split_texture.reset();scene.release();pass.detach();require(pass.references()==0,"refused_grid_detach_releases_everything");
-    }
-    // --- The visibility grid (FogDensityConfig::shadow_pass, docs/architecture/fog-shadow-pass.md): programs and the
-    // RGBA8 target at prepare, one quad before the march under hostile caller state, Reset, detach ---
-    {
-        FogDensityConfig gconfig=config;gconfig.shadow_pass=true;
-        FogPass pass;check(pass.attach(d,table,caps,D3DFMT_X8R8G8B8),"grid attach");Harness hx(d,caps,pass,gconfig);
-        Scene scene(d,caps,128,72);scene.create();check(pass.prepare_targets(scene.w,scene.h),"grid targets");
-        require(hx.settle(A.cam)&&pass.fixture_grid()!=nullptr,"grid_pose_settles_with_the_grid_target");
-        const UINT N=64;std::vector<float> lit_map(N*N,1.f),split_map(N*N);for(UINT y=0;y<N;++y)for(UINT x=0;x<N;++x)split_map[y*N+x]=x<N/2?1.f:0.f;
-        Com<IDirect3DTexture9> lit_texture,split_texture;upload(d,N,N,D3DFMT_R32F,4,lit_map.data(),0,&lit_texture.p);upload(d,N,N,D3DFMT_R32F,4,split_map.data(),0,&split_texture.p);
-        auto shade=[&](IDirect3DTexture9* map,float x_scale,FogResult& r){
-            check(hx.prepare(A.cam),"grid prepare");FogFrame f=make_frame(A,scene,hx.frame,true);
-            if(map){f.count=1;auto& k=f.cascades[0];k.map=map;k.valid=true;k.frame=hx.frame;k.bias=0;k.rows[0]=x_scale;k.rows[5]=1e-9f;k.rows[10]=1e-9f;k.rows[11]=.5f;k.texel_world=36.6f;k.depth_range=200000.f;}
-            if(hx.execute(A,scene,r,false,&f)!=S_OK||!r.applied||r.cascades_bound!=(map?1u:0u))throw std::runtime_error("grid transaction");return surface_bytes(d,pass.fixture_st());
-        };
-        FogResult r_none,r_lit,r_split;const auto none=shade(nullptr,0,r_none),all_lit=shade(lit_texture.p,1e-9f,r_lit);const auto split_bytes=shade(split_texture.p,1e-5f,r_split);
-        require(!r_none.grid&&r_lit.grid&&r_split.grid,"grid_pass_draws_only_with_a_cascade");
-        require(none==off_none,"grid_no_cascade_frame_identical_to_in_march_programs");
-        require(all_lit==none,"grid_fully_lit_map_is_bit_identical_to_no_map");
-        // Against the in-march programs' split frame: transmittance bit-identical (visibility touches sun light only),
-        // in-scatter moved where the fog is shadowed.
-        const auto split=half_image(split_bytes),off=half_image(off_split);double worst=0;bool t_same=true;unsigned differs=0,fogged=0;
-        for(std::size_t i=0;i<split.size();i+=4){t_same=t_same&&split[i+3]==off[i+3];if(!(split[i+3]<1.f))continue;++fogged;for(int c=0;c<3;++c)worst=std::max(worst,std::fabs(double(split[i+c])-off[i+c]));differs+=split[i+1]!=off[i+1];}
-        std::printf("GRID extra_device_calls=%d fogged_pixels=%u in_scatter_differs=%u worst_S_vs_in_march=%.6f\n",int(r_split.device_calls)-int(r_none.device_calls),fogged,differs,worst);
-        require(t_same&&fogged>0&&differs>0,"grid_transmittance_identical_in_scatter_moves");
-        // The A/B toggle (fog-shadow-pass.md, "A/B toggle and log row"): the per-frame report of the split frame, then
-        // prepare_density with shadow_pass off (what Ctrl+Shift+F11 hands over) draws the in-march programs' split frame
-        // byte-identically with the grid kept allocated and nothing created; back on, the grid frame returns unchanged.
-        // One cascade: the gross count is visibility 16 + march 3 + repair 1 = 20, the net 16 - 1 (the march's own
-        // constant upload) + (3 - 3) + (1 - 1) = 15 (with two or more cascades the in-march repair binds two: 14).
-        {
-            const FogGridReport g=pass.grid_report();
-            std::printf("GRID_REPORT frame_current=%u drawn=%u bind=%08lx unshadowed=%s cascades=%u kernel=%.4g,%.4g,%.4g far_width=%.1f frame_term=%.4f calls=%u net_calls=%d\n",
-                        unsigned(g.frame==hx.frame),unsigned(g.drawn),(unsigned long)g.bind,g.unshadowed,g.cascades,g.kernel[0],g.kernel[1],g.kernel[2],g.far_width,g.frame_term,g.calls,g.net_calls);
-            require(g.frame==hx.frame&&g.drawn&&g.bind==S_OK&&std::string(g.unshadowed)=="none"&&g.cascades==1u&&g.kernel[0]>0&&g.far_width>0&&g.calls==20u&&g.net_calls==15,"grid_report_counts_the_pass_calls");
-            const unsigned toggle_references=pass.references(),toggle_allocations=pass.allocations();IDirect3DTexture9* const kept_grid=pass.fixture_grid();
-            hx.config.shadow_pass=false;FogResult r_off;const auto toggled_off=shade(split_texture.p,1e-5f,r_off);
-            std::printf("GRID_TOGGLE off_calls=%u on_calls=%u difference=%d\n",r_off.device_calls,r_split.device_calls,int(r_split.device_calls)-int(r_off.device_calls));
-            require(toggled_off==off_split&&!r_off.grid&&!pass.grid_variant()&&pass.grid_report().frame!=hx.frame,"grid_toggled_off_draws_the_in_march_split_frame_byte_identical");
-            require(pass.fixture_grid()==kept_grid&&kept_grid&&pass.references()==toggle_references&&pass.allocations()==toggle_allocations,"grid_toggled_off_keeps_the_grid_and_creates_nothing");
-            require(int(r_split.device_calls)-int(r_off.device_calls)==g.net_calls,"grid_report_net_calls_match_the_toggled_off_frame");
-            hx.config.shadow_pass=true;FogResult r_on;const auto toggled_on=shade(split_texture.p,1e-5f,r_on);
-            require(toggled_on==split_bytes&&r_on.grid&&r_on.device_calls==r_split.device_calls&&pass.fixture_grid()==kept_grid&&pass.allocations()==toggle_allocations,"grid_toggled_back_on_byte_identical");
-        }
-        const unsigned references=pass.references(),allocations=pass.allocations();
-        FogResult again;const auto repeat=shade(split_texture.p,1e-5f,again);
-        require(repeat==split_bytes&&pass.references()==references&&pass.allocations()==allocations,"grid_frames_byte_identical_create_and_allocate_nothing");
-        // Reset: the grid target goes with the other targets and returns at the next prepare; the frame is byte-identical.
-        // (The fixture's own DEFAULT maps are released first: a live DEFAULT resource makes Reset refuse.)
-        lit_texture.reset();split_texture.reset();
-        scene.release();pass.before_reset();const HRESULT reset=d->Reset(&pp);pass.after_reset(reset);check(reset,"grid Reset");scene.create();
-        require(!pass.fixture_grid()&&!pass.reset_pending(),"grid_reset_released_the_grid_target");
-        check(pass.prepare_targets(scene.w,scene.h),"grid targets after Reset");require(hx.settle(A.cam)&&pass.fixture_grid()!=nullptr,"grid_reset_recreates_the_target_at_prepare");
-        upload(d,N,N,D3DFMT_R32F,4,split_map.data(),0,&split_texture.p);
-        FogResult after;require(shade(split_texture.p,1e-5f,after)==split_bytes&&after.grid,"grid_after_reset_byte_identical_to_before");
-        split_texture.reset();
-        scene.release();pass.detach();require(pass.references()==0&&!pass.fixture_grid(),"grid_detach_releases_everything");
-        require(device_references()==references_before,"grid_device_refcount_balanced");
-    }
-    // --- Far bins 24 (FogDensityConfig::far_bins, fog-gpu-cost.md step B): the variant's march/repair created at prepare,
-    // its frame against the CPU twin at 24 far bins, the same pass back at 40 drawing the default frames byte for byte,
-    // any other count refused at prepare, Reset (programs kept) and detach ---
-    {
-        FogDensityConfig fconfig=config;fconfig.far_bins=x3m::renderer::fog_far_bins_coarse;
-        FogPass pass;check(pass.attach(d,table,caps,D3DFMT_X8R8G8B8),"far24 attach");Harness hx(d,caps,pass,fconfig);
-        Scene scene(d,caps,128,72);scene.create();check(pass.prepare_targets(scene.w,scene.h),"far24 targets");
-        require(hx.settle(A.cam)&&pass.density_far_bins()==24u,"far24_pose_settles_with_the_far24_programs");
-        const UINT N=64;std::vector<float> split_map(N*N);for(UINT y=0;y<N;++y)for(UINT x=0;x<N;++x)split_map[y*N+x]=x<N/2?1.f:0.f;
-        Com<IDirect3DTexture9> split_texture;upload(d,N,N,D3DFMT_R32F,4,split_map.data(),0,&split_texture.p);
-        auto shade=[&](IDirect3DTexture9* map,FogResult& r){ // the shaft block's frames: no map, or the split map at x = 1e-5 view x
-            check(hx.prepare(A.cam),"far24 prepare");FogFrame f=make_frame(A,scene,hx.frame,true);
-            if(map){f.count=1;auto& k=f.cascades[0];k.map=map;k.valid=true;k.frame=hx.frame;k.bias=0;k.rows[0]=1e-5f;k.rows[5]=1e-9f;k.rows[10]=1e-9f;k.rows[11]=.5f;}
-            if(hx.execute(A,scene,r,false,&f)!=S_OK||!r.applied||r.cascades_bound!=(map?1u:0u))throw std::runtime_error("far24 transaction");return surface_bytes(d,pass.fixture_st());
-        };
-        const unsigned references=pass.references(),allocations=pass.allocations();
-        FogResult r24,r24s;const auto none24=shade(nullptr,r24);const FogFrame f=make_frame(A,scene,hx.frame,true);const auto split24=shade(split_texture.p,r24s);
-        {
-            const auto lit=half_image(none24);fog_cpu::Setup cpu=cpu_setup(f,fconfig),cpu40=cpu;cpu40.far_bins=x3m::renderer::fog_far_bins_default;
-            double worst_T=0,worst_S=0,control_T=0,control_S=0;
-            for(UINT y=1;y<36;y+=7)for(UINT x=2;x<64;x+=9){double view[3];raster_ray(f,2.0*x,2.0*y,view);const auto ref=fog_cpu::march(cpu,view,0),ref40=fog_cpu::march(cpu40,view,0);const float* g=&lit[(std::size_t(y)*64+x)*4];
-                worst_T=std::max(worst_T,std::fabs(ref.T-g[3]));control_T=std::max(control_T,std::fabs(ref40.T-g[3]));
-                for(int c=0;c<3;++c){worst_S=std::max(worst_S,std::fabs(ref.S[c]-g[c]));control_S=std::max(control_S,std::fabs(ref40.S[c]-g[c]));}}
-            // Transmittance identical with the split map (visibility touches sun light only), in-scatter moved: the shaft law holds.
-            const auto split=half_image(split24);bool t_same=true;unsigned differs=0;for(std::size_t i=0;i<split.size();i+=4){t_same=t_same&&split[i+3]==lit[i+3];differs+=split[i+1]!=lit[i+1];}
-            std::printf("FAR24 sky_pixels=35 worst_T=%.6f worst_S=%.6f vs_40_bin_twin_T=%.6f vs_40_bin_twin_S=%.6f split_differs=%u device_calls=%u\n",worst_T,worst_S,control_T,control_S,differs,r24.device_calls);
-            require(worst_T<=.003&&worst_S<=.003,"far24_march_matches_cpu_reference_at_24_far_bins");
-            require(none24!=off_none&&split24!=off_split,"far24_frames_differ_from_the_40_bin_frames");
-            require(t_same&&differs>0,"far24_shafts_keep_transmittance_and_move_in_scatter");
-        }
-        // The same pass asked for 40: the default programs replace the pair at prepare and draw the first instance's frames.
-        const unsigned creates_before_swap=pixel_shader_creates;
-        hx.config.far_bins=x3m::renderer::fog_far_bins_default;FogResult r40,r40s;const auto none40=shade(nullptr,r40);const bool swapped=pass.density_far_bins()==40u;const auto split40=shade(split_texture.p,r40s);
-        require(pixel_shader_creates-creates_before_swap==2u,"far_bins_swap_creates_only_the_march_repair_pair");
-        require(swapped&&none40==off_none&&split40==off_split,"far_bins_40_on_the_same_pass_draws_the_default_frames_byte_identical");
-        require(r40.device_calls==r24.device_calls&&r40s.device_calls==r24s.device_calls,"far_bins_variants_issue_the_same_device_calls");
-        require(pass.references()==references&&pass.allocations()==allocations,"far_bins_swap_recreates_programs_only");
-        hx.config.far_bins=x3m::renderer::fog_far_bins_coarse;FogResult again;
-        require(shade(nullptr,again)==none24&&pass.density_far_bins()==24u,"far_bins_24_again_byte_identical");
-        hx.config.far_bins=32;const HRESULT refused=hx.prepare(A.cam);
-        require(refused==E_INVALIDARG&&pass.density_far_bins()==24u&&!pass.density_status().available&&pass.references()==references,"far_bins_other_than_40_or_24_refused_at_prepare");
-        hx.config.far_bins=x3m::renderer::fog_far_bins_coarse;
-        // Reset: pixel shaders survive it; the frame after the re-upload is byte-identical.
-        split_texture.reset();scene.release();pass.before_reset();const HRESULT reset=d->Reset(&pp);pass.after_reset(reset);check(reset,"far24 Reset");scene.create();
-        check(pass.prepare_targets(scene.w,scene.h),"far24 targets after Reset");require(hx.settle(A.cam),"far24_settles_after_reset");
-        FogResult after;require(shade(nullptr,after)==none24&&pass.density_far_bins()==24u,"far24_after_reset_byte_identical_programs_kept");
-        // The cap rule: above fog_far_bins_coarse_cap_max (ds would reach 1.9 far nodes at 200,000) 40 draws, said as "cap";
-        // back at the accepted cap the 24-bin pair draws again (not sticky: the cap is a launch value).
-        {
-            const float cap=hx.config.look.sky_cap;hx.config.look.sky_cap=150000.f;const HRESULT above=hx.prepare(A.cam);
-            const char* why=pass.density_status().far_bins_refused;const bool forty=pass.density_far_bins()==40u;
-            hx.config.look.sky_cap=cap;const HRESULT below=hx.prepare(A.cam);
-            require(above==S_OK&&forty&&why&&std::string(why)=="cap"&&below==S_OK&&pass.density_far_bins()==24u&&!pass.density_status().far_bins_refused,"far24_refused_above_the_cap_and_back_below_it");
-        }
-        // A 24-bin pair that cannot be built (injected CreatePixelShader failure) while 40 draws: the working pair stays,
-        // the shared composite is not re-created, "program" is reported, and 24 is not tried again until detach.
-        {
-            hx.config.far_bins=x3m::renderer::fog_far_bins_default;check(hx.prepare(A.cam),"far24 back to 40");
-            const unsigned held_references=pass.references();refuse_far24_programs=true;hx.config.far_bins=x3m::renderer::fog_far_bins_coarse;
-            FogResult r_fail;const auto failed=shade(nullptr,r_fail);refuse_far24_programs=false;const char* why=pass.density_status().far_bins_refused;
-            const unsigned creates=pixel_shader_creates;FogResult r_again;const auto again_bytes=shade(nullptr,r_again);
-            require(failed==off_none&&pass.density_far_bins()==40u&&why&&std::string(why)=="program"&&pass.references()==held_references,"far24_program_failure_keeps_the_working_pair");
-            require(again_bytes==off_none&&pixel_shader_creates==creates&&pass.density_status().far_bins_refused&&pass.density_status().available,"far24_program_failure_is_sticky_without_retries");
-        }
-        // The shadow pass: 24 is clamped to 40 as soon as a prepare asks for the grid, and stays so with the grid toggled
-        // off, so the grid frame and its toggled-off frame draw one far law (the in-march default frame).
-        {
-            FogPass shadow;check(shadow.attach(d,table,caps,D3DFMT_X8R8G8B8),"far24 shadow attach");FogDensityConfig sconfig=fconfig;sconfig.shadow_pass=true;
-            Harness hs(d,caps,shadow,sconfig);Scene s2(d,caps,128,72);s2.create();check(shadow.prepare_targets(s2.w,s2.h),"far24 shadow targets");
-            const bool settled=hs.settle(A.cam);const char* why=shadow.density_status().far_bins_refused;const bool forty=shadow.density_far_bins()==40u;
-            hs.config.shadow_pass=false;check(hs.prepare(A.cam),"far24 shadow toggled off");FogResult r_off;
-            const bool toggled=hs.execute(A,s2,r_off)==S_OK&&r_off.applied&&surface_bytes(d,shadow.fixture_st())==off_none;
-            const char* still=shadow.density_status().far_bins_refused;
-            require(settled&&forty&&why&&std::string(why)=="shadow_pass"&&toggled&&still&&std::string(still)=="shadow_pass"&&shadow.density_far_bins()==40u,"far24_clamped_to_40_with_the_shadow_pass_and_toggled_off");
-            s2.release();shadow.detach();require(shadow.references()==0,"far24_shadow_detach_releases_everything");
-        }
-        scene.release();pass.detach();require(pass.references()==0&&pass.density_far_bins()==0u,"far24_detach_releases_everything");
-        require(device_references()==references_before,"far24_device_refcount_balanced");
-    }
     // --- Quarter-resolution march (FogDensityConfig::march_scale 4, fog-gpu-cost.md step C): the quarter programs and target
     // created at prepare, the march against the CPU twin at the quarter rays, the same pass back at 2 drawing the default
-    // frames byte for byte, the 24-far-bin combination, any other spacing refused, Reset, an injected program failure, detach ---
+    // frames byte for byte, any other spacing refused, Reset, an injected program failure, detach ---
     {
         FogDensityConfig qconfig=config;qconfig.march_scale=x3m::renderer::fog_march_scale_quarter;
         FogPass pass;check(pass.attach(d,table,caps,D3DFMT_X8R8G8B8),"q4 attach");Harness hx(d,caps,pass,qconfig);
         Scene scene(d,caps,128,72);scene.create();check(pass.prepare_targets(scene.w,scene.h),"q4 targets");
-        require(hx.settle(A.cam)&&pass.density_march_scale()==4u&&pass.density_far_bins()==40u&&!pass.density_status().march_scale_refused,"q4_pose_settles_with_the_quarter_programs");
+        require(hx.settle(A.cam)&&pass.density_march_scale()==4u&&!pass.density_status().march_scale_refused,"q4_pose_settles_with_the_quarter_programs");
         const UINT N=64;std::vector<float> split_map(N*N);for(UINT y=0;y<N;++y)for(UINT x=0;x<N;++x)split_map[y*N+x]=x<N/2?1.f:0.f;
         Com<IDirect3DTexture9> split_texture;upload(d,N,N,D3DFMT_R32F,4,split_map.data(),0,&split_texture.p);
         std::vector<std::uint8_t> scene_bytes;
@@ -1041,17 +861,6 @@ void run(const std::string& cases_file){
         hx.config.march_scale=3;const HRESULT refused=hx.prepare(A.cam);
         require(refused==E_INVALIDARG&&pass.density_march_scale()==4u&&!pass.density_status().available&&pass.references()==references,"march_scale_other_than_2_or_4_refused_at_prepare");
         hx.config.march_scale=x3m::renderer::fog_march_scale_quarter;
-        // Both far-bin counts combine with the quarter spacing: 24 swaps the march/repair pair only (the composite is per spacing).
-        {
-            const unsigned creates=pixel_shader_creates;hx.config.far_bins=x3m::renderer::fog_far_bins_coarse;FogResult r24;const auto none24=shade(nullptr,r24);
-            const bool pair_only=pixel_shader_creates-creates==2u;const FogFrame f24=make_frame(A,scene,hx.frame,true);
-            fog_cpu::Setup cpu=cpu_setup(f24,hx.config),cpu40=cpu;cpu40.far_bins=x3m::renderer::fog_far_bins_default;double worst_T=0,worst_S=0,control=0;
-            twin(none24,f24,cpu,cpu40,false,worst_T,worst_S,control);
-            std::printf("Q4_FAR24 sky_pixels=35 worst_T=%.6f worst_S=%.6f vs_40_bin_twin=%.6f\n",worst_T,worst_S,control);
-            require(pair_only&&pass.density_far_bins()==24u&&pass.density_march_scale()==4u&&none24!=none4&&worst_T<=.003&&worst_S<=.003&&control>worst_S,"q4_far24_combination_matches_cpu_reference_at_24_far_bins");
-            hx.config.far_bins=x3m::renderer::fog_far_bins_default;FogResult r40;
-            require(shade(nullptr,r40)==none4&&pass.density_far_bins()==40u&&pass.density_march_scale()==4u,"q4_far_bins_back_to_40_byte_identical");
-        }
         // Reset: the quarter target goes with the others and comes back at the next prepare_density; programs are kept.
         split_texture.reset();scene.release();pass.before_reset();const bool released=pass.fixture_st()==nullptr;const HRESULT reset=d->Reset(&pp);pass.after_reset(reset);check(reset,"q4 Reset");scene.create();
         check(pass.prepare_targets(scene.w,scene.h),"q4 targets after Reset");require(hx.settle(A.cam),"q4_settles_after_reset");
@@ -1090,22 +899,20 @@ void run(const std::string& cases_file){
                 "q4_double_failure_next_prepare_builds_the_half_set_and_4_stays_refused");
         scene.release();pass.detach();require(pass.references()==0,"q4_double_failure_detach_releases_everything");
     }
-    // --- Quarter spacing refused at the first prepare: its target cannot be created, its programs cannot be built, or the
-    // shadow pass is asked (its grid programs exist at spacing 2 only, also toggled off). The half-resolution march draws the
-    // default frame each time, the reason is reported and stays ---
+    // --- Quarter spacing refused at the first prepare: its target cannot be created or its programs cannot be built. The
+    // half-resolution march draws the default frame each time, the reason is reported and stays ---
     {
         FogDensityConfig qconfig=config;qconfig.march_scale=x3m::renderer::fog_march_scale_quarter;
         auto frame_bytes=[&](FogPass& pass,Harness& hx,Scene& scene){FogResult r;check(hx.prepare(A.cam),"q4 refused prepare");
             if(hx.execute(A,scene,r)!=S_OK||!r.applied)throw std::runtime_error("q4 refused transaction");return surface_bytes(d,pass.fixture_st());};
-        for(int kind=0;kind<3;++kind){
-            static const char* const expected[3]={"target","program","shadow_pass"};
-            FogDensityConfig c=qconfig;c.shadow_pass=kind==2;
+        for(int kind=0;kind<2;++kind){
+            static const char* const expected[2]={"target","program"};
+            FogDensityConfig c=qconfig;
             if(kind==0)refuse_fp16_target_width=32;else if(kind==1)refuse_q4_programs=true;
             FogPass pass;check(pass.attach(d,table,caps,D3DFMT_X8R8G8B8),"q4 refused attach");Harness hx(d,caps,pass,c);
             Scene scene(d,caps,128,72);scene.create();check(pass.prepare_targets(scene.w,scene.h),"q4 refused targets");
             const bool settled=hx.settle(A.cam);refuse_fp16_target_width=0;refuse_q4_programs=false;
             const char* why=pass.density_status().march_scale_refused;const bool half=pass.density_march_scale()==2u;
-            if(kind==2)hx.config.shadow_pass=false; // toggled off: still the half-resolution spacing
             const auto bytes=frame_bytes(pass,hx,scene);const char* still=pass.density_status().march_scale_refused;
             std::printf("Q4_REFUSED kind=%s reason=%s drawn=%u\n",expected[kind],why?why:"none",pass.density_march_scale());
             const std::string label=std::string("q4_refused_")+expected[kind]+"_draws_the_half_resolution_march_and_stays_refused";

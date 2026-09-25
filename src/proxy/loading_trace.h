@@ -4,7 +4,6 @@
 #include <cstdint>
 struct ID3DXMesh; // d3dx9mesh.h interface; declared here so translation units without D3DX headers can include this file
 #ifdef X3M_LOADING_TRACE_FIXTURE
-#include "mesh_adjacency_cache.h"
 #endif
 struct ID3DXMesh; // adjacency_write_dump takes the mesh opaquely; the production header does not include d3dx9mesh.h
 
@@ -61,8 +60,6 @@ bool active();
 // Totals over the complete run are conserved, but a delta is not a transaction.
 Snapshot take_snapshot();
 void report();
-// Capture-serialized SaveLoadComplete only; closes admission without waiting.
-void intervals_freeze(uint64_t begin,uint64_t end,uint64_t device,uint64_t reset,uint64_t frame,DWORD tid) noexcept;
 // crypt_cache line: scope "window" (deltas since the previous window line, part
 // of report) or "session" (cumulative; capture.cpp logs it when the last device
 // is destroyed). No-op unless the cache is active.
@@ -109,15 +106,6 @@ bool fixture_crypt_site(const void* caller,Operation operation);
 void fixture_fail_mesh_patch(unsigned step);
 void fixture_fail_protection_restores(unsigned calls);
 unsigned fixture_protection_debts();
-mesh_adjacency_cache::Statistics fixture_cache_statistics();
-bool fixture_cache_constructed();
-bool fixture_cache_faulted();
-uint64_t fixture_cache_gate_rejections();
-uint64_t fixture_cache_blocked();
-void fixture_cache_cleanup_failure(HRESULT hr); // Outcome seam; no real buffer is left locked.
-void fixture_cache_reenter_once();
-bool fixture_cache_contract(ID3DXMesh* mesh); // Preflight only; never dispatches adjacency.
-uint64_t fixture_cache_gate_reason(const char* reason);
 // X3M_MESH_ADJACENCY seams: 0 native, 1 verify, 2 fast (the production switch is read once at initialization).
 void fixture_adjacency_mode(unsigned mode);
 void fixture_adjacency_math_table(int table); // -1 restores real process dispatch; no production override.

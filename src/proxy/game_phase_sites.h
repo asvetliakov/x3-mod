@@ -40,25 +40,7 @@ enum Index : unsigned {
     CreateEnd = 30,
     SeekBegin = 31,
     SeekEnd = 32,
-    // Audio-path witnesses (X3M_AUDIO_SITES=1, load hang runs 29-35), after
-    // the phase markers so the phase group installs unchanged without them.
-    // docs/reverse-engineering/voice-startup-sequence.md, voice-cue-timing.md.
-    AudioSetStateAfter = 33,  // return of IMultiMediaStream::SetState(RUN) at 4d03f5; EAX = HRESULT
-    AudioPauseAfter = 34,     // return of IMediaControl::Pause at 4d0407; EAX = HRESULT
-    AudioPumpEntry = 35,      // 4d34b0 Win32 message pump entry
-    AudioPumpBody = 36,       // 4d3532 drain loop body (one hit per iteration)
-    AudioManagerPreloop1 = 37,// 403a7f call 498370 (manager update); 403b04 is Services
-    AudioManagerPreloop2 = 38,// 403a98
-    AudioManagerInit = 39,    // 49729b
-    AudioManagerBody = 40,    // 486809
-    AudioManagerAsset = 41,   // 492dbe
-    AudioRefillEntry = 42,    // 4d0700 per-media refill state machine entry
-    AudioPollCall = 43,       // 4d0762 CompletionStatus(0,0) call setup (state 2)
-    AudioPollAfter = 44,      // 4d0774 first instruction after the poll's join; EAX = HRESULT when paired with 43
-    AudioUpdateAfter = 45,    // return of IStreamSample::Update(ASYNC) at 4d0a61; EAX = HRESULT
-    AudioCuePlay = 46,        // 498e30 cue play entry
-    Count = 47,
-    PhaseCount = 33           // the phase group; audio sites follow
+    Count = 33
 };
 constexpr unsigned kSiteCount = Count;
 // Native CALL/stack effects are replayed. Publisher entry/epilogue describe
@@ -97,20 +79,6 @@ constexpr engine_patch::SiteSpec kSites[Count] = {
     {"game_phase_create_end",0x00498f00,{0x83,0xef,0x01,0x66,0x85,0xff},6,0,0},
     {"game_phase_seek_begin",0x00498f55,{0xe8,0xd6,0x74,0x03,0x00},5,0,1},
     {"game_phase_seek_end",0x00498f5a,{0x83,0xc4,0x04,0x85,0xc0},5,0,0},
-    {"game_phase_audio_setstate_after",0x004d03f7,{0x85,0xc0,0x0f,0x8c,0x61,0xfd,0xff,0xff},8,0,4},
-    {"game_phase_audio_pause_after",0x004d0409,{0x85,0xc0,0x0f,0x8c,0x4f,0xfd,0xff,0xff},8,0,4},
-    {"game_phase_audio_pump_entry",0x004d34b0,{0x83,0xec,0x24,0x53,0x55},5,0,0},
-    {"game_phase_audio_pump_body",0x004d3532,{0x6a,0x00,0x6a,0x00,0x6a,0x00},6,0,0},
-    {"game_phase_audio_manager_preloop1",0x00403a7f,{0xe8,0xec,0x48,0x09,0x00},5,0,1},
-    {"game_phase_audio_manager_preloop2",0x00403a98,{0xe8,0xd3,0x48,0x09,0x00},5,0,1},
-    {"game_phase_audio_manager_init",0x0049729b,{0xe8,0xd0,0x10,0x00,0x00},5,0,1},
-    {"game_phase_audio_manager_body",0x00486809,{0xe8,0x62,0x1b,0x01,0x00},5,0,1},
-    {"game_phase_audio_manager_asset",0x00492dbe,{0xe8,0xad,0x55,0x00,0x00},5,0,1},
-    {"game_phase_audio_refill_entry",0x004d0700,{0x83,0xec,0x44,0x53,0x55},5,0,0},
-    {"game_phase_audio_poll_call",0x004d0762,{0x6a,0x00,0x6a,0x00,0x50,0xff,0xd2},7,0,0},
-    {"game_phase_audio_poll_after",0x004d0774,{0x83,0x7e,0x64,0x04,0x0f,0x85,0xb6,0x02,0x00,0x00},10,0,6},
-    {"game_phase_audio_update_after",0x004d0a63,{0x8b,0xf8,0x81,0xff,0x0e,0x00,0x07,0x80},8,0,0},
-    {"game_phase_audio_cue_play",0x00498e30,{0x51,0x8b,0x44,0x24,0x1c},5,0,0},
 };
 static_assert(sizeof(kSites)/sizeof(kSites[0]) == Count, "All phase markers are one group");
 }

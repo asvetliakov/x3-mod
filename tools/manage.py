@@ -46,8 +46,7 @@ FOG_MARCH_SCALE_DEFAULT = '4'  # Run 77 C/C2 (2026-09-24): quarter-resolution fo
 # unset (user selection after run 41 C / run128, 2026-09-18,
 # docs/architecture/linear-emission-cost.md, "Hull light-map gain"). The DLL's
 # own fallback stays 1 = off; an explicit --hull-lightmap-gain 1 disables it,
-# and the converted route (--linear-materials) keeps 1.0 because its own
-# --lightmap-emissive-gain applies there instead.
+# (the converted route's options were removed from the launcher on 2026-09-25).
 HULL_LIGHTMAP_GAIN_DEFAULT = 4.0
 LIGHT_MAP_FAR_FADE_DEFAULT = '80,220,1'  # user flight preference, 2026-09-20
 # Hull emissive widening the launcher forwards whenever the light-map gain is
@@ -62,6 +61,19 @@ HULL_EMISSIVE_WIDENING_DEFAULT = '4'
 TAA_THIN_REGION_EMISSIVE_DEFAULT = '1'
 TAA_FAR_STABILISER_DEFAULT = '0.985'  # Run 81 default with --taa (Run 80 A stand command)
 TAA_THIN_REGION_DEFAULT = '0.97'  # Run 81 default with --taa (Run 80 A stand command)
+# Variables of removed options (docs/verification/launcher-options-inventory.md, "Removed 2026-09-25", and the
+# earlier retirements): never sent, and an inherited shell value is dropped on every launch, so a stale export can
+# neither reach a DLL that still reads it nor clutter the environment of one that does not.
+REMOVED_VARIABLES = (
+    'X3M_TAA_CURRENT_FILTER', 'X3M_TAA_LINE_FILTER', 'X3M_TAA_THIN_CLIP', 'X3M_TAA_ADAPTIVE_WEIGHT', 'X3M_TAA_REGION_HOLD',
+    'X3M_TAA_SENTINEL_STABILISER', 'X3M_TAA_SENTINEL_STABILISER_DEFAULT', 'X3M_VOLUMETRIC_FOG_LOOK',
+    'X3M_LOD_SCALE', 'X3M_MESH_CACHE', 'X3M_LOADING_INTERVALS', 'X3M_AUDIO_SITES', 'X3M_PROFILE_RAW', 'X3M_CULL_SMALL_PARTS_SCOPE',
+    'X3M_LINEAR_MATERIALS', 'X3M_MATERIAL_DIRECT_GAIN', 'X3M_MATERIAL_EMISSIVE_GAIN', 'X3M_LIGHTMAP_EMISSIVE_GAIN', 'X3M_MATERIAL_FILL',
+    'X3M_LINEAR_DISTANCE_FADE', 'X3M_LINEAR_EMISSIONS', 'X3M_EMISSION_GAIN',
+    'X3M_SCREEN_EMISSION', 'X3M_SCREEN_EMISSION_BOUND', 'X3M_SCREEN_EMISSION_GAIN', 'X3M_SCREEN_EMISSION_TIMING', 'X3M_FADE_WITNESS', 'X3M_SHIMMER_TRACE',
+    'X3M_FOG_SHADOW_PASS', 'X3M_FOG_FAR_BINS', 'X3M_TAA_HISTORY_TAPS', 'X3M_TAA_THIN_REGION_GATE', 'X3M_TAA_THIN_REGION_SOURCE',
+    'X3M_TAA_THIN_REGION_SOURCE_DEFAULT', 'X3M_DEPTH_COPY', 'X3M_SCENE_DEPTH_CAPTURE', 'X3M_MOTION_CAPTURE', 'X3M_FINITE_POSITIONS',
+)
 # Minimum caster footprint of the sun-shadow cascades, forwarded whenever
 # --shadow-cascades is present and the option is unset (user selection after
 # run251/run253, 2026-09-22, docs/verification/directional-shadows.md). The
@@ -78,7 +90,6 @@ SHADOW_CASCADE_MIN_FOOTPRINT_DEFAULT = 8.0
 # Raised to 4 px on 2026-09-25 with the stand-command promotion below (flown at 4 px
 # since Run 75 B / 76 B).
 CULL_SMALL_PARTS_DEFAULT_PX = 4.0
-CULL_SMALL_PARTS_DEFAULT_SCOPE = 'all'
 # Run 75 B (run279): at 4 px the stub culled 30-33 of the 51-54 bolts per frame
 # one frame after they left the muzzle; projectile nodes (the engine's class-0
 # marker +0x130 & 0x20000000) are exempt by default.
@@ -133,9 +144,9 @@ def apply_promoted_defaults(args):
     fill('resource_read', 'fast')
     fill('dat_handles', True)
     fill('mesh_adjacency', 'fast')
-    fill('screen_emission_additive', 2.0, bool(args.motion_output and args.hdr and not args.screen_emission))
+    fill('screen_emission_additive', 2.0, bool(args.motion_output and args.hdr))
     fill('screen_emission_additive_alpha', 0.0, args.screen_emission_additive is not None)
-    fill('emission_source_gain', 2.0, bool(args.hdr and not args.linear_emissions))
+    fill('emission_source_gain', 2.0, bool(args.hdr))
     fill('sun_shadow_lane', True, bool(args.motion_output and args.taa and args.hdr))
     fill('shadow_replay_depth', True, bool(args.motion_output and args.ownership))
     fill('sun_shadow_apply', True, bool(args.sun_shadow_lane and args.shadow_replay_depth))
@@ -434,11 +445,11 @@ def cull_small_parts_px(args):
 
 
 def hull_emitters_requested(args):
-    """The ONE/ONE guide-light population (--hull-emitters), implied by an
-    --emission-source-gain above 1: the guide lights belong to the effects
-    group (Ctrl+Shift+F6) and take that gain, so the user selects both with
-    one option (docs/architecture/linear-emission-cost.md, "Implemented")."""
-    return bool(args.hull_emitters or (args.emission_source_gain is not None and args.emission_source_gain > 1.0))
+    """The ONE/ONE guide-light population, implied by an --emission-source-gain
+    above 1: the guide lights belong to the effects group (Ctrl+Shift+F6) and
+    take that gain (docs/architecture/linear-emission-cost.md, "Implemented";
+    the separate --hull-emitters / --hull-emission-gain were removed on 2026-09-25)."""
+    return bool(args.emission_source_gain is not None and args.emission_source_gain > 1.0)
 
 
 def fog_dust_motes_value(parser, text):
@@ -727,16 +738,12 @@ def main():
     parser.add_argument('--music-keep', action='store_true', default=None, help='[launcher default since 2026-09-25 on every modded launch (accepted run273); --no-music-keep = off; not sent under --vanilla] Keep the sector music playing at its position across alt-tab, save and pause (X3M_MUSIC_KEEP=1; absent = nothing patched; opt-in until 2026-09-25: the assumption that the story script replays the same track id after the stop-all is unverified, fly --music-trace first; refused with --vanilla): a six-byte trampoline inside the engine\'s stop-all 0x004982b0 (site 0x004982db) lets a music record through the save and pause callers without the IMediaControl::Pause (the bookkeeping and the script wake stay vanilla) and marks the track after the alt-tab caller, and the play routine\'s seek call 0x00498d54 -> 0x004d0430 is redirected so a MOV_PlayMovie of the held or still-playing track returns without the seek to 0 ms; another id (sector change), load, P_Leave and game start keep vanilla behaviour. One music_keep_stop / music_keep_seek line per decision (docs/reverse-engineering/music-restart.md, Implementation). Exact executable and bytes only, otherwise fails closed to vanilla')
     parser.add_argument('--no-music-keep', dest='music_keep', action='store_false', help='Turn the --music-keep launcher default off')
     parser.add_argument('--music-trace', action='store_true', help='Trace the music state machine (X3M_MUSIC_TRACE=1; default absent = nothing patched; independent of --music-keep; refused with --vanilla): three byte-verified entry trampolines log every stop-all 0x004982b0 (caller return address and name), every play 0x00498c90 (id, start ms, caller, record flags) and every MOV_StopMovie 0x00498810 (id, caller) as music_trace_stop / music_trace_play / music_trace_stop_movie lines with the Present frame counter, a sequence number and QPC, at most 1,000 lines per session. Expected after an alt-tab: music_trace_stop name=alt_tab, then music_trace_play of the same id with start_ms=0 (docs/reverse-engineering/music-restart.md, Implementation)')
-    parser.add_argument('--audio-sites', action='store_true', help='Load hang witness: add the fourteen byte-verified audio-path markers (media create SetState/Pause returns, message pump entry and drain iterations, the six 0x00498370 manager-update call sites, refill entry, CompletionStatus poll with its HRESULT bucket, Update return, cue play) to the game-phase group (X3M_AUDIO_SITES=1; requires --game-phases); one game_phase_audio line per telemetry window and, with --profile, every 2 s from the sampler thread so the counters stay visible while frames are stopped (docs/architecture/voice-decoder-adapter.md, "Load hang witness build")')
     parser.add_argument('--ownership', action='store_true', default=None, help='[launcher default since 2026-09-25 on every modded launch; --no-ownership = off; not sent under --vanilla] Enable the experimental normal-D3D9 ownership wrapper')
     parser.add_argument('--no-ownership', dest='ownership', action='store_false', help='Turn the --ownership launcher default off')
-    parser.add_argument('--depth-copy', action='store_true', help='Enable experimental original-preserving depth copy (requires --ownership)')
-    parser.add_argument('--scene-depth-capture', action='store_true', help='Preserve identified scene depth in requested capture frames (requires --ownership --depth-copy)')
     parser.add_argument('--object-trace', action='store_true', default=None, help='[launcher default since 2026-09-25 on every modded launch; --no-object-trace = off; not sent under --vanilla] Capture verified engine submission identity (exact executable only)')
     parser.add_argument('--no-object-trace', dest='object_trace', action='store_false', help='Turn the --object-trace launcher default off')
     parser.add_argument('--object-lifetime', action='store_true', default=None, help='[launcher default since 2026-09-25 on every modded launch with --object-trace --ownership; --no-object-lifetime = off; not sent under --vanilla] Observe verified render-registry lifetimes (requires --object-trace --ownership)')
     parser.add_argument('--no-object-lifetime', dest='object_lifetime', action='store_false', help='Turn the --object-lifetime launcher default off')
-    parser.add_argument('--mesh-cache', action='store_true', help='Enable experimental verified native adjacency reuse (requires --telemetry)')
     parser.add_argument('--mesh-adjacency', choices=['native', 'verify', 'fast'], default=None, help='[launcher default since 2026-09-25: fast on every modded launch; --mesh-adjacency native = off; the DLL reads it only with --telemetry, so without it the default is inert, and an explicit verify|fast still requires --telemetry; not sent under --vanilla] ID3DXMesh::GenerateAdjacency service (X3M_MESH_ADJACENCY; requires --telemetry): native forwards; verify runs D3DX, recomputes by exact position equality and logs any difference; fast answers from the exact-equality computation and falls through to D3DX on any qualification failure (docs/verification/mesh-adjacency-fast.md)')
     parser.add_argument('--mesh-adjacency-dump', action='store_true', help='With --mesh-adjacency verify: write every mismatching mesh (bounded) as x3-modern-captures/mesh-adjacency-<n>.bin for tools/analysis/replay_mesh_adjacency.py (X3M_MESH_ADJACENCY_DUMP=1; game data, never committed)')
     parser.add_argument('--gz-buffer', action='store_true', default=None, help='[launcher default since 2026-09-25 on every modded launch; --no-gz-buffer = off; not sent under --vanilla] Read-ahead buffer in front of the zlib gz imports of the savegame decoder (X3M_GZ_BUFFER=1; no --telemetry needed): the ~14 M three-byte gzread calls of a load are served from 256 KB chunks with zlib 1.2.3 semantics kept; one gz_buffer_file line per file in the session log (docs/verification/gz-buffer.md)')
@@ -744,16 +751,12 @@ def main():
     parser.add_argument('--gz-buffer-kb', type=int, default=256, help='Chunk size in KB of --gz-buffer (X3M_GZ_BUFFER_KB; 1..65536, default 256)')
     parser.add_argument('--crypt-cache', action='store_true', default=None, help='[launcher default since 2026-09-25 on every modded launch; --no-crypt-cache = off; not sent under --vanilla] CryptoAPI context/key cache in front of the script signature check 0x004cabc0 (X3M_CRYPT_CACHE=1; no --telemetry needed): the per-script CryptAcquireContextA delete/create/delete of the X2EgosoftCSPContainer key container and the CryptImportKey of the constant public key are answered from one cached provider handle and key; hash and signature verification pass through unchanged; one crypt_cache line per telemetry window and at teardown (docs/verification/crypt-cache.md)')
     parser.add_argument('--no-crypt-cache', dest='crypt_cache', action='store_false', help='Turn the --crypt-cache launcher default off')
-    parser.add_argument('--loading-intervals', action='store_true', help='Retain bounded per-thread loading call intervals until save_load_complete (requires --telemetry; 24 MiB payload)')
     parser.add_argument('--loading-probes', action='store_true', help='Probe batch 2 (X3M_LOADING_PROBES=1; requires --telemetry): light IAT rows on the CryptoAPI, inflateInit2_/inflateEnd, the write-side and per-open KERNEL32 imports, plus entry-counting trampolines on twelve engine loading functions (byte-verified, exact executable only); one loading_probe line per site per report window (docs/verification/loading-probes.md)')
     parser.add_argument('--resource-read', choices=['native', 'verify', 'fast'], default=None, help='[launcher default since 2026-09-25: fast on every modded launch; --resource-read native = off; not sent under --vanilla] Archive reader 0x004e8880 service (X3M_RESOURCE_READ; exact executable only): native leaves the game\'s reader alone; verify runs our whole-extent decode into a scratch buffer, then the original, and logs any difference; fast returns our decode (one fread, word XOR, one inflate, no memset) and falls back to the original on any deviation (docs/verification/resource-reader.md)')
     parser.add_argument('--dat-handles', action='store_true', default=None, help='[launcher default since 2026-09-25 on every modded launch; --no-dat-handles = off; not sent under --vanilla] Keep catalogue .dat file handles between resource opens instead of _fopen/_fclose per resource (X3M_DAT_HANDLES=1; exact executable only; docs/reverse-engineering/resource-reader.md)')
     parser.add_argument('--no-dat-handles', dest='dat_handles', action='store_false', help='Turn the --dat-handles launcher default off')
     parser.add_argument('--profile', action='store_true', help='Run the in-process sampling profiler (X3M_PROFILE=1): one sampler thread, periodic profile_* reports in the session log; see docs/verification/sampling-profiler.md')
     parser.add_argument('--profile-interval-us', type=int, default=2000, help='Sampling interval in microseconds for --profile (100..1000000, default 2000)')
-    parser.add_argument('--profile-raw', action='store_true', help='Load hang witness: with --profile, when a sampled thread\'s EIP resolves to no pinned module, log its raw Eip/Esp/Ebp/SegCs, ContextFlags and 32 stack dwords with module+RVA (profile_raw*, once per thread per report period), plus suspend/context failure codes and per-report failure counts (X3M_PROFILE_RAW=1)')
-    parser.add_argument('--finite-positions', action='store_true', help='Validate positions from verified existing buffer uploads (requires --ownership --telemetry)')
-    parser.add_argument('--motion-capture', action='store_true', help='Produce private rigid-motion diagnostics during capture (requires scene depth, finite positions and object lifetime)')
     parser.add_argument('--motion-output', action='store_true', default=None, help='[launcher default since 2026-09-25 on every modded launch; --no-motion-output = off; not sent under --vanilla] Route the reviewed material pair through motion-output variants into a private RT1 (history needs --object-trace --object-lifetime; otherwise sentinel-only)')
     parser.add_argument('--no-motion-output', dest='motion_output', action='store_false', help='Turn the --motion-output launcher default off')
     parser.add_argument('--motion-jitter', action='store_true', help='Per-draw sub-pixel jitter of every scene draw with a table VS (requires --motion-output; Halton 2,3 sequence, temporal step 1)')
@@ -762,34 +765,20 @@ def main():
     parser.add_argument('--taa-debug', action='store_true', help='Write the pre-resolve color, the resolved FP16 image and the presented main target (after the sharpen draw / copy-back or the HDR write-back) in capture frames (requires --taa)')
     parser.add_argument('--taa-mip-bias', type=float, default=None, help='D3DSAMP_MIPMAPLODBIAS applied to the mip-mapped sampler stages of routed material draws while the TAA jitter is on, restored before every other draw (X3M_TAA_MIP_BIAS; requires --taa; 0 = off; the value for the 4-sample jitter; default -0.5 with --taa; 0 disables)')
     parser.add_argument('--taa-sharpen', type=float, default=None, help='Post-resolve sharpen of the presented image, 0..1 (X3M_TAA_SHARPEN; requires --taa): robust contrast-adaptive sharpening of the resolved image only, never of the history; 1 is the strongest setting, 0.5 one stop softer; default 0.75 with --taa; 0 disables, leaving the output bit-identical to the unsharpened route (docs/architecture/temporal-integration.md, "Post-resolve sharpen")')
-    # Retired 2026-09-23 (cleanup batch 6, rejected / superseded resolve variants): registered only so that an old command line is refused by name.
-    for retired in ('--taa-current-filter', '--taa-line-filter', '--taa-thin-clip', '--taa-adaptive-weight'):
-        parser.add_argument(retired, nargs='?', const='', default=None, help=argparse.SUPPRESS)
-    parser.add_argument('--taa-far-stabiliser', default=None, metavar='W[,A[,F0,F1[,LO,HI]]]', help='Far-gated stabiliser of the TAA resolve against shimmer of distant sub-pixel detail (X3M_TAA_FAR_STABILISER; requires --taa; default 0.985 (weight only) on every modded --taa launch since Run 81, nothing sent without --taa or under --vanilla; off or 0 = off; no *_DEFAULT companion, the DLL row carries the value; 0.985,1 adds the filter): on pixels whose footprint exceeds F0 world units per pixel, fully at F1 (default 60,68 since 2026-09-25: the full weight from about 87,000 view units (17 km) at 5120 px width; 80,130 before), W is the history weight (0 off, else history weight..0.99; falls back to the history weight across the LO..HI speed gate) and A the exp(-A d^2) current-sample filter (0 off, else up to 4). The weight is full while the far content moves at most LO px/frame and back at the history weight from HI (default 0.03,0.25: a long history softens sliding detail; the one gate is shared with --taa-thin-region, see there). The speed is set by --taa-far-gate: camera (the default) takes the camera-relative residual on the camera-gate resolve (--taa-thin-region with the default camera gate: the motion of the pixel against the camera path, or its screen motion when that is smaller, so far content static in the world keeps W under a camera pan, without one-frame sparkles on far edges, but softer during fractional pans; content moving against the camera drops to the history weight); screen takes the screen speed (sharper while panning, but with --taa-far-clip 7x7 a 0.4 px far line still sparkles under fractional pans at the base weight: FAR_JITTER_LINE), which the far program (--taa-thin-region-gate screen, the thin region off, or the far stabiliser alone) always uses. The two components are separate: W,0 is weight only, 0,A filter only (docs/architecture/taa-distant-line-fade.md section 9).')
-    parser.add_argument('--taa-thin-region', default=None, metavar='W[,RELAX[,LO,HI]]', help='Thin-region stabiliser of the TAA resolve against the jitter-cycle shimmer of lattices, struts and foreshortened panels (X3M_TAA_THIN_REGION; requires --taa; default 0.97 on every modded --taa launch since Run 81, nothing sent without --taa or under --vanilla; off or 0 = off; no *_DEFAULT companion, the DLL row carries the value): where the depth is fragmented (some 7-tap line through a pixel changes between geometry and its background at least twice) and nothing nearby moves faster than the speed gate, the history weight rises to min(n/(n+1), W) (W 0 off, else history weight..0.99) and the history is pulled only (1 - RELAX) of the way to the variance clip (default 1: clip off there). LO,HI px/frame is the speed gate: full effect at or below LO, none from HI. There is ONE gate for this option and --taa-far-stabiliser: given on either, it applies to both (default 0.03,0.25); given on both, the two pairs must be equal. With the camera gate (the default) the region is held one jitter cycle (L frames) after a pixel was last flagged, and the gate\'s closure is the smaller of the pixel\'s and its nearest-depth 3x3 neighbour\'s openness, held as long (the region hold, docs/architecture/taa-plan-lifted-slot-cap.md step 1); with --taa-thin-region-gate screen the region is the 11x11 around fragmented pixels and closes when anything within 8 px moves faster than the gate. Plain silhouettes and everything outside the region keep the plain resolve (docs/architecture/taa-lattice-crawl.md section 13).')
+    parser.add_argument('--taa-far-stabiliser', default=None, metavar='W[,A[,F0,F1[,LO,HI]]]', help='Far-gated stabiliser of the TAA resolve against shimmer of distant sub-pixel detail (X3M_TAA_FAR_STABILISER; requires --taa; default 0.985 (weight only) on every modded --taa launch since Run 81, nothing sent without --taa or under --vanilla; off or 0 = off; no *_DEFAULT companion, the DLL row carries the value; 0.985,1 adds the filter): on pixels whose footprint exceeds F0 world units per pixel, fully at F1 (default 60,68 since 2026-09-25: the full weight from about 87,000 view units (17 km) at 5120 px width; 80,130 before), W is the history weight (0 off, else history weight..0.99; falls back to the history weight across the LO..HI speed gate) and A the exp(-A d^2) current-sample filter (0 off, else up to 4). The weight is full while the far content moves at most LO px/frame and back at the history weight from HI (default 0.03,0.25: a long history softens sliding detail; the one gate is shared with --taa-thin-region, see there). The speed is set by --taa-far-gate: camera (the default) takes the camera-relative residual on the camera-gate resolve (--taa-thin-region with the default camera gate: the motion of the pixel against the camera path, or its screen motion when that is smaller, so far content static in the world keeps W under a camera pan, without one-frame sparkles on far edges, but softer during fractional pans; content moving against the camera drops to the history weight); screen takes the screen speed (sharper while panning, but with --taa-far-clip 7x7 a 0.4 px far line still sparkles under fractional pans at the base weight: FAR_JITTER_LINE), which the far program (the thin region off, or the far stabiliser alone) always uses. The two components are separate: W,0 is weight only, 0,A filter only (docs/architecture/taa-distant-line-fade.md section 9).')
+    parser.add_argument('--taa-thin-region', default=None, metavar='W[,RELAX[,LO,HI]]', help='Thin-region stabiliser of the TAA resolve against the jitter-cycle shimmer of lattices, struts and foreshortened panels (X3M_TAA_THIN_REGION; requires --taa; default 0.97 on every modded --taa launch since Run 81, nothing sent without --taa or under --vanilla; off or 0 = off; no *_DEFAULT companion, the DLL row carries the value): where the depth is fragmented (some 7-tap line through a pixel changes between geometry and its background at least twice) and nothing nearby moves faster than the speed gate, the history weight rises to min(n/(n+1), W) (W 0 off, else history weight..0.99) and the history is pulled only (1 - RELAX) of the way to the variance clip (default 1: clip off there). LO,HI px/frame is the speed gate: full effect at or below LO, none from HI. There is ONE gate for this option and --taa-far-stabiliser: given on either, it applies to both (default 0.03,0.25); given on both, the two pairs must be equal. With the camera gate (the default) the region is held one jitter cycle (L frames) after a pixel was last flagged, and the gate\'s closure is the smaller of the pixel\'s and its nearest-depth 3x3 neighbour\'s openness, held as long (the region hold, docs/architecture/taa-plan-lifted-slot-cap.md step 1). The camera gate is the only gate since the screen-speed gate option was removed on 2026-09-25. Plain silhouettes and everything outside the region keep the plain resolve (docs/architecture/taa-lattice-crawl.md section 13).')
     parser.add_argument('--taa-thin-region-emissive', default=None, metavar='E', help='Emissive vote in the thin-region stabiliser mask (X3M_TAA_THIN_REGION_EMISSIVE; requires --taa-thin-region with W > 0; omitted resolves to 1 with --hdr (the user-accepted run236/run237 default since 2026-09-22, which cuts the resolved rest-flicker leak 4.4-6.9x) and stays absent = off, the mask bit for bit, without it, where the vote is inert; 0 is the opt-out: E is in the units of the scene the resolve reads, and without --hdr that is the display-referred image, where nothing exceeds 1; E in 0..65000 scene luma): a routed pixel with valid depth whose own HDR luma exceeds E and whose 3x3 luma minimum is below that luma / 3 also joins the region, so a thin emissive glow strip on a distant hull takes the region\'s history weight min(n/(n+1), W) at rest and, with the camera gate, under a camera pan, instead of the base weight (the jitter-cycle leak drops about 3.4x at W = 0.97). The test is a LOCAL PEAK: a uniformly lit panel, whose 3x3 minimum is its own luma, casts no vote, and neither do unrouted depth-sentinel pixels (lasers, engine glows, sky), which keep the sentinel law. A non-finite pixel (NaN, or luma above the resolve\'s 65000 limit) casts no vote and cannot lower a neighbour\'s minimum. The vote follows the region\'s existing rules (with the camera gate: the region hold and its box clip; with the screen gate: the 11x11 grow and speed gate); the resolve programs are unchanged (docs/architecture/thin-glow-lines.md 8.3 R3, taa-lattice-crawl.md section 32.7).')
-    parser.add_argument('--taa-thin-region-gate', default=None, choices=('screen', 'camera'), help='Gate mode of --taa-thin-region (X3M_TAA_THIN_REGION_GATE; requires --taa-thin-region with W > 0; default when omitted with the thin region on = camera, accepted in Run 59; "screen" is the opt-out, the pre-Run59 screen-speed gate with its 11x11 / 17x17 dilation draws). "camera": the region\'s gate speed is min(screen speed, camera-relative speed), the camera-relative speed being each pixel\'s routed motion measured against the camera path at its depth, so a coherent camera pan no longer closes the region; where the camera term alone keeps a pixel open, the retained history is clipped to the 7x7 min/max box of the current colour instead of running clip-free, which bounds a stale ghost to colours present nearby. The camera gate runs the region hold (A\', docs/architecture/taa-plan-lifted-slot-cap.md step 1; its only form since 2026-09-24): the mask is its per-pixel tests draw, and the resolve composes the region, holding it one jitter cycle (L frames) after a pixel was last flagged; the gate\'s closure is the smaller of the pixel\'s and its nearest-depth 3x3 neighbour\'s openness, held over the same L frames (no spatial dilation). Refused box targets at the first camera-gate run turn the thin region off as well (reason=box_target). A device without FP16 / R32F filtering, or --taa-history-taps 16, has no camera-gate program: the thin region is then off (logged as motion_output_taa_region_hold ... effect=thin_region_off) (docs/architecture/taa-lattice-crawl.md section 32.1).')
-    # Retired 2026-09-25 with the TAA mask fold (docs/architecture/taa-mask-fold.md section 7): registered only so that an old
-    # command line is refused by name.
-    parser.add_argument('--taa-sentinel-stabiliser', nargs='?', const='', default=None, help=argparse.SUPPRESS)
     parser.add_argument('--taa-history-weight', type=float, default=None, metavar='W', help='History weight of the TAA resolve, 0.5..0.98 (X3M_TAA_HISTORY_WEIGHT; requires --taa): the fraction of the accepted history kept per frame. Default absent = 0.9; 0.95 halves the per-frame ripple and doubles the convergence time and the life of clamp-bounded ghost trails')
     parser.add_argument('--taa-alpha-history', action='store_true', help='Time-accumulate the resolved alpha on the HDR route (X3M_TAA_ALPHA_HISTORY=1; requires --taa; has an effect only with --hdr, where bloom reads it as the authored-glow weight)')
     parser.add_argument('--taa-unmatched-static', choices=['off', 'node', 'all'], default=None, help='A routed draw whose motion-history key is new this frame (e.g. a LOD or mesh swap) reprojects through the camera as a static object for that one frame instead of resolving current-only (X3M_TAA_UNMATCHED_STATIC; requires --taa). node: only when the same engine node was drawn last frame under another key; all: any new key. Default when omitted with --taa = node, accepted after run212 (no approach flash, 22-draw unmatched groups filled on 36 approach frames); "off" is the opt-out and is the pre-run212 behaviour bit for bit')
     parser.add_argument('--taa-sky-history', choices=['loose', 'strict'], default=None, help='Sky history rule of the TAA resolve under the camera path (X3M_TAA_SKY_HISTORY; requires --taa). strict: a sky pixel (depth sentinel) whose 3x3 holds no routed geometry accepts sentinel history only, so the hull of a station that moved away this frame is never blended into the sky (the SETA approach smear of run235, docs/architecture/seta-motion.md); the default when omitted with --taa since 2026-09-23 (accepted in Run 68 A). loose is the opt-out and the pre-SETA behaviour bit for bit: the 2%% relative depth tolerance proves any geometry beyond device depth 0.98 as the sky\'s history')
     parser.add_argument('--taa-sky-history-band-px', type=float, default=None, help='Band threshold of the strict sky history in px/frame (X3M_TAA_SKY_HISTORY_BAND_PX; requires --taa; 1..16, DLL default 3): the translation parallax at which the 1-px sky band beside a silhouette stops taking its history under --taa-sky-history strict (docs/architecture/seta-motion.md section 4)')
     parser.add_argument('--taa-sky-history-exit-px', type=float, default=None, help='Exit reset of the strict sky history in px/frame (X3M_TAA_SKY_HISTORY_EXIT_PX; requires --taa; a value above 0 also requires --taa-sky-history strict and an age program: --taa-far-stabiliser or --taa-thin-region; default when omitted with --taa = 0.25 (accepted in Run 68 A, 2026-09-23) under strict with an age program, else 0 = off, never an error: a plain --taa launch has no age program, so the reset resolves to 0 there, and it is on with --taa-far-stabiliser or --taa-thin-region; 0 is the explicit off and the opt-out, else 0.125..the band threshold): a sky pixel in the 1-px band beside a silhouette that took the silhouette\'s history while it moved at least this much translation parallax is marked in the age target and drops that history the frame it leaves the band, so the hull share it acquired leaves in one frame instead of decaying at the history weight (docs/architecture/seta-sky-hull-share-decay.md)')
-    parser.add_argument('--taa-history-taps', choices=('5', '16'), default=None, help='History reconstruction of the TAA resolve (X3M_TAA_HISTORY_TAPS; requires --taa; DLL default 5): 5 = Catmull-Rom through five hardware-bilinear taps (docs/architecture/taa-high-resolution.md S3), 16 = the 16-tap point form of the earlier builds, for an in-flight A/B; the thin region\'s camera gate has no 16-tap form, so 16 turns a camera-gated thin region off (logged). A device that cannot filter FP16 / R32F textures draws 16 whatever is asked (logged as motion_output_taa_history_taps)')
-    parser.add_argument('--taa-far-gate', choices=('camera', 'screen'), default=None, help='Motion gate of the far weight of --taa-far-stabiliser on the camera-gate resolve (X3M_TAA_FAR_GATE; requires --taa; refused under --vanilla; default camera on every modded --taa launch, marked X3M_TAA_FAR_GATE_DEFAULT=1; an explicit value sends marker 0; nothing is sent without --taa or under --vanilla; the DLL default when the variable is unset is camera): camera applies the LO,HI gate to the motion of the pixel against the camera path (or its screen motion when smaller), so far content static in the world keeps the far weight under a camera pan: no one-frame sparkles on far edges while panning (run327), but a softer far image during fractional pans, the long history being resampled every frame; screen applies it to the screen speed, the gate before 2026-09-25: sharper far content while panning, but the far weight drops to the history weight under a pan, so a sampled sub-pixel far line leaks 10 %% per frame into the output and sparkles even with --taa-far-clip 7x7 (FAR_JITTER_LINE: 0.4 px line at 10.5 px/frame 19.2 codes against the 6-code margin; camera 4.9). Camera stays the default (docs/architecture/taa-mask-fold.md section 4.2 addenda). The far program without the camera gate (--taa-thin-region-gate screen, the thin region off) always uses the screen speed (one motion_output_taa_far_gate row when camera was given)')
+    parser.add_argument('--taa-far-gate', choices=('camera', 'screen'), default=None, help='Motion gate of the far weight of --taa-far-stabiliser on the camera-gate resolve (X3M_TAA_FAR_GATE; requires --taa; refused under --vanilla; default camera on every modded --taa launch, marked X3M_TAA_FAR_GATE_DEFAULT=1; an explicit value sends marker 0; nothing is sent without --taa or under --vanilla; the DLL default when the variable is unset is camera): camera applies the LO,HI gate to the motion of the pixel against the camera path (or its screen motion when smaller), so far content static in the world keeps the far weight under a camera pan: no one-frame sparkles on far edges while panning (run327), but a softer far image during fractional pans, the long history being resampled every frame; screen applies it to the screen speed, the gate before 2026-09-25: sharper far content while panning, but the far weight drops to the history weight under a pan, so a sampled sub-pixel far line leaks 10 %% per frame into the output and sparkles even with --taa-far-clip 7x7 (FAR_JITTER_LINE: 0.4 px line at 10.5 px/frame 19.2 codes against the 6-code margin; camera 4.9). Camera stays the default (docs/architecture/taa-mask-fold.md section 4.2 addenda). The far program without the camera gate (the thin region off) always uses the screen speed (one motion_output_taa_far_gate row when camera was given)')
     parser.add_argument('--taa-far-clip', choices=('7x7', '3x3'), default=None, help='History clip of far pixels outside the thin region on the camera-gate resolve (X3M_TAA_FAR_CLIP; requires --taa; refused under --vanilla; default 7x7 on every modded --taa launch, marked X3M_TAA_FAR_CLIP_DEFAULT=1; an explicit value sends marker 0; nothing is sent without --taa or under --vanilla; DLL default 7x7 when unset): 7x7 clips the history of every pixel with a far weight (farw of --taa-far-stabiliser times the camera-relative openness, above 0) against the 7x7 min/max of the current colour, so a sub-pixel far line that only some jitter phases sample stops flickering (run327/run332 plant sparkles); 3x3 is the variance clip of every other pixel, the clip before 2026-09-25. Acts only with the far stabiliser on and the camera-gate thin region, and always gates on the camera-relative openness, also under --taa-far-gate screen (the far weight then follows the screen speed, the clip does not) (docs/architecture/taa-mask-fold.md section 4.2 addendum "far clip").')
     parser.add_argument('--taa-box-resolution', choices=('full', 'half'), default=None, help='Resolution of the box of the TAA thin region\'s camera gate (X3M_TAA_BOX_RESOLUTION; requires --taa; refused under --vanilla; default half on every modded --taa launch since Run 82 (accepted in Run 81 A launch 2, docs/verification/temporal-resolve.md), marked X3M_TAA_BOX_RESOLUTION_DEFAULT=1; full is the explicit opt-out (marker 0); nothing is sent without --taa or under --vanilla; the DLL default when the variable is unset stays full): half draws the separable min/max box (rows, then columns) at half resolution in both axes, each 2x2 block taking the 8x8 window that contains its four pixels\' 7x7 windows, so the clip it feeds is never tighter than full; the box opens on the previous frame\'s region hold and the resolve takes the 7x7 in place where it did not (docs/architecture/taa-high-resolution.md S4, taa-mask-fold.md). Meaningful only with the camera gate (the default with --taa-thin-region); an odd frame size, a refused program or refused targets keep full (one motion_output_taa_box_resolution row)')
-    # Removed 2026-09-24 (A' accepted after Run 79 A, taa-plan-lifted-slot-cap.md step 1): registered only so that an old
-    # command line is refused by name.
-    parser.add_argument('--taa-region-hold', nargs='?', const='', default=None, help=argparse.SUPPRESS)
-    # Refusal stub (2026-09-25): without it argparse would abbreviate --taa-sentinel to --taa-sentinel-stabiliser.
-    parser.add_argument('--taa-sentinel', nargs='?', const='', default=None, help=argparse.SUPPRESS)
-    parser.add_argument('--fade-rt2-owner', choices=('on', 'off'), default=None, help='Fade-band draws as RT2 owners (X3M_FADE_RT2_OWNER; default on since Run 81 whenever --taa --motion-output --hdr are given, otherwise not sent (one launcher line, never a refusal); an explicit value requires --taa, and on also --motion-output --hdr; refused under --vanilla; X3M_FADE_RT2_OWNER_DEFAULT=1 marks the default): every draw the fade-band arm routes (fraction at or above X3M_FADE_ROUTE, 500 permille, with its 100 permille hysteresis) writes its exact depth into RT2 (COLORWRITEENABLE2 15, the depth fragment\'s alpha 1 so the engine\'s SRCALPHA/INVSRCALPHA blend stores the depth itself), and, under original shading (not with --linear-materials), the arm\'s pair identity widens from the seven distance-fade pairs to every reviewed pair whose vertex program declares g_AlphaValue / g_FogClip / g_EnableFog (the run214 station families), and the arm also admits their alpha-tested fade-band cutouts (the same state with the alpha test on; the engine\'s own test decides the owned texels; docs/architecture/fade-alpha-cutout-ownership.md). Z-write is never touched. One fade_rt2_owner_configured line; fade_route_frame carries fade_evicted, fade_owner, fade_owner_masked and fade_tested (docs/architecture/fade-rt2-ownership.md)')
+    parser.add_argument('--fade-rt2-owner', choices=('on', 'off'), default=None, help='Fade-band draws as RT2 owners (X3M_FADE_RT2_OWNER; default on since Run 81 whenever --taa --motion-output --hdr are given, otherwise not sent (one launcher line, never a refusal); an explicit value requires --taa, and on also --motion-output --hdr; refused under --vanilla; X3M_FADE_RT2_OWNER_DEFAULT=1 marks the default): every draw the fade-band arm routes (fraction at or above X3M_FADE_ROUTE, 500 permille, with its 100 permille hysteresis) writes its exact depth into RT2 (COLORWRITEENABLE2 15, the depth fragment\'s alpha 1 so the engine\'s SRCALPHA/INVSRCALPHA blend stores the depth itself), and, under original shading, the arm\'s pair identity widens from the seven distance-fade pairs to every reviewed pair whose vertex program declares g_AlphaValue / g_FogClip / g_EnableFog (the run214 station families), and the arm also admits their alpha-tested fade-band cutouts (the same state with the alpha test on; the engine\'s own test decides the owned texels; docs/architecture/fade-alpha-cutout-ownership.md). Z-write is never touched. One fade_rt2_owner_configured line; fade_route_frame carries fade_evicted, fade_owner, fade_owner_masked and fade_tested (docs/architecture/fade-rt2-ownership.md)')
     parser.add_argument('--taa-thin-vote', choices=('on', 'off'), default=None, help='Draw-time thin vote of the TAA thin region (X3M_TAA_THIN_VOTE; default on since Run 81 whenever --taa --motion-output --ownership --hdr --sun-shadow-lane are given, otherwise not sent (one launcher line, never a refusal); an explicit value requires --taa, and on also --motion-output --ownership --sun-shadow-lane; refused under --vanilla; X3M_TAA_THIN_VOTE_DEFAULT=1 marks the default): each routed subset\'s triangle-height histogram (8 log2 bins of h = 2 area / longest edge) is read once at a scene end through the ownership wrapper (READONLY, MANAGED buffers only), and every routed opaque draw writes 1 - thin into the lane\'s RT2 .a, thin = the fraction of its triangles 0.5..3 px tall at the draw\'s projected scale when at least half are (else no vote); the mask chain\'s tests draw then flags those pixels without its depth-line search. The vote reaches only the four-channel lane RT2 (logged once otherwise). One thin_vote_mode line, one thin_vote_frame line per frame log (docs/architecture/taa-thin-geometry-alternatives.md section 3.2)')
-    parser.add_argument('--taa-thin-region-source', choices=('both', 'screen', 'vote'), default=None, help='What feeds the TAA thin-region flag (X3M_TAA_THIN_REGION_SOURCE; requires --taa and --taa-thin-region with W > 0 (the default 0.97 counts); refused under --vanilla). Default vote on every modded --taa launch whose thin vote is on (--taa-thin-vote on, itself the default with --taa --motion-output --ownership --hdr --sun-shadow-lane) and whose thin region is on, sent with X3M_TAA_THIN_REGION_SOURCE_DEFAULT=1 (the TAA mask fold, docs/architecture/taa-mask-fold.md: Run 82 A showed no visible difference between both and vote); otherwise not sent and the DLL runs both. vote = the draw-time thin vote alone: the screen-space fragmented-depth search is skipped in the camera-gate resolve (the emissive vote, --taa-thin-region-emissive, default 1 on the HDR route, still runs; pass 0 for a vote-only arm); both = the search (a 7-tap line crossing geometry and its background twice) united with the vote, the diagnostic; screen = the search alone, refused with the camera gate (the default gate; its folded resolve has no plain program since the mask fold) and allowed only with --taa-thin-region-gate screen. vote requires --taa-thin-vote on. The vote default also applies under --taa-thin-region-gate screen, where the screen-gate chain\'s thin-vote twin skips its search the same way. The DLL logs taa_thin_region_source requested= configured= reason= default= and configures both when a prerequisite is missing.')
     parser.add_argument('--taa-motion-weight', default=None, metavar='F[,V0,V1]', help='Motion history weight of the TAA resolve (X3M_TAA_MOTION_WEIGHT; requires --taa; a value above 0 also requires an age program: --taa-far-stabiliser or --taa-thin-region; default when omitted with --taa = 0.7,2,8 (accepted in Run 70 A, run262/run263, 2026-09-23) with an age program, else 0 = off, never an error: a plain --taa launch has no age program, so the weight resolves to 0 there; 0 is the explicit off and the opt-out, else 0.5 <= F < 1 with 0 <= V0 < V1 <= 64 px/frame, V0,V1 default 2,8): the history keep weight of a pixel whose correspondence moves at least V1 px/frame both on screen and against the rotation-only camera path (translation parallax) is capped at F (1 at or below V0, a quadratic ramp between), so a hull under SETA accumulates a shorter history and keeps more of its texture detail; rest, pans, a hull that moves with the camera (the player\'s ship in the external view, escorts) and slow flight are untouched. Inert (cap 1) on frames without a camera transform: the parallax is measured against the camera path (docs/architecture/taa-motion-history-weight.md)')
     parser.add_argument('--camera-cut-deg', type=float, default=20.0, help='Camera rotation per frame (degrees) above which the resolve declares a cut (requires --taa; default 20)')
     parser.add_argument('--camera-log', type=int, default=300, help='Cadence in frames of the camera_state log line (requires --taa; capture frames always log; default 300)')
@@ -798,12 +787,9 @@ def main():
     parser.add_argument('--no-hdr', dest='hdr', action='store_false', help='Turn the --hdr launcher default off')
     parser.add_argument('--hdr-tonemap', action='store_true', default=None, help='[launcher default since 2026-09-25 on every modded launch with --hdr; --no-hdr-tonemap = off; not sent under --vanilla] AgX write-back of the FP16 scene (X3M_HDR_TONEMAP=agx; requires --hdr), Auto capped at +1.3 EV by default; --hdr-exposure fixed disables frame metering. Ctrl+Shift+F9 compares AUTO and fixed EV0 during play. Default off: identity write-back.')
     parser.add_argument('--no-hdr-tonemap', dest='hdr_tonemap', action='store_false', help='Turn the --hdr-tonemap launcher default off')
-    parser.add_argument('--linear-distance-fade', action='store_true', default=None, help='Qualify six Asteroid source-over materials in linear light (requires --linear-materials --taa and the material HDR/motion prerequisites; default on with linear materials and TAA, off otherwise; --no-linear-distance-fade disables; full-size composition cost per draw)')
-    parser.add_argument('--no-linear-distance-fade', dest='linear_distance_fade', action='store_false', help='Keep the Asteroid source-over materials on the native route even when --linear-materials --taa are on (opt out of the default)')
-    parser.add_argument('--fade-witness', type=int, nargs='?', const=30, default=None, metavar='K', help='Diagnostic fade-region witness (X3M_FADE_WITNESS=K; requires --linear-distance-fade or --screen-emission; default off; "--fade-witness" alone means 30): every K-th frame without an admitted emission draw the M coverage target is read back once (GetRenderTargetData to a retained system-memory copy) and the covered pixels outside the union of that frame\'s derived fade rectangles are counted; one fade_witness line per K-th frame plus that frame\'s per-DIP fade_region lines (first 64, with a truncated count) in the session log, validated by verification/probe/run_linear_distance_fade_live.py (docs/architecture/linear-distance-fade-region.md, step 1)')
-    parser.add_argument('--sun-shadow-lane', action='store_true', default=None, help='[launcher default since 2026-09-25 on every modded launch with --motion-output --taa --hdr; --no-sun-shadow-lane = off; not sent under --vanilla] Sun-share RT2 lane (X3M_SUN_SHADOW_LANE=1; DLL default off; requires --motion-output --taa --hdr): on original shading the reviewed original programs bind their own code-value share variant (composed with --original-fill), with --linear-materials the converted materials bind theirs; applies no shadows by itself (docs/architecture/legacy-sun-application.md, 4).')
+    parser.add_argument('--sun-shadow-lane', action='store_true', default=None, help='[launcher default since 2026-09-25 on every modded launch with --motion-output --taa --hdr; --no-sun-shadow-lane = off; not sent under --vanilla] Sun-share RT2 lane (X3M_SUN_SHADOW_LANE=1; DLL default off; requires --motion-output --taa --hdr): on original shading the reviewed original programs bind their own code-value share variant (composed with --original-fill); applies no shadows by itself (docs/architecture/legacy-sun-application.md, 4).')
     parser.add_argument('--no-sun-shadow-lane', dest='sun_shadow_lane', action='store_false', help='Turn the --sun-shadow-lane launcher default off')
-    parser.add_argument('--sun-shadow-apply', action='store_true', default=None, help='[launcher default since 2026-09-25 on every modded launch with --sun-shadow-lane --shadow-replay-depth; --no-sun-shadow-apply = off; not sent under --vanilla] Scene-end sun-shadow application (X3M_SUN_SHADOW_APPLY=1; DLL default off; requires --sun-shadow-lane --shadow-replay-depth, and applies only with --shadow-cascades: without a cascade set there is no map, the DLL logs one sun_shadow_apply_mode row with enabled=0 cascades=0 and the lighting stays the lane\'s): one quad multiplies the FP16 scene by 1 - (1 - f) s, s the lane share and f a 3x3 PCF of the cascade maps (the first cascade containing the pixel, blended across a 10 %% band), before the TAA resolve; exponent 1 on original shading (code values both sides), 1/2.2 with --linear-materials (the converted lane\'s linear law); one sun_shadow_apply_frame line per frame; a frame missing the lane, the replay or the FP16 owner is left byte-identical (docs/architecture/legacy-sun-application.md, 2). Ctrl+Shift+F12 switches the shadows off and on at a frame boundary for an at-rest A/B of their GPU cost: off, no map is cleared or drawn and the quad is skipped (no shadow_replay_depth and no sun_shadow_apply_frame line), every retained basis is voided so the first frame back on replays every cascade, and one sun_shadow_toggle line records each press (docs/architecture/comparison-hotkeys.md, "Sun shadows at rest").')
+    parser.add_argument('--sun-shadow-apply', action='store_true', default=None, help='[launcher default since 2026-09-25 on every modded launch with --sun-shadow-lane --shadow-replay-depth; --no-sun-shadow-apply = off; not sent under --vanilla] Scene-end sun-shadow application (X3M_SUN_SHADOW_APPLY=1; DLL default off; requires --sun-shadow-lane --shadow-replay-depth, and applies only with --shadow-cascades: without a cascade set there is no map, the DLL logs one sun_shadow_apply_mode row with enabled=0 cascades=0 and the lighting stays the lane\'s): one quad multiplies the FP16 scene by 1 - (1 - f) s, s the lane share and f a 3x3 PCF of the cascade maps (the first cascade containing the pixel, blended across a 10 %% band), before the TAA resolve; exponent 1 on original shading (code values both sides); one sun_shadow_apply_frame line per frame; a frame missing the lane, the replay or the FP16 owner is left byte-identical (docs/architecture/legacy-sun-application.md, 2). Ctrl+Shift+F12 switches the shadows off and on at a frame boundary for an at-rest A/B of their GPU cost: off, no map is cleared or drawn and the quad is skipped (no shadow_replay_depth and no sun_shadow_apply_frame line), every retained basis is voided so the first frame back on replays every cascade, and one sun_shadow_toggle line records each press (docs/architecture/comparison-hotkeys.md, "Sun shadows at rest").')
     parser.add_argument('--no-sun-shadow-apply', dest='sun_shadow_apply', action='store_false', help='Turn the --sun-shadow-apply launcher default off')
     parser.add_argument('--shadow-replay-candidates', action='store_true', help='Lane-independent caster-candidate counter of the motion route (X3M_SHADOW_REPLAY_CANDIDATES=1; requires --motion-output --ownership only, works with original hull shading; default off): one shadow_replay_candidates line per scene end and at most 16 shadow_replay_lock_witness lines per device; integer bookkeeping per routed draw, no allocation, no shadows (docs/architecture/shadow-replay-gates.md, "Implemented")')
     parser.add_argument('--shadow-replay-depth', action='store_true', default=None, help='[launcher default since 2026-09-25 on every modded launch with --motion-output --ownership; --no-shadow-replay-depth = off; not sent under --vanilla] Depth replay of the caster candidates into the sun-shadow cascade maps at every scene end (X3M_SHADOW_REPLAY_DEPTH=1; implies --shadow-replay-candidates and requires its prerequisites --motion-output --ownership only; DLL default off): one shadow_replay_depth line per frame. The maps are the --shadow-cascades set: without it there is no map and nothing is replayed (the single camera-centred map and --shadow-replay-size/-extent/-depth-half/-cap were removed on 2026-09-25; docs/architecture/directional-shadows.md, "Single map removed")')
@@ -839,13 +825,9 @@ def main():
     parser.add_argument('--no-volumetric-fog', dest='volumetric_fog', action='store_const', const=PROMOTED_OFF, help='Turn the --volumetric-fog launcher default off')
     parser.add_argument('--volumetric-fog-cards', choices=('keep', 'replace'), default=None, help='[launcher default since 2026-09-25: replace whenever --volumetric-fog is on; --volumetric-fog-cards keep = off; not sent under --vanilla] Keep vanilla fog cards, or replace validated card color with the medium after a successful warm-up (X3M_VOLUMETRIC_FOG_CARDS; requires --volumetric-fog)')
     parser.add_argument('--volumetric-fog-range', choices=('legacy', 'stored'), default=None, help='[launcher default since 2026-09-25: stored whenever --volumetric-fog is on with a positive strength; --volumetric-fog-range legacy = off; not sent under --vanilla] Fog field behind --volumetric-fog: legacy is the family atlas; stored is the experimental stored-density field, generated on one background thread, with clouds out to 30-40 km, drawn with the single shaped look (density remap, thicker cores, two-lobe phase, coloured ambient, tinted extinction, Beer-powder self-shadow; tuning by the X3M_FOG_LOOK_<NAME> environment variables, read once). A capability refusal logs one line and keeps legacy (X3M_VOLUMETRIC_FOG_RANGE; requires --volumetric-fog).')
-    # Retired 2026-09-22 with the presets L0/L1/L3: registered only so that an old command line is refused by name.
-    parser.add_argument('--volumetric-fog-look', nargs='?', const='', default=None, help=argparse.SUPPRESS)
-    parser.add_argument('--fog-shadow-pass', choices=('on', 'off'), default=None, help='Stored fog only: compute the sun-shadow shaft visibility in its own quarter-resolution pass before the march (three-cascade cross-fade, the finest cascade, a penumbra that widens with the blocker distance) instead of the march\'s per-step lookup; off (default) draws the accepted look unchanged, so the two can be A/B compared in one build (X3M_FOG_SHADOW_PASS; on requires --volumetric-fog-range stored). docs/architecture/fog-shadow-pass.md')
     parser.add_argument('--fog-dust-motes', default=None, metavar='N[,SIZE[,STREAK]]', help='Stored fog only: N near-camera dust motes (0 off, 64..8192; 2048 gives ~120 on screen) in a 400 m world-anchored window, drawn after the fog with the fog\'s own density, colour and shafts, SIZE the minimum width in pixels (2..16, default 4 when N is given alone), STREAK the velocity streak cap in pixels (0..512, default 128); Ctrl+Alt+F11 toggles them (X3M_FOG_DUST_MOTES; tuning by X3M_FOG_MOTES_<NAME>; a value above 0 requires --volumetric-fog-range stored). Default when omitted under --volumetric-fog-range stored = 1300,3,128 with X3M_FOG_MOTES_MAX_PX=8 unless that is set (accepted in Run 70 B/B2, 2026-09-23), else off; 0 is the explicit off and the opt-out. docs/architecture/fog-dust-motes.md')
     # Hand-over after a sector change (docs/architecture/fog-handover.md, "Implementation"): default on, --no-... opts out.
-    parser.add_argument('--fog-far-bins', choices=('40', '24'), default=None, help='Stored fog only: far march bins of the look over 12-22.5 km; 40 (default) draws the accepted look, 24 takes one sample per 4096-unit far node (fewer bins, a cheaper march; step B of docs/architecture/fog-gpu-cost.md) so the two can be A/B compared in one build (X3M_FOG_FAR_BINS; 24 requires --volumetric-fog-range stored and is refused with --fog-shadow-pass on, whose grid programs keep 40).')
-    parser.add_argument('--fog-march-scale', choices=('2', '4'), default=None, help='Stored fog only: march spacing in full pixels; 4 (default since Run 77 C2, 2026-09-24) marches at quarter resolution with the depth-class upsample and the edge repair at 4-px spacing (fog_march 8.99 -> 2.68 ms at 5120x1440 in Run 77 C), 2 is the opt-out and draws the former half-resolution march (step C of docs/architecture/fog-gpu-cost.md). X3M_FOG_MARCH_SCALE is always written; an explicit 4 requires --volumetric-fog-range stored and is refused with --fog-shadow-pass on, whose grid programs keep spacing 2, and with --fog-shadow-pass on and no explicit value the default resolves to 2 with one launcher line. Combines with --fog-far-bins.')
+    parser.add_argument('--fog-march-scale', choices=('2', '4'), default=None, help='Stored fog only: march spacing in full pixels; 4 (default since Run 77 C2, 2026-09-24) marches at quarter resolution with the depth-class upsample and the edge repair at 4-px spacing (fog_march 8.99 -> 2.68 ms at 5120x1440 in Run 77 C), 2 is the opt-out and draws the former half-resolution march (step C of docs/architecture/fog-gpu-cost.md). X3M_FOG_MARCH_SCALE is always written; an explicit 4 requires --volumetric-fog-range stored.')
     parser.add_argument('--fog-handover-step', dest='fog_handover_step', action='store_true', default=None, help='Stored fog only, default on: at a cold start (a new sector identity or a load gap) the far density readiness steps to 1 in the frame the far need box is resident, so the vanilla cards are masked at once instead of after a 90-frame ramp; warm refills (a jump inside the same sector) keep the ramp. --no-fog-handover-step keeps the ramp everywhere (X3M_FOG_HANDOVER_STEP; requires --volumetric-fog-range stored when given). One volumetric_fog_handover log line per cold start either way.')
     parser.add_argument('--no-fog-handover-step', dest='fog_handover_step', action='store_false', help='Keep the 90-frame far readiness ramp at a cold start (X3M_FOG_HANDOVER_STEP=0).')
     parser.add_argument('--fog-handover-coldfill', dest='fog_handover_coldfill', action='store_true', default=None, help='Stored fog only, default on: at a cold start the worker fills only the far need box, the far level goes up in one whole-atlas latch (4,260,096 B, past the 1,065,024 B per-frame budget once), then the fine level and the window growth continue under the budget. --no-fog-handover-coldfill keeps the budgeted fill (X3M_FOG_HANDOVER_COLDFILL; requires --volumetric-fog-range stored when given).')
@@ -856,31 +838,18 @@ def main():
     parser.add_argument('--no-fog-docked', dest='fog_docked', action='store_false', help='Keep the direct parent check: docked views draw the native cards (X3M_FOG_DOCKED=0).')
     parser.add_argument('--volumetric-fog-everywhere', action='store_true', help='Debug only: force bluewell when no known family is available, still requiring a valid view (X3M_VOLUMETRIC_FOG_EVERYWHERE=1; requires --volumetric-fog)')
     parser.add_argument('--volumetric-fog-timing', action='store_true', help='One volumetric_fog_frame log line per frame with the CPU wall time and device-call count of the pass (X3M_VOLUMETRIC_FOG_TIMING=1; requires --volumetric-fog)')
-    parser.add_argument('--shimmer-trace', action='store_true', help='Diagnostic distant-shimmer trace (X3M_SHIMMER_TRACE=1; requires --motion-output --taa; default off): every frame logs one shimmer_frame line with the TAA state (history, skip, cut, jitter index) and the projection p00/p11 as integers scaled by 1e4, plus up to 32 shimmer_draw lines identifying that frame\'s Asteroid-class scene draws (node/model/lod, vertex, index and primitive counts, the distance-fade f in per mille when the draw was fade-admitted and its derived screen rectangle) with a truncated count beyond 32 (docs/architecture/linear-distance-fade-region.md, "Shimmer trace (diagnostic)")')
-    parser.add_argument('--screen-emission', action='store_true', help='Packed screen emission of the bullet draws inside the region bracket (X3M_SCREEN_EMISSION=1, which also sets X3M_SCREEN_EMISSION_BOUND=1; requires --taa --motion-output --ownership --hdr --hdr-tonemap and gamma2.2 decode, with or without --linear-materials; default off): the nine SM1 screen pairs drawn in the native ONE/INVSRCCOLOR state with a locked-prefix bound compose through policy 8 in place; unbounded, unknown-state, capability-refused or otherwise refused draws stay native (docs/architecture/screen-emission-region.md, step C)')
-    parser.add_argument('--screen-emission-additive', type=float, default=None, metavar='G', help='[launcher default since 2026-09-25: 2 on every modded launch with --motion-output --hdr and without --screen-emission; --no-screen-emission-additive = off; not sent under --vanilla] Additive bullets (X3M_SCREEN_EMISSION_ADDITIVE=G, finite 1..8; requires --motion-output --hdr; mutually exclusive with --screen-emission; DLL default off): the nine SM1 screen pairs drawn in the native ONE/INVSRCCOLOR state draw in place with DESTBLEND ONE and their colour multiplied by G (G=1 binds the original shader), so the FP16 scene accumulates G*q + D above 1.0 for exposure and bloom; no bracket, bound, copies or temporal work; the blend law changes and native parity is not kept (docs/architecture/screen-emission-region.md, "Additive option"). Ctrl+Shift+F5 switches these draws between G and native during play (no shader is recreated; one screen_emission_additive_toggle line per press). With --telemetry, one screen_emission_additive_frame line per Present reports the admitted and refused draws of that frame and the hex mask of the nine pairs admitted')
+    parser.add_argument('--screen-emission-additive', type=float, default=None, metavar='G', help='[launcher default since 2026-09-25: 2 on every modded launch with --motion-output --hdr; --no-screen-emission-additive = off; not sent under --vanilla] Additive bullets (X3M_SCREEN_EMISSION_ADDITIVE=G, finite 1..8; requires --motion-output --hdr; DLL default off): the nine SM1 screen pairs drawn in the native ONE/INVSRCCOLOR state draw in place with DESTBLEND ONE and their colour multiplied by G (G=1 binds the original shader), so the FP16 scene accumulates G*q + D above 1.0 for exposure and bloom; no bracket, bound, copies or temporal work; the blend law changes and native parity is not kept (docs/architecture/screen-emission-region.md, "Additive option"). Ctrl+Shift+F5 switches these draws between G and native during play (no shader is recreated; one screen_emission_additive_toggle line per press). With --telemetry, one screen_emission_additive_frame line per Present reports the admitted and refused draws of that frame and the hex mask of the nine pairs admitted')
     parser.add_argument('--no-screen-emission-additive', dest='screen_emission_additive', action='store_const', const=PROMOTED_OFF, help='Turn the --screen-emission-additive launcher default off')
     parser.add_argument('--bolt-footprint', nargs='?', const=BOLT_FOOTPRINT_DEFAULT, default=None, metavar='W[,L]', help='[launcher default on modded launches: 3,12; --bolt-footprint 0 = off; not forwarded under --vanilla, where an explicit value is refused] Minimum on-screen size of the weapon bolts in the chase view only (X3M_BOLT_FOOTPRINT=W[,L], pixels, full width and length, finite 0 < W <= 64 and W <= L <= 256, L defaults to 12): every bolt instance of the admitted additive bullet draw narrower than W is widened to W and shorter than L lengthened to L along its projected flight axis, about its own centre in the camera plane (depth unchanged), drawn from a proxy-owned dynamic vertex buffer; only while the chase camera (--camera chase) applies its pose, so first person and every other view keep the game\'s bolts. Needs the additive bullets, --screen-emission-additive with --motion-output --hdr, and --ownership for the Unlock scan; an explicit non-zero value implies --screen-emission-additive 1 when that option is absent, the default never does. One bolt_footprint line per 300 frames (draws, written, gated, instances, lengthened, widened, refusals, CPU us), one bolt_footprint_hist line per view (pre-expansion half-length and width histograms, chase and other views) and a bolt_footprint_mode line at start (docs/architecture/bolt-footprint.md)')
     parser.add_argument('--screen-emission-additive-alpha', type=float, default=None, metavar='K', help='[launcher default since 2026-09-25: 0 whenever --screen-emission-additive is on; --no-screen-emission-additive-alpha = native alpha law; not sent under --vanilla] Per-source bloom attenuation of the additive bullets (X3M_SCREEN_EMISSION_ADDITIVE_ALPHA=K, finite 0..1; requires --screen-emission-additive; absent keeps the native alpha law): the admitted additive draw writes K*a + D.a to the scene alpha the bloom extract uses as its per-pixel authored weight, through separate-alpha blending (DESTBLENDALPHA ONE with SRCBLENDALPHA ZERO at K=0, ONE at K=1, else BLENDFACTOR with K in every lane; the colour law stays ONE/ONE/ADD and reads no blend factor). K=0 makes the bolts bloom only through the thresholded highlight term while engines, sun and every other alpha-authored emitter keep their channel; their presented brightness is unchanged because the colour law is untouched. A device without D3DPMISCCAPS_SEPARATEALPHABLEND, or without D3DPBLENDCAPS_BLENDFACTOR for a K strictly between 0 and 1, refuses the draw to the native path with screen_emission_additive_refused reason=alpha_caps. Ctrl+Shift+F5 turns it off with the rest of the option (docs/architecture/bloom-per-source-attenuation.md, option 1)')
     parser.add_argument('--no-screen-emission-additive-alpha', dest='screen_emission_additive_alpha', action='store_const', const=PROMOTED_OFF, help='Turn the --screen-emission-additive-alpha launcher default off')
-    parser.add_argument('--screen-emission-timing', action='store_true', help='Per-frame timing diagnostic of the screen-emission option (X3M_SCREEN_EMISSION_TIMING=1; requires --screen-emission; default off): one screen_emission_frame line per Present with that frame\'s packed_admitted, brackets_px and cpu_us (the wall-clock QueryPerformanceCounter delta since the previous Present). The option itself logs nothing per frame (docs/architecture/screen-emission-region.md, step C)')
-    parser.add_argument('--screen-emission-gain', type=float, default=None, metavar='G', help='Step E gain of the packed screen composition, finite 0.5..8, default 1 (X3M_SCREEN_EMISSION_GAIN; requires --screen-emission): the composed bullet is decode(native after) - decode(native before) scaled by G on the decoded scene, so 1 presents the native bolt exactly and larger values lift it into HDR for bloom and exposure (docs/architecture/screen-emission-region.md, step E)')
-    parser.add_argument('--linear-emissions', action='store_true', help='Compose reviewed additive scene emissions in linear light (requires --motion-output --taa --hdr --hdr-tonemap and gamma2.2 decode; default off)')
-    parser.add_argument('--emission-gain', type=float, default=None, help='Linear emission gain, finite 0..16, default 1 (requires --linear-emissions)')
-    parser.add_argument('--emission-source-gain', type=float, default=None, metavar='G', help='[launcher default since 2026-09-25: 2 on every modded launch with --hdr and without --linear-emissions; --emission-source-gain 1 = off; not sent under --vanilla] Source-only encoded gain of the twenty engine/effects emission pairs (ship engine glow, jump gate, weapon impact flashes, muzzle glows, explosion sprites), finite 1..8, default 1 = off (X3M_EMISSION_SOURCE_GAIN; requires --hdr; excludes --linear-emissions, whose bracket carries its own --emission-gain; needs neither --linear-materials nor --taa): the pixel program of each pair multiplies its native colour output by G before the game\'s own blend into the FP16 scene, so bloom and exposure pick the brighter emitters up. An ADD/ONE/ONE draw keeps its blend (G*S + D); a screen ADD/ONE/INVSRCCOLOR draw (most engine materials) draws with DESTBLEND ONE substituted for that draw only (G*S + D: identical to native over black for S <= 1, brighter by D*S over a lit background); alpha, draw order and every other state stay native, and a pair drawn through any other blend stays native. Gain 1 creates no variant and is byte-identical to a build without the option (docs/architecture/linear-emission-cost.md, "Implemented" and "Screen substitution"). Ctrl+Shift+F6 switches all twenty pairs and the --hull-emitters guide lights, which follow this gain, between G and native during play (no shader is recreated; one emission_source_gain_toggle and one hull_emission_gain_toggle line per press)')
-    parser.add_argument('--hull-emission-gain', type=float, default=None, metavar='G', help='Own gain of the --hull-emitters population, finite 1..8 (X3M_HULL_EMISSION_GAIN=G; requires --hull-emitters and --hdr; bracket 2 / 4 / 8). Independent of --emission-source-gain, which may be absent, so the guide lights can be judged alone; without this option they take the value of --emission-source-gain, which above 1 also implies --hull-emitters')
-    parser.add_argument('--hull-emitters', action='store_true', help='Source gain G over the hull-program emitters (X3M_HULL_EMISSION_GAIN=G, default off = 1.0; requires --hdr and a gain: --hull-emission-gain G, else the value of --emission-source-gain G): position lights, deco flares, warning signs and warp tunnels are drawn by twelve standard_lighting / XT_standard_lighting material programs with ADD ONE/ONE materials, which the twenty effects pairs cannot reach (docs/architecture/emitter-plan.md phase 3). Their art is diffuse-authored with the lightmap slot black, so each covered program gets one variant that multiplies the whole colour output of the draw by G (the final colour instruction redirected to a temporary, one MUL into oC0.xyz); the native alpha and every other state stay native. Admission is per draw and keyed on blend state: only an ADD ONE/ONE draw of a covered program takes the variant, opaque and screen-blended draws of the same program stay native (hull_emission_frame telemetry per frame; on an F8 capture frame one hull_emission_draw line per admitted draw with the node, model and LOD, joined per model by tools/analysis/summarize_hull_emitters.py). G=1 creates no variant. Implied by an --emission-source-gain above 1, whose value it then takes, because the guide lights belong to the effects group: Ctrl+Shift+F6 switches them together with the twenty effects pairs between G and native during play (one hull_emission_gain_toggle line per press, key=ctrl_shift_f6); Ctrl+Shift+F4 is the hull light-map gain only')
-    parser.add_argument('--linear-materials', action='store_true', help='Evaluate the reviewed hull-material pairs in linear space, preserving motion and compatibility-encoding into FP16 (requires --motion-output --hdr --hdr-tonemap and gamma2.2 decode; default off)')
-    parser.add_argument('--material-direct-gain', type=float, default=None, help='Linear direct-light gain, finite 0..16, default 1 (requires --linear-materials)')
-    parser.add_argument('--material-emissive-gain', type=float, default=None, help='Linear scaled material-emissive gain, finite 0..16, default 1 (requires --linear-materials)')
-    parser.add_argument('--lightmap-emissive-gain', type=float, default=None, help='Linear lightmap-emissive gain, finite 0..16, default 1 (requires --linear-materials)')
-    parser.add_argument('--material-fill', type=float, default=None, metavar='K', help='Constant hemispherical fill inside the converted material law, finite 0..0.5, default 0.05 with --linear-materials (X3M_MATERIAL_FILL; requires --linear-materials): every converted pixel program adds k*decode(LightDir_Color0)*g_direct to its lobe sum before the albedo multiply, so faces that face no light source keep a floor tinted by the sector sun. Explicit 0 disables fill and keeps the generated programs byte-identical to a build without the option (docs/architecture/fill-light.md)')
-    parser.add_argument('--original-fill', type=float, default=None, metavar='K', help='Fill in linear light inside the ORIGINAL hull pixel programs, finite 0..0.5, default 0.01 on every modded --hdr launch since 2026-09-25 by user decision (accepted in flight), marked X3M_ORIGINAL_FILL_DEFAULT=1; an explicit value is sent with marker 0 and explicit 0 is the opt-out that restores the byte-identical original programs; without --hdr, under --linear-materials or under --vanilla no default applies (the variable stays an explicit 0.0 against a stale shell value, no marker); the DLL default when the variable is unset stays 0 = off (X3M_ORIGINAL_FILL; requires --hdr; excludes --linear-materials, whose converted programs take --material-fill instead; needs neither --taa nor --hdr-tonemap): the 108 reviewed hull/asteroid/palette/glass/XT pixel programs get sum = encode(decode(sum) + K*decode(LightDir_Color0)) at their lobe-sum site before the albedo multiply, with the exact 2.2 power law and everything else in the program untouched, so shadow sides keep a floor tinted by the sector sun on original shading. K=0 creates no variant and is byte-identical to a build without the option (docs/architecture/original-shading-critique.md, 1a "Implemented")')
-    parser.add_argument('--hull-lightmap-gain', type=float, default=None, metavar='G', help='Gain on the self-illumination (light-map) term inside the ORIGINAL hull pixel programs, finite 1..8, launcher default 4 with --hdr, 1 = off (X3M_HULL_LIGHTMAP_GAIN; requires --hdr; excludes --linear-materials, whose converted programs take --lightmap-emissive-gain instead; composes with --original-fill): 100 of the 108 reviewed hull/palette/XT pixel programs fetch a light map (station windows, hull lights) as their last texture read and add its RGB unscaled to the lit colour, so each gets one variant with one MUL of that sample by G right after the fetch, keeping the alpha, the lit colour and every other word native (docs/reverse-engineering/hull-self-illumination.md); the four glass and four asteroid programs have no such term and stay native. Every opaque draw of those programs carries it (placeholder black light maps multiply to zero). G=1 creates no variant. With --hdr the launcher forwards 4 unless another value is given (the DLL default stays 1); --hull-lightmap-gain 1 turns it off. Ctrl+Shift+F4 switches this gain alone between G and native during play (one hull_emission_gain_toggle line per press, key=ctrl_shift_f4); the guide lights moved to Ctrl+Shift+F6')
+    parser.add_argument('--emission-source-gain', type=float, default=None, metavar='G', help='[launcher default since 2026-09-25: 2 on every modded launch with --hdr; --emission-source-gain 1 = off; not sent under --vanilla] Source-only encoded gain of the twenty engine/effects emission pairs (ship engine glow, jump gate, weapon impact flashes, muzzle glows, explosion sprites), finite 1..8, default 1 = off (X3M_EMISSION_SOURCE_GAIN; requires --hdr; needs no --taa): the pixel program of each pair multiplies its native colour output by G before the game\'s own blend into the FP16 scene, so bloom and exposure pick the brighter emitters up. An ADD/ONE/ONE draw keeps its blend (G*S + D); a screen ADD/ONE/INVSRCCOLOR draw (most engine materials) draws with DESTBLEND ONE substituted for that draw only (G*S + D: identical to native over black for S <= 1, brighter by D*S over a lit background); alpha, draw order and every other state stay native, and a pair drawn through any other blend stays native. Gain 1 creates no variant and is byte-identical to a build without the option (docs/architecture/linear-emission-cost.md, "Implemented" and "Screen substitution"). Ctrl+Shift+F6 switches all twenty pairs and the hull guide lights (X3M_HULL_EMISSION_GAIN), which follow this gain, between G and native during play (no shader is recreated; one emission_source_gain_toggle and one hull_emission_gain_toggle line per press)')
+    parser.add_argument('--original-fill', type=float, default=None, metavar='K', help='Fill in linear light inside the ORIGINAL hull pixel programs, finite 0..0.5, default 0.01 on every modded --hdr launch since 2026-09-25 by user decision (accepted in flight), marked X3M_ORIGINAL_FILL_DEFAULT=1; an explicit value is sent with marker 0 and explicit 0 is the opt-out that restores the byte-identical original programs; without --hdr or under --vanilla no default applies (the variable stays an explicit 0.0 against a stale shell value, no marker); the DLL default when the variable is unset stays 0 = off (X3M_ORIGINAL_FILL; requires --hdr; needs neither --taa nor --hdr-tonemap): the 108 reviewed hull/asteroid/palette/glass/XT pixel programs get sum = encode(decode(sum) + K*decode(LightDir_Color0)) at their lobe-sum site before the albedo multiply, with the exact 2.2 power law and everything else in the program untouched, so shadow sides keep a floor tinted by the sector sun on original shading. K=0 creates no variant and is byte-identical to a build without the option (docs/architecture/original-shading-critique.md, 1a "Implemented")')
+    parser.add_argument('--hull-lightmap-gain', type=float, default=None, metavar='G', help='Gain on the self-illumination (light-map) term inside the ORIGINAL hull pixel programs, finite 1..8, launcher default 4 with --hdr, 1 = off (X3M_HULL_LIGHTMAP_GAIN; requires --hdr; composes with --original-fill): 100 of the 108 reviewed hull/palette/XT pixel programs fetch a light map (station windows, hull lights) as their last texture read and add its RGB unscaled to the lit colour, so each gets one variant with one MUL of that sample by G right after the fetch, keeping the alpha, the lit colour and every other word native (docs/reverse-engineering/hull-self-illumination.md); the four glass and four asteroid programs have no such term and stay native. Every opaque draw of those programs carries it (placeholder black light maps multiply to zero). G=1 creates no variant. With --hdr the launcher forwards 4 unless another value is given (the DLL default stays 1); --hull-lightmap-gain 1 turns it off. Ctrl+Shift+F4 switches this gain alone between G and native during play (one hull_emission_gain_toggle line per press, key=ctrl_shift_f4); the guide lights moved to Ctrl+Shift+F6')
     light_map_fade = parser.add_mutually_exclusive_group()
-    light_map_fade.add_argument('--light-map-far-fade', default=None, metavar='P0,P1[,G]', help='Fade the hull light-map gain with distance: a routed hull draw keeps --hull-lightmap-gain while its pixel footprint (world units per pixel at the object origin, the --taa-far-stabiliser measure) is below P0 and falls linearly to G (default 1 = the game\'s own brightness, within [0, gain]) at P1, so sub-pixel glowing windows of distant objects stop shimmering under TAA. 0 < P0 < P1 <= 1e6; launcher default 80,220,1. The option latches the camera projection itself (no --taa needed). Enabled by default with an active original-hull light-map gain; --no-light-map-far-fade disables it. Requires an active light-map gain (--hdr, not --linear-materials, gain above 1).')
+    light_map_fade.add_argument('--light-map-far-fade', default=None, metavar='P0,P1[,G]', help='Fade the hull light-map gain with distance: a routed hull draw keeps --hull-lightmap-gain while its pixel footprint (world units per pixel at the object origin, the --taa-far-stabiliser measure) is below P0 and falls linearly to G (default 1 = the game\'s own brightness, within [0, gain]) at P1, so sub-pixel glowing windows of distant objects stop shimmering under TAA. 0 < P0 < P1 <= 1e6; launcher default 80,220,1. The option latches the camera projection itself (no --taa needed). Enabled by default with an active original-hull light-map gain; --no-light-map-far-fade disables it. Requires an active light-map gain (--hdr, gain above 1).')
     light_map_fade.add_argument('--no-light-map-far-fade', action='store_true', help='Disable the default distance fade of hull light-map brightness; keep the configured gain at all distances.')
-    parser.add_argument('--hull-emissive-widening', default=None, metavar='K[,B]', help='Widen the light-map (window/hull-light) fetch of every gained hull program by its own texel footprint and boost thin emitters (X3M_HULL_EMISSIVE_WIDENING; docs/architecture/hull-emissive-widening.md 8.3): the fetch becomes a texldd whose screen-space gradients are the pixel\'s own times k = clamp(K x light-map texels per pixel, 1, K), so a 1-texel strip is filtered over K px from the distance where it is 1 px wide (and not at all where it is K px wide; near hulls are the un-widened image bit for bit), and a second, 2k-wide fetch gates a boost B on features thinner than about 1.3 k px (t = saturate((L_k / L_2k - 1.35) / 0.15); panels and their edges keep t = 0). B = 1 is the energy-conserving law (a sub-pixel strip at I w / k); B = K shows it at I w, the peak a converged un-widened TAA would show, over K px. Finite 1 < K <= 8, 1 <= B <= K; B defaults to K. Omitted resolves to 4 (K = B = 4, the user-accepted run236/run237 default since 2026-09-22) wherever the light-map gain is already active, and to off where it is not; "off" is the opt-out. Requires an active light-map gain (--hdr, not --linear-materials, --hull-lightmap-gain above 1). Ctrl+Shift+F4 drops it with the gain.')
+    parser.add_argument('--hull-emissive-widening', default=None, metavar='K[,B]', help='Widen the light-map (window/hull-light) fetch of every gained hull program by its own texel footprint and boost thin emitters (X3M_HULL_EMISSIVE_WIDENING; docs/architecture/hull-emissive-widening.md 8.3): the fetch becomes a texldd whose screen-space gradients are the pixel\'s own times k = clamp(K x light-map texels per pixel, 1, K), so a 1-texel strip is filtered over K px from the distance where it is 1 px wide (and not at all where it is K px wide; near hulls are the un-widened image bit for bit), and a second, 2k-wide fetch gates a boost B on features thinner than about 1.3 k px (t = saturate((L_k / L_2k - 1.35) / 0.15); panels and their edges keep t = 0). B = 1 is the energy-conserving law (a sub-pixel strip at I w / k); B = K shows it at I w, the peak a converged un-widened TAA would show, over K px. Finite 1 < K <= 8, 1 <= B <= K; B defaults to K. Omitted resolves to 4 (K = B = 4, the user-accepted run236/run237 default since 2026-09-22) wherever the light-map gain is already active, and to off where it is not; "off" is the opt-out. Requires an active light-map gain (--hdr, --hull-lightmap-gain above 1). Ctrl+Shift+F4 drops it with the gain.')
     parser.add_argument('--hdr-dither', choices=['on', 'off'], default=None, help='Static +-0.5 code display dither of every write of the FP16 image into the 8-bit target (X3M_HDR_DITHER; requires --hdr; default on with --hdr): the AgX write-back, its sharpened variant, the identity write-back and the bloom candidate add one fixed interleaved-gradient pattern before the 8-bit store, so the smooth fogged sky shows no contour rings moving with the exposure. Static in screen space (a still image stays still); the mean code equals the unquantised value; off: at amplitude 0 the store equals the former one mathematically (inputs already in [0,1]); the dither-off cases reproduce the recorded figures (docs/verification/hdr-scene-path.md, "Display dither")')
     parser.add_argument('--hdr-look', choices=['none', 'golden', 'punchy'], default='none', help='AgX look (X3M_HDR_LOOK; requires --hdr-tonemap; default none)')
     parser.add_argument('--hdr-bloom', action='store_true', default=None, help='[launcher default since 2026-09-25 on every modded launch with --hdr-tonemap and the scene hook; --no-hdr-bloom = off; not sent under --vanilla] Replace stock bloom RGB with bloom from the FP16 scene before AgX (X3M_HDR_BLOOM=1; requires --hdr-tonemap and scene hook; DLL default off)')
@@ -917,7 +886,6 @@ def main():
     parser.add_argument('--no-chase-view-restore', dest='chase_view_restore', action='store_false', help='Turn the --chase-view-restore launcher default off')
     parser.add_argument('--chase-hud-anchor', choices=['forward', 'centre'], default=None, help='Place the admitted chase HUD group at the ship-forward vanishing point or retain its native centre placement (X3M_CHASE_HUD_ANCHOR; default forward with --camera chase since 2026-09-23, centre otherwise; forward requires --camera chase)')
     parser.add_argument('--voice-decoder', default=None, metavar='DIR', help='launch only. Default on a modded launch: the first valid of <game dir>/x3m/voice-decoder and the repository copy tools/voice-decoder/v4 (a candidate failing the checks below is skipped with a note; none found = no decoder; no discovery under --vanilla); --voice-decoder none = off (the literal word; pass ./none for a directory named none); an explicit DIR must be valid or the launch is refused. Deliver the process-local WMA decoder plugin built in DIR to this one game process by setting GST_PLUGIN_PATH_1_0=DIR/runtime/plugins and GST_REGISTRY_1_0=DIR/registry/x3-arm64.bin in its environment. Nothing is written into the application, the bottle or any global configuration, no DYLD_LIBRARY_PATH and no unversioned GStreamer variable is touched; only DIR/registry is created if missing (explicit or discovered; a dry run creates nothing for a discovered directory and reports that the registry will be created; the registry cache is rebuilt on first launch). The dry run prints the chosen directory and why, or "voice decoder: none". Also sets X3M_VOICE_DMO_FALLBACK=1 so the proxy re-initialises the DMO wrapper the game creates with the registered WMA decoder DMO when the speech decoder class is unregistered (byte-verified hook at 0x004cfd46, inert where Init succeeds; docs/architecture/voice-decoder-adapter.md)')
-    parser.add_argument('--lod-scale', type=float, default=None, metavar='FACTOR', help='Scale the engine\'s mesh LOD switch distances by FACTOR, 0.25..4 (above 1 pushes them out, below 1 pulls them in for fewer detailed draws on far objects) (X3M_LOD_SCALE; default absent = vanilla; no other option needed): the LOD threshold multiplier read at 0x0047d44b is replaced by a proxy-owned mirror holding the game\'s value divided by FACTOR (same-length instruction, exact executable and bytes only, otherwise fails closed to vanilla; one lod_scale line in the session log). Cost: about 4-7x the triangles and 13-15x the draw calls per distant station body at 2-3x, and correspondingly fewer below 1; the cap of 4 keeps the integer-truncated thresholds away from collapse (docs/architecture/lod-scale.md)')
     parser.add_argument('--terran-station-lod', choices=('size', 'distance'), default=None, help='How Terran stations pick their mesh LOD (X3M_TERRAN_STATION_LOD; default size on every modded launch, also the DLL default when the variable is unset; refused under --vanilla, where the proxy is not loaded). size = the reader of bit 31 of the station root\'s node+0x12c in the cull/LOD pass (0x0047d01c, je -> jmp to the same target, two bytes, verified before the write) is bypassed, so Terran TDocks/TFactories subtrees select by screen size like every other object and can reach the merged-LOD overlay records; distance = the engine\'s fixed-distance branch (7/15.5/21/28.5 km bands), nothing patched. Saves are unchanged either way')
     parser.add_argument('--lod-occlusion', choices=('off', 'record0', 'all'), default=None, help='Which mesh LOD records bind their material\'s occlusion map (t_OcclusionTexture) (X3M_LOD_OCCLUSION; default all on every modded launch since Run 81 (user decision 2026-09-24), marked X3M_LOD_OCCLUSION_DEFAULT=1; the DLL default when the variable is unset stays record0; refused under --vanilla, where the proxy is not loaded). off = record0 = the engine: only LOD record 0 binds the map, every lower record binds the NONE_OCCL_DECAL placeholder (no occlusion), nothing patched; all = the gate in the material submission (jne at 0x004c34f7, its rel32 set to 0 so both outcomes continue on the LOD-0 path, four bytes, verified before the write) is bypassed, so merged-LOD coarse records keep the station\'s occlusion. Side effect of all: vanilla lower records get occlusion too, through a second UV set about 1 %% off the occlusion unwrap and partly outside [0, 1], so they may show misplaced occlusion (docs/reverse-engineering/texture-lookup.md section 12). Saves are unchanged either way')
     parser.add_argument('--sun-flare-fix', choices=('on', 'off'), default=None, help='Keep the sun\'s lens flare when a far sun is near the view centre on wide displays by saturating the lens collector\'s overflowing horizontal bound (X3M_SUN_FLARE_FIX; default on for every modded launch, refused under --vanilla; off, or the variable unset, leaves the engine\'s bytes untouched; the first multiply of the same test still wraps for tan(F/2) >= 2, F >= 126.9 deg, which the --fov range never reaches, only script cameras; docs/reverse-engineering/field-of-view.md section 9.1)')
@@ -945,7 +913,6 @@ def main():
     parser.add_argument('--collide-memo-verify', action='store_true', help='Diagnostic form of --collide-memo (implies it; X3M_COLLIDE_MEMO_VERIFY=1): nothing is skipped, every query that would have been answered from the memo runs in the engine as well and the two are compared; verify_mismatches in the collide_memo line must stay 0. Costs what vanilla costs: for one flight')
     parser.add_argument('--lod-switch-log', type=int, nargs='?', const=16, default=None, metavar='N', help='Log a lod_switch row whenever a node\'s selected LOD record (+0x14c) changes from one frame to the next (X3M_LOD_SWITCH_LOG=N, N = rows per frame, default 16, 1..4096; implies --cull-census): the census stubs are armed on every frame and Present compares each kept node, per view, with the previous frame (both census stubs armed every frame plus one table probe per kept node: ~12 ns per node, inferred from the fixture benches, fixture-inclusive, not game FPS; table committed once): `lod_switch frame= node= body= from= to= s= D= T_pad= flag31= view=` up to N per frame, then one `lod_switch_overflow frame= dropped= cap=` row, and `lod_switch_frame frame= switches= nodes=` on frames with a switch. A Reset or a node absent for a frame re-seeds without a row. Summarise with verification/results/run299-303-run79a/ods-flicker/lod_switch_rows.py (docs/verification/cull-census.md)')
     parser.add_argument('--cull-small-parts', type=float, default=None, metavar='PX', help='[launcher default since 2026-09-25: 4 on every modded launch (was 2); --cull-small-parts 0 = off; not sent under --vanilla] Cull mesh nodes whose projected radius is under PX pixels, 0 < PX <= 64 (X3M_CULL_SMALL_PARTS_PX; launcher default 2 on every modded launch, --cull-small-parts 0 = off, nothing patched; --vanilla forwards nothing and the DLL\'s own fallback stays off): one trampoline on the per-node cull/LOD pass 0x0047cfe0 at 0x0047d2a2 sends a node whose engine metric s = r*640/D is below the per-frame threshold (PX converted with the live projection scale and the back-buffer width, the cull-census bucket rule) down the engine\'s own size-cull instruction at 0x0047d2c3; every other node runs the vanilla compare. Run131 census at the run117 station view: 2 px = 403 of the 878 census-attributed draws (901 in the frame; about 9.6 ms at 23.7 us/draw), 4 px = 458; lower bounds, because a culled node also culls its 0x40000-flagged children (0x0047d055). The threshold applies in every view (small casters leave the shadow and env maps too) and is scaled by the one main-view projection. Exact executable and bytes only, otherwise fails closed to vanilla; risk: popping of thin parts (antennas, clamps) whose radius is small, cascading to their descendants (none seen at 2 px in run 43 B) (docs/architecture/engine-frame-time.md 2.3, docs/reverse-engineering/lod-selection.md "Cull small parts site")')
-    parser.add_argument('--cull-small-parts-scope', choices=('all', 'bodies'), default=None, help='Which nodes --cull-small-parts may cull (X3M_CULL_SMALL_PARTS_SCOPE; default all; refused when the cull is off, enables nothing on its own). bodies = only nodes without a parent link ([node+0x18] == 0, the test the displaced instruction already performs): whole distant objects, which at 2 px are invisible anyway, while the glowing sub-parts of nearer stations (a few px, visible) stay. all = every node under the threshold. Fixture replay of the run131 rows at 2 px: all 97 nodes / 403 draws, bodies 89 / 395 (body-flagged rows; the rows carry no parent link, docs/verification/cull-small-parts.md). Run 43 B: at 2 px `all` took the busy view from 884 to 477 draws and ~30 to ~42 fps with no visible pop-in, while `bodies` culled 36 nodes/frame and saved nothing (nearly every small node has a parent), so `all` is the default in the launcher and in the DLL')
     parser.add_argument('--cull-small-parts-projectiles', choices=('on', 'off'), default=None, help='Whether --cull-small-parts spares weapon projectiles (X3M_CULL_SMALL_PARTS_PROJECTILES; default on; refused when the cull is off, enables nothing on its own). on = a node carrying the engine\'s class-0 (TBullets) marker, +0x130 & 0x20000000 set at object creation (0x00441242) for every bolt, beam and flak type including mod-added ones, runs the vanilla compare instead of the pixel cull; missiles carry no marker and stay subject to the cull (they rarely fall under a few pixels). Run 75 B at 4 px: 30-33 of 51-54 bolts per frame were culled by the stub one frame after leaving the muzzle; expected cost with on about 31 more bullet instances (~750 primitives) per frame while firing. The DLL turns the exemption off (projectiles=marker_mismatch) when the two marker instructions are not the verified bytes (docs/reverse-engineering/lod-selection.md "Projectile nodes")')
     parser.add_argument('--dry-run', action='store_true', help='launch only: validate the options and installation, print the command and X3M_* environment as JSON, and exit without launching')
     args = parser.parse_args()
@@ -954,16 +921,8 @@ def main():
         parser.error('--dry-run applies to launch only.')
     if args.voice_decoder is not None and args.action != 'launch':
         parser.error('--voice-decoder applies to launch only.')
-    if args.depth_copy and not args.ownership:
-        parser.error('--depth-copy requires --ownership.')
-    if args.scene_depth_capture and not (args.ownership and args.depth_copy):
-        parser.error('--scene-depth-capture requires --ownership and --depth-copy.')
     if args.object_lifetime and not (args.object_trace and args.ownership):
         parser.error('--object-lifetime requires --object-trace and --ownership.')
-    if args.mesh_cache and not args.telemetry:
-        parser.error('--mesh-cache requires --telemetry.')
-    if args.loading_intervals and not args.telemetry:
-        parser.error('--loading-intervals requires --telemetry (existing loading markers supply the endpoint).')
     if args.loading_probes and not args.telemetry:
         parser.error('--loading-probes requires --telemetry (the probe rows and trampolines are installed by the loading-trace initialization).')
     if args.game_phases and not args.telemetry:
@@ -1002,8 +961,6 @@ def main():
         parser.error('--media-cue-retry-s requires --media-cue-cache on.')
     if not 1 <= args.media_cue_retry_s <= 3600:
         parser.error('--media-cue-retry-s must be between 1 and 3600.')
-    if args.audio_sites and not args.game_phases:
-        parser.error('--audio-sites requires --game-phases.')
     if args.vanilla and args.window_monitor_rect == 'on':
         parser.error('--window-monitor-rect cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so the proxy that moves the window never runs')
     if args.vanilla and (args.window_trace or args.cursor_reassert):
@@ -1014,16 +971,10 @@ def main():
         parser.error('--gpu-sync-timing cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so there is no proxy pass to time.')
     if args.vanilla and (args.music_keep or args.music_trace):
         parser.error('--music-keep/--music-trace cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so the proxy that patches the music routines is not loaded.')
-    if args.profile_raw and not args.profile:
-        parser.error('--profile-raw requires --profile.')
     if args.mesh_adjacency == 'verify' and not args.telemetry:
         parser.error('--mesh-adjacency verify requires --telemetry (its output is telemetry rows); fast arms without it since 2026-09-25).')
     if args.mesh_adjacency_dump and args.mesh_adjacency != 'verify':
         parser.error('--mesh-adjacency-dump requires --mesh-adjacency verify.')
-    if args.finite_positions and not (args.ownership and args.telemetry):
-        parser.error('--finite-positions requires --ownership and --telemetry.')
-    if args.motion_capture and not (args.scene_depth_capture and args.finite_positions and args.object_lifetime):
-        parser.error('--motion-capture requires --scene-depth-capture, --finite-positions and --object-lifetime.')
     if args.motion_output and (args.object_trace != args.object_lifetime):
         parser.error('--motion-output history needs both --object-trace and --object-lifetime, or neither for sentinel-only mode.')
     if args.motion_jitter and not args.motion_output:
@@ -1042,10 +993,6 @@ def main():
         parser.error('--taa-sharpen requires --taa.')
     if args.taa_sharpen is not None and not 0.0 <= args.taa_sharpen <= 1.0:
         parser.error('--taa-sharpen must be within [0, 1].')
-    for retired in ('taa_current_filter', 'taa_line_filter', 'taa_thin_clip', 'taa_adaptive_weight'):
-        if getattr(args, retired) is not None:
-            parser.error('--%s was removed on 2026-09-23 (cleanup batch 6): the rejected / superseded TAA resolve variants are retired; '
-                         'use --taa-far-stabiliser and --taa-thin-region (docs/architecture/taa-lattice-crawl.md).' % retired.replace('_', '-'))
     # Run 81 defaults (the Run 80 A stand command): with --taa on a modded launch the far stabiliser is 0.985 and the
     # thin region 0.97 unless given; "off" is the explicit 0 (both off). Without --taa, or under --vanilla, nothing is
     # sent. A default the history weight would refuse (--taa-history-weight above it) stays off rather than refusing.
@@ -1094,13 +1041,6 @@ def main():
         args.taa_thin_region = ','.join('%.6g' % value for value in (thin if gate_given else thin[:2]))
         if gate_given and args.taa_far_stabiliser is not None:
             args.taa_far_stabiliser = ','.join(args.taa_far_stabiliser.split(',')[:4] + ['%.6g' % thin[2], '%.6g' % thin[3]])
-    if args.taa_thin_region_gate is not None:
-        if args.taa_thin_region is None or float(args.taa_thin_region.split(',')[0]) <= 0:
-            parser.error('--taa-thin-region-gate requires --taa-thin-region with W > 0.')
-    elif args.taa_thin_region is not None and float(args.taa_thin_region.split(',')[0]) > 0:
-        # User-accepted Run59 default (docs/verification/temporal-resolve.md): whenever the thin
-        # region is active the gate is camera-relative. Explicit "screen" is the opt-out.
-        args.taa_thin_region_gate = 'camera'
     if args.taa_thin_region_emissive is None and args.taa and args.hdr \
             and args.taa_thin_region is not None and float(args.taa_thin_region.split(',')[0]) > 0:
         # User-accepted run236/run237 default (2026-09-22, docs/architecture/taa-lattice-crawl.md
@@ -1119,12 +1059,6 @@ def main():
         if not math.isfinite(emissive) or not 0 <= emissive <= 65000:
             parser.error('--taa-thin-region-emissive expects E in 0..65000 scene luma (0 = off).')
         args.taa_thin_region_emissive = '%.6g' % emissive
-    if args.taa_sentinel is not None:
-        parser.error('--taa-sentinel was removed on 2026-09-25 (user decision): the resolve\'s depth-sentinel policy is always auto '
-                     '(far-plane camera reprojection whenever the camera read yields a transform) and X3M_TAA_SENTINEL is never sent; drop the option.')
-    if args.taa_sentinel_stabiliser is not None:
-        parser.error('--taa-sentinel-stabiliser was removed on 2026-09-25 with the TAA mask fold (docs/architecture/taa-mask-fold.md '
-                     'section 7): the sentinel class of the thin region is retired and X3M_TAA_SENTINEL_STABILISER is never sent; drop the option.')
     if args.taa_history_weight is not None and not args.taa:
         parser.error('--taa-history-weight requires --taa.')
     if args.taa_history_weight is not None and not 0.5 <= args.taa_history_weight <= 0.98:
@@ -1144,8 +1078,6 @@ def main():
         # User-accepted Run 68 A default (2026-09-23, docs/architecture/seta-sky-hull-share-decay.md):
         # strict sky history whenever the TAA route runs; "loose" is the opt-out.
         args.taa_sky_history = 'strict'
-    if args.taa_history_taps is not None and not args.taa:
-        parser.error('--taa-history-taps requires --taa.')
     if args.taa_box_resolution is not None and args.vanilla:
         parser.error('--taa-box-resolution cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9.')
     if args.taa_box_resolution is not None and not args.taa:
@@ -1179,9 +1111,6 @@ def main():
     if args.taa and not args.vanilla and args.taa_far_clip is None:
         args.taa_far_clip = '7x7'
         args.taa_far_clip_default = True
-    if args.taa_region_hold is not None:
-        parser.error("--taa-region-hold was removed on 2026-09-24: the region hold (A') was accepted after Run 79 A and is the only "
-                     "path of the thin region's camera gate (docs/architecture/taa-plan-lifted-slot-cap.md step 1); drop the option.")
     if args.fade_rt2_owner is not None and args.vanilla:
         parser.error('--fade-rt2-owner cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9.')
     if args.fade_rt2_owner is not None and not args.taa:
@@ -1211,28 +1140,6 @@ def main():
             else:
                 setattr(args, attribute, 'on')
                 setattr(args, attribute + '_default', True)
-    # --taa-thin-region-source: after the thin-region and thin-vote defaults above, which it may rely on.
-    if args.taa_thin_region_source is not None:
-        if args.vanilla:
-            parser.error('--taa-thin-region-source cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9.')
-        if not args.taa:
-            parser.error('--taa-thin-region-source requires --taa.')
-        if args.taa_thin_region is None or float(args.taa_thin_region.split(',')[0]) <= 0:
-            parser.error('--taa-thin-region-source requires --taa-thin-region with W > 0.')
-        if args.taa_thin_region_source == 'vote' and args.taa_thin_vote != 'on':
-            parser.error('--taa-thin-region-source vote requires --taa-thin-vote on (the default with --taa --motion-output --ownership --hdr --sun-shadow-lane).')
-        if args.taa_thin_region_source == 'screen' and args.taa_thin_region_gate == 'camera':
-            parser.error('--taa-thin-region-source screen is refused with the camera gate (the default): since the TAA mask fold its resolve '
-                         'computes the tests itself and has no plain program (docs/architecture/taa-mask-fold.md); use both for the search, '
-                         'or --taa-thin-region-gate screen.')
-    # The mask fold's default (2026-09-25, docs/architecture/taa-mask-fold.md): vote, the search off, on every modded launch whose
-    # thin vote and thin region are on; X3M_TAA_THIN_REGION_SOURCE_DEFAULT tells the DLL's row where the value came from. Otherwise
-    # nothing is sent (the DLL runs both).
-    args.taa_thin_region_source_default = False
-    if (args.taa_thin_region_source is None and args.taa and not args.vanilla and args.taa_thin_vote == 'on'
-            and args.taa_thin_region is not None and float(args.taa_thin_region.split(',')[0]) > 0):
-        args.taa_thin_region_source = 'vote'
-        args.taa_thin_region_source_default = True
     if args.taa_sky_history_band_px is not None:
         if not args.taa:
             parser.error('--taa-sky-history-band-px requires --taa.')
@@ -1300,17 +1207,6 @@ def main():
         parser.error('--hdr-tonemap requires --hdr.')
     if args.hdr_dither is not None and not args.hdr:
         parser.error('--hdr-dither requires --hdr.')
-    if args.linear_distance_fade is None:
-        # Default on where its prerequisites hold (user decision 2026-09-14,
-        # runs 11/14/15); silently off otherwise, so an unrelated launch does
-        # not have to name --no-linear-distance-fade.
-        args.linear_distance_fade = bool(args.linear_materials and args.taa)
-    elif args.linear_distance_fade and (not args.linear_materials or not args.taa):
-        parser.error('--linear-distance-fade requires --linear-materials --taa (and material HDR/motion prerequisites).')
-    if args.fade_witness is not None and not (args.linear_distance_fade or args.screen_emission):
-        parser.error('--fade-witness requires --linear-distance-fade or --screen-emission.')
-    if args.shimmer_trace and not (args.motion_output and args.taa):
-        parser.error('--shimmer-trace requires --motion-output --taa.')
     if args.sun_shadow_lane and not (args.motion_output and args.taa and args.hdr):
         parser.error('--sun-shadow-lane requires --motion-output --taa --hdr.')
     if args.sun_shadow_apply and not (args.sun_shadow_lane and args.shadow_replay_depth):
@@ -1440,20 +1336,10 @@ def main():
         parser.error('--volumetric-fog requires --motion-output --taa --hdr --shadow-replay-depth --shadow-cascades.')
     if args.volumetric_fog is None and (args.volumetric_fog_cards is not None or args.volumetric_fog_range is not None or args.volumetric_fog_everywhere or args.volumetric_fog_timing):
         parser.error('--volumetric-fog-cards, --volumetric-fog-range, --volumetric-fog-everywhere and --volumetric-fog-timing require --volumetric-fog.')
-    if args.volumetric_fog_look is not None:
-        parser.error('--volumetric-fog-look was removed on 2026-09-22: the stored fog range has a single look (the former L2) and the presets L0, L1 and L3 are retired. Drop the option; the tuning variables X3M_FOG_LOOK_<NAME> still apply.')
     if args.volumetric_fog_range == 'stored' and args.volumetric_fog == 0.0:
         parser.error('--volumetric-fog-range stored requires a positive --volumetric-fog strength (0 detaches the pass).')
-    if args.fog_shadow_pass == 'on' and args.volumetric_fog_range != 'stored':
-        parser.error('--fog-shadow-pass on requires --volumetric-fog-range stored.')
-    if args.fog_far_bins == '24' and args.volumetric_fog_range != 'stored':
-        parser.error('--fog-far-bins 24 requires --volumetric-fog-range stored.')
-    if args.fog_far_bins == '24' and args.fog_shadow_pass == 'on':
-        parser.error('--fog-far-bins 24 cannot be combined with --fog-shadow-pass on (the grid programs keep 40 far bins).')
     if args.fog_march_scale == '4' and args.volumetric_fog_range != 'stored':
         parser.error('--fog-march-scale 4 requires --volumetric-fog-range stored.')
-    if args.fog_march_scale == '4' and args.fog_shadow_pass == 'on':
-        parser.error('--fog-march-scale 4 cannot be combined with --fog-shadow-pass on (the grid programs keep spacing 2).')
     if (args.fog_handover_step is not None or args.fog_handover_coldfill is not None or args.fog_handover_prefill is not None) and args.volumetric_fog_range != 'stored':
         parser.error('--fog-handover-step, --fog-handover-coldfill and --fog-handover-prefill (and their --no- forms) require --volumetric-fog-range stored.')
     if args.fog_docked is not None and args.volumetric_fog is None:
@@ -1464,17 +1350,6 @@ def main():
             parser.error('--fog-dust-motes requires --volumetric-fog-range stored.')
     if args.volumetric_fog is not None and not (math.isfinite(args.volumetric_fog) and 0.0 <= args.volumetric_fog <= 0.1):
         parser.error('--volumetric-fog must be within [0, 0.1].')
-    if args.fade_witness is not None and not 1 <= args.fade_witness <= 100000:
-        parser.error('--fade-witness must be within [1,100000].')
-    # The packed screen bracket composes on the FP16 scene the AgX/gamma2.2 HDR
-    # pass owns; it consumes no linear-material variant or admission state
-    # (docs/architecture/linear-material-decoupling.md), so hull shading is free.
-    if args.screen_emission and not (args.taa and args.motion_output and args.ownership and args.hdr and args.hdr_tonemap and args.hdr_decode in ('gamma2.2', 'pow22')):
-        parser.error('--screen-emission requires --taa --motion-output --ownership --hdr --hdr-tonemap and gamma2.2 decode.')
-    if args.screen_emission_timing and not args.screen_emission:
-        parser.error('--screen-emission-timing requires --screen-emission.')
-    if args.screen_emission_additive is not None and args.screen_emission:
-        parser.error('--screen-emission-additive is mutually exclusive with --screen-emission.')
     if args.screen_emission_additive is not None and not (args.motion_output and args.hdr):
         parser.error('--screen-emission-additive requires --motion-output --hdr.')
     if args.screen_emission_additive is not None and not (math.isfinite(args.screen_emission_additive) and 1.0 <= args.screen_emission_additive <= 8.0):
@@ -1489,74 +1364,36 @@ def main():
     if args.vanilla and bolt_footprint not in (None, (0.0, 0.0)):
         parser.error('--bolt-footprint cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so the proxy that draws the expanded bolts is not loaded.')
     if bolt_footprint not in (None, (0.0, 0.0)):
-        if args.screen_emission:
-            parser.error('--bolt-footprint needs the additive bullets (--screen-emission-additive), which are mutually exclusive with --screen-emission.')
         if not (args.motion_output and args.hdr and args.ownership):
             parser.error('--bolt-footprint requires --motion-output --hdr --ownership (the additive bullet route and the ownership Unlock scan).')
-    if args.screen_emission_gain is not None and not args.screen_emission:
-        parser.error('--screen-emission-gain requires --screen-emission.')
-    if args.screen_emission_gain is not None and not (math.isfinite(args.screen_emission_gain) and 0.5 <= args.screen_emission_gain <= 8.0):
-        parser.error('--screen-emission-gain must be finite and within [0.5, 8].')
-    if args.linear_emissions and (not args.motion_output or not args.taa or not args.hdr or not args.hdr_tonemap or args.hdr_decode not in ('gamma2.2', 'pow22')):
-        parser.error('--linear-emissions requires --motion-output --taa --hdr --hdr-tonemap and gamma2.2 decode.')
-    if args.emission_gain is not None and not args.linear_emissions:
-        parser.error('--emission-gain requires --linear-emissions.')
-    if args.emission_gain is not None and (not math.isfinite(args.emission_gain) or not 0 <= args.emission_gain <= 16):
-        parser.error('--emission-gain must be finite and within [0,16].')
     if args.emission_source_gain is not None and not args.hdr:
         parser.error('--emission-source-gain requires --hdr.')
-    if args.emission_source_gain is not None and args.linear_emissions:
-        parser.error('--emission-source-gain excludes --linear-emissions (use --emission-gain inside the linear route).')
     if args.emission_source_gain is not None and not (math.isfinite(args.emission_source_gain) and 1.0 <= args.emission_source_gain <= 8.0):
         parser.error('--emission-source-gain must be finite and within [1, 8].')
-    if args.hull_emission_gain is not None and not hull_emitters_requested(args):
-        parser.error('--hull-emission-gain requires --hull-emitters (or an --emission-source-gain above 1, which implies it).')
-    if args.hull_emission_gain is not None and not (math.isfinite(args.hull_emission_gain) and 1.0 < args.hull_emission_gain <= 8.0):
-        parser.error('--hull-emission-gain must be finite and within (1, 8]: gain 1 is the native program (no variant), so an explicit hull gain must be above 1; omit --hull-emitters for off.')
-    if args.hull_emitters and args.hull_emission_gain is None and args.emission_source_gain is None:
-        parser.error('--hull-emitters requires a gain: --hull-emission-gain G, or --emission-source-gain G whose value it then takes.')
-    if args.hull_emitters and not args.hdr:
-        parser.error('--hull-emitters requires --hdr.')
-    if args.linear_materials and (not args.motion_output or not args.hdr or not args.hdr_tonemap or args.hdr_decode not in ('gamma2.2', 'pow22')):
-        parser.error('--linear-materials requires --motion-output --hdr --hdr-tonemap and gamma2.2 decode.')
-    material_gains = {'X3M_MATERIAL_DIRECT_GAIN': args.material_direct_gain, 'X3M_MATERIAL_EMISSIVE_GAIN': args.material_emissive_gain,
-                      'X3M_LIGHTMAP_EMISSIVE_GAIN': args.lightmap_emissive_gain}
-    if any(value is not None for value in material_gains.values()) and not args.linear_materials:
-        parser.error('Material gains require --linear-materials.')
-    if any(value is not None and not 0.0 <= value <= 16.0 for value in material_gains.values()):
-        parser.error('Material gains must be finite and within [0, 16].')
-    if args.material_fill is not None and not args.linear_materials:
-        parser.error('--material-fill requires --linear-materials.')
-    if args.material_fill is not None and not (math.isfinite(args.material_fill) and 0.0 <= args.material_fill <= 0.5):
-        parser.error('--material-fill must be finite and within [0, 0.5].')
     if args.original_fill is not None and not args.hdr:
         parser.error('--original-fill requires --hdr.')
-    if args.original_fill is not None and args.linear_materials:
-        parser.error('--original-fill excludes --linear-materials (the converted programs take --material-fill instead).')
     if args.original_fill is not None and not (math.isfinite(args.original_fill) and 0.0 <= args.original_fill <= 0.5):
         parser.error('--original-fill must be finite and within [0, 0.5].')
     # 2026-09-25 default (user decision, accepted in flight; docs/architecture/original-shading-critique.md 1a): 0.01 (was 0.02 earlier that day) on every
-    # modded --hdr launch unless given; explicit 0 is the opt-out (the byte-identical original programs). Not under
-    # --linear-materials (the converted programs take --material-fill), not without --hdr, not under --vanilla.
+    # modded --hdr launch unless given; explicit 0 is the opt-out (the byte-identical original programs). Not without --hdr,
+    # not under --vanilla.
     # X3M_ORIGINAL_FILL_DEFAULT tells the DLL's original_fill_mode row where the value came from.
     args.original_fill_default = False
-    if args.hdr and not args.linear_materials and not args.vanilla and args.original_fill is None:
+    if args.hdr and not args.vanilla and args.original_fill is None:
         args.original_fill = ORIGINAL_FILL_DEFAULT
         args.original_fill_default = True
     if args.hull_lightmap_gain is not None and not args.hdr:
         parser.error('--hull-lightmap-gain requires --hdr.')
-    if args.hull_lightmap_gain is not None and args.linear_materials:
-        parser.error('--hull-lightmap-gain excludes --linear-materials (the converted programs take --lightmap-emissive-gain instead).')
     if args.hull_lightmap_gain is not None and not (math.isfinite(args.hull_lightmap_gain) and 1.0 <= args.hull_lightmap_gain <= 8.0):
         parser.error('--hull-lightmap-gain must be finite and within [1, 8].')
     # Default only where the original-hull boost is active; explicit requests retain
     # strict prerequisite checks. The separate off flag cannot alias malformed input.
-    if args.light_map_far_fade is None and not args.no_light_map_far_fade and args.hdr and not args.linear_materials and (args.hull_lightmap_gain if args.hull_lightmap_gain is not None else HULL_LIGHTMAP_GAIN_DEFAULT) > 1.0:
+    if args.light_map_far_fade is None and not args.no_light_map_far_fade and args.hdr and (args.hull_lightmap_gain if args.hull_lightmap_gain is not None else HULL_LIGHTMAP_GAIN_DEFAULT) > 1.0:
         args.light_map_far_fade = LIGHT_MAP_FAR_FADE_DEFAULT
     if args.light_map_far_fade is not None:
-        gain = args.hull_lightmap_gain if args.hull_lightmap_gain is not None else (HULL_LIGHTMAP_GAIN_DEFAULT if args.hdr and not args.linear_materials else 1.0)
+        gain = args.hull_lightmap_gain if args.hull_lightmap_gain is not None else (HULL_LIGHTMAP_GAIN_DEFAULT if args.hdr else 1.0)
         if not gain > 1.0:
-            parser.error('--light-map-far-fade requires an active light-map gain (--hdr without --linear-materials, --hull-lightmap-gain above 1).')
+            parser.error('--light-map-far-fade requires an active light-map gain (--hdr, --hull-lightmap-gain above 1).')
         try:
             fade = [float(field) for field in args.light_map_far_fade.split(',')]
         except ValueError:
@@ -1571,16 +1408,16 @@ def main():
         args.hull_emissive_widening = None  # the named opt-out: the variable stays unset
     elif args.hull_emissive_widening is None \
             and (args.hull_lightmap_gain if args.hull_lightmap_gain is not None
-                 else (HULL_LIGHTMAP_GAIN_DEFAULT if args.hdr and not args.linear_materials else 1.0)) > 1.0:
+                 else (HULL_LIGHTMAP_GAIN_DEFAULT if args.hdr else 1.0)) > 1.0:
         # User-accepted run236/run237 default (2026-09-22, docs/architecture/hull-emissive-widening.md):
         # K = B = 4 wherever an explicit --hull-emissive-widening 4 would have been accepted, that is
         # wherever the gained light-map route is already active. The default never turns that route on:
         # without the gain it resolves to off here rather than to an error. "off" opts out.
         args.hull_emissive_widening = HULL_EMISSIVE_WIDENING_DEFAULT
     if args.hull_emissive_widening is not None:
-        gain = args.hull_lightmap_gain if args.hull_lightmap_gain is not None else (HULL_LIGHTMAP_GAIN_DEFAULT if args.hdr and not args.linear_materials else 1.0)
+        gain = args.hull_lightmap_gain if args.hull_lightmap_gain is not None else (HULL_LIGHTMAP_GAIN_DEFAULT if args.hdr else 1.0)
         if not gain > 1.0:
-            parser.error('--hull-emissive-widening requires an active light-map gain (--hdr without --linear-materials, --hull-lightmap-gain above 1).')
+            parser.error('--hull-emissive-widening requires an active light-map gain (--hdr, --hull-lightmap-gain above 1).')
         try:
             widen = [float(field) for field in args.hull_emissive_widening.split(',')]
         except ValueError:
@@ -1625,8 +1462,6 @@ def main():
         low, high, low_inclusive = chase_ranges[name]
         if value is not None and not ((low <= value if low_inclusive else low < value) and value <= high):
             parser.error(f'{name} out of range: {value} (expected {"[" if low_inclusive else "("}{low}, {high}])')
-    if args.lod_scale is not None and not (math.isfinite(args.lod_scale) and 0.25 <= args.lod_scale <= 4.0):
-        parser.error(f'--lod-scale out of range: {args.lod_scale} (expected [0.25, 4.0])')
     # 0 is off; otherwise the value must survive the DLL's fixed-point parser ([+]digits[.digits], (0, 64]).
     if args.cull_small_parts is not None and not (math.isfinite(args.cull_small_parts) and (args.cull_small_parts == 0.0 or 0.0001 <= args.cull_small_parts <= 64.0)):
         parser.error(f'--cull-small-parts out of range: {args.cull_small_parts} (expected 0 or [0.0001, 64])')
@@ -1675,16 +1510,12 @@ def main():
         parser.error(f'--sun-occlusion-curve out of range: {args.sun_occlusion_curve} (expected [0.25, 4])')
     if args.lod_switch_log is not None and not 1 <= args.lod_switch_log <= 4096:
         parser.error(f'--lod-switch-log out of range: {args.lod_switch_log} (expected 1..4096 rows per frame)')
-    if args.cull_small_parts_scope is not None and not cull_small_parts_px(args):
-        parser.error('--cull-small-parts-scope requires a non-zero --cull-small-parts')
     if args.cull_small_parts_projectiles is not None and not cull_small_parts_px(args):
         parser.error('--cull-small-parts-projectiles requires a non-zero --cull-small-parts')
     if not 100 <= args.profile_interval_us <= 1000000:
         parser.error('--profile-interval-us must be between 100 and 1000000.')
     if args.gz_buffer_kb != 256 and not args.gz_buffer:
         parser.error('--gz-buffer-kb requires --gz-buffer.')
-    if args.loading_intervals and not args.telemetry:
-        parser.error('--loading-intervals requires --telemetry (existing loading markers supply the endpoint).')
     if args.loading_probes and not args.telemetry:
         parser.error('--loading-probes requires --telemetry.')
     if args.frame_timing and not args.telemetry:
@@ -1697,8 +1528,6 @@ def main():
         parser.error('--gz-buffer-kb must be between 1 and 65536.')
     if args.taa:
         args.motion_jitter = True
-    if args.motion_capture and not 2 <= args.capture_frames <= 8:
-        parser.error('--motion-capture requires --capture-frames between 2 and 8 for adjacent-frame correspondence.')
     game = args.game_dir.resolve()
     dll = game / 'd3d9.dll'
     manifest = game / 'x3-modern-install.json'
@@ -1754,6 +1583,8 @@ def main():
         if not WINE.is_file():
             parser.error(f'CrossOver Preview Wine not found: {WINE}')
         env = os.environ.copy()
+        for name in REMOVED_VARIABLES:
+            env.pop(name, None)
         env['X3M_CAPTURE_START'] = str(max(1, args.capture_start))
         env['X3M_CAPTURE_FRAMES'] = str(args.capture_frames)
         # Delayed F8 capture: set only when requested, so a stale shell value
@@ -1801,15 +1632,10 @@ def main():
                 env.pop(variable, None)
         env['X3M_FRAME_TIMING_STATE_STAMPS'] = str(args.frame_timing_state_stamps if args.frame_timing else 0)
         env['X3M_OWNERSHIP'] = '1' if args.ownership else '0'
-        env['X3M_DEPTH_COPY'] = '1' if args.depth_copy else '0'
-        env['X3M_SCENE_DEPTH_CAPTURE'] = '1' if args.scene_depth_capture else '0'
         env['X3M_OBJECT_TRACE'] = '1' if args.object_trace else '0'
         env['X3M_OBJECT_LIFETIME'] = '1' if args.object_lifetime else '0'
-        env['X3M_MESH_CACHE'] = '1' if args.mesh_cache else '0'
         env['X3M_MESH_ADJACENCY'] = args.mesh_adjacency
         env['X3M_MESH_ADJACENCY_DUMP'] = '1' if args.mesh_adjacency_dump else '0'
-        env['X3M_FINITE_POSITIONS'] = '1' if args.finite_positions else '0'
-        env['X3M_MOTION_CAPTURE'] = '1' if args.motion_capture else '0'
         env['X3M_MOTION_OUTPUT'] = '1' if args.motion_output else '0'
         env['X3M_MOTION_JITTER'] = '1' if args.motion_jitter else '0'
         # User-accepted production defaults: a finite huge median bound is a
@@ -1838,26 +1664,19 @@ def main():
         # with a resolved default (the thin-region gate and its emissive
         # vote) are already set or cleared above, so an inherited value cannot
         # survive either.
-        for name, value in (('X3M_TAA_HISTORY_WEIGHT', args.taa_history_weight), ('X3M_TAA_FAR_STABILISER', args.taa_far_stabiliser), ('X3M_TAA_THIN_REGION', args.taa_thin_region), ('X3M_TAA_THIN_REGION_GATE', args.taa_thin_region_gate), ('X3M_TAA_THIN_REGION_EMISSIVE', args.taa_thin_region_emissive),
+        for name, value in (('X3M_TAA_HISTORY_WEIGHT', args.taa_history_weight), ('X3M_TAA_FAR_STABILISER', args.taa_far_stabiliser), ('X3M_TAA_THIN_REGION', args.taa_thin_region), ('X3M_TAA_THIN_REGION_EMISSIVE', args.taa_thin_region_emissive),
                             ('X3M_TAA_SKY_HISTORY', args.taa_sky_history), ('X3M_TAA_SKY_HISTORY_BAND_PX', args.taa_sky_history_band_px), ('X3M_TAA_SKY_HISTORY_EXIT_PX', args.taa_sky_history_exit_px), ('X3M_TAA_MOTION_WEIGHT', args.taa_motion_weight),
-                            ('X3M_TAA_HISTORY_TAPS', args.taa_history_taps), ('X3M_TAA_BOX_RESOLUTION', args.taa_box_resolution), ('X3M_TAA_FAR_GATE', args.taa_far_gate), ('X3M_TAA_FAR_CLIP', args.taa_far_clip), ('X3M_TAA_THIN_VOTE', args.taa_thin_vote), ('X3M_TAA_THIN_REGION_SOURCE', args.taa_thin_region_source), ('X3M_FADE_RT2_OWNER', args.fade_rt2_owner),
+                            ('X3M_TAA_BOX_RESOLUTION', args.taa_box_resolution), ('X3M_TAA_FAR_GATE', args.taa_far_gate), ('X3M_TAA_FAR_CLIP', args.taa_far_clip), ('X3M_TAA_THIN_VOTE', args.taa_thin_vote), ('X3M_FADE_RT2_OWNER', args.fade_rt2_owner),
                             ('X3M_TAA_BOX_RESOLUTION_DEFAULT', None if args.taa_box_resolution is None else '1' if args.taa_box_resolution_default else '0'),
                             ('X3M_TAA_FAR_GATE_DEFAULT', None if args.taa_far_gate is None else '1' if args.taa_far_gate_default else '0'),
                             ('X3M_TAA_FAR_CLIP_DEFAULT', None if args.taa_far_clip is None else '1' if args.taa_far_clip_default else '0'),
                             ('X3M_TAA_THIN_VOTE_DEFAULT', None if args.taa_thin_vote is None else '1' if args.taa_thin_vote_default else '0'),
-                            ('X3M_TAA_THIN_REGION_SOURCE_DEFAULT', None if args.taa_thin_region_source is None else '1' if args.taa_thin_region_source_default else '0'),
                             ('X3M_FADE_RT2_OWNER_DEFAULT', None if args.fade_rt2_owner is None else '1' if args.fade_rt2_owner_default else '0'),
                             ('X3M_TAA_ALPHA_HISTORY', '1' if args.taa_alpha_history else None)):
             if value is not None:
                 env[name] = value if isinstance(value, str) else repr(value)
             else:
                 env.pop(name, None)
-        # Retired 2026-09-23 (cleanup batch 6), X3M_TAA_REGION_HOLD (2026-09-24, A' only) and X3M_TAA_SENTINEL_STABILISER with
-        # its launcher marker X3M_TAA_SENTINEL_STABILISER_DEFAULT (2026-09-25, the mask fold): never inherited, never set (the DLL
-        # no longer reads them; it logs one ignored line for a stale X3M_TAA_REGION_HOLD or X3M_TAA_SENTINEL_STABILISER).
-        for name in ('X3M_TAA_CURRENT_FILTER', 'X3M_TAA_LINE_FILTER', 'X3M_TAA_THIN_CLIP', 'X3M_TAA_ADAPTIVE_WEIGHT', 'X3M_TAA_REGION_HOLD', 'X3M_TAA_SENTINEL_STABILISER',
-                     'X3M_TAA_SENTINEL_STABILISER_DEFAULT'):
-            env.pop(name, None)
         # --taa-sentinel / X3M_TAA_SENTINEL are gone (2026-09-25, user decision): the resolve's policy is always auto;
         # an inherited shell value is dropped, never forwarded (policies 1/2 are fixture-only, X3M_FIXTURE_TAA_SENTINEL).
         env.pop('X3M_TAA_SENTINEL', None)
@@ -1872,14 +1691,6 @@ def main():
         env['X3M_MOTION_RT_MODE'] = args.motion_rt_mode
         env['X3M_SCENE_HOOK'] = '0' if args.scene_hook == 'off' or not args.motion_output else '1'
         env['X3M_HDR'] = '1' if args.hdr else '0'
-        env['X3M_LINEAR_EMISSIONS'] = '1' if args.linear_emissions else '0'
-        env['X3M_LINEAR_DISTANCE_FADE'] = '1' if args.linear_distance_fade else '0'
-        # Step C screen emission implies the step B bound; both explicit so a
-        # stale shell value cannot enable either.
-        env['X3M_SCREEN_EMISSION'] = '1' if args.screen_emission else '0'
-        env['X3M_SCREEN_EMISSION_BOUND'] = '1' if args.screen_emission else '0'
-        env['X3M_SCREEN_EMISSION_TIMING'] = '1' if args.screen_emission_timing else '0'
-        env['X3M_SCREEN_EMISSION_GAIN'] = repr(args.screen_emission_gain if args.screen_emission_gain is not None else 1.0)
         # Explicit off value so a stale shell value cannot enable the additive option.
         env['X3M_SCREEN_EMISSION_ADDITIVE'] = repr(args.screen_emission_additive) if args.screen_emission_additive is not None else '0'
         # Absent means the native alpha law: drop the variable entirely (the
@@ -1901,10 +1712,6 @@ def main():
             env['X3M_BOLT_FOOTPRINT'] = footprint
             if args.bolt_footprint is not None and footprint != '0' and args.screen_emission_additive is None:
                 env['X3M_SCREEN_EMISSION_ADDITIVE'] = repr(1.0)
-        if args.fade_witness is not None:
-            env['X3M_FADE_WITNESS'] = str(args.fade_witness)
-        if args.shimmer_trace:
-            env['X3M_SHIMMER_TRACE'] = '1'
         env['X3M_SUN_SHADOW_LANE'] = '1' if args.sun_shadow_lane else '0'
         env['X3M_SUN_SHADOW_APPLY'] = '1' if args.sun_shadow_apply else '0'
         env['X3M_SHADOW_REPLAY_CANDIDATES'] = '1' if (args.shadow_replay_candidates or args.shadow_replay_depth) else '0'
@@ -1942,15 +1749,8 @@ def main():
         env['X3M_VOLUMETRIC_FOG_STRENGTH'] = repr(args.volumetric_fog if args.volumetric_fog is not None else 0.02)
         env['X3M_VOLUMETRIC_FOG_CARDS'] = args.volumetric_fog_cards or 'keep'
         env['X3M_VOLUMETRIC_FOG_RANGE'] = args.volumetric_fog_range or 'legacy'
-        env.pop('X3M_VOLUMETRIC_FOG_LOOK', None)  # retired 2026-09-22: never inherited, never set (the DLL logs one ignore line)
-        env['X3M_FOG_SHADOW_PASS'] = '1' if args.fog_shadow_pass == 'on' else '0'
-        env['X3M_FOG_FAR_BINS'] = '24' if args.fog_far_bins == '24' else '40'  # explicit: an inherited value never picks the variant
-        # Explicit so an inherited value never decides it: the given value, else the default 4, which the shadow pass clamps
-        # to 2 (its grid programs keep spacing 2; the DLL clamps the same way and logs refused=shadow_pass).
-        march_scale = args.fog_march_scale or ('2' if args.fog_shadow_pass == 'on' else FOG_MARCH_SCALE_DEFAULT)
-        if args.fog_march_scale is None and args.fog_shadow_pass == 'on':
-            print(f'fog march scale: 2 (the default {FOG_MARCH_SCALE_DEFAULT} is clamped to 2: --fog-shadow-pass on keeps spacing 2)', file=sys.stderr)
-        env['X3M_FOG_MARCH_SCALE'] = march_scale
+        # Explicit so an inherited value never decides it: the given value, else the default 4.
+        env['X3M_FOG_MARCH_SCALE'] = args.fog_march_scale or FOG_MARCH_SCALE_DEFAULT
         # Hand-over and docked view (fog-handover.md, "Implementation"): default on, always explicit so an inherited
         # value cannot decide them; the DLL reads them only under the stored range (hand-over) or the fog (docked).
         env['X3M_FOG_HANDOVER_STEP'] = '0' if args.fog_handover_step is False else '1'
@@ -1973,18 +1773,11 @@ def main():
                 env.pop(name, None)
         env['X3M_VOLUMETRIC_FOG_EVERYWHERE'] = '1' if args.volumetric_fog_everywhere else '0'
         env['X3M_VOLUMETRIC_FOG_TIMING'] = '1' if args.volumetric_fog_timing else '0'
-        env['X3M_EMISSION_GAIN'] = repr(args.emission_gain if args.emission_gain is not None else 1.0)
         env['X3M_EMISSION_SOURCE_GAIN'] = repr(args.emission_source_gain if args.emission_source_gain is not None else 1.0)
         # The guide lights follow the effects gain and its key (Ctrl+Shift+F6):
-        # an --emission-source-gain above 1 implies --hull-emitters and hands
-        # them its value, so one option covers engines, effects and guide
-        # lights; an explicit --hull-emission-gain still overrides the value.
-        hull_gain = args.hull_emission_gain if args.hull_emission_gain is not None else args.emission_source_gain
-        env['X3M_HULL_EMISSION_GAIN'] = repr(hull_gain if (hull_emitters_requested(args) and hull_gain is not None) else 1.0)
-        env['X3M_LINEAR_MATERIALS'] = '1' if args.linear_materials else '0'
-        for name, value in material_gains.items():
-            env[name] = str(value if value is not None else 1.0)
-        env['X3M_MATERIAL_FILL'] = repr(args.material_fill if args.material_fill is not None else (0.05 if args.linear_materials else 0.0))
+        # an --emission-source-gain above 1 hands them its value, so one option
+        # covers engines, effects and guide lights.
+        env['X3M_HULL_EMISSION_GAIN'] = repr(args.emission_source_gain if hull_emitters_requested(args) else 1.0)
         # Explicit off value so a stale shell value cannot enable the original fill.
         env['X3M_ORIGINAL_FILL'] = repr(args.original_fill if args.original_fill is not None else 0.0)
         if args.original_fill is None:
@@ -1992,11 +1785,11 @@ def main():
         else:
             env['X3M_ORIGINAL_FILL_DEFAULT'] = '1' if args.original_fill_default else '0'
         # Always explicit so a stale shell value can neither change nor enable
-        # the light-map gain: the production default (4) in HDR mode without
-        # the converted route, 1.0 (off) everywhere else, and an explicit
+        # the light-map gain: the production default (4) in HDR mode, 1.0 (off)
+        # everywhere else, and an explicit
         # --hull-lightmap-gain 1 still turns it off.
         env['X3M_HULL_LIGHTMAP_GAIN'] = repr(args.hull_lightmap_gain if args.hull_lightmap_gain is not None
-            else (HULL_LIGHTMAP_GAIN_DEFAULT if args.hdr and not args.linear_materials else 1.0))
+            else (HULL_LIGHTMAP_GAIN_DEFAULT if args.hdr else 1.0))
         # Absent means off: drop an inherited value rather than export an empty one.
         if args.light_map_far_fade is not None:
             env['X3M_LIGHT_MAP_FAR_FADE'] = args.light_map_far_fade
@@ -2041,27 +1834,13 @@ def main():
             env['X3M_STATE_SHADOW'] = '1' if args.state_shadow == 'on' else '0'
         env['X3M_GZ_BUFFER'] = '1' if args.gz_buffer else '0'
         env['X3M_GZ_BUFFER_KB'] = str(args.gz_buffer_kb)
-        env['X3M_LOADING_INTERVALS'] = '1' if args.loading_intervals else '0'
         env['X3M_LOADING_PROBES'] = '1' if args.loading_probes else '0'
         env['X3M_CRYPT_CACHE'] = '1' if args.crypt_cache else '0'
         env['X3M_RESOURCE_READ'] = args.resource_read
         env['X3M_DAT_HANDLES'] = '1' if args.dat_handles else '0'
         env['X3M_PROFILE'] = '1' if args.profile else '0'
         env['X3M_PROFILE_INTERVAL_US'] = str(args.profile_interval_us)
-        # Witness switches: set only when requested, dropped otherwise so a
-        # stale shell value cannot enable them and the plain command is unchanged.
-        for name, wanted in (('X3M_PROFILE_RAW', args.profile_raw), ('X3M_AUDIO_SITES', args.audio_sites)):
-            if wanted:
-                env[name] = '1'
-            else:
-                env.pop(name, None)
         env['X3M_CAMERA'] = args.camera  # chase installs the trampoline; vanilla (or unset) patches nothing
-        # LOD scale: set only when requested and dropped otherwise, so a stale
-        # shell value cannot patch the threshold read (docs/architecture/lod-scale.md).
-        if args.lod_scale is not None:
-            env['X3M_LOD_SCALE'] = repr(args.lod_scale)
-        else:
-            env.pop('X3M_LOD_SCALE', None)
         # Terran-station LOD: always explicit on a modded launch (size unless --terran-station-lod distance), so a
         # stale shell value can select neither mode; dropped under --vanilla (refused above).
         if args.vanilla:
@@ -2164,15 +1943,13 @@ def main():
             env.pop('X3M_LOD_SWITCH_LOG', None)
         # Small-parts cull: same rule; 0 is the documented off and is not
         # forwarded, and neither is anything under --vanilla. When the option is
-        # unset a modded launch takes the production default (2 px, scope all).
+        # unset a modded launch takes the production default (4 px).
         cull_px = cull_small_parts_px(args)
         if cull_px:
             env['X3M_CULL_SMALL_PARTS_PX'] = f'{cull_px:.4f}'  # fixed-point: the DLL parser takes no exponent form
-            env['X3M_CULL_SMALL_PARTS_SCOPE'] = args.cull_small_parts_scope or CULL_SMALL_PARTS_DEFAULT_SCOPE
             env['X3M_CULL_SMALL_PARTS_PROJECTILES'] = args.cull_small_parts_projectiles or CULL_SMALL_PARTS_DEFAULT_PROJECTILES
         else:
             env.pop('X3M_CULL_SMALL_PARTS_PX', None)
-            env.pop('X3M_CULL_SMALL_PARTS_SCOPE', None)
             env.pop('X3M_CULL_SMALL_PARTS_PROJECTILES', None)
         # The three framing constants are always forwarded at their production
         # defaults so a stale shell value cannot reframe the camera; the rest
