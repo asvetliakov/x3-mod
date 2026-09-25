@@ -79,7 +79,10 @@ class OriginalFillDefaultSource(unittest.TestCase):
 
     def test_motion_runner_drops_an_inherited_marker(self):
         runner = (ROOT / 'verification/probe/run_motion_output.py').read_text()
-        self.assertIn("'X3M_ORIGINAL_FILL_DEFAULT', 'X3M_TAA_THIN_REGION_SOURCE_DEFAULT'):\n                env.pop(marker, None)", runner)
+        # the marker sits in the runner's inherited-marker pop list (the list grows with every launcher default)
+        block = runner[runner.index("for marker in ('X3M_TAA_THIN_VOTE_DEFAULT'"):]
+        block = block[:block.index("env.pop(marker, None)")]
+        self.assertIn("'X3M_ORIGINAL_FILL_DEFAULT'", block)
 
 
 if __name__ == '__main__':
