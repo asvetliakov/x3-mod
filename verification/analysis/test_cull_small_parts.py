@@ -433,17 +433,17 @@ class CullSmallPartsLaunchOption(unittest.TestCase):
                 return exit_error.code, output.getvalue(), error.getvalue()
         return 0, output.getvalue(), error.getvalue()
 
-    def test_modded_launch_defaults_to_two_px_scope_all(self):
-        """Run 43 B default: every modded launch culls at 2 px over all nodes;
-        an explicit 0 is the off switch and --vanilla forwards nothing."""
+    def test_modded_launch_defaults_to_four_px_scope_all(self):
+        """Run 43 B default at 2 px, raised to 4 px on 2026-09-25 (stand-command promotion): every modded
+        launch culls over all nodes; an explicit 0 is the off switch and --vanilla forwards nothing."""
         with tempfile.TemporaryDirectory() as directory:
             code, output, error = self.modded_launch(directory)
             self.assertEqual(code, 0, error)
             env = json.loads(output)['env']
-            self.assertEqual((env['X3M_CULL_SMALL_PARTS_PX'], env['X3M_CULL_SMALL_PARTS_SCOPE']), ('2.0000', 'all'))
+            self.assertEqual((env['X3M_CULL_SMALL_PARTS_PX'], env['X3M_CULL_SMALL_PARTS_SCOPE']), ('4.0000', 'all'))
             # An explicit value and an explicit scope still win.
-            env = json.loads(self.modded_launch(directory, '--cull-small-parts', '4', '--cull-small-parts-scope', 'bodies')[1])['env']
-            self.assertEqual((env['X3M_CULL_SMALL_PARTS_PX'], env['X3M_CULL_SMALL_PARTS_SCOPE']), ('4.0000', 'bodies'))
+            env = json.loads(self.modded_launch(directory, '--cull-small-parts', '2', '--cull-small-parts-scope', 'bodies')[1])['env']
+            self.assertEqual((env['X3M_CULL_SMALL_PARTS_PX'], env['X3M_CULL_SMALL_PARTS_SCOPE']), ('2.0000', 'bodies'))
             # The scope alone is enough on a modded launch: the cull is on by default.
             code, output, error = self.modded_launch(directory, '--cull-small-parts-scope', 'bodies')
             self.assertEqual(code, 0, error)

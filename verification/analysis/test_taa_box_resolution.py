@@ -31,7 +31,7 @@ class BoxResolutionLaunch(unittest.TestCase):
 
     def test_without_taa_nothing_is_sent_and_inherited_values_are_dropped(self):
         with tempfile.TemporaryDirectory() as directory:
-            env = self.env(directory, '--motion-output', inherited={'X3M_TAA_BOX_RESOLUTION': 'half', self.MARKER: '1'})
+            env = self.env(directory, '--motion-output', '--no-taa', inherited={'X3M_TAA_BOX_RESOLUTION': 'half', self.MARKER: '1'})
             self.assertNotIn('X3M_TAA_BOX_RESOLUTION', env)
             self.assertNotIn(self.MARKER, env)
 
@@ -53,7 +53,7 @@ class BoxResolutionLaunch(unittest.TestCase):
                 code, _, error = self.launch(directory, *TAA, '--taa-box-resolution', value)
                 self.assertNotEqual(code, 0, value)
                 self.assertIn('--taa-box-resolution', error)
-            code, _, error = self.launch(directory, '--motion-output', '--taa-box-resolution', 'half')
+            code, _, error = self.launch(directory, '--motion-output', '--no-taa', '--taa-box-resolution', 'half')
             self.assertNotEqual(code, 0)
             self.assertIn('--taa-box-resolution requires --taa', error)
             code, _, error = self.launch(directory, '--vanilla', '--taa-box-resolution', 'half')

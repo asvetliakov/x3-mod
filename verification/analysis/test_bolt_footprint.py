@@ -975,10 +975,10 @@ class LauncherOption(unittest.TestCase):
 
     def test_default_on_a_modded_launch_without_implying_the_additive_route(self):
         with tempfile.TemporaryDirectory() as directory:
-            env = self.env(directory)
+            env = self.env(directory)  # the additive bullets at 2 are a launcher default since 2026-09-25
             self.assertEqual(env['X3M_BOLT_FOOTPRINT'], '3,12')
-            self.assertEqual(env['X3M_SCREEN_EMISSION_ADDITIVE'], '0')
-            env = self.env(directory, *self.PREREQUISITES)
+            self.assertEqual(env['X3M_SCREEN_EMISSION_ADDITIVE'], '2.0')
+            env = self.env(directory, *self.PREREQUISITES, '--no-screen-emission-additive')
             self.assertEqual((env['X3M_BOLT_FOOTPRINT'], env['X3M_SCREEN_EMISSION_ADDITIVE']), ('3,12', '0'))
             env = self.env(directory, *self.PREREQUISITES, '--screen-emission-additive', '2')
             self.assertEqual((env['X3M_BOLT_FOOTPRINT'], env['X3M_SCREEN_EMISSION_ADDITIVE']), ('3,12', '2.0'))
@@ -989,7 +989,7 @@ class LauncherOption(unittest.TestCase):
             env = self.env(directory, *self.PREREQUISITES, '--bolt-footprint', '0')
             self.assertEqual(env['X3M_BOLT_FOOTPRINT'], '0')
             self.assertEqual({k: v for k, v in env.items() if k != 'X3M_BOLT_FOOTPRINT'}, {k: v for k, v in baseline.items() if k != 'X3M_BOLT_FOOTPRINT'})
-            env = self.env(directory, *self.PREREQUISITES, '--bolt-footprint', '4,16')
+            env = self.env(directory, *self.PREREQUISITES, '--no-screen-emission-additive', '--bolt-footprint', '4,16')
             self.assertEqual((env['X3M_BOLT_FOOTPRINT'], env['X3M_SCREEN_EMISSION_ADDITIVE']), ('4,16', '1.0'), 'an explicit value implies the additive route at gain 1')
             env = self.env(directory, *self.PREREQUISITES, '--bolt-footprint', '4')
             self.assertEqual(env['X3M_BOLT_FOOTPRINT'], '4,12')
@@ -997,8 +997,10 @@ class LauncherOption(unittest.TestCase):
             self.assertEqual(env['X3M_BOLT_FOOTPRINT'], '3,3', 'L = W: width only, a square minimum')
             env = self.env(directory, *self.PREREQUISITES, '--bolt-footprint', '2.5,6.5', '--screen-emission-additive', '2')
             self.assertEqual((env['X3M_BOLT_FOOTPRINT'], env['X3M_SCREEN_EMISSION_ADDITIVE']), ('2.5,6.5', '2.0'), 'a given gain is kept')
-            env = self.env(directory, *self.PREREQUISITES, '--bolt-footprint')
+            env = self.env(directory, *self.PREREQUISITES, '--no-screen-emission-additive', '--bolt-footprint')
             self.assertEqual((env['X3M_BOLT_FOOTPRINT'], env['X3M_SCREEN_EMISSION_ADDITIVE']), ('3,12', '1.0'))
+            env = self.env(directory, *self.PREREQUISITES, '--bolt-footprint', '4,16')
+            self.assertEqual((env['X3M_BOLT_FOOTPRINT'], env['X3M_SCREEN_EMISSION_ADDITIVE']), ('4,16', '2.0'), 'the default gain 2 is kept')
 
     def test_vanilla_forwards_nothing_and_refuses_an_explicit_value(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -1012,7 +1014,7 @@ class LauncherOption(unittest.TestCase):
     def test_explicit_value_needs_the_additive_prerequisites(self):
         with tempfile.TemporaryDirectory() as directory:
             for missing in self.PREREQUISITES:
-                code, _, error = self.launch(directory, *[a for a in self.PREREQUISITES if a != missing], '--bolt-footprint', '3,12')
+                code, _, error = self.launch(directory, *[a if a != missing else '--no-' + a[2:] for a in self.PREREQUISITES], '--bolt-footprint', '3,12')
                 self.assertEqual(code, 2, missing)
                 if missing != '--motion-output':  # --hdr's own prerequisite error comes first without it
                     self.assertIn('--bolt-footprint requires --motion-output --hdr --ownership', error)

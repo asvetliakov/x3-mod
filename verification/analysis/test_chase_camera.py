@@ -799,7 +799,7 @@ class ChaseCameraLaunchOptions(unittest.TestCase):
         for args, stale, expected in ((('--camera', 'chase'), '0', '1'),
                                       (('--camera', 'chase', '--chase-fov-compensate', 'on'), '0', '1'),
                                       (('--camera', 'chase', '--chase-fov-compensate', 'off'), '1', '0'),
-                                      ((), '0', '1')):                                     # inert without chase, still explicit
+                                      ((), '0', '1')):                                     # --camera chase is a launcher default since 2026-09-25
             with self.subTest(args=args):
                 code, output = self.modded(*args, inherited={name: stale})
                 self.assertEqual(code, 0, output)
@@ -812,7 +812,7 @@ class ChaseCameraLaunchOptions(unittest.TestCase):
             self.assertEqual(self.invoke('--camera', 'chase', '--chase-fov-compensate', value)[0], 2)
         self.assertEqual(self.modded('--camera', 'chase', '--chase-fov-compensate', 'yes')[0], 2)
         for value in ('on', 'off'):   # an explicit value requires --camera chase, like the other --chase-* tunables
-            code, error = self.modded('--chase-fov-compensate', value)
+            code, error = self.modded('--camera', 'vanilla', '--chase-fov-compensate', value)
             self.assertEqual(code, 2)
             self.assertIn('requires --camera chase', error)
 

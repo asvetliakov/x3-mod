@@ -1,0 +1,163 @@
+{
+ "empty_vs_stand": {
+  "X3M_CAMERA_LOG": [
+   "300",
+   "1"
+  ],
+  "X3M_CULL_CENSUS": [
+   null,
+   "1"
+  ],
+  "X3M_FPS_OVERLAY": [
+   "0",
+   "1"
+  ],
+  "X3M_FRAME_END_STRIDE": [
+   "300",
+   "1"
+  ],
+  "X3M_FRAME_PHASES": [
+   "0",
+   "1"
+  ],
+  "X3M_FRAME_TIMING": [
+   "0",
+   "1"
+  ],
+  "X3M_LOADING_INTERVALS": [
+   "0",
+   "1"
+  ],
+  "X3M_MOTION_FRAME_LOG": [
+   null,
+   "1"
+  ],
+  "X3M_OBJECT_BOUNDS_LOG": [
+   null,
+   "1"
+  ],
+  "X3M_SHADOW_CASCADE_SIZES": [
+   "2048,4096,4096,2048,2048",
+   "2048,2048,2048,2048,2048"
+  ],
+  "X3M_SHADOW_RETENTION_CENSUS": [
+   "0",
+   "1"
+  ],
+  "X3M_TELEMETRY": [
+   "0",
+   "1"
+  ],
+  "X3M_VOLUMETRIC_FOG_TIMING": [
+   "0",
+   "1"
+  ]
+ },
+ "stand_vs_recorded_stand": {
+  "X3M_MUSIC_KEEP": [
+   null,
+   "1"
+  ],
+  "X3M_SHADOW_ALPHA_CASTERS": [
+   "0",
+   "1"
+  ]
+ },
+ "empty_vs_recorded_stand": {
+  "X3M_CAMERA_LOG": [
+   "1",
+   "300"
+  ],
+  "X3M_CULL_CENSUS": [
+   "1",
+   null
+  ],
+  "X3M_FPS_OVERLAY": [
+   "1",
+   "0"
+  ],
+  "X3M_FRAME_END_STRIDE": [
+   "1",
+   "300"
+  ],
+  "X3M_FRAME_PHASES": [
+   "1",
+   "0"
+  ],
+  "X3M_FRAME_TIMING": [
+   "1",
+   "0"
+  ],
+  "X3M_LOADING_INTERVALS": [
+   "1",
+   "0"
+  ],
+  "X3M_MOTION_FRAME_LOG": [
+   "1",
+   null
+  ],
+  "X3M_MUSIC_KEEP": [
+   null,
+   "1"
+  ],
+  "X3M_OBJECT_BOUNDS_LOG": [
+   "1",
+   null
+  ],
+  "X3M_SHADOW_ALPHA_CASTERS": [
+   "0",
+   "1"
+  ],
+  "X3M_SHADOW_CASCADE_SIZES": [
+   "2048,2048,2048,2048,2048",
+   "2048,4096,4096,2048,2048"
+  ],
+  "X3M_SHADOW_RETENTION_CENSUS": [
+   "1",
+   "0"
+  ],
+  "X3M_TELEMETRY": [
+   "1",
+   "0"
+  ],
+  "X3M_VOLUMETRIC_FOG_TIMING": [
+   "1",
+   "0"
+  ]
+ },
+ "short_stand_vs_stand": {
+  "X3M_SHADOW_CASCADE_SIZES": [
+   "2048,2048,2048,2048,2048",
+   "2048,4096,4096,2048,2048"
+  ]
+ },
+ "switches": {
+  "empty": [
+   "-noabout",
+   "-skipintro",
+   "-runinbg"
+  ],
+  "stand": [
+   "-noabout",
+   "-skipintro",
+   "-runinbg"
+  ],
+  "recorded": [
+   "-noabout",
+   "-skipintro",
+   "-runinbg"
+  ]
+ },
+ "counts": {
+  "empty": 179,
+  "stand": 182,
+  "recorded": 181
+ },
+ "checks": {
+  "empty_vs_stand only telemetry/debug + the promoted map sizes": true,
+  "stand vs recorded only the two new defaults": true,
+  "empty vs recorded: telemetry/debug + the two new defaults + the map sizes": true,
+  "same X3AP switches": true,
+  "short stand command == old stand command but the map sizes": true
+ }
+}

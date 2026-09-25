@@ -43,7 +43,7 @@ class OriginalFillDefaultLaunch(unittest.TestCase):
 
     def test_without_hdr_no_default_is_sent(self):
         with tempfile.TemporaryDirectory() as directory:
-            env = self.env(directory, '--motion-output', inherited=STALE)
+            env = self.env(directory, '--motion-output', '--no-hdr', inherited=STALE)  # --hdr: launcher default since 2026-09-25
             self.assertEqual(env['X3M_ORIGINAL_FILL'], '0.0')
             self.assertNotIn(MARKER, env)
 
@@ -56,7 +56,7 @@ class OriginalFillDefaultLaunch(unittest.TestCase):
 
     def test_parser_errors_are_unchanged(self):
         with tempfile.TemporaryDirectory() as directory:
-            for args, message in ((('--motion-output', '--original-fill', '0.05'), '--original-fill requires --hdr'),
+            for args, message in ((('--motion-output', '--no-hdr', '--original-fill', '0.05'), '--original-fill requires --hdr'),
                                   ((*HDR, *LINEAR, '--original-fill', '0'), '--original-fill excludes --linear-materials'),
                                   ((*HDR, '--original-fill', '0.51'), '--original-fill must be finite'),
                                   ((*HDR, '--original-fill', 'nan'), '--original-fill must be finite')):

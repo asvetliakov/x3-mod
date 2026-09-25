@@ -297,7 +297,8 @@ class ThinVoteLaunch(unittest.TestCase):
     def test_default_without_prerequisites_is_not_sent_nor_refused(self):
         # (4) Without --taa (or without the lane) the default is dropped with one launcher line, never a refusal.
         with tempfile.TemporaryDirectory() as directory:
-            for args, missing in ((['--motion-output', '--hdr'], '--taa --ownership --sun-shadow-lane'), ([*TAA], '--hdr --sun-shadow-lane')):
+            # the TAA chain is a launcher default since 2026-09-25: the missing prerequisites are opted out explicitly
+            for args, missing in ((['--motion-output', '--hdr', '--no-ownership'], '--taa --ownership --sun-shadow-lane'), ([*TAA, '--no-hdr'], '--hdr --sun-shadow-lane')):
                 code, output, error = self.launch(directory, *args, inherited={'X3M_TAA_THIN_VOTE': 'on', 'X3M_TAA_THIN_VOTE_DEFAULT': '1'})
                 self.assertEqual(code, 0, error)
                 env = json.loads(output)['env']
@@ -331,10 +332,10 @@ class ThinVoteLaunch(unittest.TestCase):
                 code, _, error = self.launch(directory, *TAA, *LANE, '--taa-thin-vote', value)
                 self.assertNotEqual(code, 0, value)
                 self.assertIn('--taa-thin-vote', error)
-            code, _, error = self.launch(directory, '--motion-output', '--taa-thin-vote', 'off')
+            code, _, error = self.launch(directory, '--motion-output', '--no-taa', '--taa-thin-vote', 'off')
             self.assertNotEqual(code, 0)
             self.assertIn('--taa-thin-vote requires --taa', error)
-            code, _, error = self.launch(directory, *TAA, '--taa-thin-vote', 'on')  # no lane
+            code, _, error = self.launch(directory, *TAA, '--no-sun-shadow-lane', '--taa-thin-vote', 'on')  # no lane
             self.assertNotEqual(code, 0)
             self.assertIn('--taa-thin-vote on requires --motion-output --ownership --sun-shadow-lane', error)
             code, _, error = self.launch(directory, '--vanilla', '--taa-thin-vote', 'off')

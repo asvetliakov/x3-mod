@@ -32,14 +32,20 @@ while retaining the previous proxy, manifest and provider files for rollback.
 
 ```sh
 python3 tools/manage.py install
-python3 tools/manage.py launch --direct
+python3 tools/manage.py launch
 ```
+
+Since 2026-09-25 a modded launch turns on the accepted feature set by itself: TAA with HDR, AgX and bloom, the
+sun shadows with five cascades, the stored-range fog, the chase camera, the loading fast paths, music keep and the
+direct start; the telemetry and capture diagnostics stay opt-in. Each default has an opt-out (`--no-taa`,
+`--no-volumetric-fog`, `--camera vanilla`, ...); the list is in the
+[launcher inventory](docs/verification/launcher-options-inventory.md#defaults-promoted-2026-09-25).
 
 The launcher uses `/Applications/CrossOver Preview.app`, `Steam`, and
 `drive_c/X3/X3AP.exe`. Its D3D9 override applies to that launch only. The installer
 refuses to overwrite an unknown DLL; it does not modify the EXE, archives, registry,
-or bottle configuration. For changing graphics settings, omit `--direct` to open the launcher and close it
-after use. `--direct` passes X3's `-noabout -skipintro -runinbg` switches. Test in a
+or bottle configuration. For changing graphics settings, pass `--no-direct` to open the launcher and close it
+after use. `--direct` (a default) passes X3's `-noabout -skipintro -runinbg` switches. Test in a
 modest window.
 
 Shader dumps and timestamped logs appear in `X3/x3-modern-captures/`; when that
@@ -47,17 +53,17 @@ directory cannot be created or written (a read-only game directory, e.g. under
 `Program Files (x86)` on Windows without Steam's ACL grant), the proxy writes
 them to `%LOCALAPPDATA%\x3-modern-renderer\captures` instead, and the first
 line of every session log, `capture_dir=<path> source=game|localappdata`, names
-the directory taken. By default,
-one detailed frame is captured after 120 Present calls. **F8** requests another
-capture. Detailed capture deliberately trades frame time for forensic completeness;
-expect a hitch. `--capture-start 1000` delays the automatic capture;
-`--capture-frames 0` disables automatic capture (F8 still captures one frame).
+the directory taken. Since 2026-09-25 nothing is captured automatically
+(`--capture-start 999999`); **F8** captures 8 frames on demand, 300 frames after
+the key press (`--capture-frames`, `--capture-delay`). Detailed capture deliberately
+trades frame time for forensic completeness; expect a hitch. `--capture-start 120`
+restores the automatic capture after 120 Present calls.
 Capture records live queried state, including stateblock changes, rather than
 assuming setter calls describe all current state.
 
-The installed defaults are recorded in [status](docs/status.md). Launch with
-`--motion-output --hdr --hdr-tonemap --hdr-bloom` to prepare both comparison
-features; `--hdr-exposure fixed` selects fixed EV 0 instead.
+The installed defaults are recorded in [status](docs/status.md). Both comparison
+features (`--motion-output --hdr --hdr-tonemap --hdr-bloom`) are launcher defaults;
+`--hdr-exposure fixed` selects fixed EV 0 instead.
 During play, hold **Ctrl+Shift**, then press **F9** to switch AUTO/fixed EV 0,
 or **F10** to switch bloom ON/OFF. Release the function key between presses.
 A brief panel shows the effective state or an unavailable/pending request.

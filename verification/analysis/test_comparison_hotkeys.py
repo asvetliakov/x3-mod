@@ -241,7 +241,7 @@ class ComparisonHotkeys(unittest.TestCase):
             scope['env'] = {}
             self.assertEqual(scope['main']()['X3M_HDR_EV_MAX'], '1.5')
         for policy in ('fixed', 'auto'):
-            with mock.patch.object(sys, 'argv', ['manage.py', 'launch', '--hdr-exposure', policy]), contextlib.redirect_stderr(io.StringIO()):
+            with mock.patch.object(sys, 'argv', ['manage.py', 'launch', '--no-hdr-tonemap', '--hdr-exposure', policy]), contextlib.redirect_stderr(io.StringIO()):
                 with self.assertRaises(SystemExit) as error:
                     scope['main']()
                 self.assertEqual(error.exception.code, 2)

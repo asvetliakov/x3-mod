@@ -43,7 +43,7 @@ class FarClipLaunch(unittest.TestCase):
 
     def test_without_taa_nothing_is_sent_and_inherited_values_are_dropped(self):
         with tempfile.TemporaryDirectory() as directory:
-            env = self.env(directory, '--motion-output', inherited={self.NAME: '3x3', self.MARKER: '1'})
+            env = self.env(directory, '--motion-output', '--no-taa', inherited={self.NAME: '3x3', self.MARKER: '1'})
             self.assertNotIn(self.NAME, env)
             self.assertNotIn(self.MARKER, env)
 
@@ -59,7 +59,7 @@ class FarClipLaunch(unittest.TestCase):
                 code, _, error = self.launch(directory, *TAA, '--taa-far-clip', value)
                 self.assertNotEqual(code, 0, value)
                 self.assertIn('--taa-far-clip', error)
-            code, _, error = self.launch(directory, '--motion-output', '--taa-far-clip', '3x3')
+            code, _, error = self.launch(directory, '--motion-output', '--no-taa', '--taa-far-clip', '3x3')
             self.assertNotEqual(code, 0)
             self.assertIn('--taa-far-clip requires --taa', error)
             code, _, error = self.launch(directory, '--vanilla', '--taa-far-clip', '3x3')

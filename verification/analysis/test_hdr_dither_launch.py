@@ -57,11 +57,11 @@ class HdrDitherLaunch(unittest.TestCase):
                     scope['env'] = {'X3M_HDR_DITHER': inherited}   # a stale shell value never survives
                     self.assertEqual(scope['main'](), {'X3M_HDR_DITHER': expected})
         # Without --hdr the variable is written off, and an explicit value is refused.
-        with mock.patch.object(sys, 'argv', ['manage.py', 'launch', '--motion-output']):
+        with mock.patch.object(sys, 'argv', ['manage.py', 'launch', '--motion-output', '--no-hdr']):  # --hdr is a launcher default since 2026-09-25
             scope['env'] = {'X3M_HDR_DITHER': '1'}
             self.assertEqual(scope['main'](), {'X3M_HDR_DITHER': '0'})
         for value in ('on', 'off'):
-            with mock.patch.object(sys, 'argv', ['manage.py', 'launch', '--motion-output', '--hdr-dither', value]), \
+            with mock.patch.object(sys, 'argv', ['manage.py', 'launch', '--motion-output', '--no-hdr', '--hdr-dither', value]), \
                     contextlib.redirect_stderr(io.StringIO()) as error, self.assertRaises(SystemExit) as refused:
                 scope['main']()
             self.assertEqual(refused.exception.code, 2)

@@ -29,7 +29,8 @@ class ThinRegionSourceLaunch(unittest.TestCase):
                 env = self.env(directory, *TAA, *LANE, inherited=extra)
                 self.assertEqual((env['X3M_TAA_THIN_REGION_SOURCE'], env['X3M_TAA_THIN_REGION_SOURCE_DEFAULT'], env['X3M_TAA_THIN_VOTE']), ('vote', '1', 'on'))
             # Not sent without the thin vote (off, or no lane), without the thin region, or without --taa.
-            for args in ((*TAA, *LANE, '--taa-thin-vote', 'off'), (*TAA,), (*TAA, *LANE, '--taa-thin-region', 'off'), ('--motion-output',)):
+            # The lane and --taa are launcher defaults since 2026-09-25: "no lane" / "no --taa" are explicit opt-outs.
+            for args in ((*TAA, *LANE, '--taa-thin-vote', 'off'), (*TAA, '--no-sun-shadow-lane'), (*TAA, *LANE, '--taa-thin-region', 'off'), ('--motion-output', '--no-taa')):
                 env = self.env(directory, *args, inherited=inherited)
                 self.assertNotIn('X3M_TAA_THIN_REGION_SOURCE', env, args)
                 self.assertNotIn('X3M_TAA_THIN_REGION_SOURCE_DEFAULT', env, args)
@@ -57,11 +58,11 @@ class ThinRegionSourceLaunch(unittest.TestCase):
                 self.assertNotEqual(code, 0, value)
                 self.assertIn('--taa-thin-region-source', error)
             cases = (
-                (('--motion-output', '--taa-thin-region-source', 'both'), '--taa-thin-region-source requires --taa'),
+                (('--motion-output', '--no-taa', '--taa-thin-region-source', 'both'), '--taa-thin-region-source requires --taa'),
                 ((*TAA, *LANE, '--taa-thin-region', 'off', '--taa-thin-region-source', 'screen'), '--taa-thin-region-source requires --taa-thin-region with W > 0'),
                 ((*TAA, *LANE, '--taa-thin-region', '0', '--taa-thin-region-source', 'both'), '--taa-thin-region-source requires --taa-thin-region with W > 0'),
                 ((*TAA, *LANE, '--taa-thin-vote', 'off', '--taa-thin-region-source', 'vote'), '--taa-thin-region-source vote requires --taa-thin-vote on'),
-                ((*TAA, '--taa-thin-region-source', 'vote'), '--taa-thin-region-source vote requires --taa-thin-vote on'),  # no lane: the vote's default is not sent
+                ((*TAA, '--no-sun-shadow-lane', '--taa-thin-region-source', 'vote'), '--taa-thin-region-source vote requires --taa-thin-vote on'),  # no lane: the vote's default is not sent
                 (('--vanilla', '--taa-thin-region-source', 'both'), '--taa-thin-region-source cannot be combined with --vanilla'),
                 ((*TAA, *LANE, '--taa-thin-region-source', 'screen'), '--taa-thin-region-source screen is refused with the camera gate'),
                 ((*TAA, '--taa-thin-region-gate', 'camera', '--taa-thin-region-source', 'screen'), '--taa-thin-region-source screen is refused with the camera gate'))

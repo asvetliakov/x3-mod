@@ -39,3 +39,29 @@ after undocking and a save loaded while docked restores first person anyway: **d
 production; the next candidate (Run87) carries only the far clip and the fog loader. No run is queued.
 
 Completed instructions for Runs 73-86 are in the [archive](../archive/user-runs-completed.md).
+
+## Stand command
+
+Since 2026-09-25 the functional options of the Run 84 A stand command, `--music-keep` and `--shadow-alpha-casters on`
+are launcher defaults ([inventory](launcher-options-inventory.md#defaults-promoted-2026-09-25)); the stand command
+carries only the telemetry/debug options:
+
+```sh
+env -u CX_DEBUGMSG X3M_FIXTURE_BOTTLE=X3 X3M_MOTION_FRAME_LOG=1 /Users/asvetl/x3-mod/x3run --direct --telemetry --camera-log 1 --loading-intervals --shadow-retention-census --fps-overlay --frame-end-stride 1 --volumetric-fog-timing --frame-timing --frame-phases --object-bounds-log --cull-census
+```
+
+```sh
+# Explicit form: what the defaults expand to. The old Run 84 A stand command is still accepted and gives the same
+# environment except its explicit --shadow-cascade-sizes 2048,2048,2048,2048,2048 (the default is 2048,4096,4096,2048,2048,
+# user decision 2026-09-25):
+# --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa
+# --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer
+# --resource-read fast --dat-handles --mesh-adjacency fast --screen-emission-additive 2 --screen-emission-additive-alpha 0
+# --emission-source-gain 2 --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply
+# --shadow-sun-poll on --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance
+# --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,4096,4096,2048,2048
+# --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --light-map-far-fade 80,220 --motion-rt-mode lazy
+# --volumetric-fog 0.02 --volumetric-fog-cards replace --volumetric-fog-range stored --cull-small-parts 4
+# --capture-start 999999 --capture-frames 8 --capture-delay 300 (no automatic capture; F8 captures on demand)
+# --music-keep --shadow-alpha-casters on
+```

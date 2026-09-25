@@ -1,0 +1,235 @@
+"""Stand-command promotion (user decision 2026-09-25): tools/manage.py launch with no options produces the
+environment of the Run 84 A stand command minus its telemetry/debug options, plus --music-keep and
+--shadow-alpha-casters on (docs/verification/launcher-options-inventory.md, "Defaults promoted").
+
+EXPECTED_EMPTY and STAND_TELEMETRY are the X3M_* variables of the dry-run JSON recorded by
+verification/results/launcher-defaults/compare_dry_runs.py on bottle X3 (comparison.json there); the launch
+here is hermetic (a temporary game directory, a fake proxy, nothing launched).
+"""
+import contextlib
+import hashlib
+import importlib.util
+import io
+import json
+import os
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+from unittest import mock
+
+ROOT = Path(__file__).resolve().parents[2]
+STAND = ('--direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa '
+         '--telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 '
+         '--crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --screen-emission-additive 2 '
+         '--screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --sun-shadow-lane '
+         '--shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay '
+         '--shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance '
+         '--shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 '
+         '--shadow-retention-census --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 '
+         '--light-map-far-fade 80,220 --motion-rt-mode lazy --frame-end-stride 1 --volumetric-fog 0.02 '
+         '--volumetric-fog-cards replace --volumetric-fog-range stored --volumetric-fog-timing --capture-start 999999 '
+         '--capture-frames 8 --capture-delay 300 --cull-small-parts 4 --frame-timing --frame-phases '
+         '--object-bounds-log --cull-census').split()
+EXPECTED_EMPTY = {
+    'X3M_BLOOM_SOURCE_CLAMP': '1.0', 'X3M_BOLT_FOOTPRINT': '3,12', 'X3M_CAMERA': 'chase', 'X3M_CAMERA_CUT_DEG': '20.0',
+    'X3M_CAMERA_LOG': '300', 'X3M_CAPTURE_DELAY': '300', 'X3M_CAPTURE_FRAMES': '8', 'X3M_CAPTURE_START': '999999', 'X3M_CHASE_COMBAT_TIGHTNESS': '0.0',
+    'X3M_CHASE_DISTANCE_SCALE': '1.05', 'X3M_CHASE_FOV_COMPENSATE': '1', 'X3M_CHASE_HUD_ANCHOR': 'forward',
+    'X3M_CHASE_OFFSET_Y': '0.5', 'X3M_CHASE_PITCH_DOWN_DEG': '0.5', 'X3M_CHASE_SCENE_FIX': '0',
+    'X3M_CHASE_VIEW_RESTORE': '1', 'X3M_COLLIDE_BOX_CULL': '1', 'X3M_COLLIDE_MEMO': '1', 'X3M_COLLIDE_SAT_SSE2': '1',
+    'X3M_CRYPT_CACHE': '1', 'X3M_CULL_SMALL_PARTS_PROJECTILES': 'on', 'X3M_CULL_SMALL_PARTS_PX': '4.0000',
+    'X3M_CULL_SMALL_PARTS_SCOPE': 'all', 'X3M_DAT_HANDLES': '1', 'X3M_DEPTH_COPY': '0', 'X3M_EMISSION_GAIN': '1.0',
+    'X3M_EMISSION_SOURCE_GAIN': '2.0', 'X3M_FADE_RT2_OWNER': 'on', 'X3M_FADE_RT2_OWNER_DEFAULT': '1',
+    'X3M_FINITE_POSITIONS': '0', 'X3M_FOG_DOCKED': '1', 'X3M_FOG_DUST_MOTES': '1300,3,128', 'X3M_FOG_FAR_BINS': '40',
+    'X3M_FOG_HANDOVER_COLDFILL': '1', 'X3M_FOG_HANDOVER_PREFILL': '1', 'X3M_FOG_HANDOVER_STEP': '1',
+    'X3M_FOG_MARCH_SCALE': '4', 'X3M_FOG_MOTES_MAX_PX': '8', 'X3M_FOG_SHADOW_PASS': '0', 'X3M_FOV': '90',
+    'X3M_FPS_OVERLAY': '0', 'X3M_FRAME_END_STRIDE': '300', 'X3M_FRAME_PHASES': '0', 'X3M_FRAME_TIMING': '0',
+    'X3M_FRAME_TIMING_STATE_STAMPS': '0', 'X3M_GAME_PHASES': '0', 'X3M_GAME_PHASE_THRESHOLD_MS': '20',
+    'X3M_GPU_SYNC_TIMING': '0', 'X3M_GZ_BUFFER': '1', 'X3M_GZ_BUFFER_KB': '256', 'X3M_HDR': '1', 'X3M_HDR_BLOOM': '1',
+    'X3M_HDR_CLAMP': '0.0', 'X3M_HDR_DECODE': 'gamma2.2', 'X3M_HDR_DITHER': '1', 'X3M_HDR_EV': '0.0',
+    'X3M_HDR_EV_DEADBAND': '0.25', 'X3M_HDR_EV_MANUAL': '', 'X3M_HDR_EV_MAX': '1.3', 'X3M_HDR_EV_MIN': '-3.0',
+    'X3M_HDR_EXPOSURE': 'auto', 'X3M_HDR_KEY_PULL': '0.25', 'X3M_HDR_LOOK': 'none', 'X3M_HDR_METER_BG': '0.001953125',
+    'X3M_HDR_METER_EDGE_WEIGHT': '0.35', 'X3M_HDR_TONEMAP': 'agx', 'X3M_HDR_WHITE_TARGET': '0.9',
+    'X3M_HULL_EMISSION_GAIN': '2.0', 'X3M_HULL_EMISSIVE_WIDENING': '4,4', 'X3M_HULL_LIGHTMAP_GAIN': '4.0',
+    'X3M_LIGHTMAP_EMISSIVE_GAIN': '1.0', 'X3M_LIGHT_MAP_FAR_FADE': '80,220,1', 'X3M_LIGHT_PHASES': '0',
+    'X3M_LINEAR_DISTANCE_FADE': '0', 'X3M_LINEAR_EMISSIONS': '0', 'X3M_LINEAR_MATERIALS': '0', 'X3M_LOADING_INTERVALS': '0',
+    'X3M_LOADING_PROBES': '0', 'X3M_LOD_OCCLUSION': 'all', 'X3M_LOD_OCCLUSION_DEFAULT': '1', 'X3M_LOOP_PHASES': '0',
+    'X3M_MATERIAL_DIRECT_GAIN': '1.0', 'X3M_MATERIAL_EMISSIVE_GAIN': '1.0', 'X3M_MATERIAL_FILL': '0.0',
+    'X3M_MEDIA_CUE_CACHE': '1', 'X3M_MEDIA_CUE_RETRY_S': '30', 'X3M_MEDIA_CUE_TRACE': '0', 'X3M_MESH_ADJACENCY': 'fast',
+    'X3M_MESH_ADJACENCY_DUMP': '0', 'X3M_MESH_CACHE': '0', 'X3M_MOTION_CAPTURE': '0', 'X3M_MOTION_CUT_MEDIAN_PX': '1e30',
+    'X3M_MOTION_CUT_MISSING': '1', 'X3M_MOTION_JITTER': '1', 'X3M_MOTION_OUTPUT': '1', 'X3M_MOTION_RT_MODE': 'lazy',
+    'X3M_MUSIC_KEEP': '1', 'X3M_OBJECT_LIFETIME': '1', 'X3M_OBJECT_TRACE': '1', 'X3M_ORIGINAL_FILL': '0.01',
+    'X3M_ORIGINAL_FILL_DEFAULT': '1', 'X3M_OWNERSHIP': '1', 'X3M_PASS_PHASES': '0', 'X3M_PAUSE_KEY_ONLY': '1',
+    'X3M_PROFILE': '0', 'X3M_PROFILE_INTERVAL_US': '2000', 'X3M_RESIDUAL_PHASES': '0', 'X3M_RESOURCE_READ': 'fast',
+    'X3M_SCENE_DEPTH_CAPTURE': '0', 'X3M_SCENE_HOOK': '1', 'X3M_SCREEN_EMISSION': '0',
+    'X3M_SCREEN_EMISSION_ADDITIVE': '2.0', 'X3M_SCREEN_EMISSION_ADDITIVE_ALPHA': '0.0', 'X3M_SCREEN_EMISSION_BOUND': '0',
+    'X3M_SCREEN_EMISSION_GAIN': '1.0', 'X3M_SCREEN_EMISSION_TIMING': '0', 'X3M_SECTOR_BACKGROUND': '0',
+    'X3M_SHADOW_ALPHA_CASTERS': '1', 'X3M_SHADOW_CASCADES': '250.0,1500.0,7500.0,37500.0,150000.0',
+    'X3M_SHADOW_CASCADE_ADAPTIVE_C0': '1.5', 'X3M_SHADOW_CASCADE_DROP_ORDER': 'importance',
+    'X3M_SHADOW_CASCADE_MIN_FOOTPRINT': '8.0', 'X3M_SHADOW_CASCADE_RECORDS': '1024,1024,2048,4096,4096',
+    'X3M_SHADOW_CASCADE_SIZES': '2048,4096,4096,2048,2048', 'X3M_SHADOW_CASTER_RETENTION': '1',
+    'X3M_SHADOW_REPLAY_CANDIDATES': '1', 'X3M_SHADOW_REPLAY_CAP': '512', 'X3M_SHADOW_REPLAY_DEPTH': '1',
+    'X3M_SHADOW_REPLAY_DEPTH_HALF': '512.0', 'X3M_SHADOW_REPLAY_EXTENT': '250.0', 'X3M_SHADOW_REPLAY_SIZE': '1024',
+    'X3M_SHADOW_RETENTION_CENSUS': '0', 'X3M_SHADOW_SUN_POLL': '1', 'X3M_SHADOW_SUN_TRACE': '0', 'X3M_SUBMIT_PHASES': '0',
+    'X3M_SUN_FLARE_FIX': 'on', 'X3M_SUN_OCCLUSION': '1', 'X3M_SUN_OCCLUSION_CORE_F': '1', 'X3M_SUN_OCCLUSION_DEFAULT': '1',
+    'X3M_SUN_SHADOW_APPLY': '1', 'X3M_SUN_SHADOW_BIAS_CLAMP_TEXELS': '20.97152', 'X3M_SUN_SHADOW_BIAS_SLOPE_TEXELS': '0.2',
+    'X3M_SUN_SHADOW_BIAS_UNITS': '0.53571875', 'X3M_SUN_SHADOW_LANE': '1', 'X3M_TAA': '1', 'X3M_TAA_BOX_RESOLUTION': 'half',
+    'X3M_TAA_BOX_RESOLUTION_DEFAULT': '1', 'X3M_TAA_DEBUG': '0', 'X3M_TAA_FAR_CLIP': '7x7', 'X3M_TAA_FAR_CLIP_DEFAULT': '1',
+    'X3M_TAA_FAR_GATE': 'camera', 'X3M_TAA_FAR_GATE_DEFAULT': '1', 'X3M_TAA_FAR_STABILISER': '0.985,0,60,68,0.03,0.25',
+    'X3M_TAA_MIP_BIAS': '-0.5', 'X3M_TAA_MOTION_WEIGHT': '0.7,2,8', 'X3M_TAA_SENTINEL': 'auto', 'X3M_TAA_SHARPEN': '0.75',
+    'X3M_TAA_SKY_HISTORY': 'strict', 'X3M_TAA_SKY_HISTORY_EXIT_PX': '0.25', 'X3M_TAA_THIN_REGION': '0.97,1',
+    'X3M_TAA_THIN_REGION_EMISSIVE': '1', 'X3M_TAA_THIN_REGION_GATE': 'camera', 'X3M_TAA_THIN_REGION_SOURCE': 'vote',
+    'X3M_TAA_THIN_REGION_SOURCE_DEFAULT': '1', 'X3M_TAA_THIN_VOTE': 'on', 'X3M_TAA_THIN_VOTE_DEFAULT': '1',
+    'X3M_TAA_UNMATCHED_STATIC': 'node', 'X3M_TELEMETRY': '0', 'X3M_TELEMETRY_DRAW': '0', 'X3M_TERRAN_STATION_LOD': 'size',
+    'X3M_VOICE_DMO_FALLBACK': '1', 'X3M_VOLUMETRIC_FOG': '1', 'X3M_VOLUMETRIC_FOG_CARDS': 'replace',
+    'X3M_VOLUMETRIC_FOG_EVERYWHERE': '0', 'X3M_VOLUMETRIC_FOG_RANGE': 'stored', 'X3M_VOLUMETRIC_FOG_STRENGTH': '0.02',
+    'X3M_VOLUMETRIC_FOG_TIMING': '0', 'X3M_WINDOW_MONITOR_RECT': '1', 'X3M_WINDOW_MONITOR_RECT_DEFAULT': '1',
+}
+STAND_TELEMETRY = {
+    'X3M_CAMERA_LOG': '1',
+    'X3M_CULL_CENSUS': '1', 'X3M_FPS_OVERLAY': '1', 'X3M_FRAME_END_STRIDE': '1', 'X3M_FRAME_PHASES': '1',
+    'X3M_FRAME_TIMING': '1', 'X3M_LOADING_INTERVALS': '1', 'X3M_MOTION_FRAME_LOG': '1', 'X3M_OBJECT_BOUNDS_LOG': '1',
+    'X3M_SHADOW_RETENTION_CENSUS': '1', 'X3M_TELEMETRY': '1', 'X3M_VOLUMETRIC_FOG_TIMING': '1',
+}
+# The one functional difference of the old stand command: it passes the Run 84 A map sizes explicitly, while the
+# promoted default is 2048,4096,4096,2048,2048 (user decision 2026-09-25). An explicit value wins.
+STAND_EXPLICIT = {'X3M_SHADOW_CASCADE_SIZES': '2048,2048,2048,2048,2048'}
+# Set from the installation, not from the options (the voice decoder discovery): not compared here.
+INSTALLATION = {'X3M_VOICE_DMO_FALLBACK'}
+# Opt-outs of the promoted defaults: each alone is accepted (no refusal) and turns its variable off
+# (None: the variable is not sent; for --no-direct, the X3 switches are dropped).
+OPT_OUTS = (
+    (('--no-direct',), None, None),
+    (('--camera', 'vanilla'), 'X3M_CHASE_VIEW_RESTORE', '0'),
+    (('--no-chase-view-restore',), 'X3M_CHASE_VIEW_RESTORE', '0'),
+    (('--no-ownership',), 'X3M_TAA', '0'),
+    (('--no-object-trace',), 'X3M_OBJECT_LIFETIME', '0'),
+    (('--no-object-lifetime',), 'X3M_OBJECT_TRACE', '0'),
+    (('--no-motion-output',), 'X3M_MOTION_OUTPUT', '0'),
+    (('--no-taa',), 'X3M_TAA', '0'),
+    (('--no-hdr',), 'X3M_HDR', '0'),
+    (('--no-hdr-tonemap',), 'X3M_HDR_TONEMAP', 'identity'),
+    (('--no-hdr-bloom',), 'X3M_HDR_BLOOM', '0'),
+    (('--no-bloom-source-clamp',), 'X3M_BLOOM_SOURCE_CLAMP', None),
+    (('--no-crypt-cache',), 'X3M_CRYPT_CACHE', '0'),
+    (('--no-gz-buffer',), 'X3M_GZ_BUFFER', '0'),
+    (('--resource-read', 'native'), 'X3M_RESOURCE_READ', 'native'),
+    (('--no-dat-handles',), 'X3M_DAT_HANDLES', '0'),
+    (('--mesh-adjacency', 'native'), 'X3M_MESH_ADJACENCY', 'native'),
+    (('--no-screen-emission-additive',), 'X3M_SCREEN_EMISSION_ADDITIVE', '0'),
+    (('--no-screen-emission-additive-alpha',), 'X3M_SCREEN_EMISSION_ADDITIVE_ALPHA', None),
+    (('--emission-source-gain', '1'), 'X3M_EMISSION_SOURCE_GAIN', '1.0'),
+    (('--no-sun-shadow-lane',), 'X3M_SUN_SHADOW_APPLY', '0'),
+    (('--no-shadow-replay-depth',), 'X3M_SHADOW_CASCADES', '0'),
+    (('--no-sun-shadow-apply',), 'X3M_SUN_SHADOW_APPLY', '0'),
+    (('--shadow-alpha-casters', 'off'), 'X3M_SHADOW_ALPHA_CASTERS', '0'),
+    (('--no-shadow-cascades',), 'X3M_VOLUMETRIC_FOG', '0'),
+    (('--shadow-cascade-drop-order', 'submission'), 'X3M_SHADOW_CASCADE_DROP_ORDER', 'submission'),
+    (('--no-shadow-cascade-adaptive-c0',), 'X3M_SHADOW_CASCADE_ADAPTIVE_C0', None),
+    (('--no-shadow-caster-retention',), 'X3M_SHADOW_CASTER_RETENTION', '0'),
+    (('--no-volumetric-fog',), 'X3M_VOLUMETRIC_FOG', '0'),
+    (('--volumetric-fog-cards', 'keep'), 'X3M_VOLUMETRIC_FOG_CARDS', 'keep'),
+    (('--volumetric-fog-range', 'legacy'), 'X3M_VOLUMETRIC_FOG_RANGE', 'legacy'),
+    (('--cull-small-parts', '0'), 'X3M_CULL_SMALL_PARTS_PX', None),
+    (('--no-music-keep',), 'X3M_MUSIC_KEEP', None),
+    (('--capture-start', '120'), 'X3M_CAPTURE_START', '120'),
+    (('--capture-delay', '0'), 'X3M_CAPTURE_DELAY', None),
+)
+
+
+def load_manage():
+    spec = importlib.util.spec_from_file_location('launcher_defaults_manage', ROOT / 'tools/manage.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+class LauncherDefaults(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.module = load_manage()
+        cls.directory = tempfile.TemporaryDirectory()
+        game = Path(cls.directory.name) / 'game'
+        game.mkdir()
+        (game / 'X3AP.exe').touch()
+        (game / 'd3d9.dll').write_bytes(b'proxy')
+        (game / 'x3-modern-install.json').write_text(json.dumps({'sha256': hashlib.sha256(b'proxy').hexdigest()}))
+        cls.game = game
+        cls.wine = Path(cls.directory.name) / 'wine'
+        cls.wine.touch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.directory.cleanup()
+
+    def launch(self, *args, vanilla=False, frame_log=False):
+        argv = ['manage.py', 'launch', '--dry-run', *(['--vanilla'] if vanilla else []), '--game-dir', str(self.game), *args]
+        environ = {k: v for k, v in os.environ.items() if not k.startswith('X3M_')}
+        if frame_log:
+            environ['X3M_MOTION_FRAME_LOG'] = '1'
+        output, error = io.StringIO(), io.StringIO()
+        module = self.module
+        with mock.patch.object(sys, 'argv', argv), mock.patch.object(module, 'WINE', self.wine), \
+                mock.patch.object(module, 'VOICE_DECODER_REPO', None), mock.patch.dict(module.os.environ, environ, clear=True), \
+                mock.patch.object(module.subprocess, 'call', side_effect=AssertionError('must never launch')), \
+                contextlib.redirect_stdout(output), contextlib.redirect_stderr(error):
+            try:
+                module.main()
+            except SystemExit as exit_error:
+                return exit_error.code, None, error.getvalue()
+        return 0, json.loads(output.getvalue()), error.getvalue()
+
+    def env(self, *args, **kw):
+        code, data, error = self.launch(*args, **kw)
+        self.assertEqual(code, 0, error)
+        return {k: v for k, v in data['env'].items() if k.startswith('X3M_') and k not in INSTALLATION}
+
+    def test_empty_command_is_the_stand_without_telemetry(self):
+        expected = {k: v for k, v in EXPECTED_EMPTY.items() if k not in INSTALLATION}
+        self.assertEqual(self.env(), expected)
+        _, data, _ = self.launch()
+        self.assertEqual(data['command'][-3:], ['-noabout', '-skipintro', '-runinbg'])
+
+    def test_old_stand_command_still_works(self):
+        stand = self.env(*STAND, frame_log=True)
+        empty = {k: v for k, v in EXPECTED_EMPTY.items() if k not in INSTALLATION}
+        self.assertEqual(stand, {**empty, **STAND_TELEMETRY, **STAND_EXPLICIT})
+        self.assertEqual({k for k in stand if stand[k] != empty.get(k)}, set(STAND_TELEMETRY) | set(STAND_EXPLICIT))
+
+    def test_vanilla_sends_nothing_modded(self):
+        env = self.env(vanilla=True)
+        for name in ('X3M_OWNERSHIP', 'X3M_MOTION_OUTPUT', 'X3M_TAA', 'X3M_HDR', 'X3M_SUN_SHADOW_LANE', 'X3M_SHADOW_REPLAY_DEPTH',
+                     'X3M_VOLUMETRIC_FOG', 'X3M_CRYPT_CACHE', 'X3M_GZ_BUFFER', 'X3M_DAT_HANDLES', 'X3M_SHADOW_ALPHA_CASTERS'):
+            self.assertEqual(env[name], '0', name)
+        self.assertEqual((env['X3M_CAMERA'], env['X3M_RESOURCE_READ'], env['X3M_MESH_ADJACENCY']), ('vanilla', 'native', 'native'))
+        for name in ('X3M_MUSIC_KEEP', 'X3M_SHADOW_CASCADE_DROP_ORDER', 'X3M_BLOOM_SOURCE_CLAMP', 'X3M_CULL_SMALL_PARTS_PX'):
+            self.assertNotIn(name, env)
+        _, data, _ = self.launch(vanilla=True)
+        self.assertNotIn('-noabout', data['command'])
+
+    def test_every_promoted_default_has_an_accepted_opt_out(self):
+        for args, name, value in OPT_OUTS:
+            with self.subTest(args=args):
+                code, data, error = self.launch(*args)
+                self.assertEqual(code, 0, error)
+                if name is None:
+                    self.assertNotIn('-noabout', data['command'])
+                elif value is None:
+                    self.assertNotIn(name, data['env'])
+                else:
+                    self.assertEqual(data['env'][name], value)
+
+    def test_explicit_dependants_are_still_refused(self):
+        for args, needle in ((('--no-taa', '--sun-shadow-lane'), '--sun-shadow-lane requires'),
+                             (('--no-shadow-cascades', '--shadow-caster-retention'), 'require --shadow-cascades'),
+                             (('--no-volumetric-fog', '--volumetric-fog-range', 'stored'), 'require --volumetric-fog'),
+                             (('--camera', 'vanilla', '--chase-view-restore'), '--camera chase'),
+                             (('--mesh-adjacency', 'fast'), '--mesh-adjacency verify|fast requires --telemetry')):
+            with self.subTest(args=args):
+                code, _, error = self.launch(*args)
+                self.assertEqual(code, 2)
+                self.assertIn(needle, error)
+
+
+if __name__ == '__main__':
+    unittest.main()

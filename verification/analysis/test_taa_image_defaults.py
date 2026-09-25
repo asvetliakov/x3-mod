@@ -418,7 +418,7 @@ class TaaAgeProgramDefaultsLaunch(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             env, error = self.run_env(directory, *TAA, vanilla=True, inherited={name: '0.97' for name in self.NAMES})
             self.assertFalse(set(self.NAMES) & set(env))
-            env, error = self.run_env(directory, '--motion-output', '--hdr', inherited={name: '0.97' for name in self.NAMES})
+            env, error = self.run_env(directory, '--motion-output', '--hdr', '--no-taa', inherited={name: '0.97' for name in self.NAMES})  # --taa: launcher default since 2026-09-25
             self.assertFalse(set(self.NAMES) & set(env))
             self.assertNotIn('stabiliser', error)
             self.assertNotIn('thin-region', error)

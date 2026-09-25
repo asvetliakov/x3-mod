@@ -560,18 +560,21 @@ class MusicLaunchOptions(unittest.TestCase):
         self.assertEqual(code, 0, error)
         return json.loads(output)['env']
 
-    def test_default_off_on_a_modded_launch(self):
+    def test_keep_default_on_a_modded_launch(self):
+        # --music-keep is a launcher default since 2026-09-25 (accepted run273); --music-trace stays opt-in.
         with tempfile.TemporaryDirectory() as directory:
             env = self.env(directory)
-            self.assertNotIn('X3M_MUSIC_KEEP', env)
+            self.assertEqual(env['X3M_MUSIC_KEEP'], '1')
             self.assertNotIn('X3M_MUSIC_TRACE', env)
+            self.assertEqual(env, self.env(directory, '--music-keep'), 'the explicit flag is redundant')
 
-    def test_opt_in_switches(self):
+    def test_opt_out_and_trace_switch(self):
         with tempfile.TemporaryDirectory() as directory:
-            baseline = self.env(directory)
-            self.assertEqual({k: v for k, v in self.env(directory, '--music-keep').items() if k not in baseline}, {'X3M_MUSIC_KEEP': '1'})
-            self.assertEqual({k: v for k, v in self.env(directory, '--music-trace').items() if k not in baseline}, {'X3M_MUSIC_TRACE': '1'})
-            self.assertEqual({k: v for k, v in self.env(directory, '--music-keep', '--music-trace').items() if k not in baseline}, {'X3M_MUSIC_KEEP': '1', 'X3M_MUSIC_TRACE': '1'})
+            baseline = self.env(directory, '--no-music-keep')
+            self.assertNotIn('X3M_MUSIC_KEEP', baseline)
+            self.assertEqual({k: v for k, v in self.env(directory).items() if k not in baseline}, {'X3M_MUSIC_KEEP': '1'})
+            self.assertEqual({k: v for k, v in self.env(directory, '--no-music-keep', '--music-trace').items() if k not in baseline}, {'X3M_MUSIC_TRACE': '1'})
+            self.assertEqual({k: v for k, v in self.env(directory, '--music-trace').items() if k not in baseline}, {'X3M_MUSIC_KEEP': '1', 'X3M_MUSIC_TRACE': '1'})
 
     def test_refused_under_vanilla_and_inherited_values_dropped(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -579,12 +582,11 @@ class MusicLaunchOptions(unittest.TestCase):
                 code, _, error = self.launch(directory, *args, vanilla=True)
                 self.assertEqual(code, 2, args)
                 self.assertIn('--music-keep/--music-trace cannot be combined with --vanilla', error)
-            env = self.env(directory, inherited={'X3M_MUSIC_KEEP': '1', 'X3M_MUSIC_TRACE': '1'})
+            env = self.env(directory, '--no-music-keep', inherited={'X3M_MUSIC_KEEP': '1', 'X3M_MUSIC_TRACE': '1'})
             self.assertNotIn('X3M_MUSIC_KEEP', env)
             self.assertNotIn('X3M_MUSIC_TRACE', env)
             env = self.env(directory, inherited={'X3M_MUSIC_KEEP': '1'}, vanilla=True)
             self.assertNotIn('X3M_MUSIC_KEEP', env)
-
 
 if __name__ == '__main__':
     unittest.main()

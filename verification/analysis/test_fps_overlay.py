@@ -2,6 +2,7 @@
 accumulator, the Present-path wiring and the launcher option. No Wine, game
 or DLL build."""
 import argparse
+import math
 import ast
 from pathlib import Path
 import shutil
@@ -120,7 +121,7 @@ class FpsOverlay(unittest.TestCase):
                     and isinstance(node.value, ast.Constant)]
         helpers = [node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name in referenced]
         compiled = compile(ast.fix_missing_locations(ast.Module(body=defaults + helpers + [main], type_ignores=[])), 'manage_under_test.py', 'exec')
-        scope = dict(argparse=argparse, Path=Path, GAME=Path('/unused'), BOTTLE='X3', ROOT=ROOT, __doc__='test')
+        scope = dict(argparse=argparse, math=math, Path=Path, GAME=Path('/unused'), BOTTLE='X3', ROOT=ROOT, __doc__='test')  # math: the promoted defaults reach the range checks
         exec(compiled, scope)
         for arguments, expected in (([], '0'), (['--fps-overlay'], '1')):
             with self.subTest(arguments=arguments), mock.patch.object(sys, 'argv', ['manage.py', 'launch', *arguments]):

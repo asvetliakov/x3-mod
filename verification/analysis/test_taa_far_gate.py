@@ -35,7 +35,7 @@ class FarGateLaunch(unittest.TestCase):
 
     def test_without_taa_nothing_is_sent_and_inherited_values_are_dropped(self):
         with tempfile.TemporaryDirectory() as directory:
-            env = self.env(directory, '--motion-output', inherited={self.NAME: 'screen', self.MARKER: '1'})
+            env = self.env(directory, '--motion-output', '--no-taa', inherited={self.NAME: 'screen', self.MARKER: '1'})
             self.assertNotIn(self.NAME, env)
             self.assertNotIn(self.MARKER, env)
 
@@ -51,7 +51,7 @@ class FarGateLaunch(unittest.TestCase):
                 code, _, error = self.launch(directory, *TAA, '--taa-far-gate', value)
                 self.assertNotEqual(code, 0, value)
                 self.assertIn('--taa-far-gate', error)
-            code, _, error = self.launch(directory, '--motion-output', '--taa-far-gate', 'screen')
+            code, _, error = self.launch(directory, '--motion-output', '--no-taa', '--taa-far-gate', 'screen')
             self.assertNotEqual(code, 0)
             self.assertIn('--taa-far-gate requires --taa', error)
             code, _, error = self.launch(directory, '--vanilla', '--taa-far-gate', 'screen')

@@ -809,7 +809,8 @@ class FadeOwnerLaunch(unittest.TestCase):
     def test_default_without_prerequisites_is_not_sent_nor_refused(self):
         # (4) Without --taa (or without --hdr) the default is dropped with one launcher line, never a refusal.
         with tempfile.TemporaryDirectory() as directory:
-            for args,missing in ((['--motion-output','--hdr'],'--taa'),(self.TAA[:-1],'--hdr')):
+            # the TAA chain is a launcher default since 2026-09-25: the missing prerequisite is opted out explicitly
+            for args,missing in ((['--motion-output','--hdr','--no-taa'],'--taa'),(self.TAA[:-1]+['--no-hdr'],'--hdr')):
                 code,output,error=self.launch(directory,*args,inherited={'X3M_FADE_RT2_OWNER':'on','X3M_FADE_RT2_OWNER_DEFAULT':'1'})
                 self.assertEqual(code,0,error)
                 env=json.loads(output)['env']
@@ -829,9 +830,9 @@ class FadeOwnerLaunch(unittest.TestCase):
             for value in ('1','yes','owner'):
                 code,_,error=self.launch(directory,*self.TAA,'--fade-rt2-owner',value)
                 self.assertNotEqual(code,0,value);self.assertIn('--fade-rt2-owner',error)
-            code,_,error=self.launch(directory,'--motion-output','--fade-rt2-owner','off')
+            code,_,error=self.launch(directory,'--motion-output','--no-taa','--fade-rt2-owner','off')
             self.assertNotEqual(code,0);self.assertIn('--fade-rt2-owner requires --taa',error)
-            code,_,error=self.launch(directory,*self.TAA[:-1],'--fade-rt2-owner','on')  # no --hdr
+            code,_,error=self.launch(directory,*self.TAA[:-1],'--no-hdr','--fade-rt2-owner','on')  # no --hdr
             self.assertNotEqual(code,0);self.assertIn('--fade-rt2-owner on requires --motion-output --hdr',error)
             code,_,error=self.launch(directory,'--vanilla','--fade-rt2-owner','off')
             self.assertNotEqual(code,0);self.assertIn('--fade-rt2-owner cannot be combined with --vanilla',error)
