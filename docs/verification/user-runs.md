@@ -41,7 +41,7 @@ New in this build: FOV remap on savegame load (a pre-patch save now starts remap
 TAA mask fold (no mask draw; the resolve computes the gates and writes the depth history; the sentinel stabiliser is gone,
 `--taa-sentinel-stabiliser` is refused; the screen search is off by default, `--taa-thin-region-source both` turns it on),
 `--window-monitor-rect` on by default (the game window moves from under the macOS menu bar to the full monitor), opt-in
-`--window-trace` / `--cursor-reassert` for the double cursor, `--original-fill 0.02` default on `--hdr` launches, and the
+`--window-trace` / `--cursor-reassert` for the double cursor, `--original-fill 0.01` default on `--hdr` launches, and the
 install-fleet4 overlay (Terran solar-plant louvres welded; already accepted in run321). Three launches at 5120x1440; each
 command is the stand command below plus the flags shown. Before launching run `unset X3M_TAA_THIN_REGION_SOURCE
 X3M_TAA_SENTINEL_STABILISER` once in the shell. Please report per launch and name the sector of each stand:
@@ -54,7 +54,7 @@ X3M_TAA_SENTINEL_STABILISER` once in the shell. Please report per launch and nam
    c. TAA after the fold: the lattice stand at rest and under a slow pan (the welded plant), a hull with masts or trusses under a
       pan, a laser or engine trail over sky, and the fog-band solar plants under a slow vertical pan: any shimmer, crawl or trail
       that Run 82 did not have. F8 at the lattice stand at rest and on the fog-band plants.
-   d. Hulls: the original-fill 0.02 shadow-side floor on a few ships (the value you chose; say if it reads wrong).
+   d. Hulls: the original-fill 0.01 shadow-side floor on a few ships (the value you chose; say if it reads wrong).
    e. The fps overlay figure at a stand of your choice (no timing flag, so this is the real number).
    Rows: `fov_confirm ... after=save_load_complete match=1`, `window_mode ... moved`, `motion_output_taa ...` without a stabiliser
    field, `taa_thin_region_source configured=vote default=1`, `original_fill_mode ... default=1`.
