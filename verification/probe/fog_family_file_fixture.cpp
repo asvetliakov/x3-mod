@@ -115,11 +115,11 @@ std::vector<std::uint8_t> build(const std::vector<Family>& families, const std::
     put32(b, 8, family_file_version); put32(b, 12, 64); put32(b, 16, qualified_recipe_id);
     put32(b, 20, fc); put32(b, 24, pc); put32(b, 28, family_row_bytes); put32(b, 32, family_packet_row_bytes);
     put32(b, 36, 64); put32(b, 40, table); put32(b, 44, 0);
-    put64(b, 48, fnv(&b[64], table)); put64(b, 56, b.size());
+    put64(b, 48, fnv(b.data() + 64, table)); put64(b, 56, b.size());
     return b;
 }
 void refresh(std::vector<std::uint8_t>& b) { // recompute the table checksum and size after an edit
-    put64(b, 48, fnv(&b[64], get32(b, 40))); put64(b, 56, b.size());
+    put64(b, 48, fnv(b.data() + 64, get32(b, 40))); put64(b, 56, b.size());
 }
 
 std::string dir;
@@ -235,6 +235,16 @@ int self_test() {
         }
         ++cases; std::printf("CASE shared_packet status=loaded\n");
     }
+    {   // The empty table (0 families, 0 packets, 64 bytes) the tool installs when the compiled 14
+        // cover every family: loaded, nothing added, nothing disabled.
+        const auto empty = build({}, {});
+        const auto t = load(write("empty.bin", empty));
+        ProfileInfo info{};
+        require(empty.size() == 64 && t->status == FamilyFileStatus::Loaded && !std::strcmp(t->reason, "ok") && t->families == 0
+                && t->packets == 0 && t->rows_disabled == 0 && t->file_bytes == 64 && !t->find(a.c_str())
+                && !family_profile_info(*t, Profile(family_name_id(a.c_str())), info), std::string("empty table: ") + t->reason);
+        compiled_intact(*t); ++cases; std::printf("CASE empty_table status=loaded families=0 packets=0\n");
+    }
     {
         const auto t = load(dir + "/does-not-exist.bin");
         require(t->status == FamilyFileStatus::Absent && !std::strcmp(t->reason, "absent"), "absent");
@@ -250,7 +260,7 @@ int self_test() {
     expect_rejected("version_2", edit([](auto& v) { put32(v, 8, 2); }), "version");
     expect_rejected("header_size_0", edit([](auto& v) { put32(v, 12, 0); }), "header_size");
     expect_rejected("recipe_2", edit([](auto& v) { put32(v, 16, 2); }), "recipe");
-    expect_rejected("families_0", edit([](auto& v) { put32(v, 20, 0); }), "family_count");
+    expect_rejected("families_0", edit([](auto& v) { put32(v, 20, 0); }), "packet_count"); // 0 families need 0 packets
     expect_rejected("families_257", edit([](auto& v) { put32(v, 20, 257); }), "family_count");
     expect_rejected("packets_0", edit([](auto& v) { put32(v, 24, 0); }), "packet_count");
     expect_rejected("packets_3", edit([](auto& v) { put32(v, 24, 3); }), "packet_count");

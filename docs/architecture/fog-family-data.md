@@ -102,7 +102,8 @@ That is what makes option A possible later, and what makes option C's file redun
 - **Validation contract** (all failures reject the whole file with one
   `volumetric_fog_families event=rejected reason=…` line and leave the compiled 14 in force):
   file size ≥ header; magic, version and header size exact; `recipe_id == qualified_recipe_id`;
-  family and packet counts in 1..256; table inside the file and its FNV-1a matching; each name
+  0 families with 0 packets accepted as "nothing added", otherwise families in 1..256 and packets
+  in 1..families; table inside the file and its FNV-1a matching; each name
   1..31 printable ASCII bytes, unique, not one of the 14; each id ≥ 0x10000 and unique; `base_sigma`
   finite in (0, 1e-4]; occupancy in [0.01, 0.5]; chroma and colours finite in [0, 1]; each packet
   row with width 1560, height 1430, texel bytes 8, decoded bytes 17,846,400, nonzero checksum,
@@ -270,7 +271,8 @@ body and texture hashes and the baker/recipe hashes with the record. Without the
 regression is skipped; everything else runs on synthetic catalogues.
 
 **File as built.** Little endian. Header 64: `X3FOGFAM`, version 1, header bytes 64, recipe id 1,
-family count 1..256, packet count 1..families, family row bytes 112, packet row bytes 80, table
+family count 0..256, packet count 1..families (0 with 0 families: the 64-byte empty table,
+loaded as nothing added), family row bytes 112, packet row bytes 80, table
 offset 64, table bytes, reserved 0, FNV-1a 64 of the table, file size. Family row 112: name[32]
 NUL-padded, profile id, packet index, `base_sigma`, occupancy, chroma[3], colours[4][3], flags
 (1 background palette, 2 `--profile` override). Packet row 80: offset, size (u64), width 1560,
@@ -361,7 +363,11 @@ cards); `fog families: stale (<reason>; N families, M packets still load)` (the 
 fingerprint, the record's file size or the record itself differs; the file still loads, but
 families a mod added since are absent and changed palettes are old); `fog families: ok (N
 families, M packets)`; header truncated/invalid when the proxy would reject the file; `disabled`
-under `X3M_FOG_FAMILIES=0`. Nothing under `--vanilla`. The launch comparison stats about twenty
+under `X3M_FOG_FAMILIES=0`. When nothing needs adding (vanilla: 14 `covered_by_build`, `earth`
+and `xtmgreenring` refused), `--install` writes the empty table (0 families, 0 packets, 64 bytes)
+and its record, so the line reads `fog families: ok (0 packets; 14 compiled cover 14 families, 2 refused)`,
+turns stale when a mod adds catalogues and `--check` passes on it; DLLs built from main before the
+empty-table loader change (Run85 c430294a and earlier) reject that file with `family_count` and fall back to the compiled 14, which is the same result. Nothing under `--vanilla`. The launch comparison stats about twenty
 files and reads no texture; loose bodies and textures outside the catalogues are not in it, so
 `--check` (every input hash) stays the authority, and a `--check` PASS refreshes a mismatched
 fingerprint (a touched or re-copied catalogue with unchanged content). Records written before

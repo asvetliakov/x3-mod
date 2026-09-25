@@ -192,8 +192,8 @@ class BakeAndFileTests(unittest.TestCase):
 class EndToEndTests(unittest.TestCase):
     """A synthetic game root: TBackgrounds, text bodies and DDS members in one catalogue."""
 
-    def make_game(self, root, tex_a_value=180):
-        rows = [background_line('zzmod', [3, 1, 0, 0, 0, 0, 0, 0], 5, 1),
+    def make_game(self, root, tex_a_value=180, family='zzmod'):
+        rows = [background_line(family, [3, 1, 0, 0, 0, 0, 0, 0], 5, 1),
                 background_line('zzmissing', [1, 0, 0, 0, 0, 0, 0, 0], 3, 2),
                 background_line('zznobody', [1, 0, 0, 0, 0, 0, 0, 0], 2, 3),
                 background_line('zzclear', [1, 0, 0, 0, 0, 0, 0, 0], 0, 4),
@@ -204,8 +204,8 @@ class EndToEndTests(unittest.TestCase):
         grey[:4] = [tex_a_value, 40, 20]
         grey[4:] = [30, 60, tex_a_value]
         members = [('types/TBackgrounds.pck', table),
-                   (f'{nebula}/zzmod/nebula_zzmod_dust_part01.pbd', body([r'environments\nebulae\zzmod\tex_a.tga'])),
-                   (f'{nebula}/zzmod/nebula_zzmod_dust_part02.pbd', body([r'environments\nebulae\zzmod\tex_b.tga'])),
+                   (f'{nebula}/{family}/nebula_{family}_dust_part01.pbd', body([rf'environments\nebulae\{family}\tex_a.tga'])),
+                   (f'{nebula}/{family}/nebula_{family}_dust_part02.pbd', body([rf'environments\nebulae\{family}\tex_b.tga'])),
                    (f'{nebula}/zzmissing/nebula_zzmissing_dust_part01.pbd', body([r'environments\nebulae\zzmissing\gone.tga'])),
                    ('dds/tex_a.pck', dds_rgb24(grey)),
                    ('dds/tex_b.pck', dds_rgb24(np.full((16, 16, 3), [20, 200, 90], np.uint8)))]
@@ -375,6 +375,46 @@ class LauncherReportTests(unittest.TestCase):
             (game / 'x3m' / ff.FILE_NAME).write_bytes(data[:10])
             self.assertIn('header truncated', self.dry_run(directory, {})[1])
             self.assertEqual(self.dry_run(directory, {'X3M_FOG_FAMILIES': 'none'})[1], 'fog families: disabled (X3M_FOG_FAMILIES)')
+
+    def test_zero_packet_install(self):
+        # Every family is compiled in or refused (vanilla's shape): --install still writes the empty table.
+        with tempfile.TemporaryDirectory() as directory, mock.patch.dict(os.environ, {}), \
+                mock.patch.object(ff, 'running_game', return_value=[]):
+            os.environ.pop('X3M_FOG_FAMILIES', None)
+            game = Path(directory) / 'game'
+            EndToEndTests.make_game(None, game, family=sorted(recipe.PROFILES)[0])
+            code, text = self.run_tool('--game', game, '--install', '--jobs', '1')
+            self.assertEqual(code, 0)
+            summary = json.loads(text.strip().splitlines()[-2])
+            self.assertEqual(summary['counts'], {'covered_by_build': 1, 'refused:name_invalid': 1, 'refused:no_dust_bodies': 1,
+                                                 'refused:texture_missing': 1})
+            self.assertEqual((summary['file_bytes'], summary['packets']), (64, 0))
+            self.assertIn('families=0 packets=0 (empty table: nothing to add; 1 compiled cover 1 families, 3 refused)',
+                          text.strip().splitlines()[-1])
+            data = (game / 'x3m' / ff.FILE_NAME).read_bytes()
+            self.assertEqual((len(data), data[:8], struct.unpack_from('<5I', data, 8), struct.unpack_from('<Q', data, 56)[0]),
+                             (64, b'X3FOGFAM', (1, 64, recipe.RECIPE_ID, 0, 0), 64))
+            loaded = ff.read_file(game / 'x3m' / ff.FILE_NAME)
+            self.assertEqual((loaded['status'], loaded['reason'], loaded['rows'], loaded['packets']), ('loaded', 'ok', [], []))
+            record = json.loads((game / 'x3m' / ff.RECORD_NAME).read_text())
+            self.assertEqual((record['file']['bytes'], record['launch_inputs']['layers']), (64, ['01.cat']))
+            self.assertEqual(self.dry_run(directory, {})[1], 'fog families: ok (0 packets; 1 compiled cover 1 families, 3 refused)')
+            (game / 'addon').mkdir()
+            sfc.write_catalogue(game / 'addon' / '05.cat', [('types/Dummy.txt', b'x')])
+            self.assertTrue(self.dry_run(directory, {})[1].startswith(
+                'fog families: stale (catalogue list changed (+addon/05.cat); 0 families, 0 packets still load)'))
+            for suffix in ('.cat', '.dat'):
+                (game / 'addon' / ('05' + suffix)).unlink()
+            code, text = self.run_tool('--game', game, '--check')
+            self.assertEqual(code, 0, text)
+            self.assertIn('PASS', text)
+            self.assertIn('families=0 packets=0 bytes=64', text)
+            self.assertEqual(self.dry_run(directory, {})[1], 'fog families: ok (0 packets; 1 compiled cover 1 families, 3 refused)')
+            record_path = game / 'x3m' / ff.RECORD_NAME
+            malformed = json.loads(record_path.read_text())
+            malformed['counts'] = ['not', 'a', 'mapping']
+            record_path.write_text(json.dumps(malformed))
+            self.assertIn(f'stale ({ff.RECORD_NAME} unreadable (AttributeError)', self.dry_run(directory, {})[1])
 
 
 class WrapperTests(unittest.TestCase):

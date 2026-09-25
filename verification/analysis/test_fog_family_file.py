@@ -91,7 +91,7 @@ class FogFamilyFileTests(unittest.TestCase):
         cases.mkdir()
         run = subprocess.run([str(self.exe), '--self-test', str(cases)], capture_output=True, text=True)
         self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
-        self.assertIn('PASS fog_family_file cases=67 compiled=14', run.stdout)
+        self.assertIn('PASS fog_family_file cases=68 compiled=14', run.stdout)
         for reason in ('truncated_header', 'bad_magic', 'version', 'header_size', 'recipe', 'family_count', 'packet_count',
                        'table_past_eof', 'table_checksum', 'file_size'):
             self.assertIn(f'status=rejected reason={reason}', run.stdout)
@@ -136,6 +136,7 @@ class FogFamilyFileTests(unittest.TestCase):
             'name_compiled': refresh(named), 'name': refresh(quoted), 'packet_offset': edit(prow0, '<Q', len(valid), True),
             'packet_header': edit(packet0 + 16, '<I', 5), 'occupancy': edit(row0 + 44, '<f', .6, True),
             'profile_id': edit(row0 + 32, '<I', 3, True), 'flags': edit(row0 + 108, '<I', 8, True),
+            'ok': ff.build_file([], []), 'packet_count': edit(20, '<I', 0),  # the empty table loads; 0 families need 0 packets
         }
         for reason, data in cases.items():
             with self.subTest(reason=reason):

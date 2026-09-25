@@ -306,8 +306,10 @@ void load_family_file(const family_path_char* path, FamilyTable& table) noexcept
     if (u32(h + 12) != family_file_header_bytes) return reject(table, "header_size");
     if (u32(h + 16) != qualified_recipe_id) return reject(table, "recipe");
     const auto families = u32(h + 20), packets = u32(h + 24);
-    if (families == 0 || families > family_file_max_rows) return reject(table, "family_count");
-    if (packets == 0 || packets > families) return reject(table, "packet_count");
+    // 0 families with 0 packets is the empty table the tool installs when the compiled profiles
+    // cover every family: loaded, nothing added (fog-family-data.md, "Mod flow").
+    if (families > family_file_max_rows) return reject(table, "family_count");
+    if (families ? (packets == 0 || packets > families) : packets != 0) return reject(table, "packet_count");
     if (u32(h + 28) != family_row_bytes || u32(h + 32) != family_packet_row_bytes) return reject(table, "row_size");
     const auto table_offset = u32(h + 36), table_bytes = u32(h + 40);
     if (table_offset != family_file_header_bytes) return reject(table, "table_offset");

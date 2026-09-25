@@ -423,7 +423,7 @@ def enumerate_families(assets):
 def build_file(rows, packets):
     """Bytes of the family file. rows: dicts (name, profile_id, packet, base_sigma, occupancy,
     chroma[3], colours[4][3], flags); packets: dicts (bytes, decoded_fnv1a int, profile_id, decoded_sha256)."""
-    if not 1 <= len(rows) <= MAX_ROWS or not 1 <= len(packets) <= len(rows):
+    if len(rows) > MAX_ROWS or not (1 <= len(packets) <= len(rows) if rows else not packets):
         raise ValueError('family/packet count out of range')
     table_bytes = len(rows) * FAMILY_ROW.size + len(packets) * PACKET_ROW.size
     offset = HEADER.size + table_bytes
@@ -461,8 +461,8 @@ def read_file(path):
         (magic, version, header_size, recipe_id, families, packets, row_bytes, packet_bytes,
          table_offset, table_bytes, reserved, table_fnv, file_size) = HEADER.unpack(head)
         checks = [(magic == MAGIC, 'bad_magic'), (version == VERSION, 'version'), (header_size == HEADER.size, 'header_size'),
-                  (recipe_id == recipe.RECIPE_ID, 'recipe'), (1 <= families <= MAX_ROWS, 'family_count'),
-                  (1 <= packets <= families, 'packet_count'),
+                  (recipe_id == recipe.RECIPE_ID, 'recipe'), (families <= MAX_ROWS, 'family_count'),
+                  (1 <= packets <= families if families else packets == 0, 'packet_count'),  # 0/0: empty table
                   (row_bytes == FAMILY_ROW.size and packet_bytes == PACKET_ROW.size, 'row_size'),
                   (table_offset == HEADER.size, 'table_offset'),
                   (table_bytes == families * FAMILY_ROW.size + packets * PACKET_ROW.size, 'table_bytes'),
@@ -693,7 +693,9 @@ def generate(args):
     for plan in plans:
         key = plan['status'] if plan['status'] != 'refused' else 'refused:' + plan['reason']
         counts[key] = counts.get(key, 0) + 1
-    data = build_file(rows, packets) if rows else None
+    # Nothing to add still yields a file: the 64-byte empty table (0 families, 0 packets) the DLL
+    # loads as 'nothing added', so the launch line can say ok and turn stale when a mod adds catalogues.
+    data = None if args.dry_run else build_file(rows, packets)
     record = dict(schema=1, tool='tools/analysis/fog_families.py', tool_sha256=sha256(Path(__file__).read_bytes()),
                   baker_sha256=sha256(Path(baker.__file__).read_bytes()), recipe_sha256=sha256(Path(recipe.__file__).read_bytes()),
                   numpy=np.__version__, recipe_id=recipe.RECIPE_ID, game=str(game), catalogue_layers=assets.layers,
@@ -706,6 +708,13 @@ def generate(args):
                   wall_seconds=None)
     record['wall_seconds'] = round(time.monotonic() - started, 2)
     return plans, record, data
+
+
+def empty_table_cover(record):
+    """'N compiled cover N families, R refused' for a record with nothing to add (the launch line's wording)."""
+    covered = record['counts'].get('covered_by_build', 0)
+    refused = sum(n for key, n in record['counts'].items() if key.startswith('refused'))
+    return f'{covered} compiled cover {covered + record["file"]["packets"]} families, {refused} refused'
 
 
 def print_table(plans, record):
@@ -808,13 +817,6 @@ def main(argv=None):
     print_table(plans, record)
     if args.dry_run:
         return 0
-    if data is None:
-        if args.install:
-            raise SystemExit('no families to write; nothing installed (the DLL keeps the compiled 14)')
-        target.mkdir(parents=True, exist_ok=True)
-        write_atomic(target / RECORD_NAME, (json.dumps(record, indent=1, sort_keys=True) + '\n').encode())
-        print(f'no families to write: {target / RECORD_NAME} only')
-        return 0
     if args.install:
         refuse_if_running(args)  # again: the bake can take minutes
         if (target / FILE_NAME).exists() and not args.replace:
@@ -842,7 +844,8 @@ def main(argv=None):
                 else:
                     (target / name).unlink(missing_ok=True)
         raise SystemExit(f'{error}; ' + ('the previous installation was restored' if args.install else 'output incomplete')) from None
-    print(f"wrote {target / FILE_NAME} bytes={len(data)} families={record['file']['families']} packets={record['file']['packets']}")
+    print(f"wrote {target / FILE_NAME} bytes={len(data)} families={record['file']['families']} packets={record['file']['packets']}"
+          + ('' if record['file']['families'] else f' (empty table: nothing to add; {empty_table_cover(record)})'))
     return 0
 
 

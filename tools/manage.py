@@ -220,19 +220,25 @@ def fog_families_line(game, environ, bottle=BOTTLE):
     if magic != b'X3FOGFAM' or version != 1 or header != 64 or file_size != size:
         return f'fog families: {path} bytes={size}; header invalid (the proxy will reject it); run `{hint} --replace`'
     counts = f'{families} families, {packets} packets'
+    ok = f'fog families: ok ({counts})'
     try:
         record = json.loads(path.with_name(FOG_FAMILIES_RECORD).read_text())
         if (record.get('file') or {}).get('bytes') != size:
             reason = f'file differs from {FOG_FAMILIES_RECORD}'
         else:
             reason = _fog_family_inputs().launch_difference(game, record)
+        if families == 0 and packets == 0:  # the empty table: nothing to add beyond the compiled profiles
+            tally = record.get('counts') or {}
+            covered = tally.get('covered_by_build', 0)
+            refused = sum(n for key, n in tally.items() if key.startswith('refused'))
+            ok = f'fog families: ok (0 packets; {covered} compiled cover {covered + packets} families, {refused} refused)'
     except FileNotFoundError:
         reason = f'no {FOG_FAMILIES_RECORD} beside it'
     except (OSError, ValueError, TypeError, KeyError, AttributeError) as error:
         reason = f'{FOG_FAMILIES_RECORD} unreadable ({type(error).__name__})'
     if reason is not None:
         return f'fog families: stale ({reason}; {counts} still load); run `{hint} --replace`, or `--check` to confirm'
-    return f'fog families: ok ({counts})'
+    return ok
 
 
 def fog_families_command(argv):
@@ -709,7 +715,7 @@ def main():
     parser.add_argument('--sun-shadow-bias-clamp-texels', type=float, default=None, metavar='T', help='Receiver-plane bias clamp and non-planar fallback of the sun-shadow quad in world texels of the map (2 E / N), 1..64, default 20.97152 (X3M_SUN_SHADOW_BIAS_CLAMP_TEXELS; requires --sun-shadow-apply): the default is the former 0.01 at the default cascade; the detached fixture was tuned at 4 texels and the wide fixture shows the default lighting a few silhouette pixels of a receiver\'s own faces (docs/verification/directional-shadows.md)')
     parser.add_argument('--sun-shadow-bias-slope-texels', type=float, default=None, metavar='S', help='Slope-scaled margin of the cascade sun-shadow compare in texels of the receiver plane\'s depth slope, 0..8, default 0.2 (X3M_SUN_SHADOW_BIAS_SLOPE_TEXELS; requires --sun-shadow-apply; 0 keeps the constant + plane law)')
     parser.add_argument('--sector-background', action='store_true', help='Read-only active-sector background diagnostic (X3M_SECTOR_BACKGROUND=1; default off; exact executable only): one bounded sample per frame, logged once per second and on sector/row/status changes, including menus/loading when frames are submitted. Does not affect fog rendering; no other option required. docs/reverse-engineering/sector-fog.md section 11')
-    parser.add_argument('--volumetric-fog', nargs='?', type=float, const=0.02, default=None, metavar='STRENGTH', help='Spatial family fog at scene end (default off; requires --motion-output --taa --hdr --shadow-replay-depth --shadow-cascades). Families are data-driven: the sector\'s TBackgrounds family name is matched against the 14 compiled profiles, then against <game>/x3m/fog-families.bin (mod families; `manage.py fog-families --install` writes it, and the launch line "fog families: missing|stale|ok" reports it: stale compares the catalogue list, .cat/.dat sizes and mtimes and loose TBackgrounds recorded at generation, never textures); clear sectors and unmatched families retain native cards. STRENGTH is density tuning in 0..0.1: 0.02=1x qualified family density, 0=off, other values are user tuning. Occupancy and horizon stay fixed. Ctrl+Alt+F9 toggles; Ctrl+Alt+F10 steps 0.005/0.01/0.02/0.03/0.05 (.25/.5/1/1.5/2.5x); --fps-overlay shows the multiplier. Unshadowed first spatial version; use --volumetric-fog-cards replace for replacement, keep for an explicit stacked diagnostic comparison.')
+    parser.add_argument('--volumetric-fog', nargs='?', type=float, const=0.02, default=None, metavar='STRENGTH', help='Spatial family fog at scene end (default off; requires --motion-output --taa --hdr --shadow-replay-depth --shadow-cascades). Families are data-driven: the sector\'s TBackgrounds family name is matched against the 14 compiled profiles, then against <game>/x3m/fog-families.bin (mod families; `manage.py fog-families --install` writes it, an empty table when the compiled 14 cover every family, and the launch line "fog families: missing|stale|ok" reports it: stale compares the catalogue list, .cat/.dat sizes and mtimes and loose TBackgrounds recorded at generation, never textures); clear sectors and unmatched families retain native cards. STRENGTH is density tuning in 0..0.1: 0.02=1x qualified family density, 0=off, other values are user tuning. Occupancy and horizon stay fixed. Ctrl+Alt+F9 toggles; Ctrl+Alt+F10 steps 0.005/0.01/0.02/0.03/0.05 (.25/.5/1/1.5/2.5x); --fps-overlay shows the multiplier. Unshadowed first spatial version; use --volumetric-fog-cards replace for replacement, keep for an explicit stacked diagnostic comparison.')
     parser.add_argument('--volumetric-fog-cards', choices=('keep', 'replace'), default=None, help='Keep vanilla fog cards (default), or replace validated card color with the medium after a successful warm-up (X3M_VOLUMETRIC_FOG_CARDS; requires --volumetric-fog)')
     parser.add_argument('--volumetric-fog-range', choices=('legacy', 'stored'), default=None, help='Fog field behind --volumetric-fog: legacy (default) is the family atlas; stored is the experimental stored-density field, generated on one background thread, with clouds out to 30-40 km, drawn with the single shaped look (density remap, thicker cores, two-lobe phase, coloured ambient, tinted extinction, Beer-powder self-shadow; tuning by the X3M_FOG_LOOK_<NAME> environment variables, read once). A capability refusal logs one line and keeps legacy (X3M_VOLUMETRIC_FOG_RANGE; requires --volumetric-fog).')
     # Retired 2026-09-22 with the presets L0/L1/L3: registered only so that an old command line is refused by name.
