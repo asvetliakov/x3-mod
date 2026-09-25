@@ -31,14 +31,26 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 79 A | A' region hold on/off look + gpu-sync cost, Terran station LOD patch bursts (USC dock, SPP XL) size/distance, slot-06 control, at 5120x1440 (candidate df01f23b) | 4 | Completed 2026-09-24 (run299/300/302/303; run301 aborted): A' accepted (no visible difference on the lattice stand, pans, silhouettes, shards; mask 2.93 -> 1.54 ms with the x/y draws gone, box +0.23 ms, net -1.1 ms at 5120x1440); Terran patch works (status=patched, all 16 slot-06 bodies flag31=1, lod 1 below s/T_pad 1.0, coarse ODS confirmed); the coarse record lost its red plates (baker alpha rule, fixed 5aa645e3, rebake pending) and its ambient occlusion (engine LOD-0 gate: opt-in `--lod-occlusion all` ac381be7); one ODS part flickers under motion on both hold settings (inferred LOD pop; `--lod-switch-log` e8af9e46); `--terran-station-lod distance` not flown |
 
 
-## Run 86 (completed 2026-09-25)
+## Run 88 (open)
 
-Run 86 A flown: launch 1 (run333) plants accepted (sparkles fixed); launch 2 (run334) the effects modernisation was judged
-and **dropped** by the user; launch 3 (run335) `--chase-view-restore-dock` worked as designed but the selection boxes vanished
-after undocking and a save loaded while docked restores first person anyway: **dropped**. Both features are being removed from
-production; the next candidate (Run87) carries only the far clip and the fog loader. No run is queued.
+**Run 88 A (queued 2026-09-25; Run88 DLL `__RUN88_SHA__` from 79aafc8b, installed __RUN88_TIME__; overlay install-fleet4
+unchanged).** New: the **shadow pop fix** (the sun-occlusion bracket drifted the TAA reference count, so the caster retention
+store was flushed every frame after a few hundred frames in every session since Run84; 79aafc8b), the **mesh-adjacency fast path
+arming without --telemetry** (30eecc51), and the **launcher defaults promoted** (the stand set is the default; new
+`--shadow-cascade-sizes 2048,4096,4096,2048,2048`, `--music-keep`, `--shadow-alpha-casters on`, capture off by default; 2356ba68).
+One launch at 5120x1440 with the short stand command below (telemetry on, as before). Please name the sector of each stand.
 
-Completed instructions for Runs 73-86 are in the [archive](../archive/user-runs-completed.md).
+1. **Shadow pop**: a station stand with many casters (the run336 stand): pan slowly and fly around for a minute: do shadows still
+   pop in / out? Then an alt-tab and back. Rows: `shadow_retention_flush` must appear once at most (reason=teardown at exit only),
+   `shadow_retention_probe ... fired=1` only on the last row, no `taa_references_underflow` row.
+2. **Cascade sizes**: the same stand: are the near/medium shadow edges (cascades 1-2, 300 m - 3 km) visibly cleaner than before,
+   and is there any new stutter? Rows: `shadow_cascades_mode ... sizes=2048,4096,4096,2048,2048`, `shadow_replay_depth ... us=`
+   (compare against run336: p50 124, p99 371).
+3. **Defaults**: music keeps playing across an alt-tab and a save; the adjacency row `mesh_adjacency_config requested=fast
+   enabled=1 telemetry=1`; no automatic capture at frame 120 (F8 still captures).
+4. Exit through the menu.
+
+Run 88 A is the only queued run. Completed instructions for Runs 73-86 are in the [archive](../archive/user-runs-completed.md).
 
 ## Stand command
 
