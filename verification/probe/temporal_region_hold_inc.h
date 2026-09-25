@@ -90,7 +90,9 @@ void identity_cases(EdgeScene& helper,Compiler compiler){IDirect3DDevice9* const
     // c11.x = 1: the hold program's far weight on the screen speed gate (X3M_TAA_FAR_GATE=screen), the removed camera program's
     // gate; its default camera gate (openC, since 2026-09-25) differs from it by design wherever farw > 0 and the two gates
     // differ (162 of 1024 pixels at k = 0), which FAR_CAMERA_PAN covers (temporal_far_camera_inc.h).
-    const float zero[4]={0,0,0,0},c11[4]={1,0,1,float(oracleHoldFrames)},c13[4]={.95f,20,0,0};
+    // c13.z = kFarClipOff (2): the far clip off, as the reference (no far clip) has it; since 2026-09-25 z = 0 is the default far
+    // clip on every far-weighted pixel, not off.
+    const float zero[4]={0,0,0,0},c11[4]={1,0,1,float(oracleHoldFrames)},c13[4]={.95f,20,x3::temporal::kFarClipOff,0};
     auto bindCommon=[&](){
         for(UINT slot=0;slot<13;++slot){for(auto p:{std::pair<D3DSAMPLERSTATETYPE,DWORD>{D3DSAMP_MINFILTER,slot==11?D3DTEXF_LINEAR:D3DTEXF_POINT},{D3DSAMP_MAGFILTER,slot==11?D3DTEXF_LINEAR:D3DTEXF_POINT},{D3DSAMP_MIPFILTER,D3DTEXF_NONE},
                 {D3DSAMP_ADDRESSU,D3DTADDRESS_CLAMP},{D3DSAMP_ADDRESSV,D3DTADDRESS_CLAMP},{D3DSAMP_SRGBTEXTURE,FALSE},{D3DSAMP_MAXMIPLEVEL,0}})check("hold identity sampler",d->SetSamplerState(slot,p.first,p.second));}

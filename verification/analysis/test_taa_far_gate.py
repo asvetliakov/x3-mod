@@ -71,14 +71,14 @@ class FarGateSource(unittest.TestCase):
         self.assertIn('configure_far_gate(taa_far_camera_gate,taa_far_gate_given,taa_far_gate_default)', capture)
         motion = (ROOT / 'src/proxy/motion_output.cpp').read_text()
         # The creation row: the configured gate (camera only on the camera-gate resolve) and the launcher default.
-        self.assertIn('ps30_slots=%u far_gate=%s default=%u"', motion)
+        self.assertIn('ps30_slots=%u far_gate=%s default=%u far_clip=%s far_clip_default=%u"', motion)
         self.assertIn('far_camera_gate ? "camera" : "screen", unsigned(far_camera_gate && taa_far_gate_default_)', motion)
         self.assertIn('const bool far_camera_gate = taa_far_camera_gate_ && taa_thin_camera_gate_ && taa_thin_weight_ > 0.f;', motion)
         # The ignore row only for an explicit camera (marker 0), never for the launcher's default.
         self.assertIn('if (SUCCEEDED(hr) && taa_far_gate_given_ && !taa_far_gate_default_ && taa_far_camera_gate_ && !far_camera_gate && taa_far_weight_ > 0.f)', motion)
         self.assertIn('motion_output_taa_far_gate device=%llu requested=camera configured=screen reason=%s"', motion)
         # A box-target refusal later in the session falls back to the far program: its row says so.
-        self.assertIn('reason=box_target create=%08lx bilinear=%u history_taps=%u thin_region=%.4f effect=thin_region_off far_gate=screen"', motion)
+        self.assertIn('reason=box_target create=%08lx bilinear=%u history_taps=%u thin_region=%.4f effect=thin_region_off far_gate=screen far_clip=3x3"', motion)
         self.assertIn('in.far_camera_gate = taa_far_camera_gate_;', motion)
 
     def test_pass_and_program_select_the_gate_on_c11_x(self):

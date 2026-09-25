@@ -206,6 +206,72 @@ Cost, measured in the fixture: the far weight is back under a fractional pan, an
 peak of 0.60 / 0.66, from 1.00 / 1.07 before the change and 1.50 at rest. The far hull of the motion-weight pan row drops to
 an E ratio of 0.116, from 0.198. The flight has to rate this blur against the sparkles it removes; `--taa-far-gate screen`
 flies the previous behaviour from the same build.
+2026-09-25, later: the default stays camera (as shipped in Run 84) in the DLL and the launcher, after a screen default with
+the far clip below was tried and measured. With screen gate + 7x7 far clip, the 0.4 px line's one-frame margin is 19.17 codes at 10.5 px/frame and 7.71 at 8.25 (limit 6; 0 above it at 10), against 4.93 / 2.24 on the camera gate (0.69 at rest) [M, GPU fixture `FAR_JITTER_LINE` screen rows, `/tmp/x3-run85-fixtures/temporal3.log`]. Reason: at the base weight 0.9 each frame that samples a sub-pixel line puts 10 % of it into the output, which no history clip removes; the camera gate holds 0.985 for world-static content under a pan, a 1.5 % leak. `FAR_JITTER_LINE`
+keeps the six screen-gate pan rows as the witness; the 0.4 px row at 10.5 px/frame is pinned above the margin.
+
+**Addendum 2026-09-25 (2): far clip** (the pixel tier of `docs/architecture/taa-thin-classification.md` section 3; run327 /
+run329 / run332 rest sparkles on the fog-band plants; evidence `verification/results/run329-run84a-rest-sparkles/` and
+`verification/results/far-clip-7x7/`; ledger `docs/verification/temporal-resolve.md`, "Far clip"). Written here as a second
+4.2 addendum rather than a new 4.3, which is the box gate and is referenced by that number. Distances are view units
+(1 unit = 0.2 m, `docs/reverse-engineering/camera-state-and-frame-routine.md`), footprints units per pixel.
+
+Cause [M, replay of the resolved dumps]: a plant edge is a sub-pixel bright line that lands in the current jittered sample in
+some of the 8 phases only. At 89,000-137,000 units (17.8-27.4 km) the far ramp 80 / 130 (102,400-166,400 units at 5120 px,
+p00 0.5) applied the far weight only partly (history weight 0.90-0.96), so about 7 % of a +85-code spike reached the output,
+and the next frame's 3x3 clip, whose box no longer contains the line, removed it: a one-frame sparkle. No thin-region source
+flags the plants (vote 0 / 27, search 0 / 27, emissive 0 / 27). Replay on the real frames: far weight 0.985 plus a 7x7 min /
+max clip gives 0 sparkles with line dimming p10 -2.4 codes; the weight alone leaves 1 (dimming 9.7 codes); the 7x7 alone 18.
+
+Change, two parts:
+- **Far ramp 60 / 68** (launcher and DLL default; `--taa-far-stabiliser W,A,80,130` requests the old ramp). This is the
+  sampling-limit calibration: `farw = 1` where one pixel covers 68 units (13.6 m) or more, from 87,040 units (17.4 km) at
+  5120 px, rising from 60 units (12 m) at 76,800 units (15.4 km). Every shading feature below 12-14 m there is sub-pixel,
+  whatever draw it belongs to, so the plants (70-107 units per pixel) take the full far weight. At lower widths the band
+  moves out in proportion (at 1920 px it starts at 32,640 units, 6.5 km: the gate is a pixel footprint).
+- **Far clip** (`--taa-far-clip 7x7|3x3`, `X3M_TAA_FAR_CLIP`; launcher default 7x7 on modded `--taa` launches with
+  `X3M_TAA_FAR_CLIP_DEFAULT=1`, explicit value marker 0, nothing without `--taa` or under `--vanilla`; DLL default 7x7 when
+  unset). On this program a pixel outside the region (`region = 0`) with `farw * openC > c13.z` clips its history against
+  the 7x7 min / max of the weighed finite current colour instead of the 3x3 variance clip: the box programs' box where they
+  marked the texel (the previous frame's region hold), else the in-place 7x7 that the camera term's share already takes, on
+  the same dynamic branch (`stabilise.b > stabilise.a || farClip`). `c13.z` is the threshold (`FrameInputs::far_clip`,
+  validated finite in [0, 2]): `x3::temporal::kFarClipThreshold` 0, so every pixel with any far weight takes the bound (the
+  ratified design; a threshold inside the ramp would leave its lower half on the leak-then-clip mechanism), and `kFarClipOff`
+  2, above any product of two openness values, for 3x3 (also uploaded whenever the far gate is off). Gating on `farw * openC`
+  rather than `farw` keeps a far mover (openC closed) on the 3x3 bound, so it does not take a 7-px ghost bound. The gate is
+  `openC` under both far gates: with `--taa-far-gate screen` the far weight follows the screen speed, but the clip still
+  follows the camera-relative openness, so a world-static far pixel keeps the 7x7 bound during a camera pan while its weight
+  drops to the base weight. The far program (no camera gate) has no far clip: `far_clip=3x3` on the `motion_output_taa` creation row there
+  and on the box-target fallback row; one `motion_output_taa_far_clip requested=7x7 configured=3x3` row when 7x7 was given
+  explicitly where it cannot act (screen gate, thin region off, far stabiliser off). The shipped far gate stays camera (the
+  addendum above, later the same day): camera weight + 7x7 bound on `openC`; screen weight + 7x7 still sparkles under
+  fractional pans [M]. farw exists only with a far weight or
+  filter, so `--taa-far-stabiliser 0` also turns the far clip off.
+
+Why the 7x7 helps and where it cannot: the bound keeps the history when some pixel within 3 px samples the line this phase.
+A slanted edge (the plants) always has one; a sub-pixel line exactly aligned with the pixel grid in every row would be
+missed in the same phases by every row of the box and is still clipped (the fixture's line is slanted 0.2 px per row for
+this reason). The region stays the treatment with a positive witness (unclipped hold); this tier has none, so its hold stays
+bounded by what the neighbourhood shows this frame (`taa-thin-classification.md` section 3).
+
+Cost: the hold program is 3,878 words / 1,017 D3DX slots (was 3,849 / 1,012; the fixture's `RESOLVE_BUDGET` row [M]). The 7x7 taps (40 fetches) run only on the
+branch, on far pixels, 0.33-0.60 % of the frame in the three plant bursts [M], about 0.03 ms at 5120x1440 [I]; the other
+pixels pay the few extra slots, about 0.007 ms [I, 1 us per slot]. Ceiling [I]: a frame where every pixel is valid depth
+beyond 87,040 units outside the region takes 40 taps x 7,372,800 px = 2.95e8 taps, at the measured 11 ps per tap about
+3.2 ms at 5120x1440. Real frames sit far below it: space background is the depth sentinel (no valid depth, farw 0), and only
+geometry beyond 17 km with an open camera gate counts, which the three plant bursts put at 0.33-0.60 % of the frame [M]. Native Windows: shader arithmetic and one constant on
+inputs the resolve already binds, documented D3D9 only.
+Fixture [M] (`FAR_JITTER_LINE`, lattice, `verification/results/far-clip-7x7/temporal_fixture_worktree_threshold0_out.txt`):
+with the far clip, 0 one-frame sparkles on every row (rest and yaws 10 / 10.5 / 8.25 px/frame, 1 px and 0.4 px slanted lines),
+largest margin 4.93 codes (0.4 px at yaw 10.5; 0.69 at rest), rest frame-to-frame delta 4.32 codes, dimming p10 -1.57 codes;
+with the 3x3 clip the 0.4 px line sparkles at rest (72 sparkles, margin 10.88, delta 32.7, dimming p10 -112 codes). Every
+existing lattice row stays within 1e-4 of the Run84 candidate (`MOTION_WEIGHT` e_ratio, `SETA_EXIT` trail_cast_max).
+Accepted limits [I]: a far object drifting 0.03-0.22 px/frame against the camera path (openC in (0, 1)) takes the 7x7 bound
+at keep 0.90-0.98, so its trail is bounded by the 3 px neighbourhood, about 15 frames at 0.2 px/frame. Of run332's 120 rest
+sparkles, 14 sites (12 %) are ones the next frame's 7x7 does not contain (axis-aligned or isolated); with 60 / 68 they get
+farw 1 (keep 0.985, a leak of about 1.3 codes, under the 6-code margin), so the ramp alone removes their sparkle, and what
+remains there is line dimming (weight-only replay p10 -9.7 codes), a known gap the flight judges. Open (flight): the pan sparkles at farw 1 in run332 (20 in 3631-3638)
+are not explained by the weight; the fixture's `FAR_JITTER_LINE` pan rows and the next flight settle it.
 
 ### 4.3 The box gate without the tests target
 

@@ -200,7 +200,7 @@ float4 depthParallax : register(c8); // camera_depth_parallax(): (DX, DY, DW) / 
 float4 laneParallax : register(c9);  // camera_lane_parallax(): (DX, DY, DW), 1 where s1 is the lane (.b = view z); w = 0: c8 alone
 float4 thinTests : register(c10);    // x = E of the emissive vote (0 off), y = 1: vote-only source (no search), z = 1: the thin vote is cast in the lane's .a
 float4 holdGate : register(c11);     // x = 1: the far weight on the screen speed gate (X3M_TAA_FAR_GATE=screen), 0: on openC; yz = the far components' scales, w = L, the hold length (frames)
-float4 farGate : register(c13);      // x = d0, y = 1 / (d1 - d0) of farw (0: off)
+float4 farGate : register(c13);      // x = d0, y = 1 / (d1 - d0) of farw (0: off), z = the far clip's threshold on farw * openC (X3M_TAA_FAR_CLIP; 0: any far weight, 2: off)
 #endif
 #ifdef X3M_CAMERA_GATE
 #define X3M_FAR_STABILIZE 1
@@ -975,10 +975,17 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     // box program's set of values, held in FP32 here where the box targets store FP16: at k > 0 the two bounds can differ by an
     // FP16 rounding of the weighed colour, so a pixel that takes this box at one resolution and the FP16 block box at the other
     // can differ in its last bits). Where b = a the term is 0 * finite and the 3x3 clip stands in.
+    // Far clip (X3M_TAA_FAR_CLIP, taa-mask-fold.md section 4.2 addendum "far clip", the pixel tier of taa-thin-classification.md
+    // section 3; run327 / run332 rest sparkles): a pixel outside the region whose farw * openC (the camera-relative openness,
+    // whatever X3M_TAA_FAR_GATE selects for the far weight above) exceeds c13.z clips its history against the same 7x7 min / max instead of the 3x3 variance clip, so a sub-pixel
+    // far line that one jitter phase samples is not cut back the next frame, while a far mover (openC closed) keeps the 3x3
+    // bound. c13.z = 0 (the default) takes every pixel with any far weight; 2 (above any product) is the 3x3 clip everywhere.
+    // Its taps are taken on this branch only (outside it the 3x3 path costs a few arithmetic slots).
+    bool farClip = region <= 0 && farw * openC > farGate.z;
     float4 boxLowTexel = fetch(boxLow, uv);
     float3 boxed = clipped;
     [branch] if (boxLowTexel.a > 0.5) boxed = clamp(old, boxLowTexel.rgb, fetch(boxHigh, uv).rgb);
-    else [branch] if (stabilise.b > stabilise.a) {
+    else [branch] if (stabilise.b > stabilise.a || farClip) {
         float3 low7 = low3, high7 = high3;
         [loop] for (int by = -3; by <= 3; ++by) {
             [loop] for (int bx = -3; bx <= 3; ++bx) {
@@ -990,6 +997,9 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
         }
         boxed = clamp(old, low7, high7);
     }
+    // Outside the region b = a = 0 and old below is `clipped`: the far clip replaces it with the box (the box targets where
+    // they are marked, as for the camera term's share).
+    clipped = farClip ? boxed : clipped;
 #else
     float3 boxed = clamp(old, fetch(boxLow, uv).rgb, fetch(boxHigh, uv).rgb);
 #endif

@@ -121,7 +121,7 @@ float taa_mip_bias = 0.f;
 // temporal-integration.md, "Post-resolve sharpen"); an explicit 0 is off, with
 // bit-identical output. Off entirely without TAA.
 float taa_sharpen = 0.f;
-float taa_far[6] = {0.f, 0.f, 80.f, 130.f, .03f, .25f}; // X3M_TAA_FAR_STABILISER=W[,A[,F0,F1[,LO,HI]]]: far weight (0 off), far filter A (0 off), gate footprints, speed gate px/frame
+float taa_far[6] = {0.f, 0.f, 60.f, 68.f, .03f, .25f}; // X3M_TAA_FAR_STABILISER=W[,A[,F0,F1[,LO,HI]]]: far weight (0 off), far filter A (0 off), gate footprints, speed gate px/frame
 float taa_thin_region[4] = {0.f, 1.f, .03f, .25f}; // X3M_TAA_THIN_REGION=W[,RELAX[,LO,HI]]
 bool taa_thin_gate_given = false;
 float taa_thin_emissive = 0.f; // X3M_TAA_THIN_REGION_EMISSIVE=E (thin-glow-lines.md 8.3 R3): emissive vote of the thin region (0 off)
@@ -300,6 +300,11 @@ bool taa_box_half = false, taa_box_resolution_default = false;
 // camera-relative openness or the screen speed (the gate before 2026-09-25). Invalid or oversized: stays camera, logged.
 // X3M_TAA_FAR_GATE_DEFAULT=1 marks a camera the launcher filled in from its default (the creation row's default=1).
 bool taa_far_camera_gate = true, taa_far_gate_given = false, taa_far_gate_default = false;
+// X3M_TAA_FAR_CLIP (7x7|3x3; unset is 7x7 here, the launcher sends 7x7 by default on --taa launches;
+// docs/architecture/taa-mask-fold.md section 4.2 addendum "far clip"): the history clip of a far pixel (farw * openC > 0)
+// outside the thin region on the camera-gate resolve, the 7x7 min / max or the 3x3 variance clip (the clip before 2026-09-25).
+// Invalid or oversized: stays 7x7, logged. X3M_TAA_FAR_CLIP_DEFAULT=1 marks a 7x7 the launcher filled in from its default.
+bool taa_far_clip_7x7 = true, taa_far_clip_given = false, taa_far_clip_default = false;
 // X3M_TAA_THIN_VOTE (on|off; unset is off here, the launcher sends on by default since Run 81;
 // docs/architecture/taa-thin-geometry-alternatives.md section 3.2): the draw-time thin
 // vote of the thin region (per-subset triangle-height histograms, RT2 .a, the tests draw's vote). Invalid or oversized:
@@ -2557,6 +2562,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_history_taps(taa_history_taps);
     hooked.motion_output.configure_box_resolution(taa_box_half,taa_box_resolution_default);
     hooked.motion_output.configure_far_gate(taa_far_camera_gate,taa_far_gate_given,taa_far_gate_default);
+    hooked.motion_output.configure_far_clip(taa_far_clip_7x7,taa_far_clip_given,taa_far_clip_default);
     hooked.motion_output.configure_thin_region_source(taa_thin_region_source,taa_thin_region_source_given,taa_thin_region_source_default);
     hooked.motion_output.configure_motion_weight(taa_motion_weight[0],taa_motion_weight[1],taa_motion_weight[2]);
     // Render-state configuration (hybrid unhook): the reasons that keep the
@@ -3083,7 +3089,7 @@ void initialize_log(HMODULE module) {
     // W 0 or 0.5..0.99 (checked against the history weight at attach), A 0..4, 0 < F0 < F1 <= 1e6 units per pixel.
     // The whole string must parse (1, 2, 4 or 6 fields); anything else keeps the option off.
     {wchar_t far_setting[64];const DWORD length=taa_requested?GetEnvironmentVariableW(L"X3M_TAA_FAR_STABILISER",far_setting,64):0;
-        if(length>0&&length<64){float v[6]={0.f,0.f,80.f,130.f,.03f,.25f};unsigned count=0;wchar_t* cursor=far_setting;bool ok=true;
+        if(length>0&&length<64){float v[6]={0.f,0.f,60.f,68.f,.03f,.25f};unsigned count=0;wchar_t* cursor=far_setting;bool ok=true;
             while(ok&&count<6){wchar_t* end=nullptr;v[count]=wcstof(cursor,&end);ok=end!=cursor;++count;if(!ok||*end==L'\0')break;ok=*end==L',';cursor=end+1;if(count==6)ok=false;}
             ok=ok&&(count==1||count==2||count==4||count==6)&&v[4]>=0.f&&v[5]>v[4]&&v[5]<=64.f&&(v[0]==0.f||(v[0]>=.5f&&v[0]<=.99f))&&v[1]>=0.f&&v[1]<=4.f&&v[2]>0.f&&v[3]>v[2]&&v[3]<=1e6f;
             if(ok)for(unsigned i=0;i<6;++i)taa_far[i]=v[i];else log("taa_far_setting invalid=1");}
@@ -3678,6 +3684,13 @@ void initialize_log(HMODULE module) {
         else if(!wcscmp(setting,L"camera"))taa_far_gate_given=true;
         else log("taa_far_gate_setting invalid=1");
         taa_far_gate_default=taa_far_gate_given&&taa_far_camera_gate&&GetEnvironmentVariableW(L"X3M_TAA_FAR_GATE_DEFAULT",setting,32)==1&&setting[0]==L'1';
+    }
+    if(const DWORD n=GetEnvironmentVariableW(L"X3M_TAA_FAR_CLIP",setting,32);n>=32)log("taa_far_clip_setting invalid=1 reason=too_long length=%lu",n); // oversized: invalid, stays 7x7
+    else if(n>0){
+        if(!wcscmp(setting,L"3x3")){taa_far_clip_7x7=false;taa_far_clip_given=true;}
+        else if(!wcscmp(setting,L"7x7"))taa_far_clip_given=true;
+        else log("taa_far_clip_setting invalid=1");
+        taa_far_clip_default=taa_far_clip_given&&taa_far_clip_7x7&&GetEnvironmentVariableW(L"X3M_TAA_FAR_CLIP_DEFAULT",setting,32)==1&&setting[0]==L'1';
     }
     // X3M_TAA_REGION_HOLD was removed with the dilated camera-gate chain (2026-09-24, docs/architecture/
     // taa-plan-lifted-slot-cap.md step 1): the region hold (A') is the camera gate's only path. A value that is still set,

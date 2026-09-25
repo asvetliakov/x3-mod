@@ -1,0 +1,22 @@
+model gate=camera width=1.0 yaw=0.00 clip=7x7 spike_codes=0.362 sparkles=0 rest_delta_codes=4.262 dim_codes=min -1.349 max 0.274 p10 -0.483
+model gate=camera width=1.0 yaw=0.00 clip=3x3 spike_codes=0.363 sparkles=0 rest_delta_codes=4.262 dim_codes=min -1.349 max 0.187 p10 -0.483
+model gate=camera width=1.0 yaw=10.00 clip=7x7 spike_codes=0.362 sparkles=0 rest_delta_codes=0.000 dim_codes=n/a
+model gate=camera width=1.0 yaw=10.00 clip=3x3 spike_codes=0.363 sparkles=0 rest_delta_codes=0.000 dim_codes=n/a
+model gate=screen width=1.0 yaw=10.00 clip=7x7 spike_codes=2.555 sparkles=0 rest_delta_codes=0.000 dim_codes=n/a
+model gate=camera width=1.0 yaw=10.50 clip=7x7 spike_codes=3.376 sparkles=0 rest_delta_codes=0.000 dim_codes=n/a
+model gate=camera width=1.0 yaw=10.50 clip=3x3 spike_codes=4.056 sparkles=0 rest_delta_codes=0.000 dim_codes=n/a
+model gate=screen width=1.0 yaw=10.50 clip=7x7 spike_codes=3.345 sparkles=0 rest_delta_codes=0.000 dim_codes=n/a
+model gate=camera width=1.0 yaw=8.25 clip=7x7 spike_codes=1.326 sparkles=0 rest_delta_codes=0.000 dim_codes=n/a
+model gate=camera width=1.0 yaw=8.25 clip=3x3 spike_codes=2.246 sparkles=0 rest_delta_codes=0.000 dim_codes=n/a
+model gate=screen width=1.0 yaw=8.25 clip=7x7 spike_codes=5.268 sparkles=0 rest_delta_codes=0.000 dim_codes=n/a
+model gate=camera width=0.4 yaw=0.00 clip=7x7 spike_codes=0.672 sparkles=0 rest_delta_codes=4.262 dim_codes=min -1.349 max 0.706 p10 -0.569
+model gate=camera width=0.4 yaw=0.00 clip=3x3 spike_codes=10.896 sparkles=72 rest_delta_codes=32.740 dim_codes=min -112.237 max 0.706 p10 -112.237
+model gate=camera width=0.4 yaw=10.00 clip=7x7 spike_codes=0.672 sparkles=0 rest_delta_codes=0.000 dim_codes=n/a
+model gate=camera width=0.4 yaw=10.00 clip=3x3 spike_codes=10.896 sparkles=72 rest_delta_codes=0.000 dim_codes=n/a
+model gate=screen width=0.4 yaw=10.00 clip=7x7 spike_codes=4.492 sparkles=0 rest_delta_codes=0.000 dim_codes=n/a
+model gate=camera width=0.4 yaw=10.50 clip=7x7 spike_codes=4.914 sparkles=0 rest_delta_codes=0.000 dim_codes=n/a
+model gate=camera width=0.4 yaw=10.50 clip=3x3 spike_codes=5.849 sparkles=0 rest_delta_codes=0.000 dim_codes=n/a
+model gate=screen width=0.4 yaw=10.50 clip=7x7 spike_codes=19.146 sparkles=90 rest_delta_codes=0.000 dim_codes=n/a
+model gate=camera width=0.4 yaw=8.25 clip=7x7 spike_codes=2.222 sparkles=0 rest_delta_codes=0.000 dim_codes=n/a
+model gate=camera width=0.4 yaw=8.25 clip=3x3 spike_codes=4.279 sparkles=0 rest_delta_codes=0.000 dim_codes=n/a
+model gate=screen width=0.4 yaw=8.25 clip=7x7 spike_codes=7.657 sparkles=180 rest_delta_codes=0.000 dim_codes=n/a

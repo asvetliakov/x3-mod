@@ -438,7 +438,7 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
         bool(in.color)==bool(in.color_surface)||bool(in.depth_snapshot)==bool(in.current_depth)||
         (in.depth_snapshot&&!decoder_)||(sentinel&&!in.current_depth)||
         !x3::temporal::valid_sharpen(in.sharpen)||(in.sharpen>0&&(!in.color_surface||!sharpen_))||
-        !x3::temporal::valid_far_weight(in.far_weight,in.weight)||!x3::temporal::valid_current_filter(in.far_filter)||!std::isfinite(in.far_d0)||!std::isfinite(in.far_inv)||in.far_inv<0||
+        !x3::temporal::valid_far_weight(in.far_weight,in.weight)||!x3::temporal::valid_current_filter(in.far_filter)||!x3::temporal::valid_far_clip(in.far_clip)||!std::isfinite(in.far_d0)||!std::isfinite(in.far_inv)||in.far_inv<0||
         !x3::temporal::valid_far_weight(in.thin_region_weight,in.weight)||!x3::temporal::valid_thin_clip(in.thin_region_relax)||
         (thin_region&&(!std::isfinite(in.thin_region_emissive)||in.thin_region_emissive<0))||
         (in.thin_region_source!=ThinRegionSource::Both&&in.thin_region_source!=ThinRegionSource::Screen&&in.thin_region_source!=ThinRegionSource::Vote)||
@@ -558,9 +558,9 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     UINT final_mask=1; // which owned mask target the resolve reads
     // A' (the camera-gate program only): c11 = (1: the far weight's screen speed gate, 0: its camera gate (FrameInputs::
     // far_camera_gate), the far components' scales, the hold length in frames); c13 = farw's
-    // d0 and 1 / (d1 - d0).
+    // d0 and 1 / (d1 - d0), and the far clip's threshold on farw * openC (FrameInputs::far_clip; kFarClipOff with the far gate off).
     const float hold_constants[4]={in.far_camera_gate?0.f:1.f,far_constants[2],far_constants[3],float(in.thin_region_hold_frames)};
-    const float far_gate_constants[4]={far_constants[0],far_constants[1],0.f,0.f};
+    const float far_gate_constants[4]={far_constants[0],far_constants[1],far_on?in.far_clip:x3::temporal::kFarClipOff,0.f};
     // Camera gate only (section 32.3): c8, the depth / translation term of its camera path (anything non-finite is the far-plane
     // path), and c9, the lane form read per pixel from the current depth's .b where it is four-channel.
     float parallax_constants[4]={in.camera_depth_parallax[0],in.camera_depth_parallax[1],in.camera_depth_parallax[2],in.camera_depth_parallax[3]};

@@ -1,0 +1,46 @@
+# run_temporal_pass.py in the worktree (far clip 7x7 change, uncommitted), 2026-09-25, vs the Run84 candidate report /tmp/x3-run84-candidate/temporal.out
+passed True exit 0 lattice budget slots 1019.0
+
+FAR_JITTER_LINE rows (GPU): clip width row sparkles spike_codes spike_rest rest_delta_codes dim_p10 line_px
+7x7 1.0 rest 0 0.372 0.372 4.320 -1.566 144
+7x7 1.0 yaw10 0 0.372 0.372 -1.000 0.000 0
+7x7 1.0 yaw10.5 0 3.450 0.372 -1.000 0.000 0
+7x7 1.0 yaw8.25 0 1.374 0.372 -1.000 0.000 0
+3x3 1.0 rest 0 0.372 0.372 4.320 -1.566 144
+3x3 1.0 yaw10 0 0.372 0.372 -1.000 0.000 0
+3x3 1.0 yaw10.5 0 4.067 0.372 -1.000 0.000 0
+3x3 1.0 yaw8.25 0 2.234 0.372 -1.000 0.000 0
+7x7 0.4 rest 0 0.690 0.690 4.320 -1.566 90
+7x7 0.4 yaw10 0 0.690 0.690 -1.000 0.000 0
+7x7 0.4 yaw10.5 0 4.932 0.690 -1.000 0.000 0
+7x7 0.4 yaw8.25 0 2.244 0.690 -1.000 0.000 0
+3x3 0.4 rest 72 10.880 10.880 32.705 -112.257 90
+3x3 0.4 yaw10 72 10.880 10.880 -1.000 0.000 0
+3x3 0.4 yaw10.5 0 5.823 10.880 -1.000 0.000 0
+3x3 0.4 yaw8.25 0 4.282 10.880 -1.000 0.000 0
+
+24 differing leaves (hashes, paths, timings excluded):
+/far_jitter_line <new> list len 16
+/lattice/budget/embedded_far_camera_hold/dwords 3849.0 3887.0
+/lattice/budget/embedded_far_camera_hold/headroom -500.0 -507.0
+/lattice/budget/embedded_far_camera_hold/instruction_slots 1012.0 1019.0
+/motion_weight/36/e_ratio 0.197501 0.197494
+/motion_weight/36/ripple_rms 0.009430 0.009433
+/motion_weight/37/e_ratio 0.383246 0.383249
+/motion_weight/37/ripple_rms 0.019563 0.019564
+/motion_weight/38/e_ratio 0.116333 0.116334
+/motion_weight/38/ripple_rms 0.006076 0.006075
+/motion_weight/39/e_ratio 0.116333 0.116334
+/motion_weight/39/ripple_rms 0.006076 0.006075
+/motion_weight/78/e_ratio 0.197501 0.197494
+/motion_weight/78/ripple_rms 0.009430 0.009433
+/motion_weight/79/e_ratio 0.383246 0.383249
+/motion_weight/79/ripple_rms 0.019563 0.019564
+/motion_weight/80/e_ratio 0.116333 0.116334
+/motion_weight/80/ripple_rms 0.006076 0.006075
+/motion_weight/81/e_ratio 0.116333 0.116334
+/motion_weight/81/ripple_rms 0.006076 0.006075
+/seta_exit/11/trail_cast_max 0.018799 0.018311
+/seta_exit/12/trail_cast_max 0.088501 0.087280
+/seta_exit/25/trail_cast_max 0.018799 0.018311
+/seta_exit/26/trail_cast_max 0.088501 0.087280

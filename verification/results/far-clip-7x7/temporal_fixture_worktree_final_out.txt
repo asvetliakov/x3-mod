@@ -1,0 +1,2 @@
+# screen-default attempt (temporal3, FAIL) : passed False slots 1017.0
+gate clip width row sparkles spike_codes rest_delta_codes dim_p10

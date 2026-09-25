@@ -182,6 +182,13 @@ struct FrameInputs {
     // far_weight under a camera pan), false on the pixel's screen speed (the gate before 2026-09-25). c11.x of that program;
     // the far program (no camera gate) always uses the screen speed and ignores it.
     bool far_camera_gate = true;
+    // The far clip (X3M_TAA_FAR_CLIP; docs/architecture/taa-mask-fold.md section 4.2 addendum "far clip"): on the camera-gate
+    // resolve a pixel outside the thin region whose farw * openC exceeds this threshold clips its history against the 7x7 min / max
+    // of the weighed current colour (taken in place on that branch, or the box targets where they are marked) instead of the 3x3
+    // variance clip. c13.z of that program (kFarClipOff with the far gate off); 0 (the default) is any far weight,
+    // x3::temporal::kFarClipOff (2) the 3x3 clip everywhere. Finite, in [0, 2]; anything else refuses the run. The far program (no
+    // camera gate) has no far clip and ignores it.
+    float far_clip = x3::temporal::kFarClipThreshold;
     // Post-resolve sharpen of the display image (sharpen.h, rcas.hlsl;
     // docs/architecture/temporal-integration.md "Post-resolve sharpen"): 0
     // (the default) draws nothing and the run is bit-identical to a run

@@ -670,6 +670,15 @@ public:
     // the creation row; one motion_output_taa_far_gate row when camera was requested explicitly for a far weight there). `launcher_default`
     // (X3M_TAA_FAR_GATE_DEFAULT=1 with camera) is logged as default= on the creation row.
     void configure_far_gate(bool camera, bool given, bool launcher_default) noexcept { taa_far_camera_gate_ = camera; taa_far_gate_given_ = given; taa_far_gate_default_ = given && camera && launcher_default; }
+    // X3M_TAA_FAR_CLIP (7x7|3x3, DLL default 7x7 when the variable is unset; the launcher sends 7x7 on --taa launches;
+    // docs/architecture/taa-mask-fold.md section 4.2 addendum "far clip"): on the camera-gate resolve a pixel outside the thin
+    // region with farw * openC > 0 clips its history against the 7x7 min / max instead of the 3x3 variance clip
+    // (FrameInputs::far_clip = x3::temporal::kFarClipThreshold 0; 3x3 = kFarClipOff 2). openC is the camera-relative openness
+    // whatever X3M_TAA_FAR_GATE selects for the far weight. Effective only with the far gate (a far weight or
+    // filter) on the camera-gate resolve (far_clip=7x7 on the creation row; one motion_output_taa_far_clip row when 7x7 was
+    // requested explicitly where it cannot act). `launcher_default` (X3M_TAA_FAR_CLIP_DEFAULT=1 with 7x7) is logged as
+    // far_clip_default= on the creation row.
+    void configure_far_clip(bool box7, bool given, bool launcher_default) noexcept { taa_far_clip_7x7_ = box7; taa_far_clip_given_ = given; taa_far_clip_default_ = given && box7 && launcher_default; }
     // X3M_TAA_THIN_REGION_SOURCE (both|screen|vote as 0|1|2, renderer::ThinRegionSource; docs/architecture/
     // taa-thin-geometry-alternatives.md section 3.2, taa-mask-fold.md): what feeds the thin region's flag. Resolved per
     // device at initialisation (screen and vote need the thin region, vote also the thin vote; screen is refused under the
@@ -1599,6 +1608,9 @@ private:
         std::uint32_t sample_at = 0, sampled = 0;
         std::uint64_t sample_ticks = 0, stamp_ticks = 0;
         float min_alpha = 1.f;
+        // The largest thin fraction among the known opaque draws that did not vote this frame (below thin_vote::vote_fraction;
+        // 0 when none): how close the unvoted draws come to the vote (docs/architecture/taa-thin-classification.md section 7).
+        float max_unvoted = 0.f;
     } thin_vote_frame_{};
     struct ThinVoteTotals {
         std::uint64_t reads = 0, measured = 0, unreadable = 0, retries = 0, triangles = 0, lock_ticks = 0, measure_ticks = 0;
@@ -2376,7 +2388,7 @@ private:
     float hdr_taa_k_ = 0.f;
     float taa_k_override_ = -1.f;             // X3M_TAA_K (negative: derived)
     float taa_sharpen_ = 0.f;                 // X3M_TAA_SHARPEN (0: off)
-    float taa_far_weight_ = 0.f, taa_far_filter_ = 0.f, taa_far_f0_ = 80.f, taa_far_f1_ = 130.f, taa_far_lo_ = .03f, taa_far_hi_ = .25f; // X3M_TAA_FAR_STABILISER
+    float taa_far_weight_ = 0.f, taa_far_filter_ = 0.f, taa_far_f0_ = 60.f, taa_far_f1_ = 68.f, taa_far_lo_ = .03f, taa_far_hi_ = .25f; // X3M_TAA_FAR_STABILISER (F0 / F1 80 / 130 before 2026-09-25)
     float taa_thin_weight_ = 0.f, taa_thin_relax_ = 1.f; // X3M_TAA_THIN_REGION
     bool taa_thin_camera_gate_ = false; // X3M_TAA_THIN_REGION_GATE=camera
     float taa_thin_emissive_ = 0.f;     // X3M_TAA_THIN_REGION_EMISSIVE=E: emissive vote of the thin region (thin-glow-lines.md 8.3 R3)
@@ -2389,6 +2401,9 @@ private:
     bool taa_far_camera_gate_ = true;         // X3M_TAA_FAR_GATE: camera (default) or screen; FrameInputs::far_camera_gate
     bool taa_far_gate_given_ = false;         // the variable was set to a valid value
     bool taa_far_gate_default_ = false;       // that camera came from the launcher's default (X3M_TAA_FAR_GATE_DEFAULT=1): default=1 on the creation row
+    bool taa_far_clip_7x7_ = true;            // X3M_TAA_FAR_CLIP: 7x7 (default) or 3x3; FrameInputs::far_clip
+    bool taa_far_clip_given_ = false;         // the variable was set to a valid value
+    bool taa_far_clip_default_ = false;       // that 7x7 came from the launcher's default (X3M_TAA_FAR_CLIP_DEFAULT=1): far_clip_default=1 on the creation row
     unsigned taa_thin_source_ = 0;            // X3M_TAA_THIN_REGION_SOURCE: requested (0 both, 1 screen, 2 vote)
     bool taa_thin_source_given_ = false;      // the variable was set to a valid value (the configured row is logged)
     bool taa_thin_source_default_ = false;    // that value came from the launcher's default (X3M_TAA_THIN_REGION_SOURCE_DEFAULT=1)

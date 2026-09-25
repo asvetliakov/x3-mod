@@ -29,6 +29,9 @@
 //   the larger of the screen and the camera-relative openness); the far weight acting at rest and under the integer yaw; on the
 //   screen gate, every row bit-identical to the far program and the integer yaw's sparkle margin above 40 codes on the 0.4 px
 //   line, above rest's on the 1 px line (the gate before 2026-09-25: the sparkles return).
+//   Since 2026-09-25 every program here runs with the far clip off (FrameInputs::far_clip = kFarClipOff, the clip these pins were taken
+//   with): the far program has no far clip, so the screen-gate identity needs it off; the far clip is FAR_JITTER_LINE's
+//   (temporal_far_jitter_line_inc.h).
 namespace far_camera {
 void far_camera_pan_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolver){
     std::puts("FAR_CAMERA_PAN_CASES");constexpr UINT W=512,H=16,P=16;constexpr unsigned frames=96,moveFrom=64,window=16;constexpr UINT X0=352,X1=W-16,Y0=2,Y1=H-2;
@@ -69,6 +72,7 @@ void far_camera_pan_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* res
             in.far_weight=program==CameraFarOff?0.f:.985f;in.far_d0=.9995f;in.far_inv=1.f/(.9999f-.9995f);in.far_speed_lo=x3::temporal::kFarSpeedLo;in.far_speed_hi=x3::temporal::kFarSpeedHi;
             if(program!=ScreenFar){in.thin_region_weight=.97f;in.thin_region_relax=1;in.thin_region_camera_gate=true;}
             in.far_camera_gate=program!=CameraScreen;
+            in.far_clip=x3::temporal::kFarClipOff; // the 3x3 clip (X3M_TAA_FAR_CLIP=3x3): this scene pins the far weight's gate against the far program; the far clip's rows are FAR_JITTER_LINE's
             Output out;check("fc Begin resolve",d->BeginScene());check("fc resolve",pass.run(in,&out));check("fc End resolve",d->EndScene());
             require(out.color&&out.age&&pass.diagnostics().history_valid&&out.used_history==(n>0),"fc history follows the sequence");
             run.output.push_back(read(out.color));run.age.push_back(read(out.age));}

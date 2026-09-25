@@ -90,6 +90,10 @@ programs did not run. The bound is what distinguishes this tier from the region:
 no positive witness that a thin feature exists there, so its hold must stay bounded by what the neighbourhood shows this
 frame; the region has that witness (the vote) and may hold unclipped. At 20-64k and 64-77k view units no pixel exists in the
 three bursts (`far_px_counts_out.txt` [M]), so the calibration between 40 and 77k is untested (section 7).
+As built (2026-09-25): the far weight keeps the camera gate (`openC`) by default; a screen-gate default with the bound was
+measured and rejected (the 0.4 px fixture line at 10.5 px/frame: 19.17 codes against 4.93 on the camera gate [M]), because at
+the base weight 0.9 a sampled sub-pixel line leaks 10 % per frame, which the bound does not remove (`taa-mask-fold.md`
+section 4.2 addenda).
 
 **Image witness (feature seen, size unknown).** The emissive vote at E = 1 stays: a routed pixel above 1.0 luma whose 3x3
 minimum is below a third of it is a strip seen this phase, and the hold bridges the rest. At this stand it flags 1,035-1,128

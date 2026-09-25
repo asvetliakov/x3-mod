@@ -152,7 +152,7 @@ class TaaImageDefaultsLaunch(unittest.TestCase):
         # --taa-far-stabiliser W[,A[,F0,F1]] (docs/architecture/taa-distant-line-fade.md section 9): components separate.
         with tempfile.TemporaryDirectory() as directory:
             self.assertNotIn('X3M_TAA_FAR_STABILISER', self.env(directory, *TAA, inherited={'X3M_TAA_FAR_STABILISER': '0.985'}))
-            for given, forwarded in (('0.985', '0.985,0,80,130,0.03,0.25'), ('0.985,1', '0.985,1,80,130,0.03,0.25'), ('0,1', '0,1,80,130,0.03,0.25'), ('0.97,0.5,100,160', '0.97,0.5,100,160,0.03,0.25'), ('0.985,0,80,130,0.5,2', '0.985,0,80,130,0.5,2')):
+            for given, forwarded in (('0.985', '0.985,0,60,68,0.03,0.25'), ('0.985,1', '0.985,1,60,68,0.03,0.25'), ('0,1', '0,1,60,68,0.03,0.25'), ('0.97,0.5,100,160', '0.97,0.5,100,160,0.03,0.25'), ('0.985,0,80,130,0.5,2', '0.985,0,80,130,0.5,2')):
                 self.assertEqual(self.env(directory, *TAA, '--taa-far-stabiliser', given)['X3M_TAA_FAR_STABILISER'], forwarded)
             for value in ('0.8', '0.995', 'nan', '0.985,5', '0.985,1,80', '0.985,1,130,80', '0.985,1,0,80', 'x', '0.985,1,80,130,1', '0.985,0,80,130,0.5,0.5', '0.985,0,80,130,-1,2', '0.985,0,80,130,0.1,65'):
                 code, _, error = self.launch(directory, *TAA, '--taa-far-stabiliser', value)
@@ -202,7 +202,7 @@ class TaaImageDefaultsLaunch(unittest.TestCase):
             self.assertEqual(self.env(directory, *TAA, '--taa-thin-region', '0.97', '--taa-far-stabiliser', '0.985')['X3M_TAA_THIN_REGION'], '0.97,1')
             # One shared speed gate: given on either option it reaches both; given on both it must agree.
             env = self.env(directory, *TAA, '--taa-thin-region', '0.97,1,0.05,0.5', '--taa-far-stabiliser', '0.985')
-            self.assertEqual((env['X3M_TAA_THIN_REGION'], env['X3M_TAA_FAR_STABILISER']), ('0.97,1,0.05,0.5', '0.985,0,80,130,0.05,0.5'))
+            self.assertEqual((env['X3M_TAA_THIN_REGION'], env['X3M_TAA_FAR_STABILISER']), ('0.97,1,0.05,0.5', '0.985,0,60,68,0.05,0.5'))
             env = self.env(directory, *TAA, '--taa-thin-region', '0.97', '--taa-far-stabiliser', '0.985,0,80,130,0.05,0.5')
             self.assertEqual((env['X3M_TAA_THIN_REGION'], env['X3M_TAA_FAR_STABILISER']), ('0.97,1', '0.985,0,80,130,0.05,0.5'))
             env = self.env(directory, *TAA, '--taa-thin-region', '0.97,1,0.05,0.5', '--taa-far-stabiliser', '0.985,0,80,130,0.05,0.5')
@@ -397,19 +397,19 @@ class TaaAgeProgramDefaultsLaunch(unittest.TestCase):
     def test_default_on_with_taa(self):
         with tempfile.TemporaryDirectory() as directory:
             env, _ = self.run_env(directory, *TAA, '--hdr', inherited={'X3M_TAA_FAR_STABILISER': '0', 'X3M_TAA_THIN_REGION': '0'})
-            self.assertEqual((env['X3M_TAA_FAR_STABILISER'], env['X3M_TAA_THIN_REGION']), ('0.985,0,80,130,0.03,0.25', '0.97,1'))
+            self.assertEqual((env['X3M_TAA_FAR_STABILISER'], env['X3M_TAA_THIN_REGION']), ('0.985,0,60,68,0.03,0.25', '0.97,1'))
             # The derived defaults see the defaulted thin region: camera gate, emissive vote 1 (HDR); the sentinel stabiliser is retired.
             self.assertEqual((env['X3M_TAA_THIN_REGION_GATE'], env['X3M_TAA_THIN_REGION_EMISSIVE']), ('camera', '1'))
             self.assertNotIn('X3M_TAA_SENTINEL_STABILISER', env)
             # An explicit value still wins; the other keeps its default.
             env, _ = self.run_env(directory, *TAA, '--taa-thin-region', '0.95')
-            self.assertEqual((env['X3M_TAA_FAR_STABILISER'], env['X3M_TAA_THIN_REGION']), ('0.985,0,80,130,0.03,0.25', '0.95,1'))
+            self.assertEqual((env['X3M_TAA_FAR_STABILISER'], env['X3M_TAA_THIN_REGION']), ('0.985,0,60,68,0.03,0.25', '0.95,1'))
 
     def test_explicit_off(self):
         with tempfile.TemporaryDirectory() as directory:
             for off in ('off', '0', 'OFF'):
                 env, _ = self.run_env(directory, *TAA, '--taa-far-stabiliser', off, '--taa-thin-region', off)
-                self.assertEqual((env['X3M_TAA_FAR_STABILISER'], env['X3M_TAA_THIN_REGION']), ('0,0,80,130,0.03,0.25', '0,1'), off)
+                self.assertEqual((env['X3M_TAA_FAR_STABILISER'], env['X3M_TAA_THIN_REGION']), ('0,0,60,68,0.03,0.25', '0,1'), off)
                 # Neither age program in effect: the options keyed on them resolve off, as before the defaults.
                 self.assertNotIn('X3M_TAA_THIN_REGION_GATE', env)
                 self.assertEqual(env['X3M_TAA_MOTION_WEIGHT'], '0')
@@ -427,7 +427,7 @@ class TaaAgeProgramDefaultsLaunch(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             env, _ = self.run_env(directory, *TAA, '--taa-history-weight', '0.98')
             self.assertNotIn('X3M_TAA_THIN_REGION', env)
-            self.assertEqual(env['X3M_TAA_FAR_STABILISER'], '0.985,0,80,130,0.03,0.25')
+            self.assertEqual(env['X3M_TAA_FAR_STABILISER'], '0.985,0,60,68,0.03,0.25')
 
 
 if __name__ == '__main__':

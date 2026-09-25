@@ -1,0 +1,4 @@
+before.bin // approximately 1012 instruction slots used (58 texture, 954 arithmetic)
+after.bin // approximately 1019 instruction slots used (58 texture, 961 arithmetic)
+far.bin // approximately 545 instruction slots used (44 texture, 501 arithmetic)
+# first form (farGate.z > 0 && farw * openC >= farGate.z), not rerun; the threshold-0 program measures 1,017 slots / 3,878 words in the fixture's RESOLVE_BUDGET row (temporal_fixture_worktree_threshold0_out.txt)

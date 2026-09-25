@@ -14,6 +14,7 @@ paths=[root/name for name in ('src/renderer/temporal_pass.h','src/renderer/tempo
     'src/temporal/resolve_far_camera_hold.hlsl','src/renderer/temporal_resolve_far_camera_hold_program_inc.h','src/temporal/thin_box_hold_ps.hlsl','src/renderer/temporal_thin_box_hold_program_inc.h',
     'verification/probe/temporal_fold_timing_inc.h',
     'verification/probe/temporal_far_camera_inc.h',
+    'verification/probe/temporal_far_jitter_line_inc.h',
     'verification/probe/temporal_region_hold_inc.h','verification/probe/temporal_box_half_inc.h',
     'verification/probe/temporal_thin_source_inc.h','src/temporal/line_mask_depth_thin_ps.hlsl','src/renderer/temporal_line_mask_depth_thin_program_inc.h',
      'src/temporal/thin_box_rows_half_ps.hlsl','src/renderer/temporal_thin_box_rows_half_program_inc.h','src/temporal/thin_box_columns_half_ps.hlsl','src/renderer/temporal_thin_box_columns_half_program_inc.h','src/temporal/depth_decode.hlsl','src/temporal/sharpen.h','src/temporal/rcas.hlsl','src/temporal/taa_sharpen_ps.hlsl','verification/probe/temporal_pass_fixture.cpp','verification/probe/build_temporal_pass.sh','verification/probe/run_temporal_pass.py')]
@@ -283,7 +284,7 @@ try:
     assert [hold['state'][0][k] for k in ('masks_camera','masks_screen','masks_on','masks_at_reset','masks_after_reset','masks_box_refused')]==['0','2','0','0','0','0'],hold['state']
     assert len(hold['thin'])==3 and all(r['square_differs']=='0' and float(r['age_oracle_error'])==0 for r in hold['thin']) and len(hold['motion_start'])==1 and len(hold['pan'])==1 and len(hold['stale'])==1 and len(hold['box_domain'])==1 and len(hold['pan_stop'])==1 and len(hold['box_open'])==1,hold
     assert [(r['scene'],r['box']) for r in hold['fold_fallback']]==[(s,b) for s in ('pan_arm_bars','gap_lattice_7.5px') for b in ('full','half')] and all(int(r['fallback_px_frames'])>0 and float(r['error_in_place_7x7'])<=float(r['bound']) for r in hold['fold_fallback']),hold['fold_fallback']
-    assert lattice.returncode==0 and 'LATTICE_BASE numerical=10 state_restorations=0' in lattice_text and 'FLICKER_BASE numerical=190 state_restorations=4' in lattice_text and 'LINE_BASE numerical=190 state_restorations=4' in lattice_text and 'DEPTH_FOLD_BASE numerical=452 state_restorations=72' in lattice_text and 'HISTORY_TAPS_BASE numerical=473 state_restorations=72' in lattice_text and 'REGION_HOLD_BASE numerical=525 state_restorations=75' in lattice_text and 'BOX_HALF_BASE numerical=548 state_restorations=76' in lattice_text and 'THIN_SOURCE_BASE numerical=561 state_restorations=90' in lattice_text and 'FOLD_TIMING_BASE numerical=561 state_restorations=90' in lattice_text and 'RESULT PASS numerical=581 state_restorations=90 lattice=1' in lattice_text and 'FAIL' not in lattice_text,lattice_text[-1500:]
+    assert lattice.returncode==0 and 'LATTICE_BASE numerical=10 state_restorations=0' in lattice_text and 'FLICKER_BASE numerical=190 state_restorations=4' in lattice_text and 'LINE_BASE numerical=190 state_restorations=4' in lattice_text and 'DEPTH_FOLD_BASE numerical=452 state_restorations=72' in lattice_text and 'HISTORY_TAPS_BASE numerical=473 state_restorations=72' in lattice_text and 'REGION_HOLD_BASE numerical=525 state_restorations=75' in lattice_text and 'BOX_HALF_BASE numerical=548 state_restorations=76' in lattice_text and 'THIN_SOURCE_BASE numerical=561 state_restorations=90' in lattice_text and 'FOLD_TIMING_BASE numerical=561 state_restorations=90' in lattice_text and 'FAR_CAMERA_PAN_BASE numerical=581 state_restorations=90' in lattice_text and 'RESULT PASS numerical=598 state_restorations=90 lattice=1' in lattice_text and 'FAIL' not in lattice_text,lattice_text[-1500:]
     # The 2,048-slot ceiling per TAA program (docs/architecture/taa-plan-lifted-slot-cap.md section 2; AGENTS.md "Shader slot
     # budget": 512 is the spec minimum, not a limit). device_limit stays a record.
     assert len(report['flicker']['drift'])==64 and len(report['flicker']['near_depth'])==8 and all(float(v['instruction_slots'])<=2048 and v['within_ceiling_2048']==1 for k,v in report['lattice']['budget'].items()),report['lattice']['budget']
@@ -353,6 +354,21 @@ try:
     for program,(margins,peaks) in pins.items():
         assert all(abs(float(pan[(program,'0.4',row)]['spike_codes'])-v)<=.01 for row,v in zip(('rest','yaw10','yaw10.5','yaw8.25'),margins)),(program,pan)
         assert all(abs(float(pan[(program,'1.0',row)]['peak'])-v)<=1e-4 for row,v in zip(('yaw10.5','yaw8.25'),peaks)),(program,pan)
+    # Far clip (docs/architecture/taa-mask-fold.md section 4.2 addendum "far clip"; run327 / run332 rest sparkles): slanted far
+    # sub-pixel lines (1 px, 0.4 px) under the 8-phase jitter at rest and under yaws of 10 / 10.5 / 8.25 px/frame on the camera-gate
+    # program with the far clip (7x7, the default) and without it (3x3). 7x7: every row's one-frame margin and the rest delta at
+    # most 6 codes, the rest dimming within 3 codes; 3x3: the 0.4 px line sparkles at rest (margin and delta above 6 codes).
+    report['far_jitter_line']=fields('FAR_JITTER_LINE ')
+    jit={(r['clip'],r['gate'],r['width'],r['row']):r for r in report['far_jitter_line']}
+    assert len(report['far_jitter_line'])==22 and len(jit)==22 and all(r['region_px']=='0' for r in report['far_jitter_line']),report['far_jitter_line']
+    for width in ('1.0','0.4'):
+        assert all(float(jit[('7x7','camera',width,row)]['spike_codes'])<=6 for row in ('rest','yaw10','yaw10.5','yaw8.25')),(width,jit)
+        rest=jit[('7x7','camera',width,'rest')]
+        assert float(rest['rest_delta_codes'])<=6 and max(-float(rest['dim_min']),float(rest['dim_max']))<=3 and int(rest['line_px'])>0,(width,rest)
+    assert float(jit[('3x3','camera','0.4','rest')]['spike_codes'])>6 and float(jit[('3x3','camera','0.4','rest')]['rest_delta_codes'])>6,jit
+    # The witness for the camera default of the far weight's gate: screen gate + 7x7, 0.4 px line, yaw 10.5 above the margin (the
+    # other five screen rows are informational).
+    assert float(jit[('7x7','screen','0.4','yaw10.5')]['spike_codes'])>6,jit
     ripple=report['lattice']['ripple']
     assert len(ripple)==4 and report['lattice']['budget']['plain']['instruction_slots']<=2048,report['lattice']
     assert hashes()==report['sources_before_build'],'Source changed during the lattice cases'

@@ -3195,3 +3195,65 @@ the screen gate, no camera-gate oracle config carries a far weight, and `FAR_CAM
 geometry (no camera vote: camera openness 1) keeps W_FAR under a rotation where the screen gate dropped it, so unrouted
 content that moves or has parallax leaves a longer tail during a pan, bounded by the 3x3 clip; under pure translation both
 gates were open for it (section 4.2 addendum).
+2026-09-25, later: the default stays camera, confirmed after a screen default with the far clip was measured on the GPU
+(next entry, "Far gate default").
+
+## Far clip and far ramp 60 / 68 (2026-09-25; run327 / run329 / run332 rest sparkles; `docs/architecture/taa-mask-fold.md` section 4.2 addendum (2), the pixel tier of `docs/architecture/taa-thin-classification.md`)
+
+Change: far ramp defaults F0 / F1 80 / 130 -> 60 / 68 footprint units per pixel (launcher `--taa-far-stabiliser` expansion and
+the DLL: `farw = 1` from 87,040 view units (17.4 km) at 5120 px, was 166,400 (33.3 km); the plants sit at 89,000-137,000
+units, 17.8-27.4 km); the far clip on the camera-gate program: outside the region, `farw * openC > c13.z` (0: any far weight;
+3x3 = 2, above any product; the first form, `>= 0.5`, was replaced after review) clips the
+history against the 7x7 min / max (box targets where marked, else in place, on the existing dynamic branch) instead of the
+3x3 variance clip. `--taa-far-clip 7x7|3x3` (`X3M_TAA_FAR_CLIP`, default 7x7 with `_DEFAULT=1`, explicit marker 0, nothing
+without `--taa` or under `--vanilla`, DLL default 7x7); `far_clip=` / `far_clip_default=` on the `motion_output_taa` creation
+row, `far_clip=3x3` on the box-target fallback row; the clip gates on `openC` under both `--taa-far-gate` values; `run_motion_output.py` clears `X3M_TAA_FAR_CLIP` and its marker. Telemetry:
+`thin_vote_frame` carries `max_unvoted_fraction` (the largest thin fraction among the known opaque draws that did not vote).
+The CPU oracle (`line_model`) models the far clip (`oracleFarClip`, the pass default 0); `REGION_HOLD_IDENTITY` uploads
+`c13.z = 2` (off, as its reference). Evidence:
+`verification/results/far-clip-7x7/` (`run_slots.py` + `disasm_slots.cpp` -> `slots_out.txt`, `dryrun.py` -> `dryrun_out.txt`,
+`far_jitter_line_model.py` -> `far_jitter_line_model_out.txt`, `temporal_fixture_worktree_out.txt` + `lock-timings-temporal.json`
+for the GPU run). All figures measured unless tagged [I].
+
+- Program: `generate_rigid_motion_pixel.py` regenerated every header; only the hold program's bytecode changed: 3,849 -> 3,878
+  words, 1,012 -> 1,017 slots (the fixture's `RESOLVE_BUDGET embedded_far_camera_hold` row on the threshold-0 program).
+  `slots_out.txt` (D3DX disassembly, 1,019) is the first form and was not rerun; the far program stays 545. The eight other
+  resolve manifests changed only the `resolve.hlsl` include hash. A later comment-only edit of `resolve.hlsl` (the far clip
+  gates on openC whatever the far gate) moved that hash in all nine manifests by hand (5d14764c -> 563ad6f2), not by a
+  regeneration; `generate_rigid_motion_pixel.py --check` under the Wine lock confirms it.
+- Build: `cmake --build build`, 0 warnings, on the first form (fresh build directory) and on the threshold-0 program (the
+  orchestrator's rebuild); worktree builds, not a candidate. The temporal fixture compiles on the host with `-Wall -Wextra -Werror`.
+- Dry run (Run 84 A stand command, 77 arguments, the worktree DLL): `X3M_TAA_FAR_CLIP=7x7`, `_DEFAULT=1`,
+  `X3M_TAA_FAR_STABILISER=0.985,0,60,68,0.03,0.25`; with `--taa-far-clip 3x3`: `3x3` / `0`; `--vanilla`: none of them.
+- Host: `test_taa_far_clip` 11 tests (new; one guards that the embedded hold program's provenance names the current `resolve.hlsl`), `test_taa_far_gate` and `test_taa_image_defaults` updated to the new row format and
+  the 60 / 68 expansion; `run_host_suite.py` 269 modules / 2,794 tests, 0 failing.
+- New lattice rows `FAR_JITTER_LINE` (`verification/probe/temporal_far_jitter_line_inc.h`, lattice mode and `far-jitter-line`):
+  slanted (0.2 px per row) 1 px and 0.4 px bright lines (2.0 on 0.05, period 16) on a routed far strip at 100,000 units (farw 1
+  on the production gate of the run327 projection), 8-phase jitter, the camera-gate program at the launcher defaults, far clip
+  7x7 and 3x3; rows rest, yaw 10 / 10.5 / 8.25 px/frame (static 64 frames, then 32). Pins: 7x7 every row's run327 sparkle
+  margin <= 6 codes, rest frame-to-frame delta <= 6, rest dimming within 3 codes, both widths; 3x3 the 0.4 px line's rest
+  margin and delta above 6. `FAR_CAMERA_PAN` now runs with the far clip off (its screen-gate identity against the far program
+  needs it; its pinned rows are the 3x3 ones by construction). Lattice 581 -> 597 numerical / 90 state [M] (`FAR_CAMERA_PAN_BASE`
+  581, `RESULT PASS numerical=597 ... lattice=1`). Host model of the
+  rows [I, not the GPU]: 7x7 margins 0.36 / 0.67 codes at rest (1 px / 0.4 px), 0.36 / 0.67 at yaw 10, 3.38 / 4.91 at yaw 10.5,
+  1.33 / 2.22 at yaw 8.25; rest delta 4.26; dimming min -1.35 codes; 3x3 0.4 px at rest 10.90 codes (72 sparkles), delta 32.7,
+  dimming down to -112 codes.
+
+GPU run on the threshold-0 program, orchestrator, worktree, `wine_lock.py --timings-json` 134.30 s child, 0 s wait [M]
+(`temporal_fixture_worktree_threshold0_out.txt`, `lock-timings-temporal2.json`; the first form's run, 137.98 s, gave the same
+rows): `run_temporal_pass.py` PASS, lattice 597 / 90. `FAR_JITTER_LINE` [M] (1 px / 0.4 px): 7x7 0 sparkles on every row,
+margin 0.372 / 0.690 codes at rest and yaw 10, 3.450 / 4.932 at yaw 10.5, 1.374 / 2.244 at yaw 8.25; rest delta 4.320,
+dimming p10 -1.566 codes (144 / 90 line pixels); 3x3 1 px the same at rest (0.372), 4.067 / 2.234 under the fractional yaws;
+3x3 0.4 px rest and yaw 10 72 sparkles, margin 10.880, rest delta 32.705, dimming p10 -112.257; yaw 10.5 / 8.25 5.823 / 4.282.
+The host model's margins and rest delta match within 0.1 code; its dimming p10 does not (-0.48 / -0.57 against -1.57).
+Changed rows against the Run84 candidate report [M]: `MOTION_WEIGHT` 16 leaves within 1e-5 (e_ratio 0.197501 -> 0.197494,
+0.116333 -> 0.116334), `SETA_EXIT` `trail_cast_max` 0.018799 -> 0.018311 and 0.088501 -> 0.087280 (rows 11 / 12 / 25 / 26),
+the hold program's budget; every other row identical. The camera-gate `run_motion_output.py` cases are not run. Not flown.
+
+Far gate default (same day): a screen default (DLL and launcher) was tried with the far clip and reverted; camera stays the
+default everywhere, `FrameInputs::far_camera_gate` included. `FAR_JITTER_LINE` keeps a third mode as the witness: the pan
+rows (yaw 10 / 10.5 / 8.25, both widths) with the 7x7 far clip on the screen gate. GPU run (orchestrator, worktree) [M]: on
+the screen gate the 0.4 px line's one-frame margin is 19.17 codes at 10.5 px/frame and 7.71 at 8.25 (limit 6; 0 above it at 10), against 4.93 / 2.24 on the camera gate (0.69 at rest) (`/tmp/x3-run85-fixtures/temporal3.log`); the camera rows unchanged. The host model predicted 19.15 / 7.66 [I].
+Reason: at the base weight 0.9 each frame that samples a sub-pixel line puts 10 % of it into the output, which no history clip removes; the camera gate holds 0.985 for world-static content under a pan, a 1.5 % leak. Pins: the
+0.4 px screen row at 10.5 px/frame is asserted above the 6-code margin (expected 1); the other five screen rows are
+informational. Lattice 597 -> 598 numerical expected [I] (not rerun with this pin set).

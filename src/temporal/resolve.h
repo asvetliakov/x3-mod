@@ -98,6 +98,13 @@ inline void prepare_flicker(float out[4], float thin_clip, float wmax, float lo,
 // narrow on purpose (taa-distant-line-fade.md section 10): at W 0.985 the history is resampled about 65 times, which
 // softens far detail as soon as it slides (replay: gradient energy x 0.78 at 0.085 px/frame under the first 0.5 .. 2 gate).
 constexpr float kFarWeightMax = .99f, kFarSpeedLo = .03f, kFarSpeedHi = .25f, kFarSpeedMax = 64.f, kFarFootprintMax = 1e6f;
+// Far clip (X3M_TAA_FAR_CLIP; docs/architecture/taa-mask-fold.md section 4.2 addendum "far clip"): on the camera-gate resolve a
+// pixel outside the thin region whose farw * openC exceeds this threshold clips its history against the 7x7 min / max of the
+// current colour instead of the 3x3 variance clip. kFarClipThreshold (0) takes every pixel with any far weight
+// (taa-thin-classification.md section 3); kFarClipOff (2, above any product of two openness values) is the 3x3 clip everywhere.
+// Valid thresholds are finite, in [0, 2].
+constexpr float kFarClipThreshold = 0.f, kFarClipOff = 2.f;
+inline bool valid_far_clip(float t) noexcept { return std::isfinite(t) && t>=0 && t<=kFarClipOff; }
 inline bool valid_far_speed_gate(float lo, float hi) noexcept { return std::isfinite(lo) && std::isfinite(hi) && lo>=0 && hi>lo && hi<=kFarSpeedMax; }
 // 0 is off; otherwise within [weight, 0.99], and only over a history that is kept at all (weight > 0).
 inline bool valid_far_weight(float w, float weight) noexcept { return std::isfinite(w) && (w==0 || (weight>0 && w>=weight && w<=kFarWeightMax)); }
