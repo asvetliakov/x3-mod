@@ -199,7 +199,7 @@ float4 luminance : register(c22); // k, current-filter A, alpha history (X3M_THI
 float4 depthParallax : register(c8); // camera_depth_parallax(): (DX, DY, DW) / m32, m22; xyz = 0 is the far-plane path
 float4 laneParallax : register(c9);  // camera_lane_parallax(): (DX, DY, DW), 1 where s1 is the lane (.b = view z); w = 0: c8 alone
 float4 thinTests : register(c10);    // x = E of the emissive vote (0 off), y = 1: vote-only source (no search), z = 1: the thin vote is cast in the lane's .a
-float4 holdGate : register(c11);     // x unused (0), yz = the far components' scales, w = L, the hold length (frames)
+float4 holdGate : register(c11);     // x = 1: the far weight on the screen speed gate (X3M_TAA_FAR_GATE=screen), 0: on openC; yz = the far components' scales, w = L, the hold length (frames)
 float4 farGate : register(c13);      // x = d0, y = 1 / (d1 - d0) of farw (0: off)
 #endif
 #ifdef X3M_CAMERA_GATE
@@ -1044,10 +1044,20 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     float keeping = max(tolerance, ageRaw);
     age = keeping >= 0 ? age : 0;
 #ifdef X3M_FAR_STABILIZE
-    // Two gated targets, each exact: the far weight c24.y through g and this pixel's own speed gate, the thin-region weight c5.x
+    // Two gated targets, each exact: the far weight c24.y through g and its motion gate, the thin-region weight c5.x
     // (the resolve never read c5.xy) through b. b = 0 is the far blend exactly, young pixels below the base weight included.
+    // The far weight's motion gate (taa-mask-fold.md section 4.2, addendum "far weight on the camera gate"): the camera-gate
+    // program opens it on openC by default (c11.x = 0), the camera-relative openness the region's b uses (c24.zw LO / HI on the
+    // pixel's correspondence against the camera path, the smaller of its own and the dilation neighbour's, under the L-frame
+    // closure hold), so a world-static far pixel keeps W_FAR under a camera pan and content moving against the camera path
+    // drops to the base weight; c11.x = 1 (X3M_TAA_FAR_GATE=screen) selects this pixel's screen speed gate, the gate before
+    // 2026-09-25, which the far program (no camera path: the screen gate, the far stabiliser alone) always uses. A uniform select.
     float ramp = age / (age + 1);
-    float farKeep = keep + stabilise.g * (1 - saturate((speed - flicker.z) * flicker.w)) * (min(ramp, flicker.y) - keep);
+    float farOpen = 1 - saturate((speed - flicker.z) * flicker.w);
+#ifdef X3M_REGION_HOLD
+    farOpen = holdGate.x > 0.5 ? farOpen : openC;
+#endif
+    float farKeep = keep + stabilise.g * farOpen * (min(ramp, flicker.y) - keep);
     keep = stabilise.b > 0 ? max(farKeep, keep + stabilise.b * (min(ramp, history.x) - keep)) : farKeep;
     keep = keeping >= 0 ? keep : 0; // the exit reset (the adaptive form above is 0 through the age)
 #else

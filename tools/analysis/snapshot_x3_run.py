@@ -32,6 +32,7 @@ LAUNCHER_STDERR = 'launcher-stderr.log'
 READBACKS = {
     'motion_output_color_readback': ('color', ('bgra8',)),
     'motion_output_taa_readback': ('taa', ('rgba16f',)),
+    'motion_output_taa_age_readback': ('taa_age', ('r32f',)),  # --taa-debug: the age / hold count target beside each taa dump
     'motion_output_present_readback': ('present', ('bgra8',)),
     'motion_output_readback': ('motion', ('rgba32f',)),
     'motion_output_depth_readback': ('depth', ('r32f', 'rg32f', 'rgba32f')),  # rgba32f: the receiver-depth option's wide RT2

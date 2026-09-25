@@ -295,6 +295,11 @@ unsigned taa_history_taps = 5;
 // (TemporalPass::configure_box_resolution). Invalid or oversized: stays full, logged.
 // X3M_TAA_BOX_RESOLUTION_DEFAULT=1 marks a value the launcher filled in from its default (the creation row's default=1).
 bool taa_box_half = false, taa_box_resolution_default = false;
+// X3M_TAA_FAR_GATE (camera|screen; unset is camera here, the launcher sends camera by default on --taa launches;
+// docs/architecture/taa-mask-fold.md section 4.2 addendum): the far weight's motion gate on the camera-gate resolve, the
+// camera-relative openness or the screen speed (the gate before 2026-09-25). Invalid or oversized: stays camera, logged.
+// X3M_TAA_FAR_GATE_DEFAULT=1 marks a camera the launcher filled in from its default (the creation row's default=1).
+bool taa_far_camera_gate = true, taa_far_gate_given = false, taa_far_gate_default = false;
 // X3M_TAA_THIN_VOTE (on|off; unset is off here, the launcher sends on by default since Run 81;
 // docs/architecture/taa-thin-geometry-alternatives.md section 3.2): the draw-time thin
 // vote of the thin region (per-subset triangle-height histograms, RT2 .a, the tests draw's vote). Invalid or oversized:
@@ -2551,6 +2556,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_sky_history(taa_sky_history_strict,taa_sky_history_band_px,taa_sky_history_exit_px);
     hooked.motion_output.configure_history_taps(taa_history_taps);
     hooked.motion_output.configure_box_resolution(taa_box_half,taa_box_resolution_default);
+    hooked.motion_output.configure_far_gate(taa_far_camera_gate,taa_far_gate_given,taa_far_gate_default);
     hooked.motion_output.configure_thin_region_source(taa_thin_region_source,taa_thin_region_source_given,taa_thin_region_source_default);
     hooked.motion_output.configure_motion_weight(taa_motion_weight[0],taa_motion_weight[1],taa_motion_weight[2]);
     // Render-state configuration (hybrid unhook): the reasons that keep the
@@ -3665,6 +3671,13 @@ void initialize_log(HMODULE module) {
         if(!wcscmp(setting,L"half"))taa_box_half=true;
         else if(wcscmp(setting,L"full")!=0)log("taa_box_resolution_setting invalid=1");
         taa_box_resolution_default=taa_box_half&&GetEnvironmentVariableW(L"X3M_TAA_BOX_RESOLUTION_DEFAULT",setting,32)==1&&setting[0]==L'1';
+    }
+    if(const DWORD n=GetEnvironmentVariableW(L"X3M_TAA_FAR_GATE",setting,32);n>=32)log("taa_far_gate_setting invalid=1 reason=too_long length=%lu",n); // oversized: invalid, stays camera
+    else if(n>0){
+        if(!wcscmp(setting,L"screen")){taa_far_camera_gate=false;taa_far_gate_given=true;}
+        else if(!wcscmp(setting,L"camera"))taa_far_gate_given=true;
+        else log("taa_far_gate_setting invalid=1");
+        taa_far_gate_default=taa_far_gate_given&&taa_far_camera_gate&&GetEnvironmentVariableW(L"X3M_TAA_FAR_GATE_DEFAULT",setting,32)==1&&setting[0]==L'1';
     }
     // X3M_TAA_REGION_HOLD was removed with the dilated camera-gate chain (2026-09-24, docs/architecture/
     // taa-plan-lifted-slot-cap.md step 1): the region hold (A') is the camera gate's only path. A value that is still set,

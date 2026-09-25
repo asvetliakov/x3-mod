@@ -556,9 +556,10 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     const bool emissive_vote=thin_on&&in.thin_region_emissive>0;
     const float emissive_constants[4]={emissive_vote?in.thin_region_emissive:0.f,vote_source?1.f:0.f,camera_vote?1.f:0.f,0.f};
     UINT final_mask=1; // which owned mask target the resolve reads
-    // A' (the camera-gate program only): c11 = (unused, the far components' scales, the hold length in frames); c13 = farw's
+    // A' (the camera-gate program only): c11 = (1: the far weight's screen speed gate, 0: its camera gate (FrameInputs::
+    // far_camera_gate), the far components' scales, the hold length in frames); c13 = farw's
     // d0 and 1 / (d1 - d0).
-    const float hold_constants[4]={0.f,far_constants[2],far_constants[3],float(in.thin_region_hold_frames)};
+    const float hold_constants[4]={in.far_camera_gate?0.f:1.f,far_constants[2],far_constants[3],float(in.thin_region_hold_frames)};
     const float far_gate_constants[4]={far_constants[0],far_constants[1],0.f,0.f};
     // Camera gate only (section 32.3): c8, the depth / translation term of its camera path (anything non-finite is the far-plane
     // path), and c9, the lane form read per pixel from the current depth's .b where it is four-channel.

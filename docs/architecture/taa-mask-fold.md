@@ -178,6 +178,35 @@ c9 `laneParallax`, c10 (E, vote-only source) as the mask draw takes them today; 
 Static size: 616 + about 260-300 -> 880-920 slots [I] (plan 950); first-draw compile about 0.2-0.3 s cold [I] from
 the 0.65 s at 4k slots figure. Words about 3,600.
 
+**Addendum 2026-09-25: far weight on the camera gate** (run327 plant sparkles; ledger
+`docs/verification/temporal-resolve.md`, "Far weight on the camera gate"). The far weight's motion gate in this program is
+switchable per launch, `--taa-far-gate camera|screen` (`X3M_TAA_FAR_GATE`, launcher default camera with the `_DEFAULT` marker;
+DLL default camera when unset), carried in the spare `c11.x` (0 camera, 1 screen) and chosen by one uniform select, so one
+program serves both: `farKeep = keep + g * (c11.x > 0.5 ? screenOpen : openC) * (min(ramp, c24.y) - keep)`. camera is `openC`,
+the camera openness the region's `b` already uses; screen is the pixel's screen speed gate, the gate before 2026-09-25, bit
+for bit (fixture: the screen-gate rows equal the far program's on every pixel, and `REGION_HOLD_IDENTITY` holds with the far
+weight on under it). `openC` is the UNORM8-quantised
+`max(screen openness, camera-relative openness)` of the pixel's own correspondence, the smaller of its own and the dilation
+neighbour's, under the L-frame closure hold, on the same LO / HI pair (c24.zw). So a far pixel static in the world keeps W_FAR
+under a camera rotation, and, where the route uploads the depth / translation term (c8 / c9), under translation too. A pixel
+moving against the camera path drops to the base weight, and for L frames (the jitter samples, default 8) after a mover
+uncovers it. A screen-static
+co-moving pixel keeps W_FAR, as it did before. The far program (`resolve_far.hlsl`: the screen gate, the thin region off, the
+far stabiliser alone) keeps the screen speed gate and ignores the option (`far_gate=screen` on the `motion_output_taa` row, one
+`motion_output_taa_far_gate` row when camera was requested explicitly for a far weight there; a box-target refusal later in
+the session, which falls back to the far program, logs `far_gate=screen` on its `motion_output_taa_region_hold` row). Its bytecode is unchanged; only its provenance's
+include hash changed. The hold program is 3,849 words / 1,012 slots (was 3,840 / 1,010). One unrouted case needs care: an unrouted pixel casts no camera vote (`gateOpen` sets
+its relative openness to 1), so its camera openness is 1 at any camera speed; the resolve follows it through the
+rotation-only far-plane reprojection. Under pure translation the screen gate was open for it as well (that reprojection
+carries no translation), so nothing changes there. Under a rotation it changes: unrouted far geometry that actually moves or
+has parallax now keeps W_FAR during a pan where the screen gate dropped it to the base weight, so its misreprojected history
+leaves a longer tail, bounded by the 3x3 clip.
+Cost, measured in the fixture: the far weight is back under a fractional pan, and the resampling softening of
+`taa-distant-line-fade.md` section 10 comes with it. A world-static far 1-px line strip at 10.5 / 8.25 px/frame drops to a
+peak of 0.60 / 0.66, from 1.00 / 1.07 before the change and 1.50 at rest. The far hull of the motion-weight pan row drops to
+an E ratio of 0.116, from 0.198. The flight has to rate this blur against the sparkles it removes; `--taa-far-gate screen`
+flies the previous behaviour from the same build.
+
 ### 4.3 The box gate without the tests target
 
 Implemented with the previous frame's region hold alone (no same-frame vote, see Decision); `FOLD_FALLBACK` measures the

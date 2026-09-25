@@ -664,6 +664,12 @@ public:
     // TemporalPass::configure_box_resolution(2); full is the pass without the call, bit for bit and log for log.
     // `launcher_default` (X3M_TAA_BOX_RESOLUTION_DEFAULT=1 with half) is logged as default= on the creation row.
     void configure_box_resolution(bool half, bool launcher_default) noexcept { taa_box_half_ = half; taa_box_default_ = half && launcher_default; }
+    // X3M_TAA_FAR_GATE (camera|screen, DLL default camera when the variable is unset; the launcher sends camera on --taa launches;
+    // docs/architecture/taa-mask-fold.md section 4.2 addendum): the far weight's motion gate on the camera-gate resolve,
+    // FrameInputs::far_camera_gate. The far program without the camera gate always uses the screen speed (far_gate=screen on
+    // the creation row; one motion_output_taa_far_gate row when camera was requested explicitly for a far weight there). `launcher_default`
+    // (X3M_TAA_FAR_GATE_DEFAULT=1 with camera) is logged as default= on the creation row.
+    void configure_far_gate(bool camera, bool given, bool launcher_default) noexcept { taa_far_camera_gate_ = camera; taa_far_gate_given_ = given; taa_far_gate_default_ = given && camera && launcher_default; }
     // X3M_TAA_THIN_REGION_SOURCE (both|screen|vote as 0|1|2, renderer::ThinRegionSource; docs/architecture/
     // taa-thin-geometry-alternatives.md section 3.2, taa-mask-fold.md): what feeds the thin region's flag. Resolved per
     // device at initialisation (screen and vote need the thin region, vote also the thin vote; screen is refused under the
@@ -2380,6 +2386,9 @@ private:
     unsigned taa_history_taps_ = 5;           // X3M_TAA_HISTORY_TAPS: TemporalPass::configure_history_taps (taa-high-resolution.md S3); logged with the fold line
     bool taa_box_half_ = false;               // X3M_TAA_BOX_RESOLUTION=half (S4): requested; the pass decides per run (logged only when requested)
     bool taa_box_default_ = false;            // that half came from the launcher's default (X3M_TAA_BOX_RESOLUTION_DEFAULT=1): default=1 on the creation row
+    bool taa_far_camera_gate_ = true;         // X3M_TAA_FAR_GATE: camera (default) or screen; FrameInputs::far_camera_gate
+    bool taa_far_gate_given_ = false;         // the variable was set to a valid value
+    bool taa_far_gate_default_ = false;       // that camera came from the launcher's default (X3M_TAA_FAR_GATE_DEFAULT=1): default=1 on the creation row
     unsigned taa_thin_source_ = 0;            // X3M_TAA_THIN_REGION_SOURCE: requested (0 both, 1 screen, 2 vote)
     bool taa_thin_source_given_ = false;      // the variable was set to a valid value (the configured row is logged)
     bool taa_thin_source_default_ = false;    // that value came from the launcher's default (X3M_TAA_THIN_REGION_SOURCE_DEFAULT=1)

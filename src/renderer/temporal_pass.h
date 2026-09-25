@@ -177,6 +177,11 @@ struct FrameInputs {
     float camera_lane_parallax[4]{};
     // Speed gate of far_weight and of the thin region, px/frame: full below far_speed_lo, the base weight from far_speed_hi (0 <= lo < hi <= 64).
     float far_speed_lo = x3::temporal::kFarSpeedLo, far_speed_hi = x3::temporal::kFarSpeedHi;
+    // The far weight's motion gate on the camera-gate resolve (X3M_TAA_FAR_GATE; docs/architecture/taa-mask-fold.md section 4.2
+    // addendum): true (the default) opens it on the camera-relative openness of the region (a world-static far pixel keeps
+    // far_weight under a camera pan), false on the pixel's screen speed (the gate before 2026-09-25). c11.x of that program;
+    // the far program (no camera gate) always uses the screen speed and ignores it.
+    bool far_camera_gate = true;
     // Post-resolve sharpen of the display image (sharpen.h, rcas.hlsl;
     // docs/architecture/temporal-integration.md "Post-resolve sharpen"): 0
     // (the default) draws nothing and the run is bit-identical to a run

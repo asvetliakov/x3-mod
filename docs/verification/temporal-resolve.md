@@ -3112,3 +3112,86 @@ sets them after `Apply`.
 
 Not flown. Next flight: `--gpu-sync-timing` at the run312 stand (`taa_mask_tests` absent, `taa` expected about 3.7 ms: the
 fixture's 3.93 ms scaled by flown / fixture baseline 5.45 / 5.79, inferred), the fog-band plants and the Terran lattice with the default (vote) source.
+
+## Far weight on the camera gate (2026-09-25; run327 plant sparkles; `docs/architecture/taa-mask-fold.md` section 4.2 addendum)
+
+Change: in the camera-gate resolve (`X3M_REGION_HOLD`), the far weight's motion gate is switchable at run time,
+`--taa-far-gate camera|screen` (`X3M_TAA_FAR_GATE`; requires `--taa`; default camera on modded launches with
+`X3M_TAA_FAR_GATE_DEFAULT=1`, explicit value marker 0, nothing without `--taa` or under `--vanilla`; DLL default camera when
+unset). camera is `openC`, the region's camera openness; screen is `1 - saturate((speed - LO) / (HI - LO))` on the pixel's
+screen speed, the gate before. The spare `c11.x` carries it (0 camera, 1 screen) and one uniform select picks it, so the
+program stays one. The far program (the screen gate, the thin region off, the far stabiliser alone) keeps the screen speed
+gate and ignores the option; its bytecode is unchanged. The creation row logs `far_gate=camera|screen default=` (camera only
+on the camera-gate resolve); one `motion_output_taa_far_gate` row when camera was requested explicitly (marker 0, not the
+launcher default) for a far weight with no camera gate; the box-target refusal row (`motion_output_taa_region_hold ...
+reason=box_target ... effect=thin_region_off`) ends with `far_gate=screen`, the fallback it causes.
+The CPU oracle (`line_model`, camera-gate configs) follows. Help (`--taa-far-stabiliser`, `--taa-far-gate`): camera removes
+the one-frame sparkles on far edges under a pan and softens far static content during fractional pans; screen is sharper
+while panning, with the sparkles; the flight decides the default. Dry runs of `--motion-output --ownership --object-trace
+--object-lifetime --taa`: 157 `X3M_` values, main 0be19d91's 155 plus `X3M_TAA_FAR_GATE=camera` and `_DEFAULT=1`; with
+`--taa-far-gate screen`: `screen` / `0`.
+Evidence: `verification/results/far-weight-camera-gate/` (commands, before / after rows, `row_diff.py` outputs). All figures
+measured unless tagged.
+
+New lattice rows `FAR_CAMERA_PAN` (`verification/probe/temporal_far_camera_inc.h`): a far (farw 1), routed, uniform-depth strip
+(never thin-flagged: region_px 0) with world-static bright lines (period 16, 2.0 on 0.05, 1 px and 0.4 px wide). The strip rests
+64 frames, then a yaw of 10 / 10.5 / 8.25 px/frame runs 32 frames; the far mover and co-moving rows move from frame 0. Metric:
+the run327 triage's one-frame sparkle margin in codes (`sparkles.py`: above the 1x3 max of the aligned previous and next
+frame). Camera-gate program, screen gate (= before, identical row for row) -> camera gate (rest 14.20 codes on the 0.4 px
+line, 0.167 on the 1 px line; the far weight off gives 57.87); the runner pins both columns:
+
+| row | 0.4 px margin | 1 px margin | 1 px line peak (rest 1.496) | content-frame diff to rest |
+|---|---|---|---|---|
+| yaw 10 (integer) | 57.87 -> **14.20** | 1.064 -> 0.167 | 1.509 -> 1.496 | 0.311 / 0.080 -> **0 / 0** |
+| yaw 10.5 | 15.41 -> 6.43 | 0 -> 0 | 1.005 -> **0.604** | - |
+| yaw 8.25 | 57.87 -> **14.20** | 0.861 -> 0.517 | 1.074 -> **0.662** | - |
+| far mover 10 | = far off (0.9) before and after, bit for bit | | | |
+| co-moving 10 (screen-static) | = rest before and after, bit for bit | | | |
+
+The sparkle margin under the pan returns to the rest level, and the integer yaw is the rest run bit for bit in the content
+frame. The cost is the resampling softening under a fractional pan (the `taa-distant-line-fade.md` section 10 mechanism, now
+also under camera pans): the 1 px line's peak falls to 0.40-0.44 of rest, where the base weight gave 0.67-0.72. The
+content-phase profile rms at 10.5 is 0.0159, against 0.0015 with the base weight: the profile still converging over the pan's
+32 frames. The far-program and far-off rows are identical before and after (the screen gate kept), and the screen-gate rows
+of the camera-gate program equal the far program's output on every pixel of every row (`screen_program_diff` 0).
+
+Temporal fixture, 06:52:56-06:55:06: `run_temporal_pass.py` PASS, 744 / 278 plus lattice 581 / 90 (was 561 / 90: +20 numerical
+from `FAR_CAMERA_PAN`, 48 rows: four programs x six rows x two widths). The asserted sparkle measure is the margin
+(`spike_codes`), not the count (432 at rest and at yaw 10 on both gates): camera-gate yaw 10 equals rest within 0.1 code, the
+fractional yaws stay within rest + 1, the screen gate's yaw 10 is above 40 codes on the 0.4 px line. The baseline, HEAD with the unmodified fixture, also passed: 05:22:49-05:24:57, 744 / 278 plus 561 / 90.
+Changed rows against it (`row_diff.py`, timing rows skipped):
+- `RESOLVE_BUDGET embedded_far_camera_hold`: 3,840 -> 3,849 words, 1,010 -> 1,012 slots (with the gate switch). `embedded_far` stays 545, and every other
+  program is unchanged: `generate_rigid_motion_pixel.py` regenerated all headers and only this one changed. The eight other
+  resolve manifests changed only the `resolve.hlsl` include hash.
+- `MOTION_WEIGHT program=far_camera row=pan12.5` (off and on, both generations): a world-static far hull (farw 0.5) under a
+  12.5 px/frame yaw now keeps the far weight. E ratio 0.198 -> 0.116, amplitude 0.444 -> 0.341, sigma_fit 0.81 -> 0.93,
+  ripple 0.0094 -> 0.0061. The asserted on = off identity holds, because relative 0 caps nothing.
+- `SETA_EXIT far_camera_yaw_minus_on` (both generations): `trail_cast_max` 0.087646 -> 0.088501. It is reported only, not
+  asserted for a yaw. The asserted fields are identical: fresh 205 / 205 current-only, 720 marks, none static or outside the
+  band, hull marks 163 / 163. Cause (inferred): there the world-static square moves 0.2 px/frame on screen, inside the LO..HI
+  ramp. Its far weight now takes the quantised camera openness (the neighbour minimum, the closure hold) in place of the
+  unquantised screen gate.
+- Every other row is identical, including the SETA straight and yaw +0.3 rows, the translation rows of `MOTION_WEIGHT` (1 to
+  12.5 px/frame, both programs), `SETA_*`, `THIN_REGION_HOLD*`, `FOLD_FALLBACK` and `BOX_HALF_*`. No camera-gate oracle config
+  carries a far weight, so the oracle change is exercised only through its unchanged rows.
+- `REGION_HOLD_IDENTITY`: the reference is the removed camera program word for word (2,196 words, FNV `457159f1f8e5c6b3`,
+  unchanged), and it gates the far weight on the screen speed. On the camera gate the hold program differs from it on 162 of
+  1,024 pixels at k = 0 (colour), by design; the identity now runs the hold program on the screen gate (`c11.x = 1`) with its
+  original configuration (far weight on): 0 differs at k = 0 and 0.5, row text unchanged. The camera gate is proved by
+  `FAR_CAMERA_PAN`.
+
+Build: `cmake --build build` 0 warnings; `check_no_x87.py` 690 functions, 0 violations. Host: `test_taa_far_gate` 8 OK (new),
+`test_taa_*` 108 OK, `test_s[hn]*` 198 OK, full `run_host_suite.py` 268 modules / 2,784 tests, 0 failing. `run_motion_output.py`
+(capture.cpp and motion_output.cpp changed), the camera-gate TAA cases `seam-taa-thin-hold-on`, `-hold-half`,
+`-taps16-refused`, `seam-thin-vote-far-on` / `-off`: all exit 0 (164 / 164 / 164 / 56 / 47 checks; a partial run, no
+cross-case comparison); their creation rows read `far_gate=camera default=0` (no case sets a far weight, so no gate row).
+`tools/analysis/snapshot_x3_run.py` now keeps `taa_age_1_N.r32f` (`motion_output_taa_age_readback`) in the /tmp snapshot;
+`test_snapshot_x3_run` 25 OK, with the real run327 row as a case.
+
+Not flown. Open: whether the fractional-pan softening of far world-static content is acceptable (a flight at the fog-band
+plants, a slow pan and a fast pan, default camera against `--taa-far-gate screen` from the same build; Run 84 A's flight
+decides the default). The shipped default is not oracle-checked inside an active thin region: `REGION_HOLD_IDENTITY` runs on
+the screen gate, no camera-gate oracle config carries a far weight, and `FAR_CAMERA_PAN` has region_px 0. Unrouted far
+geometry (no camera vote: camera openness 1) keeps W_FAR under a rotation where the screen gate dropped it, so unrouted
+content that moves or has parallax leaves a longer tail during a pan, bounded by the 3x3 clip; under pure translation both
+gates were open for it (section 4.2 addendum).

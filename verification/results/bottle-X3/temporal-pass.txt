@@ -1959,7 +1959,7 @@ CHECK edge history follows the sequence PASS
 CHECK edge history follows the sequence PASS
 CHECK edge history follows the sequence PASS
 CHECK exit reset: the age target is read every frame PASS
-SETA_EXIT mode=far_camera_yaw_minus_on program=far_camera strict=1 exit_px=0.250 yaw_px=-0.30 velocity_px=0.500 fresh_px=205 fresh_current_only=205 trail_cast_max=0.087646 control_cast_max=0.000000 control_diff=0.000000 negative_px=720 negative_static=0 negative_not_band=0 band_blend_positive=0 hull_mark_reads=163 hull_mark_own=163 hull_mark_unexplained=0 output_diff=0.000000 age_diff=0.000000
+SETA_EXIT mode=far_camera_yaw_minus_on program=far_camera strict=1 exit_px=0.250 yaw_px=-0.30 velocity_px=0.500 fresh_px=205 fresh_current_only=205 trail_cast_max=0.088501 control_cast_max=0.000000 control_diff=0.000000 negative_px=720 negative_static=0 negative_not_band=0 band_blend_positive=0 hull_mark_reads=163 hull_mark_own=163 hull_mark_unexplained=0 output_diff=0.000000 age_diff=0.000000
 SAMPLE exit reset, far_camera program, camera yaw -0.3 px/frame: every trail pixel is current-only on its first strict-sky frame (fresh_current_only - fresh_px) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 SAMPLE exit reset, far_camera program, camera yaw -0.3 px/frame: negative ages only on band pixels of moving frames actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 SAMPLE exit reset, far_camera program, camera yaw -0.3 px/frame: a hull pixel reading a marked texel continues the count (hull_mark_unexplained) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
@@ -4374,8 +4374,8 @@ CHECK mw history follows the sequence PASS
 CHECK mw history follows the sequence PASS
 CHECK mw history follows the sequence PASS
 CHECK mw history follows the sequence PASS
-MOTION_WEIGHT program=far_camera row=pan12.5 velocity_px=0.00 pan_px=12.50 comove=0 on=0 e_ratio=0.197501 sigma=0.70 amplitude_ratio=0.4442 sigma_fit=0.811 age_mean=48.000 ripple_rms=0.009430 ripple_frames=2 output_diff=0.000000 age_diff=0.000000
-MOTION_WEIGHT program=far_camera row=pan12.5 velocity_px=0.00 pan_px=12.50 comove=0 on=1 e_ratio=0.197501 sigma=0.70 amplitude_ratio=0.4442 sigma_fit=0.811 age_mean=48.000 ripple_rms=0.009430 ripple_frames=2 output_diff=0.000000 age_diff=0.000000
+MOTION_WEIGHT program=far_camera row=pan12.5 velocity_px=0.00 pan_px=12.50 comove=0 on=0 e_ratio=0.116333 sigma=1.00 amplitude_ratio=0.3408 sigma_fit=0.934 age_mean=48.000 ripple_rms=0.006076 ripple_frames=2 output_diff=0.000000 age_diff=0.000000
+MOTION_WEIGHT program=far_camera row=pan12.5 velocity_px=0.00 pan_px=12.50 comove=0 on=1 e_ratio=0.116333 sigma=1.00 amplitude_ratio=0.3408 sigma_fit=0.934 age_mean=48.000 ripple_rms=0.006076 ripple_frames=2 output_diff=0.000000 age_diff=0.000000
 CHECK mw far-camera program available PASS
 CHECK mw motion target equals the producer contract PASS
 CHECK mw history follows the sequence PASS
@@ -7854,7 +7854,7 @@ CHECK edge history follows the sequence PASS
 CHECK edge history follows the sequence PASS
 CHECK edge history follows the sequence PASS
 CHECK exit reset: the age target is read every frame PASS
-SETA_EXIT mode=far_camera_yaw_minus_on program=far_camera strict=1 exit_px=0.250 yaw_px=-0.30 velocity_px=0.500 fresh_px=205 fresh_current_only=205 trail_cast_max=0.087646 control_cast_max=0.000000 control_diff=0.000000 negative_px=720 negative_static=0 negative_not_band=0 band_blend_positive=0 hull_mark_reads=163 hull_mark_own=163 hull_mark_unexplained=0 output_diff=0.000000 age_diff=0.000000
+SETA_EXIT mode=far_camera_yaw_minus_on program=far_camera strict=1 exit_px=0.250 yaw_px=-0.30 velocity_px=0.500 fresh_px=205 fresh_current_only=205 trail_cast_max=0.088501 control_cast_max=0.000000 control_diff=0.000000 negative_px=720 negative_static=0 negative_not_band=0 band_blend_positive=0 hull_mark_reads=163 hull_mark_own=163 hull_mark_unexplained=0 output_diff=0.000000 age_diff=0.000000
 SAMPLE exit reset, far_camera program, camera yaw -0.3 px/frame: every trail pixel is current-only on its first strict-sky frame (fresh_current_only - fresh_px) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 SAMPLE exit reset, far_camera program, camera yaw -0.3 px/frame: negative ages only on band pixels of moving frames actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 SAMPLE exit reset, far_camera program, camera yaw -0.3 px/frame: a hull pixel reading a marked texel continues the count (hull_mark_unexplained) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
@@ -10269,8 +10269,8 @@ CHECK mw history follows the sequence PASS
 CHECK mw history follows the sequence PASS
 CHECK mw history follows the sequence PASS
 CHECK mw history follows the sequence PASS
-MOTION_WEIGHT program=far_camera row=pan12.5 velocity_px=0.00 pan_px=12.50 comove=0 on=0 e_ratio=0.197501 sigma=0.70 amplitude_ratio=0.4442 sigma_fit=0.811 age_mean=48.000 ripple_rms=0.009430 ripple_frames=2 output_diff=0.000000 age_diff=0.000000
-MOTION_WEIGHT program=far_camera row=pan12.5 velocity_px=0.00 pan_px=12.50 comove=0 on=1 e_ratio=0.197501 sigma=0.70 amplitude_ratio=0.4442 sigma_fit=0.811 age_mean=48.000 ripple_rms=0.009430 ripple_frames=2 output_diff=0.000000 age_diff=0.000000
+MOTION_WEIGHT program=far_camera row=pan12.5 velocity_px=0.00 pan_px=12.50 comove=0 on=0 e_ratio=0.116333 sigma=1.00 amplitude_ratio=0.3408 sigma_fit=0.934 age_mean=48.000 ripple_rms=0.006076 ripple_frames=2 output_diff=0.000000 age_diff=0.000000
+MOTION_WEIGHT program=far_camera row=pan12.5 velocity_px=0.00 pan_px=12.50 comove=0 on=1 e_ratio=0.116333 sigma=1.00 amplitude_ratio=0.3408 sigma_fit=0.934 age_mean=48.000 ripple_rms=0.006076 ripple_frames=2 output_diff=0.000000 age_diff=0.000000
 CHECK mw far-camera program available PASS
 CHECK mw motion target equals the producer contract PASS
 CHECK mw history follows the sequence PASS

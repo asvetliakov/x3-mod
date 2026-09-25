@@ -1,0 +1,8 @@
+CHECK: before=8868 after=13524 changed=0
+FAR_CAMERA_PAN: before=0 after=48 changed=0
+FAR_CAMERA_PAN_CASES: before=0 after=1 changed=0
+RESOLVE_BUDGET: before=18 after=18 changed=1
+    variant=embedded_far_camera_hold | dwords:3840->3849 instruction_slots:1010->1012 headroom:-498->-500
+RESULT: before=1 after=1 changed=1
+     | numerical:561->581
+SAMPLE: before=338 after=358 changed=0

@@ -1,0 +1,30 @@
+Far weight on the camera gate (2026-09-25; docs/verification/temporal-resolve.md "Far weight on the camera gate"), bottle X3.
+Base: main 0be19d91. Every Wine command ran under verification/probe/wine_lock.py with X3M_FIXTURE_BOTTLE=X3, one at a time,
+after game_guard.game_running() printed [].
+
+Baseline reports (HEAD sources, unmodified fixture; kept local, not tracked):
+  python3 verification/probe/run_temporal_pass.py            # 05:22:49-05:24:57, RESULT PASS 744/278 + lattice 561/90
+  cp verification/results/bottle-X3/temporal-{pass,lattice}.txt /private/tmp/claude-501/base/
+Before rows of the new scene (the fixture with temporal_far_camera_inc.h, built against the HEAD hold program header
+git show HEAD:src/renderer/temporal_resolve_far_camera_hold_program_inc.h > /private/tmp/claude-501/hold_old.h):
+  sh build_before.sh; WHICH=before sh run_fc.sh                # -> far_camera_pan_before_out.txt (its SAMPLE lines predate
+                                                               #    the margin metric; the FAR_CAMERA_PAN rows are the final format)
+After (the change; embedded program regenerated with tools/shaders/generate_rigid_motion_pixel.py, all shaders):
+  python3 verification/probe/run_temporal_pass.py            # 06:02:06-06:04:20, PASS 744/278 + lattice 583/90
+  grep -a '^FAR_CAMERA_PAN \|^SAMPLE far camera\|^RESULT' verification/results/bottle-X3/temporal-lattice.txt > far_camera_pan_after_out.txt
+Changed rows against the baseline (timing rows skipped):
+  python3 row_diff.py /private/tmp/claude-501/base/temporal-lattice.txt ../bottle-X3/temporal-lattice.txt > row_diff_lattice_out.txt
+  python3 row_diff.py /private/tmp/claude-501/base/temporal-pass.txt ../bottle-X3/temporal-pass.txt > row_diff_pass_out.txt
+
+Far gate switch (--taa-far-gate camera|screen, X3M_TAA_FAR_GATE; c11.x of the hold program), regenerated shaders, then:
+  python3 verification/probe/run_temporal_pass.py            # 06:30:27-06:32:37, PASS 744/278 + lattice 587/90 (48 FAR_CAMERA_PAN rows)
+  (far_camera_pan_after_out.txt and row_diff_*_out.txt above are from this run)
+  python3 verification/probe/run_motion_output.py seam-taa-thin-hold-on seam-taa-thin-hold-half seam-thin-vote-far-on \
+      seam-thin-vote-far-off seam-taa-thin-taps16-refused     # 06:36:10-06:37:34, all exit 0 (partial run)
+  /usr/bin/python3 verification/probe/run_host_suite.py      # 268 modules, 2784 tests, 0 failing
+  python3 tools/manage.py --bottle X3 --dry-run --motion-output --ownership --object-trace --object-lifetime --taa launch
+      # X3M_TAA_FAR_GATE=camera, X3M_TAA_FAR_GATE_DEFAULT=1; 157 X3M_ values (main: 155, the pair added)
+  ... --taa --taa-far-gate screen launch                     # screen / 0
+
+Review fixes (spike-margin assertions, ignore row on explicit camera only, far_gate=screen on the box_target row):
+  python3 verification/probe/run_temporal_pass.py            # 06:52:56-06:55:06, PASS 744/278 + lattice 581/90 (current *_out.txt files)

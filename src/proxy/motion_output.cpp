@@ -1629,11 +1629,18 @@ bool MotionOutput::ensure_taa() noexcept {
         log("motion_output_taa_motion_weight device=%llu unavailable=1 reason=no_age_program requested=%.3f,%g,%g", id_, double(motion_weight_[0]), double(motion_weight_[1]), double(motion_weight_[2]));
         motion_weight_[0] = 0.f;
     }
+    // Far weight's gate (X3M_TAA_FAR_GATE): the camera gate exists only on the camera-gate resolve; elsewhere the far program's
+    // screen speed gate is configured. One row when camera was requested explicitly (not the launcher's default, which every
+    // --taa launch sends) for a far weight that has no camera gate.
+    const bool far_camera_gate = taa_far_camera_gate_ && taa_thin_camera_gate_ && taa_thin_weight_ > 0.f;
+    if (SUCCEEDED(hr) && taa_far_gate_given_ && !taa_far_gate_default_ && taa_far_camera_gate_ && !far_camera_gate && taa_far_weight_ > 0.f)
+        log("motion_output_taa_far_gate device=%llu requested=camera configured=screen reason=%s", id_,
+            taa_thin_weight_ > 0.f ? "screen_gate" : "thin_region_off");
     taa_failed_ = FAILED(hr);
     // ps30_slots: D3DCAPS9::MaxPixelShader30InstructionSlots at initialize (AGENTS.md "Shader slot budget": logged, never a gate).
-    log("motion_output_taa device=%llu initialize=%08lx references=%u sharpen=%.3f history_weight=%.3f copy=%s alpha_history=%u age_bytes_per_pixel=%u far_weight=%.4f far_filter=%.3f far_f0=%.1f far_f1=%.1f far_speed_lo=%.3f far_speed_hi=%.3f thin_region=%.4f thin_relax=%.3f thin_gate=%s thin_emissive=%.3f ps30_slots=%u", id_, hr, taa_references_, double(taa_sharpen_), double(taa_history_weight_), taa_copy_draw_ ? "draw" : "stretch",
+    log("motion_output_taa device=%llu initialize=%08lx references=%u sharpen=%.3f history_weight=%.3f copy=%s alpha_history=%u age_bytes_per_pixel=%u far_weight=%.4f far_filter=%.3f far_f0=%.1f far_f1=%.1f far_speed_lo=%.3f far_speed_hi=%.3f thin_region=%.4f thin_relax=%.3f thin_gate=%s thin_emissive=%.3f ps30_slots=%u far_gate=%s default=%u", id_, hr, taa_references_, double(taa_sharpen_), double(taa_history_weight_), taa_copy_draw_ ? "draw" : "stretch",
         unsigned(taa_alpha_history_), taa_far_weight_ > 0.f || taa_far_filter_ > 0.f || taa_thin_weight_ > 0.f ? 8u : 0u, double(taa_far_weight_), double(taa_far_filter_), double(taa_far_f0_), double(taa_far_f1_), double(taa_far_lo_), double(taa_far_hi_), double(taa_thin_weight_), double(taa_thin_relax_), taa_thin_camera_gate_ ? "camera" : "screen", double(taa_thin_emissive_),
-        taa_ ? taa_->ps30_instruction_slots() : 0u);
+        taa_ ? taa_->ps30_instruction_slots() : 0u, far_camera_gate ? "camera" : "screen", unsigned(far_camera_gate && taa_far_gate_default_));
     return !taa_failed_;
 }
 // The whole resolve at the bloom copy: RT1/RT2 containers as inputs, the
@@ -1676,6 +1683,7 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
             // latch far_gate leaves d0 = inv = 0 and the mask is off for the frame (the program stays bound: no history cut).
             in.far_weight = taa_far_weight_; in.far_filter = taa_far_filter_; in.far_speed_lo = taa_far_lo_; in.far_speed_hi = taa_far_hi_;
             in.thin_region_weight = taa_thin_weight_; in.thin_region_relax = taa_thin_relax_; in.thin_region_camera_gate = taa_thin_camera_gate_; in.thin_region_emissive = taa_thin_emissive_;
+            in.far_camera_gate = taa_far_camera_gate_; // X3M_TAA_FAR_GATE; read by the camera-gate resolve only
             in.thin_region_hold_frames = jitter_samples_; // A' (camera gate): the hold covers one jitter cycle (2..64)
             in.thin_vote = thin_vote_upload_ && sun_lane_active_; // the vote travels in the lane's .a; the R32F RT2 has none
             in.thin_region_source = static_cast<renderer::ThinRegionSource>(taa_thin_source_configured_); // both unless configured otherwise
@@ -1764,7 +1772,7 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
             if (taa_->camera_gate_failed() != taa_box_refused_logged_) {
                 taa_box_refused_logged_ = taa_->camera_gate_failed();
                 if (taa_box_refused_logged_)
-                    log("motion_output_taa_region_hold device=%llu unavailable=1 reason=box_target create=%08lx bilinear=%u history_taps=%u thin_region=%.4f effect=thin_region_off",
+                    log("motion_output_taa_region_hold device=%llu unavailable=1 reason=box_target create=%08lx bilinear=%u history_taps=%u thin_region=%.4f effect=thin_region_off far_gate=screen",
                         id_, taa_->camera_gate_result(), unsigned(taa_->bilinear_history_available()), taa_->history_taps(), double(taa_thin_weight_));
             }
             release(composition_mask);

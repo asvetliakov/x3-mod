@@ -141,14 +141,14 @@ FlickerModel line_model(const FlickerRun& run,const LineConfig& c,const std::vec
                 old/=weights;if(!finite||!oracle_finite(old)){m.color[n][i]=float(cur);m.age[n][i]=fresh;continue;}}
             const bool farOn=c.farW>0||c.farA>0||c.thinW>0; // the far program has no 3x3 sentinel soft clip
             const UINT ageIndex=UINT(by+(fy>=.5?1:0))*S+UINT(bx+(fx>=.5?1:0));
-            double gate=0,screenGate=0,holdFraction=0,heldCount=0;bool boxOpen=true;
+            double gate=0,screenGate=0,holdFraction=0,heldCount=0,farOpen=-1;bool boxOpen=true; // farOpen: the camera gate's openC (the far weight's gate there)
             if(hold){const double stored=m.age[n-1][ageIndex],magnitude=std::fabs(stored);const double held=magnitude<=65?(magnitude-std::floor(magnitude))*65536:0;heldCount=std::floor(magnitude);
                 const double heldC=std::floor(held/128);const double regionHold=flagged?double(oracleHoldFrames):std::max(held-128*heldC-1,0.);
                 const UINT bx_=UINT(int(x)+nearX),by_=UINT(int(y)+nearY); // the resolve's dilation: the nearest-depth neighbour's tests texel
                 const float ownS=std::min(testR,px((*masks)[n],bx_,by_,0)),ownC=std::min(testA,px((*masks)[n],bx_,by_,3));
                 double codeC;const float openC=std::min(ownC,closure_hold(ownC,heldC,codeC)),openS=std::min(ownS,openC);
                 const bool region=regionHold>0;
-                gate=region?openC:0.f;screenGate=region?openS:0.f;
+                gate=region?openC:0.f;screenGate=region?openS:0.f;farOpen=openC;
                 holdFraction=hold_code(regionHold,codeC);boxOpen=held_region(m.age[n-1][i]); // the box programs' gate: last frame's region at the same texel
                 if(oracleBoxHalf){boxOpen=false;const UINT bx0=x&~1u,by0=y&~1u; // S4: any pixel of the 2x2 block (all in frame: x, y in [3, S-3))
                     for(UINT qy=by0;qy<=by0+1;++qy)for(UINT qx=bx0;qx<=bx0+1;++qx)boxOpen=boxOpen||held_region(m.age[n-1][qy*S+qx]);}}
@@ -167,7 +167,7 @@ FlickerModel line_model(const FlickerRun& run,const LineConfig& c,const std::vec
             old=clamped+soft*(old-clamped)+boxTerm;
             double keep=w;const double farw=hold?double(px((*masks)[n],x,y,1)):farOn?far_gate_weight(centre):0;
             if(farOn){double a=hold?heldCount:m.age[n-1][ageIndex];if(!(a>=1&&a<=64))a=1;
-                const double ramp=a/(a+1),slow=1-std::min(std::max((speed-double(farLo))/(double(farHi)-double(farLo)),0.),1.);
+                const double ramp=a/(a+1),slow=hold?farOpen:1-std::min(std::max((speed-double(farLo))/(double(farHi)-double(farLo)),0.),1.);
                 const double farKeep=w+(c.farW>0?double(far_gate_weight(centre))*slow*(std::min(ramp,double(c.farW))-w):0.);
                 keep=gate>0?std::max(farKeep,w+gate*(std::min(ramp,double(c.thinW))-w)):farKeep;
                 m.age[n][i]=float(std::min(a+1,64.)+holdFraction);}

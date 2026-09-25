@@ -178,7 +178,7 @@ class SnapshotX3RunTests(unittest.TestCase):
         self.log.write_text(''.join(rows))
         _, count, issues = self.save(log=self.log)
         self.assertEqual((count, issues), (expected, []))
-        self.assertEqual(expected, 10)  # Eight writers; the depth tag has three formats (r32f, rg32f, rgba32f).
+        self.assertEqual(expected, 11)  # Nine writers; the depth tag has three formats (r32f, rg32f, rgba32f).
 
     def test_sun_lens_back_buffer_record_is_preserved(self):
         # The real --sun-occlusion-log line (run228 frame 3440): the Present-time back buffer.
@@ -188,6 +188,15 @@ class SnapshotX3RunTests(unittest.TestCase):
         destination, count, issues = self.save(log=self.log)
         self.assertEqual((count, issues), (1, []))
         self.assertEqual((destination / 'lens_1_3440.bgra8').read_bytes(), b'abcd')
+
+    def test_taa_age_record_is_preserved(self):
+        # The real --taa-debug line (run327 frame 2242): the R32F age target beside the taa dump.
+        (self.capture / 'taa_age_1_2242.r32f').write_bytes(b'abcd')
+        self.log.write_text('motion_output_taa_age_readback device=1 frame=2242 file=taa_age_1_2242.r32f width=5120 height=1440 '
+                            'format=r32f_row_major result=00000000 bytes=4\n')
+        destination, count, issues = self.save(log=self.log)
+        self.assertEqual((count, issues), (1, []))
+        self.assertEqual((destination / 'taa_age_1_2242.r32f').read_bytes(), b'abcd')
 
     def test_sun_lane_depth_and_shadow_map_records_are_preserved(self):
         # Sun lane active: RT2 is G32R32F (.r depth, .g share) and the replayed

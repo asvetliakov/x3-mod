@@ -1,0 +1,8 @@
+MOTION_WEIGHT: before=84 after=84 changed=4
+    program=far_camera row=pan12.5 | e_ratio:0.197501->0.116333 sigma:0.70->1.00 amplitude_ratio:0.4442->0.3408 sigma_fit:0.811->0.934 ripple_rms:0.009430->0.006076
+    program=far_camera row=pan12.5 | e_ratio:0.197501->0.116333 sigma:0.70->1.00 amplitude_ratio:0.4442->0.3408 sigma_fit:0.811->0.934 ripple_rms:0.009430->0.006076
+    program=far_camera row=pan12.5 | e_ratio:0.197501->0.116333 sigma:0.70->1.00 amplitude_ratio:0.4442->0.3408 sigma_fit:0.811->0.934 ripple_rms:0.009430->0.006076
+    program=far_camera row=pan12.5 | e_ratio:0.197501->0.116333 sigma:0.70->1.00 amplitude_ratio:0.4442->0.3408 sigma_fit:0.811->0.934 ripple_rms:0.009430->0.006076
+SETA_EXIT: before=28 after=28 changed=2
+    program=far_camera | trail_cast_max:0.087646->0.088501
+    program=far_camera | trail_cast_max:0.087646->0.088501

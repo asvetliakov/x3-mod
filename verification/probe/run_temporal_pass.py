@@ -13,6 +13,7 @@ paths=[root/name for name in ('src/renderer/temporal_pass.h','src/renderer/tempo
     'src/temporal/resolve_age_taps16.hlsl','src/renderer/temporal_resolve_age_taps16_program_inc.h','src/temporal/resolve_far_taps16.hlsl','src/renderer/temporal_resolve_far_taps16_program_inc.h',
     'src/temporal/resolve_far_camera_hold.hlsl','src/renderer/temporal_resolve_far_camera_hold_program_inc.h','src/temporal/thin_box_hold_ps.hlsl','src/renderer/temporal_thin_box_hold_program_inc.h',
     'verification/probe/temporal_fold_timing_inc.h',
+    'verification/probe/temporal_far_camera_inc.h',
     'verification/probe/temporal_region_hold_inc.h','verification/probe/temporal_box_half_inc.h',
     'verification/probe/temporal_thin_source_inc.h','src/temporal/line_mask_depth_thin_ps.hlsl','src/renderer/temporal_line_mask_depth_thin_program_inc.h',
      'src/temporal/thin_box_rows_half_ps.hlsl','src/renderer/temporal_thin_box_rows_half_program_inc.h','src/temporal/thin_box_columns_half_ps.hlsl','src/renderer/temporal_thin_box_columns_half_program_inc.h','src/temporal/depth_decode.hlsl','src/temporal/sharpen.h','src/temporal/rcas.hlsl','src/temporal/taa_sharpen_ps.hlsl','verification/probe/temporal_pass_fixture.cpp','verification/probe/build_temporal_pass.sh','verification/probe/run_temporal_pass.py')]
@@ -282,7 +283,7 @@ try:
     assert [hold['state'][0][k] for k in ('masks_camera','masks_screen','masks_on','masks_at_reset','masks_after_reset','masks_box_refused')]==['0','2','0','0','0','0'],hold['state']
     assert len(hold['thin'])==3 and all(r['square_differs']=='0' and float(r['age_oracle_error'])==0 for r in hold['thin']) and len(hold['motion_start'])==1 and len(hold['pan'])==1 and len(hold['stale'])==1 and len(hold['box_domain'])==1 and len(hold['pan_stop'])==1 and len(hold['box_open'])==1,hold
     assert [(r['scene'],r['box']) for r in hold['fold_fallback']]==[(s,b) for s in ('pan_arm_bars','gap_lattice_7.5px') for b in ('full','half')] and all(int(r['fallback_px_frames'])>0 and float(r['error_in_place_7x7'])<=float(r['bound']) for r in hold['fold_fallback']),hold['fold_fallback']
-    assert lattice.returncode==0 and 'LATTICE_BASE numerical=10 state_restorations=0' in lattice_text and 'FLICKER_BASE numerical=190 state_restorations=4' in lattice_text and 'LINE_BASE numerical=190 state_restorations=4' in lattice_text and 'DEPTH_FOLD_BASE numerical=452 state_restorations=72' in lattice_text and 'HISTORY_TAPS_BASE numerical=473 state_restorations=72' in lattice_text and 'REGION_HOLD_BASE numerical=525 state_restorations=75' in lattice_text and 'BOX_HALF_BASE numerical=548 state_restorations=76' in lattice_text and 'THIN_SOURCE_BASE numerical=561 state_restorations=90' in lattice_text and 'RESULT PASS numerical=561 state_restorations=90 lattice=1' in lattice_text and 'FAIL' not in lattice_text,lattice_text[-1500:]
+    assert lattice.returncode==0 and 'LATTICE_BASE numerical=10 state_restorations=0' in lattice_text and 'FLICKER_BASE numerical=190 state_restorations=4' in lattice_text and 'LINE_BASE numerical=190 state_restorations=4' in lattice_text and 'DEPTH_FOLD_BASE numerical=452 state_restorations=72' in lattice_text and 'HISTORY_TAPS_BASE numerical=473 state_restorations=72' in lattice_text and 'REGION_HOLD_BASE numerical=525 state_restorations=75' in lattice_text and 'BOX_HALF_BASE numerical=548 state_restorations=76' in lattice_text and 'THIN_SOURCE_BASE numerical=561 state_restorations=90' in lattice_text and 'FOLD_TIMING_BASE numerical=561 state_restorations=90' in lattice_text and 'RESULT PASS numerical=581 state_restorations=90 lattice=1' in lattice_text and 'FAIL' not in lattice_text,lattice_text[-1500:]
     # The 2,048-slot ceiling per TAA program (docs/architecture/taa-plan-lifted-slot-cap.md section 2; AGENTS.md "Shader slot
     # budget": 512 is the spec minimum, not a limit). device_limit stays a record.
     assert len(report['flicker']['drift'])==64 and len(report['flicker']['near_depth'])==8 and all(float(v['instruction_slots'])<=2048 and v['within_ceiling_2048']==1 for k,v in report['lattice']['budget'].items()),report['lattice']['budget']
@@ -330,6 +331,28 @@ try:
     # with the pre-fold baseline built from the same include (X3M_FOLD_BASELINE).
     report['fold_timing']=fields('FOLD_TIMING build=')
     assert [(r['motion'],r['config']) for r in report['fold_timing']]==[(m,c) for m in ('rest','pan') for c in ('vote','both','thin_vote_off')] and all(r['build']=='fold' and r['width']=='5120' and r['mask_ms']=='0.0000' and float(r['resolve_ms'])>0 and float(r['box_ms'])>0 for r in report['fold_timing']),report['fold_timing']
+    # Far weight on the camera gate (docs/architecture/taa-mask-fold.md section 4.2 addendum; run327 sparkles): a far world-static
+    # line strip (1 px and 0.4 px) under pure yaws of 10 / 10.5 / 8.25 px/frame, a far mover and a co-moving object, on the
+    # camera-gate program (far 0.985 on X3M_TAA_FAR_GATE camera and screen, and far off) and the far program alone. The camera
+    # gate's yaws keep the rest level of one-frame sparkles; the mover drops to the base weight bit for bit; the screen gate is
+    # the far program bit for bit. Both behaviours are pinned (the 0.4 px line's sparkle margin in codes, the 1 px line's peak).
+    report['far_camera_pan']=fields('FAR_CAMERA_PAN ')
+    pan={(r['program'],r['width'],r['row']):r for r in report['far_camera_pan']}
+    assert len(report['far_camera_pan'])==48 and len(pan)==48 and all(r['region_px']=='0' for r in report['far_camera_pan'] if r['program']!='far_screen'),report['far_camera_pan']
+    for width in ('1.0','0.4'):
+        rest=pan[('far_camera',width,'rest')]
+        # The sparkle margin (spike_codes), not the count (432 at rest and at yaw10 on both gates): the integer yaw equals rest
+        # within 0.1 code, the fractional yaws stay within rest + 1; the screen gate's integer yaw is the sparkling one.
+        assert abs(float(pan[('far_camera',width,'yaw10')]['spike_codes'])-float(rest['spike_codes']))<=.1 and all(float(pan[('far_camera',width,row)]['spike_codes'])<=float(rest['spike_codes'])+1 for row in ('yaw10.5','yaw8.25')),(width,pan)
+        screen=pan[('far_camera_screen_gate',width,'yaw10')]
+        assert float(screen['spike_codes'])>40 if width=='0.4' else float(screen['spike_codes'])>=float(pan[('far_camera_screen_gate',width,'rest')]['spike_codes'])+.1,(width,screen)
+        assert pan[('far_camera',width,'yaw10')]['rest_content_diff']=='0.000000' and pan[('far_camera',width,'mover10')]['off_diff']=='0.000000' and pan[('far_camera',width,'comove10')]['rest_content_diff']=='0.000000',(width,pan)
+        assert all(r['screen_program_diff']=='0.000000' for r in report['far_camera_pan'] if r['program']=='far_camera_screen_gate' and r['width']==width),(width,pan)
+    # program: (0.4 px margin at rest, yaw10, yaw10.5, yaw8.25), (1 px peak at yaw10.5, yaw8.25); the first run of each gate.
+    pins={'far_camera':((14.202,14.202,6.427,14.202),(.603821,.661987)),'far_camera_screen_gate':((14.202,57.874,15.414,57.874),(1.004639,1.074005))}
+    for program,(margins,peaks) in pins.items():
+        assert all(abs(float(pan[(program,'0.4',row)]['spike_codes'])-v)<=.01 for row,v in zip(('rest','yaw10','yaw10.5','yaw8.25'),margins)),(program,pan)
+        assert all(abs(float(pan[(program,'1.0',row)]['peak'])-v)<=1e-4 for row,v in zip(('yaw10.5','yaw8.25'),peaks)),(program,pan)
     ripple=report['lattice']['ripple']
     assert len(ripple)==4 and report['lattice']['budget']['plain']['instruction_slots']<=2048,report['lattice']
     assert hashes()==report['sources_before_build'],'Source changed during the lattice cases'
