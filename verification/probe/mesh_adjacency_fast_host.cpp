@@ -12,6 +12,13 @@
 #include <vector>
 int main(int argc,char** argv){
     if(argc==5&&!std::strcmp(argv[1],"fp-domain")){unsigned cw=0,tag=0,mx=0;if(std::sscanf(argv[2],"%x",&cw)!=1||std::sscanf(argv[3],"%x",&tag)!=1||std::sscanf(argv[4],"%x",&mx)!=1)return 2;std::printf("%u\n",unsigned(x3m::mesh_adjacency_fast::supported_fp_domain(cw,tag,mx)));return 0;}
+    // config VALUE TELEMETRY: the X3M_MESH_ADJACENCY parse and arming policy ("-" = unset);
+    // VALUE is widened byte by byte and its length is capped like GetEnvironmentVariableW's return.
+    if(argc==4&&!std::strcmp(argv[1],"config")){namespace m=x3m::mesh_adjacency_fast;
+        wchar_t value[64]{};uint32_t length=0;
+        if(std::strcmp(argv[2],"-"))for(;argv[2][length]&&length<63;++length)value[length]=wchar_t(static_cast<unsigned char>(argv[2][length]));
+        const m::Mode requested=m::parse_mode(value,length>=m::mode_capacity?length+1:length);
+        std::printf("requested=%s armed=%s\n",m::mode_name(requested),m::mode_name(m::armed_mode(requested,argv[3][0]=='1')));return 0;}
     unsigned V=0,F=0,bits=0,stride=0,offset=0,head=1,normal=1,refusal=1,heap=1,retire=0,unlink=1,later=0,normalize=0;float eps=0.f;
     if(std::scanf("%u %u %u %g %u %u %u %u %u %u %u %u %u %u",&V,&F,&bits,&eps,&stride,&offset,&head,&normal,&refusal,&heap,&retire,&unlink,&later,&normalize)!=14)return 2;
     std::vector<unsigned char> vertices(size_t(V)*stride);std::vector<unsigned char> indices(size_t(F)*3*(bits==32?4:2));

@@ -52,6 +52,10 @@ using Snapshot=std::array<Sample,static_cast<unsigned>(Operation::Count)>;
 // One installation generation per process. Reinitialization after teardown is
 // refused so foreign chains retain immutable callable originals.
 bool initialize();
+// X3M_MESH_ADJACENCY=fast (the only mode that arms without X3M_TELEMETRY=1):
+// initialize() then patches the two D3DX mesh import rows alone. The caller's
+// initialize gate must include this for a fast-only launch.
+bool mesh_adjacency_requested();
 bool active();
 // Per-field atomic exchange: concurrent calls can straddle adjacent reports.
 // Totals over the complete run are conserved, but a delta is not a transaction.

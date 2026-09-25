@@ -74,6 +74,18 @@ Report generate(const Input& input,uint32_t* adjacency,const Policy& policy={}) 
 // Frees the calling thread's retained scratch arena (one malloc per call otherwise;
 // arenas above 16 MB are released after the call, smaller ones kept for the next mesh).
 void release_scratch() noexcept;
+// X3M_MESH_ADJACENCY=native|verify|fast (ASCII, case-insensitive), read by
+// loading_trace at installation. `length` is GetEnvironmentVariableW's return
+// for a mode_capacity-wchar buffer: 0 (unset), >= mode_capacity (too long) and
+// every other value select Native. armed_mode: Fast arms with or without
+// X3M_TELEMETRY=1 (the launcher sends fast by default since 2026-09-25);
+// Verify is a diagnostic whose metric rows are telemetry output, so it arms
+// only with telemetry; Native stays Native.
+enum class Mode : unsigned { Native, Verify, Fast };
+constexpr uint32_t mode_capacity=16;
+Mode parse_mode(const wchar_t* value,uint32_t length) noexcept;
+Mode armed_mode(Mode requested,bool telemetry) noexcept;
+const char* mode_name(Mode mode) noexcept;
 // Which reciprocal square root the build uses for D3DXVec3Normalize: "rsqrtss"
 // (x86, the instruction D3DX's SSE table uses) or "portable" (1/sqrt, host tests).
 const char* rsqrt_implementation() noexcept;

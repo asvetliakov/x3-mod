@@ -1,0 +1,22 @@
+mesh-adjacency fast without telemetry, 2026-09-25 (worktree off main 425f81f1, uncommitted diff)
+Host only; no Wine run, no install.
+
+$ PYTHONPATH=verification/probe python3 -m unittest discover -s verification/analysis -p 'test_mesh_adjacency_fast.py'
+Ran 27 tests ... OK   (26 before + test_mode_config_arms_fast_without_telemetry)
+
+$ for m in test_check_no_x87 test_cursor_reassert test_exe_identity test_game_phase_install test_iteration08_loading \
+    test_loading_profile test_loading_phases test_telemetry_summary test_iteration09_run2 test_snapshot_x3_run; do
+    PYTHONPATH=verification/probe:verification/analysis python3 -m unittest $m | tail -1; done
+OK x10
+
+$ cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DPython3_EXECUTABLE=/usr/bin/python3
+$ cmake --build build -j8 2>&1 | grep -ci warning
+0
+$ strings -a build/d3d9.dll | grep -c "mesh_adjacency_config requested"
+1
+
+$ /usr/bin/python3 verification/probe/check_no_x87.py build/d3d9.dll
+reachable_functions 690, violations {}
+
+$ python3 tools/manage.py launch --dry-run      (tools/manage.py unchanged by this change)
+rc 0, "X3M_MESH_ADJACENCY": "native"

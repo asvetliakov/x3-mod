@@ -3786,7 +3786,7 @@ void initialize_log(HMODULE module) {
     }
     cull_census::initialize(); // X3M_CULL_CENSUS=1 only; two read-only trampolines on the cull/LOD pass (0x0047d258, 0x0047d528), same window
     cull_small_parts::initialize(); // X3M_CULL_SMALL_PARTS_PX only; one trampoline on the cull/LOD pass (0x0047d2a2), same window, disjoint from the census claims
-    if(telemetry::enabled()||gz_buffer::requested()||crypt_cache::requested())loading_trace::initialize(); // X3M_GZ_BUFFER=1 / X3M_CRYPT_CACHE=1 patch their rows alone
+    if(telemetry::enabled()||gz_buffer::requested()||crypt_cache::requested()||loading_trace::mesh_adjacency_requested())loading_trace::initialize(); // X3M_GZ_BUFFER=1 / X3M_CRYPT_CACHE=1 / X3M_MESH_ADJACENCY=fast patch their rows alone (fast arms without telemetry since 2026-09-25)
     resource_reader::initialize(); // X3M_RESOURCE_READ=verify|fast, X3M_DAT_HANDLES=1; after the probes so its stub chains behind theirs
     sampling_profiler::initialize(); // X3M_PROFILE=1 only; outside loader lock, after the log exists
 }

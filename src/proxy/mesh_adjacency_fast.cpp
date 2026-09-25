@@ -200,6 +200,19 @@ const char* rsqrt_implementation() noexcept {
 #endif
 }
 const char* normalize_name(Normalize normalize) noexcept { return normalize==Normalize::Generic?"generic":"sse2"; }
+Mode parse_mode(const wchar_t* value,uint32_t length) noexcept {
+    if(!value||!length||length>=mode_capacity)return Mode::Native;
+    auto equals=[&](const char* name){
+        uint32_t i=0;
+        for(;i<length&&name[i];++i){wchar_t c=value[i];if(c>=L'A'&&c<=L'Z')c=wchar_t(c-L'A'+L'a');if(c!=wchar_t(name[i]))return false;}
+        return i==length&&!name[i];
+    };
+    return equals("fast")?Mode::Fast:equals("verify")?Mode::Verify:Mode::Native;
+}
+Mode armed_mode(Mode requested,bool telemetry) noexcept {
+    return requested==Mode::Fast||(requested==Mode::Verify&&telemetry)?requested:Mode::Native;
+}
+const char* mode_name(Mode mode) noexcept { return mode==Mode::Fast?"fast":mode==Mode::Verify?"verify":"native"; }
 bool supported_fp_domain(uint32_t control,uint32_t tag,uint32_t mxcsr) noexcept {
     // 53-bit x87, nearest, all exceptions masked, empty register stack. The
     // reserved CW bit 6 differs between 023f (game) and 027f (CRT) and is ignored.

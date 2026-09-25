@@ -556,3 +556,24 @@ unresolved. See review 31 for exact source/binary provenance, the narrowly
 observed Steam FP-control canonicalization, authored admitted-path coverage and
 fixed-order timing limitations. No game acceptance or native-Windows run is
 claimed by these fixture results.
+
+## Fast path without telemetry (2026-09-25)
+
+Defect: `X3M_MESH_ADJACENCY` was read only in the telemetry branch of
+`loading_trace::install`, so the launcher's `fast` did nothing without
+`--telemetry`. Fix: `parse_mode`/`armed_mode` in `mesh_adjacency_fast.{h,cpp}`
+(fast arms regardless of telemetry, verify only with it); without telemetry
+`install` patches the `D3DXCreateMesh`/`D3DXCleanMesh` rows alone (plus any
+gz-buffer/crypt-cache rows) and writes no metric row; one
+`mesh_adjacency_config requested= enabled= telemetry=` row per process
+([loading-performance.md](../reverse-engineering/loading-performance.md#exact-equality-adjacency-switch)).
+Host evidence (measured, commands in
+`verification/results/mesh-adjacency-no-telemetry/acceptance.txt`):
+`test_mesh_adjacency_fast` 27 OK including the new
+`test_mode_config_arms_fast_without_telemetry`; ten loading/telemetry modules
+OK; `cmake --build build` 0 warnings; `check_no_x87.py` 690 reachable, 0
+violations; launch `--dry-run` rc 0. Not verified: the Wine loading fixtures
+(no telemetry-off install case exists there yet) and a game load. Open:
+`capture.cpp` calls `loading_trace::initialize()` only with telemetry,
+gz-buffer or crypt-cache; a `fast`-only launch needs
+`loading_trace::mesh_adjacency_requested()` in that condition.

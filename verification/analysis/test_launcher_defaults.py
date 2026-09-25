@@ -224,7 +224,7 @@ class LauncherDefaults(unittest.TestCase):
                              (('--no-shadow-cascades', '--shadow-caster-retention'), 'require --shadow-cascades'),
                              (('--no-volumetric-fog', '--volumetric-fog-range', 'stored'), 'require --volumetric-fog'),
                              (('--camera', 'vanilla', '--chase-view-restore'), '--camera chase'),
-                             (('--mesh-adjacency', 'fast'), '--mesh-adjacency verify|fast requires --telemetry')):
+                             (('--mesh-adjacency', 'verify'), '--mesh-adjacency verify requires --telemetry')):
             with self.subTest(args=args):
                 code, _, error = self.launch(*args)
                 self.assertEqual(code, 2)

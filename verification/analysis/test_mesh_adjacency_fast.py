@@ -338,6 +338,19 @@ class HostModule(unittest.TestCase):
             self.assertFalse(check(0x027f, 0xffff, mx))
         self.assertFalse(check(0x027f, 0xfffc, 0x1f80))
 
+    def test_mode_config_arms_fast_without_telemetry(self):
+        # X3M_MESH_ADJACENCY as loading_trace reads it (2026-09-25): fast arms with
+        # telemetry off, verify only with telemetry, unset/unknown/too long stay native.
+        config = lambda value, telemetry: subprocess.check_output([str(self.exe), 'config', value, str(telemetry)], text=True).strip()
+        self.assertEqual(config('fast', 0), 'requested=fast armed=fast')
+        self.assertEqual(config('FAST', 0), 'requested=fast armed=fast')
+        self.assertEqual(config('fast', 1), 'requested=fast armed=fast')
+        self.assertEqual(config('verify', 0), 'requested=verify armed=native')
+        self.assertEqual(config('Verify', 1), 'requested=verify armed=verify')
+        for value in ('-', 'native', 'fastx', 'fas', '', 'f' * 15 + 'ast'):
+            for telemetry in (0, 1):
+                self.assertEqual(config(value, telemetry), 'requested=native armed=native')
+
     def check(self, vertices, faces, epsilon, offset=0, heads=None, **policy):
         head_bits = heads if heads is not None else ([(ZERO,) * 3] * len(vertices) if offset else None)
         # The reference sees what the driver's vertex holds at bytes 0-11: the head

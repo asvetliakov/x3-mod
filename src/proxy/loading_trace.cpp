@@ -143,7 +143,7 @@ template<unsigned Index> HRESULT WINAPI mesh_point_reps(ID3DXMesh* mesh,const DW
 // hook's public buffer qualification and serve as the "original" callable of
 // the adjacency cache, so the order stays cache lookup -> compute -> admission.
 namespace adjacency_fast=mesh_adjacency_fast;
-enum class AdjacencyMode : unsigned { Native, Verify, Fast };
+using AdjacencyMode=adjacency_fast::Mode; // parse/arming policy is host-tested (mesh_adjacency_fast.h)
 std::atomic<AdjacencyMode> adjacency_mode{AdjacencyMode::Native};
 std::atomic<bool> adjacency_faulted{false};
 enum class AdjacencyFallback : unsigned { Input, Gate, Declaration, Size, Lock, Module, MathTable, CompetingNormals, FpDomain, Count };
@@ -1023,11 +1023,33 @@ bool install_crypt_group(const crypt_cache::Originals& real,HMODULE target){
     crypt_cache_active.store(true,std::memory_order_release);
     return true;
 }
+// The two D3DX import rows whose results are observed; observe_mesh patches the
+// shared mesh vtables (GenerateAdjacency among them) from these.
+bool mesh_row(const Hook& hook){return &hook==&hooks[static_cast<unsigned>(Operation::MeshCreate)]||&hook==&hooks[static_cast<unsigned>(Operation::MeshClean)];}
+AdjacencyMode adjacency_requested_mode(){
+    wchar_t setting[adjacency_fast::mode_capacity]{};
+    return adjacency_fast::parse_mode(setting,GetEnvironmentVariableW(L"X3M_MESH_ADJACENCY",setting,adjacency_fast::mode_capacity));
+}
+// One mesh_adjacency_config row per process: enabled=1 when a non-native mode is
+// armed and at least one mesh import row routes meshes to the vtable hooks.
+bool adjacency_config_logged=false;
+void log_adjacency_config(AdjacencyMode requested_mode,bool trace){
+    if(adjacency_config_logged)return;
+    adjacency_config_logged=true;
+    bool rows=false;for(const auto& hook:hooks)rows|=mesh_row(hook)&&hook.slot&&*hook.slot==hook.replacement;
+    const bool enabled=rows&&mesh_observation_enabled.load(std::memory_order_acquire)&&adjacency_mode.load(std::memory_order_acquire)!=AdjacencyMode::Native;
+    log("mesh_adjacency_config requested=%s enabled=%u telemetry=%u",adjacency_fast::mode_name(requested_mode),unsigned(enabled),unsigned(trace));
+}
 bool install(HMODULE target) {
     if(installed.load())return true;
     if(installation_started){log("loading_trace disabled=reinitialization_not_supported");return false;}
     const bool trace=requested(),buffer=gz_buffer::requested(),crypt=crypt_cache::requested();
-    if(!trace&&!buffer&&!crypt)return false;
+    // X3M_MESH_ADJACENCY=fast arms without telemetry: only the two mesh import
+    // rows are patched then, and no metric row is written (report() runs from
+    // the telemetry summary only). With telemetry the full set is patched below.
+    const AdjacencyMode adjacency_request=adjacency_requested_mode(),adjacency_armed=adjacency_fast::armed_mode(adjacency_request,trace);
+    const bool adjacency=!trace&&adjacency_armed!=AdjacencyMode::Native;
+    if(!trace&&!buffer&&!crypt&&!adjacency)return false;
     auto base=reinterpret_cast<unsigned char*>(target);
     auto dos=reinterpret_cast<IMAGE_DOS_HEADER*>(base);
     if(!readable(dos,sizeof *dos,target)||dos->e_magic!=IMAGE_DOS_SIGNATURE||
@@ -1102,30 +1124,35 @@ bool install(HMODULE target) {
         if(imports)install_crypt_group(real,target);
         log("crypt_cache requested=1 enabled=%u telemetry=%u imports=%u provider_slots=%u key_slots=%u blob_limit=%u",unsigned(crypt_cache_active.load()),trace,imports,crypt_cache::provider_slots,crypt_cache::key_slots,crypt_cache::blob_limit);
     }
-    if(!trace&&!gz_buffer_active&&!crypt_cache_active)return false;
+    if(!trace&&!gz_buffer_active&&!crypt_cache_active&&!adjacency){log_adjacency_config(adjacency_request,trace);return false;}
     installation_started=true;
-    if(!trace) { // buffer and/or crypt cache only: no mesh observation, no cache/adjacency services
+    if(!trace) { // buffer, crypt cache and/or the adjacency fast path only: no mesh cache, no metric rows
         LARGE_INTEGER buffer_frequency{};QueryPerformanceFrequency(&buffer_frequency);clock_frequency=buffer_frequency.QuadPart;
+        if(adjacency){adjacency_mode.store(adjacency_armed,std::memory_order_release);mesh_observation_enabled.store(true,std::memory_order_release);}
+        bool adjacency_rows=false;
         for(auto& hook:hooks) {
             if(crypt&&crypt_cache_row(hook)){
                 if(hook.slot&&*hook.slot==hook.replacement)++hook_count;
                 log("loading_hook name=%s installed=%u cache_active=%u",hook.name,unsigned(hook.slot&&*hook.slot==hook.replacement),unsigned(crypt_cache_active.load()));
                 continue;
             }
-            if(!((gz_buffer_active&&gz_buffer_row(hook))||(crypt_cache_active&&crypt_cache_row(hook)))){hook.slot=nullptr;continue;}
-            if(hook.slot&&patch(hook,false)){++hook_count;log("loading_hook name=%s installed=1",hook.name);}
+            if(!((gz_buffer_active&&gz_buffer_row(hook))||(crypt_cache_active&&crypt_cache_row(hook))||(adjacency&&mesh_row(hook)))){hook.slot=nullptr;continue;}
+            if(hook.slot&&patch(hook,false)){++hook_count;adjacency_rows|=adjacency&&mesh_row(hook);log("loading_hook name=%s installed=1",hook.name);}
             else {log("loading_hook name=%s installed=0",hook.name);if(hook.slot&&!has_protection_debt(hook.slot))hook.slot=nullptr;}
         }
+        // Neither mesh row patched: no mesh reaches the vtable hooks; keep the native state.
+        if(adjacency&&!adjacency_rows){mesh_observation_enabled.store(false,std::memory_order_release);adjacency_mode.store(AdjacencyMode::Native,std::memory_order_release);}
         coverage_start=tick();installed.store(hook_count!=0);
-        log("loading_trace coverage_begin=%llu frequency=%llu hooks=%u module=main inclusive=0 paths=0 qualification=named_pe32_imports scope=%s",coverage_start,clock_frequency,hook_count,
-            gz_buffer_active&&crypt_cache_active?"gz_buffer+crypt_cache":gz_buffer_active?"gz_buffer":"crypt_cache");
+        char scope[48]{};
+        const bool scope_on[]={gz_buffer_active,crypt_cache_active.load(),adjacency_rows};const char* const scope_names[]={"gz_buffer","crypt_cache","mesh_adjacency"};
+        for(unsigned i=0;i<3;++i)if(scope_on[i]){if(scope[0])std::strcat(scope,"+");std::strcat(scope,scope_names[i]);}
+        log("loading_trace coverage_begin=%llu frequency=%llu hooks=%u module=main inclusive=0 paths=0 qualification=named_pe32_imports scope=%s",coverage_start,clock_frequency,hook_count,scope[0]?scope:"none");
+        log_adjacency_config(adjacency_request,trace);
         return installed.load();
     }
     wchar_t cache_setting[8]{};cache_requested=GetEnvironmentVariableW(L"X3M_MESH_CACHE",cache_setting,8)==1&&cache_setting[0]==L'1';
     log("mesh_cache requested=%u enabled=0 activation=await_public_mesh_and_buffer_contract adjacency_metric_scope=hook_service restart_on_cleanup_failure=1",cache_requested);
-    wchar_t adjacency_setting[16]{};const DWORD adjacency_length=GetEnvironmentVariableW(L"X3M_MESH_ADJACENCY",adjacency_setting,16);
-    AdjacencyMode requested_mode=AdjacencyMode::Native;
-    if(adjacency_length&&adjacency_length<16){if(!lstrcmpiW(adjacency_setting,L"fast"))requested_mode=AdjacencyMode::Fast;else if(!lstrcmpiW(adjacency_setting,L"verify"))requested_mode=AdjacencyMode::Verify;}
+    const AdjacencyMode requested_mode=adjacency_armed; // with telemetry every parsed mode arms
     adjacency_mode.store(requested_mode,std::memory_order_release);
     wchar_t dump_setting[8]{};adjacency_dump_requested.store(GetEnvironmentVariableW(L"X3M_MESH_ADJACENCY_DUMP",dump_setting,8)==1&&dump_setting[0]==L'1',std::memory_order_relaxed);
     log("mesh_adjacency mode=%s scope=hook_service equivalence=d3dx_rules+exact_position_equality fp_domain=pc53_nearest_masked_empty_mxcsr_1f80_or_9fc0 normal_gate=sse2_no_competing gate=public_systemmem_readonly+declaration_float3+no_attribute_table order=cache_lookup,compute,cache_store native_fallback=1 dump=%u rsqrt=%s math_table=%s normalize=%s",adjacency_mode_name(requested_mode),unsigned(adjacency_dump_requested.load(std::memory_order_relaxed)),adjacency_fast::rsqrt_implementation(),
@@ -1146,11 +1173,13 @@ bool install(HMODULE target) {
     coverage_start=tick();installed.store(hook_count!=0);
     log("loading_trace coverage_begin=%llu frequency=%llu hooks=%u module=main inclusive=1 paths=0 qualification=named_pe32_imports light_rows=1 nesting=%u probes=%u crypt_cache=%u",coverage_start,clock_frequency,hook_count,unsigned(nesting),unsigned(probes),unsigned(crypt_cache_active));
     if(probes)loading_probes::initialize();
+    log_adjacency_config(adjacency_request,trace);
     return installed.load();
 }
 }
 
 bool initialize(){const DWORD error=GetLastError();bool result=install(GetModuleHandleW(nullptr));SetLastError(error);return result;}
+bool mesh_adjacency_requested(){return adjacency_fast::armed_mode(adjacency_requested_mode(),false)!=AdjacencyMode::Native;}
 bool active(){return installed.load()||mesh_owned_slots.load()||protection_debts.load();}
 Snapshot take_snapshot() {
     Snapshot result{};

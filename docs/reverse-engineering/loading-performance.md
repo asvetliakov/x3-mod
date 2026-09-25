@@ -225,6 +225,25 @@ real `d3dx9_37.dll` and fixture timings are in
 The next user run should use `verify` first (`verify_mismatched=0` in the last
 `mesh_adjacency_metric` line), then `fast`.
 
+2026-09-25, fast without telemetry: until this date `X3M_MESH_ADJACENCY` was
+read only inside the telemetry branch of `loading_trace::install`, so `fast`
+did nothing on a launch without `--telemetry`. The read (`parse_mode`) and the
+arming rule (`armed_mode`: `fast` arms with telemetry on or off, `verify` only
+with telemetry, unset/unknown/too long stay `native`) now sit in
+`mesh_adjacency_fast.{h,cpp}` and are host-tested. Without telemetry,
+`install` patches only the `D3DXCreateMesh`/`D3DXCleanMesh` import rows
+(besides any gz-buffer or crypt-cache rows), from which `observe_mesh` hooks
+the shared mesh vtables exactly as with telemetry; the mesh cache stays
+telemetry-only, and no `loading_metric`/`mesh_adjacency_metric` row is written
+because `report()` runs only from the telemetry summary. If neither mesh row
+patches, the mode reverts to `native`. One `mesh_adjacency_config
+requested=<native|verify|fast> enabled=<0|1> telemetry=<0|1>` row is logged at
+installation; the non-telemetry `loading_trace coverage_begin` row names
+`mesh_adjacency` in its `scope=`. `capture.cpp` still calls
+`loading_trace::initialize()` only when telemetry, `X3M_GZ_BUFFER=1` or
+`X3M_CRYPT_CACHE=1` is on; a launch with `fast` alone needs
+`loading_trace::mesh_adjacency_requested()` added to that condition.
+
 ## Savegame gz read-ahead buffer
 
 The 13.9 M three-byte `gzread` calls of the savegame decode come from the

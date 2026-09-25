@@ -1020,8 +1020,8 @@ def main():
         parser.error('--music-keep/--music-trace cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so the proxy that patches the music routines is not loaded.')
     if args.profile_raw and not args.profile:
         parser.error('--profile-raw requires --profile.')
-    if args.mesh_adjacency != 'native' and not args.telemetry and 'mesh_adjacency' not in args.promoted_defaults:
-        parser.error('--mesh-adjacency verify|fast requires --telemetry.')
+    if args.mesh_adjacency == 'verify' and not args.telemetry:
+        parser.error('--mesh-adjacency verify requires --telemetry (its output is telemetry rows); fast arms without it since 2026-09-25).')
     if args.mesh_adjacency_dump and args.mesh_adjacency != 'verify':
         parser.error('--mesh-adjacency-dump requires --mesh-adjacency verify.')
     if args.finite_positions and not (args.ownership and args.telemetry):
