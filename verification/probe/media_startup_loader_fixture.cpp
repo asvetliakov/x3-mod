@@ -8,7 +8,8 @@ using UINT=unsigned;using DWORD=std::uint32_t;using HRESULT=std::int32_t;
 struct IDirect3D9 {unsigned identity;};
 static IDirect3D9 native_factory{1},wrapped_factory{2};
 static bool ownership_enabled=false,depth_copy_enabled=false,finite_positions_enabled=false,
-    lock_bookends_enabled=false,locked_prefix_enabled=false,readable_buffers_enabled=false;
+    lock_bookends_enabled=false,locked_prefix_enabled=false,readable_buffers_enabled=false,
+    texture_keys_enabled=false;
 static unsigned calls=0,hooks=0,wraps=0,vetoes=0,before=0,after=0,scopes=0,logs=0;
 static bool backend_present=true,backend_success=true,wrap_success=true,telemetry_on=true,trace_on=false;
 static IDirect3D9* hooked=nullptr;static UINT seen_sdk=0;
@@ -19,7 +20,7 @@ void hook_direct3d(IDirect3D9* value){++hooks;hooked=value;}
 namespace telemetry {unsigned now(){static unsigned tick=0;return ++tick;}bool enabled(){return telemetry_on;}}
 namespace object_trace {bool active(){return trace_on;}}
 namespace ownership {
-struct Options {bool capture_auto_depth=false,track_buffer_writes=false,track_buffer_lock_attempts=false,capture_finite_positions=false,locked_prefix_bounds=false,track_execution_state=true,readable_managed_buffers=false;};
+struct Options {bool capture_auto_depth=false,track_buffer_writes=false,track_buffer_lock_attempts=false,capture_finite_positions=false,locked_prefix_bounds=false,track_execution_state=true,readable_managed_buffers=false,texture_upload_keys=false;};
 Options options;
 void* process_admission_monitor(){return nullptr;}
 struct ApplicationAdmissionAbi {explicit ApplicationAdmissionAbi(void*){++scopes;}~ApplicationAdmissionAbi(){--scopes;}};
@@ -38,7 +39,7 @@ int main(){
     for(unsigned scenario=0;scenario<6;++scenario){
         calls=hooks=wraps=vetoes=before=after=scopes=logs=0;hooked=nullptr;seen_sdk=0;
         backend_present=scenario!=0;backend_success=scenario!=1;ownership_enabled=scenario>=3;wrap_success=scenario!=4;
-        depth_copy_enabled=finite_positions_enabled=lock_bookends_enabled=locked_prefix_enabled=scenario==5;
+        depth_copy_enabled=finite_positions_enabled=lock_bookends_enabled=locked_prefix_enabled=texture_keys_enabled=scenario==5;
         const auto result=Direct3DCreate9(0x20);
         check(scopes==0&&before==1&&after==1);check(calls==unsigned(backend_present));
         check(!calls||seen_sdk==0x20);
@@ -46,7 +47,7 @@ int main(){
         else {check(hooks==1&&hooked==result);check(wraps==unsigned(ownership_enabled));
             check(result==((ownership_enabled&&wrap_success)?&wrapped_factory:&native_factory));
             check(vetoes==unsigned(!ownership_enabled||!wrap_success));}
-        if(scenario==5){const auto& o=x3m::ownership::options;check(o.capture_auto_depth&&o.track_buffer_writes&&o.track_buffer_lock_attempts&&o.capture_finite_positions&&o.locked_prefix_bounds&&!o.track_execution_state);}
+        if(scenario==5){const auto& o=x3m::ownership::options;check(o.capture_auto_depth&&o.track_buffer_writes&&o.track_buffer_lock_attempts&&o.capture_finite_positions&&o.locked_prefix_bounds&&o.texture_upload_keys&&!o.track_execution_state);}
     }
     std::printf("LOADER FACTORY checks=%u failures=%u\n",checks,failures);return failures?1:0;
 }

@@ -44,5 +44,6 @@
   "--chase-view-restore-dock opt-in (40cd3023): the rear chase view kept across docking at a station; the docked screen shows the rear view of the parked ship; unflown",
   "--effects-stage opt-in phase 1 (9375a1e7): HDR bolt capsules and shield-hit shells/decals drawn in the resolve bracket over the game's own effects; texture keys hashed at upload; unflown",
   "no default behaviour change against Run85 (dry run A differs only by X3M_CHASE_VIEW_RESTORE_DOCK=0)"
- ]
+ ],
+ "host_suite_after_test_fixes": "main after the test-side fixes (commit follows b443c8b0): 272 modules / 2,821 tests / 0 failing, 85.0 s wall; only tests, harness stubs and nine bloom provenance digests changed, plus one stale source comment in motion_output.cpp (no code change)"
 }

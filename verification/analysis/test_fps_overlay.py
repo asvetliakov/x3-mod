@@ -68,7 +68,7 @@ class FpsOverlay(unittest.TestCase):
         # F1-F3 are engine views; the telemetry marker requires Shift, so the
         # chords are disjoint. One option-gated poller; the sampler edges the
         # folded chord outside its Ctrl+Shift arm.
-        self.assertIn('keys.alt=(fps_overlay_requested || volumetric_fog_requested) && (GetAsyncKeyState(VK_MENU)&0x8000)!=0;', polling)
+        self.assertIn('keys.alt=(fps_overlay_requested || volumetric_fog_requested || effects_stage_requested) && (GetAsyncKeyState(VK_MENU)&0x8000)!=0;', polling)
         self.assertIn('keys.fps_overlay=fps_overlay_requested && (GetAsyncKeyState(VK_F7)&0x8000)!=0;', polling)
         self.assertEqual(capture.count('GetAsyncKeyState(VK_F7)'), 1)
         self.assertEqual(capture.count('GetAsyncKeyState(VK_MENU)'), 1)
@@ -84,8 +84,11 @@ class FpsOverlay(unittest.TestCase):
         self.assertNotIn('ctx.fps_overlay.toggle()', present)
         self.assertIn('fps_overlay_toggle device=%llu frame=%llu visible=%u reason=key', polling)
         self.assertIn('if(ctx.fps_overlay.shadows(shadows)||fog_changed||refreshed)', present)  # the fog part of the line has its own latch
-        for key in ('VK_F4', 'VK_F5', 'VK_F6'):
+        for key in ('VK_F4', 'VK_F6'):
             self.assertIn(f'emitter_compare && (GetAsyncKeyState({key})&0x8000)!=0;', polling)
+        # F5 is read once for the emitter chord and the effects stage chord; the emitter key stays on its option.
+        self.assertIn('const bool f5=(emitter_compare || effects_stage_requested) && (GetAsyncKeyState(VK_F5)&0x8000)!=0;', polling)
+        self.assertIn('keys.screen_additive=emitter_compare && f5;', polling)
         self.assertIn('if(action.fps_overlay)log("fps_overlay_toggle device=%llu frame=%llu visible=%u reason=key"', polling)
         self.assertIn(edge, controls)
         self.assertIn('fps_overlay_down_ = keys.fps_overlay;', controls)

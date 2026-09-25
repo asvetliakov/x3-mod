@@ -7,6 +7,7 @@ using ULONG = unsigned long;
 using DWORD = std::uint32_t;
 using INT = int;
 using HRESULT = std::int32_t;
+using LONGLONG = long long;
 constexpr HRESULT S_OK = 0, S_FALSE = 1, E_FAIL = -1, E_ABORT = -2,
     E_NOINTERFACE = -3, D3DERR_DEVICELOST = -4, D3DERR_DEVICENOTRESET = -5,
     D3DERR_NOTAVAILABLE = -6, D3DERR_INVALIDCALL = -7, D3DERR_NOTFOUND = -8;
@@ -14,6 +15,11 @@ constexpr bool SUCCEEDED(HRESULT hr) { return hr >= 0; }
 constexpr bool FAILED(HRESULT hr) { return hr < 0; }
 enum D3DFORMAT { D3DFMT_UNKNOWN, D3DFMT_A16B16G16R16F, D3DFMT_A8R8G8B8, D3DFMT_G32R32F, D3DFMT_A32B32G32R32F, D3DFMT_R32F };
 enum D3DPRIMITIVETYPE { D3DPT_TRIANGLELIST };
+// Declared by d3d9_ownership.h (included through motion_output.h since 9375a1e7); unused by the handoff bodies.
+enum D3DPOOL { D3DPOOL_DEFAULT };
+enum D3DDECLTYPE { D3DDECLTYPE_FLOAT1 = 0, D3DDECLTYPE_UNUSED = 17 };
+enum D3DRESOURCETYPE { D3DRTYPE_SURFACE = 1, D3DRTYPE_VERTEXBUFFER = 6 };
+struct D3DSURFACE_DESC {};
 enum D3DTEXTUREFILTERTYPE { D3DTEXF_POINT };
 enum D3DRENDERSTATETYPE { D3DRS_ZENABLE };
 enum D3DCULL { D3DCULL_NONE = 1, D3DCULL_CW = 2, D3DCULL_CCW = 3 }; // documented D3D9 values; the replay records default to no culling
@@ -30,6 +36,7 @@ struct IDirect3DVertexBuffer9 {};
 struct IDirect3DIndexBuffer9 {};
 struct IDirect3DVertexDeclaration9 {};
 struct IDirect3DDevice9 {};
+struct IDirect3D9 {};
 struct IDirect3DStateBlock9 {};
 struct IDirect3DQuery9 {};
 constexpr int IID_IDirect3DTexture9 = 1;

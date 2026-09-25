@@ -4161,7 +4161,7 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
             if (composition_effective_) { composition_state_lost_ = true; ++composition_counts_.suppressed; }
             invalidate_taa(TaaInvalidateSite::RestoreFailed);
         } else if (route.submit) {
-            if (effects_requested_ && effects_armed_now()) record_effect_draw(call, route); // the effects stage's records: a taken draw clears route.submit (S_OK to the engine)
+            if (effects_requested_ && effects_armed_now()) record_effect_draw(call, route); // the effects stage's records: phase 1 takes no draw: route.submit stays as admitted (the stage draws on top; see effects-modernisation-opus.md "Implementation (phase 1)") (S_OK to the engine)
             if (shadow_.fog_card_source) prepare_fog_card(call, route);
             if (!route.fog_card_mask.masked && route.submit) prepare_composition(call, route);
             // Additive option: its pair check is the only per-draw cost for

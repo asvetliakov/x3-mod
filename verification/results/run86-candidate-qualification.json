@@ -3548,5 +3548,6 @@
    "rerun": "test_taa_far_gate, test_fov_site, test_linear_emission_source_gain, test_linear_emission_hull_gain OK on main"
   }
  },
- "host_suite_note": "6 modules failed on test-side expectations not updated by 9375a1e7 (DLL unaffected); test fixes committed on main after the install, see the install record and status"
+ "host_suite_note": "6 modules failed on test-side expectations not updated by 9375a1e7 (DLL unaffected); test fixes committed on main after the install, see the install record and status",
+ "host_suite_after_test_fixes": "main after the test-side fixes (commit follows b443c8b0): 272 modules / 2,821 tests / 0 failing, 85.0 s wall; only tests, harness stubs and nine bloom provenance digests changed, plus one stale source comment in motion_output.cpp (no code change)"
 }

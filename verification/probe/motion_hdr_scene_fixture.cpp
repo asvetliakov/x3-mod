@@ -141,6 +141,7 @@ renderer::ShadowReplayPass::~ShadowReplayPass() = default; // the depth-replay p
 renderer::SunShadowApplyPass::~SunShadowApplyPass() = default; // likewise: only the unique_ptr member destructor is needed
 renderer::FogPass::~FogPass() = default; // likewise
 renderer::SunOcclusionPass::~SunOcclusionPass() = default; // likewise (partial sun occlusion, 855fc1bc)
+renderer::EffectsStagePass::~EffectsStagePass() = default; // likewise (effects stage, 9375a1e7)
 // The scene-end apply quad is gated on sun_apply_requested_, which no scenario
 // here sets; inert so it cannot perturb the recorded call sequences.
 void MotionOutput::run_sun_shadow_apply() noexcept {}

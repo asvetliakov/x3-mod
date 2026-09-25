@@ -232,7 +232,8 @@ class SourceAndPolicy(unittest.TestCase):
         ownership = (ROOT / 'src/ownership/d3d9_ownership.cpp').read_text()
         self.assertIn('std::atomic<SurfaceLockObserver> surface_lock_observer{nullptr};', ownership)
         self.assertEqual(ownership.count('const SurfaceLockObserver observer=surface_lock_observer.load(std::memory_order_relaxed);'), 2)
-        self.assertIn('if(!observer)return observe_result(device_of(node), static_cast<Surface*>(node)->native_->LockRect(locked_rect, rect, flags));', ownership)
+        self.assertIn('if(!observer)hr=observe_result(device_of(node), static_cast<Surface*>(node)->native_->LockRect(locked_rect, rect, flags));', ownership)
+        self.assertIn('else hr=observed_surface_lock(node, observer, return_address, locked_rect, rect, flags);', ownership)
         self.assertIn('__attribute__((noinline)) HRESULT observed_surface_lock(', ownership)
         # The shell owns the CPU-state envelope: incoming state restored before
         # the native call, native outgoing state restored after the second observer call.

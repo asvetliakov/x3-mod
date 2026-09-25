@@ -104,6 +104,7 @@ public:
  Pass*sun_apply_=nullptr; // scene-end sun-shadow apply: after_reset forwards to the pass when one is attached
  Pass*sun_occlusion_pass_=nullptr; // partial sun occlusion (855fc1bc): after_reset forwards to the visibility pass when one is attached
  Pass*fog_=nullptr;std::uint64_t fog_frame_=~std::uint64_t(0);unsigned fog_failures_=0;bool fog_attach_failed_=false; // volumetric fog: the same forwarding and per-frame marker
+ Pass*effects_=nullptr; // effects stage (9375a1e7): after_reset forwards to the pass when one is attached
  std::uint64_t sun_apply_frame_=~std::uint64_t(0),depth_replayed_frame_=~std::uint64_t(0); // per-frame markers cleared by after_reset
  struct{unsigned rs_queries=0,rs_hits=0,rs_gets=0,rs_resyncs=0,restore_failures=0,draws=0,sb_resyncs=0,material_bind_failures=0,restore_getters=0,restore_declines=0,fade_owner_masked=0;}counters_;
  struct{DWORD states[motion_shadow_state_count]{};bool states_known[motion_shadow_state_count]{};bool recording=false;

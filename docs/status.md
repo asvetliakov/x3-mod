@@ -32,8 +32,8 @@ advisory targets missed: full-screen shell 0.54/0.78 ms, 60 bolts + 2 shells 0.1
 chase transition CPU 771/0; ownership 370 + 661 / admission 147 / integration 26 cases / execution 184; fog pass 178/0 and route
 bridge PASS; ten closures rerun with Run85 counts (FOV 268, window 19, sun flare 79, LOD occlusion 108, cull 153, chase fire 307,
 gpu sync 32, cursor 42, sun occlusion 74 + 128, census 119); five dry runs (A stand, B + dock, C + effects stage, D + taa-debug,
-E vanilla). Host suite 272 modules / 2,821 tests / 6 failing on test-side expectations left stale by 9375a1e7 (DLL unaffected; test
-fixes on main after the install). The ownership fallback runner is stale (does not read x3m_add_fog_field_assets) and was not run.
+E vanilla). Host suite at the candidate: 272 modules / 2,821 tests / 6 failing on test-side expectations left stale by 9375a1e7 (DLL
+unaffected); after the test fixes on main: 272 / 2,821 / 0 failing (85 s). The ownership fallback runner is stale (does not read x3m_add_fog_field_assets) and was not run.
 Not a native Windows execution. The install record verifies installed bytes and unchanged X3AP.exe `fdbf3418…` and cxbottle.conf
 `cc5d6c00…`.
 
