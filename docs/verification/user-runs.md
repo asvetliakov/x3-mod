@@ -35,7 +35,7 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 
 ## Run 85 (open)
 
-**Run 85 A (queued 2026-09-25; Run85 DLL `__RUN85_SHA__` from 53e7aba5, installed __RUN85_TIME__; overlay install-fleet4 unchanged).**
+**Run 85 A (queued 2026-09-25; Run85 DLL `c430294a…` from 53e7aba5, installed 09:25; overlay install-fleet4 unchanged).**
 New in this build: `--taa-far-clip 7x7|3x3` (default 7x7: far pixels outside the thin region keep their history against the
 in-place 7x7 box instead of the 3x3, so a sub-pixel line missed by the current jitter phase is no longer erased) and the far
 stabiliser ramp 60/68 (full 0.985 weight from about 87,000 view units = 17 km at 5120 width, was 102-166k). Everything else as

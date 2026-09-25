@@ -58,7 +58,7 @@
   "tools/manage.py"
  ],
  "changed_files_command": "git diff --stat 46cd4f9d..53e7aba5 -- src/ -> 8 files changed, 207 insertions(+), 139 deletions(-)",
- "verdict": "DLL QUALIFIED at 53e7aba5, launcher defect open: build 0 warnings, x87 119 roots / 690 reachable / 0 violations; PE imports 231 -> 231 (no new or removed function, same 15 DLLs), exports unchanged; temporal 744/278 + lattice 598/90 (hold program 1017 slots, 22 FAR_JITTER_LINE rows); motion 234 summary cases (250 case lines) PASS; host suite 269 modules / 2795 tests / 3 failing (test_fov_site, test_linear_emission_source_gain, test_linear_emission_hull_gain: `manage.py launch --help` ValueError from an unescaped % in the --taa-far-gate help, source defect in 53e7aba5, DLL and dry runs unaffected); dry runs A-D exit 0 with the expected env. gpu-sync, cursor re-assert, lod occlusion, sun occlusion, FOV patch, window mode, sun flare, cull small parts, chase fire, fog pass, fog route bridge, fog family, bloom, cull census, site verifiers and the identity matrix reused from run84 (closures, verifiers and EXE unchanged in the range).",
+ "verdict": "DLL QUALIFIED at 53e7aba5 (launcher --help defect fixed on main 89f4b014 before the install, host-only, DLL unaffected): build 0 warnings, x87 119 roots / 690 reachable / 0 violations; PE imports 231 -> 231 (no new or removed function, same 15 DLLs), exports unchanged; temporal 744/278 + lattice 598/90 (hold program 1017 slots, 22 FAR_JITTER_LINE rows); motion 234 summary cases (250 case lines) PASS; host suite 269 modules / 2795 tests / 3 failing (test_fov_site, test_linear_emission_source_gain, test_linear_emission_hull_gain: `manage.py launch --help` ValueError from an unescaped % in the --taa-far-gate help, source defect in 53e7aba5, DLL and dry runs unaffected); dry runs A-D exit 0 with the expected env. gpu-sync, cursor re-assert, lod occlusion, sun occlusion, FOV patch, window mode, sun flare, cull small parts, chase fire, fog pass, fog route bridge, fog family, bloom, cull census, site verifiers and the identity matrix reused from run84 (closures, verifiers and EXE unchanged in the range).",
  "host_suite": {
   "command": "/usr/bin/python3 verification/probe/run_host_suite.py",
   "cwd": "/tmp/x3-run85-candidate/src",
@@ -1961,5 +1961,10 @@
   "host suite FAILED on its first run: 3 modules (test_fov_site, test_linear_emission_source_gain, test_linear_emission_hull_gain), one error each, all `manage.py launch --help` ValueError: unsupported format character 'p' at index 911, from the unescaped '10 % per frame' in the --taa-far-gate help (tools/manage.py line 610, 22776b6f); source defect in the frozen candidate tree and on main, not rerun; the DLL and the non-help dry runs are unaffected",
   "gpu-sync, cursor re-assert, lod occlusion and sun occlusion reused from run84 (reuse-deps.json: 0 changed files in each closure)",
   "no motion-output case exercises far_clip=7x7: all 93 motion_output_taa rows in the case capture logs report far_clip=3x3 (no case sets a far weight with the camera gate); the 7x7 path is covered by the temporal fixture only"
- ]
+ ],
+ "launcher_defect_fix": {
+  "commit": "89f4b014",
+  "change": "tools/manage.py --taa-far-gate help text '10 % per frame' -> '10 %% per frame'",
+  "rerun": "test_taa_far_gate, test_fov_site, test_linear_emission_source_gain, test_linear_emission_hull_gain OK on main"
+ }
 }

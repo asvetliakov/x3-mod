@@ -1,0 +1,47 @@
+{
+ "candidate": {
+  "dll": "/tmp/x3-run85-candidate/build/d3d9.dll",
+  "sha256": "c430294a1bd136ee266899dbff2e1623a96f9d64a62cfd664a239fcb1cffdecf",
+  "bytes": 56857261,
+  "commit": "53e7aba5",
+  "qualification": "verification/results/run85-candidate-qualification.json"
+ },
+ "command": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3-run85-candidate/build/d3d9.dll",
+ "cwd": "/Users/asvetl/x3-mod",
+ "exit": 0,
+ "installed_at": "2026-09-25T09:25+04:00",
+ "installed": {
+  "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
+  "sha256": "c430294a1bd136ee266899dbff2e1623a96f9d64a62cfd664a239fcb1cffdecf",
+  "bytes": 56857261,
+  "verified": "sha256 and size read back after install"
+ },
+ "unchanged": {
+  "X3AP.exe": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+  "cxbottle.conf": "cc5d6c00a8afccaf88cbae1a7c46040db513eb163a52693287a3d29aca828e0c"
+ },
+ "previous": {
+  "dll": "/tmp/x3-run84-candidate/build/d3d9.dll",
+  "sha256": "189a34f08b0b2bacf53286e0b2d284a4303ac87713e0b0e90af68805ef23e75d",
+  "bytes": 56854000,
+  "commit": "46cd4f9d"
+ },
+ "rollback": {
+  "dll": "/tmp/x3-run84-candidate/build/d3d9.dll",
+  "sha256": "189a34f08b0b2bacf53286e0b2d284a4303ac87713e0b0e90af68805ef23e75d",
+  "bytes": 56854000,
+  "records": [
+   "verification/results/run84-candidate-qualification.json",
+   "verification/results/run84-candidate-install.json"
+  ],
+  "then": "/tmp/x3-run83-candidate/build/d3d9.dll f0259ceb\u2026"
+ },
+ "game_running_at_install": false,
+ "game_data": "fleet overlay install-fleet4 (620 bodies) unchanged; fog family file x3m/fog-families.bin installed after this DLL (see status)",
+ "changes_vs_previous": [
+  "--taa-far-clip 7x7|3x3, default 7x7: far pixels outside the thin region clip their history against the in-place 7x7 box, gated on farw*openC > 0 (22776b6f)",
+  "far stabiliser ramp far_f0/f1 80/130 -> 60/68 (farw = 1 from 87,040 view units = 17.4 km at 5120 width) (22776b6f)",
+  "thin_vote_frame row gains max_unvoted_fraction (22776b6f)",
+  "far-gate default unchanged (camera); the screen A/B is dropped (fixture witness rows)"
+ ]
+}
