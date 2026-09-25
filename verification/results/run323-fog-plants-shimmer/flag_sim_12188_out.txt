@@ -1,0 +1,4 @@
+frame 12188 | owned n24838 vote 0 emissive 0 search 1707 flag_vote_src 0 flag_both_src 1707 | remainder n9265 vote 0 emissive 0 search 1743 flag_vote_src 0 flag_both_src 1743
+frame 12189 | owned n24810 vote 0 emissive 0 search 1688 flag_vote_src 0 flag_both_src 1688 | remainder n9294 vote 0 emissive 0 search 1776 flag_vote_src 0 flag_both_src 1776 | new_vote 0/0 | new_both 641/3464
+frame 12190 | owned n24835 vote 0 emissive 0 search 1773 flag_vote_src 0 flag_both_src 1773 | remainder n9337 vote 0 emissive 0 search 1784 flag_vote_src 0 flag_both_src 1784 | new_vote 0/0 | new_both 811/3557
+frame 12191 | owned n24856 vote 0 emissive 0 search 1677 flag_vote_src 0 flag_both_src 1677 | remainder n9260 vote 0 emissive 0 search 1731 flag_vote_src 0 flag_both_src 1731 | new_vote 0/0 | new_both 582/3408

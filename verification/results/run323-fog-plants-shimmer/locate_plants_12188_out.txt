@@ -1,0 +1,2 @@
+far_owner px 24838 w range (np.float32(113089.555), np.float32(222108.55))
+cluster px 24838 bbox x2336-2452 y269-803 w p50 128667

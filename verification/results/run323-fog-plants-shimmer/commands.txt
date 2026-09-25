@@ -1,0 +1,22 @@
+Fog-band plants shimmer on Run83 (DLL f0259ceb, 80394271 mask fold) vs Run82 (cd8ef8e4, d1a4e360, stabiliser 0).
+Sessions (read-only, no Wine): run323 /tmp/x3-bottleX3-run323/session-20260925-042913-216.log (vote source, default);
+run313 /tmp/x3-bottleX3-run313/session-20260925-003730-212.log (Run82, source both = unset default, S = 0, --gpu-sync-timing);
+run324 /tmp/x3-bottleX3-run324/session-20260925-044213-216.log (Run83, --taa-thin-region-source both, no F8 bursts).
+Scripts copied from ../run313-run82a-stabiliser-off (station_pixels, owner_pixels, shimmer, locate_plants, burst_px, draw_table, route_rows);
+new: shimmer_pan.py (shimmer.py + horizontal search SX, margin M), lane_stats.py, flag_sim.py (CPU model of resolve.hlsl thinFlag),
+plant_frames.py, frame_dt.py, crop_png.py (visual check, PNGs to scratch only). Run from this directory.
+python3 burst_px.py 323 > burst_px_out.txt                                                         # 12188-12195 rotation 0 / cut 0 (rest); 15787-15794 pan
+python3 locate_plants.py 323 <f> > locate_plants_<f>_out.txt   (f = 12188 12195 15787 15790 15794 5897)
+python3 route_rows.py 323 12188 15787 > route_rows_out.txt; python3 draw_table.py 323 12188|15787 > draw_table_<f>_out.txt      # Q1
+python3 lane_stats.py 323 2300 240 2490 830 12188..12195 > lane_stats_12188_out.txt                 # Q2 rest crop (two plants, edge-on)
+python3 lane_stats.py 323 1330 790 1850 1230 15787..15794 > lane_stats_15787_plantA_out.txt         # Q2 pan, near plant (w ~93k)
+python3 lane_stats.py 323 1900 530 2130 780 15787..15794 > lane_stats_15787_plantB_out.txt          # Q2 pan, far plant (w ~184k)
+python3 lane_stats.py 313 2180 380 2490 790 1673..1680 > lane_stats_313_1673_out.txt; python3 lane_stats.py 313 1990 660 2340 1210 2124..2131 > lane_stats_313_2124_out.txt
+python3 station_pixels.py 323 <same crops> <frames> > station_pixels_{12188,15787_plantA,15787_plantB}_out.txt
+python3 shimmer_pan.py 323 2300 240 2490 830 12188 8 > shimmer_12188_out.txt; S=0 SX=0 python3 shimmer_pan.py ... 12188 8 > shimmer_12188_rest_out.txt
+S=4 SX=40 python3 shimmer_pan.py 323 1330 790 1850 1230 15787 8 > shimmer_15787_plantA_out.txt; S=4 SX=40 python3 shimmer_pan.py 323 1900 530 2130 780 15787 8 > shimmer_15787_plantB_out.txt
+python3 flag_sim.py 323|313 <crop> <frames> > flag_sim_{12188,15787_plantA,15787_plantB,313_1673,313_2124}_out.txt   # Q3/Q4
+for r in 313 323 324; do python3 plant_frames.py $r; done > plant_frames_out.txt                   # Q4 run324 = both, plant spans
+python3 frame_dt.py 313 1673 2124 > frame_dt_out.txt; python3 frame_dt.py 323 12188 15787 >> frame_dt_out.txt
+grep -a -m1 '^taa_thin_region_source ' <run322..325 logs>   # run323/325 vote default=1, run324 both default=0, run313 row absent (source unset = both)
+diff of sorted proxy_options 313 vs 323: GPU_SYNC_TIMING 1 -> 0, ORIGINAL_FILL 0.0 -> 0.01, SENTINEL_STABILISER=0 gone, THIN_REGION_SOURCE=vote added

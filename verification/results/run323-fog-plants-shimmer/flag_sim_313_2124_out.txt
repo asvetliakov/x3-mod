@@ -1,0 +1,8 @@
+frame 2124 | owned n46721 vote 0 emissive 172 search 1813 flag_vote_src 172 flag_both_src 1934 | remainder n10160 vote 0 emissive 0 search 2226 flag_vote_src 0 flag_both_src 2226
+frame 2125 | owned n46862 vote 0 emissive 175 search 1847 flag_vote_src 175 flag_both_src 1973 | remainder n10248 vote 0 emissive 0 search 2240 flag_vote_src 0 flag_both_src 2240 | new_vote 100/175 | new_both 2370/4213
+frame 2126 | owned n46954 vote 0 emissive 164 search 1932 flag_vote_src 164 flag_both_src 2048 | remainder n10413 vote 0 emissive 0 search 2317 flag_vote_src 0 flag_both_src 2317 | new_vote 115/164 | new_both 2650/4365
+frame 2127 | owned n46841 vote 0 emissive 174 search 1744 flag_vote_src 174 flag_both_src 1869 | remainder n10792 vote 0 emissive 0 search 2201 flag_vote_src 0 flag_both_src 2201 | new_vote 166/174 | new_both 2627/4070
+frame 2128 | owned n46748 vote 0 emissive 166 search 1778 flag_vote_src 166 flag_both_src 1894 | remainder n10674 vote 0 emissive 0 search 2207 flag_vote_src 0 flag_both_src 2207 | new_vote 152/166 | new_both 2732/4101
+frame 2129 | owned n46541 vote 0 emissive 168 search 1717 flag_vote_src 168 flag_both_src 1835 | remainder n10600 vote 0 emissive 0 search 2152 flag_vote_src 0 flag_both_src 2152 | new_vote 148/168 | new_both 2608/3987
+frame 2130 | owned n46387 vote 0 emissive 178 search 1710 flag_vote_src 178 flag_both_src 1836 | remainder n10515 vote 0 emissive 0 search 2192 flag_vote_src 0 flag_both_src 2192 | new_vote 143/178 | new_both 2725/4028
+frame 2131 | owned n46210 vote 0 emissive 172 search 1745 flag_vote_src 172 flag_both_src 1868 | remainder n10412 vote 0 emissive 0 search 2156 flag_vote_src 0 flag_both_src 2156 | new_vote 115/172 | new_both 2697/4024

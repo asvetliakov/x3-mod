@@ -1,0 +1,10 @@
+pair 15787->15788 shift dy+1 dx-18 owned n75839 mean|dc| 2.48 p95 10.6 unowned n6962 mean|dc| 1.23 p95 5.7 bg n111113 mean|dc| 0.34 p95 0.5
+pair 15788->15789 shift dy+1 dx-14 owned n77254 mean|dc| 2.42 p95 10.1 unowned n7131 mean|dc| 1.19 p95 5.6 bg n109097 mean|dc| 0.34 p95 0.6
+pair 15789->15790 shift dy+1 dx-12 owned n78512 mean|dc| 2.23 p95 9.4 unowned n7046 mean|dc| 0.97 p95 3.5 bg n107425 mean|dc| 0.28 p95 0.5
+pair 15790->15791 shift dy+0 dx-7 owned n79537 mean|dc| 2.22 p95 9.4 unowned n7191 mean|dc| 0.80 p95 2.8 bg n106142 mean|dc| 0.19 p95 0.3
+pair 15791->15792 shift dy+1 dx-4 owned n80197 mean|dc| 2.30 p95 10.0 unowned n7229 mean|dc| 0.61 p95 1.8 bg n105227 mean|dc| 0.18 p95 0.2
+pair 15792->15793 shift dy-1 dx+8 owned n80577 mean|dc| 1.96 p95 8.2 unowned n7162 mean|dc| 0.64 p95 1.7 bg n104877 mean|dc| 0.23 p95 0.3
+pair 15793->15794 shift dy-2 dx+30 owned n79888 mean|dc| 2.93 p95 13.2 unowned n7122 mean|dc| 1.26 p95 5.9 bg n105700 mean|dc| 0.56 p95 0.9
+class owned: mean over pairs 2.36  pair min/max 1.96/2.93
+class unowned: mean over pairs 0.96  pair min/max 0.61/1.26
+class bg: mean over pairs 0.30  pair min/max 0.18/0.56

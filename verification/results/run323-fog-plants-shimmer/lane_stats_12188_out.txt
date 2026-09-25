@@ -1,0 +1,8 @@
+frame 12188 routed 24838 a==1 24838 a<1 0 a<1_hist[0,.25,.5,.75,.9,1) [] g==-1 24838 g_other 0 w_p50 128667 unrouted_within3px 9265 nonfinite_r 0
+frame 12189 routed 24810 a==1 24810 a<1 0 a<1_hist[0,.25,.5,.75,.9,1) [] g==-1 24810 g_other 0 w_p50 128672 unrouted_within3px 9294 nonfinite_r 0
+frame 12190 routed 24835 a==1 24835 a<1 0 a<1_hist[0,.25,.5,.75,.9,1) [] g==-1 24835 g_other 0 w_p50 128692 unrouted_within3px 9337 nonfinite_r 0
+frame 12191 routed 24856 a==1 24856 a<1 0 a<1_hist[0,.25,.5,.75,.9,1) [] g==-1 24856 g_other 0 w_p50 128678 unrouted_within3px 9260 nonfinite_r 0
+frame 12192 routed 24854 a==1 24854 a<1 0 a<1_hist[0,.25,.5,.75,.9,1) [] g==-1 24854 g_other 0 w_p50 128693 unrouted_within3px 9335 nonfinite_r 0
+frame 12193 routed 24822 a==1 24822 a<1 0 a<1_hist[0,.25,.5,.75,.9,1) [] g==-1 24822 g_other 0 w_p50 128688 unrouted_within3px 9335 nonfinite_r 0
+frame 12194 routed 24848 a==1 24848 a<1 0 a<1_hist[0,.25,.5,.75,.9,1) [] g==-1 24848 g_other 0 w_p50 128672 unrouted_within3px 9244 nonfinite_r 0
+frame 12195 routed 24840 a==1 24840 a<1 0 a<1_hist[0,.25,.5,.75,.9,1) [] g==-1 24840 g_other 0 w_p50 128688 unrouted_within3px 9356 nonfinite_r 0

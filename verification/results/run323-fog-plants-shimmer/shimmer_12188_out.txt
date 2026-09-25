@@ -1,0 +1,10 @@
+pair 12188->12189 shift dy+0 dx+0 owned n24838 mean|dc| 9.13 p95 50.7 unowned n2579 mean|dc| 1.76 p95 12.3 bg n62037 mean|dc| 0.00 p95 0.0
+pair 12189->12190 shift dy+0 dx-1 owned n24810 mean|dc| 7.36 p95 41.9 unowned n2363 mean|dc| 2.03 p95 11.6 bg n61998 mean|dc| 0.33 p95 1.1
+pair 12190->12191 shift dy+0 dx+0 owned n24835 mean|dc| 9.18 p95 52.8 unowned n2611 mean|dc| 1.71 p95 13.6 bg n62050 mean|dc| 0.00 p95 0.0
+pair 12191->12192 shift dy+0 dx+0 owned n24856 mean|dc| 8.00 p95 47.3 unowned n2376 mean|dc| 1.42 p95 0.0 bg n62018 mean|dc| 0.00 p95 0.0
+pair 12192->12193 shift dy+0 dx+0 owned n24854 mean|dc| 9.34 p95 52.8 unowned n2555 mean|dc| 1.94 p95 14.9 bg n62084 mean|dc| 0.00 p95 0.0
+pair 12193->12194 shift dy+0 dx+0 owned n24822 mean|dc| 8.92 p95 47.4 unowned n2129 mean|dc| 2.82 p95 23.8 bg n61918 mean|dc| 0.00 p95 0.0
+pair 12194->12195 shift dy+0 dx+0 owned n24848 mean|dc| 8.96 p95 49.3 unowned n2617 mean|dc| 1.66 p95 12.1 bg n62078 mean|dc| 0.00 p95 0.0
+class owned: mean over pairs 8.70  pair min/max 7.36/9.34
+class unowned: mean over pairs 1.91  pair min/max 1.42/2.82
+class bg: mean over pairs 0.05  pair min/max 0.00/0.33

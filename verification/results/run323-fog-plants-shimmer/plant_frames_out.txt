@@ -1,0 +1,19 @@
+== run313
+identity None
+span 157-362 frames 206 fade_tested max 18 rot>0.05deg frames 199 rot p50/max 1.528/5.642 cut p50/max 1.23/165.66
+span 407-3506 frames 3100 fade_tested max 31 rot>0.05deg frames 2240 rot p50/max 0.223/3.084 cut p50/max 3.32/500055.38
+span 3603-3987 frames 385 fade_tested max 36 rot>0.05deg frames 385 rot p50/max 1.061/3.098 cut p50/max 21.65/137.50
+span 4026-4431 frames 406 fade_tested max 13 rot>0.05deg frames 299 rot p50/max 0.251/3.071 cut p50/max 2.37/710.35
+== run323
+identity None
+span 9450-24316 frames 14867 fade_tested max 33 rot>0.05deg frames 8641 rot p50/max 0.066/4.464 cut p50/max 0.97/7375514.00
+== run324
+identity None
+span 449-691 frames 243 fade_tested max 1 rot>0.05deg frames 240 rot p50/max 1.263/3.374 cut p50/max 0.00/141829.75
+span 738-923 frames 186 fade_tested max 1 rot>0.05deg frames 105 rot p50/max 0.117/1.575 cut p50/max 0.33/18.15
+span 1073-1551 frames 479 fade_tested max 22 rot>0.05deg frames 479 rot p50/max 0.992/10.860 cut p50/max 28.24/179871.75
+span 1640-2032 frames 393 fade_tested max 33 rot>0.05deg frames 393 rot p50/max 0.844/1.665 cut p50/max 22.09/386.46
+span 2101-2103 frames 3 fade_tested max 1 rot>0.05deg frames 3 rot p50/max 0.907/1.250 cut p50/max 3632.41/8739.41
+span 2137-2144 frames 8 fade_tested max 1 rot>0.05deg frames 8 rot p50/max 0.950/0.983 cut p50/max 3807.76/26126.67
+span 2233-3042 frames 810 fade_tested max 25 rot>0.05deg frames 739 rot p50/max 0.566/6.587 cut p50/max 17.20/20323914.00
+span 3171-6977 frames 3807 fade_tested max 36 rot>0.05deg frames 2204 rot p50/max 0.124/7.345 cut p50/max 2.31/1838.78

@@ -67,6 +67,25 @@ X3M_TAA_SENTINEL_STABILISER` once in the shell. Please report per launch and nam
    `window_msg` transitions, `cursor_snapshot`.
 4. Exit through the menu after each launch.
 
+**Run 83 B (queued 2026-09-25 05:10; Run83 DLL `f0259ceb…`; one diagnostic launch, two questions).** Run 83 A launch 1 (run323) and
+its `both` relaunch (run324) showed a little shimmer on the fog-band solar plants under a slow pan; the captures find nothing
+on the input side (plants 100 % owned, flicker as run313), so the candidates are the search being off by default (rest and pan),
+the box gate reading the previous frame's hold (pan only, needs `both`), or the two things that changed besides the fold:
+frame rate (run313 ran at 28 fps under `--gpu-sync-timing`, run323 at 62) and `--original-fill` 0 -> 0.01. One launch settles
+which, and the same launch tests the partial sun occlusion the user asked for (goal 13 reopened):
+
+```sh
+<stand command> --sun-occlusion --taa-thin-region-source both --original-fill 0 --gpu-sync-timing --taa-debug
+```
+
+1. Fog-band plants (the run313 stand): at rest, then a slow vertical pan of 3-9 px/frame: say whether the shimmer is there at
+   rest, in the pan, or neither. F8 at rest and F8 in the pan (`--taa-debug` adds the resolved image and the age dump).
+   Reading: shimmer at rest = not the fold; clean at rest but shimmer in the pan = the box gate; clean in both = the frame
+   rate or the fill (a second launch without `--gpu-sync-timing` then decides).
+2. Sun: at the place of the Run 83 A pop, let a ship or station cross the sun slowly: the flare and core must fade with the
+   covered fraction instead of vanishing at half; note any shimmer or dark ring at the edge. One F8 half-covered.
+3. Exit through the menu. Name the sector.
+
 Stand command (Run 82 A's; the two age-program flags and the stabiliser are defaults or gone):
 
 ```sh
@@ -75,4 +94,4 @@ env -u CX_DEBUGMSG X3M_FIXTURE_BOTTLE=X3 X3M_MOTION_FRAME_LOG=1 /Users/asvetl/x3
 
 To remove the overlay: delete `addon/05.cat`, `05.dat`, `05.x3m-lod.json`, `06.*` and `x3m-lod-batch*.json/txt`; the originals are untouched.
 
-Run 83 A is the only queued run. Completed instructions for Runs 73-82 are in the [archive](../archive/user-runs-completed.md).
+Run 83 A (launch 1 and 3 flown as run323/324, launch 2 as run325; triaged) and Run 83 B are the queued runs. Completed instructions for Runs 73-82 are in the [archive](../archive/user-runs-completed.md).
