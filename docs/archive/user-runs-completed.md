@@ -2065,6 +2065,9 @@ env -u CX_DEBUGMSG X3M_FIXTURE_BOTTLE=X3 X3M_MOTION_FRAME_LOG=1 /Users/asvetl/x3
 | 75 A/B/C | Fog hand-over fixes + docked-load diagnostic (A); bolt visibility 3,12 (B); --gpu-sync-timing with the TAA and fog sub-boundaries (C), Run75 DLL | 3 | A completed 2026-09-23 (run278): new game and transits between fogged sectors show our fog immediately (accepted); the docked save load still shows engine fog, now pinned to `refusal=gate:states` (1,115 frames), fix in progress ([ledger](../verification/volumetric-fog.md#run-278-run-75-a-2026-09-23-hand-over-fixes-accepted-docked-load-pinned)). B completed (run279): bolts still vanish in third person; cause found: our 4 px small-part cull removes ~94 % of bullet nodes one frame after the muzzle (fix: exempt projectiles, in progress; [triage](../verification/results/run279-bolts/)). C completed (run280): TAA split = mask 2.1 / resolve 2.1 / box 1.2 / copy 0.45 ms in the busy sector, motion adds 0.4 ms in the resolve only; fog march 4.5–4.7 ms net, repair writes < 0.01 % of pixels ([ledger](../verification/gpu-sync-timing.md#run-280-run-75-c-2026-09-23-the-taa-and-fog-splits-at-19201080)). |
 | 76 B/C/D | Bolts with the projectile cull exemption (B); docked save load in fog (C); --fog-far-bins 40 vs 24 under --gpu-sync-timing (D), Run76 DLL | 3 | B completed 2026-09-24 (run282): bolts fixed, accepted (54 exempt bullet nodes per frame while firing). C completed (run283): still engine fog when docked at load; the diagnostic names ALPHATESTENABLE=1 as the only differing state, fix in progress ([ledger](../verification/volumetric-fog.md#run-283-run-76-c-2026-09-24-docked-load-still-engine-fog-the-state-is-named)). D completed (run284/285/286): 24 far bins save only 0.2–0.5 ms of the 4.8 ms march (cost model said 0.8–1.15), no visible difference; 40 stays the default; step C (quarter-res march) is the lever ([note](../architecture/fog-gpu-cost.md#run-76-d-run284-40-bins-run285-24-bins-run286-default-2026-09-24-step-b-in-flight)). |
 | 76 A | Overlay re-baked with the light-atlas bleed guard (panel tint fix), 22 bodies | 1 | Completed 2026-09-24 (run281, flown on the Run76 DLL with the share-gate re-bake): no transition seen at all, the factory panels keep their colour across the switch; accepted ([record](../verification/results/lod-overlay-batch/install-run76b/install.json)). |
+| 77 B | Docked save load in fog with the alpha-test admission, Run77 DLL | 1 | Completed 2026-09-24 (run288): our fog after the fill latch, 357 ms from the menu (prefill adopted) / 608 ms on a same-sector reload (prefill not adopted); all 3,983 card rows admitted, no drop-out across the undock; closed at the accepted cold-start trade-off ([ledger](../verification/volumetric-fog.md#run-288-run-77-b-2026-09-24-docked-save-load-shows-our-fog-after-the-fill-latch-admission-fixed)). |
+| 77 C | First 5120x1440 sessions under --gpu-sync-timing, --fog-march-scale 2 (run289) vs 4 (run290) | 2 | Completed 2026-09-24: fog_march 8.99 -> 2.68 ms (-6.3 ms), fog_route 13.6 -> 7.2, serialised dt 45.9 -> 39.0 ms, TAA stage 8.8 ms, frame GPU-bound at scale 2; the user sees transparent moving "oil rings" in the fog at scale 4: triage attributes them to the shaft-offset noise keyed per 4x4 march cell and shifted per frame (lattice vectors are multiples of 4 px, 2 px at scale 2), not to the 4-px interpolation (no seam at the sample columns); scale 2 stays the default, C2 queued ([triage](../verification/results/run289-290-march-scale/)). |
+| 77 A | Fleet overlay across addon/05 + 06 (591 bodies), race sectors and a shipyard, Run76 DLL | 1 | Completed 2026-09-24 (run287, flown on the Run77 DLL): no issues, FPS good, no transitions seen; 14 slot-05 bodies drew their merged record (draws per frame equal the marker, ladders equal the overlay thresholds); busy greenvoid sector dt p50 14.2 ms / 156 draws against 14.7 ms / 160 in Run 74 A; no overlay, fog or cull errors; the TAA fold reports active; slot 06 unproven (no slot-06 body in view), A2 queued ([triage](../verification/results/run287-fleet-overlay/)). |
 
 ## Run history paragraphs
 
@@ -2405,6 +2408,40 @@ Stand command (Run 82 A's; the two age-program flags and the stabiliser are defa
 
 ```sh
 env -u CX_DEBUGMSG X3M_FIXTURE_BOTTLE=X3 X3M_MOTION_FRAME_LOG=1 /Users/asvetl/x3-mod/x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --light-map-far-fade 80,220 --motion-rt-mode lazy --frame-end-stride 1 --volumetric-fog 0.02 --volumetric-fog-cards replace --volumetric-fog-range stored --volumetric-fog-timing --capture-start 999999 --capture-frames 8 --capture-delay 300 --cull-small-parts 4 --frame-timing --frame-phases --object-bounds-log --cull-census
+```
+
+To remove the overlay: delete `addon/05.cat`, `05.dat`, `05.x3m-lod.json`, `06.*` and `x3m-lod-batch*.json/txt`; the originals are untouched.
+
+## Run 85 (superseded 2026-09-25, unflown: folded into Run 86 A)
+
+**Run 85 A (queued 2026-09-25; Run85 DLL `c430294a…` from 53e7aba5, installed 09:25; overlay install-fleet4 unchanged).**
+New in this build: `--taa-far-clip 7x7|3x3` (default 7x7: far pixels outside the thin region keep their history against the
+in-place 7x7 box instead of the 3x3, so a sub-pixel line missed by the current jitter phase is no longer erased) and the far
+stabiliser ramp 60/68 (full 0.985 weight from about 87,000 view units = 17 km at 5120 width, was 102-166k). Everything else as
+Run84 (far gate camera, sun occlusion default, fill 0.01). One launch at 5120x1440, no timing flag. Please name the sector of each stand.
+
+1. **Fog-band plants** (the run332 stand, launch with `--taa-debug`): at rest for a few seconds, then a slow pan (3-9 px/frame) and
+   a faster one. Sparkles gone at rest and under the pans? Are the plants' bright edges dimmer or smeared compared with Run84
+   (the expected cost is about 2 codes, below visibility)? F8 at rest and F8 in the slow pan, plants clear of the ship.
+2. **Regression**: the Terran lattice stand and a hull with masts under a pan (crawl, ghost trails); one far ship crossing in
+   front of a far station (a trail behind the mover?).
+3. Exit through the menu.
+   Rows: `motion_output_taa ... far_clip=7x7 default=1 far_f0=60.0 far_f1=68.0`, `thin_vote_frame ... max_unvoted_fraction=`.
+4. **Combat capture for the effects modernisation** (launch 2, same command; the sector where you can pick a fight,
+   name it; the design [effects-modernisation-opus.md](../architecture/effects-modernisation-opus.md) §8.4 lists what each
+   F8 settles). Chase view, five F8s, one optional:
+   1. Shields-up hits on a target 300-600 m ahead, fire held (F8 while the bolts land).
+   2. The same target with its shields down (hull hits).
+   3. The kill, F8 from the first flash.
+   4. A missile just fired, own ship at full throttle.
+   5. The same view at zero throttle.
+   6. (optional) A beam weapon held on the target for 1 s.
+   Exit through the menu.
+
+Stand command (Run 84 A's plus `--taa-debug`):
+
+```sh
+env -u CX_DEBUGMSG X3M_FIXTURE_BOTTLE=X3 X3M_MOTION_FRAME_LOG=1 /Users/asvetl/x3-mod/x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --light-map-far-fade 80,220 --motion-rt-mode lazy --frame-end-stride 1 --volumetric-fog 0.02 --volumetric-fog-cards replace --volumetric-fog-range stored --volumetric-fog-timing --capture-start 999999 --capture-frames 8 --capture-delay 300 --cull-small-parts 4 --frame-timing --frame-phases --object-bounds-log --cull-census --taa-debug
 ```
 
 To remove the overlay: delete `addon/05.cat`, `05.dat`, `05.x3m-lod.json`, `06.*` and `x3m-lod-batch*.json/txt`; the originals are untouched.

@@ -2,7 +2,7 @@
 
 Archive with `python3 tools/analysis/archive_user_runs.py`.
 
-Updated 2026-09-25 (Run 84 A completed; Run 85 A queued). Earlier: 2026-09-21 (Run56 accepted for media stability; Run57 station-flash correction accepted; fog range remains under investigation). Run 17 crypto acceptance and the first-person/chase
+Updated 2026-09-25 (Run 84 A completed; Run 85 A superseded unflown; Run 86 A queued). Earlier: 2026-09-21 (Run56 accepted for media stability; Run57 station-flash correction accepted; fog range remains under investigation). Run 17 crypto acceptance and the first-person/chase
 left-centre-right diagnostic are complete and are not in this queue. The agent
 never launches the game. Only open runs keep their instructions here; a completed
 run keeps only its row in the table below. The installed build is described in [status](../status.md).
@@ -20,6 +20,7 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 
 | Run | Purpose | Sessions | Status |
 | --- | --- | ---: | --- |
+| 85 A | Run85 (far clip 7x7 + ramp 60/68): plants at rest/pans, regression, combat capture | 0 | Superseded 2026-09-25 by Run 86 A before it was flown (Run86 installed the same night with the opt-ins); its checks are folded into Run 86 A |
 | 84 A | Run84 (far gate camera default, sun occlusion default with core dimming, cursor launch arm, fill 0.01): defaults + cursor at launch + sun crossing + fog-band plants (run329 5120x1440; run330 1920x1080 menu only; run332 the plants with --taa-debug, F8 at rest and in a pan) | 3 | Completed 2026-09-25: rows as expected (cursor_reassert armed_by=launch fired, sun_occlusion_config default=1, far_gate=camera default=1, original_fill_mode default=1, window_mode moved); the desktop arrow is still visible from launch and the double cursor still appears sometimes after alt-tab: the re-assert sequence fires correctly on all 20 fires, the game makes no cursor calls and gets no WM_SETCURSOR while active, cause inside the Cocoa driver, **parked by the user** (run329-run84a-cursor/); the plants' sparkles persist and occur at rest too (user correction): not the far gate but sub-pixel highlights leaking through a partial far weight (plants at 89-137k view units = 18-27 km, ramp 102-166k) and erased by the 3x3 clip on the dark phases (run332 rest 120/120 clamped; run329-run84a-rest-sparkles/); fix on main 22776b6f (far ramp 60/68 + 7x7 far clip, design taa-thin-classification.md); the far-gate screen A/B was dropped (fixture: screen + 7x7 still sparkles on a 0.4 px line under fractional pans, 19.2 codes vs 4.9) |
 | 83 A/B | Run83 (FOV load remap, mask fold, window rect default, cursor trace/re-assert opt-in, fill default) + install-fleet4: defaults with the pre-patch save, window, folded TAA, fps (A launch 1+3 = run323, `both` relaunch run324); gpu attribution (A launch 2 = run325); plants shimmer diagnostic + partial sun occlusion (B = run326 sun, run327 plants with --taa-debug) | 5 | Completed 2026-09-25: FOV remapped from the first scene frame after the save load; window moved 0,31 -> 0,0 (menu bar gone, user); double cursor from launch until the first alt-tab (no launch arm; fixed on main b45b3735); lattice ok; fog-band plants show one-frame sparkles at thin-line edges under a pan only, with the search on or off: resolved-output analysis (run327) puts them on owned plant pixels outside the region on the plain path, the far stabiliser's screen-speed gate dropping 0.985 -> 0.9 under any pan (fix: --taa-far-gate camera, in review); the sun hidden at half cover was the vanilla CPU probe, --sun-occlusion accepted (run326) and made the launcher default (50a5f98e); TAA span 5.44-5.68 -> 3.88-4.05 ms measured (-1.6 to -1.8 ms, run325); results run323-run83a-launch1-3/, run323-fog-plants-shimmer/, run325-run83a-gpu/, run327-run83b-sparkles/ |
 | 82 B | Ad hoc on the Run82 DLL: defaults again (run319), `--taa-thin-region 0` (run320), the install-fleet4 overlay with the louvre recipe (run321) | 3 | Completed 2026-09-25: run319 defaults (shell still exporting source vote + stabiliser 0): the Terran lattice crawled with the search on too; run320 thin treatment off: a little shimmer under pan (rejected, the hold stays); frame time without `--gpu-sync-timing` p50 16 ms in fog and clear sectors vs 30-33 ms with it (the flag doubles the frame; playable fps is quoted only from launches without it); run321 louvre recipe: crawl gone, no issues (3 draws per node, flip share 0.326 vs 0.497) |
@@ -28,43 +29,43 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 80 A | A'-only build (hold-off chain removed) with the opt-in `--lod-occlusion all`, `--taa-thin-vote on`, `--fade-rt2-owner on` A/Bs, `--lod-switch-log` on the ODS while turning, bolt shape telemetry; Terran colours after the rebake | 5 | Completed 2026-09-24 (run304 baseline, run305 occlusion + switch log, run306 thin vote, run307 fade owner, run308 gpu-sync baseline): occlusion patch works (every LOD>0 ODS draw binds the map, no hitch; made the default `all`); thin vote and fade owner accepted as defaults (no visible issue, no GPU pass cost within 50 us; A'-only TAA 6.78 ms at 5120x1440, mask 1.49 / box 2.41 / resolve 2.68); ODS flicker = one LOD pop per crossing without hysteresis; coarse red plates 1.41x brighter = baker's synthesised material constants (user accepts, no shading classes); underside transition = alpha-tested casters excluded from the shadow replay (opt-in `--shadow-alpha-casters` in Run81); sentinel stabiliser removal needs the S = 0 launch (Run 81 A) |
 | 79 A | A' region hold on/off look + gpu-sync cost, Terran station LOD patch bursts (USC dock, SPP XL) size/distance, slot-06 control, at 5120x1440 (candidate df01f23b) | 4 | Completed 2026-09-24 (run299/300/302/303; run301 aborted): A' accepted (no visible difference on the lattice stand, pans, silhouettes, shards; mask 2.93 -> 1.54 ms with the x/y draws gone, box +0.23 ms, net -1.1 ms at 5120x1440); Terran patch works (status=patched, all 16 slot-06 bodies flag31=1, lod 1 below s/T_pad 1.0, coarse ODS confirmed); the coarse record lost its red plates (baker alpha rule, fixed 5aa645e3, rebake pending) and its ambient occlusion (engine LOD-0 gate: opt-in `--lod-occlusion all` ac381be7); one ODS part flickers under motion on both hold settings (inferred LOD pop; `--lod-switch-log` e8af9e46); `--terran-station-lod distance` not flown |
 | 78 A | Dither A/B, S3 5 vs 16 taps, clean exit, slot-06 burst, scale 4 default at 5120x1440 (candidate ee3bbf88) | 1 | Completed 2026-09-24 (run295-298): dither accepted (rings gone on, back off, no frame-time cost); exit fixed (no fault, four exits; the refused row never written, expectation withdrawn); slot-06 bodies never switch to their coarse record (USC dock, Terran SPP XL at s/T_pad 0.17-0.36) while slot-05 bodies do: triage-deep open; TAA taps 5, no refusals, look accepted; bolts ok (84 shape refusals, 1.1 %, open); Run 77 D closed by this session |
-| 77 B | Docked save load in fog with the alpha-test admission, Run77 DLL | 1 | Completed 2026-09-24 (run288): our fog after the fill latch, 357 ms from the menu (prefill adopted) / 608 ms on a same-sector reload (prefill not adopted); all 3,983 card rows admitted, no drop-out across the undock; closed at the accepted cold-start trade-off ([ledger](volumetric-fog.md#run-288-run-77-b-2026-09-24-docked-save-load-shows-our-fog-after-the-fill-latch-admission-fixed)). |
-| 77 C | First 5120x1440 sessions under --gpu-sync-timing, --fog-march-scale 2 (run289) vs 4 (run290) | 2 | Completed 2026-09-24: fog_march 8.99 -> 2.68 ms (-6.3 ms), fog_route 13.6 -> 7.2, serialised dt 45.9 -> 39.0 ms, TAA stage 8.8 ms, frame GPU-bound at scale 2; the user sees transparent moving "oil rings" in the fog at scale 4: triage attributes them to the shaft-offset noise keyed per 4x4 march cell and shifted per frame (lattice vectors are multiples of 4 px, 2 px at scale 2), not to the 4-px interpolation (no seam at the sample columns); scale 2 stays the default, C2 queued ([triage](../verification/results/run289-290-march-scale/)). |
-| 77 A | Fleet overlay across addon/05 + 06 (591 bodies), race sectors and a shipyard, Run76 DLL | 1 | Completed 2026-09-24 (run287, flown on the Run77 DLL): no issues, FPS good, no transitions seen; 14 slot-05 bodies drew their merged record (draws per frame equal the marker, ladders equal the overlay thresholds); busy greenvoid sector dt p50 14.2 ms / 156 draws against 14.7 ms / 160 in Run 74 A; no overlay, fog or cull errors; the TAA fold reports active; slot 06 unproven (no slot-06 body in view), A2 queued ([triage](../verification/results/run287-fleet-overlay/)). |
 
 
-## Run 85 (open)
+## Run 86 (open)
 
-**Run 85 A (queued 2026-09-25; Run85 DLL `c430294a…` from 53e7aba5, installed 09:25; overlay install-fleet4 unchanged).**
-New in this build: `--taa-far-clip 7x7|3x3` (default 7x7: far pixels outside the thin region keep their history against the
-in-place 7x7 box instead of the 3x3, so a sub-pixel line missed by the current jitter phase is no longer erased) and the far
-stabiliser ramp 60/68 (full 0.985 weight from about 87,000 view units = 17 km at 5120 width, was 102-166k). Everything else as
-Run84 (far gate camera, sun occlusion default, fill 0.01). One launch at 5120x1440, no timing flag. Please name the sector of each stand.
+**Run 86 A (queued 2026-09-25; Run86 DLL `__RUN86_SHA__` from 9375a1e7, installed __RUN86_TIME__; overlay install-fleet4 unchanged;
+supersedes the unflown Run 85 A, whose checks are folded in).** New since Run84: the far clip `--taa-far-clip 7x7` default and
+the far ramp 60/68 (the fog-band plants' sparkles at rest and under pans; Run85), and three opt-ins: `--chase-view-restore-dock`
+(keeps the rear chase view across docking at a station: the docked screen shows the rear view of the parked ship, unflown),
+`--effects-stage --effects-shields` (phase 1 of the effects modernisation: HDR bolt capsules over the game's bolts, shield-hit
+shells and decals; the game's own effects still draw underneath; unflown), and the fog family file loader (the vanilla bottle now
+carries an empty table, so the launch line reads ok). Launch lines to expect on stderr: `fog families: ok (0 packets; …)` and
+`lod overlay: ok (620 bodies in slots 05/06, …)`. Three launches at 5120x1440, no timing flag. Please name the sector of each stand.
 
-1. **Fog-band plants** (the run332 stand, launch with `--taa-debug`): at rest for a few seconds, then a slow pan (3-9 px/frame) and
-   a faster one. Sparkles gone at rest and under the pans? Are the plants' bright edges dimmer or smeared compared with Run84
-   (the expected cost is about 2 codes, below visibility)? F8 at rest and F8 in the slow pan, plants clear of the ship.
-2. **Regression**: the Terran lattice stand and a hull with masts under a pan (crawl, ghost trails); one far ship crossing in
-   front of a far station (a trail behind the mover?).
-3. Exit through the menu.
+1. **Plants and regression** (launch 1: stand command below, with `--taa-debug`): the fog-band plants (the run332 stand) at rest
+   for a few seconds, then a slow pan (3-9 px/frame) and a faster one: sparkles gone at rest and under the pans? Bright plant edges
+   dimmer or smeared compared with Run84 (expected cost about 2 codes, below visibility)? F8 at rest and F8 in the slow pan, plants
+   clear of the ship. Then the Terran lattice stand and a hull with masts under a pan, and one far ship crossing in front of a far
+   station (trail behind the mover?). Exit through the menu.
    Rows: `motion_output_taa ... far_clip=7x7 default=1 far_f0=60.0 far_f1=68.0`, `thin_vote_frame ... max_unvoted_fraction=`.
-4. **Combat capture for the effects modernisation** (launch 2, same command; the sector where you can pick a fight,
-   name it; the design [effects-modernisation-opus.md](../architecture/effects-modernisation-opus.md) §8.4 lists what each
-   F8 settles). Chase view, five F8s, one optional:
-   1. Shields-up hits on a target 300-600 m ahead, fire held (F8 while the bolts land).
-   2. The same target with its shields down (hull hits).
-   3. The kill, F8 from the first flash.
-   4. A missile just fired, own ship at full throttle.
-   5. The same view at zero throttle.
-   6. (optional) A beam weapon held on the target for 1 s.
-   Exit through the menu.
+2. **Combat capture + effects look** (launch 2: stand command + `--effects-stage --effects-shields --effects-census`): a sector where
+   you can pick a fight. Chase view. First say how the new bolts and shield hits look (too bright, too big, flicker, trails behind
+   bolts, exposure pumping when a shell fills the screen), then the five F8s the design asks for
+   ([effects-modernisation-opus.md](../architecture/effects-modernisation-opus.md) §8.4): (1) shields-up hits on a target 300-600 m
+   ahead, fire held; (2) the same target with shields down; (3) the kill, F8 from the first flash; (4) a missile just fired, own ship
+   at full throttle; (5) the same view at zero throttle; (6, optional) a beam held on the target for 1 s. Exit through the menu.
+   Rows: `effects_stage_config`, `effects_stage_frame ... stage_us=`, `effect_draw key= verdict=`.
+3. **Docking** (launch 3: stand command + `--chase-view-restore-dock`): in chase view, dock at a station (any method), look at the
+   docked screen (what does it show: the parked ship from behind, the cockpit, something broken?), trade or wait a few seconds, undock:
+   is the view still the rear chase view once flying? Then a gate jump as a regression. Exit through the menu.
+   Rows: `chase_view_restore_transfer path=dock`, `chase_view_restore_seam ... path=dock`.
 
-Stand command (Run 84 A's plus `--taa-debug`):
+Stand command (Run 84 A's; add the per-launch flags above):
 
 ```sh
-env -u CX_DEBUGMSG X3M_FIXTURE_BOTTLE=X3 X3M_MOTION_FRAME_LOG=1 /Users/asvetl/x3-mod/x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --light-map-far-fade 80,220 --motion-rt-mode lazy --frame-end-stride 1 --volumetric-fog 0.02 --volumetric-fog-cards replace --volumetric-fog-range stored --volumetric-fog-timing --capture-start 999999 --capture-frames 8 --capture-delay 300 --cull-small-parts 4 --frame-timing --frame-phases --object-bounds-log --cull-census --taa-debug
+env -u CX_DEBUGMSG X3M_FIXTURE_BOTTLE=X3 X3M_MOTION_FRAME_LOG=1 /Users/asvetl/x3-mod/x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --light-map-far-fade 80,220 --motion-rt-mode lazy --frame-end-stride 1 --volumetric-fog 0.02 --volumetric-fog-cards replace --volumetric-fog-range stored --volumetric-fog-timing --capture-start 999999 --capture-frames 8 --capture-delay 300 --cull-small-parts 4 --frame-timing --frame-phases --object-bounds-log --cull-census
 ```
 
 To remove the overlay: delete `addon/05.cat`, `05.dat`, `05.x3m-lod.json`, `06.*` and `x3m-lod-batch*.json/txt`; the originals are untouched.
 
-Run 85 A is the only queued run. Completed instructions for Runs 73-84 are in the [archive](../archive/user-runs-completed.md).
+Run 86 A is the only queued run. Completed instructions for Runs 73-85 are in the [archive](../archive/user-runs-completed.md).
