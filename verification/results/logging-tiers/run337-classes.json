@@ -1,0 +1,1020 @@
+{
+"once": {
+"capture_dir": [
+1,
+50
+],
+"clock_anchor": [
+1,
+106
+],
+"proxy_identity": [
+1,
+418
+],
+"proxy_options": [
+1,
+4666
+],
+"proxy_environment": [
+1,
+2238
+],
+"frame_end_stride_mode": [
+1,
+32
+],
+"fps_overlay_mode": [
+1,
+76
+],
+"motion_capture_mode": [
+1,
+129
+],
+"fade_route_mode": [
+1,
+102
+],
+"emission_source_gain_mode": [
+1,
+94
+],
+"hull_emission_gain_mode": [
+1,
+81
+],
+"original_fill_mode": [
+1,
+100
+],
+"hull_lightmap_gain_mode": [
+1,
+92
+],
+"light_map_far_fade_mode": [
+1,
+83
+],
+"hull_emissive_widening_mode": [
+1,
+74
+],
+"screen_emission_additive_mode": [
+1,
+146
+],
+"bolt_footprint_mode": [
+1,
+106
+],
+"bloom_source_clamp_mode": [
+1,
+77
+],
+"volumetric_fog_handover_mode": [
+1,
+89
+],
+"volumetric_fog_look_mode": [
+1,
+481
+],
+"volumetric_fog_shadow_pass": [
+1,
+121
+],
+"volumetric_fog_far_bins": [
+1,
+74
+],
+"volumetric_fog_march_scale": [
+1,
+61
+],
+"volumetric_fog_motes_mode": [
+1,
+168
+],
+"volumetric_fog_range": [
+1,
+158
+],
+"volumetric_fog_mode": [
+1,
+249
+],
+"motion_output_mode": [
+1,
+537
+],
+"x3-modern-renderer": [
+1,
+95
+],
+"telemetry_start": [
+1,
+114
+],
+"window_mode_config": [
+1,
+128
+],
+"frame_phase_mode": [
+1,
+127
+],
+"media_cue_mode": [
+1,
+287
+],
+"media_cue_site": [
+1,
+82
+],
+"terran_station_lod": [
+1,
+95
+],
+"lod_occlusion": [
+1,
+98
+],
+"fov": [
+1,
+202
+],
+"sun_flare_fix": [
+1,
+100
+],
+"collide_box_cull": [
+1,
+177
+],
+"collide_sat_sse2": [
+1,
+116
+],
+"pause_key_only": [
+1,
+86
+],
+"music_keep": [
+1,
+480
+],
+"sun_occlusion": [
+1,
+180
+],
+"sun_occlusion_config": [
+1,
+94
+],
+"cull_census": [
+1,
+184
+],
+"cull_census_lod_switch": [
+1,
+48
+],
+"cull_small_parts": [
+1,
+160
+],
+"loading_intervals_start": [
+1,
+148
+],
+"gz_buffer": [
+1,
+89
+],
+"mesh_cache": [
+1,
+148
+],
+"mesh_adjacency": [
+1,
+361
+],
+"loading_trace": [
+1,
+184
+],
+"mesh_adjacency_config": [
+1,
+60
+],
+"resource_reader": [
+1,
+196
+],
+"dat_handle_pool": [
+1,
+162
+],
+"application_admission_mode": [
+1,
+84
+],
+"screen_emission_bound": [
+1,
+127
+],
+"ownership_mode": [
+1,
+102
+],
+"backend": [
+1,
+43
+],
+"loaded_module": [
+2,
+340
+],
+"object_trace": [
+1,
+57
+],
+"sun_light_poll": [
+1,
+35
+],
+"scene_hook": [
+1,
+35
+],
+"chase_fire": [
+1,
+157
+],
+"chase_transition": [
+1,
+231
+],
+"chase_view_restore": [
+1,
+144
+],
+"chase_native_timing": [
+1,
+111
+],
+"chase_central_hud": [
+1,
+97
+],
+"chase_lead": [
+1,
+110
+],
+"chase_aim_trace": [
+1,
+117
+],
+"object_lifetime": [
+1,
+116
+],
+"ownership_factory": [
+3,
+240
+],
+"adapter": [
+3,
+288
+],
+"application_admission_final": [
+2,
+272
+],
+"device_creation_policy": [
+1,
+76
+],
+"telemetry_presentation": [
+2,
+513
+],
+"window_mode": [
+1,
+301
+],
+"create_device": [
+1,
+102
+],
+"create_device_result": [
+1,
+34
+],
+"capture_caps": [
+1,
+80
+],
+"device_hooked": [
+1,
+42
+],
+"state_hooks": [
+1,
+84
+],
+"light_map_far_fade_configured": [
+1,
+42
+],
+"hull_emissive_widening_configured": [
+1,
+54
+],
+"taa_thin_vote_configured": [
+1,
+99
+],
+"fade_rt2_owner_configured": [
+1,
+118
+],
+"shadow_replay_candidates_mode": [
+1,
+81
+],
+"object_bounds_mode": [
+1,
+70
+],
+"shadow_replay_depth_mode": [
+1,
+120
+],
+"shadow_alpha_casters_mode": [
+1,
+49
+],
+"shadow_cascades_mode": [
+1,
+357
+],
+"shadow_retention_mode": [
+1,
+77
+],
+"sun_shadow_apply_mode": [
+1,
+141
+],
+"motion_direct": [
+1,
+54
+],
+"shadow_retention_device": [
+1,
+154
+],
+"linear_cutout_device": [
+1,
+176
+],
+"thin_vote_mode": [
+1,
+193
+],
+"hdr_device": [
+1,
+602
+],
+"hdr_tonemap": [
+1,
+574
+],
+"sun_shadow_lane_depth": [
+1,
+135
+],
+"sun_shadow_lane_device": [
+1,
+109
+],
+"motion_output_device": [
+1,
+782
+],
+"ownership_copy_depth": [
+1,
+304
+],
+"volumetric_fog_families": [
+1,
+168
+],
+"hdr_target": [
+1,
+163
+],
+"motion_output_target": [
+1,
+136
+],
+"music_keep_active": [
+1,
+99
+],
+"telemetry_first_present": [
+1,
+112
+],
+"telemetry_window_context": [
+2,
+468
+],
+"telemetry_window": [
+2,
+430
+],
+"telemetry_present_window": [
+1,
+100
+],
+"fov_confirm": [
+3,
+344
+],
+"loading_phase": [
+3,
+302
+],
+"cull_small_parts_value": [
+3,
+334
+],
+"mesh_trace": [
+1,
+108
+],
+"mesh_hook": [
+2,
+144
+],
+"mesh_adjacency_fp_first": [
+1,
+120
+],
+"bloom_refusal": [
+1,
+71
+],
+"loading_intervals_file": [
+1,
+268
+],
+"shader_population": [
+2,
+98
+],
+"volumetric_fog_docked": [
+2,
+335
+],
+"volumetric_fog_device": [
+1,
+101
+],
+"volumetric_fog_prepare": [
+1,
+126
+],
+"shadow_replay_sun_latch": [
+2,
+269
+],
+"shadow_replay_sun_source": [
+1,
+93
+],
+"shadow_cascade_footprint": [
+2,
+356
+],
+"shadow_replay_depth_device": [
+1,
+144
+],
+"shadow_alpha_casters_device": [
+1,
+67
+],
+"shadow_replay_cascades_device": [
+1,
+181
+],
+"shadow_replay_depth_target": [
+1,
+102
+],
+"sun_shadow_apply_device": [
+1,
+134
+],
+"motion_output_taa_box_resolution": [
+2,
+232
+],
+"taa_thin_region_source": [
+1,
+137
+],
+"motion_output_taa": [
+1,
+391
+],
+"motion_output_taa_depth_fold": [
+1,
+71
+],
+"motion_output_taa_history_taps": [
+1,
+111
+],
+"bloom_attach": [
+1,
+63
+],
+"shadow_cascade_set": [
+2,
+977
+],
+"volumetric_fog_handover": [
+1,
+245
+],
+"hull_emission_program": [
+2,
+199
+],
+"screen_emission_additive_variant": [
+3,
+339
+],
+"emission_source_gain_pair": [
+1,
+102
+],
+"chase_fov_compensate": [
+1,
+153
+],
+"bolt_footprint_refused": [
+1,
+112
+],
+"bolt_footprint_buffer": [
+1,
+68
+],
+"bolt_footprint_hist": [
+2,
+501
+],
+"sun_occlusion_device": [
+1,
+131
+],
+"motion_output_mip_bias_summary": [
+1,
+134
+],
+"hull_lightmap_widen_summary": [
+1,
+93
+]
+},
+"event": {
+"frame_phase_site": [
+10,
+840
+],
+"voice_dmo_fallback": [
+9,
+1585
+],
+"collide_memo": [
+37,
+21697
+],
+"crypt_cache": [
+5,
+1393
+],
+"loading_hook": [
+27,
+1294
+],
+"telemetry_span": [
+4,
+434
+],
+"chase_camera": [
+39,
+16749
+],
+"chase_transition_site": [
+9,
+639
+],
+"chase_view_restore_site": [
+7,
+511
+],
+"telemetry_summary": [
+426,
+74561
+],
+"engine_memory": [
+427,
+49012
+],
+"resource_reader_metric": [
+58,
+41372
+],
+"volumetric_fog_sector": [
+4,
+594
+],
+"taa_invalidate": [
+431,
+22947
+],
+"telemetry_cursor_poll": [
+465,
+46014
+],
+"chase_fire_window": [
+37,
+12177
+],
+"chase_camera_timing": [
+37,
+5762
+],
+"chase_camera_window": [
+37,
+13445
+],
+"chase_aim_window": [
+37,
+13853
+],
+"chase_cursor_window": [
+37,
+3367
+],
+"chase_transition_timing": [
+333,
+90093
+],
+"chase_view_restore_state": [
+37,
+10727
+],
+"chase_transition_window": [
+37,
+5357
+],
+"chase_native_timing_window": [
+37,
+4748
+],
+"chase_native_timing_metric": [
+148,
+16786
+],
+"chase_central_hud_window": [
+37,
+9764
+],
+"chase_lead_window": [
+37,
+7627
+],
+"dat_handle_pool_metric": [
+57,
+7725
+],
+"shader": [
+56,
+3115
+],
+"volumetric_fog_prefill": [
+92,
+15937
+],
+"mesh_adjacency_metric": [
+57,
+54914
+],
+"hull_emission_variant": [
+15,
+1712
+],
+"motion_output_variant": [
+42,
+4723
+],
+"original_fill_variant": [
+21,
+2728
+],
+"hull_lightmap_variant": [
+21,
+3190
+],
+"hull_lightmap_widen_variant": [
+19,
+2717
+],
+"sun_shadow_original_variant": [
+21,
+2875
+],
+"sun_shadow_original_lightmap_variant": [
+21,
+3526
+],
+"sun_shadow_original_lightmap_widen_variant": [
+19,
+3306
+],
+"motion_output_mip_bias_game_write": [
+16,
+1463
+],
+"hull_emission_refused_state": [
+16,
+2666
+],
+"music_keep_seek": [
+5,
+815
+],
+"gz_buffer_file": [
+8,
+1626
+],
+"screen_emission_additive_refused_window": [
+36,
+9692
+],
+"bolt_footprint": [
+36,
+15236
+],
+"collide_census": [
+36,
+9782
+],
+"media_cue_window": [
+36,
+15569
+],
+"frame_timing": [
+36,
+33781
+],
+"draw_pairs": [
+36,
+13968
+],
+"draw_batch": [
+36,
+3449
+],
+"frame_timing_slow": [
+144,
+39504
+],
+"frame_phases": [
+36,
+22744
+],
+"frame_phases_slow": [
+144,
+34877
+],
+"chase_view_restore_timing": [
+78,
+12739
+],
+"bloom_admission": [
+36,
+5760
+],
+"volumetric_fog_cache": [
+6,
+917
+],
+"shadow_retention_probe": [
+10,
+1062
+],
+"hull_emission_refused": [
+16,
+2208
+],
+"shadow_replay_sun_point": [
+29,
+26762
+],
+"bloom_prepare": [
+36,
+5259
+],
+"bloom_commit": [
+36,
+6831
+],
+"emission_source_gain_variant": [
+6,
+666
+],
+"motion_unmatched_static": [
+64,
+16667
+],
+"motion_unmatched_static_frame": [
+45,
+5261
+],
+"shadow_retention_resight": [
+35,
+17446
+],
+"shadow_retention_summary": [
+36,
+13093
+],
+"chase_cursor_update": [
+78,
+10276
+],
+"chase_transition_event": [
+40,
+20757
+],
+"chase_transition_detail": [
+40,
+18913
+],
+"shadow_replay_sun_point_summary": [
+35,
+5945
+],
+"chase_aim_writer": [
+16,
+2424
+],
+"chase_aim_event": [
+16,
+8568
+],
+"chase_aim_ray": [
+16,
+4426
+],
+"chase_aim_pose": [
+32,
+7760
+],
+"chase_aim_basis": [
+96,
+12178
+],
+"shadow_replay_depth_refused": [
+8,
+849
+],
+"emission_source_gain_refused_state": [
+16,
+2960
+],
+"sun_shadow_toggle": [
+10,
+580
+]
+},
+"frame": {
+"camera_state": [
+11075,
+6505925
+],
+"telemetry_metric": [
+3549,
+499938
+],
+"loading_metric": [
+522,
+138579
+],
+"resource": [
+2020,
+87773
+],
+"screen_emission_additive_frame": [
+11074,
+1029846
+],
+"fade_route_frame": [
+11074,
+2275963
+],
+"motion_output_frame": [
+11074,
+19544201
+],
+"thin_vote_frame": [
+11074,
+6511360
+],
+"shadow_lease_retirement": [
+11074,
+1061353
+],
+"hdr_frame": [
+11074,
+12859407
+],
+"frame_end": [
+11074,
+1256084
+],
+"hull_emission_frame": [
+11067,
+2412455
+],
+"sun_shadow_lane_frame": [
+10648,
+4198465
+],
+"shadow_replay_sun": [
+10648,
+2317634
+],
+"shadow_replay_candidates": [
+10648,
+9437273
+],
+"shadow_alpha_casters": [
+10648,
+1679545
+],
+"shadow_replay_depth": [
+10516,
+5308456
+],
+"shadow_retention_frame": [
+10648,
+12281277
+],
+"sun_shadow_apply_frame": [
+10516,
+1550991
+],
+"volumetric_fog_frame": [
+10648,
+3513868
+],
+"volumetric_fog_cache_frame": [
+10648,
+2130418
+],
+"volumetric_fog_cards": [
+10648,
+2159401
+],
+"original_fill_frame": [
+10648,
+671270
+],
+"hull_lightmap_frame": [
+10648,
+852286
+],
+"hull_lightmap_far_fade_frame": [
+10648,
+1077064
+],
+"hull_lightmap_widen_frame": [
+10648,
+1416441
+],
+"emission_source_gain_frame": [
+4598,
+846196
+]
+}
+}

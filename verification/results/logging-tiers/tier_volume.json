@@ -1,0 +1,15 @@
+{
+ "today_no_option_B_per_frame": 3464.4,
+ "today_no_option_MB_per_h": 748.3,
+ "always_B_per_frame": 0.72,
+ "always_MB_per_h_plus_once": 0.187,
+ "perf_B_per_frame": 1678.8,
+ "perf_frame_rows": 1498.6,
+ "perf_windows": 14.7,
+ "perf_summaries": 44.3,
+ "perf_family_at_60": 121.1,
+ "perf_MB_per_h": 362.6,
+ "debug_B_per_frame": 9292.6,
+ "debug_MB_per_h": 2007.2,
+ "run337_measured_MB_per_h_at_47fps": 1607.2
+}

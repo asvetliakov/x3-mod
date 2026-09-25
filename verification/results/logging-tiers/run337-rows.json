@@ -1,0 +1,571 @@
+{
+ "file": "session-20260925-202714-216.log",
+ "lines": 264038,
+ "bytes": 104651234,
+ "frame_end_rows": 11074,
+ "max_frame": 11073,
+ "elapsed_ms": 234415,
+ "distinct_rows": 253,
+ "rows": [
+  {
+   "name": "motion_output_frame",
+   "lines": 11074,
+   "bytes": 19544201,
+   "bytes_per_line": 1764.9,
+   "lines_per_frame": 1.0,
+   "bytes_per_frame": 1765.0
+  },
+  {
+   "name": "hdr_frame",
+   "lines": 11074,
+   "bytes": 12859407,
+   "bytes_per_line": 1161.2,
+   "lines_per_frame": 1.0,
+   "bytes_per_frame": 1161.3
+  },
+  {
+   "name": "shadow_retention_frame",
+   "lines": 10648,
+   "bytes": 12281277,
+   "bytes_per_line": 1153.4,
+   "lines_per_frame": 0.962,
+   "bytes_per_frame": 1109.1
+  },
+  {
+   "name": "shadow_replay_candidates",
+   "lines": 10648,
+   "bytes": 9437273,
+   "bytes_per_line": 886.3,
+   "lines_per_frame": 0.962,
+   "bytes_per_frame": 852.3
+  },
+  {
+   "name": "thin_vote_frame",
+   "lines": 11074,
+   "bytes": 6511360,
+   "bytes_per_line": 588.0,
+   "lines_per_frame": 1.0,
+   "bytes_per_frame": 588.0
+  },
+  {
+   "name": "camera_state",
+   "lines": 11075,
+   "bytes": 6505925,
+   "bytes_per_line": 587.4,
+   "lines_per_frame": 1.0,
+   "bytes_per_frame": 587.5
+  },
+  {
+   "name": "shadow_replay_depth",
+   "lines": 10516,
+   "bytes": 5308456,
+   "bytes_per_line": 504.8,
+   "lines_per_frame": 0.95,
+   "bytes_per_frame": 479.4
+  },
+  {
+   "name": "sun_shadow_lane_frame",
+   "lines": 10648,
+   "bytes": 4198465,
+   "bytes_per_line": 394.3,
+   "lines_per_frame": 0.962,
+   "bytes_per_frame": 379.2
+  },
+  {
+   "name": "volumetric_fog_frame",
+   "lines": 10648,
+   "bytes": 3513868,
+   "bytes_per_line": 330.0,
+   "lines_per_frame": 0.962,
+   "bytes_per_frame": 317.3
+  },
+  {
+   "name": "hull_emission_frame",
+   "lines": 11067,
+   "bytes": 2412455,
+   "bytes_per_line": 218.0,
+   "lines_per_frame": 0.999,
+   "bytes_per_frame": 217.9
+  },
+  {
+   "name": "shadow_replay_sun",
+   "lines": 10648,
+   "bytes": 2317634,
+   "bytes_per_line": 217.7,
+   "lines_per_frame": 0.962,
+   "bytes_per_frame": 209.3
+  },
+  {
+   "name": "fade_route_frame",
+   "lines": 11074,
+   "bytes": 2275963,
+   "bytes_per_line": 205.5,
+   "lines_per_frame": 1.0,
+   "bytes_per_frame": 205.5
+  },
+  {
+   "name": "volumetric_fog_cards",
+   "lines": 10648,
+   "bytes": 2159401,
+   "bytes_per_line": 202.8,
+   "lines_per_frame": 0.962,
+   "bytes_per_frame": 195.0
+  },
+  {
+   "name": "volumetric_fog_cache_frame",
+   "lines": 10648,
+   "bytes": 2130418,
+   "bytes_per_line": 200.1,
+   "lines_per_frame": 0.962,
+   "bytes_per_frame": 192.4
+  },
+  {
+   "name": "shadow_alpha_casters",
+   "lines": 10648,
+   "bytes": 1679545,
+   "bytes_per_line": 157.7,
+   "lines_per_frame": 0.962,
+   "bytes_per_frame": 151.7
+  },
+  {
+   "name": "sun_shadow_apply_frame",
+   "lines": 10516,
+   "bytes": 1550991,
+   "bytes_per_line": 147.5,
+   "lines_per_frame": 0.95,
+   "bytes_per_frame": 140.1
+  },
+  {
+   "name": "hull_lightmap_widen_frame",
+   "lines": 10648,
+   "bytes": 1416441,
+   "bytes_per_line": 133.0,
+   "lines_per_frame": 0.962,
+   "bytes_per_frame": 127.9
+  },
+  {
+   "name": "frame_end",
+   "lines": 11074,
+   "bytes": 1256084,
+   "bytes_per_line": 113.4,
+   "lines_per_frame": 1.0,
+   "bytes_per_frame": 113.4
+  },
+  {
+   "name": "hull_lightmap_far_fade_frame",
+   "lines": 10648,
+   "bytes": 1077064,
+   "bytes_per_line": 101.2,
+   "lines_per_frame": 0.962,
+   "bytes_per_frame": 97.3
+  },
+  {
+   "name": "shadow_lease_retirement",
+   "lines": 11074,
+   "bytes": 1061353,
+   "bytes_per_line": 95.8,
+   "lines_per_frame": 1.0,
+   "bytes_per_frame": 95.9
+  },
+  {
+   "name": "screen_emission_additive_frame",
+   "lines": 11074,
+   "bytes": 1029846,
+   "bytes_per_line": 93.0,
+   "lines_per_frame": 1.0,
+   "bytes_per_frame": 93.0
+  },
+  {
+   "name": "hull_lightmap_frame",
+   "lines": 10648,
+   "bytes": 852286,
+   "bytes_per_line": 80.0,
+   "lines_per_frame": 0.962,
+   "bytes_per_frame": 77.0
+  },
+  {
+   "name": "emission_source_gain_frame",
+   "lines": 4598,
+   "bytes": 846196,
+   "bytes_per_line": 184.0,
+   "lines_per_frame": 0.415,
+   "bytes_per_frame": 76.4
+  },
+  {
+   "name": "original_fill_frame",
+   "lines": 10648,
+   "bytes": 671270,
+   "bytes_per_line": 63.0,
+   "lines_per_frame": 0.962,
+   "bytes_per_frame": 60.6
+  },
+  {
+   "name": "telemetry_metric",
+   "lines": 3549,
+   "bytes": 499938,
+   "bytes_per_line": 140.9,
+   "lines_per_frame": 0.321,
+   "bytes_per_frame": 45.1
+  },
+  {
+   "name": "loading_metric",
+   "lines": 522,
+   "bytes": 138579,
+   "bytes_per_line": 265.5,
+   "lines_per_frame": 0.047,
+   "bytes_per_frame": 12.5
+  },
+  {
+   "name": "chase_transition_timing",
+   "lines": 333,
+   "bytes": 90093,
+   "bytes_per_line": 270.5,
+   "lines_per_frame": 0.03,
+   "bytes_per_frame": 8.1
+  },
+  {
+   "name": "resource",
+   "lines": 2020,
+   "bytes": 87773,
+   "bytes_per_line": 43.5,
+   "lines_per_frame": 0.182,
+   "bytes_per_frame": 7.9
+  },
+  {
+   "name": "telemetry_summary",
+   "lines": 426,
+   "bytes": 74561,
+   "bytes_per_line": 175.0,
+   "lines_per_frame": 0.038,
+   "bytes_per_frame": 6.7
+  },
+  {
+   "name": "mesh_adjacency_metric",
+   "lines": 57,
+   "bytes": 54914,
+   "bytes_per_line": 963.4,
+   "lines_per_frame": 0.005,
+   "bytes_per_frame": 5.0
+  },
+  {
+   "name": "engine_memory",
+   "lines": 427,
+   "bytes": 49012,
+   "bytes_per_line": 114.8,
+   "lines_per_frame": 0.039,
+   "bytes_per_frame": 4.4
+  },
+  {
+   "name": "telemetry_cursor_poll",
+   "lines": 465,
+   "bytes": 46014,
+   "bytes_per_line": 99.0,
+   "lines_per_frame": 0.042,
+   "bytes_per_frame": 4.2
+  },
+  {
+   "name": "resource_reader_metric",
+   "lines": 58,
+   "bytes": 41372,
+   "bytes_per_line": 713.3,
+   "lines_per_frame": 0.005,
+   "bytes_per_frame": 3.7
+  },
+  {
+   "name": "frame_timing_slow",
+   "lines": 144,
+   "bytes": 39504,
+   "bytes_per_line": 274.3,
+   "lines_per_frame": 0.013,
+   "bytes_per_frame": 3.6
+  },
+  {
+   "name": "frame_phases_slow",
+   "lines": 144,
+   "bytes": 34877,
+   "bytes_per_line": 242.2,
+   "lines_per_frame": 0.013,
+   "bytes_per_frame": 3.1
+  },
+  {
+   "name": "frame_timing",
+   "lines": 36,
+   "bytes": 33781,
+   "bytes_per_line": 938.4,
+   "lines_per_frame": 0.003,
+   "bytes_per_frame": 3.1
+  },
+  {
+   "name": "shadow_replay_sun_point",
+   "lines": 29,
+   "bytes": 26762,
+   "bytes_per_line": 922.8,
+   "lines_per_frame": 0.003,
+   "bytes_per_frame": 2.4
+  },
+  {
+   "name": "taa_invalidate",
+   "lines": 431,
+   "bytes": 22947,
+   "bytes_per_line": 53.2,
+   "lines_per_frame": 0.039,
+   "bytes_per_frame": 2.1
+  },
+  {
+   "name": "frame_phases",
+   "lines": 36,
+   "bytes": 22744,
+   "bytes_per_line": 631.8,
+   "lines_per_frame": 0.003,
+   "bytes_per_frame": 2.1
+  },
+  {
+   "name": "collide_memo",
+   "lines": 37,
+   "bytes": 21697,
+   "bytes_per_line": 586.4,
+   "lines_per_frame": 0.003,
+   "bytes_per_frame": 2.0
+  },
+  {
+   "name": "chase_transition_event",
+   "lines": 40,
+   "bytes": 20757,
+   "bytes_per_line": 518.9,
+   "lines_per_frame": 0.004,
+   "bytes_per_frame": 1.9
+  },
+  {
+   "name": "chase_transition_detail",
+   "lines": 40,
+   "bytes": 18913,
+   "bytes_per_line": 472.8,
+   "lines_per_frame": 0.004,
+   "bytes_per_frame": 1.7
+  },
+  {
+   "name": "shadow_retention_resight",
+   "lines": 35,
+   "bytes": 17446,
+   "bytes_per_line": 498.5,
+   "lines_per_frame": 0.003,
+   "bytes_per_frame": 1.6
+  },
+  {
+   "name": "chase_native_timing_metric",
+   "lines": 148,
+   "bytes": 16786,
+   "bytes_per_line": 113.4,
+   "lines_per_frame": 0.013,
+   "bytes_per_frame": 1.5
+  },
+  {
+   "name": "chase_camera",
+   "lines": 39,
+   "bytes": 16749,
+   "bytes_per_line": 429.5,
+   "lines_per_frame": 0.004,
+   "bytes_per_frame": 1.5
+  },
+  {
+   "name": "motion_unmatched_static",
+   "lines": 64,
+   "bytes": 16667,
+   "bytes_per_line": 260.4,
+   "lines_per_frame": 0.006,
+   "bytes_per_frame": 1.5
+  },
+  {
+   "name": "volumetric_fog_prefill",
+   "lines": 92,
+   "bytes": 15937,
+   "bytes_per_line": 173.2,
+   "lines_per_frame": 0.008,
+   "bytes_per_frame": 1.4
+  },
+  {
+   "name": "media_cue_window",
+   "lines": 36,
+   "bytes": 15569,
+   "bytes_per_line": 432.5,
+   "lines_per_frame": 0.003,
+   "bytes_per_frame": 1.4
+  },
+  {
+   "name": "bolt_footprint",
+   "lines": 36,
+   "bytes": 15236,
+   "bytes_per_line": 423.2,
+   "lines_per_frame": 0.003,
+   "bytes_per_frame": 1.4
+  },
+  {
+   "name": "draw_pairs",
+   "lines": 36,
+   "bytes": 13968,
+   "bytes_per_line": 388.0,
+   "lines_per_frame": 0.003,
+   "bytes_per_frame": 1.3
+  },
+  {
+   "name": "chase_aim_window",
+   "lines": 37,
+   "bytes": 13853,
+   "bytes_per_line": 374.4,
+   "lines_per_frame": 0.003,
+   "bytes_per_frame": 1.3
+  },
+  {
+   "name": "chase_camera_window",
+   "lines": 37,
+   "bytes": 13445,
+   "bytes_per_line": 363.4,
+   "lines_per_frame": 0.003,
+   "bytes_per_frame": 1.2
+  },
+  {
+   "name": "shadow_retention_summary",
+   "lines": 36,
+   "bytes": 13093,
+   "bytes_per_line": 363.7,
+   "lines_per_frame": 0.003,
+   "bytes_per_frame": 1.2
+  },
+  {
+   "name": "chase_view_restore_timing",
+   "lines": 78,
+   "bytes": 12739,
+   "bytes_per_line": 163.3,
+   "lines_per_frame": 0.007,
+   "bytes_per_frame": 1.2
+  },
+  {
+   "name": "chase_aim_basis",
+   "lines": 96,
+   "bytes": 12178,
+   "bytes_per_line": 126.9,
+   "lines_per_frame": 0.009,
+   "bytes_per_frame": 1.1
+  },
+  {
+   "name": "chase_fire_window",
+   "lines": 37,
+   "bytes": 12177,
+   "bytes_per_line": 329.1,
+   "lines_per_frame": 0.003,
+   "bytes_per_frame": 1.1
+  },
+  {
+   "name": "chase_view_restore_state",
+   "lines": 37,
+   "bytes": 10727,
+   "bytes_per_line": 289.9,
+   "lines_per_frame": 0.003,
+   "bytes_per_frame": 1.0
+  },
+  {
+   "name": "chase_cursor_update",
+   "lines": 78,
+   "bytes": 10276,
+   "bytes_per_line": 131.7,
+   "lines_per_frame": 0.007,
+   "bytes_per_frame": 0.9
+  },
+  {
+   "name": "collide_census",
+   "lines": 36,
+   "bytes": 9782,
+   "bytes_per_line": 271.7,
+   "lines_per_frame": 0.003,
+   "bytes_per_frame": 0.9
+  },
+  {
+   "name": "chase_central_hud_window",
+   "lines": 37,
+   "bytes": 9764,
+   "bytes_per_line": 263.9,
+   "lines_per_frame": 0.003,
+   "bytes_per_frame": 0.9
+  },
+  {
+   "name": "screen_emission_additive_refused_window",
+   "lines": 36,
+   "bytes": 9692,
+   "bytes_per_line": 269.2,
+   "lines_per_frame": 0.003,
+   "bytes_per_frame": 0.9
+  },
+  {
+   "name": "chase_aim_event",
+   "lines": 16,
+   "bytes": 8568,
+   "bytes_per_line": 535.5,
+   "lines_per_frame": 0.001,
+   "bytes_per_frame": 0.8
+  },
+  {
+   "name": "chase_aim_pose",
+   "lines": 32,
+   "bytes": 7760,
+   "bytes_per_line": 242.5,
+   "lines_per_frame": 0.003,
+   "bytes_per_frame": 0.7
+  },
+  {
+   "name": "dat_handle_pool_metric",
+   "lines": 57,
+   "bytes": 7725,
+   "bytes_per_line": 135.5,
+   "lines_per_frame": 0.005,
+   "bytes_per_frame": 0.7
+  },
+  {
+   "name": "chase_lead_window",
+   "lines": 37,
+   "bytes": 7627,
+   "bytes_per_line": 206.1,
+   "lines_per_frame": 0.003,
+   "bytes_per_frame": 0.7
+  },
+  {
+   "name": "bloom_commit",
+   "lines": 36,
+   "bytes": 6831,
+   "bytes_per_line": 189.8,
+   "lines_per_frame": 0.003,
+   "bytes_per_frame": 0.6
+  },
+  {
+   "name": "shadow_replay_sun_point_summary",
+   "lines": 35,
+   "bytes": 5945,
+   "bytes_per_line": 169.9,
+   "lines_per_frame": 0.003,
+   "bytes_per_frame": 0.5
+  },
+  {
+   "name": "chase_camera_timing",
+   "lines": 37,
+   "bytes": 5762,
+   "bytes_per_line": 155.7,
+   "lines_per_frame": 0.003,
+   "bytes_per_frame": 0.5
+  },
+  {
+   "name": "bloom_admission",
+   "lines": 36,
+   "bytes": 5760,
+   "bytes_per_line": 160.0,
+   "lines_per_frame": 0.003,
+   "bytes_per_frame": 0.5
+  },
+  {
+   "name": "chase_transition_window",
+   "lines": 37,
+   "bytes": 5357,
+   "bytes_per_line": 144.8,
+   "lines_per_frame": 0.003,
+   "bytes_per_frame": 0.5
+  }
+ ]
+}
