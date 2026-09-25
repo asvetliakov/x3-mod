@@ -21,6 +21,7 @@ import subprocess
 import tempfile
 import time
 import bottle
+import fixture_log  # X3M_LOG_FILE: the session log where this runner reads it (logging tiers)
 from game_guard import game_running
 
 ROOT=Path(__file__).resolve().parents[2]
@@ -186,7 +187,7 @@ def main():
     start=time.monotonic()
     try:
         with (work/'stdout.txt').open('w') as out,(work/'wine.log').open('w') as err:
-            child=subprocess.run(command,env=env,stdout=out,stderr=err,timeout=180)
+            child=subprocess.run(command,env={**env, **fixture_log.session_log_env(work)},stdout=out,stderr=err,timeout=180)
         result.update(exit_code=child.returncode,wall_seconds=round(time.monotonic()-start,3))
         assert child.returncode==0,f'fixture failed; see {work}'
         logs=list((work/'x3-modern-captures').glob('session-*.log'));assert len(logs)==1,'one proxy session log'

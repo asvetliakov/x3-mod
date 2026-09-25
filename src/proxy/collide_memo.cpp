@@ -3,6 +3,7 @@
 #include "engine_patch.h"
 #include "object_trace.h"
 #include "capture.h"
+#include "log_tiers.h"
 #include <windows.h>
 #include <cstring>
 
@@ -11,6 +12,7 @@ static_assert(sizeof(x3m_collide_memo_args) == 40, "the ten words at the site");
 namespace {
 using namespace x3m::collide_memo::core;
 namespace engine_patch = x3m::engine_patch;
+bool windows_ = false; // the 300-frame collide_memo window: X3M_TELEMETRY=1 or a logging group (log_tiers.h)
 bool patched_ = false, verify_ = false;
 const char* state_ = "disabled";
 engine_patch::CallSite site_{};
@@ -207,6 +209,7 @@ bool install_at(const Addresses& a, bool verify_mode) {
 bool initialize() {
     const DWORD error = GetLastError();
     if (patched_) { SetLastError(error); return true; }
+    windows_ = x3m::log_tier::telemetry();
     wchar_t setting[4]{}, verify[4]{};
     const DWORD length = GetEnvironmentVariableW(L"X3M_COLLIDE_MEMO", setting, 4);
     if (length == 0) { state_ = "disabled"; SetLastError(error); return false; }
@@ -243,7 +246,7 @@ void present(unsigned long long device, unsigned long long frame, bool) {
     frame_ = now;
     // A query cannot be in flight on the thread that is presenting: busy here is what an unwind past the thunk left.
     if (busy_ && static_cast<LONG>(GetCurrentThreadId()) == owner_thread_) { busy_ = false; ++counters_.stuck_busy; InterlockedExchange(&clear_requested_, 1); }
-    if (now % 300u != 0) return;
+    if (now % 300u != 0 || !windows_) return;
     const DWORD error = GetLastError();
     const Counters c = counters();   // written by the owner thread; a torn read costs one window's accuracy, never a decision
     const auto d = [](std::uint32_t a, std::uint32_t b) { return static_cast<unsigned long>(a - b); };

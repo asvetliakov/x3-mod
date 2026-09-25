@@ -4,6 +4,7 @@
 #include "engine_memory.h"
 #include "object_trace.h"
 #include "capture.h"
+#include "log_tiers.h"
 #include <windows.h>
 #include <atomic>
 #include <cstring>
@@ -43,6 +44,8 @@ std::int32_t small_threshold_ = 0; // cull_small_parts' threshold for the frame 
 // are one per distinct model, not one per row.
 struct Ladder { std::uint32_t model_ptr; bool known; std::int32_t count; unsigned thresholds; std::int32_t thr[ladder_cap]; };
 constexpr unsigned ladder_cache_size = 256;
+// X3M_DEBUG=1 without X3M_LOD_SWITCH_LOG: the launcher's bare --lod-switch-log cap (rows per frame).
+constexpr unsigned lod_switch_debug_cap = 16;
 Ladder ladder_cache_[ladder_cache_size];
 
 Ladder read_ladder(std::uint32_t model) {
@@ -303,13 +306,14 @@ bool initialize() {
     if (patched_) { SetLastError(error); return true; }
     wchar_t setting[4]{};
     const DWORD length = GetEnvironmentVariableW(L"X3M_CULL_CENSUS", setting, 4);
-    if (length == 0) {
+    const bool group = log_tier::debug(); // X3M_DEBUG=1: the census and the LOD switch rows at their default cap
+    if (length == 0 && !group) {
         state_ = "disabled";
         if (GetEnvironmentVariableW(L"X3M_LOD_SWITCH_LOG", setting, 4)) log("cull_census_lod_switch state=census_off cap=0 table=0");
         SetLastError(error); return false;
     }
     bool applied = false;
-    const bool requested = length == 1 && setting[0] == L'1';
+    const bool requested = group || (length == 1 && setting[0] == L'1');
     if (!requested) state_ = "disabled";
     else if (!object_trace::executable_verified()) state_ = "executable_mismatch";
     else applied = install_at(measure_site_va, exit_site_va);
@@ -322,6 +326,7 @@ bool initialize() {
     else if (cap_length && !parse_lod_switch_cap(cap_text, cap_length < 8 ? unsigned(cap_length) : 8u, &cap)) lod_switch = "invalid";
     else if (cap && !set_lod_switch_log(cap)) lod_switch = "alloc_failed";
     else if (cap) lod_switch = "on";
+    else if (!cap_length && group && applied) lod_switch = set_lod_switch_log(lod_switch_debug_cap) ? "on" : "alloc_failed";
     log("cull_census requested=%u patched=%u reason=%s measure_site=0x%08lx exit_site=0x%08lx write_measure=%s write_exit=%s stub_measure=0x%08lx stub_exit=0x%08lx ring=%u",
         requested ? 1u : 0u, patched_ ? 1u : 0u, state_, static_cast<unsigned long>(measure_site_va), static_cast<unsigned long>(exit_site_va),
         measure_site_.patched_in ? (measure_site_.atomic_write ? "atomic" : "plain") : "none", exit_site_.patched_in ? (exit_site_.atomic_write ? "atomic" : "plain") : "none",

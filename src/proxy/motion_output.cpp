@@ -29,6 +29,7 @@
 #include "../ownership/application_admission_abi.h"
 #include "screen_emission_admission.h"
 #include "frame_timing.h" // X3M_FRAME_TIMING only: the redundant-state counters
+#include "session_log.h"
 #include "../renderer/linear_emission_sm1.h"
 #include <algorithm>
 #include <cmath>
@@ -474,7 +475,7 @@ void MotionOutput::configure_taa(bool requested, bool debug) noexcept { taa_requ
 void MotionOutput::configure_sentinel(renderer::SentinelMode mode, float cut_degrees, unsigned log_frames) noexcept {
     sentinel_mode_ = mode;
     camera_cut_degrees_ = std::isfinite(cut_degrees) && cut_degrees > 0 ? cut_degrees : 20.f;
-    camera_log_interval_ = log_frames ? log_frames : 300u;
+    camera_log_interval_ = log_frames; // 0: capture frames only (the default since the logging tiers; X3M_DEBUG=1 gives 1)
 }
 
 // ---- cost telemetry --------------------------------------------------------
@@ -1482,7 +1483,7 @@ void MotionOutput::flush_taa_invalidate_log() noexcept {
     if (!pending) return;
     taa_invalidate_pending_ = 0;
     for (unsigned site = 0; pending; ++site, pending >>= 1)
-        if (pending & 1u) log("taa_invalidate device=%llu frame=%llu site=%s", id_, frame_, taa_invalidate_site_name(TaaInvalidateSite(site)));
+        if ((pending & 1u) && telemetry_) log("taa_invalidate device=%llu frame=%llu site=%s", id_, frame_, taa_invalidate_site_name(TaaInvalidateSite(site)));
 }
 
 MotionOutput::ComparisonExposure MotionOutput::comparison_exposure() const noexcept {
@@ -2097,12 +2098,19 @@ void MotionOutput::publish_sun_lane(const char* source) noexcept {
     // cutout_opaque_*: the tested-opaque arm's cutout-pair counts of this frame
     // (also on linear_material_frame with linear materials on); original_variants
     // / original_refused: the original share producer's create-time totals.
-    log("sun_shadow_lane_frame device=%llu frame=%llu source=%s format=%u available=%u receiver_draws=%u covered_draws=%u untracked_writers=%u non_depth_writers=%u failed=%u owner=%u exclusion_required=%u exclusion_valid=%u shadows=%u cutout_opaque_routed=%u cutout_opaque_lane=%u cutout_opaque_refused=%u original_variants=%u original_refused=%u original_refused_draws=%u stamped=%u stamp_refused=%u stamped_prims=%u",
+    if(shadow_state_row())log("sun_shadow_lane_frame device=%llu frame=%llu source=%s format=%u available=%u receiver_draws=%u covered_draws=%u untracked_writers=%u non_depth_writers=%u failed=%u owner=%u exclusion_required=%u exclusion_valid=%u shadows=%u cutout_opaque_routed=%u cutout_opaque_lane=%u cutout_opaque_refused=%u original_variants=%u original_refused=%u original_refused_draws=%u stamped=%u stamp_refused=%u stamped_prims=%u",
         id_,frame_,source,unsigned(lane_depth_format()),available,sun_frame_.receivers,sun_frame_.covered,sun_frame_.untracked,sun_frame_.non_writers,sun_frame_.failed,owner,sun_frame_.coverage_required,coverage,
         unsigned(sun_apply_requested_),counters_.cutout_opaque_routed,counters_.cutout_opaque_lane,counters_.cutout_opaque_refused,sun_original_variants_,sun_original_refused_,sun_original_refused_draws_,sun_stamps_,sun_stamp_refused_,sun_stamp_prims_);
     // Refusal buckets for the untracked-writer veto: one line per frame with
     // untracked writers, never per draw (docs/verification/directional-shadows.md).
+    // Bounded since the logging tiers (the row is in every tier): every frame with the family rows every frame
+    // (X3M_SHADOW_ROWS / X3M_DEBUG=1 / X3M_MOTION_FRAME_LOG=1 with telemetry), otherwise the first 16 rows per device and
+    // then one row per 600 frames, the frames skipped in between counted by one sun_shadow_lane_refusals_skipped row.
     if(!sun_frame_.untracked)return;
+    const bool every_frame=shadow_rows_||(telemetry_&&frame_log_interval_==1);
+    if(!every_frame&&sun_refusal_rows_>=16&&frame_-sun_refusal_last_frame_<600){++sun_refusal_skipped_;return;}
+    if(sun_refusal_skipped_)log("sun_shadow_lane_refusals_skipped device=%llu frame=%llu skipped=%u since_frame=%llu",id_,frame_,sun_refusal_skipped_,sun_refusal_last_frame_);
+    ++sun_refusal_rows_;sun_refusal_last_frame_=frame_;sun_refusal_skipped_=0;
     char buckets[320]; int used=0;
     for(unsigned i=0;i<renderer::sun_untracked_reason_count&&used>=0&&std::size_t(used)<sizeof buckets;++i){
         const int n=std::snprintf(buckets+used,sizeof buckets-std::size_t(used)," %s=%lu",renderer::sun_untracked_reason_name(i),static_cast<unsigned long>(sun_frame_.reasons[i]));
@@ -2337,7 +2345,7 @@ __attribute__((noinline, cold)) HRESULT MotionOutput::direct_failed(HRESULT hr) 
     // D3DERR_INVALIDCALL only; a loss code from one ends the fixture.
     if (hr == D3DERR_DEVICELOST || hr == D3DERR_DEVICENOTRESET) {
         log("motion_direct_loss_code device=%llu hr=%08lx", id_, static_cast<unsigned long>(hr));
-        std::fflush(nullptr); // the log is fully buffered: keep the witness line
+        session_log::drain_now(1000); // the log is buffered in memory: write the witness line before the exit
         TerminateProcess(GetCurrentProcess(), 0xD1EC7u);
     }
 #endif
@@ -4845,13 +4853,15 @@ void MotionOutput::log_bolt_footprint_window() noexcept {
     s.refused_w += w.refused_w; s.refused_recheck += w.refused_recheck; s.failures += w.failures; s.locks += w.locks; s.ticks += w.ticks; s.timed += w.timed;
     s.lengthened += w.lengthened; s.widened += w.widened; s.world_axis += w.world_axis; s.disc += w.disc; s.gated += w.gated;
     ++bolt_windows_;
-    log("bolt_footprint device=%llu frame=%llu frames=%u draws=%u written=%u untouched=%u gated=%u instances=%u expanded=%u lengthened=%u widened=%u world_axis=%u disc=%u refused_period=%u refused_w=%u refused_buffer=%u refused_rows=%u refused_shape=%u refused_recheck=%u failures=%u locks=%u timed_draws=%u us=%.1f session_draws=%u session_written=%u session_expanded=%u session_gated=%u buffer_bytes=%lu refused_max_prims=%u refused_shape_bits=%u",
+    // The 300-frame health windows are telemetry rows since the logging tiers (X3M_TELEMETRY=1 or a group);
+    // the mode, first-applied and refusal rows stay in every tier.
+    if (telemetry_) log("bolt_footprint device=%llu frame=%llu frames=%u draws=%u written=%u untouched=%u gated=%u instances=%u expanded=%u lengthened=%u widened=%u world_axis=%u disc=%u refused_period=%u refused_w=%u refused_buffer=%u refused_rows=%u refused_shape=%u refused_recheck=%u failures=%u locks=%u timed_draws=%u us=%.1f session_draws=%u session_written=%u session_expanded=%u session_gated=%u buffer_bytes=%lu refused_max_prims=%u refused_shape_bits=%u",
         id_, frame_, bolt_window_frames_, w.draws, w.written, w.untouched, w.gated, w.instances, w.expanded, w.lengthened, w.widened, w.world_axis, w.disc,
         w.refused_period, w.refused_w, w.refused_buffer, w.refused_rows, w.refused_shape, w.refused_recheck,
         w.failures, w.locks, w.timed, us, s.draws, s.written, s.expanded, s.gated, static_cast<unsigned long>(bolt_vb_bytes_), w.refused_max_prims, w.refused_shape_bits);
     for (unsigned view = 0; view < 2; ++view) {
         const auto& h = bolt_hist_[view];
-        if (!h.instances) continue;
+        if (!h.instances || !telemetry_) continue;
         char lengths[bolt_footprint::hist_buckets * 11 + 1], widths[bolt_footprint::hist_buckets * 11 + 1];
         int at_l = 0, at_w = 0;
         for (unsigned i = 0; i < bolt_footprint::hist_buckets; ++i) {
@@ -4876,7 +4886,7 @@ void MotionOutput::log_screen_additive_window() noexcept {
     std::uint32_t refused = 0;
     for (unsigned i = 0; i < screen_additive_reason_count; ++i) refused += w.refused[i];
     const std::uint32_t evaluated = w.admitted + refused + w.apply_failures;
-    log("screen_emission_additive_refused_window device=%llu frame=%llu frames=%u pair_draws=%u admitted=%u refused=%u apply_failures=%u not_reached=%u "
+    if (telemetry_) log("screen_emission_additive_refused_window device=%llu frame=%llu frames=%u pair_draws=%u admitted=%u refused=%u apply_failures=%u not_reached=%u "
         "state=%u draw_shape=%u scene=%u no_fp16_target=%u no_variant=%u srgb_sampler=%u projected=%u dither=%u alpha_state=%u alpha_caps=%u enabled=%u",
         id_, frame_, screen_additive_window_frames_, w.pair_draws, w.admitted, refused, w.apply_failures, w.pair_draws > evaluated ? w.pair_draws - evaluated : 0u,
         w.refused[0], w.refused[1], w.refused[2], w.refused[3], w.refused[4], w.refused[5], w.refused[6], w.refused[7], w.refused[8], w.refused[9],
@@ -7141,7 +7151,7 @@ void MotionOutput::after_present(HRESULT result) noexcept {
             static_cast<unsigned long>(c.mip_bias_failures), static_cast<unsigned long>(sampler_biased_mask_),
             static_cast<unsigned long>(c.restore_getters), static_cast<unsigned long>(c.restore_declines));
     }
-    if (taa_enabled_ && (capture_ || frame_ % camera_log_interval_ == 0)) log_camera_state();
+    if (taa_enabled_ && (capture_ || (camera_log_interval_ && frame_ % camera_log_interval_ == 0))) log_camera_state();
     if (thin_vote_upload_ && (capture_ || (telemetry_ && frame_ % frame_log_interval_ == 0))) log_thin_vote_frame();
     if (telemetry_ && frame_ % frame_log_interval_ == 0)
         log("shadow_lease_retirement device=%llu frame=%llu calls=%u records=%u refs=%u us=%.1f clock_errors=%u",
@@ -8226,7 +8236,7 @@ void MotionOutput::publish_shadow_replay_candidates() noexcept {
         if (sun_verdict_ == shadow_replay::SunVerdict::Relatched)
             log("shadow_replay_sun_latch device=%llu frame=%llu event=relatch register=%d program=%016llx sun=%.9g,%.9g,%.9g",
                 id_, frame_, sun_latch_.source_register, static_cast<unsigned long long>(sun_latch_.source_program), double(sun[0]), double(sun[1]), double(sun[2]));
-        log("shadow_replay_sun device=%llu frame=%llu verdict=%s register=%d samples=%u agree=%u disagree=%u invalid=%u no_register=%u unlatched=%u bounds_state=%d bounds_unavailable=%u extent_refused=%u sun=%.6f,%.6f,%.6f",
+        if (shadow_state_row()) log("shadow_replay_sun device=%llu frame=%llu verdict=%s register=%d samples=%u agree=%u disagree=%u invalid=%u no_register=%u unlatched=%u bounds_state=%d bounds_unavailable=%u extent_refused=%u sun=%.6f,%.6f,%.6f",
             id_, frame_, shadow_replay::sun_verdict_name(sun_verdict_), sun_latch_.source_register, samples.samples, samples.agree, samples.disagree, samples.invalid, samples.no_register, samples.unlatched,
             candidate_bounds_state_, candidate_bounds_unavailable_, candidate_extents_.refused_frame /* extent_refused: this frame's refused stores */, double(sun ? sun[0] : 0.f), double(sun ? sun[1] : 0.f), double(sun ? sun[2] : 0.f));
     }
@@ -8345,9 +8355,11 @@ void MotionOutput::publish_shadow_replay_candidates() noexcept {
     static_assert(renderer::shadow_cascade_max <= 10, "the bound assumes one-digit cascade indices");
     constexpr std::size_t cascade_fields_bound = renderer::shadow_cascade_max * (14 + 20 + 33 + 28 + 24 + 31 + 19 + 22 + 31 + 29) + 45 + 32 + 42 + 1;
     char cascade_fields[cascade_fields_bound]; cascade_fields[0] = 0;
+    const bool row = shadow_state_row(); // the flip tracker below runs every frame; the fields are formatted only for a written row
     if (depth_cascades_on()) {
         std::size_t used = 0; bool truncated = false;
         const auto put = [&](const char* format, auto... values) {
+            if (!row) return;
             const int n = std::snprintf(cascade_fields + used, sizeof cascade_fields - used, format, values...);
             if (n < 0 || std::size_t(n) >= sizeof cascade_fields - used) { cascade_fields[used] = 0; truncated = true; } else used += std::size_t(n);
         };
@@ -8391,7 +8403,7 @@ void MotionOutput::publish_shadow_replay_candidates() noexcept {
             log("shadow_replay_candidates_truncated device=%llu frame=%llu count=%u bound=%u used=%u total=%u", id_, frame_, depth_cascades_.count, unsigned(cascade_fields_bound), unsigned(used), candidates_line_truncated_);
         }
     }
-    log("shadow_replay_candidates device=%llu frame=%llu routed=%u zwrite=%u slice0=%u bounds=%u origin=%u fallback=%u managed=%u dynamic=%u default_pool=%u excluded=%u unknown=%u shadow_mismatch=%u"
+    if (row) log("shadow_replay_candidates device=%llu frame=%llu routed=%u zwrite=%u slice0=%u bounds=%u origin=%u fallback=%u managed=%u dynamic=%u default_pool=%u excluded=%u unknown=%u shadow_mismatch=%u"
         " leased=%u capped=%u reads=%u serial_changed=%u readonly_after=%u writable_after=%u pending=%u in_flight=%u quiet=%u cold_thread=%u stale=%u roots=%llu waiting=%llu nested=%u overflow=%u%s",
         id_, frame_, c.routed, c.zwrite, c.slice0, c.bounds, c.origin, c.fallback, c.managed, c.dynamic, c.default_pool, c.excluded, c.unknown, c.shadow_mismatch,
         c.leased, c.capped, c.reads, c.serial_changed, c.readonly_after, c.writable_after, c.pending, c.in_flight, c.quiet, c.cold_thread, c.stale,
@@ -8400,7 +8412,7 @@ void MotionOutput::publish_shadow_replay_candidates() noexcept {
     // draws that reached the candidate decision became.
     if (alpha_casters_requested_) {
         const auto& a = alpha_caster_counts_;
-        log("shadow_alpha_casters device=%llu frame=%llu ready=%u seen=%u tested=%u opaque=%u refused_state=%u refused_function=%u refused_uv=%u refused_texture=%u refused_pool=%u",
+        if (row) log("shadow_alpha_casters device=%llu frame=%llu ready=%u seen=%u tested=%u opaque=%u refused_state=%u refused_function=%u refused_uv=%u refused_texture=%u refused_pool=%u",
             id_, frame_, unsigned(alpha_casters_ready()), a.seen, a.tested, a.opaque, a.state, a.function, a.uv, a.texture, a.pool);
         alpha_caster_counts_ = {};
     }
@@ -8582,7 +8594,7 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
     // the next frame's line carries these (run 40 triage: the replay's us= and
     // the apply's cost on one line, without joining two line kinds).
     sun_apply_us_ = us; sun_apply_sampled_ = sun_apply_applied_ ? sampled : 0;
-    log("sun_shadow_apply_frame device=%llu frame=%llu applied=%u skip_reason=%s exponent=%.6f us=%.1f map=%u result=%08lx restore=%08lx stage=%u",
+    if (shadow_timing_ || family_row()) log("sun_shadow_apply_frame device=%llu frame=%llu applied=%u skip_reason=%s exponent=%.6f us=%.1f map=%u result=%08lx restore=%08lx stage=%u",
         id_, frame_, unsigned(sun_apply_applied_), skip ? skip : "none", double(exponent), us, out.map_size, out.operation, out.restore, unsigned(out.failed));
 }
 #include "motion_output_shadow_replay_inc.h"

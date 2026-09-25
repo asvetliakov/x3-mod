@@ -569,24 +569,29 @@ class MusicLaunchOptions(unittest.TestCase):
             self.assertEqual(env, self.env(directory, '--music-keep'), 'the explicit flag is redundant')
 
     def test_opt_out_and_trace_switch(self):
+        # The trace is part of --debug since the logging tiers (2026-09-26): the DLL reads X3M_MUSIC_TRACE or X3M_DEBUG.
         with tempfile.TemporaryDirectory() as directory:
             baseline = self.env(directory, '--no-music-keep')
             self.assertNotIn('X3M_MUSIC_KEEP', baseline)
             self.assertEqual({k: v for k, v in self.env(directory).items() if k not in baseline}, {'X3M_MUSIC_KEEP': '1'})
-            self.assertEqual({k: v for k, v in self.env(directory, '--no-music-keep', '--music-trace').items() if k not in baseline}, {'X3M_MUSIC_TRACE': '1'})
-            self.assertEqual({k: v for k, v in self.env(directory, '--music-trace').items() if k not in baseline}, {'X3M_MUSIC_KEEP': '1', 'X3M_MUSIC_TRACE': '1'})
+            self.assertEqual({k: v for k, v in self.env(directory, '--no-music-keep', '--debug').items() if k not in baseline}, {'X3M_DEBUG': '1'})
+            self.assertEqual({k: v for k, v in self.env(directory, '--debug').items() if k not in baseline}, {'X3M_MUSIC_KEEP': '1', 'X3M_DEBUG': '1'})
+            code, _, error = self.launch(directory, '--music-trace')
+            self.assertEqual(code, 2)
+            self.assertIn('unrecognized arguments', error)
+        self.assertIn('requested(L"X3M_MUSIC_TRACE", &trace_present) || log_tier::debug();', (ROOT / 'src/proxy/music_keep.cpp').read_text())
 
     def test_refused_under_vanilla_and_inherited_values_dropped(self):
         with tempfile.TemporaryDirectory() as directory:
-            for args in (('--music-keep',), ('--music-trace',), ('--music-keep', '--music-trace')):
-                code, _, error = self.launch(directory, *args, vanilla=True)
-                self.assertEqual(code, 2, args)
-                self.assertIn('--music-keep/--music-trace cannot be combined with --vanilla', error)
+            code, _, error = self.launch(directory, '--music-keep', vanilla=True)
+            self.assertEqual(code, 2)
+            self.assertIn('--music-keep cannot be combined with --vanilla', error)
             env = self.env(directory, '--no-music-keep', inherited={'X3M_MUSIC_KEEP': '1', 'X3M_MUSIC_TRACE': '1'})
             self.assertNotIn('X3M_MUSIC_KEEP', env)
             self.assertNotIn('X3M_MUSIC_TRACE', env)
-            env = self.env(directory, inherited={'X3M_MUSIC_KEEP': '1'}, vanilla=True)
+            env = self.env(directory, inherited={'X3M_MUSIC_KEEP': '1', 'X3M_MUSIC_TRACE': '1'}, vanilla=True)
             self.assertNotIn('X3M_MUSIC_KEEP', env)
+            self.assertNotIn('X3M_MUSIC_TRACE', env)
 
 if __name__ == '__main__':
     unittest.main()

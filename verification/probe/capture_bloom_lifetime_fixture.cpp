@@ -376,7 +376,10 @@ static std::uint64_t now() noexcept { static std::atomic<std::uint64_t> n{0}; re
 static State& process() noexcept { static State value; return value; }
 template<class... Args> static void record(Args&&...) noexcept {}
 template<class... Args> static void summary(Args&&...) noexcept {}
+static bool enabled() noexcept { return false; } // the 300-frame bloom windows are telemetry rows (logging tiers)
 } // namespace telemetry
+// The session log's counters and its last-device writer row (src/proxy/session_log.h): no lifetime work, inert here.
+namespace session_log { static void note_reset() noexcept {} static void report(const char*) noexcept {} static void park_writer(const char*) noexcept {} }
 namespace game_phases { static void invalidate_device() noexcept {} }
 // Inert mirror of the production diagnostic: the shader-population report does
 // no lifetime or Reset work, so it has nothing to contribute to this seam.

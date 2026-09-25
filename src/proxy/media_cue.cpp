@@ -5,6 +5,7 @@
 #include "object_trace.h"
 #include "telemetry.h"
 #include "capture.h"
+#include "log_tiers.h"
 #include <atomic>
 #include <cstdio>
 #include <cstdlib>
@@ -106,53 +107,41 @@ const char* kind_text(const detail::Entry& e,char (&buffer)[16]) {
     else std::snprintf(buffer,sizeof buffer,"none");
     return buffer;
 }
-// The entry-side line: written synchronously from the gate, before the
-// original allocator runs, straight to the session log's OS handle (no stdio
-// buffer, no log mutex), so a build that never returns (run100/101: the first
-// comm dialog hung inside Wine's video path) still names the cue that hung.
-// Bypassing stdio means the line may precede buffered lines written earlier
-// and, rarely, land inside a line stdio flushed in two pieces; grep for the
-// prefix, not for line order. The CRT formatter is x87 code, so it runs under
-// call_preserved's FNSAVE/FRSTOR envelope, indirectly, keeping the entry
-// handler's audited graph x87-free. Reached only with the trace on and the
-// entry limiter admitting; the trace-off path pays one predicate. A line
-// that does not reach the file whole (no handle, truncated format, failed or
-// short write) counts as suppressed so the window line accounts for it.
+// The entry-side line, logged from the gate before the original allocator runs. Since the logging tiers it goes
+// through the session log's buffer like every row (no file I/O on the game thread); the writer thread drains it within
+// 200 ms whatever the game thread does, so a build that never returns (run100/101: the first comm dialog hung inside
+// Wine's video path) still names the cue that hung. The formatter runs behind call_preserved inside log(), keeping the
+// entry handler's audited graph x87-free. Reached only with the trace on and the entry limiter admitting; the trace-off
+// path pays one predicate. Without a session log the line counts as suppressed so the window line accounts for it.
 void write_enter_line(const detail::Entry& e) {
     const HANDLE handle=log_handle();
-    bool written_whole=false;
-    if(handle!=INVALID_HANDLE_VALUE&&handle)x3m::call_preserved([&]{
-        char kind[16];char line[192];
-        const int n=std::snprintf(line,sizeof line,"media_cue_enter frame=%llu qpc=%llu id=%lu kind=%s caller=%s flags=0x%lx attempt=%lu\n",
+    if(handle==INVALID_HANDLE_VALUE||!handle){++enter_limit.suppressed;return;}
+    // kind_text formats with the CRT (x87 code): behind call_preserved like the row itself.
+    x3m::call_preserved([&]{
+        char kind[16];
+        log("media_cue_enter frame=%llu qpc=%llu id=%lu kind=%s caller=%s flags=0x%lx attempt=%lu",
             e.frame,e.qpc,static_cast<unsigned long>(e.id),kind_text(e,kind),detail::caller_names[e.caller],static_cast<unsigned long>(e.flags),static_cast<unsigned long>(e.attempt));
-        DWORD written=0;
-        written_whole=n>0&&unsigned(n)<sizeof line&&WriteFile(handle,line,DWORD(n),&written,nullptr)&&written==DWORD(n);
     });
-    if(!written_whole)++enter_limit.suppressed;
 }
-// The video blit witness line, the same direct handle write: the enter line
-// goes down before the native LockRect/UnlockRect (either may be the call
-// that never returns), the result line after it. Reached only for calls from
+// The video blit witness line, through the session log's buffer the same way: the enter line is logged before the
+// native LockRect/UnlockRect (either may be the call that never returns; the writer thread still drains it), the
+// result line after it. Reached only for calls from
 // the consumer's range on the owner thread with the trace on; GetDesc on the
 // borrowed native surface is the only D3D call, made per written line (at
 // most two per `video_blit_line_interval` blits plus the first unlock).
 void write_video_line(const ownership::SurfaceLockEvent& e,const char* stage) {
     const HANDLE handle=log_handle();
-    bool written_whole=false;
-    if(handle!=INVALID_HANDLE_VALUE&&handle){
+    if(handle==INVALID_HANDLE_VALUE||!handle){++video.suppressed;return;}
+    x3m::call_preserved([&]{ // the result text is CRT-formatted (x87 code)
         D3DSURFACE_DESC desc{};
         if(!e.native||FAILED(e.native->GetDesc(&desc)))desc=D3DSURFACE_DESC{};
         char result[16];
         if(e.phase==ownership::SurfaceLockPhase::LockEnter||e.phase==ownership::SurfaceLockPhase::UnlockEnter)std::snprintf(result,sizeof result,"pending");
         else std::snprintf(result,sizeof result,"0x%08lx",static_cast<unsigned long>(e.result));
-        char line[224];
-        const int n=std::snprintf(line,sizeof line,"media_video_blit frame=%llu qpc=%llu texture=%p width=%u height=%u format=%u flags=0x%lx result=%s stage=%s blits=%llu unlocks=%llu\n",
+        log("media_video_blit frame=%llu qpc=%llu texture=%p width=%u height=%u format=%u flags=0x%lx result=%s stage=%s blits=%llu unlocks=%llu",
             current_frame.load(std::memory_order_relaxed),qpc(),static_cast<void*>(e.surface),unsigned(desc.Width),unsigned(desc.Height),unsigned(desc.Format),
             static_cast<unsigned long>(e.flags),result,stage,video.locks_total,video.unlocks);
-        DWORD written=0;
-        written_whole=n>0&&unsigned(n)<sizeof line&&WriteFile(handle,line,DWORD(n),&written,nullptr)&&written==DWORD(n);
-    }
-    if(!written_whole)++video.suppressed;
+    });
 }
 // The observer the ownership shell calls twice per Surface::LockRect/UnlockRect
 // once registered (trace on only): everything outside the consumer's return
@@ -279,7 +268,7 @@ bool initialize() {
     ErrorGuard error;
     if(initialized)return installed.load(std::memory_order_acquire);
     initialized=true;wchar_t value[16]{};
-    const bool trace_wanted=GetEnvironmentVariableW(L"X3M_MEDIA_CUE_TRACE",value,4)==1&&value[0]==L'1';
+    const bool trace_wanted=log_tier::debug_flag(L"X3M_MEDIA_CUE_TRACE"); // X3M_MEDIA_CUE_TRACE=1 or X3M_DEBUG=1
     const bool cache_wanted=GetEnvironmentVariableW(L"X3M_MEDIA_CUE_CACHE",value,4)==1&&value[0]==L'1';
     unsigned retry_s=default_retry_s;
     if(GetEnvironmentVariableW(L"X3M_MEDIA_CUE_RETRY_S",value,16)>0){const unsigned long n=wcstoul(value,nullptr,10);if(n>=1&&n<=max_retry_s)retry_s=unsigned(n);}

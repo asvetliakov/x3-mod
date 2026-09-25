@@ -43,6 +43,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import bottle  # noqa: E402
+import fixture_log  # X3M_LOG_FILE: the session log where this runner reads it (logging tiers)
 from game_guard import game_running  # noqa: E402
 
 PROBE = ROOT / 'verification/probe'
@@ -129,7 +130,7 @@ def run_config(name, extra, seam, exe, draws, log):
     assert not game_running(), 'the game is running'
     log.write(f'==== {name}\n')
     log.flush()
-    completed = subprocess.run(command, env=env, stdout=subprocess.PIPE, stderr=log, text=True, timeout=900)
+    completed = subprocess.run(command, env={**env, **fixture_log.session_log_env(directory)}, stdout=subprocess.PIPE, stderr=log, text=True, timeout=900)
     text = completed.stdout
     (directory / 'stdout.txt').write_text(text)
     assert completed.returncode == 0, f'{name}: exit {completed.returncode}\n{text[-2000:]}'

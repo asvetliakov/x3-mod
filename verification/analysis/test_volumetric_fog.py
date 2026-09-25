@@ -240,20 +240,26 @@ class FogLauncherTests(unittest.TestCase):
     def test_defaults_values_and_inherited_environment(self):
         status, output, error = self.launch(*self.BASE, '--volumetric-fog')
         self.assertEqual(status, 0, error)
-        for line in ('"X3M_VOLUMETRIC_FOG": "1"', '"X3M_VOLUMETRIC_FOG_STRENGTH": "0.02"',
-                     '"X3M_VOLUMETRIC_FOG_EVERYWHERE": "0"', '"X3M_VOLUMETRIC_FOG_TIMING": "0"'):
+        for line in ('"X3M_VOLUMETRIC_FOG": "1"', '"X3M_VOLUMETRIC_FOG_STRENGTH": "0.02"', '"X3M_VOLUMETRIC_FOG_EVERYWHERE": "0"'):
             self.assertIn(line, output)
+        # The pass timing is part of --perf since the logging tiers (2026-09-26): the DLL reads X3M_VOLUMETRIC_FOG_TIMING or
+        # X3M_PERF; the launcher never sends the variable.
+        self.assertNotIn('X3M_VOLUMETRIC_FOG_TIMING', output)
         # The superseded --volumetric-fog-anisotropy was removed (the stored look carries
         # its own two-lobe phase); the DLL keeps its own g = 0.3 default.
         self.assertNotIn('X3M_VOLUMETRIC_FOG_ANISOTROPY', output)
-        status, output, error = self.launch(*self.BASE, '--volumetric-fog', '0.05', '--volumetric-fog-everywhere', '--volumetric-fog-timing')
+        status, output, error = self.launch(*self.BASE, '--volumetric-fog', '0.05', '--volumetric-fog-everywhere', '--perf')
         self.assertEqual(status, 0, error)
-        for line in ('"X3M_VOLUMETRIC_FOG_STRENGTH": "0.05"', '"X3M_VOLUMETRIC_FOG_EVERYWHERE": "1"', '"X3M_VOLUMETRIC_FOG_TIMING": "1"'):
+        for line in ('"X3M_VOLUMETRIC_FOG_STRENGTH": "0.05"', '"X3M_VOLUMETRIC_FOG_EVERYWHERE": "1"', '"X3M_PERF": "1"'):
             self.assertIn(line, output)
-        status, output, error = self.launch(*self.BASE, environment={'X3M_VOLUMETRIC_FOG': '1', 'X3M_VOLUMETRIC_FOG_EVERYWHERE': '1'})
+        status, _, error = self.launch(*self.BASE, '--volumetric-fog', '--volumetric-fog-timing')
+        self.assertEqual(status, 2)
+        self.assertIn('unrecognized arguments', error)
+        status, output, error = self.launch(*self.BASE, environment={'X3M_VOLUMETRIC_FOG': '1', 'X3M_VOLUMETRIC_FOG_EVERYWHERE': '1', 'X3M_VOLUMETRIC_FOG_TIMING': '1'})
         self.assertEqual(status, 0, error)
         self.assertIn('"X3M_VOLUMETRIC_FOG": "0"', output)
         self.assertIn('"X3M_VOLUMETRIC_FOG_EVERYWHERE": "0"', output)
+        self.assertNotIn('X3M_VOLUMETRIC_FOG_TIMING', output)
 
     def test_card_option(self):
         for mode in ('keep', 'replace'):

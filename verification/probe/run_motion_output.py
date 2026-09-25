@@ -175,6 +175,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from game_guard import game_running  # noqa: E402
 import fixture_process  # noqa: E402  (per-case timeout: ends the fixture, its Wine processes and winedbg)
 import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bottle results directory
+import fixture_log  # X3M_LOG_FILE: the session log where this runner reads it (logging tiers)
 PROBE = ROOT / 'verification/probe'
 BUILD = PROBE / 'build'
 RESULTS = bottle.results_dir(ROOT)
@@ -198,10 +199,10 @@ VARIANTS = {
     'depth': dict(X3M_OWNERSHIP='1', X3M_DEPTH_COPY='1', X3M_SCENE_DEPTH_CAPTURE='1'),
     'admission': dict(X3M_OWNERSHIP='1', X3M_ADMISSION='1')}
 def case(name, mode, variant='plain', enabled='1', jitter=False, taa=False, bench=None, lazy=False, burst=False, camera=False, sentinel=None, envmap=False,
-         hook=None, shadow=True, hdr=False, hdr_fault=None, hdr_env=None, mip_bias=None, mipbias=False, cutout=None):
+         hook=None, shadow=True, hdr=False, hdr_fault=None, hdr_env=None, mip_bias=None, mipbias=False, cutout=None, tiers=False):
     return dict(name=name, mode=mode, variant=variant, enabled=enabled, jitter=jitter, taa=taa, bench=bench, lazy=lazy, burst=burst,
                 camera=camera, sentinel=sentinel, envmap=envmap, hook=hook, shadow=shadow, hdr=hdr, hdr_fault=hdr_fault, hdr_env=hdr_env or {},
-                mip_bias=mip_bias, mipbias=mipbias, cutout=cutout)
+                mip_bias=mip_bias, mipbias=mipbias, cutout=cutout, tiers=tiers)
 
 
 CASES = [case(f'{dll}-{state}' if variant == 'plain' else f'{dll}-{variant}-{state}', dll, variant, enabled)
@@ -359,6 +360,25 @@ SHADOW_POLL_MODES = ('agree', 'null', 'disagree', 'refusals')  # refusals: a lay
 # alternate-frame rule alone would leave the far cascade absent; it must replay
 # in full anyway. Frame 6 is the ON edge after a Reset.
 SHADOW_TOGGLE_PRESSES = (1, 3, 4, 6)  # off, on, off, on
+# Logging tiers (docs/architecture/logging-tiers.md, "Implemented"): the cascade script on the seam DLL run with no
+# logging variable (the always tier, with and without F8 captures), with X3M_DEBUG=1 and with the individual variables the
+# debug group stands for, with X3M_PERF=1 and with the perf group's individuals, and once with the seam's log() benchmark.
+# The group and its individuals must log the same set of row names; the always tier's rows per frame are measured.
+LOG_TIERS_CASE = 'seam-log-tiers'
+LOG_TIERS_DEBUG = dict(X3M_TELEMETRY='1', X3M_MOTION_FRAME_LOG='1', X3M_CAMERA_LOG='1', X3M_FRAME_END_STRIDE='1', X3M_SHADOW_ROWS='1',
+                       X3M_SHADOW_RETENTION_CENSUS='1', X3M_OBJECT_BOUNDS_LOG='1', X3M_CULL_CENSUS='1', X3M_LOD_SWITCH_LOG='16',
+                       X3M_MEDIA_CUE_TRACE='1', X3M_MUSIC_TRACE='1', X3M_WINDOW_TRACE='1', X3M_SHADOW_SUN_TRACE='1', X3M_SECTOR_BACKGROUND='1',
+                       X3M_LOADING_PROBES='1', X3M_COLLIDE_NARROW_CENSUS='1', X3M_COLLIDE_QUERY_PHASES='1')
+LOG_TIERS_PERF = dict(X3M_TELEMETRY='1', X3M_FRAME_TIMING='1', X3M_FRAME_PHASES='1', X3M_FPS_OVERLAY='1', X3M_VOLUMETRIC_FOG_TIMING='1',
+                      X3M_SHADOW_TIMING='1', X3M_FRAME_END_STRIDE='1')
+# Every logging variable a tier run starts without (the runner's own pins included): the groups, their individuals and the
+# explicit per-draw / dump switches.
+LOG_TIERS_CLEARED = set(LOG_TIERS_DEBUG) | set(LOG_TIERS_PERF) | {'X3M_DEBUG', 'X3M_PERF', 'X3M_TELEMETRY_DRAW', 'X3M_TAA_DEBUG', 'X3M_LOG_FILE'}
+# Rows whose presence follows the wall clock (the 1 Hz summaries, the 10 s writer row), not a switch: excluded from the
+# name comparison and listed in the case result.
+LOG_TIERS_CLOCKED = {'telemetry_summary', 'telemetry_metric', 'engine_memory', 'loading_metric', 'mesh_adjacency_metric', 'resource_reader_metric',
+                     'dat_handle_pool_metric', 'telemetry_window', 'telemetry_window_state', 'telemetry_cursor_poll'}
+LOG_TIERS_BENCH_ROWS = 10000
 CASES += [case('seam-ownership-shadow-replay-cascades-toggle', 'shadowreplay', 'ownership', camera=True,
                hdr_env=dict(SHADOW_REPLAY_CASCADES_ENV, X3M_FIXTURE_SHADOW_TOGGLE=','.join(str(v) for v in SHADOW_TOGGLE_PRESSES)))]
 # The same A/B on the one-cascade set, with the capture window over the off
@@ -374,6 +394,7 @@ CASES += [case('seam-ownership-shadow-replay-toggle-single', 'shadowreplay', 'ow
                hdr_env=dict(SHADOW_REPLAY_ENV, X3M_FIXTURE_SHADOW_TOGGLE=','.join(str(v) for v in SHADOW_TOGGLE_SINGLE_PRESSES),
                             X3M_CAPTURE_START='2', X3M_CAPTURE_FRAMES='2'))]
 CASES += [case(f'seam-ownership-shadow-replay-cascades-poll-{m}', 'shadowreplay', 'ownership', camera=True, hdr_env=dict(SHADOW_REPLAY_CASCADES_ENV, X3M_FIXTURE_SHADOW_POLL=m)) for m in SHADOW_POLL_MODES]
+CASES += [case(LOG_TIERS_CASE, 'shadowreplay', 'ownership', camera=True, hdr_env=SHADOW_REPLAY_CASCADES_ENV, tiers=True)]
 # Own-ship-adaptive cascade 0 (shadow-cascade-extents.md, section 5): the
 # cascade script under four cascades narrowed to 8 / 48 / 240 / 800 (the set R
 # ratios), K = 1.5, with two hulls drawn every frame: H1 (radius about 1.69
@@ -780,12 +801,20 @@ THIN_VOTE_TWINS = {'seam-thin-vote-far-on': 'seam-thin-vote-far-off'}
 # X3M_FADE_RT2_OWNER with the vote on and no fade-band draw: RT1 and every RT2 lane equal the option-off run's byte for byte
 # (the owner fragment writes max(w * 0 + c218.x, 0) = the vote's .a on every opaque row).
 THIN_VOTE_OWNER_TWINS = {'seam-thin-vote-far-on-owner': 'seam-thin-vote-far-on'}
+# The exit path (docs/architecture/logging-tiers.md, "Exit path"): the hostile script thrown out of frame 4 right after its
+# BeginScene, where the 2026-09-26 flake threw (X3M_FIXTURE_THROW_FRAME), once as it is (the route still holds the
+# device: it is never destroyed and the process must exit anyway, with no D3D call from the static teardown at
+# ExitProcess) and once run to completion (the device destroyed: the log writer parks and drops its module reference, so
+# the application's FreeLibrary unloads the proxy); see run_exit_path.
+EXIT_PATH_CASE, EXIT_PATH_TIMEOUT_S, EXIT_PATH_FRAME = 'seam-exit-path', 90, 4
 THIN_VOTE_FRAMES, THIN_VOTE_SIZE = 6, 128
 # seam-thin-vote-far-on carries the launcher's default marker (X3M_TAA_THIN_VOTE_DEFAULT=1, Run 81): its configured row reads default=1.
 THIN_VOTE_DEFAULT_MARKED = ('seam-thin-vote-far-on',)
 CASES += [case(name, 'thinvote', 'ownership', jitter=True, taa=True, hdr=True, hdr_env=dict(THIN_VOTE_ENV, X3M_TAA_THIN_VOTE=vote, X3M_FIXTURE_THIN_SCALE=scale, X3M_FIXTURE_THIN_SCRIPT=script,
                                                                                             **({'X3M_TAA_THIN_VOTE_DEFAULT': '1'} if name in THIN_VOTE_DEFAULT_MARKED else {})))
           for name, (vote, scale, script) in THIN_VOTE_CASES.items()]
+CASES += [case(EXIT_PATH_CASE, 'thinvote', 'ownership', jitter=True, taa=True, hdr=True,
+               hdr_env=dict(THIN_VOTE_ENV, X3M_TAA_THIN_VOTE='on', X3M_FIXTURE_THIN_SCALE='far', X3M_FIXTURE_THIN_SCRIPT='hostile', X3M_FIXTURE_EXIT_REPORT='1'))]
 CASES += [case('seam-thin-vote-far-on-owner', 'thinvote', 'ownership', jitter=True, taa=True, hdr=True,
                hdr_env=dict(THIN_VOTE_ENV, X3M_TAA_THIN_VOTE='on', X3M_FIXTURE_THIN_SCALE='far', X3M_FIXTURE_THIN_SCRIPT='plain', X3M_FADE_RT2_OWNER='on'))]
 # The thin region's flag source (taa-thin-geometry-alternatives.md section 3.2): the vote alone whenever the vote and the thin
@@ -1659,6 +1688,135 @@ def sources():
         'motion_output_shadow_alpha_inc.h')]
     paths += [ROOT / 'tools' / 'analysis' / 'shadow_retention.py']
     return {str(p.relative_to(ROOT)): sha(p) for p in sorted(paths)}
+
+
+def run_exit_path(name, command, base_env, directory, wine_log, report):
+    """The seam-exit-path case (EXIT_PATH_CASE above): both variants must exit within EXIT_PATH_TIMEOUT_S."""
+    captures = directory / 'x3-modern-captures'
+    captures.mkdir(exist_ok=True)
+    stamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
+    variants, checks = {}, 0
+    for index, how in enumerate(('throw', 'complete')):
+        log_path = captures / f'session-{stamp}-{index}.log'
+        env = dict(base_env, X3M_LOG_FILE='Z:' + str(log_path.resolve()))
+        if how == 'throw':
+            env['X3M_FIXTURE_THROW_FRAME'] = str(EXIT_PATH_FRAME)
+        no_game()
+        wine_log.write(f'==== {name} {how}\n'); wine_log.flush()
+        try:
+            completed = fixture_process.run(command, build_dir=directory, env=env, stdout=subprocess.PIPE, stderr=wine_log, text=True, timeout=EXIT_PATH_TIMEOUT_S)
+            text, code, hung = completed.stdout, completed.returncode, False
+        except fixture_process.FixtureTimeout as timeout:
+            out = timeout.output or ''
+            text, code, hung = (out.decode(errors='replace') if isinstance(out, bytes) else out), None, True
+            wine_log.write(timeout.cleanup + '\n'); wine_log.flush()
+        (directory / f'fixture-stdout-{how}.txt').write_text(text or '')
+        report.append(f'==== {name} {how} exit={code} hung={hung}\n{(text or "")[-1500:]}')
+        lines = (text or '').splitlines()
+        rows = log_path.read_text(errors='replace').splitlines() if log_path.is_file() else []
+        freed = [fields(l) for l in lines if l.startswith('EXITPATH freelibrary ')]
+        variants[how] = {'hung': hung, 'exit': code, 'begin_scene': any(l.startswith(f'EXITPATH begin_scene=1 frame={EXIT_PATH_FRAME}') for l in lines),
+                         'result': next((l.split(' ', 2)[1] + (' ' + l.split(' ', 2)[2][:40] if l.startswith('RESULT FAIL') else '') for l in lines if l.startswith('RESULT ')), None),
+                         'unloaded': freed[0]['unloaded'] if freed else None, 'path_known': freed[0]['path_known'] if freed else None,
+                         'device_destroy': sum(r.startswith('device_destroy ') for r in rows), 'session_end': sum(r.startswith('session_end ') for r in rows),
+                         'log_writer_parked': sum(r.startswith('log_writer_parked ') for r in rows)}
+    for how, v in variants.items():
+        assert not v['hung'], (name, how, v)
+        assert v['path_known'] == '1' and v['session_end'] == 1, (name, how, v)
+        checks += 2
+    # throw: the exception leaves frame 4 after BeginScene; the route still holds the device, so it is never destroyed and
+    # the proxy stays loaded (a live device keeps the writer and its module reference); the process still exits.
+    t = variants['throw']
+    assert t['exit'] == 1 and t['begin_scene'] and t['result'] == 'FAIL exit path after BeginScene', (name, t)
+    assert t['device_destroy'] == 0 and t['unloaded'] == '0', (name, t)
+    # complete: the script passes, the device goes, the writer parks and drops its reference, FreeLibrary unloads the proxy.
+    c = variants['complete']
+    assert c['exit'] == 0 and c['result'] == 'PASS' and c['device_destroy'] == 1 and c['log_writer_parked'] >= 1 and c['unloaded'] == '1', (name, c)
+    checks += 4
+    return {'checks': checks, 'exit': 0, 'variants': variants, 'directory': str(directory.relative_to(ROOT))}
+
+
+def run_log_tiers(name, command, base_env, directory, wine_log, report):
+    """The seam-log-tiers case (LOG_TIERS_CASE above): six runs of one script, row names and volumes compared."""
+    captures = directory / 'x3-modern-captures'
+    captures.mkdir(exist_ok=True)
+    base = {k: v for k, v in base_env.items() if k not in LOG_TIERS_CLEARED}
+    runs = {'always': {}, 'always_no_capture': dict(X3M_CAPTURE_START='1000000', X3M_CAPTURE_FRAMES='0'),
+            'debug': dict(X3M_DEBUG='1'), 'debug_individual': LOG_TIERS_DEBUG, 'perf': dict(X3M_PERF='1'), 'perf_individual': LOG_TIERS_PERF,
+            'bench': dict(X3M_TELEMETRY='1', X3M_FIXTURE_LOG_BENCH=str(LOG_TIERS_BENCH_ROWS)),
+            'exception': dict(X3M_FIXTURE_EXCEPTION='1')}
+    stamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
+    logs, exits, texts = {}, {}, {}
+    for index, (tier, extra) in enumerate(runs.items()):
+        log_path = captures / f'session-{stamp}-{index}.log'
+        env = dict(base, **extra, X3M_LOG_FILE='Z:' + str(log_path.resolve()))
+        no_game()
+        wine_log.write(f'==== {name} {tier}\n'); wine_log.flush()
+        completed = fixture_process.run(command, build_dir=directory, env=env, stdout=subprocess.PIPE, stderr=wine_log, text=True, timeout=360)
+        texts[tier] = completed.stdout
+        (directory / f'fixture-stdout-{tier}.txt').write_text(completed.stdout)
+        report.append(f'==== {name} {tier} exit={completed.returncode}\n{completed.stdout[-2000:]}')
+        exits[tier] = completed.returncode
+        assert log_path.is_file(), f'{name} {tier}: no session log at the X3M_LOG_FILE path'
+        logs[tier] = log_path.read_text(errors='replace').splitlines()
+    names = {tier: {l.split(' ', 1)[0].split('=', 1)[0] for l in lines if l} for tier, lines in logs.items()}
+    checks = 0
+    def compare(group, individual):
+        a, b = names[group] - LOG_TIERS_CLOCKED, names[individual] - LOG_TIERS_CLOCKED
+        assert a == b, (name, group, sorted(a - b), individual, sorted(b - a))
+        return {'names': len(a), 'clocked_only_in_group': sorted((names[group] - names[individual]) & LOG_TIERS_CLOCKED),
+                'clocked_only_in_individual': sorted((names[individual] - names[group]) & LOG_TIERS_CLOCKED)}
+    equivalence = {'debug': compare('debug', 'debug_individual'), 'perf': compare('perf', 'perf_individual')}
+    checks += 2
+    for tier in ('always', 'debug', 'debug_individual', 'perf', 'perf_individual', 'bench', 'exception'):
+        assert exits[tier] == 0 and texts[tier].splitlines() and texts[tier].splitlines()[-1].startswith('RESULT PASS '), (name, tier, exits[tier], texts[tier][-400:])
+        checks += 1
+    volumes = {}
+    for tier, lines in logs.items():
+        first = fields(lines[0])
+        assert lines[0].startswith('log_open ') and first['source'] == 'override' and first['previous'] == 'none', (name, tier, lines[0])
+        ends = [fields(l) for l in lines if l.startswith('session_end ')]
+        raised = tier == 'exception'
+        assert len(ends) == 1 and ends[0]['exception'] == str(int(raised)), (name, tier, ends)
+        witnesses = [i for i, l in enumerate(lines) if l.startswith('exception ')]
+        assert len(witnesses) == int(raised), (name, tier, witnesses)
+        checks += 3
+        if raised:
+            # The seam's continuable access violation of 0x0badf00d, handled by nobody: one row from the crash filter, after the rows
+            # logged before it (the writer drained them first) and before the rows logged after it.
+            row = fields(lines[witnesses[0]])
+            assert (row['code'], row['access'], row['access_kind'], row['unhandled']) == ('c0000005', '0badf00d', '0', '1'), (name, row)
+            before = next(i for i, l in enumerate(lines) if l.startswith('fixture_exception_marker before=1'))
+            after = next(i for i, l in enumerate(lines) if l.startswith('fixture_exception_marker after=1'))
+            assert before < witnesses[0] < after, (name, before, witnesses[0], after)
+            checks += 2
+        frames = int(ends[0]['frames'])
+        # Steady rows: after the first frame_end (the header and device creation before it), session_end excluded.
+        start = next((i for i, l in enumerate(lines) if l.startswith('frame_end ')), len(lines))
+        steady = [l for l in lines[start + 1:] if not l.startswith('session_end ')]
+        header = lines[:start + 1]
+        volumes[tier] = {'frames': frames, 'rows': len(lines), 'bytes': sum(len(l) + 1 for l in lines),
+                         'header_rows': len(header), 'header_bytes': sum(len(l) + 1 for l in header),
+                         'steady_rows': len(steady), 'steady_bytes': sum(len(l) + 1 for l in steady),
+                         'rows_per_frame': round(len(steady) / frames, 3) if frames else None,
+                         'bytes_per_frame': round(sum(len(l) + 1 for l in steady) / frames, 1) if frames else None,
+                         'steady_names': sorted({l.split(' ', 1)[0] for l in steady}),
+                         'log_writer': [fields(l) for l in lines if l.startswith('log_writer ')]}
+    # The always tier writes no per-frame family or shadow row outside capture frames and no telemetry row.
+    for gated in ('motion_output_frame', 'shadow_replay_depth', 'shadow_replay_candidates', 'shadow_replay_sun', 'sun_shadow_apply_frame',
+                  'shadow_retention_frame', 'sun_shadow_lane_frame', 'camera_state', 'telemetry_summary', 'log_writer', 'taa_invalidate'):
+        assert gated not in volumes['always_no_capture']['steady_names'], (name, gated)
+        checks += 1
+    bench = fields(next(l for l in logs['bench'] if l.startswith('log_bench ')))
+    assert int(bench['rows']) == LOG_TIERS_BENCH_ROWS, (name, bench)
+    checks += 1
+    result = {'checks': checks, 'exit': 0, 'exits': exits, 'equivalence': equivalence, 'directory': str(directory.relative_to(ROOT)),
+              'always': volumes['always_no_capture'], 'always_with_capture': volumes['always'],
+              'volumes': {tier: {k: v for k, v in data.items() if k != 'steady_names'} for tier, data in volumes.items()},
+              'bench': {k: (float(v) if '.' in v else int(v)) for k, v in bench.items()},
+              'bench_log_writer': volumes['bench']['log_writer'], 'debug_log_writer': volumes['debug']['log_writer'], 'perf_log_writer': volumes['perf']['log_writer'],
+              'exception_row': next(fields(l) for l in logs['exception'] if l.startswith('exception '))}
+    return result
 
 
 def no_game():
@@ -6449,7 +6607,7 @@ def main(argv=None):
         wine_log = (RESULTS / 'motion-output-wine.log').open('w')
         result['bench'] = {}
         for entry in CASES + (WRAP_CASES if only else []):
-            name, mode, variant, enabled, jitter, taa, bench, lazy, burst, camera, sentinel, envmap, hook, shadow, hdr, hdr_fault, hdr_env, mip_bias, mipbias, cutout = (entry[k] for k in ('name', 'mode', 'variant', 'enabled', 'jitter', 'taa', 'bench', 'lazy', 'burst', 'camera', 'sentinel', 'envmap', 'hook', 'shadow', 'hdr', 'hdr_fault', 'hdr_env', 'mip_bias', 'mipbias', 'cutout'))
+            name, mode, variant, enabled, jitter, taa, bench, lazy, burst, camera, sentinel, envmap, hook, shadow, hdr, hdr_fault, hdr_env, mip_bias, mipbias, cutout, tiers = (entry[k] for k in ('name', 'mode', 'variant', 'enabled', 'jitter', 'taa', 'bench', 'lazy', 'burst', 'camera', 'sentinel', 'envmap', 'hook', 'shadow', 'hdr', 'hdr_fault', 'hdr_env', 'mip_bias', 'mipbias', 'cutout', 'tiers'))
             if only and name not in only:
                 continue
             directory = BUILD / ('motion-output-' + name + '-' + datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f'))
@@ -6501,7 +6659,12 @@ def main(argv=None):
                        X3M_SHADOW_CASCADES='0', X3M_FIXTURE_SUNAPPLY_CASCADES='0',
                        # Caster retention off unless a case sets it.
                        X3M_SHADOW_RETENTION_CENSUS='0', X3M_SHADOW_CASTER_RETENTION='0', X3M_SHADOW_RETENTION_TIMING='0',
-                       X3M_SHADOW_ALPHA_CASTERS='0')  # alpha-tested casters off unless a case sets them
+                       X3M_SHADOW_ALPHA_CASTERS='0',  # alpha-tested casters off unless a case sets them
+                       # Logging tiers (docs/architecture/logging-tiers.md): the rows every case's oracle reads at the cadence they
+                       # had before the tiers: the shadow cost and state rows every frame, camera_state every 300 frames, frame_end
+                       # every 300 frames; the groups themselves are never inherited (the seam-log-tiers case sets them).
+                       X3M_SHADOW_TIMING='1', X3M_SHADOW_ROWS='1', X3M_CAMERA_LOG='300', X3M_FRAME_END_STRIDE='300')
+            env.pop('X3M_DEBUG', None); env.pop('X3M_PERF', None)
             for inherited in ('X3M_SHADOW_CASCADE_SIZES', 'X3M_SHADOW_CASCADE_CAPS', 'X3M_SHADOW_CASCADE_BUDGET', 'X3M_FIXTURE_SHADOW_CASCADES',
                               'X3M_SHADOW_CASTER_RETENTION_AGE', 'X3M_SHADOW_CASTER_RETENTION_EPS', *SHADOW_REPLAY_REMOVED,
                               'X3M_FIXTURE_SHADOW_EXTENT', 'X3M_FIXTURE_SUNAPPLY_WIDE'):  # the removed single-map variables: only a case may set one
@@ -6541,10 +6704,23 @@ def main(argv=None):
                 # hdrexposure needs no early readback and moves the window (the DLL caps it at eight frames)
                 # onto the hazard and NaN frames so their stored FP16 values are on record.
                 env['X3M_CAPTURE_START'] = str(EXPOSURE_HAZARD_FRAMES[0]) if mode == 'hdrexposure' else '1'; env['X3M_CAPTURE_FRAMES'] = '8'
+            if name == EXIT_PATH_CASE:
+                case = run_exit_path(name, command, env, directory, wine_log, report)
+                result['cases'][name] = case
+                save()
+                print(f'{name}: exit={case["exit"]} checks={case["checks"]} variants={case["variants"]}', flush=True)
+                continue
+            if tiers:
+                case = run_log_tiers(name, command, env, directory, wine_log, report)
+                result['cases'][name] = case
+                save()
+                print(f'{name}: exit={case["exit"]} checks={case["checks"]} always_rows_per_frame={case["always"]["rows_per_frame"]} '
+                      f'bench_mean_us={case["bench"]["mean_us"]} bench_max_us={case["bench"]["max_us"]}', flush=True)
+                continue
             no_game()
             wine_log.write(f'==== {name}\n'); wine_log.flush()
             try:
-                completed = fixture_process.run(command, build_dir=directory, env=env, stdout=subprocess.PIPE, stderr=wine_log, text=True, timeout=360)
+                completed = fixture_process.run(command, build_dir=directory, env={**env, **fixture_log.session_log_env(directory)}, stdout=subprocess.PIPE, stderr=wine_log, text=True, timeout=360)
             except fixture_process.FixtureTimeout as timeout:
                 report.append(f'==== {name} timeout after {timeout.timeout} s\n{timeout.output or ""}\n{timeout.cleanup}\n')
                 wine_log.write(timeout.cleanup + '\n'); wine_log.flush()

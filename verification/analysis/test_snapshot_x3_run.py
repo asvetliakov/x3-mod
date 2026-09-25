@@ -348,6 +348,61 @@ class SnapshotX3RunTests(unittest.TestCase):
         self.assertEqual((competing / 'keep').read_text(), 'concurrent snapshot')
         self.assertFalse((self.output / 'x3-bottleX3-run1').exists())
 
+    def game_layout(self, first_row='log_open file=C:\\X3\\x3m.log source=game previous=renamed session=20260926-101500-777'):
+        """The logging-tiers layout: <game>/x3m.log with its log_open row, captures in <game>/x3-modern-captures."""
+        game = self.root / 'game'; game.mkdir()
+        captures = game / 'x3-modern-captures'; captures.mkdir()
+        log = game / 'x3m.log'
+        log.write_text(first_row + '\n')
+        return game, captures, log
+
+    def test_game_log_is_preserved_under_its_session_name_with_its_captures(self):
+        game, captures, log = self.game_layout()
+        (game / 'x3m.prev.log').write_text('log_open file=x source=game previous=absent session=20260925-090000-1\n')
+        (captures / 'hdr_1_2.rgba16f').write_bytes(b'abcd')
+        with log.open('a') as out:
+            out.write('hdr_readback device=1 frame=2 file=hdr_1_2.rgba16f result=00000000 bytes=4\n')
+        destination, count, issues = snapshot.snapshot(capture_dir=captures, since_ns=1, destination_root=self.output)
+        self.assertEqual(sorted(p.name for p in destination.iterdir()), ['hdr_1_2.rgba16f', 'session-20260926-101500-777.log'])
+        self.assertEqual((count, issues), (1, []))
+        self.assertEqual((destination / 'session-20260926-101500-777.log').read_text(), log.read_text())
+        # --log names the game log directly; the captures directory is its x3-modern-captures.
+        destination, count, _ = snapshot.snapshot(log=log, destination_root=self.output)
+        self.assertTrue((destination / 'session-20260926-101500-777.log').exists())
+        self.assertEqual(count, 1)
+
+    def test_game_log_newer_than_a_legacy_session_log_wins_and_prev_log_is_never_taken(self):
+        game, captures, log = self.game_layout()
+        legacy = captures / 'session-20260926-090000-5.log'; legacy.write_text('legacy\n')
+        os.utime(legacy, ns=(10, 10)); os.utime(log, ns=(20, 20))
+        with patch.object(snapshot, 'created_ns', side_effect=lambda info: info.st_mtime_ns):
+            destination, _, _ = snapshot.snapshot(capture_dir=captures, since_ns=5, destination_root=self.output)
+            self.assertEqual([p.name for p in destination.iterdir()], ['session-20260926-101500-777.log'])
+            os.utime(legacy, ns=(30, 30))
+            destination, _, _ = snapshot.snapshot(capture_dir=captures, since_ns=5, destination_root=self.output)
+            self.assertEqual([p.name for p in destination.iterdir()], [legacy.name])
+            log.unlink(); (game / 'x3m.prev.log').write_text('log_open session=20260926-080000-1 previous=absent\n')
+            os.utime(game / 'x3m.prev.log', ns=(40, 40))
+            destination, _, _ = snapshot.snapshot(capture_dir=captures, since_ns=5, destination_root=self.output)
+            self.assertEqual([p.name for p in destination.iterdir()], [legacy.name])
+
+    def test_game_log_birth_before_the_launch_needs_an_in_place_open(self):
+        game, captures, log = self.game_layout()
+        busy = game / 'x3m-4242.log'
+        busy.write_text('log_open file=x source=game previous=busy session=20260926-101600-4242\n')
+        os.utime(log, ns=(50, 50)); os.utime(busy, ns=(60, 60))
+        # Both born before the boundary (20): only the busy log, opened in place, may still be this launch's.
+        directory = os.open(game, os.O_RDONLY)
+        self.addCleanup(os.close, directory)
+        with patch.object(snapshot, 'created_ns', side_effect=lambda info: 1):
+            self.assertEqual(snapshot.select_game_log(directory, 20)[2], busy.name)
+            busy.unlink()
+            self.assertIsNone(snapshot.select_game_log(directory, 20))
+        without = game / 'x3m.log'
+        without.write_text('no header row\n')
+        with self.assertRaisesRegex(ValueError, 'no log_open row'):
+            snapshot.snapshot(log=without, destination_root=self.output)
+
     def test_launcher_preserves_arguments_and_game_exit_even_if_snapshot_fails(self):
         executable = self.root / 'python3'
         executable.write_text('#!/bin/sh\nprintf "<%s>\\n" "$PWD" "$@" >> "$X3_TEST_CALLS"\ncase "$1" in\n-c) echo 123;;\nverification/probe/wine_lock.py) exit "$X3_TEST_GAME_STATUS";;\ntools/analysis/snapshot_x3_run.py) exit 2;;\n*) exit 99;;\nesac\n')

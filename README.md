@@ -48,12 +48,20 @@ or bottle configuration. For changing graphics settings, pass `--no-direct` to o
 after use. `--direct` (a default) passes X3's `-noabout -skipintro -runinbg` switches. Test in a
 modest window.
 
-Shader dumps and timestamped logs appear in `X3/x3-modern-captures/`; when that
-directory cannot be created or written (a read-only game directory, e.g. under
-`Program Files (x86)` on Windows without Steam's ACL grant), the proxy writes
-them to `%LOCALAPPDATA%\x3-modern-renderer\captures` instead, and the first
-line of every session log, `capture_dir=<path> source=game|localappdata`, names
-the directory taken. Since 2026-09-25 nothing is captured automatically
+The session log is `X3/x3m.log`; the previous launch's is kept as `X3/x3m.prev.log`
+(and a second instance, or a file another program holds, gets `x3m-<pid>.log`).
+Shader dumps and readbacks appear in `X3/x3-modern-captures/`. When the game directory
+cannot be written (a read-only game directory, e.g. under `Program Files (x86)` on
+Windows without Steam's ACL grant), the proxy writes the log to
+`%LOCALAPPDATA%\x3-modern-renderer\x3m.log` and the captures to `...\captures`; the
+first row of every log, `log_open file=<path> source=game|localappdata|override
+previous=renamed|absent|busy|none session=<stamp>`, names the file taken. A launch without
+logging options writes only the always tier (session header, errors, one `frame_end` row a
+minute, `session_end`); `--perf` adds the performance rows and `--debug` the rendering
+diagnostics (`X3M_PERF=1` / `X3M_DEBUG=1` without the launcher;
+[logging tiers](docs/architecture/logging-tiers.md)). For a bug report: launch with the
+tier asked for, reproduce, quit, and send `x3m.log` (and `x3m.prev.log` if the game was
+started again since). Since 2026-09-25 nothing is captured automatically
 (`--capture-start 999999`); **F8** captures 8 frames on demand, 300 frames after
 the key press (`--capture-frames`, `--capture-delay`). Detailed capture deliberately
 trades frame time for forensic completeness; expect a hitch. `--capture-start 120`
@@ -74,10 +82,10 @@ exposure handoff and verification limits.
 For one combined loading/render-boundary/cursor diagnostic session:
 
 ```sh
-python3 tools/manage.py launch --direct --telemetry --capture-start 999999 --capture-frames 4
+python3 tools/manage.py launch --direct --perf --capture-start 999999 --capture-frames 4
 ```
 
-Additional telemetry is opt-in. Ctrl+Shift+F7 optionally marks a phase while
+Additional telemetry is opt-in (`--perf`, `--debug`). Ctrl+Shift+F7 optionally marks a phase while
 Present is running; F8 captures four frames with this command. See the
 [single-session test steps](docs/verification/iteration-03.md) and
 [coverage limits](docs/verification/telemetry.md). Timing is CPU-side elapsed
@@ -99,7 +107,7 @@ startup delete ([docs/verification/crypt-cache.md](docs/verification/crypt-cache
 
 Loading-time switches ([docs/verification/loading-probes.md](docs/verification/loading-probes.md),
 [docs/verification/resource-reader.md](docs/verification/resource-reader.md)):
-`--telemetry --loading-probes` (env `X3M_LOADING_PROBES=1`) adds the CryptoAPI /
+`--debug` (env `X3M_DEBUG=1`, or `X3M_LOADING_PROBES=1` with `X3M_TELEMETRY=1`) adds the CryptoAPI /
 per-open import rows and entry-counting trampolines on twelve engine loading
 functions; `--resource-read verify|fast` (env `X3M_RESOURCE_READ`) replaces the
 archive reader's per-kilobyte decode with one read + one inflate (`verify` compares

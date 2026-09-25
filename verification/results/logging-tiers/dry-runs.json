@@ -1,0 +1,256 @@
+{
+ "checks": {
+  "--debug --perf adds exactly the two groups": true,
+  "--debug adds exactly X3M_DEBUG=1": true,
+  "--perf adds exactly X3M_PERF=1": true,
+  "default launch: no X3M_DEBUG/X3M_PERF, no tiered variable": true,
+  "inherited tiered values dropped": true,
+  "no functional variable changed against the base (default)": true,
+  "no functional variable changed against the base (vanilla)": true,
+  "vanilla launch: no tiered variable": true
+ },
+ "counts": {
+  "base_default": 150,
+  "base_vanilla": 99,
+  "new_debug": 125,
+  "new_debug_perf": 126,
+  "new_default": 124,
+  "new_perf": 125,
+  "new_vanilla": 73
+ },
+ "debug_perf_vs_default": {
+  "X3M_DEBUG": [
+   null,
+   "1"
+  ],
+  "X3M_PERF": [
+   null,
+   "1"
+  ]
+ },
+ "debug_vs_default": {
+  "X3M_DEBUG": [
+   null,
+   "1"
+  ]
+ },
+ "default_vs_base": {
+  "X3M_CAMERA_LOG": [
+   "300",
+   null
+  ],
+  "X3M_FPS_OVERLAY": [
+   "0",
+   null
+  ],
+  "X3M_FRAME_END_STRIDE": [
+   "300",
+   null
+  ],
+  "X3M_FRAME_PHASES": [
+   "0",
+   null
+  ],
+  "X3M_FRAME_TIMING": [
+   "0",
+   null
+  ],
+  "X3M_FRAME_TIMING_STATE_STAMPS": [
+   "0",
+   null
+  ],
+  "X3M_GAME_PHASES": [
+   "0",
+   null
+  ],
+  "X3M_GAME_PHASE_THRESHOLD_MS": [
+   "20",
+   null
+  ],
+  "X3M_GPU_SYNC_TIMING": [
+   "0",
+   null
+  ],
+  "X3M_LIGHT_PHASES": [
+   "0",
+   null
+  ],
+  "X3M_LOADING_PROBES": [
+   "0",
+   null
+  ],
+  "X3M_LOOP_PHASES": [
+   "0",
+   null
+  ],
+  "X3M_MEDIA_CUE_TRACE": [
+   "0",
+   null
+  ],
+  "X3M_MESH_ADJACENCY_DUMP": [
+   "0",
+   null
+  ],
+  "X3M_PASS_PHASES": [
+   "0",
+   null
+  ],
+  "X3M_PROFILE": [
+   "0",
+   null
+  ],
+  "X3M_PROFILE_INTERVAL_US": [
+   "2000",
+   null
+  ],
+  "X3M_RESIDUAL_PHASES": [
+   "0",
+   null
+  ],
+  "X3M_SECTOR_BACKGROUND": [
+   "0",
+   null
+  ],
+  "X3M_SHADOW_RETENTION_CENSUS": [
+   "0",
+   null
+  ],
+  "X3M_SHADOW_SUN_TRACE": [
+   "0",
+   null
+  ],
+  "X3M_SUBMIT_PHASES": [
+   "0",
+   null
+  ],
+  "X3M_TAA_DEBUG": [
+   "0",
+   null
+  ],
+  "X3M_TELEMETRY": [
+   "0",
+   null
+  ],
+  "X3M_TELEMETRY_DRAW": [
+   "0",
+   null
+  ],
+  "X3M_VOLUMETRIC_FOG_TIMING": [
+   "0",
+   null
+  ]
+ },
+ "inherited_tiered_vs_default": {},
+ "perf_vs_default": {
+  "X3M_PERF": [
+   null,
+   "1"
+  ]
+ },
+ "vanilla_vs_base": {
+  "X3M_CAMERA_LOG": [
+   "300",
+   null
+  ],
+  "X3M_FPS_OVERLAY": [
+   "0",
+   null
+  ],
+  "X3M_FRAME_END_STRIDE": [
+   "300",
+   null
+  ],
+  "X3M_FRAME_PHASES": [
+   "0",
+   null
+  ],
+  "X3M_FRAME_TIMING": [
+   "0",
+   null
+  ],
+  "X3M_FRAME_TIMING_STATE_STAMPS": [
+   "0",
+   null
+  ],
+  "X3M_GAME_PHASES": [
+   "0",
+   null
+  ],
+  "X3M_GAME_PHASE_THRESHOLD_MS": [
+   "20",
+   null
+  ],
+  "X3M_GPU_SYNC_TIMING": [
+   "0",
+   null
+  ],
+  "X3M_LIGHT_PHASES": [
+   "0",
+   null
+  ],
+  "X3M_LOADING_PROBES": [
+   "0",
+   null
+  ],
+  "X3M_LOOP_PHASES": [
+   "0",
+   null
+  ],
+  "X3M_MEDIA_CUE_TRACE": [
+   "0",
+   null
+  ],
+  "X3M_MESH_ADJACENCY_DUMP": [
+   "0",
+   null
+  ],
+  "X3M_PASS_PHASES": [
+   "0",
+   null
+  ],
+  "X3M_PROFILE": [
+   "0",
+   null
+  ],
+  "X3M_PROFILE_INTERVAL_US": [
+   "2000",
+   null
+  ],
+  "X3M_RESIDUAL_PHASES": [
+   "0",
+   null
+  ],
+  "X3M_SECTOR_BACKGROUND": [
+   "0",
+   null
+  ],
+  "X3M_SHADOW_RETENTION_CENSUS": [
+   "0",
+   null
+  ],
+  "X3M_SHADOW_SUN_TRACE": [
+   "0",
+   null
+  ],
+  "X3M_SUBMIT_PHASES": [
+   "0",
+   null
+  ],
+  "X3M_TAA_DEBUG": [
+   "0",
+   null
+  ],
+  "X3M_TELEMETRY": [
+   "0",
+   null
+  ],
+  "X3M_TELEMETRY_DRAW": [
+   "0",
+   null
+  ],
+  "X3M_VOLUMETRIC_FOG_TIMING": [
+   "0",
+   null
+  ]
+ }
+}

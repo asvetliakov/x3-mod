@@ -74,6 +74,23 @@ REMOVED_VARIABLES = (
     'X3M_FOG_SHADOW_PASS', 'X3M_FOG_FAR_BINS', 'X3M_TAA_HISTORY_TAPS', 'X3M_TAA_THIN_REGION_GATE', 'X3M_TAA_THIN_REGION_SOURCE',
     'X3M_TAA_THIN_REGION_SOURCE_DEFAULT', 'X3M_DEPTH_COPY', 'X3M_SCENE_DEPTH_CAPTURE', 'X3M_MOTION_CAPTURE', 'X3M_FINITE_POSITIONS',
 )
+# Logging variables (docs/architecture/logging-tiers.md, 2026-09-26): the two groups the DLL expands, the switches and
+# cadences the groups replace, and the explicit developer options' variables. An inherited value of any of them is
+# dropped on every launch (a stale export can neither change what a flight logs nor serialise it); the launcher sends
+# X3M_DEBUG / X3M_PERF for --debug / --perf and a developer option's own variable only when that option is given.
+# Unlike REMOVED_VARIABLES the DLL still reads every one of them: the fixture runners set them by hand.
+TIERED_VARIABLES = (
+    'X3M_DEBUG', 'X3M_PERF', 'X3M_LOG_FILE',
+    # replaced by the groups
+    'X3M_TELEMETRY', 'X3M_FRAME_TIMING', 'X3M_FRAME_PHASES', 'X3M_FPS_OVERLAY', 'X3M_VOLUMETRIC_FOG_TIMING', 'X3M_SHADOW_TIMING', 'X3M_SHADOW_ROWS',
+    'X3M_MOTION_FRAME_LOG', 'X3M_CAMERA_LOG', 'X3M_SHADOW_RETENTION_CENSUS', 'X3M_OBJECT_BOUNDS_LOG', 'X3M_CULL_CENSUS',
+    'X3M_LOD_SWITCH_LOG', 'X3M_MEDIA_CUE_TRACE', 'X3M_MUSIC_TRACE', 'X3M_WINDOW_TRACE', 'X3M_SHADOW_SUN_TRACE', 'X3M_SECTOR_BACKGROUND',
+    'X3M_LOADING_PROBES', 'X3M_COLLIDE_NARROW_CENSUS', 'X3M_COLLIDE_QUERY_PHASES', 'X3M_SHADOW_RETENTION_TIMING',
+    # explicit developer options (sent only when given)
+    'X3M_FRAME_END_STRIDE', 'X3M_TELEMETRY_DRAW', 'X3M_GPU_SYNC_TIMING', 'X3M_GAME_PHASES', 'X3M_GAME_PHASE_THRESHOLD_MS',
+    'X3M_PASS_PHASES', 'X3M_RESIDUAL_PHASES', 'X3M_LIGHT_PHASES', 'X3M_SUBMIT_PHASES', 'X3M_LOOP_PHASES', 'X3M_FRAME_TIMING_STATE_STAMPS',
+    'X3M_TAA_DEBUG', 'X3M_PROFILE', 'X3M_PROFILE_INTERVAL_US', 'X3M_MESH_ADJACENCY_DUMP',
+)
 # Minimum caster footprint of the sun-shadow cascades, forwarded whenever
 # --shadow-cascades is present and the option is unset (user selection after
 # run251/run253, 2026-09-22, docs/verification/directional-shadows.md). The
@@ -473,9 +490,11 @@ def fog_dust_motes_value(parser, text):
     return count, size, streak
 
 
-# The proxy writes its session-*.log into <game dir>\x3-modern-captures; the
-# launcher's own teed terminal output joins it there, so one preserved run
-# directory (tools/analysis/snapshot_x3_run.py) holds both clocks
+# The proxy writes its session log to <game dir>\x3m.log (the previous one kept as
+# x3m.prev.log; docs/architecture/logging-tiers.md) and its captures into
+# <game dir>\x3-modern-captures, where the launcher's own teed terminal output
+# goes too; tools/analysis/snapshot_x3_run.py copies both into one preserved run
+# directory, the log under its session-*.log name, so it holds both clocks
 # (docs/verification/sampling-profiler.md, "audio correlation").
 CAPTURE_SUBDIRECTORY = 'x3-modern-captures'
 LAUNCHER_STDERR = 'launcher-stderr.log'
@@ -687,11 +706,17 @@ def main():
     parser.add_argument('--direct', action='store_true', default=None, help='[launcher default since 2026-09-25 on every modded launch; --no-direct = off; not sent under --vanilla] Skip launcher and intro using X3 command-line switches')
     parser.add_argument('--no-direct', dest='direct', action='store_false', help='Turn the --direct launcher default off')
     parser.add_argument('--vanilla', action='store_true', help='Launch with builtin D3D9, ignoring the installed proxy')
-    parser.add_argument('--telemetry', action='store_true', help='Enable bounded loading, presentation and cursor diagnostics')
-    parser.add_argument('--frame-timing', action='store_true', help='Per-300-frame frame-time window: one frame_timing line with dt/draws/present percentiles, the proxy draw/scene/state buckets with the state call mix, the pre-draw/between-draws/post-draw split of the game time between hooked calls, and up to four frame_timing_slow witnesses (X3M_FRAME_TIMING=1; requires --telemetry; docs/verification/sampling-profiler.md, "Frame timing diagnostic")')
-    parser.add_argument('--frame-end-stride', type=int, default=300, metavar='N',
-                        help='Frames between two frame_end lines, 1..100000, default 300 (X3M_FRAME_END_STRIDE; no prerequisite: frame_end exists in every mode): 1 logs every frame, which makes the frame cost readable per toggle state and shows periodic events the 300-frame cadence hides, at about 100 B of log per frame. Capture frames always log one. The other 300-frame reports of the Present path (chase camera, admission, finite upload) keep their own cadence')
-    parser.add_argument('--fps-overlay', action='store_true', help='On-screen frame-rate line on the presented image (X3M_FPS_OVERLAY=1; default off; no prerequisite): "FPS 61.3  16.3 MS  DRAWS 638" from a one-second sliding window of the Present-to-Present interval (the ms figure is the frame interval, not GPU time), refreshed every 250 ms, plus "SHADOWS ON|OFF" when --sun-shadow-apply is on. Ctrl+Alt+F7 hides and shows it (Alt is the Option key under Wine on macOS; Shift must be up, so the Ctrl+Shift+F7 telemetry marker never fires on it). Drawn with Clear rectangles like the comparison notice, no GPU objects (docs/architecture/comparison-hotkeys.md, "FPS overlay")')
+    # Logging tiers (docs/architecture/logging-tiers.md): the only two logging options. The DLL expands each group into
+    # its switches, so X3M_DEBUG=1 / X3M_PERF=1 on a bare proxy give the same rows. Without either, the always tier:
+    # once-per-session rows, errors and refusals, Reset, one frame_end row a minute, session_end.
+    parser.add_argument('--debug', action='store_true', help='Debug logging tier (X3M_DEBUG=1; inert under --vanilla, where no proxy loads): the rendering-state rows every frame (motion_output_frame, hdr_frame, camera_state, the shadow/sun state rows), the F8-frame censuses and bounds (cull census, LOD switch rows, object bounds), the traces (window, music, media cue, sun, sector background, loading probes, collide narrow census and query phases), the retention census and the 300-frame health windows; telemetry counters on. About 9 KB of log per frame (about 2 GB per hour at 60 fps). Independent of --perf; the stand is --debug --perf (docs/architecture/logging-tiers.md)')
+    parser.add_argument('--perf', action='store_true', help='Performance logging tier (X3M_PERF=1; inert under --vanilla, where no proxy loads): frame_end every frame, the per-frame fog and shadow cost rows, the 300-frame frame-time and engine-phase windows with their slow-frame witnesses, the 1 Hz telemetry summaries and loading metrics, the family rows every 60 frames and the FPS overlay (Ctrl+Alt+F7 hides it). About 1.7 KB per frame (about 360 MB per hour at 60 fps; gzip about 20x). What a stutter report needs (docs/architecture/logging-tiers.md)')
+    # Removed 2026-09-26 (logging tiers): --telemetry and --frame-timing stay registered hidden only because argparse would
+    # otherwise abbreviate them to --telemetry-draw and --frame-timing-state-stamps; both are refused below.
+    parser.add_argument('--telemetry', nargs='?', const='', default=None, help=argparse.SUPPRESS)
+    parser.add_argument('--frame-timing', nargs='?', const='', default=None, help=argparse.SUPPRESS)
+    parser.add_argument('--frame-end-stride', type=int, default=None, metavar='N',
+                        help='Frames between two frame_end lines, 1..100000 (X3M_FRAME_END_STRIDE, sent only when given, and then it wins over the tiers; unset: 1 with --perf or --debug, else the DLL\'s 3600, about one row a minute; no prerequisite: frame_end exists in every mode): 1 logs every frame, which makes the frame cost readable per toggle state and shows periodic events the 300-frame cadence hides, at about 100 B of log per frame. Capture frames always log one. The other 300-frame reports of the Present path (chase camera, admission, finite upload) keep their own cadence')
     parser.add_argument('--gpu-sync-timing', action='store_true', help='Serialised GPU cost of each proxy pass (X3M_GPU_SYNC_TIMING=1; default off; no prerequisite; refused with --vanilla). Diagnostic for one flight only: it serialises CPU and GPU at every pass boundary (one D3D9 event query issued and spun on with D3DGETDATA_FLUSH until the GPU is idle), so frame rate drops while it is on and the figures are serialised costs, not the pipelined frame. Passes: scene, engine draw span, shadow depth, sun apply, retention, fog fill, fog route, motes, TAA, HDR write-back, meter, HDR readback, bloom, present. One gpu_sync_timing row per pass per 300 frames (window and session median/p90 in us, the spin wait, the serialised Present-to-Present dt) and gpu_sync_timing_summary rows at the final device release. A device that refuses event queries logs one gpu_sync_timing available=0 line and runs unchanged (docs/architecture/engine-frame-time.md, "GPU sync timing")')
     parser.add_argument('--window-monitor-rect', choices=('on', 'off'), default=None, dest='window_monitor_rect',
                         help='[launcher default on modded launches when omitted; --window-monitor-rect off or --no-window-monitor-rect = off; not sent under --vanilla, '
@@ -703,55 +728,43 @@ def main():
                              'window already at the monitor rectangle (Windows with a bottom taskbar) is left alone. One window_mode row per CreateDevice/Reset '
                              '(docs/architecture/window-mode-and-cursor-fix.md section 2.1)')
     parser.add_argument('--no-window-monitor-rect', action='store_const', const='off', dest='window_monitor_rect', help='Same as --window-monitor-rect off')
-    parser.add_argument('--window-trace', action='store_true',
-                        help='Consolidated window/cursor trace for the double cursor after alt-tab (X3M_WINDOW_TRACE=1; requires --telemetry; refused under '
-                             '--vanilla; default off): window-thread message hooks (WH_CALLWNDPROC/WH_CALLWNDPROCRET/WH_GETMESSAGE, no subclassing) log the focus and '
-                             'window messages with the game handler\'s result (window_msg), summarised WM_SETCURSOR and per-frame mouse-move counts '
-                             '(window_msg_frame), the game\'s SetCursor/SetCursorPos calls on change (cursor_call), and a change-only cursor_snapshot at every '
-                             'Present for 120 frames after the first Present and after each transition; a bounded ring recorded from device creation and '
-                             'flushed at the first Present, on transitions and on the Ctrl+Shift+F7 marker. Passthrough '
-                             'only: nothing is shown, hidden, warped or captured (docs/architecture/window-mode-and-cursor-fix.md section 3.2)')
     parser.add_argument('--cursor-reassert', action='store_true',
                         help='Candidate fix for the duplicate arrow after alt-tab (X3M_CURSOR_REASSERT=1; refused under --vanilla; default off; independent of '
-                             '--telemetry): once at launch (device creation) and after each activation (WM_ACTIVATE active or WM_ACTIVATEAPP on), at the first '
+                             'the logging tiers): once at launch (device creation) and after each activation (WM_ACTIVATE active or WM_ACTIVATEAPP on), at the first '
                              'Present within 120 frames where the game '
                              'window is foreground and visible, Win32 reports the cursor hidden and the pointer is inside the client, one balanced '
                              'SetCursor(arrow) / ShowCursor(TRUE) / ShowCursor(FALSE) / SetCursor(previous) on the window thread, so the Win32 end state equals '
                              'the start and the display driver runs one hide transition; never a loop, a global hide, a foreground change or a pointer trap. One '
                              'cursor_reassert row per firing or refusal (armed_by=launch|activate); an unexpected count disables it for the process (docs/architecture/window-mode-and-cursor-fix.md section 3.3)')
     parser.add_argument('--frame-timing-state-stamps', type=int, default=0, metavar='N',
-                        help='Stamp every Nth hooked state call in the frame-timing diagnostic (X3M_FRAME_TIMING_STATE_STAMPS; requires --frame-timing; default 0 = count the calls without reading the clock, so state_us is reported as -1). Two QueryPerformanceCounter reads cost about 136 ns per state call under FEX, which is several ms per busy frame; N>0 stamps one call in N and scales the sum by N (reported as state_sampled=N)')
-    parser.add_argument('--game-phases', action='store_true', help='Measure native frame phases and delayed target-lock work (X3M_GAME_PHASES=1; requires --telemetry)')
+                        help='Stamp every Nth hooked state call in the frame-timing diagnostic (X3M_FRAME_TIMING_STATE_STAMPS; requires --perf, whose frame-time windows it samples; default 0 = count the calls without reading the clock, so state_us is reported as -1). Two QueryPerformanceCounter reads cost about 136 ns per state call under FEX, which is several ms per busy frame; N>0 stamps one call in N and scales the sum by N (reported as state_sampled=N)')
+    parser.add_argument('--game-phases', action='store_true', help='Measure native frame phases and delayed target-lock work (X3M_GAME_PHASES=1; requires --perf or --debug)')
     parser.add_argument('--game-phase-threshold-ms', type=int, default=20, metavar='N',
                         help='Frame time at or above which the game-phase group writes its segment tape: one game_phase_slow_frame line plus its game_phase_segment rows (X3M_GAME_PHASE_THRESHOLD_MS; requires --game-phases; 1..10000, default 20, lowered from the built-in 50 so a 25-45 ms frame is attributed). Each qualifying frame writes up to 96 segment rows, so a low threshold on a steadily slow scene is verbose')
     parser.add_argument('--telemetry-draw', action='store_true',
-                        help='Per-draw proxy cost metrics (X3M_TELEMETRY_DRAW=1; requires --telemetry): gate_us, route_draw_us, set_rt_us, lazy_flush_us and jitter_us on the motion_output_frame line. Off, the route takes no QueryPerformanceCounter stamp per draw (under Wine each stamp is a syscall; docs/verification/route-cost-run1.md)')
-    parser.add_argument('--frame-phases', action='store_true', help='Per-frame engine phase stamps: ten byte-verified sites inside the render routine partition the frame into pre_render, prologue, scene_update, begin_scene, views, overlays, text, scene_end and present, plus per-view setup/submit sums; one frame_phases line per 300-frame window and up to four frame_phases_slow witnesses keyed by frame (X3M_FRAME_PHASES=1; requires --telemetry; independent of --game-phases; docs/verification/sampling-profiler.md, "Frame phases")')
-    parser.add_argument('--pass-phases', action='store_true', help='Per-draw effect-pass stamps: four byte-verified sites in the D3DX pass loop of the material submission routine split each material draw into pass-apply (BeginPass), the device draw and EndPass, accumulated per frame through a lean stub (no x87 save) and reduced at the frame-phase boundary; one pass_phases line per 300-frame window with passes, apply/draw/end p50/p95, their sum, the same window\'s view_submit and the stamps\' own estimated cost self_p50_us (X3M_PASS_PHASES=1; requires --telemetry and --frame-phases; about 4,000 dispatches per busy frame, budget under 1.5 ms; docs/verification/sampling-profiler.md, "Pass phases")')
-    parser.add_argument('--residual-phases', action='store_true', help='Residual attribution stamps: two byte-verified sites split what the pass and frame groups leave unattributed, the ID3DXEffect::Begin dispatch of the material submission routine (engine per-object preparation from the last pass_end, D3DX setup to the first pass_begin) and the particles-call return of the frame routine\'s per-view loop (the particles pass from view_submit_end; the rest of the views phase is computed as views - view_setup - view_submit - particles), accumulated per frame through the lean stub and reduced at the frame-phase boundary; one residual_phases line per 300-frame window with materials/particle views/passes/views, prepare/setup/particles/other p50/p95, prepare and setup per pass in ns, and the stamps\' own estimated cost (X3M_RESIDUAL_PHASES=1; requires --telemetry and implies --frame-phases and --pass-phases, which it pairs with; about 1,000 dispatches per busy frame; docs/verification/sampling-profiler.md, "Residual phases")')
-    parser.add_argument('--light-phases', action='store_true', help='R7 whole-call timing by cockpit/traversal caller; requires --telemetry and --frame-phases.')
-    parser.add_argument('--submit-phases', action='store_true', help='view_submit candidate stamps: twenty-two byte-verified sites bracket the draw-queue sort 0x0047e620 (time, calls, queue length), the per-node cache walk (time, misses, sampled iterations), the ID3DXEffect SetTechnique and End dispatches, the Begin-to-pass-loop block, the two D3DXMatrixInverse calls, 0x004c0150 and 0x004bdee0, and write one submit_phases line per 300-frame window (p50/p95 per pair, calls, the stamps\' own self cost). Diagnostic: about 12 dispatches per draw plus 2 per node, roughly 1 ms per busy frame. Requires --telemetry and --frame-phases (docs/verification/sampling-profiler.md, Submit phases).')
-    parser.add_argument('--loop-phases', action='store_true', help='Per-sector update stamps: six byte-verified sites inside the main loop\'s per-sector update driver split the input_part=0 stall region into its callees (collide, simulate, post, economy+attach), accumulated per frame over every container the driver visits through the lean stub and reduced at the frame-phase boundary; one loop_phases line per 300-frame window with sectors/containers, the four intervals p50/p95, their sum, the frame\'s pre_render (or the --game-phases input phase), the largest single interval and its owner, plus one loop_phases_slow line for each of the first 64 frames whose sum exceeds 50 ms (X3M_LOOP_PHASES=1; requires --telemetry and --frame-phases; six dispatches per active sector and two per skipped container per frame; docs/verification/sampling-profiler.md, "Loop phases")')
-    parser.add_argument('--media-cue-trace', action='store_true', help='Trace every media-record build: one byte-verified gate on the allocator 0x00498140 records the media id, caller (selector/speech/script/savegame/query/other), constructor flags, result (the record or 0) and build duration of every call, drained at the Present boundary as media_cue lines (first 32 per second) plus one media_cue_window line per 300 frames with attempts/failures/refusals, per-frame attempt p50/max and the top ids (X3M_MEDIA_CUE_TRACE=1; requires --telemetry; docs/verification/media-cues.md, "Gate")')
-    parser.add_argument('--media-cue-cache', choices=('on', 'off'), default='on', help='Negative cache for the sector selector\'s cue restart: a media id whose selector-path build returned 0 is refused (EAX 0, the state a failed build leaves) on the same gate for --media-cue-retry-s seconds instead of rebuilding the DirectShow graph every frame; speech, script, savegame and query callers are never refused (X3M_MEDIA_CUE_CACHE; default on since run 34, independent of --telemetry; pass off to restore the stock per-frame retry)')
+                        help='Per-draw proxy cost metrics (X3M_TELEMETRY_DRAW=1; requires --perf or --debug): gate_us, route_draw_us, set_rt_us, lazy_flush_us and jitter_us on the motion_output_frame line. Off, the route takes no QueryPerformanceCounter stamp per draw (under Wine each stamp is a syscall; docs/verification/route-cost-run1.md)')
+    parser.add_argument('--pass-phases', action='store_true', help='Per-draw effect-pass stamps: four byte-verified sites in the D3DX pass loop of the material submission routine split each material draw into pass-apply (BeginPass), the device draw and EndPass, accumulated per frame through a lean stub (no x87 save) and reduced at the frame-phase boundary; one pass_phases line per 300-frame window with passes, apply/draw/end p50/p95, their sum, the same window\'s view_submit and the stamps\' own estimated cost self_p50_us (X3M_PASS_PHASES=1; requires --perf; about 4,000 dispatches per busy frame, budget under 1.5 ms; docs/verification/sampling-profiler.md, "Pass phases")')
+    parser.add_argument('--residual-phases', action='store_true', help='Residual attribution stamps: two byte-verified sites split what the pass and frame groups leave unattributed, the ID3DXEffect::Begin dispatch of the material submission routine (engine per-object preparation from the last pass_end, D3DX setup to the first pass_begin) and the particles-call return of the frame routine\'s per-view loop (the particles pass from view_submit_end; the rest of the views phase is computed as views - view_setup - view_submit - particles), accumulated per frame through the lean stub and reduced at the frame-phase boundary; one residual_phases line per 300-frame window with materials/particle views/passes/views, prepare/setup/particles/other p50/p95, prepare and setup per pass in ns, and the stamps\' own estimated cost (X3M_RESIDUAL_PHASES=1; requires --perf and implies --pass-phases, which it pairs with (the frame phases come with --perf); about 1,000 dispatches per busy frame; docs/verification/sampling-profiler.md, "Residual phases")')
+    parser.add_argument('--light-phases', action='store_true', help='R7 whole-call timing by cockpit/traversal caller; requires --perf (telemetry and the frame phases).')
+    parser.add_argument('--submit-phases', action='store_true', help='view_submit candidate stamps: twenty-two byte-verified sites bracket the draw-queue sort 0x0047e620 (time, calls, queue length), the per-node cache walk (time, misses, sampled iterations), the ID3DXEffect SetTechnique and End dispatches, the Begin-to-pass-loop block, the two D3DXMatrixInverse calls, 0x004c0150 and 0x004bdee0, and write one submit_phases line per 300-frame window (p50/p95 per pair, calls, the stamps\' own self cost). Diagnostic: about 12 dispatches per draw plus 2 per node, roughly 1 ms per busy frame. Requires --perf (docs/verification/sampling-profiler.md, Submit phases).')
+    parser.add_argument('--loop-phases', action='store_true', help='Per-sector update stamps: six byte-verified sites inside the main loop\'s per-sector update driver split the input_part=0 stall region into its callees (collide, simulate, post, economy+attach), accumulated per frame over every container the driver visits through the lean stub and reduced at the frame-phase boundary; one loop_phases line per 300-frame window with sectors/containers, the four intervals p50/p95, their sum, the frame\'s pre_render (or the --game-phases input phase), the largest single interval and its owner, plus one loop_phases_slow line for each of the first 64 frames whose sum exceeds 50 ms (X3M_LOOP_PHASES=1; requires --perf; six dispatches per active sector and two per skipped container per frame; docs/verification/sampling-profiler.md, "Loop phases")')
+    parser.add_argument('--media-cue-cache', choices=('on', 'off'), default='on', help='Negative cache for the sector selector\'s cue restart: a media id whose selector-path build returned 0 is refused (EAX 0, the state a failed build leaves) on the same gate for --media-cue-retry-s seconds instead of rebuilding the DirectShow graph every frame; speech, script, savegame and query callers are never refused (X3M_MEDIA_CUE_CACHE; default on since run 34, independent of the logging tiers; pass off to restore the stock per-frame retry)')
     parser.add_argument('--media-cue-retry-s', type=int, default=30, metavar='N', help='Seconds before a cached media-cue failure is retried (X3M_MEDIA_CUE_RETRY_S; default 30; 1..3600; meaningless with --media-cue-cache off)')
     parser.add_argument('--music-keep', action='store_true', default=None, help='[launcher default since 2026-09-25 on every modded launch (accepted run273); --no-music-keep = off; not sent under --vanilla] Keep the sector music playing at its position across alt-tab, save and pause (X3M_MUSIC_KEEP=1; absent = nothing patched; opt-in until 2026-09-25: the assumption that the story script replays the same track id after the stop-all is unverified, fly --music-trace first; refused with --vanilla): a six-byte trampoline inside the engine\'s stop-all 0x004982b0 (site 0x004982db) lets a music record through the save and pause callers without the IMediaControl::Pause (the bookkeeping and the script wake stay vanilla) and marks the track after the alt-tab caller, and the play routine\'s seek call 0x00498d54 -> 0x004d0430 is redirected so a MOV_PlayMovie of the held or still-playing track returns without the seek to 0 ms; another id (sector change), load, P_Leave and game start keep vanilla behaviour. One music_keep_stop / music_keep_seek line per decision (docs/reverse-engineering/music-restart.md, Implementation). Exact executable and bytes only, otherwise fails closed to vanilla')
     parser.add_argument('--no-music-keep', dest='music_keep', action='store_false', help='Turn the --music-keep launcher default off')
-    parser.add_argument('--music-trace', action='store_true', help='Trace the music state machine (X3M_MUSIC_TRACE=1; default absent = nothing patched; independent of --music-keep; refused with --vanilla): three byte-verified entry trampolines log every stop-all 0x004982b0 (caller return address and name), every play 0x00498c90 (id, start ms, caller, record flags) and every MOV_StopMovie 0x00498810 (id, caller) as music_trace_stop / music_trace_play / music_trace_stop_movie lines with the Present frame counter, a sequence number and QPC, at most 1,000 lines per session. Expected after an alt-tab: music_trace_stop name=alt_tab, then music_trace_play of the same id with start_ms=0 (docs/reverse-engineering/music-restart.md, Implementation)')
     parser.add_argument('--ownership', action='store_true', default=None, help='[launcher default since 2026-09-25 on every modded launch; --no-ownership = off; not sent under --vanilla] Enable the experimental normal-D3D9 ownership wrapper')
     parser.add_argument('--no-ownership', dest='ownership', action='store_false', help='Turn the --ownership launcher default off')
     parser.add_argument('--object-trace', action='store_true', default=None, help='[launcher default since 2026-09-25 on every modded launch; --no-object-trace = off; not sent under --vanilla] Capture verified engine submission identity (exact executable only)')
     parser.add_argument('--no-object-trace', dest='object_trace', action='store_false', help='Turn the --object-trace launcher default off')
     parser.add_argument('--object-lifetime', action='store_true', default=None, help='[launcher default since 2026-09-25 on every modded launch with --object-trace --ownership; --no-object-lifetime = off; not sent under --vanilla] Observe verified render-registry lifetimes (requires --object-trace --ownership)')
     parser.add_argument('--no-object-lifetime', dest='object_lifetime', action='store_false', help='Turn the --object-lifetime launcher default off')
-    parser.add_argument('--mesh-adjacency', choices=['native', 'verify', 'fast'], default=None, help='[launcher default since 2026-09-25: fast on every modded launch; --mesh-adjacency native = off; the DLL reads it only with --telemetry, so without it the default is inert, and an explicit verify|fast still requires --telemetry; not sent under --vanilla] ID3DXMesh::GenerateAdjacency service (X3M_MESH_ADJACENCY; requires --telemetry): native forwards; verify runs D3DX, recomputes by exact position equality and logs any difference; fast answers from the exact-equality computation and falls through to D3DX on any qualification failure (docs/verification/mesh-adjacency-fast.md)')
+    parser.add_argument('--mesh-adjacency', choices=['native', 'verify', 'fast'], default=None, help='[launcher default since 2026-09-25: fast on every modded launch; --mesh-adjacency native = off; verify requires --perf or --debug (its output is telemetry rows), fast arms without them; not sent under --vanilla] ID3DXMesh::GenerateAdjacency service (X3M_MESH_ADJACENCY; requires --telemetry): native forwards; verify runs D3DX, recomputes by exact position equality and logs any difference; fast answers from the exact-equality computation and falls through to D3DX on any qualification failure (docs/verification/mesh-adjacency-fast.md)')
     parser.add_argument('--mesh-adjacency-dump', action='store_true', help='With --mesh-adjacency verify: write every mismatching mesh (bounded) as x3-modern-captures/mesh-adjacency-<n>.bin for tools/analysis/replay_mesh_adjacency.py (X3M_MESH_ADJACENCY_DUMP=1; game data, never committed)')
     parser.add_argument('--gz-buffer', action='store_true', default=None, help='[launcher default since 2026-09-25 on every modded launch; --no-gz-buffer = off; not sent under --vanilla] Read-ahead buffer in front of the zlib gz imports of the savegame decoder (X3M_GZ_BUFFER=1; no --telemetry needed): the ~14 M three-byte gzread calls of a load are served from 256 KB chunks with zlib 1.2.3 semantics kept; one gz_buffer_file line per file in the session log (docs/verification/gz-buffer.md)')
     parser.add_argument('--no-gz-buffer', dest='gz_buffer', action='store_false', help='Turn the --gz-buffer launcher default off')
     parser.add_argument('--gz-buffer-kb', type=int, default=256, help='Chunk size in KB of --gz-buffer (X3M_GZ_BUFFER_KB; 1..65536, default 256)')
     parser.add_argument('--crypt-cache', action='store_true', default=None, help='[launcher default since 2026-09-25 on every modded launch; --no-crypt-cache = off; not sent under --vanilla] CryptoAPI context/key cache in front of the script signature check 0x004cabc0 (X3M_CRYPT_CACHE=1; no --telemetry needed): the per-script CryptAcquireContextA delete/create/delete of the X2EgosoftCSPContainer key container and the CryptImportKey of the constant public key are answered from one cached provider handle and key; hash and signature verification pass through unchanged; one crypt_cache line per telemetry window and at teardown (docs/verification/crypt-cache.md)')
     parser.add_argument('--no-crypt-cache', dest='crypt_cache', action='store_false', help='Turn the --crypt-cache launcher default off')
-    parser.add_argument('--loading-probes', action='store_true', help='Probe batch 2 (X3M_LOADING_PROBES=1; requires --telemetry): light IAT rows on the CryptoAPI, inflateInit2_/inflateEnd, the write-side and per-open KERNEL32 imports, plus entry-counting trampolines on twelve engine loading functions (byte-verified, exact executable only); one loading_probe line per site per report window (docs/verification/loading-probes.md)')
     parser.add_argument('--resource-read', choices=['native', 'verify', 'fast'], default=None, help='[launcher default since 2026-09-25: fast on every modded launch; --resource-read native = off; not sent under --vanilla] Archive reader 0x004e8880 service (X3M_RESOURCE_READ; exact executable only): native leaves the game\'s reader alone; verify runs our whole-extent decode into a scratch buffer, then the original, and logs any difference; fast returns our decode (one fread, word XOR, one inflate, no memset) and falls back to the original on any deviation (docs/verification/resource-reader.md)')
     parser.add_argument('--dat-handles', action='store_true', default=None, help='[launcher default since 2026-09-25 on every modded launch; --no-dat-handles = off; not sent under --vanilla] Keep catalogue .dat file handles between resource opens instead of _fopen/_fclose per resource (X3M_DAT_HANDLES=1; exact executable only; docs/reverse-engineering/resource-reader.md)')
     parser.add_argument('--no-dat-handles', dest='dat_handles', action='store_false', help='Turn the --dat-handles launcher default off')
@@ -781,7 +794,6 @@ def main():
     parser.add_argument('--taa-thin-vote', choices=('on', 'off'), default=None, help='Draw-time thin vote of the TAA thin region (X3M_TAA_THIN_VOTE; default on since Run 81 whenever --taa --motion-output --ownership --hdr --sun-shadow-lane are given, otherwise not sent (one launcher line, never a refusal); an explicit value requires --taa, and on also --motion-output --ownership --sun-shadow-lane; refused under --vanilla; X3M_TAA_THIN_VOTE_DEFAULT=1 marks the default): each routed subset\'s triangle-height histogram (8 log2 bins of h = 2 area / longest edge) is read once at a scene end through the ownership wrapper (READONLY, MANAGED buffers only), and every routed opaque draw writes 1 - thin into the lane\'s RT2 .a, thin = the fraction of its triangles 0.5..3 px tall at the draw\'s projected scale when at least half are (else no vote); the mask chain\'s tests draw then flags those pixels without its depth-line search. The vote reaches only the four-channel lane RT2 (logged once otherwise). One thin_vote_mode line, one thin_vote_frame line per frame log (docs/architecture/taa-thin-geometry-alternatives.md section 3.2)')
     parser.add_argument('--taa-motion-weight', default=None, metavar='F[,V0,V1]', help='Motion history weight of the TAA resolve (X3M_TAA_MOTION_WEIGHT; requires --taa; a value above 0 also requires an age program: --taa-far-stabiliser or --taa-thin-region; default when omitted with --taa = 0.7,2,8 (accepted in Run 70 A, run262/run263, 2026-09-23) with an age program, else 0 = off, never an error: a plain --taa launch has no age program, so the weight resolves to 0 there; 0 is the explicit off and the opt-out, else 0.5 <= F < 1 with 0 <= V0 < V1 <= 64 px/frame, V0,V1 default 2,8): the history keep weight of a pixel whose correspondence moves at least V1 px/frame both on screen and against the rotation-only camera path (translation parallax) is capped at F (1 at or below V0, a quadratic ramp between), so a hull under SETA accumulates a shorter history and keeps more of its texture detail; rest, pans, a hull that moves with the camera (the player\'s ship in the external view, escorts) and slow flight are untouched. Inert (cap 1) on frames without a camera transform: the parallax is measured against the camera path (docs/architecture/taa-motion-history-weight.md)')
     parser.add_argument('--camera-cut-deg', type=float, default=20.0, help='Camera rotation per frame (degrees) above which the resolve declares a cut (requires --taa; default 20)')
-    parser.add_argument('--camera-log', type=int, default=300, help='Cadence in frames of the camera_state log line (requires --taa; capture frames always log; default 300)')
     parser.add_argument('--scene-hook', nargs='?', const='on', default=None, choices=['on', 'off'], help='Engine scene-end hook (X3M_SCENE_HOOK): patch the frame routine\'s compositing callsite (0x004721b1, exact executable and bytes only, otherwise it fails closed to the bloom-copy/selector boundary) so the route learns the scene end from the engine and, with --taa, resolves there before the glow pass. Default on with --motion-output since review 26 (iteration 10: 214/214 agreement); "--scene-hook" alone means on; "--scene-hook off" keeps the copy/selector boundary')
     parser.add_argument('--hdr', action='store_true', default=None, help='[launcher default since 2026-09-25 on every modded launch with --motion-output; --no-hdr = off; not sent under --vanilla] FP16 HDR scene path (X3M_HDR=1; requires --motion-output): the scene renders into an owned A16B16G16R16F target bound as RT0 at the latching Clear and is written back into the game\'s 8-bit main target at the scene end (--scene-hook, else the bloom copy, else EndScene/Present); fails closed on the capability gate and self test. Without --hdr-tonemap the write-back is the stage-1 identity copy and presented frames equal the non-HDR frames to within one 8-bit code (docs/architecture/hdr-scene-path.md, "Stage 1 implementation")')
     parser.add_argument('--no-hdr', dest='hdr', action='store_false', help='Turn the --hdr launcher default off')
@@ -805,22 +817,18 @@ def main():
     parser.add_argument('--shadow-cascade-backface-from', default=None, metavar='K|none', help='Cascades K and beyond (0..cascades-1) replay their casters\' BACK faces (CW and CCW swapped per draw; NONE unchanged), so a lit surface never compares against its own depth on the knife edge re-rolled by the TAA jitter (X3M_SHADOW_CASCADE_BACKFACE_FROM; requires --shadow-cascades). Default (absent): every cascade whose world texel is at least 8 units (37,500 / 4096 = 18.3 u qualifies, 7,500 / 4096 = 3.7 u does not); "none" turns it off. Trade-off: a back-face map casts no contact shadow from geometry thinner than one texel of that cascade (a hull plate at 18-73 u texels is invisible either way) and a pancaked caster (nearer the light than the map\'s near plane) is flattened by its back faces as before')
     parser.add_argument('--shadow-cascade-drop-order', choices=('submission', 'importance'), default=None, help='[launcher default since 2026-09-25: importance whenever --shadow-cascades is on; --shadow-cascade-drop-order submission = off; not sent under --vanilla] What a cascade drops when its candidates exceed its cap (X3M_SHADOW_CASCADE_DROP_ORDER; requires --shadow-cascades): submission (default: the last submitted) or importance (the smallest projected size at the camera, decided at the scene end; stable across submission order; dropped_min_size<i> shows the largest caster dropped)')
     parser.add_argument('--shadow-sun-poll', choices=('on', 'off'), default=None, help='Sun position for the cascades from the engine\'s brightest directional light node instead of one LightDir_Dir0 constant (X3M_SHADOW_SUN_POLL; default on with --shadow-cascades; verified executable only, cross-checked against the constants, the constant latch otherwise; requires --shadow-cascades).')
-    parser.add_argument('--shadow-sun-trace', action='store_true', help='Per-frame sun trace of the cascades (X3M_SHADOW_SUN_TRACE=1; default off; requires --shadow-cascades): one shadow_sun_frame line per frame with the frame\'s sun source, the reason and the poll status, the cascades that re-derived their direction (rederived= and the bit mask rederived_mask=), the poll/constant agreement angle and the light distance, so the re-derivation rate while moving and at rest is measurable between the sparse shadow_replay_sun_point lines (about 200 B per frame; read by tools/analysis/shadow_sun_frame.py)')
     parser.add_argument('--shadow-cascade-budget', type=int, default=None, metavar='B', help='Draw issues per frame above which the far cascade replays on even frames only, 1..4096, default 640 (X3M_SHADOW_CASCADE_BUDGET; requires --shadow-cascades)')
     parser.add_argument('--shadow-cascade-adaptive-c0', type=float, default=None, metavar='K', help='[launcher default since 2026-09-25: 1.5 whenever --shadow-cascades is on; --no-shadow-cascade-adaptive-c0 = off; not sent under --vanilla] Own-ship-adaptive near cascade (X3M_SHADOW_CASCADE_ADAPTIVE_C0; DLL default off; requires --shadow-cascades; suggested 1.5): the first cascade\'s half-extent becomes max(its configured value, K x the own ship\'s radius), the radius being the largest object-space AABB corner distance over the player ship\'s z-writing draws (the ship is the active cockpit\'s ref object of the verified executable), committed at once on a ship change and after eight stable frames on a > 20 %% size change, clamped to the last cascade\'s extent; the texel is 2 E0 / size. While E0 is above its configured value the configured ladder slides with it (--shadow-cascade-ladder-ratio): cascade i becomes max(its configured extent, E0 x R^i), capped at the last cascade\'s configured extent, and a cascade whose slid extent reaches the next one\'s is dropped (its map stays allocated, nothing replays into it, the apply owns no pixel with it); every slid cascade re-anchors its texel grid once per commit. One shadow_cascade_set line (own_radius= e0= texel0= active_mask= slid= extents=) per commit and per F8 frame (docs/architecture/shadow-cascade-extents.md, 5)')
     parser.add_argument('--no-shadow-cascade-adaptive-c0', dest='shadow_cascade_adaptive_c0', action='store_const', const=PROMOTED_OFF, help='Turn the --shadow-cascade-adaptive-c0 launcher default off')
     parser.add_argument('--shadow-cascade-min-footprint', type=float, default=None, metavar='P', help='Per-part minimum light-space footprint of the shadow cascades in screen pixels (0 < P <= 64, or 0 = off; X3M_SHADOW_CASCADE_MIN_FOOTPRINT; requires --shadow-cascades; default 8 whenever --shadow-cascades is given, the DLL\'s own fallback with the variable absent is also 8; 0 is the opt-out, forwarded as 0 = off, bit-identical). A caster part leaves cascade k when the largest lateral side of its sun-space box is below max(P x 0.95 x E_{k-1} x 2 / (m00 x width), 3 texels of cascade k): the receivers cascade k serves are at least 0.95 x E_{k-1} away, so such a part can darken at most P pixels of any of them. With P = 8 on 1280 px and the 250/1500/7500/37500/150000 set that is about 557 u on c4, 111 u on c3 and nothing binding on c0-c2: fighters and turrets stop replaying into the far maps, big hull parts are untouched. Live and retained casters alike; the thresholds are logged as shadow_cascade_footprint and the drops count footprint_refused<i> / footprint_aged<i> on shadow_replay_candidates (docs/architecture/shadow-cascades.md, "Minimum caster footprint")')
     parser.add_argument('--shadow-cascade-ladder-ratio', type=float, default=None, metavar='R', help='Ratio between consecutive cascades of the slid ladder under --shadow-cascade-adaptive-c0 (X3M_SHADOW_CASCADE_LADDER_RATIO; 2..16, default 5; requires --shadow-cascade-adaptive-c0): with a corvette at E0 675 the set 250 / 1500 / 7500 / 37500 becomes 675 / 3375 / 16875 / 37500; a fighter at the configured E0 keeps the configured set. The per-cascade caps and records, --shadow-cascade-static-from and --shadow-cascade-large-min slide with the extents: each live cascade takes the policy of the configured cascade its extent most closely matches (a dropped cascade keeps no cap; the active caps are scaled down together when their sum would exceed the configured storage); every slid or dropped/restored cascade re-anchors its grid once per commit')
-    parser.add_argument('--shadow-retention-census', action='store_true', help='Caster retention census (X3M_SHADOW_RETENTION_CENSUS=1; default off; requires --shadow-cascades): the node-keyed retention store runs with every expiry decision taken as if live but holds no references and replays nothing; one shadow_retention_frame line per frame, one cumulative shadow_retention_resight line every 300 frames and shadow_retention_caster lines on F8 frames calibrate eps, the age cap and the budget before --shadow-caster-retention is trusted (docs/architecture/shadow-caster-retention.md, stage 1)')
     parser.add_argument('--shadow-caster-retention', action='store_true', default=None, help='[launcher default since 2026-09-25 on every modded launch with --shadow-cascades; --no-shadow-caster-retention = off; not sent under --vanilla] Retention of static sun-shadow casters the engine stopped submitting (X3M_SHADOW_CASTER_RETENTION=1; DLL default off; requires --shadow-cascades; wins over --shadow-retention-census): nodes whose world rows held still for 8 sightings keep their draws, with the store\'s own references on VB, IB and declaration, and are replayed into the cascades they meet inside the per-cascade caps and the issue budget until the node retires, leaves 2 x the outermost box, its buffers change, the age cap passes, the sun re-latches or the device resets (docs/architecture/shadow-caster-retention.md, stage 2)')
     parser.add_argument('--no-shadow-caster-retention', dest='shadow_caster_retention', action='store_false', help='Turn the --shadow-caster-retention launcher default off')
     parser.add_argument('--shadow-caster-retention-age', type=int, default=None, metavar='FRAMES', help='Frames an unseen static caster is kept, 1..10000000, default 7200 (X3M_SHADOW_CASTER_RETENTION_AGE; requires --shadow-retention-census or --shadow-caster-retention)')
     parser.add_argument('--shadow-caster-retention-eps', type=float, default=None, metavar='UNITS', help='Largest AABB-corner displacement between two sightings of a static caster in world units, 0.0001..100, default 0.05 (X3M_SHADOW_CASTER_RETENTION_EPS; requires --shadow-retention-census or --shadow-caster-retention)')
-    parser.add_argument('--shadow-retention-timing', action='store_true', help='Per-draw cost of the caster retention record hook on the shadow_retention_frame line (X3M_SHADOW_RETENTION_TIMING=1; default off; requires --shadow-retention-census or --shadow-caster-retention): two counter reads per recorded draw, draw_us / draw_calls')
     parser.add_argument('--sun-shadow-bias-units', type=float, default=None, metavar='B', help='Constant sun-shadow compare bias in world units, 0..1000, default 0.53571875 (X3M_SUN_SHADOW_BIAS_UNITS; requires --sun-shadow-apply): the quad subtracts B plus one world texel of the map, divided by 2 D, from every compare; with --sun-shadow-bias-clamp-texels the defaults resolve to the former 0.001 / 0.01 at the default 250 / 512 / 1024 cascade; capture frames print the resolved values in sun_shadow_apply_params')
     parser.add_argument('--sun-shadow-bias-clamp-texels', type=float, default=None, metavar='T', help='Receiver-plane bias clamp and non-planar fallback of the sun-shadow quad in world texels of the map (2 E / N), 1..64, default 20.97152 (X3M_SUN_SHADOW_BIAS_CLAMP_TEXELS; requires --sun-shadow-apply): the default is the former 0.01 at the default cascade; the detached fixture was tuned at 4 texels and the wide fixture shows the default lighting a few silhouette pixels of a receiver\'s own faces (docs/verification/directional-shadows.md)')
     parser.add_argument('--sun-shadow-bias-slope-texels', type=float, default=None, metavar='S', help='Slope-scaled margin of the cascade sun-shadow compare in texels of the receiver plane\'s depth slope, 0..8, default 0.2 (X3M_SUN_SHADOW_BIAS_SLOPE_TEXELS; requires --sun-shadow-apply; 0 keeps the constant + plane law)')
-    parser.add_argument('--sector-background', action='store_true', help='Read-only active-sector background diagnostic (X3M_SECTOR_BACKGROUND=1; default off; exact executable only): one bounded sample per frame, logged once per second and on sector/row/status changes, including menus/loading when frames are submitted. Does not affect fog rendering; no other option required. docs/reverse-engineering/sector-fog.md section 11')
     parser.add_argument('--volumetric-fog', nargs='?', type=float, const=0.02, default=None, metavar='STRENGTH', help='[launcher default since 2026-09-25: 0.02 on every modded launch with --motion-output --taa --hdr --shadow-replay-depth --shadow-cascades; --no-volumetric-fog = off; not sent under --vanilla] Spatial family fog at scene end (DLL default off; requires --motion-output --taa --hdr --shadow-replay-depth --shadow-cascades). Families are data-driven: the sector\'s TBackgrounds family name is matched against the 14 compiled profiles, then against <game>/x3m/fog-families.bin (mod families; `manage.py fog-families --install` writes it, an empty table when the compiled 14 cover every family, and the launch line "fog families: missing|stale|ok" reports it: stale compares the catalogue list, .cat/.dat sizes and mtimes and loose TBackgrounds recorded at generation, never textures); clear sectors and unmatched families retain native cards. STRENGTH is density tuning in 0..0.1: 0.02=1x qualified family density, 0=off, other values are user tuning. Occupancy and horizon stay fixed. Ctrl+Alt+F9 toggles; Ctrl+Alt+F10 steps 0.005/0.01/0.02/0.03/0.05 (.25/.5/1/1.5/2.5x); --fps-overlay shows the multiplier. Unshadowed first spatial version; use --volumetric-fog-cards replace for replacement, keep for an explicit stacked diagnostic comparison.')
     parser.add_argument('--no-volumetric-fog', dest='volumetric_fog', action='store_const', const=PROMOTED_OFF, help='Turn the --volumetric-fog launcher default off')
     parser.add_argument('--volumetric-fog-cards', choices=('keep', 'replace'), default=None, help='[launcher default since 2026-09-25: replace whenever --volumetric-fog is on; --volumetric-fog-cards keep = off; not sent under --vanilla] Keep vanilla fog cards, or replace validated card color with the medium after a successful warm-up (X3M_VOLUMETRIC_FOG_CARDS; requires --volumetric-fog)')
@@ -837,7 +845,6 @@ def main():
     parser.add_argument('--fog-docked', dest='fog_docked', action='store_true', default=None, help='Default on with --volumetric-fog: docked at a station or inside a carrier, the fog sector detector accepts the ship when a walk of at most 3 parent objects reaches the cockpit sector, so the medium keeps drawing and the cards stay replaced; a failed walk keeps the native cards. --no-fog-docked keeps the direct parent check (X3M_FOG_DOCKED; requires --volumetric-fog when given). One volumetric_fog_docked log line per docked span.')
     parser.add_argument('--no-fog-docked', dest='fog_docked', action='store_false', help='Keep the direct parent check: docked views draw the native cards (X3M_FOG_DOCKED=0).')
     parser.add_argument('--volumetric-fog-everywhere', action='store_true', help='Debug only: force bluewell when no known family is available, still requiring a valid view (X3M_VOLUMETRIC_FOG_EVERYWHERE=1; requires --volumetric-fog)')
-    parser.add_argument('--volumetric-fog-timing', action='store_true', help='One volumetric_fog_frame log line per frame with the CPU wall time and device-call count of the pass (X3M_VOLUMETRIC_FOG_TIMING=1; requires --volumetric-fog)')
     parser.add_argument('--screen-emission-additive', type=float, default=None, metavar='G', help='[launcher default since 2026-09-25: 2 on every modded launch with --motion-output --hdr; --no-screen-emission-additive = off; not sent under --vanilla] Additive bullets (X3M_SCREEN_EMISSION_ADDITIVE=G, finite 1..8; requires --motion-output --hdr; DLL default off): the nine SM1 screen pairs drawn in the native ONE/INVSRCCOLOR state draw in place with DESTBLEND ONE and their colour multiplied by G (G=1 binds the original shader), so the FP16 scene accumulates G*q + D above 1.0 for exposure and bloom; no bracket, bound, copies or temporal work; the blend law changes and native parity is not kept (docs/architecture/screen-emission-region.md, "Additive option"). Ctrl+Shift+F5 switches these draws between G and native during play (no shader is recreated; one screen_emission_additive_toggle line per press). With --telemetry, one screen_emission_additive_frame line per Present reports the admitted and refused draws of that frame and the hex mask of the nine pairs admitted')
     parser.add_argument('--no-screen-emission-additive', dest='screen_emission_additive', action='store_const', const=PROMOTED_OFF, help='Turn the --screen-emission-additive launcher default off')
     parser.add_argument('--bolt-footprint', nargs='?', const=BOLT_FOOTPRINT_DEFAULT, default=None, metavar='W[,L]', help='[launcher default on modded launches: 3,12; --bolt-footprint 0 = off; not forwarded under --vanilla, where an explicit value is refused] Minimum on-screen size of the weapon bolts in the chase view only (X3M_BOLT_FOOTPRINT=W[,L], pixels, full width and length, finite 0 < W <= 64 and W <= L <= 256, L defaults to 12): every bolt instance of the admitted additive bullet draw narrower than W is widened to W and shorter than L lengthened to L along its projected flight axis, about its own centre in the camera plane (depth unchanged), drawn from a proxy-owned dynamic vertex buffer; only while the chase camera (--camera chase) applies its pose, so first person and every other view keep the game\'s bolts. Needs the additive bullets, --screen-emission-additive with --motion-output --hdr, and --ownership for the Unlock scan; an explicit non-zero value implies --screen-emission-additive 1 when that option is absent, the default never does. One bolt_footprint line per 300 frames (draws, written, gated, instances, lengthened, widened, refusals, CPU us), one bolt_footprint_hist line per view (pre-expansion half-length and width histograms, chase and other views) and a bolt_footprint_mode line at start (docs/architecture/bolt-footprint.md)')
@@ -891,16 +898,12 @@ def main():
     parser.add_argument('--sun-flare-fix', choices=('on', 'off'), default=None, help='Keep the sun\'s lens flare when a far sun is near the view centre on wide displays by saturating the lens collector\'s overflowing horizontal bound (X3M_SUN_FLARE_FIX; default on for every modded launch, refused under --vanilla; off, or the variable unset, leaves the engine\'s bytes untouched; the first multiply of the same test still wraps for tan(F/2) >= 2, F >= 126.9 deg, which the --fov range never reaches, only script cameras; docs/reverse-engineering/field-of-view.md section 9.1)')
     parser.add_argument('--fov', default=None, metavar='N|game', help='Field of view as the game counts it, like X4: N is the horizontal angle in degrees on a 16:9 screen, 70..100 (the in-game FOV menu\'s range; decimals allowed), default 90 on every modded launch; or game. The vertical angle is derived (70 -> 43.0 deg, 80 -> 50.5, 90 -> 58.7, 100 -> 67.7) and stays the same on every display at least as wide as 4:3, so wider screens get more width: at 90, 21:9 shows 106 deg (2560x1080; 107 on 3440x1440) and 32:9 127 (5120x1440). The in-game FOV menu always starts from its own 90 whatever --fov is (the game keeps that number in its script and never sees --fov), so its first press jumps to the value of 91 (or 89); from then on the menu works in the same units as --fov (its number is remapped the same way: engine focus of N 50..130 through a table; other values unchanged). game keeps the vanilla model, where the number is the horizontal angle of the central 4:3 area (90 = 73.74 deg vertical, 106 horizontal on 16:9, 139 on 32:9), and patches nothing. --fov seeds a new game; after a savegame load the savegame\'s own value wins, as with the menu: a save written without the patch (or under --fov game) that holds the game\'s number N is converted to the same units on load (its 90 means 90 whatever --fov is), a save written with the patch loads as saved (a decimal --fov that would land on such a number is moved by 1/65536 of a turn so its saves do too); saves are written in the units in play, so a patched save loads narrower under --fov game. The DLL writes the registry constructor\'s default (0x0041c9dc) and hooks the INS_SetFocus store (0x0042dbf8) and the savegame load store (0x0041c8c1), all three verified or none (refused under --vanilla, where the proxy is not loaded); zoom scales the result; displays narrower than 4:3 get a slightly larger vertical angle (docs/reverse-engineering/field-of-view.md)')
     parser.add_argument('--point-light-root-admission', action='store_true', help='Admit a point light for a mesh node whose root object is in range, not only when the node itself is (X3M_POINT_LIGHT_ROOT_ADMISSION=1; default absent = vanilla per-node cull): the six-byte range-test branch at 0x004c27af is replaced by a detour that keeps the native decision for an in-range node and otherwise walks the node\'s parent chain (at most 8 bounds-checked hops) and applies the same range predicate to the root; exact executable and bytes only, otherwise fails closed to vanilla; one point_light_root_admission line in the session log (docs/reverse-engineering/camera-and-lights.md, "Point-light admission site")')
-    parser.add_argument('--cull-census', action='store_true', help='Log the engine\'s own cull/LOD census on F8 capture frames (X3M_CULL_CENSUS=1; default absent = nothing patched): two read-only trampolines on the per-node cull/LOD pass 0x0047cfe0 record, per node, the LOD metric s = r*640/D, the small-object measure, the two per-node thresholds, the cull verdict and the selected LOD index into a bounded ring (8192 entries, overflow= counted), emitted as cull_census rows at Present; outside capture frames each stub is one compare and a dead branch. Exact executable and bytes only, otherwise fails closed to vanilla; summarise with tools/analysis/cull_census.py (docs/reverse-engineering/lod-selection.md, "Cull census sites")')
-    parser.add_argument('--object-bounds-log', action='store_true', help='Log the projected screen bounds of every routed draw whose object box the caster-candidate route already computed, on F8 capture frames only (X3M_OBJECT_BOUNDS_LOG=1; launch only, default absent = no line; requires --object-trace and --shadow-replay-candidates or --shadow-replay-depth, i.e. the same verified submission identity object_context needs): one object_bounds line per such draw with the box\'s viewport-clipped pixel rectangle, its device depth range and how many of its eight corners are inside the frustum (offscreen=1 for an empty rectangle, near=1 for a box straddling the eye plane). No geometry is transformed twice and nothing is patched; outside capture frames it is one bool test. Bucket a frame with tools/analysis/draw_accounting.py (docs/architecture/engine-frame-time.md, "Object bounds log")')
     parser.add_argument('--no-collide-box-cull', dest='collide_box_cull', action='store_false', default=None, help='Turn the sector collision box early-out off (it is on by default on a modded launch)')
     parser.add_argument('--collide-box-cull', dest='collide_box_cull', action='store_true', default=None, help='[launcher default on modded launches since 2026-09-23; --no-collide-box-cull = off; not forwarded under --vanilla unless given] Insert the missing integer bounding-box early-out in the engine\'s sector collision pass (X3M_COLLIDE_BOX_CULL=1; default absent = nothing patched): two trampolines at the square-root pair tests 0x0045d58e (all-pairs loop of 0x0045d250) and 0x0045cc7c (swept scan of 0x0045cab0) jump to the engine\'s own continue label when max(|dx|,|dy|,|dz|) exceeds the engine\'s reject radius plus a margin that covers its float32 and truncation error, so only pairs the engine\'s own compare discards are skipped; class-7 pairs always take the engine path. Counts pairs and box rejects per frame (collide_census line per 300 frames, collide_census_frame on F8 frames); compare loop_phases collide_p50_us with the option on and off (--loop-phases). Exact executable and bytes only, otherwise fails closed to vanilla (docs/reverse-engineering/sector-collide.md, section 10)')
-    parser.add_argument('--collide-narrow-census', action='store_true', help='One-flight diagnostic of the sector collision narrow phase (X3M_COLLIDE_NARROW_CENSUS=1; default absent = nothing patched; independent of --collide-box-cull): the call 0x0045d665 -> 0x0048ac80 is bracketed per accepted pair (objects, class/subtype/model, positions, transform hash, result, BVH node-pair visits, microseconds) into a 256-entry ring, 0x0048a9a5 counts mesh-pair tests, the entry of 0x004e2530 counts BVH node-pair visits and the entry of 0x004e2190 counts leaf triangle tests. One collide_narrow line per 300 frames (accepted / mesh_pairs / node_pairs / narrow_us / tri_tests p50, max, sum; the share of pairs a cross-frame no-contact memo would answer) and, on F8 frames, one collide_narrow_pair row per accepted pair ordered by visits. Exact executable and bytes only, otherwise fails closed to vanilla (docs/reverse-engineering/sector-collide.md, section 11.7)')
     parser.add_argument('--no-collide-sat-sse2', dest='collide_sat_sse2', action='store_false', default=None, help='Turn the SSE2 separating-axis test off (it is on by default on a modded launch)')
     parser.add_argument('--collide-sat-sse2', dest='collide_sat_sse2', action='store_true', default=None, help='[launcher default on modded launches; --no-collide-sat-sse2 = off; not forwarded under --vanilla unless given] Replace the engine\'s x87 OBB-OBB separating-axis test of the collision BVH descent with an SSE2 reimplementation (X3M_COLLIDE_SAT_SSE2=1; default absent = nothing patched; independent of --collide-box-cull and --collide-narrow-census): the sole call of 0x004e3280, at 0x004e25a3, is redirected. The box test only prunes the descent and the replacement separates only where the engine\'s compare separates with a 2^-20 relative margin to spare, and on an unordered (NaN) compare exactly as the engine does, so the same contacts are found. No counters of its own: fly it with --collide-narrow-census and compare narrow_us / node_pairs / tri_tests with the option on and off. Exact executable and bytes only, otherwise fails closed to vanilla (docs/reverse-engineering/sector-collide.md, section 12.8)')
     parser.add_argument('--no-collide-memo', dest='collide_memo', action='store_false', default=None, help='Turn the no-contact collision memo off (it is on by default on a modded launch); refused together with --collide-memo-verify')
     parser.add_argument('--collide-memo', dest='collide_memo', action='store_true', default=None, help='[launcher default on modded launches; --no-collide-memo = off; not forwarded under --vanilla unless given] Answer a mesh-pair collision query from a memo when its complete input (both transforms and scales, models with a content stamp, flags, contact cap, tolerance, running minimum) equals, bit for bit, a query that found no contact in this or the previous frame (X3M_COLLIDE_MEMO=1; default absent = nothing patched; independent of --collide-sat-sse2, --collide-box-cull and --collide-narrow-census): the sole call of 0x004e29f0, at 0x0047f329, is redirected. Contacts are never stored, so every contact is computed; nothing is capped or skipped on a stride. One collide_memo line per 300 frames (hits, skipped_visits). Exact executable and bytes only, otherwise fails closed to vanilla (docs/reverse-engineering/sector-collide.md, section 14)')
-    parser.add_argument('--collide-query-phases', action='store_true', help='Opt-in engine-query and outer descent timings; implies --collide-memo, one same-frame difference summary per 300 frames (X3M_COLLIDE_QUERY_PHASES=1). Combine with --loop-phases to attribute moving collision time.')
     parser.add_argument('--sun-occlusion', action='store_true', help='[default on since 2026-09-25 after Run 83 (Runs 64/65 accepted): sent on every modded --motion-output launch without --submit-phases, marked X3M_SUN_OCCLUSION_DEFAULT=1; the core dimming (--sun-occlusion-core-f on, run235) comes with it and is the sun dimming when occluded; --no-sun-occlusion restores the vanilla probe] Partial sun occlusion, steps 1 and 2 (X3M_SUN_OCCLUSION=1, explicit: marker 0; absent = nothing patched, no cost; an explicit --sun-occlusion requires --motion-output for the route\'s RT2 and is refused with --submit-phases, whose sort_return_b stamp claims 0x00472490, where the default is simply not sent; nothing under --vanilla): the sun\'s lens chain fades with the visible fraction of the disc instead of popping off when the engine\'s binary CPU probe fails at about half cover. The flare probe\'s call 0x00471630 is answered "visible" when the main view re-probes the single sun record owned by the background view while a GPU fraction exists (the probe\'s three early tests are replicated in vanilla order; the owner\'s own probe, later views, records the main view owns, a second sun, any unhealthy frame = the original probe), a 32-tap 1x1 FP16 visibility pass runs once per frame against the scene depth, and inside the bracket at 0x00472491 the sun\'s core bodies are clipped per pixel against the scene depth and scaled by the smoothed fraction, its ghosts scaled by the fraction, other records\' bodies left alone (wrapped vertex/pixel programs, built once). A lens draw that cannot carry the fraction returns the decision to the engine from the next frame on. Exact executable and bytes only, otherwise fails closed to vanilla (docs/architecture/sun-partial-occlusion.md)')
     parser.add_argument('--no-sun-occlusion', action='store_true', help='Opt out of the default partial sun occlusion (sends no X3M_SUN_OCCLUSION, as before Run 83: the DLL installs nothing and the engine\'s binary CPU probe decides the flare, which pops off at about half cover); refused together with --sun-occlusion or any --sun-occlusion-radius/-curve/-core-f; --sun-occlusion-log still installs its observe-only redirects')
     parser.add_argument('--sun-occlusion-log', action='store_true', help='Diagnostic for the sun-occlusion flight (X3M_SUN_OCCLUSION_LOG=1; works with or without --sun-occlusion, installing the same two redirects observe-only when the feature is off): one sun_probe line per probe call (record fields +0x10/+0x20/+0x24/+0x30/+0x34/+0x38, the vanilla result, the answer given; the original probe always runs), one sun_visibility line per frame (footprint, radius, owner layer/flags, the sun lane\'s projected uv, smoothing weight and a synchronous 1x1 readback of the fraction), on F8 capture frames a lens_<device>_<frame>.bgra8 readback of the presented back buffer (the only dump that contains the chain) and one sun_lens_draw fingerprint per draw inside the lens bracket (shader hashes, stage textures, blend/z/alpha-test state, RT0, primitive counts). For one flight: costs the vanilla probe plus a 1x1 readback stall per frame')
@@ -911,7 +914,6 @@ def main():
     parser.add_argument('--pause-key-only', dest='pause_key_only', action='store_true', default=None, help='[launcher default on modded launches; --no-pause-key-only = off; refused under --vanilla, where the proxy is not loaded] While the flight pause is up, only the Pause key or a mouse click ends it; every other key, including the Alt/Command press that starts an alt-tab, is read and ignored (X3M_PAUSE_KEY_ONLY=1; default absent = nothing patched). The engine\'s pause wait loop in 0x00404280 exits on any new key or mouse button; its key test at 0x004043a5 (12 bytes) is rewritten in place to accept only the pause key newly pressed; the mouse exit is unchanged. Shift+Pause no longer unpauses. One pause_key_only log line (patched, key, reason). Exact executable and bytes only, otherwise fails closed to vanilla (docs/reverse-engineering/pause-dialog-input.md, section 4.1)')
     parser.add_argument('--pause-key', type=pause_key_code, default=None, metavar='CODE', help=f'Engine key code that ends the pause under --pause-key-only (X3M_PAUSE_KEY; default 0x{PAUSE_KEY_DEFAULT:x} = DIK_PAUSE): the reader\'s 12-bit code, | 0x1000 for a Shift chord, 0x-hex or decimal in [0x1, 0x{PAUSE_KEY_MAX:x}] with a non-zero low 12 bits; for a rebound Pause key. Needs the patch (refused with --no-pause-key-only and under --vanilla)')
     parser.add_argument('--collide-memo-verify', action='store_true', help='Diagnostic form of --collide-memo (implies it; X3M_COLLIDE_MEMO_VERIFY=1): nothing is skipped, every query that would have been answered from the memo runs in the engine as well and the two are compared; verify_mismatches in the collide_memo line must stay 0. Costs what vanilla costs: for one flight')
-    parser.add_argument('--lod-switch-log', type=int, nargs='?', const=16, default=None, metavar='N', help='Log a lod_switch row whenever a node\'s selected LOD record (+0x14c) changes from one frame to the next (X3M_LOD_SWITCH_LOG=N, N = rows per frame, default 16, 1..4096; implies --cull-census): the census stubs are armed on every frame and Present compares each kept node, per view, with the previous frame (both census stubs armed every frame plus one table probe per kept node: ~12 ns per node, inferred from the fixture benches, fixture-inclusive, not game FPS; table committed once): `lod_switch frame= node= body= from= to= s= D= T_pad= flag31= view=` up to N per frame, then one `lod_switch_overflow frame= dropped= cap=` row, and `lod_switch_frame frame= switches= nodes=` on frames with a switch. A Reset or a node absent for a frame re-seeds without a row. Summarise with verification/results/run299-303-run79a/ods-flicker/lod_switch_rows.py (docs/verification/cull-census.md)')
     parser.add_argument('--cull-small-parts', type=float, default=None, metavar='PX', help='[launcher default since 2026-09-25: 4 on every modded launch (was 2); --cull-small-parts 0 = off; not sent under --vanilla] Cull mesh nodes whose projected radius is under PX pixels, 0 < PX <= 64 (X3M_CULL_SMALL_PARTS_PX; launcher default 2 on every modded launch, --cull-small-parts 0 = off, nothing patched; --vanilla forwards nothing and the DLL\'s own fallback stays off): one trampoline on the per-node cull/LOD pass 0x0047cfe0 at 0x0047d2a2 sends a node whose engine metric s = r*640/D is below the per-frame threshold (PX converted with the live projection scale and the back-buffer width, the cull-census bucket rule) down the engine\'s own size-cull instruction at 0x0047d2c3; every other node runs the vanilla compare. Run131 census at the run117 station view: 2 px = 403 of the 878 census-attributed draws (901 in the frame; about 9.6 ms at 23.7 us/draw), 4 px = 458; lower bounds, because a culled node also culls its 0x40000-flagged children (0x0047d055). The threshold applies in every view (small casters leave the shadow and env maps too) and is scaled by the one main-view projection. Exact executable and bytes only, otherwise fails closed to vanilla; risk: popping of thin parts (antennas, clamps) whose radius is small, cascading to their descendants (none seen at 2 px in run 43 B) (docs/architecture/engine-frame-time.md 2.3, docs/reverse-engineering/lod-selection.md "Cull small parts site")')
     parser.add_argument('--cull-small-parts-projectiles', choices=('on', 'off'), default=None, help='Whether --cull-small-parts spares weapon projectiles (X3M_CULL_SMALL_PARTS_PROJECTILES; default on; refused when the cull is off, enables nothing on its own). on = a node carrying the engine\'s class-0 (TBullets) marker, +0x130 & 0x20000000 set at object creation (0x00441242) for every bolt, beam and flak type including mod-added ones, runs the vanilla compare instead of the pixel cull; missiles carry no marker and stay subject to the cull (they rarely fall under a few pixels). Run 75 B at 4 px: 30-33 of 51-54 bolts per frame were culled by the stub one frame after leaving the muzzle; expected cost with on about 31 more bullet instances (~750 primitives) per frame while firing. The DLL turns the exemption off (projectiles=marker_mismatch) when the two marker instructions are not the verified bytes (docs/reverse-engineering/lod-selection.md "Projectile nodes")')
     parser.add_argument('--dry-run', action='store_true', help='launch only: validate the options and installation, print the command and X3M_* environment as JSON, and exit without launching')
@@ -923,56 +925,49 @@ def main():
         parser.error('--voice-decoder applies to launch only.')
     if args.object_lifetime and not (args.object_trace and args.ownership):
         parser.error('--object-lifetime requires --object-trace and --ownership.')
-    if args.loading_probes and not args.telemetry:
-        parser.error('--loading-probes requires --telemetry (the probe rows and trampolines are installed by the loading-trace initialization).')
-    if args.game_phases and not args.telemetry:
-        parser.error('--game-phases requires --telemetry.')
+    # Logging tiers (docs/architecture/logging-tiers.md, 2026-09-26): --debug and --perf replace --telemetry and the
+    # per-row options; the two hidden stubs exist only so argparse cannot abbreviate them to longer options.
+    if args.telemetry is not None:
+        parser.error('--telemetry was removed on 2026-09-26 (logging tiers): use --perf (performance rows) or --debug '
+                     '(diagnostic rows); either turns the telemetry counters on.')
+    if args.frame_timing is not None:
+        parser.error('--frame-timing was removed on 2026-09-26 (logging tiers): its frame-time windows are part of --perf.')
+    telemetry_on = args.debug or args.perf  # the DLL turns X3M_TELEMETRY on for either group
+    if args.game_phases and not telemetry_on:
+        parser.error('--game-phases requires --perf or --debug (telemetry).')
     if args.game_phase_threshold_ms != 20 and not args.game_phases:
         parser.error('--game-phase-threshold-ms requires --game-phases.')
     if not 1 <= args.game_phase_threshold_ms <= 10000:
         parser.error('--game-phase-threshold-ms must be between 1 and 10000.')
-    if args.telemetry_draw and not args.telemetry:
-        parser.error('--telemetry-draw requires --telemetry.')
-    if args.frame_timing and not args.telemetry:
-        parser.error('--frame-timing requires --telemetry.')
-    if args.frame_phases and not args.telemetry:
-        parser.error('--frame-phases requires --telemetry.')
-    if args.residual_phases and not args.telemetry:
-        parser.error('--residual-phases requires --telemetry.')
-    if args.residual_phases:  # pairs with both stamp groups, so it turns them on
-        args.frame_phases = args.pass_phases = True
-    if args.pass_phases and not (args.telemetry and args.frame_phases):
-        parser.error('--pass-phases requires --telemetry and --frame-phases.')
-    if args.light_phases and not (args.telemetry and args.frame_phases):
-        parser.error('--light-phases requires --telemetry and --frame-phases.')
-    if args.submit_phases and not (args.telemetry and args.frame_phases):
-        parser.error('--submit-phases requires --telemetry and --frame-phases.')
-    if args.loop_phases and not (args.telemetry and args.frame_phases):
-        parser.error('--loop-phases requires --telemetry and --frame-phases.')
-    if args.frame_timing_state_stamps and not args.frame_timing:
-        parser.error('--frame-timing-state-stamps requires --frame-timing.')
+    if args.telemetry_draw and not telemetry_on:
+        parser.error('--telemetry-draw requires --perf or --debug (telemetry).')
+    # The engine stamp families pair with the frame phases, which --perf turns on in the DLL.
+    for option, given in (('--residual-phases', args.residual_phases), ('--pass-phases', args.pass_phases), ('--light-phases', args.light_phases),
+                          ('--submit-phases', args.submit_phases), ('--loop-phases', args.loop_phases)):
+        if given and not args.perf:
+            parser.error(f'{option} requires --perf (telemetry and the frame phases).')
+    if args.residual_phases:  # pairs with the pass stamps, so it turns them on
+        args.pass_phases = True
+    if args.frame_timing_state_stamps and not args.perf:
+        parser.error('--frame-timing-state-stamps requires --perf (it samples the frame-time windows).')
     if not 0 <= args.frame_timing_state_stamps <= 100000:
         parser.error('--frame-timing-state-stamps must be between 0 and 100000.')
-    if not 1 <= args.frame_end_stride <= 100000:
+    if args.frame_end_stride is not None and not 1 <= args.frame_end_stride <= 100000:
         parser.error('--frame-end-stride must be within [1, 100000].')
-    if args.media_cue_trace and not args.telemetry:
-        parser.error('--media-cue-trace requires --telemetry.')
     if args.media_cue_retry_s != 30 and args.media_cue_cache != 'on':
         parser.error('--media-cue-retry-s requires --media-cue-cache on.')
     if not 1 <= args.media_cue_retry_s <= 3600:
         parser.error('--media-cue-retry-s must be between 1 and 3600.')
     if args.vanilla and args.window_monitor_rect == 'on':
         parser.error('--window-monitor-rect cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so the proxy that moves the window never runs')
-    if args.vanilla and (args.window_trace or args.cursor_reassert):
-        parser.error('--window-trace/--cursor-reassert cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so the proxy that installs the window hooks never runs')
-    if args.window_trace and not args.telemetry:
-        parser.error('--window-trace requires --telemetry (it extends the telemetry window and cursor rows and the SetCursor/SetCursorPos import rows).')
+    if args.vanilla and args.cursor_reassert:
+        parser.error('--cursor-reassert cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so the proxy that installs the window hooks never runs')
     if args.vanilla and args.gpu_sync_timing:
         parser.error('--gpu-sync-timing cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so there is no proxy pass to time.')
-    if args.vanilla and (args.music_keep or args.music_trace):
-        parser.error('--music-keep/--music-trace cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so the proxy that patches the music routines is not loaded.')
-    if args.mesh_adjacency == 'verify' and not args.telemetry:
-        parser.error('--mesh-adjacency verify requires --telemetry (its output is telemetry rows); fast arms without it since 2026-09-25).')
+    if args.vanilla and args.music_keep:
+        parser.error('--music-keep cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so the proxy that patches the music routines is not loaded.')
+    if args.mesh_adjacency == 'verify' and not telemetry_on:
+        parser.error('--mesh-adjacency verify requires --perf or --debug (its output is telemetry rows; fast arms without them since 2026-09-25).')
     if args.mesh_adjacency_dump and args.mesh_adjacency != 'verify':
         parser.error('--mesh-adjacency-dump requires --mesh-adjacency verify.')
     if args.motion_output and (args.object_trace != args.object_lifetime):
@@ -1189,10 +1184,10 @@ def main():
         # 2026-09-25), else the explicit off 0 (never an error); always forwarded with --taa, so neither a stale shell
         # value nor the DLL's own 0.7,2,8 fallback can apply where the launcher resolved it off. 0 is the opt-out.
         args.taa_motion_weight = TAA_MOTION_WEIGHT_DEFAULT if age_program else '0'
-    if not args.taa and (args.camera_cut_deg != 20.0 or args.camera_log != 300):
-        parser.error('--camera-cut-deg and --camera-log require --taa.')
-    if not 0 < args.camera_cut_deg <= 180 or not 1 <= args.camera_log <= 1000000:
-        parser.error('--camera-cut-deg must be in (0, 180] and --camera-log in [1, 1000000].')
+    if not args.taa and args.camera_cut_deg != 20.0:
+        parser.error('--camera-cut-deg requires --taa.')
+    if not 0 < args.camera_cut_deg <= 180:
+        parser.error('--camera-cut-deg must be in (0, 180].')
     if args.motion_rt_mode == 'lazy' and not args.motion_output:
         parser.error('--motion-rt-mode requires --motion-output.')
     if args.motion_rt_mode is None:
@@ -1217,8 +1212,6 @@ def main():
         parser.error('--shadow-replay-depth requires --motion-output --ownership.')
     if args.shadow_alpha_casters == 'on' and not args.shadow_replay_depth:
         parser.error('--shadow-alpha-casters on requires --shadow-replay-depth.')
-    if args.object_bounds_log and not (args.object_trace and (args.shadow_replay_candidates or args.shadow_replay_depth)):
-        parser.error('--object-bounds-log requires --object-trace and --shadow-replay-candidates or --shadow-replay-depth.')
     # Sun-shadow cascades (docs/architecture/shadow-cascades.md; the DLL's defaults
     # are the single named constants of src/renderer/shadow_replay_projection.h).
     SHADOW_CASCADE_EXTENTS = '250,1500,7500,25000'
@@ -1234,14 +1227,13 @@ def main():
                       ('--shadow-cascade-records', args.shadow_cascade_records), ('--shadow-cascade-static-from', args.shadow_cascade_static_from),
                       ('--shadow-cascade-drop-order', args.shadow_cascade_drop_order), ('--shadow-cascade-large-min', args.shadow_cascade_large_min),
                       ('--shadow-cascade-adaptive-c0', args.shadow_cascade_adaptive_c0), ('--shadow-cascade-ladder-ratio', args.shadow_cascade_ladder_ratio),
-                      ('--shadow-sun-trace', args.shadow_sun_trace or None),
                       ('--shadow-cascade-backface-from', args.shadow_cascade_backface_from),
                       ('--shadow-cascade-min-footprint', args.shadow_cascade_min_footprint))
         if args.shadow_cascades is None:
             for option, value in companions:
                 if value is not None:
                     parser.error(f'{option} requires --shadow-cascades.')
-            return {'X3M_SHADOW_CASCADES': '0', 'X3M_SHADOW_SUN_POLL': '0', 'X3M_SHADOW_SUN_TRACE': '0'}
+            return {'X3M_SHADOW_CASCADES': '0', 'X3M_SHADOW_SUN_POLL': '0'}
         if not args.shadow_replay_depth:
             parser.error('--shadow-cascades requires --shadow-replay-depth.')
         try:
@@ -1252,8 +1244,7 @@ def main():
         if not 1 <= len(extents) <= SHADOW_CASCADE_MAX or not all(math.isfinite(e) and low <= e <= high for e in extents) \
                 or any(b <= a for a, b in zip(extents, extents[1:])):
             parser.error(f'--shadow-cascades takes 1..{SHADOW_CASCADE_MAX} ascending half-extents within [{low:g}, {high:g}].')
-        env = {'X3M_SHADOW_CASCADES': ','.join(repr(e) for e in extents), 'X3M_SHADOW_SUN_POLL': '0' if args.shadow_sun_poll == 'off' else '1',
-               'X3M_SHADOW_SUN_TRACE': '1' if args.shadow_sun_trace else '0'}
+        env = {'X3M_SHADOW_CASCADES': ','.join(repr(e) for e in extents), 'X3M_SHADOW_SUN_POLL': '0' if args.shadow_sun_poll == 'off' else '1'}
 
         def integers(option, text, low, high):
             try:
@@ -1312,10 +1303,10 @@ def main():
         return env
     args.shadow_cascade_env = shadow_cascade_env(parser, args)
     # Caster retention (docs/architecture/shadow-caster-retention.md): rides the cascades.
-    if (args.shadow_retention_census or args.shadow_caster_retention) and args.shadow_cascades is None:
-        parser.error('--shadow-retention-census and --shadow-caster-retention require --shadow-cascades.')
-    if (args.shadow_caster_retention_age is not None or args.shadow_caster_retention_eps is not None or args.shadow_retention_timing) and not (args.shadow_retention_census or args.shadow_caster_retention):
-        parser.error('--shadow-caster-retention-age, --shadow-caster-retention-eps and --shadow-retention-timing require --shadow-retention-census or --shadow-caster-retention.')
+    if args.shadow_caster_retention and args.shadow_cascades is None:
+        parser.error('--shadow-caster-retention requires --shadow-cascades.')
+    if (args.shadow_caster_retention_age is not None or args.shadow_caster_retention_eps is not None) and not args.shadow_caster_retention:
+        parser.error('--shadow-caster-retention-age and --shadow-caster-retention-eps require --shadow-caster-retention.')
     if args.shadow_caster_retention_age is not None and not 1 <= args.shadow_caster_retention_age <= 10000000:
         parser.error('--shadow-caster-retention-age must be within [1, 10000000].')
     if args.shadow_caster_retention_eps is not None and not (math.isfinite(args.shadow_caster_retention_eps) and 1e-4 <= args.shadow_caster_retention_eps <= 100.0):
@@ -1334,8 +1325,8 @@ def main():
         parser.error('--sun-shadow-bias-slope-texels must be within [0, 8].')
     if args.volumetric_fog is not None and not (args.motion_output and args.taa and args.hdr and args.shadow_replay_depth and args.shadow_cascades is not None):
         parser.error('--volumetric-fog requires --motion-output --taa --hdr --shadow-replay-depth --shadow-cascades.')
-    if args.volumetric_fog is None and (args.volumetric_fog_cards is not None or args.volumetric_fog_range is not None or args.volumetric_fog_everywhere or args.volumetric_fog_timing):
-        parser.error('--volumetric-fog-cards, --volumetric-fog-range, --volumetric-fog-everywhere and --volumetric-fog-timing require --volumetric-fog.')
+    if args.volumetric_fog is None and (args.volumetric_fog_cards is not None or args.volumetric_fog_range is not None or args.volumetric_fog_everywhere):
+        parser.error('--volumetric-fog-cards, --volumetric-fog-range and --volumetric-fog-everywhere require --volumetric-fog.')
     if args.volumetric_fog_range == 'stored' and args.volumetric_fog == 0.0:
         parser.error('--volumetric-fog-range stored requires a positive --volumetric-fog strength (0 detaches the pass).')
     if args.fog_march_scale == '4' and args.volumetric_fog_range != 'stored':
@@ -1486,8 +1477,8 @@ def main():
         parser.error('--pause-key-only/--pause-key cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so the proxy that patches the pause never runs')
     if args.pause_key is not None and args.pause_key_only is False:
         parser.error('--pause-key needs the pause-key-only patch: it cannot be combined with --no-pause-key-only')
-    if args.collide_memo is False and (args.collide_memo_verify or args.collide_query_phases):
-        parser.error('--collide-memo-verify/--collide-query-phases implies the memo: it cannot be combined with --no-collide-memo')
+    if args.collide_memo is False and args.collide_memo_verify:
+        parser.error('--collide-memo-verify implies the memo: it cannot be combined with --no-collide-memo')
     if args.sun_occlusion and not args.motion_output:
         parser.error('--sun-occlusion requires --motion-output (the visibility fraction is measured from the route\'s scene depth).')
     if (args.sun_occlusion or args.sun_occlusion_log) and args.submit_phases:
@@ -1508,22 +1499,12 @@ def main():
         parser.error(f'--sun-occlusion-radius out of range: {args.sun_occlusion_radius} (expected [0.005, 0.25])')
     if args.sun_occlusion_curve is not None and not (math.isfinite(args.sun_occlusion_curve) and 0.25 <= args.sun_occlusion_curve <= 4.0):
         parser.error(f'--sun-occlusion-curve out of range: {args.sun_occlusion_curve} (expected [0.25, 4])')
-    if args.lod_switch_log is not None and not 1 <= args.lod_switch_log <= 4096:
-        parser.error(f'--lod-switch-log out of range: {args.lod_switch_log} (expected 1..4096 rows per frame)')
     if args.cull_small_parts_projectiles is not None and not cull_small_parts_px(args):
         parser.error('--cull-small-parts-projectiles requires a non-zero --cull-small-parts')
     if not 100 <= args.profile_interval_us <= 1000000:
         parser.error('--profile-interval-us must be between 100 and 1000000.')
     if args.gz_buffer_kb != 256 and not args.gz_buffer:
         parser.error('--gz-buffer-kb requires --gz-buffer.')
-    if args.loading_probes and not args.telemetry:
-        parser.error('--loading-probes requires --telemetry.')
-    if args.frame_timing and not args.telemetry:
-        parser.error('--frame-timing requires --telemetry.')
-    if args.frame_timing_state_stamps and not args.frame_timing:
-        parser.error('--frame-timing-state-stamps requires --frame-timing.')
-    if not 0 <= args.frame_timing_state_stamps <= 100000:
-        parser.error('--frame-timing-state-stamps must be between 0 and 100000.')
     if not 1 <= args.gz_buffer_kb <= 65536:
         parser.error('--gz-buffer-kb must be between 1 and 65536.')
     if args.taa:
@@ -1553,8 +1534,10 @@ def main():
                           'transaction_pending': media_package.safe(game, media_package.JOURNAL).exists(),
                           'owned': bool(owned and dll.exists() and digest(dll) == owned['sha256']),
                           'installation': owned,
-                          'log_directories': {'game': str(game / 'x3-modern-captures'),
-                                              'fallback': r'%LOCALAPPDATA%\x3-modern-renderer\captures (read-only game directory)'}}, indent=2))
+                          'log_file': {'game': str(game / 'x3m.log'), 'previous': str(game / 'x3m.prev.log'),
+                                       'fallback': r'%LOCALAPPDATA%\x3-modern-renderer\x3m.log (read-only game directory)'},
+                          'capture_directories': {'game': str(game / 'x3-modern-captures'),
+                                                  'fallback': r'%LOCALAPPDATA%\x3-modern-renderer\captures (read-only game directory)'}}, indent=2))
         return
     if args.action in ('install', 'uninstall', 'rollback', 'recover'):
         try:
@@ -1583,8 +1566,17 @@ def main():
         if not WINE.is_file():
             parser.error(f'CrossOver Preview Wine not found: {WINE}')
         env = os.environ.copy()
-        for name in REMOVED_VARIABLES:
+        for name in REMOVED_VARIABLES + TIERED_VARIABLES:
             env.pop(name, None)
+        # Logging tiers: the two groups, expanded by the DLL; every other logging variable is sent only by its own
+        # developer option below (an inherited value of the tiered set was dropped above, so a stale export cannot
+        # change what a flight logs or serialise it).
+        if args.debug:
+            env['X3M_DEBUG'] = '1'
+        if args.perf:
+            env['X3M_PERF'] = '1'
+        if args.frame_end_stride is not None:
+            env['X3M_FRAME_END_STRIDE'] = str(args.frame_end_stride)
         env['X3M_CAPTURE_START'] = str(max(1, args.capture_start))
         env['X3M_CAPTURE_FRAMES'] = str(args.capture_frames)
         # Delayed F8 capture: set only when requested, so a stale shell value
@@ -1593,49 +1585,45 @@ def main():
             env['X3M_CAPTURE_DELAY'] = str(args.capture_delay)
         else:
             env.pop('X3M_CAPTURE_DELAY', None)
-        env['X3M_TELEMETRY'] = '1' if args.telemetry else '0'
-        env['X3M_GAME_PHASES'] = '1' if args.game_phases else '0'
-        env['X3M_GAME_PHASE_THRESHOLD_MS'] = str(args.game_phase_threshold_ms)
-        env['X3M_TELEMETRY_DRAW'] = '1' if args.telemetry_draw else '0'
-        env['X3M_FRAME_TIMING'] = '1' if args.frame_timing else '0'
-        env['X3M_FRAME_END_STRIDE'] = str(args.frame_end_stride)  # explicit, so an inherited value cannot change the cadence
-        env['X3M_FPS_OVERLAY'] = '1' if args.fps_overlay else '0'
-        env['X3M_GPU_SYNC_TIMING'] = '1' if args.gpu_sync_timing else '0'  # explicit, so an inherited value cannot serialise a normal flight
-        # Window mode, trace and cursor re-assert (window-mode-and-cursor-fix.md section 4). The monitor-rect move is
+        if args.game_phases:
+            env['X3M_GAME_PHASES'] = '1'
+            env['X3M_GAME_PHASE_THRESHOLD_MS'] = str(args.game_phase_threshold_ms)
+        if args.telemetry_draw:
+            env['X3M_TELEMETRY_DRAW'] = '1'
+        if args.gpu_sync_timing:
+            env['X3M_GPU_SYNC_TIMING'] = '1'  # never inherited (popped above), so a stale export cannot serialise a normal flight
+        # Window mode and cursor re-assert (window-mode-and-cursor-fix.md section 4). The monitor-rect move is
         # explicit on every modded launch (on by default, the _DEFAULT marker telling the DLL's row whether it is the
-        # default) so a stale shell value cannot decide it; the trace and the re-assert travel only when given. None of
-        # them travels under --vanilla (explicit values are refused above).
-        for name in ('X3M_WINDOW_MONITOR_RECT', 'X3M_WINDOW_MONITOR_RECT_DEFAULT', 'X3M_WINDOW_TRACE', 'X3M_CURSOR_REASSERT'):
+        # default) so a stale shell value cannot decide it; the re-assert travels only when given (the window trace is
+        # part of --debug since 2026-09-26). None of them travels under --vanilla (explicit values are refused above).
+        for name in ('X3M_WINDOW_MONITOR_RECT', 'X3M_WINDOW_MONITOR_RECT_DEFAULT', 'X3M_CURSOR_REASSERT'):
             env.pop(name, None)
         if not args.vanilla:
             env['X3M_WINDOW_MONITOR_RECT'] = '0' if args.window_monitor_rect == 'off' else '1'
             env['X3M_WINDOW_MONITOR_RECT_DEFAULT'] = '1' if args.window_monitor_rect is None else '0'
-            if args.window_trace:
-                env['X3M_WINDOW_TRACE'] = '1'
             if args.cursor_reassert:
                 env['X3M_CURSOR_REASSERT'] = '1'
-        env['X3M_FRAME_PHASES'] = '1' if args.frame_phases else '0'  # implied by --residual-phases above
-        env['X3M_PASS_PHASES'] = '1' if args.pass_phases else '0'
-        env['X3M_RESIDUAL_PHASES'] = '1' if args.residual_phases else '0'
-        env['X3M_LIGHT_PHASES'] = '1' if args.light_phases else '0'
-        env['X3M_SUBMIT_PHASES'] = '1' if args.submit_phases else '0'
-        env['X3M_LOOP_PHASES'] = '1' if args.loop_phases else '0'
-        env['X3M_MEDIA_CUE_TRACE'] = '1' if args.media_cue_trace else '0'
-        env['X3M_MEDIA_CUE_CACHE'] = '1' if args.media_cue_cache == 'on' else '0'
-        env['X3M_MEDIA_CUE_RETRY_S'] = str(args.media_cue_retry_s)
-        # Music keep and trace: set only when requested (refused with --vanilla above) and dropped otherwise,
-        # so a stale shell value cannot patch the stop-all or the play routine's seek.
-        for option, variable in ((args.music_keep, 'X3M_MUSIC_KEEP'), (args.music_trace, 'X3M_MUSIC_TRACE')):
+        # The engine stamp families (explicit developer options; the frame phases they pair with come with --perf).
+        for option, variable in ((args.pass_phases, 'X3M_PASS_PHASES'), (args.residual_phases, 'X3M_RESIDUAL_PHASES'), (args.light_phases, 'X3M_LIGHT_PHASES'),
+                                 (args.submit_phases, 'X3M_SUBMIT_PHASES'), (args.loop_phases, 'X3M_LOOP_PHASES')):
             if option:
                 env[variable] = '1'
-            else:
-                env.pop(variable, None)
-        env['X3M_FRAME_TIMING_STATE_STAMPS'] = str(args.frame_timing_state_stamps if args.frame_timing else 0)
+        env['X3M_MEDIA_CUE_CACHE'] = '1' if args.media_cue_cache == 'on' else '0'
+        env['X3M_MEDIA_CUE_RETRY_S'] = str(args.media_cue_retry_s)
+        # Music keep: set only when requested (refused with --vanilla above) and dropped otherwise, so a stale shell
+        # value cannot patch the stop-all or the play routine's seek (the trace is part of --debug since 2026-09-26).
+        if args.music_keep:
+            env['X3M_MUSIC_KEEP'] = '1'
+        else:
+            env.pop('X3M_MUSIC_KEEP', None)
+        if args.frame_timing_state_stamps:
+            env['X3M_FRAME_TIMING_STATE_STAMPS'] = str(args.frame_timing_state_stamps)
         env['X3M_OWNERSHIP'] = '1' if args.ownership else '0'
         env['X3M_OBJECT_TRACE'] = '1' if args.object_trace else '0'
         env['X3M_OBJECT_LIFETIME'] = '1' if args.object_lifetime else '0'
         env['X3M_MESH_ADJACENCY'] = args.mesh_adjacency
-        env['X3M_MESH_ADJACENCY_DUMP'] = '1' if args.mesh_adjacency_dump else '0'
+        if args.mesh_adjacency_dump:
+            env['X3M_MESH_ADJACENCY_DUMP'] = '1'
         env['X3M_MOTION_OUTPUT'] = '1' if args.motion_output else '0'
         env['X3M_MOTION_JITTER'] = '1' if args.motion_jitter else '0'
         # User-accepted production defaults: a finite huge median bound is a
@@ -1645,7 +1633,8 @@ def main():
         env.setdefault('X3M_MOTION_CUT_MEDIAN_PX', '1e30')
         env.setdefault('X3M_MOTION_CUT_MISSING', '1')
         env['X3M_TAA'] = '1' if args.taa else '0'
-        env['X3M_TAA_DEBUG'] = '1' if args.taa_debug else '0'
+        if args.taa_debug:
+            env['X3M_TAA_DEBUG'] = '1'
         # --taa-k / X3M_TAA_K are gone (2026-09-25, user decision): k is derived from the write-back
         # exposure only; an inherited shell value is dropped, never forwarded.
         env.pop('X3M_TAA_K', None)
@@ -1687,7 +1676,6 @@ def main():
         else:
             env.pop('X3M_TAA_UNMATCHED_STATIC', None)
         env['X3M_CAMERA_CUT_DEG'] = repr(args.camera_cut_deg)
-        env['X3M_CAMERA_LOG'] = str(args.camera_log)
         env['X3M_MOTION_RT_MODE'] = args.motion_rt_mode
         env['X3M_SCENE_HOOK'] = '0' if args.scene_hook == 'off' or not args.motion_output else '1'
         env['X3M_HDR'] = '1' if args.hdr else '0'
@@ -1730,21 +1718,17 @@ def main():
             env.pop(name, None)
         env.update(args.shadow_cascade_env)
         # Caster retention: explicit switches, companions only when given.
-        env['X3M_SHADOW_RETENTION_CENSUS'] = '1' if args.shadow_retention_census else '0'
         env['X3M_SHADOW_CASTER_RETENTION'] = '1' if args.shadow_caster_retention else '0'
-        for name in ('X3M_SHADOW_CASTER_RETENTION_AGE', 'X3M_SHADOW_CASTER_RETENTION_EPS', 'X3M_SHADOW_RETENTION_TIMING'):
+        for name in ('X3M_SHADOW_CASTER_RETENTION_AGE', 'X3M_SHADOW_CASTER_RETENTION_EPS'):
             env.pop(name, None)
         if args.shadow_caster_retention_age is not None:
             env['X3M_SHADOW_CASTER_RETENTION_AGE'] = str(args.shadow_caster_retention_age)
         if args.shadow_caster_retention_eps is not None:
             env['X3M_SHADOW_CASTER_RETENTION_EPS'] = repr(args.shadow_caster_retention_eps)
-        if args.shadow_retention_timing:
-            env['X3M_SHADOW_RETENTION_TIMING'] = '1'
         env['X3M_SUN_SHADOW_BIAS_UNITS'] = repr(args.sun_shadow_bias_units if args.sun_shadow_bias_units is not None else 0.53571875)
         env['X3M_SUN_SHADOW_BIAS_CLAMP_TEXELS'] = repr(args.sun_shadow_bias_clamp_texels if args.sun_shadow_bias_clamp_texels is not None else 20.97152)
         env['X3M_SUN_SHADOW_BIAS_SLOPE_TEXELS'] = repr(args.sun_shadow_bias_slope_texels if args.sun_shadow_bias_slope_texels is not None else 0.2)
         # Volumetric fog: every switch explicit so an inherited value cannot enable it.
-        env['X3M_SECTOR_BACKGROUND'] = '1' if args.sector_background else '0'
         env['X3M_VOLUMETRIC_FOG'] = '1' if args.volumetric_fog is not None else '0'
         env['X3M_VOLUMETRIC_FOG_STRENGTH'] = repr(args.volumetric_fog if args.volumetric_fog is not None else 0.02)
         env['X3M_VOLUMETRIC_FOG_CARDS'] = args.volumetric_fog_cards or 'keep'
@@ -1772,7 +1756,6 @@ def main():
             for name in [k for k in env if k.startswith('X3M_FOG_MOTES_')]:
                 env.pop(name, None)
         env['X3M_VOLUMETRIC_FOG_EVERYWHERE'] = '1' if args.volumetric_fog_everywhere else '0'
-        env['X3M_VOLUMETRIC_FOG_TIMING'] = '1' if args.volumetric_fog_timing else '0'
         env['X3M_EMISSION_SOURCE_GAIN'] = repr(args.emission_source_gain if args.emission_source_gain is not None else 1.0)
         # The guide lights follow the effects gain and its key (Ctrl+Shift+F6):
         # an --emission-source-gain above 1 hands them its value, so one option
@@ -1834,12 +1817,12 @@ def main():
             env['X3M_STATE_SHADOW'] = '1' if args.state_shadow == 'on' else '0'
         env['X3M_GZ_BUFFER'] = '1' if args.gz_buffer else '0'
         env['X3M_GZ_BUFFER_KB'] = str(args.gz_buffer_kb)
-        env['X3M_LOADING_PROBES'] = '1' if args.loading_probes else '0'
         env['X3M_CRYPT_CACHE'] = '1' if args.crypt_cache else '0'
         env['X3M_RESOURCE_READ'] = args.resource_read
         env['X3M_DAT_HANDLES'] = '1' if args.dat_handles else '0'
-        env['X3M_PROFILE'] = '1' if args.profile else '0'
-        env['X3M_PROFILE_INTERVAL_US'] = str(args.profile_interval_us)
+        if args.profile:
+            env['X3M_PROFILE'] = '1'
+            env['X3M_PROFILE_INTERVAL_US'] = str(args.profile_interval_us)
         env['X3M_CAMERA'] = args.camera  # chase installs the trampoline; vanilla (or unset) patches nothing
         # Terran-station LOD: always explicit on a modded launch (size unless --terran-station-lod distance), so a
         # stale shell value can select neither mode; dropped under --vanilla (refused above).
@@ -1880,11 +1863,6 @@ def main():
             env['X3M_COLLIDE_BOX_CULL'] = '1'
         else:
             env.pop('X3M_COLLIDE_BOX_CULL', None)
-        # Collide narrow census: same rule (diagnostic; independent of the box cull).
-        if args.collide_narrow_census:
-            env['X3M_COLLIDE_NARROW_CENSUS'] = '1'
-        else:
-            env.pop('X3M_COLLIDE_NARROW_CENSUS', None)
         # Collide SAT SSE2 and memo: launcher defaults on a modded launch (collide_default), still dropped from an inherited
         # environment when off.
         if collide_default(args.collide_sat_sse2, args):
@@ -1892,7 +1870,7 @@ def main():
         else:
             env.pop('X3M_COLLIDE_SAT_SSE2', None)
         # Collide memo: same rule; the verify switch implies the memo and never travels alone.
-        if collide_default(args.collide_memo, args) or args.collide_memo_verify or args.collide_query_phases:
+        if collide_default(args.collide_memo, args) or args.collide_memo_verify:
             env['X3M_COLLIDE_MEMO'] = '1'
         else:
             env.pop('X3M_COLLIDE_MEMO', None)
@@ -1906,10 +1884,6 @@ def main():
             env['X3M_PAUSE_KEY'] = f'0x{args.pause_key:x}'
         else:
             env.pop('X3M_PAUSE_KEY', None)
-        if args.collide_query_phases:
-            env['X3M_COLLIDE_QUERY_PHASES'] = '1'
-        else:
-            env.pop('X3M_COLLIDE_QUERY_PHASES', None)
         if args.collide_memo_verify:
             env['X3M_COLLIDE_MEMO_VERIFY'] = '1'
         else:
@@ -1925,22 +1899,6 @@ def main():
                 env.pop(name, None)
             else:
                 env[name] = value
-        # Object bounds log: same rule, set only when requested so a stale shell
-        # value cannot add a per-draw line to a capture frame.
-        if args.object_bounds_log:
-            env['X3M_OBJECT_BOUNDS_LOG'] = '1'
-        else:
-            env.pop('X3M_OBJECT_BOUNDS_LOG', None)
-        # Cull census: same rule, set only when requested so a stale shell
-        # value cannot patch the cull/LOD pass.
-        if args.cull_census or args.lod_switch_log is not None:
-            env['X3M_CULL_CENSUS'] = '1'
-        else:
-            env.pop('X3M_CULL_CENSUS', None)
-        if args.lod_switch_log is not None:
-            env['X3M_LOD_SWITCH_LOG'] = str(args.lod_switch_log)
-        else:
-            env.pop('X3M_LOD_SWITCH_LOG', None)
         # Small-parts cull: same rule; 0 is the documented off and is not
         # forwarded, and neither is anything under --vanilla. When the option is
         # unset a modded launch takes the production default (4 px).

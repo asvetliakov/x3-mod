@@ -8,6 +8,7 @@ import re
 import shutil
 import subprocess
 import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bottle results directory
+import fixture_log  # X3M_LOG_FILE: the session log where this runner reads it (logging tiers)
 root=Path(__file__).resolve().parents[2];probe=root/'verification/probe/build';results=bottle.results_dir(root)
 from run_ownership_integration import sources, binaries, sha, require_no_game
 from verify_ownership_integration import verify_geometry, verify_motion_mode, verify_admission
@@ -60,7 +61,7 @@ def main():
     stdout_path = results / 'ownership-integration-fallback.txt'
     with stdout_path.open('w') as stdout, (results / 'ownership-integration-fallback-wine.log').open('w') as stderr:
         require_no_game()
-        completed = subprocess.run([wine, '--bottle', bottle.BOTTLE, '--no-update', '--dll', 'd3d9=n,b', '--workdir', str(directory), str(directory / 'd3d9_smoke.exe')], env=env, stdout=stdout, stderr=stderr, timeout=90)
+        completed = subprocess.run([wine, '--bottle', bottle.BOTTLE, '--no-update', '--dll', 'd3d9=n,b', '--workdir', str(directory), str(directory / 'd3d9_smoke.exe')], env={**env, **fixture_log.session_log_env(directory)}, stdout=stdout, stderr=stderr, timeout=90)
     trace = max((directory / 'x3-modern-captures').glob('session-*.log'), key=lambda p: p.stat().st_mtime)
     shutil.copy(trace, results / 'ownership-integration-fallback-capture.log')
     text = trace.read_text(); output = stdout_path.read_text()

@@ -17,6 +17,7 @@
 #include <cstring>
 #include <type_traits>
 #include <cwchar>
+#include "log_tiers.h"
 
 namespace x3m::loading_trace {
 namespace {
@@ -647,9 +648,9 @@ __attribute__((noinline)) BOOL WINAPI crypt_release(HCRYPTPROV provider,DWORD fl
 __attribute__((noinline)) BOOL WINAPI crypt_import(HCRYPTPROV provider,const BYTE* data,DWORD length,HCRYPTKEY key,DWORD flags,HCRYPTKEY* out){return crypt_site(__builtin_return_address(0),Operation::CryptImport)?crypt_cache::import_key(provider,data,length,key,flags,out):light::crypt_import_key(provider,data,length,key,flags,out);}
 __attribute__((noinline)) BOOL WINAPI crypt_key_destroy(HCRYPTKEY key){return crypt_site(__builtin_return_address(0),Operation::CryptKeyDestroy)?crypt_cache::destroy_key(key):light::crypt_destroy_key(key);}
 
-bool requested() { wchar_t setting[8]{};return GetEnvironmentVariableW(L"X3M_TELEMETRY",setting,8)==1&&setting[0]==L'1'; }
+bool requested() { return log_tier::telemetry(); } // X3M_TELEMETRY=1 or a logging group (log_tiers.h)
 }
-bool probes_requested() { wchar_t setting[8]{};return GetEnvironmentVariableW(L"X3M_LOADING_PROBES",setting,8)==1&&setting[0]==L'1'; }
+bool probes_requested() { return log_tier::debug_flag(L"X3M_LOADING_PROBES"); } // X3M_LOADING_PROBES=1 or X3M_DEBUG=1
 namespace {
 bool readable(const void* address,size_t bytes,HMODULE owner=nullptr,bool executable=false);
 

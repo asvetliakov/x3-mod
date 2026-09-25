@@ -19,6 +19,7 @@ import tempfile
 import time
 
 import bottle
+import fixture_log  # X3M_LOG_FILE: the session log where this runner reads it (logging tiers)
 from game_guard import game_running
 import run_linear_material as material_reference
 
@@ -253,7 +254,7 @@ def main():
             command=[bottle.WINE,*bottle.wine_args(),'--dll','d3d9=n,b','--workdir',str(work),str(work/'fixture.exe'),'Z:'+str(inputs[2]),'Z:'+str(inputs[3]),'cutoutbench' if run.get('timing') else 'cutout']
             if run.get('timing'):command.append(f"{run['width']}x{run['height']}")
             start=time.monotonic()
-            with (work/'stdout.txt').open('w') as out,(work/'wine.log').open('w') as error:child=subprocess.run(command,env=env,stdout=out,stderr=error,timeout=180)
+            with (work/'stdout.txt').open('w') as out,(work/'wine.log').open('w') as error:child=subprocess.run(command,env={**env, **fixture_log.session_log_env(work)},stdout=out,stderr=error,timeout=180)
             assert child.returncode==0,(run['name'],'fixture failed',str(work))
             output=(work/'stdout.txt').read_text()
             if run.get('timing'):case=validate_timing(output,run['material'],run['width'],run['height'],run.get('ordinary',False))

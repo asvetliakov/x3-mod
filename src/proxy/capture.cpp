@@ -65,6 +65,8 @@
 #include "fps_overlay.h"
 #include "engine_memory.h"
 #include "cpu_state.h"
+#include "log_tiers.h"
+#include "session_log.h"
 #include "../ownership/d3d9_ownership.h"
 #include "../ownership/application_admission_abi.h"
 #include <array>
@@ -85,8 +87,6 @@
 namespace x3m {
 namespace {
 std::recursive_mutex mutex;
-FILE* logfile;
-HANDLE log_os_handle=INVALID_HANDLE_VALUE; // log_handle(): exception-context writes bypass stdio
 std::wstring directory;
 unsigned capture_start = 120;
 unsigned capture_count = 1;
@@ -95,12 +95,13 @@ unsigned capture_count = 1;
 // the game's SETA time compression, so a capture of the compressed case needs
 // the delay to re-engage SETA (src/proxy/capture_arm_core.h).
 unsigned capture_delay = 0;
-// X3M_FRAME_END_STRIDE (1..frame_end_stride_max, default 300; launcher
-// --frame-end-stride): frames between two frame_end lines. Read once at attach,
-// used as a divisor on the Present path only; 1 logs every frame (about 100 B
-// per frame). The default keeps the historical 300-frame cadence, and the
-// other 300-frame reports of that path keep it whatever this is.
-constexpr unsigned frame_end_stride_default = 300, frame_end_stride_max = 100000;
+// X3M_FRAME_END_STRIDE (1..frame_end_stride_max; launcher --frame-end-stride):
+// frames between two frame_end lines. Read once at attach, used as a divisor on
+// the Present path only; 1 logs every frame (about 100 B per frame). Unset:
+// 1 with X3M_PERF=1 or X3M_DEBUG=1, else 3600, the always tier's heartbeat of
+// about one row a minute (docs/architecture/logging-tiers.md; 300 before the
+// tiers). The other 300-frame reports of that path keep their own cadence.
+constexpr unsigned frame_end_stride_default = 3600, frame_end_stride_max = 100000;
 unsigned frame_end_stride = frame_end_stride_default;
 bool scene_depth_capture_requested = false;
 bool finite_positions_requested = false;
@@ -229,6 +230,10 @@ x3m::renderer::HdrConfig hdr_config{};
 // periodic motion_output_frame cadence with telemetry on (default 60).
 bool motion_rt_lazy = false;
 unsigned motion_frame_log = 60;
+// X3M_SHADOW_TIMING=1 or X3M_PERF=1: shadow_replay_depth and sun_shadow_apply_frame every frame (logging tiers).
+bool shadow_timing_requested = false;
+// X3M_SHADOW_ROWS=1 or X3M_DEBUG=1: the five shadow/sun state rows every frame (logging tiers; the family cadence otherwise).
+bool shadow_rows_requested = false;
 // X3M_STATE_SHADOW selects the render-state configuration (hybrid unhook,
 // docs/architecture/state-call-fast-path.md step 5). Unset (auto, -1): the
 // SetRenderState and SetSamplerState hooks are not installed and the route
@@ -250,7 +255,7 @@ int motion_state_shadow = -1;
 // X3M_FIXTURE_TAA_SENTINEL=auto|1|2 (1: current-only; 2: strict, skip the
 // resolve without one) for the fixtures that pin those policies;
 // X3M_CAMERA_CUT_DEG bounds the camera rotation per frame before a cut is
-// declared (default 20); X3M_CAMERA_LOG is the camera_state line cadence (300).
+// declared (default 20); X3M_CAMERA_LOG is the camera_state line cadence (unset: capture frames only, 1 with X3M_DEBUG=1).
 x3m::renderer::SentinelMode taa_sentinel_mode = x3m::renderer::SentinelMode::Auto;
 float camera_cut_degrees = 20.f;
 // X3M_TAA_UNMATCHED_STATIC=node|all|off (requires X3M_TAA=1): a routed draw
@@ -326,7 +331,7 @@ bool thin_vote_gate = false;
 // their weight. Needs an age program (far stabiliser or thin region), which motion_output judges;
 // inert (cap 1) without the camera path (the seam's X3M_FIXTURE_TAA_SENTINEL=1, or no camera transform this frame).
 float taa_motion_weight[3] = {0.f, 2.f, 8.f};
-unsigned camera_log_frames = 300;
+unsigned camera_log_frames = 0; // X3M_CAMERA_LOG; 0 = capture frames only (initialize_log)
 unsigned motion_jitter_samples = 8;
 // The finite huge displacement bound is a practical off switch. A missing
 // bound of 1 is exactly off because finish_cut_detector uses strict > and the
@@ -1141,6 +1146,8 @@ ULONG WINAPI release_device(IDirect3DDevice9* d) {
         resource_reader::report(); // final summary without telemetry; the reader itself stays installed (loading continues without a device)
         loading_trace::crypt_cache_report("session"); // cumulative totals; bounded native cache retained until process exit
         voice_dmo_fallback::shutdown(); // disarms the fault witness; the site patch stays with the other claims
+        session_log::report("last_device"); // telemetry on: the log writer's last window (render-side format cost, drain cost)
+        session_log::park_writer("last_device"); // the writer ends and drops its module reference (FreeLibrary can unload); the next device re-arms it
         ownership::set_surface_lock_observer(nullptr); // the video blit witness: no surface outlives the last device, and the log closes after this
     }
     if(!refs){
@@ -1223,7 +1230,7 @@ void compositor_pre(const X3mCompositorFrame* frame,void* storage,void*) {
     auto& call=*new(storage) CompositorInvocation{};
     CaptureLock lock;
     frame_timing::Scope timing(frame_timing::Bucket::Scene,"compositor_pre"); // X3M_FRAME_TIMING only
-    if(++bloom_calls%300==0)
+    if(++bloom_calls%300==0&&telemetry::enabled()) // the 300-call window: a telemetry row since the logging tiers
         log("bloom_admission calls=%llu caller=%llu owner=%llu device=%llu nested=%llu thread=%llu reset=%llu glow_off=%llu scene_handoff=%llu pass_unavailable=%llu boundary=%llu post_qualification=%llu",
             bloom_calls,bloom_refusals[0],bloom_refusals[1],bloom_refusals[2],bloom_refusals[3],bloom_refusals[4],bloom_refusals[5],
             bloom_refusals[6],bloom_refusals[7],bloom_refusals[8],bloom_refusals[9],bloom_refusals[10]);
@@ -1281,7 +1288,7 @@ void compositor_pre(const X3mCompositorFrame* frame,void* storage,void*) {
         call.ready=compositor_current(call);
         if(call.ready)++ctx.bloom_prepared;
     }
-    if((call.ready && ctx.bloom_prepared==1) || (!prepared.ready && ctx.bloom_failure_reports++<8) || ctx.frame%300==0)
+    if((call.ready && ctx.bloom_prepared==1) || (!prepared.ready && ctx.bloom_failure_reports++<8) || (ctx.frame%300==0&&telemetry::enabled()))
     {
         char clamp_text[24];
         const float clamp=call.input.filter.source_clamp;
@@ -1310,7 +1317,7 @@ void compositor_post(const X3mCompositorFrame*,void* storage,void*) {
         ++ctx.bloom_committed;ctx.bloom_effective_frame=ctx.frame;
         ctx.bloom_effective_on=ctx.comparison.bloom_requested;
     }
-    if((result.committed && ctx.bloom_committed==1) || (!result.committed && ctx.bloom_failure_reports++<8) || ctx.frame%300==0)
+    if((result.committed && ctx.bloom_committed==1) || (!result.committed && ctx.bloom_failure_reports++<8) || (ctx.frame%300==0&&telemetry::enabled()))
         log("bloom_commit device=%llu frame=%llu committed=%u reason=%s operation=%08lx restore=%08lx recovery=%08lx recovery_restore=%08lx original_preserved=%u state_preserved=%u cpu_ticks=%llu",
             ctx.id,ctx.frame,result.committed,result.reason,result.operation,result.restore,result.recovery,result.recovery_restore,
             result.original_preserved,result.state_preserved,telemetry::now()-begin);
@@ -1704,6 +1711,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
     }
     if (ctx.capture && ctx.remaining) --ctx.remaining;
     ++ctx.frame; ctx.draws=0; ctx.composition_scene_owner=false;
+    session_log::note_frame(); // session_end frames= and the exception row's frame=: one interlocked add
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     ctx.fixture_emission_source_calls=0; ctx.fixture_primitive_source_calls=0;
 #endif
@@ -1726,7 +1734,8 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
     ctx.motion.begin_frame(d,ctx.frame,ctx.capture && motion_capture_requested && motion_live_replay_available &&
         object_trace::active() && object_lifetime::active());
     if (ctx.capture) log("frame_begin device=%llu frame=%llu",ctx.id,ctx.frame);
-    if (logfile) { const auto begin=telemetry::now(); fflush(logfile); telemetry::record(ctx.stats,telemetry::Metric::LogFlush,telemetry::now()-begin); }
+    // No flush here since the logging tiers: the writer thread drains the log (session_log.h). The only
+    // log metric left is log_wake (telemetry.cpp): the SetEvent a telemetry summary uses to wake the writer.
     return hr;
 }
 HRESULT reset_common(IDirect3DDevice9* d,D3DPRESENT_PARAMETERS* p,D3DDISPLAYMODEEX* mode,bool extended) {
@@ -1760,6 +1769,7 @@ HRESULT reset_common(IDirect3DDevice9* d,D3DPRESENT_PARAMETERS* p,D3DDISPLAYMODE
     // mode-change path); the same predicate moves its window back to the monitor rectangle (window_mode.h).
     if(p)window_mode::apply("reset_before",ctx.stats.focus_window,p->hDeviceWindow,p->Windowed!=FALSE,p->BackBufferWidth,p->BackBufferHeight);
     log("reset_begin ptr=%p device=%llu",d,ctx.id);
+    session_log::note_reset();
     finite_upload_metrics(d,ctx,"reset_before");
     const auto begin=telemetry::now();
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
@@ -2510,6 +2520,8 @@ HRESULT WINAPI end_stateblock(IDirect3DDevice9* d,IDirect3DStateBlock9** out){
 }
 void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     if (devices.count(d)) return;
+    session_log::note_device();
+    session_log::start_writer(telemetry::enabled()); // re-arms a writer parked by the previous last-device release (no-op while one runs)
     IDirect3DDevice9Ex* ex=nullptr;
     const bool supports_ex=SUCCEEDED(d->QueryInterface(IID_IDirect3DDevice9Ex,reinterpret_cast<void**>(&ex)))
         && static_cast<void*>(ex)==static_cast<void*>(d);
@@ -2561,6 +2573,8 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_taa_flicker(taa_alpha_history);
     hooked.motion_output.configure_rt_mode(motion_rt_lazy);
     hooked.motion_output.configure_frame_log(motion_frame_log);
+    hooked.motion_output.configure_shadow_timing(shadow_timing_requested);
+    hooked.motion_output.configure_shadow_rows(shadow_rows_requested);
     hooked.motion_output.configure_sentinel(taa_sentinel_mode,camera_cut_degrees,camera_log_frames);
     hooked.motion_output.configure_unmatched_static(taa_unmatched_static);
     hooked.motion_output.configure_sky_history(taa_sky_history_strict,taa_sky_history_band_px,taa_sky_history_exit_px);
@@ -2670,7 +2684,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
       // counter (no box without it) and needs the verified submission identity that object_context
       // needs, because node=/model= are the scope's. Refused otherwise, and always noted.
       { wchar_t flag[4]{};
-        const bool bounds_asked=GetEnvironmentVariableW(L"X3M_OBJECT_BOUNDS_LOG",flag,4)==1&&flag[0]==L'1';
+        const bool bounds_asked=log_tier::debug()||(GetEnvironmentVariableW(L"X3M_OBJECT_BOUNDS_LOG",flag,4)==1&&flag[0]==L'1'); // or X3M_DEBUG=1
         if(bounds_asked){
             const bool traced=object_trace::active();
             const bool bounds_enabled=enabled&&traced;
@@ -2787,7 +2801,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
                 // Per-frame sun trace (X3M_SHADOW_SUN_TRACE=1, default off): one
                 // shadow_sun_frame line per frame while the cascades are on, for the
                 // re-derivation rate between the sparse shadow_replay_sun_point lines.
-                { const bool trace_asked=GetEnvironmentVariableW(L"X3M_SHADOW_SUN_TRACE",setting,4)==1&&setting[0]==L'1';
+                { const bool trace_asked=log_tier::debug_flag(L"X3M_SHADOW_SUN_TRACE"); // X3M_SHADOW_SUN_TRACE=1 or X3M_DEBUG=1
                   if(trace_asked)log("shadow_sun_trace_mode requested=1 enabled=%u cascades=%u",set.count!=0,set.count);
                   hooked.motion_output.configure_shadow_sun_trace(trace_asked&&set.count!=0); } } }
           // Sun-shadow caster retention (docs/architecture/shadow-caster-retention.md), cascades only, default off:
@@ -2797,7 +2811,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
           // X3M_SHADOW_CASTER_RETENTION_EPS (units, 1e-4..100, default 0.05) calibrate both;
           // X3M_SHADOW_RETENTION_TIMING=1 adds the per-draw cost to the frame line (two counter reads per recorded draw).
           { const auto flag=[&](const wchar_t* name){ return GetEnvironmentVariableW(name,setting,4)==1&&setting[0]==L'1'; };
-            const bool census=flag(L"X3M_SHADOW_RETENTION_CENSUS"), live=flag(L"X3M_SHADOW_CASTER_RETENTION");
+            const bool census=flag(L"X3M_SHADOW_RETENTION_CENSUS")||log_tier::debug(), live=flag(L"X3M_SHADOW_CASTER_RETENTION"); // census: or X3M_DEBUG=1
             if(census||live){
                 std::uint32_t age=shadow_retention::age_cap_default; double eps=shadow_retention::eps_default; wchar_t number[32]{}; wchar_t* stop=nullptr;
                 if(GetEnvironmentVariableW(L"X3M_SHADOW_CASTER_RETENTION_AGE",number,32)>0){ const unsigned long v=wcstoul(number,&stop,10); if(stop!=number&&*stop==L'\0'&&v>=shadow_retention::age_cap_min&&v<=shadow_retention::age_cap_max)age=std::uint32_t(v); }
@@ -2944,49 +2958,71 @@ bool thin_vote_route_gate() noexcept { return thin_vote_gate; } // the loader's 
 // `call 0x0047e6e0` for the lens scene, under the thunk's full CPU-state boundary.
 void sun_lens_begin() { CaptureLock lock; for(auto& entry:devices) entry.second->motion_output.sun_occlusion_begin(); }
 void sun_lens_end() { CaptureLock lock; for(auto& entry:devices) entry.second->motion_output.sun_occlusion_end(); }
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+// Seam only: the render-thread cost of log() (format + append, no file I/O) per row, its worst single call, the calls
+// over 100 us and 1 ms, and the rows the buffer dropped while the writer drained; wall_ms covers the whole burst.
+void log_fixture_bench(unsigned rows) {
+    static char pad[1601]; std::memset(pad,'x',1600); pad[1600]=0; // with the prefix about one motion_output_frame row (1,765 B)
+    LARGE_INTEGER frequency{},begin{},a{},b{},end{}; QueryPerformanceFrequency(&frequency);
+    const unsigned dropped=session_log::dropped_total();
+    unsigned long long total=0,worst=0; unsigned over_100us=0,over_1ms=0;
+    QueryPerformanceCounter(&begin);
+    for(unsigned i=0;i<rows;++i){
+        QueryPerformanceCounter(&a);
+        log("log_bench_row i=%u value=%.3f pad=%s",i,double(i)*.5,pad);
+        QueryPerformanceCounter(&b);
+        const unsigned long long t=static_cast<unsigned long long>(b.QuadPart-a.QuadPart);
+        total+=t; if(t>worst)worst=t;
+        over_100us+=t*10000ull>static_cast<unsigned long long>(frequency.QuadPart); over_1ms+=t*1000ull>static_cast<unsigned long long>(frequency.QuadPart);
+    }
+    QueryPerformanceCounter(&end);
+    const double us=1e6/double(frequency.QuadPart);
+    log("log_bench rows=%u row_bytes=%u mean_us=%.3f max_us=%.1f over_100us=%u over_1ms=%u wall_ms=%.1f dropped=%u",rows,1600u+34u,
+        double(total)*us/double(rows),double(worst)*us,over_100us,over_1ms,double(end.QuadPart-begin.QuadPart)*us/1000.,session_log::dropped_total()-dropped);
+}
+#endif
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+LONG WINAPI fixture_exception_resume(EXCEPTION_POINTERS* info) {
+    return info&&info->ExceptionRecord&&info->ExceptionRecord->ExceptionCode==EXCEPTION_ACCESS_VIOLATION&&info->ExceptionRecord->NumberParameters==2&&
+        info->ExceptionRecord->ExceptionInformation[1]==0x0badf00du?EXCEPTION_CONTINUE_EXECUTION:EXCEPTION_CONTINUE_SEARCH;
+}
+void log_fixture_exception() {
+    log("fixture_exception_marker before=1");
+    const ULONG_PTR information[2]={0,0x0badf00du}; // a read of 0x0badf00d, handled by nobody: it reaches the crash filter
+    RaiseException(EXCEPTION_ACCESS_VIOLATION,0,2,information);
+    log("fixture_exception_marker after=1");
+}
+bool fixture_exception_requested() { wchar_t raise[4]{}; return GetEnvironmentVariableW(L"X3M_FIXTURE_EXCEPTION",raise,4)==1&&raise[0]==L'1'; }
+#endif
 void initialize_log(HMODULE module) {
     CaptureLock lock;
-    wchar_t path[32768]{}; GetModuleFileNameW(module,path,32768);
-    directory=path; directory.resize(directory.find_last_of(L"\\/"));
-    directory+=L"\\x3-modern-captures"; CreateDirectoryW(directory.c_str(),nullptr);
-    SYSTEMTIME now{}; GetLocalTime(&now);
-    wchar_t suffix[100]; swprintf(suffix,100,L"\\session-%04u%02u%02u-%02u%02u%02u-%lu.log",now.wYear,now.wMonth,now.wDay,now.wHour,now.wMinute,now.wSecond,GetCurrentProcessId());
-    const char* source="game";
-    logfile=_wfopen((directory+suffix).c_str(),L"w");
-    if(!logfile){
-        // W3 of the native-Windows audit: the game directory may be read-only
-        // (Program Files without Steam's ACL grant, a virtualised install);
-        // the log then goes to %LOCALAPPDATA%\x3-modern-renderer\captures
-        // (the variable, else %USERPROFILE%\AppData\Local) and the first line
-        // records which directory was taken. capture_directory() follows.
-        const auto environment=[](const wchar_t* name){
-            std::wstring value(GetEnvironmentVariableW(name,nullptr,0),L'\0');
-            if(value.size()<2) return std::wstring();
-            const DWORD length=GetEnvironmentVariableW(name,&value[0],static_cast<DWORD>(value.size()));
-            if(!length||length>=value.size()) return std::wstring(); // gone or grown in between
-            value.resize(length);
-            return value;
-        };
-        std::wstring base=environment(L"LOCALAPPDATA");
-        if(base.empty()){ base=environment(L"USERPROFILE"); if(!base.empty()) base+=L"\\AppData\\Local"; }
-        if(!base.empty()){
-            base+=L"\\x3-modern-renderer"; CreateDirectoryW(base.c_str(),nullptr);
-            base+=L"\\captures"; CreateDirectoryW(base.c_str(),nullptr);
-            logfile=_wfopen((base+suffix).c_str(),L"w");
-            if(logfile){ directory=base; source="localappdata"; }
-        }
-    }
-    if(logfile) setvbuf(logfile,nullptr,_IOFBF,1024*1024);
-    if(logfile) log_os_handle=reinterpret_cast<HANDLE>(_get_osfhandle(_fileno(logfile)));
+    // The session log (docs/architecture/logging-tiers.md, "Log file policy"): <game dir>\x3m.log with the
+    // previous one renamed to x3m.prev.log, x3m-<pid>.log when that rename fails (another instance or an
+    // editor holding the file), X3M_LOG_FILE=<path> opened exactly (the fixture runners), and W3 of the
+    // native-Windows audit: %LOCALAPPDATA%\x3-modern-renderer\x3m.log with the captures under ...\captures
+    // when the game directory is not writable. The first row records what happened; capture_directory()
+    // follows the captures directory.
+    // Rows are buffered in memory from here on and written by one writer thread (started after
+    // telemetry::initialize below): no file I/O on a game thread after this point.
+    session_log::Opened opened=session_log::open(module);
+    directory=opened.captures;
+    log("log_open file=%s source=%s previous=%s session=%s stale_removed=%u%s",opened.path.c_str(),opened.source,opened.previous,opened.session,
+        opened.stale_removed,opened.override_failed?" override=failed":"");
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+    // Seam only: the filter that resumes the seam's own access violation, installed first, so the session log's crash
+    // filter chains to it (the way it chains to whatever filter the process had).
+    if(fixture_exception_requested())SetUnhandledExceptionFilter(&fixture_exception_resume);
+#endif
+    session_log::arm_exception_witness(module); // the crash filter: one exception row for the first unhandled exception
     {
         // Logged as UTF-8 through WideCharToMultiByte: the CRT's %ls conversion
         // runs in the "C" locale and drops the whole line on a character it
         // cannot represent (a non-ASCII user name under %LOCALAPPDATA%, a
-        // non-ASCII game path).
+        // non-ASCII game path). The profile prefix is redacted (logging-tiers.md section 6).
         std::string utf8(static_cast<std::size_t>(WideCharToMultiByte(CP_UTF8,0,directory.c_str(),-1,nullptr,0,nullptr,nullptr)),'\0');
         if(utf8.size()>1) utf8.resize(static_cast<std::size_t>(WideCharToMultiByte(CP_UTF8,0,directory.c_str(),-1,&utf8[0],static_cast<int>(utf8.size()),nullptr,nullptr))-1);
         else utf8.clear();
-        log("capture_dir=%s source=%s",utf8.c_str(),source);
+        log("capture_dir=%s source=%s",session_log::redact_path(utf8).c_str(),opened.captures_source);
     }
     // Wall-clock anchor of this session (docs/verification/sampling-profiler.md,
     // "Audio correlation"): one UTC instant read next to one QueryPerformanceCounter
@@ -3041,16 +3077,22 @@ void initialize_log(HMODULE module) {
             if(stop!=setting&&*stop==L'\0'&&v<=capture_arm::core::delay_max) capture_delay=unsigned(v);
         }
     }
-    // X3M_FRAME_END_STRIDE (1..100000, default 300): frames between frame_end
-    // lines. Out of range or malformed keeps the default; the line is written
-    // only when the stride is not the default, so a default run is unchanged.
-    if(GetEnvironmentVariableW(L"X3M_FRAME_END_STRIDE",setting,32)>0){
-        wchar_t* stop=nullptr; const unsigned long v=wcstoul(setting,&stop,10);
-        if(stop!=setting&&*stop==L'\0'&&v>=1&&v<=frame_end_stride_max)frame_end_stride=unsigned(v);
+    // X3M_FRAME_END_STRIDE (1..100000): frames between frame_end lines. An explicit
+    // valid value wins; unset or invalid: 1 with a logging group, else the default
+    // 3600 (about one row a minute). frame_end_stride_mode is logged for any
+    // stride but the default.
+    {   bool given=false;
+        if(GetEnvironmentVariableW(L"X3M_FRAME_END_STRIDE",setting,32)>0){
+            wchar_t* stop=nullptr; const unsigned long v=wcstoul(setting,&stop,10);
+            if(stop!=setting&&*stop==L'\0'&&v>=1&&v<=frame_end_stride_max){frame_end_stride=unsigned(v);given=true;}
+        }
+        if(!given)frame_end_stride=log_tier::cadence_default(log_tier::perf()||log_tier::debug(),1u,frame_end_stride_default);
         if(frame_end_stride!=frame_end_stride_default)log("frame_end_stride_mode stride=%u",frame_end_stride);
     }
     // X3M_FPS_OVERLAY=1 (default off): the on-screen frame-rate line.
-    fps_overlay_requested=GetEnvironmentVariableW(L"X3M_FPS_OVERLAY",setting,32)==1 && setting[0]==L'1';
+    fps_overlay_requested=log_tier::perf_flag(L"X3M_FPS_OVERLAY"); // X3M_FPS_OVERLAY=1 or X3M_PERF=1
+    shadow_timing_requested=log_tier::perf_flag(L"X3M_SHADOW_TIMING");
+    shadow_rows_requested=log_tier::debug_flag(L"X3M_SHADOW_ROWS");
     if(fps_overlay_requested)log("fps_overlay_mode requested=1 refresh_ms=250 window_ms=1000 key=ctrl_alt_f7");
     // X3M_GPU_SYNC_TIMING=1 (default off): serialising event-query spins at the proxy's pass boundaries (one diagnostic flight).
     gpu_sync_timing_requested=GetEnvironmentVariableW(L"X3M_GPU_SYNC_TIMING",setting,32)==1 && setting[0]==L'1';
@@ -3501,7 +3543,7 @@ void initialize_log(HMODULE module) {
      log("bloom_source_clamp_mode requested=%u enabled=%u clamp=%g clamp_valid=%u bloom=%u",
          unsigned(present),unsigned(bloom_source_clamp<x3::temporal::kAgxClampOff),
          double(value),unsigned(valid),unsigned(bloom_requested));}
-    sector_background_requested=GetEnvironmentVariableW(L"X3M_SECTOR_BACKGROUND",setting,32)==1 && setting[0]==L'1';
+    sector_background_requested=log_tier::debug_flag(L"X3M_SECTOR_BACKGROUND"); // X3M_SECTOR_BACKGROUND=1 or X3M_DEBUG=1
     // X3M_VOLUMETRIC_FOG=1: the sun-lit medium at the scene end (needs the route and
     // the resolve, which accumulates the jittered march). Whole strings must
     // parse; out of range keeps the default. Strength 0 is a detached pass.
@@ -3515,7 +3557,7 @@ void initialize_log(HMODULE module) {
      wchar_t fog_cascades[4]{};const bool fog_cascade_list=GetEnvironmentVariableW(L"X3M_SHADOW_CASCADES",fog_cascades,4)>0;
      volumetric_fog_requested=asked && motion_output_requested && taa_requested && hdr_requested && fog_replay && fog_cascade_list && volumetric_fog_strength>0.f;
      volumetric_fog_everywhere=volumetric_fog_requested && fog_env(L"X3M_VOLUMETRIC_FOG_EVERYWHERE")==1 && setting[0]==L'1';
-     volumetric_fog_timing=volumetric_fog_requested && fog_env(L"X3M_VOLUMETRIC_FOG_TIMING")==1 && setting[0]==L'1';
+     volumetric_fog_timing=volumetric_fog_requested && (log_tier::perf() || (fog_env(L"X3M_VOLUMETRIC_FOG_TIMING")==1 && setting[0]==L'1')); // or X3M_PERF=1
      volumetric_fog_cards_replace=volumetric_fog_requested && fog_env(L"X3M_VOLUMETRIC_FOG_CARDS")==7 && !wcscmp(setting,L"replace");
      volumetric_fog_range_stored=volumetric_fog_requested && fog_env(L"X3M_VOLUMETRIC_FOG_RANGE")==6 && !wcscmp(setting,L"stored");
      volumetric_fog_march_scale=renderer::fog_march_scale_default;
@@ -3612,6 +3654,8 @@ void initialize_log(HMODULE module) {
         else log("state_shadow_setting ignored=1 length=%u mode=auto",unsigned(wcslen(setting)));
     }
     const bool scene_hook_requested=scene_hook::wanted(); // default on with the route (X3M_SCENE_HOOK=0 turns it off)
+    // X3M_MOTION_FRAME_LOG: an explicit valid value wins; else 1 with X3M_DEBUG=1, else 60.
+    motion_frame_log=log_tier::cadence_default(log_tier::debug(),1u,60u);
     if(GetEnvironmentVariableW(L"X3M_MOTION_FRAME_LOG",setting,32)>0){const unsigned long n=wcstoul(setting,nullptr,10);if(n>=1&&n<=100000)motion_frame_log=unsigned(n);}
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     // Seam only: policies 1 and 2 for the fixtures; production stays auto.
@@ -3699,12 +3743,23 @@ void initialize_log(HMODULE module) {
     else if(taa_requested&&taa_sentinel_mode!=x3m::renderer::SentinelMode::CurrentOnly&&(taa_far[0]>0.f||taa_far[1]>0.f||taa_thin_region[0]>0.f))
         taa_motion_weight[0]=.7f; // Run 70 A (2026-09-23, run262/run263): 0.7,2,8 with an age program under a policy that can reach 2 (0 is the opt-out)
     if(GetEnvironmentVariableW(L"X3M_CAMERA_CUT_DEG",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>0&&v<=180)camera_cut_degrees=v;}
+    // X3M_CAMERA_LOG: an explicit valid value wins; else 1 with X3M_DEBUG=1, else 0 (capture frames only).
+    camera_log_frames=log_tier::cadence_default(log_tier::debug(),1u,0u);
     if(GetEnvironmentVariableW(L"X3M_CAMERA_LOG",setting,32)>0){const unsigned long n=wcstoul(setting,nullptr,10);if(n>=1&&n<=1000000)camera_log_frames=unsigned(n);}
     log("motion_output_mode requested=%u scope=live_same_draw_diagnostic history_requires=object_trace,object_lifetime temporal_consumer=%u taa=%u taa_debug=%u jitter=%u jitter_samples=%u cut_median_px=%.3f cut_missing=%.3f rt_mode=%s frame_log=%u sentinel=%s unmatched_static=%u sky_history=%s sky_history_band_px=%.2f sky_history_exit_px=%.3f motion_weight=%.3f,%g,%g camera_cut_deg=%.2f camera_log=%u state_shadow=%s scene_hook=%u hdr=%u taa_k=%.5f mip_bias=%g taa_sharpen=%.3f taa_history_weight=%.3f",
         motion_output_requested,taa_requested,taa_requested,taa_debug_requested,motion_jitter_requested,motion_jitter_samples,motion_cut_median_px,motion_cut_missing,motion_rt_lazy?"lazy":"perdraw",motion_frame_log,
         taa_sentinel_mode==x3m::renderer::SentinelMode::CurrentOnly?"1":taa_sentinel_mode==x3m::renderer::SentinelMode::Camera?"2":"auto",taa_unmatched_static,taa_sky_history_strict?"strict":"loose",taa_sky_history_band_px,double(taa_sky_history_exit_px),double(taa_motion_weight[0]),double(taa_motion_weight[1]),double(taa_motion_weight[2]),camera_cut_degrees,camera_log_frames,motion_state_shadow<0?"auto":motion_state_shadow?"1":"0",scene_hook_requested,hdr_requested,taa_k_override,double(taa_mip_bias),taa_sharpen,double(taa_history_weight));
     log("x3-modern-renderer version=0.4 schema=2 capture_start=%u capture_frames=%u pointer_bits=32",capture_start,capture_count);
-    telemetry::initialize([]{if(logfile)fflush(logfile);});
+    telemetry::initialize(&session_log::request_drain); // a summary wakes the writer; no I/O on the caller
+    session_log::start_writer(telemetry::enabled()); // telemetry on: per-row QPC cost and the 10 s log_writer rows
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+    // Seam only (docs/architecture/logging-tiers.md, "Writer thread"): X3M_FIXTURE_LOG_BENCH=<rows> times that many
+    // motion_output_frame-sized rows through log() on this thread while the writer drains them, then one log_bench row.
+    { wchar_t bench[16]{}; if(GetEnvironmentVariableW(L"X3M_FIXTURE_LOG_BENCH",bench,16)>0){ const unsigned long rows=wcstoul(bench,nullptr,10); if(rows>=1&&rows<=1000000)log_fixture_bench(unsigned(rows)); } }
+    // Seam only: X3M_FIXTURE_EXCEPTION=1 raises one continuable access violation here (between two marker rows), which
+    // nobody handles: the session log's crash filter writes its row and chains to the seam's resuming filter.
+    if(fixture_exception_requested())log_fixture_exception();
+#endif
     window_mode::initialize(); // X3M_WINDOW_MONITOR_RECT (+ _DEFAULT marker): one window_mode_config row when set
     cursor_reassert::initialize(); // X3M_CURSOR_REASSERT=1 only
     window_trace::initialize(telemetry::enabled(),&loading_trace::light::cursor_drain); // X3M_WINDOW_TRACE=1 with X3M_TELEMETRY=1 only
@@ -3813,6 +3868,18 @@ const X3mCompositorBinding* compositor_binding() noexcept {
 void abandon_fog_density_workers() noexcept {
     for(auto& entry:devices)if(entry.second)entry.second->motion_output.abandon_volumetric_fog_worker();
 }
+// DllMain DLL_PROCESS_DETACH at process exit only (lpReserved != NULL), after abandon_fog_density_workers and before
+// the CRT's static destructors: every device context still alive (the application never released its device, or an
+// exception left a frame) moves into storage that is never destroyed. The OS has already ended every other thread,
+// the D3D runtime's own included (wined3d's command stream), so ~Device / ~MotionOutput would call into D3D objects
+// whose threads are gone and wait forever (the seam-exit-path case). The process is ending: its memory and handles go
+// with it. No allocation, no lock, no D3D call, no logging.
+void abandon_devices_at_exit() noexcept {
+    using Map=decltype(devices);
+    alignas(Map) static unsigned char storage[sizeof(Map)];
+    Map* kept=new(storage) Map(); // placement: never destroyed
+    kept->swap(devices);
+}
 void scene_end_signal() {
     CaptureLock lock;
     frame_timing::Scope timing(frame_timing::Bucket::Scene,"scene_end_signal"); // X3M_FRAME_TIMING only
@@ -3820,17 +3887,15 @@ void scene_end_signal() {
 }
 // Self-preserving: the CRT formatter is x87 code (%g/%f, the MinGW pformat),
 // and log() is reachable from the light-envelope hooks (draw capture lines,
-// the stream hooks' metadata-failure line). The save/restore is paid only when
-// a line is written; call_preserved keeps the formatter out of the audited
-// graph (cpu_state.h).
+// the stream hooks' metadata-failure line). session_log::vlog formats behind
+// call_preserved into stack scratch and appends the row to the in-memory buffer
+// under its own lock (not the capture lock); the writer thread does the I/O.
 void log(const char* format,...) {
-    CaptureLock lock;
-    if(!logfile) return;
     va_list args; va_start(args,format);
-    call_preserved([&]{vfprintf(logfile,format,args);fputc('\n',logfile);});
+    session_log::vlog(format,args);
     va_end(args);
 }
-HANDLE log_handle() noexcept { return log_os_handle; }
+HANDLE log_handle() noexcept { return session_log::handle(); }
 void hook_direct3d(IDirect3D9* d) {
     CaptureLock lock;
     if(factories.count(d)) return;

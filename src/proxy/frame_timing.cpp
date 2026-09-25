@@ -1,4 +1,5 @@
 #include "frame_timing.h"
+#include "log_tiers.h"
 #include <cstdio>
 #include <cstdint>
 #include <windows.h>
@@ -109,8 +110,7 @@ unsigned stamp_interval(const wchar_t* text, unsigned length) noexcept {
 
 void initialize() noexcept {
     const DWORD saved = GetLastError();
-    wchar_t setting[8]{};
-    active = GetEnvironmentVariableW(L"X3M_FRAME_TIMING", setting, 8) == 1 && setting[0] == L'1';
+    active = log_tier::perf_flag(L"X3M_FRAME_TIMING"); // X3M_FRAME_TIMING=1 or X3M_PERF=1
     if (active) {
         wchar_t stamps[8]{};
         state_stamps = stamp_interval(stamps, GetEnvironmentVariableW(L"X3M_FRAME_TIMING_STATE_STAMPS", stamps, 8));

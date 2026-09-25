@@ -48,4 +48,8 @@ extern unsigned long long dll_load_qpc;
 // DllMain DLL_PROCESS_DETACH only: abandons every live stored-density fog worker (no join, no
 // lock, no log) so the static teardown that follows cannot wait on a thread the OS already ended.
 void abandon_fog_density_workers() noexcept;
+// DllMain DLL_PROCESS_DETACH at process exit only, after abandon_fog_density_workers: every live device context is
+// moved into never-destroyed storage, so the CRT's static teardown makes no D3D call after the OS ended the runtime's
+// threads (a Release would wait on wined3d's dead command stream forever).
+void abandon_devices_at_exit() noexcept;
 }

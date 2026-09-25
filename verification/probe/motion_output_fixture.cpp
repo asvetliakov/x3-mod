@@ -83,6 +83,7 @@
 #include <cstring>
 #include <fstream>
 #include <limits>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -194,6 +195,10 @@ struct Snapshot {
     IDirect3DBaseTexture9* textures[sampler_stages]{};
     DWORD samplers[sampler_stages][sampler_count]{};
     float ps_low[32]{}; UINT frequency0 = 0; IDirect3DIndexBuffer9* indices = nullptr;
+    // The snapshot keeps its reference on the bound index buffer until it is destroyed: a buffer with no public reference
+    // (the thin-vote hostile script's T2 after frame 3) gets a fresh wrapper per GetIndices, and a released one's address
+    // could be reused by the next, so comparing a released pointer depended on heap reuse (2026-09-26 flake).
+    std::shared_ptr<IDirect3DIndexBuffer9> indices_held;
     // Nulled by the apply quad's normalize: the vertex texture samplers and stage 0's coordinate states.
     IDirect3DBaseTexture9* vertex_textures[4]{}; DWORD stage0[2]{};
 };
@@ -564,6 +569,7 @@ struct Fixture {
     Words vs_words, ps_words;
     std::uint64_t vs_hash = 0, ps_hash = 0, flat_hash = 0;
     unsigned long long frame = 0; unsigned draw_index = 0;
+    unsigned long long throw_frame = ~0ull; // X3M_FIXTURE_THROW_FRAME (seam-exit-path)
     bool reserved_written = false;
     Object a{"A"}, b{"B"};
     std::vector<DrawRecord> records;
@@ -746,7 +752,7 @@ struct Fixture {
         api(d->GetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, &s.stage0[1]), "GetTextureStageState TEXTURETRANSFORMFLAGS");
         api(d->GetPixelShaderConstantF(0, s.ps_low, 8), "GetPixelShaderConstantF low");
         api(d->GetStreamSourceFreq(0, &s.frequency0), "GetStreamSourceFreq");
-        if (SUCCEEDED(d->GetIndices(&s.indices)) && s.indices) s.indices->Release();
+        if (SUCCEEDED(d->GetIndices(&s.indices)) && s.indices) s.indices_held.reset(s.indices, [](IDirect3DIndexBuffer9* b) { b->Release(); });
         api(d->GetRenderTarget(0, &s.rt[0]), "GetRenderTarget0"); s.rt[0]->Release();
         if (SUCCEEDED(d->GetRenderTarget(1, &s.rt[1])) && s.rt[1]) s.rt[1]->Release();
         if (SUCCEEDED(d->GetRenderTarget(2, &s.rt[2])) && s.rt[2]) s.rt[2]->Release();
@@ -832,6 +838,7 @@ struct Fixture {
         scope(nullptr);
         api(d->DrawPrimitive(D3DPT_TRIANGLELIST, 0, 1), "DrawPrimitive background"); ++draw_index;
         compare(before, snapshot(), "fill");
+        if (frame == throw_frame) { std::printf("EXITPATH begin_scene=1 frame=%llu\n", frame); throw std::runtime_error("exit path after BeginScene"); }
         scene_states(); material_state();
         set_camera(frame);
         if (before_scene) before_scene(*this);
@@ -3275,6 +3282,11 @@ int main(int argc, char** argv) {
         f.scope(nullptr);
         api(f.factory->CreateDevice(0, D3DDEVTYPE_HAL, window, D3DCREATE_HARDWARE_VERTEXPROCESSING, &f.pp, &f.d.p), "CreateDevice");
         f.create(mode == "production");
+        {   // seam-exit-path (docs/architecture/logging-tiers.md, "Exit path"): X3M_FIXTURE_THROW_FRAME=<n> throws out of frame n
+            // right after its BeginScene and first draw, where the thin-vote hostile failure of 2026-09-26 threw.
+            char at[16]{};
+            if (GetEnvironmentVariableA("X3M_FIXTURE_THROW_FRAME", at, sizeof at) > 0) f.throw_frame = std::strtoull(at, nullptr, 10);
+        }
         if ((f.taa || f.cutout || f.faderoute) && f.enabled && f.seam && !f.bench && !f.emission_bench && !f.msaa) { f.reference.create(runtime, window, Fixture::W, Fixture::H); f.reference_ready = true; }
         if (mode == "unmatchedstatic") run_unmatched_static(f); else if (mode == "thinvote") run_thin_vote(f); else if (f.sunlane) f.run_sun_lane(argv[1]); else if (f.lightmapfade) f.run_lightmap_fade(argv[1]); else if (f.lightmapwiden) f.run_lightmap_widen(argv[1]); else if (f.hullemission) f.run_hull_emission(argv[1]); else if (mode == "shadowreplay") run_shadow_replay_integration(f); else if (mode == "shadowretention") run_shadow_retention_integration(f); else if (mode == "shadowpool") run_shadow_pool_integration(f); else if (mode == "shadowalpha") run_shadow_alpha(f); else if (mode == "shadowalpharoute") run_shadow_alpha_route(f); else if (mode == "sunapply") { char cascades[4]{}; const bool scripted = GetEnvironmentVariableA("X3M_FIXTURE_SUNAPPLY_CASCADES", cascades, sizeof cascades) == 1; if (scripted && cascades[0] == '1') run_sun_apply_cascades(f, 3); else if (scripted && cascades[0] == '5') run_sun_apply_cascades(f, 5); else require(false, "sunapply names its cascade script (X3M_FIXTURE_SUNAPPLY_CASCADES=1|5; the single-map script was removed on 2026-09-25)"); } else if (f.cutout) run_cutout_integration(f,argv[1]); else if (f.faderoute) run_fade_route_integration(f,argv[1]); else if (f.screenemission) run_screen_emission_integration(f,argv[1]); else if (f.distancefade) run_distance_fade_integration(f,argv[1]); else if (f.materialglass) f.run_glass_materials(argv[1]); else if (f.materialxt) f.run_xt_materials(argv[1]); else if (f.emissions) run_emission_integration(f,argv[4],argv[5]); else if (f.linearmaterials) f.run_linear_materials(argv[4],argv[5],argv[6],argv[7],argv[8]); else if (f.bench) f.run_bench(24); else if (f.routebench) f.run_route_bench(12, f.routebench_draws); else if (f.burst) f.run_burst(9); else if (f.mipbias) f.run_mipbias(8); else if (f.zonly) f.run_zonly(argv[1], 9); else if (f.envmap) f.run_envmap(); else if (f.hook) f.run_hook();
         else if (f.hdrvalues) f.run_hdrvalues(); else if (f.hdrfault) f.run_hdrfault();
@@ -3294,7 +3306,15 @@ int main(int argc, char** argv) {
                     checks, restorations, f.frame, motion_checked, motion_matched, max_uv_pixels, max_depth_error, depth_checked, depth_written, max_current_depth_error, coverage_frames, coverage_checked, coverage_ambiguous, f.jitter, f.taa, taa_frames, taa_history_frames, taa_reference_frames, taa_changed_pixels, taa_skipped_frames);
         exit_code = 0;
     } catch (const std::exception& e) { std::printf("RESULT FAIL %s\n", e.what()); }
+    // seam-exit-path: whether the application's FreeLibrary really unloads the proxy (looked up by its full path, so the
+    // system d3d9 the proxy forwards to is not mistaken for it).
+    char exit_report[4]{};
+    const bool exit_path = GetEnvironmentVariableA("X3M_FIXTURE_EXIT_REPORT", exit_report, sizeof exit_report) == 1 && exit_report[0] == '1';
+    char proxy_path[MAX_PATH]{};
+    const DWORD proxy_length = exit_path && runtime ? GetModuleFileNameA(runtime, proxy_path, MAX_PATH) : 0;
     if (runtime) FreeLibrary(runtime);
+    if (exit_path) std::printf("EXITPATH freelibrary path_known=%u unloaded=%u\n", unsigned(proxy_length > 0 && proxy_length < MAX_PATH),
+                               unsigned(proxy_length > 0 && GetModuleHandleA(proxy_path) == nullptr));
     if (window) DestroyWindow(window);
     UnregisterClassA(cls.lpszClassName, cls.hInstance);
     return exit_code;

@@ -93,11 +93,15 @@ class SourceAndPolicy(unittest.TestCase):
         writer = writer[:writer.index('\n}')]
         self.assertIn('const HANDLE handle=log_handle();', writer)
         self.assertIn('x3m::call_preserved([&]{', writer)
-        self.assertIn('"media_cue_enter frame=%llu qpc=%llu id=%lu kind=%s caller=%s flags=0x%lx attempt=%lu\\n"', writer)
-        self.assertIn('written_whole=n>0&&unsigned(n)<sizeof line&&WriteFile(handle,line,DWORD(n),&written,nullptr)&&written==DWORD(n);', writer)
-        self.assertIn('if(!written_whole)++enter_limit.suppressed;', writer)
+        # Through the session log's buffer since the logging tiers (the writer thread drains it even if the game thread
+        # hangs); no file I/O on the game thread; without a log the line counts as suppressed.
+        self.assertIn('log("media_cue_enter frame=%llu qpc=%llu id=%lu kind=%s caller=%s flags=0x%lx attempt=%lu",', writer)
+        self.assertNotIn('WriteFile', writer)
+        self.assertIn('if(handle==INVALID_HANDLE_VALUE||!handle){++enter_limit.suppressed;return;}', writer)
+        self.assertIn('x3m::call_preserved([&]{', writer)
         self.assertIn('if (!now) { ++suppressed; return false; }', core)
-        self.assertNotIn('log(', writer.replace('log_handle()', ''))
+        # log() takes only the session log's buffer lock since the logging tiers, never the capture mutex.
+        self.assertNotIn('CaptureLock', writer)
         self.assertIn('detail::RateLimit enter_limit;', source)
         self.assertIn('limit={};enter_limit={};', source)
         self.assertIn('suppressed=%llu enter_suppressed=%llu dropped=%llu', source)
@@ -213,10 +217,11 @@ class SourceAndPolicy(unittest.TestCase):
         writer = source[source.index('void write_video_line(const ownership::SurfaceLockEvent& e,const char* stage) {'):]
         writer = writer[:writer.index('\n}')]
         self.assertIn('const HANDLE handle=log_handle();', writer)
-        self.assertIn('"media_video_blit frame=%llu qpc=%llu texture=%p width=%u height=%u format=%u flags=0x%lx result=%s stage=%s blits=%llu unlocks=%llu\\n"', writer)
-        self.assertIn('written_whole=n>0&&unsigned(n)<sizeof line&&WriteFile(handle,line,DWORD(n),&written,nullptr)&&written==DWORD(n);', writer)
-        self.assertIn('if(!written_whole)++video.suppressed;', writer)
-        self.assertNotIn('log(', writer.replace('log_handle()', ''))
+        self.assertIn('log("media_video_blit frame=%llu qpc=%llu texture=%p width=%u height=%u format=%u flags=0x%lx result=%s stage=%s blits=%llu unlocks=%llu",', writer)
+        self.assertNotIn('WriteFile', writer)
+        self.assertIn('if(handle==INVALID_HANDLE_VALUE||!handle){++video.suppressed;return;}', writer)
+        # log() takes only the session log's buffer lock since the logging tiers, never the capture mutex.
+        self.assertNotIn('CaptureLock', writer)
         self.assertIn('video_blits=%llu video_unlocks=%llu video_failures=%llu video_suppressed=%llu video_reentries=%llu video_foreign=%llu video_early=%llu', source)
         self.assertIn('    video.close();\n', source)
         self.assertIn('ownership::SurfaceLockObserver video_lock_observer() noexcept;', header)
@@ -265,31 +270,34 @@ class SourceAndPolicy(unittest.TestCase):
 
 class MediaCueLaunchOptions(unittest.TestCase):
     def test_trace_requires_telemetry_cache_default_on_and_retry_range(self):
+        # The trace is part of --debug since the logging tiers (2026-09-26): the DLL reads X3M_MEDIA_CUE_TRACE or X3M_DEBUG
+        # (and telemetry, which the group turns on); the launcher no longer has --media-cue-trace nor sends the variable.
         from verification.analysis.test_lod_scale_launch import LodScaleLaunchOption
         helper = LodScaleLaunchOption()
         with tempfile.TemporaryDirectory() as directory:
             code, _, error = helper.launch(directory, '--media-cue-trace')
             self.assertEqual(code, 2)
-            self.assertIn('--media-cue-trace requires --telemetry', error)
-            code, output, error = helper.launch(directory, '--media-cue-trace', '--telemetry')
+            self.assertIn('unrecognized arguments', error)
+            code, output, error = helper.launch(directory, '--debug')
             self.assertEqual(code, 0, error)
             env = json.loads(output)['env']
-            self.assertEqual((env['X3M_MEDIA_CUE_TRACE'], env['X3M_MEDIA_CUE_CACHE'], env['X3M_MEDIA_CUE_RETRY_S']), ('1', '1', '30'))
+            self.assertEqual((env['X3M_DEBUG'], env['X3M_MEDIA_CUE_CACHE'], env['X3M_MEDIA_CUE_RETRY_S']), ('1', '1', '30'))
+            self.assertNotIn('X3M_MEDIA_CUE_TRACE', env)
             # The cache is on by default and does not depend on telemetry: the
             # DLL reads X3M_MEDIA_CUE_CACHE on its own (src/proxy/media_cue.cpp).
             code, output, error = helper.launch(directory)
             self.assertEqual(code, 0, error)
             env = json.loads(output)['env']
-            self.assertEqual((env['X3M_MEDIA_CUE_TRACE'], env['X3M_MEDIA_CUE_CACHE'], env['X3M_MEDIA_CUE_RETRY_S']), ('0', '1', '30'))
+            self.assertEqual((env['X3M_MEDIA_CUE_CACHE'], env['X3M_MEDIA_CUE_RETRY_S']), ('1', '30'))
             code, output, error = helper.launch(directory, '--media-cue-cache', 'on', '--media-cue-retry-s', '45')
             self.assertEqual(code, 0, error)
             env = json.loads(output)['env']
-            self.assertEqual((env['X3M_MEDIA_CUE_TRACE'], env['X3M_MEDIA_CUE_CACHE'], env['X3M_MEDIA_CUE_RETRY_S']), ('0', '1', '45'))
+            self.assertEqual((env['X3M_MEDIA_CUE_CACHE'], env['X3M_MEDIA_CUE_RETRY_S']), ('1', '45'))
             # off still writes 0, the stock per-frame rebuild.
             code, output, error = helper.launch(directory, '--media-cue-cache', 'off')
             self.assertEqual(code, 0, error)
             env = json.loads(output)['env']
-            self.assertEqual((env['X3M_MEDIA_CUE_TRACE'], env['X3M_MEDIA_CUE_CACHE'], env['X3M_MEDIA_CUE_RETRY_S']), ('0', '0', '30'))
+            self.assertEqual((env['X3M_MEDIA_CUE_CACHE'], env['X3M_MEDIA_CUE_RETRY_S']), ('0', '30'))
             code, _, error = helper.launch(directory, '--media-cue-cache', 'off', '--media-cue-retry-s', '45')
             self.assertEqual(code, 2)
             self.assertIn('--media-cue-retry-s requires --media-cue-cache on', error)
@@ -299,11 +307,12 @@ class MediaCueLaunchOptions(unittest.TestCase):
                 self.assertIn('between 1 and 3600', error)
             code, _, error = helper.launch(directory, '--media-cue-cache', 'maybe')
             self.assertEqual(code, 2)
-            # Absent options reset inherited values: the launcher owns the three variables.
+            # Absent options reset inherited values: the launcher owns the cache variables and drops the trace.
             code, output, error = helper.launch(directory, inherited={'X3M_MEDIA_CUE_TRACE': '1', 'X3M_MEDIA_CUE_CACHE': '0', 'X3M_MEDIA_CUE_RETRY_S': '5'})
             self.assertEqual(code, 0, error)
             env = json.loads(output)['env']
-            self.assertEqual((env['X3M_MEDIA_CUE_TRACE'], env['X3M_MEDIA_CUE_CACHE'], env['X3M_MEDIA_CUE_RETRY_S']), ('0', '1', '30'))
+            self.assertEqual((env['X3M_MEDIA_CUE_CACHE'], env['X3M_MEDIA_CUE_RETRY_S']), ('1', '30'))
+            self.assertNotIn('X3M_MEDIA_CUE_TRACE', env)
 
 
 @unittest.skipUnless(probe.DEFAULT_EXE.is_file(), 'installed X3AP.exe unavailable')

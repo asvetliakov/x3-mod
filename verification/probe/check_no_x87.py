@@ -96,7 +96,11 @@ EXTERN_ROOTS = ['_x3m_probe_enter', '_x3m_probe_exit', '_x3m_resource_read_entry
                 '_x3m_music_keep_status_thunk', '_x3m_music_keep_status',
                 # the window-thread message hooks (src/proxy/window_trace.cpp, X3M_WINDOW_TRACE=1 / X3M_CURSOR_REASSERT=1): run inside
                 # user32's message dispatch under LightCallBoundary; their ring writes and cursor_reassert::observe hold no floating point
-                '_x3m_window_hook_call@12', '_x3m_window_hook_ret@12', '_x3m_window_hook_get@12']
+                '_x3m_window_hook_call@12', '_x3m_window_hook_ret@12', '_x3m_window_hook_get@12',
+                # the session log (src/proxy/session_log.cpp, docs/architecture/logging-tiers.md): the open/rotation path, the
+                # vectored exception witness (any thread, first fatal-class exception) and the process-exit session_end row are
+                # integer-only and format without the CRT; log()'s append runs under the existing roots behind call_preserved
+                '_x3m_session_log_open', '_x3m_exception_witness@4', '_x3m_session_end']
 # The lock view without the FNSAVE/FRSTOR shell (src/ownership/d3d9_ownership.cpp,
 # route-per-draw-cost.md lever 2a): called only from the draw hooks' route, it
 # preserves nothing itself, so it and its core are a required root, and its own

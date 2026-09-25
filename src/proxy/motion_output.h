@@ -1113,6 +1113,12 @@ public:
     // Cadence of the periodic motion_output_frame line with telemetry on
     // (every `frames` frames; default 60; capture frames always log).
     void configure_frame_log(unsigned frames) noexcept { frame_log_interval_ = frames ? frames : 60u; }
+    // X3M_SHADOW_TIMING=1 or X3M_PERF=1 (docs/architecture/logging-tiers.md): the two shadow cost rows
+    // (shadow_replay_depth, sun_shadow_apply_frame) every frame; otherwise they follow family_row().
+    void configure_shadow_timing(bool every_frame) noexcept { shadow_timing_ = every_frame; }
+    // X3M_SHADOW_ROWS=1 or X3M_DEBUG=1: the five shadow/sun state rows (shadow_retention_frame, shadow_replay_candidates,
+    // shadow_replay_sun, shadow_alpha_casters, sun_shadow_lane_frame) every frame; otherwise they follow family_row().
+    void configure_shadow_rows(bool every_frame) noexcept { shadow_rows_ = every_frame; }
     // Device references held by owned objects (variants, sentinel shader,
     // motion target surface), one per object in every reference model the
     // route runs under (native D3D9 and the ownership wrapper; see
@@ -2286,6 +2292,14 @@ private:
     telemetry::State* stats_ = nullptr;
     gpu_sync_timing::Marks* gpu_sync_ = nullptr; // owned by the device context (capture.cpp); null when --gpu-sync-timing is off
     unsigned frame_log_interval_ = 60;
+    bool shadow_timing_ = false, shadow_rows_ = false; // configure_shadow_timing, configure_shadow_rows
+    // sun_shadow_lane_refusals rate limit (publish_sun_lane): rows written, frame of the last, frames skipped since.
+    unsigned sun_refusal_rows_ = 0, sun_refusal_skipped_ = 0; std::uint64_t sun_refusal_last_frame_ = 0;
+    // The family block's gate (motion_output_frame, hdr_frame, ...): a capture frame, or telemetry on and
+    // the frame on the X3M_MOTION_FRAME_LOG cadence (60; X3M_DEBUG=1 gives 1). The shadow/sun state rows
+    // share it since the logging tiers (they were written every frame with no gate before).
+    bool family_row() const noexcept { return capture_ || (telemetry_ && frame_ % frame_log_interval_ == 0); }
+    bool shadow_state_row() const noexcept { return shadow_rows_ || family_row(); }
     // Lazy binding state: RT1 (and RT2) held by the route across routed draws.
     bool lazy_mode_ = false, lazy_rt1_ = false, lazy_rt2_ = false;
     bool state_shadow_ = true, state_hooks_ = true, scene_hook_installed_ = false;

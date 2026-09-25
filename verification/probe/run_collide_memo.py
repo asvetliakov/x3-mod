@@ -56,7 +56,8 @@ def main():
         import build_collide_memo
         build = build_collide_memo.build()
     started = time.time()
-    run = subprocess.run([bottle.WINE, *bottle.wine_args(name), str(EXE)], capture_output=True, text=True, timeout=3000)
+    # X3M_TELEMETRY=1: the 300-frame collide_memo window the fixture checks is a telemetry row since the logging tiers.
+    run = subprocess.run([bottle.WINE, *bottle.wine_args(name), str(EXE)], capture_output=True, text=True, timeout=3000, env=dict(os.environ, X3M_TELEMETRY='1'))
     record = {'fixture': str(EXE.relative_to(ROOT)), 'exit_status': run.returncode, 'elapsed_s': round(time.time() - started, 1), **parse(run.stdout), 'bottle': bottle.describe(name),
               'build': {k: build[k] for k in ('engine', 'audit')} if build else None,
               'note': 'run_ns is one un-memoed query of the cost pair, hit_ns one answered query, harness included; diagnostic timings, not game FPS'}

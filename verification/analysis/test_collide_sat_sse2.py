@@ -268,6 +268,7 @@ class SatLaunchOption(unittest.TestCase):
             self.assertNotIn('X3M_COLLIDE_SAT_SSE2', json.loads(output)['env'])
 
     def test_dry_run_carries_the_switch_alone_and_with_the_census(self):
+        # The narrow census is part of --debug since the logging tiers (2026-09-26): X3M_DEBUG=1, expanded by the DLL.
         with tempfile.TemporaryDirectory() as directory:
             baseline = json.loads(self.launch(directory)[1])
             code, output, error = self.launch(directory, '--collide-sat-sse2')
@@ -275,8 +276,8 @@ class SatLaunchOption(unittest.TestCase):
             delivered = json.loads(output)
             self.assertEqual(delivered['command'], baseline['command'])
             self.assertEqual({k: v for k, v in delivered['env'].items() if k not in baseline['env']}, {'X3M_COLLIDE_SAT_SSE2': '1'})
-            both = json.loads(self.launch(directory, '--collide-sat-sse2', '--collide-narrow-census')[1])
-            self.assertEqual({k: v for k, v in both['env'].items() if k not in baseline['env']}, {'X3M_COLLIDE_SAT_SSE2': '1', 'X3M_COLLIDE_NARROW_CENSUS': '1'})
+            both = json.loads(self.launch(directory, '--collide-sat-sse2', '--debug')[1])
+            self.assertEqual({k: v for k, v in both['env'].items() if k not in baseline['env']}, {'X3M_COLLIDE_SAT_SSE2': '1', 'X3M_DEBUG': '1'})
 
 
 if __name__ == '__main__':

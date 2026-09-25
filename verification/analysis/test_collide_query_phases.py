@@ -45,11 +45,13 @@ class QueryPhases(unittest.TestCase):
         self.assertFalse(runner.accepted({**runner.parse(text),'exit_status':0}))
 
     def test_cli_implies_memo_and_clears_inherited(self):
+        # Part of --debug since the logging tiers (2026-09-26): the DLL reads X3M_COLLIDE_QUERY_PHASES or X3M_DEBUG and runs
+        # only with the memo (collide_memo.cpp initialize -> collide_query_phases::initialize(true, ...)); the option is gone.
         helper=launch_tests.MemoLaunchOption()
         with tempfile.TemporaryDirectory() as directory:
-            rc,out,err=helper.launch(directory,'--collide-query-phases');self.assertEqual(rc,0,err)
-            env=json.loads(out)['env'];self.assertEqual(env['X3M_COLLIDE_QUERY_PHASES'],'1');self.assertEqual(env['X3M_COLLIDE_MEMO'],'1')
-            rc,_,err=helper.launch(directory,'--collide-query-phases','--no-collide-memo');self.assertNotEqual(rc,0);self.assertIn('cannot be combined',err)
+            rc,_,err=helper.launch(directory,'--collide-query-phases');self.assertEqual(rc,2);self.assertIn('unrecognized arguments',err)
+            rc,out,err=helper.launch(directory,'--debug','--collide-memo');self.assertEqual(rc,0,err)
+            env=json.loads(out)['env'];self.assertEqual((env['X3M_DEBUG'],env['X3M_COLLIDE_MEMO']),('1','1'));self.assertNotIn('X3M_COLLIDE_QUERY_PHASES',env)
             rc,out,err=helper.launch(directory,inherited={'X3M_COLLIDE_QUERY_PHASES':'1'});self.assertEqual(rc,0,err);self.assertNotIn('X3M_COLLIDE_QUERY_PHASES',json.loads(out)['env'])
 
 if __name__=='__main__':unittest.main()

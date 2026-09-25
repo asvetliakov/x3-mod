@@ -25,7 +25,17 @@ namespace frame=x3m::frame_phases;
 namespace frame_marker=x3m::frame_phases::sites;
 constexpr unsigned total_stubs=marker::Count+frame_marker::Count; // frame stamps share the emitter, indexed after the phase group
 static HANDLE media_log_handle=INVALID_HANDLE_VALUE; // the media-cue checks' stand-in for the session log's OS handle
-namespace x3m { LONGLONG dll_load_qpc=0; void log(const char* format,...){va_list args;va_start(args,format);std::vprintf(format,args);va_end(args);std::putchar('\n');} HANDLE log_handle() noexcept {return media_log_handle;} }
+namespace x3m { LONGLONG dll_load_qpc=0;
+// The media-cue rows go through log() since the logging tiers (the session log's buffer): the stand-in writes them to
+// the checks' file (trailing newline stripped as the session log does), every other row to stdout as before.
+void log(const char* format,...){va_list args;va_start(args,format);char line[512];int n=std::vsnprintf(line,sizeof line,format,args);va_end(args);
+    if(n<0)return;
+    if(unsigned(n)>=sizeof line)n=int(sizeof line)-1;
+    if(n>0&&line[n-1]=='\n')line[--n]=0;
+    const bool media=!std::strncmp(line,"media_cue_enter ",16)||!std::strncmp(line,"media_video_blit ",17);
+    if(media&&media_log_handle!=INVALID_HANDLE_VALUE){line[n]='\n';DWORD written=0;WriteFile(media_log_handle,line,DWORD(n+1),&written,nullptr);}
+    else std::printf("%s\n",line);}
+HANDLE log_handle() noexcept {return media_log_handle;} }
 namespace x3m::telemetry { bool enabled(){return true;} std::uint64_t frequency(){LARGE_INTEGER f{};return QueryPerformanceFrequency(&f)?std::uint64_t(f.QuadPart):0;} }
 namespace x3m::object_trace { bool executable_verified(){return true;} }
 extern "C" {

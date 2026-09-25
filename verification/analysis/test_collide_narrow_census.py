@@ -290,15 +290,20 @@ class NarrowLaunchOption(unittest.TestCase):
             self.assertNotIn('X3M_COLLIDE_NARROW_CENSUS', json.loads(output)['env'])
 
     def test_dry_run_carries_the_switch_independently_of_the_box_cull(self):
+        # Part of --debug since the logging tiers (2026-09-26): the DLL reads X3M_COLLIDE_NARROW_CENSUS or X3M_DEBUG.
         with tempfile.TemporaryDirectory() as directory:
             baseline = json.loads(self.launch(directory)[1])
-            code, output, error = self.launch(directory, '--collide-narrow-census')
+            code, output, error = self.launch(directory, '--debug')
             self.assertEqual(code, 0, error)
             delivered = json.loads(output)
             self.assertEqual(delivered['command'], baseline['command'])
-            self.assertEqual({k: v for k, v in delivered['env'].items() if k not in baseline['env']}, {'X3M_COLLIDE_NARROW_CENSUS': '1'})
-            both = json.loads(self.launch(directory, '--collide-narrow-census', '--collide-box-cull')[1])
-            self.assertEqual({k: v for k, v in both['env'].items() if k not in baseline['env']}, {'X3M_COLLIDE_NARROW_CENSUS': '1', 'X3M_COLLIDE_BOX_CULL': '1'})
+            self.assertEqual({k: v for k, v in delivered['env'].items() if k not in baseline['env']}, {'X3M_DEBUG': '1'})
+            both = json.loads(self.launch(directory, '--debug', '--collide-box-cull')[1])
+            self.assertEqual({k: v for k, v in both['env'].items() if k not in baseline['env']}, {'X3M_DEBUG': '1', 'X3M_COLLIDE_BOX_CULL': '1'})
+            code, _, error = self.launch(directory, '--collide-narrow-census')
+            self.assertEqual(code, 2)
+            self.assertIn('unrecognized arguments', error)
+        self.assertIn('const bool group = log_tier::debug();', (ROOT / 'src/proxy/collide_narrow_census.cpp').read_text())
 
 
 if __name__ == '__main__':

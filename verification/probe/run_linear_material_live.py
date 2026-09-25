@@ -18,6 +18,7 @@ import tempfile
 import time
 
 import bottle
+import fixture_log  # X3M_LOG_FILE: the session log where this runner reads it (logging tiers)
 import linear_glass_live_reference as glass_live
 from game_guard import game_running
 
@@ -620,7 +621,7 @@ def main():
                        'Z:' + str(programs[0]), 'Z:' + str(programs[1]), fixture_mode, *extra_programs]
             start = time.monotonic()
             with (work / 'stdout.txt').open('w') as out, (work / 'wine.log').open('w') as error:
-                completed = subprocess.run(command, env=env, stdout=out, stderr=error, timeout=180)
+                completed = subprocess.run(command, env={**env, **fixture_log.session_log_env(work)}, stdout=out, stderr=error, timeout=180)
             assert completed.returncode == 0, f'{name}: exit {completed.returncode}; see {work}'
             logs = list((work / 'x3-modern-captures').glob('session-*.log'))
             assert len(logs) == 1, f'{name}: missing session log'

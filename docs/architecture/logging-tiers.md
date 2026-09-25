@@ -1,6 +1,6 @@
 # Logging tiers: always, `--perf`, `--debug`, and `x3m.log`
 
-Design note, 2026-09-25 (read-only survey at `ae16da06`; nothing implemented). Decision: how the proxy's
+Design note, 2026-09-25 (read-only survey at `ae16da06`); implemented 2026-09-26 on `9a668e81`, see "Implemented" below for what differs from this design and the measured figures. Decision: how the proxy's
 telemetry/debug options collapse into a release-ready scheme where a player without the launcher can be told
 "enable logging or a performance trace, reproduce, upload the log". Evidence scripts and their outputs are under
 `verification/results/logging-tiers/` (`row_volume.py` → `run337-rows.json`, `run337-classes.json`;
@@ -20,7 +20,7 @@ the obsolete-options cleanup on main. The config file stays a later step.
 Three tiers, two launcher options, one file:
 
 - **Always** (no environment at all): one-per-process and one-per-device rows, mode/config rows, errors,
-  refusals, first-N failure witnesses, Reset/recovery, `frame_end` at its default stride 300, a
+  refusals, first-N failure witnesses, Reset/recovery, `frame_end` about once a minute (stride 3600; amended 2026-09-26, 300 in this design), a
   `volumetric_fog_cards` heartbeat every 600 frames, one `session_end` row at process detach and one `exception`
   row on the first fatal exception. Bounded by construction: about 0.2 MB per hour at 60 fps plus the
   per-session caps (inferred from measured row sizes, `tier_volume.json`).
@@ -303,8 +303,9 @@ Measured in run337's header rows:
 
 ## Cost on the hot path
 
-- Always: one `frame_end` row per 300 frames and one QPC read per frame that already exists (`capture.cpp:1698-1707`);
-  the per-frame `fflush` stays (0.1-0.6 us measured). The seven ungated shadow/sun rows stop being formatted
+- Always: one `frame_end` row per 3600 frames (300 in this design; amended 2026-09-26) and one QPC read per frame that
+  already exists (`capture.cpp:1698-1707`); the per-frame `fflush` stays (0.1-0.6 us measured; replaced by the writer
+  thread in the implementation, see "Implemented"). The seven ungated shadow/sun rows stop being formatted
   every frame, which removes about 3.5 KB of `vfprintf` work per frame from every player launch (a saving,
   size measured; time inferred).
 - `--perf`: about six formatted rows per frame plus the family block every 60 frames; the state hooks and ten
@@ -325,6 +326,172 @@ Win32 APIs, nothing Wine-specific. Unverified natively: UAC virtualisation of th
 question above), Steam/GOG directory ACLs, and whether an antivirus holds `x3m.log` open at launch (the
 `x3m-<pid>.log` fallback covers the sharing violation). None of the tiers changes rendering; `--perf`'s hooks
 are the same on both platforms.
+
+## Implemented (2026-09-26)
+
+Uncommitted worktree on `9a668e81`. The ratified shape, with the two amendments of 2026-09-26 (the always-tier heartbeat is
+`frame_end` about once a minute, stride 3600, `--perf`/`--debug` stride 1, an explicit `X3M_FRAME_END_STRIDE` wins; the
+fixture seams keep their `X3M_FIXTURE_*` names and every individual `X3M_*` variable stays a DLL read, ORed with its group,
+an explicit cadence value winning) and the orchestrator's writer-thread requirement (below), which replaces "keep the
+per-frame `fflush`".
+
+**Groups** (`src/proxy/log_tiers.h`, header-only so the fixture builds that compile single sources link nothing new):
+`X3M_DEBUG=1` / `X3M_PERF=1` are read at each switch's own read site; `log_tier::telemetry()` is `X3M_TELEMETRY=1` or
+either group. Membership as implemented:
+
+| Group | Switches (individual variable, read site) |
+|---|---|
+| both | `X3M_TELEMETRY` (telemetry.cpp, loading_trace.cpp: counters, 1 Hz summaries, loading metrics, the loading-trace hook set, the family block's gate); `X3M_FRAME_END_STRIDE` 1 (capture.cpp) |
+| `--perf` | `X3M_FRAME_TIMING` (state hooks, 300-frame windows), `X3M_FRAME_PHASES` (ten stamps), `X3M_FPS_OVERLAY`, `X3M_VOLUMETRIC_FOG_TIMING`, `X3M_SHADOW_TIMING` (new: `shadow_replay_depth` and `sun_shadow_apply_frame` every frame) |
+| `--debug` | `X3M_MOTION_FRAME_LOG` 1 (family block every frame), `X3M_CAMERA_LOG` 1, `X3M_SHADOW_ROWS` (new: the five shadow/sun state rows every frame), `X3M_SHADOW_RETENTION_CENSUS`, `X3M_OBJECT_BOUNDS_LOG`, `X3M_CULL_CENSUS` with `X3M_LOD_SWITCH_LOG` 16, `X3M_MEDIA_CUE_TRACE`, `X3M_MUSIC_TRACE`, `X3M_WINDOW_TRACE`, `X3M_SHADOW_SUN_TRACE`, `X3M_SECTOR_BACKGROUND`, `X3M_LOADING_PROBES`, `X3M_COLLIDE_NARROW_CENSUS`, `X3M_COLLIDE_QUERY_PHASES` |
+
+**Gates.** The seven formerly ungated shadow/sun rows: `shadow_replay_depth` and `sun_shadow_apply_frame` on
+`X3M_SHADOW_TIMING` or the family cadence; `shadow_retention_frame`, `shadow_replay_candidates`, `shadow_replay_sun`,
+`shadow_alpha_casters`, `sun_shadow_lane_frame` on `X3M_SHADOW_ROWS` or the family cadence (capture frame, or telemetry on
+and `frame % X3M_MOTION_FRAME_LOG == 0`); the per-frame state they carry (flip tracker, counters, retention session totals)
+is still updated every frame, only the formatting is skipped. `camera_state`: capture frames always, otherwise only with an
+interval (explicit or `--debug`). The 300-frame health windows and `taa_invalidate` are gated on telemetry
+(`X3M_TELEMETRY=1` or either group), not on `--debug` alone: `bloom_admission`, the periodic `bloom_prepare` /
+`bloom_commit` (their first success and first eight failures stay in every tier), `chase_camera_window`,
+`chase_fire_window`, `chase_view_restore_state`, `collide_census`, the periodic `collide_memo`, `bolt_footprint` with its
+histograms, `screen_emission_additive_refused_window`, `shadow_retention_resight` and the non-final
+`shadow_retention_summary`, `taa_invalidate` (`chase_aim`, `chase_lead`, `chase_transition` and `media_cue_window` were
+already telemetry or trace rows). Reason for the deviation: every fixture runner that reads them sets `X3M_TELEMETRY=1`,
+so they keep working unchanged, and `--perf` stays exactly equivalent to its individual variables; the cost for `--perf` is
+the ~5 MB per hour estimated in section 1 (inferred), 1.4 % of its 360 MB.
+
+**Log file** (`src/proxy/session_log.cpp`): as section 3, with `CreateFileW` (`CREATE_ALWAYS`, shared read/write, not
+delete) instead of `_wfopen`; any rename failure other than file/path-not-found opens `x3m-<pid>.log` (`previous=busy`);
+after the open, `x3m-<pid>.log` files of that directory last written before the current `x3m.prev.log` are deleted
+(only names matching the pattern; `log_open stale_removed=`); an unknown module path never opens `\x3m.log` at a drive
+root but goes to the `%LOCALAPPDATA%` fallback; `X3M_LOG_FILE` gives `source=override previous=none` (a failed override
+falls back to the policy and appends `override=failed`); `file=` is the `GetFinalPathNameByHandleW` path, redacted. First
+rows: `log_open`, `capture_dir`. Redaction (section 6), applied before `sanitize` so a profile path with a space or a
+non-ASCII byte still matches: `capture_dir`, `log_open file=`, `proxy_identity path=`, `loaded_module path=` and
+`backend path=` through
+`redact_path` (`%USERPROFILE%` prefix, else a `<drive>:\Users\<name>` / `<drive>:\home\<name>` prefix to `~`);
+`proxy_environment` values through `redact_value` (every occurrence of the host home, `HOME` or `WINE_HOST_HOME`, in both
+separator forms, and of `%USERPROFILE%`), `WINEUSERNAME` without its value.
+
+**Rows added**: `log_open` (first row), `session_end frames= elapsed_ms= devices= resets= exception=0|1 dropped=
+filter=ours|replaced|none` (at process exit, or at a dynamic unload, through the OS handle), `exception code= address= eip=
+esp= thread= frame= module= base= offset= access_kind= access= unhandled=1` (the first exception nobody handled; `module=`
+is the executable's file name, `proxy`, `system_d3d9`, `other` or `none`, from `VirtualQuery` and a table filled at arm
+time), `log_dropped n=`, `log_writer` (telemetry: every 10 s and at the last device release), `log_writer_parked reason=
+exited=`, `sun_shadow_lane_refusals_skipped device= frame= skipped= since_frame=`. No existing row name or field format
+changed; values that changed: `motion_output_mode ... camera_log=` reads 0 by default (capture frames only),
+`frame_end_stride_mode` appears for any stride but 3600, and `sun_shadow_lane_refusals` (one row per frame with an
+untracked writer, in every tier) is written every frame only with the family rows every frame (`X3M_SHADOW_ROWS`,
+`--debug`, or `X3M_MOTION_FRAME_LOG=1` with telemetry), otherwise for the first 16 frames per device and then once per 600
+frames, the skipped frames counted by `sun_shadow_lane_refusals_skipped`. The telemetry metric `log_flush` is renamed
+`log_wake`: it times the `SetEvent` a summary uses to wake the writer.
+
+### Writer thread
+
+`x3m::log()` formats one row behind `call_preserved` into 8 KiB of stack scratch (a longer row, such as a
+`proxy_options` with many variables, is formatted straight into the buffer under the lock; rows over 256 KiB are cut and
+marked ` truncated=1`) and copies it into a 4 MiB buffer of two 2 MiB halves under its own SRW lock (not the capture lock).
+One writer thread (`CreateThread`, 64 KiB stack reservation) drains every 200 ms, when a half fills, and on a telemetry
+summary, with `WriteFile` in 64 KiB chunks; the lock is never held across a write. No `WriteFile`, `fflush` or
+`MoveFileExW` runs on a game thread in play after `log_open`: the rows that used to be written straight to the handle
+from game threads (media cue enter and video-blit lines, music trace lines) go through the buffer too (a hung game thread
+does not stop the writer, which is what the media cue's direct write was for). Direct writes left: the voice DMO
+fallback's fault witness, in a vectored handler on a faulting thread that may hold the buffer lock and is about to die (it
+fires only on that hook's execute fault; `report()` logs the record through the buffer as well), and the four patch
+restore rows (`fov`, `lod_occlusion`, `sun_flare_fix`, `terran_station_lod`), written only inside DllMain on a dynamic
+`FreeLibrary`, never during play (their fixture records are bound to those sources; `test_logging_tiers.py` pins the
+list). Full buffer:
+the row is dropped and counted, never blocking and never growing; one `log_dropped n=` row precedes the next row that
+fits, and `session_end dropped=` carries the session total.
+
+The writer holds a module reference (`GetModuleHandleExW`, released by `FreeLibraryAndExitThread`) only while a device
+exists: the last device's release parks it (it drains, ends and drops the reference; the releasing thread waits at most
+1 s, once, at teardown) and the next device creation starts a new one; rows logged while no writer runs stay in the
+buffer for the next writer or for detach. So an application's `FreeLibrary` after its last device unloads the proxy.
+
+Crash row: a filter installed with `SetUnhandledExceptionFilter` at attach, chained to the filter it replaced (called
+after ours; its answer is returned). It runs only for an exception nobody handled, so a probe read or a driver's own
+`__try` never burns the one-shot row or stalls a thread. It writes its row with integers only (a stack buffer, no CRT, no
+allocation) and restores the last error; the rows logged before the fault go first: it wakes the writer and waits until
+they are written, bounded by `GetTickCount64` at 500 ms (not on the writer thread, not for a stack overflow), and without a
+running writer it writes them itself under a try-lock of the buffer. A filter installed later by the game or a runtime
+replaces ours: the crash row is then absent, `session_end filter=replaced` says so at a clean exit, and a crash still shows
+as a log that ends without `session_end`. At detach the filter it replaced goes back unless another took over.
+
+### Exit path
+
+`DLL_PROCESS_DETACH` first makes `log()` try the buffer lock once (never wait). At process exit (`lpReserved != NULL`)
+Windows has already ended every other thread, the D3D runtime's own included (wined3d's command stream): the proxy's
+static teardown must not call into D3D, so every device context still alive (the application never released its device,
+or an exception left a frame) moves into storage that is never destroyed (`abandon_devices_at_exit`, after
+`abandon_fog_density_workers`) and `~Device` / `~MotionOutput` never run; the process's memory and handles go with it
+(documented DllMain rule: at process exit only release what is safe without other threads, anything else is left to the
+OS). Before this, a device left alive at exit hung the process: `release_resources` waited on wined3d's dead thread (the
+2026-09-26 `seam-thin-vote-hostile` failure; before the writer existed, the fixture's `FreeLibrary` had unloaded the proxy
+while the runtime's threads still ran, and the pinned writer moved the same teardown to `ExitProcess`). Then the writer is
+signalled and waited for at most 1 s (at process exit it is already gone; on a dynamic unload it has either parked or this
+is its own `FreeLibraryAndExitThread`, where nothing waits), and the rows still buffered and `session_end` are written:
+lock-free at process exit, under a try-lock on a dynamic unload. `seam-exit-path` (motion runner) proves both: the hostile
+script thrown out of frame 4 after `BeginScene` (the device is never destroyed) exits within its 90 s bound (it hung until
+the 90 s timeout before the fix), and the same script run to completion, device destroyed and writer parked, lets the
+fixture's `FreeLibrary` unload the proxy (`GetModuleHandle` of its full path returns NULL; before the fix it stayed
+loaded).
+
+Measured on the seam DLL under CrossOver Preview (bottle X3, FEX; case `seam-log-tiers` of `run_motion_output.py`,
+final sources, the accepted full run): `X3M_FIXTURE_LOG_BENCH=10000` formats 10,000 rows of 1,634 B (a
+`motion_output_frame`-sized row) through `log()` on the calling thread while the writer drains: mean 2.64 us per call,
+worst call 52.5 us, 0 calls over 100 us, 0 over 1 ms, 27.1 ms for the burst (16.7 MB, four times the buffer), 0 rows
+dropped; the writer made 336 `WriteFile` calls (2,400 us in all, worst 162.5 us, histogram 311 / 24 / 1 / 0 / 0 / 0 at the
+10 us, 100 us, 1 ms, 10 ms, 100 ms edges) off the render thread. In the ordinary fixture runs with telemetry on (the
+`log_writer reason=last_device` row): `--debug` 5,132 rows, 3,444 us, 0.67 us per row mean, worst call 57.5 us; `--perf`
+5,063 rows, 3,138 us, 0.62 us per row, worst call 40.9 us. The worst single call seen in any run of this change was
+315.1 us (one call of the `--perf` run in a partial run before the review fixes; not isolated: a preemption of the writer inside its short
+lock section, or a first touch of a buffer page, are the candidates). The render-thread cost per frame in flight is
+inferred from these per-row costs (0.60 us per row plus 1.25 ns per byte, fitted to the bench and `--debug` points of the final run) and run337's
+row mix (section 4): always tier about
+0.0002 us per frame (one `frame_end` row per 3,600 frames), `--perf` about 6 us per frame (six rows, 1.7 KB), `--debug`
+about 28 us per frame (27 rows, 9.3 KB), about 34 us with both; the former per-frame `fflush` (0.1-0.6 us measured in
+run337, but a disk sync, an antivirus scan or a page-in on the render thread) is gone.
+
+### Evidence
+
+- Build: `cmake --build build` 0 warnings; `check_no_x87.py build/d3d9.dll` PASS, 0 violations, 709 functions
+  reachable (685 before), with the new roots `_x3m_session_log_open`, `_x3m_exception_witness@4`, `_x3m_session_end`
+  (log()'s append is reached from the existing light-hook roots).
+- `run_motion_output.py` (full, bottle X3, final sources after review): PASS, 231 cases, 346,382 checks: the 229
+  committed cases at their counts (346,327 checks, none changed) plus `seam-log-tiers` at 47 and `seam-exit-path` at 8.
+  An earlier full run stopped in `seam-thin-vote-hostile` (`RESTORE_DIFF fill indices`, then no exit): the fixture compared
+  an index buffer pointer it had already released (the snapshot now holds its reference) and the pinned writer moved the
+  D3D teardown to `ExitProcess` (the exit-path rule above); after both fixes the case passed its 95 checks in five of five
+  separate runs. Per-case comparison
+  `verification/results/logging-tiers/compare_motion_counts.py` against `../launcher-defaults/motion-cases-2026-09-25.json`
+  (inputs committed as `motion-cases-2026-09-26.json`). The runner pins `X3M_SHADOW_TIMING=1 X3M_SHADOW_ROWS=1
+  X3M_CAMERA_LOG=300 X3M_FRAME_END_STRIDE=300` so every oracle reads the rows at their pre-tier cadence.
+- `seam-log-tiers` (new, 47 checks): the debug group and its 17 individual variables log the same 135 row names,
+  the perf group and its 7 individuals the same 121 (clocked rows excluded: none differed); the always tier without F8
+  captures: 98 rows, 17,873 B for an 8-frame script, of which 69 rows / 12,363 B header before the first `frame_end` and
+  28 rows / 5,421 B lifecycle events (Reset, release, destroy, resource identities, shadow refusals, the writer's park), no per-frame row, no
+  telemetry row, no window; `log_open source=override previous=none` first in every run and `session_end exception=0` in every other run;
+  the exception run (a continuable access violation of 0x0badf00d raised by the seam at attach, handled by nobody; the
+  crash filter chains to the seam's resuming filter): one row `exception
+  code=c0000005 ... module=other ... access_kind=0 access=0badf00d unhandled=1`, after the marker row logged before
+  it and before the one logged after it, and `session_end exception=1`.
+- Launcher: `manage.py --help` exit 0; `verification/results/launcher-defaults/compare_dry_runs.py` 5 PASS (default 124
+  variables, stand 126, recorded stand 181); `verification/results/logging-tiers/dry_run_tiers.py` 8 PASS (default 150 →
+  124, `--vanilla` 99 → 73, `--debug` / `--perf` 125, both 126; the 26 variables no longer sent are all logging variables,
+  no functional variable changed); `options_tiers.py` 209 → 194 registered option strings.
+- Host: `run_host_suite.py` 268 modules, 2,792 tests, 0 failing (267 / 2,782 at `9a668e81`); new `test_logging_tiers.py` (launcher groups, the 19 replaced options exit 2,
+  inherited logging variables dropped, developer options only when given, every group switch read through
+  `log_tiers.h`); `test_snapshot_x3_run.py` three new cases for the `x3m.log` layout.
+- Other Wine runners: `run_d3d9_exports.py --dll build/d3d9.dll` PASS (writable: `log_open ... source=game
+  previous=renamed`, the planted `x3m.log` moved to `x3m.prev.log`, a planted
+  `x3m-<pid>.log` older than it deleted, `stale_removed=1`; read-only: `source=localappdata previous=absent`,
+  `file=%USERPROFILE%\AppData\Local\x3-modern-renderer\x3m.log`, captures under `...\captures`, nothing written in the
+  read-only directory; 8 checks each); `run_loading_trace.py` PASS (112 / 123 / 36,091 checks); `run_crypt_cache.py` PASS;
+  `run_cursor_reassert.py` PASS (42 checks); `run_game_phase_cpu.py` PASS
+  (12,025 checks, the 11 media cue cases reading the buffered rows); `run_temporal_pass.py` PASS and unchanged (546 samples, 278 restorations, the
+  far-stabiliser and thin-region tables identical to the committed summary). Adapted but not rerun: the other eleven runners
+  that now set `X3M_LOG_FILE` (`verification/probe/fixture_log.py`) and the two collide runners (`X3M_TELEMETRY=1`).
 
 ## Verification that would prove it
 

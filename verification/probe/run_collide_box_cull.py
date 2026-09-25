@@ -24,7 +24,8 @@ def main():
     if name != 'X3':
         sys.exit('set X3M_FIXTURE_BOTTLE=X3')
     started = time.time()
-    run = subprocess.run([bottle.WINE, *bottle.wine_args(name), str(EXE)], capture_output=True, text=True, timeout=900)
+    # X3M_TELEMETRY=1: the 300-frame collide_census window the fixture checks is a telemetry row since the logging tiers.
+    run = subprocess.run([bottle.WINE, *bottle.wine_args(name), str(EXE)], capture_output=True, text=True, timeout=900, env=dict(os.environ, X3M_TELEMETRY='1'))
     total = re.search(r'COLLIDE BOX CULL CPU checks=(\d+) failures=(\d+)', run.stdout)
     number = r'=([\d.]+)'
     bench = re.search(r'COLLIDE BOX CULL BENCH ns_per_pair far: ' + ' '.join(k + number for k in BENCH) + ' near: ' + ' '.join(k + number for k in BENCH), run.stdout)

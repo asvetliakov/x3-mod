@@ -5,6 +5,7 @@
 #include "object_trace.h"
 #include "cpu_state.h"
 #include "capture.h"
+#include "log_tiers.h"
 #include <windows.h>
 #include <cstring>
 #include <atomic>
@@ -71,8 +72,7 @@ bool initialize(bool memo_ready,bool verifying){
     ErrorGuard error;
     if(enabled)return true;
     if(patch.patched_in)return false; // retain a failed rollback for shutdown; never overwrite its claim
-    wchar_t value[4]{};
-    if(GetEnvironmentVariableW(L"X3M_COLLIDE_QUERY_PHASES",value,4)!=1 || value[0]!=L'1')return false;
+    if(!log_tier::debug_flag(L"X3M_COLLIDE_QUERY_PHASES"))return false; // X3M_COLLIDE_QUERY_PHASES=1 or X3M_DEBUG=1
     const char* reason="memo_off";
     if(memo_ready){
         LARGE_INTEGER f{};

@@ -2,6 +2,7 @@
 #include "loading_trace_light.h"
 #include "capture.h"
 #include "object_trace.h"
+#include "log_tiers.h"
 #include <cstring>
 
 // Sites (X3AP.exe as identified by executable_identity.h, preferred base
@@ -108,8 +109,7 @@ bool initialize() {
     const DWORD error=GetLastError();
     if(initialized_){SetLastError(error);return installed_!=0;}
     initialized_=true;
-    wchar_t setting[8]{};
-    requested_=GetEnvironmentVariableW(L"X3M_LOADING_PROBES",setting,8)==1&&setting[0]==L'1';
+    requested_=log_tier::debug_flag(L"X3M_LOADING_PROBES"); // X3M_LOADING_PROBES=1 or X3M_DEBUG=1
     if(!requested_){SetLastError(error);return false;}
     if(!object_trace::executable_verified()){log("loading_probes requested=1 installed=0 status=executable_mismatch");SetLastError(error);return false;}
     if(!engine_patch::install_window_open()){log("loading_probes requested=1 installed=0 status=late_claim window_closed_by=%s",engine_patch::install_window_reason());SetLastError(error);return false;}

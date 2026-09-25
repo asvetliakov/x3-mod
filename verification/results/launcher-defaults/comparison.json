@@ -1,58 +1,34 @@
 {
  "empty_vs_stand": {
-  "X3M_CAMERA_LOG": [
-   "300",
-   "1"
-  ],
-  "X3M_CULL_CENSUS": [
+  "X3M_DEBUG": [
    null,
    "1"
   ],
-  "X3M_FPS_OVERLAY": [
-   "0",
-   "1"
-  ],
-  "X3M_FRAME_END_STRIDE": [
-   "300",
-   "1"
-  ],
-  "X3M_FRAME_PHASES": [
-   "0",
-   "1"
-  ],
-  "X3M_FRAME_TIMING": [
-   "0",
-   "1"
-  ],
-  "X3M_MOTION_FRAME_LOG": [
-   null,
-   "1"
-  ],
-  "X3M_OBJECT_BOUNDS_LOG": [
+  "X3M_PERF": [
    null,
    "1"
   ],
   "X3M_SHADOW_CASCADE_SIZES": [
    "2048,4096,4096,4096,2048",
    "2048,2048,2048,2048,2048"
-  ],
-  "X3M_SHADOW_RETENTION_CENSUS": [
-   "0",
-   "1"
-  ],
-  "X3M_TELEMETRY": [
-   "0",
-   "1"
-  ],
-  "X3M_VOLUMETRIC_FOG_TIMING": [
-   "0",
-   "1"
   ]
  },
  "stand_vs_recorded_stand": {
+  "X3M_CAMERA_LOG": [
+   "1",
+   null
+  ],
+  "X3M_CULL_CENSUS": [
+   "1",
+   null
+  ],
   "X3M_CULL_SMALL_PARTS_SCOPE": [
    "all",
    null
+  ],
+  "X3M_DEBUG": [
+   null,
+   "1"
   ],
   "X3M_DEPTH_COPY": [
    "0",
@@ -74,8 +50,44 @@
    "0",
    null
   ],
+  "X3M_FPS_OVERLAY": [
+   "1",
+   null
+  ],
+  "X3M_FRAME_END_STRIDE": [
+   "1",
+   null
+  ],
+  "X3M_FRAME_PHASES": [
+   "1",
+   null
+  ],
+  "X3M_FRAME_TIMING": [
+   "1",
+   null
+  ],
+  "X3M_FRAME_TIMING_STATE_STAMPS": [
+   "0",
+   null
+  ],
+  "X3M_GAME_PHASES": [
+   "0",
+   null
+  ],
+  "X3M_GAME_PHASE_THRESHOLD_MS": [
+   "20",
+   null
+  ],
+  "X3M_GPU_SYNC_TIMING": [
+   "0",
+   null
+  ],
   "X3M_LIGHTMAP_EMISSIVE_GAIN": [
    "1.0",
+   null
+  ],
+  "X3M_LIGHT_PHASES": [
+   "0",
    null
   ],
   "X3M_LINEAR_DISTANCE_FADE": [
@@ -94,6 +106,14 @@
    "1",
    null
   ],
+  "X3M_LOADING_PROBES": [
+   "0",
+   null
+  ],
+  "X3M_LOOP_PHASES": [
+   "0",
+   null
+  ],
   "X3M_MATERIAL_DIRECT_GAIN": [
    "1.0",
    null
@@ -106,6 +126,14 @@
    "0.0",
    null
   ],
+  "X3M_MEDIA_CUE_TRACE": [
+   "0",
+   null
+  ],
+  "X3M_MESH_ADJACENCY_DUMP": [
+   "0",
+   null
+  ],
   "X3M_MESH_CACHE": [
    "0",
    null
@@ -114,9 +142,37 @@
    "0",
    null
   ],
+  "X3M_MOTION_FRAME_LOG": [
+   "1",
+   null
+  ],
   "X3M_MUSIC_KEEP": [
    null,
    "1"
+  ],
+  "X3M_OBJECT_BOUNDS_LOG": [
+   "1",
+   null
+  ],
+  "X3M_PASS_PHASES": [
+   "0",
+   null
+  ],
+  "X3M_PERF": [
+   null,
+   "1"
+  ],
+  "X3M_PROFILE": [
+   "0",
+   null
+  ],
+  "X3M_PROFILE_INTERVAL_US": [
+   "2000",
+   null
+  ],
+  "X3M_RESIDUAL_PHASES": [
+   "0",
+   null
   ],
   "X3M_SCENE_DEPTH_CAPTURE": [
    "0",
@@ -135,6 +191,10 @@
    null
   ],
   "X3M_SCREEN_EMISSION_TIMING": [
+   "0",
+   null
+  ],
+  "X3M_SECTOR_BACKGROUND": [
    "0",
    null
   ],
@@ -158,6 +218,22 @@
    "1024",
    null
   ],
+  "X3M_SHADOW_RETENTION_CENSUS": [
+   "1",
+   null
+  ],
+  "X3M_SHADOW_SUN_TRACE": [
+   "0",
+   null
+  ],
+  "X3M_SUBMIT_PHASES": [
+   "0",
+   null
+  ],
+  "X3M_TAA_DEBUG": [
+   "0",
+   null
+  ],
   "X3M_TAA_SENTINEL": [
    "auto",
    null
@@ -171,6 +247,18 @@
    null
   ],
   "X3M_TAA_THIN_REGION_SOURCE_DEFAULT": [
+   "1",
+   null
+  ],
+  "X3M_TELEMETRY": [
+   "1",
+   null
+  ],
+  "X3M_TELEMETRY_DRAW": [
+   "0",
+   null
+  ],
+  "X3M_VOLUMETRIC_FOG_TIMING": [
    "1",
    null
   ]
@@ -178,7 +266,7 @@
  "empty_vs_recorded_stand": {
   "X3M_CAMERA_LOG": [
    "1",
-   "300"
+   null
   ],
   "X3M_CULL_CENSUS": [
    "1",
@@ -210,22 +298,42 @@
   ],
   "X3M_FPS_OVERLAY": [
    "1",
-   "0"
+   null
   ],
   "X3M_FRAME_END_STRIDE": [
    "1",
-   "300"
+   null
   ],
   "X3M_FRAME_PHASES": [
    "1",
-   "0"
+   null
   ],
   "X3M_FRAME_TIMING": [
    "1",
-   "0"
+   null
+  ],
+  "X3M_FRAME_TIMING_STATE_STAMPS": [
+   "0",
+   null
+  ],
+  "X3M_GAME_PHASES": [
+   "0",
+   null
+  ],
+  "X3M_GAME_PHASE_THRESHOLD_MS": [
+   "20",
+   null
+  ],
+  "X3M_GPU_SYNC_TIMING": [
+   "0",
+   null
   ],
   "X3M_LIGHTMAP_EMISSIVE_GAIN": [
    "1.0",
+   null
+  ],
+  "X3M_LIGHT_PHASES": [
+   "0",
    null
   ],
   "X3M_LINEAR_DISTANCE_FADE": [
@@ -244,6 +352,14 @@
    "1",
    null
   ],
+  "X3M_LOADING_PROBES": [
+   "0",
+   null
+  ],
+  "X3M_LOOP_PHASES": [
+   "0",
+   null
+  ],
   "X3M_MATERIAL_DIRECT_GAIN": [
    "1.0",
    null
@@ -254,6 +370,14 @@
   ],
   "X3M_MATERIAL_FILL": [
    "0.0",
+   null
+  ],
+  "X3M_MEDIA_CUE_TRACE": [
+   "0",
+   null
+  ],
+  "X3M_MESH_ADJACENCY_DUMP": [
+   "0",
    null
   ],
   "X3M_MESH_CACHE": [
@@ -276,6 +400,22 @@
    "1",
    null
   ],
+  "X3M_PASS_PHASES": [
+   "0",
+   null
+  ],
+  "X3M_PROFILE": [
+   "0",
+   null
+  ],
+  "X3M_PROFILE_INTERVAL_US": [
+   "2000",
+   null
+  ],
+  "X3M_RESIDUAL_PHASES": [
+   "0",
+   null
+  ],
   "X3M_SCENE_DEPTH_CAPTURE": [
    "0",
    null
@@ -293,6 +433,10 @@
    null
   ],
   "X3M_SCREEN_EMISSION_TIMING": [
+   "0",
+   null
+  ],
+  "X3M_SECTOR_BACKGROUND": [
    "0",
    null
   ],
@@ -322,7 +466,19 @@
   ],
   "X3M_SHADOW_RETENTION_CENSUS": [
    "1",
-   "0"
+   null
+  ],
+  "X3M_SHADOW_SUN_TRACE": [
+   "0",
+   null
+  ],
+  "X3M_SUBMIT_PHASES": [
+   "0",
+   null
+  ],
+  "X3M_TAA_DEBUG": [
+   "0",
+   null
   ],
   "X3M_TAA_SENTINEL": [
    "auto",
@@ -342,21 +498,21 @@
   ],
   "X3M_TELEMETRY": [
    "1",
-   "0"
+   null
+  ],
+  "X3M_TELEMETRY_DRAW": [
+   "0",
+   null
   ],
   "X3M_VOLUMETRIC_FOG_TIMING": [
    "1",
-   "0"
+   null
   ]
  },
  "short_stand_vs_stand": {
   "X3M_SHADOW_CASCADE_SIZES": [
    "2048,2048,2048,2048,2048",
    "2048,4096,4096,4096,2048"
-  ],
-  "X3M_SHADOW_RETENTION_CENSUS": [
-   "1",
-   "0"
   ]
  },
  "switches": {
@@ -377,15 +533,15 @@
   ]
  },
  "counts": {
-  "empty": 150,
-  "stand": 153,
+  "empty": 124,
+  "stand": 126,
   "recorded": 181
  },
  "checks": {
-  "empty_vs_stand only telemetry/debug + the promoted map sizes": true,
-  "stand vs recorded only the two new defaults and the removed variables": true,
-  "empty vs recorded: telemetry/debug + the two new defaults + the map sizes + the removed variables": true,
+  "empty_vs_stand only the two groups + the promoted map sizes": true,
+  "stand vs recorded only the two new defaults, the removed and the logging variables, and the groups": true,
+  "empty vs recorded: the two new defaults + the map sizes + the removed and the logging variables": true,
   "same X3AP switches": true,
-  "short stand command == old stand command but the map sizes and the census": true
+  "short stand command == old stand command but the map sizes": true
  }
 }

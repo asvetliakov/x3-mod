@@ -40,8 +40,11 @@ and allocation/copy work, hashing, and synchronous file dumping; these are
 nested within `shader_inspect`. Shader backend creation is separate. The count
 of dumps is unique shader hashes in this process, whereas inspection can occur
 at creation and again in captured draws. `lock_wait` records the existing global
-capture mutex's acquisition delay. `log_flush` records explicit flushes,
-including summary flushes. Do not add overlapping categories together.
+capture mutex's acquisition delay. `log_wake` (named `log_flush` before the
+logging tiers of 2026-09-26, when it timed the stdio flush) records the one
+`SetEvent` a summary uses to wake the log writer thread; no metric times the
+file writes, which the writer's `log_writer` rows report. Do not add
+overlapping categories together.
 
 Resource categories cover 2D, cube and volume textures, render targets, depth
 surfaces, vertex buffers and index buffers. `bytes` for VB/IB is the successful
@@ -372,3 +375,15 @@ can also appear in a real snapshot. See [entry coverage and verification
 limits](proxy-application-admission.md).
 
 **Removed 2026-09-25** (user decision): `--depth-copy`, `--scene-depth-capture`, `--motion-capture` and `--finite-positions` from the launcher only (the DLL paths stay for the ownership-integration and motion fixtures, which set the variables); `docs/verification/launcher-options-inventory.md`, "4. Removed 2026-09-25".
+
+**Logging tiers, 2026-09-26** ([design and implementation](../architecture/logging-tiers.md), "Implemented"): the launcher's
+`--telemetry` and the per-row options are replaced by `--perf` (`X3M_PERF=1`) and `--debug` (`X3M_DEBUG=1`), expanded
+inside the DLL (`src/proxy/log_tiers.h`); `X3M_TELEMETRY=1` and every individual variable stay DLL reads for the fixtures.
+Without either group a launch logs the always tier only (header, errors and refusals, Reset, `frame_end` every 3600
+frames, `session_end`, one `exception` row from a chained unhandled-exception filter; review fixes of 2026-09-26: no D3D call from the teardown at ExitProcess, the writer parked with the last device). The log is `<game dir>\x3m.log` (previous launch
+`x3m.prev.log`); rows are written by one writer thread from a 4 MiB in-memory buffer, so the per-frame `fflush` and its
+`log_flush` metric are gone from the render thread. The 300-frame health windows and `taa_invalidate` are telemetry
+rows now (either group or `X3M_TELEMETRY=1`). Evidence: `run_motion_output.py` PASS, the 229 committed cases at 346,327
+checks plus the new `seam-log-tiers` (47: group/individual row-name equivalence, the always tier's volume, the `log()`
+benchmark, the exception witness) and `seam-exit-path` (8: exit after a throw past `BeginScene`, `FreeLibrary` unloads the proxy after the last device); `run_d3d9_exports.py` PASS on the new file policy; x87 audit 709 reachable, 0 violations;
+host suite 268 / 2,792 / 0 (`verification/results/logging-tiers/`).

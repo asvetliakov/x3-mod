@@ -10,7 +10,7 @@ enum class Metric : unsigned {
     LockWait, CreateDevice, PresentNormal, PresentCapture, FrameNormal, FrameCapture,
     DrawBackend, CaptureCpu, Snapshot, ShaderVS, ShaderPS, ShaderInspect,
     ShaderGetFunction, ShaderHash, ShaderDump, Texture, CubeTexture, VolumeTexture,
-    RenderTarget, DepthStencil, VertexBuffer, IndexBuffer, Reset, LogFlush,
+    RenderTarget, DepthStencil, VertexBuffer, IndexBuffer, Reset, LogWake,
     CursorProperties, CursorPosition, CursorShow,
     // Live motion route and temporal boundary (docs/verification/telemetry.md,
     // "Route and boundary cost"). All CPU-inclusive wall clock, never GPU time.

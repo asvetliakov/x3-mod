@@ -202,7 +202,11 @@ class ProxyEnvironmentLine(unittest.TestCase):
         self.assertIn('line+=" count="+std::to_string(entries.size());', self.source)
         # X3M_* option values are never truncated.
         self.assertIn('collect(is_option,std::string::npos)', self.source)
-        self.assertIn('collect(is_environment,kValueLimit)', self.source)
+        self.assertIn('collect(is_environment,kValueLimit,true)', self.source)
+        # Logging tiers, section 6: the environment values are redacted (host home, %USERPROFILE%), WINEUSERNAME keeps
+        # its name without the value; the options are not (no X3M_* value carries a path).
+        self.assertIn('if(redact) value=_stricmp(name.c_str(),"WINEUSERNAME")==0?std::string():session_log::redact_value(value);', self.source)
+        self.assertIn('path_utf8=session_log::redact_path(utf8(path));', self.source)
 
     def test_a_failure_still_yields_a_count(self):
         body = self.source[self.source.index('void log_identity('):]

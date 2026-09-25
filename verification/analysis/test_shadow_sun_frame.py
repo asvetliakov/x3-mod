@@ -70,21 +70,23 @@ class ShadowSunTraceLaunchOption(unittest.TestCase):
     value can neither enable nor disable the trace."""
 
     def test_option_requires_the_cascades_and_cannot_be_inherited(self):
+        # The per-frame sun trace is part of --debug since the logging tiers (2026-09-26): the DLL reads
+        # X3M_SHADOW_SUN_TRACE or X3M_DEBUG (with the cascades on); --shadow-sun-trace is unknown and an inherited value dropped.
         from verification.analysis.test_shadow_cascades import launch
         base = ['--motion-output', '--ownership', '--shadow-replay-depth']
         with tempfile.TemporaryDirectory() as directory:
-            code, _, error = launch(directory, *base, '--shadow-sun-trace')
+            code, _, error = launch(directory, *base, '--shadow-cascades', 'default', '--shadow-sun-trace')
             self.assertNotEqual(code, 0)
-            self.assertIn('--shadow-sun-trace requires --shadow-cascades', error)
-            code, output, error = launch(directory, *base, '--shadow-cascades', 'default', '--shadow-sun-trace')
+            self.assertIn('unrecognized arguments', error)
+            code, output, error = launch(directory, *base, '--shadow-cascades', 'default', '--debug', inherited={'X3M_SHADOW_SUN_TRACE': '1'})
             self.assertEqual(code, 0, error)
-            self.assertEqual(json.loads(output)['env']['X3M_SHADOW_SUN_TRACE'], '1')
-            code, output, error = launch(directory, *base, '--shadow-cascades', 'default', inherited={'X3M_SHADOW_SUN_TRACE': '1'})
-            self.assertEqual(code, 0, error)
-            self.assertEqual(json.loads(output)['env']['X3M_SHADOW_SUN_TRACE'], '0')
+            env = json.loads(output)['env']
+            self.assertEqual(env['X3M_DEBUG'], '1')
+            self.assertNotIn('X3M_SHADOW_SUN_TRACE', env)
             code, output, error = launch(directory, *base, inherited={'X3M_SHADOW_SUN_TRACE': '1'})
             self.assertEqual(code, 0, error)
-            self.assertEqual(json.loads(output)['env']['X3M_SHADOW_SUN_TRACE'], '0')
+            self.assertNotIn('X3M_SHADOW_SUN_TRACE', json.loads(output)['env'])
+        self.assertIn('const bool trace_asked=log_tier::debug_flag(L"X3M_SHADOW_SUN_TRACE");', (ROOT / 'src/proxy/capture.cpp').read_text())
 
 
 if __name__ == '__main__':

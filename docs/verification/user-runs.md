@@ -62,18 +62,25 @@ Run 89 A is the only queued run. Completed instructions for Runs 73-88 are in th
 ## Stand command
 
 Since 2026-09-25 the functional options of the Run 84 A stand command, `--music-keep` and `--shadow-alpha-casters on`
-are launcher defaults ([inventory](launcher-options-inventory.md#defaults-promoted-2026-09-25)); the stand command
-carries only the telemetry/debug options (without `--loading-intervals`, removed with its recorder on 2026-09-25, and
-`--shadow-retention-census`, which the caster retention overrides):
+are launcher defaults ([inventory](launcher-options-inventory.md#defaults-promoted-2026-09-25)); since 2026-09-26 its
+telemetry/debug options are the two logging groups ([logging tiers](../architecture/logging-tiers.md)): `--debug`
+(rendering-state rows every frame, censuses, traces) and `--perf` (per-frame cost rows, frame-time and phase windows,
+FPS overlay). The DLL expands both; the `X3M_MOTION_FRAME_LOG=1` prefix is gone (the launcher drops it, `--debug`
+gives the cadence). The log is `<game dir>\x3m.log` (the previous launch's is `x3m.prev.log`); `x3run`'s snapshot copies
+it into the run directory under its `session-*.log` name.
 
 ```sh
-env -u CX_DEBUGMSG X3M_FIXTURE_BOTTLE=X3 X3M_MOTION_FRAME_LOG=1 /Users/asvetl/x3-mod/x3run --direct --telemetry --camera-log 1 --fps-overlay --frame-end-stride 1 --volumetric-fog-timing --frame-timing --frame-phases --object-bounds-log --cull-census
+env -u CX_DEBUGMSG X3M_FIXTURE_BOTTLE=X3 /Users/asvetl/x3-mod/x3run --direct --debug --perf
 ```
 
 ```sh
-# Explicit form: what the defaults expand to. The old Run 84 A stand command is still accepted and gives the same
-# environment except its explicit --shadow-cascade-sizes 2048,2048,2048,2048,2048 (the default is 2048,4096,4096,4096,2048,
-# user decision 2026-09-25):
+# --debug --perf stand for the former --telemetry --camera-log 1 --fps-overlay --frame-end-stride 1
+# --volumetric-fog-timing --frame-timing --frame-phases --object-bounds-log --cull-census and the X3M_MOTION_FRAME_LOG=1
+# prefix (all removed from the launcher on 2026-09-26; --frame-end-stride stays as an explicit knob), plus the other
+# debug-tier diagnostics (retention census, LOD switch rows, window/music/media/sun traces, sector background, loading
+# probes, collide narrow census and query phases; docs/architecture/logging-tiers.md, "Implemented").
+# Explicit form of the functional defaults: the old Run 84 A functional options give the same environment except an
+# explicit --shadow-cascade-sizes 2048,2048,2048,2048,2048 (the default is 2048,4096,4096,4096,2048, user decision 2026-09-25):
 # --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa
 # --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer
 # --resource-read fast --dat-handles --mesh-adjacency fast --screen-emission-additive 2 --screen-emission-additive-alpha 0

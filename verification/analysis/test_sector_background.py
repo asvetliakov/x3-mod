@@ -52,14 +52,18 @@ class SectorBackgroundTests(unittest.TestCase):
         self.assertNotIn('sector_background::sample(', (ROOT / 'src/proxy/motion_output_fog_inc.h').read_text())
 
     def test_launcher_opt_in_without_rendering_dependencies(self):
+        # Part of --debug since the logging tiers (2026-09-26): the DLL reads X3M_SECTOR_BACKGROUND or X3M_DEBUG.
         launcher = test_volumetric_fog.FogLauncherTests()
         status, output, error = launcher.launch('--sector-background')
+        self.assertEqual(status, 2)
+        self.assertIn('unrecognized arguments', error)
+        status, output, error = launcher.launch('--debug')
         self.assertEqual(status, 0, error)
-        self.assertIn('"X3M_SECTOR_BACKGROUND": "1"', output)
+        self.assertIn('"X3M_DEBUG": "1"', output)
         self.assertIn('"X3M_VOLUMETRIC_FOG": "0"', output)
         status, output, error = launcher.launch(environment={'X3M_SECTOR_BACKGROUND': '1'})
         self.assertEqual(status, 0, error)
-        self.assertIn('"X3M_SECTOR_BACKGROUND": "0"', output)
+        self.assertNotIn('X3M_SECTOR_BACKGROUND', output)
 
 
 if __name__ == '__main__':

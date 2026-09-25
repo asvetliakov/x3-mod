@@ -3,6 +3,7 @@
 #include "loading_trace.h"
 #include "game_phases.h"
 #include "cpu_state.h"
+#include "log_tiers.h"
 #include <algorithm>
 #include <cstring>
 
@@ -16,7 +17,7 @@ uint64_t clock_frequency=0, startup=0;
 // (cpu_state.h), so the bucketing is integer work, not a double division.
 uint64_t bucket_ticks[5]{};
 State global;
-constexpr const char* names[]={"lock_wait","create_device","present_normal","present_capture","frame_normal","frame_capture","draw_backend","capture_cpu","snapshot","shader_vs_backend","shader_ps_backend","shader_inspect","shader_getfunction","shader_hash","shader_dump","texture","cube_texture","volume_texture","render_target","depth_stencil","vertex_buffer","index_buffer","reset","log_flush","cursor_properties","cursor_position","cursor_show","stretch_backend","route_gate","route_draw","route_set_rt","route_jitter","route_fill","route_lazy_flush","route_readback","taa_run","taa_state_capture","taa_copy_color","taa_copy_depth","taa_resolve_draw","taa_state_apply","taa_copy_back","hdr_redirect","hdr_writeback","hdr_writeback_draw","hdr_writeback_stretch","hdr_bind","hdr_recheck","hdr_meter","hdr_meter_readback"};
+constexpr const char* names[]={"lock_wait","create_device","present_normal","present_capture","frame_normal","frame_capture","draw_backend","capture_cpu","snapshot","shader_vs_backend","shader_ps_backend","shader_inspect","shader_getfunction","shader_hash","shader_dump","texture","cube_texture","volume_texture","render_target","depth_stencil","vertex_buffer","index_buffer","reset","log_wake","cursor_properties","cursor_position","cursor_show","stretch_backend","route_gate","route_draw","route_set_rt","route_jitter","route_fill","route_lazy_flush","route_readback","taa_run","taa_state_capture","taa_copy_color","taa_copy_depth","taa_resolve_draw","taa_state_apply","taa_copy_back","hdr_redirect","hdr_writeback","hdr_writeback_draw","hdr_writeback_stretch","hdr_bind","hdr_recheck","hdr_meter","hdr_meter_readback"};
 static_assert(sizeof(names)/sizeof(*names)==static_cast<unsigned>(Metric::Count));
 double us(uint64_t ticks){return clock_frequency?double(ticks)*1000000.0/double(clock_frequency):0;}
 bool per_draw(Metric metric){
@@ -30,7 +31,7 @@ bool per_draw(Metric metric){
 void initialize(void (*flush_log)()){
     flush_output=flush_log;
     wchar_t value[8]{};
-    active=GetEnvironmentVariableW(L"X3M_TELEMETRY",value,8)==1 && value[0]==L'1';
+    active=log_tier::telemetry(); // X3M_TELEMETRY=1, X3M_PERF=1 or X3M_DEBUG=1 (docs/architecture/logging-tiers.md)
     if(!active)return;
     draw_active=GetEnvironmentVariableW(L"X3M_TELEMETRY_DRAW",value,8)==1 && value[0]==L'1';
     LARGE_INTEGER f{}; if(!QueryPerformanceFrequency(&f)||f.QuadPart<=0){active=false;return;}
@@ -74,7 +75,8 @@ void summary(State& state,const char* reason,uint64_t frame){
     engine_memory_line("summary",state.device,frame);
     if(state.device)game_phases::report(frame); // prior finalized records only
     if(state.device==0)loading_trace::report();
-    if(flush_output){const auto begin=now();flush_output();record(state,Metric::LogFlush,now()-begin);}
+    // Wakes the log writer (session_log::request_drain: one SetEvent, no I/O); log_wake is that call's cost, formerly log_flush.
+    if(flush_output){const auto begin=now();flush_output();record(state,Metric::LogWake,now()-begin);}
     reporting=was_reporting;
 }
 void present(State& state,uint64_t frame,bool captured,uint64_t begin,uint64_t end,HRESULT result){

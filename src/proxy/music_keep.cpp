@@ -3,6 +3,8 @@
 #include "object_trace.h"
 #include "cpu_state.h"
 #include "capture.h"
+#include "log_tiers.h"
+#include "session_log.h"
 #include <windows.h>
 #include <cstdarg>
 #include <cstdio>
@@ -110,26 +112,20 @@ bool live_record(std::uint32_t record, std::uint32_t id, std::uint32_t media, Li
     });
     return live;
 }
-// One event line, written synchronously through the session log's OS handle
-// (no stdio buffer, no log mutex; it may precede buffered lines written
-// earlier: grep for the prefix, not for order). The CRT formatter is x87
-// code, so it runs under call_preserved's FNSAVE/FRSTOR envelope,
-// indirectly, keeping the handlers' audited graph x87-free. Capped at
-// trace_line_cap event lines per session, then one notice.
+// One event line through the session log's buffer (no file I/O on the game thread since the logging tiers; the
+// callers' formats keep their trailing newline, which the log strips). The CRT formatter runs behind call_preserved
+// inside the session log, keeping the handlers' audited graph x87-free. Capped at trace_line_cap event lines per
+// session, then one notice.
 void write_line(const char* format, ...) {
     bool notice = false;
     if (lines_ >= trace_line_cap) { ++suppressed_; if (cap_noted_) return; cap_noted_ = true; notice = true; }
     else ++lines_;
     const HANDLE handle = x3m::log_handle();
     if (handle == INVALID_HANDLE_VALUE || !handle) return;
+    if (notice) { x3m::log("music_trace_cap frame=%llu lines=%lu note=further_music_lines_suppressed", current_frame_, lines_); return; }
     va_list args;
     va_start(args, format);
-    x3m::call_preserved([&] {
-        char line[256];
-        const int n = notice ? std::snprintf(line, sizeof line, "music_trace_cap frame=%llu lines=%lu note=further_music_lines_suppressed\n", current_frame_, lines_)
-                             : std::vsnprintf(line, sizeof line, format, args);
-        if (n > 0 && unsigned(n) < sizeof line) { DWORD written = 0; WriteFile(handle, line, DWORD(n), &written, nullptr); }
-    });
+    x3m::session_log::vlog(format, args);
     va_end(args);
 }
 const char* action_name(SeekAction a) { return a == SeekAction::skip ? "skip" : a == SeekAction::pause_then_vanilla ? "pause_then_vanilla" : "vanilla"; }
@@ -590,7 +586,8 @@ bool initialize() {
     const DWORD error = GetLastError();
     if (keep_patched_ || trace_patched_) { SetLastError(error); return true; }
     bool keep_present = false, trace_present = false;
-    const bool keep_requested = requested(L"X3M_MUSIC_KEEP", &keep_present), trace_requested = requested(L"X3M_MUSIC_TRACE", &trace_present);
+    const bool keep_requested = requested(L"X3M_MUSIC_KEEP", &keep_present), trace_requested = requested(L"X3M_MUSIC_TRACE", &trace_present) || log_tier::debug(); // X3M_MUSIC_TRACE=1 or X3M_DEBUG=1
+    trace_present = trace_present || trace_requested;
     if (!keep_present && !trace_present) { keep_state_ = trace_state_ = "disabled"; SetLastError(error); return false; }
     lines_ = seq_ = suppressed_ = walks_cut_ = 0; cap_noted_ = false;
     const bool image_ok = object_trace::executable_verified();

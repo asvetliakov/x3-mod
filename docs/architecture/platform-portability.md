@@ -343,10 +343,52 @@ its `scan`/`scan_log` never raise on log content and report unparsable lines in
   `test_d3d9_exports.py` parses the PE export directory; the Wine fixture
   `run_d3d9_exports.py` resolves all seventeen and calls the forwarded and
   the fallback entry points.
-- Session logs fall back to `%LOCALAPPDATA%\x3-modern-renderer\captures`
-  when the game directory is not writable (W3; the first log line
-  `capture_dir=<path> source=game|localappdata` records the choice;
-  `run_d3d9_exports.py`'s read-only-directory case exercises it under Wine).
+- The session log is `<game dir>\x3m.log` since the logging tiers (2026-09-26,
+  [logging-tiers.md](logging-tiers.md)): the previous one is renamed to
+  `x3m.prev.log` with `MoveFileExW(MOVEFILE_REPLACE_EXISTING)`, a rename that fails
+  for any reason but "no previous log" (a second instance, an editor or an
+  antivirus holding the file) opens `x3m-<pid>.log` instead, `X3M_LOG_FILE`
+  opens an exact path (fixtures), and the file is created with `CreateFileW`
+  (`CREATE_ALWAYS`, shared for read and write). When the game directory is not
+  writable (W3) the log goes to `%LOCALAPPDATA%\x3-modern-renderer\x3m.log` and the
+  captures to `...\captures`; the first row `log_open file=<path>
+  source=game|localappdata|override previous=renamed|absent|busy|none
+  session=<stamp>` records the choice, `file=` being the path
+  `GetFinalPathNameByHandleW` resolved (resolved at run time; Vista+) so a UAC
+  virtualised write names the VirtualStore copy. `run_d3d9_exports.py`
+  exercises the rotation (`previous=renamed`) and the read-only fallback under
+  Wine. Unverified natively: whether `X3AP.exe` carries a `requestedExecutionLevel`
+  manifest (without one a 32-bit process writing under Program Files is
+  redirected by UAC file virtualisation), the Steam/GOG install-directory ACLs,
+  and an antivirus holding `x3m.log` at launch (the `x3m-<pid>.log` fallback
+  covers the sharing violation).
+- Rows reach the file through one writer thread (`CreateThread`, an auto-reset
+  event, `WriteFile` in 64 KiB chunks every 200 ms or when a 2 MiB half of the
+  4 MiB buffer fills); a game thread only formats and copies. The thread holds
+  a module reference (`GetModuleHandleExW`, released by
+  `FreeLibraryAndExitThread`) only while a device exists: the last device's
+  release parks it and the next device creation starts another, so an
+  application's `FreeLibrary` after its last device unloads the proxy.
+  `DLL_PROCESS_DETACH` signals it and waits at most 1 s, then writes the
+  remaining rows and `session_end` through the OS handle. The crash row comes
+  from a filter installed with `SetUnhandledExceptionFilter` (chained to the one
+  it replaced, put back at detach): it runs only for an exception nobody
+  handled, formats integers by hand (no CRT, no allocation, no lock), restores
+  the last error and names the module from `VirtualQuery` and a table resolved
+  at arm time (no loader call on the exception path); a filter installed later
+  replaces it (`session_end filter=replaced`).
+- DllMain rules at process exit (`DLL_PROCESS_DETACH` with `lpReserved != NULL`,
+  documented: every other thread has already been terminated): the proxy makes
+  no D3D call from its teardown. Device contexts still alive are moved into
+  never-destroyed storage before the CRT's static destructors run, so no
+  `Release` or resource teardown waits on a runtime thread that no longer
+  exists (the D3D9 runtime's worker threads under Wine, the driver's under
+  Windows); the process's memory and handles go with it. On a dynamic
+  `FreeLibrary` (`lpReserved == NULL`) the ordinary destructors run, with the
+  runtime's threads alive.
+- All of the log path is documented Win32; nothing Wine-specific. Native
+  behaviour of the writer, the crash filter and the exit path is unverified
+  (Windows-compatible source only).
 - Current CrossOver fixtures do not establish native-Windows rendering, reset,
   multithreading, presentation or performance. Everything above is
   Windows-compatible source verified on CrossOver Preview (Steam and X3

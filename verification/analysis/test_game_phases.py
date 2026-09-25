@@ -28,36 +28,44 @@ class DiagnosticLaunchOptions(unittest.TestCase):
     def test_segment_threshold_default_range_and_prerequisite(self):
         helper=self.helper()
         with tempfile.TemporaryDirectory() as directory:
-            code,output,error=helper.launch(directory,'--telemetry','--game-phases')
+            code,output,error=helper.launch(directory,'--perf','--game-phases')
             self.assertEqual(code,0,error)
             self.assertEqual(json.loads(output)['env']['X3M_GAME_PHASE_THRESHOLD_MS'],'20')
-            code,output,error=helper.launch(directory,'--telemetry','--game-phases','--game-phase-threshold-ms','45')
+            code,output,error=helper.launch(directory,'--debug','--game-phases','--game-phase-threshold-ms','45')
             self.assertEqual(code,0,error)
             self.assertEqual(json.loads(output)['env']['X3M_GAME_PHASE_THRESHOLD_MS'],'45')
-            code,_,error=helper.launch(directory,'--telemetry','--game-phase-threshold-ms','30')
+            code,_,error=helper.launch(directory,'--perf','--game-phase-threshold-ms','30')
             self.assertEqual(code,2)
             self.assertIn('--game-phase-threshold-ms requires --game-phases',error)
+            code,_,error=helper.launch(directory,'--game-phases')
+            self.assertEqual(code,2)
+            self.assertIn('--game-phases requires --perf or --debug',error)
             for value in ('0','10001'):
-                code,_,error=helper.launch(directory,'--telemetry','--game-phases','--game-phase-threshold-ms',value)
+                code,_,error=helper.launch(directory,'--perf','--game-phases','--game-phase-threshold-ms',value)
                 self.assertEqual(code,2,value)
                 self.assertIn('--game-phase-threshold-ms must be between 1 and 10000',error)
-            # The default is written explicitly, so an inherited value cannot change it.
-            code,output,error=helper.launch(directory,'--telemetry','--game-phases',inherited={'X3M_GAME_PHASE_THRESHOLD_MS':'500'})
+            # The threshold travels with --game-phases (the default written explicitly), so an inherited value cannot
+            # change it; without --game-phases neither variable is sent.
+            code,output,error=helper.launch(directory,'--perf','--game-phases',inherited={'X3M_GAME_PHASE_THRESHOLD_MS':'500'})
             self.assertEqual(code,0,error)
             self.assertEqual(json.loads(output)['env']['X3M_GAME_PHASE_THRESHOLD_MS'],'20')
+            code,output,error=helper.launch(directory,'--perf',inherited={'X3M_GAME_PHASE_THRESHOLD_MS':'500','X3M_GAME_PHASES':'1'})
+            self.assertEqual(code,0,error)
+            env=json.loads(output)['env']
+            self.assertNotIn('X3M_GAME_PHASE_THRESHOLD_MS',env);self.assertNotIn('X3M_GAME_PHASES',env)
 
     def test_telemetry_draw_requires_telemetry_and_resets_inherited_value(self):
         helper=self.helper()
         with tempfile.TemporaryDirectory() as directory:
             code,_,error=helper.launch(directory,'--telemetry-draw')
             self.assertEqual(code,2)
-            self.assertIn('--telemetry-draw requires --telemetry',error)
-            code,output,error=helper.launch(directory,'--telemetry','--telemetry-draw')
+            self.assertIn('--telemetry-draw requires --perf or --debug',error)
+            code,output,error=helper.launch(directory,'--perf','--telemetry-draw')
             self.assertEqual(code,0,error)
             self.assertEqual(json.loads(output)['env']['X3M_TELEMETRY_DRAW'],'1')
-            code,output,error=helper.launch(directory,'--telemetry',inherited={'X3M_TELEMETRY_DRAW':'1'})
+            code,output,error=helper.launch(directory,'--perf',inherited={'X3M_TELEMETRY_DRAW':'1'})
             self.assertEqual(code,0,error)
-            self.assertEqual(json.loads(output)['env']['X3M_TELEMETRY_DRAW'],'0')
+            self.assertNotIn('X3M_TELEMETRY_DRAW',json.loads(output)['env'])
 
     def test_production_wiring_of_both_variables(self):
         source=(ROOT/'src/proxy/game_phases.cpp').read_text()

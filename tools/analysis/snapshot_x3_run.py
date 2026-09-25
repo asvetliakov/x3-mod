@@ -3,6 +3,10 @@
 
 No launcher, source deletion, directory-wide copy or manifest. --since-ns is a
 pre-launch time.time_ns() boundary; no newly created log is a harmless no-op.
+The session log is <game dir>/x3m.log (x3m-<pid>.log on a busy rotation) since the
+logging tiers, preserved under its session-*.log name from the log_open row; a
+session-*.log in the captures directory (an older proxy, a runner's X3M_LOG_FILE)
+is still found. Readbacks and the launcher's stderr stay in the captures directory.
 Explicit logs are allowed, but readbacks outside that log's write interval are
 reported as stale. Shader dumps are reusable only when their FNV identity and
 bounded size match the logged record. Invoke after the game exits.
@@ -19,8 +23,12 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'verification/probe'))
 from game_guard import game_running
 
-CAPTURES = Path.home() / 'Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/x3-modern-captures'
+CAPTURE_SUBDIRECTORY = 'x3-modern-captures'
+CAPTURES = Path.home() / 'Library/Application Support/CrossOver/Bottles/X3/drive_c/X3' / CAPTURE_SUBDIRECTORY
 SESSION = re.compile(r'session-\d{8}-\d{6}-\d+\.log\Z')
+# The session log since the logging tiers (docs/architecture/logging-tiers.md): <game dir>\x3m.log, or x3m-<pid>.log
+# when the rotation met a sharing violation; x3m.prev.log is the previous launch's and never selected.
+GAME_LOG = re.compile(r'x3m(?:-\d+)?\.log\Z')
 # The launcher's teed terminal output (tools/manage.py launch), written next to
 # the session log: preserved with it so a wall-clock burst from another
 # component can be aligned with the proxy's frame clock.
@@ -81,14 +89,18 @@ def select_log(directory_fd, since_ns):
 
 
 def copy_file(source_fd, target_fd, name, *, size=None, window=None, shader_id=None,
-              expected_sha256=None, since_ns=None, created_before=None):
-    """Pinned directories + no-follow leaf opens prevent path/symlink escapes."""
+              expected_sha256=None, since_ns=None, created_before=None, target_name=None, modified_since_ns=None):
+    """Pinned directories + no-follow leaf opens prevent path/symlink escapes. target_name renames the copy
+    (x3m.log -> session-*.log); modified_since_ns checks the modification time only (a log opened in place)."""
+    target_name = target_name or name
     read_fd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=source_fd)
     with os.fdopen(read_fd, 'rb') as source:
         before = os.fstat(source.fileno())
         if not stat.S_ISREG(before.st_mode):
             raise ValueError('not a regular file')
         if since_ns is not None and (created_ns(before) < since_ns or before.st_mtime_ns < since_ns):
+            raise ValueError('selected log predates this launch')
+        if modified_since_ns is not None and before.st_mtime_ns < modified_since_ns:
             raise ValueError('selected log predates this launch')
         if size is not None and before.st_size != size:
             raise ValueError(f'size differs: expected {size}, found {before.st_size}')
@@ -98,7 +110,7 @@ def copy_file(source_fd, target_fd, name, *, size=None, window=None, shader_id=N
             raise ValueError('created after this session log: it belongs to a later launch')
         if shader_id is not None and not 0 < before.st_size <= 4 * 1024 * 1024:
             raise ValueError('shader size exceeds the logged writer contract')
-        write_fd = os.open(name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600, dir_fd=target_fd)
+        write_fd = os.open(target_name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600, dir_fd=target_fd)
         try:
             fingerprint = 14695981039346656037
             digest = hashlib.sha256() if expected_sha256 is not None else None
@@ -131,7 +143,7 @@ def copy_file(source_fd, target_fd, name, *, size=None, window=None, shader_id=N
             return before
         except BaseException:
             # Only this newly created destination is removed, never a source.
-            os.unlink(name, dir_fd=target_fd)
+            os.unlink(target_name, dir_fd=target_fd)
             raise
 
 
@@ -196,22 +208,74 @@ def references(log):
     return wanted, issues
 
 
+def log_open_row(directory_fd, name):
+    """The fields of the log's first row when it is the proxy's log_open row (logging tiers), else {}."""
+    fd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=directory_fd)
+    with os.fdopen(fd, 'rb') as source:
+        first = source.readline(4096).decode('utf-8', 'replace')
+    return dict(FIELDS.findall(first)) if first.startswith('log_open ') else {}
+
+
+def select_game_log(directory_fd, since_ns):
+    """The newest x3m.log / x3m-<pid>.log of this launch in the game directory, as (created, mtime, name) or None.
+    A log created before the boundary is taken only when its log_open row says it was opened in place (previous=busy,
+    or an X3M_LOG_FILE override): then the birth time is the old file's and the modification time decides."""
+    found = []
+    for name in os.listdir(directory_fd):
+        if not GAME_LOG.fullmatch(name):
+            continue
+        info = os.stat(name, dir_fd=directory_fd, follow_symlinks=False)
+        if not stat.S_ISREG(info.st_mode) or info.st_mtime_ns < since_ns:
+            continue
+        if created_ns(info) >= since_ns or log_open_row(directory_fd, name).get('previous') in ('busy', 'none'):
+            found.append((created_ns(info), info.st_mtime_ns, name))
+    return max(found) if found else None
+
+
 def snapshot(*, capture_dir=CAPTURES, since_ns=None, log=None, destination_root=Path('/tmp')):
     if log is None and (since_ns is None or since_ns <= 0):
         raise ValueError('provide an explicit log or positive pre-launch --since-ns boundary')
     require_idle()  # An unavailable process inventory also raises and refuses.
-    capture_dir = Path(log).absolute().parent if log is not None else Path(capture_dir)
-    if not capture_dir.exists():
+    # Since the logging tiers the proxy writes <game dir>\x3m.log (x3m-<pid>.log when the rotation was busy) and keeps its
+    # captures in <game dir>\x3-modern-captures; a proxy before them wrote session-*.log into the captures directory.
+    if log is not None:
+        log = Path(log).absolute()
+        log_dir = log.parent
+        capture_dir = log_dir / CAPTURE_SUBDIRECTORY if GAME_LOG.fullmatch(log.name) else log_dir
+    else:
+        capture_dir = Path(capture_dir)
+        log_dir = capture_dir.parent
+    if not capture_dir.exists() and not log_dir.exists():
         if log is not None:
             raise FileNotFoundError(capture_dir)
         return None, 0, []
-    source_fd = os.open(capture_dir, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
-    with closing_fd(source_fd):
-        name = Path(log).name if log is not None else select_log(source_fd, since_ns)
-        if name is None:
-            return None, 0, []
-        if not SESSION.fullmatch(name):
-            raise ValueError('explicit log must have a session timestamp/PID basename')
+    source_fd = os.open(capture_dir, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW) if capture_dir.exists() else None
+    log_fd = os.open(log_dir, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW) if log_dir != capture_dir else source_fd
+    with closing_fd(source_fd), closing_fd(log_fd if log_fd != source_fd else None):
+        if log is not None:
+            name, name_fd = log.name, log_fd
+            if not (SESSION.fullmatch(name) or GAME_LOG.fullmatch(name)):
+                raise ValueError('explicit log must be x3m.log, x3m-<pid>.log or have a session timestamp/PID basename')
+        else:
+            candidates = []
+            legacy = select_log(source_fd, since_ns) if source_fd is not None else None
+            if legacy is not None:
+                info = os.stat(legacy, dir_fd=source_fd, follow_symlinks=False)
+                candidates.append((created_ns(info), info.st_mtime_ns, legacy, source_fd))
+            game = select_game_log(log_fd, since_ns) if log_fd is not None and log_fd != source_fd else None
+            if game is not None:
+                candidates.append((*game, log_fd))
+            if not candidates:
+                return None, 0, []
+            _, _, name, name_fd = max(candidates, key=lambda c: c[:2])
+        # The preserved copy keeps the session-*.log name every analysis script globs: x3m.log is renamed after its
+        # log_open row's session= field.
+        target_name = name
+        if GAME_LOG.fullmatch(name):
+            session = log_open_row(name_fd, name).get('session', '')
+            if not re.fullmatch(r'\d{8}-\d{6}-\d+', session):
+                raise ValueError(f'{name}: no log_open row with a session name')
+            target_name = f'session-{session}.log'
         existing = (re.fullmatch(r'x3-bottleX3-run(\d+)', path.name) for path in Path(destination_root).iterdir())
         number = 1 + max((int(match[1]) for match in existing if match), default=0)
         while True:
@@ -224,11 +288,16 @@ def snapshot(*, capture_dir=CAPTURES, since_ns=None, log=None, destination_root=
         target_fd = os.open(destination, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
         with closing_fd(target_fd):
             # Log first. All authorization is parsed from this immutable copy.
-            info = copy_file(source_fd, target_fd, name, since_ns=since_ns if log is None else None)
-            log_fd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=target_fd)
-            with os.fdopen(log_fd, 'r', errors='replace') as copied_log:
+            info = copy_file(name_fd, target_fd, name, since_ns=since_ns if log is None and not GAME_LOG.fullmatch(name) else None,
+                             target_name=target_name, modified_since_ns=since_ns if log is None else None)
+            copied_fd = os.open(target_name, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=target_fd)
+            with os.fdopen(copied_fd, 'r', errors='replace') as copied_log:
                 wanted, issues = references(copied_log)
             count = 0
+            if source_fd is None:
+                if wanted:
+                    issues.append(f'{capture_dir}: no capture directory, {len(wanted)} referenced files not preserved')
+                wanted = {}
             for filename, options in wanted.items():
                 options = dict(options)
                 if options.pop('timed', False):
@@ -252,6 +321,8 @@ def snapshot(*, capture_dir=CAPTURES, since_ns=None, log=None, destination_root=
             if since_ns is not None:
                 bounds['since_ns'] = since_ns
             try:
+                if source_fd is None:
+                    raise FileNotFoundError(LAUNCHER_STDERR)
                 stamps = copy_file(source_fd, target_fd, LAUNCHER_STDERR, **bounds)
                 count += 1
                 if stamps.st_mtime_ns < created_ns(info):
@@ -268,7 +339,9 @@ def snapshot(*, capture_dir=CAPTURES, since_ns=None, log=None, destination_root=
 class closing_fd:
     def __init__(self, fd): self.fd = fd
     def __enter__(self): return self.fd
-    def __exit__(self, *_): os.close(self.fd)
+    def __exit__(self, *_):
+        if self.fd is not None:
+            os.close(self.fd)
 
 
 def main():

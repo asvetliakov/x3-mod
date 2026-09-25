@@ -17,6 +17,7 @@ import subprocess
 import tempfile
 import time
 import bottle
+import fixture_log  # X3M_LOG_FILE: the session log where this runner reads it (logging tiers)
 import sun_shadow_apply as sun_apply  # the bias law (resolve_bias) for the shadow_apply record
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -596,7 +597,7 @@ def main():
                                *('Z:'+str(p) for p in programs[:2]), 'hullemission']
                     start = time.monotonic()
                     with (work/'stdout.txt').open('w') as out, (work/'wine.log').open('w') as error:
-                        completed = subprocess.run(command, env=env, stdout=out, stderr=error, timeout=180)
+                        completed = subprocess.run(command, env={**env, **fixture_log.session_log_env(work)}, stdout=out, stderr=error, timeout=180)
                     assert completed.returncode == 0, (case, gain, completed.returncode, str(work))
                     logs = list((work/'x3-modern-captures').glob('session-*.log')); assert len(logs) == 1
                     check = validate_hull_emission((work/'stdout.txt').read_text(), logs[0].read_text(), gain)
@@ -653,7 +654,7 @@ def main():
                        *('Z:'+str(p) for p in programs[:2]), 'sunlane']
             start = time.monotonic()
             with (work/'stdout.txt').open('w') as out, (work/'wine.log').open('w') as error:
-                completed = subprocess.run(command, env=env, stdout=out, stderr=error, timeout=180)
+                completed = subprocess.run(command, env={**env, **fixture_log.session_log_env(work)}, stdout=out, stderr=error, timeout=180)
             assert completed.returncode == 0, (case, completed.returncode, str(work))
             logs = list((work/'x3-modern-captures').glob('session-*.log')); assert len(logs) == 1
             script = 'shadow_apply' if apply_base(case) == 'shadow_apply_cascades' else 'original_lane' if case == 'original_lane_lightmap' else apply_base(case)

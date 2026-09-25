@@ -158,6 +158,10 @@ LONG CALLBACK fault_witness(EXCEPTION_POINTERS* info) {
     fault=f;fault_seq.store(1,std::memory_order_release);
     char line[352];const int n=format_fault(line,sizeof line,f,1,other_first_chance.load(std::memory_order_relaxed));
     const HANDLE handle=log_handle();DWORD written_bytes=0;
+    // Synchronous on purpose (logging tiers): this runs in a vectored handler on the faulting thread, which may hold
+    // the session log's buffer lock (a fault inside the formatter) and is about to die, so a buffered row could never
+    // land; it fires only on the hook's execute fault, never per frame. report() writes the same record again through
+    // the buffer at the next Present or at shutdown.
     if(n>0&&handle!=INVALID_HANDLE_VALUE&&handle)WriteFile(handle,line,DWORD(n),&written_bytes,nullptr); // unbuffered, no lock; may precede buffered lines
     return EXCEPTION_CONTINUE_SEARCH;
 }

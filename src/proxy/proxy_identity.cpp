@@ -1,6 +1,7 @@
 #include "proxy_identity.h"
 #include "capture.h"
 #include "object_trace.h"
+#include "session_log.h"
 #include "x3m_source_commit_inc.h"
 #include <wincrypt.h>
 #include <algorithm>
@@ -156,7 +157,7 @@ void log_module(HMODULE module,const char* name) {
             const DWORD length=GetModuleFileNameW(module,&path[0],static_cast<DWORD>(path.size()));
             if(length&&length<path.size()){
                 path.resize(length);
-                path_utf8=utf8(path);
+                path_utf8=session_log::redact_path(utf8(path)); // profile prefix redacted before sanitize (always tier)
                 sanitize(path_utf8);
                 std::string full;
                 hex=hash_file(path,full,bytes)&&full.size()==64?full.substr(0,16):std::string("unavailable");
@@ -187,7 +188,9 @@ bool is_environment(const wchar_t* entry) {
 // FreeEnvironmentStringsW); one pass, bounded by the block the OS hands back,
 // and no variable outside the filter is read or logged. Names are matched
 // case-insensitively, as Win32 environment names are.
-std::vector<std::string> collect(bool (*select)(const wchar_t*),std::size_t limit) {
+// redact (proxy_environment only; docs/architecture/logging-tiers.md section 6): the host home directory and
+// %USERPROFILE% in every value become "~" / "%USERPROFILE%", and WINEUSERNAME keeps its name without the value.
+std::vector<std::string> collect(bool (*select)(const wchar_t*),std::size_t limit,bool redact=false) {
     std::vector<std::string> entries;
     LPWCH block=GetEnvironmentStringsW();
     if(!block) return entries;
@@ -199,6 +202,8 @@ std::vector<std::string> collect(bool (*select)(const wchar_t*),std::size_t limi
         const std::size_t split=pair.find('=');
         std::string name=split==std::string::npos?pair:pair.substr(0,split);
         std::string value=split==std::string::npos?std::string():pair.substr(split+1);
+        // Redacted before sanitize, so a profile path with a space or a non-ASCII byte still matches.
+        if(redact) value=_stricmp(name.c_str(),"WINEUSERNAME")==0?std::string():session_log::redact_value(value);
         sanitize(name);
         if(!value.empty()) sanitize(value);
         if(value.size()>limit){value.resize(limit);value+="\xe2\x80\xa6";} // U+2026, kept out of sanitize
@@ -218,7 +223,7 @@ std::string options() {
 // The emulation and Wine/CrossOver variables, same form, with the number of
 // entries last so an empty list is still a positive statement.
 std::string environment() {
-    const std::vector<std::string> entries=collect(is_environment,kValueLimit);
+    const std::vector<std::string> entries=collect(is_environment,kValueLimit,true);
     std::string line;
     for(const std::string& entry:entries){line+=' ';line+=entry;}
     line+=" count="+std::to_string(entries.size());
@@ -240,7 +245,7 @@ void log_identity(HMODULE self) {
         if(length&&length<path.size()){
             path.resize(length);
             if(!hash_file(path,hex,bytes)) hex="unavailable";
-            path_utf8=utf8(path);
+            path_utf8=session_log::redact_path(utf8(path)); // a profile prefix redacted (logging-tiers.md section 6)
             sanitize(path_utf8);
             const std::size_t separator=path.find_last_of(L"\\/");
             manifest=manifest_sha256(separator==std::wstring::npos?std::wstring(L"."):path.substr(0,separator));

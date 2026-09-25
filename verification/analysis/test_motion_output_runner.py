@@ -82,7 +82,7 @@ class MotionOutputRunnerTests(unittest.TestCase):
                        'seam-ownership-bolt-shape-prims': '0', 'seam-ownership-bolt-shape-decl': '0'})  # the bolt footprint's shape-refusal script
         self.assertEqual({n for n, e in hdr.items() if e.get('X3M_HDR_EXPOSURE') == 'auto'}, automatic)
         self.assertEqual({n: e['X3M_HDR_EV_MANUAL'] for n, e in hdr.items() if e.get('X3M_HDR_EXPOSURE') == 'manual'}, manual)
-        self.assertEqual((len(hdr), len(automatic), len(manual)), (108, 14, 57))  # 110 before seam-thin-vote-far-on-source-{both,screen} went with X3M_TAA_THIN_REGION_SOURCE (2026-09-25)  # + seam-ownership-shadow-alpha-route{,-less} (the lane's FP16 scene, no exposure mode) + seam-thin-vote-far-on-owner (no exposure mode)  # 4 seam-*lightmap-far-fade*, 7 seam-lightmap-widen-* and 4 seam-thin-vote-* cases set no exposure mode (runtime default)
+        self.assertEqual((len(hdr), len(automatic), len(manual)), (109, 14, 57))  # + seam-exit-path (the hostile thin-vote script, no exposure mode; 2026-09-26)  # 110 before seam-thin-vote-far-on-source-{both,screen} went with X3M_TAA_THIN_REGION_SOURCE (2026-09-25)  # + seam-ownership-shadow-alpha-route{,-less} (the lane's FP16 scene, no exposure mode) + seam-thin-vote-far-on-owner (no exposure mode)  # 4 seam-*lightmap-far-fade*, 7 seam-lightmap-widen-* and 4 seam-thin-vote-* cases set no exposure mode (runtime default)
         for name, env in hdr.items():
             with self.subTest(case=name):
                 if name in automatic:
@@ -136,8 +136,10 @@ class MotionOutputRunnerTests(unittest.TestCase):
             self.assertEqual(kwargs['env']['X3M_FIXTURE_WRAP'], '1' if directory.name.split('motion-output-')[1].startswith('seam-burst-lazy-wrap-') else '0')
             self.assertEqual(kwargs['env']['X3M_HDR_EXPOSURE'], 'fixed')
             self.assertEqual(kwargs['env']['X3M_HDR_EV_MANUAL'], '')
+            # The runner names the session log through X3M_LOG_FILE (logging tiers), which creates the directory.
+            self.assertRegex(kwargs['env']['X3M_LOG_FILE'], r'^Z:.*x3-modern-captures[\\/]session-\d{8}-\d{6}-\d+\.log$')
             captures = directory / 'x3-modern-captures'
-            captures.mkdir()
+            captures.mkdir(exist_ok=True)
             (captures / 'session-test.log').write_text('host dispatch test')
             if mutate:
                 self.inputs['dll'].write_bytes(b'changed')

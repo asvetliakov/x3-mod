@@ -22,6 +22,7 @@ import tempfile
 import time
 
 import bottle
+import fixture_log  # X3M_LOG_FILE: the session log where this runner reads it (logging tiers)
 from game_guard import game_running
 import run_linear_distance_fade as component
 import run_linear_material as material
@@ -1432,7 +1433,7 @@ def main_screen(args):
             if run.get('timing'):command.append(f"{run['width']}x{run['height']}")
             start=time.monotonic()
             with (work/'stdout.txt').open('w') as out,(work/'wine.log').open('w') as error:
-                child=subprocess.run(command,env=env,stdout=out,stderr=error,timeout=180)
+                child=subprocess.run(command,env={**env, **fixture_log.session_log_env(work)},stdout=out,stderr=error,timeout=180)
             assert child.returncode==0,f"{run['name']}: fixture failed; {work}"
             logs=list((work/'x3-modern-captures').glob('session-*.log'));assert len(logs)==1
             output=(work/'stdout.txt').read_text();trace=logs[0].read_text()
@@ -1547,7 +1548,7 @@ def main():
             start=time.monotonic()
             if not reused:
                 with (work/'stdout.txt').open('w') as out,(work/'wine.log').open('w') as error:
-                    child=subprocess.run(command,env=env,stdout=out,stderr=error,timeout=180)
+                    child=subprocess.run(command,env={**env, **fixture_log.session_log_env(work)},stdout=out,stderr=error,timeout=180)
                 assert child.returncode==0,f"{run['name']}: fixture failed; {work}"
             logs=list((work/'x3-modern-captures').glob('session-*.log'));assert len(logs)==1
             output=(work/'stdout.txt').read_text();trace=logs[0].read_text()

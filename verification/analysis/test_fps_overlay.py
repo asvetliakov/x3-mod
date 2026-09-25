@@ -94,39 +94,29 @@ class FpsOverlay(unittest.TestCase):
         reset = extract_function(capture, 'HRESULT reset_common(')
         self.assertIn('ctx.fps_overlay.reset();ctx.fps_notice.text("","");', reset)
         self.assertIn('ComparisonNotice fps_notice{72};', capture)
-        self.assertIn('fps_overlay_requested=GetEnvironmentVariableW(L"X3M_FPS_OVERLAY",setting,32)==1', capture)
+        self.assertIn('fps_overlay_requested=log_tier::perf_flag(L"X3M_FPS_OVERLAY");', capture)  # or X3M_PERF=1
         # The accumulator itself: no OS or D3D header, no allocation.
         for absent in ('windows.h', 'd3d9.h', 'new', 'malloc', 'std::string', 'std::vector'):
             self.assertNotIn(absent, header)
 
     def test_launcher_option_writes_the_environment(self):
-        source = (ROOT / 'tools/manage.py').read_text()
-        tree = ast.parse(source)
-        main = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'main')
-        statements = []
-        for node in main.body:
-            if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name) and node.targets[0].id == 'game':
-                break
-            statements.append(node)
-        assignments = [node for node in ast.walk(main) if isinstance(node, ast.Assign)
-            and isinstance(node.targets[0], ast.Subscript)
-            and isinstance(node.targets[0].value, ast.Name) and node.targets[0].value.id == 'env'
-            and isinstance(node.targets[0].slice, ast.Constant)
-            and node.targets[0].slice.value == 'X3M_FPS_OVERLAY']
-        self.assertEqual(len(assignments), 1)
-        main.body = statements + assignments + [ast.Return(value=ast.Name(id='env', ctx=ast.Load()))]
-        referenced = {n.id for n in ast.walk(main) if isinstance(n, ast.Name)}
-        defaults = [node for node in tree.body if isinstance(node, ast.Assign) and len(node.targets) == 1
-                    and isinstance(node.targets[0], ast.Name) and node.targets[0].id.isupper() and node.targets[0].id in referenced
-                    and isinstance(node.value, ast.Constant)]
-        helpers = [node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name in referenced]
-        compiled = compile(ast.fix_missing_locations(ast.Module(body=defaults + helpers + [main], type_ignores=[])), 'manage_under_test.py', 'exec')
-        scope = dict(argparse=argparse, math=math, Path=Path, GAME=Path('/unused'), BOTTLE='X3', ROOT=ROOT, __doc__='test')  # math: the promoted defaults reach the range checks
-        exec(compiled, scope)
-        for arguments, expected in (([], '0'), (['--fps-overlay'], '1')):
-            with self.subTest(arguments=arguments), mock.patch.object(sys, 'argv', ['manage.py', 'launch', *arguments]):
-                scope['env'] = {'X3M_FPS_OVERLAY': '1'}  # an inherited value never leaks
-                self.assertEqual(scope['main']()['X3M_FPS_OVERLAY'], expected)
+        # Since the logging tiers (2026-09-26) the overlay is part of --perf: the launcher sends X3M_PERF=1, the DLL reads
+        # X3M_FPS_OVERLAY or the group; --fps-overlay is gone and an inherited X3M_FPS_OVERLAY never leaks.
+        import json
+        import tempfile
+        from verification.analysis.test_lod_scale_launch import LodScaleLaunchOption
+        helper = LodScaleLaunchOption()
+        with tempfile.TemporaryDirectory() as directory:
+            code, _, error = helper.launch(directory, '--fps-overlay')
+            self.assertEqual(code, 2)
+            self.assertIn('unrecognized arguments', error)
+            for arguments, perf in (([], None), (['--perf'], '1')):
+                with self.subTest(arguments=arguments):
+                    code, output, error = helper.launch(directory, *arguments, inherited={'X3M_FPS_OVERLAY': '1'})
+                    self.assertEqual(code, 0, error)
+                    env = json.loads(output)['env']
+                    self.assertNotIn('X3M_FPS_OVERLAY', env)
+                    self.assertEqual(env.get('X3M_PERF'), perf)
 
 
 if __name__ == '__main__':

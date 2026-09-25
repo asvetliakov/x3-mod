@@ -11,6 +11,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from game_guard import game_running  # noqa: E402
 import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bottle results directory
+import fixture_log  # X3M_LOG_FILE: the session log where this runner reads it (logging tiers)
 
 root = Path(__file__).resolve().parents[2]
 probe = root / 'verification/probe/build'
@@ -129,7 +130,7 @@ def main():
                 trace_path.unlink(missing_ok=True)
                 with stdout_path.open('w') as stdout, (results / (case + '-wine.log')).open('w') as stderr:
                     require_no_game()
-                    completed = subprocess.run(command, env=env, stdout=stdout, stderr=stderr, timeout=120)
+                    completed = subprocess.run(command, env={**env, **fixture_log.session_log_env(directory)}, stdout=stdout, stderr=stderr, timeout=120)
                 # Keep the child exit/provenance even if it fails before logging.
                 manifest['cases'][case] = {'exit': completed.returncode, 'exe_sha256': sha(directory / exe),
                     'dll_sha256': sha(directory / 'd3d9.dll'), 'report_sha256': sha(stdout_path)}

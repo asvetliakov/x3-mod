@@ -282,31 +282,29 @@ class LaunchOption(unittest.TestCase):
             self.assertNotIn('X3M_OBJECT_BOUNDS_LOG', json.loads(output)['env'])
 
     def test_dry_run_carries_the_switch(self):
+        # Part of --debug since the logging tiers (2026-09-26): the DLL reads X3M_OBJECT_BOUNDS_LOG or X3M_DEBUG.
         with tempfile.TemporaryDirectory() as directory:
             baseline = json.loads(self.launch(directory, *self.PREREQUISITES)[1])
-            code, output, error = self.launch(directory, *self.PREREQUISITES, '--object-bounds-log')
+            code, output, error = self.launch(directory, *self.PREREQUISITES, '--debug')
             self.assertEqual(code, 0, error)
             delivered = json.loads(output)
             self.assertEqual(delivered['command'], baseline['command'])
-            self.assertEqual({k: v for k, v in delivered['env'].items() if k not in baseline['env']},
-                             {'X3M_OBJECT_BOUNDS_LOG': '1'})
+            self.assertEqual({k: v for k, v in delivered['env'].items() if k not in baseline['env']}, {'X3M_DEBUG': '1'})
+            code, _, error = self.launch(directory, *self.PREREQUISITES, '--object-bounds-log')
+            self.assertEqual(code, 2)
+            self.assertIn('unrecognized arguments', error)
 
     def test_prerequisites_are_enforced(self):
+        # The launcher no longer checks them (the option is part of --debug); the DLL refuses without the candidate route
+        # and the verified submission identity, and says so in one object_bounds_mode row.
+        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        self.assertIn('const bool bounds_enabled=enabled&&traced;', capture)
+        self.assertIn('log("object_bounds_mode requested=1 enabled=%u candidates=%u object_trace=%u",bounds_enabled,enabled,traced);', capture)
         with tempfile.TemporaryDirectory() as directory:
-            # Without the candidate route there is no object box to project.
-            kept = [option for option in self.PREREQUISITES if option != '--shadow-replay-candidates']
-            code, _, error = self.launch(directory, *kept, '--object-bounds-log')
-            self.assertEqual(code, 2)
-            self.assertIn('--object-bounds-log requires', error)
-            # Sentinel-only motion output (no verified submission identity) has no node/model.
-            code, _, error = self.launch(directory, '--motion-output', '--ownership',
-                                         '--shadow-replay-candidates', '--object-bounds-log')
-            self.assertEqual(code, 2)
-            self.assertIn('--object-bounds-log requires', error)
-            # --shadow-replay-depth implies the candidate counter and is accepted.
-            code, _, error = self.launch(directory, *[o for o in self.PREREQUISITES if o != '--shadow-replay-candidates'],
-                                         '--shadow-replay-depth', '--object-bounds-log')
+            code, output, error = self.launch(directory, '--motion-output', '--ownership', '--shadow-replay-candidates', '--debug',
+                                              inherited={'X3M_OBJECT_BOUNDS_LOG': '1'})
             self.assertEqual(code, 0, error)
+            self.assertNotIn('X3M_OBJECT_BOUNDS_LOG', json.loads(output)['env'])
 
 
 if __name__ == '__main__':

@@ -196,7 +196,7 @@ void report(std::uint64_t frame) {
     // Native gate3 in chase_aim is intentionally retained. This is an effective
     // branch override count, not proof that later native gun checks admitted a ray.
     const double micros=frequency?1000000.0/double(frequency):0;
-    log("chase_fire_window frame=%llu native_inactive_override=%llu refused_stale=%llu refused_identity=%llu refused_view=%llu refused_cursor=%llu refused_read=%llu "
+    if(timing)log("chase_fire_window frame=%llu native_inactive_override=%llu refused_stale=%llu refused_identity=%llu refused_view=%llu refused_cursor=%llu refused_read=%llu "
         "timed_calls=%llu total_us=%.3f max_us=%.3f timing_scope=eligible_handler_after_first_qpc excludes=stub_cpu_boundary_first_qpc_early_filter native_input_writes=0 downstream_constraints=native",
         frame,c.result[0],c.result[1],c.result[2],c.result[3],c.result[4],c.result[5],c.timed,double(c.ticks)*micros,double(c.max_ticks)*micros);
 }

@@ -496,7 +496,7 @@ void report(std::uint64_t frame) {
         fov_rows_suppressed = true; // one closing row after the cap; later changes are not logged
         log("chase_fov_compensate frame=%llu suppressed=1 changes=%llu", frame, s.fov_changes - fov_changes_logged);
     }
-    log("chase_camera_window frame=%llu applied=%llu native_base=%llu native_render=%llu native_branch=%s domain_delta=%.1f domain_samples=%llu domain_delta_min=%.1f domain_delta_max=%.1f "
+    if (timing_enabled) log("chase_camera_window frame=%llu applied=%llu native_base=%llu native_render=%llu native_branch=%s domain_delta=%.1f domain_samples=%llu domain_delta_min=%.1f domain_delta_max=%.1f "
         "native_basis_dev_deg=%.4f render_basis_dev_deg=%.4f rotation_clamps=%llu position_clamps=%llu rotation_lag_min=%.3f rotation_lag_max=%.3f position_lag_min=%.1f position_lag_max=%.1f",
         frame, s.window_applied, s.window_base_domain, s.window_applied - s.window_base_domain, s.native_base_domain ? "base" : "render",
         s.domain_delta, s.window_domain_samples, s.window_domain_samples ? s.domain_delta_min : 0.0, s.window_domain_samples ? s.domain_delta_max : 0.0,

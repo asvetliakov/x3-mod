@@ -598,7 +598,7 @@ int main(){
         initialize = compact(extract_function(capture_source, 'void initialize_log(HMODULE module)'))
         init_order = positions(
             initialize,
-            'telemetry::initialize([]{if(logfile)fflush(logfile);});',
+            'telemetry::initialize(&session_log::request_drain);',
             'game_phases::initialize();',
             'loading_trace::initialize();',
         )

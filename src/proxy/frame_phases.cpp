@@ -10,6 +10,7 @@
 #include "object_trace.h"
 #include "telemetry.h"
 #include "capture.h"
+#include "log_tiers.h"
 #include <atomic>
 #include <cstdio>
 
@@ -106,8 +107,8 @@ void emit_window() {
 bool initialize() {
     ErrorGuard error;
     if(initialized)return active.load(std::memory_order_acquire);
-    initialized=true;wchar_t value[4]{};
-    const bool wanted=GetEnvironmentVariableW(L"X3M_FRAME_PHASES",value,4)==1&&value[0]==L'1';
+    initialized=true;
+    const bool wanted=log_tier::perf_flag(L"X3M_FRAME_PHASES"); // X3M_FRAME_PHASES=1 or X3M_PERF=1
     if(!wanted)return false;
     const char* status="telemetry_off";
     if(telemetry::enabled()){

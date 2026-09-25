@@ -1,5 +1,6 @@
 #include "capture.h"
 #include "proxy_identity.h"
+#include "session_log.h"
 #include "voice_dmo_fallback.h"
 #include "cull_census.h"
 #include "collide_box_cull.h"
@@ -101,7 +102,8 @@ BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
     }
     if (backend) {
         GetModuleFileNameW(backend, path, 32768);
-        x3m::log("backend path=%ls", path);
+        x3m::log("backend path=%s", x3m::session_log::redact_wide_path(path).c_str()); // profile prefix redacted (always tier)
+        x3m::session_log::name_module(backend, "system_d3d9"); // the exception row's module= for a fault in the backend
         // Which D3D9 implementation this process forwards to, by path, size and
         // hash prefix (builtin, a replacement in the system directory, ...): one
         // hash of the loaded file, once, never classified by name here.
@@ -372,11 +374,14 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
         DisableThreadLibraryCalls(module);
         LARGE_INTEGER stamp{}; QueryPerformanceCounter(&stamp); x3m::dll_load_qpc = static_cast<unsigned long long>(stamp.QuadPart);
     } else if (reason == DLL_PROCESS_DETACH) {
+        // The session log's rows from here on never wait on its buffer lock (a terminated thread may hold it).
+        x3m::session_log::closing();
         // First: the CRT runs this before the module's static destructors (crtdll.c calls DllMain,
         // then _CRT_INIT(DLL_PROCESS_DETACH)); proven by the fog exit fixture and its hanging control.
         // Process exit only: on a dynamic FreeLibrary live threads still mutate the device map under the
         // capture lock, and the module pin makes a FreeLibrary with a worker unreachable anyway.
         if (reserved != nullptr) x3m::abandon_fog_density_workers();
+        if (reserved != nullptr) x3m::abandon_devices_at_exit(); // no D3D call from the static teardown at ExitProcess
         x3m::voice_dmo_fallback::shutdown(); // one RemoveVectoredExceptionHandler; safe under the loader lock, idempotent
         x3m::ownership::set_surface_lock_observer(nullptr); // one relaxed store, idempotent: a late surface call forwards natively
         // FreeLibrary only, and only if window_trace's pin failed (a pinned module never reaches this with hooks):
@@ -402,6 +407,9 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
         if (reserved == nullptr) x3m::music_keep::shutdown(); // same rule: the music keep and trace sites back only on FreeLibrary
         if (reserved == nullptr) x3m::cull_census::shutdown(); // same rule: the two census sites back only on FreeLibrary
         if (reserved == nullptr) x3m::cull_small_parts::shutdown(); // same rule: the small-parts site back only on FreeLibrary
+        // Last: the exception handler goes, the writer is signalled and waited for (at most 1 s; at process exit it is
+        // already gone), and at process exit the buffered rows and one session_end row are written through the OS handle.
+        x3m::session_log::detach(reserved != nullptr);
     }
     return TRUE;
 }

@@ -3,6 +3,7 @@
 #include "engine_patch.h"
 #include "object_trace.h"
 #include "capture.h"
+#include "log_tiers.h"
 #include <windows.h>
 #include <cstring>
 
@@ -21,6 +22,7 @@ std::uintptr_t p1_stub_ = 0, p2_stub_ = 0;
 const char* state_ = "disabled";
 Window window_;
 unsigned frame_lines_ = 0;
+bool windows_ = false; // the 300-frame collide_census window: X3M_TELEMETRY=1 or a logging group (log_tiers.h)
 
 bool bytes_match(std::uintptr_t at, const unsigned char* expected, unsigned length) {
     unsigned char actual[64]{};
@@ -133,6 +135,7 @@ bool install_at(std::uintptr_t p1, std::uintptr_t p2, bool counters) {
 bool initialize() {
     const DWORD error = GetLastError();
     if (patched_) { SetLastError(error); return true; }
+    windows_ = x3m::log_tier::telemetry();
     wchar_t setting[4]{};
     const DWORD length = GetEnvironmentVariableW(L"X3M_COLLIDE_BOX_CULL", setting, 4);
     if (length == 0) { state_ = "disabled"; SetLastError(error); return false; }
@@ -182,7 +185,7 @@ void present(unsigned long long device, unsigned long long frame, bool captured)
             device, frame, (unsigned long)values[0], (unsigned long)values[1], (unsigned long)values[2], (unsigned long)values[3], counters_ ? 1u : 0u, x3m_collide_box_cull_enabled ? 1u : 0u);
     if (window_.full()) {
         WindowSummary s;
-        if (window_.close(s))
+        if (window_.close(s) && windows_)
             log("collide_census frame=%llu frames=%u p1_pairs_p50=%llu p1_pairs_max=%llu p1_pairs_sum=%llu p1_rejected_p50=%llu p1_rejected_max=%llu p1_rejected_sum=%llu "
                 "p2_cands_p50=%llu p2_cands_max=%llu p2_cands_sum=%llu p2_rejected_p50=%llu p2_rejected_max=%llu p2_rejected_sum=%llu counters=%u enabled=%u",
                 s.frame, s.frames, s.p50[0], s.max[0], s.sum[0], s.p50[1], s.max[1], s.sum[1], s.p50[2], s.max[2], s.sum[2], s.p50[3], s.max[3], s.sum[3],

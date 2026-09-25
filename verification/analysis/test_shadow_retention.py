@@ -495,28 +495,29 @@ class LauncherOptions(unittest.TestCase):
     BASE = ['--motion-output', '--ownership', '--shadow-replay-depth', '--shadow-cascades', 'default']
 
     def test_default_off_and_values(self):
+        # Since the logging tiers (2026-09-26) the census is part of --debug (the DLL reads X3M_SHADOW_RETENTION_CENSUS or
+        # X3M_DEBUG) and --shadow-retention-timing is gone from the launcher (X3M_SHADOW_RETENTION_TIMING stays a DLL read
+        # for the fixtures); an inherited value of either is dropped.
         with tempfile.TemporaryDirectory() as directory:
             code, output, error = launch(directory, *self.BASE, inherited={'X3M_SHADOW_CASTER_RETENTION': '1', 'X3M_SHADOW_RETENTION_CENSUS': '1', 'X3M_SHADOW_CASTER_RETENTION_AGE': '9',
                                                                           'X3M_SHADOW_CASTER_RETENTION_EPS': '9', 'X3M_SHADOW_RETENTION_TIMING': '1'})
             self.assertEqual(code, 0, error); env = json.loads(output)['env']
-            self.assertEqual((env['X3M_SHADOW_CASTER_RETENTION'], env['X3M_SHADOW_RETENTION_CENSUS']), ('0', '0'))
-            for name in ('X3M_SHADOW_CASTER_RETENTION_AGE', 'X3M_SHADOW_CASTER_RETENTION_EPS', 'X3M_SHADOW_RETENTION_TIMING'):
+            self.assertEqual(env['X3M_SHADOW_CASTER_RETENTION'], '0')
+            for name in ('X3M_SHADOW_CASTER_RETENTION_AGE', 'X3M_SHADOW_CASTER_RETENTION_EPS', 'X3M_SHADOW_RETENTION_TIMING', 'X3M_SHADOW_RETENTION_CENSUS'):
                 self.assertNotIn(name, env)
-            code, output, error = launch(directory, *self.BASE, '--shadow-retention-census', '--shadow-caster-retention-age', '3600', '--shadow-caster-retention-eps', '0.1')
+            code, output, error = launch(directory, *self.BASE, '--shadow-caster-retention', '--shadow-caster-retention-age', '3600', '--shadow-caster-retention-eps', '0.1')
             self.assertEqual(code, 0, error); env = json.loads(output)['env']
-            self.assertEqual((env['X3M_SHADOW_RETENTION_CENSUS'], env['X3M_SHADOW_CASTER_RETENTION'], env['X3M_SHADOW_CASTER_RETENTION_AGE'], env['X3M_SHADOW_CASTER_RETENTION_EPS']), ('1', '0', '3600', '0.1'))
-            code, output, error = launch(directory, *self.BASE, '--shadow-caster-retention', '--shadow-retention-timing')
-            self.assertEqual(code, 0, error); env = json.loads(output)['env']
-            self.assertEqual((env['X3M_SHADOW_CASTER_RETENTION'], env['X3M_SHADOW_RETENTION_TIMING']), ('1', '1'))
+            self.assertEqual((env['X3M_SHADOW_CASTER_RETENTION'], env['X3M_SHADOW_CASTER_RETENTION_AGE'], env['X3M_SHADOW_CASTER_RETENTION_EPS']), ('1', '3600', '0.1'))
+            for option in ('--shadow-retention-census', '--shadow-retention-timing'):
+                code, _, error = launch(directory, *self.BASE, '--shadow-caster-retention', option)
+                self.assertEqual(code, 2, option); self.assertIn('unrecognized arguments', error)
 
     def test_refusals(self):
         with tempfile.TemporaryDirectory() as directory:
-            for option in ('--shadow-retention-census', '--shadow-caster-retention'):
-                code, _, error = launch(directory, '--motion-output', '--ownership', '--shadow-replay-depth', option)
-                self.assertNotEqual(code, 0); self.assertIn('require --shadow-cascades', error)
-            for option in (('--shadow-caster-retention-age', '100'), ('--shadow-retention-timing',)):
-                code, _, error = launch(directory, *self.BASE, *option)
-                self.assertNotEqual(code, 0, option); self.assertIn('require --shadow-retention-census or --shadow-caster-retention', error)
+            code, _, error = launch(directory, '--motion-output', '--ownership', '--shadow-replay-depth', '--shadow-caster-retention')
+            self.assertNotEqual(code, 0); self.assertIn('--shadow-caster-retention requires --shadow-cascades', error)
+            code, _, error = launch(directory, *self.BASE, '--shadow-caster-retention-age', '100')
+            self.assertNotEqual(code, 0); self.assertIn('require --shadow-caster-retention', error)
             for option, value, message in (('--shadow-caster-retention-age', '0', 'must be within [1, 10000000]'), ('--shadow-caster-retention-eps', '0', 'must be within [0.0001, 100]'),
                                            ('--shadow-caster-retention-eps', 'nan', 'must be within [0.0001, 100]')):
                 code, _, error = launch(directory, *self.BASE, '--shadow-caster-retention', option, value)

@@ -14,6 +14,7 @@ import time
 import sys
 
 import bottle
+import fixture_log  # X3M_LOG_FILE: the session log where this runner reads it (logging tiers)
 from game_guard import game_running
 from run_linear_material_live import fields,sha
 
@@ -205,7 +206,7 @@ def main():
                      'Z:'+str(inputs[2]),'Z:'+str(inputs[3]),'emissionsbench' if benchmark else 'emissions','Z:'+str(inputs[4]),'Z:'+str(inputs[5])]
             start=time.monotonic()
             with (work/'stdout.txt').open('w') as out,(work/'wine.log').open('w') as err:
-                child=subprocess.run(command,env=env,stdout=out,stderr=err,timeout=180)
+                child=subprocess.run(command,env={**env, **fixture_log.session_log_env(work)},stdout=out,stderr=err,timeout=180)
             assert child.returncode==0,f'{key}: fixture exit{child.returncode}; {work}'
             logs=list((work/'x3-modern-captures').glob('session-*.log'));assert len(logs)==1
             output=(work/'stdout.txt').read_text()

@@ -69,20 +69,22 @@ class WindowLaunchOptions(unittest.TestCase):
 
     def test_trace_and_reassert(self):
         with tempfile.TemporaryDirectory() as directory:
-            self.assertEqual(self.window_env(directory, '--telemetry', '--window-trace', '--cursor-reassert'),
-                             {'X3M_WINDOW_MONITOR_RECT': '1', 'X3M_WINDOW_MONITOR_RECT_DEFAULT': '1', 'X3M_WINDOW_TRACE': '1', 'X3M_CURSOR_REASSERT': '1'})
+            # The trace comes with --debug (X3M_DEBUG=1, expanded by the DLL); the launcher never sends X3M_WINDOW_TRACE.
+            self.assertEqual(self.window_env(directory, '--debug', '--cursor-reassert'),
+                             {'X3M_WINDOW_MONITOR_RECT': '1', 'X3M_WINDOW_MONITOR_RECT_DEFAULT': '1', 'X3M_CURSOR_REASSERT': '1'})
             self.assertEqual(self.window_env(directory, '--cursor-reassert', '--no-window-monitor-rect'),
                              {'X3M_WINDOW_MONITOR_RECT': '0', 'X3M_WINDOW_MONITOR_RECT_DEFAULT': '0', 'X3M_CURSOR_REASSERT': '1'})
-            traced = json.loads(self.launch(directory, '--telemetry', '--window-trace')[1])['env']
-            self.assertEqual(traced['X3M_TELEMETRY'], '1')
+            traced = json.loads(self.launch(directory, '--debug', inherited={'X3M_WINDOW_TRACE': '1'})[1])['env']
+            self.assertEqual(traced['X3M_DEBUG'], '1')
+            self.assertNotIn('X3M_WINDOW_TRACE', traced)
             self.assertNotIn('X3M_CURSOR_REASSERT', traced)
 
     def test_refusals(self):
         with tempfile.TemporaryDirectory() as directory:
-            for args, vanilla, message in ((('--window-trace',), False, '--window-trace requires --telemetry'),
+            # The window trace is part of --debug since the logging tiers (2026-09-26): --window-trace is unknown.
+            for args, vanilla, message in ((('--window-trace',), False, 'unrecognized arguments'),
                                            (('--window-monitor-rect',), False, 'expected one argument'),
                                            (('--window-monitor-rect', 'on'), True, 'cannot be combined with --vanilla'),
-                                           (('--telemetry', '--window-trace'), True, 'cannot be combined with --vanilla'),
                                            (('--cursor-reassert',), True, 'cannot be combined with --vanilla'),
                                            (('--window-monitor-rect', 'maybe'), False, 'invalid choice')):
                 with self.subTest(args=args, vanilla=vanilla):

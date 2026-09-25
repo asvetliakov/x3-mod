@@ -2,17 +2,20 @@
 """Stand-command promotion (2026-09-25): compare the launcher's dry runs.
 
 Runs `tools/manage.py launch --bottle X3 --dry-run` on the host (no Wine, nothing launched): the empty
-command, the Run 84 A stand command and the short stand command of 2026-09-25 (the last two with
-X3M_MOTION_FRAME_LOG=1 in the shell). Prints the
+command, the Run 84 A stand command and the short stand command. Prints the
 X3M_* differences between them, and of each against the stand environment recorded before the promotion
 (stand_env_before.json), and writes comparison.json beside this script.
-Expected: empty vs stand differ only in the telemetry/debug variables and X3M_SHADOW_CASCADE_SIZES (the promoted
+Since the logging tiers (2026-09-26, docs/architecture/logging-tiers.md) the telemetry/debug options of both stand
+commands are the two groups: the Run 84 A command is replayed with its functional options plus --debug --perf, the short
+stand command is `--direct --debug --perf`, and the X3M_MOTION_FRAME_LOG=1 shell prefix is gone (the launcher drops it).
+Expected: empty vs stand differ only in X3M_DEBUG / X3M_PERF and X3M_SHADOW_CASCADE_SIZES (the promoted
 2048,4096,4096,4096,2048 against the stand's explicit 2048 x5, user decision 2026-09-25); the stand differs from its
-recorded environment only by X3M_MUSIC_KEEP=1 and X3M_SHADOW_ALPHA_CASTERS=1 (the two new defaults) and by the variables
+recorded environment only by X3M_MUSIC_KEEP=1 and X3M_SHADOW_ALPHA_CASTERS=1 (the two new defaults), by the variables
 of the options removed on 2026-09-25 (REMOVED; docs/verification/launcher-options-inventory.md, "Removed 2026-09-25"),
-which the launcher no longer sends. The Run 84 A stand command is replayed without --loading-intervals (removed that day);
-the short stand command dropped --loading-intervals and --shadow-retention-census (docs/verification/user-runs.md).
+which the launcher no longer sends, by the logging variables the launcher no longer sends (its TIERED_VARIABLES) and by
+the two groups. The Run 84 A stand command is replayed without --loading-intervals (removed 2026-09-25).
 """
+import importlib.util
 import json
 import os
 import subprocess
@@ -22,23 +25,29 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
 STAND = ('--direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa '
-         '--telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 '
+         '--debug --perf --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 '
          '--crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --screen-emission-additive 2 '
          '--screen-emission-additive-alpha 0 --emission-source-gain 2 --sun-shadow-lane '
-         '--shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay '
+         '--shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on '
          '--shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance '
          '--shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 '
-         '--shadow-retention-census --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 '
-         '--light-map-far-fade 80,220 --motion-rt-mode lazy --frame-end-stride 1 --volumetric-fog 0.02 '
-         '--volumetric-fog-cards replace --volumetric-fog-range stored --volumetric-fog-timing --capture-start 999999 '
-         '--capture-frames 8 --capture-delay 300 --cull-small-parts 4 --frame-timing --frame-phases '
-         '--object-bounds-log --cull-census').split()
-# The stand command since 2026-09-25 (docs/verification/user-runs.md, "Stand command"): --direct plus the telemetry flags.
-STAND_SHORT = ('--direct --telemetry --camera-log 1 --fps-overlay '
-               '--frame-end-stride 1 --volumetric-fog-timing '
-               '--frame-timing --frame-phases --object-bounds-log --cull-census').split()
-TELEMETRY = {'X3M_TELEMETRY', 'X3M_CAMERA_LOG', 'X3M_SHADOW_RETENTION_CENSUS', 'X3M_MOTION_FRAME_LOG',
-             'X3M_FPS_OVERLAY', 'X3M_FRAME_END_STRIDE', 'X3M_VOLUMETRIC_FOG_TIMING', 'X3M_FRAME_TIMING', 'X3M_FRAME_PHASES', 'X3M_OBJECT_BOUNDS_LOG', 'X3M_CULL_CENSUS'}
+         '--shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 '
+         '--light-map-far-fade 80,220 --motion-rt-mode lazy --volumetric-fog 0.02 '
+         '--volumetric-fog-cards replace --volumetric-fog-range stored --capture-start 999999 '
+         '--capture-frames 8 --capture-delay 300 --cull-small-parts 4').split()
+# The stand command since 2026-09-26 (docs/verification/user-runs.md, "Stand command"): --direct plus the two logging groups.
+STAND_SHORT = '--direct --debug --perf'.split()
+GROUPS = {'X3M_DEBUG': [None, '1'], 'X3M_PERF': [None, '1']}
+
+
+def tiered_variables():
+    sys.path.insert(0, str(ROOT / "tools"))  # manage.py imports its sibling media_package
+    spec = importlib.util.spec_from_file_location('compare_dry_runs_manage', ROOT / 'tools/manage.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return set(module.TIERED_VARIABLES)
+
+
 NEW = {'X3M_MUSIC_KEEP': '1', 'X3M_SHADOW_ALPHA_CASTERS': '1'}
 # Intended functional difference: the promoted map sizes (user decision 2026-09-25) differ from the Run 84 A stand's
 # explicit 2048 x5, which an explicit --shadow-cascade-sizes still selects.
@@ -57,9 +66,6 @@ REMOVED = {'X3M_SHADOW_REPLAY_SIZE': '1024', 'X3M_SHADOW_REPLAY_EXTENT': '250.0'
            'X3M_MATERIAL_FILL': '0.0', 'X3M_MESH_CACHE': '0', 'X3M_MOTION_CAPTURE': '0', 'X3M_SCENE_DEPTH_CAPTURE': '0', 'X3M_SCREEN_EMISSION': '0',
            'X3M_SCREEN_EMISSION_BOUND': '0', 'X3M_SCREEN_EMISSION_GAIN': '1.0', 'X3M_SCREEN_EMISSION_TIMING': '0', 'X3M_TAA_THIN_REGION_GATE': 'camera',
            'X3M_TAA_THIN_REGION_SOURCE': 'vote', 'X3M_TAA_THIN_REGION_SOURCE_DEFAULT': '1'}
-# The short stand command no longer carries --shadow-retention-census (2026-09-25): the one difference to the old stand command
-# besides the map sizes.
-CENSUS = {'X3M_SHADOW_RETENTION_CENSUS': ['1', '0']}
 
 
 def dry_run(arguments, frame_log):
@@ -81,9 +87,12 @@ def diff(a, b):
 
 def main():
     recorded = json.loads((HERE / 'stand_env_before.json').read_text())
+    tiered = tiered_variables()
+    # The logging variables of the recorded stand: the launcher no longer sends any of them.
+    recorded_tiered = {k: [v, None] for k, v in recorded['env'].items() if k in tiered}
     empty, empty_switches = dry_run([], False)
-    stand, stand_switches = dry_run(STAND, True)
-    short, short_switches = dry_run(STAND_SHORT, True)
+    stand, stand_switches = dry_run(STAND, False)
+    short, short_switches = dry_run(STAND_SHORT, False)
     result = {
         'empty_vs_stand': diff(empty, stand),
         'stand_vs_recorded_stand': diff(recorded['env'], stand),
@@ -92,16 +101,14 @@ def main():
         'switches': {'empty': empty_switches, 'stand': stand_switches, 'recorded': recorded['exe_switches']},
         'counts': {'empty': len(empty), 'stand': len(stand), 'recorded': len(recorded['env'])},
     }
+    new_defaults = {k: [None if k == 'X3M_MUSIC_KEEP' else '0', v] for k, v in NEW.items()}
+    removed = {k: [v, None] for k, v in REMOVED.items()}
     checks = {
-        'empty_vs_stand only telemetry/debug + the promoted map sizes': set(result['empty_vs_stand']) <= TELEMETRY | set(SIZES)
-            and result['empty_vs_stand'].get('X3M_SHADOW_CASCADE_SIZES') == SIZES['X3M_SHADOW_CASCADE_SIZES'][::-1],
-        'stand vs recorded only the two new defaults and the removed variables': result['stand_vs_recorded_stand'] == {**{k: [None if k == 'X3M_MUSIC_KEEP' else '0', v] for k, v in NEW.items()}, **{k: [v, None] for k, v in REMOVED.items()}},
-        'empty vs recorded: telemetry/debug + the two new defaults + the map sizes + the removed variables': set(result['empty_vs_recorded_stand']) <= TELEMETRY | set(NEW) | set(SIZES) | set(REMOVED)
-            and all(result['empty_vs_recorded_stand'][k] == [v, None] for k, v in REMOVED.items())
-            and all(result['empty_vs_recorded_stand'][k][1] == v for k, v in NEW.items())
-            and result['empty_vs_recorded_stand'].get('X3M_SHADOW_CASCADE_SIZES') == SIZES['X3M_SHADOW_CASCADE_SIZES'],
+        'empty_vs_stand only the two groups + the promoted map sizes': result['empty_vs_stand'] == {**GROUPS, 'X3M_SHADOW_CASCADE_SIZES': SIZES['X3M_SHADOW_CASCADE_SIZES'][::-1]},
+        'stand vs recorded only the two new defaults, the removed and the logging variables, and the groups': result['stand_vs_recorded_stand'] == {**new_defaults, **removed, **recorded_tiered, **GROUPS},
+        'empty vs recorded: the two new defaults + the map sizes + the removed and the logging variables': result['empty_vs_recorded_stand'] == {**new_defaults, **removed, **recorded_tiered, **SIZES},
         'same X3AP switches': empty_switches == stand_switches == short_switches == recorded['exe_switches'],
-        'short stand command == old stand command but the map sizes and the census': result['short_stand_vs_stand'] == {**SIZES, **CENSUS},
+        'short stand command == old stand command but the map sizes': result['short_stand_vs_stand'] == SIZES,
     }
     result['checks'] = checks
     (HERE / 'comparison.json').write_text(json.dumps(result, indent=1) + '\n')

@@ -6,6 +6,7 @@ import os
 import shutil
 import subprocess
 import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bottle results directory
+import fixture_log  # X3M_LOG_FILE: the session log where this runner reads it (logging tiers)
 root=Path(__file__).resolve().parents[2]
 probe=root/'verification/probe/build'
 results=bottle.results_dir(root)
@@ -21,7 +22,7 @@ for mode in ('baseline','off','on'):
         command+=['--dll','d3d9=n,b']
     command+=[str(directory/'telemetry_fixture.exe')]
     with (results/f'telemetry-{mode}.txt').open('w') as stdout,(results/f'telemetry-{mode}-wine.log').open('w') as stderr:
-        result=subprocess.run(command,env=env,stdout=stdout,stderr=stderr,timeout=90)
+        result=subprocess.run(command,env={**env, **fixture_log.session_log_env(directory)},stdout=stdout,stderr=stderr,timeout=90)
     traces=list((directory/'x3-modern-captures').glob('session-*.log'))
     if traces:shutil.copy(max(traces,key=lambda p:p.stat().st_mtime),results/f'telemetry-{mode}-capture.log')
     print(f'{mode}: exit={result.returncode}',flush=True)

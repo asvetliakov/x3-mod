@@ -452,7 +452,7 @@ void MotionOutput::run_shadow_replay_cascades(const bool* quiet) noexcept {
                                     previous ? sun_apply_us_ : 0., previous ? sun_apply_sampled_ : 0u);
         if (n < 0 || n >= int(sizeof apply_text)) apply_text[0] = 0;
     }
-    log("shadow_replay_depth device=%llu frame=%llu replayed=%u skipped_lease=%u skipped_state=%u skipped_caps=%u draws=%u us=%.1f shadow_toggle=%u%s far_replayed=%u far_frame=%lld issues=%u budget=%u%s%s%s%s",
+    if (shadow_timing_ || family_row()) log("shadow_replay_depth device=%llu frame=%llu replayed=%u skipped_lease=%u skipped_state=%u skipped_caps=%u draws=%u us=%.1f shadow_toggle=%u%s far_replayed=%u far_frame=%lld issues=%u budget=%u%s%s%s%s",
         id_, frame_, c.replayed, c.skipped_lease, c.skipped_state, c.skipped_caps, c.draws, c.us, unsigned(sun_shadow_enabled_), text, unsigned(far_replayed),
         far_kept ? static_cast<long long>(far_kept->frame) : -1ll, issues, depth_cascades_.budget, retained_text, cull_text, state_text, apply_text);
 }

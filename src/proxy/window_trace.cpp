@@ -1,6 +1,7 @@
 #include "window_trace.h"
 #include "cursor_reassert.h"
 #include "cpu_state.h"
+#include "log_tiers.h"
 #include <cstring>
 
 namespace x3m { void log(const char* format, ...); }
@@ -185,8 +186,7 @@ HHOOK take(HHOOK& slot) {
 }
 
 void initialize(bool telemetry, CursorSource source) {
-    wchar_t value[4]{};
-    requested_ = GetEnvironmentVariableW(L"X3M_WINDOW_TRACE", value, 4) == 1 && value[0] == L'1';
+    requested_ = log_tier::debug_flag(L"X3M_WINDOW_TRACE"); // X3M_WINDOW_TRACE=1 or X3M_DEBUG=1
     enabled_ = requested_ && telemetry;
     cursor_source_ = enabled_ ? source : nullptr;
     if (requested_)

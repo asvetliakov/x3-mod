@@ -101,20 +101,23 @@ class SourceAndReplay(unittest.TestCase):
 
 class FramePhasesLaunchOption(unittest.TestCase):
     def test_launch_option_requires_telemetry_and_resets_inherited_value(self):
+        # Since the logging tiers (2026-09-26) the frame phases are part of --perf: X3M_PERF=1, expanded by the DLL
+        # (frame_phases.cpp reads X3M_FRAME_PHASES or the group); --frame-phases is gone, an inherited value is dropped.
         from verification.analysis.test_lod_scale_launch import LodScaleLaunchOption
         helper = LodScaleLaunchOption()
         with tempfile.TemporaryDirectory() as directory:
             code, _, error = helper.launch(directory, '--frame-phases')
             self.assertEqual(code, 2)
-            self.assertIn('--frame-phases requires --telemetry', error)
-            code, output, error = helper.launch(directory, '--frame-phases', '--telemetry')
+            self.assertIn('unrecognized arguments', error)
+            code, output, error = helper.launch(directory, '--perf')
             self.assertEqual(code, 0, error)
             env = json.loads(output)['env']
-            self.assertEqual(env['X3M_FRAME_PHASES'], '1')
-            self.assertEqual(env['X3M_GAME_PHASES'], '0')
+            self.assertEqual(env['X3M_PERF'], '1')
+            self.assertNotIn('X3M_FRAME_PHASES', env); self.assertNotIn('X3M_GAME_PHASES', env)
             code, output, error = helper.launch(directory, inherited={'X3M_FRAME_PHASES': '1'})
             self.assertEqual(code, 0, error)
-            self.assertEqual(json.loads(output)['env']['X3M_FRAME_PHASES'], '0')
+            self.assertNotIn('X3M_FRAME_PHASES', json.loads(output)['env'])
+        self.assertIn('const bool wanted=log_tier::perf_flag(L"X3M_FRAME_PHASES");', (ROOT / 'src/proxy/frame_phases.cpp').read_text())
 
 
 @unittest.skipUnless(probe.DEFAULT_EXE.is_file(), 'installed X3AP.exe unavailable')

@@ -4,6 +4,7 @@
 #include "object_trace.h"
 #include "cpu_state.h"
 #include "capture.h"
+#include "log_tiers.h"
 #include <windows.h>
 #include <cstring>
 
@@ -178,9 +179,10 @@ bool initialize() {
     if (patched_) { SetLastError(error); return true; }
     wchar_t setting[4]{};
     const DWORD length = GetEnvironmentVariableW(L"X3M_COLLIDE_NARROW_CENSUS", setting, 4);
-    if (length == 0) { state_ = "disabled"; SetLastError(error); return false; }
+    const bool group = log_tier::debug(); // X3M_DEBUG=1 turns the census on as X3M_COLLIDE_NARROW_CENSUS=1 does
+    if (length == 0 && !group) { state_ = "disabled"; SetLastError(error); return false; }
     bool applied = false;
-    const bool requested = length == 1 && setting[0] == L'1';
+    const bool requested = group || (length == 1 && setting[0] == L'1');
     if (!requested) state_ = "disabled";
     else if (!object_trace::executable_verified()) state_ = "executable_mismatch";
     // The two callees are outside the windows install_at compares: checked here, on the real image only.

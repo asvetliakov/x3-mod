@@ -426,31 +426,36 @@ class CullCensusLaunchOption(unittest.TestCase):
             self.assertNotIn('X3M_CULL_CENSUS', json.loads(output)['env'])
 
     def test_dry_run_carries_the_switch(self):
+        # Since the logging tiers (2026-09-26) the census is part of --debug: the launcher sends X3M_DEBUG=1 and the DLL
+        # arms the census (cull_census.cpp reads X3M_CULL_CENSUS or the group); --cull-census is unknown.
         with tempfile.TemporaryDirectory() as directory:
             baseline = json.loads(self.launch(directory)[1])
-            code, output, error = self.launch(directory, '--cull-census')
+            code, output, error = self.launch(directory, '--debug')
             self.assertEqual(code, 0, error)
             delivered = json.loads(output)
             self.assertEqual(delivered['command'], baseline['command'])
-            self.assertEqual({k: v for k, v in delivered['env'].items() if k not in baseline['env']}, {'X3M_CULL_CENSUS': '1'})
+            self.assertEqual({k: v for k, v in delivered['env'].items() if k not in baseline['env']}, {'X3M_DEBUG': '1'})
+            code, _, error = self.launch(directory, '--cull-census')
+            self.assertEqual(code, 2)
+            self.assertIn('unrecognized arguments', error)
+            code, output, _ = self.launch(directory, inherited={'X3M_CULL_CENSUS': '1'})
+            self.assertEqual(code, 0)
+            self.assertNotIn('X3M_CULL_CENSUS', json.loads(output)['env'])
 
     def test_lod_switch_log_option(self):
+        # --debug arms the LOD switch rows at the former bare --lod-switch-log cap, 16 rows per frame (the DLL's
+        # lod_switch_debug_cap); an explicit X3M_LOD_SWITCH_LOG (fixtures) still wins. The launcher option is gone.
         with tempfile.TemporaryDirectory() as directory:
-            baseline = json.loads(self.launch(directory)[1])
-            added = lambda out: {k: v for k, v in json.loads(out)['env'].items() if k not in baseline['env']}
-            code, output, error = self.launch(directory, '--lod-switch-log')
-            self.assertEqual(code, 0, error)
-            self.assertEqual(added(output), {'X3M_CULL_CENSUS': '1', 'X3M_LOD_SWITCH_LOG': '16'})
-            code, output, error = self.launch(directory, '--cull-census', '--lod-switch-log', '4')
-            self.assertEqual(code, 0, error)
-            self.assertEqual(added(output), {'X3M_CULL_CENSUS': '1', 'X3M_LOD_SWITCH_LOG': '4'})
+            for args in (('--lod-switch-log',), ('--lod-switch-log', '4')):
+                code, _, error = self.launch(directory, *args)
+                self.assertEqual(code, 2, args)
+                self.assertIn('unrecognized arguments', error)
             code, output, _ = self.launch(directory, inherited={'X3M_LOD_SWITCH_LOG': '8'})
             self.assertEqual(code, 0)
             self.assertNotIn('X3M_LOD_SWITCH_LOG', json.loads(output)['env'])
-            for bad in ('0', '4097'):
-                code, _, error = self.launch(directory, '--lod-switch-log', bad)
-                self.assertEqual(code, 2)
-                self.assertIn('--lod-switch-log out of range', error)
+        source = (ROOT / 'src/proxy/cull_census.cpp').read_text()
+        self.assertIn('constexpr unsigned lod_switch_debug_cap = 16;', source)
+        self.assertIn('else if (!cap_length && group && applied) lod_switch = set_lod_switch_log(lod_switch_debug_cap) ? "on" : "alloc_failed";', source)
 
 
 if __name__ == '__main__':

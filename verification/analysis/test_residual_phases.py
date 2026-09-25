@@ -133,28 +133,26 @@ class SourceAndReplay(unittest.TestCase):
 
 class ResidualPhasesLaunchOption(unittest.TestCase):
     def test_launch_option_requires_telemetry_and_implies_frame_and_pass_phases(self):
+        # Since the logging tiers (2026-09-26): requires --perf (telemetry and the frame phases); implies the pass stamps.
         from verification.analysis.test_lod_scale_launch import LodScaleLaunchOption
         helper = LodScaleLaunchOption()
         with tempfile.TemporaryDirectory() as directory:
             code, _, error = helper.launch(directory, '--residual-phases')
             self.assertEqual(code, 2)
-            self.assertIn('--residual-phases requires --telemetry', error)
-            code, output, error = helper.launch(directory, '--residual-phases', '--telemetry')
+            self.assertIn('--residual-phases requires --perf', error)
+            code, output, error = helper.launch(directory, '--residual-phases', '--perf')
             self.assertEqual(code, 0, error)
             env = json.loads(output)['env']
-            self.assertEqual(env['X3M_RESIDUAL_PHASES'], '1')
-            self.assertEqual(env['X3M_FRAME_PHASES'], '1')
-            self.assertEqual(env['X3M_PASS_PHASES'], '1')
-            # The implication precedes the pass-phases check: no --frame-phases needed.
-            code, output, error = helper.launch(directory, '--residual-phases', '--pass-phases', '--telemetry')
+            self.assertEqual((env['X3M_RESIDUAL_PHASES'], env['X3M_PASS_PHASES'], env['X3M_PERF']), ('1', '1', '1'))
+            self.assertNotIn('X3M_FRAME_PHASES', env)  # the DLL's perf group turns the frame phases on
+            code, output, error = helper.launch(directory, '--residual-phases', '--pass-phases', '--perf')
             self.assertEqual(code, 0, error)
             env = json.loads(output)['env']
-            self.assertEqual((env['X3M_RESIDUAL_PHASES'], env['X3M_FRAME_PHASES'], env['X3M_PASS_PHASES']), ('1', '1', '1'))
-            code, output, error = helper.launch(directory, '--frame-phases', '--telemetry', inherited={'X3M_RESIDUAL_PHASES': '1'})
+            self.assertEqual((env['X3M_RESIDUAL_PHASES'], env['X3M_PASS_PHASES']), ('1', '1'))
+            code, output, error = helper.launch(directory, '--perf', inherited={'X3M_RESIDUAL_PHASES': '1', 'X3M_PASS_PHASES': '1'})
             self.assertEqual(code, 0, error)
             env = json.loads(output)['env']
-            self.assertEqual(env['X3M_RESIDUAL_PHASES'], '0')
-            self.assertEqual(env['X3M_PASS_PHASES'], '0')
+            self.assertNotIn('X3M_RESIDUAL_PHASES', env); self.assertNotIn('X3M_PASS_PHASES', env)
 
 
 @unittest.skipUnless(probe.DEFAULT_EXE.is_file(), 'installed X3AP.exe unavailable')

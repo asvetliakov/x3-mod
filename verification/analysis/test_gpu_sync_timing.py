@@ -81,8 +81,9 @@ class GpuSyncTimingLauncher(unittest.TestCase):
 
     def test_dry_run_default_off_and_opt_in(self):
         with tempfile.TemporaryDirectory() as directory:
-            self.assertEqual(self.env(directory)['X3M_GPU_SYNC_TIMING'], '0')
-            self.assertEqual(self.env(directory, inherited={'X3M_GPU_SYNC_TIMING': '1'})['X3M_GPU_SYNC_TIMING'], '0')  # an inherited value cannot switch it on
+            # Sent only with the option since the logging tiers (2026-09-26); an inherited value is dropped, never forwarded.
+            self.assertNotIn('X3M_GPU_SYNC_TIMING', self.env(directory))
+            self.assertNotIn('X3M_GPU_SYNC_TIMING', self.env(directory, inherited={'X3M_GPU_SYNC_TIMING': '1'}))  # an inherited value cannot switch it on
             baseline = self.env(directory)
             opted = self.env(directory, '--gpu-sync-timing')
             self.assertEqual({k: v for k, v in opted.items() if baseline.get(k) != v}, {'X3M_GPU_SYNC_TIMING': '1'})
@@ -92,7 +93,7 @@ class GpuSyncTimingLauncher(unittest.TestCase):
             code, _, error = self.launch(directory, '--gpu-sync-timing', vanilla=True)
             self.assertEqual(code, 2)
             self.assertIn('--gpu-sync-timing cannot be combined with --vanilla', error)
-            self.assertEqual(self.env(directory, vanilla=True)['X3M_GPU_SYNC_TIMING'], '0')
+            self.assertNotIn('X3M_GPU_SYNC_TIMING', self.env(directory, vanilla=True))
 
     def test_help_says_it_serialises_for_one_flight(self):
         source = (ROOT / 'tools/manage.py').read_text()

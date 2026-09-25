@@ -279,8 +279,9 @@ class MemoLaunchOption(unittest.TestCase):
             self.assertEqual(json.loads(output)['command'], baseline['command'])
             self.assertEqual(added('--collide-memo'), {'X3M_COLLIDE_MEMO': '1'})
             self.assertEqual(added('--collide-memo-verify'), {'X3M_COLLIDE_MEMO': '1', 'X3M_COLLIDE_MEMO_VERIFY': '1'})
-            self.assertEqual(added('--collide-memo', '--collide-sat-sse2', '--collide-narrow-census', '--collide-box-cull'),
-                             {'X3M_COLLIDE_MEMO': '1', 'X3M_COLLIDE_SAT_SSE2': '1', 'X3M_COLLIDE_NARROW_CENSUS': '1', 'X3M_COLLIDE_BOX_CULL': '1'})
+            # The narrow census rides --debug since the logging tiers (2026-09-26).
+            self.assertEqual(added('--collide-memo', '--collide-sat-sse2', '--debug', '--collide-box-cull'),
+                             {'X3M_COLLIDE_MEMO': '1', 'X3M_COLLIDE_SAT_SSE2': '1', 'X3M_DEBUG': '1', 'X3M_COLLIDE_BOX_CULL': '1'})
 
 
 if __name__ == '__main__':

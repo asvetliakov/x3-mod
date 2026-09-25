@@ -7,11 +7,13 @@ CrossOver Preview with that proxy next to it
 (`--dll d3d9=n,b`): once in a writable directory, where the fixture must
 resolve all seventeen system d3d9 export names on the proxy, call the
 forwarded and the fallback entry points with the documented results and the
-proxy's session log (first line `capture_dir=... source=game`) must carry one
+proxy's session log (x3m.log next to the DLL, the previous x3m.log renamed to
+x3m.prev.log; first rows `log_open ... source=game previous=renamed` and
+`capture_dir=... source=game`) must carry one
 `d3d9_export` line per first-called forwarder; once in a directory made
 read-only, where the proxy must fall back to
-%LOCALAPPDATA%\\x3-modern-renderer\\captures (`source=localappdata`) and leave
-nothing in the read-only directory. Host-side: verification/analysis/
+%LOCALAPPDATA%\\x3-modern-renderer\\x3m.log with the captures under ...\\captures
+(`source=localappdata`) and leave nothing in the read-only directory. Host-side: verification/analysis/
 test_d3d9_exports.py parses the export directory from the file.
 Run through verification/probe/wine_lock.py; the game must be down.
 `--case writable` selects one load smoke; `--case both` (the default) retains
@@ -75,6 +77,15 @@ def run_case(name, readonly, report, dll, dll_sha256):
     shutil.copy(dll, directory / 'd3d9.dll')
     assert sha(directory / 'd3d9.dll') == dll_sha256, 'Selected DLL changed before fixture execution'
     started = time.time()
+    if not readonly:
+        # A previous launch's log: the proxy renames it to x3m.prev.log before opening its own (logging tiers). Around
+        # it, busy-rotation leftovers: x3m-1234.log older than it (deleted at open), x3m-99999.log newer (kept) and a
+        # name outside the pattern (kept).
+        (directory / 'x3m.log').write_text('previous launch\n')
+        for stale, age in (('x3m-1234.log', 7200), ('x3m-99999.log', -60), ('x3m-abc.log', 7200)):
+            (directory / stale).write_text('leftover\n')
+            os.utime(directory / stale, (started - 3600 - age, started - 3600 - age))
+        os.utime(directory / 'x3m.log', (started - 3600, started - 3600))
     if readonly:
         directory.chmod(stat.S_IRUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH)
     command = [str(WINE), *bottle.wine_args(), '--dll', 'd3d9=n,b', '--workdir', str(directory), str(directory / EXE.name)] + (['readonly'] if readonly else [])
@@ -96,25 +107,40 @@ def run_case(name, readonly, report, dll, dll_sha256):
     env_lines = {fields(l).get('LOCALAPPDATA') or fields(l).get('USERPROFILE'): l for l in lines if l.startswith('ENV ')}
     localappdata = next((fields(l)['LOCALAPPDATA'] for l in lines if l.startswith('ENV LOCALAPPDATA=')), '-')
     userprofile = next((fields(l)['USERPROFILE'] for l in lines if l.startswith('ENV USERPROFILE=')), '-')
-    # The proxy's session log: next to the DLL, or the LOCALAPPDATA fallback.
-    game_logs = sorted((directory / 'x3-modern-captures').glob('session-*.log')) if (directory / 'x3-modern-captures').is_dir() else []
+    # The proxy's session log (docs/architecture/logging-tiers.md): <dir>\x3m.log with the previous one renamed to
+    # x3m.prev.log, or the LOCALAPPDATA fallback x3-modern-renderer\x3m.log with the captures under ...\captures.
     if readonly:
         assert not (directory / 'x3-modern-captures').exists(), f'{name}: the read-only directory received a capture directory'
+        assert not (directory / 'x3m.log').exists(), f'{name}: the read-only directory received a log'
         base = windows_to_bottle(localappdata) if localappdata != '-' else windows_to_bottle(userprofile) / 'AppData/Local'
-        fallback_dir = base / 'x3-modern-renderer' / 'captures'
-        candidates = [p for p in sorted(fallback_dir.glob('session-*.log')) if p.stat().st_mtime >= started - 2]
-        assert len(candidates) == 1, f'{name}: expected one new session log under {fallback_dir}, found {[p.name for p in candidates]}'
+        log_dir = base / 'x3-modern-renderer'
+        captures_dir = log_dir / 'captures'
+        candidates = [p for p in sorted(log_dir.glob('x3m*.log')) if p.name != 'x3m.prev.log' and p.stat().st_mtime >= started - 2]
+        assert len(candidates) == 1, f'{name}: expected one new x3m log under {log_dir}, found {[p.name for p in candidates]}'
         trace_path = candidates[0]
         expected_source = 'localappdata'
     else:
-        assert len(game_logs) == 1, f'{name}: expected one session log next to the DLL, found {len(game_logs)}'
-        trace_path = game_logs[0]
+        trace_path = directory / 'x3m.log'
+        captures_dir = directory / 'x3-modern-captures'
+        assert trace_path.is_file() and (directory / 'x3m.prev.log').read_text() == 'previous launch\n', f'{name}: no rotated log pair'
+        assert not list(captures_dir.glob('session-*.log')), f'{name}: a session-*.log beside the captures'
+        leftovers = {p.name for p in directory.glob('x3m-*.log')}
+        assert leftovers == {'x3m-99999.log', 'x3m-abc.log'}, (name, leftovers)
         expected_source = 'game'
     trace = trace_path.read_text(errors='replace')
-    first = trace.splitlines()[0]
+    rows = trace.splitlines()
+    opened = fields(rows[0])
+    assert rows[0].startswith('log_open ') and opened['source'] == expected_source and re.fullmatch(r'\d{8}-\d{6}-\d+', opened['session']), (name, rows[0])
+    assert opened['previous'] == ('renamed' if not readonly else opened['previous']) and opened['previous'] in ('renamed', 'absent'), (name, rows[0])
+    assert readonly or opened['stale_removed'] == '1', (name, rows[0])
+    first = rows[1]
     assert first.startswith('capture_dir=') and fields(first)['source'] == expected_source, (name, first)
     capture_dir = first[len('capture_dir='):].rsplit(' source=', 1)[0]
-    assert windows_to_bottle(capture_dir).resolve() == trace_path.parent.resolve(), (name, capture_dir, trace_path)
+    # The profile prefix is redacted in the row (logging-tiers.md section 6): put the fixture's own %USERPROFILE% back.
+    if capture_dir.startswith('%USERPROFILE%'):
+        assert userprofile != '-', (name, first)
+        capture_dir = userprofile + capture_dir[len('%USERPROFILE%'):]
+    assert windows_to_bottle(capture_dir).resolve() == captures_dir.resolve(), (name, capture_dir, captures_dir)
     export_lines = {fields(l)['name']: fields(l) for l in trace.splitlines() if l.startswith('d3d9_export ')}
     # The shim has no backend export under Wine: the naked forwarder's fallback answered, logged once.
     assert export_lines['Direct3D9EnableMaximizedWindowedModeShim']['forwarded'] == '0', (name, export_lines)

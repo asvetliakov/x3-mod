@@ -336,7 +336,7 @@ void MotionOutput::publish_shadow_retention() noexcept {
     auto& f = store.frame;
     const bool live = st.mode == shadow_retention::Mode::Live;
     const auto& c = candidates_.counts;
-    log("shadow_retention_frame device=%llu frame=%llu mode=%s known=%u nodes_live=%u nodes_unseen=%u records=%u records_unseen=%u static=%u moving=%u"
+    if (shadow_state_row()) log("shadow_retention_frame device=%llu frame=%llu mode=%s known=%u nodes_live=%u nodes_unseen=%u records=%u records_unseen=%u static=%u moving=%u"
         " excluded_class=%u unscoped=%u new_nodes=%u first_seen_in_range=%u promoted=%u superseded=%u lod_replaced=%u model_replaced=%u reclassified=%u"
         " retired=%u journal_overflow=%u revalidated=%u mutation_delta=%llu buffer_changed=%u buffer_gone=%u buffer_orphaned=%u orphan_probe=%u"
         " box_exit=%u age=%u evicted=%u flush=%s unseen_in_frustum=%u unseen_outside=%u live_c0=%u live_c1=%u live_c2=%u live_c3=%u live_c4=%u"
@@ -379,7 +379,7 @@ void MotionOutput::publish_shadow_retention() noexcept {
     }
     f = {};
     st.draw_ticks = 0; st.draw_calls = 0; st.gate_ticks = 0; st.gate_calls = 0;
-    if (frame_ && frame_ % shadow_retention::resight_period == 0) {
+    if (frame_ && frame_ % shadow_retention::resight_period == 0 && telemetry_) { // a telemetry window since the logging tiers
         const auto& t = store.totals;
         char text[1024]; int used = 0;
         const auto put = [&](const char* name, const std::uint64_t* v) { for (unsigned b = 0; b < shadow_retention::resight_buckets && used >= 0 && used < int(sizeof text); ++b) used += std::snprintf(text + used, sizeof text - used, " %s_b%u=%llu", name, b, static_cast<unsigned long long>(v[b])); };

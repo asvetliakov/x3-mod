@@ -164,49 +164,50 @@ class FrameTimingWindow(unittest.TestCase):
 
 
 class FrameTimingLaunchOption(unittest.TestCase):
+    """Since the logging tiers (2026-09-26, docs/architecture/logging-tiers.md) the frame-time windows come with --perf:
+    the launcher sends X3M_PERF=1 and the DLL turns X3M_FRAME_TIMING on; --frame-timing is refused and an inherited
+    X3M_FRAME_TIMING is dropped (the DLL still reads it for the fixtures)."""
+
     def test_launch_option_requires_telemetry_and_resets_inherited_value(self):
         from verification.analysis.test_lod_scale_launch import LodScaleLaunchOption
         helper = LodScaleLaunchOption()
         with tempfile.TemporaryDirectory() as directory:
             code, _, error = helper.launch(directory, '--frame-timing')
             self.assertEqual(code, 2)
-            self.assertIn('--frame-timing requires --telemetry', error)
-            code, output, error = helper.launch(directory, '--frame-timing', '--telemetry')
+            self.assertIn('--frame-timing was removed on 2026-09-26', error)
+            code, output, error = helper.launch(directory, '--perf')
             self.assertEqual(code, 0, error)
-            self.assertEqual(json.loads(output)['env']['X3M_FRAME_TIMING'], '1')
+            environment = json.loads(output)['env']
+            self.assertEqual(environment['X3M_PERF'], '1')
+            self.assertNotIn('X3M_FRAME_TIMING', environment)
             code, output, error = helper.launch(directory, inherited={'X3M_FRAME_TIMING': '1'})
             self.assertEqual(code, 0, error)
-            self.assertEqual(json.loads(output)['env']['X3M_FRAME_TIMING'], '0')
+            self.assertNotIn('X3M_FRAME_TIMING', json.loads(output)['env'])
 
     def test_state_stamps_option_requires_frame_timing_and_exports_the_interval(self):
         from verification.analysis.test_lod_scale_launch import LodScaleLaunchOption
         helper = LodScaleLaunchOption()
         with tempfile.TemporaryDirectory() as directory:
-            code, _, error = helper.launch(directory, '--telemetry', '--frame-timing-state-stamps', '8')
+            code, _, error = helper.launch(directory, '--debug', '--frame-timing-state-stamps', '8')
             self.assertEqual(code, 2)
-            self.assertIn('--frame-timing-state-stamps requires --frame-timing', error)
-            code, output, error = helper.launch(
-                directory, '--telemetry', '--frame-timing', '--frame-timing-state-stamps', '8')
+            self.assertIn('--frame-timing-state-stamps requires --perf', error)
+            code, output, error = helper.launch(directory, '--perf', '--frame-timing-state-stamps', '8')
             self.assertEqual(code, 0, error)
-            environment = json.loads(output)['env']
-            self.assertEqual(environment['X3M_FRAME_TIMING'], '1')
-            self.assertEqual(environment['X3M_FRAME_TIMING_STATE_STAMPS'], '8')
-            # Default: the calls are counted, never stamped.
-            code, output, error = helper.launch(directory, '--telemetry', '--frame-timing')
+            self.assertEqual(json.loads(output)['env']['X3M_FRAME_TIMING_STATE_STAMPS'], '8')
+            # Default: the calls are counted, never stamped (the variable is not sent; the DLL's default is 0).
+            code, output, error = helper.launch(directory, '--perf')
             self.assertEqual(code, 0, error)
-            self.assertEqual(json.loads(output)['env']['X3M_FRAME_TIMING_STATE_STAMPS'], '0')
-
+            self.assertNotIn('X3M_FRAME_TIMING_STATE_STAMPS', json.loads(output)['env'])
 
     def test_frame_end_stride_is_exported_with_its_default_and_bounded(self):
-        """--frame-end-stride has no prerequisite (frame_end exists in every
-        mode), defaults to the historical 300 and is always exported, so an
-        inherited value cannot change the cadence."""
+        """--frame-end-stride has no prerequisite (frame_end exists in every mode) and is sent only when given, where it
+        wins over the tiers; unset, the DLL takes 1 with a logging group and 3600 otherwise. An inherited value is dropped."""
         from verification.analysis.test_lod_scale_launch import LodScaleLaunchOption
         helper = LodScaleLaunchOption()
         with tempfile.TemporaryDirectory() as directory:
             code, output, error = helper.launch(directory, inherited={'X3M_FRAME_END_STRIDE': '1'})
             self.assertEqual(code, 0, error)
-            self.assertEqual(json.loads(output)['env']['X3M_FRAME_END_STRIDE'], '300')
+            self.assertNotIn('X3M_FRAME_END_STRIDE', json.loads(output)['env'])
             code, output, error = helper.launch(directory, '--frame-end-stride', '1')
             self.assertEqual(code, 0, error)
             self.assertEqual(json.loads(output)['env']['X3M_FRAME_END_STRIDE'], '1')
@@ -214,6 +215,9 @@ class FrameTimingLaunchOption(unittest.TestCase):
                 code, _, error = helper.launch(directory, '--frame-end-stride', value)
                 self.assertEqual(code, 2, value)
                 self.assertIn('--frame-end-stride must be within [1, 100000]', error)
+        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        self.assertIn('constexpr unsigned frame_end_stride_default = 3600', capture)
+        self.assertIn('frame_end_stride=log_tier::cadence_default(log_tier::perf()||log_tier::debug(),1u,frame_end_stride_default);', capture)
 
     def test_motion_rt_mode_defaults_to_lazy_on_the_route_and_preserves_feature_off(self):
         from verification.analysis.test_lod_scale_launch import LodScaleLaunchOption
