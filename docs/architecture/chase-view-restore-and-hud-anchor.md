@@ -195,7 +195,14 @@ geometry_delta=0x… frame=…`.
   `0x0049f570`). Forges player input, depends on the key binding and the script's
   cycle state; rejected.
 
-### 2026-09-25: docking path (`--chase-view-restore-dock`)
+### 2026-09-25: docking path (`--chase-view-restore-dock`) — dropped
+
+**Dropped 2026-09-25 by user decision after Run 86 A launch 3 (run335).** The
+option, `X3M_CHASE_VIEW_RESTORE_DOCK` and the dock path were removed (revert of
+40cd3023, including the `destroy_step`/`consume_step` refactor); the docking
+chain refuses with reason 18 again and the jump path is as before. Reason and
+flight finding: [chase-view-docking.md](../reverse-engineering/chase-view-docking.md),
+"Dropped". The section below records the design as it was.
 
 Source for the docking request ("docking reverts the chase view to first
 person"). The spec is [chase-view-docking.md](../reverse-engineering/chase-view-docking.md).

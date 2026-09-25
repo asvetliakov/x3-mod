@@ -311,3 +311,15 @@ run, no install, unflown.
   through the `chase_view_restore_seam … path=dock` line, and a mismatch
   refuses without writing. The docked-screen look and native Windows
   behaviour are unverified.
+
+### 2026-09-25 docking path dropped
+
+Removed by user decision after Run 86 A launch 3 (run335): after undocking the
+HUD selection brackets for stations and ships disappeared (cause not
+investigated), and a save loaded while docked restores the first-person view
+anyway. In run335 the dock transfer was accepted and consumed at `f0c4b` with
+`cell0=258` (two seam rows), as designed. Source reverted to pre-40cd3023
+(`git revert` of 40cd3023, refactor included; `mutate_restore_host.py` deleted):
+the docking chain refuses with reason 18, the jump path is unchanged, and
+`--chase-view-restore-dock` is an unknown launcher option. Details in
+[chase-view-docking.md](../reverse-engineering/chase-view-docking.md), "Dropped".

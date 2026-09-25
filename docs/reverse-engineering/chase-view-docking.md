@@ -267,3 +267,19 @@ python3 verification/results/chase-view-docking/run315_dock_events.py # needs th
 ```
 
 Both print derived offsets, names, return chains and bytes only.
+
+## Dropped (2026-09-25)
+
+`--chase-view-restore-dock` (40cd3023) was removed by user decision after
+Run 86 A launch 3 (run335). The user's reason: after undocking, the station and
+ship selection boxes (HUD brackets) disappeared, and a save loaded while docked
+restores the first-person view anyway, so the feature is not worth it.
+
+Run335 finding: the path worked as designed. The transfer logged `path=dock`,
+was accepted and was consumed at the `f0c4b` seam with `cell0=258`; two seam
+rows were logged. After the undock the HUD brackets vanished. The cause was not
+investigated. The production code is back at the pre-40cd3023 state: the
+docking destructor chain refuses with reason 18 and clears the arm, there is no
+dock path, and the option and its environment variable are gone. The findings
+in sections 1-5 remain valid reverse-engineering facts for any later attempt;
+such an attempt must first explain the lost brackets.
