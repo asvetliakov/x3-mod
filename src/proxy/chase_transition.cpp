@@ -166,7 +166,7 @@ detail::HandlerTiming restore_timing[restore_site_count]{};
 constexpr unsigned restore_pending_update_expiry=600;
 // Once-per-reason arm/transfer refusal samples, captured under the lock and
 // emitted by handle() after it is released (log() must not run under the Guard).
-struct RestoreSample { bool wanted=false,armed=false;unsigned kind=0,reason=0,readable=0;std::uint32_t cockpit=0,mode=0,connect=0,ship=0,view=0,handle=0,valid=0,refused=0,native_script=0,player=0;std::uint64_t generation=0; };
+struct RestoreSample { bool wanted=false,armed=false;unsigned kind=0,reason=0,readable=0,path=0;std::uint32_t cockpit=0,mode=0,connect=0,ship=0,view=0,handle=0,valid=0,refused=0,native_script=0,player=0;std::uint64_t generation=0; };
 RestoreSample restore_sample;
 // readable: bit0 connect, bit1 ship, bit2 view field reads succeeded (a real 0 is distinguishable from an unreadable field).
 void restore_sample_arm(unsigned reason,std::uintptr_t cockpit,std::uint64_t gen,std::uint32_t mode,unsigned readable,std::uint32_t connect,std::uint32_t ship,std::uint32_t view,std::uint32_t handle,const detail::Identity* id) {
@@ -178,19 +178,26 @@ void restore_sample_arm(unsigned reason,std::uintptr_t cockpit,std::uint64_t gen
     restore_sample.mode=mode;restore_sample.connect=connect;restore_sample.ship=ship;restore_sample.view=view;restore_sample.handle=handle;
     if(id){restore_sample.valid=id->valid;restore_sample.refused=id->refused;restore_sample.native_script=id->native_script;restore_sample.player=id->player;}
 }
-void restore_sample_transfer(unsigned reason,std::uintptr_t cockpit,std::uint64_t gen,const Origin& o) {
+// kind 1: refused transfer (once per reason; the step refused from the armed
+// state, so armed=1); kind 2: accepted transfer, once per path per session
+// (the state line carries transfers= and dock_transfers= for the rest).
+void restore_sample_transfer(unsigned kind,unsigned reason,unsigned path,std::uintptr_t cockpit,std::uint64_t gen,const Origin& o) {
     if(reason>=detail::refuse_count)reason=0;
-    const std::uint32_t bit=1u<<reason;if(restore.transfer_sample_logged&bit)return;restore.transfer_sample_logged|=bit;
-    restore_sample={};restore_sample.wanted=true;restore_sample.kind=1;restore_sample.armed=restore.armed;restore_sample.reason=reason;restore_sample.cockpit=std::uint32_t(cockpit);restore_sample.generation=gen;
+    if(kind==1){const std::uint32_t bit=1u<<reason;if(restore.transfer_sample_logged&bit)return;restore.transfer_sample_logged|=bit;}
+    else{const std::uint32_t bit=1u<<(path<detail::path_count?path:0);if(restore.transfer_path_logged&bit)return;restore.transfer_path_logged|=bit;}
+    restore_sample={};restore_sample.wanted=true;restore_sample.kind=kind;restore_sample.armed=kind==1;restore_sample.reason=reason;restore_sample.path=path;restore_sample.cockpit=std::uint32_t(cockpit);restore_sample.generation=gen;
     restore_sample.valid=o.valid;restore_sample.refused=o.flags;restore_sample.handle=o.count;restore_sample.ship=o.task;restore_sample.view=o.context;
+    if(kind==2){restore_sample.player=restore.pending_monitor;restore_sample.native_script=restore.pending_task_id;}
 }
 RestoreSample restore_take_sample(){RestoreSample s=restore_sample;restore_sample.wanted=false;return s;}
 void restore_emit_sample(const RestoreSample& s) {
     if(s.kind==0)log("chase_view_restore_arm_refused reason=%u cockpit=0x%08lx generation=%llu mode=%lu readable=%u connect=%lu ship=0x%08lx view=0x%08lx handle=%lu identity_valid=%lu identity_refused=%lu native_script=0x%08lx player=0x%08lx armed=%u",
         s.reason,static_cast<unsigned long>(s.cockpit),s.generation,static_cast<unsigned long>(s.mode),s.readable,static_cast<unsigned long>(s.connect),static_cast<unsigned long>(s.ship),static_cast<unsigned long>(s.view),
         static_cast<unsigned long>(s.handle),static_cast<unsigned long>(s.valid),static_cast<unsigned long>(s.refused),static_cast<unsigned long>(s.native_script),static_cast<unsigned long>(s.player),unsigned(s.armed));
-    else log("chase_view_restore_transfer_refused reason=%u cockpit=0x%08lx generation=%llu origin_valid=%lu origin_flags=%lu context_return_count=%lu task=0x%08lx context=0x%08lx",
-        s.reason,static_cast<unsigned long>(s.cockpit),s.generation,static_cast<unsigned long>(s.valid),static_cast<unsigned long>(s.refused),static_cast<unsigned long>(s.handle),static_cast<unsigned long>(s.ship),static_cast<unsigned long>(s.view));
+    else if(s.kind==1)log("chase_view_restore_transfer_refused reason=%u cockpit=0x%08lx generation=%llu origin_valid=%lu origin_flags=%lu context_return_count=%lu task=0x%08lx context=0x%08lx path=%s",
+        s.reason,static_cast<unsigned long>(s.cockpit),s.generation,static_cast<unsigned long>(s.valid),static_cast<unsigned long>(s.refused),static_cast<unsigned long>(s.handle),static_cast<unsigned long>(s.ship),static_cast<unsigned long>(s.view),detail::restore_path_name(s.path));
+    else log("chase_view_restore_transfer path=%s cockpit=0x%08lx generation=%llu context_return_count=%lu task=0x%08lx task_id=0x%08lx monitor=0x%08lx",
+        detail::restore_path_name(s.path),static_cast<unsigned long>(s.cockpit),s.generation,static_cast<unsigned long>(s.handle),static_cast<unsigned long>(s.ship),static_cast<unsigned long>(s.native_script),static_cast<unsigned long>(s.player));
 }
 void restore_filter_publish() {
     const std::uint32_t pcs[detail::restore_filter_count]={detail::restore_mode_pc,detail::restore_player_pc,
@@ -271,22 +278,20 @@ void restore_on_update(std::uintptr_t cockpit,std::uint32_t thread) {
     restore.arm_epoch=restore_epoch.load(std::memory_order_acquire);++restore.arms;
     restore_filter_publish();
 }
-// Transfer to pending only at the measured warp destructor; any other
+// Transfer to pending only at the measured warp destructor (or, with
+// X3M_CHASE_VIEW_RESTORE_DOCK=1, the measured dock destructor); any other
 // destructor clears the arm and a second destruction clears pending.
 void restore_on_destroy(std::uintptr_t cockpit,std::uint32_t caller,std::uint32_t ebp,std::uint32_t thread) {
     if(!restore_enabled.load(std::memory_order_relaxed))return;
     restore_epoch_ok();
-    if(restore.pending){restore.clear_pending(detail::cancel_second_destruction);restore_filter_publish();return;}
-    if(!restore.armed)return;
+    if(!restore.pending&&!restore.armed)return;
     const auto* life=state.find(cockpit);
     const std::uint64_t gen=life?life->generation:0;
-    if(cockpit!=restore.arm_cockpit||gen!=restore.arm_generation||caller!=detail::restore_destructor_caller){
-        restore.clear_arm(detail::cancel_destructor);restore.reset_attempt();restore_filter_publish();return;}
-    Origin o;detail::destructor_provenance(caller,ebp,o,bytes,code_address,vm_root);
-    std::uint32_t monitor=0,task_id=0;
-    const unsigned why=detail::transfer_proof(restore,o,bytes,vm_root,monitor,task_id);
-    if(why){restore.refuse(why);restore_sample_transfer(why,cockpit,gen,o);restore.clear_arm(detail::cancel_destructor);restore.reset_attempt();restore_filter_publish();return;}
-    restore.transfer(monitor,o.task,task_id,thread,restore_epoch.load(std::memory_order_acquire));
+    Origin o;unsigned why=0,path=0;
+    const unsigned step=detail::destroy_step(restore,std::uint32_t(cockpit),gen,caller,thread,[]{return restore_epoch.load(std::memory_order_acquire);},bytes,vm_root,
+        [&](Origin& out){detail::destructor_provenance(caller,ebp,out,bytes,code_address,vm_root);},o,why,path);
+    if(step==detail::destroy_refused)restore_sample_transfer(1,why,path,cockpit,gen,o);
+    else if(step==detail::destroy_transferred)restore_sample_transfer(2,0,path,cockpit,gen,o);
     restore_filter_publish();
 }
 // Whether a SelectMode assignment belongs to the armed/pending main monitor.
@@ -309,7 +314,7 @@ bool restore_store_is_ours(std::uint32_t esp,std::uint32_t eax,bool& malformed) 
 // released: log() takes capture's mutex, which present() holds while calling
 // report() under this same lock.
 struct SeamLog {
-    bool wanted=false,ours=false,ctx=false,src=false,prefix=false;unsigned readable=0,why=0;
+    bool wanted=false,ours=false,ctx=false,src=false,prefix=false;unsigned readable=0,why=0,path=0;
     std::uint32_t pc=0,opcode=0,index=0,esi=0,context=0,id=0,pending_monitor=0,v[4]{},t[4]{},requested=0,epoch=0;unsigned char source_tag=0;
 };
 void restore_capture_seam(const detail::SeamRegs& s,const detail::SeamDecode& d,bool ours,unsigned why,SeamLog& out) {
@@ -320,16 +325,18 @@ void restore_capture_seam(const detail::SeamRegs& s,const detail::SeamDecode& d,
     const unsigned index[4]={0,1,16,17};
     if(out.ctx)for(unsigned i=0;i<4;++i)if(detail::raw_cell(r,out.context,desc,index[i],out.t[i],out.v[i]))out.readable|=1u<<i;
     out.src=bytes(s.ebx,0,source,5);if(out.src){out.source_tag=source[0];std::memcpy(&out.requested,source+1,4);}
-    out.prefix=d.task&&detail::live_stack_prefix(d.task,s.ebx,d.code,bytes,code_address,detail::restore_reset_prefix,3);
+    out.path=restore.pending_path;
+    const detail::RestorePathSpec spec=detail::restore_path_spec(out.path);
+    out.prefix=d.task&&spec.reset&&detail::live_stack_prefix(d.task,s.ebx,d.code,bytes,code_address,spec.reset,spec.reset_count);
     out.epoch=restore_epoch.load(std::memory_order_relaxed);
 }
 void restore_emit_seam(const SeamLog& o) {
-    log("chase_view_restore_seam pc=0x%lx opcode=0x%lx index=%lu esi=%lu context=0x%08lx monitor=0x%08lx pending_monitor=0x%08lx ours=%u cells_readable=%u cell0=%lu cell1=%lu cell16=%lu cell17_tag=%lu cell17=0x%08lx cell0_tag=%lu cell1_tag=%lu cell16_tag=%lu source_readable=%u source_tag=%u source=%lu prefix_ok=%u refusal=%u epoch=%lu",
+    log("chase_view_restore_seam pc=0x%lx opcode=0x%lx index=%lu esi=%lu context=0x%08lx monitor=0x%08lx pending_monitor=0x%08lx ours=%u cells_readable=%u cell0=%lu cell1=%lu cell16=%lu cell17_tag=%lu cell17=0x%08lx cell0_tag=%lu cell1_tag=%lu cell16_tag=%lu source_readable=%u source_tag=%u source=%lu prefix_ok=%u refusal=%u epoch=%lu path=%s",
         static_cast<unsigned long>(o.pc),static_cast<unsigned long>(o.opcode),static_cast<unsigned long>(o.index),static_cast<unsigned long>(o.esi),
         static_cast<unsigned long>(o.context),static_cast<unsigned long>(o.id),static_cast<unsigned long>(o.pending_monitor),unsigned(o.ours),o.readable,
         static_cast<unsigned long>(o.v[0]),static_cast<unsigned long>(o.v[1]),static_cast<unsigned long>(o.v[2]),static_cast<unsigned long>(o.t[3]),static_cast<unsigned long>(o.v[3]),
         static_cast<unsigned long>(o.t[0]),static_cast<unsigned long>(o.t[1]),static_cast<unsigned long>(o.t[2]),unsigned(o.src),unsigned(o.source_tag),static_cast<unsigned long>(o.requested),
-        unsigned(o.prefix),o.why,static_cast<unsigned long>(o.epoch));
+        unsigned(o.prefix),o.why,static_cast<unsigned long>(o.epoch),detail::restore_path_name(o.path));
 }
 void restore_on_store(std::uint32_t* regs,std::uint32_t esp,std::uint32_t thread,SeamLog& seam_log) {
     ++restore.seam_calls;
@@ -343,14 +350,12 @@ void restore_on_store(std::uint32_t* regs,std::uint32_t esp,std::uint32_t thread
         if(restore.pending&&!ours){restore_capture_seam(s,d,false,0,seam_log);return;}
         if(!ours)return;
         if(restore.pending){
-            unsigned why=detail::seam_consume_proof(restore,s,d,restore_epoch.load(std::memory_order_acquire),bytes,code_address,vm_root);
-            if(!why&&!writable_span(s.ebx+1,4))why=detail::refuse_writable;
-            restore_capture_seam(s,d,true,why,seam_log);
-            if(why){restore.refuse(why);restore.clear_pending(detail::cancel_proof);restore_filter_publish();return;}
-            // Clear pending immediately before the single source-payload write.
-            restore.take_pending();restore_filter_publish();
-            if(write_payload(s.ebx+1,detail::restore_rear_mode))++restore.consumed;
-            else{++restore.writes_failed;restore.refuse(detail::refuse_write);}
+            // Pending is cleared (and the filter republished) immediately before the single source-payload write.
+            const unsigned why=detail::consume_step(restore,s,d,restore_epoch.load(std::memory_order_acquire),bytes,code_address,vm_root,
+                [](std::uintptr_t at,unsigned n){return writable_span(at,n);},
+                [](std::uintptr_t at,std::uint32_t value){restore_filter_publish();return write_payload(at,value);},
+                [&](unsigned verdict){restore_capture_seam(s,d,true,verdict,seam_log);});
+            if(why)restore_filter_publish();
             return;
         }
         restore.clear_arm(detail::cancel_selection);restore.reset_attempt();restore_filter_publish();return;
@@ -526,6 +531,13 @@ bool restore_wanted() {
     wchar_t setting[8]{};
     return GetEnvironmentVariableW(L"X3M_CHASE_VIEW_RESTORE",setting,8)==1&&setting[0]==L'1';
 }
+// X3M_CHASE_VIEW_RESTORE_DOCK=1: also accept the station-docking chain
+// (docs/reverse-engineering/chase-view-docking.md). Meaningful only with the
+// ticket installed; no site of its own.
+bool restore_dock_wanted() {
+    wchar_t setting[8]{};
+    return GetEnvironmentVariableW(L"X3M_CHASE_VIEW_RESTORE_DOCK",setting,8)==1&&setting[0]==L'1';
+}
 }
 bool initialize() {
     const DWORD error=GetLastError();
@@ -545,11 +557,13 @@ bool initialize() {
     // interpreter operands are never read or written.
     const bool restore_requested=restore_wanted();
     const bool restore_okay=restore_requested&&okay&&engine_patch::install_window_open()&&restore_sites_install(restore_specs);
-    {Guard guard;restore={};restore_filter_publish();}
+    const bool dock_requested=restore_dock_wanted(),dock_okay=restore_okay&&dock_requested;
+    {Guard guard;restore={};restore.dock=dock_okay;restore_filter_publish();}
     restore_enabled.store(restore_okay,std::memory_order_release);
-    if(restore_requested||restore_okay){
-        log("chase_view_restore installed=%u requested=%u sites=%u mutation=source_payload_258_at_0x%lx prefilter=armed_operand_addresses expiry_updates=%u",
-            unsigned(restore_okay),unsigned(restore_requested),restore_site_count,static_cast<unsigned long>(detail::restore_mode_pc),restore_pending_update_expiry);
+    if(restore_requested||restore_okay||dock_requested){
+        log("chase_view_restore installed=%u requested=%u sites=%u mutation=source_payload_258_at_0x%lx prefilter=armed_operand_addresses expiry_updates=%u dock=%u dock_requested=%u paths=%s",
+            unsigned(restore_okay),unsigned(restore_requested),restore_site_count,static_cast<unsigned long>(detail::restore_mode_pc),restore_pending_update_expiry,
+            unsigned(dock_okay),unsigned(dock_requested),dock_okay?"jump,dock":"jump");
         for(unsigned i=0;i<restore_site_count;++i)
             log("chase_view_restore_site index=%u site=0x%08lx patched=%u status=%s",i,static_cast<unsigned long>(restore_specs[i].address),unsigned(restore_sites[i].patched_in),restore_sites[i].status);
     }
@@ -597,11 +611,12 @@ void report(std::uint64_t frame) {
     if(restore_installed()){
         detail::RestoreState r;detail::HandlerTiming rt[restore_site_count]{};
         {Guard guard;r=restore;for(unsigned i=0;i<restore_site_count;++i){rt[i]=restore_timing[i];restore_timing[i]={};}}
-        log("chase_view_restore_state frame=%llu armed=%u pending=%u arms=%llu arm_refusals=%llu arm_refusal_reasons=%llu,%llu,%llu,%llu,%llu,%llu,%llu transfers=%llu consumed=%llu writes_failed=%llu seam_calls=%llu eh_bumps=%llu epoch=%lu last_refusal=%u cancels=%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu refusals=%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu",
+        log("chase_view_restore_state frame=%llu armed=%u pending=%u arms=%llu arm_refusals=%llu arm_refusal_reasons=%llu,%llu,%llu,%llu,%llu,%llu,%llu transfers=%llu consumed=%llu writes_failed=%llu seam_calls=%llu eh_bumps=%llu epoch=%lu last_refusal=%u cancels=%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu refusals=%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu path=%s dock=%u dock_transfers=%llu dock_consumed=%llu",
             frame,unsigned(r.armed),unsigned(r.pending),r.arms,r.arm_refusals,r.arm_refusal_reasons[0],r.arm_refusal_reasons[1],r.arm_refusal_reasons[2],r.arm_refusal_reasons[3],r.arm_refusal_reasons[4],r.arm_refusal_reasons[5],r.arm_refusal_reasons[6],r.transfers,r.consumed,r.writes_failed,r.seam_calls,restore_eh_bumps.load(std::memory_order_relaxed),
             static_cast<unsigned long>(restore_epoch.load(std::memory_order_relaxed)),r.last_refusal,
             r.cancels[0],r.cancels[1],r.cancels[2],r.cancels[3],r.cancels[4],r.cancels[5],r.cancels[6],r.cancels[7],r.cancels[8],r.cancels[9],r.cancels[10],r.cancels[11],r.cancels[12],r.cancels[13],r.cancels[14],
-            r.refusals[0],r.refusals[1],r.refusals[2],r.refusals[3],r.refusals[4],r.refusals[5],r.refusals[6],r.refusals[7],r.refusals[8],r.refusals[9],r.refusals[10],r.refusals[11],r.refusals[12],r.refusals[13],r.refusals[14],r.refusals[15],r.refusals[16],r.refusals[17],r.refusals[18],r.refusals[19],r.refusals[20],r.refusals[21],r.refusals[22]);
+            r.refusals[0],r.refusals[1],r.refusals[2],r.refusals[3],r.refusals[4],r.refusals[5],r.refusals[6],r.refusals[7],r.refusals[8],r.refusals[9],r.refusals[10],r.refusals[11],r.refusals[12],r.refusals[13],r.refusals[14],r.refusals[15],r.refusals[16],r.refusals[17],r.refusals[18],r.refusals[19],r.refusals[20],r.refusals[21],r.refusals[22],
+            detail::restore_path_name(r.pending_path),unsigned(r.dock),r.path_transfers[detail::path_dock],r.path_consumed[detail::path_dock]);
         if(timing)for(unsigned i=0;i<restore_site_count;++i)if(rt[i].calls)
             log("chase_view_restore_timing frame=%llu kind=%u calls=%llu samples=%llu invalid_qpc=%llu total_us=%.3f max_us=%.3f scope=handler_after_prefilter native_work=excluded",
                 frame,i,rt[i].calls,rt[i].samples,rt[i].invalid,as_double(rt[i].ticks)*micros,as_double(rt[i].max_ticks)*micros);

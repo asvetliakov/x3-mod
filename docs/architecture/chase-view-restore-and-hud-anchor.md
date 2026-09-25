@@ -195,6 +195,66 @@ geometry_delta=0x… frame=…`.
   `0x0049f570`). Forges player input, depends on the key binding and the script's
   cycle state; rejected.
 
+### 2026-09-25: docking path (`--chase-view-restore-dock`)
+
+Source for the docking request ("docking reverts the chase view to first
+person"). The spec is [chase-view-docking.md](../reverse-engineering/chase-view-docking.md).
+Option: `--chase-view-restore-dock` (`X3M_CHASE_VIEW_RESTORE_DOCK=1`, always
+explicit on a launch, default off). It requires `--chase-view-restore` and
+`--camera chase`, and `--vanilla` refuses it. Unflown.
+
+- **Mechanism.** The same one-use ticket accepts a second destructor chain. At
+  the destructor `0x0041ffc0` (caller `0x0042d402`), a 6-pair chain
+  `efbff,edba0,edbe3,9be97,9bcd0,0` with `origin_flags=0`, warp 0, killed 0
+  and nonzero frame contexts transfers with `pending_path=dock`. The chain is
+  Run315 event 52 (measured). The 5-pair gate chain with warp 1 still
+  transfers as `path=jump`. The row is chosen only by the chain length and
+  exact returns, and a warp value mismatch refuses (reason 12).
+  The dock pending is consumed at the same `f0c4b` seam through `0x004a3ffd`
+  with the dock proof: warp 0 and live prefix `edc91,9bec3,9bcd0,0`
+  (inferred). The seam then writes 258 over the `PUSH1` payload of
+  `RestartAllMonitors`, and the engine builds the new cockpit in mode 258.
+  Every other consume check is unchanged. A mismatch refuses without writing.
+- **Option off is unchanged.** The dock row is admitted only with
+  `RestoreState::dock`, so the 6-pair chain refuses with reason 18 and clears
+  the arm exactly as before. The host fixture compares the new transfer gate
+  with a verbatim copy of the pre-change gate on 16 chain shapes and warp
+  values. The only difference with the option off is in the log lines listed
+  below.
+- **Double arming.** One arm gives at most one pending. Any second
+  destruction cancels a pending ticket (`cancel_second_destruction`), and a
+  consumed or cancelled ticket needs a fresh arm. A jump pending cannot
+  consume on a dock seam, and a dock pending cannot consume on a jump seam
+  (different prefix and warp). The load boundary (epoch advance at
+  `0x004a0880`, VM clear and construct, deserializer kind 7) cancels a dock
+  pending the same way.
+- **Code.** `transfer_proof` selects the path row. `destroy_step` and
+  `consume_step` in `chase_transition_restore_core.h` now hold the destructor
+  and seam state transitions that `chase_transition.cpp` used to inline, so
+  the portable host fixture drives the production state machine. As before,
+  the pending epoch is read after the provenance walk, so a lock-free EH bump
+  during the walk stamps the new epoch. With the option off, the host fixture
+  checks the sequencing against the verbatim pre-change proofs and order on
+  every length-4 event sequence. There is no new site or stub, and the seven
+  restore spans are unchanged.
+- **Log.** The new line `chase_view_restore_transfer path=jump|dock …` is
+  written for the first accepted transfer of each path in a session, like the
+  once-per-reason refusal line. `transfers=` and `dock_transfers=` in the
+  state line count the rest. `path=` was added to
+  `chase_view_restore_transfer_refused` (`none` when no row matched) and to
+  `chase_view_restore_seam`. The `chase_view_restore_state` line gains
+  `path= dock= dock_transfers= dock_consumed=`, and the install line gains
+  `dock= dock_requested= paths=`. The log token is `jump`; the RE note calls
+  this path "gate".
+- **Cost.** While docked the screen shows the engine's rear view of the
+  parked ship instead of the cockpit. This is unflown, and whether the chase
+  camera admits docked frames is unknown. The flight check and expected rows
+  are in the RE note, §5.
+- **Saves.** A save made while docked stores the script cell and the native
+  mode, both 258 (RE note §4). Loading it restores the rear view even with
+  the option off or under `--vanilla`, because the deserializer `0x00419e06`
+  writes the saved mode and no ticket is involved.
+
 ## Item 2: where the central crosshair belongs
 
 ### The numbers

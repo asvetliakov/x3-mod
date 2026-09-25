@@ -240,3 +240,74 @@ by `handle()` after release.
   violations; worktree DLL SHA-256
   `05ebd272edcc24a4c470a78bbf9f3c61058d24c59768f4a32b9b69c265b0b5e9` (evidence
   only).
+
+### 2026-09-25 docking path (`--chase-view-restore-dock`), source checkpoint
+
+Design in [chase-view-restore-and-hud-anchor.md](../architecture/chase-view-restore-and-hud-anchor.md)
+("2026-09-25: docking path"); spec in
+[chase-view-docking.md](../reverse-engineering/chase-view-docking.md). No new
+site or stub. The destructor and seam state transitions moved into
+`destroy_step`/`consume_step` of `chase_transition_restore_core.h`. No Wine
+run, no install, unflown.
+
+- Host fixture `chase_transition_restore_host.cpp` →
+  `chase restore host: 69 checks PASS`. Before the change it had 37 checks
+  (static count). The new cases:
+  - The dock chain with the option off refuses with reason 18, clears the arm
+    and leaves no pending. The verdicts equal a verbatim copy of the
+    pre-change gate on 16 chain shapes and warp values.
+  - With the option on, the dock chain transfers `path=dock` and keys the
+    pending ticket by thread, task, task ID and epoch. The dock seam writes
+    258 once.
+  - These refuse: warp 1 on the dock chain, warp 0 on the jump chain, a wrong
+    return, `origin_flags=4`, a null root context. Another destructor caller
+    clears the arm.
+  - These refuse without writing: a wrong dock prefix, the jump prefix under
+    a dock pending, warp 1 at the dock seam, a jump pending on a dock seam.
+  - The jump chain still transfers and consumes, with `path=jump`, with the
+    option on and off.
+  - After a dock transfer, a jump chain cancels the pending ticket (one
+    transfer in total, filter idle, no second pending), and the reverse
+    order does the same.
+  - A stale epoch at the dock seam refuses without writing, and
+    `clear_all(cancel_epoch)` clears the dock pending once.
+  - Review fixes: the pending epoch is read after the provenance walk, as in
+    47d5e3d9. An epoch bump inside the walk stamps the new epoch, and the
+    fixture checks this on both paths.
+  - The option-off equivalence drives `destroy_step`/`consume_step` and the
+    47d5e3d9 sequencing, with the verbatim pre-change `seam_consume_proof`
+    and `transfer_proof` copied into the fixture, through every length-4
+    sequence over a 27-event alphabet. The events are re-arm, 6 destructor
+    shapes × 2 warp values, and 3 seam stacks × 2 warp values × 2 epochs,
+    plus a not-writable seam and a failed write. Result: `sequences=531441
+    mismatches=0 transfers=41007 consumed=1413`.
+  - The accepted-transfer line is written once per path per session.
+- Mutation witness
+  `python3 verification/results/chase-view-docking/mutate_restore_host.py` →
+  `mutations=8 caught=8`. The mutations: dock warp, option gate, the
+  second-destruction cancel, a second write, the dock chain, the per-path
+  consume prefix, the epoch read before the walk, and a dropped
+  `reset_attempt` on refusal. On its own, the dropped `reset_attempt` gives
+  360,846 mismatching sequences in the equivalence check.
+- `PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_chase_transition`
+  → 5 tests OK. `test_chase_camera` → 58 tests OK, including the new launcher
+  case: the option requires `--chase-view-restore` and `--camera chase`, the
+  environment variable is always explicit and a stale `1` becomes `0`, and
+  `--vanilla` refuses. `test_chase_restore_sites` and
+  `test_chase_transition_sites` → 12 tests OK.
+- `cmake --build build` (fresh worktree configure, MinGW i686 RelWithDebInfo)
+  → 0 warnings. `check_no_x87.py build/d3d9.dll` → PASS, 119 roots, 690
+  functions, 0 violations. The worktree DLL is 56,882,055 B (after the review fixes), SHA-256
+  `b6a5eb9f…a35c9d8e` (evidence only).
+  `build_chase_transition_cpu.py` builds the Wine CPU fixture, and its audit
+  shows `GetLastError` first and `SetLastError` last in both callbacks. The
+  fixture was not run under Wine: no emitted stub changed.
+- Dry run: the Run 84 A stand command (`--bottle X3 --dll-source
+  build/d3d9.dll --direct --camera chase` plus `/tmp/x3-run84-candidate/stand.txt`)
+  with `--chase-view-restore-dock` → exit 0 and `X3M_CHASE_VIEW_RESTORE_DOCK=1`.
+  Without the option → `0`. The 183-variable environments differ only in
+  that variable.
+- Open: the dock consume prefix is inferred. The first flight settles it
+  through the `chase_view_restore_seam … path=dock` line, and a mismatch
+  refuses without writing. The docked-screen look and native Windows
+  behaviour are unverified.

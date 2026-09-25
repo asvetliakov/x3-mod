@@ -12,6 +12,23 @@ constexpr std::uint32_t restore_mode_pc=0xf0c4b, restore_player_pc=0xe5da1, rest
 constexpr std::uint32_t restore_killed_pcs[2]={0x13b48,0x13b62};
 constexpr std::uint32_t restore_reset_prefix[3]={0xedc91,0x16724,0};
 constexpr std::uint32_t restore_warp_prefix[5]={0xefbff,0xedba0,0xedbe3,0x1661c,0};
+// Docking at a station (docs/reverse-engineering/chase-view-docking.md, opt-in
+// X3M_CHASE_VIEW_RESTORE_DOCK=1): RunPlayerTrade's StopAllMonitors destructor
+// chain (measured, run315 event 52, warp 0) and its RestartAllMonitors ->
+// SelectMode(1) live-stack prefix at the same f0c4b seam (inferred: a mismatch
+// refuses without writing).
+constexpr std::uint32_t restore_dock_prefix[6]={0xefbff,0xedba0,0xedbe3,0x9be97,0x9bcd0,0};
+constexpr std::uint32_t restore_dock_reset_prefix[4]={0xedc91,0x9bec3,0x9bcd0,0};
+// The pending ticket's path is chosen only by the exact destructor chain; the
+// consume proof then requires that path's live prefix and warp value, so a
+// jump pending never consumes on a dock seam or the reverse.
+enum RestorePath : unsigned { path_none=0, path_jump=1, path_dock=2, path_count=3 };
+struct RestorePathSpec { const std::uint32_t* transfer; unsigned transfer_count; const std::uint32_t* reset; unsigned reset_count; std::uint32_t warp; };
+constexpr RestorePathSpec restore_path_spec(unsigned path) {
+    return path==path_jump?RestorePathSpec{restore_warp_prefix,5,restore_reset_prefix,3,1}:
+           path==path_dock?RestorePathSpec{restore_dock_prefix,6,restore_dock_reset_prefix,4,0}:RestorePathSpec{nullptr,0,nullptr,0,0};
+}
+constexpr const char* restore_path_name(unsigned path){return path==path_jump?"jump":path==path_dock?"dock":"none";}
 constexpr std::uint32_t restore_monitor_class=0x25e, restore_warp_class=0x96, restore_rear_mode=258;
 constexpr std::uint32_t restore_destructor_caller=0x42d402;
 constexpr unsigned restore_filter_count=5; // mode, player, controller, killed x2 operand addresses
@@ -36,19 +53,23 @@ enum RestoreArmRefusal : unsigned { arm_ok=0, arm_connect=1, arm_view_not_ready=
 constexpr unsigned restore_arm_retry_cap=64; // precondition retries per cockpit generation
 struct RestoreState {
     bool armed=false, pending=false;
+    bool dock=false; // X3M_CHASE_VIEW_RESTORE_DOCK: admits the dock row at transfer; survives every clear
+    unsigned pending_path=path_none;
     std::uint32_t arm_cockpit=0, arm_player=0, arm_controller=0, arm_native_script=0, arm_epoch=0, arm_code=0;
     std::uint64_t arm_generation=0;
     std::uint32_t pending_monitor=0, pending_task=0, pending_task_id=0, pending_thread=0, pending_epoch=0;
     std::uint64_t attempt_generation=0, retry_generation=0; std::uint32_t attempt_mode=0, pending_updates=0, retries=0;
     std::uint64_t arms=0, arm_refusals=0, transfers=0, consumed=0, writes_failed=0, seam_calls=0;
+    std::uint64_t path_transfers[path_count]{}, path_consumed[path_count]{};
     std::uint64_t cancels[cancel_count]{}, refusals[refuse_count]{}, arm_refusal_reasons[arm_refusal_count]{};
     std::uint32_t arm_sample_logged=0, transfer_sample_logged=0; // once-per-reason sample line masks
+    std::uint32_t transfer_path_logged=0; // once-per-path accepted-transfer line mask
     unsigned last_refusal=0;
     void clear_arm(unsigned reason) noexcept { if(armed)++cancels[reason]; armed=false;arm_cockpit=0;arm_generation=0;arm_player=0;arm_controller=0;arm_native_script=0;arm_code=0; }
     void clear_pending(unsigned reason) noexcept { if(pending)++cancels[reason]; take_pending(); }
-    void take_pending() noexcept { pending=false;pending_monitor=0;pending_task=0;pending_task_id=0;pending_thread=0;pending_epoch=0;pending_updates=0; }
-    void transfer(std::uint32_t monitor,std::uint32_t task,std::uint32_t task_id,std::uint32_t thread,std::uint32_t epoch) noexcept {
-        armed=false;pending=true;pending_monitor=monitor;pending_task=task;pending_task_id=task_id;pending_thread=thread;pending_epoch=epoch;pending_updates=0;++transfers;
+    void take_pending() noexcept { pending=false;pending_path=path_none;pending_monitor=0;pending_task=0;pending_task_id=0;pending_thread=0;pending_epoch=0;pending_updates=0; }
+    void transfer(std::uint32_t monitor,std::uint32_t task,std::uint32_t task_id,std::uint32_t thread,std::uint32_t epoch,unsigned path) noexcept {
+        armed=false;pending=true;pending_path=path<path_count?path:path_none;pending_monitor=monitor;pending_task=task;pending_task_id=task_id;pending_thread=thread;pending_epoch=epoch;pending_updates=0;++transfers;++path_transfers[pending_path];
     }
     void clear_all(unsigned reason) noexcept { clear_arm(reason);clear_pending(reason); }
     void refuse(unsigned why) noexcept { last_refusal=why;++refusals[why]; }
@@ -142,6 +163,8 @@ unsigned seam_consume_proof(const RestoreState& st,const SeamRegs& s,const SeamD
                             Reader bytes,CodeRange code_address,std::uint32_t vm_root) {
     auto field=[&](std::uintptr_t base,unsigned offset,auto& out){return bytes(base,offset,&out,sizeof out);};
     if(st.pending_epoch!=epoch)return refuse_epoch;
+    const RestorePathSpec path=restore_path_spec(st.pending_path);
+    if(!path.reset)return refuse_provenance;
     if(s.thread!=st.pending_thread)return refuse_thread;
     if(d.task!=st.pending_task)return refuse_task;
     std::uint32_t task_id=0,context=0,task_context=0;
@@ -158,7 +181,7 @@ unsigned seam_consume_proof(const RestoreState& st,const SeamRegs& s,const SeamD
     if(!integer_cell(r,context,desc,1,handle)||handle!=0)return refuse_handle_cell;
     std::uint32_t player=0,controller=0,warp=0,killed=0;
     if(!global_scalars(r,player,controller,warp,killed)||player!=st.arm_player||controller!=st.arm_controller||!player)return refuse_globals;
-    if(warp!=1||killed!=0)return refuse_warp;
+    if(warp!=path.warp||killed!=0)return refuse_warp;
     // run65: cell11 is a camera priority (20), never the player. cell16 is the
     // main-monitor number (0 from Create); cell17 is the player ref bound by
     // StartMainMonitor from the same global cell9 validated above.
@@ -170,7 +193,7 @@ unsigned seam_consume_proof(const RestoreState& st,const SeamRegs& s,const SeamD
     if(!bytes(s.ebx,0,source,5))return refuse_source;
     std::memcpy(&requested,source+1,4);
     if(source[0]!=1||requested!=1)return refuse_source;
-    if(!live_stack_prefix(d.task,s.ebx,d.code,bytes,code_address,restore_reset_prefix,3))return refuse_stack;
+    if(!live_stack_prefix(d.task,s.ebx,d.code,bytes,code_address,path.reset,path.reset_count))return refuse_stack;
     return refuse_none;
 }
 // Killed store (class96 cell6) at its known PCs: only a well-formed zero store
@@ -184,22 +207,68 @@ bool killed_store_is_zero(const SeamRegs& s,const SeamDecode& d,Reader bytes,std
     if(!bytes(s.ebx,0,source,5)||source[0]!=1)return false;
     std::memcpy(&value,source+1,4);return value==0;
 }
-// Pending transfer at the warp destructor: the exact measured return prefix,
-// the armed player/controller scalars, live warp1/killed0 and a borrowed
-// monitor context of the expected class.
+// Pending transfer at the warp or dock destructor: the exact measured return
+// chain of one path (5 pairs: jump; 6 pairs: dock, only with st.dock), the
+// armed player/controller scalars, live warp (1 jump, 0 dock)/killed0 and a
+// borrowed monitor context of the expected class. `path` names the selected
+// row (path_none when the chain length selects none) even on a refusal.
 template<class Reader>
 unsigned transfer_proof(const RestoreState& st,const Origin& o,Reader bytes,std::uint32_t vm_root,
-                        std::uint32_t& monitor,std::uint32_t& task_id) {
+                        std::uint32_t& monitor,std::uint32_t& task_id,unsigned& path) {
     auto field=[&](std::uintptr_t base,unsigned offset,auto& out){return bytes(base,offset,&out,sizeof out);};
-    if(o.valid!=15||o.flags||o.count!=5)return refuse_provenance;
-    for(unsigned i=0;i<5;++i)if(o.returns[i]!=restore_warp_prefix[i]||!o.contexts[i])return refuse_prefix;
+    path=path_none;
+    if(o.valid!=15||o.flags)return refuse_provenance;
+    const unsigned row=o.count==5?path_jump:(o.count==6&&st.dock)?path_dock:path_none;
+    if(!row)return refuse_provenance;
+    path=row;const RestorePathSpec spec=restore_path_spec(row);
+    for(unsigned i=0;i<spec.transfer_count;++i)if(o.returns[i]!=spec.transfer[i]||!o.contexts[i])return refuse_prefix;
     if(!o.task||(o.task&3)||!field(o.task,8,task_id))return refuse_task_id;
     IdentityReader<Reader> r{bytes};r.vm_root=vm_root;std::uint32_t desc[14]{};
     if(!r.root())return refuse_globals;
     if(!borrowed_context(r,o.context,restore_monitor_class,monitor,desc))return refuse_monitor_class;
     std::uint32_t player=0,controller=0,warp=0,killed=0;
     if(!global_scalars(r,player,controller,warp,killed)||player!=st.arm_player||controller!=st.arm_controller)return refuse_identity;
-    if(warp!=1||killed!=0)return refuse_warp;
+    if(warp!=spec.warp||killed!=0)return refuse_warp;
+    return refuse_none;
+}
+// Destructor step shared by the proxy and the host fixture. A pending ticket
+// is cancelled by any second destruction (so one arm yields at most one
+// pending, whatever path follows); an armed ticket transfers only for its own
+// cockpit generation at the measured caller with one path's exact proof, and
+// every other destruction clears the arm. `fill` runs the destructor
+// provenance walk only when it is needed; `epoch` is read after the walk, so
+// a lock-free EH epoch bump during the walk stamps the new epoch (and the
+// consume then refuses with refuse_epoch).
+enum RestoreDestroy : unsigned { destroy_idle=0, destroy_cancel_pending=1, destroy_cleared=2, destroy_refused=3, destroy_transferred=4 };
+template<class Reader,class Fill,class Epoch>
+unsigned destroy_step(RestoreState& st,std::uint32_t cockpit,std::uint64_t generation,std::uint32_t caller,std::uint32_t thread,Epoch epoch,
+                      Reader bytes,std::uint32_t vm_root,Fill fill,Origin& o,unsigned& why,unsigned& path) {
+    why=refuse_none;path=path_none;
+    if(st.pending){st.clear_pending(cancel_second_destruction);return destroy_cancel_pending;}
+    if(!st.armed)return destroy_idle;
+    if(cockpit!=st.arm_cockpit||generation!=st.arm_generation||caller!=restore_destructor_caller){
+        st.clear_arm(cancel_destructor);st.reset_attempt();return destroy_cleared;}
+    fill(o);
+    std::uint32_t monitor=0,task_id=0;
+    why=transfer_proof(st,o,bytes,vm_root,monitor,task_id,path);
+    if(why){st.refuse(why);st.clear_arm(cancel_destructor);st.reset_attempt();return destroy_refused;}
+    st.transfer(monitor,o.task,task_id,thread,epoch(),path);return destroy_transferred;
+}
+// Consume step at the f0c4b seam for a pending ticket: the full proof of the
+// pending path, then the writability check; `capture` sees the verdict while
+// pending is still intact (diagnostic line). A refusal clears pending without
+// writing; success clears pending immediately before the single payload write.
+template<class Reader,class CodeRange,class Writable,class Write,class Capture>
+unsigned consume_step(RestoreState& st,const SeamRegs& s,const SeamDecode& d,std::uint32_t epoch,Reader bytes,CodeRange code_address,
+                      std::uint32_t vm_root,Writable writable,Write write,Capture capture) {
+    unsigned why=seam_consume_proof(st,s,d,epoch,bytes,code_address,vm_root);
+    if(!why&&!writable(s.ebx+1,4))why=refuse_writable;
+    capture(why);
+    if(why){st.refuse(why);st.clear_pending(cancel_proof);return why;}
+    const unsigned path=st.pending_path;
+    st.take_pending();
+    if(write(s.ebx+1,restore_rear_mode)){++st.consumed;++st.path_consumed[path];}
+    else{++st.writes_failed;st.refuse(refuse_write);}
     return refuse_none;
 }
 }
