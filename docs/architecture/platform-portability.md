@@ -821,3 +821,15 @@ every fraction the filter resolves is unchanged (a plain added bias shifted roun
 the fixture's camera-tracking rows by up to 0.012 px). Inferred for native drivers; exact on this backend with and
 without the bias; and the sub-texel precision (the look bound in the fixture is
 the 3x3 clip, not the precision).
+
+## 2026-09-25: TAA mask fold (the camera gate's tests in the resolve)
+
+The camera-gate resolve (`resolve_far_camera_hold.hlsl`, 3,840 words, 1,010 slots) computes the removed tests draw's gates
+itself and writes three render targets: colour (A16B16G16R16F), age (R32F) and the next depth history (R32F, the current
+depth's `.r`). Documented D3D9 only: `SetRenderTarget(2, ...)` under `NumSimultaneousRTs >= 3` and
+`D3DPMISCCAPS_MRTINDEPENDENTBITDEPTHS`, both read at `initialize`; a device below 3 targets has no camera-gate path (one
+`motion_output_taa_region_hold ... reason=render_targets` row, the thin region off; the fixture's caps-override row). `SavedState`
+now also reads every stream's source and frequency with `GetStreamSource` / `GetStreamSourceFreq` and sets them again after
+the state block's `Apply` (a block created under other stream offsets did not take the later offsets at `Capture` on this
+backend; legal on the non-pure device the proxy creates). Unverified natively: the mixed-format three-target write and the
+program's cost; cross-compiled only.

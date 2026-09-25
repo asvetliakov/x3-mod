@@ -94,6 +94,9 @@ bool thinBadTap=false;double thinBadMotion=0;float thinK=0;
 // A' rows (temporal_region_hold_inc.h): thinPanStop, the frame from which the pan scene's camera and shards stand still;
 // armPanX, the arm scene (shards and square) carried by a camera pan of that many px/frame (the box-open fraction row).
 unsigned thinPanStop=~0u;double armPanX=0;
+// FOLD_FALLBACK (the mask fold): thinGapLattice, a routed plate of 6.5 px cells with 1 px gaps of the sentinel background at a
+// 7.5 px pitch (the run315 Terran lattice: 1 px gaps, 7.5 px pitch) carried by the arm pan (armPanX): search-only, no vote.
+bool thinGapLattice=false;
 double pan_x_at(unsigned n){return n>=thinPanStop?0.:thinPanX;}
 // Section 32.5: thinPatchGlass / thinBadGlass give the pan scene's mover / the bad-motion object the depth SENTINEL (routed blended
 // glass: motion alpha 1, no depth write), drawn over the shards.
@@ -106,7 +109,7 @@ bool thinPatchGlass=false,thinBadGlass=false;
 // 4..11) and an 8x8 routed GLASS quad (depth sentinel, motion alpha 1) at (21..28, 20..27). sentinelMover != 0: a routed 2x2
 // object at (6..7, 13..14) standing still on screen while claiming that x velocity, i.e. moving against the camera path.
 // sentinelBarFrom: a colour-only bar of value 4, 8 px wide, rows [4, 28), crossing at 6 px/frame from that frame (a laser).
-// thinCutFrame: camera_cut on that frame. thinFailRows: the row-target creation of the separable box fails on frame 1.
+// thinCutFrame: camera_cut on that frame.
 // sentinelBadBlock: a colour-only 3x3 block of 65504 (non-finite for the resolve) at (14..16, 14..16) and a static colour-only
 // bar of value 4 at x in [18, 20): the block's centre has no finite tap in its inner 3x3 and a finite emitter within 3 px.
 bool sentinelBadBlock=false;
@@ -126,7 +129,7 @@ bool sentinelBadBlock=false;
 // they must NOT vote - they would if a non-finite tap counted as a low minimum (max(NaN, 0) folded to 0) - and the 65504 pixel,
 // 7 px clear of the panel ring, would vote for itself without the limit.
 bool thinEmissive=false,thinEmissiveBad=false;constexpr float emissiveHull=.16f,emissiveValue=3;
-bool thinSentinel=false,sentinelFacets=true,sentinelProps=false,thinFailRows=false;double sentinelMover=0;unsigned sentinelBarFrom=~0u,thinCutFrame=~0u;
+bool thinSentinel=false,sentinelFacets=true,sentinelProps=false;double sentinelMover=0;unsigned sentinelBarFrom=~0u,thinCutFrame=~0u;
 // Fade owner (X3M_FADE_RT2_OWNER; docs/architecture/fade-rt2-ownership.md section 4), sentinel scene: sentinelOwnerFrom != ~0u adds a far
 // routed 8x8 square (value 0.6, depth ownerDepth, x in [6, 14), y in [12, 20)) drawn as the route's masked fade-band row (noDepth: RT1
 // alpha 1, RT2 keeps the sentinel) before that frame and as an RT2 owner (its depth written) from it: one sentinel -> valid class change.
@@ -134,6 +137,9 @@ unsigned sentinelOwnerFrom=~0u;constexpr float ownerDepth=.999f;
 constexpr float sentinelFacetValue=.75f,sentinelBarValue=4;constexpr double sentinelBarV=6;
 constexpr int injectRect[4]={20,9,26,15};
 std::vector<EdgeObject> thin_objects(unsigned n){std::vector<EdgeObject> o;constexpr double S=EdgeScene::S;
+    if(thinGapLattice){const double shift=std::fmod(armPanX*n,7.5);
+        for(double top=.3-7.5;top<S;top+=7.5){for(double left=.3-7.5+shift;left<S;left+=7.5)o.push_back({left,top,left+6.5,top+6.5,1,lineDepth,armPanX,0});}
+        return o;}
     if(thinEmissive){o.push_back({0,0,S,20,emissiveHull,lineDepth,0,0});
         if(thinEmissiveBad){o.push_back({4,10,5,11,emissiveValue,lineDepth,0,0});o.push_back({30,10,31,11,65504.f,lineDepth,0,0});
             o.push_back({9,3,24,18,emissiveValue,lineDepth,0,0});o.push_back({16,10,17,11,NAN,lineDepth,0,0});return o;}
@@ -165,27 +171,18 @@ std::vector<EdgeObject> thin_objects(unsigned n){std::vector<EdgeObject> o;const
     o.push_back({21+shift,12,29+shift,20,1,squareDepth,armPanX,0});if(thinBadMotion!=0)o.push_back({6,13,8,15,1,thinBadGlass?-1.f:lineDepth,thinBadMotion,0});return o;}
 double thin_velocity(double nearest){return nearest==double(lineDepth)?thinDrift:nearest==1.?cameraPanY:0;} // nearest 1: the sentinel, on the camera path
 double thin_velocity_x(double nearest){return nearest==double(patchDepth)?thinPatchV:cameraPanX;}
-// Fails the creation of A16B16G16R16F render-target textures (the box targets of the camera gate) while alive.
-struct BoxCreationFault {
-    using Create=HRESULT(WINAPI*)(IDirect3DDevice9*,UINT,UINT,UINT,DWORD,D3DFORMAT,D3DPOOL,IDirect3DTexture9**,HANDLE*);
-    static inline Create original=nullptr;static inline unsigned refused=0;
-    void** previous;void* table[119];IDirect3DDevice9* device;
-    static HRESULT WINAPI hook(IDirect3DDevice9* d,UINT w,UINT h,UINT levels,DWORD usage,D3DFORMAT format,D3DPOOL pool,IDirect3DTexture9** out,HANDLE* shared){
-        if(format==D3DFMT_A16B16G16R16F&&(usage&D3DUSAGE_RENDERTARGET)){++refused;if(out)*out=nullptr;return D3DERR_OUTOFVIDEOMEMORY;}return original(d,w,h,levels,usage,format,pool,out,shared);}
-    explicit BoxCreationFault(IDirect3DDevice9* d):previous(*reinterpret_cast<void***>(d)),device(d){std::copy(previous,previous+119,table);std::memcpy(&original,&table[23],sizeof original);auto fn=&hook;std::memcpy(&table[23],&fn,sizeof fn);refused=0;*reinterpret_cast<void***>(d)=table;}
-    ~BoxCreationFault(){*reinterpret_cast<void***>(device)=previous;}
-};
-// The camera mask's tests draw (line_mask_ps.hlsl c7.z = 0, the only camera-gate mask draw since the dilated chain went) on the
-// last frame of a run, from the scene hooks: r = screen openness, a = camera openness (max of it and the camera-relative openness
-// on routed valid depth; 1 elsewhere on the camera path: no vote), b = the flag / class code. Scenes on the far-plane camera path
-// only (the pan, arm and sentinel scenes), not the forward / flight cameras.
+// The camera gate's tests (the removed camera tests draw; since the mask fold the resolve computes them, resolve.hlsl
+// X3M_REGION_HOLD, and the fixture draws them with its X3M_FOLD_TESTS_OUT twin, foldTestsProgram) on the last frame of a run,
+// from the scene hooks: r = screen openness, a = camera openness (max of it and the camera-relative openness on routed valid
+// depth; 1 elsewhere on the camera path: no vote), b = the flag (1 fragmented, else 0; the sentinel class went with the
+// sentinel stabiliser). Scenes on the far-plane camera path only (the pan, arm and sentinel scenes), not the forward / flight cameras.
 void hold_tests_cpu(const FarRun& run,UINT x,UINT y,float out[3]){
     const float d=px(run.depth.back(),x,y),alpha=px(run.motion.back(),x,y,3);const bool valid=d>=0&&d<=1,sentinel=d<=-.5f,routed=alpha==1.f;
     const double vx=valid?line_velocity_x(d):cameraPanX,vy=valid?line_velocity(d):cameraPanY;
     auto open=[](double speed){return quantise8(1-(speed-double(farLo))/(double(farHi)-double(farLo)));};
     const float screen=open(std::hypot(vx,vy));
     out[0]=screen;out[1]=valid&&routed?std::max(screen,open(std::hypot(vx-cameraPanX,vy-cameraPanY))):(valid||sentinel)?1.f:screen;
-    out[2]=quantise8((fragmented(run.depth.back(),int(x),int(y))?254./255:0)+(sentinel&&alpha==-1.f?1./255:0));}
+    out[2]=fragmented(run.depth.back(),int(x),int(y))?1.f:0.f;(void)sentinel;}
 double hold_tests_error(const FarRun& run){constexpr UINT S=EdgeScene::S;double e=0;for(UINT y=0;y<S;++y)for(UINT x=0;x<S;++x){float t[3];hold_tests_cpu(run,x,y,t);
     e=std::max({e,std::fabs(double(px(run.mask.back(),x,y,0))-t[0]),std::fabs(double(px(run.mask.back(),x,y,3))-t[1]),std::fabs(double(px(run.mask.back(),x,y,2))-t[2])});}return e;}
 // A pixel of the last frame that is routed geometry (motion alpha 1, valid depth): where the camera-relative vote is cast.
@@ -217,17 +214,28 @@ std::vector<float> read_fp16(IDirect3DDevice9* d,IDirect3DTexture9* texture,UINT
     check("fp16 unlock",sys->UnlockRect());return out;}
 // failBoxes: the first camera-gate run (frame 0; the two FP16 colour histories are allowed, the box pair refused) meets a
 // box-target creation failure; the pass turns the thin region off for the session (no fallback program set).
+// The camera gate's tests of every frame (the mask fold): a twin pass on the same inputs whose camera program is the
+// X3M_FOLD_TESTS_OUT build of the production resolve source (the tests at the top of the program, returned as the colour: r
+// screen openness, g farw, b flag, a camera openness), read back and re-quantised to the UNORM8 codes the resolve uses.
+// The tests are frame-local (no history), so the twin's own history does not matter.
+const DWORD* foldTestsProgram=nullptr; // compiled once in main (temporal_pass_fixture.cpp)
+std::vector<float> fold_tests(EdgeScene& s,IDirect3DTexture9* colour){auto t=s.read(colour);
+    for(std::size_t i=0;i<t.size();i+=4){for(std::size_t c:{0u,1u,3u})t[i+c]=float(std::lround(double(t[i+c])*255.))/255.f;}
+    return t;}
 FarRun thin_sequence(EdgeScene& s,const DWORD* resolver,const LineConfig& c,unsigned frames,bool failMasks=false,bool failBoxes=false){
-    TemporalPass pass;check("thin initialize",thinFlight&&flight.lane?pass.initialize(s.d,nullptr,resolver,nullptr,nullptr,reinterpret_cast<const DWORD*>(x3m::renderer::hdr_writeback_program())):pass.initialize(s.d,nullptr,resolver));const bool on=c.thinW>0||c.farW>0;constexpr UINT S=EdgeScene::S;
-    if(on){check("thin configure",pass.configure_far());if(c.sentS>0){require(!pass.sentinel_available(),"separable box programs are not created by configure_far");check("thin configure sentinel",pass.configure_sentinel());}require(pass.far_available(),"thin-region program created on this device");if(c.camera)require(pass.camera_gate_available(),"camera-gate programs created on this device");
-        if(c.camera&&c.sentS>0)require(pass.sentinel_available(),"separable box twins created on this device");
+    const bool laneCopy=thinFlight&&flight.lane;
+    TemporalPass pass;check("thin initialize",laneCopy?pass.initialize(s.d,nullptr,resolver,nullptr,nullptr,reinterpret_cast<const DWORD*>(x3m::renderer::hdr_writeback_program())):pass.initialize(s.d,nullptr,resolver));const bool on=c.thinW>0||c.farW>0;constexpr UINT S=EdgeScene::S;
+    TemporalPass twin;const bool tests=on&&c.camera&&c.thinW>0&&!failBoxes; // a session whose box targets fail runs no camera gate: no tests to record
+    if(on){check("thin configure",pass.configure_far());require(pass.far_available(),"thin-region program created on this device");if(c.camera)require(pass.camera_gate_available(),"camera-gate programs created on this device");
         if(c.camera&&thinBoxDivisor==2){check("thin configure box resolution",pass.configure_box_resolution(2));require(pass.box_resolution()==2,"half-resolution box programs created on this device");}}
+    if(tests){require(foldTestsProgram!=nullptr,"fold tests program compiled");check("tests twin initialize",laneCopy?twin.initialize(s.d,nullptr,resolver,nullptr,nullptr,reinterpret_cast<const DWORD*>(x3m::renderer::hdr_writeback_program())):twin.initialize(s.d,nullptr,resolver));
+        check("tests twin configure",twin.configure_far(nullptr,foldTestsProgram));require(twin.camera_gate_available(),"tests twin: the camera gate runs the tests program");}
     const FlickerConfig f{c.name,0,0,.1f,.5f,false,.9f};FarRun run;bool sequence=true;
     for(unsigned n=0;n<frames;++n){const unsigned index=n%latticePhases+1;const double jx=halton(index,2)-.5,jy=halton(index,3)-.5;
         s.render(thin_objects(n),sentinelBackground,jx,jy);
         if(thinTintTap){s.target(s.colorSurface.p);check("tint tap Begin",s.d->BeginScene());check("tint tap flat",s.d->SetPixelShader(s.flat.p));s.constant(1.0009765625f,1,1,1);s.quad(16,16,17,17,0,0);check("tint tap End",s.d->EndScene());}
         run.current.push_back(s.read(s.color.p));run.depth.push_back(s.read(s.depth32.p));if(thinSentinel||thinEmissive||c.camera)run.motion.push_back(s.read(s.motion.p));
-        auto in=flicker_inputs(s,f,jx,jy,true);in.sentinel_strength=thinFailRows&&n==0?0.f:c.sentS;in.sentinel_emitter=c.sentE;in.camera_cut=n==thinCutFrame;in.thin_region_weight=c.thinW;in.thin_region_relax=c.relax;in.far_weight=c.farW;in.far_d0=farD0;in.far_inv=farInv;in.far_speed_lo=farLo;in.far_speed_hi=farHi;
+        auto in=flicker_inputs(s,f,jx,jy,true);in.camera_cut=n==thinCutFrame;in.thin_region_weight=c.thinW;in.thin_region_relax=c.relax;in.far_weight=c.farW;in.far_d0=farD0;in.far_inv=farInv;in.far_speed_lo=farLo;in.far_speed_hi=farHi;
         in.luminance_k=thinK;in.thin_region_emissive=c.emisE;in.thin_region_camera_gate=c.camera;{const double vx=cameraPanAlternates&&!cameraPanVertical?camera_pan_at(n):thinPanX!=0?pan_x_at(n):armPanX,vy=!cameraPanVertical?0:cameraPanAlternates?camera_pan_at(n):cameraPanY;
             if(vx!=0){in.clip_to_previous[3]=float(-2*vx/S);}
             if(vy!=0){in.clip_to_previous[7]=float(2*vy/S);}} // content moved down by vy px: previous clip y = y + 2 vy / S // previous clip x = x - 2 pan / S: content moved right by pan px
@@ -241,16 +249,17 @@ FarRun thin_sequence(EdgeScene& s,const DWORD* resolver,const LineConfig& c,unsi
                 s.quad(0,0,S,S,0,0);check("flight lane End",s.d->EndScene());check("flight lane unbind",s.d->SetTexture(0,nullptr));s.target(s.colorSurface.p);in.current_depth=flightLane->texture.p;}}
         Output out;check("thin Begin resolve",s.d->BeginScene());
         if(failMasks&&n==0){MaskCreationFault fault(s.d);check(c.name,pass.run(in,&out));}
-        else if(thinFailRows&&n==1){BoxCreationFault fault(s.d);check(c.name,pass.run(in,&out));require(BoxCreationFault::refused>0&&pass.sentinel_failed()&&!pass.camera_gate_failed(),"row-target creation fault reached; the sentinel stabiliser is off for the session, the camera gate carries on");}
         else if(failBoxes&&n==0){LateBoxFault fault(s.d,2);check(c.name,pass.run(in,&out));require(LateBoxFault::refused>0&&pass.camera_gate_failed(),"box-target creation fault reached; thin region off");}
         else check(c.name,pass.run(in,&out));
         check("thin End resolve",s.d->EndScene());
         sequence=sequence&&out.color&&pass.diagnostics().history_valid&&out.used_history==(n>0&&n!=thinCutFrame);
-        // The camera gate (A'): the published mask is the tests target, recorded every frame for the oracle (line_model); the hold ran unless the box targets failed.
+        // The camera gate (A'): the tests of every frame from the twin, for the oracle (line_model); the hold ran unless the box targets failed.
         if(c.camera)sequence=sequence&&pass.diagnostics().region_hold==!pass.camera_gate_failed();
         if(c.camera&&!pass.camera_gate_failed())sequence=sequence&&pass.diagnostics().box_half==(thinBoxDivisor==2);
         if(thinRecordBoxes&&out.box_low&&out.box_high){UINT w=0,h=0;run.boxLow.push_back(read_fp16(s.d,out.box_low,w,h));run.boxHigh.push_back(read_fp16(s.d,out.box_high,w,h));run.boxWidth=w;}
-        run.output.push_back(s.read(out.color));if(out.age)run.age.push_back(s.read(out.age));if(out.stabiliser_mask&&(c.camera||n+1==frames))run.mask.push_back(s.read(out.stabiliser_mask));
+        run.output.push_back(s.read(out.color));if(out.age)run.age.push_back(s.read(out.age));
+        if(tests){Output t;check("tests twin Begin",s.d->BeginScene());check("tests twin run",twin.run(in,&t));check("tests twin End",s.d->EndScene());require(twin.diagnostics().region_hold,"tests twin drew the camera gate");run.mask.push_back(fold_tests(s,t.color));}
+        else if(out.stabiliser_mask&&n+1==frames)run.mask.push_back(s.read(out.stabiliser_mask));
         if(n==thinInjectFrame){ // stale history: the bright patch written into the history the next frame reads (the oracle injects the same values)
             Com<IDirect3DSurface9> level;check("thin inject level",out.color->GetSurfaceLevel(0,&level.p));s.target(level.p);check("thin inject Begin",s.d->BeginScene());check("thin inject flat",s.d->SetPixelShader(s.flat.p));
             s.constant(patchValue,patchValue,patchValue,1);s.quad(injectRect[0],injectRect[1],injectRect[2],injectRect[3],0,0);check("thin inject End",s.d->EndScene());s.target(s.colorSurface.p);}}
@@ -260,109 +269,6 @@ void thin_ripple(const FarRun& r,double& rms,double& p2p,UINT x0=4,UINT x1=9){do
     for(UINT y=5;y<27;++y)for(UINT x=x0;x<x1;++x){double lo=1e9,hi=-1e9,mean=0;for(unsigned n=N-thinAnalysed;n<N;++n){const double v=px(r.output[n],x,y);lo=std::min(lo,v);hi=std::max(hi,v);mean+=v/thinAnalysed;}
         for(unsigned n=N-thinAnalysed;n<N;++n){const double e=px(r.output[n],x,y)-mean;sum+=e*e;++count;}p2p=std::max(p2p,hi-lo);}
     rms=std::sqrt(sum/count);}
-// ---- sentinel stabiliser (docs/architecture/temporal-integration.md "Distant unrouted stations under a pan"), the seven rows of its design ----
-void sentinel_stabiliser_cases(EdgeScene& s,const DWORD* resolver,const LineConfig& camera97){
-    constexpr UINT S=EdgeScene::S;IDirect3DDevice9* const d=s.d;
-    LineConfig off=camera97,on=camera97,unbound=camera97;off.name="sentinel-0-emitter-0";off.sentS=0;off.sentE=0;on.name="sentinel-0.7";on.sentS=.7f;unbound.name="sentinel-0.7-emitter-0";unbound.sentS=.7f;unbound.sentE=0;
-    auto same_mask=[&](const FarRun& a,const FarRun& b){return !a.mask.empty()&&a.mask==b.mask;};
-    auto same_pixel=[&](const FarRun& a,const FarRun& b,unsigned n,UINT x,UINT y){return std::memcmp(&a.output[n][(y*S+x)*4],&b.output[n][(y*S+x)*4],4*sizeof(float))==0&&(a.age.empty()||a.age[n][(y*S+x)*4]==b.age[n][(y*S+x)*4]);};
-    // refusals, hostile state, a failed columns draw, Reset
-    {thinSentinel=true;s.render(thin_objects(0),sentinelBackground,0,0);Output out;const FlickerConfig none{"sentinel-validation",0,0,.1f,.5f,false,.9f};
-        TemporalPass pass;check("sentinel initialize",pass.initialize(d,nullptr,resolver));check("sentinel configure",pass.configure_far());
-        auto in=flicker_inputs(s,none,0,0,true);in.caller_scene_open=false;in.thin_region_weight=.97f;in.thin_region_camera_gate=true;
-        for(float bad:{-.1f,1.5f,NAN}){in.sentinel_strength=bad;require(pass.run(in,&out)==E_INVALIDARG,"sentinel strength outside [0, 1] is refused");}in.sentinel_strength=.7f;
-        require(pass.run(in,&out)==E_INVALIDARG,"sentinel strength without configure_sentinel is refused");check("sentinel configure sentinel",pass.configure_sentinel());check("sentinel configure is idempotent",pass.configure_sentinel());require(pass.sentinel_available(),"separable box programs created by configure_sentinel");
-        for(float bad:{-1.f,NAN}){in.sentinel_emitter=bad;require(pass.run(in,&out)==E_INVALIDARG,"negative or non-finite emitter bound is refused while S > 0");in.sentinel_strength=0;require(SUCCEEDED(pass.run(in,&out)),"the emitter bound is not validated at S = 0");in.sentinel_strength=.7f;}in.sentinel_emitter=1;
-        in.thin_region_camera_gate=false;in.sentinel_strength=NAN;require(SUCCEEDED(pass.run(in,&out)),"sentinel fields are ignored without the camera gate");in.thin_region_camera_gate=true;in.sentinel_strength=.7f;
-        require(SUCCEEDED(pass.run(in,&out))&&out.stabiliser_mask,"sentinel run publishes the mask");
-        const float junk[4]={9,8,7,6};for(UINT r:{0u,4u,6u,22u,23u,24u})check("sentinel hostile constant",d->SetPixelShaderConstantF(r,junk,1));
-        for(UINT slot:{1u,2u,3u,6u,9u,10u}){check("sentinel hostile texture",d->SetTexture(slot,s.wave.p));}
-        check("sentinel hostile CWE1",d->SetRenderState(D3DRS_COLORWRITEENABLE1,0));
-        {Snapshot before(d);check("sentinel hostile run",pass.run(in,&out));before.equals(d,"sentinel run restores c0..c7, c22..c24, samplers 1..3, 6, 8..10, RT1 and COLORWRITEENABLE1");}
-        {Output failed;{Fault fault(d,3);require(pass.run(in,&failed)==E_FAIL&&!failed.color&&!pass.diagnostics().history_valid,"failed columns draw of the separable box (the third draw: tests, rows, columns, resolve) publishes nothing");}
-            check("sentinel recovery",pass.run(in,&out));require(out.color&&!out.used_history,"after a failed box draw the sentinel run restarts without history");}
-        pass.before_reset();pass.after_reset(S_OK);check("sentinel after Reset",pass.run(in,&out));require(out.color&&!out.used_history&&out.stabiliser_mask&&pass.sentinel_available()&&!pass.sentinel_failed(),"Reset protocol keeps the separable box programs and recreates the row targets");
-        for(UINT slot:{1u,2u,3u,4u,6u,8u,9u,10u}){check("sentinel unbind",d->SetTexture(slot,nullptr));}
-        ++state_checks;s.target(s.colorSurface.p);thinSentinel=false;}
-    // (1) S = 0 and E = 0 against the camera-gate run (S = 0, E at its default): the arm scene at rest and the pan scene
-    for(double pan:{0.,.5}){thinPanX=cameraPanX=pan;const auto a=thin_sequence(s,resolver,camera97,48),b=thin_sequence(s,resolver,off,48);const bool same=same_rgb(a.output,b.output)&&same_rgb(a.age,b.age)&&same_mask(a,b);
-        std::printf("SENTINEL_STABILISER row=off pan=%.2f colour_identical=%u age_identical=%u mask_identical=%u\n",pan,unsigned(same_rgb(a.output,b.output)),unsigned(same_rgb(a.age,b.age)),unsigned(same_mask(a,b)));
-        ++numeric_checks;require(same,"sentinel stabiliser off (S = 0, E = 0): colour, age and mask bit-identical to the camera-gate run");}
-    thinPanX=cameraPanX=0;thinSentinel=true;
-    // (2) sentinel sub-pixel facets under a pan on the far-plane path: oracle, mask, ripple against S = 0
-    // The facets vary along y, so only a VERTICAL pan moves content across them (run214's pan). Flicker = rms, codes, of the
-    // output against the motion-compensated earlier output showing the same content at the same pixel phase: lag 1 at rest,
-    // lag 10 / 3 px for the steady 0.3 px/frame pan, lag 2 for a pan that reverses every frame (same speed, the history stays
-    // inside the 32 px frame), lag 1 / pan px for the steady integer pans. A steady pan of p px/frame leaves a pixel at row y
-    // at most y / p frames of history (content enters at the top border): the steady 2 and 4 px/frame rows are measured on
-    // rows [20, 28) (history 10..14 and 5..7 frames) and reported, not asserted; the reversing rows carry those speeds.
-    struct PanCase{const char* mode;double pan;bool vertical,alternating;unsigned lag;int shift;UINT y0;bool asserted;};
-    const PanCase pans[]={{"rest",0,false,false,1,0,8,true},{"steady",.3,true,false,10,3,12,true},{"reversing",.3,true,true,2,0,8,true},{"reversing",2,true,true,2,0,8,true},{"reversing",4,true,true,2,0,8,true},{"steady",2,true,false,1,2,20,false},{"steady",4,true,false,1,4,20,false}};
-    for(const PanCase& pc:pans){cameraPanVertical=pc.vertical;cameraPanAlternates=pc.alternating;cameraPanSpeed=pc.alternating?pc.pan:0;cameraPanY=pc.alternating?0:pc.pan;oracleSkipCeiling=pc.pan<1?0:unsigned(std::ceil(pc.pan)+1)*(S-6)*thinFrames; // about pan + 1 border rows per frame
-        const auto baseRun=thin_sequence(s,resolver,camera97,thinFrames),run=thin_sequence(s,resolver,on,thinFrames);const auto model=line_model(run,on,&run.mask);const unsigned skipped=oracleSkipped;
-        auto flicker=[&](const FarRun& r){double sum=0;unsigned count=0;for(unsigned n=thinFrames-thinAnalysed;n<thinFrames;++n)for(UINT y=pc.y0;y<28;++y)for(UINT x=4;x<28;++x){const double e=double(px(r.output[n],x,y))-double(px(r.output[n-pc.lag],x,UINT(int(y)-pc.shift)));sum+=e*e;++count;}return std::sqrt(sum/count);};
-        auto detail=[&](const FarRun& r){double sum=0;unsigned count=0;for(unsigned n=thinFrames-thinAnalysed;n<thinFrames;++n)for(UINT y=pc.y0;y<28;++y)for(UINT x=4;x<28;++x){const double e=double(px(r.output[n],x,y+1))-double(px(r.output[n],x,y));sum+=e*e;++count;}return std::sqrt(sum/count);};
-        double oracle=0,ageOracle=0,maskError=0;const double baseRms=flicker(baseRun),rms=flicker(run);
-        for(unsigned n=0;n<thinFrames;++n)for(UINT y=3;y+3<S;++y)for(UINT x=3;x+3<S;++x){oracle=std::max(oracle,double(std::fabs(px(run.output[n],x,y)-model.color[n][y*S+x])));ageOracle=std::max(ageOracle,double(std::fabs(px(run.age[n],x,y)-model.age[n][y*S+x])));}
-        maskError=hold_tests_error(run);
-        std::printf("SENTINEL_STABILISER row=facets pan_axis=%s pan=%.2f pan_mode=%s ratio_asserted=%u strength=%.2f oracle_error=%.6f age_oracle_error=%.6f mask_error=%.6f oracle_skipped_px=%u oracle_skip_ceiling=%u base_flicker_codes=%.3f flicker_codes=%.3f flicker_ratio=%.4f base_detail_codes=%.3f detail_codes=%.3f\n",pc.vertical?"y":"none",pc.pan,pc.mode,unsigned(pc.asserted),double(on.sentS),oracle,ageOracle,maskError,skipped,oracleSkipCeiling,255*baseRms,255*rms,rms/baseRms,255*detail(baseRun),255*detail(run));
-        metric("sentinel stabiliser: shader matches the 2-D CPU oracle within the FP16 bound",oracle,0,.0006/(1-.97));metric("sentinel stabiliser: age target matches the CPU oracle",ageOracle,0,0);
-        metric("sentinel stabiliser: the published tests target equals the CPU tests draw (the class code on the unrouted sky)",maskError,0,.5/255);
-        if(pc.asserted){++numeric_checks;require(rms<.6*baseRms,"sentinel facets: flicker below 0.6 x the S = 0 run under this pan");}}
-    cameraPanVertical=cameraPanAlternates=false;cameraPanSpeed=cameraPanY=0;oracleSkipCeiling=0;
-    // (3) geometry silhouette and (6) routed sentinel pixels (glass), camera at rest: bit-identical to S = 0 on every frame
-    {sentinelProps=true;const auto baseRun=thin_sequence(s,resolver,camera97,64),run=thin_sequence(s,resolver,on,64);unsigned squareDiffers=0,glassDiffers=0,skyDiffers=0,glassMaskDiffers=0;bool classes=true;
-        for(unsigned n=0;n<64;++n)for(UINT y=0;y<S;++y)for(UINT x=0;x<S;++x){const bool differs=!same_pixel(run,baseRun,n,x,y),square=x>=21&&x<29&&y>=4&&y<12,glass=x>=21&&x<29&&y>=20&&y<28;
-            classes=classes&&(!square||(px(run.depth[n],x,y)>=0&&px(run.depth[n],x,y)<=1))&&(!glass||(px(run.depth[n],x,y)<=-.5f&&px(run.motion[n],x,y,3)==1.f));
-            if(square)squareDiffers+=differs;else if(glass)glassDiffers+=differs;else skyDiffers+=differs;}
-        for(UINT y=20;y<28;++y)for(UINT x=21;x<29;++x)glassMaskDiffers+=px(run.mask.back(),x,y,2)!=px(baseRun.mask.back(),x,y,2)||px(run.mask.back(),x,y,3)!=px(baseRun.mask.back(),x,y,3);
-        std::printf("SENTINEL_STABILISER row=silhouette frames=64 square_px=64 square_differs=%u unrouted_differs=%u\n",squareDiffers,skyDiffers);
-        std::printf("SENTINEL_STABILISER row=routed_sentinel frames=64 glass_px=64 glass_differs=%u glass_mask_differs=%u\n",glassDiffers,glassMaskDiffers);
-        require(classes,"sentinel props: the square holds geometry and the glass is routed on the depth sentinel on every frame");numeric_checks+=2;require(squareDiffers==0&&skyDiffers>0,"geometry silhouette against the sentinel: geometry pixels bit-identical to S = 0 while the unrouted sky changes");
-        require(glassDiffers==0&&glassMaskDiffers==0,"routed sentinel pixels (motion alpha 1): colour, age and strength bit-identical to S = 0");sentinelProps=false;}
-    // (5) (a routed object moving against the camera path closed the stabiliser within 8 px of itself: the dilated chain's 17x17
-    // minimum, removed 2026-09-24; with A' the closure is the pixel's and its nearest-depth neighbour's, held one jitter cycle)
-    // (4) an emitter crossing the sentinel at 6 px/frame, camera at rest, with and without the emitter bound. Measured against the
-    // S = 0 run: the 3x3 clip of the installed resolve already keeps one bright pixel behind the bar and one dark pixel inside
-    // its leading edge (the 3x3 there holds both colours), so the absolute trail (trail_px_*) is reported beside what the
-    // stabiliser ADDS: columns behind the bar (added_trail) and columns INSIDE the bar that keep older, darker history
-    // (added_inside: the box of a pixel within 3 px of either edge still holds the background, on the leading side this frame
-    // and on the trailing side the frame after). added_reach is the largest distance of any changed pixel from the nearest
-    // edge of the bar: the design's bound, 3 px unbound and 1 px with the emitter bound.
-    {sentinelFacets=false;sentinelBarFrom=16;const unsigned frames=16+10;unsigned trail[2]{},addedTrail[2]{},addedLead[2]{},after[2]{};double brightest[2]{},added[2]{},reach[2]{};double basePeak=0;
-        const auto baseRun=thin_sequence(s,resolver,camera97,frames);
-        for(unsigned n=sentinelBarFrom;n<frames;++n)for(UINT y=8;y<24;++y)for(UINT x=0;x<S;++x)if(!(px(baseRun.current[n],x,y)>.3f))basePeak=std::max(basePeak,double(px(baseRun.output[n],x,y))-.25);
-        for(unsigned which=0;which<2;++which){const auto run=thin_sequence(s,resolver,which?unbound:on,frames);
-            for(unsigned n=sentinelBarFrom;n<frames;++n){const double l=-8+sentinelBarV*(n-sentinelBarFrom);for(UINT y=8;y<24;++y){unsigned columns=0,behind=0,lead=0;
-                for(UINT x=0;x<S;++x){const double excess=double(px(run.output[n],x,y))-.25,delta=std::fabs(double(px(run.output[n],x,y))-double(px(baseRun.output[n],x,y)));const bool bar=px(run.current[n],x,y)>.3f;
-                    if(l>=S){after[which]+=excess!=0;continue;}
-                    if(!bar&&excess>.01){++columns;brightest[which]=std::max(brightest[which],excess);}
-                    if(delta>.01){added[which]=std::max(added[which],delta);if(bar)++lead;else ++behind;reach[which]=std::max(reach[which],bar?std::min(double(x)-l+1,l+8-double(x)):double(x)<l?l-double(x):double(x)-(l+7));}}
-                trail[which]=std::max(trail[which],columns);addedTrail[which]=std::max(addedTrail[which],behind);addedLead[which]=std::max(addedLead[which],lead);}}}
-        std::printf("SENTINEL_STABILISER row=emitter bar_value=%.1f px_per_frame=%.0f trail_px_bound_1=%u trail_px_unbound=%u trail_excess_s0=%.4f trail_excess_bound_1=%.4f trail_excess_unbound=%.4f added_trail_px_bound_1=%u added_trail_px_unbound=%u added_inside_px_bound_1=%u added_inside_px_unbound=%u added_reach_px_bound_1=%.0f added_reach_px_unbound=%.0f added_max_bound_1=%.4f added_max_unbound=%.4f nonzero_px_after_exit_bound_1=%u nonzero_px_after_exit_unbound=%u\n",double(sentinelBarValue),sentinelBarV,trail[0],trail[1],basePeak,brightest[0],brightest[1],addedTrail[0],addedTrail[1],addedLead[0],addedLead[1],reach[0],reach[1],added[0],added[1],after[0],after[1]);
-        numeric_checks+=2;// Peak: the installed resolve already leaves basePeak one pixel behind the bar (the 3x3 variance clip there reaches
-        // m1 + 1.25 sigma = 3.71 of the bar's 4). The stabiliser may add at most S of the rest up to the bar's own value and
-        // its weight gain: measured +0.33 with E = 1. Unbound is LOWER than the installed resolve, not better: that pixel was
-        // inside the bar a frame earlier, within 3 px of its leading edge, where the unbound box had kept the old background.
-        ++numeric_checks;require(brightest[0]<=basePeak+.4&&brightest[1]<=basePeak+.4&&brightest[0]<double(sentinelBarValue)-.25&&brightest[1]<double(sentinelBarValue)-.25,"emitter trail peak: at most 0.4 above the installed resolve's and below the emitter's own value");
-        require(trail[0]<=1&&trail[1]<=3&&addedTrail[0]<=1&&addedTrail[1]<=3&&reach[0]<=1&&reach[1]<=3&&addedTrail[1]>=addedTrail[0],"emitter crossing the sentinel: trail <= 1 px with E = 1, <= 3 px with E = 0, and every pixel the stabiliser changes lies within that distance of an edge of the bar");require(after[0]==0&&after[1]==0,"emitter trail is zero once the bar has left");sentinelFacets=true;sentinelBarFrom=~0u;}
-    // Non-finite block beside an emitter: the centre of the block has no finite tap in its inner 3x3 while the 7x7 holds a
-    // finite emitter above E. Its own sample is non-finite, so the resolve is current-only (black) there and never reads the
-    // box, and every finite pixel has itself in its inner 3x3: an empty box is unreachable, and thin_box_columns_ps.hlsl
-    // writes (0, 0) for it anyway. Asserted at the output: the block equals the S = 0 run and nothing leaves [0, bar value].
-    {sentinelFacets=false;sentinelBadBlock=true;const auto baseRun=thin_sequence(s,resolver,camera97,32),run=thin_sequence(s,resolver,on,32);unsigned blockDiffers=0;double lowest=1e9,highest=-1e9;bool finite=true;
-        for(unsigned n=0;n<32;++n)for(UINT y=0;y<S;++y)for(UINT x=0;x<S;++x){const double v=px(run.output[n],x,y);finite=finite&&std::isfinite(v);lowest=std::min(lowest,v);highest=std::max(highest,v);if(x>=14&&x<17&&y>=14&&y<17)blockDiffers+=!same_pixel(run,baseRun,n,x,y)||v!=0;}
-        std::printf("SENTINEL_STABILISER row=nonfinite_block frames=32 block_px=9 block_differs_or_nonzero=%u output_min=%.6f output_max=%.6f all_finite=%u\n",blockDiffers,lowest,highest,unsigned(finite));
-        ++numeric_checks;require(finite&&blockDiffers==0&&lowest>=0&&highest<=double(sentinelBarValue),"non-finite block beside an emitter: block current-only as at S = 0, every output finite and within [0, emitter]");sentinelFacets=true;sentinelBadBlock=false;}
-    // (7) history-invalid frame (camera cut) under the stabiliser: current-only (Reset is covered by the validation block above)
-    {thinCutFrame=40;const auto run=thin_sequence(s,resolver,on,48);double cut=0,before=0;for(UINT y=0;y<S;++y)for(UINT x=0;x<S;++x){cut=std::max(cut,double(std::fabs(px(run.output[40],x,y)-px(run.current[40],x,y))));before=std::max(before,double(std::fabs(px(run.output[39],x,y)-px(run.current[39],x,y))));}
-        std::printf("SENTINEL_STABILISER row=cut frame=40 output_minus_current_max=%.6f previous_frame_output_minus_current_max=%.6f\n",cut,before);
-        ++numeric_checks;require(cut==0&&before>.01,"history-invalid frame under the sentinel stabiliser: the output is the current frame");thinCutFrame=~0u;}
-    // row-target creation failure: the stabiliser is off for the session, the camera-gate run bit for bit, history kept
-    {const auto baseRun=thin_sequence(s,resolver,camera97,32);thinFailRows=true;const auto failed=thin_sequence(s,resolver,on,32);thinFailRows=false;
-        ++numeric_checks;require(same_rgb(baseRun.output,failed.output)&&same_rgb(baseRun.age,failed.age),"row-target creation failure: the camera-gate run bit for bit, history kept");}
-    thinSentinel=false;
-}
 // ---- emissive vote in the thin region (docs/architecture/thin-glow-lines.md 8.3 R3; taa-lattice-crawl.md section 32.6) ----
 // The "emissive" scene at rest over 64 frames of the 8-phase jitter, on the screen gate (the vote is in the mask's own
 // fragmentation channel, so the camera gate adds nothing at rest). Rows: E = 0 against the plain resolve, then E = 1 against the
@@ -378,7 +284,7 @@ void emissive_vote_cases(EdgeScene& s,const DWORD* resolver,const LineConfig& re
     for(UINT i=0;i<S*S;++i)offMaskB=std::max(offMaskB,double(offRun.mask[0][i*4+2]));
     double maskError=0;
     for(UINT y=0;y<S;++y)for(UINT x=0;x<S;++x)maskError=std::max(maskError,double(std::fabs(px(voteRun.mask[0],x,y,2)-
-        quantise8(thin_region_strength(voteRun.depth.back(),int(x),int(y),vote.camera,&voteRun.motion.back(),vote.sentS,&voteRun.current.back(),vote.emisE)))));
+        quantise8(thin_region_strength(voteRun.depth.back(),int(x),int(y),vote.camera,&voteRun.motion.back(),&voteRun.current.back(),vote.emisE)))));
     double stripB=1,panelB=0,skyB=0;
     for(UINT y=2;y<18;++y)for(UINT x=6;x<8;++x)stripB=std::min(stripB,double(px(voteRun.mask[0],x,y,2)));
     for(UINT y=8;y<12;++y)for(UINT x=20;x<24;++x)panelB=std::max(panelB,double(px(voteRun.mask[0],x,y,2)));
@@ -400,7 +306,7 @@ void emissive_vote_cases(EdgeScene& s,const DWORD* resolver,const LineConfig& re
     // as oracle error over the whole window.
     {thinEmissiveBad=true;const auto bad=thin_sequence(s,resolver,vote,16);double control=0,nanB=0,overflowB=0,badOracle=0;
         for(UINT y=0;y<S;++y)for(UINT x=0;x<S;++x)badOracle=std::max(badOracle,double(std::fabs(px(bad.mask[0],x,y,2)-
-            quantise8(thin_region_strength(bad.depth.back(),int(x),int(y),vote.camera,&bad.motion.back(),vote.sentS,&bad.current.back(),vote.emisE)))));
+            quantise8(thin_region_strength(bad.depth.back(),int(x),int(y),vote.camera,&bad.motion.back(),&bad.current.back(),vote.emisE)))));
         for(UINT y=9;y<12;++y)for(UINT x=15;x<18;++x)nanB=std::max(nanB,double(px(bad.mask[0],x,y,2)));
         for(UINT y=9;y<12;++y)for(UINT x=29;x<S;++x)overflowB=std::max(overflowB,double(px(bad.mask[0],x,y,2)));
         control=px(bad.mask[0],4,10,2);
@@ -415,7 +321,7 @@ void thin_region_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolv
     std::puts("THIN_REGION_CASES");EdgeScene s(d,compiler);constexpr UINT S=EdgeScene::S;
     struct Defer{Defer(){deferMetrics=true;deferredFailures.clear();}~Defer(){deferMetrics=false;}} defer;
     struct Hooks{Hooks(){line_velocity=thin_velocity;line_velocity_x=thin_velocity_x;farD0=.98f;farInv=200;} // far gate for the combined config: farw 1 on the shards (0.99), 0 on the square (0.98)
-        ~Hooks(){line_velocity=line_velocity_default;line_velocity_x=line_velocity_x_default;thinDrift=0;thinMoveFrom=~0u;thinBadTap=false;thinBadMotion=0;thinPatchGlass=thinBadGlass=false;thinK=0;oracleK=0;thinFlight=false;flight=Flight{};flightLane=nullptr;thinForward=thinForwardMover=false;thinForwardParallax=true;thinPanX=cameraPanX=thinPatchV=0;thinPatchFrom=thinInjectFrame=oracleInjectFrame=~0u;farD0=farInv=0;cameraPanAlternates=false;cameraPanSpeed=0;thinSentinel=sentinelProps=thinFailRows=sentinelBadBlock=thinEmissive=thinEmissiveBad=false;cameraPanVertical=false;cameraPanY=0;oracleSkipCeiling=0;sentinelFacets=true;sentinelMover=0;sentinelBarFrom=thinCutFrame=~0u;}} hooks;
+        ~Hooks(){line_velocity=line_velocity_default;line_velocity_x=line_velocity_x_default;thinDrift=0;thinMoveFrom=~0u;thinBadTap=false;thinBadMotion=0;thinPatchGlass=thinBadGlass=false;thinK=0;oracleK=0;thinFlight=false;flight=Flight{};flightLane=nullptr;thinForward=thinForwardMover=false;thinForwardParallax=true;thinPanX=cameraPanX=thinPatchV=0;thinPatchFrom=thinInjectFrame=oracleInjectFrame=~0u;farD0=farInv=0;cameraPanAlternates=false;cameraPanSpeed=0;thinSentinel=sentinelProps=sentinelBadBlock=thinEmissive=thinEmissiveBad=false;cameraPanVertical=false;cameraPanY=0;oracleSkipCeiling=0;sentinelFacets=true;sentinelMover=0;sentinelBarFrom=thinCutFrame=~0u;}} hooks;
     const LineConfig base{"thin-base",0,0},on97{"thin-region-0.97",0,0,0,0,.97f,1},on985{"thin-region-0.985",0,0,0,0,.985f,1},half{"thin-region-0.97-relax-0.5",0,0,0,0,.97f,.5f},weightOnly{"thin-region-0.97-relax-0",0,0,0,0,.97f,0},withFar{"thin-region-0.97+far-weight-0.985",0,0,.985f,0,.97f,1},
         camera97{"thin-region-0.97-camera-gate",0,0,0,0,.97f,1,true};
     // ---- refusals, hostile state, failed draw, Reset ----
@@ -442,13 +348,16 @@ void thin_region_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolv
         in.thin_region_camera_gate=true;
         require(bare.run(in,&out)==E_INVALIDARG,"camera gate without configure_far is refused");
         in.thin_region_weight=0;require(SUCCEEDED(pass.run(in,&out))&&!out.stabiliser_mask,"camera gate without the thin region is ignored (plain resolve)");in.thin_region_weight=.97f;
-        require(SUCCEEDED(pass.run(in,&out))&&out.age&&out.stabiliser_mask,"camera-gate run publishes the age target and the mask");
-        for(UINT r:{0u,4u,5u,6u,10u,22u,24u})check("thin camera hostile constant",d->SetPixelShaderConstantF(r,junk,1));
+        require(SUCCEEDED(pass.run(in,&out))&&out.age&&!out.stabiliser_mask&&pass.line_mask_targets()==0&&pass.diagnostics().depth_folded,"camera-gate run publishes the age target, draws no mask (the mask fold) and folds the depth");
+        for(UINT r:{0u,4u,5u,6u,8u,9u,10u,11u,13u,22u,24u})check("thin camera hostile constant",d->SetPixelShaderConstantF(r,junk,1));
+        Com<IDirect3DSurface9> hostileRt2;check("thin camera hostile RT2 surface",d->CreateRenderTarget(S,S,D3DFMT_A16B16G16R16F,D3DMULTISAMPLE_NONE,0,FALSE,&hostileRt2.p,nullptr));
+        check("thin camera hostile RT2",d->SetRenderTarget(2,hostileRt2.p));check("thin camera hostile CWE2",d->SetRenderState(D3DRS_COLORWRITEENABLE2,0));
         check("thin camera hostile s9",d->SetTexture(9,s.wave.p));check("thin camera hostile s10",d->SetTexture(10,s.wave.p));check("thin camera hostile s9 min",d->SetSamplerState(9,D3DSAMP_MINFILTER,D3DTEXF_LINEAR));check("thin camera hostile s10 u",d->SetSamplerState(10,D3DSAMP_ADDRESSU,D3DTADDRESS_WRAP));check("thin camera hostile CWE1",d->SetRenderState(D3DRS_COLORWRITEENABLE1,0));
-        {Snapshot before(d);check("thin camera hostile run",pass.run(in,&out));before.equals(d,"camera-gate run restores c0..c7, c10, c22, c24, samplers 8..10, RT1 and COLORWRITEENABLE1");}
-        {Output failed;{Fault fault(d,2);require(pass.run(in,&failed)==E_FAIL&&!failed.color&&!pass.diagnostics().history_valid,"failed box draw (the second draw: tests, box, resolve) publishes nothing");}
-            check("thin camera recovery",pass.run(in,&out));require(out.color&&!out.used_history,"after a failed box draw the camera-gate resolve restarts without history");}
-        pass.before_reset();pass.after_reset(S_OK);check("thin camera after Reset",pass.run(in,&out));require(out.color&&!out.used_history&&out.stabiliser_mask&&pass.camera_gate_available()&&!pass.camera_gate_failed(),"Reset protocol keeps the camera-gate programs and recreates the box targets");
+        {Snapshot before(d);check("thin camera hostile run",pass.run(in,&out));before.equals(d,"camera-gate run restores c0..c13, c22, c24, samplers 1, 7, 9 and 10, RT1, RT2 and COLORWRITEENABLE1 / 2");}
+        {Output failed;{Fault fault(d,2);require(pass.run(in,&failed)==E_FAIL&&!failed.color&&!pass.diagnostics().history_valid,"failed resolve draw (the second draw: box, resolve) publishes nothing");}
+            check("thin camera recovery",pass.run(in,&out));require(out.color&&!out.used_history,"after a failed resolve draw the camera-gate resolve restarts without history");}
+        pass.before_reset();pass.after_reset(S_OK);check("thin camera after Reset",pass.run(in,&out));require(out.color&&!out.used_history&&!out.stabiliser_mask&&pass.camera_gate_available()&&!pass.camera_gate_failed(),"Reset protocol keeps the camera-gate programs and recreates the box targets");
+        check("thin camera unbind RT2",d->SetRenderTarget(2,nullptr));check("thin camera CWE2",d->SetRenderState(D3DRS_COLORWRITEENABLE2,15));
         in.thin_region_camera_gate=false;in.thin_region_emissive=0;check("thin unbind s9",d->SetTexture(9,nullptr));check("thin unbind s10",d->SetTexture(10,nullptr));
         check("thin unbind s0",d->SetTexture(0,nullptr));check("thin unbind s8",d->SetTexture(8,nullptr));check("thin unbind s4",d->SetTexture(4,nullptr));state_checks+=2;s.target(s.colorSurface.p);}
     // ---- static shards, and drifting inside the gate (0.12 px/frame, t = 0.41) and past HI (0.30) ----
@@ -648,7 +557,6 @@ void thin_region_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolv
             ++numeric_checks;require(finite,"non-finite speed (overflow): every camera-gate output finite");}}
     thinBadMotion=0;thinBadGlass=false;
     emissive_vote_cases(s,resolver,on97);
-    sentinel_stabiliser_cases(s,resolver,camera97);
     // ---- mask-target creation failure: option off for the session, plain resolve bit for bit, history kept ----
     {const auto baseRun=thin_sequence(s,resolver,base,32),failed=thin_sequence(s,resolver,on97,32,true);
         ++numeric_checks;require(same_rgb(baseRun.output,failed.output)&&failed.masksFailed,"mask-target creation failure under the thin region: plain resolve, history kept");}

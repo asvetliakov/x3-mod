@@ -64,8 +64,7 @@ int main(int argc, char** argv) {
         namespace r = x3m::renderer;
         slots(r::temporal_line_mask_depth_program(), std::size(r::temporal_line_mask_depth_program()), "line_mask_depth");
         slots(r::temporal_line_mask_depth_thin_program(), std::size(r::temporal_line_mask_depth_thin_program()), "line_mask_depth_thin");
-        slots(r::temporal_line_mask_camera_depth_program(), std::size(r::temporal_line_mask_camera_depth_program()), "line_mask_camera_depth");
-        slots(r::temporal_line_mask_camera_depth_thin_program(), std::size(r::temporal_line_mask_camera_depth_thin_program()), "line_mask_camera_depth_thin");
+        slots(r::temporal_resolve_far_camera_hold_program(), std::size(r::temporal_resolve_far_camera_hold_program()), "resolve_far_camera_hold"); // the camera gate's tests since the mask fold
         slots(r::current_depth_pixel_program(), std::size(r::current_depth_pixel_program()), "current_depth");
         slots(r::current_depth_thin_pixel_program(), std::size(r::current_depth_thin_pixel_program()), "current_depth_thin");
         {

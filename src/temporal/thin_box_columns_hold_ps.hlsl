@@ -1,3 +1,0 @@
-// The separable box's column draw gated on the mask's tests target (A'); see thin_box_columns_ps.hlsl, X3M_REGION_HOLD_MASK.
-#define X3M_REGION_HOLD_MASK 1
-#include "thin_box_columns_ps.hlsl"

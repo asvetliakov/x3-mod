@@ -79,7 +79,7 @@ class OriginalFillDefaultSource(unittest.TestCase):
 
     def test_motion_runner_drops_an_inherited_marker(self):
         runner = (ROOT / 'verification/probe/run_motion_output.py').read_text()
-        self.assertIn("'X3M_ORIGINAL_FILL_DEFAULT', 'X3M_TAA_SENTINEL_STABILISER_DEFAULT'):\n                env.pop(marker, None)", runner)
+        self.assertIn("'X3M_ORIGINAL_FILL_DEFAULT', 'X3M_TAA_THIN_REGION_SOURCE_DEFAULT'):\n                env.pop(marker, None)", runner)
 
 
 if __name__ == '__main__':

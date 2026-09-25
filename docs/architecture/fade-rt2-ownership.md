@@ -194,17 +194,19 @@ accepted then; the run216 laser report was a null result for S = 0.7, not a requ
 code (the class code in the tests draw, c6.x, the s6 fallback fetch, the emitter bound and c23 in the columns program,
 the launcher option) is retired in a cleanup batch, about 36 slots back on the tests draw (281 - 245 at 2026-09-21).
 
-**Default flipped 2026-09-25** (Run 82 A launch 2, run313/run314, Run82 DLL with the alpha-tested cutout owner, flown
-with `--taa-sentinel-stabiliser 0`; scripts and outputs in
-[run313-run82a-stabiliser-off](../../verification/results/run313-run82a-stabiliser-off/)): conditions 1, 2 and 4 are
-met. Log: `fade_refused` 0 on all 4,493 `fade_route_frame` rows and no `unmatched=no_zwrite` refusal
-(`fade_owner_frames_out.txt`, `route_rows_out.txt`). RT2: valid depth 0.970-0.974 of the station detail pixels on the
-fog-band plant crop at rest (burst 1673) and 0.911-0.965 during the pan (burst 2124), against 0.17-0.48 on run311; the
-second plant in the pan burst stays at 0.47-0.49 (`station_pixels_*_out.txt`). User: no shimmer seen. Condition 3 (the
-replay) is still open: no `color_*` input was dumped. The launcher now sends `X3M_TAA_SENTINEL_STABILISER=0` on every
-modded `--taa` launch with `X3M_TAA_SENTINEL_STABILISER_DEFAULT=1` (logged as `sentinel_stabiliser_default=1` on the
-`motion_output_taa` row); an explicit `--taa-sentinel-stabiliser 0.7` restores the previous look for an A/B. The DLL's
-fallback when the variable is unset stays 0.7 under the camera gate, so fixtures are unchanged.
+**Retired 2026-09-25 with the TAA mask fold** (`docs/architecture/taa-mask-fold.md` section 7, ratified by the orchestrator;
+Run 82 A launch 2, run313/314: stabiliser 0 with the cutout owner, plant crops valid depth 0.97, no shimmer seen: conditions
+1, 2 and 4 met, condition 3's replay was not run because no `color_` input was dumped). The fold removed the tests draw
+whole (the class code went with it), so the stabiliser was not flipped to 0 but deleted: `--taa-sentinel-stabiliser` is a
+launcher parser error naming the removal, `X3M_TAA_SENTINEL_STABILISER` is never sent or inherited and the DLL logs one
+`taa_sentinel_stabiliser_setting ignored=1 reason=retired` row for a stale value; `FrameInputs::sentinel_strength` /
+`sentinel_emitter`, `configure_sentinel()`, the separable full-resolution box twins (`thin_box_rows_hold` /
+`thin_box_columns_hold`), the emitter bound (`c23`, `fp16_above`) and the class term (`c11.x`, `carriesClass`) are gone.
+The fade owner is unchanged (its rows still pass: `THIN_REGION_HOLD_FADE_OWNER`, now without S). Evidence:
+`docs/verification/temporal-resolve.md`, "Mask fold". (Main's 59ae2dfe had first made the stabiliser a launcher default 0
+on the same evidence: `fade_refused` 0 on all 4,493 `fade_route_frame` rows, no `unmatched=no_zwrite` refusal, valid depth
+0.970-0.974 of the fog-band plant's detail pixels at rest and 0.911-0.965 in the pan against 0.17-0.48 on run311;
+[run313-run82a-stabiliser-off](../../verification/results/run313-run82a-stabiliser-off/). The fold supersedes that default.)
 
 ## 6. Cost (question 5, per draw)
 

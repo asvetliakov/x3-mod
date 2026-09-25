@@ -2990,10 +2990,11 @@ needs `--taa` and the thin region with W > 0, vote also `--taa-thin-vote on`, bo
 Not flown. Run 82 A/B: `--taa-thin-region-source vote` against `both` at the lattice stand and on hulls: whether the
 voted draws alone keep the lattice crawl down, and `taa_mask_tests` with `--gpu-sync-timing`.
 
-**Open (filed 2026-09-25, from the thin-region-source review):** the temporal pass's `D3DSBT_ALL` state block does not
-refresh stream offsets on `Capture` (fixture: streams 0/1 offsets 24 -> 0 and 48 -> 0 when the pass was created under
-different offsets); the fixture cases start each frame from the hostile state, which hides it. Production state-restore
-defect, pre-existing; not in this change.
+**Fixed 2026-09-25 with the mask fold (below; was open, filed 2026-09-25, from the thin-region-source review):** the temporal
+pass's `D3DSBT_ALL` state block does not refresh stream offsets on `Capture` (fixture: streams 0/1 offsets 24 -> 0 and
+48 -> 0 when the pass was created under different offsets); the fixture cases start each frame from the hostile state,
+which hides it. `SavedState` now restores every stream's source and frequency itself; `REGION_HOLD_STATE streams_restored=1`
+runs from a non-hostile start.
 
 **2026-09-25: sentinel stabiliser off by default on modded `--taa` launches.** Run 82 A launch 2 (run313/run314,
 [run313-run82a-stabiliser-off](../../verification/results/run313-run82a-stabiliser-off/)) flew `--taa-sentinel-stabiliser 0`
@@ -3009,3 +3010,105 @@ A/B), nothing without `--taa` or under `--vanilla`. The DLL reads the marker onl
 `test_taa_sentinel_stabiliser_default` 6 tests, `test_taa_image_defaults` updated to the new default, 55 launcher modules
 739 tests OK; dry runs: `--taa` 0/1, `--taa-sentinel-stabiliser 0.7` 0.7/0, `--vanilla` neither; build 0 warnings,
 `check_no_x87` 684 / 0.
+(Superseded the same day by the mask fold below: the option and its marker are removed, not defaulted.)
+
+## Mask fold (2026-09-25; design `docs/architecture/taa-mask-fold.md`, option (a), ratified with the screen search default off)
+
+The camera gate's line-mask tests draw is folded into the A' resolve: `resolve_far_camera_hold.hlsl` reads the caller's
+current depth at s1 (lane or R32F), computes both gates (UNORM8-quantised), the far weight (`c13`), the flag (thin vote at
+`c10.z`, else the 7-tap search unless `c10.y` = 1, else the emissive vote at `c10.x`) and the neighbour's gates at its clamped
+texel centre, composes the holds as before (the sentinel class term gone), takes the 7x7 in place where the camera term adds
+strength and no box ran, and writes the next R32F depth history as RT2 (reason `resolve_mrt`, every current-depth format;
+the StretchRect and copy draw are gone for camera-gate runs; a D24X8 snapshot refuses the run). The box programs (49-tap and
+the S4 pair) gate on the previous frame's region hold only: the design's same-frame vote read in the gate cost 1.7 ms at
+5120x1440 (box 2.5 against 1.0 ms, measured, `FOLD_TIMING` of the first build) and the in-place 7x7 covers those pixels with
+the reference box. `camera_gate_available()` requires `NumSimultaneousRTs >= 3` (route row `reason=render_targets`). The
+sentinel stabiliser is retired whole (launcher parser error, the variable never sent, one DLL ignored row; the separable
+full-resolution twins, `c23`, `fp16_above`, `c11.x`, the class code deleted; `docs/architecture/fade-rt2-ownership.md`
+section 5). Thin-region source: vote is the launcher default (with `X3M_TAA_THIN_REGION_SOURCE_DEFAULT=1`) whenever the thin
+vote and thin region are on; both turns the search on; screen is refused under the camera gate (parser error; DLL row
+`reason=screen_refused_camera_gate`); the DLL default when unset stays both. The state-block stream-offset defect filed above
+is fixed: `SavedState` reads every stream's source and frequency (`GetStreamSource` / `GetStreamSourceFreq`) at capture and
+sets them after `Apply`.
+
+- Programs (`RESOLVE_BUDGET`, measured): `far_camera_hold` 2,479 -> 3,840 words, 616 -> 1,010 slots (design plan 950; within
+  the 2,048 ceiling; the modern cap 32,768); `thin_box_hold` 70 -> 59 slots, `thin_box_rows_half` 158 -> 92,
+  `thin_box_columns_half` 330 -> 107. Retired: `line_mask_camera` (251), `_depth` (241), `_depth_thin` (257),
+  `thin_box_rows_hold` (155), `thin_box_columns_hold` (121). Every other embedded program's bytecode is unchanged (15
+  resolve / mask / box records compared before and after the full regeneration; all manifests regenerated for the tool
+  hashes, the bloom records too). The fixture's `X3M_FOLD_TESTS_OUT` twin (tests only) is 1,081 words / 267 slots. The
+  compiler helper's source limit rose from 64 KB to 256 KB (the include-expanded resolve is about 70 KB).
+- Build (MinGW i686, RelWithDebInfo): 0 warnings; `check_no_x87.py` 684 reachable functions, 0 violations.
+- `run_temporal_pass.py` PASS (bottle X3). Main run 744 / 278 / 2 generations (counts unchanged); `temporal-pass.txt` differs
+  only in `CHECK` lines and three `MOTE_STREAK` rows (the mote-streak case ran the stabiliser at 0.7; without it the dark-sky
+  streak keeps the current sample: overlap 0.655 -> 1.000, the flickering sky's trail beyond 3 px 0.688 -> 0.617), 48 row
+  types identical (`verification/results/taa-mask-fold/row_diff.py`, `changed_rows.py` and their outputs).
+  Lattice 561 / 90 (610 / 107 before). Unchanged rows: every `THIN_REGION_HOLD`, `_MOTION_START`, `_PAN`, `_STALE`,
+  `_BOX_DOMAIN`, `_PAN_STOP` row (the fold reproduces the removed tests draw's results in those scenes; oracle errors
+  0.0083 / 0.0054 / 0.0024, age 0, tests 0), the kept `BOX_HALF_ORACLE` rows, 64 row types in all. Changed rows and why:
+  `REGION_HOLD_IDENTITY` (2 rows, k = 0 and 0.5: the folded program against the removed camera program on the composition of
+  its own tests, colour, age and RT2 depth 0 differ, 1,024 flagged, 618 with the camera term above the screen gate; the 11
+  edge pixels that differed before the clamp of the neighbour's texel centre are gone), `REGION_HOLD_STATE` (the 2-RT caps
+  override refused, RT2 and `COLORWRITEENABLE2` restored, the stream offsets restored from a non-hostile start, mask targets
+  0 on a camera-gate run), `DEPTH_FOLD` 15 -> 10 rows (camera: lane, lane with the screen chain's fold program refused and
+  G32R32F byte-identical to the R32F twin, all `resolve_mrt`, the one-ulp negative control differs) and `_FAULT` 2 -> 4 (the
+  RT2 bind and the resolve draw), `BOX_HALF_CONTAINMENT` (6 scenes; the arm scenes now compare 59,541 / 60,395 pixels because
+  the region hold opens the box at rest, output identical at both resolutions; half-only pixels held to the pixel's 7x7),
+  `THIN_REGION_HOLD_BOX_OPEN` (the fold's gate 0.538 of the frame against 0.546 for the removed region-gated one),
+  `THIN_REGION_HOLD_FADE_OWNER` (without S: oracle 0.0044, one opening per pixel, extra hold 0 frames),
+  `THIN_REGION_CAMERA_FORWARD` (camera rms 1.525 -> 1.511 codes), `THIN_SOURCE` (camera gate: both flags U W V, vote W V,
+  flags read from the age target; screen refused `80070057`), the identities 6 -> 4. New: `FOLD_FALLBACK` (the in-place 7x7
+  against the oracle on its pixels: arm bars under a 0.5 px/frame pan 451 / 149 pixel-frames at full / half resolution,
+  error 0.0007 / 0.0005 against 0.048 / 0.020 if the 3x3 clip were taken there; the 1 px gap / 7.5 px pitch lattice 32 / 8
+  pixel-frames, error 0; bound 0.02). Retired: the `SENTINEL_STABILISER` (14), `THIN_REGION_HOLD_SENTINEL` (2),
+  `BOX_HALF_SENTINEL` / `_EMITTER` and the sentinel containment scenes, `BOX_HALF_TIMING`, `THIN_SOURCE_TIMING`,
+  `LINE_TIMING_SENTINEL` rows.
+- Timing at 5120x1440 (`FOLD_TIMING`, the station content: 40 % sky, far panels, a 1024 x 512 lattice of 1 px gaps at 7.5 px,
+  voted struts; three alternating rounds of the pre-fold build of the same include, `X3M_FOLD_BASELINE` with the stabiliser
+  0.7 as flown, and the fold build; fixture CPU wall clock with event-query drains, measured,
+  `verification/results/taa-mask-fold/fold_timing_pairs.py` and `fold_timing_summary.py`): baseline at rest mask 1.68, box
+  1.46, resolve 2.59, TAA 5.79 ms (flown run312: 1.39 / 1.30 / 2.45 / 5.45). Fold, vote (the default): box 0.98, resolve 2.91
+  (+0.32), TAA 3.93 ms (-1.86); under the pan resolve 3.01 (+0.47), TAA 4.01 (-1.59). Fold, both (the search on): resolve
+  3.28 (+0.69), TAA 4.25 (-1.54); pan +0.80 / -1.24. The hinge (resolve growth above +1.0 ms) is not reached. The box at rest
+  is its gate reading the previous age for 16 pixels per row texel (the region is small here).
+- Route: `Output::stabiliser_mask` null on a camera-gate run (no `taa_mask` dump), `mask_targets=0`; the motion runner's
+  thin-vote cases read the flag from the `taa_age` dump (region hold = L exactly where flagged that frame).
+  `run_motion_output.py` PASS, 250 cases all exit 0 (bottle X3): `seam-taa-thin-hold-on` / `-half` / `-taps16-refused` 164 checks each (device references 5 / 7 / 6 + base, `mask_targets=0`, one `taa_age` dump per resolved frame instead of two dumps), the thin-vote cases 47-95 checks with the flag read from the age dump, `seam-thin-vote-far-on-source-{both,screen,vote}` 61 each (screen configured both, `reason=screen_refused_camera_gate`; vote flags no unvoted pixel).
+- Host: the full suite 262 modules / 2,740 tests OK (`run_host_suite.py`); touched: `test_taa_image_defaults` 23, `test_taa_thin_region_source` 10, `test_taa_thin_vote` 16, `test_taa_box_resolution` 9, `test_taa_region_hold` 5, `test_motion_output_runner` 20, `test_bloom_programs` 5 (records regenerated for the compiler helper's hash), `test_temporal_runner_cleanup` 5, `test_shader_compiler_provenance` 1.
+- Dry runs (`verification/results/taa-mask-fold/dry_runs.py`, `dry_runs_out.txt`): the `--taa` default sends
+  `X3M_TAA_THIN_REGION_SOURCE=vote` with the default marker 1 and no stabiliser variable; `--taa-thin-region-source both`
+  sends both (marker 0); `screen` is a parser error (the camera gate); `--taa-sentinel-stabiliser 0.7` is a parser error naming
+  the removal; `--vanilla` sends none of them.
+- Native Windows: documented D3D9 only (three render targets under the caps check, `GetStreamSource` on the non-pure device
+  the proxy creates); cross-compiled, not run (`docs/architecture/platform-portability.md`, 2026-09-25 entry).
+
+- Review items (2026-09-25, after the merge with main at f895a8c5):
+  - Baseline and the flown default: the fixture baseline (5.79 ms TAA at rest) ran the sentinel stabiliser at 0.7, as flown in
+    Run 82 A launch 1; main's 59ae2dfe had already made 0 the launcher default before this change landed. Against that default
+    the stabiliser's box over the sky is not in the baseline, so the saving the flight will see is smaller than the fixture's
+    -1.86 ms: about -0.6 to -0.9 ms (inferred: the mask draw's 1.4 flown minus the resolve's +0.3 and the box's region cost),
+    settled by the next `--gpu-sync-timing` flight.
+  - `THIN_REGION_CAMERA_FORWARD` camera rms 1.525 -> 1.511 codes: not the sentinel class (that case ran `camera97`, S = 0,
+    before as well) and not the in-place 7x7 (the probe with it disabled, `verification/results/taa-mask-fold/probe_*`, gives
+    the same 1.511, measured). The remaining differences are the gate programs themselves: the gates now evaluated in the
+    resolve and quantised by `floor(x * 255 + 0.5)` instead of the UNORM write, and the box gate on the held region instead
+    of `a > r` (inferred; 0.014 codes, 0.9 %, the shares and residuals of the row unchanged).
+  - `BOX_HALF_CONTAINMENT pan_box_domain_k0.5_nonfinite output_identical` 1 -> 0: 96 output values of 128 frames differ between
+    the full- and half-resolution runs, at most 1.2e-4 absolute and 4.9e-4 relative (2^-11, one FP16 step; measured, probe
+    `PROBE_OUTPUT_DIFF`); disabling the FP32 in-place 7x7 leaves the same 96, so it is not that box against the FP16 block
+    box. Inferred cause: the fold's gate opens the box on the whole held region, so more pixels take the 7x7 (FP16 targets) at
+    full and the 8x8 block box at half, and at k = 0.5 their FP16-stored bounds clamp a few histories one FP16 step apart.
+    Acceptable: containment holds (0 violations), the oracle row is within its bound, and the other five scenes are identical.
+  - The vote default also applies under `--taa-thin-region-gate screen`: the launcher sends vote (marker 1) whenever the thin
+    vote and thin region are on, and the screen-gate chain's thin-vote twin skips its search on `c10.y` the same way (dry run
+    `--taa-thin-region-gate screen`: `vote` / `1`, measured; help text says so).
+  - `SavedState` now makes up to 64 stream calls per run (16 streams x `GetStreamSource` / `GetStreamSourceFreq` at capture and
+    `SetStreamSource` / `SetStreamSourceFreq` after `Apply`), untimed; the pass's capture / apply phases (`ticks_capture`,
+    `ticks_apply`) include them.
+  - Merge with main (f895a8c5): the stabiliser's launcher default 0 and its `X3M_TAA_SENTINEL_STABILISER_DEFAULT` marker
+    (59ae2dfe) are dropped with the option; the marker is popped with the retired variables; `test_taa_sentinel_stabiliser_default`
+    deleted. Only comments changed in shader and pass sources after the temporal fixture ran (the resolve-family manifests were
+    regenerated for the source hashes, bytecode identical), so `run_temporal_pass.py` was not rerun.
+
+Not flown. Next flight: `--gpu-sync-timing` at the run312 stand (`taa_mask_tests` absent, `taa` expected about 3.7 ms: the
+fixture's 3.93 ms scaled by flown / fixture baseline 5.45 / 5.79, inferred), the fog-band plants and the Terran lattice with the default (vote) source.

@@ -1,0 +1,5 @@
+taa_default exit=0 X3M_TAA_THIN_REGION_SOURCE=vote X3M_TAA_THIN_REGION_SOURCE_DEFAULT=1 X3M_TAA_SENTINEL_STABILISER=- X3M_TAA_THIN_VOTE=on
+source_both exit=0 X3M_TAA_THIN_REGION_SOURCE=both X3M_TAA_THIN_REGION_SOURCE_DEFAULT=0 X3M_TAA_SENTINEL_STABILISER=- X3M_TAA_THIN_VOTE=on
+source_screen exit=2 error: --taa-thin-region-source screen is refused with the camera gate (the default): since the TAA mask fold its resolve computes the tests itself and has no plain program (docs/architecture/taa-mask-fold.md); use both for the search, or --taa-thin-region-gate screen.
+sentinel_0.7 exit=2 error: --taa-sentinel-stabiliser was removed on 2026-09-25 with the TAA mask fold (docs/architecture/taa-mask-fold.md section 7): the sentinel class of the thin region is retired and X3M_TAA_SENTINEL_STABILISER is never sent; drop the option.
+vanilla exit=0 X3M_TAA_THIN_REGION_SOURCE=- X3M_TAA_THIN_REGION_SOURCE_DEFAULT=- X3M_TAA_SENTINEL_STABILISER=- X3M_TAA_THIN_VOTE=-

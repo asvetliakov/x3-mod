@@ -79,26 +79,16 @@ SHADERS = {
     'temporal_line_mask': dict(source=ROOT / 'src/temporal/line_mask_ps.hlsl',
         header=ROOT / 'src/renderer/temporal_line_mask_program_inc.h',
         provenance=ROOT / 'verification/results/temporal-line-mask-program.json'),
-    # Camera-relative thin-region gate (taa-lattice-crawl.md section 32.1): the mask with both gate strengths, the far
-    # program with the 7x7 box clip, and the box pass itself. Defines plus includes; the plain programs' bytes are untouched.
-    'temporal_line_mask_camera': dict(source=ROOT / 'src/temporal/line_mask_camera_ps.hlsl',
-        header=ROOT / 'src/renderer/temporal_line_mask_camera_program_inc.h',
-        provenance=ROOT / 'verification/results/temporal-line-mask-camera-program.json'),
-    # The two mask programs' first draw with the current depth copy folded in (docs/architecture/taa-high-resolution.md S1):
-    # COLOR1 = the current-depth texel for the R32F history. Defines plus includes; the programs above keep their bytes.
+    # The screen-gate mask's first draw with the current depth copy folded in (docs/architecture/taa-high-resolution.md S1):
+    # COLOR1 = the current-depth texel for the R32F history. Defines plus includes; the program above keeps its bytes. The
+    # camera gate's mask programs went with the mask fold (docs/architecture/taa-mask-fold.md): its resolve computes the tests.
     'temporal_line_mask_depth': dict(source=ROOT / 'src/temporal/line_mask_depth_ps.hlsl',
         header=ROOT / 'src/renderer/temporal_line_mask_depth_program_inc.h',
         provenance=ROOT / 'verification/results/temporal-line-mask-depth-program.json'),
-    'temporal_line_mask_camera_depth': dict(source=ROOT / 'src/temporal/line_mask_camera_depth_ps.hlsl',
-        header=ROOT / 'src/renderer/temporal_line_mask_camera_depth_program_inc.h',
-        provenance=ROOT / 'verification/results/temporal-line-mask-camera-depth-program.json'),
-    # Thin vote (X3M_TAA_THIN_VOTE): the two depth-folding tests draws with the draw-time vote from the lane's .a.
+    # Thin vote (X3M_TAA_THIN_VOTE): the depth-folding tests draw with the draw-time vote from the lane's .a.
     'temporal_line_mask_depth_thin': dict(source=ROOT / 'src/temporal/line_mask_depth_thin_ps.hlsl',
         header=ROOT / 'src/renderer/temporal_line_mask_depth_thin_program_inc.h',
         provenance=ROOT / 'verification/results/temporal-line-mask-depth-thin-program.json'),
-    'temporal_line_mask_camera_depth_thin': dict(source=ROOT / 'src/temporal/line_mask_camera_depth_thin_ps.hlsl',
-        header=ROOT / 'src/renderer/temporal_line_mask_camera_depth_thin_program_inc.h',
-        provenance=ROOT / 'verification/results/temporal-line-mask-camera-depth-thin-program.json'),
     # S3 (docs/architecture/taa-high-resolution.md): the resolve programs above use the 5-tap bilinear Catmull-Rom history;
     # these four keep the 16-tap point form (X3M_HISTORY_TAPS16, bytecode of the earlier programs) for --taa-history-taps 16.
     # The camera gate has none: its only resolve is the A' program below (the dilated camera chain was removed 2026-09-24).
@@ -114,21 +104,15 @@ SHADERS = {
     'temporal_resolve_far_taps16': dict(source=ROOT / 'src/temporal/resolve_far_taps16.hlsl',
         header=ROOT / 'src/renderer/temporal_resolve_far_taps16_program_inc.h',
         provenance=ROOT / 'verification/results/temporal-resolve-far-taps16-program.json'),
-    # A' (docs/architecture/taa-plan-lifted-slot-cap.md step 1; the only camera-gate path since 2026-09-24): the camera-gate
-    # resolve composing the
-    # region from the mask's tests target with temporal holds, and the three box programs gated on that target.
+    # A' (docs/architecture/taa-plan-lifted-slot-cap.md step 1; the only camera-gate path since 2026-09-24) with the mask fold
+    # (docs/architecture/taa-mask-fold.md): the camera-gate resolve computing the per-pixel tests and composing the region with
+    # temporal holds (depth history as RT2), and the 49-tap box gated on this frame's vote and last frame's region hold.
     'temporal_resolve_far_camera_hold': dict(source=ROOT / 'src/temporal/resolve_far_camera_hold.hlsl',
         header=ROOT / 'src/renderer/temporal_resolve_far_camera_hold_program_inc.h',
         provenance=ROOT / 'verification/results/temporal-resolve-far-camera-hold-program.json'),
     'temporal_thin_box_hold': dict(source=ROOT / 'src/temporal/thin_box_hold_ps.hlsl',
         header=ROOT / 'src/renderer/temporal_thin_box_hold_program_inc.h',
         provenance=ROOT / 'verification/results/temporal-thin-box-hold-program.json'),
-    'temporal_thin_box_rows_hold': dict(source=ROOT / 'src/temporal/thin_box_rows_hold_ps.hlsl',
-        header=ROOT / 'src/renderer/temporal_thin_box_rows_hold_program_inc.h',
-        provenance=ROOT / 'verification/results/temporal-thin-box-rows-hold-program.json'),
-    'temporal_thin_box_columns_hold': dict(source=ROOT / 'src/temporal/thin_box_columns_hold_ps.hlsl',
-        header=ROOT / 'src/renderer/temporal_thin_box_columns_hold_program_inc.h',
-        provenance=ROOT / 'verification/results/temporal-thin-box-columns-hold-program.json'),
     # S4 (docs/architecture/taa-high-resolution.md S4; X3M_TAA_BOX_RESOLUTION=half, opt-in): the camera gate's separable box at
     # half resolution (row pairs into a W/2 x (H/2 + 1) target, the 8x8 block box into W/2 x H/2), created only on request.
     'temporal_thin_box_rows_half': dict(source=ROOT / 'src/temporal/thin_box_rows_half_ps.hlsl',

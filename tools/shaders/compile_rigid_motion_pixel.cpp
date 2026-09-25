@@ -15,7 +15,7 @@ int main(int argc, char** argv) {
     std::ifstream input(argv[2], std::ios::binary);
     if (!input) return 3;
     const std::string source{std::istreambuf_iterator<char>(input), {}};
-    if (source.empty() || source.size() > 65536) return 4;
+    if (source.empty() || source.size() > 262144) return 4; // the include-expanded resolve with the mask fold is about 70 KB
     HMODULE module = LoadLibraryA(argv[1]);
     if (!module) return 5;
     auto address = GetProcAddress(module, "D3DXCompileShader");

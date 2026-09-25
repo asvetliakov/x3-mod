@@ -126,8 +126,6 @@ float taa_thin_region[4] = {0.f, 1.f, .03f, .25f}; // X3M_TAA_THIN_REGION=W[,REL
 bool taa_thin_gate_given = false;
 float taa_thin_emissive = 0.f; // X3M_TAA_THIN_REGION_EMISSIVE=E (thin-glow-lines.md 8.3 R3): emissive vote of the thin region (0 off)
 bool taa_thin_camera_gate = false; // X3M_TAA_THIN_REGION_GATE=camera (taa-lattice-crawl.md section 32.1)
-float taa_sentinel[2] = {0.f, 1.f}; // X3M_TAA_SENTINEL_STABILISER=S[,E] (temporal-integration.md "sentinel stabiliser"): strength (0 off), emitter bound (0 none)
-bool taa_sentinel_default = false; // X3M_TAA_SENTINEL_STABILISER_DEFAULT=1 with a valid value: the launcher filled it in (off since 2026-09-25); sentinel_stabiliser_default= on the motion_output_taa row
 bool taa_alpha_history = false;  // X3M_TAA_ALPHA_HISTORY=1
 float taa_history_weight = .9f;  // X3M_TAA_HISTORY_WEIGHT (0.5..0.98)
 // X3M_HDR=1 (default off; requires X3M_MOTION_OUTPUT=1): the FP16 HDR scene
@@ -304,12 +302,14 @@ bool taa_box_half = false, taa_box_resolution_default = false;
 // X3M_TAA_THIN_VOTE_DEFAULT=1 marks a value the launcher filled in from its default (the configured row's default=1).
 bool taa_thin_vote = false;
 bool taa_thin_vote_given = false, taa_thin_vote_default = false;
-// X3M_TAA_THIN_REGION_SOURCE (both|screen|vote; unset is both, today's mask; forwarded by the launcher only when given;
-// docs/architecture/taa-thin-geometry-alternatives.md section 3.2): what feeds the thin region's flag, 0 both, 1 the
-// screen-space fragmented-depth search alone, 2 the thin vote alone (needs the vote). Invalid or oversized: stays both,
-// logged. motion_output resolves and logs it per device (taa_thin_region_source requested= configured= reason=).
+// X3M_TAA_THIN_REGION_SOURCE (both|screen|vote; unset is both, the search on; the launcher sends vote by default since the
+// mask fold, docs/architecture/taa-mask-fold.md, with X3M_TAA_THIN_REGION_SOURCE_DEFAULT=1; docs/architecture/
+// taa-thin-geometry-alternatives.md section 3.2): what feeds the thin region's flag, 0 both (the fragmented-depth search and
+// the vote), 1 the search alone (the screen-gate chain only: refused with one row under the camera gate), 2 the thin vote
+// alone (needs the vote). Invalid or oversized: stays both, logged. motion_output resolves and logs it per device
+// (taa_thin_region_source requested= configured= reason= default=).
 unsigned taa_thin_region_source = 0;
-bool taa_thin_region_source_given = false;
+bool taa_thin_region_source_given = false, taa_thin_region_source_default = false;
 // X3M_FADE_RT2_OWNER (on|off; unset is off here, the launcher sends on by default since Run 81;
 // docs/architecture/fade-rt2-ownership.md): every draw the fade-band arm routes owns
 // RT2 (exact depth through the engine's blend) and, under original shading, the arm's pair identity widens to every
@@ -2543,7 +2543,6 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_taa_resolve(taa_history_weight);
     hooked.motion_output.configure_taa_far(taa_far[0],taa_far[1],taa_far[2],taa_far[3],taa_far[4],taa_far[5]);
     hooked.motion_output.configure_taa_thin_region(taa_thin_region[0],taa_thin_region[1],taa_thin_region[2],taa_thin_region[3],taa_thin_gate_given,taa_thin_camera_gate,taa_thin_emissive);
-    hooked.motion_output.configure_taa_sentinel(taa_sentinel[0],taa_sentinel[1],taa_sentinel_default);
     hooked.motion_output.configure_taa_flicker(taa_alpha_history);
     hooked.motion_output.configure_rt_mode(motion_rt_lazy);
     hooked.motion_output.configure_frame_log(motion_frame_log);
@@ -2552,7 +2551,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_sky_history(taa_sky_history_strict,taa_sky_history_band_px,taa_sky_history_exit_px);
     hooked.motion_output.configure_history_taps(taa_history_taps);
     hooked.motion_output.configure_box_resolution(taa_box_half,taa_box_resolution_default);
-    hooked.motion_output.configure_thin_region_source(taa_thin_region_source,taa_thin_region_source_given);
+    hooked.motion_output.configure_thin_region_source(taa_thin_region_source,taa_thin_region_source_given,taa_thin_region_source_default);
     hooked.motion_output.configure_motion_weight(taa_motion_weight[0],taa_motion_weight[1],taa_motion_weight[2]);
     // Render-state configuration (hybrid unhook): the reasons that keep the
     // SetRenderState/SetSamplerState hooks installed, then the capability
@@ -3109,23 +3108,9 @@ void initialize_log(HMODULE module) {
         if(length>0&&length<16){if(wcscmp(gate_setting,L"camera")==0)taa_thin_camera_gate=true;else if(wcscmp(gate_setting,L"screen")!=0)log("taa_thin_region_gate_setting invalid=1");}
         else if(length>=16)log("taa_thin_region_gate_setting invalid=1 reason=too_long length=%lu",length);
         else if(taa_requested&&taa_thin_region[0]>0.f)taa_thin_camera_gate=true;}
-    // X3M_TAA_SENTINEL_STABILISER=<S>[,<E>] (docs/architecture/temporal-integration.md "Distant unrouted stations under a
-    // pan"): S 0..1, the thin-region strength of unrouted depth-sentinel pixels through the camera
-    // gate (always box-clipped); E >= 0, the emitter bound in scene luma (default 1; 0 = none). 1 or 2 fields; anything else
-    // keeps the option off. Meaningful only with the camera gate; the route turns it off otherwise and says so.
-    // Absent is the Run61/Run62-accepted default: S = 0.7 with E = 1 whenever the TAA route runs with the thin-region
-    // camera gate resolved above (that gate is the only path the stabiliser has); off otherwise, and "0" opts out. Since
-    // 2026-09-25 the launcher sends 0 on modded --taa launches with X3M_TAA_SENTINEL_STABILISER_DEFAULT=1 (read only with a
-    // valid value, exactly "1"); this fallback is unchanged so the fixtures stay byte-identical.
-    {wchar_t sentinel_setting[32];const DWORD length=taa_requested?GetEnvironmentVariableW(L"X3M_TAA_SENTINEL_STABILISER",sentinel_setting,32):0;
-        if(length>0&&length<32){float v[2]={0.f,1.f};unsigned count=0;wchar_t* cursor=sentinel_setting;bool ok=true;
-            while(ok&&count<2){wchar_t* end=nullptr;v[count]=wcstof(cursor,&end);ok=end!=cursor;++count;if(!ok||*end==L'\0')break;ok=*end==L',';cursor=end+1;if(count==2)ok=false;}
-            ok=ok&&v[0]>=0.f&&v[0]<=1.f&&v[1]>=0.f&&v[1]<=65000.f;
-            if(ok){taa_sentinel[0]=v[0];taa_sentinel[1]=v[1];
-                taa_sentinel_default=GetEnvironmentVariableW(L"X3M_TAA_SENTINEL_STABILISER_DEFAULT",sentinel_setting,32)==1&&sentinel_setting[0]==L'1';}
-            else log("taa_sentinel_stabiliser_setting invalid=1");}
-        else if(length>=32)log("taa_sentinel_stabiliser_setting invalid=1 reason=too_long length=%lu",length);
-        else if(taa_requested&&taa_thin_camera_gate)taa_sentinel[0]=.7f;} // run216/run221: 0.7 is the default with the camera gate ("0" opts out)
+    // X3M_TAA_SENTINEL_STABILISER was retired with the mask fold (2026-09-25, docs/architecture/taa-mask-fold.md section 7): the
+    // launcher refuses the option and never sets the variable; one line when a caller sets it by hand, no effect.
+    {wchar_t sentinel_setting[32];if(GetEnvironmentVariableW(L"X3M_TAA_SENTINEL_STABILISER",sentinel_setting,32)>0)log("taa_sentinel_stabiliser_setting ignored=1 reason=retired");}
     // X3M_TAA_HISTORY_WEIGHT=<w> (0.5 <= w <= 0.98; unset: 0.9): the resolve's history weight (docs/verification/
     // motion-output.md, "Run 139"). The whole string must parse; an invalid value keeps the default.
     if(taa_requested&&GetEnvironmentVariableW(L"X3M_TAA_HISTORY_WEIGHT",setting,32)>0){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&*end==L'\0'&&v>=.5f&&v<=.98f)taa_history_weight=v;}
@@ -3698,6 +3683,7 @@ void initialize_log(HMODULE module) {
         else if(!wcscmp(setting,L"screen")){taa_thin_region_source=1;taa_thin_region_source_given=true;}
         else if(!wcscmp(setting,L"vote")){taa_thin_region_source=2;taa_thin_region_source_given=true;}
         else log("taa_thin_region_source_setting invalid=1");
+        taa_thin_region_source_default=taa_thin_region_source_given&&GetEnvironmentVariableW(L"X3M_TAA_THIN_REGION_SOURCE_DEFAULT",setting,32)==1&&setting[0]==L'1';
     }
     if(const DWORD n=GetEnvironmentVariableW(L"X3M_FADE_RT2_OWNER",setting,32);n>=32)log("fade_rt2_owner_setting invalid=1 reason=too_long length=%lu",n); // oversized: invalid, stays off
     else if(n>0){
@@ -3722,9 +3708,9 @@ void initialize_log(HMODULE module) {
         taa_motion_weight[0]=.7f; // Run 70 A (2026-09-23, run262/run263): 0.7,2,8 with an age program under a policy that can reach 2 (0 is the opt-out)
     if(GetEnvironmentVariableW(L"X3M_CAMERA_CUT_DEG",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>0&&v<=180)camera_cut_degrees=v;}
     if(GetEnvironmentVariableW(L"X3M_CAMERA_LOG",setting,32)>0){const unsigned long n=wcstoul(setting,nullptr,10);if(n>=1&&n<=1000000)camera_log_frames=unsigned(n);}
-    log("motion_output_mode requested=%u scope=live_same_draw_diagnostic history_requires=object_trace,object_lifetime temporal_consumer=%u taa=%u taa_debug=%u jitter=%u jitter_samples=%u cut_median_px=%.3f cut_missing=%.3f rt_mode=%s frame_log=%u sentinel=%s unmatched_static=%u sentinel_stabiliser=%.3f sentinel_emitter=%.3f sky_history=%s sky_history_band_px=%.2f sky_history_exit_px=%.3f motion_weight=%.3f,%g,%g camera_cut_deg=%.2f camera_log=%u state_shadow=%s scene_hook=%u hdr=%u taa_k=%.5f mip_bias=%g taa_sharpen=%.3f taa_history_weight=%.3f",
+    log("motion_output_mode requested=%u scope=live_same_draw_diagnostic history_requires=object_trace,object_lifetime temporal_consumer=%u taa=%u taa_debug=%u jitter=%u jitter_samples=%u cut_median_px=%.3f cut_missing=%.3f rt_mode=%s frame_log=%u sentinel=%s unmatched_static=%u sky_history=%s sky_history_band_px=%.2f sky_history_exit_px=%.3f motion_weight=%.3f,%g,%g camera_cut_deg=%.2f camera_log=%u state_shadow=%s scene_hook=%u hdr=%u taa_k=%.5f mip_bias=%g taa_sharpen=%.3f taa_history_weight=%.3f",
         motion_output_requested,taa_requested,taa_requested,taa_debug_requested,motion_jitter_requested,motion_jitter_samples,motion_cut_median_px,motion_cut_missing,motion_rt_lazy?"lazy":"perdraw",motion_frame_log,
-        taa_sentinel_mode==x3m::renderer::SentinelMode::CurrentOnly?"1":taa_sentinel_mode==x3m::renderer::SentinelMode::Camera?"2":"auto",taa_unmatched_static,double(taa_sentinel[0]),double(taa_sentinel[1]),taa_sky_history_strict?"strict":"loose",taa_sky_history_band_px,double(taa_sky_history_exit_px),double(taa_motion_weight[0]),double(taa_motion_weight[1]),double(taa_motion_weight[2]),camera_cut_degrees,camera_log_frames,motion_state_shadow<0?"auto":motion_state_shadow?"1":"0",scene_hook_requested,hdr_requested,taa_k_override,double(taa_mip_bias),taa_sharpen,double(taa_history_weight));
+        taa_sentinel_mode==x3m::renderer::SentinelMode::CurrentOnly?"1":taa_sentinel_mode==x3m::renderer::SentinelMode::Camera?"2":"auto",taa_unmatched_static,taa_sky_history_strict?"strict":"loose",taa_sky_history_band_px,double(taa_sky_history_exit_px),double(taa_motion_weight[0]),double(taa_motion_weight[1]),double(taa_motion_weight[2]),camera_cut_degrees,camera_log_frames,motion_state_shadow<0?"auto":motion_state_shadow?"1":"0",scene_hook_requested,hdr_requested,taa_k_override,double(taa_mip_bias),taa_sharpen,double(taa_history_weight));
     log("x3-modern-renderer version=0.4 schema=2 capture_start=%u capture_frames=%u pointer_bits=32",capture_start,capture_count);
     telemetry::initialize([]{if(logfile)fflush(logfile);});
     window_mode::initialize(); // X3M_WINDOW_MONITOR_RECT (+ _DEFAULT marker): one window_mode_config row when set

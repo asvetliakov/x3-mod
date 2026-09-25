@@ -38,50 +38,19 @@
 //             farw * c5.w, b = a = 0, one draw into the second target.
 // farw = saturate((d - c5.x) * c5.y) on a valid depth, else 0; c5.zw are the far
 // component scales. s1 / s4 are point/clamp, single level; c4 = 1 / size, jitter UV.
-// X3M_CAMERA_GATE (line_mask_camera_ps.hlsl; taa-lattice-crawl.md section 32.1): the
-// camera-relative gate mode of the thin region, bound only in that mode and only
-// with the thin region on and the line filter off (c7.w = 0). The gates travel
-// as OPENNESS, saturate(1 - (speed - c6.z) * c6.w), not as closure: a non-finite
-// correspondence then reads 0 = closed whether saturate returns 0 for a NaN or
-// the NaN reaches the UNORM target (written as 0), with no comparison a compiler
-// or backend may fold. The tests draw (c7.z = 0) writes r = the openness of the
-// screen speed (the plain program's gate) and a = the larger of it and the
-// openness of the camera-relative speed, i.e. the gate on min(screen speed,
-// camera-relative speed); the camera-relative speed is the routed
-// correspondence measured against the camera path c0..c3 at this pixel's depth,
-// 0 where the pixel follows the camera path itself, and not measured (open) on a
-// routed pixel on the depth sentinel, section 32.5 (c0..c3 are validated finite
-// by the caller). The camera program is the tests draw alone (c7.z is not read):
-// A' (resolve.hlsl X3M_REGION_HOLD, taa-plan-lifted-slot-cap.md step 1) composes
-// the region in the resolve from this target, so the separable draws below exist
-// in the screen-gate program only.
-// c8 (camera program only; section 32.3) makes that camera path depth- and
-// translation-aware: c0..c3 is the rotation-only far-plane matrix (zero z
-// column), exact for the sentinel; on a valid depth the path adds c8.xyz * (d -
-// c8.w), the camera-relative translation between the two views over the pixel's
-// view z = m32 / (d - m22). c8.xyz = 0 (no translation, or no depth law) is the
-// far-plane path bit for bit. With c9.w = 1 the caller has bound its four-channel
-// current depth at s5 and a pixel whose .b (clip w = view z, current_depth_ps.hlsl)
-// is positive takes c9.xyz / .b instead: no m22 / m32, which the engine keeps as
-// per-submission scratch. With c9.w = 1 the c8 law is not used at all: a valid
-// depth whose .b is not positive (the producer writes both in one draw, so none
-// is expected) stays on the far-plane path, so a wrong m22 / m32 latch cannot
-// close a window the lane opens. c9.w = 0: c8 alone.
-// Sentinel stabiliser class (camera program, thin region on; docs/architecture/temporal-integration.md, "sentinel
-// stabiliser"): the tests draw writes b = the flag and this pixel's own class (an UNROUTED SENTINEL pixel: depth sentinel,
-// motion alpha exactly -1, per-pixel motion on) as one code (classCode), from the two texels it already reads; the resolve
-// applies S to it. A routed sentinel pixel (alpha 1, section 32.5 glass) is outside the class. The screen-gate program's
-// composition skips the six outer taps where the product is exactly 0 (below).
+// The camera-gate mode of the thin region has no mask draw since the mask fold (docs/architecture/taa-mask-fold.md): the
+// A' resolve (resolve.hlsl X3M_REGION_HOLD) computes its tests itself. This program serves the screen-gate chain and the far
+// stabiliser alone.
 // X3M_TAA_THIN_REGION_EMISSIVE (docs/architecture/thin-glow-lines.md 8.3 R3; taa-lattice-crawl.md section 32.7): c10.x = E > 0
 // adds an EMISSIVE VOTE to b in the tests draw (c7.z = 0), reading this frame's scene at s0. E = 0 (the default) does not
 // read s0 or c10 at all and the mask is what it was bit for bit. E is in the units of the bound scene: the HDR route binds the
 // FP16 scene, the 8-bit route the FP16 copy of the display-referred target, where nothing exceeds 1 and E >= 1 never fires.
-// X3M_MASK_DEPTH_OUT (line_mask_depth_ps.hlsl, line_mask_camera_depth_ps.hlsl; docs/architecture/taa-high-resolution.md S1):
+// X3M_MASK_DEPTH_OUT (line_mask_depth_ps.hlsl; docs/architecture/taa-high-resolution.md S1):
 // the tests draw (c7.z = 0) or the far-only draw (c7.z = 2) with s1 = the caller's two- or four-channel current depth
 // itself instead of its R32F copy; COLOR1 = that centre texel, which the caller's R32F second target (the next depth
-// history) stores as its .r, the value the copy draw wrote. Every tap reads .r, so the mask is the same bit for bit; the
-// camera variant takes the lane's .b from the same centre texel instead of s5. Bound only for that one draw.
-// X3M_THIN_VOTE (line_mask_depth_thin_ps.hlsl, line_mask_camera_depth_thin_ps.hlsl; X3M_TAA_THIN_VOTE, docs/architecture/
+// history) stores as its .r, the value the copy draw wrote. Every tap reads .r, so the mask is the same bit for bit. Bound
+// only for that one draw.
+// X3M_THIN_VOTE (line_mask_depth_thin_ps.hlsl; X3M_TAA_THIN_VOTE, docs/architecture/
 // taa-thin-geometry-alternatives.md section 3.2): with X3M_MASK_DEPTH_OUT only, s1 being the four-channel lane. The route's
 // depth fragment writes .a = 1 - thin on an opaque routed row (thin = the draw's fraction of triangles 0.5..3 px tall; 1 =
 // no vote), the fill leaves -1 and other writers 1. With the thin region on, the tests draw sets the flag on a valid depth
@@ -100,14 +69,9 @@ float4 reprojection2 : register(c2);
 float4 reprojection3 : register(c3);
 float4 sizeJitter : register(c4);
 float4 farGate : register(c5);
-float4 thinGate : register(c6); // sentinel-stabiliser S (camera program; else unused), on, speed LO, 1 / (HI - LO)
+float4 thinGate : register(c6); // x unused, on, speed LO, 1 / (HI - LO)
 float4 options : register(c7);
 float4 emissive : register(c10); // x = E, the emissive vote's luma threshold in scene units; 0 = off (no tap, no vote); y = 1: vote-only source (X3M_THIN_VOTE)
-#ifdef X3M_CAMERA_GATE
-float4 depthParallax : register(c8); // camera_depth_parallax(): (DX, DY, DW) / m32, m22; xyz = 0 is the far-plane path
-float4 laneParallax : register(c9);  // camera_lane_parallax(): (DX, DY, DW), 1 where s5 carries the view z; w = 0: c8 alone
-sampler2D laneDepth : register(s5);  // the caller's four-channel current depth (.b = clip w = view z), point / clamp
-#endif
 #ifdef X3M_MASK_DEPTH_OUT
 static float4 centreTexel; // s1 at this pixel: the whole current-depth texel (main sets it first)
 #endif
@@ -121,13 +85,6 @@ bool sentinelDepth(float v) { return v <= -0.5 && v >= -1e30; }
 bool lineBackground(float q, float d) { return sentinelDepth(q) || (validDepth(q) && (1 - q) * lineMargin < 1 - d); }
 bool classChange(float a, float b) { return (validDepth(a) && lineBackground(b, a)) || (validDepth(b) && lineBackground(a, b)); }
 float farWeight(float depth) { return validDepth(depth) ? saturate((depth - farGate.x) * farGate.y) : 0; }
-#ifdef X3M_CAMERA_GATE
-// Camera program, thin region on (c6.y > 0.5): b carries two bits, the flag (fragmented or emissive) as 254/255 and the
-// pixel's own sentinel-stabiliser class as 1/255, so the resolve reads the class from the tests texel instead of the 4-byte
-// depth and 16-byte motion texels (docs/architecture/engine-frame-time.md, "TAA stage cost"). The codes are 0, 1/255, 254/255
-// and 1 in UNORM8 (resolve.hlsl carriesClass).
-float classCode(float flag, bool sentinelClass) { return (flag > 0.5 ? 254.0 / 255 : 0) + (sentinelClass ? 1.0 / 255 : 0); }
-#endif
 // Emissive vote of the thin region, tests draw only. A pixel qualifies when it is ROUTED with valid depth (motion alpha
 // exactly 1, the routing the resolve itself reads, sampled once by the caller), its own scene luma L exceeds E, and the
 // MINIMUM luma of its 3x3 is below L / 3: a local peak, i.e. a thin emissive strip on a hull, and not a uniformly lit panel,
@@ -158,7 +115,6 @@ bool emissiveVote(float2 uv, float depth, float alpha) {
     }
     return centre > emissive.x && lowest * 3 < centre;
 }
-#ifndef X3M_CAMERA_GATE
 // Screen speed of this pixel's own correspondence, px/frame (no dilation: the 13x13 maximum of the later draws covers the neighbours).
 float gateClosure(float2 uv, float depth, float4 motion) {
     float2 previousUV = uv;
@@ -173,47 +129,6 @@ float gateClosure(float2 uv, float depth, float4 motion) {
     return speed == speed ? saturate((speed - thinGate.z) * thinGate.w) : 1;
 }
 
-#else
-// Openness of this pixel's own gates (no dilation: the 17x17 minimum of the later draws covers the neighbours): x = the camera
-// gate, y = the screen-speed gate. A routed pixel whose depth is neither valid nor the sentinel has no camera path and keeps
-// its screen speed. A routed pixel on the SENTINEL (blended glass routes motion but writes no depth; s1.r is the sentinel there
-// with either depth source, R32F or the lane) has no distance and casts no vote in the camera gate (section 32.5): against the
-// far plane its relative speed is the whole translation parallax, which the 17x17 minimum would spread over every strut.
-// A VALID depth whose lane .b is not positive still votes from the far plane (fail closed on an inconsistent frame).
-float gateOpenness(float speed) { return saturate(1 - (speed - thinGate.z) * thinGate.w); }
-float2 gateOpen(float2 uv, float depth, float4 motion) {
-    const bool routed = options.x > 0.5 && motion.w >= 1 && motion.w <= 1;
-    const bool cameraPath = validDepth(depth) || sentinelDepth(depth);
-    float2 cameraUV = uv;
-    if (cameraPath) {
-        float2 unjittered = uv - 0.5 * sizeJitter.xy - sizeJitter.zw;
-        float4 clip = float4(unjittered.x * 2 - 1, 1 - unjittered.y * 2, validDepth(depth) ? depth : 1, 1);
-        float3 previous = float3(dot(reprojection0, clip), dot(reprojection1, clip), dot(reprojection3, clip));
-        // Section 32.3: the pixel's own depth and the camera translation. 1 / view z = (d - m22) / m32, so the previous clip
-        // position over z is the far-plane image plus c8.xyz * (d - m22); the sentinel has no geometry and stays at infinity.
-        // Preferred where the lane is bound (c9.w = 1): 1 / view z read directly from .b, no depth law at all.
-        if (validDepth(depth)) {
-#ifdef X3M_MASK_DEPTH_OUT
-            float viewZ = centreTexel.b; // s1 is the lane itself: the texel s5 would return
-#else
-            float viewZ = tex2Dlod(laneDepth, float4(uv, 0, 0)).b;
-#endif
-            // With the lane bound the law is never consulted: a valid depth whose .b is not positive stays on the far plane.
-            previous += laneParallax.w > 0.5 ? laneParallax.xyz * (viewZ > 0 ? 1 / viewZ : 0) : depthParallax.xyz * (depth - depthParallax.w);
-        }
-        cameraUV = float2(previous.x, -previous.y) / max(previous.z, 1e-6) * 0.5 + 0.5 + 0.5 * sizeJitter.xy + sizeJitter.zw;
-    }
-    float2 previousUV = routed ? motion.xy + sizeJitter.zw : cameraUV;
-    float screenSpeed = length((previousUV - uv) / sizeJitter.xy);
-    float screen = gateOpenness(screenSpeed);
-    // No vote on the sentinel, yet a non-finite routed correspondence must still read closed without a comparison: the screen
-    // speed scaled by 1e-20 stays NaN / infinite when it is, and is below LO (open, no vote) for any finite speed under LO * 1e20
-    // px/frame; a finite garbage speed beyond that grades to closed, which is the safe side.
-    float relative = routed ? gateOpenness(validDepth(depth) ? length((previousUV - cameraUV) / sizeJitter.xy) : screenSpeed * 1e-20) : 1;
-    return float2(cameraPath ? max(screen, relative) : screen, screen);
-}
-#endif
-
 #ifdef X3M_MASK_DEPTH_OUT
 struct MaskDepthOut { float4 mask : COLOR0; float4 depth : COLOR1; };
 MaskDepthOut main(float2 uv : TEXCOORD0)
@@ -224,7 +139,6 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0
 {
 #endif
     float4 result = 0;
-#ifndef X3M_CAMERA_GATE
     if (options.z > 1.5 && options.z < 2.5) {
         result.rg = farWeight(fetch(uv).r) * farGate.zw;
     } else if (options.z > 3.5) {
@@ -266,18 +180,13 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0
             result.b *= (1 - result.a) * thinGate.y; result.a = 0;
         }
     } else
-#endif
     {
         float depth = fetch(uv).r;
         result.g = farWeight(depth);
         [branch] if (thinGate.y > 0.5) {
             // One motion sample for the whole draw: the speed gate and the emissive vote read the same texel.
             float4 motion = tex2Dlod(motionOverride, float4(uv, 0, 0));
-#ifdef X3M_CAMERA_GATE
-            result.ar = gateOpen(uv, depth, motion);
-#else
             result.a = gateClosure(uv, depth, motion);
-#endif
             // b only ever becomes 1: the first fragmented line ends the search and a fragmented pixel skips the emissive vote.
 #ifdef X3M_THIN_VOTE
             // The draw-time vote (lane .a = 1 - thin in [0, 1) on a routed pixel with a valid depth): flagged without the search.
@@ -292,13 +201,7 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0
                 if (changes >= 2) { result.b = 1; break; }
             }
             [branch] if (emissive.x > 0 && result.b < 0.5) { if (emissiveVote(uv, depth, motion.w)) result.b = 1; }
-#ifdef X3M_CAMERA_GATE
-            // The composition's sentinel class, from this draw's own depth and motion texels (the ones it would fetch at s6 / s4):
-            // b = flag * 254/255 + class * 1/255 (see classCode).
-            result.b = classCode(result.b, sentinelDepth(depth) && options.x > 0.5 && motion.w >= -1 && motion.w <= -1);
-#endif
         }
-#ifndef X3M_CAMERA_GATE
         if (validDepth(depth) && options.w > 0.5) {
             [loop] for (int k = 0; k < 4; ++k) {
                 float2 along = (k == 0 ? float2(1, 0) : (k == 1 ? float2(0, 1) : (k == 2 ? float2(1, 1) : float2(1, -1)))) * sizeJitter.xy;
@@ -310,7 +213,6 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0
                 if (before && after) result.r = 1;
             }
         }
-#endif
     }
 #ifdef X3M_MASK_DEPTH_OUT
     MaskDepthOut output;

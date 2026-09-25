@@ -1,0 +1,8 @@
+build=baseline motion=rest config=today rounds=3 mask_ms=1.675[1.569..1.790] box_ms=1.464[1.303..1.627] resolve_ms=2.591[2.529..2.694] taa_ms=5.786[5.432..6.209] resolve_vs_baseline_ms=+0.000 taa_vs_baseline_ms=+0.000
+build=baseline motion=pan config=today rounds=3 mask_ms=1.614[1.548..1.649] box_ms=1.411[1.370..1.444] resolve_ms=2.545[2.492..2.575] taa_ms=5.596[5.434..5.693] resolve_vs_baseline_ms=+0.000 taa_vs_baseline_ms=+0.000
+build=fold motion=rest config=vote rounds=3 mask_ms=0.000[0.000..0.000] box_ms=0.978[0.907..1.113] resolve_ms=2.913[2.864..2.987] taa_ms=3.931[3.807..4.157] resolve_vs_baseline_ms=+0.322 taa_vs_baseline_ms=-1.855
+build=fold motion=rest config=both rounds=3 mask_ms=0.000[0.000..0.000] box_ms=0.940[0.885..1.034] resolve_ms=3.283[3.195..3.389] taa_ms=4.249[4.119..4.457] resolve_vs_baseline_ms=+0.692 taa_vs_baseline_ms=-1.537
+build=fold motion=rest config=thin_vote_off rounds=3 mask_ms=0.000[0.000..0.000] box_ms=0.947[0.894..1.025] resolve_ms=3.229[3.197..3.294] taa_ms=4.209[4.114..4.341] resolve_vs_baseline_ms=+0.638 taa_vs_baseline_ms=-1.577
+build=fold motion=pan config=vote rounds=3 mask_ms=0.000[0.000..0.000] box_ms=0.971[0.913..1.069] resolve_ms=3.010[2.930..3.126] taa_ms=4.009[3.868..4.234] resolve_vs_baseline_ms=+0.465 taa_vs_baseline_ms=-1.587
+build=fold motion=pan config=both rounds=3 mask_ms=0.000[0.000..0.000] box_ms=0.984[0.901..1.121] resolve_ms=3.345[3.257..3.450] taa_ms=4.354[4.183..4.599] resolve_vs_baseline_ms=+0.800 taa_vs_baseline_ms=-1.242
+build=fold motion=pan config=thin_vote_off rounds=3 mask_ms=0.000[0.000..0.000] box_ms=0.981[0.919..1.093] resolve_ms=3.340[3.264..3.416] taa_ms=4.345[4.208..4.530] resolve_vs_baseline_ms=+0.795 taa_vs_baseline_ms=-1.251

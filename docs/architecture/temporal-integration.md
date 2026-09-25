@@ -1083,6 +1083,10 @@ natively.
 
 ## Distant unrouted stations under a pan: sentinel stabiliser (2026-09-21; default on at S = 0.7 since 2026-09-22)
 
+**Retired 2026-09-25 with the TAA mask fold** (`docs/architecture/taa-mask-fold.md` section 7,
+`docs/architecture/fade-rt2-ownership.md` section 5): the option is a launcher parser error, the variable is never sent and
+the DLL ignores a stale value with one row; the code below is deleted. The section is history.
+
 Implementation status: `--taa-sentinel-stabiliser S[,E]` / `X3M_TAA_SENTINEL_STABILISER`. **Default 0.7 (E = 1) whenever
 the TAA route runs with the thin-region camera gate in effect**, in the launcher and in the DLL's native fallback, after
 Run 61 (run216: lasers over sky clean, no ghost complaint) and Run 62 (run221: the distant-station pan flicker the option

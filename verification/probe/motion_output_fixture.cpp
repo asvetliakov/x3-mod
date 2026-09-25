@@ -308,17 +308,15 @@ struct Reference {
         { char taps[8]{}; const DWORD n = GetEnvironmentVariableA("X3M_TAA_HISTORY_TAPS", taps, sizeof taps);
           api(pass.configure_history_taps(n > 0 && n < sizeof taps && !std::strcmp(taps, "16") ? 16 : 5), "reference history taps"); }
         // The DLL's thin-region parse (capture.cpp), for the cases that set it: X3M_TAA_THIN_REGION=W (first field), the camera
-        // gate unless X3M_TAA_THIN_REGION_GATE=screen and X3M_TAA_SENTINEL_STABILISER=S (first field; camera gate only). The camera
-        // gate runs A' only (X3M_TAA_REGION_HOLD is ignored since 2026-09-24); without its programs (16 taps, no filter caps, a
+        // gate unless X3M_TAA_THIN_REGION_GATE=screen. The camera gate runs A' with the mask fold only (X3M_TAA_REGION_HOLD is
+        // ignored since 2026-09-24, the sentinel stabiliser retired 2026-09-25); without its programs (16 taps, no filter caps, a
         // refused program) the DLL turns the thin region off, and so does this mirror. Unset: none of it, the pass as before.
         { char setting[32]{}; DWORD n = GetEnvironmentVariableA("X3M_TAA_THIN_REGION", setting, sizeof setting);
           thin_weight = n > 0 && n < sizeof setting ? std::strtof(setting, nullptr) : 0.f;
-          n = GetEnvironmentVariableA("X3M_TAA_THIN_REGION_GATE", setting, sizeof setting); thin_camera = !(n > 0 && n < sizeof setting && !std::strcmp(setting, "screen"));
-          n = GetEnvironmentVariableA("X3M_TAA_SENTINEL_STABILISER", setting, sizeof setting); sentinel_strength = n > 0 && n < sizeof setting ? std::strtof(setting, nullptr) : 0.f; }
+          n = GetEnvironmentVariableA("X3M_TAA_THIN_REGION_GATE", setting, sizeof setting); thin_camera = !(n > 0 && n < sizeof setting && !std::strcmp(setting, "screen")); }
         if (thin_weight > 0.f) {
             api(pass.configure_far(), "reference configure far");
             if (thin_camera && !pass.camera_gate_available()) { thin_weight = 0.f; thin_camera = false; } // motion_output.cpp: region off
-            if (thin_camera && sentinel_strength > 0.f) api(pass.configure_sentinel(), "reference configure sentinel");
         }
         // S4: the DLL's X3M_TAA_BOX_RESOLUTION parse (capture.cpp; "half" exactly, anything else full) and motion_output.cpp's rule
         // (half only with the camera gate). A half-resolution reference also runs a full-resolution shadow pass on the same
@@ -334,7 +332,6 @@ struct Reference {
             { char taps[8]{}; const DWORD n = GetEnvironmentVariableA("X3M_TAA_HISTORY_TAPS", taps, sizeof taps);
               api(shadow.configure_history_taps(n > 0 && n < sizeof taps && !std::strcmp(taps, "16") ? 16 : 5), "shadow history taps"); }
             api(shadow.configure_far(), "shadow configure far");
-            if (sentinel_strength > 0.f) api(shadow.configure_sentinel(), "shadow configure sentinel");
         }
     }
     bool box_half = false;
@@ -354,7 +351,7 @@ struct Reference {
     }
     void invalidate() { pass.invalidate(); if (box_half) shadow.invalidate(); }
     bool copy_by_draw = false;
-    float thin_weight = 0.f, sentinel_strength = 0.f; bool thin_camera = true;
+    float thin_weight = 0.f; bool thin_camera = true;
     void upload(const std::vector<DWORD>& image, const std::vector<float>& motion_data, const std::vector<float>& depth_data) {
         D3DLOCKED_RECT lock{};
         api(color->LockRect(&lock, nullptr, 0), "lock reference color");
@@ -406,7 +403,6 @@ struct Reference {
         if (thin_weight > 0.f) { // as motion_output.cpp resolve() fills them (no far stabiliser, no camera transform in these cases)
             in.thin_region_weight = thin_weight; in.thin_region_relax = 1.f; in.far_speed_lo = .03f; in.far_speed_hi = .25f;
             in.thin_region_camera_gate = thin_camera;
-            in.sentinel_strength = thin_camera ? sentinel_strength : 0.f; in.sentinel_emitter = 1.f;
         }
         x3m::renderer::Output out{};
         // S4 containment: the full-resolution shadow first (stretch mode: it reads the shared 8-bit input and writes nothing

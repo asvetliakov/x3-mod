@@ -5,7 +5,7 @@
 // with the option on 2026-09-23, cleanup batch 6.)
 constexpr double lineDrift=.3;
 constexpr float lineDepth=.99f,squareDepth=.98f;
-struct LineConfig { const char* name; float thin,wmax; float farW=0,farA=0,thinW=0,relax=1; bool camera=false; float sentS=0,sentE=1,emisE=0; }; // camera: the camera gate, which runs A' (the region hold) only; sentS / sentE: the sentinel stabiliser (temporal-integration.md), camera gate only; emisE: the thin region's emissive vote (thin-glow-lines.md 8.3 R3)
+struct LineConfig { const char* name; float thin,wmax; float farW=0,farA=0,thinW=0,relax=1; bool camera=false; float emisE=0; }; // camera: the camera gate, which runs A' (the region hold with the mask fold) only; emisE: the thin region's emissive vote (thin-glow-lines.md 8.3 R3)
 // Far stabiliser gate of the far cases (temporal_far_inc.h) and the scene hooks the shared oracle uses.
 float farD0=0,farInv=0,farLo=x3::temporal::kFarSpeedLo,farHi=x3::temporal::kFarSpeedHi;
 double line_velocity_default(double nearest){return nearest==double(lineDepth)?lineDrift:0;}
@@ -32,11 +32,14 @@ double oracleK=0;
 double oracle_weigh(double v){return oracleK>0?v/(1+oracleK*std::max(v,0.)):v;}
 double oracle_unweigh(double v){return oracleK>0?v/std::max(1-oracleK*std::max(v,0.),1./65504):v;}
 bool oracle_finite(double v){return std::fabs(v)<=65000;}
-// S4 (X3M_TAA_BOX_RESOLUTION=half; temporal_box_half_inc.h): the camera gate's box is the half-resolution block box: open where
-// any of the pixel's 2x2 block opens, the 8x8 window of the block; with the emitter bound and a tap above E in the 8x8 on a
-// block all on the sentinel, the inner 4x4 (a bright tap in the common 6x6) or the 8x8 of the dim taps (bright taps in the
-// outer ring only) (thin_box_{rows,columns}_half_ps.hlsl).
+// S4 (X3M_TAA_BOX_RESOLUTION=half; temporal_box_half_inc.h): the camera gate's box is the half-resolution block box, the 8x8
+// window of the block, where any of the pixel's 2x2 block opens (thin_box_{rows,columns}_half_ps.hlsl); elsewhere the resolve's
+// in-place 7x7 (the mask fold).
 bool oracleBoxHalf=false;
+// FOLD_FALLBACK (temporal_region_hold_inc.h): where the camera term adds strength (b > a) and no box program ran there, the
+// resolve takes the 7x7 in place (the mask fold). oracleFallbackMarks, when set, receives 1 at those pixels of every frame;
+// oracleFallback3x3 models the 3x3 clip there instead (the pre-fold behaviour, the contrast the row reports).
+std::vector<std::vector<unsigned char>>* oracleFallbackMarks=nullptr;bool oracleFallback3x3=false;
 // History reconstruction the oracle models (docs/architecture/taa-high-resolution.md S3): 5 (the default programs) or 16 (the 16-tap twins).
 unsigned oracleHistoryTaps=5;
 // A' (resolve.hlsl X3M_REGION_HOLD; LineConfig::camera): the camera gate's L-frame peak hold (closureHold) and the hold fraction of the
@@ -48,19 +51,18 @@ float closure_hold(float own,double held,double& code){const double period=oracl
 double hold_code(double h,double codeC){return (h+128*codeC)/65536;}
 double fresh_code(bool flagged,float a){double c;closure_hold(a,0,c);return hold_code(flagged?double(oracleHoldFrames):0.,c);}
 bool held_region(double age){const double v=std::fabs(age);const double held=v<=65?(v-std::floor(v))*65536:0;return held-128*std::floor(held/128)>0;} // the previous region hold at a texel
-bool hold_class(float code){return code>.5f/255&&(code<1.5f/255||code>254.5f/255);} // the tests draw's sentinel-class code (1/255 or 1)
 float quantise8(double v){return float(std::lround(std::min(std::max(v,0.),1.)*255.))/255.f;} // as the A8R8G8B8 mask stores it
 // Thin-region gate exactly as line_mask_ps.hlsl computes it (clamped addressing): b = (11x11 maximum of FRAGMENTED) * (1 - 17x17 maximum
 // of the 8-bit speed closure); FRAGMENTED = some 7-tap line through the pixel changes depth class at least twice; the closure uses the
 // pixel's own motion: (line_velocity_x, line_velocity) of its depth where routed geometry, the camera path (cameraPanX, 0) on the
-// sentinel background. camera (line_mask_camera_ps.hlsl): the closure speed is min(screen speed, |own motion - camera path|).
+// sentinel background. camera (the removed line_mask_camera_ps.hlsl; since the mask fold the camera-gate resolve's own tests):
+// the closure speed is min(screen speed, |own motion - camera path|).
 float depth_clamped(const std::vector<float>& depth,int x,int y){constexpr int S=int(EdgeScene::S);return px(depth,UINT(std::min(std::max(x,0),S-1)),UINT(std::min(std::max(y,0),S-1)));}
 bool depth_class_change(float a,float b){auto valid=[](float d){return d>=0&&d<=1;};auto background=[&](float q,float d){return q<=-.5f||(valid(q)&&(1-q)*1.1f<1-d);};return (valid(a)&&background(b,a))||(valid(b)&&background(a,b));}
 bool fragmented(const std::vector<float>& depth,int x,int y){const int dirs[4][2]={{1,0},{0,1},{1,1},{1,-1}};
     for(auto& k:dirs){unsigned changes=0;for(int t=-3;t<3;++t)changes+=depth_class_change(depth_clamped(depth,x+t*k[0],y+t*k[1]),depth_clamped(depth,x+(t+1)*k[0],y+(t+1)*k[1]));if(changes>=2)return true;}return false;}
 double line_velocity_default(double nearest);
 double (*line_velocity)(double)=line_velocity_default;
-// motion + sentS > 0 (camera): the sentinel stabiliser, max(strength, sentS * (1 - closure)) on an unrouted sentinel pixel (motion alpha -1).
 // Emissive vote of the thin region exactly as line_mask_ps.hlsl casts it (thin-glow-lines.md 8.3 R3, clamped addressing): a ROUTED
 // pixel (motion alpha 1) of valid depth whose own Rec.709 luma exceeds E and whose 3x3 luma minimum is below that luma / 3.
 // A tap that is not finite (NaN, or |L| above the resolve's 65000 limit) counts as 0 at the centre and as the limit as a
@@ -75,14 +77,12 @@ bool emissive_vote(const std::vector<float>& current,const std::vector<float>& d
     const double centre=luma(x,y,0);if(!(centre>double(E)))return false;
     double lowest=emissiveFinite;for(int dy=-1;dy<=1;++dy)for(int dx=-1;dx<=1;++dx)lowest=std::min(lowest,luma(x+dx,y+dy,emissiveFinite));
     return lowest*3<centre;}
-float thin_region_strength(const std::vector<float>& depth,int x,int y,bool camera=false,const std::vector<float>* motion=nullptr,float sentS=0,const std::vector<float>* current=nullptr,float emisE=0){bool any=false;float closure=0;
+float thin_region_strength(const std::vector<float>& depth,int x,int y,bool camera=false,const std::vector<float>* motion=nullptr,const std::vector<float>* current=nullptr,float emisE=0){bool any=false;float closure=0;
     const bool vote=current&&motion&&emisE>0;
     for(int dy=-8;dy<=8;++dy)for(int dx=-8;dx<=8;++dx){if(std::abs(dx)<=5&&std::abs(dy)<=5)any=any||fragmented(depth,x+dx,y+dy)||(vote&&emissive_vote(*current,depth,*motion,x+dx,y+dy,emisE));const float d=depth_clamped(depth,x+dx,y+dy);const bool geometry=d>=0&&d<=1;
         const double vx=geometry?line_velocity_x(d):cameraPanX,vy=geometry?line_velocity(d):0,screen=std::hypot(vx,vy),relative=std::hypot(vx-cameraPanX,vy),speed=camera?std::min(screen,relative):screen;
         closure=std::max(closure,quantise8((speed-double(farLo))/(double(farHi)-double(farLo))));}
-    float strength=any?1-closure:0;
-    if(camera&&motion&&sentS>0&&depth_clamped(depth,x,y)<=-.5f&&px(*motion,UINT(x),UINT(y),3)==-1.f)strength=std::max(strength,sentS*(1-closure));
-    return strength;}
+    return any?1-closure:0;}
 float far_gate_weight_raw(float depth){if(!(depth>=0&&depth<=1))return 0;return std::min(std::max((depth-farD0)*farInv,0.f),1.f);}
 float far_gate_weight(float depth){if(!(depth>=0&&depth<=1))return 0;const float w=std::min(std::max((depth-farD0)*farInv,0.f),1.f);return float(std::lround(w*255.f))/255.f;} // as the A8R8G8B8 mask stores it
 
@@ -90,15 +90,18 @@ float far_gate_weight(float depth){if(!(depth>=0&&depth<=1))return 0;const float
 // closest-depth dilation (content moves by (line_velocity_x, line_velocity) of the closest depth; the camera path by
 // (cameraPanX, 0)), the disocclusion proof over the 2x2 footprint, Catmull-Rom history with the snap (the 5-tap form: the 4x4
 // without its corners, renormalised; oracleHistoryTaps 16: the full 4x4), the 3x3 clip, the thin
-// soft clip and age weight of the variants, the camera gate's 7x7 box clip by the share of the strength the camera term added,
+// soft clip and age weight of the variants, the camera gate's 7x7 box clip by the share of the strength the camera term added
+// (the half-resolution block box where the box programs opened it, else the resolve's in-place 7x7),
 // and the far stabiliser's exp(-A d^2) current sample by the far gate. FP16 rounding per frame. The 5-tap form weighs each of
 // its five blocks (the texels one bilinear fetch blends) before the sum. c.camera (A', the camera gate's only path): the gates are composed per pixel from the
-// published tests target of each frame (run.mask[n]: r screen openness, g far weight, b flag / class code, a camera openness)
-// and the holds carried in the fraction of the model's own age (hold_code), exactly as resolve.hlsl X3M_REGION_HOLD does; the
-// box term applies only where the box programs opened (camera openness above screen openness, or the class with S > 0).
+// tests of each frame (run.mask[n]: r screen openness, g far weight, b flag, a camera openness; the resolve computes them
+// itself since the mask fold, and the fixture draws them with its X3M_FOLD_TESTS_OUT twin) and the holds carried in the
+// fraction of the model's own age (hold_code), exactly as resolve.hlsl X3M_REGION_HOLD does; the box programs open on the
+// previous region hold (the lattice scenes cast no thin vote).
 FlickerModel line_model(const FlickerRun& run,const LineConfig& c,const std::vector<std::vector<float>>* masks=nullptr){constexpr UINT S=EdgeScene::S;const unsigned N=unsigned(run.current.size());FlickerModel m;m.color.resize(N);m.age.resize(N);
     auto valid=[](float d){return d>=0&&d<=1;};auto sentinel=[](float d){return d<=-.5f;};const double w=.9;
     oracleSkipped=0;
+    if(oracleFallbackMarks)oracleFallbackMarks->assign(N,std::vector<unsigned char>(S*S,0));
     for(unsigned n=0;n<N;++n){if(cameraPanAlternates)(cameraPanVertical?cameraPanY:cameraPanX)=camera_pan_at(n);m.color[n].assign(S*S,0);m.age[n].assign(S*S,1);const unsigned index=n%latticePhases+1;const double jx=halton(index,2)-.5,jy=halton(index,3)-.5;
         for(UINT y=0;y<S;++y)for(UINT x=0;x<S;++x){m.color[n][y*S+x]=px(run.output[n],x,y);if(!run.age.empty())m.age[n][y*S+x]=px(run.age[n],x,y);}
         if(n&&n-1==oracleInjectFrame)for(int y=oracleInjectRect[1];y<oracleInjectRect[3];++y)for(int x=oracleInjectRect[0];x<oracleInjectRect[2];++x)m.color[n-1][UINT(y)*S+UINT(x)]=oracleInjectValue; // after frame n-1 was modelled
@@ -144,30 +147,22 @@ FlickerModel line_model(const FlickerRun& run,const LineConfig& c,const std::vec
                 const UINT bx_=UINT(int(x)+nearX),by_=UINT(int(y)+nearY); // the resolve's dilation: the nearest-depth neighbour's tests texel
                 const float ownS=std::min(testR,px((*masks)[n],bx_,by_,0)),ownC=std::min(testA,px((*masks)[n],bx_,by_,3));
                 double codeC;const float openC=std::min(ownC,closure_hold(ownC,heldC,codeC)),openS=std::min(ownS,openC);
-                const bool region=regionHold>0,sentinelTerm=c.sentS>0&&hold_class(testB);
-                gate=std::max(double(region?openC:0.f),double(sentinelTerm?c.sentS*openC:0.f));screenGate=region?openS:0.f;
-                holdFraction=hold_code(regionHold,codeC);boxOpen=sentinelTerm||(testA>testR&&(flagged||held_region(m.age[n-1][i]))); // the box twins' gate: same texel, last frame's region
+                const bool region=regionHold>0;
+                gate=region?openC:0.f;screenGate=region?openS:0.f;
+                holdFraction=hold_code(regionHold,codeC);boxOpen=held_region(m.age[n-1][i]); // the box programs' gate: last frame's region at the same texel
                 if(oracleBoxHalf){boxOpen=false;const UINT bx0=x&~1u,by0=y&~1u; // S4: any pixel of the 2x2 block (all in frame: x, y in [3, S-3))
-                    for(UINT qy=by0;qy<=by0+1;++qy)for(UINT qx=bx0;qx<=bx0+1;++qx){const float r=px((*masks)[n],qx,qy,0),b=px((*masks)[n],qx,qy,2),a=px((*masks)[n],qx,qy,3);
-                        boxOpen=boxOpen||(c.sentS>0&&hold_class(b))||(a>r&&(b>.5f||held_region(m.age[n-1][qy*S+qx])));}}}
-            else{gate=c.thinW>0?quantise8(thin_region_strength(run.depth[n],int(x),int(y),c.camera,run.motion.empty()?nullptr:&run.motion[n],c.sentS)):0;screenGate=c.camera?quantise8(thin_region_strength(run.depth[n],int(x),int(y),false)):gate;}
+                    for(UINT qy=by0;qy<=by0+1;++qy)for(UINT qx=bx0;qx<=bx0+1;++qx)boxOpen=boxOpen||held_region(m.age[n-1][qy*S+qx]);}}
+            else{gate=c.thinW>0?quantise8(thin_region_strength(run.depth[n],int(x),int(y),c.camera,run.motion.empty()?nullptr:&run.motion[n])):0;screenGate=c.camera?quantise8(thin_region_strength(run.depth[n],int(x),int(y),false)):gate;}
             const double clamped=std::min(std::max(old,lo),hi),soft=farOn?screenGate*c.relax:sawValid&&sawSentinel?c.thin*(1-std::min(std::max((speed-2)*.5,0.),1.)):0;
             double boxTerm=0;
-            if(c.camera&&gate>screenGate&&boxOpen){ // the strength the camera term added takes the history clipped to the 7x7 box of the current colour (clamped addressing)
-                double boxLo=wcur,boxHi=wcur,innerLo=wcur,innerHi=wcur,rawMax=0;for(int dy=-3;dy<=3;++dy)for(int dx=-3;dx<=3;++dx){const double raw=px(run.current[n],UINT(std::min(std::max(int(x)+dx,0),int(S)-1)),UINT(std::min(std::max(int(y)+dy,0),int(S)-1)));if(!oracle_finite(raw))continue;const double q=oracle_weigh(raw);boxLo=std::min(boxLo,q);boxHi=std::max(boxHi,q);rawMax=std::max(rawMax,std::max(raw,0.));
-                    if(std::abs(dx)<=1&&std::abs(dy)<=1){innerLo=std::min(innerLo,q);innerHi=std::max(innerHi,q);}}
-                if(c.sentS>0&&c.sentE>0&&rawMax>double(c.sentE)&&sentinel(centre)){boxLo=innerLo;boxHi=innerHi;} // the emitter bound: the inner 3x3
-                if(oracleBoxHalf){const int X0=int(x&~1u),Y0=int(y&~1u);auto at=[&](int v){return UINT(std::min(std::max(v,0),int(S)-1));};
-                    const bool bound=c.sentS>0&&c.sentE>0;bool anyBright=false,commonBright=false,allSentinel=true;double dimLo=wcur,dimHi=wcur;
-                    boxLo=boxHi=innerLo=innerHi=wcur;
-                    for(int dy=-3;dy<=4;++dy)for(int dx=-3;dx<=4;++dx){const double raw=px(run.current[n],at(X0+dx),at(Y0+dy));if(!oracle_finite(raw))continue;const double q=oracle_weigh(raw);boxLo=std::min(boxLo,q);boxHi=std::max(boxHi,q);
-                        const bool bright=bound&&std::max(raw,0.)>=double(x3::temporal::fp16_above(c.sentE)); // the half rows' test (c23.z)
-                        if(bright){anyBright=true;commonBright=commonBright||(dx>=-2&&dx<=3&&dy>=-2&&dy<=3);}else{dimLo=std::min(dimLo,q);dimHi=std::max(dimHi,q);}
-                        if(dx>=-1&&dx<=2&&dy>=-1&&dy<=2){innerLo=std::min(innerLo,q);innerHi=std::max(innerHi,q);}}
-                    for(int j=0;j<2;++j)for(int i=0;i<2;++i)allSentinel=allSentinel&&sentinel(px(run.depth[n],UINT(X0+i),UINT(Y0+j)));
-                    // No bright tap: the 8x8 box; on the sky with a bright tap in the common 6x6: the inner 4x4; on the sky with bright
-                    // taps in the outer ring only: the 8x8 box of the dim taps; across a silhouette: the 8x8 box of every tap.
-                    if(anyBright&&allSentinel){if(commonBright){boxLo=innerLo;boxHi=innerHi;}else{boxLo=dimLo;boxHi=dimHi;}}}
+            const bool fallback=hold&&c.camera&&gate>screenGate&&!boxOpen;
+            if(fallback&&oracleFallbackMarks)(*oracleFallbackMarks)[n][i]=1;
+            if(c.camera&&gate>screenGate&&!(fallback&&oracleFallback3x3)){ // the strength the camera term added takes the history clipped to the 7x7 box of the current colour (clamped addressing)
+                // Where the box programs opened (S4: the pixel's block), their box; elsewhere the resolve's in-place 7x7 (the mask fold).
+                double boxLo=wcur,boxHi=wcur;for(int dy=-3;dy<=3;++dy)for(int dx=-3;dx<=3;++dx){const double raw=px(run.current[n],UINT(std::min(std::max(int(x)+dx,0),int(S)-1)),UINT(std::min(std::max(int(y)+dy,0),int(S)-1)));if(!oracle_finite(raw))continue;const double q=oracle_weigh(raw);boxLo=std::min(boxLo,q);boxHi=std::max(boxHi,q);}
+                if(oracleBoxHalf&&boxOpen){const int X0=int(x&~1u),Y0=int(y&~1u);auto at=[&](int v){return UINT(std::min(std::max(v,0),int(S)-1));};
+                    boxLo=boxHi=wcur;
+                    for(int dy=-3;dy<=4;++dy)for(int dx=-3;dx<=4;++dx){const double raw=px(run.current[n],at(X0+dx),at(Y0+dy));if(!oracle_finite(raw))continue;const double q=oracle_weigh(raw);boxLo=std::min(boxLo,q);boxHi=std::max(boxHi,q);}}
                 boxTerm=(gate-screenGate)*c.relax*(std::min(std::max(old,boxLo),boxHi)-clamped);}
             old=clamped+soft*(old-clamped)+boxTerm;
             double keep=w;const double farw=hold?double(px((*masks)[n],x,y,1)):farOn?far_gate_weight(centre):0;
@@ -237,19 +232,7 @@ void line_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolver){
             laneIns[1].camera_lane_parallax[0]=1e-4f;laneIns[1].camera_lane_parallax[3]=1;
             for(unsigned warm=0;warm<3;++warm)for(unsigned which=0;which<2;++which){check("lane timing warm",lanePasses[which].run(laneIns[which],&out));drain();}
             for(unsigned round=0;round<6;++round)for(unsigned step=0;step<2;++step){const unsigned which=(round+step)%2;drain();const auto start=stamp();check("lane timing run",lanePasses[which].run(laneIns[which],&out));drain();laneMs[which]+=1000.*double(stamp()-start)/double(frequency.QuadPart)/6;}
-            std::printf("LINE_TIMING_CAMERA_LANE width=%u height=%u rounds=6 r32f_camera_ms=%.4f lane_input_law_ms=%.4f lane_input_lane_ms=%.4f lane_fetch_delta_ms=%.4f lane_input_over_r32f_ms=%.4f scope=cpu_wall_with_event_query_drain\n",W,H,ms[3],laneMs[0],laneMs[1],laneMs[1]-laneMs[0],laneMs[0]-ms[3]);
-            // Sentinel stabiliser (temporal-integration.md "Distant unrouted stations under a pan"): an all-sentinel, unrouted frame
-            // (depth -1, motion alpha -1) under the same 1 px/frame pan. S = 0: no region, the box pass skips every pixel. S = 0.7: the
-            // separable box (rows draw on every pixel, columns draw and the resolve's box clip on every pixel), the worst case; the
-            // 49-tap program over a whole frame is fragmented_pan_camera_delta_ms of LINE_TIMING_CAMERA.
-            for(auto* surface:{depthSurface.p,motionSurface.p}){s.target(surface);check("sentinel timing viewport",d->SetViewport(&full));check("sentinel timing Begin",d->BeginScene());check("sentinel timing flat",d->SetPixelShader(s.flat.p));s.constant(surface==depthSurface.p?-1.f:0.f,0,0,-1);
-                const V v[]={{-.5f,-.5f,.5f,1,0,0},{W-.5f,-.5f,.5f,1,1,0},{-.5f,H-.5f,.5f,1,0,1},{W-.5f,H-.5f,.5f,1,1,1}};check("sentinel timing fill",d->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP,2,v,sizeof(V)));check("sentinel timing End",d->EndScene());}
-            check("sentinel timing restore",d->SetRenderTarget(0,saved.p));check("sentinel timing restore viewport",d->SetViewport(&vp));
-            TemporalPass sentinelPasses[2];FrameInputs sentinelIns[2]={ins[3],ins[3]};double sentinelMs[2]{};sentinelIns[1].sentinel_strength=.7f;
-            for(unsigned i=0;i<2;++i){check("sentinel timing initialize",sentinelPasses[i].initialize(d,nullptr,resolver));check("sentinel timing configure far",sentinelPasses[i].configure_far());if(i)check("sentinel timing configure sentinel",sentinelPasses[i].configure_sentinel());require(i==0||sentinelPasses[i].sentinel_available(),"sentinel timing: separable box programs created");}
-            for(unsigned warm=0;warm<3;++warm)for(unsigned which=0;which<2;++which){check("sentinel timing warm",sentinelPasses[which].run(sentinelIns[which],&out));drain();}
-            for(unsigned round=0;round<6;++round)for(unsigned step=0;step<2;++step){const unsigned which=(round+step)%2;drain();const auto start=stamp();check("sentinel timing run",sentinelPasses[which].run(sentinelIns[which],&out));drain();sentinelMs[which]+=1000.*double(stamp()-start)/double(frequency.QuadPart)/6;}
-            std::printf("LINE_TIMING_SENTINEL width=%u height=%u rounds=6 content=all_unrouted_sentinel_pan strength_off_ms=%.4f strength_on_separable_ms=%.4f sentinel_delta_ms=%.4f scope=cpu_wall_with_event_query_drain\n",W,H,sentinelMs[0],sentinelMs[1],sentinelMs[1]-sentinelMs[0]);}
+            std::printf("LINE_TIMING_CAMERA_LANE width=%u height=%u rounds=6 r32f_camera_ms=%.4f lane_input_law_ms=%.4f lane_input_lane_ms=%.4f lane_fetch_delta_ms=%.4f lane_input_over_r32f_ms=%.4f scope=cpu_wall_with_event_query_drain\n",W,H,ms[3],laneMs[0],laneMs[1],laneMs[1]-laneMs[0],laneMs[0]-ms[3]);}
         check("line timing restore target",d->SetRenderTarget(0,saved.p));check("line timing restore vp",d->SetViewport(&vp));}
     if(!deferredFailures.empty())throw std::runtime_error(deferredFailures.front());
 }

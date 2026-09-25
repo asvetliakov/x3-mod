@@ -50,16 +50,6 @@ constexpr unsigned kFlickerRegister = 24;
 constexpr unsigned kExitRegister = 25;
 static_assert(kExitRegister == kFlickerRegister + 1);
 constexpr float kSkyHistoryExitMin = .125f, kSkyHistoryExitOff = 1e30f;
-// The smallest IEEE binary16 value strictly above e (e >= 0; 3.4e38 when none is finite): the half-resolution box's bright
-// test (thin_box_rows_half_ps.hlsl, c23.z, luma >= this) matches the full-resolution test on FP16-rounded row maxima
-// (FP16(luma) > e) from the safe side under any rounding mode (docs/verification/temporal-resolve.md, "S4").
-inline float fp16_above(float e) noexcept {
-    if (!(e >= 0.f)) return 0.f;
-    if (e >= 65504.f) return 3.4e38f;
-    int exponent = 0; std::frexp(double(e), &exponent);              // e in [2^(exponent-1), 2^exponent)
-    const double spacing = std::ldexp(1.0, std::max(exponent - 11, -24)); // binade spacing, the subnormal floor 2^-24
-    return float((std::floor(double(e) / spacing) + 1.0) * spacing);
-}
 inline bool valid_sky_history_exit(float px, float band_px) noexcept {
     return std::isfinite(px) && (px == 0 || (px >= kSkyHistoryExitMin && px <= band_px));
 }

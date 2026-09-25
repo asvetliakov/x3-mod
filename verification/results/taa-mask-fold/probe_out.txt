@@ -1,0 +1,22 @@
+== probe_tr_on
+THIN_REGION_CAMERA_FORWARD dz=0.225018 speed_near=0.6000 speed_far=0.3001 scene_residual_near_px=0.005840 scene_residual_far_px=0.002921 form_residual_near_px=0.000213 form_residual_far_px=0.000107 screen_gate_share=0.0000 rotation_only_routed_px=70 rotation_only_open_max=0.0000 camera_share_near=1.0000 camera_share_far=1.0000 camera_min_open_near=1.0000 camera_min_open_far=1.0000 camera_tests_screen_channel_max=0.0000 screen_rms_codes=16.340 camera_rms_codes=1.511 camera_over_screen=0.0924 screen_p2p_codes=99.4 camera_p2p_codes=8.0 mover_gate_max=0.0000 mover_window_min_open=1.0000 rotation_identical_to_screen=1
+== probe_tr_off
+PROBE no in-place 7x7
+THIN_REGION_CAMERA_FORWARD dz=0.225018 speed_near=0.6000 speed_far=0.3001 scene_residual_near_px=0.005840 scene_residual_far_px=0.002921 form_residual_near_px=0.000213 form_residual_far_px=0.000107 screen_gate_share=0.0000 rotation_only_routed_px=70 rotation_only_open_max=0.0000 camera_share_near=1.0000 camera_share_far=1.0000 camera_min_open_near=1.0000 camera_min_open_far=1.0000 camera_tests_screen_channel_max=0.0000 screen_rms_codes=16.340 camera_rms_codes=1.511 camera_over_screen=0.0924 screen_p2p_codes=99.4 camera_p2p_codes=8.0 mover_gate_max=0.0000 mover_window_min_open=1.0000 rotation_identical_to_screen=1
+== probe_bh_on
+PROBE_OUTPUT_DIFF scene=arm_rest differing=0 max_abs=0.00000000 max_rel=0.00000000
+PROBE_OUTPUT_DIFF scene=arm_drift_0.30 differing=0 max_abs=0.00000000 max_rel=0.00000000
+PROBE_OUTPUT_DIFF scene=pan_0.50 differing=0 max_abs=0.00000000 max_rel=0.00000000
+PROBE_OUTPUT_DIFF scene=pan_stale_patch differing=0 max_abs=0.00000000 max_rel=0.00000000
+BOX_HALF_CONTAINMENT scene=pan_box_domain_k0.5_nonfinite frames=128 compared_px=129697 violations=0 marker_missing=0 half_only_px=224 half_only_violations=0 nonfinite_skipped=128 worst=0.000000 output_identical=0
+PROBE_OUTPUT_DIFF scene=pan_box_domain_k0.5_nonfinite differing=96 max_abs=0.00012207 max_rel=0.00048828
+PROBE_OUTPUT_DIFF scene=pan_stop differing=0 max_abs=0.00000000 max_rel=0.00000000
+== probe_bh_off
+PROBE no in-place 7x7
+PROBE_OUTPUT_DIFF scene=arm_rest differing=0 max_abs=0.00000000 max_rel=0.00000000
+PROBE_OUTPUT_DIFF scene=arm_drift_0.30 differing=0 max_abs=0.00000000 max_rel=0.00000000
+PROBE_OUTPUT_DIFF scene=pan_0.50 differing=0 max_abs=0.00000000 max_rel=0.00000000
+PROBE_OUTPUT_DIFF scene=pan_stale_patch differing=0 max_abs=0.00000000 max_rel=0.00000000
+BOX_HALF_CONTAINMENT scene=pan_box_domain_k0.5_nonfinite frames=128 compared_px=129697 violations=0 marker_missing=0 half_only_px=224 half_only_violations=0 nonfinite_skipped=128 worst=0.000000 output_identical=0
+PROBE_OUTPUT_DIFF scene=pan_box_domain_k0.5_nonfinite differing=96 max_abs=0.00012207 max_rel=0.00048828
+PROBE_OUTPUT_DIFF scene=pan_stop differing=0 max_abs=0.00000000 max_rel=0.00000000

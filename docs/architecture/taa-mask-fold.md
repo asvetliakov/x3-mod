@@ -1,6 +1,6 @@
 # TAA mask fold: removing the full-resolution "tests" draw
 
-Design note, 2026-09-25. Proposed; the main session ratifies. Question: remove the line-mask tests draw
+Design note, 2026-09-25. Ratified and implemented 2026-09-25 (see Decision). Question: remove the line-mask tests draw
 (`line_mask_camera_depth_thin_ps.hlsl`, one full-resolution pass, 1.38-1.40 ms at 5120x1440 [M]) by moving what it
 produces into the passes that remain, without changing the accepted look. Constraint from the run315 lattice triage
 (orchestrator, 2026-09-25): the screen-space thin test (the four 7-tap depth-class searches) stays at full resolution;
@@ -12,6 +12,28 @@ Marks: **[M]** measured in this session's tool results (run312 / run315 / run310
 rows of `verification/results/bottle-X3/temporal-lattice.txt`, the program manifests), **[I]** inferred.
 
 ## Decision
+
+Ratified 2026-09-25 (orchestrator): option (a), screen search default off. The 7-tap screen search is compiled into the
+folded resolve but skipped by default: `c10.y` = 1 (the vote-only source) is the launcher's default whenever the thin vote
+and the thin region are on (`X3M_TAA_THIN_REGION_SOURCE=vote` with `X3M_TAA_THIN_REGION_SOURCE_DEFAULT=1`), `both` turns
+the search back on as the diagnostic, and `screen` is refused under the camera gate (no plain program exists any more;
+launcher parser error, one DLL row `reason=screen_refused_camera_gate`). Reason: the Run 82 A/B (run312 both against run315
+vote) showed no visible difference, and the Terran lattice crawls under both sources alike (its fix is a baker change).
+
+As built (implemented 2026-09-25; evidence and figures: `docs/verification/temporal-resolve.md`, "Mask fold"), with three
+departures from the text below, each measured or forced:
+
+- **Box gate without the same-frame vote** (section 4.3): the box programs open on the previous frame's region hold only.
+  Reading the lane's `.a` (16 B) in the gate cost 1.7 ms in the S4 pair at 5120x1440 (`FOLD_TIMING`: box 2.5 ms with it,
+  1.0 ms without, measured), more than the fold saves; the resolve's in-place 7x7 already gives a newly voted pixel the
+  reference box on its first frame, so the look is the design's or tighter (the 7x7 instead of the 8x8 block box, half
+  resolution only).
+- **The neighbour's gates at its texel centre** (section 4.2): at the frame's edge the dilation can win through a clamped
+  tap outside the frame; the gate is evaluated at `clamp(dilatedUV, texel / 2, 1 - texel / 2)`, which is what the removed
+  tests draw computed there (the identity row found the 11 edge pixels that differed without it).
+- **A D24X8 snapshot refuses a camera-gate run** (section 4.1): the resolve writes the depth history as RT2 and must sample
+  the caller's depth at s1, which a decoded snapshot would have to occupy. The route never supplies one (it passes the R32F
+  RT2 or the lane); the R32F input folds like the lane (reason `resolve_mrt`), so the StretchRect copy is gone too.
 
 Fold the tests draw into the A' resolve (`resolve_far_camera_hold`): the resolve reads the four-channel lane itself,
 computes the far weight, both gates (own and nearest-depth neighbour), the vote flag, the 7-tap search and the emissive
@@ -90,6 +112,8 @@ case is unbounded by the region size.
 
 ### 4.1 Pass order and targets
 
+Implemented as below (the D24X8 snapshot refused, see Decision).
+
 | # | draw | resolution | program | reads | writes |
 | --- | --- | --- | --- | --- | --- |
 | 1 | colour copy (8-bit route only) | full | `copy_` | the display surface | scratch FP16 (unchanged) |
@@ -111,6 +135,10 @@ RT2 leaves the device right after the draw, as RT1 does today; `SavedState` alre
 `render_targets_`.
 
 ### 4.2 The folded resolve
+
+Implemented (`src/temporal/resolve.hlsl`, `X3M_REGION_HOLD`; 3,840 words): the tests at the top of the program, the
+neighbour's gates at its clamped texel centre, `c10` = (E, vote-only, vote cast, 0), `c13` = (d0, inv, 0, 0), the in-place
+7x7 over the 40 taps around the raw 3x3, RT2 = the lane's `.r`.
 
 Reads and computes, in the order the program already has (the age read stays before the clip, the Catmull-Rom weight
 arithmetic keeps its instruction order as the S3 / A' re-baselines required):
@@ -152,6 +180,9 @@ the 0.65 s at 4k slots figure. Words about 3,600.
 
 ### 4.3 The box gate without the tests target
 
+Implemented with the previous frame's region hold alone (no same-frame vote, see Decision); `FOLD_FALLBACK` measures the
+in-place 7x7 on the pixels it serves.
+
 `boxOpen(p)` in both half-resolution programs becomes `voted(lane(p)) || heldRegion(previousAge(p))`: the lane's
 `.a` in [0, 1) with a valid `.r`, or h > 0 in the age fraction at the same unreprojected texel (the read the programs
 already do). No `a > r`, no class. Consequences:
@@ -174,6 +205,9 @@ frame): +2.5 ms for that frame [I]; after a cut there is no history and the curr
 
 ### 4.4 Region hold and hysteresis
 
+Implemented unchanged (the identity row: the folded program equals the removed camera program on its own tests, colour and
+age bit for bit).
+
 Unchanged encoding: `(h + 128 (q (L + 1) + t)) / 65536` in the age fraction, h = L on a flag, the closure peak hold
 from the camera openness, the screen gate not held, the reprojected read for the resolve and the unreprojected read
 for the box. The only change of timing is the box gate's view of a search flag (one frame), which 4.3 covers. The
@@ -181,6 +215,9 @@ holds are now computed from float gates quantised to UNORM8, so `closureHold`'s 
 inputs as today.
 
 ### 4.5 Route side (`src/proxy/motion_output.cpp`)
+
+Implemented: `Output::stabiliser_mask` is null on a camera-gate run, the motion runner's thin-vote cases read the flag from
+the `taa_age` dump (the region hold is L exactly where the pixel was flagged that frame), `mask_targets=0`.
 
 - `TemporalPass::Output::line_mask` is null on the A' path; the `taa_mask` readback (`motion_output.cpp:1838`) has
   nothing to dump. The fixture cases that classify it (`run_motion_output.py` 3879, 4099-4167, 4222: thin-hold and
@@ -191,6 +228,9 @@ inputs as today.
   thin vote and the fade owner keep writing `.a`.
 
 ## 5. Native Windows
+
+Implemented: `camera_gate_available()` requires `NumSimultaneousRTs >= 3` (the fixture's caps-override row refuses a 2-RT
+device), `SavedState` restores RT2 like RT1; the resolve is 3,840 words.
 
 Documented D3D9 only: `SetRenderTarget(2, ...)` under `NumSimultaneousRTs >= 3` and `MRTINDEPENDENTBITDEPTHS`
 (D3DCAPS9 at initialise, refused with a log row otherwise), one ps_3_0 program of about 900 slots created by
@@ -223,6 +263,10 @@ motion cases `seam-taa-thin-vote-far-on-source-{both,screen,vote}`, `seam-taa-th
 assertion moved to the age dump) and the cutout-owner cases (`.a = 1` is no vote: unchanged).
 
 ## 7. Sentinel-class retirement (question 5)
+
+Implemented: the option is removed from the launcher with a parser error (not accepted-and-ignored), the variable is never
+sent or inherited, the DLL logs one ignored row for a stale value; the code listed below is deleted
+(`docs/architecture/fade-rt2-ownership.md` section 5 records the retirement).
 
 Folded into the same change. The class code lives in the tests draw (`classCode`, `carriesClass`), the box gate
 (`emitter.y`, the bright-tap code of the rows, the sky / emitter branch of the columns with its four depth reads) and

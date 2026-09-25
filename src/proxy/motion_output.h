@@ -665,10 +665,11 @@ public:
     // `launcher_default` (X3M_TAA_BOX_RESOLUTION_DEFAULT=1 with half) is logged as default= on the creation row.
     void configure_box_resolution(bool half, bool launcher_default) noexcept { taa_box_half_ = half; taa_box_default_ = half && launcher_default; }
     // X3M_TAA_THIN_REGION_SOURCE (both|screen|vote as 0|1|2, renderer::ThinRegionSource; docs/architecture/
-    // taa-thin-geometry-alternatives.md section 3.2): what feeds the thin region's flag. Resolved per device at
-    // initialisation (screen and vote need the thin region, vote also the thin vote and its twin programs; anything
-    // missing configures both) and logged there only when given: the default run's log is unchanged line for line.
-    void configure_thin_region_source(unsigned source, bool given) noexcept { taa_thin_source_ = source <= 2 ? source : 0u; taa_thin_source_given_ = given; }
+    // taa-thin-geometry-alternatives.md section 3.2, taa-mask-fold.md): what feeds the thin region's flag. Resolved per
+    // device at initialisation (screen and vote need the thin region, vote also the thin vote; screen is refused under the
+    // camera gate, whose resolve has no plain program since the mask fold; anything missing configures both) and logged
+    // there only when given. `launcher_default` (X3M_TAA_THIN_REGION_SOURCE_DEFAULT=1) is logged as default= on that row.
+    void configure_thin_region_source(unsigned source, bool given, bool launcher_default = false) noexcept { taa_thin_source_ = source <= 2 ? source : 0u; taa_thin_source_given_ = given; taa_thin_source_default_ = given && launcher_default; }
     // X3M_TAA_THIN_VOTE (on|off, DLL default off when the variable is unset; the launcher sends on since Run 81; docs/architecture/taa-thin-geometry-alternatives.md section 3.2): the
     // draw-time thin vote of the thin region. `enabled` is the caller's resolution (requested with the route, TAA, the
     // sun-share lane and the ownership wrapper); it also switched the material transformer
@@ -1014,13 +1015,6 @@ public:
     // bit for bit what it was. E is in the units of the scene the pass binds, so
     // E >= 1 needs the HDR route (the 8-bit route's copy never exceeds 1).
     void configure_taa_thin_region(float weight, float relax, float lo, float hi, bool gate_given, bool camera_gate = false, float emissive = 0.f) noexcept { taa_thin_weight_ = weight; taa_thin_relax_ = relax; taa_thin_camera_gate_ = camera_gate; taa_thin_emissive_ = emissive; if (gate_given) { taa_far_lo_ = lo; taa_far_hi_ = hi; } }
-    // X3M_TAA_SENTINEL_STABILISER=S[,E] (docs/architecture/temporal-integration.md
-    // "Distant unrouted stations under a pan"), off by default: thin-region
-    // strength S of unrouted depth-sentinel pixels through the camera gate, box
-    // clipped; emitter bound E (0 none). Turned off at initialisation without
-    // the camera gate or the separable box programs. `launcher_default` (X3M_TAA_SENTINEL_STABILISER_DEFAULT=1: the
-    // launcher's off default since 2026-09-25) is logged as sentinel_stabiliser_default= on the motion_output_taa row.
-    void configure_taa_sentinel(float strength, float emitter, bool launcher_default = false) noexcept { taa_sentinel_strength_ = strength; taa_sentinel_emitter_ = emitter; taa_sentinel_default_ = launcher_default; }
     // X3M_TAA_ALPHA_HISTORY (docs/architecture/taa-flicker-suppression.md; HDR route only), off by default: with it
     // off the pass never creates the variant program. (The thin clip and adaptive weight of the same note were
     // removed 2026-09-23, cleanup batch 6.) Before attach, like the others.
@@ -2380,8 +2374,6 @@ private:
     float taa_thin_weight_ = 0.f, taa_thin_relax_ = 1.f; // X3M_TAA_THIN_REGION
     bool taa_thin_camera_gate_ = false; // X3M_TAA_THIN_REGION_GATE=camera
     float taa_thin_emissive_ = 0.f;     // X3M_TAA_THIN_REGION_EMISSIVE=E: emissive vote of the thin region (thin-glow-lines.md 8.3 R3)
-    float taa_sentinel_strength_ = 0.f, taa_sentinel_emitter_ = 1.f; // X3M_TAA_SENTINEL_STABILISER=S[,E]
-    bool taa_sentinel_default_ = false;       // that S came from the launcher's default (X3M_TAA_SENTINEL_STABILISER_DEFAULT=1)
     bool taa_masks_logged_ = false;           // the one line for TemporalPass::line_masks_failed()
     bool taa_box_refused_logged_ = false;     // the one line per TemporalPass::camera_gate_failed() episode (box targets refused: thin region off)
     bool taa_fold_logged_ = false;            // the one line for TemporalPass::Diagnostics::depth_folded (taa-high-resolution.md S1), per attachment
@@ -2390,6 +2382,7 @@ private:
     bool taa_box_default_ = false;            // that half came from the launcher's default (X3M_TAA_BOX_RESOLUTION_DEFAULT=1): default=1 on the creation row
     unsigned taa_thin_source_ = 0;            // X3M_TAA_THIN_REGION_SOURCE: requested (0 both, 1 screen, 2 vote)
     bool taa_thin_source_given_ = false;      // the variable was set to a valid value (the configured row is logged)
+    bool taa_thin_source_default_ = false;    // that value came from the launcher's default (X3M_TAA_THIN_REGION_SOURCE_DEFAULT=1)
     unsigned taa_thin_source_configured_ = 0; // what taa_initialize resolved it to; FrameInputs::thin_region_source
     const char* taa_box_reason_logged_ = nullptr; // the last Diagnostics::box_resolution_reason seen for this attachment
     unsigned taa_box_reason_rows_ = 0;            // changes of that reason: rows for the first 8, one suppressed=1 row at the 9th

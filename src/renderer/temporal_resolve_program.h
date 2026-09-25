@@ -31,28 +31,17 @@ inline constexpr std::uint32_t temporal_line_mask_words[] = {
 inline constexpr std::uint32_t temporal_resolve_far_words[] = {
 #include "temporal_resolve_far_program_inc.h"
 };
-// Camera-relative thin-region gate (docs/architecture/taa-lattice-crawl.md section 32.1): the tests draw of
-// src/temporal/line_mask_camera_ps.hlsl (manifest verification/results/temporal-line-mask-camera-program.json); its resolve
-// and box programs are the A' programs below.
-inline constexpr std::uint32_t temporal_line_mask_camera_words[] = {
-#include "temporal_line_mask_camera_program_inc.h"
-};
-// The mask chain's first draw with the current depth copy folded in (docs/architecture/taa-high-resolution.md S1):
-// src/temporal/line_mask_depth_ps.hlsl and line_mask_camera_depth_ps.hlsl, COLOR1 = the current-depth texel
-// (manifests verification/results/temporal-line-mask{,-camera}-depth-program.json).
+// The screen-gate chain's first draw with the current depth copy folded in (docs/architecture/taa-high-resolution.md S1):
+// src/temporal/line_mask_depth_ps.hlsl, COLOR1 = the current-depth texel (manifest
+// verification/results/temporal-line-mask-depth-program.json). The camera gate has no mask draw since the mask fold
+// (docs/architecture/taa-mask-fold.md): its resolve computes the tests itself.
 inline constexpr std::uint32_t temporal_line_mask_depth_words[] = {
 #include "temporal_line_mask_depth_program_inc.h"
 };
-inline constexpr std::uint32_t temporal_line_mask_camera_depth_words[] = {
-#include "temporal_line_mask_camera_depth_program_inc.h"
-};
-// Thin-vote twins of the two (X3M_TAA_THIN_VOTE; docs/architecture/taa-thin-geometry-alternatives.md section 3.2):
-// src/temporal/line_mask_depth_thin_ps.hlsl and line_mask_camera_depth_thin_ps.hlsl, the same draws plus the vote from the lane's .a.
+// Its thin-vote twin (X3M_TAA_THIN_VOTE; docs/architecture/taa-thin-geometry-alternatives.md section 3.2):
+// src/temporal/line_mask_depth_thin_ps.hlsl, the same draw plus the vote from the lane's .a.
 inline constexpr std::uint32_t temporal_line_mask_depth_thin_words[] = {
 #include "temporal_line_mask_depth_thin_program_inc.h"
-};
-inline constexpr std::uint32_t temporal_line_mask_camera_depth_thin_words[] = {
-#include "temporal_line_mask_camera_depth_thin_program_inc.h"
 };
 // S3 (docs/architecture/taa-high-resolution.md): the four resolve programs above reconstruct the history with the 5-tap
 // bilinear Catmull-Rom form; these keep the 16-tap point form of the earlier builds (X3M_HISTORY_TAPS16,
@@ -70,22 +59,16 @@ inline constexpr std::uint32_t temporal_resolve_age_taps16_words[] = {
 inline constexpr std::uint32_t temporal_resolve_far_taps16_words[] = {
 #include "temporal_resolve_far_taps16_program_inc.h"
 };
-// A' (docs/architecture/taa-plan-lifted-slot-cap.md step 1, the only camera-gate path since Run 79 A): the camera-gate resolve
-// with the region and closure holds, which composes the region from the mask's tests target itself
-// (src/temporal/resolve_far_camera_hold.hlsl), the 49-tap box and the sentinel stabiliser's separable box, gated on that
-// target (thin_box{,_rows,_columns}_hold_ps.hlsl; manifests
-// verification/results/temporal-{resolve-far-camera,thin-box,thin-box-rows,thin-box-columns}-hold-program.json).
+// A' (docs/architecture/taa-plan-lifted-slot-cap.md step 1, the only camera-gate path since Run 79 A) with the mask fold
+// (docs/architecture/taa-mask-fold.md): the camera-gate resolve with the region and closure holds, which computes the per-pixel
+// tests and composes the region itself and writes the depth history as RT2 (src/temporal/resolve_far_camera_hold.hlsl), and
+// the 49-tap box gated on this frame's vote and last frame's region hold (thin_box_hold_ps.hlsl; manifests
+// verification/results/temporal-{resolve-far-camera,thin-box}-hold-program.json).
 inline constexpr std::uint32_t temporal_resolve_far_camera_hold_words[] = {
 #include "temporal_resolve_far_camera_hold_program_inc.h"
 };
 inline constexpr std::uint32_t temporal_thin_box_hold_words[] = {
 #include "temporal_thin_box_hold_program_inc.h"
-};
-inline constexpr std::uint32_t temporal_thin_box_rows_hold_words[] = {
-#include "temporal_thin_box_rows_hold_program_inc.h"
-};
-inline constexpr std::uint32_t temporal_thin_box_columns_hold_words[] = {
-#include "temporal_thin_box_columns_hold_program_inc.h"
 };
 // S4 (docs/architecture/taa-high-resolution.md S4, opt-in X3M_TAA_BOX_RESOLUTION=half): the same separable box at half resolution
 // (thin_box_rows_half_ps.hlsl, thin_box_columns_half_ps.hlsl; manifests verification/results/temporal-thin-box-rows-half-program.json
@@ -118,25 +101,19 @@ inline constexpr const auto& temporal_resolve_age_program() noexcept { return de
 // The mask and far-stabiliser programs TemporalPass::configure_far creates.
 inline constexpr const auto& temporal_line_mask_program() noexcept { return detail::temporal_line_mask_words; }
 inline constexpr const auto& temporal_resolve_far_program() noexcept { return detail::temporal_resolve_far_words; }
-// The camera-gate programs TemporalPass::configure_far creates on top (optional: a refusal leaves no camera-gate path):
-// the tests-draw mask here, the hold resolve and the box below.
-inline constexpr const auto& temporal_line_mask_camera_program() noexcept { return detail::temporal_line_mask_camera_words; }
-// The depth-folding mask programs configure_far creates on top (optional: a refusal keeps the copy draw).
+// The depth-folding mask program configure_far creates on top (optional: a refusal keeps the copy draw) and its thin-vote twin
+// (configure_thin_vote).
 inline constexpr const auto& temporal_line_mask_depth_program() noexcept { return detail::temporal_line_mask_depth_words; }
-inline constexpr const auto& temporal_line_mask_camera_depth_program() noexcept { return detail::temporal_line_mask_camera_depth_words; }
 inline constexpr const auto& temporal_line_mask_depth_thin_program() noexcept { return detail::temporal_line_mask_depth_thin_words; }
-inline constexpr const auto& temporal_line_mask_camera_depth_thin_program() noexcept { return detail::temporal_line_mask_camera_depth_thin_words; }
 // The 16-tap point twins TemporalPass creates beside the 5-tap programs (configure_history_taps).
 inline constexpr const auto& temporal_resolve_taps16_program() noexcept { return detail::temporal_resolve_taps16_words; }
 inline constexpr const auto& temporal_resolve_thin_taps16_program() noexcept { return detail::temporal_resolve_thin_taps16_words; }
 inline constexpr const auto& temporal_resolve_age_taps16_program() noexcept { return detail::temporal_resolve_age_taps16_words; }
 inline constexpr const auto& temporal_resolve_far_taps16_program() noexcept { return detail::temporal_resolve_far_taps16_words; }
-// The camera-gate resolve and box configure_far creates with the camera mask (the camera gate has no 16-tap form), and the
-// separable box's twins configure_sentinel creates.
+// The camera-gate resolve and box configure_far creates (optional: a refusal leaves no camera-gate path; the camera gate has
+// no 16-tap form).
 inline constexpr const auto& temporal_resolve_far_camera_hold_program() noexcept { return detail::temporal_resolve_far_camera_hold_words; }
 inline constexpr const auto& temporal_thin_box_hold_program() noexcept { return detail::temporal_thin_box_hold_words; }
-inline constexpr const auto& temporal_thin_box_rows_hold_program() noexcept { return detail::temporal_thin_box_rows_hold_words; }
-inline constexpr const auto& temporal_thin_box_columns_hold_program() noexcept { return detail::temporal_thin_box_columns_hold_words; }
 // The half-resolution pair TemporalPass::configure_box_resolution(2) creates (S4; none in a session that never asks).
 inline constexpr const auto& temporal_thin_box_rows_half_program() noexcept { return detail::temporal_thin_box_rows_half_words; }
 inline constexpr const auto& temporal_thin_box_columns_half_program() noexcept { return detail::temporal_thin_box_columns_half_words; }

@@ -77,7 +77,7 @@ class BoxResolutionSource(unittest.TestCase):
         self.assertIn('taa_->configure_box_resolution(2)', motion)
         # Logged only when half is requested: the default run's log is the pre-S4 log line for line.
         self.assertIn('if (SUCCEEDED(hr) && taa_box_half_) {', motion)
-        self.assertIn('create=%08lx default=%u sentinel_stabiliser=%.3f', motion)
+        self.assertIn('create=%08lx default=%u",', motion)
         self.assertIn('unsigned(taa_box_default_)', motion)
         self.assertIn('if (taa_box_half_ && taa_->box_resolution() == 2', motion)
         # The per-change row is capped: 8 rows, then one suppressed=1 row per attachment.

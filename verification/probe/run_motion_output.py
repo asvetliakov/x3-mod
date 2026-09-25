@@ -733,37 +733,36 @@ COPY_TWINS = {'seam-taa-copy-draw': 'seam-taa-on'}
 # case here but THIN_HOLD_CASES configures the thin region). The runner sets the variable for no other case.
 REGION_HOLD_TWINS = {'seam-taa-region-hold-ignored': ('seam-taa-on', 'off')}
 CASES += [case(name, 'seam', jitter=True, taa=True, hdr_env=dict(X3M_TAA_REGION_HOLD=value)) for name, (_, value) in REGION_HOLD_TWINS.items()]
-# The DLL path of A': the thin region (0.97) with its default camera gate and the sentinel stabiliser (0.7). The fixture's reference
-# pass mirrors the same settings (motion_output_fixture.cpp, Reference::create), so every seam frame still equals its reference
-# resolve byte for byte. The pass then holds the far / camera-gate programs (7: line mask, far, camera mask, hold resolve, its
-# 49-tap box twin, the two depth-folding masks) and the separable box twins (2) on top of the base references; the first
-# completed run logs region_hold=1 mask_targets=1.
+# The DLL path of A' with the mask fold: the thin region (0.97) with its default camera gate. The fixture's reference pass mirrors
+# the same settings (motion_output_fixture.cpp, Reference::create), so every seam frame still equals its reference resolve byte for
+# byte. The pass then holds the far / camera-gate programs (5: line mask, far, the folded hold resolve, its 49-tap box, the
+# screen chain's depth-folding mask) on top of the base references; the first completed run logs region_hold=1 mask_targets=0
+# (the camera gate draws no mask).
 # S4 (docs/architecture/taa-high-resolution.md S4; X3M_TAA_BOX_RESOLUTION=half, opt-in): the same case with the camera gate's box
 # at half resolution. The reference mirrors it and runs a full-resolution shadow pass beside it, checking per pixel that the
 # half-resolution box contains the full-resolution one (REFERENCE_BOX_CONTAINMENT); the DLL holds the half-resolution pair (2)
 # on top and logs one creation row and one row for what the first run drew. Every other case pins full, which logs nothing.
 THIN_HOLD_CASES = {'seam-taa-thin-hold-on': 'on', 'seam-taa-thin-hold-half': 'half'}
-THIN_HOLD_REFERENCES = {'on': 7 + 2, 'half': 7 + 2 + 2}
+THIN_HOLD_REFERENCES = {'on': 5, 'half': 5 + 2}
 # seam-taa-thin-hold-half carries the launcher's Run 82 default marker (X3M_TAA_BOX_RESOLUTION_DEFAULT=1): its creation row reads default=1.
 BOX_DEFAULT_MARKED = ('seam-taa-thin-hold-half',)
-CASES += [case(name, 'seam', jitter=True, taa=True, hdr_env=dict(X3M_TAA_THIN_REGION='0.97', X3M_TAA_SENTINEL_STABILISER='0.7', X3M_TAA_BOX_RESOLUTION='half' if value == 'half' else 'full',
+CASES += [case(name, 'seam', jitter=True, taa=True, hdr_env=dict(X3M_TAA_THIN_REGION='0.97', X3M_TAA_BOX_RESOLUTION='half' if value == 'half' else 'full',
                                                                  **({'X3M_TAA_BOX_RESOLUTION_DEFAULT': '1'} if name in BOX_DEFAULT_MARKED else {})))
           for name, value in THIN_HOLD_CASES.items()]
 # The refusal path: the camera gate has no 16-tap program, so the thin region with its camera gate under --taa-history-taps 16 is
 # turned off at pass creation with one motion_output_taa_region_hold row (reason=history_taps16, effect=thin_region_off; no
-# fallback program set) and the sentinel stabiliser with it (reason=camera_gate_off). The pass still holds what configure_far
-# created (the 7 above) and the far program's 16-tap twin (1) beside the resolve's (1); every seam frame is the 16-tap case's
-# byte for byte (the reference mirrors the rule).
+# fallback program set). The pass still holds what configure_far created (the 5 above) and the far program's 16-tap twin (1)
+# beside the resolve's (1); every seam frame is the 16-tap case's byte for byte (the reference mirrors the rule).
 REGION_OFF_TWINS = {'seam-taa-thin-taps16-refused': 'seam-taa-taps16'}
-REGION_OFF_REFERENCES = 7 + 1
-CASES += [case(name, 'seam', jitter=True, taa=True, hdr_env=dict(X3M_TAA_HISTORY_TAPS='16', X3M_TAA_THIN_REGION='0.97', X3M_TAA_SENTINEL_STABILISER='0.7'))
+REGION_OFF_REFERENCES = 5 + 1
+CASES += [case(name, 'seam', jitter=True, taa=True, hdr_env=dict(X3M_TAA_HISTORY_TAPS='16', X3M_TAA_THIN_REGION='0.97'))
           for name in REGION_OFF_TWINS]
 # Thin vote (X3M_TAA_THIN_VOTE; docs/architecture/taa-thin-geometry-alternatives.md section 3.2, "Implemented"): the
 # "thinvote" script (motion_output_thin_vote_inc.h) through the ownership wrapper with TAA, the FP16 scene and the
-# sun-share lane (the four-channel RT2), the thin region (0.97) with its camera gate and A' (the taa_mask dump is the
-# tests target). Two MANAGED subsets: six struts 1.4 px wide at the far scale (5.6 px at the near one) in front of a
+# sun-share lane (the four-channel RT2), the thin region (0.97) with its camera gate and A' with the mask fold (the flag of a
+# frame is the region hold L in the fraction of its taa_age dump: the resolve computes the tests itself). Two MANAGED subsets: six struts 1.4 px wide at the far scale (5.6 px at the near one) in front of a
 # panel at almost the same depth, so the 7-tap line search never flags the struts: only the vote can. far-on: the struts'
-# RT2 .a is 0 (1 - thin, thin = 1) from frame 1 and their tests-target b carries the flag; the panel's .a is 1 and its b
+# RT2 .a is 0 (1 - thin, thin = 1) from frame 1 and their region hold is L (flagged); the panel's .a is 1 and its hold
 # clear. far-off: .a = w = 2 everywhere (the option-off fragment), no flag; its RT1 and the RT2 .r/.g/.b lanes equal
 # far-on's byte for byte (the repacked motion literals and the thin depth fragment change nothing else). near-on: the
 # struts exceed 3 px: .a 1, no flag. hostile: MANAGED|WRITEONLY buffers created before the readable policy is armed
@@ -786,10 +785,10 @@ CASES += [case(name, 'thinvote', 'ownership', jitter=True, taa=True, hdr=True, h
           for name, (vote, scale, script) in THIN_VOTE_CASES.items()]
 CASES += [case('seam-thin-vote-far-on-owner', 'thinvote', 'ownership', jitter=True, taa=True, hdr=True,
                hdr_env=dict(THIN_VOTE_ENV, X3M_TAA_THIN_VOTE='on', X3M_FIXTURE_THIN_SCALE='far', X3M_FIXTURE_THIN_SCRIPT='plain', X3M_FADE_RT2_OWNER='on'))]
-# X3M_TAA_THIN_REGION_SOURCE (Run 82 A/B; taa-thin-geometry-alternatives.md section 3.2): far-on with the source given, one
-# case per value. both: far-on's mask. screen: the vote still runs (RT2 .a 0, thin_vote_frame voted 1) but the tests draw is
-# the plain program, so the struts (never fragmented) lose their flag and one thin_vote_absent row says screen_source. vote:
-# the struts keep their flag and no unvoted pixel is flagged anywhere (the search is skipped). One configured row each.
+# X3M_TAA_THIN_REGION_SOURCE (taa-thin-geometry-alternatives.md section 3.2; the launcher's default vote since the mask fold,
+# taa-mask-fold.md): far-on with the source given, one case per value. both: far-on's flags. screen: refused under the camera
+# gate (the folded resolve has no plain program): configured both with reason=screen_refused_camera_gate, the run is both's.
+# vote: the struts keep their flag and no unvoted pixel is flagged anywhere (the search is skipped). One configured row each.
 THIN_VOTE_SOURCE_CASES = {f'seam-thin-vote-far-on-source-{source}': source for source in ('both', 'screen', 'vote')}
 CASES += [case(name, 'thinvote', 'ownership', jitter=True, taa=True, hdr=True,
                hdr_env=dict(THIN_VOTE_ENV, X3M_TAA_THIN_VOTE='on', X3M_FIXTURE_THIN_SCALE='far', X3M_FIXTURE_THIN_SCRIPT='plain', X3M_TAA_THIN_REGION_SOURCE=source))
@@ -3829,21 +3828,20 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
         assert taa_lines_log[0]['copy'] == ('draw' if copy_draw else 'stretch'), (name, taa_lines_log)
         # The slot cap is logged once per pass creation (AGENTS.md "Shader slot budget"; the region_hold field left this row with the
         # option, 2026-09-24); the region hold runs only in THIN_HOLD_CASES (the only camera-gate configuration here), whose first
-        # completed run draws it with one mask target (the history-taps row's region_hold and mask_targets).
+        # completed run draws it without a mask target (the mask fold: the history-taps row's region_hold and mask_targets).
         held = '1' if thin_hold in ('on', 'half') else '0'
         assert int(taa_lines_log[0]['ps30_slots']) > 0 and 'region_hold' not in taa_lines_log[0], (name, taa_lines_log)
         assert taps_lines if thin_hold else True, (name, taps_lines)
-        assert all(t['region_hold'] == held and t['mask_targets'] == ('1' if thin_hold else '0') for t in taps_lines), (name, taps_lines)
+        assert all(t['region_hold'] == held and t['mask_targets'] == '0' for t in taps_lines), (name, taps_lines)
         refusals = [fields(l) for l in tl if l.startswith('motion_output_taa_region_hold ')]
         if region_off:
             assert [(r['unavailable'], r['reason'], r['create'], r['bilinear'], r['history_taps'], r['thin_region'], r['effect']) for r in refusals] == \
                    [('1', 'history_taps16', '00000000', '1', '16', '0.9700', 'thin_region_off')], (name, refusals)
-            assert float(taa_lines_log[0]['thin_region']) == 0 and taa_lines_log[0]['thin_gate'] == 'screen' and float(taa_lines_log[0]['sentinel_stabiliser']) == 0, (name, taa_lines_log)
-            assert [l for l in tl if l.startswith('motion_output_taa_sentinel ') and 'reason=camera_gate_off' in l], (name, 'sentinel follows the region off')
+            assert float(taa_lines_log[0]['thin_region']) == 0 and taa_lines_log[0]['thin_gate'] == 'screen' and 'sentinel_stabiliser' not in taa_lines_log[0], (name, taa_lines_log)
         else:
             assert not refusals, (name, 'hold refused')
         if thin_hold:
-            assert taa_lines_log[0]['thin_gate'] == 'camera' and float(taa_lines_log[0]['thin_region']) == .97 and float(taa_lines_log[0]['sentinel_stabiliser']) == .7, (name, taa_lines_log)
+            assert taa_lines_log[0]['thin_gate'] == 'camera' and float(taa_lines_log[0]['thin_region']) == .97 and 'sentinel_stabiliser' not in taa_lines_log[0], (name, taa_lines_log)
         # S4: rows only when half is asked (creation, then what the first run drew); the reference's per-pixel containment.
         box_rows = [fields(l) for l in tl if l.startswith('motion_output_taa_box_resolution ')]
         containment = [fields(l) for l in text.splitlines() if l.startswith('REFERENCE_BOX_CONTAINMENT ')]
@@ -3876,9 +3874,10 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
         assert int(summary['lazy_flushes']) == (int(summary['routed']) if lazy else 0), (name, frame, summary)
         assert int(summary['jitter_writes']) == 2 * int(summary['jittered']), (name, frame, summary)
         # Motion + depth; with X3M_TAA_DEBUG the pre-resolve colour, the resolved FP16 image and the presented main target; the FP16 readback of the HDR path adds one.
-        # THIN_HOLD_CASES: the far programs' capture dumps add the age target and the mask (taa_age, taa_mask) on every resolved frame.
+        # THIN_HOLD_CASES: the far programs' capture dumps add the age target (taa_age) on every resolved frame; the camera gate
+        # publishes no mask since the mask fold (no taa_mask dump).
         assert int(summary['readbacks']) == (0 if frame == 0 else (5 if taa and not strict_skip else 2) + int(hdr and hdr_fault is None)
-                                             + (2 if taa and not strict_skip and name in THIN_HOLD_CASES else 0)), (name, frame, summary)
+                                             + (1 if taa and not strict_skip and name in THIN_HOLD_CASES else 0)), (name, frame, summary)
         # Render-state shadow: every route query is a shadow hit except after a
         # resynchronization (at most one native read per shadowed state); the
         # native reads are those misses plus the fill's touched-state save. Off:
@@ -4077,14 +4076,18 @@ THIN_REGION_SOURCES = ('both', 'screen', 'vote')
 
 def thin_region_source_rows(trace):
     """The DLL's taa_thin_region_source rows (motion_output.cpp: one per device, only when X3M_TAA_THIN_REGION_SOURCE was
-    given): requested / configured / reason and the prerequisites the device saw. Malformed rows fail."""
+    given): requested / configured / reason, the prerequisites the device saw and default= (the launcher's marker). Malformed
+    rows fail."""
     rows = []
     for line in trace.splitlines():
         if not line.startswith('taa_thin_region_source '):
             continue
         row = fields(line)
         assert row.get('requested') in THIN_REGION_SOURCES and row.get('configured') in THIN_REGION_SOURCES, line
-        assert row.get('reason') in ('ok', 'thin_region_off', 'thin_vote_off', 'program'), line
+        assert row.get('reason') in ('ok', 'thin_region_off', 'thin_vote_off', 'program', 'screen_refused_camera_gate'), line
+        assert row.get('default') in ('0', '1'), line
+        assert not (row['reason'] == 'screen_refused_camera_gate') or (row['requested'] == 'screen' and row['camera_gate'] == '1'), line
+        assert not (row['configured'] == 'screen' and row.get('camera_gate') == '1'), line  # screen is refused under the camera gate
         assert (row['reason'] == 'ok') == (row['configured'] == row['requested']), line  # a refusal always configures both
         assert row['reason'] == 'ok' or row['configured'] == 'both', line
         for key in ('thin_vote', 'twins', 'camera_gate'):
@@ -4096,8 +4099,9 @@ def thin_region_source_rows(trace):
 
 def validate_thin_vote(name, text, trace, directory, env):
     """The thinvote script (motion_output_thin_vote_inc.h): RT2 .a per subset from the script's seam readback, the pixel
-    ABI's c218, the tests target's b from the DLL's taa_mask dumps classified by the same frame's depth dump, and the
-    DLL's thin_vote lines (the hostile script: the refusal counters, the retry, the Reset, the releases while queued)."""
+    ABI's c218, the flag of each frame from the DLL's taa_age dumps (the region hold is L, the jitter period, exactly where the
+    folded resolve flagged the pixel that frame) classified by the same frame's depth dump, and the DLL's thin_vote lines
+    (the hostile script: the refusal counters, the retry, the Reset, the releases while queued)."""
     import struct
     vote = env['X3M_TAA_THIN_VOTE'] == 'on'
     near = env['X3M_FIXTURE_THIN_SCALE'] == 'near'
@@ -4109,8 +4113,9 @@ def validate_thin_vote(name, text, trace, directory, env):
     if source is None:
         assert not source_rows, (name, source_rows)
     else:
-        assert [(r['requested'], r['configured'], r['reason'], r['thin_vote'], r['twins'], r['camera_gate']) for r in source_rows] == \
-            [(source, source, 'ok', '1', '1', '1')], (name, source_rows)
+        want = ('screen', 'both', 'screen_refused_camera_gate') if source == 'screen' else (source, source, 'ok')
+        assert [(r['requested'], r['configured'], r['reason'], r['thin_vote'], r['twins'], r['camera_gate'], r['default']) for r in source_rows] == \
+            [want + ('1', '1', '1', env.get('X3M_TAA_THIN_REGION_SOURCE_DEFAULT', '0'))], (name, source_rows)
     mode = fields([l for l in lines if l.startswith('THIN_MODE ')][0])
     assert mode['vote'] == str(int(vote)) and abs(float(mode['strut_px']) - (5.6 if near else 1.4)) < 1e-3, (name, mode)
     rt2 = {(int(r['step']), r['subset']): r for r in (fields(l) for l in lines if l.startswith('THIN_RT2 '))}
@@ -4164,15 +4169,12 @@ def validate_thin_vote(name, text, trace, directory, env):
     frames = [fields(l) for l in trace.splitlines() if l.startswith('thin_vote_frame ')]
     absent = [l for l in trace.splitlines() if l.startswith('thin_vote_absent ') or l.startswith('thin_vote_tests ')]
     holds = [fields(l) for l in trace.splitlines() if l.startswith('motion_output_taa_history_taps ')]
-    assert holds and holds[0]['region_hold'] == '1', (name, holds)  # the taa_mask dump is the tests target (A')
+    assert holds and holds[0]['region_hold'] == '1' and holds[0]['mask_targets'] == '0', (name, holds)  # A' with the mask fold: no mask target
     if vote:
         assert len(configured) == 1 and configured[0]['enabled'] == '1' and configured[0]['requested'] == '1', (name, configured)
         assert configured[0]['default'] == ('1' if env.get('X3M_TAA_THIN_VOTE_DEFAULT') == '1' else '0'), (name, configured)
         assert len(modes) == 1 and modes[0]['enabled'] == '1' and modes[0]['lane'] == '1' and modes[0]['cache'] == '1', (name, modes)
-        if source == 'screen':  # the plain tests program by choice: one row naming it, the vote itself runs on
-            assert len(absent) == 1 and fields(absent[0]).get('reason') == 'screen_source' and absent[0].startswith('thin_vote_absent '), (name, absent)
-        else:
-            assert not absent, (name, absent)
+        assert not absent, (name, absent)  # the folded resolve reads the vote (screen is refused under the camera gate: a both run)
         assert len(frames) >= THIN_VOTE_FRAMES, (name, len(frames))
         last = frames[-1]
         # missed splits into its causes on every row; deferred_cap is dropped under its explicit name. The runner sets
@@ -4217,11 +4219,22 @@ def validate_thin_vote(name, text, trace, directory, env):
         assert [(c['requested'], c['enabled'], c['default']) for c in configured] == [('0', '0', '0')], (name, configured)
         assert not modes and not frames and not absent, (name, modes, frames, absent)
         checks += 1
-    # The tests target's b: every voting subset's pixels flagged (254/255 of the code, + the class bit), none elsewhere;
-    # panel pixels further than 4 px from the fill (its silhouette corners are fragmented lines) never.
-    depths, masks = thin_vote_dumps(directory, 'depth', 'rgba32f'), thin_vote_dumps(directory, 'taa_mask', 'bgra8')
+    # The flag of each frame (the mask fold: the folded resolve's region hold in the fraction of the age target is L exactly where
+    # it flagged the pixel that frame; 255 flagged, 0 not): every voting subset's pixels flagged, none elsewhere; panel pixels
+    # further than 4 px from the fill (its silhouette corners are fragmented lines) never.
+    depths, masks = thin_vote_dumps(directory, 'depth', 'rgba32f'), thin_vote_dumps(directory, 'taa_age', 'r32f')
     common = sorted(set(depths) & set(masks))
-    assert len(common) >= (3 if hostile else 4) and set(common) <= set(range(THIN_VOTE_FRAMES)), (name, sorted(depths), sorted(masks))  # hostile: frame 4 has no scene end (no mask), the Reset ends the capture window
+    assert len(common) >= (3 if hostile else 4) and set(common) <= set(range(THIN_VOTE_FRAMES)), (name, sorted(depths), sorted(masks))  # hostile: frame 4 has no scene end (no resolve), the Reset ends the capture window
+    period = JITTER_SAMPLES  # FrameInputs::thin_region_hold_frames: the route's jitter period
+
+    def flag_bytes(path):
+        ages = struct.unpack(f'<{THIN_VOTE_SIZE * THIN_VOTE_SIZE}f', path.read_bytes())
+        out = []
+        for age in ages:
+            v = abs(age)
+            held = (v - int(v)) * 65536 if v <= 65 else 0
+            out.append(255 if round(held) % 128 == period else 0)
+        return out
     size = THIN_VOTE_SIZE
     classes = {'S': .25, 'P': .26}
     if hostile:
@@ -4230,8 +4243,8 @@ def validate_thin_vote(name, text, trace, directory, env):
     unvoted_flagged = {}  # per frame: flagged tests-target pixels whose lane .a carries no vote (the search's own flags)
     for frame in common:
         lanes = struct.unpack(f'<{size * size * 4}f', depths[frame].read_bytes())
-        mask = masks[frame].read_bytes()
-        assert len(mask) == size * size * 4, (name, frame)
+        mask = flag_bytes(masks[frame])
+        assert len(mask) == size * size, (name, frame)
         fill = [lanes[p * 4] < -.5 for p in range(size * size)]
         near_fill = [False] * (size * size)
         for y in range(size):
@@ -4243,11 +4256,11 @@ def validate_thin_vote(name, text, trace, directory, env):
         report = {}
         for subset, depth in classes.items():
             pixels = [p for p in range(size * size) if depth - .0015 < lanes[p * 4] < depth + .0015 and not (subset == 'P' and near_fill[p])]
-            blue = [mask[p * 4] for p in pixels]  # BGRA8: byte 0 is b
+            blue = [mask[p] for p in pixels]
             if subset == 'T1' and frame == 0:
                 continue
             assert pixels, (name, frame, subset)
-            flagged = vote and expected_alpha(frame, subset) == 0.0 and source != 'screen'
+            flagged = vote and expected_alpha(frame, subset) == 0.0
             if flagged:
                 assert min(blue) >= 254, (name, frame, subset, sorted(set(blue)))
             else:
@@ -4255,7 +4268,7 @@ def validate_thin_vote(name, text, trace, directory, env):
             report[subset] = {'pixels': len(pixels), 'b_min': min(blue), 'b_max': max(blue)}
             checks += 1
         mask_report[frame] = report
-        unvoted_flagged[frame] = sum(1 for p in range(size * size) if mask[p * 4] >= 254 and not (0 <= lanes[p * 4 + 3] < 1 and 0 <= lanes[p * 4] <= 1))
+        unvoted_flagged[frame] = sum(1 for p in range(size * size) if mask[p] >= 254 and not (0 <= lanes[p * 4 + 3] < 1 and 0 <= lanes[p * 4] <= 1))
         if source == 'vote':  # the vote alone: nothing the route did not vote for is flagged, the fill's silhouette corners included
             assert unvoted_flagged[frame] == 0, (name, frame, unvoted_flagged[frame])
             checks += 1
@@ -6488,10 +6501,6 @@ def main(argv=None):
                        # pre-run212 off behaviour, so the runner pins off; the unmatched-static cases set
                        # node/all in their own env below.
                        X3M_TAA_UNMATCHED_STATIC='0',
-                       # Likewise the DLL defaults X3M_TAA_SENTINEL_STABILISER to 0.7 with the TAA route and the
-                       # thin-region camera gate (run216/run221). No script here sets X3M_TAA_THIN_REGION, so the
-                       # gate never resolves on, but the pin keeps that independent of the DLL default and of an
-                       # inherited shell value; the oracles model the stabiliser off.
                        # Likewise the DLL defaults X3M_TAA_SKY_HISTORY to strict with the TAA route and the exit
                        # reset to 0.25 under strict (Run 68 A, 2026-09-23). The oracles here and the committed case
                        # results model the loose sky history, so the runner pins loose with the reset off; the
@@ -6501,7 +6510,6 @@ def main(argv=None):
                        X3M_TAA_HISTORY_TAPS='5',  # S3 default, pinned; HISTORY_TAPS16_CASE sets 16
                        X3M_TAA_BOX_RESOLUTION='full',  # S4 default (logs nothing), pinned so a shell value cannot reach the DLL; the -thin-hold-half case sets half
                        X3M_FADE_RT2_OWNER='off',  # DLL default off, pinned so a shell value cannot reach the DLL; the -owner cases set on
-                       X3M_TAA_SENTINEL_STABILISER='0',
                        X3M_TELEMETRY_DRAW='1',  # per-draw metrics (gate_us, route_draw_us, ...) are gated behind this switch since a8d4309; the validators require them
                        X3M_FIXTURE_CAMERA='rotate' if camera else 'none', X3M_TAA_SENTINEL=sentinel or 'auto', X3M_FIXTURE_WRAP='0',
                        X3M_MOTION_RT_MODE='lazy' if lazy else 'perdraw', X3M_MOTION_FRAME_LOG='1' if burst else '60',
@@ -6535,7 +6543,7 @@ def main(argv=None):
             env.pop('X3M_SUN_SHADOW_RECEIVER_DEPTH', None)  # the former option: the DLL and the fixtures read no such variable
             env.pop('X3M_TAA_REGION_HOLD', None)  # removed 2026-09-24 (A' only): the DLL logs a stale value; only REGION_HOLD_TWINS set it
             for marker in ('X3M_TAA_THIN_VOTE_DEFAULT', 'X3M_FADE_RT2_OWNER_DEFAULT', 'X3M_LOD_OCCLUSION_DEFAULT', 'X3M_TAA_BOX_RESOLUTION_DEFAULT',
-                           'X3M_ORIGINAL_FILL_DEFAULT', 'X3M_TAA_SENTINEL_STABILISER_DEFAULT'):
+                           'X3M_ORIGINAL_FILL_DEFAULT', 'X3M_TAA_THIN_REGION_SOURCE_DEFAULT'):
                 env.pop(marker, None)  # the launcher's default markers: never inherited, set only by a case (seam-thin-vote-far-on, seam-taa-thin-hold-half)
             env.update(hdr_env)
             if taa:

@@ -131,11 +131,30 @@ float4 luminance : register(c22); // k, current-filter A, alpha history (X3M_THI
 // every pixel (0 where the box pass skipped one). The weight target follows b.
 // X3M_REGION_HOLD (resolve_far_camera_hold.hlsl; A' of docs/architecture/
 // taa-plan-lifted-slot-cap.md section 3 and taa-thin-geometry-alternatives.md
-// section 3.1; as built: docs/verification/temporal-resolve.md "A' region
-// hold"): the camera-gate program without the mask's two dilation draws. s8 is
-// the mask's TESTS target (line_mask_ps.hlsl, c7.z = 0: r = screen openness,
-// g = farw, b = the flag / sentinel-class code, a = camera openness) and the
-// composition the y draw did over its 11x11 / 17x17 windows is done here per
+// section 3.1, with the mask fold of docs/architecture/taa-mask-fold.md; as built:
+// docs/verification/temporal-resolve.md "A' region hold" and "Mask fold"): the
+// camera-gate program. It computes the per-pixel tests the removed tests draw wrote
+// (r = screen openness, g = farw, b = the flag, a = camera openness; each gate
+// quantised to UNORM8 as that target stored it) from its own inputs: s1 is the
+// caller's current depth itself (the four-channel lane: .r depth, .b clip w = view
+// z, .a the thin vote; an R32F depth reads .b = .a = 1, which no constant below
+// consults), s4 the motion. The gates are those of the camera mask (taa-lattice-
+// crawl.md section 32.1): screen openness saturate(1 - (speed - c24.z) * c24.w) of
+// the pixel's own correspondence (the routed motion where its alpha is 1, else the
+// camera path c0..c3 at its depth), camera openness the larger of it and the
+// openness of the routed correspondence measured against that camera path (section
+// 32.3: c8 = the depth / translation term, c9 = its lane form where c9.w = 1 reads
+// 1 / .b; no vote on the sentinel; a non-finite speed reads closed). The camera path
+// here is a variable of its own: cameraUV below stays the rotation-only far-plane
+// path the band term needs. The flag: the thin vote (c10.z = 1: a valid depth whose
+// lane .a is in [0, 1)), else the fragmented-depth search (four 7-tap lines over the
+// lane's .r, two class changes on one line; skipped where c10.y = 1, the vote-only
+// source, the default of the launcher), else the emissive vote (c10.x = E > 0: a
+// routed pixel of valid depth whose luma exceeds E and whose 3x3 luma minimum is
+// below a third of it). farw = saturate((d - c13.x) * c13.y) on a valid depth. COLOR2
+// is the centre lane's .r, the next R32F depth history (bit for bit what the copy
+// draw wrote), on every return. The composition the y draw of the mask chain did
+// over its 11x11 / 17x17 windows is done here per
 // pixel, with two temporal holds carried in the fraction of the age count and
 // read at the same reprojected texel as the count. L = c11.w is the hold length
 // in frames, the jitter period (1..64):
@@ -154,25 +173,34 @@ float4 luminance : register(c22); // k, current-filter A, alpha history (X3M_THI
 //   beyond the camera gate's is the camera's own motion, which must release the
 //   frame the camera stops (the fixture's stop-after-pan row), and every
 //   content-motion closure it would hold is in openC already, so a <= b.
-//   "own" is the smaller of this pixel's tests texel and that of the
+//   "own" is the smaller of this pixel's gates and those of the
 //   nearest-depth 3x3 neighbour whose correspondence the resolve follows (the
-//   dilation below): a background pixel beside a mover closes with it (an
+//   dilation below; computed again at that neighbour from its depth, lane .b and
+//   motion texels): a background pixel beside a mover closes with it (an
 //   unrouted pixel casts no camera vote of its own);
-//   composition: b = max(region * openC, class * S * openC), a = region * openS,
-//   r / g = farw * c11.yz (the mask's farGate.zw), S = c11.x.
+//   composition: b = region * openC, a = region * openS, r / g = farw * c11.yz
+//   (the far components' scales). The sentinel class of the retired sentinel
+//   stabiliser (c11.x) is gone.
 // The fraction is (h + 128 (qC (L + 1) + tC)) / 65536: 16 bits beside counts up
 // to 64, exact in FP32 (h <= 64 in 7 bits, the pair <= 5 L + 4 in 9). The count
 // is floor(|age|), its sign the exit mark as before. A current-only return
 // writes the pixel's own holds (h' = q' = t' = 0: the history that carried them
-// is gone). The box targets (s9 / s10) hold the 7x7 box where the box programs
-// (thin_box*_hold_ps.hlsl) opened them, marked by boxLow.a = 1 (0 where they did
-// not run): the camera term can add strength on the tests texel (a > r) inside
-// the region (this frame's flag, or the previous frame's region hold at the same
-// texel, unreprojected), or the sentinel class with S > 0. Where b > a and the
-// marker is 0 the added strength (b - a) takes the 3x3 clip: the tighter bound.
+// is gone). The box targets (s9 / s10) hold the 7x7 box (or the 8x8 block box of
+// S4) where the box programs opened them, marked by boxLow.a = 1 (0 where they
+// did not run): they open on the previous frame's region hold at the same texel,
+// unreprojected. Where b > a and the marker is 0 (a pixel's first frame in the
+// region, whatever flagged it, or a pixel whose camera term comes from its
+// neighbour) the resolve takes the 7x7 min / max of the weighed finite current
+// colour in place: the full-resolution reference box.
+// X3M_FOLD_TESTS_OUT (fixture only, with X3M_REGION_HOLD): COLOR0 = the tests
+// (r, g, b, a) above and nothing else, for the temporal fixture's oracle.
 #ifdef X3M_REGION_HOLD
 #define X3M_CAMERA_GATE 1
-float4 holdGate : register(c11); // x = S of the sentinel stabiliser, yz = the far components' scales (the mask's c5.zw), w = L, the hold length (frames)
+float4 depthParallax : register(c8); // camera_depth_parallax(): (DX, DY, DW) / m32, m22; xyz = 0 is the far-plane path
+float4 laneParallax : register(c9);  // camera_lane_parallax(): (DX, DY, DW), 1 where s1 is the lane (.b = view z); w = 0: c8 alone
+float4 thinTests : register(c10);    // x = E of the emissive vote (0 off), y = 1: vote-only source (no search), z = 1: the thin vote is cast in the lane's .a
+float4 holdGate : register(c11);     // x unused (0), yz = the far components' scales, w = L, the hold length (frames)
+float4 farGate : register(c13);      // x = d0, y = 1 / (d1 - d0) of farw (0: off)
 #endif
 #ifdef X3M_CAMERA_GATE
 #define X3M_FAR_STABILIZE 1
@@ -186,7 +214,9 @@ sampler2D boxHigh : register(s10);
 #ifdef X3M_LINE_FILTER
 #define X3M_CURRENT_FILTER 1
 #define X3M_FILTER_A luminance.w
+#ifndef X3M_REGION_HOLD
 sampler2D lineMask : register(s8);
+#endif
 #else
 #define X3M_FILTER_A luminance.y
 #endif
@@ -266,8 +296,78 @@ float3 unweigh(float3 c) { return c * (luminance.x > 0 ? 1 / max(1 - luminance.x
 float4 weighColour(float4 c) { return float4(weigh(c.rgb), c.a); } // the 5-tap history's per-block weighing; alpha is never weighed
 #endif
 #ifdef X3M_REGION_HOLD
-// The tests draw's b code (line_mask_ps.hlsl classCode): 1/255 or 1 carries the sentinel class, above 0.5 the flag.
-bool carriesClass(float code) { return code > 0.5 / 255 && (code < 1.5 / 255 || code > 254.5 / 255); }
+// The tests of the removed camera tests draw (line_mask_ps.hlsl with the camera gate, taa-mask-fold.md section 4.2), computed
+// here per pixel. Each gate is quantised to UNORM8 as that target stored it (floor(x * 255 + 0.5): round half up, the UNORM
+// write's nearest except at exact halves), so the holds below see the values the tests target carried.
+float gateQuantise(float v) { return floor(v * 255 + 0.5) * (1.0 / 255); }
+bool thinValid(float v) { return v >= 0 && v <= 1; }
+bool thinSentinel(float v) { return v <= -0.5 && v >= -1e30; }
+// The fragmented-depth search's class test (d is valid; q is compared only when valid, so no NaN reaches the <).
+bool lineBackground(float q, float d) { return thinSentinel(q) || (thinValid(q) && (1 - q) * 1.1 < 1 - d); }
+bool classChange(float a, float b) { return (thinValid(a) && lineBackground(b, a)) || (thinValid(b) && lineBackground(a, b)); }
+// Openness of a gate speed (px/frame) under the shared speed gate c24.zw: a NaN or infinite speed fails the <= and reads
+// closed (0) without relying on how saturate treats a NaN.
+float gateOpenness(float speed) { return speed <= 1e38 ? saturate(1 - (speed - flicker.z) * flicker.w) : 0; }
+// x = camera openness (the tests draw's a), y = screen openness (its r) of the correspondence at `at`: the routed motion where its
+// alpha is 1, else the camera path c0..c3 at the depth (the far plane on the sentinel) with the depth / translation term (c8,
+// or c9 / .b of the lane where c9.w = 1; a valid depth whose .b is not positive stays on the far plane). A routed pixel on the
+// sentinel casts no camera vote (section 32.5), yet a non-finite correspondence still reads closed (speed * 1e-20).
+float2 gateOpen(float2 at, float depth, float viewZ, float4 motion) {
+    const bool routed = options.x > 0.5 && motion.w >= 1 && motion.w <= 1;
+    const bool cameraPath = thinValid(depth) || thinSentinel(depth);
+    float2 pathUV = at;
+    if (cameraPath) {
+        float2 unjittered = at - 0.5 * sizeJitter.xy - sizeJitter.zw;
+        float4 clip = float4(unjittered.x * 2 - 1, 1 - unjittered.y * 2, thinValid(depth) ? depth : 1, 1);
+        float3 previous = float3(dot(reprojection0, clip), dot(reprojection1, clip), dot(reprojection3, clip));
+        if (thinValid(depth)) previous += laneParallax.w > 0.5 ? laneParallax.xyz * (viewZ > 0 ? 1 / viewZ : 0) : depthParallax.xyz * (depth - depthParallax.w);
+        pathUV = float2(previous.x, -previous.y) / max(previous.z, 1e-6) * 0.5 + 0.5 + 0.5 * sizeJitter.xy + sizeJitter.zw;
+    }
+    float2 previousUV = routed ? motion.xy + sizeJitter.zw : pathUV;
+    float screenSpeed = length((previousUV - at) / sizeJitter.xy);
+    float screen = gateOpenness(screenSpeed);
+    float relative = routed ? gateOpenness(thinValid(depth) ? length((previousUV - pathUV) / sizeJitter.xy) : screenSpeed * 1e-20) : 1;
+    return float2(gateQuantise(cameraPath ? max(screen, relative) : screen), gateQuantise(screen));
+}
+// FRAGMENTED: along one of the four 7-tap lines through the pixel the lane's depth changes class at least twice (clamped
+// addressing: a line leaving the frame sees no further change). The first fragmented line ends the search.
+bool fragmentedDepth(float2 at) {
+    [loop] for (int k = 0; k < 4; ++k) {
+        float2 along = (k == 0 ? float2(1, 0) : (k == 1 ? float2(0, 1) : (k == 2 ? float2(1, 1) : float2(1, -1)))) * sizeJitter.xy;
+        float changes = 0, previous = fetch(currentDepth, at - 3 * along).r;
+        [loop] for (int t = -2; t <= 3; ++t) { float next = fetch(currentDepth, at + t * along).r; if (classChange(previous, next)) changes += 1; previous = next; }
+        if (changes >= 2) return true;
+    }
+    return false;
+}
+// Emissive vote (thin-glow-lines.md 8.3 R3), as the tests draw cast it: a ROUTED pixel of valid depth whose own scene luma exceeds
+// E = c10.x and whose 3x3 luma minimum is below a third of it. A non-finite tap (NaN, |L| > 65000) counts 0 at the centre and the
+// limit as a neighbour; the centre is tested first so a pixel below E takes one tap.
+float sceneLuma(float2 at) { return dot(fetch(currentColor, at).rgb, lumaWeights); }
+bool emissiveVote(float2 at, float depth, float alpha) {
+    if (!thinValid(depth) || !(options.x > 0.5)) return false;
+    if (!(alpha >= 1 && alpha <= 1)) return false;
+    float own = sceneLuma(at);
+    if (!((own == own && own <= 65000 && own >= -65000 ? max(own, 0) : 0) > thinTests.x)) return false;
+    float centre = 0, lowest = 65000;
+    [loop] for (int ny = -1; ny <= 1; ++ny) {
+        [loop] for (int nx = -1; nx <= 1; ++nx) {
+            float tap = sceneLuma(at + float2(nx, ny) * sizeJitter.xy);
+            bool finite = tap == tap && tap <= 65000 && tap >= -65000;
+            lowest = min(lowest, finite ? max(tap, 0) : 65000);
+            if (nx == 0 && ny == 0) centre = finite ? max(tap, 0) : 0;
+        }
+    }
+    return centre > thinTests.x && lowest * 3 < centre;
+}
+// The flag: the thin vote (c10.z = 1: a valid depth whose lane .a = 1 - thin is in [0, 1)); else the search (not under the
+// vote-only source, c10.y = 1); else the emissive vote (c10.x > 0). 1 or 0.
+float thinFlag(float2 at, float4 lane, float alpha) {
+    if (thinTests.z > 0.5 && thinValid(lane.r) && lane.a >= 0 && lane.a < 1) return 1;
+    [branch] if (!(thinTests.y > 0.5)) { if (fragmentedDepth(at)) return 1; }
+    [branch] if (thinTests.x > 0) { if (emissiveVote(at, lane.r, alpha)) return 1; }
+    return 0;
+}
 // The camera gate's L-frame peak hold: `own` this frame's openness, `held` the stored pair q (L + 1) + t of the reprojected
 // texel (q the held closed quarters 0..4, t the frames it still holds 0..L; the +0.5 keeps the floor clear of the integers
 // whatever the rounding of the reciprocal). Returns the openness bound the hold leaves; `code` receives the pair to store.
@@ -325,10 +425,17 @@ float loopWeight(float4 weights, int index) {
     return index == 0 ? weights.x : (index == 1 ? weights.y : (index == 2 ? weights.z : weights.w));
 }
 #ifdef X3M_AGE_WEIGHT
+#ifdef X3M_REGION_HOLD
+// COLOR2: the next R32F depth history, the centre lane's .r (set first in main), on every return.
+struct ResolveOutput { float4 color : COLOR0; float4 age : COLOR1; float4 depth : COLOR2; };
+static float foldDepth;
+ResolveOutput emit(float4 color, float age) { ResolveOutput o; o.color = color; o.age = age; o.depth = foldDepth; return o; }
+#else
 struct ResolveOutput { float4 color : COLOR0; float4 age : COLOR1; };
 // The age target is R32F: only .x is stored, so the count is written to every lane (one
 // instruction fewer than a float4 with constant lanes; the stored bytes are the same).
 ResolveOutput emit(float4 color, float age) { ResolveOutput o; o.color = color; o.age = age; return o; }
+#endif
 ResolveOutput main(float2 uv : TEXCOORD0) {
 #else
 #define emit(color, age) (color)
@@ -336,11 +443,20 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
 #endif
     // The mask-snapshot modes (options.z) live in resolve_snapshot.hlsl.
 #ifdef X3M_REGION_HOLD
-    // A': this pixel's tests texel. Its own holds are what a current-only return writes.
-    float4 tests = fetch(lineMask, uv);
-    float flagged = tests.b > 0.5 ? holdGate.w : 0;
+    // A' with the mask fold: this pixel's tests (the centre lane texel and motion, both gates, farw, the flag). Its own holds
+    // are what a current-only return writes.
+    float4 lane = fetch(currentDepth, uv);
+    foldDepth = lane.r;
+    float4 ownMotion = fetch(motionOverride, uv);
+    float2 own = gateOpen(uv, lane.r, lane.b, ownMotion); // x = camera openness, y = screen openness
+    float farw = gateQuantise(thinValid(lane.r) ? saturate((lane.r - farGate.x) * farGate.y) : 0);
+    float flag = thinFlag(uv, lane, ownMotion.w);
+#ifdef X3M_FOLD_TESTS_OUT
+    return emit(float4(own.y, farw, flag, own.x), 0);
+#endif
+    float flagged = flag > 0.5 ? holdGate.w : 0;
     float freshC;
-    closureHold(tests.a, 0, freshC);
+    closureHold(own.x, 0, freshC);
     float fresh = holdCode(flagged, freshC);
 #endif
     float4 current = fetch(currentColor, uv);
@@ -349,7 +465,11 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     // The output alpha is the current alpha (the 8-bit main target keeps
     // whatever the game wrote there); history alpha is never blended.
     float alpha = current.a == current.a ? current.a : 1;
+#ifdef X3M_REGION_HOLD
+    float depth = lane.r;
+#else
     float depth = fetch(currentDepth, uv).r;
+#endif
     // Depth-sentinel policy (options.w): a negative current depth marks a pixel
     // no routed opaque draw wrote (background, particles, unknown programs).
     // Policy 1 keeps it current-only: with the identity matrix the route
@@ -389,6 +509,9 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     // "silhouette", corner pixels).
     float2 dilate = 0;
     float nearest = depth;
+#ifdef X3M_REGION_HOLD
+    float nearViewZ = lane.b; // the winner's lane .b: its camera path for the neighbour gate below
+#endif
 #if defined(X3M_THIN_CLIP) && !defined(X3M_FAR_STABILIZE)
 #define X3M_SENTINEL_SOFT_CLIP 1
     // thin: the 3x3 (centre included) holds both a valid depth and the sentinel.
@@ -407,10 +530,16 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     [loop] for (int ky = -1; ky <= 1; ++ky) {
         [loop] for (int kx = -1; kx <= 1; ++kx) {
             if (X3M_OFF_CENTRE(kx, ky)) {
+#ifdef X3M_REGION_HOLD
+                float4 neighborTexel = fetch(currentDepth, uv + float2(kx, ky) * sizeJitter.xy);
+                float neighbor = neighborTexel.r;
+                if (neighbor >= 0 && neighbor < nearest) { nearest = neighbor; dilate = float2(kx, ky); nearViewZ = neighborTexel.b; }
+#else
                 float neighbor = fetch(currentDepth, uv + float2(kx, ky) * sizeJitter.xy).r;
                 // neighbor >= 0 && neighbor < nearest is validDepth(neighbor) && neighbor < nearest here:
                 // nearest starts at the validated centre depth (<= 1) and only falls, and a NaN fails >=.
                 if (neighbor >= 0 && neighbor < nearest) { nearest = neighbor; dilate = float2(kx, ky); }
+#endif
 #ifdef X3M_SENTINEL_SOFT_CLIP
                 if (validDepth(neighbor)) sawValid = true;
                 if (neighbor <= -0.5 && neighbor >= -1e30) sawSentinel = true;
@@ -419,6 +548,9 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
         }
     }
     float2 dilatedUV = uv + dilate * sizeJitter.xy;
+#ifdef X3M_REGION_HOLD
+    float besideDepth = nearest; // the winner's raw depth (dilate != 0 only: then valid) before the alpha scaling below
+#endif
     // The dilated band of the sky: a far-plane pixel a valid neighbour below 1
     // won the dilation for (nearest < 1 here, before the alpha scaling below;
     // its own path, the fade-band draw included, keeps nearest == 1). Read by
@@ -464,7 +596,11 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
         // is the dilated band; a routed sentinel-depth draw beside closer
         // geometry (a fade-band square, an engine glow) keeps the geometry
         // path it takes today. (A NaN alpha clears the band: fail-open.)
+#ifdef X3M_REGION_HOLD
+        band *= step(ownMotion.w, 0.5);
+#else
         band *= step(fetch(motionOverride, uv).w, 0.5);
+#endif
         // A routed correspondence (alpha 1) is never the strict sky path: nearest
         // drops to 0 for it and stays for alpha 0 / -1 (sge + mul; a NaN alpha
         // gives 0 and rejects below anyway). nearest's only readers after this
@@ -751,13 +887,20 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     float held = ageHeld <= 65 ? frac(ageHeld) * 65536 : 0; // <=: a NaN reads as no hold (the file's compare rule)
     float heldC = floor(held * (1.0 / 128));
     float regionHold = flagged > 0 ? flagged : max(held - 128 * heldC - 1, 0);
-    float4 beside = fetch(lineMask, dilatedUV); // the nearest-depth neighbour's tests texel (this pixel's own when it is nearest)
-    float ownS = min(tests.r, beside.r), ownC = min(tests.a, beside.a);
+    // The nearest-depth neighbour's gates, from its own depth, lane .b and motion texels (this pixel's own when it is nearest),
+    // at its texel centre: at the frame's edge the dilation can win through a clamped tap outside the frame, whose texels are
+    // the edge texel's, and the removed tests draw evaluated that texel at its own centre.
+    float2 beside = own;
+    [branch] if (any(dilate != 0)) {
+        float2 besideUV = clamp(dilatedUV, 0.5 * sizeJitter.xy, 1 - 0.5 * sizeJitter.xy);
+        beside = gateOpen(besideUV, besideDepth, nearViewZ, fetch(motionOverride, besideUV));
+    }
+    float ownS = min(own.y, beside.y), ownC = min(own.x, beside.x);
     float codeC;
     float openC = min(ownC, closureHold(ownC, heldC, codeC));
     float openS = min(ownS, openC);
     float region = regionHold > 0 ? 1 : 0;
-    float4 stabilise = float4(tests.gg * holdGate.yz, max(region * openC, (carriesClass(tests.b) ? holdGate.x : 0) * openC), region * openS);
+    float4 stabilise = float4(farw.xx * holdGate.yz, region * openC, region * openS);
     float holds = holdCode(regionHold, codeC);
 #endif
     // From here on every colour is in the weighted domain (identity at k = 0);
@@ -801,6 +944,9 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
             }
         }
     }
+#ifdef X3M_REGION_HOLD
+    float3 low3 = low, high3 = high; // the raw 3x3 min / max: the inner part of the in-place 7x7 box below
+#endif
     mean /= count;
     float3 sigma = sqrt(max(square / count - mean * mean, 0));
     low = max(low, mean - clipGamma * sigma);
@@ -822,10 +968,28 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     // The strength the camera term added (b - a) takes the history clipped to the current 7x7 box; the screen gate's own share (a) the unclipped one.
     float3 clipped = clamp(old, low, high);
 #ifdef X3M_REGION_HOLD
-    // The box programs mark the texels they computed (boxLow.a = 1, thin_box_ps.hlsl X3M_REGION_HOLD_MASK); elsewhere the added
-    // strength takes the 3x3 clip (a select: the box read is exact where marked).
+    // The box programs mark the texels they computed (boxLow.a = 1, thin_box_ps.hlsl X3M_REGION_HOLD_MASK and the S4 pair).
+    // Elsewhere, where the camera term adds strength (b > a: a pixel's first frame in the region, a pixel whose camera term
+    // comes from its neighbour), the 7x7 min / max of the weighed finite current colour is taken here:
+    // the 40 taps around the raw 3x3 already in low3 / high3 (min / max are exact and order-free, so it is the full-resolution
+    // box program's set of values, held in FP32 here where the box targets store FP16: at k > 0 the two bounds can differ by an
+    // FP16 rounding of the weighed colour, so a pixel that takes this box at one resolution and the FP16 block box at the other
+    // can differ in its last bits). Where b = a the term is 0 * finite and the 3x3 clip stands in.
     float4 boxLowTexel = fetch(boxLow, uv);
-    float3 boxed = boxLowTexel.a > 0.5 ? clamp(old, boxLowTexel.rgb, fetch(boxHigh, uv).rgb) : clipped;
+    float3 boxed = clipped;
+    [branch] if (boxLowTexel.a > 0.5) boxed = clamp(old, boxLowTexel.rgb, fetch(boxHigh, uv).rgb);
+    else [branch] if (stabilise.b > stabilise.a) {
+        float3 low7 = low3, high7 = high3;
+        [loop] for (int by = -3; by <= 3; ++by) {
+            [loop] for (int bx = -3; bx <= 3; ++bx) {
+                if (abs(bx) > 1 || abs(by) > 1) {
+                    float3 neighbor = fetch(currentColor, uv + float2(bx, by) * sizeJitter.xy).rgb;
+                    if (finiteColor(neighbor)) { neighbor = weigh(neighbor); low7 = min(low7, neighbor); high7 = max(high7, neighbor); }
+                }
+            }
+        }
+        boxed = clamp(old, low7, high7);
+    }
 #else
     float3 boxed = clamp(old, fetch(boxLow, uv).rgb, fetch(boxHigh, uv).rgb);
 #endif

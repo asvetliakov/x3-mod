@@ -1,0 +1,21 @@
+THIN_REGION_CAMERA_FORWARD dz=0.225018 camera_rms_codes=1.525->1.511 camera_over_screen=0.0934->0.0924
+BOX_HALF_ORACLE scene=sentinel_rest retired
+BOX_HALF_ORACLE scene=sentinel_reversing retired
+BOX_HALF_ORACLE scene=sentinel_emitter retired
+BOX_HALF_ORACLE scene=sentinel_nonfinite_block retired
+BOX_HALF_CONTAINMENT scene=arm_rest frames=128 compared_px=0->59541 half_only_px=0->9543
+BOX_HALF_CONTAINMENT scene=arm_drift_0.30 frames=128 compared_px=0->60395 half_only_px=0->8689
+BOX_HALF_CONTAINMENT scene=pan_0.50 frames=128 compared_px=130848->129824
+BOX_HALF_CONTAINMENT scene=pan_stale_patch frames=128 compared_px=130272->129816 half_only_px=224->228
+BOX_HALF_CONTAINMENT scene=pan_box_domain_k0.5_nonfinite frames=128 compared_px=130720->129697 output_identical=1->0
+BOX_HALF_CONTAINMENT scene=pan_stop frames=96 compared_px=65312->97056
+BOX_HALF_CONTAINMENT scene=sentinel_rest frames=128 retired
+BOX_HALF_CONTAINMENT scene=sentinel_reversing frames=128 retired
+BOX_HALF_CONTAINMENT scene=sentinel_emitter frames=26 retired
+BOX_HALF_CONTAINMENT scene=sentinel_emitter_silhouette frames=26 retired
+BOX_HALF_CONTAINMENT scene=sentinel_tap_above_e_fp32 frames=32 retired
+BOX_HALF_CONTAINMENT scene=sentinel_nonfinite_block frames=32 retired
+THIN_REGION_HOLD_FADE_OWNER frames=64 strength=0.70->None oracle_error=0.005859->0.004395
+MOTE_STREAK sky=flicker value=2.00 frames=34 trail_beyond_3px_max=0.688477->0.617188
+MOTE_STREAK sky=dark value=0.80 frames=34 overlap_output_over_current=0.6551->1.0000 leading_output_over_current=0.3669->1.0000
+MOTE_STREAK sky=flicker_hull value=2.00 frames=34 trail_beyond_3px_max=1.521484->1.419434

@@ -2,22 +2,22 @@
 // form (b > a on the dilated chain's composed mask) was removed with that chain (2026-09-24, A' only).
 // 7x7 min / max box of the current colour for the camera-relative thin-region
 // gate (resolve.hlsl X3M_CAMERA_GATE; docs/architecture/taa-lattice-crawl.md
-// section 32.1). Drawn by TemporalPass after the mask draws and before the
-// resolve into two owned A16B16G16R16F targets, COLOR0 the minimum and COLOR1
-// the maximum (rgb; alpha 1), which the resolve reads at s9 / s10. s0 = the
-// current colour (the resolve's own input), s8 = the final mask: a pixel whose
-// camera-gated strength b does not exceed its screen-gated strength a is
-// skipped (the resolve never reads its texels). Every tap is weighed exactly as
-// the resolve weighs its clip statistics (c22.x = k), non-finite taps are
-// skipped (|v| <= c6.z, the resolve's HDR limit), and taps outside the frame
-// repeat the edge texel (clamp): the box is the set of colours present in the
-// current 7x7, in the resolve's domain. c4 = 1 / size. Point / clamp, one level.
-// X3M_REGION_HOLD_MASK (thin_box_hold_ps.hlsl; A', resolve.hlsl X3M_REGION_HOLD): s8 is the mask's
-// TESTS target (r = screen openness, a = camera openness, b = the flag / class code) and the resolve composes the
-// region itself, so the box opens where the tests texel lets the camera term add strength: camera openness above screen openness (a > r) inside the region. Computed texels are
-// marked COLOR0.a = 1 (0 elsewhere), which the resolve reads before using the box; it takes the 3x3 clip where unmarked.
+// section 32.1). Drawn by TemporalPass before the resolve into two owned
+// A16B16G16R16F targets, COLOR0 the minimum and COLOR1 the maximum (rgb), which
+// the resolve reads at s9 / s10. s0 = the current colour (the resolve's own
+// input). Every tap is weighed exactly as the resolve weighs its clip statistics
+// (c22.x = k), non-finite taps are skipped (|v| <= c6.z, the resolve's HDR
+// limit), and taps outside the frame repeat the edge texel (clamp): the box is the
+// set of colours present in the current 7x7, in the resolve's domain. c4 = 1 /
+// size. Point / clamp, one level.
+// X3M_REGION_HOLD_MASK (thin_box_hold_ps.hlsl; A' with the mask fold, resolve.hlsl X3M_REGION_HOLD and
+// docs/architecture/taa-mask-fold.md section 4.3): the box opens on the previous frame's region hold at the same texel (s7,
+// unreprojected: the age target the resolve wrote). A pixel's first frame in the region (a new flag of any source: search,
+// vote or emissive) is not open here; the resolve takes the same 7x7 in place there. The same-frame thin vote of the design
+// is not read: its 16-byte lane fetch per gate test cost 1.7 ms in the half-resolution pair at 5120x1440 (FOLD_TIMING), and
+// the in-place box gives those pixels the reference box. Computed texels are marked COLOR0.a = 1 (0 elsewhere), which the
+// resolve reads before using the box.
 sampler2D currentColor : register(s0);
-sampler2D lineMask : register(s8);
 float4 sizeJitter : register(c4);
 float4 rejection : register(c6);
 float4 luminance : register(c22);
@@ -27,28 +27,24 @@ float4 fetch(sampler2D s, float2 uv) { return tex2Dlod(s, float4(uv, 0, 0)); }
 bool finiteColor(float3 v) { return all(v == v) && all(abs(v) <= rejection.z); }
 float3 weigh(float3 c) { return c * (luminance.x > 0 ? 1 / (1 + luminance.x * lumaFloored(c)) : 1); }
 #ifdef X3M_REGION_HOLD_MASK
-// Region membership at a texel: this frame's flag (b code above 0.5), or the previous frame's region hold at the same texel
-// (s7, the age target the resolve wrote last frame, unreprojected: one frame late at the region's moving edge, where the
-// resolve then takes the 3x3 clip; resolve.hlsl X3M_REGION_HOLD, the hold in the low 7 bits of the 16-bit fraction).
 sampler2D previousAge : register(s7);
-bool inRegion(float4 m, float2 uv) {
-    if (m.b > 0.5) return true;
-    float v = abs(tex2Dlod(previousAge, float4(uv, 0, 0)).r);
+// The previous frame's region hold at the same texel (the age target the resolve wrote last frame, the hold in the low 7 bits of
+// the 16-bit fraction; resolve.hlsl X3M_REGION_HOLD). A NaN or a count above 65 reads as no hold.
+bool heldRegion(float2 uv) {
+    float v = abs(fetch(previousAge, uv).r);
     float held = v <= 65 ? frac(v) * 65536 : 0;
     return held - 128 * floor(held * (1.0 / 128)) > 0;
 }
-bool boxOpen(float4 m, float2 uv) { return m.a > m.r && inRegion(m, uv); }
-#define X3M_SKIPPED_ALPHA 0
+bool boxOpen(float2 uv) { return heldRegion(uv); }
 #else
 #error "include body of thin_box_hold_ps.hlsl only: the ungated box program was removed with the dilated chain"
 #endif
 struct BoxOutput { float4 low : COLOR0; float4 high : COLOR1; };
 BoxOutput main(float2 uv : TEXCOORD0) {
     BoxOutput o;
-    o.low = float4(0, 0, 0, X3M_SKIPPED_ALPHA);
+    o.low = float4(0, 0, 0, 0);
     o.high = float4(0, 0, 0, 1);
-    float4 mask = fetch(lineMask, uv);
-    [branch] if (boxOpen(mask, uv)) {
+    [branch] if (boxOpen(uv)) {
         float3 low = rejection.z, high = -rejection.z;
         [loop] for (int ny = -3; ny <= 3; ++ny) {
             [loop] for (int nx = -3; nx <= 3; ++nx) {
@@ -59,10 +55,7 @@ BoxOutput main(float2 uv : TEXCOORD0) {
                 }
             }
         }
-        o.low.rgb = low;
-#ifdef X3M_REGION_HOLD_MASK
-        o.low.a = 1; // computed: the resolve may use this box
-#endif
+        o.low = float4(low, 1); // computed: the resolve may use this box
         o.high.rgb = high;
     }
     return o;

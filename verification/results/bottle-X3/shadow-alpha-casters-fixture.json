@@ -10,9 +10,9 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "binaries": {
-  "verification/probe/build/motion_output_fixture.exe": "4a871f265d16fd97b1bc4e3a04f2713c59bf635337269caa61da335f66799338",
-  "verification/probe/build/motion-output-seam/d3d9.dll": "ffa0120ed2cadd4e71a85e4577e6adce34c6a9512c7e305fe0f23fc09fd555a1",
-  "build/d3d9.dll": "c459a5a07d17c6a43c533a13703eeb50a62c8e1fb2918de05c6b84288e6426ed"
+  "verification/probe/build/motion_output_fixture.exe": "8dc6737d742bb0ba788b4a58177517d782befe509d326a543e8c41c9fcd10450",
+  "verification/probe/build/motion-output-seam/d3d9.dll": "55076114a89ad8a8d73c5d7413188218bbee7834d5075bae9f087560e8f97dc9",
+  "build/d3d9.dll": "a1a7f81cb37f893a74740750f9fdb02b35aa3233e1676b32632f97de50b9b4cb"
  },
  "checks": 26,
  "maps": {
@@ -188,8 +188,8 @@
  },
  "half_shadow_fraction": 0.5,
  "exit": 0,
- "directory": "verification/probe/build/motion-output-shadow-alpha-casters-20260924-214623-131816",
- "trace_sha256": "b8251cba027f95614508a4dfd44c7ba9eafafc3f36dae3e51cf1e8c47ea8a4a0",
- "dll_sha256": "ffa0120ed2cadd4e71a85e4577e6adce34c6a9512c7e305fe0f23fc09fd555a1",
- "exe_sha256": "4a871f265d16fd97b1bc4e3a04f2713c59bf635337269caa61da335f66799338"
+ "directory": "verification/probe/build/motion-output-shadow-alpha-casters-20260925-034228-412719",
+ "trace_sha256": "b93d860ff278d5028b00d7c2d44aec0081d0de57d565a332db58bf98404813d8",
+ "dll_sha256": "55076114a89ad8a8d73c5d7413188218bbee7834d5075bae9f087560e8f97dc9",
+ "exe_sha256": "8dc6737d742bb0ba788b4a58177517d782befe509d326a543e8c41c9fcd10450"
 }

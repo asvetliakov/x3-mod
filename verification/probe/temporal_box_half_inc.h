@@ -8,13 +8,13 @@
 //   inside one history.
 //   BOX_HALF_CONTAINMENT: every standard scene run twice, full and half, with the box targets read back each frame: where the
 //   full-resolution box was computed, the half-resolution block texel is computed and its bounds contain the full ones
-//   channel by channel (no tolerance); where only the half-resolution one was computed it contains the pixel's own 3x3
-//   (the clip the resolve takes there at full resolution). Rest, drift, the pan, the stale patch, the box domain (k = 0.5,
-//   a non-finite tap), the sentinel facets at rest and under a reversing pan, the emitter crossing the sky, the stop after a pan.
-//   BOX_HALF_ORACLE / _RIPPLE / _PAN_STOP / _STALE / _EMITTER: the half-resolution runs against the CPU oracle with the block
-//   box (the thin-region bounds), and the rest ripple, stop-after-pan, stale-ghost and emitter rows within their bounds.
-//   BOX_HALF_TIMING: the box stage alone (TaaBox sub-pass boundaries, event-query drained) at both resolutions on the
-//   all-unrouted-sentinel pan frame at 1280x768 and 5120x1440: the fixture's CPU wall clock, not GPU or game time.
+//   channel by channel (no tolerance); where only the half-resolution one was computed it contains the pixel's own 7x7 (the
+//   box the resolve computes in place there at full resolution since the mask fold). Rest, drift, the pan, the stale patch,
+//   the box domain (k = 0.5, a non-finite tap), the stop after a pan. At rest the fold's gate opens the box on the held
+//   region, where the camera term adds nothing (b = a): the two runs are identical bit for bit.
+//   BOX_HALF_ORACLE / _RIPPLE / _PAN_STOP / _STALE: the half-resolution runs against the CPU oracle with the block box (the
+//   thin-region bounds), and the rest ripple, stop-after-pan and stale-ghost rows within their bounds. (The sentinel and
+//   emitter rows went with the sentinel stabiliser; the timing moved to FOLD_TIMING.)
 namespace box_half {
 constexpr UINT S=EdgeScene::S;
 using region_hold::Oracle;using region_hold::oracle;
@@ -63,15 +63,14 @@ void state_cases(EdgeScene& s,const DWORD* resolver){
     // Half resolution: the box targets are S/2 x S/2; hostile state (c12 included) restored.
     check("box half run",pass.run(in,&out));UINT bw=0,bh=0;read_fp16(d,out.box_low,bw,bh);
     const bool halfRun=pass.diagnostics().box_half&&std::strcmp(pass.diagnostics().box_resolution_reason,"half")==0&&bw==S/2&&bh==S/2;
-    in.sentinel_strength=.7f;check("box half configure sentinel",pass.configure_sentinel());
-    const float junk[4]={9,8,7,6};for(UINT reg:{0u,4u,6u,11u,12u,22u,23u,24u})check("box half hostile constant",d->SetPixelShaderConstantF(reg,junk,1));
+    const float junk[4]={9,8,7,6};for(UINT reg:{0u,4u,6u,8u,9u,10u,11u,12u,13u,22u,23u,24u})check("box half hostile constant",d->SetPixelShaderConstantF(reg,junk,1));
     for(UINT slot:{0u,1u,2u,3u,7u,8u,9u,10u})check("box half hostile texture",d->SetTexture(slot,s.wave.p));
     check("box half hostile CWE1",d->SetRenderState(D3DRS_COLORWRITEENABLE1,0));{D3DVIEWPORT9 odd{1,2,7,5,0,1};check("box half hostile viewport",d->SetViewport(&odd));}
-    {Snapshot before(d);check("box half hostile run",pass.run(in,&out));before.equals(d,"half-resolution box run restores c0..c7, c11, c12, c22..c24, samplers 0..3 and 7..10, RT1, COLORWRITEENABLE1 and the viewport");}
+    {Snapshot before(d);check("box half hostile run",pass.run(in,&out));before.equals(d,"half-resolution box run restores c0..c13, c22..c24, samplers 0..3 and 7..10, RT1, RT2, COLORWRITEENABLE1 and the viewport");}
     const bool hostileHalf=pass.diagnostics().box_half;
-    // Draws of a half run with the stabiliser: tests (1), rows (2), columns (3), resolve (4).
+    // Draws of a half run: rows (1), columns (2), resolve (3).
     bool faults=true;
-    for(unsigned call:{2u,3u}){Output failed;{Fault fault(d,call);faults=faults&&pass.run(in,&failed)==E_FAIL&&!failed.color&&!pass.diagnostics().history_valid;}
+    for(unsigned call:{1u,2u}){Output failed;{Fault fault(d,call);faults=faults&&pass.run(in,&failed)==E_FAIL&&!failed.color&&!pass.diagnostics().history_valid;}
         check("box half recovery",pass.run(in,&out));faults=faults&&out.color&&!out.used_history&&pass.diagnostics().box_half;}
     // Back to full and to half inside one history: the targets change size, the history is kept.
     check("box half continues",pass.run(in,&out));check("box half to full",pass.configure_box_resolution(1));check("box half full run",pass.run(in,&out));read_fp16(d,out.box_low,bw,bh);
@@ -100,7 +99,7 @@ void state_cases(EdgeScene& s,const DWORD* resolver){
         for(IDirect3DTexture9* t:{colour.p,depth.p,motion.p}){Com<IDirect3DSurface9> level;check("odd level",t->GetSurfaceLevel(0,&level.p));s.target(level.p);check("odd clear",d->Clear(0,nullptr,D3DCLEAR_TARGET,t==colour.p?D3DCOLOR_ARGB(255,64,64,64):0,1,0));}
         s.target(s.colorSurface.p);
         TemporalPass oddPass;check("odd initialize",oddPass.initialize(d,nullptr,resolver));check("odd configure far",oddPass.configure_far());check("odd configure box",oddPass.configure_box_resolution(2));
-        FrameInputs o=in;o.color=colour.p;o.current_depth=depth.p;o.motion=motion.p;o.width=o.height=O;o.sentinel_strength=0;
+        FrameInputs o=in;o.color=colour.p;o.current_depth=depth.p;o.motion=motion.p;o.width=o.height=O;
         check("odd run",oddPass.run(o,&out));read_fp16(d,out.box_low,bw,bh);
         odd=oddPass.diagnostics().region_hold&&!oddPass.diagnostics().box_half&&std::strcmp(oddPass.diagnostics().box_resolution_reason,"odd_size")==0&&bw==O;}
     std::printf("BOX_HALF_STATE settings=%u refused_program_full_identical=%u half_targets=%u hostile_half=%u failed_draws=%u toggles_keep_history=%u targets_refused_full=%u rearmed=%u odd_size_full=%u\n",
@@ -124,8 +123,9 @@ Containment containment(const FarRun& full,const FarRun& half){
             double lo[3],hi[3];bool reference=fullMarked;
             if(fullMarked){++c.compared;if(!halfMarked){++c.markerMissing;++c.violations;continue;}for(unsigned k=0;k<3;++k){lo[k]=full.boxLow[n][f+k];hi[k]=full.boxHigh[n][f+k];}}
             else if(halfMarked){++c.halfOnly;reference=true;for(unsigned k=0;k<3;++k){lo[k]=1e30;hi[k]=-1e30;}
-                // The pixel's own 3x3 min / max of finite taps, weighed as the box programs weigh (the fixture scenes are grey: luma = value).
-                for(int dy=-1;dy<=1;++dy)for(int dx=-1;dx<=1;++dx){const UINT tx=UINT(std::min(std::max(int(x)+dx,0),int(S)-1)),ty=UINT(std::min(std::max(int(y)+dy,0),int(S)-1));
+                // The pixel's own 7x7 min / max of finite taps (the resolve's in-place box at full resolution), weighed as the box
+                // programs weigh (the fixture scenes are grey: luma = value).
+                for(int dy=-3;dy<=3;++dy)for(int dx=-3;dx<=3;++dx){const UINT tx=UINT(std::min(std::max(int(x)+dx,0),int(S)-1)),ty=UINT(std::min(std::max(int(y)+dy,0),int(S)-1));
                     for(unsigned k=0;k<3;++k){const double v=px(full.current[n],tx,ty,k);if(!oracle_finite(v))continue;const double q=float(oracle_weigh(v));lo[k]=std::min(lo[k],q);hi[k]=std::max(hi[k],q);}}}
             if(!reference)continue;
             bool bad=false;
@@ -139,14 +139,14 @@ void print(const char* scene,const Containment& c,bool sameOutput){
     std::printf("BOX_HALF_CONTAINMENT scene=%s frames=%u compared_px=%u violations=%u marker_missing=%u half_only_px=%u half_only_violations=%u nonfinite_skipped=%u worst=%.6f output_identical=%u\n",
         scene,c.frames,c.compared,c.violations,c.markerMissing,c.halfOnly,c.halfOnlyViolations,c.skipped,c.worst,unsigned(sameOutput));}
 FarRun run_at(EdgeScene& s,const DWORD* resolver,const LineConfig& c,unsigned frames,unsigned divisor){thinBoxDivisor=divisor;thinRecordBoxes=true;FarRun r=thin_sequence(s,resolver,c,frames);thinBoxDivisor=1;thinRecordBoxes=false;return r;}
-// Runs the scene at both resolutions, checks containment (one numerical check) and returns the pair. opens: the scene opens the
-// box somewhere (a pan, or the sentinel stabiliser); a static scene without the stabiliser opens it nowhere at either resolution,
-// and then the two runs must be the same bit for bit.
+// Runs the scene at both resolutions, checks containment (one numerical check) and returns the pair. opens: the camera term
+// adds strength somewhere (a pan); in a static scene the fold's gate opens the box on the held region but b = a there, and the
+// two runs must be the same bit for bit.
 std::pair<FarRun,FarRun> contained(EdgeScene& s,const DWORD* resolver,const LineConfig& c,unsigned frames,const char* scene,bool opens=true){
     auto full=run_at(s,resolver,c,frames,1),half=run_at(s,resolver,c,frames,2);const Containment k=containment(full,half);
     const bool same=full.output==half.output&&full.age==half.age;print(scene,k,same);
-    ++numeric_checks;require(k.violations==0&&k.halfOnlyViolations==0&&(opens?k.compared>0:k.compared==0&&k.halfOnly==0&&same),
-        "half-resolution box contains the full-resolution box at every pixel and frame (and the 3x3 where only it runs); where neither opens the runs are identical");
+    ++numeric_checks;require(k.violations==0&&k.halfOnlyViolations==0&&k.compared>0&&(opens||same),
+        "half-resolution box contains the full-resolution box at every pixel and frame (and the 7x7 where only it runs); at rest the runs are identical");
     return {std::move(full),std::move(half)};}
 void oracle_row(const char* scene,const FarRun& half,const LineConfig& c,unsigned from=0){oracleBoxHalf=true;const Oracle o=oracle(half,c,from);const double maskError=hold_tests_error(half);oracleBoxHalf=false;
     std::printf("BOX_HALF_ORACLE scene=%s oracle_error=%.6f age_oracle_error=%.6f tests_mask_error=%.6f oracle_skipped_px=%u\n",scene,o.colour,o.age,maskError,oracleSkipped);
@@ -186,89 +186,8 @@ void rows(EdgeScene& s,const DWORD* resolver){
         std::printf("BOX_HALF_PAN_STOP pan=0.50 stop_frame=64 half_first8=%.3f full_first8=%.3f base_first8=%.3f half_next24=%.3f full_next24=%.3f base_next24=%.3f\n",half8,full8,base8,half24,full24,base24);
         ++numeric_checks;require(half8<=.15*base8&&half24<=.15*base24,"half-resolution box, stop after a pan: step rms at most 0.15 x the plain resolve's, the 8 frames after the stop and the 24 after");
         thinPanStop=~0u;thinPanX=cameraPanX=0;}
-    // Sentinel facets (S = 0.7) at rest and under a reversing vertical 2 px/frame pan: containment, oracle, flicker < 0.6 x S = 0.
-    {thinSentinel=true;LineConfig holdOff=hold97,holdOn=hold97;holdOff.name="sentinel-0-hold";holdOn.name="sentinel-0.7-hold";holdOn.sentS=.7f;
-        struct PanCase{const char* mode;double pan;bool alternating;unsigned lag;};const PanCase pans[]={{"rest",0,false,1},{"reversing",2,true,2}};
-        for(const PanCase& pc:pans){cameraPanVertical=pc.alternating;cameraPanAlternates=pc.alternating;cameraPanSpeed=pc.pan;cameraPanY=0;oracleSkipCeiling=pc.pan<1?0:unsigned(std::ceil(pc.pan)+1)*(S-6)*thinFrames;
-            const std::string scene=std::string("sentinel_")+pc.mode;const auto baseRun=thin_sequence(s,resolver,holdOff,thinFrames);const auto pair=contained(s,resolver,holdOn,thinFrames,scene.c_str());oracle_row(scene.c_str(),pair.second,holdOn);
-            auto flicker=[&](const FarRun& r){double sum=0;unsigned count=0;for(unsigned n=thinFrames-thinAnalysed;n<thinFrames;++n)for(UINT y=8;y<28;++y)for(UINT x=4;x<28;++x){const double e=double(px(r.output[n],x,y))-double(px(r.output[n-pc.lag],x,y));sum+=e*e;++count;}return std::sqrt(sum/count);};
-            const double baseRms=flicker(baseRun),fullRms=flicker(pair.first),rms=flicker(pair.second);
-            std::printf("BOX_HALF_SENTINEL pan=%.2f pan_mode=%s strength=0.70 base_flicker_codes=%.3f full_flicker_codes=%.3f half_flicker_codes=%.3f half_flicker_ratio=%.4f full_flicker_ratio=%.4f\n",pc.pan,pc.mode,255*baseRms,255*fullRms,255*rms,rms/baseRms,fullRms/baseRms);
-            ++numeric_checks;require(rms<.6*baseRms,"half-resolution box, sentinel facets: flicker below 0.6 x the S = 0 hold run");}
-        cameraPanVertical=cameraPanAlternates=false;cameraPanSpeed=cameraPanY=0;oracleSkipCeiling=0;thinSentinel=false;}
-    // An emitter (value 4, 8 px wide) crossing the sky at 6 px/frame, camera at rest, S = 0.7 with E = 1: containment and the
-    // trail behind the bar at both resolutions (trail = columns off the bar more than 0.01 above the sky, per row, worst frame).
-    {thinSentinel=true;sentinelFacets=false;sentinelBarFrom=16;constexpr unsigned frames=16+10;LineConfig holdOn=hold97;holdOn.name="emitter-0.7-hold";holdOn.sentS=.7f;
-        const auto pair=contained(s,resolver,holdOn,frames,"sentinel_emitter");unsigned trail[2]{},after[2]{};double reach[2]{};
-        for(unsigned which=0;which<2;++which){const FarRun& run=which?pair.second:pair.first;
-            for(unsigned n=sentinelBarFrom;n<frames;++n){const double l=-8+sentinelBarV*(n-sentinelBarFrom);for(UINT y=8;y<24;++y){unsigned columns=0;
-                for(UINT x=0;x<S;++x){const double excess=double(px(run.output[n],x,y))-.25;const bool bar=px(run.current[n],x,y)>.3f;
-                    if(l>=S){after[which]+=excess!=0;continue;}
-                    if(!bar&&excess>.01){++columns;reach[which]=std::max(reach[which],double(x)<l?l-double(x):double(x)-(l+7));}}
-                trail[which]=std::max(trail[which],columns);}}}
-        std::printf("BOX_HALF_EMITTER bar_value=%.1f px_per_frame=%.0f trail_px_full=%u trail_px_half=%u reach_px_full=%.0f reach_px_half=%.0f nonzero_px_after_exit_full=%u nonzero_px_after_exit_half=%u\n",
-            double(sentinelBarValue),sentinelBarV,trail[0],trail[1],reach[0],reach[1],after[0],after[1]);
-        ++numeric_checks;require(trail[1]<=2&&reach[1]<=2&&after[1]==0,"half-resolution box, emitter over the sky: trail within 2 px (the block's inner 4x4; 1 px at full resolution), none after the bar has left");
-        oracle_row("sentinel_emitter",pair.second,holdOn);
-        // The same bar crossing the props (a geometry square and a routed glass quad): blocks that straddle the square's
-        // silhouette next to the bar take the 8x8 of every tap. Containment only: the CPU oracle does not model a colour-only
-        // bar over routed geometry (the full-resolution run misses it by the same 3.06 / 25).
-        sentinelProps=true;const auto props=contained(s,resolver,holdOn,frames,"sentinel_emitter_silhouette");sentinelProps=false;
-        sentinelFacets=true;sentinelBarFrom=~0u;thinSentinel=false;}
-    // A tap whose luma is just above E in FP32 (about 1.0002 for E = 1) but E after the FP16 rounding the full-resolution rows
-    // apply: dim at full resolution, so it must not be bright at half resolution (containment only: the oracle's grey model
-    // reads one channel).
-    {thinSentinel=true;sentinelFacets=false;thinTintTap=true;LineConfig holdOn=hold97;holdOn.name="tint-0.7-hold";holdOn.sentS=.7f;
-        contained(s,resolver,holdOn,32,"sentinel_tap_above_e_fp32");thinTintTap=false;sentinelFacets=true;thinSentinel=false;}
-    // A non-finite 3x3 block beside a static bright bar (the fail-safe of an empty box; the pixels there are current-only).
-    {thinSentinel=true;sentinelFacets=false;sentinelBadBlock=true;LineConfig holdOn=hold97;holdOn.name="nonfinite-0.7-hold";holdOn.sentS=.7f;
-        const auto pair=contained(s,resolver,holdOn,32,"sentinel_nonfinite_block");oracle_row("sentinel_nonfinite_block",pair.second,holdOn);
-        sentinelBadBlock=false;sentinelFacets=true;thinSentinel=false;}
 }
 
-// ---- BOX_HALF_TIMING: the box stage alone at both resolutions, 1280x768 ----
-// The pass's TaaBox boundaries: drained (event query) at both, the wall clock between summed. A failed drain inside the pass
-// (noexcept) is counted and fails the row afterwards.
-struct BoxMarks final : x3m::gpu_sync_timing::Marks {
-    IDirect3DQuery9* query=nullptr;LARGE_INTEGER frequency{};double ms=0;std::int64_t start=0;unsigned failures=0;
-    static std::int64_t now(){LARGE_INTEGER t{};QueryPerformanceCounter(&t);return t.QuadPart;}
-    bool wait() noexcept {if(FAILED(query->Issue(D3DISSUE_END)))return false;const auto t0=now();HRESULT hr;while((hr=query->GetData(nullptr,0,D3DGETDATA_FLUSH))==S_FALSE){if(now()-t0>frequency.QuadPart*10)return false;Sleep(0);}return SUCCEEDED(hr);}
-    void drain(){if(!wait())throw std::runtime_error("box timing drain");}
-    void begin(unsigned pass) noexcept override {if(pass==x3m::gpu_sync_timing::TaaBox){failures+=!wait();start=now();}}
-    void end(unsigned pass) noexcept override {if(pass==x3m::gpu_sync_timing::TaaBox&&start){failures+=!wait();ms+=1000.*double(now()-start)/double(frequency.QuadPart);start=0;}}
-};
-// W x H: 1280x768 (the fixture's usual timing size) and 5120x1440 (the target resolution; the fixture's clock there too, reported
-// beside the flown figures, never in place of them).
-void timing(IDirect3DDevice9* d,EdgeScene& s,const DWORD* resolver,const UINT W,const UINT H){
-    Com<IDirect3DQuery9> query;check("box timing query",d->CreateQuery(D3DQUERYTYPE_EVENT,&query.p));
-    Com<IDirect3DTexture9> color,depth,motion;Com<IDirect3DSurface9> saved;check("box timing save",d->GetRenderTarget(0,&saved.p));D3DVIEWPORT9 vp{};check("box timing viewport",d->GetViewport(&vp));
-    check("box timing color",d->CreateTexture(W,H,1,D3DUSAGE_RENDERTARGET,D3DFMT_A16B16G16R16F,D3DPOOL_DEFAULT,&color.p,nullptr));
-    check("box timing depth",d->CreateTexture(W,H,1,D3DUSAGE_RENDERTARGET,D3DFMT_R32F,D3DPOOL_DEFAULT,&depth.p,nullptr));
-    check("box timing motion",d->CreateTexture(W,H,1,D3DUSAGE_RENDERTARGET,D3DFMT_A32B32G32R32F,D3DPOOL_DEFAULT,&motion.p,nullptr));
-    for(UINT n=0;n<20;++n)check("box timing unbind",d->SetTexture(n<16?n:D3DVERTEXTEXTURESAMPLER0+n-16,nullptr));
-    // The all-unrouted-sentinel frame of LINE_TIMING_SENTINEL: depth -1, motion alpha -1, a grey sky; the stabiliser opens the box everywhere.
-    struct V{float x,y,z,rhw,u,v;};const V quad[]={{-.5f,-.5f,.5f,1,0,0},{W-.5f,-.5f,.5f,1,1,0},{-.5f,H-.5f,.5f,1,0,1},{W-.5f,H-.5f,.5f,1,1,1}};D3DVIEWPORT9 full{0,0,W,H,0,1};
-    const float fills[3][4]={{.25f,.25f,.25f,1},{-1,0,0,0},{0,0,0,-1}};IDirect3DTexture9* targets[3]={color.p,depth.p,motion.p};
-    for(unsigned i=0;i<3;++i){Com<IDirect3DSurface9> level;check("box timing level",targets[i]->GetSurfaceLevel(0,&level.p));s.target(level.p);check("box timing fill viewport",d->SetViewport(&full));check("box timing Begin",d->BeginScene());
-        check("box timing flat",d->SetPixelShader(s.flat.p));s.constant(fills[i][0],fills[i][1],fills[i][2],fills[i][3]);check("box timing fill",d->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP,2,quad,sizeof(V)));check("box timing End",d->EndScene());}
-    check("box timing restore",d->SetRenderTarget(0,saved.p));check("box timing restore viewport",d->SetViewport(&vp));
-    FrameInputs in{};in.color=color.p;in.current_depth=depth.p;in.motion=motion.p;in.width=W;in.height=H;in.epoch=1;in.weight=.9f;std::copy(identity,identity+16,in.clip_to_previous);in.clip_to_previous[3]=-2.f/W;
-    in.motion_policy=MotionPolicy::PerPixel;in.reactive_policy=ReactivePolicy::DerivedFromDepthSentinel;in.sentinel_camera=true;in.history_allowed=true;in.caller_queries_idle=true;in.caller_scene_open=false;
-    in.thin_region_weight=.97f;in.thin_region_camera_gate=true;in.sentinel_strength=.7f;in.sentinel_emitter=1;
-    TemporalPass passes[2];BoxMarks marks[2];double total[2]{};Output out;
-    for(unsigned i=0;i<2;++i){check("box timing initialize",passes[i].initialize(d,nullptr,resolver));check("box timing configure far",passes[i].configure_far());check("box timing configure sentinel",passes[i].configure_sentinel());
-        check("box timing resolution",passes[i].configure_box_resolution(i?2:1));marks[i].query=query.p;QueryPerformanceFrequency(&marks[i].frequency);}
-    for(unsigned warm=0;warm<3;++warm)for(unsigned which=0;which<2;++which){check("box timing warm",passes[which].run(in,&out));marks[which].drain();}
-    for(unsigned which=0;which<2;++which){passes[which].configure_sync_timing(&marks[which]);marks[which].ms=0;}
-    constexpr unsigned rounds=8;
-    for(unsigned round=0;round<rounds;++round)for(unsigned step=0;step<2;++step){const unsigned which=(round+step)%2;marks[which].drain();const auto t0=BoxMarks::now();check("box timing run",passes[which].run(in,&out));marks[which].drain();
-        total[which]+=1000.*double(BoxMarks::now()-t0)/double(marks[which].frequency.QuadPart)/rounds;require(passes[which].diagnostics().box_half==(which==1)&&passes[which].diagnostics().region_hold,"box timing: the configured resolution drew");}
-    for(unsigned which=0;which<2;++which)passes[which].configure_sync_timing(nullptr);
-    require(marks[0].failures==0&&marks[1].failures==0&&marks[0].ms>0&&marks[1].ms>0,"box timing: every TaaBox boundary drained");
-    std::printf("BOX_HALF_TIMING width=%u height=%u rounds=%u content=all_unrouted_sentinel_pan box_full_ms=%.4f box_half_ms=%.4f box_delta_ms=%.4f run_full_ms=%.4f run_half_ms=%.4f scope=cpu_wall_with_event_query_drain_fixture\n",
-        W,H,rounds,marks[0].ms/rounds,marks[1].ms/rounds,marks[1].ms/rounds-marks[0].ms/rounds,total[0],total[1]);
-    check("box timing restore target",d->SetRenderTarget(0,saved.p));check("box timing restore vp",d->SetViewport(&vp));
-}
 } // namespace box_half
 void box_half_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolver){
     std::puts("BOX_HALF_CASES");EdgeScene s(d,compiler);
@@ -278,6 +197,5 @@ void box_half_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolver)
             cameraPanAlternates=cameraPanVertical=false;cameraPanSpeed=cameraPanY=0;thinSentinel=false;sentinelFacets=true;sentinelBarFrom=~0u;sentinelProps=false;sentinelBadBlock=false;oracleSkipCeiling=0;thinPanStop=~0u;armPanX=0;thinBoxDivisor=1;thinRecordBoxes=false;oracleBoxHalf=false;thinTintTap=false;}} hooks;
     box_half::state_cases(s,resolver);
     box_half::rows(s,resolver);
-    box_half::timing(d,s,resolver,1280,768);box_half::timing(d,s,resolver,5120,1440);
     if(!deferredFailures.empty())throw std::runtime_error(deferredFailures.front());
 }

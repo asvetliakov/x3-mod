@@ -278,19 +278,22 @@ stabiliser (`resolve_far.hlsl`; `docs/architecture/taa-distant-line-fade.md` sec
 and `c24.yzw` become the weight target and the LO..HI speed gate. The thin region (`taa-lattice-crawl.md` section 13) adds
 the mask's `b` (strength, speed-gated in the mask program: `c6`, `s4` motion, `c0..c3`) and `a`, and `c24.x` = clip relaxation;
 this variant compiles no 3x3 sentinel soft clip. On a two- or four-channel current depth (the sun-shadow lane's RT2) the
-mask chain's first draw uses `line_mask_depth_ps.hlsl` / `line_mask_camera_depth_ps.hlsl` instead (`X3M_MASK_DEPTH_OUT`:
+mask chain's first draw of the screen-gate chain uses `line_mask_depth_ps.hlsl` instead (`X3M_MASK_DEPTH_OUT`:
 `s1` = that depth itself, `COLOR1` = its texel into the R32F next depth history, which then needs no copy draw;
 `docs/architecture/taa-high-resolution.md` S1). The camera gate runs the region hold only (A', `resolve_far_camera_hold.hlsl`,
 `X3M_REGION_HOLD`; `docs/architecture/taa-plan-lifted-slot-cap.md` step 1; the dilated camera chain and `--taa-region-hold`
-were removed on 2026-09-24): its mask is the tests draw alone (`line_mask_camera_ps.hlsl` compiles no dilation mode), so
-s8 is the tests target (r screen openness, g far weight, b flag / class code, a camera openness), `c11` = (S, the far
-components' scales, the hold length L = the jitter period), and the program composes the region itself with an L-frame
-region hold and an L-frame peak hold of the camera gate (its own openness the smaller of this pixel's tests texel and its
-nearest-depth 3x3 neighbour's; the screen gate is not held) carried in the fraction of the age count ((h + 128 code) /
-65536, code = q (L + 1) + t; the count is `floor(|age|)`, its sign the exit mark); its box programs
-(`thin_box*_hold_ps.hlsl`, `X3M_REGION_HOLD_MASK`) open where camera openness exceeds screen openness inside the region
-(this frame's flag, or last frame's region hold at the same texel, read from the age target at `s7`) or, with the
-stabiliser, on the class code, and mark computed texels in the box alpha, which the resolve checks. Ordinary resolve uses zero;
+were removed on 2026-09-24) with the mask fold (2026-09-25, `docs/architecture/taa-mask-fold.md`): no mask draw. `s1` is
+the caller's current depth itself (the four-channel lane, or R32F), and the program computes the tests the removed tests draw
+wrote (screen and camera openness quantised to UNORM8, the far weight from `c13` = (d0, inv), the flag: the thin vote in the
+lane's `.a` where `c10.z` = 1, else the fragmented-depth search unless `c10.y` = 1, else the emissive vote at `c10.x` = E;
+the camera path's depth term in `c8` / `c9`), `c11` = (0, the far components' scales, the hold length L = the jitter period),
+composes the region itself with an L-frame region hold and an L-frame peak hold of the camera gate (its own openness the
+smaller of this pixel's and its nearest-depth 3x3 neighbour's; the screen gate is not held) carried in the fraction of the
+age count ((h + 128 code) / 65536, code = q (L + 1) + t; the count is `floor(|age|)`, its sign the exit mark), and writes the
+next depth history as `COLOR2` (R32F, the depth's `.r` bit for bit; three render targets). Its box programs
+(`thin_box_hold_ps.hlsl`, `X3M_REGION_HOLD_MASK`, and the S4 half-resolution pair) open on last frame's region hold at the
+same texel (the age target at `s7`) and mark computed texels in the box alpha; where the camera term adds strength and the
+box did not run the resolve takes the 7x7 min / max in place. Ordinary resolve uses zero;
 `prepare` initializes the mode and reserved component to zero. Runtime code must
 not use snapshot mode as a color resolve. `TemporalPass` uses this third GPU draw
 only under `ReactivePolicy::RequiredMask` and owns the resulting ping-pong masks.

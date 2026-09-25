@@ -1,0 +1,41 @@
+== temporal-pass.txt: 11786 -> 11772 lines
+CHECK 10755 -> 10741 differing=2709
+MOTE_STREAK 8 -> 8 differing=6
+identical row types: 48
+== temporal-lattice.txt: 5391 -> 9517 lines
+RESOLVE_BUDGET 22 -> 18 differing=15
+CHECK 4684 -> 8868 differing=7925
+SAMPLE 363 -> 338 differing=65
+LINE_TIMING 1 -> 1 (timing, not compared)
+LINE_TIMING_CAMERA 1 -> 1 (timing, not compared)
+LINE_TIMING_CAMERA_LANE 1 -> 1 (timing, not compared)
+LINE_TIMING_SENTINEL 1 -> 0 (timing, not compared)
+THIN_REGION_CAMERA_FORWARD 1 -> 1 differing=1
+SENTINEL_STABILISER 14 -> 0 differing=14
+DEPTH_FOLD 15 -> 10 differing=15
+DEPTH_FOLD_FAULT 2 -> 4 differing=4
+DEPTH_FOLD_BASE 1 -> 1 differing=1
+HISTORY_TAPS_BASE 1 -> 1 differing=1
+REGION_HOLD_IDENTITY 4 -> 2 differing=4
+REGION_HOLD_STATE 1 -> 1 differing=1
+THIN_REGION_HOLD_BOX_OPEN 1 -> 1 differing=1
+THIN_REGION_HOLD_SENTINEL 2 -> 0 differing=2
+THIN_REGION_HOLD_FADE_OWNER 1 -> 1 differing=1
+REGION_HOLD_BASE 1 -> 1 differing=1
+BOX_HALF_CONTAINMENT 12 -> 6 differing=12
+BOX_HALF_ORACLE 9 -> 5 differing=4
+BOX_HALF_SENTINEL 2 -> 0 differing=2
+BOX_HALF_EMITTER 1 -> 0 differing=1
+BOX_HALF_TIMING 2 -> 0 (timing, not compared)
+BOX_HALF_BASE 1 -> 1 differing=1
+THIN_SOURCE 6 -> 5 differing=6
+THIN_SOURCE_IDENTITY 6 -> 4 differing=6
+THIN_SOURCE_RESET 1 -> 1 differing=1
+THIN_SOURCE_TIMING 2 -> 0 (timing, not compared)
+RESULT 1 -> 1 differing=1
+FOLD_FALLBACK 0 -> 4 differing=4
+THIN_SOURCE_REFUSED 0 -> 1 differing=1
+THIN_SOURCE_BASE 0 -> 1 differing=1
+FOLD_TIMING_CASES 0 -> 1 (timing, not compared)
+FOLD_TIMING 0 -> 6 (timing, not compared)
+identical row types: 64

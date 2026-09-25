@@ -125,3 +125,6 @@ every modded `--taa` launch (`sentinel_stabiliser_default=` on the `motion_outpu
 explicit 0.7 restores the previous look; nothing without `--taa` or under `--vanilla`); the DLL fallback when unset stays
 0.7 under the camera gate, so fixtures are unchanged. Host: `test_taa_sentinel_stabiliser_default` 6 tests; the 55
 launcher modules 739 tests OK; build 0 warnings, `check_no_x87` 684 / 0.
+Superseded the same day by the TAA mask fold (`docs/verification/temporal-resolve.md`, "Mask fold"): the stabiliser is removed,
+`--taa-sentinel-stabiliser` is a launcher parser error and neither variable is sent; `test_taa_sentinel_stabiliser_default`
+was deleted with it.

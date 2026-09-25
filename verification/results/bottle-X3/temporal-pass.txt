@@ -2045,7 +2045,6 @@ CHECK exit reset: the age target is read every frame PASS
 SETA_EXIT mode=loose_on program=age strict=0 exit_px=0.250 yaw_px=0.00 velocity_px=0.500 fresh_px=204 fresh_current_only=0 trail_cast_max=0.118896 control_cast_max=0.000000 control_diff=0.000000 negative_px=0 negative_static=0 negative_not_band=0 band_blend_positive=720 hull_mark_reads=0 hull_mark_own=0 hull_mark_unexplained=0 output_diff=0.000000 age_diff=0.000000
 SAMPLE exit reset: loose with the floor uploaded is bit-identical to loose without it on both targets, no negative age actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 CHECK edge far programs available PASS
-CHECK edge sentinel stabiliser available PASS
 CHECK edge scene has a routed object PASS
 CHECK edge scene motion target equals the producer contract at every covered pixel PASS
 CHECK edge history follows the sequence PASS
@@ -2083,7 +2082,6 @@ CHECK edge history follows the sequence PASS
 CHECK edge history follows the sequence PASS
 CHECK edge history follows the sequence PASS
 CHECK edge far programs available PASS
-CHECK edge sentinel stabiliser available PASS
 CHECK edge scene has a routed object PASS
 CHECK edge scene motion target equals the producer contract at every covered pixel PASS
 CHECK edge history follows the sequence PASS
@@ -2121,7 +2119,6 @@ CHECK edge history follows the sequence PASS
 CHECK edge history follows the sequence PASS
 CHECK edge history follows the sequence PASS
 CHECK edge far programs available PASS
-CHECK edge sentinel stabiliser available PASS
 CHECK edge scene has a routed object PASS
 CHECK edge scene motion target equals the producer contract at every covered pixel PASS
 CHECK edge history follows the sequence PASS
@@ -2159,9 +2156,8 @@ CHECK edge history follows the sequence PASS
 CHECK edge history follows the sequence PASS
 CHECK edge history follows the sequence PASS
 CHECK mote streak: the age target is read every frame PASS
-MOTE_STREAK sky=flicker value=2.00 frames=34 negative_px=0 control_diff=0.000000 trail_beyond_3px_max=0.688477 trail_px=144 overlap_output_over_current=1.0000 overlap_px=28 leading_output_over_current=1.0000 leading_px=12
+MOTE_STREAK sky=flicker value=2.00 frames=34 negative_px=0 control_diff=0.000000 trail_beyond_3px_max=0.617188 trail_px=144 overlap_output_over_current=1.0000 overlap_px=28 leading_output_over_current=1.0000 leading_px=12
 CHECK edge far programs available PASS
-CHECK edge sentinel stabiliser available PASS
 CHECK edge scene has a routed object PASS
 CHECK edge scene motion target equals the producer contract at every covered pixel PASS
 CHECK edge history follows the sequence PASS
@@ -2201,7 +2197,6 @@ CHECK edge history follows the sequence PASS
 CHECK mote streak: the age target is read every frame PASS
 MOTE_STREAK sky=dark value=2.00 frames=34 negative_px=0 control_diff=0.000000 trail_beyond_3px_max=0.000000 trail_px=0 overlap_output_over_current=1.0000 overlap_px=28 leading_output_over_current=1.0000 leading_px=12
 CHECK edge far programs available PASS
-CHECK edge sentinel stabiliser available PASS
 CHECK edge scene has a routed object PASS
 CHECK edge scene motion target equals the producer contract at every covered pixel PASS
 CHECK edge history follows the sequence PASS
@@ -2239,7 +2234,7 @@ CHECK edge history follows the sequence PASS
 CHECK edge history follows the sequence PASS
 CHECK edge history follows the sequence PASS
 CHECK mote streak: the age target is read every frame PASS
-MOTE_STREAK sky=dark value=0.80 frames=34 negative_px=0 control_diff=0.000000 trail_beyond_3px_max=0.000000 trail_px=0 overlap_output_over_current=0.6551 overlap_px=28 leading_output_over_current=0.3669 leading_px=12
+MOTE_STREAK sky=dark value=0.80 frames=34 negative_px=0 control_diff=0.000000 trail_beyond_3px_max=0.000000 trail_px=0 overlap_output_over_current=1.0000 overlap_px=28 leading_output_over_current=1.0000 leading_px=12
 SAMPLE mote streak over the flickering sky: no negative age (the unrouted streak writes no exit mark) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 SAMPLE mote streak over the flickering sky: the sky 8+ rows from the streak identical to the run without it actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 SAMPLE mote streak (value 2, above the emitter bound) over a dark sky: no negative age actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
@@ -2249,7 +2244,6 @@ SAMPLE mote streak (value 0.8, below the emitter bound) over a dark sky: no nega
 SAMPLE mote streak (value 0.8, below the emitter bound) over a dark sky: the sky 8+ rows from the streak identical to the run without it actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 SAMPLE mote streak (value 0.8, below the emitter bound) over a dark sky: no trail beyond 3 px behind the tail (max |out - control| over 0.05 M) actual=0.000000000 expected=0.000000000 tolerance=1.000000000 PASS
 CHECK edge far programs available PASS
-CHECK edge sentinel stabiliser available PASS
 CHECK edge scene has a routed object PASS
 CHECK edge scene motion target equals the producer contract at every covered pixel PASS
 CHECK edge history follows the sequence PASS
@@ -2287,7 +2281,6 @@ CHECK edge history follows the sequence PASS
 CHECK edge history follows the sequence PASS
 CHECK edge history follows the sequence PASS
 CHECK edge far programs available PASS
-CHECK edge sentinel stabiliser available PASS
 CHECK edge scene has a routed object PASS
 CHECK edge scene motion target equals the producer contract at every covered pixel PASS
 CHECK edge history follows the sequence PASS
@@ -2325,7 +2318,7 @@ CHECK edge history follows the sequence PASS
 CHECK edge history follows the sequence PASS
 CHECK edge history follows the sequence PASS
 CHECK mote streak: the age target is read every frame PASS
-MOTE_STREAK sky=flicker_hull value=2.00 frames=34 negative_px=648 control_diff=0.000000 trail_beyond_3px_max=1.521484 trail_px=96 overlap_output_over_current=1.0000 overlap_px=28 leading_output_over_current=1.0000 leading_px=12
+MOTE_STREAK sky=flicker_hull value=2.00 frames=34 negative_px=648 control_diff=0.000000 trail_beyond_3px_max=1.419434 trail_px=96 overlap_output_over_current=1.0000 overlap_px=28 leading_output_over_current=1.0000 leading_px=12
 MOTE_STREAK_HULL marks_with_streak=648 marks_without=648
 SAMPLE mote streak across a moving hull's band: the hull's marks equal the run without the streak actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 CHECK mote streak hull row: the moving hull writes its band marks PASS
@@ -7947,7 +7940,6 @@ CHECK exit reset: the age target is read every frame PASS
 SETA_EXIT mode=loose_on program=age strict=0 exit_px=0.250 yaw_px=0.00 velocity_px=0.500 fresh_px=204 fresh_current_only=0 trail_cast_max=0.118896 control_cast_max=0.000000 control_diff=0.000000 negative_px=0 negative_static=0 negative_not_band=0 band_blend_positive=720 hull_mark_reads=0 hull_mark_own=0 hull_mark_unexplained=0 output_diff=0.000000 age_diff=0.000000
 SAMPLE exit reset: loose with the floor uploaded is bit-identical to loose without it on both targets, no negative age actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 CHECK edge far programs available PASS
-CHECK edge sentinel stabiliser available PASS
 CHECK edge scene has a routed object PASS
 CHECK edge scene motion target equals the producer contract at every covered pixel PASS
 CHECK edge history follows the sequence PASS
@@ -7985,7 +7977,6 @@ CHECK edge history follows the sequence PASS
 CHECK edge history follows the sequence PASS
 CHECK edge history follows the sequence PASS
 CHECK edge far programs available PASS
-CHECK edge sentinel stabiliser available PASS
 CHECK edge scene has a routed object PASS
 CHECK edge scene motion target equals the producer contract at every covered pixel PASS
 CHECK edge history follows the sequence PASS
@@ -8023,7 +8014,6 @@ CHECK edge history follows the sequence PASS
 CHECK edge history follows the sequence PASS
 CHECK edge history follows the sequence PASS
 CHECK edge far programs available PASS
-CHECK edge sentinel stabiliser available PASS
 CHECK edge scene has a routed object PASS
 CHECK edge scene motion target equals the producer contract at every covered pixel PASS
 CHECK edge history follows the sequence PASS
@@ -8061,9 +8051,8 @@ CHECK edge history follows the sequence PASS
 CHECK edge history follows the sequence PASS
 CHECK edge history follows the sequence PASS
 CHECK mote streak: the age target is read every frame PASS
-MOTE_STREAK sky=flicker value=2.00 frames=34 negative_px=0 control_diff=0.000000 trail_beyond_3px_max=0.688477 trail_px=144 overlap_output_over_current=1.0000 overlap_px=28 leading_output_over_current=1.0000 leading_px=12
+MOTE_STREAK sky=flicker value=2.00 frames=34 negative_px=0 control_diff=0.000000 trail_beyond_3px_max=0.617188 trail_px=144 overlap_output_over_current=1.0000 overlap_px=28 leading_output_over_current=1.0000 leading_px=12
 CHECK edge far programs available PASS
-CHECK edge sentinel stabiliser available PASS
 CHECK edge scene has a routed object PASS
 CHECK edge scene motion target equals the producer contract at every covered pixel PASS
 CHECK edge history follows the sequence PASS
@@ -8103,7 +8092,6 @@ CHECK edge history follows the sequence PASS
 CHECK mote streak: the age target is read every frame PASS
 MOTE_STREAK sky=dark value=2.00 frames=34 negative_px=0 control_diff=0.000000 trail_beyond_3px_max=0.000000 trail_px=0 overlap_output_over_current=1.0000 overlap_px=28 leading_output_over_current=1.0000 leading_px=12
 CHECK edge far programs available PASS
-CHECK edge sentinel stabiliser available PASS
 CHECK edge scene has a routed object PASS
 CHECK edge scene motion target equals the producer contract at every covered pixel PASS
 CHECK edge history follows the sequence PASS
@@ -8141,7 +8129,7 @@ CHECK edge history follows the sequence PASS
 CHECK edge history follows the sequence PASS
 CHECK edge history follows the sequence PASS
 CHECK mote streak: the age target is read every frame PASS
-MOTE_STREAK sky=dark value=0.80 frames=34 negative_px=0 control_diff=0.000000 trail_beyond_3px_max=0.000000 trail_px=0 overlap_output_over_current=0.6551 overlap_px=28 leading_output_over_current=0.3669 leading_px=12
+MOTE_STREAK sky=dark value=0.80 frames=34 negative_px=0 control_diff=0.000000 trail_beyond_3px_max=0.000000 trail_px=0 overlap_output_over_current=1.0000 overlap_px=28 leading_output_over_current=1.0000 leading_px=12
 SAMPLE mote streak over the flickering sky: no negative age (the unrouted streak writes no exit mark) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 SAMPLE mote streak over the flickering sky: the sky 8+ rows from the streak identical to the run without it actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 SAMPLE mote streak (value 2, above the emitter bound) over a dark sky: no negative age actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
@@ -8151,7 +8139,6 @@ SAMPLE mote streak (value 0.8, below the emitter bound) over a dark sky: no nega
 SAMPLE mote streak (value 0.8, below the emitter bound) over a dark sky: the sky 8+ rows from the streak identical to the run without it actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 SAMPLE mote streak (value 0.8, below the emitter bound) over a dark sky: no trail beyond 3 px behind the tail (max |out - control| over 0.05 M) actual=0.000000000 expected=0.000000000 tolerance=1.000000000 PASS
 CHECK edge far programs available PASS
-CHECK edge sentinel stabiliser available PASS
 CHECK edge scene has a routed object PASS
 CHECK edge scene motion target equals the producer contract at every covered pixel PASS
 CHECK edge history follows the sequence PASS
@@ -8189,7 +8176,6 @@ CHECK edge history follows the sequence PASS
 CHECK edge history follows the sequence PASS
 CHECK edge history follows the sequence PASS
 CHECK edge far programs available PASS
-CHECK edge sentinel stabiliser available PASS
 CHECK edge scene has a routed object PASS
 CHECK edge scene motion target equals the producer contract at every covered pixel PASS
 CHECK edge history follows the sequence PASS
@@ -8227,7 +8213,7 @@ CHECK edge history follows the sequence PASS
 CHECK edge history follows the sequence PASS
 CHECK edge history follows the sequence PASS
 CHECK mote streak: the age target is read every frame PASS
-MOTE_STREAK sky=flicker_hull value=2.00 frames=34 negative_px=648 control_diff=0.000000 trail_beyond_3px_max=1.521484 trail_px=96 overlap_output_over_current=1.0000 overlap_px=28 leading_output_over_current=1.0000 leading_px=12
+MOTE_STREAK sky=flicker_hull value=2.00 frames=34 negative_px=648 control_diff=0.000000 trail_beyond_3px_max=1.419434 trail_px=96 overlap_output_over_current=1.0000 overlap_px=28 leading_output_over_current=1.0000 leading_px=12
 MOTE_STREAK_HULL marks_with_streak=648 marks_without=648
 SAMPLE mote streak across a moving hull's band: the hull's marks equal the run without the streak actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 CHECK mote streak hull row: the moving hull writes its band marks PASS
