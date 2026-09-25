@@ -1,5 +1,5 @@
 """Host tests of the --original-fill launcher default (X3M_ORIGINAL_FILL, docs/architecture/original-shading-critique.md 1a):
-0.02 on every modded --hdr launch since 2026-09-25 (user decision, accepted in flight) with X3M_ORIGINAL_FILL_DEFAULT=1; an
+0.01 on every modded --hdr launch since 2026-09-25 (0.02 for a few hours) (user decision, accepted in flight) with X3M_ORIGINAL_FILL_DEFAULT=1; an
 explicit value (0 = the opt-out, the byte-identical original programs) is sent with marker 0; no default and no marker under
 --linear-materials (its --material-fill applies instead), without --hdr or under --vanilla, where the variable stays an explicit
 0.0 against a stale shell value; an inherited value or marker never survives; the parser errors are unchanged. The DLL default
@@ -27,7 +27,7 @@ class OriginalFillDefaultLaunch(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             for inherited in (None, {'X3M_ORIGINAL_FILL': '0.0', MARKER: '0'}):
                 env = self.env(directory, *HDR, inherited=inherited)
-                self.assertEqual((env['X3M_ORIGINAL_FILL'], env[MARKER]), ('0.02', '1'))
+                self.assertEqual((env['X3M_ORIGINAL_FILL'], env[MARKER]), ('0.01', '1'))
 
     def test_explicit_values_are_sent_with_marker_0(self):
         with tempfile.TemporaryDirectory() as directory:

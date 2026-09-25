@@ -187,3 +187,5 @@ The DLL default when the variable is unset stays 0 (fixtures unchanged); it read
 dry runs (`verification/results/original-fill-default/dry_runs.py`): modded `--hdr` 0.02/1,
 `--original-fill 0` 0.0/0, `--hdr --linear-materials` 0.0/none (material fill 0.05), `--vanilla`
 0.0/none. No Wine run (DLL default unchanged).
+
+**Same day, later:** the user lowered the default to `0.01` (`ORIGINAL_FILL_DEFAULT` in `tools/manage.py`; test updated: the modded `--hdr` dry run sends `0.01`/`1`). The DLL is untouched: the value is a launcher default, so the Run83 candidate's dry-run record still shows `0.02` for that field and the main checkout's launcher, which every flight uses, sends `0.01`.
