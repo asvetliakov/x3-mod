@@ -56,6 +56,7 @@ carries an empty table, so the launch line reads ok). Launch lines to expect on 
    ahead, fire held; (2) the same target with shields down; (3) the kill, F8 from the first flash; (4) a missile just fired, own ship
    at full throttle; (5) the same view at zero throttle; (6, optional) a beam held on the target for 1 s. Exit through the menu.
    Rows: `effects_stage_config`, `effects_stage_frame ... stage_us=`, `effect_draw key= verdict=`.
+   **Done (run334): the user did not like the look and dropped the effects modernisation (removal from production in progress).**
 3. **Docking** (launch 3: stand command + `--chase-view-restore-dock`): in chase view, dock at a station (any method), look at the
    docked screen (what does it show: the parked ship from behind, the cockpit, something broken?), trade or wait a few seconds, undock:
    is the view still the rear chase view once flying? Then a gate jump as a regression. Exit through the menu.
