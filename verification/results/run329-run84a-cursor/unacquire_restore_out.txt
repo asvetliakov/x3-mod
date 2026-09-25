@@ -1,0 +1,20 @@
+== run329
+deact snap f=163 xy=(1617, 1139) | last active snap (119, (1821, 1340)) | at preceding fire (1, (1617, 1139)) | equal_to_fire=True
+deact snap f=2424 xy=(1617, 1139) | last active snap (292, (546, 805)) | at preceding fire (184, (1617, 1139)) | equal_to_fire=True
+== run330
+deact snap f=346 xy=(1628, 707) | last active snap (4, (1627, 707)) | at preceding fire (1, (1628, 707)) | equal_to_fire=True
+deact snap f=635 xy=(1589, 718) | last active snap (525, (1846, 462)) | at preceding fire (409, (1600, 712)) | equal_to_fire=False
+deact snap f=746 xy=(1601, 718) | last active snap (703, (1786, 735)) | at preceding fire (663, (1611, 714)) | equal_to_fire=False
+deact snap f=1082 xy=(99, 737) | last active snap (941, (1652, 974)) | at preceding fire (822, (1600, 737)) | equal_to_fire=False
+deact snap f=1269 xy=(692, 630) | last active snap (1268, (1770, 780)) | at preceding fire (1179, (1601, 630)) | equal_to_fire=False
+deact snap f=1405 xy=(1476, 791) | last active snap (1394, (1706, 560)) | at preceding fire (1313, (1600, 630)) | equal_to_fire=False
+deact snap f=1513 xy=(1533, 743) | last active snap (1512, (1600, 737)) | at preceding fire (1450, (1666, 741)) | equal_to_fire=False
+deact snap f=1620 xy=(1603, 681) | last active snap (1619, (1676, 798)) | at preceding fire (1537, (1600, 670)) | equal_to_fire=False
+deact snap f=1875 xy=(3960, 705) | last active snap (1801, (2210, 704)) | at preceding fire (1682, (3519, 705)) | equal_to_fire=False
+deact snap f=2063 xy=(2345, 552) | last active snap (2057, (2800, 365)) | at preceding fire (1949, (2314, 552)) | equal_to_fire=False
+deact snap f=2267 xy=(1349, 555) | last active snap (2243, (2269, 944)) | at preceding fire (2124, (1757, 558)) | equal_to_fire=False
+deact snap f=2573 xy=(980, 608) | last active snap (2458, (1869, 551)) | at preceding fire (2354, (1671, 606)) | equal_to_fire=False
+deact snap f=2827 xy=(1129, 682) | last active snap (2773, (1661, 473)) | at preceding fire (2669, (1641, 671)) | equal_to_fire=False
+deact snap f=3130 xy=(1588, 595) | last active snap (3048, (1601, 917)) | at preceding fire (2929, (1683, 591)) | equal_to_fire=False
+deact snap f=3476 xy=(1529, 535) | last active snap (3345, (1697, 521)) | at preceding fire (3232, (1623, 530)) | equal_to_fire=False
+deact snap f=4064 xy=(1642, 647) | last active snap (3688, (2014, 935)) | at preceding fire (3569, (1600, 535)) | equal_to_fire=False

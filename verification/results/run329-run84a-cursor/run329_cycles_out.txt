@@ -1,0 +1,44 @@
+# whole-session row counts
+     3 cursor_reassert
+     3 cursor_reassert_arm
+   223 cursor_snapshot
+   310 telemetry_cursor_poll
+     4 window_msg:WM_ACTIVATE
+    12 window_msg:WM_ACTIVATEAPP
+     2 window_msg:WM_CANCELMODE
+     2 window_msg:WM_KILLFOCUS
+     2 window_msg:WM_SETFOCUS
+     5 window_trace_flush
+# WM_SETCURSOR rows (frame hwnd hit trigger result suppressed)
+# window_msg_frame rows
+# cursor_call rows: 0
+# launch timeline frames 0..200 (poll/snapshot change-only)
+  f=0 poll flags=1 cursor=00000000 xy=1617,1139
+  f=0 cursor_reassert_arm armed_by=launch hwnd=000a0064
+  f=0 window_trace_flush reason=first_present written=0 expired=0
+  f=0 snap fg=000a0064 flags=1 cursor=00000000 xy=1617,1139 clip=-1512,0,5120,1440
+  f=1 poll flags=0 cursor=00000000 xy=1617,1139
+  f=1 cursor_reassert action=fired armed_by=launch hwnd=000a0064 before_flags=0 up=0 down=-1 after_flags=0 pointer_in_client=1 clip_is_client=0 clip=0,1,5120,1439
+  f=1 snap fg=000a0064 flags=0 cursor=00000000 xy=1617,1139 clip=0,1,5120,1439
+  f=162 window_msg name=WM_CANCELMODE hwnd=000a0064 wparam=00000000 result=00000000
+  f=162 window_msg name=WM_ACTIVATE hwnd=000a0064 wparam=00000000 result=00000000
+  f=162 window_msg name=WM_ACTIVATEAPP hwnd=000a0064 wparam=00000000 result=00000000
+  f=162 window_msg name=WM_ACTIVATEAPP hwnd=0001006e wparam=00000000 result=00000000
+  f=162 window_msg name=WM_ACTIVATEAPP hwnd=00080068 wparam=00000000 result=00000000
+  f=162 window_msg name=WM_KILLFOCUS hwnd=000a0064 wparam=00000000 result=00000000
+  f=163 window_trace_flush reason=transition written=6 expired=0
+  f=163 snap fg=00030020 flags=1 cursor=00010022 xy=1617,1139 clip=-1512,0,5120,1440
+  f=166 poll flags=1 cursor=00010022 xy=1617,1139
+  f=184 cursor_reassert_arm armed_by=activate hwnd=000a0064
+  f=184 cursor_reassert action=fired armed_by=activate hwnd=000a0064 before_flags=0 up=0 down=-1 after_flags=0 pointer_in_client=1 clip_is_client=0 clip=0,1,5120,1439
+  f=183 window_msg name=WM_ACTIVATEAPP hwnd=000a0064 wparam=00000001 result=00000000
+  f=183 window_msg name=WM_ACTIVATEAPP hwnd=0001006e wparam=00000001 result=00000000
+  f=183 window_msg name=WM_ACTIVATEAPP hwnd=00080068 wparam=00000001 result=00000000
+  f=183 window_msg name=WM_ACTIVATE hwnd=000a0064 wparam=00000001 result=00000000
+  f=183 window_msg name=WM_SETFOCUS hwnd=000a0064 wparam=00000000 result=00000000
+  f=184 window_trace_flush reason=transition written=5 expired=0
+  f=184 snap fg=000a0064 flags=0 cursor=00000000 xy=1617,1139 clip=0,1,5120,1439
+  f=195 poll flags=0 cursor=00000000 xy=1667,1128
+# cycles: k deact_f syscmd inact_setcursor(result) deact_xy act_order act_to_fire_ms? fire_f fire_xy on_clip_edge flags_after(set) handles_after moved_px setcursor_after calls_after mframes_after
+ 1   162        - 0(-) ret_xy=('1617', '1139') ret_in_clip=1 ACTIVATEAPP>ACTIVATE>SETFOCUS fire_f=184 pic=1 cic=0 up/down=0/-1 fire_xy=1617,1139 edge=False flags_after=['0'] handles_after=['00000000'] moved=1474 snaps=63 setcursor_after=0 calls_after=0 mframes_after=0 inactive_ms=372
+ 2  2423        - 0(-) ret_xy=('1707', '1179') ret_in_clip=1 ACTIVATEAPP>ACTIVATE>SETFOCUS fire_f=2442 pic=1 cic=0 up/down=0/-1 fire_xy=1717,1160 edge=False flags_after=['0'] handles_after=['00000000'] moved=518 snaps=85 setcursor_after=0 calls_after=0 mframes_after=0 inactive_ms=418

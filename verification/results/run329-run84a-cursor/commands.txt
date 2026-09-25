@@ -1,0 +1,9 @@
+Run 84 A cursor triage (Run84 DLL 189a34f0 from 46cd4f9d). Read-only on the logs; no Wine, no build. Run from this directory.
+run329 = /tmp/x3-bottleX3-run329/session-20260925-072506-212.log (5120x1440, full session)
+run330 = /tmp/x3-bottleX3-run330/session-20260925-073043-216.log (1920x1080 windowed at 1600,72, menu only)
+grep -c '^cursor_reassert_arm' / '^cursor_reassert ' / '^cursor_call' / '^window_msg_frame' $L; grep '^window_msg' $L | grep -oE 'name=[A-Z_0-9]+' | sort | uniq -c   # Q1-Q3 row counts
+grep -nE '^(window_trace|cursor_reassert|window_mode|window_msg|cursor_call)' $L                                                     # Q1, Q3 raw rows
+grep -E '^telemetry_cursor_poll' $L | grep -oE 'flags=[0-9]+ cursor=[0-9a-f]+' | sort | uniq -c; same for cursor_snapshot foreground/flags   # Q2 Win32 hidden state
+python3 cursor_cycles.py <run330> > run330_cycles_out.txt; python3 cursor_cycles.py <run329> 200 > run329_cycles_out.txt   # Q1 launch timeline, Q2, Q3 per-cycle table
+python3 unacquire_restore.py <log> for both > unacquire_restore_out.txt   # pointer snap-back at deactivation (dinput exclusive unacquire, inferred)
+flush coverage one-liner (awk over window_trace_flush: written/expired/overwritten, last flush frame; marker flushes; last frame) > flush_coverage_out.txt   # ring completeness
