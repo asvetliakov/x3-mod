@@ -1,0 +1,22 @@
+crop x2260-2780 y850-1200 frames 2904..2911 MG=6.0 JUMP=4.0 DET=4.0
+motion disp (to previous frame, px dy,dx): 2904:(+1.52,-0.29) 2905:(+7.15,+0.23) 2906:(+7.73,-0.26) 2907:(+9.24,-0.05) 2908:(+9.79,-0.59) 2909:(+10.21,+0.24) 2910:(+11.39,-0.21) 2911:(+11.55,+0.02)
+shifts (i->i+1): 2904:(-7, 0) 2905:(-8, 0) 2906:(-9, 0) 2907:(-10, 1) 2908:(-10, 0) 2909:(-11, 0) 2910:(-12, 0)
+[hdr] mean over pairs: edge_mean_min3 2.153 edge_jump_frac 0.107 edge_mean_direct 9.561 edge_jump>8 0.058 edge_jump>16 0.029 owned_min3 2.062 owned_jump 0.097 thin_min3 nan thin_jump nan other_min3 nan other_jump nan remainder_min3 0.140 remainder_jump 0.007 | edge_jump_frac per pair 0.101 0.101 0.105 0.104 0.111 0.120 0.106
+[taa] mean over pairs: edge_mean_min3 0.775 edge_jump_frac 0.031 edge_mean_direct 2.601 edge_jump>8 0.009 edge_jump>16 0.003 owned_min3 0.641 owned_jump 0.025 thin_min3 nan thin_jump nan other_min3 nan other_jump nan remainder_min3 0.391 remainder_jump 0.012 | edge_jump_frac per pair 0.016 0.019 0.026 0.036 0.044 0.041 0.035
+[present] mean over pairs: edge_mean_min3 0.873 edge_jump_frac 0.042 edge_mean_direct 3.237 edge_jump>8 0.015 edge_jump>16 0.005 owned_min3 0.663 owned_jump 0.031 thin_min3 nan thin_jump nan other_min3 nan other_jump nan remainder_min3 0.556 remainder_jump 0.025 | edge_jump_frac per pair 0.025 0.031 0.034 0.046 0.056 0.053 0.046
+[hdr] sparkles (plant px, margin 6.0) per interior frame [152, 191, 163, 196, 239, 241] total 1182; score p99 7.66 p99.9 65.55 max 100.3
+[taa] sparkles (plant px, margin 6.0) per interior frame [5, 8, 2, 11, 4, 8] total 38; score p99 0.11 p99.9 4.05 max 31.4
+[present] sparkles (plant px, margin 6.0) per interior frame [10, 14, 8, 24, 17, 14] total 87; score p99 0.21 p99.9 5.37 max 66.9
+taa tabulation (sum over interior frames): base class | flag8 held1-7 out_border2 out_far block_box(marker) inplace7x7(no marker) clip3x3
+  sparkle  owned      |       2       1      10      25       3       0      35
+  sparkle  thin       |       0       0       0       0       0       0       0
+  sparkle  other      |       0       0       0       0       0       0       0
+  sparkle  remainder  |       0       0       0       0       0       0       0
+  edge     owned      |    5548    3849   11080   33506    4474    4923   44586
+  edge     thin       |       0       0       0       0       0       0       0
+  edge     other      |       0       0       0       0       0       0       0
+  edge     remainder  |    5941    3111    4661    5814    4501    4551   10475
+  plant    owned      |    5561    4096   13058   55608    4521    5136   68666
+  plant    thin       |       0       0       0       0       0       0       0
+  plant    other      |       0       0       0       0       0       0       0
+  plant    remainder  |    6347    4490    8250   10457    5236    5601   18707

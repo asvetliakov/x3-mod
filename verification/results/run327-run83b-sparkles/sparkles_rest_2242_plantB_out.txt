@@ -1,0 +1,25 @@
+crop x2560-2780 y780-900 frames 2242..2249 MG=6.0 JUMP=4.0 DET=4.0
+motion disp (to previous frame, px dy,dx): 2242:(-0.28,-0.13) 2243:(+0.28,+0.12) 2244:(-0.06,-0.38) 2245:(-0.39,+0.44) 2246:(+0.17,+0.00) 2247:(-0.17,+0.25) 2248:(+0.39,-0.25) 2249:(+0.06,+0.38)
+shifts (i->i+1): 2242:(0, 0) 2243:(0, 0) 2244:(0, 0) 2245:(0, 0) 2246:(0, 0) 2247:(0, 0) 2248:(0, 0)
+[hdr] mean over pairs: edge_mean_min3 2.188 edge_jump_frac 0.114 edge_mean_direct 9.171 edge_jump>8 0.065 edge_jump>16 0.033 owned_min3 2.391 owned_jump 0.122 thin_min3 nan thin_jump nan other_min3 nan other_jump nan remainder_min3 0.033 remainder_jump 0.002 | edge_jump_frac per pair 0.117 0.108 0.115 0.118 0.106 0.119 0.116
+[hdr] rest 8-frame per-pixel std: edge mean 7.472 p95 34.09 p99 44.19; owned 7.068 remainder 2.510
+[taa] mean over pairs: edge_mean_min3 0.097 edge_jump_frac 0.000 edge_mean_direct 0.122 edge_jump>8 0.000 edge_jump>16 0.000 owned_min3 0.095 owned_jump 0.000 thin_min3 nan thin_jump nan other_min3 nan other_jump nan remainder_min3 0.025 remainder_jump 0.000 | edge_jump_frac per pair 0.000 0.000 0.000 0.000 0.000 0.000 0.000
+[taa] rest 8-frame per-pixel std: edge mean 0.129 p95 0.56 p99 0.97; owned 0.121 remainder 0.047
+[present] mean over pairs: edge_mean_min3 0.088 edge_jump_frac 0.000 edge_mean_direct 0.123 edge_jump>8 0.000 edge_jump>16 0.000 owned_min3 0.079 owned_jump 0.000 thin_min3 nan thin_jump nan other_min3 nan other_jump nan remainder_min3 0.031 remainder_jump 0.000 | edge_jump_frac per pair 0.000 0.000 0.000 0.000 0.000 0.000 0.000
+[present] rest 8-frame per-pixel std: edge mean 0.137 p95 0.67 p99 1.07; owned 0.118 remainder 0.070
+[hdr] sparkles (plant px, margin 6.0) per interior frame [119, 123, 142, 132, 116, 129] total 761; score p99 14.68 p99.9 76.78 max 101.1
+[taa] sparkles (plant px, margin 6.0) per interior frame [0, 0, 0, 0, 0, 0] total 0; score p99 0.02 p99.9 0.64 max 2.4
+[present] sparkles (plant px, margin 6.0) per interior frame [0, 0, 0, 0, 0, 0] total 0; score p99 0.00 p99.9 1.00 max 4.3
+taa tabulation (sum over interior frames): base class | flag8 held1-7 out_border2 out_far block_box(marker) inplace7x7(no marker) clip3x3
+  sparkle  owned      |       0       0       0       0       0       0       0
+  sparkle  thin       |       0       0       0       0       0       0       0
+  sparkle  other      |       0       0       0       0       0       0       0
+  sparkle  remainder  |       0       0       0       0       0       0       0
+  edge     owned      |    3207    2099    7655   12892    5306       0   20547
+  edge     thin       |       0       0       0       0       0       0       0
+  edge     other      |       0       0       0       0       0       0       0
+  edge     remainder  |    4477    1054    3906    4055    5531       0    7961
+  plant    owned      |    3212    2148    8513   22623    5360       0   31136
+  plant    thin       |       0       0       0       0       0       0       0
+  plant    other      |       0       0       0       0       0       0       0
+  plant    remainder  |    4899    1325    5422    6975    6224       0   12397

@@ -1,0 +1,20 @@
+Run 83 B (run327, /tmp/x3-bottleX3-run327/session-20260925-050315-212.log, DLL f0259ceb from 80394271): fog-band plant sparkles,
+output side. Read-only, no Wine. The taa_age_1_*.r32f dumps were written (16 motion_output_taa_age_readback rows, result 0) but
+tools/analysis/snapshot_x3_run.py READBACKS (lines 32-41) has no motion_output_taa_age_readback entry, so the snapshot omitted
+them; the scripts read them from the bottle's x3-modern-captures directory (same session, 05:04).
+Copied from ../run323-fog-plants-shimmer: burst_px.py locate_plants.py frame_dt.py (unchanged); sparkle_rows.py embeds the flag_sim.py thinFlag model (checked against the actual h == 8: identical on every plant pixel).
+New: config_rows.py, thumb_png.py (PNG to scratch only), sparkles.py, sparkle_rows.py, present_top.py.
+python3 config_rows.py /tmp/x3-bottleX3-run327/session-*.log > config_rows_327_out.txt       # Q1/Q5
+python3 config_rows.py /tmp/x3-bottleX3-run326/session-*.log > config_rows_326_out.txt       # Q5: the launch before (sun occlusion on, log=0)
+python3 burst_px.py 327 > burst_px_out.txt; python3 frame_dt.py 327 2242 2904 > frame_dt_out.txt   # Q1 rest / pan, fps
+for f in 2242 2249 2904 2911; do python3 locate_plants.py 327 $f > locate_plants_${f}_out.txt; done   # Q1 crops
+# Q2 (combined two-plant crops; hull control = player ship nose, CTRL=1 WMIN=0)
+python3 sparkles.py 2260 630 2780 900 2242 8 > sparkles_rest_2242_out.txt
+python3 sparkles.py 2260 850 2780 1200 2904 8 > sparkles_pan_2904_out.txt
+EXSHIP=8 python3 sparkles.py 2260 850 2780 1200 2904 8 > sparkles_pan_2904_exship8_out.txt
+EXSHIP=8 python3 sparkles.py 2260 630 2580 820 2242 8 > sparkles_rest_2242_plantA_out.txt; EXSHIP=8 python3 sparkles.py 2560 780 2780 900 2242 8 > sparkles_rest_2242_plantB_out.txt
+EXSHIP=8 python3 sparkles.py 2260 850 2460 1040 2904 8 > sparkles_pan_2904_plantA_exship8_out.txt; EXSHIP=8 python3 sparkles.py 2600 1040 2780 1200 2904 8 > sparkles_pan_2904_plantB_exship8_out.txt
+for b in 2242 2904; do WMIN=0 CTRL=1 python3 sparkles.py 2525 975 2590 1025 $b 8 > sparkles_hull_${b}_out.txt; done
+# Q3/Q4 sparkle classes (lane, actual region hold h, box marker proxy, flag model N / N-1, input spike, 3x3/7x7 bound, ship)
+python3 sparkle_rows.py 2260 850 2780 1200 2904 8 > sparkle_rows_pan_2904_out.txt; python3 sparkle_rows.py 2260 630 2780 900 2242 8 > sparkle_rows_rest_2242_out.txt
+python3 present_top.py 2260 850 2780 1200 2904 8 > present_top_pan_2904_out.txt; python3 present_top.py 2260 630 2780 900 2242 8 > present_top_rest_2242_out.txt

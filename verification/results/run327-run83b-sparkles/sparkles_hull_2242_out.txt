@@ -1,0 +1,16 @@
+crop x2525-2590 y975-1025 frames 2242..2249 MG=6.0 JUMP=4.0 DET=4.0
+motion disp (to previous frame, px dy,dx): 2242:(-0.28,-0.12) 2243:(+0.28,+0.12) 2244:(-0.06,-0.38) 2245:(-0.39,+0.44) 2246:(+0.17,+0.00) 2247:(-0.17,+0.25) 2248:(+0.39,-0.25) 2249:(+0.06,+0.38)
+shifts (i->i+1): 2242:(0, 0) 2243:(0, 0) 2244:(0, 0) 2245:(0, 0) 2246:(0, 0) 2247:(0, 0) 2248:(0, 0)
+[hdr] mean over pairs: edge_mean_min3 1.097 edge_jump_frac 0.054 edge_mean_direct 5.584 edge_jump>8 0.013 edge_jump>16 0.002 all_min3 0.671 all_jump 0.023 | edge_jump_frac per pair 0.052 0.054 0.055 0.060 0.051 0.055 0.051
+[hdr] rest 8-frame per-pixel std: edge mean 3.998 p95 16.83 p99 29.17; all 2.211
+[taa] mean over pairs: edge_mean_min3 0.284 edge_jump_frac 0.003 edge_mean_direct 0.363 edge_jump>8 0.000 edge_jump>16 0.000 all_min3 0.164 all_jump 0.001 | edge_jump_frac per pair 0.002 0.003 0.002 0.002 0.001 0.004 0.004
+[taa] rest 8-frame per-pixel std: edge mean 0.333 p95 1.35 p99 2.59; all 0.178
+[present] mean over pairs: edge_mean_min3 0.541 edge_jump_frac 0.017 edge_mean_direct 0.734 edge_jump>8 0.002 edge_jump>16 0.000 all_min3 0.313 all_jump 0.007 | edge_jump_frac per pair 0.014 0.017 0.026 0.013 0.016 0.022 0.013
+[present] rest 8-frame per-pixel std: edge mean 0.676 p95 2.73 p99 4.64; all 0.403
+[hdr] sparkles (plant px, margin 6.0) per interior frame [0, 2, 0, 1, 0, 0] total 3; score p99 0.27 p99.9 2.02 max 42.8
+[taa] sparkles (plant px, margin 6.0) per interior frame [0, 0, 0, 0, 0, 0] total 0; score p99 -0.05 p99.9 0.15 max 4.1
+[present] sparkles (plant px, margin 6.0) per interior frame [0, 0, 0, 0, 0, 1] total 1; score p99 0.00 p99.9 0.28 max 6.0
+taa tabulation (sum over interior frames): base class | flag8 held1-7 out_border2 out_far block_box(marker) inplace7x7(no marker) clip3x3
+  sparkle  all        |       0       0       0       0       0       0       0
+  edge     all        |      58      74     461    7771     132       0    8232
+  plant    all        |      58      74     462   18906     132       0   19368

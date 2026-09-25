@@ -1,0 +1,13 @@
+crop x2525-2590 y975-1025 frames 2904..2911 MG=6.0 JUMP=4.0 DET=4.0
+motion disp (to previous frame, px dy,dx): 2904:(+0.34,-0.25) 2905:(+2.35,+0.34) 2906:(+2.21,-0.03) 2907:(+2.72,+0.07) 2908:(+2.45,-0.42) 2909:(+2.10,+0.51) 2910:(+2.55,-0.07) 2911:(+1.96,+0.27)
+shifts (i->i+1): 2904:(-2, 0) 2905:(-2, 0) 2906:(-3, 0) 2907:(-2, 0) 2908:(-2, -1) 2909:(-3, 0) 2910:(-2, 0)
+[hdr] mean over pairs: edge_mean_min3 1.403 edge_jump_frac 0.075 edge_mean_direct 5.532 edge_jump>8 0.033 edge_jump>16 0.009 all_min3 0.924 all_jump 0.040 | edge_jump_frac per pair 0.088 0.094 0.057 0.090 0.059 0.057 0.080
+[taa] mean over pairs: edge_mean_min3 1.417 edge_jump_frac 0.087 edge_mean_direct 3.976 edge_jump>8 0.049 edge_jump>16 0.015 all_min3 0.862 all_jump 0.046 | edge_jump_frac per pair 0.100 0.089 0.093 0.096 0.109 0.089 0.030
+[present] mean over pairs: edge_mean_min3 2.184 edge_jump_frac 0.107 edge_mean_direct 6.060 edge_jump>8 0.068 edge_jump>16 0.039 all_min3 1.301 all_jump 0.058 | edge_jump_frac per pair 0.110 0.101 0.108 0.117 0.125 0.123 0.065
+[hdr] sparkles (plant px, margin 6.0) per interior frame [7, 4, 4, 5, 1, 1] total 22; score p99 0.08 p99.9 6.69 max 52.1
+[taa] sparkles (plant px, margin 6.0) per interior frame [0, 0, 0, 0, 0, 0] total 0; score p99 -0.32 p99.9 0.19 max 1.3
+[present] sparkles (plant px, margin 6.0) per interior frame [0, 0, 0, 0, 0, 0] total 0; score p99 0.00 p99.9 0.72 max 3.0
+taa tabulation (sum over interior frames): base class | flag8 held1-7 out_border2 out_far block_box(marker) inplace7x7(no marker) clip3x3
+  sparkle  all        |       0       0       0       0       0       0       0
+  edge     all        |      86     238     861    9041      88     236    9902
+  plant    all        |      86     247    1002   18165      88     245   19167

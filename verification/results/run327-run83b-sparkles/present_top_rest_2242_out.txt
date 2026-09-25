@@ -1,0 +1,14 @@
+crop x2260-2780 y630-900 2242..2249 EXSHIP=8 MG=6.0: present sparkles 37, taa sparkles 27, present sparkles with a taa sparkle within 1 px 16
+  present score 10.1 frame 2246 x2498 y705 taa score 6.8 hdr score 16.6 h 0 owned 1
+  present score 9.4 frame 2243 x2477 y703 taa score 8.1 hdr score 88.4 h 0 owned 1
+  present score 9.0 frame 2246 x2310 y671 taa score 5.7 hdr score -6.9 h 0 owned 1
+  present score 8.9 frame 2246 x2479 y703 taa score 7.1 hdr score 83.9 h 0 owned 1
+  present score 8.7 frame 2246 x2370 y645 taa score 6.9 hdr score 24.2 h 0 owned 1
+  present score 8.6 frame 2246 x2480 y703 taa score 7.5 hdr score 89.3 h 0 owned 1
+  present score 8.6 frame 2243 x2478 y703 taa score 7.9 hdr score 86.5 h 0 owned 1
+  present score 8.6 frame 2243 x2476 y703 taa score 7.8 hdr score 86.8 h 0 owned 1
+  present score 8.3 frame 2246 x2405 y655 taa score 4.2 hdr score 12.4 h 0 owned 1
+  present score 8.1 frame 2246 x2384 y648 taa score 7.2 hdr score 7.6 h 0 owned 1
+  present score 7.9 frame 2244 x2506 y707 taa score 4.2 hdr score 6.8 h 0 owned 1
+  present score 7.7 frame 2245 x2418 y663 taa score 5.3 hdr score 48.4 h 0 owned 1
+present score>12: 0; of those taa score>6: 0, taa score in (2,6]: 0, region(h>0): 0

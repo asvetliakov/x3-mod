@@ -1,0 +1,12 @@
+proxy_identity sha256=f0259ceb6ef3eac7a407c49762dda9a182898d27ae4e32eb242ec922c1a52b8e bytes=56846411 path=C:\X3\d3d9.dll manifest_sha256=fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab source_commit=803942710d567f3476e6323008dfbdbce2b88330 at
+proxy_options X3M_GPU_SYNC_TIMING=0 X3M_ORIGINAL_FILL=0.01 X3M_ORIGINAL_FILL_DEFAULT=1 X3M_TAA_THIN_REGION_SOURCE=vote X3M_TAA_THIN_REGION_SOURCE_DEFAULT=1 X3M_TAA_DEBUG=0 X3M_SUN_OCCLUSION=1 X3M_SUN_OCCLUSION_CORE_F=1 X3M_SUN_OCCLUSION_LOG=<absent> X3M_TAA_BOX_RESOLUTION=half X3M_TAA_FAR_STABILISER=0.985,0,80,130,0.03,0.25 X3M_TAA_THIN_REGION=0.97,1
+motion_output_mode taa=1 taa_debug=0 jitter_samples=8 sentinel=auto sky_history=strict
+fov site=0041c9dc status=patched reason=ok value=0x3470 vertical_deg=58.72 setting=90 write=atomic registry=absent registry_before=- setfocus=active setfocus_write=atomic load=active load_write=atomic
+sun_occlusion requested=1 log=0 patched=1 reason=ok probe_site=0x00471630 probe_target=0x00488720 probe_write=atomic lens_site=0x00472491 lens_target=0x0047e6e0 lens_write=atomic
+sun_occlusion_config override=1 log=0 route=1 radius_u=0.0400 curve=1.000 core_f=1
+motion_output_taa_box_resolution device=1 requested=half configured=half reason=ok create=00000000 default=1
+taa_thin_region_source device=1 requested=vote configured=vote reason=ok thin_region=0.9700 thin_vote=1 twins=1 camera_gate=1 default=1
+motion_output_taa history_weight=0.900 far_weight=0.9850 far_f0=80.0 far_f1=130.0 far_speed_lo=0.030 far_speed_hi=0.250 thin_region=0.9700 thin_relax=1.000 thin_gate=camera thin_emissive=1.000
+motion_output_taa_history_taps device=1 requested=5 drawn=5 bilinear=1 reason=ok region_hold=1 mask_targets=0
+sun_occlusion_device device=1 attached=1 reason=ok result=00000000 formats=00000000 programs=00000000 slots=389 adapter_format=22
+readback rows {}
