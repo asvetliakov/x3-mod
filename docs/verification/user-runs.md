@@ -34,7 +34,7 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 76 A | Overlay re-baked with the light-atlas bleed guard (panel tint fix), 22 bodies | 1 | Completed 2026-09-24 (run281, flown on the Run76 DLL with the share-gate re-bake): no transition seen at all, the factory panels keep their colour across the switch; accepted ([record](../verification/results/lod-overlay-batch/install-run76b/install.json)). |
 
 
-## Run 83 (completed)
+## Run 84 (open)
 
 **Run 84 A (queued 2026-09-25; Run84 DLL from main after the far-gate merge; overlay install-fleet4 unchanged).**
 New in this build: `--taa-far-gate camera|screen` (default camera: the far stabiliser's 0.985 weight follows the camera-relative

@@ -2375,4 +2375,3 @@ which, and the same launch tests the partial sun occlusion the user asked for (g
    covered fraction instead of vanishing at half; note any shimmer or dark ring at the edge. One F8 half-covered.
 3. Exit through the menu. Name the sector.
 
-## Run 84 (queued once the Run84 candidate installs)
