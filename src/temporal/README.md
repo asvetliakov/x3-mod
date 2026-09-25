@@ -151,7 +151,8 @@ Per output pixel `p` (unjittered grid), in this order:
    alpha is 0 or the route's fill sentinel -1 (the far-plane pixel is its own
    correspondence when no closer neighbor won the dilation); a dilated
    neighbor with alpha -1 is a routed draw without history and rejects.
-   The route selects 2 only with a valid transform (`X3M_TAA_SENTINEL`),
+   The route selects 2 only with a valid transform (policy auto, the only
+   production policy since 2026-09-25; `X3M_FIXTURE_TAA_SENTINEL` in the seam),
    else 1 with the identity matrix, which the resolve then never applies.
    Under policy 1 a jittered edge against the sentinel background is wiped
    on every phase that uncovers it (see the thin-line fixture,

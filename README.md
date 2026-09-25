@@ -141,7 +141,7 @@ against the Python reference synthetically, not in gameplay. With `--hdr`
 and `--taa` together (stage 3) the temporal resolve runs on the FP16 scene
 before the write-back — no 8-bit round trip, the history in engine radiance,
 a reversible luminance weighting inside the resolve whose constant is the
-write-back's exposure (`--taa-k` fixes it; 0 is the unweighted resolve) —
+write-back's exposure (derived only; `--taa-k` was removed 2026-09-25) —
 and the presented frame is the tonemap of the resolved image.
 `--taa-sharpen 0..1` (env `X3M_TAA_SHARPEN`, requires `--taa`) adds a
 robust contrast-adaptive sharpen (RCAS) of the presented image only — the

@@ -609,7 +609,7 @@ def main():
                        X3M_HDR_EXPOSURE='manual', X3M_HDR_EV_MANUAL='0', X3M_HDR_CLAMP='0', X3M_HDR_BLOOM='0',
                        X3M_LINEAR_MATERIALS=str(material), X3M_MATERIAL_DIRECT_GAIN='1', X3M_MATERIAL_EMISSIVE_GAIN='4',
                        X3M_LIGHTMAP_EMISSIVE_GAIN='4', X3M_OWNERSHIP=str(ownership), X3M_TAA=str(taa),
-                       X3M_TAA_SENTINEL='1', X3M_TAA_SHARPEN='0', X3M_TAA_MIP_BIAS='0', X3M_SCENE_HOOK='0',
+                       X3M_FIXTURE_TAA_SENTINEL='1', X3M_TAA_SHARPEN='0', X3M_TAA_MIP_BIAS='0', X3M_SCENE_HOOK='0',
                        X3M_TELEMETRY='1', X3M_MOTION_FRAME_LOG='1', X3M_CAPTURE_START='1', X3M_CAPTURE_FRAMES='0',
                        X3M_MOTION_RT_MODE=rt_mode, X3M_STATE_SHADOW='1', WINEDLLOVERRIDES='d3d9=n,b')
             if args.mode=='glass': env['X3M_MATERIAL_EMISSIVE_GAIN']='1'

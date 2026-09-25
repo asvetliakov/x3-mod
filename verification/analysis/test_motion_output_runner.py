@@ -91,7 +91,7 @@ class MotionOutputRunnerTests(unittest.TestCase):
                     self.assertNotIn('X3M_HDR_TONEMAP', env)  # identity, runtime baseline fixed zero
                     self.assertNotIn('X3M_HDR_EXPOSURE', env)
                     self.assertNotIn('X3M_HDR_EV_MANUAL', env)
-        self.assertEqual(hdr['seam-taa-hdr-tonemap-k0']['X3M_TAA_K'], '0')
+        self.assertEqual(hdr['seam-taa-hdr-tonemap-k0']['X3M_FIXTURE_TAA_K'], '0')
 
     def test_render_state_resync_bound_includes_wrap_slots(self):
         self.assertEqual(runner.RS_SHADOW_STATES, 32)
@@ -520,7 +520,7 @@ class MotionOutputRunnerTests(unittest.TestCase):
                          {'seam-taa-fade-route-hover-owner', 'seam-taa-fade-route-hover-age', 'seam-taa-fade-route-original-owner-age', 'seam-taa-fade-route-original-age'})
         self.assertEqual(set(runner.FADE_ROUTE_AGE_FRESH), {'seam-taa-fade-route-hover-owner'} | set(runner.FADE_ROUTE_AGE_CASES))
         # The original-shading cases (run 125; run 130's origin behind the camera and same-node overlay) turn linear materials and the fade bracket off; every other case keeps both on.
-        self.assertTrue(all(c['jitter'] and c['taa'] and c['hdr'] and c['hdr_env']['X3M_TAA_SENTINEL'] == '2'
+        self.assertTrue(all(c['jitter'] and c['taa'] and c['hdr'] and c['hdr_env']['X3M_FIXTURE_TAA_SENTINEL'] == '2'
                             and c['hdr_env']['X3M_FIXTURE_CAMERA'] == 'rotate' and 'X3M_FADE_ROUTE' not in c['hdr_env'] for c in cases))
         self.assertEqual({c['name']: (c['hdr_env']['X3M_LINEAR_MATERIALS'], c['hdr_env']['X3M_LINEAR_DISTANCE_FADE']) for c in cases},
                          {c['name']: (('0', '0') if c['hdr_env']['X3M_FIXTURE_FADE_SCRIPT'] in runner.FADE_ROUTE_ORIGINAL_SCRIPTS else ('1', '1')) for c in cases})

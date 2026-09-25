@@ -2008,7 +2008,7 @@ bool MotionOutput::resolve_allowed(SceneEndSource source) noexcept {
     if (shadow_.recording) return skip(TaaSkip::Recording);
     if (active_queries_) return skip(TaaSkip::Queries);
     if (!ensure_taa()) return skip(TaaSkip::Initialize);
-    // Strict mode (X3M_TAA_SENTINEL=2): a frame whose scene camera could not
+    // Strict mode (seam X3M_FIXTURE_TAA_SENTINEL=2): a frame whose scene camera could not
     // be read, or whose transform failed, skips the resolve instead of
     // resolving current-only, so a broken camera read shows in gameplay and
     // in the log (skip 9) rather than degrading silently. A frame without a
@@ -6471,7 +6471,8 @@ void MotionOutput::begin_redirect() noexcept {
     // exposure multiplier exp2(EV) the AgX write-back applies to the resolved
     // image (EV manual or adapted at this latch), so the weighted domain is
     // the display-relative luminance the tonemap sees; 0 (unweighted) with the
-    // identity write-back, which applies no exposure; X3M_TAA_K overrides.
+    // identity write-back, which applies no exposure; the seam's
+    // X3M_FIXTURE_TAA_K overrides (production: always derived).
     hdr_taa_k_ = taa_k_override_ >= 0.f ? taa_k_override_ : hdr_->tonemap_active() ? hdr_->exposure().k() : 0.f;
 }
 // One write-back through the pass (the ladder), with the capture-frame

@@ -200,7 +200,7 @@ TAA run is user-managed.
 | `src/renderer/hdr_pass.{h,cpp}` + `hdr_writeback_program{,_inc}.h`, `hdr_tonemap_program{,_inc}.h`, `hdr_meter_program.h` + `hdr_meter_{level0,reduce}_program_inc.h`, `exposure.{h,cpp}`, `src/temporal/agx.{h,hlsl}` | FP16 HDR scene path (`X3M_HDR=1`): the owned `A16B16G16R16F` RT0, the capability gate and four-format self test, the write-back ladder (stage 1: identity; stage 2 with `X3M_HDR_TONEMAP=agx`: the AgX tonemap, the exposure meter chain and the host adaptation of `exposure.h`); the route decides when to redirect, flush and end ([hdr-scene-path.md](hdr-scene-path.md), "Stage 1 implementation" and "Stage 2 implementation") |
 | `src/proxy/scene_capture.{h,cpp}` | `describe_surface` shared with the route |
 | `src/proxy/camera_state.{h,cpp}` + `src/renderer/camera_reprojection.h` | Live engine camera read at the selector's Clear events behind the exact-executable gate (no patch), the far-plane `clip_to_previous` builder and the sentinel policy decision (`X3M_TAA_SENTINEL`, `X3M_CAMERA_CUT_DEG`, `X3M_CAMERA_LOG`); see [temporal-integration.md](temporal-integration.md#camera-reprojection-for-sentinel-pixels-2026-09-12) |
-| `tools/manage.py` | `--motion-output` (history needs `--object-trace --object-lifetime`; otherwise sentinel-only), `--taa` (implies `--motion-jitter`), `--taa-debug`, `--taa-k`, `--taa-mip-bias <float>` (`X3M_TAA_MIP_BIAS`: the mip LOD bias of the routed material stages while the jitter is on, default −0.5 with `--taa` since 2026-09-16, 0 disables), `--taa-sentinel auto|1|2`, `--camera-cut-deg`, `--camera-log`, `--state-shadow auto|on|off` (default `auto`: the variable is left unset and the DLL's hybrid unhook decides), `--scene-hook [on|off]` (default on with `--motion-output`), `--hdr` |
+| `tools/manage.py` | `--motion-output` (history needs `--object-trace --object-lifetime`; otherwise sentinel-only), `--taa` (implies `--motion-jitter`), `--taa-debug`, `--taa-mip-bias <float>` (`X3M_TAA_MIP_BIAS`: the mip LOD bias of the routed material stages while the jitter is on, default −0.5 with `--taa` since 2026-09-16, 0 disables), `--camera-cut-deg`, `--camera-log`, `--state-shadow auto|on|off` (default `auto`: the variable is left unset and the DLL's hybrid unhook decides), `--scene-hook [on|off]` (default on with `--motion-output`), `--hdr` |
 
 `X3M_MOTION_OUTPUT=1` enables the route. Without `X3M_OBJECT_TRACE=1` and
 `X3M_OBJECT_LIFETIME=1` gate 5 never passes and every eligible draw writes the
@@ -218,9 +218,9 @@ pre-resolve color in capture frames. With `X3M_HDR=1` the resolve consumes
 the FP16 scene target instead of the 8-bit RT0 and the write-back presents
 its output (stage 3 of the HDR scene path,
 [temporal-integration.md](temporal-integration.md#stage-3-of-the-hdr-scene-path-taa-on-hdr-2026-09-12));
-`X3M_TAA_K=<k>` (0 ≤ k ≤ 65504; default unset) fixes the resolve's
-luminance-weighting constant there, 0 being the unweighted resolve, where
-the default derives it from the write-back's exposure. `X3M_MOTION_RT_MODE=lazy` (default
+The resolve's luminance-weighting constant there is derived from the
+write-back's exposure only (`X3M_TAA_K` / `--taa-k` removed 2026-09-25; the
+fixture seam keeps `X3M_FIXTURE_TAA_K`). `X3M_MOTION_RT_MODE=lazy` (default
 `perdraw`) keeps RT1/RT2 and `COLORWRITEENABLE1/2` bound across consecutive
 routed draws and restores them before any application call that could
 observe them (an A/B experiment; equivalence and the restore points are in
@@ -233,8 +233,9 @@ per-draw metrics (`route_gate`, `route_draw`, `route_set_rt`, `route_jitter`,
 route takes no QPC stamp per draw. The object observers read only through the
 validated direct-read path; the `X3M_ENGINE_READS=rpm` `ReadProcessMemory`
 fallback was removed on 2026-09-22 (last commit carrying it: main `59ad2649`).
-`X3M_TAA_SENTINEL=auto|1|2` (default
-`auto`) selects the resolve's depth-sentinel policy: `auto` reprojects the
+The resolve's depth-sentinel policy is `auto` (`X3M_TAA_SENTINEL` and
+`--taa-sentinel` removed 2026-09-25; `1` and `2` are fixture-only through the
+seam's `X3M_FIXTURE_TAA_SENTINEL`): `auto` reprojects the
 unrouted (sentinel) pixels through the live engine camera at the far plane
 whenever the camera read of this frame and of the history's frame both
 validate and the rotation between them is at or below `X3M_CAMERA_CUT_DEG`

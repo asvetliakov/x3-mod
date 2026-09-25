@@ -109,7 +109,7 @@ bool motion_capture_requested = false;
 bool motion_output_requested = false;
 bool motion_jitter_requested = false;
 bool taa_requested = false, taa_debug_requested = false;
-float taa_k_override = -1.f; // X3M_TAA_K (stage 3): fixed k of the resolve's luminance weighting on the HDR path; negative: derived from the exposure
+float taa_k_override = -1.f; // X3M_FIXTURE_TAA_K (seam DLL only): fixed k of the resolve's luminance weighting on the HDR path; negative (always in production): derived from the exposure
 // X3M_TAA_MIP_BIAS=<float> (default -0.5 with X3M_TAA=1, otherwise 0 = off,
 // bit-identical): D3DSAMP_MIPMAPLODBIAS the route applies to the mip-mapped
 // stages of routed draws while the jitter is on (docs/architecture/
@@ -253,12 +253,15 @@ unsigned motion_frame_log = 60;
 // off (every query a native GetRenderState, the A/B of the shadow itself).
 // X3M_SCENE_HOOK is parsed by scene_hook (default on with the route).
 int motion_state_shadow = -1;
-// X3M_TAA_K=<k> (stage 3 of the HDR scene path; requires X3M_HDR=1 and
-// X3M_TAA=1) fixes k of the resolve's luminance weighting (0: unweighted);
-// unset: k = exp2(EV) of the AgX write-back, 0 with the identity write-back.
-// X3M_TAA_SENTINEL=auto|1|2 selects the resolve's depth-sentinel policy
-// (auto: far-plane camera reprojection whenever the live camera read yields a
-// transform; 1: current-only; 2: strict, skip the resolve without one);
+// k of the resolve's luminance weighting (stage 3 of the HDR scene path) is
+// derived only: exp2(EV) of the AgX write-back, 0 with the identity
+// write-back (X3M_TAA_K and --taa-k were removed 2026-09-25; the seam DLL
+// keeps the fixture-only X3M_FIXTURE_TAA_K for the unweighted identity case).
+// The resolve's depth-sentinel policy is auto in production (far-plane camera
+// reprojection whenever the live camera read yields a transform; X3M_TAA_SENTINEL
+// and --taa-sentinel were removed 2026-09-25); the seam DLL alone reads
+// X3M_FIXTURE_TAA_SENTINEL=auto|1|2 (1: current-only; 2: strict, skip the
+// resolve without one) for the fixtures that pin those policies;
 // X3M_CAMERA_CUT_DEG bounds the camera rotation per frame before a cut is
 // declared (default 20); X3M_CAMERA_LOG is the camera_state line cadence (300).
 x3m::renderer::SentinelMode taa_sentinel_mode = x3m::renderer::SentinelMode::Auto;
@@ -333,14 +336,14 @@ bool fade_rt2_owner_given = false, fade_rt2_owner_default = false;
 // the vote through it, so the policy is armed exactly when the vote can run.
 bool thin_vote_gate = false;
 // X3M_TAA_MOTION_WEIGHT=F[,V0,V1] (F 0 off, else 0.5..0.99; 0 <= V0 < V1 <= 64 px/frame, default 2,8;
-// absent: 0.7,2,8 since 2026-09-23 after Run 70 A with the TAA route, an age program and X3M_TAA_SENTINEL other
-// than 1, else off; invalid or oversized: off, logged; docs/architecture/taa-motion-history-weight.md): the age programs cap the history
+// absent: 0.7,2,8 since 2026-09-23 after Run 70 A with the TAA route, an age program and a sentinel policy other
+// than 1 (always, in production), else off; invalid or oversized: off, logged; docs/architecture/taa-motion-history-weight.md): the age programs cap the history
 // keep weight at F for a pixel whose correspondence moves V1 px/frame or more of translation
 // parallax against the rotation-only camera path (1 at or below V0, a quadratic ramp between), so
 // a hull under SETA accumulates a shorter history; the gate is the smaller of that parallax and the
 // pixel's own screen motion, so a pan, a co-moving hull (the player's ship, an escort) and rest keep
 // their weight. Needs an age program (far stabiliser or thin region), which motion_output judges;
-// inert (cap 1) without the camera path (X3M_TAA_SENTINEL=1, or no camera transform this frame).
+// inert (cap 1) without the camera path (the seam's X3M_FIXTURE_TAA_SENTINEL=1, or no camera transform this frame).
 float taa_motion_weight[3] = {0.f, 2.f, 8.f};
 unsigned camera_log_frames = 300;
 unsigned motion_jitter_samples = 8;
@@ -3103,12 +3106,15 @@ void initialize_log(HMODULE module) {
     taa_requested=motion_output_requested && GetEnvironmentVariableW(L"X3M_TAA",setting,32)==1 && setting[0]==L'1';
     if(taa_requested)motion_jitter_requested=true;
     taa_debug_requested=taa_requested && GetEnvironmentVariableW(L"X3M_TAA_DEBUG",setting,32)>0 && wcstoul(setting,nullptr,10)>0;
-    // X3M_TAA_K=<k> (0 <= k <= 65504): a fixed luminance-weighting constant for
-    // the resolve on the FP16 scene (X3M_HDR=1); 0 is the unweighted resolve.
-    // Unset, out of range or not a number: derived from the write-back's
-    // exposure (0 is a valid override, so a failed conversion, which wcstof
-    // reports as 0, must not be taken: the whole string has to be consumed).
-    if(GetEnvironmentVariableW(L"X3M_TAA_K",setting,32)>0){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&*end==L'\0'&&v>=0.f&&v<=65504.f)taa_k_override=v;}
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+    // Seam only: X3M_FIXTURE_TAA_K=<k> (0 <= k <= 65504) fixes the resolve's
+    // luminance-weighting constant on the FP16 scene (0: the unweighted
+    // identity reference). Unset, out of range or not a number: derived from
+    // the write-back's exposure (0 is a valid value, so a failed conversion,
+    // which wcstof reports as 0, must not be taken: the whole string has to be
+    // consumed). Production never reads it: k is always derived.
+    if(GetEnvironmentVariableW(L"X3M_FIXTURE_TAA_K",setting,32)>0){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&*end==L'\0'&&v>=0.f&&v<=65504.f)taa_k_override=v;}
+#endif
     // X3M_TAA_MIP_BIAS=<bias> (-8 <= bias <= 8, whole string consumed; unset or
     // invalid: -0.5 with the TAA resolve on, otherwise off): requires the route
     // with the jitter (X3M_TAA=1 or X3M_MOTION_JITTER=1); the bias is applied
@@ -3676,11 +3682,14 @@ void initialize_log(HMODULE module) {
     }
     const bool scene_hook_requested=scene_hook::wanted(); // default on with the route (X3M_SCENE_HOOK=0 turns it off)
     if(GetEnvironmentVariableW(L"X3M_MOTION_FRAME_LOG",setting,32)>0){const unsigned long n=wcstoul(setting,nullptr,10);if(n>=1&&n<=100000)motion_frame_log=unsigned(n);}
-    if(GetEnvironmentVariableW(L"X3M_TAA_SENTINEL",setting,32)>0){
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+    // Seam only: policies 1 and 2 for the fixtures; production stays auto.
+    if(GetEnvironmentVariableW(L"X3M_FIXTURE_TAA_SENTINEL",setting,32)>0){
         if(!wcscmp(setting,L"1"))taa_sentinel_mode=x3m::renderer::SentinelMode::CurrentOnly;
         else if(!wcscmp(setting,L"2"))taa_sentinel_mode=x3m::renderer::SentinelMode::Camera;
         else taa_sentinel_mode=x3m::renderer::SentinelMode::Auto;
     }
+#endif
     if(GetEnvironmentVariableW(L"X3M_TAA_UNMATCHED_STATIC",setting,32)>0){
         if(!wcscmp(setting,L"node"))taa_unmatched_static=1;
         else if(!wcscmp(setting,L"all"))taa_unmatched_static=2;

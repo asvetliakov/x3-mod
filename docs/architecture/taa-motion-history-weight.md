@@ -2,8 +2,8 @@
 
 Design note, 2026-09-23 (Fable). **Implemented 2026-09-23 (section 9 is the as-built record,
 `docs/verification/temporal-resolve.md` "2026-09-23 motion history weight"); default 0.7,2,8 since 2026-09-23 after
-Run 70 A, run262/run263** (launcher and DLL fallback, with an age program and a camera policy other than
-`--taa-sentinel 1`; `--taa-motion-weight 0` opts out). Numbers marked [M] are Run 68 A measurements
+Run 70 A, run262/run263** (launcher and DLL fallback, with an age program; the camera policy is always auto since
+`--taa-sentinel` was removed on 2026-09-25; `--taa-motion-weight 0` opts out). Numbers marked [M] are Run 68 A measurements
 (`verification/results/run254-exit/hull_sharp.py`, `hull_blurfit.py`, `hull_region_split.py`
 and their `*_out*.txt`; ledger `docs/verification/temporal-resolve.md`, "Run 254"); [E] are estimates
 from the model in section 3.
@@ -188,7 +188,7 @@ age target identical to off on every row). Plumbing as the exit reset's: `FrameI
 reason=no_age_program`), and handed to the pass only under camera policy 2 (`relative` is the translation parallax against
 the far-plane path there and the screen motion otherwise, i.e. a pan would be capped without the camera path).
 `--taa-motion-weight F[,V0,V1]` (requires `--taa`; F > 0 requires an age program; 0 the explicit off; omitted: 0.7,2,8 with an
-age program under a policy other than `--taa-sentinel 1`, else 0, always forwarded; the DLL's fallback for an absent variable
+age program (policy always auto since 2026-09-25), else 0, always forwarded; the DLL's fallback for an absent variable
 matches, an invalid or oversized value stays off, logged).
 
 **Slots (measured, D3DXDisassembleShader through the generator and the fixture's `RESOLVE_BUDGET`).** The term as written

@@ -1419,7 +1419,7 @@ def main_screen(args):
                        X3M_SCREEN_EMISSION=str(run['screen']),X3M_SCREEN_EMISSION_BOUND=str(run['screen']),X3M_SCREEN_EMISSION_GAIN=repr(run.get('gain',SCREEN_GAIN)),
                        X3M_SCREEN_EMISSION_ADDITIVE=repr(run.get('additive',0.)),
                        X3M_SCREEN_EMISSION_ADDITIVE_ALPHA='' if run.get('alpha') is None else repr(run['alpha']),
-                       X3M_OWNERSHIP='1',X3M_TAA='1',X3M_TAA_SENTINEL='2',X3M_TAA_SHARPEN='0',X3M_TAA_MIP_BIAS='-.5' if materials else '0',
+                       X3M_OWNERSHIP='1',X3M_TAA='1',X3M_FIXTURE_TAA_SENTINEL='2',X3M_TAA_SHARPEN='0',X3M_TAA_MIP_BIAS='-.5' if materials else '0',
                        X3M_FIXTURE_CAMERA='rotate',X3M_SCENE_HOOK='0',X3M_TELEMETRY='1',X3M_MOTION_FRAME_LOG='1',X3M_STATE_SHADOW='1',
                        X3M_MOTION_RT_MODE='lazy',X3M_TAA_DEBUG='0' if run.get('timing') else '1',
                        X3M_CAPTURE_START='1000000' if run.get('timing') else str(SCREEN_CAPTURE_FRAMES.start),X3M_CAPTURE_FRAMES='0' if run.get('timing') else str(len(SCREEN_CAPTURE_FRAMES)),WINEDLLOVERRIDES='d3d9=n,b')
@@ -1534,7 +1534,7 @@ def main():
                        X3M_HDR_EXPOSURE='manual',X3M_HDR_EV_MANUAL='0',X3M_HDR_CLAMP='0',X3M_HDR_BLOOM='0',
                        X3M_LINEAR_MATERIALS='1',X3M_MATERIAL_DIRECT_GAIN='1',X3M_MATERIAL_EMISSIVE_GAIN='1',X3M_LIGHTMAP_EMISSIVE_GAIN='1',
                        X3M_LINEAR_DISTANCE_FADE=str(run['fade']),X3M_LINEAR_EMISSIONS=str(run['emission']),X3M_EMISSION_GAIN='1',
-                       X3M_OWNERSHIP='1',X3M_TAA=str(run['taa']),X3M_TAA_SENTINEL='2',X3M_TAA_SHARPEN='0',X3M_TAA_MIP_BIAS='-.5',
+                       X3M_OWNERSHIP='1',X3M_TAA=str(run['taa']),X3M_FIXTURE_TAA_SENTINEL='2',X3M_TAA_SHARPEN='0',X3M_TAA_MIP_BIAS='-.5',
                        X3M_FIXTURE_CAMERA='rotate',X3M_SCENE_HOOK='0',X3M_TELEMETRY='1',X3M_MOTION_FRAME_LOG='1',X3M_STATE_SHADOW='1',
                        X3M_MOTION_RT_MODE='lazy' if run['lazy'] else 'perdraw',X3M_TAA_DEBUG='0' if run.get('timing') else '1',
                        X3M_CAPTURE_START='1000000' if run.get('timing') else '1',X3M_CAPTURE_FRAMES='0',WINEDLLOVERRIDES='d3d9=n,b')

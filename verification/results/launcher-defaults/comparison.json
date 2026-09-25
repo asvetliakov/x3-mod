@@ -77,6 +77,10 @@
   "X3M_SHADOW_REPLAY_SIZE": [
    "1024",
    null
+  ],
+  "X3M_TAA_SENTINEL": [
+   "auto",
+   null
   ]
  },
  "empty_vs_recorded_stand": {
@@ -148,6 +152,10 @@
    "1",
    "0"
   ],
+  "X3M_TAA_SENTINEL": [
+   "auto",
+   null
+  ],
   "X3M_TELEMETRY": [
    "1",
    "0"
@@ -181,14 +189,14 @@
   ]
  },
  "counts": {
-  "empty": 175,
-  "stand": 178,
+  "empty": 174,
+  "stand": 177,
   "recorded": 181
  },
  "checks": {
   "empty_vs_stand only telemetry/debug + the promoted map sizes": true,
-  "stand vs recorded only the two new defaults and the removed single-map variables": true,
-  "empty vs recorded: telemetry/debug + the two new defaults + the map sizes + the removed single-map variables": true,
+  "stand vs recorded only the two new defaults and the removed variables (single map, sentinel)": true,
+  "empty vs recorded: telemetry/debug + the two new defaults + the map sizes + the removed variables (single map, sentinel)": true,
   "same X3AP switches": true,
   "short stand command == old stand command but the map sizes": true
  }

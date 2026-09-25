@@ -28,7 +28,7 @@
 // view buffers as the engine camera globals (x3m_camera_state_fixture_install):
 // the camera yaws one degree per frame with a 30-degree jump at frame 7, the
 // reference resolve is driven by the same far-plane builder and the DLL's
-// resolved image must still equal it byte for byte (X3M_TAA_SENTINEL selects
+// resolved image must still equal it byte for byte (X3M_FIXTURE_TAA_SENTINEL selects
 // the policy; 2 is strict and skips the resolve on frames without a
 // transform). "envmap" (seam, TAA, camera) runs the environment-map sequence
 // of the frame routine (mid-frame EndScene, six cube-face target changes with
@@ -540,7 +540,7 @@ struct Fixture {
     void (*hook_stub)() = nullptr;
     bool history_valid = false; // the route holds a resolved previous frame (hook script)
     // Camera: the fake engine globals installed (X3M_FIXTURE_CAMERA=rotate),
-    // the policy switch (X3M_TAA_SENTINEL: 0 auto, 1, 2 strict), this frame's
+    // the policy switch (X3M_FIXTURE_TAA_SENTINEL: 0 auto, 1, 2 strict), this frame's
     // scene view, the view of the last frame that resolved (the history's) and
     // the decision the route must have taken at this frame's boundary.
     void (*camera_install)(const float* const*, const float* const*) = nullptr;
@@ -3232,7 +3232,7 @@ int main(int argc, char** argv) {
         if (GetEnvironmentVariableA("X3M_MOTION_JITTER_SAMPLES", setting, sizeof setting) > 0) { const unsigned n = unsigned(std::atoi(setting)); if (n >= 2 && n <= 64) f.jitter_samples = n; }
         char rt_mode[8]{}; f.lazy = GetEnvironmentVariableA("X3M_MOTION_RT_MODE", rt_mode, sizeof rt_mode) == 4 && !std::strcmp(rt_mode, "lazy");
         char camera_mode[8]{}; f.camera = f.seam && GetEnvironmentVariableA("X3M_FIXTURE_CAMERA", camera_mode, sizeof camera_mode) == 6 && !std::strcmp(camera_mode, "rotate");
-        if (GetEnvironmentVariableA("X3M_TAA_SENTINEL", setting, sizeof setting) > 0) f.sentinel = !std::strcmp(setting, "1") ? 1 : !std::strcmp(setting, "2") ? 2 : 0;
+        if (GetEnvironmentVariableA("X3M_FIXTURE_TAA_SENTINEL", setting, sizeof setting) > 0) f.sentinel = !std::strcmp(setting, "1") ? 1 : !std::strcmp(setting, "2") ? 2 : 0;
         f.state_shadow = !(GetEnvironmentVariableA("X3M_STATE_SHADOW", setting, sizeof setting) == 1 && setting[0] == '0');
         f.wrap = GetEnvironmentVariableA("X3M_FIXTURE_WRAP", setting, sizeof setting) == 1 && setting[0] == '1';
         f.burst_mask = f.burst && GetEnvironmentVariableA("X3M_FIXTURE_BURST_MASK", setting, sizeof setting) == 1 && setting[0] == '1';

@@ -1,6 +1,6 @@
 """Host tests of --taa-motion-weight (X3M_TAA_MOTION_WEIGHT, docs/architecture/taa-motion-history-weight.md):
-always resolved and forwarded with --taa (0.7,2,8 with an age program and a camera policy other than
---taa-sentinel 1 since Run 70 A, else 0), the DLL's own fallback matches; 0 is the opt-out; an inherited shell
+always resolved and forwarded with --taa (0.7,2,8 with an age program since Run 70 A, else 0; the
+camera policy is always auto since --taa-sentinel was removed on 2026-09-25), the DLL's own fallback matches; 0 is the opt-out; an inherited shell
 value never survives a launch. No game, no Wine."""
 import contextlib
 import importlib.util
@@ -50,18 +50,16 @@ class MotionWeightLaunch(unittest.TestCase):
         return json.loads(output)['env']
 
     def test_omitted_resolves_to_the_run70_default_or_off(self):
-        # Run 70 A (2026-09-23, run262/run263): 0.7,2,8 with an age program under a policy that can reach 2, else 0;
+        # Run 70 A (2026-09-23, run262/run263): 0.7,2,8 with an age program (policy always auto), else 0;
         # always forwarded with --taa, so an inherited value never survives.
         with tempfile.TemporaryDirectory() as directory:
             self.assertEqual(self.env(directory, *TAA, *AGE)['X3M_TAA_MOTION_WEIGHT'], '0.7,2,8')
             self.assertEqual(self.env(directory, *TAA, *AGE, inherited={'X3M_TAA_MOTION_WEIGHT': '0'})['X3M_TAA_MOTION_WEIGHT'], '0.7,2,8')
             self.assertEqual(self.env(directory, *TAA, '--taa-thin-region', '0.97')['X3M_TAA_MOTION_WEIGHT'], '0.7,2,8')
-            self.assertEqual(self.env(directory, *TAA, *AGE, '--taa-sentinel', '2')['X3M_TAA_MOTION_WEIGHT'], '0.7,2,8')
-            # Off: the explicit opt-out, no age program (never an error), camera policy forced to 1.
+            # Off: the explicit opt-out, no age program (never an error).
             self.assertEqual(self.env(directory, *TAA, *AGE, '--taa-motion-weight', '0')['X3M_TAA_MOTION_WEIGHT'], '0,2,8')
             self.assertEqual(self.env(directory, *TAA, inherited={'X3M_TAA_MOTION_WEIGHT': '0.8'})['X3M_TAA_MOTION_WEIGHT'], '0')
             self.assertEqual(self.env(directory, *TAA, '--taa-far-stabiliser', '0')['X3M_TAA_MOTION_WEIGHT'], '0')
-            self.assertEqual(self.env(directory, *TAA, *AGE, '--taa-sentinel', '1', inherited={'X3M_TAA_MOTION_WEIGHT': '0.8,2,8'})['X3M_TAA_MOTION_WEIGHT'], '0')
             # Without --taa nothing is forwarded and an inherited value is dropped.
             self.assertNotIn('X3M_TAA_MOTION_WEIGHT', self.env(directory, '--motion-output', inherited={'X3M_TAA_MOTION_WEIGHT': '0.8,2,8'}))
 
@@ -100,7 +98,7 @@ class MotionWeightLaunch(unittest.TestCase):
         fallback = 'else if(taa_requested&&taa_sentinel_mode!=x3m::renderer::SentinelMode::CurrentOnly&&(taa_far[0]>0.f||taa_far[1]>0.f||taa_thin_region[0]>0.f))\n        taa_motion_weight[0]=.7f;'
         self.assertIn(fallback, capture)
         parse = capture.index('GetEnvironmentVariableW(L"X3M_TAA_MOTION_WEIGHT"')
-        self.assertLess(capture.index('GetEnvironmentVariableW(L"X3M_TAA_SENTINEL"'), parse)
+        self.assertLess(capture.index('GetEnvironmentVariableW(L"X3M_FIXTURE_TAA_SENTINEL"'), parse)
         self.assertLess(capture.index('GetEnvironmentVariableW(L"X3M_TAA_THIN_REGION"'), parse)
         self.assertLess(parse, capture.index(fallback))
         manage = load_manage()

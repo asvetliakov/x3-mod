@@ -55,10 +55,11 @@ class MotionCutDefaultsLaunch(unittest.TestCase):
             env = self.env(directory)
             self.assertEqual(env['X3M_MOTION_CUT_MEDIAN_PX'], '1e30')
             self.assertEqual(env['X3M_MOTION_CUT_MISSING'], '1')
-            # The separate camera-cut and sentinel policy stay at their
-            # established defaults; this change only disables the two motion heuristics.
+            # The separate camera cut stays at its established default (the sentinel
+            # policy is always auto since 2026-09-25 and no longer sent); this change
+            # only disables the two motion heuristics.
             self.assertEqual(env['X3M_CAMERA_CUT_DEG'], '20.0')
-            self.assertEqual(env['X3M_TAA_SENTINEL'], 'auto')
+            self.assertNotIn('X3M_TAA_SENTINEL', env)
 
     def test_explicit_diagnostic_overrides_are_preserved(self):
         with tempfile.TemporaryDirectory() as directory:

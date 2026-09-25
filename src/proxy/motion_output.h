@@ -11,7 +11,7 @@
 // per-draw gate evaluation with variant substitution and exact restoration,
 // per-draw sub-pixel jitter (X3M_MOTION_JITTER=1), previous-row history, the
 // cut detector, the live camera state read at the scene Clear (the far-plane
-// reprojection of sentinel pixels, X3M_TAA_SENTINEL), the temporal resolve at
+// reprojection of sentinel pixels, policy auto), the temporal resolve at
 // the bloom copy (X3M_TAA=1, owning one TemporalPass per device), the FP16
 // HDR scene redirect with its logical-binding shim and write-back policy
 // (X3M_HDR=1, owning one HdrPass per device) and capture-frame diagnostics.
@@ -226,7 +226,7 @@ struct MotionRoute {
 // Why the temporal resolve did not run at this frame's bloom copy (X3M_TAA=1).
 // None: it ran (see taa_result/taa_copy). NotReached: the selector never
 // presented the AwaitCopy event (menu, rejected or unrecognized frame).
-// CameraState: X3M_TAA_SENTINEL=2 (strict) and no far-plane transform this frame.
+// CameraState: policy 2 (strict; seam X3M_FIXTURE_TAA_SENTINEL=2) and no far-plane transform this frame.
 // Target: the engine scene-end hook fired while RT0 was not the latched main target.
 // Msaa: the latched main target is multisampled (the route refused the frame:
 // RT1/RT2 textures cannot share its sample count; motion_output_msaa_refused).
@@ -632,7 +632,8 @@ public:
     // copies and identity draws (TemporalPass::configure_copy). Logged as
     // taa_copy=stretch|draw in motion_output_device.
     bool taa_copy_by_draw() const noexcept { return taa_copy_draw_; }
-    // Depth-sentinel policy of the resolve (X3M_TAA_SENTINEL: auto | 1 | 2),
+    // Depth-sentinel policy of the resolve (auto in production; the seam's
+    // X3M_FIXTURE_TAA_SENTINEL: auto | 1 | 2),
     // the camera rotation bound that declares a cut (X3M_CAMERA_CUT_DEG) and
     // the cadence of the camera_state line (X3M_CAMERA_LOG frames; capture
     // frames always log). Effective immediately.
@@ -773,9 +774,10 @@ public:
     // Stage 2: the adapted exposure multiplier as the TAA luminance weighting
     // k (exported for stage 3; nothing consumes it yet; 0 without the meter).
     float hdr_taa_k() const noexcept { return hdr_taa_k_; }
-    // X3M_TAA_K: a fixed k for the resolve's luminance weighting on the HDR
-    // path (>= 0; 0 is the unweighted resolve); negative selects the derived
-    // value (the write-back's exposure multiplier, see the latch).
+    // X3M_FIXTURE_TAA_K (seam DLL only; production always passes -1): a fixed
+    // k for the resolve's luminance weighting on the HDR path (>= 0; 0 is the
+    // unweighted resolve); negative selects the derived value (the
+    // write-back's exposure multiplier, see the latch).
     void configure_taa_k(float k) noexcept { taa_k_override_ = k; }
     // X3M_TAA_MIP_BIAS=<float> (-0.5 by default with the TAA resolve, 0: off): the
     // D3DSAMP_MIPMAPLODBIAS the route applies while the jitter is active to
@@ -2374,7 +2376,7 @@ private:
     bool hdr_requested_ = false, hdr_enabled_ = false;
     bool hdr_tonemap_disabled_logged_ = false;
     float hdr_taa_k_ = 0.f;
-    float taa_k_override_ = -1.f;             // X3M_TAA_K (negative: derived)
+    float taa_k_override_ = -1.f;             // X3M_FIXTURE_TAA_K, seam only (negative: derived)
     float taa_sharpen_ = 0.f;                 // X3M_TAA_SHARPEN (0: off)
     float taa_far_weight_ = 0.f, taa_far_filter_ = 0.f, taa_far_f0_ = 60.f, taa_far_f1_ = 68.f, taa_far_lo_ = .03f, taa_far_hi_ = .25f; // X3M_TAA_FAR_STABILISER (F0 / F1 80 / 130 before 2026-09-25)
     float taa_thin_weight_ = 0.f, taa_thin_relax_ = 1.f; // X3M_TAA_THIN_REGION

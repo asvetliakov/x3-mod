@@ -578,8 +578,10 @@ rejects as before. The fixture's `sentinel-camera-fill` mode (the route's
 ABI) reproduces the alpha-0 mode's metrics exactly (thin line drift 0.003
 px, silhouette ratio 178x, no ghost). Bytecode 3,840 words (3,794).
 
-**Policy selection per frame** (`renderer::camera_sentinel_policy`,
-`X3M_TAA_SENTINEL`): `auto` (default, `--taa-sentinel auto`) takes policy 2
+**Policy selection per frame** (`renderer::camera_sentinel_policy`): the
+`--taa-sentinel` launcher option and `X3M_TAA_SENTINEL` were removed 2026-09-25,
+user decision; policies 1/2 are fixture-only via `X3M_FIXTURE_TAA_SENTINEL`.
+`auto` (the only production policy) takes policy 2
 when the scene view of this frame and the scene view of the frame the
 history came from (the last frame that completed a resolve on this device;
 cleared whenever the history is invalidated, by Reset, and when a frame does
@@ -677,7 +679,7 @@ out ([seta-sky-hull-share-decay.md](seta-sky-hull-share-decay.md)).
 **Motion history weight default (2026-09-23, Run 70 A, run262/run263).** With `--taa` the
 launcher resolves `X3M_TAA_MOTION_WEIGHT=0.7,2,8` when an age program is in effect
 (`--taa-far-stabiliser` or `--taa-thin-region`) and the camera policy is not forced to 1
-(`--taa-sentinel 1`, where the cap is inert), else 0, and always forwards it; the DLL falls
+(since 2026-09-25 only the fixture seam can force it, where the cap is inert), else 0, and always forwards it; the DLL falls
 back to 0.7,2,8 under the same conditions when the variable is absent (an invalid or
 oversized value stays off and is logged). `--taa-motion-weight 0` opts out
 ([taa-motion-history-weight.md](taa-motion-history-weight.md)).
@@ -774,9 +776,12 @@ luminance 0.18 gets `w ≈ 0.85` at any exposure, a 16× brighter feature
 `w ≈ 0.26`. Typical range `2^±8` = 1/256 … 256 (the EV clamps); a normally
 exposed scene sits near 1. With the identity write-back (stage 1, no
 exposure model) `k = 0`: the unweighted resolve, which keeps the stage-1 HDR
-twins of the TAA runs within one code of the 8-bit twins. `X3M_TAA_K=<k>`
-(0 ≤ k ≤ 65504) overrides the derivation for A/B and fixtures; the frame
-line reports `taa_k`, `hdr_frame … k=`. Not chosen: a fixed default with
+twins of the TAA runs within one code of the 8-bit twins. Production reads
+only the derived `k`; the fixture seam DLL (`X3M_MOTION_OUTPUT_FIXTURE`)
+alone reads `X3M_FIXTURE_TAA_K=<k>` (0 ≤ k ≤ 65504), which the identity
+case `seam-taa-hdr-tonemap-k0` sets to 0 to pin the unweighted resolve; the
+frame line reports `taa_k`, `hdr_frame … k=`.
+The `--taa-k` launcher option and `X3M_TAA_K` were removed 2026-09-25, user decision. Not chosen: a fixed default with
 manual exposure (manual EV is still an exposure the tonemap applies, so the
 derivation holds), and `k = 1` with the identity write-back (it would move
 the HDR twins away from their 8-bit references for no display benefit).

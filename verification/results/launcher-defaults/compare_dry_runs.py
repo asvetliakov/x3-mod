@@ -42,7 +42,9 @@ NEW = {'X3M_MUSIC_KEEP': '1', 'X3M_SHADOW_ALPHA_CASTERS': '1'}
 SIZES = {'X3M_SHADOW_CASCADE_SIZES': ['2048,2048,2048,2048,2048', '2048,4096,4096,4096,2048']}
 # The single map and its four variables were removed on 2026-09-25 (docs/architecture/directional-shadows.md, "Single map
 # removed"): the recorded Run 84 A stand still carried them, the launcher no longer sends them.
-REMOVED = {'X3M_SHADOW_REPLAY_SIZE': '1024', 'X3M_SHADOW_REPLAY_EXTENT': '250.0', 'X3M_SHADOW_REPLAY_DEPTH_HALF': '512.0', 'X3M_SHADOW_REPLAY_CAP': '512'}
+# X3M_TAA_SENTINEL went the same day (user decision: --taa-sentinel removed, the resolve's policy always auto).
+REMOVED = {'X3M_SHADOW_REPLAY_SIZE': '1024', 'X3M_SHADOW_REPLAY_EXTENT': '250.0', 'X3M_SHADOW_REPLAY_DEPTH_HALF': '512.0', 'X3M_SHADOW_REPLAY_CAP': '512',
+           'X3M_TAA_SENTINEL': 'auto'}
 
 
 def dry_run(arguments, frame_log):
@@ -78,8 +80,8 @@ def main():
     checks = {
         'empty_vs_stand only telemetry/debug + the promoted map sizes': set(result['empty_vs_stand']) <= TELEMETRY | set(SIZES)
             and result['empty_vs_stand'].get('X3M_SHADOW_CASCADE_SIZES') == SIZES['X3M_SHADOW_CASCADE_SIZES'][::-1],
-        'stand vs recorded only the two new defaults and the removed single-map variables': result['stand_vs_recorded_stand'] == {**{k: [None if k == 'X3M_MUSIC_KEEP' else '0', v] for k, v in NEW.items()}, **{k: [v, None] for k, v in REMOVED.items()}},
-        'empty vs recorded: telemetry/debug + the two new defaults + the map sizes + the removed single-map variables': set(result['empty_vs_recorded_stand']) <= TELEMETRY | set(NEW) | set(SIZES) | set(REMOVED)
+        'stand vs recorded only the two new defaults and the removed variables (single map, sentinel)': result['stand_vs_recorded_stand'] == {**{k: [None if k == 'X3M_MUSIC_KEEP' else '0', v] for k, v in NEW.items()}, **{k: [v, None] for k, v in REMOVED.items()}},
+        'empty vs recorded: telemetry/debug + the two new defaults + the map sizes + the removed variables (single map, sentinel)': set(result['empty_vs_recorded_stand']) <= TELEMETRY | set(NEW) | set(SIZES) | set(REMOVED)
             and all(result['empty_vs_recorded_stand'][k] == [v, None] for k, v in REMOVED.items())
             and all(result['empty_vs_recorded_stand'][k][1] == v for k, v in NEW.items())
             and result['empty_vs_recorded_stand'].get('X3M_SHADOW_CASCADE_SIZES') == SIZES['X3M_SHADOW_CASCADE_SIZES'],

@@ -535,7 +535,7 @@ presented 8-bit frame is compared against the AgX reference
 | `seam-taa-hdr-tonemap-on` (manual EV 0) | 1.0 | 0.500 / 0.269 | 1, 2, 4, 7 | alpha exact |
 | `seam-taa-hdr-tonemap-ev1` (manual EV 1) | 2.0 | 0.500 / 0.240 | 1, 2, 4, 7 | alpha exact |
 | `seam-taa-hdr-tonemap-auto` (auto exposure, dt 16 ms) | 1.084 → 1.626 (adapting) | 0.500 / 0.286 | 1, 2, 4, 7 | alpha exact |
-| `seam-taa-hdr-tonemap-k0` (`X3M_TAA_K=0`) | 0.0 | 0.500 / 0.269 | 1, 2, 4, 7 | alpha exact |
+| `seam-taa-hdr-tonemap-k0` (`X3M_FIXTURE_TAA_K=0`, seam only since 2026-09-25; was `X3M_TAA_K=0`) | 0.0 | 0.500 / 0.269 | 1, 2, 4, 7 | alpha exact |
 | `seam-ownership-taa-hdr-tonemap-on` (wrapper) | 1.0 | 0.500 / 0.269 | 1, 2, 4, 7 | alpha exact; zero final references |
 | `seam-taa-hook-hdr-tonemap-on` (engine hook, glow on/off frames) | 1.0 | — (hook validator: FP16 byte-exact, presented per fixture) | 6 of 7 | alpha exact |
 | `production-taa-hdr-tonemap-on` | 1.0 | — (no seam: current-only, hdr/taa lines checked) | — | — |
@@ -545,7 +545,7 @@ comparison is against the unrounded 255·AgX value): the tonemap draw of the
 resolved image reproduces the double-precision reference to the last bit
 that an 8-bit code can hold, in every frame, at every `k`. The frame lines
 carry `taa_hdr=1 taa_copy=00000001` (no copy-back) and `taa_k`, the
-`hdr_frame` lines `k=` equal to `exp2(ev)` (`X3M_TAA_K` overriding), the
+`hdr_frame` lines `k=` equal to `exp2(ev)` (the fixture seam's `X3M_FIXTURE_TAA_K` overriding; production `X3M_TAA_K` removed 2026-09-25), the
 history pattern is the seam script's (frames 1, 2, 4, 7: the same as on the
 8-bit path). `k` under auto exposure follows the adapted EV frame by frame
 (1.084, 1.171, 1.261, 1.354, 1.394, 1.491, 1.591, 1.626) while the resolved

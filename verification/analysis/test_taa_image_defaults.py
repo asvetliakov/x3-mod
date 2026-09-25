@@ -135,13 +135,12 @@ class TaaImageDefaultsLaunch(unittest.TestCase):
 
     def test_motion_weight_defaults_to_0_7_with_an_age_program(self):
         # Run 70 A (2026-09-23, run262/run263, docs/architecture/taa-motion-history-weight.md): with --taa the launcher
-        # resolves X3M_TAA_MOTION_WEIGHT=0.7,2,8 with an age program and a camera policy other than --taa-sentinel 1,
-        # else 0, always forwarded; the DLL falls back to the same value when the launcher passes nothing.
+        # resolves X3M_TAA_MOTION_WEIGHT=0.7,2,8 with an age program (the camera policy is always auto since
+        # 2026-09-25), else 0, always forwarded; the DLL falls back to the same value when the launcher passes nothing.
         with tempfile.TemporaryDirectory() as directory:
             age = ('--taa-far-stabiliser', '0.985', '--taa-thin-region', '0.97')
             self.assertEqual(self.env(directory, *TAA, *age, inherited={'X3M_TAA_MOTION_WEIGHT': '0'})['X3M_TAA_MOTION_WEIGHT'], '0.7,2,8')
             self.assertEqual(self.env(directory, *TAA, *age, '--taa-motion-weight', '0')['X3M_TAA_MOTION_WEIGHT'], '0,2,8')
-            self.assertEqual(self.env(directory, *TAA, *age, '--taa-sentinel', '1')['X3M_TAA_MOTION_WEIGHT'], '0')
             self.assertEqual(self.env(directory, *TAA, inherited={'X3M_TAA_MOTION_WEIGHT': '0.7,2,8'})['X3M_TAA_MOTION_WEIGHT'], '0')
             self.assertEqual(self.env(directory, *TAA, *age, '--taa-motion-weight', '0.8,2,8')['X3M_TAA_MOTION_WEIGHT'], '0.8,2,8')
         capture = (ROOT / 'src/proxy/capture.cpp').read_text()

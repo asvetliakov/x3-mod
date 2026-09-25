@@ -221,9 +221,10 @@ inline bool camera_lane_parallax(const CameraState& current, const CameraState& 
     out[3] = 1.f;
     return true;
 }
-// X3M_TAA_SENTINEL: auto (default) reprojects sentinel pixels through the
-// camera whenever a valid transform exists and falls back to current-only
-// otherwise; 1 never reprojects; 2 is the strict diagnostic form of auto (the
+// Policy: auto (the only production policy; X3M_TAA_SENTINEL and
+// --taa-sentinel were removed 2026-09-25) reprojects sentinel pixels through
+// the camera whenever a valid transform exists and falls back to current-only
+// otherwise; 1 and 2 are fixture-only (seam X3M_FIXTURE_TAA_SENTINEL): 1 never reprojects; 2 is the strict diagnostic form of auto (the
 // route skips the resolve on a frame whose camera cannot be read or whose
 // transform fails, so a broken camera read is visible in gameplay rather than
 // silently current-only; frames without a previous view still resolve).

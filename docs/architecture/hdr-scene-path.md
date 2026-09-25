@@ -1074,7 +1074,7 @@ draws) if a gameplay profile shows it.
 
 Delivered behind the existing switches — `X3M_HDR=1` with `X3M_TAA=1`
 (`tools/manage.py launch --hdr --taa`, both requiring `--motion-output`) —
-with one new diagnostic switch, `X3M_TAA_K` (`--taa-k`). With `X3M_HDR=0`
+with one new diagnostic switch, `X3M_TAA_K` (`--taa-k`; removed 2026-09-25 by user decision, the seam DLL keeps `X3M_FIXTURE_TAA_K`). With `X3M_HDR=0`
 the 8-bit route of temporal step 3 is untouched bit for bit; with
 `X3M_TAA=0` stages 1 and 2 are unchanged.
 
@@ -1099,7 +1099,7 @@ Nothing here is gameplay-verified.
 | Resolve output → write-back | "Output::color, an FP16 history texture" consumed by the tonemap | As designed, by ping-pong: the write-back (`HdrPass::write_back(..., source)`) samples the pass's output texture; no copy back into the scene target. The emergency `StretchRect` rung copies the target, i.e. the unresolved scene (an image, never black) |
 | Order at the scene end | scene FP16 → TAA → meter → AgX → compositor | As designed at both scene ends (`resolve_hdr` then `end_redirect` in `scene_end_hook` and `before_stretch`); stage 1's "write-back then resolve on the 8-bit RT0" survives only when the redirect is not active for the frame |
 | Weighting | `w = 1/(1 + k·luma)` on every current tap and the history tap, inverse after | As designed, on the current pixel, the 3×3 statistics and each of the 16 Catmull-Rom taps, with the luma floored at 0 (review 24: a negative-luma pixel, possible from a subtractive blend into the FP16 scene, is the identity instead of a zero or negative weight); the inverse denominator is floored at 1/65504; `k = 0` is an exact identity by construction (a compare selects the constant 1.0), not by `1/(1+0)` |
-| `k` | "uploaded as the adapted exposure" | `k = exp2(EV)` consumed by the same frame's AgX write-back (manual or adapted at the latch); **0 with the identity write-back** (no exposure model: the unweighted resolve keeps the stage-1 TAA twins within one code of their 8-bit twins); `X3M_TAA_K` overrides |
+| `k` | "uploaded as the adapted exposure" | `k = exp2(EV)` consumed by the same frame's AgX write-back (manual or adapted at the latch); **0 with the identity write-back** (no exposure model: the unweighted resolve keeps the stage-1 TAA twins within one code of their 8-bit twins); the seam's `X3M_FIXTURE_TAA_K` overrides (production: derived only) |
 | Constant register | "a free constant register" | `c22` (`kLuminanceRegister`), leaving c8..c21 to the AgX block; `ResolveConstants` grew to nine registers, uploaded as c0..c7 plus c22 |
 | Failure | — | A failed run leaves the write-back its unresolved source (`motion_output_taa_failed … hdr=1`, `taa_hdr=1`, the frame line's `taa_result`), the pass drops its history; every end of the redirect, `before_reset` and `release_resources` clear the borrowed output pointer; fixture fault `HdrFault::Resolve` (14) |
 | Debug readbacks | — | `X3M_TAA_DEBUG` on the HDR path flushes the unresolved scene into the main target first so the 8-bit "pre-resolve colour" readback is meaningful; the FP16 `hdr_<device>_<frame>.rgba16f` readback is the unresolved scene, `taa_<device>_<frame>.rgba16f` the resolved one |
@@ -1113,7 +1113,7 @@ Nothing here is gameplay-verified.
 | `src/renderer/temporal_pass.{h,cpp}` | `FrameInputs::luminance_k`, the c22 upload, the documented FP16 input path |
 | `src/renderer/hdr_pass.{h,cpp}` | `write_back(..., source)`: the sampled texture (resolved output or the target's container), the meter chain reads it too; `HdrFault::Resolve` |
 | `src/proxy/motion_output.{h,cpp}` | `resolve(main, hdr_scene)`, `resolve_hdr`, the order at both scene ends, `hdr_resolved_`, `k` at the latch, `taa_hdr`/`taa_k` on the frame line, `configure_taa_k` |
-| `src/proxy/capture.cpp` | `X3M_TAA_K` parsing, `taa_k` on the `motion_output_mode` line |
+| `src/proxy/capture.cpp` | `X3M_FIXTURE_TAA_K` parsing (seam build only), `taa_k` on the `motion_output_mode` line |
 | `verification/probe/temporal_pass_fixture.cpp`, `run_temporal_pass.py` | `hdr_cases` (k validation, firefly, stationary gradient, saturated edge, negative channels); counts 448 / 204 / 386 |
 | `verification/probe/temporal_resolve.cpp` | uploads c22 = 0 explicitly (78 samples unchanged) |
-| `verification/probe/motion_output_fixture.cpp`, `run_motion_output.py` | the reference pass fed with the FP16 scene through the seam and the DLL's `k`; the presented comparison per write-back kind; the AgX + TAA cases, the `X3M_TAA_K=0` case, the hook, wrapper and production variants, the TAA fault script with fault 14; the coverage oracle skipped on tonemapped frames |
+| `verification/probe/motion_output_fixture.cpp`, `run_motion_output.py` | the reference pass fed with the FP16 scene through the seam and the DLL's `k`; the presented comparison per write-back kind; the AgX + TAA cases, the `X3M_FIXTURE_TAA_K=0` case, the hook, wrapper and production variants, the TAA fault script with fault 14; the coverage oracle skipped on tonemapped frames |

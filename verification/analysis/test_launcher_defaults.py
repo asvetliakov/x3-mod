@@ -75,7 +75,7 @@ EXPECTED_EMPTY = {
     'X3M_SUN_SHADOW_BIAS_UNITS': '0.53571875', 'X3M_SUN_SHADOW_LANE': '1', 'X3M_TAA': '1', 'X3M_TAA_BOX_RESOLUTION': 'half',
     'X3M_TAA_BOX_RESOLUTION_DEFAULT': '1', 'X3M_TAA_DEBUG': '0', 'X3M_TAA_FAR_CLIP': '7x7', 'X3M_TAA_FAR_CLIP_DEFAULT': '1',
     'X3M_TAA_FAR_GATE': 'camera', 'X3M_TAA_FAR_GATE_DEFAULT': '1', 'X3M_TAA_FAR_STABILISER': '0.985,0,60,68,0.03,0.25',
-    'X3M_TAA_MIP_BIAS': '-0.5', 'X3M_TAA_MOTION_WEIGHT': '0.7,2,8', 'X3M_TAA_SENTINEL': 'auto', 'X3M_TAA_SHARPEN': '0.75',
+    'X3M_TAA_MIP_BIAS': '-0.5', 'X3M_TAA_MOTION_WEIGHT': '0.7,2,8', 'X3M_TAA_SHARPEN': '0.75',
     'X3M_TAA_SKY_HISTORY': 'strict', 'X3M_TAA_SKY_HISTORY_EXIT_PX': '0.25', 'X3M_TAA_THIN_REGION': '0.97,1',
     'X3M_TAA_THIN_REGION_EMISSIVE': '1', 'X3M_TAA_THIN_REGION_GATE': 'camera', 'X3M_TAA_THIN_REGION_SOURCE': 'vote',
     'X3M_TAA_THIN_REGION_SOURCE_DEFAULT': '1', 'X3M_TAA_THIN_VOTE': 'on', 'X3M_TAA_THIN_VOTE_DEFAULT': '1',
@@ -161,11 +161,12 @@ class LauncherDefaults(unittest.TestCase):
     def tearDownClass(cls):
         cls.directory.cleanup()
 
-    def launch(self, *args, vanilla=False, frame_log=False):
+    def launch(self, *args, vanilla=False, frame_log=False, inherited=None):
         argv = ['manage.py', 'launch', '--dry-run', *(['--vanilla'] if vanilla else []), '--game-dir', str(self.game), *args]
         environ = {k: v for k, v in os.environ.items() if not k.startswith('X3M_')}
         if frame_log:
             environ['X3M_MOTION_FRAME_LOG'] = '1'
+        environ.update(inherited or {})
         output, error = io.StringIO(), io.StringIO()
         module = self.module
         with mock.patch.object(sys, 'argv', argv), mock.patch.object(module, 'WINE', self.wine), \
@@ -228,6 +229,26 @@ class LauncherDefaults(unittest.TestCase):
                 code, _, error = self.launch(*args)
                 self.assertEqual(code, 2)
                 self.assertIn(needle, error)
+
+    def test_taa_k_and_sentinel_options_removed(self):
+        # --taa-k / X3M_TAA_K and --taa-sentinel / X3M_TAA_SENTINEL were removed on 2026-09-25
+        # (user decisions; docs/architecture/temporal-integration.md, "Derivation of k" and
+        # "Policy selection per frame"): the options are refused (--taa-k as unknown, --taa-sentinel by a stub) and an inherited
+        # value of the variables is dropped, never forwarded (k derived only, policy always auto).
+        for value in ('1', '0'):
+            code, _, error = self.launch('--taa-k', value)
+            self.assertEqual(code, 2, value); self.assertIn('unrecognized arguments', error)
+        # --taa-sentinel is a refusal stub (it would otherwise abbreviate --taa-sentinel-stabiliser).
+        for args in (('--taa-sentinel', '1'), ('--taa-sentinel', '2'), ('--taa-sentinel', 'auto'), ('--taa-sentinel',)):
+            code, _, error = self.launch(*args)
+            self.assertEqual(code, 2, args); self.assertIn('--taa-sentinel was removed on 2026-09-25', error)
+        for vanilla in (False, True):
+            code, data, error = self.launch(vanilla=vanilla, inherited={'X3M_TAA_K': '0', 'X3M_TAA_SENTINEL': '1'})
+            self.assertEqual(code, 0, error)
+            self.assertNotIn('X3M_TAA_K', data['env']); self.assertNotIn('X3M_TAA_SENTINEL', data['env'])
+        # The stabiliser refusal stub is unaffected.
+        code, _, error = self.launch('--taa-sentinel-stabiliser', '1')
+        self.assertEqual(code, 2); self.assertIn('--taa-sentinel-stabiliser was removed', error)
 
 
 if __name__ == '__main__':

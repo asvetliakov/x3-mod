@@ -82,7 +82,7 @@ recommended without a deliberate refactor.
 `--no-collide-sat-sse2`, `--no-light-map-far-fade`, `--motion-jitter`
 (`--taa` implies it, `motion-output.md:735`), `--cull-small-parts` (launcher
 default 2), `--cull-small-parts-scope`, `--taa-mip-bias`, `--taa-sharpen`,
-`--taa-history-weight`, `--taa-k`, `--taa-sentinel`, `--camera-cut-deg`,
+`--taa-history-weight`, `--taa-k` (removed 2026-09-25, user decision: k derived only), `--taa-sentinel` (removed 2026-09-25, user decision: policy always auto), `--camera-cut-deg`,
 `--hull-lightmap-gain`, `--hull-emitters`, `--hull-emission-gain`,
 `--original-fill`, `--screen-emission`, `--screen-emission-gain`, the chase
 defaults (`--chase-pitch-down-deg`, `--chase-offset-y`, `--chase-hud-anchor`,

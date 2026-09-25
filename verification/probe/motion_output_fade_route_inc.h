@@ -14,7 +14,7 @@
 // inputs with A scissored to the bottom half (rows 32..63: the scene still
 // has its depth writer, which the selector's Scene phase requires), so both
 // quads sit over the route's sentinel fill (no routed opaque draw beneath)
-// under X3M_TAA_SENTINEL=2 (the run-49 configuration: far-plane reprojection
+// under X3M_FIXTURE_TAA_SENTINEL=2 (the run-49 configuration: far-plane reprojection
 // of the fill plus the quads' own RT1 rows at alpha 1). hover: the
 // diffuse-alpha-.5 inputs with P's g_AlphaValue per frame (permille 507,
 // 449, 449, 390, 449, 449, 507, 449, 390, 507, 449, 449): the arm's

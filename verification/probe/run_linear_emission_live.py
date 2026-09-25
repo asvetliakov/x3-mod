@@ -198,7 +198,7 @@ def main():
             env={k:v for k,v in os.environ.items() if not k.startswith('X3M_')}
             env.update(X3M_MOTION_OUTPUT='1',X3M_HDR='1',X3M_HDR_TONEMAP='agx',X3M_HDR_DECODE='gamma2.2',X3M_HDR_BLOOM='0',
                 X3M_HDR_EXPOSURE='manual',X3M_HDR_EV_MANUAL='0',X3M_HDR_CLAMP='0',X3M_LINEAR_MATERIALS='0',
-                X3M_LINEAR_EMISSIONS=str(enabled),X3M_EMISSION_GAIN='1',X3M_OWNERSHIP='1',X3M_TAA='1',X3M_TAA_SENTINEL='1',
+                X3M_LINEAR_EMISSIONS=str(enabled),X3M_EMISSION_GAIN='1',X3M_OWNERSHIP='1',X3M_TAA='1',X3M_FIXTURE_TAA_SENTINEL='1',
                 X3M_TAA_SHARPEN='0',X3M_TAA_MIP_BIAS='-.5',X3M_SCENE_HOOK='0',X3M_TELEMETRY='1',X3M_MOTION_FRAME_LOG='1',
                 X3M_TAA_DEBUG='0' if benchmark else '1',X3M_CAPTURE_START='1000000' if benchmark else '1',X3M_CAPTURE_FRAMES='0',X3M_MOTION_RT_MODE='lazy' if lazy else 'perdraw',X3M_STATE_SHADOW='1',WINEDLLOVERRIDES='d3d9=n,b')
             command=[bottle.WINE,*bottle.wine_args(),'--dll','d3d9=n,b','--workdir',str(work),str(work/'fixture.exe'),

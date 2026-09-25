@@ -760,7 +760,6 @@ def main():
     parser.add_argument('--taa', action='store_true', default=None, help='[launcher default since 2026-09-25 on every modded launch with --motion-output --object-trace --object-lifetime; --no-taa = off; not sent under --vanilla] Run the temporal resolve at the bloom copy and present the resolved image (requires --motion-output; implies --motion-jitter; temporal step 3)')
     parser.add_argument('--no-taa', dest='taa', action='store_false', help='Turn the --taa launcher default off')
     parser.add_argument('--taa-debug', action='store_true', help='Write the pre-resolve color, the resolved FP16 image and the presented main target (after the sharpen draw / copy-back or the HDR write-back) in capture frames (requires --taa)')
-    parser.add_argument('--taa-k', type=float, default=None, help='Fixed k of the resolve luminance weighting on the FP16 scene, 0 = unweighted (X3M_TAA_K; requires --taa and --hdr; default: derived from the write-back exposure)')
     parser.add_argument('--taa-mip-bias', type=float, default=None, help='D3DSAMP_MIPMAPLODBIAS applied to the mip-mapped sampler stages of routed material draws while the TAA jitter is on, restored before every other draw (X3M_TAA_MIP_BIAS; requires --taa; 0 = off; the value for the 4-sample jitter; default -0.5 with --taa; 0 disables)')
     parser.add_argument('--taa-sharpen', type=float, default=None, help='Post-resolve sharpen of the presented image, 0..1 (X3M_TAA_SHARPEN; requires --taa): robust contrast-adaptive sharpening of the resolved image only, never of the history; 1 is the strongest setting, 0.5 one stop softer; default 0.75 with --taa; 0 disables, leaving the output bit-identical to the unsharpened route (docs/architecture/temporal-integration.md, "Post-resolve sharpen")')
     # Retired 2026-09-23 (cleanup batch 6, rejected / superseded resolve variants): registered only so that an old command line is refused by name.
@@ -775,7 +774,6 @@ def main():
     parser.add_argument('--taa-sentinel-stabiliser', nargs='?', const='', default=None, help=argparse.SUPPRESS)
     parser.add_argument('--taa-history-weight', type=float, default=None, metavar='W', help='History weight of the TAA resolve, 0.5..0.98 (X3M_TAA_HISTORY_WEIGHT; requires --taa): the fraction of the accepted history kept per frame. Default absent = 0.9; 0.95 halves the per-frame ripple and doubles the convergence time and the life of clamp-bounded ghost trails')
     parser.add_argument('--taa-alpha-history', action='store_true', help='Time-accumulate the resolved alpha on the HDR route (X3M_TAA_ALPHA_HISTORY=1; requires --taa; has an effect only with --hdr, where bloom reads it as the authored-glow weight)')
-    parser.add_argument('--taa-sentinel', choices=['auto', '1', '2'], default='auto', help='Depth-sentinel policy of the resolve (requires --taa): auto reprojects unrouted (background) pixels through the live camera at the far plane whenever the engine camera read yields a transform, 1 keeps them current-only, 2 is strict (skips the resolve on frames without a transform)')
     parser.add_argument('--taa-unmatched-static', choices=['off', 'node', 'all'], default=None, help='A routed draw whose motion-history key is new this frame (e.g. a LOD or mesh swap) reprojects through the camera as a static object for that one frame instead of resolving current-only (X3M_TAA_UNMATCHED_STATIC; requires --taa). node: only when the same engine node was drawn last frame under another key; all: any new key. Default when omitted with --taa = node, accepted after run212 (no approach flash, 22-draw unmatched groups filled on 36 approach frames); "off" is the opt-out and is the pre-run212 behaviour bit for bit')
     parser.add_argument('--taa-sky-history', choices=['loose', 'strict'], default=None, help='Sky history rule of the TAA resolve under the camera path (X3M_TAA_SKY_HISTORY; requires --taa). strict: a sky pixel (depth sentinel) whose 3x3 holds no routed geometry accepts sentinel history only, so the hull of a station that moved away this frame is never blended into the sky (the SETA approach smear of run235, docs/architecture/seta-motion.md); the default when omitted with --taa since 2026-09-23 (accepted in Run 68 A). loose is the opt-out and the pre-SETA behaviour bit for bit: the 2%% relative depth tolerance proves any geometry beyond device depth 0.98 as the sky\'s history')
     parser.add_argument('--taa-sky-history-band-px', type=float, default=None, help='Band threshold of the strict sky history in px/frame (X3M_TAA_SKY_HISTORY_BAND_PX; requires --taa; 1..16, DLL default 3): the translation parallax at which the 1-px sky band beside a silhouette stops taking its history under --taa-sky-history strict (docs/architecture/seta-motion.md section 4)')
@@ -787,10 +785,12 @@ def main():
     # Removed 2026-09-24 (A' accepted after Run 79 A, taa-plan-lifted-slot-cap.md step 1): registered only so that an old
     # command line is refused by name.
     parser.add_argument('--taa-region-hold', nargs='?', const='', default=None, help=argparse.SUPPRESS)
+    # Refusal stub (2026-09-25): without it argparse would abbreviate --taa-sentinel to --taa-sentinel-stabiliser.
+    parser.add_argument('--taa-sentinel', nargs='?', const='', default=None, help=argparse.SUPPRESS)
     parser.add_argument('--fade-rt2-owner', choices=('on', 'off'), default=None, help='Fade-band draws as RT2 owners (X3M_FADE_RT2_OWNER; default on since Run 81 whenever --taa --motion-output --hdr are given, otherwise not sent (one launcher line, never a refusal); an explicit value requires --taa, and on also --motion-output --hdr; refused under --vanilla; X3M_FADE_RT2_OWNER_DEFAULT=1 marks the default): every draw the fade-band arm routes (fraction at or above X3M_FADE_ROUTE, 500 permille, with its 100 permille hysteresis) writes its exact depth into RT2 (COLORWRITEENABLE2 15, the depth fragment\'s alpha 1 so the engine\'s SRCALPHA/INVSRCALPHA blend stores the depth itself), and, under original shading (not with --linear-materials), the arm\'s pair identity widens from the seven distance-fade pairs to every reviewed pair whose vertex program declares g_AlphaValue / g_FogClip / g_EnableFog (the run214 station families), and the arm also admits their alpha-tested fade-band cutouts (the same state with the alpha test on; the engine\'s own test decides the owned texels; docs/architecture/fade-alpha-cutout-ownership.md). Z-write is never touched. One fade_rt2_owner_configured line; fade_route_frame carries fade_evicted, fade_owner, fade_owner_masked and fade_tested (docs/architecture/fade-rt2-ownership.md)')
     parser.add_argument('--taa-thin-vote', choices=('on', 'off'), default=None, help='Draw-time thin vote of the TAA thin region (X3M_TAA_THIN_VOTE; default on since Run 81 whenever --taa --motion-output --ownership --hdr --sun-shadow-lane are given, otherwise not sent (one launcher line, never a refusal); an explicit value requires --taa, and on also --motion-output --ownership --sun-shadow-lane; refused under --vanilla; X3M_TAA_THIN_VOTE_DEFAULT=1 marks the default): each routed subset\'s triangle-height histogram (8 log2 bins of h = 2 area / longest edge) is read once at a scene end through the ownership wrapper (READONLY, MANAGED buffers only), and every routed opaque draw writes 1 - thin into the lane\'s RT2 .a, thin = the fraction of its triangles 0.5..3 px tall at the draw\'s projected scale when at least half are (else no vote); the mask chain\'s tests draw then flags those pixels without its depth-line search. The vote reaches only the four-channel lane RT2 (logged once otherwise). One thin_vote_mode line, one thin_vote_frame line per frame log (docs/architecture/taa-thin-geometry-alternatives.md section 3.2)')
     parser.add_argument('--taa-thin-region-source', choices=('both', 'screen', 'vote'), default=None, help='What feeds the TAA thin-region flag (X3M_TAA_THIN_REGION_SOURCE; requires --taa and --taa-thin-region with W > 0 (the default 0.97 counts); refused under --vanilla). Default vote on every modded --taa launch whose thin vote is on (--taa-thin-vote on, itself the default with --taa --motion-output --ownership --hdr --sun-shadow-lane) and whose thin region is on, sent with X3M_TAA_THIN_REGION_SOURCE_DEFAULT=1 (the TAA mask fold, docs/architecture/taa-mask-fold.md: Run 82 A showed no visible difference between both and vote); otherwise not sent and the DLL runs both. vote = the draw-time thin vote alone: the screen-space fragmented-depth search is skipped in the camera-gate resolve (the emissive vote, --taa-thin-region-emissive, default 1 on the HDR route, still runs; pass 0 for a vote-only arm); both = the search (a 7-tap line crossing geometry and its background twice) united with the vote, the diagnostic; screen = the search alone, refused with the camera gate (the default gate; its folded resolve has no plain program since the mask fold) and allowed only with --taa-thin-region-gate screen. vote requires --taa-thin-vote on. The vote default also applies under --taa-thin-region-gate screen, where the screen-gate chain\'s thin-vote twin skips its search the same way. The DLL logs taa_thin_region_source requested= configured= reason= default= and configures both when a prerequisite is missing.')
-    parser.add_argument('--taa-motion-weight', default=None, metavar='F[,V0,V1]', help='Motion history weight of the TAA resolve (X3M_TAA_MOTION_WEIGHT; requires --taa; a value above 0 also requires an age program: --taa-far-stabiliser or --taa-thin-region; default when omitted with --taa = 0.7,2,8 (accepted in Run 70 A, run262/run263, 2026-09-23) with an age program and a camera policy other than --taa-sentinel 1, else 0 = off, never an error: a plain --taa launch has no age program, so the weight resolves to 0 there; 0 is the explicit off and the opt-out, else 0.5 <= F < 1 with 0 <= V0 < V1 <= 64 px/frame, V0,V1 default 2,8): the history keep weight of a pixel whose correspondence moves at least V1 px/frame both on screen and against the rotation-only camera path (translation parallax) is capped at F (1 at or below V0, a quadratic ramp between), so a hull under SETA accumulates a shorter history and keeps more of its texture detail; rest, pans, a hull that moves with the camera (the player\'s ship in the external view, escorts) and slow flight are untouched. Inert (cap 1) under --taa-sentinel 1 and on frames without a camera transform: the parallax is measured against the camera path (docs/architecture/taa-motion-history-weight.md)')
+    parser.add_argument('--taa-motion-weight', default=None, metavar='F[,V0,V1]', help='Motion history weight of the TAA resolve (X3M_TAA_MOTION_WEIGHT; requires --taa; a value above 0 also requires an age program: --taa-far-stabiliser or --taa-thin-region; default when omitted with --taa = 0.7,2,8 (accepted in Run 70 A, run262/run263, 2026-09-23) with an age program, else 0 = off, never an error: a plain --taa launch has no age program, so the weight resolves to 0 there; 0 is the explicit off and the opt-out, else 0.5 <= F < 1 with 0 <= V0 < V1 <= 64 px/frame, V0,V1 default 2,8): the history keep weight of a pixel whose correspondence moves at least V1 px/frame both on screen and against the rotation-only camera path (translation parallax) is capped at F (1 at or below V0, a quadratic ramp between), so a hull under SETA accumulates a shorter history and keeps more of its texture detail; rest, pans, a hull that moves with the camera (the player\'s ship in the external view, escorts) and slow flight are untouched. Inert (cap 1) on frames without a camera transform: the parallax is measured against the camera path (docs/architecture/taa-motion-history-weight.md)')
     parser.add_argument('--camera-cut-deg', type=float, default=20.0, help='Camera rotation per frame (degrees) above which the resolve declares a cut (requires --taa; default 20)')
     parser.add_argument('--camera-log', type=int, default=300, help='Cadence in frames of the camera_state log line (requires --taa; capture frames always log; default 300)')
     parser.add_argument('--scene-hook', nargs='?', const='on', default=None, choices=['on', 'off'], help='Engine scene-end hook (X3M_SCENE_HOOK): patch the frame routine\'s compositing callsite (0x004721b1, exact executable and bytes only, otherwise it fails closed to the bloom-copy/selector boundary) so the route learns the scene end from the engine and, with --taa, resolves there before the glow pass. Default on with --motion-output since review 26 (iteration 10: 214/214 agreement); "--scene-hook" alone means on; "--scene-hook off" keeps the copy/selector boundary')
@@ -1034,10 +1034,6 @@ def main():
         parser.error('--taa requires --object-trace and --object-lifetime: without history every routed draw carries the sentinel, the resolve stays current-only and the jitter only moves the image.')
     if args.taa_debug and not args.taa:
         parser.error('--taa-debug requires --taa.')
-    if args.taa_k is not None and not (args.taa and args.hdr):
-        parser.error('--taa-k requires --taa and --hdr.')
-    if args.taa_k is not None and not 0.0 <= args.taa_k <= 65504.0:
-        parser.error('--taa-k must be within [0, 65504].')
     if args.taa_mip_bias is not None and not args.taa:
         parser.error('--taa-mip-bias requires --taa.')
     if args.taa_mip_bias is not None and not -8.0 <= args.taa_mip_bias <= 8.0:
@@ -1123,6 +1119,9 @@ def main():
         if not math.isfinite(emissive) or not 0 <= emissive <= 65000:
             parser.error('--taa-thin-region-emissive expects E in 0..65000 scene luma (0 = off).')
         args.taa_thin_region_emissive = '%.6g' % emissive
+    if args.taa_sentinel is not None:
+        parser.error('--taa-sentinel was removed on 2026-09-25 (user decision): the resolve\'s depth-sentinel policy is always auto '
+                     '(far-plane camera reprojection whenever the camera read yields a transform) and X3M_TAA_SENTINEL is never sent; drop the option.')
     if args.taa_sentinel_stabiliser is not None:
         parser.error('--taa-sentinel-stabiliser was removed on 2026-09-25 with the TAA mask fold (docs/architecture/taa-mask-fold.md '
                      'section 7): the sentinel class of the thin region is retired and X3M_TAA_SENTINEL_STABILISER is never sent; drop the option.')
@@ -1279,12 +1278,12 @@ def main():
         args.taa_motion_weight = ','.join('%.9g' % value for value in weight)  # %.9g round-trips a float32 boundary value (0.9999999, 7.9999999) the DLL would otherwise refuse after rounding
     elif args.taa:
         # User-accepted Run 70 A default (2026-09-23, run262/run263, docs/architecture/taa-motion-history-weight.md):
-        # 0.7,2,8 with an age program under a camera policy that can reach 2 (not --taa-sentinel 1, where the cap is
-        # inert), else the explicit off 0 (never an error); always forwarded with --taa, so neither a stale shell value
-        # nor the DLL's own 0.7,2,8 fallback can apply where the launcher resolved it off. 0 is the opt-out.
-        args.taa_motion_weight = TAA_MOTION_WEIGHT_DEFAULT if age_program and args.taa_sentinel != '1' else '0'
-    if not args.taa and (args.taa_sentinel != 'auto' or args.camera_cut_deg != 20.0 or args.camera_log != 300):
-        parser.error('--taa-sentinel, --camera-cut-deg and --camera-log require --taa.')
+        # 0.7,2,8 with an age program (the camera policy is always auto since --taa-sentinel was removed on
+        # 2026-09-25), else the explicit off 0 (never an error); always forwarded with --taa, so neither a stale shell
+        # value nor the DLL's own 0.7,2,8 fallback can apply where the launcher resolved it off. 0 is the opt-out.
+        args.taa_motion_weight = TAA_MOTION_WEIGHT_DEFAULT if age_program else '0'
+    if not args.taa and (args.camera_cut_deg != 20.0 or args.camera_log != 300):
+        parser.error('--camera-cut-deg and --camera-log require --taa.')
     if not 0 < args.camera_cut_deg <= 180 or not 1 <= args.camera_log <= 1000000:
         parser.error('--camera-cut-deg must be in (0, 180] and --camera-log in [1, 1000000].')
     if args.motion_rt_mode == 'lazy' and not args.motion_output:
@@ -1821,8 +1820,9 @@ def main():
         env.setdefault('X3M_MOTION_CUT_MISSING', '1')
         env['X3M_TAA'] = '1' if args.taa else '0'
         env['X3M_TAA_DEBUG'] = '1' if args.taa_debug else '0'
-        if args.taa_k is not None:
-            env['X3M_TAA_K'] = repr(args.taa_k)
+        # --taa-k / X3M_TAA_K are gone (2026-09-25, user decision): k is derived from the write-back
+        # exposure only; an inherited shell value is dropped, never forwarded.
+        env.pop('X3M_TAA_K', None)
         # The mip bias and the post-resolve sharpen are always forwarded in TAA
         # mode, at the production defaults when unset, so a stale shell value
         # can neither change nor enable them; an explicit 0 disables one and
@@ -1858,7 +1858,9 @@ def main():
         for name in ('X3M_TAA_CURRENT_FILTER', 'X3M_TAA_LINE_FILTER', 'X3M_TAA_THIN_CLIP', 'X3M_TAA_ADAPTIVE_WEIGHT', 'X3M_TAA_REGION_HOLD', 'X3M_TAA_SENTINEL_STABILISER',
                      'X3M_TAA_SENTINEL_STABILISER_DEFAULT'):
             env.pop(name, None)
-        env['X3M_TAA_SENTINEL'] = args.taa_sentinel
+        # --taa-sentinel / X3M_TAA_SENTINEL are gone (2026-09-25, user decision): the resolve's policy is always auto;
+        # an inherited shell value is dropped, never forwarded (policies 1/2 are fixture-only, X3M_FIXTURE_TAA_SENTINEL).
+        env.pop('X3M_TAA_SENTINEL', None)
         # node by default with --taa (run212), off without it: always resolved here, so an
         # inherited shell value can neither select a mode nor survive a launch without --taa.
         if args.taa_unmatched_static is not None:

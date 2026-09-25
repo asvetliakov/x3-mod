@@ -72,13 +72,13 @@ restore points and the hand-derived anchors; the unset run must equal the
 X3M_TAA_MIP_BIAS=0 run byte for byte; regular-script twins with the bias on
 (TAA, lazy, jitter-only) must equal their unbiased twins, since they bind no
 mip-mapped texture.
-Camera reprojection of sentinel pixels (X3M_TAA_SENTINEL, seam only): four
+Camera reprojection of sentinel pixels (X3M_FIXTURE_TAA_SENTINEL, seam only): four
 runs install the fixture's own projection/view buffers as the engine camera
 globals (X3M_FIXTURE_CAMERA=rotate: one degree of yaw per frame, a 30-degree
 jump at frame 7). With the switch on (auto) the DLL must reproject the
 background through the camera on every frame with a previous view, declare the
 camera cut at frame 7 and still equal the reference resolve byte for byte;
-with X3M_TAA_SENTINEL=1 the colour must equal the run without a camera (the
+with X3M_FIXTURE_TAA_SENTINEL=1 the colour must equal the run without a camera (the
 switch off changes nothing); the strict mode (2) must skip the resolve on every
 frame without a readable camera and nothing else; the DLL's camera_state lines
 must carry the fixture's matrices and decisions. One "envmap" run inserts the
@@ -671,13 +671,13 @@ CASES += [case(f'bench-{size}-hdr-tonemap-taa-{state}', 'bench', jitter=True, ta
 # equals the reference pass byte for byte, the presented frames within one
 # code of the 8-bit twins). These run the AgX write-back with k = exp2(EV):
 # manual EV 0 (k = 1) and 1 (k = 2), auto exposure (k follows the adapted
-# EV), the X3M_TAA_K=0 override, the engine hook, the ownership wrapper, the
+# EV), the X3M_FIXTURE_TAA_K=0 seam override, the engine hook, the ownership wrapper, the
 # production DLL, and the fault script with the resolve failing (fault 14).
 TAA_HDR = dict(AGX_MANUAL, X3M_HDR_EV_MANUAL='0', X3M_HDR_DT_MS='16')
 CASES += [case('seam-taa-hdr-tonemap-on', 'seam', jitter=True, taa=True, hdr=True, hdr_env=TAA_HDR),
           case('seam-taa-hdr-tonemap-ev1', 'seam', jitter=True, taa=True, hdr=True, hdr_env=dict(TAA_HDR, X3M_HDR_EV_MANUAL='1')),
           case('seam-taa-hdr-tonemap-auto', 'seam', jitter=True, taa=True, hdr=True, hdr_env=dict(AGX_AUTO, X3M_HDR_DT_MS='16')),
-          case('seam-taa-hdr-tonemap-k0', 'seam', jitter=True, taa=True, hdr=True, hdr_env=dict(TAA_HDR, X3M_TAA_K='0')),
+          case('seam-taa-hdr-tonemap-k0', 'seam', jitter=True, taa=True, hdr=True, hdr_env=dict(TAA_HDR, X3M_FIXTURE_TAA_K='0')),
           case('seam-ownership-taa-hdr-tonemap-on', 'seam', 'ownership', jitter=True, taa=True, hdr=True, hdr_env=TAA_HDR),
           case('production-taa-hdr-tonemap-on', 'production', jitter=True, taa=True, hdr=True, hdr_env=TAA_HDR),
           case('seam-taa-hook-hdr-tonemap-on', 'seam', jitter=True, taa=True, hook='1', hdr=True, hdr_env=TAA_HDR),
@@ -836,7 +836,7 @@ CUTOUT_ENV = dict(X3M_HDR_TONEMAP='agx', X3M_HDR_DECODE='gamma2.2', X3M_HDR_EXPO
                   # record were written for; the fill itself is covered by the
                   # linear-material fill oracle cases.
                   X3M_LINEAR_MATERIALS='1', X3M_MATERIAL_FILL='0', X3M_MATERIAL_DIRECT_GAIN='1', X3M_MATERIAL_EMISSIVE_GAIN='1', X3M_LIGHTMAP_EMISSIVE_GAIN='1',
-                  X3M_LINEAR_DISTANCE_FADE='0', X3M_LINEAR_EMISSIONS='0', X3M_OWNERSHIP='1', X3M_TAA_SENTINEL='2', X3M_TAA_SHARPEN='0', X3M_TAA_MIP_BIAS='0',
+                  X3M_LINEAR_DISTANCE_FADE='0', X3M_LINEAR_EMISSIONS='0', X3M_OWNERSHIP='1', X3M_FIXTURE_TAA_SENTINEL='2', X3M_TAA_SHARPEN='0', X3M_TAA_MIP_BIAS='0',
                   X3M_FIXTURE_MOTION_DEPTH='1', X3M_FIXTURE_CAMERA='rotate', X3M_MOTION_FRAME_LOG='1', X3M_TAA_DEBUG='1',
                   X3M_CAPTURE_START='1000000', X3M_CAPTURE_FRAMES='0', X3M_FIXTURE_CUTOUT_MIXED='0', X3M_FIXTURE_CUTOUT_ORDINARY='0')
 CASES += [case(f'seam-taa-cutout-{script}', 'cutout', jitter=True, taa=True, lazy=True, hdr=True, cutout=script,
@@ -877,7 +877,7 @@ CASES += [case(f'seam-ownership-bolt-shape-{script}', 'boltshape', 'ownership', 
 # live fade oracle predicts (bit-identical composite), M covers them and the
 # resolved shift equals the raw one (current-only: the run-49 trembling
 # reproduced). `sentinel`: the routed inputs with A scissored to the bottom
-# half, both quads over the route's sentinel fill under X3M_TAA_SENTINEL=2
+# half, both quads over the route's sentinel fill under X3M_FIXTURE_TAA_SENTINEL=2
 # (far-plane reprojection of the fill, the quads' own RT1 rows): resolved
 # shift stable as for `routed`.
 # `hover`: g_AlphaValue per frame so the estimate runs 507, 449, 449, 390,
@@ -3884,7 +3884,7 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
             # policy establishes history although every pixel resolves
             # current-only), except the first frame after Reset (9, not captured).
             expect_history = int(frame in history_frames) if live else int(frame not in (0, 9))
-            if strict_skip:  # X3M_TAA_SENTINEL=2 without a readable camera: attempted, skipped (9), never resolved
+            if strict_skip:  # X3M_FIXTURE_TAA_SENTINEL=2 without a readable camera: attempted, skipped (9), never resolved
                 assert (summary['taa_attempted'], summary['taa_resolved'], summary['taa_history'], summary['taa_skip']) == ('1', '0', '0', '9'), (name, frame, summary)
             else:
                 assert (summary['taa_attempted'], summary['taa_resolved'], summary['taa_history'], summary['taa_skip']) == ('1', '1', str(expect_history), '0'), (name, frame, summary)
@@ -5140,14 +5140,14 @@ def validate_hdr_taa(name, text, trace, directory, hdr_env):
     FP16 image to equal the reference pass's output byte for byte; here every
     presented 8-bit frame is compared against the AgX reference of that
     resolved image at the EV the frame consumed (one code per channel, alpha
-    carried), k on the hdr_frame line equals exp2(EV) (or the X3M_TAA_K
+    carried), k on the hdr_frame line equals exp2(EV) (or the X3M_FIXTURE_TAA_K
     override) and the frame line reports the HDR resolve with that k."""
     params = hdr_env_params(hdr_env)
     s2 = hdr_stage2_lines(trace)
     tl = trace.splitlines()
     frames = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('motion_output_frame ')}
     taa_readbacks = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('motion_output_taa_readback ')}
-    override = hdr_env.get('X3M_TAA_K')
+    override = hdr_env.get('X3M_FIXTURE_TAA_K')
     images, ks, evs = {}, {}, {}
     for frame in range(1, 9):
         h, f = s2['frames'][frame], frames[frame]
@@ -5309,13 +5309,13 @@ def validate_identity_k(name, trace, hdr_env):
     derive k = 0, the unweighted resolve, on every frame, and the frame line
     must report that k for every HDR resolve. The fixture's reference pass
     takes the DLL's k from the exposure export, so the derivation itself is
-    checked only here on these cases (review 24); an X3M_TAA_K override is
+    checked only here on these cases (review 24); an X3M_FIXTURE_TAA_K override is
     the value it names."""
     tl = trace.splitlines()
     tonemap = [fields(l) for l in tl if l.startswith('hdr_tonemap ')]
     hdr_frames = [fields(l) for l in tl if l.startswith('hdr_frame ')]
     resolves = [f for f in (fields(l) for l in tl if l.startswith('motion_output_frame ')) if f.get('taa_hdr') == '1']
-    expected = float((hdr_env or {}).get('X3M_TAA_K', 0.0))
+    expected = float((hdr_env or {}).get('X3M_FIXTURE_TAA_K', 0.0))
     assert tonemap and all(t['tonemap'] == '0' for t in tonemap), (name, tonemap[:1])
     assert hdr_frames and all(float(h['k']) == expected for h in hdr_frames), (name, sorted({h['k'] for h in hdr_frames}))
     assert resolves and all(float(f['taa_k']) == expected for f in resolves), (name, sorted({f['taa_k'] for f in resolves}))
@@ -6489,7 +6489,7 @@ def main(argv=None):
                        X3M_TAA_BOX_RESOLUTION='full',  # S4 default (logs nothing), pinned so a shell value cannot reach the DLL; the -thin-hold-half case sets half
                        X3M_FADE_RT2_OWNER='off',  # DLL default off, pinned so a shell value cannot reach the DLL; the -owner cases set on
                        X3M_TELEMETRY_DRAW='1',  # per-draw metrics (gate_us, route_draw_us, ...) are gated behind this switch since a8d4309; the validators require them
-                       X3M_FIXTURE_CAMERA='rotate' if camera else 'none', X3M_TAA_SENTINEL=sentinel or 'auto', X3M_FIXTURE_WRAP='0',
+                       X3M_FIXTURE_CAMERA='rotate' if camera else 'none', X3M_FIXTURE_TAA_SENTINEL=sentinel or 'auto', X3M_FIXTURE_WRAP='0',
                        X3M_MOTION_RT_MODE='lazy' if lazy else 'perdraw', X3M_MOTION_FRAME_LOG='1' if burst else '60',
                        X3M_STATE_SHADOW='1' if shadow else '0', X3M_SCENE_HOOK=hook or '0',  # 'default' leaves the switch unset below
                        X3M_HDR='1' if hdr else '0', X3M_FIXTURE_HDR_FAULT=hdr_fault or '',
@@ -7133,7 +7133,7 @@ def main(argv=None):
         # the camera path changes the colour of history frames (the unrouted
         # pixels now blend the reprojected previous frame) and of no other.
         seam_taa, camera_on = result['cases']['seam-taa-on']['color_hashes'], result['cases']['seam-taa-camera-on']['color_hashes']
-        assert result['cases']['seam-taa-camera-sentinel1-on']['color_hashes'] == seam_taa, 'X3M_TAA_SENTINEL=1 with a camera differs from the run without a camera'
+        assert result['cases']['seam-taa-camera-sentinel1-on']['color_hashes'] == seam_taa, 'X3M_FIXTURE_TAA_SENTINEL=1 with a camera differs from the run without a camera'
         assert result['cases']['seam-taa-sentinel2-nocamera-on']['color_hashes'] == jittered, 'strict mode without a camera changed the colour'
         assert all(camera_on[f] == seam_taa[f] for f in camera_on if f not in SEAM_TAA_HISTORY), 'camera path changed a frame without history'
         camera_changed = [f for f in camera_on if f in SEAM_TAA_HISTORY - CAMERA_CUT_FRAMES and camera_on[f] != seam_taa[f]]

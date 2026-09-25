@@ -1437,7 +1437,7 @@ template<class Pose> CameraRun camera_sequence(EdgeScene& s,CameraSky& sky,const
         const unsigned index=n%P+1;const double jx=jitter?halton(index,2)-.5:0,jy=jitter?halton(index,3)-.5:0;
         const x3m::renderer::CameraState c=pose(n);
         sky.render(c,jx,jy);run.current.push_back(s.read(s.color.p));
-        // The route's decision (X3M_TAA_SENTINEL=auto) or a negative control that forces policy 2 with the wrong matrix.
+        // The route's decision (X3M_FIXTURE_TAA_SENTINEL=auto) or a negative control that forces policy 2 with the wrong matrix.
         auto d=x3m::renderer::camera_sentinel_policy(x3m::renderer::SentinelMode::Auto,c,previous,cutDegrees);
         if(control!=CameraControl::Builder&&c.valid&&previous.valid&&!d.cut){
             d.policy=2;d.transform=true;
