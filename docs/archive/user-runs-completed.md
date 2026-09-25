@@ -2069,6 +2069,7 @@ env -u CX_DEBUGMSG X3M_FIXTURE_BOTTLE=X3 X3M_MOTION_FRAME_LOG=1 /Users/asvetl/x3
 | 77 C | First 5120x1440 sessions under --gpu-sync-timing, --fog-march-scale 2 (run289) vs 4 (run290) | 2 | Completed 2026-09-24: fog_march 8.99 -> 2.68 ms (-6.3 ms), fog_route 13.6 -> 7.2, serialised dt 45.9 -> 39.0 ms, TAA stage 8.8 ms, frame GPU-bound at scale 2; the user sees transparent moving "oil rings" in the fog at scale 4: triage attributes them to the shaft-offset noise keyed per 4x4 march cell and shifted per frame (lattice vectors are multiples of 4 px, 2 px at scale 2), not to the 4-px interpolation (no seam at the sample columns); scale 2 stays the default, C2 queued ([triage](../verification/results/run289-290-march-scale/)). |
 | 77 A | Fleet overlay across addon/05 + 06 (591 bodies), race sectors and a shipyard, Run76 DLL | 1 | Completed 2026-09-24 (run287, flown on the Run77 DLL): no issues, FPS good, no transitions seen; 14 slot-05 bodies drew their merged record (draws per frame equal the marker, ladders equal the overlay thresholds); busy greenvoid sector dt p50 14.2 ms / 156 draws against 14.7 ms / 160 in Run 74 A; no overlay, fog or cull errors; the TAA fold reports active; slot 06 unproven (no slot-06 body in view), A2 queued ([triage](../verification/results/run287-fleet-overlay/)). |
 | 78 A | Dither A/B, S3 5 vs 16 taps, clean exit, slot-06 burst, scale 4 default at 5120x1440 (candidate ee3bbf88) | 1 | Completed 2026-09-24 (run295-298): dither accepted (rings gone on, back off, no frame-time cost); exit fixed (no fault, four exits; the refused row never written, expectation withdrawn); slot-06 bodies never switch to their coarse record (USC dock, Terran SPP XL at s/T_pad 0.17-0.36) while slot-05 bodies do: triage-deep open; TAA taps 5, no refusals, look accepted; bolts ok (84 shape refusals, 1.1 %, open); Run 77 D closed by this session |
+| 79 A | A' region hold on/off look + gpu-sync cost, Terran station LOD patch bursts (USC dock, SPP XL) size/distance, slot-06 control, at 5120x1440 (candidate df01f23b) | 4 | Completed 2026-09-24 (run299/300/302/303; run301 aborted): A' accepted (no visible difference on the lattice stand, pans, silhouettes, shards; mask 2.93 -> 1.54 ms with the x/y draws gone, box +0.23 ms, net -1.1 ms at 5120x1440); Terran patch works (status=patched, all 16 slot-06 bodies flag31=1, lod 1 below s/T_pad 1.0, coarse ODS confirmed); the coarse record lost its red plates (baker alpha rule, fixed 5aa645e3, rebake pending) and its ambient occlusion (engine LOD-0 gate: opt-in `--lod-occlusion all` ac381be7); one ODS part flickers under motion on both hold settings (inferred LOD pop; `--lod-switch-log` e8af9e46); `--terran-station-lod distance` not flown |
 
 ## Run history paragraphs
 
@@ -2487,3 +2488,24 @@ env -u CX_DEBUGMSG X3M_FIXTURE_BOTTLE=X3 X3M_MOTION_FRAME_LOG=1 /Users/asvetl/x3
 To remove the overlay: delete `addon/05.cat`, `05.dat`, `05.x3m-lod.json`, `06.*` and `x3m-lod-batch*.json/txt`; the originals are untouched.
 
 Run 86 A is the only queued run. Completed instructions for Runs 73-85 are in the [archive](../archive/user-runs-completed.md).
+
+## Run 88 (completed 2026-09-25)
+
+**Run 88 A (queued 2026-09-25; Run88 DLL `6fe194bd…` from 79aafc8b, installed 20:25; overlay install-fleet4
+unchanged).** New: the **shadow pop fix** (the sun-occlusion bracket drifted the TAA reference count, so the caster retention
+store was flushed every frame after a few hundred frames in every session since Run84; 79aafc8b), the **mesh-adjacency fast path
+arming without --telemetry** (30eecc51), and the **launcher defaults promoted** (the stand set is the default; new
+`--shadow-cascade-sizes 2048,4096,4096,4096,2048`, `--music-keep`, `--shadow-alpha-casters on`, capture off by default; 2356ba68).
+One launch at 5120x1440 with the short stand command below (telemetry on, as before). Please name the sector of each stand.
+
+1. **Shadow pop**: a station stand with many casters (the run336 stand): pan slowly and fly around for a minute: do shadows still
+   pop in / out? Then an alt-tab and back. Rows: `shadow_retention_flush` must appear once at most (reason=teardown at exit only),
+   `shadow_retention_probe ... fired=1` only on the last row, no `taa_references_underflow` row.
+2. **Cascade sizes**: the same stand: are the near/medium shadow edges (cascades 1-2, 300 m - 3 km) visibly cleaner than before,
+   and is there any new stutter? Rows: `shadow_cascades_mode ... sizes=2048,4096,4096,4096,2048`, `shadow_replay_depth ... us=`
+   (compare against run336: p50 124, p99 371).
+3. **Defaults**: music keeps playing across an alt-tab and a save; the adjacency row `mesh_adjacency_config requested=fast
+   enabled=1 telemetry=1`; no automatic capture at frame 120 (F8 still captures).
+4. Exit through the menu.
+
+Run 88 A is the only queued run. Completed instructions for Runs 73-86 are in the [archive](../archive/user-runs-completed.md).

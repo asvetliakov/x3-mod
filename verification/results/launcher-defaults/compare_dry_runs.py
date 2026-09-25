@@ -7,7 +7,7 @@ X3M_MOTION_FRAME_LOG=1 in the shell). Prints the
 X3M_* differences between them, and of each against the stand environment recorded before the promotion
 (stand_env_before.json), and writes comparison.json beside this script.
 Expected: empty vs stand differ only in the telemetry/debug variables and X3M_SHADOW_CASCADE_SIZES (the promoted
-2048,4096,4096,2048,2048 against the stand's explicit 2048 x5, user decision 2026-09-25); the stand differs from its
+2048,4096,4096,4096,2048 against the stand's explicit 2048 x5, user decision 2026-09-25); the stand differs from its
 recorded environment only by X3M_MUSIC_KEEP=1 and X3M_SHADOW_ALPHA_CASTERS=1 (the two new defaults).
 """
 import json
@@ -39,7 +39,7 @@ TELEMETRY = {'X3M_TELEMETRY', 'X3M_CAMERA_LOG', 'X3M_LOADING_INTERVALS', 'X3M_SH
 NEW = {'X3M_MUSIC_KEEP': '1', 'X3M_SHADOW_ALPHA_CASTERS': '1'}
 # Intended functional difference: the promoted map sizes (user decision 2026-09-25) differ from the Run 84 A stand's
 # explicit 2048 x5, which an explicit --shadow-cascade-sizes still selects.
-SIZES = {'X3M_SHADOW_CASCADE_SIZES': ['2048,2048,2048,2048,2048', '2048,4096,4096,2048,2048']}
+SIZES = {'X3M_SHADOW_CASCADE_SIZES': ['2048,2048,2048,2048,2048', '2048,4096,4096,4096,2048']}
 
 
 def dry_run(arguments, frame_log):

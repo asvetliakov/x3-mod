@@ -2,7 +2,7 @@
 
 Archive with `python3 tools/analysis/archive_user_runs.py`.
 
-Updated 2026-09-25 (Run 86 A completed; effects modernisation and docking restore dropped; nothing queued). Earlier: 2026-09-21 (Run56 accepted for media stability; Run57 station-flash correction accepted; fog range remains under investigation). Run 17 crypto acceptance and the first-person/chase
+Updated 2026-09-25 (Run 88 A completed: shadow pop fixed; nothing queued). Earlier: 2026-09-21 (Run56 accepted for media stability; Run57 station-flash correction accepted; fog range remains under investigation). Run 17 crypto acceptance and the first-person/chase
 left-centre-right diagnostic are complete and are not in this queue. The agent
 never launches the game. Only open runs keep their instructions here; a completed
 run keeps only its row in the table below. The installed build is described in [status](../status.md).
@@ -20,6 +20,7 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 
 | Run | Purpose | Sessions | Status |
 | --- | --- | ---: | --- |
+| 88 A | Run88 (shadow pop fix, adjacency without telemetry, promoted defaults with cascade sizes 2048,4096,4096,2048,2048): one launch, short stand command (run337) | 1 | Completed 2026-09-25: all good (user); retention store never flushed (0 rows vs 18,992 in run336), probe never fired, no underflow; replay us p50 251 (was 124: two 4096 maps + live retention); defaults in force; cascade 3 bumped to 4096 afterwards (launcher default 2048,4096,4096,4096,2048, unflown) |
 | 86 A | Run86 (far clip 7x7 + ramp 60/68; opt-in effects stage phase 1, chase view across docking; fog empty table; launcher report lines): plants + regression (run333), combat + effects look (run334), docking (run335) | 3 | Completed 2026-09-25: plants sparkles fixed (rest 120 -> 1 measured, pan 65 -> 46 invisible remainder; run333-run86a-plants/); effects modernisation dropped by the user after seeing it (old effect design, many tuning hours); docking restore worked (transfer path=dock, 258 at f0c4b) but the selection boxes vanished after undock and saves while docked restore first person anyway: dropped; both removed from production |
 | 85 A | Run85 (far clip 7x7 + ramp 60/68): plants at rest/pans, regression, combat capture | 0 | Superseded 2026-09-25 by Run 86 A before it was flown (Run86 installed the same night with the opt-ins); its checks are folded into Run 86 A |
 | 84 A | Run84 (far gate camera default, sun occlusion default with core dimming, cursor launch arm, fill 0.01): defaults + cursor at launch + sun crossing + fog-band plants (run329 5120x1440; run330 1920x1080 menu only; run332 the plants with --taa-debug, F8 at rest and in a pan) | 3 | Completed 2026-09-25: rows as expected (cursor_reassert armed_by=launch fired, sun_occlusion_config default=1, far_gate=camera default=1, original_fill_mode default=1, window_mode moved); the desktop arrow is still visible from launch and the double cursor still appears sometimes after alt-tab: the re-assert sequence fires correctly on all 20 fires, the game makes no cursor calls and gets no WM_SETCURSOR while active, cause inside the Cocoa driver, **parked by the user** (run329-run84a-cursor/); the plants' sparkles persist and occur at rest too (user correction): not the far gate but sub-pixel highlights leaking through a partial far weight (plants at 89-137k view units = 18-27 km, ramp 102-166k) and erased by the 3x3 clip on the dark phases (run332 rest 120/120 clamped; run329-run84a-rest-sparkles/); fix on main 22776b6f (far ramp 60/68 + 7x7 far clip, design taa-thin-classification.md); the far-gate screen A/B was dropped (fixture: screen + 7x7 still sparkles on a 0.4 px line under fractional pans, 19.2 codes vs 4.9) |
@@ -28,29 +29,9 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 82 A | FOV remap (menu in game units), sun flare fix, chase compensation, S4 half default, cutout ownership: defaults look + menu/sun/chase checks; stabiliser 0 retry; thin-region source vote A/B, at 5120x1440 (candidate d1a4e360) | 5 | Completed 2026-09-25 (run312 defaults; run313/314 stabiliser 0; run315/318 source vote, flown with the stabiliser still 0 from the shell): FOV menu, sun at 100, chase size and the fog-band plants accepted by the user; run312 loaded a pre-patch save and ran at the vanilla 0x4000 until the first menu step (the savegame restores registry+0x24, RE §7.4; load-site remap in progress); stabiliser 0: plant crops valid depth 0.97 vs 0.17-0.48 in run311, no no_zwrite refusals, no shimmer seen -> default flips to 0 (§5 conditions 1, 2, 4; condition 3 replay still open); vote source: mask draw 1.38-1.40 ms in every session (no saving), and the lattice crawl the user reported in run315 is explained by vote-only flagging (the coarse record's solid cell draws never vote; 7.5 % of the flickering lattice pixels in the A' region vs 72-80 % under both) -> vote rejected as a source; results `verification/results/run312-run82a-launch1/`, `run313-run82a-stabiliser-off/`, `run315-run82a-thin-source-vote/`, `run315-run82a-lattice-crawl/` |
 | 81 A | Run81 defaults (thin vote, fade owner, occlusion `all`, FOV 58.7155 vertical, age programs) + alpha casters look; S4 half box A/B; sentinel stabiliser off with the owner on, at 5120x1440 (candidate 9e1645be) | 3 | Completed 2026-09-24 (run309 defaults + alpha casters + gpu-sync, run310 S4 half, run311 stabiliser 0): ODS underside transition fixed, alpha casters clean (refused_pool 0); S4 half accepted (box 2.36 -> 1.40 ms, TAA -1.2 ms; default from Run 82); FOV in effect until the in-game menu (starts from its own 90, left at 100) overrode it -> the remap model (Run 82); at F 100 the sun vanished near the view centre = engine 32-bit overflow in the lens-flare collector (fixed in Run 82); chase ship 1.333x larger (compensated in Run 82); the cull read a HUD projection (fixed); stabiliser 0 shimmers on the fog-band plants: their alpha-tested cutouts were unowned (owned from Run 82; stabiliser stays 0.7 until the retry) |
 | 80 A | A'-only build (hold-off chain removed) with the opt-in `--lod-occlusion all`, `--taa-thin-vote on`, `--fade-rt2-owner on` A/Bs, `--lod-switch-log` on the ODS while turning, bolt shape telemetry; Terran colours after the rebake | 5 | Completed 2026-09-24 (run304 baseline, run305 occlusion + switch log, run306 thin vote, run307 fade owner, run308 gpu-sync baseline): occlusion patch works (every LOD>0 ODS draw binds the map, no hitch; made the default `all`); thin vote and fade owner accepted as defaults (no visible issue, no GPU pass cost within 50 us; A'-only TAA 6.78 ms at 5120x1440, mask 1.49 / box 2.41 / resolve 2.68); ODS flicker = one LOD pop per crossing without hysteresis; coarse red plates 1.41x brighter = baker's synthesised material constants (user accepts, no shading classes); underside transition = alpha-tested casters excluded from the shadow replay (opt-in `--shadow-alpha-casters` in Run81); sentinel stabiliser removal needs the S = 0 launch (Run 81 A) |
-| 79 A | A' region hold on/off look + gpu-sync cost, Terran station LOD patch bursts (USC dock, SPP XL) size/distance, slot-06 control, at 5120x1440 (candidate df01f23b) | 4 | Completed 2026-09-24 (run299/300/302/303; run301 aborted): A' accepted (no visible difference on the lattice stand, pans, silhouettes, shards; mask 2.93 -> 1.54 ms with the x/y draws gone, box +0.23 ms, net -1.1 ms at 5120x1440); Terran patch works (status=patched, all 16 slot-06 bodies flag31=1, lod 1 below s/T_pad 1.0, coarse ODS confirmed); the coarse record lost its red plates (baker alpha rule, fixed 5aa645e3, rebake pending) and its ambient occlusion (engine LOD-0 gate: opt-in `--lod-occlusion all` ac381be7); one ODS part flickers under motion on both hold settings (inferred LOD pop; `--lod-switch-log` e8af9e46); `--terran-station-lod distance` not flown |
 
 
-## Run 88 (open)
-
-**Run 88 A (queued 2026-09-25; Run88 DLL `6fe194bd…` from 79aafc8b, installed 20:25; overlay install-fleet4
-unchanged).** New: the **shadow pop fix** (the sun-occlusion bracket drifted the TAA reference count, so the caster retention
-store was flushed every frame after a few hundred frames in every session since Run84; 79aafc8b), the **mesh-adjacency fast path
-arming without --telemetry** (30eecc51), and the **launcher defaults promoted** (the stand set is the default; new
-`--shadow-cascade-sizes 2048,4096,4096,2048,2048`, `--music-keep`, `--shadow-alpha-casters on`, capture off by default; 2356ba68).
-One launch at 5120x1440 with the short stand command below (telemetry on, as before). Please name the sector of each stand.
-
-1. **Shadow pop**: a station stand with many casters (the run336 stand): pan slowly and fly around for a minute: do shadows still
-   pop in / out? Then an alt-tab and back. Rows: `shadow_retention_flush` must appear once at most (reason=teardown at exit only),
-   `shadow_retention_probe ... fired=1` only on the last row, no `taa_references_underflow` row.
-2. **Cascade sizes**: the same stand: are the near/medium shadow edges (cascades 1-2, 300 m - 3 km) visibly cleaner than before,
-   and is there any new stutter? Rows: `shadow_cascades_mode ... sizes=2048,4096,4096,2048,2048`, `shadow_replay_depth ... us=`
-   (compare against run336: p50 124, p99 371).
-3. **Defaults**: music keeps playing across an alt-tab and a save; the adjacency row `mesh_adjacency_config requested=fast
-   enabled=1 telemetry=1`; no automatic capture at frame 120 (F8 still captures).
-4. Exit through the menu.
-
-Run 88 A is the only queued run. Completed instructions for Runs 73-86 are in the [archive](../archive/user-runs-completed.md).
+No run is queued. Completed instructions for Runs 73-88 are in the [archive](../archive/user-runs-completed.md).
 
 ## Stand command
 
@@ -64,14 +45,14 @@ env -u CX_DEBUGMSG X3M_FIXTURE_BOTTLE=X3 X3M_MOTION_FRAME_LOG=1 /Users/asvetl/x3
 
 ```sh
 # Explicit form: what the defaults expand to. The old Run 84 A stand command is still accepted and gives the same
-# environment except its explicit --shadow-cascade-sizes 2048,2048,2048,2048,2048 (the default is 2048,4096,4096,2048,2048,
+# environment except its explicit --shadow-cascade-sizes 2048,2048,2048,2048,2048 (the default is 2048,4096,4096,4096,2048,
 # user decision 2026-09-25):
 # --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa
 # --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer
 # --resource-read fast --dat-handles --mesh-adjacency fast --screen-emission-additive 2 --screen-emission-additive-alpha 0
 # --emission-source-gain 2 --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply
 # --shadow-sun-poll on --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance
-# --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,4096,4096,2048,2048
+# --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,4096,4096,4096,2048
 # --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --light-map-far-fade 80,220 --motion-rt-mode lazy
 # --volumetric-fog 0.02 --volumetric-fog-cards replace --volumetric-fog-range stored --cull-small-parts 4
 # --capture-start 999999 --capture-frames 8 --capture-delay 300 (no automatic capture; F8 captures on demand)

@@ -3820,3 +3820,14 @@ the store at every device Release from then on.
 Not flown: the next `--shadow-caster-retention` flight should show `shadow_retention_flush reason=teardown`
 exactly once (at the device destroy), `records_unseen` > 0 through the session, and at most 16
 `shadow_retention_probe` rows with `fired=1` only on the last.
+
+## 2026-09-25 Run 88 A (run337, Run88 DLL 6fe194bd): shadow pop fixed, cascade sizes accepted
+
+User: "All good now". Measured from the session log (10,527 replay frames): `shadow_retention_flush` rows 0 (the store was never
+flushed; run336 had 18,992), `shadow_retention_probe` 10 rows all `fired=0` (last: frame 2291 now=3722 device=330 bloom=25
+gpu_sync=0 retained=65), no `taa_references_underflow` row; the retention summary ends with static_nodes 364,666, unseen 242,466,
+promoted 72 (the store works: run336 had static=0 after frame 906). `sizes=2048,4096,4096,2048,2048` in force;
+`mesh_adjacency_config requested=fast enabled=1 telemetry=1`; defaults X3M_CAPTURE_START=999999, MUSIC_KEEP=1,
+ALPHA_CASTERS=1. Replay `us=` p50 251.4 / p90 359.8 / p99 527.7 (run336: 124.2 / 165.4 / 371.0): about +0.13 ms per frame for the
+two 4096 maps plus the now-live retention (not separated). User decision after the flight: cascade 3 to 4096 as well ->
+launcher default `2048,4096,4096,4096,2048` (+144 MB vs 2048x5), unflown.
