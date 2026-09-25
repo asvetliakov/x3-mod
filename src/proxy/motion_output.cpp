@@ -408,6 +408,7 @@ void MotionOutput::release_resources() noexcept {
     // Joins the stored-density worker and frees its caches, staging and DEFAULT atlases with the
     // other passes. This is the device release path, not DllMain (FogPass::abandon_density_worker).
     if (fog_) { taa_call([&] { fog_->detach(); }); fog_.reset(); fog_frame_ = ~std::uint64_t(0); }
+    release_effects_stage();
     fog_density_refused_ = fog_density_prepared_ = fog_density_camera_valid_ = fog_density_config_logged_ = false; // a new pass may be refused for another reason
     fog_motes_drawn_ = false;
     release_depth_leases(); release_candidate_extents(); release_thin_votes();
@@ -1757,6 +1758,12 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
             if (chase_snap) t.camera_cut = true;
             in.caller_scene_open = scene_open_; in.caller_stateblock_recording = shadow_.recording;
             in.caller_queries_idle = active_queries_ == 0;
+            // Effects stage (motion_output_effects_inc.h): the armed stage draws as the first act of the run's
+            // bracket; it reads the lane the run reads and the cut verdict the run takes.
+            if (effects_requested_ && effects_armed_now() && effects_ && depth && hdr_scene) { // the FP16 route only: RT0 is the texture the resolve reads
+                in.stage_callback = &MotionOutput::effects_stage_callback; in.stage_context = this;
+                effects_lane_ = depth; effects_lane_width_ = in.width; effects_lane_height_ = in.height; effects_cut_pending_ = in.cut;
+            }
             // Phase timing of the run (telemetry only): the pass stamps its own
             // five phases; the whole call is timed here and nests them.
             taa_->configure_timing(telemetry_);
@@ -1788,6 +1795,11 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
             const std::uint64_t run_ticks = stamp() - run_begin;
             const auto diagnostics = taa_->diagnostics();
             t.result = injected ? hr : diagnostics.operation; t.restore = diagnostics.restoration;
+            if (in.stage_callback) { // the effects stage's run inside this bracket (unknown 11: whether the depth surface was attached at capture)
+                effects_lane_ = nullptr; effects_depth_bound_ = diagnostics.stage_depth_bound;
+                LARGE_INTEGER qf{}; QueryPerformanceFrequency(&qf);
+                effects_stage_us_ = qf.QuadPart ? float(double(diagnostics.ticks_stage) * 1e6 / double(qf.QuadPart)) : 0.f;
+            }
             // The depth-copy fold (taa-high-resolution.md S1): one line on the attachment's first completed run.
             if (!taa_fold_logged_ && !injected && SUCCEEDED(diagnostics.operation)) {
                 taa_fold_logged_ = true;
@@ -2922,6 +2934,11 @@ void MotionOutput::before_reset() noexcept {
     last_routed_node_ = last_routed_lifetime_ = 0; last_routed_frame_ = ~std::uint64_t{0}; last_routed_draw_ = 0; // no overlay witness survives Reset
     release_fade_witness(); release_packed_sample(); // the M target is recreated after Reset; the copies follow its size
     release_bolt_buffer(); // DEFAULT pool: goes before Reset, recreated by the next draw that needs it
+    // Effects stage: the pass's DEFAULT buffers go; the attach refusal, the disarm window, the ages and the hit slots
+    // start over after the Reset (the frame after it re-attaches).
+    if (effects_) taa_call([&] { effects_->before_reset(); });
+    release_effects_atlas(); effects_attach_failed_ = false; effects_arming_.reset(); effects_ages_.clear();
+    effects_ship_hit_count_ = 0; effects_bolt_count_[0] = effects_bolt_count_[1] = 0; effects_frame_armed_ = false; effects_lane_ = nullptr;
     composition_state_lost_ = false; composition_frame_stopped_ = false; composition_attach_attempted_ = false;
     composition_adapter_format_ = D3DFMT_UNKNOWN; // Reset may change the adapter display format.
     if (hdr_) hdr_->before_reset();
@@ -2958,6 +2975,7 @@ void MotionOutput::after_reset(HRESULT result) noexcept {
     if (sun_apply_) sun_apply_->after_reset(result);
     if (sun_occlusion_pass_) sun_occlusion_pass_->after_reset(result);
     if (fog_) { fog_->after_reset(result); fog_frame_ = ~std::uint64_t(0); }
+    if (effects_) effects_->after_reset(result);
     sun_apply_frame_ = ~std::uint64_t(0); depth_replayed_frame_ = ~std::uint64_t(0); // a successful Reset continues the frame counter: the replay and the quad may run again
     scene_open_ = false; // Reset ends any application scene; BeginScene follows.
     if (!enabled_) return;
@@ -3708,6 +3726,7 @@ void MotionOutput::begin_frame(std::uint64_t frame, bool capture) noexcept {
     if (cascade_adaptive_on() && frame != frame_) update_adaptive_cascades(); // the previous frame's own ship and radius commit at the boundary (its frame number and capture flag); a Reset's repeated begin of the same frame is no boundary
     if (fog_cards_replace_ && fog_cards_.suppressed && !fog_cards_.finished) fault_fog_cards("scene_end_missing");
     frame_ = frame; capture_ = capture; telemetry_ = telemetry::enabled();
+    if (effects_requested_) effects_begin_frame(); // the effects stage's arming and record buffers for this frame
     packed_sample_.valid = false; packed_sample_.sampled = 0; // an unmatched pre never pairs with a later frame's post
     engine_memory::next_frame(); // the object observers' direct-read regions are re-validated once per frame
     counters_ = {}; sun_frame_={}; sun_stamps_=sun_stamp_refused_=sun_stamp_prims_=0; sun_coverage_current_=sun_composition_completed_=false;
@@ -4142,6 +4161,7 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
             if (composition_effective_) { composition_state_lost_ = true; ++composition_counts_.suppressed; }
             invalidate_taa(TaaInvalidateSite::RestoreFailed);
         } else if (route.submit) {
+            if (effects_requested_ && effects_armed_now()) record_effect_draw(call, route); // the effects stage's records: a taken draw clears route.submit (S_OK to the engine)
             if (shadow_.fog_card_source) prepare_fog_card(call, route);
             if (!route.fog_card_mask.masked && route.submit) prepare_composition(call, route);
             // Additive option: its pair check is the only per-draw cost for
@@ -4503,6 +4523,10 @@ void MotionOutput::prepare_screen_additive(const MotionDrawCall& call, MotionRou
     if (!call.primitives || call.indexed || call.user_memory) { refuse(1); return; }
     if (!scene_open_ || active_queries_ || shadow_.recording || !scene_bound() || main_msaa_) { refuse(2); return; }
     if (hdr_state_ != HdrState::Active || !hdr_) { refuse(3); return; }
+    // Effects stage (motion_output_effects_inc.h): an armed stage records the bullet draw here; the draw still takes
+    // the additive route below (phase 1 suppresses nothing), only the footprint rewrite is skipped for a recorded one.
+    const bool effects_recorded = effects_requested_ && effects_armed_now() && record_bolt_draw(call, route);
+    if (effects_recorded) ++screen_additive_window_.effects_recorded;
     const bool gained = screen_additive_gain_ != 1.f;
     if (gained && !shadow_.ps_screen_additive_variant) { refuse(4); return; }
     // The PS2 promotion samples the diffuse texture itself: the packed route's
@@ -4568,8 +4592,9 @@ void MotionOutput::prepare_screen_additive(const MotionDrawCall& call, MotionRou
     if (shadow_.screen_additive_index < screen_emission::pair_count)
         screen_additive_frame_pairs_ |= 1u << shadow_.screen_additive_index;
     // Bolt footprint: one bool test unless requested; it never changes the
-    // admission above and unwinds nothing but its own binding.
-    if (bolt_footprint_requested_) prepare_bolt_footprint(call, route);
+    // admission above and unwinds nothing but its own binding. A draw the
+    // effects stage recorded keeps its native size (the capsule is its footprint).
+    if (bolt_footprint_requested_ && !effects_recorded) prepare_bolt_footprint(call, route);
 }
 // The attenuation's render states in apply order. SEPARATEALPHABLENDENABLE is
 // last so the alpha triple is already in place when it starts to matter, and
@@ -4857,10 +4882,10 @@ void MotionOutput::log_screen_additive_window() noexcept {
     for (unsigned i = 0; i < screen_additive_reason_count; ++i) refused += w.refused[i];
     const std::uint32_t evaluated = w.admitted + refused + w.apply_failures;
     log("screen_emission_additive_refused_window device=%llu frame=%llu frames=%u pair_draws=%u admitted=%u refused=%u apply_failures=%u not_reached=%u "
-        "state=%u draw_shape=%u scene=%u no_fp16_target=%u no_variant=%u srgb_sampler=%u projected=%u dither=%u alpha_state=%u alpha_caps=%u enabled=%u",
+        "state=%u draw_shape=%u scene=%u no_fp16_target=%u no_variant=%u srgb_sampler=%u projected=%u dither=%u alpha_state=%u alpha_caps=%u enabled=%u effects_recorded=%u",
         id_, frame_, screen_additive_window_frames_, w.pair_draws, w.admitted, refused, w.apply_failures, w.pair_draws > evaluated ? w.pair_draws - evaluated : 0u,
         w.refused[0], w.refused[1], w.refused[2], w.refused[3], w.refused[4], w.refused[5], w.refused[6], w.refused[7], w.refused[8], w.refused[9],
-        unsigned(screen_additive_enabled_));
+        unsigned(screen_additive_enabled_), w.effects_recorded);
     w = ScreenAdditiveWindow{}; screen_additive_window_frames_ = 0;
 }
 bool MotionOutput::publish_composition() noexcept {
@@ -7046,8 +7071,9 @@ void MotionOutput::after_present(HRESULT result) noexcept {
         screen_additive_frame_admitted_ = screen_additive_frame_refused_ = screen_additive_frame_pairs_ = 0; // this frame only
         if (++screen_additive_window_frames_ >= 300u) log_screen_additive_window();
     }
-    if (bolt_footprint_requested_) chase_pose_mark_ = chase_camera::pose_write_count(); // the next frame's gate needs a fresh chase pose
+    if (bolt_footprint_requested_ || effects_requested_) chase_pose_mark_ = chase_camera::pose_write_count(); // the next frame's gate needs a fresh chase pose
     if (bolt_footprint_requested_ && ++bolt_window_frames_ >= 300u) log_bolt_footprint_window();
+    if (effects_requested_) log_effects_stage_frame();
     if (fade_refused_count_) log_fade_refused();
     if (emission_source_gain_requested_) {
         // One line per frame that saw at least one candidate draw (an eligible
@@ -7857,6 +7883,7 @@ void MotionOutput::note_candidate_draw(const MotionRoute& route) noexcept {
                     // through the draw's own clip rows. Capture frames only, and only
                     // with X3M_OBJECT_BOUNDS_LOG; the corners are the route's own.
                     if (object_bounds_log_ && capture_ && e->state == shadow_replay::ExtentState::Known) log_object_bounds(route, draw_rows(), e->lo, e->hi, route.alpha_tested);
+                    if (effects_shields_ && effects_requested_ && effects_armed_now() && e->state == shadow_replay::ExtentState::Known) note_owner_box(route, draw_rows(), e->lo, e->hi); // the shell association's owner boxes
                     if (e->state == shadow_replay::ExtentState::Known && !ensure_candidate_bounds_rows()) ++candidate_bounds_unavailable_;
                     else if (e->state == shadow_replay::ExtentState::Known) {
                         const float* rows = draw_rows();
@@ -8716,4 +8743,5 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
 #include "motion_output_shadow_retention_inc.h"
 #include "motion_output_fog_inc.h"
 #include "motion_output_sun_occlusion_inc.h"
+#include "motion_output_effects_inc.h"
 } // namespace x3m

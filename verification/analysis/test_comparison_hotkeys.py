@@ -145,7 +145,7 @@ class ComparisonHotkeys(unittest.TestCase):
         # (Run 70 B/B2, 2026-09-23) enables them, so the key is polled there without the option unless 0 opted out.
         self.assertIn('} else if(motes_length||volumetric_fog_range_stored){', capture)
         self.assertIn('unsigned long n=renderer::fog_mote_default_count;', capture)
-        self.assertIn('keys.alt=(fps_overlay_requested || volumetric_fog_requested) && (GetAsyncKeyState(VK_MENU)&0x8000)!=0;', polling)
+        self.assertIn('keys.alt=(fps_overlay_requested || volumetric_fog_requested || effects_stage_requested) && (GetAsyncKeyState(VK_MENU)&0x8000)!=0;', polling)
         self.assertIn('fog_dust_motes_launch_ = motes.count > 0; fog_density_config_.motes = motes; fog_density_config_.dust_motes = motes.count > 0;', header)
         toggle = extract_function(fragment, 'int MotionOutput::volumetric_fog_dust_motes_toggle(')
         self.assertLess(toggle.index('if (!fog_dust_motes_launch_) return -1;'), toggle.index('fog_density_config_.dust_motes = !fog_density_config_.dust_motes;'))
@@ -299,7 +299,7 @@ class ComparisonHotkeys(unittest.TestCase):
         # Shift up, so the chords are disjoint (comparison-hotkeys.md, "FPS overlay").
         self.assertEqual(capture.count('GetAsyncKeyState(VK_F7)'), 1)
         controls = (ROOT / 'src/proxy/comparison_controls.h').read_text()
-        self.assertIn('keys.alt=(fps_overlay_requested || volumetric_fog_requested) && (GetAsyncKeyState(VK_MENU)&0x8000)!=0;', polling)
+        self.assertIn('keys.alt=(fps_overlay_requested || volumetric_fog_requested || effects_stage_requested) && (GetAsyncKeyState(VK_MENU)&0x8000)!=0;', polling)
         self.assertIn('keys.fps_overlay=fps_overlay_requested && (GetAsyncKeyState(VK_F7)&0x8000)!=0;', polling)
         self.assertIn('result.fps_overlay = keys.control && keys.alt && !keys.shift && keys.fps_overlay && !fps_overlay_down_;', controls)
         telemetry_source = (ROOT / 'src/proxy/telemetry.cpp').read_text()

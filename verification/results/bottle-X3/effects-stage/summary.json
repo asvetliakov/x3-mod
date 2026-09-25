@@ -1,0 +1,1039 @@
+{
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
+  "build": {
+    "executable_sha256": "d4dab4002507f991e308f5047aad0a0ec42efde188864b06a3edb86a57f39475",
+    "keys_executable_sha256": "8aa8c8894c53b33fd3294ceb1cce29e46e297d5d2b306d1a0007e7e4c9bdba5f"
+  },
+  "gates": {
+    "pass_open_ms": 0.1,
+    "bolts60_shells2_ms": 0.05,
+    "fullscreen_shell_ms": 0.1,
+    "resolve_core_ratio": 0.9,
+    "resolve_trail_px": 3
+  },
+  "textures": [
+    {
+      "name": "exp_PL_imp_diff",
+      "expected_key": "bef0465755af1985",
+      "source": "01.cat:dds/exp_PL_imp_diff.pck",
+      "dds_sha256": "92d8d249307aab2e3224b432b9c7807a2eb61b7e3aeb521f918164a51b421a35"
+    },
+    {
+      "name": "fx_bullets2_diff",
+      "expected_key": "1d615ca9580bd5ac",
+      "source": "01.cat:dds/fx_bullets2_diff.pck",
+      "dds_sha256": "1becbb604cb4682911dab092c5e3575d9a4768dde211c0445050ffb4825606fa"
+    },
+    {
+      "name": "fx_sphereshockwave_diff",
+      "expected_key": "1270112df32acd84",
+      "source": "01.cat:dds/fx_sphereshockwave_diff.pck",
+      "dds_sha256": "982eeb5af1e01f0cf269a696ac67c488ac0b1392991bfe0a24aa39c05debd750"
+    }
+  ],
+  "runs": {
+    "gpu": {
+      "command": [
+        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+        "--bottle",
+        "X3",
+        "--no-update",
+        "--dll",
+        "d3d9=b",
+        "--workdir",
+        "/Users/asvetl/x3-mod/.claude/worktrees/agent-a0441c97b566f12b5/verification/probe/build/effects-stage",
+        "/Users/asvetl/x3-mod/.claude/worktrees/agent-a0441c97b566f12b5/verification/probe/build/effects-stage/effects_stage_fixture.exe",
+        "C:\\X3\\d3dx9_37.dll"
+      ],
+      "exit_code": 0,
+      "result": {
+        "checks": 121,
+        "failures": 0,
+        "verdict": "PASS"
+      }
+    },
+    "keys": {
+      "command": [
+        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+        "--bottle",
+        "X3",
+        "--no-update",
+        "--dll",
+        "d3d9=b",
+        "--workdir",
+        "/Users/asvetl/x3-mod/.claude/worktrees/agent-a0441c97b566f12b5/verification/probe/build/effects-stage",
+        "/Users/asvetl/x3-mod/.claude/worktrees/agent-a0441c97b566f12b5/verification/probe/build/effects-stage/effects_stage_keys_fixture.exe",
+        "C:\\X3\\d3dx9_37.dll",
+        "--keys",
+        "Z:\\private\\var\\folders\\l6\\0sdq5b49401b_4m_26gsl1f00000gn\\T\\x3-effects-keys-37kpdzip\\exp_PL_imp_diff.dds",
+        "bef0465755af1985",
+        "Z:\\private\\var\\folders\\l6\\0sdq5b49401b_4m_26gsl1f00000gn\\T\\x3-effects-keys-37kpdzip\\fx_bullets2_diff.dds",
+        "1d615ca9580bd5ac",
+        "Z:\\private\\var\\folders\\l6\\0sdq5b49401b_4m_26gsl1f00000gn\\T\\x3-effects-keys-37kpdzip\\fx_sphereshockwave_diff.dds",
+        "1270112df32acd84"
+      ],
+      "exit_code": 0,
+      "result": {
+        "checks": 8,
+        "failures": 0,
+        "verdict": "PASS"
+      }
+    }
+  },
+  "report": {
+    "checks": [
+      [
+        "attach",
+        true
+      ],
+      [
+        "fp16_refused",
+        true
+      ],
+      [
+        "bolt_core_bright_4ch",
+        true
+      ],
+      [
+        "bolt_core_width_4ch",
+        true
+      ],
+      [
+        "bolt_length_native_4ch",
+        true
+      ],
+      [
+        "bolt_length_min_4ch",
+        true
+      ],
+      [
+        "bolt_occluded_4ch",
+        true
+      ],
+      [
+        "bolt_soft_end_4ch",
+        true
+      ],
+      [
+        "bolt_core_bright_r32f",
+        true
+      ],
+      [
+        "bolt_core_width_r32f",
+        true
+      ],
+      [
+        "bolt_length_native_r32f",
+        true
+      ],
+      [
+        "bolt_length_min_r32f",
+        true
+      ],
+      [
+        "bolt_occluded_r32f",
+        true
+      ],
+      [
+        "bolt_soft_end_r32f",
+        true
+      ],
+      [
+        "shell_rim",
+        true
+      ],
+      [
+        "shell_four_rings",
+        true
+      ],
+      [
+        "shell_hull_cut",
+        true
+      ],
+      [
+        "shell_soft_cut",
+        true
+      ],
+      [
+        "decal_on_hull",
+        true
+      ],
+      [
+        "decal_not_on_sky",
+        true
+      ],
+      [
+        "off_path_no_record",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_bolt_0px_core",
+        true
+      ],
+      [
+        "resolve_bolt_0px_trail",
+        true
+      ],
+      [
+        "off_path_resolve_identical",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_bolt_4px_core",
+        true
+      ],
+      [
+        "resolve_bolt_4px_trail",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_bolt_8px_core",
+        true
+      ],
+      [
+        "resolve_bolt_8px_trail",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_shell_0px_core",
+        true
+      ],
+      [
+        "suppression_armed_taken",
+        true
+      ],
+      [
+        "suppression_failed_forwarded",
+        true
+      ],
+      [
+        "suppression_recovers",
+        true
+      ],
+      [
+        "reset_released",
+        true
+      ],
+      [
+        "reset_recreated",
+        true
+      ],
+      [
+        "bolt_core_bright_4ch",
+        true
+      ],
+      [
+        "bolt_core_width_4ch",
+        true
+      ],
+      [
+        "bolt_length_native_4ch",
+        true
+      ],
+      [
+        "bolt_length_min_4ch",
+        true
+      ],
+      [
+        "bolt_occluded_4ch",
+        true
+      ],
+      [
+        "bolt_soft_end_4ch",
+        true
+      ],
+      [
+        "shell_rim",
+        true
+      ],
+      [
+        "shell_four_rings",
+        true
+      ],
+      [
+        "shell_hull_cut",
+        true
+      ],
+      [
+        "shell_soft_cut",
+        true
+      ],
+      [
+        "decal_on_hull",
+        true
+      ],
+      [
+        "decal_not_on_sky",
+        true
+      ],
+      [
+        "off_path_no_record",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_bolt_0px_core",
+        true
+      ],
+      [
+        "resolve_bolt_0px_trail",
+        true
+      ],
+      [
+        "off_path_resolve_identical",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_bolt_4px_core",
+        true
+      ],
+      [
+        "resolve_bolt_4px_trail",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_bolt_8px_core",
+        true
+      ],
+      [
+        "resolve_bolt_8px_trail",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_stage_ran",
+        true
+      ],
+      [
+        "resolve_shell_0px_core",
+        true
+      ],
+      [
+        "pass_open_measured",
+        true
+      ],
+      [
+        "detach_released",
+        true
+      ],
+      [
+        "texture_key_matches_table",
+        true
+      ],
+      [
+        "texture_key_matches_table",
+        true
+      ],
+      [
+        "texture_key_matches_table",
+        true
+      ],
+      [
+        "key_path_1",
+        true
+      ],
+      [
+        "key_path_2",
+        true
+      ],
+      [
+        "key_path_3",
+        true
+      ],
+      [
+        "key_default_pool_unknown",
+        true
+      ],
+      [
+        "key_dynamic_default_pool_unknown",
+        true
+      ]
+    ],
+    "attach": {
+      "result": 0,
+      "enabled": 1,
+      "reason": "ok",
+      "largest_program_slots": 216,
+      "bolt": "95/62",
+      "shell": "44/216",
+      "decal": "27/84",
+      "fp16_blending": 0,
+      "max_ps_slots": 512,
+      "references": 13
+    },
+    "pass_open": {
+      "width": 5120,
+      "height": 1440,
+      "own_off_ms": 1.3907,
+      "own_on_ms": 1.4414,
+      "own_submit_ms": 0.0379,
+      "ride_off_ms": 1.7954,
+      "ride_on_ms": 1.849,
+      "ride_submit_ms": 0.0375,
+      "own_stage_ms": 0.0128,
+      "ride_stage_ms": 0.0161,
+      "own_pass_ms": -0.0033,
+      "gate_ms": 0.1,
+      "depth_bound_before_unbind": 1,
+      "method": "tail_fenced"
+    },
+    "bolt": [
+      {
+        "width": 1920,
+        "height": 1080,
+        "lane": "4ch",
+        "core": 6.0,
+        "core_width_px": 3,
+        "length_px": 133,
+        "native_length_px": 130.6,
+        "halo": 0.0,
+        "case": "BOLT_CAPSULE"
+      },
+      {
+        "lane": "4ch",
+        "length_px": 15,
+        "l_min": 12.0,
+        "case": "BOLT_TINY"
+      },
+      {
+        "lane": "4ch",
+        "left": 6.0,
+        "right": 0.0,
+        "case": "BOLT_OCCLUDED"
+      },
+      {
+        "lane": "4ch",
+        "covered": 3.0,
+        "open": 6.0,
+        "case": "BOLT_SOFT"
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "lane": "r32f",
+        "core": 6.0,
+        "core_width_px": 3,
+        "length_px": 133,
+        "native_length_px": 130.6,
+        "halo": 0.0,
+        "case": "BOLT_CAPSULE"
+      },
+      {
+        "lane": "r32f",
+        "length_px": 15,
+        "l_min": 12.0,
+        "case": "BOLT_TINY"
+      },
+      {
+        "lane": "r32f",
+        "left": 6.0,
+        "right": 0.0,
+        "case": "BOLT_OCCLUDED"
+      },
+      {
+        "lane": "r32f",
+        "covered": 2.994,
+        "open": 6.0,
+        "case": "BOLT_SOFT"
+      },
+      {
+        "width": 5120,
+        "height": 1440,
+        "lane": "4ch",
+        "core": 6.0,
+        "core_width_px": 3,
+        "length_px": 351,
+        "native_length_px": 348.2,
+        "halo": 0.0,
+        "case": "BOLT_CAPSULE"
+      },
+      {
+        "lane": "4ch",
+        "length_px": 19,
+        "l_min": 16.0,
+        "case": "BOLT_TINY"
+      },
+      {
+        "lane": "4ch",
+        "left": 6.0,
+        "right": 0.0,
+        "case": "BOLT_OCCLUDED"
+      },
+      {
+        "lane": "4ch",
+        "covered": 3.0,
+        "open": 6.0,
+        "case": "BOLT_SOFT"
+      }
+    ],
+    "shell": [
+      {
+        "centre": 4.7812,
+        "rim": 0.4978,
+        "mid": 0.2372,
+        "rings": 4,
+        "open": 8.6016,
+        "r_px": 204.0,
+        "case": "SHELL"
+      },
+      {
+        "left": 0.0,
+        "right": 8.2344,
+        "soft": 2.8027,
+        "open": 8.6016,
+        "case": "SHELL_CUT"
+      },
+      {
+        "on_hull": 3.332,
+        "on_sky": 0.0,
+        "case": "DECAL"
+      },
+      {
+        "centre": 4.7812,
+        "rim": 0.4192,
+        "mid": 0.196,
+        "rings": 4,
+        "open": 8.6016,
+        "r_px": 544.0,
+        "case": "SHELL"
+      },
+      {
+        "left": 0.0,
+        "right": 8.2344,
+        "soft": 2.8047,
+        "open": 8.6016,
+        "case": "SHELL_CUT"
+      },
+      {
+        "on_hull": 3.3301,
+        "on_sky": 0.0,
+        "case": "DECAL"
+      }
+    ],
+    "resolve": [
+      {
+        "speed_px": 0,
+        "current": 6.0,
+        "resolved": 6.0,
+        "ratio": 1.0,
+        "trail_px": 0,
+        "calls": 0,
+        "what": "bolt"
+      },
+      {
+        "speed_px": 4,
+        "current": 6.0,
+        "resolved": 6.0,
+        "ratio": 1.0,
+        "trail_px": 0,
+        "calls": 0,
+        "what": "bolt"
+      },
+      {
+        "speed_px": 8,
+        "current": 6.0,
+        "resolved": 6.0,
+        "ratio": 1.0,
+        "trail_px": 0,
+        "calls": 0,
+        "what": "bolt"
+      },
+      {
+        "speed_px": 0,
+        "current": 3.004,
+        "resolved": 3.004,
+        "ratio": 1.0,
+        "trail_px": 0,
+        "calls": 0,
+        "what": "shell"
+      },
+      {
+        "speed_px": 0,
+        "current": 6.0,
+        "resolved": 6.0,
+        "ratio": 1.0,
+        "trail_px": 0,
+        "calls": 0,
+        "what": "bolt"
+      },
+      {
+        "speed_px": 4,
+        "current": 6.0,
+        "resolved": 6.0,
+        "ratio": 1.0,
+        "trail_px": 0,
+        "calls": 0,
+        "what": "bolt"
+      },
+      {
+        "speed_px": 8,
+        "current": 6.0,
+        "resolved": 6.0,
+        "ratio": 1.0,
+        "trail_px": 0,
+        "calls": 0,
+        "what": "bolt"
+      },
+      {
+        "speed_px": 0,
+        "current": 3.004,
+        "resolved": 3.004,
+        "ratio": 1.0,
+        "trail_px": 0,
+        "calls": 0,
+        "what": "shell"
+      }
+    ],
+    "timing": [
+      {
+        "width": 1920,
+        "height": 1080,
+        "bolts": 60,
+        "shells": 2,
+        "fenced_on_ms": 0.9446,
+        "fenced_off_ms": 0.8701,
+        "submit_ms": 0.0449,
+        "chain_ms": 0.0745,
+        "gpu_ms": 0.0296,
+        "samples": 15,
+        "calls": 62,
+        "method": "tail_fenced",
+        "label": "bolts60_shells2"
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "bolts": 0,
+        "shells": 1,
+        "fenced_on_ms": 1.2923,
+        "fenced_off_ms": 0.7599,
+        "submit_ms": 0.0032,
+        "chain_ms": 0.5324,
+        "gpu_ms": 0.5292,
+        "samples": 15,
+        "calls": 39,
+        "method": "tail_fenced",
+        "label": "fullscreen_shell"
+      },
+      {
+        "width": 5120,
+        "height": 1440,
+        "bolts": 60,
+        "shells": 2,
+        "fenced_on_ms": 1.5917,
+        "fenced_off_ms": 1.3899,
+        "submit_ms": 0.0438,
+        "chain_ms": 0.2018,
+        "gpu_ms": 0.158,
+        "samples": 15,
+        "calls": 62,
+        "method": "tail_fenced",
+        "label": "bolts60_shells2"
+      },
+      {
+        "width": 5120,
+        "height": 1440,
+        "bolts": 0,
+        "shells": 1,
+        "fenced_on_ms": 2.0602,
+        "fenced_off_ms": 1.275,
+        "submit_ms": 0.0034,
+        "chain_ms": 0.7852,
+        "gpu_ms": 0.7818,
+        "samples": 15,
+        "calls": 39,
+        "method": "tail_fenced",
+        "label": "fullscreen_shell"
+      }
+    ],
+    "keys": [
+      {
+        "name": "exp_PL_imp_diff.dds",
+        "load": 0,
+        "query": 0,
+        "known": 1,
+        "key": "bef0465755af1985",
+        "expected": "bef0465755af1985",
+        "match": 1,
+        "source": 2,
+        "uploads": 1,
+        "size": "128x128",
+        "format": 827611204
+      },
+      {
+        "name": "fx_bullets2_diff.dds",
+        "load": 0,
+        "query": 0,
+        "known": 1,
+        "key": "1d615ca9580bd5ac",
+        "expected": "1d615ca9580bd5ac",
+        "match": 1,
+        "source": 2,
+        "uploads": 1,
+        "size": "1024x1024",
+        "format": 894720068
+      },
+      {
+        "name": "fx_sphereshockwave_diff.dds",
+        "load": 0,
+        "query": 0,
+        "known": 1,
+        "key": "1270112df32acd84",
+        "expected": "1270112df32acd84",
+        "match": 1,
+        "source": 2,
+        "uploads": 1,
+        "size": "512x512",
+        "format": 894720068
+      }
+    ],
+    "key_paths": [
+      {
+        "source": 1,
+        "known": 1,
+        "match": 1,
+        "uploads": 1,
+        "unknown_before_fallback": 0,
+        "readonly_kept": 1
+      },
+      {
+        "source": 2,
+        "known": 1,
+        "match": 1,
+        "uploads": 1,
+        "unknown_before_fallback": 0,
+        "readonly_kept": 1
+      },
+      {
+        "source": 3,
+        "known": 1,
+        "match": 1,
+        "uploads": 0,
+        "unknown_before_fallback": 1,
+        "readonly_kept": 1
+      }
+    ],
+    "result": {
+      "checks": 121,
+      "failures": 0,
+      "verdict": "PASS"
+    },
+    "suppression": {
+      "taken_armed": 10,
+      "forwarded_missing": 1,
+      "failed": 80004005,
+      "step": 0,
+      "forwarded_window": 64,
+      "taken_after": 1,
+      "both": 0,
+      "again": 0
+    },
+    "reset": {
+      "before": 13,
+      "released": 9,
+      "reset": 0,
+      "ensured": 0,
+      "after": 13,
+      "run": 0,
+      "bolts": 1
+    },
+    "fp16_refused": {
+      "result": "8876086a",
+      "enabled": 0,
+      "reason": "fp16_blending",
+      "references": 0
+    },
+    "off_path": [
+      {
+        "result": 1,
+        "calls": 0,
+        "identical": 1
+      },
+      {
+        "result": 1,
+        "calls": 0,
+        "identical": 1
+      }
+    ],
+    "check_count": 129,
+    "check_failures": 0,
+    "failed_checks": []
+  },
+  "gates_met": {
+    "pass_open_measured": true,
+    "own_pass_within_gate": true,
+    "own_stage_within_gate": true,
+    "timing_targets": {
+      "advisory": true,
+      "met": {
+        "bolts60_shells2_1920": true,
+        "fullscreen_shell_1920": false,
+        "bolts60_shells2_5120": false,
+        "fullscreen_shell_5120": false
+      }
+    },
+    "resolve_core": true,
+    "resolve_trail": true,
+    "keys_match": true
+  },
+  "passed": true
+}

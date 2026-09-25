@@ -833,3 +833,30 @@ now also reads every stream's source and frequency with `GetStreamSource` / `Get
 the state block's `Apply` (a block created under other stream offsets did not take the later offsets at `Capture` on this
 backend; legal on the non-pure device the proxy creates). Unverified natively: the mixed-format three-target write and the
 program's cost; cross-compiled only.
+
+## 2026-09-25: effects stage, phase 1 (`--effects-stage`, default off)
+
+`X3M_EFFECTS_STAGE=1` ([effects-modernisation-opus.md](effects-modernisation-opus.md) section 9) adds, only with the
+option, three vs_3_0 / ps_3_0 pairs (bolt streak, shield shell, ripple decal; slot counts in the `effects_stage_device`
+row and `verification/results/effects-stage/acceptance_out.txt`), three vertex declarations, one `D3DPOOL_DEFAULT`
+`D3DUSAGE_DYNAMIC | WRITEONLY` vertex buffer (64 KB, one `D3DLOCK_DISCARD` lock per frame), a static unit icosphere
+(162 vertices, 320 triangles) and a static 16-bit quad index buffer, created at attach, released before Reset and
+re-created by the next `ensure_resources`. Per frame the stage draws inside the temporal resolve's state bracket
+(`TemporalPass::FrameInputs::stage_callback`, after the pass's `normalize` unbound RT1+ and the depth surface; the pass
+normalizes again afterwards) with documented calls only: programs, declaration, streams, indices, constants,
+`SetTexture` (the lane at s0, the game's bullet atlas at s1 as the game bound it, the application-visible pointer held
+through its own AddRef for the frame so the ownership layer unwraps it), samplers, `CLIPPING`, `CULLMODE NONE`, ONE/ONE additive blending, `DrawIndexedPrimitive`. Prerequisites
+are documented capabilities checked at attach: shader model 3, `D3DPMISCCAPS_BLENDOP`, `D3DPBLENDCAPS_ONE` both ways,
+`D3DPMISCCAPS_CULLNONE`, linear filters, `MaxVertexShaderConst >= 10`, the index and primitive limits, and
+`CheckDeviceFormat(D3DUSAGE_RENDERTARGET | D3DUSAGE_QUERY_POSTPIXELSHADER_BLENDING, A16B16G16R16F)`; a refusal leaves
+every effect draw native (`effects_stage_device attached=0 reason=`). Occlusion is the completed lane's soft term (no
+depth surface is attached inside the bracket: measured, `stage_depth_bound=0` in the frame row); the hardware depth
+test of section 2.2 is therefore not used. Phase 1 suppresses no game draw (review B1): the recorded draws go through
+natively and the stage adds to them. Upload-time texture keys: the ownership layer hashes the
+still-mapped level-0 bytes at the `UnlockRect` that ends a writable lock of level 0 (through the texture wrapper or
+its level-0 surface from `GetSurfaceLevel`), plus one `LockRect(0, D3DLOCK_READONLY)` fallback on MANAGED / SYSTEMMEM
+textures whose upload was not observed (DEFAULT-pool textures are never keyed, at upload or by the fallback: fail closed). No point sprites, instancing,
+VPOS, MRT, private layouts or Wine export. Cross-compiled with MinGW i686 / SSE2 and qualified on bottle X3 only
+(`docs/verification/effects-stage.md`); native Windows execution unverified, like the rest of the renderer. Open on
+Windows: whether the game's own texture loader uploads through `LockRect` on the wrapper (the census rows of the
+capture flight settle it on CrossOver; on Windows the same API path is assumed).

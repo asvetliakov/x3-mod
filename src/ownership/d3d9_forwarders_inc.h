@@ -676,17 +676,15 @@ HRESULT WINAPI Texture::GetLevelDesc(UINT Level, D3DSURFACE_DESC* pDesc) {
 }
 HRESULT WINAPI Texture::GetSurfaceLevel(UINT Level, IDirect3DSurface9** ppSurfaceLevel) {
     ApplicationAdmissionAbi admission(process_admission_monitor());
-    IDirect3DSurface9* owned = untouched_output<IDirect3DSurface9>();
-    const HRESULT hr = native_->GetSurfaceLevel(Level, ppSurfaceLevel ? &owned : nullptr);
-    return output(device_of(this), hr, owned, ppSurfaceLevel);
+    return texture_surface_level(this, Level, ppSurfaceLevel);
 }
 HRESULT WINAPI Texture::LockRect(UINT level, D3DLOCKED_RECT * locked_rect, const RECT * rect, DWORD flags) {
     ApplicationAdmissionAbi admission(process_admission_monitor());
-    return observe_result(device_of(this), native_->LockRect(level, locked_rect, rect, flags));
+    return texture_lock(this, level, locked_rect, rect, flags);
 }
 HRESULT WINAPI Texture::UnlockRect(UINT Level) {
     ApplicationAdmissionAbi admission(process_admission_monitor());
-    return observe_result(device_of(this), native_->UnlockRect(Level));
+    return texture_unlock(this, Level);
 }
 HRESULT WINAPI Texture::AddDirtyRect(const RECT * dirty_rect) {
     ApplicationAdmissionAbi admission(process_admission_monitor());

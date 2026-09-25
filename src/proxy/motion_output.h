@@ -50,6 +50,9 @@
 #include "../renderer/linear_distance_fade.h"
 #include "fade_region.h"
 #include "bolt_footprint_core.h"
+#include "effects_stage_core.h"
+#include "../renderer/effects_stage_pass.h"
+#include "../ownership/d3d9_ownership.h"
 #include "fade_route_core.h"
 #include "shadow_replay_candidates.h"
 #include "thin_vote_core.h"
@@ -924,6 +927,18 @@ public:
     // option off.
     void configure_bolt_footprint(bool requested, float w_px, float l_px) noexcept;
     bool bolt_footprint_requested() const noexcept { return bolt_footprint_requested_; }
+    // Effects stage, phase 1 (motion_output_effects_inc.h; docs/architecture/effects-modernisation-opus.md section 9;
+    // X3M_EFFECTS_STAGE=1 with X3M_EFFECTS_SHIELDS / _CENSUS / _BOLT_VIEWS): recognised effect draws become records
+    // and are suppressed; the stage draws them inside the temporal resolve's bracket. The key table is parsed before
+    // the configuration (configure_effects_key_table with the file's text, or null with the reason it has none).
+    struct EffectsStageConfig {
+        bool requested = false, shields = false, census = false, bolt_views_all = false, bolt_views_default = true;
+        renderer::EffectsStageTuning tuning{};
+    };
+    void configure_effects_stage(const EffectsStageConfig&) noexcept;
+    void configure_effects_key_table(const char* text, std::size_t length, const char* status) noexcept;
+    bool effects_stage_requested() const noexcept { return effects_requested_; }
+    int effects_stage_toggle() noexcept; // Ctrl+Shift+F3: -1 not requested, else the new state
     // Fade-band motion arm threshold (X3M_FADE_ROUTE=<permille>, default
     // 500; fade_route::threshold_off disables the arm): a reviewed pair drawn
     // in the exact fade-band state routes (own RT1 motion, RT2 masked, no
@@ -1797,6 +1812,21 @@ private:
     void release_bolt_buffer() noexcept;
     void log_bolt_footprint_window() noexcept;
     void log_screen_additive_frame() noexcept;
+    // Effects stage (motion_output_effects_inc.h).
+    bool attach_effects_stage() noexcept;
+    void release_effects_stage() noexcept;
+    void release_effects_atlas() noexcept;
+    void effects_begin_frame() noexcept;
+    bool effects_armed_now() noexcept; // the per-frame arming decision, taken at the first draw after the latch
+    bool effects_pair_bound() const noexcept;
+    std::uint64_t effects_draw_identity() const noexcept;
+    void log_effect_draw_census(const ownership::TextureKeyView& key, const char* verdict, const char* cls, const float* rows, bool scoped, std::uint64_t identity, const MotionDrawCall& call) noexcept;
+    bool record_effect_draw(const MotionDrawCall&, MotionRoute&) noexcept; // true: the draw is the stage's (route.submit cleared)
+    bool record_bolt_draw(const MotionDrawCall&, MotionRoute&) noexcept;
+    void note_owner_box(const MotionRoute&, const float* rows, const float* lo, const float* hi) noexcept;
+    static HRESULT effects_stage_callback(void* context, IDirect3DDevice9*) noexcept;
+    HRESULT run_effects_stage() noexcept;
+    void log_effects_stage_frame() noexcept;
     void derive_fade_region(MotionRoute&) noexcept;
     // Step-1 rectangle of the bound draw (resolve, rows, jitter, viewport,
     // fill mode, clip to the owning target); the counters, witness and log
@@ -2070,6 +2100,44 @@ private:
     bolt_footprint::Histogram bolt_hist_[2]{};
     std::uint32_t chase_pose_mark_ = 0; // chase_camera::pose_write_count() at the last Present (the frame-stamped view gate)
     unsigned bolt_refusal_logged_ = 0; // bit per refusal reason already logged (one line each per device)
+    // Effects stage (motion_output_effects_inc.h; effects_stage_core.h). The records of the current frame, the bolt
+    // instances of this and the previous frame (velocity matching), the owner boxes the candidate route noted, the
+    // node-age map and the per-ship hit slots, the pass and its arming.
+    bool effects_requested_ = false, effects_enabled_ = true, effects_shields_ = false, effects_census_ = false;
+    bool effects_bolt_views_all_ = false, effects_bolt_views_default_ = true;
+    bool effects_attach_failed_ = false, effects_frame_armed_ = false, effects_arm_pending_ = false, effects_tuning_reset_ = false, effects_allocation_failed_ = false;
+    bool effects_stage_ran_ = false, effects_cut_pending_ = false, effects_depth_bound_ = false;
+    const char* effects_frame_reason_ = "off";
+    const char* effects_keys_status_ = "unread";
+    std::unique_ptr<renderer::EffectsStagePass> effects_;
+    renderer::EffectsStageTuning effects_tuning_{};
+    renderer::EffectsReport effects_report_{};
+    effects_stage::KeyTable effects_keys_{};
+    effects_stage::Arming effects_arming_{};
+    effects_stage::FrameCounters effects_frame_{}, effects_window_{};
+    effects_stage::MatchStats effects_match_{};
+    unsigned effects_window_frames_ = 0, effects_bolt_sets_ = 0;
+    effects_stage::Record effects_hits_[effects_stage::max_hits]{};
+    unsigned effects_hit_count_ = 0;
+    std::unique_ptr<effects_stage::BoltInstance[]> effects_bolts_[2];
+    unsigned effects_bolt_count_[2]{}, effects_bolt_current_ = 0;
+    std::uint64_t effects_bolt_draw_hash_ = 0;
+    std::unique_ptr<effects_stage::BoltVertex[]> effects_bolt_vertices_;
+    effects_stage::ShellInstance effects_shells_[effects_stage::max_shells]{};
+    unsigned effects_shell_count_ = 0;
+    effects_stage::DecalVertex effects_decals_[effects_stage::max_hits * 4]{};
+    struct EffectsRawBox { float rows[16]; float lo[3], hi[3]; std::uint64_t serial; float volume; bool used; }; // a candidate draw's clip rows and object-space extent
+    std::unique_ptr<EffectsRawBox[]> effects_raw_boxes_;
+    unsigned effects_raw_box_count_ = 0;
+    effects_stage::AgeMap effects_ages_{};
+    effects_stage::ShipHits effects_ship_hits_[effects_stage::max_shells]{};
+    unsigned effects_ship_hit_count_ = 0;
+    IDirect3DBaseTexture9* effects_bolt_atlas_ = nullptr; // the game's bullet atlas, native, held for the frame
+    std::uint64_t effects_bolt_atlas_identity_ = 0;
+    IDirect3DTexture9* effects_lane_ = nullptr; // the completed RT2 the resolve reads (borrowed for the callback)
+    UINT effects_lane_width_ = 0, effects_lane_height_ = 0;
+    LONGLONG effects_last_qpc_ = 0;
+    float effects_dt_ = 1.f / 60.f, effects_stage_us_ = 0.f;
     float screen_additive_gain_ = 1.f;
     bool screen_additive_enabled_ = true; // Ctrl+Shift+F5 runtime A/B; the variant stays created
     // Per-source bloom attenuation of the additive draw (option 1): the scene
@@ -2099,6 +2167,7 @@ private:
     struct ScreenAdditiveWindow {
         std::uint32_t pair_draws = 0, admitted = 0, apply_failures = 0;
         std::uint32_t refused[screen_additive_reason_count]{};
+        std::uint32_t effects_recorded = 0; // admitted draws the effects stage recorded (drawn natively as well, no footprint rewrite)
     } screen_additive_window_{};
     unsigned screen_additive_window_frames_ = 0;
     void log_screen_additive_window() noexcept;

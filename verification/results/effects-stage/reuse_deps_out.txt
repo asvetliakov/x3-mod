@@ -1,0 +1,5 @@
+fog_pass: dependency_paths=73 changed=0 REUSABLE
+  command: git diff --stat main -- (73 paths) -> empty
+fog_route_bridge: dependency_paths=58 changed=0 REUSABLE
+  command: git diff --stat main -- (58 paths) -> empty
+changed against main: 39 tracked, 38 untracked

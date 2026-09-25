@@ -327,6 +327,49 @@ void run_screen_emission_integration(Fixture& f,const char* original_path) {
         return;
     }
     require(!bolt_shape_length,"X3M_FIXTURE_BOLT_SHAPE only with mode boltshape");
+    // Effects stage, phase 1 (mode effectsstage; docs/architecture/effects-modernisation-opus.md "Implementation
+    // (phase 1)", docs/verification/effects-stage.md, review B2): the production recogniser and stage end to end.
+    // Frames 1-13 each draw one ordinary bolt from the writer's buffer under the qualified additive configuration
+    // with X3M_EFFECTS_STAGE=1: the draw must be admitted by the additive route AND forwarded natively once (phase 1
+    // suppresses nothing), the seam's effects_stage_frame row of that Present (X3M_TELEMETRY=1) must show it
+    // recorded and drawn by the stage inside the resolve's bracket (bolts=1, result 0). Frame 6 queues the HDR
+    // Resolve fault (HdrFault::Resolve = 14: MotionOutput::resolve fails without running the pass), so the stage
+    // cannot run at that scene end: the row shows ran=0 with the record kept and the bolt still drawn natively
+    // (the B1 path: nothing vanishes). After frame 9 the device is Reset (the pass's buffers go with the targets;
+    // the next frame re-attaches: a second effects_stage_device row) and frames 10-13 draw again. The runner reads
+    // the session log (validate_effects_stage).
+    if(f.effectsstage) {
+        require(qualified&&additive,"effects stage script needs the qualified additive configuration");
+        constexpr unsigned stage_frames=14,fault_plan=6,reset_after=9;
+        unsigned bolt_submissions=0,native_draws=0,admitted_draws=0;
+        for(unsigned plan=0;plan<stage_frames;++plan) {
+            if(plan==reset_after+1){bullets.reset();f.reset();create_bullets();}
+            f.frame_begin();f.linear_material_inputs();f.write_reserved();
+            f.draw(f.a,.03125f*float(plan%3),0,0,true,true,f.a.recorded,Alter::None,false);
+            const unsigned required=f.emission_status(f.d.p,16);
+            f.emissions_enabled=required!=0;
+            if(plan) {
+                write_bullets(4);bind_bullets('s'); // four copies of the quad: 24 vertices, the smallest stock bullet body (bolt_footprint::min_period), one instance
+                const auto state=f.snapshot();
+                const unsigned admitted_before=f.emission_status(f.d.p,60),native_before=f.emission_status(f.d.p,49);
+                const HRESULT hr=f.d->DrawPrimitive(D3DPT_TRIANGLELIST,0,8);++bolt_submissions;++f.draw_index;
+                require(SUCCEEDED(hr),"effects stage bolt draw HRESULT");
+                f.compare(state,f.snapshot(),"effects stage bolt restoration");
+                const unsigned native=f.emission_status(f.d.p,49)-native_before,admitted=f.emission_status(f.d.p,60)-admitted_before;
+                require(native==1,"effects stage bolt draw forwarded natively once (phase 1 suppresses nothing)");
+                require(admitted==1,"effects stage bolt draw admitted by the additive route");
+                native_draws+=native;admitted_draws+=admitted;
+                if(plan==fault_plan){require(f.hdr_fault!=nullptr,"effects stage resolve fault seam");f.hdr_fault(f.d.p,14,1);}
+            }
+            f.emission_reference_color=scene();
+            raw(3,f.emission_reference_mask);
+            f.emission_mask_valid=required&&f.emission_status(f.d.p,1);
+            f.frame_end();
+        }
+        api(f.d->SetIndices(nullptr),"effects stage final index release");api(f.d->SetStreamSource(0,nullptr,0,0),"effects stage final stream release");
+        std::printf("EFFECTS_STAGE frames=%u submissions=%u native_draws=%u admitted=%u fault_plan=%u reset_after=%u\n",stage_frames,bolt_submissions,native_draws,admitted_draws,fault_plan,reset_after);
+        return;
+    }
     // Plan: kind s = screen, f = fade, e = emission; overlap doubles the quad in
     // one DIP; faults are pass faults (5 SourceBind -> refusal 5 native; 6
     // Composite -> Incomplete, A|R recovered). Reset after frame 10 (the

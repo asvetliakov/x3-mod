@@ -1,0 +1,17 @@
+KEYS name=exp_PL_imp_diff.dds load=00000000 query=00000000 known=1 key=bef0465755af1985 expected=bef0465755af1985 match=1 source=2 uploads=1 size=128x128 format=827611204
+CHECK texture_key_matches_table PASS
+KEYS name=fx_bullets2_diff.dds load=00000000 query=00000000 known=1 key=1d615ca9580bd5ac expected=1d615ca9580bd5ac match=1 source=2 uploads=1 size=1024x1024 format=894720068
+CHECK texture_key_matches_table PASS
+KEYS name=fx_sphereshockwave_diff.dds load=00000000 query=00000000 known=1 key=1270112df32acd84 expected=1270112df32acd84 match=1 source=2 uploads=1 size=512x512 format=894720068
+CHECK texture_key_matches_table PASS
+KEY_PATH source=1 known=1 match=1 uploads=1 unknown_before_fallback=0 readonly_kept=1
+CHECK key_path_1 PASS
+KEY_PATH source=2 known=1 match=1 uploads=1 unknown_before_fallback=0 readonly_kept=1
+CHECK key_path_2 PASS
+KEY_PATH source=3 known=1 match=1 uploads=0 unknown_before_fallback=1 readonly_kept=1
+CHECK key_path_3 PASS
+KEY_DEFAULT known=0 source=0
+CHECK key_default_pool_unknown PASS
+KEY_DYNAMIC known=0 uploads=0
+CHECK key_dynamic_default_pool_unknown PASS
+RESULT PASS checks=8 failures=0

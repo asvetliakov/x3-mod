@@ -920,7 +920,7 @@ scripts beside them.
   - Generated fragments are `*_inc.h`.
 - **Stage behaviour.**
   - Default off; nothing under `--vanilla`.
-  - Fail closed: a draw is never both suppressed and lost without a logged disarm, and never both native and staged.
+  - Fail closed: a draw is never both suppressed and lost without a logged disarm, and never both native and staged. *(Phase 1 as built suppresses nothing: every recorded draw is native and staged; see "Implementation (phase 1)".)*
 - **Evidence and files.**
   - Keep build products, captures and game bytes untracked. Hashes and names derived from the archive may be
     tracked; bytes may not.
@@ -929,3 +929,115 @@ scripts beside them.
   - Do not commit, install or rebuild a frozen candidate DLL.
 - **Report.** Outcome, Evidence (commands and numbers, marked measured or inferred), Files changed, Open issues;
   about 25 lines. The first message without a tool call ends the turn.
+
+## Implementation (phase 1), 2026-09-25
+
+Built as section 9 orders it; ledger `docs/verification/effects-stage.md`; fixture record
+`verification/results/bottle-X3/effects-stage/summary.json`. Marks as in the header. Everything below is opt-in
+(`--effects-stage`, `X3M_EFFECTS_STAGE=1`, refused under `--vanilla`, needs `--motion-output --hdr --taa --ownership`
+and the additive bullets, implied at gain 1), default off until the flights.
+
+**Work order 1, the pass-opening price [M].** `run_effects_stage.py` case `pass_open` at 5120x1440, the fenced frame
+tail the stage rides in production (MRT quad with the depth surface attached → the RT1/RT2 and depth unbind the resolve's
+`normalize` does → the stage → the resolve's first target change), stage on and off in alternating frames, the stage's
+CPU submit subtracted: riding an RT0-only pass a fog-like quad opened 0.012 ms, opening its own pass right after the
+unbind 0.021 ms, price of the own pass 0.008 ms (three runs: −0.002, 0.017, 0.008; noise about ±0.015 ms). This
+backend answers no `D3DQUERYTYPE_TIMESTAMP` (0 samples, as in the fog fixture), so the numbers are EVENT-fenced wall
+time differences, the fog ledger's law. **Verdict: below the 0.1 ms gate; the stage is built as designed, the in-place
+bolt fallback of 8.3 is not built.** The 0.36 ms tile-GPU load/store of section 2.2 does not appear on this backend
+[M]; a native tile driver stays unverified. Unknown 11: the D24X8 is attached when the resolve captures the caller's
+state (`stage_depth_bound=1`) and is unbound by `normalize` before the stage runs, so the stage occludes by the lane
+alone (the motes' rule) and sets `ZENABLE` off; the hardware depth test of 2.2 is not used.
+
+**Where the stage runs.** `TemporalPass::FrameInputs::stage_callback` (+ `stage_context`): called once inside the
+run's bracket after `normalize` and the scene open, before the first copy; the pass runs `normalize` again afterwards,
+so the resolve sees the state it expects and a run with a null callback is bit for bit the old run (fixture: a
+callback that draws nothing gives the run without the field byte for byte). `MotionOutput::resolve` sets the callback
+only on an armed frame with the lane texture in hand; `run_effects_stage` draws through `renderer::EffectsStagePass`
+(`src/renderer/effects_stage_pass.cpp`): programs, declaration, streams, indices, constants, the lane at s0, the game's
+bullet atlas at s1 (the ownership layer's borrowed native pointer, AddRef'd for the frame), `CLIPPING`, `CULLMODE NONE`,
+ONE/ONE, `DrawIndexedPrimitive`; no `SetRenderTarget`, no state block of its own (the resolve's bracket restores).
+
+**Records, and why phase 1 suppresses nothing (2.1; review B1, 2026-09-25).** `record_effect_draw` runs in
+`before_draw` for the pair `d5e1c75351ed3f04` / `89193868c61c3846` + `8360f422de08b5bd` only (one bool test for every
+other pair): Scene phase after the latching clear, the stage armed, `--effects-shields`, the stage-0 texture's key
+known and listed as `shield_hit`; then c4-6 read once (`GetVertexShaderConstantF`, one call per recorded draw), origin
+and scale from the rows, the identity from the object scope's node serial (`--object-trace` / `--object-lifetime`) else
+the key with the origin quantised to 8 units. Every refusal counts (`forwarded`, `unknown_keys`, `overflow`). Bolts:
+`record_bolt_draw` runs inside `prepare_screen_additive` after its admission checks; the same shape and locked-prefix
+rules as the footprint, `detect_period`, `derive_instances` (centroid, covariance axis, extents, UV centroid, colour
+alpha); the second bullet draw of a frame with the same first/last vertex words adds no second record (unknown 4:
+`bolt_sets` per window counts the distinct sets). **The recorded draw is not suppressed:** whether the stage will run is
+not known at draw time (the resolve is decided at scene end: target bound, container, `resolve_allowed`; the state can
+be lost mid-frame; the run can fail before the callback), and a suppressed sprite cannot be forwarded natively later
+without retaining game resources (option a of the review: refused as not airtight for the sprites). So the game's
+draw always goes through, the bullets through the additive route as before with only the `--bolt-footprint` rewrite
+skipped for a recorded draw (the capsule is its footprint; `screen_emission_additive_refused_window effects_recorded=`),
+the sprites unchanged, and the stage adds its capsules and shells on top (option b). A frame the stage does not reach
+shows the game's effects, never nothing; the 7.5 us per suppressed draw of section 2.1 is not saved in phase 1, and
+the native bolt card sits under the capsule (the capsule is far brighter). Suppression returns with phase 2 only with
+a fixture-proven forward path. `--effects-bolt-views chase|all` is the footprint's view gate (default chase, marker
+`_DEFAULT`). Arming (`effects_begin_frame`): the HDR redirect, the jittered TAA resolve, the lane, the attached pass
+with its buffers, FP16 blending, and not within the 64-frame window after a failed stage (`effects_stage_failed` row,
+`Arming::fail`); the decision is taken at the first draw after the latching clear (`effects_armed_now`: the HDR redirect, the depth surface and the jitter are latched inside the frame, not at Present). Ctrl+Alt+F5 (Shift up) toggles the stage (F3 is the game's target view). The end-to-end path
+(recogniser, additive admission, native forward, the stage inside the resolve, the resolve-fault frame, Reset and
+the buffers' return) is driven by the motion_output fixture's `seam-ownership-effects-stage` case (review B2; ledger
+row "Review fixes": 10 drawn frames of 13 bullet draws, the fault frame kept its record with the native draw, the stage's
+callback 116–173 us CPU per frame at the fixture's 1280x768).
+
+**Bolts (3.1) [M in the fixture].** Four vertices per instance (`BoltVertex`, stride 64); the vertex program builds
+the window-space streak from the previous position (centre − velocity, nearest-centroid match on the same UV period,
+refused on ambiguity or a cut) to the current one, length max(native, L_min · H/1080) plus the streak, core radius
+max(native, W_min/2), halo 3x; the pixel program is a capsule SDF with a one-pixel analytic edge, I_core 6 white plus
+I_halo 1.5 tinted by `tex2Dlod(atlas, uv, mip 4)`, soft against the lane over SOFT 0.5 x max(half width, half length/4).
+Fixture: a 0.8 px bolt drawn 3 px wide, 133 / 351 px long (native 130.6 / 348.2), a 0.5-unit bolt 15 / 19 px, the
+hull-covered half 0.000, the end 2.5 units in front of a hull at 0.50 of the core; through the real resolve at 0 / 4 / 8
+px per frame over 8 jitter phases the core keeps 1.000 with a 0-px trail over dark sky. **Timing [M]:** 60 bolts + 2
+shells (204 / 544 px radius) cost 0.124 ms at 1080p and 0.162 ms at 5120x1440 in the tail, above the 0.05 ms target
+of section 9; the two shells dominate (60 bolts alone: the pass_open stage at 0.012–0.021 ms).
+
+**Shells and decals (3.3) [M in the fixture].** Owner boxes: every caster-candidate draw with a Known extent notes
+(clip rows, object-space extent, node serial); per node the largest box of the frame; at the stage the object → world
+rows come from the clip rows through P^-1 and the camera's world-from-view basis (`object_to_world_from_clip`, host
+test within 2e-3). Association by ellipsoid-normalised distance (half-extents x 1.2), the nearest owner within 1.5
+radii takes the hit into its four slots (oldest replaced), else the decal. The shell is the unit icosphere (162 / 320)
+on the ellipsoid, Fresnel rim `pow(1 − |n·v|, 2.5)` x envelope of the newest hit, up to four Gaussian rings at
+`ring_speed 3 rad/s x age`, a hex lattice on the rings, a 0.1 s flash, the native sprite's mean colour as tint (from the
+key table), soft against the lane; back faces leave early. Fixture: rim 0.50 / 0.42 at 70° against 0.24 / 0.20 at 45°,
+four rings 8.0/1.5, 7.8/2.1, 4.6/0.02, 5.9/0.04 (on / three widths off), the hull cut 0.000 / 8.23, the soft cut 2.80 of
+8.60, the decal 3.33 on a hull at its depth and 0.000 over sky. **Timing [M]:** a shell projecting past every screen
+edge 0.54 ms at 1080p and 0.77 ms at 5120x1440 (0.79 / 0.78 before the back-face early-out), above the 0.1 ms target;
+the shell pixel program is 216 slots against the ~110 the estimate assumed, and both hemispheres are rasterised
+(the early-out leaves the back one in the first instructions). Levers, not taken: a winding-based cull (halves the
+raster work; the icosphere's winding would have to be pinned in the fixture), fewer ring slots, a coarser sphere
+for large shells. In a fight the shells are far smaller than the screen; the flight's `effects_stage_frame`
+`stage_us=` row measures the real cost.
+
+**Texture keys (8.2) [M].** `ownership::Options::texture_upload_keys`: `Texture::LockRect` (level 0, writable, no
+rect) remembers the mapping and `UnlockRect(0)` hashes it before forwarding; `GetSurfaceLevel(0)` links the surface
+wrapper to its texture node (validated through the registry at use, the surface may outlive the wrapper) so
+`Surface::LockRect/UnlockRect` keys the same way; `compute_texture_key_readonly` is the one-shot fallback (MANAGED /
+SYSTEMMEM only; DEFAULT stays unknown). The key is `sparse_key`: FNV-1a 64 over width, height, the D3DFORMAT value and
+16 runs of 256 bytes at rows (k·rows)/16 and columns (k·2654435761 mod 2^32) mod (row_bytes − 255), block rows for
+DXT (`level0_layout`); `tools/effects/effect_keys.py` mirrors it on the archive DDS (DXT1/3/5, A8R8G8B8 / X8R8G8B8;
+anything else is listed with no key and a reason). Fixture: D3DX loads the three catalogue textures through the
+surface path (`source=2`) and every key equals the table's; the table (`tools/effects/effect_keys.json`, 3 entries:
+`exp_PL_imp_diff` shield_hit `bef0465755af1985`, `fx_sphereshockwave_diff` shield_hit `1270112df32acd84`,
+`fx_bullets2_diff` bolt `1d615ca9580bd5ac`, extents in body units from the LOD-0 points / 65536, tints = mean colour)
+is read by the DLL from `<EXE dir>\effect_keys.json` or `X3M_EFFECTS_KEYS` (the launcher points the latter at the
+repository's table until an install carries it). Which of the sprites is the shield hit stays open (unknown 1): the
+classes are the table's guess; the census (`--effects-census`: `effect_draw` rows with `key=`, `verdict=`, size,
+format, blend, scope, origin; `shield_hit` rows with the owner distance) pins them, and the flight may show the game
+uploading differently from D3DX (unknown 7, the census `key_source=` / `uploads=` fields).
+
+**Rows.** `effects_stage_config` (creation), `effects_stage_device` (attach, slots), `effects_stage_frame` (per frame
+under `--telemetry`, else per 300 frames: armed, reason, recognised, recorded, forwarded, unknown_keys, overflow,
+bolt_draws / bolt_sets, bolts, hits, shells, decals, matched, refused_ambiguous, median_speed, result, calls,
+stage_us, depth_bound, enabled), `effects_stage_failed`, `effects_stage_toggle`, `effect_draw` and `shield_hit` on
+capture frames with `--effects-census`. `effect_node` at node death (section 5) is not built: the age map expires
+entries after 120 frames instead.
+
+**Not built / open.** The `bolt_match` row's draw-9 / draw-90 instance hashes are folded into `bolt_sets`; hits with no
+scope use the spatial identity; the meter's response (unknown 8) and starfield trails (unknown 12) are the flight's;
+native Windows is cross-compiled only (platform-portability.md, "effects stage"). The two timing targets of section 9
+are not met as measured (above); everything else in the acceptance list passes.

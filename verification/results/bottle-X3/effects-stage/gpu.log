@@ -1,0 +1,165 @@
+ATTACH result=00000000 enabled=1 reason=ok largest_program_slots=216 bolt=95/62 shell=44/216 decal=27/84 fp16_blending=00000000 max_ps_slots=512 references=13
+CHECK attach PASS
+FP16_REFUSED result=8876086a enabled=0 reason=fp16_blending references=0
+CHECK fp16_refused PASS
+SIZE width=1920 height=1080
+BOLT_CAPSULE width=1920 height=1080 lane=4ch core=6.000 core_width_px=3 length_px=133 native_length_px=130.6 halo=0.000
+CHECK bolt_core_bright_4ch PASS
+CHECK bolt_core_width_4ch PASS
+CHECK bolt_length_native_4ch PASS
+BOLT_TINY lane=4ch length_px=15 l_min=12.0
+CHECK bolt_length_min_4ch PASS
+BOLT_OCCLUDED lane=4ch left=6.000 right=0.000
+CHECK bolt_occluded_4ch PASS
+BOLT_SOFT lane=4ch covered=3.000 open=6.000
+CHECK bolt_soft_end_4ch PASS
+BOLT_CAPSULE width=1920 height=1080 lane=r32f core=6.000 core_width_px=3 length_px=133 native_length_px=130.6 halo=0.000
+CHECK bolt_core_bright_r32f PASS
+CHECK bolt_core_width_r32f PASS
+CHECK bolt_length_native_r32f PASS
+BOLT_TINY lane=r32f length_px=15 l_min=12.0
+CHECK bolt_length_min_r32f PASS
+BOLT_OCCLUDED lane=r32f left=6.000 right=0.000
+CHECK bolt_occluded_r32f PASS
+BOLT_SOFT lane=r32f covered=2.994 open=6.000
+CHECK bolt_soft_end_r32f PASS
+SHELL_MERIDIANS k0=0.150/0.023 k1=0.184/0.023 k2=0.458/0.026 k3=0.421/0.050 k4=0.168/0.237 k5=0.498/0.041 k6=0.333/0.024 k7=0.170/0.022
+SHELL_RINGS ring0=8.039/1.502 ring1=7.812/2.119 ring2=4.578/0.023 ring3=5.863/0.037
+SHELL centre=4.7812 rim=0.4978 mid=0.2372 rings=4 open=8.6016 r_px=204.0
+CHECK shell_rim PASS
+CHECK shell_four_rings PASS
+SHELL_CUT left=0.0000 right=8.2344 soft=2.8027 open=8.6016
+CHECK shell_hull_cut PASS
+CHECK shell_soft_cut PASS
+DECAL on_hull=3.3320 on_sky=0.0000
+CHECK decal_on_hull PASS
+CHECK decal_not_on_sky PASS
+OFF_PATH result=00000001 calls=0 identical=1
+CHECK off_path_no_record PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+RESOLVE bolt speed_px=0 current=6.000 resolved=6.000 ratio=1.000 trail_px=0 calls=0
+CHECK resolve_bolt_0px_core PASS
+CHECK resolve_bolt_0px_trail PASS
+CHECK off_path_resolve_identical PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+RESOLVE bolt speed_px=4 current=6.000 resolved=6.000 ratio=1.000 trail_px=0 calls=0
+CHECK resolve_bolt_4px_core PASS
+CHECK resolve_bolt_4px_trail PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+RESOLVE bolt speed_px=8 current=6.000 resolved=6.000 ratio=1.000 trail_px=0 calls=0
+CHECK resolve_bolt_8px_core PASS
+CHECK resolve_bolt_8px_trail PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+RESOLVE shell speed_px=0 current=3.004 resolved=3.004 ratio=1.000 trail_px=0 calls=0
+CHECK resolve_shell_0px_core PASS
+TIMING bolts60_shells2 width=1920 height=1080 bolts=60 shells=2 fenced_on_ms=0.9446 fenced_off_ms=0.8701 submit_ms=0.0449 chain_ms=0.0745 gpu_ms=0.0296 samples=15 calls=62 method=tail_fenced
+TIMING fullscreen_shell width=1920 height=1080 bolts=0 shells=1 fenced_on_ms=1.2923 fenced_off_ms=0.7599 submit_ms=0.0032 chain_ms=0.5324 gpu_ms=0.5292 samples=15 calls=39 method=tail_fenced
+SUPPRESSION taken_armed=10 forwarded_missing=1 failed=80004005 step=0 forwarded_window=64 taken_after=1 both=0 again=00000000
+CHECK suppression_armed_taken PASS
+CHECK suppression_failed_forwarded PASS
+CHECK suppression_recovers PASS
+RESET before=13 released=9 reset=00000000 ensured=00000000 after=13 run=00000000 bolts=1
+CHECK reset_released PASS
+CHECK reset_recreated PASS
+SIZE width=5120 height=1440
+BOLT_CAPSULE width=5120 height=1440 lane=4ch core=6.000 core_width_px=3 length_px=351 native_length_px=348.2 halo=0.000
+CHECK bolt_core_bright_4ch PASS
+CHECK bolt_core_width_4ch PASS
+CHECK bolt_length_native_4ch PASS
+BOLT_TINY lane=4ch length_px=19 l_min=16.0
+CHECK bolt_length_min_4ch PASS
+BOLT_OCCLUDED lane=4ch left=6.000 right=0.000
+CHECK bolt_occluded_4ch PASS
+BOLT_SOFT lane=4ch covered=3.000 open=6.000
+CHECK bolt_soft_end_4ch PASS
+SHELL_MERIDIANS k0=0.147/0.022 k1=0.182/0.023 k2=0.409/0.024 k3=0.370/0.047 k4=0.163/0.196 k5=0.419/0.038 k6=0.409/0.022 k7=0.171/0.022
+SHELL_RINGS ring0=8.000/1.271 ring1=6.773/1.911 ring2=3.311/0.021 ring3=3.988/0.031
+SHELL centre=4.7812 rim=0.4192 mid=0.1960 rings=4 open=8.6016 r_px=544.0
+CHECK shell_rim PASS
+CHECK shell_four_rings PASS
+SHELL_CUT left=0.0000 right=8.2344 soft=2.8047 open=8.6016
+CHECK shell_hull_cut PASS
+CHECK shell_soft_cut PASS
+DECAL on_hull=3.3301 on_sky=0.0000
+CHECK decal_on_hull PASS
+CHECK decal_not_on_sky PASS
+OFF_PATH result=00000001 calls=0 identical=1
+CHECK off_path_no_record PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+RESOLVE bolt speed_px=0 current=6.000 resolved=6.000 ratio=1.000 trail_px=0 calls=0
+CHECK resolve_bolt_0px_core PASS
+CHECK resolve_bolt_0px_trail PASS
+CHECK off_path_resolve_identical PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+RESOLVE bolt speed_px=4 current=6.000 resolved=6.000 ratio=1.000 trail_px=0 calls=0
+CHECK resolve_bolt_4px_core PASS
+CHECK resolve_bolt_4px_trail PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+RESOLVE bolt speed_px=8 current=6.000 resolved=6.000 ratio=1.000 trail_px=0 calls=0
+CHECK resolve_bolt_8px_core PASS
+CHECK resolve_bolt_8px_trail PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+CHECK resolve_stage_ran PASS
+RESOLVE shell speed_px=0 current=3.004 resolved=3.004 ratio=1.000 trail_px=0 calls=0
+CHECK resolve_shell_0px_core PASS
+TIMING bolts60_shells2 width=5120 height=1440 bolts=60 shells=2 fenced_on_ms=1.5917 fenced_off_ms=1.3899 submit_ms=0.0438 chain_ms=0.2018 gpu_ms=0.1580 samples=15 calls=62 method=tail_fenced
+TIMING fullscreen_shell width=5120 height=1440 bolts=0 shells=1 fenced_on_ms=2.0602 fenced_off_ms=1.2750 submit_ms=0.0034 chain_ms=0.7852 gpu_ms=0.7818 samples=15 calls=39 method=tail_fenced
+PASS_OPEN width=5120 height=1440 own_off_ms=1.3907 own_on_ms=1.4414 own_submit_ms=0.0379 ride_off_ms=1.7954 ride_on_ms=1.8490 ride_submit_ms=0.0375 own_stage_ms=0.0128 ride_stage_ms=0.0161 own_pass_ms=-0.0033 gate_ms=0.1 depth_bound_before_unbind=1 method=tail_fenced
+CHECK pass_open_measured PASS
+CHECK detach_released PASS
+RESULT PASS checks=121 failures=0

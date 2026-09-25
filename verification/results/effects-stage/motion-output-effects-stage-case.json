@@ -1,0 +1,74 @@
+{
+ "case": "seam-ownership-effects-stage",
+ "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_motion_output.py seam-ownership-effects-stage",
+ "bottle": {
+  "name": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+   "FEX_X87REDUCEDPRECISION": "1",
+   "WINEMSYNC": "1"
+  },
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "record": {
+  "checks": 1,
+  "frames": 14,
+  "drawn_frames": 10,
+  "fault_frame": 6,
+  "attaches": 1,
+  "reset_after": 9,
+  "calls": [
+   0,
+   0,
+   43,
+   43,
+   43,
+   43,
+   0,
+   43,
+   43,
+   43,
+   0,
+   43,
+   43,
+   43
+  ],
+  "stage_us": [
+   503.9,
+   2.9,
+   715.0,
+   122.4,
+   132.9,
+   160.4,
+   160.4,
+   120.2,
+   140.9,
+   173.0,
+   3.2,
+   171.2,
+   143.9,
+   115.9
+  ],
+  "depth_bound": [
+   "0",
+   "0",
+   "0",
+   "0",
+   "0",
+   "0",
+   "0",
+   "0",
+   "0",
+   "0",
+   "0",
+   "0",
+   "0",
+   "0"
+  ],
+  "exit": 0,
+  "directory": "verification/probe/build/motion-output-seam-ownership-effects-stage-20260925-115643-420804",
+  "trace_sha256": "cdd51e53f58ac26318a0822ad32d8002d40050c0a44bc33689af3e6cd24c7476",
+  "dll_sha256": "4ee8e9df9578dbff1a9e8e1f8ef4b1ec304bef3c0745811e843e87de33f502d5",
+  "exe_sha256": "3d80b7b4a7d7b2b40656c4fa3d6422fc167e627c329652e83db21c02e80dcdd0"
+ }
+}

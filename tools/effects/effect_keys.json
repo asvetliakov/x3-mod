@@ -1,0 +1,137 @@
+{
+ "schema": 1,
+ "hash": "sparse16x256-fnv1a64",
+ "tool": "tools/effects/effect_keys.py",
+ "game": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3",
+ "mods": [],
+ "classes": {
+  "exp_PL_imp_diff": "shield_hit",
+  "fx_sphereshockwave_diff": "shield_hit",
+  "fx_bullets2_diff": "bolt"
+ },
+ "entries": [
+  {
+   "name": "exp_PL_imp_diff",
+   "class": "shield_hit",
+   "body": "objects/v/10659",
+   "body_source": "01.cat:objects/v/10659.pbd",
+   "extent": [
+    1.0,
+    1.0,
+    0.0
+   ],
+   "axis": [
+    1.0,
+    0.0,
+    0.0
+   ],
+   "texture_source": "01.cat:dds/exp_PL_imp_diff.pck",
+   "texture_sha256": "92d8d249307aab2e3224b432b9c7807a2eb61b7e3aeb521f918164a51b421a35",
+   "key": "bef0465755af1985",
+   "width": 128,
+   "height": 128,
+   "format": "DXT1",
+   "tint": [
+    0.7376,
+    1.0,
+    0.4207
+   ],
+   "also": [
+    {
+     "body": "objects/v/10659",
+     "body_source": "01.cat:objects/v/10659.pbd"
+    }
+   ]
+  },
+  {
+   "name": "fx_bullets2_diff",
+   "class": "bolt",
+   "body": "objects/v/00518",
+   "body_source": "01.cat:objects/v/00518.pbd",
+   "extent": [
+    0.343758,
+    0.343765,
+    1.0
+   ],
+   "axis": [
+    0.0,
+    0.0,
+    1.0
+   ],
+   "texture_source": "01.cat:dds/fx_bullets2_diff.pck",
+   "texture_sha256": "1becbb604cb4682911dab092c5e3575d9a4768dde211c0445050ffb4825606fa",
+   "key": "1d615ca9580bd5ac",
+   "width": 1024,
+   "height": 1024,
+   "format": "DXT5",
+   "tint": [
+    0.879,
+    0.8661,
+    1.0
+   ],
+   "also": [
+    {
+     "body": "objects/v/00518",
+     "body_source": "01.cat:objects/v/00518.pbd"
+    },
+    {
+     "body": "objects/v/12009",
+     "body_source": "addon/01.cat:objects/v/12009.pbb"
+    },
+    {
+     "body": "objects/v/12009",
+     "body_source": "addon/01.cat:objects/v/12009.pbb"
+    },
+    {
+     "body": "objects/v/12009",
+     "body_source": "01.cat:objects/v/12009.pbd"
+    },
+    {
+     "body": "objects/v/12009",
+     "body_source": "01.cat:objects/v/12009.pbd"
+    }
+   ]
+  },
+  {
+   "name": "fx_sphereshockwave_diff",
+   "class": "shield_hit",
+   "body": "objects/v/12007",
+   "body_source": "addon/01.cat:objects/v/12007.pbb",
+   "extent": [
+    1.0,
+    0.941528,
+    0.0
+   ],
+   "axis": [
+    1.0,
+    0.0,
+    0.0
+   ],
+   "texture_source": "01.cat:dds/fx_sphereshockwave_diff.pck",
+   "texture_sha256": "982eeb5af1e01f0cf269a696ac67c488ac0b1392991bfe0a24aa39c05debd750",
+   "key": "1270112df32acd84",
+   "width": 512,
+   "height": 512,
+   "format": "DXT5",
+   "tint": [
+    0.6795,
+    0.8673,
+    1.0
+   ],
+   "also": [
+    {
+     "body": "objects/v/12007",
+     "body_source": "addon/01.cat:objects/v/12007.pbb"
+    },
+    {
+     "body": "objects/v/12007",
+     "body_source": "01.cat:objects/v/12007.pbd"
+    },
+    {
+     "body": "objects/v/12007",
+     "body_source": "01.cat:objects/v/12007.pbd"
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,19 @@
+acceptance modules:
+Ran 52 tests in 5.434s
+OK
+modules naming the launcher baseline or the hotkeys:
+Ran 31 tests in 6.698s
+OK
+key table:
+SAME tools/effects/effect_keys.json 3
+program slots (vs_3_0 / ps_3_0, the conservative table of ps3_program_slots.h):
+  effects_bolt_vertex slots=95 words=497
+  effects_bolt_pixel slots=62 words=342
+  effects_shell_vertex slots=44 words=274
+  effects_shell_pixel slots=216 words=995
+  effects_decal_vertex slots=27 words=196
+  effects_decal_pixel slots=84 words=437
+build_exit=0 warnings=0
+x87 PASS roots 119 reachable 713 violations 0
+sha256_prefix=9d5c2a0abb8d8805 (provenance only, build-directory dependent)
+scratch_removed=1

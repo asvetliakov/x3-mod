@@ -79,10 +79,11 @@ class MotionOutputRunnerTests(unittest.TestCase):
                        'seam-taa-fade-route-cutout-order-owner': '0', 'seam-taa-fade-route-cutout-mip-owner': '0', 'seam-taa-fade-route-cutout-mip-nobias-owner': '0',
                        **{f'seam-taa-fade-route-{n}-owner': '0' for n in ('routed', 'routed-perdraw', 'sentinel', 'hover', 'original', 'behind', 'overlay', 'foreign', 'hull')},
                        'seam-taa-cutout-opaque-get': '0',
-                       'seam-ownership-bolt-shape-prims': '0', 'seam-ownership-bolt-shape-decl': '0'})  # the bolt footprint's shape-refusal script
+                       'seam-ownership-bolt-shape-prims': '0', 'seam-ownership-bolt-shape-decl': '0',  # the bolt footprint's shape-refusal script
+                       'seam-ownership-effects-stage': '0'})  # the effects stage's end-to-end script (effects-stage.md)
         self.assertEqual({n for n, e in hdr.items() if e.get('X3M_HDR_EXPOSURE') == 'auto'}, automatic)
         self.assertEqual({n: e['X3M_HDR_EV_MANUAL'] for n, e in hdr.items() if e.get('X3M_HDR_EXPOSURE') == 'manual'}, manual)
-        self.assertEqual((len(hdr), len(automatic), len(manual)), (110, 14, 57))  # + seam-ownership-shadow-alpha-route{,-less} (the lane's FP16 scene, no exposure mode) + seam-thin-vote-far-on-owner (no exposure mode)  # 4 seam-*lightmap-far-fade*, 7 seam-lightmap-widen-* and 4 seam-thin-vote-* cases set no exposure mode (runtime default)
+        self.assertEqual((len(hdr), len(automatic), len(manual)), (111, 14, 58))  # + seam-ownership-effects-stage (manual 0); + seam-ownership-shadow-alpha-route{,-less} (the lane's FP16 scene, no exposure mode) + seam-thin-vote-far-on-owner (no exposure mode)  # 4 seam-*lightmap-far-fade*, 7 seam-lightmap-widen-* and 4 seam-thin-vote-* cases set no exposure mode (runtime default)
         for name, env in hdr.items():
             with self.subTest(case=name):
                 if name in automatic:

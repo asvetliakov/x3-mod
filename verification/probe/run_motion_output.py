@@ -850,6 +850,15 @@ BOLT_SHAPE_ENV = dict(X3M_HDR_TONEMAP='agx', X3M_HDR_DECODE='gamma2.2', X3M_HDR_
 BOLT_SHAPE_EXPECT = {'prims': (4, 2200, 1024 * 72 * 24, 2200), 'decl': (128, 2, 6144 * 24, 2)}
 CASES += [case(f'seam-ownership-bolt-shape-{script}', 'boltshape', 'ownership', jitter=True, taa=True, lazy=True, camera=True, sentinel='2', hdr=True,
                hdr_env=dict(BOLT_SHAPE_ENV, X3M_FIXTURE_BOLT_SHAPE=script)) for script in BOLT_SHAPE_EXPECT]
+# Effects stage, phase 1 (motion_output_screen_emission_inc.h, mode effectsstage; docs/verification/effects-stage.md,
+# review B2): the bullet draws under the qualified additive configuration with X3M_EFFECTS_STAGE=1 and the repository's
+# key table; 14 Presents with per-frame effects_stage_frame rows (X3M_TELEMETRY=1), the HDR Resolve fault at frame 6
+# (the stage cannot run: the record is kept, the native draw lands) and a Reset after frame 9 (the pass keeps its programs,
+# its DEFAULT buffers come back under the reference accounting, the next frames draw again).
+EFFECTS_STAGE_ENV = dict(BOLT_SHAPE_ENV, X3M_EFFECTS_STAGE='1', X3M_EFFECTS_SHIELDS='0', X3M_EFFECTS_CENSUS='0', X3M_EFFECTS_BOLT_VIEWS='all',
+                         X3M_EFFECTS_KEYS='Z:' + str(ROOT / 'tools/effects/effect_keys.json').replace('/', '\\'), X3M_TELEMETRY='1', X3M_TELEMETRY_DRAW='0')
+EFFECTS_STAGE_SCRIPT = dict(frames=14, fault_plan=6, reset_after=9)
+CASES += [case('seam-ownership-effects-stage', 'effectsstage', 'ownership', jitter=True, taa=True, lazy=True, camera=True, sentinel='2', hdr=True, hdr_env=EFFECTS_STAGE_ENV)]
 # Fade-band motion arm scripts (motion_output_fade_route_inc.h, X3M_FIXTURE_FADE_SCRIPT;
 # docs/architecture/linear-distance-fade-region.md "Fade-band route"): twelve
 # static frames over the eight jitter phases with the rotating camera (cut at
@@ -4358,6 +4367,48 @@ def validate_bolt_shape(name, text, trace, script):
                 other_devices=len(other))
 
 
+def validate_effects_stage(name, text, trace):
+    """The effectsstage script (docs/verification/effects-stage.md, review B2): every bolt draw admitted by the
+    additive route and forwarded natively once (phase 1 suppresses nothing); the seam's per-frame effects_stage_frame
+    rows show the bolt recorded and drawn by the stage (bolts=1, result 0, ran=1) on every bolt frame but the
+    resolve-fault frame, where the stage did not run (ran=0, bolts=0) while the record and the native draw stand; the
+    device attaches twice (before and after the Reset) and draws again afterwards; the additive route's window is
+    not closed in 14 frames, so the recorded count is the frame rows' sum."""
+    script = EFFECTS_STAGE_SCRIPT
+    lines = text.splitlines(); tl = trace.splitlines()
+    assert any(l.startswith('RESULT PASS ') for l in lines) and not any(l.startswith('RESULT FAIL') for l in lines), name
+    summary = [fields(l) for l in lines if l.startswith('EFFECTS_STAGE ')]
+    assert len(summary) == 1, (name, summary)
+    s = summary[0]
+    assert (int(s['frames']), int(s['submissions']), int(s['native_draws']), int(s['admitted']), int(s['fault_plan']), int(s['reset_after'])) == \
+        (script['frames'], script['frames'] - 1, script['frames'] - 1, script['frames'] - 1, script['fault_plan'], script['reset_after']), (name, s)
+    configs = [fields(l) for l in tl if l.startswith('effects_stage_config ')]
+    assert len(configs) == 1 and configs[0]['enabled'] == '1' and configs[0]['table'] == 'ok' and int(configs[0]['keys']) >= 2, (name, configs)
+    devices = [fields(l) for l in tl if l.startswith('effects_stage_device ')]
+    assert len(devices) == 1 and devices[0]['attached'] == '1' and devices[0]['reason'] == 'ok', (name, devices)  # the pass survives the Reset; only its DEFAULT buffers come back
+    rows = [fields(l) for l in tl if l.startswith('effects_stage_frame ') and fields(l)['scope'] == 'frame']
+    assert len(rows) == script['frames'], (name, len(rows))
+    drawn = 0
+    for plan, row in enumerate(rows):
+        assert row['mode'] == 'additive' and row['armed'] == '1', (name, plan, row)
+        if plan == 0:
+            assert int(row['recorded']) == 0 and int(row['bolts']) == 0, (name, plan, row)
+        elif plan in (1, script['reset_after'] + 1):  # the first draw of the writer's buffer (new again after the Reset) only marks it for the Unlock scan (locked_prefix_core.h): nothing to record yet
+            assert int(row['recorded']) == 0 and int(row['bolts']) == 0 and row['ran'] == '1', (name, plan, row)
+        elif plan == script['fault_plan']:  # the resolve fault: the record is kept, the stage did not run, the native draw stood (native_draws above)
+            assert int(row['recorded']) == 1 and int(row['bolts']) == 0 and row['ran'] == '0', (name, plan, row)
+        else:
+            assert int(row['recorded']) == 1 and int(row['bolt_draws']) == 1 and int(row['bolts']) == 1 and row['ran'] == '1' and row['result'] == '00000000' and int(row['calls']) > 0, (name, plan, row)
+            drawn += 1
+    assert drawn == script['frames'] - 4, (name, drawn)
+    assert all(int(rows[plan]['bolts']) == 1 for plan in range(script['reset_after'] + 2, script['frames'])), (name, 'after the Reset')
+    assert not any(l.startswith('effects_stage_failed ') for l in tl), name
+    reset_rows = [l for l in lines if l.startswith('RESET PASS')]
+    assert len(reset_rows) == 1, (name, reset_rows)
+    return dict(checks=1, frames=len(rows), drawn_frames=drawn, fault_frame=int(rows[script['fault_plan']]['frame']), attaches=len(devices), reset_after=script['reset_after'],
+                calls=[int(r['calls']) for r in rows], stage_us=[float(r['stage_us']) for r in rows], depth_bound=[r['depth_bound'] for r in rows])
+
+
 def validate_zonly(name, text, trace):
     """The zonly script (asteroid-fog-temporal.md, run 47): nine frames, each a depth-only prepass with the z_only
     vs_1_1 program (null PS, ZWRITEENABLE on, COLORWRITEENABLE 0) followed by the blended, z-write-off material draw
@@ -6486,7 +6537,7 @@ def main(argv=None):
             directory = BUILD / ('motion-output-' + name + '-' + datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f'))
             directory.mkdir(parents=True)
             shutil.copy(candidate_exe, directory)
-            shutil.copy(candidate_seam if mode in ('seam', 'msaa', 'cutout', 'zonly', 'faderoute', 'lightmapfade', 'lightmapwiden', 'shadowreplay', 'shadowretention', 'shadowpool', 'shadowalpha', 'shadowalpharoute', 'unmatchedstatic', 'boltshape') + HDR_MODES + ('thinvote',) and not name.startswith('production') else candidate_dll, directory / 'd3d9.dll')
+            shutil.copy(candidate_seam if mode in ('seam', 'msaa', 'cutout', 'zonly', 'faderoute', 'lightmapfade', 'lightmapwiden', 'shadowreplay', 'shadowretention', 'shadowpool', 'shadowalpha', 'shadowalpharoute', 'unmatchedstatic', 'boltshape', 'effectsstage') + HDR_MODES + ('thinvote',) and not name.startswith('production') else candidate_dll, directory / 'd3d9.dll')
             env = dict(os.environ, X3M_CAMERA='vanilla', X3M_CHASE_SCENE_FIX='0', X3M_CHASE_COMBAT_TIGHTNESS='0', X3M_MOTION_OUTPUT=enabled, X3M_MOTION_JITTER='1' if jitter else '0', X3M_MOTION_JITTER_SAMPLES=str(JITTER_SAMPLES),
                        X3M_TAA='1' if taa else '0', X3M_TAA_DEBUG='1' if taa and not bench else '0',
                        X3M_CAPTURE_START='1000' if bench else str(BURST_CAPTURE[0]) if burst else '1',
@@ -6614,6 +6665,14 @@ def main(argv=None):
                 result['cases'][name] = case
                 save()
                 print(f'{name}: exit={completed.returncode} checks={case["checks"]} refused_frame={case["refused"]["frame"]}', flush=True)
+                continue
+            if mode == 'effectsstage':
+                case = validate_effects_stage(name, text, trace)
+                case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
+                            dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / candidate_exe.name))
+                result['cases'][name] = case
+                save()
+                print(f'{name}: exit={completed.returncode} checks={case["checks"]} drawn_frames={case["drawn_frames"]} attaches={case["attaches"]}', flush=True)
                 continue
             if mode == 'boltshape':
                 case = validate_bolt_shape(name, text, trace, hdr_env['X3M_FIXTURE_BOLT_SHAPE'])
