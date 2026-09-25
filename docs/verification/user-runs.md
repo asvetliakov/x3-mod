@@ -48,6 +48,16 @@ Run84 (far gate camera, sun occlusion default, fill 0.01). One launch at 5120x14
    front of a far station (a trail behind the mover?).
 3. Exit through the menu.
    Rows: `motion_output_taa ... far_clip=7x7 default=1 far_f0=60.0 far_f1=68.0`, `thin_vote_frame ... max_unvoted_fraction=`.
+4. **Combat capture for the effects modernisation** (launch 2, same command; the sector where you can pick a fight,
+   name it; the design [effects-modernisation-opus.md](../architecture/effects-modernisation-opus.md) §8.4 lists what each
+   F8 settles). Chase view, five F8s, one optional:
+   1. Shields-up hits on a target 300-600 m ahead, fire held (F8 while the bolts land).
+   2. The same target with its shields down (hull hits).
+   3. The kill, F8 from the first flash.
+   4. A missile just fired, own ship at full throttle.
+   5. The same view at zero throttle.
+   6. (optional) A beam weapon held on the target for 1 s.
+   Exit through the menu.
 
 Stand command (Run 84 A's plus `--taa-debug`):
 
