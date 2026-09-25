@@ -368,6 +368,26 @@ changed `GetCursorInfo` flags/handle disables the option for the process. Rows:
 `cursor_reassert_mode`, `cursor_reassert_arm`, `cursor_reassert` (`action=fired|refused`).
 The observer is the `WH_CALLWNDPROC` hook of section 3.2, installed without the trace too.
 
+**Launch arm (implemented 2026-09-25, not flown).** Run 83 A (run323,
+`verification/results/run323-run83a-launch1-3/cursor_launch_out.txt`) showed the duplicate
+arrow from launch until the first alt-tab: the game window was foreground from frame 0 and
+Win32 reported the cursor hidden from frame 2, but nothing armed before the first
+re-activation at frame 139, and the six later firings had identical before/after flags. The
+first complete hook installation per process (`window_trace::attach` at `hook_device`, window
+thread) now also arms the machine once (`core::arm_launch`, `armed_by` =
+`arm_launch_source`, not a message number); the same gates, 120-frame window, one firing,
+count and mismatch rules apply. An arming message while a launch arm is still pending
+replaces it (fresh 120-frame window, `armed_by=activate`); a launch never arms over a pending
+arm and a second device (`already_hooked`) or a later re-attach does not arm again. Rows:
+`window_trace_hooks ... launch_arm=0|1`; `cursor_reassert_arm armed_by=launch|activate
+message=none|WM_ACTIVATE|WM_ACTIVATEAPP`; `cursor_reassert` fired rows carry
+`armed_by=launch|activate` (was the message name) and end with `message=`, refused rows end
+with `armed_by=`. With `--window-trace` the ring now also flushes at the device's first
+Present (`window_trace_flush reason=first_present`, the entries since the hooks were installed)
+and starts a snapshot burst there, as a transition does (change-only `cursor_snapshot` for
+120 Presents, `burst=0` always written). Hooks are installed after the native `CreateDevice`
+returns, so messages sent during device creation are still not observed.
+
 ### 3.4 Alternatives considered
 
 - **Candidate A of the observations note (call the driver's `updateCursor:`

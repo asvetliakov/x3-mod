@@ -5,8 +5,14 @@
 //  1. The sequence's order and counts with a recording stand-in (count -1, 0, -2).
 //  2. The hooks on a probe window: WH_CALLWNDPROCRET sees the handler's magic
 //     result, the message count matches, the handler's last error survives.
-//  3. Arming: WM_ACTIVATE inactive does not arm, active arms once,
-//     WM_ACTIVATEAPP while armed does not arm again.
+//  2a. Launch: the first complete attach arms once (armed_by=launch) and the
+//     trace's first Present flushes the ring's first entries with one
+//     cursor_snapshot; a launch arm with the window not foreground waits and is
+//     refused after 120 frames without firing; a launch arm with the gates
+//     holding fires once, balanced, armed_by=launch (the second launch arm is
+//     driven directly: one per process in production).
+//  3. Arming: WM_ACTIVATE inactive does not arm, active arms once (also over a
+//     pending launch arm, with a fresh window), WM_ACTIVATEAPP while armed does not arm again.
 //  4. The production present step with synthetic gates and the real Win32
 //     sequence in the game's state (SetCursor(NULL), ShowCursor count -1): waits
 //     while a gate fails, fires once when all pass with up = 0, down = -1 and
@@ -186,35 +192,78 @@ int main() {
     for (int i = 0; i < 10; ++i) SendMessageA(hwnd, kProbe, 0, 0);
     require("message_count_matches", wt::observed().rets == rets0 + 11 && wt::observed().calls == calls0 + 11);
 
-    // 3. Arming.
-    SendMessageA(hwnd, WM_ACTIVATE, WA_INACTIVE, 0);
-    require("inactive_does_not_arm", cr::machine().arms == 0 && cr::machine().state == cr::core::State::idle);
-    SendMessageA(hwnd, WM_ACTIVATE, WA_ACTIVE, 0);
-    SendMessageA(hwnd, WM_ACTIVATEAPP, TRUE, 0);
-    require("activate_arms_once", cr::machine().arms == 1 && cr::machine().state == cr::core::State::armed && cr::machine().armed_by == WM_ACTIVATE);
-
-    // 4. The game's cursor state on this thread: handle NULL, show count -1 (dinput's exclusive acquire).
+    // 2a. Launch arm and the first-Present flush.
+    require("launch_armed_at_attach", cr::machine().arms == 1 && cr::machine().state == cr::core::State::armed
+            && cr::machine().armed_by == cr::core::arm_launch_source && logged(0, "window_trace_hooks", {"device=1", "installed=1", "launch_arm=1"})
+            && logged(0, "window_trace_hooks", {"device=2", "reason=already_hooked"}));
+    // The game's cursor state on this thread: handle NULL, show count -1 (dinput's exclusive acquire).
     SetCursor(nullptr);
     const int initial = ShowCursor(FALSE);
     std::printf("COUNT initial_after_hide=%d\n", initial);
     require("game_state_count_minus_one", initial == -1);
     unsigned long long frame = 100;
-    const size_t before_wait = x3m::lines.size();
+    // One ring entry before the first Present (hit 2: a later hit-1 row is a change, not suppressed).
+    SendMessageA(hwnd, WM_SETCURSOR, reinterpret_cast<WPARAM>(hwnd), MAKELPARAM(HTCAPTION, WM_MOUSEMOVE));
+    const size_t before_first = x3m::lines.size();
+    wt::present(hwnd, 1, ++frame, 0); // the real gates: the probe window is hidden, so the launch arm waits
+    require("first_present_flush_and_snapshot", logged(before_first, "window_trace_flush", {"reason=first_present"})
+            && logged(before_first, "window_msg ", {"name=WM_SETCURSOR", "hit=2"}) && logged(before_first, "cursor_snapshot", {"burst=0"})
+            && logged(before_first, "cursor_reassert_arm", {"armed_by=launch", "message=none", "arms=1"}) && cr::machine().state == cr::core::State::armed);
     cr::core::Gates waiting = all_pass(); waiting.foreground = false;
+    {
+        const size_t before = x3m::lines.size();
+        unsigned waits = 0; cr::core::Step last = cr::core::Step::none;
+        for (unsigned i = 0; i < cr::core::window_frames && cr::machine().state == cr::core::State::armed; ++i) {
+            last = cr::present_with(hwnd, ++frame, waiting).step; waits += last == cr::core::Step::wait;
+        }
+        require("launch_not_foreground_refused", last == cr::core::Step::refuse && waits == cr::core::window_frames - 2 && cr::machine().fires == 0
+                && cr::machine().refusals == 1 && cr::machine().state == cr::core::State::idle
+                && logged(before, "cursor_reassert frame=", {"action=refused", "reason=foreground", "armed_by=launch"}));
+        cr::arm_launch(); // a second process's launch arm, driven directly
+        const CursorState start = cursor_state();
+        SetLastError(0x2468);
+        const size_t before_fire = x3m::lines.size();
+        const auto fired = cr::present_with(hwnd, ++frame, all_pass());
+        const DWORD error = GetLastError();
+        const CursorState end = cursor_state();
+        require("launch_fires_once_balanced", fired.step == cr::core::Step::fire && cr::machine().arms == 2 && cr::machine().fires == 1
+                && cr::machine().state == cr::core::State::idle && same(start, end) && error == 0x2468
+                && logged(before_fire, "cursor_reassert_arm", {"armed_by=launch", "arms=2"})
+                && logged(before_fire, "cursor_reassert frame=", {"action=fired", "armed_by=launch", " up=0 down=-1 ", "balanced=1", "disabled=0", "message=none"}));
+        require("launch_no_second_fire", cr::present_with(hwnd, ++frame, all_pass()).step == cr::core::Step::none && cr::machine().fires == 1);
+    }
+
+    // 3. Arming.
+    const unsigned arms_base = cr::machine().arms;
+    SendMessageA(hwnd, WM_ACTIVATE, WA_INACTIVE, 0);
+    require("inactive_does_not_arm", cr::machine().arms == arms_base && cr::machine().state == cr::core::State::idle);
+    cr::arm_launch();
+    cr::present_with(hwnd, ++frame, waiting); // the pending launch arm has used one frame
+    const unsigned left_launch = cr::machine().frames_left;
+    SendMessageA(hwnd, WM_ACTIVATE, WA_ACTIVE, 0);
+    require("activate_replaces_pending_launch_arm", left_launch == cr::core::window_frames - 1 && cr::machine().arms == arms_base + 2
+            && cr::machine().state == cr::core::State::armed && cr::machine().armed_by == WM_ACTIVATE && cr::machine().frames_left == cr::core::window_frames);
+    SendMessageA(hwnd, WM_ACTIVATEAPP, TRUE, 0);
+    require("activate_arms_once", cr::machine().arms == arms_base + 2 && cr::machine().state == cr::core::State::armed && cr::machine().armed_by == WM_ACTIVATE);
+
+    // 4. The present step in the game's cursor state (set in 2a).
+    char arms_needle[32];
+    std::snprintf(arms_needle, sizeof arms_needle, "arms=%u", arms_base + 2);
+    const size_t before_wait = x3m::lines.size();
     bool waited = true;
     for (int i = 0; i < 5; ++i) waited = waited && cr::present_with(hwnd, ++frame, waiting).step == cr::core::Step::wait;
-    require("waits_while_gate_fails", waited && cr::machine().fires == 0 && cr::machine().state == cr::core::State::armed
-            && logged(before_wait, "cursor_reassert_arm", {"message=WM_ACTIVATE", "arms=1"}));
+    require("waits_while_gate_fails", waited && cr::machine().fires == 1 && cr::machine().state == cr::core::State::armed
+            && logged(before_wait, "cursor_reassert_arm", {"armed_by=activate", "message=WM_ACTIVATE", arms_needle}));
     const CursorState start = cursor_state();
     SetLastError(0x1357);
     const size_t before_fire = x3m::lines.size();
     const auto fired = cr::present_with(hwnd, ++frame, all_pass());
     const DWORD fire_error = GetLastError();
     const CursorState end = cursor_state();
-    require("fires_once_balanced", fired.step == cr::core::Step::fire && cr::machine().fires == 1 && cr::machine().state == cr::core::State::idle
-            && logged(before_fire, "cursor_reassert frame=", {"action=fired", " up=0 down=-1 ", "balanced=1", "disabled=0"}));
+    require("fires_once_balanced", fired.step == cr::core::Step::fire && cr::machine().fires == 2 && cr::machine().state == cr::core::State::idle
+            && logged(before_fire, "cursor_reassert frame=", {"action=fired", "armed_by=activate", " up=0 down=-1 ", "balanced=1", "disabled=0", "message=WM_ACTIVATE"}));
     require("win32_end_state_equals_start", same(start, end) && fire_error == 0x1357);
-    require("no_second_fire", cr::present_with(hwnd, ++frame, all_pass()).step == cr::core::Step::none && cr::machine().fires == 1);
+    require("no_second_fire", cr::present_with(hwnd, ++frame, all_pass()).step == cr::core::Step::none && cr::machine().fires == 2);
     std::printf("CURSOR start_flags=%lu start_cursor=%p end_flags=%lu end_cursor=%p x=%ld y=%ld\n", static_cast<unsigned long>(start.flags),
                 static_cast<void*>(start.cursor), static_cast<unsigned long>(end.flags), static_cast<void*>(end.cursor), start.pos.x, start.pos.y);
     // The real sequence alone, both starting counts.
@@ -235,8 +284,8 @@ int main() {
     const size_t before_refuse = x3m::lines.size();
     unsigned waits = 0; cr::core::Step last = cr::core::Step::none;
     for (unsigned i = 0; i < cr::core::window_frames; ++i) { last = cr::present_with(hwnd, ++frame, waiting).step; waits += last == cr::core::Step::wait; }
-    require("refuses_after_window", cr::machine().arms == 2 && waits == cr::core::window_frames - 1 && last == cr::core::Step::refuse && cr::machine().refusals == 1
-            && cr::machine().state == cr::core::State::idle && logged(before_refuse, "cursor_reassert frame=", {"action=refused", "reason=foreground"}));
+    require("refuses_after_window", cr::machine().arms == arms_base + 3 && waits == cr::core::window_frames - 1 && last == cr::core::Step::refuse && cr::machine().refusals == 2
+            && cr::machine().state == cr::core::State::idle && logged(before_refuse, "cursor_reassert frame=", {"action=refused", "reason=foreground", "armed_by=activate"}));
     // 8. The real gate collection with this window shown under the pointer and brought to the foreground.
     {
         const unsigned arms_before = cr::machine().arms, fires_before = cr::machine().fires;

@@ -532,15 +532,17 @@ def main():
                              '--vanilla; default off): window-thread message hooks (WH_CALLWNDPROC/WH_CALLWNDPROCRET/WH_GETMESSAGE, no subclassing) log the focus and '
                              'window messages with the game handler\'s result (window_msg), summarised WM_SETCURSOR and per-frame mouse-move counts '
                              '(window_msg_frame), the game\'s SetCursor/SetCursorPos calls on change (cursor_call), and a change-only cursor_snapshot at every '
-                             'Present for 120 frames after each transition; a bounded ring flushed on transitions and on the Ctrl+Shift+F7 marker. Passthrough '
+                             'Present for 120 frames after the first Present and after each transition; a bounded ring recorded from device creation and '
+                             'flushed at the first Present, on transitions and on the Ctrl+Shift+F7 marker. Passthrough '
                              'only: nothing is shown, hidden, warped or captured (docs/architecture/window-mode-and-cursor-fix.md section 3.2)')
     parser.add_argument('--cursor-reassert', action='store_true',
                         help='Candidate fix for the duplicate arrow after alt-tab (X3M_CURSOR_REASSERT=1; refused under --vanilla; default off; independent of '
-                             '--telemetry): after each activation (WM_ACTIVATE active or WM_ACTIVATEAPP on), at the first Present within 120 frames where the game '
+                             '--telemetry): once at launch (device creation) and after each activation (WM_ACTIVATE active or WM_ACTIVATEAPP on), at the first '
+                             'Present within 120 frames where the game '
                              'window is foreground and visible, Win32 reports the cursor hidden and the pointer is inside the client, one balanced '
                              'SetCursor(arrow) / ShowCursor(TRUE) / ShowCursor(FALSE) / SetCursor(previous) on the window thread, so the Win32 end state equals '
                              'the start and the display driver runs one hide transition; never a loop, a global hide, a foreground change or a pointer trap. One '
-                             'cursor_reassert row per firing or refusal; an unexpected count disables it for the process (docs/architecture/window-mode-and-cursor-fix.md section 3.3)')
+                             'cursor_reassert row per firing or refusal (armed_by=launch|activate); an unexpected count disables it for the process (docs/architecture/window-mode-and-cursor-fix.md section 3.3)')
     parser.add_argument('--frame-timing-state-stamps', type=int, default=0, metavar='N',
                         help='Stamp every Nth hooked state call in the frame-timing diagnostic (X3M_FRAME_TIMING_STATE_STAMPS; requires --frame-timing; default 0 = count the calls without reading the clock, so state_us is reported as -1). Two QueryPerformanceCounter reads cost about 136 ns per state call under FEX, which is several ms per busy frame; N>0 stamps one call in N and scales the sum by N (reported as state_sampled=N)')
     parser.add_argument('--game-phases', action='store_true', help='Measure native frame phases and delayed target-lock work (X3M_GAME_PHASES=1; requires --telemetry)')

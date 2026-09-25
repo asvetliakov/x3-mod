@@ -20,6 +20,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 WINDOW_FRAMES = 120
 WM_ACTIVATE, WM_ACTIVATEAPP = 0x0006, 0x001C
+ARM_LAUNCH = 0x10000
 GATES = ('same_thread', 'foreground', 'visible', 'cursor_hidden', 'pointer_in_client', 'clip_is_client')
 
 
@@ -32,9 +33,16 @@ class Twin:
 
     def observe(self, message, wparam):
         arming = (message == WM_ACTIVATE and wparam & 0xFFFF) or (message == WM_ACTIVATEAPP and wparam)
-        if not arming or self.state != 'idle':
+        if not arming or not (self.state == 'idle' or (self.state == 'armed' and self.armed_by == ARM_LAUNCH)):
             return False
         self.state, self.frames_left, self.armed_by = 'armed', WINDOW_FRAMES, message
+        self.arms += 1
+        return True
+
+    def launch(self):
+        if self.state != 'idle':
+            return False
+        self.state, self.frames_left, self.armed_by = 'armed', WINDOW_FRAMES, ARM_LAUNCH
         self.arms += 1
         return True
 
@@ -71,7 +79,8 @@ class Twin:
         return balanced
 
     def status(self):
-        return f'{self.state} {self.arms} {self.fires} {self.refusals} {self.mismatches}'
+        source = 'launch' if self.armed_by == ARM_LAUNCH else 'activate'
+        return f'{self.state} {self.arms} {self.fires} {self.refusals} {self.mismatches} {source} {self.frames_left}'
 
 
 def setcursor_twin(rows):
@@ -92,6 +101,13 @@ def script(seed):
     rng = random.Random(seed)
     events = []
     all_pass = dict.fromkeys(GATES, True)
+    # Launch part: the launch arm fires once when the gates hold, waits and is refused when the window is
+    # not foreground, is replaced (fresh window) by an arming message, and never arms over a pending arm.
+    events += [('launch',), ('present', dict(all_pass, foreground=False)), ('present', all_pass), ('after', 0, -1, True, True), ('present', all_pass)]
+    events += [('launch',)] + [('present', dict(all_pass, foreground=False))] * WINDOW_FRAMES
+    events += [('launch',), ('present', dict(all_pass, foreground=False)), ('msg', WM_ACTIVATE, 0), ('msg', WM_ACTIVATE, 1), ('launch',), ('msg', WM_ACTIVATEAPP, 1)]
+    events += [('present', all_pass), ('after', 0, -1, True, True), ('reset',)]
+    launch = len(events)
     # Named part: inactive, arm, re-arm attempts, waits, fire once, refusal after the window, mismatch disables.
     events += [('msg', WM_ACTIVATE, 0), ('msg', WM_ACTIVATE, 1), ('msg', WM_ACTIVATEAPP, 1), ('msg', WM_ACTIVATE, 2)]
     events += [('present', dict(all_pass, foreground=False))] * 5 + [('present', all_pass), ('after', 0, -1, True, True), ('present', all_pass)]
@@ -105,13 +121,15 @@ def script(seed):
     events.append(('reset',))
     for _ in range(4000):
         roll = rng.random()
-        if roll < 0.03:
+        if roll < 0.004:
+            events.append(('launch',))
+        elif roll < 0.03:
             events.append(('msg', rng.choice((WM_ACTIVATE, WM_ACTIVATEAPP, 0x0007)), rng.choice((0, 1, 2, 0x10001))))
         elif roll < 0.035:
             events.append(('after', rng.choice((0, 1, -1)), rng.choice((-1, 0, -2)), rng.random() < 0.95, rng.random() < 0.95))
         else:
             events.append(('present', {name: rng.random() < 0.9 for name in GATES}))
-    return events, named
+    return events, named, launch
 
 
 def twin_run(events):
@@ -123,6 +141,9 @@ def twin_run(events):
         elif event[0] == 'msg':
             armed = machine.observe(event[1], event[2])
             out.append(f'msg {int(armed)} {machine.status()}')
+        elif event[0] == 'launch':
+            armed = machine.launch()
+            out.append(f'launch {int(armed)} {machine.status()}')
         elif event[0] == 'present':
             step, reason = machine.present(event[1])
             out.append(f'present {step} {reason} {machine.status()}')
@@ -139,8 +160,9 @@ HEAD = r'''
 using namespace x3m::cursor_reassert::core;
 static Machine m;
 static const char* state_name(State s) { return s == State::idle ? "idle" : s == State::armed ? "armed" : "disabled"; }
-static void status() { std::printf(" %s %u %u %u %u\n", state_name(m.state), m.arms, m.fires, m.refusals, m.mismatches); }
+static void status() { std::printf(" %s %u %u %u %u %s %u\n", state_name(m.state), m.arms, m.fires, m.refusals, m.mismatches, arm_source(m.armed_by), m.frames_left); }
 static void msg(unsigned message, unsigned wparam) { const bool a = observe(m, message, wparam); std::printf("msg %d", int(a)); status(); }
+static void launch() { const bool a = arm_launch(m); std::printf("launch %d", int(a)); status(); }
 static void pres(bool t, bool f, bool v, bool h, bool p, bool c) {
     Gates g; g.same_thread = t; g.foreground = f; g.visible = v; g.cursor_hidden = h; g.pointer_in_client = p; g.clip_is_client = c;
     const Decision d = present(m, g);
@@ -169,6 +191,8 @@ def harness(events, setcursor_rows):
             lines.append('    m = Machine(); std::printf("reset\\n");')
         elif event[0] == 'msg':
             lines.append(f'    msg({event[1]}u, {event[2]}u);')
+        elif event[0] == 'launch':
+            lines.append('    launch();')
         elif event[0] == 'present':
             lines.append('    pres(%s);' % ', '.join('1' if event[1][g] else '0' for g in GATES))
         else:
@@ -191,24 +215,39 @@ def setcursor_script():
 
 
 class CursorReassertCore(unittest.TestCase):
+    def test_launch_twin(self):
+        events, _, launch = script(1)
+        out = twin_run(events[:launch])
+        self.assertEqual(out[0], 'launch 1 armed 1 0 0 0 launch 120')              # the launch arm
+        self.assertEqual(out[1], 'present wait foreground armed 1 0 0 0 launch 119')
+        self.assertEqual(out[2], 'present fired gates_passed idle 1 1 0 0 launch 0')  # fires once when the gates hold
+        self.assertEqual(out[4], 'present none - idle 1 1 0 0 launch 0')
+        self.assertEqual(sum(1 for line in out[6:126] if line.startswith('present wait foreground')), WINDOW_FRAMES - 1)
+        self.assertEqual(out[125], 'present refused foreground idle 2 1 1 0 launch 0')  # not foreground: refused, never fired
+        self.assertEqual(out[128], 'msg 0 armed 3 1 1 0 launch 119')                   # WM_ACTIVATE inactive keeps the launch arm
+        self.assertEqual(out[129], 'msg 1 armed 4 1 1 0 activate 120')                 # an activation replaces it, fresh window
+        self.assertEqual(out[130], 'launch 0 armed 4 1 1 0 activate 120')              # a launch never arms over a pending arm
+        self.assertEqual(out[131], 'msg 0 armed 4 1 1 0 activate 120')
+        self.assertEqual(out[132], 'present fired gates_passed idle 4 2 1 0 activate 0')
+
     def test_named_twin(self):
-        events, named = script(1)
-        out = twin_run(events[:named])
-        self.assertEqual(out[1], 'msg 1 armed 1 0 0 0')          # WM_ACTIVATE active arms
-        self.assertEqual(out[2], 'msg 0 armed 1 0 0 0')          # WM_ACTIVATEAPP while armed does not
-        self.assertEqual(out[9], 'present fired gates_passed idle 1 1 0 0')
-        self.assertEqual(out[11], 'present none - idle 1 1 0 0')  # fire once
+        events, named, launch = script(1)
+        out = twin_run(events[:named])[launch:]
+        self.assertEqual(out[1], 'msg 1 armed 1 0 0 0 activate 120')          # WM_ACTIVATE active arms
+        self.assertEqual(out[2], 'msg 0 armed 1 0 0 0 activate 120')          # WM_ACTIVATEAPP while armed does not
+        self.assertEqual(out[9], 'present fired gates_passed idle 1 1 0 0 activate 0')
+        self.assertEqual(out[11], 'present none - idle 1 1 0 0 activate 0')  # fire once
         refusal = [line for line in out if line.startswith('present refused')]
-        self.assertEqual(refusal[0], 'present refused cursor_visible idle 2 1 1 0')
+        self.assertEqual(refusal[0], 'present refused cursor_visible idle 2 1 1 0 activate 0')
         self.assertEqual(sum(1 for line in out if line.startswith('present wait cursor_visible')), WINDOW_FRAMES - 1)
         self.assertTrue(out[-3].startswith('after 0 disabled'))  # handle changed -> disabled
-        self.assertEqual(out[-2], 'msg 0 disabled 4 3 1 1')       # never re-arms
-        self.assertEqual(out[-1], 'present none - disabled 4 3 1 1')
+        self.assertEqual(out[-2], 'msg 0 disabled 4 3 1 1 activate 0')       # never re-arms
+        self.assertEqual(out[-1], 'present none - disabled 4 3 1 1 activate 0')
 
     def test_compiled_core_matches_twin(self):
         compiler = shutil.which('clang++') or shutil.which('c++')
         self.assertIsNotNone(compiler, 'A host C++ compiler is required')
-        events, _ = script(1)
+        events, _, _ = script(1)
         rows = setcursor_script()
         with tempfile.TemporaryDirectory(prefix='x3-cursor-reassert-') as temporary:
             directory = Path(temporary)
@@ -296,14 +335,18 @@ class CursorReassertRunnerParser(unittest.TestCase):
             sys.path.pop(0)
         checks = '\n'.join(f'CHECK c{i} PASS' for i in range(module.EXPECTED_CHECKS))
         text = ('COUNT initial_after_hide=-1\nREAL_GATES same_thread=1 foreground=1 cursor_flags=0 show_count=-1 step=not_fired\n'
-                'LOG cursor_reassert frame=106 hwnd=0001 action=fired up=0 down=-1 balanced=1 disabled=0\n'
-                'LOG cursor_reassert frame=230 hwnd=0001 action=refused reason=foreground\n'
-                'LOG cursor_reassert frame=231 hwnd=0001 action=fired up=-1 down=-2 balanced=0 disabled=1\n'
+                'LOG cursor_reassert frame=221 hwnd=0001 action=refused reason=foreground window_frames=120 refusals=1 armed_by=launch\n'
+                'LOG cursor_reassert frame=222 hwnd=0001 action=fired armed_by=launch up=0 down=-1 balanced=1 disabled=0 message=none\n'
+                'LOG cursor_reassert frame=230 hwnd=0001 action=fired armed_by=activate up=0 down=-1 balanced=1 disabled=0 message=WM_ACTIVATE\n'
+                'LOG cursor_reassert frame=350 hwnd=0001 action=refused reason=foreground window_frames=120 refusals=2 armed_by=activate\n'
+                'LOG cursor_reassert frame=351 hwnd=0001 action=fired armed_by=activate up=-1 down=-2 balanced=0 disabled=1 message=WM_ACTIVATE\n'
                 f'{checks}\nRESULT checks={module.EXPECTED_CHECKS} failed=0 PASS\n')
         report = module.parse(text)
         module.accept(report)
         with self.assertRaises(AssertionError):
             module.accept(module.parse(text.replace('up=0 down=-1 balanced=1', 'up=1 down=0 balanced=1')))
+        with self.assertRaises(AssertionError):  # the launch firing must be first and armed_by=launch
+            module.accept(module.parse(text.replace('armed_by=launch up=0', 'armed_by=activate up=0')))
 
 
 if __name__ == '__main__':

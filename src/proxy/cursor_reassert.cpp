@@ -29,13 +29,17 @@ void initialize() {
     wchar_t value[4]{};
     enabled_ = GetEnvironmentVariableW(L"X3M_CURSOR_REASSERT", value, 4) == 1 && value[0] == L'1';
     if (enabled_)
-        log("cursor_reassert_mode requested=1 window_frames=%u arm=WM_ACTIVATE_active,WM_ACTIVATEAPP_on gates=thread,foreground,visible,cursor_hidden,pointer_in_client_or_clip "
+        log("cursor_reassert_mode requested=1 window_frames=%u arm=launch_once,WM_ACTIVATE_active,WM_ACTIVATEAPP_on gates=thread,foreground,visible,cursor_hidden,pointer_in_client_or_clip "
             "sequence=set_arrow,show_true,show_false,set_previous disable_on_mismatch=1", core::window_frames);
 }
 bool enabled() { return enabled_ && machine_.state != core::State::disabled; }
 void observe(UINT message, WPARAM wparam) noexcept {
     if (!enabled_) return;
     if (core::observe(machine_, message, static_cast<std::uint32_t>(wparam))) { arm_pending_ = true; armed_tick_ = GetTickCount(); }
+}
+void arm_launch() noexcept {
+    if (!enabled_) return;
+    if (core::arm_launch(machine_)) { arm_pending_ = true; armed_tick_ = GetTickCount(); }
 }
 void refuse(const char* reason) {
     if (!enabled_) return;
@@ -51,13 +55,14 @@ core::Decision present_with(HWND window, unsigned long long frame, const core::G
     const DWORD saved_error = GetLastError();
     if (arm_pending_) {
         arm_pending_ = false;
-        log("cursor_reassert_arm frame=%llu hwnd=%p message=%s arms=%u tick_ms=%lu", frame, static_cast<void*>(window),
-            machine_.armed_by == core::wm_activate ? "WM_ACTIVATE" : "WM_ACTIVATEAPP", machine_.arms, static_cast<unsigned long>(armed_tick_));
+        log("cursor_reassert_arm frame=%llu hwnd=%p armed_by=%s message=%s arms=%u tick_ms=%lu", frame, static_cast<void*>(window),
+            core::arm_source(machine_.armed_by), core::arm_message(machine_.armed_by), machine_.arms, static_cast<unsigned long>(armed_tick_));
     }
+    const std::uint32_t armed_by = machine_.armed_by;
     const auto decision = core::present(machine_, gates);
     if (decision.step == core::Step::refuse)
-        log("cursor_reassert frame=%llu hwnd=%p action=refused reason=%s window_frames=%u refusals=%u", frame, static_cast<void*>(window), decision.reason,
-            core::window_frames, machine_.refusals);
+        log("cursor_reassert frame=%llu hwnd=%p action=refused reason=%s window_frames=%u refusals=%u armed_by=%s", frame, static_cast<void*>(window), decision.reason,
+            core::window_frames, machine_.refusals, core::arm_source(armed_by));
     else if (decision.step == core::Step::fire) {
         CURSORINFO before{}; before.cbSize = sizeof before;
         const BOOL before_ok = GetCursorInfo(&before);
@@ -68,11 +73,12 @@ core::Decision present_with(HWND window, unsigned long long frame, const core::G
         const bool balanced = before_ok && after_ok && core::balanced(sequence, before.flags, after.flags, before.hCursor, after.hCursor);
         core::after_fire(machine_, balanced);
         log("cursor_reassert frame=%llu hwnd=%p action=fired armed_by=%s before_flags=%lu before_cursor=%p previous=%p arrow=%p up=%d down=%d after_flags=%lu after_cursor=%p "
-            "clip_ok=%d clip=%ld,%ld,%ld,%ld pointer_in_client=%u clip_is_client=%u balanced=%u disabled=%u fires=%u",
-            frame, static_cast<void*>(window), machine_.armed_by == core::wm_activate ? "WM_ACTIVATE" : "WM_ACTIVATEAPP",
+            "clip_ok=%d clip=%ld,%ld,%ld,%ld pointer_in_client=%u clip_is_client=%u balanced=%u disabled=%u fires=%u message=%s",
+            frame, static_cast<void*>(window), core::arm_source(armed_by),
             static_cast<unsigned long>(before.flags), static_cast<void*>(before.hCursor), sequence.previous, sequence.arrow, sequence.up, sequence.down,
             static_cast<unsigned long>(after.flags), static_cast<void*>(after.hCursor), int(clip_ok), clip.left, clip.top, clip.right, clip.bottom,
-            unsigned(gates.pointer_in_client), unsigned(gates.clip_is_client), unsigned(balanced), unsigned(machine_.state == core::State::disabled), machine_.fires);
+            unsigned(gates.pointer_in_client), unsigned(gates.clip_is_client), unsigned(balanced), unsigned(machine_.state == core::State::disabled), machine_.fires,
+            core::arm_message(armed_by));
     }
     SetLastError(saved_error);
     return decision;

@@ -5,7 +5,8 @@
 // --cursor-reassert (X3M_CURSOR_REASSERT=1; docs/architecture/
 // window-mode-and-cursor-fix.md section 3.3). Armed by the WH_CALLWNDPROC
 // observer that window_trace.cpp installs on the window thread (with or
-// without --window-trace), evaluated at each Present on that thread: once the
+// without --window-trace) and once at launch when the hooks are installed at
+// device creation, evaluated at each Present on that thread: once the
 // window is foreground and visible, Win32 reports the cursor hidden and the
 // pointer is inside the client (or the clip is the client), one balanced
 // SetCursor(arrow) / ShowCursor(TRUE) / ShowCursor(FALSE) / SetCursor(previous)
@@ -22,6 +23,10 @@ void observe(UINT message, WPARAM wparam) noexcept;
 // The hooks could not be installed (foreign thread, SetWindowsHookEx failure):
 // one row, the option stays off for the process.
 void refuse(const char* reason);
+// The launch arm (window_trace::attach on the window thread, once per process, when the
+// hooks are installed at device creation): arms an idle machine; the arm row follows at
+// the next Present with armed_by=launch. Integer work only, no logging.
+void arm_launch() noexcept;
 // Present, after the native call, on the render thread.
 void present(HWND window, unsigned long long frame);
 // The Win32 gate reads present() makes (the fixture records them with its own window

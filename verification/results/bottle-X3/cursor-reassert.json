@@ -11,31 +11,31 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "sources": {
-  "src/proxy/cursor_reassert_core.h": "46ce8db37d823235fe4301fd96ad21428883f915e8b0c52e1e86019db1335723",
-  "src/proxy/cursor_reassert.h": "b2170106b6192f516a3192b837cb1eb2888bd4a3209938ca3fd755dfdc9937c1",
-  "src/proxy/cursor_reassert.cpp": "efab5b8c0b4230c0682f1534aa16ba781a8cb9e481f6c4efc07917fd27f0077f",
+  "src/proxy/cursor_reassert_core.h": "65df895e7cd3852e8d49ae1e6d7de83e6091a17a8ec0b32732d3bf51ff3cd7bc",
+  "src/proxy/cursor_reassert.h": "d16534409d5249cada09a18a9bbb65b39120e97c34a0c9f4ec3b3f8ca51146f0",
+  "src/proxy/cursor_reassert.cpp": "38024ba750bc01db63994ef92f23cfc434c6da13bdc3b23c9d9c8a10878e0f68",
   "src/proxy/window_trace_core.h": "93faf02316761cc9a5ea967d24987997d9a96d0c01a1f3148f3a1b9a26772d9f",
-  "src/proxy/window_trace.h": "eed7c546111a3349b66b12eb46dc126638885118b79b0bc7168ea00b374b397a",
-  "src/proxy/window_trace.cpp": "4688a7bb800cbbfb756f11e3f32dc34abff5a53bc44f8e6409993088903dd845",
+  "src/proxy/window_trace.h": "3bb1e5d019335cf1c9e3c6720461402a3a487492709c404f6a4f033bbc9642d7",
+  "src/proxy/window_trace.cpp": "ca5498c75ad36a4f8f8b068c9ef58e3f7fd5335006618f890d48e319415411f5",
   "src/proxy/cpu_state.h": "73784e6190929661764c85d54778e97a4935a3841b7fca6f12e408751c1f4d6a",
-  "verification/probe/cursor_reassert_fixture.cpp": "a22134fac181d1bba7f48252ae46eac297890e4ec5bb967bef057761503bf615",
-  "verification/probe/run_cursor_reassert.py": "fec411df7ee002c798c1666e8bba50873cef43cf0247ae46c83f4ac4595d8b3b"
+  "verification/probe/cursor_reassert_fixture.cpp": "d118585d39d85dcce67d9924125275271beee09201e98834b1a083d67b85aba6",
+  "verification/probe/run_cursor_reassert.py": "d62102139c011104253c24241edb3b21285afe49b188af42b768ed90ceb0dc26"
  },
- "executable": "/Users/asvetl/x3-mod/.claude/worktrees/agent-aa42a3ae9a72bb5b8/build/cursor_reassert_fixture.exe",
- "executable_sha256": "71300addd7af9907705de25a4a2233ee47305db230388433d7f994e397543b86",
- "expected_checks": 36,
+ "executable": "/Users/asvetl/x3-mod/.claude/worktrees/agent-a056de3410aaeb9d3/build/cursor_reassert_fixture.exe",
+ "executable_sha256": "fc7bc734abd3cc7126d4f0d8bb65963a302330cc619bbf5a7f833b2e5855f171",
+ "expected_checks": 42,
  "command": [
   "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
   "--bottle",
   "X3",
   "--no-update",
   "--workdir",
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-aa42a3ae9a72bb5b8/build",
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-aa42a3ae9a72bb5b8/build/cursor_reassert_fixture.exe"
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a056de3410aaeb9d3/build",
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a056de3410aaeb9d3/build/cursor_reassert_fixture.exe"
  ],
- "elapsed_s": 8.9,
+ "elapsed_s": 9.8,
  "exit_code": 0,
- "report_sha256": "ad334a94da70605d3f065275245618cc84bdbdf4ed9877aece1c807c887f1538",
+ "report_sha256": "52f9a778b0e0329bbaa6bf65e096b7f9a804880cafb7b5bf6ccd1627ded7e489",
  "report": {
   "checks": [
    [
@@ -103,15 +103,39 @@
     true
    ],
    [
-    "inactive_does_not_arm",
-    true
-   ],
-   [
-    "activate_arms_once",
+    "launch_armed_at_attach",
     true
    ],
    [
     "game_state_count_minus_one",
+    true
+   ],
+   [
+    "first_present_flush_and_snapshot",
+    true
+   ],
+   [
+    "launch_not_foreground_refused",
+    true
+   ],
+   [
+    "launch_fires_once_balanced",
+    true
+   ],
+   [
+    "launch_no_second_fire",
+    true
+   ],
+   [
+    "inactive_does_not_arm",
+    true
+   ],
+   [
+    "activate_replaces_pending_launch_arm",
+    true
+   ],
+   [
+    "activate_arms_once",
     true
    ],
    [
@@ -191,8 +215,8 @@
    "start_cursor": 0,
    "end_flags": 1,
    "end_cursor": 0,
-   "x": 4255,
-   "y": 853
+   "x": 1674,
+   "y": 1280
   },
   "real_gates": {
    "same_thread": 1,
@@ -226,13 +250,27 @@
    }
   ],
   "result": {
-   "checks": 36,
+   "checks": 42,
    "failed": 0,
    "verdict": "PASS"
   },
   "rows": [
    {
+    "action": "refused",
+    "reason": "foreground",
+    "armed_by": "launch"
+   },
+   {
     "action": "fired",
+    "armed_by": "launch",
+    "up": 0,
+    "down": -1,
+    "balanced": 1,
+    "disabled": 0
+   },
+   {
+    "action": "fired",
+    "armed_by": "activate",
     "up": 0,
     "down": -1,
     "balanced": 1,
@@ -240,10 +278,12 @@
    },
    {
     "action": "refused",
-    "reason": "foreground"
+    "reason": "foreground",
+    "armed_by": "activate"
    },
    {
     "action": "fired",
+    "armed_by": "activate",
     "up": 0,
     "down": -1,
     "balanced": 1,
@@ -251,13 +291,14 @@
    },
    {
     "action": "fired",
+    "armed_by": "activate",
     "up": -1,
     "down": -2,
     "balanced": 0,
     "disabled": 1
    }
   ],
-  "check_count": 36,
+  "check_count": 42,
   "failed_checks": []
  }
 }

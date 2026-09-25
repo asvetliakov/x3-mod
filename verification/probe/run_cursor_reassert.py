@@ -6,7 +6,7 @@ Invoke only as:
   X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_cursor_reassert.py --exe <build>/cursor_reassert_fixture.exe
 The fixture (verification/probe/cursor_reassert_fixture.cpp with the production
 src/proxy/cursor_reassert.cpp and window_trace.cpp) drives the state machine with
-synthetic WM_ACTIVATE messages and gates, runs the real balanced Win32 sequence in the
+the launch arm at the hooks' installation and synthetic WM_ACTIVATE messages and gates, runs the real balanced Win32 sequence in the
 game's cursor state (asserting one firing, the order and the ShowCursor counts), checks
 the WH_CALLWNDPROC/WH_CALLWNDPROCRET/WH_GETMESSAGE observers and their removal. Its probe
 window stays hidden. This runner never builds it; it parses the COUNT / CURSOR / CHECK /
@@ -30,7 +30,7 @@ DEFAULT_EXE = ROOT / 'build/cursor_reassert_fixture.exe'
 SOURCES = ('src/proxy/cursor_reassert_core.h', 'src/proxy/cursor_reassert.h', 'src/proxy/cursor_reassert.cpp', 'src/proxy/window_trace_core.h',
            'src/proxy/window_trace.h', 'src/proxy/window_trace.cpp', 'src/proxy/cpu_state.h',
            'verification/probe/cursor_reassert_fixture.cpp', 'verification/probe/run_cursor_reassert.py')
-EXPECTED_CHECKS = 36  # light ring 5, stand-in sequence 4, setup 2, hooks 5 (incl. already_hooked), arming 2, game state 1, present step 4, real sequence 2, refusal 1, real gates 2, mismatch 2, trace ring 4, removal 2
+EXPECTED_CHECKS = 42  # light ring 5, stand-in sequence 4, setup 2, hooks 5 (incl. already_hooked), launch 5 (arm at attach, first-Present flush, not-foreground refusal, fire, no second fire), game state 1, arming 3, present step 4, real sequence 2, refusal 1, real gates 2, mismatch 2, trace ring 4, removal 2
 
 
 def sha(path):
@@ -60,7 +60,7 @@ def parse(text):
         elif line.startswith('DRAIN '):
             report['drains'].append(fields(line))
         elif line.startswith('LOG cursor_reassert frame='):
-            report['rows'].append({k: v for k, v in fields(line).items() if k in ('action', 'reason', 'up', 'down', 'balanced', 'disabled')})
+            report['rows'].append({k: v for k, v in fields(line).items() if k in ('action', 'reason', 'up', 'down', 'balanced', 'disabled', 'armed_by')})
         elif line.startswith('RESULT '):
             report['result'] = dict(fields(line), verdict=line.split()[-1])
     report['check_count'] = len(report['checks'])
@@ -74,9 +74,12 @@ def accept(report):
     assert result and result['verdict'] == 'PASS' and not report['failed_checks'], report['failed_checks']
     assert result['checks'] == report['check_count'] == EXPECTED_CHECKS, (result, report['check_count'])
     assert report['count'] and report['count']['initial_after_hide'] == -1, report['count']
-    fired = [(r['up'], r['down'], r['balanced']) for r in report['rows'] if r.get('action') == 'fired']
-    # The synthetic firing, optionally the real-gate firing (balanced), then the -2 mismatch.
-    assert fired[0] == (0, -1, 1) and fired[-1] == (-1, -2, 0) and all(f == (0, -1, 1) for f in fired[1:-1]) and len(fired) in (2, 3), fired
+    fired = [(r['up'], r['down'], r['balanced'], r.get('armed_by')) for r in report['rows'] if r.get('action') == 'fired']
+    # The launch firing, the synthetic activation firing, optionally the real-gate firing (balanced), then the -2 mismatch.
+    assert fired[0] == (0, -1, 1, 'launch') and fired[1] == (0, -1, 1, 'activate') and fired[-1] == (-1, -2, 0, 'activate'), fired
+    assert all(f == (0, -1, 1, 'activate') for f in fired[1:-1]) and len(fired) in (3, 4), fired
+    refused = [(r['reason'], r.get('armed_by')) for r in report['rows'] if r.get('action') == 'refused']
+    assert refused[:2] == [('foreground', 'launch'), ('foreground', 'activate')], refused
     assert report['real_gates'] is not None and report['real_gates']['show_count'] == -1, report['real_gates']
 
 

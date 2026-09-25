@@ -124,3 +124,23 @@ first device's hooks. Measured: clean build 0 warnings; `check_no_x87.py` PASS, 
 15 tests OK; `run_cursor_reassert.py` (bottle X3) PASS 36/36, 8.9 s, exe `71300add…`, attach row
 `installed=1 ... pinned=1`, second attach `device=2 installed=0 reason=already_hooked
 hooked_device=1`. The window fixture was not rerun (window_mode sources unchanged).
+
+## 2026-09-25: launch arm and first-Present trace flush (not flown)
+
+Run 83 A (run323, `verification/results/run323-run83a-launch1-3/cursor_launch.sh` and
+`cursor_launch_out.txt`): foreground from frame 0, cursor flags 0 from frame 2, first
+re-activation at frame 139, so nothing armed the re-assert at launch and the trace showed
+nothing before frame 109. Change (design section 3.3 "Launch arm"): the first complete hook
+installation per process arms the machine once (`armed_by=launch`); an arming message replaces
+a pending launch arm; `--window-trace` flushes at the device's first Present
+(`reason=first_present`) and starts a snapshot burst there. Measured in the worktree at
+f19f31ab + diff: clean build 0 warnings; `check_no_x87.py` 690 reachable, 0 violations (DLL
+`557d638b…`); test_cursor_reassert + test_window_options + test_window_mode 16 tests OK
+(new: launch twin, launch in the seeded random script and the compiled-core comparison);
+`run_cursor_reassert.py` (bottle X3) PASS 42/42 (was 36), 9.8 s, exe `fc7bc734…`: attach row
+`launch_arm=1`; first Present `reason=first_present written=2` with `cursor_snapshot burst=0`;
+launch arm with foreground false refused at its 120th frame (`armed_by=launch`, 0 fires);
+a launch arm with the gates holding fired once `armed_by=launch up=0 down=-1 balanced=1`,
+end state and last error unchanged, no second fire; a later `WM_ACTIVATE` replaced a pending
+launch arm (fresh 120-frame window) and fired `armed_by=activate`; real-gate witness fired
+balanced. `dry_runs.py`: unchanged mapping (trace+reassert 1/1 with both variables).

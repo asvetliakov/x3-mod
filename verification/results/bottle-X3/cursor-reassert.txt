@@ -10,80 +10,95 @@ DRAIN case=past_capacity n=64 dropped=36 set=100 first=48 newest=111
 CHECK drain_past_capacity_dropped PASS
 CHECK light_row_last_error_kept PASS
 CHECK drain_empty_after PASS
-LOG cursor_reassert_mode requested=1 window_frames=120 arm=WM_ACTIVATE_active,WM_ACTIVATEAPP_on gates=thread,foreground,visible,cursor_hidden,pointer_in_client_or_clip sequence=set_arrow,show_true,show_false,set_previous disable_on_mismatch=1
-LOG window_trace_scope requested=1 enabled=1 telemetry=1 reason=ok hooks=callwndproc,callwndprocret,getmessage cursor_iat=0 snapshot_frames=120 ring=1024 ring_ms=4000 setcursor_ms=250 excludes=dinput_user32,cocoa
+LOG cursor_reassert_mode requested=1 window_frames=120 arm=launch_once,WM_ACTIVATE_active,WM_ACTIVATEAPP_on gates=thread,foreground,visible,cursor_hidden,pointer_in_client_or_clip sequence=set_arrow,show_true,show_false,set_previous disable_on_mismatch=1
+LOG window_trace_scope requested=1 enabled=1 telemetry=1 reason=ok hooks=callwndproc,callwndprocret,getmessage cursor_iat=0 snapshot_frames=120 ring=1024 ring_ms=4000 setcursor_ms=250 flush=first_present,transition,marker excludes=dinput_user32,cocoa
 CHECK options_enabled PASS
 CHECK probe_window PASS
-LOG window_trace_hooks device=1 window=00010058 window_thread=212 render_thread=212 installed=1 reason=ok error=0 trace=1 reassert=1 call=1 ret=1 get=1 pinned=1
+LOG window_trace_hooks device=1 window=00010058 window_thread=208 render_thread=208 installed=1 reason=ok error=0 trace=1 reassert=1 call=1 ret=1 get=1 pinned=1 launch_arm=1
 CHECK hooks_installed PASS
-LOG window_trace_hooks device=2 window=00010058 installed=0 reason=already_hooked hooked_device=1 hook_thread=212 thread=212
+LOG window_trace_hooks device=2 window=00010058 installed=0 reason=already_hooked hooked_device=1 hook_thread=208 thread=208
 CHECK second_device_logged_already_hooked PASS
 CHECK callwndprocret_sees_result PASS
 CHECK handler_last_error_kept PASS
 CHECK message_count_matches PASS
-CHECK inactive_does_not_arm PASS
-CHECK activate_arms_once PASS
+CHECK launch_armed_at_attach PASS
 COUNT initial_after_hide=-1
 CHECK game_state_count_minus_one PASS
-LOG cursor_reassert_arm frame=101 hwnd=00010058 message=WM_ACTIVATE arms=1 tick_ms=2023188455
+LOG cursor_reassert_arm frame=101 hwnd=00010058 armed_by=launch message=none arms=1 tick_ms=2027492106
+LOG window_msg seq=1 depth=0 frame=0 tick_ms=2027492114 hwnd=00010058 msg=0020 name=WM_SETCURSOR wparam=00010058 hit=2 trigger=0200 result=00000001 suppressed=0
+LOG window_msg_frame frame=0 tick_ms=2027492115 mousemove=0 ncmousemove=0 setcursor=1 cursor_set=0 cursor_pos=0 cursor_dropped=0
+LOG window_trace_flush frame=101 reason=first_present written=2 expired=0 overwritten=0
+LOG cursor_snapshot device=1 frame=101 burst=0 foreground=00000000 focus=00000000 active=00000000 capture=00000000 visible=0 iconic=0 style=84000000 exstyle=00000000 cursor_ok=1 cursor_flags=1 cursor=00000000 x=1674 y=1280 clip_ok=1 clip=-1512,0,5120,1440 window_rect=0,0,320,200 client_origin=0,0 client_size=320,200 monitor_ok=1 monitor=0,0,5120,1440 work=0,31,5120,1440
+CHECK first_present_flush_and_snapshot PASS
+LOG cursor_reassert frame=220 hwnd=00010058 action=refused reason=foreground window_frames=120 refusals=1 armed_by=launch
+CHECK launch_not_foreground_refused PASS
+LOG cursor_reassert_arm frame=221 hwnd=00010058 armed_by=launch message=none arms=2 tick_ms=2027492115
+LOG cursor_reassert frame=221 hwnd=00010058 action=fired armed_by=launch before_flags=1 before_cursor=00000000 previous=00000000 arrow=00010054 up=0 down=-1 after_flags=1 after_cursor=00000000 clip_ok=1 clip=-1512,0,5120,1440 pointer_in_client=1 clip_is_client=0 balanced=1 disabled=0 fires=1 message=none
+CHECK launch_fires_once_balanced PASS
+CHECK launch_no_second_fire PASS
+CHECK inactive_does_not_arm PASS
+LOG cursor_reassert_arm frame=223 hwnd=00010058 armed_by=launch message=none arms=3 tick_ms=2027492116
+CHECK activate_replaces_pending_launch_arm PASS
+CHECK activate_arms_once PASS
+LOG cursor_reassert_arm frame=224 hwnd=00010058 armed_by=activate message=WM_ACTIVATE arms=4 tick_ms=2027492116
 CHECK waits_while_gate_fails PASS
-LOG cursor_reassert frame=106 hwnd=00010058 action=fired armed_by=WM_ACTIVATE before_flags=1 before_cursor=00000000 previous=00000000 arrow=00010054 up=0 down=-1 after_flags=1 after_cursor=00000000 clip_ok=1 clip=-1512,0,5120,1440 pointer_in_client=1 clip_is_client=0 balanced=1 disabled=0 fires=1
+LOG cursor_reassert frame=229 hwnd=00010058 action=fired armed_by=activate before_flags=1 before_cursor=00000000 previous=00000000 arrow=00010054 up=0 down=-1 after_flags=1 after_cursor=00000000 clip_ok=1 clip=-1512,0,5120,1440 pointer_in_client=1 clip_is_client=0 balanced=1 disabled=0 fires=2 message=WM_ACTIVATE
 CHECK fires_once_balanced PASS
 CHECK win32_end_state_equals_start PASS
 CHECK no_second_fire PASS
-CURSOR start_flags=1 start_cursor=00000000 end_flags=1 end_cursor=00000000 x=4255 y=853
+CURSOR start_flags=1 start_cursor=00000000 end_flags=1 end_cursor=00000000 x=1674 y=1280
 CHECK real_sequence_hidden PASS
 CHECK real_sequence_count_zero PASS
-LOG cursor_reassert_arm frame=108 hwnd=00010058 message=WM_ACTIVATE arms=2 tick_ms=2023188457
-LOG cursor_reassert frame=227 hwnd=00010058 action=refused reason=foreground window_frames=120 refusals=1
+LOG cursor_reassert_arm frame=231 hwnd=00010058 armed_by=activate message=WM_ACTIVATE arms=5 tick_ms=2027492117
+LOG cursor_reassert frame=350 hwnd=00010058 action=refused reason=foreground window_frames=120 refusals=2 armed_by=activate
 CHECK refuses_after_window PASS
-LOG cursor_reassert_arm frame=228 hwnd=00010058 message=WM_ACTIVATEAPP arms=3 tick_ms=2023188475
-LOG cursor_reassert frame=228 hwnd=00010058 action=fired armed_by=WM_ACTIVATEAPP before_flags=0 before_cursor=00000000 previous=00000000 arrow=00010054 up=0 down=-1 after_flags=0 after_cursor=00000000 clip_ok=1 clip=-1512,0,5120,1440 pointer_in_client=1 clip_is_client=0 balanced=1 disabled=0 fires=2
+LOG cursor_reassert_arm frame=351 hwnd=00010058 armed_by=activate message=WM_ACTIVATEAPP arms=6 tick_ms=2027492131
+LOG cursor_reassert frame=351 hwnd=00010058 action=fired armed_by=activate before_flags=0 before_cursor=00000000 previous=00000000 arrow=00010054 up=0 down=-1 after_flags=0 after_cursor=00000000 clip_ok=1 clip=-1512,0,5120,1440 pointer_in_client=1 clip_is_client=0 balanced=1 disabled=0 fires=3 message=WM_ACTIVATEAPP
 REAL_GATES same_thread=1 foreground=1 visible=1 cursor_ok=1 cursor_flags=0 show_count=-1 cursor_hidden=1 pointer_in_client=1 clip_is_client=0 armed_by_show=1 step=fired state=idle
 CHECK real_gates_collected PASS
 CHECK real_present_end_state_unchanged PASS
-LOG cursor_reassert_arm frame=229 hwnd=00010058 message=WM_ACTIVATE arms=4 tick_ms=2023189102
-LOG cursor_reassert frame=229 hwnd=00010058 action=fired armed_by=WM_ACTIVATE before_flags=0 before_cursor=00000000 previous=00000000 arrow=00010054 up=-1 down=-2 after_flags=0 after_cursor=00000000 clip_ok=1 clip=-1512,0,5120,1440 pointer_in_client=1 clip_is_client=0 balanced=0 disabled=1 fires=3
+LOG cursor_reassert_arm frame=352 hwnd=00010058 armed_by=activate message=WM_ACTIVATE arms=7 tick_ms=2027492734
+LOG cursor_reassert frame=352 hwnd=00010058 action=fired armed_by=activate before_flags=0 before_cursor=00000000 previous=00000000 arrow=00010054 up=-1 down=-2 after_flags=0 after_cursor=00000000 clip_ok=1 clip=-1512,0,5120,1440 pointer_in_client=1 clip_is_client=0 balanced=0 disabled=1 fires=4 message=WM_ACTIVATE
 CHECK mismatch_disables PASS
 CHECK disabled_never_rearms PASS
-LOG window_msg seq=1 depth=0 frame=0 tick_ms=2023188455 hwnd=00010058 msg=0006 name=WM_ACTIVATE wparam=00000000 lparam=00000000 result=00000000
-LOG window_msg seq=2 depth=0 frame=0 tick_ms=2023188456 hwnd=00010058 msg=0006 name=WM_ACTIVATE wparam=00000001 lparam=00000000 result=00000000
-LOG window_msg seq=3 depth=0 frame=0 tick_ms=2023188456 hwnd=00010058 msg=001c name=WM_ACTIVATEAPP wparam=00000001 lparam=00000000 result=00000000
-LOG window_msg seq=4 depth=0 frame=0 tick_ms=2023188457 hwnd=00010058 msg=0006 name=WM_ACTIVATE wparam=00000002 lparam=00000000 result=00000000
-LOG window_msg seq=5 depth=0 frame=0 tick_ms=2023188475 hwnd=00010058 msg=001c name=WM_ACTIVATEAPP wparam=00000001 lparam=00000000 result=00000000
-LOG window_msg seq=6 depth=0 frame=0 tick_ms=2023188476 hwnd=0001005c msg=001c name=WM_ACTIVATEAPP wparam=00000001 lparam=00000000 result=00000000
-LOG window_msg seq=7 depth=0 frame=0 tick_ms=2023188477 hwnd=00010058 msg=0006 name=WM_ACTIVATE wparam=00000001 lparam=00000000 result=00000000
-LOG window_msg seq=8 depth=3 frame=0 tick_ms=2023188540 hwnd=0001006c msg=0005 name=WM_SIZE wparam=00000000 lparam=00010001 result=00000000
-LOG window_msg seq=9 depth=3 frame=0 tick_ms=2023188540 hwnd=0001006c msg=0003 name=WM_MOVE wparam=00000000 lparam=00000000 result=00000000
-LOG window_msg seq=10 depth=3 frame=0 tick_ms=2023188541 hwnd=0001006c msg=0047 name=WM_WINDOWPOSCHANGED wparam=00000000 lparam=0022ebbc result=00000000
-LOG window_msg seq=11 depth=0 frame=0 tick_ms=2023188544 hwnd=00010058 msg=0007 name=WM_SETFOCUS wparam=00000000 lparam=00000000 result=00000000
-LOG window_msg seq=12 depth=1 frame=0 tick_ms=2023188546 hwnd=00010058 msg=0003 name=WM_MOVE wparam=00000000 lparam=02f10fff result=00000000
-LOG window_msg seq=13 depth=0 frame=0 tick_ms=2023188546 hwnd=00010058 msg=0047 name=WM_WINDOWPOSCHANGED wparam=00000000 lparam=0022f62c result=00000000
-LOG window_msg seq=14 depth=0 frame=0 tick_ms=2023189093 hwnd=00010058 msg=0047 name=WM_WINDOWPOSCHANGED wparam=00000000 lparam=0022f62c result=00000000
-LOG window_msg seq=15 depth=0 frame=0 tick_ms=2023189094 hwnd=00010058 msg=0006 name=WM_ACTIVATE wparam=00000000 lparam=00000000 result=00000000
-LOG window_msg seq=16 depth=0 frame=0 tick_ms=2023189095 hwnd=00010058 msg=001c name=WM_ACTIVATEAPP wparam=00000000 lparam=00000000 result=00000000
-LOG window_msg seq=17 depth=0 frame=0 tick_ms=2023189096 hwnd=0001006c msg=001c name=WM_ACTIVATEAPP wparam=00000000 lparam=00000000 result=00000000
-LOG window_msg seq=18 depth=0 frame=0 tick_ms=2023189097 hwnd=0001005c msg=001c name=WM_ACTIVATEAPP wparam=00000000 lparam=00000000 result=00000000
-LOG window_msg seq=19 depth=0 frame=0 tick_ms=2023189098 hwnd=00010058 msg=0008 name=WM_KILLFOCUS wparam=00000000 lparam=00000000 result=00000000
-LOG window_msg seq=20 depth=0 frame=0 tick_ms=2023189102 hwnd=00010058 msg=0006 name=WM_ACTIVATE wparam=00000001 lparam=00000000 result=00000000
-LOG window_msg seq=21 depth=0 frame=0 tick_ms=2023189103 hwnd=00010058 msg=0006 name=WM_ACTIVATE wparam=00000001 lparam=00000000 result=00000000
-LOG window_trace_flush frame=230 reason=transition written=21 expired=0 overwritten=0
-LOG cursor_snapshot device=1 frame=230 burst=0 foreground=00000000 focus=00000000 active=00000000 capture=00000000 visible=0 iconic=0 style=84000000 exstyle=00000000 cursor_ok=1 cursor_flags=1 cursor=00000000 x=4260 y=812 clip_ok=1 clip=-1512,0,5120,1440 window_rect=4095,753,4415,953 client_origin=4095,753 client_size=320,200 monitor_ok=1 monitor=0,0,5120,1440 work=0,31,5120,1440
+LOG window_msg seq=2 depth=0 frame=101 tick_ms=2027492116 hwnd=00010058 msg=0006 name=WM_ACTIVATE wparam=00000000 lparam=00000000 result=00000000
+LOG window_msg seq=3 depth=0 frame=101 tick_ms=2027492116 hwnd=00010058 msg=0006 name=WM_ACTIVATE wparam=00000001 lparam=00000000 result=00000000
+LOG window_msg seq=4 depth=0 frame=101 tick_ms=2027492117 hwnd=00010058 msg=001c name=WM_ACTIVATEAPP wparam=00000001 lparam=00000000 result=00000000
+LOG window_msg seq=5 depth=0 frame=101 tick_ms=2027492118 hwnd=00010058 msg=0006 name=WM_ACTIVATE wparam=00000002 lparam=00000000 result=00000000
+LOG window_msg seq=6 depth=0 frame=101 tick_ms=2027492132 hwnd=00010058 msg=001c name=WM_ACTIVATEAPP wparam=00000001 lparam=00000000 result=00000000
+LOG window_msg seq=7 depth=0 frame=101 tick_ms=2027492133 hwnd=0001005c msg=001c name=WM_ACTIVATEAPP wparam=00000001 lparam=00000000 result=00000000
+LOG window_msg seq=8 depth=0 frame=101 tick_ms=2027492134 hwnd=00010058 msg=0006 name=WM_ACTIVATE wparam=00000001 lparam=00000000 result=00000000
+LOG window_msg seq=9 depth=3 frame=101 tick_ms=2027492182 hwnd=0001006c msg=0005 name=WM_SIZE wparam=00000000 lparam=00010001 result=00000000
+LOG window_msg seq=10 depth=3 frame=101 tick_ms=2027492183 hwnd=0001006c msg=0003 name=WM_MOVE wparam=00000000 lparam=00000000 result=00000000
+LOG window_msg seq=11 depth=3 frame=101 tick_ms=2027492184 hwnd=0001006c msg=0047 name=WM_WINDOWPOSCHANGED wparam=00000000 lparam=0022eb9c result=00000000
+LOG window_msg seq=12 depth=0 frame=101 tick_ms=2027492186 hwnd=00010058 msg=0007 name=WM_SETFOCUS wparam=00000000 lparam=00000000 result=00000000
+LOG window_msg seq=13 depth=1 frame=101 tick_ms=2027492189 hwnd=00010058 msg=0003 name=WM_MOVE wparam=00000000 lparam=049c05ea result=00000000
+LOG window_msg seq=14 depth=0 frame=101 tick_ms=2027492189 hwnd=00010058 msg=0047 name=WM_WINDOWPOSCHANGED wparam=00000000 lparam=0022f60c result=00000000
+LOG window_msg seq=15 depth=0 frame=101 tick_ms=2027492724 hwnd=00010058 msg=0047 name=WM_WINDOWPOSCHANGED wparam=00000000 lparam=0022f60c result=00000000
+LOG window_msg seq=16 depth=0 frame=101 tick_ms=2027492726 hwnd=00010058 msg=0006 name=WM_ACTIVATE wparam=00000000 lparam=00000000 result=00000000
+LOG window_msg seq=17 depth=0 frame=101 tick_ms=2027492727 hwnd=00010058 msg=001c name=WM_ACTIVATEAPP wparam=00000000 lparam=00000000 result=00000000
+LOG window_msg seq=18 depth=0 frame=101 tick_ms=2027492728 hwnd=0001006c msg=001c name=WM_ACTIVATEAPP wparam=00000000 lparam=00000000 result=00000000
+LOG window_msg seq=19 depth=0 frame=101 tick_ms=2027492729 hwnd=0001005c msg=001c name=WM_ACTIVATEAPP wparam=00000000 lparam=00000000 result=00000000
+LOG window_msg seq=20 depth=0 frame=101 tick_ms=2027492730 hwnd=00010058 msg=0008 name=WM_KILLFOCUS wparam=00000000 lparam=00000000 result=00000000
+LOG window_msg seq=21 depth=0 frame=101 tick_ms=2027492734 hwnd=00010058 msg=0006 name=WM_ACTIVATE wparam=00000001 lparam=00000000 result=00000000
+LOG window_msg seq=22 depth=0 frame=101 tick_ms=2027492735 hwnd=00010058 msg=0006 name=WM_ACTIVATE wparam=00000001 lparam=00000000 result=00000000
+LOG window_trace_flush frame=353 reason=transition written=21 expired=0 overwritten=0
+LOG cursor_snapshot device=1 frame=353 burst=0 foreground=00000000 focus=00000000 active=00000000 capture=00000000 visible=0 iconic=0 style=84000000 exstyle=00000000 cursor_ok=1 cursor_flags=1 cursor=00000000 x=1674 y=1280 clip_ok=1 clip=-1512,0,5120,1440 window_rect=1514,1180,1834,1380 client_origin=1514,1180 client_size=320,200 monitor_ok=1 monitor=0,0,5120,1440 work=0,31,5120,1440
 CHECK flush_on_transition PASS
-LOG window_msg seq=22 depth=0 frame=230 tick_ms=2023189106 hwnd=00010058 msg=0020 name=WM_SETCURSOR wparam=00010058 hit=1 trigger=0200 result=00000001 suppressed=0
-LOG window_msg_frame frame=230 tick_ms=2023189110 mousemove=3 ncmousemove=0 setcursor=5 cursor_set=0 cursor_pos=0 cursor_dropped=0
-LOG window_msg seq=23 depth=0 frame=231 tick_ms=2023189110 hwnd=00010058 msg=0005 name=WM_SIZE wparam=00000000 lparam=00c80140 result=00000000
-LOG window_trace_flush frame=232 reason=transition written=3 expired=0 overwritten=0
-LOG cursor_snapshot device=1 frame=232 burst=0 foreground=00000000 focus=00000000 active=00000000 capture=00000000 visible=0 iconic=0 style=84000000 exstyle=00000000 cursor_ok=1 cursor_flags=1 cursor=00000000 x=4260 y=812 clip_ok=1 clip=-1512,0,5120,1440 window_rect=4095,753,4415,953 client_origin=4095,753 client_size=320,200 monitor_ok=1 monitor=0,0,5120,1440 work=0,31,5120,1440
+LOG window_msg seq=23 depth=0 frame=353 tick_ms=2027492738 hwnd=00010058 msg=0020 name=WM_SETCURSOR wparam=00010058 hit=1 trigger=0200 result=00000001 suppressed=0
+LOG window_msg_frame frame=353 tick_ms=2027492742 mousemove=3 ncmousemove=0 setcursor=5 cursor_set=0 cursor_pos=0 cursor_dropped=0
+LOG window_msg seq=24 depth=0 frame=354 tick_ms=2027492742 hwnd=00010058 msg=0005 name=WM_SIZE wparam=00000000 lparam=00c80140 result=00000000
+LOG window_trace_flush frame=355 reason=transition written=3 expired=0 overwritten=0
+LOG cursor_snapshot device=1 frame=355 burst=0 foreground=00000000 focus=00000000 active=00000000 capture=00000000 visible=0 iconic=0 style=84000000 exstyle=00000000 cursor_ok=1 cursor_flags=1 cursor=00000000 x=1674 y=1280 clip_ok=1 clip=-1512,0,5120,1440 window_rect=1514,1180,1834,1380 client_origin=1514,1180 client_size=320,200 monitor_ok=1 monitor=0,0,5120,1440 work=0,31,5120,1440
 CHECK no_flush_without_transition PASS
 CHECK setcursor_summary_and_frame_counts PASS
-LOG window_trace_flush frame=233 reason=marker written=0 expired=0 overwritten=0
+LOG window_trace_flush frame=356 reason=marker written=0 expired=0 overwritten=0
 CHECK flush_on_marker PASS
-LOG window_trace_flush frame=233 reason=device_destroy written=0 expired=0 overwritten=0
+LOG window_trace_flush frame=356 reason=device_destroy written=0 expired=0 overwritten=0
 LOG window_trace_hooks device=1 removed=1 call=1 ret=1 get=1
 CHECK unhook_all_true PASS
 CHECK nothing_observed_after_removal PASS
-RESULT checks=36 failed=0 PASS
+RESULT checks=42 failed=0 PASS
 
 --- stderr (tail) ---
 msync: bootstrapped mach port on wine-2505746-msync.

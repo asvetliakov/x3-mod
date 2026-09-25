@@ -13,8 +13,9 @@
 // WH_GETMESSAGE (posted WM_MOUSEMOVE / WM_NCMOUSEMOVE counts). The hook
 // procedures keep the thread's last error and MXCSR (LightCallBoundary), make
 // no Win32 call besides CallNextHookEx and GetTickCount, and never log: they
-// write a bounded ring (1024 entries) that the Present flushes on a
-// transition message to the device window or the Ctrl+Shift+F7 marker (entries
+// write a bounded ring (1024 entries) that the Present flushes at the device's
+// first Present (reason=first_present), on a transition message to the device
+// window or the Ctrl+Shift+F7 marker (entries
 // older than 4 s are dropped); messages to the thread's other windows (the
 // fixture saw one, not identified) are rows, not transitions, and never arm cursor_reassert.
 // Removed at device destruction and at DLL detach.
@@ -22,7 +23,9 @@
 // Rows: window_trace_scope (once), window_trace_hooks (install / remove),
 // window_msg, window_msg_frame, cursor_call (the EXE's SetCursor/SetCursorPos
 // imports through the light IAT rows), window_trace_flush, and cursor_snapshot
-// (change-only, every Present for 120 frames after a transition). dinput's own
+// (change-only, every Present for 120 frames after the first Present and after
+// each transition). The first complete installation per process also arms
+// cursor_reassert once (armed_by=launch). dinput's own
 // ShowCursor/ClipCursor and the Cocoa cursor are not instrumented (labelled in
 // window_trace_scope). The trace never shows, hides, warps or captures.
 namespace x3m::window_trace {

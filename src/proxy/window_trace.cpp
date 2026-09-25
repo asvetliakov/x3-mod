@@ -52,6 +52,11 @@ constexpr unsigned ring_capacity = 1024; // 4 s of per-frame entries at 240 fps 
 Entry ring_[ring_capacity];
 std::uint32_t ring_next_ = 0, overwritten_ = 0, message_seq_ = 0;
 bool transition_pending_ = false;
+// Set when the hooks are installed with the trace on: the device's first Present flushes
+// the ring (the entries since device creation) and starts a snapshot burst, as a transition does.
+bool first_present_pending_ = false;
+// cursor_reassert's launch arm: once per process, at the first complete installation.
+bool launch_armed_ = false;
 core::SetCursorSummary setcursor_;
 std::uint32_t frame_mousemove_ = 0, frame_ncmousemove_ = 0, frame_setcursor_ = 0;
 std::uint32_t cursor_seen_ = 0;
@@ -186,7 +191,7 @@ void initialize(bool telemetry, CursorSource source) {
     cursor_source_ = enabled_ ? source : nullptr;
     if (requested_)
         log("window_trace_scope requested=1 enabled=%u telemetry=%u reason=%s hooks=callwndproc,callwndprocret,getmessage cursor_iat=%u snapshot_frames=%u ring=%u ring_ms=%u "
-            "setcursor_ms=%u excludes=dinput_user32,cocoa",
+            "setcursor_ms=%u flush=first_present,transition,marker excludes=dinput_user32,cocoa",
             unsigned(enabled_), unsigned(telemetry), enabled_ ? "ok" : "telemetry_off", unsigned(cursor_source_ != nullptr), core::snapshot_frames, ring_capacity,
             core::ring_ms, core::setcursor_interval_ms);
 }
@@ -201,7 +206,7 @@ void attach(HWND window, unsigned long long device) {
         // Hooks left by an off-thread final Release: removed here, on their installing thread, then reinstalled below.
         const HHOOK get = take(get_hook_), ret = take(ret_hook_), call = take(call_hook_);
         const BOOL unhooked = (!get || UnhookWindowsHookEx(get)) && (!ret || UnhookWindowsHookEx(ret)) && (!call || UnhookWindowsHookEx(call));
-        observed_.installed = false; orphaned_ = false; burst_left_ = 0; transition_pending_ = false;
+        observed_.installed = false; orphaned_ = false; burst_left_ = 0; transition_pending_ = false; first_present_pending_ = false;
         log("window_trace_hooks device=%llu removed=1 reason=orphaned_by_foreign_release result=%d", device, int(unhooked));
     }
     if (observed_.installed) {
@@ -236,15 +241,19 @@ void attach(HWND window, unsigned long long device) {
     }
     observed_.installed = complete;
     if (complete) hook_device_ = device;
+    if (complete && enabled_) first_present_pending_ = true;
+    const bool launch_arm = complete && reassert && !launch_armed_;
+    if (launch_arm) { launch_armed_ = true; cursor_reassert::arm_launch(); }
     if (complete && !pinned_) {
         HMODULE self = nullptr;
         pinned_ = GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_PIN,
                                      reinterpret_cast<LPCWSTR>(&x3m_window_hook_call), &self) != FALSE && self != nullptr;
     }
-    log("window_trace_hooks device=%llu window=%p window_thread=%lu render_thread=%lu installed=%u reason=%s error=%lu trace=%u reassert=%u call=%u ret=%u get=%u pinned=%u",
+    log("window_trace_hooks device=%llu window=%p window_thread=%lu render_thread=%lu installed=%u reason=%s error=%lu trace=%u reassert=%u call=%u ret=%u get=%u pinned=%u "
+        "launch_arm=%u",
         device, static_cast<void*>(window), static_cast<unsigned long>(window_thread), static_cast<unsigned long>(thread), unsigned(complete),
         complete ? "ok" : "set_hook_failed", static_cast<unsigned long>(error), unsigned(enabled_), unsigned(reassert && complete),
-        unsigned(call_hook_ != nullptr), unsigned(ret_hook_ != nullptr), unsigned(get_hook_ != nullptr), unsigned(pinned_));
+        unsigned(call_hook_ != nullptr), unsigned(ret_hook_ != nullptr), unsigned(get_hook_ != nullptr), unsigned(pinned_), unsigned(launch_arm));
     SetLastError(saved_error);
 }
 void detach(unsigned long long device) {
@@ -265,7 +274,7 @@ void detach(unsigned long long device) {
     observed_.unhook_ret = ret ? UnhookWindowsHookEx(ret) : FALSE;
     observed_.unhook_call = call ? UnhookWindowsHookEx(call) : FALSE;
     observed_.installed = false;
-    burst_left_ = 0;
+    burst_left_ = 0; first_present_pending_ = false;
     if (enabled_) flush("device_destroy", current_frame_); // the last transitions before the device went
     log("window_trace_hooks device=%llu removed=1 call=%d ret=%d get=%d", device, int(observed_.unhook_call), int(observed_.unhook_ret),
         int(observed_.unhook_get));
@@ -304,10 +313,10 @@ void present(HWND window, unsigned long long device, unsigned long long frame, u
         }
         const bool marker = markers != markers_seen_;
         markers_seen_ = markers;
-        if (transition_pending_ || marker) {
-            flush(transition_pending_ ? "transition" : "marker", frame);
-            if (transition_pending_) { burst_left_ = core::snapshot_frames; burst_index_ = 0; }
-            transition_pending_ = false;
+        if (first_present_pending_ || transition_pending_ || marker) {
+            flush(first_present_pending_ ? "first_present" : transition_pending_ ? "transition" : "marker", frame);
+            if (first_present_pending_ || transition_pending_) { burst_left_ = core::snapshot_frames; burst_index_ = 0; }
+            first_present_pending_ = transition_pending_ = false;
         }
         if (burst_left_ && window) { snapshot(window, device, frame); --burst_left_; }
     }
