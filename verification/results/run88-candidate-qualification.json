@@ -1,0 +1,3488 @@
+{
+ "schema": 1,
+ "candidate": {
+  "commit": "79aafc8b",
+  "commit_full": "79aafc8b4484bfdffda4d208adab2cb9b006422a",
+  "branch": "main (detached worktree)",
+  "checkout": "/tmp/x3-run88-candidate/src",
+  "source_clean": true,
+  "source_clean_note": "detached worktree /tmp/x3-run88-candidate/src at 79aafc8b (verification/probe/build/ created first); git status --short empty before the build (0 lines). Runner rewrites of tracked results were copied to /tmp/x3-run88-candidate/results-<tag>/ (lists rewritten-<tag>.txt: motion 46, loadtrace 5, meshhook 7, crypt 2, resreader 2, intervals 65, cursor 2, integration 11) and restored by /tmp/x3-run88-candidate/save_restore.sh; temporal-lattice.txt and temporal-pass-summary.json copied to /tmp/x3-run88-candidate and restored by git checkout. git status --short --untracked-files=all empty after every step and at the end.",
+  "source_clean_after": true,
+  "dll": "/tmp/x3-run88-candidate/build/d3d9.dll",
+  "sha256": "6fe194bdcd83e39fb45e71196c8c1815c030f8e05474aa7866264a510b3a07be",
+  "bytes": 56886757,
+  "embedded_marker": "X3M_SOURCE_COMMIT=79aafc8b4484bfdffda4d208adab2cb9b006422a",
+  "embedded_marker_check": "strings -a /tmp/x3-run88-candidate/build/d3d9.dll | grep X3M_SOURCE_COMMIT",
+  "configuration": "RelWithDebInfo",
+  "toolchain": "cmake/mingw-i686.cmake",
+  "toolchain_versions": {
+   "i686-w64-mingw32-gcc": "16.2.0",
+   "binutils_ld": "2.47.20260726",
+   "cmake": "4.4.3"
+  },
+  "python3": "/usr/bin/python3",
+  "build_commands": [
+   "cmake -S . -B /tmp/x3-run88-candidate/build -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DPython3_EXECUTABLE=/usr/bin/python3",
+   "cmake --build /tmp/x3-run88-candidate/build -j4"
+  ],
+  "build_seconds": 45,
+  "build_seconds_note": "configure + build, fresh build directory",
+  "build_warnings": 0,
+  "build_warnings_check": "grep -ci warning /tmp/x3-run88-candidate/build.log -> 0",
+  "build_log_sha256": "9f4d2eecc327903e7521d5bdb0a09a3cea8647279891e0019b6c8838e617fd7f",
+  "dll_write_protected_after_build": true,
+  "supersedes": "Run87 candidate 22593133 (sha256 94c4ef42...)",
+  "sha256_recheck_after_fixtures": "6fe194bdcd83e39fb45e71196c8c1815c030f8e05474aa7866264a510b3a07be",
+  "fog_family_file_fixture": {
+   "exe": "/tmp/x3-run88-candidate/build/fog_family_file_fixture.exe",
+   "sha256": "e94e38dcfdeb567a251a71be3aa2d816f8f820b1ac94f3292448f1bc6cd16dac"
+  },
+  "size_versus_run87": "56,856,749 -> 56,886,757 bytes (+30008)"
+ },
+ "scope": "Run87 + shadow pop fix + mesh-adjacency fast without telemetry + promoted launcher defaults. 22593133..79aafc8b: (1) 79aafc8b: acquire_lens_depth() runs the sun-occlusion GetContainer under taa_call (motion_output_sun_occlusion_inc.h), taa_call clamps at 0 with one taa_references_underflow row (motion_output.cpp/.h), 64-bit final-Release probe sum and the rate-limited shadow_retention_probe row (capture.cpp release_device), motion case n_route_lifecycle; (2) 30eecc51: X3M_MESH_ADJACENCY read and arming in mesh_adjacency_fast.{h,cpp} (fast arms without telemetry), loading_trace.cpp/.h, capture.cpp gates loading_trace::initialize on mesh_adjacency_requested(); (3) 2356ba68: tools/manage.py only: the empty modded launch = the accepted stand set minus telemetry, cascade sizes 2048,4096,4096,2048,2048, capture off by default (999999/8/300), music keep and alpha casters on. No EXE patch site changed.",
+ "changed_files_src": [
+  "src/proxy/capture.cpp",
+  "src/proxy/loading_trace.cpp",
+  "src/proxy/loading_trace.h",
+  "src/proxy/mesh_adjacency_fast.cpp",
+  "src/proxy/mesh_adjacency_fast.h",
+  "src/proxy/motion_output.cpp",
+  "src/proxy/motion_output.h",
+  "src/proxy/motion_output_shadow_retention_inc.h",
+  "src/proxy/motion_output_sun_occlusion_inc.h"
+ ],
+ "changed_files_other_dll_relevant": [
+  "tools/manage.py"
+ ],
+ "changed_files_command": "git diff --stat 22593133..79aafc8b -- src/ -> 9 files changed, 157 insertions(+), 19 deletions(-)",
+ "verdict": "DLL QUALIFIED at 79aafc8b: build 0 warnings; x87 119 roots / 690 reachable / 0 violations (Run87 values); PE imports 231 -> 232 functions from 15 DLLs (new: api-ms-win-crt-string-l1-1-0.dll!strcat; none removed), 17 exports equal to Run87; host suite 272 modules / 2824 tests / 0 failing; temporal 744/278 + lattice 598/90 (22 FAR_JITTER_LINE rows equal to Run87); motion 234 summary cases PASS (4 differing stable fields vs Run87, all four the shadow-retention cases that gained n_route_lifecycle: checks 12,055/12,052/8,304/12,202); loading trace 112/123/36,093/36,150, mesh cache hook 1,714/2,003/2,011/2,189/2,673/2,681, crypt cache 237, resource reader 4,721, loading intervals 8 cases, cursor 42/42, ownership integration 26 cases PASS; dry runs A-D exit 0 (A = the new --direct default). Reused with closures byte-identical to Run87: fog_family_file_fixture, fog_route_bridge, fov_patch, window_mode, sun_flare_fix, lod_occlusion_patch, cull_small_parts_fixture, chase_fire, gpu_sync_timing, sun_occlusion, cull_census, bloom_pass, fog_pass, ownership, ownership_admission, execution_ownership (run87_entry); ownership_integration_fallback refused by the pre-existing harness defect.",
+ "host_suite": {
+  "command": "/usr/bin/python3 verification/probe/run_host_suite.py",
+  "cwd": "/tmp/x3-run88-candidate/src",
+  "result": "PASS",
+  "modules": 272,
+  "tests": 2824,
+  "failing_modules": 0,
+  "failing": [],
+  "wall_seconds": 96.2,
+  "output": "/tmp/x3-run88-candidate/host-suite.out",
+  "versus_run87": "270/2,810 -> 272/2,824, 0 -> 0 failing"
+ },
+ "linked_audit": {
+  "command": "/usr/bin/python3 verification/probe/check_no_x87.py /tmp/x3-run88-candidate/build/d3d9.dll",
+  "result": "PASS",
+  "roots_count": 119,
+  "reachable_functions": 690,
+  "violations": 0,
+  "comparison": {
+   "run87": "119 roots / 690 reachable / 0 violations",
+   "run88": "119 roots / 690 reachable / 0 violations"
+  },
+  "import_delta": {
+   "command": "python3 verification/results/run70-candidate-audit.py pe /tmp/x3-run87-candidate/build/d3d9.dll /tmp/x3-run88-candidate/build/d3d9.dll",
+   "baseline_dll": "/tmp/x3-run87-candidate/build/d3d9.dll (sha256 94c4ef42..., rechecked equal to the Run87 record)",
+   "imported_dlls": [
+    15,
+    15
+   ],
+   "new_imported_dlls": [],
+   "removed_imported_dlls": [],
+   "total_imported_functions": {
+    "run87": 231,
+    "run88": 232
+   },
+   "per_function_delta": {
+    "new": [
+     "api-ms-win-crt-string-l1-1-0.dll!strcat"
+    ],
+    "removed": []
+   },
+   "reading": "strcat from the UCRT string forwarder (api-ms-win-crt-string-l1-1-0.dll), a documented CRT function on native Windows 10+ and the UCRT redistributable; no new DLL"
+  },
+  "exports": {
+   "count": 17,
+   "names_equal_run87": true,
+   "x3m_exports": []
+  }
+ },
+ "temporal_pass": {
+  "command": "cd /tmp/x3-run88-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run88-candidate/lock-timings-temporal.json python3 verification/probe/run_temporal_pass.py",
+  "why_run": "brief: rerun as the TAA fixture of the candidate; its include closure is byte-identical to Run87 (reuse-deps.json)",
+  "passed": true,
+  "exit_code": 0,
+  "result_line": "RESULT PASS numerical=744 state_restorations=278 generations=2",
+  "report": "verification/results/bottle-X3/temporal-pass.txt",
+  "report_identical_to_committed": true,
+  "far_camera_hold_program_slots": 1017,
+  "far_jitter_line_rows": 22,
+  "far_jitter_line_rows_equal_run87": true,
+  "lattice": {
+   "report": "verification/results/bottle-X3/temporal-lattice.txt (restored to committed; copy /tmp/x3-run88-candidate/temporal-lattice.txt)",
+   "sha256": "9e9228765a78dbb8b3be76c11731252fcd1cabd3b800e0361f9d8500403bc92a",
+   "result_line": "RESULT PASS numerical=598 state_restorations=90 lattice=1",
+   "failures": 0,
+   "fold_timing_5120x1440": [
+    {
+     "motion": "rest",
+     "config": "vote",
+     "mask_ms": "0.0000",
+     "box_ms": "1.0331",
+     "resolve_ms": "2.8041",
+     "taa_ms": "3.8675"
+    },
+    {
+     "motion": "rest",
+     "config": "both",
+     "mask_ms": "0.0000",
+     "box_ms": "1.0258",
+     "resolve_ms": "2.8675",
+     "taa_ms": "3.9102"
+    },
+    {
+     "motion": "rest",
+     "config": "thin_vote_off",
+     "mask_ms": "0.0000",
+     "box_ms": "0.8212",
+     "resolve_ms": "3.1505",
+     "taa_ms": "3.9908"
+    },
+    {
+     "motion": "pan",
+     "config": "vote",
+     "mask_ms": "0.0000",
+     "box_ms": "1.0237",
+     "resolve_ms": "2.8508",
+     "taa_ms": "3.8914"
+    },
+    {
+     "motion": "pan",
+     "config": "both",
+     "mask_ms": "0.0000",
+     "box_ms": "1.0154",
+     "resolve_ms": "2.8771",
+     "taa_ms": "3.9074"
+    },
+    {
+     "motion": "pan",
+     "config": "thin_vote_off",
+     "mask_ms": "0.0000",
+     "box_ms": "0.8195",
+     "resolve_ms": "3.1990",
+     "taa_ms": "4.0351"
+    }
+   ]
+  },
+  "comparison_to_run87": {
+   "command": "python3 verification/results/run70-candidate-audit.py diff /tmp/x3-run87-candidate/temporal-summary-run87.json /tmp/x3-run88-candidate/temporal-summary-run88.json",
+   "output": "/tmp/x3-run88-candidate/temporal-diff.json",
+   "leaves": [
+    6269,
+    6269
+   ],
+   "changed": 53,
+   "added": 0,
+   "removed": 0,
+   "changed_by_field": {
+    "executable_sha256": 1,
+    "command": 5,
+    "report_sha256": 1,
+    "plain_ms": 1,
+    "far_stabiliser_ms": 1,
+    "thin_region_ms": 1,
+    "far_delta_ms": 1,
+    "thin_region_delta_ms": 1,
+    "no_region_thin_ms": 1,
+    "no_region_camera_ms": 1,
+    "no_region_camera_delta_ms": 1,
+    "fragmented_pan_thin_ms": 1,
+    "fragmented_pan_camera_ms": 1,
+    "fragmented_pan_camera_delta_ms": 1,
+    "r32f_camera_ms": 1,
+    "lane_input_law_ms": 1,
+    "lane_input_lane_ms": 1,
+    "lane_fetch_delta_ms": 1,
+    "lane_input_over_r32f_ms": 1,
+    "copy_ms": 6,
+    "box_ms": 6,
+    "resolve_ms": 6,
+    "taa_ms": 6,
+    "run_ms": 6
+   },
+   "changed_reading": "fixture executable and report hashes, command paths and *_ms timings only; no numerical row, budget, slot count or source hash differs"
+  },
+  "comparison_to_committed": {
+   "command": "python3 verification/results/run70-candidate-audit.py diff <git show HEAD:verification/results/bottle-X3/temporal-pass-summary.json> <run summary>",
+   "output": "/tmp/x3-run88-candidate/temporal-diff-committed.json",
+   "leaves": [
+    6269,
+    6269
+   ],
+   "changed": 53,
+   "added": 0,
+   "removed": 0,
+   "changed_by_field": {
+    "executable_sha256": 1,
+    "command": 5,
+    "report_sha256": 1,
+    "plain_ms": 1,
+    "far_stabiliser_ms": 1,
+    "thin_region_ms": 1,
+    "far_delta_ms": 1,
+    "thin_region_delta_ms": 1,
+    "no_region_thin_ms": 1,
+    "no_region_camera_ms": 1,
+    "no_region_camera_delta_ms": 1,
+    "fragmented_pan_thin_ms": 1,
+    "fragmented_pan_camera_ms": 1,
+    "fragmented_pan_camera_delta_ms": 1,
+    "r32f_camera_ms": 1,
+    "lane_input_law_ms": 1,
+    "lane_input_lane_ms": 1,
+    "lane_fetch_delta_ms": 1,
+    "lane_input_over_r32f_ms": 1,
+    "copy_ms": 6,
+    "box_ms": 6,
+    "resolve_ms": 6,
+    "taa_ms": 6,
+    "run_ms": 6
+   },
+   "changed_reading": "executable/report hashes, command paths and timings only; no numerical row differs"
+  },
+  "lock": {
+   "lock_wait_seconds": 3.750000000000281e-06,
+   "child_elapsed_seconds": 132.590523875,
+   "exit_code": 0
+  }
+ },
+ "motion_output": {
+  "command": "cd /tmp/x3-run88-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run88-candidate/lock-timings-motion.json python3 verification/probe/run_motion_output.py",
+  "why_run": "capture.cpp, motion_output.cpp/.h, motion_output_sun_occlusion_inc.h, motion_output_shadow_retention_inc.h and the runner changed (reuse-deps.json)",
+  "corpus": "/tmp/x3-shader-sweep/programs present at start, not modified",
+  "status": "PASS",
+  "passed": true,
+  "consume_only": false,
+  "cases": 234,
+  "case_lines_in_output": 250,
+  "binaries": {
+   "verification/probe/build/motion_output_fixture.exe": "a628a034d624711ab9eeb89ad4972b6dfbe7baacf79a64a614d30d21567a8211",
+   "verification/probe/build/motion-output-seam/d3d9.dll": "ef65b7e2bd71bfe6d51d4dcacf959dbec6246f85de894480fd5f6ec43b42aedb",
+   "build/d3d9.dll": "6440d5bb69d05fc1fbbac6953839da836fb490bfd7a5c4b1b6d6761fe6986fcc"
+  },
+  "binaries_note": "the suite fresh-builds build/d3d9.dll from 79aafc8b source in the worktree build directory; bytes differ from the candidate (path-dependent debug info)",
+  "report_sha256": "9b3087b440f10a3052e38f939cba9a77d53444bb5e0302814abf257c84932ff6",
+  "copies": "/tmp/x3-run88-candidate/results-motion/, /tmp/x3-run88-candidate/motion-summary-run88.json",
+  "n_route_lifecycle": {
+   "reading": "a sub-case appended to the case list of the four seam-ownership-shadow-retention cases (not a separate summary case), so the suite stays at 234 cases",
+   "retention_cases": {
+    "seam-ownership-shadow-retention-live": {
+     "checks": [
+      9743,
+      12055
+     ],
+     "frames": [
+      1535,
+      1849
+     ],
+     "n_route_lifecycle_in_cases": true,
+     "route_lifecycle": {
+      "device_term": 16,
+      "probe_rows": 11
+     },
+     "taa_clamp": {
+      "taa_references": 8,
+      "underflow_rows": 1
+     }
+    },
+    "seam-ownership-shadow-retention-census": {
+     "checks": [
+      9740,
+      12052
+     ],
+     "frames": [
+      1535,
+      1849
+     ],
+     "n_route_lifecycle_in_cases": true,
+     "route_lifecycle": {
+      "device_term": 16,
+      "probe_rows": 0
+     },
+     "taa_clamp": {
+      "taa_references": 8,
+      "underflow_rows": 1
+     }
+    },
+    "seam-ownership-shadow-retention-off": {
+     "checks": [
+      6629,
+      8304
+     ],
+     "frames": [
+      1535,
+      1849
+     ],
+     "n_route_lifecycle_in_cases": true,
+     "route_lifecycle": null,
+     "taa_clamp": {
+      "taa_references": 8,
+      "underflow_rows": 1
+     }
+    },
+    "seam-ownership-shadow-retention-live-poll": {
+     "checks": [
+      9890,
+      12202
+     ],
+     "frames": [
+      1547,
+      1861
+     ],
+     "n_route_lifecycle_in_cases": true,
+     "route_lifecycle": {
+      "device_term": 16,
+      "probe_rows": 11
+     },
+     "taa_clamp": {
+      "taa_references": 8,
+      "underflow_rows": 1
+     }
+    }
+   }
+  },
+  "comparison_to_run87": {
+   "command": "python3 verification/results/sky-history-default/compare_motion_output.py /tmp/x3-run87-candidate/motion-summary-run87.json /tmp/x3-run88-candidate/motion-summary-run88.json",
+   "output": "/tmp/x3-run88-candidate/motion-compare-run87.out",
+   "cases": [
+    234,
+    234
+   ],
+   "missing": "[]",
+   "added": "[]",
+   "checks": [
+    337330,
+    345941
+   ],
+   "cases_with_differing_stable_fields": 4,
+   "differing": [
+    "seam-ownership-shadow-retention-census",
+    "seam-ownership-shadow-retention-live",
+    "seam-ownership-shadow-retention-live-poll",
+    "seam-ownership-shadow-retention-off"
+   ],
+   "reading": "the only differing cases are the four shadow-retention cases (cases list, checks, frames, compared frames, map coverage from the added n_route_lifecycle sub-case, taa_clamp/route_lifecycle fields new)"
+  },
+  "comparison_to_committed": {
+   "command": "python3 verification/results/sky-history-default/compare_motion_output.py /tmp/x3-run88-candidate/motion-summary-committed.json /tmp/x3-run88-candidate/motion-summary-run88.json",
+   "output": "/tmp/x3-run88-candidate/motion-compare-committed.out",
+   "committed_summary_from": "79aafc8b",
+   "reading": "the four retention cases as above plus the 7 thin-vote cases that differ only in max_unvoted_fraction (committed summary predates it), as in Run85-87",
+   "cases": [
+    234,
+    234
+   ],
+   "missing": "[]",
+   "added": "[]",
+   "checks": [
+    337330,
+    345941
+   ],
+   "cases_with_differing_stable_fields": 11,
+   "differing": [
+    "seam-ownership-shadow-retention-census",
+    "seam-ownership-shadow-retention-live",
+    "seam-ownership-shadow-retention-live-poll",
+    "seam-ownership-shadow-retention-off",
+    "seam-thin-vote-far-on",
+    "seam-thin-vote-far-on-owner",
+    "seam-thin-vote-far-on-source-both",
+    "seam-thin-vote-far-on-source-screen",
+    "seam-thin-vote-far-on-source-vote",
+    "seam-thin-vote-hostile",
+    "seam-thin-vote-near-on"
+   ]
+  },
+  "dither_cases_vs_ledger": {
+   "command": "python3 verification/results/run78-candidate-motion-dither-compare.py verification/results/hdr-display-dither/motion-output-cases-2026-09-24.json /tmp/x3-run88-candidate/motion-summary-run88.json",
+   "result": "cases 9 common_leaves 153 differing 0"
+  },
+  "depth_fold_line": {
+   "command": "python3 verification/results/run77-candidate-fold-count.py /tmp/x3-run88-candidate/src /tmp/x3-run88-candidate/build.log",
+   "result": "logs_with_taa=200 fold_lines_per_log={0: 2, 1: 198} depth_fold={'0': 170, '1': 28} reasons={'far_off': 24, 'r32f_depth': 146, 'resolve_mrt': 28}",
+   "reading": "identical to Run87: one sentinel2-nocamera session (two copies) lacks the line",
+   "output": "/tmp/x3-run88-candidate/motion-fold.out"
+  },
+  "lock": {
+   "lock_wait_seconds": 3.708000000001571e-06,
+   "child_elapsed_seconds": 593.33099525,
+   "exit_code": 0
+  },
+  "first_attempt": "none: first run passed"
+ },
+ "loading_trace": {
+  "command": "cd /tmp/x3-run88-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run88-candidate/lock-timings-loadtrace.json python3 verification/probe/run_loading_trace.py",
+  "why_run": "closure includes src/proxy/loading_trace.cpp/.h and mesh_adjacency_fast.{h,cpp} (30eecc51)",
+  "passed": true,
+  "counts": {
+   "loading-trace": 112,
+   "loading-mesh": 123,
+   "mesh-adjacency-cache-off": 36093,
+   "mesh-adjacency-cache-on": 36150
+  },
+  "equal_to_committed": true,
+  "copies": "/tmp/x3-run88-candidate/results-loadtrace/",
+  "output": "/tmp/x3-run88-candidate/loadtrace.out",
+  "lock": {
+   "lock_wait_seconds": 9.874999999999468e-06,
+   "child_elapsed_seconds": 41.651714250000005,
+   "exit_code": 0
+  },
+  "new_row": "loading-trace-fixture.txt gains \"mesh_adjacency_config requested=native enabled=0 telemetry=1\" (30eecc51 config row); no telemetry-off install case exists in this fixture",
+  "admission_witness": {
+   "loading-trace": [
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "1"
+   ],
+   "loading-mesh": [
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "1"
+   ],
+   "mesh-adjacency-cache-off": [
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "1"
+   ],
+   "mesh-adjacency-cache-on": [
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "1"
+   ]
+  }
+ },
+ "mesh_cache_hook": {
+  "command": "cd /tmp/x3-run88-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run88-candidate/lock-timings-meshhook.json python3 verification/probe/run_mesh_cache_hook.py",
+  "why_run": "closure includes src/proxy/loading_trace.cpp/.h and mesh_adjacency_fast.{h,cpp} (30eecc51)",
+  "passed": true,
+  "counts": {
+   "native-off-normal": 1714,
+   "native-on-normal": 2003,
+   "native-on-fault": 2011,
+   "wrapped-off-normal": 2189,
+   "wrapped-on-normal": 2673,
+   "wrapped-on-fault": 2681
+  },
+  "equal_to_committed": true,
+  "copies": "/tmp/x3-run88-candidate/results-meshhook/",
+  "output": "/tmp/x3-run88-candidate/meshhook.out",
+  "lock": {
+   "lock_wait_seconds": 3.667000000002335e-06,
+   "child_elapsed_seconds": 20.187234959,
+   "exit_code": 0
+  }
+ },
+ "crypt_cache": {
+  "command": "cd /tmp/x3-run88-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run88-candidate/lock-timings-crypt.json python3 verification/probe/run_crypt_cache.py",
+  "why_run": "closure includes src/proxy/loading_trace.cpp/.h and mesh_adjacency_fast.{h,cpp} (30eecc51) (crypt_cache_hook_fixture links loading_trace.cpp)",
+  "passed": true,
+  "counts": {
+   "checks": 237,
+   "failures": 0,
+   "verified_off_on": [
+    150,
+    150
+   ]
+  },
+  "equal_to_committed": true,
+  "copies": "/tmp/x3-run88-candidate/results-crypt/",
+  "output": "/tmp/x3-run88-candidate/crypt.out",
+  "lock": {
+   "lock_wait_seconds": 3.124999999999656e-06,
+   "child_elapsed_seconds": 13.804723916,
+   "exit_code": 0
+  }
+ },
+ "resource_reader": {
+  "command": "cd /tmp/x3-run88-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run88-candidate/lock-timings-resreader.json python3 verification/probe/run_resource_reader.py",
+  "why_run": "closure includes src/proxy/loading_trace.h (one declaration added)",
+  "passed": true,
+  "counts": {
+   "checks": 4721,
+   "expected_checks": 4721,
+   "failures": 0,
+   "cases": [
+    "cursor",
+    "error_abi",
+    "fallbacks",
+    "fast",
+    "pool",
+    "probes",
+    "rewind_failure"
+   ]
+  },
+  "equal_to_committed": true,
+  "copies": "/tmp/x3-run88-candidate/results-resreader/",
+  "output": "/tmp/x3-run88-candidate/resreader.out",
+  "lock": {
+   "lock_wait_seconds": 3.790999999999517e-06,
+   "child_elapsed_seconds": 18.401257083,
+   "exit_code": 0
+  }
+ },
+ "loading_intervals": {
+  "command": "cd /tmp/x3-run88-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run88-candidate/lock-timings-intervals.json python3 verification/probe/run_loading_intervals.py",
+  "why_run": "closure includes src/proxy/loading_trace.h (one declaration added)",
+  "passed": true,
+  "counts": {
+   "normal": 10,
+   "abandon": 1,
+   "threads": 20,
+   "allocation": 5,
+   "tls_alloc": 5,
+   "tls_set": 5,
+   "reuse": 5,
+   "forwarder": 112
+  },
+  "equal_to_committed": true,
+  "copies": "/tmp/x3-run88-candidate/results-intervals/",
+  "output": "/tmp/x3-run88-candidate/intervals.out",
+  "lock": {
+   "lock_wait_seconds": 2.958000000000821e-06,
+   "child_elapsed_seconds": 167.2347665,
+   "exit_code": 0
+  },
+  "prebuild": "sh verification/probe/build_loading_intervals.sh (host compile; the runner does not build) after a first attempt exited 1 before Wine: /tmp/x3-run88-candidate/intervals-attempt1.out",
+  "first_attempt_lock": {
+   "lock_wait_seconds": 4.250000000000781e-06,
+   "child_elapsed_seconds": 0.079584375,
+   "exit_code": 1
+  }
+ },
+ "cursor_reassert": {
+  "command": "cd /tmp/x3-run88-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run88-candidate/lock-timings-cursor.json python3 verification/probe/run_cursor_reassert.py --exe /tmp/x3-run88-candidate/build/cursor_reassert_fixture.exe",
+  "why_run": "closure includes src/proxy/loading_trace.h (via loading_trace_light / window_trace)",
+  "result": "PASS",
+  "passed": true,
+  "expected_checks": 42,
+  "checks": 42,
+  "exit_code": 0,
+  "elapsed_s": 7.8,
+  "executable_sha256": "c1ec18dfefc48ca39b44fae0cd57e5fbbf4a2f7b39a739e88558136813484234",
+  "report_sha256": "d6cace7a2d25206b6ee8224a73cf569ba36cb857ece790fed010faf1cd3eba56",
+  "versus_run87": "42/42 -> 42/42",
+  "lock": {
+   "lock_wait_seconds": 5.2089999999990755e-06,
+   "child_elapsed_seconds": 7.925041625,
+   "exit_code": 0
+  },
+  "run87_entry": {
+   "reused_from": "run85",
+   "reason": "include closure (15 files, runner and build script) byte-identical to Run85: git diff --stat 53e7aba5 22593133 -- <closure> is empty; it differed in Run86 only by CMakeLists.txt (effects stage / docking restore, removed again), so Run86 rerun evidence is not the current code",
+   "dependency_paths_checked": [
+    "CMakeLists.txt",
+    "src/proxy/cpu_state.h",
+    "src/proxy/cursor_reassert.cpp",
+    "src/proxy/cursor_reassert.h",
+    "src/proxy/cursor_reassert_core.h",
+    "src/proxy/loading_intervals_core.h",
+    "src/proxy/loading_trace.h",
+    "src/proxy/loading_trace_light.cpp",
+    "src/proxy/loading_trace_light.h",
+    "src/proxy/mesh_adjacency_cache.h",
+    "src/proxy/window_trace.cpp",
+    "src/proxy/window_trace.h",
+    "src/proxy/window_trace_core.h",
+    "verification/probe/cursor_reassert_fixture.cpp",
+    "verification/probe/run_cursor_reassert.py"
+   ],
+   "dependency_check": "/tmp/x3-run87-candidate/reuse_deps.py -> /tmp/x3-run87-candidate/reuse-deps.json",
+   "run85_entry": {
+    "reused_from": "run84",
+    "reason": "no such source changed since 46cd4f9d: git diff --stat 46cd4f9d 53e7aba5 -- <the 15 files of its include closure, runner and build script> is empty",
+    "dependency_paths_checked": [
+     "CMakeLists.txt",
+     "src/proxy/cpu_state.h",
+     "src/proxy/cursor_reassert.cpp",
+     "src/proxy/cursor_reassert.h",
+     "src/proxy/cursor_reassert_core.h",
+     "src/proxy/loading_intervals_core.h",
+     "src/proxy/loading_trace.h",
+     "src/proxy/loading_trace_light.cpp",
+     "src/proxy/loading_trace_light.h",
+     "src/proxy/mesh_adjacency_cache.h",
+     "src/proxy/window_trace.cpp",
+     "src/proxy/window_trace.h",
+     "src/proxy/window_trace_core.h",
+     "verification/probe/cursor_reassert_fixture.cpp",
+     "verification/probe/run_cursor_reassert.py"
+    ],
+    "dependency_check": "/tmp/x3-run85-candidate/reuse_deps.py -> /tmp/x3-run85-candidate/reuse-deps.json",
+    "run84_entry": {
+     "command": "cd /tmp/x3-run84-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run84-candidate/lock-timings-cursor.json python3 verification/probe/run_cursor_reassert.py --exe /tmp/x3-run84-candidate/build/cursor_reassert_fixture.exe",
+     "result": "PASS",
+     "passed": true,
+     "expected_checks": 42,
+     "checks": 42,
+     "failed_checks": [],
+     "exit_code": 0,
+     "elapsed_s": 7.7,
+     "executable_sha256": "095132ec89ec9bc41f9005c7ace2fbed819d85f34a461ca2707b675a4c9f248a",
+     "report_sha256": "5197a5be4ff37878f0ee2b062c588a3ceacc5ab6bdf81a8c9f785c5e1b7d2756",
+     "lock": {
+      "lock_wait_seconds": 3.083000000000946e-06,
+      "child_elapsed_seconds": 7.77697725,
+      "exit_code": 0
+     },
+     "record_copy": "/tmp/x3-run84-candidate/cursor-reassert.json",
+     "versus_run83": "36/36 -> 42/42"
+    }
+   }
+  }
+ },
+ "ownership_integration": {
+  "command": "cd /tmp/x3-run88-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run88-candidate/lock-timings-integration.json python3 verification/probe/run_ownership_integration.py",
+  "verifier": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/verify_ownership_integration.py (host) -> exit 0",
+  "why_run": "the runner fresh-builds a Release d3d9.dll of the whole tree (build-ownership), which links the changed capture.cpp (release_device probe), motion_output.cpp and loading_trace.cpp",
+  "result": "PASS",
+  "cases_run": 26,
+  "cases_run_note": "every case exit=0 (integration.out)",
+  "dll_sha256": "c245c94223964173bd95511fa940120951fe2b1281e1ee8a6a9b657be1f769c8",
+  "current_sources_and_binaries_match": true,
+  "copies": "/tmp/x3-run88-candidate/results-integration/",
+  "lock": {
+   "lock_wait_seconds": 3.500000000000031e-06,
+   "child_elapsed_seconds": 147.088569917,
+   "exit_code": 0
+  },
+  "run87_entry": {
+   "reused_from": "run86",
+   "reason": "include closure byte-identical to Run85 (git diff --stat 53e7aba5 22593133 -- <closure> empty); the Run85 record carries no ownership section, so the Run86 entry is nested: it was run on the effects-era ownership layer (d3d9_ownership.*, d3d9_forwarders_inc.h upload-time texture keys), which 479cd036 reverted byte-for-byte to the Run85 code; no Wine run of the current ownership code is in a candidate record",
+   "dependency_paths_checked": [
+    "CMakeLists.txt",
+    "src/ownership/README.md",
+    "src/ownership/application_admission.cpp",
+    "src/ownership/application_admission.h",
+    "src/ownership/application_admission_abi.cpp",
+    "src/ownership/application_admission_abi.h",
+    "src/ownership/buffer_lock_observation.h",
+    "src/ownership/clone_upload_abi.cpp",
+    "src/ownership/clone_upload_abi.h",
+    "src/ownership/clone_upload_core.h",
+    "src/ownership/clone_upload_observer.h",
+    "src/ownership/clone_upload_observer_inc.h",
+    "src/ownership/d3d9_classes_inc.h",
+    "src/ownership/d3d9_forwarders_inc.h",
+    "src/ownership/d3d9_ownership.cpp",
+    "src/ownership/d3d9_ownership.h",
+    "src/ownership/execution_state.cpp",
+    "src/ownership/execution_state.h",
+    "src/ownership/finite_buffer_evidence.cpp",
+    "src/ownership/finite_buffer_evidence.h",
+    "src/ownership/portable_managed_upload.cpp",
+    "src/ownership/portable_managed_upload.h",
+    "src/ownership/surface_lease_core.h",
+    "src/ownership/surface_lock_observation.h",
+    "src/proxy/fade_region_math.h",
+    "src/proxy/locked_prefix_core.h",
+    "src/proxy/sse_scalar.h",
+    "verification/probe/build.sh",
+    "verification/probe/build_admission_dependencies.sh",
+    "verification/probe/build_ownership_integration.sh",
+    "verification/probe/capture_state_fixture.cpp",
+    "verification/probe/d3d9_smoke.cpp",
+    "verification/probe/ownership_integration_auto_depth.cpp",
+    "verification/probe/ownership_integration_fallback_stub.cpp",
+    "verification/probe/ownership_integration_lifetime.cpp",
+    "verification/probe/run_ownership_integration.py",
+    "verification/probe/run_ownership_integration_fallback.py"
+   ],
+   "dependency_check": "/tmp/x3-run87-candidate/reuse_deps.py -> /tmp/x3-run87-candidate/reuse-deps.json",
+   "run86_entry": {
+    "command": "cd /tmp/x3-run86-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run86-candidate/lock-timings-integration.json python3 verification/probe/run_ownership_integration.py",
+    "verifier": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/verify_ownership_integration.py (host)",
+    "why_run": "d3d9_ownership.* and CMakeLists.txt changed",
+    "result": "PASS",
+    "cases_run": 26,
+    "cases_run_note": "13 modes x selected fixtures, every case exit=0 (integration.out)",
+    "dll_sha256": "027af970aa83bcf1a8571fb93abb03144fa2b73356f994422c12d2e22171040d",
+    "current_sources_and_binaries_match": true,
+    "copies": "/tmp/x3-run86-candidate/results-integration/",
+    "lock": {
+     "lock_wait_seconds": 2.874999999999406e-06,
+     "child_elapsed_seconds": 140.281272042,
+     "exit_code": 0
+    }
+   }
+  }
+ },
+ "ownership_integration_fallback": {
+  "command": "cd /tmp/x3-run88-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run88-candidate/lock-timings-fallback.json python3 verification/probe/run_ownership_integration_fallback.py",
+  "result": "NOT RUN (runner refused before Wine)",
+  "reason": "AssertionError 'Build all current production components first' with the fresh integration manifest in place (the Run86 harness defect: production_link_inputs parses only add_library(d3d9 SHARED ...) and misses fog_field_assets.cpp added by x3m_add_fog_field_assets(d3d9)); a first attempt refused on the manifest check because the committed manifest had been restored",
+  "lock": {
+   "lock_wait_seconds": 3.500000000000031e-06,
+   "child_elapsed_seconds": 0.18884825,
+   "exit_code": 1
+  },
+  "first_attempt_lock": {
+   "lock_wait_seconds": 3.750000000000281e-06,
+   "child_elapsed_seconds": 0.147145666,
+   "exit_code": 1
+  },
+  "run87_entry": {
+   "reused_from": "run86",
+   "reason": "include closure byte-identical to Run85 (git diff --stat 53e7aba5 22593133 -- <closure> empty); the Run85 record carries no ownership section, so the Run86 entry is nested: it was run on the effects-era ownership layer (d3d9_ownership.*, d3d9_forwarders_inc.h upload-time texture keys), which 479cd036 reverted byte-for-byte to the Run85 code; no Wine run of the current ownership code is in a candidate record",
+   "dependency_paths_checked": [
+    "CMakeLists.txt",
+    "src/ownership/README.md",
+    "src/ownership/application_admission.cpp",
+    "src/ownership/application_admission.h",
+    "src/ownership/application_admission_abi.cpp",
+    "src/ownership/application_admission_abi.h",
+    "src/ownership/buffer_lock_observation.h",
+    "src/ownership/clone_upload_abi.cpp",
+    "src/ownership/clone_upload_abi.h",
+    "src/ownership/clone_upload_core.h",
+    "src/ownership/clone_upload_observer.h",
+    "src/ownership/clone_upload_observer_inc.h",
+    "src/ownership/d3d9_classes_inc.h",
+    "src/ownership/d3d9_forwarders_inc.h",
+    "src/ownership/d3d9_ownership.cpp",
+    "src/ownership/d3d9_ownership.h",
+    "src/ownership/execution_state.cpp",
+    "src/ownership/execution_state.h",
+    "src/ownership/finite_buffer_evidence.cpp",
+    "src/ownership/finite_buffer_evidence.h",
+    "src/ownership/portable_managed_upload.cpp",
+    "src/ownership/portable_managed_upload.h",
+    "src/ownership/surface_lease_core.h",
+    "src/ownership/surface_lock_observation.h",
+    "src/proxy/fade_region_math.h",
+    "src/proxy/locked_prefix_core.h",
+    "src/proxy/sse_scalar.h",
+    "verification/probe/build.sh",
+    "verification/probe/build_admission_dependencies.sh",
+    "verification/probe/build_ownership_integration.sh",
+    "verification/probe/capture_state_fixture.cpp",
+    "verification/probe/d3d9_smoke.cpp",
+    "verification/probe/ownership_integration_auto_depth.cpp",
+    "verification/probe/ownership_integration_fallback_stub.cpp",
+    "verification/probe/ownership_integration_lifetime.cpp",
+    "verification/probe/run_ownership_integration.py",
+    "verification/probe/run_ownership_integration_fallback.py"
+   ],
+   "dependency_check": "/tmp/x3-run87-candidate/reuse_deps.py -> /tmp/x3-run87-candidate/reuse-deps.json",
+   "run86_entry": {
+    "command": "cd /tmp/x3-run86-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run86-candidate/lock-timings-fallback.json python3 verification/probe/run_ownership_integration_fallback.py",
+    "result": "NOT RUN (runner refused before Wine)",
+    "reason": "AssertionError 'Build all current production components first': production_link_inputs() parses only the add_library(d3d9 SHARED ...) text and finds src/renderer/fog_field_assets.cpp.obj extra; fog_field_assets.cpp joins the target through x3m_add_fog_field_assets(d3d9) since dcf3728b (2026-09-23). Pre-existing harness defect, outside this range",
+    "lock": {
+     "lock_wait_seconds": 2.874999999999406e-06,
+     "child_elapsed_seconds": 0.17105833299999998,
+     "exit_code": 1
+    }
+   }
+  }
+ },
+ "fog_family_file_fixture": {
+  "reused_from": "run87",
+  "reason": "include closure (4 files, runner and build script) byte-identical to Run87: git diff --stat 22593133 79aafc8b -- <closure> is empty; the fixture does not compile capture.cpp, motion_output*, loading_trace* or mesh_adjacency_fast*",
+  "dependency_paths_checked": [
+   "src/renderer/fog_field_assets.cpp",
+   "src/renderer/fog_field_assets.h",
+   "verification/probe/fog_family_file_fixture.cpp",
+   "verification/probe/fog_family_gpu.py"
+  ],
+  "dependency_check": "/tmp/x3-run88-candidate/reuse_deps.py -> /tmp/x3-run88-candidate/reuse-deps.json",
+  "run87_entry": {
+   "command": "cd /tmp/x3-run87-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run87-candidate/lock-timings-fogfam.json \"/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine\" --bottle X3 --no-update --dll d3d9=b --workdir /tmp/x3-run87-candidate/fogfam-selftest /tmp/x3-run87-candidate/build/fog_family_file_fixture.exe --self-test Z:/tmp/x3-run87-candidate/fogfam-selftest",
+   "why_run": "fog_field_assets.cpp (load_family_file, 28cbd43e) and the fixture changed since Run85",
+   "result": "PASS",
+   "result_line": "PASS fog_family_file cases=68 compiled=14",
+   "empty_table_case": "CASE empty_table status=loaded families=0 packets=0",
+   "cases": 68,
+   "exe_sha256": "d4bc79ed7e96df5da3fb8cd799717ff0555291c31cbbc922fd2bcf17a0d73a7f",
+   "versus_run86": "68 cases, as in Run86 (same loader source)",
+   "lock": {
+    "lock_wait_seconds": 3.625000000000156e-06,
+    "child_elapsed_seconds": 5.584568375,
+    "exit_code": 0
+   },
+   "previous_entry": {
+    "command": "cd /tmp/x3-run86-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run86-candidate/lock-timings-fogfam.json \"/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine\" --bottle X3 --no-update --dll d3d9=b --workdir /tmp/x3-run86-candidate/fogfam-selftest /tmp/x3-run86-candidate/build/fog_family_file_fixture.exe --self-test Z:/tmp/x3-run86-candidate/fogfam-selftest",
+    "why_run": "fog_field_assets.cpp load_family_file and the fixture changed (28cbd43e)",
+    "result": "PASS",
+    "result_line": "PASS fog_family_file cases=68 compiled=14",
+    "empty_table_case": "CASE empty_table status=loaded families=0 packets=0",
+    "exe_sha256": "a69bbe26d4d133e2823003631d1bc13c40332ac3b10ecb906cf07ed21510cb8f",
+    "versus_run80": "67 -> 68 cases (empty_table added)",
+    "lock": {
+     "lock_wait_seconds": 3.0840000000004197e-06,
+     "child_elapsed_seconds": 2.0399395410000003,
+     "exit_code": 0
+    },
+    "previous_entry": {
+     "reused_from": "run84",
+     "reason": "no such source changed since 46cd4f9d: git diff --stat 46cd4f9d 53e7aba5 -- <the 4 files of its include closure, runner and build script> is empty",
+     "dependency_paths_checked": [
+      "src/renderer/fog_field_assets.cpp",
+      "src/renderer/fog_field_assets.h",
+      "verification/probe/fog_family_file_fixture.cpp",
+      "verification/probe/fog_family_gpu.py"
+     ],
+     "dependency_check": "/tmp/x3-run85-candidate/reuse_deps.py -> /tmp/x3-run85-candidate/reuse-deps.json",
+     "run84_entry": {
+      "reused_from": "run83",
+      "dependency_paths_checked": [
+       "src/renderer/fog_field_assets.cpp",
+       "src/renderer/fog_field_assets.h",
+       "verification/probe/fog_family_file_fixture.cpp",
+       "verification/probe/fog_family_gpu.py"
+      ],
+      "dependency_check": "/tmp/x3-run84-candidate/reuse_deps.py -> /tmp/x3-run84-candidate/reuse-deps.json",
+      "run83_entry": {
+       "reused_from": "run82",
+       "dependency_paths_checked": [
+        "src/renderer/fog_field_assets.cpp",
+        "src/renderer/fog_field_assets.h",
+        "verification/probe/fog_family_file_fixture.cpp",
+        "verification/probe/fog_family_gpu.py"
+       ],
+       "dependency_check": "/tmp/x3-run83-candidate/reuse_deps.py -> /tmp/x3-run83-candidate/reuse-deps.json",
+       "run82_entry": {
+        "reused_from": "run81",
+        "run80_result": "PASS",
+        "run80_result_line": "PASS fog_family_file cases=67 compiled=14",
+        "run80_lock": {
+         "lock_wait_seconds": 3.249999999999781e-06,
+         "child_elapsed_seconds": 2.726379042,
+         "exit_code": 0
+        }
+       }
+      }
+     }
+    }
+   }
+  }
+ },
+ "fog_route_bridge": {
+  "reused_from": "run87",
+  "reason": "include closure (58 files, runner and build script) byte-identical to Run87: git diff --stat 22593133 79aafc8b -- <closure> is empty; the fixture does not compile capture.cpp, motion_output*, loading_trace* or mesh_adjacency_fast*",
+  "dependency_paths_checked": [
+   "src/fog/fog_density_cache.cpp",
+   "src/fog/fog_density_cache.h",
+   "src/fog/fog_density_generator.cpp",
+   "src/fog/fog_density_generator.h",
+   "src/fog/fog_handover.h",
+   "src/proxy/cpu_state.h",
+   "src/proxy/fog_card_mask.h",
+   "src/proxy/fog_card_match.h",
+   "src/proxy/fog_card_policy.h",
+   "src/proxy/fog_prefill.h",
+   "src/proxy/fog_sector_policy.h",
+   "src/proxy/motion_output_fog_inc.h",
+   "src/proxy/sector_background.h",
+   "src/renderer/camera_reprojection.h",
+   "src/renderer/fog_composite_program_inc.h",
+   "src/renderer/fog_density_composite_look_program_inc.h",
+   "src/renderer/fog_density_composite_look_q4_program_inc.h",
+   "src/renderer/fog_density_march_grid_program_inc.h",
+   "src/renderer/fog_density_march_look_far24_program_inc.h",
+   "src/renderer/fog_density_march_look_far24_q4_program_inc.h",
+   "src/renderer/fog_density_march_look_program_inc.h",
+   "src/renderer/fog_density_march_look_q4_program_inc.h",
+   "src/renderer/fog_density_needs_census_program_inc.h",
+   "src/renderer/fog_density_needs_census_q4_program_inc.h",
+   "src/renderer/fog_density_repair_grid_program_inc.h",
+   "src/renderer/fog_density_repair_look_far24_program_inc.h",
+   "src/renderer/fog_density_repair_look_far24_q4_program_inc.h",
+   "src/renderer/fog_density_repair_look_program_inc.h",
+   "src/renderer/fog_density_repair_look_q4_program_inc.h",
+   "src/renderer/fog_density_visibility_grid_program_inc.h",
+   "src/renderer/fog_dust_motes_grid_program_inc.h",
+   "src/renderer/fog_dust_motes_look_program_inc.h",
+   "src/renderer/fog_dust_motes_vertex_program_inc.h",
+   "src/renderer/fog_family_chroma_inc.h",
+   "src/renderer/fog_field_assets.cpp",
+   "src/renderer/fog_field_assets.h",
+   "src/renderer/fog_look_math.h",
+   "src/renderer/fog_march_program_inc.h",
+   "src/renderer/fog_mote_math.h",
+   "src/renderer/fog_pass.cpp",
+   "src/renderer/fog_pass.h",
+   "src/renderer/fog_pass_math.h",
+   "src/renderer/fog_shadow_grid.h",
+   "src/renderer/fog_volume_math.h",
+   "src/renderer/gpu_sync_timing_core.h",
+   "src/renderer/ps3_program_slots.h",
+   "src/renderer/quad_vertex_program.h",
+   "src/renderer/quad_vertex_program_inc.h",
+   "src/renderer/shadow_cascade_footprint_core.h",
+   "src/renderer/shadow_replay_projection.h",
+   "src/renderer/sun_shadow_apply_pass.h",
+   "verification/probe/fog_route_bridge.cpp",
+   "verification/probe/fog_route_bridge_build.py",
+   "verification/probe/fog_route_bridge_check.py",
+   "verification/probe/fog_route_bridge_run.py",
+   "verification/probe/fog_route_camera_basis_inc.h",
+   "verification/probe/fog_route_density_inc.h",
+   "verification/probe/fog_route_owner_inc.h"
+  ],
+  "dependency_check": "/tmp/x3-run88-candidate/reuse_deps.py -> /tmp/x3-run88-candidate/reuse-deps.json",
+  "run87_entry": {
+   "commands": [
+    "python3 verification/probe/fog_route_bridge_build.py --production-root /tmp/x3-run87-candidate/src --spatial-root /tmp/x3-run87-candidate/src --asset-data /tmp/x3-run87-candidate/build/generated/fog_field --output /tmp/x3-run87-candidate/route/build",
+    "python3 verification/probe/fog_route_bridge_build.py --baseline --production-root /tmp/x3-run76-candidate/baseline-6f16dbf6 --spatial-root /tmp/x3-run76-candidate/baseline-6f16dbf6 --asset-data /tmp/x3-run87-candidate/build/generated/fog_field --output /tmp/x3-run87-candidate/route/baseline-build",
+    "python3 verification/probe/fog_route_bridge_run.py build-exit --output /tmp/x3-run87-candidate/route",
+    "cd /tmp/x3-run87-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run87-candidate/lock-timings-route.json python3 verification/probe/fog_route_bridge_run.py run --output /tmp/x3-run87-candidate/route --cases /tmp/x3-fog-family-gpu-inputs-final/cases.txt",
+    "python3 verification/probe/fog_route_bridge_run.py check --output /tmp/x3-run87-candidate/route --summary /tmp/x3-run87-candidate/route/summary.json"
+   ],
+   "why_run": "fog_field_assets.cpp is in its closure and changed since Run85 (reuse-deps.json)",
+   "result": "PASS",
+   "result_line": "PASS bridge_checks=42063 exit_checks=4",
+   "bridge_checks": 42063,
+   "exit_checks": 4,
+   "versus_run86": "36537 -> 42063 bridge checks (per frame, timing-dependent first fill), exit checks 4 -> 4",
+   "lock": {
+    "lock_wait_seconds": 4.499999999990623e-06,
+    "child_elapsed_seconds": 82.208135583,
+    "exit_code": 0
+   },
+   "previous_entry": {
+    "commands": [
+     "python3 verification/probe/fog_route_bridge_build.py --production-root /tmp/x3-run86-candidate/src --spatial-root /tmp/x3-run86-candidate/src --asset-data /tmp/x3-run86-candidate/build/generated/fog_field --output /tmp/x3-run86-candidate/route/build",
+     "python3 verification/probe/fog_route_bridge_build.py --baseline --production-root /tmp/x3-run76-candidate/baseline-6f16dbf6 --spatial-root /tmp/x3-run76-candidate/baseline-6f16dbf6 --asset-data /tmp/x3-run86-candidate/build/generated/fog_field --output /tmp/x3-run86-candidate/route/baseline-build",
+     "python3 verification/probe/fog_route_bridge_run.py build-exit --output /tmp/x3-run86-candidate/route",
+     "cd /tmp/x3-run86-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run86-candidate/lock-timings-route.json python3 verification/probe/fog_route_bridge_run.py run --output /tmp/x3-run86-candidate/route --cases /tmp/x3-fog-family-gpu-inputs-final/cases.txt",
+     "python3 verification/probe/fog_route_bridge_run.py check --output /tmp/x3-run86-candidate/route --summary /tmp/x3-run86-candidate/route/summary.json"
+    ],
+    "why_run": "fog_field_assets.cpp is in its closure (reuse-deps.json)",
+    "result": "PASS",
+    "result_line": "PASS bridge_checks=36537 exit_checks=4",
+    "bridge_checks": 36537,
+    "exit_checks": 4,
+    "versus_run80": "42135 -> 36537 bridge checks: the checks are per frame (native_card_forward_once 6984 -> 6051) and follow the asynchronous first fill (795 -> 682 frames), timing-dependent; exit checks 4 equal",
+    "lock": {
+     "lock_wait_seconds": 3.374999999999906e-06,
+     "child_elapsed_seconds": 80.997989292,
+     "exit_code": 0
+    },
+    "previous_entry": {
+     "reused_from": "run84",
+     "reason": "no such source changed since 46cd4f9d: git diff --stat 46cd4f9d 53e7aba5 -- <the 58 files of its include closure, runner and build script> is empty",
+     "dependency_paths_checked": [
+      "src/fog/fog_density_cache.cpp",
+      "src/fog/fog_density_cache.h",
+      "src/fog/fog_density_generator.cpp",
+      "src/fog/fog_density_generator.h",
+      "src/fog/fog_handover.h",
+      "src/proxy/cpu_state.h",
+      "src/proxy/fog_card_mask.h",
+      "src/proxy/fog_card_match.h",
+      "src/proxy/fog_card_policy.h",
+      "src/proxy/fog_prefill.h",
+      "src/proxy/fog_sector_policy.h",
+      "src/proxy/motion_output_fog_inc.h",
+      "src/proxy/sector_background.h",
+      "src/renderer/camera_reprojection.h",
+      "src/renderer/fog_composite_program_inc.h",
+      "src/renderer/fog_density_composite_look_program_inc.h",
+      "src/renderer/fog_density_composite_look_q4_program_inc.h",
+      "src/renderer/fog_density_march_grid_program_inc.h",
+      "src/renderer/fog_density_march_look_far24_program_inc.h",
+      "src/renderer/fog_density_march_look_far24_q4_program_inc.h",
+      "src/renderer/fog_density_march_look_program_inc.h",
+      "src/renderer/fog_density_march_look_q4_program_inc.h",
+      "src/renderer/fog_density_needs_census_program_inc.h",
+      "src/renderer/fog_density_needs_census_q4_program_inc.h",
+      "src/renderer/fog_density_repair_grid_program_inc.h",
+      "src/renderer/fog_density_repair_look_far24_program_inc.h",
+      "src/renderer/fog_density_repair_look_far24_q4_program_inc.h",
+      "src/renderer/fog_density_repair_look_program_inc.h",
+      "src/renderer/fog_density_repair_look_q4_program_inc.h",
+      "src/renderer/fog_density_visibility_grid_program_inc.h",
+      "src/renderer/fog_dust_motes_grid_program_inc.h",
+      "src/renderer/fog_dust_motes_look_program_inc.h",
+      "src/renderer/fog_dust_motes_vertex_program_inc.h",
+      "src/renderer/fog_family_chroma_inc.h",
+      "src/renderer/fog_field_assets.cpp",
+      "src/renderer/fog_field_assets.h",
+      "src/renderer/fog_look_math.h",
+      "src/renderer/fog_march_program_inc.h",
+      "src/renderer/fog_mote_math.h",
+      "src/renderer/fog_pass.cpp",
+      "src/renderer/fog_pass.h",
+      "src/renderer/fog_pass_math.h",
+      "src/renderer/fog_shadow_grid.h",
+      "src/renderer/fog_volume_math.h",
+      "src/renderer/gpu_sync_timing_core.h",
+      "src/renderer/ps3_program_slots.h",
+      "src/renderer/quad_vertex_program.h",
+      "src/renderer/quad_vertex_program_inc.h",
+      "src/renderer/shadow_cascade_footprint_core.h",
+      "src/renderer/shadow_replay_projection.h",
+      "src/renderer/sun_shadow_apply_pass.h",
+      "verification/probe/fog_route_bridge.cpp",
+      "verification/probe/fog_route_bridge_build.py",
+      "verification/probe/fog_route_bridge_check.py",
+      "verification/probe/fog_route_bridge_run.py",
+      "verification/probe/fog_route_camera_basis_inc.h",
+      "verification/probe/fog_route_density_inc.h",
+      "verification/probe/fog_route_owner_inc.h"
+     ],
+     "dependency_check": "/tmp/x3-run85-candidate/reuse_deps.py -> /tmp/x3-run85-candidate/reuse-deps.json",
+     "run84_entry": {
+      "reused_from": "run83",
+      "dependency_paths_checked": [
+       "src/fog/fog_density_cache.cpp",
+       "src/fog/fog_density_cache.h",
+       "src/fog/fog_density_generator.cpp",
+       "src/fog/fog_density_generator.h",
+       "src/fog/fog_handover.h",
+       "src/proxy/cpu_state.h",
+       "src/proxy/fog_card_mask.h",
+       "src/proxy/fog_card_match.h",
+       "src/proxy/fog_card_policy.h",
+       "src/proxy/fog_prefill.h",
+       "src/proxy/fog_sector_policy.h",
+       "src/proxy/motion_output_fog_inc.h",
+       "src/proxy/sector_background.h",
+       "src/renderer/camera_reprojection.h",
+       "src/renderer/fog_composite_program_inc.h",
+       "src/renderer/fog_density_composite_look_program_inc.h",
+       "src/renderer/fog_density_composite_look_q4_program_inc.h",
+       "src/renderer/fog_density_march_grid_program_inc.h",
+       "src/renderer/fog_density_march_look_far24_program_inc.h",
+       "src/renderer/fog_density_march_look_far24_q4_program_inc.h",
+       "src/renderer/fog_density_march_look_program_inc.h",
+       "src/renderer/fog_density_march_look_q4_program_inc.h",
+       "src/renderer/fog_density_needs_census_program_inc.h",
+       "src/renderer/fog_density_needs_census_q4_program_inc.h",
+       "src/renderer/fog_density_repair_grid_program_inc.h",
+       "src/renderer/fog_density_repair_look_far24_program_inc.h",
+       "src/renderer/fog_density_repair_look_far24_q4_program_inc.h",
+       "src/renderer/fog_density_repair_look_program_inc.h",
+       "src/renderer/fog_density_repair_look_q4_program_inc.h",
+       "src/renderer/fog_density_visibility_grid_program_inc.h",
+       "src/renderer/fog_dust_motes_grid_program_inc.h",
+       "src/renderer/fog_dust_motes_look_program_inc.h",
+       "src/renderer/fog_dust_motes_vertex_program_inc.h",
+       "src/renderer/fog_family_chroma_inc.h",
+       "src/renderer/fog_field_assets.cpp",
+       "src/renderer/fog_field_assets.h",
+       "src/renderer/fog_look_math.h",
+       "src/renderer/fog_march_program_inc.h",
+       "src/renderer/fog_mote_math.h",
+       "src/renderer/fog_pass.cpp",
+       "src/renderer/fog_pass.h",
+       "src/renderer/fog_pass_math.h",
+       "src/renderer/fog_shadow_grid.h",
+       "src/renderer/fog_volume_math.h",
+       "src/renderer/gpu_sync_timing_core.h",
+       "src/renderer/ps3_program_slots.h",
+       "src/renderer/quad_vertex_program.h",
+       "src/renderer/quad_vertex_program_inc.h",
+       "src/renderer/shadow_cascade_footprint_core.h",
+       "src/renderer/shadow_replay_projection.h",
+       "src/renderer/sun_shadow_apply_pass.h",
+       "verification/probe/fog_route_bridge.cpp",
+       "verification/probe/fog_route_bridge_build.py",
+       "verification/probe/fog_route_bridge_check.py",
+       "verification/probe/fog_route_bridge_run.py",
+       "verification/probe/fog_route_camera_basis_inc.h",
+       "verification/probe/fog_route_density_inc.h",
+       "verification/probe/fog_route_owner_inc.h"
+      ],
+      "dependency_check": "/tmp/x3-run84-candidate/reuse_deps.py -> /tmp/x3-run84-candidate/reuse-deps.json",
+      "run83_entry": {
+       "reused_from": "run82",
+       "dependency_paths_checked": [
+        "src/fog/fog_density_cache.cpp",
+        "src/fog/fog_density_cache.h",
+        "src/fog/fog_density_generator.cpp",
+        "src/fog/fog_density_generator.h",
+        "src/fog/fog_handover.h",
+        "src/proxy/cpu_state.h",
+        "src/proxy/fog_card_mask.h",
+        "src/proxy/fog_card_match.h",
+        "src/proxy/fog_card_policy.h",
+        "src/proxy/fog_prefill.h",
+        "src/proxy/fog_sector_policy.h",
+        "src/proxy/motion_output_fog_inc.h",
+        "src/proxy/sector_background.h",
+        "src/renderer/camera_reprojection.h",
+        "src/renderer/fog_composite_program_inc.h",
+        "src/renderer/fog_density_composite_look_program_inc.h",
+        "src/renderer/fog_density_composite_look_q4_program_inc.h",
+        "src/renderer/fog_density_march_grid_program_inc.h",
+        "src/renderer/fog_density_march_look_far24_program_inc.h",
+        "src/renderer/fog_density_march_look_far24_q4_program_inc.h",
+        "src/renderer/fog_density_march_look_program_inc.h",
+        "src/renderer/fog_density_march_look_q4_program_inc.h",
+        "src/renderer/fog_density_needs_census_program_inc.h",
+        "src/renderer/fog_density_needs_census_q4_program_inc.h",
+        "src/renderer/fog_density_repair_grid_program_inc.h",
+        "src/renderer/fog_density_repair_look_far24_program_inc.h",
+        "src/renderer/fog_density_repair_look_far24_q4_program_inc.h",
+        "src/renderer/fog_density_repair_look_program_inc.h",
+        "src/renderer/fog_density_repair_look_q4_program_inc.h",
+        "src/renderer/fog_density_visibility_grid_program_inc.h",
+        "src/renderer/fog_dust_motes_grid_program_inc.h",
+        "src/renderer/fog_dust_motes_look_program_inc.h",
+        "src/renderer/fog_dust_motes_vertex_program_inc.h",
+        "src/renderer/fog_family_chroma_inc.h",
+        "src/renderer/fog_field_assets.cpp",
+        "src/renderer/fog_field_assets.h",
+        "src/renderer/fog_look_math.h",
+        "src/renderer/fog_march_program_inc.h",
+        "src/renderer/fog_mote_math.h",
+        "src/renderer/fog_pass.cpp",
+        "src/renderer/fog_pass.h",
+        "src/renderer/fog_pass_math.h",
+        "src/renderer/fog_shadow_grid.h",
+        "src/renderer/fog_volume_math.h",
+        "src/renderer/gpu_sync_timing_core.h",
+        "src/renderer/ps3_program_slots.h",
+        "src/renderer/quad_vertex_program.h",
+        "src/renderer/quad_vertex_program_inc.h",
+        "src/renderer/shadow_cascade_footprint_core.h",
+        "src/renderer/shadow_replay_projection.h",
+        "src/renderer/sun_shadow_apply_pass.h",
+        "verification/probe/fog_route_bridge.cpp",
+        "verification/probe/fog_route_bridge_build.py",
+        "verification/probe/fog_route_bridge_check.py",
+        "verification/probe/fog_route_bridge_run.py",
+        "verification/probe/fog_route_camera_basis_inc.h",
+        "verification/probe/fog_route_density_inc.h",
+        "verification/probe/fog_route_owner_inc.h"
+       ],
+       "dependency_check": "/tmp/x3-run83-candidate/reuse_deps.py -> /tmp/x3-run83-candidate/reuse-deps.json",
+       "run82_entry": {
+        "reused_from": "run81",
+        "run80_result": "PASS",
+        "run80_result_line": "PASS bridge_checks=42135 exit_checks=4",
+        "run80_lock": {
+         "lock_wait_seconds": 3.707999999991163e-06,
+         "child_elapsed_seconds": 81.31968337500001,
+         "exit_code": 0
+        }
+       }
+      }
+     }
+    }
+   }
+  }
+ },
+ "fov_patch": {
+  "reused_from": "run87",
+  "reason": "include closure (14 files, runner and build script) byte-identical to Run87: git diff --stat 22593133 79aafc8b -- <closure> is empty; the fixture does not compile capture.cpp, motion_output*, loading_trace* or mesh_adjacency_fast*",
+  "dependency_paths_checked": [
+   "src/proxy/capture.h",
+   "src/proxy/compositor_bridge.h",
+   "src/proxy/engine_memory.cpp",
+   "src/proxy/engine_memory.h",
+   "src/proxy/engine_patch.cpp",
+   "src/proxy/engine_patch.h",
+   "src/proxy/fov.cpp",
+   "src/proxy/fov.h",
+   "src/proxy/fov_sites.h",
+   "src/proxy/object_trace.h",
+   "verification/probe/build_fov_patch.py",
+   "verification/probe/fov_patch_fixture.cpp",
+   "verification/probe/fov_patch_fixture_shim.h",
+   "verification/probe/run_fov_patch.py"
+  ],
+  "dependency_check": "/tmp/x3-run88-candidate/reuse_deps.py -> /tmp/x3-run88-candidate/reuse-deps.json",
+  "run87_entry": {
+   "reused_from": "run85",
+   "reason": "include closure (14 files, runner and build script) byte-identical to Run85: git diff --stat 53e7aba5 22593133 -- <closure> is empty; it differed in Run86 only by src/proxy/capture.h (effects stage / docking restore, removed again), so Run86 rerun evidence is not the current code",
+   "dependency_paths_checked": [
+    "src/proxy/capture.h",
+    "src/proxy/compositor_bridge.h",
+    "src/proxy/engine_memory.cpp",
+    "src/proxy/engine_memory.h",
+    "src/proxy/engine_patch.cpp",
+    "src/proxy/engine_patch.h",
+    "src/proxy/fov.cpp",
+    "src/proxy/fov.h",
+    "src/proxy/fov_sites.h",
+    "src/proxy/object_trace.h",
+    "verification/probe/build_fov_patch.py",
+    "verification/probe/fov_patch_fixture.cpp",
+    "verification/probe/fov_patch_fixture_shim.h",
+    "verification/probe/run_fov_patch.py"
+   ],
+   "dependency_check": "/tmp/x3-run87-candidate/reuse_deps.py -> /tmp/x3-run87-candidate/reuse-deps.json",
+   "run85_entry": {
+    "reused_from": "run84",
+    "reason": "no such source changed since 46cd4f9d: git diff --stat 46cd4f9d 53e7aba5 -- <the 14 files of its include closure, runner and build script> is empty",
+    "dependency_paths_checked": [
+     "src/proxy/capture.h",
+     "src/proxy/compositor_bridge.h",
+     "src/proxy/engine_memory.cpp",
+     "src/proxy/engine_memory.h",
+     "src/proxy/engine_patch.cpp",
+     "src/proxy/engine_patch.h",
+     "src/proxy/fov.cpp",
+     "src/proxy/fov.h",
+     "src/proxy/fov_sites.h",
+     "src/proxy/object_trace.h",
+     "verification/probe/build_fov_patch.py",
+     "verification/probe/fov_patch_fixture.cpp",
+     "verification/probe/fov_patch_fixture_shim.h",
+     "verification/probe/run_fov_patch.py"
+    ],
+    "dependency_check": "/tmp/x3-run85-candidate/reuse_deps.py -> /tmp/x3-run85-candidate/reuse-deps.json",
+    "run84_entry": {
+     "reused_from": "run83",
+     "dependency_paths_checked": [
+      "src/proxy/capture.h",
+      "src/proxy/compositor_bridge.h",
+      "src/proxy/engine_memory.cpp",
+      "src/proxy/engine_memory.h",
+      "src/proxy/engine_patch.cpp",
+      "src/proxy/engine_patch.h",
+      "src/proxy/fov.cpp",
+      "src/proxy/fov.h",
+      "src/proxy/fov_sites.h",
+      "src/proxy/object_trace.h",
+      "verification/probe/build_fov_patch.py",
+      "verification/probe/fov_patch_fixture.cpp",
+      "verification/probe/fov_patch_fixture_shim.h",
+      "verification/probe/run_fov_patch.py"
+     ],
+     "dependency_check": "/tmp/x3-run84-candidate/reuse_deps.py -> /tmp/x3-run84-candidate/reuse-deps.json",
+     "run83_entry": {
+      "command": "cd /tmp/x3-run83-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run83-candidate/lock-timings-fov.json python3 verification/probe/run_fov_patch.py",
+      "result": "PASS",
+      "checks": 268,
+      "checks_passed": 268,
+      "failed": [],
+      "exit_status": 0,
+      "elapsed_s": 5.7,
+      "executable_sha256": "ff52e32219c4a9abac33c99da3f9ac599df03d77d1475190e668abb1b0fe7723",
+      "lock": {
+       "lock_wait_seconds": 3.583000000001446e-06,
+       "child_elapsed_seconds": 8.470527416000001,
+       "exit_code": 0
+      },
+      "record_copy": "/tmp/x3-run83-candidate/fov-patch.json",
+      "versus_run82": "194 -> 268: load-site claim cases (brief expects 268/268)"
+     }
+    }
+   }
+  }
+ },
+ "window_mode": {
+  "reused_from": "run87",
+  "reason": "include closure (6 files, runner and build script) byte-identical to Run87: git diff --stat 22593133 79aafc8b -- <closure> is empty; the fixture does not compile capture.cpp, motion_output*, loading_trace* or mesh_adjacency_fast*",
+  "dependency_paths_checked": [
+   "CMakeLists.txt",
+   "src/proxy/window_mode.cpp",
+   "src/proxy/window_mode.h",
+   "src/proxy/window_mode_core.h",
+   "verification/probe/run_window_mode.py",
+   "verification/probe/window_mode_fixture.cpp"
+  ],
+  "dependency_check": "/tmp/x3-run88-candidate/reuse_deps.py -> /tmp/x3-run88-candidate/reuse-deps.json",
+  "run87_entry": {
+   "reused_from": "run85",
+   "reason": "include closure (6 files, runner and build script) byte-identical to Run85: git diff --stat 53e7aba5 22593133 -- <closure> is empty; it differed in Run86 only by CMakeLists.txt (effects stage / docking restore, removed again), so Run86 rerun evidence is not the current code",
+   "dependency_paths_checked": [
+    "CMakeLists.txt",
+    "src/proxy/window_mode.cpp",
+    "src/proxy/window_mode.h",
+    "src/proxy/window_mode_core.h",
+    "verification/probe/run_window_mode.py",
+    "verification/probe/window_mode_fixture.cpp"
+   ],
+   "dependency_check": "/tmp/x3-run87-candidate/reuse_deps.py -> /tmp/x3-run87-candidate/reuse-deps.json",
+   "run85_entry": {
+    "reused_from": "run84",
+    "reason": "no such source changed since 46cd4f9d: git diff --stat 46cd4f9d 53e7aba5 -- <the 6 files of its include closure, runner and build script> is empty",
+    "dependency_paths_checked": [
+     "CMakeLists.txt",
+     "src/proxy/window_mode.cpp",
+     "src/proxy/window_mode.h",
+     "src/proxy/window_mode_core.h",
+     "verification/probe/run_window_mode.py",
+     "verification/probe/window_mode_fixture.cpp"
+    ],
+    "dependency_check": "/tmp/x3-run85-candidate/reuse_deps.py -> /tmp/x3-run85-candidate/reuse-deps.json",
+    "run84_entry": {
+     "reused_from": "run83",
+     "dependency_paths_checked": [
+      "CMakeLists.txt",
+      "src/proxy/window_mode.cpp",
+      "src/proxy/window_mode.h",
+      "src/proxy/window_mode_core.h",
+      "verification/probe/run_window_mode.py",
+      "verification/probe/window_mode_fixture.cpp"
+     ],
+     "dependency_check": "/tmp/x3-run84-candidate/reuse_deps.py -> /tmp/x3-run84-candidate/reuse-deps.json",
+     "run83_entry": {
+      "command": "cd /tmp/x3-run83-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run83-candidate/lock-timings-window.json python3 verification/probe/run_window_mode.py --exe /tmp/x3-run83-candidate/build/window_mode_fixture.exe",
+      "result": "PASS",
+      "passed": true,
+      "expected_checks": 19,
+      "checks": 19,
+      "failed_checks": [],
+      "exit_code": 0,
+      "elapsed_s": 8.8,
+      "executable_sha256": "f662d6e0aa1feff7c9406341486e9149bbc5f557c7a2977d2f8424099d9fd01d",
+      "report_sha256": "b55a0782f536443268fa24cb2776b0bcbefbcad9ad12c47aa10bb511557d5547",
+      "lock": {
+       "lock_wait_seconds": 3.2910000000024864e-06,
+       "child_elapsed_seconds": 8.867968917,
+       "exit_code": 0
+      },
+      "geometry": {
+       "monitor": "0,0,5120,1440",
+       "work": "0,31,5120,1440",
+       "offset": 31,
+       "offset_x": 0
+      },
+      "record_copy": "/tmp/x3-run83-candidate/window-mode.json"
+     }
+    }
+   }
+  }
+ },
+ "sun_flare_fix": {
+  "reused_from": "run87",
+  "reason": "include closure (12 files, runner and build script) byte-identical to Run87: git diff --stat 22593133 79aafc8b -- <closure> is empty; the fixture does not compile capture.cpp, motion_output*, loading_trace* or mesh_adjacency_fast*",
+  "dependency_paths_checked": [
+   "src/proxy/capture.h",
+   "src/proxy/compositor_bridge.h",
+   "src/proxy/engine_patch.cpp",
+   "src/proxy/engine_patch.h",
+   "src/proxy/object_trace.h",
+   "src/proxy/sun_flare_fix.cpp",
+   "src/proxy/sun_flare_fix.h",
+   "src/proxy/sun_flare_fix_sites.h",
+   "verification/probe/build_sun_flare_fix.py",
+   "verification/probe/run_sun_flare_fix.py",
+   "verification/probe/sun_flare_fix_fixture.cpp",
+   "verification/probe/sun_flare_fix_fixture_shim.h"
+  ],
+  "dependency_check": "/tmp/x3-run88-candidate/reuse_deps.py -> /tmp/x3-run88-candidate/reuse-deps.json",
+  "run87_entry": {
+   "reused_from": "run85",
+   "reason": "include closure (12 files, runner and build script) byte-identical to Run85: git diff --stat 53e7aba5 22593133 -- <closure> is empty; it differed in Run86 only by src/proxy/capture.h (effects stage / docking restore, removed again), so Run86 rerun evidence is not the current code",
+   "dependency_paths_checked": [
+    "src/proxy/capture.h",
+    "src/proxy/compositor_bridge.h",
+    "src/proxy/engine_patch.cpp",
+    "src/proxy/engine_patch.h",
+    "src/proxy/object_trace.h",
+    "src/proxy/sun_flare_fix.cpp",
+    "src/proxy/sun_flare_fix.h",
+    "src/proxy/sun_flare_fix_sites.h",
+    "verification/probe/build_sun_flare_fix.py",
+    "verification/probe/run_sun_flare_fix.py",
+    "verification/probe/sun_flare_fix_fixture.cpp",
+    "verification/probe/sun_flare_fix_fixture_shim.h"
+   ],
+   "dependency_check": "/tmp/x3-run87-candidate/reuse_deps.py -> /tmp/x3-run87-candidate/reuse-deps.json",
+   "run85_entry": {
+    "reused_from": "run84",
+    "reason": "no such source changed since 46cd4f9d: git diff --stat 46cd4f9d 53e7aba5 -- <the 12 files of its include closure, runner and build script> is empty",
+    "dependency_paths_checked": [
+     "src/proxy/capture.h",
+     "src/proxy/compositor_bridge.h",
+     "src/proxy/engine_patch.cpp",
+     "src/proxy/engine_patch.h",
+     "src/proxy/object_trace.h",
+     "src/proxy/sun_flare_fix.cpp",
+     "src/proxy/sun_flare_fix.h",
+     "src/proxy/sun_flare_fix_sites.h",
+     "verification/probe/build_sun_flare_fix.py",
+     "verification/probe/run_sun_flare_fix.py",
+     "verification/probe/sun_flare_fix_fixture.cpp",
+     "verification/probe/sun_flare_fix_fixture_shim.h"
+    ],
+    "dependency_check": "/tmp/x3-run85-candidate/reuse_deps.py -> /tmp/x3-run85-candidate/reuse-deps.json",
+    "run84_entry": {
+     "reused_from": "run83",
+     "dependency_paths_checked": [
+      "src/proxy/capture.h",
+      "src/proxy/compositor_bridge.h",
+      "src/proxy/engine_patch.cpp",
+      "src/proxy/engine_patch.h",
+      "src/proxy/object_trace.h",
+      "src/proxy/sun_flare_fix.cpp",
+      "src/proxy/sun_flare_fix.h",
+      "src/proxy/sun_flare_fix_sites.h",
+      "verification/probe/build_sun_flare_fix.py",
+      "verification/probe/run_sun_flare_fix.py",
+      "verification/probe/sun_flare_fix_fixture.cpp",
+      "verification/probe/sun_flare_fix_fixture_shim.h"
+     ],
+     "dependency_check": "/tmp/x3-run84-candidate/reuse_deps.py -> /tmp/x3-run84-candidate/reuse-deps.json",
+     "run83_entry": {
+      "reused_from": "run82",
+      "dependency_paths_checked": [
+       "src/proxy/capture.h",
+       "src/proxy/compositor_bridge.h",
+       "src/proxy/engine_patch.cpp",
+       "src/proxy/engine_patch.h",
+       "src/proxy/object_trace.h",
+       "src/proxy/sun_flare_fix.cpp",
+       "src/proxy/sun_flare_fix.h",
+       "src/proxy/sun_flare_fix_sites.h",
+       "verification/probe/build_sun_flare_fix.py",
+       "verification/probe/run_sun_flare_fix.py",
+       "verification/probe/sun_flare_fix_fixture.cpp",
+       "verification/probe/sun_flare_fix_fixture_shim.h"
+      ],
+      "dependency_check": "/tmp/x3-run83-candidate/reuse_deps.py -> /tmp/x3-run83-candidate/reuse-deps.json",
+      "run82_entry": {
+       "command": "cd /tmp/x3-run82-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run82-candidate/lock-timings-sunflare.json python3 verification/probe/run_sun_flare_fix.py",
+       "result": "PASS",
+       "checks": 79,
+       "checks_passed": 79,
+       "failed": [],
+       "exit_status": 0,
+       "elapsed_s": 5.3,
+       "executable_sha256": "50af33b69edde442a8b51cfeb7ae6de2f42a7034a28cc8237be29daf7146ec13",
+       "lock": {
+        "lock_wait_seconds": 9.374999999998967e-06,
+        "child_elapsed_seconds": 10.877328417,
+        "exit_code": 0
+       },
+       "compare": {
+        "non_overflowing": 606,
+        "identical": 606,
+        "overflowing": 3490,
+        "changed": 3382,
+        "past_x_patched": 3490,
+        "past_x_vanilla": 108
+       },
+       "record_copy": "/tmp/x3-run82-candidate/sun-flare-fix.json",
+       "versus_ledger": "79/79 = docs/verification/sun-flare-fix.md"
+      }
+     }
+    }
+   }
+  }
+ },
+ "lod_occlusion_patch": {
+  "reused_from": "run87",
+  "reason": "include closure (12 files, runner and build script) byte-identical to Run87: git diff --stat 22593133 79aafc8b -- <closure> is empty; the fixture does not compile capture.cpp, motion_output*, loading_trace* or mesh_adjacency_fast*",
+  "dependency_paths_checked": [
+   "src/proxy/capture.h",
+   "src/proxy/compositor_bridge.h",
+   "src/proxy/engine_patch.cpp",
+   "src/proxy/engine_patch.h",
+   "src/proxy/lod_occlusion.cpp",
+   "src/proxy/lod_occlusion.h",
+   "src/proxy/lod_occlusion_sites.h",
+   "src/proxy/object_trace.h",
+   "verification/probe/build_lod_occlusion_patch.py",
+   "verification/probe/lod_occlusion_patch_fixture.cpp",
+   "verification/probe/lod_occlusion_patch_fixture_shim.h",
+   "verification/probe/run_lod_occlusion_patch.py"
+  ],
+  "dependency_check": "/tmp/x3-run88-candidate/reuse_deps.py -> /tmp/x3-run88-candidate/reuse-deps.json",
+  "run87_entry": {
+   "reused_from": "run85",
+   "reason": "include closure (12 files, runner and build script) byte-identical to Run85: git diff --stat 53e7aba5 22593133 -- <closure> is empty; it differed in Run86 only by src/proxy/capture.h (effects stage / docking restore, removed again), so Run86 rerun evidence is not the current code",
+   "dependency_paths_checked": [
+    "src/proxy/capture.h",
+    "src/proxy/compositor_bridge.h",
+    "src/proxy/engine_patch.cpp",
+    "src/proxy/engine_patch.h",
+    "src/proxy/lod_occlusion.cpp",
+    "src/proxy/lod_occlusion.h",
+    "src/proxy/lod_occlusion_sites.h",
+    "src/proxy/object_trace.h",
+    "verification/probe/build_lod_occlusion_patch.py",
+    "verification/probe/lod_occlusion_patch_fixture.cpp",
+    "verification/probe/lod_occlusion_patch_fixture_shim.h",
+    "verification/probe/run_lod_occlusion_patch.py"
+   ],
+   "dependency_check": "/tmp/x3-run87-candidate/reuse_deps.py -> /tmp/x3-run87-candidate/reuse-deps.json",
+   "run85_entry": {
+    "reused_from": "run84",
+    "reason": "no such source changed since 46cd4f9d: git diff --stat 46cd4f9d 53e7aba5 -- <the 12 files of its include closure, runner and build script> is empty",
+    "dependency_paths_checked": [
+     "src/proxy/capture.h",
+     "src/proxy/compositor_bridge.h",
+     "src/proxy/engine_patch.cpp",
+     "src/proxy/engine_patch.h",
+     "src/proxy/lod_occlusion.cpp",
+     "src/proxy/lod_occlusion.h",
+     "src/proxy/lod_occlusion_sites.h",
+     "src/proxy/object_trace.h",
+     "verification/probe/build_lod_occlusion_patch.py",
+     "verification/probe/lod_occlusion_patch_fixture.cpp",
+     "verification/probe/lod_occlusion_patch_fixture_shim.h",
+     "verification/probe/run_lod_occlusion_patch.py"
+    ],
+    "dependency_check": "/tmp/x3-run85-candidate/reuse_deps.py -> /tmp/x3-run85-candidate/reuse-deps.json",
+    "run84_entry": {
+     "command": "cd /tmp/x3-run84-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run84-candidate/lock-timings-lodocc.json python3 verification/probe/run_lod_occlusion_patch.py",
+     "why_run": "its runner changed in 80394271..46cd4f9d (DEFAULT_MARKERS gained X3M_SUN_OCCLUSION_DEFAULT; reuse-deps.json)",
+     "result": "PASS",
+     "checks": 108,
+     "checks_passed": 108,
+     "failed": [],
+     "exit_status": 0,
+     "elapsed_s": 5.2,
+     "executable_sha256": "5716d036eeee7598cf61a935baf82a45947bdac905b7ae07b44ff4b992a6e79a",
+     "record_copy": "/tmp/x3-run84-candidate/lod-occlusion-patch.json",
+     "versus_run82": "108/108 (Run82, reused in Run83)",
+     "lock": {
+      "lock_wait_seconds": 3.333000000001196e-06,
+      "child_elapsed_seconds": 7.705322375,
+      "exit_code": 0
+     }
+    }
+   }
+  }
+ },
+ "cull_small_parts_fixture": {
+  "reused_from": "run87",
+  "reason": "include closure (19 files, runner and build script) byte-identical to Run87: git diff --stat 22593133 79aafc8b -- <closure> is empty; the fixture does not compile capture.cpp, motion_output*, loading_trace* or mesh_adjacency_fast*",
+  "dependency_paths_checked": [
+   "src/proxy/camera_state.h",
+   "src/proxy/capture.h",
+   "src/proxy/compositor_bridge.h",
+   "src/proxy/cull_census.cpp",
+   "src/proxy/cull_census.h",
+   "src/proxy/cull_census_core.h",
+   "src/proxy/cull_small_parts.cpp",
+   "src/proxy/cull_small_parts.h",
+   "src/proxy/cull_small_parts_core.h",
+   "src/proxy/engine_memory.cpp",
+   "src/proxy/engine_memory.h",
+   "src/proxy/engine_patch.cpp",
+   "src/proxy/engine_patch.h",
+   "src/proxy/fov.h",
+   "src/proxy/object_trace.h",
+   "src/renderer/camera_reprojection.h",
+   "verification/probe/build_cull_small_parts.py",
+   "verification/probe/cull_small_parts_fixture.cpp",
+   "verification/probe/run_cull_small_parts.py"
+  ],
+  "dependency_check": "/tmp/x3-run88-candidate/reuse_deps.py -> /tmp/x3-run88-candidate/reuse-deps.json",
+  "run87_entry": {
+   "reused_from": "run85",
+   "reason": "include closure (19 files, runner and build script) byte-identical to Run85: git diff --stat 53e7aba5 22593133 -- <closure> is empty; it differed in Run86 only by src/proxy/capture.h (effects stage / docking restore, removed again), so Run86 rerun evidence is not the current code",
+   "dependency_paths_checked": [
+    "src/proxy/camera_state.h",
+    "src/proxy/capture.h",
+    "src/proxy/compositor_bridge.h",
+    "src/proxy/cull_census.cpp",
+    "src/proxy/cull_census.h",
+    "src/proxy/cull_census_core.h",
+    "src/proxy/cull_small_parts.cpp",
+    "src/proxy/cull_small_parts.h",
+    "src/proxy/cull_small_parts_core.h",
+    "src/proxy/engine_memory.cpp",
+    "src/proxy/engine_memory.h",
+    "src/proxy/engine_patch.cpp",
+    "src/proxy/engine_patch.h",
+    "src/proxy/fov.h",
+    "src/proxy/object_trace.h",
+    "src/renderer/camera_reprojection.h",
+    "verification/probe/build_cull_small_parts.py",
+    "verification/probe/cull_small_parts_fixture.cpp",
+    "verification/probe/run_cull_small_parts.py"
+   ],
+   "dependency_check": "/tmp/x3-run87-candidate/reuse_deps.py -> /tmp/x3-run87-candidate/reuse-deps.json",
+   "run85_entry": {
+    "reused_from": "run84",
+    "reason": "no such source changed since 46cd4f9d: git diff --stat 46cd4f9d 53e7aba5 -- <the 19 files of its include closure, runner and build script> is empty",
+    "dependency_paths_checked": [
+     "src/proxy/camera_state.h",
+     "src/proxy/capture.h",
+     "src/proxy/compositor_bridge.h",
+     "src/proxy/cull_census.cpp",
+     "src/proxy/cull_census.h",
+     "src/proxy/cull_census_core.h",
+     "src/proxy/cull_small_parts.cpp",
+     "src/proxy/cull_small_parts.h",
+     "src/proxy/cull_small_parts_core.h",
+     "src/proxy/engine_memory.cpp",
+     "src/proxy/engine_memory.h",
+     "src/proxy/engine_patch.cpp",
+     "src/proxy/engine_patch.h",
+     "src/proxy/fov.h",
+     "src/proxy/object_trace.h",
+     "src/renderer/camera_reprojection.h",
+     "verification/probe/build_cull_small_parts.py",
+     "verification/probe/cull_small_parts_fixture.cpp",
+     "verification/probe/run_cull_small_parts.py"
+    ],
+    "dependency_check": "/tmp/x3-run85-candidate/reuse_deps.py -> /tmp/x3-run85-candidate/reuse-deps.json",
+    "run84_entry": {
+     "reused_from": "run83",
+     "dependency_paths_checked": [
+      "src/proxy/camera_state.h",
+      "src/proxy/capture.h",
+      "src/proxy/compositor_bridge.h",
+      "src/proxy/cull_census.cpp",
+      "src/proxy/cull_census.h",
+      "src/proxy/cull_census_core.h",
+      "src/proxy/cull_small_parts.cpp",
+      "src/proxy/cull_small_parts.h",
+      "src/proxy/cull_small_parts_core.h",
+      "src/proxy/engine_memory.cpp",
+      "src/proxy/engine_memory.h",
+      "src/proxy/engine_patch.cpp",
+      "src/proxy/engine_patch.h",
+      "src/proxy/fov.h",
+      "src/proxy/object_trace.h",
+      "src/renderer/camera_reprojection.h",
+      "verification/probe/build_cull_small_parts.py",
+      "verification/probe/cull_small_parts_fixture.cpp",
+      "verification/probe/run_cull_small_parts.py"
+     ],
+     "dependency_check": "/tmp/x3-run84-candidate/reuse_deps.py -> /tmp/x3-run84-candidate/reuse-deps.json",
+     "run83_entry": {
+      "commands": [
+       "/usr/bin/python3 verification/probe/build_cull_small_parts.py",
+       "cd /tmp/x3-run83-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run83-candidate/lock-timings-cull.json python3 verification/probe/run_cull_small_parts.py"
+      ],
+      "why_run": "its include closure contains src/proxy/fov.h, changed in d1a4e360..80394271 (reuse-deps.json)",
+      "result": "PASS",
+      "checks": 153,
+      "failures": 0,
+      "exit_status": 0,
+      "bench_us": {
+       "native_pass": 0.2281,
+       "patched_disarmed": 0.2333,
+       "patched_armed": 0.2345
+      },
+      "record_copy": "/tmp/x3-run83-candidate/cull-small-parts-cpu.json",
+      "previous": "153 checks (Run82)",
+      "lock": {
+       "lock_wait_seconds": 3.374999999999906e-06,
+       "child_elapsed_seconds": 5.281896875,
+       "exit_code": 0
+      }
+     }
+    }
+   }
+  }
+ },
+ "chase_fire": {
+  "reused_from": "run87",
+  "reason": "include closure (16 files, runner and build script) byte-identical to Run87: git diff --stat 22593133 79aafc8b -- <closure> is empty; the fixture does not compile capture.cpp, motion_output*, loading_trace* or mesh_adjacency_fast*",
+  "dependency_paths_checked": [
+   "src/proxy/capture.h",
+   "src/proxy/chase_aim_trace.cpp",
+   "src/proxy/chase_aim_trace.h",
+   "src/proxy/chase_camera.h",
+   "src/proxy/chase_fire.cpp",
+   "src/proxy/chase_fire.h",
+   "src/proxy/compositor_bridge.h",
+   "src/proxy/cpu_state.h",
+   "src/proxy/engine_memory.cpp",
+   "src/proxy/engine_memory.h",
+   "src/proxy/engine_patch.cpp",
+   "src/proxy/engine_patch.h",
+   "src/proxy/object_trace.h",
+   "src/proxy/telemetry.h",
+   "verification/probe/chase_fire_fixture.cpp",
+   "verification/probe/run_chase_fire.py"
+  ],
+  "dependency_check": "/tmp/x3-run88-candidate/reuse_deps.py -> /tmp/x3-run88-candidate/reuse-deps.json",
+  "run87_entry": {
+   "reused_from": "run85",
+   "reason": "include closure (16 files, runner and build script) byte-identical to Run85: git diff --stat 53e7aba5 22593133 -- <closure> is empty; it differed in Run86 only by src/proxy/capture.h (effects stage / docking restore, removed again), so Run86 rerun evidence is not the current code",
+   "dependency_paths_checked": [
+    "src/proxy/capture.h",
+    "src/proxy/chase_aim_trace.cpp",
+    "src/proxy/chase_aim_trace.h",
+    "src/proxy/chase_camera.h",
+    "src/proxy/chase_fire.cpp",
+    "src/proxy/chase_fire.h",
+    "src/proxy/compositor_bridge.h",
+    "src/proxy/cpu_state.h",
+    "src/proxy/engine_memory.cpp",
+    "src/proxy/engine_memory.h",
+    "src/proxy/engine_patch.cpp",
+    "src/proxy/engine_patch.h",
+    "src/proxy/object_trace.h",
+    "src/proxy/telemetry.h",
+    "verification/probe/chase_fire_fixture.cpp",
+    "verification/probe/run_chase_fire.py"
+   ],
+   "dependency_check": "/tmp/x3-run87-candidate/reuse_deps.py -> /tmp/x3-run87-candidate/reuse-deps.json",
+   "run85_entry": {
+    "reused_from": "run84",
+    "reason": "no such source changed since 46cd4f9d: git diff --stat 46cd4f9d 53e7aba5 -- <the 16 files of its include closure, runner and build script> is empty",
+    "dependency_paths_checked": [
+     "src/proxy/capture.h",
+     "src/proxy/chase_aim_trace.cpp",
+     "src/proxy/chase_aim_trace.h",
+     "src/proxy/chase_camera.h",
+     "src/proxy/chase_fire.cpp",
+     "src/proxy/chase_fire.h",
+     "src/proxy/compositor_bridge.h",
+     "src/proxy/cpu_state.h",
+     "src/proxy/engine_memory.cpp",
+     "src/proxy/engine_memory.h",
+     "src/proxy/engine_patch.cpp",
+     "src/proxy/engine_patch.h",
+     "src/proxy/object_trace.h",
+     "src/proxy/telemetry.h",
+     "verification/probe/chase_fire_fixture.cpp",
+     "verification/probe/run_chase_fire.py"
+    ],
+    "dependency_check": "/tmp/x3-run85-candidate/reuse_deps.py -> /tmp/x3-run85-candidate/reuse-deps.json",
+    "run84_entry": {
+     "reused_from": "run83",
+     "dependency_paths_checked": [
+      "src/proxy/capture.h",
+      "src/proxy/chase_aim_trace.cpp",
+      "src/proxy/chase_aim_trace.h",
+      "src/proxy/chase_camera.h",
+      "src/proxy/chase_fire.cpp",
+      "src/proxy/chase_fire.h",
+      "src/proxy/compositor_bridge.h",
+      "src/proxy/cpu_state.h",
+      "src/proxy/engine_memory.cpp",
+      "src/proxy/engine_memory.h",
+      "src/proxy/engine_patch.cpp",
+      "src/proxy/engine_patch.h",
+      "src/proxy/object_trace.h",
+      "src/proxy/telemetry.h",
+      "verification/probe/chase_fire_fixture.cpp",
+      "verification/probe/run_chase_fire.py"
+     ],
+     "dependency_check": "/tmp/x3-run84-candidate/reuse_deps.py -> /tmp/x3-run84-candidate/reuse-deps.json",
+     "run83_entry": {
+      "reused_from": "run82",
+      "dependency_paths_checked": [
+       "src/proxy/capture.h",
+       "src/proxy/chase_aim_trace.cpp",
+       "src/proxy/chase_aim_trace.h",
+       "src/proxy/chase_camera.h",
+       "src/proxy/chase_fire.cpp",
+       "src/proxy/chase_fire.h",
+       "src/proxy/compositor_bridge.h",
+       "src/proxy/cpu_state.h",
+       "src/proxy/engine_memory.cpp",
+       "src/proxy/engine_memory.h",
+       "src/proxy/engine_patch.cpp",
+       "src/proxy/engine_patch.h",
+       "src/proxy/object_trace.h",
+       "src/proxy/telemetry.h",
+       "verification/probe/chase_fire_fixture.cpp",
+       "verification/probe/run_chase_fire.py"
+      ],
+      "dependency_check": "/tmp/x3-run83-candidate/reuse_deps.py -> /tmp/x3-run83-candidate/reuse-deps.json",
+      "run82_entry": {
+       "command": "cd /tmp/x3-run82-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run82-candidate/lock-timings-chasefire.json python3 verification/probe/run_chase_fire.py",
+       "result": "PASS",
+       "cases": 4,
+       "checks": 307,
+       "failures": 0,
+       "modes": [
+        {
+         "checks": 250,
+         "failures": 0,
+         "mode": "complete"
+        },
+        {
+         "checks": 22,
+         "failures": 0,
+         "mode": "off"
+        },
+        {
+         "checks": 13,
+         "failures": 0,
+         "mode": "bad"
+        },
+        {
+         "checks": 22,
+         "failures": 0,
+         "mode": "late"
+        }
+       ],
+       "runtime_verified": true,
+       "source_and_binary_stable": true,
+       "binary_sha256": "eea0af11e755b262c04d129a8641f9e269951dffdef97be6f7c4e9123679cea8",
+       "record_copy": "/tmp/x3-run82-candidate/chase-fire-summary.json",
+       "versus_committed": "mode check counts equal; binary and chase_camera.h source hashes differ (chase FOV compensation)",
+       "lock": {
+        "lock_wait_seconds": 3.208000000001071e-06,
+        "child_elapsed_seconds": 26.810175125,
+        "exit_code": 0
+       }
+      }
+     }
+    }
+   }
+  }
+ },
+ "gpu_sync_timing": {
+  "reused_from": "run87",
+  "reason": "include closure (7 files, runner and build script) byte-identical to Run87: git diff --stat 22593133 79aafc8b -- <closure> is empty; the fixture does not compile capture.cpp, motion_output*, loading_trace* or mesh_adjacency_fast*",
+  "dependency_paths_checked": [
+   "CMakeLists.txt",
+   "src/proxy/cpu_state.h",
+   "src/renderer/gpu_sync_timing.cpp",
+   "src/renderer/gpu_sync_timing.h",
+   "src/renderer/gpu_sync_timing_core.h",
+   "verification/probe/gpu_sync_timing_fixture.cpp",
+   "verification/probe/run_gpu_sync_timing.py"
+  ],
+  "dependency_check": "/tmp/x3-run88-candidate/reuse_deps.py -> /tmp/x3-run88-candidate/reuse-deps.json",
+  "run87_entry": {
+   "reused_from": "run85",
+   "reason": "include closure (7 files, runner and build script) byte-identical to Run85: git diff --stat 53e7aba5 22593133 -- <closure> is empty; it differed in Run86 only by CMakeLists.txt (effects stage / docking restore, removed again), so Run86 rerun evidence is not the current code",
+   "dependency_paths_checked": [
+    "CMakeLists.txt",
+    "src/proxy/cpu_state.h",
+    "src/renderer/gpu_sync_timing.cpp",
+    "src/renderer/gpu_sync_timing.h",
+    "src/renderer/gpu_sync_timing_core.h",
+    "verification/probe/gpu_sync_timing_fixture.cpp",
+    "verification/probe/run_gpu_sync_timing.py"
+   ],
+   "dependency_check": "/tmp/x3-run87-candidate/reuse_deps.py -> /tmp/x3-run87-candidate/reuse-deps.json",
+   "run85_entry": {
+    "reused_from": "run84",
+    "reason": "no such source changed since 46cd4f9d: git diff --stat 46cd4f9d 53e7aba5 -- <the 7 files of its include closure, runner and build script> is empty",
+    "dependency_paths_checked": [
+     "CMakeLists.txt",
+     "src/proxy/cpu_state.h",
+     "src/renderer/gpu_sync_timing.cpp",
+     "src/renderer/gpu_sync_timing.h",
+     "src/renderer/gpu_sync_timing_core.h",
+     "verification/probe/gpu_sync_timing_fixture.cpp",
+     "verification/probe/run_gpu_sync_timing.py"
+    ],
+    "dependency_check": "/tmp/x3-run85-candidate/reuse_deps.py -> /tmp/x3-run85-candidate/reuse-deps.json",
+    "run84_entry": {
+     "command": "cd /tmp/x3-run84-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run84-candidate/lock-timings-gpusync.json python3 verification/probe/run_gpu_sync_timing.py --exe /tmp/x3-run84-candidate/build/gpu_sync_timing_fixture.exe",
+     "why_run": "the temporal pass changed",
+     "passed": true,
+     "expected_checks": 32,
+     "checks": 32,
+     "checks_passed": 32,
+     "failed_checks": [],
+     "passes": 25,
+     "support": {
+      "available": 1,
+      "reason": "ok",
+      "result": 0,
+      "references": 52,
+      "device_delta": 52,
+      "queries": 50,
+      "census": 1,
+      "frequency": 10000000
+     },
+     "device": "adapter=NVIDIA GeForce 8800 GTX driver=nvd3dum.dll",
+     "session": {
+      "windows": 3,
+      "dt_n": 47,
+      "dt_median_us": 12544,
+      "retention_median_us": 13,
+      "fog_route_median_us": 3520,
+      "taa_median_us": 1568
+     },
+     "reset": {
+      "result": 0,
+      "available": 1,
+      "reason": "ok",
+      "references": 52,
+      "device_delta": 52
+     },
+     "exe_sha256": "7bc5b947cc3687d00932e086c6effdf89fcdf4018e03965dcf67b925e085bead",
+     "report_sha256": "f8af859a1f8b546aaa9a439fcc58e1fb7fe32a716f8fd19c79f9de95f57e6b24",
+     "copies": [
+      "/tmp/x3-run84-candidate/gpu-sync-timing.json",
+      "/tmp/x3-run84-candidate/gpu-sync-timing.txt"
+     ],
+     "lock": {
+      "lock_wait_seconds": 3.0000000000030003e-06,
+      "child_elapsed_seconds": 9.731566542,
+      "exit_code": 0
+     }
+    }
+   }
+  }
+ },
+ "sun_occlusion": {
+  "reused_from": "run87",
+  "reason": "include closure (26 files, runner and build script) byte-identical to Run87: git diff --stat 22593133 79aafc8b -- <closure> is empty; the fixture does not compile capture.cpp, motion_output*, loading_trace* or mesh_adjacency_fast*",
+  "dependency_paths_checked": [
+   "src/proxy/capture.h",
+   "src/proxy/compositor_bridge.h",
+   "src/proxy/cpu_state.h",
+   "src/proxy/engine_memory.cpp",
+   "src/proxy/engine_memory.h",
+   "src/proxy/engine_patch.cpp",
+   "src/proxy/engine_patch.h",
+   "src/proxy/object_trace.h",
+   "src/proxy/sun_occlusion.cpp",
+   "src/proxy/sun_occlusion.h",
+   "src/proxy/sun_occlusion_core.h",
+   "src/renderer/lens_visibility_variant.cpp",
+   "src/renderer/lens_visibility_variant.h",
+   "src/renderer/ps3_program_slots.h",
+   "src/renderer/quad_vertex_program.h",
+   "src/renderer/quad_vertex_program_inc.h",
+   "src/renderer/sun_occlusion_pass.cpp",
+   "src/renderer/sun_occlusion_pass.h",
+   "src/renderer/sun_visibility_program_inc.h",
+   "src/renderer/sun_visibility_taps_inc.h",
+   "verification/probe/build_sun_occlusion.py",
+   "verification/probe/run_sun_occlusion.py",
+   "verification/probe/sun_occlusion_fixture.cpp",
+   "verification/probe/sun_occlusion_hook_fixture.cpp",
+   "verification/probe/sun_occlusion_host.cpp",
+   "verification/probe/verify_sun_occlusion_sites.py"
+  ],
+  "dependency_check": "/tmp/x3-run88-candidate/reuse_deps.py -> /tmp/x3-run88-candidate/reuse-deps.json",
+  "run87_entry": {
+   "reused_from": "run85",
+   "reason": "include closure (26 files, runner and build script) byte-identical to Run85: git diff --stat 53e7aba5 22593133 -- <closure> is empty; it differed in Run86 only by src/proxy/capture.h (effects stage / docking restore, removed again), so Run86 rerun evidence is not the current code",
+   "dependency_paths_checked": [
+    "src/proxy/capture.h",
+    "src/proxy/compositor_bridge.h",
+    "src/proxy/cpu_state.h",
+    "src/proxy/engine_memory.cpp",
+    "src/proxy/engine_memory.h",
+    "src/proxy/engine_patch.cpp",
+    "src/proxy/engine_patch.h",
+    "src/proxy/object_trace.h",
+    "src/proxy/sun_occlusion.cpp",
+    "src/proxy/sun_occlusion.h",
+    "src/proxy/sun_occlusion_core.h",
+    "src/renderer/lens_visibility_variant.cpp",
+    "src/renderer/lens_visibility_variant.h",
+    "src/renderer/ps3_program_slots.h",
+    "src/renderer/quad_vertex_program.h",
+    "src/renderer/quad_vertex_program_inc.h",
+    "src/renderer/sun_occlusion_pass.cpp",
+    "src/renderer/sun_occlusion_pass.h",
+    "src/renderer/sun_visibility_program_inc.h",
+    "src/renderer/sun_visibility_taps_inc.h",
+    "verification/probe/build_sun_occlusion.py",
+    "verification/probe/run_sun_occlusion.py",
+    "verification/probe/sun_occlusion_fixture.cpp",
+    "verification/probe/sun_occlusion_hook_fixture.cpp",
+    "verification/probe/sun_occlusion_host.cpp",
+    "verification/probe/verify_sun_occlusion_sites.py"
+   ],
+   "dependency_check": "/tmp/x3-run87-candidate/reuse_deps.py -> /tmp/x3-run87-candidate/reuse-deps.json",
+   "run85_entry": {
+    "reused_from": "run84",
+    "reason": "no such source changed since 46cd4f9d: git diff --stat 46cd4f9d 53e7aba5 -- <the 26 files of its include closure, runner and build script> is empty",
+    "dependency_paths_checked": [
+     "src/proxy/capture.h",
+     "src/proxy/compositor_bridge.h",
+     "src/proxy/cpu_state.h",
+     "src/proxy/engine_memory.cpp",
+     "src/proxy/engine_memory.h",
+     "src/proxy/engine_patch.cpp",
+     "src/proxy/engine_patch.h",
+     "src/proxy/object_trace.h",
+     "src/proxy/sun_occlusion.cpp",
+     "src/proxy/sun_occlusion.h",
+     "src/proxy/sun_occlusion_core.h",
+     "src/renderer/lens_visibility_variant.cpp",
+     "src/renderer/lens_visibility_variant.h",
+     "src/renderer/ps3_program_slots.h",
+     "src/renderer/quad_vertex_program.h",
+     "src/renderer/quad_vertex_program_inc.h",
+     "src/renderer/sun_occlusion_pass.cpp",
+     "src/renderer/sun_occlusion_pass.h",
+     "src/renderer/sun_visibility_program_inc.h",
+     "src/renderer/sun_visibility_taps_inc.h",
+     "verification/probe/build_sun_occlusion.py",
+     "verification/probe/run_sun_occlusion.py",
+     "verification/probe/sun_occlusion_fixture.cpp",
+     "verification/probe/sun_occlusion_hook_fixture.cpp",
+     "verification/probe/sun_occlusion_host.cpp",
+     "verification/probe/verify_sun_occlusion_sites.py"
+    ],
+    "dependency_check": "/tmp/x3-run85-candidate/reuse_deps.py -> /tmp/x3-run85-candidate/reuse-deps.json",
+    "run84_entry": {
+     "command": "cd /tmp/x3-run84-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run84-candidate/lock-timings-sun.json python3 verification/probe/run_sun_occlusion.py",
+     "why_run": "brief: the sun occlusion default changed (launcher default and the default= config row in capture.cpp); the fixture sources themselves are unchanged in the range",
+     "passed": true,
+     "hook": {
+      "checks": 74,
+      "failures": 0,
+      "expected": 74,
+      "exit_status": 0,
+      "executable_sha256": "b6ae3a0bbb343feb631b900dcf83f40edc6f0b3fa164a1768888a1d9725f674a"
+     },
+     "gpu": {
+      "checks": 128,
+      "failed_checks": [],
+      "expected": 128,
+      "exit_status": 0,
+      "skipped": [],
+      "executable_sha256": "8c68a92f468afe7e16b0640c6420aaca59ab910e47b3866fd6c477fe9b59adb1"
+     },
+     "module_audit": {
+      "probe_thunk": [
+       "pushf",
+       "cld",
+       "push",
+       "push",
+       "call",
+       "add",
+       "cmp",
+       "je",
+       "popf",
+       "ret",
+       "popf",
+       "jmp"
+      ],
+      "lens_thunk": [
+       "pushf",
+       "cld",
+       "call",
+       "popf",
+       "push",
+       "call",
+       "add",
+       "pushf",
+       "cld",
+       "call",
+       "popf",
+       "ret"
+      ],
+      "probe_handler_float_free": true,
+      "module_float_free_outside_boundary": true,
+      "no_exception_runtime_symbols": true,
+      "functions": 20
+     },
+     "default_row_coverage": "the default= field of the sun_occlusion_config row is written by capture.cpp from X3M_SUN_OCCLUSION_DEFAULT; neither fixture exercises that row (host tests and the dry runs cover the launcher side)",
+     "record_copy": "/tmp/x3-run84-candidate/sun-occlusion.json",
+     "lock": {
+      "lock_wait_seconds": 3.167000000001835e-06,
+      "child_elapsed_seconds": 15.960211332999998,
+      "exit_code": 0
+     }
+    }
+   }
+  }
+ },
+ "cull_census": {
+  "reused_from": "run87",
+  "reason": "include closure (13 files, runner and build script) byte-identical to Run87: git diff --stat 22593133 79aafc8b -- <closure> is empty; the fixture does not compile capture.cpp, motion_output*, loading_trace* or mesh_adjacency_fast*",
+  "dependency_paths_checked": [
+   "src/proxy/capture.h",
+   "src/proxy/compositor_bridge.h",
+   "src/proxy/cull_census.cpp",
+   "src/proxy/cull_census.h",
+   "src/proxy/cull_census_core.h",
+   "src/proxy/engine_memory.cpp",
+   "src/proxy/engine_memory.h",
+   "src/proxy/engine_patch.cpp",
+   "src/proxy/engine_patch.h",
+   "src/proxy/object_trace.h",
+   "verification/probe/build_cull_census.py",
+   "verification/probe/cull_census_fixture.cpp",
+   "verification/probe/run_cull_census.py"
+  ],
+  "dependency_check": "/tmp/x3-run88-candidate/reuse_deps.py -> /tmp/x3-run88-candidate/reuse-deps.json",
+  "run87_entry": {
+   "reused_from": "run85",
+   "reason": "include closure (13 files, runner and build script) byte-identical to Run85: git diff --stat 53e7aba5 22593133 -- <closure> is empty; it differed in Run86 only by src/proxy/capture.h (effects stage / docking restore, removed again), so Run86 rerun evidence is not the current code",
+   "dependency_paths_checked": [
+    "src/proxy/capture.h",
+    "src/proxy/compositor_bridge.h",
+    "src/proxy/cull_census.cpp",
+    "src/proxy/cull_census.h",
+    "src/proxy/cull_census_core.h",
+    "src/proxy/engine_memory.cpp",
+    "src/proxy/engine_memory.h",
+    "src/proxy/engine_patch.cpp",
+    "src/proxy/engine_patch.h",
+    "src/proxy/object_trace.h",
+    "verification/probe/build_cull_census.py",
+    "verification/probe/cull_census_fixture.cpp",
+    "verification/probe/run_cull_census.py"
+   ],
+   "dependency_check": "/tmp/x3-run87-candidate/reuse_deps.py -> /tmp/x3-run87-candidate/reuse-deps.json",
+   "run85_entry": {
+    "reused_from": "run84",
+    "reason": "no such source changed since 46cd4f9d: git diff --stat 46cd4f9d 53e7aba5 -- <the 13 files of its include closure, runner and build script> is empty",
+    "dependency_paths_checked": [
+     "src/proxy/capture.h",
+     "src/proxy/compositor_bridge.h",
+     "src/proxy/cull_census.cpp",
+     "src/proxy/cull_census.h",
+     "src/proxy/cull_census_core.h",
+     "src/proxy/engine_memory.cpp",
+     "src/proxy/engine_memory.h",
+     "src/proxy/engine_patch.cpp",
+     "src/proxy/engine_patch.h",
+     "src/proxy/object_trace.h",
+     "verification/probe/build_cull_census.py",
+     "verification/probe/cull_census_fixture.cpp",
+     "verification/probe/run_cull_census.py"
+    ],
+    "dependency_check": "/tmp/x3-run85-candidate/reuse_deps.py -> /tmp/x3-run85-candidate/reuse-deps.json",
+    "run84_entry": {
+     "reused_from": "run83",
+     "dependency_paths_checked": [
+      "src/proxy/capture.h",
+      "src/proxy/compositor_bridge.h",
+      "src/proxy/cull_census.cpp",
+      "src/proxy/cull_census.h",
+      "src/proxy/cull_census_core.h",
+      "src/proxy/engine_memory.cpp",
+      "src/proxy/engine_memory.h",
+      "src/proxy/engine_patch.cpp",
+      "src/proxy/engine_patch.h",
+      "src/proxy/object_trace.h",
+      "verification/probe/build_cull_census.py",
+      "verification/probe/cull_census_fixture.cpp",
+      "verification/probe/run_cull_census.py"
+     ],
+     "dependency_check": "/tmp/x3-run84-candidate/reuse_deps.py -> /tmp/x3-run84-candidate/reuse-deps.json",
+     "run83_entry": {
+      "reused_from": "run82",
+      "dependency_paths_checked": [
+       "src/proxy/capture.h",
+       "src/proxy/compositor_bridge.h",
+       "src/proxy/cull_census.cpp",
+       "src/proxy/cull_census.h",
+       "src/proxy/cull_census_core.h",
+       "src/proxy/engine_memory.cpp",
+       "src/proxy/engine_memory.h",
+       "src/proxy/engine_patch.cpp",
+       "src/proxy/engine_patch.h",
+       "src/proxy/object_trace.h",
+       "verification/probe/build_cull_census.py",
+       "verification/probe/cull_census_fixture.cpp",
+       "verification/probe/run_cull_census.py"
+      ],
+      "dependency_check": "/tmp/x3-run83-candidate/reuse_deps.py -> /tmp/x3-run83-candidate/reuse-deps.json",
+      "run82_entry": {
+       "reused_from": "run81",
+       "run80_result": "PASS 119/0"
+      }
+     }
+    }
+   }
+  }
+ },
+ "bloom_pass": {
+  "reused_from": "run87",
+  "reason": "include closure (10 files, runner and build script) byte-identical to Run87: git diff --stat 22593133 79aafc8b -- <closure> is empty; the fixture does not compile capture.cpp, motion_output*, loading_trace* or mesh_adjacency_fast*",
+  "dependency_paths_checked": [
+   "src/renderer/bloom_pass.cpp",
+   "src/renderer/bloom_pass.h",
+   "src/renderer/quad_vertex_program.h",
+   "src/renderer/quad_vertex_program_inc.h",
+   "src/temporal/agx.h",
+   "src/temporal/bloom.h",
+   "src/temporal/sharpen.h",
+   "verification/probe/bloom_pass_fixture.cpp",
+   "verification/probe/bloom_pass_fixture_build.py",
+   "verification/probe/run_bloom_pass.py"
+  ],
+  "dependency_check": "/tmp/x3-run88-candidate/reuse_deps.py -> /tmp/x3-run88-candidate/reuse-deps.json",
+  "run87_entry": {
+   "reused_from": "run85",
+   "reason": "include closure (10 files, runner and build script) byte-identical to Run85: git diff --stat 53e7aba5 22593133 -- <closure> is empty",
+   "dependency_paths_checked": [
+    "src/renderer/bloom_pass.cpp",
+    "src/renderer/bloom_pass.h",
+    "src/renderer/quad_vertex_program.h",
+    "src/renderer/quad_vertex_program_inc.h",
+    "src/temporal/agx.h",
+    "src/temporal/bloom.h",
+    "src/temporal/sharpen.h",
+    "verification/probe/bloom_pass_fixture.cpp",
+    "verification/probe/bloom_pass_fixture_build.py",
+    "verification/probe/run_bloom_pass.py"
+   ],
+   "dependency_check": "/tmp/x3-run87-candidate/reuse_deps.py -> /tmp/x3-run87-candidate/reuse-deps.json",
+   "run85_entry": {
+    "reused_from": "run84",
+    "reason": "no such source changed since 46cd4f9d: git diff --stat 46cd4f9d 53e7aba5 -- <the 10 files of its include closure, runner and build script> is empty",
+    "dependency_paths_checked": [
+     "src/renderer/bloom_pass.cpp",
+     "src/renderer/bloom_pass.h",
+     "src/renderer/quad_vertex_program.h",
+     "src/renderer/quad_vertex_program_inc.h",
+     "src/temporal/agx.h",
+     "src/temporal/bloom.h",
+     "src/temporal/sharpen.h",
+     "verification/probe/bloom_pass_fixture.cpp",
+     "verification/probe/bloom_pass_fixture_build.py",
+     "verification/probe/run_bloom_pass.py"
+    ],
+    "dependency_check": "/tmp/x3-run85-candidate/reuse_deps.py -> /tmp/x3-run85-candidate/reuse-deps.json",
+    "run84_entry": {
+     "reused_from": "run83",
+     "dependency_paths_checked": [
+      "src/renderer/bloom_pass.cpp",
+      "src/renderer/bloom_pass.h",
+      "src/renderer/quad_vertex_program.h",
+      "src/renderer/quad_vertex_program_inc.h",
+      "src/temporal/agx.h",
+      "src/temporal/bloom.h",
+      "src/temporal/sharpen.h",
+      "verification/probe/bloom_pass_fixture.cpp",
+      "verification/probe/bloom_pass_fixture_build.py",
+      "verification/probe/run_bloom_pass.py"
+     ],
+     "dependency_check": "/tmp/x3-run84-candidate/reuse_deps.py -> /tmp/x3-run84-candidate/reuse-deps.json",
+     "run83_entry": {
+      "reused_from": "run82",
+      "dependency_paths_checked": [
+       "src/renderer/bloom_pass.cpp",
+       "src/renderer/bloom_pass.h",
+       "src/renderer/quad_vertex_program.h",
+       "src/renderer/quad_vertex_program_inc.h",
+       "src/temporal/agx.h",
+       "src/temporal/bloom.h",
+       "src/temporal/sharpen.h",
+       "verification/probe/bloom_pass_fixture.cpp",
+       "verification/probe/bloom_pass_fixture_build.py",
+       "verification/probe/run_bloom_pass.py"
+      ],
+      "dependency_check": "/tmp/x3-run83-candidate/reuse_deps.py -> /tmp/x3-run83-candidate/reuse-deps.json",
+      "run82_entry": {
+       "reused_from": "run81",
+       "run80_result": "PASS",
+       "run80_result_line": null,
+       "run80_lock": {
+        "lock_wait_seconds": 4.375000000000906e-06,
+        "child_elapsed_seconds": 15.511949667,
+        "exit_code": 0
+       },
+       "run80_images": "47/47"
+      }
+     }
+    }
+   }
+  }
+ },
+ "fog_pass": {
+  "reused_from": "run87",
+  "reason": "include closure (73 files, runner and build script) byte-identical to Run87: git diff --stat 22593133 79aafc8b -- <closure> is empty; the fixture does not compile capture.cpp, motion_output*, loading_trace* or mesh_adjacency_fast*",
+  "dependency_paths_checked": [
+   "src/fog/fog_composite_ps.hlsl",
+   "src/fog/fog_density_cache.cpp",
+   "src/fog/fog_density_cache.h",
+   "src/fog/fog_density_composite_look_ps.hlsl",
+   "src/fog/fog_density_composite_look_q4_ps.hlsl",
+   "src/fog/fog_density_composite_ps.hlsl",
+   "src/fog/fog_density_field_inc.h",
+   "src/fog/fog_density_generator.cpp",
+   "src/fog/fog_density_generator.h",
+   "src/fog/fog_density_march_grid_ps.hlsl",
+   "src/fog/fog_density_march_look_far24_ps.hlsl",
+   "src/fog/fog_density_march_look_far24_q4_ps.hlsl",
+   "src/fog/fog_density_march_look_ps.hlsl",
+   "src/fog/fog_density_march_look_q4_ps.hlsl",
+   "src/fog/fog_density_march_ps.hlsl",
+   "src/fog/fog_density_needs_census_ps.hlsl",
+   "src/fog/fog_density_needs_census_q4_ps.hlsl",
+   "src/fog/fog_density_repair_grid_ps.hlsl",
+   "src/fog/fog_density_repair_look_far24_ps.hlsl",
+   "src/fog/fog_density_repair_look_far24_q4_ps.hlsl",
+   "src/fog/fog_density_repair_look_ps.hlsl",
+   "src/fog/fog_density_repair_look_q4_ps.hlsl",
+   "src/fog/fog_density_repair_ps.hlsl",
+   "src/fog/fog_density_visibility_grid_ps.hlsl",
+   "src/fog/fog_dust_motes_grid_ps.hlsl",
+   "src/fog/fog_dust_motes_look_ps.hlsl",
+   "src/fog/fog_dust_motes_ps.hlsl",
+   "src/fog/fog_dust_motes_vs.hlsl",
+   "src/fog/fog_field_inc.h",
+   "src/fog/fog_handover.h",
+   "src/fog/fog_march_ps.hlsl",
+   "src/fog/fog_shadow_grid_inc.h",
+   "src/fog/fog_sky_level0_ps.hlsl",
+   "src/fog/fog_sky_reduce_ps.hlsl",
+   "src/proxy/cpu_state.h",
+   "src/proxy/fog_card_mask.h",
+   "src/renderer/fog_composite_program_inc.h",
+   "src/renderer/fog_density_composite_look_program_inc.h",
+   "src/renderer/fog_density_composite_look_q4_program_inc.h",
+   "src/renderer/fog_density_march_grid_program_inc.h",
+   "src/renderer/fog_density_march_look_far24_program_inc.h",
+   "src/renderer/fog_density_march_look_far24_q4_program_inc.h",
+   "src/renderer/fog_density_march_look_program_inc.h",
+   "src/renderer/fog_density_march_look_q4_program_inc.h",
+   "src/renderer/fog_density_needs_census_program_inc.h",
+   "src/renderer/fog_density_needs_census_q4_program_inc.h",
+   "src/renderer/fog_density_repair_grid_program_inc.h",
+   "src/renderer/fog_density_repair_look_far24_program_inc.h",
+   "src/renderer/fog_density_repair_look_far24_q4_program_inc.h",
+   "src/renderer/fog_density_repair_look_program_inc.h",
+   "src/renderer/fog_density_repair_look_q4_program_inc.h",
+   "src/renderer/fog_density_visibility_grid_program_inc.h",
+   "src/renderer/fog_dust_motes_grid_program_inc.h",
+   "src/renderer/fog_dust_motes_look_program_inc.h",
+   "src/renderer/fog_dust_motes_vertex_program_inc.h",
+   "src/renderer/fog_family_chroma_inc.h",
+   "src/renderer/fog_field_assets.h",
+   "src/renderer/fog_look_math.h",
+   "src/renderer/fog_march_program_inc.h",
+   "src/renderer/fog_mote_math.h",
+   "src/renderer/fog_pass.cpp",
+   "src/renderer/fog_pass.h",
+   "src/renderer/fog_pass_math.h",
+   "src/renderer/fog_shadow_grid.h",
+   "src/renderer/fog_volume_math.h",
+   "src/renderer/gpu_sync_timing_core.h",
+   "src/renderer/ps3_program_slots.h",
+   "src/renderer/quad_vertex_program.h",
+   "src/renderer/quad_vertex_program_inc.h",
+   "verification/probe/build_fog_pass.sh",
+   "verification/probe/fog_pass_fixture.cpp",
+   "verification/probe/fog_reference.h",
+   "verification/probe/run_fog_pass.py"
+  ],
+  "dependency_check": "/tmp/x3-run88-candidate/reuse_deps.py -> /tmp/x3-run88-candidate/reuse-deps.json",
+  "run87_entry": {
+   "reused_from": "run85",
+   "reason": "include closure (73 files, runner and build script) byte-identical to Run85: git diff --stat 53e7aba5 22593133 -- <closure> is empty",
+   "dependency_paths_checked": [
+    "src/fog/fog_composite_ps.hlsl",
+    "src/fog/fog_density_cache.cpp",
+    "src/fog/fog_density_cache.h",
+    "src/fog/fog_density_composite_look_ps.hlsl",
+    "src/fog/fog_density_composite_look_q4_ps.hlsl",
+    "src/fog/fog_density_composite_ps.hlsl",
+    "src/fog/fog_density_field_inc.h",
+    "src/fog/fog_density_generator.cpp",
+    "src/fog/fog_density_generator.h",
+    "src/fog/fog_density_march_grid_ps.hlsl",
+    "src/fog/fog_density_march_look_far24_ps.hlsl",
+    "src/fog/fog_density_march_look_far24_q4_ps.hlsl",
+    "src/fog/fog_density_march_look_ps.hlsl",
+    "src/fog/fog_density_march_look_q4_ps.hlsl",
+    "src/fog/fog_density_march_ps.hlsl",
+    "src/fog/fog_density_needs_census_ps.hlsl",
+    "src/fog/fog_density_needs_census_q4_ps.hlsl",
+    "src/fog/fog_density_repair_grid_ps.hlsl",
+    "src/fog/fog_density_repair_look_far24_ps.hlsl",
+    "src/fog/fog_density_repair_look_far24_q4_ps.hlsl",
+    "src/fog/fog_density_repair_look_ps.hlsl",
+    "src/fog/fog_density_repair_look_q4_ps.hlsl",
+    "src/fog/fog_density_repair_ps.hlsl",
+    "src/fog/fog_density_visibility_grid_ps.hlsl",
+    "src/fog/fog_dust_motes_grid_ps.hlsl",
+    "src/fog/fog_dust_motes_look_ps.hlsl",
+    "src/fog/fog_dust_motes_ps.hlsl",
+    "src/fog/fog_dust_motes_vs.hlsl",
+    "src/fog/fog_field_inc.h",
+    "src/fog/fog_handover.h",
+    "src/fog/fog_march_ps.hlsl",
+    "src/fog/fog_shadow_grid_inc.h",
+    "src/fog/fog_sky_level0_ps.hlsl",
+    "src/fog/fog_sky_reduce_ps.hlsl",
+    "src/proxy/cpu_state.h",
+    "src/proxy/fog_card_mask.h",
+    "src/renderer/fog_composite_program_inc.h",
+    "src/renderer/fog_density_composite_look_program_inc.h",
+    "src/renderer/fog_density_composite_look_q4_program_inc.h",
+    "src/renderer/fog_density_march_grid_program_inc.h",
+    "src/renderer/fog_density_march_look_far24_program_inc.h",
+    "src/renderer/fog_density_march_look_far24_q4_program_inc.h",
+    "src/renderer/fog_density_march_look_program_inc.h",
+    "src/renderer/fog_density_march_look_q4_program_inc.h",
+    "src/renderer/fog_density_needs_census_program_inc.h",
+    "src/renderer/fog_density_needs_census_q4_program_inc.h",
+    "src/renderer/fog_density_repair_grid_program_inc.h",
+    "src/renderer/fog_density_repair_look_far24_program_inc.h",
+    "src/renderer/fog_density_repair_look_far24_q4_program_inc.h",
+    "src/renderer/fog_density_repair_look_program_inc.h",
+    "src/renderer/fog_density_repair_look_q4_program_inc.h",
+    "src/renderer/fog_density_visibility_grid_program_inc.h",
+    "src/renderer/fog_dust_motes_grid_program_inc.h",
+    "src/renderer/fog_dust_motes_look_program_inc.h",
+    "src/renderer/fog_dust_motes_vertex_program_inc.h",
+    "src/renderer/fog_family_chroma_inc.h",
+    "src/renderer/fog_field_assets.h",
+    "src/renderer/fog_look_math.h",
+    "src/renderer/fog_march_program_inc.h",
+    "src/renderer/fog_mote_math.h",
+    "src/renderer/fog_pass.cpp",
+    "src/renderer/fog_pass.h",
+    "src/renderer/fog_pass_math.h",
+    "src/renderer/fog_shadow_grid.h",
+    "src/renderer/fog_volume_math.h",
+    "src/renderer/gpu_sync_timing_core.h",
+    "src/renderer/ps3_program_slots.h",
+    "src/renderer/quad_vertex_program.h",
+    "src/renderer/quad_vertex_program_inc.h",
+    "verification/probe/build_fog_pass.sh",
+    "verification/probe/fog_pass_fixture.cpp",
+    "verification/probe/fog_reference.h",
+    "verification/probe/run_fog_pass.py"
+   ],
+   "dependency_check": "/tmp/x3-run87-candidate/reuse_deps.py -> /tmp/x3-run87-candidate/reuse-deps.json",
+   "run85_entry": {
+    "reused_from": "run84",
+    "reason": "no such source changed since 46cd4f9d: git diff --stat 46cd4f9d 53e7aba5 -- <the 73 files of its include closure, runner and build script> is empty",
+    "dependency_paths_checked": [
+     "src/fog/fog_composite_ps.hlsl",
+     "src/fog/fog_density_cache.cpp",
+     "src/fog/fog_density_cache.h",
+     "src/fog/fog_density_composite_look_ps.hlsl",
+     "src/fog/fog_density_composite_look_q4_ps.hlsl",
+     "src/fog/fog_density_composite_ps.hlsl",
+     "src/fog/fog_density_field_inc.h",
+     "src/fog/fog_density_generator.cpp",
+     "src/fog/fog_density_generator.h",
+     "src/fog/fog_density_march_grid_ps.hlsl",
+     "src/fog/fog_density_march_look_far24_ps.hlsl",
+     "src/fog/fog_density_march_look_far24_q4_ps.hlsl",
+     "src/fog/fog_density_march_look_ps.hlsl",
+     "src/fog/fog_density_march_look_q4_ps.hlsl",
+     "src/fog/fog_density_march_ps.hlsl",
+     "src/fog/fog_density_needs_census_ps.hlsl",
+     "src/fog/fog_density_needs_census_q4_ps.hlsl",
+     "src/fog/fog_density_repair_grid_ps.hlsl",
+     "src/fog/fog_density_repair_look_far24_ps.hlsl",
+     "src/fog/fog_density_repair_look_far24_q4_ps.hlsl",
+     "src/fog/fog_density_repair_look_ps.hlsl",
+     "src/fog/fog_density_repair_look_q4_ps.hlsl",
+     "src/fog/fog_density_repair_ps.hlsl",
+     "src/fog/fog_density_visibility_grid_ps.hlsl",
+     "src/fog/fog_dust_motes_grid_ps.hlsl",
+     "src/fog/fog_dust_motes_look_ps.hlsl",
+     "src/fog/fog_dust_motes_ps.hlsl",
+     "src/fog/fog_dust_motes_vs.hlsl",
+     "src/fog/fog_field_inc.h",
+     "src/fog/fog_handover.h",
+     "src/fog/fog_march_ps.hlsl",
+     "src/fog/fog_shadow_grid_inc.h",
+     "src/fog/fog_sky_level0_ps.hlsl",
+     "src/fog/fog_sky_reduce_ps.hlsl",
+     "src/proxy/cpu_state.h",
+     "src/proxy/fog_card_mask.h",
+     "src/renderer/fog_composite_program_inc.h",
+     "src/renderer/fog_density_composite_look_program_inc.h",
+     "src/renderer/fog_density_composite_look_q4_program_inc.h",
+     "src/renderer/fog_density_march_grid_program_inc.h",
+     "src/renderer/fog_density_march_look_far24_program_inc.h",
+     "src/renderer/fog_density_march_look_far24_q4_program_inc.h",
+     "src/renderer/fog_density_march_look_program_inc.h",
+     "src/renderer/fog_density_march_look_q4_program_inc.h",
+     "src/renderer/fog_density_needs_census_program_inc.h",
+     "src/renderer/fog_density_needs_census_q4_program_inc.h",
+     "src/renderer/fog_density_repair_grid_program_inc.h",
+     "src/renderer/fog_density_repair_look_far24_program_inc.h",
+     "src/renderer/fog_density_repair_look_far24_q4_program_inc.h",
+     "src/renderer/fog_density_repair_look_program_inc.h",
+     "src/renderer/fog_density_repair_look_q4_program_inc.h",
+     "src/renderer/fog_density_visibility_grid_program_inc.h",
+     "src/renderer/fog_dust_motes_grid_program_inc.h",
+     "src/renderer/fog_dust_motes_look_program_inc.h",
+     "src/renderer/fog_dust_motes_vertex_program_inc.h",
+     "src/renderer/fog_family_chroma_inc.h",
+     "src/renderer/fog_field_assets.h",
+     "src/renderer/fog_look_math.h",
+     "src/renderer/fog_march_program_inc.h",
+     "src/renderer/fog_mote_math.h",
+     "src/renderer/fog_pass.cpp",
+     "src/renderer/fog_pass.h",
+     "src/renderer/fog_pass_math.h",
+     "src/renderer/fog_shadow_grid.h",
+     "src/renderer/fog_volume_math.h",
+     "src/renderer/gpu_sync_timing_core.h",
+     "src/renderer/ps3_program_slots.h",
+     "src/renderer/quad_vertex_program.h",
+     "src/renderer/quad_vertex_program_inc.h",
+     "verification/probe/build_fog_pass.sh",
+     "verification/probe/fog_pass_fixture.cpp",
+     "verification/probe/fog_reference.h",
+     "verification/probe/run_fog_pass.py"
+    ],
+    "dependency_check": "/tmp/x3-run85-candidate/reuse_deps.py -> /tmp/x3-run85-candidate/reuse-deps.json",
+    "run84_entry": {
+     "reused_from": "run83",
+     "dependency_paths_checked": [
+      "src/fog/fog_composite_ps.hlsl",
+      "src/fog/fog_density_cache.cpp",
+      "src/fog/fog_density_cache.h",
+      "src/fog/fog_density_composite_look_ps.hlsl",
+      "src/fog/fog_density_composite_look_q4_ps.hlsl",
+      "src/fog/fog_density_composite_ps.hlsl",
+      "src/fog/fog_density_field_inc.h",
+      "src/fog/fog_density_generator.cpp",
+      "src/fog/fog_density_generator.h",
+      "src/fog/fog_density_march_grid_ps.hlsl",
+      "src/fog/fog_density_march_look_far24_ps.hlsl",
+      "src/fog/fog_density_march_look_far24_q4_ps.hlsl",
+      "src/fog/fog_density_march_look_ps.hlsl",
+      "src/fog/fog_density_march_look_q4_ps.hlsl",
+      "src/fog/fog_density_march_ps.hlsl",
+      "src/fog/fog_density_needs_census_ps.hlsl",
+      "src/fog/fog_density_needs_census_q4_ps.hlsl",
+      "src/fog/fog_density_repair_grid_ps.hlsl",
+      "src/fog/fog_density_repair_look_far24_ps.hlsl",
+      "src/fog/fog_density_repair_look_far24_q4_ps.hlsl",
+      "src/fog/fog_density_repair_look_ps.hlsl",
+      "src/fog/fog_density_repair_look_q4_ps.hlsl",
+      "src/fog/fog_density_repair_ps.hlsl",
+      "src/fog/fog_density_visibility_grid_ps.hlsl",
+      "src/fog/fog_dust_motes_grid_ps.hlsl",
+      "src/fog/fog_dust_motes_look_ps.hlsl",
+      "src/fog/fog_dust_motes_ps.hlsl",
+      "src/fog/fog_dust_motes_vs.hlsl",
+      "src/fog/fog_field_inc.h",
+      "src/fog/fog_handover.h",
+      "src/fog/fog_march_ps.hlsl",
+      "src/fog/fog_shadow_grid_inc.h",
+      "src/fog/fog_sky_level0_ps.hlsl",
+      "src/fog/fog_sky_reduce_ps.hlsl",
+      "src/proxy/cpu_state.h",
+      "src/proxy/fog_card_mask.h",
+      "src/renderer/fog_composite_program_inc.h",
+      "src/renderer/fog_density_composite_look_program_inc.h",
+      "src/renderer/fog_density_composite_look_q4_program_inc.h",
+      "src/renderer/fog_density_march_grid_program_inc.h",
+      "src/renderer/fog_density_march_look_far24_program_inc.h",
+      "src/renderer/fog_density_march_look_far24_q4_program_inc.h",
+      "src/renderer/fog_density_march_look_program_inc.h",
+      "src/renderer/fog_density_march_look_q4_program_inc.h",
+      "src/renderer/fog_density_needs_census_program_inc.h",
+      "src/renderer/fog_density_needs_census_q4_program_inc.h",
+      "src/renderer/fog_density_repair_grid_program_inc.h",
+      "src/renderer/fog_density_repair_look_far24_program_inc.h",
+      "src/renderer/fog_density_repair_look_far24_q4_program_inc.h",
+      "src/renderer/fog_density_repair_look_program_inc.h",
+      "src/renderer/fog_density_repair_look_q4_program_inc.h",
+      "src/renderer/fog_density_visibility_grid_program_inc.h",
+      "src/renderer/fog_dust_motes_grid_program_inc.h",
+      "src/renderer/fog_dust_motes_look_program_inc.h",
+      "src/renderer/fog_dust_motes_vertex_program_inc.h",
+      "src/renderer/fog_family_chroma_inc.h",
+      "src/renderer/fog_field_assets.h",
+      "src/renderer/fog_look_math.h",
+      "src/renderer/fog_march_program_inc.h",
+      "src/renderer/fog_mote_math.h",
+      "src/renderer/fog_pass.cpp",
+      "src/renderer/fog_pass.h",
+      "src/renderer/fog_pass_math.h",
+      "src/renderer/fog_shadow_grid.h",
+      "src/renderer/fog_volume_math.h",
+      "src/renderer/gpu_sync_timing_core.h",
+      "src/renderer/ps3_program_slots.h",
+      "src/renderer/quad_vertex_program.h",
+      "src/renderer/quad_vertex_program_inc.h",
+      "verification/probe/build_fog_pass.sh",
+      "verification/probe/fog_pass_fixture.cpp",
+      "verification/probe/fog_reference.h",
+      "verification/probe/run_fog_pass.py"
+     ],
+     "dependency_check": "/tmp/x3-run84-candidate/reuse_deps.py -> /tmp/x3-run84-candidate/reuse-deps.json",
+     "run83_entry": {
+      "reused_from": "run82",
+      "dependency_paths_checked": [
+       "src/fog/fog_composite_ps.hlsl",
+       "src/fog/fog_density_cache.cpp",
+       "src/fog/fog_density_cache.h",
+       "src/fog/fog_density_composite_look_ps.hlsl",
+       "src/fog/fog_density_composite_look_q4_ps.hlsl",
+       "src/fog/fog_density_composite_ps.hlsl",
+       "src/fog/fog_density_field_inc.h",
+       "src/fog/fog_density_generator.cpp",
+       "src/fog/fog_density_generator.h",
+       "src/fog/fog_density_march_grid_ps.hlsl",
+       "src/fog/fog_density_march_look_far24_ps.hlsl",
+       "src/fog/fog_density_march_look_far24_q4_ps.hlsl",
+       "src/fog/fog_density_march_look_ps.hlsl",
+       "src/fog/fog_density_march_look_q4_ps.hlsl",
+       "src/fog/fog_density_march_ps.hlsl",
+       "src/fog/fog_density_needs_census_ps.hlsl",
+       "src/fog/fog_density_needs_census_q4_ps.hlsl",
+       "src/fog/fog_density_repair_grid_ps.hlsl",
+       "src/fog/fog_density_repair_look_far24_ps.hlsl",
+       "src/fog/fog_density_repair_look_far24_q4_ps.hlsl",
+       "src/fog/fog_density_repair_look_ps.hlsl",
+       "src/fog/fog_density_repair_look_q4_ps.hlsl",
+       "src/fog/fog_density_repair_ps.hlsl",
+       "src/fog/fog_density_visibility_grid_ps.hlsl",
+       "src/fog/fog_dust_motes_grid_ps.hlsl",
+       "src/fog/fog_dust_motes_look_ps.hlsl",
+       "src/fog/fog_dust_motes_ps.hlsl",
+       "src/fog/fog_dust_motes_vs.hlsl",
+       "src/fog/fog_field_inc.h",
+       "src/fog/fog_handover.h",
+       "src/fog/fog_march_ps.hlsl",
+       "src/fog/fog_shadow_grid_inc.h",
+       "src/fog/fog_sky_level0_ps.hlsl",
+       "src/fog/fog_sky_reduce_ps.hlsl",
+       "src/proxy/cpu_state.h",
+       "src/proxy/fog_card_mask.h",
+       "src/renderer/fog_composite_program_inc.h",
+       "src/renderer/fog_density_composite_look_program_inc.h",
+       "src/renderer/fog_density_composite_look_q4_program_inc.h",
+       "src/renderer/fog_density_march_grid_program_inc.h",
+       "src/renderer/fog_density_march_look_far24_program_inc.h",
+       "src/renderer/fog_density_march_look_far24_q4_program_inc.h",
+       "src/renderer/fog_density_march_look_program_inc.h",
+       "src/renderer/fog_density_march_look_q4_program_inc.h",
+       "src/renderer/fog_density_needs_census_program_inc.h",
+       "src/renderer/fog_density_needs_census_q4_program_inc.h",
+       "src/renderer/fog_density_repair_grid_program_inc.h",
+       "src/renderer/fog_density_repair_look_far24_program_inc.h",
+       "src/renderer/fog_density_repair_look_far24_q4_program_inc.h",
+       "src/renderer/fog_density_repair_look_program_inc.h",
+       "src/renderer/fog_density_repair_look_q4_program_inc.h",
+       "src/renderer/fog_density_visibility_grid_program_inc.h",
+       "src/renderer/fog_dust_motes_grid_program_inc.h",
+       "src/renderer/fog_dust_motes_look_program_inc.h",
+       "src/renderer/fog_dust_motes_vertex_program_inc.h",
+       "src/renderer/fog_family_chroma_inc.h",
+       "src/renderer/fog_field_assets.h",
+       "src/renderer/fog_look_math.h",
+       "src/renderer/fog_march_program_inc.h",
+       "src/renderer/fog_mote_math.h",
+       "src/renderer/fog_pass.cpp",
+       "src/renderer/fog_pass.h",
+       "src/renderer/fog_pass_math.h",
+       "src/renderer/fog_shadow_grid.h",
+       "src/renderer/fog_volume_math.h",
+       "src/renderer/gpu_sync_timing_core.h",
+       "src/renderer/ps3_program_slots.h",
+       "src/renderer/quad_vertex_program.h",
+       "src/renderer/quad_vertex_program_inc.h",
+       "verification/probe/build_fog_pass.sh",
+       "verification/probe/fog_pass_fixture.cpp",
+       "verification/probe/fog_reference.h",
+       "verification/probe/run_fog_pass.py"
+      ],
+      "dependency_check": "/tmp/x3-run83-candidate/reuse_deps.py -> /tmp/x3-run83-candidate/reuse-deps.json",
+      "run82_entry": {
+       "reused_from": "run81",
+       "run80_result": "PASS",
+       "run80_result_line": "RESULT PASS checks=178 failures=0 state_restorations=1180",
+       "run80_lock": {
+        "lock_wait_seconds": 3.2500000000032503e-06,
+        "child_elapsed_seconds": 123.189002167,
+        "exit_code": 0
+       }
+      }
+     }
+    }
+   }
+  }
+ },
+ "ownership": {
+  "reused_from": "run87",
+  "reason": "include closure (30 files, runner and build script) byte-identical to Run87: git diff --stat 22593133 79aafc8b -- <closure> is empty; the fixture does not compile capture.cpp, motion_output*, loading_trace* or mesh_adjacency_fast*",
+  "dependency_paths_checked": [
+   "src/ownership/README.md",
+   "src/ownership/application_admission.cpp",
+   "src/ownership/application_admission.h",
+   "src/ownership/application_admission_abi.cpp",
+   "src/ownership/application_admission_abi.h",
+   "src/ownership/buffer_lock_observation.h",
+   "src/ownership/clone_upload_abi.cpp",
+   "src/ownership/clone_upload_abi.h",
+   "src/ownership/clone_upload_core.h",
+   "src/ownership/clone_upload_observer.h",
+   "src/ownership/clone_upload_observer_inc.h",
+   "src/ownership/d3d9_classes_inc.h",
+   "src/ownership/d3d9_forwarders_inc.h",
+   "src/ownership/d3d9_ownership.cpp",
+   "src/ownership/d3d9_ownership.h",
+   "src/ownership/execution_state.cpp",
+   "src/ownership/execution_state.h",
+   "src/ownership/finite_buffer_evidence.cpp",
+   "src/ownership/finite_buffer_evidence.h",
+   "src/ownership/portable_managed_upload.cpp",
+   "src/ownership/portable_managed_upload.h",
+   "src/ownership/surface_lease_core.h",
+   "src/ownership/surface_lock_observation.h",
+   "src/proxy/fade_region_math.h",
+   "src/proxy/locked_prefix_core.h",
+   "src/proxy/sse_scalar.h",
+   "verification/probe/build_admission_dependencies.sh",
+   "verification/probe/build_ownership.sh",
+   "verification/probe/ownership_fixture.cpp",
+   "verification/probe/run_ownership.py"
+  ],
+  "dependency_check": "/tmp/x3-run88-candidate/reuse_deps.py -> /tmp/x3-run88-candidate/reuse-deps.json",
+  "run87_entry": {
+   "reused_from": "run86",
+   "reason": "include closure byte-identical to Run85 (git diff --stat 53e7aba5 22593133 -- <closure> empty); the Run85 record carries no ownership section, so the Run86 entry is nested: it was run on the effects-era ownership layer (d3d9_ownership.*, d3d9_forwarders_inc.h upload-time texture keys), which 479cd036 reverted byte-for-byte to the Run85 code; no Wine run of the current ownership code is in a candidate record",
+   "dependency_paths_checked": [
+    "src/ownership/README.md",
+    "src/ownership/application_admission.cpp",
+    "src/ownership/application_admission.h",
+    "src/ownership/application_admission_abi.cpp",
+    "src/ownership/application_admission_abi.h",
+    "src/ownership/buffer_lock_observation.h",
+    "src/ownership/clone_upload_abi.cpp",
+    "src/ownership/clone_upload_abi.h",
+    "src/ownership/clone_upload_core.h",
+    "src/ownership/clone_upload_observer.h",
+    "src/ownership/clone_upload_observer_inc.h",
+    "src/ownership/d3d9_classes_inc.h",
+    "src/ownership/d3d9_forwarders_inc.h",
+    "src/ownership/d3d9_ownership.cpp",
+    "src/ownership/d3d9_ownership.h",
+    "src/ownership/execution_state.cpp",
+    "src/ownership/execution_state.h",
+    "src/ownership/finite_buffer_evidence.cpp",
+    "src/ownership/finite_buffer_evidence.h",
+    "src/ownership/portable_managed_upload.cpp",
+    "src/ownership/portable_managed_upload.h",
+    "src/ownership/surface_lease_core.h",
+    "src/ownership/surface_lock_observation.h",
+    "src/proxy/fade_region_math.h",
+    "src/proxy/locked_prefix_core.h",
+    "src/proxy/sse_scalar.h",
+    "verification/probe/build_admission_dependencies.sh",
+    "verification/probe/build_ownership.sh",
+    "verification/probe/ownership_fixture.cpp",
+    "verification/probe/run_ownership.py"
+   ],
+   "dependency_check": "/tmp/x3-run87-candidate/reuse_deps.py -> /tmp/x3-run87-candidate/reuse-deps.json",
+   "run86_entry": {
+    "command": "cd /tmp/x3-run86-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run86-candidate/lock-timings-ownership.json python3 verification/probe/run_ownership.py",
+    "verifier": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/verify_ownership.py (host)",
+    "why_run": "d3d9_ownership.* and the forwarders changed",
+    "result": "PASS",
+    "baseline": {
+     "checks": 370,
+     "failures": 0
+    },
+    "wrapped": {
+     "checks": 661,
+     "failures": 0
+    },
+    "backend_observations_equal": true,
+    "shared_hresult_outcomes_equal": true,
+    "versus_committed": "370/0 and 661/0, equal to the committed ownership-verification.json",
+    "copies": "/tmp/x3-run86-candidate/results-ownership/",
+    "lock": {
+     "lock_wait_seconds": 3.4590000000007948e-06,
+     "child_elapsed_seconds": 12.121875333,
+     "exit_code": 0
+    }
+   }
+  }
+ },
+ "ownership_admission": {
+  "reused_from": "run87",
+  "reason": "include closure (30 files, runner and build script) byte-identical to Run87: git diff --stat 22593133 79aafc8b -- <closure> is empty; the fixture does not compile capture.cpp, motion_output*, loading_trace* or mesh_adjacency_fast*",
+  "dependency_paths_checked": [
+   "src/ownership/README.md",
+   "src/ownership/application_admission.cpp",
+   "src/ownership/application_admission.h",
+   "src/ownership/application_admission_abi.cpp",
+   "src/ownership/application_admission_abi.h",
+   "src/ownership/buffer_lock_observation.h",
+   "src/ownership/clone_upload_abi.cpp",
+   "src/ownership/clone_upload_abi.h",
+   "src/ownership/clone_upload_core.h",
+   "src/ownership/clone_upload_observer.h",
+   "src/ownership/clone_upload_observer_inc.h",
+   "src/ownership/d3d9_classes_inc.h",
+   "src/ownership/d3d9_forwarders_inc.h",
+   "src/ownership/d3d9_ownership.cpp",
+   "src/ownership/d3d9_ownership.h",
+   "src/ownership/execution_state.cpp",
+   "src/ownership/execution_state.h",
+   "src/ownership/finite_buffer_evidence.cpp",
+   "src/ownership/finite_buffer_evidence.h",
+   "src/ownership/portable_managed_upload.cpp",
+   "src/ownership/portable_managed_upload.h",
+   "src/ownership/surface_lease_core.h",
+   "src/ownership/surface_lock_observation.h",
+   "src/proxy/fade_region_math.h",
+   "src/proxy/locked_prefix_core.h",
+   "src/proxy/sse_scalar.h",
+   "verification/probe/build_admission_dependencies.sh",
+   "verification/probe/build_ownership_admission.sh",
+   "verification/probe/ownership_admission_fixture.cpp",
+   "verification/probe/run_ownership_admission.py"
+  ],
+  "dependency_check": "/tmp/x3-run88-candidate/reuse_deps.py -> /tmp/x3-run88-candidate/reuse-deps.json",
+  "run87_entry": {
+   "reused_from": "run86",
+   "reason": "include closure byte-identical to Run85 (git diff --stat 53e7aba5 22593133 -- <closure> empty); the Run85 record carries no ownership section, so the Run86 entry is nested: it was run on the effects-era ownership layer (d3d9_ownership.*, d3d9_forwarders_inc.h upload-time texture keys), which 479cd036 reverted byte-for-byte to the Run85 code; no Wine run of the current ownership code is in a candidate record",
+   "dependency_paths_checked": [
+    "src/ownership/README.md",
+    "src/ownership/application_admission.cpp",
+    "src/ownership/application_admission.h",
+    "src/ownership/application_admission_abi.cpp",
+    "src/ownership/application_admission_abi.h",
+    "src/ownership/buffer_lock_observation.h",
+    "src/ownership/clone_upload_abi.cpp",
+    "src/ownership/clone_upload_abi.h",
+    "src/ownership/clone_upload_core.h",
+    "src/ownership/clone_upload_observer.h",
+    "src/ownership/clone_upload_observer_inc.h",
+    "src/ownership/d3d9_classes_inc.h",
+    "src/ownership/d3d9_forwarders_inc.h",
+    "src/ownership/d3d9_ownership.cpp",
+    "src/ownership/d3d9_ownership.h",
+    "src/ownership/execution_state.cpp",
+    "src/ownership/execution_state.h",
+    "src/ownership/finite_buffer_evidence.cpp",
+    "src/ownership/finite_buffer_evidence.h",
+    "src/ownership/portable_managed_upload.cpp",
+    "src/ownership/portable_managed_upload.h",
+    "src/ownership/surface_lease_core.h",
+    "src/ownership/surface_lock_observation.h",
+    "src/proxy/fade_region_math.h",
+    "src/proxy/locked_prefix_core.h",
+    "src/proxy/sse_scalar.h",
+    "verification/probe/build_admission_dependencies.sh",
+    "verification/probe/build_ownership_admission.sh",
+    "verification/probe/ownership_admission_fixture.cpp",
+    "verification/probe/run_ownership_admission.py"
+   ],
+   "dependency_check": "/tmp/x3-run87-candidate/reuse_deps.py -> /tmp/x3-run87-candidate/reuse-deps.json",
+   "run86_entry": {
+    "command": "cd /tmp/x3-run86-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run86-candidate/lock-timings-admission.json python3 verification/probe/run_ownership_admission.py",
+    "why_run": "d3d9_ownership.* changed",
+    "result": "PASS",
+    "modes": 12,
+    "checks": 147,
+    "per_mode": {
+     "disabled": 14,
+     "enabled": 33,
+     "private0": 12,
+     "private1": 12,
+     "private2": 12,
+     "private3": 12,
+     "private4": 12,
+     "private5": 12,
+     "private6": 12,
+     "shared": 6,
+     "foreign": 5,
+     "software": 5
+    },
+    "median_ns": {
+     "disabled": 5.564,
+     "enabled": 1288.962
+    },
+    "copy": "/tmp/x3-run86-candidate/results-admission/ownership-admission-summary.json",
+    "lock": {
+     "lock_wait_seconds": 2.999999999999531e-06,
+     "child_elapsed_seconds": 96.090812958,
+     "exit_code": 0
+    }
+   }
+  }
+ },
+ "execution_ownership": {
+  "reused_from": "run87",
+  "reason": "include closure (30 files, runner and build script) byte-identical to Run87: git diff --stat 22593133 79aafc8b -- <closure> is empty; the fixture does not compile capture.cpp, motion_output*, loading_trace* or mesh_adjacency_fast*",
+  "dependency_paths_checked": [
+   "src/ownership/README.md",
+   "src/ownership/application_admission.cpp",
+   "src/ownership/application_admission.h",
+   "src/ownership/application_admission_abi.cpp",
+   "src/ownership/application_admission_abi.h",
+   "src/ownership/buffer_lock_observation.h",
+   "src/ownership/clone_upload_abi.cpp",
+   "src/ownership/clone_upload_abi.h",
+   "src/ownership/clone_upload_core.h",
+   "src/ownership/clone_upload_observer.h",
+   "src/ownership/clone_upload_observer_inc.h",
+   "src/ownership/d3d9_classes_inc.h",
+   "src/ownership/d3d9_forwarders_inc.h",
+   "src/ownership/d3d9_ownership.cpp",
+   "src/ownership/d3d9_ownership.h",
+   "src/ownership/execution_state.cpp",
+   "src/ownership/execution_state.h",
+   "src/ownership/finite_buffer_evidence.cpp",
+   "src/ownership/finite_buffer_evidence.h",
+   "src/ownership/portable_managed_upload.cpp",
+   "src/ownership/portable_managed_upload.h",
+   "src/ownership/surface_lease_core.h",
+   "src/ownership/surface_lock_observation.h",
+   "src/proxy/fade_region_math.h",
+   "src/proxy/locked_prefix_core.h",
+   "src/proxy/sse_scalar.h",
+   "verification/probe/build_admission_dependencies.sh",
+   "verification/probe/build_execution_ownership.sh",
+   "verification/probe/execution_ownership_fixture.cpp",
+   "verification/probe/run_execution_ownership.py"
+  ],
+  "dependency_check": "/tmp/x3-run88-candidate/reuse_deps.py -> /tmp/x3-run88-candidate/reuse-deps.json",
+  "run87_entry": {
+   "reused_from": "run86",
+   "reason": "include closure byte-identical to Run85 (git diff --stat 53e7aba5 22593133 -- <closure> empty); the Run85 record carries no ownership section, so the Run86 entry is nested: it was run on the effects-era ownership layer (d3d9_ownership.*, d3d9_forwarders_inc.h upload-time texture keys), which 479cd036 reverted byte-for-byte to the Run85 code; no Wine run of the current ownership code is in a candidate record",
+   "dependency_paths_checked": [
+    "src/ownership/README.md",
+    "src/ownership/application_admission.cpp",
+    "src/ownership/application_admission.h",
+    "src/ownership/application_admission_abi.cpp",
+    "src/ownership/application_admission_abi.h",
+    "src/ownership/buffer_lock_observation.h",
+    "src/ownership/clone_upload_abi.cpp",
+    "src/ownership/clone_upload_abi.h",
+    "src/ownership/clone_upload_core.h",
+    "src/ownership/clone_upload_observer.h",
+    "src/ownership/clone_upload_observer_inc.h",
+    "src/ownership/d3d9_classes_inc.h",
+    "src/ownership/d3d9_forwarders_inc.h",
+    "src/ownership/d3d9_ownership.cpp",
+    "src/ownership/d3d9_ownership.h",
+    "src/ownership/execution_state.cpp",
+    "src/ownership/execution_state.h",
+    "src/ownership/finite_buffer_evidence.cpp",
+    "src/ownership/finite_buffer_evidence.h",
+    "src/ownership/portable_managed_upload.cpp",
+    "src/ownership/portable_managed_upload.h",
+    "src/ownership/surface_lease_core.h",
+    "src/ownership/surface_lock_observation.h",
+    "src/proxy/fade_region_math.h",
+    "src/proxy/locked_prefix_core.h",
+    "src/proxy/sse_scalar.h",
+    "verification/probe/build_admission_dependencies.sh",
+    "verification/probe/build_execution_ownership.sh",
+    "verification/probe/execution_ownership_fixture.cpp",
+    "verification/probe/run_execution_ownership.py"
+   ],
+   "dependency_check": "/tmp/x3-run87-candidate/reuse_deps.py -> /tmp/x3-run87-candidate/reuse-deps.json",
+   "run86_entry": {
+    "command": "cd /tmp/x3-run86-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run86-candidate/lock-timings-execution.json python3 verification/probe/run_execution_ownership.py",
+    "why_run": "src/ownership/* changed",
+    "result": "PASS",
+    "checks": 184,
+    "completed_cases": 23,
+    "versus_committed": "execution-ownership.txt equal to the committed report apart from timing lines (RESULT PASS checks=184 failures=0)",
+    "lock": {
+     "lock_wait_seconds": 3.583000000001446e-06,
+     "child_elapsed_seconds": 18.705276583,
+     "exit_code": 0
+    }
+   }
+  }
+ },
+ "site_verifiers": {
+  "reused_from": "run87",
+  "reason": "EXE unchanged and git diff --stat 22593133 79aafc8b -- verification/probe/verify_*.py verification/results/executable-identity/ is empty; no EXE patch site changed",
+  "run87_entry": {
+   "reused_from": "run85",
+   "reason": "EXE unchanged and git diff --stat 53e7aba5 22593133 -- verification/probe/verify_*.py verification/results/executable-identity/ is empty; no EXE patch site changed",
+   "run85_entry": {
+    "reused_from": "run84",
+    "reason": "EXE unchanged and git diff --stat 46cd4f9d 53e7aba5 -- verification/probe/verify_*.py verification/results/executable-identity/ is empty",
+    "run84_entry": {
+     "reused_from": "run83",
+     "reason": "EXE unchanged and git diff --stat 80394271 46cd4f9d -- verification/probe/verify_*.py verification/results/executable-identity/ is empty",
+     "run83_entry": {
+      "executable_identity": {
+       "command": "cd verification/results/executable-identity && /usr/bin/python3 run_verifiers.py --output /tmp/x3-run83-candidate/verifiers.json",
+       "result": "PASS",
+       "anchors": 41,
+       "commit": "803942710d567f3476e6323008dfbdbce2b88330",
+       "summary": {
+        "shipped": {
+         "pass": 27,
+         "total": 27,
+         "sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab"
+        },
+        "laa_cleared": {
+         "pass": 27,
+         "total": 27,
+         "sha256": "9d8ddf43f06031f4fb21e5e700d55a2df8881c76bd8c5ce4a9af0866d6dc38c8"
+        },
+        "ntcore_4gb": {
+         "pass": 27,
+         "total": 27,
+         "sha256": "5d6b741e7269b40e2a7df850fc274d593d0b39ac647e0b0205b64737c93190c3"
+        },
+        "unknown_hash": {
+         "pass": 27,
+         "total": 27,
+         "sha256": "712693d9452a6144fe4aec404e5d7243e733000c2a57316e1e76ba3f17d2c8af"
+        }
+       },
+       "site_corrupt": {
+        "verify_chase_camera_site": {
+         "va": "0x00420e0f",
+         "identity_ok": true,
+         "result": "FAIL"
+        },
+        "verify_lod_scale_site": {
+         "va": "0x0047d44d",
+         "identity_ok": true,
+         "result": "FAIL"
+        },
+        "verify_terran_lod_site": {
+         "va": "0x0047d01c",
+         "identity_ok": true,
+         "result": "FAIL"
+        },
+        "verify_lod_occlusion_site": {
+         "va": "0x004c34f9",
+         "identity_ok": true,
+         "result": "FAIL"
+        },
+        "verify_fov_site": {
+         "va": "0x0041c9dd",
+         "identity_ok": true,
+         "result": "FAIL"
+        },
+        "verify_fov_site@setfocus": {
+         "va": "0x0042dbf8",
+         "identity_ok": true,
+         "result": "FAIL"
+        },
+        "verify_fov_site@load": {
+         "va": "0x0041c8c2",
+         "identity_ok": true,
+         "result": "FAIL"
+        },
+        "verify_sun_flare_site": {
+         "va": "0x0047e392",
+         "identity_ok": true,
+         "result": "FAIL"
+        }
+       },
+       "different_build_identity_ok": false,
+       "versus_run82": "27 verifiers per variant = Run82; corrupt-site cases 7 -> 8 (verify_fov_site@load 0x0041c8c2)"
+      },
+      "fov_site": {
+       "command": "/usr/bin/python3 verification/probe/verify_fov_site.py",
+       "result": "PASS",
+       "checks": 44,
+       "checks_passed": 44,
+       "site": "0x41c9d9",
+       "function_instructions": 201,
+       "overlapping_claims": [],
+       "incoming_window_branches": []
+      },
+      "reused_from_run82": {
+       "sun_flare_site": {
+        "command": "/usr/bin/python3 verification/probe/verify_sun_flare_site.py",
+        "result": "PASS",
+        "checks": 19,
+        "checks_passed": 19,
+        "site": "0x47e391",
+        "function_instructions": 865,
+        "overlapping_claims": [],
+        "incoming_window_branches": [],
+        "reused_from": "run82",
+        "reason": "EXE unchanged (identity matrix PASS on the same shipped sha256) and none of these verifier scripts changed in d1a4e360..80394271 (only verify_fov_site.py did)"
+       },
+       "lod_occlusion_site": {
+        "command": "/usr/bin/python3 verification/probe/verify_lod_occlusion_site.py",
+        "result": "PASS",
+        "checks": 20,
+        "checks_passed": 20,
+        "site": "0x4c34f7",
+        "function_instructions": 4695,
+        "overlapping_claims": [],
+        "incoming_window_branches": [],
+        "reused_from": "run82",
+        "reason": "EXE unchanged (identity matrix PASS on the same shipped sha256) and none of these verifier scripts changed in d1a4e360..80394271 (only verify_fov_site.py did)"
+       },
+       "terran_lod_site": {
+        "command": "/usr/bin/python3 verification/probe/verify_terran_lod_site.py",
+        "result": "PASS",
+        "checks": 16,
+        "checks_passed": 16,
+        "site": "0x47d01c",
+        "function_instructions": 373,
+        "overlapping_claims": [],
+        "incoming_window_branches": [],
+        "reused_from": "run82",
+        "reason": "EXE unchanged (identity matrix PASS on the same shipped sha256) and none of these verifier scripts changed in d1a4e360..80394271 (only verify_fov_site.py did)"
+       },
+       "cull_small_parts_site": {
+        "command": "/usr/bin/python3 verification/probe/verify_cull_small_parts_site.py",
+        "result": "PASS",
+        "checks": 21,
+        "checks_passed": 21,
+        "site": "0x47d2a2",
+        "function_instructions": 373,
+        "reused_from": "run82",
+        "reason": "EXE unchanged (identity matrix PASS on the same shipped sha256) and none of these verifier scripts changed in d1a4e360..80394271 (only verify_fov_site.py did)"
+       },
+       "cull_census_sites": {
+        "command": "/usr/bin/python3 verification/probe/verify_cull_census_sites.py",
+        "result": "PASS",
+        "checks": 21,
+        "checks_passed": 21,
+        "function_instructions": 373,
+        "reused_from": "run82",
+        "reason": "EXE unchanged (identity matrix PASS on the same shipped sha256) and none of these verifier scripts changed in d1a4e360..80394271 (only verify_fov_site.py did)"
+       },
+       "pause_sites": {
+        "command": "/usr/bin/python3 verification/results/pause-dialog-input/verify_pause_sites.py",
+        "result": "PASS",
+        "reused_from": "run82",
+        "reason": "EXE unchanged (identity matrix PASS on the same shipped sha256) and none of these verifier scripts changed in d1a4e360..80394271 (only verify_fov_site.py did)"
+       },
+       "music_restart_sites": {
+        "command": "/usr/bin/python3 verification/results/music-restart/verify_music_restart_sites.py",
+        "result": "PASS",
+        "reused_from": "run82",
+        "reason": "EXE unchanged (identity matrix PASS on the same shipped sha256) and none of these verifier scripts changed in d1a4e360..80394271 (only verify_fov_site.py did)"
+       },
+       "music_keep_writes": {
+        "command": "/usr/bin/python3 verification/results/music-restart/verify_music_keep_writes.py",
+        "result": "PASS",
+        "check_count": 48,
+        "reused_from": "run82",
+        "reason": "EXE unchanged (identity matrix PASS on the same shipped sha256) and none of these verifier scripts changed in d1a4e360..80394271 (only verify_fov_site.py did)"
+       }
+      },
+      "exe": "bottle X3 drive_c/X3/X3AP.exe (read-only), shipped (LAA set, CheckSum 0)"
+     }
+    }
+   }
+  }
+ },
+ "reuse_dependency_check": {
+  "command": "python3 /tmp/x3-run88-candidate/reuse_deps.py",
+  "output": "/tmp/x3-run88-candidate/reuse-deps.json",
+  "changed_closures_vs_run87": [
+   "crypt_cache",
+   "cursor_reassert",
+   "loading_intervals",
+   "loading_trace",
+   "mesh_cache_hook",
+   "motion_output",
+   "resource_reader"
+  ],
+  "unchanged_closures_vs_run87": [
+   "bloom_pass",
+   "chase_fire",
+   "chase_transition_cpu",
+   "cull_census",
+   "cull_small_parts",
+   "effects_stage",
+   "execution_ownership",
+   "fog_family_file_fixture",
+   "fog_pass",
+   "fog_route_bridge",
+   "fov_patch",
+   "gpu_sync_timing",
+   "lod_occlusion_patch",
+   "mesh_adjacency_cache",
+   "ownership",
+   "ownership_admission",
+   "ownership_integration",
+   "sun_flare_fix",
+   "sun_occlusion",
+   "temporal_pass",
+   "window_mode"
+  ],
+  "reading": "loading_trace, mesh_cache_hook, crypt_cache, resource_reader and loading_intervals were added to the closure table for Run88; capture.cpp appears only in the motion_output closure (and the ownership-integration full-DLL build, which hashes all of src/); effects_stage and chase_transition_cpu closures are provenance only"
+ },
+ "dry_run": {
+  "command_script": "/tmp/x3-run88-candidate/run88-dryrun.sh",
+  "extractor": "/tmp/x3-run88-candidate/extract_dryrun.py",
+  "cwd": "/tmp/x3-run88-candidate/src",
+  "wrapped": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run88-candidate/lock-timings-dryrun.json sh /tmp/x3-run88-candidate/run88-dryrun.sh",
+  "form": "env -u CX_DEBUGMSG -u X3M_TAA_THIN_REGION_SOURCE -u X3M_TAA_SENTINEL_STABILISER -u X3M_TAA_FAR_GATE -u X3M_TAA_FAR_CLIP -u X3M_TAA_FAR_STABILISER -u X3M_SUN_OCCLUSION -u X3M_ORIGINAL_FILL -u X3M_EFFECTS_STAGE -u X3M_EFFECTS_KEYS -u X3M_CHASE_VIEW_RESTORE_DOCK -u X3M_MOTION_FRAME_LOG /usr/bin/python3 tools/manage.py launch --dry-run --bottle X3 --dll-source <candidate> --direct [variant]; B adds X3M_MOTION_FRAME_LOG=1 --camera chase <stand.txt>; D: --dll-source <candidate> --vanilla",
+  "flight_options": "A = --direct (the new short default); B = --direct --camera chase + stand.txt (the old stand command); C = A + --taa-debug; D = --vanilla",
+  "game_launched": false,
+  "output": "/tmp/x3-run88-candidate/dryrun.out",
+  "env_extract": "/tmp/x3-run88-candidate/dryrun-env.json",
+  "variants": {
+   "A_DEFAULT": {
+    "exit": 0,
+    "overrides": "d3d9=n,b",
+    "x3m_env_count": 180,
+    "values": {
+     "X3M_FOV": "90",
+     "X3M_TAA_FAR_CLIP": "7x7",
+     "X3M_TAA_FAR_CLIP_DEFAULT": "1",
+     "X3M_TAA_FAR_STABILISER": "0.985,0,60,68,0.03,0.25",
+     "X3M_TAA_DEBUG": "0",
+     "X3M_TAA_FAR_GATE": "camera",
+     "X3M_TAA_FAR_GATE_DEFAULT": "1",
+     "X3M_SUN_OCCLUSION": "1",
+     "X3M_SUN_OCCLUSION_CORE_F": "1",
+     "X3M_SUN_OCCLUSION_DEFAULT": "1",
+     "X3M_ORIGINAL_FILL": "0.01",
+     "X3M_ORIGINAL_FILL_DEFAULT": "1",
+     "X3M_TAA_THIN_REGION_SOURCE": "vote",
+     "X3M_TAA_THIN_REGION_SOURCE_DEFAULT": "1",
+     "X3M_WINDOW_MONITOR_RECT": "1",
+     "X3M_WINDOW_MONITOR_RECT_DEFAULT": "1",
+     "X3M_GPU_SYNC_TIMING": "0",
+     "X3M_TAA": "1",
+     "X3M_HDR": "1",
+     "X3M_LOD_OCCLUSION": "all",
+     "X3M_CHASE_VIEW_RESTORE": "1",
+     "X3M_SCREEN_EMISSION_ADDITIVE": "2.0",
+     "X3M_SHADOW_CASCADE_SIZES": "2048,4096,4096,2048,2048",
+     "X3M_MUSIC_KEEP": "1",
+     "X3M_SHADOW_ALPHA_CASTERS": "1",
+     "X3M_CAPTURE_START": "999999",
+     "X3M_CAPTURE_FRAMES": "8",
+     "X3M_CAPTURE_DELAY": "300",
+     "X3M_MESH_ADJACENCY": "fast",
+     "X3M_TELEMETRY": "0"
+    },
+    "report_lines": [
+     "fog families: ok (0 packets; 14 compiled cover 14 families, 2 refused)",
+     "lod overlay: ok (620 bodies in slots 05/06, 2.72 GB; sources unchanged; no package: ModName empty)"
+    ]
+   },
+   "B_STAND": {
+    "exit": 0,
+    "overrides": "d3d9=n,b",
+    "x3m_env_count": 183,
+    "values": {
+     "X3M_FOV": "90",
+     "X3M_TAA_FAR_CLIP": "7x7",
+     "X3M_TAA_FAR_CLIP_DEFAULT": "1",
+     "X3M_TAA_FAR_STABILISER": "0.985,0,60,68,0.03,0.25",
+     "X3M_TAA_DEBUG": "0",
+     "X3M_TAA_FAR_GATE": "camera",
+     "X3M_TAA_FAR_GATE_DEFAULT": "1",
+     "X3M_SUN_OCCLUSION": "1",
+     "X3M_SUN_OCCLUSION_CORE_F": "1",
+     "X3M_SUN_OCCLUSION_DEFAULT": "1",
+     "X3M_ORIGINAL_FILL": "0.01",
+     "X3M_ORIGINAL_FILL_DEFAULT": "1",
+     "X3M_TAA_THIN_REGION_SOURCE": "vote",
+     "X3M_TAA_THIN_REGION_SOURCE_DEFAULT": "1",
+     "X3M_WINDOW_MONITOR_RECT": "1",
+     "X3M_WINDOW_MONITOR_RECT_DEFAULT": "1",
+     "X3M_GPU_SYNC_TIMING": "0",
+     "X3M_TAA": "1",
+     "X3M_HDR": "1",
+     "X3M_LOD_OCCLUSION": "all",
+     "X3M_CHASE_VIEW_RESTORE": "1",
+     "X3M_SCREEN_EMISSION_ADDITIVE": "2.0",
+     "X3M_SHADOW_CASCADE_SIZES": "2048,2048,2048,2048,2048",
+     "X3M_MUSIC_KEEP": "1",
+     "X3M_SHADOW_ALPHA_CASTERS": "1",
+     "X3M_CAPTURE_START": "999999",
+     "X3M_CAPTURE_FRAMES": "8",
+     "X3M_CAPTURE_DELAY": "300",
+     "X3M_MESH_ADJACENCY": "fast",
+     "X3M_TELEMETRY": "1",
+     "X3M_MOTION_FRAME_LOG": "1"
+    },
+    "report_lines": [
+     "fog families: ok (0 packets; 14 compiled cover 14 families, 2 refused)",
+     "lod overlay: ok (620 bodies in slots 05/06, 2.72 GB; sources unchanged; no package: ModName empty)"
+    ]
+   },
+   "C_TAA_DEBUG": {
+    "exit": 0,
+    "overrides": "d3d9=n,b",
+    "x3m_env_count": 180,
+    "values": {
+     "X3M_FOV": "90",
+     "X3M_TAA_FAR_CLIP": "7x7",
+     "X3M_TAA_FAR_CLIP_DEFAULT": "1",
+     "X3M_TAA_FAR_STABILISER": "0.985,0,60,68,0.03,0.25",
+     "X3M_TAA_DEBUG": "1",
+     "X3M_TAA_FAR_GATE": "camera",
+     "X3M_TAA_FAR_GATE_DEFAULT": "1",
+     "X3M_SUN_OCCLUSION": "1",
+     "X3M_SUN_OCCLUSION_CORE_F": "1",
+     "X3M_SUN_OCCLUSION_DEFAULT": "1",
+     "X3M_ORIGINAL_FILL": "0.01",
+     "X3M_ORIGINAL_FILL_DEFAULT": "1",
+     "X3M_TAA_THIN_REGION_SOURCE": "vote",
+     "X3M_TAA_THIN_REGION_SOURCE_DEFAULT": "1",
+     "X3M_WINDOW_MONITOR_RECT": "1",
+     "X3M_WINDOW_MONITOR_RECT_DEFAULT": "1",
+     "X3M_GPU_SYNC_TIMING": "0",
+     "X3M_TAA": "1",
+     "X3M_HDR": "1",
+     "X3M_LOD_OCCLUSION": "all",
+     "X3M_CHASE_VIEW_RESTORE": "1",
+     "X3M_SCREEN_EMISSION_ADDITIVE": "2.0",
+     "X3M_SHADOW_CASCADE_SIZES": "2048,4096,4096,2048,2048",
+     "X3M_MUSIC_KEEP": "1",
+     "X3M_SHADOW_ALPHA_CASTERS": "1",
+     "X3M_CAPTURE_START": "999999",
+     "X3M_CAPTURE_FRAMES": "8",
+     "X3M_CAPTURE_DELAY": "300",
+     "X3M_MESH_ADJACENCY": "fast",
+     "X3M_TELEMETRY": "0"
+    },
+    "report_lines": [
+     "fog families: ok (0 packets; 14 compiled cover 14 families, 2 refused)",
+     "lod overlay: ok (620 bodies in slots 05/06, 2.72 GB; sources unchanged; no package: ModName empty)"
+    ]
+   },
+   "D_VANILLA": {
+    "exit": 0,
+    "overrides": "d3d9=b",
+    "x3m_env_count": 125,
+    "values": {
+     "X3M_TAA_DEBUG": "0",
+     "X3M_ORIGINAL_FILL": "0.0",
+     "X3M_GPU_SYNC_TIMING": "0",
+     "X3M_TAA": "0",
+     "X3M_HDR": "0",
+     "X3M_CHASE_VIEW_RESTORE": "0",
+     "X3M_SCREEN_EMISSION_ADDITIVE": "0",
+     "X3M_SHADOW_ALPHA_CASTERS": "0",
+     "X3M_CAPTURE_START": "120",
+     "X3M_CAPTURE_FRAMES": "1",
+     "X3M_MESH_ADJACENCY": "native",
+     "X3M_TELEMETRY": "0"
+    },
+    "report_lines": []
+   }
+  },
+  "a_vs_b": {
+   "X3M_CAMERA_LOG": [
+    "1",
+    "300"
+   ],
+   "X3M_CULL_CENSUS": [
+    "1",
+    null
+   ],
+   "X3M_FPS_OVERLAY": [
+    "1",
+    "0"
+   ],
+   "X3M_FRAME_END_STRIDE": [
+    "1",
+    "300"
+   ],
+   "X3M_FRAME_PHASES": [
+    "1",
+    "0"
+   ],
+   "X3M_FRAME_TIMING": [
+    "1",
+    "0"
+   ],
+   "X3M_LOADING_INTERVALS": [
+    "1",
+    "0"
+   ],
+   "X3M_MOTION_FRAME_LOG": [
+    "1",
+    null
+   ],
+   "X3M_OBJECT_BOUNDS_LOG": [
+    "1",
+    null
+   ],
+   "X3M_SHADOW_CASCADE_SIZES": [
+    "2048,2048,2048,2048,2048",
+    "2048,4096,4096,2048,2048"
+   ],
+   "X3M_SHADOW_RETENTION_CENSUS": [
+    "1",
+    "0"
+   ],
+   "X3M_TELEMETRY": [
+    "1",
+    "0"
+   ],
+   "X3M_VOLUMETRIC_FOG_TIMING": [
+    "1",
+    "0"
+   ]
+  },
+  "c_vs_a": {
+   "X3M_TAA_DEBUG": [
+    "0",
+    "1"
+   ]
+  },
+  "b_vs_run87_a_stand": {
+   "X3M_MUSIC_KEEP": [
+    null,
+    "1"
+   ],
+   "X3M_SHADOW_ALPHA_CASTERS": [
+    "0",
+    "1"
+   ]
+  },
+  "vanilla_vs_run87": {
+   "X3M_MOTION_FRAME_LOG": [
+    "1",
+    null
+   ]
+  },
+  "reading": "A (the new short default: --direct only) exits 0 with 180 X3M variables; A-C print \"fog families: ok (0 packets; 14 compiled cover 14 families, 2 refused)\" and \"lod overlay: ok (620 bodies in slots 05/06, 2.72 GB; sources unchanged; no package: ModName empty)\" on stderr, D (--vanilla) prints neither. A equals B (the old stand command, --camera chase + stand.txt, ambient X3M_MOTION_FRAME_LOG=1 as in Run87) except the telemetry/debug variables (X3M_TELEMETRY 1->0, X3M_CAMERA_LOG 1->300, X3M_FPS_OVERLAY, X3M_FRAME_TIMING, X3M_FRAME_PHASES, X3M_LOADING_INTERVALS, X3M_SHADOW_RETENTION_CENSUS, X3M_VOLUMETRIC_FOG_TIMING 1->0, X3M_FRAME_END_STRIDE 1->300, X3M_CULL_CENSUS / X3M_OBJECT_BOUNDS_LOG / X3M_MOTION_FRAME_LOG absent) and X3M_SHADOW_CASCADE_SIZES 2048x5 -> 2048,4096,4096,2048,2048; A carries X3M_MUSIC_KEEP=1, X3M_SHADOW_ALPHA_CASTERS=1, X3M_CAPTURE_START=999999 (frames 8, delay 300), X3M_MESH_ADJACENCY=fast. C differs from A only in X3M_TAA_DEBUG 0->1. B versus the Run87 A_STAND: only X3M_MUSIC_KEEP (absent->1) and X3M_SHADOW_ALPHA_CASTERS 0->1 (the two new defaults). D versus the Run87 D_VANILLA: only X3M_MOTION_FRAME_LOG absent (Run87 injected it into every variant's ambient environment; Run88 only into B); D sends no far gate/clip, sun occlusion, effects or _DEFAULT variable.",
+  "lock": {
+   "lock_wait_seconds": 3.458000000001321e-06,
+   "child_elapsed_seconds": 0.559490834,
+   "exit_code": 0
+  }
+ },
+ "producer": "/tmp/x3-run88-candidate/make_record.py (this record); /tmp/x3-run88-candidate/reuse_deps.py (closures vs Run87); /tmp/x3-run88-candidate/w.sh (guarded Wine wrapper); /tmp/x3-run88-candidate/save_restore.sh (rewrite copy + restore); verification/results/run70-candidate-audit.py (pe, diff); verification/results/sky-history-default/compare_motion_output.py; verification/results/run78-candidate-motion-dither-compare.py; verification/results/run77-candidate-fold-count.py; dry-run /tmp/x3-run88-candidate/run88-dryrun.sh + /tmp/x3-run88-candidate/extract_dryrun.py",
+ "bottle": "X3",
+ "wine_arch": "arm64 (cxbottle.conf \"WineArch\" = \"arm64\", checked)",
+ "environment": {
+  "FEX_X87REDUCEDPRECISION": "1",
+  "WINEMSYNC": "1",
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf",
+  "checked": "grep of cxbottle.conf this session: \"WineArch\" = \"arm64\", FEX_X87REDUCEDPRECISION \"1\", WINEMSYNC \"1\""
+ },
+ "native_windows": "unverified: cross-compiled only; one new import (strcat, UCRT), exports equal to Run87; the src changes are reference counting, logging and environment parsing on documented APIs",
+ "game_acceptance": "pending user launch (Run 88): the next --shadow-caster-retention flight must show one flush=teardown (device destroy) and fired=1 only on the last shadow_retention_probe row; a fast-only launch must log mesh_adjacency_config requested=fast enabled=1 telemetry=0",
+ "installed": false,
+ "wall_times_seconds": {
+  "build": 45,
+  "temporal": 132.6,
+  "motion": 593.3,
+  "loadtrace": 41.7,
+  "meshhook": 20.2,
+  "crypt": 13.8,
+  "resreader": 18.4,
+  "intervals": 167.2,
+  "cursor": 7.9,
+  "integration": 147.1,
+  "dryrun": 0.6,
+  "host_suite": 96.2
+ },
+ "incidents": [
+  "game_guard.game_running() printed [] as a separate command before the build and before every Wine step (w.sh re-checks it before taking the lock); no Wine step overlapped another; the host suite ran before the first Wine step",
+  "run_loading_intervals.py first attempt exited 1 before Wine (0.1 s): the runner expects verification/probe/build/loading_intervals/loading_intervals_fixture.exe pre-built; sh verification/probe/build_loading_intervals.sh built it and the rerun passed (intervals-attempt1.out, lock-timings-intervals-attempt1.json)",
+  "run_ownership_integration_fallback.py refused twice before Wine: first because save_restore.sh had already restored the committed ownership-integration-build.json (manifest/source mismatch); with the fresh manifest copied back it refused with the Run86 harness defect 'Build all current production components first' (production_link_inputs parses only add_library(d3d9 SHARED ...) and misses fog_field_assets.cpp added by x3m_add_fog_field_assets). Tree restored after each",
+  "the brief expected 235 motion cases: n_route_lifecycle is a sub-case inside the four seam-ownership-shadow-retention cases, so the suite still has 234 cases",
+  "the brief expected capture.cpp in the gpu-sync, cursor, lod-occlusion, cull, chase-fire, window, fov and sun-flare closures and motion_output_sun_occlusion_inc.h in the sun-occlusion closure: none of those fixtures compiles either file (CMakeLists fixture targets and build scripts checked); capture.cpp is compiled only by the motion suite and the ownership-integration full-DLL build, both rerun"
+ ],
+ "launcher_defect_fix": {
+  "status": "carried: the Run85 --taa-far-gate help fix (89f4b014) is in this tree; the host suite passes",
+  "run87_entry": {
+   "status": "carried: the Run85 --taa-far-gate help fix (89f4b014) is in this tree; the host suite passes",
+   "run85_entry": {
+    "commit": "89f4b014",
+    "change": "tools/manage.py --taa-far-gate help text '10 % per frame' -> '10 %% per frame'",
+    "rerun": "test_taa_far_gate, test_fov_site, test_linear_emission_source_gain, test_linear_emission_hull_gain OK on main"
+   }
+  }
+ },
+ "host_suite_note": "0 failing on the candidate tree 79aafc8b",
+ "host_suite_after_test_fixes": "not applicable: the candidate tree itself passes (see host_suite)",
+ "dropped_sections": {
+  "effects_stage": "the effects stage (9375a1e7) was removed from production in 479cd036; its fixture and runner no longer exist at 22593133",
+  "chase_transition_cpu": "the docking restore (40cd3023) was reverted whole in 22593133; the chase transition closure is byte-identical to Run85, and the Run85 record carries no chase_transition_cpu section, so there is no current-code entry to nest; the Run86 entry qualified the reverted code",
+  "note": "carried from Run87; no section dropped in Run88"
+ }
+}

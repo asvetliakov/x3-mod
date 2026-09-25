@@ -1,0 +1,47 @@
+{
+ "candidate": {
+  "dll": "/tmp/x3-run88-candidate/build/d3d9.dll",
+  "sha256": "6fe194bdcd83e39fb45e71196c8c1815c030f8e05474aa7866264a510b3a07be",
+  "bytes": 56886757,
+  "commit": "79aafc8b",
+  "qualification": "verification/results/run88-candidate-qualification.json"
+ },
+ "command": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3-run88-candidate/build/d3d9.dll",
+ "cwd": "/Users/asvetl/x3-mod",
+ "exit": 0,
+ "installed_at": "2026-09-25T20:25+04:00",
+ "installed": {
+  "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
+  "sha256": "6fe194bdcd83e39fb45e71196c8c1815c030f8e05474aa7866264a510b3a07be",
+  "bytes": 56886757,
+  "verified": "sha256 and size read back after install"
+ },
+ "unchanged": {
+  "X3AP.exe": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+  "cxbottle.conf": "cc5d6c00a8afccaf88cbae1a7c46040db513eb163a52693287a3d29aca828e0c"
+ },
+ "previous": {
+  "dll": "/tmp/x3-run87-candidate/build/d3d9.dll",
+  "sha256": "94c4ef4202abb6a4ffaa459ee540003c8f8636d62e0a3166e82a305efef90081",
+  "bytes": 56856749,
+  "commit": "22593133"
+ },
+ "rollback": {
+  "dll": "/tmp/x3-run87-candidate/build/d3d9.dll",
+  "sha256": "94c4ef4202abb6a4ffaa459ee540003c8f8636d62e0a3166e82a305efef90081",
+  "bytes": 56856749,
+  "records": [
+   "verification/results/run87-candidate-qualification.json",
+   "verification/results/run87-candidate-install.json"
+  ],
+  "then": "/tmp/x3-run86-candidate/build/d3d9.dll 27881669\u2026"
+ },
+ "game_running_at_install": false,
+ "game_data": "fleet overlay install-fleet4 (620 bodies) unchanged; x3m/fog-families.bin (empty table) + .json unchanged",
+ "changes_vs_previous": [
+  "shadow pop fix: sun-occlusion lens-depth acquisition under taa_call, taa_call underflow clamp + row, 64-bit final-Release probe sum, shadow_retention_probe row (79aafc8b)",
+  "mesh-adjacency fast path arms without --telemetry (30eecc51 + the capture.cpp gate)",
+  "launcher defaults promoted: the stand set is the default; cascade sizes 2048,4096,4096,2048,2048; music keep; alpha casters on; capture off (2356ba68); launcher only",
+  "new PE import api-ms-win-crt-string-l1-1-0.dll!strcat (native Windows unverified)"
+ ]
+}

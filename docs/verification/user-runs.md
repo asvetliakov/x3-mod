@@ -33,7 +33,7 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 
 ## Run 88 (open)
 
-**Run 88 A (queued 2026-09-25; Run88 DLL `__RUN88_SHA__` from 79aafc8b, installed __RUN88_TIME__; overlay install-fleet4
+**Run 88 A (queued 2026-09-25; Run88 DLL `6fe194bd…` from 79aafc8b, installed 20:25; overlay install-fleet4
 unchanged).** New: the **shadow pop fix** (the sun-occlusion bracket drifted the TAA reference count, so the caster retention
 store was flushed every frame after a few hundred frames in every session since Run84; 79aafc8b), the **mesh-adjacency fast path
 arming without --telemetry** (30eecc51), and the **launcher defaults promoted** (the stand set is the default; new
