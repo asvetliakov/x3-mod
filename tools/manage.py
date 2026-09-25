@@ -180,27 +180,74 @@ VOICE_DECODER_REPO_ENV = 'X3M_VOICE_DECODER_REPO'
 
 
 FOG_FAMILIES_GAME_FILE = Path('x3m/fog-families.bin')  # tools/analysis/fog_families.py --install
+FOG_FAMILIES_RECORD = 'fog-families.json'  # written beside it; carries the launch_inputs fingerprint
+FOG_FAMILIES_TOOL = ROOT / 'tools/analysis/fog_families.py'
+FOG_FAMILIES_HINT = 'python3 tools/manage.py fog-families --bottle {bottle} --install'
 
 
-def fog_families_line(game, environ):
+def _fog_family_inputs():
+    """tools/analysis/fog_family_inputs.py (standard library only; no NumPy at launch)."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location('fog_family_inputs', ROOT / 'tools/analysis/fog_family_inputs.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def fog_families_line(game, environ, bottle=BOTTLE):
     """One report line on the data-driven fog family file the proxy reads at the first fog sector
-    sample (docs/architecture/fog-family-data.md, "Implementation"): the 64-byte header only."""
+    sample (docs/architecture/fog-family-data.md, "Implementation", "Mod flow"): missing, stale or ok.
+    Cheap: the 64-byte header, the record's file size and its launch_inputs stat fingerprint
+    (catalogue list, .cat/.dat sizes and mtimes, loose TBackgrounds); never reads the packets or
+    any texture. `fog_families.py --check` does the full comparison. Never blocks the launch."""
     override = environ.get('X3M_FOG_FAMILIES')
     if override is not None and override.strip().lower() in ('0', 'none'):
         return 'fog families: disabled (X3M_FOG_FAMILIES)'
     path = Path(override) if override else game / FOG_FAMILIES_GAME_FILE
+    hint = FOG_FAMILIES_HINT.format(bottle=bottle)
     if not path.is_file():
-        return f'fog families: absent ({path}); the 14 compiled profiles only'
-    size = path.stat().st_size
-    with path.open('rb') as stream:
-        head = stream.read(64)
+        return f'fog families: missing; run `{hint}` to cover mod sectors, compiled 14 names only'
+    try:
+        size = path.stat().st_size
+        with path.open('rb') as stream:
+            head = stream.read(64)
+    except OSError as error:
+        return f'fog families: {path} unreadable ({error.strerror}); compiled 14 names only'
     if len(head) < 64:
-        return f'fog families: {path} present bytes={size}; header truncated (the proxy will reject it)'
+        return f'fog families: {path} bytes={size}; header truncated (the proxy will reject it); run `{hint} --replace`'
     magic, version, header, _, families, packets = struct.unpack_from('<8s5I', head)
     file_size = struct.unpack_from('<Q', head, 56)[0]
     if magic != b'X3FOGFAM' or version != 1 or header != 64 or file_size != size:
-        return f'fog families: {path} present bytes={size}; header invalid (the proxy will reject it)'
-    return f'fog families: {path} present bytes={size} families={families} packets={packets}'
+        return f'fog families: {path} bytes={size}; header invalid (the proxy will reject it); run `{hint} --replace`'
+    counts = f'{families} families, {packets} packets'
+    try:
+        record = json.loads(path.with_name(FOG_FAMILIES_RECORD).read_text())
+        if (record.get('file') or {}).get('bytes') != size:
+            reason = f'file differs from {FOG_FAMILIES_RECORD}'
+        else:
+            reason = _fog_family_inputs().launch_difference(game, record)
+    except FileNotFoundError:
+        reason = f'no {FOG_FAMILIES_RECORD} beside it'
+    except (OSError, ValueError, TypeError, KeyError, AttributeError) as error:
+        reason = f'{FOG_FAMILIES_RECORD} unreadable ({type(error).__name__})'
+    if reason is not None:
+        return f'fog families: stale ({reason}; {counts} still load); run `{hint} --replace`, or `--check` to confirm'
+    return f'fog families: ok ({counts})'
+
+
+def fog_families_command(argv):
+    """`manage.py fog-families`: the argv that runs tools/analysis/fog_families.py on the bottle's
+    game directory. --bottle/--game-dir are consumed; everything else is forwarded verbatim;
+    without --check, --install, --out or --dry-run it adds --check."""
+    parser = argparse.ArgumentParser(prog='manage.py fog-families',
+                                     description='Generate, install or check <game>/x3m/fog-families.bin (tools/analysis/fog_families.py).')
+    parser.add_argument('--bottle', default=BOTTLE, help='CrossOver bottle whose drive_c/X3 is the game directory (default: X3; X3M_BOTTLE overrides)')
+    parser.add_argument('--game-dir', type=Path, default=None, help='game directory (overrides --bottle)')
+    args, rest = parser.parse_known_args(argv)
+    game = args.game_dir or Path.home() / f'Library/Application Support/CrossOver/Bottles/{args.bottle}/drive_c/X3'
+    if not any(arg.split('=')[0] in ('--check', '--install', '--out', '--dry-run', '-h', '--help') for arg in rest):
+        rest = [*rest, '--check']
+    return [sys.executable, str(FOG_FAMILIES_TOOL), '--game', str(game), *rest]
 
 
 def voice_decoder_problem(root, *, create_registry, dry_run=False):
@@ -495,8 +542,13 @@ def source_commit(dll):
 
 
 def main():
+    if sys.argv[1:2] == ['fog-families']:  # thin wrapper with its own options (fog_families_command)
+        raise SystemExit(subprocess.call(fog_families_command(sys.argv[2:])))
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', choices=['install', 'uninstall', 'rollback', 'recover', 'launch', 'status'])
+    parser.add_argument('action', choices=['install', 'uninstall', 'rollback', 'recover', 'launch', 'status', 'fog-families'],
+                        help='fog-families [--bottle B] [--check | --install [--replace] | --dry-run] [fog_families.py options]: '
+                             'generate, install or check <game>/x3m/fog-families.bin for mod nebula families through '
+                             'tools/analysis/fog_families.py on the bottle\'s game directory (default --check; see manage.py fog-families --help)')
     parser.add_argument('--game-dir', type=Path, default=GAME)
     parser.add_argument('--bottle', default=BOTTLE, help='CrossOver bottle (default: X3, the arm64/FEX bottle; X3M_BOTTLE overrides; the old x86_64/Rosetta bottle is Steam)')
     parser.add_argument('--dll-source', type=Path, default=ROOT / 'build/d3d9.dll',
@@ -607,7 +659,7 @@ def main():
     parser.add_argument('--taa-sky-history-band-px', type=float, default=None, help='Band threshold of the strict sky history in px/frame (X3M_TAA_SKY_HISTORY_BAND_PX; requires --taa; 1..16, DLL default 3): the translation parallax at which the 1-px sky band beside a silhouette stops taking its history under --taa-sky-history strict (docs/architecture/seta-motion.md section 4)')
     parser.add_argument('--taa-sky-history-exit-px', type=float, default=None, help='Exit reset of the strict sky history in px/frame (X3M_TAA_SKY_HISTORY_EXIT_PX; requires --taa; a value above 0 also requires --taa-sky-history strict and an age program: --taa-far-stabiliser or --taa-thin-region; default when omitted with --taa = 0.25 (accepted in Run 68 A, 2026-09-23) under strict with an age program, else 0 = off, never an error: a plain --taa launch has no age program, so the reset resolves to 0 there, and it is on with --taa-far-stabiliser or --taa-thin-region; 0 is the explicit off and the opt-out, else 0.125..the band threshold): a sky pixel in the 1-px band beside a silhouette that took the silhouette\'s history while it moved at least this much translation parallax is marked in the age target and drops that history the frame it leaves the band, so the hull share it acquired leaves in one frame instead of decaying at the history weight (docs/architecture/seta-sky-hull-share-decay.md)')
     parser.add_argument('--taa-history-taps', choices=('5', '16'), default=None, help='History reconstruction of the TAA resolve (X3M_TAA_HISTORY_TAPS; requires --taa; DLL default 5): 5 = Catmull-Rom through five hardware-bilinear taps (docs/architecture/taa-high-resolution.md S3), 16 = the 16-tap point form of the earlier builds, for an in-flight A/B; the thin region\'s camera gate has no 16-tap form, so 16 turns a camera-gated thin region off (logged). A device that cannot filter FP16 / R32F textures draws 16 whatever is asked (logged as motion_output_taa_history_taps)')
-    parser.add_argument('--taa-far-gate', choices=('camera', 'screen'), default=None, help='Motion gate of the far weight of --taa-far-stabiliser on the camera-gate resolve (X3M_TAA_FAR_GATE; requires --taa; refused under --vanilla; default camera on every modded --taa launch, marked X3M_TAA_FAR_GATE_DEFAULT=1; an explicit value sends marker 0; nothing is sent without --taa or under --vanilla; the DLL default when the variable is unset is camera): camera applies the LO,HI gate to the motion of the pixel against the camera path (or its screen motion when smaller), so far content static in the world keeps the far weight under a camera pan: no one-frame sparkles on far edges while panning (run327), but a softer far image during fractional pans, the long history being resampled every frame; screen applies it to the screen speed, the gate before 2026-09-25: sharper far content while panning, but the far weight drops to the history weight under a pan, so a sampled sub-pixel far line leaks 10 % per frame into the output and sparkles even with --taa-far-clip 7x7 (FAR_JITTER_LINE: 0.4 px line at 10.5 px/frame 19.2 codes against the 6-code margin; camera 4.9). Camera stays the default (docs/architecture/taa-mask-fold.md section 4.2 addenda). The far program without the camera gate (--taa-thin-region-gate screen, the thin region off) always uses the screen speed (one motion_output_taa_far_gate row when camera was given)')
+    parser.add_argument('--taa-far-gate', choices=('camera', 'screen'), default=None, help='Motion gate of the far weight of --taa-far-stabiliser on the camera-gate resolve (X3M_TAA_FAR_GATE; requires --taa; refused under --vanilla; default camera on every modded --taa launch, marked X3M_TAA_FAR_GATE_DEFAULT=1; an explicit value sends marker 0; nothing is sent without --taa or under --vanilla; the DLL default when the variable is unset is camera): camera applies the LO,HI gate to the motion of the pixel against the camera path (or its screen motion when smaller), so far content static in the world keeps the far weight under a camera pan: no one-frame sparkles on far edges while panning (run327), but a softer far image during fractional pans, the long history being resampled every frame; screen applies it to the screen speed, the gate before 2026-09-25: sharper far content while panning, but the far weight drops to the history weight under a pan, so a sampled sub-pixel far line leaks 10 %% per frame into the output and sparkles even with --taa-far-clip 7x7 (FAR_JITTER_LINE: 0.4 px line at 10.5 px/frame 19.2 codes against the 6-code margin; camera 4.9). Camera stays the default (docs/architecture/taa-mask-fold.md section 4.2 addenda). The far program without the camera gate (--taa-thin-region-gate screen, the thin region off) always uses the screen speed (one motion_output_taa_far_gate row when camera was given)')
     parser.add_argument('--taa-far-clip', choices=('7x7', '3x3'), default=None, help='History clip of far pixels outside the thin region on the camera-gate resolve (X3M_TAA_FAR_CLIP; requires --taa; refused under --vanilla; default 7x7 on every modded --taa launch, marked X3M_TAA_FAR_CLIP_DEFAULT=1; an explicit value sends marker 0; nothing is sent without --taa or under --vanilla; DLL default 7x7 when unset): 7x7 clips the history of every pixel with a far weight (farw of --taa-far-stabiliser times the camera-relative openness, above 0) against the 7x7 min/max of the current colour, so a sub-pixel far line that only some jitter phases sample stops flickering (run327/run332 plant sparkles); 3x3 is the variance clip of every other pixel, the clip before 2026-09-25. Acts only with the far stabiliser on and the camera-gate thin region, and always gates on the camera-relative openness, also under --taa-far-gate screen (the far weight then follows the screen speed, the clip does not) (docs/architecture/taa-mask-fold.md section 4.2 addendum "far clip").')
     parser.add_argument('--taa-box-resolution', choices=('full', 'half'), default=None, help='Resolution of the box of the TAA thin region\'s camera gate (X3M_TAA_BOX_RESOLUTION; requires --taa; refused under --vanilla; default half on every modded --taa launch since Run 82 (accepted in Run 81 A launch 2, docs/verification/temporal-resolve.md), marked X3M_TAA_BOX_RESOLUTION_DEFAULT=1; full is the explicit opt-out (marker 0); nothing is sent without --taa or under --vanilla; the DLL default when the variable is unset stays full): half draws the separable min/max box (rows, then columns) at half resolution in both axes, each 2x2 block taking the 8x8 window that contains its four pixels\' 7x7 windows, so the clip it feeds is never tighter than full; the box opens on the previous frame\'s region hold and the resolve takes the 7x7 in place where it did not (docs/architecture/taa-high-resolution.md S4, taa-mask-fold.md). Meaningful only with the camera gate (the default with --taa-thin-region); an odd frame size, a refused program or refused targets keep full (one motion_output_taa_box_resolution row)')
     # Removed 2026-09-24 (A' accepted after Run 79 A, taa-plan-lifted-slot-cap.md step 1): registered only so that an old
@@ -657,7 +709,7 @@ def main():
     parser.add_argument('--sun-shadow-bias-clamp-texels', type=float, default=None, metavar='T', help='Receiver-plane bias clamp and non-planar fallback of the sun-shadow quad in world texels of the map (2 E / N), 1..64, default 20.97152 (X3M_SUN_SHADOW_BIAS_CLAMP_TEXELS; requires --sun-shadow-apply): the default is the former 0.01 at the default cascade; the detached fixture was tuned at 4 texels and the wide fixture shows the default lighting a few silhouette pixels of a receiver\'s own faces (docs/verification/directional-shadows.md)')
     parser.add_argument('--sun-shadow-bias-slope-texels', type=float, default=None, metavar='S', help='Slope-scaled margin of the cascade sun-shadow compare in texels of the receiver plane\'s depth slope, 0..8, default 0.2 (X3M_SUN_SHADOW_BIAS_SLOPE_TEXELS; requires --sun-shadow-apply; 0 keeps the constant + plane law)')
     parser.add_argument('--sector-background', action='store_true', help='Read-only active-sector background diagnostic (X3M_SECTOR_BACKGROUND=1; default off; exact executable only): one bounded sample per frame, logged once per second and on sector/row/status changes, including menus/loading when frames are submitted. Does not affect fog rendering; no other option required. docs/reverse-engineering/sector-fog.md section 11')
-    parser.add_argument('--volumetric-fog', nargs='?', type=float, const=0.02, default=None, metavar='STRENGTH', help='Spatial family fog at scene end (default off; requires --motion-output --taa --hdr --shadow-replay-depth --shadow-cascades). Validated bluewell and foggreenoutlands engine families only; clear, unsupported and unavailable sectors retain native cards. STRENGTH is density tuning in 0..0.1: 0.02=1x qualified family density, 0=off, other values are user tuning. Occupancy and horizon stay fixed. Ctrl+Alt+F9 toggles; Ctrl+Alt+F10 steps 0.005/0.01/0.02/0.03/0.05 (.25/.5/1/1.5/2.5x); --fps-overlay shows the multiplier. Unshadowed first spatial version; use --volumetric-fog-cards replace for replacement, keep for an explicit stacked diagnostic comparison.')
+    parser.add_argument('--volumetric-fog', nargs='?', type=float, const=0.02, default=None, metavar='STRENGTH', help='Spatial family fog at scene end (default off; requires --motion-output --taa --hdr --shadow-replay-depth --shadow-cascades). Families are data-driven: the sector\'s TBackgrounds family name is matched against the 14 compiled profiles, then against <game>/x3m/fog-families.bin (mod families; `manage.py fog-families --install` writes it, and the launch line "fog families: missing|stale|ok" reports it: stale compares the catalogue list, .cat/.dat sizes and mtimes and loose TBackgrounds recorded at generation, never textures); clear sectors and unmatched families retain native cards. STRENGTH is density tuning in 0..0.1: 0.02=1x qualified family density, 0=off, other values are user tuning. Occupancy and horizon stay fixed. Ctrl+Alt+F9 toggles; Ctrl+Alt+F10 steps 0.005/0.01/0.02/0.03/0.05 (.25/.5/1/1.5/2.5x); --fps-overlay shows the multiplier. Unshadowed first spatial version; use --volumetric-fog-cards replace for replacement, keep for an explicit stacked diagnostic comparison.')
     parser.add_argument('--volumetric-fog-cards', choices=('keep', 'replace'), default=None, help='Keep vanilla fog cards (default), or replace validated card color with the medium after a successful warm-up (X3M_VOLUMETRIC_FOG_CARDS; requires --volumetric-fog)')
     parser.add_argument('--volumetric-fog-range', choices=('legacy', 'stored'), default=None, help='Fog field behind --volumetric-fog: legacy (default) is the family atlas; stored is the experimental stored-density field, generated on one background thread, with clouds out to 30-40 km, drawn with the single shaped look (density remap, thicker cores, two-lobe phase, coloured ambient, tinted extinction, Beer-powder self-shadow; tuning by the X3M_FOG_LOOK_<NAME> environment variables, read once). A capability refusal logs one line and keeps legacy (X3M_VOLUMETRIC_FOG_RANGE; requires --volumetric-fog).')
     # Retired 2026-09-22 with the presets L0/L1/L3: registered only so that an old command line is refused by name.
@@ -2042,8 +2094,10 @@ def main():
         print(voice_line, file=sys.stderr)
         for line in args.defaults_not_sent:
             print(line, file=sys.stderr)
-        fog_families = fog_families_line(game, env)
-        print(fog_families, file=sys.stderr)
+        # Informational only (never blocks); the builtin D3D9 of --vanilla reads no family file.
+        fog_families = None if args.vanilla else fog_families_line(game, env, args.bottle)
+        if fog_families is not None:
+            print(fog_families, file=sys.stderr)
         if voice_root is not None:
             plugins, registry = voice_root / 'runtime/plugins', voice_root / 'registry'
             voice_env = {'GST_PLUGIN_PATH_1_0': str(plugins), 'GST_REGISTRY_1_0': str(registry / 'x3-arm64.bin'),

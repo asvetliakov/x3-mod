@@ -347,6 +347,26 @@ rows (`decoded_ok=56`). Per family: palette 0.55 s, palette + bake 2.16 s (media
 passed its self-test under Wine on bottle X3 (62 cases, the build before review round 1; evidence
 `verification/results/fog-family-data/fixture-wine/`); not run natively.
 
+**Mod flow (2026-09-25).** One entry point: `python3 tools/manage.py fog-families --bottle X3
+--install` (add `--replace` over an existing file; without a mode flag it runs `--check`; any
+other `fog_families.py` option is forwarded, `--game-dir` overrides the bottle). Re-run it after
+installing, removing or updating a mod that ships catalogues or a TBackgrounds, and after the
+LOD overlay (`lod_batch_census` → `lod_overlay --install` → `manage.py fog-families --install
+--replace`). The record now carries `launch_inputs` (`tools/analysis/fog_family_inputs.py`,
+standard library only): the catalogue layer list, size and mtime of every `.cat`/`.dat`
+(including `--mod-cat` layers) and of the loose `types/TBackgrounds.{pck,txt}` in the base and
+addon trees. Every modded `manage.py launch` prints one line and never blocks: `fog families:
+missing; run … to cover mod sectors, compiled 14 names only` (no file: mod families get native
+cards); `fog families: stale (<reason>; N families, M packets still load)` (the stat
+fingerprint, the record's file size or the record itself differs; the file still loads, but
+families a mod added since are absent and changed palettes are old); `fog families: ok (N
+families, M packets)`; header truncated/invalid when the proxy would reject the file; `disabled`
+under `X3M_FOG_FAMILIES=0`. Nothing under `--vanilla`. The launch comparison stats about twenty
+files and reads no texture; loose bodies and textures outside the catalogues are not in it, so
+`--check` (every input hash) stays the authority, and a `--check` PASS refreshes a mismatched
+fingerprint (a touched or re-copied catalogue with unchanged content). Records written before
+2026-09-25 lack `launch_inputs` and are compared by catalogue list only.
+
 ## Unknowns
 
 - ~~The exact percentile convention of the stock palette derivation~~: settled, see

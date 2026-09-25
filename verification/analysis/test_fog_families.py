@@ -284,42 +284,119 @@ class EndToEndTests(unittest.TestCase):
                 ff.running_game = original
 
 
-class LauncherReportTests(unittest.TestCase):
-    """tools/manage.py launch --dry-run reports the file from its header (note §4)."""
+def load_manage():
+    spec = importlib.util.spec_from_file_location('fog_families_manage', ROOT / 'tools/manage.py')
+    manage = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(manage)
+    return manage
 
-    def dry_run(self, directory, environ):
-        spec = importlib.util.spec_from_file_location('fog_families_manage', ROOT / 'tools/manage.py')
-        manage = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(manage)
+
+class LauncherReportTests(unittest.TestCase):
+    """tools/manage.py launch --dry-run: one 'fog families:' line, missing / stale / ok (fog-family-data.md, "Mod flow")."""
+
+    def dry_run(self, directory, environ, vanilla=False):
+        manage = load_manage()
         game = Path(directory) / 'game'
         game.mkdir(exist_ok=True)
         (game / 'X3AP.exe').touch()
+        (game / 'd3d9.dll').write_bytes(b'proxy')  # an owned install, so the modded dry run passes its install check
+        (game / 'x3-modern-install.json').write_text(json.dumps({'sha256': hashlib.sha256(b'proxy').hexdigest()}))
         wine = Path(directory) / 'wine'
         wine.touch()
-        argv = ['manage.py', 'launch', '--dry-run', '--vanilla', '--game-dir', str(game)]
+        argv = ['manage.py', 'launch', '--dry-run', *(['--vanilla'] if vanilla else []), '--bottle', 'X3', '--game-dir', str(game)]
         output, error = io.StringIO(), io.StringIO()
         with mock.patch.dict(os.environ, environ), mock.patch.object(sys, 'argv', argv), mock.patch.object(manage, 'WINE', wine), \
+                mock.patch.object(manage, 'VOICE_DECODER_REPO', Path(directory) / 'no-decoder'), \
                 mock.patch.object(manage.subprocess, 'call', side_effect=AssertionError('must never launch')), \
                 contextlib.redirect_stdout(output), contextlib.redirect_stderr(error):
             manage.main()
         line = json.loads(output.getvalue())['fog_families']
-        self.assertIn(line, error.getvalue())
+        if vanilla:
+            self.assertIsNone(line)
+            self.assertNotIn('fog families', error.getvalue())
+        else:
+            self.assertEqual([l for l in error.getvalue().splitlines() if l.startswith('fog families')], [line])
         return game, line
 
-    def test_dry_run_line_absent_present_invalid_and_disabled(self):
-        with tempfile.TemporaryDirectory() as directory, mock.patch.dict(os.environ, {}):
+    def run_tool(self, *argv):
+        with contextlib.redirect_stdout(io.StringIO()) as stdout:
+            code = ff.main([str(a) for a in argv])
+        return code, stdout.getvalue()
+
+    def test_launch_line_missing_stale_ok(self):
+        with tempfile.TemporaryDirectory() as directory, mock.patch.dict(os.environ, {}), \
+                mock.patch.object(ff, 'running_game', return_value=[]):
             os.environ.pop('X3M_FOG_FAMILIES', None)
-            game, line = self.dry_run(directory, {})
-            self.assertTrue(line.startswith('fog families: absent'), line)
-            rows = [dict(name=n, profile_id=ff.profile_id(n), packet=0, base_sigma=2.5e-6, occupancy=.12, chroma=[.5, .5, 1.0],
-                         colours=[[.5, .5, 1.0]] * 4, flags=0) for n in ('zza', 'zzb')]
-            data = ff.build_file(rows, [dict(bytes=b'\0' * 60, decoded_fnv1a=1, profile_id=ff.profile_id('zza'), decoded_sha256='00' * 32)])
-            (game / 'x3m').mkdir()
-            (game / 'x3m' / ff.FILE_NAME).write_bytes(data)
-            self.assertTrue(self.dry_run(directory, {})[1].endswith(f'present bytes={len(data)} families=2 packets=1'))
+            game = Path(directory) / 'game'
+            EndToEndTests.make_game(None, game)
+            hint = '`python3 tools/manage.py fog-families --bottle X3 --install`'
+            self.assertEqual(self.dry_run(directory, {})[1],
+                             f'fog families: missing; run {hint} to cover mod sectors, compiled 14 names only')
+            self.dry_run(directory, {}, vanilla=True)
+            self.assertEqual(self.run_tool('--game', game, '--install', '--jobs', '1')[0], 0)
+            record = json.loads((game / 'x3m' / ff.RECORD_NAME).read_text())
+            self.assertEqual(record['launch_inputs']['layers'], ['01.cat'])
+            self.assertEqual(self.dry_run(directory, {})[1], 'fog families: ok (1 families, 1 packets)')
+            self.dry_run(directory, {}, vanilla=True)  # present file: still nothing under --vanilla
+            # A mod adds a catalogue: stale, named; removing it restores ok.
+            (game / 'addon').mkdir()
+            sfc.write_catalogue(game / 'addon' / '05.cat', [('types/Dummy.txt', b'x')])
+            line = self.dry_run(directory, {})[1]
+            self.assertTrue(line.startswith('fog families: stale (catalogue list changed (+addon/05.cat); 1 families, 1 packets still load)'), line)
+            self.assertIn(f'{hint[:-1]} --replace`', line)
+            for suffix in ('.cat', '.dat'):
+                (game / 'addon' / ('05' + suffix)).unlink()
+            self.assertTrue(self.dry_run(directory, {})[1].startswith('fog families: ok'))
+            # A loose TBackgrounds appears: stale.
+            (game / 'types').mkdir()
+            (game / 'types' / 'TBackgrounds.txt').write_text('25;0;\n')
+            self.assertIn('stale (types/TBackgrounds.txt changed', self.dry_run(directory, {})[1])
+            (game / 'types' / 'TBackgrounds.txt').unlink()
+            # A touched catalogue with unchanged content: stale until --check PASSes and refreshes the fingerprint.
+            dat = game / '01.dat'
+            os.utime(dat, ns=(dat.stat().st_atime_ns, dat.stat().st_mtime_ns + 10**9))
+            self.assertIn('stale (01.dat changed (size or mtime)', self.dry_run(directory, {})[1])
+            code, text = self.run_tool('--game', game, '--check')
+            self.assertEqual(code, 0)
+            self.assertIn('launch fingerprint refreshed (01.dat changed', text)
+            self.assertEqual(self.dry_run(directory, {})[1], 'fog families: ok (1 families, 1 packets)')
+            # The record goes missing or no longer describes the file.
+            record_path = game / 'x3m' / ff.RECORD_NAME
+            saved = record_path.read_bytes()
+            record_path.unlink()
+            self.assertIn('stale (no fog-families.json beside it', self.dry_run(directory, {})[1])
+            record_path.write_bytes(saved.replace(b'"bytes": ', b'"bytes": 1'))
+            self.assertIn('stale (file differs from fog-families.json', self.dry_run(directory, {})[1])
+            record_path.write_bytes(saved)
+            # Header damage and the DLL's own opt-out.
+            data = (game / 'x3m' / ff.FILE_NAME).read_bytes()
             (game / 'x3m' / ff.FILE_NAME).write_bytes(data + b'\0')
-            self.assertIn('header invalid', self.dry_run(directory, {})[1])
+            self.assertIn('header invalid (the proxy will reject it)', self.dry_run(directory, {})[1])
+            (game / 'x3m' / ff.FILE_NAME).write_bytes(data[:10])
+            self.assertIn('header truncated', self.dry_run(directory, {})[1])
             self.assertEqual(self.dry_run(directory, {'X3M_FOG_FAMILIES': 'none'})[1], 'fog families: disabled (X3M_FOG_FAMILIES)')
+
+
+class WrapperTests(unittest.TestCase):
+    """tools/manage.py fog-families forwards to fog_families.py with the bottle's game directory."""
+
+    def test_argument_forwarding(self):
+        manage = load_manage()
+        tool = str(ROOT / 'tools/analysis/fog_families.py')
+        bottle_game = str(Path.home() / 'Library/Application Support/CrossOver/Bottles/X3/drive_c/X3')
+        self.assertEqual(manage.fog_families_command(['--bottle', 'X3', '--install', '--replace', '--jobs', '2']),
+                         [sys.executable, tool, '--game', bottle_game, '--install', '--replace', '--jobs', '2'])
+        self.assertEqual(manage.fog_families_command(['--bottle', 'X3']), [sys.executable, tool, '--game', bottle_game, '--check'])
+        self.assertEqual(manage.fog_families_command(['--game-dir', '/g', '--out=/o', '--mod-cat', '/m/05.cat']),
+                         [sys.executable, tool, '--game', '/g', '--out=/o', '--mod-cat', '/m/05.cat'])
+        self.assertEqual(manage.fog_families_command(['--bottle', 'Other', '--dry-run'])[3],
+                         str(Path.home() / 'Library/Application Support/CrossOver/Bottles/Other/drive_c/X3'))
+        argv = ['manage.py', 'fog-families', '--bottle', 'X3', '--install']
+        with mock.patch.object(sys, 'argv', argv), mock.patch.object(manage.subprocess, 'call', return_value=3) as call:
+            with self.assertRaises(SystemExit) as caught:
+                manage.main()
+        self.assertEqual(caught.exception.code, 3)
+        call.assert_called_once_with([sys.executable, tool, '--game', bottle_game, '--install'])
 
 
 if __name__ == '__main__':

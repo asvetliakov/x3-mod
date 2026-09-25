@@ -65,7 +65,9 @@ Usage (NumPy 2.0.2 required, as for the build):
   fog_families.py --dry-run [--game DIR]                  family table and refusals, no bake
   fog_families.py --out DIR [--jobs N]                     DIR/x3m/fog-families.bin + .json
   fog_families.py --install [--replace] [--force-running]  into <game>/x3m/ (one .previous kept)
-  fog_families.py --check [--out DIR]                      installed (or DIR's) file vs catalogues
+  fog_families.py --check [--out DIR]                      installed (or DIR's) file vs catalogues; a PASS
+                                                           refreshes the launch fingerprint (fog_family_inputs.py)
+tools/manage.py fog-families --bottle X3 [--check|--install ...] forwards here with the bottle's game directory.
 Options: --mod-cat PATH ... (extra catalogue layers), --family NAME ..., --profile
 NAME=occupancy,sigma, --background-palette NAME ..., --jobs N (parallel palette + bake).
 Removing <game>/x3m/fog-families.bin (and .json) reverts to the compiled 14; so does
@@ -94,6 +96,7 @@ for _path in (HERE, ROOT / 'tools', ROOT / 'tools' / 'build'):
         sys.path.insert(0, str(_path))
 import bake_fog_fields as baker  # noqa: E402
 import bob1  # noqa: E402
+import fog_family_inputs  # noqa: E402
 import fog_field_recipe as recipe  # noqa: E402
 import lod_atlas  # noqa: E402
 import sector_fog_census as sfc  # noqa: E402
@@ -694,7 +697,8 @@ def generate(args):
     record = dict(schema=1, tool='tools/analysis/fog_families.py', tool_sha256=sha256(Path(__file__).read_bytes()),
                   baker_sha256=sha256(Path(baker.__file__).read_bytes()), recipe_sha256=sha256(Path(recipe.__file__).read_bytes()),
                   numpy=np.__version__, recipe_id=recipe.RECIPE_ID, game=str(game), catalogue_layers=assets.layers,
-                  mod_cats=[str(m) for m in mods], tbackgrounds=tbackgrounds, jobs=max(1, args.jobs), dry_run=args.dry_run,
+                  mod_cats=[str(m) for m in mods], launch_inputs=fog_family_inputs.launch_inputs(game, mods),
+                  tbackgrounds=tbackgrounds, jobs=max(1, args.jobs), dry_run=args.dry_run,
                   palette_rule='fog-family-data.md §3; floor-565 DXT decode, inclusive numpy-linear percentile bands, 9-decimal stops',
                   counts=counts, families=[{k: v for k, v in p.items()} for p in plans],
                   file=None if data is None else dict(name=FILE_NAME, bytes=len(data), sha256=sha256(data), families=len(rows),
@@ -759,6 +763,13 @@ def check(args):
         print('STALE', problem)
     if not problems:
         print(f"PASS {file_path} families={len(loaded['rows'])} packets={len(loaded['packets'])} bytes={loaded['bytes']}")
+        # Every input still matches: refresh the stat fingerprint the launcher compares, so a touched
+        # or re-copied catalogue does not keep the launch line at 'stale'.
+        stale = fog_family_inputs.launch_difference(game, record)
+        if stale is not None or 'launch_inputs' not in record:
+            record['launch_inputs'] = fog_family_inputs.launch_inputs(game, record.get('mod_cats') or ())
+            write_atomic(record_path, (json.dumps(record, indent=1, sort_keys=True) + '\n').encode())
+            print(f'launch fingerprint refreshed ({stale or "record predates it"})')
     return 1 if problems else 0
 
 

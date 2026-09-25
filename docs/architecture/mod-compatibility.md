@@ -34,6 +34,19 @@ across 81 preserved sessions ([effect shader users](../reverse-engineering/effec
 - **Executable patches or hook DLLs:** outside this note; the proxy's own hook
   sites are byte-verified at install and refuse on a mismatch.
 
+## Fog families
+
+`--volumetric-fog` matches a sector's TBackgrounds family name against the 14
+compiled profiles, then against `<game>/x3m/fog-families.bin`, which is
+generated from the installed catalogues; a mod nebula family absent from both
+keeps its native cards. After installing or updating a mod, run
+`python3 tools/manage.py fog-families --bottle X3 --install --replace` (drop
+`--replace` the first time). Each modded launch prints `fog families: missing`,
+`stale (<reason>)` or `ok (N families, M packets)`; stale compares the recorded
+catalogue list, `.cat`/`.dat` sizes and mtimes and loose TBackgrounds, and
+`manage.py fog-families` without a flag runs the full `--check`
+([fog-family-data.md](fog-family-data.md), "Mod flow (2026-09-25)").
+
 ## Mayhem 3 (`Install_540`)
 
 The eight CAT listings (`05`–`12.cat`, rolling-XOR decoded, 6,152 entries)
