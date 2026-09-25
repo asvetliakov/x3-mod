@@ -16,9 +16,6 @@ bool screen_emission_route_enabled() noexcept;
 // X3M_OWNERSHIP=1); computed once in initialize_log. The loader enables the
 // step D Unlock scan for it as well: the footprint reads the scanned vertices.
 bool bolt_footprint_requested_gate() noexcept;
-// X3M_EFFECTS_STAGE=1 with its prerequisites (the additive route, TAA, X3M_OWNERSHIP=1); computed once in
-// initialize_log. The loader enables the Unlock scan and arms the ownership layer's upload-time texture keys on it.
-bool effects_stage_requested_gate() noexcept;
 // X3M_TAA_THIN_VOTE=on with every environment prerequisite (route, TAA, HDR, X3M_SUN_SHADOW_LANE=1, X3M_OWNERSHIP=1);
 // computed once in initialize_log. The loader arms the readable-MANAGED creation policy and the lock bookends only
 // through this gate; hook_device enables the vote on the same gate.

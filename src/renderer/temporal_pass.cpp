@@ -419,8 +419,7 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     diagnostics_.operation=diagnostics_.restoration=S_OK;diagnostics_.depth_folded=false;diagnostics_.depth_fold_reason="not_run";diagnostics_.history_taps=0;diagnostics_.region_hold=false;diagnostics_.thin_vote=false;diagnostics_.thin_vote_reason="not_run";diagnostics_.thin_region_source=ThinRegionSource::Both;diagnostics_.box_half=false;diagnostics_.box_resolution_reason="not_run";
     // Phase timing (Diagnostics::ticks_*): QPC pairs only, no device call changes.
     diagnostics_.timed=timing_;
-    diagnostics_.ticks_capture=diagnostics_.ticks_copy_color=diagnostics_.ticks_copy_depth=diagnostics_.ticks_draw=diagnostics_.ticks_apply=diagnostics_.ticks_stage=0;
-    diagnostics_.stage_ran=diagnostics_.stage_depth_bound=false;diagnostics_.stage_result=S_FALSE;
+    diagnostics_.ticks_capture=diagnostics_.ticks_copy_color=diagnostics_.ticks_copy_depth=diagnostics_.ticks_draw=diagnostics_.ticks_apply=0;
     auto fail=[&](HRESULT hr){invalidate();diagnostics_.operation=hr;return hr;};
     const bool supplemental=in.reactive_policy==ReactivePolicy::SupplementalMaskWithDepthSentinel;
     const bool mask=in.reactive_policy==ReactivePolicy::RequiredMask||supplemental;
@@ -616,18 +615,6 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     diagnostics_.ticks_copy_depth=stamp()-mark;
     mark=stamp();
     if(SUCCEEDED(hr)&&!in.caller_scene_open){hr=call<SceneFn>(BeginScene)(d);own_scene=SUCCEEDED(hr);}
-    // Effects stage (FrameInputs::stage_callback; effects-modernisation-opus.md 2.2 / 8.3): the caller's stage draws into
-    // the still-bound RT0 as the first act of this bracket, after normalize unbound RT1+ and the depth surface and once the
-    // scene is open; normalize runs again so every later step sees the state it expects. A lost device fails the run
-    // through hr; any other stage failure is the caller's to report (stage_result) and the resolve goes on.
-    diagnostics_.stage_depth_bound=saved.depth!=nullptr;
-    if(SUCCEEDED(hr)&&in.stage_callback){
-        const std::uint64_t stage_mark=stamp();
-        diagnostics_.stage_ran=true;diagnostics_.stage_result=in.stage_callback(in.stage_context,d);
-        if(lost(diagnostics_.stage_result))hr=diagnostics_.stage_result;
-        else if(diagnostics_.stage_result!=S_FALSE)hr=normalize(in.width,in.height); // S_FALSE: the callback touched no state (its contract)
-        diagnostics_.ticks_stage=stamp()-stage_mark;
-    }
     // Enhanced RT2 retains R32F histories. The identity program point-samples
     // the two- or four-channel source; R32F stores only .r, exactly preserving
     // sentinels. Never request an unsupported G32R32F/A32B32G32R32F -> R32F

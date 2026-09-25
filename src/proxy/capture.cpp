@@ -164,13 +164,6 @@ bool screen_emission_additive_requested = false; // X3M_SCREEN_EMISSION_ADDITIVE
 float screen_emission_additive_gain = 1.f;       // G, finite 1..8; anything else refuses the option
 bool bolt_footprint_requested = false; // X3M_BOLT_FOOTPRINT=W[,L]: minimum on-screen bolt width and length on the additive draws (bolt-footprint.md, option A', Run 73 B rule)
 float bolt_footprint_w = 3.f, bolt_footprint_l = 12.f;
-// Effects stage, phase 1 (docs/architecture/effects-modernisation-opus.md section 9; launcher --effects-stage):
-// X3M_EFFECTS_STAGE=1 with the additive bullets, motion output, HDR, TAA and X3M_OWNERSHIP=1; X3M_EFFECTS_SHIELDS=1,
-// X3M_EFFECTS_CENSUS=1, X3M_EFFECTS_BOLT_VIEWS=chase|all (marker X3M_EFFECTS_BOLT_VIEWS_DEFAULT), X3M_EFFECTS_KEYS=<path>
-// (default <EXE directory>\x3m\effect_keys.json). The loader arms the ownership upload keys and the Unlock scan on this gate.
-bool effects_stage_requested = false, effects_stage_shields = false, effects_stage_census = false, effects_stage_bolt_views_all = false, effects_stage_bolt_views_default = true;
-std::vector<char> effects_stage_keys_text; // the key table's bytes (read once at load); empty with effects_stage_keys_status naming why
-const char* effects_stage_keys_status = "unread";
 bool screen_emission_additive_alpha_requested = false; // X3M_SCREEN_EMISSION_ADDITIVE_ALPHA=K: per-source bloom attenuation of the additive draw (bloom-per-source-attenuation.md, option 1)
 float screen_emission_additive_alpha = 1.f;      // K, finite 0..1; absent or invalid keeps the native alpha law a + D.a
 unsigned fade_witness_frames = 0; // X3M_FADE_WITNESS=<k>, 0 = off
@@ -1469,9 +1462,7 @@ void comparison_begin_frame(Device& ctx) noexcept {
     // The emitter keys are polled with any emitter option on (an unrequested
     // one of the three still answers with a logged refusal); a launch with
     // only --fps-overlay polls its own chord and nothing else.
-    // F5 is read once: the additive bullets' Ctrl+Shift chord and, with --effects-stage, the stage's Ctrl+Alt chord (Shift up) each take the raw key on their own latch.
-    const bool f5=(emitter_compare || effects_stage_requested) && (GetAsyncKeyState(VK_F5)&0x8000)!=0;
-    keys.screen_additive=emitter_compare && f5;
+    keys.screen_additive=emitter_compare && (GetAsyncKeyState(VK_F5)&0x8000)!=0;
     keys.source_gain=emitter_compare && (GetAsyncKeyState(VK_F6)&0x8000)!=0;
     keys.hull_gain=emitter_compare && (GetAsyncKeyState(VK_F4)&0x8000)!=0;
     // Ctrl+Shift+F12: the sun shadows at rest (comparison-hotkeys.md, "Sun
@@ -1487,10 +1478,6 @@ void comparison_begin_frame(Device& ctx) noexcept {
     const bool f11=(volumetric_fog_shadow_pass || volumetric_fog_motes.count) && (GetAsyncKeyState(VK_F11)&0x8000)!=0;
     keys.fog_shadow_pass=volumetric_fog_shadow_pass && f11;
     keys.fog_dust_motes=volumetric_fog_motes.count && f11;
-    // Ctrl+Alt+F5 with Shift up: the effects stage A/B (comparison-hotkeys.md, "Effects stage"), polled only with
-    // --effects-stage on F5's own raw latch (Ctrl+Shift+F5 stays the additive bullets; F3 is the game's target view);
-    // one effects_stage_toggle line per accepted press, no notice; off records nothing, so every effect draw is the game's.
-    keys.effects_stage=effects_stage_requested && f5;
     // Ctrl+Alt+F9 / F10 with Shift up: the volumetric fog on/off and its strength ladder, polled only with
     // --volumetric-fog (raw F9/F10 latches of their own; Ctrl+Shift+F9/F10 stay exposure and bloom).
     keys.fog_toggle=volumetric_fog_requested && (GetAsyncKeyState(VK_F9)&0x8000)!=0;
@@ -1499,13 +1486,12 @@ void comparison_begin_frame(Device& ctx) noexcept {
     // overlay"), polled only with --fps-overlay. The telemetry phase marker
     // is Ctrl+Shift+F7 (telemetry.cpp requires Shift), so the chords are
     // disjoint; the sampler applies the Alt/Shift rule and the F7 edge.
-    keys.alt=(fps_overlay_requested || volumetric_fog_requested || effects_stage_requested) && (GetAsyncKeyState(VK_MENU)&0x8000)!=0;
+    keys.alt=(fps_overlay_requested || volumetric_fog_requested) && (GetAsyncKeyState(VK_MENU)&0x8000)!=0;
     keys.fps_overlay=fps_overlay_requested && (GetAsyncKeyState(VK_F7)&0x8000)!=0;
     const auto action=ctx.comparison.sample(keys);
     if(action.sun_shadow)ctx.motion_output.sun_shadow_toggle();
     if(action.fog_shadow_pass)ctx.motion_output.volumetric_fog_shadow_pass_toggle();
     if(action.fog_dust_motes)ctx.motion_output.volumetric_fog_dust_motes_toggle();
-    if(action.effects_stage)ctx.motion_output.effects_stage_toggle();
     if(action.fog_toggle)ctx.motion_output.volumetric_fog_toggle();
     if(action.fog_step)ctx.motion_output.volumetric_fog_step();
     ctx.motion_output.volumetric_fog_begin_frame();
@@ -2618,13 +2604,6 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     }
     hooked.motion_output.configure_screen_emission_additive(screen_emission_additive_requested,screen_emission_additive_gain,screen_emission_additive_alpha_requested,screen_emission_additive_alpha);
     hooked.motion_output.configure_bolt_footprint(bolt_footprint_requested,bolt_footprint_w,bolt_footprint_l);
-    if(effects_stage_requested){
-        hooked.motion_output.configure_effects_key_table(effects_stage_keys_text.empty()?nullptr:effects_stage_keys_text.data(),effects_stage_keys_text.size(),effects_stage_keys_status);
-        MotionOutput::EffectsStageConfig effects{};
-        effects.requested=true;effects.shields=effects_stage_shields;effects.census=effects_stage_census;
-        effects.bolt_views_all=effects_stage_bolt_views_all;effects.bolt_views_default=effects_stage_bolt_views_default;
-        hooked.motion_output.configure_effects_stage(effects);
-    }
     hooked.motion_output.configure_fade_witness(fade_witness_frames);
     hooked.motion_output.configure_fade_route(fade_route_threshold);
     hooked.motion_output.configure_shimmer_trace(shimmer_trace_requested);
@@ -2952,7 +2931,6 @@ HRESULT WINAPI create_device(IDirect3D9* d,UINT adapter,D3DDEVTYPE type,HWND win
 }
 bool screen_emission_route_enabled() noexcept { return screen_emission_requested; } // the one gate the loader's scan enable shares
 bool bolt_footprint_requested_gate() noexcept { return bolt_footprint_requested; } // the second consumer of the loader's scan enable
-bool effects_stage_requested_gate() noexcept { return effects_stage_requested; } // the third: the effects stage's bolt records; also the loader's upload-key arming
 bool thin_vote_route_gate() noexcept { return thin_vote_gate; } // the loader's readable policy and bookends; hook_device's enable
 // The lens bracket's listener (src/proxy/sun_occlusion.h): the engine's render thread, inside its
 // `call 0x0047e6e0` for the lens scene, under the thunk's full CPU-state boundary.
@@ -3488,50 +3466,6 @@ void initialize_log(HMODULE module) {
          log("bolt_footprint_mode requested=1 enabled=%u w=%g l=%g valid=%u additive=%u ownership=%u view_gate=chase_camera",
              unsigned(bolt_footprint_requested),double(bolt_footprint_w),double(bolt_footprint_l),unsigned(valid),
              unsigned(screen_emission_additive_requested),unsigned(ownership));}}
-    // X3M_EFFECTS_STAGE=1 (docs/architecture/effects-modernisation-opus.md section 9): the proxy-owned effects
-    // stage, phase 1. Prerequisites: the additive bullets (motion output and HDR through their own gates above), TAA
-    // (the stage draws inside the resolve's bracket) and X3M_OWNERSHIP=1 (the Unlock scan and the upload-time texture
-    // keys); a missing one refuses the option in one effects_stage_mode line. X3M_EFFECTS_SHIELDS=1 admits the keyed
-    // shield-hit sprites, X3M_EFFECTS_CENSUS=1 the capture-frame effect_draw rows, X3M_EFFECTS_BOLT_VIEWS=chase|all the
-    // view rule (chase unless given; the launcher's marker _DEFAULT says which). The key table is read here, once.
-    {const bool asked=GetEnvironmentVariableW(L"X3M_EFFECTS_STAGE",setting,32)==1&&setting[0]==L'1';
-     effects_stage_requested=false;effects_stage_shields=effects_stage_census=effects_stage_bolt_views_all=false;effects_stage_bolt_views_default=true;
-     if(asked){
-         const bool ownership=GetEnvironmentVariableW(L"X3M_OWNERSHIP",setting,32)==1&&setting[0]==L'1';
-         const bool taa=GetEnvironmentVariableW(L"X3M_TAA",setting,32)==1&&setting[0]==L'1';
-         effects_stage_requested=screen_emission_additive_requested&&ownership&&taa;
-         effects_stage_shields=GetEnvironmentVariableW(L"X3M_EFFECTS_SHIELDS",setting,32)==1&&setting[0]==L'1';
-         effects_stage_census=GetEnvironmentVariableW(L"X3M_EFFECTS_CENSUS",setting,32)==1&&setting[0]==L'1';
-         const DWORD views=GetEnvironmentVariableW(L"X3M_EFFECTS_BOLT_VIEWS",setting,32);
-         const bool views_all=views==3&&!lstrcmpiW(setting,L"all"),views_chase=views==5&&!lstrcmpiW(setting,L"chase");
-         effects_stage_bolt_views_all=views_all;
-         effects_stage_bolt_views_default=!(GetEnvironmentVariableW(L"X3M_EFFECTS_BOLT_VIEWS_DEFAULT",setting,32)==1&&setting[0]==L'0');
-         // The key table: X3M_EFFECTS_KEYS verbatim, else <EXE directory>\x3m\effect_keys.json (the installer copies it there); at most 256 KB.
-         wchar_t path[MAX_PATH+64]{};DWORD length=GetEnvironmentVariableW(L"X3M_EFFECTS_KEYS",path,MAX_PATH);
-         if(!length||length>=MAX_PATH){
-             length=GetModuleFileNameW(nullptr,path,MAX_PATH);
-             DWORD cut=length<MAX_PATH?length:0;
-             while(cut&&path[cut-1]!=L'\\'&&path[cut-1]!=L'/')--cut;
-             static const wchar_t leaf[]=L"x3m\\effect_keys.json";
-             if(cut&&cut+sizeof(leaf)/sizeof(leaf[0])<MAX_PATH)std::memcpy(path+cut,leaf,sizeof leaf);else path[0]=L'\0';
-         }
-         effects_stage_keys_text.clear();effects_stage_keys_status="missing";
-         if(path[0]){
-             HANDLE file=CreateFileW(path,GENERIC_READ,FILE_SHARE_READ,nullptr,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,nullptr);
-             if(file!=INVALID_HANDLE_VALUE){
-                 LARGE_INTEGER size{};
-                 if(GetFileSizeEx(file,&size)&&size.QuadPart>0&&size.QuadPart<=262144){
-                     effects_stage_keys_text.resize(std::size_t(size.QuadPart));DWORD read=0;
-                     if(ReadFile(file,effects_stage_keys_text.data(),DWORD(size.QuadPart),&read,nullptr)&&read==DWORD(size.QuadPart))effects_stage_keys_status="read";
-                     else{effects_stage_keys_text.clear();effects_stage_keys_status="read_failed";}
-                 }else effects_stage_keys_status=size.QuadPart>262144?"too_large":"empty";
-                 CloseHandle(file);
-             }
-         }
-         log("effects_stage_mode requested=1 enabled=%u additive=%u ownership=%u taa=%u shields=%u census=%u bolt_views=%s bolt_views_default=%u bolt_views_valid=%u keys=%s key_bytes=%lu",
-             unsigned(effects_stage_requested),unsigned(screen_emission_additive_requested),unsigned(ownership),unsigned(taa),unsigned(effects_stage_shields),unsigned(effects_stage_census),
-             effects_stage_bolt_views_all?"all":"chase",unsigned(effects_stage_bolt_views_default),unsigned(views==0||views_all||views_chase),effects_stage_keys_status,static_cast<unsigned long>(effects_stage_keys_text.size()));
-     }}
     // X3M_SCREEN_EMISSION_TIMING=1: the option's opt-in per-frame timing
     // diagnostic (one screen_emission_frame line per Present). Needs the
     // enabled option; the option itself stays free of per-frame logging.

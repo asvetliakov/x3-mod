@@ -846,7 +846,7 @@ class Wiring(unittest.TestCase):
         motion = (ROOT / 'src/proxy/motion_output.cpp').read_text()
         additive = motion[motion.index('void MotionOutput::prepare_screen_additive('):motion.index('void MotionOutput::apply_screen_additive_alpha') if 'void MotionOutput::apply_screen_additive_alpha' in motion else None]
         self.assertIn('++screen_additive_admitted_; ++screen_additive_frame_admitted_;', additive)
-        self.assertIn('if (bolt_footprint_requested_ && !effects_recorded) prepare_bolt_footprint(call, route);', additive)
+        self.assertIn('if (bolt_footprint_requested_) prepare_bolt_footprint(call, route);', additive)
         self.assertLess(additive.index('++screen_additive_admitted_'), additive.index('prepare_bolt_footprint(call, route)'), 'after the admission, never before a refusal')
         finish = motion[motion.index('void MotionOutput::finish_screen_additive('):]
         self.assertTrue(finish.startswith('void MotionOutput::finish_screen_additive(MotionRoute& route) noexcept {\n    if (route.bolt_footprint) finish_bolt_footprint(route);'))
@@ -873,7 +873,7 @@ class Wiring(unittest.TestCase):
         self.assertIn('return pose_gate_open(site.patched_in, pose_written.load(std::memory_order_relaxed), pose_writes.load(std::memory_order_relaxed), mark);', chase)
         publish = chase[chase.index('void publish_pose('):chase.index('void handle(')]
         self.assertIn('    pose_written.store(written, std::memory_order_relaxed);\n    if (written) pose_writes.fetch_add(1, std::memory_order_relaxed);', publish)
-        self.assertIn('if (bolt_footprint_requested_ || effects_requested_) chase_pose_mark_ = chase_camera::pose_write_count();', motion, 'the mark is taken at Present (the effects stage shares the gate)')
+        self.assertIn('if (bolt_footprint_requested_) chase_pose_mark_ = chase_camera::pose_write_count();', motion, 'the mark is taken at Present')
         self.assertIn('if (!active) { chase_fire::invalidate_camera(cockpit); return; }', chase, 'inactive cockpits never publish')
         self.assertIn('bolt_footprint_hist device=%llu', motion)
         self.assertIn('if (++screen_additive_window_frames_ >= 300u) log_screen_additive_window();', motion)
@@ -929,7 +929,7 @@ class Wiring(unittest.TestCase):
         self.assertLess(capture.index('screen_emission_additive_mode requested=1'), capture.index('X3M_BOLT_FOOTPRINT",setting'), 'parsed after the additive gate it needs')
         self.assertIn('hooked.motion_output.configure_bolt_footprint(bolt_footprint_requested,bolt_footprint_w,bolt_footprint_l);', capture)
         loader = (ROOT / 'src/proxy/loader.cpp').read_text()
-        self.assertIn('const bool prefix_requested = bound_requested || footprint_requested || effects_requested;', loader)
+        self.assertIn('const bool prefix_requested = bound_requested || footprint_requested;', loader)
         self.assertIn('"bolt_footprint_only"', loader)
         core = (ROOT / 'src/proxy/locked_prefix_core.h').read_text()
         self.assertIn('if (extras) std::memcpy(extras + std::size_t(i) * 3, words + 3, 12);', core)

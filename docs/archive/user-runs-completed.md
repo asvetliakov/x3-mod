@@ -2068,6 +2068,7 @@ env -u CX_DEBUGMSG X3M_FIXTURE_BOTTLE=X3 X3M_MOTION_FRAME_LOG=1 /Users/asvetl/x3
 | 77 B | Docked save load in fog with the alpha-test admission, Run77 DLL | 1 | Completed 2026-09-24 (run288): our fog after the fill latch, 357 ms from the menu (prefill adopted) / 608 ms on a same-sector reload (prefill not adopted); all 3,983 card rows admitted, no drop-out across the undock; closed at the accepted cold-start trade-off ([ledger](../verification/volumetric-fog.md#run-288-run-77-b-2026-09-24-docked-save-load-shows-our-fog-after-the-fill-latch-admission-fixed)). |
 | 77 C | First 5120x1440 sessions under --gpu-sync-timing, --fog-march-scale 2 (run289) vs 4 (run290) | 2 | Completed 2026-09-24: fog_march 8.99 -> 2.68 ms (-6.3 ms), fog_route 13.6 -> 7.2, serialised dt 45.9 -> 39.0 ms, TAA stage 8.8 ms, frame GPU-bound at scale 2; the user sees transparent moving "oil rings" in the fog at scale 4: triage attributes them to the shaft-offset noise keyed per 4x4 march cell and shifted per frame (lattice vectors are multiples of 4 px, 2 px at scale 2), not to the 4-px interpolation (no seam at the sample columns); scale 2 stays the default, C2 queued ([triage](../verification/results/run289-290-march-scale/)). |
 | 77 A | Fleet overlay across addon/05 + 06 (591 bodies), race sectors and a shipyard, Run76 DLL | 1 | Completed 2026-09-24 (run287, flown on the Run77 DLL): no issues, FPS good, no transitions seen; 14 slot-05 bodies drew their merged record (draws per frame equal the marker, ladders equal the overlay thresholds); busy greenvoid sector dt p50 14.2 ms / 156 draws against 14.7 ms / 160 in Run 74 A; no overlay, fog or cull errors; the TAA fold reports active; slot 06 unproven (no slot-06 body in view), A2 queued ([triage](../verification/results/run287-fleet-overlay/)). |
+| 78 A | Dither A/B, S3 5 vs 16 taps, clean exit, slot-06 burst, scale 4 default at 5120x1440 (candidate ee3bbf88) | 1 | Completed 2026-09-24 (run295-298): dither accepted (rings gone on, back off, no frame-time cost); exit fixed (no fault, four exits; the refused row never written, expectation withdrawn); slot-06 bodies never switch to their coarse record (USC dock, Terran SPP XL at s/T_pad 0.17-0.36) while slot-05 bodies do: triage-deep open; TAA taps 5, no refusals, look accepted; bolts ok (84 shape refusals, 1.1 %, open); Run 77 D closed by this session |
 
 ## Run history paragraphs
 
@@ -2445,3 +2446,44 @@ env -u CX_DEBUGMSG X3M_FIXTURE_BOTTLE=X3 X3M_MOTION_FRAME_LOG=1 /Users/asvetl/x3
 ```
 
 To remove the overlay: delete `addon/05.cat`, `05.dat`, `05.x3m-lod.json`, `06.*` and `x3m-lod-batch*.json/txt`; the originals are untouched.
+
+## Run 86 (completed 2026-09-25)
+
+**Run 86 A (queued 2026-09-25; Run86 DLL `27881669…` from 9375a1e7, installed 12:37; overlay install-fleet4 unchanged;
+supersedes the unflown Run 85 A, whose checks are folded in).** New since Run84: the far clip `--taa-far-clip 7x7` default and
+the far ramp 60/68 (the fog-band plants' sparkles at rest and under pans; Run85), and three opt-ins: `--chase-view-restore-dock`
+(keeps the rear chase view across docking at a station: the docked screen shows the rear view of the parked ship, unflown),
+`--effects-stage --effects-shields` (phase 1 of the effects modernisation: HDR bolt capsules over the game's bolts, shield-hit
+shells and decals; the game's own effects still draw underneath; unflown), and the fog family file loader (the vanilla bottle now
+carries an empty table, so the launch line reads ok). Launch lines to expect on stderr: `fog families: ok (0 packets; …)` and
+`lod overlay: ok (620 bodies in slots 05/06, …)`. Three launches at 5120x1440, no timing flag. Please name the sector of each stand.
+
+1. **Plants and regression** (launch 1: stand command below, with `--taa-debug`): the fog-band plants (the run332 stand) at rest
+   for a few seconds, then a slow pan (3-9 px/frame) and a faster one: sparkles gone at rest and under the pans? Bright plant edges
+   dimmer or smeared compared with Run84 (expected cost about 2 codes, below visibility)? F8 at rest and F8 in the slow pan, plants
+   clear of the ship. Then the Terran lattice stand and a hull with masts under a pan, and one far ship crossing in front of a far
+   station (trail behind the mover?). Exit through the menu.
+   Rows: `motion_output_taa ... far_clip=7x7 default=1 far_f0=60.0 far_f1=68.0`, `thin_vote_frame ... max_unvoted_fraction=`.
+   **Done (run333): sparkles fixed, no issues (user); measured rest 120 -> 1, pan 65 -> 46 (unexplained remainder, invisible).**
+2. **Combat capture + effects look** (launch 2: stand command + `--effects-stage --effects-shields --effects-census`): a sector where
+   you can pick a fight. Chase view. First say how the new bolts and shield hits look (too bright, too big, flicker, trails behind
+   bolts, exposure pumping when a shell fills the screen), then the five F8s the design asks for
+   ([effects-modernisation-opus.md](../architecture/effects-modernisation-opus.md) §8.4): (1) shields-up hits on a target 300-600 m
+   ahead, fire held; (2) the same target with shields down; (3) the kill, F8 from the first flash; (4) a missile just fired, own ship
+   at full throttle; (5) the same view at zero throttle; (6, optional) a beam held on the target for 1 s. Exit through the menu.
+   Rows: `effects_stage_config`, `effects_stage_frame ... stage_us=`, `effect_draw key= verdict=`.
+   **Done (run334): the user did not like the look and dropped the effects modernisation (removal from production in progress).**
+3. **Docking** (launch 3: stand command + `--chase-view-restore-dock`): in chase view, dock at a station (any method), look at the
+   docked screen (what does it show: the parked ship from behind, the cockpit, something broken?), trade or wait a few seconds, undock:
+   is the view still the rear chase view once flying? Then a gate jump as a regression. Exit through the menu.
+   Rows: `chase_view_restore_transfer path=dock`, `chase_view_restore_seam ... path=dock`.
+
+Stand command (Run 84 A's; add the per-launch flags above):
+
+```sh
+env -u CX_DEBUGMSG X3M_FIXTURE_BOTTLE=X3 X3M_MOTION_FRAME_LOG=1 /Users/asvetl/x3-mod/x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --light-map-far-fade 80,220 --motion-rt-mode lazy --frame-end-stride 1 --volumetric-fog 0.02 --volumetric-fog-cards replace --volumetric-fog-range stored --volumetric-fog-timing --capture-start 999999 --capture-frames 8 --capture-delay 300 --cull-small-parts 4 --frame-timing --frame-phases --object-bounds-log --cull-census
+```
+
+To remove the overlay: delete `addon/05.cat`, `05.dat`, `05.x3m-lod.json`, `06.*` and `x3m-lod-batch*.json/txt`; the originals are untouched.
+
+Run 86 A is the only queued run. Completed instructions for Runs 73-85 are in the [archive](../archive/user-runs-completed.md).

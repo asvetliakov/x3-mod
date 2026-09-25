@@ -91,12 +91,6 @@ struct Options {
     // releases the converted buffer and repeats the original creation (still WRITEONLY). No payload, sidecar or
     // Lock/Unlock work, so it composes with the typed scanners. Off: creation is forwarded unchanged.
     bool readable_managed_buffers = false;
-    // Upload-time texture keys (docs/architecture/effects-modernisation-opus.md 8.2; X3M_EFFECTS_STAGE=1): the sparse
-    // content hash of a 2D texture's level 0 (effects_stage_core.h sparse_key) computed from the still-mapped bytes at
-    // the Unlock that ends a writable Lock of level 0, through the texture wrapper or through the level-0 surface a
-    // GetSurfaceLevel handed out. The key lives on the texture's wrapper node and dies with it (get_texture_key_view).
-    // Off: one predicate per texture or surface lock, nothing else.
-    bool texture_upload_keys = false;
 };
 
 // On success, consumes exactly the caller's owned native reference. On failure,
@@ -215,26 +209,6 @@ HRESULT get_buffer_readability(IDirect3DResource9* application, BufferReadabilit
 // wrap_factory; the thin-vote fixture uses this to create buffers before and after arming). E_INVALIDARG for an
 // unrecognised device.
 HRESULT configure_readable_managed_buffers(IDirect3DDevice9* application, bool on) noexcept;
-// Upload-time texture keys (Options::texture_upload_keys; docs/architecture/effects-modernisation-opus.md 8.2).
-// get_texture_key_view: the key of an application 2D-texture wrapper as computed at its last observed level-0
-// upload; one registry find under the registry mutex, no device call, no floating point (the draw path reads it).
-// S_OK for a recognised texture wrapper (inspect requested / known), E_INVALIDARG otherwise. `source` says how the
-// key was made: 1 the texture's own LockRect/UnlockRect, 2 its level-0 surface's, 3 the read-only fallback.
-struct TextureKeyView {
-    HRESULT status = S_FALSE;
-    bool requested = false, known = false;
-    std::uint64_t key = 0;
-    std::uint32_t width = 0, height = 0, format = 0; // level 0 (format: the D3DFORMAT value)
-    unsigned source = 0;
-    unsigned uploads = 0; // observed level-0 uploads (the key follows the last one)
-};
-HRESULT get_texture_key_view(IDirect3DBaseTexture9* application, TextureKeyView* out) noexcept;
-// The first-bind fallback for a texture whose upload was not observed: one LockRect(0, D3DLOCK_READONLY) on the
-// native texture (MANAGED or SYSTEMMEM pool only; a DEFAULT-pool texture is refused and never retried), the same
-// hash, stored on the node as source 3. At most one attempt per texture wrapper (a refusal is remembered). Not for
-// the draw path of a frame that must stay light: the caller decides when to pay it.
-HRESULT compute_texture_key_readonly(IDirect3DBaseTexture9* application, TextureKeyView* out) noexcept;
-HRESULT configure_texture_upload_keys(IDirect3DDevice9* application, bool on) noexcept;
 // Write invalidation of watched VB/IB wrappers (the thin vote's histogram cache). One process-wide queue with ONE
 // consumer (src/ownership/README.md, "Write invalidation"). watch_buffer_writes marks one
 // recognised application wrapper (one registry find; E_INVALIDARG otherwise); from then on the wrapper's pointer is

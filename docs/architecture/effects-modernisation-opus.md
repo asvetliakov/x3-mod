@@ -1,5 +1,7 @@
 # Effects modernisation: a proxy-owned effects stage
 
+**Dropped (2026-09-25).** The user tried phase 1 and dropped it ("didn't like it; drop it"): the effect diversity and design stay the old game's, and tuning would take many hours. The phase-1 code (9375a1e7) is removed from production; this note stays as the record.
+
 Design note, 2026-09-25 (Opus 5.5, high). **Ratified 2026-09-25 by the main session** as the architecture, with the second design (effects-modernisation-fable.md) merged in section 8. A second design was written
 independently beside this one. Nothing here is built. It answers the user's request of 2026-09-25 ("replace /
 modernize all weapon effects (hit shields etc), projectiles and engine trails ... make them look beautiful and

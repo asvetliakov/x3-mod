@@ -9,7 +9,6 @@
 #include "clone_upload_abi.h"
 #include <d3dx9mesh.h>
 #include "../proxy/locked_prefix_core.h"
-#include "../proxy/effects_stage_core.h"
 #include <limits>
 #include <type_traits>
 #include <new>
@@ -80,14 +79,6 @@ struct Node {
     Node* parent;
     LockSidecar* lock_sidecar=nullptr; // CPU reference only; no native ownership edge.
     bool write_watch=false, watched_write=false; // watch_buffer_writes; a writable Lock of a watched buffer is open
-    // Upload-time texture keys (Options::texture_upload_keys). On a Texture node: the key of its last observed
-    // level-0 upload (upload_key_state 0 none, 1 known, 2 the read-only fallback refused). On a Texture or a level-0
-    // Surface node: the mapping of the open writable level-0 lock (level0_bits) and, on the surface, the texture it
-    // belongs to (level_owner, validated through application_nodes before use: the surface may outlive the wrapper).
-    std::uint64_t upload_key=0; std::uint32_t upload_key_state=0, upload_key_source=0, upload_count=0;
-    std::uint32_t upload_width=0, upload_height=0, upload_format=0;
-    void* level0_bits=nullptr; std::uint32_t level0_pitch=0;
-    Node* level_owner=nullptr; IUnknown* level_owner_application=nullptr;
     Node(Kind type, IUnknown* native, Node* owner) : kind(type), backend(native), parent(owner) {}
     virtual ~Node() { release_lock_sidecar(lock_sidecar); }
 };
@@ -130,9 +121,6 @@ HRESULT buffer_lock(Node* node, UINT offset, UINT size, void** data, DWORD flags
 HRESULT buffer_unlock(Node* node);
 HRESULT surface_lock(Node* node, const void* return_address, D3DLOCKED_RECT* locked_rect, const RECT* rect, DWORD flags);
 HRESULT surface_unlock(Node* node, const void* return_address);
-HRESULT texture_lock(Node* node, UINT level, D3DLOCKED_RECT* locked_rect, const RECT* rect, DWORD flags);
-HRESULT texture_unlock(Node* node, UINT level);
-HRESULT texture_surface_level(Node* node, UINT level, IDirect3DSurface9** out);
 HRESULT buffer_private_result(Node* node, REFGUID guid, HRESULT hr);
 HRESULT process_vertices(Device* node, UINT first, UINT destination, UINT count,
     IDirect3DVertexBuffer9* buffer, IDirect3DVertexDeclaration9* declaration, DWORD flags);
@@ -922,7 +910,6 @@ HRESULT adopt(Node* parent, Kind kind, IUnknown* owned, REFIID iid, void** out,
                  static_cast<Factory*>(existing)->options.capture_finite_positions != options->capture_finite_positions ||
                  static_cast<Factory*>(existing)->options.prepare_readable_managed_uploads != options->prepare_readable_managed_uploads ||
                  static_cast<Factory*>(existing)->options.readable_managed_buffers != options->readable_managed_buffers ||
-                 static_cast<Factory*>(existing)->options.texture_upload_keys != options->texture_upload_keys ||
                  static_cast<Factory*>(existing)->options.finite_payload_budget != options->finite_payload_budget ||
                  static_cast<Factory*>(existing)->options.finite_sidecar_limit != options->finite_sidecar_limit))
                 return E_INVALIDARG; // Never silently reconfigure a live factory.
@@ -1304,79 +1291,15 @@ __attribute__((noinline)) HRESULT observed_surface_unlock(Node* node, SurfaceLoc
     outgoing.restore();
     return e.result;
 }
-// Upload-time texture keys (Options::texture_upload_keys; docs/architecture/effects-modernisation-opus.md 8.2). A
-// writable lock of level 0 (through the texture wrapper, or through the level-0 surface GetSurfaceLevel linked to it)
-// remembers the mapping; the Unlock that ends it hashes the still-mapped bytes (effects_stage_core.h sparse_key: the
-// level-0 size and format from GetLevelDesc(0), 16 runs of 256 bytes) into the texture node before the native Unlock.
-// Integer work only; the registry mutex guards the node writes. A rect lock (a partial upload) is not hashed.
-namespace {
-void texture_key_note_lock(Node* node, const D3DLOCKED_RECT* locked_rect, const RECT* rect, DWORD flags, HRESULT hr) noexcept {
-    if(FAILED(hr)||!locked_rect||!locked_rect->pBits||rect||(flags&D3DLOCK_READONLY))return;
-    node->level0_bits=locked_rect->pBits;node->level0_pitch=std::uint32_t(locked_rect->Pitch>0?locked_rect->Pitch:0);
-}
-// The texture node a lock belongs to: the node itself, or the surface's validated owner (null when the wrapper died).
-Node* texture_key_owner(Node* node) noexcept {
-    if(node->kind==Kind::Texture)return node;
-    if(!node->level_owner||!node->level_owner_application)return nullptr;
-    const auto found=application_nodes.find(node->level_owner_application);
-    return found!=application_nodes.end()&&found->second==node->level_owner&&found->second->kind==Kind::Texture?found->second:nullptr;
-}
-void texture_key_before_unlock(Node* node, unsigned source) noexcept {
-    void* bits=node->level0_bits;const std::uint32_t pitch=node->level0_pitch;
-    node->level0_bits=nullptr;node->level0_pitch=0;
-    if(!bits||!pitch)return;
-    std::lock_guard<std::recursive_mutex> lock(registry_mutex);
-    Node* owner=texture_key_owner(node);
-    if(!owner)return;
-    D3DSURFACE_DESC desc{};
-    if(FAILED(static_cast<Texture*>(owner)->native_->GetLevelDesc(0,&desc)))return;
-    // DEFAULT-pool textures (dynamic uploads, render targets) are not keyed, as the read-only fallback refuses them:
-    // their level 0 is rewritten at will and the key would name a moment, not an asset.
-    if(desc.Pool==D3DPOOL_DEFAULT)return;
-    std::uint32_t rows=0,row_bytes=0;
-    if(!effects_stage::level0_layout(desc.Width,desc.Height,std::uint32_t(desc.Format),&rows,&row_bytes)||row_bytes>pitch)return;
-    owner->upload_key=effects_stage::sparse_key(desc.Width,desc.Height,std::uint32_t(desc.Format),rows,row_bytes,static_cast<const unsigned char*>(bits),pitch);
-    owner->upload_key_state=1;owner->upload_key_source=source;++owner->upload_count;
-    owner->upload_width=desc.Width;owner->upload_height=desc.Height;owner->upload_format=std::uint32_t(desc.Format);
-}
-} // namespace
 HRESULT surface_lock(Node* node, const void* return_address, D3DLOCKED_RECT* locked_rect, const RECT* rect, DWORD flags) {
     const SurfaceLockObserver observer=surface_lock_observer.load(std::memory_order_relaxed);
-    const bool keyed=node->level_owner&&device_of(node)->options.texture_upload_keys;
-    HRESULT hr;
-    if(!observer)hr=observe_result(device_of(node), static_cast<Surface*>(node)->native_->LockRect(locked_rect, rect, flags));
-    else hr=observed_surface_lock(node, observer, return_address, locked_rect, rect, flags);
-    if(keyed)texture_key_note_lock(node,locked_rect,rect,flags,hr);
-    return hr;
+    if(!observer)return observe_result(device_of(node), static_cast<Surface*>(node)->native_->LockRect(locked_rect, rect, flags));
+    return observed_surface_lock(node, observer, return_address, locked_rect, rect, flags);
 }
 HRESULT surface_unlock(Node* node, const void* return_address) {
-    if(node->level0_bits)texture_key_before_unlock(node,2);
     const SurfaceLockObserver observer=surface_lock_observer.load(std::memory_order_relaxed);
     if(!observer)return observe_result(device_of(node), static_cast<Surface*>(node)->native_->UnlockRect());
     return observed_surface_unlock(node, observer, return_address);
-}
-HRESULT texture_lock(Node* node, UINT level, D3DLOCKED_RECT* locked_rect, const RECT* rect, DWORD flags) {
-    const HRESULT hr=observe_result(device_of(node), static_cast<Texture*>(node)->native_->LockRect(level, locked_rect, rect, flags));
-    if(level==0&&device_of(node)->options.texture_upload_keys)texture_key_note_lock(node,locked_rect,rect,flags,hr);
-    return hr;
-}
-HRESULT texture_unlock(Node* node, UINT level) {
-    if(level==0&&node->level0_bits)texture_key_before_unlock(node,1);
-    return observe_result(device_of(node), static_cast<Texture*>(node)->native_->UnlockRect(level));
-}
-HRESULT texture_surface_level(Node* node, UINT level, IDirect3DSurface9** out) {
-    IDirect3DSurface9* owned = untouched_output<IDirect3DSurface9>();
-    const HRESULT hr = static_cast<Texture*>(node)->native_->GetSurfaceLevel(level, out ? &owned : nullptr);
-    const HRESULT result = output(device_of(node), hr, owned, out);
-    // The level-0 surface wrapper learns its texture, so an upload through it (D3DX loads through GetSurfaceLevel +
-    // LockRect) is keyed like one through the texture. The link is validated at use: the surface may outlive the
-    // texture wrapper.
-    if(SUCCEEDED(result)&&level==0&&out&&*out&&device_of(node)->options.texture_upload_keys){
-        std::lock_guard<std::recursive_mutex> lock(registry_mutex);
-        const auto found=application_nodes.find(*out);
-        if(found!=application_nodes.end()&&found->second->kind==Kind::Surface){found->second->level_owner=node;found->second->level_owner_application=node->application;}
-    }
-    return result;
 }
 HRESULT buffer_private_result(Node* node, REFGUID guid, HRESULT hr) {
     PreserveExecution preserve;Device* device=device_of(node);
@@ -2103,60 +2026,6 @@ HRESULT configure_readable_managed_buffers(IDirect3DDevice9* application, bool o
     const auto found = application_nodes.find(application);
     if (found == application_nodes.end() || found->second->kind != Kind::Device) return E_INVALIDARG;
     static_cast<Device*>(found->second)->options.readable_managed_buffers = on;
-    return S_OK;
-}
-HRESULT configure_texture_upload_keys(IDirect3DDevice9* application, bool on) noexcept {
-    std::lock_guard<std::recursive_mutex> lock(registry_mutex);
-    const auto found = application_nodes.find(application);
-    if (found == application_nodes.end() || found->second->kind != Kind::Device) return E_INVALIDARG;
-    static_cast<Device*>(found->second)->options.texture_upload_keys = on;
-    return S_OK;
-}
-namespace {
-void fill_texture_key_view(const Node* node, TextureKeyView* out) noexcept {
-    out->requested = device_of(const_cast<Node*>(node))->options.texture_upload_keys;
-    out->known = node->upload_key_state == 1;
-    out->status = out->known ? S_OK : S_FALSE;
-    out->key = out->known ? node->upload_key : 0; out->source = node->upload_key_source; out->uploads = node->upload_count;
-    out->width = node->upload_width; out->height = node->upload_height; out->format = node->upload_format;
-}
-}
-HRESULT get_texture_key_view(IDirect3DBaseTexture9* application, TextureKeyView* out) noexcept {
-    if (!out) return E_POINTER;
-    *out = {};
-    std::lock_guard<std::recursive_mutex> lock(registry_mutex);
-    const auto found = application_nodes.find(application);
-    if (found == application_nodes.end() || found->second->kind != Kind::Texture) return E_INVALIDARG;
-    fill_texture_key_view(found->second, out);
-    return S_OK;
-}
-HRESULT compute_texture_key_readonly(IDirect3DBaseTexture9* application, TextureKeyView* out) noexcept {
-    if (!out) return E_POINTER;
-    *out = {};
-    PreserveExecution preserve;
-    std::lock_guard<std::recursive_mutex> lock(registry_mutex);
-    const auto found = application_nodes.find(application);
-    if (found == application_nodes.end() || found->second->kind != Kind::Texture) return E_INVALIDARG;
-    Node* node = found->second;
-    if (node->upload_key_state == 0 && device_of(node)->options.texture_upload_keys) {
-        IDirect3DTexture9* native = static_cast<Texture*>(node)->native_;
-        D3DSURFACE_DESC desc{};
-        std::uint32_t rows = 0, row_bytes = 0;
-        node->upload_key_state = 2; // one attempt; a refusal is remembered
-        if (SUCCEEDED(native->GetLevelDesc(0, &desc)) && (desc.Pool == D3DPOOL_MANAGED || desc.Pool == D3DPOOL_SYSTEMMEM) &&
-            effects_stage::level0_layout(desc.Width, desc.Height, std::uint32_t(desc.Format), &rows, &row_bytes)) {
-            D3DLOCKED_RECT mapped{};
-            if (SUCCEEDED(native->LockRect(0, &mapped, nullptr, D3DLOCK_READONLY))) {
-                if (mapped.pBits && mapped.Pitch > 0 && std::uint32_t(mapped.Pitch) >= row_bytes) {
-                    node->upload_key = effects_stage::sparse_key(desc.Width, desc.Height, std::uint32_t(desc.Format), rows, row_bytes, static_cast<const unsigned char*>(mapped.pBits), std::uint32_t(mapped.Pitch));
-                    node->upload_key_state = 1; node->upload_key_source = 3;
-                    node->upload_width = desc.Width; node->upload_height = desc.Height; node->upload_format = std::uint32_t(desc.Format);
-                }
-                native->UnlockRect(0);
-            }
-        }
-    }
-    fill_texture_key_view(node, out);
     return S_OK;
 }
 

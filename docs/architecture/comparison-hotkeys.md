@@ -233,20 +233,6 @@ With `--fps-overlay` the fog part appends ` MOTES` while the last fog frame drew
 them. The fixture export `x3m_fog_dust_motes_fixture_toggle` stands in for the
 press. In-game and native Windows behavior are unverified.
 
-## Effects stage
-
-**Ctrl+Alt+F5** (Shift up) toggles the effects stage (`effects-modernisation-opus.md`, phase 1) while it
-was enabled at launch (`--effects-stage`, `X3M_EFFECTS_STAGE=1`); otherwise the key is not
-polled. F3 is the game's target view, so the chord is the overlay's Alt rule on F5's own raw latch:
-the one `GetAsyncKeyState(VK_F5)` read feeds both the additive-bullets key (Ctrl+Shift+F5) and this
-one, so Ctrl+Shift+F5 stays the bullets and a held F5 never becomes a press by changing modifiers.
-Off records nothing from the next frame's arming decision (`effects_begin_frame`), so every effect
-draw is the game's alone (phase 1 draws the stage on top of the native draws and suppresses nothing;
-the bullets keep the additive route and regain the footprint rewrite); the pass's programs and buffers
-stay allocated. One `effects_stage_toggle device= frame= enabled=0|1 key=ctrl_alt_f5` line per press;
-no notice. The `effects_stage_frame` row carries `enabled=`. In-game and native Windows behavior are
-unverified.
-
 ## Fog shadow pass
 
 **Ctrl+Shift+F11** switches the stored fog's sun-visibility grid pass

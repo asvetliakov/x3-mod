@@ -41,7 +41,6 @@ bool finite_positions_enabled = false;
 bool lock_bookends_enabled = false;
 bool locked_prefix_enabled = false;
 bool readable_buffers_enabled = false; // X3M_TAA_THIN_VOTE=on under ownership: the readable-MANAGED creation policy
-bool texture_keys_enabled = false;     // X3M_EFFECTS_STAGE=1 under ownership: upload-time texture keys (effects-modernisation-opus.md 8.2)
 INIT_ONCE once = INIT_ONCE_STATIC_INIT;
 BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
     x3m::initialize_log(self_module); // logs the proxy_identity/proxy_options header first
@@ -77,15 +76,11 @@ BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
     const bool bound_requested = (GetEnvironmentVariableW(L"X3M_SCREEN_EMISSION_BOUND", setting, 8) == 1 && setting[0] == L'1')
         || x3m::screen_emission_route_enabled();
     const bool footprint_requested = x3m::bolt_footprint_requested_gate();
-    // The effects stage (effects-modernisation-opus.md section 9) reads the same scan for its bolt records and keys
-    // every 2D texture at its level-0 upload through the ownership wrapper (Options::texture_upload_keys).
-    const bool effects_requested = x3m::effects_stage_requested_gate();
-    const bool prefix_requested = bound_requested || footprint_requested || effects_requested;
+    const bool prefix_requested = bound_requested || footprint_requested;
     locked_prefix_enabled = ownership_enabled && prefix_requested;
-    texture_keys_enabled = ownership_enabled && effects_requested;
     if (prefix_requested)
-        x3m::log("screen_emission_bound requested=1 enabled=%u scope=discard_locked_vertex_buffers payload_retained=0 source=%s texture_keys=%u", locked_prefix_enabled,
-                 bound_requested && footprint_requested ? "bound+bolt_footprint" : footprint_requested ? "bolt_footprint_only" : bound_requested ? "bound" : "effects_stage_only", unsigned(texture_keys_enabled));
+        x3m::log("screen_emission_bound requested=1 enabled=%u scope=discard_locked_vertex_buffers payload_retained=0 source=%s", locked_prefix_enabled,
+                 bound_requested && footprint_requested ? "bound+bolt_footprint" : footprint_requested ? "bolt_footprint_only" : "bound");
     if (ownership_enabled || depth_requested)
         x3m::log("ownership_mode requested=%u depth_copy_requested=%u depth_copy_enabled=%u scope=normal9 fallback=native", ownership_enabled, depth_requested, depth_copy_enabled);
     if (finite_requested)
@@ -241,7 +236,6 @@ extern "C" IDirect3D9* WINAPI Direct3DCreate9(UINT sdk) {
         options.capture_finite_positions = finite_positions_enabled;
         options.locked_prefix_bounds = locked_prefix_enabled;
         options.readable_managed_buffers = readable_buffers_enabled;
-        options.texture_upload_keys = texture_keys_enabled;
         // Live application-call admission is not yet serialized with replay.
         // Keep execution observation off until live replay consumes it. Its
         // synchronized snapshots do not provide write exclusion. Native

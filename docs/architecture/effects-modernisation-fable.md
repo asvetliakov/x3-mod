@@ -1,5 +1,7 @@
 # Effects modernisation: weapons, impacts, explosions, engines (Fable design)
 
+**Dropped (2026-09-25).** The user tried phase 1 and dropped it ("didn't like it; drop it"): the effect diversity and design stay the old game's, and tuning would take many hours. The phase-1 code (9375a1e7) is removed from production; this note stays as the record.
+
 Design note, 2026-09-25, for the main session to ratify. No code, no capture, no
 Wine run of its own; every figure is **[M]** measured in a cited ledger or
 **[I]** inferred here. A parallel note by a second designer exists and was not

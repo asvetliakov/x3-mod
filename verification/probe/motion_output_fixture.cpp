@@ -493,7 +493,7 @@ struct Fixture {
     bool distancefade_enabled = false, distancefade_emissions_enabled = false;
     // Packed screen emission script (screen-emission-region.md step C): the
     // fade/emission transport plus the bullet pair; X3M_SCREEN_EMISSION as read.
-    bool screenemission = false, screenemission_bench = false, screen_enabled = false, boltshape = false, effectsstage = false;
+    bool screenemission = false, screenemission_bench = false, screen_enabled = false, boltshape = false;
     std::vector<float> emission_reference_color, emission_reference_mask;
     unsigned (*emission_status)(IDirect3DDevice9*, unsigned) = nullptr;
     void (*emission_fault)(IDirect3DDevice9*, unsigned, unsigned) = nullptr;
@@ -3154,7 +3154,7 @@ int main(int argc, char** argv) {
     HWND window = CreateWindowA(cls.lpszClassName, "Live motion route fixture", WS_OVERLAPPEDWINDOW, 0, 0, 96, 96, nullptr, nullptr, cls.hInstance, nullptr);
     HMODULE runtime = LoadLibraryA("d3d9.dll");
     try {
-        if ((argc != 4 && argc != 5 && argc != 6 && argc != 9) || !window || !runtime) throw std::runtime_error("usage: fixture <vs.bin> <ps.bin> production|seam|unmatchedstatic|thinvote|bench|routebench|burst|mipbias|zonly|envmap|hook|hdrvalues|hdrfault|hdrramp|hdrexposure|hdrtonemapfault|msaa|linearmaterials|materialwrap|materialxt|materialglass|sunlane|hullemission|lightmapfade|lightmapwiden|emissions|emissionsbench|distancefade|distancefadebench|screenemission|screenemissionbench|boltshape|effectsstage|cutout|cutoutbench|faderoute|shadowreplay [WxH|draws|shared-PS Split-PS BUMP-VS BUMP-PS BUMP-negative-PS]");
+        if ((argc != 4 && argc != 5 && argc != 6 && argc != 9) || !window || !runtime) throw std::runtime_error("usage: fixture <vs.bin> <ps.bin> production|seam|unmatchedstatic|thinvote|bench|routebench|burst|mipbias|zonly|envmap|hook|hdrvalues|hdrfault|hdrramp|hdrexposure|hdrtonemapfault|msaa|linearmaterials|materialwrap|materialxt|materialglass|sunlane|hullemission|lightmapfade|lightmapwiden|emissions|emissionsbench|distancefade|distancefadebench|screenemission|screenemissionbench|boltshape|cutout|cutoutbench|faderoute|shadowreplay [WxH|draws|shared-PS Split-PS BUMP-VS BUMP-PS BUMP-negative-PS]");
         Fixture f;
         f.runtime = runtime; f.window = window;
         const std::string mode = argv[3];
@@ -3182,8 +3182,7 @@ int main(int argc, char** argv) {
         f.distancefade = mode == "distancefade" || f.distancefade_bench;
         f.screenemission_bench = mode == "screenemissionbench";
         f.boltshape = mode == "boltshape"; // the screen-emission setup, then the bolt footprint's shape-refusal script (X3M_FIXTURE_BOLT_SHAPE)
-        f.effectsstage = mode == "effectsstage"; // the screen-emission setup, then the effects stage script (X3M_EFFECTS_STAGE=1; effects-stage.md)
-        f.screenemission = mode == "screenemission" || f.screenemission_bench || f.boltshape || f.effectsstage;
+        f.screenemission = mode == "screenemission" || f.screenemission_bench || f.boltshape;
         f.emission_bench = mode == "emissionsbench" || f.distancefade_bench || f.screenemission_bench;
         f.emissions = mode == "emissions" || f.emission_bench || f.distancefade || f.screenemission || f.cutout || f.faderoute;
         if(f.emission_bench&&!f.distancefade&&!f.screenemission){Fixture::W=1920;Fixture::H=1080;}

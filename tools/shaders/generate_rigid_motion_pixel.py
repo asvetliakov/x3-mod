@@ -257,21 +257,6 @@ SHADERS = {
     'fog_density_march_exact': dict(source=ROOT / 'verification/probe/fog_density_march_exact_ps.hlsl',
                                     header=ROOT / 'verification/probe/fog_density_march_exact_program_inc.h',
                                     provenance=ROOT / 'verification/results/fog-density-march-exact-program.json'),
-    # Effects stage, phase 1 (docs/architecture/effects-modernisation-opus.md section 9; X3M_EFFECTS_STAGE): the bolt
-    # streak, the shield-hit shell and the ripple decal, each a vs_3_0 / ps_3_0 pair; the pixel programs include
-    # src/effects/effects_soft_depth.hlsl (the lane's soft term).
-    'effects_bolt_vs': dict(source=ROOT / 'src/effects/effects_bolt_vs.hlsl', header=ROOT / 'src/renderer/effects_bolt_vertex_program_inc.h',
-                            provenance=ROOT / 'verification/results/effects-bolt-vertex-program.json', target='vs_3_0'),
-    'effects_bolt_ps': dict(source=ROOT / 'src/effects/effects_bolt_ps.hlsl', header=ROOT / 'src/renderer/effects_bolt_pixel_program_inc.h',
-                            provenance=ROOT / 'verification/results/effects-bolt-pixel-program.json'),
-    'effects_shell_vs': dict(source=ROOT / 'src/effects/effects_shell_vs.hlsl', header=ROOT / 'src/renderer/effects_shell_vertex_program_inc.h',
-                             provenance=ROOT / 'verification/results/effects-shell-vertex-program.json', target='vs_3_0'),
-    'effects_shell_ps': dict(source=ROOT / 'src/effects/effects_shell_ps.hlsl', header=ROOT / 'src/renderer/effects_shell_pixel_program_inc.h',
-                             provenance=ROOT / 'verification/results/effects-shell-pixel-program.json'),
-    'effects_decal_vs': dict(source=ROOT / 'src/effects/effects_decal_vs.hlsl', header=ROOT / 'src/renderer/effects_decal_vertex_program_inc.h',
-                             provenance=ROOT / 'verification/results/effects-decal-vertex-program.json', target='vs_3_0'),
-    'effects_decal_ps': dict(source=ROOT / 'src/effects/effects_decal_ps.hlsl', header=ROOT / 'src/renderer/effects_decal_pixel_program_inc.h',
-                             provenance=ROOT / 'verification/results/effects-decal-pixel-program.json'),
 }
 VERSION_TOKENS = {'ps_3_0': 0xffff0300, 'vs_3_0': 0xfffe0300}
 INCLUDE = re.compile(r'^#include "([^"]+)"\s*$')

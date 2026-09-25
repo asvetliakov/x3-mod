@@ -176,11 +176,6 @@ VOICE_DECODER_GAME_SUBDIR = Path('x3m/voice-decoder')  # drop-in location under 
 # overrides it for tests that run the launcher as a subprocess; an empty value
 # removes the candidate. It is consumed by the launcher and never forwarded.
 VOICE_DECODER_REPO = ROOT / 'tools/voice-decoder/v4'
-# Effects stage (docs/architecture/effects-modernisation-opus.md 8.2): the generated texture key table
-# (tools/effects/effect_keys.py). `install` copies it to <game>/x3m/effect_keys.json, the DLL's default path;
-# X3M_EFFECTS_KEYS overrides the path (the launcher names the repository copy when no install carried it).
-EFFECT_KEYS_FILE = ROOT / 'tools/effects/effect_keys.json'
-EFFECT_KEYS_GAME_FILE = Path('x3m/effect_keys.json')
 VOICE_DECODER_REPO_ENV = 'X3M_VOICE_DECODER_REPO'
 
 
@@ -769,10 +764,6 @@ def main():
     parser.add_argument('--screen-emission', action='store_true', help='Packed screen emission of the bullet draws inside the region bracket (X3M_SCREEN_EMISSION=1, which also sets X3M_SCREEN_EMISSION_BOUND=1; requires --taa --motion-output --ownership --hdr --hdr-tonemap and gamma2.2 decode, with or without --linear-materials; default off): the nine SM1 screen pairs drawn in the native ONE/INVSRCCOLOR state with a locked-prefix bound compose through policy 8 in place; unbounded, unknown-state, capability-refused or otherwise refused draws stay native (docs/architecture/screen-emission-region.md, step C)')
     parser.add_argument('--screen-emission-additive', type=float, default=None, metavar='G', help='Additive bullets (X3M_SCREEN_EMISSION_ADDITIVE=G, finite 1..8; requires --motion-output --hdr; mutually exclusive with --screen-emission; default off): the nine SM1 screen pairs drawn in the native ONE/INVSRCCOLOR state draw in place with DESTBLEND ONE and their colour multiplied by G (G=1 binds the original shader), so the FP16 scene accumulates G*q + D above 1.0 for exposure and bloom; no bracket, bound, copies or temporal work; the blend law changes and native parity is not kept (docs/architecture/screen-emission-region.md, "Additive option"). Ctrl+Shift+F5 switches these draws between G and native during play (no shader is recreated; one screen_emission_additive_toggle line per press). With --telemetry, one screen_emission_additive_frame line per Present reports the admitted and refused draws of that frame and the hex mask of the nine pairs admitted')
     parser.add_argument('--bolt-footprint', nargs='?', const=BOLT_FOOTPRINT_DEFAULT, default=None, metavar='W[,L]', help='[launcher default on modded launches: 3,12; --bolt-footprint 0 = off; not forwarded under --vanilla, where an explicit value is refused] Minimum on-screen size of the weapon bolts in the chase view only (X3M_BOLT_FOOTPRINT=W[,L], pixels, full width and length, finite 0 < W <= 64 and W <= L <= 256, L defaults to 12): every bolt instance of the admitted additive bullet draw narrower than W is widened to W and shorter than L lengthened to L along its projected flight axis, about its own centre in the camera plane (depth unchanged), drawn from a proxy-owned dynamic vertex buffer; only while the chase camera (--camera chase) applies its pose, so first person and every other view keep the game\'s bolts. Needs the additive bullets, --screen-emission-additive with --motion-output --hdr, and --ownership for the Unlock scan; an explicit non-zero value implies --screen-emission-additive 1 when that option is absent, the default never does. One bolt_footprint line per 300 frames (draws, written, gated, instances, lengthened, widened, refusals, CPU us), one bolt_footprint_hist line per view (pre-expansion half-length and width histograms, chase and other views) and a bolt_footprint_mode line at start (docs/architecture/bolt-footprint.md)')
-    parser.add_argument('--effects-stage', action='store_true', help='Effects stage, phase 1, UNFLOWN (X3M_EFFECTS_STAGE=1; docs/architecture/effects-modernisation-opus.md section 9 and "Implementation (phase 1)"; default off; refused under --vanilla; requires --motion-output --hdr --taa --ownership and the additive bullets: --screen-emission-additive 1 is implied when that option is absent): the admitted bullet draws are recorded from the ownership Unlock scan and the proxy draws them once per frame as HDR capsules (a white core at least 3 px wide, a halo tinted by the bullet atlas, a velocity streak from nearest-centroid matching) inside the TAA resolve\'s state bracket, ONE/ONE on the FP16 scene, softly occluded by the completed depth lane. Phase 1 suppresses nothing: the game\'s own bullet draw still goes through the additive route (only the --bolt-footprint rewrite is skipped for a recorded draw) and every keyed sprite draws natively, so a frame the stage does not reach (the resolve skipped, a failed run, a disarmed stage) shows the game\'s effects, never nothing. With --effects-shields the DEFAULT effect pair\'s draws whose stage-0 texture carries a key the shipped effect_keys.json classes as shield_hit are also drawn as a Fresnel shell with expanding rings on the hit ship (a ripple decal when no owner box is near). Fail closed: an unknown or unlisted texture key, a disarmed stage or an overflow records nothing; a failed stage disarms it for 64 frames. Ctrl+Alt+F5 (Shift up) toggles the stage during play (one effects_stage_toggle line per press). Measured detached (docs/verification/effects-stage.md): 60 bolts + 2 shells 0.12 / 0.16 ms and a screen-filling shell 0.54 / 0.77 ms at 1080p / 5120x1440, above the note\'s 0.05 / 0.1 ms targets; the flight decides. Rows: effects_stage_config at creation, effects_stage_frame per frame with --telemetry (else per 300 frames), effect_draw on capture frames with --effects-census')
-    parser.add_argument('--effects-shields', action='store_true', help='With --effects-stage: admit the keyed shield-hit sprites to the stage (X3M_EFFECTS_SHIELDS=1; default off until the capture flight pins the keys; docs/architecture/effects-modernisation-opus.md 3.3)')
-    parser.add_argument('--effects-census', action='store_true', help='With --effects-stage: one effect_draw row per DEFAULT-pair effect draw on capture frames (F8) with its texture key, size, format, blend, scope and world origin, plus shield_hit rows for the association (X3M_EFFECTS_CENSUS=1; the flight\'s evidence for the key table)')
-    parser.add_argument('--effects-bolt-views', choices=('chase', 'all'), default=None, help='With --effects-stage: which views the stage takes the bullet draws in (X3M_EFFECTS_BOLT_VIEWS; default chase on every --effects-stage launch, marked X3M_EFFECTS_BOLT_VIEWS_DEFAULT=1; an explicit value sends marker 0): chase keeps the bolt-footprint rule (the external chase pose only, first person keeps the game\'s bolts), all takes every view (the user decides; section 3.1 "Open")')
     parser.add_argument('--screen-emission-additive-alpha', type=float, default=None, metavar='K', help='Per-source bloom attenuation of the additive bullets (X3M_SCREEN_EMISSION_ADDITIVE_ALPHA=K, finite 0..1; requires --screen-emission-additive; absent keeps the native alpha law): the admitted additive draw writes K*a + D.a to the scene alpha the bloom extract uses as its per-pixel authored weight, through separate-alpha blending (DESTBLENDALPHA ONE with SRCBLENDALPHA ZERO at K=0, ONE at K=1, else BLENDFACTOR with K in every lane; the colour law stays ONE/ONE/ADD and reads no blend factor). K=0 makes the bolts bloom only through the thresholded highlight term while engines, sun and every other alpha-authored emitter keep their channel; their presented brightness is unchanged because the colour law is untouched. A device without D3DPMISCCAPS_SEPARATEALPHABLEND, or without D3DPBLENDCAPS_BLENDFACTOR for a K strictly between 0 and 1, refuses the draw to the native path with screen_emission_additive_refused reason=alpha_caps. Ctrl+Shift+F5 turns it off with the rest of the option (docs/architecture/bloom-per-source-attenuation.md, option 1)')
     parser.add_argument('--screen-emission-timing', action='store_true', help='Per-frame timing diagnostic of the screen-emission option (X3M_SCREEN_EMISSION_TIMING=1; requires --screen-emission; default off): one screen_emission_frame line per Present with that frame\'s packed_admitted, brackets_px and cpu_us (the wall-clock QueryPerformanceCounter delta since the previous Present). The option itself logs nothing per frame (docs/architecture/screen-emission-region.md, step C)')
     parser.add_argument('--screen-emission-gain', type=float, default=None, metavar='G', help='Step E gain of the packed screen composition, finite 0.5..8, default 1 (X3M_SCREEN_EMISSION_GAIN; requires --screen-emission): the composed bullet is decode(native after) - decode(native before) scaled by G on the decoded scene, so 1 presents the native bolt exactly and larger values lift it into HDR for bloom and exposure (docs/architecture/screen-emission-region.md, step E)')
@@ -1416,25 +1407,6 @@ def main():
             parser.error('--bolt-footprint needs the additive bullets (--screen-emission-additive), which are mutually exclusive with --screen-emission.')
         if not (args.motion_output and args.hdr and args.ownership):
             parser.error('--bolt-footprint requires --motion-output --hdr --ownership (the additive bullet route and the ownership Unlock scan).')
-    # Effects stage (docs/architecture/effects-modernisation-opus.md section 9): refused under --vanilla, needs the
-    # additive bullets' prerequisites and TAA (the stage draws inside the resolve's bracket) and the ownership layer
-    # (the Unlock scan and the upload-time texture keys); --effects-stage implies --screen-emission-additive 1 when
-    # that option is absent (the footprint's rule). The sub-options need the stage. The bolt view rule defaults to chase
-    # on every --effects-stage launch, marked X3M_EFFECTS_BOLT_VIEWS_DEFAULT=1 (an explicit value sends marker 0).
-    for name, given in (('--effects-shields', args.effects_shields), ('--effects-census', args.effects_census), ('--effects-bolt-views', args.effects_bolt_views is not None)):
-        if given and not args.effects_stage:
-            parser.error(f'{name} requires --effects-stage.')
-    args.effects_bolt_views_default = False
-    if args.effects_stage:
-        if args.vanilla:
-            parser.error('--effects-stage cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so the proxy that draws the stage is not loaded.')
-        if args.screen_emission:
-            parser.error('--effects-stage needs the additive bullets (--screen-emission-additive), which are mutually exclusive with --screen-emission.')
-        if not (args.motion_output and args.hdr and args.taa and args.ownership):
-            parser.error('--effects-stage requires --motion-output --hdr --taa --ownership (the additive bullet route, the resolve the stage draws inside, and the ownership Unlock scan and texture keys).')
-        if args.effects_bolt_views is None:
-            args.effects_bolt_views = 'chase'
-            args.effects_bolt_views_default = True
     if args.screen_emission_gain is not None and not args.screen_emission:
         parser.error('--screen-emission-gain requires --screen-emission.')
     if args.screen_emission_gain is not None and not (math.isfinite(args.screen_emission_gain) and 0.5 <= args.screen_emission_gain <= 8.0):
@@ -1682,15 +1654,9 @@ def main():
                     {'source': str(source), 'source_commit': commit, 'manifest_source': origin,
                      'executable': executable_record(game / 'X3AP.exe')},
                     retire_media=True)
-                # The effects stage's key table beside the DLL's other app-local data (x3m/): the DLL's default path;
-                # the repository copy stays the launcher's fallback (X3M_EFFECTS_KEYS) when this file is absent.
-                keys = game / EFFECT_KEYS_GAME_FILE
-                keys.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copyfile(EFFECT_KEYS_FILE, keys)
-                print(f'Installed {dll}; bottle configuration unchanged. Effect key table: {keys} ({hashlib.sha256(keys.read_bytes()).hexdigest()[:16]}).')
+                print(f'Installed {dll}; bottle configuration unchanged.')
             elif args.action == 'uninstall':
                 retained = media_package.uninstall(game)
-                (game / EFFECT_KEYS_GAME_FILE).unlink(missing_ok=True)
                 print('Removed owned proxy and manifest; captures and originals retained.')
                 if retained:
                     print('Retained changed/unowned media: ' + ', '.join(retained))
@@ -1850,25 +1816,6 @@ def main():
             env['X3M_BOLT_FOOTPRINT'] = footprint
             if args.bolt_footprint is not None and footprint != '0' and args.screen_emission_additive is None:
                 env['X3M_SCREEN_EMISSION_ADDITIVE'] = repr(1.0)
-        # Effects stage: the four variables on an --effects-stage launch (the additive bullets implied at gain 1 when
-        # absent), all four cleared otherwise so an inherited value cannot survive.
-        for name in ('X3M_EFFECTS_STAGE', 'X3M_EFFECTS_SHIELDS', 'X3M_EFFECTS_CENSUS', 'X3M_EFFECTS_BOLT_VIEWS', 'X3M_EFFECTS_BOLT_VIEWS_DEFAULT'):
-            env.pop(name, None)
-        if args.effects_stage:
-            env['X3M_EFFECTS_STAGE'] = '1'
-            env['X3M_EFFECTS_SHIELDS'] = '1' if args.effects_shields else '0'
-            env['X3M_EFFECTS_CENSUS'] = '1' if args.effects_census else '0'
-            env['X3M_EFFECTS_BOLT_VIEWS'] = args.effects_bolt_views
-            env['X3M_EFFECTS_BOLT_VIEWS_DEFAULT'] = '1' if args.effects_bolt_views_default else '0'
-            if args.screen_emission_additive is None:
-                env['X3M_SCREEN_EMISSION_ADDITIVE'] = repr(1.0)
-            # The key table: `install` copies the repository's table to <game>/x3m/effect_keys.json, the DLL's default
-            # path (nothing to forward); without that copy the repository's table is named through X3M_EFFECTS_KEYS
-            # (Wine's Z: drive is the host root) so a launch before the next install still has the keys.
-            if (game / EFFECT_KEYS_GAME_FILE).exists():
-                env.pop('X3M_EFFECTS_KEYS', None)
-            else:
-                env['X3M_EFFECTS_KEYS'] = 'Z:' + str(EFFECT_KEYS_FILE).replace('/', '\\')
         if args.fade_witness is not None:
             env['X3M_FADE_WITNESS'] = str(args.fade_witness)
         if args.shimmer_trace:

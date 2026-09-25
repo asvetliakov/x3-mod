@@ -115,12 +115,6 @@ def generate(parsed, directory):
                 body = f"return buffer_lock(this, {', '.join(args)});"
             elif kind in {"VertexBuffer", "IndexBuffer"} and name == "Unlock":
                 body = "return buffer_unlock(this);"
-            elif kind == "Texture" and name == "LockRect":
-                body = f"return texture_lock(this, {', '.join(args)});"
-            elif kind == "Texture" and name == "UnlockRect":
-                body = f"return texture_unlock(this, {args[0]});"
-            elif kind == "Texture" and name == "GetSurfaceLevel":
-                body = f"return texture_surface_level(this, {', '.join(args)});"
             elif kind == "Surface" and name == "LockRect":
                 body = f"return surface_lock(this, __builtin_return_address(0), {', '.join(args)});"
             elif kind == "Surface" and name == "UnlockRect":
