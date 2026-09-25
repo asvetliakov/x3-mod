@@ -1,0 +1,61 @@
+run327 frames 2243..2249 (history = previous frame, rest) k=1.7605 T=2.0 codes; far ramp 80/130 = view z 102400..166399
+frame 2243: valid routed px 131153 | history outside 3x3 box by >2 codes: 491 (0.374 % of valid) above 360 below 131 | of those: in region(h>0) 205 voted 6 inside 7x7 box 372 outside 7x7 too 119
+   z      <20k: px   105252 outside3x3    204 (0.194 %) in7x7    111 region     18 voted      6
+   z  102-166k: px    19381 outside3x3    218 (1.125 %) in7x7    198 region    121 voted      0
+   z     >166k: px     6520 outside3x3     69 (1.058 %) in7x7     63 region     66 voted      0
+   edge-vote E=1.0: flagged routed px 1077 (0.82 % of valid) by z <20k:1077 20-64k:0 64-102k:0 102-166k:0 >166k:0
+   edge-vote E=0.5: flagged routed px 3207 (2.45 % of valid) by z <20k:2984 20-64k:0 64-102k:0 102-166k:172 >166k:51
+   edge-vote E=0.25: flagged routed px 6185 (4.72 % of valid) by z <20k:5572 20-64k:0 64-102k:0 102-166k:448 >166k:165
+   edge-vote E=0.1: flagged routed px 10473 (7.99 % of valid) by z <20k:8925 20-64k:0 64-102k:0 102-166k:1150 >166k:398
+frame 2244: valid routed px 131174 | history outside 3x3 box by >2 codes: 298 (0.227 % of valid) above 240 below 58 | of those: in region(h>0) 186 voted 5 inside 7x7 box 275 outside 7x7 too 23
+   z      <20k: px   105274 outside3x3     75 (0.071 %) in7x7     68 region     18 voted      5
+   z  102-166k: px    19409 outside3x3    163 (0.840 %) in7x7    151 region    110 voted      0
+   z     >166k: px     6491 outside3x3     60 (0.924 %) in7x7     56 region     58 voted      0
+   edge-vote E=1.0: flagged routed px 1078 (0.82 % of valid) by z <20k:1078 20-64k:0 64-102k:0 102-166k:0 >166k:0
+   edge-vote E=0.5: flagged routed px 3273 (2.50 % of valid) by z <20k:3023 20-64k:0 64-102k:0 102-166k:197 >166k:53
+   edge-vote E=0.25: flagged routed px 6141 (4.68 % of valid) by z <20k:5452 20-64k:0 64-102k:0 102-166k:525 >166k:164
+   edge-vote E=0.1: flagged routed px 10507 (8.01 % of valid) by z <20k:8869 20-64k:0 64-102k:0 102-166k:1234 >166k:404
+frame 2245: valid routed px 131118 | history outside 3x3 box by >2 codes: 506 (0.386 % of valid) above 402 below 104 | of those: in region(h>0) 249 voted 6 inside 7x7 box 416 outside 7x7 too 90
+   z      <20k: px   105245 outside3x3    183 (0.174 %) in7x7    126 region     38 voted      6
+   z  102-166k: px    19385 outside3x3    230 (1.186 %) in7x7    203 region    128 voted      0
+   z     >166k: px     6488 outside3x3     93 (1.433 %) in7x7     87 region     83 voted      0
+   edge-vote E=1.0: flagged routed px 1128 (0.86 % of valid) by z <20k:1128 20-64k:0 64-102k:0 102-166k:0 >166k:0
+   edge-vote E=0.5: flagged routed px 3274 (2.50 % of valid) by z <20k:3053 20-64k:0 64-102k:0 102-166k:170 >166k:51
+   edge-vote E=0.25: flagged routed px 6104 (4.66 % of valid) by z <20k:5480 20-64k:0 64-102k:0 102-166k:465 >166k:159
+   edge-vote E=0.1: flagged routed px 10466 (7.98 % of valid) by z <20k:8969 20-64k:0 64-102k:0 102-166k:1134 >166k:363
+frame 2246: valid routed px 131126 | history outside 3x3 box by >2 codes: 438 (0.334 % of valid) above 370 below 68 | of those: in region(h>0) 168 voted 6 inside 7x7 box 337 outside 7x7 too 101
+   z      <20k: px   105265 outside3x3    232 (0.220 %) in7x7    148 region     17 voted      6
+   z  102-166k: px    19363 outside3x3    147 (0.759 %) in7x7    139 region     95 voted      0
+   z     >166k: px     6498 outside3x3     59 (0.908 %) in7x7     50 region     56 voted      0
+   edge-vote E=1.0: flagged routed px 1035 (0.79 % of valid) by z <20k:1035 20-64k:0 64-102k:0 102-166k:0 >166k:0
+   edge-vote E=0.5: flagged routed px 3262 (2.49 % of valid) by z <20k:3024 20-64k:0 64-102k:0 102-166k:174 >166k:64
+   edge-vote E=0.25: flagged routed px 6232 (4.75 % of valid) by z <20k:5586 20-64k:0 64-102k:0 102-166k:481 >166k:165
+   edge-vote E=0.1: flagged routed px 10442 (7.96 % of valid) by z <20k:8857 20-64k:0 64-102k:0 102-166k:1185 >166k:400
+frame 2247: valid routed px 131144 | history outside 3x3 box by >2 codes: 303 (0.231 % of valid) above 270 below 33 | of those: in region(h>0) 196 voted 5 inside 7x7 box 272 outside 7x7 too 31
+   z      <20k: px   105264 outside3x3     60 (0.057 %) in7x7     50 region     10 voted      5
+   z  102-166k: px    19399 outside3x3    167 (0.861 %) in7x7    154 region    114 voted      0
+   z     >166k: px     6481 outside3x3     76 (1.173 %) in7x7     68 region     72 voted      0
+   edge-vote E=1.0: flagged routed px 1098 (0.84 % of valid) by z <20k:1098 20-64k:0 64-102k:0 102-166k:0 >166k:0
+   edge-vote E=0.5: flagged routed px 3289 (2.51 % of valid) by z <20k:3050 20-64k:0 64-102k:0 102-166k:189 >166k:50
+   edge-vote E=0.25: flagged routed px 6157 (4.69 % of valid) by z <20k:5476 20-64k:0 64-102k:0 102-166k:521 >166k:160
+   edge-vote E=0.1: flagged routed px 10473 (7.99 % of valid) by z <20k:8903 20-64k:0 64-102k:0 102-166k:1205 >166k:365
+frame 2248: valid routed px 131131 | history outside 3x3 box by >2 codes: 498 (0.380 % of valid) above 368 below 130 | of those: in region(h>0) 229 voted 6 inside 7x7 box 440 outside 7x7 too 58
+   z      <20k: px   105247 outside3x3    175 (0.166 %) in7x7    136 region     22 voted      6
+   z  102-166k: px    19390 outside3x3    259 (1.336 %) in7x7    243 region    146 voted      0
+   z     >166k: px     6494 outside3x3     64 (0.986 %) in7x7     61 region     61 voted      0
+   edge-vote E=1.0: flagged routed px 1102 (0.84 % of valid) by z <20k:1102 20-64k:0 64-102k:0 102-166k:0 >166k:0
+   edge-vote E=0.5: flagged routed px 3195 (2.44 % of valid) by z <20k:2989 20-64k:0 64-102k:0 102-166k:151 >166k:55
+   edge-vote E=0.25: flagged routed px 6141 (4.68 % of valid) by z <20k:5516 20-64k:0 64-102k:0 102-166k:465 >166k:160
+   edge-vote E=0.1: flagged routed px 10527 (8.03 % of valid) by z <20k:8968 20-64k:0 64-102k:0 102-166k:1160 >166k:399
+frame 2249: valid routed px 131182 | history outside 3x3 box by >2 codes: 344 (0.262 % of valid) above 309 below 35 | of those: in region(h>0) 219 voted 5 inside 7x7 box 313 outside 7x7 too 31
+   z      <20k: px   105268 outside3x3     82 (0.078 %) in7x7     76 region     17 voted      5
+   z  102-166k: px    19422 outside3x3    189 (0.973 %) in7x7    176 region    131 voted      0
+   z     >166k: px     6492 outside3x3     73 (1.124 %) in7x7     61 region     71 voted      0
+   edge-vote E=1.0: flagged routed px 1122 (0.86 % of valid) by z <20k:1122 20-64k:0 64-102k:0 102-166k:0 >166k:0
+   edge-vote E=0.5: flagged routed px 3249 (2.48 % of valid) by z <20k:3031 20-64k:0 64-102k:0 102-166k:175 >166k:43
+   edge-vote E=0.25: flagged routed px 6161 (4.70 % of valid) by z <20k:5513 20-64k:0 64-102k:0 102-166k:495 >166k:153
+   edge-vote E=0.1: flagged routed px 10577 (8.06 % of valid) by z <20k:8976 20-64k:0 64-102k:0 102-166k:1219 >166k:382
+totals over frames by z bin: px, outside3x3, in7x7, region, voted
+        <20k: 736815 1011 (0.137 %) 715 140 39
+    102-166k: 135749 1373 (1.011 %) 1264 845 0
+       >166k: 45464 494 (1.087 %) 446 467 0

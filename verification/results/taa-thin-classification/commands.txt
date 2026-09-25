@@ -1,0 +1,11 @@
+Design evidence for docs/architecture/taa-thin-classification.md (2026-09-25, read-only, no Wine, no build).
+Inputs: the run327 rest burst dumps under /tmp/x3-bottleX3-run327 (hdr_1/depth_1/taa_1/motion_1 F=2242..2249) and its
+taa_age_1_F.r32f in the bottle's x3-modern-captures (same files the run329 triage scripts read); the run332 and run327
+session logs (grep only).
+python3 witness_census.py 327 2242 8 2>/dev/null > witness_census_327_rest_out.txt
+  # per frame: routed valid-depth px; px whose previous history lies outside the current 3x3 box by > 2 luma codes
+  # (the clip-erase signature), split above / below, by view-z bin, with the share inside the current 7x7 box, in the
+  # region (h > 0) and voted (lane .a < 1); plus the emissive ("mark edges") vote at E = 1 / 0.5 / 0.25 / 0.1 by z bin.
+grep -E 'thin_vote_frame device=1 frame=(282[6-9]|283[0-3]|363[1-8]) ' /tmp/x3-bottleX3-run332/session-*.log | sed -E '...'  # opaque / known / voted / min_alpha per frame
+grep -E 'thin_vote_frame device=1 frame=(224[2-9]|290[4-9]) ' /tmp/x3-bottleX3-run327/session-*.log | sed -E '...'
+  # run332 plant stand: opaque 4, known 4, voted 2, min_alpha 0.2764 on every burst frame; run327: opaque 29, voted 2, 0.2764
