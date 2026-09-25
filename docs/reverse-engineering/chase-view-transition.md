@@ -1002,3 +1002,14 @@ byte unchanged. Prose elsewhere calling cell11 the "monitor-ref cell" is wrong
 and should be read as cell17. Reproduction scripts (local, untracked):
 `/tmp/x3-run65-script/kc.py`, `d2.py`, over `/tmp/x3-camera-study/x3story.obj`.
 No game, Wine, build or install was run for this study.
+
+## 2026-09-25 docking and undocking
+
+Docking at a station resets the rear view through the same
+`RestartAllMonitors` → `SelectMode(1)` store at `f0c4b` (seam `0x004a3ffd`).
+The caller here is `7e0::RunPlayerTrade`, forked by `StartPlayerTrade` from
+`CanLand`, with destructor chain `efbff,edba0,edbe3,9be97,9bcd0,0` (Run315,
+measured). The installed ticket refuses it with provenance reason 18. A
+station launch writes no view mode and keeps the cockpit. The study, the
+Run315 witness and the proposed dock row for the ticket are in
+[chase-view-docking.md](chase-view-docking.md).
