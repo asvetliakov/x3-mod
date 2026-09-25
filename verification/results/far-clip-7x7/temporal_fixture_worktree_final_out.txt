@@ -1,2 +1,29 @@
-# screen-default attempt (temporal3, FAIL) : passed False slots 1017.0
+# temporal3: screen-default attempt, FAIL (no JSON report; the runner threw on the pinned row):
+SAMPLE far jitter line, width 0.4: 7x7 far clip on the screen gate (the shipped default), yaw10.5: largest one-frame margin at most 6 codes (max(spike - 6, 0)) actual=13.167210035 expected=0.000000000 tolerance=0.000000000 FAIL
+SAMPLE far jitter line, width 0.4: 7x7 far clip on the screen gate (the shipped default), yaw8.25: largest one-frame margin at most 6 codes (max(spike - 6, 0)) actual=1.714290687 expected=0.000000000 tolerance=0.000000000 FAIL
+RESULT FAIL far jitter line, width 0.4: 7x7 far clip on the screen gate (the shipped default), yaw10.5: largest one-frame margin at most 6 codes (max(spike - 6, 0))
+
+# temporal4: final (camera default, screen rows as witness): passed True slots 1017.0 lock child 133.4 s
 gate clip width row sparkles spike_codes rest_delta_codes dim_p10
+camera 7x7 1.0 rest 0 0.372 4.320 -1.566
+camera 7x7 1.0 yaw10 0 0.372 -1.000 0.000
+camera 7x7 1.0 yaw10.5 0 3.450 -1.000 0.000
+camera 7x7 1.0 yaw8.25 0 1.374 -1.000 0.000
+camera 3x3 1.0 rest 0 0.372 4.320 -1.566
+camera 3x3 1.0 yaw10 0 0.372 -1.000 0.000
+camera 3x3 1.0 yaw10.5 0 4.067 -1.000 0.000
+camera 3x3 1.0 yaw8.25 0 2.234 -1.000 0.000
+screen 7x7 1.0 yaw10 0 2.571 -1.000 0.000
+screen 7x7 1.0 yaw10.5 0 3.336 -1.000 0.000
+screen 7x7 1.0 yaw8.25 0 5.278 -1.000 0.000
+camera 7x7 0.4 rest 0 0.690 4.320 -1.566
+camera 7x7 0.4 yaw10 0 0.690 -1.000 0.000
+camera 7x7 0.4 yaw10.5 0 4.932 -1.000 0.000
+camera 7x7 0.4 yaw8.25 0 2.244 -1.000 0.000
+camera 3x3 0.4 rest 72 10.880 32.705 -112.257
+camera 3x3 0.4 yaw10 72 10.880 -1.000 0.000
+camera 3x3 0.4 yaw10.5 0 5.823 -1.000 0.000
+camera 3x3 0.4 yaw8.25 0 4.282 -1.000 0.000
+screen 7x7 0.4 yaw10 0 4.509 -1.000 0.000
+screen 7x7 0.4 yaw10.5 90 19.167 -1.000 0.000
+screen 7x7 0.4 yaw8.25 180 7.714 -1.000 0.000
