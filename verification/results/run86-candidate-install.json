@@ -1,0 +1,48 @@
+{
+ "candidate": {
+  "dll": "/tmp/x3-run86-candidate/build/d3d9.dll",
+  "sha256": "27881669462aa3463a215e4dd42aed0e7eed5e0b620111863b3530cd4323f317",
+  "bytes": 57329900,
+  "commit": "9375a1e7",
+  "qualification": "verification/results/run86-candidate-qualification.json"
+ },
+ "command": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3-run86-candidate/build/d3d9.dll",
+ "cwd": "/Users/asvetl/x3-mod",
+ "exit": 0,
+ "installed_at": "2026-09-25T12:37+04:00",
+ "installed": {
+  "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
+  "sha256": "27881669462aa3463a215e4dd42aed0e7eed5e0b620111863b3530cd4323f317",
+  "bytes": 57329900,
+  "verified": "sha256 and size read back after install"
+ },
+ "unchanged": {
+  "X3AP.exe": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+  "cxbottle.conf": "cc5d6c00a8afccaf88cbae1a7c46040db513eb163a52693287a3d29aca828e0c"
+ },
+ "previous": {
+  "dll": "/tmp/x3-run85-candidate/build/d3d9.dll",
+  "sha256": "c430294a1bd136ee266899dbff2e1623a96f9d64a62cfd664a239fcb1cffdecf",
+  "bytes": 56857261,
+  "commit": "53e7aba5"
+ },
+ "rollback": {
+  "dll": "/tmp/x3-run85-candidate/build/d3d9.dll",
+  "sha256": "c430294a1bd136ee266899dbff2e1623a96f9d64a62cfd664a239fcb1cffdecf",
+  "bytes": 56857261,
+  "records": [
+   "verification/results/run85-candidate-qualification.json",
+   "verification/results/run85-candidate-install.json"
+  ],
+  "then": "/tmp/x3-run84-candidate/build/d3d9.dll 189a34f0\u2026"
+ },
+ "game_running_at_install": false,
+ "game_data": "fleet overlay install-fleet4 (620 bodies) unchanged; NEW files under drive_c/X3/x3m/: effect_keys.json (copied by install, sha 11a5ee56\u2026), fog-families.bin (64 B empty table, 0 packets: 14 compiled cover 14 families, 2 refused) + fog-families.json (tools/analysis/fog_families.py --install via manage.py fog-families, after the DLL); launch lines: fog families ok, lod overlay ok 620 bodies",
+ "host_suite_at_install": "272 modules / 2,821 tests / 6 failing on test-side expectations (test fixes on main after the install)",
+ "changes_vs_previous": [
+  "fog family loader accepts the 0-family/0-packet table (28cbd43e); the launcher reports fog families / lod overlay lines and gains the fog-families action (89f4b014, 28cbd43e, b36925d0)",
+  "--chase-view-restore-dock opt-in (40cd3023): the rear chase view kept across docking at a station; the docked screen shows the rear view of the parked ship; unflown",
+  "--effects-stage opt-in phase 1 (9375a1e7): HDR bolt capsules and shield-hit shells/decals drawn in the resolve bracket over the game's own effects; texture keys hashed at upload; unflown",
+  "no default behaviour change against Run85 (dry run A differs only by X3M_CHASE_VIEW_RESTORE_DOCK=0)"
+ ]
+}

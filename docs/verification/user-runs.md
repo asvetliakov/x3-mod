@@ -33,7 +33,7 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 
 ## Run 86 (open)
 
-**Run 86 A (queued 2026-09-25; Run86 DLL `__RUN86_SHA__` from 9375a1e7, installed __RUN86_TIME__; overlay install-fleet4 unchanged;
+**Run 86 A (queued 2026-09-25; Run86 DLL `27881669…` from 9375a1e7, installed 12:37; overlay install-fleet4 unchanged;
 supersedes the unflown Run 85 A, whose checks are folded in).** New since Run84: the far clip `--taa-far-clip 7x7` default and
 the far ramp 60/68 (the fog-band plants' sparkles at rest and under pans; Run85), and three opt-ins: `--chase-view-restore-dock`
 (keeps the rear chase view across docking at a station: the docked screen shows the rear view of the parked ship, unflown),
