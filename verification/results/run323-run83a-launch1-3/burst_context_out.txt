@@ -1,0 +1,26 @@
+volumetric_fog_sector device=1 frame=0 profile=0 reason=no_cockpit sector=00000000 index=-1 generation=1 density_scale=1.000 forced_profile=none
+volumetric_fog_sector device=1 frame=1338 profile=0 reason=clear sector=11d682c0 index=67 generation=1 density_scale=1.000 forced_profile=none
+volumetric_fog_sector device=1 frame=9084 profile=0 reason=no_cockpit sector=00000000 index=-1 generation=1 density_scale=1.000 forced_profile=none
+volumetric_fog_sector device=1 frame=9450 profile=2 reason=foggreenoutlands sector=10d72790 index=14 generation=1 density_scale=1.000 forced_profile=none
+volumetric_fog_sector device=1 frame=24318 profile=0 reason=no_cockpit sector=00000000 index=-1 generation=1 density_scale=1.000 forced_profile=none
+volumetric_fog_sector device=1 frame=24758 profile=0 reason=clear sector=12039e20 index=21 generation=1 density_scale=1.000 forced_profile=none
+volumetric_fog_sector device=1 frame=31996 profile=0 reason=no_cockpit sector=00000000 index=-1 generation=1 density_scale=1.000 forced_profile=none
+motion_output_frame device=1 frame=5897 latched=1 msaa=0 filled=1 fill_result=00000000 fill_restore=00000000 draws=94 routed=73 matched=73 gate1=0 gate2=20 gate3=1 gate4=0 gate5=0 gate6=0 apply_failures=0 restore_failures=0 histor
+frame_end device=1 frame=5897 draws=94 capture=1 present=00000000 elapsed_ms=113726 dt_ms=576 qpc=20257030568537
+chase_camera frame=5897 status=active frames=4560 applied=4205 refused=355 refused_inactive=0 admitted_unbound=0 cockpits_seen=1 snaps=1 coalesced=0 clamps=590 write_refused=0 verdict=0 snap_reason=1 mode=258 connect=0 flags_1a0=0
+emission_source_gain_frame device=1 frame=12188 gain=2 admitted=1 admitted_screen=1 refused_blend=0 refused_screen=0 refused_other=11 refused_unknown=0 refused_state=11 bind_failures=0
+motion_output_frame device=1 frame=12188 latched=1 msaa=0 filled=1 fill_result=00000000 fill_restore=00000000 draws=78 routed=20 matched=20 gate1=0 gate2=28 gate3=30 gate4=0 gate5=0 gate6=0 apply_failures=0 restore_failures=0 hist
+frame_end device=1 frame=12188 draws=78 capture=1 present=00000000 elapsed_ms=239174 dt_ms=500 qpc=20258285048112
+chase_camera frame=12188 status=active frames=10484 applied=9923 refused=561 refused_inactive=0 admitted_unbound=0 cockpits_seen=1 snaps=2 coalesced=0 clamps=4559 write_refused=0 verdict=0 snap_reason=1 mode=258 connect=0 flags_1a
+emission_source_gain_frame device=1 frame=15787 gain=2 admitted=1 admitted_screen=1 refused_blend=0 refused_screen=0 refused_other=0 refused_unknown=0 refused_state=0 bind_failures=0
+motion_output_frame device=1 frame=15787 latched=1 msaa=0 filled=1 fill_result=00000000 fill_restore=00000000 draws=79 routed=24 matched=24 gate1=0 gate2=21 gate3=30 gate4=4 gate5=0 gate6=0 apply_failures=0 restore_failures=0 hist
+frame_end device=1 frame=15787 draws=79 capture=1 present=00000000 elapsed_ms=303384 dt_ms=421 qpc=20258927142841
+chase_camera frame=15787 status=active frames=14083 applied=13522 refused=561 refused_inactive=0 admitted_unbound=0 cockpits_seen=1 snaps=2 coalesced=0 clamps=5322 write_refused=0 verdict=0 snap_reason=1 mode=258 connect=0 flags_1
+emission_source_gain_frame device=1 frame=28222 gain=2 admitted=1 admitted_screen=1 refused_blend=0 refused_screen=0 refused_other=10 refused_unknown=0 refused_state=10 bind_failures=0
+motion_output_frame device=1 frame=28222 latched=1 msaa=0 filled=1 fill_result=00000000 fill_restore=00000000 draws=181 routed=148 matched=148 gate1=0 gate2=30 gate3=3 gate4=0 gate5=0 gate6=0 apply_failures=0 restore_failures=0 hi
+frame_end device=1 frame=28222 draws=181 capture=1 present=00000000 elapsed_ms=540672 dt_ms=706 qpc=20261300022323
+chase_camera frame=28222 status=active frames=26077 applied=25421 refused=656 refused_inactive=0 admitted_unbound=0 cockpits_seen=1 snaps=4 coalesced=0 clamps=9446 write_refused=0 verdict=0 snap_reason=4 mode=258 connect=0 flags_1
+emission_source_gain_frame device=1 frame=29032 gain=2 admitted=1 admitted_screen=1 refused_blend=0 refused_screen=0 refused_other=0 refused_unknown=0 refused_state=0 bind_failures=0
+motion_output_frame device=1 frame=29032 latched=1 msaa=0 filled=1 fill_result=00000000 fill_restore=00000000 draws=130 routed=107 matched=107 gate1=0 gate2=20 gate3=3 gate4=0 gate5=0 gate6=0 apply_failures=0 restore_failures=0 hi
+frame_end device=1 frame=29032 draws=130 capture=1 present=00000000 elapsed_ms=558142 dt_ms=505 qpc=20261474723360
+chase_camera frame=29032 status=active frames=26887 applied=26231 refused=656 refused_inactive=0 admitted_unbound=0 cockpits_seen=1 snaps=4 coalesced=0 clamps=9502 write_refused=0 verdict=0 snap_reason=4 mode=258 connect=0 flags_1

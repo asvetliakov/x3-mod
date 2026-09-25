@@ -1,0 +1,7 @@
+Run 83 A launch 2: run325 (Run83 DLL f0259ceb from 80394271, TAA mask fold, --gpu-sync-timing) vs run312 (Run82, fog sector 14) and run315 (Run82, clear sector 67). Logs read-only, no Wine. Run from this directory.
+Scripts copied from ../run315-run82a-thin-source-vote (gpu_passes, gpu_taa, pan_windows, gpu_rest_pan, exit_rows, abnormal_rows) and ../run310-run81a-s4-half (gpu_windows); sector_class.py new.
+python3 exit_rows.py 325 > exit_rows_out.txt; python3 abnormal_rows.py 325 > abnormal_rows_out.txt   # Q1
+grep -aE '^(proxy_identity|gpu_sync_timing_mode|taa_thin_region_source|motion_output_taa_box_resolution|volumetric_fog_sector)' /tmp/x3-bottleX3-run325/session-*.log > config_rows_out.txt   # Q1
+python3 gpu_taa.py 312 315 325 > gpu_taa_out.txt; python3 pan_windows.py 312 315 325 > pan_windows_out.txt; python3 gpu_rest_pan.py > gpu_rest_pan_out.txt   # Q2
+for r in 312 315 325; do python3 gpu_passes.py $r > gpu_passes_${r}_out.txt; done   # Q2/Q4 session medians
+python3 sector_class.py 312 315 325 > sector_class_out.txt   # Q2-Q4 sector x class medians (window assigned to the sector active at its first frame)

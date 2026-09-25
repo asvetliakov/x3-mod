@@ -1,0 +1,45 @@
+ROW fov site=0041c9dc status=patched reason=ok value=0x3470 vertical_deg=58.72 setting=90 write=atomic registry=absent registry_before=- setfocus=active setfocus_write=atomic load=active load_write=atomic
+ROW fov_confirm frame=0 registry=absent focus=- expected=0x3470 match=0 vertical_deg=- camera=skipped
+ROW cull_small_parts_value px=4 m00=0.499997914 width=5120 threshold=3 focus=0x3470 source=registry fallback=no_scene
+ROW fov_confirm frame=4 registry=30057be0 focus=0x3470 expected=0x3470 match=1 vertical_deg=58.72 camera=skipped
+ROW fov_confirm frame=1338 registry=5c752498 focus=0x3470 expected=0x3470 match=1 vertical_deg=58.72 camera=skipped after=save_load_complete
+ROW cull_small_parts_value px=4 m00=0.499997884 width=5120 threshold=3 focus=0x3470 source=scene fallback=none
+ROW cull_small_parts_value px=4 m00=0.499997914 width=5120 threshold=3 focus=0x3470 source=registry fallback=aged
+ROW cull_small_parts_value px=4 m00=0.499997884 width=5120 threshold=3 focus=0x3470 source=scene fallback=none
+ROW cull_small_parts_value px=4 m00=0.491355926 width=5120 threshold=3 focus=0x351f source=scene fallback=none
+ROW cull_small_parts_value px=4 m00=0.499997884 width=5120 threshold=3 focus=0x3470 source=scene fallback=none
+ROW cull_small_parts_value px=4 m00=0.508835375 width=5120 threshold=3 focus=0x33c1 source=scene fallback=none
+ROW cull_small_parts_value px=4 m00=0.499997884 width=5120 threshold=3 focus=0x3470 source=scene fallback=none
+ROW cull_small_parts_value px=4 m00=0.491355926 width=5120 threshold=3 focus=0x351f source=scene fallback=none
+ROW cull_small_parts_value px=4 m00=0.482854068 width=5120 threshold=3 focus=0x35cf source=scene fallback=none
+ROW cull_small_parts_value px=4 m00=0.474488199 width=5120 threshold=3 focus=0x3680 source=scene fallback=none
+ROW cull_small_parts_value px=4 m00=0.466254294 width=5120 threshold=3 focus=0x3732 source=scene fallback=none
+ROW cull_small_parts_value px=4 m00=0.458193272 width=5120 threshold=3 focus=0x37e4 source=scene fallback=none
+ROW cull_small_parts_value px=4 m00=0.45021081 width=5120 threshold=3 focus=0x3898 source=scene fallback=none
+ROW cull_small_parts_value px=4 m00=0.442392051 width=5120 threshold=3 focus=0x394c source=scene fallback=none
+ROW cull_small_parts_value px=4 m00=0.434646606 width=5120 threshold=3 focus=0x3a02 source=scene fallback=none
+ROW cull_small_parts_value px=4 m00=0.427056223 width=5120 threshold=3 focus=0x3ab8 source=scene fallback=none
+ROW cull_small_parts_value px=4 m00=0.419574738 width=5120 threshold=3 focus=0x3b6f source=scene fallback=none
+ROW cull_small_parts_value px=4 m00=0.499997914 width=5120 threshold=3 focus=0x3470 source=registry fallback=aged
+ROW cull_small_parts_value px=4 m00=0.375037372 width=5120 threshold=3 focus=0x4000 source=scene fallback=none
+ROW cull_small_parts_value px=4 m00=0.499997884 width=5120 threshold=3 focus=0x3470 source=scene fallback=none
+ROW cull_small_parts_value px=4 m00=0.499997914 width=5120 threshold=3 focus=0x3470 source=registry fallback=aged
+camera_state valid runs (first..last frame, p00, p11, background_p00, rows, F_deg=2*atan(1/(0.75*p11)), vertical_deg=2*atan(1/p11))
+1338..21887 p00=0.5 p11=1.7778 bg_p00=0.5 rows=20183 F_deg=73.74 F=0x3470 vert=58.71
+21888..21986 p00=0.4914 p11=1.747 bg_p00=0.4914 rows=99 F_deg=74.70 F=0x351f vert=59.57
+21987..22086 p00=0.5 p11=1.7778 bg_p00=0.5 rows=100 F_deg=73.74 F=0x3470 vert=58.71
+22087..22158 p00=0.5088 p11=1.8092 bg_p00=0.5088 rows=72 F_deg=72.78 F=0x33c1 vert=57.86
+22159..22172 p00=0.5 p11=1.7778 bg_p00=0.5 rows=14 F_deg=73.74 F=0x3470 vert=58.71
+22173..22184 p00=0.4914 p11=1.747 bg_p00=0.4914 rows=12 F_deg=74.70 F=0x351f vert=59.57
+22185..22193 p00=0.4829 p11=1.7168 bg_p00=0.4829 rows=9 F_deg=75.67 F=0x35cf vert=60.44
+22194..22204 p00=0.4745 p11=1.6871 bg_p00=0.4745 rows=11 F_deg=76.64 F=0x3680 vert=61.31
+22205..22215 p00=0.4663 p11=1.6578 bg_p00=0.4663 rows=11 F_deg=77.62 F=0x3732 vert=62.20
+22216..22226 p00=0.4582 p11=1.6291 bg_p00=0.4582 rows=11 F_deg=78.60 F=0x37e4 vert=63.09
+22227..22237 p00=0.4502 p11=1.6007 bg_p00=0.4502 rows=11 F_deg=79.59 F=0x3898 vert=63.99
+22238..22248 p00=0.4424 p11=1.5729 bg_p00=0.4424 rows=11 F_deg=80.58 F=0x394c vert=64.89
+22249..22260 p00=0.4346 p11=1.5454 bg_p00=0.4346 rows=12 F_deg=81.57 F=0x3a02 vert=65.81
+22261..22275 p00=0.4271 p11=1.5184 bg_p00=0.4271 rows=15 F_deg=82.57 F=0x3ab8 vert=66.74
+22276..24316 p00=0.4196 p11=1.4918 bg_p00=0.4196 rows=2041 F_deg=83.58 F=0x3b6f vert=67.67
+24564..24756 p00=0.375 p11=1.3335 bg_p00=0.375 rows=193 F_deg=89.99 F=0x3fff vert=73.73
+24758..31994 p00=0.5 p11=1.7778 bg_p00=0.5 rows=7237 F_deg=73.74 F=0x3470 vert=58.71
+runs 17

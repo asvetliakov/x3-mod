@@ -1,0 +1,12 @@
+proxy_identity sha256=f0259ceb6ef3eac7a407c49762dda9a182898d27ae4e32eb242ec922c1a52b8e bytes=56846411 path=C:\X3\d3d9.dll manifest_sha256=fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab source_commit=803942710d567f3476e6323008dfbdbce2b88330 attach_us=110487 exe_sha256=fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab exe_bytes=2153984 exe_hash_us=8161 exe_laa=1 exe_max_app=fffeffff
+gpu_sync_timing_mode requested=1 passes=25 boundaries=50 window=300 serialises=1
+volumetric_fog_sector device=1 frame=0 profile=0 reason=no_cockpit sector=00000000 index=-1 generation=1 density_scale=1.000 forced_profile=none
+volumetric_fog_sector device=1 frame=164 profile=0 reason=clear sector=11d682c0 index=67 generation=1 density_scale=1.000 forced_profile=none
+motion_output_taa_box_resolution device=1 requested=half configured=half reason=ok create=00000000 default=1
+taa_thin_region_source device=1 requested=vote configured=vote reason=ok thin_region=0.9700 thin_vote=1 twins=1 camera_gate=1 default=1
+motion_output_taa_box_resolution device=1 frame=164 drawn=half reason=half width=5120 height=1440 target_create=00000000
+volumetric_fog_sector device=1 frame=1608 profile=0 reason=no_cockpit sector=00000000 index=-1 generation=1 density_scale=1.000 forced_profile=none
+volumetric_fog_sector device=1 frame=1984 profile=0 reason=clear sector=5db57258 index=21 generation=1 density_scale=1.000 forced_profile=none
+volumetric_fog_sector device=1 frame=2635 profile=0 reason=no_cockpit sector=00000000 index=-1 generation=1 density_scale=1.000 forced_profile=none
+volumetric_fog_sector device=1 frame=2816 profile=2 reason=foggreenoutlands sector=11d68770 index=14 generation=1 density_scale=1.000 forced_profile=none
+volumetric_fog_sector device=1 frame=3496 profile=0 reason=no_cockpit sector=00000000 index=-1 generation=1 density_scale=1.000 forced_profile=none

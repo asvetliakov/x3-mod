@@ -1,0 +1,10 @@
+run312 sector=14 mixed windows=4 taa=5456 taa_box=1300 taa_resolve=2456 taa_copy=21 taa_mask=1448 taa_mask_tests=1394 engine=9709 shadow_depth=1062 fog_route=6404 bloom=2682 sun_apply=1447 hdr_writeback=1981 scene=32541
+run312 sector=14 pan   windows=12 taa=5441 taa_box=1300 taa_resolve=2446 taa_copy=22 taa_mask=1446 taa_mask_tests=1394 engine=6256 shadow_depth=838 fog_route=6412 bloom=2675 sun_apply=1446 hdr_writeback=1956 scene=29063
+run315 sector=67 mixed windows=6 taa=5682 taa_box=1478 taa_resolve=2572 taa_copy=24 taa_mask=1454 taa_mask_tests=1404 engine=9616 shadow_depth=1244 bloom=2730 sun_apply=1573 hdr_writeback=2120 scene=26808
+run315 sector=67 pan   windows=20 taa=5637 taa_box=1426 taa_resolve=2567 taa_copy=23 taa_mask=1450 taa_mask_tests=1400 engine=8255 shadow_depth=1267 bloom=2704 sun_apply=1571 hdr_writeback=2061 scene=25271
+run315 sector=67 rest  windows=4 taa=5441 taa_box=1322 taa_resolve=2442 taa_copy=20 taa_mask=1430 taa_mask_tests=1386 engine=8796 shadow_depth=1174 bloom=2670 sun_apply=1454 hdr_writeback=1984 scene=25252
+run325 sector=14 pan   windows=1 taa=3880 taa_box=841 taa_resolve=2823 taa_copy=20 engine=6847 shadow_depth=1126 fog_route=6522 bloom=2683 sun_apply=1463 hdr_writeback=2001 scene=29082
+run325 sector=21 mixed windows=1 taa=4051 taa_box=840 taa_resolve=3032 taa_copy=21 engine=13431 shadow_depth=1655 bloom=2666 sun_apply=1673 hdr_writeback=2249 scene=29813
+run325 sector=21 pan   windows=1 taa=3931 taa_box=843 taa_resolve=2912 taa_copy=21 engine=8254 shadow_depth=1681 bloom=2681 sun_apply=1553 hdr_writeback=2073 scene=24456
+run325 sector=67 mixed windows=3 taa=3889 taa_box=836 taa_resolve=2906 taa_copy=20 engine=7507 shadow_depth=1118 bloom=2651 sun_apply=1434 hdr_writeback=1974 scene=21515
+run325 sector=67 pan   windows=2 taa=4022 taa_box=841 taa_resolve=3013 taa_copy=20 engine=8062 shadow_depth=1226 bloom=2660 sun_apply=1546 hdr_writeback=1974 scene=23248

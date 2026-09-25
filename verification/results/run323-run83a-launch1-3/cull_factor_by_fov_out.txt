@@ -1,0 +1,20 @@
+applied (cull_small_parts_value): px=4 m00=0.499998 focus=0x3470 width=5120 threshold=3; cull_small_parts_frame rows=40
+scene projection runs: first..last frame, rows, p00, F, factor F/0x4000, thresholds px 2/4/8 corrected (scene P[0] and F) | as applied (HUD P[0], 0x4000)
+1338..21887 rows=20183 p00=0.5000 F=0x3470 factor=0.8193 thresholds=2/3/5 | applied 2/3/5
+21888..21986 rows=99 p00=0.4914 F=0x351f factor=0.8300 thresholds=2/3/5 | applied 2/3/5
+21987..22086 rows=100 p00=0.5000 F=0x3470 factor=0.8193 thresholds=2/3/5 | applied 2/3/5
+22087..22158 rows=72 p00=0.5088 F=0x33c1 factor=0.8087 thresholds=2/3/5 | applied 2/3/5
+22159..22172 rows=14 p00=0.5000 F=0x3470 factor=0.8193 thresholds=2/3/5 | applied 2/3/5
+22173..22184 rows=12 p00=0.4914 F=0x351f factor=0.8300 thresholds=2/3/5 | applied 2/3/5
+22185..22193 rows=9 p00=0.4829 F=0x35cf factor=0.8408 thresholds=2/3/5 | applied 2/3/5
+22194..22204 rows=11 p00=0.4745 F=0x3680 factor=0.8516 thresholds=2/3/5 | applied 2/3/5
+22205..22215 rows=11 p00=0.4663 F=0x3732 factor=0.8624 thresholds=2/3/5 | applied 2/3/5
+22216..22226 rows=11 p00=0.4582 F=0x37e4 factor=0.8733 thresholds=2/3/5 | applied 2/3/5
+22227..22237 rows=11 p00=0.4502 F=0x3898 factor=0.8843 thresholds=2/3/6 | applied 2/3/5  <- differs
+22238..22248 rows=11 p00=0.4424 F=0x394c factor=0.8953 thresholds=2/3/6 | applied 2/3/5  <- differs
+22249..22260 rows=12 p00=0.4346 F=0x3a02 factor=0.9064 thresholds=2/3/6 | applied 2/3/5  <- differs
+22261..22275 rows=15 p00=0.4271 F=0x3ab8 factor=0.9175 thresholds=2/3/6 | applied 2/3/5  <- differs
+22276..24316 rows=2041 p00=0.4196 F=0x3b6f factor=0.9286 thresholds=2/3/6 | applied 2/3/5  <- differs
+24564..24756 rows=193 p00=0.3750 F=0x4000 factor=1.0000 thresholds=2/3/6 | applied 2/3/5  <- differs
+24758..31994 rows=7237 p00=0.5000 F=0x3470 factor=0.8193 thresholds=2/3/5 | applied 2/3/5
+runs 17

@@ -1,0 +1,59 @@
+# telemetry_cursor_poll frame flags cursor (changes, frame<700)
+0 1 00000000
+2 0 00000000
+119 1 00010022
+147 0 00000000
+237 1 00010022
+343 0 00000000
+418 1 00010022
+515 0 00000000
+603 1 00010022
+675 0 00000000
+# telemetry_window frame foreground thread_focus (changes)
+0    
+0 000a0064 000a0064 0,0,5120,1440 0,0,5120,1440
+119 00030020 00000000 0,0,5120,1440 0,0,5120,1440
+147 000a0064 000a0064 0,0,5120,1440 0,0,5120,1440
+237 00030020 00000000 0,0,5120,1440 0,0,5120,1440
+343 000a0064 000a0064 0,0,5120,1440 0,0,5120,1440
+418 00030020 00000000 0,0,5120,1440 0,0,5120,1440
+515 000a0064 000a0064 0,0,5120,1440 0,0,5120,1440
+603 00030020 00000000 0,0,5120,1440 0,0,5120,1440
+675 000a0064 000a0064 0,0,5120,1440 0,0,5120,1440
+759 00030020 00000000 0,0,5120,1440 0,0,5120,1440
+917 000a0064 000a0064 0,0,5120,1440 0,0,5120,1440
+# first window_msg rows
+seq=1 frame=109 msg=0112 name=WM_SYSCOMMAND wparam=0000f100
+seq=2 frame=109 msg=001f name=WM_CANCELMODE wparam=00000000
+seq=3 frame=109 msg=0006 name=WM_ACTIVATE wparam=00000000
+seq=4 frame=109 msg=001c name=WM_ACTIVATEAPP wparam=00000000
+seq=5 frame=109 msg=001c name=WM_ACTIVATEAPP wparam=00000000
+seq=6 frame=109 msg=001c name=WM_ACTIVATEAPP wparam=00000000
+seq=7 frame=109 msg=0008 name=WM_KILLFOCUS wparam=00000000
+seq=8 frame=139 msg=001c name=WM_ACTIVATEAPP wparam=00000001
+seq=9 frame=139 msg=001c name=WM_ACTIVATEAPP wparam=00000001
+seq=10 frame=139 msg=001c name=WM_ACTIVATEAPP wparam=00000001
+seq=11 frame=139 msg=0006 name=WM_ACTIVATE wparam=00000001
+seq=12 frame=139 msg=0007 name=WM_SETFOCUS wparam=00000000
+# window_trace_flush
+frame=110 written=7 expired=0
+frame=140 written=5 expired=0
+frame=230 written=6 expired=0
+frame=340 written=12 expired=0
+frame=418 written=6 expired=0
+frame=511 written=55 expired=0
+frame=593 written=6 expired=0
+frame=668 written=10 expired=0
+frame=755 written=6 expired=0
+frame=917 written=5 expired=0
+frame=3908 written=6 expired=0
+frame=5096 written=5 expired=0
+# cursor_reassert
+frame=140 action=fired armed_by=WM_ACTIVATEAPP before_flags=0 before_cursor=00000000 up=0 down=-1 after_flags=0 after_cursor=00000000 clip=0,1,5120,1439 fires=1
+frame=340 action=fired armed_by=WM_ACTIVATEAPP before_flags=0 before_cursor=00000000 up=0 down=-1 after_flags=0 after_cursor=00000000 clip=0,1,5120,1439 fires=2
+frame=511 action=fired armed_by=WM_ACTIVATEAPP before_flags=0 before_cursor=00000000 up=0 down=-1 after_flags=0 after_cursor=00000000 clip=0,1,5120,1439 fires=3
+frame=668 action=fired armed_by=WM_ACTIVATEAPP before_flags=0 before_cursor=00000000 up=0 down=-1 after_flags=0 after_cursor=00000000 clip=0,1,5120,1439 fires=4
+frame=917 action=fired armed_by=WM_ACTIVATEAPP before_flags=0 before_cursor=00000000 up=0 down=-1 after_flags=0 after_cursor=00000000 clip=0,1,5120,1439 fires=5
+frame=5096 action=fired armed_by=WM_ACTIVATEAPP before_flags=0 before_cursor=00000000 up=0 down=-1 after_flags=0 after_cursor=00000000 clip=0,1,5120,1439 fires=6
+# first cursor_snapshot frame
+frame=110 foreground=00030020 exstyle=00000000 cursor_ok=1 y=1155

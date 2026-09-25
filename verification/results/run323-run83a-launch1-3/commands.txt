@@ -1,0 +1,18 @@
+Run 83 A launches 1+3: run323 (/tmp/x3-bottleX3-run323, session-20260925-042913-216.log), Run83 DLL f0259ceb (80394271),
+modded defaults + --window-trace --cursor-reassert. Logs read-only, no Wine, no build. Run from this directory.
+Copied from ../run312-run82a-launch1: exit_rows, abnormal_rows, fov_timeline, cull_factor_by_fov, sun_screen, sun_group_angle, sun_absent_centre;
+from ../run309-run81a-launch1: sun_capture_pixels (adds depth at the sun box). New: cursor_launch.sh, sun_burst_timeline.py, sun_occluder_cover.py.
+L=/tmp/x3-bottleX3-run323/session-20260925-042913-216.log
+LC_ALL=C awk '{print $1}' $L | sort | uniq -c | sort -rn > rowtypes_out.txt; comm vs ../run312-run82a-launch1/rowtypes_out.txt -> rowtypes_new_vs_312_out.txt, rowtypes_gone_vs_312_out.txt  # Q1
+grep -anE '^(proxy[a-z_]*|fov|fov_confirm|sun_flare_fix|window_mode[a-z_]*|window_trace_hooks|window_trace_scope|cursor_reassert_mode|cursor_reassert_arm|original_fill_mode|taa_thin_region_source) ' $L   # Q1
+python3 exit_rows.py 312 323 > exit_rows_out.txt; python3 abnormal_rows.py 312 323 > abnormal_rows_out.txt   # Q1
+python3 fov_timeline.py $L > fov_timeline_out.txt; python3 cull_factor_by_fov.py $L > cull_factor_by_fov_out.txt   # Q1
+for r in 324 325: grep taa_thin_region_source / proxy_options X3M_TAA_THIN_REGION_SOURCE in /tmp/x3-bottleX3-run$r/session-*.log   # Q1 (both = run324)
+python3 sun_screen.py $L > sun_screen_out.txt; python3 sun_group_angle.py $L > sun_group_angle_out.txt; python3 sun_absent_centre.py $L > sun_absent_centre_out.txt   # Q2
+python3 sun_burst_timeline.py $L 27900-28500 28800-29300 > sun_burst_timeline_out.txt; python3 sun_burst_timeline.py $L 25221-29995 > sun_burst_timeline_25221_29995_out.txt   # Q2
+python3 sun_burst_timeline.py $L <w> for 28400-28480 28481-28530 28531-28574 28560-28574 > sun_before_toggle_out.txt   # Q2
+grep -a ' frame=2857[2-7] ' $L (frame_end draws 140 -> 130 at 28575, emission_source_gain refused_state 10 -> 0)   # Q2
+python3 sun_capture_pixels.py /tmp/x3-bottleX3-run323 > sun_capture_pixels_out.txt   # Q2, Q4
+python3 sun_occluder_cover.py /tmp/x3-bottleX3-run323 28222:2351:509 28229:2351:509 29032:2184:640 29039:2184:640 > sun_occluder_cover_out.txt   # Q2
+sh cursor_launch.sh $L > cursor_launch_out.txt   # Q3
+grep volumetric_fog_sector + frame_end/chase_camera/motion_output_frame/emission_source_gain_frame at 5897 12188 15787 28222 29032 > burst_context_out.txt   # Q4
