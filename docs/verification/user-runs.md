@@ -34,9 +34,9 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 75 A/B/C | Fog hand-over fixes + docked-load diagnostic (A); bolt visibility 3,12 (B); --gpu-sync-timing with the TAA and fog sub-boundaries (C), Run75 DLL | 3 | A completed 2026-09-23 (run278): new game and transits between fogged sectors show our fog immediately (accepted); the docked save load still shows engine fog, now pinned to `refusal=gate:states` (1,115 frames), fix in progress ([ledger](volumetric-fog.md#run-278-run-75-a-2026-09-23-hand-over-fixes-accepted-docked-load-pinned)). B completed (run279): bolts still vanish in third person; cause found: our 4 px small-part cull removes ~94 % of bullet nodes one frame after the muzzle (fix: exempt projectiles, in progress; [triage](../verification/results/run279-bolts/)). C completed (run280): TAA split = mask 2.1 / resolve 2.1 / box 1.2 / copy 0.45 ms in the busy sector, motion adds 0.4 ms in the resolve only; fog march 4.5–4.7 ms net, repair writes < 0.01 % of pixels ([ledger](gpu-sync-timing.md#run-280-run-75-c-2026-09-23-the-taa-and-fog-splits-at-19201080)). |
 
 
-## Run 83 (queued once the Run83 candidate installs)
+## Run 83 (open)
 
-**Run 83 A (queued 2026-09-25; Run83 DLL from main after the mask fold merge; overlay install-fleet4 installed 03:13).**
+**Run 83 A (queued 2026-09-25 04:30; Run83 DLL `f0259ceb…` from 80394271 installed 04:25; overlay install-fleet4 installed 03:13).**
 New in this build: FOV remap on savegame load (a pre-patch save now starts remapped; `fov_confirm ... after=save_load_complete`),
 TAA mask fold (no mask draw; the resolve computes the gates and writes the depth history; the sentinel stabiliser is gone,
 `--taa-sentinel-stabiliser` is refused; the screen search is off by default, `--taa-thin-region-source both` turns it on),
@@ -75,4 +75,4 @@ env -u CX_DEBUGMSG X3M_FIXTURE_BOTTLE=X3 X3M_MOTION_FRAME_LOG=1 /Users/asvetl/x3
 
 To remove the overlay: delete `addon/05.cat`, `05.dat`, `05.x3m-lod.json`, `06.*` and `x3m-lod-batch*.json/txt`; the originals are untouched.
 
-Run 83 A is the only queued run (it flies once the Run83 candidate is installed). Completed instructions for Runs 73-82 are in the [archive](../archive/user-runs-completed.md).
+Run 83 A is the only queued run. Completed instructions for Runs 73-82 are in the [archive](../archive/user-runs-completed.md).
