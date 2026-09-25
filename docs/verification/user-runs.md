@@ -20,6 +20,7 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 
 | Run | Purpose | Sessions | Status |
 | --- | --- | ---: | --- |
+| 83 A/B | Run83 (FOV load remap, mask fold, window rect default, cursor trace/re-assert opt-in, fill default) + install-fleet4: defaults with the pre-patch save, window, folded TAA, fps (A launch 1+3 = run323, `both` relaunch run324); gpu attribution (A launch 2 = run325); plants shimmer diagnostic + partial sun occlusion (B = run326 sun, run327 plants with --taa-debug) | 5 | Completed 2026-09-25: FOV remapped from the first scene frame after the save load; window moved 0,31 -> 0,0 (menu bar gone, user); double cursor from launch until the first alt-tab (no launch arm; fixed on main b45b3735); lattice ok; fog-band plants show one-frame sparkles at thin-line edges under a pan only, with the search on or off: resolved-output analysis (run327) puts them on owned plant pixels outside the region on the plain path, the far stabiliser's screen-speed gate dropping 0.985 -> 0.9 under any pan (fix: --taa-far-gate camera, in review); the sun hidden at half cover was the vanilla CPU probe, --sun-occlusion accepted (run326) and made the launcher default (50a5f98e); TAA span 5.44-5.68 -> 3.88-4.05 ms measured (-1.6 to -1.8 ms, run325); results run323-run83a-launch1-3/, run323-fog-plants-shimmer/, run325-run83a-gpu/, run327-run83b-sparkles/ |
 | 82 B | Ad hoc on the Run82 DLL: defaults again (run319), `--taa-thin-region 0` (run320), the install-fleet4 overlay with the louvre recipe (run321) | 3 | Completed 2026-09-25: run319 defaults (shell still exporting source vote + stabiliser 0): the Terran lattice crawled with the search on too; run320 thin treatment off: a little shimmer under pan (rejected, the hold stays); frame time without `--gpu-sync-timing` p50 16 ms in fog and clear sectors vs 30-33 ms with it (the flag doubles the frame; playable fps is quoted only from launches without it); run321 louvre recipe: crawl gone, no issues (3 draws per node, flip share 0.326 vs 0.497) |
 | 82 A | FOV remap (menu in game units), sun flare fix, chase compensation, S4 half default, cutout ownership: defaults look + menu/sun/chase checks; stabiliser 0 retry; thin-region source vote A/B, at 5120x1440 (candidate d1a4e360) | 5 | Completed 2026-09-25 (run312 defaults; run313/314 stabiliser 0; run315/318 source vote, flown with the stabiliser still 0 from the shell): FOV menu, sun at 100, chase size and the fog-band plants accepted by the user; run312 loaded a pre-patch save and ran at the vanilla 0x4000 until the first menu step (the savegame restores registry+0x24, RE §7.4; load-site remap in progress); stabiliser 0: plant crops valid depth 0.97 vs 0.17-0.48 in run311, no no_zwrite refusals, no shimmer seen -> default flips to 0 (§5 conditions 1, 2, 4; condition 3 replay still open); vote source: mask draw 1.38-1.40 ms in every session (no saving), and the lattice crawl the user reported in run315 is explained by vote-only flagging (the coarse record's solid cell draws never vote; 7.5 % of the flickering lattice pixels in the A' region vs 72-80 % under both) -> vote rejected as a source; results `verification/results/run312-run82a-launch1/`, `run313-run82a-stabiliser-off/`, `run315-run82a-thin-source-vote/`, `run315-run82a-lattice-crawl/` |
 | 81 A | Run81 defaults (thin vote, fade owner, occlusion `all`, FOV 58.7155 vertical, age programs) + alpha casters look; S4 half box A/B; sentinel stabiliser off with the owner on, at 5120x1440 (candidate 9e1645be) | 3 | Completed 2026-09-24 (run309 defaults + alpha casters + gpu-sync, run310 S4 half, run311 stabiliser 0): ODS underside transition fixed, alpha casters clean (refused_pool 0); S4 half accepted (box 2.36 -> 1.40 ms, TAA -1.2 ms; default from Run 82); FOV in effect until the in-game menu (starts from its own 90, left at 100) overrode it -> the remap model (Run 82); at F 100 the sun vanished near the view centre = engine 32-bit overflow in the lens-flare collector (fixed in Run 82); chase ship 1.333x larger (compensated in Run 82); the cull read a HUD projection (fixed); stabiliser 0 shimmers on the fog-band plants: their alpha-tested cutouts were unowned (owned from Run 82; stabiliser stays 0.7 until the retry) |
@@ -31,60 +32,31 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 77 A | Fleet overlay across addon/05 + 06 (591 bodies), race sectors and a shipyard, Run76 DLL | 1 | Completed 2026-09-24 (run287, flown on the Run77 DLL): no issues, FPS good, no transitions seen; 14 slot-05 bodies drew their merged record (draws per frame equal the marker, ladders equal the overlay thresholds); busy greenvoid sector dt p50 14.2 ms / 156 draws against 14.7 ms / 160 in Run 74 A; no overlay, fog or cull errors; the TAA fold reports active; slot 06 unproven (no slot-06 body in view), A2 queued ([triage](../verification/results/run287-fleet-overlay/)). |
 | 76 B/C/D | Bolts with the projectile cull exemption (B); docked save load in fog (C); --fog-far-bins 40 vs 24 under --gpu-sync-timing (D), Run76 DLL | 3 | B completed 2026-09-24 (run282): bolts fixed, accepted (54 exempt bullet nodes per frame while firing). C completed (run283): still engine fog when docked at load; the diagnostic names ALPHATESTENABLE=1 as the only differing state, fix in progress ([ledger](volumetric-fog.md#run-283-run-76-c-2026-09-24-docked-load-still-engine-fog-the-state-is-named)). D completed (run284/285/286): 24 far bins save only 0.2–0.5 ms of the 4.8 ms march (cost model said 0.8–1.15), no visible difference; 40 stays the default; step C (quarter-res march) is the lever ([note](../architecture/fog-gpu-cost.md#run-76-d-run284-40-bins-run285-24-bins-run286-default-2026-09-24-step-b-in-flight)). |
 | 76 A | Overlay re-baked with the light-atlas bleed guard (panel tint fix), 22 bodies | 1 | Completed 2026-09-24 (run281, flown on the Run76 DLL with the share-gate re-bake): no transition seen at all, the factory panels keep their colour across the switch; accepted ([record](../verification/results/lod-overlay-batch/install-run76b/install.json)). |
-| 75 A/B/C | Fog hand-over fixes + docked-load diagnostic (A); bolt visibility 3,12 (B); --gpu-sync-timing with the TAA and fog sub-boundaries (C), Run75 DLL | 3 | A completed 2026-09-23 (run278): new game and transits between fogged sectors show our fog immediately (accepted); the docked save load still shows engine fog, now pinned to `refusal=gate:states` (1,115 frames), fix in progress ([ledger](volumetric-fog.md#run-278-run-75-a-2026-09-23-hand-over-fixes-accepted-docked-load-pinned)). B completed (run279): bolts still vanish in third person; cause found: our 4 px small-part cull removes ~94 % of bullet nodes one frame after the muzzle (fix: exempt projectiles, in progress; [triage](../verification/results/run279-bolts/)). C completed (run280): TAA split = mask 2.1 / resolve 2.1 / box 1.2 / copy 0.45 ms in the busy sector, motion adds 0.4 ms in the resolve only; fog march 4.5–4.7 ms net, repair writes < 0.01 % of pixels ([ledger](gpu-sync-timing.md#run-280-run-75-c-2026-09-23-the-taa-and-fog-splits-at-19201080)). |
 
 
-## Run 83 (open)
+## Run 83 (completed)
 
-**Run 83 A (queued 2026-09-25 04:30; Run83 DLL `f0259ceb…` from 80394271 installed 04:25; overlay install-fleet4 installed 03:13).**
-New in this build: FOV remap on savegame load (a pre-patch save now starts remapped; `fov_confirm ... after=save_load_complete`),
-TAA mask fold (no mask draw; the resolve computes the gates and writes the depth history; the sentinel stabiliser is gone,
-`--taa-sentinel-stabiliser` is refused; the screen search is off by default, `--taa-thin-region-source both` turns it on),
-`--window-monitor-rect` on by default (the game window moves from under the macOS menu bar to the full monitor), opt-in
-`--window-trace` / `--cursor-reassert` for the double cursor, `--original-fill 0.01` default on `--hdr` launches, and the
-install-fleet4 overlay (Terran solar-plant louvres welded; already accepted in run321). Three launches at 5120x1440; each
-command is the stand command below plus the flags shown. Before launching run `unset X3M_TAA_THIN_REGION_SOURCE
+**Run 84 A (queued 2026-09-25; Run84 DLL from main after the far-gate merge; overlay install-fleet4 unchanged).**
+New in this build: `--taa-far-gate camera|screen` (default camera: the far stabiliser's 0.985 weight follows the camera-relative
+test instead of screen speed, which removes the one-frame sparkles on far plant edges under a pan and softens far static content
+during fractional pans; `screen` = the Run83 behaviour), `--sun-occlusion` on by default with the core dimming (`--no-sun-occlusion`
+restores the vanilla probe), `--cursor-reassert` arming once at launch, `--window-trace` recording from the first frame, and the
+`--original-fill 0.01` default. Two launches at 5120x1440, no timing flag. Before launching run `unset X3M_TAA_THIN_REGION_SOURCE
 X3M_TAA_SENTINEL_STABILISER` once in the shell. Please report per launch and name the sector of each stand:
 
-1. **Defaults** (launch 1: stand command, no timing flag). In order:
-   a. Load the same pre-patch save Run 82 A launch 1 used (the one that started at the vanilla FOV): the view must be the
-      remapped 90 from the first frame, without touching the menu.
-   b. Window: the macOS menu bar must be gone and the bottom of the game window visible (no cut-off row); alt-tab out and back
-      once: the window must come back full screen.
-   c. TAA after the fold: the lattice stand at rest and under a slow pan (the welded plant), a hull with masts or trusses under a
-      pan, a laser or engine trail over sky, and the fog-band solar plants under a slow vertical pan: any shimmer, crawl or trail
-      that Run 82 did not have. F8 at the lattice stand at rest and on the fog-band plants.
-   d. Hulls: the original-fill 0.01 shadow-side floor on a few ships (the value you chose; say if it reads wrong).
-   e. The fps overlay figure at a stand of your choice (no timing flag, so this is the real number).
-   Rows: `fov_confirm ... after=save_load_complete match=1`, `window_mode ... moved`, `motion_output_taa ...` without a stabiliser
-   field, `taa_thin_region_source configured=vote default=1`, `original_fill_mode ... default=1`.
-2. **GPU attribution** (launch 2: stand command + `--gpu-sync-timing`): the lattice stand at rest and the fog-band plants, one
-   F8 each. Decides the fold's measured saving (`taa` span, `taa_box`, `taa_resolve`, no `taa_mask_tests` row) against run312.
-   Not a frame-rate figure.
-3. **Double cursor** (launch 3: stand command + `--window-trace --cursor-reassert`): in a sector, alt-tab out, move the desktop
-   cursor outside the game window's screen area, alt-tab back: report whether one or two cursors show, then move the mouse into
-   the game and open/close the in-game menu once; repeat the alt-tab recipe a second time. Rows: `cursor_reassert ... fired`,
-   `window_msg` transitions, `cursor_snapshot`.
-4. Exit through the menu after each launch.
-
-**Run 83 B (queued 2026-09-25 05:10; Run83 DLL `f0259ceb…`; one diagnostic launch, two questions).** Run 83 A launch 1 (run323) and
-its `both` relaunch (run324) showed a little shimmer on the fog-band solar plants under a slow pan; the captures find nothing
-on the input side (plants 100 % owned, flicker as run313), so the candidates are the search being off by default (rest and pan),
-the box gate reading the previous frame's hold (pan only, needs `both`), or the two things that changed besides the fold:
-frame rate (run313 ran at 28 fps under `--gpu-sync-timing`, run323 at 62) and `--original-fill` 0 -> 0.01. One launch settles
-which, and the same launch tests the partial sun occlusion the user asked for (goal 13 reopened):
-
-```sh
-<stand command> --sun-occlusion --taa-thin-region-source both --original-fill 0 --gpu-sync-timing --taa-debug
-```
-
-1. Fog-band plants (the run313 stand): at rest, then a slow vertical pan of 3-9 px/frame: say whether the shimmer is there at
-   rest, in the pan, or neither. F8 at rest and F8 in the pan (`--taa-debug` adds the resolved image and the age dump).
-   Reading: shimmer at rest = not the fold; clean at rest but shimmer in the pan = the box gate; clean in both = the frame
-   rate or the fill (a second launch without `--gpu-sync-timing` then decides).
-2. Sun: at the place of the Run 83 A pop, let a ship or station cross the sun slowly: the flare and core must fade with the
-   covered fraction instead of vanishing at half; note any shimmer or dark ring at the edge. One F8 half-covered.
-3. Exit through the menu. Name the sector.
+1. **Defaults + cursor** (launch 1: stand command + `--window-trace --cursor-reassert`). In order:
+   a. Cursor at launch: is the desktop arrow still visible over the game before any alt-tab? Then alt-tab out, move the
+      desktop cursor outside the game area, alt-tab back: one or two cursors.
+   b. Sun: let a ship or station cross the sun slowly: the flare and core must fade with the covered fraction instead of vanishing at
+      half (this is now the default, no flag). One F8 half-covered.
+   c. Fog-band plants (the run313 stand): slow vertical pan 3-9 px/frame and a faster one: sparkles gone? Is far static content
+      visibly softer while panning (compare with launch 2)? F8 at rest and F8 in the slow pan, with the plants clear of the ship.
+   d. The lattice stand and a hull with masts under a pan, as a regression check.
+   Rows: `cursor_reassert ... armed_by=launch fired`, `sun_occlusion_config ... default=1`, `motion_output_taa ... far_gate=camera default=1`,
+   `original_fill_mode ... default=1`.
+2. **Far gate A/B** (launch 2: stand command + `--taa-far-gate screen`): the same fog-band plants, slow and faster pan: sparkles back?
+   Sharper while panning? F8 in the slow pan. Decides the default of `--taa-far-gate`.
+3. Exit through the menu after each launch.
 
 Stand command (Run 82 A's; the two age-program flags and the stabiliser are defaults or gone):
 
@@ -94,4 +66,4 @@ env -u CX_DEBUGMSG X3M_FIXTURE_BOTTLE=X3 X3M_MOTION_FRAME_LOG=1 /Users/asvetl/x3
 
 To remove the overlay: delete `addon/05.cat`, `05.dat`, `05.x3m-lod.json`, `06.*` and `x3m-lod-batch*.json/txt`; the originals are untouched.
 
-Run 83 A (launch 1 and 3 flown as run323/324, launch 2 as run325; triaged) and Run 83 B are the queued runs. Completed instructions for Runs 73-82 are in the [archive](../archive/user-runs-completed.md).
+Run 84 A is the only queued run (it flies once the Run84 candidate is installed). Completed instructions for Runs 73-83 are in the [archive](../archive/user-runs-completed.md). Completed instructions for Runs 73-82 are in the [archive](../archive/user-runs-completed.md).
