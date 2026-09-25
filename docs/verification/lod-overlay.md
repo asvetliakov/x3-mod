@@ -272,3 +272,16 @@ always-line per-pixel std 11.7 (was 26.6) and the plant's frame-to-frame luma rm
 narrowing were not captured (no lod-0 census frames; `cull_census_lod_switch state=off`): the flight report is the only
 evidence, and the user noticed nothing. The session still carried the shell's `X3M_TAA_THIN_REGION_SOURCE=vote` and
 `X3M_TAA_SENTINEL_STABILISER=0` exports.
+
+## 2026-09-25 selected packages, launch line, rebake policy (tooling, synthetic trees)
+
+Implements [lod-overlay-mods.md](../architecture/lod-overlay-mods.md) ("Implementation (2026-09-25)"). No Wine,
+no bake or census over a real tree; the bottle was only read by the launch check.
+
+| check | command | result |
+|---|---|---|
+| overlay, census and check tests (measured) | `PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_lod_overlay_batch verification.analysis.test_lod_batch_census verification.analysis.test_lod_overlay_check` | 68 OK (batch 55 = 49 + 6 new: derived copy contents/marker/sync/stale/rollback/remove, auto/none/refusals, restore, 2^31 refusal, trust-tool, budget; census 6; check 7: none/ok, orphaned/above/named and digest source changes, cost-free path, package clauses, user.reg parse, manage.py dry run, a game dir outside a bottle reads no registry) |
+| neighbouring modules (measured) | `... test_fog_families test_voice_decoder_launch test_launcher_stderr_tee test_lod_recipes test_bob1` | 89 OK, 1 skipped |
+| launcher modules (measured) | the 53 `test_*.py` that load `tools/manage.py` and capture stderr | 738 OK, 1 skipped, after splitting the `fog-families` wrapper with a pre-parser instead of `sys.argv` (the 19 errors of `test_fps_overlay`, `test_hdr_dither_launch`, `test_comparison_hotkeys` since 89f4b014 are gone) |
+| real bottle line (measured) | [`launch_line_cost.py`](../../verification/results/lod-overlay-mods/launch_line_cost.py), [`_out.txt`](../../verification/results/lod-overlay-mods/launch_line_cost_out.txt) | `lod overlay: ok (620 bodies in slots 05/06, 2.72 GB; sources unchanged; no package: ModName empty)`; 59.6 / 52.5 / 47.9 ms; opened 19 cats, 2 markers, user.reg, 0 dats |
+| launcher dry run (measured) | `python3 tools/manage.py launch --dry-run --bottle X3 --direct --camera chase <Run 84 A stand args>`; `... --dry-run --vanilla --bottle X3` | exit 0, stderr and JSON carry the line above; `--vanilla`: exit 0, no line, JSON `lod_overlay: null` |

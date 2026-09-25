@@ -1,0 +1,2 @@
+lod overlay: ok (620 bodies in slots 05/06, 2.72 GB; sources unchanged; no package: ModName empty)
+overlay_line: 59.6, 52.5, 47.9 ms over 3 runs; files opened per run 22 (.dat 0, .cat 19, markers 2, user.reg 1)

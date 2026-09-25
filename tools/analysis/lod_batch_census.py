@@ -489,8 +489,8 @@ def census_body(assets, textures, entry, opts):
 _WORKER = {}
 
 
-def _init(game, opts):
-    assets, skipped = lod_overlay.original_assets(Path(game))
+def _init(game, opts, mods=()):
+    assets, skipped = lod_overlay.original_assets(Path(game), mods=mods)
     _WORKER.update(assets=assets, textures=SizedTextures(assets), opts=opts, skipped=skipped)
 
 
@@ -521,12 +521,23 @@ def text_body_keys(assets):
                   and not k.startswith(('objects/cut/', 'addon/objects/cut/')))
 
 
-def run(game, opts, jobs=1, limit=None, only=None, include_text=False):
+def package_keys(assets, keys):
+    """With a selected package (Assets mods=[...]) its members sit under addon/<key>, which the resolver
+    (Assets.candidates) prefers over the numbered <key>: drop the numbered key of a stem the package holds in
+    either body form, so each stem gives one row (the package's)."""
+    held = {k[len('addon/'):-4] for k in assets.entries if k.startswith('addon/objects/')
+            and k.endswith(('.bob', '.bod'))}
+    return [k for k in keys if k.startswith('addon/') or k[:-4] not in held]
+
+
+def run(game, opts, jobs=1, limit=None, only=None, include_text=False, mods=()):
     """(rows, skipped marker sources) over every winning binary body (and, with include_text, the
     winning text bodies, compiled by bob1.parse_text); `only` restricts to a set of body keys
-    (body_key(name))."""
-    assets, skipped = lod_overlay.original_assets(Path(game))
+    (body_key(name)); mods are selected packages read as the top layers (lod_overlay --mod)."""
+    assets, skipped = lod_overlay.original_assets(Path(game), mods=mods)
     keys = body_keys(assets) + (text_body_keys(assets) if include_text else [])
+    if mods:
+        keys = package_keys(assets, keys)
     if only is not None:
         keys = [k for k in keys if body_key(k) in only]
     keys = keys[:limit]
@@ -534,7 +545,7 @@ def run(game, opts, jobs=1, limit=None, only=None, include_text=False):
         _WORKER.update(assets=assets, textures=SizedTextures(assets), opts=opts, skipped=skipped)
         rows = [_work(k) for k in keys]
     else:
-        with multiprocessing.get_context('spawn').Pool(jobs, _init, (str(game), opts)) as pool:
+        with multiprocessing.get_context('spawn').Pool(jobs, _init, (str(game), opts, [str(m) for m in mods])) as pool:
             rows = pool.map(_work, keys, chunksize=4)
     rows = [r for r in rows if 'skip' not in r]
     for r in rows:

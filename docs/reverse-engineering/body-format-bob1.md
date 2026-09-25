@@ -379,12 +379,15 @@ One stem exercises rule 3: `objects\effects\engines\fx_engine_boron_m3` is `.pbd
 (inferred from the code; not observed in game).
 
 **For the overlay builder.** Write the merged body as `objects\<name>.pbb` into a new
-**`addon\05.cat`/`05.dat`**: numbering must stay contiguous (the mount loop stops at
-the first gap), 05 is the next free number, and it becomes the highest non-mod slot, so
+**`addon\NN.cat`/`NN.dat`** where NN is the next free number, computed by
+`lod_overlay.next_slot` (05 on vanilla AP; install-fleet4 took 05-06): numbering must stay
+contiguous (the mount loop stops at the first gap), and the slot becomes the highest non-mod slot, so
 it overrides the shipped body whatever extension that uses. Do not also ship
 `<name>.bod`/`-Lnnn` variants in the same or a higher layer. A loose
 `objects\…\<name>.pbb` in the game folder overrides every catalogue (a development
-shortcut), and a selected `addon\mods` catalogue would override `addon\05`.
+shortcut), and a selected `addon\mods` catalogue overrides every numbered slot; its
+merged bodies therefore go into a derived package copy `addon\mods\<name>-x3m-lod.cat`
+selected in its place ([lod-overlay-mods.md](../architecture/lod-overlay-mods.md)).
 `sector_fog_census.Assets` agrees on the layer order (loose > later catalogue) but
 does not apply the in-layer extension rank (`logical()` rejects mixed formats).
 

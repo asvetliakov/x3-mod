@@ -289,16 +289,19 @@ body explicitly (`verification/results/bob1-format/bob1_module_roundtrip.py`).
 copies the coarsest LOD (points, part flags, per-group 7-int records and the 10
 part ints copied, nothing recomputed), collapses each part's groups into an
 opaque and an alpha group (collapse below), and places it as a new record
-(placement below). The output is `addon/NN.cat`/`.dat` with `NN` one past the highest installed addon
-slot (`addon/05` today; `--slot` must equal it unless `--force-slot`). The
+(placement below). The output is `addon/NN.cat`/`.dat` with `NN` the next contiguous free addon
+number (`next_slot`; `addon/07` with install-fleet4 in 05-06); a batch reuses the previous overlay's slots
+when they form the top of the numbering, else takes the next free ones (`--slot` must equal it unless
+`--force-slot`). The
 engine's resolver is now traced ([body-format-bob1.md
 §7](../reverse-engineering/body-format-bob1.md#7-which-file-wins-extension-and-archive-precedence)):
 a loose file wins, otherwise the highest-numbered catalogue holding the name
 under any body extension, with extension order applying only within that layer.
 So the new slot overrides the shipped member without any mod selection; the
 member keeps the winning member's exact archive path, and a body whose winning
-resource is loose is refused. `addon/mods/` is not used because a mod package is
-searched only when selected in the launcher.
+resource is loose is refused. `addon/mods/` is used only for the derived copy of a
+selected package (`<name>-x3m-lod.cat/.dat`, `--mod`), because a selected package outranks every
+numbered slot ([lod-overlay-mods.md](lod-overlay-mods.md)).
 
 **Dat size and multiple slots (2026-09-24).** The engine opens a member with
 `fopen` + `fseek(long)` ([loading-orchestration.md](../reverse-engineering/loading-orchestration.md)

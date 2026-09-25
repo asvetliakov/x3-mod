@@ -307,15 +307,20 @@ def write_csv(result, path):
         writer.writerows(rows)
 
 
+def catalogue_index(dat_name, sizes):
+    """Encoded CAT bytes for (archive path, size) pairs in DAT order: the rolling XOR (0xdb + i) of
+    read_catalogue's decode."""
+    index = (dat_name + '\n' + ''.join(f'{name} {size}\n' for name, size in sizes)).encode()
+    return bytes(v ^ ((0xdb + i) & 255) for i, v in enumerate(index))
+
+
 def write_catalogue(cat, members):
     """Write a CAT/DAT pair: members are (archive path, stored bytes) in DAT order.
 
     The inverse of read_catalogue plus the 0x33 DAT XOR; stored bytes are written
     as given (callers gzip them when the member is a packed resource)."""
     cat.parent.mkdir(parents=True, exist_ok=True)
-    index = (cat.with_suffix('.dat').name + '\n' + ''.join(
-        f'{name} {len(data)}\n' for name, data in members)).encode()
-    cat.write_bytes(bytes(v ^ ((0xdb + i) & 255) for i, v in enumerate(index)))
+    cat.write_bytes(catalogue_index(cat.with_suffix('.dat').name, [(name, len(data)) for name, data in members]))
     cat.with_suffix('.dat').write_bytes(bytes(v ^ 0x33 for _, data in members for v in data))
 
 

@@ -262,7 +262,7 @@ non-zero start UV offset, an animated group left out of the atlas), texture_gene
 Materials row, drawn at run time), pil_missing (a jpg/tga texture without
 Pillow), and the lod_atlas reasons. Mixed effects and the second UV set are handled, not refused
 (lod_atlas notes). A change to lod_atlas.py or this file changes tool_sha256, so the next --sync
-rebuilds every body. Per-body recipes (lod_recipes.py, not in TOOL_FILES) choose the source record of C and
+rebuilds every body unless --trust-tool (below). Per-body recipes (lod_recipes.py, not in TOOL_FILES) choose the source record of C and
 apply geometry ops after a geometric self-check (the Terran solar-plant louvre weld,
 docs/architecture/lattice-baker-fix.md); the census row carries recipe or recipe_skipped, the recipe digest
 joins that body's inputs_sha256, so a recipe-only change rebuilds only the bodies with a recipe.
@@ -294,8 +294,42 @@ rebuilds only the bodies whose inputs changed (inputs_sha256 over the decoded bo
 texture its tiles read) or that are new, and copies the other bodies' members (body + atlases,
 verified by sha256) from any live slot of the previous overlay; the previous overlay must have been built
 with the same rule, width, atlas options and tool sources (tool_sha256 over lod_atlas.py,
-lod_overlay.py, bob1.py and lod_batch_census.py in the settings). addon/mods/*.cat
-are detected and a warning gives how many overlay bodies a selected mod would override.
+lod_overlay.py, bob1.py and lod_batch_census.py in the settings); --trust-tool reuses bodies whose
+settings differ only in tool_sha256 (a tool edit that does not change the bake), each body still keyed
+by its inputs_sha256. --budget-bytes N (opt-in, default none) keeps the baked or reused bodies of the
+numbered overlay and the derived package in priority order (ships and stations before other, then draws
+saved per member byte) while their members fit in N bytes, and refuses the rest with reason budget
+(record budget_bytes, a summary note).
+
+Selected package (--mod NAME|auto|none, default auto; docs/architecture/lod-overlay-mods.md): the engine
+mounts one addon/mods/NAME.cat, chosen in the start menu, into a slot above every numbered catalogue, so no
+numbered overlay slot can win over it. auto reads HKCU\Software\EGOSOFT\X3AP\ModName (the bottle's
+user.reg found from --game, or --registry; winreg on native Windows); empty means no package; a
+NAME-x3m-lod selection maps back to NAME through its marker. With a package the batch runs a second census
+with the package as the top layer (Assets mods=[...]) over the package-affected bodies: every body stem the
+package holds plus every eligible numbered-overlay body one of whose texture_sources the package overrides.
+Those are baked in the package view and written into the derived package
+addon/mods/NAME-x3m-lod.cat/.dat: every package member copied verbatim in DAT order, minus the body members
+(.pbb .bob .pbd .bod) of the stems replaced, plus the merged bodies with their atlases, plus the original
+numbered body of a texture-overridden body the package view could not bake (so our merged ladder with the
+old texture's atlas does not draw while the package is selected). A package cannot be split (only one is
+mounted): a copy whose dat would exceed 2^31 - 1 is refused with nothing written. The numbered overlay is
+unchanged (byte-identical to --mod none). The user selects NAME-x3m-lod in the start menu. The marker
+addon/mods/NAME-x3m-lod.x3m-lod.json records package, package_fingerprint (source cat sha256, dat
+size:mtime or sha256 under --hash-archives), package_members, removed_members, restored and the usual
+overlay_sha256 / bodies / batch settings; its status (lod_overlay_check.package_status) is valid, stale (the
+source package changed: a plain run refuses, --sync or --replace rebuilds), orphaned (the copy no longer
+matches: never read, its marker removed on --install) or source_missing (the mod was uninstalled: removed on
+--install unless --keep-package-copy). --remove-package NAME deletes a copy. --sync reuses package-view
+bodies from the previous copy (or a numbered slot) by inputs_sha256. The derived copy is never a body source.
+With --mod none every other addon/mods/*.cat gets today's warning (how many overlay bodies it overrides
+while selected).
+
+Launch check (--check; lod_overlay_check.py, standard library only, also the `lod overlay:` line of
+tools/manage.py launch): none / ok / stale / orphaned / source_missing from the markers, stat of the
+catalogues, the small cat hashes and ModName; never a dat. Markers written since 2026-09-25 carry
+originals_fingerprints (game-relative path -> size:mtime of every original catalogue file) so the line names
+the changed file, and overlay_dat_bytes.
 The before/after archive check is a cat sha256 plus dat size and mtime by default
 (--hash-archives hashes every dat; mod trees are gigabytes); the marker records the mode.
 The batch writes a record JSON (--record, default x3m-lod-batch.json under --out, beside the marker on --install, else in the
@@ -313,6 +347,8 @@ the affected bodies, the record's light_bleed.bodies), and a *-bodies.txt log wi
   python3 tools/analysis/lod_overlay.py --out /tmp/x3m-lod ships/argon/argon_TL=50 stations/others/military_outpost_middleb=100
   python3 tools/analysis/lod_overlay.py --batch --dry-run --only verification/results/lod-overlay-batch/sectors.txt --out /tmp/x3m-batch
   python3 tools/analysis/lod_overlay.py --batch --sync --install
+  python3 tools/analysis/lod_overlay.py --batch --sync --install --mod MyMod --trust-tool
+  python3 tools/analysis/lod_overlay.py --check
 """
 import argparse
 import contextlib
@@ -333,6 +369,9 @@ import bob1  # noqa: E402
 import lod_recipes  # noqa: E402
 from inspect_x3 import read_catalogue  # noqa: E402
 from sector_fog_census import Assets, unpack, write_catalogue  # noqa: E402
+import lod_overlay_check  # noqa: E402  (standard library only: the launch-time check and its archive helpers)
+from lod_overlay_check import (fingerprint_files, hash_files, original_archives, originals_digest,  # noqa: E402
+                               originals_fingerprints, slot_set)
 
 MARKER_SUFFIX = '.x3m-lod.json'
 REPLACED_SUFFIX = '.x3m-replaced'
@@ -353,6 +392,7 @@ REFERENCE = (1280, 768)     # lod-selection.md reference frame of the threshold 
 LIVE_MARKERS = ('valid', 'legacy')
 OURS_MARKERS = LIVE_MARKERS + ('retired', 'unreadable')   # catalogues never read as body sources
 OUR_SLOTS = LIVE_MARKERS + ('retired',)     # slots left out of the originals hash
+XOR33 = bytes(v ^ 0x33 for v in range(256))    # DAT member byte encoding (bytes.translate)
 DAT_LIMIT = 2 ** 31 - 1     # the engine opens a member with fopen + fseek(long) (0x004e8827): offset + size must fit
 MAX_DAT_BYTES = 2_000_000_000   # default --max-dat-bytes; the largest vanilla dat (02.dat) is 2,114,263,875 B
 
@@ -390,21 +430,6 @@ def running_game():
         sys.path.insert(0, probe)
     from game_guard import game_running
     return game_running()
-
-
-def slot_set(slots):
-    """None, one slot number or an iterable of them -> a set of slot numbers."""
-    if slots is None:
-        return set()
-    return {int(slots)} if isinstance(slots, int) else {int(s) for s in slots}
-
-
-def original_archives(game, exclude_slot=None):
-    """Every installed NN.cat/.dat and addon/NN.cat/.dat pair except the addon slots in exclude_slot (one
-    number or an iterable: all slots of a multi-slot overlay plus retired slots)."""
-    cats = sorted(game.glob('[0-9][0-9].cat')) + sorted((game / 'addon').glob('[0-9][0-9].cat'))
-    skip = {game / 'addon' / f'{s:02d}.cat' for s in slot_set(exclude_slot)}
-    return [p for cat in cats if cat not in skip for p in (cat, cat.with_suffix('.dat'))]
 
 
 def our_slots(markers):
@@ -473,10 +498,6 @@ def slot_plan(prev_slots, nxt, count, start):
     replaced = [s for s in prev if s in new]
     retired = [s for s in prev if s not in new and s not in removed]
     return new, replaced, retired, removed
-
-
-def originals_digest(hashes):
-    return hashlib.sha256(json.dumps(sorted(hashes.items())).encode()).hexdigest()
 
 
 def installed_markers(game):
@@ -548,10 +569,12 @@ def legacy_verified(cat, manifest):
     return True
 
 
-def original_assets(game, markers=None):
+def original_assets(game, markers=None, mods=()):
     """(Assets, skipped sources): every catalogue with a live, retired or unreadable marker beside
-    it is left out; an orphaned marker's catalogue (a mod overwrote the slot) is read as a source."""
-    assets = Assets(Path(game))
+    it is left out; an orphaned marker's catalogue (a mod overwrote the slot) is read as a source. mods are
+    selected addon/mods packages layered on top (the package view of --mod); a derived package copy is ours
+    and is never passed here."""
+    assets = Assets(Path(game), mods=[Path(m) for m in mods])
     markers = installed_markers(game) if markers is None else markers
     ours = {m['path'].with_name(f'{m["slot"]:02d}.cat') for m in markers if m['slot'] and m['status'] in OURS_MARKERS}
     ours |= {m['path'].with_name(m['path'].name[:-len(MARKER_SUFFIX)] + '.cat') for m in markers
@@ -566,30 +589,6 @@ def original_assets(game, markers=None):
             else:
                 del assets.entries[key]
     return assets, skipped
-
-
-def hash_files(paths):
-    out = {}
-    for p in paths:
-        h = hashlib.sha256()
-        with p.open('rb') as f:
-            for block in iter(lambda: f.read(1 << 20), b''):
-                h.update(block)
-        out[str(p)] = h.hexdigest()
-    return out
-
-
-def fingerprint_files(paths, full=False):
-    """{path: fingerprint}: sha256 of every .cat (small) and, with full, of every .dat; otherwise
-    a .dat is 'size:<bytes>:mtime_ns:<ns>' (mod trees are gigabytes; --hash-archives hashes them)."""
-    out = {}
-    for p in paths:
-        if full or p.suffix.lower() == '.cat':
-            out.update(hash_files([p]))
-        else:
-            st = p.stat()
-            out[str(p)] = f'size:{st.st_size}:mtime_ns:{st.st_mtime_ns}'
-    return out
 
 
 def archive_digest(game, exclude_slot, mode):
@@ -1379,6 +1378,12 @@ def build_parser():
                                               ' contiguous free slot)')
     ap.add_argument('--force-slot', action='store_true', help='allow a --slot other than the next contiguous one')
     ap.add_argument('--dry-run', action='store_true', help='print the planned records; write nothing')
+    ap.add_argument('--check', action='store_true',
+                    help='print the launch-time `lod overlay:` line (lod_overlay_check.py: markers, catalogue stats,'
+                         ' small cat hashes, ModName; no dat read unless --hash-archives) and exit 0')
+    ap.add_argument('--registry', type=Path, metavar='USER_REG',
+                    help='user.reg to read HKCU\\Software\\EGOSOFT\\X3AP\\ModName from (default: the bottle\'s, found'
+                         ' from --game; native Windows: the registry)')
     ap.add_argument('--max-dat-bytes', type=int, default=MAX_DAT_BYTES, metavar='N',
                     help=f'largest overlay .dat (default {MAX_DAT_BYTES:,}); --batch splits a larger overlay over'
                          ' consecutive addon slots, each body with its atlases inside one archive; the single-body mode refuses. N above'
@@ -1442,6 +1447,25 @@ def build_parser():
                         ' (default: lod_batch_census.RADIUS_SOURCES present)')
     b.add_argument('--budget-mb', type=float, default=512.0,
                    help='batch: warn when a flown sector\'s resident atlas estimate exceeds this (default 512)')
+    b.add_argument('--mod', default='auto', metavar='NAME|auto|none',
+                   help='batch: the addon/mods package the start menu selects (module notes, "Selected package"):'
+                        ' auto (default) reads HKCU\\Software\\EGOSOFT\\X3AP\\ModName (the bottle\'s user.reg, see'
+                        ' --registry; empty = none); NAME bakes addon/mods/NAME.cat as the top layer into the derived'
+                        ' package addon/mods/NAME-x3m-lod.cat/.dat (a NAME-x3m-lod selection maps back to NAME through'
+                        ' its marker); none bakes the numbered overlay only and warns about every package')
+    b.add_argument('--remove-package', metavar='NAME',
+                   help='delete the derived package addon/mods/NAME-x3m-lod.cat/.dat and its marker (NAME or'
+                        ' NAME-x3m-lod), then exit; re-select NAME in the start menu')
+    b.add_argument('--keep-package-copy', action='store_true',
+                   help='batch --install: keep a derived package whose source package is gone (source_missing)'
+                        ' instead of removing it')
+    b.add_argument('--trust-tool', action='store_true',
+                   help='batch --sync: reuse bodies although the tool sources changed (settings.tool_sha256 differs);'
+                        ' every other setting and each body\'s inputs_sha256 must still match')
+    b.add_argument('--budget-bytes', type=int, metavar='N',
+                   help='batch: keep overlay bodies (numbered and derived package) in priority order (ships and'
+                        ' stations before other, then draws saved per byte) while their merged members fit in N'
+                        ' bytes; the rest are refused with reason budget (default: no budget)')
     b.add_argument('--record', type=Path,
                    help='batch: record JSON path (default x3m-lod-batch.json under --out or beside the marker on --install, else in the working'
                         ' directory); *-summary.txt and *-bodies.txt are written beside it')
@@ -1452,6 +1476,17 @@ def main(argv=None):
     ap = build_parser()
     a = ap.parse_args(join_collapse(sys.argv[1:] if argv is None else argv))
     a.collapse, a.area_percent = a.collapse
+    if a.check:
+        print(lod_overlay_check.overlay_line(a.game, a.registry, a.hash_archives))
+        return 0
+    if a.remove_package:
+        return remove_package(a, a.game.resolve())
+    if not a.batch and (a.mod != 'auto' or a.trust_tool or a.budget_bytes is not None or a.keep_package_copy):
+        ap.error('--mod, --trust-tool, --budget-bytes and --keep-package-copy need --batch')
+    if a.trust_tool and not a.sync:
+        ap.error('--trust-tool needs --sync (it only affects the reuse of the previous overlay)')
+    if a.budget_bytes is not None and a.budget_bytes < 1:
+        ap.error('--budget-bytes must be >= 1')
     if a.batch and a.bodies:
         ap.error('--batch takes no body names; restrict the set with --only FILE')
     if not a.batch and not a.bodies:
@@ -1750,6 +1785,7 @@ def write_overlay(a, game, layout, before, written, exclude, manifest_extra=None
     for slot, members, _ in layout:        # every archive checked before the first byte is written
         check_dat_limit(slot, members)
     group = [s for s, _, _ in layout]
+    origin_fp = originals_fingerprints(game, original_archives(game, exclude))   # names a changed file at launch
     for (slot, members, bodies), files in zip(layout, written):
         write_catalogue(files[0], members)
         overlay = hash_files(files[:2])
@@ -1760,8 +1796,9 @@ def write_overlay(a, game, layout, before, written, exclude, manifest_extra=None
                         **({'atlas_options': dict(a.atlas_opts, sizes=list(a.atlas_opts['sizes']))}
                            if a.collapse == 'atlas' else {}),
                         bodies=bodies, originals=len(before), originals_sha256=originals_digest(before),
-                        originals_mode=a.hash_mode,
+                        originals_mode=a.hash_mode, originals_fingerprints=origin_fp,
                         overlay_sha256={'cat': overlay[str(files[0])], 'dat': overlay[str(files[1])]},
+                        overlay_dat_bytes=files[1].stat().st_size,
                         **(manifest_extra or {}))
         files[2].write_text(json.dumps(manifest, indent=1) + '\n')
     for rslot, files in zip(retire, retired_files):
@@ -1861,8 +1898,8 @@ def bleed_fields(atlas):
 _BAKE = {}
 
 
-def _bake_init(game, atlas_opts):
-    _BAKE['assets'] = original_assets(Path(game))[0]
+def _bake_init(game, atlas_opts, mods=()):
+    _BAKE['assets'] = original_assets(Path(game), mods=mods)[0]
     _BAKE['atlas_opts'] = atlas_opts
 
 
@@ -1895,61 +1932,312 @@ def bake_reason(message):
     return 'bake_other' if code == 'atlas_other' else code
 
 
-def reuse_previous(prev, eligible, settings, notes):
-    """{name: plan} of the eligible bodies whose members can be copied from the previous overlay:
-    same batch settings, same inputs_sha256, every member present with its recorded sha256. prev is
-    dict(slots, markers) of the previous overlay's live slots; a member is looked up in the body's own slot
-    first, then in every other live slot of that overlay (an orphaned slot is not among them: its bodies
-    are rebuilt)."""
-    out = {}
-    names = '/'.join(f'{s:02d}' for s in prev['slots'])
-    if any((m['manifest'].get('batch') or {}).get('settings') != settings for m in prev['markers']):
-        notes.append(f'--sync: the previous overlay addon/{names} was built with different settings'
-                     ' (rule, width or atlas options); every body is rebuilt')
-        return out
-    entries, dats = {}, {}                 # slot -> {path: entry}; slot -> open dat
-    for m in prev['markers']:
-        cat = m['path'].with_name(f'{m["slot"]:02d}.cat')
-        try:
-            entries[m['slot']] = {e['path']: e for e in read_catalogue(cat)}
-        except (ValueError, OSError) as exc:
-            notes.append(f'--sync: cannot read addon/{m["slot"]:02d}.cat ({exc}); its bodies are rebuilt')
-    old = {b['name'].lower(): (b, m['slot']) for m in prev['markers'] if m['slot'] in entries
-           for b in m['manifest'].get('bodies', ())}
+def settings_match(recorded, settings, trust_tool=False):
+    """(match, trusted): the recorded batch settings equal these, or, with --trust-tool, differ only in
+    tool_sha256 (trusted)."""
+    if recorded == settings:
+        return True, False
+    if trust_tool and isinstance(recorded, dict) and 'tool_sha256' in recorded:
+        strip = lambda d: {k: v for k, v in d.items() if k != 'tool_sha256'}
+        if strip(recorded) == strip(settings):
+            return True, True
+    return False, False
 
-    def read(slot, e):
-        if slot not in dats:
-            dats[slot] = stack.enter_context(
-                prev['markers'][0]['path'].with_name(f'{slot:02d}.dat').open('rb'))
-        dats[slot].seek(e['offset'])
-        return bytes(v ^ 0x33 for v in dats[slot].read(e['size']))
+
+def source_label(key):
+    return f'addon/{key:02d}' if isinstance(key, int) else f'addon/mods/{key}'
+
+
+def reuse_previous(prev, eligible, settings, notes, trust_tool=False, extra=()):
+    """{name: plan} of the eligible bodies whose members can be copied from the previous overlay:
+    same batch settings (--trust-tool: except tool_sha256), same inputs_sha256, every member present with its
+    recorded sha256. prev is dict(slots, markers) of the previous overlay's live slots (or None); extra are
+    further (key, cat, manifest) sources, the derived package copy of --mod. A member is looked up in the body's
+    own source first, then in every other source (an orphaned slot is not among them: its bodies are rebuilt)."""
+    out = {}
+    sources = []                           # (key: slot number or derived package name, cat, manifest)
+    if prev:
+        names = '/'.join(f'{s:02d}' for s in prev['slots'])
+        checks = [settings_match((m['manifest'].get('batch') or {}).get('settings'), settings, trust_tool)
+                  for m in prev['markers']]
+        if not all(ok for ok, _ in checks):
+            notes.append(f'--sync: the previous overlay addon/{names} was built with different settings'
+                         ' (rule, width or atlas options' + ('' if trust_tool else ', or tool sources: --trust-tool'
+                                                             ' reuses across a tool change') + '); every body is rebuilt')
+        else:
+            if any(t for _, t in checks):
+                notes.append(f'--trust-tool: the previous overlay addon/{names} was built with other tool sources'
+                             ' (tool_sha256 differs); its bodies are reused where their inputs_sha256 match')
+            sources += [(m['slot'], m['path'].with_name(f'{m["slot"]:02d}.cat'), m['manifest']) for m in prev['markers']]
+    for key, cat, manifest in extra:
+        ok, trusted = settings_match((manifest.get('batch') or {}).get('settings'), settings, trust_tool)
+        if not ok:
+            notes.append(f'--sync: {source_label(key)} was built with different settings; its bodies are rebuilt')
+            continue
+        if trusted:
+            notes.append(f'--trust-tool: {source_label(key)} was built with other tool sources; reused where the'
+                         ' inputs match')
+        sources.append((key, cat, manifest))
+    entries, dats, cats = {}, {}, {}       # key -> {path: entry}; key -> open dat; key -> cat path
+    for key, cat, _ in sources:
+        try:
+            entries[key] = {e['path']: e for e in read_catalogue(cat)}
+            cats[key] = cat
+        except (ValueError, OSError) as exc:
+            notes.append(f'--sync: cannot read {source_label(key)}.cat ({exc}); its bodies are rebuilt')
+    old = {}
+    for key, _, manifest in sources:
+        if key in entries:
+            for b in manifest.get('bodies', ()):
+                old.setdefault(b['name'].lower(), []).append((b, key))
+
+    def read(key, e):
+        if key not in dats:
+            dats[key] = stack.enter_context(cats[key].with_suffix('.dat').open('rb'))
+        dats[key].seek(e['offset'])
+        return dats[key].read(e['size']).translate(XOR33)
 
     with contextlib.ExitStack() as stack:
         for r in eligible:
-            b, home = old.get(r['name'].lower(), (None, None))
-            if not b or not b.get('inputs_sha256') or b['inputs_sha256'] != r.get('inputs_sha256'):
-                continue
-            got, came = [], None
-            for mem in b.get('members', ()):
-                for slot in [home] + [s for s in entries if s != home]:
-                    e = entries[slot].get(mem['path'])
-                    if e is not None and e['size'] == mem['bytes']:
-                        data = read(slot, e)
-                        if hashlib.sha256(data).hexdigest() == mem['sha256']:
-                            got.append((mem['path'], data))
-                            came = slot if came is None else came
-                            break
+            for b, home in old.get(r['name'].lower(), ()):
+                if not b.get('inputs_sha256') or b['inputs_sha256'] != r.get('inputs_sha256'):
+                    continue
+                got, came = [], None
+                for mem in b.get('members', ()):
+                    for key in [home] + [k for k in entries if k != home]:
+                        e = entries[key].get(mem['path'])
+                        if e is not None and e['size'] == mem['bytes']:
+                            data = read(key, e)
+                            if hashlib.sha256(data).hexdigest() == mem['sha256']:
+                                got.append((mem['path'], data))
+                                came = key if came is None else came
+                                break
+                    else:
+                        break
                 else:
-                    break
-            else:
-                if got:
-                    out[r['name']] = dict(name=r['name'], member=b['member'], source=b['source'], members=got,
-                                          manifest=dict(b, reused_from=came), draws=b.get('draws'),
-                                          atlas=b.get('atlas'), reused=True, trailing=b.get('trailing_bytes', 0),
-                                          guard_waived=b.get('guard_waived', False), seconds=0.0,
-                                          text=f'{r["name"]}: reused from addon/{came:02d} ({len(got)} members,'
-                                               f' inputs {r["inputs_sha256"][:16]})\n')
+                    if got:
+                        out[r['name']] = dict(name=r['name'], member=b['member'], source=b['source'], members=got,
+                                              manifest=dict(b, reused_from=came), draws=b.get('draws'),
+                                              atlas=b.get('atlas'), reused=True, trailing=b.get('trailing_bytes', 0),
+                                              guard_waived=b.get('guard_waived', False), seconds=0.0,
+                                              text=f'{r["name"]}: reused from {source_label(came)} ({len(got)} members,'
+                                                   f' inputs {r["inputs_sha256"][:16]})\n')
+                        break
     return out
+
+
+def select_package(a, game):
+    """(package name or None, notes) for --mod: none; auto = ModName from the registry (empty: none); NAME. A
+    derived NAME-x3m-lod maps back to its source through its marker. An explicit NAME that cannot be used
+    refuses; auto falls back to no package with a note."""
+    notes = []
+    if a.mod == 'none':
+        return None, notes
+    explicit = a.mod != 'auto'
+    if explicit:
+        name = a.mod
+    else:
+        name, where = lod_overlay_check.read_mod_name(a.registry, game)
+        if name is None:
+            notes.append(f'--mod auto: ModName unknown ({where}); no package baked')
+            return None, notes
+        if not name:
+            return None, notes
+        notes.append(f'--mod auto: ModName {name} ({where})')
+
+    def refuse(msg):
+        if explicit:
+            raise SystemExit(f'--mod {a.mod}: {msg}')
+        notes.append(f'--mod auto: {msg}; no package baked')
+        return None, notes
+    if name.endswith(lod_overlay_check.PACKAGE_SUFFIX):
+        marker = lod_overlay_check.package_files(game, name)[2]
+        try:
+            src = json.loads(marker.read_text())['package']
+        except (OSError, ValueError, KeyError, TypeError):
+            return refuse(f'{name} looks like a derived package but has no readable x3m-lod marker (not ours)')
+        notes.append(f'{name} is the derived package of {src}; baking {src}')
+        name = src
+    if not lod_overlay_check.valid_package_name(name):
+        return refuse(f'package name {name!r} is not an ASCII stem without dots or path separators')
+    cat = game / 'addon' / 'mods' / f'{name}.cat'
+    if not cat.is_file() or not cat.with_suffix('.dat').is_file():
+        return refuse(f'addon/mods/{name}.cat/.dat not found')
+    return name, notes
+
+
+def resource_stem(path):
+    """Resource identity of a member path for the texture-override test: lower case, no addon/, no extension
+    (a package texture under another extension counts as an override: conservative)."""
+    p = path.replace('\\', '/').lower().removeprefix('addon/')
+    head, _, tail = p.rpartition('/')
+    return (head + '/' if head else '') + (tail.rsplit('.', 1)[0] if '.' in tail else tail)
+
+
+def package_census(a, game, opts, pkg_cat, eligible, only):
+    """(rows, info) of the package view: the census with the package as the top layer over the package-affected
+    bodies: every body stem the package holds, plus every eligible numbered-overlay body one of whose
+    texture_sources the package overrides."""
+    import lod_batch_census as census
+    entries = read_catalogue(pkg_cat)
+    held = {census.body_key(e['path']) for e in entries if e['path'].lower().endswith(bob1.BODY_EXTENSIONS)}
+    res = {resource_stem(e['path']) for e in entries}
+    texture = sorted(r['name'] for r in eligible if census.body_key(r['name']) not in held
+                     and any(resource_stem(t) in res for t in r.get('texture_sources') or ()))
+    keys = held | {census.body_key(n) for n in texture}
+    if only is not None:
+        keys &= only
+    rows, _ = census.run(game, opts, a.jobs, only=keys, include_text=not a.binary_only, mods=[pkg_cat])
+    rows.sort(key=lambda r: r['name'].lower())
+    for r in rows:
+        r['package_reason'] = 'held' if census.body_key(r['name']) in held else 'texture'
+    return rows, dict(members=len(entries), held=len(held), texture=texture, affected=len(keys))
+
+
+def budget_priority(row, nbytes):
+    """--budget-bytes order: ships and stations before other, then draws saved (record 0 -> C) per byte."""
+    return (0 if row.get('cat') in ('ship', 'station') else 1, -(row.get('saved_r0') or 0) / max(nbytes, 1),
+            row['name'].lower())
+
+
+def apply_budget(limit, items):
+    """items: (row, bytes); keeps rows in budget_priority order while the running total fits in limit (a row that
+    does not fit is skipped and the next tried) and refuses the rest with reason budget. Returns (kept bytes,
+    refused names)."""
+    used, refused = 0, []
+    for row, n in sorted(items, key=lambda x: budget_priority(x[0], x[1])):
+        if used + n <= limit:
+            used += n
+        else:
+            row['refuse'].append('budget')
+            row['eligible'] = False
+            refused.append(row['name'])
+    return used, refused
+
+
+def package_layout(pkg_cat, derived, pkg_plans, restored):
+    """The derived package's members: every package member in DAT order minus the body members (.pbb .bob .pbd
+    .bod) of the stems we replace, then the merged bodies with their atlases, then the restored original bodies.
+    Refuses (nothing written) a duplicate name or a dat above 2^31 - 1: a package cannot be split."""
+    import lod_batch_census as census
+    entries = read_catalogue(pkg_cat)
+    replaced = {census.body_key(p['name']) for p in pkg_plans} | {census.body_key(r['name']) for r in restored}
+    is_replaced = lambda e: e['path'].lower().endswith(bob1.BODY_EXTENSIONS) and census.body_key(e['path']) in replaced
+    kept = [e for e in entries if not is_replaced(e)]
+    removed = [e['path'] for e in entries if is_replaced(e)]
+    added = [m for p in pkg_plans for m in p['members']] + [(r['member'], r['stored']) for r in restored]
+    names = [e['path'].lower() for e in kept] + [m.lower() for m, _ in added]
+    if len(set(names)) != len(names):
+        raise SystemExit(f'addon/mods/{derived}: a merged member name is already in the package; refusing, nothing'
+                         ' written')
+    total = sum(e['size'] for e in kept) + dat_bytes(added)
+    if total > DAT_LIMIT:
+        raise SystemExit(f'addon/mods/{derived}.dat would be {total} bytes, above 2^31 - 1 = {DAT_LIMIT} (the engine'
+                         ' seeks catalogue members with a signed 32-bit offset, and only one package is mounted, so it'
+                         ' cannot be split); refusing, nothing written')
+    return dict(entries=len(entries), kept=kept, removed=removed, added=added, bytes=total)
+
+
+def write_package(pkg_cat, cat, layout):
+    """Stream the derived CAT/DAT: kept package members copied as stored (the 0x33 XOR is per byte, so the
+    encoded bytes are position independent), then the added members encoded."""
+    from sector_fog_census import catalogue_index
+    cat.parent.mkdir(parents=True, exist_ok=True)
+    sizes = [(e['path'], e['size']) for e in layout['kept']] + [(m, len(d)) for m, d in layout['added']]
+    cat.write_bytes(catalogue_index(cat.with_suffix('.dat').name, sizes))
+    with pkg_cat.with_suffix('.dat').open('rb') as src, cat.with_suffix('.dat').open('wb') as dst:
+        for e in layout['kept']:
+            src.seek(e['offset'])
+            left = e['size']
+            while left:
+                chunk = src.read(min(left, 1 << 22))
+                if not chunk:
+                    raise OSError(f'{pkg_cat.with_suffix(".dat")}: truncated at {e["path"]}')
+                dst.write(chunk)
+                left -= len(chunk)
+        for _, data in layout['added']:
+            dst.write(bytes(data).translate(XOR33))
+
+
+def commit_package(a, root, pkg_cat, derived, layout, manifest, pkg_before, previous):
+    """Write addon/mods/<derived>.cat/.dat + marker under root. On --install an existing copy is moved aside first
+    and put back on any failure: ours (valid) is superseded; stale needs --sync or --replace; a foreign file at
+    our name (orphaned, unreadable or no marker) needs --replace. Returns (targets, restore, finish)."""
+    targets = list(lod_overlay_check.package_files(root, derived))
+    existing = [t for t in targets if t.exists()]
+    if existing and not a.install:
+        raise SystemExit(f'refusing to overwrite existing addon/mods/{derived} outputs under {root}')
+    if existing:
+        status = previous['status'] if previous else None
+        if status in (None, 'orphaned', 'unreadable') and not a.replace:
+            raise SystemExit(f'addon/mods/{derived}.cat exists and is not a valid x3m-lod package copy'
+                             f' ({status or "no marker"}); pass --replace to overwrite it')
+        if status == 'stale' and not (a.sync or a.replace):
+            raise SystemExit(f'addon/mods/{derived} is stale ({previous["reason"]}); pass --sync or --replace')
+    asides = [(t, t.with_name(t.name + REPLACED_SUFFIX)) for t in existing]
+    for _, aside in asides:
+        if aside.exists():
+            raise SystemExit(f'{aside} exists (an interrupted --replace?); resolve it by hand')
+    moved, state = [], {'writing': False}
+
+    def restore():
+        for t, aside in reversed(moved):
+            if aside.exists():
+                os.replace(aside, t)
+        if state['writing']:
+            back = {t for t, _ in moved}
+            for t in targets:
+                if t not in back:
+                    t.unlink(missing_ok=True)
+
+    def finish():
+        for _, aside in moved:
+            aside.unlink(missing_ok=True)
+    try:
+        for t, aside in asides:
+            t.rename(aside)
+            moved.append((t, aside))
+        state['writing'] = True
+        write_package(pkg_cat, targets[0], layout)
+        h = hash_files(targets[:2])
+        manifest.update(overlay_sha256={'cat': h[str(targets[0])], 'dat': h[str(targets[1])]},
+                        overlay_dat_bytes=targets[1].stat().st_size)
+        targets[2].write_text(json.dumps(manifest, indent=1) + '\n')
+        if lod_overlay_check.package_fingerprint(pkg_cat, a.hash_archives) != pkg_before:
+            raise SystemExit(f'addon/mods/{pkg_cat.name} changed during the run; outputs removed')
+    except BaseException:
+        restore()
+        raise
+    return targets, restore, finish
+
+
+def remove_package(a, game):
+    """--remove-package NAME: delete our derived copy (all three files; an orphaned copy is not ours, so only its
+    marker goes)."""
+    name = a.remove_package
+    derived = name if name.endswith(lod_overlay_check.PACKAGE_SUFFIX) else lod_overlay_check.derived_name(name)
+    cat, dat, marker = lod_overlay_check.package_files(game, derived)
+    found = {p['derived']: p for p in lod_overlay_check.package_markers(game)}.get(derived)
+    if found is None:
+        raise SystemExit(f'--remove-package: addon/mods/{derived}{MARKER_SUFFIX} not found; nothing removed'
+                         ' (only a derived package with its x3m-lod marker is ours)')
+    if not a.force_running:
+        try:
+            lines = running_game()
+        except RuntimeError as exc:
+            raise SystemExit(f'--remove-package: cannot tell whether the game is running ({exc});'
+                             ' pass --force-running to override') from None
+        if lines:
+            raise SystemExit(f'--remove-package: the game is running ({lines[0]}); quit it first')
+    if found['status'] in ('orphaned', 'unreadable'):
+        marker.unlink()
+        print(f'removed the marker {marker.name} only: addon/mods/{derived}.cat/.dat do not match it (not ours)')
+        return 0
+    for f in (cat, dat, marker):
+        f.unlink(missing_ok=True)
+    print(f'removed addon/mods/{derived}.cat, .dat and {marker.name}; select {found["package"]} (or no package)'
+          ' in the start menu')
+    return 0
 
 
 def batch(a, game, root, markers):
@@ -1979,7 +2267,15 @@ def batch(a, game, root, markers):
     for m in orphaned:
         notes.append(f'orphaned marker {m["path"].name}: addon/{m["slot"]:02d} was overwritten by a mod; read as a'
                      ' source' + ('; the marker is removed on --install' if a.install else ''))
-    mods = sorted((game / 'addon' / 'mods').glob('*.cat'))
+    pkg_markers = lod_overlay_check.package_markers(game, a.hash_archives)
+    derived_ours = {p['derived'] for p in pkg_markers if p['status'] != 'unreadable'}
+    mods = [m for m in sorted((game / 'addon' / 'mods').glob('*.cat')) if m.stem not in derived_ours]
+    package, pkg_notes = select_package(a, game)
+    notes += pkg_notes
+    pkg_cat = game / 'addon' / 'mods' / f'{package}.cat' if package else None
+    derived = lod_overlay_check.derived_name(package) if package else None
+    pkg_previous = next((p for p in pkg_markers if p['derived'] == derived), None)
+    pkg_before = lod_overlay_check.package_fingerprint(pkg_cat, a.hash_archives) if package else None
     only = parse_only(a.only) if a.only else None
     width = a.atlas_opts['screen_width']
     opts = dict(sizes=a.atlas_opts['sizes'], include_other=a.include_other, widths=(width,),
@@ -1991,7 +2287,8 @@ def batch(a, game, root, markers):
                     atlas=dict(a.atlas_opts, sizes=list(a.atlas_opts['sizes'])), tool_sha256=tool_sha256())
     t0 = time.time()
     rows, skipped = census.run(game, opts, a.jobs, only=only, include_text=not a.binary_only)
-    census.attach_world(rows, census.world_radii(a.radius_log or census.default_radius_logs()))
+    radii = census.world_radii(a.radius_log or census.default_radius_logs())
+    census.attach_world(rows, radii)
     census_s = time.time() - t0
     rows.sort(key=lambda r: r['name'].lower())
     if skipped:
@@ -2002,26 +2299,44 @@ def batch(a, game, root, markers):
                          + ', '.join(op['op'] for op in r['recipe_ops']))
         elif r.get('recipe_skipped'):
             notes.append(f'recipe_skipped {r["recipe_skipped"]}; baked plainly from record 0')
-    floor, starved = [], {}                # texel floor: refused before baking, ratio kept in the record
-    for r in rows:
-        est = (r.get('atlas') or {}).get(width, {})
-        ratio = est.get('ratio')
-        if est.get('tiles') is not None:
-            r['texel'] = lod_atlas.texel_floor(est['tiles'], a.min_texels, a.texel_floor_share)
-        if r['eligible'] and a.min_texels and ratio is not None and r.get('texel', {}).get('refuse', False):
-            r['refuse'].append('texel_floor')
-            r['eligible'] = False
-            r['ratio'] = ratio
-            floor.append((r['name'], ratio))
-            starved[r['name']] = r['texel']['starved_share']
+    def texel_pass(rs, floor, starved):     # texel floor: refused before baking, ratio kept in the record
+        for r in rs:
+            est = (r.get('atlas') or {}).get(width, {})
+            ratio = est.get('ratio')
+            if est.get('tiles') is not None:
+                r['texel'] = lod_atlas.texel_floor(est['tiles'], a.min_texels, a.texel_floor_share)
+            if r['eligible'] and a.min_texels and ratio is not None and r.get('texel', {}).get('refuse', False):
+                r['refuse'].append('texel_floor')
+                r['eligible'] = False
+                r['ratio'] = ratio
+                floor.append((r['name'], ratio))
+                starved[r['name']] = r['texel']['starved_share']
+    floor, starved = [], {}
+    texel_pass(rows, floor, starved)
     eligible = [r for r in rows if r['eligible']]
-    reused = {}
+    pkg_rows, pkg_info, pkg_floor = [], {}, []
+    if package:                            # the package view: census over the package-affected bodies only
+        t0 = time.time()
+        pkg_rows, pkg_info = package_census(a, game, opts, pkg_cat, eligible, only)
+        census.attach_world(pkg_rows, radii)
+        census_s += time.time() - t0
+        texel_pass(pkg_rows, pkg_floor, {})
+    pkg_eligible = [r for r in pkg_rows if r['eligible']]
+    budget_info = None
+    reused, pkg_reused = {}, {}
     if a.sync:
         if prev is None:
             notes.append('--sync: no previous overlay; every body is built')
         else:
-            reused = reuse_previous(prev, eligible, settings, notes)
+            reused = reuse_previous(prev, eligible, settings, notes, a.trust_tool)
+        if package:
+            extra = [(derived, lod_overlay_check.package_files(game, derived)[0], pkg_previous['manifest'])] \
+                if pkg_previous and pkg_previous['status'] in ('valid', 'stale') else []
+            pnotes = []
+            pkg_reused = reuse_previous(prev, pkg_eligible, settings, pnotes, a.trust_tool, extra)
+            notes += [n for n in pnotes if n not in notes]
     to_bake = [r for r in eligible if r['name'] not in reused]
+    pkg_to_bake = [r for r in pkg_eligible if r['name'] not in pkg_reused]
     t0 = time.time()
     if a.jobs <= 1 or len(to_bake) <= 1:
         assets, _ = original_assets(game, markers)
@@ -2032,6 +2347,16 @@ def batch(a, game, root, markers):
             results = pool.map(_bake_work, to_bake, chunksize=1)
     else:
         results = []
+    if len(pkg_to_bake) == 1 or (pkg_to_bake and a.jobs <= 1):
+        passets, _ = original_assets(game, markers, mods=[pkg_cat])
+        pkg_results = [bake_safely(passets, r, a.atlas_opts) for r in pkg_to_bake]
+    elif pkg_to_bake:
+        with multiprocessing.get_context('spawn').Pool(min(a.jobs, len(pkg_to_bake)), _bake_init,
+                                                       (str(game), a.atlas_opts, [str(pkg_cat)]),
+                                                       maxtasksperchild=1) as pool:
+            pkg_results = pool.map(_bake_work, pkg_to_bake, chunksize=1)
+    else:
+        pkg_results = []
     bake_s = time.time() - t0
     by_name = {r['name']: r for r in rows}
     plans = []
@@ -2045,7 +2370,50 @@ def batch(a, game, root, markers):
             plans.append(res)
     plans += list(reused.values())
     plans.sort(key=lambda p: p['name'].lower())
+    pkg_by_name = {r['name']: r for r in pkg_rows}
+    pkg_plans = []
+    for res in pkg_results:
+        row = pkg_by_name[res['name']]
+        if 'refused' in res:
+            row['refuse'].append('bake:' + bake_reason(res['refused']))
+            row['bake_error'] = res['refused'][:200]
+            row['eligible'] = False
+        else:
+            pkg_plans.append(res)
+    pkg_plans += list(pkg_reused.values())
+    pkg_plans.sort(key=lambda p: p['name'].lower())
+    if a.budget_bytes is not None:         # on the baked (or reused) member bytes: exact, the bake time is spent
+        items = [(by_name[p['name']], dat_bytes(p['members']), p) for p in plans] \
+            + [(pkg_by_name[p['name']], dat_bytes(p['members']), p) for p in pkg_plans]
+        kept_bytes, refused = apply_budget(a.budget_bytes, [(r, n) for r, n, _ in items])
+        dropped = {id(p) for r, _, p in items if not r['eligible']}
+        plans = [p for p in plans if id(p) not in dropped]
+        pkg_plans = [p for p in pkg_plans if id(p) not in dropped]
+        budget_info = dict(limit=a.budget_bytes, kept_bytes=kept_bytes, kept_bodies=len(plans) + len(pkg_plans),
+                           refused=refused)
+        notes.append(f'--budget-bytes {a.budget_bytes}: kept {len(plans) + len(pkg_plans)} bodies ({kept_bytes} B of'
+                     f' merged members), refused {len(refused)} (reason budget)'
+                     + (': ' + ', '.join(refused[:12]) + (', ...' if len(refused) > 12 else '') if refused else ''))
     check_member_names(plans)
+    check_member_names(pkg_plans)
+    pkg_layout, restored = None, []
+    if package:                            # restore: a texture-overridden numbered body the package view could not
+        final = {p['name'] for p in plans}  # bake keeps its original (unmerged) body in the copy, shadowing ours
+        baked = {p['name'] for p in pkg_plans}
+        todo = [n for n in pkg_info['texture'] if n in final and n not in baked]
+        if todo:
+            nassets, _ = original_assets(game, markers)
+            for n in todo:
+                e = bob1.resolve_body(nassets, n)
+                if 'loose' in e:
+                    stored = e['loose'].read_bytes()
+                else:
+                    with e['cat'].with_suffix('.dat').open('rb') as f:
+                        f.seek(e['offset'])
+                        stored = f.read(e['size']).translate(XOR33)
+                restored.append(dict(name=n, member=e['path'], source=e['source'], stored=stored))
+        if pkg_plans or restored:
+            pkg_layout = package_layout(pkg_cat, derived, pkg_plans, restored)
     packed = pack_slots(plans, a.max_dat_bytes, slot)   # refuses before the record or any archive is written
     cap = min(a.max_dat_bytes, DAT_LIMIT)
     if cap < a.max_dat_bytes:
@@ -2088,7 +2456,20 @@ def batch(a, game, root, markers):
             budget.append(f'warning: sector {label}: resident atlas estimate {tot[width][0] / 1e6:.2f} MB exceeds'
                           f' --budget-mb {a.budget_mb:g}')
     mod_notes = []
+    if package:
+        pb = sum(1 for p in pkg_plans if p['reused'])
+        mod_notes.append(
+            f'package {package}: addon/mods/{package}.cat {pkg_info["members"]} members, {pkg_info["held"]} body stems;'
+            f' affected {pkg_info["affected"]} (held {pkg_info["held"]}, texture overrides {len(pkg_info["texture"])});'
+            f' package view enumerated {len(pkg_rows)}, eligible {sum(1 for r in pkg_rows if r["eligible"])};'
+            f' built {len(pkg_plans) - pb} + reused {pb} = {len(pkg_plans)} merged, restored {len(restored)} original'
+            + (f'; derived addon/mods/{derived}.cat/.dat: {len(pkg_layout["kept"])} of {pkg_layout["entries"]}'
+               f' package members kept, {len(pkg_layout["removed"])} body members replaced,'
+               f' {len(pkg_layout["added"])} members added, dat {pkg_layout["bytes"]} B; select {derived} in the start'
+               ' menu' if pkg_layout else '; no derived package needed (nothing merged or restored)'))
     for mc in mods:
+        if mc.stem == package:
+            continue
         try:
             keys = {census.body_key(e['path']) for e in read_catalogue(mc)
                     if e['path'].lower().endswith(bob1.BODY_EXTENSIONS)}
@@ -2097,7 +2478,8 @@ def batch(a, game, root, markers):
             continue
         hit = sum(1 for p in plans if census.body_key(p['name']) in keys)
         mod_notes.append(f'warning: addon/mods/{mc.name} ({len(keys)} bodies) overrides the overlay for {hit} of its'
-                         f' {len(plans)} bodies while that mod is selected in the launcher')
+                         f' {len(plans)} bodies while that mod is selected in the launcher; --mod {mc.stem} bakes its'
+                         f' derived package {mc.stem}-x3m-lod')
     # summary
     cnt = lambda it: dict(sorted(Counter(it).items(), key=lambda x: (-x[1], x[0])))
     reasons = cnt(x for r in rows for x in r['refuse'])
@@ -2252,6 +2634,19 @@ def batch(a, game, root, markers):
         timing=dict(census_s=round(census_s, 2), bake_s=round(bake_s, 2), per_body_s=round(per_body, 3),
                     extrapolated_full_s=round(full_est, 1), total_s=round(time.time() - t_start, 2)),
         sectors=sectors, budget_mb=a.budget_mb, budget_warnings=budget, notes=notes + mod_notes,
+        trust_tool=bool(a.trust_tool), budget_bytes=budget_info,
+        package=None if not package else dict(
+            name=package, derived=derived, fingerprint=pkg_before, **pkg_info,
+            built=sum(1 for p in pkg_plans if not p['reused']), reused=sum(1 for p in pkg_plans if p['reused']),
+            merged=[p['name'] for p in pkg_plans], restored=[dict(name=r['name'], member=r['member'],
+                                                                   source=r['source']) for r in restored],
+            refused=cnt(x for r in pkg_rows for x in r['refuse']),
+            layout=None if not pkg_layout else dict(kept=len(pkg_layout['kept']), removed=pkg_layout['removed'],
+                                                    added=[m for m, _ in pkg_layout['added']],
+                                                    dat_bytes=pkg_layout['bytes']),
+            bodies=[dict(name=r['name'], member=r.get('member'), reason=r['package_reason'], eligible=r['eligible'],
+                         refuse=r['refuse'], filter=r['filter'], inputs_sha256=r.get('inputs_sha256'),
+                         texture_sources=r.get('texture_sources')) for r in pkg_rows]),
         orphaned_markers=[m['path'].name for m in orphaned],
         bodies=[dict(name=r['name'], cat=r['cat'], member=r.get('member'), t_pad=r.get('t_pad'),
                      t_pad_below_t1=r.get('t_pad_below_t1', False), r0_drawn=r.get('r0_drawn'),
@@ -2278,20 +2673,62 @@ def batch(a, game, root, markers):
         record_path.write_text(json.dumps(record, indent=1, default=str) + '\n')
         stem = record_path.with_suffix('')
         Path(str(stem) + '-summary.txt').write_text('\n'.join(summary) + '\n')
-        Path(str(stem) + '-bodies.txt').write_text(''.join(p['text'] + '\n' for p in plans))
+        Path(str(stem) + '-bodies.txt').write_text(''.join(p['text'] + '\n' for p in plans + pkg_plans))
         print(f'record {record_path} (+ -summary.txt, -bodies.txt)')
     if a.dry_run:
         write_record()
         print('dry run: nothing written')
         return 0
-    if not plans:
+    if not plans and not pkg_layout:
         raise SystemExit('--batch: no eligible body; nothing to write')
     before = archive_digest(game, exclude, a.hash_mode)[1]
     extra = dict(batch=dict(settings=settings, counts=record['counts'], timing=record['timing'], slots=slot_rows,
                             retired_slot=retire[0] if retire else None, retired_slots=retire, removed_slots=remove,
                             record=str(record_path)))
-    written, moved = commit_outputs(a, game, root, layout, prev['slots'] if prev else (), before, exclude, extra,
-                                    retire, remove, [m['path'] for m in orphaned])
+    pkg_done = None
+    if pkg_layout:                         # the derived package first: put back if the numbered write fails
+        manifest = dict(
+            tool='tools/analysis/lod_overlay.py --batch --mod', slot=None, package=package, derived=derived,
+            package_fingerprint=pkg_before, package_members=pkg_layout['entries'], kept_members=len(pkg_layout['kept']),
+            removed_members=pkg_layout['removed'],
+            restored=[dict(name=r['name'], member=r['member'], source=r['source'],
+                           sha256=hashlib.sha256(r['stored']).hexdigest()) for r in restored],
+            collapse='atlas', display=list(a.display), screen_width=width,
+            atlas_options=dict(a.atlas_opts, sizes=list(a.atlas_opts['sizes'])),
+            bodies=[p['manifest'] for p in pkg_plans], originals=len(before), originals_sha256=originals_digest(before),
+            originals_mode=a.hash_mode, originals_fingerprints=originals_fingerprints(game, original_archives(game, exclude)),
+            batch=dict(settings=settings, counts=record['package'] and {k: record['package'][k] for k in
+                                                                        ('built', 'reused', 'affected', 'held')},
+                       record=str(record_path)))
+        pkg_done = commit_package(a, root, pkg_cat, derived, pkg_layout, manifest, pkg_before, pkg_previous)
+    written = moved = []
+    try:
+        if plans:
+            written, moved = commit_outputs(a, game, root, layout, prev['slots'] if prev else (), before, exclude,
+                                            extra, retire, remove, [m['path'] for m in orphaned])
+    except BaseException:
+        if pkg_done:
+            pkg_done[1]()
+        raise
+    if pkg_done:
+        pkg_done[2]()
+        written = list(written) + pkg_done[0]
+    if a.install:                          # derived copies left behind: foreign markers and uninstalled sources
+        for pm in pkg_markers:
+            if pm['derived'] == derived and pkg_layout:
+                continue
+            files = lod_overlay_check.package_files(game, pm['derived'])
+            if pm['status'] in ('orphaned', 'unreadable'):
+                pm['path'].unlink(missing_ok=True)
+                print(f'removed orphaned package marker {pm["path"].name} (addon/mods/{pm["derived"]}.cat is not ours)')
+            elif pm['status'] == 'source_missing' and not a.keep_package_copy:
+                for f in files:
+                    f.unlink(missing_ok=True)
+                print(f'removed addon/mods/{pm["derived"]}: its source package is gone (--keep-package-copy keeps it)')
+            elif pm['derived'] == derived and not pkg_layout:
+                for f in files:
+                    f.unlink(missing_ok=True)
+                print(f'removed addon/mods/{derived}: the package no longer needs a derived copy')
     write_record()
     print(f'wrote {", ".join(str(w) for w in written)}; {len(before)} original archive files unchanged'
           + (f'; replaced the installed {", ".join(f"addon/{s:02d}" for s in replaced)} overlay'

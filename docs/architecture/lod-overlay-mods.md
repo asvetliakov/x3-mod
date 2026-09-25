@@ -308,3 +308,43 @@ start menu shows `<name>-x3m-lod`.
   names a missing cat (one user launch; nothing in the tools depends on it).
 - Bake time per 2048² body (the fleet had 49; a `--only` dry bake of ten 2048² mod bodies would give
   it) and the real disk figure of the mod set (11.3 GB is the census estimate).
+
+## Implementation (2026-09-25)
+
+Implemented on synthetic trees only (no bake or census over the bottle or `/tmp/x3-mod1`, `/tmp/x3-mod2`).
+Ledger: [lod-overlay.md](../verification/lod-overlay.md), "2026-09-25 selected packages, launch line, rebake policy".
+
+- **Launch check** `tools/analysis/lod_overlay_check.py` (standard library only; owns `original_archives`,
+  `hash_files`, `fingerprint_files`, `originals_digest`, which `lod_overlay.py` imports). `overlay_line(game)`
+  gives `lod overlay: <state> (<clauses>)[; rebake with `<command>`]`, state the worst of orphaned >
+  source_missing > stale > ok, or none. Printed by `tools/manage.py launch` on stderr beside `fog families:`
+  and in the `--dry-run` JSON (`lod_overlay`) for every modded launch; **nothing under `--vanilla`** (the brief
+  overrides section 2's "also under --vanilla"). Also `lod_overlay.py --check` and the module's own CLI.
+  "Intact" = the marker's cat sha256 plus the dat size (`overlay_dat_bytes`, else the `batch.slots` bytes); the
+  dat is never opened (`--hash-archives` hashes it). New marker fields written by the baker:
+  `originals_fingerprints` (game-relative path -> `size:N:mtime_ns:M` of every original catalogue file), so the
+  line names the changed file, and `overlay_dat_bytes`. An older marker falls back to its path-keyed
+  `originals_sha256` digest ("sources changed since the bake", no file named). A catalogue above the highest
+  live slot is its own clause with the count of overlay bodies it holds. ModName: a text scan of the bottle's
+  `user.reg` of the bottle the game directory sits in (a game directory outside a bottle reports `ModName
+  unknown (no bottle registry)` and no package; `winreg` on native Windows). A selected plain package that shadows overlay bodies without a derived copy is `stale` (the line
+  suggests `--mod <name>`). Real bottle (measured, `verification/results/lod-overlay-mods/launch_line_cost.py`):
+  `ok (620 bodies in slots 05/06, 2.72 GB; sources unchanged; no package: ModName empty)`, 48-60 ms, 19 cats +
+  2 markers + user.reg opened, no dat.
+- **Selected package** (`--mod NAME|auto|none`, default auto; `--registry USER_REG`): a second census with the
+  package as the top layer (`census.run(..., mods=[cat])`; `package_keys` drops the numbered key of a stem the
+  package holds so each stem gives one row) over the held stems plus the eligible numbered bodies whose
+  `texture_sources` the package overrides (compared by path without extension, conservative). The derived copy
+  is streamed (kept members copied as stored bytes, the XOR is per byte), the CAT index via
+  `sector_fog_census.catalogue_index`. Two additions to the design: a texture-overridden numbered body the
+  package view cannot bake is **restored** as its original body in the copy (marker `restored`), so the old
+  texture's atlas does not draw while the package is selected; and derived-package markers are read by
+  `lod_overlay_check.package_markers` (not `installed_markers`, whose consumers group numbered slots).
+  `--dry-run` writes no package (the record carries the layout). Refusals before any write: a dat above
+  2^31 - 1, a duplicate member name, an explicit `--mod` that does not resolve; on write: an existing stale copy
+  without `--sync`/`--replace`, a foreign file at the copy's name without `--replace`, a source package that
+  changed during the run. The package copy is written first and put back if the numbered write fails.
+  `--install` removes orphaned package markers and copies whose source is gone (`--keep-package-copy`).
+- **Rebake policy**: `--trust-tool` (with `--sync`) reuses bodies whose settings differ only in `tool_sha256`;
+  `--budget-bytes N` applies after baking on the actual member bytes (numbered and package bodies in one
+  priority order; a body that does not fit is skipped and the next tried), so it saves disk, not bake time.

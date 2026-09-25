@@ -11,6 +11,7 @@ import copy
 import gzip
 import io
 import json
+import os
 import shutil
 import sys
 import tempfile
@@ -24,6 +25,7 @@ import bob1
 import lod_atlas
 import lod_batch_census as census
 import lod_overlay
+import lod_overlay_check
 import numpy as np
 from inspect_x3 import read_catalogue
 from sector_fog_census import unpack, write_catalogue
@@ -800,6 +802,271 @@ class MultiSlot(unittest.TestCase):
             (addon / '04.x3m-lod.json').write_text(json.dumps(dict(m['manifest'], overlay_slots=[3, 5])))
             self.assertEqual({m['path'].name: m['status'] for m in lod_overlay.installed_markers(game)},
                              {'02.x3m-lod.json': 'retired', '04.x3m-lod.json': 'unreadable'})   # malformed group
+
+
+def jpg_texture_mod():
+    from PIL import Image
+    y, x = np.mgrid[0:16, 0:16]
+    img = np.stack([200 - 10 * x, 8 + 15 * y, np.full((16, 16), 30)], -1).astype(np.uint8)
+    buf = io.BytesIO()
+    Image.fromarray(img).save(buf, 'JPEG', quality=95)
+    return buf.getvalue()
+
+
+PACKAGE = [('types/TShips.txt', b'mod types\n'),                                 # kept verbatim
+           ('objects/ships/x/good.pbb', packed(mixed_tree())),                   # shadows a numbered body
+           ('objects/ships/x/newship.pbb', packed(atlas_tree_lod0())),           # a ship only the mod has
+           ('objects/ships/x/badmod.pbd', b'BODY 0\n'),                          # refused: kept verbatim
+           ('textures/j_diff.jpg', jpg_texture_mod())]                           # overrides ships/x/jpg's texture
+
+
+def make_package(game, name='Big'):
+    write_catalogue(game / f'addon/mods/{name}.cat', PACKAGE)
+    return game / f'addon/mods/{name}.cat'
+
+
+def reg(path, mod_name):
+    path.write_text(f'WINE REGISTRY Version 2\n\n[Software\\\\EGOSOFT\\\\X3AP] 1790307522\n"ModName"="{mod_name}"\n')
+    return path
+
+
+class SelectedPackage(unittest.TestCase):
+    """--mod: the derived package addon/mods/<name>-x3m-lod.cat/.dat (docs/architecture/lod-overlay-mods.md)."""
+
+    @unittest.mock.patch.object(lod_overlay, 'running_game', return_value=[])
+    def test_derived_copy_marker_sync_and_remove(self, _running):
+        with tempfile.TemporaryDirectory() as folder:
+            game = make_game(folder)
+            make_package(game)
+            none, big = Path(folder) / 'none', Path(folder) / 'big'
+            code, text = run(BATCH + ['--game', str(game), '--out', str(none), '--mod', 'none'])
+            self.assertIn('warning: addon/mods/Big.cat (3 bodies) overrides the overlay for 1 of its 9 bodies', text)
+            code, text = run(BATCH + ['--game', str(game), '--out', str(big), '--mod', 'Big'])
+            self.assertEqual(code, 0)
+            self.assertNotIn('warning: addon/mods/Big.cat', text)
+            self.assertIn('package Big: addon/mods/Big.cat 5 members, 3 body stems; affected 4 (held 3, texture'
+                          ' overrides 1)', text)
+            self.assertIn('built 3 + reused 0 = 3 merged, restored 0 original; derived addon/mods/Big-x3m-lod.cat/.dat:'
+                          ' 3 of 5 package members kept, 2 body members replaced', text)
+            # the numbered overlay is byte-identical to a --mod none run
+            for f in ('02.cat', '02.dat'):
+                self.assertEqual((big / 'addon' / f).read_bytes(), (none / 'addon' / f).read_bytes())
+            copy_cat = big / 'addon/mods/Big-x3m-lod.cat'
+            members, source = cat_members(copy_cat), cat_members(game / 'addon/mods/Big.cat')
+            for kept in ('types/TShips.txt', 'objects/ships/x/badmod.pbd', 'textures/j_diff.jpg'):
+                self.assertEqual(members[kept], source[kept])                       # copied byte for byte
+            q = lod_overlay.qualified_stem
+            self.assertEqual(sorted(p for p in members if p.startswith('objects/')),
+                             ['objects/ships/x/badmod.pbd', 'objects/ships/x/good.pbb', 'objects/ships/x/jpg.pbb',
+                              'objects/ships/x/newship.pbb'])
+            for body in ('good', 'newship', 'jpg'):
+                self.assertIn(f'dds/x3m_lod_{q(f"objects/ships/x/{body}.pbb")}_diffuse.pck', members)
+            good = bob1.parse(unpack(members['objects/ships/x/good.pbb']))
+            self.assertEqual(len(bob1.lods(good)), 3)                             # the package's body, merged
+            self.assertEqual([m['effect'] for m in bob1.materials(good)[3:]], [b'argon.fx', b'other.fx'])
+            self.assertEqual([e['path'] for e in read_catalogue(copy_cat)][:3],
+                             ['types/TShips.txt', 'objects/ships/x/badmod.pbd', 'textures/j_diff.jpg'])   # DAT order
+            marker = json.loads((big / 'addon/mods/Big-x3m-lod.x3m-lod.json').read_text())
+            self.assertEqual((marker['slot'], marker['package'], marker['derived'], marker['package_members'],
+                              marker['kept_members']), (None, 'Big', 'Big-x3m-lod', 5, 3))
+            self.assertEqual(sorted(marker['removed_members']), ['objects/ships/x/good.pbb', 'objects/ships/x/newship.pbb'])
+            self.assertEqual(marker['package_fingerprint']['cat'],
+                             lod_overlay.hash_files([game / 'addon/mods/Big.cat'])[str(game / 'addon/mods/Big.cat')])
+            self.assertEqual(marker['overlay_sha256']['dat'],
+                             lod_overlay.hash_files([copy_cat.with_suffix('.dat')])[str(copy_cat.with_suffix('.dat'))])
+            bodies = {b['name']: b for b in marker['bodies']}
+            self.assertEqual({n: b['source'] for n, b in bodies.items()},
+                             {'ships/x/good': 'addon/mods/Big.cat', 'ships/x/jpg': '02.cat',
+                              'ships/x/newship': 'addon/mods/Big.cat'})
+            self.assertEqual(bodies['ships/x/jpg']['atlas']['tiles'][0]['sources']['diffuse'],
+                             'addon/mods/Big.cat:textures/j_diff.jpg')                 # the package's texture
+            record = json.loads((big / 'x3m-lod-batch.json').read_text())
+            self.assertEqual((record['package']['texture'], record['package']['layout']['kept']), (['ships/x/jpg'], 3))
+            self.assertEqual({b['name']: b['reason'] for b in record['package']['bodies']},
+                             {'ships/x/badmod': 'held', 'ships/x/good': 'held', 'ships/x/jpg': 'texture',
+                              'ships/x/newship': 'held'})
+            # install: the package copy beside the numbered overlay; --sync reuses both; statuses
+            code, text = run(BATCH + ['--game', str(game), '--install', '--mod', 'Big'])
+            self.assertEqual([(p['derived'], p['status']) for p in lod_overlay_check.package_markers(game)],
+                             [('Big-x3m-lod', 'valid')])
+            self.assertEqual(lod_overlay.original_assets(game, mods=[game / 'addon/mods/Big.cat'])[0].layers[-1],
+                             'addon/mods/Big.cat')                          # the copy is never a source
+            code, text = run(BATCH + ['--game', str(game), '--install', '--mod', 'Big', '--sync'])
+            self.assertIn('built 0 + reused 3 = 3 merged', text)
+            self.assertIn('built 0 + reused 9 = 9 overlay bodies', text)
+            m2 = json.loads((game / 'addon/mods/Big-x3m-lod.x3m-lod.json').read_text())
+            self.assertEqual({b['reused_from'] for b in m2['bodies']}, {'Big-x3m-lod'})
+            self.assertEqual(sorted((game / 'addon/mods').glob('*' + lod_overlay.REPLACED_SUFFIX)), [])
+            # the mod is updated: stale; a plain run refuses, --sync rebuilds
+            src = game / 'addon/mods/Big.dat'
+            os.utime(src, ns=(src.stat().st_atime_ns, src.stat().st_mtime_ns + 10 ** 9))
+            (pm,) = lod_overlay_check.package_markers(game)
+            self.assertEqual((pm['status'], pm['reason']), ('stale', 'Big.dat changed'))
+            state = {p.name: p.read_bytes() for p in (game / 'addon/mods').iterdir()}
+            with self.assertRaisesRegex(SystemExit, 'is stale .*pass --sync or --replace'):
+                run(BATCH + ['--game', str(game), '--install', '--mod', 'Big'])
+            self.assertEqual({p.name: p.read_bytes() for p in (game / 'addon/mods').iterdir()}, state)
+            run(BATCH + ['--game', str(game), '--install', '--mod', 'Big', '--sync'])
+            self.assertEqual(lod_overlay_check.package_markers(game)[0]['status'], 'valid')
+            # a failed numbered write puts the previous package copy back
+            state = {p.name: p.read_bytes() for p in (game / 'addon/mods').iterdir()}
+            with unittest.mock.patch.object(lod_overlay, 'write_catalogue', side_effect=OSError('disk full')):
+                with self.assertRaisesRegex(OSError, 'disk full'):
+                    run(BATCH + ['--game', str(game), '--install', '--mod', 'Big', '--sync'])
+            self.assertEqual({p.name: p.read_bytes() for p in (game / 'addon/mods').iterdir()}, state)
+            # uninstalled mod: source_missing, removed by --remove-package
+            saved = {s: (game / f'addon/mods/Big{s}').read_bytes() for s in ('.cat', '.dat')}
+            for s in saved:
+                (game / f'addon/mods/Big{s}').unlink()
+            self.assertEqual(lod_overlay_check.package_markers(game)[0]['status'], 'source_missing')
+            code, text = run(['--game', str(game), '--remove-package', 'Big'])
+            self.assertIn('removed addon/mods/Big-x3m-lod.cat, .dat and Big-x3m-lod.x3m-lod.json; select Big', text)
+            self.assertEqual(sorted(p.name for p in (game / 'addon/mods').iterdir()), [])
+            with self.assertRaisesRegex(SystemExit, 'not found; nothing removed'):
+                run(['--game', str(game), '--remove-package', 'Big'])
+            # --install removes a copy whose source is gone (unless --keep-package-copy) and an orphaned marker
+            for s, data in saved.items():
+                (game / f'addon/mods/Big{s}').write_bytes(data)
+            run(BATCH + ['--game', str(game), '--install', '--mod', 'Big', '--sync'])
+            for s in saved:
+                (game / f'addon/mods/Big{s}').unlink()
+            code, text = run(BATCH + ['--game', str(game), '--install', '--mod', 'none', '--sync',
+                                      '--keep-package-copy'])
+            self.assertTrue((game / 'addon/mods/Big-x3m-lod.cat').exists())
+            code, text = run(BATCH + ['--game', str(game), '--install', '--mod', 'none', '--sync'])
+            self.assertIn('removed addon/mods/Big-x3m-lod: its source package is gone', text)
+            self.assertEqual(sorted(p.name for p in (game / 'addon/mods').iterdir()), [])
+
+    def test_auto_none_and_refusals(self):
+        with tempfile.TemporaryDirectory() as folder:
+            game = make_game(folder)
+            make_package(game)
+            out, r = Path(folder) / 'out', Path(folder) / 'user.reg'
+            dry = lambda *extra: run(BATCH + ['--dry-run', '--game', str(game), '--out', str(out), *extra])[1]
+            text = dry('--registry', str(reg(r, 'Big')))
+            self.assertIn('--mod auto: ModName Big', text)
+            self.assertIn('package Big: addon/mods/Big.cat 5 members', text)
+            self.assertFalse((out / 'addon').exists())                            # dry run: nothing written
+            record = json.loads((out / 'x3m-lod-batch.json').read_text())
+            self.assertEqual((record['package']['name'], record['package']['layout']['kept']), ('Big', 3))
+            text = dry('--registry', str(reg(r, 'Big')), '--mod', 'none')      # --mod none overrides the registry
+            self.assertNotIn('package Big:', text)
+            self.assertIn('warning: addon/mods/Big.cat', text)
+            text = dry('--registry', str(reg(r, '')))                           # empty: no package
+            self.assertNotIn('package Big:', text)
+            self.assertNotIn('--mod auto', text)
+            text = dry('--registry', str(Path(folder) / 'missing.reg'))
+            self.assertIn('--mod auto: ModName unknown', text)
+            text = dry('--registry', str(reg(r, 'Gone')))
+            self.assertIn('--mod auto: addon/mods/Gone.cat/.dat not found; no package baked', text)
+            with self.assertRaisesRegex(SystemExit, 'Gone.cat/.dat not found'):
+                dry('--mod', 'Gone')
+            with self.assertRaisesRegex(SystemExit, 'not an ASCII stem'):
+                dry('--mod', 'a.b')
+            with self.assertRaisesRegex(SystemExit, 'no readable x3m-lod marker'):
+                dry('--mod', 'Big-x3m-lod')
+            # the derived name maps back to its source through the marker
+            run(BATCH + ['--game', str(game), '--out', str(Path(folder) / 'o2'), '--mod', 'Big'])
+            shutil.copy(Path(folder) / 'o2/addon/mods/Big-x3m-lod.x3m-lod.json', game / 'addon/mods')
+            text = dry('--registry', str(reg(r, 'Big-x3m-lod')))
+            self.assertIn('Big-x3m-lod is the derived package of Big; baking Big', text)
+            self.assertIn('package Big: addon/mods/Big.cat', text)
+            with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                run(['--game', str(game), '--dry-run', '--mod', 'Big', 'ships/x/good=8@0'])   # --mod needs --batch
+
+    def test_restore_when_the_package_view_refuses(self):
+        """A numbered overlay body whose texture the package overrides but which the package view cannot bake
+        keeps its original body in the copy (the merged one would draw the old texture's atlas)."""
+        with tempfile.TemporaryDirectory() as folder:
+            game = make_game(folder)
+            write_catalogue(game / 'addon/mods/Tex.cat', [('textures/j_diff.jpg', b'not a jpeg')])
+            out = Path(folder) / 'out'
+            code, text = run(BATCH + ['--game', str(game), '--out', str(out), '--mod', 'Tex'])
+            self.assertIn('built 0 + reused 0 = 0 merged, restored 1 original', text)
+            members = cat_members(out / 'addon/mods/Tex-x3m-lod.cat')
+            self.assertEqual(sorted(members), ['objects/ships/x/jpg.pbb', 'textures/j_diff.jpg'])
+            self.assertEqual(members['objects/ships/x/jpg.pbb'], cat_members(game / '02.cat')['objects/ships/x/jpg.pbb'])
+            marker = json.loads((out / 'addon/mods/Tex-x3m-lod.x3m-lod.json').read_text())
+            self.assertEqual([(r['name'], r['source']) for r in marker['restored']], [('ships/x/jpg', '02.cat')])
+            self.assertEqual(marker['bodies'], [])
+
+    @unittest.mock.patch.object(lod_overlay, 'running_game', return_value=[])
+    def test_package_dat_limit_refused(self, _running):
+        with tempfile.TemporaryDirectory() as folder:
+            game = make_game(folder)
+            make_package(game)
+            one = Path(folder) / 'one'
+            run(BATCH + ['--game', str(game), '--out', str(one), '--mod', 'Big'])
+            size = (one / 'addon/mods/Big-x3m-lod.dat').stat().st_size
+            biggest = max(sum(m['bytes'] for m in b['members'])
+                          for b in json.loads((one / 'addon/02.x3m-lod.json').read_text())['bodies'])
+            self.assertLess(biggest, size - 1)
+            out = Path(folder) / 'out'
+            with unittest.mock.patch.object(lod_overlay, 'DAT_LIMIT', size - 1):    # stands in for 2^31 - 1
+                with self.assertRaisesRegex(SystemExit, rf'addon/mods/Big-x3m-lod.dat would be {size} bytes, above'
+                                                        rf' 2\^31 - 1 = {size - 1} .*cannot be split'):
+                    run(BATCH + ['--game', str(game), '--out', str(out), '--mod', 'Big'])
+                with self.assertRaisesRegex(SystemExit, 'cannot be split'):
+                    run(BATCH + ['--game', str(game), '--install', '--mod', 'Big'])
+            self.assertFalse(out.exists())                                        # no record, no archive
+            self.assertEqual(sorted(p.name for p in (game / 'addon').rglob('*')),
+                             ['01.cat', '01.dat', 'Big.cat', 'Big.dat', 'mods'])
+
+
+class RebakePolicy(unittest.TestCase):
+    """--trust-tool and --budget-bytes (docs/architecture/lod-overlay-mods.md section 3)."""
+
+    @unittest.mock.patch.object(lod_overlay, 'running_game', return_value=[])
+    def test_trust_tool(self, _running):
+        with tempfile.TemporaryDirectory() as folder:
+            game = make_game(folder)
+            run(BATCH + ['--game', str(game), '--install'])
+            with unittest.mock.patch.object(lod_overlay, 'tool_sha256', return_value='0' * 64):   # a tool edit
+                code, text = run(BATCH + ['--game', str(game), '--out', str(Path(folder) / 'a'), '--sync'])
+                self.assertIn('was built with different settings', text)
+                self.assertIn('built 9 + reused 0 = 9', text)
+                code, text = run(BATCH + ['--game', str(game), '--out', str(Path(folder) / 'b'), '--sync',
+                                          '--trust-tool'])
+                self.assertIn('--trust-tool: the previous overlay addon/02 was built with other tool sources', text)
+                self.assertIn('built 0 + reused 9 = 9', text)
+            record = json.loads((Path(folder) / 'b/x3m-lod-batch.json').read_text())
+            self.assertTrue(record['trust_tool'])
+            self.assertEqual(cat_members(Path(folder) / 'b/addon/02.cat'), cat_members(game / 'addon/02.cat'))
+            code, text = run(BATCH + ['--game', str(game), '--out', str(Path(folder) / 'c'), '--sync', '--trust-tool',
+                                      '--display', '2560x1440'])                  # other settings still rebuild
+            self.assertIn('+ reused 0 =', text)
+            with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                run(BATCH + ['--game', str(game), '--dry-run', '--trust-tool'])     # needs --sync
+
+    def test_budget(self):
+        with tempfile.TemporaryDirectory() as folder:
+            game = make_game(folder)
+            full = Path(folder) / 'full.json'
+            run(BATCH + ['--game', str(game), '--dry-run', '--record', str(full)])
+            rows = {b['name']: b for b in json.loads(full.read_text())['bodies'] if b.get('reused') is not None}
+            sizes = {n: b['atlas_bytes'] + b['member_bytes'] for n, b in rows.items()}
+            limit = sum(sizes.values()) - 1                         # one body at least cannot stay
+            code, text = run(BATCH + ['--game', str(game), '--dry-run', '--record', str(Path(folder) / 'b.json'),
+                                      '--budget-bytes', str(limit)])
+            record = json.loads((Path(folder) / 'b.json').read_text())
+            by = {b['name']: b for b in record['bodies']}
+            kept = sorted(n for n, b in by.items() if b.get('reused') is not None)
+            refused = sorted(n for n, b in by.items() if 'budget' in b['refuse'])
+            self.assertTrue(refused)
+            self.assertEqual(sorted(kept + refused), sorted(sizes))
+            self.assertEqual(sum(sizes[n] for n in kept), record['budget_bytes']['kept_bytes'])
+            self.assertLessEqual(record['budget_bytes']['kept_bytes'], limit)
+            self.assertEqual((record['counts']['overlay_bodies'], record['refused']['budget']), (len(kept), len(refused)))
+            self.assertIn(f'--budget-bytes {limit}: kept {len(kept)} bodies', text)
+            self.assertEqual(sorted(record['budget_bytes']['refused']), refused)
+            # order: ship before station, then draws saved per byte
+            keep = lambda **k: dict(dict(name='n', cat='ship', saved_r0=1), **k)
+            order = sorted([(keep(name='st', cat='station', saved_r0=9), 10), (keep(name='o', cat='other', saved_r0=90), 1),
+                            (keep(name='a', saved_r0=2), 10), (keep(name='b', saved_r0=2), 5)],
+                           key=lambda x: lod_overlay.budget_priority(*x))
+            self.assertEqual([r['name'] for r, _ in order], ['st', 'b', 'a', 'o'])
+            rs = [(dict(keep(name=n), refuse=[], eligible=True), b) for n, b in (('x', 6), ('y', 6), ('z', 3))]
+            self.assertEqual(lod_overlay.apply_budget(10, rs), (9, ['y']))       # y does not fit, z still does
 
 
 def texel_tree(g):

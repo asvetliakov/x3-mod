@@ -241,6 +241,25 @@ def fog_families_line(game, environ, bottle=BOTTLE):
     return ok
 
 
+def lod_overlay_line(game):
+    """The `lod overlay:` report line (tools/analysis/lod_overlay_check.py, standard library only;
+    docs/architecture/lod-overlay-mods.md section 2): none / ok / stale / orphaned / source_missing from the
+    x3m-lod markers, catalogue stats, the small .cat hashes and ModName in the user.reg of the bottle the
+    game directory sits in (<bottle>/drive_c/...); a game directory outside a bottle reports `ModName unknown
+    (no bottle registry)` and no package. Never reads a .dat, never blocks the launch."""
+    try:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location('lod_overlay_check', ROOT / 'tools/analysis/lod_overlay_check.py')
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        registry = module.bottle_registry(game)  # only a game directory inside a bottle (<bottle>/drive_c/...)
+        if registry is None:                      # never another bottle's user.reg: no package
+            return module.overlay_line(game, mod_name=None, mod_where='no bottle registry')
+        return module.overlay_line(game, registry)
+    except Exception as error:  # a report line never blocks a launch
+        return f'lod overlay: check failed ({type(error).__name__}: {error})'
+
+
 def fog_families_command(argv):
     """`manage.py fog-families`: the argv that runs tools/analysis/fog_families.py on the bottle's
     game directory. --bottle/--game-dir are consumed; everything else is forwarded verbatim;
@@ -548,8 +567,14 @@ def source_commit(dll):
 
 
 def main():
-    if sys.argv[1:2] == ['fog-families']:  # thin wrapper with its own options (fog_families_command)
-        raise SystemExit(subprocess.call(fog_families_command(sys.argv[2:])))
+    # `fog-families` is a thin wrapper with its own options (fog_families_command): split the first positional
+    # and the verbatim rest before the full parse (argparse reads the command line itself; main names no `sys`).
+    wrapper = argparse.ArgumentParser(add_help=False)
+    wrapper.add_argument('action', nargs='?')
+    wrapper.add_argument('rest', nargs=argparse.REMAINDER)
+    first, _ = wrapper.parse_known_args()
+    if first.action == 'fog-families':
+        raise SystemExit(subprocess.call(fog_families_command(first.rest)))
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action', choices=['install', 'uninstall', 'rollback', 'recover', 'launch', 'status', 'fog-families'],
                         help='fog-families [--bottle B] [--check | --install [--replace] | --dry-run] [fog_families.py options]: '
@@ -2111,6 +2136,10 @@ def main():
         fog_families = None if args.vanilla else fog_families_line(game, env, args.bottle)
         if fog_families is not None:
             print(fog_families, file=sys.stderr)
+        # Merged-LOD overlay state (game data, informational; nothing under --vanilla).
+        lod_overlay = None if args.vanilla else lod_overlay_line(game)
+        if lod_overlay is not None:
+            print(lod_overlay, file=sys.stderr)
         if voice_root is not None:
             plugins, registry = voice_root / 'runtime/plugins', voice_root / 'registry'
             voice_env = {'GST_PLUGIN_PATH_1_0': str(plugins), 'GST_REGISTRY_1_0': str(registry / 'x3-arm64.bin'),
@@ -2154,6 +2183,7 @@ def main():
                                       'executable': executable_record(game / 'X3AP.exe'),
                                       'voice_decoder': voice_line,
                                       'fog_families': fog_families,
+                                      'lod_overlay': lod_overlay,
                                       'env': {**{k: env[k] for k in sorted(env) if k.startswith('X3M_')},
                                               **voice_env}}, indent=2))
                     return

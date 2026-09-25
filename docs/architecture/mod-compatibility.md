@@ -47,6 +47,24 @@ catalogue list, `.cat`/`.dat` sizes and mtimes and loose TBackgrounds, and
 `manage.py fog-families` without a flag runs the full `--check`
 ([fog-family-data.md](fog-family-data.md), "Mod flow (2026-09-25)").
 
+## Merged-LOD overlay
+
+The overlay (`tools/analysis/lod_overlay.py --batch`) is game data in the next free
+`addon/NN` slots; a mod that adds numbered catalogues is read as a source and
+the next `--sync` rebake covers its ships and stations. A mod package selected in
+the start menu (`addon/mods/<name>.cat`) outranks every numbered slot, so its own
+bodies (and bodies whose textures it overrides) get their merged ladder only
+through a derived copy: `lod_overlay.py --batch --sync --install --mod <name>`
+(default `--mod auto` reads `ModName` from the bottle's `user.reg`) writes
+`addon/mods/<name>-x3m-lod.cat/.dat` (every package member verbatim, the
+affected bodies replaced), which the user selects instead of `<name>`; updating
+the mod makes that copy stale until the next `--sync`, and
+`--remove-package <name>` deletes it. Each modded launch prints
+`lod overlay: none | ok | stale | orphaned | source_missing (...)` from the
+markers, catalogue stats, the small `.cat` hashes and `ModName` (about 50 ms,
+no `.dat` read), with the rebake command when stale
+([lod-overlay-mods.md](lod-overlay-mods.md), "Implementation (2026-09-25)").
+
 ## Mayhem 3 (`Install_540`)
 
 The eight CAT listings (`05`–`12.cat`, rolling-XOR decoded, 6,152 entries)
