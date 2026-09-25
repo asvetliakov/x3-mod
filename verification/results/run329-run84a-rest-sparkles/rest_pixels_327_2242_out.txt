@@ -1,0 +1,51 @@
+run327 crop x2260-2780 y630-900 frames 2242..2249 k=1.7605 farw d0=0.99994439 d1=0.99996692 (view z 102400 .. 166399)
+owned plant px 24407: view z p5/p50/p95 117131/129418/221315; farw p5/p50/p95 0.329/0.545/1.000; farw==1 0.249 farw==0 0.000
+far routed speed (px/frame, rel. to crop median) p50 0.0010 p99 0.0021; farOpen(screen) at p99 1.000
+owned plant age_prev: ==64 1.000 <16 0.0001 <8 0.0001 min 1
+frame 2243: model vs actual taa code on out-of-region plant px: |err| p50 0.009 p99 0.027 max 0.13; sparkles 5 hdr-spikes(plant) 351
+frame 2244: model vs actual taa code on out-of-region plant px: |err| p50 0.008 p99 0.027 max 0.11; sparkles 1 hdr-spikes(plant) 405
+frame 2245: model vs actual taa code on out-of-region plant px: |err| p50 0.008 p99 0.027 max 0.10; sparkles 2 hdr-spikes(plant) 445
+frame 2246: model vs actual taa code on out-of-region plant px: |err| p50 0.008 p99 0.027 max 0.12; sparkles 11 hdr-spikes(plant) 420
+frame 2247: model vs actual taa code on out-of-region plant px: |err| p50 0.008 p99 0.028 max 0.11; sparkles 4 hdr-spikes(plant) 422
+frame 2248: model vs actual taa code on out-of-region plant px: |err| p50 0.008 p99 0.027 max 0.08; sparkles 4 hdr-spikes(plant) 416
+frame after a sparkle (n 27): history clamped down by the 3x3 clip 27; removed/rise p50 1.00 min 0.67; 3x3 clip high below the sparkle history 27; 7x7 max of the current above the sparkle history 26
+keep on owned out-of-region plant px: p5/p50/p95 0.9272/0.9461/0.9846; >=0.98 0.239
+sparkles n 27; owned 27; in region 0; input spike within 1px 25; history inside clip box 27
+  w: min 1.146e+05 p50 1.219e+05 max 1.372e+05
+  farw: min 0.2784 p50 0.4196 max 0.6627
+  age: min 64 p50 64 max 64
+  speed: min 6.104e-05 p50 0.0007816 max 0.001999
+  keep: min 0.9236 p50 0.9355 max 0.9561
+  tscore: min 6.024 p50 6.782 max 8.142
+  hscore: min -3.508 p50 78.94 max 101.6
+  dcur: min 0.009609 p50 0.01393 max 0.01745
+  dclip: min 0 p50 0 max 0
+  bright-frame term: current term dominates 27, clip term dominates 0; clip raised history (clp>old) 0, lowered 0
+  model vs actual on sparkles |err| code p50 0.009 max 0.043
+  f2243 x2477 y703 own1 w119127 farw0.361 age64 spd0.000 keep0.9305 score t8.1 h88.4 | hdr 79 168 79 79 158 79 127 140 | taa 79.1 87.2 79.1 79.1 86.2 79.1 83.1 88.0 | pred 87.2 | wL cur 0.3049 old 0.0720 clip[0.0323,0.2835] mm[0.0323,0.3049] dcur +0.0162 dclip +0.0000
+  f2243 x2478 y703 own1 w119061 farw0.361 age64 spd0.001 keep0.9305 score t7.9 h86.5 | hdr 79 166 79 79 154 79 119 140 | taa 79.1 87.0 79.1 79.1 85.8 79.1 82.4 87.3 | pred 87.0 | wL cur 0.2988 old 0.0720 clip[0.0323,0.2850] mm[0.0323,0.3057] dcur +0.0158 dclip +0.0000
+  f2243 x2476 y703 own1 w119193 farw0.365 age64 spd0.001 keep0.9309 score t7.8 h86.8 | hdr 79 166 79 79 148 79 137 138 | taa 79.1 87.0 79.1 79.1 85.1 79.1 84.1 88.6 | pred 87.0 | wL cur 0.2998 old 0.0720 clip[0.0239,0.2641] mm[0.0239,0.3049] dcur +0.0158 dclip +0.0000
+  f2246 x2480 y703 own1 w119005 farw0.361 age64 spd0.000 keep0.9305 score t7.5 h89.3 | hdr 79 176 79 79 168 79 145 156 | taa 79.1 88.2 87.3 79.1 87.3 79.6 85.3 91.5 | pred 87.3 | wL cur 0.3075 old 0.0719 clip[0.0305,0.2846] mm[0.0305,0.3086] dcur +0.0164 dclip +0.0000
+  f2244 x2363 y675 own1 w120221 farw0.384 age64 spd0.001 keep0.9325 score t7.4 h80.6 | hdr 59 58 141 53 59 61 58 51 | taa 58.8 58.7 67.1 59.7 59.3 59.4 59.3 58.7 | pred 67.1 | wL cur 0.2250 old 0.0384 clip[0.0348,0.1318] mm[0.0348,0.2250] dcur +0.0126 dclip +0.0000
+  f2246 x2370 y761 own1 w137164 farw0.663 age64 spd0.001 keep0.9561 score t7.4 h75.8 | hdr 58 59 164 57 176 57 58 51 | taa 58.9 58.9 66.5 66.1 73.5 59.5 59.4 59.1 | pred 73.5 | wL cur 0.3312 old 0.0494 clip[0.0306,0.1851] mm[0.0306,0.3312] dcur +0.0124 dclip +0.0000
+  f2248 x2414 y756 own1 w127026 farw0.510 age64 spd0.001 keep0.9431 score t7.4 h2.1 | hdr 58 167 60 135 69 166 168 82 | taa 72.4 79.7 63.9 69.7 66.3 74.9 82.3 73.2 | pred 82.3 | wL cur 0.3078 old 0.0643 clip[0.0231,0.1920] mm[0.0231,0.3078] dcur +0.0138 dclip +0.0000
+  f2243 x2414 y756 own1 w128644 farw0.533 age64 spd0.000 keep0.9451 score t7.3 h72.6 | hdr 58 167 60 135 69 166 168 82 | taa 72.4 79.7 63.9 69.7 66.3 74.9 82.3 73.2 | pred 79.7 | wL cur 0.3017 old 0.0598 clip[0.0192,0.1827] mm[0.0192,0.3017] dcur +0.0133 dclip +0.0000
+  f2246 x2384 y648 own1 w114650 farw0.278 age64 spd0.001 keep0.9236 score t7.2 h7.6 | hdr 78 157 78 78 156 78 47 78 | taa 76.9 85.0 78.2 78.1 85.9 78.7 76.8 76.9 | pred 85.9 | wL cur 0.2695 old 0.0702 clip[0.0210,0.1643] mm[0.0210,0.2695] dcur +0.0152 dclip +0.0000
+  f2246 x2479 y703 own1 w119070 farw0.369 age64 spd0.001 keep0.9312 score t7.1 h83.9 | hdr 79 167 79 79 163 79 113 154 | taa 79.1 87.2 79.1 79.1 86.7 79.1 81.8 88.1 | pred 86.7 | wL cur 0.2908 old 0.0719 clip[0.0305,0.2715] mm[0.0305,0.3075] dcur +0.0151 dclip +0.0000
+  f2246 x2477 y703 own1 w119201 farw0.369 age64 spd0.000 keep0.9312 score t7.1 h78.9 | hdr 79 168 79 79 158 79 127 140 | taa 79.1 87.2 79.1 79.1 86.2 79.1 83.1 88.0 | pred 86.2 | wL cur 0.2758 old 0.0719 clip[0.0264,0.2477] mm[0.0264,0.2758] dcur +0.0140 dclip +0.0000
+  f2245 x2343 y687 own1 w124174 farw0.455 age64 spd0.001 keep0.9385 score t7.0 h89.1 | hdr 60 62 58 155 61 63 60 62 | taa 61.2 61.2 61.0 69.8 62.0 62.1 61.3 61.3 | pred 69.8 | wL cur 0.2654 old 0.0417 clip[0.0193,0.1512] mm[0.0193,0.2654] dcur +0.0138 dclip +0.0000
+  f2246 x2370 y645 own1 w115045 farw0.286 age64 spd0.001 keep0.9242 score t6.9 h24.2 | hdr 77 167 77 77 157 77 154 77 | taa 77.1 86.2 85.3 84.5 91.4 77.1 84.8 84.0 | pred 91.4 | wL cur 0.2725 old 0.0826 clip[0.0240,0.2606] mm[0.0240,0.2924] dcur +0.0144 dclip +0.0000
+  f2246 x2498 y705 own1 w118291 farw0.349 age64 spd0.000 keep0.9295 score t6.8 h16.6 | hdr 79 171 154 79 170 79 67 79 | taa 78.3 87.1 92.8 91.5 98.3 79.1 78.3 78.3 | pred 98.3 | wL cur 0.3128 old 0.0972 clip[0.0209,0.2302] mm[0.0209,0.3128] dcur +0.0152 dclip +0.0000
+  f2246 x2478 y703 own1 w119135 farw0.369 age64 spd0.000 keep0.9312 score t6.7 h74.9 | hdr 79 166 79 79 154 79 119 140 | taa 79.1 87.0 79.1 79.1 85.8 79.1 82.4 87.3 | pred 85.8 | wL cur 0.2637 old 0.0719 clip[0.0264,0.2616] mm[0.0264,0.2908] dcur +0.0132 dclip +0.0000
+  f2246 x2501 y731 own1 w121989 farw0.420 age64 spd0.002 keep0.9355 score t6.6 h92.8 | hdr 53 39 58 57 157 58 57 97 | taa 62.3 61.1 60.9 60.7 70.2 63.6 60.9 63.9 | pred 70.2 | wL cur 0.2723 old 0.0411 clip[0.0205,0.1567] mm[0.0205,0.2723] dcur +0.0149 dclip +0.0000
+  f2248 x2504 y731 own1 w121926 farw0.420 age64 spd0.002 keep0.9355 score t6.4 h101.6 | hdr 57 59 56 63 59 62 170 62 | taa 63.7 63.4 62.5 62.5 62.2 62.2 73.0 64.1 | pred 73.0 | wL cur 0.3139 old 0.0434 clip[0.0223,0.1799] mm[0.0223,0.3139] dcur +0.0174 dclip +0.0000
+  f2248 x2413 y659 own1 w114950 farw0.282 age64 spd0.001 keep0.9239 score t6.4 h53.0 | hdr 79 79 79 79 79 79 148 79 | taa 79.1 79.1 79.0 78.7 78.7 78.7 85.5 79.2 | pred 85.5 | wL cur 0.2472 old 0.0712 clip[0.0427,0.1607] mm[0.0427,0.2472] dcur +0.0134 dclip +0.0000
+  f2247 x2293 y670 own1 w124232 farw0.459 age64 spd0.002 keep0.9388 score t6.3 h14.1 | hdr 80 60 160 49 139 154 55 158 | taa 70.8 62.5 71.6 70.4 76.1 82.4 61.0 70.2 | pred 82.5 | wL cur 0.2622 old 0.0665 clip[0.0242,0.2117] mm[0.0242,0.2820] dcur +0.0120 dclip +0.0000
+  f2247 x2409 y705 own1 w123495 farw0.451 age64 spd0.001 keep0.9382 score t6.3 h85.7 | hdr 167 78 78 61 78 164 78 78 | taa 85.7 78.3 78.3 77.4 77.4 84.6 78.3 78.3 | pred 84.6 | wL cur 0.2941 old 0.0689 clip[0.0116,0.2395] mm[0.0116,0.3083] dcur +0.0139 dclip +0.0000
+  f2246 x2299 y689 own1 w127253 farw0.506 age64 spd0.002 keep0.9428 score t6.2 h72.3 | hdr 61 111 126 59 136 58 57 59 | taa 60.0 63.9 68.8 60.9 67.1 60.2 60.0 60.0 | pred 67.2 | wL cur 0.2094 old 0.0414 clip[0.0350,0.1245] mm[0.0350,0.2094] dcur +0.0096 dclip +0.0000
+  f2243 x2384 y648 own1 w114636 farw0.278 age64 spd0.002 keep0.9236 score t6.2 h79.1 | hdr 78 157 78 78 156 78 47 78 | taa 76.9 85.0 78.2 78.1 85.9 78.7 76.8 76.9 | pred 85.0 | wL cur 0.2721 old 0.0679 clip[0.0243,0.1659] mm[0.0243,0.2721] dcur +0.0156 dclip +0.0000
+  f2248 x2501 y741 own1 w122560 farw0.435 age64 spd0.001 keep0.9368 score t6.2 h76.1 | hdr 57 59 47 67 123 73 150 71 | taa 70.2 69.5 68.3 65.0 69.9 70.2 77.2 71.0 | pred 77.2 | wL cur 0.2527 old 0.0560 clip[0.0276,0.1541] mm[0.0276,0.2527] dcur +0.0124 dclip +0.0000
+  f2245 x2406 y759 own1 w128090 farw0.525 age64 spd0.001 keep0.9445 score t6.1 h94.9 | hdr 157 46 46 155 44 40 46 46 | taa 64.7 56.2 55.2 64.3 57.3 56.5 56.0 55.4 | pred 64.3 | wL cur 0.2658 old 0.0336 clip[0.0130,0.2119] mm[0.0130,0.2867] dcur +0.0129 dclip +0.0000
+  f2246 x2314 y672 own1 w123639 farw0.443 age64 spd0.000 keep0.9375 score t6.0 h-3.5 | hdr 77 167 77 77 166 77 113 77 | taa 79.1 86.4 85.5 84.6 91.1 82.7 84.9 84.1 | pred 91.2 | wL cur 0.3013 old 0.0828 clip[0.0181,0.2157] mm[0.0181,0.3013] dcur +0.0137 dclip +0.0000
+  f2247 x2336 y712 own1 w127771 farw0.522 age64 spd0.001 keep0.9441 score t6.0 h90.0 | hdr 163 59 69 66 58 158 64 46 | taa 71.3 70.7 70.6 70.4 64.8 72.5 63.5 62.7 | pred 72.5 | wL cur 0.2751 old 0.0473 clip[0.0185,0.1552] mm[0.0185,0.2751] dcur +0.0127 dclip +0.0000
+  f2247 x2458 y759 own1 w130902 farw0.565 age64 spd0.000 keep0.9478 score t6.0 h66.3 | hdr 60 62 48 60 60 177 59 52 | taa 60.8 60.9 60.3 60.2 60.1 70.0 61.3 60.8 | pred 70.0 | wL cur 0.3352 old 0.0404 clip[0.0354,0.1912] mm[0.0354,0.3352] dcur +0.0154 dclip +0.0000

@@ -1,0 +1,3 @@
+run329 crop x2140-2600 y320-810 frames 5901..5908 k=1.6656 farw d0=0.99994439 d1=0.99996692 (view z 102400 .. 166399)
+owned plant px 29148: view z p5/p50/p95 108867/121845/208287; farw p5/p50/p95 0.157/0.416/1.000; farw==1 0.250 farw==0 0.000
+far routed speed (px/frame, rel. to crop median) p50 0.0010 p99 0.0021; farOpen(screen) at p99 1.000

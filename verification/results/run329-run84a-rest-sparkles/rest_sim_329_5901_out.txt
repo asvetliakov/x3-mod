@@ -1,0 +1,8 @@
+run329 crop x2140-2600 y320-810 frames 5901..5908 cycles 12 k=1.6656; plant px 39887, owned 29134; keep base on owned p50 0.9352
+input (hdr) one-frame spikes on plant px per frame: [408, 371, 374, 407, 384, 440, 435, 366]; input temporal std (code) on plant p50 1.18 p99 42.53
+base      sparkles/frame [7, 9, 18, 22, 13, 19, 22, 20] total 130 max score 11.9 | out temporal std p50 0.063 p99 4.71 | mean(out)-mean(input) on edge px (input std>8, n 7114) p50 +0.6 p10 -9.7
+far1      sparkles/frame [0, 0, 0, 0, 0, 0, 0, 0] total 0 max score 2.6 | out temporal std p50 0.017 p99 1.26 | mean(out)-mean(input) on edge px (input std>8, n 7114) p50 -0.3 p10 -11.5
+gamma075  sparkles/frame [7, 13, 18, 23, 14, 26, 27, 28] total 156 max score 14.2 | out temporal std p50 0.076 p99 5.31 | mean(out)-mean(input) on edge px (input std>8, n 7114) p50 -0.4 p10 -12.5
+box7      sparkles/frame [2, 0, 2, 3, 0, 1, 2, 3] total 13 max score 9.1 | out temporal std p50 0.057 p99 3.14 | mean(out)-mean(input) on edge px (input std>8, n 7114) p50 +1.9 p10 -0.8
+far1box7  sparkles/frame [0, 0, 0, 0, 0, 0, 0, 0] total 0 max score 1.8 | out temporal std p50 0.016 p99 0.84 | mean(out)-mean(input) on edge px (input std>8, n 7114) p50 +0.9 p10 -1.9
+region    sparkles/frame [0, 0, 0, 0, 0, 0, 0, 0] total 0 max score 2.0 | out temporal std p50 0.026 p99 1.26 | mean(out)-mean(input) on edge px (input std>8, n 7114) p50 +2.1 p10 -0.0

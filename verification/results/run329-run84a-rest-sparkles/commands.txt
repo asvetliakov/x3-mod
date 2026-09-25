@@ -1,0 +1,29 @@
+Run 84 A rest sparkles (run329 Run84 DLL 189a34f0 from 46cd4f9d, --taa-far-gate camera default, no --taa-debug: hdr/depth/motion only)
+against the run327 rest burst (Run83 DLL f0259ceb, --taa-debug: taa_1 + taa_age_1 still in the bottle's x3-modern-captures).
+Read-only, no Wine. Session-log facts used (grep only): run327 hdr_frame k=1.76050 (2242..2249), camera_state p00=0.4999979
+p22=1.00000298 p32=-6.00001812 cut_median_px=0 rotation 0 (2242..2249); run329 k=1.66558..1.66571 (5901..5908), view matrix
+and t constant over 5890..5912 (rest; rotation_deg=0.2469 is the background/history offset constant, cut_median_px=0),
+far_gate=camera default=1, source=vote; jitter indices from motion_output_frame rows.
+python3 rest_pixels.py 327 2260 630 2780 900 2242 8 > rest_pixels_327_2242_out.txt              # Q1/Q2 per-pixel terms, model vs actual
+KX=1.6656 python3 rest_pixels.py 329 2140 320 2600 810 5901 8 > rest_pixels_329_5901_out.txt  # Q2/Q4 farw, speed (no taa dumps)
+python3 flag_context.py 2260 630 2780 900 2242 8 > flag_context_327_2242_out.txt                 # Q3 flag sources, region distance
+python3 rest_sim.py 327 2260 630 2780 900 2242 > rest_sim_327_2242_out.txt                      # Q4/Q5 steady-state variant replay (+ calibration vs taa_1)
+KX=1.6656 python3 rest_sim.py 329 2140 320 2600 810 5901 > rest_sim_329_5901_out.txt          # Q4/Q5 same on run329
+vote_share_329_out.txt / emissive_precondition_329_out.txt: inline python (lane .a < 1 and L > 1 counts on the run329 far routed px of the crop)
+(stderr of the scripts carries numpy overflow warnings from unweigh on sentinel texels; redirected away)
+
+Follow-up on run332 (/tmp/x3-bottleX3-run332, Run84 DLL 189a34f0, camera gate default=1, source vote, --taa-debug; taa_age in the
+run dir). Log facts (grep): rest 2826..2833 view matrix and t constant, cut_median 0, jitter indices 3..7,0..2 (one period, every
+phase once, same phases as run327 2242..2249 = 4..7,0..3); pan 3631..3638 cut_median 0.97 -> 10.6 px, jitter 0..7; k 1.94037
+(rest), 2.1553 (pan). Plant crops from ../run327-run83b-sparkles/locate_plants.py 332 {2826,3631,3638}.
+run_sparkles.py = ../run327-run83b-sparkles/sparkles.py with TD/BD from RUN / AGEDIR (only that line);
+run_sparkles.py adds farw per pixel (F0/F1 env), the farw-bin sparkle rates, gate keep on the sparkles and the camera-gate
+closure q decoded from taa_age (heldC = held // 128, q = floor((heldC + 0.5) / 9)).
+python3 run_sparkles.py 2260 630 2780 900 2242 8 | tail -4 > cmp_327_rest_2242_out.txt
+EXSHIP=8 python3 run_sparkles.py 2260 850 2780 1200 2904 8 | tail -4 > cmp_327_pan_2904_exship8_out.txt
+RUN=332 AGEDIR=/tmp/x3-bottleX3-run332 python3 run_sparkles.py 2940 300 3270 880 2826 8 > sparkles_332_rest_2826_out.txt   (cmp_332_rest_2826_out.txt = its last 4 lines)
+RUN=332 AGEDIR=/tmp/x3-bottleX3-run332 EXSHIP=8 python3 run_sparkles.py 2480 450 2810 1045 3631 8 > sparkles_332_pan_3631_exship8_out.txt (cmp_332_pan_3631_exship8_out.txt = last 4); without EXSHIP: sparkles_332_pan_3631_out.txt (identical counts: no ship near the plant)
+AGEDIR=/tmp/x3-bottleX3-run332 KX=1.94037 python3 rest_pixels.py 332 2940 300 3270 880 2826 8 > rest_pixels_332_2826_out.txt
+AGEDIR=/tmp/x3-bottleX3-run332 KX=1.94037 python3 rest_sim.py 332 2940 300 3270 880 2826 > rest_sim_332_2826_out.txt
+AGEDIR=/tmp/x3-bottleX3-run332 python3 far_px_counts.py 332 2826 2830 3631 3635 3638; python3 far_px_counts.py 329 5901 5905 6503 6507 6510; AGEDIR=<bottle captures> python3 far_px_counts.py 327 2242 2904 2911  > far_px_counts_out.txt
+(cmp_327_rest / cmp_327_pan were produced before the q line was added: 3 lines each; the screen-gate keep line is valid under a pan only)

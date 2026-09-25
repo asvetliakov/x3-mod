@@ -1,0 +1,7 @@
+crop x2260-2780 y630-900 frames 2242..2249: sparkle flag sources {'n': 27, 'vote': 0, 'search': 0, 'emissive': 0, '7x7 has sentinel/bg texel': 16, 'region(h>0)': 0}
+distance to nearest region px (h>0): min 1.0 p50 15.0 max 27.2; <=2 px 3
+  vote: share of owned plant px 0.0000, of plant px 0.0000
+  srch: share of owned plant px 0.0690, of plant px 0.1053
+  emi: share of owned plant px 0.0000, of plant px 0.0000
+  region h>0: share of owned plant px 0.1102, of plant px 0.1578
+  7x7 has sentinel/bg texel: share of owned plant px 0.3582

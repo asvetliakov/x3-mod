@@ -1,0 +1,4 @@
+farw (f0 80 f1 130) on owned out-of-region plant px: p50 0.063 ==1 0.229; on taa sparkles (n 120): p50 0.000
+taa sparkle rate per 10k owned out-of-region plant px by farw bin [0,.25) [.25,.5) [.5,.75) [.75,1]: 116/182916=6.34 4/14900=2.68 0/0=0.00 0/58645=0.00
+on the taa sparkles (screen-gate figures valid under a pan only: at rest |disp| is the jitter): screen speed |disp| p50 0.30 px/frame; keep under the screen gate (Run83) p50 0.9000, under the camera gate with openC=1 (Run84, world-static, inferred) p50 0.9000; current share (1-keep) 0.1000 vs 0.1000
+camera-gate closure q (openC <= 1 - q/4, decoded from taa_age): owned out-of-region plant px q=0 1.000 q>=1 0.000; taa sparkles q=0 120 q>=1 0; sparkles in farw bin 3 with q>=1 0 of 0

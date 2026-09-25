@@ -1,0 +1,8 @@
+5901 far px 29134 L>1 (emissive vote precondition, E=1) 0 L max 0.880
+5902 far px 29148 L>1 (emissive vote precondition, E=1) 0 L max 0.895
+5903 far px 29089 L>1 (emissive vote precondition, E=1) 0 L max 0.875
+5904 far px 29148 L>1 (emissive vote precondition, E=1) 0 L max 0.832
+5905 far px 29062 L>1 (emissive vote precondition, E=1) 0 L max 0.854
+5906 far px 29136 L>1 (emissive vote precondition, E=1) 0 L max 0.827
+5907 far px 29121 L>1 (emissive vote precondition, E=1) 0 L max 0.818
+5908 far px 29136 L>1 (emissive vote precondition, E=1) 0 L max 0.784

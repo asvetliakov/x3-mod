@@ -1,0 +1,16 @@
+run327 crop x2260-2780 y630-900 frames 2242..2249 cycles 12 k=1.7605; plant px 33731, owned 24428; keep base on owned p50 0.9458
+input (hdr) one-frame spikes on plant px per frame: [402, 351, 405, 445, 420, 422, 416, 393]; input temporal std (code) on plant p50 1.21 p99 43.62
+base      sparkles/frame [11, 18, 22, 12, 35, 10, 23, 25] total 156 max score 11.6 | out temporal std p50 0.054 p99 4.11 | mean(out)-mean(input) on edge px (input std>8, n 6810) p50 +0.5 p10 -9.6
+far1      sparkles/frame [1, 0, 0, 0, 0, 0, 0, 0] total 1 max score 7.8 | out temporal std p50 0.019 p99 1.12 | mean(out)-mean(input) on edge px (input std>8, n 6810) p50 -0.6 p10 -11.2
+gamma075  sparkles/frame [21, 18, 27, 11, 42, 16, 25, 28] total 188 max score 29.5 | out temporal std p50 0.066 p99 4.81 | mean(out)-mean(input) on edge px (input std>8, n 6810) p50 -0.5 p10 -12.1
+box7      sparkles/frame [0, 4, 0, 0, 6, 2, 4, 5] total 21 max score 11.2 | out temporal std p50 0.049 p99 2.84 | mean(out)-mean(input) on edge px (input std>8, n 6810) p50 +1.8 p10 -0.9
+far1box7  sparkles/frame [0, 0, 0, 0, 0, 0, 0, 0] total 0 max score 1.8 | out temporal std p50 0.019 p99 0.81 | mean(out)-mean(input) on edge px (input std>8, n 6810) p50 +0.6 p10 -2.5
+region    sparkles/frame [0, 0, 0, 0, 0, 0, 0, 0] total 0 max score 1.9 | out temporal std p50 0.028 p99 1.20 | mean(out)-mean(input) on edge px (input std>8, n 6810) p50 +2.0 p10 -0.1
+out-of-region plant px (never h>0 in the burst, 1 px margin) n 24995: base replay vs actual taa_1 |err| code p50 0.099 p99 3.257
+  interior frames 1..6 (non-cyclic), out-of-region plant px: actual taa_1 sparkles [5, 1, 2, 10, 3, 3] total 24
+  interior frames 1..6 (non-cyclic), out-of-region plant px: base         sparkles [11, 13, 3, 26, 2, 7] total 62
+  interior frames 1..6 (non-cyclic), out-of-region plant px: far1         sparkles [0, 0, 0, 0, 0, 0] total 0
+  interior frames 1..6 (non-cyclic), out-of-region plant px: gamma075     sparkles [11, 14, 3, 32, 4, 11] total 75
+  interior frames 1..6 (non-cyclic), out-of-region plant px: box7         sparkles [2, 0, 0, 4, 1, 2] total 9
+  interior frames 1..6 (non-cyclic), out-of-region plant px: far1box7     sparkles [0, 0, 0, 0, 0, 0] total 0
+  interior frames 1..6 (non-cyclic), out-of-region plant px: region       sparkles [0, 0, 0, 0, 0, 0] total 0
