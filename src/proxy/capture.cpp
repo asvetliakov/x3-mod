@@ -3752,7 +3752,11 @@ void initialize_log(HMODULE module) {
         if(GetEnvironmentVariableW(L"X3M_SUN_OCCLUSION_CURVE",value,32)>0){wchar_t* end=nullptr;const float v=wcstof(value,&end);if(end!=value&&*end==L'\0'&&v>=.25f&&v<=4.f)sun_occlusion_curve=v;}
         sun_occlusion_core_f=!(GetEnvironmentVariableW(L"X3M_SUN_OCCLUSION_CORE_F",value,32)==1&&value[0]==L'0'); // default on; only an explicit "0" restores clip-only
         sun_occlusion::set_listener(&sun_lens_begin,&sun_lens_end);
-        if(sun_occlusion::initialize())log("sun_occlusion_config override=%u log=%u route=%u radius_u=%.4f curve=%.3f core_f=%u",sun_occlusion::override_enabled()?1u:0u,sun_occlusion::logging()?1u:0u,motion_output_requested?1u:0u,double(sun_occlusion_radius),double(sun_occlusion_curve),sun_occlusion_core_f?1u:0u);
+        if(sun_occlusion::initialize()){
+            // X3M_SUN_OCCLUSION_DEFAULT=1: the launcher filled the override in from its Run 83 default (read only when the override is on).
+            const bool from_default=sun_occlusion::override_enabled()&&GetEnvironmentVariableW(L"X3M_SUN_OCCLUSION_DEFAULT",value,32)==1&&value[0]==L'1';
+            log("sun_occlusion_config override=%u log=%u route=%u radius_u=%.4f curve=%.3f core_f=%u default=%u",sun_occlusion::override_enabled()?1u:0u,sun_occlusion::logging()?1u:0u,motion_output_requested?1u:0u,double(sun_occlusion_radius),double(sun_occlusion_curve),sun_occlusion_core_f?1u:0u,from_default?1u:0u);
+        }
     }
     cull_census::initialize(); // X3M_CULL_CENSUS=1 only; two read-only trampolines on the cull/LOD pass (0x0047d258, 0x0047d528), same window
     cull_small_parts::initialize(); // X3M_CULL_SMALL_PARTS_PX only; one trampoline on the cull/LOD pass (0x0047d2a2), same window, disjoint from the census claims

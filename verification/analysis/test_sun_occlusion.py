@@ -493,7 +493,7 @@ class SunOcclusionSites(unittest.TestCase):
 
 class SunOcclusionLaunchOption(unittest.TestCase):
     ROUTE = ('--ownership', '--object-trace', '--object-lifetime', '--motion-output', '--taa', '--hdr')
-    NAMES = ('X3M_SUN_OCCLUSION', 'X3M_SUN_OCCLUSION_LOG', 'X3M_SUN_OCCLUSION_RADIUS', 'X3M_SUN_OCCLUSION_CURVE', 'X3M_SUN_OCCLUSION_CORE_F')
+    NAMES = ('X3M_SUN_OCCLUSION', 'X3M_SUN_OCCLUSION_LOG', 'X3M_SUN_OCCLUSION_RADIUS', 'X3M_SUN_OCCLUSION_CURVE', 'X3M_SUN_OCCLUSION_CORE_F', 'X3M_SUN_OCCLUSION_DEFAULT')
 
     def launch(self, directory, *args, inherited=None):
         module = load('sun_occlusion_manage', 'tools/manage.py')
@@ -516,35 +516,70 @@ class SunOcclusionLaunchOption(unittest.TestCase):
                 return exit_error.code, output.getvalue(), error.getvalue()
         return 0, output.getvalue(), error.getvalue()
 
-    def test_default_is_off_and_drops_inherited_variables(self):
+    def sun_env(self, output):
+        return {k: v for k, v in json.loads(output)['env'].items() if k in self.NAMES}
+
+    def test_default_is_on_for_modded_motion_output_launches(self):
+        # Run 83 (2026-09-25): the override and its core dimming are sent by default, marked X3M_SUN_OCCLUSION_DEFAULT=1.
         with tempfile.TemporaryDirectory() as directory:
-            code, output, error = self.launch(directory, *self.ROUTE, inherited={name: '1' for name in self.NAMES})
+            code, output, error = self.launch(directory, *self.ROUTE, inherited={name: '0' for name in self.NAMES})
             self.assertEqual(code, 0, error)
-            self.assertFalse(set(self.NAMES) & set(json.loads(output)['env']))
+            self.assertEqual(self.sun_env(output), {'X3M_SUN_OCCLUSION': '1', 'X3M_SUN_OCCLUSION_CORE_F': '1', 'X3M_SUN_OCCLUSION_DEFAULT': '1'})
+            code, output, error = self.launch(directory, *self.ROUTE, '--sun-occlusion')   # explicit: marker 0
+            self.assertEqual(code, 0, error)
+            self.assertEqual(self.sun_env(output), {'X3M_SUN_OCCLUSION': '1', 'X3M_SUN_OCCLUSION_CORE_F': '1', 'X3M_SUN_OCCLUSION_DEFAULT': '0'})
+
+    def test_no_default_without_its_prerequisite_and_drops_inherited_variables(self):
+        # --no-sun-occlusion, no --motion-output, --submit-phases (never an error) and --vanilla: nothing sent, stale shell values dropped.
+        with tempfile.TemporaryDirectory() as directory:
+            for args in (('--no-sun-occlusion', *self.ROUTE), ('--ownership', '--object-trace'),
+                         (*self.ROUTE, '--telemetry', '--frame-phases', '--submit-phases'), ('--vanilla',)):
+                code, output, error = self.launch(directory, *args, inherited={name: '1' for name in self.NAMES})
+                self.assertEqual(code, 0, (args, error))
+                self.assertEqual(self.sun_env(output), {}, args)
 
     def test_dry_run_carries_the_options(self):
         with tempfile.TemporaryDirectory() as directory:
-            baseline = json.loads(self.launch(directory, *self.ROUTE)[1])
             code, output, error = self.launch(directory, *self.ROUTE, '--sun-occlusion', '--sun-occlusion-log', '--sun-occlusion-radius', '0.05', '--sun-occlusion-curve', '2', '--sun-occlusion-core-f', 'on')
             self.assertEqual(code, 0, error)
-            delivered = json.loads(output)
-            self.assertEqual({k: v for k, v in delivered['env'].items() if k not in baseline['env']},
-                             {'X3M_SUN_OCCLUSION': '1', 'X3M_SUN_OCCLUSION_LOG': '1', 'X3M_SUN_OCCLUSION_RADIUS': '0.0500', 'X3M_SUN_OCCLUSION_CURVE': '2.0000', 'X3M_SUN_OCCLUSION_CORE_F': '1'})
+            self.assertEqual(self.sun_env(output),
+                             {'X3M_SUN_OCCLUSION': '1', 'X3M_SUN_OCCLUSION_LOG': '1', 'X3M_SUN_OCCLUSION_RADIUS': '0.0500', 'X3M_SUN_OCCLUSION_CURVE': '2.0000', 'X3M_SUN_OCCLUSION_CORE_F': '1', 'X3M_SUN_OCCLUSION_DEFAULT': '0'})
             code, output, error = self.launch(directory, '--vanilla', '--sun-occlusion-log')   # observe-only needs no route
             self.assertEqual(code, 0, error)
-            self.assertEqual({k for k in json.loads(output)['env'] if k in self.NAMES}, {'X3M_SUN_OCCLUSION_LOG'})
+            self.assertEqual(set(self.sun_env(output)), {'X3M_SUN_OCCLUSION_LOG'})
+            code, output, error = self.launch(directory, *self.ROUTE, '--no-sun-occlusion', '--sun-occlusion-log')   # observe-only beside the opt-out
+            self.assertEqual(code, 0, error)
+            self.assertEqual(set(self.sun_env(output)), {'X3M_SUN_OCCLUSION_LOG'})
+
+    def test_dependent_options_accept_the_default(self):
+        with tempfile.TemporaryDirectory() as directory:
+            code, output, error = self.launch(directory, *self.ROUTE, '--sun-occlusion-radius', '0.05', '--sun-occlusion-curve', '2', '--sun-occlusion-core-f', 'off')
+            self.assertEqual(code, 0, error)
+            self.assertEqual(self.sun_env(output),
+                             {'X3M_SUN_OCCLUSION': '1', 'X3M_SUN_OCCLUSION_RADIUS': '0.0500', 'X3M_SUN_OCCLUSION_CURVE': '2.0000', 'X3M_SUN_OCCLUSION_CORE_F': '0', 'X3M_SUN_OCCLUSION_DEFAULT': '1'})
 
     def test_core_f_defaults_to_on_and_takes_an_explicit_off(self):
-        # run235 acceptance: the clipped core dims with f whenever --sun-occlusion is on; off restores clip-only.
+        # run235 acceptance: the clipped core dims with f whenever the override is on; off restores clip-only.
         with tempfile.TemporaryDirectory() as directory:
-            for args, want in ((('--sun-occlusion',), '1'), (('--sun-occlusion', '--sun-occlusion-core-f', 'on'), '1'),
-                               (('--sun-occlusion', '--sun-occlusion-core-f', 'off'), '0')):
+            for args, want in (((), '1'), (('--sun-occlusion',), '1'), (('--sun-occlusion', '--sun-occlusion-core-f', 'on'), '1'),
+                               (('--sun-occlusion', '--sun-occlusion-core-f', 'off'), '0'), (('--sun-occlusion-core-f', 'off'), '0')):
                 code, output, error = self.launch(directory, *self.ROUTE, *args, inherited={'X3M_SUN_OCCLUSION_CORE_F': '0' if want == '1' else '1'})
                 self.assertEqual(code, 0, error)
                 self.assertEqual(json.loads(output)['env']['X3M_SUN_OCCLUSION_CORE_F'], want, args)   # the option wins over any shell value
-            code, output, error = self.launch(directory, *self.ROUTE, inherited={'X3M_SUN_OCCLUSION_CORE_F': '1'})   # no override: nothing is patched, nothing is set
+            code, output, error = self.launch(directory, *self.ROUTE, '--no-sun-occlusion', inherited={'X3M_SUN_OCCLUSION_CORE_F': '1'})   # no override: nothing is patched, nothing is set
             self.assertEqual(code, 0, error)
             self.assertNotIn('X3M_SUN_OCCLUSION_CORE_F', json.loads(output)['env'])
+
+    def test_dll_config_row_carries_the_default_marker(self):
+        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        read = re.search(r'const bool from_default=([^;]*);', capture).group(1)
+        self.assertTrue(read.startswith('sun_occlusion::override_enabled()&&'), read)                 # read only when the override is on
+        self.assertIn('L"X3M_SUN_OCCLUSION_DEFAULT"', read)
+        self.assertIn("value[0]==L'1'", read)
+        row = re.search(r'log\("sun_occlusion_config [^"]*"', capture).group(0)
+        self.assertTrue(row.endswith(' default=%u"'), row)
+        sun = (ROOT / 'src/proxy/sun_occlusion.cpp').read_text()                                        # absent = disabled, nothing patched
+        self.assertIn('GetEnvironmentVariableW(L"X3M_SUN_OCCLUSION", setting, 4) == 1 && setting[0] == L\'1\'', sun)
 
     def test_dll_reads_the_variable_as_default_on(self):
         capture = (ROOT / 'src/proxy/capture.cpp').read_text()
@@ -557,7 +592,7 @@ class SunOcclusionLaunchOption(unittest.TestCase):
 
     def test_refusals(self):
         with tempfile.TemporaryDirectory() as directory:
-            for args, needle in ((('--sun-occlusion',), '--motion-output'), ((*self.ROUTE, '--sun-occlusion-radius', '0.02'), 'require --sun-occlusion'), ((*self.ROUTE, '--sun-occlusion-core-f', 'off'), 'require --sun-occlusion'), ((*self.ROUTE, '--sun-occlusion', '--sun-occlusion-core-f', 'maybe'), 'invalid choice'),
+            for args, needle in ((('--sun-occlusion',), '--motion-output'), ((*self.ROUTE, '--no-sun-occlusion', '--sun-occlusion-radius', '0.02'), 'require --sun-occlusion'), ((*self.ROUTE, '--no-sun-occlusion', '--sun-occlusion-core-f', 'off'), 'require --sun-occlusion'), (('--ownership', '--sun-occlusion-curve', '2'), 'require --sun-occlusion'), ((*self.ROUTE, '--telemetry', '--frame-phases', '--submit-phases', '--sun-occlusion-radius', '0.05'), 'require --sun-occlusion'), ((*self.ROUTE, '--sun-occlusion', '--no-sun-occlusion'), 'mutually exclusive'), ((*self.ROUTE, '--sun-occlusion', '--sun-occlusion-core-f', 'maybe'), 'invalid choice'),
                                  ((*self.ROUTE, '--sun-occlusion', '--sun-occlusion-radius', '1.5'), 'out of range'), ((*self.ROUTE, '--sun-occlusion', '--sun-occlusion-radius', '0.001'), 'out of range'), ((*self.ROUTE, '--sun-occlusion', '--sun-occlusion-curve', '0.1'), 'out of range'),
                                  ((*self.ROUTE, '--telemetry', '--frame-phases', '--submit-phases', '--sun-occlusion'), '--submit-phases')):
                 code, _, error = self.launch(directory, *args)

@@ -454,3 +454,32 @@ already passed, so no Wine run was needed.
 | Check | Result |
 | --- | --- |
 | `/usr/bin/python3 verification/probe/run_host_suite.py --modules test_sun_occlusion` | 24 tests, 0 failing (new: core-f default on / explicit off / inherited value ignored, the DLL's default-on read; the invalid-choice refusal) |
+
+## Launcher default (2026-09-25, after Run 83)
+
+User decision after the Run 83 flight: "--sun-occlusion works, make it the default along with the sun dimming when
+occluded". Run 83 A (run323, launches 1 and 3) had shown the vanilla CPU probe hiding the whole flare at about half
+cover: `verification/results/run323-run83a-launch1-3/sun_occluder_cover.py` (geometry fraction of `depth_1_<frame>` in
+boxes of half-size 5/20/60 px around the sun pixel, output in `sun_occluder_cover_out.txt`, measured) gives, while the
+flare shows, frames 28222/28229 h5=0.000 h20=0.189-0.215 h60=0.292-0.299, and once it is gone, frames 29032/29039
+h5=1.000 h20=0.989-0.992 h60=0.538-0.540: the sun pixel is covered with the disc neighbourhood about half covered.
+
+Launcher (`tools/manage.py`, the c2aa8d4e pattern): on a modded launch with `--motion-output` and without
+`--submit-phases`, `--no-sun-occlusion` or `--sun-occlusion`, the launcher sends `X3M_SUN_OCCLUSION=1` with
+`X3M_SUN_OCCLUSION_DEFAULT=1` (and `X3M_SUN_OCCLUSION_CORE_F=1`: the core dimming of run235 is the "sun dimming when
+occluded" and comes with it); explicit `--sun-occlusion` sends marker 0. `--no-sun-occlusion` sends nothing and drops
+inherited values; the DLL needs the absence (it installs only on `X3M_SUN_OCCLUSION` exactly `1`), so absent still
+means nothing patched, no cost. With `--submit-phases` the default is simply not sent (explicit `--sun-occlusion`
+stays refused there); without `--motion-output` and under `--vanilla` nothing is sent. `--sun-occlusion-radius`,
+`-curve` and `-core-f` accept the default as their prerequisite. DLL: `sun_occlusion_config` gains `default=` (1 only
+when the override is on and the marker is `1`; the marker is not read otherwise); the DLL default when the variable
+is unset is unchanged (off), so the fixtures are unchanged and no Wine run was needed. `run_motion_output.py` and
+`run_lod_occlusion_patch.py` drop an inherited `X3M_SUN_OCCLUSION_DEFAULT`.
+
+| Check | Result |
+| --- | --- |
+| `cmake --build build -j4` (MinGW i686, RelWithDebInfo) | 0 warnings |
+| `python3 verification/probe/check_no_x87.py build/d3d9.dll` | 690 reachable functions, 0 violations |
+| `python3 -m unittest test_sun_occlusion test_taa_box_resolution` | 36 tests OK (test_sun_occlusion 27: default 1/1, explicit 1/0, opt-out, no route, `--submit-phases`, `--vanilla` nothing; dependent options under the default; the row's `default=`) |
+| 51 launcher modules (every `verification/analysis/test_*.py` naming `manage.py`) plus test_taa_box_resolution | 726 tests OK |
+| Dry runs (Run 83 A stand command via `tools/manage.py launch --bottle X3 --dry-run`; `verification/results/sun-occlusion-default/dry_runs.sh`, output `dry_runs_out.txt`) | stand: `X3M_SUN_OCCLUSION=1`, `_CORE_F=1`, `_DEFAULT=1`; `+ --sun-occlusion`: `_DEFAULT=0`; `+ --no-sun-occlusion`: none; `+ --submit-phases`: none, exit 0; `--vanilla`: none |

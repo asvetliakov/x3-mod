@@ -1,6 +1,6 @@
 # Sun and lens chain under partial occlusion
 
-2026-09-22. Ratified design; **steps 1 and 2 are implemented behind `--sun-occlusion` (default off)**; step 1 flew
+2026-09-22. Ratified design; **steps 1 and 2 are implemented behind `--sun-occlusion`, the launcher default on modded `--motion-output` launches since 2026-09-25 (user decision after Run 83; `--no-sun-occlusion` restores the vanilla probe)**; step 1 flew
 once (Run 223) without ever engaging for the sun, which the section "After Run 223" corrects; step 2 is not flown
 (sections "Step 1 as built" and "After Run 223" carry the corrections to the text below; ledger:
 [verification/sun-occlusion.md](../verification/sun-occlusion.md)). Owning RE note:
@@ -15,7 +15,7 @@ Trigger: Run 61 user report, triaged in
 **Take the occlusion decision away from the engine's binary CPU probe and make it a GPU visibility
 fraction `f` in a 1x1 texture, measured from the proxy's own scene depth (RT2 `.b`) over the sun's disc
 footprint and multiplied into every draw of the `Lensflare Scene` in the pixel shader. No readback, no
-query, no added latency.** Three pieces, one launcher switch (`--sun-occlusion`, default off until flown):
+query, no added latency.** Three pieces, one launcher switch (`--sun-occlusion`; default off until flown, default on since 2026-09-25 after Run 83, see the ledger):
 
 1. **Probe override** at the sole call `0x00471630` (`call 0x00488720`). Replacement keeps the cheap
    vanilla gates (**corrected: three, in vanilla order**: flare video option, the rect test, view flag;

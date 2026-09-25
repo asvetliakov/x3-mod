@@ -1,0 +1,6 @@
+# dry_runs.sh output, 2026-09-25 (worktree tools/manage.py launch --bottle X3 --dry-run, Run 83 A stand command)
+stand                     rc=0 {'X3M_SUN_OCCLUSION': '1', 'X3M_SUN_OCCLUSION_CORE_F': '1', 'X3M_SUN_OCCLUSION_DEFAULT': '1'}
+stand --sun-occlusion     rc=0 {'X3M_SUN_OCCLUSION': '1', 'X3M_SUN_OCCLUSION_CORE_F': '1', 'X3M_SUN_OCCLUSION_DEFAULT': '0'}
+stand --no-sun-occlusion  rc=0 {}
+stand --submit-phases     rc=0 {}
+--vanilla                 rc=0 {}
