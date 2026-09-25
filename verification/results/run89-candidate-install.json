@@ -1,0 +1,46 @@
+{
+ "candidate": {
+  "dll": "/tmp/x3-run89-candidate/build/d3d9.dll",
+  "sha256": "0f6acab4ddce2f20101ab768725080b65a703488865567c3cd3718e7d6126ea8",
+  "bytes": 56806407,
+  "commit": "e2db7813",
+  "qualification": "verification/results/run89-candidate-qualification.json"
+ },
+ "command": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3-run89-candidate/build/d3d9.dll",
+ "cwd": "/Users/asvetl/x3-mod",
+ "exit": 0,
+ "installed_at": "2026-09-25T21:40+04:00",
+ "installed": {
+  "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
+  "sha256": "0f6acab4ddce2f20101ab768725080b65a703488865567c3cd3718e7d6126ea8",
+  "bytes": 56806407,
+  "verified": "sha256 and size read back after install; candidate hash rechecked before install"
+ },
+ "unchanged": {
+  "X3AP.exe": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+  "cxbottle.conf": "cc5d6c00a8afccaf88cbae1a7c46040db513eb163a52693287a3d29aca828e0c"
+ },
+ "previous": {
+  "dll": "/tmp/x3-run88-candidate/build/d3d9.dll",
+  "sha256": "6fe194bdcd83e39fb45e71196c8c1815c030f8e05474aa7866264a510b3a07be",
+  "bytes": 56886757,
+  "commit": "79aafc8b"
+ },
+ "rollback": {
+  "dll": "/tmp/x3-run88-candidate/build/d3d9.dll",
+  "sha256": "6fe194bdcd83e39fb45e71196c8c1815c030f8e05474aa7866264a510b3a07be",
+  "bytes": 56886757,
+  "records": [
+   "verification/results/run88-candidate-qualification.json",
+   "verification/results/run88-candidate-install.json"
+  ],
+  "then": "/tmp/x3-run87-candidate/build/d3d9.dll 94c4ef42…"
+ },
+ "game_running_at_install": false,
+ "game_data": "fleet overlay install-fleet4 (620 bodies) unchanged; x3m/fog-families.bin (empty table) + .json unchanged",
+ "changes_vs_previous": [
+  "single shadow map removed: cascades are the only replay geometry; --no-shadow-cascades = no map, no lease, no replay, apply off with one sun_shadow_apply_mode enabled=0 cascades=0 row; the four --shadow-replay-size/-extent/-depth-half/-cap options gone (launcher exit 2, DLL logs one shadow_replay_config single_map=removed row when a variable is inherited); caster counter idle without cascades; sun_shadow_apply_ps program deleted (e2db7813)",
+  "launcher default --shadow-cascade-sizes 2048,4096,4096,4096,2048 (cascade 3 to 4096, user decision after Run 88 A; ecd2aaae, launcher only, unflown)",
+  "not in this build (decided after the freeze at e2db7813): --taa-k and --taa-sentinel removal (in flight, next candidate)"
+ ]
+}
