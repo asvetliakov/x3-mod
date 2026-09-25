@@ -438,7 +438,7 @@ SHADOW_RETENTION_ENV = dict(X3M_SHADOW_REPLAY_DEPTH='1', X3M_SHADOW_REPLAY_SIZE=
                             X3M_TELEMETRY_DRAW='0', X3M_CAPTURE_START='10', X3M_SHADOW_RETENTION_TIMING='1', X3M_SHADOW_CASCADE_MIN_FOOTPRINT='0')
 SHADOW_RETENTION_CASES = {'seam-ownership-shadow-retention-live': dict(X3M_SHADOW_CASTER_RETENTION='1'), 'seam-ownership-shadow-retention-census': dict(X3M_SHADOW_RETENTION_CENSUS='1'),
                           'seam-ownership-shadow-retention-off': {}}
-SHADOW_RETENTION_SCRIPT = ('a_turn_away', 'b_moving', 'c_retired', 'd_lod_swap', 'e_shared_mesh', 'f_buffer_lock', 'g_release_first', 'h_reset', 'm_observer', 'j_excluded', 'i_capacity', 'k_age_and_sun', 'teardown')
+SHADOW_RETENTION_SCRIPT = ('a_turn_away', 'b_moving', 'c_retired', 'd_lod_swap', 'e_shared_mesh', 'f_buffer_lock', 'g_release_first', 'h_reset', 'm_observer', 'j_excluded', 'i_capacity', 'n_route_lifecycle', 'k_age_and_sun', 'teardown')
 CASES += [case(name, 'shadowretention', 'ownership', camera=True, hdr_env=dict(SHADOW_RETENTION_ENV, **extra)) for name, extra in SHADOW_RETENTION_CASES.items()]
 # The same script live under the positional sun (X3M_FIXTURE_SHADOW_POLL=agree): every cascade's basis
 # from the polled light, retained records on the point source, then a source switch (the context
@@ -2933,6 +2933,18 @@ def validate_shadow_retention(name, text, trace, directory, env):
         destroyed = [i for i, l in enumerate(tl) if l.startswith('device_destroy ')]
         assert len(teardown) == 1 and len(destroyed) == 1 and teardown[0] < destroyed[0], (name, teardown, destroyed)
         assert fields(tl[teardown[0]])['nodes'] == '2' and fields(tl[teardown[0]])['refs'] == ('3' if mode == 2 else '0'), (name, tl[teardown[0]])
+        # The final-Release probe's terms (shadow-caster-retention.md, "Final-Release probe drift (2026-09-25)"): rows only
+        # while the store holds a reference (live), rate-limited to 16 per device, never fired before the teardown flush.
+        probes = [fields(l) for l in tl if l.startswith('shadow_retention_probe ')]
+        assert (1 <= len(probes) <= 16) if mode == 2 else not probes, (name, len(probes))
+        total = lambda p: int(p['device']) + int(p['bloom']) + int(p['gpu_sync']) + 1 + int(p['retained'])
+        assert all(int(p['retained']) >= 1 and (int(p['now']) > total(p)) == (p['fired'] == '0') for p in probes), (name, probes[:4])
+        fired = [p for p in probes if p['fired'] == '1']  # exactly the true final Release: the teardown flush's frame, the count equal to the sum
+        assert [(p['frame'], int(p['now']) == total(p)) for p in fired] == ([(fields(tl[teardown[0]])['frame'], True)] if mode == 2 else []), (name, fired)
+        assert len({(p['device'], p['bloom'], p['gpu_sync'], p['fired']) for p in probes}) == len(probes), (name, 'one row per distinct tuple of the terms and the verdict')
+        lifecycle = fields(next(l for l in lines if l.startswith('RETENTION_ROUTE_LIFECYCLE ')))
+        assert lifecycle['device_term_first'] == lifecycle['device_term_last'] and lifecycle['teardown_flushes'] == '0', (name, lifecycle)
+        case['route_lifecycle'] = {'device_term': int(lifecycle['device_term_first']), 'probe_rows': len(probes)}
         summary = retention_analysis.summary(frame_rows, resights, float(env.get('X3M_SHADOW_CASTER_RETENTION_EPS', '0.05')))
         # Case i: the frame that fills the table evicts the reserve (8) at its scene end and the 1,025th node one more; cases c, m and i overflow the ring once each.
         assert summary['levels']['nodes_live'] + 0 <= 1024 and summary['totals']['evicted'] == 9 and summary['totals']['journal_overflow'] == 3 and summary['drift']['frames_over_eps'] == 1, (name, summary['totals'], summary['drift'])
@@ -2952,6 +2964,11 @@ def validate_shadow_retention(name, text, trace, directory, env):
                              'full_store_walk_us_max': max((r['walk_us'] for r in full), default=None), 'overflow_frame_us': max(r['us'] for r in frame_rows if r['journal_overflow']),
                              'burst_frame': next(({'retired': r['retired'], 'us': r['us'], 'journal_us': r['journal_us']} for r in frame_rows if r['retired'] >= 590), None)}
         assert case['retention']['burst_frame'] is not None, name
+    # The taa_references_ clamp (every setting): one underflow row, from the one-sided cycle past zero, and the term restored.
+    clamp = fields(next(l for l in lines if l.startswith('RETENTION_TAA_CLAMP ')))
+    underflows = [fields(l) for l in tl if l.startswith('taa_references_underflow ')]
+    assert len(underflows) == 1 and underflows[0]['site'] == 'lens_depth_release' and underflows[0]['delta'] == '-1' and underflows[0]['references'] == '0' and clamp['clamped'] == '0', (name, underflows, clamp)
+    case['taa_clamp'] = {'taa_references': int(clamp['taa_references']), 'underflow_rows': len(underflows)}
     assert len([i for i, l in enumerate(tl) if l.startswith('device_destroy ')]) == 1, f'{name}: the device was not destroyed'
     case['failed_reset'] = fields(next(l for l in lines if l.startswith('RETENTION_FAILED_RESET ')))['result']
     case['lock_drop_frames'] = int(fields(next(l for l in lines if l.startswith('RETENTION_LOCK_DROP ')))['frames'])

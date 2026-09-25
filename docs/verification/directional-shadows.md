@@ -3796,3 +3796,27 @@ refusal (`refused_uv`) and a non-2D stage-0 texture (`refused_texture`) have no 
 `refused_pool` / `refused_uv` / `refused_texture` 0 (the game's material textures are assumed
 `D3DPOOL_MANAGED` [I]), and `shadow_cross.py` on the ODS pair at cascade 4 should drop the 3,910
 fine-lit / coarse-shadowed pixels toward 0; replay `us` per frame up by tens of microseconds.
+
+## Final-Release probe drift: the retention store flushed every frame (2026-09-25, worktree `agent-a03f4da4789dd5c14`)
+
+Cause and fix: shadow-caster-retention.md, "Final-Release probe drift (2026-09-25, run336)". The drifting
+term is `taa_references_` (measured, not enumerated): the sun-occlusion bracket acquired RT2's container
+outside `taa_call` and released it inside, -1 per frame under the ownership wrapper (a fresh texture node per
+`GetContainer`); the unsigned probe sum wrapped when the drift exceeded the other terms and the hook flushed
+the store at every device Release from then on.
+
+| Item | Result |
+| --- | --- |
+| run336 `taa_references` (per-frame `motion_output_frame` field; `verification/results/run336-shadow-pop/taa_references_drift.py`) | 0 until 403; 61 at 404, 68 at 405, then -1 per bracket frame (steady 405-507 and 603-2418, 2946-3141; no change in the gaps); 4,294,966,958 at 906 (the first `flush=teardown`, 338 brackets in), 4,294,965,250 at 3141 [M] |
+| run334 / run324 (same script) | run334: 80 at 790 then -1 per frame to 41 at 829 (session end); run324, no sun occlusion: flat 82 from frame 450 [M] |
+| Runs with `sun_occlusion_device attached=1` vs teardown flushes | 326/329/333/335/336 attached and flushing (2,776 / 4,771 / 8,653 / 3,106 / 18,992 rows); 324/325/327/332 not attached, 0; 334 attached, 0 (drift started at 790, session ended before the wrap) [M] |
+| Fix | `MotionOutput::acquire_lens_depth()`: the `GetContainer` under `taa_call`; `sun_occlusion_begin` uses it. Hardening: `taa_call` clamps at 0 with one `taa_references_underflow` row; the probe sum is 64-bit. The bracket is the launcher default since Run84 (50a5f98e): every session since then flushed |
+| Probe row | `shadow_retention_probe` in `release_device`, keyed on (device, bloom, gpu_sync, fired), 16 rows per device with one slot for the first fired row; only while `retention_references()` is non-zero |
+| Fixture (negative, main's acquisition; witness `verification/results/run336-shadow-pop/negative_witness.txt`) | `seam-ownership-shadow-retention-live` FAIL: case `n_route_lifecycle` cycle 21 (frame 886) two `flush=teardown` rows (`nodes=2 refs=3`, `nodes=1 refs=2`), `RETENTION_WITNESS stat=7 value=0 expected=2` [M] |
+| Fixture (fix + clamp) | live / census / off / live-poll: 12,055 / 12,052 / 8,304 / 12,202 checks, 1,849 / 1,849 / 1,849 / 1,861 frames, `RETENTION_ROUTE_LIFECYCLE cycles=301 device_term_first=16 device_term_last=16 teardown_flushes=0` and `RETENTION_TAA_CLAMP taa_references=8 one_sided_cycles=9 clamped=0 device_term=8` with one `taa_references_underflow device=1 frame=1166 site=lens_depth_release delta=-1 references=0` row in every setting; probe rows live 11 (first build, before the clamp cycles: `frame=0 now=32 device=8`, `frame=0 now=40 device=16`, `frame=865 now=66 device=17` (RT2 held), `frame=1848 now=20 device=16 retained=3 fired=1`, the teardown, 20 = 16+0+0+1+3); census/off none [M] |
+| Build / audit | `cmake --build build` 0 warnings; `check_no_x87.py build/d3d9.dll` 119 roots / 690 reachable / 0 violations [M] |
+| Host | `test_capture_bloom_lifetime` (its double gains the probe stub and two checks per alias model: 210 -> 214), `test_capture_bloom_x3`, `test_gpu_sync_timing` (still exactly two `gpu_sync_references(ctx)` calls in capture.cpp), `test_game_phase_install`, `test_shadow_retention`: 34 tests OK [M] |
+
+Not flown: the next `--shadow-caster-retention` flight should show `shadow_retention_flush reason=teardown`
+exactly once (at the device destroy), `records_unseen` > 0 through the session, and at most 16
+`shadow_retention_probe` rows with `fired=1` only on the last.

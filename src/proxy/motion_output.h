@@ -1482,6 +1482,7 @@ private:
     bool ensure_sun_occlusion() noexcept;
     void finish_lens(MotionRoute& route) noexcept;
     void release_lens_depth() noexcept;
+    IDirect3DTexture9* acquire_lens_depth() noexcept;      // RT2's container under taa_call (its release is under it too)
     void sun_lens_present_readback() noexcept;
     D3DFORMAT sun_lane_depth_formats_[3]{};
     unsigned sun_lane_depth_count_=0;
@@ -1742,6 +1743,7 @@ public:
     HRESULT fixture_shadow_replay_readback(float* out, std::size_t floats, UINT* width, UINT* height, float* params, unsigned param_floats, unsigned cascade=0) noexcept;
     // Retention seam: the store's levels and cumulative counters (index list in the inc file).
     unsigned fixture_shadow_retention_stats(std::uint64_t* out, unsigned count) noexcept;
+    int fixture_lens_depth(unsigned mode) noexcept; // the bracket's RT2 reference lifecycle (x3m_sun_occlusion_fixture_lens_depth)
     void fixture_shadow_retention_device_lost() noexcept { flush_shadow_retention(shadow_retention::Flush::Device); } // as a failed Present reports it
 private:
 #endif
@@ -1912,7 +1914,8 @@ private:
     // Runs a TemporalPass call and folds the device references it created or
     // released into taa_references_ by probing the count before and after,
     // which is exact in both reference models (native and wrapper).
-    template<typename Fn> void taa_call(Fn&& fn) noexcept;
+    template<typename Fn> void taa_call(Fn&& fn, const char* site = nullptr) noexcept;
+    bool taa_underflow_logged_ = false; // one taa_references_underflow row per session
     HRESULT save_state(SavedState& saved) noexcept;
     HRESULT restore_state(const SavedState& saved) noexcept;
     bool ensure_target(UINT width, UINT height) noexcept;

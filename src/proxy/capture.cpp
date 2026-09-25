@@ -427,6 +427,11 @@ struct Device : Hooks {
     MotionOutputFixtureWrapSnapshot fixture_wrap{};
 #endif
     unsigned bloom_busy = 0; // suppress all final-reference inference during injected operations
+    // shadow_retention_probe rows (release_device): the tuples logged so far, at most 16 per device.
+    struct RetentionProbeRow { std::uint32_t now, device, bloom, gpu_sync, retained, fired; };
+    RetentionProbeRow retention_probe_rows[16]{};
+    unsigned retention_probe_logged = 0;
+    bool retention_probe_fired = false;
     bool reset_active = false, bloom_attempted = false;
     unsigned bloom_failure_reports = 0;
     std::uint64_t bloom_prepared = 0, bloom_committed = 0;
@@ -1007,6 +1012,25 @@ void gpu_sync_attach(Device& ctx,IDirect3DDevice9* d) {
     ctx.motion_output.configure_gpu_sync_timing(ctx.gpu_sync.get());
 }
 unsigned gpu_sync_references(const Device& ctx) noexcept { return ctx.gpu_sync?ctx.gpu_sync->references():0u; }
+// The caster retention store's final-Release probe (release_device): one row for the first
+// probe and one per distinct tuple of the accounting terms and the verdict (device, bloom,
+// gpu_sync, fired; now and retained move with the application's objects and the store's
+// size every frame and are reported, not keyed), at most 16 per device, of which one slot
+// is kept for the first fired row so a mid-session flush is always on record. Reached only
+// while the store holds a reference (never with the option off).
+void retention_probe_log(Device& ctx, ULONG now, unsigned device_term, unsigned bloom_term, unsigned gpu_sync_term, unsigned retained, bool fired) {
+    constexpr unsigned limit = sizeof ctx.retention_probe_rows / sizeof ctx.retention_probe_rows[0];
+    if (ctx.retention_probe_logged >= limit || (!fired && ctx.retention_probe_logged + 1 >= limit && !ctx.retention_probe_fired)) return;
+    const Device::RetentionProbeRow row{std::uint32_t(now), device_term, bloom_term, gpu_sync_term, retained, fired ? 1u : 0u};
+    for (unsigned i = 0; i < ctx.retention_probe_logged; ++i) {
+        const auto& seen = ctx.retention_probe_rows[i];
+        if (seen.device == row.device && seen.bloom == row.bloom && seen.gpu_sync == row.gpu_sync && seen.fired == row.fired) return;
+    }
+    ctx.retention_probe_rows[ctx.retention_probe_logged++] = row;
+    ctx.retention_probe_fired |= fired;
+    log("shadow_retention_probe frame=%llu now=%lu device=%u bloom=%u gpu_sync=%u retained=%u fired=%u id=%llu rows=%u",
+        ctx.frame, now, device_term, bloom_term, gpu_sync_term, retained, fired ? 1u : 0u, ctx.id, ctx.retention_probe_logged);
+}
 void gpu_sync_mark(Device& ctx,unsigned pass,bool begin) noexcept {
     if(!ctx.gpu_sync)return;
     if(begin)ctx.gpu_sync->begin(pass); else ctx.gpu_sync->end(pass);
@@ -1095,7 +1119,13 @@ ULONG WINAPI release_device(IDirect3DDevice9* d) {
             if (retained) {
                 ctx.get<ULONG (WINAPI*)(IDirect3DDevice9*)>(1)(d);
                 const ULONG now = fn(d);
-                if (now <= ctx.motion_output.device_references() + ctx.bloom.references() + gpu_sync_references(ctx) + 1 + retained) ctx.motion_output.retention_before_final_release();
+                const unsigned device_term = ctx.motion_output.device_references(), bloom_term = ctx.bloom.references(), gpu_sync_term = gpu_sync_references(ctx);
+                const bool fired = std::uint64_t(now) <= std::uint64_t(device_term) + bloom_term + gpu_sync_term + 1 + retained; // 64-bit: a wrapped term can never satisfy it
+                // The probe's terms (run336: a drifted term flushed the store every frame and
+                // nothing recorded why): the first probe, then once per distinct tuple, at
+                // most 16 rows per device; only while the store holds a reference.
+                retention_probe_log(ctx, now, device_term, bloom_term, gpu_sync_term, retained, fired);
+                if (fired) ctx.motion_output.retention_before_final_release();
             }
         }
         const unsigned held = accounting
@@ -4053,6 +4083,14 @@ extern "C" __declspec(dllexport) unsigned x3m_shadow_retention_fixture_stats(IDi
     x3m::CaptureLock lock;
     const auto it=x3m::devices.find(device);
     return it==x3m::devices.end()?0u:it->second->motion_output.fixture_shadow_retention_stats(out,count);
+}
+// The route's own mid-session device-object lifecycle (the sun bracket's RT2 reference: 1 releases the
+// previous one and acquires, 0 releases; 2 acquires outside the accounting (main's shape, the one-sided
+// release that drove taa_references_ negative), 3 acquires under it and releases outside); 1 while held, -1 unknown device.
+extern "C" __declspec(dllexport) int x3m_sun_occlusion_fixture_lens_depth(IDirect3DDevice9* device,unsigned acquire) {
+    x3m::CaptureLock lock;
+    const auto it=x3m::devices.find(device);
+    return it==x3m::devices.end()?-1:it->second->motion_output.fixture_lens_depth(acquire);
 }
 extern "C" __declspec(dllexport) void x3m_shadow_retention_fixture_lifetime(unsigned op,std::uint64_t a,std::uint64_t b) {
     x3m::CaptureLock lock;

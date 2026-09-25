@@ -251,6 +251,11 @@ struct Device : Hooks {
     std::uint64_t reset_generation = 0;
     DWORD scene_thread = 0;
     unsigned bloom_busy = 0;
+    // shadow_retention_probe rows (release_device), as capture.cpp declares them.
+    struct RetentionProbeRow { std::uint32_t now, device, bloom, gpu_sync, retained, fired; };
+    RetentionProbeRow retention_probe_rows[16]{};
+    unsigned retention_probe_logged = 0;
+    bool retention_probe_fired = false;
     bool reset_active = false, bloom_attempted = false, composition_scene_owner = false;
     unsigned bloom_failure_reports = 0, bloom_prepared = 0, bloom_committed = 0, remaining = 0;
     bool capture = false;
@@ -271,6 +276,14 @@ bool bloom_requested=true;
 // extracted release, Reset and bloom paths see the production calls with zero contribution.
 struct GpuSyncCalls { unsigned references = 0, releases = 0, before_resets = 0, after_resets = 0, marks = 0; } gpu_sync_calls;
 unsigned gpu_sync_references(const Device&) noexcept { ++gpu_sync_calls.references; return 0; }
+// The final-Release probe's diagnostic row (capture.cpp retention_probe_log): the calls and the verdicts, no rate limit here.
+struct RetentionProbeRowSeen { ULONG now = 0; unsigned device = 0, bloom = 0, gpu_sync = 0, retained = 0; unsigned sum() const { return device + bloom + gpu_sync + 1 + retained; } };
+struct RetentionProbeCalls { unsigned calls = 0, fired = 0; RetentionProbeRowSeen last, fired_row; } retention_probe_calls;
+void retention_probe_log(Device&, ULONG now, unsigned device_term, unsigned bloom_term, unsigned gpu_sync_term, unsigned retained, bool fired) {
+    ++retention_probe_calls.calls;
+    retention_probe_calls.last = {now, device_term, bloom_term, gpu_sync_term, retained};
+    if (fired) { ++retention_probe_calls.fired; retention_probe_calls.fired_row = retention_probe_calls.last; }
+}
 void gpu_sync_release(Device&) { ++gpu_sync_calls.releases; }
 void gpu_sync_before_reset(Device&) { ++gpu_sync_calls.before_resets; }
 void gpu_sync_after_reset(Device&,HRESULT) { ++gpu_sync_calls.after_resets; }
@@ -589,13 +602,19 @@ static void retained_orphans_release(AliasModel model) {
     std::vector<std::unique_ptr<Surface>> orphans, application;
     for (unsigned i = 0; i < 3; ++i) { orphans.push_back(std::make_unique<Surface>(&env.device, model)); env.ctx->motion_output.retained.push_back(orphans.back().get()); }
     for (unsigned i = 0; i < 8; ++i) application.push_back(std::make_unique<Surface>(&env.device, model)); // the application's own live resources
+    retention_probe_calls = {};
     native_addref(&env.device); // scripted GetDevice
     release_device(&env.device);
     check(env.ctx->motion_output.retention_flushes == 0 && env.ctx->motion_output.retained.size() == 3, "a Release far from the final count leaves the store alone");
+    check(retention_probe_calls.calls == 1 && retention_probe_calls.fired == 0 && retention_probe_calls.last.retained == 3
+          && retention_probe_calls.last.now > retention_probe_calls.last.sum(), "the probe row reports the terms of a Release that did not fire");
     for (auto& resource : application) resource->Release(); // teardown: the application releases its resources, then the device
     const ULONG result = release_device(&env.device);
     // Within the store's references of the final count the flush may come one Release early (a false positive costs only the off-screen shadows).
     check(env.ctx->motion_output.retention_flushes >= 1 && env.ctx->motion_output.retained.empty(), "the store is flushed by the final Release at the latest");
+    // The application's resource Releases re-enter the hook (one probe each, unfired while the count is far), then the fired one.
+    check(retention_probe_calls.calls >= 2 && retention_probe_calls.fired == 1 && retention_probe_calls.fired_row.retained == 3
+          && retention_probe_calls.fired_row.now <= retention_probe_calls.fired_row.sum(), "exactly one probe row reports fired=1, with the count within the store's references of the sum");
     check(orphans[0]->dead && orphans[1]->dead && orphans[2]->dead, "every retained reference is released");
     check(result == 0 && env.native.destroyed == 1 && devices.count(&env.device) == 0, "the device retires although the store held orphaned resources");
 }

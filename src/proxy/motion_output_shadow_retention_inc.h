@@ -408,8 +408,9 @@ void MotionOutput::log_shadow_retention_summary(bool final) noexcept {
 // 17 model_replaced, 18 moving_dropped, 19 revalidated, 20 journal_overflow, 21 refused, 22 promoted, 23..29 flushes by reason, 30 orphan_probe, 31 pending releases,
 // 32 revalidate_context_lost, 33 far_alternate_due_to_retained, 34 flush idle, 35 reclassified_after_unseen.
 unsigned MotionOutput::fixture_shadow_retention_stats(std::uint64_t* out, unsigned count) noexcept {
-    constexpr unsigned stats = 36;
+    constexpr unsigned stats = 38;
     std::uint64_t v[stats]{};
+    v[36] = device_references(); v[37] = taa_references_; // the final-Release probe's own term and its measured part, store or not (the route lifecycle case)
     if (retention_) {
         const auto& s = retention_->store; const auto& t = s.totals;
         unsigned statics = 0;

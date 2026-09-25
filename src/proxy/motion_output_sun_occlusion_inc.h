@@ -28,8 +28,37 @@ void MotionOutput::release_lens_depth() noexcept {
     if (!lens_depth_) return;
     IDirect3DTexture9* const depth = lens_depth_;
     lens_depth_ = nullptr; lens_depth_width_ = lens_depth_height_ = 0;
-    taa_call([&] { depth->Release(); });
+    taa_call([&] { depth->Release(); }, "lens_depth_release");
 }
+// RT2's container for the bracket (null: no RT2 or the container is unreadable). Under
+// the ownership wrapper GetContainer creates a fresh device-referencing texture node
+// (create_target released the texture's own node after GetSurfaceLevel), which
+// release_lens_depth drops under taa_call: the acquisition runs under the same
+// accounting, so taa_references_ carries +1 for the node's lifetime and -1 at its
+// release. Acquired outside it, the count drifted by one per frame until the
+// final-Release probe's sum wrapped and the caster retention store was flushed every
+// frame (run336; shadow-caster-retention.md, "Final-Release probe drift (2026-09-25)").
+IDirect3DTexture9* MotionOutput::acquire_lens_depth() noexcept {
+    IDirect3DTexture9* depth = nullptr;
+    if (!depth_surface_) return nullptr;
+    taa_call([&] { if (FAILED(depth_surface_->GetContainer(IID_IDirect3DTexture9, reinterpret_cast<void**>(&depth)))) depth = nullptr; }, "lens_depth_acquire");
+    return depth;
+}
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+// The seam's mid-session lifecycle of the bracket's RT2 reference: 1 = the production
+// acquisition after releasing the previous one (begin), 0 = release (end); 2 = the
+// acquisition outside the accounting (main's shape: its release under taa_call is
+// one-sided and drives taa_references_ down, the clamp's test); 3 = the reverse
+// one-sided shape (acquired under the accounting, released outside), which restores
+// one. Returns 1 while a reference is held.
+int MotionOutput::fixture_lens_depth(unsigned mode) noexcept {
+    release_lens_depth();
+    if (mode == 1) lens_depth_ = acquire_lens_depth();
+    else if (mode == 2 && depth_surface_ && FAILED(depth_surface_->GetContainer(IID_IDirect3DTexture9, reinterpret_cast<void**>(&lens_depth_)))) lens_depth_ = nullptr;
+    else if (mode == 3) { IDirect3DTexture9* const depth = acquire_lens_depth(); if (depth) depth->Release(); }
+    return lens_depth_ ? 1 : 0;
+}
+#endif
 // The sun shadow lane's direction (the frame's validated LightDir_Dir0, world space, object -> light) projected with the
 // scene camera to back-buffer uv: an independent cross-check of the record's uv in the log. False when either is
 // unavailable or the sun is behind the camera.
@@ -61,7 +90,7 @@ void MotionOutput::sun_occlusion_begin() noexcept {
     else if (motion_state_lost_ || composition_state_lost_) skip = "state";
     else if (!ensure_sun_occlusion()) skip = "attach";
     else if (sun_occlusion_pass_->reset_pending()) skip = "reset_pending";
-    else if (FAILED(depth_surface_->GetContainer(IID_IDirect3DTexture9, reinterpret_cast<void**>(&depth))) || !depth) skip = "depth_container";
+    else if (!(depth = acquire_lens_depth())) skip = "depth_container";
     so::core::Footprint disc{};
     renderer::SunVisibilityResult out{};
     renderer::SunVisibilityFrame frame{};

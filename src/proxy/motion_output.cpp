@@ -1449,12 +1449,21 @@ ULONG MotionOutput::probe_references() noexcept {
 // wrapper's parent release, and a count that still includes the objects being
 // released could match the hook's final-release probe by coincidence. The
 // application cannot issue its final Release inside a hook, so nothing is missed.
-template<typename Fn> void MotionOutput::taa_call(Fn&& fn) noexcept {
+template<typename Fn> void MotionOutput::taa_call(Fn&& fn, const char* site) noexcept {
     taa_busy_ = true;
     const ULONG before = probe_references();
     fn();
     const ULONG after = probe_references();
-    taa_references_ = unsigned(long(taa_references_) + (long(after) - long(before)));
+    // The count cannot fall below zero by construction (every reference released here was
+    // taken here); a release taken outside the accounting (run336: the bracket's RT2 container)
+    // would drive it negative, and unsigned it wrapped to ~2^32 and satisfied the caster
+    // retention store's final-Release probe every frame. Clamped at zero, one row per session.
+    const long delta = long(after) - long(before);
+    const long next = long(taa_references_) + delta;
+    if (next < 0) {
+        if (!taa_underflow_logged_) { taa_underflow_logged_ = true; log("taa_references_underflow device=%llu frame=%llu site=%s delta=%ld references=%u", id_, frame_, site ? site : "unnamed", delta, taa_references_); }
+        taa_references_ = 0;
+    } else taa_references_ = unsigned(next);
     taa_busy_ = false;
 }
 // Integer-only (light setter paths reach it): the site is recorded and logged

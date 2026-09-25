@@ -1,0 +1,16 @@
+/tmp/x3-bottleX3-run336/session-20260925-185734-212.log rows=19975 changes=2117
+   (0, 0)
+   (404, 61)
+   ((405, 68), (507, 4294967262), 'step -1 per frame')
+   ((603, 4294967261), (2418, 4294965446), 'step -1 per frame')
+   ((2946, 4294965445), (3141, 4294965250), 'step -1 per frame')
+/tmp/x3-bottleX3-run334/session-20260925-165403-212.log rows=10972 changes=44
+   (0, 0)
+   (453, 13)
+   (702, 66)
+   (789, 74)
+   ((790, 80), (829, 41), 'step -1 per frame')
+/tmp/x3-bottleX3-run324/session-20260925-044213-216.log rows=7071 changes=3
+   (0, 0)
+   (449, 63)
+   (450, 82)

@@ -592,6 +592,71 @@ the pure-header driver of `test_shadow_cascades.py`).
 Unverified: native Windows; the game (no census run yet), hence `eps`,
 `age_cap`, the transit behaviour and whether `0x0046d080`'s batches arrive as managed draws.
 
+## Final-Release probe drift (2026-09-25, run336)
+
+**Symptom.** With `--shadow-caster-retention` the store was flushed `reason=teardown` once in every
+frame from some frame on (run336: 906 to the end, 18,990 of 19,493 frames; runs 326/329/333/335 from
+1310/2668/8175/5599; never in 324/325/327/332/334), so no caster became static and the shadows followed
+the live submission. The flushing site is the device Release hook's final-Release probe
+(`capture.cpp`, `release_device`): `now <= device_references() + bloom.references() + gpu_sync_references + 1 +
+retained`.
+
+**Cause (measured).** The drifting term is `MotionOutput::taa_references_`, the part of
+`device_references()` that is not enumerated but measured: `taa_call` probes the device count before and
+after a pass call and adds the difference. It fell by exactly one per frame from the first sun-occlusion
+bracket on (run336: 68 at frame 405, then -1 per bracket frame (gaps where no bracket ran: 508-602, 2419-2945), wrapping the
+unsigned to 4,294,966,958 by frame 906 and reaching 4,294,965,250 at 3141; run334 the same from frame 790; run324, without sun occlusion, flat at
+82). The bracket's `sun_occlusion_begin` acquired RT2's container (`depth_surface_->GetContainer`) outside
+`taa_call` and released it (`release_lens_depth`, the next `begin` or `end`) inside one. Under the ownership
+wrapper (the retention feature's environment) the texture's own wrapper node was released right after
+`GetSurfaceLevel` in `create_target`, so every `GetContainer` adopts a *fresh* texture node and takes one
+wrapper-device reference (`++parent->refs`); its Release drops that reference through the hook. Taken
+outside the accounting and dropped inside it, each bracket charged -1 to `taa_references_`.
+
+The probe's sum is unsigned. While `device_references()` still summed positive the drift only made the
+condition harder (`now <= sum` needs the application to hold no objects beyond the store's); once the
+drift exceeded the rest of the sum (run336: after 406 decrements from 68, i.e. -338, at frame 906; the other terms plus
+`retained` were about 338 then) the sum wrapped to about 2^32 and the probe fired at every device Release
+for the rest of the session. The start frame differs per run with the size of the other terms. Of the five runs that never flushed,
+324/325/327/332 ran without the bracket and never drifted; 334 had it, drifted from frame 790 and ended
+40 frames later, before the wrap. The bracket (`--sun-occlusion`) has been the launcher default since
+Run84 (50a5f98e), which is why every session since then flushed.
+
+**Fix.** `acquire_lens_depth()` runs the `GetContainer` under `taa_call`, so `taa_references_` carries +1
+for the node's lifetime and -1 at its release (the fixture's probe row shows `device=17` while the bracket
+holds RT2, `16` otherwise). Hardening: `taa_call` clamps `taa_references_` at zero instead of wrapping and
+logs one `taa_references_underflow device= frame= site= delta= references=` row per session (the lens
+sites are named, other sites `unnamed`); the hook's probe sum is 64-bit, so a wrapped term could never
+satisfy `now <= sum` again. The other two container acquisitions were already symmetric: the TAA resolve
+acquires and releases both containers inside one `taa_call`; the single-map sun apply acquires and releases
+outside any. No other term drifts: every `device_references()` member is an enumerated object; bloom and
+gpu_sync count their own objects and zero them before releasing; `retained` is the store's resource-table
+size, decremented on every release (`free_resource`).
+
+**Probe row.** `shadow_retention_probe frame= now= device= bloom= gpu_sync= retained= fired= id= rows=`
+(`device` is the `device_references()` term, `id` the device) is logged from the hook only while the store
+holds a reference (zero cost with the option off): the first probe, then once per distinct tuple of the
+accounting terms and the verdict (`device`, `bloom`, `gpu_sync`, `fired`; `now` and `retained` move with the
+application's objects and the store's size every frame and are reported, not keyed), at most 16 rows per
+device, one slot kept for the first `fired=1` row so a mid-session flush is always on record. A healthy
+session shows a handful of rows and one `fired=1` row at the teardown with `now` equal to the sum.
+
+**Fixture.** Script case `n_route_lifecycle` (`seam-ownership-shadow-retention-live/-census/-off/-live-poll`):
+with two nodes retained (refs 3) it runs 301 bracket lifecycles through the seam export
+`x3m_sun_occlusion_fixture_lens_depth` (the production acquire and release, in the bracket's order) beside an
+application buffer created and released each cycle (the engine's mesh churn: its final Release runs the
+probe), and asserts the `device_references()` term unchanged (seam stat 36), no teardown flush, the store's
+levels and references intact; then the clamp: main's shape (seam mode 2, acquired outside the accounting and
+released under it) one cycle more than `taa_references_` holds (seam stat 37) leaves the term at 0 with one
+underflow row (`site=lens_depth_release delta=-1`), and the reverse shape (mode 3) restores it exactly. With main's acquisition it fails on the 21st cycle (the sum wraps:
+16 - 21 + 0 + 0 + 1 + 3 < 0), two `flush=teardown` rows at frame 886 and `retained issues 0 expected 2`;
+with the fix and the clamp all four settings pass (12,055 / 12,052 / 8,304 / 12,202 checks, 1,849 / 1,861
+frames; `RETENTION_TAA_CLAMP taa_references=8 one_sided_cycles=9 clamped=0 device_term=8`, one
+`taa_references_underflow site=lens_depth_release delta=-1 references=0` row in every setting). The runner
+also checks the probe rows: 1..16 in live (11 measured: the clamp cycles change the device term), none in
+census or off, one `fired=1` row and only at the teardown flush's frame with `now` equal to the sum. Evidence: directional-shadows.md, "Final-Release
+probe drift"; the run336 trajectory script `verification/results/run336-shadow-pop/taa_references_drift.py`.
+
 ## Open RE (not blocking stages 1–2)
 
 - Whether the instanced-batch draws of `0x0046d080` reach the proxy as managed z-writing draws

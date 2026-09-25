@@ -15,3 +15,5 @@ grep '^shadow_retention_flush' $L | awk '{print $4}' | sort | uniq -c
 for r in 324 ... 336; do grep -m1 'reason=teardown' /tmp/x3-bottleX3-run$r/session-*.log; grep -c '^shadow_retention_flush .*reason=teardown' ...; done
 grep '^sun_shadow_toggle' $L
 grep -E '^(shadow_cascades_mode|shadow_retention_device|shadow_cascade_set|shadow_cascade_footprint) ' $L
+
+# taa_references trajectory (the drifting term): python3 taa_references_drift.py <run336 log> <run334 log> <run324 log> > taa_references_drift_out.txt

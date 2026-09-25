@@ -19,7 +19,7 @@ using RetentionLifetimeFn = void (*)(unsigned, std::uint64_t, std::uint64_t);
 enum RetentionStat : unsigned { RsEnabled, RsMode, RsNodes, RsRecords, RsRefs, RsStatics, RsUnseen, RsRetainedIssues, RsRetired, RsBoxExit, RsAge, RsEvicted, RsBufferChanged, RsBufferGone,
                                 RsBufferOrphaned, RsReclassified, RsLodReplaced, RsModelReplaced, RsMovingDropped, RsRevalidated, RsJournalOverflow, RsRefused, RsPromoted,
                                 RsFlushNone, RsFlushEpoch, RsFlushReset, RsFlushDevice, RsFlushTeardown, RsFlushSun, RsFlushObserver, RsOrphanProbe, RsPending,
-                                RsContextLost, RsFarAlternate, RsFlushIdle, RsReclassifiedAfterUnseen, RsCount };
+                                RsContextLost, RsFarAlternate, RsFlushIdle, RsReclassifiedAfterUnseen, RsDeviceReferences, RsTaaReferences, RsCount };
 constexpr unsigned retention_node_reserve = 8; // shadow_retention::node_reserve: the scene end keeps this many node slots free
 constexpr double retention_eye[3] = {55962., 20286., 55517.}; // the run111 world offset
 constexpr unsigned retention_settle = 10;                      // sightings: the ninth agreeing one makes a node static
@@ -404,6 +404,49 @@ void run_shadow_retention_integration(Fixture& f) {
         s.expect(RsJournalOverflow, overflow + 1, "2,049 entries overflow"); s.expect(RsNodes, 0, "the revalidation empties the store"); s.expect(RsRefs, 0, "no reference remains");
         require(retention_count(mesh.p) == base, "the shared mesh's count is back at the baseline");
         s.check_issues = true;
+        s.end();
+    }
+    { // n. a mid-session device-object lifecycle of the route's own while the store holds references: the sun bracket's
+      // RT2 reference (the production acquire and release, in the bracket's order) beside the engine-shaped churn of an
+      // application buffer, whose final Release runs the hook's final-Release probe. The probe's device term must not
+      // drift (run336: it fell by one per bracket until the sum wrapped and the store was flushed every frame), no
+      // teardown flush may fire, and the store keeps its references. The probe rows are checked by the runner.
+        s.begin("n_route_lifecycle");
+        const auto lens = symbol<int (*)(IDirect3DDevice9*, unsigned)>(f.runtime, "x3m_sun_occlusion_fixture_lens_depth", false);
+        require(lens != nullptr, "the seam DLL exports the sun bracket's RT2 lifecycle");
+        auto& n27 = s.make(27, 'B', -.05f, .05f); auto& n28 = s.make(28, 'B', .7f, .10f);
+        const ULONG base27 = retention_count(n27.buffer.p);
+        s.settle({&n27, &n28}); s.frame({&n28}, {&n27}, true);
+        s.expect(RsNodes, 2, "one retained, one live"); s.expect_live(RsRefs, 3, 0, "three references held");
+        const std::uint64_t teardowns = s.s[RsFlushTeardown];
+        const auto cycle = [&](bool compare) {
+            require(lens(f.d.p, 1) == 1, "the bracket's RT2 reference is acquired");            // begin: the previous one released, this frame's acquired
+            Com<IDirect3DVertexBuffer9> churn; s.make_buffer('B', churn); churn.reset();           // the engine's mesh churn: a final Release through the hook's probe
+            s.frame({&n28}, {&n27}, compare, false);
+            require(lens(f.d.p, 0) == 0, "the bracket's RT2 reference is released");            // end
+        };
+        cycle(false); s.read(); const std::uint64_t device_term = s.s[RsDeviceReferences];          // warm: every lazy object of the route exists
+        for (unsigned i = 0; i < 300; ++i) cycle(i + 1 == 300);
+        s.read();
+        std::printf("RETENTION_ROUTE_LIFECYCLE cycles=301 device_term_first=%llu device_term_last=%llu teardown_flushes=%llu\n",
+                    static_cast<unsigned long long>(device_term), static_cast<unsigned long long>(s.s[RsDeviceReferences]), static_cast<unsigned long long>(s.s[RsFlushTeardown] - teardowns));
+        require(s.s[RsDeviceReferences] == device_term, "the probe's device term is unchanged by 300 bracket lifecycles");
+        s.expect(RsFlushTeardown, teardowns, "no teardown flush mid-session"); s.expect(RsNodes, 2, "both nodes still in the store"); s.expect_live(RsRefs, 3, 0, "the references still held");
+        require(retention_count(n27.buffer.p) == held(base27), "the retained node's reference is still held, once");
+        // The clamp: main's shape (acquired outside the accounting, released under it) once more than the measured
+        // term holds drives it to zero and no further (one taa_references_underflow row, checked by the runner); the
+        // reverse shape restores it exactly, so the teardown's final-Release accounting is untouched.
+        const std::uint64_t taa = s.s[RsTaaReferences];
+        for (std::uint64_t i = 0; i <= taa; ++i) { require(lens(f.d.p, 2) == 1, "acquired outside the accounting"); require(lens(f.d.p, 0) == 0, "released under it"); }
+        s.read();
+        std::printf("RETENTION_TAA_CLAMP taa_references=%llu one_sided_cycles=%llu clamped=%llu device_term=%llu\n", static_cast<unsigned long long>(taa), static_cast<unsigned long long>(taa + 1),
+                    static_cast<unsigned long long>(s.s[RsTaaReferences]), static_cast<unsigned long long>(s.s[RsDeviceReferences]));
+        require(s.s[RsTaaReferences] == 0 && s.s[RsDeviceReferences] == device_term - taa, "the measured term is clamped at zero, never wrapped");
+        for (std::uint64_t i = 0; i < taa; ++i) require(lens(f.d.p, 3) == 0, "the reverse one-sided shape restores one");
+        s.read(); require(s.s[RsTaaReferences] == taa && s.s[RsDeviceReferences] == device_term, "the measured term is restored exactly");
+        s.frame({&n28}, {&n27}, false, false); s.read(); s.expect(RsNodes, 2, "the store is untouched by the clamp"); s.expect_live(RsRefs, 3, 0, "its references too");
+        s.retire(n27); s.retire(n28); s.frame({}, {}, false); s.expect(RsNodes, 0, "case n leaves nothing"); s.expect(RsRefs, 0, "no reference remains");
+        require(retention_count(n27.buffer.p) == base27, "reference counts back to the baseline");
         s.end();
     }
     { // k. the age cap, then the sun re-latch
