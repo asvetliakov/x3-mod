@@ -1,0 +1,17 @@
+# Run336 shadow pop triage (read-only; log /tmp/x3-bottleX3-run336/session-20260925-185734-212.log, 184,674,570 B, Run87 DLL 94c4ef42, source 22593133)
+L=/tmp/x3-bottleX3-run336/session-20260925-185734-212.log
+J=<scratch>/rows.json   # intermediate, untracked
+python3 parse_rows.py $L $J                 # shadow_replay_depth/_candidates/_retention_frame/_summary/_flush, chase_camera -> JSON
+python3 analyze.py $J        > analyze_out.txt        # Q1 caps/budget/skips, Q2 record fill, Q3 retention counters, Q4 far cadence, Q5 us
+python3 analyze_extra.py $J  > analyze_extra_out.txt  # footprint gate, flip/period2 per cascade, frames with no depth replay (hotkey off)
+python3 flips_vs_camera.py $L $J > flips_vs_camera_out.txt   # camera rotation/translation per frame vs flip frames
+python3 churn_after_flush.py $L $J > churn_after_flush_out.txt # flip rates 404-905 (retention live) vs 906-19896 (flushed each frame)
+python3 flip_frames.py $L $J > flip_frames_out.txt           # flip frames >=906 attributed: turn / leased change / footprint change / other
+THR=2 python3 turns.py $L $J > turns_ge2deg.txt             # in-flight frames with >=2 deg/frame forward rotation (empty = none)
+# grep one-liners -> grep_out.txt (see the block that produced it):
+grep -oE '\b[a-z_0-9]*(dropped|overflow)[a-z_0-9]*=[0-9]+' $L | awk -F= '$2>0' | sort | uniq -c | sort -rn
+grep -E ' moving_dropped=[1-9]' $L | awk '{print $1}' | sort | uniq -c
+grep '^shadow_retention_flush' $L | awk '{print $4}' | sort | uniq -c
+for r in 324 ... 336; do grep -m1 'reason=teardown' /tmp/x3-bottleX3-run$r/session-*.log; grep -c '^shadow_retention_flush .*reason=teardown' ...; done
+grep '^sun_shadow_toggle' $L
+grep -E '^(shadow_cascades_mode|shadow_retention_device|shadow_cascade_set|shadow_cascade_footprint) ' $L

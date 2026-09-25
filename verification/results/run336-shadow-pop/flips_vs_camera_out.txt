@@ -1,0 +1,8 @@
+camera frames 19975 rot deg/frame p50=0.000 p90=0.354 p99=90.000
+move u/frame p50=5.4 p99=182.1 max=99498
+translation jumps >5000 u/frame 6 [404, 508, 546, 574, 603, 19897]
+c0 flip>=5 frames=5 sample=[(411, 24.0), (508, 21.0), (603, 20.0), (691, 16.0), (848, 15.0)] rot_deg median=1.377 move median=339.8
+c1 flip>=5 frames=4 sample=[(508, 30.0), (603, 22.0), (691, 16.0), (848, 15.0)] rot_deg median=97.758 move median=61776.5
+c2 flip>=5 frames=7 sample=[(413, 6.0), (508, 38.0), (603, 43.0), (691, 19.0), (848, 15.0), (1235, 5.0), (1236, 5.0)] rot_deg median=0.295 move median=69.4
+c3 flip>=5 frames=17 sample=[(413, 6.0), (508, 49.0), (603, 36.0), (691, 18.0), (848, 15.0), (1235, 9.0), (2481, 5.0), (2482, 5.0)] rot_deg median=0.351 move median=93.2
+c4 flip>=5 frames=20 sample=[(411, 14.0), (508, 40.0), (511, 6.0), (546, 10.0), (574, 5.0), (603, 12.0), (1235, 5.0), (1236, 5.0)] rot_deg median=0.328 move median=97.3

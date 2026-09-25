@@ -1,0 +1,45 @@
+# dropped/overflow fields >0 (field=value count)
+  77 dropped_entries=99
+  65 moving_dropped=10
+   4 moving_dropped=1
+   2 moving_dropped=4
+   1 moving_dropped=2
+   1 journal_overflow=2
+   1 dropped=20
+   1 dropped=16
+# row kinds carrying moving_dropped>0
+   6 shadow_retention_frame
+  66 shadow_retention_summary
+# per-frame moving_dropped / lod_replaced / journal_overflow rows
+
+ frame=404 lod_replaced=0 journal_overflow=2 moving_dropped=0 
+ frame=508 lod_replaced=0 journal_overflow=0 moving_dropped=4 
+ frame=603 lod_replaced=1 journal_overflow=0 moving_dropped=2 
+ frame=665 lod_replaced=0 journal_overflow=0 moving_dropped=1 
+ frame=670 lod_replaced=0 journal_overflow=0 moving_dropped=1 
+ frame=689 lod_replaced=0 journal_overflow=0 moving_dropped=1 
+ frame=691 lod_replaced=1 journal_overflow=0 moving_dropped=0 
+ frame=702 lod_replaced=0 journal_overflow=0 moving_dropped=1
+# retention flush reasons and frame range
+18992 reason=teardown
+frame=906
+frame=19896
+# teardown flush onset across runs (commit, first flush frame, count)
+run324 source_commit=80394271 first= n=0 retention_frames=6529
+run325 source_commit=80394271 first= n=0 retention_frames=2772
+run326 source_commit=80394271 first=frame=1310 n=2776 retention_frames=3672
+run327 source_commit=80394271 first= n=0 retention_frames=2935
+run329 source_commit=46cd4f9d first=frame=2668 n=4771 retention_frames=6935
+run332 source_commit=46cd4f9d first= n=0 retention_frames=3638
+run333 source_commit=9375a1e7 first=frame=8175 n=8653 retention_frames=16381
+run334 source_commit=9375a1e7 first= n=0 retention_frames=9832
+run335 source_commit=9375a1e7 first=frame=5599 n=3106 retention_frames=7257
+run336 source_commit=22593133 first=frame=906 n=18992 retention_frames=19493
+# shadow hotkey toggles
+state=0 frame=3381 state=1 frame=3404 state=0 frame=3532 state=1 frame=3547 state=0 frame=4144 state=1 frame=4174 state=0 frame=5179 state=1 frame=5210 state=0 frame=7424 state=1 frame=7449 state=0 frame=7504 state=1 frame=7522 state=0 frame=11781 state=1 frame=11810 state=0 frame=11852 state=1 frame=11871 state=0 frame=18492 state=1 frame=18530 state=0 frame=18571 state=1 frame=18593 state=0 frame=18954 state=1 frame=18977
+# config rows
+shadow_cascades_mode requested=1 enabled=1 reason=ok cascades=5 extents=250,1500,7500,37500,150000 sizes=2048,2048,2048,4096,4096 caps=128,512,1024,1024,1024 budget=640 depth_light=300000 records=1024,1024,2048,4096,4096 static_from=none drop_order=importance large_min=0 adaptive_c0=1.5 ladder_ratio=5 backface_from=texel backface_mask=24 min_footprint=8
+shadow_retention_device device=1 mode=live enabled=1 reason=ok age_cap=7200 eps=0.05 orphan_probe=1 nodes=1024 records=4096 resources=1024 bytes=1850528
+shadow_cascade_footprint device=1 frame=404 px=8 m00=0.499997884 width=5120 cascades=5 active=31 min0=0.732421875 min1=4.39453125 min2=21.9726562 min3=54.9316406 min4=222.657196
+shadow_cascade_set device=1 frame=509 reason=node own_node=1e552ab8 own_status=0 own_radius=449.335022 e0=674.002563 texel0=0.658205628 depth_behind0=1348.00513 active_mask=31 apply_slots=0,1,2,3,4 slid=15 changed=15 extents=674.002563,3370.0127,16850.0625,84250.3125,150000 caps=412,824,824,824,824 static_from=none large_min=0 k=1.5 ratio=5 pending_radius=0 pending_frames=0 held_frames=509 frame_r
+shadow_cascade_footprint device=1 frame=510 px=8 m00=0.499997884 width=5120 cascades=5 active=31 min0=1.97461689 min1=9.87308407 min2=49.3654175 min3=123.413544 min4=500.238342

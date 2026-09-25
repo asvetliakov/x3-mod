@@ -1,0 +1,77 @@
+Q0 depth frames 404 19896 rows 19220
+Q1 per cascade max draws / cap / frames at cap
+  c0 max=42 cap=128 p50=7 p99=35 frames_at_cap=0 argmax_frame=806
+  c1 max=42 cap=512 p50=8 p99=42 frames_at_cap=0 argmax_frame=691
+  c2 max=60 cap=1024 p50=9 p99=58 frames_at_cap=0 argmax_frame=875
+  c3 max=53 cap=1024 p50=11 p99=51 frames_at_cap=0 argmax_frame=413
+  c4 max=57 cap=1024 p50=14 p99=24 frames_at_cap=0 argmax_frame=405
+  skipped_caps>0 rows=0 first=[]
+  skipped_lease>0 rows=0 first=[]
+  skipped_state>0 rows=0 first=[]
+  issues max=214 p50=53 p99=205 budget=640 rows_issues>=640=0
+  cand capped>0 rows=0 frames=[]
+  cand capped0>0 rows=0 frames=[]
+  cand capped1>0 rows=0 frames=[]
+  cand capped2>0 rows=0 frames=[]
+  cand capped3>0 rows=0 frames=[]
+  cand capped4>0 rows=0 frames=[]
+  cand dropped_min_size0>0 rows=0 frames=[]
+  cand dropped_min_size1>0 rows=0 frames=[]
+  cand dropped_min_size2>0 rows=0 frames=[]
+  cand dropped_min_size3>0 rows=0 frames=[]
+  cand dropped_min_size4>0 rows=0 frames=[]
+  cand overflow>0 rows=0 frames=[]
+  cand footprint_refused0>0 rows=0 frames=[]
+  cand footprint_refused1>0 rows=2655 frames=['3257', '3258', '3259', '3260', '3261', '3262']
+  cand footprint_refused2>0 rows=19294 frames=['603', '604', '605', '606', '607', '608']
+  cand footprint_refused3>0 rows=19391 frames=['411', '412', '413', '414', '415', '416']
+  cand footprint_refused4>0 rows=19485 frames=['411', '412', '413', '414', '415', '416']
+  cand stale>0 rows=0 frames=[]
+  cand shadow_mismatch>0 rows=0 frames=[]
+Q2 record list: candidates c<i> max vs records; routed max; retention records max
+  c0 max=42 records_cap=1024
+  c1 max=42 records_cap=1024
+  c2 max=53 records_cap=2048
+  c3 max=53 records_cap=4096
+  c4 max=57 records_cap=4096
+  routed max=137 p50=78
+  zwrite max=121 p50=69
+  managed max=63 p50=23
+  leased max=63 p50=23
+  excluded max=29 p50=15
+  fallback max=83 p50=15
+  retention records max=79; nodes_live max=42
+Q3 retention
+  modes {'live': 19493}
+  journal_overflow>0 rows=1 max=2 first=[('404', '2')]
+  moving_dropped>0 rows=6 max=4 first=[('508', '4'), ('603', '2'), ('665', '1'), ('670', '1'), ('689', '1'), ('702', '1')]
+  lod_replaced>0 rows=2 max=1 first=[('603', '1'), ('691', '1')]
+  model_replaced>0 rows=0 max=0 first=[]
+  reclassified>0 rows=1 max=1 first=[('468', '1')]
+  retired>0 rows=0 max=0 first=[]
+  superseded>0 rows=4 max=1 first=[('412', '1'), ('603', '1'), ('691', '1'), ('893', '1')]
+  evicted>0 rows=0 max=0 first=[]
+  box_exit>0 rows=0 max=0 first=[]
+  cam_jump>0 rows=0 max=0 first=[]
+  sun_relatch>0 rows=0 max=0 first=[]
+  refused>0 rows=0 max=0 first=[]
+  abandoned>0 rows=0 max=0 first=[]
+  deferred>0 rows=0 max=0 first=[]
+  buffer_gone>0 rows=0 max=0 first=[]
+  buffer_changed>0 rows=0 max=0 first=[]
+  unseen_in_frustum>0 rows=0 max=0 first=[]
+  records_unseen>0 rows=429 max=56 first=[('477', '1'), ('478', '1'), ('479', '1'), ('480', '1'), ('481', '1'), ('482', '1'), ('483', '1'), ('484', '1')]
+  nodes_unseen>0 rows=429 max=31 first=[('477', '1'), ('478', '1'), ('479', '1'), ('480', '1'), ('481', '1'), ('482', '1'), ('483', '1'), ('484', '1')]
+  flush {'none': 503, 'teardown': 18990}
+  retention frames with records>0 19492 range 404 19896
+  retention frame range 404 19896
+Q4 far cadence
+  far_replayed=1 rows 19220 of 19220
+  gaps [(1, 19208), (24, 2), (16, 1), (31, 1), (32, 1), (26, 1), (19, 1), (30, 1)]
+  frame-far_frame [(0, 19220)]
+Q5 us distribution
+  us n=19220 p50=124.2 p90=165.4 p99=371.0 max=2743.2 mean=132.5
+  apply_us n=19220 p50=83.2 p90=140.7 p99=269.6 max=2268.9 mean=97.3
+  retention us p50=14.6 p99=40.8 max=948.6
+  select_us p50=7.6 p99=18.9 max=220.9
+  draws p50=23 p99=54 max=63

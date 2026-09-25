@@ -1,0 +1,6 @@
+retention live 404-905 frames=502 flip sums c0..c4=[150.0, 112.0, 170.0, 173.0, 117.0] per1000=[298.8, 223.1, 338.6, 344.6, 233.1]
+flushed 906-19896 frames=18991 flip sums c0..c4=[55.0, 41.0, 89.0, 464.0, 541.0] per1000=[2.9, 2.2, 4.7, 24.4, 28.5]
+frames>=906 with forward rotation >=0.5 deg/frame 300  >=10 deg 78
+  turning frames=222 flips/frame mean=0.311 frames_with_flip=36
+  still frames=11434 flips/frame mean=0.025 frames_with_flip=180
+  |delta leased| on turning frames mean=0.19 max=8
