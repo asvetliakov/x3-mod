@@ -106,7 +106,7 @@ resolve's s0) and, at the resolved texel `r`:
                          r.rgb = lerp(r.rgb, s.rgb, W * share); r.a = s.a; }
 ```
 
-`W` = `X3M_BOLT_FAR_SHOW`, default 0.5 [I]: the current bolt is shown at half strength over a held far pixel, matching the
+`W` = `X3M_BOLT_FAR_SHOW`, default 1 since Run 94 A (the user judged 1 better than 0.5 in run349; 0.5 [I] before): the current bolt is shown at half strength over a held far pixel, matching the
 measured retention over space (44-61 % green, 9-33 % blue [M]; the flight tunes it). `share` ramps the composite in with
 the far weight across the d0-d1 contour, so there is no step at the far ramp's edge; inside the region (`stabilise.b` = 1)
 it is full. The hull component under the bolt is then half the stabilised history and half the current jittered sample for

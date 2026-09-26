@@ -2,7 +2,7 @@
 
 Archive with `python3 tools/analysis/archive_user_runs.py`.
 
-Updated 2026-09-27 (Run94 installed: bolts through the TAA; Run 94 A queued; Run 93 A completed). Earlier: 2026-09-21 (Run56 accepted for media stability; Run57 station-flash correction accepted; fog range remains under investigation). Run 17 crypto acceptance and the first-person/chase
+Updated 2026-09-27 (Run 94 A completed: bullets fixed, W default 1; no run queued). Earlier: 2026-09-21 (Run56 accepted for media stability; Run57 station-flash correction accepted; fog range remains under investigation). Run 17 crypto acceptance and the first-person/chase
 left-centre-right diagnostic are complete and are not in this queue. The agent
 never launches the game. Only open runs keep their instructions here; a completed
 run keeps only its row in the table below. The installed build is described in [status](../status.md).
@@ -20,6 +20,7 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 
 | Run | Purpose | Sessions | Status |
 | --- | --- | ---: | --- |
+| 94 A | Run94 (bolts through the TAA, default on at W 0.5): launch 1 defaults with F8 firing at a far station (run348); launch 2 `--bolt-far-show 1` with F8 firing at a far station and at a self-shadowed hull (run349) | 2 | Completed 2026-09-27: **bullets fixed** (user); `--bolt-far-show 1` looks better than 0.5 -> **W default 1** (the user's decision; 0.5 had been chosen to match the bolt's measured retention over empty space so a bolt crossing a silhouette stayed continuous); no dark spots on the self-shadowed hull reported; both sessions exited clean |
 | 93 A | Run93 (single-copy bullets on by default; opt-in rotation-aware TAA motion weight): launch 1 defaults with F8 firing at a station / rest / pan / firing at a second station (run346); launch 2 `--taa-history-weight 0.9 --taa-motion-weight-rotation 0.7`, rest + pan (run347) | 2 | Completed 2026-09-26: **bullets still vanish over distant stations** (user, both scenes): the single-copy rule works (`bolt_copies early_dropped=2 late=2` every firing frame; before TAA the bolt adds as much over the station as over space; the late copy passes the depth test) but the **TAA resolve erases the bolt**: its pixels carry the far station's depth, so the far/thin history weights keep ~0.99 there vs 0.39-0.91 over space (run346-run93a-bolts/; design note for the fix in progress); **rotation weight**: engaged (policy 2, pan 8.5-8.8 px/frame, applied weight 0.70 vs 0.85), +34 % pan sharpness on the one station visible in both pans, but the user's reference station left the screen in run347's pan; the user noticed shimmer under the pan and **keeps it off** ("better blurring than shimmering"); both sessions exited clean |
 | 92 A | Run92 (TAA history weight default 0.85, `bolt_copy` capture diagnostic): launch 1 default with `--taa-debug`, F8 at rest / mid-pan / while firing (run341); launch 2 `--taa-history-weight 0.9` (run342); launch 3 `--taa-history-weight 0.8` (run343), rest + pan F8 each | 3 | Completed 2026-09-26: **0.85 accepted as the default** (user: with 0.8 the adjacent station shimmers at rest and under the pan; 0.85 and 0.9 look similar, shimmer less noticeable); **bullet copies proven identical**: 32 `bolt_copy` rows over 8 capture frames (2098-2105), the early draws 6/7 and the late draws 211-214 of each of the two bullet buffers carry the same `hash`, `qsum` and `bbox` in 8 of 8 frames (revisions n / n+1) -> the fix drops the early copy (single-copy rule, in implementation); all three sessions `session_end ... exception=0 dropped=0` |
 | 91 A | Run91 (developer options trimmed with `--draw-trace`; hotkeys removed except F8 under `--debug`; `--capture-start`/`--capture-delay` gone; the `x3m.ini` settings file; plus everything since Run 88 A: logging tiers, option cleanup, single shadow map removed, cascade 3 at 4096): launch 1 default stand `x3run --direct --debug --perf` (run338), launch 2 player mode `x3run --direct --config --debug --perf` with F8 captures (run339), optional `--no-shadow-cascades` not flown | 2 | Completed 2026-09-26: "everything looks okay" (user), Run91 accepted; run338 `config_open source=bare`, 20,416 frames, `session_end ... exception=0 dropped=0 filter=ours`; run339 `config_open file=C:\X3\x3m.ini source=game keys=0` (394 lines, 11.4 ms), 121 `proxy_options` values `@default`, `log_open previous=renamed`, three F8 captures (frames 2242, 6650, 7102), 11,202 frames, no drops, exit clean; two pre-existing notes raised by the user and triaged afterwards: distant stations/asteroids drawn over the player's bullets (captures in run339), stations blurry under a pan (no capture) |
@@ -27,35 +28,9 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 89 A | Run89 (single shadow map removed, cascades only; `--no-shadow-cascades` = shadows off; cascade sizes 2048,4096,4096,4096,2048): one launch with the short stand command, plus an optional short `--no-shadow-cascades` launch | 0 | Superseded 2026-09-26 by Run 90 A before it was flown (Run90 installed the logging tiers and the option cleanup the same night); its checks are folded into Run 90 A |
 | 88 A | Run88 (shadow pop fix, adjacency without telemetry, promoted defaults with cascade sizes 2048,4096,4096,2048,2048): one launch, short stand command (run337) | 1 | Completed 2026-09-25: all good (user); retention store never flushed (0 rows vs 18,992 in run336), probe never fired, no underflow; replay us p50 251 (was 124: two 4096 maps + live retention); defaults in force; cascade 3 bumped to 4096 afterwards (launcher default 2048,4096,4096,4096,2048, unflown) |
 | 86 A | Run86 (far clip 7x7 + ramp 60/68; opt-in effects stage phase 1, chase view across docking; fog empty table; launcher report lines): plants + regression (run333), combat + effects look (run334), docking (run335) | 3 | Completed 2026-09-25: plants sparkles fixed (rest 120 -> 1 measured, pan 65 -> 46 invisible remainder; run333-run86a-plants/); effects modernisation dropped by the user after seeing it (old effect design, many tuning hours); docking restore worked (transfer path=dock, 258 at f0c4b) but the selection boxes vanished after undock and saves while docked restore first person anyway: dropped; both removed from production |
-| 85 A | Run85 (far clip 7x7 + ramp 60/68): plants at rest/pans, regression, combat capture | 0 | Superseded 2026-09-25 by Run 86 A before it was flown (Run86 installed the same night with the opt-ins); its checks are folded into Run 86 A |
 
 
-**Run 94 A (queued 2026-09-27; Run94 DLL `338b00d7…` from 2a75e2c3, installed 00:47: bolts through the TAA, on by default).**
-One question: are the bullets right now over distant stations? The late bullet draw flags its pixels, the resolve
-leaves the station's history untouched and the tonemap adds the bolt back at half strength (`--bolt-far-show`, default
-0.5) where the resolve was holding far or thin-region history. Same stand as before (a large station 2-10 km away, and
-a far one if you can); name the sector.
-
-Launch 1 (defaults):
-
-```sh
-env -u CX_DEBUGMSG X3M_FIXTURE_BOTTLE=X3 /Users/asvetl/x3-mod/x3run --direct --debug --perf --taa-debug
-```
-
-1. **Bullets over a station**: fire across a distant station (and a far one) so bolts cross the silhouette. Expected: the
-   bolts stay visible over the hull as over space (a little dimmer over the hull is by design at 0.5); no dark spots or
-   flicker on the hull where the bolts passed, no trail left on the station after the bolts. F8 once while firing.
-   Rows: `bolt_far_composite` once row at start; `bolt_flag=` on the frame lines while firing.
-2. **Bullets over a shadowed hull**: fire at a near ship or station whose hull is in the sun's shadow (self-shadowed
-   side): the bolts must not go dark or vanish over the shadowed part, and the hull must not flicker. F8 once.
-3. **Nothing else changed**: the stand at rest and under a pan looks like Run 93 A launch 1; the bloom around bolts over
-   space unchanged.
-4. Exit through the menu.
-
-Launch 2 (short, optional): the same command plus `--bolt-far-show 1` (full-strength composite) if 0.5 looks too dim
-over the hull; or `--bolt-far-composite off` to see the old behaviour again for comparison.
-
-Run 94 A is the only queued run. Completed instructions for Runs 73-88 are in the [archive](../archive/user-runs-completed.md).
+No run is queued. Completed instructions for Runs 73-88 are in the [archive](../archive/user-runs-completed.md).
 
 ## Stand command
 

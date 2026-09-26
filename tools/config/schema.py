@@ -120,7 +120,7 @@ SETTINGS = [
           'anti-aliasing would otherwise fade a bolt into the station behind it. 1 = on, 0 = off.', '1', builtin='0',
           requires=('screen_emission_additive', 'hdr'), launcher='--bolt-far-composite'),
     entry('bolt_far_show', 'float', 'graphics', 'How strongly a bolt in front of a distant station shows, 0 to 1. 1 = its full '
-          'brightness, 0.5 = half (about its look over empty space), 0 = the anti-aliased result.', '0.5', range=(0.0, 1.0),
+          'brightness (the default since Run 94 A), 0.5 = half (about its look over empty space), 0 = the anti-aliased result.', '1', range=(0.0, 1.0),
           requires=('bolt_far_composite',), launcher='--bolt-far-show'),
     # ---------------------------------------------------------------- hdr
     entry('hdr', 'bool', 'hdr', 'High dynamic range rendering: lights brighter than white, automatic exposure and a filmic '

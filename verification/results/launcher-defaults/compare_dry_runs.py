@@ -25,7 +25,7 @@ Since the single-copy bullet rule (2026-09-26, docs/architecture/bolt-footprint.
 --motion-output --hdr also sends X3M_BOLT_SINGLE_COPY=1: one more expected delta against the recorded stand (SINGLE_COPY);
 the empty command then sends 124 X3M_* variables (123 before).
 Since bolts through the TAA (2026-09-26, docs/architecture/bolts-through-taa.md) every modded launch with --motion-output
---hdr also sends X3M_BOLT_FAR_COMPOSITE=1 and X3M_BOLT_FAR_SHOW=0.5 (BOLT_FAR): the empty command sends 126 variables.
+--hdr also sends X3M_BOLT_FAR_COMPOSITE=1 and X3M_BOLT_FAR_SHOW=1 (BOLT_FAR; 0.5 until Run 94 A): the empty command sends 126 variables.
 """
 import importlib.util
 import json
@@ -65,7 +65,7 @@ NEW = {'X3M_MUSIC_KEEP': '1', 'X3M_SHADOW_ALPHA_CASTERS': '1'}
 CONFIG = {'X3M_CONFIG': [None, 'bare']}
 # The single-copy bullet rule (2026-09-26): on by default with the additive bullets' prerequisites.
 SINGLE_COPY = {'X3M_BOLT_SINGLE_COPY': [None, '1']}
-BOLT_FAR = {'X3M_BOLT_FAR_COMPOSITE': [None, '1'], 'X3M_BOLT_FAR_SHOW': [None, '0.5']}
+BOLT_FAR = {'X3M_BOLT_FAR_COMPOSITE': [None, '1'], 'X3M_BOLT_FAR_SHOW': [None, '1']}
 # Intended functional difference: the promoted map sizes (user decision 2026-09-25) differ from the Run 84 A stand's
 # explicit 2048 x5, which an explicit --shadow-cascade-sizes still selects.
 SIZES = {'X3M_SHADOW_CASCADE_SIZES': ['2048,2048,2048,2048,2048', '2048,4096,4096,4096,2048']}

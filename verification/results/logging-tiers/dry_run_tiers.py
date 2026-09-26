@@ -22,7 +22,7 @@ X3M_CONFIG=bare (no file and no DLL defaults unless --config; not under --vanill
 that is not a dropped logging or removed variable (CONFIG_DELTA). The single-copy bullet rule (2026-09-26,
 docs/architecture/bolt-footprint.md "Single copy") adds X3M_BOLT_SINGLE_COPY=1 on the same launches (default 124 variables,
 123 before): the second functional addition, also in CONFIG_DELTA. Bolts through the TAA (2026-09-26,
-docs/architecture/bolts-through-taa.md) adds X3M_BOLT_FAR_COMPOSITE=1 and X3M_BOLT_FAR_SHOW=0.5 on the same launches
+docs/architecture/bolts-through-taa.md) adds X3M_BOLT_FAR_COMPOSITE=1 and X3M_BOLT_FAR_SHOW=1 on the same launches (0.5 until Run 94 A)
 (default 126 variables): the third and fourth functional additions, also in CONFIG_DELTA.
 Writes dry-runs.json beside this script.
 
@@ -50,7 +50,7 @@ REMOVED_2026_09_26 = {'X3M_MESH_ADJACENCY_DUMP', 'X3M_VOLUMETRIC_FOG_EVERYWHERE'
 VANILLA_NOT_SENT = {'X3M_CAPTURE_START'}
 # Sent since the settings file (2026-09-26) on every modded launch.
 CONFIG_DELTA = {'X3M_CONFIG': [None, 'bare'], 'X3M_BOLT_SINGLE_COPY': [None, '1'],
-                'X3M_BOLT_FAR_COMPOSITE': [None, '1'], 'X3M_BOLT_FAR_SHOW': [None, '0.5']}
+                'X3M_BOLT_FAR_COMPOSITE': [None, '1'], 'X3M_BOLT_FAR_SHOW': [None, '1']}
 
 
 def tiered():

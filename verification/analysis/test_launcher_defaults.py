@@ -39,7 +39,7 @@ STAND_SHORT = '--direct --debug --perf'.split()
 EXPECTED_EMPTY = {
     'X3M_BLOOM_SOURCE_CLAMP': '1.0', 'X3M_BOLT_FOOTPRINT': '3,12', 'X3M_CAMERA': 'chase', 'X3M_CAMERA_CUT_DEG': '20.0',
     'X3M_BOLT_SINGLE_COPY': '1',  # 2026-09-26: the early bullet copy dropped (bolt-footprint.md, "Single copy")
-    'X3M_BOLT_FAR_COMPOSITE': '1', 'X3M_BOLT_FAR_SHOW': '0.5',  # 2026-09-26: bolts through the TAA (bolts-through-taa.md)
+    'X3M_BOLT_FAR_COMPOSITE': '1', 'X3M_BOLT_FAR_SHOW': '1',  # 2026-09-26: bolts through the TAA (bolts-through-taa.md); W 1 since Run 94 A
     'X3M_CAPTURE_FRAMES': '8', 'X3M_CAPTURE_START': '999999', 'X3M_CHASE_COMBAT_TIGHTNESS': '0.0',
     # No settings file and no built-in defaults on a default launch (--config opts in; docs/architecture/config-file.md).
     'X3M_CONFIG': 'bare',

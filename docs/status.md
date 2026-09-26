@@ -31,13 +31,13 @@ Nothing: main `2a75e2c3` is the installed commit (documentation and the run queu
 
 ## Run queue
 
-Run 94 A is queued (bullets over a distant station and over a self-shadowed hull; rest and pan unchanged):
-[run queue](verification/user-runs.md).
+No run is queued. Run 94 A (run348/349) accepted the bolt composite; the user chose `--bolt-far-show 1` over 0.5, now the
+default: [run queue](verification/user-runs.md).
 
 ## Open items
 
 - From Run 91 A: bullets behind distant objects = the game's early bullet copy overpainted by later opaque draws while
-  the additive route brightens both copies (Run94 composites the bolt back over held far/thin pixels; flight check in Run 94 A); station blur under a pan =
+  the additive route brightens both copies (fixed: Run94 composites the bolt back over held far/thin pixels, accepted in Run 94 A at W 1); station blur under a pan =
   history weight (0.85 accepted in Run 92 A; the rotation-aware weight stays opt-in and off after Run 93 A: the user prefers blur to shimmer).
 
 - Native Windows runtime behaviour is unverified; the source cross-compiles, gaps are tracked in
