@@ -32,14 +32,15 @@ Nothing: main `92f8223d` is the installed commit (documentation and the run queu
 
 ## Run queue
 
-Run 93 A is queued (bullets over a station and into empty space; 0.85 alone against 0.9 plus the rotation term at the
-same pan speed, with a slow-turn shimmer check): [run queue](verification/user-runs.md).
+No run is queued. Run 93 A (run346/347): the single-copy rule works but the TAA resolve still erases bolts over far
+geometry (design note in progress); the rotation-aware weight stays off by the user's decision (shimmer under pan):
+[run queue](verification/user-runs.md).
 
 ## Open items
 
 - From Run 91 A: bullets behind distant objects = the game's early bullet copy overpainted by later opaque draws while
-  the additive route brightens both copies (fixed in Run93 by the single-copy rule; flight check in Run 93 A); station blur under a pan =
-  history weight (0.85 accepted in Run 92 A; the opt-in rotation-aware weight flies in Run 93 A).
+  the additive route brightens both copies (Run93's single-copy rule removed the double brightness, but the TAA resolve keeps ~0.99 history at bolt pixels that carry a far station's depth: fix design in docs/architecture/bolts-through-taa.md); station blur under a pan =
+  history weight (0.85 accepted in Run 92 A; the rotation-aware weight stays opt-in and off after Run 93 A: the user prefers blur to shimmer).
 
 - Native Windows runtime behaviour is unverified; the source cross-compiles, gaps are tracked in
   [platform portability](architecture/platform-portability.md).
