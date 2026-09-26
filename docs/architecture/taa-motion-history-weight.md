@@ -7,6 +7,7 @@ Run 70 A, run262/run263** (launcher and DLL fallback, with an age program; the c
 (`verification/results/run254-exit/hull_sharp.py`, `hull_blurfit.py`, `hull_region_split.py`
 and their `*_out*.txt`; ledger `docs/verification/temporal-resolve.md`, "Run 254"); [E] are estimates
 from the model in section 3.
+Section 10 adds the opt-in rotation-aware term (2026-09-26, `--taa-motion-weight-rotation`, off by default).
 
 ## 1. Decision
 
@@ -252,3 +253,66 @@ The section 3 model said sigma 1.0 -> 0.8 (E x2.5) and alias x1.45 for 0.9 -> 0.
 two-frame ripple x2.06 at the half-texel resample, so the fixture's ripple bound is 2.5x (the first run's number, as
 section 6 asked). Only the flight rates that trade (section 8, item 2). Everything below V0 and every pan is bit-identical
 on both targets, and the age target never differs: the cap changes the weight, never the count.
+
+## 10. Rotation-aware motion weight (opt-in, 2026-09-26)
+
+**Why.** The cap above reads `min(relative, screen)`: a pan has relative 0, so a world-static station under a camera turn
+keeps the full base weight and loses about 40 % of its sharpness at 20-30 px/frame (Run 91 A / Run 92 A,
+`docs/verification/temporal-resolve.md`). The rest weight the user accepts (0.85; 0.9 would shimmer less) cannot also serve
+the pan. This term lowers the weight with the camera rotation only; translation keeps going through c25.yzw.
+
+**Term.** `X3M_TAA_MOTION_WEIGHT_ROTATION=F[,V0,V1]` (launcher `--taa-motion-weight-rotation`, requires `--taa` and an age
+program; absent = off, no default; F 0 the explicit off, else 0.5 <= F <= 0.98 with 0 <= V0 < V1 <= 64, V0,V1 default
+2,8). Per pixel of every age program the pass draws (age, far, far_camera_hold):
+
+- r = |cameraUV - dilatedUV| / texel, clamped at 64 px/frame before the root. `cameraUV` is the camera path of the dilated
+  position through c0..c3, which under camera policy 2 is the far-plane reprojection (zero z column, no translation): the
+  screen displacement the camera's rotation alone gives that direction, which for a pure rotation does not depend on depth.
+  So it is the rotation-only displacement at the pixel's depth, not the total reprojection. The pass receives the term only
+  under policy 2 (like c25.yzw); without the camera path c0..c3 is not rotation-only and the term stays off.
+- turnCap = saturate(max(F, A r + B)), A = -(1 - F) / (V1 - V0), B = 1 - A V0: 1 at or below V0, F at or above V1, linear
+  in r between.
+- At the blend, after the far / thin-region / adaptive keep and the exit reset, before c25's cap:
+  `keep = special > 0 ? keep : min(keep, turnCap)`, special = max(g * farOpen, b) + band on the far programs (any far
+  weight in effect, any thin-region weight, the sky band) and band on the age program. Those pixels keep their weight
+  exactly (a select, never a blend with the cap); the two caps combine as the smaller.
+
+**Register.** c26 = (A, B, F, 0), `kRotationRegister` in `resolve.h`, uploaded with c24 / c25 as one three-register block
+for the age programs (`prepare_motion_weight_rotation`; the state block restores it). Off (or an invalid triple) uploads
+0, 1, 1: turnCap is exactly 1 (r is finite after the clamp, so 0 * r + 1 is 1) and `min(keep, 1)` is keep bit for bit. The
+fixture's X3M_CAMERA_GATE-alone reference of REGION_HOLD_IDENTITY (the removed camera program) does not compile the term
+(`X3M_ROTATION_WEIGHT`), so it stays word for word.
+
+**Cost (measured, `RESOLVE_BUDGET`).** age 544 -> 555, far 545 -> 558, far_camera_hold 1017 -> 1030 slots; plain, thin and
+snapshot bytecode unchanged. At the planning figure of about 1 us per slot per frame at 5120x1440 the hold program costs
+about 13 us more per frame [inferred]; the fixture's fold timing rows moved within their run-to-run spread.
+
+**Fixture (`run_temporal_pass.py`, `MOTION_WEIGHT_ROTATION` rows; 772 / 278, 574 samples).** 512x16 stripe, camera yaw
+from frame 16, hull world-static, far gate moved beyond the hull on the far-camera program so the hull is ordinary (the
+adjacent station of Run 92 A had far 0, thin 0). Option 0.7,2,8 (measured, identical on both programs and both generations):
+
+| row | base 0.9: E ratio off -> on, ripple rms off -> on | base 0.85: E ratio off -> on, ripple rms off -> on |
+| --- | --- | --- |
+| pan 12.5 px/frame | 0.197 -> **0.513**, 0.0094 -> 0.0300 | 0.298 -> **0.513**, 0.0144 -> 0.0300 |
+| pan 6 px/frame (ramp 0.8) | 0.647 -> 0.696, 0.0142 -> 0.0276 | 0.674 -> 0.696, 0.0207 -> 0.0276 |
+| pan 4 px/frame (ramp 0.9) | 0.647 unchanged, bit-identical | 0.674 unchanged, bit-identical |
+
+The Run 92 A replay predicted 0.514 and 0.0300 for the pan12.5 row (`verification/results/run341-343-run92a-weights/`,
+`predict_pan_row_w07_out.txt`). At 4 px/frame the ramp is 1 - 0.3 x 2 / 6 = 0.9, so neither base weight is lowered. The
+6 px/frame row is within 0.002 (0 measured) of a run whose cap is the constant 0.8, which pins A and B. The age target is
+identical to off on every row. Mixed row (far-camera program, yaw 12 px/frame on the texel grid so each pixel's history
+lineage stays in its world-static class; 75,636 far, 9,168 thin-region and 114,600 ordinary pixel-frames): far and
+thin-region pixels bit-identical to off on colour and age, ordinary pixels up to 0.141 apart; two off-runs prove the
+classes (far weight 0.985 -> 0.95 moves far pixels only, 0.0103; thin weight 0.97 -> 0.98 thin pixels only, 0.0039). With
+the option unset every committed row of `temporal-pass.txt` is unchanged (only the RESULT line differs;
+`verification/results/rotation-motion-weight/compare_records.py`).
+
+**Risks, for the A/B flight.** (1) Shimmer during slow turns just above V0: between 2 and 8 px/frame the history is
+shorter and the jitter's alias shows (ripple 0.0276 at 6 px/frame against 0.0142 off). (2) A whole-screen weight change as
+a turn starts or ends: every ordinary pixel changes weight in the same frame, which may read as the image sharpening and
+softening with the turn. (3) The sky proper (sentinel depth, no far weight, not the band) counts as ordinary, so stars and
+the background take the lower weight during a turn. (4) Not measured in flight; pairs with a rest weight of 0.9 in the
+model (0.9 rest, 0.7 above 8 px/frame: +28 % / +35 % at 20 / 30 px/frame over 0.85).
+
+**Native Windows.** Documented ps_3_0 arithmetic and one more `SetPixelShaderConstantF` register; nothing backend-specific.
+Verified on CrossOver Preview only.

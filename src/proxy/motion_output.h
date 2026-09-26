@@ -815,6 +815,17 @@ public:
         motion_weight_[1] = ok ? v0 : 2.f;
         motion_weight_[2] = ok ? v1 : 8.f;
     }
+    // X3M_TAA_MOTION_WEIGHT_ROTATION=F[,V0,V1] (opt-in; absent or 0 off, else 0.5..0.98, 0 <= V0 < V1 <= 64 px/frame,
+    // default 2,8; docs/architecture/taa-motion-history-weight.md section 10): the age programs cap an ordinary pixel's
+    // history keep weight over the screen displacement the camera rotation alone produces: FrameInputs::
+    // motion_weight_rotation whenever the camera path is in effect (policy 2: c0..c3 is then the rotation-only path).
+    // Needs an age program, like X3M_TAA_MOTION_WEIGHT (taa_initialize logs it unavailable and drops it otherwise).
+    void configure_motion_weight_rotation(float f, float v0, float v1) noexcept {
+        const bool ok = x3::temporal::valid_motion_weight_rotation(f, v0, v1);
+        motion_weight_rotation_[0] = ok ? f : 0.f;
+        motion_weight_rotation_[1] = ok ? v0 : 2.f;
+        motion_weight_rotation_[2] = ok ? v1 : 8.f;
+    }
     // RT1/RT2 binding policy (X3M_MOTION_RT_MODE). perdraw (default): each
     // routed draw binds RT1/RT2 and COLORWRITEENABLE1/2 and after_draw puts
     // the application's values back. lazy (experiment): the bindings stay
@@ -2575,6 +2586,8 @@ private:
                                       // program)
     float motion_weight_[3] = {0.f, 2.f, 8.f}; // X3M_TAA_MOTION_WEIGHT: FrameInputs::motion_weight, _v0, _v1 (0 without
                                                // an age program)
+    float motion_weight_rotation_[3] = {0.f, 2.f, 8.f}; // X3M_TAA_MOTION_WEIGHT_ROTATION: FrameInputs::
+                                                        // motion_weight_rotation, _v0, _v1 (0 without an age program)
     // Static-world previous rows for new keys (temporal-integration.md). The
     // camera verdict is evaluated once per frame, on the frame's first miss.
     unsigned unmatched_static_ = 0;

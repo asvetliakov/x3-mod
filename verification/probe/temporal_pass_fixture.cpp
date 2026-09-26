@@ -3735,7 +3735,17 @@ void motion_weight_cases(IDirect3DDevice9* d, Compiler compiler, const DWORD* de
           d->CreateTexture(W, H, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A32B32G32R32F, D3DPOOL_DEFAULT, &motion.p, nullptr));
     check("mw motion surface", motion->GetSurfaceLevel(0, &motionSurface.p));
     Com<ID3DXBuffer> a, b;
-    Com<IDirect3DPixelShader9> stripePS, motionPS;
+    Com<ID3DXBuffer> layoutCode;
+    Com<IDirect3DPixelShader9> stripePS, motionPS, layoutPS;
+    // The rotation rows' mixed layout (section 10 of taa-motion-history-weight.md): device depth by the content column
+    // m = (x - c.x) mod 128 (c.x the content's displacement, so the layout is world-static like the stripe): far (c.z)
+    // below m 48, the hull (c.y) elsewhere, the sentinel -1 at m 88 (the fragmented-depth search flags |m - 88| <= 2).
+    compile(
+        compiler,
+        "float4 c:register(c0);float4 main(float2 vpos:VPOS):COLOR0{float u=floor(vpos.x)-c.x;float m=u-128*floor(u/128);"
+        "float d=m<48?c.z:c.y;d=abs(m-88)<0.5?-1:d;return float4(d,d,d,1);}",
+        "ps_3_0", &layoutCode.p);
+    check("mw layout PS", d->CreatePixelShader(static_cast<DWORD*>(layoutCode->GetBufferPointer()), &layoutPS.p));
     compile(
         compiler,
         "float4 c:register(c0);float4 main(float2 vpos:VPOS):COLOR0{float v=c.y+c.z*sin(6.28318530718*(floor(vpos.x)-c.x)/c.w);return float4(v,v,v,1);}",
@@ -3791,8 +3801,17 @@ void motion_weight_cases(IDirect3DDevice9* d, Compiler compiler, const DWORD* de
     // screen-static.
     // weight: the base history weight; 0.9 except the pan12.5 row, which runs at the production default
     // (x3::temporal::kHistoryWeightDefault, 0.85 since Run 91 A: temporal-resolve.md, run340 replay).
+    // extra (the rotation rows, section 10): the rotation-aware weight's triple, the far gate moved beyond the hull (d0
+    // 0.9998: the hull at 0.9997 has no far weight, an ordinary pixel like the adjacent station of Run 92 A) and the
+    // mixed layout above (far 0.99995, the hull, the sentinel column); farWeight / thinWeight (0: 0.985 / 0.97) probe
+    // which pixels the far and thin-region weights govern.
+    struct Extra {
+        const float* rotation = nullptr;
+        bool nearGate = false, mixed = false;
+        float farWeight = 0, thinWeight = 0;
+    };
     auto sequence = [&](unsigned program, double v, double pan, const float* triple, bool comove = false,
-                        float weight = .9f) {
+                        float weight = .9f, const Extra* extra = nullptr) {
         TemporalPass pass;
         check("mw initialize", pass.initialize(d, decoder, resolver));
         if (program) {
@@ -3827,10 +3846,11 @@ void motion_weight_cases(IDirect3DDevice9* d, Compiler compiler, const DWORD* de
             }
             s.quad(0, 0, W, H, 0, 0);
             check("mw motion End", d->EndScene());
-            target(depthSurface.p, s.flat.p);
+            const bool mixed = extra && extra->mixed;
+            target(depthSurface.p, mixed ? layoutPS.p : s.flat.p);
             check("mw depth Begin", d->BeginScene());
             {
-                const float c[4] = {hullDepth, 0, 0, 0};
+                const float c[4] = {mixed ? float(disp) : hullDepth, mixed ? hullDepth : 0.f, mixed ? .99995f : 0.f, 0};
                 check("mw depth constant", d->SetPixelShaderConstantF(0, c, 1));
             }
             s.quad(0, 0, W, H, 0, 0);
@@ -3882,6 +3902,17 @@ void motion_weight_cases(IDirect3DDevice9* d, Compiler compiler, const DWORD* de
                 in.motion_weight_v0 = triple[1];
                 in.motion_weight_v1 = triple[2];
             }
+            if (extra && extra->rotation) {
+                in.motion_weight_rotation = extra->rotation[0];
+                in.motion_weight_rotation_v0 = extra->rotation[1];
+                in.motion_weight_rotation_v1 = extra->rotation[2];
+            }
+            if (program && extra && (extra->nearGate || extra->mixed)) {
+                in.far_d0 = .9998f;
+                in.far_inv = 1.f / (.9999f - .9998f);
+            }
+            if (program && extra && extra->farWeight > 0) in.far_weight = extra->farWeight;
+            if (program && extra && extra->thinWeight > 0) in.thin_region_weight = extra->thinWeight;
             Output out;
             check("mw Begin resolve", d->BeginScene());
             check("mw resolve", pass.run(in, &out));
@@ -4053,6 +4084,133 @@ void motion_weight_cases(IDirect3DDevice9* d, Compiler compiler, const DWORD* de
         require(
             on[FAST - 1].diff > 0 && on[FAST].diff > 0 && off[FAST].eRatio < off[0].eRatio,
             "motion weight: the 12 and 12.5 px/frame rows differ from off and the half-texel row is softer than rest without the option");
+    }
+    // Rotation-aware motion weight (X3M_TAA_MOTION_WEIGHT_ROTATION=0.7,2,8; taa-motion-history-weight.md section 10): a
+    // camera yaw of 12.5, 4 and 6 px/frame over the world-static hull at base weights 0.9 and 0.85, off against on, the
+    // far gate beyond the hull on the far-camera program (an ordinary pixel). Asserted per program: 12.5 E ratio at
+    // least 1.3x off's at both weights (the Run 92 A replay predicted 0.514 against 0.197 / 0.299); 4 px/frame not
+    // below off's (the ramp is 0.9 there: neither base weight is lowered); 6 px/frame within 0.002 of the run whose cap
+    // is the constant 0.8 (the linear ramp's A and B at a binding point) and at least 0.01 from off; the age target
+    // identical on every row. Then the mixed row on the far-camera program (yaw 12 px/frame: the history is the exact
+    // texel, so every pixel's lineage stays in its world-static class): far-weight and thin-region pixels bit-identical
+    // to off on both targets, ordinary pixels at least 0.01 apart; the classes are proven by two off runs that change
+    // only the far weight (0.985 -> 0.95) or only the thin-region weight (0.97 -> 0.98): each moves its own class and
+    // no other.
+    {
+        const float rotation[3] = {.7f, 2, 8}, rotationBound[3] = {.8f, 0, .5f};
+        struct PanRow {
+            const char* name;
+            double pan;
+        };
+        const PanRow pans[] = {{"pan12.5", 12.5}, {"pan4", 4}, {"pan6", 6}};
+        for (unsigned program = 0; program < 2; ++program) {
+            const char* pn = program ? "far_camera" : "age";
+            const std::string prefix = std::string("rotation weight, ") + pn + " program: ";
+            double ageDiff = 0, fastRatio = 1e30, slowRatio = 1e30;
+            for (const PanRow& row : pans)
+                for (const float weight : {.9f, .85f}) {
+                    Extra off{}, on{};
+                    off.nearGate = on.nearGate = true;
+                    on.rotation = rotation;
+                    const Run rOff = sequence(program, 0, row.pan, nullptr, false, weight, &off),
+                              rOn = sequence(program, 0, row.pan, nullptr, false, weight, &on);
+                    const Numbers a = numbers(rOff, nullptr, row.pan), b = numbers(rOn, &rOff, row.pan);
+                    for (unsigned m = 0; m < 2; ++m) {
+                        const Numbers& q = m ? b : a;
+                        std::printf(
+                            "MOTION_WEIGHT_ROTATION program=%s row=%s pan_px=%.2f weight=%.3f on=%u e_ratio=%.6f sigma=%.2f amplitude_ratio=%.4f sigma_fit=%.3f age_mean=%.3f ripple_rms=%.6f ripple_frames=%u output_diff=%.6f age_diff=%.6f\n",
+                            pn, row.name, row.pan, double(weight), m, q.eRatio, q.sigma, q.ampRatio, q.sigmaFit, q.age,
+                            q.ripple, q.shiftFrames, q.diff, q.ageDiff);
+                    }
+                    ageDiff += b.ageDiff;
+                    const double ratio = b.eRatio / a.eRatio;
+                    if (row.pan == 12.5) fastRatio = std::min(fastRatio, ratio);
+                    if (row.pan == 4) slowRatio = std::min(slowRatio, ratio);
+                    if (row.pan == 6 && weight == .9f) {
+                        Extra bound{};
+                        bound.nearGate = true;
+                        bound.rotation = rotationBound;
+                        const Run rBound = sequence(program, 0, row.pan, nullptr, false, weight, &bound);
+                        const Numbers c = numbers(rBound, &rOn, row.pan);
+                        std::printf(
+                            "MOTION_WEIGHT_ROTATION program=%s row=%s pan_px=%.2f weight=%.3f on=2 e_ratio=%.6f sigma=%.2f amplitude_ratio=%.4f sigma_fit=%.3f age_mean=%.3f ripple_rms=%.6f ripple_frames=%u output_diff=%.6f age_diff=%.6f\n",
+                            pn, row.name, row.pan, double(weight), c.eRatio, c.sigma, c.ampRatio, c.sigmaFit, c.age,
+                            c.ripple, c.shiftFrames, c.diff, c.ageDiff);
+                        // 0.7,2,8 at 6 px/frame: 1.1 - 0.05 x 6 = 0.8 against the constant F 0.8 of the bound run.
+                        metric((prefix +
+                                "pan 6 px/frame: within 0.002 of the run whose cap is the constant 0.8 (a wrong "
+                                "A or B fails)")
+                                   .c_str(),
+                               std::min(c.diff, .002), 0, .002);
+                        metric((prefix + "pan 6 px/frame: the ramp binds (output differs from off by at least 0.01; "
+                                         "min(diff, 0.01))")
+                                   .c_str(),
+                               std::min(b.diff, .01), .01, 0);
+                    }
+                }
+            metric((prefix + "pan 12.5 px/frame: E ratio at least 1.3x off's at 0.9 and 0.85 (min(on / off, 1.3))")
+                       .c_str(),
+                   std::min(fastRatio, 1.3), 1.3, 0);
+            metric((prefix +
+                    "pan 4 px/frame (ramp 0.9: no base weight lowered): E ratio not below off's (min(on / off, 1))")
+                       .c_str(),
+                   std::min(slowRatio, 1.), 1, 1e-3);
+            metric((prefix + "age target identical to off on every rotation row (the cap never changes the count)")
+                       .c_str(),
+                   ageDiff, 0, 0);
+        }
+        // The mixed row: content column m = (x - displacement) mod 128; far 8..40, thin |m - 88| 1..2, ordinary 56..80
+        // and 96..120 (at least 6 px from every class boundary and the sentinel column's search reach).
+        Extra off{}, on{}, farProbe{}, thinProbe{};
+        off.mixed = on.mixed = farProbe.mixed = thinProbe.mixed = true;
+        on.rotation = rotation;
+        farProbe.farWeight = .95f; // below the age ramp n / (n + 1) of these 48 frames, which bounds 0.985 itself
+        thinProbe.thinWeight = .98f;
+        constexpr double pan = 12;
+        const Run rOff = sequence(1, 0, pan, nullptr, false, .9f, &off),
+                  rOn = sequence(1, 0, pan, nullptr, false, .9f, &on),
+                  rFar = sequence(1, 0, pan, nullptr, false, .9f, &farProbe),
+                  rThin = sequence(1, 0, pan, nullptr, false, .9f, &thinProbe);
+        double diff[3]{}, ageD[3]{}, farMoved[3]{}, thinMoved[3]{};
+        unsigned count[3]{};
+        for (unsigned n = 0; n < frames; ++n)
+            for (UINT y = Y0; y < Y1; ++y)
+                for (UINT x = 2; x + 2 < W; ++x) {
+                    const long u = long(x) - std::lround(rOff.d[n]), m = ((u % 128) + 128) % 128;
+                    const int cls = m >= 8 && m <= 40                               ? 0
+                                    : (m >= 86 && m <= 90 && m != 88)               ? 1
+                                    : (m >= 56 && m <= 80) || (m >= 96 && m <= 120) ? 2
+                                                                                    : -1;
+                    if (cls < 0) continue;
+                    const std::size_t i = y * W + x;
+                    diff[cls] = std::max(diff[cls], double(std::fabs(rOn.output[n][i] - rOff.output[n][i])));
+                    ageD[cls] = std::max(ageD[cls], double(std::fabs(rOn.age[n][i] - rOff.age[n][i])));
+                    farMoved[cls] = std::max(farMoved[cls], double(std::fabs(rFar.output[n][i] - rOff.output[n][i])));
+                    thinMoved[cls] = std::max(thinMoved[cls],
+                                              double(std::fabs(rThin.output[n][i] - rOff.output[n][i])));
+                    ++count[cls];
+                }
+        require(count[0] && count[1] && count[2], "rotation weight: the mixed row holds far, thin and ordinary pixels");
+        std::printf(
+            "MOTION_WEIGHT_ROTATION_CLASSES program=far_camera pan_px=%.2f weight=0.900 far_px=%u thin_px=%u ordinary_px=%u far_diff=%.6f thin_diff=%.6f ordinary_diff=%.6f far_age_diff=%.6f thin_age_diff=%.6f ordinary_age_diff=%.6f far_probe_far=%.6f far_probe_thin=%.6f far_probe_ordinary=%.6f thin_probe_far=%.6f thin_probe_thin=%.6f thin_probe_ordinary=%.6f\n",
+            pan, count[0], count[1], count[2], diff[0], diff[1], diff[2], ageD[0], ageD[1], ageD[2], farMoved[0],
+            farMoved[1], farMoved[2], thinMoved[0], thinMoved[1], thinMoved[2]);
+        metric("rotation weight, mixed row: far-weight pixels bit-identical to off on both targets", diff[0] + ageD[0],
+               0, 0);
+        metric("rotation weight, mixed row: thin-region pixels bit-identical to off on both targets", diff[1] + ageD[1],
+               0, 0);
+        metric("rotation weight, mixed row: ordinary pixels differ from off by at least 0.01 (min(diff, 0.01))",
+               std::min(diff[2], .01), .01, 0);
+        // The classes are what the row claims: the far weight governs the far pixels only, the thin-region weight the
+        // thin pixels only, and neither an ordinary pixel.
+        metric(
+            "rotation weight, mixed row: the far-weight probe moves far pixels only, the thin-weight probe thin pixels "
+            "only",
+            farMoved[0] > 0 && farMoved[1] == 0 && farMoved[2] == 0 && thinMoved[1] > 0 && thinMoved[0] == 0 &&
+                    thinMoved[2] == 0
+                ? 1
+                : 0,
+            1, 0);
     }
     if (!deferredFailures.empty()) throw std::runtime_error(deferredFailures.front());
 }

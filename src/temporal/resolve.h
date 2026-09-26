@@ -84,6 +84,37 @@ inline void prepare_motion_weight(float out[4], float f, float v0, float v1) noe
     out[2] = 1.f - a * v0 * v0;
     out[3] = f;
 }
+// Rotation-aware motion weight (X3M_TAA_MOTION_WEIGHT_ROTATION=F[,V0,V1], opt-in, 2026-09-26;
+// docs/architecture/taa-motion-history-weight.md section 10): c26 of the age variants, uploaded with c24 / c25 as one
+// three-register block. The age variants cap the history keep weight of an ORDINARY pixel (no far weight in effect, no
+// thin-region weight, not the sky band) at saturate(max(F, A r + B)), r the pixel's screen displacement in px/frame
+// that the camera rotation alone produces (the rotation-only camera path against the pixel, clamped at 64), so a static
+// hull under a pan accumulates a shorter history; translation keeps going through c25.yzw. Linear in r:
+// A = -(1 - F) / (V1 - V0), B = 1 - A V0 (1 at or below V0, F at or above V1). Off uploads 0, 1, 1, 0: the cap is
+// exactly 1 and min(keep, 1) is keep bit for bit. F 0 is off; else 0.5 <= F <= 0.98 with 0 <= V0 < V1 <= 64.
+constexpr unsigned kRotationRegister = 26;
+// The pass uploads c24..c26 as one block.
+static_assert(kRotationRegister == kExitRegister + 1 && kRotationRegister == kFlickerRegister + 2);
+constexpr float kRotationWeightMin = .5f, kRotationWeightMax = .98f, kRotationSpeedMax = 64.f;
+inline bool valid_motion_weight_rotation(float f, float v0, float v1) noexcept {
+    if (!std::isfinite(f) || f < 0) return false;
+    if (f == 0) return true;
+    return f >= kRotationWeightMin && f <= kRotationWeightMax && std::isfinite(v0) && std::isfinite(v1) && v0 >= 0 &&
+           v1 > v0 && v1 <= kRotationSpeedMax;
+}
+// c26. Off (or an invalid triple: fail closed to the identity) uploads A 0, B 1, F 1.
+inline void prepare_motion_weight_rotation(float out[4], float f, float v0, float v1) noexcept {
+    out[3] = 0.f;
+    if (!valid_motion_weight_rotation(f, v0, v1) || f == 0) {
+        out[0] = 0.f;
+        out[1] = out[2] = 1.f;
+        return;
+    }
+    const float a = -(1.f - f) / (v1 - v0);
+    out[0] = a;
+    out[1] = 1.f - a * v0;
+    out[2] = f;
+}
 constexpr float kAdaptiveWeightMax = .99f;                          // upper bound of WMAX
 constexpr float kAdaptiveLoDefault = .1f, kAdaptiveHiDefault = .5f; // px/frame
 constexpr float kAgeLimit = 64.f;                                   // the age target saturates here

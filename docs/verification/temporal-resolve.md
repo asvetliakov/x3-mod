@@ -3388,3 +3388,24 @@ Run 92 A measurements (first frame of each burst; scripts and outputs `verificat
    ripple_rms rises to 0.0300 (3.2x of 0.9, replica). Cost a few ALU slots; risk: shimmer while turning slowly just above V0,
    and whole-screen weight changes at the start and end of a turn. Worth one A/B flight against 0.85 because the modelled
    gain is two to three times the 0.85-vs-0.9 step the user could not see; if it is not built, 0.85 stands as accepted.
+
+## 2026-09-26 Rotation-aware motion weight (opt-in; fixture, not flown)
+
+Built on 1abdd4e8 in response to Run 92 A item 4: `--taa-motion-weight-rotation F[,V0,V1]` (`X3M_TAA_MOTION_WEIGHT_ROTATION`,
+off by default, requires `--taa` and an age program). Design and as-built: `docs/architecture/taa-motion-history-weight.md`
+section 10 (c26 = A, B, F; rotation-only displacement `cameraUV - dilatedUV` under camera policy 2; ordinary pixels only).
+
+- Fixture, bottle X3, `run_temporal_pass.py` PASS: temporal 772 / 278 (was 744; +28 = fourteen metrics x two
+  generations), 574 samples; lattice 584 / 90 unchanged, REGION_HOLD_IDENTITY_REFERENCE still 2196 words identical=1 (the
+  term is not compiled into the fixture's removed-program reference; the identity case now uploads c26 off). Option unset:
+  every committed line of `temporal-pass.txt` present unchanged, only the RESULT line differs
+  (`verification/results/rotation-motion-weight/compare_records.py`, measured).
+- 0.7,2,8, pan 12.5 px/frame: E ratio 0.197 -> 0.513 at 0.9 and 0.298 -> 0.513 at 0.85; ripple rms 0.0094 -> 0.0300 and
+  0.0144 -> 0.0300 (replay prediction 0.514 / 0.0300). Pan 6 px/frame (ramp 0.8): 0.647 -> 0.696 / 0.674 -> 0.696, within 0
+  of the constant-0.8 run. Pan 4 px/frame (ramp 0.9): bit-identical at both weights. Age target identical on every row.
+  Both programs (age, far_camera) give the same on-row numbers (measured).
+- Mixed row (far_camera, yaw 12): far-weight and thin-region pixels bit-identical to off on colour and age; ordinary pixels
+  0.141 apart; far-weight probe (0.985 -> 0.95) moves far pixels only, thin probe (0.97 -> 0.98) thin pixels only.
+- Slots: age 544 -> 555, far 545 -> 558, far_camera_hold 1017 -> 1030; plain / thin / snapshot bytecode unchanged.
+- Open: not flown. Risks for the A/B: slow-turn shimmer just above V0, a whole-screen weight change at turn start and end,
+  and the sky proper counting as ordinary (stars take the lower weight during a turn).

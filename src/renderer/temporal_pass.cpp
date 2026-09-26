@@ -899,17 +899,23 @@ HRESULT TemporalPass::run(const FrameInputs& in, Output* out) noexcept {
         return fail(E_INVALIDARG);
     if (!x3::temporal::valid_motion_weight(in.motion_weight, in.motion_weight_v0, in.motion_weight_v1))
         return fail(E_INVALIDARG);
+    if (!x3::temporal::valid_motion_weight_rotation(in.motion_weight_rotation, in.motion_weight_rotation_v0,
+                                                    in.motion_weight_rotation_v1))
+        return fail(E_INVALIDARG);
     constants.luminance[2] = in.alpha_history ? 1.f : 0.f; // read by the flicker variants only
     constants.luminance[3] = far_on ? in.far_filter : 0.f; // A of the masked filter: far variants only
     // c24 and, for the age programs, c25 (the exit floor squared under strict, else off: seta-sky-hull-share-decay.md)
-    // as one block.
-    float flicker_constants[8]{};
+    // and c26 (the rotation-aware motion weight) as one block.
+    float flicker_constants[12]{};
     x3::temporal::prepare_flicker(flicker_constants, in.thin_clip, in.adaptive_weight, in.adaptive_lo, in.adaptive_hi);
     x3::temporal::prepare_exit(flicker_constants + 4, in.sky_history_exit_px, strict_sky_term > 0.f);
     // c25.yzw: the motion history weight's A, B, F (taa-motion-history-weight.md), 0, 1, 1 when off: the age programs'
     // cap is then exactly 1.
     x3::temporal::prepare_motion_weight(flicker_constants + 4, in.motion_weight, in.motion_weight_v0,
                                         in.motion_weight_v1);
+    // c26: the rotation-aware motion weight's A, B, F (taa-motion-history-weight.md section 10), 0, 1, 1 when off.
+    x3::temporal::prepare_motion_weight_rotation(flicker_constants + 8, in.motion_weight_rotation,
+                                                 in.motion_weight_rotation_v0, in.motion_weight_rotation_v1);
     // Far variant: c24.yzw = W_FAR (the base weight when that component is off; its gate channel is 0 then), speed gate
     // far_speed_lo .. far_speed_hi px/frame. Far program: c24.x = clip relaxation of the thin region, c24.y = W_FAR
     // (the base weight when off), c24.zw the shared speed gate (the camera-gate resolve's gates read it too); c5.x
@@ -1248,12 +1254,12 @@ HRESULT TemporalPass::run(const FrameInputs& in, Output* out) noexcept {
                      step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d, 10, emissive_constants, 1)) &&
                      step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d, 11, hold_constants, 1)) &&
                      step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d, 13, far_gate_constants, 1)))) &&
-        // Flicker variants only: c24 (c24 and c25 for the age programs), and for the age weight the previous age at
+        // Flicker variants only: c24 (c24..c26 for the age programs), and for the age weight the previous age at
         // s7 (point, clamp, single level; the block restores the sampler) and
         // the next age as RT1, which leaves the device again right after the
         // draw so no later quad of this run can write it.
         (!(flicker || far_on) || step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(
-                                     d, x3::temporal::kFlickerRegister, flicker_constants, aged ? 2 : 1))) &&
+                                     d, x3::temporal::kFlickerRegister, flicker_constants, aged ? 3 : 1))) &&
         (!aged || (step(call<SetRsFn>(SetRenderState)(d, D3DRS_COLORWRITEENABLE1, 15)) &&
                    step(call<SetSamplerFn>(SetSamplerState)(d, 7, D3DSAMP_MINFILTER, D3DTEXF_POINT)) &&
                    step(call<SetSamplerFn>(SetSamplerState)(d, 7, D3DSAMP_MAGFILTER, D3DTEXF_POINT)) &&

@@ -102,10 +102,10 @@ void identity_cases(EdgeScene& helper,Compiler compiler){IDirect3DDevice9* const
         check("hold identity CWE1",d->SetRenderState(D3DRS_COLORWRITEENABLE1,15));check("hold identity CWE2",d->SetRenderState(D3DRS_COLORWRITEENABLE2,15));};
     auto unbindMrt=[&](){check("hold identity unbind RT2",d->SetRenderTarget(2,nullptr));check("hold identity unbind RT1",d->SetRenderTarget(1,nullptr));};
     for(const float k:{0.f,.5f}){
-        const float c22[4]={k,0,0,0},c24[8]={1,.985f,farLo,1.f/(farHi-farLo),1e30f,0,1,1};
+        const float c22[4]={k,0,0,0},c24[12]={1,.985f,farLo,1.f/(farHi-farLo),1e30f,0,1,1,0,1,1,0}; // c26: the rotation-aware weight off (resolve.h)
         // The tests on these inputs (the X3M_FOLD_TESTS_OUT twin of the hold program; its age and depth outputs go to scratch).
         mrt(testsSurface.p,ageSurface[1].p,depthSurface.p); // first: the helper's target() unbinds every texture and resets s0
-        bindCommon();check("hold identity constants",d->SetPixelShaderConstantF(0,&c0[0][0],8));check("hold identity c22",d->SetPixelShaderConstantF(22,c22,1));check("hold identity c24",d->SetPixelShaderConstantF(24,c24,2));
+        bindCommon();check("hold identity constants",d->SetPixelShaderConstantF(0,&c0[0][0],8));check("hold identity c22",d->SetPixelShaderConstantF(22,c22,1));check("hold identity c24",d->SetPixelShaderConstantF(24,c24,3));
         {IDirect3DTexture9* const bind[13]={input[Current].p,input[Depth].p,input[Previous].p,input[PreviousDepth].p,input[Motion].p,nullptr,nullptr,input[Age].p,nullptr,input[BoxLow].p,input[BoxHigh].p,input[Previous].p,nullptr};
             for(UINT slot=0;slot<13;++slot)check("hold identity texture",d->SetTexture(slot,bind[slot]));}
         check("hold identity tests PS",d->SetPixelShader(testsOut.p));
@@ -124,7 +124,7 @@ void identity_cases(EdgeScene& helper,Compiler compiler){IDirect3DDevice9* const
         for(unsigned which=0;which<2;++which){ // 0 the hold program on the raw inputs, 1 the camera program on the composed mask
             if(which){helper.target(colourSurface[1].p);check("hold identity RT1",d->SetRenderTarget(1,ageSurface[1].p));check("hold identity CWE1",d->SetRenderState(D3DRS_COLORWRITEENABLE1,15));}
             else mrt(colourSurface[0].p,ageSurface[0].p,depthSurface.p);
-            bindCommon();check("hold identity constants",d->SetPixelShaderConstantF(0,&c0[0][0],8));check("hold identity c22",d->SetPixelShaderConstantF(22,c22,1));check("hold identity c24",d->SetPixelShaderConstantF(24,c24,2));
+            bindCommon();check("hold identity constants",d->SetPixelShaderConstantF(0,&c0[0][0],8));check("hold identity c22",d->SetPixelShaderConstantF(22,c22,1));check("hold identity c24",d->SetPixelShaderConstantF(24,c24,3));
             IDirect3DTexture9* const bind[13]={input[Current].p,input[Depth].p,input[Previous].p,input[PreviousDepth].p,input[Motion].p,nullptr,nullptr,input[Age].p,which?input[Composed].p:nullptr,input[BoxLow].p,input[BoxHigh].p,input[Previous].p,nullptr};
             for(UINT slot=0;slot<13;++slot)check("hold identity texture",d->SetTexture(slot,bind[slot]));
             check("hold identity PS",d->SetPixelShader(which?composed.p:held.p));
@@ -192,7 +192,7 @@ void state_cases(EdgeScene& s,const DWORD* resolver){
     for(unsigned bad:{0u,65u}){in.thin_region_hold_frames=bad;require(pass.run(in,&out)==E_INVALIDARG,"a hold length outside 1..64 is refused");}in.thin_region_hold_frames=oracleHoldFrames;
     require(SUCCEEDED(pass.run(in,&out))&&!out.stabiliser_mask&&out.age&&pass.diagnostics().region_hold&&pass.diagnostics().depth_folded&&std::strcmp(pass.diagnostics().depth_fold_reason,"resolve_mrt")==0,"camera-gate run publishes the age target, no mask, and folds the depth into the resolve (RT2)");
     require(SUCCEEDED(pass.run(in,&out))&&out.used_history&&pass.diagnostics().region_hold,"camera-gate run continues the history");
-    const float junk[4]={9,8,7,6};for(UINT reg:{0u,4u,5u,6u,8u,9u,10u,11u,12u,13u,22u,24u,25u})check("hold hostile constant",d->SetPixelShaderConstantF(reg,junk,1));
+    const float junk[4]={9,8,7,6};for(UINT reg:{0u,4u,5u,6u,8u,9u,10u,11u,12u,13u,22u,24u,25u,26u})check("hold hostile constant",d->SetPixelShaderConstantF(reg,junk,1));
     for(UINT slot:{0u,1u,7u,8u,9u,10u,11u})check("hold hostile texture",d->SetTexture(slot,s.wave.p));
     check("hold hostile s8 min",d->SetSamplerState(8,D3DSAMP_MINFILTER,D3DTEXF_LINEAR));check("hold hostile s11 min",d->SetSamplerState(11,D3DSAMP_MINFILTER,D3DTEXF_POINT));check("hold hostile CWE1",d->SetRenderState(D3DRS_COLORWRITEENABLE1,0));
     Com<IDirect3DSurface9> hostileRt2;check("hold hostile RT2 surface",d->CreateRenderTarget(S,S,D3DFMT_A16B16G16R16F,D3DMULTISAMPLE_NONE,0,FALSE,&hostileRt2.p,nullptr));

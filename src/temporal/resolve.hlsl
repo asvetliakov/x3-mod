@@ -234,6 +234,11 @@ sampler2D lineMask : register(s8);
 #define X3M_THIN_CLIP 1
 sampler2D previousAge : register(s7);
 #endif
+// Rotation-aware motion weight (c26 below): every age program the pass draws, not the fixture's X3M_CAMERA_GATE-alone
+// reference of REGION_HOLD_IDENTITY, which stays the removed camera program word for word.
+#if defined(X3M_AGE_WEIGHT) && (defined(X3M_REGION_HOLD) || !defined(X3M_CAMERA_GATE))
+#define X3M_ROTATION_WEIGHT 1
+#endif
 #ifdef X3M_THIN_CLIP
 float4 flicker : register(c24); // thin-clip S, age wmax, speed LO, 1 / (HI - LO)
 #endif
@@ -253,6 +258,12 @@ float4 flicker : register(c24); // thin-clip S, age wmax, speed LO, 1 / (HI - LO
 // (docs/architecture/taa-motion-history-weight.md, at the depth proof below): 0, 1, 1 when off.
 #ifdef X3M_AGE_WEIGHT
 float4 skyExit : register(c25);
+#endif
+#ifdef X3M_ROTATION_WEIGHT
+// Rotation-aware motion weight (X3M_TAA_MOTION_WEIGHT_ROTATION, opt-in; docs/architecture/taa-motion-history-weight.md
+// section 10; uploaded with c24 / c25 as one block): A, B, F of the cap on an ordinary pixel's keep weight over its
+// rotation-only screen displacement r (px/frame), saturate(max(F, A r + B)); w unused. 0, 1, 1 when off.
+float4 rotationWeight : register(c26);
 #endif
 static const float3 lumaWeights = float3(0.2126, 0.7152, 0.0722);
 static const float unweighFloor = 1.0 / 65504.0;
@@ -699,6 +710,18 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     float parallax2 = min(dot(relative, relative), dot(screenPx, screenPx));
     float cap = saturate(max(skyExit.w, parallax2 * skyExit.y + skyExit.z));
 #endif
+#ifdef X3M_ROTATION_WEIGHT
+    // Rotation-aware motion weight (opt-in, c26 = A, B, F): the screen displacement the camera rotation alone produces
+    // at this pixel, the rotation-only camera path (cameraUV, the far-plane reprojection of the dilated position: a
+    // direction's displacement under a pure rotation does not depend on its depth) against the dilated position it was
+    // reprojected from (both texture centres with the current jitter, so 0 at rest). Linear in r px/frame from V0 to V1
+    // (A = -(1 - F) / (V1 - V0), B = 1 - A V0); r is clamped at 64 px/frame before the root, so a camera path at
+    // prepare's 1e15 bound (an overflowing square) reads 64 and 0 * r + 1 stays exactly 1 when off. Applied at the blend
+    // to ordinary pixels only; translation parallax stays with c25.yzw.
+    float2 turnPx = (cameraUV - dilatedUV) / sizeJitter.xy;
+    float turn = sqrt(min(dot(turnPx, turnPx), 4096));
+    float turnCap = saturate(max(rotationWeight.z, turn * rotationWeight.x + rotationWeight.y));
+#endif
     float considered = refused * options.z, proven = 0;
     [loop] for (int ty = 0; ty < 2; ++ty) {
         [loop] for (int tx = 0; tx < 2; ++tx) {
@@ -1002,8 +1025,20 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     float farKeep = keep + stabilise.g * farOpen * (min(ramp, flicker.y) - keep);
     keep = stabilise.b > 0 ? max(farKeep, keep + stabilise.b * (min(ramp, history.x) - keep)) : farKeep;
     keep = keeping >= 0 ? keep : 0; // the exit reset (the adaptive form above is 0 through the age)
+#ifdef X3M_ROTATION_WEIGHT
+    // Ordinary pixel for the rotation cap: no far weight in effect (g * farOpen 0), no thin-region weight (b 0) and not
+    // the sky band. Every other pixel keeps its weight exactly (a select, never a blend with the cap).
+    float special = max(stabilise.g * farOpen, stabilise.b) + band;
+#endif
 #else
     keep = min(age / (age + 1), lerp(flicker.y, history.z, saturate((speed - flicker.z) * flicker.w)));
+#ifdef X3M_ROTATION_WEIGHT
+    float special = band;
+#endif
+#endif
+#ifdef X3M_ROTATION_WEIGHT
+    // The rotation-aware cap (min never raises a weight; exactly keep when off: turnCap is 1 and keep <= 1).
+    keep = special > 0 ? keep : min(keep, turnCap);
 #endif
     // The motion history weight's cap (computed with the depth proof above): min never raises a
     // weight (young pixels, the exit reset's 0); before the alpha history so it uses the same weight.

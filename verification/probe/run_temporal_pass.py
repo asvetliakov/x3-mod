@@ -55,8 +55,9 @@ try:
     # same rows on the far and far-camera programs (six sequences and eleven metrics per generation). 712 / 528: the motion
     # history weight (taa-motion-history-weight.md section 6: ten rows on two age programs, ten metrics per program and generation).
     # 744 / 546: the dust motes' streak over sky, case (m) of fog-dust-motes.md section 5.4 (seven sequences and nine metrics
-    # per generation).
-    assert run.returncode==0 and match and tuple(map(int,match.groups()))==(744,278,2) and report['samples']==546 and 'RESET PASS' in text and 'FAIL' not in text,text[-1500:]
+    # per generation). 772 / 574: the rotation-aware motion weight (taa-motion-history-weight.md section 10: 26 rows and
+    # the mixed row per generation, fourteen metrics per generation).
+    assert run.returncode==0 and match and tuple(map(int,match.groups()))==(772,278,2) and report['samples']==574 and 'RESET PASS' in text and 'FAIL' not in text,text[-1500:]
     # Motion history weight rows (docs/architecture/taa-motion-history-weight.md): the age programs' keep weight capped by the
     # smaller of the translation parallax and the screen motion. Off path, every slow row, the pan and the co-moving hull
     # bit-identical; the age target never differs; the half-texel 12.5 px/frame row is sharper (E ratio) with the cap 0.8.
@@ -75,6 +76,24 @@ try:
         pan=weight_rows[('age','pan12.5',on)]
         assert pan['weight']=='0.850' and abs(float(pan['e_ratio'])-.299)<=.01 and float(pan['ripple_rms'])<=.0155,pan
         assert all(weight_rows[(program,'rest',on)]['weight']=='0.900' for program in ('age','far_camera')),weight_rows[('age','rest',on)]
+    # Rotation-aware motion weight rows (taa-motion-history-weight.md section 10, opt-in X3M_TAA_MOTION_WEIGHT_ROTATION=0.7,2,8):
+    # yaw 12.5 / 4 / 6 px/frame at base 0.9 and 0.85, off and on, plus the 6 px/frame constant-cap bound run, per program;
+    # the mixed far / thin / ordinary row on the far-camera program.
+    report['motion_weight_rotation']=[dict(re.findall(r'(\w+)=(\S+)',line)) for line in text.splitlines() if line.startswith('MOTION_WEIGHT_ROTATION ')]
+    rotation_rows={(row['program'],row['row'],row['weight'],row['on']):row for row in report['motion_weight_rotation'][:26]} # two programs x (three pans x two weights x off / on + the bound run) per generation
+    assert len(report['motion_weight_rotation'])==52 and len(rotation_rows)==26,report['motion_weight_rotation']
+    for program in ('age','far_camera'):
+        assert all(row['age_diff']=='0.000000' for key,row in rotation_rows.items() if key[0]==program and key[3]=='1'),program
+        for weight in ('0.900','0.850'):
+            off,on=rotation_rows[(program,'pan12.5',weight,'0')],rotation_rows[(program,'pan12.5',weight,'1')]
+            assert float(on['e_ratio'])>=1.3*float(off['e_ratio']) and float(on['output_diff'])>0,(off,on)
+            off,on=rotation_rows[(program,'pan4',weight,'0')],rotation_rows[(program,'pan4',weight,'1')]
+            assert float(on['e_ratio'])>=float(off['e_ratio'])*(1-1e-3),(off,on)
+        assert float(rotation_rows[(program,'pan6','0.900','2')]['output_diff'])<=.002<.01<=float(rotation_rows[(program,'pan6','0.900','1')]['output_diff']),program
+    # The option-off path is the existing one: the age program's off row at 0.85 is the MOTION_WEIGHT pan12.5 row's scene.
+    assert rotation_rows[('age','pan12.5','0.850','0')]['e_ratio']==weight_rows[('age','pan12.5','0')]['e_ratio'],(rotation_rows[('age','pan12.5','0.850','0')],weight_rows[('age','pan12.5','0')])
+    report['motion_weight_rotation_classes']=[dict(re.findall(r'(\w+)=(\S+)',line)) for line in text.splitlines() if line.startswith('MOTION_WEIGHT_ROTATION_CLASSES ')]
+    assert len(report['motion_weight_rotation_classes'])==2 and all(r['far_diff']=='0.000000' and r['thin_diff']=='0.000000' and r['far_age_diff']=='0.000000' and r['thin_age_diff']=='0.000000' and float(r['ordinary_diff'])>=.01 for r in report['motion_weight_rotation_classes']),report['motion_weight_rotation_classes']
     # Case (m): the unrouted streak writes no negative age and, over a dark sky, no trail beyond 3 px; the hull row's marks are
     # the hull's own. The flickering sky's trail and the segment brightness ratios are reported, not gated.
     report['mote_streak']=[dict(re.findall(r'(\w+)=(\S+)',line)) for line in text.splitlines() if line.startswith('MOTE_STREAK ')]

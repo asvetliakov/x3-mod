@@ -2129,6 +2129,14 @@ bool MotionOutput::ensure_taa() noexcept {
             double(motion_weight_[0]), double(motion_weight_[1]), double(motion_weight_[2]));
         motion_weight_[0] = 0.f;
     }
+    if (SUCCEEDED(hr) && motion_weight_rotation_[0] > 0.f &&
+        !(taa_far_weight_ > 0.f || taa_far_filter_ > 0.f || taa_thin_weight_ > 0.f)) {
+        log("motion_output_taa_motion_weight_rotation device=%llu unavailable=1 reason=no_age_program "
+            "requested=%.3f,%g,%g",
+            id_, double(motion_weight_rotation_[0]), double(motion_weight_rotation_[1]),
+            double(motion_weight_rotation_[2]));
+        motion_weight_rotation_[0] = 0.f;
+    }
     // Far weight's gate (X3M_TAA_FAR_GATE): the camera gate exists only on the camera-gate resolve; elsewhere the far
     // program's screen speed gate is configured. One row when camera was requested explicitly (not the launcher's
     // default, which every
@@ -2276,6 +2284,10 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
                 in.motion_weight = motion_weight_[0];
                 in.motion_weight_v0 = motion_weight_[1];
                 in.motion_weight_v1 = motion_weight_[2];
+                // The rotation-aware cap (section 10) reads the rotation-only camera path the same policy provides.
+                in.motion_weight_rotation = motion_weight_rotation_[0];
+                in.motion_weight_rotation_v0 = motion_weight_rotation_[1];
+                in.motion_weight_rotation_v1 = motion_weight_rotation_[2];
             }
             // Camera gate (taa-lattice-crawl.md section 32.3): the depth / translation term beside the far-plane
             // matrix, from the same two views and this frame's latched depth law; zero (the far-plane path) without the

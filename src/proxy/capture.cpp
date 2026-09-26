@@ -364,6 +364,12 @@ bool thin_vote_gate = false;
 // their weight. Needs an age program (far stabiliser or thin region), which motion_output judges;
 // inert (cap 1) without the camera path (the seam's X3M_FIXTURE_TAA_SENTINEL=1, or no camera transform this frame).
 float taa_motion_weight[3] = {0.f, 2.f, 8.f};
+// X3M_TAA_MOTION_WEIGHT_ROTATION=F[,V0,V1] (opt-in, 2026-09-26; absent, 0, invalid or oversized: off, the last two
+// logged; else 0.5..0.98 with 0 <= V0 < V1 <= 64 px/frame, default 2,8; docs/architecture/taa-motion-history-weight.md
+// section 10): the age programs cap an ordinary pixel's history keep weight at F where the camera rotation alone moves
+// it V1 px/frame or more on screen (1 at or below V0, linear between), so a static hull under a pan keeps more detail;
+// thin-region, far-weight and sky-band pixels keep their weights. Same prerequisites as X3M_TAA_MOTION_WEIGHT.
+float taa_motion_weight_rotation[3] = {0.f, 2.f, 8.f};
 unsigned camera_log_frames = 0; // X3M_CAMERA_LOG; 0 = capture frames only (initialize_log)
 unsigned motion_jitter_samples = 8;
 // The finite huge displacement bound is a practical off switch. A missing
@@ -3154,6 +3160,8 @@ void hook_device(IDirect3DDevice9* d, HWND window, HWND focus) {
     hooked.motion_output.configure_thin_region_source(taa_thin_region_source, taa_thin_region_source_given,
                                                       taa_thin_region_source_default);
     hooked.motion_output.configure_motion_weight(taa_motion_weight[0], taa_motion_weight[1], taa_motion_weight[2]);
+    hooked.motion_output.configure_motion_weight_rotation(taa_motion_weight_rotation[0], taa_motion_weight_rotation[1],
+                                                          taa_motion_weight_rotation[2]);
     // Render-state configuration (hybrid unhook): the reasons that keep the
     // SetRenderState/SetSamplerState hooks installed, then the capability
     // check of the documented reads the unhooked route depends on (the proxy
@@ -5068,6 +5076,31 @@ void initialize_log(HMODULE module) {
                (taa_far[0] > 0.f || taa_far[1] > 0.f || taa_thin_region[0] > 0.f))
         taa_motion_weight[0] = .7f; // Run 70 A (2026-09-23, run262/run263): 0.7,2,8 with an age program under a policy
                                     // that can reach 2 (0 is the opt-out)
+    // X3M_TAA_MOTION_WEIGHT_ROTATION=<F>[,<V0>,<V1>]: parsed like X3M_TAA_MOTION_WEIGHT (1 or 3 fields, all in range),
+    // no default: absent is off.
+    if (const DWORD n = x3m::config::get(L"X3M_TAA_MOTION_WEIGHT_ROTATION", setting, 32); n >= 32)
+        log("taa_motion_weight_rotation_setting invalid=1 reason=too_long length=%lu", n);
+    else if (n > 0) {
+        float v[3] = {0.f, 2.f, 8.f};
+        unsigned count = 0;
+        wchar_t* cursor = setting;
+        bool ok = true;
+        while (ok && count < 3) {
+            wchar_t* end = nullptr;
+            v[count] = wcstof(cursor, &end);
+            ok = end != cursor;
+            ++count;
+            if (!ok || *end == L'\0') break;
+            ok = *end == L',';
+            cursor = end + 1;
+            if (count == 3) ok = false;
+        }
+        ok = ok && (count == 1 || count == 3) && x3::temporal::valid_motion_weight_rotation(v[0], v[1], v[2]);
+        if (ok)
+            for (unsigned i = 0; i < 3; ++i) taa_motion_weight_rotation[i] = v[i];
+        else
+            log("taa_motion_weight_rotation_setting invalid=1");
+    }
     if (x3m::config::get(L"X3M_CAMERA_CUT_DEG", setting, 32) > 0) {
         const float v = wcstof(setting, nullptr);
         if (v > 0 && v <= 180) camera_cut_degrees = v;
@@ -5078,7 +5111,7 @@ void initialize_log(HMODULE module) {
         const unsigned long n = wcstoul(setting, nullptr, 10);
         if (n >= 1 && n <= 1000000) camera_log_frames = unsigned(n);
     }
-    log("motion_output_mode requested=%u scope=live_same_draw_diagnostic history_requires=object_trace,object_lifetime temporal_consumer=%u taa=%u taa_debug=%u jitter=%u jitter_samples=%u cut_median_px=%.3f cut_missing=%.3f rt_mode=%s frame_log=%u sentinel=%s unmatched_static=%u sky_history=%s sky_history_band_px=%.2f sky_history_exit_px=%.3f motion_weight=%.3f,%g,%g camera_cut_deg=%.2f camera_log=%u state_shadow=%s scene_hook=%u hdr=%u taa_k=%.5f mip_bias=%g taa_sharpen=%.3f taa_history_weight=%.3f",
+    log("motion_output_mode requested=%u scope=live_same_draw_diagnostic history_requires=object_trace,object_lifetime temporal_consumer=%u taa=%u taa_debug=%u jitter=%u jitter_samples=%u cut_median_px=%.3f cut_missing=%.3f rt_mode=%s frame_log=%u sentinel=%s unmatched_static=%u sky_history=%s sky_history_band_px=%.2f sky_history_exit_px=%.3f motion_weight=%.3f,%g,%g motion_weight_rotation=%.3f,%g,%g camera_cut_deg=%.2f camera_log=%u state_shadow=%s scene_hook=%u hdr=%u taa_k=%.5f mip_bias=%g taa_sharpen=%.3f taa_history_weight=%.3f",
         motion_output_requested, taa_requested, taa_requested, taa_debug_requested, motion_jitter_requested,
         motion_jitter_samples, motion_cut_median_px, motion_cut_missing, motion_rt_lazy ? "lazy" : "perdraw",
         motion_frame_log,
@@ -5087,7 +5120,8 @@ void initialize_log(HMODULE module) {
                                                                       : "auto",
         taa_unmatched_static, taa_sky_history_strict ? "strict" : "loose", taa_sky_history_band_px,
         double(taa_sky_history_exit_px), double(taa_motion_weight[0]), double(taa_motion_weight[1]),
-        double(taa_motion_weight[2]), camera_cut_degrees, camera_log_frames,
+        double(taa_motion_weight[2]), double(taa_motion_weight_rotation[0]), double(taa_motion_weight_rotation[1]),
+        double(taa_motion_weight_rotation[2]), camera_cut_degrees, camera_log_frames,
         motion_state_shadow < 0 ? "auto"
         : motion_state_shadow   ? "1"
                                 : "0",

@@ -107,6 +107,41 @@ class MotionWeightLaunch(unittest.TestCase):
         resolve = source_text(ROOT / 'src/temporal/resolve.h')
         self.assertIn('kMotionWeightMin = .5f', resolve)
 
+    def test_rotation_weight_opt_in(self):
+        # --taa-motion-weight-rotation (2026-09-26, taa-motion-history-weight.md section 10): absent = off and never sent;
+        # forwarded as the full triple when given; requires --taa and an age program; vanilla sends nothing.
+        name = 'X3M_TAA_MOTION_WEIGHT_ROTATION'
+        with tempfile.TemporaryDirectory() as directory:
+            self.assertNotIn(name, self.env(directory, *TAA, *AGE))
+            self.assertNotIn(name, self.env(directory, *TAA, *AGE, inherited={name: '0.7,2,8'}))  # a stale shell value is dropped
+            self.assertNotIn(name, self.env(directory, inherited={name: '0.7,2,8'}))
+            self.assertEqual(self.env(directory, *TAA, *AGE, '--taa-motion-weight-rotation', '0.7')[name], '0.7,2,8')
+            self.assertEqual(self.env(directory, *TAA, *AGE, '--taa-motion-weight-rotation', '0.5,0,64')[name], '0.5,0,64')
+            self.assertEqual(self.env(directory, *TAA, *AGE, '--taa-motion-weight-rotation', '0.98,2,8')[name], '0.98,2,8')
+            self.assertEqual(self.env(directory, *TAA, '--taa-thin-region', '0.97', '--taa-motion-weight-rotation', '0.8,3,12')[name], '0.8,3,12')
+            self.assertEqual(self.env(directory, *TAA, '--taa-motion-weight-rotation', '0')[name], '0,2,8')  # explicit off
+            for value in ('0.4', '0.99', '1', '-0.7', 'nan', 'x', '0.7,8,2', '0.7,-1,8', '0.7,2,65', '0.7,2', '0.7,2,8,9', ''):
+                code, _, error = self.launch(directory, *TAA, *AGE, '--taa-motion-weight-rotation', value)
+                self.assertNotEqual(code, 0, value)
+                self.assertIn('--taa-motion-weight-rotation', error)
+            code, _, error = self.launch(directory, '--motion-output', '--taa-motion-weight-rotation', '0.7')
+            self.assertNotEqual(code, 0)
+            self.assertIn('--taa-motion-weight-rotation requires --taa', error)
+            for args in ((), ('--taa-far-stabiliser', '0')):
+                code, _, error = self.launch(directory, *TAA, *args, '--taa-motion-weight-rotation', '0.7')
+                self.assertNotEqual(code, 0, args)
+                self.assertIn('--taa-motion-weight-rotation requires an age program', error)
+            # No abbreviation: the parser refuses a prefix.
+            code, _, error = self.launch(directory, *TAA, *AGE, '--taa-motion-weight-rot', '0.7')
+            self.assertNotEqual(code, 0)
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
+        self.assertIn('float taa_motion_weight_rotation[3] = {0.f, 2.f, 8.f};', capture)
+        self.assertIn('L"X3M_TAA_MOTION_WEIGHT_ROTATION"', capture)
+        self.assertIn('motion_weight_rotation=%.3f,%g,%g', capture)
+        resolve = source_text(ROOT / 'src/temporal/resolve.h')
+        self.assertIn('kRotationRegister = 26', resolve)
+        self.assertIn('kRotationWeightMin = .5f, kRotationWeightMax = .98f', resolve)
+
 
 if __name__ == '__main__':
     unittest.main()

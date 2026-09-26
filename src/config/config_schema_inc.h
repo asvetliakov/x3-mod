@@ -362,6 +362,7 @@ constexpr Entry entries[entry_count] = {
     {"X3M_TAA_HISTORY_WEIGHT", "taa_history_weight", Type::Float, nullptr, nullptr, 88, 1, 14, 0, 0, "", 0, -1},
     {"X3M_TAA_MIP_BIAS", "taa_mip_bias", Type::Float, "-0.5", nullptr, 89, 1, 14, 0, 0, "", 0, -1},
     {"X3M_TAA_MOTION_WEIGHT", "taa_motion_weight", Type::String, "0.7,2,8", nullptr, 90, 0, 14, 0, 0, "", 1, -1},
+    {"X3M_TAA_MOTION_WEIGHT_ROTATION", "taa_motion_weight_rotation", Type::String, nullptr, nullptr, 90, 0, 14, 0, 0, "", 1, -1},
     {"X3M_TAA_SHARPEN", "taa_sharpen", Type::Float, "0.75", nullptr, 90, 1, 14, 0, 0, "", 0, -1},
     {"X3M_TAA_SKY_HISTORY", "taa_sky_history", Type::String, "strict", nullptr, 91, 0, 14, 0, 0, "", 1, -1},
     {"X3M_TAA_SKY_HISTORY_BAND_PX", "taa_sky_history_band_px", Type::Float, nullptr, nullptr, 91, 1, 14, 0, 0, "", 1, -1},

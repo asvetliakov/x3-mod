@@ -339,6 +339,10 @@ SETTINGS = [
         launcher='--taa-sky-history-exit-px', range=[(0, 0), (0.125, 16)]),
     dev('taa_motion_weight', 'string', 'graphics', 'History-weight cap of fast-parallax pixels: F[,V0,V1] or 0.', '0.7,2,8',
         launcher='--taa-motion-weight'),
+    dev('taa_motion_weight_rotation', 'string', 'graphics', 'Opt-in: keeps less of the previous frames while the camera turns, '
+        'so stations stay sharper in a pan (may shimmer more during slow turns). F[,V0,V1]: the kept share falls to F '
+        '(0.5 to 0.98) as the turn moves the picture from V0 to V1 pixels per frame (default 2,8); absent or 0 = off.',
+        launcher='--taa-motion-weight-rotation', requires=('taa',)),
     dev('camera_cut_deg', 'float', 'graphics', 'Camera rotation per frame above which the resolve declares a cut.', '20.0',
         launcher='--camera-cut-deg', range=[R(0, 180, True)]),
     dev('motion_cut_median_px', 'float', 'graphics', 'Global cut heuristic: median displacement bound (1e30 = disabled).', '1e30'),
