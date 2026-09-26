@@ -635,18 +635,41 @@ inline std::uint32_t write_draw(const Frame& f, const float* positions, const st
 }
 
 // The capture-only bolt_copy row (lod-overlay.md, "Run 91 A: bolts behind
-// distant objects"): FNV-1a 64 over the bytes of the first `n` scanned
-// positions (x, y, z floats as the Unlock scan copied them). Two draws of the
-// same bolts hash equal; a different batch, count or position differs.
-inline std::uint64_t position_hash(const float* positions, std::uint32_t n) noexcept {
-    std::uint64_t h = 0xcbf29ce484222325ull;
-    const auto* p = reinterpret_cast<const unsigned char*>(positions);
-    const std::size_t bytes = positions ? std::size_t(n) * 3u * sizeof(float) : 0u;
-    for (std::size_t i = 0; i < bytes; ++i) {
-        h ^= p[i];
-        h *= 0x100000001b3ull;
+// distant objects"), one pass over the first `n` scanned positions (x, y, z
+// floats as the Unlock scan copied them):
+//   hash  FNV-1a 64 over all their bytes (same bolts in the same order: equal);
+//   qsum  wrapping sum of each whole triangle's own FNV-1a 64 over its 9
+//         floats (order-independent: equal for the same triangles reordered);
+//   lo/hi the axis-aligned bounds (equal for the same bolts extruded
+//         differently). An incomplete last triangle adds nothing to qsum.
+struct PositionDigest {
+    std::uint64_t hash = 0, qsum = 0;
+    float lo[3]{}, hi[3]{};
+};
+inline PositionDigest position_digest(const float* positions, std::uint32_t n) noexcept {
+    constexpr std::uint64_t basis = 0xcbf29ce484222325ull, prime = 0x100000001b3ull;
+    PositionDigest d;
+    d.hash = basis;
+    if (!positions || !n) return d;
+    for (unsigned a = 0; a < 3; ++a) d.lo[a] = d.hi[a] = positions[a];
+    std::uint64_t triangle = basis;
+    for (std::uint32_t i = 0; i < n; ++i) {
+        const float* v = positions + std::size_t(i) * 3u;
+        const auto* p = reinterpret_cast<const unsigned char*>(v);
+        for (unsigned b = 0; b < 3u * sizeof(float); ++b) {
+            d.hash = (d.hash ^ p[b]) * prime;
+            triangle = (triangle ^ p[b]) * prime;
+        }
+        for (unsigned a = 0; a < 3; ++a) {
+            if (v[a] < d.lo[a]) d.lo[a] = v[a];
+            if (v[a] > d.hi[a]) d.hi[a] = v[a];
+        }
+        if (i % 3u == 2u) {
+            d.qsum += triangle;
+            triangle = basis;
+        }
     }
-    return h;
+    return d;
 }
 
 #undef X3M_BF_INLINE

@@ -1,0 +1,71 @@
+{
+ "case": "seam-bolt-copy-hash",
+ "bottle": "X3",
+ "rows": [
+  {
+   "frame": "5",
+   "draw": "3",
+   "vb": "8",
+   "revision": "12",
+   "count": "12",
+   "prims": "4",
+   "hash": "0c7d75b318c771ca",
+   "qsum": "a9a259fd66b49257",
+   "bbox": "0.0,-0.2,2.0,0.6,0.3,2.0"
+  },
+  {
+   "frame": "5",
+   "draw": "4",
+   "vb": "8",
+   "revision": "13",
+   "count": "12",
+   "prims": "4",
+   "hash": "0c7d75b318c771ca",
+   "qsum": "a9a259fd66b49257",
+   "bbox": "0.0,-0.2,2.0,0.6,0.3,2.0"
+  },
+  {
+   "frame": "5",
+   "draw": "5",
+   "vb": "9",
+   "revision": "4",
+   "count": "12",
+   "prims": "4",
+   "hash": "e24d919047c79424",
+   "qsum": "28868fb0aa50a2ff",
+   "bbox": "-0.5,-0.2,2.0,0.1,0.3,2.0"
+  },
+  {
+   "frame": "5",
+   "draw": "6",
+   "vb": "8",
+   "revision": "13",
+   "count": "6",
+   "prims": "2",
+   "hash": "fc925f9ce05341f8",
+   "qsum": "ad835a3809c916ed",
+   "bbox": "0.0,-0.2,2.0,0.5,0.2,2.0"
+  },
+  {
+   "frame": "5",
+   "draw": "7",
+   "vb": "8",
+   "revision": "14",
+   "count": "12",
+   "prims": "4",
+   "hash": "46f51ef654f27972",
+   "qsum": "a9a259fd66b49257",
+   "bbox": "0.0,-0.2,2.0,0.6,0.3,2.0"
+  },
+  {
+   "frame": "5",
+   "draw": "8",
+   "vb": "8",
+   "revision": "14",
+   "count": "30",
+   "prims": "10",
+   "hash": "none",
+   "reason": "buffer:beyond"
+  }
+ ]
+}

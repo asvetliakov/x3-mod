@@ -881,9 +881,10 @@ BOLT_SHAPE_EXPECT = {'prims': (4, 2200, 1024 * 72 * 24, 2200), 'decl': (128, 2, 
 CASES += [case(f'seam-ownership-bolt-shape-{script}', 'boltshape', 'ownership', jitter=True, taa=True, lazy=True, camera=True, sentinel='2', hdr=True,
                hdr_env=dict(BOLT_SHAPE_ENV, X3M_FIXTURE_BOLT_SHAPE=script)) for script in BOLT_SHAPE_EXPECT]
 # The capture-only bolt_copy row (docs/verification/lod-overlay.md, "Run 91 A: bolts behind distant
-# objects"): script copy draws per frame 1-7 the writer's buffer twice (two DISCARD fills with the same
-# two bolts) and a second buffer with two shifted bolts once; the capture window is one frame
-# (X3M_CAPTURE_START=5) and must carry exactly three bolt_copy rows, hashes 1 = 2 != 3.
+# objects"): script copy draws per frame 1-7 six bullet draws (equal refill, second buffer, shorter
+# range, swapped bolts, a range past the scan; validate_bolt_copy); the capture window is one frame
+# (X3M_CAPTURE_START=5) and must carry exactly six bolt_copy rows.
+BOLT_COPY_RESULTS = ROOT / 'verification/results/bolt-copy-hash'  # the rows of the case (small, tracked; lod-overlay.md)
 CASES += [case('seam-bolt-copy-hash', 'boltshape', 'ownership', jitter=True, taa=True, lazy=True, camera=True, sentinel='2', hdr=True,
                hdr_env=dict(BOLT_SHAPE_ENV, X3M_FIXTURE_BOLT_SHAPE='copy', X3M_CAPTURE_START='5', X3M_CAPTURE_FRAMES='1'))]
 # Fade-band motion arm scripts (motion_output_fade_route_inc.h, X3M_FIXTURE_FADE_SCRIPT;
@@ -4497,25 +4498,38 @@ def validate_bolt_shape(name, text, trace, script):
 
 
 def validate_bolt_copy(name, text, trace):
-    """The copy script: every bolt_copy row of the session falls on the one capture frame, three rows in draw
-    order, each hashed (no hash=none) with start 0, count 12 and prims 4 as drawn; rows 1 and 2 share the buffer
-    and the hash at two different revisions, row 3 is another buffer with another hash; no bolt_copy_more."""
+    """The copy script (six bullet draws per frame, fills of 24 vertices): every bolt_copy row of the session falls on
+    the one capture frame, six rows in draw order. 1-2: buffer A at two increasing revisions, 12 of the 24 filled
+    vertices, equal hash, qsum and bbox (a hash over the whole prefix would still be equal, but 4 separates it);
+    3: buffer B, another hash, qsum and bbox; 4: A at row 2's revision, 2 primitives, another hash; 5: A refilled
+    with the two drawn bolts swapped, another hash but row 1's qsum and bbox; 6: A at row 5's revision, 10
+    primitives past the 24 scanned, hash=none reason=buffer:beyond with the lookup's revision; no bolt_copy_more."""
     lines = text.splitlines(); tl = trace.splitlines()
     assert any(l.startswith('RESULT PASS ') for l in lines) and not any(l.startswith('RESULT FAIL') for l in lines), name
     summary = [fields(l) for l in lines if l.startswith('BOLT_COPY ')]
-    assert len(summary) == 1 and int(summary[0]['draws']) == 21 and int(summary[0]['primitives']) == 4, (name, summary)
+    assert len(summary) == 1 and int(summary[0]['draws']) == 42 and int(summary[0]['filled_vertices']) == 24, (name, summary)
     rows = [fields(l) for l in tl if l.startswith('bolt_copy ')]
-    assert len(rows) == 3 and len({r['frame'] for r in rows}) == 1 and len({r['device'] for r in rows}) == 1, (name, rows)
+    refused = [l for l in tl if l.startswith('bolt_footprint_refused ')]
+    assert len(rows) == 6 and len({r['frame'] for r in rows}) == 1 and len({r['device'] for r in rows}) == 1, (name, rows, refused)
     assert not any(l.startswith('bolt_copy_more ') for l in tl), name
-    assert [int(r['draw']) for r in rows] == sorted(int(r['draw']) for r in rows), (name, rows)
-    for r in rows:
-        assert r['hash'] != 'none' and len(r['hash']) == 16, (name, r, [l for l in tl if l.startswith('bolt_footprint_refused ')])
-        assert (int(r['start']), int(r['count']), int(r['prims'])) == (0, 12, 4), (name, r)
-    first, second, third = rows
-    assert first['vb'] == second['vb'] != third['vb'], (name, rows)
-    assert int(second['revision']) > int(first['revision']), (name, rows)
-    assert first['hash'] == second['hash'] != third['hash'], (name, rows)
-    return dict(checks=1, script='copy', rows=[{k: r[k] for k in ('frame', 'draw', 'vb', 'revision', 'count', 'prims', 'hash')} for r in rows])
+    draws = [int(r['draw']) for r in rows]
+    assert draws == list(range(draws[0], draws[0] + 6)), (name, rows)
+    for r, prims in zip(rows, (4, 4, 4, 2, 4, 10)):
+        assert (int(r['start']), int(r['count']), int(r['prims'])) == (0, 3 * prims, prims), (name, r)
+    hashed, beyond = rows[:5], rows[5]
+    for r in hashed:
+        assert len(r['hash']) == 16 and len(r['qsum']) == 16 and len(r['bbox'].split(',')) == 6, (name, r, refused)
+    a1, a2, b, short, swapped = hashed
+    assert a1['vb'] == a2['vb'] == short['vb'] == swapped['vb'] == beyond['vb'] != b['vb'], (name, rows)
+    assert int(a2['revision']) > int(a1['revision']) and short['revision'] == a2['revision'], (name, rows)
+    assert int(swapped['revision']) > int(a2['revision']) and beyond['revision'] == swapped['revision'], (name, rows)
+    assert (a1['hash'], a1['qsum'], a1['bbox']) == (a2['hash'], a2['qsum'], a2['bbox']), (name, rows)
+    assert b['hash'] != a1['hash'] and b['qsum'] != a1['qsum'] and b['bbox'] != a1['bbox'], (name, rows)
+    assert short['hash'] != a1['hash'] and short['qsum'] != a1['qsum'], (name, rows)
+    assert swapped['hash'] != a1['hash'] and (swapped['qsum'], swapped['bbox']) == (a1['qsum'], a1['bbox']), (name, rows)
+    assert beyond['hash'] == 'none' and beyond['reason'] == 'buffer:beyond', (name, beyond)
+    keys = ('frame', 'draw', 'vb', 'revision', 'count', 'prims', 'hash', 'qsum', 'bbox', 'reason')
+    return dict(checks=1, script='copy', rows=[{k: r[k] for k in keys if k in r} for r in rows])
 
 
 def validate_zonly(name, text, trace):
@@ -6804,6 +6818,8 @@ def main(argv=None):
                             dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / candidate_exe.name))
                 result['cases'][name] = case
                 save()
+                BOLT_COPY_RESULTS.mkdir(parents=True, exist_ok=True)
+                (BOLT_COPY_RESULTS / f'{name}.json').write_text(json.dumps(dict(case=name, bottle=os.environ.get('X3M_FIXTURE_BOTTLE', 'Steam'), rows=case['rows']), indent=1) + '\n')
                 print(f'{name}: exit={completed.returncode} rows={len(case["rows"])} hashes={",".join(r["hash"] for r in case["rows"])}', flush=True)
                 continue
             if mode == 'boltshape':

@@ -2017,8 +2017,8 @@ private:
     void log_bolt_footprint_window() noexcept;
     // Capture frames only: one bolt_copy row per bullet-producer draw (the
     // scanned positions' hash, or hash=none with the refusal that left none).
-    void log_bolt_copy(const MotionDrawCall&, const float* positions, std::uint64_t revision,
-                       const char* reason) noexcept;
+    void log_bolt_copy(const MotionDrawCall&, const float* positions, std::uint64_t revision, const char* reason,
+                       const char* detail) noexcept;
     void log_screen_additive_frame() noexcept;
     void derive_fade_region(MotionRoute&) noexcept;
     // Step-1 rectangle of the bound draw (resolve, rows, jitter, viewport,

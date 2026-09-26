@@ -6402,13 +6402,15 @@ struct BoltTiming {
 }
 // One row per bullet-producer draw of a capture frame, at most bolt_copy_cap
 // per frame (after_present writes bolt_copy_more with the rest). `positions`
-// non-null: the Unlock scan's retained copy at `revision`; the row hashes
-// exactly the drawn range (StartVertex 0, 3 x primitives vertices) and then
-// rechecks that the scan still held at that revision (hash=none
-// reason=recheck otherwise). Null: `reason` names the refusal that left no
-// positions.
+// non-null: the Unlock scan's retained copy at `revision`; the row digests
+// exactly the drawn range (StartVertex 0, 3 x primitives vertices: hash,
+// qsum, bbox; bolt_footprint::position_digest) and then rechecks that the
+// scan still held at that revision (hash=none reason=recheck otherwise).
+// Null: `reason` (and `detail`, the prefix lookup's refusal for `buffer`)
+// names the refusal that left no positions; `revision` is what the lookup
+// reported (0 before it).
 void MotionOutput::log_bolt_copy(const MotionDrawCall& call, const float* positions, std::uint64_t revision,
-                                 const char* reason) noexcept {
+                                 const char* reason, const char* detail) noexcept {
     if (bolt_copy_rows_ >= bolt_copy_cap) {
         ++bolt_copy_more_;
         return;
@@ -6416,20 +6418,22 @@ void MotionOutput::log_bolt_copy(const MotionDrawCall& call, const float* positi
     ++bolt_copy_rows_;
     const std::uint32_t count = call.primitives * 3u;
     if (positions) {
-        const std::uint64_t hash = bolt_footprint::position_hash(positions, count);
+        const bolt_footprint::PositionDigest d = bolt_footprint::position_digest(positions, count);
         const fade_region::Query query{shadow_.stream0, shadow_.indices, shadow_.stream0_identity,
                                        shadow_.indices_identity};
         if (fade_region::recheck_locked_prefix(query, count, revision)) {
-            log("bolt_copy device=%llu frame=%llu draw=%u vb=%llu revision=%llu start=%u count=%u prims=%u hash=%016llx",
+            log("bolt_copy device=%llu frame=%llu draw=%u vb=%llu revision=%llu start=%u count=%u prims=%u hash=%016llx qsum=%016llx bbox=%.1f,%.1f,%.1f,%.1f,%.1f,%.1f",
                 id_, frame_, unsigned(counters_.draws), shadow_.stream0, revision, unsigned(call.first),
-                unsigned(count), unsigned(call.primitives), hash);
+                unsigned(count), unsigned(call.primitives), d.hash, d.qsum, double(d.lo[0]), double(d.lo[1]),
+                double(d.lo[2]), double(d.hi[0]), double(d.hi[1]), double(d.hi[2]));
             return;
         }
         reason = "recheck";
+        detail = nullptr;
     }
-    log("bolt_copy device=%llu frame=%llu draw=%u vb=%llu revision=%llu start=%u count=%u prims=%u hash=none reason=%s",
+    log("bolt_copy device=%llu frame=%llu draw=%u vb=%llu revision=%llu start=%u count=%u prims=%u hash=none reason=%s%s%s",
         id_, frame_, unsigned(counters_.draws), shadow_.stream0, revision, unsigned(call.first), unsigned(count),
-        unsigned(call.primitives), reason ? reason : "other");
+        unsigned(call.primitives), reason ? reason : "other", detail ? ":" : "", detail ? detail : "");
 }
 void MotionOutput::prepare_bolt_footprint(const MotionDrawCall& call, MotionRoute& route) noexcept {
     using namespace bolt_footprint;
@@ -6458,7 +6462,7 @@ void MotionOutput::prepare_bolt_footprint(const MotionDrawCall& call, MotionRout
     bool copy_logged = false;
     const auto refuse_once = [&](unsigned reason, unsigned detail) {
         if (capture_ && !copy_logged)
-            log_bolt_copy(call, nullptr, 0, reason < reason_count ? reasons[reason] : "other");
+            log_bolt_copy(call, nullptr, 0, reason < reason_count ? reasons[reason] : "other", nullptr);
         if (reason < reason_count && !(bolt_refusal_logged_ & (1u << reason))) {
             bolt_refusal_logged_ |= 1u << reason;
             UINT stream0_bytes = 0;
@@ -6537,13 +6541,18 @@ void MotionOutput::prepare_bolt_footprint(const MotionDrawCall& call, MotionRout
     unsigned refusal = 0;
     if (!fade_region::locked_prefix_vertices(query, count, &positions, &extras, &revision, &refusal)) {
         ++c.refused_buffer;
+        if (capture_ && !copy_logged) { // the lookup's own refusal and revision, not only "buffer"
+            log_bolt_copy(call, nullptr, revision, "buffer",
+                          fade_region::prefix::lookup_name(fade_region::prefix::Lookup(refusal)));
+            copy_logged = true;
+        }
         refuse_once(6, refusal);
         return;
     }
-    // bolt_copy (capture frames only): the hash of the drawn range from the
+    // bolt_copy (capture frames only): the digest of the drawn range from the
     // Unlock scan's retained copy.
     if (capture_) {
-        log_bolt_copy(call, positions, revision, nullptr);
+        log_bolt_copy(call, positions, revision, nullptr, nullptr);
         copy_logged = true;
     }
     // Instanced geometry draws more than the prefix: one documented Get.

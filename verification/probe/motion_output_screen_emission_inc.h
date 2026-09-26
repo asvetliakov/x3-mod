@@ -273,26 +273,37 @@ void run_screen_emission_integration(Fixture& f,const char* original_path) {
         require(oversize||misdeclared||copies,"X3M_FIXTURE_BOLT_SHAPE is prims, decl or copy");
         require(qualified&&additive,"bolt shape script needs the qualified additive configuration");
         // =copy (the bolt_copy capture row; lod-overlay.md, "Run 91 A: bolts
-        // behind distant objects"): per frame 1-7 the game's two-copy shape,
-        // the writer's buffer DISCARD-filled with two bolts and drawn, then
-        // DISCARD-filled again with the same bolts and drawn (a new revision,
-        // equal positions), then a second buffer with two bolts shifted along
-        // x drawn once. The capture window (X3M_CAPTURE_START) falls inside;
-        // the runner requires three rows on it: hashes 1 = 2 != 3. The rows
-        // are the near-plane kinds' perspective (w = z) and the bolts sit at
-        // w = 2, so the footprint's frame gate passes before the positions.
+        // behind distant objects"): per frame 1-7 six bullet draws. A fill
+        // writes four bolts (24 vertices) and then one sentinel vertex (the
+        // scan's all-ones terminator, so the scanned count is exactly 24
+        // whatever memory the driver recycles); the draws use fewer:
+        //   1 the writer's buffer A filled, 4 primitives (bolts 0-1);
+        //   2 A filled again with the same bolts (a new revision), 4;
+        //   3 a second buffer B, bolts shifted along x, 4;
+        //   4 A not refilled, 2 primitives (a shorter range);
+        //   5 A filled with bolts 0 and 1 swapped (same triangles, another order), 4;
+        //   6 A not refilled, 10 primitives (30 vertices past the 24 scanned).
+        // The capture window (X3M_CAPTURE_START) falls inside; the runner
+        // requires hash 1 = 2, 3 / 4 / 5 different, qsum and bbox 5 = 1, and
+        // row 6 hash=none reason=buffer:beyond. The rows are the near-plane
+        // kinds' perspective (w = z) and the bolts sit at w = 2, so the
+        // footprint's frame gate passes before the positions.
         if(copies) {
-            constexpr unsigned copy_frames=8,copy_quads=2;
+            constexpr unsigned copy_frames=8,copy_quads=4,copy_draws_per_frame=6;
+            struct CopyDraw {bool second;unsigned fill;float shift;UINT primitives;}; // fill: 0 none, 1 in order, 2 bolts 0/1 swapped
+            const CopyDraw copy_plan[copy_draws_per_frame]={{false,1,0.f,4},{false,1,0.f,4},{true,1,-.5f,4},{false,0,0.f,2},{false,2,0.f,4},{false,0,0.f,10}};
             Com<IDirect3DVertexBuffer9> other;
             api(f.d->CreateVertexBuffer(buffer_bytes,D3DUSAGE_DYNAMIC|D3DUSAGE_WRITEONLY,0,D3DPOOL_DEFAULT,&other.p,nullptr),"bolt copy second buffer");
             const float corners[6][2]={{qx0,qy0},{qx1,qy0},{qx0,qy1},{qx1,qy0},{qx1,qy1},{qx0,qy1}};
-            const auto write_copy=[&](IDirect3DVertexBuffer9* target,float shift) {
+            const auto write_copy=[&](IDirect3DVertexBuffer9* target,float shift,bool swapped) {
                 void* data=nullptr;api(target->Lock(0,buffer_bytes,&data,D3DLOCK_DISCARD),"bolt copy discard lock"); // an explicit window: SizeToLock 0 is never scanned
                 for(unsigned q=0;q<copy_quads;++q)for(unsigned k=0;k<6;++k) {
+                    const unsigned source=swapped&&q<2?1-q:q;
                     auto* v=static_cast<unsigned char*>(data)+(q*6+k)*stride;
-                    const float position[3]={corners[k][0]+shift+.1f*float(q),corners[k][1],2.f},uv[2]={.5f,.5f};const DWORD colour=0xffffffffu;
+                    const float position[3]={corners[k][0]+shift+.1f*float(source),corners[k][1]+.05f*float(source),2.f},uv[2]={.5f,.5f};const DWORD colour=0xffffffffu;
                     std::memcpy(v,position,12);std::memcpy(v+12,uv,8);std::memcpy(v+20,&colour,4);
                 }
+                std::memset(static_cast<unsigned char*>(data)+copy_quads*6*stride,0xff,12);
                 api(target->Unlock(),"bolt copy discard unlock");
             };
             unsigned copy_draws=0;
@@ -301,14 +312,15 @@ void run_screen_emission_integration(Fixture& f,const char* original_path) {
                 f.draw(f.a,.03125f*float(plan%3),0,0,true,true,f.a.recorded,Alter::None,false);
                 const unsigned required=f.emission_status(f.d.p,16);
                 f.emissions_enabled=required!=0;
-                if(plan)for(unsigned draw=0;draw<3;++draw) {
-                    write_copy(draw<2?bullets.p:other.p,draw<2?0.f:-.5f);
+                if(plan)for(const auto& d:copy_plan) {
+                    IDirect3DVertexBuffer9* target=d.second?other.p:bullets.p;
+                    if(d.fill)write_copy(target,d.shift,d.fill==2);
                     bind_bullets('s');
                     api(f.d->SetVertexShaderConstantF(0,near_rows,4),"bolt copy perspective rows");
-                    if(draw==2)api(f.d->SetStreamSource(0,other.p,0,stride),"bolt copy second stream");
+                    api(f.d->SetStreamSource(0,target,0,stride),"bolt copy stream");
                     const auto state=f.snapshot();
                     const unsigned admitted_before=f.emission_status(f.d.p,60);
-                    const HRESULT hr=f.d->DrawPrimitive(D3DPT_TRIANGLELIST,0,2*copy_quads);++f.draw_index;
+                    const HRESULT hr=f.d->DrawPrimitive(D3DPT_TRIANGLELIST,0,d.primitives);++f.draw_index;
                     require(SUCCEEDED(hr),"bolt copy draw HRESULT");
                     f.compare(state,f.snapshot(),"bolt copy restoration");
                     require(f.emission_status(f.d.p,60)-admitted_before==1,"bolt copy additive admission");
@@ -321,7 +333,7 @@ void run_screen_emission_integration(Fixture& f,const char* original_path) {
                 f.frame_end();
             }
             api(f.d->SetIndices(nullptr),"bolt copy final index release");api(f.d->SetStreamSource(0,nullptr,0,0),"bolt copy final stream release");
-            std::printf("BOLT_COPY frames=%u draws=%u quads=%u primitives=%u\n",copy_frames,copy_draws,copy_quads,2*copy_quads);
+            std::printf("BOLT_COPY frames=%u draws=%u filled_vertices=%u draws_per_frame=%u\n",copy_frames,copy_draws,copy_quads*6,copy_draws_per_frame);
             return;
         }
         constexpr unsigned part_bytes=1024u*72u*stride,big_quads=1100,small_quads=1025; // 6600 and 6150 vertices: both above max_vertices
