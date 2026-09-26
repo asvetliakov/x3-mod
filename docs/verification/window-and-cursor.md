@@ -161,3 +161,46 @@ Candidate fix (not built): one bounded repeat fire at the first pointer motion a
 schedule of fires. **User decision 2026-09-25: parked, not a big deal.** `--cursor-reassert` stays opt-in.
 
 **2026-09-26** (`docs/architecture/comparison-hotkeys.md`, "Removed 2026-09-26"): the window trace no longer flushes on the Ctrl+Shift+F7 marker (`window_trace::present` lost its marker argument, `flush=first_present,transition`); `run_cursor_reassert.py` PASS, 41 checks (42 before, `flush_on_marker` removed; bottle X3).
+
+## 2026-09-27: alt-tab freeze on a plain CrossOver launch (triage, no build, no launch)
+
+Symptom (user): from the CrossOver shortcut (bare `x3m.ini`, always tier) an alt-tab away and back
+freezes the game 5-10 s; from `manage.py launch` it does not. Script and output:
+`verification/results/alt-tab-freeze/altab_gaps.py` / `altab_gaps.out` (inputs: `x3m.prev.log` =
+CrossOver session 20260927-021454, `x3m.log` = bare x3run session, run347 `--debug --perf`).
+
+Measured:
+- CrossOver session: one alt-tab stop (`music_keep_stop name=alt_tab`, WndProc WM_ACTIVATE inactive,
+  caller `0x004d36c2`) at frame 614, t=27.9 s; the next stamped row is frame 899 at t=71.8 s:
+  **43.9 s for 285 frames** (every other 300-frame window: 2.8-4.5 s). The only `music_keep_active` row is
+  frame 0 (`run_in_background=0`); the active flag `0x00608adc` never read 0 at a Present, i.e. no Present
+  ran while the game was inactive. `resets=0`; no `device_lost`, Reset, `cursor_reassert` or Present-error
+  row; `media_cue_window` 599..1199 has 0 attempts (no cue retry); 4 new PS and 1 VS (32 variant rows) were created in
+  that window. The later gaps are loads: frame 1286 (sector `greenvoid`, 43.5 MB gz, fog prefill
+  stall_ms 22,987) and frame 15507 (6.1 s), not alt-tabs.
+- x3run sessions: three alt-tabs in `x3m.log` and two in run347, each `music_keep_active 1->0` the frame
+  after the stop and `0->1` 43/64/60 (x3m.log) and 15/7 (run347) frames later, all
+  `run_in_background=1`; run347 has no frame over 100 ms within 60 frames of its alt-tab.
+- Launch-path difference: `manage.py` `--direct` (default) appends `-noabout -skipintro -runinbg`
+  (`tools/manage.py:2163-2164`). The CrossOver shortcut `X3AP.lnk` has `HasArguments=0` (LinkFlags 0x93).
+  Environment rows differ only in `WINEDLLOVERRIDES` (unset vs `d3d9=n,b`), `WINEUSERLOCALE` (en-AE vs C),
+  `CX_APP_BUNDLE_PATH`/`CX_WINEWRAPPER_ALT_LOADER_SOCKET` (CrossOver only), host PATH/PWD; `CX_GRAPHICS_BACKEND=dxmt`,
+  `WINEMSYNC=1`, `FEX_X87REDUCEDPRECISION=1` identical; no GST variable in either row. Window row identical
+  in both 1920x1080 sessions (1600,72,3520,1152 windowed, `action=refused reason=backbuffer_mismatch`);
+  run346-349 ran 5120x1440 moved to the monitor rect.
+
+Inference: without `-runinbg` the RunInBackground bit (`0x4000` of `[*0x00606f3c]`) is clear and the
+pump `0x004d34b0` blocks in `GetMessageA` while `[0x00608adc]==0` (`docs/reverse-engineering/music-restart.md`
+§2, `pause-dialog-input.md` §2.3) until WM_ACTIVATE active. So only the CrossOver path stops the game loop on
+alt-tab; the freeze is the time between the user's return and the first frame after it (delayed or missing
+WM_ACTIVATE active from the Cocoa driver, or a stall in the first frame after reactivation). The always tier
+cannot split the 43.9 s into time away and time frozen, and does not show which. Nothing in the proxy
+blocks on focus: the session-log writer is asynchronous, the cursor re-assert is off, no Reset ran.
+
+Diagnostic (one launch): CrossOver shortcut with `debug = 1` and `perf = 1` in `x3m.ini`, load a save, fly
+10 s, alt-tab away about 10 s, return by clicking the window, note when it moves, quit. Rows read:
+`window_msg` WM_ACTIVATE/WM_ACTIVATEAPP/WM_SETFOCUS `tick_ms` (return time), `music_keep_active` 1->0 and 0->1
+with `run_in_background`, `frame_timing_slow` (`gap_pre_us`) and `frame_phases_slow` (`pre_render_us` = pump
+and script, `present_us`) of the first frame after the return. WM_ACTIVATE active arriving seconds after
+the click = the macOS/Cocoa side; activation prompt and a long `pre_render_us` = the game's own resume;
+a long `present_us` = DXMT/Metal. A/B second launch: the same shortcut with the argument `-runinbg`.

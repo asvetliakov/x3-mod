@@ -1,0 +1,38 @@
+== x3m.prev.log
+  window_mode: before=1600,72,3520,1152 after=1600,72,3520,1152 backbuffer=1920x1080 windowed=1 action=refused reason=backbuffer_mismatch
+  gap L143->L167 t=7.2s dt=7.97s frames 0->3 (0.4 fps) frame_end->loading_phase
+  gap L338->L339 t=16.7s dt=6.44s frames 164->165 (0.2 fps) loading_phase->loading_phase
+  gap L350->L389 t=27.9s dt=43.91s frames 614->899 (6.5 fps) music_keep_stop->media_cue_window
+  gap L391->L436 t=74.9s dt=24.01s frames 1199->1285 (3.6 fps) media_cue_window->music_keep_seek
+  gap L1213->L1244 t=272.8s dt=10.23s frames 15299->15584 (27.9 fps) media_cue_window->music_keep_seek
+  alt_tab stop L350 frame=614 t=27.9s
+  active L141 frame=0 unsampled->1 run_in_background=0
+== x3m.log
+  window_mode: before=1600,72,3520,1152 after=1600,72,3520,1152 backbuffer=1920x1080 windowed=1 action=refused reason=backbuffer_mismatch
+  gap L142->L307 t=2.7s dt=8.05s frames 0->4 (0.5 fps) frame_end->loading_phase
+  alt_tab stop L312 frame=257 t=13.6s
+  alt_tab stop L317 frame=427 t=15.4s
+  alt_tab stop L359 frame=606 t=17.4s
+  active L140 frame=0 unsampled->1 run_in_background=0
+  active L313 frame=258 1->0 run_in_background=1
+  active L316 frame=301 0->1 run_in_background=1
+  active L318 frame=428 1->0 run_in_background=1
+  active L356 frame=492 0->1 run_in_background=1
+  active L360 frame=607 1->0 run_in_background=1
+  active L361 frame=667 0->1 run_in_background=1
+== session-20260926-212048-216.log
+  window_mode: before=0,31,5120,1471 after=0,0,5120,1440 backbuffer=5120x1440 windowed=1 action=moved reason=work_origin
+  gap L372->L1116 t=4.9s dt=7.06s frames 3->4 (0.1 fps) frame_end->loading_phase
+  gap L5656->L6044 t=19.2s dt=19.13s frames 400->400 (0.0 fps) frame_end->music_keep_seek
+  gap L6620->L6621 t=19.2s dt=19.60s frames 400->401 (0.1 fps) loading_phase->loading_phase
+  gap L1408212->L1408797 t=91.3s dt=6.87s frames 2285->2286 (0.1 fps) frame_end->frame_end
+  gap L1411779->L1412059 t=102.9s dt=12.53s frames 2554->2554 (0.0 fps) frame_end->music_keep_seek
+  gap L1478247->L1478826 t=163.2s dt=6.49s frames 5099->5100 (0.2 fps) frame_end->frame_end
+  alt_tab stop L2923 frame=154 t=14.7s
+  active L247 frame=0 unsampled->1 run_in_background=0
+  active L2933 frame=155 1->0 run_in_background=1
+  active L3103 frame=170 0->1 run_in_background=1
+  active L19304 frame=896 1->0 run_in_background=1
+  active L19540 frame=903 0->1 run_in_background=1
+  slow frames (>100 ms) within 60 frames of alt-tab at 154: []
+X3AP.lnk LinkFlags=0x93 HasArguments=False
