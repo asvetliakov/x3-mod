@@ -3362,3 +3362,29 @@ ripple_rms 0.00943 -> **0.01436** (1.52x; replay predicted 0.299 / 0.0144); far_
 0.0155 on that row. One-liner: `verification/results/run340-run91a-pan-replay/pan_row_fixture.sh`. Not yet flown.
 
 **2026-09-26 Run 92 A (run341 0.85, run342 0.9, run343 0.8; same stand, rest + mid-pan F8 each):** the user accepts 0.85 as the default: at 0.8 the adjacent station shimmers at rest and under the pan; 0.85 and 0.9 look similar with less noticeable shimmer. Decision closed; the fixture pan row stays pinned at the 0.85 numbers.
+
+Run 92 A measurements (first frame of each burst; scripts and outputs `verification/results/run341-343-run92a-weights/`,
+`summary.txt`) [M unless tagged]:
+1. Station A (the adjacent station, 10.5-12 km at rest, 40-45 units/px, thin 0, far weight 0), E / E_current before / after
+   the sharpen. Rest: 0.85 0.665 / 0.906 (run341 810, box 4446,154-5120,590), 0.9 0.659 / 0.898 (run342 812, 4435,197-5120,622),
+   0.8 0.632 / 0.863 (run343 987, 4352,236-5027,645). Mid-pan: 0.85 **29.95 px/frame** 0.479 / 0.654 (run341 986,
+   4605,90-5120,558), 0.9 **20.05** 0.406 / 0.553 (run342 1003, 4572,241-5120,687), 0.8 only **2.03** px/frame on a different
+   framing (run343 1219, station at 14.4 km, 3857,546-4287,863) 0.450 / 0.616. The pans differ in speed, so the three pan
+   numbers are not comparable as measured; the 0.8 pan is not a pan of the same kind.
+2. Rest flicker, station A, present_ frame-to-frame luma (median of 7 rest pairs): 0.9 rms 0.713 codes, 0.087 % of pixels
+   above 4 codes; 0.85 1.005 / 0.58 %; **0.8 1.237 / 1.49 %** (x1.73 rms and x17 hot pixels against 0.9: the shimmer the user
+   saw). Normalised by the unresolved current's change: 0.099 / 0.129 / 0.176.
+3. 0.85 vs 0.9 under the pan: measured +18 % presented (0.654 vs 0.553), but at 29.95 against 20.05 px/frame, and the control
+   (station B, 30 km, 0.985 in both sessions) moved +21 % between the same two bursts (0.235 vs 0.194): the flights cannot
+   confirm or refute the replay's gain. The replay at the measured speeds [model] puts the two bursts within 1 % of each other
+   (0.793 at 0.85 / 29.9 px/f, 0.787 at 0.9 / 20.1) and gives +16 % / +12 % for 0.85 over 0.9 at equal speed (20 / 30 px/frame):
+   consistent with the user seeing no difference between 0.85 and 0.9 across unequal pans.
+4. Rotation-aware motion weight [I, model]: the cap `min(keep, cap)` today reads `min(relative, screen)` speed, so a pan
+   (relative 0) never lowers the weight. A second term on the rotation path (`cameraUV - uv`, already computed in the
+   resolve) limited to base-weight pixels (far g = 0, region b = 0; the present cap also clamps the 0.97 / 0.985 weights and
+   must not here) would allow a rest weight of 0.9 (rest flicker 0.713 instead of 1.005 codes, hot pixels 0.09 % instead of
+   0.58 %) with 0.7 at >= 8 px/frame: after RCAS 0.75 E / E_ideal 1.172 against 0.913 at 20 px/frame (+28 % over 0.85), 1.070
+   against 0.793 at 30 (+35 %); model pan shimmer falls (1.70 against 2.24 codes at 20 px/frame), but the fixture pan row's
+   ripple_rms rises to 0.0300 (3.2x of 0.9, replica). Cost a few ALU slots; risk: shimmer while turning slowly just above V0,
+   and whole-screen weight changes at the start and end of a turn. Worth one A/B flight against 0.85 because the modelled
+   gain is two to three times the 0.85-vs-0.9 step the user could not see; if it is not built, 0.85 stands as accepted.

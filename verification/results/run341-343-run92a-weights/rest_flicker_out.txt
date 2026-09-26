@@ -1,0 +1,27 @@
+== run341 (station A, rest)
+pair 810->811 |d| p50 0.43: present rms 1.227 codes p99 4.72 >4 codes 1.494 % | current rms 7.750 | present/current 0.1584
+pair 811->812 |d| p50 0.29: present rms 1.005 codes p99 3.79 >4 codes 0.580 % | current rms 7.790 | present/current 0.1290
+pair 812->813 |d| p50 0.32: present rms 1.139 codes p99 4.14 >4 codes 1.085 % | current rms 8.809 | present/current 0.1293
+pair 813->814 |d| p50 0.34: present rms 0.871 codes p99 3.14 >4 codes 0.345 % | current rms 7.841 | present/current 0.1111
+pair 814->815 |d| p50 0.61: present rms 1.416 codes p99 5.14 >4 codes 2.317 % | current rms 8.898 | present/current 0.1591
+pair 815->816 |d| p50 0.17: present rms 0.833 codes p99 2.93 >4 codes 0.169 % | current rms 7.914 | present/current 0.1052
+pair 816->817 |d| p50 0.32: present rms 0.882 codes p99 3.14 >4 codes 0.372 % | current rms 5.269 | present/current 0.1673
+station px 204728; first pair (normal-rate): present rms 1.227, ratio 0.1584; median over pairs: present rms 1.005, ratio 0.1293
+== run342 (station A, rest)
+pair 812->813 |d| p50 0.35: present rms 0.613 codes p99 2.00 >4 codes 0.052 % | current rms 7.775 | present/current 0.0789
+pair 813->814 |d| p50 0.61: present rms 0.971 codes p99 3.72 >4 codes 0.585 % | current rms 8.810 | present/current 0.1102
+pair 814->815 |d| p50 0.17: present rms 0.564 codes p99 1.93 >4 codes 0.009 % | current rms 7.832 | present/current 0.0720
+pair 815->816 |d| p50 0.32: present rms 0.637 codes p99 2.14 >4 codes 0.037 % | current rms 5.236 | present/current 0.1217
+pair 816->817 |d| p50 0.45: present rms 0.794 codes p99 2.93 >4 codes 0.152 % | current rms 8.064 | present/current 0.0985
+pair 817->818 |d| p50 0.40: present rms 0.796 codes p99 2.93 >4 codes 0.208 % | current rms 7.516 | present/current 0.1059
+pair 818->819 |d| p50 0.30: present rms 0.713 codes p99 2.72 >4 codes 0.087 % | current rms 7.880 | present/current 0.0905
+station px 203067; first pair (normal-rate): present rms 0.613, ratio 0.0789; median over pairs: present rms 0.713, ratio 0.0985
+== run343 (station A, rest)
+pair 987->988 |d| p50 0.17: present rms 1.003 codes p99 3.72 >4 codes 0.540 % | current rms 8.019 | present/current 0.1250
+pair 988->989 |d| p50 0.30: present rms 0.915 codes p99 3.21 >4 codes 0.450 % | current rms 5.195 | present/current 0.1762
+pair 989->990 |d| p50 0.46: present rms 1.614 codes p99 5.93 >4 codes 3.375 % | current rms 8.222 | present/current 0.1963
+pair 990->991 |d| p50 0.38: present rms 1.202 codes p99 4.72 >4 codes 1.441 % | current rms 7.539 | present/current 0.1594
+pair 991->992 |d| p50 0.30: present rms 1.536 codes p99 5.93 >4 codes 3.041 % | current rms 8.020 | present/current 0.1915
+pair 992->993 |d| p50 0.30: present rms 1.237 codes p99 4.78 >4 codes 1.489 % | current rms 8.497 | present/current 0.1456
+pair 993->994 |d| p50 0.38: present rms 1.496 codes p99 5.86 >4 codes 2.965 % | current rms 8.022 | present/current 0.1865
+station px 186365; first pair (normal-rate): present rms 1.003, ratio 0.1250; median over pairs: present rms 1.237, ratio 0.1762

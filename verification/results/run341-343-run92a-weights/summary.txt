@@ -1,0 +1,19 @@
+Run 92 A weights (run341 0.85 installed default, run342 --taa-history-weight 0.9, run343 0.8; same stand; first frame of each
+burst for sharpness, consecutive rest-burst frames for flicker). Ledger: docs/verification/temporal-resolve.md, Run 92 A entry.
+Scripts: ../run340-run91a-pan-replay/station_blobs.py and sharpness_measured.py (boxes below), rest_flicker.py,
+replay_steady_speeds.py (copy of the run340 replay with speed / weight lists), predict_pan_row_w07.py.
+
+Station A (the adjacent station, 10.5-14 km, 40-56 units/px, thin 0, far 0) [measured, sharpness_out.txt], E / E_current:
+  weight  rest frame  box                      taa    present | pan frame  box                     px/frame  taa    present
+  0.85    341/810     4446,154-5120,590        0.665  0.906   | 341/986    4605,90-5120,558         29.95    0.479  0.654
+  0.90    342/812     4435,197-5120,622        0.659  0.898   | 342/1003   4572,241-5120,687        20.05    0.406  0.553
+  0.80    343/987     4352,236-5027,645        0.632  0.863   | 343/1219   3857,546-4287,863 (14.4 km)  2.03  0.450  0.616
+  control station B (30 km, far weight 0.985 in all three): pan present 0.235 (7.0 px/f) / 0.194 (5.2) / 0.209 (1.65).
+Rest flicker, station A, present_ frame-to-frame luma codes (rest_flicker_out.txt), median over 7 pairs [measured]:
+  0.90 rms 0.713, >4 codes 0.087 %, present/current 0.0985
+  0.85 rms 1.005, >4 codes 0.580 %, present/current 0.1293  (x1.41 rms, x6.7 hot px vs 0.9)
+  0.80 rms 1.237, >4 codes 1.489 %, present/current 0.1762  (x1.73 rms, x17 hot px vs 0.9)
+Model at the measured speeds (replay_steady_speeds_out.txt), E / E_ideal after RCAS 0.75:
+  20.1 px/f: 0.9 0.787, 0.85 0.913, 0.8 1.018, 0.7 1.172 | 29.9 px/f: 0.9 0.710, 0.85 0.793, 0.8 0.890, 0.7 1.070
+  rest shimmer model: 0.23 / 0.36 / 0.48 / 0.75 codes for 0.9 / 0.85 / 0.8 / 0.7
+Fixture pan12.5 replica (predict_pan_row_w07_out.txt): 0.7 -> e_ratio 0.514, ripple_rms 0.0300 (3.2x of 0.9).

@@ -1,0 +1,17 @@
+scene 810 box 4446,154,5120,590 k 2.46 ev 1.3; crop 320x220, measured 43296 px
+v   0.0 px/frame w 0.90: E/E_ideal taa 1.005 rcas0.75 1.148 rcas1.0 1.254 | shimmer 0.23 codes, |mean residual| 0.11 codes
+v   0.0 px/frame w 0.85: E/E_ideal taa 1.010 rcas0.75 1.154 rcas1.0 1.260 | shimmer 0.36 codes, |mean residual| 0.10 codes
+v   0.0 px/frame w 0.80: E/E_ideal taa 1.017 rcas0.75 1.161 rcas1.0 1.269 | shimmer 0.48 codes, |mean residual| 0.10 codes
+v   0.0 px/frame w 0.70: E/E_ideal taa 1.038 rcas0.75 1.186 rcas1.0 1.294 | shimmer 0.75 codes, |mean residual| 0.10 codes
+v   2.0 px/frame w 0.90: E/E_ideal taa 0.820 rcas0.75 1.033 rcas1.0 1.208 | shimmer 2.72 codes, |mean residual| 0.41 codes
+v   2.0 px/frame w 0.85: E/E_ideal taa 0.890 rcas0.75 1.121 rcas1.0 1.303 | shimmer 2.45 codes, |mean residual| 0.37 codes
+v   2.0 px/frame w 0.80: E/E_ideal taa 0.936 rcas0.75 1.180 rcas1.0 1.365 | shimmer 2.35 codes, |mean residual| 0.35 codes
+v   2.0 px/frame w 0.70: E/E_ideal taa 1.004 rcas0.75 1.266 rcas1.0 1.456 | shimmer 2.39 codes, |mean residual| 0.35 codes
+v  20.1 px/frame w 0.90: E/E_ideal taa 0.601 rcas0.75 0.787 rcas1.0 0.929 | shimmer 2.74 codes, |mean residual| 0.55 codes
+v  20.1 px/frame w 0.85: E/E_ideal taa 0.699 rcas0.75 0.913 rcas1.0 1.070 | shimmer 2.24 codes, |mean residual| 0.44 codes
+v  20.1 px/frame w 0.80: E/E_ideal taa 0.781 rcas0.75 1.018 rcas1.0 1.187 | shimmer 1.94 codes, |mean residual| 0.39 codes
+v  20.1 px/frame w 0.70: E/E_ideal taa 0.901 rcas0.75 1.172 rcas1.0 1.355 | shimmer 1.70 codes, |mean residual| 0.34 codes
+v  29.9 px/frame w 0.90: E/E_ideal taa 0.548 rcas0.75 0.710 rcas1.0 0.839 | shimmer 4.99 codes, |mean residual| 0.91 codes
+v  29.9 px/frame w 0.85: E/E_ideal taa 0.610 rcas0.75 0.793 rcas1.0 0.938 | shimmer 4.17 codes, |mean residual| 0.74 codes
+v  29.9 px/frame w 0.80: E/E_ideal taa 0.683 rcas0.75 0.890 rcas1.0 1.048 | shimmer 3.57 codes, |mean residual| 0.63 codes
+v  29.9 px/frame w 0.70: E/E_ideal taa 0.823 rcas0.75 1.070 rcas1.0 1.249 | shimmer 2.87 codes, |mean residual| 0.52 codes
