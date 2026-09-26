@@ -880,8 +880,7 @@ program's cost; cross-compiled only.
 
 ## 2026-09-25: obsolete options removed (TAA needs FP16 and R32F filtering)
 
-The removal of `--taa-history-taps 16` (user decision; `docs/verification/launcher-options-inventory.md`, "4. Removed
-2026-09-25") dropped the 16-tap point resolve programs that were the fallback of the 5-tap bilinear history (entry
+The removal of `--taa-history-taps 16` (user decision; `docs/verification/launcher-options-inventory.md`, "4. Removed") dropped the 16-tap point resolve programs that were the fallback of the 5-tap bilinear history (entry
 "2026-09-24: TAA 5-tap bilinear history"). The documented checks (`D3DPTFILTERCAPS_MINFLINEAR | MAGFLINEAR`,
 `CheckDeviceFormat(D3DUSAGE_QUERY_FILTER)` of A16B16G16R16F and R32F against the display format) now run at device attach
 (`TemporalPass::query_history_filtering`, before the first frame latches) as well as in `TemporalPass::initialize`, which

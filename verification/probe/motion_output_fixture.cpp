@@ -477,7 +477,7 @@ struct Fixture {
     float sharpen = 0.f;   // X3M_TAA_SHARPEN: the presented image is RCAS of the resolved one (the runner compares it against the Python reference)
     bool hdr_dither = false; // X3M_HDR_DITHER=1: the presented cells carry the +-0.5 code display dither (the runner checks it per pixel)
     bool hook = false, wrap = false, burst_mask = false, state_shadow = true, hdr = false, hdrvalues = false, hdrfault = false;
-    int (*hull_toggle)(IDirect3DDevice9*,int) = nullptr; // x3m_hull_emission_fixture_toggle: the F4 (lightmap=1) and F6 (lightmap=0) hull actions
+    int (*hull_toggle)(IDirect3DDevice9*,int) = nullptr; // x3m_hull_emission_fixture_toggle: the light-map (lightmap=1) and guide-light (lightmap=0) A/B seam
     bool hdrramp = false, hdrexposure = false, hdrtonemapfault = false; // stage-2 scripts
     bool emissions = false, emission_bench = false, emissions_enabled = false, emission_mask_valid = false;
     unsigned reactive_uploads = 0; // reference reactive-mask uploads (supplemental policy frames)

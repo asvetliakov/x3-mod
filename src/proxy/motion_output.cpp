@@ -1486,29 +1486,6 @@ void MotionOutput::flush_taa_invalidate_log() noexcept {
         if ((pending & 1u) && telemetry_) log("taa_invalidate device=%llu frame=%llu site=%s", id_, frame_, taa_invalidate_site_name(TaaInvalidateSite(site)));
 }
 
-MotionOutput::ComparisonExposure MotionOutput::comparison_exposure() const noexcept {
-    ComparisonExposure result{};
-    result.automatic = hdr_config_.exposure == renderer::ExposureMode::Auto;
-    if (!hdr_enabled_ || !hdr_) return result;
-    result.automatic = hdr_->exposure_mode() == renderer::ExposureMode::Auto;
-    result.ev = hdr_->exposure().ev();
-    result.frame_used = counters_.hdr.writebacks && counters_.hdr.tonemap
-        && SUCCEEDED(counters_.hdr.tonemap_draw) && !counters_.hdr.unwind;
-    if (!hdr_->tonemap_active()) { result.reason = "tonemap_unavailable"; return result; }
-    if (!hdr_->caps().meter) { result.reason = "auto_not_prepared"; return result; }
-    result.ready = true; result.reason = "ready";
-    return result;
-}
-bool MotionOutput::comparison_toggle_exposure() noexcept {
-    if (!comparison_boundary_available() || !comparison_exposure().ready) return false;
-    const auto mode = hdr_->exposure_mode() == renderer::ExposureMode::Auto
-        ? renderer::ExposureMode::Manual : renderer::ExposureMode::Auto;
-    if (!hdr_->comparison_exposure(mode)) return false;
-    // Exposure controls tonemap and the HDR resolve's luminance weighting.
-    // Keep TAA enabled, but make its next resolve seed a fresh history.
-    invalidate_taa(TaaInvalidateSite::ComparisonExposure);
-    return true;
-}
 void MotionOutput::comparison_state_failed(HRESULT result) noexcept {
     if (FAILED(result) && !motion_state_lost_) {
         motion_state_lost_ = true; motion_state_error_ = result;
@@ -1971,7 +1948,7 @@ void MotionOutput::before_stretch(IDirect3DSurface9* source, const RECT* source_
     // other copy reading the main target flushes first, one writing it ends
     // first.
     if (bloom && gpu_sync_) gpu_sync_->end(gpu_sync_timing::Engine); // --gpu-sync-timing only: the copy fallback's scene end (a no-op after the hook's)
-    if(bloom&&!counters_.hook_scene_end){publish_sun_lane("copy");if(candidates_requested_)publish_shadow_replay_candidates();if(thin_vote_read_count_)read_thin_votes();if(sun_apply_requested_&&sun_shadow_enabled_)run_sun_shadow_apply();} // F12 off: the quad is skipped whole
+    if(bloom&&!counters_.hook_scene_end){publish_sun_lane("copy");if(candidates_requested_)publish_shadow_replay_candidates();if(thin_vote_read_count_)read_thin_votes();if(sun_apply_requested_)run_sun_shadow_apply();}
     if (bloom && fog_requested_) run_volumetric_fog(); // once per frame (fog_frame_), as at the hook
     if (motion_state_lost_ || composition_state_lost_) return;
     if (hdr_state_ != HdrState::Off) {
@@ -2055,7 +2032,7 @@ void MotionOutput::scene_end_hook(MotionHdrSceneCallback callback, void* context
     if (thin_vote_read_count_) read_thin_votes(); // the subsets first drawn this frame: histograms for the next frames' votes
     // Sun-shadow application (legacy-sun-application.md section 2): after the
     // replay produced this frame's map, before the fog and the resolve.
-    if (sun_apply_requested_ && sun_shadow_enabled_) run_sun_shadow_apply(); // Ctrl+Shift+F12 off: no quad, no sun_shadow_apply_frame line
+    if (sun_apply_requested_) run_sun_shadow_apply();
     // Volumetric sun fog: on top of the shadowed scene (the game's fog
     // cards are its last draws), before the resolve accumulates the jittered march.
     if (fog_requested_) run_volumetric_fog();
@@ -2154,35 +2131,13 @@ namespace {
 // zn = 6, zf = 2e6. The route latches m00/m11/m20/m21 only.
 constexpr float projection_default_m22 = 1.000003f, projection_default_m32 = -6.0000184f;
 }
-// Runtime emitter A/B (comparison-hotkeys.md). Nothing is created, released
-// or reconfigured here: the flag only decides whether the per-draw admission
-// runs at all, so an off option draws exactly as it would without it. The
-// source gain at 1 has no variant; its key is a logged no-op. The additive option has no such case: gain 1 still draws with
-// DESTBLEND ONE (and the alpha attenuation, if any), so F5 switches it
-// whenever the option is requested, variant or not.
-int MotionOutput::screen_emission_additive_toggle() noexcept {
-    const bool available = screen_additive_requested_;
-    if (available) screen_additive_enabled_ = !screen_additive_enabled_;
-    log("screen_emission_additive_toggle device=%llu frame=%llu accepted=%u enabled=%u requested=%u gain=%g",
-        id_, frame_, unsigned(available), unsigned(screen_additive_enabled_), unsigned(screen_additive_requested_), double(screen_additive_gain_));
-    return available ? (screen_additive_enabled_ ? 1 : 0) : -1;
-}
-int MotionOutput::emission_source_gain_toggle() noexcept {
-    const bool available = emission_source_gain_requested_ && emission_source_gain_ != 1.f;
-    if (available) source_gain_enabled_ = !source_gain_enabled_;
-    // The twenty effects pairs only; the phase-3 population has its own key (F4).
-    log("emission_source_gain_toggle device=%llu frame=%llu accepted=%u enabled=%u requested=%u gain=%g",
-        id_, frame_, unsigned(available), unsigned(source_gain_enabled_), unsigned(emission_source_gain_requested_), double(emission_source_gain_));
-    return available ? (source_gain_enabled_ ? 1 : 0) : -1;
-}
-// The two hull families, each on its own key (comparison-hotkeys.md): the
-// hull light-map gain (hull-self-illumination.md 5) alone on Ctrl+Shift+F4,
-// and the ONE/ONE guide-light emitters (emitter plan phase 3) with the
-// effects gain on Ctrl+Shift+F6, whose value they take. One flag each, so the
-// two options stay independent; the variants were created at registration, so
-// off only means prepare_hull_gain is never entered (guide lights) and
-// bind_variant_pair keeps the fill/motion variant (light map). enabled= is the
-// state of the family the key drove; both states are logged either way.
+// The two hull families' A/B, a fixture seam only since the Ctrl+Shift+F4/F6
+// keys went on 2026-09-26 (x3m_hull_emission_fixture_toggle): the hull
+// light-map gain (hull-self-illumination.md 5) and the ONE/ONE guide-light
+// emitters (emitter plan phase 3). One flag each; the variants were created at
+// registration, so off only means prepare_hull_gain is never entered (guide
+// lights) and bind_variant_pair keeps the fill/motion variant (light map).
+// enabled= is the state of the family= driven; both states are logged.
 bool MotionOutput::configure_lightmap_far_fade(float p0, float p1, float floor) noexcept {
     if (device_) return lightmap_far_fade_; // Creation-time shader variant: immutable after attach.
     lightmap_far_fade_ = hull_lightmap_gain_requested_ && std::isfinite(p0) && std::isfinite(p1) && std::isfinite(floor)
@@ -2207,36 +2162,12 @@ int MotionOutput::hull_emission_gain_toggle(bool lightmap) noexcept {
         else hull_gain_enabled_ = !hull_gain_enabled_;
     }
     const bool state = lightmap ? hull_lightmap_enabled_ : hull_gain_enabled_;
-    log("hull_emission_gain_toggle device=%llu frame=%llu key=%s accepted=%u enabled=%u requested=%u gain=%g lightmap_requested=%u lightmap_gain=%g hull_enabled=%u lightmap_enabled=%u",
-        id_, frame_, lightmap ? "ctrl_shift_f4" : "ctrl_shift_f6", unsigned(available), unsigned(state),
+    log("hull_emission_gain_toggle device=%llu frame=%llu family=%s accepted=%u enabled=%u requested=%u gain=%g lightmap_requested=%u lightmap_gain=%g hull_enabled=%u lightmap_enabled=%u",
+        id_, frame_, lightmap ? "lightmap" : "guide", unsigned(available), unsigned(state),
         unsigned(hull_emission_gain_requested_), double(hull_emission_gain_),
         unsigned(hull_lightmap_gain_requested_), double(hull_lightmap_gain_),
         unsigned(hull_gain_enabled_), unsigned(hull_lightmap_enabled_));
     return available ? (state ? 1 : 0) : -1;
-}
-// Ctrl+Shift+F12: the sun shadows at rest (comparison-hotkeys.md, "Sun shadows
-// at rest"), the A/B that makes the cascades' fill/clear cost readable in
-// frame_end. The press lands at the frame boundary, so a scene never sees the
-// gate change under it. Both edges void every retained basis (the far
-// cascade's included): an off interval must never leave a stale map for the
-// apply quad to publish when it comes back. Nothing is created or released.
-int MotionOutput::sun_shadow_toggle() noexcept {
-    // Nothing to gate on this device: a logged no-op. The state is left alone.
-    if (!sun_apply_requested_ && !depth_replay_requested_) {
-        log("sun_shadow_toggle device=%llu state=%u frame=%llu accepted=0", id_, unsigned(sun_shadow_enabled_), frame_);
-        return -1;
-    }
-    sun_shadow_enabled_ = !sun_shadow_enabled_;
-    // Every published product of a past replay goes: the retained per-cascade
-    // bases. The frame back on
-    // replays every cascade in full (sun_shadow_force_replay_), so the far
-    // cascade cannot be published from the budget's alternate-frame rule
-    // against a basis that no longer exists.
-    if (depth_replay_) depth_replay_->invalidate_retained();
-    depth_replayed_ = 0; depth_cascade_frame_ok_ = false;
-    sun_shadow_force_replay_ = sun_shadow_enabled_;
-    log("sun_shadow_toggle device=%llu state=%u frame=%llu accepted=1", id_, unsigned(sun_shadow_enabled_), frame_);
-    return sun_shadow_enabled_ ? 1 : 0;
 }
 void MotionOutput::after_begin_scene(HRESULT result) noexcept { if (enabled_ && SUCCEEDED(result)) scene_open_ = true; }
 void MotionOutput::after_end_scene(HRESULT result) noexcept { if (enabled_ && SUCCEEDED(result)) scene_open_ = false; }
@@ -3284,7 +3215,7 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
             // Hull light-map gain (hull-self-illumination.md 5): the fill
             // variant (K, or K=0) plus the one MUL after the light-map fetch,
             // created once here and selected in bind_variant_pair over the
-            // fill/motion variant while the F4 flag is on. gain_applied=0 is
+            // fill/motion variant while the light-map flag is on. gain_applied=0 is
             // the fail-closed refusal of a program without the term (the
             // glass and asteroid originals): no object, no selection.
             if (hull_lightmap_gain_requested_ && entry.variant) {
@@ -3357,7 +3288,7 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
                         id_, hash, unsigned(shared), share_hr, unsigned(words.size()), depth_enabled_, double(original_fill_requested_ ? original_fill_ : 0.f), unsigned(share_applied));
                 // The same share producer composed with the hull light-map gain
                 // (hull-self-illumination.md 5), created only beside a created
-                // share variant so the F4 flag can fall back to it; the lane
+                // share variant so the light-map flag can fall back to it; the lane
                 // selects it in bind_variant_pair while the flag is on.
                 if (hull_lightmap_gain_requested_ && entry.sun_original_variant) {
                     words.clear();
@@ -4174,7 +4105,7 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
             if (!route.fog_card_mask.masked && route.submit) prepare_composition(call, route);
             // Additive option: its pair check is the only per-draw cost for
             // any other draw; never on a draw the bracket already took.
-            if (shadow_.screen_additive_pair && screen_additive_enabled_ && route.submit && !route.composition && !route.fog_card_mask.masked) {
+            if (shadow_.screen_additive_pair && route.submit && !route.composition && !route.fog_card_mask.masked) {
                 const unsigned failures = screen_additive_failures_;
                 prepare_screen_additive(call, route);
                 screen_additive_window_.apply_failures += screen_additive_failures_ - failures;
@@ -4183,10 +4114,10 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
     }
     // Source-only gain: a null pointer test when the option is off or the
     // bound pair is not one of the twenty; the bracket routes take precedence.
-    if (shadow_.source_gain_eligible_variant && source_gain_enabled_
+    if (shadow_.source_gain_eligible_variant
             && !route.routed && !route.composition && !route.fog_card_mask.masked && route.submit) prepare_source_gain(call, route);
     // Hull-emitter gain: one bool test when the option is off or the bound PS
-    // is not one of the twelve; its own F4 flag (F6 is the effects gain's).
+    // is not one of the twelve; its own flag (a fixture seam toggles it).
     // A routed or composed draw takes the same blend verdict inside.
     if (shadow_.ps_hull_program && hull_gain_enabled_ && !route.fog_card_mask.masked && route.submit) prepare_hull_gain(call, route);
     if (!route.routed && !route.composition && route.submit && route.scene && call.primitives)
@@ -4878,8 +4809,7 @@ void MotionOutput::log_bolt_footprint_window() noexcept {
 // One line per 300 frames while the additive route is requested (telemetry
 // or not): the window's additive-pair draws, admissions, refusals per reason
 // and apply failures; not_reached = the pair draws the route never evaluated
-// (routed, composed, fog-masked, not submitted after a failed restore, or the
-// Ctrl+Shift+F5 key off). A window without any bullet draw logs pair_draws=0,
+// (routed, composed, fog-masked, not submitted after a failed restore). A window without any bullet draw logs pair_draws=0,
 // which tells "nothing to admit" from a refusal.
 void MotionOutput::log_screen_additive_window() noexcept {
     auto& w = screen_additive_window_;
@@ -4887,10 +4817,9 @@ void MotionOutput::log_screen_additive_window() noexcept {
     for (unsigned i = 0; i < screen_additive_reason_count; ++i) refused += w.refused[i];
     const std::uint32_t evaluated = w.admitted + refused + w.apply_failures;
     if (telemetry_) log("screen_emission_additive_refused_window device=%llu frame=%llu frames=%u pair_draws=%u admitted=%u refused=%u apply_failures=%u not_reached=%u "
-        "state=%u draw_shape=%u scene=%u no_fp16_target=%u no_variant=%u srgb_sampler=%u projected=%u dither=%u alpha_state=%u alpha_caps=%u enabled=%u",
+        "state=%u draw_shape=%u scene=%u no_fp16_target=%u no_variant=%u srgb_sampler=%u projected=%u dither=%u alpha_state=%u alpha_caps=%u",
         id_, frame_, screen_additive_window_frames_, w.pair_draws, w.admitted, refused, w.apply_failures, w.pair_draws > evaluated ? w.pair_draws - evaluated : 0u,
-        w.refused[0], w.refused[1], w.refused[2], w.refused[3], w.refused[4], w.refused[5], w.refused[6], w.refused[7], w.refused[8], w.refused[9],
-        unsigned(screen_additive_enabled_));
+        w.refused[0], w.refused[1], w.refused[2], w.refused[3], w.refused[4], w.refused[5], w.refused[6], w.refused[7], w.refused[8], w.refused[9]);
     w = ScreenAdditiveWindow{}; screen_additive_window_frames_ = 0;
 }
 bool MotionOutput::publish_composition() noexcept {
@@ -5115,7 +5044,7 @@ HRESULT MotionOutput::bind_variant_pair(MotionRoute& route, bool material) noexc
     // the larger axis's and both coarse fetches collapse to one): at the two selection points below a stage
     // shadowed at anything else is raised to ANISOTROPIC for this draw (ensure_widen_filter, restored by undo);
     // a failed raise keeps the un-widened gained variant. Only a draw that actually selects the widened variant
-    // pays the call (never an F4-off frame or a non-gain lane).
+    // pays the call (never a light-map-off frame or a non-gain lane).
     bool widen = false;
     if (sun_lane_active_ && route.depth && route.fade_owner) {
         // X3M_FADE_RT2_OWNER on the four-channel lane RT2: an owner writes .g too, which must read as no share (-1,
@@ -5139,7 +5068,7 @@ HRESULT MotionOutput::bind_variant_pair(MotionRoute& route, bool material) noexc
         const bool original=!material&&shadow_.original_share_pair&&!shadow_.xt_default_ready
             &&(!original_fill_requested_||hdr_state_==HdrState::Active);
         // The gained share variant (hull light-map gain) over the plain one
-        // while the F4 flag is on; the same reviewed pair, the FP16 scene.
+        // while the light-map flag is on; the same reviewed pair, the FP16 scene.
         const bool gained_original=original&&hull_lightmap_enabled_&&shadow_.ps_sun_original_lightmap&&hdr_state_==HdrState::Active;
         const bool widened_original=gained_original&&widen_draw&&shadow_.ps_sun_original_lightmap_widen&&ensure_widen_filter(route);
         const auto lane=material?shadow_.ps_sun_material:widened_original?shadow_.ps_sun_original_lightmap_widen:gained_original?shadow_.ps_sun_original_lightmap:original?shadow_.ps_sun_original:shadow_.xt_default_ready?shadow_.ps_sun_xt:shadow_.ps_sun_motion;
@@ -5152,7 +5081,7 @@ HRESULT MotionOutput::bind_variant_pair(MotionRoute& route, bool material) noexc
     if (shadow_.original_fill_pair && !material && !shadow_.xt_default_ready && hdr_state_ == HdrState::Active
         && ps == shadow_.ps_variant && !route.fade_arm && shadow_.ps_original_fill_variant) { ps = shadow_.ps_original_fill_variant; fill = true; }
     // Hull light-map gain: over the plain or fill-composed motion variant of
-    // the same one bind pair while the F4 flag is on; the gained variant
+    // the same one bind pair while the light-map flag is on; the gained variant
     // carries the fill K itself. Never over a sun-lane, XT repaired or
     // material program, only into the FP16 scene target.
     if (shadow_.hull_lightmap_pair && hull_lightmap_enabled_ && !material && !shadow_.xt_default_ready && hdr_state_ == HdrState::Active
@@ -6968,12 +6897,12 @@ void MotionOutput::log_screen_emission_frame() noexcept {
 }
 // One line per Present with telemetry on (the option itself stays free of
 // per-frame logging): which of the nine pairs actually drew additively this
-// frame, how many draws were refused, and whether the runtime key has the
-// option on. `pairs` is a hex bit mask over screen_emission::pairs indices.
+// frame and how many draws were refused. `pairs` is a hex bit mask over
+// screen_emission::pairs indices.
 void MotionOutput::log_screen_additive_frame() noexcept {
-    log("screen_emission_additive_frame device=%llu frame=%llu admitted=%u refused=%u pairs=%03x toggled=%u",
+    log("screen_emission_additive_frame device=%llu frame=%llu admitted=%u refused=%u pairs=%03x",
         id_, frame_, screen_additive_frame_admitted_, screen_additive_frame_refused_,
-        screen_additive_frame_pairs_, unsigned(screen_additive_enabled_));
+        screen_additive_frame_pairs_);
 }
 void MotionOutput::after_present(HRESULT result) noexcept {
     report_xt_default_unavailable();
@@ -7009,7 +6938,7 @@ void MotionOutput::after_present(HRESULT result) noexcept {
         // covered program reach prepare_hull_gain; programs = bit per admitted
         // program (twelve); refused_other = routed + unknown + state + bind;
         // opaque and alpha are the blend-off and source-over parts of
-        // refused_blend; toggled is the F4 flag.
+        // refused_blend; toggled is the light-map flag.
         const auto& g = hull_gain_counts_;
         const std::uint32_t other = g.refused_routed + g.refused_unknown + g.refused_state + g.bind_failures;
         if (g.admitted || g.refused_blend || g.refused_variant || other)
@@ -8416,21 +8345,12 @@ void MotionOutput::publish_shadow_replay_candidates() noexcept {
             id_, frame_, unsigned(alpha_casters_ready()), a.seen, a.tested, a.opaque, a.state, a.function, a.uv, a.texture, a.pool);
         alpha_caster_counts_ = {};
     }
-    // Ctrl+Shift+F12 off (comparison-hotkeys.md, "Sun shadows at rest"): one
-    // boolean test, then no transaction at all this frame (no map cleared,
-    // nothing drawn, no retained caster issued). The frame's leases are still
-    // retired here, as a replayed frame retires them.
-    // `depth_replayed_frame_` deliberately keeps the frame of the last real
-    // transaction: every consumer (the apply quad's precondition, the F8 map
-    // dump) then sees that this frame published nothing.
+    // The cascade replay transaction (the Ctrl+Shift+F12 off state went on
+    // 2026-09-26: the shadows run whenever the launch configured them).
     {
     // --gpu-sync-timing only: the replay transaction's pair (its per-frame line included); nothing without a replay.
-    gpu_sync_timing::Span shadow_span(gpu_sync_ && sun_shadow_enabled_ && depth_cascades_on() ? gpu_sync_ : nullptr, gpu_sync_timing::ShadowDepth);
-    if (!sun_shadow_enabled_) {
-        depth_replayed_ = 0; depth_cascade_frame_ok_ = false;
-        if (depth_replay_requested_) release_depth_leases();
-    }
-    else if (depth_cascades_on()) run_shadow_replay_cascades(quiet_records);
+    gpu_sync_timing::Span shadow_span(gpu_sync_ && depth_cascades_on() ? gpu_sync_ : nullptr, gpu_sync_timing::ShadowDepth);
+    if (depth_cascades_on()) run_shadow_replay_cascades(quiet_records);
     // No cascade set: no map and no lease were taken; nothing replays (the
     // single camera-centred map was removed on 2026-09-25).
     }

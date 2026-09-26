@@ -248,7 +248,7 @@ enum class TaaInvalidateSite : unsigned {
     NotResolved = 6,            // the frame ended without a resolve (menu, rejected, never reached)
     PresentFailed = 7,          // Present returned a failure
     Reset = 8,                  // device Reset
-    ComparisonExposure = 9,     // the comparison exposure toggle reseeds the history
+    ComparisonExposure = 9,     // retired with the Ctrl+Shift+F9 exposure A/B (2026-09-26); the number stays reserved
     ComparisonStateFailed = 10, // a comparison-control operation failed
     CompositionStateLost = 11,  // the linear composition pass lost device state
     CompositionReaders = 12,    // the main-target readers are unknown while the enhanced image is live
@@ -807,22 +807,14 @@ public:
     void configure_emission_source_gain(float gain) noexcept; // one gain for all twenty pairs
     bool emission_source_gain_requested() const noexcept { return emission_source_gain_requested_; }
     // Emitter plan phase 3: the same gain over the twelve hull programs' ADD
-    // ONE/ONE draws (X3M_HULL_EMISSION_GAIN); 1 = off. The guide lights are
-    // switched with the effects gain (Ctrl+Shift+F6), the hull light-map gain
-    // alone (Ctrl+Shift+F4): one entry point, lightmap = true for the F4
-    // family, false for the guide lights. Returns the new state of the family
-    // the key drove: 1 on, 0 off, -1 not requested (logged no-op); the
-    // prebuilt variants stay, nothing is created or released.
+    // ONE/ONE draws (X3M_HULL_EMISSION_GAIN); 1 = off. The toggle is a fixture
+    // seam (x3m_hull_emission_fixture_toggle; no key since 2026-09-26):
+    // lightmap = true for the light-map gain, false for the guide lights.
+    // Returns the new state of that family: 1 on, 0 off, -1 not requested
+    // (logged no-op); the prebuilt variants stay, nothing is created or released.
     void configure_hull_emission_gain(float gain) noexcept;
     int hull_emission_gain_toggle(bool lightmap) noexcept;
     bool hull_emission_gain_requested() const noexcept { return hull_emission_gain_requested_; }
-    // Runtime A/B of the source gain (Ctrl+Shift+F6, comparison-hotkeys.md):
-    // the prebuilt variants stay; the per-draw path stops selecting them (and
-    // stops the screen substitution), so the draw goes out exactly as it
-    // would without the option. Returns the new state (1 on / 0 off), or -1
-    // when the option was not requested (gain 1, no variant): a logged no-op.
-    int emission_source_gain_toggle() noexcept;
-    bool emission_source_gain_enabled() const noexcept { return source_gain_enabled_; }
     // Option C (docs/architecture/original-shading-critique.md 1a): fill in
     // linear light inside the original hull pixel programs, finite 0..0.5, 0
     // is off (no variant is created). Excludes linear materials; configure
@@ -834,8 +826,7 @@ public:
     // programs plus one MUL of the sampled light map by G, finite 1..8, 1 is
     // off (no variant is created). Excludes linear materials; needs HDR only;
     // configure after configure_linear_materials and configure_original_fill,
-    // before attach. Ctrl+Shift+F4 switches this gain alone
-    // (hull_lightmap_enabled_); the guide lights follow Ctrl+Shift+F6.
+    // before attach. hull_lightmap_enabled_ stays on outside the fixture seam.
     void configure_hull_lightmap_gain(float gain) noexcept;
     bool hull_lightmap_gain_requested() const noexcept { return hull_lightmap_gain_requested_; }
     // Light-map far fade (X3M_LIGHT_MAP_FAR_FADE=P0,P1[,G]; call after
@@ -890,12 +881,6 @@ public:
     void configure_screen_emission_additive(bool requested, float gain,
         bool alpha_requested = false, float alpha = 1.f) noexcept;
     bool screen_emission_additive_requested() const noexcept { return screen_additive_requested_; }
-    // Runtime A/B of the additive option (Ctrl+Shift+F5): off leaves the draw
-    // in its native screen blend with the native program, exactly like a
-    // refused draw. Returns the new state, or -1 when the option was not
-    // requested or its gain is 1 (no variant exists): a logged no-op.
-    int screen_emission_additive_toggle() noexcept;
-    bool screen_emission_additive_enabled() const noexcept { return screen_additive_enabled_; }
     // Diagnostic fade-region witness (X3M_FADE_WITNESS=<k>, note section 7,
     // step 1): every k-th frame without an admitted emission draw the M
     // coverage target is read back once and its covered pixels counted
@@ -1048,23 +1033,23 @@ public:
     void configure_volumetric_fog_handover(bool step, bool coldfill) noexcept {
         fog_density_config_.handover_step = step; fog_density_config_.handover_coldfill = coldfill;
     }
-    // Ctrl+Alt+F11 (comparison-hotkeys.md; launched with the motes only): flips the mote stage the next owner latch hands
-    // to FogPass::prepare_density; off keeps the mote programs and buffers. One fog_dust_motes_toggle line per press;
-    // returns the new state, -1 without the option.
+    // Fixture seam (the Ctrl+Alt+F11 key went on 2026-09-26; launched with the motes only): flips the mote stage the next
+    // owner latch hands to FogPass::prepare_density; off keeps the mote programs and buffers. One fog_dust_motes_toggle
+    // line per call; returns the new state, -1 without the option.
     int volumetric_fog_dust_motes_toggle() noexcept;
     static constexpr int fog_overlay_motes = 1 << 24; // volumetric_fog_overlay_state: the motes were drawn last fog frame
     // DllMain DLL_PROCESS_DETACH only (FogPass::abandon_density_worker): no join, no lock, no log.
     void abandon_volumetric_fog_worker() noexcept { if (fog_) fog_->abandon_density_worker(); }
-    // Ctrl+Alt+F9 toggles the pass, Ctrl+Alt+F10 steps the strength through
-    // renderer::fog_strength_steps (comparison-hotkeys.md). One
-    // volumetric_fog_toggle / volumetric_fog_strength line per press. -1: option off.
     void volumetric_fog_sector_sample(std::uint64_t frame, const sector_background::Sample&) noexcept;
     // R3 (fog-handover.md, "R3 implementation"): one walk result from a stalled frame's resource-creation hook
     // (capture.cpp, at most one per 250 ms); starts the far fill of a found fog sector, never authority. One
     // volumetric_fog_prefill line per poll (bounded).
     void configure_volumetric_fog_prefill(bool on) noexcept { fog_prefill_launch_ = on; }
     void volumetric_fog_prefill(const fog_prefill::Result&, std::uint64_t stall_ms) noexcept;
-    void volumetric_fog_begin_frame() noexcept; // after comparison hotkeys
+    void volumetric_fog_begin_frame() noexcept; // once per frame at the frame boundary
+    // Fixture seams (the Ctrl+Alt+F9/F10 keys went on 2026-09-26): the pass on/off and the strength step through
+    // renderer::fog_strength_steps for the fog route fixtures. One volumetric_fog_toggle / volumetric_fog_strength
+    // line per call. -1: option off.
     int volumetric_fog_toggle() noexcept;
     int volumetric_fog_step() noexcept;
     // FPS overlay second line: -1 option off, else (enabled, strength in 1/1000, current active family).
@@ -1073,19 +1058,6 @@ public:
             (fog_motes_drawn_ ? fog_overlay_motes : 0);
     }
     float volumetric_fog_strength() const noexcept { return fog_strength_; }
-    // Ctrl+Shift+F12 (comparison-hotkeys.md, "Sun shadows at rest"): the
-    // at-rest A/B of the sun shadows. Off, the scene end runs neither the
-    // cascade replay transaction (no map cleared or drawn, no
-    // retained caster issued) nor the apply quad; everything else (the lane,
-    // the candidate counter, TAA, capture) is unchanged. Every retained basis
-    // is dropped on both edges, so the first frame back on replays every
-    // cascade instead of publishing a stale map, the far one included whatever
-    // the budget's alternate-frame rule would say. Returns the new state
-    // (1 on / 0 off), or -1 on a device with neither the replay nor the apply
-    // requested (a logged no-op, nothing changed); one bool test at the scene
-    // end, nothing per draw.
-    int sun_shadow_toggle() noexcept;
-    bool sun_shadow_enabled() const noexcept { return sun_shadow_enabled_; }
     bool hdr_redirected() const noexcept { return hdr_state_ != HdrState::Off; }
     // BEFORE the application's SetRenderTarget: the surface to bind natively.
     // Index 0 while redirected: the application's main surface maps to the FP16
@@ -1134,14 +1106,7 @@ public:
     void before_present() noexcept;
     void after_present(HRESULT result) noexcept;
 
-    struct ComparisonExposure {
-        bool ready = false, automatic = false, frame_used = false;
-        float ev = 0.f;
-        const char* reason = "hdr_unavailable";
-    };
-    ComparisonExposure comparison_exposure() const noexcept;
-    bool comparison_toggle_exposure() noexcept;
-    // Late notice/controls admission. Present still follows a refused notice.
+    // Late FPS overlay admission. Present still follows a refused overlay.
     bool comparison_boundary_available() const noexcept {
         return enabled_ && !scene_open_ && !active_queries_ && !shadow_.recording
             && !reference_accounting_busy() && !draw_submission_blocked()
@@ -1249,7 +1214,7 @@ private:
                          IDirect3DPixelShader9* sun_original_variant = nullptr;
                          // The same share variant composed with the hull light-map gain
                          // (X3M_HULL_LIGHTMAP_GAIN); selected over sun_original_variant while
-                         // the F4 flag is on; null without the option or the term.
+                         // the light-map flag is on; null without the option or the term.
                          IDirect3DPixelShader9* sun_original_lightmap_variant = nullptr;
                          // The widened forms of the two gained variants above
                          // (X3M_HULL_EMISSIVE_WIDENING); null without the option or the term.
@@ -1424,8 +1389,6 @@ private:
     // epoch for the FP16 target (a refusal is final until Reset), run once per
     // frame after the depth replay. Storage only: no per-draw cost.
     bool sun_apply_requested_=false, sun_apply_attach_failed_=false, sun_apply_applied_=false, sun_apply_attempted_=false;
-    bool sun_shadow_enabled_=true; // Ctrl+Shift+F12: the scene-end replay/apply gate (on until a press)
-    bool sun_shadow_force_replay_=false; // the frame back on replays every cascade, whatever the budget's parity rule says
     double sun_apply_bias_units_=renderer::sun_shadow_bias_units_default;         // world units; resolved per frame with the cascade (sun_shadow_apply_bias)
     double sun_apply_clamp_texels_=renderer::sun_shadow_bias_clamp_texels_default; // world texels; the receiver-plane clamp and non-planar fallback
     double sun_apply_slope_texels_=renderer::sun_shadow_bias_slope_texels_default; // texels of the plane's depth slope; the cascade program's slope-scaled margin
@@ -1961,9 +1924,6 @@ private:
     float screen_emission_gain_ = 1.f;
     bool emission_source_gain_requested_ = false;
     float emission_source_gain_ = 1.f; // 1 = off (no variant, native bytes)
-    // Runtime hotkey state, default on; never touched by a draw that does not
-    // already reach the option's admission, and never used for creation.
-    bool source_gain_enabled_ = true;
     // Source-gain draw accounting (per-frame line): admitted draws (total, of
     // which screen-substituted), refusals by blend state, screen draws refused
     // because the DESTBLEND substitution failed, by unknown state, by device
@@ -1975,7 +1935,7 @@ private:
     // Hull-emitter gain (emitter plan phase 3): X3M_HULL_EMISSION_GAIN=G
     // (finite 1..8, 1 = off, needs HDR only), one whole-output variant
     // per covered hull program at creation, ONE/ONE admission per draw; its
-    // toggle with the effects gain, Ctrl+Shift+F6 (hull_gain_enabled_).
+    // flag hull_gain_enabled_ (on; a fixture seam toggles it).
     // Per-frame accounting: admitted
     // draws, refusals by blend state (of which refused_opaque = blend off,
     // refused_alpha = SRCALPHA/INVSRCALPHA), covered draws without a variant,
@@ -1984,7 +1944,7 @@ private:
     // bit per admitted program.
     bool hull_emission_gain_requested_ = false;
     float hull_emission_gain_ = 1.f;
-    bool hull_gain_enabled_ = true; // Ctrl+Shift+F6 with the effects gain, default on; gates entry to prepare_hull_gain only
+    bool hull_gain_enabled_ = true; // on outside the fixture seam; gates entry to prepare_hull_gain only
     struct { std::uint32_t admitted = 0, refused_blend = 0, refused_variant = 0, refused_routed = 0, refused_unknown = 0, refused_state = 0, bind_failures = 0, programs = 0, refused_opaque = 0, refused_alpha = 0; } hull_gain_counts_;
     std::uint32_t hull_gain_logged_[4]{}; // per-device sample caps: blend, bind_failed, state, routed
     std::uint32_t hull_gain_program_logged_ = 0; // bit per hull program: first admission logged this device epoch (at most 12 lines)
@@ -1993,7 +1953,7 @@ private:
     std::uint32_t original_fill_draws_ = 0; // routed draws that bound the fill variant this frame (frame line only)
     bool hull_lightmap_gain_requested_ = false; // X3M_HULL_LIGHTMAP_GAIN=G (finite 1..8, 1 = off), exclusive with linear materials
     float hull_lightmap_gain_ = 1.f;
-    bool hull_lightmap_enabled_ = true; // Ctrl+Shift+F4, default on; gates the light-map variant selection only
+    bool hull_lightmap_enabled_ = true; // on outside the fixture seam; gates the light-map variant selection only
     bool lightmap_far_fade_ = false;            // X3M_LIGHT_MAP_FAR_FADE accepted: dynamic gain variants, c217.w per draw
     float lightmap_fade_p0_ = 0.f, lightmap_fade_inv_ = 0.f, lightmap_fade_floor_ = 1.f;
     float lightmap_fade_m00_ = 0.f;             // the far fade's own P[0] latch (0 = none); camera_scene_ stays the TAA/candidate consumers' alone
@@ -2045,7 +2005,6 @@ private:
     std::uint32_t chase_pose_mark_ = 0; // chase_camera::pose_write_count() at the last Present (the frame-stamped view gate)
     unsigned bolt_refusal_logged_ = 0; // bit per refusal reason already logged (one line each per device)
     float screen_additive_gain_ = 1.f;
-    bool screen_additive_enabled_ = true; // Ctrl+Shift+F5 runtime A/B; the variant stays created
     // Per-source bloom attenuation of the additive draw (option 1): the scene
     // alpha the bloom extract weighs by becomes k*a + D.a. 1 = off (no alpha
     // state is touched); 0 uses SRCBLENDALPHA ZERO, anything between uses
@@ -2068,7 +2027,7 @@ private:
     // every draw with an additive pair bound, admissions, refusals per reason
     // (prepare_screen_additive's vocabulary) and apply failures; the rest of
     // the pair draws never reached the route (routed, composed, fog-masked,
-    // not submitted, Ctrl+Shift+F5 off).
+    // not submitted).
     static constexpr unsigned screen_additive_reason_count = 10;
     struct ScreenAdditiveWindow {
         std::uint32_t pair_draws = 0, admitted = 0, apply_failures = 0;
@@ -2403,7 +2362,7 @@ private:
     // Stored-density range. The camera is the previous scene end's (read after the owner latch).
     bool fog_density_requested_ = false, fog_density_refused_ = false, fog_density_prepared_ = false, fog_density_camera_valid_ = false;
     bool fog_density_config_logged_ = false, fog_density_ready_logged_[2]{}, fog_march_scale_refused_logged_ = false;
-    // X3M_FOG_DUST_MOTES at launch: arms the Ctrl+Alt+F11 toggle and the mote fields of volumetric_fog_frame.
+    // X3M_FOG_DUST_MOTES at launch: arms the dust-motes fixture toggle and the mote fields of volumetric_fog_frame.
     bool fog_dust_motes_launch_ = false, fog_motes_refused_logged_ = false, fog_motes_drawn_ = false;
     long long fog_motes_epoch_qpc_ = 0; // the drift clock's origin (first mote frame)
     unsigned fog_density_logs_ = 0, fog_handover_logs_ = 0;

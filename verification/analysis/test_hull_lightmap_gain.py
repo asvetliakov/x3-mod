@@ -340,7 +340,7 @@ class LauncherAndProxyGateTests(unittest.TestCase):
             env = json.loads(output)['env']
             self.assertEqual((env['X3M_HULL_LIGHTMAP_GAIN'], env['X3M_ORIGINAL_FILL']), ('4.0', '0.05'))
 
-    def test_dll_gate_creation_selection_and_the_shared_f4_toggle(self):
+    def test_dll_gate_creation_selection_and_the_fixture_toggle(self):
         source = (ROOT / 'src/proxy/capture.cpp').read_text()
         block = source[source.index('X3M_HULL_LIGHTMAP_GAIN=<g>'):][:2200]
         self.assertIn('GetEnvironmentVariableW(L"X3M_HULL_LIGHTMAP_GAIN",setting,32)', block)
@@ -350,16 +350,16 @@ class LauncherAndProxyGateTests(unittest.TestCase):
         self.assertIn('configure_hull_lightmap_gain(hull_lightmap_gain)', source)
         for absent in ('taa_requested', 'screen_ownership'):
             self.assertNotIn(absent, block)
-        polling = extract_function(source, 'void comparison_begin_frame(')
-        self.assertIn('|| hull_emission_gain!=1.f || hull_lightmap_gain!=1.f;', polling)
-        self.assertIn('if(action.hull_gain)comparison_emitter(ctx,"ctrl_shift_f4","LIGHTMAP",ctx.motion_output.hull_emission_gain_toggle(true));', polling)
+        # No key since 2026-09-26: the toggle is reached only through the fixture export.
+        self.assertIn('return it->second->motion_output.hull_emission_gain_toggle(lightmap!=0);', source)
+        self.assertNotIn('GetAsyncKeyState(VK_F4)', source)
         motion = (ROOT / 'src/proxy/motion_output.cpp').read_text()
         self.assertIn('hull_lightmap_gain_requested_ = std::isfinite(gain) && gain > 1.f && gain <= 8.f && !linear_material_requested_;', motion)
         # Created once at registration beside the fill variant, composed with the fill K.
         self.assertIn('renderer::linear_material_hull_lightmap_gain_pixel_variant(', motion)
         self.assertIn('original_fill_requested_ ? original_fill_ : 0.f, hull_lightmap_gain_,', motion)
         self.assertIn('hull_lightmap_variant device=%llu original=%016llx transform=%u create=%08lx words=%u depth=%u fill=%g gain=%g fill_applied=%u gain_applied=%u', motion)
-        # Selected in the one bind pair over the plain or fill variant while the F4 flag is on; undone with the route.
+        # Selected in the one bind pair over the plain or fill variant while the light-map flag is on; undone with the route.
         bind = extract_function(motion, 'HRESULT MotionOutput::bind_variant_pair(')
         self.assertIn('shadow_.hull_lightmap_pair && hull_lightmap_enabled_ && !material && !shadow_.xt_default_ready && hdr_state_ == HdrState::Active', bind)
         self.assertIn('(ps == shadow_.ps_variant || (fill && ps == shadow_.ps_original_fill_variant))', bind)
@@ -368,14 +368,14 @@ class LauncherAndProxyGateTests(unittest.TestCase):
         self.assertNotIn('GetRenderState', bind)
         contract = motion[motion.index('void MotionOutput::refresh_linear_material_contract'):][:3000]
         self.assertIn('shadow_.hull_lightmap_pair = hull_lightmap_gain_requested_ && shadow_.ps_hull_lightmap_variant && shadow_.vs_variant', contract)
-        # F4 is the light-map gain alone (its own flag); the guide lights moved
-        # to F6 with the effects gain. Both states and the driving key are logged.
+        # The fixture seam: the light-map gain alone (its own flag) or the guide
+        # lights. Both states and the driven family are logged.
         toggle = extract_function(motion, 'int MotionOutput::hull_emission_gain_toggle(')
         self.assertIn('const bool available = lightmap ? hull_lightmap_gain_requested_ : hull_emission_gain_requested_;', toggle)
         self.assertIn('if (lightmap) hull_lightmap_enabled_ = !hull_lightmap_enabled_;', toggle)
         self.assertIn('else hull_gain_enabled_ = !hull_gain_enabled_;', toggle)
-        self.assertIn('key=%s accepted=%u enabled=%u requested=%u gain=%g lightmap_requested=%u lightmap_gain=%g hull_enabled=%u lightmap_enabled=%u', toggle)
-        self.assertIn('lightmap ? "ctrl_shift_f4" : "ctrl_shift_f6"', toggle)
+        self.assertIn('family=%s accepted=%u enabled=%u requested=%u gain=%g lightmap_requested=%u lightmap_gain=%g hull_enabled=%u lightmap_enabled=%u', toggle)
+        self.assertIn('lightmap ? "lightmap" : "guide"', toggle)
         self.assertNotIn('CreatePixelShader', toggle)
         self.assertIn('hull_lightmap_frame device=%llu frame=%llu gain=%g fill=%g admitted=%u toggled=%u', motion)
         # The sun-share lane: a gained share variant beside every share variant, selected under the same flag.

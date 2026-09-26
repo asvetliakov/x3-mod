@@ -39,7 +39,7 @@ Since 2026-09-25 a modded launch turns on the accepted feature set by itself: TA
 sun shadows with five cascades, the stored-range fog, the chase camera, the loading fast paths, music keep and the
 direct start; the telemetry and capture diagnostics stay opt-in. Each default has an opt-out (`--no-taa`,
 `--no-volumetric-fog`, `--camera vanilla`, ...); the list is in the
-[launcher inventory](docs/verification/launcher-options-inventory.md#defaults-promoted-2026-09-25).
+[launcher inventory](docs/verification/launcher-options-inventory.md#promoted-defaults-2026-09-25).
 
 The launcher uses `/Applications/CrossOver Preview.app`, `Steam`, and
 `drive_c/X3/X3AP.exe`. Its D3D9 override applies to that launch only. The installer
@@ -61,32 +61,26 @@ minute, `session_end`); `--perf` adds the performance rows and `--debug` the ren
 diagnostics (`X3M_PERF=1` / `X3M_DEBUG=1` without the launcher;
 [logging tiers](docs/architecture/logging-tiers.md)). For a bug report: launch with the
 tier asked for, reproduce, quit, and send `x3m.log` (and `x3m.prev.log` if the game was
-started again since). Since 2026-09-25 nothing is captured automatically
-(`--capture-start 999999`); **F8** captures 8 frames on demand, 300 frames after
-the key press (`--capture-frames`, `--capture-delay`). Detailed capture deliberately
-trades frame time for forensic completeness; expect a hitch. `--capture-start 120`
-restores the automatic capture after 120 Present calls.
+started again since). Nothing is captured automatically; with `--debug`, **F8**
+captures a burst of 8 frames at once (`--capture-frames`); without `--debug` the key
+does nothing. F8 is the only key the proxy reads (every other in-game hotkey was removed
+on 2026-09-26, [in-game keys](docs/architecture/comparison-hotkeys.md)). Detailed
+capture deliberately trades frame time for forensic completeness; expect a hitch.
 Capture records live queried state, including stateblock changes, rather than
 assuming setter calls describe all current state.
 
-The installed defaults are recorded in [status](docs/status.md). Both comparison
-features (`--motion-output --hdr --hdr-tonemap --hdr-bloom`) are launcher defaults;
+The installed defaults are recorded in [status](docs/status.md). Auto exposure and
+bloom (`--motion-output --hdr --hdr-tonemap --hdr-bloom`) are launcher defaults;
 `--hdr-exposure fixed` selects fixed EV 0 instead.
-During play, hold **Ctrl+Shift**, then press **F9** to switch AUTO/fixed EV 0,
-or **F10** to switch bloom ON/OFF. Release the function key between presses.
-A brief panel shows the effective state or an unavailable/pending request.
-These controls work only while the game is foreground; **F8 is unchanged**.
-See [comparison controls](docs/architecture/comparison-hotkeys.md) for capability,
-exposure handoff and verification limits.
 
 For one combined loading/render-boundary/cursor diagnostic session:
 
 ```sh
-python3 tools/manage.py launch --direct --perf --capture-start 999999 --capture-frames 4
+python3 tools/manage.py launch --direct --debug --perf --capture-frames 4
 ```
 
-Additional telemetry is opt-in (`--perf`, `--debug`). Ctrl+Shift+F7 optionally marks a phase while
-Present is running; F8 captures four frames with this command. See the
+Additional telemetry is opt-in (`--perf`, `--debug`); F8 captures four frames with this
+command. See the
 [single-session test steps](docs/verification/iteration-03.md) and
 [coverage limits](docs/verification/telemetry.md). Timing is CPU-side elapsed
 time, not GPU timing. Loading optimization and the alt-tab cursor fix remain pending.

@@ -526,7 +526,7 @@ int MotionOutput::volumetric_fog_dust_motes_toggle() noexcept {
     // (the transaction is the launch-off one); the mote programs and buffers stay allocated.
     fog_density_config_.dust_motes = !fog_density_config_.dust_motes;
     const char* refused = fog_ && fog_->motes_refused() ? fog_->density_status().motes_refused : nullptr;
-    log("fog_dust_motes_toggle device=%llu frame=%llu enabled=%u refused=%s key=ctrl_alt_f11", id_, frame_, unsigned(fog_density_config_.dust_motes), refused ? refused : "none");
+    log("fog_dust_motes_toggle device=%llu frame=%llu enabled=%u refused=%s", id_, frame_, unsigned(fog_density_config_.dust_motes), refused ? refused : "none");
     return fog_density_config_.dust_motes ? 1 : 0;
 }
 int MotionOutput::volumetric_fog_step() noexcept {

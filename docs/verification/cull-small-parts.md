@@ -85,6 +85,6 @@ Shadow cost: `sun_shadow_apply_frame` at 4672-4679 gives `applied=1 skip_reason=
 
 No anomalies: `motion_direct_loss_code` — 0 occurrences; `apply_failures`/`restore_failures` — 0 on all 154 `motion_output_frame` lines; no `refused`/error lines tied to `motion_direct` or `cull_small_parts` (the 49053 `refused` hits are unrelated frame types — `screen_emission_additive_frame`, `fade_route_frame`, `chase_camera` — all `refused=0`/`refused_*=0` in the sampled lines).
 
-**Removed 2026-09-25** (user decision): `--cull-small-parts-scope` (every node is a candidate; the `bodies` branch went from the stub encoder and the census); `docs/verification/launcher-options-inventory.md`, "4. Removed 2026-09-25".
+**Removed 2026-09-25** (user decision): `--cull-small-parts-scope` (every node is a candidate; the `bodies` branch went from the stub encoder and the census); `docs/verification/launcher-options-inventory.md`, "4. Removed".
 
 Fixture after the removal (2026-09-25, bottle X3): `run_cull_small_parts.py` 119 checks, 0 failures (153 with the scope section; `verification/results/cull-small-parts-cpu.json`) (measured).

@@ -12,9 +12,7 @@
 #include <mutex>
 #include <thread>
 #include <vector>
-#include "../../src/proxy/comparison_controls.h"
 #include "../../src/renderer/gpu_sync_timing_core.h" // the pass enumerators the extracted bloom marks name
-#include "../../src/proxy/capture_arm_core.h" // portable; only so the Device replica can hold the pending-capture member
 
 #define WINAPI
 using DWORD = std::uint32_t;
@@ -169,8 +167,6 @@ struct BloomPass {
 } // namespace renderer
 
 struct MotionOutput {
-    struct ComparisonExposure {bool ready=true,automatic=false,frame_used=true;float ev=0.f;const char* reason="ready";};
-    ComparisonExposure comparison_exposure() const noexcept {return {};}
     std::vector<Surface*> resources;
     bool releasing_ = false, taa_busy_ = false, composition_busy_ = false, boundary_available = true;
     unsigned restores = 0, releases = 0, resets = 0, after_resets = 0, stateblocks = 0;
@@ -234,19 +230,15 @@ struct Device : Hooks {
     object_capture::Cache object_evidence{}; // diagnostic association; inert here
     MotionOutput motion_output{};
     renderer::BloomPass bloom{};
-    ComparisonControls comparison{};
     struct Notice {
         unsigned hides=0;char first[64]{},second[64]{};
         void hide() noexcept {++hides;}
         void text(const char* a,const char* b) noexcept {
             std::snprintf(first,sizeof first,"%s",a);std::snprintf(second,sizeof second,"%s",b);
         }
-    } comparison_notice;
+    };
     struct Overlay { unsigned resets=0; void reset() noexcept {++resets;} } fps_overlay; // inert mirror of the --fps-overlay accumulator
     Notice fps_notice; // inert mirror of the overlay bitmap
-    bool comparison_report_pending=false,bloom_effective_on=false;
-    char comparison_emitter_notice[40]{}; // inert mirror of the production field (Ctrl+Shift+F5/F6/F4 notice line)
-    std::uint64_t bloom_effective_frame=UINT64_MAX;
     CompositorInvocation* compositor = nullptr;
     std::uint64_t reset_generation = 0;
     DWORD scene_thread = 0;
@@ -259,7 +251,6 @@ struct Device : Hooks {
     bool reset_active = false, bloom_attempted = false, composition_scene_owner = false;
     unsigned bloom_failure_reports = 0, bloom_prepared = 0, bloom_committed = 0, remaining = 0;
     bool capture = false;
-    capture_arm::core::Pending capture_pending; // mirrors the production struct so the extracted bodies compile
     static std::atomic<unsigned> destructors;
     ~Device() { ++destructors; }
 };
@@ -552,22 +543,6 @@ static void notice_pin_lifetime(AliasModel model,unsigned drop_at) {
     }else check(env.native.destroyed==0&&devices.count(&env.device)==1&&!env.ctx->bloom.shutdowns,"nonterminal notice pin keeps application resources");
 }
 
-static void notice_readiness_text() {
-    ++scenarios;
-    Environment env(AliasModel::NativeObject);
-    env.ctx->bloom.enabled_=false;env.ctx->bloom_attempted=false;
-    comparison_notice_text(*env.ctx);
-    check(!std::strcmp(env.ctx->comparison_notice.second,"BLOOM WAITING"),"configured unattempted bloom is waiting");
-    env.ctx->bloom_attempted=true;comparison_notice_text(*env.ctx);
-    check(!std::strcmp(env.ctx->comparison_notice.second,"BLOOM UNAVAILABLE"),"attempted refused bloom is unavailable");
-    env.ctx->bloom.enabled_=true;comparison_notice_text(*env.ctx);
-    check(!std::strcmp(env.ctx->comparison_notice.second,"BLOOM ON REQUESTED"),"ready bloom without this-frame commit remains requested");
-    env.ctx->bloom_effective_frame=env.ctx->frame;env.ctx->bloom_effective_on=true;comparison_notice_text(*env.ctx);
-    check(!std::strcmp(env.ctx->comparison_notice.second,"BLOOM ON"),"this-frame successful commit confirms ON");
-    bloom_requested=false;env.ctx->bloom_attempted=false;comparison_notice_text(*env.ctx);
-    check(!std::strcmp(env.ctx->comparison_notice.second,"BLOOM UNAVAILABLE"),"unrequested bloom is unavailable not waiting");
-    bloom_requested=true;
-}
 
 static void final_during_invocation(AliasModel model, bool worker) {
     ++scenarios;
@@ -659,8 +634,7 @@ static void reset_case(AliasModel model, bool extended, bool success) {
     check(env.ctx->reset_generation == 1 && !env.ctx->reset_active && env.ctx->scene_thread == 0,
           "Reset generation/thread state remains revoked after result");
     check(!env.ctx->composition_scene_owner, "Reset revokes prior emission scene admission");
-    check(env.ctx->comparison_notice.hides==1&&env.ctx->bloom_effective_frame==UINT64_MAX,
-          "Reset hides comparison notice and discards effective bloom frame");
+    check(env.ctx->fps_overlay.resets==1,"Reset restarts the FPS overlay window");
     check((extended ? env.native.reset_ex_calls.load() : env.native.reset_calls.load()) == 1,
           "correct Reset vtable slot called once");
     compositor_cleanup(nullptr, storage, nullptr, success ? 0 : 1);
@@ -803,7 +777,6 @@ int main() {
                          PreRefusal::ResetActive}) pre_refusal(refusal);
     pre_glow_off();
     nested_invocation();
-    notice_readiness_text();
     std::printf("capture_bloom_lifetime scenarios=%u checks=%u failures=%u\n", scenarios, checks, failures);
     return failures ? 1 : 0;
 }

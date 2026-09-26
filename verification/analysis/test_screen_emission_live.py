@@ -151,7 +151,7 @@ def timing_report(screen,width,height):
 class LauncherOption(unittest.TestCase):
     def test_packed_route_options_are_removed(self):
         # --screen-emission, --screen-emission-gain and --screen-emission-timing left the launcher on 2026-09-25
-        # (docs/verification/launcher-options-inventory.md, "Removed 2026-09-25"); the DLL keeps the packed route for the
+        # (docs/verification/launcher-options-inventory.md, "4. Removed"); the DLL keeps the packed route for the
         # live runner (run_linear_distance_fade_live.py sets the variables itself). No variable is sent or inherited.
         variables=('X3M_SCREEN_EMISSION','X3M_SCREEN_EMISSION_BOUND','X3M_SCREEN_EMISSION_GAIN','X3M_SCREEN_EMISSION_TIMING')
         with tempfile.TemporaryDirectory() as directory:

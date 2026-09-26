@@ -2,7 +2,7 @@
 
 **Removed 2026-09-25** (user decision): `--loading-intervals`, `X3M_LOADING_INTERVALS`, the interval recorder in
 `src/proxy/loading_trace_light.cpp` and its fixture, runner, host test and analyzer are gone; this ledger is history
-(`docs/verification/launcher-options-inventory.md`, "4. Removed 2026-09-25").
+(`docs/verification/launcher-options-inventory.md`, "4. Removed").
 
 Owning mechanism and limits:
 [loading observations](../reverse-engineering/loading-observations.md#bounded-interval-recorder-for-the-next-consolidated-diagnostic-2026-09-15).

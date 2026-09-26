@@ -1,0 +1,242 @@
+{
+"binaries": {
+"build/d3d9.dll": "272a92a0149220dd62f7fa587ac98c033fc1e7af953bf6d6236afe0cbfd64e88",
+"verification/probe/build/motion-output-seam/d3d9.dll": "df5a8313edc2846bd36f8cd3f0745ca7a702b258789378e3cc9c2ebcafa6334f",
+"verification/probe/build/motion_output_fixture.exe": "48451cf489852ef820f747cff4845d69651523227a866cdc410e39cc0f317bc8"
+},
+"cases": {
+"production-burst-lazy": {
+"checks": 41,
+"exit": 0
+},
+"seam-exit-path": {
+"checks": 8,
+"exit": 0
+},
+"seam-lightmap-far-fade-floor2": {
+"checks": 56,
+"exit": 0
+},
+"seam-lightmap-far-fade-off": {
+"checks": 56,
+"exit": 0
+},
+"seam-lightmap-far-fade-on": {
+"checks": 56,
+"exit": 0
+},
+"seam-lightmap-widen-k2": {
+"checks": 498,
+"exit": 0
+},
+"seam-lightmap-widen-k3": {
+"checks": 503,
+"exit": 0
+},
+"seam-lightmap-widen-k3-aniso": {
+"checks": 503,
+"exit": 0
+},
+"seam-lightmap-widen-k3b1": {
+"checks": 503,
+"exit": 0
+},
+"seam-lightmap-widen-k4": {
+"checks": 508,
+"exit": 0
+},
+"seam-lightmap-widen-off": {
+"checks": 472,
+"exit": 0
+},
+"seam-lightmap-widen-programs": {
+"checks": 80,
+"exit": 0
+},
+"seam-log-tiers": {
+"checks": 57,
+"exit": 0
+},
+"seam-ownership-lightmap-far-fade-on": {
+"checks": 56,
+"exit": 0
+},
+"seam-ownership-shadow-replay-adaptive-big": {
+"checks": 333,
+"exit": 0
+},
+"seam-ownership-shadow-replay-adaptive-reuse": {
+"checks": 336,
+"exit": 0
+},
+"seam-ownership-shadow-replay-adaptive-small": {
+"checks": 333,
+"exit": 0
+},
+"seam-ownership-shadow-replay-adaptive-swap": {
+"checks": 336,
+"exit": 0
+},
+"seam-ownership-shadow-replay-cascades": {
+"checks": 278,
+"exit": 0
+},
+"seam-ownership-shadow-replay-cascades-alpha-on": {
+"checks": 283,
+"exit": 0
+},
+"seam-ownership-shadow-replay-cascades-casters-20": {
+"checks": 278,
+"exit": 0
+},
+"seam-ownership-shadow-replay-cascades-poll-agree": {
+"checks": 281,
+"exit": 0
+},
+"seam-ownership-shadow-replay-cascades-poll-disagree": {
+"checks": 281,
+"exit": 0
+},
+"seam-ownership-shadow-replay-cascades-poll-null": {
+"checks": 281,
+"exit": 0
+},
+"seam-ownership-shadow-replay-cascades-poll-refusals": {
+"checks": 281,
+"exit": 0
+},
+"seam-ownership-shadow-replay-casters-2": {
+"checks": 239,
+"exit": 0
+},
+"seam-ownership-shadow-replay-casters-20": {
+"checks": 239,
+"exit": 0
+},
+"seam-ownership-shadow-replay-casters-8": {
+"checks": 239,
+"exit": 0
+},
+"seam-ownership-shadow-replay-far-refused": {
+"checks": 239,
+"exit": 0
+},
+"seam-ownership-shadow-replay-ladder-corvette": {
+"checks": 373,
+"exit": 0
+},
+"seam-ownership-shadow-replay-ladder-corvette-static": {
+"checks": 373,
+"exit": 0
+},
+"seam-ownership-shadow-replay-ladder-destroyer": {
+"checks": 373,
+"exit": 0
+},
+"seam-ownership-shadow-replay-ladder-shrink": {
+"checks": 376,
+"exit": 0
+},
+"seam-ownership-shadow-replay-no-cascades": {
+"checks": 103,
+"exit": 0
+},
+"seam-ownership-shadow-replay-off": {
+"checks": 100,
+"exit": 0
+},
+"seam-ownership-shadow-replay-on": {
+"checks": 239,
+"exit": 0
+},
+"seam-ownership-shadow-replay-sun-programs": {
+"checks": 241,
+"exit": 0
+},
+"seam-ownership-shadow-replay-wide": {
+"checks": 239,
+"exit": 0
+},
+"seam-ownership-taa-shadow-replay-off": {
+"checks": 123,
+"exit": 0
+},
+"seam-ownership-taa-shadow-replay-on": {
+"checks": 262,
+"exit": 0
+},
+"sun-shadow-apply-cascades": {
+"checks": 4570,
+"exit": 0
+},
+"sun-shadow-apply-cascades-5": {
+"checks": 3239,
+"exit": 0
+},
+"sun-shadow-apply-cascades-5-faces": {
+"checks": 2991,
+"exit": 0
+},
+"sun-shadow-apply-cascades-5-faces-slope": {
+"checks": 2991,
+"exit": 0
+},
+"sun-shadow-apply-cascades-5-slope": {
+"checks": 3239,
+"exit": 0
+},
+"sun-shadow-apply-cascades-slope": {
+"checks": 4570,
+"exit": 0
+}
+},
+"selected_cases": [
+"production-burst-lazy",
+"seam-exit-path",
+"seam-lightmap-far-fade-floor2",
+"seam-lightmap-far-fade-off",
+"seam-lightmap-far-fade-on",
+"seam-lightmap-widen-k2",
+"seam-lightmap-widen-k3",
+"seam-lightmap-widen-k3-aniso",
+"seam-lightmap-widen-k3b1",
+"seam-lightmap-widen-k4",
+"seam-lightmap-widen-off",
+"seam-lightmap-widen-programs",
+"seam-log-tiers",
+"seam-ownership-lightmap-far-fade-on",
+"seam-ownership-shadow-replay-adaptive-big",
+"seam-ownership-shadow-replay-adaptive-reuse",
+"seam-ownership-shadow-replay-adaptive-small",
+"seam-ownership-shadow-replay-adaptive-swap",
+"seam-ownership-shadow-replay-cascades",
+"seam-ownership-shadow-replay-cascades-alpha-on",
+"seam-ownership-shadow-replay-cascades-casters-20",
+"seam-ownership-shadow-replay-cascades-poll-agree",
+"seam-ownership-shadow-replay-cascades-poll-disagree",
+"seam-ownership-shadow-replay-cascades-poll-null",
+"seam-ownership-shadow-replay-cascades-poll-refusals",
+"seam-ownership-shadow-replay-casters-2",
+"seam-ownership-shadow-replay-casters-20",
+"seam-ownership-shadow-replay-casters-8",
+"seam-ownership-shadow-replay-far-refused",
+"seam-ownership-shadow-replay-ladder-corvette",
+"seam-ownership-shadow-replay-ladder-corvette-static",
+"seam-ownership-shadow-replay-ladder-destroyer",
+"seam-ownership-shadow-replay-ladder-shrink",
+"seam-ownership-shadow-replay-no-cascades",
+"seam-ownership-shadow-replay-off",
+"seam-ownership-shadow-replay-on",
+"seam-ownership-shadow-replay-sun-programs",
+"seam-ownership-shadow-replay-wide",
+"seam-ownership-taa-shadow-replay-off",
+"seam-ownership-taa-shadow-replay-on",
+"sun-shadow-apply-cascades",
+"sun-shadow-apply-cascades-5",
+"sun-shadow-apply-cascades-5-faces",
+"sun-shadow-apply-cascades-5-faces-slope",
+"sun-shadow-apply-cascades-5-slope",
+"sun-shadow-apply-cascades-slope"
+],
+"status": "PARTIAL"
+}

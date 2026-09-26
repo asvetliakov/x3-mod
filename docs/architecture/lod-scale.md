@@ -1,6 +1,6 @@
 # LOD threshold scale (`--lod-scale`, `X3M_LOD_SCALE`)
 
-**Removed 2026-09-25** (user decision): `--lod-scale`, `X3M_LOD_SCALE` and `src/proxy/lod_scale.*` are gone; the merged-LOD overlay replaced its purpose (`docs/verification/launcher-options-inventory.md`, "4. Removed 2026-09-25").
+**Removed 2026-09-25** (user decision): `--lod-scale`, `X3M_LOD_SCALE` and `src/proxy/lod_scale.*` are gone; the merged-LOD overlay replaced its purpose (`docs/verification/launcher-options-inventory.md`, "4. Removed").
 
 Default off. `tools/manage.py launch --lod-scale <factor>` (0.25..4.0) scales
 every mesh LOD switch distance of the engine's threshold loop by `factor`;

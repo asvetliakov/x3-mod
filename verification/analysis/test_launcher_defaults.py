@@ -1,6 +1,6 @@
 """Stand-command promotion (user decision 2026-09-25): tools/manage.py launch with no options produces the
 environment of the Run 84 A stand command minus its telemetry/debug options, plus --music-keep and
---shadow-alpha-casters on (docs/verification/launcher-options-inventory.md, "Defaults promoted"). Since the logging
+--shadow-alpha-casters on (docs/verification/launcher-options-inventory.md, "Promoted defaults (2026-09-25)"). Since the logging
 tiers (2026-09-26, docs/architecture/logging-tiers.md) the stand's telemetry/debug options are --debug --perf, which add
 X3M_DEBUG=1 / X3M_PERF=1 and nothing else; the launcher sends no logging variable otherwise.
 
@@ -21,8 +21,8 @@ from pathlib import Path
 from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
-# The Run 84 A stand command without --loading-intervals (removed 2026-09-25) and with its telemetry/debug options as the
-# two logging groups (2026-09-26).
+# The Run 84 A stand command without --loading-intervals (removed 2026-09-25), with its telemetry/debug options as the
+# two logging groups and without --capture-start / --capture-delay (both removed 2026-09-26).
 STAND = ('--direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa '
          '--debug --perf --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 '
          '--crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --screen-emission-additive 2 '
@@ -32,13 +32,13 @@ STAND = ('--direct --camera chase --chase-view-restore --ownership --object-trac
          '--shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 '
          '--shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 '
          '--light-map-far-fade 80,220 --motion-rt-mode lazy --volumetric-fog 0.02 '
-         '--volumetric-fog-cards replace --volumetric-fog-range stored --capture-start 999999 '
-         '--capture-frames 8 --capture-delay 300 --cull-small-parts 4').split()
+         '--volumetric-fog-cards replace --volumetric-fog-range stored '
+         '--capture-frames 8 --cull-small-parts 4').split()
 # The stand command since 2026-09-26 (docs/verification/user-runs.md, "Stand command").
 STAND_SHORT = '--direct --debug --perf'.split()
 EXPECTED_EMPTY = {
     'X3M_BLOOM_SOURCE_CLAMP': '1.0', 'X3M_BOLT_FOOTPRINT': '3,12', 'X3M_CAMERA': 'chase', 'X3M_CAMERA_CUT_DEG': '20.0',
-    'X3M_CAPTURE_DELAY': '300', 'X3M_CAPTURE_FRAMES': '8', 'X3M_CAPTURE_START': '999999', 'X3M_CHASE_COMBAT_TIGHTNESS': '0.0',
+    'X3M_CAPTURE_FRAMES': '8', 'X3M_CAPTURE_START': '999999', 'X3M_CHASE_COMBAT_TIGHTNESS': '0.0',
     'X3M_CHASE_DISTANCE_SCALE': '1.05', 'X3M_CHASE_FOV_COMPENSATE': '1', 'X3M_CHASE_HUD_ANCHOR': 'forward',
     'X3M_CHASE_OFFSET_Y': '0.5', 'X3M_CHASE_PITCH_DOWN_DEG': '0.5', 'X3M_CHASE_SCENE_FIX': '0',
     'X3M_CHASE_VIEW_RESTORE': '1', 'X3M_COLLIDE_BOX_CULL': '1', 'X3M_COLLIDE_MEMO': '1', 'X3M_COLLIDE_SAT_SSE2': '1',
@@ -121,8 +121,7 @@ OPT_OUTS = (
     (('--volumetric-fog-range', 'legacy'), 'X3M_VOLUMETRIC_FOG_RANGE', 'legacy'),
     (('--cull-small-parts', '0'), 'X3M_CULL_SMALL_PARTS_PX', None),
     (('--no-music-keep',), 'X3M_MUSIC_KEEP', None),
-    (('--capture-start', '120'), 'X3M_CAPTURE_START', '120'),
-    (('--capture-delay', '0'), 'X3M_CAPTURE_DELAY', None),
+    (('--capture-frames', '16'), 'X3M_CAPTURE_FRAMES', '16'),
 )
 
 
@@ -240,7 +239,7 @@ class LauncherDefaults(unittest.TestCase):
             self.assertNotIn('X3M_TAA_K', data['env']); self.assertNotIn('X3M_TAA_SENTINEL', data['env'])
 
     def test_removed_options_are_unknown_and_their_variables_dropped(self):
-        # docs/verification/launcher-options-inventory.md, "Removed 2026-09-25": every removed option is a plain unknown
+        # docs/verification/launcher-options-inventory.md, "4. Removed": every removed option is a plain unknown
         # argument (exit 2), and none of their variables survives from an inherited shell environment.
         for args in (('--taa-current-filter',), ('--taa-line-filter',), ('--taa-thin-clip',), ('--taa-adaptive-weight',), ('--taa-region-hold',),
                      ('--volumetric-fog-look', 'L1'), ('--lod-scale', '2'), ('--linear-materials',), ('--material-fill', '0.05'),
@@ -250,7 +249,8 @@ class LauncherDefaults(unittest.TestCase):
                      ('--hull-emitters',), ('--hull-emission-gain', '2'), ('--fog-shadow-pass', 'on'), ('--fog-far-bins', '24'),
                      ('--taa-history-taps', '16'), ('--taa-thin-region-gate', 'screen'), ('--taa-thin-region-source', 'both'),
                      ('--mesh-cache',), ('--depth-copy',), ('--scene-depth-capture',), ('--motion-capture',), ('--finite-positions',),
-                     ('--loading-intervals',), ('--audio-sites',), ('--profile-raw',), ('--cull-small-parts-scope', 'bodies')):
+                     ('--loading-intervals',), ('--audio-sites',), ('--profile-raw',), ('--cull-small-parts-scope', 'bodies'),
+                     ('--capture-start', '120'), ('--capture-delay', '0')):  # the last two removed 2026-09-26
             with self.subTest(args=args):
                 code, _, error = self.launch(*args)
                 self.assertEqual(code, 2, args)

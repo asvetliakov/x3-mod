@@ -18,6 +18,10 @@
    "1",
    null
   ],
+  "X3M_CAPTURE_DELAY": [
+   "300",
+   null
+  ],
   "X3M_CULL_CENSUS": [
    "1",
    null
@@ -270,6 +274,10 @@
  "empty_vs_recorded_stand": {
   "X3M_CAMERA_LOG": [
    "1",
+   null
+  ],
+  "X3M_CAPTURE_DELAY": [
+   "300",
    null
   ],
   "X3M_CULL_CENSUS": [
@@ -541,8 +549,8 @@
   ]
  },
  "counts": {
-  "empty": 123,
-  "stand": 125,
+  "empty": 122,
+  "stand": 124,
   "recorded": 181
  },
  "checks": {

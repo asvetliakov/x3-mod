@@ -298,7 +298,7 @@ class WindowHookWiring(unittest.TestCase):
         self.assertIn('s.down = api.show_cursor(false);', core)
         capture = (ROOT / 'src/proxy/capture.cpp').read_text()
         for needle in ('window_trace::attach(window,devices.at(d)->id);', 'window_trace::detach(devices.at(d)->id);forget_cached_device();devices.erase(d);',
-                       'window_trace::present(ctx.stats.window,ctx.id,ctx.frame,ctx.stats.markers);',
+                       'window_trace::present(ctx.stats.window,ctx.id,ctx.frame);',
                        'window_trace::initialize(telemetry::enabled(),&loading_trace::light::cursor_drain);', 'loading_trace::light::cursor_observe(true);'):
             self.assertIn(needle, capture)
         present = capture[capture.index('HRESULT WINAPI present(IDirect3DDevice9* d'):]

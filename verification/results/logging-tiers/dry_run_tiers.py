@@ -14,6 +14,9 @@ Since the second step of 2026-09-26 (developer options trimmed to four) --debug 
 variables of the removed options (X3M_TELEMETRY_DRAW and the engine-stamp families) are expanded by the DLL from X3M_DRAW_TRACE
 (--draw-trace, which needs a group), never sent by the launcher. The
 default and vanilla launches send one variable fewer (X3M_VOLUMETRIC_FOG_EVERYWHERE=0 is gone with its option).
+Since the third step of 2026-09-26 (--capture-start / --capture-delay removed, F8 under --debug the only capture trigger) the
+default launch sends one variable fewer (X3M_CAPTURE_DELAY=300, in REMOVED_VARIABLES; X3M_CAPTURE_START=999999 stays
+launcher-sent as "never") and vanilla one fewer (X3M_CAPTURE_START=120: no proxy loads under --vanilla).
 Writes dry-runs.json beside this script.
 
     python3 verification/results/logging-tiers/dry_run_tiers.py
@@ -35,7 +38,9 @@ FORMS = {'default': [], 'debug': ['--debug'], 'perf': ['--perf'], 'debug_perf': 
 
 
 # Removed with their options on 2026-09-26 (REMOVED_VARIABLES): the base sent them as explicit off values.
-REMOVED_2026_09_26 = {'X3M_MESH_ADJACENCY_DUMP', 'X3M_VOLUMETRIC_FOG_EVERYWHERE'}
+REMOVED_2026_09_26 = {'X3M_MESH_ADJACENCY_DUMP', 'X3M_VOLUMETRIC_FOG_EVERYWHERE', 'X3M_CAPTURE_DELAY'}
+# No longer sent under --vanilla since 2026-09-26 (no proxy loads there); modded launches still send 999999.
+VANILLA_NOT_SENT = {'X3M_CAPTURE_START'}
 
 
 def tiered():
@@ -92,7 +97,7 @@ def main():
         '--perf --draw-trace adds exactly X3M_PERF=1 and X3M_DRAW_TRACE=1': result['perf_draw_trace_vs_default'] == {'X3M_PERF': [None, '1'], 'X3M_DRAW_TRACE': [None, '1']},
         'no functional variable changed against the base (default)': set(result['default_vs_base']) <= names | REMOVED_2026_09_26
             and all(b is None for a, b in result['default_vs_base'].values()),
-        'no functional variable changed against the base (vanilla)': set(result['vanilla_vs_base']) <= names | REMOVED_2026_09_26
+        'no functional variable changed against the base (vanilla)': set(result['vanilla_vs_base']) <= names | REMOVED_2026_09_26 | VANILLA_NOT_SENT
             and all(b is None for a, b in result['vanilla_vs_base'].values()),
         'inherited tiered values dropped': result['inherited_tiered_vs_default'] == {},
     }

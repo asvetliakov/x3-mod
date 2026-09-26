@@ -61,7 +61,6 @@ bool launch_armed_ = false;
 core::SetCursorSummary setcursor_;
 std::uint32_t frame_mousemove_ = 0, frame_ncmousemove_ = 0, frame_setcursor_ = 0;
 std::uint32_t cursor_seen_ = 0;
-unsigned long long markers_seen_ = 0;
 unsigned burst_left_ = 0, burst_index_ = 0;
 
 Entry& push(Kind kind) {
@@ -191,7 +190,7 @@ void initialize(bool telemetry, CursorSource source) {
     cursor_source_ = enabled_ ? source : nullptr;
     if (requested_)
         log("window_trace_scope requested=1 enabled=%u telemetry=%u reason=%s hooks=callwndproc,callwndprocret,getmessage cursor_iat=%u snapshot_frames=%u ring=%u ring_ms=%u "
-            "setcursor_ms=%u flush=first_present,transition,marker excludes=dinput_user32,cocoa",
+            "setcursor_ms=%u flush=first_present,transition excludes=dinput_user32,cocoa",
             unsigned(enabled_), unsigned(telemetry), enabled_ ? "ok" : "telemetry_off", unsigned(cursor_source_ != nullptr), core::snapshot_frames, ring_capacity,
             core::ring_ms, core::setcursor_interval_ms);
 }
@@ -290,7 +289,7 @@ void shutdown() noexcept {
     if (HHOOK h = take(call_hook_)) UnhookWindowsHookEx(h);
     SetLastError(saved_error);
 }
-void present(HWND window, unsigned long long device, unsigned long long frame, unsigned long long markers) {
+void present(HWND window, unsigned long long device, unsigned long long frame) {
     if (!observed_.installed || device != hook_device_) return; // options off, hooks refused or another device: two loads per Present
     const DWORD saved_error = GetLastError();
     if (GetCurrentThreadId() != hook_thread_) {
@@ -311,10 +310,8 @@ void present(HWND window, unsigned long long device, unsigned long long frame, u
             e.a = frame_mousemove_; e.b = frame_ncmousemove_; e.c = frame_setcursor_; e.d = counts.set; e.e = counts.pos; e.f = counts.dropped;
             frame_mousemove_ = frame_ncmousemove_ = frame_setcursor_ = 0;
         }
-        const bool marker = markers != markers_seen_;
-        markers_seen_ = markers;
-        if (first_present_pending_ || transition_pending_ || marker) {
-            flush(first_present_pending_ ? "first_present" : transition_pending_ ? "transition" : "marker", frame);
+        if (first_present_pending_ || transition_pending_) {
+            flush(first_present_pending_ ? "first_present" : "transition", frame);
             if (first_present_pending_ || transition_pending_) { burst_left_ = core::snapshot_frames; burst_index_ = 0; }
             first_present_pending_ = transition_pending_ = false;
         }

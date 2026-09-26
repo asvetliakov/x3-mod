@@ -1,55 +1,12 @@
-# Launcher options and proxy environment inventory (2026-09-25)
+# Launcher options and proxy environment inventory
 
-Read-only survey at main `a505d758`. Sources: `tools/manage.py` (the `launch` parser, lines 583-849, and the
-environment resolution, lines 1666-2160), the `GetEnvironmentVariableW(L"X3M_...")` reads under `src/proxy/` and
-`src/ownership/`, `docs/goals.md`, `docs/status.md`, the cleanup inventory
-(`docs/architecture/cleanup-inventory-2026-09-22.md`), the feature ledgers under `docs/verification/` and the
-Run 84 A stand command in `docs/archive/user-runs-completed.md:2409`. Every line reference is `file:line` at
-`a505d758`. "Measured" figures are grep counts; the classification is read from the help text, the resolution code
-and the ledgers. Where the effect of an option is not clear from those, the row says "unclear" and names the read
-site.
+Measured from `tools/manage.py` and the DLL reads (`GetEnvironmentVariableW(L"X3M_...")` under `src/`) at main `bec1afb5` with the in-game key and capture-option removal of 2026-09-26; a row's older `file:line` cites point at `a505d758`.
 
-Updated 2026-09-25 after the stand-command promotion ("Defaults promoted" below): the tables and the count summary
-describe the launcher after it; line references into `tools/manage.py` in the older rows still point at `a505d758`.
-The telemetry/debug options of the stand and the diagnostic rows of section 3 were then merged into one section-2
-table (each option once, both rows' cites kept), leaving section 3 to functional opt-ins, A/B switches and value knobs.
-Updated again on 2026-09-25 after the obsolete-option removal: the former section 4 and its removal list became
-"4. Removed 2026-09-25"; removed options have no row in sections 1-3 and 5.
-
-## Count summary
-
-| Figure | Value | How |
-|---|---|---|
-| Options registered on the `launch` parser | 182 option strings since the second step of 2026-09-26 (13 removed: 12 developer options and `--volumetric-fog-everywhere`; `--draw-trace` added; 183 `add_argument('--` calls in `tools/manage.py`, 195 before; measured by `options_tiers.py` and grep). Earlier: 194 option strings since the logging tiers of 2026-09-26 (19 removed, `--telemetry` and `--frame-timing` of them re-registered as hidden refusal stubs, `--debug` and `--perf` added; 195 `add_argument('--` calls in `tools/manage.py`, measured by `verification/results/logging-tiers/options_tiers.py`). Earlier: 209 option strings since the obsolete-option removal of 2026-09-25 (248 at `ae16da06`; 39 gone, 31 live options and the 8 suppressed refusal stubs, so none remains; parser parsed at both commits by `verification/results/launcher-defaults/removed_options_2026-09-25.py`, measured; 210 `add_argument('--` calls in `tools/manage.py`, 245 before, measured). Earlier: 247 since the removal of `--taa-k` and `--taa-sentinel` on 2026-09-25 (user decisions: k derived from the write-back exposure only, sentinel policy always auto; `--taa-k` gone, `--taa-sentinel` kept registered as a suppressed refusal stub because argparse would otherwise abbreviate it to `--taa-sentinel-stabiliser`; 246 → 245 `add_argument('--` calls in `tools/manage.py`, measured); 248 after the single map's removal the same day (the four `--shadow-replay-size/-extent/-depth-half/-cap` options gone; 250 → 246 `add_argument('--` calls in `tools/manage.py`, measured); 252 after the promotion earlier that day (248 `add_argument('--` calls in the `launch` parser plus the 4 retired names registered by a loop; 24 of them are the `--no-<name>` opt-outs added with the promotion); before: 228 (224 calls in `tools/manage.py:583-849` plus the 4 retired names, `:676-677`); includes 3 shared with other actions (`--game-dir`, `--bottle`, `--dll-source`, `:583-585`) and 8 suppressed refusal stubs (7 before `--taa-sentinel`) | measured (grep) |
-| Options the launcher turns on or fills in by itself on a modded launch (section 1) | 77 table rows, 119 distinct option names in the Name cells since 2026-09-26 (the value knobs of section-1 defaults moved in from section 3, each right after its default; the capture row moved to section 2; the `--frame-end-stride`, `--game-phase-threshold-ms` and `--profile-interval-us` rows and `--camera-log` dropped; counted by `verification/results/logging-tiers/inventory_scan.py`, which counts every `--name` in a Name cell, off values included, so its figures are not comparable with the hand counts below). Earlier: 84 options in 69 table rows (recounted 2026-09-26: `--motion-jitter`, implied by `--taa`, had no row) since the removal of `--taa-thin-region-gate`, `--taa-thin-region-source`, `--fog-far-bins` and `--cull-small-parts-scope` on 2026-09-25 (three rows dropped, one name from the cull row), 9 `_DEFAULT` markers (`X3M_TAA_THIN_REGION_SOURCE_DEFAULT` gone); counted from the edit, inferred. Before: 87 options since `--taa-sentinel` was removed on 2026-09-25 (policy always auto, row dropped); 88 after the single map's removal the same day (92 after the promotion the same day: 58 before, plus 29 promoted from the stand command that were not section-1 rows, plus the three capture values plus `--music-keep` and `--shadow-alpha-casters`), in 73 table rows (74 before the `--taa-sentinel` row left; the `--shadow-replay-*` row left with the single map, 2026-09-25); still 10 carry a `_DEFAULT` marker (`X3M_WINDOW_MONITOR_RECT_DEFAULT`, `X3M_ORIGINAL_FILL_DEFAULT`, `X3M_LOD_OCCLUSION_DEFAULT`, `X3M_TAA_BOX_RESOLUTION_DEFAULT`, `X3M_TAA_FAR_GATE_DEFAULT`, `X3M_TAA_FAR_CLIP_DEFAULT`, `X3M_TAA_THIN_VOTE_DEFAULT`, `X3M_FADE_RT2_OWNER_DEFAULT`, `X3M_TAA_THIN_REGION_SOURCE_DEFAULT`, `X3M_SUN_OCCLUSION_DEFAULT`) | counted from section 1 |
-| Telemetry/debug options, all opt-in (section 2) | 2 group options, 5 explicit developer rows and the F8 capture row (8 rows, 13 option names, counted by `inventory_scan.py`) since the second step of 2026-09-26. Earlier: 2 group options (`--debug`, `--perf`) and 12 explicit rows with 21 option names since the logging tiers of 2026-09-26 (19 options replaced by the groups; `--volumetric-fog-everywhere` moved to section 3; the stand command is `--direct --debug --perf`; counted from the edit). Before: 29 rows, 42 option names since `--loading-intervals`, `--audio-sites` and `--profile-raw` were removed on 2026-09-25; 9 options of the stand command (`--loading-intervals` and `--shadow-retention-census` left it that day) plus the prefix (counted from the edit). Before: 32 rows, 45 option names (the old section-2 rows merged with the diagnostic rows of section 3, 2026-09-25); 11 of the options (14 argv tokens) plus the `X3M_MOTION_FRAME_LOG=1` prefix are in the stand command, marked `in the stand` (the three capture options were promoted too, 2026-09-25). Before 2026-09-25 the stand command carried 52 options, 77 argv tokens, 7 of them redundant with a default already in effect | counted (table rows and distinct option names in the Name cells; stand from the Run 84 A command) |
-| Opt-in functional options, A/B switches and value knobs of features (section 3) | 10 rows, 13 option names since 2026-09-26 (true opt-ins and the launcher rows only: the value knobs moved to section 1, the capture row to section 2, the A/B opt-out row deleted in favour of the column key, `--volumetric-fog-everywhere` removed; counted by `inventory_scan.py`). Earlier: 24 rows, 96 option names since `--volumetric-fog-everywhere` moved here from section 2 (2026-09-26). Before: 23 rows, 95 option names since the removal of 2026-09-25 (the `--cull-small-parts-scope`, `--fog-shadow-pass` and `--fog-far-bins 24` rows and the two screen-gate names of the A/B row; counted from the edit). Before: 26 rows, 100 option names (the `--taa-sentinel 1 / 2` row dropped 2026-09-25, 27 / 101 before; the fog-families `--dry-run` counted with the launch one; the four `--shadow-replay-*` names removed with the single map on 2026-09-25 are not listed, see `docs/architecture/directional-shadows.md` "Single map removed", nor is `--taa-k`, removed the same day by user decision, see `docs/architecture/temporal-integration.md` "Derivation of k"; 28 rows / 102 names before); before the telemetry merge 58 rows, then given as 94 (96 before `--music-keep` and `--shadow-alpha-casters` moved to section 1) | counted (table rows and distinct option names in the Name cells) |
-| Removed on 2026-09-25 (section 4, formerly "Obsolete, superseded or failed", 37 rows) | 39 option strings (31 live options, 8 refusal stubs); 17 of the 38 `REMOVED_VARIABLES` stay DLL reads for the fixtures (launcher-only removals), 21 have no DLL read left | measured (`removed_options_2026-09-25.py`) |
-| Removed on 2026-09-26 (section 4, second list) | 13 option strings (`--telemetry-draw`, `--game-phases`, `--game-phase-threshold-ms`, `--pass-phases`, `--residual-phases`, `--light-phases`, `--submit-phases`, `--loop-phases`, `--frame-end-stride`, `--frame-timing-state-stamps`, `--mesh-adjacency-dump`, `--collide-memo-verify`, `--volumetric-fog-everywhere`) and the `verify` choices of `--mesh-adjacency` / `--resource-read`; 6 folded into `--draw-trace` (expanded in the DLL), 2 removed with their DLL reads, the rest fixture-only | measured (`options_tiers.py`) |
-| `X3M_*` variables the DLL reads that `manage.py` never sets (section 5) | Two lists since 2026-09-26: 14 fixture-seam rows and 6 logging-internal rows (20 rows, `inventory_scan.py`); removed that day with their values baked: `X3M_CHASE_MAX_DT`, the 26 `X3M_FOG_LOOK_*` and six `X3M_FOG_MOTES_*` (33 names, all in `REMOVED_VARIABLES`, 73 names). Earlier: 18 named since the logging tiers of 2026-09-26 (`X3M_SHADOW_TIMING`, `X3M_SHADOW_ROWS` and `X3M_LOG_FILE` added; the launcher only drops an inherited value), before: 15 named, the 17 variables of the launcher-only removals (one row) and the 24 `X3M_FOG_LOOK_<NAME>` since 2026-09-25 (`X3M_HDR_EV_OFFSET`, `X3M_VOLUMETRIC_FOG_ANISOTROPY`, the three ignored reads and the three penumbra fields gone); before: 20 named plus the 27 `X3M_FOG_LOOK_<NAME>` and 6 `X3M_FOG_MOTES_<NAME>` tunables (of which `X3M_FOG_MOTES_MAX_PX` is set by the launcher) and the `X3M_FIXTURE_*` fault switches | measured (set difference of the grep lists) |
-| Variables `manage.py` names that no DLL code reads | Since 2026-09-26: the 4 launcher-side names plus 56 of the 73 `REMOVED_VARIABLES` (35 added that day: `X3M_MESH_ADJACENCY_DUMP`, `X3M_VOLUMETRIC_FOG_EVERYWHERE` and the 33 baked names of section 5). Earlier: 4 launcher-side (`X3M_BOTTLE`, `X3M_SOURCE_COMMIT`, `X3M_VOICE_DECODER_REPO`, `X3M_FOG_FAMILIES`) plus the 21 of `REMOVED_VARIABLES` without a DLL read, only popped from an inherited environment (2026-09-25; before: 8, the retired TAA names popped at `tools/manage.py:1770-1772`) | measured |
-
-Column key for sections 1-3 (`Name | Value | Type | Description/Notes`): **Name** is the launcher option family with
-its environment variables in parentheses. **Value** is the value in force on a default modded launch (section 1), the
-DLL default or "off" (section 3), or, in section 2 (telemetry/debug, all opt-in), `in the stand` with the value the
-stand command passes, or `off` / the DLL default for an option the stand does not carry. **Type** is one of `default (launcher)` (the
-launcher sends it on every modded launch, or derives it from other options), `default (DLL)` (on without any
-variable), `promoted 2026-09-25` (a stand-command option the launcher fills in since that date), `telemetry`, `opt-in`,
-`value knob` (a tunable of a default, listed right after it in section 1), `value knob (DLL default)` (a tunable the
-launcher never sends, so the DLL default is in force), `capture knob` (the F8 capture controls, section 2) or `A/B
-switch` (an opt-out kept for comparison). Every section-1 default has its opt-out, `--no-<name>` or the explicit off
-value named in its row; the opt-outs have no rows of their own (since 2026-09-26). **Description/Notes** gives,
-separated by semicolons, what it does, the acceptance verdict with its date and `docs/goals.md` or ledger citation,
-then the launcher/DLL default details, requirements, conflicts and `file:line`. Section 4 keeps its own columns; there
-**default state** is one of `launcher default`, `DLL default`, `stand only` (the user passes it every time; not a
-launcher default), `opt-in`, `opt-out via --no-...` or an explicit off value.
+Columns of sections 1-3 (`Name | Value | Type | Description/Notes`): **Name** is the option family with its variables in parentheses; **Value** is the value on a default modded launch (section 1), `in the stand` or off (section 2), or the DLL default (section 3); **Type** is `default (launcher)`, `default (DLL)`, `promoted 2026-09-25`, `telemetry`, `opt-in`, `value knob` (a tunable listed after its default), `value knob (DLL default)` or `capture knob`; every section-1 default names its opt-out (`--no-<name>` or an explicit off value) in its row; **Description/Notes** gives what it does, the verdict with its citation, then defaults, requirements and `file:line`.
 
 ## 1. Defaults
 
-Options the launcher turns on by itself on a modded launch (with or without a `_DEFAULT` marker), and DLL behaviours
-that are on without any variable. A "modded launch" is `launch` without `--vanilla`; `--vanilla`
-(`tools/manage.py:596`) loads the builtin d3d9 (`d3d9=b`, `:2149`) and the launcher drops or refuses the proxy
-options (per-option notes below).
+Options the launcher turns on by itself on a modded launch (`launch` without `--vanilla`), and DLL behaviours on without any variable.
 
 | Name | Value | Type | Description/Notes |
 |---|---|---|---|
@@ -77,8 +34,8 @@ options (per-option notes below).
 | `--state-shadow auto / on / off` (`X3M_STATE_SHADOW`) | auto (variable unset) | default (DLL) | Render-state configuration of the route (hybrid unhook); `docs/architecture/state-call-fast-path.md:359` (default since 2026-09-16); launcher `auto` leaves the variable unset (`:802`, `:1950-1952`); DLL auto (`capture.cpp:3635-3639`) |
 | `--hdr-dither on / off` (`X3M_HDR_DITHER`) | on | default (launcher) | Static +-0.5 code display dither of the FP16-to-8-bit write; Run 78 A run295-298 "dither accepted (rings gone)" (`user-runs-completed.md` row 78 A, 2026-09-24); launcher default on with `--hdr` (`:786`, `:1933`); DLL default off (`capture.cpp:3157-3160`) |
 | `--hdr-exposure`, `--hdr-ev-max`, `--hdr-ev-min`, `--hdr-ev`, `--hdr-ev-deadband`, `--hdr-edge-weight`, `--hdr-key-pull`, `--hdr-white-target`, `--hdr-meter-bg`, `--hdr-clamp`, `--hdr-decode`, `--hdr-look` (`X3M_HDR_*`) | auto; EV max 1.3; EV min -3; EV 0; deadband 0.25; edge weight 0.35; key pull 0.25; white target 0.9; meter bg 1/512; clamp 0; decode gamma2.2; look none | default (launcher) | Auto exposure capped at +1.3 EV and the meter rules; goal 5 Accepted (in game): "+1.3 EV ceiling is the launcher default" (`docs/goals.md:16`); launcher always forwards these values (`:787-801`, `:1931-1945`); DLL defaults Auto / 1.3 (`capture.cpp:3140-3145`); changing any of them requires `--hdr-tonemap` (`:1517`) |
-| `--hdr-ev-manual`, `--hdr-exposure fixed`, `--hdr-ev`, `--hdr-ev-min/max`, `--hdr-meter-bg`, `--hdr-white-target`, `--hdr-ev-deadband`, `--hdr-edge-weight`, `--hdr-key-pull`, `--hdr-clamp`, `--hdr-decode srgb / none` (`X3M_HDR_*`) | section-1 values (auto, EV max 1.3, ...) | value knob | Exposure and meter knobs (`:790-801`); goal 5: "the fixed-EV comparison stays on Ctrl+Shift+F9" (`docs/goals.md:16`); opt-in values |
-| `--hull-lightmap-gain G` (`X3M_HULL_LIGHTMAP_GAIN`) | 4 | default (launcher) | Gain on the light-map term of the original hull programs; run128 "very very good", launcher default 4 in the run42 candidate (`docs/goals.md:14`); launcher default 4 with `--hdr` (`:51`, `:781`, `:1909`); DLL default 1 = off (`capture.cpp:3344`); Ctrl+Shift+F4 toggles |
+| `--hdr-ev-manual`, `--hdr-exposure fixed`, `--hdr-ev`, `--hdr-ev-min/max`, `--hdr-meter-bg`, `--hdr-white-target`, `--hdr-ev-deadband`, `--hdr-edge-weight`, `--hdr-key-pull`, `--hdr-clamp`, `--hdr-decode srgb / none` (`X3M_HDR_*`) | section-1 values (auto, EV max 1.3, ...) | value knob | Exposure and meter knobs (`:790-801`); goal 5 (`docs/goals.md:16`); opt-in values |
+| `--hull-lightmap-gain G` (`X3M_HULL_LIGHTMAP_GAIN`) | 4 | default (launcher) | Gain on the light-map term of the original hull programs; run128 "very very good", launcher default 4 in the run42 candidate (`docs/goals.md:14`); launcher default 4 with `--hdr` (`:51`, `:781`, `:1909`); DLL default 1 = off (`capture.cpp:3344`) |
 | `--light-map-far-fade P0,P1[,G]` (`X3M_LIGHT_MAP_FAR_FADE`) | 80,220,1 | default (launcher) | Fades the light-map gain with distance; user flight preference 2026-09-20 (`:52`); `docs/status.md:107-108`; launcher default `80,220,1` when the gain is active (`:52`, `:783`, `:1466-1468`); DLL unset = off (`capture.cpp:3358-3360`); `--no-light-map-far-fade` opts out (`:784`) |
 | `--hull-emissive-widening K[,B]` (`X3M_HULL_EMISSIVE_WIDENING`) | 4 | default (launcher) | Widens the light-map fetch by its texel footprint, boosts thin emitters; run236/run237 accepted, 4 chosen (`user-runs-completed.md:2088`, 2026-09-22); launcher default 4 when the gain is active (`:57`, `:785`, `:1486-1492`); DLL unset = off (`capture.cpp:3385-3387`); `off` opts out |
 | `--media-cue-cache on / off` (`X3M_MEDIA_CUE_CACHE`) | on | default (launcher) | Negative cache for the sector selector's cue restart; default-on policy 2026-09-17 (`docs/verification/media-cues.md:271`); launcher default on (`:643-644`, `:1706-1707`); DLL needs the value 1 (`src/proxy/media_cue.cpp:283`); independent of `--telemetry` |
@@ -99,8 +56,8 @@ options (per-option notes below).
 | `--shadow-cascade-backface-from K / none` (`X3M_SHADOW_CASCADE_BACKFACE_FROM`) | every cascade with a world texel >= 8 u | default (DLL) | Far cascades replay back faces; `docs/architecture/shadow-cascades.md:270` implemented 2026-09-18, default on by texel; DLL default: every cascade whose world texel is >= 8 u (`:726`, `capture.cpp:2734-2740`); launcher forwards only when given |
 | `--shadow-cascade-drop-order submission / importance` (`X3M_SHADOW_CASCADE_DROP_ORDER`) | importance | promoted 2026-09-25 | What a cascade drops above its cap; goal 8 "drop order by importance" (`docs/goals.md:19`); launcher default (2026-09-25): `importance` whenever the cascades are on; DLL default submission (`capture.cpp:2728`); `--shadow-cascade-drop-order submission` = off |
 | `--fog-handover-step`, `--fog-handover-coldfill`, `--fog-handover-prefill`, `--fog-docked` (`X3M_FOG_HANDOVER_STEP/_COLDFILL/_PREFILL`, `X3M_FOG_DOCKED`) | on | default (launcher) | Cold-start hand-over of the stored fog after a sector change; docked view keeps the fog; Run 75 A run278 hand-over accepted; Run 77 B run288 docked load closed (rows 75 A, 77 B, 2026-09-23/24); launcher default on, always explicit (`:753-760`, `:1867-1870`); DLL `fog_default_on` = on unless 0 (`capture.cpp:3529-3532`); `--no-...` forms opt out; stored range only |
-| `--fog-dust-motes N[,SIZE[,STREAK]]` (`X3M_FOG_DUST_MOTES`, `X3M_FOG_MOTES_MAX_PX`) | 1300,3,128; MAX_PX 8 | default (launcher) | Near-camera dust motes in the stored fog; Run 70 B/B2 run264 accepted (row 70, 2026-09-23); goal 12; launcher default `1300,3,128` + `MAX_PX=8` under `--volumetric-fog-range stored` (`:42-43`, `:749`, `:1875-1879`); DLL default under the stored range (`capture.cpp:3598-3610`); `0` opts out; Ctrl+Alt+F11 toggles |
-| `--fog-dust-motes N,SIZE,STREAK` with `X3M_FOG_MOTES_MAX_PX` (the other mote tunables baked 2026-09-26, section 5) | 1300,3,128 | value knob | Mote tuning (`:749`); goal 12; Ctrl+Alt+F11 toggles in game (`:749`); `--fog-dust-motes 0` is the A/B opt-out of the default, restoring the earlier behaviour bit for bit |
+| `--fog-dust-motes N[,SIZE[,STREAK]]` (`X3M_FOG_DUST_MOTES`, `X3M_FOG_MOTES_MAX_PX`) | 1300,3,128; MAX_PX 8 | default (launcher) | Near-camera dust motes in the stored fog; Run 70 B/B2 run264 accepted (row 70, 2026-09-23); goal 12; launcher default `1300,3,128` + `MAX_PX=8` under `--volumetric-fog-range stored` (`:42-43`, `:749`, `:1875-1879`); DLL default under the stored range (`capture.cpp:3598-3610`); `0` opts out |
+| `--fog-dust-motes N,SIZE,STREAK` with `X3M_FOG_MOTES_MAX_PX` (the other mote tunables baked 2026-09-26, section 5) | 1300,3,128 | value knob | Mote tuning (`:749`); goal 12; `--fog-dust-motes 0` is the A/B opt-out of the default, restoring the earlier behaviour bit for bit |
 | `--fog-march-scale 2 / 4` (`X3M_FOG_MARCH_SCALE`) | 4 | default (launcher) | Quarter-resolution fog march; Run 77 C2 accepted scale 4 (`user-runs-completed.md:2196`, 2026-09-24); launcher default 4, always written (`:44`, `:752`, `:1861-1864`); DLL default "4" (`capture.cpp:3581-3583`); the look marches 40 far bins (the 24-bin variant was removed on 2026-09-25) |
 | `--volumetric-fog-cards`, `--volumetric-fog-range` (`X3M_VOLUMETRIC_FOG_CARDS/_RANGE`) | replace / stored | promoted 2026-09-25 | Fog card policy and field; goal 12: the accepted look is `replace` + `stored`, "still opt-in flags" (`docs/goals.md:23`); launcher default (2026-09-25): `replace` / `stored` with `--volumetric-fog`; `keep` / `legacy` are the off values; resolved by the 2026-09-25 promotion |
 | (no option) `X3M_MOTION_CUT_MEDIAN_PX`, `X3M_MOTION_CUT_MISSING` | 1e30 / 1 | default (launcher) | Global camera-cut heuristics of the resolve disabled by default; Run57 "global heuristic cuts disabled by default" (`docs/status.md:69-73`, 2026-09-21); launcher `setdefault` (`:1728-1733`), so a shell value survives as the diagnostic opt-in; DLL read `capture.cpp:3061-3062`; no launcher option exists for these two |
@@ -121,114 +78,51 @@ options (per-option notes below).
 | `--gz-buffer-kb N` (`X3M_GZ_BUFFER_KB`) | 256 KB | value knob | Chunk size of `--gz-buffer`; sent on every modded launch (`:657`, `:1954`); no verdict |
 | `--screen-emission-additive`, `--screen-emission-additive-alpha` (`X3M_SCREEN_EMISSION_ADDITIVE`, `..._ALPHA`) | 2; alpha 0 | promoted 2026-09-25 | Additive bullets above 1.0 with bloom alpha 0 (`:765`, `:767`); goal 3: bolts accepted run 26; alpha 0 accepted run 30 (`docs/goals.md:14-15`); launcher default (2026-09-25): 2 with `--motion-output --hdr`; alpha 0 with the additive bullets; `--no-screen-emission-additive` / `--no-screen-emission-additive-alpha` = off |
 | `--emission-source-gain` (`X3M_EMISSION_SOURCE_GAIN`) | 2 | promoted 2026-09-25 | Gain over the twenty effects pairs (`:772`); goal 3: engines respond, run 30 (`docs/goals.md:14`); launcher default (2026-09-25): 2 with `--hdr`; the hull guide lights take the same gain (`X3M_HULL_EMISSION_GAIN`); `--emission-source-gain 1` = off |
-| `--screen-emission-additive G`, `--emission-source-gain G`, `--hull-lightmap-gain G`, `--original-fill K`, `--bloom-source-clamp C` values | additive 2 / alpha 0, source gain 2, lightmap gain 4, fill 0.01, clamp 1.0 (section 1) | value knob | Alternative VALUES for section-1 defaults (`:765`, `:772`, `:781`, `:780`, `:789`); goals 3-6; value knobs of defaults; Ctrl+Shift+F4/F5/F6 toggle each family in game (`:765`, `:772`, `:781`); `--hull-lightmap-gain 1` and `--original-fill 0` are the A/B opt-outs of their defaults, restoring the earlier behaviour bit for bit |
+| `--screen-emission-additive G`, `--emission-source-gain G`, `--hull-lightmap-gain G`, `--original-fill K`, `--bloom-source-clamp C` values | additive 2 / alpha 0, source gain 2, lightmap gain 4, fill 0.01, clamp 1.0 (section 1) | value knob | Alternative VALUES for section-1 defaults (`:765`, `:772`, `:781`, `:780`, `:789`); goals 3-6; value knobs of defaults; `--hull-lightmap-gain 1` and `--original-fill 0` are the A/B opt-outs of their defaults, restoring the earlier behaviour bit for bit |
 | `--sun-shadow-lane`, `--shadow-replay-depth`, `--sun-shadow-apply` (`X3M_SUN_SHADOW_LANE`, `X3M_SHADOW_REPLAY_DEPTH`, `X3M_SUN_SHADOW_APPLY`) | on | promoted 2026-09-25 | Sun-share lane, caster depth replay, scene-end shadow application (`:711-714`); goal 8 Accepted (in game): "Still opt-in flags in the launcher ... not launcher defaults" (`docs/goals.md:19`); launcher default (2026-09-25); lane with `--motion-output --taa --hdr`, replay with `--motion-output --ownership`, apply with both; `--no-sun-shadow-lane` / `--no-shadow-replay-depth` / `--no-sun-shadow-apply` = off; without the replay the cascades, retention, alpha casters and fog stay off |
 | `--sun-shadow-bias-units`, `--sun-shadow-bias-clamp-texels`, `--sun-shadow-bias-slope-texels` (`X3M_SUN_SHADOW_BIAS_*`) | 0.53571875 / 20.97152 / 0.2 | value knob | Shadow compare biases of the sun-shadow apply (`:739-741`); `docs/verification/directional-shadows.md`; sent at these values on every modded launch (`:1847-1849`) |
 | `--shadow-cascades`, `--shadow-cascade-sizes`, `--shadow-cascade-records`, `--shadow-cascade-drop-order`, `--shadow-cascade-adaptive-c0`, `--shadow-caster-retention` (`X3M_SHADOW_CASCADE*`, `X3M_SHADOW_CASTER_RETENTION`) | cascades 250,1500,7500,37500,150000; sizes 2048,4096,4096,4096,2048; records 1024,1024,2048,4096,4096; drop order importance; adaptive c0 1.5; retention on | promoted 2026-09-25 | The accepted five-cascade set, importance drop, own-ship adaptive near cascade, static caster retention (`:720-735`); goal 8: "five cascades (250-150,000 units, 2048^2 each, drop order by importance), caster retention and footprint 8 flies in every stand command and was accepted through runs 65-67" (`docs/goals.md:19`); launcher default (2026-09-25): the five-cascade set with `--shadow-replay-depth`; records `1024,1024,2048,4096,4096` only with five cascades; sizes `2048,4096,4096,4096,2048` with five cascades (user decision 2026-09-25: 4096 maps for cascades 1 and 2, 15 cm and 73 cm per texel; 176 MiB of maps, +96 MiB against the stand's 2048 x5), 2048 each otherwise; `--no-shadow-cascades`, `--shadow-cascade-drop-order submission`, `--no-shadow-cascade-adaptive-c0`, `--no-shadow-caster-retention` = off |
 | `--shadow-cascade-caps`, `--shadow-cascade-static-from`, `--shadow-cascade-large-min`, `--shadow-cascade-budget`, `--shadow-cascade-ladder-ratio`, `--shadow-caster-retention-age`, `--shadow-caster-retention-eps` (`X3M_SHADOW_CASCADE_*`, `X3M_SHADOW_CASTER_RETENTION_*`) | caps 128,512,1024,1024,1024; budget 640; ladder ratio 5; static-from and large-min off | value knob (DLL default) | Cascade tuning knobs of the section-1 cascade default: caps, budget and ladder ratio are the DLL defaults in force on every launch; static-from and large-min are off (`:722-725`, `:730`, `:733`, `:736-737`); `docs/architecture/shadow-cascades.md:269` (implemented 2026-09-18, default off); value knobs of a default (not separate features); static-from / large-min unused; no flight of `static-from`/`large-min`/`ladder-ratio` found in the run archive (grep, measured) |
 | `--volumetric-fog`, `--volumetric-fog-cards`, `--volumetric-fog-range` (`X3M_VOLUMETRIC_FOG`, `_STRENGTH`, `_CARDS`, `_RANGE`) | 0.02; cards replace; range stored | promoted 2026-09-25 | Stored-range fog replacing the vanilla cards (`:743-745`); goal 12 Accepted (in game): "Still opt-in flags" (`docs/goals.md:23`); launcher default (2026-09-25) with `--motion-output --taa --hdr --shadow-replay-depth --shadow-cascades`; cards and range follow the fog; `--no-volumetric-fog`, `--volumetric-fog-cards keep`, `--volumetric-fog-range legacy` = off |
-| `--volumetric-fog STRENGTH` (`X3M_VOLUMETRIC_FOG`) | 0.02 | value knob | Density tuning (`:743`); goal 12; Ctrl+Alt+F9/F10 toggle in game (`:743`) |
+| `--volumetric-fog STRENGTH` (`X3M_VOLUMETRIC_FOG`) | 0.02 | value knob | Density tuning (`:743`); goal 12 |
 | `--music-keep` (`X3M_MUSIC_KEEP`) | on | promoted 2026-09-25 | Keeps sector music playing at its position across alt-tab, save and pause (`:645`); Run 73 B run273 "music keep accepted (6 alt-tabs, all skip_all)" (row 73 B/C, 2026-09-23); goal 14 still lists "music restart on alt-tab/save" as open (`docs/goals.md:25`); launcher default (2026-09-25) on every modded launch; not sent under `--vanilla`; `--no-music-keep` = off. The ~1 s DirectSound gap on alt-tab (row 72 B) is the open caveat |
 | `--shadow-alpha-casters on / off` (`X3M_SHADOW_ALPHA_CASTERS`) | on (1) | promoted 2026-09-25 | Alpha-tested routed draws cast shadows with their alpha test (`:718`; `capture.cpp:2684`); Run 81 A run309 "alpha casters clean (refused_pool 0)" (row 81 A, 2026-09-24); no default decision recorded (`docs/verification/directional-shadows.md:3732`); launcher default (2026-09-25): `on` with `--shadow-replay-depth` (the variable is `1`); `--shadow-alpha-casters off` = off |
 
+### Promoted defaults (2026-09-25)
+
+The Run 84 A stand command became the launcher default (user decision 2026-09-25, `apply_promoted_defaults` in
+`tools/manage.py`). A promoted default is filled only when the option is absent, the launch is modded and its
+prerequisites hold, so opting out of a prerequisite (`--no-taa`, `--no-shadow-replay-depth`, `--camera vanilla`, ...)
+switches its dependants off instead of refusing (an explicit dependant is still refused); every default has its
+`--no-<name>` or an explicit off value; `CULL_SMALL_PARTS_DEFAULT_PX` is 4 (was 2). Evidence:
+`verification/results/launcher-defaults/compare_dry_runs.py` against the recorded pre-change stand `stand_env_before.json`
+(output `comparison.json`), `verification/analysis/test_launcher_defaults.py`.
+
+| Class | Options | Launcher behaviour |
+|---|---|---|
+| Functional, promoted (36) | `--direct`, `--camera chase`, `--chase-view-restore`, `--ownership`, `--object-trace`, `--object-lifetime`, `--motion-output`, `--taa`, `--hdr`, `--hdr-tonemap`, `--hdr-bloom`, `--bloom-source-clamp 1.0`, `--crypt-cache`, `--gz-buffer`, `--resource-read fast`, `--dat-handles`, `--mesh-adjacency fast`, `--screen-emission-additive 2`, `--screen-emission-additive-alpha 0`, `--emission-source-gain 2`, `--sun-shadow-lane`, `--shadow-replay-depth`, `--sun-shadow-apply`, `--shadow-cascades 250,1500,7500,37500,150000`, `--shadow-cascade-drop-order importance`, `--shadow-cascade-records 1024,1024,2048,4096,4096`, `--shadow-cascade-sizes` (promoted as `2048,4096,4096,4096,2048`, not the stand's 2048 x5: user decision 2026-09-25), `--shadow-cascade-adaptive-c0 1.5`, `--shadow-caster-retention`, `--volumetric-fog 0.02`, `--volumetric-fog-cards replace`, `--volumetric-fog-range stored`, `--cull-small-parts 4`, `--capture-frames 8` (with `--capture-start 999999` and `--capture-delay 300` until their removal on 2026-09-26) | Filled in when not given and when their own prerequisites hold after the earlier defaults (section 1 rows); help texts say "launcher default since 2026-09-25" |
+| Functional, already defaults (5) | `--hdr-exposure auto`, `--shadow-replay-candidates` (implied by the replay), `--shadow-sun-poll on`, `--light-map-far-fade 80,220`, `--motion-rt-mode lazy` | Unchanged |
+| Telemetry/debug, stay opt-in (11 + prefix) | `--telemetry`, `--camera-log 1`, `--loading-intervals`, `--shadow-retention-census`, `--fps-overlay`, `--frame-end-stride 1`, `--volumetric-fog-timing`, `--frame-timing`, `--frame-phases`, `--object-bounds-log`, `--cull-census`, `X3M_MOTION_FRAME_LOG=1` | Section 2; the stand command was then `x3run --direct` plus these, without `--loading-intervals` (removed) and `--shadow-retention-census` since the removal of 2026-09-25; since 2026-09-26 it is `x3run --direct --debug --perf` (logging tiers) |
+| Added (2) | `--music-keep`, `--shadow-alpha-casters on` | `X3M_MUSIC_KEEP=1` on every modded launch; alpha casters with the replay |
+
 ## 2. Telemetry/debug: two logging groups and the explicit developer options
 
-Since 2026-09-26 (logging tiers, [design and implementation](../architecture/logging-tiers.md)) the launcher's logging
-options are the two groups `--debug` and `--perf`; the DLL expands each (`src/proxy/log_tiers.h`), so `X3M_DEBUG=1` /
-`X3M_PERF=1` on a bare proxy give the same rows as the launcher (fixture case `seam-log-tiers`: equal row-name sets for
-each group and its individual variables). Without either, a launch writes the always tier only. The launcher drops an
-inherited value of every logging variable (`TIERED_VARIABLES`, 40 names, every one still a DLL read for the fixtures,
-measured by `verification/results/logging-tiers/options_tiers.py`) and sends a developer option's own variable only when
-the option is given. The stand command is `x3run --direct --debug --perf` (`docs/verification/user-runs.md`, "Stand
-command"). The log is `<game dir>\x3m.log` (previous launch `x3m.prev.log`).
-
-The groups replaced 19 launcher options, all removed on 2026-09-26 (`--telemetry` and `--frame-timing` stay registered
-as hidden refusal stubs, because argparse would otherwise have abbreviated them to `--telemetry-draw` and
-`--frame-timing-state-stamps`, both removed in the second step below; the stubs now only name the replacement; the
-other 17 are unknown arguments, exit 2): `--telemetry`, `--frame-timing`,
-`--frame-phases`, `--fps-overlay`, `--volumetric-fog-timing` (perf); `--camera-log`, `--shadow-retention-census`,
-`--object-bounds-log`, `--cull-census`, `--lod-switch-log`, `--media-cue-trace`, `--music-trace`, `--window-trace`,
-`--shadow-sun-trace`, `--sector-background`, `--loading-probes`, `--collide-narrow-census`, `--collide-query-phases`
-(debug); and `--shadow-retention-timing` (dropped; its variable is still read by the DLL for the retention fixtures).
-The `X3M_MOTION_FRAME_LOG=1` shell prefix of the old stand command is dropped by the launcher (the debug group gives
-the cadence).
-
-Second step, user and orchestrator decisions 2026-09-26: the explicit developer options were trimmed to five
-(`--draw-trace`, `--gpu-sync-timing`, `--taa-debug`, `--profile` with `--profile-interval-us`, `--sun-occlusion-log` with
-`--sun-occlusion-radius` and `--sun-occlusion-curve`). `--telemetry-draw` and the engine-stamp families (`--game-phases`,
-`--pass-phases`, `--residual-phases`, `--light-phases`, `--loop-phases`) became the one option `--draw-trace`
-(`X3M_DRAW_TRACE`, expanded in `src/proxy/log_tiers.h`), in neither group because the stand `--debug --perf` runs on every
-flight: `--perf` = the cheap cost rows, `--debug` = per-frame diagnostic rows and traces with no engine patch beyond the
-frame boundary, `--draw-trace` = the heavy per-draw and engine-stamp attribution;
-the other removed options are listed in section 4, "Removed 2026-09-26". The F8 capture controls are not diagnostics of
-their own and moved here as one row.
+All opt-in; the stand command is `x3run --direct --debug --perf` ([logging tiers](../architecture/logging-tiers.md)).
 
 | Name | Value | Type | Description/Notes |
 |---|---|---|---|
 | `--debug` (`X3M_DEBUG`) | in the stand | telemetry | The DLL turns on telemetry and every diagnostic whose only effects are rows and F8-frame reads: family block (`motion_output_frame`, `hdr_frame`, ...) and `camera_state` every frame, the five shadow/sun state rows every frame (`X3M_SHADOW_ROWS`), `frame_end` every frame, retention census, object bounds, cull census with the LOD switch rows (cap 16), media cue, music, window and sun traces, sector background, loading probes, collide narrow census and query phases. Inert under `--vanilla`. About 8.0 KB per frame, 9.4 KB with `--perf` (inferred from the measured run337 row sizes, `verification/results/logging-tiers/debug_volume.py`; 9.3 KB before the 2026-09-26 membership); engine patches: the ten frame-phase stamps only (the frame boundary, a member since 2026-09-26) |
-| `--perf` (`X3M_PERF`) | in the stand | telemetry | Telemetry counters and 1 Hz summaries with the loading metrics, `frame_end` every frame, the frame-time windows (`--frame-timing`'s state hooks) and the ten frame-phase stamps, the FPS overlay (Ctrl+Alt+F7 hides it), `volumetric_fog_frame` and the two shadow cost rows every frame (`X3M_SHADOW_TIMING`), the family block every 60 frames. Inert under `--vanilla`. About 1.7 KB per frame (inferred) |
+| `--perf` (`X3M_PERF`) | in the stand | telemetry | Telemetry counters and 1 Hz summaries with the loading metrics, `frame_end` every frame, the frame-time windows (`--frame-timing`'s state hooks) and the ten frame-phase stamps, the FPS overlay (on for the whole session), `volumetric_fog_frame` and the two shadow cost rows every frame (`X3M_SHADOW_TIMING`), the family block every 60 frames. Inert under `--vanilla`. About 1.7 KB per frame (inferred) |
 | `--draw-trace` (`X3M_DRAW_TRACE`) | off | telemetry | The heavy attribution, in no group (2026-09-26): the DLL expands it to the per-draw route cost fields on `motion_output_frame` (`X3M_TELEMETRY_DRAW`: `gate_us`, `route_draw_us`, `set_rt_us`, `lazy_flush_us`, `jitter_us`; two QPC reads per routed draw, about 1 ms per frame by `docs/verification/route-cost-run1.md`, inferred) and the engine-stamp families `X3M_GAME_PHASES` (segment tape at 20 ms), `X3M_PASS_PHASES`, `X3M_RESIDUAL_PHASES`, `X3M_LIGHT_PHASES`, `X3M_LOOP_PHASES` (byte-verified trampolines at start-up, fail closed per site) with the frame phases; requires `--perf` or `--debug` (telemetry and the frame boundary; refused alone, exit 2); not sent under `--vanilla`; not in the stand. Not `X3M_SUBMIT_PHASES` (fixture-only: it claims the lens traversal call the sun-occlusion default patches) |
 | `--gpu-sync-timing` (`X3M_GPU_SYNC_TIMING`) | off | telemetry | Serialised GPU cost per proxy pass; halves the frame rate; refused with `--vanilla` |
 | `--taa-debug` (`X3M_TAA_DEBUG`) | off | telemetry | Raw resolve and age dumps on F8 frames (~40 MB per frame); requires `--taa` |
 | `--profile`, `--profile-interval-us` (`X3M_PROFILE`, `X3M_PROFILE_INTERVAL_US`) | off; 2000 us | telemetry | Sampling thread; the interval travels only with `--profile`; blind to engine code under FEX (`tools/manage.py`, env `:1961`) |
 | `--sun-occlusion-log`, `--sun-occlusion-radius`, `--sun-occlusion-curve` | off | telemetry | A 1x1 readback per frame and the lens dumps on F8; the two others are knobs of the default (radius 0.005..0.25, curve 0.25..4) |
-| F8 capture controls: `--capture-start`, `--capture-frames`, `--capture-delay` (`X3M_CAPTURE_START/_FRAMES/_DELAY`) | 999999 / 8 frames / 300 frames | capture knob | The automatic first capture frame and the F8 burst length; launcher default since 2026-09-25: start 999999 = no automatic capture, F8 captures 8 frames on demand after 300 frames (before: 120 / 1 / 0, still the values under `--vanilla`) (`:587-594`, `:1670-1677`); DLL reads `capture.cpp:3020-3030`; `--capture-start 120` restores the automatic capture; above 8 frames is meant for the `--taa-debug` dumps; not removed (moved from sections 1 and 3, 2026-09-26) |
-
-Counts: 2 group options, 5 explicit developer rows and the F8 capture row (8 rows, 13 option names, counted by
-`verification/results/logging-tiers/inventory_scan.py`) in this section since 2026-09-26; the launch parser registers
-181 option strings (194 after the first tiers step, 13 removed in the second; 209 before the tiers; measured by
-`options_tiers.py`); a default launch sends 123 `X3M_*` variables (124 after the first step, 150 before;
-`X3M_VOLUMETRIC_FOG_EVERYWHERE=0` left with its option), `--vanilla` 72 (73, 99), `--debug` or `--perf` one more each,
-`--debug --perf` 125, `--perf --draw-trace` 125 (measured by `verification/results/logging-tiers/dry_run_tiers.py`; each
-option adds only its own variable: the members are expanded by the DLL). Before the second step: 2 group options and 12 explicit rows
-(21 option names).
-
-## Defaults promoted (2026-09-25)
-
-User decision 2026-09-25: the Run 84 A stand command becomes the launcher's default on a modded launch, without its
-telemetry/debug options, plus `--music-keep` (accepted run273) and `--shadow-alpha-casters on` (flown clean run309).
-`python3 tools/manage.py launch --bottle X3 --dry-run` with no other option now produces the stand environment minus
-the telemetry/debug variables, plus `X3M_MUSIC_KEEP=1` and `X3M_SHADOW_ALPHA_CASTERS=1`; the old stand command still
-works and yields the same environment plus the telemetry ones; `--vanilla` sends nothing modded (unchanged, measured).
-Obsolete options were not touched (a later cleanup). Implementation: `apply_promoted_defaults` in `tools/manage.py`.
-
-Classification of the 52 stand options:
-
-| Class | Options | Launcher behaviour |
-|---|---|---|
-| Functional, promoted (36) | `--direct`, `--camera chase`, `--chase-view-restore`, `--ownership`, `--object-trace`, `--object-lifetime`, `--motion-output`, `--taa`, `--hdr`, `--hdr-tonemap`, `--hdr-bloom`, `--bloom-source-clamp 1.0`, `--crypt-cache`, `--gz-buffer`, `--resource-read fast`, `--dat-handles`, `--mesh-adjacency fast`, `--screen-emission-additive 2`, `--screen-emission-additive-alpha 0`, `--emission-source-gain 2`, `--sun-shadow-lane`, `--shadow-replay-depth`, `--sun-shadow-apply`, `--shadow-cascades 250,1500,7500,37500,150000`, `--shadow-cascade-drop-order importance`, `--shadow-cascade-records 1024,1024,2048,4096,4096`, `--shadow-cascade-sizes` (promoted as `2048,4096,4096,4096,2048`, not the stand's 2048 x5: user decision 2026-09-25), `--shadow-cascade-adaptive-c0 1.5`, `--shadow-caster-retention`, `--volumetric-fog 0.02`, `--volumetric-fog-cards replace`, `--volumetric-fog-range stored`, `--cull-small-parts 4`, `--capture-start 999999`, `--capture-frames 8`, `--capture-delay 300` (no automatic capture; F8 captures on demand) | Filled in when not given and when their own prerequisites hold after the earlier defaults (section 1 rows); help texts say "launcher default since 2026-09-25" |
-| Functional, already defaults (5) | `--hdr-exposure auto`, `--shadow-replay-candidates` (implied by the replay), `--shadow-sun-poll on`, `--light-map-far-fade 80,220`, `--motion-rt-mode lazy` | Unchanged |
-| Telemetry/debug, stay opt-in (11 + prefix) | `--telemetry`, `--camera-log 1`, `--loading-intervals`, `--shadow-retention-census`, `--fps-overlay`, `--frame-end-stride 1`, `--volumetric-fog-timing`, `--frame-timing`, `--frame-phases`, `--object-bounds-log`, `--cull-census`, `X3M_MOTION_FRAME_LOG=1` | Section 2; the stand command was then `x3run --direct` plus these, without `--loading-intervals` (removed) and `--shadow-retention-census` since the removal of 2026-09-25; since 2026-09-26 it is `x3run --direct --debug --perf` (logging tiers) |
-| Added (2) | `--music-keep`, `--shadow-alpha-casters on` | `X3M_MUSIC_KEEP=1` on every modded launch; alpha casters with the replay |
-
-Rules: a promoted default is filled only when the option is absent, the launch is modded and its prerequisites hold,
-so opting out of a prerequisite (`--no-taa`, `--no-shadow-replay-depth`, `--camera vanilla`, ...) switches its
-dependants off instead of refusing; an explicit dependant is still refused as before. Every promoted boolean has a
-`--no-<name>`; valued options use their existing off value (`--camera vanilla`, `--resource-read native`,
-`--mesh-adjacency native`, `--emission-source-gain 1`, `--shadow-cascade-drop-order submission`,
-`--volumetric-fog-cards keep`, `--volumetric-fog-range legacy`, `--cull-small-parts 0`, `--shadow-alpha-casters off`)
-or a new `--no-<name>` where none existed (`--no-bloom-source-clamp`, `--no-screen-emission-additive`,
-`--no-screen-emission-additive-alpha`, `--no-shadow-cascades`, `--no-shadow-cascade-adaptive-c0`,
-`--no-volumetric-fog`). No new `_DEFAULT` marker: none of the promoted options' DLL rows logs a `default=` field.
-`CULL_SMALL_PARTS_DEFAULT_PX` is 4 (was 2).
-
-Caveats: `--mesh-adjacency fast` is sent by default but the DLL reads `X3M_MESH_ADJACENCY` only inside its telemetry
-branch (`src/proxy/loading_trace.cpp:928` since the removal of 2026-09-25, `:1107-1126` at `a505d758`), so without `--telemetry` the adjacency fast path stays inert (the
-other loading fast paths do not need telemetry); an explicit `--mesh-adjacency verify|fast` without `--telemetry` is
-still refused. (Superseded: `fast` arms without telemetry since 2026-09-25, and `verify` left the launcher on 2026-09-26.)
-
-Evidence: `verification/results/launcher-defaults/compare_dry_runs.py` (host dry runs on bottle X3, output
-`comparison.json`, recorded pre-change stand `stand_env_before.json`): empty vs stand differ in 13 `X3M_*` variables,
-12 telemetry/debug plus the intended `X3M_SHADOW_CASCADE_SIZES` (`2048,4096,4096,4096,2048` by default, the stand's
-explicit 2048 x5 wins when passed); the stand differs from its pre-change environment only by `X3M_MUSIC_KEEP`
-(absent -> 1) and `X3M_SHADOW_ALPHA_CASTERS` (0 -> 1); the short stand command of `user-runs.md` differs from the old
-one only by the map sizes; the X3 switches are the same; `--vanilla` is byte-identical to before (measured
-2026-09-25). `verification/analysis/test_launcher_defaults.py` asserts the empty-command and stand environments, the
-vanilla launch, every opt-out and the explicit refusals hermetically.
+| `--capture-frames` (`X3M_CAPTURE_FRAMES`) | 8 frames | capture knob | Length of the F8 capture burst; F8 is polled only under `--debug` (`X3M_DEBUG=1`) and starts the burst at once, without it the key is never read (`src/proxy/capture.cpp` Present, user decision 2026-09-26); launcher default 8 since 2026-09-25, 1 under `--vanilla` (`tools/manage.py` `apply_promoted_defaults`); DLL read `capture.cpp:2900`, capped at 64; above 8 is meant for the `--taa-debug` dumps; `--capture-start` and `--capture-delay` removed 2026-09-26 (section 4) |
 
 ## 3. Opt-in, accepted, still useful
 
-True opt-ins and the launcher's own rows, kept on purpose (since 2026-09-26 the value knobs of the defaults are in section 1 next to the default they tune, the F8 capture controls in section 2, and the opt-outs are covered by the column key). Each row cites its definition.
+True opt-ins and the launcher's own rows, kept on purpose.
 
 | Name | Value | Type | Description/Notes |
 |---|---|---|---|
@@ -243,85 +137,34 @@ True opt-ins and the launcher's own rows, kept on purpose (since 2026-09-26 the 
 | `--pause-key CODE` (`X3M_PAUSE_KEY`) | off (the Pause key) | opt-in | Engine key code of a rebound Pause key (`:843`; `src/proxy/pause_key_only.cpp:93`); `docs/verification/pause-key-only.md:13` |
 | `manage.py fog-families [--check / --install / --dry-run]`, `status`, `install`, `uninstall`, `rollback`, `recover` | n/a | opt-in | The non-launch actions (`:579-582`, `:263-276`, `:1626-1665`); `docs/status.md:21-23` (fog family loader, Run87); `--dll-source` applies to `install` only (`:585`) |
 
-## 4. Removed 2026-09-25
+## 4. Removed
 
-User decision 2026-09-25: the obsolete rows of this inventory's former section 4 and its "Top removal candidates" were
-removed, option and code together unless noted. The launcher parser registers 209 option strings (248 at `ae16da06`;
-39 gone: 31 live options and all 8 suppressed refusal stubs, none added; measured by
-`verification/results/launcher-defaults/removed_options_2026-09-25.py`). Every removed option is a plain unknown argument
-(exit 2), and `tools/manage.py` `REMOVED_VARIABLES` (38 names) drops their variables from an inherited environment on
-every launch, modded or vanilla. The per-feature ledgers carry one "removed 2026-09-25" line each. Dry runs: the
-default modded launch (`--direct`) sends 150 `X3M_*` variables (174 at `ae16da06`, the difference exactly the 24
-removed ones), the vanilla launch 99 (119, 20 removed explicit-off values), none added or changed (measured,
-`verification/results/launcher-defaults/dry_run_env_diff_2026-09-25.py`).
+Each removed option is an unknown argument (exit 2); `REMOVED_VARIABLES` in `tools/manage.py` drops their variables from an inherited environment on every launch.
 
-Removed with their DLL code:
-
-- Refusal stubs: `--taa-current-filter`, `--taa-line-filter`, `--taa-thin-clip`, `--taa-adaptive-weight`,
-  `--taa-sentinel-stabiliser`, `--taa-sentinel`, `--taa-region-hold`, `--volumetric-fog-look` (8), with the three DLL
-  "ignored" reads (`X3M_TAA_SENTINEL_STABILISER`, `X3M_TAA_REGION_HOLD`, `X3M_VOLUMETRIC_FOG_LOOK`), the leftover
-  `X3M_VOLUMETRIC_FOG_ANISOTROPY` read and the `X3M_HDR_EV_OFFSET` alias. The fixture seams `X3M_FIXTURE_TAA_K` /
-  `X3M_FIXTURE_TAA_SENTINEL` stay.
-- `--lod-scale` (`src/proxy/lod_scale.*`), `--mesh-cache` (`src/proxy/mesh_adjacency_cache.*` and the cache branch of the
-  adjacency hook; the fast/verify adjacency is unchanged), `--loading-intervals` (the recorder in
-  `loading_trace_light.cpp`), `--audio-sites` (14 audio game-phase sites; 33 sites remain), `--profile-raw` (the raw
-  witness and periodic callback of the sampling profiler), `--cull-small-parts-scope` (scope `all` only), `--shimmer-trace`.
-- `--fog-shadow-pass` (the visibility-grid pass, its march/repair/mote programs, the Ctrl+Shift+F11 toggle and the
-  constraints it put on `--fog-march-scale` and `--fog-far-bins`) and `--fog-far-bins` (only the 40-bin programs remain);
-  the three grid penumbra tunables of `X3M_FOG_LOOK_<NAME>` went with the pass (24 fields remain).
-- `--taa-history-taps` (the four 16-tap resolve programs; the pass is 5-tap only and refuses at initialize without FP16
-  and R32F filtering) and the screen-gate options `--taa-thin-region-gate` / `--taa-thin-region-source` (the DLL derives
-  the camera gate whenever the thin region is on, and the vote as the region's source whenever the vote is on).
-
-Removed from the launcher only; the DLL code stays because shared, fixture-driven paths run through it (the variables are
-still read, see section 5):
-
-- `--linear-materials`, `--material-fill`, `--material-direct-gain`, `--material-emissive-gain`,
-  `--lightmap-emissive-gain`, `--linear-distance-fade` / `--no-linear-distance-fade`: the converted-material transformer
-  is shared with the flown `--original-fill` and `--hull-lightmap-gain`; the motion fixture's cutout and fade-route cases
-  drive it through `X3M_LINEAR_MATERIALS` / `X3M_LINEAR_DISTANCE_FADE`.
-- `--linear-emissions`, `--emission-gain`: the composition pass is shared with the flown `--emission-source-gain`.
-- `--screen-emission`, `--screen-emission-gain`, `--screen-emission-timing`, `--fade-witness`: the packed route lives in
-  the same composition pass; `run_linear_distance_fade_live.py` drives it and the witness, and `X3M_SCREEN_EMISSION_BOUND`
-  is the locked-prefix diagnostic the bolt footprint shares.
-- `--hull-emitters`, `--hull-emission-gain`: the guide lights now take the effects gain alone (`X3M_HULL_EMISSION_GAIN`
-  is `--emission-source-gain` when above 1, else 1).
-- `--depth-copy`, `--scene-depth-capture`, `--motion-capture`, `--finite-positions`: the ownership-integration suite and
-  the motion fixture's depth cases drive the auto-depth and finite-position paths through these variables.
-
-Kept by user decision (2026-09-25): `--chase-scene-fix`, `--point-light-root-admission`, `--hdr-look golden / punchy`,
-`--taa-alpha-history` (section 3). Kept by the orchestrator: `--cursor-reassert` (the parked cursor fix, opt-in per the
-user), `--profile` and `--profile-interval-us` (the profiler still samples proxy code and native Windows),
-`--shadow-retention-census` (the retention's stage-1 calibration tool; dropped from the stand command; part of `--debug` since 2026-09-26, section 2) and
-`X3M_FADE_ROUTE` (the threshold constant the fade-band arm and `--fade-rt2-owner` read).
-
-Removed 2026-09-26 (user decisions: developer options trimmed to five, `--volumetric-fog-everywhere` dropped). The
-parser registers 182 option strings (194 before; 13 gone, `--draw-trace` added; measured by
-`verification/results/logging-tiers/options_tiers.py`); each removed string is an unknown argument (exit 2), and the
-two removed choices exit 2 as invalid choices:
-
-- Folded into `--draw-trace` (the DLL reads stay, ORed with `X3M_DRAW_TRACE`, `src/proxy/log_tiers.h`): `--telemetry-draw`,
-  `--game-phases` and `--game-phase-threshold-ms` (threshold at its 20 ms DLL default), `--pass-phases`,
-  `--residual-phases`, `--light-phases`, `--loop-phases`.
-- Fixture-only (the DLL reads stay for the runners and host fixtures, section 5): `--submit-phases` (in no group:
-  it claims the lens traversal call the sun-occlusion default patches; the launcher's conflict check and the
-  default's suppression went with the option), `--frame-end-stride` (the tiers give 3600 / 1; an explicit
-  `X3M_FRAME_END_STRIDE` still wins), `--frame-timing-state-stamps`, `--collide-memo-verify`, the `verify` choice of
-  `--mesh-adjacency` (choices `native` / `fast`; `native` stays as the default's opt-out) and of `--resource-read`
-  (choices `native` / `fast`; the fixture drives the verify mode through `fixture_bind`, the DLL parse stays).
-- Removed with their DLL code: `--mesh-adjacency-dump` (the in-game dump switch `X3M_MESH_ADJACENCY_DUMP`, its path
-  resolver and call; the dump writer stays for the fixture's self-test replay) and `--volumetric-fog-everywhere`
-  (`X3M_VOLUMETRIC_FOG_EVERYWHERE`, the forced bluewell profile of the sector policy and the latch's forced target).
-  Both variables are in `REMOVED_VARIABLES`; the default launch sends 123 `X3M_*` variables (124 before, the explicit
-  `X3M_VOLUMETRIC_FOG_EVERYWHERE=0` gone), `--vanilla` 72 (measured, `dry_run_tiers.py`).
+| Option or variable | Removed | What went with it | Where recorded |
+|---|---|---|---|
+| `--taa-k` (`X3M_TAA_K`) | 2026-09-25 (`ae16da06`) | k always derived from the write-back exposure; the k0 identity case kept as the fixture seam `X3M_FIXTURE_TAA_K` (with `X3M_FIXTURE_TAA_SENTINEL` for the sentinel policy twins, under `X3M_MOTION_OUTPUT_FIXTURE`); the launcher drops an inherited `X3M_TAA_K` | commit `ae16da06` (9 cases rerun with identical counts and colour hashes); `docs/verification/temporal-resolve.md` |
+| Single shadow map: `--shadow-replay-size`, `--shadow-replay-extent`, `--shadow-replay-depth-half`, `--shadow-replay-cap` (`X3M_SHADOW_REPLAY_SIZE`, `_EXTENT`, `_DEPTH_HALF`, `_CAP`) | 2026-09-25 (`e2db7813`) | The camera-centred single map: cascades are the only replay geometry, `--no-shadow-cascades` = no map, no lease, no replay and the apply off (one `sun_shadow_apply_mode enabled=0 cascades=0` row); the DLL logs one `shadow_replay_config single_map=removed` row; `sun_shadow_apply_ps.hlsl` deleted; 12 fixture cases moved to a one-cascade set, 2 deleted | commit `e2db7813`; `docs/architecture/directional-shadows.md`, "Single map removed"; `compare_dry_runs.py` (the four in its REMOVED) |
+| Refusal stubs `--taa-current-filter`, `--taa-line-filter`, `--taa-thin-clip`, `--taa-adaptive-weight`, `--taa-sentinel-stabiliser`, `--taa-sentinel`, `--taa-region-hold`, `--volumetric-fog-look` | 2026-09-25 | The three DLL "ignored" reads (`X3M_TAA_SENTINEL_STABILISER`, `X3M_TAA_REGION_HOLD`, `X3M_VOLUMETRIC_FOG_LOOK`), the leftover `X3M_VOLUMETRIC_FOG_ANISOTROPY` read and the `X3M_HDR_EV_OFFSET` alias; the fixture seams `X3M_FIXTURE_TAA_K` / `X3M_FIXTURE_TAA_SENTINEL` stay | `verification/results/launcher-defaults/removed_options_2026-09-25.py` (parser 248 option strings at `ae16da06` -> 209: 31 live options and the 8 stubs); `dry_run_env_diff_2026-09-25.py` (default launch 174 -> 150 `X3M_*`, vanilla 119 -> 99); `REMOVED_VARIABLES` 38 names; one "removed 2026-09-25" line in each feature ledger |
+| `--lod-scale`, `--mesh-cache`, `--loading-intervals`, `--audio-sites`, `--profile-raw`, `--cull-small-parts-scope`, `--shimmer-trace` | 2026-09-25 | With their DLL code: `src/proxy/lod_scale.*`; `src/proxy/mesh_adjacency_cache.*` and the cache branch of the adjacency hook (fast/verify unchanged); the recorder in `loading_trace_light.cpp`; 14 audio game-phase sites (33 remain); the profiler's raw witness and periodic callback; scope `all` only | `removed_options_2026-09-25.py`; `docs/architecture/lod-scale.md`, `docs/verification/mesh-cache-hook.md`, `loading-intervals.md`, `sampling-profiler.md`, `cull-small-parts.md` |
+| `--fog-shadow-pass`, `--fog-far-bins` | 2026-09-25 | The visibility-grid pass, its march/repair/mote programs, the Ctrl+Shift+F11 toggle and the constraints it put on `--fog-march-scale` and `--fog-far-bins`; only the 40-bin programs remain; the three grid penumbra tunables of `X3M_FOG_LOOK_<NAME>` | `removed_options_2026-09-25.py`; `docs/verification/fog-shadow-pass.md` |
+| `--taa-history-taps`, `--taa-thin-region-gate`, `--taa-thin-region-source` | 2026-09-25 | The four 16-tap resolve programs (5-tap only; the pass refuses at initialize without FP16 and R32F filtering); the screen gate: the DLL derives the camera gate whenever the thin region is on and the vote as its source whenever the vote is on | `removed_options_2026-09-25.py`; `docs/architecture/taa-high-resolution.md` |
+| `--linear-materials`, `--material-fill`, `--material-direct-gain`, `--material-emissive-gain`, `--lightmap-emissive-gain`, `--linear-distance-fade` / `--no-linear-distance-fade` | 2026-09-25 | Launcher only: the converted-material transformer is shared with the flown `--original-fill` and `--hull-lightmap-gain`; the cutout and fade-route fixture cases drive it through `X3M_LINEAR_MATERIALS` / `X3M_LINEAR_DISTANCE_FADE` (section 5) | `removed_options_2026-09-25.py`; `docs/verification/linear-distance-fade.md` |
+| `--linear-emissions`, `--emission-gain` | 2026-09-25 | Launcher only: the composition pass is shared with the flown `--emission-source-gain` | `removed_options_2026-09-25.py` |
+| `--screen-emission`, `--screen-emission-gain`, `--screen-emission-timing`, `--fade-witness` | 2026-09-25 | Launcher only: the packed route lives in the same composition pass; `run_linear_distance_fade_live.py` drives it and the witness; `X3M_SCREEN_EMISSION_BOUND` is the locked-prefix diagnostic the bolt footprint shares | `removed_options_2026-09-25.py`; `docs/verification/screen-emission.md` |
+| `--hull-emitters`, `--hull-emission-gain` | 2026-09-25 | Launcher only: the guide lights take the effects gain (`X3M_HULL_EMISSION_GAIN` is `--emission-source-gain` when above 1, else 1) | `removed_options_2026-09-25.py`; `docs/verification/hull-emissive-widening.md` |
+| `--depth-copy`, `--scene-depth-capture`, `--motion-capture`, `--finite-positions` | 2026-09-25 | Launcher only: the ownership-integration suite and the motion fixture's depth cases drive the auto-depth and finite-position paths through these variables | `removed_options_2026-09-25.py`; `docs/verification/resource-reader.md` |
+| `--telemetry`, `--frame-timing` (hidden refusal stubs until the parser stopped taking abbreviations later that day), `--frame-phases`, `--fps-overlay`, `--volumetric-fog-timing`; `--camera-log`, `--shadow-retention-census`, `--object-bounds-log`, `--cull-census`, `--lod-switch-log`, `--media-cue-trace`, `--music-trace`, `--window-trace`, `--shadow-sun-trace`, `--sector-background`, `--loading-probes`, `--collide-narrow-census`, `--collide-query-phases`; `--shadow-retention-timing` | 2026-09-26 | Replaced by `--perf` (the first five) and `--debug` (the next thirteen), expanded by the DLL (`src/proxy/log_tiers.h`); `--shadow-retention-timing` dropped; every variable stays a DLL read for the fixtures (`TIERED_VARIABLES`, popped from inherited environments); the `X3M_MOTION_FRAME_LOG=1` stand prefix dropped | `docs/architecture/logging-tiers.md`; `verification/results/logging-tiers/options_tiers.py` (209 -> 194 option strings); case `seam-log-tiers` |
+| `--telemetry-draw`, `--game-phases`, `--game-phase-threshold-ms`, `--pass-phases`, `--residual-phases`, `--light-phases`, `--loop-phases` | 2026-09-26 | Folded into `--draw-trace` (`X3M_DRAW_TRACE`; the DLL reads stay, ORed with it in `src/proxy/log_tiers.h`; the threshold at its 20 ms DLL default) | `options_tiers.py` (194 -> 182: 13 gone, `--draw-trace` added); `docs/architecture/logging-tiers.md` |
+| `--submit-phases`, `--frame-end-stride`, `--frame-timing-state-stamps`, `--collide-memo-verify`; the `verify` choice of `--mesh-adjacency` and of `--resource-read` | 2026-09-26 | Options only, the DLL reads stay as fixture seams (section 5): the submit stamps in no group (they claim the lens traversal call the sun-occlusion default patches; the conflict check went with the option), `frame_end` at 3600 / 1 by tier, an explicit `X3M_FRAME_END_STRIDE` still wins; the invalid choices exit 2 (`native` / `fast` remain) | `options_tiers.py` |
+| `--mesh-adjacency-dump`, `--volumetric-fog-everywhere` (`X3M_MESH_ADJACENCY_DUMP`, `X3M_VOLUMETRIC_FOG_EVERYWHERE`) | 2026-09-26 | With their DLL code: the in-game dump switch, its path resolver and call (the dump writer stays for the fixture's self-test replay); the forced bluewell profile of the sector policy and the latch's forced target; both in `REMOVED_VARIABLES` | `dry_run_tiers.py` (default launch 124 -> 123 `X3M_*`, vanilla 73 -> 72); `docs/verification/mesh-adjacency-fast.md` |
+| `X3M_CHASE_MAX_DT`, the 24 `X3M_FOG_LOOK_<NAME>` scalars with `X3M_FOG_LOOK_AMBIENT_SUN` / `_AWAY`, `X3M_FOG_MOTES_RADIUS`, `_NEAR`, `_GAIN`, `_SOFT`, `_DRIFT`, `_SEED` (33 variables) | 2026-09-26 | DLL read and parsing gone, value baked: the chase dt clamp 0.10 s (`chase_camera_math.h:168`); the accepted L2 look of `renderer::FogLookTuning` (COVERAGE 0.35, EXPONENT 2, SIGMA_SCALE 8, COVERAGE_VARIATION 0.12, WARP_CYCLES_NEAR 13, WARP_NEAR 500, WARP_CYCLES_FAR 5, WARP_FAR 1400, FORWARD_G 0.75, FORWARD_WEIGHT 0.7, BACK_G -0.15, ALBEDO_WHITE 0.5, AMBIENT_GAIN 0.35, EXTINCTION_TINT 0.6, SCATTER_LIFT 0.5, LIFT_FLOOR 0.5, SHADOW_FLOOR 0.15, SKY_CAP 112500, TAPER_START 65000, SELF_SHADOW 3, POWDER 0.5, TAP_DISTANCE 3000, TAP_LENGTH 9000, SHADOW_JITTER 1; the ambient hues stay derived from the family chroma; `src/renderer/fog_look_math.h`); the motes RADIUS 1000, NEAR 25, GAIN 1, SOFT 0.02, DRIFT 20, SEED 1 (`src/renderer/fog_mote_math.h`); `X3M_FOG_MOTES_MAX_PX` stays; the `volumetric_fog_look_mode` row reads `look=single constants=baked`; all in `REMOVED_VARIABLES` | Section 5 rule (user decision 2026-09-26: a variable stays only when a runner, host test or analysis tool sets it); `docs/architecture/fog-dust-motes.md`, `docs/architecture/volumetric-fog.md` |
+| In-game keys Ctrl+Shift+F4 / F5 / F6 / F7 / F9 / F10 / F12, Ctrl+Alt+F7 / F9 / F10 / F11 | 2026-09-26 | The key sampler (`src/proxy/comparison_controls.h`), the two-line notice, the `renderer_comparison`, `*_toggle` (emitters, sun shadows, FPS overlay) and `telemetry_phase_marker` rows and every `key=` / `keys=` field; the features keep their launch state; F8 stays, polled only under `--debug`; kept as fixture seams: the hull A/B export, the fog toggle/step and the dust-motes toggle | `docs/architecture/comparison-hotkeys.md`, "Removed 2026-09-26"; `verification/analysis/test_comparison_hotkeys.py` |
+| `--capture-start`, `--capture-delay` (`X3M_CAPTURE_START`, `X3M_CAPTURE_DELAY`) | 2026-09-26 | The automatic capture start and the F8 delay (`src/proxy/capture_arm_core.h`, the `capture_armed` row); the launcher keeps sending `X3M_CAPTURE_START=999999` (never) on every modded launch (section 5; a DLL with the older default 120 captures only on F8); `X3M_CAPTURE_DELAY` is no longer read and is in `REMOVED_VARIABLES` (74 names) | `options_tiers.py` (182 -> 178 option strings: the two options, and the `--telemetry` / `--frame-timing` refusal stubs once the parser took `allow_abbrev=False`); `dry_run_tiers.py` (default launch 123 -> 122 `X3M_*`, vanilla 72 -> 71); `compare_dry_runs.py`; `test_launcher_defaults.py` |
 
 ## 5. Environment variables without a launcher option
 
-Every `X3M_*` the DLL reads that `tools/manage.py` never sets. Rule since 2026-09-26 (user decision): a variable stays
-only when a fixture runner, host test or analysis tool sets it; the others were removed with their accepted value baked
-into the DLL ("Removed 2026-09-26" below). No new launcher options. The launcher drops an inherited value of every
-variable below that it does not send (`REMOVED_VARIABLES` or `TIERED_VARIABLES` in `tools/manage.py`) unless the row
-says otherwise. Setters are grep results over `verification/probe` and `tools/analysis` (measured 2026-09-26).
+Every `X3M_*` the DLL reads that `tools/manage.py` never sets; each stays only because a runner, host test or analysis tool sets it.
 
 ### Fixture seams
 
@@ -341,6 +184,7 @@ says otherwise. Setters are grep results over `verification/probe` and `tools/an
 | `X3M_MESH_ADJACENCY=verify` (value) | `src/proxy/loading_trace.cpp:900` | The verify mode of the adjacency service (the launcher sends only `fast` / `native` since 2026-09-26) | `mesh_adjacency_fast_fixture.cpp` (`run_loading_trace.py`) |
 | `X3M_GAME_PHASE_THRESHOLD_MS` | `src/proxy/game_phases.cpp:218` | Segment-tape threshold, default 20 ms (also under `X3M_DRAW_TRACE=1`); option removed 2026-09-26 | `game_phases_host.cpp` (`test_game_phases.py`) |
 | `X3M_LINEAR_MATERIALS`, `X3M_MATERIAL_FILL`, `X3M_MATERIAL_DIRECT_GAIN`, `X3M_MATERIAL_EMISSIVE_GAIN`, `X3M_LIGHTMAP_EMISSIVE_GAIN`, `X3M_LINEAR_DISTANCE_FADE`, `X3M_LINEAR_EMISSIONS`, `X3M_EMISSION_GAIN`, `X3M_SCREEN_EMISSION`, `X3M_SCREEN_EMISSION_BOUND`, `X3M_SCREEN_EMISSION_GAIN`, `X3M_SCREEN_EMISSION_TIMING`, `X3M_FADE_WITNESS`, `X3M_DEPTH_COPY`, `X3M_SCENE_DEPTH_CAPTURE`, `X3M_MOTION_CAPTURE`, `X3M_FINITE_POSITIONS` | `src/proxy/capture.cpp`, `src/proxy/loader.cpp` | The launcher-only removals of 2026-09-25 (section 4): converted materials, linear emissions, packed screen emission and its witness/timing, the iteration-05 depth/motion capture chain | Set by the motion fixture cases, `run_ownership_integration.py` and the live runners (`run_linear_distance_fade_live.py`, `run_linear_material_live.py`); the launcher drops an inherited value (`REMOVED_VARIABLES`) |
+| `X3M_CAPTURE_START` | `capture.cpp:2901` (DLL default 0 = never; 120 in Run90 and earlier) | The Present count that starts one capture burst of `X3M_CAPTURE_FRAMES` frames, without X3M_DEBUG; no option since 2026-09-26: the launcher sends 999999 (never) on every modded launch and nothing under `--vanilla`, the fixtures override it | The launcher (`CAPTURE_START_NEVER`); `run_motion_output.py` (every case), `run_sun_share_live.py`, `run_telemetry.py`, `run_legacy_telemetry.py`, `run_ownership_integration.py`, `run_ownership_integration_fallback.py`, `run_locked_prefix_live.py`, `run_route_bench.py`, `run_hook_admission_benchmark.py`, `run_state_hook_benchmark.py`, the `run_linear_*_live.py` runners, `motion_output_fixture.cpp` |
 
 ### Logging internals
 
@@ -352,20 +196,3 @@ says otherwise. Setters are grep results over `verification/probe` and `tools/an
 | `X3M_PROFILE_REPORT_S` | `src/proxy/sampling_profiler.cpp:476` | Profiler report period, default 5 s; goes with `--profile` (section 2) | `run_sampling_profiler.py` |
 | `X3M_TELEMETRY_DRAW`, `X3M_GAME_PHASES`, `X3M_PASS_PHASES`, `X3M_RESIDUAL_PHASES`, `X3M_LIGHT_PHASES`, `X3M_LOOP_PHASES` | `telemetry.cpp:35`, `game_phases.cpp:210`, `pass_phases.cpp:77`, `residual_phases.cpp:86`, `light_phases.cpp:85`, `loop_phases.cpp:81` | Members of `--draw-trace` since 2026-09-26 (read through `log_tier::draw_trace_flag`); options removed | `run_motion_output.py` (`seam-log-tiers` individuals; `X3M_TELEMETRY_DRAW` on every case), `run_route_bench.py`, `run_locked_prefix_live.py`, `game_phase_cpu_fixture.cpp` (pass/residual/loop) |
 | The other individual switches of the two groups (`X3M_TELEMETRY`, `X3M_FRAME_TIMING`, `X3M_FRAME_PHASES`, `X3M_CULL_CENSUS`, ...; `TIERED_VARIABLES`) | through `src/proxy/log_tiers.h` | Each is ORed with its group (`docs/architecture/logging-tiers.md`) | `run_motion_output.py` (`seam-log-tiers` individuals) and the feature runners |
-
-Removed 2026-09-26 (DLL read and parsing gone, value baked; an inherited value is dropped by the launcher,
-`REMOVED_VARIABLES`): `X3M_CHASE_MAX_DT` (0.10 s, `chase_camera_math.h:168`); the 24 `X3M_FOG_LOOK_<NAME>` scalars
-and `X3M_FOG_LOOK_AMBIENT_SUN` / `_AWAY` (the accepted L2 look of `renderer::FogLookTuning`: COVERAGE 0.35, EXPONENT 2,
-SIGMA_SCALE 8, COVERAGE_VARIATION 0.12, WARP_CYCLES_NEAR 13, WARP_NEAR 500, WARP_CYCLES_FAR 5, WARP_FAR 1400, FORWARD_G
-0.75, FORWARD_WEIGHT 0.7, BACK_G -0.15, ALBEDO_WHITE 0.5, AMBIENT_GAIN 0.35, EXTINCTION_TINT 0.6, SCATTER_LIFT 0.5,
-LIFT_FLOOR 0.5, SHADOW_FLOOR 0.15, SKY_CAP 112500, TAPER_START 65000, SELF_SHADOW 3, POWDER 0.5, TAP_DISTANCE 3000,
-TAP_LENGTH 9000, SHADOW_JITTER 1; the ambient hues stay derived from the family chroma; `src/renderer/fog_look_math.h`);
-`X3M_FOG_MOTES_RADIUS` 1000, `_NEAR` 25, `_GAIN` 1, `_SOFT` 0.02, `_DRIFT` 20 and `_SEED` 1
-(`src/renderer/fog_mote_math.h`). `X3M_FOG_MOTES_MAX_PX` stays (the launcher sends 8 with the default motes); the
-`volumetric_fog_look_mode` row now reads `look=single constants=baked`. Also removed that day with their options:
-`X3M_MESH_ADJACENCY_DUMP` and `X3M_VOLUMETRIC_FOG_EVERYWHERE` (section 4).
-
-Launcher-side variables the DLL never reads: `X3M_BOTTLE` (bottle override, `tools/manage.py:584`), `X3M_SOURCE_COMMIT`,
-`X3M_VOICE_DECODER_REPO` (launcher-only test override, popped at `:2117`), `X3M_FOG_FAMILIES` (`:197-202`), and the
-`REMOVED_VARIABLES` names popped from every launch (section 4). `X3M_FIXTURE_BOTTLE` in the stand prefix is read by
-`verification/probe/wine_lock.py` and the runners, not by the launcher or the DLL.

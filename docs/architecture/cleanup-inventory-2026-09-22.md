@@ -351,7 +351,7 @@ fixtures green on its own.
    stale duration hints are gone. Host suite before and after: **233 modules /
    2,311 tests green**; the seven harness-sharing modules 68 tests green.
 4. **Batch 4 — `--lod-scale`** (D) — **done 2026-09-25** with the obsolete-option removal
-   (`docs/verification/launcher-options-inventory.md`, "4. Removed 2026-09-25"): `src/proxy/lod_scale.*`,
+   (`docs/verification/launcher-options-inventory.md`, "4. Removed"): `src/proxy/lod_scale.*`,
    `lod_scale_core.h`, `verify_lod_scale_site.py` and `test_lod_scale_patch.py` deleted; `--lod-scale` is an unknown
    argument and `X3M_LOD_SCALE` is dropped from an inherited environment.
 5. **Batch 5 — GTAO/SSAO chain** (C) — **done 2026-09-22.**
@@ -481,7 +481,7 @@ fixtures green on its own.
 11. **Batch 9 - obsolete launcher options** - **done 2026-09-25** (user decision): every row of the options
    inventory's former section 4 except the kept ones, with the eight refusal stubs, the three ignored reads,
    `X3M_VOLUMETRIC_FOG_ANISOTROPY` and the `X3M_HDR_EV_OFFSET` alias; H and I lost their launcher options only (item 7).
-   List, keeps and reasons: `docs/verification/launcher-options-inventory.md`, "4. Removed 2026-09-25".
+   List, keeps and reasons: `docs/verification/launcher-options-inventory.md`, "4. Removed".
 
 ## 5. Caveats
 

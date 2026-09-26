@@ -232,7 +232,7 @@ class LauncherGateTests(unittest.TestCase):
             self.assertEqual(code, 0, error)
             self.assertEqual(json.loads(output)['env']['X3M_HULL_EMISSION_GAIN'], '1.0')
             # --hull-emitters and --hull-emission-gain were removed on 2026-09-25 (docs/verification/launcher-options-inventory.md,
-            # "Removed 2026-09-25"): the guide lights take the effects gain only, and an inherited value never survives.
+            # "4. Removed"): the guide lights take the effects gain only, and an inherited value never survives.
             for bad in (PREREQUISITES + ['--hull-emitters'], PREREQUISITES + ['--emission-source-gain', '2', '--hull-emission-gain', '3']):
                 code, _, error = launch(directory, *bad); self.assertEqual(code, 2, bad); self.assertIn('unrecognized arguments', error)
             with contextlib.ExitStack() as stack:
@@ -249,7 +249,8 @@ class LauncherGateTests(unittest.TestCase):
                 self.assertEqual(json.loads(output)['env']['X3M_HULL_EMISSION_GAIN'], repr(float(boundary)))
         help_text = launch_help()
         self.assertNotIn('--hull-emitters', help_text); self.assertNotIn('--hull-emission-gain', help_text)
-        self.assertIn('Ctrl+Shift+F6', help_text)  # the guide lights moved to the effects key
+        self.assertIn('The hull guide lights (X3M_HULL_EMISSION_GAIN) follow this gain', ' '.join(help_text.split()))  # no key since 2026-09-26
+        self.assertNotIn('Ctrl+Shift', help_text)
 
 
 class FixtureCoverageTests(unittest.TestCase):

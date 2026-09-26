@@ -1,8 +1,8 @@
 #pragma once
 // d3d9-free arithmetic of the volumetric sun fog (docs/architecture/volumetric-fog.md,
 // "Stage 1 implementation"), compiled natively by
-// verification/analysis/test_fog_pass_math.py: option ranges, the hotkey's
-// strength ladder, the sun radiance from the tracked light's colour words, the
+// verification/analysis/test_fog_pass_math.py: option ranges, the
+// strength ladder (the fixture seam's; its Ctrl+Alt+F10 key was removed 2026-09-26), the sun radiance from the tracked light's colour words, the
 // capability decision and the sector latch of the automatic rule.
 #include <cmath>
 #include <cstddef>
@@ -11,7 +11,7 @@ namespace x3m::renderer {
 constexpr float fog_strength_default = .02f, fog_strength_min = 0.f, fog_strength_max = .1f; // tau_max
 constexpr float fog_anisotropy_default = .3f, fog_anisotropy_min = 0.f, fog_anisotropy_max = .9f; // Henyey-Greenstein g
 constexpr float fog_radius_default = 10000.f; // view units; 99.98 % of the density lies inside cascade 3 (84k units)
-// Ctrl+Alt+F10 steps through these; a launcher value between two steps moves to the next one above it.
+// volumetric_fog_step (a fixture seam since the Ctrl+Alt+F10 key was removed 2026-09-26) steps through these; a launcher value between two steps moves to the next one above it.
 constexpr float fog_strength_steps[] = {.005f, .01f, .02f, .03f, .05f};
 inline float fog_strength_next(float current) noexcept {
     for (float step : fog_strength_steps) if (step > current + 1e-6f) return step;

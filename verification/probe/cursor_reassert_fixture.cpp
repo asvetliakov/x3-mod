@@ -205,7 +205,7 @@ int main() {
     // One ring entry before the first Present (hit 2: a later hit-1 row is a change, not suppressed).
     SendMessageA(hwnd, WM_SETCURSOR, reinterpret_cast<WPARAM>(hwnd), MAKELPARAM(HTCAPTION, WM_MOUSEMOVE));
     const size_t before_first = x3m::lines.size();
-    wt::present(hwnd, 1, ++frame, 0); // the real gates: the probe window is hidden, so the launch arm waits
+    wt::present(hwnd, 1, ++frame); // the real gates: the probe window is hidden, so the launch arm waits
     require("first_present_flush_and_snapshot", logged(before_first, "window_trace_flush", {"reason=first_present"})
             && logged(before_first, "window_msg ", {"name=WM_SETCURSOR", "hit=2"}) && logged(before_first, "cursor_snapshot", {"burst=0"})
             && logged(before_first, "cursor_reassert_arm", {"armed_by=launch", "message=none", "arms=1"}) && cr::machine().state == cr::core::State::armed);
@@ -327,25 +327,22 @@ int main() {
 
     // 5. The trace ring (cursor_reassert is disabled now, so window_trace::present runs the trace alone).
     const size_t before_flush = x3m::lines.size();
-    wt::present(hwnd, 1, ++frame, 0);
+    wt::present(hwnd, 1, ++frame);
     require("flush_on_transition", logged(before_flush, "window_trace_flush", {"reason=transition"}) && logged(before_flush, "window_msg ", {"name=WM_ACTIVATE", "result=00000000"})
             && logged(before_flush, "window_msg ", {"name=WM_ACTIVATEAPP"}) && logged(before_flush, "cursor_snapshot", {"burst=0"}));
     for (int i = 0; i < 3; ++i) PostMessageA(hwnd, WM_MOUSEMOVE, 0, MAKELPARAM(10 + i, 10));
     pump();
     for (int i = 0; i < 5; ++i) SendMessageA(hwnd, WM_SETCURSOR, reinterpret_cast<WPARAM>(hwnd), MAKELPARAM(HTCLIENT, WM_MOUSEMOVE));
     const size_t before_quiet = x3m::lines.size();
-    wt::present(hwnd, 1, ++frame, 0);
+    wt::present(hwnd, 1, ++frame);
     const bool quiet = !logged(before_quiet, "window_trace_flush", {}) && !logged(before_quiet, "window_msg", {});
     SendMessageA(hwnd, WM_SIZE, SIZE_RESTORED, MAKELPARAM(320, 200));
     const size_t before_second = x3m::lines.size();
-    wt::present(hwnd, 1, ++frame, 0);
+    wt::present(hwnd, 1, ++frame);
     require("no_flush_without_transition", quiet);
     require("setcursor_summary_and_frame_counts", logged(before_second, "window_msg ", {"name=WM_SETCURSOR", "hit=1", "trigger=0200", "result=00000001"})
             && logged(before_second, "window_msg_frame", {"mousemove=3", "setcursor=5"}) && logged(before_second, "window_msg ", {"name=WM_SIZE"})
             && logged(before_second, "window_trace_flush", {"reason=transition"}));
-    const size_t before_marker = x3m::lines.size();
-    wt::present(hwnd, 1, ++frame, 1);
-    require("flush_on_marker", logged(before_marker, "window_trace_flush", {"reason=marker"}));
 
     // 6. Removal.
     wt::detach(1);

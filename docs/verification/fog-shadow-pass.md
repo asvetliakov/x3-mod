@@ -9,4 +9,4 @@ fog_route serialised GPU median (measured): on W6 4.79 ms; off W4 4.53, W8 4.47,
 route figures (`run275_windows_pass_off.txt`). Decision stands: the pass stays off (no visible difference in Run 68 C);
 it is cheap enough to enable per sector if a look case appears.
 
-**Removed 2026-09-25** (user decision): `--fog-shadow-pass` (the visibility-grid pass, its programs and the Ctrl+Shift+F11 toggle); `docs/verification/launcher-options-inventory.md`, "4. Removed 2026-09-25".
+**Removed 2026-09-25** (user decision): `--fog-shadow-pass` (the visibility-grid pass, its programs and the Ctrl+Shift+F11 toggle); `docs/verification/launcher-options-inventory.md`, "4. Removed".

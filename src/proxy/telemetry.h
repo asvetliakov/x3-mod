@@ -60,8 +60,6 @@ struct State {
     HWND gui_active=nullptr,gui_focus=nullptr,gui_capture=nullptr;
     BOOL gui_valid=FALSE,clip_valid=FALSE;
     RECT clip_rect{};
-    bool marker_down=false;
-    uint64_t markers=0;
     HCURSOR cursor=nullptr;
     DWORD cursor_flags=0;
     POINT point{};

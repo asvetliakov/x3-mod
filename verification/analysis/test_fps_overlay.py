@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class FpsOverlay(unittest.TestCase):
-    def test_accumulator_window_rounding_toggle_and_reset(self):
+    def test_accumulator_window_rounding_and_reset(self):
         compiler = shutil.which('clang++') or shutil.which('c++')
         self.assertIsNotNone(compiler)
         fixture = ROOT / 'verification/probe/fps_overlay_fixture.cpp'
@@ -37,60 +37,36 @@ class FpsOverlay(unittest.TestCase):
     def test_present_path_wiring(self):
         capture = (ROOT / 'src/proxy/capture.cpp').read_text()
         header = (ROOT / 'src/proxy/fps_overlay.h').read_text()
-        controls = (ROOT / 'src/proxy/comparison_controls.h').read_text()
         present = extract_function(capture, 'HRESULT WINAPI present(')
-        # The overlay draws after the hotkey notice, before the native Present,
-        # under the notice's admission and the same pin, with its own bitmap.
-        self.assertLess(present.index('comparison_notice.draw('), present.index('ctx.fps_notice.draw('))
+        # The overlay draws before the native Present, admitted at a clean frame
+        # boundary with the process in the foreground, under the pin, with its own bitmap.
         self.assertLess(present.index('ctx.fps_notice.draw('), present.index('const HRESULT hr=fn('))
         self.assertIn('if(ctx.fps_overlay.visible() && comparison_foreground()\n'
                       '            && !ctx.reset_active && !ctx.compositor && !ctx.bloom_busy\n'
                       '            && ctx.motion_output.comparison_boundary_available()){', present)
-        self.assertIn('if(!notice_pin.device){ctx.get<ULONG (WINAPI*)(IDirect3DDevice9*)>(1)(d);notice_pin.device=d;notice_pin.owner=owner;}', present)
-        self.assertEqual(present.count('BloomOperation internal(ctx);'), 2)
+        self.assertIn('ctx.get<ULONG (WINAPI*)(IDirect3DDevice9*)>(1)(d);notice_pin.device=d;notice_pin.owner=owner;', present)
+        self.assertEqual(present.count('BloomOperation internal(ctx);'), 1)
         self.assertIn('comparison_state_failed(overlay.restore)', present)
         self.assertIn('renderer_fps_overlay device=%llu frame=%llu operation=%08lx restore=%08lx drawn=%u', present)
-        # The existing notice's draw site is unchanged.
-        self.assertIn('ctx.comparison_notice.visible(GetTickCount64()) && comparison_foreground()', present)
-        self.assertEqual(present.count('ctx.comparison_notice.draw(d,ctx.original,ctx.caps.NumSimultaneousRTs)'), 1)
+        # No hotkey notice any more (comparison-hotkeys.md, "Removed 2026-09-26").
+        self.assertNotIn('ctx.comparison_notice', capture)
         # One QPC per shown frame after the native Present, before draws reset;
-        # the text is rebuilt only when the accumulator says so.
+        # the text is rebuilt only when the accumulator or the fog state says so.
         accounting = present.index('if(ctx.fps_overlay.visible()){')
         self.assertLess(present.index('const HRESULT hr=fn('), accounting)
         self.assertLess(accounting, present.index('++ctx.frame; ctx.draws=0;'))
         self.assertIn('const bool refreshed=ctx.fps_overlay.frame(uint64_t(stamp.QuadPart),ctx.draws);', present)
-        self.assertIn('const int shadows=!sun_shadow_apply_requested?-1:int(ctx.motion_output.sun_shadow_enabled());', present)
-        self.assertIn('shadows<0?"":shadows?"SHADOWS ON":"SHADOWS OFF"', present)
+        self.assertIn('if(ctx.fps_overlay.fog(fog)||refreshed){', present)
+        self.assertNotIn('SHADOWS', present)
         self.assertEqual(present.count('QueryPerformanceCounter(&stamp)'), 2)  # the overlay and the frame_end line
-        # The key: sampler-owned, option-gated, edge-triggered like the others.
-        polling = extract_function(capture, 'void comparison_begin_frame(')
-        self.assertIn('&& !sun_shadow_apply_requested && !fps_overlay_requested)return;', polling)
-        # Ctrl+Alt+F7 with Shift up: every Ctrl+Shift function key is owned and
-        # F1-F3 are engine views; the telemetry marker requires Shift, so the
-        # chords are disjoint. One option-gated poller; the sampler edges the
-        # folded chord outside its Ctrl+Shift arm.
-        self.assertIn('keys.alt=(fps_overlay_requested || volumetric_fog_requested) && (GetAsyncKeyState(VK_MENU)&0x8000)!=0;', polling)
-        self.assertIn('keys.fps_overlay=fps_overlay_requested && (GetAsyncKeyState(VK_F7)&0x8000)!=0;', polling)
-        self.assertEqual(capture.count('GetAsyncKeyState(VK_F7)'), 1)
-        self.assertEqual(capture.count('GetAsyncKeyState(VK_MENU)'), 1)
-        self.assertIn('(GetAsyncKeyState(VK_SHIFT)&0x8000)!=0;', (ROOT / 'src/proxy/telemetry.cpp').read_text().split('marker_down=', 1)[1].split('\n', 1)[0])
-        edge = 'result.fps_overlay = keys.control && keys.alt && !keys.shift && keys.fps_overlay && !fps_overlay_down_;'
-        self.assertLess(controls.index(edge), controls.index('latch(keys);\n        return result;'))
-        self.assertLess(controls.index('result.sun_shadow = keys.sun_shadow && !sun_shadow_down_;\n        }'), controls.index(edge))
-        # A draw failure keeps the mode on, retries next frame and logs once
-        # per episode; the second line follows the at-rest state the frame it
-        # changes. Only --fps-overlay: the emitter polls stay on their option.
+        # No key: on for the whole session whenever requested (X3M_FPS_OVERLAY or X3M_PERF).
+        self.assertNotIn('toggle', header)
+        self.assertIn('bool visible() const noexcept { return requested_; }', header)
+        self.assertIn('log("fps_overlay_mode requested=1 refresh_ms=250 window_ms=1000");', capture)
+        # A draw failure keeps the mode on, retries next frame and logs once per episode.
         self.assertIn('if(ctx.fps_overlay.draw_outcome(FAILED(overlay.operation)||FAILED(overlay.restore)))', present)
         self.assertNotIn('reason=draw_failed', present)
-        self.assertNotIn('ctx.fps_overlay.toggle()', present)
-        self.assertIn('fps_overlay_toggle device=%llu frame=%llu visible=%u reason=key', polling)
-        self.assertIn('if(ctx.fps_overlay.shadows(shadows)||fog_changed||refreshed)', present)  # the fog part of the line has its own latch
-        for key in ('VK_F4', 'VK_F5', 'VK_F6'):
-            self.assertIn(f'emitter_compare && (GetAsyncKeyState({key})&0x8000)!=0;', polling)
-        self.assertIn('if(action.fps_overlay)log("fps_overlay_toggle device=%llu frame=%llu visible=%u reason=key"', polling)
-        self.assertIn(edge, controls)
-        self.assertIn('fps_overlay_down_ = keys.fps_overlay;', controls)
-        # Reset empties the window and the bitmap; visibility survives.
+        # Reset empties the window and the bitmap; the overlay stays on.
         reset = extract_function(capture, 'HRESULT reset_common(')
         self.assertIn('ctx.fps_overlay.reset();ctx.fps_notice.text("","");', reset)
         self.assertIn('ComparisonNotice fps_notice{72};', capture)

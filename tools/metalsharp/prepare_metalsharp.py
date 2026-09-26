@@ -26,7 +26,7 @@ GAME_ARGS = "-noabout -skipintro -runinbg"
 ROUTES = [("dxmt32", "dxmt_32", "X3AP x3m proxy [DXMT(32)]", "sharp_1790400000001"),
           ("d3d9", "d3d9", "X3AP x3m proxy [D3D9]", "sharp_1790400000002")]
 CC = "/opt/homebrew/bin/i686-w64-mingw32-gcc"
-DRY_RUN = [sys.executable, os.path.join(REPO, "tools/manage.py"), "launch", "--dry-run", "--bottle", "X3", "--direct", "--telemetry", "--camera-log", "1"]
+DRY_RUN = [sys.executable, os.path.join(REPO, "tools/manage.py"), "launch", "--dry-run", "--bottle", "X3", "--direct", "--debug", "--perf"]
 CMD_SPECIAL = set('&|<>^%!"')
 
 

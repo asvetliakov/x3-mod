@@ -3858,3 +3858,5 @@ Producers and records: `verification/results/shadow-single-map-removal/` (`fixtu
 `compare_dry_runs.py` -> `comparison.json`, `compact_sun_share_live.py` -> `sun-share-live.json`). Not run:
 `run_route_bench.py` (its two depth configurations moved to a one-cascade set; a benchmark, not an acceptance
 check). Not flown.
+
+**Ctrl+Shift+F12 removed 2026-09-26** (user decision; `docs/architecture/comparison-hotkeys.md`, "Removed 2026-09-26"): the sun shadows run whenever the launch configured them; `MotionOutput::sun_shadow_toggle`, `sun_shadow_enabled_` / `sun_shadow_force_replay_`, the `x3m_sun_shadow_fixture_toggle` export, the `shadow_toggle=` field of `shadow_replay_depth` (the parser keeps it optional for older logs) and the two toggle cases are gone; the 27 shadowreplay and 6 sunapply cases pass at their committed counts (`motion-output.md`).

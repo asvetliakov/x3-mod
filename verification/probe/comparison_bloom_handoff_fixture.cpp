@@ -7,7 +7,7 @@
 #include <initializer_list>
 
 struct Resource { unsigned references=1; void AddRef() { ++references; } };
-struct Device { std::uint64_t id=7, frame=42; struct { bool bloom_requested=true; } comparison; };
+struct Device { std::uint64_t id=7, frame=42; };
 struct Display {
     bool valid=true;
     x3::temporal::AgxConstants agx{};
@@ -33,9 +33,11 @@ struct MotionHdrScene { void* device; Resource* scene; Resource* main; std::uint
 int main() {
     unsigned checks=0, failures=0;
     auto check=[&](bool ok) { ++checks; if(!ok) ++failures; };
+    // Two retains in a row: the handoff is deterministic and always at full
+    // strength (the Ctrl+Shift+F10 zero-gain A/B went on 2026-09-26).
     float active_gain=0;
-    for (bool on : {false,true}) {
-        Device owner; owner.comparison.bloom_requested=on;
+    for (bool again : {false,true}) {
+        Device owner;
         Resource texture,main;
         CompositorInvocation call{&owner,&owner};
         MotionHdrScene scene{&owner,&texture,&main,owner.id,owner.frame};
@@ -48,11 +50,11 @@ int main() {
         check(call.input.decode==scene.display.decode && call.input.sharpen==scene.display.sharpen);
         check(call.input.exact_sharpen && !std::memcmp(&call.input.sharpen_constants,
               &scene.display.sharpen_constants,sizeof scene.display.sharpen_constants));
-        check(call.input.filter.strength==(on?1.f:0.f));
+        check(call.input.filter.strength==1.f);
         check(call.input.filter.authored_glow_gain>0 && call.input.filter.authored_glow_gain<=4.f);
         check(call.input.filter.highlight_gain==.05f);
         check(call.input.filter.levels==5 && call.input.filter.threshold==1.f && call.input.filter.knee==.5f);
-        if(on) check(call.input.filter.authored_glow_gain==active_gain);
+        if(again) check(call.input.filter.authored_glow_gain==active_gain);
         active_gain=call.input.filter.authored_glow_gain;
         // The callback is retain-once even when invoked again before cleanup.
         retain_compositor_scene(&call,scene);

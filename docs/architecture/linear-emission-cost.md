@@ -342,7 +342,7 @@ routed opaque draw of the 100 programs carries the gain (unrouted draws keep the
 original program, as with `--original-fill`): the black 32x32 placeholder
 light maps of props and emitter materials multiply to zero, so no admission
 policy is needed, and any non-window light-map art (panel stripes, decals)
-brightens with the windows. **Ctrl+Shift+F4** toggles this gain alone
+brightens with the windows. **Ctrl+Shift+F4** (removed 2026-09-26, [in-game keys](comparison-hotkeys.md#removed-2026-09-26)) toggled this gain alone
 (its own flag since the run 41 regrouping; the guide lights of
 `--hull-emitters` moved to Ctrl+Shift+F6 with the effects gain they now take
 by default, and `hull_emission_gain_toggle` logs the driving key and both

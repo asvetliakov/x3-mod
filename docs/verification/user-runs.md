@@ -37,7 +37,8 @@ New since Run 88 A (the last flight): the **logging tiers** (`--debug` / `--perf
 tier is bounded), the **obsolete options and their code removed**, **`--taa-k` / `--taa-sentinel` removed** (k derived, sentinel
 auto: no visible change expected), the **single shadow map removed** (cascades only) and **cascade 3 at 4096**. The old stand
 command no longer works (its options are gone); the new one is below. Please name the sector of each stand and note whether
-X3AP.exe stays in the process list after quitting.
+X3AP.exe stays in the process list after quitting. Captures: nothing is captured automatically (the launcher sends
+`X3M_CAPTURE_START=999999`); F8 captures 8 frames on demand, starting at once (`--capture-delay` is gone).
 
 Launch 1, at 5120x1440:
 
@@ -72,7 +73,7 @@ Run 90 A is the only queued run. Completed instructions for Runs 73-88 are in th
 ## Stand command
 
 Since 2026-09-25 the functional options of the Run 84 A stand command, `--music-keep` and `--shadow-alpha-casters on`
-are launcher defaults ([inventory](launcher-options-inventory.md#defaults-promoted-2026-09-25)); since 2026-09-26 its
+are launcher defaults ([inventory](launcher-options-inventory.md#promoted-defaults-2026-09-25)); since 2026-09-26 its
 telemetry/debug options are the two logging groups ([logging tiers](../architecture/logging-tiers.md)): `--debug`
 (rendering-state rows every frame, censuses, traces) and `--perf` (per-frame cost rows, frame-time and phase windows,
 FPS overlay). The DLL expands both; the `X3M_MOTION_FRAME_LOG=1` prefix is gone (the launcher drops it, `--debug`
@@ -99,6 +100,7 @@ env -u CX_DEBUGMSG X3M_FIXTURE_BOTTLE=X3 /Users/asvetl/x3-mod/x3run --direct --d
 # --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,4096,4096,4096,2048
 # --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --light-map-far-fade 80,220 --motion-rt-mode lazy
 # --volumetric-fog 0.02 --volumetric-fog-cards replace --volumetric-fog-range stored --cull-small-parts 4
-# --capture-start 999999 --capture-frames 8 --capture-delay 300 (no automatic capture; F8 captures on demand)
+# --capture-frames 8 (no automatic capture; F8 under --debug captures 8 frames at once; --capture-start and
+# --capture-delay were removed on 2026-09-26)
 # --music-keep --shadow-alpha-casters on
 ```

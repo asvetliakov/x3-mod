@@ -166,7 +166,7 @@ Add `pixel[6] = k_draw(f)` (one multiply-add and a clamp), and choose the widene
 `k_draw > 1 && blend off && atest off && levels(stage) > 1` (the mip-bias shadow keeps per-stage level counts, so the
 32x32 single-level placeholder of the ONE/ONE emitter props never binds it; the LOD clamp would make it identical
 anyway). No new `SetPixelShaderConstantF`, no `Get*`, no allocation per draw. Reset re-creates the variants through the
-existing registration path; Ctrl+Shift+F4 keeps toggling the gain, and the widened variant follows the gain variant's
+existing registration path; Ctrl+Shift+F4 kept toggling the gain until its removal on 2026-09-26 (the fixture seam still does), and the widened variant follows the gain variant's
 selection.
 
 ### 2.4 Proof method
@@ -334,7 +334,7 @@ Implemented as designed with these concrete choices and measured facts:
   is already refused by the opaque chain) and the stage's level count exceeds 1. The `SetTexture` hook installs for
   the option as for the mip bias so the level counts exist without `--taa-mip-bias`. Frame line
   `hull_lightmap_widen_frame` (widened / unity counts, k range, camera), detach line `hull_lightmap_widen_summary`
-  (session k range). Ctrl+Shift+F4 drops the widened variant with the gain. No new API call or allocation per draw.
+  (session k range). Ctrl+Shift+F4 dropped the widened variant with the gain (removed 2026-09-26, [in-game keys](comparison-hotkeys.md#removed-2026-09-26)). No new API call or allocation per draw.
 - **Option**: `X3M_HULL_EMISSIVE_WIDENING=K,Q0,Q1` parsed in `capture.cpp` (logs `hull_emissive_widening_mode` /
   `_configured`), launcher `--hull-emissive-widening K,Q0,Q1` (requires the active light-map gain: `--hdr`, gain above 1
   (`--linear-materials`, which excluded it, left the launcher on 2026-09-25); no `--taa` requirement: the option latches the camera projection itself, as

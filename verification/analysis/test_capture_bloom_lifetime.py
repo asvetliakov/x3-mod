@@ -100,9 +100,6 @@ class CaptureBloomLifetimeTests(unittest.TestCase):
             'HRESULT reset_common(IDirect3DDevice9* d,D3DPRESENT_PARAMETERS* p,D3DDISPLAYMODEEX* mode,bool extended)',
             'HRESULT WINAPI reset(IDirect3DDevice9* d,D3DPRESENT_PARAMETERS* p)',
             'HRESULT WINAPI reset_ex(IDirect3DDevice9* d,D3DPRESENT_PARAMETERS* p,D3DDISPLAYMODEEX* mode)',
-            'const char* comparison_bloom_reason(const Device& ctx) noexcept',
-            'bool comparison_bloom_ready(const Device& ctx) noexcept',
-            'void comparison_notice_text(Device& ctx) noexcept',
         ]
         functions = [extract_function(source, signature) for signature in signatures]
         functions.append(extract_function(source, 'struct NoticePin') + ';')
@@ -118,7 +115,7 @@ class CaptureBloomLifetimeTests(unittest.TestCase):
             self.assertEqual(build.returncode, 0, build.stdout + build.stderr)
             run = subprocess.run([str(executable)], capture_output=True, text=True)
             self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
-            self.assertEqual(run.stdout, 'capture_bloom_lifetime scenarios=42 checks=214 failures=0\n')
+            self.assertEqual(run.stdout, 'capture_bloom_lifetime scenarios=41 checks=209 failures=0\n')
             self.assertEqual(run.stderr, '')
 
 

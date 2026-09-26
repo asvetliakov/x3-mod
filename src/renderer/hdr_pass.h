@@ -193,9 +193,6 @@ public:
     IDirect3DPixelShader9* identity_shader() const noexcept { return caps_.dither && writeback_dither_shader_ ? writeback_dither_shader_ : shader_; }
     const ExposureState& exposure() const noexcept { return exposure_; }
     ExposureMode exposure_mode() const noexcept { return config_.exposure; }
-    // Comparison-only handoff at a closed frame boundary; never provisions
-    // meter resources that startup did not prepare. Parameters are unchanged.
-    bool comparison_exposure(ExposureMode mode) noexcept;
     // At the latch of a frame (after the redirect bound): copies the previous
     // frame's tile image from its ring target to system memory and locks it
     // (the lagged readback, a Present after the chain wrote it), reduces it

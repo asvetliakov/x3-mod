@@ -156,7 +156,8 @@ class FogCardPolicyTests(unittest.TestCase):
         self.assertIn('motion_state_lost_ = true', bracket)
         self.assertIn('route.submit = false', bracket)
         self.assertLess(bracket.index('fog_latch_.card(frame_)'), bracket.index('may_replace()'))
-        self.assertLess(capture.index('if(action.fog_step)'), capture.index('ctx.motion_output.volumetric_fog_begin_frame()'))
+        # The frame boundary runs the fog begin step every frame (the Ctrl+Alt+F9/F10 keys that preceded it went on 2026-09-26).
+        self.assertLess(capture.index('ctx.motion_output.begin_frame(ctx.frame,ctx.capture);'), capture.index('ctx.motion_output.volumetric_fog_begin_frame();'))
         self.assertNotIn('set_stream_frequency', capture)
 
 

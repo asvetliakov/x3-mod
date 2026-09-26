@@ -32,7 +32,7 @@ struct FogDensityConfig {
     unsigned upload_budget_bytes=0; // per prepare_density; 0 selects 8 tiles (1,065,024 B)
     FogLookTuning look{};       // the single look's tuning; read once at init by the caller
     // X3M_FOG_DUST_MOTES (docs/architecture/fog-dust-motes.md): motes.count > 0 is the launch option; dust_motes is its
-    // toggle (Ctrl+Alt+F11), latched here. The mote programs and the static DEFAULT VB/IB are created at
+    // on/off (a fixture seam; the Ctrl+Alt+F11 key was removed 2026-09-26), latched here. The mote programs and the static DEFAULT VB/IB are created at
     // prepare_density while it is on, never on a draw path; count 0 creates, queries and draws nothing.
     FogMoteTuning motes{};
     bool dust_motes=false;

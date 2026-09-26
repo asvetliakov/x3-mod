@@ -13,12 +13,12 @@
  "counts": {
   "base_default": 150,
   "base_vanilla": 99,
-  "new_debug": 124,
-  "new_debug_perf": 125,
-  "new_default": 123,
-  "new_perf": 124,
-  "new_perf_draw_trace": 125,
-  "new_vanilla": 72
+  "new_debug": 123,
+  "new_debug_perf": 124,
+  "new_default": 122,
+  "new_perf": 123,
+  "new_perf_draw_trace": 124,
+  "new_vanilla": 71
  },
  "debug_perf_vs_default": {
   "X3M_DEBUG": [
@@ -38,6 +38,10 @@
  },
  "default_vs_base": {
   "X3M_CAMERA_LOG": [
+   "300",
+   null
+  ],
+  "X3M_CAPTURE_DELAY": [
    "300",
    null
   ],
@@ -166,6 +170,10 @@
  "vanilla_vs_base": {
   "X3M_CAMERA_LOG": [
    "300",
+   null
+  ],
+  "X3M_CAPTURE_START": [
+   "120",
    null
   ],
   "X3M_FPS_OVERLAY": [

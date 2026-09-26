@@ -485,6 +485,9 @@ row mix (section 4): always tier about
 about 28 us per frame (27 rows, 9.3 KB), about 34 us with both; the former per-frame `fflush` (0.1-0.6 us measured in
 run337, but a disk sync, an antivirus scan or a page-in on the render thread) is gone.
 
+2026-09-26 (in-game keys and capture options removed, `comparison-hotkeys.md`, "Removed 2026-09-26"): F8 is polled only under
+`X3M_DEBUG=1`, the FPS overlay has no key, `telemetry_phase_marker` and `capture_armed` are gone.
+
 ### Evidence
 
 - Build: `cmake --build build` 0 warnings; `check_no_x87.py build/d3d9.dll` PASS, 0 violations, 709 functions

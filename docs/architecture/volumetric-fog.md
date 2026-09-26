@@ -337,7 +337,7 @@ frame bound at least one).
 0..0.1, default 0.02, 0 = off; requires `--motion-output --taa --hdr --shadow-replay-depth
 --shadow-cascades`), `--volumetric-fog-anisotropy G` (0..0.9, default 0.3),
 `--volumetric-fog-everywhere` (removed 2026-09-26), `--volumetric-fog-timing` (part of `--perf` since 2026-09-26; one `volumetric_fog_frame` line per frame with
-`cpu_us` and `calls`; otherwise one line per change of the skip reason, at most 64). Hotkeys, polled only with
+`cpu_us` and `calls`; otherwise one line per change of the skip reason, at most 64). Hotkeys (removed 2026-09-26, [in-game keys](comparison-hotkeys.md#removed-2026-09-26)), polled only with
 the option: **Ctrl+Alt+F9** toggles the pass, **Ctrl+Alt+F10** steps the strength through
 0.005/0.01/0.02/0.03/0.05 (a launcher value between steps moves to the next above); Shift must be up, so
 the chords are disjoint from Ctrl+Shift+F9/F10 (exposure, bloom), as Ctrl+Alt+F7 is from the telemetry
@@ -423,7 +423,7 @@ counts. Replacement must never teach the sector detector that its cards vanished
 No background identity or geometry-fade shader is included in this allowlist.
 
 **Readiness and fallback.** Cache frame eligibility after hotkeys in
-`comparison_begin_frame`; Ctrl+Alt+F9 off and strength zero immediately leave all
+`comparison_begin_frame` (gone with the keys on 2026-09-26; `volumetric_fog_begin_frame` now runs at every frame boundary); Ctrl+Alt+F9 off and strength zero immediately leave all
 cards native. Require a previous fully successful fog transaction *and* this
 frame's known prerequisites/resources, not previous success alone. Prepare target
 sizes/caps outside individual card brackets; a first warm-up frame after enabling

@@ -8,22 +8,20 @@ namespace x3m {
 // overlay"). Pure arithmetic on QPC ticks the caller reads: no OS calls, D3D
 // objects or allocations. Four 250 ms buckets form a one-second sliding
 // window; the text is refreshed when a bucket closes, so a frame costs three
-// integer adds and one compare, and a hidden overlay costs one branch.
+// integer adds and one compare, and an unrequested overlay costs one branch.
+// On for the whole session when requested (no key since 2026-09-26).
 class FpsOverlay {
 public:
     static constexpr unsigned bucket_count = 4, line_capacity = 40;
     void configure(bool requested, std::uint64_t frequency) noexcept {
-        requested_ = requested; visible_ = requested; frequency_ = frequency ? frequency : 1; reset();
+        requested_ = requested; frequency_ = frequency ? frequency : 1; reset();
     }
     bool requested() const noexcept { return requested_; }
-    bool visible() const noexcept { return requested_ && visible_; }
-    // Ctrl+Alt+F7. Showing again starts a fresh window: the hidden span
-    // must not enter the frame interval.
-    bool toggle() noexcept { if (requested_) { visible_ = !visible_; if (visible_) reset(); } return visible(); }
+    bool visible() const noexcept { return requested_; }
     // One call per presented frame with the QPC stamp and the frame's draw
     // count. True when line() changed (each bucket close, about 250 ms).
     bool frame(std::uint64_t now, std::uint64_t draws) noexcept {
-        if (!visible()) return false; // the caller gates on visible() too; hidden is inert either way
+        if (!visible()) return false; // the caller gates on visible() too; unrequested is inert either way
         if (!primed_) { primed_ = true; last_ = bucket_start_ = now; return false; }
         const std::uint64_t dt = now >= last_ ? now - last_ : 0; last_ = now;
         Bucket& current = buckets_[head_]; ++current.frames; current.draws += draws; current.ticks += dt;
@@ -37,21 +35,18 @@ public:
         return true;
     }
     const char* line() const noexcept { return line_; }
-    // The second line's state (-1 none, 0 off, 1 on), compared each shown
-    // frame so a Ctrl+Shift+F12 press rewrites the text the same frame: true
-    // when it differs from the last written state.
-    bool shadows(int state) noexcept { if (state == shadows_) return false; shadows_ = state; return true; }
-    // The same for the volumetric fog's part of the second line (MotionOutput::volumetric_fog_overlay_state; -1 none).
+    // The second line's volumetric fog state (MotionOutput::volumetric_fog_overlay_state; -1 none), compared each
+    // shown frame so a change rewrites the text the same frame: true when it differs from the last written state.
     bool fog(int state) noexcept { if (state == fog_) return false; fog_ = state; return true; }
     // The draw's outcome each shown frame. A failure keeps the mode on (the
     // next frame retries); true only at the start of a failure episode, so
     // the caller logs once until a draw succeeds again.
     bool draw_outcome(bool failed) noexcept { const bool first = failed && !draw_failed_; draw_failed_ = failed; return first; }
     bool draw_failed() const noexcept { return draw_failed_; }
-    // Device Reset and configure: the window and the text go, the visibility stays.
+    // Device Reset and configure: the window and the text go, the overlay stays on.
     void reset() noexcept {
         for (Bucket& bucket : buckets_) bucket = Bucket{};
-        head_ = 0; last_ = bucket_start_ = 0; primed_ = false; line_[0] = '\0'; shadows_ = -2; fog_ = -2; draw_failed_ = false;
+        head_ = 0; last_ = bucket_start_ = 0; primed_ = false; line_[0] = '\0'; fog_ = -2; draw_failed_ = false;
     }
     // "FPS 61.3  16.3 MS  DRAWS 638": the ms figure is the Present-to-Present
     // interval, not GPU time. Uppercase only (the notice glyph set); values
@@ -69,10 +64,9 @@ private:
     struct Bucket { std::uint64_t frames = 0, draws = 0, ticks = 0; };
     Bucket buckets_[bucket_count]{};
     unsigned head_ = 0;
-    int shadows_ = -2; // last written second-line state; -2 = nothing written since reset
     int fog_ = -2;     // last written fog state of the second line; -2 = nothing written since reset
     std::uint64_t frequency_ = 1, last_ = 0, bucket_start_ = 0;
-    bool requested_ = false, visible_ = false, primed_ = false, draw_failed_ = false;
+    bool requested_ = false, primed_ = false, draw_failed_ = false;
     char line_[line_capacity]{};
 };
 } // namespace x3m

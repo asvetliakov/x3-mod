@@ -159,3 +159,5 @@ coverage complete to frame 2442 (run329) and 4174 (run330), expired 0, overwritt
 is contradicted by the two observed returns (0, inactive state).
 Candidate fix (not built): one bounded repeat fire at the first pointer motion after each arm, plus a diagnostic
 schedule of fires. **User decision 2026-09-25: parked, not a big deal.** `--cursor-reassert` stays opt-in.
+
+**2026-09-26** (`docs/architecture/comparison-hotkeys.md`, "Removed 2026-09-26"): the window trace no longer flushes on the Ctrl+Shift+F7 marker (`window_trace::present` lost its marker argument, `flush=first_present,transition`); `run_cursor_reassert.py` PASS, 41 checks (42 before, `flush_on_marker` removed; bottle X3).

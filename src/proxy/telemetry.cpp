@@ -87,9 +87,6 @@ void present(State& state,uint64_t frame,bool captured,uint64_t begin,uint64_t e
     if(state.had_present)record(state,(captured||state.last_frame_capture)?Metric::FrameCapture:Metric::FrameNormal,end-state.last_present);
     else log("telemetry_first_present device=%llu frame=%llu qpc=%llu since_start_us=%.3f capture=%u reset_count=%llu",state.device,frame,end,us(end-startup),captured,state.resets);
     state.had_present=true;state.last_present=end;state.last_frame_capture=captured;
-    const bool marker_down=(GetAsyncKeyState(VK_F7)&0x8000)!=0 && (GetAsyncKeyState(VK_CONTROL)&0x8000)!=0 && (GetAsyncKeyState(VK_SHIFT)&0x8000)!=0;
-    if(marker_down&&!state.marker_down && GetAncestor(GetForegroundWindow(),GA_ROOT)==GetAncestor(state.window,GA_ROOT))log("telemetry_phase_marker device=%llu frame=%llu marker=%llu qpc=%llu since_start_us=%.3f coverage=present_poll",state.device,frame,++state.markers,end,us(end-startup));
-    state.marker_down=marker_down;
     poll_window(state,frame);
     if(!state.last_summary)state.last_summary=end;
     if(end-state.last_summary>=clock_frequency && frame%60==0) {

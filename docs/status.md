@@ -47,7 +47,7 @@ cxbottle.conf `cc5d6c00…`.
 
 ## Current work and pending acceptance
 
-- **Launcher defaults (2026-09-25, launcher only, no DLL change):** `manage.py launch` with no options now gives the Run 84 A stand environment minus its telemetry/debug options, plus music keep and alpha-tested casters; the stand command is `x3run --direct` plus the telemetry flags ([inventory](verification/launcher-options-inventory.md#defaults-promoted-2026-09-25)).
+- **Launcher defaults (2026-09-25, launcher only, no DLL change):** `manage.py launch` with no options now gives the Run 84 A stand environment minus its telemetry/debug options, plus music keep and alpha-tested casters; the stand command is `x3run --direct` plus the telemetry flags ([inventory](verification/launcher-options-inventory.md#promoted-defaults-2026-09-25)).
 - **Media accepted:** Run200 identifies the intended DLL and enables the ID2 skip.
   The user reports no crash or media-related stutter. Preserved logs have no
   crash markers; per-call skip counts are intentionally not logged. Speech/music

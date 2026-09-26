@@ -1,6 +1,6 @@
 """Host tests of the thin region's flag source (docs/architecture/taa-thin-geometry-alternatives.md section 3.2,
 taa-mask-fold.md). --taa-thin-region-source and X3M_TAA_THIN_REGION_SOURCE(_DEFAULT) were removed on 2026-09-25 (user
-decision, docs/verification/launcher-options-inventory.md "Removed 2026-09-25"): the DLL configures the vote alone whenever
+decision, docs/verification/launcher-options-inventory.md "4. Removed"): the DLL configures the vote alone whenever
 the thin vote and the thin region are on (both otherwise), marked default when the vote was the launcher's default. Covered:
 the option is unknown and the variables are neither sent nor inherited; the runner's parser of the DLL's
 taa_thin_region_source row; the source contract of the DLL, the pass and the shaders (the folded resolve reads c10.y / c10.z;

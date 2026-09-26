@@ -765,3 +765,5 @@ their right neighbour 91.4-96.8 % off vs 49.9-50.7 % on; run length of equal cod
 banding p99 0.12-0.27 codes vs 0.021-0.026 codes (about 10x lower). Frame time p50/p95 18.91/21.19 ms on vs 18.98/21.31
 off (no measurable cost). Logs carry `hdr_tonemap dither=1 dither_reason=ok` / `dither=0 dither_reason=off`. Accepted;
 `--hdr-dither on` stays the default.
+
+**Ctrl+Shift+F9 / F10 removed 2026-09-26** (user decision; `docs/architecture/comparison-hotkeys.md`, "Removed 2026-09-26"): exposure follows `--hdr-exposure`, bloom runs at full strength; the notice, the `renderer_comparison` rows, `MotionOutput::comparison_toggle_exposure` and `HdrPass::comparison_exposure` are gone (`HdrConfig::allow_auto_toggle` stays, so a fixed-EV launch still prepares the meter).

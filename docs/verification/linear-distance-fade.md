@@ -129,4 +129,4 @@ Superseded the same day by the TAA mask fold (`docs/verification/temporal-resolv
 `--taa-sentinel-stabiliser` is a launcher parser error and neither variable is sent; `test_taa_sentinel_stabiliser_default`
 was deleted with it.
 
-**Removed 2026-09-25** (user decision): `--linear-materials`, `--material-fill`, `--material-direct-gain`, `--material-emissive-gain`, `--lightmap-emissive-gain` and `--linear-distance-fade` from the launcher only (the converted-material and fade code stays for the fixtures and the shared fill / light-map gain); `docs/verification/launcher-options-inventory.md`, "4. Removed 2026-09-25".
+**Removed 2026-09-25** (user decision): `--linear-materials`, `--material-fill`, `--material-direct-gain`, `--material-emissive-gain`, `--lightmap-emissive-gain` and `--linear-distance-fade` from the launcher only (the converted-material and fade code stays for the fixtures and the shared fill / light-map gain); `docs/verification/launcher-options-inventory.md`, "4. Removed".

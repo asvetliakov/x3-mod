@@ -88,7 +88,15 @@ class LauncherGroups(unittest.TestCase):
             with self.subTest(args=args):
                 code, _, error = self.launch(*args)
                 self.assertEqual(code, 2, args)
-                self.assertTrue('unrecognized arguments' in error or 'was removed on 2026-09-26' in error or 'invalid choice' in error, error[-300:])
+                self.assertTrue('unrecognized arguments' in error or 'invalid choice' in error, error[-300:])
+
+    def test_parser_takes_no_abbreviations(self):
+        # allow_abbrev=False (2026-09-26): a prefix of a registered option is an unknown argument.
+        for args in (('--capture', '4'), ('--capture-frame', '4'), ('--deb',), ('--draw',)):
+            with self.subTest(args=args):
+                code, _, error = self.launch(*args)
+                self.assertEqual(code, 2, args)
+                self.assertIn('unrecognized arguments', error)
 
     def test_groups_add_exactly_their_variable(self):
         _, empty, _ = self.launch()

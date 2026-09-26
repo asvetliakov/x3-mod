@@ -1,6 +1,6 @@
 # Fog route GPU cost at 1920x1080 (design note, 2026-09-23)
 
-**Removed 2026-09-25** (user decision): step B's 24-far-bin variant (`--fog-far-bins`, `X3M_FOG_FAR_BINS`) and its programs are gone; the look marches 40 far bins at spacing 4 (default) or 2 (`docs/verification/launcher-options-inventory.md`, "4. Removed 2026-09-25").
+**Removed 2026-09-25** (user decision): step B's 24-far-bin variant (`--fog-far-bins`, `X3M_FOG_FAR_BINS`) and its programs are gone; the look marches 40 far bins at spacing 4 (default) or 2 (`docs/verification/launcher-options-inventory.md`, "4. Removed").
 
 Question: how to cut the GPU cost of the stored-density fog route without changing the accepted look
 (L2 law, density scale 1.0x, 22.5 km fade, dust motes 1300,3 / MAX_PX 8, shadow pass off). Plan for

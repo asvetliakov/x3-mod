@@ -174,7 +174,7 @@ class FrameTimingLaunchOption(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             code, _, error = helper.launch(directory, '--frame-timing')
             self.assertEqual(code, 2)
-            self.assertIn('--frame-timing was removed on 2026-09-26', error)
+            self.assertIn('unrecognized arguments: --frame-timing', error)  # a plain unknown argument (no abbreviation, no stub)
             code, output, error = helper.launch(directory, '--perf')
             self.assertEqual(code, 0, error)
             environment = json.loads(output)['env']

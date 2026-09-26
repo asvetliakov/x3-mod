@@ -261,7 +261,7 @@ class OriginalFillTransformerTests(unittest.TestCase):
 class LauncherGateTests(unittest.TestCase):
     def test_default_off_requires_hdr(self):
         # The launcher's --linear-materials / --material-fill went on 2026-09-25 (docs/verification/launcher-options-inventory.md,
-        # "Removed 2026-09-25"); the DLL still excludes the fill under X3M_LINEAR_MATERIALS (test below).
+        # "4. Removed"); the DLL still excludes the fill under X3M_LINEAR_MATERIALS (test below).
         with tempfile.TemporaryDirectory() as directory:
             code, output, error = launch(directory, *PREREQUISITES); self.assertEqual(code, 0, error)
             baseline = json.loads(output)['env']

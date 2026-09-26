@@ -1,4 +1,36 @@
-# Same-run exposure and bloom comparisons
+# In-game keys
+
+## Removed 2026-09-26
+
+User decision 2026-09-26: every in-game debug and A/B key went; F8 stays as the
+capture key. The features the keys toggled keep their launcher-configured state for the
+whole session.
+
+| Key (gone) | What it did | Now |
+| --- | --- | --- |
+| Ctrl+Shift+F4 / F5 / F6 | hull light-map gain, additive bullets, emission source gain + guide lights: configured gain vs native | configured gain always; the hull pair keeps a fixture-only export (`x3m_hull_emission_fixture_toggle`) |
+| Ctrl+Shift+F7 | `telemetry_phase_marker` row, window-trace flush reason `marker` | removed (row, flush reason, cursor fixture check) |
+| Ctrl+Shift+F9 / F10 | exposure AUTO vs fixed EV 0, bloom ON/OFF, with the two-line notice and `renderer_comparison` rows | launch policy (`--hdr-exposure`), bloom at full strength; notice, rows and `MotionOutput::comparison_toggle_exposure` removed |
+| Ctrl+Shift+F12 | sun shadows off/on at rest (`sun_shadow_toggle`, `shadow_toggle=` on `shadow_replay_depth`) | shadows run whenever configured; toggle, export, field and the two motion-output toggle cases removed |
+| Ctrl+Alt+F7 | FPS overlay hide/show (`fps_overlay_toggle`) | the overlay is on for the whole session with `--perf` (`X3M_PERF=1` or `X3M_FPS_OVERLAY=1`); its second line keeps the fog state, no SHADOWS text |
+| Ctrl+Alt+F9 / F10 | volumetric fog on/off, strength step | launch strength; `volumetric_fog_toggle` / `_step` stay as fixture seams of the fog route fixtures |
+| Ctrl+Alt+F11 | dust motes on/off (`key=ctrl_alt_f11`) | launch state; `volumetric_fog_dust_motes_toggle` stays as a fog route fixture seam (its export went) |
+
+**F8** is polled only under `--debug` (`X3M_DEBUG=1`): its press edge starts a burst
+of `--capture-frames` frames (default 8) at once. Without `--debug` the key is never
+queried and nothing is logged. `--capture-start` and `--capture-delay` were removed the
+same day; the launcher still sends `X3M_CAPTURE_START=999999` (never) on every modded
+launch, so a DLL with the older default 120 also captures only on F8, and the fixtures set
+their own start (DLL default 0 = never). The F8 guard reads the debug flag cached once at
+`initialize_log` (`log_tier::init`), never the environment per frame. No `key=` / `keys=` field remains in any row.
+Host proof: `verification/analysis/test_comparison_hotkeys.py` (the production F8 block
+executed with and without the debug tier). Ledger lines (`docs/verification/`): `motion-output.md`,
+`directional-shadows.md`, `volumetric-fog.md`, `telemetry.md`, `window-and-cursor.md`, `screen-emission.md`,
+`hdr-scene-path.md`.
+
+The sections below are the history of the keys before their removal.
+
+## History: same-run exposure and bloom comparisons
 
 Controls were installed in candidate `75dbbed`; runs 26/27 exercise their notices
 and toggles in game. Native Windows remains unverified. The 2026-09-14
@@ -234,7 +266,7 @@ press. In-game and native Windows behavior are unverified.
 ## Fog shadow pass
 
 Removed 2026-09-25 with `--fog-shadow-pass` (user decision; `docs/verification/launcher-options-inventory.md`,
-"4. Removed 2026-09-25"): **Ctrl+Shift+F11** is no press, and F11 is read only for the dust motes.
+"4. Removed"): **Ctrl+Shift+F11** is no press, and F11 is read only for the dust motes.
 
 ## Exposure handoff and capability preparation
 

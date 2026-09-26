@@ -121,7 +121,7 @@ mask lane is possible (section 7).
   calls of the stage>`, `mote_shift_px=<512 |delta| / R: the perpendicular displacement at the wrap radius
   this frame>` (superseded, see As built: H/2 x m11 in place of 512), `mote_streak=0|1` (previous basis valid: 0 on a cut, a Reset, a gap or |delta| > R),
   `mote_shadow=in_march|grid|none`, `mote_refused=<reason|none>`. Same budget rules as the grid fields.
-- **Ctrl+Alt+F11** toggles the stage (free since the look cycle was retired on 2026-09-22; the Alt rule on
+- **Ctrl+Alt+F11** (removed 2026-09-26, [in-game keys](comparison-hotkeys.md#removed-2026-09-26)) toggled the stage (free since the look cycle was retired on 2026-09-22; the Alt rule on
   F11's own raw latch, so Ctrl+Shift+F11 stays the shadow pass; polled only with the option). One
   `fog_dust_motes_toggle device= frame= enabled=0|1 refused=<none|not_requested> key=ctrl_alt_f11` line per
   press, no notice; the FPS overlay's fog line appends ` MOTES` while drawn. Fixture export

@@ -227,4 +227,4 @@ opt-in wiring, endpoint gates and explicit cleanup-failure handling. Game mesh
 eligibility, repeat-hit rate, retained memory pressure and live benefit remain
 unmeasured; neither checkpoint installs or launches the game.
 
-**Removed 2026-09-25** (user decision): `--mesh-cache` with `src/proxy/mesh_adjacency_cache.*`, the cache branch of the adjacency hook and its fixtures and runners (the fast/verify adjacency is unchanged); `docs/verification/launcher-options-inventory.md`, "4. Removed 2026-09-25".
+**Removed 2026-09-25** (user decision): `--mesh-cache` with `src/proxy/mesh_adjacency_cache.*`, the cache branch of the adjacency hook and its fixtures and runners (the fast/verify adjacency is unchanged); `docs/verification/launcher-options-inventory.md`, "4. Removed".

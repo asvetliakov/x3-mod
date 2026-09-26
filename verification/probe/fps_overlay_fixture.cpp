@@ -1,5 +1,5 @@
 // Host check of the FPS overlay accumulator: window arithmetic, ms rounding,
-// refresh cadence, toggle and Reset semantics, no allocation. Pure ticks;
+// refresh cadence, Reset semantics, no allocation. Pure ticks;
 // production header included intact.
 #include <cstdio>
 #include <cstdlib>
@@ -21,7 +21,7 @@ int main(){
     CHECK(std::strlen(text)<=36); // the notice's column count
     x3m::FpsOverlay::format(text,sizeof text,0.0/0.0,0.0/0.0,3);CHECK(!std::strcmp(text,"FPS 0.0  0.0 MS  DRAWS 3"));
     x3m::FpsOverlay overlay;
-    CHECK(!overlay.requested()&&!overlay.visible()&&!overlay.toggle()&&!overlay.visible()); // unrequested: the key is inert
+    CHECK(!overlay.requested()&&!overlay.visible()); // unrequested: inert
     overlay.configure(false,hz);CHECK(!overlay.visible());
     for(unsigned i=0;i<3000;++i)CHECK(!overlay.frame(std::uint64_t(i)*16667,600)); // never refreshes while unrequested
     CHECK(overlay.line()[0]=='\0');
@@ -40,10 +40,9 @@ int main(){
     // Draws average over the window, rounded to nearest.
     for(unsigned i=0;i<120;++i){now+=33333;overlay.frame(now,i%2?301:300);}
     CHECK(!std::strncmp(overlay.line(),"FPS 30.0  33.3 MS  DRAWS 30",27));
-    // Toggle off then on: a fresh window, so the hidden span never enters the interval.
-    CHECK(!overlay.toggle()&&!overlay.visible());
-    CHECK(overlay.toggle()&&overlay.visible()&&overlay.line()[0]=='\0');
-    now+=5*hz; // five hidden seconds
+    // Reset: a fresh window, so the span before it never enters the interval.
+    overlay.reset();CHECK(overlay.visible()&&overlay.line()[0]=='\0');
+    now+=5*hz; // five seconds without a Present (a device Reset)
     CHECK(!overlay.frame(now,10)); // primes only
     refreshes=0;for(unsigned i=0;i<60;++i){now+=16667;if(overlay.frame(now,10))++refreshes;}
     CHECK(refreshes==4&&!std::strcmp(overlay.line(),"FPS 60.0  16.7 MS  DRAWS 10")); // intervals 15, 30, 45, 60
@@ -64,20 +63,18 @@ int main(){
     CHECK(!std::strcmp(overlay.line(),"FPS 60.0  16.7 MS  DRAWS 1"));
     // The second line's state: the first shown frame writes it, a change
     // rewrites it the same frame, an unchanged state is one compare.
-    CHECK(overlay.shadows(-1));CHECK(!overlay.shadows(-1));CHECK(overlay.shadows(1));
-    for(unsigned i=0;i<100;++i)CHECK(!overlay.shadows(1));
-    CHECK(overlay.shadows(0)&&!overlay.shadows(0)&&overlay.shadows(1));
-    overlay.reset();CHECK(overlay.shadows(1)); // Reset forgets the written state
-    CHECK(!overlay.toggle()&&overlay.toggle()&&overlay.shadows(1)); // so does showing again
+    CHECK(overlay.fog(-1));CHECK(!overlay.fog(-1));CHECK(overlay.fog(1));
+    for(unsigned i=0;i<100;++i)CHECK(!overlay.fog(1));
+    CHECK(overlay.fog(0)&&!overlay.fog(0)&&overlay.fog(1));
+    overlay.reset();CHECK(overlay.fog(1)); // Reset forgets the written state
     // A draw failure keeps the mode on and reports once per episode; success
-    // closes the episode, Reset and re-show clear it.
+    // closes the episode, Reset clears it.
     CHECK(!overlay.draw_outcome(false)&&!overlay.draw_failed());
     CHECK(overlay.draw_outcome(true)&&overlay.draw_failed()&&overlay.visible());
     for(unsigned i=0;i<100;++i)CHECK(!overlay.draw_outcome(true)&&overlay.visible()); // retried, not re-logged
     CHECK(!overlay.draw_outcome(false)&&!overlay.draw_failed());
     CHECK(overlay.draw_outcome(true)); // a new episode after a success logs again
     overlay.reset();CHECK(!overlay.draw_failed()&&overlay.draw_outcome(true));
-    CHECK(!overlay.toggle()&&overlay.toggle()&&!overlay.draw_failed());
     CHECK(allocations==before_allocations);
     std::printf("fps_overlay checks=%u failures=%u allocations=%u\n",checks,failures,allocations-before_allocations);
     return failures?1:0;

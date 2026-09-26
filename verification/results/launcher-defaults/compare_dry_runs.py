@@ -15,7 +15,10 @@ of the options removed on 2026-09-25 (REMOVED; docs/verification/launcher-option
 which the launcher no longer sends, by the logging variables the launcher no longer sends (its TIERED_VARIABLES) and by
 the two groups. The Run 84 A stand command is replayed without --loading-intervals (removed 2026-09-25).
 Since 2026-09-26 REMOVED also carries X3M_MESH_ADJACENCY_DUMP and X3M_VOLUMETRIC_FOG_EVERYWHERE (options and DLL reads
-removed; the recorded stand sent both as 0).
+removed; the recorded stand sent both as 0) and X3M_CAPTURE_DELAY (--capture-delay removed, F8 under --debug the only
+capture trigger; the recorded stand sent 300). --capture-start went the same day, but the launcher still sends
+X3M_CAPTURE_START=999999 (never) on every modded launch, the recorded stand's value. The Run 84 A command is replayed
+without those two options.
 """
 import importlib.util
 import json
@@ -35,8 +38,8 @@ STAND = ('--direct --camera chase --chase-view-restore --ownership --object-trac
          '--shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 '
          '--shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 '
          '--light-map-far-fade 80,220 --motion-rt-mode lazy --volumetric-fog 0.02 '
-         '--volumetric-fog-cards replace --volumetric-fog-range stored --capture-start 999999 '
-         '--capture-frames 8 --capture-delay 300 --cull-small-parts 4').split()
+         '--volumetric-fog-cards replace --volumetric-fog-range stored '
+         '--capture-frames 8 --cull-small-parts 4').split()
 # The stand command since 2026-09-26 (docs/verification/user-runs.md, "Stand command"): --direct plus the two logging groups.
 STAND_SHORT = '--direct --debug --perf'.split()
 GROUPS = {'X3M_DEBUG': [None, '1'], 'X3M_PERF': [None, '1']}
@@ -69,7 +72,9 @@ REMOVED = {'X3M_SHADOW_REPLAY_SIZE': '1024', 'X3M_SHADOW_REPLAY_EXTENT': '250.0'
            'X3M_SCREEN_EMISSION_BOUND': '0', 'X3M_SCREEN_EMISSION_GAIN': '1.0', 'X3M_SCREEN_EMISSION_TIMING': '0', 'X3M_TAA_THIN_REGION_GATE': 'camera',
            'X3M_TAA_THIN_REGION_SOURCE': 'vote', 'X3M_TAA_THIN_REGION_SOURCE_DEFAULT': '1',
            # Removed 2026-09-26 with their options and DLL reads (the in-game adjacency dump, the forced fog profile).
-           'X3M_MESH_ADJACENCY_DUMP': '0', 'X3M_VOLUMETRIC_FOG_EVERYWHERE': '0'}
+           'X3M_MESH_ADJACENCY_DUMP': '0', 'X3M_VOLUMETRIC_FOG_EVERYWHERE': '0',
+           # Removed 2026-09-26 with --capture-delay (X3M_CAPTURE_START=999999 stays launcher-sent).
+           'X3M_CAPTURE_DELAY': '300'}
 
 
 def dry_run(arguments, frame_log):

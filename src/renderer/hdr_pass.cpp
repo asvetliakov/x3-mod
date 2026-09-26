@@ -976,19 +976,6 @@ void HdrPass::prepare_constants() noexcept {
     x3::temporal::set_dither(agx_, caps_.dither);
 }
 
-bool HdrPass::comparison_exposure(ExposureMode mode) noexcept {
-    if (!tonemap_active() || !caps_.meter) return false;
-    config_.exposure = mode; config_.ev_manual = 0.f;
-    exposure_.configure(config_.params, mode, 0.f);
-    exposure_.reset();
-    // Discard old-mode meter results rather than applying them when AUTO
-    // resumes. The first fresh meter then adapts from neutral exposure.
-    chain_pending_[0] = chain_pending_[1] = false;
-    chain_slot_ = 0; latch_ticks_ = 0;
-    prepare_constants();
-    return true;
-}
-
 // At the latch: the previous frame's tile image (queued into the ring's
 // system-memory surface by that frame's chain) is copied and locked now -- a
 // frame later, so the lock does not wait on this frame's work -- reduced to

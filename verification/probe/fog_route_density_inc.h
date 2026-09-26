@@ -45,8 +45,8 @@ struct DensityRun {
         return std::strstr(x3m::last_frame_row,needle)?std::string(x3m::last_frame_row):std::string();
     }
     static bool has(const std::string& row,const char* field){return row.find(field)!=std::string::npos;}
-    // Ctrl+Alt+F11 (fog-dust-motes.md section 5.3) through the production fragment: the toggle the fixture export
-    // x3m_fog_dust_motes_fixture_toggle forwards to, called between frames, a launch with the motes on (N 8192 over the widest
+    // The motes' on/off fixture seam (fog-dust-motes.md section 5.3; the Ctrl+Alt+F11 key went on 2026-09-26) through the
+    // production fragment, called between frames, a launch with the motes on (N 8192 over the widest
     // window, R 5000, so the pose's fog is within reach). The drift clock is the real one, so on frames are not compared
     // byte for byte; the off frames are the launch-off stored frame, and the placement law is the pass fixture's.
     void motes_ab(const std::vector<std::uint16_t>& vanilla,const std::vector<std::uint16_t>& in_march){
@@ -64,7 +64,7 @@ struct DensityRun {
         require(has(on_row," motes=1 mote_count=8192 mote_calls=12 ")&&has(on_row," mote_shadow=none mote_refused=none"),"motes_ab_launch_on_row_fields");
         // Toggle off at the frame boundary: one row; the frame is the launch-off stored frame; the buffers stay.
         const unsigned allocations=m.fog_->allocations(),references=m.fog_->references(),rows_before=x3m::motes_rows;
-        require(m.volumetric_fog_dust_motes_toggle()==0&&x3m::motes_rows==rows_before+1&&has(x3m::last_motes_row,"enabled=0 refused=none key=ctrl_alt_f11"),"motes_ab_toggle_off_logs_one_row");
+        require(m.volumetric_fog_dust_motes_toggle()==0&&x3m::motes_rows==rows_before+1&&has(x3m::last_motes_row,"enabled=0 refused=none"),"motes_ab_toggle_off_logs_one_row");
         Frame off=periodic();const std::string off_row=row_of(m);
         std::printf("MOTES_AB off_row=%s\n",off_row.empty()?"none":off_row.c_str());
         require(off.applied&&off.image==in_march&&off.quads==3&&!m.fog_->motes_variant()&&!m.fog_motes_drawn_,"motes_ab_toggled_off_frame_is_the_launch_off_frame");
@@ -151,7 +151,7 @@ struct DensityRun {
             require(sector_b.last.image!=stored_a&&sector_b.last.image!=vanilla,"sector_change_places_clouds_differently");
             std::printf("IMAGE stored_sector_b %016llx\n",fnv(sector_b.last.image));
             b.index=1;Fill again=fill(b,vanilla);require(again.last.image==stored_a,"sector_rekey_is_deterministic");
-            // Ctrl+Alt+F9 off: nothing is prepared or drawn, the worker completes its window and parks.
+            // The fog seam off: nothing is prepared or drawn, the worker completes its window and parks.
             const unsigned references=m.fog_->references(),allocations=m.fog_->allocations();const ULONG refs_on=device_refs(d);
             m.volumetric_fog_toggle();
             const auto uploads_off=m.fog_->density_status().upload_bytes_total;bool off_native=true;

@@ -299,11 +299,7 @@ void MotionOutput::run_shadow_replay_cascades(const bool* quiet) noexcept {
         for (unsigned k = 0; k < cascades && !state; ++k) {
             const float* own = cascade_sun(k); // decides the frame's source: the grid anchor below is the same source's
             if (!renderer::shadow_replay_basis(camera_scene_, own, depth_cascades_.cascades[k], bases[k], point_sun_.grid_anchor(k))) { state = "basis"; break; }
-            // The first frame after the A/B came back on replays every cascade
-            // with casters: the far map's retained basis was voided by the
-            // press, so the budget's alternate-frame rule must not leave it
-            // absent for a frame (comparison-hotkeys.md, "Sun shadows at rest").
-            replays[k] = per_cascade[k] != 0 && (sun_shadow_force_replay_ || renderer::shadow_cascade_replays(k, cascades, issues, depth_cascades_.budget, frame_));
+            replays[k] = per_cascade[k] != 0 && renderer::shadow_cascade_replays(k, cascades, issues, depth_cascades_.budget, frame_);
             offsets[k] = offset;
             // Back-face cascades (shadow_cascade_backface_texel_default): the map holds the casters' far sides, so a
             // lit receiver never compares against its own depth (directional-shadows.md, "Run 40 A", cause 2).
@@ -402,7 +398,6 @@ void MotionOutput::run_shadow_replay_cascades(const bool* quiet) noexcept {
             if (retained_on && cascades > 1 && !far_replayed && per_cascade[cascades - 1] && issues > depth_cascades_.budget && live_issues <= depth_cascades_.budget)
                 ++retention_->store.frame.far_alternate_due_to_retained, ++retention_->store.totals.far_alternate_due_to_retained;
             c.replayed = c.draws; depth_replayed_ = out.drawn; depth_cascade_frame_ok_ = true;
-            sun_shadow_force_replay_ = false; // consumed: a refused frame keeps the demand for the next transaction
         }
     }
     release_depth_leases();
@@ -446,14 +441,14 @@ void MotionOutput::run_shadow_replay_cascades(const bool* quiet) noexcept {
     // read 0 whenever the previous frame ran no apply at all - never a stale
     // repeat of an older frame's numbers.
     char apply_text[48]; apply_text[0] = 0;
-    if (sun_apply_requested_ && sun_shadow_enabled_) {
+    if (sun_apply_requested_) {
         const bool previous = sun_apply_frame_ != ~std::uint64_t(0) && sun_apply_frame_ + 1 == frame_;
         const int n = std::snprintf(apply_text, sizeof apply_text, " apply_us=%.1f apply_cascades=%u",
                                     previous ? sun_apply_us_ : 0., previous ? sun_apply_sampled_ : 0u);
         if (n < 0 || n >= int(sizeof apply_text)) apply_text[0] = 0;
     }
-    if (shadow_timing_ || family_row()) log("shadow_replay_depth device=%llu frame=%llu replayed=%u skipped_lease=%u skipped_state=%u skipped_caps=%u draws=%u us=%.1f shadow_toggle=%u%s far_replayed=%u far_frame=%lld issues=%u budget=%u%s%s%s%s",
-        id_, frame_, c.replayed, c.skipped_lease, c.skipped_state, c.skipped_caps, c.draws, c.us, unsigned(sun_shadow_enabled_), text, unsigned(far_replayed),
+    if (shadow_timing_ || family_row()) log("shadow_replay_depth device=%llu frame=%llu replayed=%u skipped_lease=%u skipped_state=%u skipped_caps=%u draws=%u us=%.1f%s far_replayed=%u far_frame=%lld issues=%u budget=%u%s%s%s%s",
+        id_, frame_, c.replayed, c.skipped_lease, c.skipped_state, c.skipped_caps, c.draws, c.us, text, unsigned(far_replayed),
         far_kept ? static_cast<long long>(far_kept->frame) : -1ll, issues, depth_cascades_.budget, retained_text, cull_text, state_text, apply_text);
 }
 #ifdef X3M_MOTION_OUTPUT_FIXTURE

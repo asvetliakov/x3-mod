@@ -293,7 +293,7 @@ class FogLauncherTests(unittest.TestCase):
 
     def test_shadow_pass_and_far_bins_options_are_removed(self):
         # --fog-shadow-pass (the visibility grid, fog-shadow-pass.md) and --fog-far-bins (step B's 24 bins, fog-gpu-cost.md)
-        # were removed on 2026-09-25 (docs/verification/launcher-options-inventory.md, "Removed 2026-09-25"): both are
+        # were removed on 2026-09-25 (docs/verification/launcher-options-inventory.md, "4. Removed"): both are
         # unknown arguments, their variables are neither sent nor inherited, and the DLL reads neither.
         stored = ('--volumetric-fog', '--volumetric-fog-range', 'stored')
         for extra in (('--fog-shadow-pass', 'on'), ('--fog-shadow-pass', 'off'), ('--fog-far-bins', '24'), ('--fog-far-bins', '40')):
@@ -420,7 +420,7 @@ class FogLauncherTests(unittest.TestCase):
         self.assertIn('float max_px = 8.f,', motes)
         self.assertIn('} else if(motes_length||volumetric_fog_range_stored){', capture)
         self.assertIn('unsigned long n=renderer::fog_mote_default_count;float values[2]{renderer::fog_mote_default_size,renderer::fog_mote_default_streak};bool valid=true;', capture)
-        self.assertIn('key=ctrl_alt_f11 source=%s', capture); self.assertIn('motes_length?"env":"default"', capture)
+        self.assertIn(' source=%s",', capture); self.assertNotIn('key=ctrl_alt_f11', capture); self.assertIn('motes_length?"env":"default"', capture)
         self.assertIn('volumetric_fog_motes_mode enabled=0 invalid=1 reason=%s",valid?"out_of_range":"unparsable"', capture)
 
     def test_dust_motes_stage_and_frame_row(self):
@@ -539,12 +539,10 @@ class FogWiringTests(unittest.TestCase):
         self.assertIn('volumetric_fog_disabled device=%llu frame=%llu reason=%s result=%08lx session=1', fragment)
         self.assertIn('renderer::fog_sun_radiance(point_sun_sample_.colour, q.sun_radiance)', fragment)
         self.assertIn('std::memcpy(out->colour,best.rgb,12);', (ROOT / 'src/proxy/sun_light_poll.cpp').read_text())
-        # Hotkeys: polled only with the option; Ctrl+Alt+F9 toggles, Ctrl+Alt+F10 steps, outside the Ctrl+Shift arm.
-        self.assertIn('keys.fog_toggle=volumetric_fog_requested && (GetAsyncKeyState(VK_F9)&0x8000)!=0;', capture)
-        self.assertIn('keys.fog_step=volumetric_fog_requested && (GetAsyncKeyState(VK_F10)&0x8000)!=0;', capture)
-        controls = (ROOT / 'src/proxy/comparison_controls.h').read_text()
-        self.assertIn('result.fog_toggle = keys.control && keys.alt && !keys.shift && keys.fog_toggle && !fog_toggle_down_;', controls)
-        self.assertIn('result.fog_step = keys.control && keys.alt && !keys.shift && keys.fog_step && !fog_step_down_;', controls)
+        # No Ctrl+Alt+F9/F10 keys since 2026-09-26: the fog runs at its launch state; the toggle and step are fixture seams.
+        for absent in ('GetAsyncKeyState(VK_F9)', 'GetAsyncKeyState(VK_F10)', 'volumetric_fog_toggle(', 'volumetric_fog_step(', 'keys=ctrl_alt'):
+            self.assertNotIn(absent, capture)
+        self.assertIn('ctx.motion_output.volumetric_fog_begin_frame();', capture)
         self.assertIn('volumetric_fog_requested=asked && motion_output_requested && taa_requested && hdr_requested && fog_replay && fog_cascade_list && volumetric_fog_strength>0.f;', capture)
         self.assertIn('src/renderer/fog_pass.cpp', (ROOT / 'CMakeLists.txt').read_text())
 

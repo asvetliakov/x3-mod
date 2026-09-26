@@ -18,7 +18,6 @@
 #include "collide_memo.h"
 #include "sun_occlusion.h"
 #include "cull_small_parts.h"
-#include "capture_arm_core.h"
 #include "frame_timing.h"
 #include "frame_phases.h"
 #include "pass_phases.h"
@@ -60,7 +59,6 @@
 #include "draw_input.h"
 #include "motion_capture.h"
 #include "motion_output.h"
-#include "comparison_controls.h"
 #include "comparison_notice.h"
 #include "fps_overlay.h"
 #include "engine_memory.h"
@@ -88,13 +86,12 @@ namespace x3m {
 namespace {
 std::recursive_mutex mutex;
 std::wstring directory;
-unsigned capture_start = 120;
-unsigned capture_count = 1;
-// X3M_CAPTURE_DELAY (launcher --capture-delay, frames, 0 = immediate): the F8
-// press only arms the burst, which starts this many frames later. F8 cancels
-// the game's SETA time compression, so a capture of the compressed case needs
-// the delay to re-engage SETA (src/proxy/capture_arm_core.h).
-unsigned capture_delay = 0;
+// X3M_CAPTURE_START: the Present count that starts one burst; 0 or unset = never.
+// The --capture-start option went on 2026-09-26: the launcher sends 999999 (never)
+// on every modded launch, the fixtures set their own start; F8 under X3M_DEBUG=1
+// is the only capture trigger in a game launch.
+unsigned capture_start = 0;
+unsigned capture_count = 1; // X3M_CAPTURE_FRAMES (launcher --capture-frames): the burst length
 // X3M_FRAME_END_STRIDE (1..frame_end_stride_max; fixtures only since the launcher option went on 2026-09-26):
 // frames between two frame_end lines. Read once at attach, used as a divisor on
 // the Present path only; 1 logs every frame (about 100 B per frame). Unset:
@@ -151,7 +148,7 @@ bool screen_emission_requested = false; // X3M_SCREEN_EMISSION=1: packed screen 
 bool screen_emission_timing_requested = false; // X3M_SCREEN_EMISSION_TIMING=1: per-Present screen_emission_frame line, needs the option
 float screen_emission_gain = 1.f;       // X3M_SCREEN_EMISSION_GAIN: step E composition gain g, finite 0.5..8, default 1
 float emission_source_gain = 1.f;       // X3M_EMISSION_SOURCE_GAIN: source-only encoded gain of the twenty additive/screen emission pairs, finite 1..8, 1 = off (requires X3M_HDR=1)
-float hull_emission_gain = 1.f;         // X3M_HULL_EMISSION_GAIN: the same gain over the twelve hull programs' ADD ONE/ONE draws (emitter plan phase 3), finite 1..8, 1 = off (requires X3M_HDR=1 only; independent of the effects gain, own key Ctrl+Shift+F4)
+float hull_emission_gain = 1.f;         // X3M_HULL_EMISSION_GAIN: the same gain over the twelve hull programs' ADD ONE/ONE draws (emitter plan phase 3), finite 1..8, 1 = off (requires X3M_HDR=1 only; independent of the effects gain; its Ctrl+Shift+F4 key was removed 2026-09-26)
 float original_fill = 0.f;             // X3M_ORIGINAL_FILL: linear-light fill inside the original hull pixel programs, finite 0..0.5, 0 = off (requires X3M_HDR=1, excludes X3M_LINEAR_MATERIALS=1)
 bool lightmap_far_fade_requested = false; // X3M_LIGHT_MAP_FAR_FADE=P0,P1[,G]: the hull light-map gain fades to G (default 1) as the draw's footprint grows from P0 to P1 units/px; needs the gain
 float lightmap_far_fade[3] = {0.f, 0.f, 1.f};
@@ -159,7 +156,7 @@ bool sun_occlusion_core_f = true; // X3M_SUN_OCCLUSION_CORE_F: the clipped core 
 float sun_occlusion_radius = sun_occlusion::core::radius_default_u, sun_occlusion_curve = 1.f; // X3M_SUN_OCCLUSION_RADIUS (0.005..0.25, the disc's half-width as a fraction of the back-buffer width), X3M_SUN_OCCLUSION_CURVE (0.25..4, exponent on the used fraction)
 bool hull_emissive_widening_requested = false; // X3M_HULL_EMISSIVE_WIDENING=K[,B] (hull-emissive-widening.md 8.3): the light-map fetch of the gained hull variants widens to k x k px, k = clamp(K . texels per pixel, 1, K) per pixel, thin emitters boosted by B; needs the gain
 float hull_emissive_widening[2] = {1.f, 1.f};
-float hull_lightmap_gain = 1.f;        // X3M_HULL_LIGHTMAP_GAIN: gain on the light-map (self-illumination) term inside the original hull pixel programs, finite 1..8, 1 = off (requires X3M_HDR=1, excludes X3M_LINEAR_MATERIALS=1; Ctrl+Shift+F4 switches it alone)
+float hull_lightmap_gain = 1.f;        // X3M_HULL_LIGHTMAP_GAIN: gain on the light-map (self-illumination) term inside the original hull pixel programs, finite 1..8, 1 = off (requires X3M_HDR=1, excludes X3M_LINEAR_MATERIALS=1; the Ctrl+Shift+F4 key was removed 2026-09-26)
 bool screen_emission_additive_requested = false; // X3M_SCREEN_EMISSION_ADDITIVE=G: in-place ADD/ONE/ONE bullets with a colour gain (screen-emission-region.md, "Additive option")
 float screen_emission_additive_gain = 1.f;       // G, finite 1..8; anything else refuses the option
 bool bolt_footprint_requested = false; // X3M_BOLT_FOOTPRINT=W[,L]: minimum on-screen bolt width and length on the additive draws (bolt-footprint.md, option A', Run 73 B rule)
@@ -168,13 +165,9 @@ bool screen_emission_additive_alpha_requested = false; // X3M_SCREEN_EMISSION_AD
 float screen_emission_additive_alpha = 1.f;      // K, finite 0..1; absent or invalid keeps the native alpha law a + D.a
 unsigned fade_witness_frames = 0; // X3M_FADE_WITNESS=<k>, 0 = off
 unsigned fade_route_threshold = 500; // X3M_FADE_ROUTE=<permille>|off: fade-band motion arm threshold (fade_route_core.h), default 500
-// Ctrl+Shift+F12 (comparison-hotkeys.md, "Sun shadows at rest"): true once a
-// device enabled the scene-end sun-shadow application, so the A/B key is
-// polled only then; without --sun-shadow-apply the press is ignored.
-bool sun_shadow_apply_requested = false;
-// X3M_FPS_OVERLAY=1 (comparison-hotkeys.md, "FPS overlay"; default off): the
-// frame-rate line on the presented image, Ctrl+Alt+F7 hides and shows it.
-// Off, the Present path pays one branch and polls no key.
+// X3M_FPS_OVERLAY=1 or X3M_PERF=1 (comparison-hotkeys.md, "FPS overlay"; default
+// off): the frame-rate line on the presented image, shown for the whole session
+// (no key since 2026-09-26). Off, the Present path pays one branch.
 bool fps_overlay_requested = false;
 // X3M_GPU_SYNC_TIMING=1 (engine-frame-time.md, "GPU sync timing"; default off,
 // one diagnostic flight): an event query at every pass boundary, spun to
@@ -184,7 +177,6 @@ bool gpu_sync_timing_requested = false;
 // X3M_VOLUMETRIC_FOG=1 (default off; docs/architecture/volumetric-fog.md, "Stage 1
 // implementation"): X3M_VOLUMETRIC_FOG_STRENGTH=<tau_max> (0..0.1, default 0.02),
 // X3M_VOLUMETRIC_FOG_TIMING=1 (one volumetric_fog_frame line per frame).
-// Ctrl+Alt+F9 toggles the pass, Ctrl+Alt+F10 steps the strength (Shift up).
 bool sector_background_requested = false; // read-only, independent of the fog pass
 bool volumetric_fog_cards_replace = false;
 bool volumetric_fog_requested = false, volumetric_fog_timing = false;
@@ -394,15 +386,9 @@ struct Device : Hooks {
     // and at the final release like bloom's); null when off or refused.
     std::unique_ptr<renderer::GpuSyncTiming> gpu_sync;
     bool gpu_sync_summary_logged = false;
-    ComparisonControls comparison;
-    ComparisonNotice comparison_notice;
-    bool comparison_report_pending = false;
-    char comparison_emitter_notice[40]{}; // last emitter-key result (F4 LIGHTMAP, F5 BULLETS, F6 EMISSION + GUIDE); empty = show the bloom line
-    FpsOverlay fps_overlay; // --fps-overlay accumulator and Ctrl+Alt+F7 visibility
-    ComparisonNotice fps_notice{72}; // its bitmap, one panel below the hotkey notice
+    FpsOverlay fps_overlay; // X3M_FPS_OVERLAY / X3M_PERF accumulator
+    ComparisonNotice fps_notice{72}; // its bitmap (the notice panel class, one panel down)
 
-    std::uint64_t bloom_effective_frame = UINT64_MAX;
-    bool bloom_effective_on = false;
     CompositorInvocation* compositor = nullptr; // capture mutex; invocation owns its CPU/native pins
     std::uint64_t reset_generation = 0;
     DWORD scene_thread = 0;
@@ -436,7 +422,6 @@ struct Device : Hooks {
     std::uint64_t fog_ready_frame = 0;
     object_capture::Cache object_evidence; // capture-only; existing HookGuard owns it
     bool key_down = false;
-    capture_arm::core::Pending capture_pending; // X3M_CAPTURE_DELAY only; cleared on Reset
     explicit Device(void* object, size_t size) : Hooks(object, size) {}
 };
 // Preserve the original serialization while exposing its CPU-side wait cost.
@@ -1206,9 +1191,7 @@ void retain_compositor_scene(void* storage,const MotionHdrScene& scene) noexcept
     // Bloom-only source ceiling: the pyramid sees at most this decoded code,
     // the presented scene keeps its full HDR value (bloom-falloff.md).
     call.input.filter.source_clamp=bloom_source_clamp;
-    // OFF retains the same filtering/RGB replacement, with zero final gain.
-    // Skipping replacement would restore the original compositor's glow.
-    call.input.filter.strength=ctx.comparison.bloom_requested?1.f:0.f;
+    call.input.filter.strength=1.f; // full gain (the Ctrl+Shift+F10 zero-gain A/B went on 2026-09-26)
 }
 bool compositor_current(const CompositorInvocation& call,bool refresh_owner=true) noexcept {
     if(!call.owner || !call.native_pin || call.revoked)return false;
@@ -1314,8 +1297,7 @@ void compositor_post(const X3mCompositorFrame*,void* storage,void*) {
     call.ready=false; // every candidate is consumed at most once
     if(!result.state_preserved)ctx.motion_output.stateblock_applied();
     if(result.committed){
-        ++ctx.bloom_committed;ctx.bloom_effective_frame=ctx.frame;
-        ctx.bloom_effective_on=ctx.comparison.bloom_requested;
+        ++ctx.bloom_committed;
     }
     if((result.committed && ctx.bloom_committed==1) || (!result.committed && ctx.bloom_failure_reports++<8) || (ctx.frame%300==0&&telemetry::enabled()))
         log("bloom_commit device=%llu frame=%llu committed=%u reason=%s operation=%08lx restore=%08lx recovery=%08lx recovery_restore=%08lx original_preserved=%u state_preserved=%u cpu_ticks=%llu",
@@ -1429,129 +1411,6 @@ bool comparison_foreground() noexcept {
     const HWND window=GetForegroundWindow();
     return window && GetWindowThreadProcessId(window,&process) && process==GetCurrentProcessId();
 }
-const char* comparison_bloom_reason(const Device& ctx) noexcept {
-    if(!bloom_requested)return "not_prepared";
-    if(!scene_hook::compositor_active())return "boundary_unavailable";
-    if(!ctx.bloom_attempted)return "waiting_scene";
-    if(!ctx.bloom.enabled())return ctx.bloom.caps().reason;
-    return "ready";
-}
-bool comparison_bloom_ready(const Device& ctx) noexcept {
-    return bloom_requested && scene_hook::compositor_active() && ctx.bloom.enabled();
-}
-void comparison_log(Device& ctx,const char* phase,const char* key,bool accepted) noexcept {
-    const auto exposure=ctx.motion_output.comparison_exposure();
-    const bool bloom_effective=ctx.bloom_effective_frame==ctx.frame;
-    log("renderer_comparison device=%llu frame=%llu phase=%s key=%s accepted=%u exposure=%s effective_ev=%.6g exposure_ready=%u exposure_used=%u exposure_reason=%s bloom_requested=%u bloom_ready=%u bloom_used=%u bloom_effective=%u bloom_reason=%s bloom_off_filter_runs=1",
-        ctx.id,ctx.frame,phase,key,accepted,exposure.automatic?"auto":"fixed",double(exposure.ev),
-        exposure.ready,exposure.frame_used,exposure.reason,ctx.comparison.bloom_requested,
-        comparison_bloom_ready(ctx),bloom_effective,bloom_effective&&ctx.bloom_effective_on,comparison_bloom_reason(ctx));
-}
-// One emitter toggle: the MotionOutput state change is already logged with
-// its family and gain; this adds the key identity to the comparison record
-// and the notice line. state<0 is the refusal (option not requested, or gain
-// 1 so no variant exists); nothing is created or released either way.
-// refused is the refusal word: the short form for the second half of a key
-// that reports two families, so one F6 press fits the notice's 36 columns.
-void comparison_emitter(Device& ctx,const char* key,const char* label,int state,const char* refused="UNAVAILABLE") noexcept {
-    // Appends, so two or three keys sampled in the same frame each keep their
-    // label; the caller clears the line before the first of them.
-    const std::size_t used=std::strlen(ctx.comparison_emitter_notice);
-    std::snprintf(ctx.comparison_emitter_notice+used,sizeof ctx.comparison_emitter_notice-used,"%s%s %s",
-        used?" ":"",label,state<0?refused:state?"ON":"OFF");
-    comparison_log(ctx,"request",key,state>=0);
-}
-void comparison_begin_frame(Device& ctx) noexcept {
-    // Ordinary launches pay no comparison input/foreground polling. A
-    // requested-but-refused capability still accepts the UNAVAILABLE notice.
-    const bool hdr_compare=hdr_requested && hdr_config.tonemap==renderer::HdrTonemap::Agx;
-    // Emitter A/B keys (comparison-hotkeys.md): Ctrl+Shift+F4 the hull
-    // light-map gain, F5 the additive bullets, F6 the emission source gain
-    // together with the guide lights that follow it (F7 is
-    // the telemetry marker and F8 the capture key). Any requested emitter
-    // option opens the sampler; the individual keys are polled
-    // unconditionally inside it so an unrequested option answers with a
-    // logged refusal.
-    const bool emitter_compare=screen_emission_additive_requested || emission_source_gain!=1.f || hull_emission_gain!=1.f || hull_lightmap_gain!=1.f;
-    if(!hdr_compare && !volumetric_fog_requested && !emitter_compare && !sun_shadow_apply_requested && !fps_overlay_requested)return;
-    ComparisonKeys keys{};
-    keys.foreground=comparison_foreground();
-    keys.control=(GetAsyncKeyState(VK_CONTROL)&0x8000)!=0;
-    keys.shift=(GetAsyncKeyState(VK_SHIFT)&0x8000)!=0;
-    keys.exposure=hdr_compare && (GetAsyncKeyState(VK_F9)&0x8000)!=0;
-    keys.bloom=hdr_compare && (GetAsyncKeyState(VK_F10)&0x8000)!=0;
-    // The emitter keys are polled with any emitter option on (an unrequested
-    // one of the three still answers with a logged refusal); a launch with
-    // only --fps-overlay polls its own chord and nothing else.
-    keys.screen_additive=emitter_compare && (GetAsyncKeyState(VK_F5)&0x8000)!=0;
-    keys.source_gain=emitter_compare && (GetAsyncKeyState(VK_F6)&0x8000)!=0;
-    keys.hull_gain=emitter_compare && (GetAsyncKeyState(VK_F4)&0x8000)!=0;
-    // Ctrl+Shift+F12: the sun shadows at rest (comparison-hotkeys.md, "Sun
-    // shadows at rest"). Polled only with the apply requested, so a launch
-    // without it never queries the key; no notice and no report, one
-    // sun_shadow_toggle line per accepted press.
-    keys.sun_shadow=sun_shadow_apply_requested && (GetAsyncKeyState(VK_F12)&0x8000)!=0;
-    // Ctrl+Alt+F11 with Shift up: the dust motes on/off (comparison-hotkeys.md, "Fog dust motes"), polled only with
-    // --fog-dust-motes, on F11's own raw latch; one fog_dust_motes_toggle line per accepted press, no notice.
-    keys.fog_dust_motes=volumetric_fog_motes.count && (GetAsyncKeyState(VK_F11)&0x8000)!=0;
-    // Ctrl+Alt+F9 / F10 with Shift up: the volumetric fog on/off and its strength ladder, polled only with
-    // --volumetric-fog (raw F9/F10 latches of their own; Ctrl+Shift+F9/F10 stay exposure and bloom).
-    keys.fog_toggle=volumetric_fog_requested && (GetAsyncKeyState(VK_F9)&0x8000)!=0;
-    keys.fog_step=volumetric_fog_requested && (GetAsyncKeyState(VK_F10)&0x8000)!=0;
-    // Ctrl+Alt+F7 with Shift up: the FPS overlay (comparison-hotkeys.md, "FPS
-    // overlay"), polled only with --fps-overlay. The telemetry phase marker
-    // is Ctrl+Shift+F7 (telemetry.cpp requires Shift), so the chords are
-    // disjoint; the sampler applies the Alt/Shift rule and the F7 edge.
-    keys.alt=(fps_overlay_requested || volumetric_fog_requested) && (GetAsyncKeyState(VK_MENU)&0x8000)!=0;
-    keys.fps_overlay=fps_overlay_requested && (GetAsyncKeyState(VK_F7)&0x8000)!=0;
-    const auto action=ctx.comparison.sample(keys);
-    if(action.sun_shadow)ctx.motion_output.sun_shadow_toggle();
-    if(action.fog_dust_motes)ctx.motion_output.volumetric_fog_dust_motes_toggle();
-    if(action.fog_toggle)ctx.motion_output.volumetric_fog_toggle();
-    if(action.fog_step)ctx.motion_output.volumetric_fog_step();
-    ctx.motion_output.volumetric_fog_begin_frame();
-    if(action.fps_overlay)log("fps_overlay_toggle device=%llu frame=%llu visible=%u reason=key",ctx.id,ctx.frame,unsigned(ctx.fps_overlay.toggle()));
-    const bool emitter=action.screen_additive||action.source_gain||action.hull_gain;
-    if(emitter)ctx.comparison_emitter_notice[0]='\0';
-    if(action.hull_gain)comparison_emitter(ctx,"ctrl_shift_f4","LIGHTMAP",ctx.motion_output.hull_emission_gain_toggle(true));
-    if(action.screen_additive)comparison_emitter(ctx,"ctrl_shift_f5","BULLETS",ctx.motion_output.screen_emission_additive_toggle());
-    // F6 is the effects group: the twenty engine/effects pairs and the ONE/ONE
-    // guide lights, which take the same gain (comparison-hotkeys.md).
-    if(action.source_gain){comparison_emitter(ctx,"ctrl_shift_f6","EMISSION",ctx.motion_output.emission_source_gain_toggle());
-        comparison_emitter(ctx,"ctrl_shift_f6","GUIDE",ctx.motion_output.hull_emission_gain_toggle(false),"N/A");}
-    if(emitter){ctx.comparison_notice.show(GetTickCount64());ctx.comparison_report_pending=true;}
-    if(!action.exposure && !action.bloom)return;
-    ctx.comparison_emitter_notice[0]='\0'; // an exposure/bloom press owns the second line again
-    const bool boundary=!ctx.reset_active && !ctx.compositor && !ctx.bloom_busy
-        && ctx.motion_output.comparison_boundary_available();
-    if(action.exposure){
-        const bool accepted=boundary && ctx.motion_output.comparison_toggle_exposure();
-        comparison_log(ctx,"request","ctrl_shift_f9",accepted);
-    }
-    if(action.bloom){
-        const bool accepted=boundary && comparison_bloom_ready(ctx);
-        if(accepted)ctx.comparison.bloom_requested=!ctx.comparison.bloom_requested;
-        comparison_log(ctx,"request","ctrl_shift_f10",accepted);
-    }
-    ctx.comparison_notice.show(GetTickCount64());ctx.comparison_report_pending=true;
-}
-void comparison_notice_text(Device& ctx) noexcept {
-    const auto exposure=ctx.motion_output.comparison_exposure();
-    char first[48]{},second[48]{};
-    if(!exposure.ready) {
-        if(!std::strcmp(exposure.reason,"auto_not_prepared"))
-            std::snprintf(first,sizeof first,"FIXED EV %+.2f / NO AUTO",double(exposure.ev));
-        else std::snprintf(first,sizeof first,"EXPOSURE UNAVAILABLE");
-    } else if(exposure.automatic)
-        std::snprintf(first,sizeof first,"EXPOSURE AUTO%s",exposure.frame_used?"":" / WAITING");
-    else std::snprintf(first,sizeof first,"FIXED EV %+.2f%s",double(exposure.ev),exposure.frame_used?"":" / WAITING");
-    if(ctx.comparison_emitter_notice[0])std::snprintf(second,sizeof second,"%s",ctx.comparison_emitter_notice);
-    else if(!comparison_bloom_ready(ctx))std::snprintf(second,sizeof second,"BLOOM %s",
-        !std::strcmp(comparison_bloom_reason(ctx),"waiting_scene")?"WAITING":"UNAVAILABLE");
-    else std::snprintf(second,sizeof second,"BLOOM %s%s",ctx.comparison.bloom_requested?"ON":"OFF",
-        ctx.bloom_effective_frame==ctx.frame && ctx.bloom_effective_on==ctx.comparison.bloom_requested?"":" REQUESTED");
-    ctx.comparison_notice.text(first,second);
-}
 HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,const RGNDATA* r) {
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
@@ -1577,27 +1436,13 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
     if(volumetric_fog_prefill){ctx.fog_prefill_gate.present(GetTickCount64());ctx.fog_prefill_thread=GetCurrentThreadId();} // R3 stall gate
     if(sector_background_requested || volumetric_fog_requested)sector_background_context(ctx); // menus/loading without BeginScene
     ctx.motion_output.before_present();
-    if(ctx.comparison_report_pending){comparison_log(ctx,"frame","none",true);ctx.comparison_report_pending=false;}
-    if(ctx.comparison_notice.visible(GetTickCount64()) && comparison_foreground()
-            && !ctx.reset_active && !ctx.compositor && !ctx.bloom_busy
-            && ctx.motion_output.comparison_boundary_available()){
-        comparison_notice_text(ctx);
-        ctx.get<ULONG (WINAPI*)(IDirect3DDevice9*)>(1)(d);notice_pin.device=d;notice_pin.owner=owner;
-        BloomOperation internal(ctx);
-        const auto notice=ctx.comparison_notice.draw(d,ctx.original,ctx.caps.NumSimultaneousRTs);
-        if(FAILED(notice.restore))ctx.motion_output.comparison_state_failed(notice.restore);
-        if(FAILED(notice.operation)||FAILED(notice.restore)){
-            log("renderer_comparison_notice device=%llu frame=%llu operation=%08lx restore=%08lx drawn=%u",ctx.id,ctx.frame,notice.operation,notice.restore,notice.drawn);
-            ctx.comparison_notice.hide();
-        }
-    }
-    // The FPS overlay (comparison-hotkeys.md, "FPS overlay"): the same
-    // admission and pin as the hotkey notice, its own bitmap one panel lower.
-    // Off or hidden, this is the one branch the option costs per frame.
+    // The FPS overlay (comparison-hotkeys.md, "FPS overlay"): admitted at a
+    // clean frame boundary with the process in the foreground, its own bitmap.
+    // Off, this is the one branch the option costs per frame.
     if(ctx.fps_overlay.visible() && comparison_foreground()
             && !ctx.reset_active && !ctx.compositor && !ctx.bloom_busy
             && ctx.motion_output.comparison_boundary_available()){
-        if(!notice_pin.device){ctx.get<ULONG (WINAPI*)(IDirect3DDevice9*)>(1)(d);notice_pin.device=d;notice_pin.owner=owner;}
+        ctx.get<ULONG (WINAPI*)(IDirect3DDevice9*)>(1)(d);notice_pin.device=d;notice_pin.owner=owner;
         BloomOperation internal(ctx);
         const auto overlay=ctx.fps_notice.draw(d,ctx.original,ctx.caps.NumSimultaneousRTs);
         if(FAILED(overlay.restore))ctx.motion_output.comparison_state_failed(overlay.restore);
@@ -1634,24 +1479,20 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
     music_keep::present(ctx.id,ctx.frame,ctx.capture); // X3M_MUSIC_KEEP=1 / X3M_MUSIC_TRACE=1 only: stores the frame counter the music lines carry
     cull_small_parts::present(ctx.id,ctx.frame,ctx.capture); // X3M_CULL_SMALL_PARTS_PX only: the frame's threshold and culled count on a captured frame
     telemetry::present(ctx.stats,ctx.frame,ctx.capture,begin,end,hr);
-    window_trace::present(ctx.stats.window,ctx.id,ctx.frame,ctx.stats.markers); // hooks installed only: the cursor re-assert step, the trace's flush and snapshots
+    window_trace::present(ctx.stats.window,ctx.id,ctx.frame); // hooks installed only: the cursor re-assert step, the trace's flush and snapshots
     if(ctx.fps_overlay.visible()){
         // Shown only: one QueryPerformanceCounter per Present (the frame_end
-        // clock), the text rebuilt when a 250 ms bucket closes. The second
-        // line is the Ctrl+Shift+F12 state, only when that key is live.
+        // clock), the text rebuilt when a 250 ms bucket closes.
         LARGE_INTEGER stamp{};QueryPerformanceCounter(&stamp);
         const bool refreshed=ctx.fps_overlay.frame(uint64_t(stamp.QuadPart),ctx.draws);
-        const int shadows=!sun_shadow_apply_requested?-1:int(ctx.motion_output.sun_shadow_enabled());
-        // With --volumetric-fog the second line also carries the fog state and the current
-        // strength (Ctrl+Alt+F9 / F10); IDLE = the sector rule holds the medium at zero.
+        // With --volumetric-fog the second line carries the fog state and its strength;
+        // IDLE = the sector rule holds the medium at zero.
         const int fog=ctx.motion_output.volumetric_fog_overlay_state();
-        const bool fog_changed=ctx.fps_overlay.fog(fog); // latched every shown frame
-        if(ctx.fps_overlay.shadows(shadows)||fog_changed||refreshed){ // a state change rewrites the line the same frame
-            const char* at_rest=shadows<0?"":shadows?"SHADOWS ON":"SHADOWS OFF";
+        if(ctx.fps_overlay.fog(fog)||refreshed){ // a state change rewrites the line the same frame
             char second[40];
-            if(fog<0)std::snprintf(second,sizeof second,"%s",at_rest);
-            else if(!(fog&1))std::snprintf(second,sizeof second,"%s%sFOG OFF",at_rest,*at_rest?"  ":"");
-            else std::snprintf(second,sizeof second,"%s%sFOG %.2fx%s%s",at_rest,*at_rest?"  ":"",double(ctx.motion_output.volumetric_fog_strength() / .02f),(fog&2)?"":" IDLE",
+            if(fog<0)second[0]='\0';
+            else if(!(fog&1))std::snprintf(second,sizeof second,"FOG OFF");
+            else std::snprintf(second,sizeof second,"FOG %.2fx%s%s",double(ctx.motion_output.volumetric_fog_strength() / .02f),(fog&2)?"":" IDLE",
                                (fog&MotionOutput::fog_overlay_motes)?" MOTES":"");
             ctx.fps_notice.text(ctx.fps_overlay.line(),second);
         }
@@ -1716,21 +1557,19 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
     ctx.fixture_emission_source_calls=0; ctx.fixture_primitive_source_calls=0;
 #endif
     ctx.events=0; ctx.stats.frame=ctx.frame;
-    const bool down=(GetAsyncKeyState(VK_F8)&0x8000)!=0;
-    // With X3M_CAPTURE_DELAY=0 the edge starts the burst as before; with a delay
-    // it arms one, and a further F8 while it is pending neither re-arms nor
-    // cancels. The capture_start schedule is unaffected either way.
-    const auto arm=capture_arm::core::step(ctx.capture_pending,down&&!ctx.key_down,ctx.frame,capture_delay);
-    if (arm==capture_arm::core::Action::arm)
-        log("capture_armed device=%llu frame=%llu start_frame=%llu delay=%u",ctx.id,ctx.frame,ctx.capture_pending.start_frame,capture_delay);
-    if (arm==capture_arm::core::Action::start || (capture_count && ctx.frame==capture_start)) ctx.remaining=capture_count ? capture_count : 1;
+    // F8 is the one in-game key (comparison-hotkeys.md, "Removed 2026-09-26"):
+    // polled only under X3M_DEBUG=1 (cached at initialize_log), where its press edge starts a burst of
+    // X3M_CAPTURE_FRAMES frames at once; without it the key is never queried.
+    // X3M_CAPTURE_START: the launcher sends 999999 (never); the fixtures set their start (0 or unset = never).
+    const bool down=log_tier::cached_debug && (GetAsyncKeyState(VK_F8)&0x8000)!=0;
+    if ((down && !ctx.key_down) || (capture_count && ctx.frame==capture_start)) ctx.remaining=capture_count ? capture_count : 1;
     ctx.key_down=down; ctx.capture=ctx.remaining>0;
     point_light_admission::begin_frame(ctx.capture); // option on only: enables the per-node sample for a capture frame
     cull_census::begin_frame(ctx.capture); // X3M_CULL_CENSUS=1 only: arms the two pass stubs for a capture frame
     cull_small_parts::begin_frame(); // X3M_CULL_SMALL_PARTS_PX only: this frame's threshold from the scene view's projection (else the registry F) and the back-buffer width
     ctx.scene_depth.begin_frame(d,ctx.id,ctx.frame,ctx.capture);
     ctx.motion_output.begin_frame(ctx.frame,ctx.capture);
-    comparison_begin_frame(ctx);
+    ctx.motion_output.volumetric_fog_begin_frame(); // fog option only (returns at once without it)
     ctx.motion.begin_frame(d,ctx.frame,ctx.capture && motion_capture_requested && motion_live_replay_available &&
         object_trace::active() && object_lifetime::active());
     if (ctx.capture) log("frame_begin device=%llu frame=%llu",ctx.id,ctx.frame);
@@ -1751,11 +1590,9 @@ HRESULT reset_common(IDirect3DDevice9* d,D3DPRESENT_PARAMETERS* p,D3DDISPLAYMODE
     // stack-local saved state. Ordinary Reset during original is supported.
     if(ctx.bloom_busy || ctx.motion_output.composition_operation_active())return D3DERR_INVALIDCALL;
     ++ctx.reset_generation; ctx.reset_active=true; ctx.scene_thread=0; ctx.composition_scene_owner=false;
-    ctx.comparison_notice.hide();ctx.comparison.reset_focus();ctx.comparison_report_pending=false;ctx.comparison_emitter_notice[0]='\0';
-    ctx.fps_overlay.reset();ctx.fps_notice.text("",""); // the window restarts after Reset; visibility is kept
-    ctx.bloom_effective_frame=UINT64_MAX;
+    ctx.fps_overlay.reset();ctx.fps_notice.text("",""); // the window restarts after Reset; the overlay stays on
     revoke_compositor(ctx);
-    ctx.capture=false; ctx.remaining=0;capture_arm::core::clear(ctx.capture_pending);ctx.stats.had_present=false;ctx.stats.last_frame_capture=false;++ctx.stats.resets;
+    ctx.capture=false; ctx.remaining=0;ctx.stats.had_present=false;ctx.stats.last_frame_capture=false;++ctx.stats.resets;
     ctx.scene_depth.invalidate();
     ctx.motion.invalidate();
     {
@@ -2838,7 +2675,6 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
         if(GetEnvironmentVariableW(L"X3M_SUN_SHADOW_BIAS_CLAMP_TEXELS",text,32)>0){ end=nullptr; const double v=wcstod(text,&end); if(end!=text&&*end==L'\0'&&v>=renderer::sun_shadow_bias_clamp_texels_min&&v<=renderer::sun_shadow_bias_clamp_texels_max)clamp_texels=v; }
         { wchar_t slope_text[32]{}; if(GetEnvironmentVariableW(L"X3M_SUN_SHADOW_BIAS_SLOPE_TEXELS",slope_text,32)>0){ end=nullptr; const double v=wcstod(slope_text,&end); if(end!=slope_text&&*end==L'\0'&&v>=renderer::sun_shadow_bias_slope_texels_min&&v<=renderer::sun_shadow_bias_slope_texels_max)slope_texels=v; } }
         if(apply_asked)log("sun_shadow_apply_mode requested=1 enabled=%u lane=%u replay=%u linear_materials=%u bias_units=%.9g clamp_texels=%.9g slope_texels=%.9g cascades=%u",apply_enabled,sun_lane_enabled,depth_asked&&enabled,linear_material_requested,bias_units,clamp_texels,slope_texels,unsigned(cascades_configured));
-        sun_shadow_apply_requested=sun_shadow_apply_requested||apply_enabled; // opens the Ctrl+Shift+F12 sampler
         hooked.motion_output.configure_sun_shadow_apply(apply_enabled,bias_units,clamp_texels,slope_texels); } }
     hooked.motion_output.configure_volumetric_fog(volumetric_fog_requested,volumetric_fog_strength,volumetric_fog_anisotropy,volumetric_fog_timing,volumetric_fog_cards_replace);
     hooked.motion_output.configure_volumetric_fog_range(volumetric_fog_range_stored);
@@ -2996,6 +2832,7 @@ bool fixture_exception_requested() { wchar_t raise[4]{}; return GetEnvironmentVa
 #endif
 void initialize_log(HMODULE module) {
     CaptureLock lock;
+    log_tier::init(); // the group flags cached once for the render-path checks (the F8 guard)
     // The session log (docs/architecture/logging-tiers.md, "Log file policy"): <game dir>\x3m.log with the
     // previous one renamed to x3m.prev.log, x3m-<pid>.log when that rename fails (another instance or an
     // editor holding the file), X3M_LOG_FILE=<path> opened exactly (the fixture runners), and W3 of the
@@ -3061,22 +2898,11 @@ void initialize_log(HMODULE module) {
     // and one environment scan, never on the render path.
     proxy_identity::log_identity(module);
     wchar_t setting[32]{};
-    if(GetEnvironmentVariableW(L"X3M_CAPTURE_START",setting,32)>0) capture_start=wcstoul(setting,nullptr,10);
+    if(GetEnvironmentVariableW(L"X3M_CAPTURE_START",setting,32)>0) capture_start=wcstoul(setting,nullptr,10); // launcher 999999, fixtures their start
     if(GetEnvironmentVariableW(L"X3M_CAPTURE_FRAMES",setting,32)>0) capture_count=wcstoul(setting,nullptr,10);
     // 64: a plain frame counter (ctx.remaining); above 8 serves the raw TAA
     // debug dumps (about 40 MB per 1280x768 frame), see tools/manage.py.
     if(capture_count>64) capture_count=64;
-    // X3M_CAPTURE_DELAY (frames, default 0 = immediate): frames between the F8
-    // press and the start of the burst, so SETA can be re-engaged after the key
-    // press cancels it. Malformed keeps 0; read once, used on the Present path.
-    {   // A return of 32 or more means truncation: the buffer content is then
-        // undefined, so the value is refused rather than parsed.
-        const DWORD length=GetEnvironmentVariableW(L"X3M_CAPTURE_DELAY",setting,32);
-        if(length>0&&length<32){
-            wchar_t* stop=nullptr; const unsigned long v=wcstoul(setting,&stop,10);
-            if(stop!=setting&&*stop==L'\0'&&v<=capture_arm::core::delay_max) capture_delay=unsigned(v);
-        }
-    }
     // X3M_FRAME_END_STRIDE (1..100000): frames between frame_end lines. An explicit
     // valid value wins; unset or invalid: 1 with a logging group, else the default
     // 3600 (about one row a minute). frame_end_stride_mode is logged for any
@@ -3089,11 +2915,11 @@ void initialize_log(HMODULE module) {
         if(!given)frame_end_stride=log_tier::cadence_default(log_tier::perf()||log_tier::debug(),1u,frame_end_stride_default);
         if(frame_end_stride!=frame_end_stride_default)log("frame_end_stride_mode stride=%u",frame_end_stride);
     }
-    // X3M_FPS_OVERLAY=1 (default off): the on-screen frame-rate line.
+    // X3M_FPS_OVERLAY=1 (default off): the on-screen frame-rate line, on for the session.
     fps_overlay_requested=log_tier::perf_flag(L"X3M_FPS_OVERLAY"); // X3M_FPS_OVERLAY=1 or X3M_PERF=1
     shadow_timing_requested=log_tier::perf_flag(L"X3M_SHADOW_TIMING");
     shadow_rows_requested=log_tier::debug_flag(L"X3M_SHADOW_ROWS");
-    if(fps_overlay_requested)log("fps_overlay_mode requested=1 refresh_ms=250 window_ms=1000 key=ctrl_alt_f7");
+    if(fps_overlay_requested)log("fps_overlay_mode requested=1 refresh_ms=250 window_ms=1000");
     // X3M_GPU_SYNC_TIMING=1 (default off): serialising event-query spins at the proxy's pass boundaries (one diagnostic flight).
     gpu_sync_timing_requested=GetEnvironmentVariableW(L"X3M_GPU_SYNC_TIMING",setting,32)==1 && setting[0]==L'1';
     if(gpu_sync_timing_requested)log("gpu_sync_timing_mode requested=1 passes=%u boundaries=%u window=%u serialises=1",gpu_sync_timing::pass_count,gpu_sync_timing::boundary_count,gpu_sync_timing::window_frames_default);
@@ -3342,7 +3168,7 @@ void initialize_log(HMODULE module) {
     // --hull-emission-gain G, or the effects gain's value under
     // --hull-emitters): finite 1..8, 1 (the launcher default) is off. Needs
     // the FP16 scene only (X3M_HDR=1), independent of the effects gain so the
-    // population can be bracketed alone, with its own key (Ctrl+Shift+F4);
+    // population can be bracketed alone;
     // the DLL refuses without HDR with the reason logged. Unparsable or out
     // of range keeps 1 and logs.
     {hull_emission_gain=1.f;bool gain_valid=true;float value=1.f;
@@ -3383,9 +3209,8 @@ void initialize_log(HMODULE module) {
     // 1..8, 1 (the launcher default) is off. The variant is the fill/motion
     // program plus one MUL, so it needs the motion-output registry and the
     // FP16 scene (X3M_HDR=1) only; exclusive with the linear-material route,
-    // whose converted programs carry X3M_LIGHTMAP_EMISSIVE_GAIN. Ctrl+Shift+F4
-    // switches this gain alone (the guide lights follow the effects gain on
-    // Ctrl+Shift+F6). Unparsable or out of range keeps 1 and logs.
+    // whose converted programs carry X3M_LIGHTMAP_EMISSIVE_GAIN. Unparsable or
+    // out of range keeps 1 and logs.
     {hull_lightmap_gain=1.f;bool gain_valid=true;float value=1.f;
      SetLastError(ERROR_SUCCESS);
      const DWORD gain_length=GetEnvironmentVariableW(L"X3M_HULL_LIGHTMAP_GAIN",setting,32);
@@ -3614,7 +3439,7 @@ void initialize_log(HMODULE module) {
             }
             renderer::fog_mote_normalize(motes);
             volumetric_fog_motes=motes;
-            log("volumetric_fog_motes_mode enabled=1 count=%u size=%g streak=%g overrides=%u RADIUS=%g NEAR=%g MAX_PX=%g GAIN=%g SOFT=%g DRIFT=%g SEED=%u key=ctrl_alt_f11 source=%s",
+            log("volumetric_fog_motes_mode enabled=1 count=%u size=%g streak=%g overrides=%u RADIUS=%g NEAR=%g MAX_PX=%g GAIN=%g SOFT=%g DRIFT=%g SEED=%u source=%s",
                 motes.count,double(motes.size),double(motes.streak),overrides,double(motes.radius),double(motes.near_fade),double(motes.max_px),double(motes.gain),double(motes.soft),double(motes.drift),unsigned(motes.seed),motes_length?"env":"default");
         } else if(valid&&n==0)log("volumetric_fog_motes_mode enabled=0 reason=off");
         else log("volumetric_fog_motes_mode enabled=0 invalid=1 reason=%s",valid?"out_of_range":"unparsable");
@@ -3622,7 +3447,7 @@ void initialize_log(HMODULE module) {
      if(asked)log("volumetric_fog_range mode=%s atlas_bytes=%u levels=2 cpu_bytes=%u upload_budget_bytes=%u upload_rects=%u ramp_frames=%u worker_threads=%u",volumetric_fog_range_stored?"stored":"legacy",
         volumetric_fog_range_stored?unsigned(fog::kAtlasBytes):0u,volumetric_fog_range_stored?unsigned(4*fog::kAtlasBytes):0u,volumetric_fog_range_stored?unsigned(fog::kDefaultUploadBudget):0u,
         volumetric_fog_range_stored?fog::kDefaultUploadRects:0u,volumetric_fog_range_stored?fog::kReadinessRampFrames:0u,unsigned(volumetric_fog_range_stored));
-     if(asked)log("volumetric_fog_mode requested=1 enabled=%u motion_output=%u taa=%u hdr=%u shadow_replay_depth=%u shadow_cascades=%u strength=%g density_scale=%g anisotropy=%g timing=%u cards=%s rule=current_engine_family keys=ctrl_alt_f9,ctrl_alt_f10",volumetric_fog_requested,motion_output_requested,taa_requested,hdr_requested,unsigned(fog_replay),unsigned(fog_cascade_list),double(volumetric_fog_strength),double(volumetric_fog_strength / .02f),double(volumetric_fog_anisotropy),volumetric_fog_timing,volumetric_fog_cards_replace?"replace":"keep");}
+     if(asked)log("volumetric_fog_mode requested=1 enabled=%u motion_output=%u taa=%u hdr=%u shadow_replay_depth=%u shadow_cascades=%u strength=%g density_scale=%g anisotropy=%g timing=%u cards=%s rule=current_engine_family",volumetric_fog_requested,motion_output_requested,taa_requested,hdr_requested,unsigned(fog_replay),unsigned(fog_cascade_list),double(volumetric_fog_strength),double(volumetric_fog_strength / .02f),double(volumetric_fog_anisotropy),volumetric_fog_timing,volumetric_fog_cards_replace?"replace":"keep");}
     hdr_config.sharpen=taa_sharpen; // the HDR write-back sharpens the resolved image with the same setting
     motion_rt_lazy=GetEnvironmentVariableW(L"X3M_MOTION_RT_MODE",setting,32)>0 && !wcscmp(setting,L"lazy");
     if(GetEnvironmentVariableW(L"X3M_STATE_SHADOW",setting,32)>0){ // exactly "1" or "0"; anything else is auto, noted
@@ -4019,22 +3844,6 @@ extern "C" __declspec(dllexport) HRESULT x3m_shadow_replay_fixture_cascade_readb
     if(it==x3m::devices.end()) return D3DERR_INVALIDCALL;
     return it->second->motion_output.fixture_shadow_replay_readback(out,floats,width,height,params,param_floats,cascade);
 }
-// The at-rest sun-shadow A/B (comparison-hotkeys.md, "Sun shadows at rest"):
-// the fixture executable stands in for the Ctrl+Shift+F12 press, which the
-// production key path delivers at the same frame boundary. Returns the new
-// state (1 on / 0 off), or -1 for an unknown device.
-extern "C" __declspec(dllexport) int x3m_sun_shadow_fixture_toggle(IDirect3DDevice9* device) {
-    x3m::CaptureLock lock;
-    const auto it=x3m::devices.find(device);
-    return it==x3m::devices.end()?-1:it->second->motion_output.sun_shadow_toggle();
-}
-// The dust motes' on/off (comparison-hotkeys.md, "Fog dust motes"): the Ctrl+Alt+F11 action without the key, at the
-// same frame boundary. Returns the new state (1 on / 0 off), -1 without the option or for an unknown device.
-extern "C" __declspec(dllexport) int x3m_fog_dust_motes_fixture_toggle(IDirect3DDevice9* device) {
-    x3m::CaptureLock lock;
-    const auto it=x3m::devices.find(device);
-    return it==x3m::devices.end()?-1:it->second->motion_output.volumetric_fog_dust_motes_toggle();
-}
 // Own-ship-adaptive cascade 0 seam (shadow-cascade-extents.md, section 5):
 // the fixture executable's synthetic own-ship root node stands in for the
 // registry walk of the verified executable; the scope nodes of its draws are
@@ -4087,9 +3896,8 @@ extern "C" __declspec(dllexport) HRESULT x3m_hdr_fixture_exposure(IDirect3DDevic
     if(it==x3m::devices.end()) return D3DERR_INVALIDCALL;
     return it->second->motion_output.fixture_hdr_exposure(out,floats);
 }
-// The two hull-family actions without their keys: the same toggle the sampler
-// calls, lightmap!=0 for Ctrl+Shift+F4 (the light-map gain), 0 for the guide
-// lights that Ctrl+Shift+F6 drives beside the effects gain.
+// Fixture seam (the Ctrl+Shift+F4/F6 keys went on 2026-09-26): the hull-family
+// A/B between frames, lightmap!=0 for the light-map gain, 0 for the guide lights.
 extern "C" __declspec(dllexport) int x3m_hull_emission_fixture_toggle(IDirect3DDevice9* device,int lightmap) {
     x3m::CaptureLock lock;
     const auto it=x3m::devices.find(device);

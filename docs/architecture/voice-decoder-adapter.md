@@ -231,7 +231,7 @@ updated.
 
 ## Load hang witness build
 
-**Removed 2026-09-25** (user decision; `docs/verification/launcher-options-inventory.md`, "4. Removed 2026-09-25"): the load
+**Removed 2026-09-25** (user decision; `docs/verification/launcher-options-inventory.md`, "4. Removed"): the load
 hang's cause was found (above), and `--profile-raw` / `X3M_PROFILE_RAW` and `--audio-sites` / `X3M_AUDIO_SITES` with their
 fourteen audio sites are gone; the launch command below no longer parses. What follows is the history of that build.
 

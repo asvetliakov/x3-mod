@@ -30,7 +30,7 @@ DEFAULT_EXE = ROOT / 'build/cursor_reassert_fixture.exe'
 SOURCES = ('src/proxy/cursor_reassert_core.h', 'src/proxy/cursor_reassert.h', 'src/proxy/cursor_reassert.cpp', 'src/proxy/window_trace_core.h',
            'src/proxy/window_trace.h', 'src/proxy/window_trace.cpp', 'src/proxy/cpu_state.h',
            'verification/probe/cursor_reassert_fixture.cpp', 'verification/probe/run_cursor_reassert.py')
-EXPECTED_CHECKS = 42  # light ring 5, stand-in sequence 4, setup 2, hooks 5 (incl. already_hooked), launch 5 (arm at attach, first-Present flush, not-foreground refusal, fire, no second fire), game state 1, arming 3, present step 4, real sequence 2, refusal 1, real gates 2, mismatch 2, trace ring 4, removal 2
+EXPECTED_CHECKS = 41  # light ring 5, stand-in sequence 4, setup 2, hooks 5 (incl. already_hooked), launch 5 (arm at attach, first-Present flush, not-foreground refusal, fire, no second fire), game state 1, arming 3, present step 4, real sequence 2, refusal 1, real gates 2, mismatch 2, trace ring 3 (the marker flush went with Ctrl+Shift+F7 on 2026-09-26), removal 2
 
 
 def sha(path):

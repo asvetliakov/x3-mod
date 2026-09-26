@@ -15,8 +15,7 @@
 // no Win32 call besides CallNextHookEx and GetTickCount, and never log: they
 // write a bounded ring (1024 entries) that the Present flushes at the device's
 // first Present (reason=first_present), on a transition message to the device
-// window or the Ctrl+Shift+F7 marker (entries
-// older than 4 s are dropped); messages to the thread's other windows (the
+// window (entries older than 4 s are dropped); messages to the thread's other windows (the
 // fixture saw one, not identified) are rows, not transitions, and never arm cursor_reassert.
 // Removed at device destruction and at DLL detach.
 //
@@ -46,7 +45,7 @@ void detach(unsigned long long device);
 void shutdown() noexcept;
 // Present, after the native call, for the device that installed the hooks only:
 // cursor_reassert's step, then the trace's drain, flush and snapshot.
-void present(HWND window, unsigned long long device, unsigned long long frame, unsigned long long markers);
+void present(HWND window, unsigned long long device, unsigned long long frame);
 // Hook observation counters (the Wine fixture's assertions).
 struct Observed {
     unsigned calls = 0, rets = 0, gets = 0;

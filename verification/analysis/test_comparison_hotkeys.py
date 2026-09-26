@@ -1,10 +1,13 @@
-"""Focused host execution: no Wine, game, shader compiler or DLL build."""
+"""In-game keys (comparison-hotkeys.md, "Removed 2026-09-26"): F8 is the only
+key the proxy reads, and only under X3M_DEBUG=1. Focused host execution: no
+Wine, game, shader compiler or DLL build."""
 import argparse
 import ast
 import contextlib
 import io
 import math
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -16,131 +19,124 @@ from unittest import mock
 from verification.analysis.test_capture_bloom_lifetime import extract_function
 
 ROOT = Path(__file__).resolve().parents[2]
+F8_BEGIN = '    // F8 is the one in-game key'
+F8_END = 'ctx.key_down=down; ctx.capture=ctx.remaining>0;\n'
 
 
-class ComparisonHotkeys(unittest.TestCase):
-    def test_production_controls_and_exposure_handoff(self):
-        source = (ROOT / 'src/renderer/hdr_pass.cpp').read_text()
-        functions = [extract_function(source, signature) for signature in (
-            'void HdrPass::prepare_constants(', 'bool HdrPass::comparison_exposure(')]
-        # The two emitter toggles the F4 and F6 actions drive run in the same
-        # fixture, on a stand-in carrying only the members they touch.
-        motion = (ROOT / 'src/proxy/motion_output.cpp').read_text()
-        toggles = [extract_function(motion, signature) for signature in (
-            'int MotionOutput::emission_source_gain_toggle(', 'int MotionOutput::hull_emission_gain_toggle(')]
-        self.run_host('comparison_controls_fixture.cpp', functions, exposure=True, toggles=toggles)
+def f8_block(capture):
+    start = capture.index(F8_BEGIN)
+    return capture[start:capture.index(F8_END, start) + len(F8_END)]
+
+
+class InGameKeys(unittest.TestCase):
+    def test_f8_is_the_only_key_and_only_under_debug(self):
+        sources = {path: path.read_text() for path in (ROOT / 'src').rglob('*') if path.suffix in ('.cpp', '.h')}
+        pollers = {str(path.relative_to(ROOT)): text.count('GetAsyncKeyState(')
+                   for path, text in sources.items() if 'GetAsyncKeyState(' in text}
+        self.assertEqual(pollers, {'src/proxy/capture.cpp': 1})
+        for path, text in sources.items():
+            for absent in ('GetKeyState(', 'VK_CONTROL', 'VK_SHIFT', 'VK_MENU', 'ComparisonControls', 'comparison_begin_frame',
+                           'telemetry_phase_marker', 'fps_overlay_toggle', 'sun_shadow_toggle', 'renderer_comparison',
+                           'screen_emission_additive_toggle', 'emission_source_gain_toggle', 'capture_armed', 'X3M_CAPTURE_DELAY'):
+                self.assertNotIn(absent, text, (path, absent))
+            self.assertIsNone(re.search(r'key=ctrl_|keys=ctrl_', text), path)
+        for gone in ('src/proxy/comparison_controls.h', 'src/proxy/capture_arm_core.h'):
+            self.assertFalse((ROOT / gone).exists(), gone)
+        capture = sources[ROOT / 'src/proxy/capture.cpp']
+        block = f8_block(capture)
+        # The key is polled only when the debug tier is on (short-circuit before the call).
+        self.assertIn('const bool down=log_tier::cached_debug && (GetAsyncKeyState(VK_F8)&0x8000)!=0;', block)
+        # The flag is cached once at initialize_log, never read from the environment per frame (log_tiers.h).
+        self.assertIn('log_tier::init();', extract_function(capture, 'void initialize_log('))
+        tiers = (ROOT / 'src/proxy/log_tiers.h').read_text()
+        self.assertIn('inline void init() noexcept { cached_debug = debug(); cached_perf = perf(); cached_draw_trace = draw_trace(); }', tiers)
+        self.assertNotIn('log_tier::debug()', extract_function(capture, 'HRESULT WINAPI present('))
+        present = extract_function(capture, 'HRESULT WINAPI present(')
+        self.assertIn(block, present)
+        # X3M_CAPTURE_START: 0 (unset) never starts a burst; the launcher sends 999999.
+        self.assertIn('unsigned capture_start = 0;', capture)
+        self.assertIn('GetEnvironmentVariableW(L"X3M_CAPTURE_START",setting,32)', capture)
+        # The fps overlay has no key: visible whenever requested.
+        overlay = (ROOT / 'src/proxy/fps_overlay.h').read_text()
+        self.assertIn('bool visible() const noexcept { return requested_; }', overlay)
+        self.assertNotIn('toggle', overlay)
+        # Bloom runs at full strength; the fog begin-frame step runs every frame without the sampler.
+        self.assertIn('call.input.filter.strength=1.f;', extract_function(capture, 'void retain_compositor_scene('))
+        self.assertIn('ctx.motion_output.volumetric_fog_begin_frame();', present)
+        # The remaining toggles are fixture seams: no production caller.
+        for seam in ('hull_emission_gain_toggle(', 'volumetric_fog_toggle(', 'volumetric_fog_step(', 'volumetric_fog_dust_motes_toggle('):
+            callers = [str(p.relative_to(ROOT)) for p, t in sources.items()
+                       if re.search(r'(?<!MotionOutput::)(?<!int )' + re.escape(seam), t)]
+            self.assertLessEqual(set(callers), {'src/proxy/capture.cpp'}, seam)
+        hull = capture[capture.index('x3m_hull_emission_fixture_toggle'):]
+        self.assertLess(hull.index('#endif'), hull.index('\n}\n') + 10)  # inside the fixture-only export block
+        self.assertNotIn('x3m_fog_dust_motes_fixture_toggle', capture)
+        self.assertNotIn('x3m_sun_shadow_fixture_toggle', capture)
+
+    def test_f8_press_captures_only_under_debug(self):
+        """The production F8 block, executed: no poll and no capture without the
+        debug tier; with it, one burst of X3M_CAPTURE_FRAMES per press edge. The
+        fixture seam X3M_CAPTURE_START starts one burst either way."""
+        compiler = shutil.which('clang++') or shutil.which('c++')
+        self.assertIsNotNone(compiler)
+        block = f8_block((ROOT / 'src/proxy/capture.cpp').read_text())
+        harness = textwrap.dedent('''
+            #include <cstdint>
+            #include <cstdio>
+            #define VK_F8 0x77
+            static unsigned polls = 0, failures = 0, checks = 0; static bool f8 = false;
+            short GetAsyncKeyState(int key) { ++polls; return key == VK_F8 && f8 ? short(-32768) : short(0); }
+            namespace log_tier { static bool cached_debug = false; }
+            static unsigned capture_start = 0, capture_count = 8;
+            struct Ctx { std::uint64_t frame = 0; unsigned remaining = 0; bool key_down = false, capture = false; };
+            static void frame(Ctx& ctx) {
+                if (ctx.capture && ctx.remaining) --ctx.remaining;
+                ++ctx.frame;
+            @BLOCK@
+            }
+            #define CHECK(x) do { ++checks; if (!(x)) { ++failures; std::printf("FAIL line=%d %s\\n", __LINE__, #x); } } while (0)
+            static unsigned run(Ctx& ctx, unsigned frames, bool key) { unsigned n = 0; f8 = key; for (unsigned i = 0; i < frames; ++i) { frame(ctx); n += ctx.capture; } return n; }
+            int main() {
+                { Ctx ctx; log_tier::cached_debug = false; // no debug: never polled, never captures
+                  CHECK(run(ctx, 5, false) == 0); CHECK(run(ctx, 20, true) == 0); CHECK(run(ctx, 5, false) == 0); CHECK(run(ctx, 20, true) == 0);
+                  CHECK(polls == 0); }
+                { Ctx ctx; log_tier::cached_debug = true; polls = 0; // debug: one burst of 8 per press edge
+                  CHECK(run(ctx, 5, false) == 0); CHECK(polls == 5);
+                  CHECK(run(ctx, 30, true) == 8); // a held key is one press
+                  CHECK(run(ctx, 2, false) == 0); CHECK(run(ctx, 1, true) == 1); CHECK(run(ctx, 20, false) == 7); }
+                { Ctx ctx; log_tier::cached_debug = false; capture_start = 3; // the fixture seam, without debug
+                  unsigned first = 0, n = 0; f8 = false;
+                  for (unsigned i = 0; i < 40; ++i) { frame(ctx); if (ctx.capture) { ++n; if (!first) first = unsigned(ctx.frame); } }
+                  CHECK(first == 3 && n == 8); capture_start = 0; }
+                std::printf("f8 checks=%u failures=%u\\n", checks, failures);
+                return failures ? 1 : 0;
+            }
+        ''').replace('@BLOCK@', block)
+        with tempfile.TemporaryDirectory(prefix='x3-f8-') as temporary:
+            source, executable = Path(temporary) / 'f8.cpp', Path(temporary) / 'f8'
+            source.write_text(harness)
+            result = subprocess.run([compiler, '-std=c++17', '-Wall', '-Wextra', '-Werror', '-O1', str(source), '-o', str(executable)],
+                                    capture_output=True, text=True, timeout=60)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            result = subprocess.run([str(executable)], capture_output=True, text=True, timeout=20)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertEqual(result.stdout, 'f8 checks=12 failures=0\n')
 
     def test_production_notice_state_failure_and_allocation_contract(self):
+        # The notice panel class now draws only the FPS overlay.
         self.run_host('comparison_notice_fixture.cpp', [], notice=True)
 
-    def test_production_bloom_handoff_preserves_display_and_off_filtering(self):
+    def test_production_bloom_handoff_preserves_display_at_full_strength(self):
         source = (ROOT / 'src/proxy/capture.cpp').read_text()
         functions = [extract_function(source, 'void retain_compositor_scene(')]
         self.run_host('comparison_bloom_handoff_fixture.cpp', functions, handoff=True)
 
-    def test_sun_shadow_at_rest_key_and_scene_end_gate(self):
-        """Ctrl+Shift+F12 (comparison-hotkeys.md, "Sun shadows at rest"): the
-        edge-triggered key, polled only with --sun-shadow-apply, and the one
-        boolean that removes the replay transaction and the apply quad from the
-        scene end while everything else keeps running."""
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
-        controls = (ROOT / 'src/proxy/comparison_controls.h').read_text()
-        motion_source = (ROOT / 'src/proxy/motion_output.cpp').read_text()
-        replay = (ROOT / 'src/proxy/motion_output_shadow_replay_inc.h').read_text()
-        # The key: its own latch and edge in the shared sampler.
-        self.assertIn('bool sun_shadow = false;', controls)
-        self.assertIn('result.sun_shadow = keys.sun_shadow && !sun_shadow_down_;', controls)
-        self.assertIn('sun_shadow_down_ = keys.sun_shadow;', controls)
-        polling = extract_function(capture, 'void comparison_begin_frame(')
-        self.assertIn('keys.sun_shadow=sun_shadow_apply_requested && (GetAsyncKeyState(VK_F12)&0x8000)!=0;', polling)
-        self.assertEqual(capture.count('GetAsyncKeyState(VK_F12)'), 1, 'one owner per function key')
-        self.assertIn('if(action.sun_shadow)ctx.motion_output.sun_shadow_toggle();', polling)
-        self.assertIn('!emitter_compare && !sun_shadow_apply_requested && !fps_overlay_requested)return;', polling)
-        self.assertLess(polling.index('!fps_overlay_requested)return;'), polling.index('comparison_foreground()'))
-        # The toggle: no allocation, no device object, every retained basis voided.
-        toggle = extract_function(motion_source, 'int MotionOutput::sun_shadow_toggle(')
-        self.assertIn('sun_shadow_enabled_ = !sun_shadow_enabled_;', toggle)
-        self.assertIn('if (depth_replay_) depth_replay_->invalidate_retained();', toggle)
-        self.assertIn('sun_shadow_toggle device=%llu state=%u frame=%llu', toggle)
-        # A device with neither the replay nor the apply: a logged no-op.
-        self.assertIn('if (!sun_apply_requested_ && !depth_replay_requested_) {', toggle)
-        self.assertIn('return -1;', toggle)
-        self.assertLess(toggle.index('return -1;'), toggle.index('sun_shadow_enabled_ = !sun_shadow_enabled_;'))
-        # The retained cascade bases go (the single map and its published view
-        # rows were removed on 2026-09-25), and the frame back on replays every
-        # cascade whatever the budget says.
-        self.assertIn('depth_replayed_ = 0; depth_cascade_frame_ok_ = false;', toggle)
-        self.assertIn('sun_shadow_force_replay_ = sun_shadow_enabled_;', toggle)
-        self.assertIn('void invalidate_retained() noexcept { for (auto& r : retained_) r.valid = false; }', (ROOT / 'src/renderer/shadow_replay_pass.h').read_text())
-        cascades = extract_function(replay, 'void MotionOutput::run_shadow_replay_cascades(')
-        self.assertIn('(sun_shadow_force_replay_ || renderer::shadow_cascade_replays(', cascades)
-        self.assertIn('sun_shadow_force_replay_ = false;', cascades)
-        # An F8 while off dumps no stale map (the basis line still reports valid=0):
-        # only a retained cascade map is read back.
-        dump = extract_function(motion_source, 'void MotionOutput::readback(')
-        self.assertIn('if (kept && depth_replay_->map_surface(i)) readback_surface(', dump)
-        for absent in ('CreateTexture', 'execute', 'Clear'):
-            self.assertNotIn(absent, toggle)
-        # The scene end: one boolean test, both the replay transaction and the
-        # apply quad, with the frame's leases still retired.
-        scene_end = extract_function(motion_source, 'void MotionOutput::publish_shadow_replay_candidates(')
-        self.assertIn('if (!sun_shadow_enabled_) {', scene_end)
-        self.assertIn('if (depth_replay_requested_) release_depth_leases();', scene_end)
-        self.assertIn('else if (depth_cascades_on()) run_shadow_replay_cascades(quiet_records);', scene_end)
-        self.assertEqual(motion_source.count('run_sun_shadow_apply();'), 2)
-        self.assertEqual(motion_source.count('sun_apply_requested_&&sun_shadow_enabled_)run_sun_shadow_apply();')
-                         + motion_source.count('sun_apply_requested_ && sun_shadow_enabled_) run_sun_shadow_apply();'), 2)
-        # The per-frame shadow line carries the state it ran under (the cascades' line alone).
-        self.assertEqual(replay.count('us=%.1f shadow_toggle=%u'), 1)
-        self.assertEqual(replay.count('us=%.1f shadow_toggle=%u%s far_replayed='), 1)
-
-    def test_fog_shadow_pass_key_is_removed(self):
-        """Ctrl+Shift+F11 (the fog shadow-pass A/B) went with --fog-shadow-pass on 2026-09-25: no key field, no poll, no toggle."""
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
-        for path in ('src/proxy/comparison_controls.h', 'src/proxy/capture.cpp', 'src/proxy/motion_output.h', 'src/proxy/motion_output_fog_inc.h'):
-            self.assertNotIn('fog_shadow_pass', (ROOT / path).read_text(), path)
-        self.assertEqual(capture.count('GetAsyncKeyState(VK_F11)'), 1, 'one owner per function key')
-
-    def test_fog_dust_motes_key_and_frame_boundary(self):
-        """Ctrl+Alt+F11 with Shift up (comparison-hotkeys.md, "Fog dust motes"): polled whenever the motes are on (by default under the stored range since 2026-09-23, or with --fog-dust-motes), on
-        F11's own raw latch under the Alt rule (the motes are on by default under the stored range since 2026-09-23) (the sampler runs in comparison_controls_fixture.cpp); the toggle flips the
-        proxy's copy of the mote stage, which FogPass latches at the next prepare_density, and logs one row."""
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
-        controls = (ROOT / 'src/proxy/comparison_controls.h').read_text()
-        header = (ROOT / 'src/proxy/motion_output.h').read_text()
-        fragment = (ROOT / 'src/proxy/motion_output_fog_inc.h').read_text()
-        self.assertIn('bool fog_dust_motes = false;', controls)
-        self.assertIn('result.fog_dust_motes = keys.control && keys.alt && !keys.shift && keys.fog_dust_motes && !fog_dust_motes_down_;', controls)
-        self.assertIn('fog_dust_motes_down_ = keys.fog_dust_motes;', controls)
-        polling = extract_function(capture, 'void comparison_begin_frame(')
-        self.assertIn('keys.fog_dust_motes=volumetric_fog_motes.count && (GetAsyncKeyState(VK_F11)&0x8000)!=0;', polling)
-        self.assertIn('if(action.fog_dust_motes)ctx.motion_output.volumetric_fog_dust_motes_toggle();', polling)
-        # The motes imply the stored range and so the fog option: the sampler's early return and the Alt poll cover them.
-        # Parsed only past the overlong and stored-range refusals; absent under the stored range the default 1300,3,128
-        # (Run 70 B/B2, 2026-09-23) enables them, so the key is polled there without the option unless 0 opted out.
-        self.assertIn('} else if(motes_length||volumetric_fog_range_stored){', capture)
-        self.assertIn('unsigned long n=renderer::fog_mote_default_count;', capture)
-        self.assertIn('keys.alt=(fps_overlay_requested || volumetric_fog_requested) && (GetAsyncKeyState(VK_MENU)&0x8000)!=0;', polling)
-        self.assertIn('fog_dust_motes_launch_ = motes.count > 0; fog_density_config_.motes = motes; fog_density_config_.dust_motes = motes.count > 0;', header)
-        toggle = extract_function(fragment, 'int MotionOutput::volumetric_fog_dust_motes_toggle(')
-        self.assertLess(toggle.index('if (!fog_dust_motes_launch_) return -1;'), toggle.index('fog_density_config_.dust_motes = !fog_density_config_.dust_motes;'))
-        self.assertIn('fog_dust_motes_toggle device=%llu frame=%llu enabled=%u refused=%s key=ctrl_alt_f11', toggle)
-        code = '\n'.join(line.split('//')[0] for line in toggle.splitlines())
-        for forbidden in ('release', 'detach', 'fog_->prepare', 'native<', 'invalidate'):
-            self.assertNotIn(forbidden, code)
-        self.assertIn('x3m_fog_dust_motes_fixture_toggle', capture)
-        # The overlay's fog line appends " MOTES" while the stage drew the last fog frame.
-        self.assertIn('(fog&MotionOutput::fog_overlay_motes)?" MOTES":""', capture)
-        self.assertIn('(fog_motes_drawn_ ? fog_overlay_motes : 0)', header)
-
-    def run_host(self, fixture, functions, exposure=False, notice=False, handoff=False, toggles=()):
+    def run_host(self, fixture, functions, notice=False, handoff=False):
         compiler = shutil.which('clang++') or shutil.which('c++')
         self.assertIsNotNone(compiler)
         with tempfile.TemporaryDirectory(prefix='x3-comparison-') as temporary:
             directory = Path(temporary)
             (directory / ('comparison_handoff_under_test_inc.h' if handoff else 'comparison_exposure_under_test_inc.h')).write_text('\n'.join(functions))
-            if toggles:
-                (directory / 'comparison_toggles_under_test_inc.h').write_text('\n'.join(toggles))
             stub = ROOT / 'verification/probe/hdr_display_snapshot_stubs/d3d9.h'
             (directory / 'd3d9.h').write_text(f'#include "{stub}"\n' + textwrap.dedent('''
                 #define WINAPI
@@ -152,11 +148,7 @@ class ComparisonHotkeys(unittest.TestCase):
                 constexpr HRESULT D3DERR_NOTFOUND=-99;
                 constexpr DWORD D3DCLEAR_TARGET=1;
             '''))
-            extra = []
-            if exposure:
-                extra.append(str(ROOT / 'src/renderer/exposure.cpp'))
-            if notice:
-                extra.append(str(ROOT / 'src/proxy/comparison_notice.cpp'))
+            extra = [str(ROOT / 'src/proxy/comparison_notice.cpp')] if notice else []
             for name, flags in [('release', ['-O2']), ('sanitized', ['-O1', '-g', '-fsanitize=address,undefined'])]:
                 with self.subTest(fixture=fixture, mode=name):
                     executable = directory / name
@@ -220,138 +212,6 @@ class ComparisonHotkeys(unittest.TestCase):
                 with self.assertRaises(SystemExit) as error:
                     scope['main']()
                 self.assertEqual(error.exception.code, 2)
-
-    def test_frame_state_and_capability_wiring(self):
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
-        present = extract_function(capture, 'HRESULT WINAPI present(')
-        self.assertLess(present.index('before_present()'), present.index('comparison_notice.draw('))
-        self.assertLess(present.index('comparison_notice.draw('), present.index('const HRESULT hr=fn('))
-        self.assertLess(present.index('const HRESULT hr=fn('), present.index('comparison_begin_frame(ctx)'))
-        self.assertLess(present.index('struct NoticePin'), present.index('HookGuard lock'))
-        self.assertIn('std::shared_ptr<Device> owner;', present)
-        self.assertIn('notice_pin.owner=owner', present)
-        self.assertLess(present.index('BloomOperation internal(ctx)'), present.index('comparison_notice.draw('))
-        self.assertIn('comparison_state_failed(notice.restore)', present)
-        self.assertEqual(present.count('const HRESULT hr=fn(d,a,b,w,r)'), 1)
-        self.assertIn('const bool down=(GetAsyncKeyState(VK_F8)&0x8000)!=0;', present)
-        self.assertIn('ctx.comparison_notice.visible(GetTickCount64()) && comparison_foreground()', present)
-        motion_source = (ROOT / 'src/proxy/motion_output.cpp').read_text()
-        polling = extract_function(capture, 'void comparison_begin_frame(')
-        # Ordinary launches (no HDR AgX, no fog, emitter or shadow option) return before any key or foreground query.
-        self.assertLess(polling.index('if(!hdr_compare && !volumetric_fog_requested && !emitter_compare && !sun_shadow_apply_requested && !fps_overlay_requested)return;'),
-                        polling.index('comparison_foreground()'))
-        self.assertIn('const bool hdr_compare=hdr_requested && hdr_config.tonemap==renderer::HdrTonemap::Agx;', polling)
-        self.assertLess(polling.index('if(action.sun_shadow)ctx.motion_output.sun_shadow_toggle();'),
-                        polling.index('if(!action.exposure && !action.bloom)return;'))
-        self.assertNotIn('ambient_occlusion', capture)  # the AO chain's Ctrl+Shift+F11 went in cleanup batch 5; F11 is now the fog shadow-pass A/B
-        # Emitter A/B keys: F4 the hull light-map gain alone (its own flag), F5
-        # additive, F6 the effects group: the twenty emission-source pairs and
-        # the ONE/ONE guide lights, which take the same gain (F7 is the
-        # telemetry marker, F8 the capture key; the 2026-09-16 effect-family key
-        # and its option stay removed). The
-        # keys are polled only inside the comparison sampler, so an ordinary
-        # launch stays at zero queries; inside it they are unconditional, so
-        # an option that was not requested answers with a logged refusal.
-        self.assertIn('const bool emitter_compare=screen_emission_additive_requested'
-                      ' || emission_source_gain!=1.f || hull_emission_gain!=1.f || hull_lightmap_gain!=1.f;', polling)
-        for key, call in (('VK_F4', 'ctx.motion_output.hull_emission_gain_toggle(true)'),
-                          ('VK_F5', 'ctx.motion_output.screen_emission_additive_toggle()'),
-                          ('VK_F6', 'ctx.motion_output.emission_source_gain_toggle()')):
-            self.assertIn(f'(GetAsyncKeyState({key})&0x8000)!=0;', polling)
-            self.assertEqual(capture.count(f'GetAsyncKeyState({key})'), 1, 'one owner per function key')
-            self.assertIn(call, polling)
-        for key, label in (('ctrl_shift_f4', 'LIGHTMAP'), ('ctrl_shift_f5', 'BULLETS'),
-                           ('ctrl_shift_f6', 'EMISSION'), ('ctrl_shift_f6', 'GUIDE')):
-            self.assertIn(f'comparison_emitter(ctx,"{key}","{label}"', polling)
-        # One F6 press drives both halves of the effects group; F4 drives the
-        # light map alone (one hull_emission_gain_toggle call per key).
-        self.assertIn('comparison_emitter(ctx,"ctrl_shift_f6","GUIDE",ctx.motion_output.hull_emission_gain_toggle(false),"N/A");', polling)
-        self.assertEqual(polling.count('hull_emission_gain_toggle('), 2)
-        for removed in ('effect_source_gain', 'X3M_EFFECT_SOURCE_GAIN'):
-            self.assertNotIn(removed, capture)
-        # F7 rule: telemetry.cpp owns Ctrl+Shift+F7 (its marker requires Shift);
-        # capture.cpp's one F7 poller is the FPS overlay's Ctrl+Alt+F7 with
-        # Shift up, so the chords are disjoint (comparison-hotkeys.md, "FPS overlay").
-        self.assertEqual(capture.count('GetAsyncKeyState(VK_F7)'), 1)
-        controls = (ROOT / 'src/proxy/comparison_controls.h').read_text()
-        self.assertIn('keys.alt=(fps_overlay_requested || volumetric_fog_requested) && (GetAsyncKeyState(VK_MENU)&0x8000)!=0;', polling)
-        self.assertIn('keys.fps_overlay=fps_overlay_requested && (GetAsyncKeyState(VK_F7)&0x8000)!=0;', polling)
-        self.assertIn('result.fps_overlay = keys.control && keys.alt && !keys.shift && keys.fps_overlay && !fps_overlay_down_;', controls)
-        telemetry_source = (ROOT / 'src/proxy/telemetry.cpp').read_text()
-        self.assertEqual(telemetry_source.count('GetAsyncKeyState(VK_F7)'), 1)
-        self.assertIn('(GetAsyncKeyState(VK_F7)&0x8000)!=0 && (GetAsyncKeyState(VK_CONTROL)&0x8000)!=0 && (GetAsyncKeyState(VK_SHIFT)&0x8000)!=0;', telemetry_source)
-        emitter = extract_function(capture, 'void comparison_emitter(')
-        self.assertIn('state<0?refused:state?"ON":"OFF"', emitter)
-        self.assertIn('const char* refused="UNAVAILABLE"', emitter)
-        # One F6 press writes both halves: the guide light's refusal uses the
-        # short word so EMISSION UNAVAILABLE GUIDE N/A fits the 36 columns.
-        self.assertIn('"GUIDE",ctx.motion_output.hull_emission_gain_toggle(false),"N/A");', polling)
-        self.assertLessEqual(len('EMISSION UNAVAILABLE GUIDE N/A'), 36)
-        self.assertIn('comparison_log(ctx,"request",key,state>=0);', emitter)
-        notice = extract_function(capture, 'void comparison_notice_text(')
-        self.assertIn('if(ctx.comparison_emitter_notice[0])', notice)
-        # A refused toggle changes no state and creates nothing; the enabled
-        # flag only gates the per-draw selection of the prebuilt variant.
-        for signature, flag in (('int MotionOutput::screen_emission_additive_toggle(',
-                                 'screen_additive_enabled_ = !screen_additive_enabled_;'),
-                                ('int MotionOutput::emission_source_gain_toggle(',
-                                 'source_gain_enabled_ = !source_gain_enabled_;')):
-            body = extract_function(motion_source, signature)
-            self.assertIn(f'if (available) {flag}', body)
-            self.assertIn('return available ?', body)
-            self.assertNotIn('CreatePixelShader', body)
-        # Gain 1 creates no source-gain variant, so F6 refuses it; the
-        # additive option at gain 1 still changes the draw (DESTBLEND ONE
-        # and any alpha attenuation), so F5 stays available.
-        self.assertIn('const bool available = screen_additive_requested_;',
-                      extract_function(motion_source, 'int MotionOutput::screen_emission_additive_toggle('))
-        self.assertIn('emission_source_gain_requested_ && emission_source_gain_ != 1.f',
-                      extract_function(motion_source, 'int MotionOutput::emission_source_gain_toggle('))
-        # Several emitter keys in one sample each keep their notice label.
-        self.assertIn("if(emitter)ctx.comparison_emitter_notice[0]='\\0';", polling)
-        self.assertIn('const std::size_t used=std::strlen(ctx.comparison_emitter_notice);', emitter)
-        draws = extract_function(motion_source, 'MotionRoute MotionOutput::before_draw(')
-        self.assertIn('shadow_.screen_additive_pair && screen_additive_enabled_ &&', draws)
-        self.assertIn('shadow_.source_gain_eligible_variant && source_gain_enabled_', draws)
-        # The guide lights keep their own flag (the options stay independent);
-        # F6 now drives it beside the effects gain, and the effects toggle
-        # itself still touches no hull state.
-        self.assertIn('shadow_.ps_hull_program && hull_gain_enabled_ && !route.fog_card_mask.masked && route.submit', draws)
-        self.assertNotIn('hull', extract_function(motion_source, 'int MotionOutput::emission_source_gain_toggle('))
-        # One flag per family: F4 the light map, F6 the guide lights; the one
-        # toggle logs the driving key and both states, and creates nothing.
-        hull_toggle = extract_function(motion_source, 'int MotionOutput::hull_emission_gain_toggle(')
-        self.assertIn('const bool available = lightmap ? hull_lightmap_gain_requested_ : hull_emission_gain_requested_;', hull_toggle)
-        self.assertIn('if (lightmap) hull_lightmap_enabled_ = !hull_lightmap_enabled_;', hull_toggle)
-        self.assertIn('else hull_gain_enabled_ = !hull_gain_enabled_;', hull_toggle)
-        self.assertIn('lightmap ? "ctrl_shift_f4" : "ctrl_shift_f6"', hull_toggle)
-        self.assertIn('lightmap_requested=%u lightmap_gain=%g hull_enabled=%u lightmap_enabled=%u', hull_toggle)
-        self.assertIn('return available ?', hull_toggle)
-        self.assertNotIn('CreatePixelShader', hull_toggle)
-        self.assertIn('shadow_.hull_lightmap_pair && hull_lightmap_enabled_ &&', extract_function(motion_source, 'HRESULT MotionOutput::bind_variant_pair('))
-        # One additive telemetry line per Present, counters reset every frame.
-        additive = extract_function(motion_source, 'void MotionOutput::log_screen_additive_frame(')
-        self.assertIn('screen_emission_additive_frame device=%llu frame=%llu admitted=%u refused=%u pairs=%03x toggled=%u', additive)
-        present = extract_function(motion_source, 'void MotionOutput::after_present(')
-        self.assertIn('if (telemetry_) log_screen_additive_frame();', present)
-        self.assertIn('screen_additive_frame_admitted_ = screen_additive_frame_refused_ = screen_additive_frame_pairs_ = 0;', present)
-        reset = extract_function(capture, 'HRESULT reset_common(')
-        self.assertIn('ctx.comparison_notice.hide();ctx.comparison.reset_focus()', reset)
-        handoff = extract_function(capture, 'void retain_compositor_scene(')
-        self.assertIn('call.input.filter.strength=ctx.comparison.bloom_requested?1.f:0.f;', handoff)
-        hdr = (ROOT / 'src/renderer/hdr_pass.cpp').read_text()
-        self.assertIn('caps_.tonemap && config_.meter_requested()', hdr)
-        defaults = capture.split('hdr_config=x3m::renderer::HdrConfig{};', 1)[1].split('hdr_config.allow_auto_toggle=true;', 1)[0]
-        self.assertIn('hdr_config.exposure=x3m::renderer::ExposureMode::Auto;', defaults)
-        self.assertIn('hdr_config.params.ev_max=1.3f;', defaults)
-        self.assertIn('if(GetEnvironmentVariableW(L"X3M_HDR_EV_MAX",setting,32)>0)', capture)
-        self.assertIn('hdr_config.allow_auto_toggle=true;', capture)
-        self.assertIn('if (caps_.meter) ensure_chain(width, height)', hdr)
-        toggle = extract_function(motion_source, 'bool MotionOutput::comparison_toggle_exposure(')
-        self.assertIn('invalidate_taa(TaaInvalidateSite::ComparisonExposure)', toggle)
-        failure = extract_function(motion_source, 'void MotionOutput::comparison_state_failed(')
-        self.assertIn('FAILED(result) && !motion_state_lost_', failure)
-        self.assertIn('motion_state_lost_ = true; motion_state_error_ = result', failure)
 
 
 if __name__ == '__main__':

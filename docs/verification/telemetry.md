@@ -374,7 +374,7 @@ must retire that root in the serial fixture. Other concurrently active callers
 can also appear in a real snapshot. See [entry coverage and verification
 limits](proxy-application-admission.md).
 
-**Removed 2026-09-25** (user decision): `--depth-copy`, `--scene-depth-capture`, `--motion-capture` and `--finite-positions` from the launcher only (the DLL paths stay for the ownership-integration and motion fixtures, which set the variables); `docs/verification/launcher-options-inventory.md`, "4. Removed 2026-09-25".
+**Removed 2026-09-25** (user decision): `--depth-copy`, `--scene-depth-capture`, `--motion-capture` and `--finite-positions` from the launcher only (the DLL paths stay for the ownership-integration and motion fixtures, which set the variables); `docs/verification/launcher-options-inventory.md`, "4. Removed".
 
 **Logging tiers, 2026-09-26** ([design and implementation](../architecture/logging-tiers.md), "Implemented"): the launcher's
 `--telemetry` and the per-row options are replaced by `--perf` (`X3M_PERF=1`) and `--debug` (`X3M_DEBUG=1`), expanded
@@ -389,3 +389,5 @@ benchmark, the exception witness) and `seam-exit-path` (8: exit after a throw pa
 host suite 268 / 2,792 / 0 (`verification/results/logging-tiers/`).
 
 **2026-09-26, developer options trimmed to four** (user decision; `docs/architecture/logging-tiers.md`, "Second step"): `--telemetry-draw` removed from the launcher; `X3M_TELEMETRY_DRAW` (the per-draw route cost fields) is expanded from `--draw-trace` (`X3M_DRAW_TRACE`, requires `--perf` or `--debug`) and is in neither group: about 1 ms per frame, and the stand `--debug --perf` runs on every flight; still settable alone by the runners. `--frame-end-stride` and `--frame-timing-state-stamps` removed (their variables stay fixture reads).
+
+**2026-09-26, in-game keys and capture options** (user decision; `docs/architecture/comparison-hotkeys.md`, "Removed 2026-09-26"): Ctrl+Shift+F7 (`telemetry_phase_marker`) removed; F8 is polled only under `--debug` (the flag cached once at `initialize_log`) and starts a burst of `--capture-frames` at once; `--capture-start` / `--capture-delay` removed (exit 2; the launcher parser takes no abbreviations since, and the `--telemetry` / `--frame-timing` refusal stubs went); the launcher keeps sending `X3M_CAPTURE_START=999999` on every modded launch, `X3M_CAPTURE_DELAY` is in `REMOVED_VARIABLES`; the FPS overlay is on for the session with `--perf`; default launch 122 `X3M_*` variables, vanilla 71 (`dry_run_tiers.py` PASS 9, `compare_dry_runs.py` PASS 5).

@@ -7,7 +7,8 @@
 // own parsers and ask cadence_default() only when no valid value was given).
 // Header-only: the fixture builds that compile single proxy sources against
 // stubs link nothing new. Read once per site at initialisation, never on a
-// render path; integers only (no x87, no allocation).
+// render path; integers only (no x87, no allocation). A render-path check
+// reads the flags cached once by init() (initialize_log), never the environment.
 #include <windows.h>
 
 namespace x3m::log_tier {
@@ -32,6 +33,11 @@ inline bool perf() noexcept { return env_flag(L"X3M_PERF"); }
 // X3M_SUBMIT_PHASES is in no group: it claims the lens traversal call the
 // sun-occlusion default patches; it stays a fixture-only read.
 inline bool draw_trace() noexcept { return env_flag(L"X3M_DRAW_TRACE"); }
+// The three group flags, read once by init() at initialize_log (before any
+// device exists) for the checks that run on the render path (the F8 guard on
+// every Present): plain bools, no environment read per frame.
+inline bool cached_debug = false, cached_perf = false, cached_draw_trace = false;
+inline void init() noexcept { cached_debug = debug(); cached_perf = perf(); cached_draw_trace = draw_trace(); }
 // X3M_TELEMETRY=1 or either group: the counters, the 1 Hz summaries, the
 // loading-trace hook set and the family block's gate.
 inline bool telemetry() noexcept { return env_flag(L"X3M_TELEMETRY") || perf() || debug(); }
