@@ -1,0 +1,22 @@
+frames_nonzero=1251 p50=238 p90=496 max=532 ge500=70 in290_310=85
+     0-59     n= 57 draws min=   1 med= 496 max= 496 replay_issues_med=- cap=0 dt_med=16 marks=camera_state,chase_camera,loading_phase,media_cue_enter,sector_background,volumetric_fog_sector
+    60-119    n= 60 draws min= 494 med= 495 max= 496 replay_issues_med=- cap=0 dt_med=16 marks=camera_state,sector_background
+   120-179    n= 60 draws min= 495 med= 527 max= 527 replay_issues_med=- cap=0 dt_med=17 marks=camera_state,sector_background
+   180-239    n= 60 draws min=   1 med= 526 max= 532 replay_issues_med=517 cap=0 dt_med=16 marks=camera_state,loading_phase,media_cue_enter,sector_background,volumetric_fog_sector
+   240-299    n= 60 draws min= 269 med= 294 max= 327 replay_issues_med=549 cap=0 dt_med=24 marks=camera_state,lod_switch,sector_background
+   300-359    n= 60 draws min= 266 med= 283 max= 322 replay_issues_med=688 cap=0 dt_med=23 marks=camera_state,chase_camera,media_cue_enter,sector_background
+   360-419    n= 60 draws min= 180 med= 203 max= 269 replay_issues_med=534 cap=0 dt_med=19 marks=camera_state,lod_switch,sector_background
+   420-479    n= 60 draws min= 200 med= 206 max= 214 replay_issues_med=532 cap=0 dt_med=19 marks=camera_state,sector_background
+   480-539    n= 60 draws min= 220 med= 222 max= 230 replay_issues_med=506 cap=0 dt_med=20 marks=camera_state,sector_background
+   540-599    n= 60 draws min= 222 med= 233 max= 233 replay_issues_med=493 cap=0 dt_med=20 marks=camera_state,sector_background
+   600-659    n= 60 draws min= 222 med= 222 max= 236 replay_issues_med=493 cap=0 dt_med=20 marks=camera_state,chase_camera,sector_background
+   660-719    n= 60 draws min= 222 med= 222 max= 222 replay_issues_med=493 cap=0 dt_med=20 marks=camera_state,sector_background
+   720-779    n= 60 draws min= 222 med= 222 max= 222 replay_issues_med=493 cap=0 dt_med=20 marks=camera_state,sector_background
+   780-839    n= 60 draws min= 222 med= 222 max= 222 replay_issues_med=493 cap=8 dt_med=20 marks=camera_state,chase_camera,sector_background
+   840-899    n= 60 draws min= 218 med= 224 max= 256 replay_issues_med=491 cap=0 dt_med=20 marks=camera_state,sector_background
+   900-959    n= 60 draws min= 225 med= 239 max= 247 replay_issues_med=504 cap=0 dt_med=20 marks=camera_state,chase_camera,sector_background
+   960-1019   n= 60 draws min= 226 med= 232 max= 265 replay_issues_med=501 cap=8 dt_med=20 marks=camera_state,chase_camera,sector_background
+  1020-1079   n= 60 draws min= 237 med= 240 max= 247 replay_issues_med=536 cap=0 dt_med=21 marks=camera_state,sector_background
+  1080-1139   n= 60 draws min= 237 med= 238 max= 242 replay_issues_med=535 cap=0 dt_med=21 marks=camera_state,sector_background
+  1140-1199   n= 60 draws min=   1 med= 496 max= 496 replay_issues_med=535 cap=0 dt_med=17 marks=camera_state,media_cue_enter,sector_background,volumetric_fog_sector
+  1200-1259   n= 54 draws min= 495 med= 495 max= 496 replay_issues_med=- cap=0 dt_med=15 marks=camera_state,chase_camera,media_cue_enter,sector_background

@@ -1,0 +1,10 @@
+# Producing commands (run from this directory; logs are local /tmp session logs, untracked)
+python3 draw_series.py /tmp/x3-bottleX3-run341/session-*.log > series-run341.txt        # same for 342, 343 (bin 60)
+python3 draw_series.py /tmp/x3-bottleX3-run33N/session-*.log 120 > series-run33N.txt    # 337..340 (bin 120)
+python3 plateau_check.py /tmp/x3-bottleX3-run33{7,8,9}/session-*.log /tmp/x3-bottleX3-run34{0,1,2,3}/session-*.log > plateau-check.txt
+python3 draw_breakdown.py /tmp/x3-bottleX3-run341/session-*.log 810 817 --detail > run341-810-817.txt
+python3 draw_breakdown.py /tmp/x3-bottleX3-run341/session-*.log 986 993 > run341-986-993.txt
+python3 draw_breakdown.py /tmp/x3-bottleX3-run341/session-*.log 2098 2105 --detail > run341-2098-2105.txt
+python3 draw_breakdown.py /tmp/x3-bottleX3-run339/session-*.log 2242 2249 --detail > run339-2242-2249.txt
+python3 draw_breakdown.py /tmp/x3-bottleX3-run340/session-*.log 4078 4085 > run340-4078-4085.txt
+python3 node_bodies.py /tmp/x3-bottleX3-run341/session-*.log 810 > nodes-run341-810.txt

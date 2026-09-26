@@ -1,0 +1,18 @@
+x3-bottleX3-run337 menu: n=421 p50=496 p90=533 max=536; flight: n=10650 p50=105 p90=122 max=328; draws500-max: frames=175 menu=175 flight=0 with_shadow_replay=0 flight_frames=[]; draws290-310: frames=36 menu=0 flight=36 with_shadow_replay=36 flight_frames=[582, 664]
+  segment frames 324-2288 sector_reason=foggreenoutlands/bg14 n=1965 p50=117 p90=134 max=328 ge290=47
+  segment frames 2289-10973 sector_reason=clear/bg67 n=8685 p50=102 p90=120 max=193 ge290=0
+x3-bottleX3-run338 menu: n=1036 p50=496 p90=535 max=538; flight: n=19377 p50=120 p90=273 max=444; draws500-max: frames=506 menu=506 flight=0 with_shadow_replay=0 flight_frames=[]; draws290-310: frames=279 menu=0 flight=279 with_shadow_replay=279 flight_frames=[10552, 20025]
+  segment frames 326-8793 sector_reason=clear/bg67 n=8468 p50=99 p90=124 max=196 ge290=0
+  segment frames 9191-14932 sector_reason=foggreenoutlands/bg14 n=5742 p50=120 p90=215 max=408 ge290=417
+  segment frames 15158-20324 sector_reason=clear/bg21 n=5167 p50=238 p90=355 max=444 ge290=1234
+x3-bottleX3-run339 menu: n=1074 p50=530 p90=545 max=559; flight: n=10125 p50=154 p90=363 max=419; draws500-max: frames=677 menu=677 flight=0 with_shadow_replay=0 flight_frames=[]; draws290-310: frames=266 menu=0 flight=266 with_shadow_replay=266 flight_frames=[6117, 10769]
+  segment frames 714-5862 sector_reason=clear/bg67 n=5149 p50=100 p90=124 max=186 ge290=0
+  segment frames 6116-11091 sector_reason=clear/bg21 n=4976 p50=294 p90=394 max=419 ge290=2528
+x3-bottleX3-run340 menu: n=337 p50=496 p90=530 max=533; flight: n=3928 p50=227 p90=260 max=337; draws500-max: frames=115 menu=115 flight=0 with_shadow_replay=0 flight_frames=[]; draws290-310: frames=173 menu=0 flight=173 with_shadow_replay=173 flight_frames=[247, 4169]
+  segment frames 246-4173 sector_reason=clear/bg21 n=3928 p50=227 p90=260 max=337 ge290=215
+x3-bottleX3-run341 menu: n=304 p50=496 p90=527 max=530; flight: n=2033 p50=230 p90=253 max=327; draws500-max: frames=72 menu=72 flight=0 with_shadow_replay=0 flight_frames=[]; draws290-310: frames=111 menu=0 flight=111 with_shadow_replay=111 flight_frames=[203, 353]
+  segment frames 202-2234 sector_reason=clear/bg21 n=2033 p50=230 p90=253 max=327 ge290=132
+x3-bottleX3-run342 menu: n=311 p50=496 p90=527 max=532; flight: n=940 p50=230 p90=294 max=327; draws500-max: frames=70 menu=70 flight=0 with_shadow_replay=0 flight_frames=[]; draws290-310: frames=85 menu=0 flight=85 with_shadow_replay=85 flight_frames=[218, 324]
+  segment frames 217-1156 sector_reason=clear/bg21 n=940 p50=230 p90=294 max=327 ge290=107
+x3-bottleX3-run343 menu: n=274 p50=496 p90=524 max=527; flight: n=1696 p50=232 p90=253 max=327; draws500-max: frames=42 menu=42 flight=0 with_shadow_replay=0 flight_frames=[]; draws290-310: frames=83 menu=0 flight=83 with_shadow_replay=83 flight_frames=[191, 1244]
+  segment frames 190-1885 sector_reason=clear/bg21 n=1696 p50=232 p90=253 max=327 ge290=104
