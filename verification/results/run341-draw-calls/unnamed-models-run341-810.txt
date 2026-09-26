@@ -1,0 +1,24 @@
+35b42b43 (901000003): cut 9010 = stations\docks\dock5ports_arm_scene [02.cat:objects/stations/docks/dock5ports_arm_scene.pbd] P 4 B 100003 N Object01 inline body:
+LODs 1  materials 46
+  LOD0 scale=22099 flags=0x0 points=1203 parts=1 groups/part=[2] draws=2 faces=854 part_flags=['0x81'] materials=[14, 23]
+35b42b44 (901000004): cut 9010 = stations\docks\dock5ports_arm_scene [02.cat:objects/stations/docks/dock5ports_arm_scene.pbd] P 3 B 100004 N Dock_slider inline body:
+LODs 1  materials 46
+  LOD0 scale=17366 flags=0x0 points=155 parts=1 groups/part=[1] draws=1 faces=134 part_flags=['0x1081'] materials=[14]
+35b8bf20 (901300000): cut 9013 = stations\docks\DockCarrier_quicklaunch_scene [02.cat:objects/stations/docks/dockCarrier_quicklaunch_scene.pbd] P 0 B 100000 N Ehangar_door_upper_1 inline body:
+LODs 1  materials 48
+  LOD0 scale=8992 flags=0x0 points=48 parts=1 groups/part=[1] draws=1 faces=28 part_flags=['0x81'] materials=[35]
+35b8bf21 (901300001): cut 9013 = stations\docks\DockCarrier_quicklaunch_scene [02.cat:objects/stations/docks/dockCarrier_quicklaunch_scene.pbd] P 1 B 100001 N Ehangar_door_lower_1 inline body:
+LODs 1  materials 48
+  LOD0 scale=8992 flags=0x0 points=48 parts=1 groups/part=[1] draws=1 faces=28 part_flags=['0x81'] materials=[35]
+35b8bf23 (901300003): cut 9013 = stations\docks\DockCarrier_quicklaunch_scene [02.cat:objects/stations/docks/dockCarrier_quicklaunch_scene.pbd] P 3 B 100003 N Ehangar_small inline body:
+LODs 1  materials 48
+  LOD0 scale=16354 flags=0x0 points=702 parts=1 groups/part=[7] draws=7 faces=432 part_flags=['0x81'] materials=[7, 9, 12, 15, 22, 23, 46]
+35ba45c3 (901400003): cut 9014 = stations\docks\DockCarrier_scene [02.cat:objects/stations/docks/dockCarrier_scene.pbd] P 3 B 100003 N EObject01 inline body:
+LODs 1  materials 48
+  LOD0 scale=39157 flags=0x0 points=9630 parts=1 groups/part=[25] draws=25 faces=3994 part_flags=['0x81'] materials=[1, 6, 7, 9, 11, 13, 14, 15, 16, 17, 19, 20, '... 25 distinct']
+35ba45c4 (901400004): cut 9014 = stations\docks\DockCarrier_scene [02.cat:objects/stations/docks/dockCarrier_scene.pbd] P 4 B 100004 N Ehangar_door_upper_1 inline body:
+LODs 1  materials 48
+  LOD0 scale=25270 flags=0x0 points=48 parts=1 groups/part=[1] draws=1 faces=28 part_flags=['0x81'] materials=[36]
+35ba45c5 (901400005): cut 9014 = stations\docks\DockCarrier_scene [02.cat:objects/stations/docks/dockCarrier_scene.pbd] P 5 B 100005 N Ehangar_door_lower_1 inline body:
+LODs 1  materials 48
+  LOD0 scale=25178 flags=0x0 points=48 parts=1 groups/part=[1] draws=1 faces=28 part_flags=['0x81'] materials=[36]

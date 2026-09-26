@@ -8,3 +8,4 @@ python3 draw_breakdown.py /tmp/x3-bottleX3-run341/session-*.log 2098 2105 --deta
 python3 draw_breakdown.py /tmp/x3-bottleX3-run339/session-*.log 2242 2249 --detail > run339-2242-2249.txt
 python3 draw_breakdown.py /tmp/x3-bottleX3-run340/session-*.log 4078 4085 > run340-4078-4085.txt
 python3 node_bodies.py /tmp/x3-bottleX3-run341/session-*.log 810 > nodes-run341-810.txt
+python3 name_model_id.py --log /tmp/x3-bottleX3-run341/session-*.log --frame 810 > unnamed-models-run341-810.txt   # names every census body=- model id (scene-embedded bodies) from the installed catalogues

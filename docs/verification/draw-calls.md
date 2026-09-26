@@ -67,3 +67,22 @@ Argon M7/M1 capital ships and turret props entering finer LODs (inferred attribu
   opaque) for objects the census sizes at 4-5. They have a single LOD record, so the LOD overlay has no
   coarse record to replace.
 - 53 of the 203 opaque draws are on nodes at lod > 0, mostly 4 per node.
+
+**2026-09-26: model 35ba45c3 identified (measured, offline).** It is the carrier hangar interior
+`EObject01`, the inline body `P 3; B 100003` of the scene `stations\docks\DockCarrier_scene`
+(`types/CutData` row 9014; `02.cat` `objects/stations/docks/dockCarrier_scene.pbd`). The two frame-810
+nodes sit under the Argon M1 (`36480a00` → `36480000` → root `3647fb00`, whose other child is
+`argon_M1`) and the Argon M7 (`3849b310` → `3849a910` → root `384980f8`, sibling `Argon_M7`), per the
+`object_ancestor` rows. A scene-embedded body's model id is `local + (cut_id − 1) · 100000` (EXE
+`0x004920f1..0x00492105` for text scenes, `0x00491521..0x00491534` for binary CUT1), so
+901400003 = 100003 + 9013 · 100000. The body table only has slots for ids below about 20000 + 2,200, so the
+census prints `body=-` for every such id. The inline body has 1 LOD record, scale 39157 (= census
+`radius`), 1 part and 25 groups (= 25 draws), and 3,994 faces. Its per-group face counts equal the frame's
+25 `motion_route primitives=` values in order on both nodes. The frame's other `body=-` ids are the same
+scene's doors (`35ba45c4`/`c5`, 1 draw each), `DockCarrier_quicklaunch_scene` (`35b8bf20/21/23`) and
+`dock5ports_arm_scene` (`35b42b43/44`); all of them have one LOD.
+Method: `verification/results/run341-draw-calls/name_model_id.py <hex id>` or `--log <session.log> --frame <n>`
+(output `unnamed-models-run341-810.txt`). The overlay baker cannot give it a coarse record today:
+`bob1.parse_text` refuses text scenes, and the overlay addresses `objects\<body name>` members, which an
+inline scene body does not have. The logs do not record whether the hull hides the interior; its 12×6 px
+bounds lie inside the M1's bounds.
