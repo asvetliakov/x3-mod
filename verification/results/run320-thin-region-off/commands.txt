@@ -1,5 +1,0 @@
-# 2026-09-25 triage: run320 16 ms vs run315/312 30-33 ms
-for r in 312 313 314 315 319 320; do python3 frame_windows.py $r > frame_windows_${r}_out.txt; done
-# gpu_sync_timing_mode present: grep -c gpu_sync /tmp/x3-bottleX3-run{312,313,314,315}/session-*.log (>0); run319/320: 0
-# thin config: grep -m1 -E '^taa_thin_region_source|^thin_vote_absent' run319 -> requested=vote thin_region=0.9700; run320 -> thin_vote_absent
-# note: thin_us column is thin_vote_frame draw_us+lock_us, which is cumulative per session, not per frame

@@ -1,5 +1,0 @@
-camera 2888->4294: rotation 25.53 deg, camera_state t delta 60381.1 units (t [13778.    412.8 37238.1] -> [ 20835.3   2527.3 -22691.9])
-node 33358780: view-matrix camera rotation 25.53 deg, camera move 57155.6; node view pos [-26479.  10285.  53609.] -> [-12371.  -4460.  14045.] (dist 60670 -> 19240); object rotation relative to camera 62.35 deg
-node 33358780: world_basis rotation 68.99 deg; world pos delta 13788.2; basis-in-camera rotation 62.35 deg / 80.77 deg
-node 1c7f5ff8: view-matrix camera rotation 25.53 deg, camera move 57155.6; node view pos [ 12528.   7293. 125440.] -> [33405.  6601. 64793.] (dist 126275 -> 73196); object rotation relative to camera 25.53 deg
-node 1c7f5ff8: world_basis rotation 0.55 deg; world pos delta 0.0; basis-in-camera rotation 25.53 deg / 25.53 deg
