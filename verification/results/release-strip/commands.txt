@@ -1,0 +1,5 @@
+2026-09-27 strip check of the release (commit 9163b5a0, reused regenerate binaries, no Wine step):
+python3 tools/release/release.py --out /tmp/x3m-release-test-strip --regenerate-dir /tmp/x3m-release-0.5.0/regenerate  -> exit 0, release-0.5.0.json here
+i686-w64-mingw32-addr2line -f -e /tmp/x3m-release-test-strip/d3d9.dll 0x6fb42000  -> BloomPass::attach, src/renderer/bloom_pass.cpp:272 (resolved through .gnu_debuglink -> d3d9.debug)
+i686-w64-mingw32-objdump -h /tmp/x3m-release-test-strip/d3d9.dll | grep -c debug_  -> 0
+Before (x3m-0.5.0 release, /tmp/x3m-release-0.5.0): DLL 57247320 B, zip 76901445 B.
