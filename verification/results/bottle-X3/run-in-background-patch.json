@@ -1,0 +1,586 @@
+{
+ "fixture": "verification/probe/run_in_background_patch_fixture.cpp",
+ "runner": "verification/probe/run_run_in_background_patch.py",
+ "production_sources": [
+  "src/proxy/run_in_background.cpp",
+  "src/proxy/run_in_background.h",
+  "src/proxy/run_in_background_sites.h",
+  "src/proxy/engine_patch.cpp",
+  "src/proxy/engine_patch.h"
+ ],
+ "source": {
+  "commit": "2cb891889341d8897c50b8ef34f5249145a7990d",
+  "production_sources_dirty": true,
+  "dirty_paths": [
+   "src/proxy/run_in_background.cpp",
+   "src/proxy/run_in_background.h",
+   "src/proxy/run_in_background_sites.h"
+  ],
+  "sha256": {
+   "src/proxy/run_in_background.cpp": "3b9f2405f541b993257d7bbbed5a08e0c043dfffd68c5be7627ce3c27661a003",
+   "src/proxy/run_in_background.h": "a6f12a46c79d5029e8d810a1343abc5abdd4b3aad8dbdcfc90246be396a20a53",
+   "src/proxy/run_in_background_sites.h": "684a9afa680bccfddf8c095c09244198987beb8d0f5af8af7e36b6d686a15941",
+   "src/proxy/engine_patch.cpp": "a9207d06c7075fa56690566ee4f514347852d2f1d41252b5386674d61b24f2cf",
+   "src/proxy/engine_patch.h": "0d251d55b27d4e87249cc5804e572b44a00460cabae23d2f273a2e3a23b1e071"
+  }
+ },
+ "game_launched": false,
+ "bottle": {
+  "name": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+   "FEX_X87REDUCEDPRECISION": "1",
+   "WINEMSYNC": "1"
+  },
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "exit_status": 0,
+ "elapsed_s": 5.4,
+ "executable_sha256": "194ffa2dd864c39b8f59161750a84303a1e4905e57c022d5f9602748f37341e7",
+ "toolchain": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+ "build_audit": {
+  "engine_patch_lock_cmpxchg8b": 1,
+  "thunk": [
+   "pushf",
+   "pusha",
+   "cld",
+   "call",
+   "popa",
+   "popf",
+   "jmp"
+  ],
+  "thunk_jump_indirect": true,
+  "module_x87": [],
+  "symbols": {
+   "_rib_code_page": "00403000",
+   "_rib_window": "00403392",
+   "_rib_registry_page": "004b8000",
+   "_rib_callee_page": "004d2000",
+   "_rib_data_page": "00606000",
+   "_rib_slot": "00606f3c"
+  },
+  "pages": {
+   ".x3mrbc": {
+    "va": "00403000",
+    "size": 4096,
+    "ok": true
+   },
+   ".x3mrbr": {
+    "va": "004b8000",
+    "size": 4096,
+    "ok": true
+   },
+   ".x3mrbt": {
+    "va": "004d2000",
+    "size": 4096,
+    "ok": true
+   },
+   ".x3mrbd": {
+    "va": "00606000",
+    "size": 4096,
+    "ok": true
+   }
+  },
+  "overlapping_sections": [],
+  "highest_other_section_end": "00239008"
+ },
+ "check_count": 47,
+ "pass_count": 47,
+ "checks": [
+  {
+   "name": "layout_at_engine_addresses",
+   "pass": true
+  },
+  {
+   "name": "window_is_header_window",
+   "pass": true
+  },
+  {
+   "name": "site_calls_callee",
+   "pass": true
+  },
+  {
+   "name": "code_page_execute_read",
+   "pass": true
+  },
+  {
+   "name": "vanilla_semantics",
+   "pass": true
+  },
+  {
+   "name": "vanilla_semantics",
+   "pass": true
+  },
+  {
+   "name": "vanilla_semantics",
+   "pass": true
+  },
+  {
+   "name": "vanilla_semantics",
+   "pass": true
+  },
+  {
+   "name": "unset_is_off",
+   "pass": true
+  },
+  {
+   "name": "zero_is_off",
+   "pass": true
+  },
+  {
+   "name": "word_refused",
+   "pass": true
+  },
+  {
+   "name": "long_refused",
+   "pass": true
+  },
+  {
+   "name": "executable_mismatch_refused",
+   "pass": true
+  },
+  {
+   "name": "private_page",
+   "pass": true
+  },
+  {
+   "name": "foreign_target_refused",
+   "pass": true
+  },
+  {
+   "name": "changed_window_refused",
+   "pass": true
+  },
+  {
+   "name": "roview_mapped",
+   "pass": true
+  },
+  {
+   "name": "readonly_view_refused",
+   "pass": true
+  },
+  {
+   "name": "armed",
+   "pass": true
+  },
+  {
+   "name": "thunk_invisible_to_callee",
+   "pass": true
+  },
+  {
+   "name": "flags_set_lasterror_kept",
+   "pass": true
+  },
+  {
+   "name": "one_site_row",
+   "pass": true
+  },
+  {
+   "name": "second_pass_writes_nothing",
+   "pass": true
+  },
+  {
+   "name": "restored",
+   "pass": true
+  },
+  {
+   "name": "vanilla_after_restore",
+   "pass": true
+  },
+  {
+   "name": "armed",
+   "pass": true
+  },
+  {
+   "name": "thunk_invisible_to_callee",
+   "pass": true
+  },
+  {
+   "name": "flags_set_lasterror_kept",
+   "pass": true
+  },
+  {
+   "name": "one_site_row",
+   "pass": true
+  },
+  {
+   "name": "second_pass_writes_nothing",
+   "pass": true
+  },
+  {
+   "name": "restored",
+   "pass": true
+  },
+  {
+   "name": "vanilla_after_restore",
+   "pass": true
+  },
+  {
+   "name": "armed",
+   "pass": true
+  },
+  {
+   "name": "thunk_invisible_to_callee",
+   "pass": true
+  },
+  {
+   "name": "flags_set_lasterror_kept",
+   "pass": true
+  },
+  {
+   "name": "one_site_row",
+   "pass": true
+  },
+  {
+   "name": "second_pass_writes_nothing",
+   "pass": true
+  },
+  {
+   "name": "restored",
+   "pass": true
+  },
+  {
+   "name": "vanilla_after_restore",
+   "pass": true
+  },
+  {
+   "name": "armed",
+   "pass": true
+  },
+  {
+   "name": "thunk_invisible_to_callee",
+   "pass": true
+  },
+  {
+   "name": "flags_set_lasterror_kept",
+   "pass": true
+  },
+  {
+   "name": "one_site_row",
+   "pass": true
+  },
+  {
+   "name": "second_pass_writes_nothing",
+   "pass": true
+  },
+  {
+   "name": "restored",
+   "pass": true
+  },
+  {
+   "name": "vanilla_after_restore",
+   "pass": true
+  },
+  {
+   "name": "late_claim_refused",
+   "pass": true
+  }
+ ],
+ "runs": [
+  {
+   "phase": "vanilla",
+   "scenario": "no_argument_registry_0",
+   "ret": "0x00c0ffee",
+   "flags": "0x00001000",
+   "error": "0x1234abcd",
+   "eax": "00000000",
+   "ecx": "00606100",
+   "edx": "0d0d0d0d",
+   "ebx": "b0b0b0b0",
+   "esi": "005556a8",
+   "edi": "d0d0d0d0",
+   "ebp": "e0e0e0e0",
+   "eflags": "00000606",
+   "return": "004033ce",
+   "calls": "1",
+   "stack": "28"
+  },
+  {
+   "phase": "vanilla",
+   "scenario": "no_argument_registry_1",
+   "ret": "0x00c0ffee",
+   "flags": "0x00005000",
+   "error": "0x1234abcd",
+   "eax": "00000001",
+   "ecx": "00606100",
+   "edx": "0d0d0d0d",
+   "ebx": "b0b0b0b0",
+   "esi": "005556a8",
+   "edi": "d0d0d0d0",
+   "ebp": "e0e0e0e0",
+   "eflags": "00000606",
+   "return": "004033ce",
+   "calls": "1",
+   "stack": "28"
+  },
+  {
+   "phase": "vanilla",
+   "scenario": "noruninbg",
+   "ret": "0x00c0ffee",
+   "flags": "0x00001000",
+   "error": "0x1234abcd",
+   "eax": "00000000",
+   "ecx": "00606100",
+   "edx": "dddd0001",
+   "ebx": "b0b0b0b0",
+   "esi": "50505050",
+   "edi": "d0d0d0d0",
+   "ebp": "e0e0e0e0",
+   "eflags": "00000616",
+   "return": "004033ce",
+   "calls": "1",
+   "stack": "28"
+  },
+  {
+   "phase": "vanilla",
+   "scenario": "runinbg",
+   "ret": "0x00c0ffee",
+   "flags": "0x00005000",
+   "error": "0x1234abcd",
+   "eax": "00000001",
+   "ecx": "00606100",
+   "edx": "dddd0001",
+   "ebx": "b0b0b0b0",
+   "esi": "50505050",
+   "edi": "d0d0d0d0",
+   "ebp": "e0e0e0e0",
+   "eflags": "00000616",
+   "return": "004033ce",
+   "calls": "1",
+   "stack": "28"
+  },
+  {
+   "phase": "patched",
+   "scenario": "no_argument_registry_0",
+   "ret": "0x00c0ffee",
+   "flags": "0x00005000",
+   "error": "0x1234abcd",
+   "eax": "00000000",
+   "ecx": "00606100",
+   "edx": "0d0d0d0d",
+   "ebx": "b0b0b0b0",
+   "esi": "005556a8",
+   "edi": "d0d0d0d0",
+   "ebp": "e0e0e0e0",
+   "eflags": "00000606",
+   "return": "004033ce",
+   "calls": "1",
+   "stack": "28"
+  },
+  {
+   "phase": "patched",
+   "scenario": "no_argument_registry_1",
+   "ret": "0x00c0ffee",
+   "flags": "0x00005000",
+   "error": "0x1234abcd",
+   "eax": "00000001",
+   "ecx": "00606100",
+   "edx": "0d0d0d0d",
+   "ebx": "b0b0b0b0",
+   "esi": "005556a8",
+   "edi": "d0d0d0d0",
+   "ebp": "e0e0e0e0",
+   "eflags": "00000606",
+   "return": "004033ce",
+   "calls": "1",
+   "stack": "28"
+  },
+  {
+   "phase": "patched",
+   "scenario": "noruninbg",
+   "ret": "0x00c0ffee",
+   "flags": "0x00005000",
+   "error": "0x1234abcd",
+   "eax": "00000000",
+   "ecx": "00606100",
+   "edx": "dddd0001",
+   "ebx": "b0b0b0b0",
+   "esi": "50505050",
+   "edi": "d0d0d0d0",
+   "ebp": "e0e0e0e0",
+   "eflags": "00000616",
+   "return": "004033ce",
+   "calls": "1",
+   "stack": "28"
+  },
+  {
+   "phase": "patched",
+   "scenario": "runinbg",
+   "ret": "0x00c0ffee",
+   "flags": "0x00005000",
+   "error": "0x1234abcd",
+   "eax": "00000001",
+   "ecx": "00606100",
+   "edx": "dddd0001",
+   "ebx": "b0b0b0b0",
+   "esi": "50505050",
+   "edi": "d0d0d0d0",
+   "ebp": "e0e0e0e0",
+   "eflags": "00000616",
+   "return": "004033ce",
+   "calls": "1",
+   "stack": "28"
+  }
+ ],
+ "rows": [
+  {
+   "site": "0x004033c9",
+   "status": "off",
+   "reason": "unset",
+   "setting": "-",
+   "before": null,
+   "after": null,
+   "write": "none",
+   "handler": "0x00201ba0",
+   "kind": "install"
+  },
+  {
+   "site": "0x004033c9",
+   "status": "off",
+   "reason": "setting_off",
+   "setting": "0",
+   "before": null,
+   "after": null,
+   "write": "none",
+   "handler": "0x00201ba0",
+   "kind": "install"
+  },
+  {
+   "site": "0x004033c9",
+   "status": "refused",
+   "reason": "invalid_setting",
+   "setting": "?",
+   "before": null,
+   "after": null,
+   "write": "none",
+   "handler": "0x00201ba0",
+   "kind": "install"
+  },
+  {
+   "site": "0x004033c9",
+   "status": "refused",
+   "reason": "invalid_setting",
+   "setting": "?",
+   "before": null,
+   "after": null,
+   "write": "none",
+   "handler": "0x00201ba0",
+   "kind": "install"
+  },
+  {
+   "site": "0x004033c9",
+   "status": "refused",
+   "reason": "executable_mismatch",
+   "setting": "1",
+   "before": null,
+   "after": null,
+   "write": "none",
+   "handler": "0x00201ba0",
+   "kind": "install"
+  },
+  {
+   "site": "0x004033c9",
+   "status": "armed",
+   "reason": "ok",
+   "setting": "1",
+   "before": null,
+   "after": null,
+   "write": "atomic",
+   "handler": "0x00201ba0",
+   "kind": "install"
+  },
+  {
+   "site": "0x004033c9",
+   "status": "patched",
+   "reason": "ok",
+   "setting": "1",
+   "before": 0,
+   "after": 1,
+   "flags_before": "0x00001000",
+   "flags_after": "0x00005000",
+   "kind": "site"
+  },
+  {
+   "site": "0x004033c9",
+   "status": "armed",
+   "reason": "ok",
+   "setting": "1",
+   "before": null,
+   "after": null,
+   "write": "atomic",
+   "handler": "0x00201ba0",
+   "kind": "install"
+  },
+  {
+   "site": "0x004033c9",
+   "status": "already",
+   "reason": "ok",
+   "setting": "1",
+   "before": 1,
+   "after": 1,
+   "flags_before": "0x00005000",
+   "flags_after": "0x00005000",
+   "kind": "site"
+  },
+  {
+   "site": "0x004033c9",
+   "status": "armed",
+   "reason": "ok",
+   "setting": "1",
+   "before": null,
+   "after": null,
+   "write": "atomic",
+   "handler": "0x00201ba0",
+   "kind": "install"
+  },
+  {
+   "site": "0x004033c9",
+   "status": "patched",
+   "reason": "ok",
+   "setting": "1",
+   "before": 0,
+   "after": 1,
+   "flags_before": "0x00001000",
+   "flags_after": "0x00005000",
+   "kind": "site"
+  },
+  {
+   "site": "0x004033c9",
+   "status": "armed",
+   "reason": "ok",
+   "setting": "1",
+   "before": null,
+   "after": null,
+   "write": "atomic",
+   "handler": "0x00201ba0",
+   "kind": "install"
+  },
+  {
+   "site": "0x004033c9",
+   "status": "already",
+   "reason": "ok",
+   "setting": "1",
+   "before": 1,
+   "after": 1,
+   "flags_before": "0x00005000",
+   "flags_after": "0x00005000",
+   "kind": "site"
+  },
+  {
+   "site": "0x004033c9",
+   "status": "refused",
+   "reason": "late_claim",
+   "setting": "1",
+   "before": null,
+   "after": null,
+   "write": "none",
+   "handler": "0x00201ba0",
+   "kind": "install"
+  }
+ ],
+ "result": {
+  "checks": 47,
+  "failures": 0
+ },
+ "passed": true
+}

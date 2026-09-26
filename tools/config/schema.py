@@ -253,6 +253,9 @@ SETTINGS = [
           'do not. 1 = on, 0 = the game\'s own.', '1', launcher='--pause-key-only'),
     entry('pause_key', 'string', 'window', 'The game\'s key code of a rebound pause key (decimal or 0x hex). Empty = the Pause key.',
           builtin='', requires=('pause_key_only',), launcher='--pause-key'),
+    entry('run_in_background', 'bool', 'window', 'Keeps the game running while another window is active, as the -runinbg start '
+          'option does, so switching back to the game does not stall. 1 = on, 0 = the game\'s own.', '1',
+          launcher='--run-in-background', since='2026-09-27'),
     # ---------------------------------------------------------------- audio
     entry('music_keep', 'bool', 'audio', 'Sector music keeps playing where it was across switching windows, saving and pausing, '
           'instead of restarting. 1 = on, 0 = off.', '1', launcher='--music-keep'),

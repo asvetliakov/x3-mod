@@ -9,6 +9,7 @@
 #include "window_trace.h"
 #include "terran_station_lod.h"
 #include "lod_occlusion.h"
+#include "run_in_background.h"
 #include "sun_flare_fix.h"
 #include "fov.h"
 #include "music_keep.h"
@@ -473,6 +474,8 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
         if (reserved == nullptr)
             x3m::sun_occlusion::shutdown(); // same rule: the probe and lens calls back only on FreeLibrary
         if (reserved == nullptr) x3m::collide_memo::shutdown(); // same rule: the memo's call back only on FreeLibrary
+        if (reserved == nullptr)
+            x3m::run_in_background::shutdown(); // same rule: the init call back only on FreeLibrary
         if (reserved == nullptr)
             x3m::music_keep::shutdown(); // same rule: the music keep and trace sites back only on FreeLibrary
         if (reserved == nullptr)

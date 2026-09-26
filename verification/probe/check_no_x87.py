@@ -94,6 +94,9 @@ EXTERN_ROOTS = ['_x3m_probe_enter', '_x3m_probe_exit', '_x3m_resource_read_entry
                 '_x3m_music_trace_stop', '_x3m_music_trace_play', '_x3m_music_trace_stop_movie',
                 # the status-query gate at 0x004983d9 (per flag-2 record per frame inside the media update)
                 '_x3m_music_keep_status_thunk', '_x3m_music_keep_status',
+                # run in background (src/proxy/run_in_background.cpp, X3M_RUN_IN_BACKGROUND=1): the init-call thunk and its integer-only
+                # handler, once per process on the game's init thread; its row is formatted behind call_preserved
+                '_x3m_run_in_background_thunk', '_x3m_run_in_background_apply',
                 # the window-thread message hooks (src/proxy/window_trace.cpp, X3M_WINDOW_TRACE=1 / X3M_CURSOR_REASSERT=1): run inside
                 # user32's message dispatch under LightCallBoundary; their ring writes and cursor_reassert::observe hold no floating point
                 '_x3m_window_hook_call@12', '_x3m_window_hook_ret@12', '_x3m_window_hook_get@12',

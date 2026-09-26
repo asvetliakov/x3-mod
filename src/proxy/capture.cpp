@@ -12,6 +12,7 @@
 #include "pause_key_only.h"
 #include "terran_station_lod.h"
 #include "lod_occlusion.h"
+#include "run_in_background.h"
 #include "sun_flare_fix.h"
 #include "fov.h"
 #include "music_keep.h"
@@ -5252,6 +5253,10 @@ void initialize_log(HMODULE module) {
     music_keep::initialize(); // X3M_MUSIC_KEEP=1: stop-all classifier trampoline (0x004982db) and the play seek call
                               // redirect (0x00498d54); X3M_MUSIC_TRACE=1: three entry trampolines (0x004982b0,
                               // 0x00498c90, 0x00498810); same window, disjoint from every other claim
+    run_in_background::initialize(); // X3M_RUN_IN_BACKGROUND=1 (schema default): the init routine's call 0x004d2580 at
+                                     // 0x004033c9, right after the game wrote the -runinbg bit, redirected to a thunk
+                                     // that sets bit 0x4000 of [*0x00606f3c] once; same window, disjoint from every
+                                     // other claim
     // X3M_SUN_OCCLUSION=1 / X3M_SUN_OCCLUSION_LOG=1 only (docs/architecture/sun-partial-occlusion.md): the flare
     // probe's call 0x00471630 and the lens traversal's call 0x00472491, same window, disjoint from every other claim
     // except X3M_SUBMIT_PHASES' stamp at 0x00472490 (refused by name). The override needs the route's RT2

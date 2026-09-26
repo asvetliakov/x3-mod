@@ -204,3 +204,26 @@ with `run_in_background`, `frame_timing_slow` (`gap_pre_us`) and `frame_phases_s
 and script, `present_us`) of the first frame after the return. WM_ACTIVATE active arriving seconds after
 the click = the macOS/Cocoa side; activation prompt and a long `pre_render_us` = the game's own resume;
 a long `present_us` = DXMT/Metal. A/B second launch: the same shortcut with the argument `-runinbg`.
+
+## 2026-09-27: `run_in_background` (built in a worktree, not installed, not flown)
+
+User decision: the DLL makes every launch behave as if `-runinbg` had been given. Setting `run_in_background` /
+`X3M_RUN_IN_BACKGROUND` (bool, schema default 1, launcher `--run-in-background on|off`, not under `--vanilla`).
+Mechanism and bytes: [run-in-background.md](../reverse-engineering/run-in-background.md). The argument only writes
+the init routine's local `[esp+0x14]` (`0x00402d16` = 1, `0x00402d09` = 0), whose one reader decides bit 0x4000 of
+`[*0x00606f3c]`; the pump `0x004d34b0` blocks only when that bit and the active flag `0x00608adc` are both 0. The DLL
+redirects the call at `0x004033c9` (right after the game wrote the bit) to a register/EFLAGS/LastError-preserving
+thunk that sets the bit once when clear.
+
+| Check | Result (measured) |
+| --- | --- |
+| Site verifier on the installed EXE (`verify_run_in_background_site.py`, `verification/results/run-in-background/verify_run_in_background_site.json`) | 17/17 PASS: window, boundaries, parser stores, `[esp+0x14]` read only at `0x00403398`, single caller of `0x004d2580`, no branch into the call, no overlapping claim |
+| Wine fixture, bottle X3 (`run_run_in_background_patch.py`, `verification/results/bottle-X3/run-in-background-patch.json`) | 47/47 PASS, 5.4 s: four scenarios (no argument with registry 0 / 1, `-noruninbg`, `-runinbg`) vanilla vs patched with identical callee register records (EFLAGS with DF set, ESP distance, return address), flags word = vanilla \| 0x4000, LastError kept, `patched` / `already` rows, second pass writes nothing, restore; refusals: unset, `0`, `on`, `1111`, executable mismatch, changed window, foreign target, read-only view (`protect_failed`), `late_claim` |
+| Build `build-rb` (MinGW i686 RelWithDebInfo), `check_no_x87.py` | 0 warnings; PASS, 0 violations, 124 roots (thunk and handler added) |
+| Host tests | `test_run_in_background` 9, focused set (`test_config_schema test_launcher_defaults test_logging_tiers test_exe_identity`) OK; full suite 272 modules, 2,834 tests, 0 failing |
+| Dry runs (`compare_dry_runs.py`, `dry_run_tiers.py`) | default launch 127 `X3M_*` variables (126 before), the only new one `X3M_RUN_IN_BACKGROUND=1`; all checks PASS; X3AP switches unchanged |
+
+Expected in the next CrossOver-shortcut flight: `run_in_background … status=armed`, then `status=patched
+value_before=0 value_after=1`, and `music_keep_active frame=0 … run_in_background=1`; after an alt-tab the loop keeps
+presenting (`music_keep_active 1->0` and back, as in the x3run sessions) instead of a 44 s gap.
+

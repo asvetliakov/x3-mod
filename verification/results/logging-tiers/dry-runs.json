@@ -13,11 +13,11 @@
  "counts": {
   "base_default": 150,
   "base_vanilla": 99,
-  "new_debug": 127,
-  "new_debug_perf": 128,
-  "new_default": 126,
-  "new_perf": 127,
-  "new_perf_draw_trace": 128,
+  "new_debug": 128,
+  "new_debug_perf": 129,
+  "new_default": 127,
+  "new_perf": 128,
+  "new_perf_draw_trace": 129,
   "new_vanilla": 71
  },
  "debug_perf_vs_default": {
@@ -128,6 +128,10 @@
   "X3M_RESIDUAL_PHASES": [
    "0",
    null
+  ],
+  "X3M_RUN_IN_BACKGROUND": [
+   null,
+   "1"
   ],
   "X3M_SECTOR_BACKGROUND": [
    "0",

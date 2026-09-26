@@ -129,6 +129,7 @@ Sizes are measured bytes per line in run337 unless marked inferred. "F8" means c
 | `--lod-switch-log [N]` (`X3M_LOD_SWITCH_LOG`) | `cull_census_lod_switch` rows | F8 / bounded table | debug | Same tooling |
 | `--media-cue-trace` (`X3M_MEDIA_CUE_TRACE`) | media record rows | per cue, bounded | debug | One byte-verified gate, flown (`docs/verification/media-cues.md`) |
 | `--music-trace` (`X3M_MUSIC_TRACE`) | music state rows | per transition | debug | Three trampolines the `--music-keep` default already shares |
+| (none) `run_in_background` (`X3M_RUN_IN_BACKGROUND`, default on, 2026-09-27) | install row, then one site row when the game reaches `0x004033c9` during init | 2 per process, about 150 B each (inferred) | always | Mode row: says whether the game loop keeps running while inactive (`status=patched` or `already`, `value_before`); [run-in-background.md](../reverse-engineering/run-in-background.md) |
 | `--window-trace` (`X3M_WINDOW_TRACE`) | `window_msg` rows | bursty on alt-tab, per message | debug | Cursor reports; flown Run 84 A |
 | `--shadow-sun-trace` (`X3M_SHADOW_SUN_TRACE`) | per-frame sun rows | unmeasured (inferred ~200 B per frame) | debug | Trace only |
 | `--sector-background` (`X3M_SECTOR_BACKGROUND`) | sector rows | per sector | debug | Read-only |

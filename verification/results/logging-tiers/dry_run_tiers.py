@@ -23,7 +23,9 @@ that is not a dropped logging or removed variable (CONFIG_DELTA). The single-cop
 docs/architecture/bolt-footprint.md "Single copy") adds X3M_BOLT_SINGLE_COPY=1 on the same launches (default 124 variables,
 123 before): the second functional addition, also in CONFIG_DELTA. Bolts through the TAA (2026-09-26,
 docs/architecture/bolts-through-taa.md) adds X3M_BOLT_FAR_COMPOSITE=1 and X3M_BOLT_FAR_SHOW=1 on the same launches (0.5 until Run 94 A)
-(default 126 variables): the third and fourth functional additions, also in CONFIG_DELTA.
+(default 126 variables): the third and fourth functional additions, also in CONFIG_DELTA. Run in background (2026-09-27,
+docs/reverse-engineering/run-in-background.md) adds X3M_RUN_IN_BACKGROUND=1 on every modded launch (default 127
+variables; not under --vanilla): the fifth, also in CONFIG_DELTA.
 Writes dry-runs.json beside this script.
 
     python3 verification/results/logging-tiers/dry_run_tiers.py
@@ -50,7 +52,8 @@ REMOVED_2026_09_26 = {'X3M_MESH_ADJACENCY_DUMP', 'X3M_VOLUMETRIC_FOG_EVERYWHERE'
 VANILLA_NOT_SENT = {'X3M_CAPTURE_START'}
 # Sent since the settings file (2026-09-26) on every modded launch.
 CONFIG_DELTA = {'X3M_CONFIG': [None, 'bare'], 'X3M_BOLT_SINGLE_COPY': [None, '1'],
-                'X3M_BOLT_FAR_COMPOSITE': [None, '1'], 'X3M_BOLT_FAR_SHOW': [None, '1']}
+                'X3M_BOLT_FAR_COMPOSITE': [None, '1'], 'X3M_BOLT_FAR_SHOW': [None, '1'],
+                'X3M_RUN_IN_BACKGROUND': [None, '1']}
 
 
 def tiered():

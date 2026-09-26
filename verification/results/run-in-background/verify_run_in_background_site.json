@@ -1,0 +1,70 @@
+{
+ "exe": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/X3AP.exe",
+ "checks": {
+  "exe_identity": true,
+  "window_bytes": true,
+  "window_boundaries": true,
+  "site_is_call_target": true,
+  "argument_parser": true,
+  "argument_stores": true,
+  "local_initialised_minus_one": true,
+  "local_only_read_in_window": true,
+  "pump_tests_bit": true,
+  "script_setter_reader": true,
+  "registry_value_name": true,
+  "callee_prologue": true,
+  "single_caller": true,
+  "no_branch_into_call": true,
+  "atomic_word": true,
+  "no_overlapping_claim": true,
+  "header_constants": true
+ },
+ "arguments": [
+  {
+   "string": "/runinbg",
+   "string_va": "0x00555514",
+   "je": "0x00402bf7",
+   "store": "0x00402d16",
+   "value": 1,
+   "ok": true
+  },
+  {
+   "string": "-runinbg",
+   "string_va": "0x00555520",
+   "je": "0x00402c10",
+   "store": "0x00402d16",
+   "value": 1,
+   "ok": true
+  },
+  {
+   "string": "/noruninbg",
+   "string_va": "0x0055552c",
+   "je": "0x00402c29",
+   "store": "0x00402d09",
+   "value": 0,
+   "ok": true
+  },
+  {
+   "string": "-noruninbg",
+   "string_va": "0x00555538",
+   "je": "0x00402c42",
+   "store": "0x00402d09",
+   "value": 0,
+   "ok": true
+  }
+ ],
+ "local_uses": [
+  "0x00402d09",
+  "0x00402d16",
+  "0x00403398"
+ ],
+ "target_callers": [
+  "0x004033c9"
+ ],
+ "raw_interior_hits": [],
+ "interior_branches": [],
+ "overlapping_claims": [],
+ "window": "8b0d3c6f60008b44241481090010000083f8ff7510bea8565500e85f510b008b0d3c6f600085c07408810900400000eb068121ffbfffffe8b2f10c00",
+ "site_bytes": "e8b2f10c00",
+ "result": "PASS"
+}

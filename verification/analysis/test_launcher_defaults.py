@@ -62,7 +62,7 @@ EXPECTED_EMPTY = {
     'X3M_MOTION_CUT_MISSING': '1', 'X3M_MOTION_JITTER': '1', 'X3M_MOTION_OUTPUT': '1', 'X3M_MOTION_RT_MODE': 'lazy',
     'X3M_MUSIC_KEEP': '1', 'X3M_OBJECT_LIFETIME': '1', 'X3M_OBJECT_TRACE': '1', 'X3M_ORIGINAL_FILL': '0.01',
     'X3M_ORIGINAL_FILL_DEFAULT': '1', 'X3M_OWNERSHIP': '1', 'X3M_PAUSE_KEY_ONLY': '1',
-    'X3M_RESOURCE_READ': 'fast', 'X3M_SCENE_HOOK': '1',
+    'X3M_RESOURCE_READ': 'fast', 'X3M_RUN_IN_BACKGROUND': '1', 'X3M_SCENE_HOOK': '1',  # run in background since 2026-09-27
     'X3M_SCREEN_EMISSION_ADDITIVE': '2.0', 'X3M_SCREEN_EMISSION_ADDITIVE_ALPHA': '0.0',
     'X3M_SHADOW_ALPHA_CASTERS': '1', 'X3M_SHADOW_CASCADES': '250.0,1500.0,7500.0,37500.0,150000.0',
     'X3M_SHADOW_CASCADE_ADAPTIVE_C0': '1.5', 'X3M_SHADOW_CASCADE_DROP_ORDER': 'importance',
@@ -128,6 +128,7 @@ OPT_OUTS = (
     (('--volumetric-fog-range', 'legacy'), 'X3M_VOLUMETRIC_FOG_RANGE', 'legacy'),
     (('--cull-small-parts', '0'), 'X3M_CULL_SMALL_PARTS_PX', None),
     (('--no-music-keep',), 'X3M_MUSIC_KEEP', None),
+    (('--run-in-background', 'off'), 'X3M_RUN_IN_BACKGROUND', '0'),
     (('--capture-frames', '16'), 'X3M_CAPTURE_FRAMES', '16'),
 )
 
@@ -211,10 +212,15 @@ class LauncherDefaults(unittest.TestCase):
                      'X3M_VOLUMETRIC_FOG', 'X3M_CRYPT_CACHE', 'X3M_GZ_BUFFER', 'X3M_DAT_HANDLES', 'X3M_SHADOW_ALPHA_CASTERS'):
             self.assertEqual(env[name], '0', name)
         self.assertEqual((env['X3M_CAMERA'], env['X3M_RESOURCE_READ'], env['X3M_MESH_ADJACENCY']), ('vanilla', 'native', 'native'))
-        for name in ('X3M_MUSIC_KEEP', 'X3M_SHADOW_CASCADE_DROP_ORDER', 'X3M_BLOOM_SOURCE_CLAMP', 'X3M_CULL_SMALL_PARTS_PX'):
+        for name in ('X3M_MUSIC_KEEP', 'X3M_SHADOW_CASCADE_DROP_ORDER', 'X3M_BLOOM_SOURCE_CLAMP', 'X3M_CULL_SMALL_PARTS_PX',
+                     'X3M_RUN_IN_BACKGROUND'):
             self.assertNotIn(name, env)
         _, data, _ = self.launch(vanilla=True)
         self.assertNotIn('-noabout', data['command'])
+        # An explicit value is refused under --vanilla (no proxy loads), like the other proxy-only options.
+        code, _, error = self.launch('--run-in-background', 'on', vanilla=True)
+        self.assertEqual(code, 2)
+        self.assertIn('--run-in-background cannot be combined with --vanilla', error)
 
     def test_every_promoted_default_has_an_accepted_opt_out(self):
         for args, name, value in OPT_OUTS:

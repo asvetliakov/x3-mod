@@ -457,6 +457,8 @@ concrete remaining gates, removal status and the separate depth-adapter gap.
   (2026-09-22) add only stack/register reads in the stub and Present-time reads
   through `engine_memory::read` (documented `VirtualQuery`), no new dependency.
 
+- run in background: native Windows with the bit set (the game's `-runinbg` path: background rendering, DirectSound focus, exclusive fullscreen) unverified ([run-in-background.md](../reverse-engineering/run-in-background.md)).
+
 - music-keep skip_all: native alt-tab with a blocked loop unverified (DirectSound ring unserviced without GLOBALFOCUS, DirectShow audible in background) ([music-restart.md](../reverse-engineering/music-restart.md) §6 "Alt-tab").
 
 ## 2026-09-24: TAA region hold (A', the camera gate's only path; `--taa-region-hold` removed the same day after Run 79 A)
@@ -604,6 +606,18 @@ runs the lane-off R32F RT2 and every late bullet draw's flag is refused, `r32f_l
 a shaded hull is the sun-share lane's share, which the sun-shadow cascade apply reads back: a flagged texel (g > 1, the
 share lost in the sum) is left unshadowed for that one frame (factor 1; measured in the seam case: 1.0 against 0.5 on
 the unflagged, fully shadowed hull). Cross-compiled and fixture-qualified under CrossOver; native execution unverified.
+
+## 2026-09-27: run in background (`--run-in-background`, default on)
+
+EXE-specific: a byte-verified redirect of one `call rel32` in `X3AP.exe` (`0x004033c9`,
+[run-in-background.md](../reverse-engineering/run-in-background.md)), gated by the structural executable identity and a
+60-byte window compare like the other engine patches; no Wine or CrossOver dependency. Documented Win32 only:
+`VirtualProtect`, `FlushInstructionCache`, `GetModuleHandleExW(…PIN)`, `InterlockedExchange`/`InterlockedOr`,
+`GetLastError`/`SetLastError`. On native Windows the effect is the game's own `-runinbg` behaviour: the loop keeps
+running and presenting while the window is inactive (CPU/GPU load in the background, as with the argument); whether
+DirectSound audio (no `DSBCAPS_GLOBALFOCUS`) is audible in the background and how an exclusive-fullscreen device
+behaves when inactive are the game's own `-runinbg` behaviour and unverified here. Cross-compiled, fixture-qualified
+under CrossOver; native Windows unverified.
 
 ## Shader slot budget
 

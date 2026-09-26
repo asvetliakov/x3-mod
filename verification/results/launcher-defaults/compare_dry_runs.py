@@ -26,6 +26,8 @@ Since the single-copy bullet rule (2026-09-26, docs/architecture/bolt-footprint.
 the empty command then sends 124 X3M_* variables (123 before).
 Since bolts through the TAA (2026-09-26, docs/architecture/bolts-through-taa.md) every modded launch with --motion-output
 --hdr also sends X3M_BOLT_FAR_COMPOSITE=1 and X3M_BOLT_FAR_SHOW=1 (BOLT_FAR; 0.5 until Run 94 A): the empty command sends 126 variables.
+Since run in background (2026-09-27, docs/reverse-engineering/run-in-background.md) every modded launch also sends
+X3M_RUN_IN_BACKGROUND=1 (RUN_IN_BACKGROUND): the empty command sends 127 variables.
 """
 import importlib.util
 import json
@@ -66,6 +68,8 @@ CONFIG = {'X3M_CONFIG': [None, 'bare']}
 # The single-copy bullet rule (2026-09-26): on by default with the additive bullets' prerequisites.
 SINGLE_COPY = {'X3M_BOLT_SINGLE_COPY': [None, '1']}
 BOLT_FAR = {'X3M_BOLT_FAR_COMPOSITE': [None, '1'], 'X3M_BOLT_FAR_SHOW': [None, '1']}
+# Run in background (2026-09-27): the -runinbg flag on every modded launch.
+RUN_IN_BACKGROUND = {'X3M_RUN_IN_BACKGROUND': [None, '1']}
 # Intended functional difference: the promoted map sizes (user decision 2026-09-25) differ from the Run 84 A stand's
 # explicit 2048 x5, which an explicit --shadow-cascade-sizes still selects.
 SIZES = {'X3M_SHADOW_CASCADE_SIZES': ['2048,2048,2048,2048,2048', '2048,4096,4096,4096,2048']}
@@ -126,8 +130,8 @@ def main():
     removed = {k: [v, None] for k, v in REMOVED.items()}
     checks = {
         'empty_vs_stand only the two groups + the promoted map sizes': result['empty_vs_stand'] == {**GROUPS, 'X3M_SHADOW_CASCADE_SIZES': SIZES['X3M_SHADOW_CASCADE_SIZES'][::-1]},
-        'stand vs recorded only the two new defaults, the removed and the logging variables, and the groups': result['stand_vs_recorded_stand'] == {**new_defaults, **removed, **recorded_tiered, **GROUPS, **CONFIG, **SINGLE_COPY, **BOLT_FAR},
-        'empty vs recorded: the two new defaults + the map sizes + the removed and the logging variables': result['empty_vs_recorded_stand'] == {**new_defaults, **removed, **recorded_tiered, **SIZES, **CONFIG, **SINGLE_COPY, **BOLT_FAR},
+        'stand vs recorded only the two new defaults, the removed and the logging variables, and the groups': result['stand_vs_recorded_stand'] == {**new_defaults, **removed, **recorded_tiered, **GROUPS, **CONFIG, **SINGLE_COPY, **BOLT_FAR, **RUN_IN_BACKGROUND},
+        'empty vs recorded: the two new defaults + the map sizes + the removed and the logging variables': result['empty_vs_recorded_stand'] == {**new_defaults, **removed, **recorded_tiered, **SIZES, **CONFIG, **SINGLE_COPY, **BOLT_FAR, **RUN_IN_BACKGROUND},
         'same X3AP switches': empty_switches == stand_switches == short_switches == recorded['exe_switches'],
         'short stand command == old stand command but the map sizes': result['short_stand_vs_stand'] == SIZES,
     }

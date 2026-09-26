@@ -194,6 +194,10 @@
    "0",
    null
   ],
+  "X3M_RUN_IN_BACKGROUND": [
+   null,
+   "1"
+  ],
   "X3M_SCENE_DEPTH_CAPTURE": [
    "0",
    null
@@ -460,6 +464,10 @@
    "0",
    null
   ],
+  "X3M_RUN_IN_BACKGROUND": [
+   null,
+   "1"
+  ],
   "X3M_SCENE_DEPTH_CAPTURE": [
    "0",
    null
@@ -581,8 +589,8 @@
   ]
  },
  "counts": {
-  "empty": 126,
-  "stand": 128,
+  "empty": 127,
+  "stand": 129,
   "recorded": 181
  },
  "checks": {

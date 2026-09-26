@@ -164,7 +164,8 @@ does block (static reading; native Windows unverified). The status query
 RunInBackground bit **clear** it answers **2 = ended** for every record it is
 asked about without looking (`0x004d14eb`→`0x004d1500`→`0x004d15a0`); with the
 bit **set** the loop keeps running while inactive and the query answers
-normally. The bottle X3 runs with the bit clear (InputFlags `0x70200107`, as
+normally. (Where the bit comes from, and the DLL's `run_in_background` setting that
+sets it as `-runinbg` does: [run-in-background.md](run-in-background.md), 2026-09-27.) The bottle X3 runs with the bit clear (InputFlags `0x70200107`, as
 reported by the reviewer; not re-read here), so the false "ended" applies to
 the frame that follows an alt-tab (§6 "Alt-tab", Patch D). Vanilla: the stop-all's status 1 wakes the
 script task, which calls `MOV_PlayMovie` → `0x00498d54` →
