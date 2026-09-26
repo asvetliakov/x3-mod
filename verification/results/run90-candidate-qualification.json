@@ -1,0 +1,3029 @@
+{
+ "schema": 1,
+ "candidate": {
+  "commit": "f9cceb17",
+  "commit_full": "f9cceb171556f814e522da038a5e3d533fdb42de",
+  "branch": "main (detached worktree)",
+  "checkout": "/tmp/x3-run90-candidate/src",
+  "source_clean": true,
+  "source_clean_note": "detached worktree /tmp/x3-run90-candidate/src at f9cceb17 (verification/probe/build/ created first); git status --short --untracked-files=all empty before the build (0 lines). Runner rewrites of tracked results were copied to /tmp/x3-run90-candidate/results-<tag>/ (lists rewritten-<tag>.txt: bloom 1, census 1, chasefire 1, chasetrans 1, collide 1, crypt 2, cull 1, cursor 2, dryrun 0, exports 2, fogpass 0, fogshader 0, fov 1, gamephase 1, gpusync 2, integration 11, loadtrace 5, lodocc 1, motion 44, resreader 2, route 0, sites 0, sunflare 1, sunocc 2, sunshare 1, temporal 2, terran 1, tiers 0, window 2) and restored by /tmp/x3-run90-candidate/save_restore.sh. git status --short --untracked-files=all empty after every step; at the end only this record is untracked.",
+  "source_clean_after": true,
+  "dll": "/tmp/x3-run90-candidate/build/d3d9.dll",
+  "sha256": "6f6be732bfd5a8b7b0819ae233d42128e55af5f31e42f727abc4272c54dffb98",
+  "bytes": 56825745,
+  "embedded_marker": "X3M_SOURCE_COMMIT=f9cceb171556f814e522da038a5e3d533fdb42de",
+  "embedded_marker_check": "strings -a /tmp/x3-run90-candidate/build/d3d9.dll | grep -c X3M_SOURCE_COMMIT=f9cceb17 -> 1",
+  "configuration": "RelWithDebInfo",
+  "toolchain": "cmake/mingw-i686.cmake",
+  "toolchain_versions": {
+   "i686-w64-mingw32-gcc": "16.2.0",
+   "binutils_ld": "2.47.20260726",
+   "cmake": "4.4.3"
+  },
+  "python3": "/usr/bin/python3",
+  "build_commands": [
+   "cmake -S . -B /tmp/x3-run90-candidate/build -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DPython3_EXECUTABLE=/usr/bin/python3",
+   "cmake --build /tmp/x3-run90-candidate/build -j4"
+  ],
+  "build_seconds": 45,
+  "build_seconds_note": "configure + build, fresh build directory",
+  "build_warnings": 0,
+  "build_warnings_check": "grep -ci warning /tmp/x3-run90-candidate/build.log -> 0",
+  "build_log_sha256": "84e41d40a74795d20260741f60b3c938690aca43a7e9a23e469968f577d3bf33",
+  "dll_write_protected_after_build": true,
+  "supersedes": "Run89 candidate e2db7813 (sha256 0f6acab4...)",
+  "sha256_recheck_after_fixtures": "6f6be732bfd5a8b7b0819ae233d42128e55af5f31e42f727abc4272c54dffb98",
+  "size_versus_run89": "56,806,407 -> 56,825,745 bytes (+19338)",
+  "section_size_delta_vs_run89": {
+   ".text": -2432,
+   ".data": -1504,
+   ".rdata": -92364,
+   ".bss": 4172032,
+   ".idata": 80,
+   ".reloc": -1132,
+   ".debug_aranges": -72,
+   ".debug_info": 15465,
+   ".debug_abbrev": -2452,
+   ".debug_line": 17795,
+   ".debug_frame": -616,
+   ".debug_str": 223,
+   ".debug_line_str": -691,
+   ".debug_loclists": 72560,
+   ".debug_rnglists": 19806
+  },
+  "size_reading": "the file grew although .text (-2,432 B), .rdata (-92,364 B) and .reloc shrank: the debug sections grew (.debug_loclists +72,560, .debug_line +17,795, .debug_info +15,465, .debug_rnglists +19,806); .bss +4,194,560 (the 4 MiB log buffer) takes no file bytes. The brief's \"about 56.3 MB\" (9a668e81 message: 56,293,859 B) came from another build and does not hold for this RelWithDebInfo build"
+ },
+ "scope": "Run89 + four commits e2db7813..f9cceb17: (1) ae16da06 --taa-k and --taa-sentinel removed (fixture seams X3M_FIXTURE_TAA_K / X3M_FIXTURE_TAA_SENTINEL); (2) 9a668e81 obsolete launcher options and their DLL code removed (39 option strings; --lod-scale, --mesh-cache, --loading-intervals recorder, --audio-sites, --fog-shadow-pass, --fog-far-bins 24-bin programs, --taa-history-taps 16-tap programs, --taa-thin-region-gate/-source; a device without FP16/R32F filtering turns TAA, jitter and mip bias off); (3) 896c03b8 logging tiers design note (docs + evidence scripts); (4) f9cceb17 logging tiers: X3M_DEBUG/X3M_PERF expanded in the DLL (log_tiers.h), x3m.log in the module directory via session_log.{h,cpp} with x3m.prev.log rotation, writer thread, chained unhandled-exception filter, exit path (abandoned device contexts at ExitProcess, writer parks on the last device destroy); launcher --debug / --perf replace 19 telemetry options (default launch 124 variables, --vanilla 73). No new EXE patch site; 14 audio witness sites and the lod-scale site removed.",
+ "changed_files_src": [
+  "src/fog/fog_density_field_inc.h",
+  "src/fog/fog_density_march_grid_ps.hlsl",
+  "src/fog/fog_density_march_look_far24_ps.hlsl",
+  "src/fog/fog_density_march_look_far24_q4_ps.hlsl",
+  "src/fog/fog_density_repair_grid_ps.hlsl",
+  "src/fog/fog_density_repair_look_far24_ps.hlsl",
+  "src/fog/fog_density_repair_look_far24_q4_ps.hlsl",
+  "src/fog/fog_density_visibility_grid_ps.hlsl",
+  "src/fog/fog_dust_motes_grid_ps.hlsl",
+  "src/fog/fog_dust_motes_ps.hlsl",
+  "src/fog/fog_shadow_grid_inc.h",
+  "src/proxy/capture.cpp",
+  "src/proxy/capture.h",
+  "src/proxy/chase_camera.cpp",
+  "src/proxy/chase_fire.cpp",
+  "src/proxy/chase_transition.cpp",
+  "src/proxy/collide_box_cull.cpp",
+  "src/proxy/collide_memo.cpp",
+  "src/proxy/collide_narrow_census.cpp",
+  "src/proxy/collide_query_phases.cpp",
+  "src/proxy/comparison_controls.h",
+  "src/proxy/cull_census.cpp",
+  "src/proxy/cull_census.h",
+  "src/proxy/cull_census_core.h",
+  "src/proxy/cull_small_parts.cpp",
+  "src/proxy/cull_small_parts.h",
+  "src/proxy/cull_small_parts_core.h",
+  "src/proxy/executable_identity.h",
+  "src/proxy/frame_phases.cpp",
+  "src/proxy/frame_timing.cpp",
+  "src/proxy/game_phase_sites.h",
+  "src/proxy/game_phases.cpp",
+  "src/proxy/game_phases.h",
+  "src/proxy/loader.cpp",
+  "src/proxy/loading_intervals_core.h",
+  "src/proxy/loading_probes.cpp",
+  "src/proxy/loading_trace.cpp",
+  "src/proxy/loading_trace.h",
+  "src/proxy/loading_trace_light.cpp",
+  "src/proxy/loading_trace_light.h",
+  "src/proxy/lod_scale.cpp",
+  "src/proxy/lod_scale.h",
+  "src/proxy/lod_scale_core.h",
+  "src/proxy/log_tiers.h",
+  "src/proxy/media_cue.cpp",
+  "src/proxy/mesh_adjacency_cache.cpp",
+  "src/proxy/mesh_adjacency_cache.h",
+  "src/proxy/motion_output.cpp",
+  "src/proxy/motion_output.h",
+  "src/proxy/motion_output_fog_inc.h",
+  "src/proxy/motion_output_shadow_replay_inc.h",
+  "src/proxy/motion_output_shadow_retention_inc.h",
+  "src/proxy/music_keep.cpp",
+  "src/proxy/proxy_identity.cpp",
+  "src/proxy/sampling_profiler.cpp",
+  "src/proxy/sampling_profiler.h",
+  "src/proxy/session_log.cpp",
+  "src/proxy/session_log.h",
+  "src/proxy/telemetry.cpp",
+  "src/proxy/telemetry.h",
+  "src/proxy/voice_dmo_fallback.cpp",
+  "src/proxy/window_trace.cpp",
+  "src/renderer/camera_reprojection.h",
+  "src/renderer/fog_density_march_grid_program_inc.h",
+  "src/renderer/fog_density_march_look_far24_program_inc.h",
+  "src/renderer/fog_density_march_look_far24_q4_program_inc.h",
+  "src/renderer/fog_density_repair_grid_program_inc.h",
+  "src/renderer/fog_density_repair_look_far24_program_inc.h",
+  "src/renderer/fog_density_repair_look_far24_q4_program_inc.h",
+  "src/renderer/fog_density_visibility_grid_program_inc.h",
+  "src/renderer/fog_dust_motes_grid_program_inc.h",
+  "src/renderer/fog_look_math.h",
+  "src/renderer/fog_pass.cpp",
+  "src/renderer/fog_pass.h",
+  "src/renderer/fog_shadow_grid.h",
+  "src/renderer/linear_distance_fade.h",
+  "src/renderer/linear_material.h",
+  "src/renderer/temporal_pass.cpp",
+  "src/renderer/temporal_pass.h",
+  "src/renderer/temporal_resolve_age_taps16_program_inc.h",
+  "src/renderer/temporal_resolve_far_taps16_program_inc.h",
+  "src/renderer/temporal_resolve_program.h",
+  "src/renderer/temporal_resolve_taps16_program_inc.h",
+  "src/renderer/temporal_resolve_thin_taps16_program_inc.h",
+  "src/temporal/README.md",
+  "src/temporal/resolve.hlsl",
+  "src/temporal/resolve_age_taps16.hlsl",
+  "src/temporal/resolve_far_taps16.hlsl",
+  "src/temporal/resolve_taps16.hlsl",
+  "src/temporal/resolve_thin_taps16.hlsl"
+ ],
+ "changed_files_other_dll_relevant": [
+  "CMakeLists.txt",
+  "tools/manage.py"
+ ],
+ "changed_files_command": "git diff --stat e2db7813..f9cceb17 -- src/ -> 90 files changed, 1281 insertions(+), 6054 deletions(-)",
+ "temporal_pass": {
+  "command": "cd /tmp/x3-run90-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run90-candidate/lock-timings-temporal.json python3 verification/probe/run_temporal_pass.py",
+  "why_run": "temporal_pass.cpp/.h, temporal_resolve_program.h, resolve.hlsl (16-tap programs removed) and the fixture changed",
+  "result": "PASS",
+  "exit_code": 0,
+  "records_vs_committed": {
+   "temporal-pass-summary.json": null,
+   "temporal-lattice.txt": null
+  },
+  "rewritten_files": 2,
+  "copies": "/tmp/x3-run90-candidate/results-temporal/",
+  "lock": {
+   "lock_wait_seconds": 4.707999999999102e-06,
+   "child_elapsed_seconds": 131.517168875,
+   "exit_code": 0
+  },
+  "run89_innermost": {
+   "passed": true,
+   "exit_code": 0,
+   "result_line": "RESULT PASS numerical=744 state_restorations=278 generations=2",
+   "report": "verification/results/bottle-X3/temporal-pass.txt",
+   "report_identical_to_committed": true,
+   "far_camera_hold_program_slots": 1017,
+   "far_jitter_line_rows": 22,
+   "far_jitter_line_rows_equal_run87": true
+  },
+  "reading": "temporal-pass.txt not rewritten: byte-identical to the committed report (RESULT PASS numerical=744 state_restorations=278 generations=2, = Run89 innermost); temporal-lattice 584/90 (committed file 598 from 22776b6f; 9a668e81 reported 584/90 after the 16-tap programs went)"
+ },
+ "gpu_sync_timing": {
+  "command": "cd /tmp/x3-run90-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run90-candidate/lock-timings-gpusync.json python3 verification/probe/run_gpu_sync_timing.py --exe /tmp/x3-run90-candidate/build/gpu_sync_timing_fixture.exe",
+  "why_run": "CMake-built fixture of the candidate tree; closure includes CMakeLists.txt and changed production sources",
+  "result": "PASS",
+  "exit_code": 0,
+  "records_vs_committed": {
+   "gpu-sync-timing.json": null,
+   "gpu-sync-timing.txt": null
+  },
+  "rewritten_files": 2,
+  "copies": "/tmp/x3-run90-candidate/results-gpusync/",
+  "lock": {
+   "lock_wait_seconds": 3.5419999999987406e-06,
+   "child_elapsed_seconds": 2.476805625,
+   "exit_code": 0
+  },
+  "run89_innermost": {
+   "passed": true,
+   "expected_checks": 32,
+   "checks": 32,
+   "checks_passed": 32,
+   "passes": 25,
+   "device": "adapter=NVIDIA GeForce 8800 GTX driver=nvd3dum.dll",
+   "exe_sha256": "7bc5b947cc3687d00932e086c6effdf89fcdf4018e03965dcf67b925e085bead",
+   "report_sha256": "f8af859a1f8b546aaa9a439fcc58e1fb7fe32a716f8fd19c79f9de95f57e6b24"
+  },
+  "reading": "32/32 = the Run84 entry carried by Run89 (the committed gpu-sync-timing.json from 614b87fb has 30)"
+ },
+ "bloom_pass": {
+  "command": "cd /tmp/x3-run90-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run90-candidate/lock-timings-bloom.json python3 verification/probe/run_bloom_pass.py",
+  "why_run": "closure includes capture.cpp/.h and the temporal pass sources, changed in code",
+  "result": "PASS",
+  "exit_code": 0,
+  "records_vs_committed": {
+   "bloom-pass-summary.json": null
+  },
+  "rewritten_files": 1,
+  "copies": "/tmp/x3-run90-candidate/results-bloom/",
+  "lock": {
+   "lock_wait_seconds": 3.0829999999974766e-06,
+   "child_elapsed_seconds": 10.257619083,
+   "exit_code": 0
+  },
+  "run89_innermost": {
+   "reused_from": "run81",
+   "run80_result": "PASS",
+   "run80_result_line": null,
+   "run80_images": "47/47"
+  },
+  "reading": "47 cases / 47 images = Run80 entry carried by Run89 (committed summary from 1a778952 has 45)"
+ },
+ "loading_trace": {
+  "command": "cd /tmp/x3-run90-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run90-candidate/lock-timings-loadtrace.json python3 verification/probe/run_loading_trace.py",
+  "why_run": "loading_trace.cpp/.h, loading_trace_light.*, loading_probes.cpp, log_tiers.h and the fixture/runner changed (mesh cache removed)",
+  "result": "PASS",
+  "exit_code": 0,
+  "records_vs_committed": {
+   "loading-trace-fixture.txt": null,
+   "loading-mesh-fixture.txt": null,
+   "mesh-adjacency-fixture.txt": null,
+   "loading-trace-mesh-summary.json": null
+  },
+  "rewritten_files": 5,
+  "copies": "/tmp/x3-run90-candidate/results-loadtrace/",
+  "lock": {
+   "lock_wait_seconds": 3.625000000000156e-06,
+   "child_elapsed_seconds": 30.009012709,
+   "exit_code": 0
+  },
+  "run89_innermost": {
+   "passed": true,
+   "equal_to_committed": true,
+   "new_row": "loading-trace-fixture.txt gains \"mesh_adjacency_config requested=native enabled=0 telemetry=1\" (30eecc51 config row); no telemetry-off install case exists in this fixture"
+  },
+  "reading": "loading_fixture 112/0, engine_patch_rel32 26/0, loading mesh 123/0, mesh adjacency 36,091/0; the summary lists 3 cases (committed 4 from 2e5f1af4): mesh-adjacency-cache-off/-on became one mesh-adjacency case with the mesh cache removed in 9a668e81"
+ },
+ "crypt_cache": {
+  "command": "cd /tmp/x3-run90-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run90-candidate/lock-timings-crypt.json python3 verification/probe/run_crypt_cache.py",
+  "why_run": "loading trace/light sources and log_tiers.h changed",
+  "result": "PASS",
+  "exit_code": 0,
+  "records_vs_committed": {
+   "crypt-cache-fixture.txt": null,
+   "crypt-cache-summary.json": null
+  },
+  "rewritten_files": 2,
+  "copies": "/tmp/x3-run90-candidate/results-crypt/",
+  "lock": {
+   "lock_wait_seconds": 3.625000000000156e-06,
+   "child_elapsed_seconds": 12.662817291,
+   "exit_code": 0
+  },
+  "run89_innermost": {
+   "passed": true,
+   "equal_to_committed": true
+  }
+ },
+ "resource_reader": {
+  "command": "cd /tmp/x3-run90-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run90-candidate/lock-timings-resreader.json python3 verification/probe/run_resource_reader.py",
+  "why_run": "loading_probes.cpp, loading_trace.*, log_tiers.h changed",
+  "result": "PASS",
+  "exit_code": 0,
+  "records_vs_committed": {
+   "resource-reader-fixture.txt": null,
+   "resource-reader-summary.json": null
+  },
+  "rewritten_files": 2,
+  "copies": "/tmp/x3-run90-candidate/results-resreader/",
+  "lock": {
+   "lock_wait_seconds": 3.709000000001045e-06,
+   "child_elapsed_seconds": 15.342824583,
+   "exit_code": 0
+  },
+  "run89_innermost": {
+   "passed": true,
+   "equal_to_committed": true
+  }
+ },
+ "cursor_reassert": {
+  "command": "cd /tmp/x3-run90-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run90-candidate/lock-timings-cursor.json python3 verification/probe/run_cursor_reassert.py --exe /tmp/x3-run90-candidate/build/cursor_reassert_fixture.exe",
+  "why_run": "window_trace.cpp changed; CMake-built fixture",
+  "result": "PASS",
+  "exit_code": 0,
+  "records_vs_committed": {
+   "cursor-reassert.json": null,
+   "cursor-reassert.txt": null
+  },
+  "rewritten_files": 2,
+  "copies": "/tmp/x3-run90-candidate/results-cursor/",
+  "lock": {
+   "lock_wait_seconds": 4.666999999999866e-06,
+   "child_elapsed_seconds": 3.362933833,
+   "exit_code": 0
+  },
+  "run89_innermost": {
+   "result": "PASS",
+   "passed": true,
+   "expected_checks": 42,
+   "checks": 42,
+   "exit_code": 0,
+   "elapsed_s": 7.7,
+   "executable_sha256": "095132ec89ec9bc41f9005c7ace2fbed819d85f34a461ca2707b675a4c9f248a",
+   "report_sha256": "5197a5be4ff37878f0ee2b062c588a3ceacc5ab6bdf81a8c9f785c5e1b7d2756",
+   "versus_run83": "36/36 -> 42/42"
+  }
+ },
+ "d3d9_exports": {
+  "command": "cd /tmp/x3-run90-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run90-candidate/lock-timings-exports.json python3 verification/probe/run_d3d9_exports.py --dll /tmp/x3-run90-candidate/build/d3d9.dll",
+  "why_run": "loader.cpp and session_log.h changed; runs against the frozen candidate DLL (writable and read-only module directory cases)",
+  "result": "PASS",
+  "exit_code": 0,
+  "records_vs_committed": {
+   "d3d9-exports-summary.json": {
+    "committed": {
+     "passed": true,
+     "status": "PASS",
+     "cases": 1
+    },
+    "run90": {
+     "passed": true,
+     "status": "PASS",
+     "cases": 2
+    }
+   },
+   "d3d9-exports.txt": {
+    "committed": [
+     "RESULT PASS checks=8 failures=0"
+    ],
+    "run90": [
+     "RESULT PASS checks=8 failures=0",
+     "RESULT PASS checks=8 failures=0"
+    ]
+   }
+  },
+  "rewritten_files": 2,
+  "copies": "/tmp/x3-run90-candidate/results-exports/",
+  "lock": {
+   "lock_wait_seconds": 4.082999999998477e-06,
+   "child_elapsed_seconds": 17.793186582999997,
+   "exit_code": 0
+  },
+  "previous": "d3d9-exports.txt committed RESULT PASS checks=8 (one case)",
+  "reading": "two cases (writable and read-only module directory), RESULT PASS checks=8 each; the committed record (d544b57f) had one case"
+ },
+ "game_phase_cpu": {
+  "command": "cd /tmp/x3-run90-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run90-candidate/lock-timings-gamephase.json python3 verification/probe/run_game_phase_cpu.py",
+  "why_run": "game_phases.*, frame_phases.cpp, game_phase_sites.h, media_cue.cpp, log_tiers.h changed (audio witness sites removed)",
+  "result": "PASS",
+  "exit_code": 0,
+  "records_vs_committed": {
+   "game_phase_cpu.json": {
+    "committed": {
+     "result": "PASS",
+     "failures": 0
+    },
+    "run90": {
+     "result": "PASS",
+     "failures": 0
+    }
+   }
+  },
+  "rewritten_files": 1,
+  "copies": "/tmp/x3-run90-candidate/results-gamephase/",
+  "lock": {
+   "lock_wait_seconds": 3.5419999999987406e-06,
+   "child_elapsed_seconds": 11.148766291,
+   "exit_code": 0
+  },
+  "previous": "game_phase_cpu.json committed PASS failures 0"
+ },
+ "fov_patch": {
+  "command": "cd /tmp/x3-run90-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run90-candidate/lock-timings-fov.json python3 verification/probe/run_fov_patch.py",
+  "why_run": "closure includes chase_camera.cpp, collide_*, cull_census.*, telemetry.h, log_tiers.h changed in code",
+  "result": "PASS",
+  "exit_code": 0,
+  "records_vs_committed": {
+   "fov-patch.json": {
+    "committed": {
+     "passed": true,
+     "result": 2,
+     "checks": 268,
+     "check_count": 268,
+     "exit_status": 0
+    },
+    "run90": {
+     "passed": true,
+     "result": 2,
+     "checks": 268,
+     "check_count": 268,
+     "exit_status": 0
+    }
+   }
+  },
+  "rewritten_files": 1,
+  "copies": "/tmp/x3-run90-candidate/results-fov/",
+  "lock": {
+   "lock_wait_seconds": 3.54200000000221e-06,
+   "child_elapsed_seconds": 7.546700625,
+   "exit_code": 0
+  },
+  "run89_innermost": {
+   "result": "PASS",
+   "checks": 268,
+   "checks_passed": 268,
+   "exit_status": 0,
+   "elapsed_s": 5.7,
+   "executable_sha256": "ff52e32219c4a9abac33c99da3f9ac599df03d77d1475190e668abb1b0fe7723",
+   "versus_run82": "194 -> 268: load-site claim cases (brief expects 268/268)"
+  }
+ },
+ "window_mode": {
+  "command": "cd /tmp/x3-run90-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run90-candidate/lock-timings-window.json python3 verification/probe/run_window_mode.py --exe /tmp/x3-run90-candidate/build/window_mode_fixture.exe",
+  "why_run": "CMake-built fixture of the candidate tree",
+  "result": "PASS",
+  "exit_code": 0,
+  "records_vs_committed": {
+   "window-mode.json": {
+    "committed": {
+     "passed": true,
+     "expected_checks": 19,
+     "exit_code": 0,
+     "result": 3,
+     "checks": 19,
+     "check_count": 19
+    },
+    "run90": {
+     "passed": true,
+     "expected_checks": 19,
+     "exit_code": 0,
+     "result": 3,
+     "checks": 19,
+     "check_count": 19
+    }
+   },
+   "window-mode.txt": {
+    "committed": [
+     "RESULT checks=19 failed=0 PASS"
+    ],
+    "run90": [
+     "RESULT checks=19 failed=0 PASS"
+    ]
+   }
+  },
+  "rewritten_files": 2,
+  "copies": "/tmp/x3-run90-candidate/results-window/",
+  "lock": {
+   "lock_wait_seconds": 3.290999999999017e-06,
+   "child_elapsed_seconds": 8.9166,
+   "exit_code": 0
+  },
+  "run89_innermost": {
+   "result": "PASS",
+   "passed": true,
+   "expected_checks": 19,
+   "checks": 19,
+   "exit_code": 0,
+   "elapsed_s": 8.8,
+   "executable_sha256": "f662d6e0aa1feff7c9406341486e9149bbc5f557c7a2977d2f8424099d9fd01d",
+   "report_sha256": "b55a0782f536443268fa24cb2776b0bcbefbcad9ad12c47aa10bb511557d5547"
+  }
+ },
+ "sun_flare_fix": {
+  "command": "cd /tmp/x3-run90-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run90-candidate/lock-timings-sunflare.json python3 verification/probe/run_sun_flare_fix.py",
+  "why_run": "engine_patch closure (chase_camera, collide_*, telemetry.h, log_tiers.h) changed in code",
+  "result": "PASS",
+  "exit_code": 0,
+  "records_vs_committed": {
+   "sun-flare-fix.json": {
+    "committed": {
+     "passed": true,
+     "result": 2,
+     "checks": 79,
+     "check_count": 79,
+     "exit_status": 0
+    },
+    "run90": {
+     "passed": true,
+     "result": 2,
+     "checks": 79,
+     "check_count": 79,
+     "exit_status": 0
+    }
+   }
+  },
+  "rewritten_files": 1,
+  "copies": "/tmp/x3-run90-candidate/results-sunflare/",
+  "lock": {
+   "lock_wait_seconds": 5.415999999997673e-06,
+   "child_elapsed_seconds": 7.203713542,
+   "exit_code": 0
+  },
+  "run89_innermost": {
+   "result": "PASS",
+   "checks": 79,
+   "checks_passed": 79,
+   "exit_status": 0,
+   "elapsed_s": 5.3,
+   "executable_sha256": "50af33b69edde442a8b51cfeb7ae6de2f42a7034a28cc8237be29daf7146ec13",
+   "versus_ledger": "79/79 = docs/verification/sun-flare-fix.md"
+  }
+ },
+ "lod_occlusion_patch": {
+  "command": "cd /tmp/x3-run90-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run90-candidate/lock-timings-lodocc.json python3 verification/probe/run_lod_occlusion_patch.py",
+  "why_run": "engine_patch closure changed in code",
+  "result": "PASS",
+  "exit_code": 0,
+  "records_vs_committed": {
+   "lod-occlusion-patch.json": {
+    "committed": {
+     "passed": true,
+     "result": 2,
+     "checks": 108,
+     "check_count": 108,
+     "exit_status": 0
+    },
+    "run90": {
+     "passed": true,
+     "result": 2,
+     "checks": 108,
+     "check_count": 108,
+     "exit_status": 0
+    }
+   }
+  },
+  "rewritten_files": 1,
+  "copies": "/tmp/x3-run90-candidate/results-lodocc/",
+  "lock": {
+   "lock_wait_seconds": 3.708000000001571e-06,
+   "child_elapsed_seconds": 6.9404375,
+   "exit_code": 0
+  },
+  "run89_innermost": {
+   "result": "PASS",
+   "checks": 108,
+   "checks_passed": 108,
+   "exit_status": 0,
+   "elapsed_s": 5.2,
+   "executable_sha256": "5716d036eeee7598cf61a935baf82a45947bdac905b7ae07b44ff4b992a6e79a",
+   "versus_run82": "108/108 (Run82, reused in Run83)"
+  }
+ },
+ "terran_lod_patch": {
+  "command": "cd /tmp/x3-run90-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run90-candidate/lock-timings-terran.json python3 verification/probe/run_terran_lod_patch.py",
+  "why_run": "production EXE patch; engine_patch closure changed in code (not in the Run89 record; added by the closure scan)",
+  "result": "PASS",
+  "exit_code": 0,
+  "records_vs_committed": {
+   "terran-lod-patch.json": {
+    "committed": {
+     "passed": true,
+     "result": 2,
+     "checks": 92,
+     "check_count": 92,
+     "exit_status": 0
+    },
+    "run90": {
+     "passed": true,
+     "result": 2,
+     "checks": 92,
+     "check_count": 92,
+     "exit_status": 0
+    }
+   }
+  },
+  "rewritten_files": 1,
+  "copies": "/tmp/x3-run90-candidate/results-terran/",
+  "lock": {
+   "lock_wait_seconds": 3.2919999999984906e-06,
+   "child_elapsed_seconds": 9.443682874999999,
+   "exit_code": 0
+  },
+  "previous": "terran-lod-patch.json committed 92/92"
+ },
+ "cull_small_parts_fixture": {
+  "command": "cd /tmp/x3-run90-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run90-candidate/lock-timings-cull.json python3 verification/probe/run_cull_small_parts.py (after /usr/bin/python3 verification/probe/build_cull_small_parts.py, host)",
+  "why_run": "cull_small_parts.*, cull_census.*, log_tiers.h and the fixture changed (--cull-small-parts-scope removed)",
+  "result": "PASS",
+  "exit_code": 0,
+  "records_vs_committed": {
+   "cull-small-parts-cpu.json": {
+    "committed": {
+     "checks": 119,
+     "failures": 0,
+     "exit_status": 0
+    },
+    "run90": {
+     "checks": 119,
+     "failures": 0,
+     "exit_status": 0
+    }
+   }
+  },
+  "rewritten_files": 1,
+  "copies": "/tmp/x3-run90-candidate/results-cull/",
+  "lock": {
+   "lock_wait_seconds": 3.500000000000031e-06,
+   "child_elapsed_seconds": 5.195541958,
+   "exit_code": 0
+  },
+  "run89_innermost": {
+   "result": "PASS",
+   "checks": 153,
+   "failures": 0,
+   "exit_status": 0,
+   "previous": "153 checks (Run82)"
+  },
+  "reading": "119/0 = the committed record of 9a668e81 (153 at Run83: the --cull-small-parts-scope checks went with the option)"
+ },
+ "cull_census": {
+  "command": "cd /tmp/x3-run90-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run90-candidate/lock-timings-census.json python3 verification/probe/run_cull_census.py (after /usr/bin/python3 verification/probe/build_cull_census.py, host)",
+  "why_run": "cull_census.*, log_tiers.h changed",
+  "result": "PASS",
+  "exit_code": 0,
+  "records_vs_committed": {
+   "cull-census-cpu.json": {
+    "committed": {
+     "checks": 119,
+     "failures": 0,
+     "exit_status": 0
+    },
+    "run90": {
+     "checks": 119,
+     "failures": 0,
+     "exit_status": 0
+    }
+   }
+  },
+  "rewritten_files": 1,
+  "copies": "/tmp/x3-run90-candidate/results-census/",
+  "lock": {
+   "lock_wait_seconds": 42.094559125,
+   "child_elapsed_seconds": 5.724751290999997,
+   "exit_code": 0
+  },
+  "run89_innermost": {
+   "reused_from": "run81",
+   "run80_result": "PASS 119/0"
+  }
+ },
+ "chase_fire": {
+  "command": "cd /tmp/x3-run90-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run90-candidate/lock-timings-chasefire.json python3 verification/probe/run_chase_fire.py",
+  "why_run": "chase_camera.cpp, chase_fire.cpp, telemetry.h changed",
+  "result": "PASS",
+  "exit_code": 0,
+  "records_vs_committed": {
+   "chase-fire-summary.json": {
+    "committed": {
+     "passed": true
+    },
+    "run90": {
+     "passed": true
+    }
+   }
+  },
+  "rewritten_files": 1,
+  "copies": "/tmp/x3-run90-candidate/results-chasefire/",
+  "lock": {
+   "lock_wait_seconds": 3.458000000001321e-06,
+   "child_elapsed_seconds": 22.733898458000002,
+   "exit_code": 0
+  },
+  "run89_innermost": {
+   "result": "PASS",
+   "cases": 4,
+   "checks": 307,
+   "failures": 0,
+   "runtime_verified": true,
+   "source_and_binary_stable": true,
+   "binary_sha256": "eea0af11e755b262c04d129a8641f9e269951dffdef97be6f7c4e9123679cea8",
+   "versus_committed": "mode check counts equal; binary and chase_camera.h source hashes differ (chase FOV compensation)"
+  },
+  "reading": "4 modes, 250+22+13+22 = 307 checks, 0 failures (= Run82 entry)"
+ },
+ "chase_transition_cpu": {
+  "command": "cd /tmp/x3-run90-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run90-candidate/lock-timings-chasetrans.json python3 verification/probe/run_chase_transition_cpu.py (after /usr/bin/python3 verification/probe/build_chase_transition_cpu.py, host)",
+  "why_run": "chase_camera.cpp, chase_transition.cpp, telemetry.h changed (a dropped provenance section at Run89; rerun because its closure changed in code)",
+  "result": "PASS",
+  "exit_code": 0,
+  "records_vs_committed": {
+   "chase-restore-cpu.json": {
+    "committed": {
+     "checks": 771,
+     "failures": 0,
+     "exit_status": 0
+    },
+    "run90": {
+     "checks": 771,
+     "failures": 0,
+     "exit_status": 0
+    }
+   }
+  },
+  "rewritten_files": 1,
+  "copies": "/tmp/x3-run90-candidate/results-chasetrans/",
+  "lock": {
+   "lock_wait_seconds": 4.917000000000116e-06,
+   "child_elapsed_seconds": 5.734179083,
+   "exit_code": 0
+  },
+  "previous": "chase-restore-cpu.json committed 771/0"
+ },
+ "collide_query_phases": {
+  "command": "cd /tmp/x3-run90-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run90-candidate/lock-timings-collide.json python3 verification/probe/run_collide_query_phases.py (after /usr/bin/python3 verification/probe/build_collide_query_phases.py, host)",
+  "why_run": "collide_box_cull/memo/narrow_census/query_phases.cpp, log_tiers.h changed (not in the Run89 record; its closure covers the other collide fixtures' production sources)",
+  "result": "PASS",
+  "exit_code": 0,
+  "records_vs_committed": {
+   "collide-query-phases.json": {
+    "committed": {
+     "checks": 142,
+     "failures": 0,
+     "exit_status": 0
+    },
+    "run90": {
+     "checks": 142,
+     "failures": 0,
+     "exit_status": 0
+    }
+   }
+  },
+  "rewritten_files": 1,
+  "copies": "/tmp/x3-run90-candidate/results-collide/",
+  "lock": {
+   "lock_wait_seconds": 3.1669999999983656e-06,
+   "child_elapsed_seconds": 8.463801333,
+   "exit_code": 0
+  },
+  "previous": "collide-query-phases.json committed 142/0"
+ },
+ "motion_output": {
+  "command": "cd /tmp/x3-run90-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run90-candidate/lock-timings-motion.json python3 verification/probe/run_motion_output.py",
+  "why_run": "capture.cpp, motion_output.*, temporal pass, fog and shadow sources, the fixture and the runner changed in code (reuse-deps.json, comment-only.json)",
+  "corpus": "/tmp/x3-shader-sweep/programs (751 entries) present at start, not modified",
+  "status": "PASS",
+  "passed": true,
+  "cases": 231,
+  "case_lines_in_output": 247,
+  "case_lines_nonzero_exit": 0,
+  "checks": 346382,
+  "binaries": {
+   "verification/probe/build/motion_output_fixture.exe": "c75a95d4c1858b1b2aa37f0fb6614a1b8b437d34c2d48e2af3ade792db6ba7c9",
+   "verification/probe/build/motion-output-seam/d3d9.dll": "77e45e78aebc5102751070e0fe5ffefa2c679c6b30ab02994c6e2bee55918b62",
+   "build/d3d9.dll": "e2e6fbc5e1968b90a65c585afb0acf76655533ed1130f6d84616691a6f5954f0"
+  },
+  "binaries_note": "the suite fresh-builds the fixture and seam DLL from f9cceb17 source in the worktree probe build directory; bytes differ from the candidate (seam build)",
+  "copies": "/tmp/x3-run90-candidate/results-motion/, /tmp/x3-run90-candidate/motion-summary-run90.json",
+  "per_case": {
+   "command": "python3 /tmp/x3-run90-candidate/motion_cases.py /tmp/x3-run90-candidate/motion-summary-run90.json",
+   "output": "/tmp/x3-run90-candidate/motion-cases-vs-committed.json",
+   "vs_committed_2026_09_26": {
+    "cases": [
+     231,
+     231
+    ],
+    "checks": [
+     346382,
+     346382
+    ],
+    "missing": [],
+    "extra": [],
+    "differing": {}
+   },
+   "vs_run89": {
+    "cases": [
+     233,
+     231
+    ],
+    "checks": [
+     346838,
+     346382
+    ],
+    "deleted": {
+     "seam-taa-region-hold-ignored": 164,
+     "seam-taa-taps16": 164,
+     "seam-taa-thin-taps16-refused": 164,
+     "seam-thin-vote-far-on-source-both": 61,
+     "seam-thin-vote-far-on-source-screen": 61
+    },
+    "added": {
+     "seam-exit-path": 8,
+     "seam-log-tiers": 47,
+     "seam-taa-no-filter-refused": 103
+    },
+    "differing_common": {}
+   },
+   "violations": [],
+   "reading": "every one of the 231 cases equals verification/results/logging-tiers/motion-cases-2026-09-26.json (231 / 346,382); versus Run89 exactly the documented moves: 5 deleted by 9a668e81 (614 checks), 3 added (seam-taa-no-filter-refused 103, seam-log-tiers 47, seam-exit-path 8); the 228 common cases have equal check counts"
+  },
+  "comparison_to_run89": {
+   "command": "python3 verification/results/sky-history-default/compare_motion_output.py /tmp/x3-run89-candidate/motion-summary-run89.json /tmp/x3-run90-candidate/motion-summary-run90.json",
+   "output": "/tmp/x3-run90-candidate/motion-compare-run89.out",
+   "cases": [
+    233,
+    231
+   ],
+   "missing": "['seam-taa-region-hold-ignored', 'seam-taa-taps16', 'seam-taa-thin-taps16-refused', 'seam-thin-vote-far-on-source-both', 'seam-thin-vote-far-on-source-screen']",
+   "added": "['seam-exit-path', 'seam-log-tiers', 'seam-taa-no-filter-refused']",
+   "checks": [
+    346838,
+    346382
+   ],
+   "cases_with_differing_stable_fields": 4,
+   "differing": [
+    "seam-thin-vote-far-on",
+    "seam-thin-vote-far-on-owner",
+    "seam-thin-vote-hostile",
+    "seam-thin-vote-near-on"
+   ],
+   "reading": "the 4 thin-vote cases with differing stable fields keep their check counts: source_rows now carry the one configured vote row and unvoted_flagged is 0, the documented effect of removing X3M_TAA_THIN_REGION_SOURCE in 9a668e81 (the vote is the only source; run_motion_output.py thin_region_source_rows)"
+  },
+  "comparison_to_committed_summary": {
+   "output": "/tmp/x3-run90-candidate/motion-compare-committed.out",
+   "cases": [
+    234,
+    231
+   ],
+   "checks": [
+    337330,
+    346382
+   ],
+   "reading": "not a reference: verification/results/bottle-X3/motion-output-summary.json at HEAD is from 80394271 (234 cases, before the single-map removal); the per-case reference is logging-tiers/motion-cases-2026-09-26.json"
+  },
+  "lock": {
+   "lock_wait_seconds": 4.8339999999987004e-06,
+   "child_elapsed_seconds": 592.546227292,
+   "exit_code": 0
+  }
+ },
+ "sun_share_live": {
+  "command": "cd /tmp/x3-run90-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run90-candidate/lock-timings-sunshare.json python3 verification/probe/run_sun_share_live.py --fixture verification/probe/build/motion_output_fixture.exe --dll verification/probe/build/motion-output-seam/d3d9.dll",
+  "why_run": "capture.cpp and the sun/shadow sources changed; fixture = the motion runner's fresh build at f9cceb17",
+  "passed": true,
+  "cases": 25,
+  "case_names_vs_committed": {
+   "removed": [
+    "shadow_apply"
+   ],
+   "added": [
+    "shadow_apply_no_cascades"
+   ]
+  },
+  "run89": "25 cases passed=True",
+  "copies": "/tmp/x3-run90-candidate/results-sunshare/",
+  "lock": {
+   "lock_wait_seconds": 3.0840000000004197e-06,
+   "child_elapsed_seconds": 49.169468292000005,
+   "exit_code": 0
+  }
+ },
+ "sun_occlusion": {
+  "command": "cd /tmp/x3-run90-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run90-candidate/lock-timings-sunocc.json python3 verification/probe/run_sun_occlusion.py",
+  "why_run": "brief; closure includes capture.h (changed)",
+  "passed": true,
+  "hook": {
+   "checks": 74,
+   "failures": 0,
+   "exit_status": 0
+  },
+  "gpu": {
+   "checks": 128,
+   "result": {
+    "checks": 128,
+    "failures": 0,
+    "verdict": "PASS"
+   },
+   "exit_status": 0,
+   "failed_checks": 0
+  },
+  "run89": "hook 74/74, gpu 128/128",
+  "copies": "/tmp/x3-run90-candidate/results-sunocc/",
+  "lock": {
+   "lock_wait_seconds": 3.2919999999984906e-06,
+   "child_elapsed_seconds": 6.683951,
+   "exit_code": 0
+  }
+ },
+ "fog_route_bridge": {
+  "commands": [
+   "python3 verification/probe/fog_route_bridge_build.py --production-root /tmp/x3-run90-candidate/src --spatial-root /tmp/x3-run90-candidate/src --asset-data /tmp/x3-run90-candidate/build/generated/fog_field --output /tmp/x3-run90-candidate/route/build",
+   "python3 verification/probe/fog_route_bridge_build.py --baseline --production-root /tmp/x3-run76-candidate/baseline-6f16dbf6 --spatial-root /tmp/x3-run76-candidate/baseline-6f16dbf6 --asset-data /tmp/x3-run90-candidate/build/generated/fog_field --output /tmp/x3-run90-candidate/route/baseline-build",
+   "python3 verification/probe/fog_route_bridge_run.py build-exit --output /tmp/x3-run90-candidate/route",
+   "cd /tmp/x3-run90-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run90-candidate/lock-timings-route.json python3 verification/probe/fog_route_bridge_run.py run --output /tmp/x3-run90-candidate/route --cases /tmp/x3-fog-family-gpu-inputs-final/cases.txt",
+   "python3 verification/probe/fog_route_bridge_run.py check --output /tmp/x3-run90-candidate/route --summary /tmp/x3-run90-candidate/route/summary.json"
+  ],
+  "why_run": "motion_output_fog_inc.h, fog_pass.cpp/.h, fog_look_math.h and the bridge sources changed in code",
+  "result": "PASS",
+  "result_line": "PASS bridge_checks=32039 exit_checks=4",
+  "build_exit": {
+   "dll_sha256": "c083eb39778950ceac4d28ccc295f33d224043a6bb29ae8bfca9f9e4e1f5a04e",
+   "executable_sha256": "fd829e476d054ef6d6301b758e2823256615f0ec80bfdc46ee0198c49bc1509b"
+  },
+  "per_name_vs_run89": {
+   "command": "python3 verification/results/run70-candidate-audit.py bridge /tmp/x3-run89-candidate/route/bridge.log /tmp/x3-run90-candidate/route/bridge.log",
+   "output": "/tmp/x3-run90-candidate/route-bridge-names.json",
+   "checks": [
+    41877,
+    32039
+   ],
+   "names": [
+    110,
+    95
+   ],
+   "only_run89": 15,
+   "only_run90": 0,
+   "count_changed": {
+    "native_card_LastError_preserved": [
+     6941,
+     5307
+    ],
+    "native_card_forward_once": [
+     6941,
+     5307
+    ],
+    "once_only_hook_fallback_guard": [
+     6939,
+     5305
+    ],
+    "one_fog_transaction_maximum": [
+     6939,
+     5305
+    ],
+    "route_RT1_RT2_bytes": [
+     6939,
+     5305
+    ],
+    "route_pass_state_restored": [
+     6939,
+     5305
+    ]
+   }
+  },
+  "reading": "the 15 shadow_ab_* names went with --fog-shadow-pass (9a668e81); the six per-frame names fall 6,941 -> 5,307 (per-frame count, timing-dependent first fill; the volumetric-fog ledger records 31,907 after the removal); every check PASS, exit_checks 4",
+  "versus_run89": "PASS bridge_checks=41877 exit_checks=4",
+  "lock": {
+   "lock_wait_seconds": 2.917000000001585e-06,
+   "child_elapsed_seconds": 61.639752,
+   "exit_code": 0
+  }
+ },
+ "fog_pass": {
+  "commands": [
+   "python3 verification/probe/fog_density_shader_run.py build --output /tmp/x3-run90-candidate/fogpass --asset-data /tmp/x3-run90-candidate/build/generated/fog_field --reference /tmp/x3-run67-fog-ref --scale4-reference /tmp/x3-run77-fog-ref-scale4",
+   "python3 tools/analysis/fog_density_shader_reference.py --asset-data /tmp/x3-run90-candidate/build/generated/fog_field --output /tmp/x3-run90-candidate/fogref",
+   "cd /tmp/x3-run90-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run90-candidate/lock-timings-fogshader.json python3 verification/probe/fog_density_shader_run.py run --output /tmp/x3-run90-candidate/fogpass --reference /tmp/x3-run90-candidate/fogref --scale4-reference /tmp/x3-run77-fog-ref-scale4",
+   "python3 verification/probe/fog_density_shader_run.py check --output /tmp/x3-run90-candidate/fogpass --reference /tmp/x3-run90-candidate/fogref --scale4-reference /tmp/x3-run77-fog-ref-scale4"
+  ],
+  "why_run": "fog_density_field_inc.h, fog_dust_motes_ps.hlsl, fog_shadow_grid_inc.h, fog_pass.cpp/.h changed since Run89 (the closure is byte-identical to 9a668e81, whose committed summary is PASS 28/28)",
+  "result": "PASS",
+  "gates_true": 28,
+  "gates": 28,
+  "gate_names_equal_committed": true,
+  "fixture_checks": 29,
+  "pass_fixture": {
+   "checks": 130,
+   "state_restorations": 1136,
+   "atlas_comparisons": 16,
+   "atlas_differing_bytes": 0
+  },
+  "motes_cases": 26,
+  "equal_to_committed": {
+   "pass_off_hashes": true,
+   "reference": true,
+   "shaders": true,
+   "fixture_checks": true
+  },
+  "look_reference_difference": "exporter_sha256 and a far_bins field only (the kept /tmp/x3-run77-fog-ref-scale4 came from an older exporter); cases_sha256 and reference_sha256 equal",
+  "reference_regenerated": "/tmp/x3-run90-candidate/fogref: cases_sha256 ccd6e0d8..., reference_sha256 38a6eb99... = the committed summary reference (the old /tmp/x3-run67-fog-ref still carries the removed grid cases)",
+  "versus_run89": "Run89 reused the Run81 run (checks=178, 52 gates); 28 gates / pass 130 is the post-removal figure of the volumetric-fog ledger (2026-09-25)",
+  "output": "/tmp/x3-run90-candidate/fogpass/summary.json",
+  "lock": {
+   "lock_wait_seconds": 3.3340000000006698e-06,
+   "child_elapsed_seconds": 103.517508167,
+   "exit_code": 0
+  }
+ },
+ "ownership_integration": {
+  "command": "cd /tmp/x3-run90-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run90-candidate/lock-timings-integration.json python3 verification/probe/run_ownership_integration.py",
+  "verifier": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/verify_ownership_integration.py (host) -> exit 0",
+  "why_run": "the runner fresh-builds a Release d3d9.dll of the whole tree (every changed production source)",
+  "result": "PASS",
+  "cases_run": 26,
+  "cases_total": 26,
+  "verification": {
+   "result": "PASS",
+   "cases": {
+    "off-smoke": {
+     "devices": 2,
+     "destroyed": 2,
+     "reused_device_addresses": 0,
+     "scoped_geometry_records": 2,
+     "finite_metric_records": 0,
+     "known_index_draws": 0,
+     "portable_uploads": null,
+     "native_contract_rejection_reported": false,
+     "motion_configured": false,
+     "motion_enabled": false,
+     "motion_disabled_reason": "write_exclusion_unavailable",
+     "motion_replay_records": 0,
+     "admission": {
+      "enabled": false,
+      "final_factories": 1,
+      "final_devices": 2,
+      "nested_factory_witnesses": 0,
+      "admitted_roots": 0,
+      "promotions": 0,
+      "final_vetoes": 0
+     }
+    },
+    "off-capture": {
+     "devices": 2,
+     "destroyed": 2,
+     "reused_device_addresses": 0,
+     "scoped_geometry_records": 12,
+     "finite_metric_records": 0,
+     "known_index_draws": 0,
+     "portable_uploads": null,
+     "native_contract_rejection_reported": false,
+     "motion_configured": false,
+     "motion_enabled": false,
+     "motion_disabled_reason": "write_exclusion_unavailable",
+     "motion_replay_records": 0,
+     "admission": {
+      "enabled": false,
+      "final_factories": 1,
+      "final_devices": 2,
+      "nested_factory_witnesses": 0,
+      "admitted_roots": 0,
+      "promotions": 0,
+      "final_vetoes": 0
+     }
+    },
+    "off-lifetime": {
+     "devices": 16,
+     "destroyed": 16,
+     "reused_device_addresses": 14,
+     "scoped_geometry_records": 0,
+     "finite_metric_records": 0,
+     "known_index_draws": 0,
+     "portable_uploads": null,
+     "native_contract_rejection_reported": false,
+     "motion_configured": false,
+     "motion_enabled": false,
+     "motion_disabled_reason": "write_exclusion_unavailable",
+     "motion_replay_records": 0,
+     "admission": {
+      "enabled": false,
+      "final_factories": 16,
+      "final_devices": 16,
+      "nested_factory_witnesses": 0,
+      "admitted_roots": 0,
+      "promotions": 0,
+      "final_vetoes": 0
+     }
+    },
+    "off-contracts": {
+     "devices": 3,
+     "destroyed": 3,
+     "reused_device_addresses": 1,
+     "scoped_geometry_records": 0,
+     "finite_metric_records": 0,
+     "known_index_draws": 0,
+     "portable_uploads": null,
+     "native_contract_rejection_reported": false,
+     "motion_configured": false,
+     "motion_enabled": false,
+     "motion_disabled_reason": "write_exclusion_unavailable",
+     "motion_replay_records": 0,
+     "admission": {
+      "enabled": false,
+      "final_factories": 1,
+      "final_devices": 3,
+      "nested_factory_witnesses": 0,
+      "admitted_roots": 0,
+      "promotions": 0,
+      "final_vetoes": 0
+     }
+    },
+    "off-auto": {
+     "devices": 1,
+     "destroyed": 1,
+     "reused_device_addresses": 0,
+     "scoped_geometry_records": 0,
+     "finite_metric_records": 0,
+     "known_index_draws": 0,
+     "portable_uploads": null,
+     "native_contract_rejection_reported": false,
+     "motion_configured": false,
+     "motion_enabled": false,
+     "motion_disabled_reason": "write_exclusion_unavailable",
+     "motion_replay_records": 0,
+     "admission": {
+      "enabled": false,
+      "final_factories": 1,
+      "final_devices": 1,
+      "nested_factory_witnesses": 0,
+      "admitted_roots": 0,
+      "promotions": 0,
+      "final_vetoes": 0
+     }
+    },
+    "on-smoke": {
+     "devices": 2,
+     "destroyed": 2,
+     "reused_device_addresses": 0,
+     "scoped_geometry_records": 2,
+     "finite_metric_records": 0,
+     "known_index_draws": 0,
+     "portable_uploads": null,
+     "native_contract_rejection_reported": false,
+     "motion_configured": false,
+     "motion_enabled": false,
+     "motion_disabled_reason": "write_exclusion_unavailable",
+     "motion_replay_records": 0,
+     "admission": {
+      "enabled": false,
+      "final_factories": 1,
+      "final_devices": 2,
+      "nested_factory_witnesses": 0,
+      "admitted_roots": 0,
+      "promotions": 0,
+      "final_vetoes": 0
+     }
+    },
+    "on-capture": {
+     "devices": 2,
+     "destroyed": 2,
+     "reused_device_addresses": 0,
+     "scoped_geometry_records": 12,
+     "finite_metric_records": 0,
+     "known_index_draws": 0,
+     "portable_uploads": null,
+     "native_contract_rejection_reported": false,
+     "motion_configured": false,
+     "motion_enabled": false,
+     "motion_disabled_reason": "write_exclusion_unavailable",
+     "motion_replay_records": 0,
+     "admission": {
+      "enabled": false,
+      "final_factories": 1,
+      "final_devices": 2,
+      "nested_factory_witnesses": 0,
+      "admitted_roots": 0,
+      "promotions": 0,
+      "final_vetoes": 0
+     }
+    },
+    "on-lifetime": {
+     "devices": 16,
+     "destroyed": 16,
+     "reused_device_addresses": 12,
+     "scoped_geometry_records": 0,
+     "finite_metric_records": 0,
+     "known_index_draws": 0,
+     "portable_uploads": null,
+     "native_contract_rejection_reported": false,
+     "motion_configured": false,
+     "motion_enabled": false,
+     "motion_disabled_reason": "write_exclusion_unavailable",
+     "motion_replay_records": 0,
+     "admission": {
+      "enabled": false,
+      "final_factories": 16,
+      "final_devices": 16,
+      "nested_factory_witnesses": 0,
+      "admitted_roots": 0,
+      "promotions": 0,
+      "final_vetoes": 0
+     }
+    },
+    "on-contracts": {
+     "devices": 3,
+     "destroyed": 3,
+     "reused_device_addresses": 1,
+     "scoped_geometry_records": 0,
+     "finite_metric_records": 0,
+     "known_index_draws": 0,
+     "portable_uploads": null,
+     "native_contract_rejection_reported": false,
+     "motion_configured": false,
+     "motion_enabled": false,
+     "motion_disabled_reason": "write_exclusion_unavailable",
+     "motion_replay_records": 0,
+     "admission": {
+      "enabled": false,
+      "final_factories": 1,
+      "final_devices": 3,
+      "nested_factory_witnesses": 0,
+      "admitted_roots": 0,
+      "promotions": 0,
+      "final_vetoes": 0
+     }
+    },
+    "on-auto": {
+     "devices": 1,
+     "destroyed": 1,
+     "reused_device_addresses": 0,
+     "scoped_geometry_records": 0,
+     "finite_metric_records": 0,
+     "known_index_draws": 0,
+     "portable_uploads": null,
+     "native_contract_rejection_reported": false,
+     "motion_configured": false,
+     "motion_enabled": false,
+     "motion_disabled_reason": "write_exclusion_unavailable",
+     "motion_replay_records": 0,
+     "admission": {
+      "enabled": false,
+      "final_factories": 1,
+      "final_devices": 1,
+      "nested_factory_witnesses": 0,
+      "admitted_roots": 0,
+      "promotions": 0,
+      "final_vetoes": 0
+     }
+    },
+    "depth_only-smoke": {
+     "devices": 2,
+     "destroyed": 2,
+     "reused_device_addresses": 0,
+     "scoped_geometry_records": 2,
+     "finite_metric_records": 0,
+     "known_index_draws": 0,
+     "portable_uploads": null,
+     "native_contract_rejection_reported": false,
+     "motion_configured": false,
+     "motion_enabled": false,
+     "motion_disabled_reason": "write_exclusion_unavailable",
+     "motion_replay_records": 0,
+     "admission": {
+      "enabled": false,
+      "final_factories": 1,
+      "final_devices": 2,
+      "nested_factory_witnesses": 0,
+      "admitted_roots": 0,
+      "promotions": 0,
+      "final_vetoes": 0
+     }
+    },
+    "copy_depth-auto": {
+     "devices": 1,
+     "destroyed": 1,
+     "reused_device_addresses": 0,
+     "scoped_geometry_records": 0,
+     "finite_metric_records": 0,
+     "known_index_draws": 0,
+     "portable_uploads": null,
+     "native_contract_rejection_reported": false,
+     "motion_configured": false,
+     "motion_enabled": false,
+     "motion_disabled_reason": "write_exclusion_unavailable",
+     "motion_replay_records": 0,
+     "admission": {
+      "enabled": false,
+      "final_factories": 1,
+      "final_devices": 1,
+      "nested_factory_witnesses": 0,
+      "admitted_roots": 0,
+      "promotions": 0,
+      "final_vetoes": 0
+     }
+    },
+    "scene_depth-auto": {
+     "devices": 1,
+     "destroyed": 1,
+     "reused_device_addresses": 0,
+     "scoped_geometry_records": 0,
+     "finite_metric_records": 0,
+     "known_index_draws": 0,
+     "portable_uploads": null,
+     "native_contract_rejection_reported": false,
+     "motion_configured": false,
+     "motion_enabled": false,
+     "motion_disabled_reason": "write_exclusion_unavailable",
+     "motion_replay_records": 0,
+     "admission": {
+      "enabled": false,
+      "final_factories": 1,
+      "final_devices": 1,
+      "nested_factory_witnesses": 0,
+      "admitted_roots": 0,
+      "promotions": 0,
+      "final_vetoes": 0
+     }
+    },
+    "scene_only-smoke": {
+     "devices": 2,
+     "destroyed": 2,
+     "reused_device_addresses": 0,
+     "scoped_geometry_records": 2,
+     "finite_metric_records": 0,
+     "known_index_draws": 0,
+     "portable_uploads": null,
+     "native_contract_rejection_reported": false,
+     "motion_configured": false,
+     "motion_enabled": false,
+     "motion_disabled_reason": "write_exclusion_unavailable",
+     "motion_replay_records": 0,
+     "admission": {
+      "enabled": false,
+      "final_factories": 1,
+      "final_devices": 2,
+      "nested_factory_witnesses": 0,
+      "admitted_roots": 0,
+      "promotions": 0,
+      "final_vetoes": 0
+     }
+    },
+    "object_requested-smoke": {
+     "devices": 2,
+     "destroyed": 2,
+     "reused_device_addresses": 0,
+     "scoped_geometry_records": 2,
+     "finite_metric_records": 0,
+     "known_index_draws": 0,
+     "portable_uploads": null,
+     "native_contract_rejection_reported": false,
+     "motion_configured": false,
+     "motion_enabled": false,
+     "motion_disabled_reason": "write_exclusion_unavailable",
+     "motion_replay_records": 0,
+     "admission": {
+      "enabled": false,
+      "final_factories": 1,
+      "final_devices": 2,
+      "nested_factory_witnesses": 0,
+      "admitted_roots": 0,
+      "promotions": 0,
+      "final_vetoes": 0
+     }
+    },
+    "finite_on-smoke": {
+     "devices": 2,
+     "destroyed": 2,
+     "reused_device_addresses": 0,
+     "scoped_geometry_records": 2,
+     "finite_metric_records": 8,
+     "known_index_draws": 0,
+     "portable_uploads": null,
+     "native_contract_rejection_reported": false,
+     "motion_configured": false,
+     "motion_enabled": false,
+     "motion_disabled_reason": "write_exclusion_unavailable",
+     "motion_replay_records": 0,
+     "admission": {
+      "enabled": false,
+      "final_factories": 1,
+      "final_devices": 2,
+      "nested_factory_witnesses": 0,
+      "admitted_roots": 0,
+      "promotions": 0,
+      "final_vetoes": 0
+     }
+    },
+    "finite_on-capture": {
+     "devices": 2,
+     "destroyed": 2,
+     "reused_device_addresses": 0,
+     "scoped_geometry_records": 12,
+     "finite_metric_records": 16,
+     "known_index_draws": 8,
+     "portable_uploads": {
+      "devices": 2,
+      "uploads_per_device": 3,
+      "publications_per_device": 3,
+      "scans_per_device": 3,
+      "classified_bytes_per_device": 126,
+      "partial_vertex_upload_bytes": 60,
+      "whole_index_upload_bytes": 6,
+      "source_position_layout": "POSITIONT remains unsupported",
+      "cumulative_samples_not_summed": true
+     },
+     "native_contract_rejection_reported": false,
+     "motion_configured": false,
+     "motion_enabled": false,
+     "motion_disabled_reason": "write_exclusion_unavailable",
+     "motion_replay_records": 0,
+     "admission": {
+      "enabled": false,
+      "final_factories": 1,
+      "final_devices": 2,
+      "nested_factory_witnesses": 0,
+      "admitted_roots": 0,
+      "promotions": 0,
+      "final_vetoes": 0
+     }
+    },
+    "finite_without_ownership-capture": {
+     "devices": 2,
+     "destroyed": 2,
+     "reused_device_addresses": 0,
+     "scoped_geometry_records": 12,
+     "finite_metric_records": 16,
+     "known_index_draws": 0,
+     "portable_uploads": null,
+     "native_contract_rejection_reported": false,
+     "motion_configured": false,
+     "motion_enabled": false,
+     "motion_disabled_reason": "write_exclusion_unavailable",
+     "motion_replay_records": 0,
+     "admission": {
+      "enabled": false,
+      "final_factories": 1,
+      "final_devices": 2,
+      "nested_factory_witnesses": 0,
+      "admitted_roots": 0,
+      "promotions": 0,
+      "final_vetoes": 0
+     }
+    },
+    "motion_requested-auto": {
+     "devices": 1,
+     "destroyed": 1,
+     "reused_device_addresses": 0,
+     "scoped_geometry_records": 0,
+     "finite_metric_records": 3,
+     "known_index_draws": 0,
+     "portable_uploads": null,
+     "native_contract_rejection_reported": false,
+     "motion_configured": true,
+     "motion_enabled": false,
+     "motion_disabled_reason": "write_exclusion_unavailable",
+     "motion_replay_records": 0,
+     "admission": {
+      "enabled": false,
+      "final_factories": 1,
+      "final_devices": 1,
+      "nested_factory_witnesses": 0,
+      "admitted_roots": 0,
+      "promotions": 0,
+      "final_vetoes": 0
+     }
+    },
+    "motion_without_prereqs-capture": {
+     "devices": 2,
+     "destroyed": 2,
+     "reused_device_addresses": 0,
+     "scoped_geometry_records": 12,
+     "finite_metric_records": 0,
+     "known_index_draws": 0,
+     "portable_uploads": null,
+     "native_contract_rejection_reported": false,
+     "motion_configured": false,
+     "motion_enabled": false,
+     "motion_disabled_reason": "write_exclusion_unavailable",
+     "motion_replay_records": 0,
+     "admission": {
+      "enabled": false,
+      "final_factories": 1,
+      "final_devices": 2,
+      "nested_factory_witnesses": 0,
+      "admitted_roots": 0,
+      "promotions": 0,
+      "final_vetoes": 0
+     }
+    },
+    "admission_on-smoke": {
+     "devices": 2,
+     "destroyed": 2,
+     "reused_device_addresses": 0,
+     "scoped_geometry_records": 2,
+     "finite_metric_records": 0,
+     "known_index_draws": 0,
+     "portable_uploads": null,
+     "native_contract_rejection_reported": false,
+     "motion_configured": false,
+     "motion_enabled": false,
+     "motion_disabled_reason": "write_exclusion_unavailable",
+     "motion_replay_records": 0,
+     "admission": {
+      "enabled": true,
+      "final_factories": 1,
+      "final_devices": 2,
+      "nested_factory_witnesses": 0,
+      "admitted_roots": 126,
+      "promotions": 0,
+      "final_vetoes": 0
+     }
+    },
+    "admission_on-capture": {
+     "devices": 2,
+     "destroyed": 2,
+     "reused_device_addresses": 0,
+     "scoped_geometry_records": 12,
+     "finite_metric_records": 0,
+     "known_index_draws": 0,
+     "portable_uploads": null,
+     "native_contract_rejection_reported": false,
+     "motion_configured": false,
+     "motion_enabled": false,
+     "motion_disabled_reason": "write_exclusion_unavailable",
+     "motion_replay_records": 0,
+     "admission": {
+      "enabled": true,
+      "final_factories": 1,
+      "final_devices": 2,
+      "nested_factory_witnesses": 0,
+      "admitted_roots": 194,
+      "promotions": 0,
+      "final_vetoes": 0
+     }
+    },
+    "admission_on-lifetime": {
+     "devices": 16,
+     "destroyed": 16,
+     "reused_device_addresses": 13,
+     "scoped_geometry_records": 0,
+     "finite_metric_records": 0,
+     "known_index_draws": 0,
+     "portable_uploads": null,
+     "native_contract_rejection_reported": false,
+     "motion_configured": false,
+     "motion_enabled": false,
+     "motion_disabled_reason": "write_exclusion_unavailable",
+     "motion_replay_records": 0,
+     "admission": {
+      "enabled": true,
+      "final_factories": 16,
+      "final_devices": 16,
+      "nested_factory_witnesses": 16,
+      "admitted_roots": 176,
+      "promotions": 0,
+      "final_vetoes": 0
+     }
+    },
+    "admission_on-contracts": {
+     "devices": 3,
+     "destroyed": 3,
+     "reused_device_addresses": 1,
+     "scoped_geometry_records": 0,
+     "finite_metric_records": 0,
+     "known_index_draws": 0,
+     "portable_uploads": null,
+     "native_contract_rejection_reported": false,
+     "motion_configured": false,
+     "motion_enabled": false,
+     "motion_disabled_reason": "write_exclusion_unavailable",
+     "motion_replay_records": 0,
+     "admission": {
+      "enabled": true,
+      "final_factories": 1,
+      "final_devices": 3,
+      "nested_factory_witnesses": 0,
+      "admitted_roots": 547,
+      "promotions": 0,
+      "final_vetoes": 3
+     }
+    },
+    "admission_on-auto": {
+     "devices": 1,
+     "destroyed": 1,
+     "reused_device_addresses": 0,
+     "scoped_geometry_records": 0,
+     "finite_metric_records": 0,
+     "known_index_draws": 0,
+     "portable_uploads": null,
+     "native_contract_rejection_reported": false,
+     "motion_configured": false,
+     "motion_enabled": false,
+     "motion_disabled_reason": "write_exclusion_unavailable",
+     "motion_replay_records": 0,
+     "admission": {
+      "enabled": true,
+      "final_factories": 1,
+      "final_devices": 1,
+      "nested_factory_witnesses": 0,
+      "admitted_roots": 17,
+      "promotions": 0,
+      "final_vetoes": 0
+     }
+    },
+    "admission_native-smoke": {
+     "devices": 2,
+     "destroyed": 2,
+     "reused_device_addresses": 0,
+     "scoped_geometry_records": 2,
+     "finite_metric_records": 0,
+     "known_index_draws": 0,
+     "portable_uploads": null,
+     "native_contract_rejection_reported": false,
+     "motion_configured": false,
+     "motion_enabled": false,
+     "motion_disabled_reason": "write_exclusion_unavailable",
+     "motion_replay_records": 0,
+     "admission": {
+      "enabled": true,
+      "final_factories": 1,
+      "final_devices": 2,
+      "nested_factory_witnesses": 0,
+      "admitted_roots": 49,
+      "promotions": 0,
+      "final_vetoes": 2
+     }
+    }
+   },
+   "limits": [
+    "Motion option cases establish configuration gates and synthetic-executable refusal, not successful replay or temporal consumption.",
+    "Synthetic DLL integration, not gameplay validation.",
+    "Direct3D9Ex remains native and uninstrumented.",
+    "Finite capture verifies readable managed upload/index evidence while POSITIONT/UP inputs remain ineligible; no XYZ or live motion candidate is established.",
+    "Original-preserving depth-copy allocation smoke only; numerical/content behavior has a separate fixture."
+   ],
+   "current_sources_and_binaries_match": true
+  },
+  "dll_sha256": "e2cc8dbdccdca2b5029805c58e15767ba5ad56173d90182ad9fef996b4846778",
+  "versus_run89": "26 cases PASS -> 26/26",
+  "copies": "/tmp/x3-run90-candidate/results-integration/",
+  "lock": {
+   "lock_wait_seconds": 4.208000000002071e-06,
+   "child_elapsed_seconds": 137.568573583,
+   "exit_code": 0
+  }
+ },
+ "ownership_integration_fallback": {
+  "command": "cd /tmp/x3-run90-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run90-candidate/lock-timings-fallback.json python3 verification/probe/run_ownership_integration_fallback.py",
+  "result": "NOT RUN (runner refused before Wine)",
+  "exit_code": 1,
+  "reason": "AssertionError: Build all current production components first",
+  "reading": "run with the fresh integration manifest in place (before the restore); the Run86 harness defect (production_link_inputs misses fog_field_assets.cpp) still refuses, as at Run89",
+  "lock": {
+   "lock_wait_seconds": 3.4590000000007948e-06,
+   "child_elapsed_seconds": 0.15887720900000002,
+   "exit_code": 1
+  }
+ },
+ "ownership": {
+  "reused_from": "run89",
+  "reason": "include closure (34 files, runner and build script) byte-identical to Run89: git diff --stat e2db7813 f9cceb17 -- <closure> is empty",
+  "dependency_paths_checked": [
+   "src/ownership/README.md",
+   "src/ownership/application_admission.cpp",
+   "src/ownership/application_admission.h",
+   "src/ownership/application_admission_abi.cpp",
+   "src/ownership/application_admission_abi.h",
+   "src/ownership/buffer_lock_observation.h",
+   "src/ownership/clone_upload_abi.cpp",
+   "src/ownership/clone_upload_abi.h",
+   "src/ownership/clone_upload_core.h",
+   "src/ownership/clone_upload_observer.h",
+   "src/ownership/clone_upload_observer_inc.h",
+   "src/ownership/d3d9_classes_inc.h",
+   "src/ownership/d3d9_forwarders_inc.h",
+   "src/ownership/d3d9_ownership.cpp",
+   "src/ownership/d3d9_ownership.h",
+   "src/ownership/execution_state.cpp",
+   "src/ownership/execution_state.h",
+   "src/ownership/finite_buffer_evidence.cpp",
+   "src/ownership/finite_buffer_evidence.h",
+   "src/ownership/portable_managed_upload.cpp",
+   "src/ownership/portable_managed_upload.h",
+   "src/ownership/surface_lease_core.h",
+   "src/ownership/surface_lock_observation.h",
+   "src/proxy/fade_region_math.h",
+   "src/proxy/locked_prefix_core.h",
+   "src/proxy/sse_scalar.h",
+   "tools/ownership/generate_d3d9_forwarders.py",
+   "verification/probe/bottle.py",
+   "verification/probe/build_admission_dependencies.sh",
+   "verification/probe/build_ownership.sh",
+   "verification/probe/game_guard.py",
+   "verification/probe/ownership_fixture.cpp",
+   "verification/probe/run_ownership.py",
+   "verification/probe/verify_ownership.py"
+  ],
+  "dependency_check": "/tmp/x3-run90-candidate/reuse_deps.py -> /tmp/x3-run90-candidate/reuse-deps.json",
+  "run89_entry": {
+   "reused_from": "run88",
+   "reason": "include closure (30 files, runner and build script) byte-identical to Run88: git diff --stat 79aafc8b e2db7813 -- <closure> is empty; the fixture does not compile capture.cpp, motion_output* or the shadow replay/apply passes",
+   "dependency_paths_checked": [
+    "src/ownership/README.md",
+    "src/ownership/application_admission.cpp",
+    "src/ownership/application_admission.h",
+    "src/ownership/application_admission_abi.cpp",
+    "src/ownership/application_admission_abi.h",
+    "src/ownership/buffer_lock_observation.h",
+    "src/ownership/clone_upload_abi.cpp",
+    "src/ownership/clone_upload_abi.h",
+    "src/ownership/clone_upload_core.h",
+    "src/ownership/clone_upload_observer.h",
+    "src/ownership/clone_upload_observer_inc.h",
+    "src/ownership/d3d9_classes_inc.h",
+    "src/ownership/d3d9_forwarders_inc.h",
+    "src/ownership/d3d9_ownership.cpp",
+    "src/ownership/d3d9_ownership.h",
+    "src/ownership/execution_state.cpp",
+    "src/ownership/execution_state.h",
+    "src/ownership/finite_buffer_evidence.cpp",
+    "src/ownership/finite_buffer_evidence.h",
+    "src/ownership/portable_managed_upload.cpp",
+    "src/ownership/portable_managed_upload.h",
+    "src/ownership/surface_lease_core.h",
+    "src/ownership/surface_lock_observation.h",
+    "src/proxy/fade_region_math.h",
+    "src/proxy/locked_prefix_core.h",
+    "src/proxy/sse_scalar.h",
+    "verification/probe/build_admission_dependencies.sh",
+    "verification/probe/build_ownership.sh",
+    "verification/probe/ownership_fixture.cpp",
+    "verification/probe/run_ownership.py"
+   ],
+   "dependency_check": "/tmp/x3-run89-candidate/reuse_deps.py -> /tmp/x3-run89-candidate/reuse-deps.json",
+   "run88_entry": {
+    "reused_from": "run87",
+    "reason": "include closure (30 files, runner and build script) byte-identical to Run87: git diff --stat 22593133 79aafc8b -- <closure> is empty; the fixture does not compile capture.cpp, motion_output*, loading_trace* or mesh_adjacency_fast*",
+    "dependency_paths_checked": [
+     "src/ownership/README.md",
+     "src/ownership/application_admission.cpp",
+     "src/ownership/application_admission.h",
+     "src/ownership/application_admission_abi.cpp",
+     "src/ownership/application_admission_abi.h",
+     "src/ownership/buffer_lock_observation.h",
+     "src/ownership/clone_upload_abi.cpp",
+     "src/ownership/clone_upload_abi.h",
+     "src/ownership/clone_upload_core.h",
+     "src/ownership/clone_upload_observer.h",
+     "src/ownership/clone_upload_observer_inc.h",
+     "src/ownership/d3d9_classes_inc.h",
+     "src/ownership/d3d9_forwarders_inc.h",
+     "src/ownership/d3d9_ownership.cpp",
+     "src/ownership/d3d9_ownership.h",
+     "src/ownership/execution_state.cpp",
+     "src/ownership/execution_state.h",
+     "src/ownership/finite_buffer_evidence.cpp",
+     "src/ownership/finite_buffer_evidence.h",
+     "src/ownership/portable_managed_upload.cpp",
+     "src/ownership/portable_managed_upload.h",
+     "src/ownership/surface_lease_core.h",
+     "src/ownership/surface_lock_observation.h",
+     "src/proxy/fade_region_math.h",
+     "src/proxy/locked_prefix_core.h",
+     "src/proxy/sse_scalar.h",
+     "verification/probe/build_admission_dependencies.sh",
+     "verification/probe/build_ownership.sh",
+     "verification/probe/ownership_fixture.cpp",
+     "verification/probe/run_ownership.py"
+    ],
+    "dependency_check": "/tmp/x3-run88-candidate/reuse_deps.py -> /tmp/x3-run88-candidate/reuse-deps.json",
+    "run87_entry": {
+     "reused_from": "run86",
+     "reason": "include closure byte-identical to Run85 (git diff --stat 53e7aba5 22593133 -- <closure> empty); the Run85 record carries no ownership section, so the Run86 entry is nested: it was run on the effects-era ownership layer (d3d9_ownership.*, d3d9_forwarders_inc.h upload-time texture keys), which 479cd036 reverted byte-for-byte to the Run85 code; no Wine run of the current ownership code is in a candidate record",
+     "dependency_paths_checked": [
+      "src/ownership/README.md",
+      "src/ownership/application_admission.cpp",
+      "src/ownership/application_admission.h",
+      "src/ownership/application_admission_abi.cpp",
+      "src/ownership/application_admission_abi.h",
+      "src/ownership/buffer_lock_observation.h",
+      "src/ownership/clone_upload_abi.cpp",
+      "src/ownership/clone_upload_abi.h",
+      "src/ownership/clone_upload_core.h",
+      "src/ownership/clone_upload_observer.h",
+      "src/ownership/clone_upload_observer_inc.h",
+      "src/ownership/d3d9_classes_inc.h",
+      "src/ownership/d3d9_forwarders_inc.h",
+      "src/ownership/d3d9_ownership.cpp",
+      "src/ownership/d3d9_ownership.h",
+      "src/ownership/execution_state.cpp",
+      "src/ownership/execution_state.h",
+      "src/ownership/finite_buffer_evidence.cpp",
+      "src/ownership/finite_buffer_evidence.h",
+      "src/ownership/portable_managed_upload.cpp",
+      "src/ownership/portable_managed_upload.h",
+      "src/ownership/surface_lease_core.h",
+      "src/ownership/surface_lock_observation.h",
+      "src/proxy/fade_region_math.h",
+      "src/proxy/locked_prefix_core.h",
+      "src/proxy/sse_scalar.h",
+      "verification/probe/build_admission_dependencies.sh",
+      "verification/probe/build_ownership.sh",
+      "verification/probe/ownership_fixture.cpp",
+      "verification/probe/run_ownership.py"
+     ],
+     "dependency_check": "/tmp/x3-run87-candidate/reuse_deps.py -> /tmp/x3-run87-candidate/reuse-deps.json",
+     "run86_entry": {
+      "command": "cd /tmp/x3-run86-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run86-candidate/lock-timings-ownership.json python3 verification/probe/run_ownership.py",
+      "verifier": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/verify_ownership.py (host)",
+      "why_run": "d3d9_ownership.* and the forwarders changed",
+      "result": "PASS",
+      "baseline": {
+       "checks": 370,
+       "failures": 0
+      },
+      "wrapped": {
+       "checks": 661,
+       "failures": 0
+      },
+      "backend_observations_equal": true,
+      "shared_hresult_outcomes_equal": true,
+      "versus_committed": "370/0 and 661/0, equal to the committed ownership-verification.json",
+      "copies": "/tmp/x3-run86-candidate/results-ownership/",
+      "lock": {
+       "lock_wait_seconds": 3.4590000000007948e-06,
+       "child_elapsed_seconds": 12.121875333,
+       "exit_code": 0
+      }
+     }
+    }
+   }
+  }
+ },
+ "ownership_admission": {
+  "reused_from": "run89",
+  "reason": "include closure (33 files, runner and build script) byte-identical to Run89: git diff --stat e2db7813 f9cceb17 -- <closure> is empty",
+  "dependency_paths_checked": [
+   "src/ownership/README.md",
+   "src/ownership/application_admission.cpp",
+   "src/ownership/application_admission.h",
+   "src/ownership/application_admission_abi.cpp",
+   "src/ownership/application_admission_abi.h",
+   "src/ownership/buffer_lock_observation.h",
+   "src/ownership/clone_upload_abi.cpp",
+   "src/ownership/clone_upload_abi.h",
+   "src/ownership/clone_upload_core.h",
+   "src/ownership/clone_upload_observer.h",
+   "src/ownership/clone_upload_observer_inc.h",
+   "src/ownership/d3d9_classes_inc.h",
+   "src/ownership/d3d9_forwarders_inc.h",
+   "src/ownership/d3d9_ownership.cpp",
+   "src/ownership/d3d9_ownership.h",
+   "src/ownership/execution_state.cpp",
+   "src/ownership/execution_state.h",
+   "src/ownership/finite_buffer_evidence.cpp",
+   "src/ownership/finite_buffer_evidence.h",
+   "src/ownership/portable_managed_upload.cpp",
+   "src/ownership/portable_managed_upload.h",
+   "src/ownership/surface_lease_core.h",
+   "src/ownership/surface_lock_observation.h",
+   "src/proxy/fade_region_math.h",
+   "src/proxy/locked_prefix_core.h",
+   "src/proxy/sse_scalar.h",
+   "tools/ownership/generate_d3d9_forwarders.py",
+   "verification/probe/bottle.py",
+   "verification/probe/build_admission_dependencies.sh",
+   "verification/probe/build_ownership_admission.sh",
+   "verification/probe/game_guard.py",
+   "verification/probe/ownership_admission_fixture.cpp",
+   "verification/probe/run_ownership_admission.py"
+  ],
+  "dependency_check": "/tmp/x3-run90-candidate/reuse_deps.py -> /tmp/x3-run90-candidate/reuse-deps.json",
+  "run89_entry": {
+   "reused_from": "run88",
+   "reason": "include closure (30 files, runner and build script) byte-identical to Run88: git diff --stat 79aafc8b e2db7813 -- <closure> is empty; the fixture does not compile capture.cpp, motion_output* or the shadow replay/apply passes",
+   "dependency_paths_checked": [
+    "src/ownership/README.md",
+    "src/ownership/application_admission.cpp",
+    "src/ownership/application_admission.h",
+    "src/ownership/application_admission_abi.cpp",
+    "src/ownership/application_admission_abi.h",
+    "src/ownership/buffer_lock_observation.h",
+    "src/ownership/clone_upload_abi.cpp",
+    "src/ownership/clone_upload_abi.h",
+    "src/ownership/clone_upload_core.h",
+    "src/ownership/clone_upload_observer.h",
+    "src/ownership/clone_upload_observer_inc.h",
+    "src/ownership/d3d9_classes_inc.h",
+    "src/ownership/d3d9_forwarders_inc.h",
+    "src/ownership/d3d9_ownership.cpp",
+    "src/ownership/d3d9_ownership.h",
+    "src/ownership/execution_state.cpp",
+    "src/ownership/execution_state.h",
+    "src/ownership/finite_buffer_evidence.cpp",
+    "src/ownership/finite_buffer_evidence.h",
+    "src/ownership/portable_managed_upload.cpp",
+    "src/ownership/portable_managed_upload.h",
+    "src/ownership/surface_lease_core.h",
+    "src/ownership/surface_lock_observation.h",
+    "src/proxy/fade_region_math.h",
+    "src/proxy/locked_prefix_core.h",
+    "src/proxy/sse_scalar.h",
+    "verification/probe/build_admission_dependencies.sh",
+    "verification/probe/build_ownership_admission.sh",
+    "verification/probe/ownership_admission_fixture.cpp",
+    "verification/probe/run_ownership_admission.py"
+   ],
+   "dependency_check": "/tmp/x3-run89-candidate/reuse_deps.py -> /tmp/x3-run89-candidate/reuse-deps.json",
+   "run88_entry": {
+    "reused_from": "run87",
+    "reason": "include closure (30 files, runner and build script) byte-identical to Run87: git diff --stat 22593133 79aafc8b -- <closure> is empty; the fixture does not compile capture.cpp, motion_output*, loading_trace* or mesh_adjacency_fast*",
+    "dependency_paths_checked": [
+     "src/ownership/README.md",
+     "src/ownership/application_admission.cpp",
+     "src/ownership/application_admission.h",
+     "src/ownership/application_admission_abi.cpp",
+     "src/ownership/application_admission_abi.h",
+     "src/ownership/buffer_lock_observation.h",
+     "src/ownership/clone_upload_abi.cpp",
+     "src/ownership/clone_upload_abi.h",
+     "src/ownership/clone_upload_core.h",
+     "src/ownership/clone_upload_observer.h",
+     "src/ownership/clone_upload_observer_inc.h",
+     "src/ownership/d3d9_classes_inc.h",
+     "src/ownership/d3d9_forwarders_inc.h",
+     "src/ownership/d3d9_ownership.cpp",
+     "src/ownership/d3d9_ownership.h",
+     "src/ownership/execution_state.cpp",
+     "src/ownership/execution_state.h",
+     "src/ownership/finite_buffer_evidence.cpp",
+     "src/ownership/finite_buffer_evidence.h",
+     "src/ownership/portable_managed_upload.cpp",
+     "src/ownership/portable_managed_upload.h",
+     "src/ownership/surface_lease_core.h",
+     "src/ownership/surface_lock_observation.h",
+     "src/proxy/fade_region_math.h",
+     "src/proxy/locked_prefix_core.h",
+     "src/proxy/sse_scalar.h",
+     "verification/probe/build_admission_dependencies.sh",
+     "verification/probe/build_ownership_admission.sh",
+     "verification/probe/ownership_admission_fixture.cpp",
+     "verification/probe/run_ownership_admission.py"
+    ],
+    "dependency_check": "/tmp/x3-run88-candidate/reuse_deps.py -> /tmp/x3-run88-candidate/reuse-deps.json",
+    "run87_entry": {
+     "reused_from": "run86",
+     "reason": "include closure byte-identical to Run85 (git diff --stat 53e7aba5 22593133 -- <closure> empty); the Run85 record carries no ownership section, so the Run86 entry is nested: it was run on the effects-era ownership layer (d3d9_ownership.*, d3d9_forwarders_inc.h upload-time texture keys), which 479cd036 reverted byte-for-byte to the Run85 code; no Wine run of the current ownership code is in a candidate record",
+     "dependency_paths_checked": [
+      "src/ownership/README.md",
+      "src/ownership/application_admission.cpp",
+      "src/ownership/application_admission.h",
+      "src/ownership/application_admission_abi.cpp",
+      "src/ownership/application_admission_abi.h",
+      "src/ownership/buffer_lock_observation.h",
+      "src/ownership/clone_upload_abi.cpp",
+      "src/ownership/clone_upload_abi.h",
+      "src/ownership/clone_upload_core.h",
+      "src/ownership/clone_upload_observer.h",
+      "src/ownership/clone_upload_observer_inc.h",
+      "src/ownership/d3d9_classes_inc.h",
+      "src/ownership/d3d9_forwarders_inc.h",
+      "src/ownership/d3d9_ownership.cpp",
+      "src/ownership/d3d9_ownership.h",
+      "src/ownership/execution_state.cpp",
+      "src/ownership/execution_state.h",
+      "src/ownership/finite_buffer_evidence.cpp",
+      "src/ownership/finite_buffer_evidence.h",
+      "src/ownership/portable_managed_upload.cpp",
+      "src/ownership/portable_managed_upload.h",
+      "src/ownership/surface_lease_core.h",
+      "src/ownership/surface_lock_observation.h",
+      "src/proxy/fade_region_math.h",
+      "src/proxy/locked_prefix_core.h",
+      "src/proxy/sse_scalar.h",
+      "verification/probe/build_admission_dependencies.sh",
+      "verification/probe/build_ownership_admission.sh",
+      "verification/probe/ownership_admission_fixture.cpp",
+      "verification/probe/run_ownership_admission.py"
+     ],
+     "dependency_check": "/tmp/x3-run87-candidate/reuse_deps.py -> /tmp/x3-run87-candidate/reuse-deps.json",
+     "run86_entry": {
+      "command": "cd /tmp/x3-run86-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run86-candidate/lock-timings-admission.json python3 verification/probe/run_ownership_admission.py",
+      "why_run": "d3d9_ownership.* changed",
+      "result": "PASS",
+      "modes": 12,
+      "checks": 147,
+      "per_mode": {
+       "disabled": 14,
+       "enabled": 33,
+       "private0": 12,
+       "private1": 12,
+       "private2": 12,
+       "private3": 12,
+       "private4": 12,
+       "private5": 12,
+       "private6": 12,
+       "shared": 6,
+       "foreign": 5,
+       "software": 5
+      },
+      "median_ns": {
+       "disabled": 5.564,
+       "enabled": 1288.962
+      },
+      "copy": "/tmp/x3-run86-candidate/results-admission/ownership-admission-summary.json",
+      "lock": {
+       "lock_wait_seconds": 2.999999999999531e-06,
+       "child_elapsed_seconds": 96.090812958,
+       "exit_code": 0
+      }
+     }
+    }
+   }
+  }
+ },
+ "execution_ownership": {
+  "reused_from": "run89",
+  "reason": "include closure (33 files, runner and build script) byte-identical to Run89: git diff --stat e2db7813 f9cceb17 -- <closure> is empty",
+  "dependency_paths_checked": [
+   "src/ownership/README.md",
+   "src/ownership/application_admission.cpp",
+   "src/ownership/application_admission.h",
+   "src/ownership/application_admission_abi.cpp",
+   "src/ownership/application_admission_abi.h",
+   "src/ownership/buffer_lock_observation.h",
+   "src/ownership/clone_upload_abi.cpp",
+   "src/ownership/clone_upload_abi.h",
+   "src/ownership/clone_upload_core.h",
+   "src/ownership/clone_upload_observer.h",
+   "src/ownership/clone_upload_observer_inc.h",
+   "src/ownership/d3d9_classes_inc.h",
+   "src/ownership/d3d9_forwarders_inc.h",
+   "src/ownership/d3d9_ownership.cpp",
+   "src/ownership/d3d9_ownership.h",
+   "src/ownership/execution_state.cpp",
+   "src/ownership/execution_state.h",
+   "src/ownership/finite_buffer_evidence.cpp",
+   "src/ownership/finite_buffer_evidence.h",
+   "src/ownership/portable_managed_upload.cpp",
+   "src/ownership/portable_managed_upload.h",
+   "src/ownership/surface_lease_core.h",
+   "src/ownership/surface_lock_observation.h",
+   "src/proxy/fade_region_math.h",
+   "src/proxy/locked_prefix_core.h",
+   "src/proxy/sse_scalar.h",
+   "tools/ownership/generate_d3d9_forwarders.py",
+   "verification/probe/bottle.py",
+   "verification/probe/build_admission_dependencies.sh",
+   "verification/probe/build_execution_ownership.sh",
+   "verification/probe/execution_ownership_fixture.cpp",
+   "verification/probe/game_guard.py",
+   "verification/probe/run_execution_ownership.py"
+  ],
+  "dependency_check": "/tmp/x3-run90-candidate/reuse_deps.py -> /tmp/x3-run90-candidate/reuse-deps.json",
+  "run89_entry": {
+   "reused_from": "run88",
+   "reason": "include closure (30 files, runner and build script) byte-identical to Run88: git diff --stat 79aafc8b e2db7813 -- <closure> is empty; the fixture does not compile capture.cpp, motion_output* or the shadow replay/apply passes",
+   "dependency_paths_checked": [
+    "src/ownership/README.md",
+    "src/ownership/application_admission.cpp",
+    "src/ownership/application_admission.h",
+    "src/ownership/application_admission_abi.cpp",
+    "src/ownership/application_admission_abi.h",
+    "src/ownership/buffer_lock_observation.h",
+    "src/ownership/clone_upload_abi.cpp",
+    "src/ownership/clone_upload_abi.h",
+    "src/ownership/clone_upload_core.h",
+    "src/ownership/clone_upload_observer.h",
+    "src/ownership/clone_upload_observer_inc.h",
+    "src/ownership/d3d9_classes_inc.h",
+    "src/ownership/d3d9_forwarders_inc.h",
+    "src/ownership/d3d9_ownership.cpp",
+    "src/ownership/d3d9_ownership.h",
+    "src/ownership/execution_state.cpp",
+    "src/ownership/execution_state.h",
+    "src/ownership/finite_buffer_evidence.cpp",
+    "src/ownership/finite_buffer_evidence.h",
+    "src/ownership/portable_managed_upload.cpp",
+    "src/ownership/portable_managed_upload.h",
+    "src/ownership/surface_lease_core.h",
+    "src/ownership/surface_lock_observation.h",
+    "src/proxy/fade_region_math.h",
+    "src/proxy/locked_prefix_core.h",
+    "src/proxy/sse_scalar.h",
+    "verification/probe/build_admission_dependencies.sh",
+    "verification/probe/build_execution_ownership.sh",
+    "verification/probe/execution_ownership_fixture.cpp",
+    "verification/probe/run_execution_ownership.py"
+   ],
+   "dependency_check": "/tmp/x3-run89-candidate/reuse_deps.py -> /tmp/x3-run89-candidate/reuse-deps.json",
+   "run88_entry": {
+    "reused_from": "run87",
+    "reason": "include closure (30 files, runner and build script) byte-identical to Run87: git diff --stat 22593133 79aafc8b -- <closure> is empty; the fixture does not compile capture.cpp, motion_output*, loading_trace* or mesh_adjacency_fast*",
+    "dependency_paths_checked": [
+     "src/ownership/README.md",
+     "src/ownership/application_admission.cpp",
+     "src/ownership/application_admission.h",
+     "src/ownership/application_admission_abi.cpp",
+     "src/ownership/application_admission_abi.h",
+     "src/ownership/buffer_lock_observation.h",
+     "src/ownership/clone_upload_abi.cpp",
+     "src/ownership/clone_upload_abi.h",
+     "src/ownership/clone_upload_core.h",
+     "src/ownership/clone_upload_observer.h",
+     "src/ownership/clone_upload_observer_inc.h",
+     "src/ownership/d3d9_classes_inc.h",
+     "src/ownership/d3d9_forwarders_inc.h",
+     "src/ownership/d3d9_ownership.cpp",
+     "src/ownership/d3d9_ownership.h",
+     "src/ownership/execution_state.cpp",
+     "src/ownership/execution_state.h",
+     "src/ownership/finite_buffer_evidence.cpp",
+     "src/ownership/finite_buffer_evidence.h",
+     "src/ownership/portable_managed_upload.cpp",
+     "src/ownership/portable_managed_upload.h",
+     "src/ownership/surface_lease_core.h",
+     "src/ownership/surface_lock_observation.h",
+     "src/proxy/fade_region_math.h",
+     "src/proxy/locked_prefix_core.h",
+     "src/proxy/sse_scalar.h",
+     "verification/probe/build_admission_dependencies.sh",
+     "verification/probe/build_execution_ownership.sh",
+     "verification/probe/execution_ownership_fixture.cpp",
+     "verification/probe/run_execution_ownership.py"
+    ],
+    "dependency_check": "/tmp/x3-run88-candidate/reuse_deps.py -> /tmp/x3-run88-candidate/reuse-deps.json",
+    "run87_entry": {
+     "reused_from": "run86",
+     "reason": "include closure byte-identical to Run85 (git diff --stat 53e7aba5 22593133 -- <closure> empty); the Run85 record carries no ownership section, so the Run86 entry is nested: it was run on the effects-era ownership layer (d3d9_ownership.*, d3d9_forwarders_inc.h upload-time texture keys), which 479cd036 reverted byte-for-byte to the Run85 code; no Wine run of the current ownership code is in a candidate record",
+     "dependency_paths_checked": [
+      "src/ownership/README.md",
+      "src/ownership/application_admission.cpp",
+      "src/ownership/application_admission.h",
+      "src/ownership/application_admission_abi.cpp",
+      "src/ownership/application_admission_abi.h",
+      "src/ownership/buffer_lock_observation.h",
+      "src/ownership/clone_upload_abi.cpp",
+      "src/ownership/clone_upload_abi.h",
+      "src/ownership/clone_upload_core.h",
+      "src/ownership/clone_upload_observer.h",
+      "src/ownership/clone_upload_observer_inc.h",
+      "src/ownership/d3d9_classes_inc.h",
+      "src/ownership/d3d9_forwarders_inc.h",
+      "src/ownership/d3d9_ownership.cpp",
+      "src/ownership/d3d9_ownership.h",
+      "src/ownership/execution_state.cpp",
+      "src/ownership/execution_state.h",
+      "src/ownership/finite_buffer_evidence.cpp",
+      "src/ownership/finite_buffer_evidence.h",
+      "src/ownership/portable_managed_upload.cpp",
+      "src/ownership/portable_managed_upload.h",
+      "src/ownership/surface_lease_core.h",
+      "src/ownership/surface_lock_observation.h",
+      "src/proxy/fade_region_math.h",
+      "src/proxy/locked_prefix_core.h",
+      "src/proxy/sse_scalar.h",
+      "verification/probe/build_admission_dependencies.sh",
+      "verification/probe/build_execution_ownership.sh",
+      "verification/probe/execution_ownership_fixture.cpp",
+      "verification/probe/run_execution_ownership.py"
+     ],
+     "dependency_check": "/tmp/x3-run87-candidate/reuse_deps.py -> /tmp/x3-run87-candidate/reuse-deps.json",
+     "run86_entry": {
+      "command": "cd /tmp/x3-run86-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run86-candidate/lock-timings-execution.json python3 verification/probe/run_execution_ownership.py",
+      "why_run": "src/ownership/* changed",
+      "result": "PASS",
+      "checks": 184,
+      "completed_cases": 23,
+      "versus_committed": "execution-ownership.txt equal to the committed report apart from timing lines (RESULT PASS checks=184 failures=0)",
+      "lock": {
+       "lock_wait_seconds": 3.583000000001446e-06,
+       "child_elapsed_seconds": 18.705276583,
+       "exit_code": 0
+      }
+     }
+    }
+   }
+  }
+ },
+ "fog_family_file_fixture": {
+  "reused_from": "run89",
+  "reason": "include closure (7 files, runner and build script) byte-identical to Run89: git diff --stat e2db7813 f9cceb17 -- <closure> is empty",
+  "dependency_paths_checked": [
+   "src/renderer/fog_field_assets.cpp",
+   "src/renderer/fog_field_assets.h",
+   "verification/probe/bottle.py",
+   "verification/probe/fog_family_file_fixture.cpp",
+   "verification/probe/fog_family_gpu.py",
+   "verification/probe/fog_family_gpu_cases_inc.h",
+   "verification/probe/fog_spatial_reference.py"
+  ],
+  "dependency_check": "/tmp/x3-run90-candidate/reuse_deps.py -> /tmp/x3-run90-candidate/reuse-deps.json",
+  "run89_entry": {
+   "reused_from": "run88",
+   "reason": "include closure (4 files, runner and build script) byte-identical to Run88: git diff --stat 79aafc8b e2db7813 -- <closure> is empty; the fixture does not compile capture.cpp, motion_output* or the shadow replay/apply passes",
+   "dependency_paths_checked": [
+    "src/renderer/fog_field_assets.cpp",
+    "src/renderer/fog_field_assets.h",
+    "verification/probe/fog_family_file_fixture.cpp",
+    "verification/probe/fog_family_gpu.py"
+   ],
+   "dependency_check": "/tmp/x3-run89-candidate/reuse_deps.py -> /tmp/x3-run89-candidate/reuse-deps.json",
+   "run88_entry": {
+    "reused_from": "run87",
+    "reason": "include closure (4 files, runner and build script) byte-identical to Run87: git diff --stat 22593133 79aafc8b -- <closure> is empty; the fixture does not compile capture.cpp, motion_output*, loading_trace* or mesh_adjacency_fast*",
+    "dependency_paths_checked": [
+     "src/renderer/fog_field_assets.cpp",
+     "src/renderer/fog_field_assets.h",
+     "verification/probe/fog_family_file_fixture.cpp",
+     "verification/probe/fog_family_gpu.py"
+    ],
+    "dependency_check": "/tmp/x3-run88-candidate/reuse_deps.py -> /tmp/x3-run88-candidate/reuse-deps.json",
+    "run87_entry": {
+     "command": "cd /tmp/x3-run87-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run87-candidate/lock-timings-fogfam.json \"/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine\" --bottle X3 --no-update --dll d3d9=b --workdir /tmp/x3-run87-candidate/fogfam-selftest /tmp/x3-run87-candidate/build/fog_family_file_fixture.exe --self-test Z:/tmp/x3-run87-candidate/fogfam-selftest",
+     "why_run": "fog_field_assets.cpp (load_family_file, 28cbd43e) and the fixture changed since Run85",
+     "result": "PASS",
+     "result_line": "PASS fog_family_file cases=68 compiled=14",
+     "empty_table_case": "CASE empty_table status=loaded families=0 packets=0",
+     "cases": 68,
+     "exe_sha256": "d4bc79ed7e96df5da3fb8cd799717ff0555291c31cbbc922fd2bcf17a0d73a7f",
+     "versus_run86": "68 cases, as in Run86 (same loader source)",
+     "lock": {
+      "lock_wait_seconds": 3.625000000000156e-06,
+      "child_elapsed_seconds": 5.584568375,
+      "exit_code": 0
+     },
+     "previous_entry": {
+      "command": "cd /tmp/x3-run86-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run86-candidate/lock-timings-fogfam.json \"/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine\" --bottle X3 --no-update --dll d3d9=b --workdir /tmp/x3-run86-candidate/fogfam-selftest /tmp/x3-run86-candidate/build/fog_family_file_fixture.exe --self-test Z:/tmp/x3-run86-candidate/fogfam-selftest",
+      "why_run": "fog_field_assets.cpp load_family_file and the fixture changed (28cbd43e)",
+      "result": "PASS",
+      "result_line": "PASS fog_family_file cases=68 compiled=14",
+      "empty_table_case": "CASE empty_table status=loaded families=0 packets=0",
+      "exe_sha256": "a69bbe26d4d133e2823003631d1bc13c40332ac3b10ecb906cf07ed21510cb8f",
+      "versus_run80": "67 -> 68 cases (empty_table added)",
+      "lock": {
+       "lock_wait_seconds": 3.0840000000004197e-06,
+       "child_elapsed_seconds": 2.0399395410000003,
+       "exit_code": 0
+      },
+      "previous_entry": {
+       "reused_from": "run84",
+       "reason": "no such source changed since 46cd4f9d: git diff --stat 46cd4f9d 53e7aba5 -- <the 4 files of its include closure, runner and build script> is empty",
+       "dependency_paths_checked": [
+        "src/renderer/fog_field_assets.cpp",
+        "src/renderer/fog_field_assets.h",
+        "verification/probe/fog_family_file_fixture.cpp",
+        "verification/probe/fog_family_gpu.py"
+       ],
+       "dependency_check": "/tmp/x3-run85-candidate/reuse_deps.py -> /tmp/x3-run85-candidate/reuse-deps.json",
+       "run84_entry": {
+        "reused_from": "run83",
+        "dependency_paths_checked": [
+         "src/renderer/fog_field_assets.cpp",
+         "src/renderer/fog_field_assets.h",
+         "verification/probe/fog_family_file_fixture.cpp",
+         "verification/probe/fog_family_gpu.py"
+        ],
+        "dependency_check": "/tmp/x3-run84-candidate/reuse_deps.py -> /tmp/x3-run84-candidate/reuse-deps.json",
+        "run83_entry": {
+         "reused_from": "run82",
+         "dependency_paths_checked": [
+          "src/renderer/fog_field_assets.cpp",
+          "src/renderer/fog_field_assets.h",
+          "verification/probe/fog_family_file_fixture.cpp",
+          "verification/probe/fog_family_gpu.py"
+         ],
+         "dependency_check": "/tmp/x3-run83-candidate/reuse_deps.py -> /tmp/x3-run83-candidate/reuse-deps.json",
+         "run82_entry": {
+          "reused_from": "run81",
+          "run80_result": "PASS",
+          "run80_result_line": "PASS fog_family_file cases=67 compiled=14",
+          "run80_lock": {
+           "lock_wait_seconds": 3.249999999999781e-06,
+           "child_elapsed_seconds": 2.726379042,
+           "exit_code": 0
+          }
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  }
+ },
+ "site_verifiers": {
+  "command": "python3 verification/probe/verify_game_phase_sites.py (host, read-only EXE)",
+  "result": "PASS",
+  "checks_true": 24,
+  "reason": "git diff e2db7813 f9cceb17 -- verification/probe/verify_*.py: verify_game_phase_sites.py lost the 14 audio witness rows (33 sites now), verify_lod_scale_site.py deleted with --lod-scale; the game-phase verifier was rerun (PASS, exe_identity true); the other site verifiers are unchanged and reused (run89_entry)",
+  "run89_entry": {
+   "reused_from": "run88",
+   "reason": "EXE unchanged and git diff --stat 79aafc8b e2db7813 -- verification/probe/verify_*.py verification/results/executable-identity/ is empty; no EXE patch site changed",
+   "run88_entry": {
+    "reused_from": "run87",
+    "reason": "EXE unchanged and git diff --stat 22593133 79aafc8b -- verification/probe/verify_*.py verification/results/executable-identity/ is empty; no EXE patch site changed",
+    "run87_entry": {
+     "reused_from": "run85",
+     "reason": "EXE unchanged and git diff --stat 53e7aba5 22593133 -- verification/probe/verify_*.py verification/results/executable-identity/ is empty; no EXE patch site changed",
+     "run85_entry": {
+      "reused_from": "run84",
+      "reason": "EXE unchanged and git diff --stat 46cd4f9d 53e7aba5 -- verification/probe/verify_*.py verification/results/executable-identity/ is empty",
+      "run84_entry": {
+       "reused_from": "run83",
+       "reason": "EXE unchanged and git diff --stat 80394271 46cd4f9d -- verification/probe/verify_*.py verification/results/executable-identity/ is empty",
+       "run83_entry": {
+        "executable_identity": {
+         "command": "cd verification/results/executable-identity && /usr/bin/python3 run_verifiers.py --output /tmp/x3-run83-candidate/verifiers.json",
+         "result": "PASS",
+         "anchors": 41,
+         "commit": "803942710d567f3476e6323008dfbdbce2b88330",
+         "summary": {
+          "shipped": {
+           "pass": 27,
+           "total": 27,
+           "sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab"
+          },
+          "laa_cleared": {
+           "pass": 27,
+           "total": 27,
+           "sha256": "9d8ddf43f06031f4fb21e5e700d55a2df8881c76bd8c5ce4a9af0866d6dc38c8"
+          },
+          "ntcore_4gb": {
+           "pass": 27,
+           "total": 27,
+           "sha256": "5d6b741e7269b40e2a7df850fc274d593d0b39ac647e0b0205b64737c93190c3"
+          },
+          "unknown_hash": {
+           "pass": 27,
+           "total": 27,
+           "sha256": "712693d9452a6144fe4aec404e5d7243e733000c2a57316e1e76ba3f17d2c8af"
+          }
+         },
+         "site_corrupt": {
+          "verify_chase_camera_site": {
+           "va": "0x00420e0f",
+           "identity_ok": true,
+           "result": "FAIL"
+          },
+          "verify_lod_scale_site": {
+           "va": "0x0047d44d",
+           "identity_ok": true,
+           "result": "FAIL"
+          },
+          "verify_terran_lod_site": {
+           "va": "0x0047d01c",
+           "identity_ok": true,
+           "result": "FAIL"
+          },
+          "verify_lod_occlusion_site": {
+           "va": "0x004c34f9",
+           "identity_ok": true,
+           "result": "FAIL"
+          },
+          "verify_fov_site": {
+           "va": "0x0041c9dd",
+           "identity_ok": true,
+           "result": "FAIL"
+          },
+          "verify_fov_site@setfocus": {
+           "va": "0x0042dbf8",
+           "identity_ok": true,
+           "result": "FAIL"
+          },
+          "verify_fov_site@load": {
+           "va": "0x0041c8c2",
+           "identity_ok": true,
+           "result": "FAIL"
+          },
+          "verify_sun_flare_site": {
+           "va": "0x0047e392",
+           "identity_ok": true,
+           "result": "FAIL"
+          }
+         },
+         "different_build_identity_ok": false,
+         "versus_run82": "27 verifiers per variant = Run82; corrupt-site cases 7 -> 8 (verify_fov_site@load 0x0041c8c2)"
+        },
+        "fov_site": {
+         "command": "/usr/bin/python3 verification/probe/verify_fov_site.py",
+         "result": "PASS",
+         "checks": 44,
+         "checks_passed": 44,
+         "site": "0x41c9d9",
+         "function_instructions": 201,
+         "overlapping_claims": [],
+         "incoming_window_branches": []
+        },
+        "reused_from_run82": {
+         "sun_flare_site": {
+          "command": "/usr/bin/python3 verification/probe/verify_sun_flare_site.py",
+          "result": "PASS",
+          "checks": 19,
+          "checks_passed": 19,
+          "site": "0x47e391",
+          "function_instructions": 865,
+          "overlapping_claims": [],
+          "incoming_window_branches": [],
+          "reused_from": "run82",
+          "reason": "EXE unchanged (identity matrix PASS on the same shipped sha256) and none of these verifier scripts changed in d1a4e360..80394271 (only verify_fov_site.py did)"
+         },
+         "lod_occlusion_site": {
+          "command": "/usr/bin/python3 verification/probe/verify_lod_occlusion_site.py",
+          "result": "PASS",
+          "checks": 20,
+          "checks_passed": 20,
+          "site": "0x4c34f7",
+          "function_instructions": 4695,
+          "overlapping_claims": [],
+          "incoming_window_branches": [],
+          "reused_from": "run82",
+          "reason": "EXE unchanged (identity matrix PASS on the same shipped sha256) and none of these verifier scripts changed in d1a4e360..80394271 (only verify_fov_site.py did)"
+         },
+         "terran_lod_site": {
+          "command": "/usr/bin/python3 verification/probe/verify_terran_lod_site.py",
+          "result": "PASS",
+          "checks": 16,
+          "checks_passed": 16,
+          "site": "0x47d01c",
+          "function_instructions": 373,
+          "overlapping_claims": [],
+          "incoming_window_branches": [],
+          "reused_from": "run82",
+          "reason": "EXE unchanged (identity matrix PASS on the same shipped sha256) and none of these verifier scripts changed in d1a4e360..80394271 (only verify_fov_site.py did)"
+         },
+         "cull_small_parts_site": {
+          "command": "/usr/bin/python3 verification/probe/verify_cull_small_parts_site.py",
+          "result": "PASS",
+          "checks": 21,
+          "checks_passed": 21,
+          "site": "0x47d2a2",
+          "function_instructions": 373,
+          "reused_from": "run82",
+          "reason": "EXE unchanged (identity matrix PASS on the same shipped sha256) and none of these verifier scripts changed in d1a4e360..80394271 (only verify_fov_site.py did)"
+         },
+         "cull_census_sites": {
+          "command": "/usr/bin/python3 verification/probe/verify_cull_census_sites.py",
+          "result": "PASS",
+          "checks": 21,
+          "checks_passed": 21,
+          "function_instructions": 373,
+          "reused_from": "run82",
+          "reason": "EXE unchanged (identity matrix PASS on the same shipped sha256) and none of these verifier scripts changed in d1a4e360..80394271 (only verify_fov_site.py did)"
+         },
+         "pause_sites": {
+          "command": "/usr/bin/python3 verification/results/pause-dialog-input/verify_pause_sites.py",
+          "result": "PASS",
+          "reused_from": "run82",
+          "reason": "EXE unchanged (identity matrix PASS on the same shipped sha256) and none of these verifier scripts changed in d1a4e360..80394271 (only verify_fov_site.py did)"
+         },
+         "music_restart_sites": {
+          "command": "/usr/bin/python3 verification/results/music-restart/verify_music_restart_sites.py",
+          "result": "PASS",
+          "reused_from": "run82",
+          "reason": "EXE unchanged (identity matrix PASS on the same shipped sha256) and none of these verifier scripts changed in d1a4e360..80394271 (only verify_fov_site.py did)"
+         },
+         "music_keep_writes": {
+          "command": "/usr/bin/python3 verification/results/music-restart/verify_music_keep_writes.py",
+          "result": "PASS",
+          "check_count": 48,
+          "reused_from": "run82",
+          "reason": "EXE unchanged (identity matrix PASS on the same shipped sha256) and none of these verifier scripts changed in d1a4e360..80394271 (only verify_fov_site.py did)"
+         }
+        },
+        "exe": "bottle X3 drive_c/X3/X3AP.exe (read-only), shipped (LAA set, CheckSum 0)"
+       }
+      }
+     }
+    }
+   }
+  }
+ },
+ "reuse_dependency_check": {
+  "command": "python3 /tmp/x3-run90-candidate/reuse_deps.py; python3 /tmp/x3-run90-candidate/comment_only.py",
+  "output": [
+   "/tmp/x3-run90-candidate/reuse-deps.json",
+   "/tmp/x3-run90-candidate/comment-only.json"
+  ],
+  "method": "closure of every run_*.py runner plus the Run89 hand roots: quoted C/C++ includes, path tokens and sibling-module imports of .py/.sh files; other runners and the shared infrastructure (bottle.py, wine_lock.py) are leaves; intersected with git diff --name-only e2db7813 f9cceb17; comment_only.py strips comments/whitespace",
+  "closures": 117,
+  "unchanged_closures": [
+   "application_admission",
+   "application_admission_abi",
+   "bloom_pass_timing",
+   "buffer_content",
+   "collide_front_feasibility",
+   "copied_depth",
+   "copy_depth_loss",
+   "d3d11_interop",
+   "d3d9_backend_smoke",
+   "depth_decode",
+   "depth_resolve",
+   "depth_sampling",
+   "effect_technique_lookup",
+   "execution_ownership",
+   "execution_state",
+   "exposure_statistics",
+   "fade_owner_probe",
+   "finite_buffer_evidence",
+   "finite_upload",
+   "fog_family_file_fixture",
+   "geometry_lease",
+   "geometry_lease_benchmark",
+   "gpu_backend_ab",
+   "hdr_shared_handles",
+   "hook_admission_benchmark",
+   "lav_packet_fixture",
+   "linear_emission",
+   "linear_emission_sm1",
+   "linear_emission_sm1_packed",
+   "managed_upload_contract",
+   "managed_upload_performance",
+   "material_motion",
+   "material_motion_structure",
+   "material_radiance",
+   "material_radiance_profiles",
+   "media_playback_fixture",
+   "motion_history",
+   "motion_row_history",
+   "ownership",
+   "ownership_admission",
+   "port_distance",
+   "process_admission",
+   "rigid_position_profiles",
+   "rigid_replay",
+   "rigid_retirement",
+   "scene_compositor",
+   "screen_emission_step_a",
+   "shader_slot_budget",
+   "varying_split",
+   "vertex_color_hdr",
+   "voice_asf_probe",
+   "voice_native_update",
+   "voice_startup_replica",
+   "voice_stream_probe",
+   "voice_sync_probe"
+  ],
+  "comment_only_closures": [
+   "linear_distance_fade",
+   "linear_material",
+   "object_lifetime",
+   "object_trace",
+   "sse2_abi"
+  ],
+  "code_changed_closures": 57,
+  "selection": "rerun: every Run89 qualification section whose closure changed in code, plus d3d9_exports and game_phase_cpu (brief), terran_lod_patch, collide_query_phases and chase_transition_cpu (production hook closures changed in code); reused: the four byte-identical closures; not run: research runners outside the qualification set (Open issues)",
+  "dropped_runners": "mesh_cache_hook, mesh_adjacency_cache and loading_intervals: runners deleted with their options in 9a668e81 (sections dropped); effects_stage carried as a dropped provenance section"
+ },
+ "dry_run": {
+  "command_script": "/tmp/x3-run90-candidate/run90-dryrun.sh",
+  "extractor": "/tmp/x3-run90-candidate/extract_dryrun.py",
+  "cwd": "/tmp/x3-run90-candidate/src",
+  "wrapped": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run90-candidate/lock-timings-dryrun.json sh /tmp/x3-run90-candidate/run90-dryrun.sh",
+  "form": "env -u CX_DEBUGMSG -u <13 stale X3M variables incl. X3M_DEBUG/X3M_PERF> /usr/bin/python3 tools/manage.py launch --dry-run --bottle X3 --dll-source <candidate> --direct [variant]; D: --vanilla; E: the Run 84 A stand command with X3M_MOTION_FRAME_LOG=1",
+  "flight_options": "A = --direct (default launch); B = --direct --debug --perf (the stand command); C = A + --no-shadow-cascades; D = --vanilla; E = the Run 84 A stand command of docs/archive/user-runs-completed.md",
+  "count_note": "x3m_env_count includes X3M_FIXTURE_BOTTLE=X3 inherited from the wine_lock wrapper prefix (also in Run89's 176); x3m_launcher_count excludes it",
+  "game_launched": false,
+  "output": "/tmp/x3-run90-candidate/dryrun.out",
+  "env_extract": "/tmp/x3-run90-candidate/dryrun-env.json",
+  "variants": {
+   "A_DEFAULT": {
+    "exit": 0,
+    "overrides": "d3d9=n,b",
+    "x3m_env_count": 125,
+    "x3m_launcher_count": 124,
+    "values": {
+     "X3M_FOV": "90",
+     "X3M_TAA_FAR_CLIP": "7x7",
+     "X3M_TAA_FAR_CLIP_DEFAULT": "1",
+     "X3M_TAA_FAR_STABILISER": "0.985,0,60,68,0.03,0.25",
+     "X3M_TAA_FAR_GATE": "camera",
+     "X3M_TAA_FAR_GATE_DEFAULT": "1",
+     "X3M_SUN_OCCLUSION": "1",
+     "X3M_SUN_OCCLUSION_CORE_F": "1",
+     "X3M_SUN_OCCLUSION_DEFAULT": "1",
+     "X3M_ORIGINAL_FILL": "0.01",
+     "X3M_ORIGINAL_FILL_DEFAULT": "1",
+     "X3M_WINDOW_MONITOR_RECT": "1",
+     "X3M_WINDOW_MONITOR_RECT_DEFAULT": "1",
+     "X3M_TAA": "1",
+     "X3M_HDR": "1",
+     "X3M_LOD_OCCLUSION": "all",
+     "X3M_CHASE_VIEW_RESTORE": "1",
+     "X3M_SCREEN_EMISSION_ADDITIVE": "2.0",
+     "X3M_SHADOW_CASCADE_SIZES": "2048,4096,4096,4096,2048",
+     "X3M_SHADOW_CASCADES": "250.0,1500.0,7500.0,37500.0,150000.0",
+     "X3M_SUN_SHADOW_APPLY": "1",
+     "X3M_SHADOW_REPLAY_DEPTH": "1",
+     "X3M_MUSIC_KEEP": "1",
+     "X3M_SHADOW_ALPHA_CASTERS": "1",
+     "X3M_CAPTURE_START": "999999",
+     "X3M_CAPTURE_FRAMES": "8",
+     "X3M_CAPTURE_DELAY": "300",
+     "X3M_MESH_ADJACENCY": "fast"
+    },
+    "report_lines": [
+     "fog families: ok (0 packets; 14 compiled cover 14 families, 2 refused)",
+     "lod overlay: ok (620 bodies in slots 05/06, 2.72 GB; sources unchanged; no package: ModName empty)"
+    ]
+   },
+   "B_STAND": {
+    "exit": 0,
+    "overrides": "d3d9=n,b",
+    "x3m_env_count": 127,
+    "x3m_launcher_count": 126,
+    "values": {
+     "X3M_FOV": "90",
+     "X3M_TAA_FAR_CLIP": "7x7",
+     "X3M_TAA_FAR_CLIP_DEFAULT": "1",
+     "X3M_TAA_FAR_STABILISER": "0.985,0,60,68,0.03,0.25",
+     "X3M_TAA_FAR_GATE": "camera",
+     "X3M_TAA_FAR_GATE_DEFAULT": "1",
+     "X3M_SUN_OCCLUSION": "1",
+     "X3M_SUN_OCCLUSION_CORE_F": "1",
+     "X3M_SUN_OCCLUSION_DEFAULT": "1",
+     "X3M_ORIGINAL_FILL": "0.01",
+     "X3M_ORIGINAL_FILL_DEFAULT": "1",
+     "X3M_WINDOW_MONITOR_RECT": "1",
+     "X3M_WINDOW_MONITOR_RECT_DEFAULT": "1",
+     "X3M_TAA": "1",
+     "X3M_HDR": "1",
+     "X3M_LOD_OCCLUSION": "all",
+     "X3M_CHASE_VIEW_RESTORE": "1",
+     "X3M_SCREEN_EMISSION_ADDITIVE": "2.0",
+     "X3M_SHADOW_CASCADE_SIZES": "2048,4096,4096,4096,2048",
+     "X3M_SHADOW_CASCADES": "250.0,1500.0,7500.0,37500.0,150000.0",
+     "X3M_SUN_SHADOW_APPLY": "1",
+     "X3M_SHADOW_REPLAY_DEPTH": "1",
+     "X3M_MUSIC_KEEP": "1",
+     "X3M_SHADOW_ALPHA_CASTERS": "1",
+     "X3M_CAPTURE_START": "999999",
+     "X3M_CAPTURE_FRAMES": "8",
+     "X3M_CAPTURE_DELAY": "300",
+     "X3M_MESH_ADJACENCY": "fast",
+     "X3M_DEBUG": "1",
+     "X3M_PERF": "1"
+    },
+    "report_lines": [
+     "fog families: ok (0 packets; 14 compiled cover 14 families, 2 refused)",
+     "lod overlay: ok (620 bodies in slots 05/06, 2.72 GB; sources unchanged; no package: ModName empty)"
+    ]
+   },
+   "C_NO_CASCADES": {
+    "exit": 0,
+    "overrides": "d3d9=n,b",
+    "x3m_env_count": 119,
+    "x3m_launcher_count": 118,
+    "values": {
+     "X3M_FOV": "90",
+     "X3M_TAA_FAR_CLIP": "7x7",
+     "X3M_TAA_FAR_CLIP_DEFAULT": "1",
+     "X3M_TAA_FAR_STABILISER": "0.985,0,60,68,0.03,0.25",
+     "X3M_TAA_FAR_GATE": "camera",
+     "X3M_TAA_FAR_GATE_DEFAULT": "1",
+     "X3M_SUN_OCCLUSION": "1",
+     "X3M_SUN_OCCLUSION_CORE_F": "1",
+     "X3M_SUN_OCCLUSION_DEFAULT": "1",
+     "X3M_ORIGINAL_FILL": "0.01",
+     "X3M_ORIGINAL_FILL_DEFAULT": "1",
+     "X3M_WINDOW_MONITOR_RECT": "1",
+     "X3M_WINDOW_MONITOR_RECT_DEFAULT": "1",
+     "X3M_TAA": "1",
+     "X3M_HDR": "1",
+     "X3M_LOD_OCCLUSION": "all",
+     "X3M_CHASE_VIEW_RESTORE": "1",
+     "X3M_SCREEN_EMISSION_ADDITIVE": "2.0",
+     "X3M_SHADOW_CASCADES": "0",
+     "X3M_SUN_SHADOW_APPLY": "1",
+     "X3M_SHADOW_REPLAY_DEPTH": "1",
+     "X3M_MUSIC_KEEP": "1",
+     "X3M_SHADOW_ALPHA_CASTERS": "1",
+     "X3M_CAPTURE_START": "999999",
+     "X3M_CAPTURE_FRAMES": "8",
+     "X3M_CAPTURE_DELAY": "300",
+     "X3M_MESH_ADJACENCY": "fast"
+    },
+    "report_lines": [
+     "fog families: ok (0 packets; 14 compiled cover 14 families, 2 refused)",
+     "lod overlay: ok (620 bodies in slots 05/06, 2.72 GB; sources unchanged; no package: ModName empty)"
+    ]
+   },
+   "D_VANILLA": {
+    "exit": 0,
+    "overrides": "d3d9=b",
+    "x3m_env_count": 74,
+    "x3m_launcher_count": 73,
+    "values": {
+     "X3M_ORIGINAL_FILL": "0.0",
+     "X3M_TAA": "0",
+     "X3M_HDR": "0",
+     "X3M_CHASE_VIEW_RESTORE": "0",
+     "X3M_SCREEN_EMISSION_ADDITIVE": "0",
+     "X3M_SHADOW_CASCADES": "0",
+     "X3M_SUN_SHADOW_APPLY": "0",
+     "X3M_SHADOW_REPLAY_DEPTH": "0",
+     "X3M_SHADOW_ALPHA_CASTERS": "0",
+     "X3M_CAPTURE_START": "120",
+     "X3M_CAPTURE_FRAMES": "1",
+     "X3M_MESH_ADJACENCY": "native"
+    },
+    "report_lines": []
+   },
+   "E_RUN84A": {
+    "exit": 2,
+    "overrides": null,
+    "x3m_env_count": null,
+    "x3m_launcher_count": null,
+    "values": {},
+    "report_lines": [],
+    "error": "manage.py: error: unrecognized arguments: --camera-log 1 --loading-intervals --fps-overlay --shadow-retention-census --volumetric-fog-timing --frame-phases --object-bounds-log --cull-census"
+   }
+  },
+  "b_vs_a": {
+   "X3M_DEBUG": [
+    null,
+    "1"
+   ],
+   "X3M_PERF": [
+    null,
+    "1"
+   ]
+  },
+  "c_vs_a": {
+   "X3M_FOG_DUST_MOTES": [
+    "1300,3,128",
+    "0,4,128"
+   ],
+   "X3M_FOG_MOTES_MAX_PX": [
+    "8",
+    null
+   ],
+   "X3M_SHADOW_CASCADES": [
+    "250.0,1500.0,7500.0,37500.0,150000.0",
+    "0"
+   ],
+   "X3M_SHADOW_CASCADE_ADAPTIVE_C0": [
+    "1.5",
+    null
+   ],
+   "X3M_SHADOW_CASCADE_DROP_ORDER": [
+    "importance",
+    null
+   ],
+   "X3M_SHADOW_CASCADE_MIN_FOOTPRINT": [
+    "8.0",
+    null
+   ],
+   "X3M_SHADOW_CASCADE_RECORDS": [
+    "1024,1024,2048,4096,4096",
+    null
+   ],
+   "X3M_SHADOW_CASCADE_SIZES": [
+    "2048,4096,4096,4096,2048",
+    null
+   ],
+   "X3M_SHADOW_CASTER_RETENTION": [
+    "1",
+    "0"
+   ],
+   "X3M_SHADOW_SUN_POLL": [
+    "1",
+    "0"
+   ],
+   "X3M_VOLUMETRIC_FOG": [
+    "1",
+    "0"
+   ],
+   "X3M_VOLUMETRIC_FOG_CARDS": [
+    "replace",
+    "keep"
+   ],
+   "X3M_VOLUMETRIC_FOG_RANGE": [
+    "stored",
+    "legacy"
+   ]
+  },
+  "a_vs_run89_a_default": {
+   "removed": [
+    "X3M_CAMERA_LOG",
+    "X3M_CULL_SMALL_PARTS_SCOPE",
+    "X3M_DEPTH_COPY",
+    "X3M_EMISSION_GAIN",
+    "X3M_FINITE_POSITIONS",
+    "X3M_FOG_FAR_BINS",
+    "X3M_FOG_SHADOW_PASS",
+    "X3M_FPS_OVERLAY",
+    "X3M_FRAME_END_STRIDE",
+    "X3M_FRAME_PHASES",
+    "X3M_FRAME_TIMING",
+    "X3M_FRAME_TIMING_STATE_STAMPS",
+    "X3M_GAME_PHASES",
+    "X3M_GAME_PHASE_THRESHOLD_MS",
+    "X3M_GPU_SYNC_TIMING",
+    "X3M_LIGHTMAP_EMISSIVE_GAIN",
+    "X3M_LIGHT_PHASES",
+    "X3M_LINEAR_DISTANCE_FADE",
+    "X3M_LINEAR_EMISSIONS",
+    "X3M_LINEAR_MATERIALS",
+    "X3M_LOADING_INTERVALS",
+    "X3M_LOADING_PROBES",
+    "X3M_LOOP_PHASES",
+    "X3M_MATERIAL_DIRECT_GAIN",
+    "X3M_MATERIAL_EMISSIVE_GAIN",
+    "X3M_MATERIAL_FILL",
+    "X3M_MEDIA_CUE_TRACE",
+    "X3M_MESH_ADJACENCY_DUMP",
+    "X3M_MESH_CACHE",
+    "X3M_MOTION_CAPTURE",
+    "X3M_PASS_PHASES",
+    "X3M_PROFILE",
+    "X3M_PROFILE_INTERVAL_US",
+    "X3M_RESIDUAL_PHASES",
+    "X3M_SCENE_DEPTH_CAPTURE",
+    "X3M_SCREEN_EMISSION",
+    "X3M_SCREEN_EMISSION_BOUND",
+    "X3M_SCREEN_EMISSION_GAIN",
+    "X3M_SCREEN_EMISSION_TIMING",
+    "X3M_SECTOR_BACKGROUND",
+    "X3M_SHADOW_RETENTION_CENSUS",
+    "X3M_SHADOW_SUN_TRACE",
+    "X3M_SUBMIT_PHASES",
+    "X3M_TAA_DEBUG",
+    "X3M_TAA_SENTINEL",
+    "X3M_TAA_THIN_REGION_GATE",
+    "X3M_TAA_THIN_REGION_SOURCE",
+    "X3M_TAA_THIN_REGION_SOURCE_DEFAULT",
+    "X3M_TELEMETRY",
+    "X3M_TELEMETRY_DRAW",
+    "X3M_VOLUMETRIC_FOG_TIMING"
+   ],
+   "added": [],
+   "changed": {}
+  },
+  "vanilla_vs_run89": {
+   "removed": [
+    "X3M_CAMERA_LOG",
+    "X3M_DEPTH_COPY",
+    "X3M_EMISSION_GAIN",
+    "X3M_FINITE_POSITIONS",
+    "X3M_FOG_FAR_BINS",
+    "X3M_FOG_SHADOW_PASS",
+    "X3M_FPS_OVERLAY",
+    "X3M_FRAME_END_STRIDE",
+    "X3M_FRAME_PHASES",
+    "X3M_FRAME_TIMING",
+    "X3M_FRAME_TIMING_STATE_STAMPS",
+    "X3M_GAME_PHASES",
+    "X3M_GAME_PHASE_THRESHOLD_MS",
+    "X3M_GPU_SYNC_TIMING",
+    "X3M_LIGHTMAP_EMISSIVE_GAIN",
+    "X3M_LIGHT_PHASES",
+    "X3M_LINEAR_DISTANCE_FADE",
+    "X3M_LINEAR_EMISSIONS",
+    "X3M_LINEAR_MATERIALS",
+    "X3M_LOADING_INTERVALS",
+    "X3M_LOADING_PROBES",
+    "X3M_LOOP_PHASES",
+    "X3M_MATERIAL_DIRECT_GAIN",
+    "X3M_MATERIAL_EMISSIVE_GAIN",
+    "X3M_MATERIAL_FILL",
+    "X3M_MEDIA_CUE_TRACE",
+    "X3M_MESH_ADJACENCY_DUMP",
+    "X3M_MESH_CACHE",
+    "X3M_MOTION_CAPTURE",
+    "X3M_PASS_PHASES",
+    "X3M_PROFILE",
+    "X3M_PROFILE_INTERVAL_US",
+    "X3M_RESIDUAL_PHASES",
+    "X3M_SCENE_DEPTH_CAPTURE",
+    "X3M_SCREEN_EMISSION",
+    "X3M_SCREEN_EMISSION_BOUND",
+    "X3M_SCREEN_EMISSION_GAIN",
+    "X3M_SCREEN_EMISSION_TIMING",
+    "X3M_SECTOR_BACKGROUND",
+    "X3M_SHADOW_RETENTION_CENSUS",
+    "X3M_SHADOW_SUN_TRACE",
+    "X3M_SUBMIT_PHASES",
+    "X3M_TAA_DEBUG",
+    "X3M_TAA_SENTINEL",
+    "X3M_TELEMETRY",
+    "X3M_TELEMETRY_DRAW",
+    "X3M_VOLUMETRIC_FOG_TIMING"
+   ],
+   "added": [],
+   "changed": {}
+  },
+  "dry_run_tiers": {
+   "command": "python3 verification/results/logging-tiers/dry_run_tiers.py",
+   "pass": 8,
+   "fail": 0,
+   "counts": "{'new_default': 124, 'new_debug': 125, 'new_perf': 125, 'new_debug_perf': 126, 'new_vanilla': 73, 'base_default': 150, 'base_vanilla': 99}",
+   "output": "/tmp/x3-run90-candidate/dry_run_tiers.out",
+   "dry_runs_json_equal_committed": true
+  },
+  "compare_dry_runs": {
+   "command": "python3 verification/results/launcher-defaults/compare_dry_runs.py",
+   "pass": 5,
+   "fail": 0,
+   "output": "/tmp/x3-run90-candidate/compare_dry_runs.out",
+   "comparison_json_equal_committed": true
+  },
+  "reading": "A-D exit 0. Launcher-sent X3M variables (excluding X3M_FIXTURE_BOTTLE inherited from the wrapper prefix): A default 124, B --debug --perf 126, C --no-shadow-cascades 118, D --vanilla 73 (Run89 175 / 120 on the same basis). A sends no X3M_DEBUG / X3M_PERF; B differs from A by exactly X3M_DEBUG=1 and X3M_PERF=1. A cascade sizes 2048,4096,4096,4096,2048, cascades 250,1500,7500,37500,150000. C sends X3M_SHADOW_CASCADES=0 without the cascade size/records/drop-order/adaptive/min-footprint variables and, by the launcher's pre-existing requirement, X3M_VOLUMETRIC_FOG=0 (cards keep, range legacy, dust motes 0,4,128), X3M_SHADOW_CASTER_RETENTION=0, X3M_SHADOW_SUN_POLL=0. A-C print the fog families and lod overlay report lines; D prints neither. Versus the Run89 dry runs only variables were removed (logging and removed-option variables), none added or changed in A. E (the Run 84 A stand command) exits 2: \"manage.py: error: unrecognized arguments: --camera-log 1 --loading-intervals --fps-overlay --shadow-retention-census --volumetric-fog-timing --frame-phases --object-bounds-log --cull-census\".",
+  "lock": {
+   "lock_wait_seconds": 2.9590000000002947e-06,
+   "child_elapsed_seconds": 0.589506666,
+   "exit_code": 0
+  }
+ },
+ "verdict": "DLL QUALIFIED at f9cceb17: build 0 warnings; x87 122 roots / 709 reachable / 0 violations; PE imports 232 -> 236 functions from 15 -> 14 DLLs (+10 kernel32, -6 incl. api-ms-win-crt-filesystem-l1-1-0.dll), 17 exports equal to Run89; host suite 268 modules / 2792 tests / 0 failing; motion 231 cases PASS / 346,382 checks, every case equal to logging-tiers/motion-cases-2026-09-26.json (vs Run89: 5 deleted, 3 added as documented); sun share live 25 passed=True; sun occlusion hook 74/0 gpu 128/0; fog route bridge PASS bridge_checks=32039 exit_checks=4; fog shader 28/28 gates, pass fixture 130/0; ownership integration 26/26 PASS; 19 further fixtures PASS (temporal_pass, gpu_sync_timing, bloom_pass, loading_trace, crypt_cache, resource_reader, cursor_reassert, d3d9_exports, game_phase_cpu, fov_patch, window_mode, sun_flare_fix, lod_occlusion_patch, terran_lod_patch, cull_small_parts_fixture, cull_census, chase_fire, chase_transition_cpu, collide_query_phases); game-phase site verifier PASS; dry runs A-D exit 0 (launcher variables A 124, B --debug --perf 126, C 118, D --vanilla 73; A has no X3M_DEBUG/X3M_PERF; cascade sizes 2048,4096,4096,4096,2048), E (Run 84 A command) exit 2 on the removed options; dry_run_tiers 8 PASS, compare_dry_runs 5 PASS. Reused (closure byte-identical to Run89): ownership, ownership_admission, execution_ownership, fog_family_file_fixture; ownership_integration_fallback refused by the pre-existing harness defect.",
+ "host_suite": {
+  "command": "/usr/bin/python3 verification/probe/run_host_suite.py",
+  "cwd": "/tmp/x3-run90-candidate/src",
+  "result": "PASS",
+  "modules": 268,
+  "tests": 2792,
+  "failing_modules": 0,
+  "failing": [],
+  "wall_seconds": 94.0,
+  "output": "/tmp/x3-run90-candidate/host-suite.out",
+  "versus_run89": "272/2,824 -> 268/2,792, 0 -> 0 failing"
+ },
+ "linked_audit": {
+  "command": "/usr/bin/python3 verification/probe/check_no_x87.py /tmp/x3-run90-candidate/build/d3d9.dll",
+  "result": "PASS",
+  "roots_count": 122,
+  "reachable_functions": 709,
+  "violations": 0,
+  "comparison": {
+   "run89": "119 roots / 687 reachable / 0 violations",
+   "run90": "122 roots / 709 reachable / 0 violations"
+  },
+  "import_delta": {
+   "command": "python3 verification/results/run70-candidate-audit.py pe /tmp/x3-run89-candidate/build/d3d9.dll /tmp/x3-run90-candidate/build/d3d9.dll",
+   "baseline_dll": "/tmp/x3-run89-candidate/build/d3d9.dll (sha256 0f6acab4..., rechecked equal to the Run89 record)",
+   "imported_dlls": [
+    15,
+    14
+   ],
+   "new_imported_dlls": [],
+   "removed_imported_dlls": [
+    "api-ms-win-crt-filesystem-l1-1-0.dll"
+   ],
+   "total_imported_functions": {
+    "run89": 232,
+    "run90": 236
+   },
+   "per_function_delta": {
+    "new": [
+     "kernel32.dll!CompareFileTime",
+     "kernel32.dll!DeleteFileW",
+     "kernel32.dll!FindClose",
+     "kernel32.dll!FindFirstFileW",
+     "kernel32.dll!FindNextFileW",
+     "kernel32.dll!FreeLibraryAndExitThread",
+     "kernel32.dll!GetFileAttributesExW",
+     "kernel32.dll!MoveFileExW",
+     "kernel32.dll!SetUnhandledExceptionFilter",
+     "kernel32.dll!TryAcquireSRWLockExclusive"
+    ],
+    "removed": [
+     "api-ms-win-crt-filesystem-l1-1-0.dll!_lock_file",
+     "api-ms-win-crt-filesystem-l1-1-0.dll!_unlock_file",
+     "api-ms-win-crt-math-l1-1-0.dll!truncf",
+     "api-ms-win-crt-stdio-l1-1-0.dll!_get_osfhandle",
+     "api-ms-win-crt-stdio-l1-1-0.dll!setvbuf",
+     "kernel32.dll!HeapSize"
+    ]
+   },
+   "reading": "new: ten documented kernel32 functions of the session log (rotation MoveFileExW/DeleteFileW, stale-log scan FindFirstFileW/FindNextFileW/FindClose/GetFileAttributesExW/CompareFileTime, writer exit FreeLibraryAndExitThread, TryAcquireSRWLockExclusive, SetUnhandledExceptionFilter); removed: the CRT FILE* path (_lock_file/_unlock_file/_get_osfhandle/setvbuf, so api-ms-win-crt-filesystem-l1-1-0.dll is no longer imported), truncf, HeapSize. CreateThread, events, GetTickCount64 and GetFinalPathNameByHandleW were already imported at Run89 (not in the delta). All are documented Win32/UCRT exports available on Windows 7+ (TryAcquireSRWLockExclusive, GetTickCount64 Vista/7+); strcat from api-ms-win-crt-string-l1-1-0.dll carried"
+  },
+  "exports": {
+   "count": 17,
+   "names_equal_run89": true,
+   "x3m_exports": []
+  }
+ },
+ "producer": "/tmp/x3-run90-candidate/make_record.py (this record); /tmp/x3-run90-candidate/reuse_deps.py (closures vs Run89); /tmp/x3-run90-candidate/comment_only.py; /tmp/x3-run90-candidate/w.sh (guarded Wine wrapper); /tmp/x3-run90-candidate/save_restore.sh; /tmp/x3-run90-candidate/batch.sh + /tmp/x3-run90-candidate/batch2.sh (sequential fixture steps); /tmp/x3-run90-candidate/motion_cases.py (per-case vs committed 2026-09-26 and Run89); /tmp/x3-run90-candidate/result_lines.py (records vs committed); verification/results/run70-candidate-audit.py (pe, bridge); verification/results/sky-history-default/compare_motion_output.py; dry-run /tmp/x3-run90-candidate/run90-dryrun.sh + /tmp/x3-run90-candidate/extract_dryrun.py",
+ "bottle": "X3",
+ "wine_arch": "arm64 (cxbottle.conf \"WineArch\" = \"arm64\", checked)",
+ "environment": {
+  "FEX_X87REDUCEDPRECISION": "1",
+  "WINEMSYNC": "1",
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf",
+  "checked": "grep of cxbottle.conf this session: \"WineArch\" = \"arm64\", FEX_X87REDUCEDPRECISION \"1\", WINEMSYNC \"1\""
+ },
+ "native_windows": "unverified: cross-compiled only; the added imports are documented kernel32 functions (Windows 7+), one CRT import DLL fewer, exports equal to Run89; session log, exception filter and exit path use documented Win32 APIs only",
+ "game_acceptance": "pending user launch (Run 90): x3m.log appears in the game directory (x3m.prev.log after a second launch), a default launch writes no per-frame rows (log_open, once/device rows, frame_end heartbeat at stride 3600, session_end), --debug --perf adds the tiered rows; the game exits cleanly through the menu (no hang at ExitProcess); rendering unchanged from Run89 (TAA, fog, cascades 2048,4096,4096,4096,2048)",
+ "installed": false,
+ "wall_times_seconds": {
+  "build": 45,
+  "motion": 592.5,
+  "sunshare": 49.2,
+  "sunocc": 6.7,
+  "route": 61.6,
+  "fogshader": 103.5,
+  "integration": 137.6,
+  "dryrun": 0.6,
+  "temporal": 131.5,
+  "gpusync": 2.5,
+  "bloom": 10.3,
+  "loadtrace": 30.0,
+  "crypt": 12.7,
+  "resreader": 15.3,
+  "cursor": 3.4,
+  "exports": 17.8,
+  "gamephase": 11.1,
+  "fov": 7.5,
+  "window": 8.9,
+  "sunflare": 7.2,
+  "lodocc": 6.9,
+  "terran": 9.4,
+  "cull": 5.2,
+  "census": 5.7,
+  "chasefire": 22.7,
+  "chasetrans": 5.7,
+  "collide": 8.5,
+  "host_suite": 94.0,
+  "route_builds_host": 26,
+  "fog_shader_build_host": 9,
+  "fog_reference_host": 46,
+  "cpu_fixture_builds_host": 8,
+  "task_elapsed_minutes": "about 50 (worktree 03:09, record ~03:59); includes about 10 min lost to the fog shader fixture stall"
+ },
+ "incidents": [
+  "game_guard.game_running() printed [] as a separate command before the build, the host suite, the motion runner, each batch and each fog-shader attempt; w.sh re-checks it before taking the lock for every Wine step; no Wine step of this task overlapped another",
+  "batch 1: a host build of the fog shader fixture (fog_density_shader_run.py build, no Wine) started while the batch ran made wine_lock's preflight refuse 15 queued steps (exports through dryrun, exit 75, child never started, no Wine run); the host verifier ran on stale inputs and its output was discarded; all refused steps were rerun in batch2.sh (outputs of the refused attempt in /tmp/x3-run90-candidate/refused-attempt1/)",
+  "run_fog_pass.py is historical and refuses (exit 2, 'superseded'); the Run89 fog_pass section is the stored-density fixture fog_density_shader_run.py, which was built, run and checked instead",
+  "fog shader attempt 2 used /tmp/x3-run67-fog-ref (still containing the grid cases removed on 2026-09-25): the numerics fixture stopped with 'RESULT FAIL case option grid' (child 57.3 s, exit 1; pass fixture 130/0 in the same run). The default reference was regenerated host-only into /tmp/x3-run90-candidate/fogref; its cases_sha256 ccd6e0d8... and reference_sha256 38a6eb99... equal the committed fog-density-shader/summary.json",
+  "fog shader attempt with the regenerated reference: the numerics fixture wrote all 146 images within about a minute, then stalled until the runner's 540 s timeout; the Windows process (pid 17623) stayed alive with 0 % CPU and only host threads (Cocoa run loop, idle workqueue) in a macOS sample, so the next attempt was refused by the preflight (exit 75); pid 17623 was terminated (SIGTERM) and the following attempt passed in 103.5 s (28/28 gates). Cause not established; the committed run took 51.8 s",
+  "cull_census waited 42.1 s for /tmp/x3-wine-runner.lock held by another process (no Wine command of this task was running); wine_lock serialised it as designed",
+  "run_ownership_integration_fallback.py refused before Wine (child 0.2 s, exit 1) with the fresh integration manifest in place: the Run86 harness defect 'Build all current production components first', unchanged since Run89",
+  "several committed tracked records predate the current code and differ from the rerun counts in the documented direction (bottle-X3/motion-output-summary.json 234 cases from 80394271, temporal-lattice.txt 598 from 22776b6f, gpu-sync-timing.json 30 from 614b87fb, bloom-pass-summary.json 45 from 1a778952, loading-trace-mesh-summary.json 4 cases from 2e5f1af4); per-case motion counts were compared against logging-tiers/motion-cases-2026-09-26.json, the other counts against the Run89 innermost entries; the rewrites were restored, not committed"
+ ],
+ "host_suite_note": "0 failing on the candidate tree f9cceb17",
+ "dropped_sections": {
+  "effects_stage": "the effects stage (9375a1e7) was removed from production in 479cd036; its fixture and runner no longer exist at 22593133",
+  "launcher_defect_fix": "dropped in Run89: the Run85 help fix carried since Run86; see run88-candidate-qualification.json",
+  "mesh_cache_hook": "dropped in Run90: runner and option removed in 9a668e81; see run89-candidate-qualification.json",
+  "loading_intervals": "dropped in Run90: runner and option removed in 9a668e81; see run89-candidate-qualification.json",
+  "note": "carried from Run89 (effects_stage, launcher_defect_fix); chase_transition_cpu rerun in Run90 (its own section); mesh_cache_hook and loading_intervals dropped"
+ }
+}

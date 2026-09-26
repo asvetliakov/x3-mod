@@ -2,7 +2,7 @@
 
 Archive with `python3 tools/analysis/archive_user_runs.py`.
 
-Updated 2026-09-25 (Run89 installed: single shadow map removed, cascade 3 at 4096; Run 89 A queued). Earlier: 2026-09-21 (Run56 accepted for media stability; Run57 station-flash correction accepted; fog range remains under investigation). Run 17 crypto acceptance and the first-person/chase
+Updated 2026-09-26 (Run90 installed: logging tiers, option cleanup, single shadow map removed; Run 90 A queued, Run 89 A superseded). Earlier: 2026-09-21 (Run56 accepted for media stability; Run57 station-flash correction accepted; fog range remains under investigation). Run 17 crypto acceptance and the first-person/chase
 left-centre-right diagnostic are complete and are not in this queue. The agent
 never launches the game. Only open runs keep their instructions here; a completed
 run keeps only its row in the table below. The installed build is described in [status](../status.md).
@@ -20,7 +20,8 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 
 | Run | Purpose | Sessions | Status |
 | --- | --- | ---: | --- |
-| 89 A | Run89 (single shadow map removed, cascades only; `--no-shadow-cascades` = shadows off; cascade sizes 2048,4096,4096,4096,2048): one launch with the short stand command, plus an optional short `--no-shadow-cascades` launch | 0 | Queued 2026-09-25 |
+| 90 A | Run90 (logging tiers: `--debug` / `--perf`, `x3m.log`; obsolete options and code removed; `--taa-k` / `--taa-sentinel` removed; plus Run89's single-map removal and cascade 3 at 4096): one launch with `x3run --direct --debug --perf`, a second short launch for the log rotation and exit, an optional `--no-shadow-cascades` launch | 0 | Queued 2026-09-26 |
+| 89 A | Run89 (single shadow map removed, cascades only; `--no-shadow-cascades` = shadows off; cascade sizes 2048,4096,4096,4096,2048): one launch with the short stand command, plus an optional short `--no-shadow-cascades` launch | 0 | Superseded 2026-09-26 by Run 90 A before it was flown (Run90 installed the logging tiers and the option cleanup the same night); its checks are folded into Run 90 A |
 | 88 A | Run88 (shadow pop fix, adjacency without telemetry, promoted defaults with cascade sizes 2048,4096,4096,2048,2048): one launch, short stand command (run337) | 1 | Completed 2026-09-25: all good (user); retention store never flushed (0 rows vs 18,992 in run336), probe never fired, no underflow; replay us p50 251 (was 124: two 4096 maps + live retention); defaults in force; cascade 3 bumped to 4096 afterwards (launcher default 2048,4096,4096,4096,2048, unflown) |
 | 86 A | Run86 (far clip 7x7 + ramp 60/68; opt-in effects stage phase 1, chase view across docking; fog empty table; launcher report lines): plants + regression (run333), combat + effects look (run334), docking (run335) | 3 | Completed 2026-09-25: plants sparkles fixed (rest 120 -> 1 measured, pan 65 -> 46 invisible remainder; run333-run86a-plants/); effects modernisation dropped by the user after seeing it (old effect design, many tuning hours); docking restore worked (transfer path=dock, 258 at f0c4b) but the selection boxes vanished after undock and saves while docked restore first person anyway: dropped; both removed from production |
 | 85 A | Run85 (far clip 7x7 + ramp 60/68): plants at rest/pans, regression, combat capture | 0 | Superseded 2026-09-25 by Run 86 A before it was flown (Run86 installed the same night with the opt-ins); its checks are folded into Run 86 A |
@@ -28,36 +29,45 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 83 A/B | Run83 (FOV load remap, mask fold, window rect default, cursor trace/re-assert opt-in, fill default) + install-fleet4: defaults with the pre-patch save, window, folded TAA, fps (A launch 1+3 = run323, `both` relaunch run324); gpu attribution (A launch 2 = run325); plants shimmer diagnostic + partial sun occlusion (B = run326 sun, run327 plants with --taa-debug) | 5 | Completed 2026-09-25: FOV remapped from the first scene frame after the save load; window moved 0,31 -> 0,0 (menu bar gone, user); double cursor from launch until the first alt-tab (no launch arm; fixed on main b45b3735); lattice ok; fog-band plants show one-frame sparkles at thin-line edges under a pan only, with the search on or off: resolved-output analysis (run327) puts them on owned plant pixels outside the region on the plain path, the far stabiliser's screen-speed gate dropping 0.985 -> 0.9 under any pan (fix: --taa-far-gate camera, in review); the sun hidden at half cover was the vanilla CPU probe, --sun-occlusion accepted (run326) and made the launcher default (50a5f98e); TAA span 5.44-5.68 -> 3.88-4.05 ms measured (-1.6 to -1.8 ms, run325); results run323-run83a-launch1-3/, run323-fog-plants-shimmer/, run325-run83a-gpu/, run327-run83b-sparkles/ |
 | 82 B | Ad hoc on the Run82 DLL: defaults again (run319), `--taa-thin-region 0` (run320), the install-fleet4 overlay with the louvre recipe (run321) | 3 | Completed 2026-09-25: run319 defaults (shell still exporting source vote + stabiliser 0): the Terran lattice crawled with the search on too; run320 thin treatment off: a little shimmer under pan (rejected, the hold stays); frame time without `--gpu-sync-timing` p50 16 ms in fog and clear sectors vs 30-33 ms with it (the flag doubles the frame; playable fps is quoted only from launches without it); run321 louvre recipe: crawl gone, no issues (3 draws per node, flip share 0.326 vs 0.497) |
 | 82 A | FOV remap (menu in game units), sun flare fix, chase compensation, S4 half default, cutout ownership: defaults look + menu/sun/chase checks; stabiliser 0 retry; thin-region source vote A/B, at 5120x1440 (candidate d1a4e360) | 5 | Completed 2026-09-25 (run312 defaults; run313/314 stabiliser 0; run315/318 source vote, flown with the stabiliser still 0 from the shell): FOV menu, sun at 100, chase size and the fog-band plants accepted by the user; run312 loaded a pre-patch save and ran at the vanilla 0x4000 until the first menu step (the savegame restores registry+0x24, RE §7.4; load-site remap in progress); stabiliser 0: plant crops valid depth 0.97 vs 0.17-0.48 in run311, no no_zwrite refusals, no shimmer seen -> default flips to 0 (§5 conditions 1, 2, 4; condition 3 replay still open); vote source: mask draw 1.38-1.40 ms in every session (no saving), and the lattice crawl the user reported in run315 is explained by vote-only flagging (the coarse record's solid cell draws never vote; 7.5 % of the flickering lattice pixels in the A' region vs 72-80 % under both) -> vote rejected as a source; results `verification/results/run312-run82a-launch1/`, `run313-run82a-stabiliser-off/`, `run315-run82a-thin-source-vote/`, `run315-run82a-lattice-crawl/` |
-| 81 A | Run81 defaults (thin vote, fade owner, occlusion `all`, FOV 58.7155 vertical, age programs) + alpha casters look; S4 half box A/B; sentinel stabiliser off with the owner on, at 5120x1440 (candidate 9e1645be) | 3 | Completed 2026-09-24 (run309 defaults + alpha casters + gpu-sync, run310 S4 half, run311 stabiliser 0): ODS underside transition fixed, alpha casters clean (refused_pool 0); S4 half accepted (box 2.36 -> 1.40 ms, TAA -1.2 ms; default from Run 82); FOV in effect until the in-game menu (starts from its own 90, left at 100) overrode it -> the remap model (Run 82); at F 100 the sun vanished near the view centre = engine 32-bit overflow in the lens-flare collector (fixed in Run 82); chase ship 1.333x larger (compensated in Run 82); the cull read a HUD projection (fixed); stabiliser 0 shimmers on the fog-band plants: their alpha-tested cutouts were unowned (owned from Run 82; stabiliser stays 0.7 until the retry) |
 
 
-**Run 89 A (queued 2026-09-25; Run89 DLL `0f6acab4…` from e2db7813, installed 21:40; overlay install-fleet4
-unchanged).** New: the **single shadow map removed** (the cascades are the only replay geometry; `--no-shadow-cascades` now
-turns the replayed sun shadows off entirely; the four `--shadow-replay-*` options are gone; e2db7813) and the **cascade 3 map at
-4096** (launcher default `--shadow-cascade-sizes 2048,4096,4096,4096,2048`, your decision after Run 88 A; unflown). On a normal
-launch the removal must be invisible: same shadows as run337. Please name the sector of each stand.
+**Run 90 A (queued 2026-09-26; Run90 DLL `6f6be732…` from f9cceb17, installed 04:00; overlay install-fleet4 unchanged).**
+New since Run 88 A (the last flight): the **logging tiers** (`--debug` / `--perf` replace the telemetry options; the DLL writes
+`x3m.log` into the game directory and keeps the previous launch's as `x3m.prev.log`; no file I/O on game threads; the always
+tier is bounded), the **obsolete options and their code removed**, **`--taa-k` / `--taa-sentinel` removed** (k derived, sentinel
+auto: no visible change expected), the **single shadow map removed** (cascades only) and **cascade 3 at 4096**. The old stand
+command no longer works (its options are gone); the new one is below. Please name the sector of each stand and note whether
+X3AP.exe stays in the process list after quitting.
 
-Launch 1, at 5120x1440, this command (telemetry on):
+Launch 1, at 5120x1440:
 
 ```sh
-env -u CX_DEBUGMSG X3M_FIXTURE_BOTTLE=X3 X3M_MOTION_FRAME_LOG=1 /Users/asvetl/x3-mod/x3run --direct --telemetry --camera-log 1 --fps-overlay --frame-end-stride 1 --volumetric-fog-timing --frame-timing --frame-phases --object-bounds-log --cull-census
+env -u CX_DEBUGMSG X3M_FIXTURE_BOTTLE=X3 /Users/asvetl/x3-mod/x3run --direct --debug --perf
 ```
 
-1. **Shadows unchanged**: the run337 station stand: shadows present on hulls and station parts as in run337, no pop, no new
-   black or missing shadows; an alt-tab and back. Rows: `shadow_replay_config` must not appear (it only appears with an inherited
-   `X3M_SHADOW_REPLAY_*` variable), `shadow_retention_flush` once at most (teardown), `sun_shadow_apply_mode ... enabled=1`.
-2. **Cascade 3 at 4096**: the same stand, look at the shadow edges 3-7 km out (large stations, the far ring of a complex): cleaner
-   than run337 or no visible difference? Any new stutter? Rows: `shadow_cascades_mode ... sizes=2048,4096,4096,4096,2048`,
-   `shadow_replay_depth ... us=` (run337: p50 251, p90 360, p99 528).
-3. Exit through the menu.
+1. **Log**: after the game is up, `x3m.log` exists in the game directory (`drive_c/X3/x3m.log`) and grows; no `session-*.log` is
+   written any more. After quitting: the file ends with a `session_end` row and X3AP.exe is gone within a few seconds.
+2. **Stutter**: fly the run337 station stand and a busy fight or a sector with many ships for a few minutes: any microstutter or
+   hitching that run337 did not have? The fps overlay against run337 (no `--gpu-sync-timing`, so the numbers are playable fps).
+   Rows: `log_dropped` must not appear; `telemetry_metric` rows for `log_wake` and the writer's write buckets.
+3. **Shadows unchanged**: the run337 stand: shadows present as in run337, no pop, no missing or black shadows; an alt-tab and back.
+   Rows: `shadow_cascades_mode ... sizes=2048,4096,4096,4096,2048`, `sun_shadow_apply_mode ... enabled=1`,
+   `shadow_retention_flush` at most once (teardown).
+4. **Cascade 3 at 4096**: shadow edges 3-7 km out (large stations, the far ring of a complex): cleaner than run337 or no visible
+   difference; any new stutter. Rows: `shadow_replay_depth ... us=` (run337: p50 251, p90 360, p99 528).
+5. **TAA look**: no change expected on the plants, edges and the sky (k and the sentinel policy were already the derived / auto
+   values). Say if anything looks different.
+6. Exit through the menu.
 
-Launch 2 (optional, short): the same command plus `--no-shadow-cascades`: load the save, look at the stand, exit. Expected: no
-replayed shadows at all and vanilla-looking lighting on hulls, no crash. Note that the launcher also leaves volumetric fog, caster
-retention and the sun poll off without cascades (an existing rule: they need the cascade maps), so the fog is gone in this launch
-too. Rows: `shadow_cascades_mode ... reason=off`, `sun_shadow_apply_mode ... enabled=0 ... cascades=0`,
+Launch 2 (short): the same command again; load, look, quit. Expected: `x3m.prev.log` holds launch 1's log (ending with
+`session_end`), `x3m.log` is launch 2's. Rows: `log_open ... previous=renamed`.
+
+Launch 3 (optional, short): the same command plus `--no-shadow-cascades`: load the save, look at the stand, quit. Expected: no
+replayed shadows and vanilla-looking hull lighting, no crash; the fog is off in this launch too (the launcher needs the cascade
+maps for it). Rows: `shadow_cascades_mode ... reason=off`, `sun_shadow_apply_mode ... enabled=0 ... cascades=0`,
 `shadow_replay_candidates_device enabled=0 reason=no_cascades`.
 
-Run 89 A is the only queued run. Completed instructions for Runs 73-88 are in the [archive](../archive/user-runs-completed.md).
+Run 90 A is the only queued run. Completed instructions for Runs 73-88 are in the [archive](../archive/user-runs-completed.md).
 
 ## Stand command
 

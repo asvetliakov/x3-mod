@@ -1,6 +1,6 @@
 # Project status
 
-Updated 2026-09-25 21:40: Run89 DLL `0f6acab4…` from e2db7813 installed (single shadow map removed, cascades only; `--no-shadow-cascades` = no replayed shadows; cascade 3 at 4096). Run 89 A queued. The `--taa-k` / `--taa-sentinel` removal is in flight for the next candidate. Earlier: Run88 6fe194bd (shadow pop fix, adjacency fast without telemetry, promoted launcher defaults) accepted in Run 88 A. Run56 accepted for media stability: the user
+Updated 2026-09-26 04:00: Run90 DLL `6f6be732…` from f9cceb17 installed (logging tiers: `--debug` / `--perf`, `x3m.log` in the game directory; obsolete options and code removed; `--taa-k` / `--taa-sentinel` removed; plus Run89's single shadow map removal and cascade 3 at 4096, never flown). Run 90 A queued (supersedes Run 89 A). In flight for the next candidate: the developer-option trim, inventory reorganisation, section-5 variable removal. Earlier: Run88 6fe194bd accepted in Run 88 A. Run56 accepted for media stability: the user
 reports no crash and no media-related stutter. The accepted production baseline
 is merged to main. Run57 accepts the station-flash default correction. Fog-range and moving-lattice
 work remain open. The agent never launches the game. See the [run queue](verification/user-runs.md) and the current
@@ -8,34 +8,42 @@ work remain open. The agent never launches the game. See the [run queue](verific
 
 ## Installed build
 
-Bottle **X3**, **CrossOver Preview.app**. Run89 DLL SHA-256:
-`0f6acab4ddce2f20101ab768725080b65a703488865567c3cd3718e7d6126ea8`
-(56,806,407 bytes), built once from clean reviewed main `e2db7813` in a detached worktree (`/tmp/x3-run89-candidate/src`).
-Retained DLL: `/tmp/x3-run89-candidate/build/d3d9.dll`. Installed 2026-09-25 21:40
-([qualification](../verification/results/run89-candidate-qualification.json), [install](../verification/results/run89-candidate-install.json)).
-Rollback: Run88 `6fe194bd…` at `/tmp/x3-run88-candidate/build/d3d9.dll` (accepted, Run 88 A), then Run87 `94c4ef42…`.
+Bottle **X3**, **CrossOver Preview.app**. Run90 DLL SHA-256:
+`6f6be732bfd5a8b7b0819ae233d42128e55af5f31e42f727abc4272c54dffb98`
+(56,825,745 bytes), built once from clean reviewed main `f9cceb17` in a detached worktree (`/tmp/x3-run90-candidate/src`).
+Retained DLL: `/tmp/x3-run90-candidate/build/d3d9.dll`. Installed 2026-09-26 04:00
+([qualification](../verification/results/run90-candidate-qualification.json), [install](../verification/results/run90-candidate-install.json)).
+Rollback: Run89 `0f6acab4…` at `/tmp/x3-run89-candidate/build/d3d9.dll` (unflown), then Run88 `6fe194bd…` (accepted, Run 88 A).
 
-Changes against Run88: the **single shadow map removed** (user decision 2026-09-25: the cascades are the only replay geometry;
-`--no-shadow-cascades` now means no map, no lease, no replay and the sun apply configured off with one
-`sun_shadow_apply_mode ... enabled=0 ... cascades=0` row, the lighting stays the lane's own; the four
-`--shadow-replay-size/-extent/-depth-half/-cap` options are gone, the launcher refuses them and the DLL logs one
-`shadow_replay_config ... single_map=removed` row when a variable is inherited; the caster counter is idle without cascades;
-the single-map apply program is deleted; e2db7813, [design](architecture/directional-shadows.md) "Single map removed",
-[ledger](verification/directional-shadows.md)) and the **launcher default `--shadow-cascade-sizes 2048,4096,4096,4096,2048`**
-(cascade 3 to 4096 after Run 88 A; ecd2aaae; launcher only, unflown). Not in this build: the `--taa-k` and `--taa-sentinel`
-removal (decided after the freeze; next candidate). Game data unchanged.
+Changes against Run88 (the last flown build): the **single shadow map removed** (cascades only; `--no-shadow-cascades` = no
+replayed shadows; e2db7813), **cascade 3 at 4096** (`--shadow-cascade-sizes 2048,4096,4096,4096,2048`, launcher default),
+**`--taa-k` and `--taa-sentinel` removed** (k derived from the exposure, sentinel policy auto; ae16da06), the **obsolete
+options and their DLL code removed** (39 option strings, 24 variables off the default launch; --lod-scale, --mesh-cache,
+--loading-intervals, --audio-sites, --fog-shadow-pass, the far24 and 16-tap programs, the screen thin-region gate; a device
+without FP16/R32F filtering turns TAA and jitter off; 9a668e81; [inventory](verification/launcher-options-inventory.md)
+section 4) and the **logging tiers** (`X3M_DEBUG` / `X3M_PERF` expanded in the DLL; the always tier is bounded, about
+0.2 MB per hour: a no-option launch used to write about 750 MB per hour from seven ungated rows; `x3m.log` in the game
+directory, the previous launch's as `x3m.prev.log`, `%LOCALAPPDATA%\x3-modern-renderer` fallback; a 4 MiB buffer drained by a
+writer thread, no file I/O on game threads; a chained unhandled-exception filter writes one `exception` row; exit path:
+device contexts alive at ExitProcess are abandoned and the writer parks on the last device destroy; launcher `--debug` /
+`--perf` replace 19 telemetry options, the stand command is `x3run --direct --debug --perf`; f9cceb17,
+[design](architecture/logging-tiers.md)). Game data unchanged.
 
-Qualification at `e2db7813` (21 min wall): build 0 warnings (44 s); x87 119 roots / 687 reachable / zero violations; imports 232
-from 15 DLLs unchanged (the crt `strcat` stays; native Windows unverified), 17 exports; host suite 272 modules / 2,824 tests /
-0 failing; motion output 233 cases (234 - 2 deleted single-map cases + `seam-ownership-shadow-replay-no-cascades`), checks
-345,941 -> 346,838, no case below Run88 (12 moved cases 2,021 -> 2,345, 6 extended 20,778 -> 21,600, 175 unchanged); sun share live
-25 cases (`shadow_apply_no_cascades`: 0 apply attempts, no map); sun occlusion 74 / 128; fog route bridge 41,877 + 4; ownership
-integration 26/26; four dry runs (default 176 variables with the new sizes; `--no-shadow-cascades` sends `X3M_SHADOW_CASCADES=0`
-and no cascade tuning; short stand = default + telemetry; vanilla 121); the temporal, bloom, fog, gpu-sync and loading closures are
-comment-only or byte-identical to Run88 and reused. Note: `--no-shadow-cascades` also leaves volumetric fog, caster retention and
-the sun poll off because the launcher requires cascades for them (pre-existing rule). Open: the ownership fallback runner is
-stale; no Wine case for the telemetry-off adjacency install path. Not a native Windows execution. The install record verifies
-installed bytes and unchanged X3AP.exe `fdbf3418…` and cxbottle.conf `cc5d6c00…`.
+Qualification at `f9cceb17` (48 min wall): build 0 warnings; x87 122 roots / 709 reachable / zero violations; imports 232 -> 236
+(kernel32 MoveFileExW, DeleteFileW, FindFirstFileW/FindNextFileW/FindClose, GetFileAttributesExW, CompareFileTime,
+FreeLibraryAndExitThread, TryAcquireSRWLockExclusive, SetUnhandledExceptionFilter added; the crt file-lock functions gone;
+`strcat` stays; native Windows unverified), 17 exports; host suite 268 modules / 2,792 tests / 0 failing; motion output 231
+cases / 346,382 checks, every case at its committed count (vs Run89: 5 deleted, 3 added); sun share live 25; sun occlusion
+74 / 128; fog route bridge 32,039 (15 shadow-pass names gone); fog shader fixture 28/28 gates with identical accepted hashes;
+temporal 744/278 and 584/90; gpu sync 32/32; bloom 47/47; loading trace, crypt cache 237, resource reader 4,721, cursor 42,
+exports, game phase, FOV/window/sun-flare/LOD/cull/chase/collide fixtures at their committed counts; ownership integration
+26/26; dry runs: default 124 variables (no X3M_DEBUG/PERF; cascade sizes 2048,4096,4096,4096,2048), `--debug --perf` 126,
+`--no-shadow-cascades` 118, `--vanilla` 73, the old Run 84 A stand command exits 2 (its options are gone); dry_run_tiers 8/8,
+compare_dry_runs 5/5. Incident: the standalone fog shader fixture (builtin d3d9, proxy not loaded) stalled once at process
+exit after all 146 images, a known Wine teardown stall (triage 2026-09-26); retry passed. Open: the ownership fallback
+runner is stale; research runners with changed closures (media playback, light/submit phase, voice, linear, rigid) not run.
+Not a native Windows execution. The install record verifies installed bytes and unchanged X3AP.exe `fdbf3418…` and
+cxbottle.conf `cc5d6c00…`.
 
 ## Current work and pending acceptance
 
