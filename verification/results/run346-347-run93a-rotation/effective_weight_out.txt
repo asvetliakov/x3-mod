@@ -1,0 +1,4 @@
+frame 2040 box 598,380,962,530 z 50000-75000: ordinary px 11391, turn r p50 44.46 px/frame (p10 40.96, p90 48.10); per-pixel w on 4967 px: p25 0.692 p50 0.700 p75 0.707; best scalar keep 0.70 (median err 0.047 codes)
+frame 2725 box 385,380,800,530 z 50000-75000: ordinary px 13549, turn r p50 44.79 px/frame (p10 42.07, p90 48.32); per-pixel w on 6214 px: p25 0.843 p50 0.850 p75 0.856; best scalar keep 0.85 (median err 0.039 codes)
+frame 1091 box 119,390,600,550 z 45000-70000: ordinary px 17045, turn r p50 0.00 px/frame (p10 0.00, p90 0.01); per-pixel w on 5870 px: p25 0.899 p50 0.900 p75 0.901; best scalar keep 0.90 (median err 0.007 codes)
+frame 2475 box 330,400,757,545 z 45000-70000: ordinary px 14149, turn r p50 0.03 px/frame (p10 0.02, p90 0.03); per-pixel w on 5112 px: p25 0.849 p50 0.850 p75 0.851; best scalar keep 0.85 (median err 0.007 codes)

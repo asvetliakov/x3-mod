@@ -1,0 +1,5 @@
+run347 frame 2039 conv 1 px 11245: |motion| p50 8.75 |rotation path| p50 8.81 |relative| p50 0.16 p90 0.16  cap p50 1.000 p10 1.000
+run346 frame 2724 conv 1 px 13661: |motion| p50 8.17 |rotation path| p50 8.50 |relative| p50 0.38 p90 0.38  cap p50 1.000 p10 1.000
+run346 frame 2724 conv 1 px 58056: |motion| p50 15.17 |rotation path| p50 15.56 |relative| p50 0.44 p90 0.45  cap p50 1.000 p10 1.000
+run347 frame 2039 conv 1 px 12199: |motion| p50 8.21 |rotation path| p50 8.29 |relative| p50 0.18 p90 0.19  cap p50 1.000 p10 1.000
+run346 frame 2724 conv 1 px 10134: |motion| p50 7.67 |rotation path| p50 7.92 |relative| p50 0.40 p90 0.40  cap p50 1.000 p10 1.000

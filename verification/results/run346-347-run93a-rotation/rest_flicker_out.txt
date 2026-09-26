@@ -1,0 +1,8 @@
+run346 station A rest
+station px 79729; first pair (normal-rate): present rms 1.242, ratio 0.1118; median over pairs: present rms 1.242, ratio 0.1395
+run347 station A rest
+station px 151038; first pair (normal-rate): present rms 0.855, ratio 0.0943; median over pairs: present rms 0.821, ratio 0.0943
+run346 station E rest
+station px 5553; first pair (normal-rate): present rms 4.977, ratio 0.1197; median over pairs: present rms 4.589, ratio 0.1140
+run347 station E rest
+station px 7182; first pair (normal-rate): present rms 2.997, ratio 0.0727; median over pairs: present rms 3.051, ratio 0.0768

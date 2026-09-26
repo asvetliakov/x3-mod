@@ -3417,3 +3417,25 @@ section 10 (c26 = A, B, F; rotation-only displacement `cameraUV - dilatedUV` und
 - Slots: age 544 -> 555, far 545 -> 556, far_camera_hold 1017 -> 1028; plain / thin / snapshot bytecode unchanged.
 - Open: not flown. Risks for the A/B: slow-turn shimmer just above V0, a whole-screen weight change at turn start and end,
   and the sky proper counting as ordinary (stars take the lower weight during a turn).
+
+**2026-09-26 Run 93 A: rotation-aware motion weight flown (run346 defaults 0.85, rotation off; run347 `--taa-history-weight 0.9
+--taa-motion-weight-rotation 0.7`), user saw no difference between the pans.** Scripts and outputs:
+`verification/results/run346-347-run93a-rotation/` (`summary.txt`) [M unless tagged].
+1. The term engaged. `camera_policy=2`, no cut, on every frame around both pans (policy 1 on 6 and 3 resolved frames of the
+   whole sessions, none near a capture). Rotation-only turn at the compared station (station E, 11-12.4 km, the one on screen
+   in both pans): 8.50 px/frame (run346 2724) and 8.81 (run347 2039), at or above V1 = 8. Applied weight, derived per pixel from
+   the captured history / current / resolved triple (the replay's clipped history, second pan frame): run347 median 0.700
+   (p25-p75 0.692-0.707), run346 0.850 (0.843-0.856); at rest 0.900 and 0.850.
+2. Sharpness (E / E_current, presented; station E box run346 385,380-800,530 / run347 598,380-962,530, the same station): rest
+   0.314 / 0.313; pan 0.225 at 8.50 px/frame (0.85) against **0.301 at 8.81 px/frame (0.9 + rotation 0.7)**: the pan keeps 96 %
+   of the rest sharpness instead of 72 %, +34 % at matched speed (the run341-343 model predicted +28 % at 20 px/frame). The
+   adjacent station A leaves the screen in run347's pan, so it cannot be compared (run346: rest 0.921, pan 0.710 at 15.6 px/frame).
+   Rest flicker (presented frame-to-frame change over the current's): station A 0.140 -> 0.094, station E 0.114 -> 0.077
+   (-33 %: the 0.9 rest weight).
+3. The station pixels are ordinary: thin 0.015-0.019, far weight 0 (station A: thin 0.000, far 0).
+4. Conclusion: engaged, and the difference is real in the data (+34 % pan sharpness, -33 % rest flicker, both at matched
+   conditions), but not visible to the user at this distance and size [I]: station E spans about 400 x 100 px and its pan
+   sharpness is limited by its own sub-pixel detail (E / E_current 0.3 even at rest), and the adjacent station the user watches
+   left the screen during run347's pan, so the two pans did not show the same object. Nothing to change in V0 / V1 / F (the
+   pans ran above V1). Measured, 0.9 + rotation 0.7 is better than 0.85 on both axes; whether to make it the default is a
+   decision for the orchestrator / user (a same-object pan of the adjacent station would be the visible test).

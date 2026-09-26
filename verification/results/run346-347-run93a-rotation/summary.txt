@@ -1,0 +1,16 @@
+Run 93 A: run346 defaults (history 0.85, rotation term off), run347 --taa-history-weight 0.9 --taa-motion-weight-rotation 0.7
+(motion_output_mode motion_weight_rotation=0.700,2,8, taa_history_weight=0.900). Ledger: docs/verification/temporal-resolve.md,
+"Run 93 A". Scripts: effective_weight.py (here), ../run340-run91a-pan-replay/{station_blobs,station_pixels,camera_parallax,
+sharpness_measured}.py, ../run341-343-run92a-weights/rest_flicker.py. Outputs *_out.txt here.
+
+Policy: camera_policy=2, camera_cut=0 on every frame around both pans (346 2718-2727, 347 2030-2042); policy 1 on 6 / 3 resolved
+frames of the whole sessions. Station E (11-12.4 km, 45-49 units/px, thin 0.015-0.019, far weight 0) is on screen in both pans;
+station A (the adjacent one, right edge) leaves the screen in run347's pan.
+Turn r (rotation-only, first pan frame, station E): run346 2724 8.50 px/frame, run347 2039 8.81 px/frame (>= V1 = 8: cap 0.70).
+Applied weight (per pixel, from taa_(f-1) / hdr_(f) / taa_(f), second pan frame, r ~ 44 px/frame): run347 2040 p25/p50/p75
+0.692 / 0.700 / 0.707 (best scalar 0.70), run346 2725 0.843 / 0.850 / 0.856 (0.85); rest: run347 1091 0.900, run346 2475 0.850.
+Sharpness E / E_current, station E, presented (before sharpen): rest 346 0.314 (0.301), 347 0.313 (0.299);
+  pan 346 0.225 (0.213) at 8.50 px/f, 347 0.301 (0.286) at 8.81 px/f: pan/rest 0.72 vs 0.96, +34 % at the pan.
+  station A, run346 only: rest 0.921, pan 15.6 px/f 0.710; run347 rest 0.921 (pan: off screen).
+Rest flicker (present / current frame-to-frame rms ratio, median of 7 pairs): station A 0.140 (346) vs 0.094 (347);
+  station E 0.114 vs 0.077 (codes rms 4.59 vs 3.05).
