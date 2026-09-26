@@ -110,3 +110,48 @@ Read `frame_dt.py` p50/p90 per background from each session; the difference is t
 `--perf` rows are the same in both, so the logging cost cancels. Four launches in one sitting; the chase camera is off in
 the baseline (`--camera vanilla`), so fly both launches in the same view (first person) or the chase camera's own
 cost stays inside the difference.
+
+## HDR readback lock: GPU wait, not a regression (triage 2026-09-27)
+
+**What the span is.** `readback_transfer_lock_us` brackets only `GetRenderTargetData(chain_ring_[slot] ->
+chain_readback_[slot])` plus `LockRect` of the system-memory tile image, inside `HdrPass::begin_frame`
+(src/renderer/hdr_pass.cpp:1441-1451), called from the HDR redirect latch `MotionOutput::begin_redirect`
+(src/proxy/motion_output.cpp:9127), i.e. at the start of frame N+1. It is the auto-exposure meter readback (80x23
+tiles at 5120x1440), not the capture path. The tile image was drawn by frame N's meter chain inside the write-back,
+the last post pass (hdr_pass.cpp:721-770); the copy is issued at the latch, not at the meter, so latency is exactly
+one frame (two-slot ring, slot toggled at the latch). The design assumption (hdr-scene-path.md, "waits on work
+submitted a Present earlier") holds only while frame N's GPU work is done by N+1's latch. Writer thread, logging and
+`--gpu-sync-timing` are outside the span (0 gpu_sync rows, `timing=cpu_qpc` in run338/348) [M].
+
+**Distribution** (`verification/results/frame-cost/readback_lock.py`, output `readback-lock-run{338,346,348,349}.txt`) [M]:
+
+| run, state | frames | lock p10/p50/p90 ms | dt p50 | dt - lock p50 | draws p50 | r(lock,dt) | r(lock,draws) |
+| --- | ---: | --- | ---: | ---: | ---: | ---: | ---: |
+| 338 bg14 (fogged) | 5,741 | 5.00 / 6.34 / 7.70 | 17.38 | 11.20 | 120 | -0.05 | -0.20 |
+| 338 bg67 (light) | 8,467 | 1.87 / 3.25 / 4.35 | 14.71 | 11.59 | 99 | -0.03 | -0.20 |
+| 338 bg21 (greenvoid) | 5,166 | 0.07 / 1.81 / 2.78 | 20.45 | 18.69 | 238 | -0.02 | -0.09 |
+| 348 bg21 | 8,525 | 0.08 / 1.42 / 2.52 | 19.95 | 18.71 | 192 | -0.01 | -0.07 |
+| 349 bg21 | 3,425 | 0.07 / 1.14 / 2.61 | 20.83 | 19.34 | 232 | -0.02 | 0.06 |
+| menu (all runs) | 304-1,036 | 0 (post chain off) | 16.6-17.2 | | 496 | | |
+
+By draw bin (run338 flight) the lock falls from 3.95-4.05 ms at 50-149 draws to 0.65 ms at 300-349 draws [M]. The
+lock is largest where the GPU has most work relative to the CPU (the fogged sector's 6.3 ms matches the 6.5 ms fog
+GPU cost) and is uncorrelated with dt: it absorbs the slack between the CPU frame and the GPU frame, and Present
+never waits (p50 7-11 us) because this lock already did [M rows, I interpretation].
+
+**History.** The copy+lock placement and the one-frame latency are identical in 1d36c29e (2026-09-12, introduced),
+e8970116, 976307f2 (2026-09-20, the three-bucket timer, Run52's build) and 2a75e2c3 (now); later commits touching
+hdr_pass.cpp (3d9e4145 dither, da84d232 removal of `comparison_exposure`, ac88d55f format, d15ecf1b/2a75e2c3 bolts)
+do not change the ring, latch or lock [M, `git show <c>:src/renderer/hdr_pass.cpp | grep`]. Run52's 154.9 us
+(40 sparse rows, run187, 478 draws, CPU-bound ~20 ms) predates the first 5120x1440 flight (2026-09-24), so it was
+measured at a smaller target with a lighter post chain [I from the handoff archive]. The 300-349-draw bin here
+(0.43-0.71 ms) and the bg21 p10 (70-80 us) are consistent with that figure. No regression commit.
+
+**Conclusion.** A GPU wait (wined3d drains its command stream and the download waits for frame N's post chain) made
+visible by the move to 5120x1440 and the heavier post chain, not a latency regression and not a measurement
+artefact [I; the wined3d CS/map sync is not read from source]. Cost to the player: the lock serialises CPU and GPU
+once per frame, so frame N's post-chain tail cannot overlap frame N+1's CPU work. In the CPU-bound greenvoid stand
+the whole lock is recoverable at most: 1.1-1.8 ms p50 of 20-21 ms (5-9 %) [I upper bound]. In GPU-bound sectors
+(bg67, bg14) only the GPU idle time inside the frame is recoverable, somewhere between 0 and the lock (3.3 / 6.3 ms)
+[unmeasured]. Deciding it needs one launch recording, per frame, a D3DQUERYTYPE_EVENT issued after the meter chain
+and polled with GetData(flags 0) at the latch before the copy (done or not), plus the lock span, in bg21 and bg67.

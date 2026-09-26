@@ -11,3 +11,5 @@ for r in 330 338 348; do python3 window_summary.py windows-run$r.txt; done > win
 #   python3 tools/manage.py launch --bottle X3 --dry-run --perf > verification/results/frame-cost/dryrun-default-perf.txt   (exit 0)
 #   $(cat dryrun-all-off.cmd) > verification/results/frame-cost/dryrun-all-off.txt                                         (exit 0)
 # GPU per-pass figures at 5120x1440 are read from ../run325-run83a-gpu/gpu_passes_325_out.txt and sector_class_out.txt (not recomputed).
+# 2026-09-27 HDR readback lock triage (hdr_frame readback_transfer_lock_us by state, r(lock,dt), r(lock,draws), draw bins)
+for r in 338 346 348 349; do python3 readback_lock.py /tmp/x3-bottleX3-run$r/session-*.log > readback-lock-run$r.txt; done
