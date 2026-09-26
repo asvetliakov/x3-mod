@@ -127,6 +127,9 @@ set_property(SOURCE src/proxy/loading_trace_light.cpp APPEND PROPERTY COMPILE_OP
 # stays idle until FogDensityConfig::enabled (checkpoint 4 wires the option).
 set_property(SOURCE src/fog/fog_density_generator.cpp src/fog/fog_density_cache.cpp APPEND PROPERTY COMPILE_OPTIONS -ffp-contract=off)
 target_compile_definitions(d3d9 PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+# The one version number is project(VERSION) above; tools/config/generate.py and tools/release/package.py read it
+# from here, and the DLL's x3-modern-renderer log row prints its major.minor through X3M_VERSION.
+target_compile_definitions(d3d9 PRIVATE X3M_VERSION="${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}")
 # Our arithmetic uses SSE2 while preserving the game's i686 Windows ABI.
 # Legacy callers provide four-byte stack alignment; align SIMD locals internally.
 # Do not enable fast-math or globally require unverified AVX/FMA instructions.

@@ -302,6 +302,23 @@ script `tools/release/package.py` (new) assembles the zip from `build/d3d9.dll`,
 regenerate bundle, records the DLL hash and source commit in the zip's `README.txt`, and refuses when
 `generate.py --check` fails, so a template can never ship stale.
 
+`python3 tools/release/release.py --out DIR` runs the whole release in order: (1) refuses tracked changes in
+`git status --porcelain` unless `--allow-dirty` (the zip's `README.txt` names the source commit); (2)
+`generate.py --check`; (3) a fresh CMake build in `DIR/build-release` (a previous one is deleted, never reused;
+any compiler, linker or CMake warning fails), `check_no_x87.py` with 0 violations, DLL SHA-256 and bytes; (4)
+`tools/regenerate/build.py --dist DIR/regenerate` for the host, then `build.py --windows` under
+`X3M_FIXTURE_BOTTLE=X3 wine_lock.py` after `game_guard.game_running()` is empty, each with its smoke test
+(`build.py` runs its Wine commands directly when the lock file names an ancestor as holder, since a nested
+`wine_lock.py` would wait on its own parent; the Wine commands run in the `X3M-Build` bottle, never the game
+bottle); `--regenerate-dir PATH` ships existing binaries instead, `--skip-windows` builds and smoke-tests
+the host binary only and makes no zip; (5) `package.py`, then the zip is CRC-tested and its `d3d9.dll` and
+`x3m-regenerate*` re-hashed against the built files; (6) `DIR/release-<version>.json` (schema 1: commit, dirty
+flag, toolchain lines, DLL/regenerate/zip hashes and bytes, `generate --check` and x87 results, wall seconds
+per step) and a final listing. `--dry-run` prints the plan and the toolchain and bottle check. The version
+has one source, `project(VERSION)` in `CMakeLists.txt`: `generate.py version()` reads it for the template and
+the zip name, and CMake passes its major.minor to the DLL as `X3M_VERSION` for the `x3-modern-renderer
+version=` log row (`capture.cpp` refuses to compile without it). Tests: `test_release_script.py`.
+
 Upgrade: the template is regenerated every release; the player's edited `x3m.ini` is never rewritten by the
 DLL (the DLL only reads it). A newer DLL under an older file: new keys take their defaults, removed keys are
 `config_key problem=unknown` rows, a renamed key is accepted through `aliases` with a row naming the new

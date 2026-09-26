@@ -8,6 +8,8 @@
                            template; never the game bottle), then the same smoke test under Wine
   build.py --windows --dry report what exists (bottle, Windows Python, packages); change nothing
   build.py --smoke-only [--windows]   rerun the smoke test on the existing executable
+  --dist DIR               write (or, with --smoke-only, test) the executable in DIR instead of <repo>/dist
+                           (tools/release/release.py uses it)
 
 The smoke test builds the synthetic game root of verification/analysis/test_regenerate.py in a temporary
 directory, runs the executable with --game-dir ROOT --no-wait and requires exit 0 and the per-item lines
@@ -20,7 +22,9 @@ pip and PyInstaller steps; the installer download is deleted once Python is inst
 again only when the bottle is recreated).
 
 Windows steps (each Wine command runs through verification/probe/wine_lock.py with
-X3M_FIXTURE_BOTTLE=X3M-Build after the game guard reports no game):
+X3M_FIXTURE_BOTTLE=X3M-Build after the game guard reports no game; when build.py itself already runs
+under wine_lock, i.e. the lock file names an ancestor process as its holder, the commands run directly
+under that lease, because a nested wine_lock would wait on its own parent):
   1. cxbottle --bottle X3M-Build --create --template win10_64
   2. download python-3.12.10-amd64.exe (python.org) to /tmp/x3m-build/ and run it
      /quiet InstallAllUsers=0 PrependPath=1 Include_test=0
@@ -90,12 +94,41 @@ def game_guard_clear():
         raise SystemExit(f'the game is running ({lines[0]}); no Wine command is started')
 
 
+LOCK_PATH = Path('/tmp/x3-wine-runner.lock')  # verification/probe/wine_lock.py LOCK_PATH
+
+
+def lock_held_by_ancestor(lock_path=LOCK_PATH, table=None):
+    """True when the Wine runner lock's recorded holder (wine_lock writes '<pid> <time> <label>') is this process or
+    one of its ancestors, i.e. build.py already runs inside a wine_lock lease."""
+    try:
+        holder = int(Path(lock_path).read_text(encoding='utf-8', errors='replace').split()[0])
+    except (OSError, ValueError, IndexError):
+        return False
+    if table is None:
+        sys.path.insert(0, str(ROOT / 'verification' / 'probe'))
+        import fixture_process
+        table = fixture_process.process_table
+    try:
+        rows = table()
+    except (OSError, RuntimeError, subprocess.SubprocessError):
+        return False
+    current, seen = os.getpid(), set()
+    while current in rows and current not in seen:
+        if current == holder:
+            return True
+        seen.add(current)
+        current = rows[current][0]
+    return False
+
+
 def wine(args, check=True, **kw):
     """One Wine command in the build bottle, serialised by wine_lock (never two at once)."""
     game_guard_clear()
     env = dict(os.environ, X3M_FIXTURE_BOTTLE=BOTTLE)
-    cmd = [sys.executable, ROOT / 'verification' / 'probe' / 'wine_lock.py', '--holder', f'x3m-regenerate build ({BOTTLE})',
-           CX_BIN / 'wine', '--bottle', BOTTLE] + list(args)
+    cmd = [CX_BIN / 'wine', '--bottle', BOTTLE] + list(args)
+    if not lock_held_by_ancestor():
+        cmd = [sys.executable, ROOT / 'verification' / 'probe' / 'wine_lock.py', '--holder',
+               f'x3m-regenerate build ({BOTTLE})'] + cmd
     t0 = time.monotonic()
     result = run(cmd, env=env, **kw)
     print(f'  (exit {result.returncode}, {time.monotonic() - t0:.1f} s)', flush=True)
@@ -196,11 +229,16 @@ def smoke(exe, windows=False):
 
 
 def main(argv=None):
+    global DIST
     ap = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
     ap.add_argument('--windows', action='store_true', help='build x3m-regenerate.exe under Wine in bottle X3M-Build')
     ap.add_argument('--dry', action='store_true', help='with --windows: report the bottle state only')
     ap.add_argument('--smoke-only', action='store_true', help='skip the build, test the existing executable')
+    ap.add_argument('--dist', type=Path, default=None, help=f'output directory (default {DIST})')
     a = ap.parse_args(argv)
+    if a.dist is not None:
+        DIST = a.dist.resolve()
+        DIST.mkdir(parents=True, exist_ok=True)
     if a.windows and a.dry:
         windows_status()
         return 0

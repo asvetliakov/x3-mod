@@ -56,8 +56,9 @@ overlay catalogues beside an `addon/NN.x3m-lod.json` marker, and
 `addon/mods/<mod>-x3m-lod.*`); the exact list is in the
 [regenerate guide](docs/user/regenerate.md#removing-the-results).
 
-The release zip is built by `tools/release/package.py --dll build/d3d9.dll --out DIR`;
-it refuses a stale settings template.
+The release zip is built by `python3 tools/release/release.py --out DIR` (see Build);
+`tools/release/package.py --dll build/d3d9.dll --out DIR` only packages existing binaries.
+Both refuse a stale settings template.
 
 ## Configure
 
@@ -133,6 +134,19 @@ and the template `assets/x3m.ini`. After changing the schema run
 when a generated file is stale. `x3m-regenerate` is built separately with
 `python3 tools/regenerate/build.py` (`--windows` for the `.exe`;
 [details](docs/user/regenerate.md#building-the-executable)).
+
+One-command release from a clean, committed tree:
+
+```sh
+python3 tools/release/release.py --out DIR     # --dry-run: plan and toolchain check only
+```
+
+It checks the template (`generate.py --check`), builds the DLL fresh in `DIR/build-release`
+(0 warnings, x87 audit 0 violations), builds and smoke-tests `x3m-regenerate` for the host and
+for Windows (the Windows step under Wine in the `X3M-Build` bottle, through `wine_lock.py`),
+packages `DIR/x3m-<version>.zip`, re-hashes its `d3d9.dll` and writes `DIR/release-<version>.json`
+([details](docs/architecture/config-file.md#6-release-packaging-and-the-upgrade-story)). The
+version is `project(VERSION)` in `CMakeLists.txt`.
 
 Formatting: C and C++ sources follow `.clang-format` (clang-format 23; four-space
 indent, attached braces, 120 columns). Format the tracked sources, leaving the

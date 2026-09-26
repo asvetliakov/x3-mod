@@ -93,7 +93,8 @@ synthetic game directory. `python3 tools/regenerate/build.py --windows` builds
 `X3M-Build` (created from the `win10_64` template; Python 3.12.10 x64 from
 python.org installed quietly into it; `pip install pyinstaller numpy==2.0.2
 pillow`), never in the game bottle, and smoke-tests it there; `--windows --dry`
-only reports the bottle state. On a Windows PC: install Python 3.12 (64-bit,
+only reports the bottle state; `--dist DIR` writes (or with `--smoke-only` tests) the
+executable in `DIR` instead of `dist/` (`tools/release/release.py` uses it). On a Windows PC: install Python 3.12 (64-bit,
 python.org), then from the repository root `py -m pip install pyinstaller
 numpy==2.0.2 pillow` and `py -m PyInstaller --noconfirm --distpath dist
 --workpath build\regenerate-win tools\regenerate\x3m_regenerate.spec`.

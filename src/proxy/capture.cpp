@@ -84,6 +84,10 @@
 #include <string>
 #include <vector>
 
+#ifndef X3M_VERSION // major.minor of project(VERSION) in CMakeLists.txt, the one version source
+#error "X3M_VERSION is set by CMakeLists.txt from project(VERSION)"
+#endif
+
 namespace x3m {
 namespace {
 std::recursive_mutex mutex;
@@ -5079,8 +5083,8 @@ void initialize_log(HMODULE module) {
                                 : "0",
         scene_hook_requested, hdr_requested, taa_k_override, double(taa_mip_bias), taa_sharpen,
         double(taa_history_weight));
-    log("x3-modern-renderer version=0.4 schema=2 capture_start=%u capture_frames=%u pointer_bits=32", capture_start,
-        capture_count);
+    log("x3-modern-renderer version=" X3M_VERSION " schema=2 capture_start=%u capture_frames=%u pointer_bits=32",
+        capture_start, capture_count);
     telemetry::initialize(&session_log::request_drain); // a summary wakes the writer; no I/O on the caller
     session_log::start_writer(telemetry::enabled());    // telemetry on: per-row QPC cost and the 10 s log_writer rows
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
