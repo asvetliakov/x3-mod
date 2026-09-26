@@ -1,0 +1,57 @@
+{
+ "candidate": {
+  "dll": "/tmp/x3-run93-candidate/build/d3d9.dll",
+  "sha256": "5bee0e8a78d6fd631a655e1b435fd34a3dabe92b7c5d656d7222f79a4228e281",
+  "bytes": 57199261,
+  "commit": "92f8223d",
+  "qualification": "verification/results/run93-candidate-qualification.json"
+ },
+ "command": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3-run93-candidate/build/d3d9.dll",
+ "cwd": "/Users/asvetl/x3-mod",
+ "exit": 0,
+ "installed_at": "2026-09-26T21:14+04:00",
+ "installed": {
+  "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
+  "sha256": "5bee0e8a78d6fd631a655e1b435fd34a3dabe92b7c5d656d7222f79a4228e281",
+  "bytes": 57199261,
+  "verified": "sha256 and size read back after install; candidate hash rechecked before install"
+ },
+ "config_template": {
+  "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/x3m.ini",
+  "source": "assets/x3m.ini at 92f8223d (every key commented; 88 user-facing keys incl. bolt_single_copy)",
+  "sha256_prefix": "022f2e6cc5ffcbea",
+  "note": "copied by hand after the install; not part of manage.py install"
+ },
+ "unchanged": {
+  "X3AP.exe": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+  "cxbottle.conf": "cc5d6c00a8afccaf88cbae1a7c46040db513eb163a52693287a3d29aca828e0c"
+ },
+ "previous": {
+  "dll": "/tmp/x3-run92-candidate/build/d3d9.dll",
+  "sha256": "f6c687cb3d154fc4677313506da81ca71e3eb4a7b8fc82c7fdc25fa7e4d8844a",
+  "bytes": 57180234,
+  "commit": "335c9250"
+ },
+ "rollback": {
+  "dll": "/tmp/x3-run92-candidate/build/d3d9.dll",
+  "sha256": "f6c687cb3d154fc4677313506da81ca71e3eb4a7b8fc82c7fdc25fa7e4d8844a",
+  "bytes": 57180234,
+  "records": [
+   "verification/results/run92-candidate-qualification.json",
+   "verification/results/run92-candidate-install.json"
+  ],
+  "then": "/tmp/x3-run91-candidate/build/d3d9.dll 25adddf8\u2026 (accepted, Run 91 A), /tmp/x3-run88-candidate/build/d3d9.dll 6fe194bd\u2026 (accepted, Run 88 A)"
+ },
+ "game_running_at_install": false,
+ "game_data": "fleet overlay install-fleet4 unchanged; x3m/fog-families.bin + .json unchanged; x3m.ini template refreshed",
+ "changes_vs_previous": [
+  "single-copy bullets on by default (X3M_BOLT_SINGLE_COPY=1, --bolt-single-copy off): the early bullet copy drawn before the frame's first depth-writing draw is dropped when the same buffer had a late copy in the previous frame; each bolt adds one contribution depth-tested after the opaque pass (060d65e4, f732834c)",
+  "opt-in rotation-aware TAA motion weight (--taa-motion-weight-rotation F[,V0,V1]; off by default, off path bit-identical) (1e779e29, ae557a7b)",
+  "shader provenance records regenerated (5431b029); config schema header regenerated (92f8223d)",
+  "imports/exports unchanged (234 / 17); Run 92 A accepted the 0.85 history weight on Run92"
+ ],
+ "incidents": [
+  "5431b029 did not build: config_schema_inc.h stale after two schema-adding cherry-picks (regenerated 92f8223d)",
+  "three leftover winedevice.exe processes in bottle X3 noted by the candidate agent (not the game; left alone)"
+ ]
+}

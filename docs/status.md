@@ -5,41 +5,41 @@ marked completed on 2026-09-26 by the user's decision ([goals](goals.md)). The a
 
 ## Installed build
 
-Bottle **X3**, **CrossOver Preview.app**. Run92 DLL SHA-256
-`f6c687cb3d154fc4677313506da81ca71e3eb4a7b8fc82c7fdc25fa7e4d8844a` (57,180,234 bytes), built once from clean
-reviewed main `335c9250` in a detached worktree (`/tmp/x3-run92-candidate/src`). Retained DLL:
-`/tmp/x3-run92-candidate/build/d3d9.dll`. Installed 2026-09-26 18:15
-([qualification](../verification/results/run92-candidate-qualification.json),
-[install](../verification/results/run92-candidate-install.json)). The shipped template `x3m.ini` (every key commented)
+Bottle **X3**, **CrossOver Preview.app**. Run93 DLL SHA-256
+`5bee0e8a78d6fd631a655e1b435fd34a3dabe92b7c5d656d7222f79a4228e281` (57,199,261 bytes), built once from clean
+reviewed main `92f8223d` in a detached worktree (`/tmp/x3-run93-candidate/src`). Retained DLL:
+`/tmp/x3-run93-candidate/build/d3d9.dll`. Installed 2026-09-26 21:14
+([qualification](../verification/results/run93-candidate-qualification.json),
+[install](../verification/results/run93-candidate-install.json)). The shipped template `x3m.ini` (every key commented)
 sits next to the DLL.
 
-Rollback chain: Run91 `25adddf8…` at `/tmp/x3-run91-candidate/build/d3d9.dll` (accepted in Run 91 A), then Run88
-`6fe194bd…` at `/tmp/x3-run88-candidate/build/d3d9.dll` (accepted in Run 88 A).
+Rollback chain: Run92 `f6c687cb…` at `/tmp/x3-run92-candidate/build/d3d9.dll` (accepted in Run 92 A), Run91
+`25adddf8…` (accepted in Run 91 A), then Run88 `6fe194bd…` (accepted in Run 88 A).
 
-Run92 carries, beyond Run91: the **TAA history weight default 0.85** (was 0.9; from the run340 pan replay,
-[temporal-resolve.md](verification/temporal-resolve.md); sharpen, thin-region and far weights unchanged), the
-**`bolt_copy` capture diagnostic** (one row per bullet draw on F8 frames with hash / qsum / bbox of the drawn positions,
-to prove whether the game's two bullet copies hold the same bolts, [lod-overlay.md](verification/lod-overlay.md)), the
-whole-tree clang-format pass (whitespace only) and the version define from the CMake project version. Qualification at
-`335c9250`: build 0 warnings, x87 0 violations, host suite 270 modules / 2,810 tests / 0 failing, motion output 230 cases
-at their committed counts plus the new bolt-copy case, temporal pan row inside its bounds, dry runs identical to Run91;
-two earlier attempts failed on a stale 0.9 literal in the pass header and on the seam build lacking the version define
-(both fixed and pinned by host tests).
+Run93 carries, beyond Run92: **single-copy bullets** on by default (the game draws its bullet batch twice; the early copy,
+overpainted by every later opaque draw, is dropped when the same buffer had a late copy in the previous frame, so a bolt
+keeps one brightness over a distant station and over empty space; `--bolt-single-copy off` for A/B;
+[bolt-footprint.md](architecture/bolt-footprint.md) "Single copy") and the **opt-in rotation-aware TAA motion weight**
+(`--taa-motion-weight-rotation F[,V0,V1]`: the history weight of ordinary pixels drops toward F with the screen motion
+from camera rotation; off by default, off path bit-identical; [taa-motion-history-weight.md](architecture/taa-motion-history-weight.md)
+section 10). Qualification at `92f8223d`: build 0 warnings, x87 0 violations, host suite 270 modules / 2,812 tests /
+0 failing, motion output 230 committed cases at their counts plus the six single-copy cases, temporal pass byte-identical
+to the committed record, dry runs: one delta vs Run92 (`X3M_BOLT_SINGLE_COPY=1`).
 
 ## Main beyond the installed build
 
-Nothing: main `335c9250` is the installed commit (documentation and the run queue follow it).
+Nothing: main `92f8223d` is the installed commit (documentation and the run queue follow it).
 
 ## Run queue
 
-No run is queued. Run 92 A (run341-343) accepted the 0.85 history weight (0.8 shimmers at rest, 0.85 and 0.9 look alike)
-and proved the game's two bullet copies identical (8 of 8 capture frames): [run queue](verification/user-runs.md).
+Run 93 A is queued (bullets over a station and into empty space; 0.85 alone against 0.9 plus the rotation term at the
+same pan speed, with a slow-turn shimmer check): [run queue](verification/user-runs.md).
 
 ## Open items
 
 - From Run 91 A: bullets behind distant objects = the game's early bullet copy overpainted by later opaque draws while
-  the additive route brightens both copies (proven identical in Run 92 A; the single-copy rule that drops the early copy is in implementation for Run93); station blur under a pan =
-  history weight (0.85 accepted in Run 92 A).
+  the additive route brightens both copies (fixed in Run93 by the single-copy rule; flight check in Run 93 A); station blur under a pan =
+  history weight (0.85 accepted in Run 92 A; the opt-in rotation-aware weight flies in Run 93 A).
 
 - Native Windows runtime behaviour is unverified; the source cross-compiles, gaps are tracked in
   [platform portability](architecture/platform-portability.md).

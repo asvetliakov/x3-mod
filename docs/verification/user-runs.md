@@ -2,7 +2,7 @@
 
 Archive with `python3 tools/analysis/archive_user_runs.py`.
 
-Updated 2026-09-26 (Run 92 A completed: 0.85 accepted, bullet copies proven identical; no run queued). Earlier: 2026-09-21 (Run56 accepted for media stability; Run57 station-flash correction accepted; fog range remains under investigation). Run 17 crypto acceptance and the first-person/chase
+Updated 2026-09-26 (Run93 installed: single-copy bullets, opt-in rotation-aware weight; Run 93 A queued; Run 92 A accepted). Earlier: 2026-09-21 (Run56 accepted for media stability; Run57 station-flash correction accepted; fog range remains under investigation). Run 17 crypto acceptance and the first-person/chase
 left-centre-right diagnostic are complete and are not in this queue. The agent
 never launches the game. Only open runs keep their instructions here; a completed
 run keeps only its row in the table below. The installed build is described in [status](../status.md).
@@ -30,7 +30,40 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 84 A | Run84 (far gate camera default, sun occlusion default with core dimming, cursor launch arm, fill 0.01): defaults + cursor at launch + sun crossing + fog-band plants (run329 5120x1440; run330 1920x1080 menu only; run332 the plants with --taa-debug, F8 at rest and in a pan) | 3 | Completed 2026-09-25: rows as expected (cursor_reassert armed_by=launch fired, sun_occlusion_config default=1, far_gate=camera default=1, original_fill_mode default=1, window_mode moved); the desktop arrow is still visible from launch and the double cursor still appears sometimes after alt-tab: the re-assert sequence fires correctly on all 20 fires, the game makes no cursor calls and gets no WM_SETCURSOR while active, cause inside the Cocoa driver, **parked by the user** (run329-run84a-cursor/); the plants' sparkles persist and occur at rest too (user correction): not the far gate but sub-pixel highlights leaking through a partial far weight (plants at 89-137k view units = 18-27 km, ramp 102-166k) and erased by the 3x3 clip on the dark phases (run332 rest 120/120 clamped; run329-run84a-rest-sparkles/); fix on main 22776b6f (far ramp 60/68 + 7x7 far clip, design taa-thin-classification.md); the far-gate screen A/B was dropped (fixture: screen + 7x7 still sparkles on a 0.4 px line under fractional pans, 19.2 codes vs 4.9) |
 
 
-No run is queued. Completed instructions for Runs 73-88 are in the [archive](../archive/user-runs-completed.md).
+**Run 93 A (queued 2026-09-26; Run93 DLL `5bee0e8a…` from 92f8223d, installed 21:14: single-copy bullets on by default, the opt-in rotation-aware TAA motion weight).**
+Two questions: are the bullets right now (one brightness whether or not a distant station is behind them), and does the
+rotation-aware weight sharpen stations under a pan without shimmer you would not accept. Same stand as Run 92 A (a large
+station 2-10 km away, no lattice type if possible); pan at roughly the same speed in every launch; name the sector. All
+launches carry `--taa-debug` so the captures hold the resolved image.
+
+Launch 1 (defaults: history weight 0.85, single-copy bullets):
+
+```sh
+env -u CX_DEBUGMSG X3M_FIXTURE_BOTTLE=X3 /Users/asvetl/x3-mod/x3run --direct --debug --perf --taa-debug
+```
+
+1. **Bullets**: fire across the distant station so bolts cross its silhouette: the bolts keep one brightness over the
+   station and over empty space (no more "station in front of the bullets"); also fire into empty space in first
+   person for a few seconds: the bolts must never vanish for a frame. F8 once while firing at the station. Rows:
+   `bolt_copies early_dropped=2 late=2` (or 1/1) on firing frames; `bolt_copy_dropped` on the capture frame.
+2. F8 at rest and F8 mid-pan (the 0.85 reference for launch 2).
+3. Exit through the menu.
+
+Launch 2 (rotation-aware weight, base 0.9):
+
+```sh
+env -u CX_DEBUGMSG X3M_FIXTURE_BOTTLE=X3 /Users/asvetl/x3-mod/x3run --direct --debug --perf --taa-debug --taa-history-weight 0.9 --taa-motion-weight-rotation 0.7
+```
+
+F8 at rest, F8 mid-pan (same speed as launch 1), then a slow turn (about a quarter of the pan speed) for a few seconds and
+F8 once during it. Your eye: the station sharper under the pan than in launch 1? Any shimmer during the slow turn, on the
+station or on the stars? Any visible change of the whole picture at the moment a turn starts or stops? At rest it should
+look exactly like 0.9 (run342).
+
+Launch 3 (optional, if launch 2 shimmers during slow turns): `--taa-motion-weight-rotation 0.75,4,12` instead, same
+checks.
+
+Run 93 A is the only queued run. Completed instructions for Runs 73-88 are in the [archive](../archive/user-runs-completed.md).
 
 ## Stand command
 
