@@ -71,7 +71,7 @@ struct FrameInputs {
     // adds it (history is on the unjittered grid; the producer's RG is already
     // the previous unjittered UV).
     float current_jitter[2]{}, previous_jitter[2]{};
-    float weight = .9f;
+    float weight = x3::temporal::kHistoryWeightDefault;  // unset = the production default (0.85 since Run 91 A)
     float rejection[4]{.0001f, .02f, 65000.f, .000001f}; // max(absolute, relative*depth) depth tolerance, HDR limit,
                                                          // minimum W
     // k of the resolve's reversible luminance weighting (resolve.h, c22.x):

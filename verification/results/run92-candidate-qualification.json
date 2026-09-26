@@ -1,0 +1,726 @@
+{
+ "schema": 1,
+ "candidate": {
+  "commit": "2b3c85e4",
+  "commit_full": "2b3c85e426af0a584632feff8f468c198434002a",
+  "branch": "main (detached worktree)",
+  "checkout": "/tmp/x3-run92-candidate/src",
+  "source_clean": true,
+  "source_clean_note": "detached worktree at 2b3c85e4 (verification/probe/build/ created first); git status --short --untracked-files=all empty before the build and after every Wine step (save_restore.sh; rewritten-<tag>.txt: motion 3, motion-bolt 1, diag-taa09 1)",
+  "source_clean_after": true,
+  "dll": "/tmp/x3-run92-candidate/build/d3d9.dll",
+  "sha256": "5b054a573310c55f4fe352596d2e2655c9753ed8d7cdd2b880a613f74be54d9e",
+  "bytes": 57180234,
+  "embedded_marker": "X3M_SOURCE_COMMIT=2b3c85e426af0a584632feff8f468c198434002a",
+  "embedded_marker_check": "strings -a d3d9.dll | grep -c X3M_SOURCE_COMMIT=2b3c85e4... -> 1 (grep -c X3M_SOURCE_COMMIT= -> 1)",
+  "configuration": "RelWithDebInfo",
+  "toolchain": "cmake/mingw-i686.cmake",
+  "toolchain_versions": {
+   "i686-w64-mingw32-gcc": "16.2.0",
+   "binutils_ld": "2.47.20260726",
+   "cmake": "4.4.3"
+  },
+  "python3": "/usr/bin/python3",
+  "build_commands": [
+   "cmake -S . -B /tmp/x3-run92-candidate/build -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DPython3_EXECUTABLE=/usr/bin/python3",
+   "cmake --build /tmp/x3-run92-candidate/build -j4"
+  ],
+  "build_seconds": 46,
+  "build_warnings": 0,
+  "build_warnings_check": "grep -ci warning build.log -> 0",
+  "build_log_sha256": "bd5f73e11dfb55a00b3ff65b12f82d95d02f2b0f3998efea6e5db6949303409b",
+  "dll_write_protected_after_build": true,
+  "supersedes": "nothing (not qualified); Run91 25adddf8 (759c2ac7) stays the installed candidate",
+  "size_versus_run91": "57,280,486 -> 57,180,234 bytes (-100252)",
+  "section_size_delta_vs_run91": {
+   ".debug_abbrev": 2636,
+   ".debug_frame": 48,
+   ".debug_info": 2189,
+   ".debug_line": -105055,
+   ".debug_loclists": -1673,
+   ".debug_rnglists": -31,
+   ".debug_str": 12,
+   ".rdata": 320,
+   ".reloc": 4,
+   ".text": 964
+  },
+  "size_reading": ".text +964, .rdata +320, .reloc +4 (bolt_copy row + position_digest); .debug_line -105055 (clang-format shortened the line table), other debug sections small; .data/.bss/.idata unchanged"
+ },
+ "scope": "Run91 + 759c2ac7..2b3c85e4: ac88d55f whole-tree clang-format (whitespace only; patch and bloom provenance records re-recorded in 0ff7d09b), d9a71f53 TAA history weight default 0.9 -> 0.85 (resolve.h kHistoryWeightDefault, capture.cpp, motion_output.h, schema/x3m.ini, launcher help), b4a42145 + 2b3c85e4 bolt_copy capture diagnostic (motion_output.cpp/.h, bolt_footprint_core.h, fixture case seam-bolt-copy-hash); docs and tooling otherwise",
+ "changed_files_src": [
+  "src/config/config_parse.h",
+  "src/fog/fog_density_cache.cpp",
+  "src/fog/fog_density_cache.h",
+  "src/fog/fog_density_generator.cpp",
+  "src/fog/fog_density_generator.h",
+  "src/fog/fog_handover.h",
+  "src/ownership/application_admission.cpp",
+  "src/ownership/application_admission.h",
+  "src/ownership/application_admission_abi.cpp",
+  "src/ownership/application_admission_abi.h",
+  "src/ownership/buffer_lock_observation.h",
+  "src/ownership/clone_upload_abi.cpp",
+  "src/ownership/clone_upload_abi.h",
+  "src/ownership/clone_upload_core.h",
+  "src/ownership/clone_upload_observer.h",
+  "src/ownership/d3d9_ownership.cpp",
+  "src/ownership/d3d9_ownership.h",
+  "src/ownership/execution_state.cpp",
+  "src/ownership/execution_state.h",
+  "src/ownership/finite_buffer_evidence.cpp",
+  "src/ownership/finite_buffer_evidence.h",
+  "src/ownership/portable_managed_upload.cpp",
+  "src/ownership/portable_managed_upload.h",
+  "src/ownership/surface_lease_core.h",
+  "src/ownership/surface_lock_observation.h",
+  "src/proxy/bolt_footprint_core.h",
+  "src/proxy/camera_state.cpp",
+  "src/proxy/camera_state.h",
+  "src/proxy/capture.cpp",
+  "src/proxy/capture_state.cpp",
+  "src/proxy/chase_aim_trace.cpp",
+  "src/proxy/chase_aim_trace.h",
+  "src/proxy/chase_camera.cpp",
+  "src/proxy/chase_camera.h",
+  "src/proxy/chase_camera_math.h",
+  "src/proxy/chase_camera_native.h",
+  "src/proxy/chase_fire.cpp",
+  "src/proxy/chase_fire.h",
+  "src/proxy/chase_lead.cpp",
+  "src/proxy/chase_lead.h",
+  "src/proxy/chase_lead_core.h",
+  "src/proxy/chase_native_timing_core.h",
+  "src/proxy/chase_transition.cpp",
+  "src/proxy/chase_transition.h",
+  "src/proxy/chase_transition_core.h",
+  "src/proxy/chase_transition_identity_core.h",
+  "src/proxy/chase_transition_restore_core.h",
+  "src/proxy/collide_box_cull.cpp",
+  "src/proxy/collide_box_cull.h",
+  "src/proxy/collide_box_cull_core.h",
+  "src/proxy/collide_memo.cpp",
+  "src/proxy/collide_memo.h",
+  "src/proxy/collide_memo_core.h",
+  "src/proxy/collide_narrow_census.cpp",
+  "src/proxy/collide_narrow_census.h",
+  "src/proxy/collide_narrow_census_core.h",
+  "src/proxy/collide_query_phases.cpp",
+  "src/proxy/collide_query_phases.h",
+  "src/proxy/collide_query_phases_core.h",
+  "src/proxy/collide_sat_sse2.cpp",
+  "src/proxy/collide_sat_sse2.h",
+  "src/proxy/collide_sat_sse2_core.h",
+  "src/proxy/comparison_notice.cpp",
+  "src/proxy/comparison_notice.h",
+  "src/proxy/compositor_bridge.h",
+  "src/proxy/compositor_bridge_seh.c",
+  "src/proxy/compositor_owner.cpp",
+  "src/proxy/compositor_owner.h",
+  "src/proxy/config.cpp",
+  "src/proxy/cpu_state.h",
+  "src/proxy/crypt_cache.cpp",
+  "src/proxy/crypt_cache.h",
+  "src/proxy/cull_census.cpp",
+  "src/proxy/cull_census.h",
+  "src/proxy/cull_census_core.h",
+  "src/proxy/cull_small_parts.cpp",
+  "src/proxy/cull_small_parts.h",
+  "src/proxy/cull_small_parts_core.h",
+  "src/proxy/cursor_reassert.cpp",
+  "src/proxy/cursor_reassert_core.h",
+  "src/proxy/draw_input.cpp",
+  "src/proxy/draw_input.h",
+  "src/proxy/engine_memory.cpp",
+  "src/proxy/engine_memory.h",
+  "src/proxy/engine_patch.cpp",
+  "src/proxy/engine_patch.h",
+  "src/proxy/executable_identity.h",
+  "src/proxy/fade_region.cpp",
+  "src/proxy/fade_region.h",
+  "src/proxy/fade_region_core.h",
+  "src/proxy/fade_region_math.h",
+  "src/proxy/fade_route_core.h",
+  "src/proxy/fog_card_mask.h",
+  "src/proxy/fog_card_match.h",
+  "src/proxy/fog_card_policy.h",
+  "src/proxy/fog_prefill.h",
+  "src/proxy/fog_sector_policy.h",
+  "src/proxy/fov.cpp",
+  "src/proxy/fov.h",
+  "src/proxy/fov_sites.h",
+  "src/proxy/fps_overlay.h",
+  "src/proxy/frame_phase_sites.h",
+  "src/proxy/frame_phases.cpp",
+  "src/proxy/frame_phases.h",
+  "src/proxy/frame_phases_core.h",
+  "src/proxy/frame_timing.cpp",
+  "src/proxy/frame_timing.h",
+  "src/proxy/game_phase_sites.h",
+  "src/proxy/game_phases.cpp",
+  "src/proxy/game_phases.h",
+  "src/proxy/game_phases_core.h",
+  "src/proxy/gz_buffer.cpp",
+  "src/proxy/gz_buffer.h",
+  "src/proxy/lean_stub.cpp",
+  "src/proxy/lean_stub.h",
+  "src/proxy/light_phase_sites.h",
+  "src/proxy/light_phases.cpp",
+  "src/proxy/light_phases.h",
+  "src/proxy/light_phases_core.h",
+  "src/proxy/linear_cutout.h",
+  "src/proxy/loader.cpp",
+  "src/proxy/loading_probes.cpp",
+  "src/proxy/loading_probes.h",
+  "src/proxy/loading_trace.cpp",
+  "src/proxy/loading_trace.h",
+  "src/proxy/loading_trace_light.cpp",
+  "src/proxy/loading_trace_light.h",
+  "src/proxy/locked_prefix_core.h",
+  "src/proxy/lod_occlusion.cpp",
+  "src/proxy/lod_occlusion.h",
+  "src/proxy/lod_occlusion_sites.h",
+  "src/proxy/log_tiers.h",
+  "src/proxy/loop_phase_sites.h",
+  "src/proxy/loop_phases.cpp",
+  "src/proxy/loop_phases.h",
+  "src/proxy/loop_phases_core.h",
+  "src/proxy/media_cue.cpp",
+  "src/proxy/media_cue.h",
+  "src/proxy/media_cue_core.h",
+  "src/proxy/media_cue_sites.h",
+  "src/proxy/mesh_adjacency_fast.cpp",
+  "src/proxy/mesh_adjacency_fast.h",
+  "src/proxy/motion_capture.cpp",
+  "src/proxy/motion_capture.h",
+  "src/proxy/motion_output.cpp",
+  "src/proxy/motion_output.h",
+  "src/proxy/music_keep.cpp",
+  "src/proxy/music_keep.h",
+  "src/proxy/music_keep_core.h",
+  "src/proxy/object_capture.h",
+  "src/proxy/object_lifetime.cpp",
+  "src/proxy/object_lifetime.h",
+  "src/proxy/object_trace.cpp",
+  "src/proxy/object_trace.h",
+  "src/proxy/own_ship_cache.h",
+  "src/proxy/pass_phase_sites.h",
+  "src/proxy/pass_phases.cpp",
+  "src/proxy/pass_phases.h",
+  "src/proxy/pass_phases_core.h",
+  "src/proxy/pause_key_only.cpp",
+  "src/proxy/pause_key_only.h",
+  "src/proxy/pause_key_only_core.h",
+  "src/proxy/point_light_admission.cpp",
+  "src/proxy/point_light_admission.h",
+  "src/proxy/point_light_admission_core.h",
+  "src/proxy/proxy_identity.cpp",
+  "src/proxy/residual_phase_sites.h",
+  "src/proxy/residual_phases.cpp",
+  "src/proxy/residual_phases.h",
+  "src/proxy/residual_phases_core.h",
+  "src/proxy/resource_reader.cpp",
+  "src/proxy/resource_reader.h",
+  "src/proxy/resource_reader_core.cpp",
+  "src/proxy/sampling_profiler.cpp",
+  "src/proxy/sampling_profiler.h",
+  "src/proxy/scene_capture.cpp",
+  "src/proxy/scene_capture.h",
+  "src/proxy/scene_hook.cpp",
+  "src/proxy/scene_hook.h",
+  "src/proxy/screen_emission_admission.h",
+  "src/proxy/sector_background.h",
+  "src/proxy/session_log.cpp",
+  "src/proxy/session_log.h",
+  "src/proxy/shadow_caster_class.h",
+  "src/proxy/shadow_replay_candidates.h",
+  "src/proxy/shadow_replay_depth.h",
+  "src/proxy/shadow_replay_sun.h",
+  "src/proxy/shadow_replay_sun_point.h",
+  "src/proxy/shadow_retention.h",
+  "src/proxy/shadow_retention_core.h",
+  "src/proxy/sse_scalar.h",
+  "src/proxy/stamp_core.h",
+  "src/proxy/stamp_install.h",
+  "src/proxy/submit_phase_sites.h",
+  "src/proxy/submit_phases.cpp",
+  "src/proxy/submit_phases.h",
+  "src/proxy/submit_phases_core.h",
+  "src/proxy/sun_flare_fix.cpp",
+  "src/proxy/sun_flare_fix.h",
+  "src/proxy/sun_flare_fix_sites.h",
+  "src/proxy/sun_light_poll.cpp",
+  "src/proxy/sun_light_poll.h",
+  "src/proxy/sun_occlusion.cpp",
+  "src/proxy/sun_occlusion.h",
+  "src/proxy/sun_occlusion_core.h",
+  "src/proxy/telemetry.cpp",
+  "src/proxy/telemetry.h",
+  "src/proxy/terran_lod_sites.h",
+  "src/proxy/terran_station_lod.cpp",
+  "src/proxy/terran_station_lod.h",
+  "src/proxy/thin_vote_core.h",
+  "src/proxy/voice_dmo_fallback.cpp",
+  "src/proxy/voice_dmo_fallback.h",
+  "src/proxy/window_mode.cpp",
+  "src/proxy/window_mode.h",
+  "src/proxy/window_mode_core.h",
+  "src/proxy/window_trace.cpp",
+  "src/proxy/window_trace.h",
+  "src/proxy/window_trace_core.h",
+  "src/renderer/bloom_pass.cpp",
+  "src/renderer/bloom_pass.h",
+  "src/renderer/bloom_programs.h",
+  "src/renderer/camera_reprojection.h",
+  "src/renderer/damage_motion_validation.h",
+  "src/renderer/depth_prepass_profiles.h",
+  "src/renderer/exposure.cpp",
+  "src/renderer/exposure.h",
+  "src/renderer/fog_field_assets.cpp",
+  "src/renderer/fog_field_assets.h",
+  "src/renderer/fog_look_math.h",
+  "src/renderer/fog_mote_math.h",
+  "src/renderer/fog_pass.cpp",
+  "src/renderer/fog_pass.h",
+  "src/renderer/fog_pass_math.h",
+  "src/renderer/fog_volume_math.h",
+  "src/renderer/gpu_sync_timing.cpp",
+  "src/renderer/gpu_sync_timing.h",
+  "src/renderer/gpu_sync_timing_core.h",
+  "src/renderer/hdr_pass.cpp",
+  "src/renderer/hdr_pass.h",
+  "src/renderer/lens_visibility_variant.cpp",
+  "src/renderer/lens_visibility_variant.h",
+  "src/renderer/linear_distance_fade.h",
+  "src/renderer/linear_emission.cpp",
+  "src/renderer/linear_emission.h",
+  "src/renderer/linear_emission_pass.cpp",
+  "src/renderer/linear_emission_pass.h",
+  "src/renderer/linear_emission_sm1.cpp",
+  "src/renderer/linear_emission_sm1.h",
+  "src/renderer/linear_material.cpp",
+  "src/renderer/linear_material.h",
+  "src/renderer/material_motion.cpp",
+  "src/renderer/material_motion.h",
+  "src/renderer/material_radiance.cpp",
+  "src/renderer/material_radiance.h",
+  "src/renderer/motion_history.cpp",
+  "src/renderer/motion_history.h",
+  "src/renderer/motion_output_profiles.h",
+  "src/renderer/motion_row_history.cpp",
+  "src/renderer/motion_row_history.h",
+  "src/renderer/object_bounds_projection.h",
+  "src/renderer/ps3_program_slots.h",
+  "src/renderer/quad_vertex_program.h",
+  "src/renderer/readback_timing.h",
+  "src/renderer/rigid_motion.cpp",
+  "src/renderer/rigid_motion.h",
+  "src/renderer/rigid_position.cpp",
+  "src/renderer/rigid_position.h",
+  "src/renderer/rigid_replay_program.cpp",
+  "src/renderer/rigid_replay_program.h",
+  "src/renderer/scene_boundary.h",
+  "src/renderer/shader_constant_register.h",
+  "src/renderer/shader_population.cpp",
+  "src/renderer/shader_population.h",
+  "src/renderer/shadow_cascade_footprint_core.h",
+  "src/renderer/shadow_replay_pass.cpp",
+  "src/renderer/shadow_replay_pass.h",
+  "src/renderer/shadow_replay_projection.h",
+  "src/renderer/static_previous_rows.h",
+  "src/renderer/sun_occlusion_pass.cpp",
+  "src/renderer/sun_occlusion_pass.h",
+  "src/renderer/sun_shadow_apply_pass.cpp",
+  "src/renderer/sun_shadow_apply_pass.h",
+  "src/renderer/sun_share_frame.h",
+  "src/renderer/temporal_pass.cpp",
+  "src/renderer/temporal_pass.h",
+  "src/renderer/temporal_resolve_program.h",
+  "src/temporal/README.md",
+  "src/temporal/agx.h",
+  "src/temporal/bloom.h",
+  "src/temporal/resolve.h",
+  "src/temporal/sharpen.h"
+ ],
+ "changed_files_other_dll_relevant": [
+  "tools/config/schema.py",
+  "tools/manage.py"
+ ],
+ "changed_files_command": "git diff --stat 759c2ac7..2b3c85e4 -- src/ -> 292 files changed, 47803 insertions(+), 24677 deletions(-)",
+ "motion_output": {
+  "command": "cd /tmp/x3-run92-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run92-candidate/lock-timings-motion.json python3 verification/probe/run_motion_output.py",
+  "why_run": "capture.cpp, motion_output.*, bolt_footprint_core.h, resolve.h and the runner changed in code (seam-bolt-copy-hash added)",
+  "corpus": "/tmp/x3-shader-sweep/programs present (751 entries), not modified",
+  "status": "FAIL",
+  "passed": false,
+  "exit_code": 1,
+  "failure": "AssertionError: seam-taa-on: exit 1, traces 1; fixture CHECK/RESULT FAIL \"main target after the copy equals the reference resolve of the same inputs (byte for byte; HDR: within one code of the reference conversion)\"",
+  "cases_completed_before_failure": 21,
+  "cases_completed_at_committed_count": 21,
+  "cause": "d9a71f53 made the seam/production route upload in.weight = taa_history_weight_ = kHistoryWeightDefault 0.85 (src/proxy/motion_output.cpp:2214, comment: \"unset: 0.85, the pass's default, bit for bit\"), but the pass default src/renderer/temporal_pass.h:74 Input::weight is still .9f, and the motion fixture reference resolve (verification/probe/motion_output_fixture.cpp ~l.560-612) leaves weight at that default: reference 0.9 vs DLL 0.85. d9a71f53 re-recorded only the temporal pass fixture, not motion output.",
+  "diagnostic": {
+   "command": "cd /tmp/x3-run92-candidate/src && X3M_TAA_HISTORY_WEIGHT=0.9 X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run92-candidate/lock-timings-diag-taa09.json python3 verification/probe/run_motion_output.py --dll build/d3d9.dll --seam verification/probe/build/motion-output-seam/d3d9.dll --fixture verification/probe/build/motion_output_fixture.exe seam-taa-on",
+   "result": "seam-taa-on exit=0 checks=164 (= committed 164) with the weight forced to 0.9: the default mismatch is the whole failure",
+   "lock": {
+    "lock_wait_seconds": 3.6669999999988656e-06,
+    "child_elapsed_seconds": 5.480483709,
+    "exit_code": 0
+   }
+  },
+  "bolt_copy_case": {
+   "command": "cd /tmp/x3-run92-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run92-candidate/lock-timings-motion-bolt.json python3 verification/probe/run_motion_output.py --dll build/d3d9.dll --seam verification/probe/build/motion-output-seam/d3d9.dll --fixture verification/probe/build/motion_output_fixture.exe seam-bolt-copy-hash",
+   "result": "PASS (validate_bolt_copy): exit=0 rows=6; the runner rewrote verification/results/bolt-copy-hash/seam-bolt-copy-hash.json byte-identical to the committed file (not in git status)",
+   "rows_hash": [
+    "0c7d75b318c771ca",
+    "0c7d75b318c771ca",
+    "e24d919047c79424",
+    "fc925f9ce05341f8",
+    "46f51ef654f27972",
+    "none"
+   ],
+   "partial_run": "status PARTIAL (single case, no cross-case comparisons; not a suite pass)",
+   "lock": {
+    "lock_wait_seconds": 3.3340000000006698e-06,
+    "child_elapsed_seconds": 5.018929417,
+    "exit_code": 0
+   }
+  },
+  "binaries_note": "the runner fresh-built the fixture, seam DLL and a production DLL from 2b3c85e4 in the worktree; the single-case runs reuse them",
+  "lock": {
+   "lock_wait_seconds": 4.165999999999892e-06,
+   "child_elapsed_seconds": 115.778842959,
+   "exit_code": 1
+  }
+ },
+ "temporal_pass": {
+  "result": "NOT RUN",
+  "reason": "not run: qualification stopped at the motion gate (seam-taa-on FAIL at 2b3c85e4); the candidate cannot qualify, rerun on the fixed commit",
+  "would_run_because": "closure changed in code since 759c2ac7"
+ },
+ "gpu_sync_timing": {
+  "result": "NOT RUN",
+  "reason": "not run: qualification stopped at the motion gate (seam-taa-on FAIL at 2b3c85e4); the candidate cannot qualify, rerun on the fixed commit",
+  "would_run_because": "closure changed in code since 759c2ac7"
+ },
+ "bloom_pass": {
+  "result": "NOT RUN",
+  "reason": "not run: qualification stopped at the motion gate (seam-taa-on FAIL at 2b3c85e4); the candidate cannot qualify, rerun on the fixed commit",
+  "would_run_because": "closure changed in code since 759c2ac7"
+ },
+ "cursor_reassert": {
+  "result": "NOT RUN",
+  "reason": "not run: qualification stopped at the motion gate (seam-taa-on FAIL at 2b3c85e4); the candidate cannot qualify, rerun on the fixed commit",
+  "would_run_because": "closure changed in code since 759c2ac7"
+ },
+ "window_mode": {
+  "result": "NOT RUN",
+  "reason": "not run: qualification stopped at the motion gate (seam-taa-on FAIL at 2b3c85e4); the candidate cannot qualify, rerun on the fixed commit",
+  "would_run_because": "closure changed in code since 759c2ac7"
+ },
+ "sun_share_live": {
+  "result": "NOT RUN",
+  "reason": "not run: qualification stopped at the motion gate (seam-taa-on FAIL at 2b3c85e4); the candidate cannot qualify, rerun on the fixed commit",
+  "would_run_because": "closure changed in code since 759c2ac7"
+ },
+ "fog_route_bridge": {
+  "result": "NOT RUN",
+  "reason": "not run: qualification stopped at the motion gate (seam-taa-on FAIL at 2b3c85e4); the candidate cannot qualify, rerun on the fixed commit",
+  "would_run_because": "brief (closure changed only by the whitespace-only fog_pass.cpp)",
+  "host_builds_done": {
+   "build": "/tmp/x3-run92-candidate/route/build",
+   "baseline_build": "/tmp/x3-run92-candidate/route/baseline-build (baseline tree recreated: /tmp/x3-run76-candidate/baseline-6f16dbf6 was gone; git worktree add --detach /tmp/x3-run92-candidate/baseline-6f16dbf6 6f16dbf6)",
+   "exit_build": "first build-exit call exit 0: dll_sha256 a9c061e7ab43d70e045b9643e92d07f11576348ad310487c728a32c07d63fa5b, executable_sha256 df48bed51a1e2c746f9cbc314e4e80ac615d0d6592697675b17d63696e7feacd (a repeat call refused to overwrite the frozen exit fixture)"
+  }
+ },
+ "ownership_integration": {
+  "result": "NOT RUN",
+  "reason": "not run: qualification stopped at the motion gate (seam-taa-on FAIL at 2b3c85e4); the candidate cannot qualify, rerun on the fixed commit",
+  "would_run_because": "closure changed in code since 759c2ac7"
+ },
+ "ownership_integration_fallback": {
+  "result": "NOT RUN",
+  "reason": "not run: qualification stopped at the motion gate (seam-taa-on FAIL at 2b3c85e4); the candidate cannot qualify, rerun on the fixed commit",
+  "would_run_because": "closure changed in code since 759c2ac7"
+ },
+ "loading_trace": {
+  "reused": true,
+  "reuse_valid_for": "2b3c85e4 only if the fix does not touch this closure",
+  "reason": "closure loading_trace: every file changed since 759c2ac7 is whitespace/comment-only (comment_only.py with the whitespace_only_check squash; 51 files)",
+  "run91_entry": {
+   "result": "PASS"
+  }
+ },
+ "crypt_cache": {
+  "reused": true,
+  "reuse_valid_for": "2b3c85e4 only if the fix does not touch this closure",
+  "reason": "closure crypt_cache: every file changed since 759c2ac7 is whitespace/comment-only (comment_only.py with the whitespace_only_check squash; 48 files)",
+  "run91_entry": {
+   "result": "PASS"
+  }
+ },
+ "resource_reader": {
+  "reused": true,
+  "reuse_valid_for": "2b3c85e4 only if the fix does not touch this closure",
+  "reason": "closure resource_reader: every file changed since 759c2ac7 is whitespace/comment-only (comment_only.py with the whitespace_only_check squash; 29 files)",
+  "run91_entry": {
+   "result": "PASS"
+  }
+ },
+ "d3d9_exports": {
+  "reused": true,
+  "reuse_valid_for": "2b3c85e4 only if the fix does not touch this closure",
+  "reason": "closure d3d9_exports: every file changed since 759c2ac7 is whitespace/comment-only (comment_only.py with the whitespace_only_check squash; 47 files)",
+  "run91_entry": {
+   "result": "PASS"
+  }
+ },
+ "game_phase_cpu": {
+  "reused": true,
+  "reuse_valid_for": "2b3c85e4 only if the fix does not touch this closure",
+  "reason": "closure game_phase_cpu: every file changed since 759c2ac7 is whitespace/comment-only (comment_only.py with the whitespace_only_check squash; 48 files)",
+  "run91_entry": {
+   "result": "PASS"
+  }
+ },
+ "cull_small_parts_fixture": {
+  "reused": true,
+  "reuse_valid_for": "2b3c85e4 only if the fix does not touch this closure",
+  "reason": "closure cull_small_parts: every file changed since 759c2ac7 is whitespace/comment-only (comment_only.py with the whitespace_only_check squash; 18 files)",
+  "run91_entry": {
+   "result": "PASS"
+  }
+ },
+ "cull_census": {
+  "reused": true,
+  "reuse_valid_for": "2b3c85e4 only if the fix does not touch this closure",
+  "reason": "closure cull_census: every file changed since 759c2ac7 is whitespace/comment-only (comment_only.py with the whitespace_only_check squash; 11 files)",
+  "run91_entry": {
+   "result": "PASS"
+  }
+ },
+ "chase_fire": {
+  "reused": true,
+  "reuse_valid_for": "2b3c85e4 only if the fix does not touch this closure",
+  "reason": "closure chase_fire: every file changed since 759c2ac7 is whitespace/comment-only (comment_only.py with the whitespace_only_check squash; 20 files)",
+  "run91_entry": {
+   "result": "PASS"
+  }
+ },
+ "chase_transition_cpu": {
+  "reused": true,
+  "reuse_valid_for": "2b3c85e4 only if the fix does not touch this closure",
+  "reason": "closure chase_transition_cpu: every file changed since 759c2ac7 is whitespace/comment-only (comment_only.py with the whitespace_only_check squash; 27 files)",
+  "run91_entry": {
+   "result": "PASS"
+  }
+ },
+ "collide_query_phases": {
+  "reused": true,
+  "reuse_valid_for": "2b3c85e4 only if the fix does not touch this closure",
+  "reason": "closure collide_query_phases: every file changed since 759c2ac7 is whitespace/comment-only (comment_only.py with the whitespace_only_check squash; 35 files)",
+  "run91_entry": {
+   "result": "PASS"
+  }
+ },
+ "sun_occlusion": {
+  "reused": true,
+  "reuse_valid_for": "2b3c85e4 only if the fix does not touch this closure",
+  "reason": "closure sun_occlusion: every file changed since 759c2ac7 is whitespace/comment-only (comment_only.py with the whitespace_only_check squash; 20 files)",
+  "run91_entry": {
+   "passed": true
+  }
+ },
+ "fog_pass": {
+  "reused": true,
+  "reuse_valid_for": "2b3c85e4 only if the fix does not touch this closure",
+  "reason": "closure fog_pass: every file changed since 759c2ac7 is whitespace/comment-only (comment_only.py with the whitespace_only_check squash; 21 files)",
+  "run91_entry": {
+   "result": "PASS"
+  }
+ },
+ "ownership": {
+  "reused": true,
+  "reuse_valid_for": "2b3c85e4 only if the fix does not touch this closure",
+  "reason": "closure ownership: every file changed since 759c2ac7 is whitespace/comment-only (comment_only.py with the whitespace_only_check squash; 23 files)",
+  "run91_entry": {
+   "result": "PASS"
+  }
+ },
+ "ownership_admission": {
+  "reused": true,
+  "reuse_valid_for": "2b3c85e4 only if the fix does not touch this closure",
+  "reason": "closure ownership_admission: every file changed since 759c2ac7 is whitespace/comment-only (comment_only.py with the whitespace_only_check squash; 23 files)",
+  "run91_entry": {
+   "result": "PASS",
+   "checks": 147
+  }
+ },
+ "execution_ownership": {
+  "reused": true,
+  "reuse_valid_for": "2b3c85e4 only if the fix does not touch this closure",
+  "reason": "closure execution_ownership: every file changed since 759c2ac7 is whitespace/comment-only (comment_only.py with the whitespace_only_check squash; 23 files)",
+  "run91_entry": {
+   "result": "PASS",
+   "checks": 184
+  }
+ },
+ "fog_family_file_fixture": {
+  "reused": true,
+  "reuse_valid_for": "2b3c85e4 only if the fix does not touch this closure",
+  "reason": "closure fog_family_file_fixture: every file changed since 759c2ac7 is whitespace/comment-only (comment_only.py with the whitespace_only_check squash; 3 files)",
+  "run91_entry": {
+   "result": "PASS"
+  }
+ },
+ "fov_patch": {
+  "reused": true,
+  "reason": "sources whitespace-only since 759c2ac7; the only code-classified closure file is the record itself, re-recorded on the formatted tree in 0ff7d09b (passed=True, check_count=268, exit_status=0, = Run91)",
+  "run91_entry": {
+   "result": "PASS"
+  }
+ },
+ "sun_flare_fix": {
+  "reused": true,
+  "reason": "sources whitespace-only since 759c2ac7; the only code-classified closure file is the record itself, re-recorded on the formatted tree in 0ff7d09b (passed=True, check_count=79, exit_status=0, = Run91)",
+  "run91_entry": {
+   "result": "PASS"
+  }
+ },
+ "lod_occlusion_patch": {
+  "reused": true,
+  "reason": "sources whitespace-only since 759c2ac7; the only code-classified closure file is the record itself, re-recorded on the formatted tree in 0ff7d09b (passed=True, check_count=108, exit_status=0, = Run91)",
+  "run91_entry": {
+   "result": "PASS"
+  }
+ },
+ "terran_lod_patch": {
+  "reused": true,
+  "reason": "sources whitespace-only since 759c2ac7; the only code-classified closure file is the record itself, re-recorded on the formatted tree in 0ff7d09b (passed=True, check_count=92, exit_status=0, = Run91)",
+  "run91_entry": {
+   "result": "PASS"
+  }
+ },
+ "site_verifiers": {
+  "reused": true,
+  "reason": "git diff 759c2ac7 2b3c85e4 -- verification/probe/verify_*.py empty; hook site sources whitespace-only",
+  "run91_entry": {
+   "result": "PASS"
+  }
+ },
+ "reuse_dependency_check": {
+  "command": "python3 /tmp/x3-run92-candidate/reuse_deps.py; python3 /tmp/x3-run92-candidate/comment_only.py",
+  "output": [
+   "/tmp/x3-run92-candidate/reuse-deps.json",
+   "/tmp/x3-run92-candidate/comment-only.json"
+  ],
+  "method": "Run91 closure method; intersected with git diff --name-only 759c2ac7 2b3c85e4; comment_only.py now uses squash(split()) of verification/results/formatting-2026-09-26/whitespace_only_check.py (literal-aware) because the old stripper misclassified formatted files",
+  "closures": 117,
+  "changed_closures": 101,
+  "comment_only_closures": 85,
+  "code_changed_closures": [
+   "bloom_pass",
+   "cursor_reassert",
+   "effects_stage",
+   "fov_patch",
+   "gpu_sync_timing",
+   "lod_occlusion_patch",
+   "motion_capture",
+   "motion_output",
+   "ownership_integration",
+   "rigid_motion",
+   "state_hook_benchmark",
+   "sun_flare_fix",
+   "sun_share_live",
+   "temporal_pass",
+   "terran_lod_patch",
+   "window_mode"
+  ],
+  "selection": "run: motion_output, sun_share_live, temporal_pass, gpu_sync_timing, bloom_pass, cursor_reassert, window_mode, ownership_integration(+fallback), fog_route_bridge (brief), dry runs; research runners outside the qualification set (motion_capture, rigid_motion, state_hook_benchmark, effects_stage [runner deleted]) not run; patch fixtures reused (record-only change); everything else reused as comment-only"
+ },
+ "dry_run": {
+  "result": "NOT RUN",
+  "reason": "not run: qualification stopped at the motion gate (seam-taa-on FAIL at 2b3c85e4); the candidate cannot qualify, rerun on the fixed commit",
+  "prepared": "/tmp/x3-run92-candidate/run92-dryrun.sh"
+ },
+ "verdict": "NOT QUALIFIED at 2b3c85e4: build 0 warnings, x87 122 roots / 710 reachable / 0 violations, imports 234 -> 234 (none added or removed), 17 exports equal to Run91, generate --check PASS, host suite 269/2801/0 failing; motion output FAIL at seam-taa-on (reference resolve uses temporal_pass.h Input::weight .9f, DLL uploads kHistoryWeightDefault 0.85; passes at 164 checks with X3M_TAA_HISTORY_WEIGHT=0.9); seam-bolt-copy-hash PASS with the committed rows; remaining sections not run. Needs a source fix and a new candidate.",
+ "host_suite": {
+  "command": "/usr/bin/python3 verification/probe/run_host_suite.py",
+  "cwd": "/tmp/x3-run92-candidate/src",
+  "result": "PASS",
+  "modules": 269,
+  "tests": 2801,
+  "failing_modules": 0,
+  "wall_seconds": 96.7,
+  "output": "/tmp/x3-run92-candidate/host-suite.out",
+  "versus_run91": "269/2,801 -> same",
+  "generate_check": {
+   "command": "python3 tools/config/generate.py --check",
+   "result": "PASS 232 settings, 87 in the template"
+  }
+ },
+ "linked_audit": {
+  "command": "/usr/bin/python3 verification/probe/check_no_x87.py /tmp/x3-run92-candidate/build/d3d9.dll",
+  "result": "PASS",
+  "roots_count": 122,
+  "reachable_functions": 710,
+  "violations": 0,
+  "comparison": {
+   "run91": "122 roots / 709 reachable / 0 violations"
+  },
+  "import_delta": {
+   "command": "python3 verification/results/run70-candidate-audit.py pe /tmp/x3-run91-candidate/build/d3d9.dll /tmp/x3-run92-candidate/build/d3d9.dll",
+   "imported_dlls": [
+    14,
+    14
+   ],
+   "new_imported_dlls": [],
+   "removed_imported_dlls": [],
+   "total_imported_functions": {
+    "run91": 234,
+    "run92": 234
+   },
+   "per_function_delta": {
+    "new": [],
+    "removed": []
+   }
+  },
+  "exports": {
+   "count": 17,
+   "names_equal_run91": true,
+   "x3m_exports": []
+  }
+ },
+ "producer": "/tmp/x3-run92-candidate/make_record.py (this record); reuse_deps.py, comment_only.py, w.sh, save_restore.sh, batch.sh (prepared, not run), motion_cases.py (prepared, not run), extract_dryrun.py (prepared) under /tmp/x3-run92-candidate",
+ "bottle": "X3",
+ "wine_arch": "arm64 (cxbottle.conf \"WineArch\" = \"arm64\", checked)",
+ "environment": {
+  "FEX_X87REDUCEDPRECISION": "1",
+  "WINEMSYNC": "1",
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf",
+  "checked": "carried from Run91 (bottle config not changed; not re-read this session)"
+ },
+ "native_windows": "unverified: cross-compiled only; imports and exports equal to Run91",
+ "game_acceptance": "not applicable: candidate not qualified",
+ "installed": false,
+ "wall_times_seconds": {
+  "build": 46,
+  "host_suite": 96.7,
+  "motion": 115.8,
+  "motion_bolt": 5.0,
+  "diag_taa09": 5.5,
+  "task_elapsed_minutes": "about 20 (worktree 17:33, build 17:34, host suite ~17:37, motion 17:40:52-17:42:49, diagnostics 17:4x)"
+ },
+ "incidents": [
+  "game_guard.game_running() printed [] as a separate command before the build and before each Wine command; w.sh re-checked it; no Wine step overlapped another; no lock wait (<1e-5 s each); no exit-75 refusal",
+  "the Run76 route-bridge baseline tree /tmp/x3-run76-candidate/baseline-6f16dbf6 no longer exists; recreated as a scratch detached worktree /tmp/x3-run92-candidate/baseline-6f16dbf6 at 6f16dbf6",
+  "the route-bridge host builds ran while the motion runner held the Wine lock (host CPU load; outputs outside the worktree)",
+  "main checkout carries an unrelated modification docs/verification/user-runs.md (not this task)"
+ ],
+ "host_suite_note": "0 failing on the candidate tree 2b3c85e4",
+ "dropped_sections": {
+  "effects_stage": "the effects stage (9375a1e7) was removed from production in 479cd036; its fixture and runner no longer exist at 22593133",
+  "launcher_defect_fix": "dropped in Run89: the Run85 help fix carried since Run86; see run88-candidate-qualification.json",
+  "mesh_cache_hook": "dropped in Run90: runner and option removed in 9a668e81; see run89-candidate-qualification.json",
+  "loading_intervals": "dropped in Run90: runner and option removed in 9a668e81; see run89-candidate-qualification.json",
+  "note": "carried from Run91 unchanged"
+ }
+}
