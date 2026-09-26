@@ -2,7 +2,7 @@
 
 Archive with `python3 tools/analysis/archive_user_runs.py`.
 
-Updated 2026-09-27 (Run 94 A completed: bullets fixed, W default 1; no run queued). Earlier: 2026-09-21 (Run56 accepted for media stability; Run57 station-flash correction accepted; fog range remains under investigation). Run 17 crypto acceptance and the first-person/chase
+Updated 2026-09-27 (Run98 = release 0.5.2 with run_in_background installed; Run 98 A queued: alt-tab from the CrossOver shortcut). Earlier: 2026-09-21 (Run56 accepted for media stability; Run57 station-flash correction accepted; fog range remains under investigation). Run 17 crypto acceptance and the first-person/chase
 left-centre-right diagnostic are complete and are not in this queue. The agent
 never launches the game. Only open runs keep their instructions here; a completed
 run keeps only its row in the table below. The installed build is described in [status](../status.md).
@@ -30,7 +30,18 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 86 A | Run86 (far clip 7x7 + ramp 60/68; opt-in effects stage phase 1, chase view across docking; fog empty table; launcher report lines): plants + regression (run333), combat + effects look (run334), docking (run335) | 3 | Completed 2026-09-25: plants sparkles fixed (rest 120 -> 1 measured, pan 65 -> 46 invisible remainder; run333-run86a-plants/); effects modernisation dropped by the user after seeing it (old effect design, many tuning hours); docking restore worked (transfer path=dock, 258 at f0c4b) but the selection boxes vanished after undock and saves while docked restore first person anyway: dropped; both removed from production |
 
 
-No run is queued. Completed instructions for Runs 73-88 are in the [archive](../archive/user-runs-completed.md).
+**Run 98 A (queued 2026-09-27; Run98 = release 0.5.2 DLL `d6f6b47a…` from ce87ec99, installed 03:01; `run_in_background` on by default).**
+One launch from the **CrossOver shortcut** (no developer launcher, no `-runinbg` argument on the shortcut), at whatever
+resolution you use there. Load a save, fly for a moment, alt-tab away for about ten seconds, click back: the game must
+resume at once (no 5-10 s freeze). Then alt-tab twice more to see whether the double cursor appears after the return
+(the game now keeps rendering while inactive, which AGENTS.md asks us to recheck). Quit through the menu. Say whether
+speech still plays. Rows in `x3m.log` afterwards: `run_in_background ... status=patched value_before=0 value_after=1`,
+`music_keep_active ... run_in_background=1`, no `Reset`/`device_lost` rows around the alt-tabs, `session_end`.
+
+Optional: set `run_in_background = 0` in `x3m.ini` (uncomment it) and repeat the alt-tab once: the freeze should be back
+(`status=off`), then restore the comment.
+
+Run 98 A is the only queued run. Completed instructions for Runs 73-88 are in the [archive](../archive/user-runs-completed.md).
 
 ## Stand command
 

@@ -1,0 +1,45 @@
+{
+ "schema": 1,
+ "candidate": {
+  "commit": "ce87ec99",
+  "checkout": "/Users/asvetl/x3-mod (clean tree; built by tools/release/release.py into /tmp/x3m-release-0.5.2/build-release, stripped to /tmp/x3m-release-0.5.2/d3d9.dll)",
+  "dll": "/tmp/x3-run98-candidate/build/d3d9.dll (copy of the shipped stripped DLL; d3d9.debug and d3d9-unstripped.dll beside it)",
+  "sha256": "d6f6b47a4ee1d6cb6f1e45e802f82e730e72869ddd7b96d19fcd5969469f8abd",
+  "bytes": 39442996,
+  "unstripped_sha256": "889e7cb18d36aedc56ba448c7d48bdedf1fa00c9bade4d0c3460a888e3b0cfe1",
+  "unstripped_bytes": 57269113,
+  "debug_file_sha256": "7fd45bd05eb688b55fc831970329597e1784915087d5580e0f6360f64b14a319",
+  "embedded_marker": "X3M_SOURCE_COMMIT=ce87ec99\u2026 (once)",
+  "configuration": "RelWithDebInfo, DWARF stripped for shipping (strip identity PASS: 10 loaded sections, 17 exports byte-identical)",
+  "toolchain": "cmake/mingw-i686.cmake; i686-w64-mingw32-gcc 16.2.0; cmake 4.4.3; binutils objcopy",
+  "build_warnings": 0,
+  "supersedes": "Run97 6e0bda57 (3744dedb)"
+ },
+ "scope": "the change since Run97 is the run_in_background patch (36fed50f: call redirect at 0x004033c9, thunk sets bit 0x4000 of the input flags once; reviewed on Opus, no blocking findings) and the version 0.5.2; evidence: site verifier 17/17 on the installed EXE, Wine fixture run_run_in_background_patch 47/47 (bottle X3; vanilla vs patched callee records identical, LastError kept, refusals, restore, late claim; record bottle-X3/run-in-background-patch.json), host suite 272/2,834/0 on main after the merge, dry runs 127 variables (+X3M_RUN_IN_BACKGROUND=1) re-recorded; no other Wine sections (the rendering sources are unchanged since Run94's qualification)",
+ "release": {
+  "record": "verification/results/release-0.5.2.json",
+  "zip": "/tmp/x3m-release-0.5.2/x3m-0.5.2.zip",
+  "zip_sha256": "76af86c3c2d6027c4fbee6f2383da71424dee19f66eb8252b587dee886b23441",
+  "zip_bytes": 58242564,
+  "contents": [
+   "d3d9.dll (stripped) 39,442,996",
+   "x3m.ini 15,4xx (91 user-facing keys incl. run_in_background)",
+   "x3m-regenerate.exe 29,633,495 (reused from the 0.5.0 build)",
+   "README.txt"
+  ],
+  "wall_s": 51.8
+ },
+ "x87_audit": "PASS 0 violations on the unstripped and the stripped DLL (release.py)",
+ "config_check": "generate.py --check PASS 237 settings, 91 in the template",
+ "host_suite": {
+  "modules": 272,
+  "tests": 2834,
+  "failing": 0,
+  "note": "run on main at 36fed50f (after the merge, before the version bump; the bump changed only CMakeLists.txt and assets/x3m.ini)"
+ },
+ "wine_sections": "none (user instruction)",
+ "verdict": "QUALIFIED (patch fixture + host suite; rendering sections reused from Run94)",
+ "installed": false,
+ "native_windows": "unverified",
+ "producer": "main session"
+}

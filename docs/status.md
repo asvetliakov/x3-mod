@@ -5,35 +5,37 @@ marked completed on 2026-09-26 by the user's decision ([goals](goals.md)). The a
 
 ## Installed build
 
-Bottle **X3**, **CrossOver Preview.app**. Run97 = **release 0.5.1 (stripped)** DLL SHA-256
-`6e0bda57db7cd9818eb2e7129ce667fcac0d477f5f894d2af171a7f8f7193191` (39,439,629 bytes; the unstripped build
-`3c2a7cff…` 57,248,980 bytes and `d3d9.debug` `a02065b2…` stay beside it), built once from clean main `3744dedb` by
-`tools/release/release.py` (the DLL inside `x3m-0.5.1.zip`, sha256 `68b21559…`, 58,241,432 bytes, at
-`/tmp/x3m-release-0.5.1/`; contents d3d9.dll, x3m.ini, x3m-regenerate.exe, README.txt;
-[release record](../verification/results/release-0.5.1.json)). Retained: `/tmp/x3-run97-candidate/build/`.
-Installed 2026-09-27 02:13 ([qualification](../verification/results/run97-candidate-qualification.json), reduced scope
-by the user's instruction: the only change since Run96 is the version string;
-[install](../verification/results/run97-candidate-install.json)). The bottle's
+Bottle **X3**, **CrossOver Preview.app**. Run98 = **release 0.5.2 (stripped)** DLL SHA-256
+`d6f6b47a4ee1d6cb6f1e45e802f82e730e72869ddd7b96d19fcd5969469f8abd` (39,442,996 bytes; the unstripped build
+`889e7cb1…` 57,269,113 bytes and `d3d9.debug` `7fd45bd0…` stay beside it), built once from clean main `ce87ec99` by
+`tools/release/release.py` (the DLL inside `x3m-0.5.2.zip`, sha256 `76af86c3…`, 58,242,564 bytes, at
+`/tmp/x3m-release-0.5.2/`; contents d3d9.dll, x3m.ini, x3m-regenerate.exe, README.txt;
+[release record](../verification/results/release-0.5.2.json)). Retained: `/tmp/x3-run98-candidate/build/`.
+Installed 2026-09-27 03:01 ([qualification](../verification/results/run98-candidate-qualification.json): the
+run-in-background patch fixture 47/47 and the site verifier 17/17, host suite 272 / 2,834 / 0;
+[install](../verification/results/run98-candidate-install.json)). The bottle's
 `cxbottle.conf` now carries the two GStreamer variables for the game-directory voice decoder
 (`manage.py voice-decoder --bottle-env apply`, deliberate, sha256 `b06979d1…`, backup `cxbottle.conf.x3m-bak`), so
 speech works from a plain CrossOver launch too (to be confirmed by the next launch). The shipped template `x3m.ini`
 sits next to the DLL.
 
-Rollback chain: Run96 `33f81537…` at `/tmp/x3-run96-candidate/build/d3d9.dll` (stripped 0.5.0, unflown), Run94
-`338b00d7…` (accepted in Run 94 A).
+Rollback chain: Run97 `6e0bda57…` at `/tmp/x3-run97-candidate/build/d3d9.dll` (0.5.1, flown from CrossOver: speech,
+small log, stripped DLL loads), Run94 `338b00d7…` (accepted in Run 94 A).
 
-Run97 carries only the version 0.5.1 beyond Run96. Run96 carried, beyond Run95: the always-tier fix (six per-frame emitter rows and the resource identity rows moved under
+Run98 carries, beyond Run97, **`run_in_background`** (default on; [RE note](reverse-engineering/run-in-background.md)):
+the DLL sets the game's run-in-background bit once as `-runinbg` would, so a plain CrossOver launch no longer freezes
+the game while its window is inactive. Run96 carried, beyond Run95: the always-tier fix (six per-frame emitter rows and the resource identity rows moved under
 `--perf`/`--debug`: a player-mode log was 159 MB/h, now about 3 MB/h), the stripped release DLL, and the voice decoder
 drop-in with the bottle setting.
 
 ## Main beyond the installed build
 
-Nothing: main `3744dedb` is the installed and released commit (documentation follows it).
+Nothing: main `ce87ec99` is the installed and released commit (documentation follows it).
 
 ## Run queue
 
-No run is queued: [run queue](verification/user-runs.md). The next launch from CrossOver (no launcher) should confirm:
-the stripped DLL loads, `x3m.log` stays small, and speech plays (`voice_dmo_fallback ... init_hr=00000000`).
+Run 98 A is queued (a plain CrossOver launch: alt-tab out and back, the `run_in_background` rows, cursor and Reset
+rows): [run queue](verification/user-runs.md).
 
 ## Open items
 
