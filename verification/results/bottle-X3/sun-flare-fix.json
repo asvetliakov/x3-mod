@@ -9,11 +9,9 @@
   "src/proxy/engine_patch.h"
  ],
  "source": {
-  "commit": "ce9732a1bdcdc58481bcc860aeb4d9f4bdb0187b",
-  "production_sources_dirty": true,
-  "dirty_paths": [
-   "src/proxy/sun_flare_fix.cpp"
-  ],
+  "commit": "204d3a099e659fe7c1accc634a6afe945c7bff99",
+  "production_sources_dirty": false,
+  "dirty_paths": [],
   "sha256": {
    "src/proxy/sun_flare_fix.cpp": "e87764b2182aacc8592b41873e9c1aa3ff9a416e8ab57ccbf2802d32d20baed3",
    "src/proxy/sun_flare_fix.h": "71cb46d0a2396087bb51a798cd729038bd250e765b8e3af581a3a34aa1e9ff27",
@@ -34,7 +32,7 @@
  },
  "exit_status": 0,
  "elapsed_s": 5.1,
- "executable_sha256": "6a616c0be3081268ea132b2684d6eb275ea6dda6e1f539133fbd7bcc621ff061",
+ "executable_sha256": "289a18e914373a256a8f84aabbae07ce5d1b07669366304214846c5999776733",
  "toolchain": "i686-w64-mingw32-g++ (GCC) 16.2.0",
  "build_audit": {
   "module_calls_seam": [
@@ -976,8 +974,8 @@
   "raise": "0"
  },
  "timing_us": {
-  "install_us": 531.5,
-  "restore_us": 612.9
+  "install_us": 535.2,
+  "restore_us": 592.2
  },
  "arena": {
   "used": 364,

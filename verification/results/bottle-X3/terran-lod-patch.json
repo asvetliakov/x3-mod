@@ -9,7 +9,7 @@
   "src/proxy/engine_patch.h"
  ],
  "source": {
-  "commit": "fd60e44b6660e6abbe06fd4dc2cf540f5e7bd54b",
+  "commit": "204d3a099e659fe7c1accc634a6afe945c7bff99",
   "production_sources_dirty": false,
   "dirty_paths": []
  },
@@ -24,8 +24,8 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "exit_status": 0,
- "elapsed_s": 5.7,
- "executable_sha256": "d1a4929a28f42af3071d0a30991d6250e585e2781c53c657ac4a70053ad178a6",
+ "elapsed_s": 5.2,
+ "executable_sha256": "168657ceacdf8235e205493ed88b25b092ee88d900e0232bfdaf7f09a89dbe5c",
  "toolchain": "i686-w64-mingw32-g++ (GCC) 16.2.0",
  "build_audit": {
   "module_imports_own_protect_or_flush": [],
@@ -592,8 +592,8 @@
   "raw_restore_flag31": 1
  },
  "timing_us": {
-  "install_us": 234.6,
-  "restore_us": 183.7
+  "install_us": 247.5,
+  "restore_us": 187.3
  },
  "install_rows": [
   {
