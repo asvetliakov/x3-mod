@@ -1,0 +1,4 @@
+file /tmp/x3-bottleX3-run330/session-20260925-073043-216.log
+state                    n     p10     p50     p90     p99     mean  fps@p50
+menu_ge500            3663   15.43   16.24   18.16   28.57    16.89     61.6
+menu_lt500             622   14.04   15.30   17.99   50.36    27.65     65.4

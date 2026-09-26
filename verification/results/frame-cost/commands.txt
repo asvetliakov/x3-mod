@@ -1,0 +1,13 @@
+# Producing commands (run from this directory; session logs are local /tmp, untracked; no Wine, no launch)
+for r in 330 338 339 346 348 349; do python3 frame_dt.py /tmp/x3-bottleX3-run$r/session-*.log > frame-dt-run$r.txt; done   # Q1 dt by state/background
+python3 pass_cpu_us.py /tmp/x3-bottleX3-run338/session-*.log > pass_cpu_us_run338_all.txt      # Q2 CPU spans, all flight
+python3 pass_cpu_us.py /tmp/x3-bottleX3-run338/session-*.log 21 > pass_cpu_us_run338_bg21.txt  # greenvoid stand
+python3 pass_cpu_us.py /tmp/x3-bottleX3-run338/session-*.log 67 > pass_cpu_us_run338_bg67.txt  # ~106-draw class
+python3 pass_cpu_us.py /tmp/x3-bottleX3-run348/session-*.log > pass_cpu_us_run348_all.txt      # newest build (2a75e2c3), bg21 only
+for r in 330 338; do python3 menu_pass_us.py /tmp/x3-bottleX3-run$r/session-*.log > menu-pass-us-run$r.txt; done   # Q3 menu 1080p vs 5120
+for r in 330 338 348; do python3 window_rows.py /tmp/x3-bottleX3-run$r/session-*.log > windows-run$r.txt; done
+for r in 330 338 348; do python3 window_summary.py windows-run$r.txt; done > window-summary.txt   # Q2 CPU hook/scene shares
+# Q5 (host-only dry runs, from the repository root):
+#   python3 tools/manage.py launch --bottle X3 --dry-run --perf > verification/results/frame-cost/dryrun-default-perf.txt   (exit 0)
+#   $(cat dryrun-all-off.cmd) > verification/results/frame-cost/dryrun-all-off.txt                                         (exit 0)
+# GPU per-pass figures at 5120x1440 are read from ../run325-run83a-gpu/gpu_passes_325_out.txt and sector_class_out.txt (not recomputed).

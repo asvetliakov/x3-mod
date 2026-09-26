@@ -1,0 +1,6 @@
+x3-bottleX3-run330 menu frames 3663 dt_p50_ms 16.24
+  hdr_frame.meter_us                 p50_us      0.0
+  hdr_frame.readback_us              p50_us      0.0
+  hdr_frame.writeback_us             p50_us      0.0
+  motion_output_frame.fill_us        p50_us      0.0
+  motion_output_frame.taa_run_us     p50_us      0.0

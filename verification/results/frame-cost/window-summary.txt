@@ -1,0 +1,7 @@
+windows-run330.txt
+menu   windows= 13 dt_p50= 16139 draws= 522 hook_overhead_us=  421 (0.81 us/draw) native_draw_us= 1476 scene_us=  280 gap_pre_us= 2705 gap_post_us= 292 present_us=  7
+windows-run338.txt
+menu   windows=  3 dt_p50= 17437 draws= 495 hook_overhead_us=  436 (0.82 us/draw) native_draw_us= 1373 scene_us=  179 gap_pre_us= 3660 gap_post_us= 147 present_us=  6
+flight windows= 64 dt_p50= 17024 draws= 120 hook_overhead_us=  732 (6.30 us/draw) native_draw_us=  401 scene_us= 2357 gap_pre_us= 7879 gap_post_us= 275 present_us=  9
+windows-run348.txt
+flight windows= 28 dt_p50= 19856 draws= 190 hook_overhead_us= 1394 (7.45 us/draw) native_draw_us=  692 scene_us= 3152 gap_pre_us= 7104 gap_post_us= 667 present_us=  9
