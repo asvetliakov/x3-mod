@@ -9,15 +9,15 @@
   "src/proxy/engine_patch.h"
  ],
  "source": {
-  "commit": "204d3a099e659fe7c1accc634a6afe945c7bff99",
+  "commit": "ecf0215eee59d958194457014468d59d06543b6d",
   "production_sources_dirty": false,
   "dirty_paths": [],
   "sha256": {
-   "src/proxy/sun_flare_fix.cpp": "e87764b2182aacc8592b41873e9c1aa3ff9a416e8ab57ccbf2802d32d20baed3",
-   "src/proxy/sun_flare_fix.h": "71cb46d0a2396087bb51a798cd729038bd250e765b8e3af581a3a34aa1e9ff27",
-   "src/proxy/sun_flare_fix_sites.h": "28dea31276e71283896ac61f5b71e178827fd941858b266c03e2ff05fe04380f",
-   "src/proxy/engine_patch.cpp": "9eb31fbf19e4f88432655ccccfe6e054739d9b8ba5f5be4054dfccf513330a2b",
-   "src/proxy/engine_patch.h": "d8a777ee51e076271c0e22889701a594d98a4fad882a4be0c1c08cefc5771e66"
+   "src/proxy/sun_flare_fix.cpp": "50b4d65615c01b3afac2a291bcd3f4a330f33fa1f1d21390907549cf5a8ad66e",
+   "src/proxy/sun_flare_fix.h": "88a6fa4292d3ac4eeeda5dbf3d5dd66c0d0bbc0381ae836a493c875d47b5f8b7",
+   "src/proxy/sun_flare_fix_sites.h": "c490df00479fbcca3aebdbc6a30af2c687f1484b1c4e3a33b2f80db446c73625",
+   "src/proxy/engine_patch.cpp": "a9207d06c7075fa56690566ee4f514347852d2f1d41252b5386674d61b24f2cf",
+   "src/proxy/engine_patch.h": "0d251d55b27d4e87249cc5804e572b44a00460cabae23d2f273a2e3a23b1e071"
   }
  },
  "game_launched": false,
@@ -32,7 +32,7 @@
  },
  "exit_status": 0,
  "elapsed_s": 5.1,
- "executable_sha256": "289a18e914373a256a8f84aabbae07ce5d1b07669366304214846c5999776733",
+ "executable_sha256": "bb153f0a477b57304f9f1d739fb5e0925d07424c42132831dd10c4a93cfb610d",
  "toolchain": "i686-w64-mingw32-g++ (GCC) 16.2.0",
  "build_audit": {
   "module_calls_seam": [
@@ -974,8 +974,8 @@
   "raise": "0"
  },
  "timing_us": {
-  "install_us": 535.2,
-  "restore_us": 592.2
+  "install_us": 504.2,
+  "restore_us": 568.2
  },
  "arena": {
   "used": 364,

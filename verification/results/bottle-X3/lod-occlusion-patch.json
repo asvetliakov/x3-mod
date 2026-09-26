@@ -9,15 +9,15 @@
   "src/proxy/engine_patch.h"
  ],
  "source": {
-  "commit": "204d3a099e659fe7c1accc634a6afe945c7bff99",
+  "commit": "ecf0215eee59d958194457014468d59d06543b6d",
   "production_sources_dirty": false,
   "dirty_paths": [],
   "sha256": {
-   "src/proxy/lod_occlusion.cpp": "7458fa0d4cdb7ecbcd00bc7179d66745c028177e7a2ecbda9a715538ef9d5e41",
-   "src/proxy/lod_occlusion.h": "5638be117920ed19f6edf4c29e01d1689def06ddf8f1d1dddca1562e4da1f36e",
-   "src/proxy/lod_occlusion_sites.h": "7e5a7e7856c74de1f46d2369961fcc6068910fb58971d0b2e0c587d0324b85ba",
-   "src/proxy/engine_patch.cpp": "9eb31fbf19e4f88432655ccccfe6e054739d9b8ba5f5be4054dfccf513330a2b",
-   "src/proxy/engine_patch.h": "d8a777ee51e076271c0e22889701a594d98a4fad882a4be0c1c08cefc5771e66"
+   "src/proxy/lod_occlusion.cpp": "5687383577b13ef28d4a5b824e2b7d2080bd017a7b42c00555b5d79f654db50c",
+   "src/proxy/lod_occlusion.h": "191342cbeb3386bbbdbdbb06f4607bfb3012e36d4fa2952ed005baa8dec2a33c",
+   "src/proxy/lod_occlusion_sites.h": "1ee062afc4037e12eefbe852ef3c98e831b979d4f57d5419e649de0269713fb1",
+   "src/proxy/engine_patch.cpp": "a9207d06c7075fa56690566ee4f514347852d2f1d41252b5386674d61b24f2cf",
+   "src/proxy/engine_patch.h": "0d251d55b27d4e87249cc5804e572b44a00460cabae23d2f273a2e3a23b1e071"
   }
  },
  "game_launched": false,
@@ -31,8 +31,8 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "exit_status": 0,
- "elapsed_s": 5.1,
- "executable_sha256": "f3fc1a86dd50d3265355fa47f94b775626fb6a4022487536fc779bf1e49b8f36",
+ "elapsed_s": 5.9,
+ "executable_sha256": "6f820eb75a0b157bc6d024bdd3eaf5f7c18b05d4e97293d53191d87e26b2b258",
  "toolchain": "i686-w64-mingw32-g++ (GCC) 16.2.0",
  "build_audit": {
   "module_imports_own_protect_or_flush": [],
@@ -669,8 +669,8 @@
   "raw_restore_lod1": 2
  },
  "timing_us": {
-  "install_us": 253.0,
-  "restore_us": 196.0
+  "install_us": 252.1,
+  "restore_us": 191.6
  },
  "install_rows": [
   {

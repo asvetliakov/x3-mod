@@ -11,17 +11,17 @@
   "src/proxy/engine_memory.h"
  ],
  "source": {
-  "commit": "204d3a099e659fe7c1accc634a6afe945c7bff99",
+  "commit": "ecf0215eee59d958194457014468d59d06543b6d",
   "production_sources_dirty": false,
   "dirty_paths": [],
   "sha256": {
-   "src/proxy/fov.cpp": "dcffce75d1acb7622559b0a1fd8ad630dae4ed65c167936fa573c854b7305dc1",
-   "src/proxy/fov.h": "11f2f3e3e5986959bf5e2a9d9eb51944ca3829a797299c73c2ee628a2273b658",
-   "src/proxy/fov_sites.h": "71304a21296700a77e1651f742da918d87d0c42536cdbde4b5adaf2a8fdb6563",
-   "src/proxy/engine_patch.cpp": "9eb31fbf19e4f88432655ccccfe6e054739d9b8ba5f5be4054dfccf513330a2b",
-   "src/proxy/engine_patch.h": "d8a777ee51e076271c0e22889701a594d98a4fad882a4be0c1c08cefc5771e66",
-   "src/proxy/engine_memory.cpp": "1db8421f74a720ad1890ee28b9ba98b350075c2faf95c626902f3260345d66fb",
-   "src/proxy/engine_memory.h": "a9f5a5262bef99cf23fd5ab4b2688aec56872ab8f995f6487d75481f1dc3b92d"
+   "src/proxy/fov.cpp": "1215c624f2de002b6f8351104a09dace62bd929bff9bfff3b5e45258ee2554d3",
+   "src/proxy/fov.h": "d3fde8cc7012b18777c3fdc4356ca3a00befd9b3c971d1334d813942e307cdd8",
+   "src/proxy/fov_sites.h": "dc23037036ed29ae43862b0ab380b2bfd0c3a444a6634815115b0fa0e1842649",
+   "src/proxy/engine_patch.cpp": "a9207d06c7075fa56690566ee4f514347852d2f1d41252b5386674d61b24f2cf",
+   "src/proxy/engine_patch.h": "0d251d55b27d4e87249cc5804e572b44a00460cabae23d2f273a2e3a23b1e071",
+   "src/proxy/engine_memory.cpp": "d0174efa4fd1cbb4ffc31831fa44445bcf3801ec8d42c3c48b230e4a5c3b631b",
+   "src/proxy/engine_memory.h": "e4c9e3b83cda6a3e91f419edcee8ae1640bd3f7ab80b0acb9b5bb8c6fe33bc21"
   }
  },
  "game_launched": false,
@@ -35,8 +35,8 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "exit_status": 0,
- "elapsed_s": 8.1,
- "executable_sha256": "cae341c267139f2e8afd336e3909ecbaf6f580a80d227822adb33c22707a2a11",
+ "elapsed_s": 8.7,
+ "executable_sha256": "bb6c4cd97b14d1181f83b9f949aa7e5a7a75f0f89ee1aed9ec704400819c2663",
  "toolchain": "i686-w64-mingw32-g++ (GCC) 16.2.0",
  "build_audit": {
   "module_imports_own_protect_or_flush": [],
@@ -1311,8 +1311,8 @@
   }
  ],
  "timing_us": {
-  "install_us": 958.2,
-  "restore_us": 342.4
+  "install_us": 977.4,
+  "restore_us": 331.6
  },
  "install_sequence": {
   "step": "install",
