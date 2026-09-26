@@ -41,7 +41,7 @@ struct Axis {
 // i686 build never enters x87 (std::floor and double->int64 both do there).
 // Lattice coordinates are world units over >= 2048, far inside that domain.
 inline std::int32_t floor_i32(double u) {
-    const std::int32_t i = static_cast<std::int32_t>(u);  // truncation toward zero
+    const std::int32_t i = static_cast<std::int32_t>(u); // truncation toward zero
     return static_cast<double>(i) > u ? i - 1 : i;
 }
 
@@ -91,7 +91,7 @@ inline float lattice(const Axis& x, const Axis& y, const Axis& z, std::uint32_t 
 
 // --- Frozen field constants (fog_mass_column_screen / fog_density_runtime_screen)
 
-constexpr double kPeriod = 32768.0;  // fog_distance_replay.PERIOD
+constexpr double kPeriod = 32768.0; // fog_distance_replay.PERIOD
 // Octave scales: 2P, P (rotated by R), P/4 (rotated by R²), P/16; exact powers of two.
 constexpr double kInvScaleMass = 1.0 / (2.0 * kPeriod);
 constexpr double kInvScaleMassRotated = 1.0 / kPeriod;
@@ -100,15 +100,15 @@ constexpr double kInvScaleDetailHigh = 1.0 / (kPeriod / 16.0);
 constexpr int kOctaveMass = 3, kOctaveMassRotated = 4, kOctaveDetailLow = 5, kOctaveDetailHigh = 6;
 
 // Proper rotation R = [[1,2,2],[2,1,-2],[-2,2,-1]]/3 as float64.
-constexpr double kR[3][3] = {{1.0 / 3.0, 2.0 / 3.0, 2.0 / 3.0},
-                             {2.0 / 3.0, 1.0 / 3.0, -2.0 / 3.0},
-                             {-2.0 / 3.0, 2.0 / 3.0, -1.0 / 3.0}};
+constexpr double kR[3][3] = {
+    {1.0 / 3.0, 2.0 / 3.0, 2.0 / 3.0}, {2.0 / 3.0, 1.0 / 3.0, -2.0 / 3.0}, {-2.0 / 3.0, 2.0 / 3.0, -1.0 / 3.0}};
 
 // R² exactly as the reference forms it: Python sum() starting at 0 over k.
 // constexpr: evaluated at compile time in IEEE double (no static-init order).
 struct RotationSquare {
     double m[3][3];
-    constexpr RotationSquare() : m{} {
+    constexpr RotationSquare()
+        : m{} {
         for (int i = 0; i < 3; ++i)
             for (int j = 0; j < 3; ++j) {
                 double s = 0.0;
@@ -135,19 +135,18 @@ inline Vec3d rotate(const Vec3d& p, const double (&m)[3][3]) {
 // float32 combination of the four octave values, reference float32 order.
 inline float combine(float mass, float mass_rotated, float detail_low, float detail_high) {
     const float f = (2.0f * mass + mass_rotated) / 3.0f;
-    float t = (f - 0.1f) / 0.3f;  // smoothstep(.10,.40): NumPy casts the scalars to float32
+    float t = (f - 0.1f) / 0.3f; // smoothstep(.10,.40): NumPy casts the scalars to float32
     t = t < 0.0f ? 0.0f : (t > 1.0f ? 1.0f : t);
     const float B = (t * t) * (3.0f - 2.0f * t);
     const float dlo = (detail_low + 1.0f) / 2.0f;
     const float dhi = (detail_high + 1.0f) / 2.0f;
     const float rho = B * (0.5f + 0.5f * dlo) - (0.2f * (1.0f - B)) * dhi;
-    return rho > 0.0f ? rho : 0.0f;  // np.maximum(0, rho): -0 becomes +0
+    return rho > 0.0f ? rho : 0.0f; // np.maximum(0, rho): -0 becomes +0
 }
 
 // The eight prefilter offsets in itertools.product((-.25,.25), repeat=3) order.
-constexpr double kPrefilterOffsets[8][3] = {
-    {-.25, -.25, -.25}, {-.25, -.25, .25}, {-.25, .25, -.25}, {-.25, .25, .25},
-    {.25, -.25, -.25},  {.25, -.25, .25},  {.25, .25, -.25},  {.25, .25, .25}};
+constexpr double kPrefilterOffsets[8][3] = {{-.25, -.25, -.25}, {-.25, -.25, .25}, {-.25, .25, -.25}, {-.25, .25, .25},
+                                            {.25, -.25, -.25},  {.25, -.25, .25},  {.25, .25, -.25},  {.25, .25, .25}};
 
 // NumPy float32 mean of eight: pairwise sum, then true_divide by 8.
 inline float mean8(const float (&a)[8]) {
@@ -211,7 +210,7 @@ inline void store_half(std::uint8_t* at, std::uint16_t word) {
     at[1] = static_cast<std::uint8_t>(word >> 8);
 }
 
-}  // namespace
+} // namespace
 
 // --- Field --------------------------------------------------------------
 
@@ -221,15 +220,15 @@ float density_field(double x, double y, double z) {
     const Vec3d r2 = rotate(p, kR2.m);
     const float mass = lattice(axis_terms(x * kInvScaleMass, kMulX), axis_terms(y * kInvScaleMass, kMulY),
                                axis_terms(z * kInvScaleMass, kMulZ), octave_base(kOctaveMass));
-    const float mass_rotated =
-        lattice(axis_terms(r1.x * kInvScaleMassRotated, kMulX), axis_terms(r1.y * kInvScaleMassRotated, kMulY),
-                axis_terms(r1.z * kInvScaleMassRotated, kMulZ), octave_base(kOctaveMassRotated));
-    const float detail_low =
-        lattice(axis_terms(r2.x * kInvScaleDetailLow, kMulX), axis_terms(r2.y * kInvScaleDetailLow, kMulY),
-                axis_terms(r2.z * kInvScaleDetailLow, kMulZ), octave_base(kOctaveDetailLow));
-    const float detail_high =
-        lattice(axis_terms(x * kInvScaleDetailHigh, kMulX), axis_terms(y * kInvScaleDetailHigh, kMulY),
-                axis_terms(z * kInvScaleDetailHigh, kMulZ), octave_base(kOctaveDetailHigh));
+    const float mass_rotated = lattice(axis_terms(r1.x * kInvScaleMassRotated, kMulX),
+                                       axis_terms(r1.y * kInvScaleMassRotated, kMulY),
+                                       axis_terms(r1.z * kInvScaleMassRotated, kMulZ), octave_base(kOctaveMassRotated));
+    const float detail_low = lattice(axis_terms(r2.x * kInvScaleDetailLow, kMulX),
+                                     axis_terms(r2.y * kInvScaleDetailLow, kMulY),
+                                     axis_terms(r2.z * kInvScaleDetailLow, kMulZ), octave_base(kOctaveDetailLow));
+    const float detail_high = lattice(axis_terms(x * kInvScaleDetailHigh, kMulX),
+                                      axis_terms(y * kInvScaleDetailHigh, kMulY),
+                                      axis_terms(z * kInvScaleDetailHigh, kMulZ), octave_base(kOctaveDetailHigh));
     return combine(mass, mass_rotated, detail_low, detail_high);
 }
 
@@ -255,14 +254,14 @@ std::uint16_t float_to_half_rne(float value) {
         return static_cast<std::uint16_t>(sign | 0x7c00u | 0x200u | (mantissa >> 13));
     }
     const int half_exponent = static_cast<int>(exponent) - 127 + 15;
-    if (half_exponent >= 0x1f) return static_cast<std::uint16_t>(sign | 0x7c00u);  // overflow
+    if (half_exponent >= 0x1f) return static_cast<std::uint16_t>(sign | 0x7c00u); // overflow
     if (half_exponent <= 0) {
         // Subnormal or zero result: the value is (mantissa|implicit) * 2^(exponent-150);
         // one half subnormal step is 2^-24, so shift by 126-exponent (>= 14).
         if (exponent == 0 && mantissa == 0) return sign;
         const std::uint32_t full = mantissa | (exponent ? 0x800000u : 0u);
         const int shift = 126 - static_cast<int>(exponent);
-        if (shift > 25) return sign;  // below half the smallest subnormal: rounds to zero
+        if (shift > 25) return sign; // below half the smallest subnormal: rounds to zero
         const std::uint32_t half = full >> shift;
         const std::uint32_t remainder = full & ((1u << shift) - 1u);
         const std::uint32_t halfway = 1u << (shift - 1);
@@ -272,7 +271,7 @@ std::uint16_t float_to_half_rne(float value) {
     }
     std::uint32_t result = (static_cast<std::uint32_t>(half_exponent) << 10) | (mantissa >> 13);
     const std::uint32_t remainder = mantissa & 0x1fffu;
-    if (remainder > 0x1000u || (remainder == 0x1000u && (result & 1u))) ++result;  // may carry into inf
+    if (remainder > 0x1000u || (remainder == 0x1000u && (result & 1u))) ++result; // may carry into inf
     return static_cast<std::uint16_t>(sign | result);
 }
 
@@ -310,8 +309,10 @@ float half_to_float(std::uint16_t half) {
 namespace {
 // floor(p/delta) through the SSE2 int32 path (keys fit int32 for any reachable
 // world: |p| < 2^31 * 512); widened to the signed 64-bit key type.
-inline std::int64_t floor_key(double q) { return static_cast<std::int64_t>(floor_i32(q)); }
-}  // namespace
+inline std::int64_t floor_key(double q) {
+    return static_cast<std::int64_t>(floor_i32(q));
+}
+} // namespace
 
 NodeKey node_key(double delta, double px, double py, double pz) {
     NodeKey k;
@@ -331,12 +332,11 @@ NodeKey window_origin(double delta, double cx, double cy, double cz) {
 
 bool window_contains(const NodeKey& origin, const NodeKey& base) {
     const std::int64_t lx = base.x - origin.x, ly = base.y - origin.y, lz = base.z - origin.z;
-    return lx >= 0 && lx <= kWindowLastBase && ly >= 0 && ly <= kWindowLastBase && lz >= 0 &&
-           lz <= kWindowLastBase;
+    return lx >= 0 && lx <= kWindowLastBase && ly >= 0 && ly <= kWindowLastBase && lz >= 0 && lz <= kWindowLastBase;
 }
 
 int storage_index(std::int64_t k) {
-    return static_cast<int>(k & (kWindowNodes - 1));  // Euclidean mod 128 for two's complement
+    return static_cast<int>(k & (kWindowNodes - 1)); // Euclidean mod 128 for two's complement
 }
 
 std::int64_t node_for_storage(std::int64_t origin, int storage) {
@@ -362,7 +362,7 @@ inline double smoothstep(double lo, double hi, double x) {
     t = t < 0.0 ? 0.0 : (t > 1.0 ? 1.0 : t);
     return t * t * (3.0 - 2.0 * t);
 }
-}  // namespace
+} // namespace
 
 LodWeights lod_weights(double distance) {
     LodWeights w;
@@ -376,7 +376,7 @@ LodWeights lod_weights(double distance) {
 Address address(int level, const NodeKey& origin, double px, double py, double pz) {
     Address a{};
     if (level < 0 || level >= kLevelCount) {
-        a.level = -1;  // refused: no such level; nothing is contained
+        a.level = -1; // refused: no such level; nothing is contained
         return a;
     }
     const double delta = kLevelDelta[level];
@@ -399,8 +399,8 @@ Address address(int level, const NodeKey& origin, double px, double py, double p
 
 // --- Slab generation ----------------------------------------------------
 
-void generate_brick(double delta, const NodeKey& origin, const WorldOffset& offset, int brick_x,
-                    int brick_y, int group, std::uint8_t* out, std::size_t pitch) {
+void generate_brick(double delta, const NodeKey& origin, const WorldOffset& offset, int brick_x, int brick_y, int group,
+                    std::uint8_t* out, std::size_t pitch) {
     NodeKey key;
     std::int64_t kz[kLanes];
     for (int lane = 0; lane < kLanes; ++lane) kz[lane] = node_for_storage(origin.z, kLanes * group + lane);
@@ -417,8 +417,8 @@ void generate_brick(double delta, const NodeKey& origin, const WorldOffset& offs
     }
 }
 
-void generate_tile(double delta, const NodeKey& origin, const WorldOffset& offset, int group,
-                   std::uint8_t* out, std::size_t pitch) {
+void generate_tile(double delta, const NodeKey& origin, const WorldOffset& offset, int group, std::uint8_t* out,
+                   std::size_t pitch) {
     const int bricks = kWindowNodes / kBrickTexels;
     for (int by = 0; by < bricks; ++by)
         for (int bx = 0; bx < bricks; ++bx)
@@ -440,5 +440,5 @@ void duplicate_tile_border(int group, std::uint8_t* atlas, std::size_t pitch) {
     std::memcpy(tile + std::size_t(kWindowNodes) * pitch, tile, std::size_t(kTileTexels) * kTexelBytes);
 }
 
-}  // namespace fog
-}  // namespace x3m
+} // namespace fog
+} // namespace x3m

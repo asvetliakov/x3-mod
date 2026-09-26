@@ -26,25 +26,24 @@
 // quiescent caller (including fixtures), outside DllMain. No on-disk change.
 namespace x3m::scene_hook {
 using Listener = void (*)();
-bool wanted();                      // the switch as parsed: "1", or unset with X3M_MOTION_OUTPUT=1 ("0" or unset without the route: off)
+bool wanted(); // the switch as parsed: "1", or unset with X3M_MOTION_OUTPUT=1 ("0" or unset without the route: off)
 // Optional callbacks select the qualified pre/original/post bridge. The hook
 // copies the binding and supplies the verified original itself. Configuration
 // is immutable after installation; null preserves the ordinary tail jump.
 bool initialize(Listener listener, const X3mCompositorBinding* callbacks = nullptr);
 bool compositor_active();
 std::uintptr_t compositor_caller_pc(); // zero unless our wrapper is active
-bool requested();                    // wanted() was seen by initialize
-bool installed();                    // our bytes own the site (active or awaiting rollback)
-bool active();                       // installed and signalling
+bool requested();                      // wanted() was seen by initialize
+bool installed();                      // our bytes own the site (active or awaiting rollback)
+bool active();                         // installed and signalling
 const char* status();
-unsigned long long signals();        // signals delivered since load (diagnostics)
-bool shutdown();                     // restore the original bytes; true when nothing is installed
+unsigned long long signals(); // signals delivered since load (diagnostics)
+bool shutdown();              // restore the original bytes; true when nothing is installed
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
 // Compile-only fixture seam (absent from production): the fixture executable
 // supplies its own E8 callsite and expected target; identity gate bypassed.
 bool fixture_install(void* callsite, void* expected_target, Listener listener);
-bool fixture_install_compositor(void* callsite, void* expected_target,
-                                const X3mCompositorBinding* callbacks);
+bool fixture_install_compositor(void* callsite, void* expected_target, const X3mCompositorBinding* callbacks);
 bool fixture_shutdown();
 #endif
 }

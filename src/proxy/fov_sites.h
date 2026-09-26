@@ -71,7 +71,8 @@
 //   cmp ecx,remap_focus_min ; jb done ; cmp ecx,remap_focus_max ; ja done   ; outside N 50..130: pass through
 //   imul edx,ecx,360 ; add edx,0x8000 ; shr edx,16                          ; N = round(F*360/65536)
 //   movzx ecx,word [edx*2 + table - 2*50]                                   ; F' = table[N - 50]
-//   done: jmp [slot]                                                        ; -> tail: MOV EDX,[0x00608504]; JMP 0x0042dbfe
+//   done: jmp [slot]                                                        ; -> tail: MOV EDX,[0x00608504]; JMP
+//   0x0042dbfe
 //
 // The script passes F = (N << 16) / 360 (truncated); rounding F*360/65536
 // recovers N exactly for every N (verify_fov_site.py), so the table holds the
@@ -81,24 +82,27 @@ namespace x3m::fov::sites {
 constexpr std::uintptr_t function_va = 0x0041c960, function_end_va = 0x0041cc14;
 constexpr std::uintptr_t window_va = 0x0041c9cc, site_va = 0x0041c9d9, write_va = 0x0041c9dc;
 constexpr unsigned window_length = 28, site_offset = 13, site_length = 7, write_offset = 16, write_length = 4;
-constexpr unsigned char expected_window[window_length] = {
-    0x89,0x5e,0x20, 0xc6,0x46,0x19,0x01, 0x88,0x5e,0x1a, 0x89,0x5e,0x1c,
-    0xc7,0x46,0x24,0x00,0x40,0x00,0x00, 0x89,0x7c,0x24,0x30, 0x89,0x5c,0x24,0x2c};
-constexpr unsigned char expected_site[site_length] = {0xc7,0x46,0x24,0x00,0x40,0x00,0x00};  // MOV dword [ESI+0x24],0x4000
-constexpr unsigned char expected_write[write_length] = {0x00,0x40,0x00,0x00};              // imm32 0x4000
+constexpr unsigned char expected_window[window_length] = {0x89, 0x5e, 0x20, 0xc6, 0x46, 0x19, 0x01, 0x88, 0x5e, 0x1a,
+                                                          0x89, 0x5e, 0x1c, 0xc7, 0x46, 0x24, 0x00, 0x40, 0x00, 0x00,
+                                                          0x89, 0x7c, 0x24, 0x30, 0x89, 0x5c, 0x24, 0x2c};
+constexpr unsigned char expected_site[site_length] = {0xc7, 0x46, 0x24, 0x00,
+                                                      0x40, 0x00, 0x00};         // MOV dword [ESI+0x24],0x4000
+constexpr unsigned char expected_write[write_length] = {0x00, 0x40, 0x00, 0x00}; // imm32 0x4000
 // The reader contract (checked before the write, fail closed): the per-frame
 // cockpit update reads the base as `mov edx,[0x00608504]; mov esi,[edx+0x24]`
 // and INS_SetFocus stores it as `mov [edx+0x24],ecx`.
 constexpr std::uintptr_t reader_va = 0x00421148, setfocus_va = 0x0042dc04;
 constexpr unsigned reader_length = 9, setfocus_length = 3;
-constexpr unsigned char expected_reader[reader_length] = {0x8b,0x15,0x04,0x85,0x60,0x00, 0x8b,0x72,0x24};
-constexpr unsigned char expected_setfocus[setfocus_length] = {0x89,0x4a,0x24};
+constexpr unsigned char expected_reader[reader_length] = {0x8b, 0x15, 0x04, 0x85, 0x60, 0x00, 0x8b, 0x72, 0x24};
+constexpr unsigned char expected_setfocus[setfocus_length] = {0x89, 0x4a, 0x24};
 // The live base: *(*0x00608504 + 0x24).
 constexpr std::uintptr_t registry_slot_va = 0x00608504;
 constexpr unsigned registry_focus_offset = 0x24;
-constexpr std::uint32_t engine_focus = 0x4000;                        // 90 deg of the 4:3 horizontal, 73.74 deg vertical
-constexpr std::uint32_t focus_floor = 0x106, focus_ceiling = 0x8000;  // the engine's post-zoom floor; 180 deg
-inline bool plausible_focus(std::uint32_t f) { return f >= focus_floor && f <= focus_ceiling; }
+constexpr std::uint32_t engine_focus = 0x4000;                       // 90 deg of the 4:3 horizontal, 73.74 deg vertical
+constexpr std::uint32_t focus_floor = 0x106, focus_ceiling = 0x8000; // the engine's post-zoom floor; 180 deg
+inline bool plausible_focus(std::uint32_t f) {
+    return f >= focus_floor && f <= focus_ceiling;
+}
 
 // Bounds of the option in the game's degrees N: the in-game menu's own clamps
 // SG_MIN_FOV / SG_MAX_FOV. F'(70) = 0x2768 stays above 0x2147, the engine's
@@ -106,7 +110,7 @@ inline bool plausible_focus(std::uint32_t f) { return f >= focus_floor && f <= f
 // assume).
 constexpr double setting_min = 70.0, setting_max = 100.0, setting_default = 90.0;
 constexpr std::uint32_t near_plane_focus = 0x2147;
-constexpr double plane_height = 0.75;  // the default view plane H for every display at least as wide as 4:3
+constexpr double plane_height = 0.75; // the default view plane H for every display at least as wide as 4:3
 // The remap F -> F' with tan(F'/2) = H * tan(F/2), unrounded; 0 outside (0, 0x8000).
 inline double remap_exact(std::uint32_t focus) {
     if (!focus || focus >= 0x8000u) return 0.0;
@@ -124,11 +128,14 @@ inline std::uint32_t game_focus(double degrees) {
     return static_cast<std::uint32_t>(std::floor(degrees * 65536.0 / 360.0));
 }
 // F' for the game's N degrees (the INS_SetFocus table's value for an integer N).
-inline std::uint32_t focus_for_degrees(double degrees) { return remap_focus(game_focus(degrees)); }
+inline std::uint32_t focus_for_degrees(double degrees) {
+    return remap_focus(game_focus(degrees));
+}
 // Whether `focus` is a vanilla-unit value (M << 16) / 360, M 0..180: what the load stub's exact-match
 // rule reads as the script's number (it remaps the ones of M 50..130).
 inline bool vanilla_focus(std::uint32_t focus) {
-    for (std::uint32_t m = 0; m <= 180; ++m) if (((m << 16) / 360u) == focus) return true;
+    for (std::uint32_t m = 0; m <= 180; ++m)
+        if (((m << 16) / 360u) == focus) return true;
     return false;
 }
 // The constructor's immediate for the script focus g = game_focus(--fov): F'(g), moved by one unit when
@@ -144,7 +151,9 @@ inline std::uint32_t constructor_focus_for(std::uint32_t g) {
     if (!f || !vanilla_focus(f)) return f;
     return remap_exact(g) >= double(f) ? f + 1u : f - 1u;
 }
-inline std::uint32_t constructor_focus(double degrees) { return constructor_focus_for(game_focus(degrees)); }
+inline std::uint32_t constructor_focus(double degrees) {
+    return constructor_focus_for(game_focus(degrees));
+}
 // The vertical FOV in degrees that a binary angle gives at H = 0.75.
 inline double vertical_for_focus(std::uint32_t focus) {
     const double pi = 3.14159265358979323846;
@@ -154,22 +163,27 @@ inline double vertical_for_focus(std::uint32_t focus) {
 // ---- INS_SetFocus: the case window, the claimed MOV EDX, the callee prefix, the remap stub ----
 constexpr std::uintptr_t setfocus_case_va = 0x0042dbed, setfocus_site_va = 0x0042dbf8, setfocus_return_va = 0x0042dbfe;
 constexpr std::uintptr_t setfocus_callee_va = 0x004a47f0;
-constexpr unsigned setfocus_case_length = 31, setfocus_site_offset = 11, setfocus_site_length = 6, setfocus_callee_length = 29;
+constexpr unsigned setfocus_case_length = 31, setfocus_site_offset = 11, setfocus_site_length = 6,
+                   setfocus_callee_length = 29;
 constexpr unsigned char expected_setfocus_case[setfocus_case_length] = {
-    0x8b,0x45,0x18, 0x8b,0x48,0x01, 0xa1,0xe4,0x85,0x60,0x00, 0x8b,0x15,0x04,0x85,0x60,0x00,
-    0x6a,0x00, 0x50, 0x8b,0x45,0x0c, 0x89,0x4a,0x24, 0xe8,0xe4,0x6b,0x07,0x00};
-constexpr unsigned char expected_setfocus_site[setfocus_site_length] = {0x8b,0x15,0x04,0x85,0x60,0x00};  // MOV EDX,[0x00608504]
+    0x8b, 0x45, 0x18, 0x8b, 0x48, 0x01, 0xa1, 0xe4, 0x85, 0x60, 0x00, 0x8b, 0x15, 0x04, 0x85, 0x60,
+    0x00, 0x6a, 0x00, 0x50, 0x8b, 0x45, 0x0c, 0x89, 0x4a, 0x24, 0xe8, 0xe4, 0x6b, 0x07, 0x00};
+constexpr unsigned char expected_setfocus_site[setfocus_site_length] = {0x8b, 0x15, 0x04,
+                                                                        0x85, 0x60, 0x00}; // MOV EDX,[0x00608504]
 constexpr unsigned char expected_setfocus_callee[setfocus_callee_length] = {
-    0x56, 0x8b,0xf0, 0x57, 0x8d,0x7e,0x28, 0x66,0xc7,0x46,0x20,0x01,0x00, 0x80,0x3f,0x08, 0x72,0x07, 0x8b,0xcf,
-    0xe8,0x37,0x3a,0x00,0x00, 0x8b,0x4c,0x24,0x0c};
+    0x56, 0x8b, 0xf0, 0x57, 0x8d, 0x7e, 0x28, 0x66, 0xc7, 0x46, 0x20, 0x01, 0x00, 0x80, 0x3f,
+    0x08, 0x72, 0x07, 0x8b, 0xcf, 0xe8, 0x37, 0x3a, 0x00, 0x00, 0x8b, 0x4c, 0x24, 0x0c};
 // The table: N = remap_first .. remap_first + remap_count - 1.
 constexpr unsigned remap_first = 50, remap_count = 81;
 // The F range whose rounded N lies in the table: round(F*360/65536) = (F*360 + 0x8000) >> 16.
-constexpr std::uint32_t remap_focus_min = ((remap_first << 16) - 0x8000u + 359u) / 360u;                  // 0x2334
-constexpr std::uint32_t remap_focus_max = (((remap_first + remap_count) << 16) - 0x8000u - 1u) / 360u;   // 0x5ccc
-constexpr unsigned remap_index(std::uint32_t focus) { return (focus * 360u + 0x8000u) >> 16; }
+constexpr std::uint32_t remap_focus_min = ((remap_first << 16) - 0x8000u + 359u) / 360u;               // 0x2334
+constexpr std::uint32_t remap_focus_max = (((remap_first + remap_count) << 16) - 0x8000u - 1u) / 360u; // 0x5ccc
+constexpr unsigned remap_index(std::uint32_t focus) {
+    return (focus * 360u + 0x8000u) >> 16;
+}
 inline void build_remap_table(std::uint16_t out[remap_count]) {
-    for (unsigned i = 0; i < remap_count; ++i) out[i] = static_cast<std::uint16_t>(remap_focus(((remap_first + i) << 16) / 360u));
+    for (unsigned i = 0; i < remap_count; ++i)
+        out[i] = static_cast<std::uint16_t>(remap_focus(((remap_first + i) << 16) / 360u));
 }
 // What the stub computes, for the host tests: the table value for F in range, else F unchanged.
 inline std::uint32_t remap_lookup(std::uint32_t focus, const std::uint16_t table[remap_count]) {
@@ -180,6 +194,7 @@ constexpr unsigned stub_length = 45, stub_done = 39;
 // The stub bytes (position independent apart from the two absolute operands): `table` is the
 // address of the 81 uint16 entries, `slot` the 4-aligned continuation word (the previous chain head).
 inline void encode_setfocus_stub(std::uint32_t table, std::uint32_t slot, unsigned char out[stub_length]) {
+    // clang-format off
     const unsigned char code[stub_length] = {
         0x81,0xf9, 0,0,0,0,              //  0 cmp ecx,remap_focus_min
         0x72, stub_done - 8,             //  6 jb done
@@ -190,8 +205,10 @@ inline void encode_setfocus_stub(std::uint32_t table, std::uint32_t slot, unsign
         0xc1,0xea, 0x10,                 // 28 shr edx,16
         0x0f,0xb7,0x0c,0x55, 0,0,0,0,    // 31 movzx ecx,word [edx*2 + disp32]
         0xff,0x25, 0,0,0,0};             // 39 done: jmp [slot]
+    // clang-format on
     std::memcpy(out, code, stub_length);
-    const std::uint32_t operands[4][2] = {{2, remap_focus_min}, {10, remap_focus_max}, {35, table - 2u * remap_first}, {41, slot}};
+    const std::uint32_t operands[4][2] = {
+        {2, remap_focus_min}, {10, remap_focus_max}, {35, table - 2u * remap_first}, {41, slot}};
     for (const auto& o : operands)
         for (unsigned k = 0; k < 4; ++k) out[o[0] + k] = static_cast<unsigned char>((o[1] >> (8 * k)) & 0xff);
 }
@@ -233,17 +250,20 @@ inline void encode_setfocus_stub(std::uint32_t table, std::uint32_t slot, unsign
 constexpr std::uintptr_t load_window_va = 0x0041c8b4, load_site_va = 0x0041c8c1, load_return_va = 0x0041c8c7;
 constexpr std::uintptr_t load_caller_va = 0x0041f790, load_function_va = 0x0041c6e0;
 constexpr unsigned load_window_length = 23, load_site_offset = 13, load_site_length = 6, load_caller_length = 9;
-constexpr unsigned char expected_load_window[load_window_length] = {
-    0xe8,0x67,0xcb,0x0c,0x00, 0x89,0x45,0x20, 0xe8,0x5f,0xcb,0x0c,0x00,
-    0x89,0x45,0x24, 0x5e, 0xb0,0x01, 0x5d, 0xc2,0x08,0x00};
-constexpr unsigned char expected_load_site[load_site_length] = {0x89,0x45,0x24, 0x5e, 0xb0,0x01};  // MOV [EBP+0x24],EAX; POP ESI; MOV AL,1
-constexpr unsigned char expected_load_caller[load_caller_length] = {0xe8,0x4b,0xcf,0xff,0xff, 0x84,0xc0, 0x74,0xda};
+constexpr unsigned char expected_load_window[load_window_length] = {0xe8, 0x67, 0xcb, 0x0c, 0x00, 0x89, 0x45, 0x20,
+                                                                    0xe8, 0x5f, 0xcb, 0x0c, 0x00, 0x89, 0x45, 0x24,
+                                                                    0x5e, 0xb0, 0x01, 0x5d, 0xc2, 0x08, 0x00};
+constexpr unsigned char expected_load_site[load_site_length] = {0x89, 0x45, 0x24, 0x5e,
+                                                                0xb0, 0x01}; // MOV [EBP+0x24],EAX; POP ESI; MOV AL,1
+constexpr unsigned char expected_load_caller[load_caller_length] = {0xe8, 0x4b, 0xcf, 0xff, 0xff,
+                                                                    0x84, 0xc0, 0x74, 0xda};
 // The vanilla units the exact-match rule accepts: (N << 16) / 360 for N = remap_first ..
 inline void build_vanilla_table(std::uint16_t out[remap_count]) {
     for (unsigned i = 0; i < remap_count; ++i) out[i] = static_cast<std::uint16_t>(((remap_first + i) << 16) / 360u);
 }
 // What the load stub stores, for the host tests: F'(N) for the exact vanilla F of N in the table, else F unchanged.
-inline std::uint32_t load_lookup(std::uint32_t focus, const std::uint16_t vanilla[remap_count], const std::uint16_t table[remap_count]) {
+inline std::uint32_t load_lookup(std::uint32_t focus, const std::uint16_t vanilla[remap_count],
+                                 const std::uint16_t table[remap_count]) {
     if (focus < remap_focus_min || focus > remap_focus_max) return focus;
     const unsigned i = remap_index(focus) - remap_first;
     return focus == vanilla[i] ? table[i] : focus;
@@ -251,7 +271,9 @@ inline std::uint32_t load_lookup(std::uint32_t focus, const std::uint16_t vanill
 constexpr unsigned load_stub_length = 53, load_stub_done = 47;
 // The load stub bytes: `vanilla` and `table` the addresses of the two 81-entry uint16 tables,
 // `slot` the 4-aligned continuation word.
-inline void encode_load_stub(std::uint32_t vanilla, std::uint32_t table, std::uint32_t slot, unsigned char out[load_stub_length]) {
+inline void encode_load_stub(std::uint32_t vanilla, std::uint32_t table, std::uint32_t slot,
+                             unsigned char out[load_stub_length]) {
+    // clang-format off
     const unsigned char code[load_stub_length] = {
         0x3d, 0,0,0,0,                   //  0 cmp eax,remap_focus_min
         0x72, load_stub_done - 7,        //  5 jb done
@@ -264,9 +286,13 @@ inline void encode_load_stub(std::uint32_t vanilla, std::uint32_t table, std::ui
         0x75, load_stub_done - 39,       // 37 jne done
         0x0f,0xb7,0x04,0x55, 0,0,0,0,    // 39 movzx eax,word [edx*2 + disp32]
         0xff,0x25, 0,0,0,0};             // 47 done: jmp [slot]
+    // clang-format on
     std::memcpy(out, code, load_stub_length);
-    const std::uint32_t operands[5][2] = {{1, remap_focus_min}, {8, remap_focus_max}, {33, vanilla - 2u * remap_first},
-                                          {43, table - 2u * remap_first}, {49, slot}};
+    const std::uint32_t operands[5][2] = {{1, remap_focus_min},
+                                          {8, remap_focus_max},
+                                          {33, vanilla - 2u * remap_first},
+                                          {43, table - 2u * remap_first},
+                                          {49, slot}};
     for (const auto& o : operands)
         for (unsigned k = 0; k < 4; ++k) out[o[0] + k] = static_cast<unsigned char>((o[1] >> (8 * k)) & 0xff);
 }
@@ -276,9 +302,8 @@ inline void encode_load_stub(std::uint32_t vanilla, std::uint32_t table, std::ui
 // `[+]digits[.digits]` or `.digits` (locale independent), accepted in
 // [setting_min, setting_max].
 enum class Parse : unsigned char { game = 0, degrees = 1, invalid = 2 };
-constexpr unsigned setting_capacity = 32;  // 1..31 characters; 32 or more is too_long
-template <class Char>
-inline Parse parse_setting(const Char* text, double* degrees) {
+constexpr unsigned setting_capacity = 32; // 1..31 characters; 32 or more is too_long
+template <class Char> inline Parse parse_setting(const Char* text, double* degrees) {
     if (!text || !*text) return Parse::game;
     {
         const char* word = "game";
@@ -288,19 +313,28 @@ inline Parse parse_setting(const Char* text, double* degrees) {
     }
     const Char* p = text;
     if (*p == Char('+')) ++p;
-    double value = 0; unsigned digits = 0;
+    double value = 0;
+    unsigned digits = 0;
     for (; *p >= Char('0') && *p <= Char('9'); ++p, ++digits) value = value * 10.0 + double(*p - Char('0'));
     if (*p == Char('.')) {
         double scale = 0.1;
-        for (++p; *p >= Char('0') && *p <= Char('9'); ++p, ++digits) { value += double(*p - Char('0')) * scale; scale *= 0.1; }
+        for (++p; *p >= Char('0') && *p <= Char('9'); ++p, ++digits) {
+            value += double(*p - Char('0')) * scale;
+            scale *= 0.1;
+        }
     }
     if (*p != Char(0) || digits == 0) return Parse::invalid;
     *degrees = value;
     return Parse::degrees;
 }
-inline bool in_range(double degrees) { return std::isfinite(degrees) && degrees >= setting_min && degrees <= setting_max; }
+inline bool in_range(double degrees) {
+    return std::isfinite(degrees) && degrees >= setting_min && degrees <= setting_max;
+}
 inline void encode(std::uint32_t focus, unsigned char out[write_length]) {
-    out[0] = focus & 0xff; out[1] = (focus >> 8) & 0xff; out[2] = (focus >> 16) & 0xff; out[3] = (focus >> 24) & 0xff;
+    out[0] = focus & 0xff;
+    out[1] = (focus >> 8) & 0xff;
+    out[2] = (focus >> 16) & 0xff;
+    out[3] = (focus >> 24) & 0xff;
 }
 
 // The install decision on the bytes read at the window: nullptr when the
@@ -323,8 +357,10 @@ inline const char* plan(const unsigned char current[window_length]) {
 // the window's address; the store goes to window + write_offset. `focus` must
 // be plausible and not the engine's 0x4000 (invalid_value otherwise).
 template <class Ops>
-inline const char* install(Ops& ops, std::uintptr_t window, bool window_open, std::uint32_t focus, bool* live, bool* atomic, std::uint32_t* protection) {
-    *live = false; *atomic = false;
+inline const char* install(Ops& ops, std::uintptr_t window, bool window_open, std::uint32_t focus, bool* live,
+                           bool* atomic, std::uint32_t* protection) {
+    *live = false;
+    *atomic = false;
     unsigned char current[window_length]{};
     if (!window) return "invalid_site";
     if (!plausible_focus(focus) || focus == engine_focus) return "invalid_value";
@@ -338,7 +374,8 @@ inline const char* install(Ops& ops, std::uintptr_t window, bool window_open, st
     *live = true; // ownership published before the mutation, so a failed rollback stays registered
     const bool flushed = ops.write(at, patched, write_length, atomic);
     unsigned char readback[write_length]{};
-    const bool verified = flushed && ops.read(at, readback, write_length) && !std::memcmp(readback, patched, write_length);
+    const bool verified = flushed && ops.read(at, readback, write_length) &&
+                          !std::memcmp(readback, patched, write_length);
     std::uint32_t unused = 0;
     const bool protected_again = ops.protect(at, write_length, *protection, &unused);
     if (verified && protected_again) return "ok";
@@ -353,7 +390,8 @@ inline const char* install(Ops& ops, std::uintptr_t window, bool window_open, st
     unsigned char back[write_length]{};
     if (ops.read(at, back, write_length) && !std::memcmp(back, expected_write, write_length)) {
         *live = false; // the engine's bytes are back: nothing is live, whatever the protection calls returned
-        return reprotected ? "patch_rolled_back" : "rollback_unprotected"; // the latter: original bytes, page left writable
+        return reprotected ? "patch_rolled_back" : "rollback_unprotected"; // the latter: original bytes, page left
+                                                                           // writable
     }
     return "rollback_failed";
 }
@@ -367,7 +405,8 @@ inline const char* install(Ops& ops, std::uintptr_t window, bool window_open, st
 // nothing is written; "restore_failed" when the protection or the store
 // failed. Only "restored" releases the registration.
 template <class Ops>
-inline const char* restore(Ops& ops, std::uintptr_t at, std::uint32_t focus, std::uint32_t protection, unsigned char found[write_length], bool* found_read) {
+inline const char* restore(Ops& ops, std::uintptr_t at, std::uint32_t focus, std::uint32_t protection,
+                           unsigned char found[write_length], bool* found_read) {
     unsigned char ours[write_length];
     encode(focus, ours);
     *found_read = ops.read(at, found, write_length);
@@ -378,35 +417,56 @@ inline const char* restore(Ops& ops, std::uintptr_t at, std::uint32_t focus, std
     if (!ops.protect(at, write_length, Ops::writable, &previous)) return "restore_failed";
     const bool flushed = ops.write(at, expected_write, write_length, &ignored);
     unsigned char back[write_length]{};
-    const bool verified = flushed && ops.read(at, back, write_length) && !std::memcmp(back, expected_write, write_length);
+    const bool verified = flushed && ops.read(at, back, write_length) &&
+                          !std::memcmp(back, expected_write, write_length);
     const bool protected_again = ops.protect(at, write_length, protection, &unused);
     return verified && protected_again ? "restored" : "restore_failed";
 }
 constexpr bool window_holds_site() {
-    for (unsigned i = 0; i < site_length; ++i) if (expected_window[site_offset + i] != expected_site[i]) return false;
-    for (unsigned i = 0; i < write_length; ++i) if (expected_window[write_offset + i] != expected_write[i]) return false;
+    for (unsigned i = 0; i < site_length; ++i)
+        if (expected_window[site_offset + i] != expected_site[i]) return false;
+    for (unsigned i = 0; i < write_length; ++i)
+        if (expected_window[write_offset + i] != expected_write[i]) return false;
     return true;
 }
-static_assert(window_va + site_offset == site_va && site_va + 3 == write_va && window_va + write_offset == write_va, "offsets");
+static_assert(window_va + site_offset == site_va && site_va + 3 == write_va && window_va + write_offset == write_va,
+              "offsets");
 static_assert(write_offset + write_length == site_offset + site_length, "the write is the MOV's imm32");
 static_assert(window_holds_site(), "the window carries the original site bytes");
 static_assert(expected_write[0] == (engine_focus & 0xff) && expected_write[1] == (engine_focus >> 8), "imm32 0x4000");
 static_assert((write_va & 7u) + write_length <= 8u, "the imm32 lies inside one aligned 8-byte word (atomic write)");
-static_assert(function_va < window_va && window_va + window_length < function_end_va, "inside the registry constructor");
-static_assert(expected_reader[2] == (registry_slot_va & 0xff) && expected_reader[3] == ((registry_slot_va >> 8) & 0xff) &&
-              expected_reader[4] == ((registry_slot_va >> 16) & 0xff) && expected_reader[8] == registry_focus_offset, "the reader reads registry+0x24");
-static_assert(setfocus_case_va + setfocus_site_offset == setfocus_site_va && setfocus_site_va + setfocus_site_length == setfocus_return_va, "the claimed MOV EDX");
+static_assert(function_va < window_va && window_va + window_length < function_end_va,
+              "inside the registry constructor");
+static_assert(expected_reader[2] == (registry_slot_va & 0xff) &&
+                  expected_reader[3] == ((registry_slot_va >> 8) & 0xff) &&
+                  expected_reader[4] == ((registry_slot_va >> 16) & 0xff) &&
+                  expected_reader[8] == registry_focus_offset,
+              "the reader reads registry+0x24");
+static_assert(setfocus_case_va + setfocus_site_offset == setfocus_site_va &&
+                  setfocus_site_va + setfocus_site_length == setfocus_return_va,
+              "the claimed MOV EDX");
 static_assert(setfocus_site_va + 12 == setfocus_va, "the store follows the claimed MOV and the two pushes");
-static_assert(setfocus_case_va + setfocus_case_length + 0x00076be4u == setfocus_callee_va, "the call rel32 at the window's end reaches the callee");
+static_assert(setfocus_case_va + setfocus_case_length + 0x00076be4u == setfocus_callee_va,
+              "the call rel32 at the window's end reaches the callee");
 static_assert((setfocus_site_va & 7u) + 5u <= 8u, "the five jmp bytes lie in one aligned 8-byte word (atomic write)");
-static_assert(expected_setfocus_site[2] == (registry_slot_va & 0xff) && expected_setfocus_site[3] == ((registry_slot_va >> 8) & 0xff) &&
-              expected_setfocus_site[4] == ((registry_slot_va >> 16) & 0xff), "MOV EDX,[registry slot]");
-static_assert(remap_index(remap_focus_min) == remap_first && remap_index(remap_focus_min - 1) == remap_first - 1, "table floor");
-static_assert(remap_index(remap_focus_max) == remap_first + remap_count - 1 && remap_index(remap_focus_max + 1) == remap_first + remap_count, "table ceiling");
+static_assert(expected_setfocus_site[2] == (registry_slot_va & 0xff) &&
+                  expected_setfocus_site[3] == ((registry_slot_va >> 8) & 0xff) &&
+                  expected_setfocus_site[4] == ((registry_slot_va >> 16) & 0xff),
+              "MOV EDX,[registry slot]");
+static_assert(remap_index(remap_focus_min) == remap_first && remap_index(remap_focus_min - 1) == remap_first - 1,
+              "table floor");
+static_assert(remap_index(remap_focus_max) == remap_first + remap_count - 1 &&
+                  remap_index(remap_focus_max + 1) == remap_first + remap_count,
+              "table ceiling");
 static_assert(remap_focus_min == 0x2334 && remap_focus_max == 0x5ccc, "F range of N 50..130");
-static_assert(load_window_va + load_site_offset == load_site_va && load_site_va + load_site_length == load_return_va, "the claimed load store");
-static_assert(load_window_va + 5u + 0x000ccb67u == 0x004e9420u && load_window_va + 13u + 0x000ccb5fu == 0x004e9420u, "both calls reach the stream reader");
-static_assert(load_caller_va + 5u - 0x000030b5u == load_function_va, "the load caller's rel32 (ff ff cf 4b) reaches the serializer");
+static_assert(load_window_va + load_site_offset == load_site_va && load_site_va + load_site_length == load_return_va,
+              "the claimed load store");
+static_assert(load_window_va + 5u + 0x000ccb67u == 0x004e9420u && load_window_va + 13u + 0x000ccb5fu == 0x004e9420u,
+              "both calls reach the stream reader");
+static_assert(load_caller_va + 5u - 0x000030b5u == load_function_va,
+              "the load caller's rel32 (ff ff cf 4b) reaches the serializer");
 static_assert((load_site_va & 7u) + 5u <= 8u, "the five jmp bytes lie in one aligned 8-byte word (atomic write)");
-static_assert(expected_load_window[load_site_offset] == expected_load_site[0] && expected_load_window[load_site_offset + 5] == expected_load_site[5], "window holds the site");
+static_assert(expected_load_window[load_site_offset] == expected_load_site[0] &&
+                  expected_load_window[load_site_offset + 5] == expected_load_site[5],
+              "window holds the site");
 }

@@ -25,8 +25,8 @@
 // window after the exact-executable and window-byte checks, with this module
 // pinned; a failed second claim rolls the first back.
 namespace x3m::cull_census {
-bool initialize();  // backend-load path only; logs one cull_census line when the variable is set
-bool shutdown();    // restores both sites (dynamic-unload detach only); true when nothing is installed
+bool initialize(); // backend-load path only; logs one cull_census line when the variable is set
+bool shutdown();   // restores both sites (dynamic-unload detach only); true when nothing is installed
 // Verifies the two windows around the given sites (the fixture passes a
 // synthetic copy of the engine bytes), claims them, emits the stubs and
 // chains them in; the production initialize() passes the engine sites.
@@ -52,7 +52,10 @@ void reset();
 // and lod_switch_frame frame= switches= nodes= on frames with a switch.
 // Returns false when cap is out of range or the table cannot be committed.
 bool set_lod_switch_log(unsigned cap);
-struct Stats { std::uint32_t entries, overflow, unmeasured, exited; bool armed; };
+struct Stats {
+    std::uint32_t entries, overflow, unmeasured, exited;
+    bool armed;
+};
 Stats stats();
 // The small-parts stub's threshold for the current frame (cull_small_parts,
 // 0 = none): rows whose `s` is below it and that the engine's own limit did
@@ -69,7 +72,9 @@ void set_body_table_global(std::uintptr_t va);
 }
 // The stubs' cdecl targets: integer only, no Win32 call, LastError untouched by
 // construction; EBX/ESI/EDI/EBP preserved by the ABI, the stubs save EAX/ECX/EDX.
-extern "C" void x3m_cull_census_measure(std::uint32_t node, std::int32_t measure, std::int32_t s, std::int32_t d, std::uint32_t view);
-extern "C" void x3m_cull_census_exit(std::uint32_t node, std::uint32_t ebx, std::uint32_t model_slot, std::uint32_t d_slot);
+extern "C" void x3m_cull_census_measure(std::uint32_t node, std::int32_t measure, std::int32_t s, std::int32_t d,
+                                        std::uint32_t view);
+extern "C" void x3m_cull_census_exit(std::uint32_t node, std::uint32_t ebx, std::uint32_t model_slot,
+                                     std::uint32_t d_slot);
 // The byte both stubs test: non-zero only while a capture frame is armed.
 extern "C" volatile unsigned char x3m_cull_census_enabled;

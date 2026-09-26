@@ -41,7 +41,7 @@
 #include <stdexcept>
 
 namespace {
-constexpr unsigned mix_rounds = 166667;      // x 6 calls = 1,000,002 calls per repetition
+constexpr unsigned mix_rounds = 166667; // x 6 calls = 1,000,002 calls per repetition
 constexpr unsigned per_setter_calls = 166667;
 constexpr unsigned getter_calls = 1000000;
 constexpr unsigned draw_iterations = 200000; // SetStreamSource + DrawIndexedPrimitive pairs
@@ -50,43 +50,74 @@ constexpr unsigned boundary_iterations = 2000000; // FNSAVE/FRSTOR dominate CpuC
 constexpr unsigned repetitions = 3;
 
 unsigned checks = 0;
-void check(bool value, const char* label) { ++checks; if (!value) throw std::runtime_error(label); }
-void ok(HRESULT hr, const char* label) { check(hr == S_OK, label); }
-template <class T> struct Com { T* p = nullptr; ~Com() { if (p) p->Release(); } T* operator->() const { return p; } };
-using Create = IDirect3D9* (WINAPI*)(UINT);
+void check(bool value, const char* label) {
+    ++checks;
+    if (!value) throw std::runtime_error(label);
+}
+void ok(HRESULT hr, const char* label) {
+    check(hr == S_OK, label);
+}
+template <class T> struct Com {
+    T* p = nullptr;
+    ~Com() {
+        if (p) p->Release();
+    }
+    T* operator->() const { return p; }
+};
+using Create = IDirect3D9*(WINAPI*)(UINT);
 
 double frequency_hz = 1;
 
 // x87/MXCSR/LastError image around one call (the FNSAVE form the proxy itself
 // uses: fnsave resets the FPU, so it is followed by frstor).
 struct CpuImage {
-    alignas(16) unsigned char x87[108]; unsigned mxcsr; DWORD error;
-    void capture() { error = GetLastError(); asm volatile("fnsave %0\n\tfrstor %0\n\tstmxcsr %1" : "=m"(x87), "=m"(mxcsr) :: "memory"); }
+    alignas(16) unsigned char x87[108];
+    unsigned mxcsr;
+    DWORD error;
+    void capture() {
+        error = GetLastError();
+        asm volatile("fnsave %0\n\tfrstor %0\n\tstmxcsr %1" : "=m"(x87), "=m"(mxcsr)::"memory");
+    }
 };
 // Seed: fninit, two zeros divided (masked invalid -> sticky IE, one NaN on the
 // stack), 1.0 and pi pushed (three live registers), control word 0x0f7f (all
 // masked, PC=64-bit, RC=truncate; default 0x027f), MXCSR 0xbf80 (FTZ, RC down,
 // all masked; default 0x1f80), LastError 0x3ac.
 void seed_cpu_state() {
-    const unsigned short cw = 0x0f7f; const unsigned mx = 0xbf80;
-    asm volatile("fninit\n\tfldz\n\tfldz\n\tfdivp\n\tfld1\n\tfldpi\n\tfldcw %0\n\tldmxcsr %1" :: "m"(cw), "m"(mx) : "memory");
+    const unsigned short cw = 0x0f7f;
+    const unsigned mx = 0xbf80;
+    asm volatile("fninit\n\tfldz\n\tfldz\n\tfdivp\n\tfld1\n\tfldpi\n\tfldcw %0\n\tldmxcsr %1" ::"m"(cw), "m"(mx)
+                 : "memory");
     SetLastError(0x3ac);
 }
-void clear_cpu_state() { asm volatile("fninit" ::: "memory"); const unsigned mx = 0x1f80; asm volatile("ldmxcsr %0" :: "m"(mx) : "memory"); }
+void clear_cpu_state() {
+    asm volatile("fninit" ::: "memory");
+    const unsigned mx = 0x1f80;
+    asm volatile("ldmxcsr %0" ::"m"(mx) : "memory");
+}
 template <class Call> void preserve_check(const char* op, Call call) {
     CpuImage before{}, after{};
-    seed_cpu_state(); before.capture();       // capture() restores the seeded image
+    seed_cpu_state();
+    before.capture(); // capture() restores the seeded image
     const HRESULT hr = call();
-    after.capture(); clear_cpu_state();
+    after.capture();
+    clear_cpu_state();
     const bool x87 = !std::memcmp(before.x87, after.x87, sizeof before.x87);
     // Control word (bytes 0-1), status word (4-5), tag word (8-9) named separately.
-    const bool control = !std::memcmp(before.x87, after.x87, 2), status = !std::memcmp(before.x87 + 4, after.x87 + 4, 2),
+    const bool control = !std::memcmp(before.x87, after.x87, 2),
+               status = !std::memcmp(before.x87 + 4, after.x87 + 4, 2),
                tags = !std::memcmp(before.x87 + 8, after.x87 + 8, 2);
-    std::printf("PRESERVE op=%s result=%08lx x87=%u control=%u status=%u tags=%u mxcsr=%u error=%u mxcsr_before=%04x mxcsr_after=%04x error_before=%lu error_after=%lu\n",
-                op, static_cast<unsigned long>(hr), x87, control, status, tags, before.mxcsr == after.mxcsr, before.error == after.error,
-                before.mxcsr, after.mxcsr, static_cast<unsigned long>(before.error), static_cast<unsigned long>(after.error));
+    std::printf(
+        "PRESERVE op=%s result=%08lx x87=%u control=%u status=%u tags=%u mxcsr=%u error=%u mxcsr_before=%04x mxcsr_after=%04x error_before=%lu error_after=%lu\n",
+        op, static_cast<unsigned long>(hr), x87, control, status, tags, before.mxcsr == after.mxcsr,
+        before.error == after.error, before.mxcsr, after.mxcsr, static_cast<unsigned long>(before.error),
+        static_cast<unsigned long>(after.error));
 }
-std::uint64_t ticks() { LARGE_INTEGER t{}; QueryPerformanceCounter(&t); return static_cast<std::uint64_t>(t.QuadPart); }
+std::uint64_t ticks() {
+    LARGE_INTEGER t{};
+    QueryPerformanceCounter(&t);
+    return static_cast<std::uint64_t>(t.QuadPart);
+}
 void report(const char* op, unsigned rep, std::uint64_t calls, std::uint64_t elapsed) {
     std::printf("BENCH op=%s rep=%u calls=%llu elapsed_ticks=%llu ns_per_call=%.3f\n", op, rep,
                 static_cast<unsigned long long>(calls), static_cast<unsigned long long>(elapsed),
@@ -110,7 +141,10 @@ struct Workload {
     void set_texture(unsigned i) { status_or |= device->SetTexture(0, textures[i & 1]); }
     void set_sampler_state(unsigned i) { status_or |= device->SetSamplerState(0, D3DSAMP_MAXANISOTROPY, 1 + (i & 3)); }
     void set_stage_state(unsigned i) { status_or |= device->SetTextureStageState(0, D3DTSS_TEXCOORDINDEX, i & 1); }
-    void set_vs_constant(unsigned i) { constants[0] = float(i); status_or |= device->SetVertexShaderConstantF(8, constants, 4); }
+    void set_vs_constant(unsigned i) {
+        constants[0] = float(i);
+        status_or |= device->SetVertexShaderConstantF(8, constants, 4);
+    }
     void set_stream_source(unsigned i) { status_or |= device->SetStreamSource(0, buffers[i & 1], 0, 32); }
 
     // Redundant writes (elision question, state-call-fast-path.md "Elision
@@ -119,7 +153,9 @@ struct Workload {
     // call (GetNumberOfSwapChains: one virtual call into the backend that
     // touches no state) as the floor of a call into the backend's table.
     void set_render_state_same(unsigned) { status_or |= device->SetRenderState(D3DRS_ZENABLE, D3DZB_TRUE); }
-    void set_render_state_alternating(unsigned i) { status_or |= device->SetRenderState(D3DRS_ZENABLE, i & 1 ? D3DZB_TRUE : D3DZB_FALSE); }
+    void set_render_state_alternating(unsigned i) {
+        status_or |= device->SetRenderState(D3DRS_ZENABLE, i & 1 ? D3DZB_TRUE : D3DZB_FALSE);
+    }
     void set_sampler_state_same(unsigned) { status_or |= device->SetSamplerState(0, D3DSAMP_MAXANISOTROPY, 1); }
     void set_stage_state_same(unsigned) { status_or |= device->SetTextureStageState(0, D3DTSS_TEXCOORDINDEX, 0); }
     void set_texture_same(unsigned) { status_or |= device->SetTexture(0, textures[0]); }
@@ -127,18 +163,32 @@ struct Workload {
 
     // Application getters, measured with the same rotation discipline. GetTexture
     // returns an AddRef'd reference, so the Release is part of the timed pair.
-    void get_render_state(unsigned i) { DWORD v = 0; status_or |= device->GetRenderState(render_states[i & 3], &v); }
-    void get_sampler_state(unsigned i) { DWORD v = 0; status_or |= device->GetSamplerState(0, i & 1 ? D3DSAMP_MAXANISOTROPY : D3DSAMP_MIPMAPLODBIAS, &v); }
-    void get_texture(unsigned) { IDirect3DBaseTexture9* t = nullptr; status_or |= device->GetTexture(0, &t); if (t) t->Release(); }
-    void get_vs_constant(unsigned) { float v[4]{}; status_or |= device->GetVertexShaderConstantF(8, v, 4); }
+    void get_render_state(unsigned i) {
+        DWORD v = 0;
+        status_or |= device->GetRenderState(render_states[i & 3], &v);
+    }
+    void get_sampler_state(unsigned i) {
+        DWORD v = 0;
+        status_or |= device->GetSamplerState(0, i & 1 ? D3DSAMP_MAXANISOTROPY : D3DSAMP_MIPMAPLODBIAS, &v);
+    }
+    void get_texture(unsigned) {
+        IDirect3DBaseTexture9* t = nullptr;
+        status_or |= device->GetTexture(0, &t);
+        if (t) t->Release();
+    }
+    void get_vs_constant(unsigned) {
+        float v[4]{};
+        status_or |= device->GetVertexShaderConstantF(8, v, 4);
+    }
     // The hybrid unhook's per-draw read set (state-call-fast-path.md, step 5):
     // the eight render states an admitted routed draw reads once each with the
     // SetRenderState hook off (selector z pair, gate-4 quartet, RT1 mask, one
     // wrap) plus the two sampler reads of a bias-eligible stage (MIPFILTER,
     // MIPMAPLODBIAS). One "call" of this row is the whole ten-read set.
     void draw_state_reads(unsigned) {
-        static const D3DRENDERSTATETYPE set[8] = {D3DRS_ZENABLE, D3DRS_ZWRITEENABLE, D3DRS_ALPHABLENDENABLE, D3DRS_ALPHATESTENABLE,
-                                                  D3DRS_SRGBWRITEENABLE, D3DRS_COLORWRITEENABLE, D3DRS_COLORWRITEENABLE1, D3DRS_WRAP0};
+        static const D3DRENDERSTATETYPE set[8] = {
+            D3DRS_ZENABLE,         D3DRS_ZWRITEENABLE,     D3DRS_ALPHABLENDENABLE,  D3DRS_ALPHATESTENABLE,
+            D3DRS_SRGBWRITEENABLE, D3DRS_COLORWRITEENABLE, D3DRS_COLORWRITEENABLE1, D3DRS_WRAP0};
         DWORD v = 0;
         for (auto state : set) status_or |= device->GetRenderState(state, &v);
         status_or |= device->GetSamplerState(0, D3DSAMP_MIPFILTER, &v);
@@ -171,39 +221,82 @@ struct Workload {
 
 void mix(Workload& w, unsigned rounds) {
     for (unsigned i = 0; i < rounds; ++i) {
-        w.set_render_state(i); w.set_texture(i); w.set_sampler_state(i);
-        w.set_stage_state(i); w.set_vs_constant(i); w.set_stream_source(i);
+        w.set_render_state(i);
+        w.set_texture(i);
+        w.set_sampler_state(i);
+        w.set_stage_state(i);
+        w.set_vs_constant(i);
+        w.set_stream_source(i);
     }
 }
 
 void device_benchmark(Workload& w) {
     mix(w, 20000); // warm up the backend's state tracking; untimed
     for (unsigned rep = 0; rep < repetitions; ++rep) {
-        std::uint64_t begin = ticks(); mix(w, mix_rounds); report("state_mix", rep, std::uint64_t(mix_rounds) * 6, ticks() - begin);
-        begin = ticks(); for (unsigned i = 0; i < per_setter_calls; ++i) w.set_render_state(i); report("SetRenderState", rep, per_setter_calls, ticks() - begin);
-        begin = ticks(); for (unsigned i = 0; i < per_setter_calls; ++i) w.set_texture(i); report("SetTexture", rep, per_setter_calls, ticks() - begin);
-        begin = ticks(); for (unsigned i = 0; i < per_setter_calls; ++i) w.set_sampler_state(i); report("SetSamplerState", rep, per_setter_calls, ticks() - begin);
-        begin = ticks(); for (unsigned i = 0; i < per_setter_calls; ++i) w.set_stage_state(i); report("SetTextureStageState", rep, per_setter_calls, ticks() - begin);
-        begin = ticks(); for (unsigned i = 0; i < per_setter_calls; ++i) w.set_vs_constant(i); report("SetVertexShaderConstantF4", rep, per_setter_calls, ticks() - begin);
-        begin = ticks(); for (unsigned i = 0; i < per_setter_calls; ++i) w.set_stream_source(i); report("SetStreamSource", rep, per_setter_calls, ticks() - begin);
+        std::uint64_t begin = ticks();
+        mix(w, mix_rounds);
+        report("state_mix", rep, std::uint64_t(mix_rounds) * 6, ticks() - begin);
+        begin = ticks();
+        for (unsigned i = 0; i < per_setter_calls; ++i) w.set_render_state(i);
+        report("SetRenderState", rep, per_setter_calls, ticks() - begin);
+        begin = ticks();
+        for (unsigned i = 0; i < per_setter_calls; ++i) w.set_texture(i);
+        report("SetTexture", rep, per_setter_calls, ticks() - begin);
+        begin = ticks();
+        for (unsigned i = 0; i < per_setter_calls; ++i) w.set_sampler_state(i);
+        report("SetSamplerState", rep, per_setter_calls, ticks() - begin);
+        begin = ticks();
+        for (unsigned i = 0; i < per_setter_calls; ++i) w.set_stage_state(i);
+        report("SetTextureStageState", rep, per_setter_calls, ticks() - begin);
+        begin = ticks();
+        for (unsigned i = 0; i < per_setter_calls; ++i) w.set_vs_constant(i);
+        report("SetVertexShaderConstantF4", rep, per_setter_calls, ticks() - begin);
+        begin = ticks();
+        for (unsigned i = 0; i < per_setter_calls; ++i) w.set_stream_source(i);
+        report("SetStreamSource", rep, per_setter_calls, ticks() - begin);
 
-        begin = ticks(); for (unsigned i = 0; i < getter_calls; ++i) w.set_render_state_same(i); report("SetRenderState_same", rep, getter_calls, ticks() - begin);
-        begin = ticks(); for (unsigned i = 0; i < getter_calls; ++i) w.set_render_state_alternating(i); report("SetRenderState_alternating", rep, getter_calls, ticks() - begin);
-        begin = ticks(); for (unsigned i = 0; i < getter_calls; ++i) w.set_sampler_state_same(i); report("SetSamplerState_same", rep, getter_calls, ticks() - begin);
-        begin = ticks(); for (unsigned i = 0; i < getter_calls; ++i) w.set_stage_state_same(i); report("SetTextureStageState_same", rep, getter_calls, ticks() - begin);
-        begin = ticks(); for (unsigned i = 0; i < getter_calls; ++i) w.set_texture_same(i); report("SetTexture_same", rep, getter_calls, ticks() - begin);
-        begin = ticks(); for (unsigned i = 0; i < getter_calls; ++i) w.noop_vtable_call(i); report("noop_vtable_GetNumberOfSwapChains", rep, getter_calls, ticks() - begin);
+        begin = ticks();
+        for (unsigned i = 0; i < getter_calls; ++i) w.set_render_state_same(i);
+        report("SetRenderState_same", rep, getter_calls, ticks() - begin);
+        begin = ticks();
+        for (unsigned i = 0; i < getter_calls; ++i) w.set_render_state_alternating(i);
+        report("SetRenderState_alternating", rep, getter_calls, ticks() - begin);
+        begin = ticks();
+        for (unsigned i = 0; i < getter_calls; ++i) w.set_sampler_state_same(i);
+        report("SetSamplerState_same", rep, getter_calls, ticks() - begin);
+        begin = ticks();
+        for (unsigned i = 0; i < getter_calls; ++i) w.set_stage_state_same(i);
+        report("SetTextureStageState_same", rep, getter_calls, ticks() - begin);
+        begin = ticks();
+        for (unsigned i = 0; i < getter_calls; ++i) w.set_texture_same(i);
+        report("SetTexture_same", rep, getter_calls, ticks() - begin);
+        begin = ticks();
+        for (unsigned i = 0; i < getter_calls; ++i) w.noop_vtable_call(i);
+        report("noop_vtable_GetNumberOfSwapChains", rep, getter_calls, ticks() - begin);
 
-        begin = ticks(); for (unsigned i = 0; i < getter_calls; ++i) w.get_render_state(i); report("GetRenderState", rep, getter_calls, ticks() - begin);
-        begin = ticks(); for (unsigned i = 0; i < getter_calls; ++i) w.get_sampler_state(i); report("GetSamplerState", rep, getter_calls, ticks() - begin);
-        begin = ticks(); for (unsigned i = 0; i < getter_calls; ++i) w.get_texture(i); report("GetTexture_Release", rep, getter_calls, ticks() - begin);
-        begin = ticks(); for (unsigned i = 0; i < getter_calls; ++i) w.get_vs_constant(i); report("GetVertexShaderConstantF4", rep, getter_calls, ticks() - begin);
-        begin = ticks(); for (unsigned i = 0; i < getter_calls; ++i) w.draw_state_reads(i); report("GetState_draw_set_10", rep, getter_calls, ticks() - begin);
-        begin = ticks(); for (unsigned i = 0; i < getter_calls; ++i) w.routed_draw_mip_bias(i); report("routed_draw_mip_bias_2stages", rep, getter_calls, ticks() - begin);
+        begin = ticks();
+        for (unsigned i = 0; i < getter_calls; ++i) w.get_render_state(i);
+        report("GetRenderState", rep, getter_calls, ticks() - begin);
+        begin = ticks();
+        for (unsigned i = 0; i < getter_calls; ++i) w.get_sampler_state(i);
+        report("GetSamplerState", rep, getter_calls, ticks() - begin);
+        begin = ticks();
+        for (unsigned i = 0; i < getter_calls; ++i) w.get_texture(i);
+        report("GetTexture_Release", rep, getter_calls, ticks() - begin);
+        begin = ticks();
+        for (unsigned i = 0; i < getter_calls; ++i) w.get_vs_constant(i);
+        report("GetVertexShaderConstantF4", rep, getter_calls, ticks() - begin);
+        begin = ticks();
+        for (unsigned i = 0; i < getter_calls; ++i) w.draw_state_reads(i);
+        report("GetState_draw_set_10", rep, getter_calls, ticks() - begin);
+        begin = ticks();
+        for (unsigned i = 0; i < getter_calls; ++i) w.routed_draw_mip_bias(i);
+        report("routed_draw_mip_bias_2stages", rep, getter_calls, ticks() - begin);
 
         // The draw pair runs inside one scene, as the game's draws do.
         check(w.device->BeginScene() == S_OK, "BeginScene");
-        begin = ticks(); for (unsigned i = 0; i < draw_iterations; ++i) w.draw_pair(i);
+        begin = ticks();
+        for (unsigned i = 0; i < draw_iterations; ++i) w.draw_pair(i);
         report("SetStreamSource_DrawIndexedPrimitive_pair", rep, draw_iterations, ticks() - begin);
         check(w.device->EndScene() == S_OK, "EndScene");
     }
@@ -221,7 +314,8 @@ void preserve_benchmark(Workload& w, IDirect3DVertexDeclaration9* declaration) {
     preserve_check("SetFVF", [&] { return device->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE); });
     preserve_check("SetRenderState", [&] { return device->SetRenderState(D3DRS_ALPHAREF, 7); });
     check(device->BeginScene() == S_OK, "BeginScene (preserve)");
-    preserve_check("DrawIndexedPrimitive", [&] { return device->DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 0, 4, 0, 2); });
+    preserve_check("DrawIndexedPrimitive",
+                   [&] { return device->DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 0, 4, 0, 2); });
     preserve_check("DrawPrimitive", [&] { return device->DrawPrimitive(D3DPT_TRIANGLELIST, 0, 1); });
     check(device->EndScene() == S_OK, "EndScene (preserve)");
 }
@@ -230,14 +324,21 @@ void preserve_benchmark(Workload& w, IDirect3DVertexDeclaration9* declaration) {
 // module. `slot` indices are the SDK layout verified in abi_check.cpp.
 void report_slots(IDirect3DDevice9* device) {
     void** vtable = *reinterpret_cast<void***>(device);
-    const struct { unsigned slot; const char* name; } entries[] = {
-        {57, "SetRenderState"}, {65, "SetTexture"}, {69, "SetSamplerState"}, {67, "SetTextureStageState"},
-        {94, "SetVertexShaderConstantF"}, {100, "SetStreamSource"}, {81, "DrawIndexedPrimitive"},
-        {58, "GetRenderState"}, {68, "GetSamplerState"}, {64, "GetTexture"}, {95, "GetVertexShaderConstantF"}};
+    const struct {
+        unsigned slot;
+        const char* name;
+    } entries[] = {{57, "SetRenderState"},           {65, "SetTexture"},
+                   {69, "SetSamplerState"},          {67, "SetTextureStageState"},
+                   {94, "SetVertexShaderConstantF"}, {100, "SetStreamSource"},
+                   {81, "DrawIndexedPrimitive"},     {58, "GetRenderState"},
+                   {68, "GetSamplerState"},          {64, "GetTexture"},
+                   {95, "GetVertexShaderConstantF"}};
     for (const auto& entry : entries) {
-        HMODULE owner = nullptr; char path[2048] = "unknown";
+        HMODULE owner = nullptr;
+        char path[2048] = "unknown";
         if (GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-                               reinterpret_cast<LPCSTR>(vtable[entry.slot]), &owner) && owner)
+                               reinterpret_cast<LPCSTR>(vtable[entry.slot]), &owner) &&
+            owner)
             GetModuleFileNameA(owner, path, sizeof path);
         std::printf("SLOT slot=%u name=%s address=%p module=%s\n", entry.slot, entry.name, vtable[entry.slot], path);
     }
@@ -247,23 +348,44 @@ void primitives() {
     std::recursive_mutex lock_primitive;
     for (unsigned rep = 0; rep < repetitions; ++rep) {
         std::uint64_t begin = ticks();
-        for (unsigned i = 0; i < primitive_iterations; ++i) { LARGE_INTEGER t{}; QueryPerformanceCounter(&t); asm volatile("" :: "m"(t) : "memory"); }
+        for (unsigned i = 0; i < primitive_iterations; ++i) {
+            LARGE_INTEGER t{};
+            QueryPerformanceCounter(&t);
+            asm volatile("" ::"m"(t) : "memory");
+        }
         report("QueryPerformanceCounter", rep, primitive_iterations, ticks() - begin);
 
         begin = ticks();
-        for (unsigned i = 0; i < primitive_iterations; ++i) { std::lock_guard<std::recursive_mutex> held(lock_primitive); asm volatile("" ::: "memory"); }
+        for (unsigned i = 0; i < primitive_iterations; ++i) {
+            std::lock_guard<std::recursive_mutex> held(lock_primitive);
+            asm volatile("" ::: "memory");
+        }
         report("recursive_mutex_lock_unlock", rep, primitive_iterations, ticks() - begin);
 
         begin = ticks();
-        for (unsigned i = 0; i < primitive_iterations; ++i) { const DWORD saved = GetLastError(); SetLastError(saved); asm volatile("" ::: "memory"); }
+        for (unsigned i = 0; i < primitive_iterations; ++i) {
+            const DWORD saved = GetLastError();
+            SetLastError(saved);
+            asm volatile("" ::: "memory");
+        }
         report("GetLastError_SetLastError", rep, primitive_iterations, ticks() - begin);
 
         begin = ticks();
-        for (unsigned i = 0; i < boundary_iterations; ++i) { x3m::LightCallBoundary b; b.before_original(); asm volatile("" ::: "memory"); b.after_original(); }
+        for (unsigned i = 0; i < boundary_iterations; ++i) {
+            x3m::LightCallBoundary b;
+            b.before_original();
+            asm volatile("" ::: "memory");
+            b.after_original();
+        }
         report("LightCallBoundary_envelope", rep, boundary_iterations, ticks() - begin);
 
         begin = ticks();
-        for (unsigned i = 0; i < boundary_iterations; ++i) { x3m::CpuCallBoundary b; b.before_original(); asm volatile("" ::: "memory"); b.after_original(); }
+        for (unsigned i = 0; i < boundary_iterations; ++i) {
+            x3m::CpuCallBoundary b;
+            b.before_original();
+            asm volatile("" ::: "memory");
+            b.after_original();
+        }
         report("CpuCallBoundary_envelope", rep, boundary_iterations, ticks() - begin);
     }
 }
@@ -273,52 +395,81 @@ int main(int argc, char** argv) {
     std::setvbuf(stdout, nullptr, _IONBF, 0);
     try {
         check(argc >= 2, "usage: state_hook_benchmark <primitives|device> [native|proxy]");
-        LARGE_INTEGER f{}; check(QueryPerformanceFrequency(&f) && f.QuadPart > 0, "QPC frequency");
+        LARGE_INTEGER f{};
+        check(QueryPerformanceFrequency(&f) && f.QuadPart > 0, "QPC frequency");
         frequency_hz = double(f.QuadPart);
-        std::printf("BENCHMARK frequency=%lld mix_rounds=%u per_setter_calls=%u primitive_iterations=%u boundary_iterations=%u repetitions=%u\n",
-                    static_cast<long long>(f.QuadPart), mix_rounds, per_setter_calls, primitive_iterations, boundary_iterations, repetitions);
-        if (!std::strcmp(argv[1], "primitives")) { primitives(); }
-        else {
+        std::printf(
+            "BENCHMARK frequency=%lld mix_rounds=%u per_setter_calls=%u primitive_iterations=%u boundary_iterations=%u repetitions=%u\n",
+            static_cast<long long>(f.QuadPart), mix_rounds, per_setter_calls, primitive_iterations, boundary_iterations,
+            repetitions);
+        if (!std::strcmp(argv[1], "primitives")) {
+            primitives();
+        } else {
             check(argc == 3 && !std::strcmp(argv[1], "device"), "device mode needs native|proxy");
             const bool native = !std::strcmp(argv[2], "native");
             check(native || !std::strcmp(argv[2], "proxy"), "mode");
             HMODULE module = LoadLibraryA(native ? "C:\\windows\\system32\\d3d9.dll" : "d3d9.dll");
             check(module != nullptr, "load D3D9");
-            char module_path[2048]{}; GetModuleFileNameA(module, module_path, sizeof module_path);
+            char module_path[2048]{};
+            GetModuleFileNameA(module, module_path, sizeof module_path);
             std::printf("MODULE mode=%s path=%s\n", argv[2], module_path);
             const auto entry = GetProcAddress(module, "Direct3DCreate9");
-            Create create = nullptr; std::memcpy(&create, &entry, sizeof create);
+            Create create = nullptr;
+            std::memcpy(&create, &entry, sizeof create);
             check(create != nullptr, "D3D9 entry");
             HWND window = CreateWindowExA(0, "STATIC", "state hook benchmark", WS_OVERLAPPEDWINDOW, 0, 0, 96, 96,
                                           nullptr, nullptr, GetModuleHandleA(nullptr), nullptr);
             check(window != nullptr, "window");
             {
-                Com<IDirect3D9> factory; factory.p = create(D3D_SDK_VERSION); check(factory.p != nullptr, "factory");
+                Com<IDirect3D9> factory;
+                factory.p = create(D3D_SDK_VERSION);
+                check(factory.p != nullptr, "factory");
                 D3DPRESENT_PARAMETERS pp{};
-                pp.Windowed = TRUE; pp.hDeviceWindow = window; pp.SwapEffect = D3DSWAPEFFECT_DISCARD;
-                pp.BackBufferWidth = pp.BackBufferHeight = 64; pp.BackBufferFormat = D3DFMT_A8R8G8B8;
-                pp.EnableAutoDepthStencil = TRUE; pp.AutoDepthStencilFormat = D3DFMT_D24S8;
+                pp.Windowed = TRUE;
+                pp.hDeviceWindow = window;
+                pp.SwapEffect = D3DSWAPEFFECT_DISCARD;
+                pp.BackBufferWidth = pp.BackBufferHeight = 64;
+                pp.BackBufferFormat = D3DFMT_A8R8G8B8;
+                pp.EnableAutoDepthStencil = TRUE;
+                pp.AutoDepthStencilFormat = D3DFMT_D24S8;
                 pp.PresentationInterval = D3DPRESENT_INTERVAL_IMMEDIATE;
                 Com<IDirect3DDevice9> device;
-                ok(factory->CreateDevice(0, D3DDEVTYPE_HAL, window, D3DCREATE_HARDWARE_VERTEXPROCESSING, &pp, &device.p), "device");
+                ok(factory->CreateDevice(0, D3DDEVTYPE_HAL, window, D3DCREATE_HARDWARE_VERTEXPROCESSING, &pp,
+                                         &device.p),
+                   "device");
                 report_slots(device.p);
-                Com<IDirect3DTexture9> a, b; Com<IDirect3DVertexBuffer9> va, vb;
+                Com<IDirect3DTexture9> a, b;
+                Com<IDirect3DVertexBuffer9> va, vb;
                 ok(device->CreateTexture(64, 64, 0, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &a.p, nullptr), "texture a");
                 ok(device->CreateTexture(64, 64, 0, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &b.p, nullptr), "texture b");
                 ok(device->CreateVertexBuffer(32 * 64, D3DUSAGE_WRITEONLY, 0, D3DPOOL_MANAGED, &va.p, nullptr), "vb a");
                 ok(device->CreateVertexBuffer(32 * 64, D3DUSAGE_WRITEONLY, 0, D3DPOOL_MANAGED, &vb.p, nullptr), "vb b");
                 // Two triangles, four XYZ|DIFFUSE vertices, six indices.
-                Com<IDirect3DVertexBuffer9> quad; Com<IDirect3DIndexBuffer9> quad_indices;
-                ok(device->CreateVertexBuffer(4 * 16, D3DUSAGE_WRITEONLY, D3DFVF_XYZ | D3DFVF_DIFFUSE, D3DPOOL_MANAGED, &quad.p, nullptr), "quad vb");
-                ok(device->CreateIndexBuffer(6 * sizeof(std::uint16_t), D3DUSAGE_WRITEONLY, D3DFMT_INDEX16, D3DPOOL_MANAGED, &quad_indices.p, nullptr), "quad ib");
+                Com<IDirect3DVertexBuffer9> quad;
+                Com<IDirect3DIndexBuffer9> quad_indices;
+                ok(device->CreateVertexBuffer(4 * 16, D3DUSAGE_WRITEONLY, D3DFVF_XYZ | D3DFVF_DIFFUSE, D3DPOOL_MANAGED,
+                                              &quad.p, nullptr),
+                   "quad vb");
+                ok(device->CreateIndexBuffer(6 * sizeof(std::uint16_t), D3DUSAGE_WRITEONLY, D3DFMT_INDEX16,
+                                             D3DPOOL_MANAGED, &quad_indices.p, nullptr),
+                   "quad ib");
                 {
-                    struct Vertex { float x, y, z; DWORD color; };
-                    const Vertex vertices[4] = {{-0.5f, -0.5f, 0.5f, 0xffff0000}, {-0.5f, 0.5f, 0.5f, 0xff00ff00},
-                                                {0.5f, 0.5f, 0.5f, 0xff0000ff}, {0.5f, -0.5f, 0.5f, 0xffffffff}};
+                    struct Vertex {
+                        float x, y, z;
+                        DWORD color;
+                    };
+                    const Vertex vertices[4] = {{-0.5f, -0.5f, 0.5f, 0xffff0000},
+                                                {-0.5f, 0.5f, 0.5f, 0xff00ff00},
+                                                {0.5f, 0.5f, 0.5f, 0xff0000ff},
+                                                {0.5f, -0.5f, 0.5f, 0xffffffff}};
                     const std::uint16_t indices[6] = {0, 1, 2, 0, 2, 3};
                     void* data = nullptr;
-                    ok(quad->Lock(0, sizeof vertices, &data, 0), "quad vb lock"); std::memcpy(data, vertices, sizeof vertices); ok(quad->Unlock(), "quad vb unlock");
-                    ok(quad_indices->Lock(0, sizeof indices, &data, 0), "quad ib lock"); std::memcpy(data, indices, sizeof indices); ok(quad_indices->Unlock(), "quad ib unlock");
+                    ok(quad->Lock(0, sizeof vertices, &data, 0), "quad vb lock");
+                    std::memcpy(data, vertices, sizeof vertices);
+                    ok(quad->Unlock(), "quad vb unlock");
+                    ok(quad_indices->Lock(0, sizeof indices, &data, 0), "quad ib lock");
+                    std::memcpy(data, indices, sizeof indices);
+                    ok(quad_indices->Unlock(), "quad ib unlock");
                 }
                 ok(device->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE), "quad fvf");
                 ok(device->SetIndices(quad_indices.p), "quad indices");
@@ -328,8 +479,10 @@ int main(int argc, char** argv) {
                 device_benchmark(w);
                 Com<IDirect3DVertexDeclaration9> declaration;
                 {
-                    const D3DVERTEXELEMENT9 elements[] = {{0, 0, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0},
-                                                          {0, 12, D3DDECLTYPE_D3DCOLOR, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_COLOR, 0}, D3DDECL_END()};
+                    const D3DVERTEXELEMENT9 elements[] = {
+                        {0, 0, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0},
+                        {0, 12, D3DDECLTYPE_D3DCOLOR, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_COLOR, 0},
+                        D3DDECL_END()};
                     ok(device->CreateVertexDeclaration(elements, &declaration.p), "declaration");
                 }
                 preserve_benchmark(w, declaration.p);

@@ -134,6 +134,18 @@ when a generated file is stale. `x3m-regenerate` is built separately with
 `python3 tools/regenerate/build.py` (`--windows` for the `.exe`;
 [details](docs/user/regenerate.md#building-the-executable)).
 
+Formatting: C and C++ sources follow `.clang-format` (clang-format 23; four-space
+indent, attached braces, 120 columns). Format the tracked sources, leaving the
+generated `*_inc.h` files to their generators:
+
+```sh
+git ls-files -z '*.c' '*.cc' '*.cpp' '*.h' '*.hpp' '*.inl' | grep -zv '_inc\.h$' \
+  | xargs -0 clang-format -i
+```
+
+Hand-laid tables (instruction-byte stubs, shader words, vtable slots) sit between
+`// clang-format off` and `// clang-format on`.
+
 ## Verification
 
 - **Host suite** (pure Python and host C++ harnesses, no Wine):

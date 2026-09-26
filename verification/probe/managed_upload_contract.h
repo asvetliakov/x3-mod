@@ -39,8 +39,8 @@ bool inspect(IDirect3DIndexBuffer9* native, BufferContract* out) noexcept;
 // Revalidates the SAME token/resource/heap and actual pointer == heap+offset.
 // Caller proves same-thread, single observed mapping and unchanged wrapper
 // forwarding; executes MFENCE/compiler barrier before any subsequent scan.
-bool validate_window(const BufferContract&, UINT offset, UINT size, DWORD flags,
-                     const void* successful_lock_pointer, Window* out) noexcept;
+bool validate_window(const BufferContract&, UINT offset, UINT size, DWORD flags, const void* successful_lock_pointer,
+                     Window* out) noexcept;
 
 // After the normal Unlock, revalidates the same token/heap and native map count
 // zero. This alone does not validate the observer's revision or reset generation.

@@ -39,20 +39,21 @@
 // without the capture lock; the live registry keeps its value, and the stub
 // and tables stay in the never-freed arena.
 namespace x3m::fov {
-bool initialize();  // backend-load path only; logs one fov line
-bool shutdown();    // dynamic-unload detach only; true when nothing stays registered
+bool initialize(); // backend-load path only; logs one fov line
+bool shutdown();   // dynamic-unload detach only; true when nothing stays registered
 // Verifies the window at `window` (the engine's 0x0041c9cc, or a fixture's copy)
 // and writes `focus` into the immediate. Returns whether the patch is live;
 // state() carries the reason either way.
 bool install_at(std::uintptr_t window, std::uint32_t focus);
 const char* state();
-const char* write_path();      // none|atomic|plain: which engine_patch::write_code path wrote the immediate
-const char* registry_state();  // written|absent|skipped: the one-off registry+0x24 write at install
-const char* setfocus_state();  // none (not attempted or restored), active, rolled_back (after a load failure) or the INS_SetFocus failure reason
-const char* load_state();      // none (not attempted or restored), active, or the load-store failure reason
-bool patched();                // any site registered (the constructor's immediate, the INS_SetFocus or the load claim)
-bool setfocus_patched();       // the INS_SetFocus claim is registered
-bool load_patched();           // the load-store claim is registered
+const char* write_path();     // none|atomic|plain: which engine_patch::write_code path wrote the immediate
+const char* registry_state(); // written|absent|skipped: the one-off registry+0x24 write at install
+const char* setfocus_state(); // none (not attempted or restored), active, rolled_back (after a load failure) or the
+                              // INS_SetFocus failure reason
+const char* load_state();     // none (not attempted or restored), active, or the load-store failure reason
+bool patched();               // any site registered (the constructor's immediate, the INS_SetFocus or the load claim)
+bool setfocus_patched();      // the INS_SetFocus claim is registered
+bool load_patched();          // the load-store claim is registered
 // The binary angle the option put in place (0x4000 when off, refused or before initialize()); after
 // rollback_failed the immediate read back, or 0 (unknown) when unreadable or implausible.
 std::uint32_t configured_focus();

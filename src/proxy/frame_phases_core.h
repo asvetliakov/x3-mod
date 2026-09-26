@@ -37,11 +37,12 @@ struct Sample {
 
 struct Tracker {
     std::uint64_t order_errors = 0, clock_errors = 0, unmatched = 0, dropped = 0;
-    bool live = false;     // a frame is being accumulated (after the first Present return)
-    bool pending = false;  // `closed` holds a finished frame not yet taken by frame()
+    bool live = false;    // a frame is being accumulated (after the first Present return)
+    bool pending = false; // `closed` holds a finished frame not yet taken by frame()
     unsigned phase = 0, fired = 0;
     std::uint64_t last_qpc = 0, setup_begin = 0, submit_begin = 0;
-    std::uint64_t submit_end = 0; // the frame's last view_submit_end clock, retained for the residual group (one store per view)
+    std::uint64_t submit_end = 0; // the frame's last view_submit_end clock, retained for the residual group (one store
+                                  // per view)
     std::uint64_t phase_ticks[phase_count]{};
     std::uint64_t setup_ticks = 0, submit_ticks = 0;
     std::uint32_t views = 0;
@@ -52,56 +53,96 @@ struct Tracker {
     } closed{};
 
     void restart(std::uint64_t qpc) noexcept {
-        live = true; phase = pre_render; fired = 0; last_qpc = qpc; setup_begin = submit_begin = submit_end = 0;
+        live = true;
+        phase = pre_render;
+        fired = 0;
+        last_qpc = qpc;
+        setup_begin = submit_begin = submit_end = 0;
         for (auto& t : phase_ticks) t = 0;
-        setup_ticks = submit_ticks = 0; views = 0;
+        setup_ticks = submit_ticks = 0;
+        views = 0;
     }
     // Cumulative intersection with submission intervals, sampled using a sibling's
     // existing QPC. Owner-thread only; no additional clock or boundary callback.
     std::uint64_t submission_ticks_at(std::uint64_t now) const noexcept {
         return submit_ticks + (live && submit_begin && now >= submit_begin ? now - submit_begin : 0);
     }
-    void drop() noexcept { if (live) ++dropped; live = false; }
+    void drop() noexcept {
+        if (live) ++dropped;
+        live = false;
+    }
     bool advance(unsigned to, std::uint64_t qpc) noexcept {
-        if (qpc < last_qpc) { ++clock_errors; drop(); return false; }
+        if (qpc < last_qpc) {
+            ++clock_errors;
+            drop();
+            return false;
+        }
         phase_ticks[phase] += qpc - last_qpc;
-        last_qpc = qpc; phase = to;
+        last_qpc = qpc;
+        phase = to;
         return true;
     }
     // Engine stamp `index` (frame_phase_sites.h order) at `qpc`.
     void site(unsigned index, std::uint64_t qpc) noexcept {
-        if (index >= site_count) { ++unmatched; return; }
-        if (!live) { ++unmatched; return; }
+        if (index >= site_count) {
+            ++unmatched;
+            return;
+        }
+        if (!live) {
+            ++unmatched;
+            return;
+        }
         if (index < core_sites) {
             const unsigned to = index + 1;
-            if (to <= phase) { ++order_errors; drop(); return; }
+            if (to <= phase) {
+                ++order_errors;
+                drop();
+                return;
+            }
             if (advance(to, qpc)) fired |= 1u << index;
             return;
         }
-        if (qpc < last_qpc) { ++clock_errors; drop(); return; }
-        if (index == core_sites) { setup_begin = qpc; ++views; }
-        else if (index == core_sites + 1) {
+        if (qpc < last_qpc) {
+            ++clock_errors;
+            drop();
+            return;
+        }
+        if (index == core_sites) {
+            setup_begin = qpc;
+            ++views;
+        } else if (index == core_sites + 1) {
             if (setup_begin && qpc >= setup_begin) setup_ticks += qpc - setup_begin;
-            setup_begin = 0; submit_begin = qpc;
+            setup_begin = 0;
+            submit_begin = qpc;
         } else {
             if (submit_begin && qpc >= submit_begin) submit_ticks += qpc - submit_begin;
-            submit_begin = 0; submit_end = qpc;
+            submit_begin = 0;
+            submit_end = qpc;
         }
     }
     // Ahead of the forwarded native Present.
     void present_begin(std::uint64_t qpc) noexcept {
         if (!live) return;
-        if (phase == present_phase) { ++order_errors; drop(); return; }
+        if (phase == present_phase) {
+            ++order_errors;
+            drop();
+            return;
+        }
         advance(present_phase, qpc);
     }
     // After the native Present returned: closes the frame and starts the next.
     void present_end(std::uint64_t qpc) noexcept {
         if (live && phase == present_phase && advance(pre_render, qpc)) {
             for (unsigned i = 0; i < phase_count; ++i) closed.phase_ticks[i] = phase_ticks[i];
-            closed.setup_ticks = setup_ticks; closed.submit_ticks = submit_ticks;
-            closed.views = views; closed.complete = fired == (1u << core_sites) - 1;
+            closed.setup_ticks = setup_ticks;
+            closed.submit_ticks = submit_ticks;
+            closed.views = views;
+            closed.complete = fired == (1u << core_sites) - 1;
             pending = true;
-        } else if (live) { ++order_errors; drop(); }
+        } else if (live) {
+            ++order_errors;
+            drop();
+        }
         restart(qpc);
     }
     // Takes the closed frame as a sample in microseconds; false when none.
@@ -116,7 +157,8 @@ struct Tracker {
         }
         out.view_setup_us = closed.setup_ticks * 1000000ull / frequency;
         out.view_submit_us = closed.submit_ticks * 1000000ull / frequency;
-        out.views = closed.views; out.complete = closed.complete;
+        out.views = closed.views;
+        out.complete = closed.complete;
         return true;
     }
 };
@@ -142,7 +184,9 @@ public:
         if (count_ < window_frames) {
             dt_[count_] = s.dt_us;
             for (unsigned i = 0; i < phase_count; ++i) phase_[i][count_] = s.phase_us[i];
-            setup_[count_] = s.view_setup_us; submit_[count_] = s.view_submit_us; views_[count_] = s.views;
+            setup_[count_] = s.view_setup_us;
+            submit_[count_] = s.view_submit_us;
+            views_[count_] = s.views;
             if (!s.complete) ++incomplete_;
             ++count_;
         }
@@ -150,28 +194,40 @@ public:
         unsigned slot = slow_count_;
         while (slot > 0 && slow_[slot - 1].dt_us < s.dt_us) --slot;
         if (slot >= slow_slots) return;
-        for (unsigned i = slow_count_ < slow_slots ? slow_count_ : slow_slots - 1; i > slot; --i) slow_[i] = slow_[i - 1];
+        for (unsigned i = slow_count_ < slow_slots ? slow_count_ : slow_slots - 1; i > slot; --i)
+            slow_[i] = slow_[i - 1];
         slow_[slot] = s;
         if (slow_count_ < slow_slots) ++slow_count_;
     }
     bool close(Summary& out) noexcept {
-        if (!count_) { reset(); return false; }
+        if (!count_) {
+            reset();
+            return false;
+        }
         out = Summary{};
-        out.frame = last_frame_; out.frames = count_; out.incomplete = incomplete_;
-        out.dt_p50 = percentile(dt_, 50); out.dt_p95 = percentile(dt_, 95);
+        out.frame = last_frame_;
+        out.frames = count_;
+        out.incomplete = incomplete_;
+        out.dt_p50 = percentile(dt_, 50);
+        out.dt_p95 = percentile(dt_, 95);
         for (unsigned i = 0; i < phase_count; ++i) {
             out.phase_p50[i] = percentile(phase_[i], 50);
             out.phase_p95[i] = percentile(phase_[i], 95);
         }
-        out.view_setup_p50 = percentile(setup_, 50); out.view_setup_p95 = percentile(setup_, 95);
-        out.view_submit_p50 = percentile(submit_, 50); out.view_submit_p95 = percentile(submit_, 95);
+        out.view_setup_p50 = percentile(setup_, 50);
+        out.view_setup_p95 = percentile(setup_, 95);
+        out.view_submit_p50 = percentile(submit_, 50);
+        out.view_submit_p95 = percentile(submit_, 95);
         out.views_p50 = percentile(views_, 50);
         out.slow_frames_count = slow_count_;
         for (unsigned i = 0; i < slow_count_; ++i) out.slow_frames[i] = slow_[i];
         reset();
         return true;
     }
-    void reset() noexcept { count_ = slow_count_ = incomplete_ = 0; last_frame_ = 0; }
+    void reset() noexcept {
+        count_ = slow_count_ = incomplete_ = 0;
+        last_frame_ = 0;
+    }
 
 private:
     std::uint64_t percentile(const std::uint64_t* values, unsigned p) noexcept {

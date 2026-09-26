@@ -35,8 +35,8 @@ enum Index : unsigned {
 };
 constexpr unsigned kSiteCount = Count;
 constexpr engine_patch::SiteSpec kSites[Count] = {
-    {"residual_phase_material_setup",0x004c1eab,{0x8b,0x13,0x8b,0x8a,0xfc,0x00,0x00,0x00},8,0,0},
-    {"residual_phase_view_particles",0x0047230c,{0x8b,0x15,0x18,0x85,0x60,0x00,0x83,0xc4,0x04},9,0,0},
+    {"residual_phase_material_setup", 0x004c1eab, {0x8b, 0x13, 0x8b, 0x8a, 0xfc, 0x00, 0x00, 0x00}, 8, 0, 0},
+    {"residual_phase_view_particles", 0x0047230c, {0x8b, 0x15, 0x18, 0x85, 0x60, 0x00, 0x83, 0xc4, 0x04}, 9, 0, 0},
 };
-static_assert(sizeof(kSites)/sizeof(kSites[0]) == Count, "Both residual stamps are one group");
+static_assert(sizeof(kSites) / sizeof(kSites[0]) == Count, "Both residual stamps are one group");
 }

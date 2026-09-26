@@ -42,8 +42,16 @@ struct CodeOps {
 // The setting as one printable token for the log line: "-" when unset, "?"
 // when too long, every character outside 0x21..0x7e shown as '?'.
 void printable(const wchar_t* text, DWORD length, char* out) {
-    if (!length) { out[0] = '-'; out[1] = 0; return; }
-    if (length >= setting_capacity) { out[0] = '?'; out[1] = 0; return; }
+    if (!length) {
+        out[0] = '-';
+        out[1] = 0;
+        return;
+    }
+    if (length >= setting_capacity) {
+        out[0] = '?';
+        out[1] = 0;
+        return;
+    }
     for (DWORD i = 0; i < length; ++i) out[i] = (text[i] >= 0x21 && text[i] <= 0x7e) ? static_cast<char>(text[i]) : '?';
     out[length] = 0;
 }
@@ -51,19 +59,30 @@ void printable(const wchar_t* text, DWORD length, char* out) {
 
 namespace x3m::lod_occlusion {
 bool install_at(std::uintptr_t window_address) {
-    if (patched_) { state_ = "already_installed"; return false; }
+    if (patched_) {
+        state_ = "already_installed";
+        return false;
+    }
     CodeOps ops;
     bool live = false, atomic = false;
-    const char* reason = sites::install(ops, window_address, engine_patch::install_window_open(), &live, &atomic, &site_protection);
-    const bool wrote = live || !std::strcmp(reason, "patch_rolled_back") || !std::strcmp(reason, "rollback_unprotected");
+    const char* reason = sites::install(ops, window_address, engine_patch::install_window_open(), &live, &atomic,
+                                        &site_protection);
+    const bool wrote = live || !std::strcmp(reason, "patch_rolled_back") ||
+                       !std::strcmp(reason, "rollback_unprotected");
     write_ = wrote ? (atomic ? "atomic" : "plain") : "none";
-    if (live) { patched_ = true; write_at_ = window_address + write_offset; } // "ok", or rollback_failed kept registered for shutdown()
+    if (live) {
+        patched_ = true;
+        write_at_ = window_address + write_offset;
+    } // "ok", or rollback_failed kept registered for shutdown()
     state_ = reason;
     return patched_ && !std::strcmp(reason, "ok");
 }
 bool initialize() {
     const DWORD error = GetLastError();
-    if (patched_) { SetLastError(error); return true; }
+    if (patched_) {
+        SetLastError(error);
+        return true;
+    }
     // Unset or empty = the DLL default (record0, engine bytes); 1..31 characters must be
     // exactly record0 or all; anything else is refused and nothing is patched. The launcher
     // sends all by default since Run 81 and marks it with X3M_LOD_OCCLUSION_DEFAULT=1 (the
@@ -73,19 +92,31 @@ bool initialize() {
     char setting[setting_capacity]{};
     printable(text, length, setting);
     wchar_t marker[2]{};
-    const bool from_default = length > 0 && x3m::config::get(L"X3M_LOD_OCCLUSION_DEFAULT", marker, 2) == 1 && marker[0] == L'1';
+    const bool from_default = length > 0 && x3m::config::get(L"X3M_LOD_OCCLUSION_DEFAULT", marker, 2) == 1 &&
+                              marker[0] == L'1';
     Mode mode = default_mode;
     bool applied = false, parsed = true;
-    if (length >= setting_capacity) { state_ = "too_long"; parsed = false; }
-    else if (length && !parse_mode(text, &mode)) { state_ = "invalid_setting"; parsed = false; }
-    else if (mode == Mode::record0) state_ = "record0";
-    else if (!object_trace::executable_verified()) state_ = "executable_mismatch";
-    else applied = install_at(window_va);
+    if (length >= setting_capacity) {
+        state_ = "too_long";
+        parsed = false;
+    } else if (length && !parse_mode(text, &mode)) {
+        state_ = "invalid_setting";
+        parsed = false;
+    } else if (mode == Mode::record0)
+        state_ = "record0";
+    else if (!object_trace::executable_verified())
+        state_ = "executable_mismatch";
+    else
+        applied = install_at(window_va);
     // rollback_failed leaves the site registered with bytes that may still be patched (or neither
     // original nor patched): the one failure that modifies the engine is not reported as a refusal.
-    const char* status = applied ? "patched" : patched_ ? "patched_unverified" : parsed && mode == Mode::record0 ? "off" : "refused";
+    const char* status = applied                           ? "patched"
+                         : patched_                        ? "patched_unverified"
+                         : parsed && mode == Mode::record0 ? "off"
+                                                           : "refused";
     log("lod_occlusion site=%08lx status=%s reason=%s mode=%s setting=%s write=%s default=%u",
-        static_cast<unsigned long>(site_va), status, state_, parsed ? mode_name(mode) : "-", setting, write_, unsigned(from_default));
+        static_cast<unsigned long>(site_va), status, state_, parsed ? mode_name(mode) : "-", setting, write_,
+        unsigned(from_default));
     SetLastError(error);
     return applied;
 }
@@ -96,7 +127,8 @@ bool shutdown() {
     unsigned char found[write_length]{};
     bool found_read = false;
     const char* reason = sites::restore(ops, write_at_, site_protection, found, &found_read);
-    if (!std::strcmp(reason, "restored")) patched_ = false; // restore_not_owned and restore_failed keep the site registered
+    if (!std::strcmp(reason, "restored"))
+        patched_ = false; // restore_not_owned and restore_failed keep the site registered
     state_ = reason;
     // One row, written straight to the log's OS handle: this runs inside DllMain (dynamic
     // unload), where the capture lock must not be taken. site= is the jne, found= its rel32.
@@ -104,15 +136,22 @@ bool shutdown() {
     if (handle && handle != INVALID_HANDLE_VALUE) {
         char line[160], bytes[12] = "--";
         if (found_read) std::snprintf(bytes, sizeof bytes, "%02x%02x%02x%02x", found[0], found[1], found[2], found[3]);
-        const int n = std::snprintf(line, sizeof line, "lod_occlusion_restore site=%08lx status=%s found=%s registered=%u\n",
-                                    static_cast<unsigned long>(write_at_ - write_offset + site_offset), reason, bytes, patched_ ? 1u : 0u);
+        const int n = std::snprintf(
+            line, sizeof line, "lod_occlusion_restore site=%08lx status=%s found=%s registered=%u\n",
+            static_cast<unsigned long>(write_at_ - write_offset + site_offset), reason, bytes, patched_ ? 1u : 0u);
         DWORD written = 0;
         if (n > 0 && unsigned(n) < sizeof line) WriteFile(handle, line, DWORD(n), &written, nullptr);
     }
     SetLastError(error);
     return !patched_;
 }
-const char* state() { return state_; }
-const char* write_path() { return write_; }
-bool patched() { return patched_; }
+const char* state() {
+    return state_;
+}
+const char* write_path() {
+    return write_;
+}
+bool patched() {
+    return patched_;
+}
 }

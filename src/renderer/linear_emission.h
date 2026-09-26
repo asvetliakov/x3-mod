@@ -5,10 +5,18 @@
 
 namespace x3m::renderer {
 // Embedded at shader creation. Changing gain or coverage needs a new variant.
-struct LinearEmissionConfig { float gain = 1.0f; bool coverage = false; };
+struct LinearEmissionConfig {
+    float gain = 1.0f;
+    bool coverage = false;
+};
 enum class LinearEmissionResult {
-    Applied, InvalidInput, InvalidConfig, UnsupportedShader, ProfileMismatch,
-    ResourceLimit, AllocationFailure
+    Applied,
+    InvalidInput,
+    InvalidConfig,
+    UnsupportedShader,
+    ProfileMismatch,
+    ResourceLimit,
+    AllocationFailure
 };
 struct LinearEmissionAbi {
     static constexpr unsigned definition_base = 30;
@@ -39,9 +47,9 @@ unsigned linear_emission_pair_index(std::uint64_t vertex, std::uint64_t pixel) n
 // Original PP output is retained despite the literal SM2 output restriction:
 // actual shader creation/native-output parity and native Windows execution are
 // separate qualification gates. No D3D calls, uploads or per-draw work here.
-LinearEmissionResult linear_emission_pixel_variant(const std::uint32_t* original,
-    std::size_t words, const LinearEmissionConfig& config,
-    std::vector<std::uint32_t>& output) noexcept;
+LinearEmissionResult linear_emission_pixel_variant(const std::uint32_t* original, std::size_t words,
+                                                   const LinearEmissionConfig& config,
+                                                   std::vector<std::uint32_t>& output) noexcept;
 
 // Source-only encoded gain (docs/architecture/linear-emission-cost.md,
 // section 4, "Implemented"): the same ten exact PS2/PS2.x programs with one
@@ -52,8 +60,8 @@ LinearEmissionResult linear_emission_pixel_variant(const std::uint32_t* original
 // (byte identity with no option). Gain is finite 1..8. Failure leaves output
 // intact; input may alias output. No D3D calls or per-draw work here.
 bool linear_emission_source_gain_valid(float gain) noexcept;
-LinearEmissionResult linear_emission_source_gain_variant(const std::uint32_t* original,
-    std::size_t words, float gain, std::vector<std::uint32_t>& output) noexcept;
+LinearEmissionResult linear_emission_source_gain_variant(const std::uint32_t* original, std::size_t words, float gain,
+                                                         std::vector<std::uint32_t>& output) noexcept;
 // Colour blend admission of the source-gain draw, shared by the proxy and the
 // GPU fixture. Inputs are the D3DRS_ALPHABLENDENABLE / SRGBWRITEENABLE values
 // and the colour triple SRCBLEND / DESTBLEND / BLENDOP (raw D3DBLEND and
@@ -69,7 +77,7 @@ LinearEmissionResult linear_emission_source_gain_variant(const std::uint32_t* or
 // generic blend refusal.
 enum class SourceGainBlend : std::uint8_t { Admit = 0, Blend = 1, Screen = 2 };
 SourceGainBlend linear_emission_source_gain_blend(std::uint32_t blend_enable, std::uint32_t srgb_write,
-    std::uint32_t src, std::uint32_t dst, std::uint32_t op) noexcept;
+                                                  std::uint32_t src, std::uint32_t dst, std::uint32_t op) noexcept;
 
 // Phase 3 of docs/architecture/emitter-plan.md: the emitters the effects gain
 // cannot reach, drawn by hull programs (position lights, deco flares, warning
@@ -86,7 +94,7 @@ bool linear_emission_hull_program_reviewed(std::uint64_t pixel) noexcept;
 // here (the plan keys phase 3 on the ONE/ONE materials), so it is an ordinary
 // refusal; the returned verdict is never Screen.
 SourceGainBlend linear_emission_hull_source_gain_blend(std::uint32_t blend_enable, std::uint32_t srgb_write,
-    std::uint32_t src, std::uint32_t dst, std::uint32_t op) noexcept;
+                                                       std::uint32_t src, std::uint32_t dst, std::uint32_t op) noexcept;
 // Pure creation-time gain of the ORIGINAL hull program's whole colour output
 // (the emitter art of the ONE/ONE materials is diffuse-authored with the
 // lightmap slot black, so the r0 sample alone carries nothing: archive check
@@ -103,6 +111,6 @@ SourceGainBlend linear_emission_hull_source_gain_blend(std::uint32_t blend_enabl
 // other tail, any use of c223 and any relative addressing fail closed.
 // Failure leaves output intact; input may alias output. No D3D calls or
 // per-draw work here.
-LinearEmissionResult linear_emission_hull_source_gain_variant(const std::uint32_t* original,
-    std::size_t words, float gain, std::vector<std::uint32_t>& output) noexcept;
+LinearEmissionResult linear_emission_hull_source_gain_variant(const std::uint32_t* original, std::size_t words,
+                                                              float gain, std::vector<std::uint32_t>& output) noexcept;
 } // namespace x3m::renderer

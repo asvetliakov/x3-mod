@@ -58,16 +58,31 @@
 namespace {
 
 unsigned checks = 0;
-void check(bool value, const char* label) { ++checks; if (!value) throw std::runtime_error(label); }
-void ok(HRESULT hr, const char* label) { check(hr == S_OK, label); }
-template <class T> struct Com { T* p = nullptr; ~Com() { if (p) p->Release(); } T* operator->() const { return p; } };
+void check(bool value, const char* label) {
+    ++checks;
+    if (!value) throw std::runtime_error(label);
+}
+void ok(HRESULT hr, const char* label) {
+    check(hr == S_OK, label);
+}
+template <class T> struct Com {
+    T* p = nullptr;
+    ~Com() {
+        if (p) p->Release();
+    }
+    T* operator->() const { return p; }
+};
 
-using Create9 = IDirect3D9* (WINAPI*)(UINT);
-using CreateEffectEx = HRESULT (WINAPI*)(IDirect3DDevice9*, const void*, UINT, const D3DXMACRO*, ID3DXInclude*,
-                                         const char*, DWORD, ID3DXEffectPool*, ID3DXEffect**, ID3DXBuffer**);
+using Create9 = IDirect3D9*(WINAPI*)(UINT);
+using CreateEffectEx = HRESULT(WINAPI*)(IDirect3DDevice9*, const void*, UINT, const D3DXMACRO*, ID3DXInclude*,
+                                        const char*, DWORD, ID3DXEffectPool*, ID3DXEffect**, ID3DXBuffer**);
 
 double frequency_hz = 1;
-std::uint64_t ticks() { LARGE_INTEGER t{}; QueryPerformanceCounter(&t); return static_cast<std::uint64_t>(t.QuadPart); }
+std::uint64_t ticks() {
+    LARGE_INTEGER t{};
+    QueryPerformanceCounter(&t);
+    return static_cast<std::uint64_t>(t.QuadPart);
+}
 
 // Keeps a returned handle live so nothing is optimised away.
 volatile std::uintptr_t sink = 0;
@@ -91,7 +106,8 @@ ModuleImage module_image(HMODULE module) {
     if (dos->e_magic != IMAGE_DOS_SIGNATURE) return info;
     const LONG lfanew = dos->e_lfanew;
     if (lfanew < static_cast<LONG>(sizeof(IMAGE_DOS_HEADER)) ||
-        lfanew > static_cast<LONG>(0x1000u - sizeof(IMAGE_NT_HEADERS32))) return info;
+        lfanew > static_cast<LONG>(0x1000u - sizeof(IMAGE_NT_HEADERS32)))
+        return info;
     const IMAGE_NT_HEADERS32* nt = reinterpret_cast<const IMAGE_NT_HEADERS32*>(base + lfanew);
     if (nt->Signature != IMAGE_NT_SIGNATURE) return info;
     if (nt->OptionalHeader.Magic != IMAGE_NT_OPTIONAL_HDR32_MAGIC) return info;
@@ -102,12 +118,16 @@ ModuleImage module_image(HMODULE module) {
         if (directory.VirtualAddress && directory.Size >= sizeof(IMAGE_EXPORT_DIRECTORY) &&
             info.size >= sizeof(IMAGE_EXPORT_DIRECTORY) &&
             directory.VirtualAddress <= info.size - sizeof(IMAGE_EXPORT_DIRECTORY))
-            info.exports = reinterpret_cast<const IMAGE_EXPORT_DIRECTORY*>(base + directory.VirtualAddress)->NumberOfFunctions;
+            info.exports = reinterpret_cast<const IMAGE_EXPORT_DIRECTORY*>(base + directory.VirtualAddress)
+                               ->NumberOfFunctions;
     }
     static const char marker[] = "Wine builtin DLL";
     const std::size_t marker_size = sizeof(marker) - 1;
     for (std::size_t at = 0x40; at + marker_size <= 0x80; ++at)
-        if (std::memcmp(base + at, marker, marker_size) == 0) { info.wine_builtin = 1; break; }
+        if (std::memcmp(base + at, marker, marker_size) == 0) {
+            info.wine_builtin = 1;
+            break;
+        }
     return info;
 }
 
@@ -121,8 +141,8 @@ enum class What { Baseline, GetTechniqueByName, SetTechniqueSame, SetTechniqueAl
 
 struct Measurement {
     What what;
-    std::string name;    // measure label
-    std::string detail;  // technique name(s) involved
+    std::string name;   // measure label
+    std::string detail; // technique name(s) involved
     const char* lookup = nullptr;
     D3DXHANDLE handle_a = nullptr;
     D3DXHANDLE handle_b = nullptr;
@@ -140,7 +160,8 @@ double run_batch(ID3DXEffect* effect, const Measurement& m, unsigned batch, unsi
         for (unsigned j = 0; j < batch; ++j) sink = first + j;
         break;
     case What::GetTechniqueByName:
-        for (unsigned j = 0; j < batch; ++j) sink = reinterpret_cast<std::uintptr_t>(effect->GetTechniqueByName(m.lookup));
+        for (unsigned j = 0; j < batch; ++j)
+            sink = reinterpret_cast<std::uintptr_t>(effect->GetTechniqueByName(m.lookup));
         break;
     case What::SetTechniqueSame:
         for (unsigned j = 0; j < batch; ++j) hr |= effect->SetTechnique(m.handle_a);
@@ -149,7 +170,10 @@ double run_batch(ID3DXEffect* effect, const Measurement& m, unsigned batch, unsi
         for (unsigned j = 0; j < batch; ++j) hr |= effect->SetTechnique(((first + j) & 1u) ? m.handle_b : m.handle_a);
         break;
     case What::BeginEnd:
-        for (unsigned j = 0; j < batch; ++j) { hr |= effect->Begin(&passes, D3DXFX_DONOTSAVESTATE); hr |= effect->End(); }
+        for (unsigned j = 0; j < batch; ++j) {
+            hr |= effect->Begin(&passes, D3DXFX_DONOTSAVESTATE);
+            hr |= effect->End();
+        }
         break;
     }
     const std::uint64_t t1 = ticks();
@@ -158,25 +182,24 @@ double run_batch(ID3DXEffect* effect, const Measurement& m, unsigned batch, unsi
     return double(t1 - t0) * 1e6 / frequency_hz / double(batch);
 }
 
-void run_measurement(ID3DXEffect* effect, const Measurement& m, std::vector<double>& microseconds,
-                     unsigned iterations, unsigned warmup, unsigned batch, unsigned rep) {
+void run_measurement(ID3DXEffect* effect, const Measurement& m, std::vector<double>& microseconds, unsigned iterations,
+                     unsigned warmup, unsigned batch, unsigned rep) {
     microseconds.clear();
     microseconds.reserve(iterations / batch);
     // Leave the effect on the technique the measurement expects as its state.
     if (m.what == What::SetTechniqueSame || m.what == What::BeginEnd || m.what == What::GetTechniqueByName)
         if (m.handle_a) ok(effect->SetTechnique(m.handle_a), "SetTechnique seed");
     for (unsigned i = 0; i < warmup; i += batch) run_batch(effect, m, batch, i);
-    for (unsigned i = 0; i < iterations; i += batch)
-        microseconds.push_back(run_batch(effect, m, batch, i));
+    for (unsigned i = 0; i < iterations; i += batch) microseconds.push_back(run_batch(effect, m, batch, i));
     std::sort(microseconds.begin(), microseconds.end());
     double sum = 0;
     for (double value : microseconds) sum += value;
     std::printf("MEASURE measure=%s detail=%s rep=%u iterations=%u batch=%u batches=%lu us_median=%.4f us_p90=%.4f "
                 "us_mean=%.4f us_p10=%.4f us_p99=%.4f\n",
                 m.name.c_str(), m.detail.empty() ? "-" : m.detail.c_str(), rep, iterations, batch,
-                static_cast<unsigned long>(microseconds.size()),
-                percentile(microseconds, 0.5), percentile(microseconds, 0.9), sum / double(microseconds.size()),
-                percentile(microseconds, 0.1), percentile(microseconds, 0.99));
+                static_cast<unsigned long>(microseconds.size()), percentile(microseconds, 0.5),
+                percentile(microseconds, 0.9), sum / double(microseconds.size()), percentile(microseconds, 0.1),
+                percentile(microseconds, 0.99));
 }
 
 std::vector<unsigned char> read_file(const char* path) {
@@ -204,7 +227,8 @@ int main(int argc, char** argv) {
         const unsigned warmup = 4 * batch;
         check(iterations >= 100000, "at least 100000 iterations");
         check(batch >= 2 && iterations % batch == 0, "batch divides iterations");
-        LARGE_INTEGER f{}; check(QueryPerformanceFrequency(&f) && f.QuadPart > 0, "QPC frequency");
+        LARGE_INTEGER f{};
+        check(QueryPerformanceFrequency(&f) && f.QuadPart > 0, "QPC frequency");
         frequency_hz = double(f.QuadPart);
 
         const std::vector<unsigned char> blob = read_file(effect_path);
@@ -218,12 +242,19 @@ int main(int argc, char** argv) {
             char path[2048]{};
             GetModuleFileNameA(d3dx, path, sizeof path);
             const ModuleImage image = module_image(d3dx);
-            std::printf("MODULE name=d3dx9_37 path=%s image_size=%lu stamp=%08lx exports=%lu wine_builtin=%d\n",
-                        path, image.size, image.stamp, image.exports, image.wine_builtin);
+            std::printf("MODULE name=d3dx9_37 path=%s image_size=%lu stamp=%08lx exports=%lu wine_builtin=%d\n", path,
+                        image.size, image.stamp, image.exports, image.wine_builtin);
         }
-        Create9 create = nullptr; CreateEffectEx create_effect = nullptr;
-        { const auto entry = GetProcAddress(d3d9, "Direct3DCreate9"); std::memcpy(&create, &entry, sizeof create); }
-        { const auto entry = GetProcAddress(d3dx, "D3DXCreateEffectEx"); std::memcpy(&create_effect, &entry, sizeof create_effect); }
+        Create9 create = nullptr;
+        CreateEffectEx create_effect = nullptr;
+        {
+            const auto entry = GetProcAddress(d3d9, "Direct3DCreate9");
+            std::memcpy(&create, &entry, sizeof create);
+        }
+        {
+            const auto entry = GetProcAddress(d3dx, "D3DXCreateEffectEx");
+            std::memcpy(&create_effect, &entry, sizeof create_effect);
+        }
         check(create != nullptr, "Direct3DCreate9");
         check(create_effect != nullptr, "D3DXCreateEffectEx");
 
@@ -231,20 +262,28 @@ int main(int argc, char** argv) {
                                       nullptr, nullptr, GetModuleHandleA(nullptr), nullptr);
         check(window != nullptr, "window");
         {
-            Com<IDirect3D9> factory; factory.p = create(D3D_SDK_VERSION); check(factory.p != nullptr, "factory");
+            Com<IDirect3D9> factory;
+            factory.p = create(D3D_SDK_VERSION);
+            check(factory.p != nullptr, "factory");
             D3DPRESENT_PARAMETERS pp{};
-            pp.Windowed = TRUE; pp.hDeviceWindow = window; pp.SwapEffect = D3DSWAPEFFECT_DISCARD;
-            pp.BackBufferWidth = pp.BackBufferHeight = 64; pp.BackBufferFormat = D3DFMT_A8R8G8B8;
-            pp.EnableAutoDepthStencil = TRUE; pp.AutoDepthStencilFormat = D3DFMT_D24S8;
+            pp.Windowed = TRUE;
+            pp.hDeviceWindow = window;
+            pp.SwapEffect = D3DSWAPEFFECT_DISCARD;
+            pp.BackBufferWidth = pp.BackBufferHeight = 64;
+            pp.BackBufferFormat = D3DFMT_A8R8G8B8;
+            pp.EnableAutoDepthStencil = TRUE;
+            pp.AutoDepthStencilFormat = D3DFMT_D24S8;
             pp.PresentationInterval = D3DPRESENT_INTERVAL_IMMEDIATE;
             Com<IDirect3DDevice9> device;
-            ok(factory->CreateDevice(0, D3DDEVTYPE_HAL, window, D3DCREATE_HARDWARE_VERTEXPROCESSING, &pp, &device.p), "device");
+            ok(factory->CreateDevice(0, D3DDEVTYPE_HAL, window, D3DCREATE_HARDWARE_VERTEXPROCESSING, &pp, &device.p),
+               "device");
             D3DCAPS9 caps{};
             ok(device->GetDeviceCaps(&caps), "caps");
             std::printf("DEVICE vs=%lx ps=%lx\n", static_cast<unsigned long>(caps.VertexShaderVersion),
                         static_cast<unsigned long>(caps.PixelShaderVersion));
 
-            Com<ID3DXEffect> effect; Com<ID3DXBuffer> errors;
+            Com<ID3DXEffect> effect;
+            Com<ID3DXBuffer> errors;
             const HRESULT created = create_effect(device.p, blob.data(), UINT(blob.size()), nullptr, nullptr, nullptr,
                                                   0, nullptr, &effect.p, &errors.p);
             if (created != S_OK && errors.p)
@@ -266,7 +305,10 @@ int main(int argc, char** argv) {
             }
             check(!names.empty(), "effect declares no engine technique name");
             std::string list;
-            for (std::size_t i = 0; i < names.size(); ++i) { if (i) list += ","; list += names[i]; }
+            for (std::size_t i = 0; i < names.size(); ++i) {
+                if (i) list += ",";
+                list += names[i];
+            }
             std::printf("FIXTURE effect=%s bytes=%lu parameters=%lu techniques=%lu engine_techniques=%s "
                         "iterations=%u repetitions=%u warmup=%u batch=%u frequency=%lld\n",
                         effect_path, static_cast<unsigned long>(blob.size()),
@@ -276,8 +318,10 @@ int main(int argc, char** argv) {
             std::vector<Measurement> plan;
             plan.push_back({What::Baseline, "baseline", "", nullptr, nullptr, nullptr});
             for (std::size_t i = 0; i < names.size(); ++i)
-                plan.push_back({What::GetTechniqueByName, "gtbn:" + names[i], names[i], names[i].c_str(), handles[i], nullptr});
-            plan.push_back({What::SetTechniqueSame, "settech_same:" + names[0], names[0], nullptr, handles[0], nullptr});
+                plan.push_back(
+                    {What::GetTechniqueByName, "gtbn:" + names[i], names[i], names[i].c_str(), handles[i], nullptr});
+            plan.push_back(
+                {What::SetTechniqueSame, "settech_same:" + names[0], names[0], nullptr, handles[0], nullptr});
             if (names.size() >= 2)
                 plan.push_back({What::SetTechniqueAlternating, "settech_alt:" + names[0] + "|" + names[1],
                                 names[0] + "|" + names[1], nullptr, handles[0], handles[1]});

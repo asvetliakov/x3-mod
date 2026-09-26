@@ -46,7 +46,7 @@ inline void frame(std::uint64_t frame_index, bool sampled) noexcept {
 bool fixture_install(const engine_patch::SiteSpec* specs, const char** status, const std::uint32_t* view_root_global);
 bool fixture_uninstall();
 void* fixture_emit(unsigned index, void*** next); // the production context stub
-bool fixture_last_sample(detail::Sample* out);   // owner thread only
+bool fixture_last_sample(detail::Sample* out);    // owner thread only
 const detail::Accumulator* fixture_accumulator();
 const detail::Gate* fixture_gate();
 std::uint64_t fixture_dropped();

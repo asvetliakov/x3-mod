@@ -15,7 +15,8 @@ namespace x3m::scalar {
 // |x| by clearing the sign bit; the same value as std::fabs for every input
 // including -0.0, NaN and infinities.
 inline double abs(double x) noexcept {
-    std::uint64_t bits; std::memcpy(&bits, &x, sizeof bits);
+    std::uint64_t bits;
+    std::memcpy(&bits, &x, sizeof bits);
     bits &= ~(std::uint64_t(1) << 63);
     std::memcpy(&x, &bits, sizeof x);
     return x;

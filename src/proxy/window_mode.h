@@ -16,13 +16,14 @@ namespace x3m::window_mode {
 void initialize();
 bool enabled();
 struct Result {
-    bool evaluated = false;           // the option was on and the predicate ran
+    bool evaluated = false; // the option was on and the predicate ran
     core::Decision decision{core::Action::refused, "off"};
-    BOOL set_result = FALSE;          // SetWindowPos, when called
-    DWORD set_error = 0;              // its GetLastError on failure (restored afterwards)
+    BOOL set_result = FALSE; // SetWindowPos, when called
+    DWORD set_error = 0;     // its GetLastError on failure (restored afterwards)
     core::Rect before, after;
 };
 // hwnd = device_window, or focus_window when device_window is NULL (D3D9's
 // rule). Preserves the thread's last error.
-Result apply(const char* phase, HWND focus_window, HWND device_window, bool windowed, UINT backbuffer_width, UINT backbuffer_height);
+Result apply(const char* phase, HWND focus_window, HWND device_window, bool windowed, UINT backbuffer_width,
+             UINT backbuffer_height);
 }

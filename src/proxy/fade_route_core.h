@@ -12,7 +12,8 @@
 // is routed like an opaque draw when its fade fraction estimate reaches the
 // threshold, instead of being composed by the fade bracket and masked
 // current-only. With the RT2 owner on under original shading the same state
-// with the alpha test on is admitted too (state's tested_ok). Host-tested through verification/probe/fade_region_host.cpp
+// with the alpha test on is admitted too (state's tested_ok). Host-tested through
+// verification/probe/fade_region_host.cpp
 // (--fade-route) from verification/analysis/test_fade_region.py.
 namespace x3m::fade_route {
 // The seven distance-fade vertex programs (linear_distance_fade.h) and the
@@ -27,23 +28,32 @@ namespace x3m::fade_route {
 // on (arm_pair below); the glass c30104cb0efb6675 and damage 37c34a7478544c14
 // programs, whose fade-band-state draws are material transparency, are not
 // rows and keep the overlay path.
-struct Registers { std::uint8_t alpha = 0, fog = 0; };
+struct Registers {
+    std::uint8_t alpha = 0, fog = 0;
+};
 // The single source for this arm: registers() scans this table and the
 // shader-population classifier (src/renderer/shader_population.h) enumerates
 // the same rows, so neither form can admit a program the other does not.
-struct VertexProgram { std::uint64_t hash; Registers registers; };
+struct VertexProgram {
+    std::uint64_t hash;
+    Registers registers;
+};
+// clang-format off
 inline constexpr VertexProgram vertex_programs[] = {
     {0xb0602757fce6e870ull, {39, 41}}, {0x0c223ad11bce02d5ull, {39, 41}},
     {0x167eb2d5629ab9d3ull, {39, 41}}, {0x330ceb9dd874ede2ull, {39, 41}},
     {0x4944d81dfe531b37ull, {39, 41}},
     {0x233d17d26ce0c1fcull, {18, 20}}, {0x12b8a13f13fe8cfeull, {18, 20}},
     {0x494fe349b8bc12ecull, {39, 41}}, {0x53a0a641107ed76cull, {39, 41}}};
-inline constexpr std::size_t vertex_program_count =
-    sizeof vertex_programs / sizeof vertex_programs[0];
+// clang-format on
+inline constexpr std::size_t vertex_program_count = sizeof vertex_programs / sizeof vertex_programs[0];
 static_assert(vertex_program_count == 9, "seven distance-fade vertex programs and the two run214 station families");
 constexpr bool registers(std::uint64_t vs, Registers& out) noexcept {
     for (const auto& row : vertex_programs)
-        if (row.hash == vs) { out = row.registers; return true; }
+        if (row.hash == vs) {
+            out = row.registers;
+            return true;
+        }
     return false;
 }
 // The arm's pair identity (MotionOutput's shadow_.fade_route_pair; gate 3 has
@@ -71,8 +81,8 @@ constexpr bool arm_pair(bool registers_row, bool distance_fade_pair, bool widen)
 constexpr bool state(std::uint32_t z, std::uint32_t z_write, std::uint32_t alpha_test, std::uint32_t blend,
                      std::uint32_t color_mask, std::uint32_t srgb_write, std::uint32_t src, std::uint32_t dst,
                      std::uint32_t op, std::uint32_t separate_alpha, bool tested_ok) noexcept {
-    return z == 1 && z_write == 0 && (alpha_test == 0 || (tested_ok && alpha_test == 1)) && blend != 0 && color_mask == 7
-        && srgb_write == 0 && src == 5 && dst == 6 && op == 1 && separate_alpha == 0;
+    return z == 1 && z_write == 0 && (alpha_test == 0 || (tested_ok && alpha_test == 1)) && blend != 0 &&
+           color_mask == 7 && srgb_write == 0 && src == 5 && dst == 6 && op == 1 && separate_alpha == 0;
 }
 // Distance of the object origin to the camera from the draw's clip rows
 // (four rows as uploaded: clip = row_k . (x, y, z, 1), so the origin's clip
@@ -95,7 +105,8 @@ inline bool origin_distance(const float rows[16], bool camera_valid, float m00, 
     const float xv = (xc - w * m20) / m00, yv = (yc - w * m21) / m11;
     const float d = scalar::sqrt(xv * xv + yv * yv + w * w);
     if (!std::isfinite(d)) return false;
-    out = d; return true;
+    out = d;
+    return true;
 }
 // The shadow-caster candidate's origin distance (MotionOutput::
 // note_candidate_distance, shadow_replay admission): the pre-run-130 contract.
@@ -116,8 +127,8 @@ inline bool origin_distance_front(const float rows[16], bool camera_valid, float
 // identical to the constant gain. No camera, a nonpositive scale or an origin
 // at or behind the camera plane (a large object around the viewer: near)
 // keeps the configured gain. One division, no branches on the device.
-inline float lightmap_far_gain(float w, bool camera_valid, float m00, float width, float gain, float floor,
-                               float p0, float inv) noexcept {
+inline float lightmap_far_gain(float w, bool camera_valid, float m00, float width, float gain, float floor, float p0,
+                               float inv) noexcept {
     if (!camera_valid || !(m00 > 0.f) || !(width > 0.f) || !(w > 0.f)) return gain;
     const float t = (2.f * w / (m00 * width) - p0) * inv;
     if (!(t > 0.f)) return gain;
@@ -142,7 +153,8 @@ inline float lightmap_widen_scale(std::uint32_t size, float k) noexcept {
 // large mesh straddling the band is admitted by its origin. Nonfinite
 // inputs yield 0 (never admitted).
 inline float fraction(float alpha_x, bool fog, float fog_x, float fog_y, float distance) noexcept {
-    if (!std::isfinite(alpha_x) || !std::isfinite(fog_x) || !std::isfinite(fog_y) || !std::isfinite(distance)) return 0.f;
+    if (!std::isfinite(alpha_x) || !std::isfinite(fog_x) || !std::isfinite(fog_y) || !std::isfinite(distance))
+        return 0.f;
     float factor = 1.f;
     if (fog) {
         factor = fog_x - fog_y * distance;
@@ -178,19 +190,27 @@ constexpr bool admit(unsigned f_permille, unsigned threshold_permille) noexcept 
 struct Hysteresis {
     static constexpr unsigned band = 100u, capacity = 64u;
     static constexpr std::uint64_t expiry = 8u;
-    struct Entry { std::uint64_t key = 0, frame = 0; bool armed = false; };
+    struct Entry {
+        std::uint64_t key = 0, frame = 0;
+        bool armed = false;
+    };
     Entry entries[capacity]{};
     unsigned count = 0;
     std::uint32_t evicted = 0;
     void clear() noexcept { count = 0; }
     // `held`: admitted below the threshold by the band only.
-    bool admit(std::uint64_t key, std::uint64_t frame, unsigned f_permille, unsigned threshold_permille, bool& held) noexcept {
+    bool admit(std::uint64_t key, std::uint64_t frame, unsigned f_permille, unsigned threshold_permille,
+               bool& held) noexcept {
         held = false;
         if (threshold_permille > 1000u) return false;
         if (!key) return f_permille >= threshold_permille;
-        Entry* entry = nullptr; unsigned oldest = 0;
+        Entry* entry = nullptr;
+        unsigned oldest = 0;
         for (unsigned i = 0; i < count; ++i) {
-            if (entries[i].key == key) { entry = &entries[i]; break; }
+            if (entries[i].key == key) {
+                entry = &entries[i];
+                break;
+            }
             if (entries[i].frame < entries[oldest].frame) oldest = i;
         }
         const bool armed = entry && entry->armed && frame >= entry->frame && frame - entry->frame <= expiry;
@@ -198,11 +218,16 @@ struct Hysteresis {
         const bool admitted = f_permille >= threshold_permille || (armed && f_permille >= low);
         held = admitted && f_permille < threshold_permille;
         if (!entry) {
-            if (count < capacity) entry = &entries[count++];
-            else { entry = &entries[oldest]; ++evicted; }
+            if (count < capacity)
+                entry = &entries[count++];
+            else {
+                entry = &entries[oldest];
+                ++evicted;
+            }
             entry->key = key;
         }
-        entry->frame = frame; entry->armed = admitted;
+        entry->frame = frame;
+        entry->armed = admitted;
         return admitted;
     }
 };

@@ -18,7 +18,7 @@ constexpr unsigned kAgxRegisterCount = 14;
 constexpr float kAgxMinEv = -12.47393f;
 constexpr float kAgxMaxEv = 4.026069f;
 constexpr float kAgxLumaWeights[3] = {0.2126f, 0.7152f, 0.0722f}; // static const in the shader
-constexpr float kAgxClampOff = 65504.f;                            // FP16 max: X3M_HDR_CLAMP unset
+constexpr float kAgxClampOff = 65504.f;                           // FP16 max: X3M_HDR_CLAMP unset
 constexpr float kAgxDecodeGamma = 2.2f;
 // Display dither of the 8-bit store (display_dither.hlsl, X3M_HDR_DITHER):
 // +-0.5 code, i.e. an amplitude of one code. c8.z of the AgX programs and
@@ -28,6 +28,7 @@ constexpr float kDisplayDitherAmplitude = 1.f / 255.f;
 enum class AgxDecode { gamma22, srgb, none };
 enum class AgxLook { none, golden, punchy };
 
+// clang-format off
 struct AgxConstants {
     float exposure[4]{1.f, kAgxClampOff, 0.f, 0.f};   // c8: exp2(EV), clamp max, display dither amplitude (0 or kDisplayDitherAmplitude), -
     float decode[4]{kAgxDecodeGamma, 0.f, 0.f, 0.f};   // c9: gamma exponent, srgb flag, none flag, -
@@ -46,18 +47,30 @@ struct AgxConstants {
     float look_offset[4]{0.f, 0.f, 0.f, 0.f};                // c20: offset rgb, -
     float look_power[4]{1.f, 1.f, 1.f, 0.f};                 // c21: power rgb, -
 };
+// clang-format on
 static_assert(sizeof(AgxConstants) == kAgxRegisterCount * 4 * sizeof(float));
 
 // Look triples (§3): golden slope (1, 0.9, 0.5) power 0.8 saturation 0.8;
 // punchy slope 1 power 1.35 saturation 1.4; none is the identity CDL.
 inline void set_look(AgxConstants& out, AgxLook look) noexcept {
     float slope[3]{1.f, 1.f, 1.f}, power = 1.f, sat = 1.f;
-    if(look == AgxLook::golden) { slope[1] = 0.9f; slope[2] = 0.5f; power = 0.8f; sat = 0.8f; }
-    else if(look == AgxLook::punchy) { power = 1.35f; sat = 1.4f; }
-    for(unsigned i = 0; i < 3; ++i) {
-        out.look_slope[i] = slope[i]; out.look_offset[i] = 0.f; out.look_power[i] = power;
+    if (look == AgxLook::golden) {
+        slope[1] = 0.9f;
+        slope[2] = 0.5f;
+        power = 0.8f;
+        sat = 0.8f;
+    } else if (look == AgxLook::punchy) {
+        power = 1.35f;
+        sat = 1.4f;
     }
-    out.look_slope[3] = sat; out.look_offset[3] = 0.f; out.look_power[3] = 0.f;
+    for (unsigned i = 0; i < 3; ++i) {
+        out.look_slope[i] = slope[i];
+        out.look_offset[i] = 0.f;
+        out.look_power[i] = power;
+    }
+    out.look_slope[3] = sat;
+    out.look_offset[3] = 0.f;
+    out.look_power[3] = 0.f;
 }
 
 inline void set_decode(AgxConstants& out, AgxDecode mode) noexcept {
@@ -71,10 +84,11 @@ inline void set_decode(AgxConstants& out, AgxDecode mode) noexcept {
 // stage 2); clamp_max <= 0 means X3M_HDR_CLAMP unset and uploads kAgxClampOff.
 // Everything else in the block is fixed by the reference; the display
 // dither (exposure[2]) is left at 0 (set_dither below).
-inline bool prepare(AgxConstants& out, float exposure_multiplier, float clamp_max,
-                    AgxDecode decode, AgxLook look) noexcept {
-    if(!std::isfinite(exposure_multiplier) || exposure_multiplier <= 0
-       || exposure_multiplier > kAgxClampOff || !std::isfinite(clamp_max)) return false;
+inline bool prepare(AgxConstants& out, float exposure_multiplier, float clamp_max, AgxDecode decode,
+                    AgxLook look) noexcept {
+    if (!std::isfinite(exposure_multiplier) || exposure_multiplier <= 0 || exposure_multiplier > kAgxClampOff ||
+        !std::isfinite(clamp_max))
+        return false;
     out.exposure[0] = exposure_multiplier;
     out.exposure[1] = clamp_max > 0 ? (clamp_max < kAgxClampOff ? clamp_max : kAgxClampOff) : kAgxClampOff;
     out.exposure[2] = out.exposure[3] = 0.f;

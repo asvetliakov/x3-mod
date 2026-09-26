@@ -30,24 +30,34 @@
 // counts a dropped pair, a contended Present defers its frame), and the line
 // reports same_thread so a cross-thread session is visible.
 namespace x3m::collide_narrow_census {
-struct Addresses { std::uintptr_t n5_site, n5_target, n6_site, n6_target, n7_site, n7_hits, n7_mode, n8_site; };
-bool initialize();  // backend-load path only; logs one collide_narrow_census line when the variable is set
-bool shutdown();    // restores the three sites (dynamic-unload detach only); true when nothing is installed
+struct Addresses {
+    std::uintptr_t n5_site, n5_target, n6_site, n6_target, n7_site, n7_hits, n7_mode, n8_site;
+};
+bool initialize(); // backend-load path only; logs one collide_narrow_census line when the variable is set
+bool shutdown();   // restores the three sites (dynamic-unload detach only); true when nothing is installed
 // Verifies the windows around the three sites (offsets relative to each site,
 // so the fixture passes layout-preserving synthetic copies), claims 8, 7, 6, 5 in
 // that order and rolls the earlier ones back when a later claim fails.
 bool install_at(const Addresses& addresses);
 const char* state();
-std::uintptr_t stub_address(unsigned site);   // 5, 6, 7 or 8; 0 when not installed
+std::uintptr_t stub_address(unsigned site); // 5, 6, 7 or 8; 0 when not installed
 // False when nothing is installed or the frame was deferred (a post handler on another thread held the lock).
 bool present(unsigned long long device, unsigned long long frame, bool captured);
 // The frame most recently taken by present() (fixture and tests).
-struct FrameView { const core::Entry* entries; unsigned count; std::uint32_t accepted, overflow, mesh_pairs, node_pairs; std::uint64_t ticks; core::MemoSummary memo; std::uint32_t tri_tests; };
+struct FrameView {
+    const core::Entry* entries;
+    unsigned count;
+    std::uint32_t accepted, overflow, mesh_pairs, node_pairs;
+    std::uint64_t ticks;
+    core::MemoSummary memo;
+    std::uint32_t tri_tests;
+};
 FrameView last_frame();
-std::uint32_t dropped_total();   // pairs a contended post handler could not record (cross-thread Present only)
+std::uint32_t dropped_total(); // pairs a contended post handler could not record (cross-thread Present only)
 }
 extern "C" {
-// Monotonic, written by the stubs only: [0] mesh-pair tests, [1] node-pair visits, [2] nested passes, [3] foreign callers, [4] leaf triangle tests.
+// Monotonic, written by the stubs only: [0] mesh-pair tests, [1] node-pair visits, [2] nested passes, [3] foreign
+// callers, [4] leaf triangle tests.
 extern volatile std::uint32_t x3m_collide_narrow_counters[5];
 extern volatile unsigned char x3m_collide_narrow_busy;
 void __cdecl x3m_collide_narrow_pre(const unsigned char* object_a, const unsigned char* object_b);

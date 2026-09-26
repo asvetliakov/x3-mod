@@ -9,14 +9,17 @@ struct FogCardMask {
     bool masked = false;
     std::uint32_t saved = 0;
     std::int32_t operation = 0, restore = 0;
-    template<class Set> void begin(std::uint32_t mask, Set&& set) noexcept {
+    template <class Set> void begin(std::uint32_t mask, Set&& set) noexcept {
         saved = mask;
         operation = set(0);
         masked = operation >= 0;
         if (!masked) restore = set(saved);
     }
-    template<class Set> void end(Set&& set) noexcept {
-        if (masked) { restore = set(saved); masked = false; }
+    template <class Set> void end(Set&& set) noexcept {
+        if (masked) {
+            restore = set(saved);
+            masked = false;
+        }
     }
 };
 } // namespace x3m

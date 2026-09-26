@@ -15,20 +15,18 @@ struct MaterialMotionVariant {
     std::vector<std::uint32_t> vertex;
     std::vector<std::uint32_t> pixel;
 };
-enum class MaterialMotionResult {
-    Applied, InvalidInput, UnsupportedShader, ProfileMismatch, AllocationFailure
-};
+enum class MaterialMotionResult { Applied, InvalidInput, UnsupportedShader, ProfileMismatch, AllocationFailure };
 struct MaterialMotionAbi {
-    static constexpr unsigned previous_vertex_constant = 252; // Four submitted rows.
+    static constexpr unsigned previous_vertex_constant = 252;   // Four submitted rows.
     static constexpr unsigned pixel_coordinates_constant = 216; // Inverse size, prior jitter UV.
-    static constexpr unsigned pixel_mode_constant = 217; // x=1 valid history request, x=0 invalid.
+    static constexpr unsigned pixel_mode_constant = 217;        // x=1 valid history request, x=0 invalid.
     // X3M_TAA_THIN_VOTE only (material_motion_configure_thin_vote): x = RT2 .a of the depth
     // fragment, 1 - thin on an opaque routed row, 1 otherwise; uploaded with c216-c217 in one call.
     // X3M_FADE_RT2_OWNER (material_motion_configure_fade_owner) uploads the same register:
     // .a = max(w * z + x, y), y = 1 on a fade-arm row (fade-rt2-ownership.md).
     static constexpr unsigned pixel_thin_constant = 218;
     static constexpr unsigned motion_render_target = 1;
-    static constexpr unsigned depth_render_target = 2;  // R32F current device depth (z/w).
+    static constexpr unsigned depth_render_target = 2; // R32F current device depth (z/w).
 };
 
 // The reviewed original pairs are the rows of the generated profile table. The
@@ -80,16 +78,18 @@ std::uint64_t material_motion_fingerprint(const std::uint32_t* words, std::size_
 // and render target. The current pixel ABI requires a zero-origin viewport and
 // the existing jitter convention. A matching shader pair alone establishes
 // none of these contracts.
-MaterialMotionResult material_motion_vertex_variant(const std::uint32_t* vertex,
-    std::size_t vertex_words, std::vector<std::uint32_t>& output, bool current_depth = true) noexcept;
-MaterialMotionResult material_motion_pixel_variant(const std::uint32_t* pixel,
-    std::size_t pixel_words, std::vector<std::uint32_t>& output, bool current_depth = true) noexcept;
+MaterialMotionResult material_motion_vertex_variant(const std::uint32_t* vertex, std::size_t vertex_words,
+                                                    std::vector<std::uint32_t>& output,
+                                                    bool current_depth = true) noexcept;
+MaterialMotionResult material_motion_pixel_variant(const std::uint32_t* pixel, std::size_t pixel_words,
+                                                   std::vector<std::uint32_t>& output,
+                                                   bool current_depth = true) noexcept;
 // Pair form retained for the detached fixtures: both stages are qualified
 // against one row before either transforms, and success publishes both
 // programs atomically. Input may alias either output vector.
-MaterialMotionResult material_motion_variant(const std::uint32_t* vertex,
-    std::size_t vertex_words, const std::uint32_t* pixel, std::size_t pixel_words,
-    MaterialMotionVariant& output, bool current_depth = true) noexcept;
+MaterialMotionResult material_motion_variant(const std::uint32_t* vertex, std::size_t vertex_words,
+                                             const std::uint32_t* pixel, std::size_t pixel_words,
+                                             MaterialMotionVariant& output, bool current_depth = true) noexcept;
 
 // Row-explicit forms. The program must still carry the row's exact fingerprint,
 // length and version (UnsupportedShader otherwise); the row's structural fields
@@ -97,12 +97,12 @@ MaterialMotionResult material_motion_variant(const std::uint32_t* vertex,
 // The table lookups above call these; the structural fixture uses them with
 // deliberately perturbed rows to prove the revalidation refuses, which the
 // fingerprint gate makes unreachable through the lookup forms.
-MaterialMotionResult material_motion_vertex_variant_for(const MotionOutputProfile& row,
-    const std::uint32_t* vertex, std::size_t vertex_words, std::vector<std::uint32_t>& output,
-    bool current_depth = true) noexcept;
-MaterialMotionResult material_motion_pixel_variant_for(const MotionOutputProfile& row,
-    const std::uint32_t* pixel, std::size_t pixel_words, std::vector<std::uint32_t>& output,
-    bool current_depth = true) noexcept;
+MaterialMotionResult material_motion_vertex_variant_for(const MotionOutputProfile& row, const std::uint32_t* vertex,
+                                                        std::size_t vertex_words, std::vector<std::uint32_t>& output,
+                                                        bool current_depth = true) noexcept;
+MaterialMotionResult material_motion_pixel_variant_for(const MotionOutputProfile& row, const std::uint32_t* pixel,
+                                                       std::size_t pixel_words, std::vector<std::uint32_t>& output,
+                                                       bool current_depth = true) noexcept;
 // Whether the variants of this row carry the depth export/output under the
 // given option (the words the transformers add depend on it).
 bool material_motion_vertex_exports_depth(const MotionOutputProfile& row, bool current_depth) noexcept;

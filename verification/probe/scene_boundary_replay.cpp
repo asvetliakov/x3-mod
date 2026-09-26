@@ -11,7 +11,9 @@ int main() {
     SceneBoundarySelector selector;
     std::string line;
     while (std::getline(std::cin, line)) {
-        std::istringstream in(line); char operation; in >> operation;
+        std::istringstream in(line);
+        char operation;
+        in >> operation;
         if (operation == 'P') {
             SceneSignatures signatures;
             // Three deprecated background slots precede the bloom pairs; the
@@ -22,22 +24,29 @@ int main() {
             // Caller storage may change after construction; profile is a copy.
             signatures.bloom[3] = {};
         } else if (operation == 'B') {
-            std::uint64_t device, generation, frame; in >> device >> generation >> frame;
+            std::uint64_t device, generation, frame;
+            in >> device >> generation >> frame;
             selector.begin_frame(device, generation, frame);
-        } else if (operation == 'I') selector.invalidate();
+        } else if (operation == 'I')
+            selector.invalidate();
         else if (operation == 'E') {
-            Event e; unsigned kind;
+            Event e;
+            unsigned kind;
             in >> kind >> e.sequence >> e.result_known >> e.result;
             e.kind = static_cast<EventKind>(kind);
-            surface(in,e.rt); surface(in,e.depth);
-            in >> e.viewport.known >> e.viewport.x >> e.viewport.y >> e.viewport.width
-               >> e.viewport.height >> e.viewport.min_z >> e.viewport.max_z >> e.only_rt0
-               >> e.rt_index >> e.vs >> e.ps >> e.texture0 >> e.draw_state_known
-               >> e.topology >> e.primitives >> e.z_enable >> e.z_write
-               >> e.clear_flags >> e.rect_count >> e.clear_z;
-            surface(in,e.source); surface(in,e.destination);
+            surface(in, e.rt);
+            surface(in, e.depth);
+            in >> e.viewport.known >> e.viewport.x >> e.viewport.y >> e.viewport.width >> e.viewport.height >>
+                e.viewport.min_z >> e.viewport.max_z >> e.only_rt0 >> e.rt_index >> e.vs >> e.ps >> e.texture0 >>
+                e.draw_state_known >> e.topology >> e.primitives >> e.z_enable >> e.z_write >> e.clear_flags >>
+                e.rect_count >> e.clear_z;
+            surface(in, e.source);
+            surface(in, e.destination);
             in >> e.source_rect_null >> e.destination_rect_null;
-            if (!in) { std::cerr << "Malformed fixture event\n"; return 2; }
+            if (!in) {
+                std::cerr << "Malformed fixture event\n";
+                return 2;
+            }
             const auto before = selector.state();
             const auto candidate = selector.before_clear(e);
             const auto confirmed = selector.observe(e);
@@ -46,12 +55,13 @@ int main() {
                 std::cout << "T " << e.sequence << ' ' << static_cast<unsigned>(before) << ' '
                           << static_cast<unsigned>(selector.state()) << '\n';
             if (candidate.valid || confirmed.valid)
-                std::cout << "S " << e.sequence << ' ' << candidate.valid << ' ' << confirmed.valid
-                          << ' ' << candidate.color.identity << ' ' << candidate.depth.identity
-                          << ' ' << candidate.depth_epoch << '\n';
+                std::cout << "S " << e.sequence << ' ' << candidate.valid << ' ' << confirmed.valid << ' '
+                          << candidate.color.identity << ' ' << candidate.depth.identity << ' ' << candidate.depth_epoch
+                          << '\n';
         } else if (operation == 'Q') {
             std::cout << "Q " << static_cast<unsigned>(selector.state()) << ' '
                       << static_cast<unsigned>(selector.rejection()) << ' ' << selector.rejection_sequence() << '\n';
-        } else return 2;
+        } else
+            return 2;
     }
 }

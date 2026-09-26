@@ -13,8 +13,8 @@
 // See docs/verification/sampling-profiler.md for the safety rules and limits.
 namespace x3m::sampling_profiler {
 struct Settings {
-    unsigned interval_us=2000;  // X3M_PROFILE_INTERVAL_US, 100..1000000
-    unsigned report_s=5;        // X3M_PROFILE_REPORT_S, 1..3600
+    unsigned interval_us = 2000; // X3M_PROFILE_INTERVAL_US, 100..1000000
+    unsigned report_s = 5;       // X3M_PROFILE_REPORT_S, 1..3600
 };
 // Starts the sampler when X3M_PROFILE=1; false (and silent) otherwise. One
 // generation per process: after shutdown a second initialize is refused.
@@ -25,10 +25,10 @@ bool active();
 void shutdown();
 // Counters for fixtures and the shutdown log line; no lock, values may lag.
 struct Status {
-    bool active=false;
-    uint64_t ticks=0, samples=0, dropped=0, reports=0;
-    uint64_t tick_ticks=0, tick_max_ticks=0, report_ticks=0, refresh_ticks=0;
-    unsigned threads=0, modules=0, threads_unsampled=0;
+    bool active = false;
+    uint64_t ticks = 0, samples = 0, dropped = 0, reports = 0;
+    uint64_t tick_ticks = 0, tick_max_ticks = 0, report_ticks = 0, refresh_ticks = 0;
+    unsigned threads = 0, modules = 0, threads_unsampled = 0;
 };
 Status status();
 }

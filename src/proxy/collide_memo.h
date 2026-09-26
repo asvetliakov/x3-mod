@@ -30,29 +30,43 @@
 // Path cost (per mesh-pair query, about 1e2 per frame): one key build and a 4-way set compare, no lock, no
 // allocation, no log, no API call; the table is 1,024 static entries. The thunk and both C handlers hold no x87/MMX
 // instruction and no floating-point arithmetic at all (the key is compared as words), MXCSR is not read or written,
-// the x87 stack is empty at the site and stays so, LastError is never touched (GetCurrentThreadId does not set it). On the run path the engine's
-// EAX/ECX/EDX and callee-saved registers reach the caller as the engine left them; on a hit EAX = 0, ECX/EDX and
-// EFLAGS are dead at the return (`xor eax,eax` follows), EBX/EBP/ESI/EDI are untouched.
+// the x87 stack is empty at the site and stays so, LastError is never touched (GetCurrentThreadId does not set it). On
+// the run path the engine's EAX/ECX/EDX and callee-saved registers reach the caller as the engine left them; on a hit
+// EAX = 0, ECX/EDX and EFLAGS are dead at the return (`xor eax,eax` follows), EBX/EBP/ESI/EDI are untouched.
 namespace x3m::collide_memo {
-struct Addresses { std::uintptr_t site, target; };
-bool initialize();  // backend-load path only; logs one collide_memo line when the variable is set
-bool shutdown();    // restores the call (dynamic-unload detach only); true when nothing is installed
+struct Addresses {
+    std::uintptr_t site, target;
+};
+bool initialize(); // backend-load path only; logs one collide_memo line when the variable is set
+bool shutdown();   // restores the call (dynamic-unload detach only); true when nothing is installed
 // Verifies the windows before and after the call (offsets relative to the site) and redirects it.
 bool install_at(const Addresses& addresses, bool verify_mode);
 const char* state();
 // Frame boundary: advances the memo's frame (entries expire after one frame without a store or a hit) and writes one
 // `collide_memo` line per 300 frames. No-op when nothing is installed.
 void present(unsigned long long device, unsigned long long frame, bool captured);
-core::Counters counters();   // monotonic totals (fixture and tests)
-void device_reset();         // after IDirect3DDevice9::Reset: the owner thread drops the whole table at its next query
+core::Counters counters(); // monotonic totals (fixture and tests)
+void device_reset();       // after IDirect3DDevice9::Reset: the owner thread drops the whole table at its next query
 }
 extern "C" {
-void x3m_collide_memo_thunk();   // the redirected call's target
+void x3m_collide_memo_thunk(); // the redirected call's target
 // The words at the site: [ESP+4..] of the engine's call, the tenth (pushed first, `push edi`) included.
-struct x3m_collide_memo_args { const float* R1; const float* T1; std::uint32_t s1; const std::uint32_t* model_a; const float* R2; const float* T2; std::uint32_t s2;
-                               const std::uint32_t* model_b; std::uint32_t tolerance; const std::uint32_t* minimum; };
-int __cdecl x3m_collide_memo_lookup(std::uint32_t flags, std::uint32_t cap, const x3m_collide_memo_args* args);   // 1: answered; 0: run, then store(); 2: run, not ours
+struct x3m_collide_memo_args {
+    const float* R1;
+    const float* T1;
+    std::uint32_t s1;
+    const std::uint32_t* model_a;
+    const float* R2;
+    const float* T2;
+    std::uint32_t s2;
+    const std::uint32_t* model_b;
+    std::uint32_t tolerance;
+    const std::uint32_t* minimum;
+};
+int __cdecl x3m_collide_memo_lookup(std::uint32_t flags, std::uint32_t cap,
+                                    const x3m_collide_memo_args* args); // 1: answered; 0: run, then store(); 2: run,
+                                                                        // not ours
 void __cdecl x3m_collide_memo_abandon(); // diagnostic CPU-mode rejection: discard pending memo without outputs
-void __cdecl x3m_collide_memo_store();                                                                            // after the engine ran
+void __cdecl x3m_collide_memo_store();   // after the engine ran
 extern std::uint32_t x3m_collide_memo_target, x3m_collide_memo_return;
 }

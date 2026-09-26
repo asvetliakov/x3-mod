@@ -17,6 +17,7 @@ public:
     std::uint64_t source_hash() const noexcept { return source_hash_; }
     std::uint32_t source_words() const noexcept { return source_words_; }
     bool qualified() const noexcept { return source_ != RigidReplaySource::Unknown; }
+
 private:
     RigidReplaySource source_ = RigidReplaySource::Unknown;
     std::uint64_t source_hash_ = 0;
@@ -29,8 +30,7 @@ private:
 };
 // Exact reviewed whole-program lookup + SM3/XYZW/MAD constructor gate. No COM
 // or allocation; never reads vertex/index buffers. Perform once at source admission.
-RigidReplayContract qualify_rigid_replay_source(const std::uint32_t* words,
-                                               std::size_t count) noexcept;
+RigidReplayContract qualify_rigid_replay_source(const std::uint32_t* words, std::size_t count) noexcept;
 #ifdef X3M_RIGID_MOTION_VERIFICATION
 RigidReplayContract original_synthetic_sm3_contract() noexcept;
 #endif
@@ -58,9 +58,9 @@ struct RigidMotionDraw {
     bool correspondence_attested = false;
 };
 struct RigidMotionInputs {
-    IDirect3DTexture9* motion = nullptr; // caller-owned native RGBA32F RT, mip zero
+    IDirect3DTexture9* motion = nullptr;      // caller-owned native RGBA32F RT, mip zero
     IDirect3DSurface9* scene_depth = nullptr; // original still-valid native D24X8
-    UINT width = 0, height = 0; // full zero-origin viewport, depth range [0,1]
+    UINT width = 0, height = 0;               // full zero-origin viewport, depth range [0,1]
     const RigidMotionDraw* draws = nullptr;
     std::size_t draw_count = 0;
     // Both WVPs above include their ACTUAL submitted raster jitter. Output removes
@@ -101,6 +101,7 @@ public:
     // True means reusable, including no release callback currently in progress.
     bool empty() const noexcept { return count_ == 0 && !releasing_ && !collecting_; }
     void release() noexcept;
+
 private:
     friend class RigidMotionPass;
     IUnknown* references_[7]{};
@@ -120,17 +121,16 @@ public:
     // Production path uses the embedded motion pixel program compiled from our
     // authored HLSL; no runtime compiler or external bytecode is required.
     HRESULT initialize(IDirect3DDevice9* native_device) noexcept;
-    HRESULT initialize(IDirect3DDevice9* native_device,
-                       const DWORD* pixel_shader) noexcept;
+    HRESULT initialize(IDirect3DDevice9* native_device, const DWORD* pixel_shader) noexcept;
     // Caller serializes use; neither pass nor retirement is thread-safe.
     // Supplied retirement must be empty. Every acquired target/state reference
     // transfers without AddRef on success or failure; run never clears a batch.
     // Default null retains immediate retirement and historical release timing.
-    HRESULT run(const RigidMotionInputs&, RigidMotionOutput*,
-                RigidMotionRetirement* retirement = nullptr) noexcept;
+    HRESULT run(const RigidMotionInputs&, RigidMotionOutput*, RigidMotionRetirement* retirement = nullptr) noexcept;
     void before_reset() noexcept;
     void shutdown() noexcept;
     RigidMotionDiagnostics diagnostics() const noexcept { return diagnostics_; }
+
 private:
     IDirect3DDevice9* device_ = nullptr;
     IDirect3DVertexShader9* vertex_ = nullptr;

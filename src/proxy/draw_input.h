@@ -22,10 +22,18 @@ struct DrawArguments {
     UINT minimum_vertex = 0, vertex_count = 0;
 };
 enum DrawInputBlocker : std::uint32_t {
-    PositionProgram = 1, PixelCoverage = 2, PositionLayout = 4,
-    BufferDescription = 8, BufferRevision = 16, DrawRange = 32,
-    RasterState = 64, TargetLayout = 128, SubmittedRows = 256,
-    ObjectScope = 512, UserMemory = 1024, QueryFailure = 2048,
+    PositionProgram = 1,
+    PixelCoverage = 2,
+    PositionLayout = 4,
+    BufferDescription = 8,
+    BufferRevision = 16,
+    DrawRange = 32,
+    RasterState = 64,
+    TargetLayout = 128,
+    SubmittedRows = 256,
+    ObjectScope = 512,
+    UserMemory = 1024,
+    QueryFailure = 2048,
     SubmissionFailure = 4096
 };
 struct DrawInput {
@@ -61,8 +69,7 @@ public:
     // A supplied scope must be sampled immediately before this same draw.
     // Empty geometry_frame preserves diagnostic-only behavior without retained
     // geometry. A nonempty frame must belong to this device and be caller-owned.
-    DrawInput read(IDirect3DDevice9* application, const DrawArguments&,
-                   const object_trace::Snapshot* scope,
+    DrawInput read(IDirect3DDevice9* application, const DrawArguments&, const object_trace::Snapshot* scope,
                    ownership::GeometryFrameHandle geometry_frame = {}) noexcept;
     static void complete(DrawInput& input, HRESULT result) noexcept;
 #ifdef X3M_DRAW_INPUT_FIXTURE
@@ -70,13 +77,14 @@ public:
     using PositionLookup = const renderer::RigidPositionProfile* (*)(const std::uint32_t*, std::size_t);
     using PixelLookup = const renderer::PixelCoverageProfile* (*)(const std::uint32_t*, std::size_t);
     void fixture_profiles(PositionLookup vertex, PixelLookup pixel) noexcept {
-        position_lookup_ = vertex; pixel_lookup_ = pixel;
+        position_lookup_ = vertex;
+        pixel_lookup_ = pixel;
     }
 #endif
 private:
     // Bounded reusable scratch, no per-draw allocation or shader cache with stale
     // COM identities. Larger programs remain unknown. Never retain game bytecode.
-    std::array<std::uint32_t,4096> shader_words_{};
+    std::array<std::uint32_t, 4096> shader_words_{};
 #ifdef X3M_DRAW_INPUT_FIXTURE
     PositionLookup position_lookup_ = renderer::find_rigid_position;
     PixelLookup pixel_lookup_ = renderer::find_pixel_coverage;

@@ -59,17 +59,17 @@ inline void frame(std::uint64_t frame_index) noexcept {
 struct EnterFrame {
     unsigned char xmm[8][16];
     std::uint32_t edx, ecx, eax, eflags;
-    std::uint32_t ret;      // [esp]: the caller's return address (rewritten on PASS)
-    std::uint32_t id;       // [esp+4]: the media id
-    std::uint32_t slot_8;   // [esp+8]
-    std::uint32_t slot_c;   // [esp+0xc]: behind the play helper, the selector's return address
-    std::uint32_t slot_10;  // [esp+0x10]: behind the play helper, the cue kind
+    std::uint32_t ret;     // [esp]: the caller's return address (rewritten on PASS)
+    std::uint32_t id;      // [esp+4]: the media id
+    std::uint32_t slot_8;  // [esp+8]
+    std::uint32_t slot_c;  // [esp+0xc]: behind the play helper, the selector's return address
+    std::uint32_t slot_10; // [esp+0x10]: behind the play helper, the cue kind
 };
 struct ReturnFrame {
     unsigned char xmm[8][16];
     std::uint32_t edx, ecx, eax, eflags;
-    std::uint32_t slot;     // the reserved slot the original return address goes back into
-    std::uint32_t id;       // the caller's still-pushed argument
+    std::uint32_t slot; // the reserved slot the original return address goes back into
+    std::uint32_t id;   // the caller's still-pushed argument
 };
 #ifdef X3M_GAME_PHASE_FIXTURE
 // The production install transaction on a fixture span (the fixture supplies
@@ -81,14 +81,14 @@ void* fixture_emit(void*** next); // the production gate stub
 const detail::NegativeCache* fixture_cache();
 const detail::PendingStack* fixture_pending();
 const detail::Gate* fixture_gate();
-bool fixture_pop_trace(detail::Entry* out);  // owner thread only
+bool fixture_pop_trace(detail::Entry* out); // owner thread only
 std::uint32_t fixture_attempts_frame();
 std::uint64_t fixture_refused();
 const char* fixture_site_status();
 void fixture_drop_pending();
-const detail::RateLimit* fixture_enter_limit();  // the media_cue_enter line limiter
+const detail::RateLimit* fixture_enter_limit(); // the media_cue_enter line limiter
 void fixture_reset_enter_limit();
-const detail::VideoBlit* fixture_video();        // the blit witness counters
+const detail::VideoBlit* fixture_video();          // the blit witness counters
 std::uint64_t fixture_video_dropped(bool foreign); // in-range enters dropped: foreign thread / before admission
 void fixture_reset_video();
 #endif

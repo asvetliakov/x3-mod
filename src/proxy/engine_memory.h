@@ -58,15 +58,16 @@ void reset();
 void begin_shutdown(const char* source);
 bool shutting_down();
 struct Stats {
-    std::uint64_t reads = 0;      // read() calls
-    std::uint64_t queries = 0;    // VirtualQuery calls (cache misses and per-frame refreshes)
-    std::uint64_t rejected = 0;   // spans refused by validation
-    std::uint64_t frame = 0;      // current epoch (a 32-bit counter; wraps are harmless, the 100 ms tick bound still applies)
-    std::uint64_t stalled_reads = 0;     // reads with frames stalled past the bound (5 ms region trust)
-    std::uint64_t strict_reads = 0;      // reads after begin_shutdown() (a VirtualQuery each)
-    std::uint64_t refused_stalled = 0;   // of rejected: frames stalled past the bound, before any shutdown signal
-    std::uint64_t refused_shutdown = 0;  // of rejected: after begin_shutdown()
-    std::uint64_t shutdown_signals = 0;  // begin_shutdown() calls
+    std::uint64_t reads = 0;         // read() calls
+    std::uint64_t queries = 0;       // VirtualQuery calls (cache misses and per-frame refreshes)
+    std::uint64_t rejected = 0;      // spans refused by validation
+    std::uint64_t frame = 0;         // current epoch (a 32-bit counter; wraps are harmless, the 100 ms tick bound still
+                                     // applies)
+    std::uint64_t stalled_reads = 0; // reads with frames stalled past the bound (5 ms region trust)
+    std::uint64_t strict_reads = 0;  // reads after begin_shutdown() (a VirtualQuery each)
+    std::uint64_t refused_stalled = 0;  // of rejected: frames stalled past the bound, before any shutdown signal
+    std::uint64_t refused_shutdown = 0; // of rejected: after begin_shutdown()
+    std::uint64_t shutdown_signals = 0; // begin_shutdown() calls
     const char* shutdown_source = nullptr;
 };
 Stats stats();

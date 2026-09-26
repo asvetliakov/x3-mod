@@ -25,11 +25,13 @@ enum Index : unsigned {
     Count = 4
 };
 constexpr unsigned kSiteCount = Count;
+// clang-format off
 constexpr engine_patch::SiteSpec kSites[Count] = {
     {"pass_phase_pass_begin",0x004c3ff0,{0x8b,0x44,0x24,0x74,0x8b,0x13},6,0,0},
     {"pass_phase_pass_applied",0x004c4000,{0x8b,0x44,0x24,0x28,0x8b,0x48,0x14},7,0,0},
     {"pass_phase_pass_drawn",0x004c403e,{0x8b,0x13,0x8b,0x82,0x08,0x01,0x00,0x00},8,0,0},
     {"pass_phase_pass_end",0x004c4049,{0x8b,0x44,0x24,0x74,0x83,0xc0,0x01},7,0,0},
 };
-static_assert(sizeof(kSites)/sizeof(kSites[0]) == Count, "All pass stamps are one group");
+// clang-format on
+static_assert(sizeof(kSites) / sizeof(kSites[0]) == Count, "All pass stamps are one group");
 }

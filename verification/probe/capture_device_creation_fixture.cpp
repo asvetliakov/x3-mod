@@ -58,8 +58,10 @@ void check(bool condition, const char* expression, int line) {
     }
 }
 
-void scenario() { ++scenarios; }
-}  // namespace test
+void scenario() {
+    ++scenarios;
+}
+} // namespace test
 
 #define CHECK(expression) test::check((expression), #expression, __LINE__)
 
@@ -88,15 +90,14 @@ struct NativeScript {
 
 NativeScript native_script;
 
-template <typename T>
-T* untouched_output() {
+template <typename T> T* untouched_output() {
     static unsigned char marker;
     return reinterpret_cast<T*>(&marker);
 }
 
 struct NativeFactory {
-    HRESULT CreateDevice(UINT adapter, D3DDEVTYPE type, HWND window, DWORD flags,
-                         D3DPRESENT_PARAMETERS* pp, IDirect3DDevice9** out) {
+    HRESULT CreateDevice(UINT adapter, D3DDEVTYPE type, HWND window, DWORD flags, D3DPRESENT_PARAMETERS* pp,
+                         IDirect3DDevice9** out) {
         ++native_script.calls;
         native_script.adapter = adapter;
         native_script.type = type;
@@ -166,8 +167,7 @@ bool has_ex(IDirect3DDevice9*, int iid) {
     return adopt_script.ex;
 }
 
-HRESULT adopt(Factory* parent, Kind kind, IDirect3DDevice9* native, int iid,
-              void** out, Options* options) {
+HRESULT adopt(Factory* parent, Kind kind, IDirect3DDevice9* native, int iid, void** out, Options* options) {
     ++adopt_script.calls;
     adopt_script.parent = parent;
     adopt_script.native = native;
@@ -202,17 +202,26 @@ void reset(NativeDevice& native) {
     adopt_script = {};
 }
 
-}  // namespace ownership_host
+} // namespace ownership_host
 
 namespace capture_host {
 
 std::vector<char> events;
 std::recursive_mutex mutex;
 unsigned capture_lock_depth;
-struct LightCallBoundary { LightCallBoundary() {} ~LightCallBoundary() {} }; // mirrors capture.cpp: inert, non-trivial so the scoped variable is not "unused"
-namespace cull_small_parts { inline void set_backbuffer_width(unsigned) {} } // X3M_CULL_SMALL_PARTS_PX pixel scale at CreateDevice (src/proxy/cull_small_parts.h); inert on the host
-namespace window_mode { inline void apply(const char*, HWND, HWND, bool, UINT, UINT) {} } // X3M_WINDOW_MONITOR_RECT move at create_before (src/proxy/window_mode.h); inert on the host
-namespace proxy_identity { inline void log_loaded_module(const wchar_t*) {} } // mirrors the loaded_module line (inert)
+struct LightCallBoundary {
+    LightCallBoundary() {}
+    ~LightCallBoundary() {}
+}; // mirrors capture.cpp: inert, non-trivial so the scoped variable is not "unused"
+namespace cull_small_parts {
+inline void set_backbuffer_width(unsigned) {}
+} // X3M_CULL_SMALL_PARTS_PX pixel scale at CreateDevice (src/proxy/cull_small_parts.h); inert on the host
+namespace window_mode {
+inline void apply(const char*, HWND, HWND, bool, UINT, UINT) {}
+} // X3M_WINDOW_MONITOR_RECT move at create_before (src/proxy/window_mode.h); inert on the host
+namespace proxy_identity {
+inline void log_loaded_module(const wchar_t*) {}
+} // mirrors the loaded_module line (inert)
 struct CpuCallBoundary {
     CpuCallBoundary() { events.push_back('C'); }
     void before_original() { events.push_back('B'); }
@@ -222,11 +231,13 @@ struct CpuCallBoundary {
 namespace ownership {
 struct Monitor {};
 Monitor monitor;
-Monitor& process_admission_monitor() { return monitor; }
+Monitor& process_admission_monitor() {
+    return monitor;
+}
 struct ApplicationAdmissionAbi {
     explicit ApplicationAdmissionAbi(Monitor&) { events.push_back('I'); }
 };
-}  // namespace ownership
+} // namespace ownership
 
 struct HookGuard {
     std::unique_lock<std::recursive_mutex> lock{mutex};
@@ -245,10 +256,14 @@ namespace telemetry {
 enum class Metric { CreateDevice };
 using Clock = uint64_t;
 Clock clock;
-Clock now() { return ++clock; }
-int process() { return 0; }
+Clock now() {
+    return ++clock;
+}
+int process() {
+    return 0;
+}
 void record(int, Metric, Clock, bool) {}
-}  // namespace telemetry
+} // namespace telemetry
 
 void log(const char*, ...) {}
 void presentation_parameters(const char*, int, HWND, D3DPRESENT_PARAMETERS*) {}
@@ -257,10 +272,7 @@ bool motion_output_requested;
 
 struct FactoryHooks {
     void* slots[17]{};
-    template <typename Function>
-    Function get(size_t index) const {
-        return reinterpret_cast<Function>(slots[index]);
-    }
+    template <typename Function> Function get(size_t index) const { return reinterpret_cast<Function>(slots[index]); }
 };
 
 std::map<IDirect3D9*, std::unique_ptr<FactoryHooks>> factories;
@@ -301,8 +313,8 @@ struct DirectScript {
 };
 DirectScript direct_script;
 
-HRESULT WINAPI direct_native(IDirect3D9* d, UINT adapter, D3DDEVTYPE type, HWND window,
-                             DWORD flags, D3DPRESENT_PARAMETERS* pp, IDirect3DDevice9** out) {
+HRESULT WINAPI direct_native(IDirect3D9* d, UINT adapter, D3DDEVTYPE type, HWND window, DWORD flags,
+                             D3DPRESENT_PARAMETERS* pp, IDirect3DDevice9** out) {
     events.push_back('N');
     ++direct_script.calls;
     direct_script.d = d;
@@ -325,20 +337,19 @@ HRESULT WINAPI direct_native(IDirect3D9* d, UINT adapter, D3DDEVTYPE type, HWND 
     return direct_script.result;
 }
 
-HRESULT WINAPI ownership_bridge(IDirect3D9* d, UINT adapter, D3DDEVTYPE type, HWND window,
-                                DWORD flags, D3DPRESENT_PARAMETERS* pp,
-                                IDirect3DDevice9** out) {
+HRESULT WINAPI ownership_bridge(IDirect3D9* d, UINT adapter, D3DDEVTYPE type, HWND window, DWORD flags,
+                                D3DPRESENT_PARAMETERS* pp, IDirect3DDevice9** out) {
     events.push_back('N');
     hook_record.native_flags = flags;
-    return ownership_host::create_device(static_cast<ownership_host::Factory*>(d->context),
-                                         adapter, type, window, flags, pp, out);
+    return ownership_host::create_device(static_cast<ownership_host::Factory*>(d->context), adapter, type, window,
+                                         flags, pp, out);
 }
 
 #include "capture_create_device_under_test_inc.h"
 
 void reset(IDirect3D9& d, NativeDevice& device,
-           HRESULT(WINAPI* callback)(IDirect3D9*, UINT, D3DDEVTYPE, HWND, DWORD,
-                                     D3DPRESENT_PARAMETERS*, IDirect3DDevice9**)) {
+           HRESULT(WINAPI* callback)(IDirect3D9*, UINT, D3DDEVTYPE, HWND, DWORD, D3DPRESENT_PARAMETERS*,
+                                     IDirect3DDevice9**)) {
     events.clear();
     hook_record = {};
     direct_script = {};
@@ -349,7 +360,7 @@ void reset(IDirect3D9& d, NativeDevice& device,
     factories.emplace(&d, std::move(hooks));
 }
 
-}  // namespace capture_host
+} // namespace capture_host
 
 namespace {
 
@@ -371,21 +382,17 @@ D3DPRESENT_PARAMETERS parameters() {
     return pp;
 }
 
-void capture_flags_case(IDirect3D9& factory, NativeDevice& device, DWORD requested,
-                        bool route, DWORD expected) {
+void capture_flags_case(IDirect3D9& factory, NativeDevice& device, DWORD requested, bool route, DWORD expected) {
     test::scenario();
     capture_host::reset(factory, device, capture_host::direct_native);
     capture_host::motion_output_requested = route;
     auto pp = parameters();
     IDirect3DDevice9* out = nullptr;
-    const HRESULT hr = capture_host::create_device(&factory, kAdapter, kType, kFocus,
-                                                    requested, &pp, &out);
+    const HRESULT hr = capture_host::create_device(&factory, kAdapter, kType, kFocus, requested, &pp, &out);
     CHECK(hr == S_OK);
     CHECK(capture_host::direct_script.calls == 1);
     CHECK(capture_host::direct_script.flags == expected);
-    CHECK((requested ^ expected) == (route && (requested & D3DCREATE_PUREDEVICE)
-                                         ? D3DCREATE_PUREDEVICE
-                                         : 0u));
+    CHECK((requested ^ expected) == (route && (requested & D3DCREATE_PUREDEVICE) ? D3DCREATE_PUREDEVICE : 0u));
     CHECK(capture_host::direct_script.adapter == kAdapter);
     CHECK(capture_host::direct_script.type == kType);
     CHECK(capture_host::direct_script.window == kFocus);
@@ -395,9 +402,8 @@ void capture_flags_case(IDirect3D9& factory, NativeDevice& device, DWORD request
     CHECK(capture_host::hook_record.calls == 1);
 }
 
-void capture_result_case(IDirect3D9& factory, NativeDevice& device, HRESULT result,
-                         capture_host::Output behavior, bool provide_pp, bool provide_out,
-                         int expected_hooks) {
+void capture_result_case(IDirect3D9& factory, NativeDevice& device, HRESULT result, capture_host::Output behavior,
+                         bool provide_pp, bool provide_out, int expected_hooks) {
     test::scenario();
     capture_host::reset(factory, device, capture_host::direct_native);
     capture_host::motion_output_requested = true;
@@ -406,8 +412,8 @@ void capture_result_case(IDirect3D9& factory, NativeDevice& device, HRESULT resu
     auto pp = parameters();
     IDirect3DDevice9* out = reinterpret_cast<IDirect3DDevice9*>(uintptr_t{0x4444});
     IDirect3DDevice9** out_arg = provide_out ? &out : nullptr;
-    const HRESULT hr = capture_host::create_device(&factory, kAdapter, kType, kFocus,
-                                                    0x52u, provide_pp ? &pp : nullptr, out_arg);
+    const HRESULT hr = capture_host::create_device(&factory, kAdapter, kType, kFocus, 0x52u, provide_pp ? &pp : nullptr,
+                                                   out_arg);
     CHECK(hr == result);
     CHECK(capture_host::direct_script.calls == 1);
     CHECK(capture_host::direct_script.flags == 0x42u);
@@ -425,8 +431,7 @@ void capture_result_case(IDirect3D9& factory, NativeDevice& device, HRESULT resu
     CHECK(capture_host::capture_lock_depth == 0);
 }
 
-void ownership_success_case(ownership_host::Factory& factory, NativeDevice& native,
-                            HRESULT native_result) {
+void ownership_success_case(ownership_host::Factory& factory, NativeDevice& native, HRESULT native_result) {
     test::scenario();
     ownership_host::reset(native);
     factory.options.track_execution_state = true;
@@ -435,8 +440,7 @@ void ownership_success_case(ownership_host::Factory& factory, NativeDevice& nati
     auto pp = parameters();
     const auto requested = pp;
     IDirect3DDevice9* out = reinterpret_cast<IDirect3DDevice9*>(uintptr_t{0x5555});
-    const HRESULT hr = ownership_host::create_device(&factory, kAdapter, kType, kFocus,
-                                                      0x2468u, &pp, &out);
+    const HRESULT hr = ownership_host::create_device(&factory, kAdapter, kType, kFocus, 0x2468u, &pp, &out);
     CHECK(hr == native_result);
     CHECK(ownership_host::native_script.calls == 1);
     CHECK(ownership_host::native_script.flags == 0x2468u);
@@ -459,7 +463,7 @@ void ownership_success_case(ownership_host::Factory& factory, NativeDevice& nati
     CHECK(native.releases == 0);
 }
 
-}  // namespace
+} // namespace
 
 int main() {
     IDirect3D9 capture_factory{};
@@ -469,22 +473,16 @@ int main() {
     capture_flags_case(capture_factory, direct_device, 0x52u, false, 0x52u);
     capture_flags_case(capture_factory, direct_device, 0x0u, true, 0x0u);
     // FPU, multithread, all mutually invalid VP choices, window and high policy bits.
-    constexpr DWORD preserved = 0x2u | 0x4u | 0x20u | 0x40u | 0x80u | 0x800u |
-                                0x2000u | 0x4000u | 0x8000u | 0x10000000u;
+    constexpr DWORD preserved = 0x2u | 0x4u | 0x20u | 0x40u | 0x80u | 0x800u | 0x2000u | 0x4000u | 0x8000u |
+                                0x10000000u;
     capture_flags_case(capture_factory, direct_device, preserved | 0x10u, true, preserved);
 
-    capture_result_case(capture_factory, direct_device, S_FALSE, capture_host::Output::Device,
-                        true, true, 1);
-    capture_result_case(capture_factory, direct_device, E_FAIL, capture_host::Output::Device,
-                        true, true, 0);
-    capture_result_case(capture_factory, direct_device, D3DERR_DEVICELOST,
-                        capture_host::Output::Device, true, true, 0);
-    capture_result_case(capture_factory, direct_device, S_OK, capture_host::Output::Null,
-                        true, true, 0);
-    capture_result_case(capture_factory, direct_device, E_FAIL, capture_host::Output::Untouched,
-                        true, true, 0);
-    capture_result_case(capture_factory, direct_device, S_OK, capture_host::Output::Device,
-                        false, false, 0);
+    capture_result_case(capture_factory, direct_device, S_FALSE, capture_host::Output::Device, true, true, 1);
+    capture_result_case(capture_factory, direct_device, E_FAIL, capture_host::Output::Device, true, true, 0);
+    capture_result_case(capture_factory, direct_device, D3DERR_DEVICELOST, capture_host::Output::Device, true, true, 0);
+    capture_result_case(capture_factory, direct_device, S_OK, capture_host::Output::Null, true, true, 0);
+    capture_result_case(capture_factory, direct_device, E_FAIL, capture_host::Output::Untouched, true, true, 0);
+    capture_result_case(capture_factory, direct_device, S_OK, capture_host::Output::Device, false, false, 0);
 
     // The hook observes native parameter/output mutations and runs after the original.
     test::scenario();
@@ -494,8 +492,8 @@ int main() {
     capture_host::direct_script.mutated_window = reinterpret_cast<HWND>(uintptr_t{0x9999});
     auto mutated = parameters();
     IDirect3DDevice9* mutated_out = nullptr;
-    CHECK(capture_host::create_device(&capture_factory, kAdapter, kType, kFocus, 0x10u,
-                                      &mutated, &mutated_out) == S_OK);
+    CHECK(capture_host::create_device(&capture_factory, kAdapter, kType, kFocus, 0x10u, &mutated, &mutated_out) ==
+          S_OK);
     CHECK(capture_host::direct_script.calls == 1);
     CHECK(mutated.BackBufferHeight == 1087);
     CHECK(mutated.witness == 0xbeefu);
@@ -504,7 +502,7 @@ int main() {
     CHECK(capture_host::hook_record.device_window == reinterpret_cast<HWND>(uintptr_t{0x9999}));
     CHECK(capture_host::hook_record.focus_window == kFocus);
     CHECK(capture_host::events.back() == 'U');
-    CHECK(capture_host::events[capture_host::events.size()-2] == 'H');
+    CHECK(capture_host::events[capture_host::events.size() - 2] == 'H');
 
     // Nested CreateDevice releases only its own recursive capture-lock scope;
     // the caller's existing scope remains held after device hooks are installed.
@@ -513,8 +511,7 @@ int main() {
     {
         capture_host::HookGuard outer;
         IDirect3DDevice9* nested_out = nullptr;
-        CHECK(capture_host::create_device(&capture_factory, kAdapter, kType, kFocus,
-                                          0, &mutated, &nested_out) == S_OK);
+        CHECK(capture_host::create_device(&capture_factory, kAdapter, kType, kFocus, 0, &mutated, &nested_out) == S_OK);
         CHECK(capture_host::hook_record.calls == 1);
         CHECK(nested_out == &direct_device);
         CHECK(capture_host::capture_lock_depth == 1);
@@ -533,8 +530,8 @@ int main() {
     ownership_host::reset(owned_native);
     ownership_host::native_script.result = E_FAIL;
     IDirect3DDevice9* failed_out = reinterpret_cast<IDirect3DDevice9*>(uintptr_t{0x7777});
-    CHECK(ownership_host::create_device(&ownership_factory, kAdapter, kType, kFocus, 0x52u,
-                                        nullptr, &failed_out) == E_FAIL);
+    CHECK(ownership_host::create_device(&ownership_factory, kAdapter, kType, kFocus, 0x52u, nullptr, &failed_out) ==
+          E_FAIL);
     CHECK(ownership_host::native_script.calls == 1);
     CHECK(failed_out == nullptr);
     CHECK(owned_native.releases == 1);
@@ -547,8 +544,8 @@ int main() {
     ownership_host::native_script.result = D3DERR_DEVICELOST;
     ownership_host::native_script.output = ownership_host::Output::Untouched;
     IDirect3DDevice9* untouched = reinterpret_cast<IDirect3DDevice9*>(uintptr_t{0x8888});
-    CHECK(ownership_host::create_device(&ownership_factory, kAdapter, kType, kFocus, 0x52u,
-                                        nullptr, &untouched) == D3DERR_DEVICELOST);
+    CHECK(ownership_host::create_device(&ownership_factory, kAdapter, kType, kFocus, 0x52u, nullptr, &untouched) ==
+          D3DERR_DEVICELOST);
     CHECK(untouched == reinterpret_cast<IDirect3DDevice9*>(uintptr_t{0x8888}));
     CHECK(owned_native.releases == 0);
     CHECK(ownership_host::adopt_script.calls == 0);
@@ -558,8 +555,8 @@ int main() {
     ownership_host::reset(owned_native);
     ownership_host::native_script.output = ownership_host::Output::Null;
     IDirect3DDevice9* null_out = reinterpret_cast<IDirect3DDevice9*>(uintptr_t{0x9999});
-    CHECK(ownership_host::create_device(&ownership_factory, kAdapter, kType, kFocus, 0x52u,
-                                        nullptr, &null_out) == S_OK);
+    CHECK(ownership_host::create_device(&ownership_factory, kAdapter, kType, kFocus, 0x52u, nullptr, &null_out) ==
+          S_OK);
     CHECK(null_out == nullptr);
     CHECK(ownership_host::adopt_script.calls == 0);
     CHECK(owned_native.releases == 0);
@@ -569,8 +566,8 @@ int main() {
     ownership_host::reset(owned_native);
     ownership_host::adopt_script.result = E_FAIL;
     IDirect3DDevice9* adopt_out = reinterpret_cast<IDirect3DDevice9*>(uintptr_t{0xaaaa});
-    CHECK(ownership_host::create_device(&ownership_factory, kAdapter, kType, kFocus, 0x52u,
-                                        nullptr, &adopt_out) == E_FAIL);
+    CHECK(ownership_host::create_device(&ownership_factory, kAdapter, kType, kFocus, 0x52u, nullptr, &adopt_out) ==
+          E_FAIL);
     CHECK(ownership_host::native_script.calls == 1);
     CHECK(ownership_host::adopt_script.calls == 1);
     CHECK(adopt_out == nullptr);
@@ -587,8 +584,8 @@ int main() {
     capture_host::motion_output_requested = true;
     auto integrated_pp = parameters();
     IDirect3DDevice9* integrated_out = nullptr;
-    CHECK(capture_host::create_device(&capture_factory, kAdapter, kType, kFocus, 0x52u,
-                                      &integrated_pp, &integrated_out) == S_OK);
+    CHECK(capture_host::create_device(&capture_factory, kAdapter, kType, kFocus, 0x52u, &integrated_pp,
+                                      &integrated_out) == S_OK);
     CHECK(ownership_host::native_script.calls == 1);
     CHECK(ownership_host::native_script.flags == 0x42u);
     CHECK(ownership_host::adopt_script.calls == 1);
@@ -597,7 +594,7 @@ int main() {
     CHECK(capture_host::hook_record.native_flags == 0x42u);
     CHECK(owned_native.releases == 0);
 
-    std::printf("capture_device_creation scenarios=%d checks=%d failures=%d\n",
-                test::scenarios, test::checks, test::failures);
+    std::printf("capture_device_creation scenarios=%d checks=%d failures=%d\n", test::scenarios, test::checks,
+                test::failures);
     return test::failures ? 1 : 0;
 }

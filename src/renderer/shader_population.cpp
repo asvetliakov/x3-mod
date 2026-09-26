@@ -42,9 +42,8 @@ constexpr ShaderTable header_tables[] = {
 
 using Provider = const ShaderTable* (*)(std::size_t&) noexcept;
 constexpr Provider providers[] = {
-    &linear_material_shader_tables, &linear_emission_shader_tables,
-    &linear_emission_sm1_shader_tables, &rigid_position_shader_tables,
-    &material_radiance_shader_tables,
+    &linear_material_shader_tables, &linear_emission_shader_tables,   &linear_emission_sm1_shader_tables,
+    &rigid_position_shader_tables,  &material_radiance_shader_tables,
 };
 
 // Flat view over the header tables followed by each provider's tables. The
@@ -98,13 +97,20 @@ bool shader_hash_known(std::uint64_t hash) noexcept {
     return false;
 }
 
-bool ShaderPopulation::observe(std::uint64_t hash, bool vertex, std::uint32_t version,
-                               std::uint32_t bytes) noexcept {
+bool ShaderPopulation::observe(std::uint64_t hash, bool vertex, std::uint32_t version, std::uint32_t bytes) noexcept {
     if (!hash) return false;
-    if (shader_hash_known(hash)) { ++known_; changed_ = true; return false; }
+    if (shader_hash_known(hash)) {
+        ++known_;
+        changed_ = true;
+        return false;
+    }
     for (std::size_t i = 0; i < used_; ++i)
         if (entries_[i].hash == hash) return false; // Already recorded this session.
-    if (used_ == capacity) { ++overflow_; changed_ = true; return false; }
+    if (used_ == capacity) {
+        ++overflow_;
+        changed_ = true;
+        return false;
+    }
     entries_[used_++] = Entry{hash, version, bytes, vertex};
     ++unknown_;
     changed_ = true;

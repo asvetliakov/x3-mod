@@ -38,17 +38,32 @@
 // the displaced `cmp`s (0x004c0c36, 0x004c3fde, 0x004bdee3) set them as before.
 namespace x3m::submit_phases::sites {
 enum Index : unsigned {
-    SortEnter = 0, SortReturnA, SortReturnB, SortReturnC,
-    WalkBegin, WalkMiss, WalkJoin,
-    TechniqueBegin, TechniqueEnd,
-    EndBegin, EndEnd,
-    BlockBegin, BlockEnd,
-    InverseWorldBegin, InverseWorldEnd, InverseViewBegin, InverseViewEnd,
-    MaterialEnter, MaterialReturn,
-    WorldEnter, WorldReturnA, WorldReturnB,
+    SortEnter = 0,
+    SortReturnA,
+    SortReturnB,
+    SortReturnC,
+    WalkBegin,
+    WalkMiss,
+    WalkJoin,
+    TechniqueBegin,
+    TechniqueEnd,
+    EndBegin,
+    EndEnd,
+    BlockBegin,
+    BlockEnd,
+    InverseWorldBegin,
+    InverseWorldEnd,
+    InverseViewBegin,
+    InverseViewEnd,
+    MaterialEnter,
+    MaterialReturn,
+    WorldEnter,
+    WorldReturnA,
+    WorldReturnB,
     Count
 };
 constexpr unsigned kSiteCount = Count;
+// clang-format off
 constexpr engine_patch::SiteSpec kSites[Count] = {
     {"submit_phase_sort_enter",0x0047e620,{0xf6,0x80,0x70,0x02,0x00,0x00,0x80},7,0,0},
     {"submit_phase_sort_return_a",0x004722b4,{0x56,0xe8,0x26,0xc4,0x00,0x00},6,0,2},
@@ -73,5 +88,6 @@ constexpr engine_patch::SiteSpec kSites[Count] = {
     {"submit_phase_world_return_a",0x0047e007,{0x8b,0x8b,0xac,0x01,0x00,0x00},6,0,0},
     {"submit_phase_world_return_b",0x0047e711,{0x8b,0x7e,0x10,0x8b,0x8f,0xac,0x01,0x00,0x00},9,0,0},
 };
-static_assert(sizeof(kSites)/sizeof(kSites[0]) == Count, "All submit stamps are one group");
+// clang-format on
+static_assert(sizeof(kSites) / sizeof(kSites[0]) == Count, "All submit stamps are one group");
 }

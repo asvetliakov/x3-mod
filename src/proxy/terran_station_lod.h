@@ -20,13 +20,14 @@
 // instruction boundaries are the same in both states, so a thread inside the
 // pass sees either jump.
 namespace x3m::terran_station_lod {
-bool initialize();  // backend-load path only; logs one terran_station_lod line
-bool shutdown();    // writes 74 05 back whatever the site holds (dynamic-unload detach only) and logs one terran_station_lod_restore row; true when nothing stays registered
+bool initialize(); // backend-load path only; logs one terran_station_lod line
+bool shutdown();   // writes 74 05 back whatever the site holds (dynamic-unload detach only) and logs one
+                   // terran_station_lod_restore row; true when nothing stays registered
 // Verifies the window at `window` (the engine's 0x0047d012, or a fixture's
 // synthetic copy) and writes the site. Returns whether the patch is live;
 // state() carries the reason either way.
 bool install_at(std::uintptr_t window);
 const char* state();
-const char* write_path();  // none|atomic|plain: which engine_patch::write_code path wrote the site
+const char* write_path(); // none|atomic|plain: which engine_patch::write_code path wrote the site
 bool patched();
 }

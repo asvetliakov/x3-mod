@@ -74,25 +74,30 @@ inline unsigned pad_pixels(double term_sum_max, double w_min, double half_max) n
     const double k = 2.0 * half_max * eps_dp4 * term_sum_max;
     if (!(k > 0) || !(w_min > 0)) return w_min > 0 ? 1u : pad_limit; // nonfinite or degenerate w
     const double q = k / w_min;
-    if (!(q > 1)) return 1u; // covers NaN (ceil(q) <= 1)
+    if (!(q > 1)) return 1u;                         // covers NaN (ceil(q) <= 1)
     if (q > double(pad_limit - 1)) return pad_limit; // ceil(q) >= pad_limit
-    return unsigned(scalar::ceil(q)); // 2..pad_limit-1; sse_scalar.h: the CRT ceil returns in st(0)
+    return unsigned(scalar::ceil(q));                // 2..pad_limit-1; sse_scalar.h: the CRT ceil returns in st(0)
 }
 
 // MotionOutput::apply_jitter's arithmetic, bit for bit (single precision,
 // SSE): rows[0] += jx_ndc * rows[3], rows[1] += jy_ndc * rows[3].
 inline void jitter_rows(float rows[16], float jx_px, float jy_px, unsigned width, unsigned height) noexcept {
     const float jx = 2.f * jx_px / float(width), jy = -2.f * jy_px / float(height);
-    for (unsigned k = 0; k < 4; ++k) { rows[k] += jx * rows[12 + k]; rows[4 + k] += jy * rows[12 + k]; }
+    for (unsigned k = 0; k < 4; ++k) {
+        rows[k] += jx * rows[12 + k];
+        rows[4 + k] += jy * rows[12 + k];
+    }
 }
 
 inline Rect full_rect(const Viewport& v) noexcept {
     return {std::int32_t(v.x), std::int32_t(v.y), std::int32_t(v.x + v.width), std::int32_t(v.y + v.height)};
 }
-inline bool empty(const Rect& r) noexcept { return r.right <= r.left || r.bottom <= r.top; }
+inline bool empty(const Rect& r) noexcept {
+    return r.right <= r.left || r.bottom <= r.top;
+}
 inline Rect intersect(const Rect& a, const Rect& b) noexcept {
-    Rect r{a.left > b.left ? a.left : b.left, a.top > b.top ? a.top : b.top,
-           a.right < b.right ? a.right : b.right, a.bottom < b.bottom ? a.bottom : b.bottom};
+    Rect r{a.left > b.left ? a.left : b.left, a.top > b.top ? a.top : b.top, a.right < b.right ? a.right : b.right,
+           a.bottom < b.bottom ? a.bottom : b.bottom};
     if (empty(r)) r = {0, 0, 0, 0};
     return r;
 }
@@ -132,9 +137,11 @@ struct NearClip {
 // intersected with the viewport. An empty intersection yields the 1x1
 // rectangle at the viewport origin. Returns Reason::Bound and writes *out;
 // any other reason leaves *out untouched and the caller uses the full viewport.
-inline Reason project_box(const float rows[16], const Box& box, const Viewport& viewport, Rect* out, NearClip* cut = nullptr, unsigned* pad_out = nullptr) noexcept {
+inline Reason project_box(const float rows[16], const Box& box, const Viewport& viewport, Rect* out,
+                          NearClip* cut = nullptr, unsigned* pad_out = nullptr) noexcept {
     if (!viewport.width || !viewport.height) return Reason::Viewport;
-    for (unsigned i = 0; i < 16; ++i) if (!std::isfinite(rows[i])) return Reason::NonFinite;
+    for (unsigned i = 0; i < 16; ++i)
+        if (!std::isfinite(rows[i])) return Reason::NonFinite;
     for (unsigned a = 0; a < 3; ++a) {
         if (!std::isfinite(box.centre[a]) || !std::isfinite(box.half[a])) return Reason::NonFinite;
         if (!(box.half[a] >= 0)) return Reason::BoundUnknown;
@@ -168,7 +175,8 @@ inline Reason project_box(const float rows[16], const Box& box, const Viewport& 
     if (cut) cut->clipped = 0;
     if (clipping) {
         unsigned behind = 0;
-        for (unsigned corner = 0; corner < 8; ++corner) if (clip[corner][2] < 0) ++behind;
+        for (unsigned corner = 0; corner < 8; ++corner)
+            if (clip[corner][2] < 0) ++behind;
         cut->clipped = behind;
         if (behind == 8) return Reason::BehindNear;
     }
@@ -183,11 +191,17 @@ inline Reason project_box(const float rows[16], const Box& box, const Viewport& 
         const double sx = X + (c[0] / c[3] + 1.0) * half_w;
         const double sy = Y + (1.0 - c[1] / c[3]) * half_h;
         if (!std::isfinite(sx) || !std::isfinite(sy)) return Reason::NonFinite;
-        if (first) { min_x = max_x = sx; min_y = max_y = sy; w_min = c[3]; first = false; }
-        else {
+        if (first) {
+            min_x = max_x = sx;
+            min_y = max_y = sy;
+            w_min = c[3];
+            first = false;
+        } else {
             w_min = c[3] < w_min ? c[3] : w_min;
-            min_x = sx < min_x ? sx : min_x; max_x = sx > max_x ? sx : max_x;
-            min_y = sy < min_y ? sy : min_y; max_y = sy > max_y ? sy : max_y;
+            min_x = sx < min_x ? sx : min_x;
+            max_x = sx > max_x ? sx : max_x;
+            min_y = sy < min_y ? sy : min_y;
+            max_y = sy > max_y ? sy : max_y;
         }
         return Reason::Bound;
     };
@@ -199,17 +213,18 @@ inline Reason project_box(const float rows[16], const Box& box, const Viewport& 
     if (clipping && cut->clipped) {
         // The 12 edges: corners differing in exactly one axis bit. z is
         // affine along an edge, so the crossing is exact at t = za / (za - zb).
-        for (unsigned a = 0; a < 8; ++a) for (unsigned axis = 0; axis < 3; ++axis) {
-            const unsigned b = a ^ (1u << axis);
-            if (b < a) continue;
-            const double za = clip[a][2], zb = clip[b][2];
-            if ((za < 0) == (zb < 0)) continue;
-            const double t = za / (za - zb);
-            double c[4];
-            for (unsigned k = 0; k < 4; ++k) c[k] = clip[a][k] + t * (clip[b][k] - clip[a][k]);
-            const Reason reason = project(c);
-            if (reason != Reason::Bound) return reason;
-        }
+        for (unsigned a = 0; a < 8; ++a)
+            for (unsigned axis = 0; axis < 3; ++axis) {
+                const unsigned b = a ^ (1u << axis);
+                if (b < a) continue;
+                const double za = clip[a][2], zb = clip[b][2];
+                if ((za < 0) == (zb < 0)) continue;
+                const double t = za / (za - zb);
+                double c[4];
+                for (unsigned k = 0; k < 4; ++k) c[k] = clip[a][k] + t * (clip[b][k] - clip[a][k]);
+                const Reason reason = project(c);
+                if (reason != Reason::Bound) return reason;
+            }
     }
     if (first) return Reason::NonFinite; // unreachable: at least one corner or crossing was projected
     // Bounded before the integer conversion: a huge box near w -> 0 projects
@@ -223,7 +238,9 @@ inline Reason project_box(const float rows[16], const Box& box, const Viewport& 
                     std::int32_t(scalar::ceil(clamp(max_x, -limit, limit))) + pad + 1,
                     std::int32_t(scalar::ceil(clamp(max_y, -limit, limit))) + pad + 1};
     Rect rect = intersect(hull, full_rect(viewport));
-    if (empty(rect)) rect = {std::int32_t(viewport.x), std::int32_t(viewport.y), std::int32_t(viewport.x) + 1, std::int32_t(viewport.y) + 1};
+    if (empty(rect))
+        rect = {std::int32_t(viewport.x), std::int32_t(viewport.y), std::int32_t(viewport.x) + 1,
+                std::int32_t(viewport.y) + 1};
     *out = rect;
     return Reason::Bound;
 }
@@ -240,20 +257,37 @@ struct Region {
     unsigned clipped = 0; // corners cut away by the near plane (near_clip only; 0 otherwise)
     unsigned pad = 0;     // w-scaled fp32 pad actually applied, in pixels (Bound only)
 };
-inline Region derive(const float* rows, bool bound_known, const Box& box, const Viewport& viewport, bool fill_solid, const Rect& fallback, bool near_clip = false) noexcept {
+inline Region derive(const float* rows, bool bound_known, const Box& box, const Viewport& viewport, bool fill_solid,
+                     const Rect& fallback, bool near_clip = false) noexcept {
     Region region{};
-    if (!viewport.width || !viewport.height) { region.reason = Reason::Viewport; region.rect = fallback; return region; }
+    if (!viewport.width || !viewport.height) {
+        region.reason = Reason::Viewport;
+        region.rect = fallback;
+        return region;
+    }
     region.rect = full_rect(viewport);
-    if (!rows) { region.reason = Reason::Rows; return region; }
-    if (!fill_solid) { region.reason = Reason::FillMode; return region; }
-    if (!bound_known) { region.reason = Reason::BoundUnknown; return region; }
+    if (!rows) {
+        region.reason = Reason::Rows;
+        return region;
+    }
+    if (!fill_solid) {
+        region.reason = Reason::FillMode;
+        return region;
+    }
+    if (!bound_known) {
+        region.reason = Reason::BoundUnknown;
+        return region;
+    }
     Rect rect{};
     NearClip cut{near_clip, 0};
     unsigned pad = 0;
     region.reason = project_box(rows, box, viewport, &rect, &cut, &pad);
     region.clipped = cut.clipped;
     region.pad = pad;
-    if (region.reason == Reason::Bound) { region.rect = rect; region.bound = true; }
+    if (region.reason == Reason::Bound) {
+        region.rect = rect;
+        region.bound = true;
+    }
     return region;
 }
 
@@ -292,13 +326,15 @@ inline Region derive(const float* rows, bool bound_known, const Box& box, const 
 // object-space extent of the prefix (the box the step-B route would have
 // projected: the run-20 hull-versus-AABB comparison).
 struct PrefixHull {
-    unsigned behind = 0;   // vertices with clip z < 0
-    unsigned pad = 0;      // pad applied, in pixels (Bound only)
-    Box aabb{};            // object-space extent of the prefix (finite positions only)
+    unsigned behind = 0; // vertices with clip z < 0
+    unsigned pad = 0;    // pad applied, in pixels (Bound only)
+    Box aabb{};          // object-space extent of the prefix (finite positions only)
 };
-inline Reason project_prefix(const float rows[16], const float* positions, std::uint32_t count, const Viewport& viewport, Rect* out, PrefixHull* info = nullptr) noexcept {
+inline Reason project_prefix(const float rows[16], const float* positions, std::uint32_t count,
+                             const Viewport& viewport, Rect* out, PrefixHull* info = nullptr) noexcept {
     if (!viewport.width || !viewport.height) return Reason::Viewport;
-    for (unsigned i = 0; i < 16; ++i) if (!std::isfinite(rows[i])) return Reason::NonFinite;
+    for (unsigned i = 0; i < 16; ++i)
+        if (!std::isfinite(rows[i])) return Reason::NonFinite;
     if (!positions || !count || count % 3) return Reason::BoundUnknown;
     // Pass 1: the prefix's extent (single precision, 3 compares per
     // component) and finiteness. The |term| sums the pad and the cut need
@@ -310,18 +346,23 @@ inline Reason project_prefix(const float rows[16], const float* positions, std::
         for (unsigned a = 0; a < 3; ++a) {
             const float x = q[a];
             if (!std::isfinite(x)) return Reason::NonFinite;
-            lo[a] = x < lo[a] ? x : lo[a]; hi[a] = x > hi[a] ? x : hi[a];
+            lo[a] = x < lo[a] ? x : lo[a];
+            hi[a] = x > hi[a] ? x : hi[a];
         }
     }
     double term_sum_max = 0, z_sum_max = 0;
     for (unsigned corner = 0; corner < 8; ++corner) {
-        const double p[3] = {double((corner & 1u) ? hi[0] : lo[0]), double((corner & 2u) ? hi[1] : lo[1]), double((corner & 4u) ? hi[2] : lo[2])};
+        const double p[3] = {double((corner & 1u) ? hi[0] : lo[0]), double((corner & 2u) ? hi[1] : lo[1]),
+                             double((corner & 4u) ? hi[2] : lo[2])};
         for (unsigned r = 0; r < 4; ++r) {
             const float* row = rows + 4 * r;
             const double sum = scalar::abs(double(row[0]) * p[0]) + scalar::abs(double(row[1]) * p[1]) +
                                scalar::abs(double(row[2]) * p[2]) + scalar::abs(double(row[3]));
-            if (r == 2) { if (sum > z_sum_max) z_sum_max = sum; } // the z row decides the cut only
-            else if (sum > term_sum_max) term_sum_max = sum;
+            if (r == 2) {
+                if (sum > z_sum_max) z_sum_max = sum;
+            } // the z row decides the cut only
+            else if (sum > term_sum_max)
+                term_sum_max = sum;
         }
     }
     const double plane = -eps_dp4 * z_sum_max; // z >= plane: possibly rasterised
@@ -335,11 +376,17 @@ inline Reason project_prefix(const float rows[16], const float* positions, std::
         const double sx = X + (c[0] / c[3] + 1.0) * half_w;
         const double sy = Y + (1.0 - c[1] / c[3]) * half_h;
         if (!std::isfinite(sx) || !std::isfinite(sy)) return Reason::NonFinite;
-        if (first) { min_x = max_x = sx; min_y = max_y = sy; w_min = c[3]; first = false; }
-        else {
+        if (first) {
+            min_x = max_x = sx;
+            min_y = max_y = sy;
+            w_min = c[3];
+            first = false;
+        } else {
             w_min = c[3] < w_min ? c[3] : w_min;
-            min_x = sx < min_x ? sx : min_x; max_x = sx > max_x ? sx : max_x;
-            min_y = sy < min_y ? sy : min_y; max_y = sy > max_y ? sy : max_y;
+            min_x = sx < min_x ? sx : min_x;
+            max_x = sx > max_x ? sx : max_x;
+            min_y = sy < min_y ? sy : min_y;
+            max_y = sy > max_y ? sy : max_y;
         }
         return Reason::Bound;
     };
@@ -379,7 +426,10 @@ inline Reason project_prefix(const float rows[16], const float* positions, std::
     }
     if (info) {
         info->behind = behind;
-        for (unsigned a = 0; a < 3; ++a) { info->aabb.centre[a] = (double(lo[a]) + double(hi[a])) * 0.5; info->aabb.half[a] = (double(hi[a]) - double(lo[a])) * 0.5; }
+        for (unsigned a = 0; a < 3; ++a) {
+            info->aabb.centre[a] = (double(lo[a]) + double(hi[a])) * 0.5;
+            info->aabb.half[a] = (double(hi[a]) - double(lo[a])) * 0.5;
+        }
     }
     if (first) return Reason::BehindNear;
     constexpr double limit = 1e9;
@@ -391,7 +441,9 @@ inline Reason project_prefix(const float rows[16], const float* positions, std::
                     std::int32_t(scalar::ceil(clamp(max_x, -limit, limit))) + pad + 1,
                     std::int32_t(scalar::ceil(clamp(max_y, -limit, limit))) + pad + 1};
     Rect rect = intersect(hull, full_rect(viewport));
-    if (empty(rect)) rect = {std::int32_t(viewport.x), std::int32_t(viewport.y), std::int32_t(viewport.x) + 1, std::int32_t(viewport.y) + 1};
+    if (empty(rect))
+        rect = {std::int32_t(viewport.x), std::int32_t(viewport.y), std::int32_t(viewport.x) + 1,
+                std::int32_t(viewport.y) + 1};
     *out = rect;
     return Reason::Bound;
 }
@@ -399,20 +451,37 @@ inline Reason project_prefix(const float rows[16], const float* positions, std::
 // derive's twin for the locked-prefix source: the same precedence (viewport,
 // rows, fill mode, then the positions), the prefix hull instead of the box.
 // positions == nullptr or count 0 means no usable prefix (BoundUnknown).
-inline Region derive_prefix(const float* rows, const float* positions, std::uint32_t count, const Viewport& viewport, bool fill_solid, const Rect& fallback, PrefixHull* info = nullptr) noexcept {
+inline Region derive_prefix(const float* rows, const float* positions, std::uint32_t count, const Viewport& viewport,
+                            bool fill_solid, const Rect& fallback, PrefixHull* info = nullptr) noexcept {
     Region region{};
-    if (!viewport.width || !viewport.height) { region.reason = Reason::Viewport; region.rect = fallback; return region; }
+    if (!viewport.width || !viewport.height) {
+        region.reason = Reason::Viewport;
+        region.rect = fallback;
+        return region;
+    }
     region.rect = full_rect(viewport);
-    if (!rows) { region.reason = Reason::Rows; return region; }
-    if (!fill_solid) { region.reason = Reason::FillMode; return region; }
-    if (!positions || !count) { region.reason = Reason::BoundUnknown; return region; }
+    if (!rows) {
+        region.reason = Reason::Rows;
+        return region;
+    }
+    if (!fill_solid) {
+        region.reason = Reason::FillMode;
+        return region;
+    }
+    if (!positions || !count) {
+        region.reason = Reason::BoundUnknown;
+        return region;
+    }
     Rect rect{};
     PrefixHull hull{};
     region.reason = project_prefix(rows, positions, count, viewport, &rect, &hull);
     region.clipped = hull.behind;
     region.pad = hull.pad;
     if (info) *info = hull;
-    if (region.reason == Reason::Bound) { region.rect = rect; region.bound = true; }
+    if (region.reason == Reason::Bound) {
+        region.rect = rect;
+        region.bound = true;
+    }
     return region;
 }
 

@@ -22,14 +22,19 @@ struct LinearMaterialConfig {
     bool selective_exposure = false;
 };
 enum class LinearMaterialResult {
-    Applied, InvalidInput, InvalidConfig, UnsupportedShader, ProfileMismatch,
-    ResourceLimit, AllocationFailure,
+    Applied,
+    InvalidInput,
+    InvalidConfig,
+    UnsupportedShader,
+    ProfileMismatch,
+    ResourceLimit,
+    AllocationFailure,
     FlowControl, // hull emissive widening: the light-map fetch sits inside loop/rep/if (dsx/dsy need depth 0)
     Subroutine   // hull emissive widening: a label/call/callnz/ret precedes the fetch (the static walk cannot place it)
 };
 struct MaterialExposureAbi {
     static constexpr unsigned vertex_constant = 250; // x = 1/e
-    static constexpr unsigned pixel_constant = 222; // x=1/e, y=C/min(e,1), z=min(e,1)
+    static constexpr unsigned pixel_constant = 222;  // x=1/e, y=C/min(e,1), z=min(e,1)
     // Qualified e range is [1/8,2]; no shader-side factor-only clamping.
 };
 struct LinearMaterialAbi {
@@ -55,8 +60,8 @@ bool linear_material_config_valid(const LinearMaterialConfig& config) noexcept;
 // albedo register. Returns false, and the caller then emits no fill, when the
 // program has zero or several such destinations (fail closed). Pure bounded
 // scan of the passed words; no allocation, no D3D and no state.
-bool linear_material_fill_sum(const std::uint32_t* code, std::size_t words,
-    unsigned albedo_register, unsigned& sum_register, unsigned& instruction_dword) noexcept;
+bool linear_material_fill_sum(const std::uint32_t* code, std::size_t words, unsigned albedo_register,
+                              unsigned& sum_register, unsigned& instruction_dword) noexcept;
 // A native scalar changes only its semantic/component carrier. The live
 // transaction must copy the original wrap bit to the destination component,
 // preserving other bits and restoring application state after the draw.
@@ -67,7 +72,7 @@ struct LinearMaterialScalarTransport {
 struct LinearMaterialPairContract {
     std::uint32_t sampler_mask = 0;
     bool bump = false; // Includes BUMPMAP_LOW; independent of sampler count.
-    std::array<LinearMaterialScalarTransport,2> scalar_transport{};
+    std::array<LinearMaterialScalarTransport, 2> scalar_transport{};
     std::uint8_t scalar_transport_count = 0;
 };
 // One exact-pair lookup supplies both cached sampler admission and technique
@@ -78,8 +83,8 @@ LinearMaterialPairContract linear_material_pair_contract(std::uint64_t vertex, s
 // gamma-2.2 composition, sampler decode state, no MSAA and the existing temporal
 // gates. This helper establishes none of those draw-time conditions.
 // Hull DEFAULT returns 0x0f, hull BUMPMAP/LOW 0x1f; Asteroid DEFAULT/BUMP
-// return 0x07/0x0f; glass DEFAULT returns 0x07; XT DEFAULT/BUMP return 0x1d/0x39, and unsupported pairs zero. The mask only
-// identifies required disabled-sRGB samplers; it establishes no dynamic gates.
+// return 0x07/0x0f; glass DEFAULT returns 0x07; XT DEFAULT/BUMP return 0x1d/0x39, and unsupported pairs zero. The mask
+// only identifies required disabled-sRGB samplers; it establishes no dynamic gates.
 std::uint32_t linear_material_sampler_mask(std::uint64_t vertex, std::uint64_t pixel) noexcept;
 bool linear_material_pair_reviewed(std::uint64_t vertex, std::uint64_t pixel) noexcept;
 // True for the Asteroid-family pairs of the same tables: the reviewed pairs
@@ -99,18 +104,21 @@ bool linear_material_asteroid_pair(std::uint64_t vertex, std::uint64_t pixel) no
 // Failure leaves output intact; input may alias output. No D3D calls, constant
 // uploads or per-draw work occur here. GPU and native-Windows behavior require
 // separate qualification, including the documented DX9 exceptional-value rules.
-LinearMaterialResult linear_material_vertex_variant(const std::uint32_t* original,
-    std::size_t words, const LinearMaterialConfig& config,
-    std::vector<std::uint32_t>& output, bool current_depth = true) noexcept;
-LinearMaterialResult linear_material_pixel_variant(const std::uint32_t* original,
-    std::size_t words, const LinearMaterialConfig& config,
-    std::vector<std::uint32_t>& output, bool current_depth = true) noexcept;
+LinearMaterialResult linear_material_vertex_variant(const std::uint32_t* original, std::size_t words,
+                                                    const LinearMaterialConfig& config,
+                                                    std::vector<std::uint32_t>& output,
+                                                    bool current_depth = true) noexcept;
+LinearMaterialResult linear_material_pixel_variant(const std::uint32_t* original, std::size_t words,
+                                                   const LinearMaterialConfig& config,
+                                                   std::vector<std::uint32_t>& output,
+                                                   bool current_depth = true) noexcept;
 // The same transformation, additionally reporting whether the constant fill
 // entered this program: false for a zero configured fill and for a refused
 // (non-unique) lobe sum. Written on every return, including failures.
-LinearMaterialResult linear_material_pixel_variant_fill(const std::uint32_t* original,
-    std::size_t words, const LinearMaterialConfig& config,
-    std::vector<std::uint32_t>& output, bool current_depth, bool& fill_applied) noexcept;
+LinearMaterialResult linear_material_pixel_variant_fill(const std::uint32_t* original, std::size_t words,
+                                                        const LinearMaterialConfig& config,
+                                                        std::vector<std::uint32_t>& output, bool current_depth,
+                                                        bool& fill_applied) noexcept;
 // Explicit opt-in ordinary material extraction. Existing APIs emit identical
 // shaders. Writes the sun luminance fraction to oC2.g AFTER motion/depth writes;
 // leaves oC2.r, color, alpha and discard unchanged. No fade producer support.
@@ -122,9 +130,10 @@ LinearMaterialResult linear_material_pixel_variant_fill(const std::uint32_t* ori
 // A selective_exposure config emits the same selective RGB as the base API,
 // writes the unqualified -1 sentinel, and reports extraction_applied=false.
 // Requires separate G32R32F MRT/state qualification before any live use.
-LinearMaterialResult linear_material_pixel_variant_sun_share(const std::uint32_t* original,
-    std::size_t words, const LinearMaterialConfig& config,
-    std::vector<std::uint32_t>& output, bool current_depth, bool& extraction_applied) noexcept;
+LinearMaterialResult linear_material_pixel_variant_sun_share(const std::uint32_t* original, std::size_t words,
+                                                             const LinearMaterialConfig& config,
+                                                             std::vector<std::uint32_t>& output, bool current_depth,
+                                                             bool& extraction_applied) noexcept;
 // Fill in linear light inside the ORIGINAL pixel programs (option C,
 // docs/architecture/original-shading-critique.md 1a): the ordinary motion/depth
 // variant of a reviewed original PS plus, immediately before its located
@@ -138,11 +147,14 @@ LinearMaterialResult linear_material_pixel_variant_sun_share(const std::uint32_t
 // (fail closed). Vertex programs and unreviewed programs are UnsupportedShader.
 // Pure, allocation-bounded, no D3D; input may alias output; failure leaves
 // output intact.
-LinearMaterialResult linear_material_original_fill_pixel_variant(const std::uint32_t* original,
-    std::size_t words, float fill, std::vector<std::uint32_t>& output, bool current_depth,
-    bool& fill_applied) noexcept;
+LinearMaterialResult linear_material_original_fill_pixel_variant(const std::uint32_t* original, std::size_t words,
+                                                                 float fill, std::vector<std::uint32_t>& output,
+                                                                 bool current_depth, bool& fill_applied) noexcept;
 // Hull emissive widening parameters (K, B; see the widen paragraph below).
-struct HullLightmapWiden { float k = 3.f; float b = 3.f; };
+struct HullLightmapWiden {
+    float k = 3.f;
+    float b = 3.f;
+};
 // Static flow-control depth of the instruction at DWORD offset `site` of a
 // ps_3_0 program: loop/rep/if/ifc open a level, endloop/endrep/endif close one
 // (else keeps it). -1 when the walk does not land on an instruction boundary
@@ -169,9 +181,9 @@ int linear_material_flow_control_depth(const std::uint32_t* code, std::size_t wo
 // below with the share producer (its c212/c221 DEFs and r11-r23 are disjoint
 // from c223 and rL): the same DEF and MUL, the share reduction unchanged;
 // lightmap_gain_applied reports it as the dedicated entry point does.
-LinearMaterialResult linear_material_original_sun_share_pixel_variant(const std::uint32_t* original,
-    std::size_t words, float fill, std::vector<std::uint32_t>& output, bool current_depth,
-    bool& share_applied, float lightmap_gain = 1.0f, bool* lightmap_gain_applied = nullptr,
+LinearMaterialResult linear_material_original_sun_share_pixel_variant(
+    const std::uint32_t* original, std::size_t words, float fill, std::vector<std::uint32_t>& output,
+    bool current_depth, bool& share_applied, float lightmap_gain = 1.0f, bool* lightmap_gain_applied = nullptr,
     bool lightmap_dynamic = false, const HullLightmapWiden* widen = nullptr, bool* widen_applied = nullptr) noexcept;
 // Hull self-illumination gain (docs/reverse-engineering/hull-self-illumination.md
 // 5, --hull-lightmap-gain): the fill variant above (K = fill, K = 0 the plain
@@ -211,9 +223,10 @@ LinearMaterialResult linear_material_original_sun_share_pixel_variant(const std:
 // sit at flow-control depth 0 (FlowControl otherwise). No intensity rescale otherwise. K
 // finite in (1, 8], B finite in [1, K]; widen with G = 1 or out-of-range
 // K/B is InvalidConfig. widen_applied reports it (equal to gain_applied).
-LinearMaterialResult linear_material_hull_lightmap_gain_pixel_variant(const std::uint32_t* original,
-    std::size_t words, float fill, float gain, std::vector<std::uint32_t>& output, bool current_depth,
-    bool& fill_applied, bool& gain_applied, bool dynamic = false, const HullLightmapWiden* widen = nullptr, bool* widen_applied = nullptr) noexcept;
+LinearMaterialResult linear_material_hull_lightmap_gain_pixel_variant(
+    const std::uint32_t* original, std::size_t words, float fill, float gain, std::vector<std::uint32_t>& output,
+    bool current_depth, bool& fill_applied, bool& gain_applied, bool dynamic = false,
+    const HullLightmapWiden* widen = nullptr, bool* widen_applied = nullptr) noexcept;
 // The light-map sampler stage of a reviewed hull/palette/XT pixel program (2 for
 // DEFAULT layouts, 3 for BUMPMAP), 0 for a program without the term (glass,
 // asteroid) or an unreviewed one. Table lookup only, no bytecode.
@@ -222,10 +235,12 @@ unsigned linear_material_hull_lightmap_stage(std::uint64_t pixel, std::size_t wo
 // Ordinary and linear repaired pairs must be published together by the caller;
 // these APIs never make the shared original VS a stage-global replacement.
 bool linear_material_xt_default_pair(std::uint64_t vertex, std::uint64_t pixel) noexcept;
-LinearMaterialResult linear_material_xt_default_vertex_variant(const std::uint32_t* original,
-    std::size_t words, const LinearMaterialConfig& config,
-    std::vector<std::uint32_t>& output, bool current_depth = true, bool linear = true) noexcept;
-LinearMaterialResult linear_material_xt_default_pixel_variant(const std::uint32_t* original,
-    std::size_t words, const LinearMaterialConfig& config,
-    std::vector<std::uint32_t>& output, bool current_depth = true, bool linear = true) noexcept;
+LinearMaterialResult linear_material_xt_default_vertex_variant(const std::uint32_t* original, std::size_t words,
+                                                               const LinearMaterialConfig& config,
+                                                               std::vector<std::uint32_t>& output,
+                                                               bool current_depth = true, bool linear = true) noexcept;
+LinearMaterialResult linear_material_xt_default_pixel_variant(const std::uint32_t* original, std::size_t words,
+                                                              const LinearMaterialConfig& config,
+                                                              std::vector<std::uint32_t>& output,
+                                                              bool current_depth = true, bool linear = true) noexcept;
 } // namespace x3m::renderer

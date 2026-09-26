@@ -56,21 +56,39 @@
 
 namespace x3m::renderer {
 enum class LensVisibilityScale : std::uint8_t { Rgb = 1, Alpha = 2, Both = 3 }; // sun_occlusion::core::Scale values
-enum class LensVisibilityResult { Applied, InvalidInput, UnsupportedVersion, UnsupportedShader, NoOutput, ResourceLimit, AllocationFailure };
-// `constants`: every `def` register the wrap adds (K for the step-1 wrap; K, C, D, W for the clip pair; ~0u = unused). On
-// native D3D9 a `def` writes the device's constant file when the program is set, so the caller records and restores them.
-struct LensVisibilityLayout { unsigned sampler = 0, constant = 0, output_temporary = 0, fetch_temporary = 0, depth_sampler = 0; unsigned constants[4] = {~0u, ~0u, ~0u, ~0u}; };
+enum class LensVisibilityResult {
+    Applied,
+    InvalidInput,
+    UnsupportedVersion,
+    UnsupportedShader,
+    NoOutput,
+    ResourceLimit,
+    AllocationFailure
+};
+// `constants`: every `def` register the wrap adds (K for the step-1 wrap; K, C, D, W for the clip pair; ~0u = unused).
+// On native D3D9 a `def` writes the device's constant file when the program is set, so the caller records and restores
+// them.
+struct LensVisibilityLayout {
+    unsigned sampler = 0, constant = 0, output_temporary = 0, fetch_temporary = 0, depth_sampler = 0;
+    unsigned constants[4] = {~0u, ~0u, ~0u, ~0u};
+};
 const char* lens_visibility_result_name(LensVisibilityResult) noexcept;
-LensVisibilityResult lens_visibility_pixel_variant(const std::uint32_t* original, std::size_t words, LensVisibilityScale scale,
-                                                   std::vector<std::uint32_t>& output, LensVisibilityLayout* layout) noexcept;
+LensVisibilityResult lens_visibility_pixel_variant(const std::uint32_t* original, std::size_t words,
+                                                   LensVisibilityScale scale, std::vector<std::uint32_t>& output,
+                                                   LensVisibilityLayout* layout) noexcept;
 // Step 2. `texcoord` 0..7 must be free in both programs; dx_u / dy_v are one RT2 pixel in uv; core_f multiplies the
 // clipped body by the fraction as well (default off: a core body is clipped only, its ghosts carry f).
-LensVisibilityResult lens_visibility_pixel_clip_variant(const std::uint32_t* original, std::size_t words, LensVisibilityScale scale, unsigned texcoord,
-                                                        float dx_u, float dy_v, bool core_f, std::vector<std::uint32_t>& output, LensVisibilityLayout* layout) noexcept;
-// origin_known: the dp4 source holds (position.xyz, 1), so the body's local origin is the rows' .w column (see the .cpp).
+LensVisibilityResult lens_visibility_pixel_clip_variant(const std::uint32_t* original, std::size_t words,
+                                                        LensVisibilityScale scale, unsigned texcoord, float dx_u,
+                                                        float dy_v, bool core_f, std::vector<std::uint32_t>& output,
+                                                        LensVisibilityLayout* layout) noexcept;
+// origin_known: the dp4 source holds (position.xyz, 1), so the body's local origin is the rows' .w column (see the
+// .cpp).
 LensVisibilityResult lens_visibility_vertex_variant(const std::uint32_t* original, std::size_t words, unsigned texcoord,
-                                                    std::vector<std::uint32_t>& output, unsigned* matrix_register, bool* origin_known) noexcept;
+                                                    std::vector<std::uint32_t>& output, unsigned* matrix_register,
+                                                    bool* origin_known) noexcept;
 // The highest texcoord index the vertex program does not write and the pixel program does not declare;
 // 8 when none, or when either program is not a vs_2_x / ps_2_x program.
-unsigned lens_visibility_free_texcoord(const std::uint32_t* vertex, std::size_t vertex_words, const std::uint32_t* pixel, std::size_t pixel_words) noexcept;
+unsigned lens_visibility_free_texcoord(const std::uint32_t* vertex, std::size_t vertex_words,
+                                       const std::uint32_t* pixel, std::size_t pixel_words) noexcept;
 } // namespace x3m::renderer

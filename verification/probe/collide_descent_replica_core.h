@@ -8,50 +8,63 @@
 // 0x004e2530 (docs/reverse-engineering/sector-collide.md section 13). No
 // Windows dependency: the host tests compile it.
 //
-// 004e293e  33 c0 / d9 1c 24 / 51 / 52 / 53 / 57        XOR EAX,EAX; FSTP [ESP] (s); PUSH ECX (T); PUSH EDX (R); PUSH EBX (b); PUSH EDI (a)
-// 004e2947  a3 44 85 60 00 / a3 48.. / a3 4c..          visit, triangle-test and contact counters = 0
-// 004e2956  e8 d5 fb ff ff                              CALL 0x004e2530        <- the site (sole external caller)
+// 004e293e  33 c0 / d9 1c 24 / 51 / 52 / 53 / 57        XOR EAX,EAX; FSTP [ESP] (s); PUSH ECX (T); PUSH EDX (R); PUSH
+// EBX (b); PUSH EDI (a) 004e2947  a3 44 85 60 00 / a3 48.. / a3 4c..          visit, triangle-test and contact counters
+// = 0 004e2956  e8 d5 fb ff ff                              CALL 0x004e2530        <- the site (sole external caller)
 // 004e295b  83 c4 14 / 5f 5e 5d 5b / 81 c4 98 00 00 00 / c3
 //
 // int __cdecl 0x004e2530(BV* a, BV* b, float* R, float* T, float s). Per entry:
-//   contacts = [0x60854c]; if ([0x596934] && contacts > 0) return 0; if ([0x608534] & 4 && contacts >= [0x608538]) return 0;
+//   contacts = [0x60854c]; if ([0x596934] && contacts > 0) return 0; if ([0x608534] & 4 && contacts >= [0x608538])
+//   return 0;
 //   ++[0x608544]; bs = float32(b.d * s); if (SAT(R, bs, T, a.d)) return 0;
 //   both leaves: return leaf(ESI = a, EAX = b)                  (0x004e2190, which always returns 0)
 //   split a when b is a leaf, or when neither is and b.d[0] < a.d[0] (ordered); otherwise split b.
 //   split b: child = b[+0x40] then b[+0x3c]: R' = R x child.R (0x004e1ff0), T' = (R . child.c) * s + T (0x004e20d0)
-//   split a: child = a[+0x40] then a[+0x3c]: R' = child.R^T x R (0x004dfd80), T' = child.R^T . float32(T - child.c) (0x004dfe60)
-//   a non-zero result of the first child is returned at once; the second child's result is returned as is.
+//   split a: child = a[+0x40] then a[+0x3c]: R' = child.R^T x R (0x004dfd80), T' = child.R^T . float32(T - child.c)
+//   (0x004dfe60) a non-zero result of the first child is returned at once; the second child's result is returned as is.
 // Every product of two float32 values is exact in double and the sums keep the
 // engine's association order, so with the x87 computing in double (FEX reduced
 // precision) each float32 store below is bit-identical to the engine's.
 namespace x3m::collide_descent_sse2::core {
-constexpr std::uintptr_t descent_site_va = 0x004e2956, descent_target_va = 0x004e2530, descent_return_va = 0x004e295b, descent_target_end_va = 0x004e2777;
+constexpr std::uintptr_t descent_site_va = 0x004e2956, descent_target_va = 0x004e2530, descent_return_va = 0x004e295b,
+                         descent_target_end_va = 0x004e2777;
 constexpr std::uintptr_t leaf_va = 0x004e2190, leaf_end_va = 0x004e252e;
-constexpr std::uintptr_t contacts_va = 0x0060854c, first_contact_va = 0x00596934, flags_va = 0x00608534, cap_va = 0x00608538, visits_va = 0x00608544;
-constexpr unsigned call_length = 5, descent_pre_length = 24, descent_post_length = 14, descent_body_length = 0x247, leaf_body_length = 0x39e;
-constexpr unsigned char descent_pre_window[descent_pre_length] = {
-    0x33,0xc0, 0xd9,0x1c,0x24, 0x51, 0x52, 0x53, 0x57, 0xa3,0x44,0x85,0x60,0x00, 0xa3,0x48,0x85,0x60,0x00, 0xa3,0x4c,0x85,0x60,0x00};
-constexpr unsigned char descent_post_window[descent_post_length] = {0x83,0xc4,0x14, 0x5f, 0x5e, 0x5d, 0x5b, 0x81,0xc4,0x98,0x00,0x00,0x00, 0xc3};
+constexpr std::uintptr_t contacts_va = 0x0060854c, first_contact_va = 0x00596934, flags_va = 0x00608534,
+                         cap_va = 0x00608538, visits_va = 0x00608544;
+constexpr unsigned call_length = 5, descent_pre_length = 24, descent_post_length = 14, descent_body_length = 0x247,
+                   leaf_body_length = 0x39e;
+constexpr unsigned char descent_pre_window[descent_pre_length] = {0x33, 0xc0, 0xd9, 0x1c, 0x24, 0x51, 0x52, 0x53,
+                                                                  0x57, 0xa3, 0x44, 0x85, 0x60, 0x00, 0xa3, 0x48,
+                                                                  0x85, 0x60, 0x00, 0xa3, 0x4c, 0x85, 0x60, 0x00};
+constexpr unsigned char descent_post_window[descent_post_length] = {0x83, 0xc4, 0x14, 0x5f, 0x5e, 0x5d, 0x5b,
+                                                                    0x81, 0xc4, 0x98, 0x00, 0x00, 0x00, 0xc3};
 // Bytes of the descent body other modules may have rewritten before this one looks: the census's entry claim
 // (site 7, 0x004e2530 +0..+4) and the SAT module's rel32 (0x004e25a3 +1..+4). They are zeroed before hashing;
 // the leaf's entry (census site 8, +0..+4) likewise.
 constexpr unsigned entry_hole = 5, sat_rel32_offset = 0x74, sat_rel32_length = 4;
 // FNV-1a 64 of the pinned image with those holes zeroed: the descent 0x004e2530..0x004e2776, the leaf
-// 0x004e2190..0x004e252d, and the four transform helpers 0x004e1ff0 (223 B), 0x004e20d0 (95 B), 0x004dfd80 (223 B), 0x004dfe60 (75 B).
-constexpr std::uint64_t descent_body_fnv1a = 0xcef4870863cdd1deull, leaf_body_fnv1a = 0xa9766de75c6ecfcaull, helpers_fnv1a = 0xac374990f77face7ull;
-struct Range { std::uintptr_t va; unsigned length; };
+// 0x004e2190..0x004e252d, and the four transform helpers 0x004e1ff0 (223 B), 0x004e20d0 (95 B), 0x004dfd80 (223 B),
+// 0x004dfe60 (75 B).
+constexpr std::uint64_t descent_body_fnv1a = 0xcef4870863cdd1deull, leaf_body_fnv1a = 0xa9766de75c6ecfcaull,
+                        helpers_fnv1a = 0xac374990f77face7ull;
+struct Range {
+    std::uintptr_t va;
+    unsigned length;
+};
 constexpr Range helper_ranges[4] = {{0x004e1ff0, 223}, {0x004e20d0, 95}, {0x004dfd80, 223}, {0x004dfe60, 75}};
 
 // The engine's BV node (0x48 bytes on x86; the host tests build the same struct at the host's pointer width).
 struct Node {
-    float R[9];            // +0x00 rotation in the parent's frame, row-major
-    float c[3];            // +0x24 centre
-    float d[3];            // +0x30 half-extents
-    const Node* first;     // +0x3c
-    const Node* second;    // +0x40 (descended before +0x3c)
-    const void* triangle;  // +0x44
+    float R[9];           // +0x00 rotation in the parent's frame, row-major
+    float c[3];           // +0x24 centre
+    float d[3];           // +0x30 half-extents
+    const Node* first;    // +0x3c
+    const Node* second;   // +0x40 (descended before +0x3c)
+    const void* triangle; // +0x44
 };
-static_assert(sizeof(void*) != 4 || (sizeof(Node) == 0x48 && offsetof(Node, first) == 0x3c && offsetof(Node, second) == 0x40), "BV node layout");
+static_assert(sizeof(void*) != 4 ||
+                  (sizeof(Node) == 0x48 && offsetof(Node, first) == 0x3c && offsetof(Node, second) == 0x40),
+              "BV node layout");
 
 // The four engine transforms. P and T are the parent's R and T, converted to Real once per descending visit and shared
 // by both children; n is the child's rotation, k its centre.
@@ -97,16 +110,32 @@ template <class Real> inline void mul_trv(const float* n, const Real* T, const f
 }
 
 // A node pair about to be entered, with b's frame in a's.
-struct Pair { const Node* a; const Node* b; float R[9]; float T[3]; };
+struct Pair {
+    const Node* a;
+    const Node* b;
+    float R[9];
+    float T[3];
+};
 // Pending second children. One frame covers `stack_entries` levels of combined tree depth (about 4 KB); a deeper
 // (degenerate, unbalanced) pair continues in a nested frame, so the descent is never capped, and it needs less stack
 // per level (56 B) than the engine's own recursion (0x6c B plus the helpers' return addresses).
 constexpr unsigned stack_entries = 64;
 
 // The child pair of `parent` in which `child` replaces a (split_a) or b.
-template <class Real> inline void compose(Pair& out, const Pair& parent, const Real* P, const Real* T, Real s, bool split_a, const Node* child) {
-    if (split_a) { out.a = child; out.b = parent.b; mul_trr<Real>(child->R, P, out.R); mul_trv<Real>(child->R, T, child->c, out.T); }
-    else { out.a = parent.a; out.b = child; mul_rr<Real>(P, child->R, out.R); mul_rc_scaled<Real>(P, child->c, T, s, out.T); }
+template <class Real>
+inline void compose(Pair& out, const Pair& parent, const Real* P, const Real* T, Real s, bool split_a,
+                    const Node* child) {
+    if (split_a) {
+        out.a = child;
+        out.b = parent.b;
+        mul_trr<Real>(child->R, P, out.R);
+        mul_trv<Real>(child->R, T, child->c, out.T);
+    } else {
+        out.a = parent.a;
+        out.b = child;
+        mul_rr<Real>(P, child->R, out.R);
+        mul_rc_scaled<Real>(P, child->c, T, s, out.T);
+    }
 }
 
 // Env supplies the engine state: contacts(), first_contact(), flags(), cap() (read at every entry, as the engine
@@ -121,28 +150,35 @@ template <class Real, class Env> int descend_pair(const Pair& start, float s_in,
     for (;;) {
         ++entries;
         const std::int32_t contacts = env.contacts();
-        const bool stop = (env.first_contact() != 0 && contacts > 0) || ((env.flags() & 4u) != 0 && contacts >= env.cap());
+        const bool stop = (env.first_contact() != 0 && contacts > 0) ||
+                          ((env.flags() & 4u) != 0 && contacts >= env.cap());
         if (!stop) {
             ++visits;
-            const float bs[3] = {float(double(now.b->d[0]) * double(s_in)), float(double(now.b->d[1]) * double(s_in)), float(double(now.b->d[2]) * double(s_in))};
+            const float bs[3] = {float(double(now.b->d[0]) * double(s_in)), float(double(now.b->d[1]) * double(s_in)),
+                                 float(double(now.b->d[2]) * double(s_in))};
             env.visit(now, bs);
             if (collide_sat_sse2::core::obb_disjoint(now.R, bs, now.T, now.a->d) == 0) {
-                const bool a_leaf = now.a->first == nullptr && now.a->second == nullptr, b_leaf = now.b->first == nullptr && now.b->second == nullptr;
+                const bool a_leaf = now.a->first == nullptr && now.a->second == nullptr,
+                           b_leaf = now.b->first == nullptr && now.b->second == nullptr;
                 if (a_leaf && b_leaf) {
-                    env.add_visits(visits); env.add_entries(entries);
+                    env.add_visits(visits);
+                    env.add_entries(entries);
                     visits = entries = 0;
                     const int result = env.leaf(now.a, now.b);
-                    if (result != 0) return result;   // the engine returns a non-zero result through every level at once
+                    if (result != 0) return result; // the engine returns a non-zero result through every level at once
                 } else {
-                    const bool split_a = b_leaf || (!a_leaf && now.b->d[0] < now.a->d[0]);   // unordered: split b, as `fcomp; test ah,5; jnp`
+                    const bool split_a = b_leaf || (!a_leaf && now.b->d[0] < now.a->d[0]); // unordered: split b, as
+                                                                                           // `fcomp; test ah,5; jnp`
                     const Node* const split = split_a ? now.a : now.b;
                     Real P[9], T[3];
                     for (unsigned i = 0; i < 9; ++i) P[i] = now.R[i];
                     for (unsigned i = 0; i < 3; ++i) T[i] = now.T[i];
                     Pair next;
-                    compose<Real>(next, now, P, T, s, split_a, split->second);   // +0x40 is entered first
-                    if (depth == stack_entries) {   // out of slots: the first child's subtree in a nested frame, then go on with the second
-                        env.add_visits(visits); env.add_entries(entries);
+                    compose<Real>(next, now, P, T, s, split_a, split->second); // +0x40 is entered first
+                    if (depth == stack_entries) { // out of slots: the first child's subtree in a nested frame, then go
+                                                  // on with the second
+                        env.add_visits(visits);
+                        env.add_entries(entries);
                         visits = entries = 0;
                         const int result = descend_pair<Real>(next, s_in, env);
                         if (result != 0) return result;
@@ -158,12 +194,15 @@ template <class Real, class Env> int descend_pair(const Pair& start, float s_in,
         if (depth == 0) break;
         now = stack[--depth];
     }
-    env.add_visits(visits); env.add_entries(entries);
+    env.add_visits(visits);
+    env.add_entries(entries);
     return 0;
 }
-template <class Real, class Env> int descend(const Node* a, const Node* b, const float* R, const float* T, float s, Env& env) {
+template <class Real, class Env>
+int descend(const Node* a, const Node* b, const float* R, const float* T, float s, Env& env) {
     Pair start;
-    start.a = a; start.b = b;
+    start.a = a;
+    start.b = b;
     std::memcpy(start.R, R, sizeof start.R);
     std::memcpy(start.T, T, sizeof start.T);
     return descend_pair<Real>(start, s, env);

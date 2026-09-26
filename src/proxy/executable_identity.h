@@ -24,18 +24,27 @@ constexpr std::uint32_t image_size = 0x002f5000, entry_point = 0x00112ead, time_
 constexpr std::uint16_t characteristics_without_laa = 0x0103; // RELOCS_STRIPPED | EXECUTABLE_IMAGE | 32BIT_MACHINE
 constexpr std::uint16_t large_address_aware_bit = IMAGE_FILE_LARGE_ADDRESS_AWARE;
 constexpr unsigned long long file_size = 2153984;
-struct Section { char name[8]; std::uint32_t virtual_size, virtual_address, raw_size, raw_pointer, characteristics; };
+struct Section {
+    char name[8];
+    std::uint32_t virtual_size, virtual_address, raw_size, raw_pointer, characteristics;
+};
+// clang-format off
 constexpr Section sections[] = {
     {{'.','t','e','x','t',0,0,0}, 0x00130630, 0x00001000, 0x00130800, 0x00000400, 0x60000020},
     {{'.','r','d','a','t','a',0,0}, 0x0004074d, 0x00132000, 0x00040800, 0x00130c00, 0x40000040},
     {{'.','d','a','t','a',0,0,0}, 0x000efb58, 0x00173000, 0x0000b000, 0x00171400, 0xc0000040},
     {{'.','r','s','r','c',0,0,0}, 0x00091814, 0x00263000, 0x00091a00, 0x0017c400, 0x40000040}};
+// clang-format on
 constexpr unsigned section_count = sizeof sections / sizeof sections[0];
 // {instruction VA, global VA, opcode/ModRM prefix}: the instruction is the
 // prefix, the little-endian global (disp32 absolute operand) and an optional
 // one-byte immediate suffix. No anchor overlaps a patched site. The
 // comment names the modules that read the global.
-struct Anchor { std::uint32_t va, global; std::uint8_t prefix_length, prefix[3], suffix_length = 0, suffix = 0; };
+struct Anchor {
+    std::uint32_t va, global;
+    std::uint8_t prefix_length, prefix[3], suffix_length = 0, suffix = 0;
+};
+// clang-format off
 constexpr Anchor anchors[] = {
     {0x00401b91, 0x0057fc60, 2, {0x8b, 0x35}},       // pause_key_only
     {0x00433cbe, 0x00587b88, 2, {0x89, 0x15}},       // chase_aim_trace
@@ -78,6 +87,7 @@ constexpr Anchor anchors[] = {
     {0x0041d00c, 0x00608dac, 3, {0x0f, 0xbf, 0x0d}}, // chase_lead
     {0x0041d020, 0x00608db0, 2, {0x8b, 0x0d}},       // chase_lead
     {0x00524fa7, 0x006619ec, 1, {0xa3}}};            // collide_memo, collide_box_cull
+// clang-format on
 constexpr unsigned anchor_count = sizeof anchors / sizeof anchors[0];
 
 // Read is bool(std::uintptr_t address, void* out, std::size_t size): a bounded,
@@ -85,34 +95,40 @@ constexpr unsigned anchor_count = sizeof anchors / sizeof anchors[0];
 template <class Read>
 bool nt_headers(std::uintptr_t base, Read read, IMAGE_NT_HEADERS32* nt, std::uint32_t* nt_offset) {
     IMAGE_DOS_HEADER dos{};
-    if (!read(base, &dos, sizeof dos) || dos.e_magic != IMAGE_DOS_SIGNATURE || dos.e_lfanew <= 0 || dos.e_lfanew >= 0x1000) return false;
+    if (!read(base, &dos, sizeof dos) || dos.e_magic != IMAGE_DOS_SIGNATURE || dos.e_lfanew <= 0 ||
+        dos.e_lfanew >= 0x1000)
+        return false;
     if (!read(base + std::uint32_t(dos.e_lfanew), nt, sizeof *nt) || nt->Signature != IMAGE_NT_SIGNATURE) return false;
     *nt_offset = std::uint32_t(dos.e_lfanew);
     return true;
 }
 // The mapped image at image_base has the known headers and section table.
-template <class Read>
-bool known_structure(Read read) {
-    IMAGE_NT_HEADERS32 nt{}; std::uint32_t offset = 0;
+template <class Read> bool known_structure(Read read) {
+    IMAGE_NT_HEADERS32 nt{};
+    std::uint32_t offset = 0;
     if (!nt_headers(image_base, read, &nt, &offset)) return false;
-    const IMAGE_FILE_HEADER& f = nt.FileHeader; const IMAGE_OPTIONAL_HEADER32& o = nt.OptionalHeader;
-    if (f.Machine != IMAGE_FILE_MACHINE_I386 || f.NumberOfSections != section_count || f.TimeDateStamp != time_date_stamp ||
-        f.SizeOfOptionalHeader != sizeof(IMAGE_OPTIONAL_HEADER32) ||
+    const IMAGE_FILE_HEADER& f = nt.FileHeader;
+    const IMAGE_OPTIONAL_HEADER32& o = nt.OptionalHeader;
+    if (f.Machine != IMAGE_FILE_MACHINE_I386 || f.NumberOfSections != section_count ||
+        f.TimeDateStamp != time_date_stamp || f.SizeOfOptionalHeader != sizeof(IMAGE_OPTIONAL_HEADER32) ||
         std::uint16_t(f.Characteristics & ~large_address_aware_bit) != characteristics_without_laa ||
         o.Magic != IMAGE_NT_OPTIONAL_HDR32_MAGIC || o.ImageBase != image_base || o.SizeOfImage != image_size ||
-        o.AddressOfEntryPoint != entry_point) return false;
+        o.AddressOfEntryPoint != entry_point)
+        return false;
     IMAGE_SECTION_HEADER table[section_count]{};
     if (!read(image_base + offset + sizeof(IMAGE_NT_HEADERS32), table, sizeof table)) return false;
     for (unsigned i = 0; i < section_count; ++i) {
-        const Section& s = sections[i]; const IMAGE_SECTION_HEADER& h = table[i];
-        if (std::memcmp(h.Name, s.name, 8) || h.Misc.VirtualSize != s.virtual_size || h.VirtualAddress != s.virtual_address ||
-            h.SizeOfRawData != s.raw_size || h.PointerToRawData != s.raw_pointer || h.Characteristics != s.characteristics) return false;
+        const Section& s = sections[i];
+        const IMAGE_SECTION_HEADER& h = table[i];
+        if (std::memcmp(h.Name, s.name, 8) || h.Misc.VirtualSize != s.virtual_size ||
+            h.VirtualAddress != s.virtual_address || h.SizeOfRawData != s.raw_size ||
+            h.PointerToRawData != s.raw_pointer || h.Characteristics != s.characteristics)
+            return false;
     }
     return true;
 }
 // Every anchor instruction is present byte for byte.
-template <class Read>
-bool anchors_match(Read read) {
+template <class Read> bool anchors_match(Read read) {
     for (const Anchor& a : anchors) {
         unsigned char expected[8]{}, actual[8]{};
         const unsigned length = a.prefix_length + 4u + a.suffix_length;
@@ -125,9 +141,9 @@ bool anchors_match(Read read) {
 }
 // IMAGE_FILE_LARGE_ADDRESS_AWARE of the image mapped at base, as the loader
 // saw it. false when the headers cannot be read.
-template <class Read>
-bool large_address_aware(std::uintptr_t base, Read read) {
-    IMAGE_NT_HEADERS32 nt{}; std::uint32_t offset = 0;
+template <class Read> bool large_address_aware(std::uintptr_t base, Read read) {
+    IMAGE_NT_HEADERS32 nt{};
+    std::uint32_t offset = 0;
     return nt_headers(base, read, &nt, &offset) && (nt.FileHeader.Characteristics & large_address_aware_bit) != 0;
 }
 // The module's file on disk has the known size (GetFileSizeEx; no read).
@@ -135,8 +151,8 @@ inline bool known_file_size(HMODULE module) {
     wchar_t path[32768];
     const DWORD length = GetModuleFileNameW(module, path, 32768);
     if (!length || length >= 32768) return false;
-    HANDLE file = CreateFileW(path, FILE_READ_ATTRIBUTES, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr,
-                              OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+    HANDLE file = CreateFileW(path, FILE_READ_ATTRIBUTES, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                              nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
     if (file == INVALID_HANDLE_VALUE) return false;
     LARGE_INTEGER size{};
     const bool ok = GetFileSizeEx(file, &size) && static_cast<unsigned long long>(size.QuadPart) == file_size;

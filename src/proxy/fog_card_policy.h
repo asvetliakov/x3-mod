@@ -13,18 +13,27 @@ struct FogCardPolicy {
         active = enabled && !fault;
         if (!enabled) armed = false;
         warmup = active && !armed;
-        refused = false; finished = false; observed = suppressed = 0;
+        refused = false;
+        finished = false;
+        observed = suppressed = 0;
     }
     bool may_replace() const noexcept { return active && !warmup && !refused && !fault; }
     // Stored range, cold-start step (fog-handover.md, "Implementation"): the medium reaches full density in this
     // frame with no ramp frame before it to warm up on, so the frame's own transaction is the proof: armed now,
     // before any card of the frame; finish() faults the replacement if this frame's pass then fails.
     void arm_on_cold_step() noexcept {
-        if (active && warmup && !refused && !fault) { warmup = false; armed = true; }
+        if (active && warmup && !refused && !fault) {
+            warmup = false;
+            armed = true;
+        }
     }
     bool medium_allowed() const noexcept { return active && (warmup || !refused); }
     void reject() noexcept { refused = true; }
-    void fail() noexcept { fault = true; active = false; armed = false; }
+    void fail() noexcept {
+        fault = true;
+        active = false;
+        armed = false;
+    }
     void finish(bool success) noexcept {
         finished = true;
         if (suppressed && !success) fail();

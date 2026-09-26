@@ -36,8 +36,8 @@ static bool read(const std::string& path, Words& result) {
     require(bytes.size() % 4 == 0, "local program size is not a DWORD multiple");
     result.clear();
     for (std::size_t i = 0; i < bytes.size(); i += 4)
-        result.push_back(std::uint32_t(bytes[i]) | (std::uint32_t(bytes[i+1]) << 8) |
-            (std::uint32_t(bytes[i+2]) << 16) | (std::uint32_t(bytes[i+3]) << 24));
+        result.push_back(std::uint32_t(bytes[i]) | (std::uint32_t(bytes[i + 1]) << 8) |
+                         (std::uint32_t(bytes[i + 2]) << 16) | (std::uint32_t(bytes[i + 3]) << 24));
     return true;
 }
 static std::string program_path(const std::string& directory, const char* stage, std::uint64_t fingerprint) {
@@ -49,21 +49,37 @@ static Words slice(const Words& w, std::size_t begin, std::size_t end) {
     require(begin <= end && end <= w.size());
     return Words(w.begin() + begin, w.begin() + end);
 }
-static unsigned kind(std::uint32_t word) { return ((word & 0x70000000u) >> 28) | ((word & 0x1800u) >> 8); }
-static unsigned opcode(std::uint32_t word) { return word & 0xffffu; }
-static std::size_t length(std::uint32_t word) { return opcode(word) == 0xfffe ? ((word >> 16) & 0x7fffu) : ((word >> 24) & 15u); }
-static bool executable(std::uint32_t word) { const auto op = opcode(word); return op != 0xfffe && op != 0x1f && op != 0x51 && op != 0x2f && op != 0x30; }
-static bool direct(std::uint32_t word, unsigned type) { return (word & 0x80002000u) == 0x80000000u && kind(word) == type; }
+static unsigned kind(std::uint32_t word) {
+    return ((word & 0x70000000u) >> 28) | ((word & 0x1800u) >> 8);
+}
+static unsigned opcode(std::uint32_t word) {
+    return word & 0xffffu;
+}
+static std::size_t length(std::uint32_t word) {
+    return opcode(word) == 0xfffe ? ((word >> 16) & 0x7fffu) : ((word >> 24) & 15u);
+}
+static bool executable(std::uint32_t word) {
+    const auto op = opcode(word);
+    return op != 0xfffe && op != 0x1f && op != 0x51 && op != 0x2f && op != 0x30;
+}
+static bool direct(std::uint32_t word, unsigned type) {
+    return (word & 0x80002000u) == 0x80000000u && kind(word) == type;
+}
 // Instruction start offsets in order, comments included, END excluded.
 static std::vector<std::size_t> boundaries(const Words& w) {
     std::vector<std::size_t> at;
     for (std::size_t i = 1; i < w.size();) {
-        if (opcode(w[i]) == 0xffff) { require(i == w.size() - 1, "END is not the last word"); return at; }
+        if (opcode(w[i]) == 0xffff) {
+            require(i == w.size() - 1, "END is not the last word");
+            return at;
+        }
         const auto n = length(w[i]);
         require(n <= w.size() - i - 1, "instruction overruns the program");
-        at.push_back(i); i += n + 1;
+        at.push_back(i);
+        i += n + 1;
     }
-    require(false, "program has no END"); return at;
+    require(false, "program has no END");
+    return at;
 }
 // One relocated operand of the authored fragment: only the register index may
 // change, to the row's choice for that register class.
@@ -74,10 +90,22 @@ static void operand(const MotionOutputProfile& row, std::uint32_t original, std:
     require((original & ~0x7ffu) == (relocated & ~0x7ffu));
     unsigned expected = 0;
     switch (kind(original)) {
-    case 0: require((original & 0x7ffu) <= 2); expected = (original & 0x7ffu) + row.pixel_temporary_base; break;
-    case 1: require((original & 0x7ffu) == 0); expected = row.pixel_input_register; break;
-    case 2: require((original & 0x7ffu) <= 4); expected = (original & 0x7ffu) + row.pixel_constant_base; break;
-    case 8: require((original & 0x7ffu) == 0); expected = row.pixel_output_register; break;
+    case 0:
+        require((original & 0x7ffu) <= 2);
+        expected = (original & 0x7ffu) + row.pixel_temporary_base;
+        break;
+    case 1:
+        require((original & 0x7ffu) == 0);
+        expected = row.pixel_input_register;
+        break;
+    case 2:
+        require((original & 0x7ffu) <= 4);
+        expected = (original & 0x7ffu) + row.pixel_constant_base;
+        break;
+    case 8:
+        require((original & 0x7ffu) == 0);
+        expected = row.pixel_output_register;
+        break;
     default: require(false);
     }
     require((relocated & 0x7ffu) == expected);
@@ -91,31 +119,40 @@ static void authored(const MotionOutputProfile& row, const Words& defs, const Wo
         const auto instruction = source[i], op = instruction & 0xffffu;
         if (op == 0xfffe) {
             const auto skip = 1 + ((instruction >> 16) & 0x7fffu);
-            require(skip <= extent - i - 1); i += skip; continue;
+            require(skip <= extent - i - 1);
+            i += skip;
+            continue;
         }
         if (op == 81) {
             require(instruction == 0x05000051u && i + 6 <= extent - 1 && d + 6 <= defs.size());
-            require(defs[d] == instruction); operand(row, source[i+1], defs[d+1]);
-            for (unsigned literal = 2; literal != 6; ++literal) require(source[i+literal] == defs[d+literal]);
-            d += 6; i += 6; continue;
+            require(defs[d] == instruction);
+            operand(row, source[i + 1], defs[d + 1]);
+            for (unsigned literal = 2; literal != 6; ++literal) require(source[i + literal] == defs[d + literal]);
+            d += 6;
+            i += 6;
+            continue;
         }
         if (op == 31) {
             require(i + 3 <= extent - 1 && instruction == 0x0200001fu);
-            require(source[i+1] == 0x80000005u && source[i+2] == 0x900f0000u);
+            require(source[i + 1] == 0x80000005u && source[i + 2] == 0x900f0000u);
             require(declaration == Words({instruction, 0x80000005u | (std::uint32_t(row.texcoord_index) << 16),
                                           0x900f0000u | row.pixel_input_register}));
-            ++declarations; i += 3; continue;
+            ++declarations;
+            i += 3;
+            continue;
         }
         // Decode known operation arity independently of the instruction length.
-        const unsigned arity = op == 1 || op == 6 ? 2 :
-            op == 2 || op == 5 || op == 8 || op == 9 || op == 11 ? 3 :
-            op == 4 || op == 88 ? 4 : 0;
+        const unsigned arity = op == 1 || op == 6                                     ? 2
+                               : op == 2 || op == 5 || op == 8 || op == 9 || op == 11 ? 3
+                               : op == 4 || op == 88                                  ? 4
+                                                                                      : 0;
         require(arity != 0 && instruction == ((arity << 24) | op));
         require(i + arity + 1 <= extent - 1 && b + arity + 1 <= body.size());
         require(body[b] == instruction);
-        for (unsigned k = 1; k <= arity; ++k) operand(row, source[i+k], body[b+k]);
-        if (kind(source[i+1]) == 8) ++output_count;
-        i += arity + 1; b += arity + 1;
+        for (unsigned k = 1; k <= arity; ++k) operand(row, source[i + k], body[b + k]);
+        if (kind(source[i + 1]) == 8) ++output_count;
+        i += arity + 1;
+        b += arity + 1;
     }
     require(d == 18 && d == defs.size() && b == 111 && b == body.size() && declarations == 1 && output_count == 1);
 }
@@ -130,31 +167,49 @@ static void authored_depth(const MotionOutputProfile& row, const Words& declarat
     std::size_t b = 0, declarations = 0, output_count = 0;
     for (std::size_t i = 1; i < extent - 1;) {
         const auto instruction = source[i], op = instruction & 0xffffu;
-        if (op == 0xfffe) { const auto skip = 1 + ((instruction >> 16) & 0x7fffu); require(skip <= extent - i - 1); i += skip; continue; }
+        if (op == 0xfffe) {
+            const auto skip = 1 + ((instruction >> 16) & 0x7fffu);
+            require(skip <= extent - i - 1);
+            i += skip;
+            continue;
+        }
         require(op != 81 && op != 47 && op != 48, "depth fragment must hold no literal");
         if (op == 31) {
-            require(i + 3 <= extent - 1 && instruction == 0x0200001fu && source[i+1] == 0x80010005u && source[i+2] == 0x90030000u);
+            require(i + 3 <= extent - 1 && instruction == 0x0200001fu && source[i + 1] == 0x80010005u &&
+                    source[i + 2] == 0x90030000u);
             require(declaration == Words({instruction, 0x80000005u | (std::uint32_t(row.depth_texcoord_index) << 16),
                                           0x90030000u | row.pixel_depth_input_register}));
-            ++declarations; i += 3; continue;
+            ++declarations;
+            i += 3;
+            continue;
         }
         const unsigned arity = op == 6 || op == 1 ? 2 : op == 5 ? 3 : 0;
         require(arity != 0 && instruction == ((arity << 24) | op));
         require(i + arity + 1 <= extent - 1 && b + arity + 1 <= body.size() && body[b] == instruction);
         for (unsigned k = 1; k <= arity; ++k) {
-            const auto original = source[i+k], relocated = body[b+k];
+            const auto original = source[i + k], relocated = body[b + k];
             require((original & 0x80002000u) == 0x80000000u && (original & ~0x7ffu) == (relocated & ~0x7ffu));
             unsigned expected = 0;
             switch (kind(original)) {
-            case 0: require((original & 0x7ffu) == 0); expected = row.pixel_temporary_base; break;
-            case 1: require((original & 0x7ffu) == 0); expected = row.pixel_depth_input_register; break;
-            case 8: require((original & 0x7ffu) == 0); expected = MaterialMotionAbi::depth_render_target; break;
+            case 0:
+                require((original & 0x7ffu) == 0);
+                expected = row.pixel_temporary_base;
+                break;
+            case 1:
+                require((original & 0x7ffu) == 0);
+                expected = row.pixel_depth_input_register;
+                break;
+            case 8:
+                require((original & 0x7ffu) == 0);
+                expected = MaterialMotionAbi::depth_render_target;
+                break;
             default: require(false);
             }
             require((relocated & 0x7ffu) == expected);
         }
-        if (kind(source[i+1]) == 8) ++output_count;
-        i += arity + 1; b += arity + 1;
+        if (kind(source[i + 1]) == 8) ++output_count;
+        i += arity + 1;
+        b += arity + 1;
     }
     require(b == 10 && b == body.size() && declarations == 1 && output_count == 2);
 }
@@ -172,13 +227,17 @@ constexpr std::size_t vertex_added = 3 + 16, pixel_added = 18 + 3 + 111;
 constexpr std::size_t vertex_depth_added = 3 + 8, pixel_depth_added = 3 + 10;
 
 static void test_row(unsigned index, const MotionOutputProfile& row, const Words& vs, const Words& ps) {
-    require(vs.size() == row.vertex_dword_count && ps.size() == row.pixel_dword_count, "local program length differs from the row");
+    require(vs.size() == row.vertex_dword_count && ps.size() == row.pixel_dword_count,
+            "local program length differs from the row");
     const std::size_t D = row.vertex_declaration_insert_dword, A = row.vertex_arithmetic_insert_dword;
-    const std::size_t Pd = row.pixel_definition_insert_dword, Pc = row.pixel_declaration_insert_dword, Pa = row.pixel_append_dword;
-    const bool vertex_depth = material_motion_vertex_exports_depth(row, true), pixel_depth = material_motion_pixel_writes_depth(row, true);
+    const std::size_t Pd = row.pixel_definition_insert_dword, Pc = row.pixel_declaration_insert_dword,
+                      Pa = row.pixel_append_dword;
+    const bool vertex_depth = material_motion_vertex_exports_depth(row, true),
+               pixel_depth = material_motion_pixel_writes_depth(row, true);
     const std::size_t vd = vertex_depth ? 1 : 0, pd = pixel_depth ? 1 : 0;
     MaterialMotionVariant output;
-    require(material_motion_variant(vs.data(), vs.size(), ps.data(), ps.size(), output) == MaterialMotionResult::Applied);
+    require(material_motion_variant(vs.data(), vs.size(), ps.data(), ps.size(), output) ==
+            MaterialMotionResult::Applied);
     require(output.vertex.size() == vs.size() + vertex_added + vd * vertex_depth_added &&
             output.pixel.size() == ps.size() + pixel_added + pd * pixel_depth_added);
     // The per-stage lookups the live route uses must produce the same programs
@@ -186,22 +245,29 @@ static void test_row(unsigned index, const MotionOutputProfile& row, const Words
     Words stage_vs, stage_ps, explicit_vs, explicit_ps;
     require(material_motion_vertex_variant(vs.data(), vs.size(), stage_vs) == MaterialMotionResult::Applied);
     require(material_motion_pixel_variant(ps.data(), ps.size(), stage_ps) == MaterialMotionResult::Applied);
-    require(material_motion_vertex_variant_for(row, vs.data(), vs.size(), explicit_vs) == MaterialMotionResult::Applied);
+    require(material_motion_vertex_variant_for(row, vs.data(), vs.size(), explicit_vs) ==
+            MaterialMotionResult::Applied);
     require(material_motion_pixel_variant_for(row, ps.data(), ps.size(), explicit_ps) == MaterialMotionResult::Applied);
-    require(stage_vs == output.vertex && stage_ps == output.pixel && explicit_vs == output.vertex && explicit_ps == output.pixel);
+    require(stage_vs == output.vertex && stage_ps == output.pixel && explicit_vs == output.vertex &&
+            explicit_ps == output.pixel);
     require(material_motion_profile(row.vertex_fingerprint, row.pixel_fingerprint) == &row);
     require(material_motion_pair_reviewed(row.vertex_fingerprint, row.pixel_fingerprint));
-    require(!material_motion_pair_reviewed(row.vertex_fingerprint, 0) && !material_motion_pair_reviewed(0, row.pixel_fingerprint));
+    require(!material_motion_pair_reviewed(row.vertex_fingerprint, 0) &&
+            !material_motion_pair_reviewed(0, row.pixel_fingerprint));
     passed(index, "pair_and_per_stage_lookups_applied_identically");
     // The motion-only form (current_depth off, what a device without a third
     // target gets) is exactly the previous transformer's output.
     MaterialMotionVariant motion_only;
-    require(material_motion_variant(vs.data(), vs.size(), ps.data(), ps.size(), motion_only, false) == MaterialMotionResult::Applied);
-    require(motion_only.vertex.size() == vs.size() + vertex_added && motion_only.pixel.size() == ps.size() + pixel_added);
+    require(material_motion_variant(vs.data(), vs.size(), ps.data(), ps.size(), motion_only, false) ==
+            MaterialMotionResult::Applied);
+    require(motion_only.vertex.size() == vs.size() + vertex_added &&
+            motion_only.pixel.size() == ps.size() + pixel_added);
     if (row.vertex_fingerprint == argon_vertex && row.pixel_fingerprint == argon_pixel) {
         require(motion_only.vertex.size() == 545 && motion_only.pixel.size() == 1392);
-        require(material_motion_fingerprint(motion_only.vertex.data(), motion_only.vertex.size()) == argon_vertex_variant_fnv);
-        require(material_motion_fingerprint(motion_only.pixel.data(), motion_only.pixel.size()) == argon_pixel_variant_fnv);
+        require(material_motion_fingerprint(motion_only.vertex.data(), motion_only.vertex.size()) ==
+                argon_vertex_variant_fnv);
+        require(material_motion_fingerprint(motion_only.pixel.data(), motion_only.pixel.size()) ==
+                argon_pixel_variant_fnv);
         passed(index, "argon_output_byte_identical_to_previous_transformer");
     }
     const std::size_t vs_dcl = 3 + 3 * vd, vs_dots = 16 + 8 * vd, ps_dcl = 3 + 3 * pd, ps_body = 111 + 10 * pd;
@@ -222,49 +288,68 @@ static void test_row(unsigned index, const MotionOutputProfile& row, const Words
         require(motion_vs == motion_only.vertex && motion_ps == motion_only.pixel);
     }
     passed(index, "all_original_words_preserved");
-    require(slice(output.vertex, D, D + 3) == Words({0x0200001fu, 0x80000005u | (std::uint32_t(row.texcoord_index) << 16),
-                                                    0xe00f0000u | row.vertex_output_register}));
+    require(slice(output.vertex, D, D + 3) ==
+            Words({0x0200001fu, 0x80000005u | (std::uint32_t(row.texcoord_index) << 16),
+                   0xe00f0000u | row.vertex_output_register}));
     if (vertex_depth) {
-        require(slice(output.vertex, D + 3, D + 6) == Words({0x0200001fu, 0x80000005u | (std::uint32_t(row.depth_texcoord_index) << 16),
-                                                            0xe00f0000u | row.vertex_depth_output_register}));
+        require(slice(output.vertex, D + 3, D + 6) ==
+                Words({0x0200001fu, 0x80000005u | (std::uint32_t(row.depth_texcoord_index) << 16),
+                       0xe00f0000u | row.vertex_depth_output_register}));
         // Current z to .xz and w to .yw from the original's rows 2 and 3.
         for (unsigned lane = 0; lane != 2; ++lane) {
             const std::size_t at = A + vs_dcl + 16 + 4 * lane, original = row.position_dp4_dwords[2 + lane];
             require(output.vertex[at] == vs[original] && output.vertex[at + 2] == vs[original + 2]);
-            require(output.vertex[at + 1] == (0xe0000000u | ((lane ? 0xau : 0x5u) << 16) | row.vertex_depth_output_register));
-            require(output.vertex[at + 3] == vs[original + 3] && vs[original + 3] == (0xa0e40000u | (row.matrix_register + 2 + lane)));
+            require(output.vertex[at + 1] ==
+                    (0xe0000000u | ((lane ? 0xau : 0x5u) << 16) | row.vertex_depth_output_register));
+            require(output.vertex[at + 3] == vs[original + 3] &&
+                    vs[original + 3] == (0xa0e40000u | (row.matrix_register + 2 + lane)));
         }
-        require(row.vertex_depth_output_register != row.vertex_output_register && row.depth_texcoord_index != row.texcoord_index);
+        require(row.vertex_depth_output_register != row.vertex_output_register &&
+                row.depth_texcoord_index != row.texcoord_index);
     }
     if (pixel_depth) {
         require(vertex_depth && row.pixel_depth_input_register != row.pixel_input_register);
-        authored_depth(row, slice(output.pixel, Pc + 21, Pc + 24), slice(output.pixel, Pa + 18 + ps_dcl + 111, Pa + 18 + ps_dcl + ps_body));
+        authored_depth(row, slice(output.pixel, Pc + 21, Pc + 24),
+                       slice(output.pixel, Pa + 18 + ps_dcl + 111, Pa + 18 + ps_dcl + ps_body));
     }
     for (unsigned lane = 0; lane != 4; ++lane) {
         const std::size_t at = A + vs_dcl + 4 * lane, original = row.position_dp4_dwords[lane];
         require(vs[original] == 0x03000009u && vs[original + 1] == (0xe0000000u | (1u << (16 + lane))));
-        require(vs[original + 2] == (0x80e40000u | row.position_temporary) && vs[original + 3] == (0xa0e40000u | (row.matrix_register + lane)));
+        require(vs[original + 2] == (0x80e40000u | row.position_temporary) &&
+                vs[original + 3] == (0xa0e40000u | (row.matrix_register + lane)));
         require(output.vertex[at] == vs[original]);
         require(output.vertex[at + 1] == (vs[original + 1] | row.vertex_output_register));
         require(output.vertex[at + 2] == vs[original + 2]);
         require(output.vertex[at + 3] == (0xa0e40000u | (row.vertex_constant_base + lane)));
     }
-    require(row.vertex_constant_base == MaterialMotionAbi::previous_vertex_constant && row.pixel_constant_base == MaterialMotionAbi::pixel_coordinates_constant &&
-        row.pixel_constant_base + 1 == MaterialMotionAbi::pixel_mode_constant && row.pixel_output_register == MaterialMotionAbi::motion_render_target);
-    passed(index, vertex_depth ? "vertex_previous_clip_current_depth_and_public_abi" : "vertex_previous_clip_and_public_abi");
-    authored(row, slice(output.pixel, Pd, Pd + 18), slice(output.pixel, Pc + 18, Pc + 21), slice(output.pixel, Pa + 18 + ps_dcl, Pa + 18 + ps_dcl + 111));
-    passed(index, pixel_depth ? "authored_fragments_register_bits_literals_and_opcodes" : "authored_fragment_register_bits_literals_and_opcodes");
+    require(row.vertex_constant_base == MaterialMotionAbi::previous_vertex_constant &&
+            row.pixel_constant_base == MaterialMotionAbi::pixel_coordinates_constant &&
+            row.pixel_constant_base + 1 == MaterialMotionAbi::pixel_mode_constant &&
+            row.pixel_output_register == MaterialMotionAbi::motion_render_target);
+    passed(index,
+           vertex_depth ? "vertex_previous_clip_current_depth_and_public_abi" : "vertex_previous_clip_and_public_abi");
+    authored(row, slice(output.pixel, Pd, Pd + 18), slice(output.pixel, Pc + 18, Pc + 21),
+             slice(output.pixel, Pa + 18 + ps_dcl, Pa + 18 + ps_dcl + 111));
+    passed(index, pixel_depth ? "authored_fragments_register_bits_literals_and_opcodes"
+                              : "authored_fragment_register_bits_literals_and_opcodes");
     const MaterialMotionVariant sentinel{{0x12345678u, 0xdeadbeefu}, {0x87654321u}};
-    auto refuse = [&](const std::uint32_t* v, std::size_t vn, const std::uint32_t* p, std::size_t pn, MaterialMotionResult expected) {
+    auto refuse = [&](const std::uint32_t* v, std::size_t vn, const std::uint32_t* p, std::size_t pn,
+                      MaterialMotionResult expected) {
         auto target = sentinel;
         require(material_motion_variant(v, vn, p, pn, target) == expected && same(target, sentinel));
     };
     for (unsigned stage = 0; stage != 2; ++stage) {
-        refuse(stage ? vs.data() : nullptr, vs.size(), stage ? nullptr : ps.data(), ps.size(), MaterialMotionResult::InvalidInput);
-        for (std::size_t n : {0u, 1u}) refuse(vs.data(), stage ? vs.size() : n, ps.data(), stage ? n : ps.size(), MaterialMotionResult::InvalidInput);
-        refuse(vs.data(), vs.size() - (stage == 0), ps.data(), ps.size() - (stage == 1), MaterialMotionResult::UnsupportedShader);
+        refuse(stage ? vs.data() : nullptr, vs.size(), stage ? nullptr : ps.data(), ps.size(),
+               MaterialMotionResult::InvalidInput);
+        for (std::size_t n : {0u, 1u})
+            refuse(vs.data(), stage ? vs.size() : n, ps.data(), stage ? n : ps.size(),
+                   MaterialMotionResult::InvalidInput);
+        refuse(vs.data(), vs.size() - (stage == 0), ps.data(), ps.size() - (stage == 1),
+               MaterialMotionResult::UnsupportedShader);
     }
-    auto extra_vs = vs, extra_ps = ps; extra_vs.push_back(0xffffu); extra_ps.push_back(0xffffu);
+    auto extra_vs = vs, extra_ps = ps;
+    extra_vs.push_back(0xffffu);
+    extra_ps.push_back(0xffffu);
     refuse(extra_vs.data(), extra_vs.size(), ps.data(), ps.size(), MaterialMotionResult::UnsupportedShader);
     refuse(vs.data(), vs.size(), extra_ps.data(), extra_ps.size(), MaterialMotionResult::UnsupportedShader);
     refuse(ps.data(), ps.size(), vs.data(), vs.size(), MaterialMotionResult::UnsupportedShader);
@@ -273,57 +358,108 @@ static void test_row(unsigned index, const MotionOutputProfile& row, const Words
     // unreachable through the lookups, so perturb the row instead. Every
     // perturbation must be refused without touching the output.
     unsigned perturbations = 0;
-    auto refuse_row = [&](const MotionOutputProfile& changed, MaterialMotionResult expected_vs, MaterialMotionResult expected_ps) {
+    auto refuse_row = [&](const MotionOutputProfile& changed, MaterialMotionResult expected_vs,
+                          MaterialMotionResult expected_ps) {
         // A stage the perturbation does not touch must still transform to the
         // reference output; the refused stage must leave the sentinel intact.
         Words target_vs = sentinel.vertex, target_ps = sentinel.pixel;
         const std::string label = "row perturbation " + std::to_string(perturbations);
         const auto vertex_result = material_motion_vertex_variant_for(changed, vs.data(), vs.size(), target_vs);
         require(vertex_result == expected_vs, (label + " vertex result").c_str());
-        require(target_vs == (expected_vs == MaterialMotionResult::Applied ? output.vertex : sentinel.vertex), (label + " vertex output").c_str());
+        require(target_vs == (expected_vs == MaterialMotionResult::Applied ? output.vertex : sentinel.vertex),
+                (label + " vertex output").c_str());
         const auto pixel_result = material_motion_pixel_variant_for(changed, ps.data(), ps.size(), target_ps);
         require(pixel_result == expected_ps, (label + " pixel result").c_str());
-        require(target_ps == (expected_ps == MaterialMotionResult::Applied ? output.pixel : sentinel.pixel), (label + " pixel output").c_str());
+        require(target_ps == (expected_ps == MaterialMotionResult::Applied ? output.pixel : sentinel.pixel),
+                (label + " pixel output").c_str());
         ++perturbations;
     };
     const auto mismatch = MaterialMotionResult::ProfileMismatch, applied = MaterialMotionResult::Applied;
     const bool damage = row.transformation_class == MotionOutputClass::BoundedDamageBranches;
     const bool branching = row.transformation_class == MotionOutputClass::RelocatedRegistersWithBranches;
     bool contiguous = true;
-    for (unsigned lane = 1; lane < 4; ++lane) contiguous = contiguous && row.position_dp4_dwords[lane] == row.position_dp4_dwords[lane - 1] + 4;
+    for (unsigned lane = 1; lane < 4; ++lane)
+        contiguous = contiguous && row.position_dp4_dwords[lane] == row.position_dp4_dwords[lane - 1] + 4;
     // The class family is revalidated from the pixel words: a straight-line
     // program under a branching row, or a branching program under a
     // straight-line row, refuses; the vertex side does not depend on it.
-    { auto r = row; r.transformation_class = (branching || damage) ? MotionOutputClass::RelocatedRegisters
+    {
+        auto r = row;
+        r.transformation_class = (branching || damage) ? MotionOutputClass::RelocatedRegisters
                                                        : MotionOutputClass::RelocatedRegistersWithBranches;
-      refuse_row(r, applied, mismatch); }
-    { auto r = row; r.vertex_output_register = 0; refuse_row(r, mismatch, applied); }        // o0 is declared and written.
-    { auto r = row; r.texcoord_index = 0; refuse_row(r, mismatch, mismatch); }              // TEXCOORD0 declared in both stages.
-    { auto r = row; r.position_temporary ^= 1; refuse_row(r, mismatch, applied); }
-    { auto r = row; r.matrix_register += 1; refuse_row(r, mismatch, applied); }
-    { auto r = row; for (auto& d : r.position_dp4_dwords) d += 1; r.vertex_arithmetic_insert_dword += 1; refuse_row(r, mismatch, applied); }
+        refuse_row(r, applied, mismatch);
+    }
+    {
+        auto r = row;
+        r.vertex_output_register = 0;
+        refuse_row(r, mismatch, applied);
+    } // o0 is declared and written.
+    {
+        auto r = row;
+        r.texcoord_index = 0;
+        refuse_row(r, mismatch, mismatch);
+    } // TEXCOORD0 declared in both stages.
+    {
+        auto r = row;
+        r.position_temporary ^= 1;
+        refuse_row(r, mismatch, applied);
+    }
+    {
+        auto r = row;
+        r.matrix_register += 1;
+        refuse_row(r, mismatch, applied);
+    }
+    {
+        auto r = row;
+        for (auto& d : r.position_dp4_dwords) d += 1;
+        r.vertex_arithmetic_insert_dword += 1;
+        refuse_row(r, mismatch, applied);
+    }
     // Perturbations that make the row itself malformed are refused by both stages.
-    { auto r = row; r.position_lane_masks[1] = 1; refuse_row(r, mismatch, mismatch); }
-    { auto r = row; r.vertex_declaration_insert_dword -= 1; refuse_row(r, mismatch, applied); }
-    { auto r = row; r.vertex_declaration_insert_dword += 1; refuse_row(r, mismatch, applied); }
-    { auto r = row; r.vertex_constant_base = row.matrix_register; refuse_row(r, mismatch, mismatch); } // Rows overlap.
-    {   // Previous-row constants placed on a constant the vertex program reads
+    {
+        auto r = row;
+        r.position_lane_masks[1] = 1;
+        refuse_row(r, mismatch, mismatch);
+    }
+    {
+        auto r = row;
+        r.vertex_declaration_insert_dword -= 1;
+        refuse_row(r, mismatch, applied);
+    }
+    {
+        auto r = row;
+        r.vertex_declaration_insert_dword += 1;
+        refuse_row(r, mismatch, applied);
+    }
+    {
+        auto r = row;
+        r.vertex_constant_base = row.matrix_register;
+        refuse_row(r, mismatch, mismatch);
+    } // Rows overlap.
+    { // Previous-row constants placed on a constant the vertex program reads
         // directly (the first such register above the clip rows, so the row
         // itself stays well formed): material or light constants in use.
         std::uint16_t used = 0;
         for (std::size_t i = 1; i < vs.size() && !used;) {
-            const auto op = opcode(vs[i]); if (op == 0xffff) break;
+            const auto op = opcode(vs[i]);
+            if (op == 0xffff) break;
             const auto n = length(vs[i]);
-            if (executable(vs[i])) for (std::size_t k = 1; k <= n && !used; ++k)
-                if (direct(vs[i + k], 2) && (vs[i + k] & 0x7ffu) >= row.matrix_register + 4u && (vs[i + k] & 0x7ffu) + 4u <= 252u)
-                    used = std::uint16_t(vs[i + k] & 0x7ffu);
+            if (executable(vs[i]))
+                for (std::size_t k = 1; k <= n && !used; ++k)
+                    if (direct(vs[i + k], 2) && (vs[i + k] & 0x7ffu) >= row.matrix_register + 4u &&
+                        (vs[i + k] & 0x7ffu) + 4u <= 252u)
+                        used = std::uint16_t(vs[i + k] & 0x7ffu);
             i += n + 1;
         }
         require(used != 0, "vertex program reads no direct constant above its clip rows");
-        auto r = row; r.vertex_constant_base = used; refuse_row(r, mismatch, applied);
+        auto r = row;
+        r.vertex_constant_base = used;
+        refuse_row(r, mismatch, applied);
     }
     if (row.light_loop_bound_required) {
-        auto r = row; r.light_loop_bound_required = false; refuse_row(r, mismatch, applied);  // VS addresses relatively.
+        auto r = row;
+        r.light_loop_bound_required = false;
+        refuse_row(r, mismatch, applied); // VS addresses relatively.
     } else {
         // Light-free row: the vertex program has no relative operand, so the
         // denied bound is only exercised by giving it one (the relative bit on
@@ -332,43 +468,113 @@ static void test_row(unsigned index, const MotionOutputProfile& row, const Words
         // carries the perturbed fingerprint; the untouched pixel side applies.
         std::size_t at = 0, operand = 0;
         for (std::size_t i = 1; i < vs.size() && !at;) {
-            const auto op = opcode(vs[i]); if (op == 0xffff) break;
+            const auto op = opcode(vs[i]);
+            if (op == 0xffff) break;
             const auto n = length(vs[i]);
-            const bool dot = std::find(std::begin(row.position_dp4_dwords), std::end(row.position_dp4_dwords), i) != std::end(row.position_dp4_dwords);
+            const bool dot = std::find(std::begin(row.position_dp4_dwords), std::end(row.position_dp4_dwords), i) !=
+                             std::end(row.position_dp4_dwords);
             if (i >= D && executable(vs[i]) && !dot)
-                for (std::size_t k = 1; k < n && !at; ++k) if (direct(vs[i + k], 2)) { at = i; operand = k; }
+                for (std::size_t k = 1; k < n && !at; ++k)
+                    if (direct(vs[i + k], 2)) {
+                        at = i;
+                        operand = k;
+                    }
             i += n + 1;
         }
         require(at != 0, "no direct constant operand followed by another operand");
-        auto w = vs; w[at + operand] |= 0x2000u;
-        auto r = row; r.vertex_fingerprint = material_motion_fingerprint(w.data(), w.size());
+        auto w = vs;
+        w[at + operand] |= 0x2000u;
+        auto r = row;
+        r.vertex_fingerprint = material_motion_fingerprint(w.data(), w.size());
         Words target_vs = sentinel.vertex, target_ps = sentinel.pixel;
-        require(material_motion_vertex_variant_for(r, w.data(), w.size(), target_vs) == mismatch && target_vs == sentinel.vertex, "relative operand under a light-free row");
-        require(material_motion_pixel_variant_for(r, ps.data(), ps.size(), target_ps) == applied && target_ps == output.pixel, "relative operand under a light-free row");
+        require(material_motion_vertex_variant_for(r, w.data(), w.size(), target_vs) == mismatch &&
+                    target_vs == sentinel.vertex,
+                "relative operand under a light-free row");
+        require(material_motion_pixel_variant_for(r, ps.data(), ps.size(), target_ps) == applied &&
+                    target_ps == output.pixel,
+                "relative operand under a light-free row");
         ++perturbations;
     }
-    { auto r = row; r.pixel_input_register = 0; refuse_row(r, applied, mismatch); }         // v0 declared.
-    { auto r = row; r.pixel_temporary_base = 0; refuse_row(r, applied, mismatch); }         // r0 written.
-    { auto r = row; r.pixel_constant_base = 0; refuse_row(r, applied, mismatch); }          // c0 read.
-    { auto r = row; r.pixel_output_register = 0; refuse_row(r, mismatch, mismatch); }       // oC0 is the color target.
-    { auto r = row; r.pixel_definition_insert_dword -= 1; refuse_row(r, applied, mismatch); }
-    { auto r = row; r.pixel_declaration_insert_dword += 1; refuse_row(r, applied, mismatch); }
-    { auto r = row; r.pixel_declaration_insert_dword -= 1; refuse_row(r, applied, mismatch); }
-    { auto r = row; r.pixel_append_dword -= 1; r.pixel_dword_count -= 1;
-      refuse_row(r, applied, MaterialMotionResult::UnsupportedShader); }                    // Length gate first.
-    { auto r = row; r.vertex_version = 0xfffe0200u; r.pixel_version = 0xffff0200u; refuse_row(r, mismatch, mismatch); }
+    {
+        auto r = row;
+        r.pixel_input_register = 0;
+        refuse_row(r, applied, mismatch);
+    } // v0 declared.
+    {
+        auto r = row;
+        r.pixel_temporary_base = 0;
+        refuse_row(r, applied, mismatch);
+    } // r0 written.
+    {
+        auto r = row;
+        r.pixel_constant_base = 0;
+        refuse_row(r, applied, mismatch);
+    } // c0 read.
+    {
+        auto r = row;
+        r.pixel_output_register = 0;
+        refuse_row(r, mismatch, mismatch);
+    } // oC0 is the color target.
+    {
+        auto r = row;
+        r.pixel_definition_insert_dword -= 1;
+        refuse_row(r, applied, mismatch);
+    }
+    {
+        auto r = row;
+        r.pixel_declaration_insert_dword += 1;
+        refuse_row(r, applied, mismatch);
+    }
+    {
+        auto r = row;
+        r.pixel_declaration_insert_dword -= 1;
+        refuse_row(r, applied, mismatch);
+    }
+    {
+        auto r = row;
+        r.pixel_append_dword -= 1;
+        r.pixel_dword_count -= 1;
+        refuse_row(r, applied, MaterialMotionResult::UnsupportedShader);
+    } // Length gate first.
+    {
+        auto r = row;
+        r.vertex_version = 0xfffe0200u;
+        r.pixel_version = 0xffff0200u;
+        refuse_row(r, mismatch, mismatch);
+    }
     // Depth registers: the same revalidation covers the second interpolator.
     if (vertex_depth) {
-        { auto r = row; r.vertex_depth_output_register = 0; refuse_row(r, mismatch, applied); }               // o0 is declared and written.
-        { auto r = row; r.vertex_depth_output_register = row.vertex_output_register; refuse_row(r, mismatch, mismatch); } // Malformed row.
-        { auto r = row; r.depth_texcoord_index = 0; refuse_row(r, mismatch, pixel_depth ? mismatch : applied); } // TEXCOORD0 declared.
+        {
+            auto r = row;
+            r.vertex_depth_output_register = 0;
+            refuse_row(r, mismatch, applied);
+        } // o0 is declared and written.
+        {
+            auto r = row;
+            r.vertex_depth_output_register = row.vertex_output_register;
+            refuse_row(r, mismatch, mismatch);
+        } // Malformed row.
+        {
+            auto r = row;
+            r.depth_texcoord_index = 0;
+            refuse_row(r, mismatch, pixel_depth ? mismatch : applied);
+        } // TEXCOORD0 declared.
     }
     if (pixel_depth) {
-        { auto r = row; r.pixel_depth_input_register = 0; refuse_row(r, applied, mismatch); }                  // v0 declared.
-        { auto r = row; r.pixel_depth_input_register = motion_output_depth_none; refuse_row(r, mismatch, mismatch); } // Output without input: malformed.
+        {
+            auto r = row;
+            r.pixel_depth_input_register = 0;
+            refuse_row(r, applied, mismatch);
+        } // v0 declared.
+        {
+            auto r = row;
+            r.pixel_depth_input_register = motion_output_depth_none;
+            refuse_row(r, mismatch, mismatch);
+        } // Output without input: malformed.
     }
     require(perturbations == 21 + 3 * vd + 2 * pd);
-    passed(index, vd + pd == 2 ? "twenty_six_row_perturbations_refused_atomically" : "twenty_one_row_perturbations_refused_atomically");
+    passed(index, vd + pd == 2 ? "twenty_six_row_perturbations_refused_atomically"
+                               : "twenty_one_row_perturbations_refused_atomically");
     // Program-side perturbations: a row copy carrying the perturbed program's
     // fingerprint satisfies the fingerprint gate, so these reach the structural
     // revalidation with real programs and prove each refusal from the words,
@@ -383,12 +589,20 @@ static void test_row(unsigned index, const MotionOutputProfile& row, const Words
         const bool vs_changed = changed_vs != vs, ps_changed = changed_ps != ps;
         require(vs_changed != ps_changed, what);
         Words target_vs = sentinel.vertex, target_ps = sentinel.pixel, lookup;
-        const auto vertex_result = material_motion_vertex_variant_for(r, changed_vs.data(), changed_vs.size(), target_vs);
+        const auto vertex_result = material_motion_vertex_variant_for(r, changed_vs.data(), changed_vs.size(),
+                                                                      target_vs);
         const auto pixel_result = material_motion_pixel_variant_for(r, changed_ps.data(), changed_ps.size(), target_ps);
-        require(vertex_result == (vs_changed ? mismatch : applied) && target_vs == (vs_changed ? sentinel.vertex : output.vertex), what);
-        require(pixel_result == (ps_changed ? mismatch : applied) && target_ps == (ps_changed ? sentinel.pixel : output.pixel), what);
+        require(vertex_result == (vs_changed ? mismatch : applied) &&
+                    target_vs == (vs_changed ? sentinel.vertex : output.vertex),
+                what);
+        require(pixel_result == (ps_changed ? mismatch : applied) &&
+                    target_ps == (ps_changed ? sentinel.pixel : output.pixel),
+                what);
         require((vs_changed ? material_motion_vertex_variant(changed_vs.data(), changed_vs.size(), lookup)
-                            : material_motion_pixel_variant(changed_ps.data(), changed_ps.size(), lookup)) == MaterialMotionResult::UnsupportedShader && lookup.empty(), what);
+                            : material_motion_pixel_variant(changed_ps.data(), changed_ps.size(), lookup)) ==
+                        MaterialMotionResult::UnsupportedShader &&
+                    lookup.empty(),
+                what);
         ++program_perturbations;
     };
     const auto vs_at = boundaries(vs), ps_at = boundaries(ps);
@@ -398,54 +612,108 @@ static void test_row(unsigned index, const MotionOutputProfile& row, const Words
     // runner requires every site for the captured rows and bounds the skips.
     std::vector<std::string> skipped;
     auto find = [&](const std::vector<std::size_t>& at, auto&& predicate) -> std::size_t {
-        for (auto i : at) if (predicate(i)) return i;
+        for (auto i : at)
+            if (predicate(i)) return i;
         return 0; // Instruction offsets start at 1.
     };
     auto skip = [&](const char* label) { skipped.push_back(label); };
     // Operand k (1-based) of the executable instruction at i that satisfies the predicate, or 0.
     auto operand_of = [&](const Words& w, std::size_t i, auto&& predicate) -> std::size_t {
         if (!executable(w[i])) return 0;
-        for (std::size_t k = 1; k <= length(w[i]); ++k) if (predicate(w[i + k])) return k;
+        for (std::size_t k = 1; k <= length(w[i]); ++k)
+            if (predicate(w[i + k])) return k;
         return 0;
     };
-    auto is_dp4 = [&](std::size_t i) { return std::find(std::begin(row.position_dp4_dwords), std::end(row.position_dp4_dwords), i) != std::end(row.position_dp4_dwords); };
+    auto is_dp4 = [&](std::size_t i) {
+        return std::find(std::begin(row.position_dp4_dwords), std::end(row.position_dp4_dwords), i) !=
+               std::end(row.position_dp4_dwords);
+    };
     auto with_index = [](std::uint32_t word, unsigned index) { return (word & ~0x7ffu) | index; };
     // Vertex side: header declarations, executable references, framing.
     {
-        const auto position = find(vs_at, [&](std::size_t i) { return i < D && opcode(vs[i]) == 0x1f && direct(vs[i + 2], 6) && (vs[i + 2] & 0x7ffu) == 0 && (vs[i + 1] & 0x1fu) == 0; });
+        const auto position = find(vs_at, [&](std::size_t i) {
+            return i < D && opcode(vs[i]) == 0x1f && direct(vs[i + 2], 6) && (vs[i + 2] & 0x7ffu) == 0 &&
+                   (vs[i + 1] & 0x1fu) == 0;
+        });
         require(position != 0, "o0 POSITION declaration not found");
-        auto w = vs; w[position + 1] = (w[position + 1] & ~0x1fu) | 3u; refuse_program(w, ps, "o0 not declared as POSITION");
-        w = vs; w[position + 2] = with_index(w[position + 2], row.vertex_output_register); refuse_program(w, ps, "chosen output register declared");
-        const auto texcoord = find(vs_at, [&](std::size_t i) { return i < D && opcode(vs[i]) == 0x1f && direct(vs[i + 2], 6) && (vs[i + 1] & 0x1fu) == 5 && ((vs[i + 1] >> 16) & 0xfu) != row.texcoord_index; });
-        if (texcoord) { w = vs; w[texcoord + 1] = (w[texcoord + 1] & ~0xf0000u) | (std::uint32_t(row.texcoord_index) << 16); refuse_program(w, ps, "chosen TEXCOORD index declared"); }
-        else skip("chosen TEXCOORD index declared");
+        auto w = vs;
+        w[position + 1] = (w[position + 1] & ~0x1fu) | 3u;
+        refuse_program(w, ps, "o0 not declared as POSITION");
+        w = vs;
+        w[position + 2] = with_index(w[position + 2], row.vertex_output_register);
+        refuse_program(w, ps, "chosen output register declared");
+        const auto texcoord = find(vs_at, [&](std::size_t i) {
+            return i < D && opcode(vs[i]) == 0x1f && direct(vs[i + 2], 6) && (vs[i + 1] & 0x1fu) == 5 &&
+                   ((vs[i + 1] >> 16) & 0xfu) != row.texcoord_index;
+        });
+        if (texcoord) {
+            w = vs;
+            w[texcoord + 1] = (w[texcoord + 1] & ~0xf0000u) | (std::uint32_t(row.texcoord_index) << 16);
+            refuse_program(w, ps, "chosen TEXCOORD index declared");
+        } else
+            skip("chosen TEXCOORD index declared");
         if (vertex_depth) {
-            w = vs; w[position + 2] = with_index(w[position + 2], row.vertex_depth_output_register); refuse_program(w, ps, "chosen depth output register declared");
-            const auto other = find(vs_at, [&](std::size_t i) { return i < D && opcode(vs[i]) == 0x1f && direct(vs[i + 2], 6) && (vs[i + 1] & 0x1fu) == 5 && ((vs[i + 1] >> 16) & 0xfu) != row.texcoord_index && ((vs[i + 1] >> 16) & 0xfu) != row.depth_texcoord_index; });
-            if (other) { w = vs; w[other + 1] = (w[other + 1] & ~0xf0000u) | (std::uint32_t(row.depth_texcoord_index) << 16); refuse_program(w, ps, "chosen depth TEXCOORD index declared"); }
-            else skip("chosen depth TEXCOORD index declared");
+            w = vs;
+            w[position + 2] = with_index(w[position + 2], row.vertex_depth_output_register);
+            refuse_program(w, ps, "chosen depth output register declared");
+            const auto other = find(vs_at, [&](std::size_t i) {
+                return i < D && opcode(vs[i]) == 0x1f && direct(vs[i + 2], 6) && (vs[i + 1] & 0x1fu) == 5 &&
+                       ((vs[i + 1] >> 16) & 0xfu) != row.texcoord_index &&
+                       ((vs[i + 1] >> 16) & 0xfu) != row.depth_texcoord_index;
+            });
+            if (other) {
+                w = vs;
+                w[other + 1] = (w[other + 1] & ~0xf0000u) | (std::uint32_t(row.depth_texcoord_index) << 16);
+                refuse_program(w, ps, "chosen depth TEXCOORD index declared");
+            } else
+                skip("chosen depth TEXCOORD index declared");
         }
-        const auto writes_output = find(vs_at, [&](std::size_t i) { return i >= D && !is_dp4(i) && executable(vs[i]) && length(vs[i]) >= 1 && direct(vs[i + 1], 6); });
-        if (writes_output) { w = vs; w[writes_output + 1] = with_index(w[writes_output + 1], row.vertex_output_register); refuse_program(w, ps, "chosen output register written"); }
-        else skip("chosen output register written");
+        const auto writes_output = find(vs_at, [&](std::size_t i) {
+            return i >= D && !is_dp4(i) && executable(vs[i]) && length(vs[i]) >= 1 && direct(vs[i + 1], 6);
+        });
+        if (writes_output) {
+            w = vs;
+            w[writes_output + 1] = with_index(w[writes_output + 1], row.vertex_output_register);
+            refuse_program(w, ps, "chosen output register written");
+        } else
+            skip("chosen output register written");
         std::size_t constant_operand = 0;
-        const auto reads_constant = find(vs_at, [&](std::size_t i) { return i >= D && !is_dp4(i) && (constant_operand = operand_of(vs, i, [](std::uint32_t t) { return direct(t, 2); })) != 0; });
-        if (reads_constant) { w = vs; w[reads_constant + constant_operand] = with_index(w[reads_constant + constant_operand], row.vertex_constant_base); refuse_program(w, ps, "previous-row constant read"); }
-        else skip("previous-row constant read");
+        const auto reads_constant = find(vs_at, [&](std::size_t i) {
+            return i >= D && !is_dp4(i) &&
+                   (constant_operand = operand_of(vs, i, [](std::uint32_t t) { return direct(t, 2); })) != 0;
+        });
+        if (reads_constant) {
+            w = vs;
+            w[reads_constant + constant_operand] = with_index(w[reads_constant + constant_operand],
+                                                              row.vertex_constant_base);
+            refuse_program(w, ps, "previous-row constant read");
+        } else
+            skip("previous-row constant read");
         const auto first = find(vs_at, [&](std::size_t i) { return i >= D && executable(vs[i]); });
         require(first != 0, "no executable vertex instruction");
-        w = vs; w[first] = (w[first] & ~0xffffu) | 0x51u; refuse_program(w, ps, "definition after the vertex header");
-        w = vs; w[row.position_dp4_dwords[0]] |= 0x10000000u; refuse_program(w, ps, "predicated position dot");
-        w = vs; w.back() = 0x0001ffffu; refuse_program(w, ps, "vertex END token malformed");
-        w = vs; w[vs_at.back()] |= 0x0f000000u; refuse_program(w, ps, "vertex instruction length overruns END");
+        w = vs;
+        w[first] = (w[first] & ~0xffffu) | 0x51u;
+        refuse_program(w, ps, "definition after the vertex header");
+        w = vs;
+        w[row.position_dp4_dwords[0]] |= 0x10000000u;
+        refuse_program(w, ps, "predicated position dot");
+        w = vs;
+        w.back() = 0x0001ffffu;
+        refuse_program(w, ps, "vertex END token malformed");
+        w = vs;
+        w[vs_at.back()] |= 0x0f000000u;
+        refuse_program(w, ps, "vertex instruction length overruns END");
         // Block depth: the last executable instruction before the position dots
         // becomes `if b0` (opcode 0x28, one boolean constant source, padded with
         // nops) with no `endif`, so the dots, the arithmetic insert and END sit
         // inside a block.
         std::size_t before_dots = 0;
-        for (auto i : vs_at) if (i >= D && i < row.position_dp4_dwords[0] && executable(vs[i]) && length(vs[i]) >= 1) before_dots = i;
+        for (auto i : vs_at)
+            if (i >= D && i < row.position_dp4_dwords[0] && executable(vs[i]) && length(vs[i]) >= 1) before_dots = i;
         require(before_dots != 0, "no executable instruction before the position dots");
-        w = vs; w[before_dots] = 0x01000028u; w[before_dots + 1] = 0xe0e40800u;
+        w = vs;
+        w[before_dots] = 0x01000028u;
+        w[before_dots + 1] = 0xe0e40800u;
         for (std::size_t k = 2; k <= length(vs[before_dots]); ++k) w[before_dots + k] = 0u;
         refuse_program(w, ps, "unterminated if before the position dots");
         // Non-adjacent quads: the instructions between the first dot and the
@@ -453,13 +721,23 @@ static void test_row(unsigned index, const MotionOutputProfile& row, const Words
         // mask) nor form a block boundary, even a balanced if/endif pair that
         // leaves the depth unchanged at every dot.
         if (!contiguous) {
-            const auto between = find(vs_at, [&](std::size_t i) { return i > row.position_dp4_dwords[0] && i < A && !is_dp4(i) && executable(vs[i]) && length(vs[i]) >= 1 && direct(vs[i + 1], 0); });
+            const auto between = find(vs_at, [&](std::size_t i) {
+                return i > row.position_dp4_dwords[0] && i < A && !is_dp4(i) && executable(vs[i]) &&
+                       length(vs[i]) >= 1 && direct(vs[i + 1], 0);
+            });
             require(between != 0, "non-adjacent quad without an instruction between the dots");
-            w = vs; w[between + 1] = with_index(w[between + 1], row.position_temporary) & ~0x000f0000u; w[between + 1] |= 0x00010000u; // .x only
+            w = vs;
+            w[between + 1] = with_index(w[between + 1], row.position_temporary) & ~0x000f0000u;
+            w[between + 1] |= 0x00010000u; // .x only
             refuse_program(w, ps, "position temporary written between the dots");
-            const auto wide = find(vs_at, [&](std::size_t i) { return i > row.position_dp4_dwords[0] && i < A && !is_dp4(i) && executable(vs[i]) && length(vs[i]) >= 2; });
+            const auto wide = find(vs_at, [&](std::size_t i) {
+                return i > row.position_dp4_dwords[0] && i < A && !is_dp4(i) && executable(vs[i]) && length(vs[i]) >= 2;
+            });
             require(wide != 0, "non-adjacent quad without a two-operand instruction between the dots");
-            w = vs; w[wide] = 0x01000028u; w[wide + 1] = 0xe0e40800u; w[wide + 2] = 0x2bu; // if b0 / endif, balanced
+            w = vs;
+            w[wide] = 0x01000028u;
+            w[wide + 1] = 0xe0e40800u;
+            w[wide + 2] = 0x2bu; // if b0 / endif, balanced
             for (std::size_t k = 3; k <= length(vs[wide]); ++k) w[wide + k] = 0u;
             refuse_program(w, ps, "block boundary between the dots");
         }
@@ -468,38 +746,85 @@ static void test_row(unsigned index, const MotionOutputProfile& row, const Words
     {
         const auto definition = find(ps_at, [&](std::size_t i) { return i < Pd && opcode(ps[i]) == 0x51; });
         auto w = ps;
-        if (definition) { w = ps; w[definition + 1] = with_index(w[definition + 1], row.pixel_constant_base); refuse_program(vs, w, "ABI constant defined"); }
-        else skip("ABI constant defined");
-        const auto input = find(ps_at, [&](std::size_t i) { return i >= Pd && i < Pc && opcode(ps[i]) == 0x1f && direct(ps[i + 2], 1); });
+        if (definition) {
+            w = ps;
+            w[definition + 1] = with_index(w[definition + 1], row.pixel_constant_base);
+            refuse_program(vs, w, "ABI constant defined");
+        } else
+            skip("ABI constant defined");
+        const auto input = find(
+            ps_at, [&](std::size_t i) { return i >= Pd && i < Pc && opcode(ps[i]) == 0x1f && direct(ps[i + 2], 1); });
         require(input != 0, "no pixel input declaration");
-        w = ps; w[input + 2] = with_index(w[input + 2], row.pixel_input_register); refuse_program(vs, w, "chosen input register declared");
-        w = ps; w[input + 1] = (w[input + 1] & ~0xf001fu) | 5u | (std::uint32_t(row.texcoord_index) << 16); refuse_program(vs, w, "chosen TEXCOORD index declared as input");
+        w = ps;
+        w[input + 2] = with_index(w[input + 2], row.pixel_input_register);
+        refuse_program(vs, w, "chosen input register declared");
+        w = ps;
+        w[input + 1] = (w[input + 1] & ~0xf001fu) | 5u | (std::uint32_t(row.texcoord_index) << 16);
+        refuse_program(vs, w, "chosen TEXCOORD index declared as input");
         if (pixel_depth) {
-            w = ps; w[input + 2] = with_index(w[input + 2], row.pixel_depth_input_register); refuse_program(vs, w, "chosen depth input register declared");
-            w = ps; w[input + 1] = (w[input + 1] & ~0xf001fu) | 5u | (std::uint32_t(row.depth_texcoord_index) << 16); refuse_program(vs, w, "chosen depth TEXCOORD index declared as input");
+            w = ps;
+            w[input + 2] = with_index(w[input + 2], row.pixel_depth_input_register);
+            refuse_program(vs, w, "chosen depth input register declared");
+            w = ps;
+            w[input + 1] = (w[input + 1] & ~0xf001fu) | 5u | (std::uint32_t(row.depth_texcoord_index) << 16);
+            refuse_program(vs, w, "chosen depth TEXCOORD index declared as input");
         }
-        w = ps; w[input] = (w[input] & ~0xffffu) | 0x51u; refuse_program(vs, w, "definition between the pixel inserts");
-        const auto writes_temporary = find(ps_at, [&](std::size_t i) { return i >= Pc && executable(ps[i]) && length(ps[i]) >= 1 && direct(ps[i + 1], 0); });
-        if (writes_temporary) { w = ps; w[writes_temporary + 1] = with_index(w[writes_temporary + 1], row.pixel_temporary_base); refuse_program(vs, w, "chosen temporary written"); }
-        else skip("chosen temporary written");
+        w = ps;
+        w[input] = (w[input] & ~0xffffu) | 0x51u;
+        refuse_program(vs, w, "definition between the pixel inserts");
+        const auto writes_temporary = find(ps_at, [&](std::size_t i) {
+            return i >= Pc && executable(ps[i]) && length(ps[i]) >= 1 && direct(ps[i + 1], 0);
+        });
+        if (writes_temporary) {
+            w = ps;
+            w[writes_temporary + 1] = with_index(w[writes_temporary + 1], row.pixel_temporary_base);
+            refuse_program(vs, w, "chosen temporary written");
+        } else
+            skip("chosen temporary written");
         std::size_t constant_operand = 0;
-        const auto reads_constant = find(ps_at, [&](std::size_t i) { return i >= Pc && (constant_operand = operand_of(ps, i, [](std::uint32_t t) { return direct(t, 2); })) != 0; });
+        const auto reads_constant = find(ps_at, [&](std::size_t i) {
+            return i >= Pc && (constant_operand = operand_of(ps, i, [](std::uint32_t t) { return direct(t, 2); })) != 0;
+        });
         if (reads_constant) {
-            w = ps; w[reads_constant + constant_operand] = with_index(w[reads_constant + constant_operand], row.pixel_constant_base); refuse_program(vs, w, "ABI constant read");
-            w = ps; w[reads_constant + constant_operand] |= 0x2000u; refuse_program(vs, w, "relative addressing in the pixel program");
-        } else { skip("ABI constant read"); skip("relative addressing in the pixel program"); }
-        const auto writes_color = find(ps_at, [&](std::size_t i) { return i >= Pc && executable(ps[i]) && length(ps[i]) >= 1 && direct(ps[i + 1], 8); });
+            w = ps;
+            w[reads_constant + constant_operand] = with_index(w[reads_constant + constant_operand],
+                                                              row.pixel_constant_base);
+            refuse_program(vs, w, "ABI constant read");
+            w = ps;
+            w[reads_constant + constant_operand] |= 0x2000u;
+            refuse_program(vs, w, "relative addressing in the pixel program");
+        } else {
+            skip("ABI constant read");
+            skip("relative addressing in the pixel program");
+        }
+        const auto writes_color = find(ps_at, [&](std::size_t i) {
+            return i >= Pc && executable(ps[i]) && length(ps[i]) >= 1 && direct(ps[i + 1], 8);
+        });
         require(writes_color != 0, "no color output write");
-        w = ps; w[writes_color + 1] = with_index(w[writes_color + 1], row.pixel_output_register); refuse_program(vs, w, "motion color output written");
-        if (pixel_depth) { w = ps; w[writes_color + 1] = with_index(w[writes_color + 1], MaterialMotionAbi::depth_render_target); refuse_program(vs, w, "depth color output written"); }
-        w = ps; w[writes_color + 1] = (w[writes_color + 1] & ~0x70001fffu) | (1u << 28) | 0x800u; refuse_program(vs, w, "oDepth written");
+        w = ps;
+        w[writes_color + 1] = with_index(w[writes_color + 1], row.pixel_output_register);
+        refuse_program(vs, w, "motion color output written");
+        if (pixel_depth) {
+            w = ps;
+            w[writes_color + 1] = with_index(w[writes_color + 1], MaterialMotionAbi::depth_render_target);
+            refuse_program(vs, w, "depth color output written");
+        }
+        w = ps;
+        w[writes_color + 1] = (w[writes_color + 1] & ~0x70001fffu) | (1u << 28) | 0x800u;
+        refuse_program(vs, w, "oDepth written");
         const auto first = find(ps_at, [&](std::size_t i) { return i >= Pc && executable(ps[i]); });
         require(first != 0, "no executable pixel instruction");
         for (auto op : {0x41u, 0x28u, 0x60u, 0x51u}) { // texkill, if (wrong length), breakp, def
-            w = ps; w[first] = (w[first] & ~0xffffu) | op; refuse_program(vs, w, "refused pixel opcode");
+            w = ps;
+            w[first] = (w[first] & ~0xffffu) | op;
+            refuse_program(vs, w, "refused pixel opcode");
         }
-        w = ps; w[first] |= 0x10000000u; refuse_program(vs, w, "predicated pixel instruction");
-        w = ps; w.back() = 0x0001ffffu; refuse_program(vs, w, "pixel END token malformed");
+        w = ps;
+        w[first] |= 0x10000000u;
+        refuse_program(vs, w, "predicated pixel instruction");
+        w = ps;
+        w.back() = 0x0001ffffu;
+        refuse_program(vs, w, "pixel END token malformed");
         // Static branch tokens built from the documented encoding: `if b0` is
         // opcode 0x28 with one source, a boolean constant register (type 14).
         const std::uint32_t if_token = 0x01000028u, b0 = 0xe0e40800u, else_token = 0x2au, endif_token = 0x2bu, nop = 0u;
@@ -508,7 +833,9 @@ static void test_row(unsigned index, const MotionOutputProfile& row, const Words
         auto block_at = [&](Words& target, std::size_t i, std::uint32_t condition) {
             require(executable(target[i]) && length(target[i]) >= 2);
             const auto n = length(target[i]);
-            target[i] = if_token; target[i + 1] = condition; target[i + 2] = endif_token;
+            target[i] = if_token;
+            target[i + 1] = condition;
+            target[i + 2] = endif_token;
             for (std::size_t k = 3; k <= n; ++k) target[i + k] = nop;
         };
         if (damage) {
@@ -518,10 +845,9 @@ static void test_row(unsigned index, const MotionOutputProfile& row, const Words
             // initializer, one-body and output opcode/destination words refuses.
             require(detail::damage_pixel_structure(row, ps.data(), ps.size()), "native damage contract");
             const bool two_sided = row.pixel_fingerprint == 0x31445adb0a62d134ull;
-            const std::size_t flow[] = {two_sided ? 1411u : 1389u, two_sided ? 1417u : 1395u,
-                two_sided ? 1436u : 1418u, two_sided ? 1442u : 1424u,
-                two_sided ? 1627u : 1601u, two_sided ? 1689u : 1663u,
-                two_sided ? 1701u : 1675u};
+            const std::size_t flow[] = {two_sided ? 1411u : 1389u, two_sided ? 1417u : 1395u, two_sided ? 1436u : 1418u,
+                                        two_sided ? 1442u : 1424u, two_sided ? 1627u : 1601u, two_sided ? 1689u : 1663u,
+                                        two_sided ? 1701u : 1675u};
             std::vector<std::size_t> critical(std::begin(flow), std::end(flow));
             for (auto i : {flow[0] + 1, flow[2] + 1, flow[2] + 2, flow[4] + 1}) critical.push_back(i);
             for (unsigned k = 3; k < 6; ++k) critical.push_back(flow[2] + k);
@@ -531,72 +857,133 @@ static void test_row(unsigned index, const MotionOutputProfile& row, const Words
                 for (unsigned k = 0; k < 2; ++k) critical.push_back(i + k);
             for (unsigned k = 0; k < 6; ++k) critical.push_back(1313 + k);
             require(critical.size() == 34, "damage critical token inventory");
-            for (auto i : critical) for (unsigned bit = 0; bit < 32; ++bit) {
-                w = ps; w[i] ^= 1u << bit;
-                require(!detail::damage_pixel_structure(row, w.data(), w.size()), "damage direct contract mutation");
-                refuse_program(vs, w, "damage token contract mutation");
-            }
+            for (auto i : critical)
+                for (unsigned bit = 0; bit < 32; ++bit) {
+                    w = ps;
+                    w[i] ^= 1u << bit;
+                    require(!detail::damage_pixel_structure(row, w.data(), w.size()),
+                            "damage direct contract mutation");
+                    refuse_program(vs, w, "damage token contract mutation");
+                }
             // A valid-looking replacement outside the owned flow sites must
             // still refuse: no extra IFC/IF, kill, loop, return or predicate.
-            for (auto op : {0x19u, 0x1au, 0x1bu, 0x1cu, 0x1du, 0x1eu, 0x26u, 0x27u,
-                            0x28u, 0x29u, 0x2au, 0x2bu, 0x2cu, 0x2du, 0x41u, 0x5eu, 0x60u}) {
-                w = ps; w[first] = (w[first] & ~0xffffu) | op;
+            for (auto op : {0x19u, 0x1au, 0x1bu, 0x1cu, 0x1du, 0x1eu, 0x26u, 0x27u, 0x28u, 0x29u, 0x2au, 0x2bu, 0x2cu,
+                            0x2du, 0x41u, 0x5eu, 0x60u}) {
+                w = ps;
+                w[first] = (w[first] & ~0xffffu) | op;
                 require(!detail::damage_pixel_structure(row, w.data(), w.size()), "damage extra flow");
                 refuse_program(vs, w, "damage extra flow refused");
             }
-            w = ps; w[first] |= 0x40000000u;
+            w = ps;
+            w[first] |= 0x40000000u;
             require(!detail::damage_pixel_structure(row, w.data(), w.size()), "damage coissue");
             refuse_program(vs, w, "damage coissue refused");
         } else if (!branching) {
             // A well-formed static branch is still outside classes A and B.
-            const auto wide = find(ps_at, [&](std::size_t i) { return i >= Pc && executable(ps[i]) && length(ps[i]) >= 2; });
+            const auto wide = find(ps_at,
+                                   [&](std::size_t i) { return i >= Pc && executable(ps[i]) && length(ps[i]) >= 2; });
             require(wide != 0, "no two-operand pixel instruction");
-            w = ps; block_at(w, wide, b0); refuse_program(vs, w, "static branch in a straight-line class");
+            w = ps;
+            block_at(w, wide, b0);
+            refuse_program(vs, w, "static branch in a straight-line class");
         } else {
             // Class C: the archive programs hold one or two `if b#`/`else`/
             // `endif` blocks (the captured four hold two), in order.
             std::vector<std::size_t> flow;
-            for (auto i : ps_at) if (i >= Pc && (opcode(ps[i]) == 0x28 || opcode(ps[i]) == 0x2a || opcode(ps[i]) == 0x2b)) flow.push_back(i);
+            for (auto i : ps_at)
+                if (i >= Pc && (opcode(ps[i]) == 0x28 || opcode(ps[i]) == 0x2a || opcode(ps[i]) == 0x2b))
+                    flow.push_back(i);
             require(flow.size() == 3 || flow.size() == 6, "class C program does not hold one or two blocks");
             const bool two_blocks = flow.size() == 6;
             const std::size_t i1 = flow[0], e1 = flow[1], d1 = flow[2];
-            const std::size_t i2 = two_blocks ? flow[3] : i1, e2 = two_blocks ? flow[4] : e1, d2 = two_blocks ? flow[5] : d1;
+            const std::size_t i2 = two_blocks ? flow[3] : i1, e2 = two_blocks ? flow[4] : e1,
+                              d2 = two_blocks ? flow[5] : d1;
             for (auto i : {i1, i2}) require(ps[i] == if_token && direct(ps[i + 1], 14), "if b# shape");
             for (auto i : {e1, e2}) require(ps[i] == else_token, "else shape");
             for (auto i : {d1, d2}) require(ps[i] == endif_token, "endif shape");
-            w = ps; w[d2] = nop; refuse_program(vs, w, "endif missing: depth 1 at END");
-            w = ps; w[i1] = endif_token; w[i1 + 1] = nop; refuse_program(vs, w, "endif without if");
-            w = ps; w[i1] = else_token; w[i1 + 1] = nop; refuse_program(vs, w, "else without if");
-            if (two_blocks) { w = ps; w[d1] = else_token; w[i2] = endif_token; w[i2 + 1] = nop; }
-            else { // An executable instruction of the else branch becomes a second `else`.
+            w = ps;
+            w[d2] = nop;
+            refuse_program(vs, w, "endif missing: depth 1 at END");
+            w = ps;
+            w[i1] = endif_token;
+            w[i1 + 1] = nop;
+            refuse_program(vs, w, "endif without if");
+            w = ps;
+            w[i1] = else_token;
+            w[i1 + 1] = nop;
+            refuse_program(vs, w, "else without if");
+            if (two_blocks) {
+                w = ps;
+                w[d1] = else_token;
+                w[i2] = endif_token;
+                w[i2 + 1] = nop;
+            } else { // An executable instruction of the else branch becomes a second `else`.
                 const auto inside = find(ps_at, [&](std::size_t i) { return i > e1 && i < d1 && executable(ps[i]); });
                 require(inside != 0, "no executable instruction in the else branch");
-                w = ps; w[inside] = else_token; for (std::size_t k = 1; k <= length(ps[inside]); ++k) w[inside + k] = nop;
+                w = ps;
+                w[inside] = else_token;
+                for (std::size_t k = 1; k <= length(ps[inside]); ++k) w[inside + k] = nop;
             }
             refuse_program(vs, w, "second else in one block");
-            const auto inner = find(ps_at, [&](std::size_t i) { return i > i1 && i < e1 && executable(ps[i]) && length(ps[i]) >= 2; });
+            const auto inner = find(
+                ps_at, [&](std::size_t i) { return i > i1 && i < e1 && executable(ps[i]) && length(ps[i]) >= 2; });
             require(inner != 0, "no two-operand instruction inside the first block");
-            w = ps; block_at(w, inner, ps[i1 + 1]); refuse_program(vs, w, "nested block: depth 2");
-            w = ps; w[i1] = (w[i1] & ~0xffffu) | 0x29u; refuse_program(vs, w, "if_comp opcode");
-            w = ps; w[i1] = (w[i1] & ~0xffffu) | 0x26u; refuse_program(vs, w, "rep opcode");
-            w = ps; w[e1] = 0x2cu; refuse_program(vs, w, "break replacing else");
-            w = ps; w[e1] = 0x60u; refuse_program(vs, w, "breakp replacing else");
-            w = ps; w[i1 + 1] = (w[i1 + 1] & ~0x70001800u) | 0x20000000u; refuse_program(vs, w, "if on a float constant, not b#");
-            w = ps; w[i1 + 1] |= 0x2000u; refuse_program(vs, w, "relatively addressed condition");
-            w = ps; w[i1] = 0x02000028u; refuse_program(vs, w, "if with two operands");
-            w = ps; w[i1] |= 0x10000000u; refuse_program(vs, w, "predicated if");
+            w = ps;
+            block_at(w, inner, ps[i1 + 1]);
+            refuse_program(vs, w, "nested block: depth 2");
+            w = ps;
+            w[i1] = (w[i1] & ~0xffffu) | 0x29u;
+            refuse_program(vs, w, "if_comp opcode");
+            w = ps;
+            w[i1] = (w[i1] & ~0xffffu) | 0x26u;
+            refuse_program(vs, w, "rep opcode");
+            w = ps;
+            w[e1] = 0x2cu;
+            refuse_program(vs, w, "break replacing else");
+            w = ps;
+            w[e1] = 0x60u;
+            refuse_program(vs, w, "breakp replacing else");
+            w = ps;
+            w[i1 + 1] = (w[i1 + 1] & ~0x70001800u) | 0x20000000u;
+            refuse_program(vs, w, "if on a float constant, not b#");
+            w = ps;
+            w[i1 + 1] |= 0x2000u;
+            refuse_program(vs, w, "relatively addressed condition");
+            w = ps;
+            w[i1] = 0x02000028u;
+            refuse_program(vs, w, "if with two operands");
+            w = ps;
+            w[i1] |= 0x10000000u;
+            refuse_program(vs, w, "predicated if");
             // Register checks reach the branch bodies: reserved registers used
             // inside a block refuse exactly as outside.
-            const auto branch_temporary = find(ps_at, [&](std::size_t i) { return i > i1 && i < e1 && executable(ps[i]) && length(ps[i]) >= 1 && direct(ps[i + 1], 0); });
-            if (branch_temporary) { w = ps; w[branch_temporary + 1] = with_index(w[branch_temporary + 1], row.pixel_temporary_base); refuse_program(vs, w, "chosen temporary written inside a branch"); }
-            else skip("chosen temporary written inside a branch");
+            const auto branch_temporary = find(ps_at, [&](std::size_t i) {
+                return i > i1 && i < e1 && executable(ps[i]) && length(ps[i]) >= 1 && direct(ps[i + 1], 0);
+            });
+            if (branch_temporary) {
+                w = ps;
+                w[branch_temporary + 1] = with_index(w[branch_temporary + 1], row.pixel_temporary_base);
+                refuse_program(vs, w, "chosen temporary written inside a branch");
+            } else
+                skip("chosen temporary written inside a branch");
             std::size_t branch_operand = 0;
-            const auto branch_constant = find(ps_at, [&](std::size_t i) { return i > i1 && i < d1 && (branch_operand = operand_of(ps, i, [](std::uint32_t t) { return direct(t, 2); })) != 0; });
-            if (branch_constant) { w = ps; w[branch_constant + branch_operand] = with_index(w[branch_constant + branch_operand], row.pixel_constant_base); refuse_program(vs, w, "ABI constant read inside a branch"); }
-            else skip("ABI constant read inside a branch");
+            const auto branch_constant = find(ps_at, [&](std::size_t i) {
+                return i > i1 && i < d1 &&
+                       (branch_operand = operand_of(ps, i, [](std::uint32_t t) { return direct(t, 2); })) != 0;
+            });
+            if (branch_constant) {
+                w = ps;
+                w[branch_constant + branch_operand] = with_index(w[branch_constant + branch_operand],
+                                                                 row.pixel_constant_base);
+                refuse_program(vs, w, "ABI constant read inside a branch");
+            } else
+                skip("ABI constant read inside a branch");
         }
     }
-    require(program_perturbations + skipped.size() == (damage ? 1131u : branching ? 40u : 26u) + (contiguous ? 0u : 2u) + 2 * vd + 3 * pd);
+    require(program_perturbations + skipped.size() == (damage      ? 1131u
+                                                       : branching ? 40u
+                                                                   : 26u) +
+                                                          (contiguous ? 0u : 2u) + 2 * vd + 3 * pd);
     require(row.observed_scene_draws == 0 || skipped.empty(), "a captured row offers every perturbation site");
     passed(index, "program_perturbations_refused_by_revalidation");
     // Single-bit mutation sweep: every bit of every input DWORD for the rows
@@ -615,38 +1002,59 @@ static void test_row(unsigned index, const MotionOutputProfile& row, const Words
             const std::size_t i = position / 32;
             const unsigned bit = unsigned(position % 32);
             changed[i] ^= std::uint32_t(1) << bit;
-            refuse(stage ? vs.data() : changed.data(), vs.size(), stage ? changed.data() : ps.data(), ps.size(), MaterialMotionResult::UnsupportedShader);
-            changed[i] ^= std::uint32_t(1) << bit; ++mutations;
+            refuse(stage ? vs.data() : changed.data(), vs.size(), stage ? changed.data() : ps.data(), ps.size(),
+                   MaterialMotionResult::UnsupportedShader);
+            changed[i] ^= std::uint32_t(1) << bit;
+            ++mutations;
         }
         require(changed == (stage ? ps : vs), "mutation sweep left the program changed");
     }
     require(mutations == (full_sweep ? (vs.size() + ps.size()) * 32 : 2 * sampled_mutations));
     mutations_total += mutations;
-    passed(index, full_sweep ? "every_input_dword_every_bit_atomic_refusals"
-                             : "sampled_input_bit_atomic_refusals");
+    passed(index, full_sweep ? "every_input_dword_every_bit_atomic_refusals" : "sampled_input_bit_atomic_refusals");
     // All single-vector directions plus simultaneous ordinary/cross aliases.
     for (unsigned mode = 0; mode != 6; ++mode) {
         auto target = sentinel;
         const std::uint32_t *v = vs.data(), *p = ps.data();
-        if (mode == 0 || mode == 4) { target.vertex = vs; v = target.vertex.data(); }
-        if (mode == 1 || mode == 5) { target.pixel = vs; v = target.pixel.data(); }
-        if (mode == 2 || mode == 5) { target.vertex = ps; p = target.vertex.data(); }
-        if (mode == 3 || mode == 4) { target.pixel = ps; p = target.pixel.data(); }
-        require(material_motion_variant(v, vs.size(), p, ps.size(), target) == MaterialMotionResult::Applied && same(target, output));
+        if (mode == 0 || mode == 4) {
+            target.vertex = vs;
+            v = target.vertex.data();
+        }
+        if (mode == 1 || mode == 5) {
+            target.pixel = vs;
+            v = target.pixel.data();
+        }
+        if (mode == 2 || mode == 5) {
+            target.vertex = ps;
+            p = target.vertex.data();
+        }
+        if (mode == 3 || mode == 4) {
+            target.pixel = ps;
+            p = target.pixel.data();
+        }
+        require(material_motion_variant(v, vs.size(), p, ps.size(), target) == MaterialMotionResult::Applied &&
+                same(target, output));
     }
     aliases_total += 6;
     passed(index, "six_input_output_alias_layouts_applied");
-    auto bad_alias = MaterialMotionVariant{ps, vs}; const auto saved = bad_alias;
-    require(material_motion_variant(bad_alias.pixel.data(), vs.size() - 1, bad_alias.vertex.data(), ps.size(), bad_alias) == MaterialMotionResult::UnsupportedShader && same(bad_alias, saved));
+    auto bad_alias = MaterialMotionVariant{ps, vs};
+    const auto saved = bad_alias;
+    require(material_motion_variant(bad_alias.pixel.data(), vs.size() - 1, bad_alias.vertex.data(), ps.size(),
+                                    bad_alias) == MaterialMotionResult::UnsupportedShader &&
+            same(bad_alias, saved));
     passed(index, "cross_alias_refusal_atomic");
     (full_sweep ? full_sweeps : sampled_sweeps) += 1;
     for (const auto& label : skipped) std::printf("SKIPPED row=%u perturbation=%s\n", index, label.c_str());
-    std::printf("ROW index=%u vs=%016llx ps=%016llx class=%c status=PASS vertex_words=%zu pixel_words=%zu mutations=%zu sweep=%s program_perturbations=%u skipped=%zu quad=%s depth=%u\n",
-                index, static_cast<unsigned long long>(row.vertex_fingerprint), static_cast<unsigned long long>(row.pixel_fingerprint),
-                row.transformation_class == MotionOutputClass::ReferenceRegisters ? 'A' :
-                row.transformation_class == MotionOutputClass::RelocatedRegisters ? 'B' : damage ? 'D' : 'C',
-                output.vertex.size(), output.pixel.size(), mutations, full_sweep ? "full" : "sampled", program_perturbations, skipped.size(), contiguous ? "adjacent" : "spaced",
-                unsigned(vd + pd));
+    std::printf(
+        "ROW index=%u vs=%016llx ps=%016llx class=%c status=PASS vertex_words=%zu pixel_words=%zu mutations=%zu sweep=%s program_perturbations=%u skipped=%zu quad=%s depth=%u\n",
+        index, static_cast<unsigned long long>(row.vertex_fingerprint),
+        static_cast<unsigned long long>(row.pixel_fingerprint),
+        row.transformation_class == MotionOutputClass::ReferenceRegisters   ? 'A'
+        : row.transformation_class == MotionOutputClass::RelocatedRegisters ? 'B'
+        : damage                                                            ? 'D'
+                                                                            : 'C',
+        output.vertex.size(), output.pixel.size(), mutations, full_sweep ? "full" : "sampled", program_perturbations,
+        skipped.size(), contiguous ? "adjacent" : "spaced", unsigned(vd + pd));
 }
 
 // The route's binary-search lookups against a linear scan of the same table,
@@ -660,7 +1068,7 @@ static void test_table_lookups() {
     std::uint64_t min_vs = ~0ull, max_vs = 0, min_ps = ~0ull, max_ps = 0;
     const auto pair_less = [](const MotionOutputProfile& a, const MotionOutputProfile& b) {
         return a.vertex_fingerprint < b.vertex_fingerprint ||
-            (a.vertex_fingerprint == b.vertex_fingerprint && a.pixel_fingerprint < b.pixel_fingerprint);
+               (a.vertex_fingerprint == b.vertex_fingerprint && a.pixel_fingerprint < b.pixel_fingerprint);
     };
     const auto linear_pair = [](std::uint64_t vs, std::uint64_t ps) -> const MotionOutputProfile* {
         for (const auto& row : motion_output_profiles)
@@ -671,22 +1079,33 @@ static void test_table_lookups() {
     for (const auto& row : motion_output_profiles) {
         if (pair_less(row, *first)) first = &row;
         if (pair_less(*last, row)) last = &row;
-        min_vs = std::min(min_vs, row.vertex_fingerprint); max_vs = std::max(max_vs, row.vertex_fingerprint);
-        min_ps = std::min(min_ps, row.pixel_fingerprint); max_ps = std::max(max_ps, row.pixel_fingerprint);
-        require(material_motion_profile(row.vertex_fingerprint, row.pixel_fingerprint) == &row, "pair lookup misses a row");
+        min_vs = std::min(min_vs, row.vertex_fingerprint);
+        max_vs = std::max(max_vs, row.vertex_fingerprint);
+        min_ps = std::min(min_ps, row.pixel_fingerprint);
+        max_ps = std::max(max_ps, row.pixel_fingerprint);
+        require(material_motion_profile(row.vertex_fingerprint, row.pixel_fingerprint) == &row,
+                "pair lookup misses a row");
         require(material_motion_pair_reviewed(row.vertex_fingerprint, row.pixel_fingerprint), "row pair not reviewed");
         const auto* vertex = material_motion_vertex_row(row.vertex_fingerprint, row.vertex_dword_count);
         const auto* pixel = material_motion_pixel_row(row.pixel_fingerprint, row.pixel_dword_count);
-        require(vertex && vertex->vertex_fingerprint == row.vertex_fingerprint && motion_output_vertex_sides_agree(*vertex, row), "vertex row lookup");
-        require(pixel && pixel->pixel_fingerprint == row.pixel_fingerprint && motion_output_pixel_sides_agree(*pixel, row), "pixel row lookup");
+        require(vertex && vertex->vertex_fingerprint == row.vertex_fingerprint &&
+                    motion_output_vertex_sides_agree(*vertex, row),
+                "vertex row lookup");
+        require(pixel && pixel->pixel_fingerprint == row.pixel_fingerprint &&
+                    motion_output_pixel_sides_agree(*pixel, row),
+                "pixel row lookup");
         require(vertex <= &row && pixel <= &row, "per-stage lookup must return the first row in table order");
         require(!material_motion_vertex_row(row.vertex_fingerprint, row.vertex_dword_count + 1) &&
-                !material_motion_pixel_row(row.pixel_fingerprint, row.pixel_dword_count + 1), "wrong length must not match");
-        for (const auto vs : {row.vertex_fingerprint, row.vertex_fingerprint ^ 1, row.vertex_fingerprint + 1, row.vertex_fingerprint - 1})
-            for (const auto ps : {row.pixel_fingerprint, row.pixel_fingerprint ^ 1, row.pixel_fingerprint + 1, row.pixel_fingerprint - 1}) {
+                    !material_motion_pixel_row(row.pixel_fingerprint, row.pixel_dword_count + 1),
+                "wrong length must not match");
+        for (const auto vs : {row.vertex_fingerprint, row.vertex_fingerprint ^ 1, row.vertex_fingerprint + 1,
+                              row.vertex_fingerprint - 1})
+            for (const auto ps : {row.pixel_fingerprint, row.pixel_fingerprint ^ 1, row.pixel_fingerprint + 1,
+                                  row.pixel_fingerprint - 1}) {
                 const auto* expected = linear_pair(vs, ps);
                 require(material_motion_profile(vs, ps) == expected, "pair search disagrees with the linear scan");
-                require(material_motion_pair_reviewed(vs, ps) == (expected != nullptr), "pair review disagrees with the linear scan");
+                require(material_motion_pair_reviewed(vs, ps) == (expected != nullptr),
+                        "pair review disagrees with the linear scan");
                 absent += expected == nullptr;
             }
     }
@@ -694,21 +1113,36 @@ static void test_table_lookups() {
     require(material_motion_profile(last->vertex_fingerprint, last->pixel_fingerprint) == last, "last pair");
     require(!material_motion_profile(first->vertex_fingerprint, first->pixel_fingerprint - 1), "below the first pair");
     require(!material_motion_profile(last->vertex_fingerprint, last->pixel_fingerprint + 1), "above the last pair");
-    require(!material_motion_profile(min_vs - 1, first->pixel_fingerprint) && !material_motion_profile(max_vs + 1, last->pixel_fingerprint), "outside the vertex range");
+    require(!material_motion_profile(min_vs - 1, first->pixel_fingerprint) &&
+                !material_motion_profile(max_vs + 1, last->pixel_fingerprint),
+            "outside the vertex range");
     for (const auto vs : {min_vs, max_vs}) {
         const MotionOutputProfile* expected = nullptr;
-        for (const auto& row : motion_output_profiles) if (row.vertex_fingerprint == vs) { expected = &row; break; }
-        require(expected && material_motion_vertex_row(vs, expected->vertex_dword_count) == expected, "vertex range boundary");
+        for (const auto& row : motion_output_profiles)
+            if (row.vertex_fingerprint == vs) {
+                expected = &row;
+                break;
+            }
+        require(expected && material_motion_vertex_row(vs, expected->vertex_dword_count) == expected,
+                "vertex range boundary");
     }
     for (const auto ps : {min_ps, max_ps}) {
         const MotionOutputProfile* expected = nullptr;
-        for (const auto& row : motion_output_profiles) if (row.pixel_fingerprint == ps) { expected = &row; break; }
-        require(expected && material_motion_pixel_row(ps, expected->pixel_dword_count) == expected, "pixel range boundary");
+        for (const auto& row : motion_output_profiles)
+            if (row.pixel_fingerprint == ps) {
+                expected = &row;
+                break;
+            }
+        require(expected && material_motion_pixel_row(ps, expected->pixel_dword_count) == expected,
+                "pixel range boundary");
     }
     require(!material_motion_vertex_row(min_vs - 1, 526) && !material_motion_vertex_row(max_vs + 1, 526) &&
-            !material_motion_pixel_row(min_ps - 1, 1260) && !material_motion_pixel_row(max_ps + 1, 1260), "outside the per-stage ranges");
-    require(!material_motion_profile(0, first->pixel_fingerprint) && !material_motion_profile(first->vertex_fingerprint, 0) &&
-            !material_motion_profile(~0ull, ~0ull) && !material_motion_vertex_row(0, 526) && !material_motion_pixel_row(0, 1260), "zero and all-ones keys");
+                !material_motion_pixel_row(min_ps - 1, 1260) && !material_motion_pixel_row(max_ps + 1, 1260),
+            "outside the per-stage ranges");
+    require(!material_motion_profile(0, first->pixel_fingerprint) &&
+                !material_motion_profile(first->vertex_fingerprint, 0) && !material_motion_profile(~0ull, ~0ull) &&
+                !material_motion_vertex_row(0, 526) && !material_motion_pixel_row(0, 1260),
+            "zero and all-ones keys");
     std::printf("TABLE lookups=PASS rows=%zu absent_pairs=%u\n", motion_output_profile_count, absent);
 }
 
@@ -724,18 +1158,26 @@ int main(int argc, char** argv) {
             const bool have_ps = read(program_path(directory, "ps", row.pixel_fingerprint), ps);
             if (!have_vs || !have_ps) {
                 std::printf("ROW index=%u vs=%016llx ps=%016llx status=SKIP reason=missing_local_program%s%s\n", index,
-                            static_cast<unsigned long long>(row.vertex_fingerprint), static_cast<unsigned long long>(row.pixel_fingerprint),
-                            have_vs ? "" : " vs", have_ps ? "" : " ps");
-                ++skipped; ++index;
+                            static_cast<unsigned long long>(row.vertex_fingerprint),
+                            static_cast<unsigned long long>(row.pixel_fingerprint), have_vs ? "" : " vs",
+                            have_ps ? "" : " ps");
+                ++skipped;
+                ++index;
                 continue;
             }
             test_row(index, row, vs, ps);
-            ++transformed; ++index;
+            ++transformed;
+            ++index;
         }
         require(transformed + skipped == motion_output_profile_count);
         test_table_lookups();
-        std::printf("RESULT PASS rows=%zu transformed=%u skipped=%u checks=%u mutations=%zu full_sweeps=%zu sampled_sweeps=%zu aliases=%zu\n",
-                    motion_output_profile_count, transformed, skipped, checks, mutations_total, full_sweeps, sampled_sweeps, aliases_total);
+        std::printf(
+            "RESULT PASS rows=%zu transformed=%u skipped=%u checks=%u mutations=%zu full_sweeps=%zu sampled_sweeps=%zu aliases=%zu\n",
+            motion_output_profile_count, transformed, skipped, checks, mutations_total, full_sweeps, sampled_sweeps,
+            aliases_total);
         return 0;
-    } catch (const std::exception& e) { std::cerr << "RESULT FAIL " << e.what() << '\n'; return 1; }
+    } catch (const std::exception& e) {
+        std::cerr << "RESULT FAIL " << e.what() << '\n';
+        return 1;
+    }
 }

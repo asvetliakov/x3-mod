@@ -34,6 +34,7 @@ enum Index : unsigned {
     Count = 6
 };
 constexpr unsigned kSiteCount = Count;
+// clang-format off
 constexpr engine_patch::SiteSpec kSites[Count] = {
     {"loop_phase_sector_collide",0x0043a38e,{0x56,0xe8,0xbc,0x2e,0x02,0x00},6,0,2},
     {"loop_phase_sector_simulate",0x0043a394,{0x56,0xe8,0x36,0x87,0x01,0x00},6,0,2},
@@ -42,5 +43,6 @@ constexpr engine_patch::SiteSpec kSites[Count] = {
     {"loop_phase_sector_economy",0x0043a3be,{0x56,0xe8,0x1c,0xf3,0x01,0x00},6,0,2},
     {"loop_phase_sector_pass_b_end",0x0043a3ca,{0x8b,0x36,0x83,0x3e,0x00},5,0,0},
 };
-static_assert(sizeof(kSites)/sizeof(kSites[0]) == Count, "All sector stamps are one group");
+// clang-format on
+static_assert(sizeof(kSites) / sizeof(kSites[0]) == Count, "All sector stamps are one group");
 }

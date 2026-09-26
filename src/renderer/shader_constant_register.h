@@ -22,8 +22,16 @@ inline int shader_float_constant_register(const std::uint32_t* words, std::size_
         if (length >= 8 && words[at + 1] == 0x42415443u) { // 'CTAB' + the 28-byte header
             const auto* table = reinterpret_cast<const unsigned char*>(words + at + 2);
             const std::size_t bytes = (length - 1) * 4;
-            const auto dword = [&](std::size_t offset) { std::uint32_t v; std::memcpy(&v, table + offset, 4); return v; };
-            const auto word = [&](std::size_t offset) { std::uint16_t v; std::memcpy(&v, table + offset, 2); return v; };
+            const auto dword = [&](std::size_t offset) {
+                std::uint32_t v;
+                std::memcpy(&v, table + offset, 4);
+                return v;
+            };
+            const auto word = [&](std::size_t offset) {
+                std::uint16_t v;
+                std::memcpy(&v, table + offset, 2);
+                return v;
+            };
             if (dword(0) != 28) return -1;
             const std::size_t constants = dword(12), info = dword(16);
             if (constants > 4096 || info > bytes || constants * 20 > bytes - info) return -1;

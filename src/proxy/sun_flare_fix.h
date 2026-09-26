@@ -21,14 +21,14 @@
 // sun_flare_fix_restore row, written to the log handle without the capture
 // lock; foreign bytes are left alone, restore_not_owned).
 namespace x3m::sun_flare_fix {
-bool initialize();  // backend-load path only; logs one sun_flare_fix line
-bool shutdown();    // dynamic-unload detach only; true when nothing stays registered
+bool initialize(); // backend-load path only; logs one sun_flare_fix line
+bool shutdown();   // dynamic-unload detach only; true when nothing stays registered
 // Verifies the window at `window` (the engine's 0x0047e365, or a fixture's
 // copy), claims the span at window + 0x2c and pushes the stub. Returns whether
 // the patch is live; state() carries the reason either way.
 bool install_at(std::uintptr_t window);
 const char* state();
-const char* write_path();          // none|atomic|plain: which engine_patch::write_code path wrote the jump
-bool patched();                    // registered (live, or a failed rollback still to be restored)
-std::uintptr_t stub_address();     // 0 unless the stub is linked in
+const char* write_path();      // none|atomic|plain: which engine_patch::write_code path wrote the jump
+bool patched();                // registered (live, or a failed rollback still to be restored)
+std::uintptr_t stub_address(); // 0 unless the stub is linked in
 }

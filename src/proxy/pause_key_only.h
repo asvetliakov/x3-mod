@@ -25,13 +25,13 @@
 // collide_sat_sse2 and collide_memo, the latter two on by default on a modded
 // launch), which makes the FreeLibrary path unreachable.
 namespace x3m::pause_key_only {
-bool initialize();  // backend-load path only; logs one pause_key_only line when X3M_PAUSE_KEY_ONLY is set
-bool shutdown();    // restores the 12 original bytes (dynamic-unload detach only); true when nothing is installed
+bool initialize(); // backend-load path only; logs one pause_key_only line when X3M_PAUSE_KEY_ONLY is set
+bool shutdown();   // restores the 12 original bytes (dynamic-unload detach only); true when nothing is installed
 // Verifies the window at `window` (the engine's 0x004043a0, or a fixture's
 // synthetic copy) and rewrites the site with `key`. Returns whether the
 // patch is live; state() carries the reason either way.
 bool install_at(std::uintptr_t window, std::uint32_t key);
 const char* state();
-const char* write_path();  // none|atomic|plain: which engine_patch::write_code path wrote the site
-std::uint32_t key();       // the key in the live patch (0 when none)
+const char* write_path(); // none|atomic|plain: which engine_patch::write_code path wrote the site
+std::uint32_t key();      // the key in the live patch (0 when none)
 }

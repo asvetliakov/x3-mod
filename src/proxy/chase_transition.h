@@ -6,8 +6,8 @@
 // partial, destroyed and capacity-refused lifetimes fail closed (generation 0).
 namespace x3m::chase_transition {
 struct Update {
-    std::uint64_t generation=0, serial=0;
-    std::uint32_t thread=0;
+    std::uint64_t generation = 0, serial = 0;
+    std::uint32_t thread = 0;
 };
 bool initialize();
 bool installed();

@@ -22,8 +22,8 @@
 // after the exact-executable and window-byte checks, with this module pinned.
 // The claim is disjoint from the census's 0x0047d258/0x0047d528; both coexist.
 namespace x3m::cull_small_parts {
-bool initialize();  // backend-load path only; logs one cull_small_parts line when the variable is set
-bool shutdown();    // restores the site (dynamic-unload detach only); true when nothing is installed
+bool initialize(); // backend-load path only; logs one cull_small_parts line when the variable is set
+bool shutdown();   // restores the site (dynamic-unload detach only); true when nothing is installed
 // Verifies the window around the given site (the fixture passes a synthetic
 // copy of the engine bytes), claims it, emits the stub and chains it in; the
 // production initialize() passes the engine site. cull_target is the address
@@ -34,10 +34,10 @@ bool shutdown();    // restores the site (dynamic-unload detach only); true when
 // when the marker's two engine instructions are not the verified bytes).
 bool install_at(std::uintptr_t site, std::uintptr_t cull_target, bool exempt_projectiles);
 const char* state();
-bool projectiles_exempt();          // the installed stub exempts marked projectile nodes
+bool projectiles_exempt(); // the installed stub exempts marked projectile nodes
 std::uintptr_t stub_address();
 double requested_px();
-bool set_px(double px);             // the setting without a relaunch (fixture and diagnostics); false outside the band
+bool set_px(double px); // the setting without a relaunch (fixture and diagnostics); false outside the band
 // Per frame, on the thread that runs the pass: publishes the threshold for
 // this frame from the given projection scale, width and the engine's base FOV
 // (binary angle, 0x4000 = the game's default; the engine's s shrinks with it)
@@ -58,10 +58,18 @@ bool wants_scene_projection();
 void note_scene_projection(float m00, float m11);
 void begin_frame();
 void set_backbuffer_width(unsigned width);
-void after_reset(unsigned width);   // disarms until the next begin_frame
+void after_reset(unsigned width); // disarms until the next begin_frame
 // Emits the cull_small_parts_frame row for a captured frame and clears the count.
 void present(unsigned long long device, unsigned long long frame, bool captured);
-struct Stats { std::int32_t threshold; std::uint32_t culled, exempt; float m00; unsigned width; std::uint32_t focus; bool scene; unsigned fallback; };  // fallback: core::Fallback (0 none, 1 no_scene, 2 reset, 3 aged)
+struct Stats {
+    std::int32_t threshold;
+    std::uint32_t culled, exempt;
+    float m00;
+    unsigned width;
+    std::uint32_t focus;
+    bool scene;
+    unsigned fallback;
+}; // fallback: core::Fallback (0 none, 1 no_scene, 2 reset, 3 aged)
 Stats stats();
 }
 // The words the stub reads and writes: the frame's threshold in `s` units

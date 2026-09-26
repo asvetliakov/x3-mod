@@ -16,15 +16,15 @@
 // this module pinned so the detour and handler can never point into freed
 // memory; VirtualProtect/FlushInstructionCache, read-back compare, rollback.
 namespace x3m::point_light_admission {
-bool initialize();  // backend-load path only; logs one point_light_root_admission line when the variable is set
-bool shutdown();    // restores the six original bytes (dynamic-unload detach only); true when nothing is installed
+bool initialize(); // backend-load path only; logs one point_light_root_admission line when the variable is set
+bool shutdown();   // restores the six original bytes (dynamic-unload detach only); true when nothing is installed
 // Verifies the window at `site` (the fixture emits a synthetic copy of the
 // engine bytes), emits the detour and patches; the production initialize()
 // calls it with the engine site. Returns whether the patch is live; state()
 // carries the reason either way.
 bool install_at(std::uintptr_t site);
 const char* state();
-const char* write_path();      // none|atomic|plain: which engine_patch::write_code path patched the site
+const char* write_path(); // none|atomic|plain: which engine_patch::write_code path patched the site
 std::uintptr_t detour_address();
 // Bumps the frame serial of the per-(node, light) root-verdict memo without
 // logging (Reset). One relaxed increment; no other work.
@@ -37,8 +37,8 @@ void next_frame();
 void begin_frame(bool capture);
 void present(unsigned long long device, unsigned long long frame, bool captured);
 struct Stats {
-    std::uint32_t outcomes[9];              // indexed by core::Outcome; walked reject-path calls only
-    std::uint32_t walks, memo_hits, frame;  // walks + memo_hits = reject
+    std::uint32_t outcomes[9];                        // indexed by core::Outcome; walked reject-path calls only
+    std::uint32_t walks, memo_hits, frame;            // walks + memo_hits = reject
     std::uint32_t fast_admit, reject, tests, samples; // fast_admit + reject = tests (this frame so far)
 };
 Stats stats();

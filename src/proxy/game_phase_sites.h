@@ -45,6 +45,7 @@ enum Index : unsigned {
 constexpr unsigned kSiteCount = Count;
 // Native CALL/stack effects are replayed. Publisher entry/epilogue describe
 // RET4 metadata; the marker never emits an extra function return.
+// clang-format off
 constexpr engine_patch::SiteSpec kSites[Count] = {
     {"game_phase_loop_setup",0x00403ab0,{0x81,0xa0,0x08,0x01,0x00,0x00,0xff,0xbf,0xff,0xff},10,0,0},
     {"game_phase_clock",0x00403af0,{0xe8,0x0b,0xd3,0x0a,0x00},5,0,1},
@@ -80,5 +81,6 @@ constexpr engine_patch::SiteSpec kSites[Count] = {
     {"game_phase_seek_begin",0x00498f55,{0xe8,0xd6,0x74,0x03,0x00},5,0,1},
     {"game_phase_seek_end",0x00498f5a,{0x83,0xc4,0x04,0x85,0xc0},5,0,0},
 };
-static_assert(sizeof(kSites)/sizeof(kSites[0]) == Count, "All phase markers are one group");
+// clang-format on
+static_assert(sizeof(kSites) / sizeof(kSites[0]) == Count, "All phase markers are one group");
 }

@@ -15,8 +15,8 @@ enum ReadFailure : std::uint32_t { Ok = 0, Unavailable = 1, NullPointer = 2, Unr
 struct Sample {
     renderer::CameraState state;
     renderer::CameraFailure failure = renderer::CameraFailure::None; // matrix validation
-    std::uint32_t read_failure = Ok;                                  // ReadFailure
-    std::uintptr_t projection = 0, view = 0;                          // buffer addresses (diagnostics)
+    std::uint32_t read_failure = Ok;                                 // ReadFailure
+    std::uintptr_t projection = 0, view = 0;                         // buffer addresses (diagnostics)
     float projection_raw[16]{}, view_raw[16]{};
 };
 // X3M_MOTION_OUTPUT=1 and X3M_TAA=1 only; the executable identity is checked

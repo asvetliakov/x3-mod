@@ -26,12 +26,17 @@ struct Gate {
         (current ? foreign : early).fetch_add(1, std::memory_order_relaxed);
         return false;
     }
-    void reset() noexcept { owner.store(0); early.store(0); foreign.store(0); }
+    void reset() noexcept {
+        owner.store(0);
+        early.store(0);
+        foreign.store(0);
+    }
 };
 
 // Nearest-rank percentile p of values[0, count) through a caller-owned scratch
 // copy of at least `count` entries: one std::nth_element, no allocation.
-inline std::uint64_t percentile(const std::uint64_t* values, unsigned count, unsigned p, std::uint64_t* scratch) noexcept {
+inline std::uint64_t percentile(const std::uint64_t* values, unsigned count, unsigned p,
+                                std::uint64_t* scratch) noexcept {
     if (!count) return 0;
     std::copy(values, values + count, scratch);
     std::size_t index = (static_cast<std::size_t>(count) * p) / 100;

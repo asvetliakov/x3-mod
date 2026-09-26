@@ -17,13 +17,19 @@ enum class MotionPolicy { Unavailable, KnownCameraOnly, PerPixel };
 // all other values are reactive. The snapshot canonicalizes and expands by one
 // pixel before resolving color; previous snapshots must not be expanded again.
 // Incomplete coverage uses Unavailable with a null mask, which cannot seed history.
-enum class ReactivePolicy { Unavailable, KnownNonReactive, RequiredMask, DerivedFromDepthSentinel, SupplementalMaskWithDepthSentinel };
+enum class ReactivePolicy {
+    Unavailable,
+    KnownNonReactive,
+    RequiredMask,
+    DerivedFromDepthSentinel,
+    SupplementalMaskWithDepthSentinel
+};
 // What feeds the thin region's flag (X3M_TAA_THIN_REGION_SOURCE; docs/architecture/taa-thin-geometry-alternatives.md
-// section 3.2, docs/architecture/taa-mask-fold.md): Both (the value when unset) = the screen-space fragmented-depth search
-// united with the thin vote where it is cast; Vote = the vote alone (the search is skipped; the launcher's default since the
-// mask fold); Screen = the search alone, which only the screen-gate chain can still draw (its plain tests program): a
-// camera-gate run with Screen is refused. Where the vote is not cast a Vote run is a Both run (Diagnostics::thin_region_source
-// says what ran).
+// section 3.2, docs/architecture/taa-mask-fold.md): Both (the value when unset) = the screen-space fragmented-depth
+// search united with the thin vote where it is cast; Vote = the vote alone (the search is skipped; the launcher's
+// default since the mask fold); Screen = the search alone, which only the screen-gate chain can still draw (its plain
+// tests program): a camera-gate run with Screen is refused. Where the vote is not cast a Vote run is a Both run
+// (Diagnostics::thin_region_source says what ran).
 enum class ThinRegionSource : unsigned { Both = 0, Screen = 1, Vote = 2 };
 inline const char* thin_region_source_name(ThinRegionSource source) noexcept {
     return source == ThinRegionSource::Screen ? "screen" : source == ThinRegionSource::Vote ? "vote" : "both";
@@ -53,10 +59,10 @@ struct FrameInputs {
     // R32F copies directly; the wider formats point-sample .r through the configured
     // identity copy shader into R32F history. No decoder draw runs.
     IDirect3DTexture9* current_depth = nullptr;
-    IDirect3DTexture9* motion = nullptr; // RGBA32F if PerPixel; alpha ABI in temporal/README
+    IDirect3DTexture9* motion = nullptr;   // RGBA32F if PerPixel; alpha ABI in temporal/README
     IDirect3DTexture9* reactive = nullptr; // RequiredMask: R32F; Supplemental: A16B16G16R16F raw red coverage
     UINT width = 0, height = 0;
-    std::uint64_t epoch = 0; // stable camera/scene/resource regime, not frame/clear count
+    std::uint64_t epoch = 0;      // stable camera/scene/resource regime, not frame/clear count
     float clip_to_previous[16]{}; // unjittered, row-major, column-vector multiplication
     // Raster pixels, positive Y down. The camera path subtracts the current
     // jitter before the inverse projection (the motion texture is rasterized on
@@ -66,7 +72,8 @@ struct FrameInputs {
     // the previous unjittered UV).
     float current_jitter[2]{}, previous_jitter[2]{};
     float weight = .9f;
-    float rejection[4]{.0001f, .02f, 65000.f, .000001f}; // max(absolute, relative*depth) depth tolerance, HDR limit, minimum W
+    float rejection[4]{.0001f, .02f, 65000.f, .000001f}; // max(absolute, relative*depth) depth tolerance, HDR limit,
+                                                         // minimum W
     // k of the resolve's reversible luminance weighting (resolve.h, c22.x):
     // 0 (the default, the 8-bit route) is the exact identity; the HDR route
     // uploads the exposure multiplier its write-back applies to the resolved
@@ -137,30 +144,32 @@ struct FrameInputs {
     // their own carries on.
     // The box pair exists only while the gate runs: the first run without it
     // releases the pair (a configuration change, never per frame).
-    // The camera gate runs A' (docs/architecture/taa-plan-lifted-slot-cap.md step 1, the region hold; the only camera-gate
-    // path since Run 79 A) with the mask fold (docs/architecture/taa-mask-fold.md): no mask draw; the camera-gate resolve
-    // computes the per-pixel tests itself (both gates, farw, the flag: the thin vote, the fragmented-depth search, the
-    // emissive vote) from current_depth, the motion and the scene, composes the region, holds it thin_region_hold_frames after
-    // the pixel was last flagged and holds the camera gate's closure as long (its own openness the smaller of the pixel's and
-    // its nearest-depth 3x3 neighbour's; the screen gate is not held), both carried along the reprojection in the fraction of
-    // the age count (resolve.hlsl X3M_REGION_HOLD), and writes the next depth history as a third render target (R32F, the
-    // current depth's .r bit for bit): NumSimultaneousRTs >= 3 (camera_gate_available()). The box programs open on last
-    // frame's region hold and mark what they computed; where the camera term adds strength and the box did not run (a pixel's
-    // first frame in the region) the resolve takes the same 7x7 in place. Needs current_depth (a D24X8 snapshot is refused). A run that leaves
-    // the camera gate after a camera-gate run restarts the history (the other age programs read whole counts).
+    // The camera gate runs A' (docs/architecture/taa-plan-lifted-slot-cap.md step 1, the region hold; the only
+    // camera-gate path since Run 79 A) with the mask fold (docs/architecture/taa-mask-fold.md): no mask draw; the
+    // camera-gate resolve computes the per-pixel tests itself (both gates, farw, the flag: the thin vote, the
+    // fragmented-depth search, the emissive vote) from current_depth, the motion and the scene, composes the region,
+    // holds it thin_region_hold_frames after the pixel was last flagged and holds the camera gate's closure as long
+    // (its own openness the smaller of the pixel's and its nearest-depth 3x3 neighbour's; the screen gate is not held),
+    // both carried along the reprojection in the fraction of the age count (resolve.hlsl X3M_REGION_HOLD), and writes
+    // the next depth history as a third render target (R32F, the current depth's .r bit for bit): NumSimultaneousRTs >=
+    // 3 (camera_gate_available()). The box programs open on last frame's region hold and mark what they computed; where
+    // the camera term adds strength and the box did not run (a pixel's first frame in the region) the resolve takes the
+    // same 7x7 in place. Needs current_depth (a D24X8 snapshot is refused). A run that leaves the camera gate after a
+    // camera-gate run restarts the history (the other age programs read whole counts).
     bool thin_region_camera_gate = false;
-    // The hold length in frames: the jitter period (a pixel flagged in any phase stays in the region the whole cycle). 1..64,
-    // read with the camera gate only; anything else refuses the run.
+    // The hold length in frames: the jitter period (a pixel flagged in any phase stays in the region the whole
+    // cycle). 1..64, read with the camera gate only; anything else refuses the run.
     unsigned thin_region_hold_frames = 8;
-    // Thin vote (X3M_TAA_THIN_VOTE; docs/architecture/taa-thin-geometry-alternatives.md section 3.2), off by default. On, with
-    // the thin region and an A32B32G32R32F current depth, the flag is also set on a pixel whose current-depth .a (the route's
-    // 1 - thin) is in [0, 1): read by the camera-gate resolve (c10.z), or, on the screen-gate chain, by
-    // the depth-folding tests draw's twin (configure_thin_vote()). Diagnostics::thin_vote names what ran; never refuses a run.
+    // Thin vote (X3M_TAA_THIN_VOTE; docs/architecture/taa-thin-geometry-alternatives.md section 3.2), off by default.
+    // On, with the thin region and an A32B32G32R32F current depth, the flag is also set on a pixel whose current-depth
+    // .a (the route's 1 - thin) is in [0, 1): read by the camera-gate resolve (c10.z), or, on the screen-gate chain, by
+    // the depth-folding tests draw's twin (configure_thin_vote()). Diagnostics::thin_vote names what ran; never refuses
+    // a run.
     bool thin_vote = false;
-    // Source of the thin region's flag (ThinRegionSource above), read with thin_region_weight > 0 only. Vote needs the vote cast
-    // (the thin_vote conditions above) and falls back to Both without it; Screen refuses a camera-gate run and draws the plain
-    // tests program on the screen-gate chain. No extra draw, constant upload or program either way (c10.y). A value outside
-    // the enum refuses the run.
+    // Source of the thin region's flag (ThinRegionSource above), read with thin_region_weight > 0 only. Vote needs the
+    // vote cast (the thin_vote conditions above) and falls back to Both without it; Screen refuses a camera-gate run
+    // and draws the plain tests program on the screen-gate chain. No extra draw, constant upload or program either way
+    // (c10.y). A value outside the enum refuses the run.
     ThinRegionSource thin_region_source = ThinRegionSource::Both;
     // Depth and translation term of the camera gate's camera path, c8 of the
     // camera-gate resolve only (camera_reprojection.h camera_depth_parallax();
@@ -175,19 +184,20 @@ struct FrameInputs {
     // any other depth input, w != 1 or a non-finite value: camera_depth_parallax
     // is the fallback for the frame.
     float camera_lane_parallax[4]{};
-    // Speed gate of far_weight and of the thin region, px/frame: full below far_speed_lo, the base weight from far_speed_hi (0 <= lo < hi <= 64).
+    // Speed gate of far_weight and of the thin region, px/frame: full below far_speed_lo, the base weight from
+    // far_speed_hi (0 <= lo < hi <= 64).
     float far_speed_lo = x3::temporal::kFarSpeedLo, far_speed_hi = x3::temporal::kFarSpeedHi;
-    // The far weight's motion gate on the camera-gate resolve (X3M_TAA_FAR_GATE; docs/architecture/taa-mask-fold.md section 4.2
-    // addendum): true (the default) opens it on the camera-relative openness of the region (a world-static far pixel keeps
-    // far_weight under a camera pan), false on the pixel's screen speed (the gate before 2026-09-25). c11.x of that program;
-    // the far program (no camera gate) always uses the screen speed and ignores it.
+    // The far weight's motion gate on the camera-gate resolve (X3M_TAA_FAR_GATE; docs/architecture/taa-mask-fold.md
+    // section 4.2 addendum): true (the default) opens it on the camera-relative openness of the region (a world-static
+    // far pixel keeps far_weight under a camera pan), false on the pixel's screen speed (the gate before 2026-09-25).
+    // c11.x of that program; the far program (no camera gate) always uses the screen speed and ignores it.
     bool far_camera_gate = true;
-    // The far clip (X3M_TAA_FAR_CLIP; docs/architecture/taa-mask-fold.md section 4.2 addendum "far clip"): on the camera-gate
-    // resolve a pixel outside the thin region whose farw * openC exceeds this threshold clips its history against the 7x7 min / max
-    // of the weighed current colour (taken in place on that branch, or the box targets where they are marked) instead of the 3x3
-    // variance clip. c13.z of that program (kFarClipOff with the far gate off); 0 (the default) is any far weight,
-    // x3::temporal::kFarClipOff (2) the 3x3 clip everywhere. Finite, in [0, 2]; anything else refuses the run. The far program (no
-    // camera gate) has no far clip and ignores it.
+    // The far clip (X3M_TAA_FAR_CLIP; docs/architecture/taa-mask-fold.md section 4.2 addendum "far clip"): on the
+    // camera-gate resolve a pixel outside the thin region whose farw * openC exceeds this threshold clips its history
+    // against the 7x7 min / max of the weighed current colour (taken in place on that branch, or the box targets where
+    // they are marked) instead of the 3x3 variance clip. c13.z of that program (kFarClipOff with the far gate off); 0
+    // (the default) is any far weight, x3::temporal::kFarClipOff (2) the 3x3 clip everywhere. Finite, in [0, 2];
+    // anything else refuses the run. The far program (no camera gate) has no far clip and ignores it.
     float far_clip = x3::temporal::kFarClipThreshold;
     // Post-resolve sharpen of the display image (sharpen.h, rcas.hlsl;
     // docs/architecture/temporal-integration.md "Post-resolve sharpen"): 0
@@ -217,7 +227,8 @@ struct FrameInputs {
     // an owned R32F pair written as COLOR1; wmax falls from WMAX to `weight`
     // between adaptive_lo and adaptive_hi px/frame. Refused without thin_clip
     // > 0 (alone it dims thin lattices) and without age_available().
-    float adaptive_weight = 0.f, adaptive_lo = x3::temporal::kAdaptiveLoDefault, adaptive_hi = x3::temporal::kAdaptiveHiDefault;
+    float adaptive_weight = 0.f, adaptive_lo = x3::temporal::kAdaptiveLoDefault,
+          adaptive_hi = x3::temporal::kAdaptiveHiDefault;
     // The output alpha is the history alpha blended with the pixel's history
     // weight and clamped to the current 3x3 alpha range, instead of the
     // current alpha. FP16 `color` input only (the HDR route: bloom reads the
@@ -298,12 +309,12 @@ struct Output {
     // The age target written by this run (adaptive_weight > 0 or a far-program run), else null;
     // same borrowing rules. For capture dumps only.
     IDirect3DTexture9* age = nullptr;
-    // Far stabiliser / screen-gate thin region runs: the owned A8R8G8B8 mask the resolve read at s8 (r filter weight, g far
-    // history-weight gate); null on a camera-gate run (no mask draw since the mask fold). Diagnostic, same borrowing rules.
-    // Keep here: run() fills the struct positionally.
+    // Far stabiliser / screen-gate thin region runs: the owned A8R8G8B8 mask the resolve read at s8 (r filter weight, g
+    // far history-weight gate); null on a camera-gate run (no mask draw since the mask fold). Diagnostic, same
+    // borrowing rules. Keep here: run() fills the struct positionally.
     IDirect3DTexture9* stabiliser_mask = nullptr;
-    // Camera-gate runs: the box pair the resolve read at s9 / s10 ([0] minimum, .a = 1 where computed; [1] maximum), W x H,
-    // or W/2 x H/2 when Diagnostics::box_half; null otherwise. Diagnostic (fixtures), same borrowing rules; after
+    // Camera-gate runs: the box pair the resolve read at s9 / s10 ([0] minimum, .a = 1 where computed; [1] maximum), W
+    // x H, or W/2 x H/2 when Diagnostics::box_half; null otherwise. Diagnostic (fixtures), same borrowing rules; after
     // stabiliser_mask because run() fills the struct positionally.
     IDirect3DTexture9* box_low = nullptr;
     IDirect3DTexture9* box_high = nullptr;
@@ -317,36 +328,36 @@ struct Diagnostics {
     // (docs/architecture/taa-high-resolution.md S1: a two- or four-channel current depth, a far-program run, the
     // depth-folding mask program created); false otherwise.
     bool depth_folded = false;
-    // Why the last run folded or not: "resolve_mrt" (a camera-gate run: the resolve wrote it as RT2, from any current_depth
-    // format), "lane_mrt" (folded into the screen-gate chain's first mask draw), "r32f_depth" (an R32F current depth needs no
-    // copy draw), "d24_decode" (the D24X8 snapshot is decoded), "far_off" (no far-program run), "mrt_caps" (fewer than two
-    // targets or no MRTINDEPENDENTBITDEPTHS), "program" (the folding program was not created), "not_run" (refused before the
-    // decision).
+    // Why the last run folded or not: "resolve_mrt" (a camera-gate run: the resolve wrote it as RT2, from any
+    // current_depth format), "lane_mrt" (folded into the screen-gate chain's first mask draw), "r32f_depth" (an R32F
+    // current depth needs no copy draw), "d24_decode" (the D24X8 snapshot is decoded), "far_off" (no far-program run),
+    // "mrt_caps" (fewer than two targets or no MRTINDEPENDENTBITDEPTHS), "program" (the folding program was not
+    // created), "not_run" (refused before the decision).
     const char* depth_fold_reason = "not_run";
     // History reconstruction of the program the last run drew (docs/architecture/taa-high-resolution.md S3): 5 (the
     // 5-tap bilinear Catmull-Rom programs, the only form), 0 when no resolve was drawn.
     unsigned history_taps = 0;
     // A' (FrameInputs::thin_region_camera_gate): the last run drew the folded hold resolve (no mask draw).
     bool region_hold = false;
-    // FrameInputs::thin_vote: the last run cast the thin vote (the camera-gate resolve read it, or the screen-gate chain drew the
-    // tests draw's thin-vote twin).
+    // FrameInputs::thin_vote: the last run cast the thin vote (the camera-gate resolve read it, or the screen-gate
+    // chain drew the tests draw's thin-vote twin).
     bool thin_vote = false;
-    // Why (or why not): "vote", "not_requested", "thin_region_off", "no_lane" (a camera-gate run on an R32F depth, which has no
-    // .a), "no_fold" (screen-gate chain: no depth-folding tests draw: an R32F or D24X8 depth, no far run or MRT caps;
-    // depth_fold_reason says which), "two_channel_depth" (a G32R32F lane has no .a), "no_twin_program" (screen-gate chain:
-    // configure_thin_vote did not create it), "screen_source" (screen-gate chain, FrameInputs::thin_region_source Screen),
-    // "not_run".
+    // Why (or why not): "vote", "not_requested", "thin_region_off", "no_lane" (a camera-gate run on an R32F depth,
+    // which has no .a), "no_fold" (screen-gate chain: no depth-folding tests draw: an R32F or D24X8 depth, no far run
+    // or MRT caps; depth_fold_reason says which), "two_channel_depth" (a G32R32F lane has no .a), "no_twin_program"
+    // (screen-gate chain: configure_thin_vote did not create it), "screen_source" (screen-gate chain,
+    // FrameInputs::thin_region_source Screen), "not_run".
     const char* thin_vote_reason = "not_run";
-    // FrameInputs::thin_region_source as drawn by the last run: Vote only when the vote was cast with c10.y = 1 (the search
-    // skipped), Screen when a screen-gate Screen run drew the plain tests program with the thin region on, Both otherwise (a
-    // Vote run without the vote, a run without the thin region).
+    // FrameInputs::thin_region_source as drawn by the last run: Vote only when the vote was cast with c10.y = 1 (the
+    // search skipped), Screen when a screen-gate Screen run drew the plain tests program with the thin region on, Both
+    // otherwise (a Vote run without the vote, a run without the thin region).
     ThinRegionSource thin_region_source = ThinRegionSource::Both;
     // S4 (configure_box_resolution(2)): the last run drew the camera gate's box at half resolution.
     bool box_half = false;
-    // Why (or why not): "half", "not_requested" (the full-resolution box is configured), "no_camera_gate" (no camera-gate
-    // run), "odd_size" (an odd width or height: the resolve's point read of the half-resolution box needs an even size; that
-    // run draws the full-resolution box), "target" (the half-resolution targets were refused, not a lost device: full
-    // resolution until Reset re-arms them), "not_run".
+    // Why (or why not): "half", "not_requested" (the full-resolution box is configured), "no_camera_gate" (no
+    // camera-gate run), "odd_size" (an odd width or height: the resolve's point read of the half-resolution box needs
+    // an even size; that run draws the full-resolution box), "target" (the half-resolution targets were refused, not a
+    // lost device: full resolution until Reset re-arms them), "not_run".
     const char* box_resolution_reason = "not_run";
     // CPU-side QueryPerformanceCounter ticks of the last run's phases, taken
     // only with configure_timing(true); zero otherwise. Wall clock around the
@@ -354,8 +365,10 @@ struct Diagnostics {
     // execution time. The five phases nest inside run and do not overlap.
     bool timed = false;
     std::uint64_t ticks_capture = 0;    // state block Capture plus the binding getters
-    std::uint64_t ticks_copy_color = 0; // 8-bit color to FP16 scratch StretchRect, or the same-format staging copy in draw mode (allocations included)
-    std::uint64_t ticks_copy_depth = 0; // R32F StretchRect or G32R32F/A32B32G32R32F point-sampled .r copy to R32F history
+    std::uint64_t ticks_copy_color = 0; // 8-bit color to FP16 scratch StretchRect, or the same-format staging copy in
+                                        // draw mode (allocations included)
+    std::uint64_t ticks_copy_depth = 0; // R32F StretchRect or G32R32F/A32B32G32R32F point-sampled .r copy to R32F
+                                        // history
     std::uint64_t ticks_draw = 0;       // normalize, scene bracket, decoder/resolve/mask quads
     std::uint64_t ticks_apply = 0;      // binding restoration plus state block Apply
 };
@@ -381,7 +394,8 @@ public:
     // binds the embedded vs_3_0 pass-through (quad_vertex_program.h) and its
     // declaration, both created here and surviving Reset.
     HRESULT initialize(IDirect3DDevice9* native_device, const DWORD* decoder, const DWORD* resolve,
-                       void* const* native_vtable = nullptr, const DWORD* sharpen = nullptr, const DWORD* copy = nullptr) noexcept;
+                       void* const* native_vtable = nullptr, const DWORD* sharpen = nullptr,
+                       const DWORD* copy = nullptr) noexcept;
     // Creates the embedded flicker-suppression variants (temporal_resolve_program.h);
     // they survive Reset like the other programs. Call once after initialize
     // when any of thin_clip / adaptive_weight / alpha_history will be used; the
@@ -397,61 +411,70 @@ public:
     // the screen-gate chain and the far stabiliser alone, one for a camera-gate
     // run) and binds it at s8 for the resolve. The camera-gate programs are
     // optional on top (camera_gate_available(), camera_programs_result()).
-    // reference_program: fixtures only (an earlier build of resolve_far.hlsl for an identity comparison); camera_program:
-    // fixtures only (the camera-gate resolve replaced, e.g. by its X3M_FOLD_TESTS_OUT twin that writes the per-pixel tests
-    // as the colour); production passes neither.
+    // reference_program: fixtures only (an earlier build of resolve_far.hlsl for an identity comparison);
+    // camera_program: fixtures only (the camera-gate resolve replaced, e.g. by its X3M_FOLD_TESTS_OUT twin that writes
+    // the per-pixel tests as the colour); production passes neither.
     HRESULT configure_far(const DWORD* reference_program = nullptr, const DWORD* camera_program = nullptr) noexcept;
     bool far_available() const noexcept { return mrt_age_ && line_mask_ != nullptr && far_ != nullptr; }
-    // S3 (docs/architecture/taa-high-resolution.md): the resolve reconstructs the history with the 5-tap bilinear Catmull-Rom
-    // form, which samples the previous colour and reactive mask a second time at s11 / s12 with LINEAR min / mag filtering.
-    // That needs linear filtering of A16B16G16R16F and R32F textures (TextureFilterCaps MINFLINEAR | MAGFLINEAR and
-    // CheckDeviceFormat D3DUSAGE_QUERY_FILTER of both, read at initialize); a device without it refuses initialize with
-    // D3DERR_NOTAVAILABLE (the 16-tap point programs were removed on 2026-09-25: no fallback program set).
+    // S3 (docs/architecture/taa-high-resolution.md): the resolve reconstructs the history with the 5-tap bilinear
+    // Catmull-Rom form, which samples the previous colour and reactive mask a second time at s11 / s12 with LINEAR min
+    // / mag filtering. That needs linear filtering of A16B16G16R16F and R32F textures (TextureFilterCaps MINFLINEAR |
+    // MAGFLINEAR and CheckDeviceFormat D3DUSAGE_QUERY_FILTER of both, read at initialize); a device without it refuses
+    // initialize with D3DERR_NOTAVAILABLE (the 16-tap point programs were removed on 2026-09-25: no fallback program
+    // set).
     bool bilinear_history_available() const noexcept { return bilinear_history_; }
-    // Why the 5-tap programs are unusable (initialize refused): "ok", "not_initialized", "filter_caps" (TextureFilterCaps), "adapter_query"
-    // (GetDirect3D / GetCreationParameters / GetDisplayMode failed), "fp16_filter" or "r32f_filter" (the format query).
+    // Why the 5-tap programs are unusable (initialize refused): "ok", "not_initialized", "filter_caps"
+    // (TextureFilterCaps), "adapter_query" (GetDirect3D / GetCreationParameters / GetDisplayMode failed), "fp16_filter"
+    // or "r32f_filter" (the format query).
     const char* bilinear_history_reason() const noexcept { return bilinear_history_reason_; }
-    // The same filter requirement as a standalone query, before any pass exists (MotionOutput decides at device attach whether
-    // TAA, and with it the jitter, can run at all): GetDeviceCaps through `native_vtable` (the device's own table when null),
-    // then the checks initialize runs. S_OK, or the refusal with *reason set as bilinear_history_reason() would be (plus
-    // "device_caps" when GetDeviceCaps itself failed). Creates nothing and keeps no reference.
-    static HRESULT query_history_filtering(IDirect3DDevice9* device, void* const* native_vtable, const char** reason) noexcept;
-    // The camera-gate programs configure_far creates on top (the folded hold resolve and its 49-tap box; the hold resolve is
-    // 5-tap only, so none without bilinear_history_available()), a history drawn with 5 taps and three simultaneous render
-    // targets (the resolve writes colour, age and depth: NumSimultaneousRTs >= 3, read at initialize): the camera gate can run. Optional: a refusal leaves no camera-gate path (AGENTS.md "Shader slot budget": no fallback program
-    // set) and the caller decides what runs instead. camera_programs_result() holds the first failed creation
-    // (D3DERR_NOTAVAILABLE without the filter caps, S_OK when every program was created).
-    bool camera_gate_available() const noexcept { return far_available() && far_camera_hold_ != nullptr && thin_box_hold_ != nullptr && render_targets_ >= 3; }
+    // The same filter requirement as a standalone query, before any pass exists (MotionOutput decides at device attach
+    // whether TAA, and with it the jitter, can run at all): GetDeviceCaps through `native_vtable` (the device's own
+    // table when null), then the checks initialize runs. S_OK, or the refusal with *reason set as
+    // bilinear_history_reason() would be (plus "device_caps" when GetDeviceCaps itself failed). Creates nothing and
+    // keeps no reference.
+    static HRESULT query_history_filtering(IDirect3DDevice9* device, void* const* native_vtable,
+                                           const char** reason) noexcept;
+    // The camera-gate programs configure_far creates on top (the folded hold resolve and its 49-tap box; the hold
+    // resolve is 5-tap only, so none without bilinear_history_available()), a history drawn with 5 taps and three
+    // simultaneous render targets (the resolve writes colour, age and depth: NumSimultaneousRTs >= 3, read at
+    // initialize): the camera gate can run. Optional: a refusal leaves no camera-gate path (AGENTS.md "Shader slot
+    // budget": no fallback program set) and the caller decides what runs instead. camera_programs_result() holds the
+    // first failed creation (D3DERR_NOTAVAILABLE without the filter caps, S_OK when every program was created).
+    bool camera_gate_available() const noexcept {
+        return far_available() && far_camera_hold_ != nullptr && thin_box_hold_ != nullptr && render_targets_ >= 3;
+    }
     HRESULT camera_programs_result() const noexcept { return camera_programs_result_; }
     // D3DCAPS9::NumSimultaneousRTs as initialize read it (the camera gate needs 3), for the caller's refusal row.
     unsigned simultaneous_render_targets() const noexcept { return render_targets_; }
     bool camera_gate_failed() const noexcept { return boxes_failed_; }
     HRESULT camera_gate_result() const noexcept { return boxes_result_; }
-    // S4 (docs/architecture/taa-high-resolution.md S4; taa-plan-lifted-slot-cap.md step 2), a session setting: 1 (the default)
-    // draws the camera gate's box at full resolution, every target bit for bit a pass without this call; 2 draws it at half
-    // resolution on every camera-gate run of an even size: the separable pair
-    // thin_box_rows_half_ps.hlsl / thin_box_columns_half_ps.hlsl into row targets of W/2 x (H/2 + 1) and box targets of W/2 x H/2 (A16B16G16R16F,
-    // default pool, allocated on the first such run, released with the histories and by a run at the other resolution),
-    // whose box at each pixel contains the full-resolution 7x7 box (the 8x8 block window), read by the resolve with its point
-    // sampler at the block texel. 2 creates the two
-    // programs (none in a session that never asks); a refusal drops both, keeps 1 and returns the failure for the caller's
-    // one log row (no other fallback program set). Anything else is E_INVALIDARG and changes nothing. A change keeps the
-    // history. Refused half-resolution targets (the row pair or the box pair) that are not a lost device fall back to the
+    // S4 (docs/architecture/taa-high-resolution.md S4; taa-plan-lifted-slot-cap.md step 2), a session setting: 1 (the
+    // default) draws the camera gate's box at full resolution, every target bit for bit a pass without this call; 2
+    // draws it at half resolution on every camera-gate run of an even size: the separable pair
+    // thin_box_rows_half_ps.hlsl / thin_box_columns_half_ps.hlsl into row targets of W/2 x (H/2 + 1) and box targets of
+    // W/2 x H/2 (A16B16G16R16F, default pool, allocated on the first such run, released with the histories and by a run
+    // at the other resolution), whose box at each pixel contains the full-resolution 7x7 box (the 8x8 block window),
+    // read by the resolve with its point sampler at the block texel. 2 creates the two programs (none in a session that
+    // never asks); a refusal drops both, keeps 1 and returns the failure for the caller's one log row (no other
+    // fallback program set). Anything else is E_INVALIDARG and changes nothing. A change keeps the history. Refused
+    // half-resolution targets (the row pair or the box pair) that are not a lost device fall back to the
     // full-resolution box for the session (Diagnostics::box_resolution_reason "target"; re-armed by Reset).
     HRESULT configure_box_resolution(unsigned divisor) noexcept;
     unsigned box_resolution() const noexcept { return box_divisor_; }
     bool box_half_failed() const noexcept { return box_half_failed_; }
     HRESULT box_half_result() const noexcept { return box_half_result_; }
-    // Thin vote (FrameInputs::thin_vote): the thin-vote twin of the screen-gate chain's depth-folding tests program, created
-    // only on request (a session that never asks holds none; a failure leaves the plain tests draw). The camera-gate resolve
-    // reads the vote itself (no program): thin_vote_available() is true wherever either path can cast it.
+    // Thin vote (FrameInputs::thin_vote): the thin-vote twin of the screen-gate chain's depth-folding tests program,
+    // created only on request (a session that never asks holds none; a failure leaves the plain tests draw). The
+    // camera-gate resolve reads the vote itself (no program): thin_vote_available() is true wherever either path can
+    // cast it.
     HRESULT configure_thin_vote() noexcept;
     bool thin_vote_available() const noexcept { return line_mask_depth_thin_ != nullptr || camera_gate_available(); }
-    // D3DCAPS9::MaxPixelShader30InstructionSlots as initialize read it, for the caller's one log row (AGENTS.md "Shader slot
-    // budget": the programs are created whatever the figure; a device that refuses one takes that program's failure path).
+    // D3DCAPS9::MaxPixelShader30InstructionSlots as initialize read it, for the caller's one log row (AGENTS.md "Shader
+    // slot budget": the programs are created whatever the figure; a device that refuses one takes that program's
+    // failure path).
     unsigned ps30_instruction_slots() const noexcept { return ps30_slots_; }
-    // The owned A8R8G8B8 mask targets currently allocated (0..2): a camera-gate run keeps none (the mask fold), the screen-gate
-    // chain and the far stabiliser alone two. Diagnostic (the caller logs it with its first completed run).
+    // The owned A8R8G8B8 mask targets currently allocated (0..2): a camera-gate run keeps none (the mask fold), the
+    // screen-gate chain and the far stabiliser alone two. Diagnostic (the caller logs it with its first completed run).
     unsigned line_mask_targets() const noexcept { return (line_masks_[0] ? 1u : 0u) + (line_masks_[1] ? 1u : 0u); }
     // The mask targets could not be created (not a lost device): the far
     // stabiliser and the thin region are off for the rest of the session, runs
@@ -495,9 +518,10 @@ public:
     // boundaries (gpu_sync_timing::TaaCopy .. TaaDisplay) inside the caller's Taa pair; null (the default) is one
     // branch per boundary and no device call.
     void configure_sync_timing(gpu_sync_timing::Marks* marks) noexcept { sync_marks_ = marks; }
+
 private:
     struct SavedState;
-    template<class Fn> Fn call(unsigned slot) const noexcept {
+    template <class Fn> Fn call(unsigned slot) const noexcept {
         return reinterpret_cast<Fn>((vtable_ ? vtable_ : *reinterpret_cast<void* const* const*>(device_))[slot]);
     }
     HRESULT allocate(UINT width, UINT height, bool reactive, bool age) noexcept;
@@ -513,7 +537,8 @@ private:
     // after every run instead of being created per frame. Default-pool-like:
     // released before Reset and re-created lazily afterwards.
     IDirect3DStateBlock9* block_ = nullptr;
-    IDirect3DPixelShader9 *decoder_ = nullptr, *resolve_ = nullptr, *snapshot_ = nullptr, *sharpen_ = nullptr, *copy_ = nullptr;
+    IDirect3DPixelShader9 *decoder_ = nullptr, *resolve_ = nullptr, *snapshot_ = nullptr, *sharpen_ = nullptr,
+                          *copy_ = nullptr;
     HRESULT snapshot_result_ = S_FALSE;
     IDirect3DPixelShader9 *thin_ = nullptr, *age_ = nullptr;
     bool bilinear_history_ = false;
@@ -522,30 +547,30 @@ private:
     bool line_masks_failed_ = false;
     HRESULT line_masks_result_ = S_OK;
     IDirect3DPixelShader9* far_ = nullptr;
-    IDirect3DPixelShader9 *line_mask_ = nullptr;
-    // Mask targets (A8R8G8B8, default pool, released with the histories; line_mask_ps.hlsl's modes decide the layout). A
-    // camera-gate run needs none and releases both (a configuration change, never per frame).
+    IDirect3DPixelShader9* line_mask_ = nullptr;
+    // Mask targets (A8R8G8B8, default pool, released with the histories; line_mask_ps.hlsl's modes decide the layout).
+    // A camera-gate run needs none and releases both (a configuration change, never per frame).
     IDirect3DTexture9* line_masks_[2]{};
     IDirect3DSurface9* line_mask_surfaces_[2]{};
     HRESULT ensure_line_masks(bool both) noexcept;
-    // Camera-relative gate (section 32.1) with A' and the mask fold: the hold resolve (resolve_far_camera_hold.hlsl) and the
-    // region-gated 7x7 box pass (thin_box_hold_ps.hlsl) with its two A16B16G16R16F targets ([0] minimum, [1] maximum; default
-    // pool, released with the histories, allocated on the first camera-gate run).
+    // Camera-relative gate (section 32.1) with A' and the mask fold: the hold resolve (resolve_far_camera_hold.hlsl)
+    // and the region-gated 7x7 box pass (thin_box_hold_ps.hlsl) with its two A16B16G16R16F targets ([0] minimum, [1]
+    // maximum; default pool, released with the histories, allocated on the first camera-gate run).
     IDirect3DPixelShader9 *far_camera_hold_ = nullptr, *thin_box_hold_ = nullptr;
     HRESULT camera_programs_result_ = S_OK;
-    // S1 (docs/architecture/taa-high-resolution.md): line_mask_ built with X3M_MASK_DEPTH_OUT, bound only for the screen-gate
-    // chain's first draw on a two- or four-channel current depth, which then writes depths_[next] as COLOR1 (R32F beside the
-    // A8R8G8B8 mask; mrt_age_ covers MRTINDEPENDENTBITDEPTHS). Optional: null keeps the copy draw.
-    IDirect3DPixelShader9 *line_mask_depth_ = nullptr;
-    IDirect3DPixelShader9 *line_mask_depth_thin_ = nullptr; // configure_thin_vote
+    // S1 (docs/architecture/taa-high-resolution.md): line_mask_ built with X3M_MASK_DEPTH_OUT, bound only for the
+    // screen-gate chain's first draw on a two- or four-channel current depth, which then writes depths_[next] as COLOR1
+    // (R32F beside the A8R8G8B8 mask; mrt_age_ covers MRTINDEPENDENTBITDEPTHS). Optional: null keeps the copy draw.
+    IDirect3DPixelShader9* line_mask_depth_ = nullptr;
+    IDirect3DPixelShader9* line_mask_depth_thin_ = nullptr; // configure_thin_vote
     IDirect3DTexture9* boxes_[2]{};
     IDirect3DSurface9* box_surfaces_[2]{};
     bool boxes_failed_ = false;
     HRESULT boxes_result_ = S_OK;
     HRESULT ensure_boxes(bool half) noexcept;
     bool boxes_half_ = false; // the size boxes_ were created at (half: W/2 x H/2)
-    // S4: the row targets of the half-resolution pair ([0] row minimum, [1] row maximum; A16B16G16R16F W/2 x (H/2 + 1), default
-    // pool, released with the histories and by the first run without the half-resolution box).
+    // S4: the row targets of the half-resolution pair ([0] row minimum, [1] row maximum; A16B16G16R16F W/2 x (H/2 + 1),
+    // default pool, released with the histories and by the first run without the half-resolution box).
     bool hold_history_ = false; // the current age target carries hold fractions (written by the hold program)
     unsigned ps30_slots_ = 0;
     IDirect3DTexture9* box_rows_[2]{};
@@ -556,10 +581,10 @@ private:
     unsigned box_divisor_ = 1;
     bool box_half_failed_ = false;
     HRESULT box_half_result_ = S_OK;
-    bool mrt_age_ = false; // caps: >= 2 simultaneous RTs with independent bit depths
-    IDirect3DTexture9* ages_[2]{};          // R32F per-pixel accumulated-frame count (age and far programs)
+    bool mrt_age_ = false;         // caps: >= 2 simultaneous RTs with independent bit depths
+    IDirect3DTexture9* ages_[2]{}; // R32F per-pixel accumulated-frame count (age and far programs)
     IDirect3DSurface9* age_surfaces_[2]{};
-    IDirect3DVertexShader9* quad_vs_ = nullptr;          // vs_3_0 pass-through of every quad (survives Reset)
+    IDirect3DVertexShader9* quad_vs_ = nullptr; // vs_3_0 pass-through of every quad (survives Reset)
     IDirect3DVertexDeclaration9* quad_declaration_ = nullptr;
     IDirect3DTexture9* colors_[2]{};
     IDirect3DTexture9* depths_[2]{};

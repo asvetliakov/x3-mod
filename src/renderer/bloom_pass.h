@@ -10,7 +10,10 @@
 #include "../temporal/sharpen.h"
 
 namespace x3m::renderer {
-struct BloomBytecode { const DWORD* words = nullptr; std::size_t count = 0; };
+struct BloomBytecode {
+    const DWORD* words = nullptr;
+    std::size_t count = 0;
+};
 struct BloomPrograms {
     BloomBytecode vertex; // existing pass-through quad vs_3_0
     // gamma/sRGB/none generic, then gamma/sRGB/none even-size extraction.
@@ -76,8 +79,17 @@ struct BloomCommit {
     const char* reason = "invalid";
 };
 enum class BloomFault : unsigned {
-    None, Allocate, Save, Setup, PrepareDraw, PrepareRestore,
-    Backup, CommitDrawAfterWrite, CommitRestore, Recovery, RecoveryRestore
+    None,
+    Allocate,
+    Save,
+    Setup,
+    PrepareDraw,
+    PrepareRestore,
+    Backup,
+    CommitDrawAfterWrite,
+    CommitRestore,
+    Recovery,
+    RecoveryRestore
 };
 
 class BloomPass {
@@ -89,8 +101,7 @@ public:
     // Borrowed device/native method table, valid until shutdown. Supplied
     // authored bytecode need only live through this call; created shaders are
     // owned. This queries public caps/formats and creates resources, no draws.
-    HRESULT attach(IDirect3DDevice9*, void* const* native, const D3DCAPS9&,
-                   const BloomPrograms&) noexcept;
+    HRESULT attach(IDirect3DDevice9*, void* const* native, const D3DCAPS9&, const BloomPrograms&) noexcept;
     const BloomCaps& caps() const noexcept { return caps_; }
     bool enabled() const noexcept { return caps_.enabled && !disabled_; }
     BloomPreparation prepare(const BloomPrepare&) noexcept;
@@ -127,7 +138,7 @@ private:
         UINT width = 0, height = 0;
         bool sharpen = false;
     } resources_{};
-    template<class Fn> Fn call(unsigned slot) const noexcept { return reinterpret_cast<Fn>(native_[slot]); }
+    template <class Fn> Fn call(unsigned slot) const noexcept { return reinterpret_cast<Fn>(native_[slot]); }
     static void release(Resources&) noexcept;
     static std::uint64_t bytes(const Resources&) noexcept;
     HRESULT create(Image&, UINT, UINT, D3DFORMAT) noexcept;
@@ -144,7 +155,12 @@ private:
 #ifdef X3M_BLOOM_PASS_FIXTURE
     static constexpr unsigned fault_count_ = static_cast<unsigned>(BloomFault::RecoveryRestore) + 1;
     unsigned faults_[fault_count_]{};
-    bool fault(BloomFault f) noexcept { auto& n = faults_[static_cast<unsigned>(f)]; if (!n) return false; --n; return true; }
+    bool fault(BloomFault f) noexcept {
+        auto& n = faults_[static_cast<unsigned>(f)];
+        if (!n) return false;
+        --n;
+        return true;
+    }
 #else
     static constexpr bool fault(BloomFault) noexcept { return false; }
 #endif

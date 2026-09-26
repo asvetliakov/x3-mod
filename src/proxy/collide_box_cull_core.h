@@ -62,17 +62,21 @@ constexpr std::uintptr_t p1_compare_va = 0x0045d5e7, p1_reject_va = 0x0045d6cc, 
 constexpr std::uintptr_t p1_sqrt_call_va = 0x0045d5da, p1_ftol_call_va = 0x0045d5e2;
 constexpr unsigned p1_compare_offset = 0x59, p1_reject_offset = 0x13e, p1_continue_offset = 0xa02;
 constexpr unsigned site_length = 6;
-constexpr unsigned p1_site_window_length = 26, p1_compare_window_length = 37, p1_reject_window_length = 24, p1_continue_window_length = 11;
-constexpr unsigned char p1_site_window[p1_site_window_length] = {
-    0x8b,0x4b,0x70, 0x8b,0x51,0x30, 0x8b,0x46,0x70, 0x2b,0x50,0x30, 0x83,0xc1,0x30, 0x83,0xc0,0x30, 0x89,0x54,0x24,0x28, 0xdb,0x44,0x24,0x28};
+constexpr unsigned p1_site_window_length = 26, p1_compare_window_length = 37, p1_reject_window_length = 24,
+                   p1_continue_window_length = 11;
+constexpr unsigned char p1_site_window[p1_site_window_length] = {0x8b, 0x4b, 0x70, 0x8b, 0x51, 0x30, 0x8b, 0x46, 0x70,
+                                                                 0x2b, 0x50, 0x30, 0x83, 0xc1, 0x30, 0x83, 0xc0, 0x30,
+                                                                 0x89, 0x54, 0x24, 0x28, 0xdb, 0x44, 0x24, 0x28};
 constexpr unsigned char p1_compare_window[p1_compare_window_length] = {
-    0x8b,0xc8, 0x89,0x4c,0x24,0x1c, 0x8b,0x44,0x24,0x24, 0xba,0x8f,0x02,0x01,0x00, 0xf7,0xea, 0x05,0x00,0x80,0x00,0x00,
-    0x83,0xd2,0x00, 0x0f,0xac,0xd0,0x10, 0x3b,0xc8, 0x0f,0x8f,0xc0,0x00,0x00,0x00};
-constexpr unsigned char p1_reject_window[p1_reject_window_length] = {
-    0x0f,0xb7,0x43,0x48, 0xbf,0x07,0x00,0x00,0x00, 0x66,0x3b,0xc7, 0x74,0x0a, 0x66,0x39,0x7e,0x48, 0x0f,0x85,0xac,0x08,0x00,0x00};
-constexpr unsigned char p1_continue_window[p1_continue_window_length] = {0x8b,0x74,0x24,0x3c, 0x83,0x3e,0x00, 0x89,0x74,0x24,0x14};
-constexpr unsigned char p1_site[site_length] = {0x8b,0x4b,0x70, 0x8b,0x51,0x30};
-constexpr unsigned p1_radius_sum_slot = 0x24;  // [ESP+0x24] at the site: the radius sum the engine scales at 0x0045d5ed
+    0x8b, 0xc8, 0x89, 0x4c, 0x24, 0x1c, 0x8b, 0x44, 0x24, 0x24, 0xba, 0x8f, 0x02, 0x01, 0x00, 0xf7, 0xea, 0x05, 0x00,
+    0x80, 0x00, 0x00, 0x83, 0xd2, 0x00, 0x0f, 0xac, 0xd0, 0x10, 0x3b, 0xc8, 0x0f, 0x8f, 0xc0, 0x00, 0x00, 0x00};
+constexpr unsigned char p1_reject_window[p1_reject_window_length] = {0x0f, 0xb7, 0x43, 0x48, 0xbf, 0x07, 0x00, 0x00,
+                                                                     0x00, 0x66, 0x3b, 0xc7, 0x74, 0x0a, 0x66, 0x39,
+                                                                     0x7e, 0x48, 0x0f, 0x85, 0xac, 0x08, 0x00, 0x00};
+constexpr unsigned char p1_continue_window[p1_continue_window_length] = {0x8b, 0x74, 0x24, 0x3c, 0x83, 0x3e,
+                                                                         0x00, 0x89, 0x74, 0x24, 0x14};
+constexpr unsigned char p1_site[site_length] = {0x8b, 0x4b, 0x70, 0x8b, 0x51, 0x30};
+constexpr unsigned p1_radius_sum_slot = 0x24; // [ESP+0x24] at the site: the radius sum the engine scales at 0x0045d5ed
 // ---- P2: the swept scan L1 of 0x0045cab0 ----
 // 0045cc5e  74 1c                 JE   0x0045cc7c               ; inbound
 // 0045cc70  75 0a                 JNE  0x0045cc7c               ; inbound
@@ -104,13 +108,14 @@ constexpr std::uintptr_t p2_sqrt_call_va = 0x0045ccd9, p2_ftol_call_va = 0x0045c
 constexpr unsigned p2_compare_offset = 0x6a, p2_continue_offset = 0x18b;
 constexpr unsigned p2_site_window_length = 35, p2_compare_window_length = 18, p2_continue_window_length = 9;
 constexpr unsigned char p2_site_window[p2_site_window_length] = {
-    0x8b,0x47,0x70, 0x8b,0x48,0x30, 0x8b,0x73,0x70, 0x2b,0x4e,0x30, 0x8b,0x50,0x34, 0x2b,0x56,0x34, 0x83,0xc0,0x30, 0x8b,0x40,0x08,
-    0x2b,0x46,0x38, 0x89,0x4c,0x24,0x30, 0xdb,0x44,0x24,0x30};
+    0x8b, 0x47, 0x70, 0x8b, 0x48, 0x30, 0x8b, 0x73, 0x70, 0x2b, 0x4e, 0x30, 0x8b, 0x50, 0x34, 0x2b, 0x56, 0x34,
+    0x83, 0xc0, 0x30, 0x8b, 0x40, 0x08, 0x2b, 0x46, 0x38, 0x89, 0x4c, 0x24, 0x30, 0xdb, 0x44, 0x24, 0x30};
 constexpr unsigned char p2_compare_window[p2_compare_window_length] = {
-    0x8b,0x8f,0xa4,0x00,0x00,0x00, 0x03,0x4c,0x24,0x20, 0x3b,0xc1, 0x0f,0x8f,0x0f,0x01,0x00,0x00};
-constexpr unsigned char p2_continue_window[p2_continue_window_length] = {0x8b,0x3f, 0x83,0x3f,0x00, 0x89,0x7c,0x24,0x24};
-constexpr unsigned char p2_site[site_length] = {0x8b,0x47,0x70, 0x8b,0x48,0x30};
-constexpr unsigned p2_sweep_slot = 0x20;  // [ESP+0x20] at the site: the sweep half-length the engine adds at 0x0045ccec
+    0x8b, 0x8f, 0xa4, 0x00, 0x00, 0x00, 0x03, 0x4c, 0x24, 0x20, 0x3b, 0xc1, 0x0f, 0x8f, 0x0f, 0x01, 0x00, 0x00};
+constexpr unsigned char p2_continue_window[p2_continue_window_length] = {0x8b, 0x3f, 0x83, 0x3f, 0x00,
+                                                                         0x89, 0x7c, 0x24, 0x24};
+constexpr unsigned char p2_site[site_length] = {0x8b, 0x47, 0x70, 0x8b, 0x48, 0x30};
+constexpr unsigned p2_sweep_slot = 0x20; // [ESP+0x20] at the site: the sweep half-length the engine adds at 0x0045ccec
 // The two helpers both sites call (checked by the production install, not by
 // the fixture, whose replicas sit at other addresses):
 // 00412440  55 8b ec 83 e4 f8 d9 45 08 d9 fa 8b e5 5d c3        FLD [EBP+8]; FSQRT (result left on the x87 stack)
@@ -118,13 +123,15 @@ constexpr unsigned p2_sweep_slot = 0x20;  // [ESP+0x20] at the site: the sweep h
 //           SSE2 path when *0x006619ec != 0: FSTP qword; CVTTSD2SI (truncation; 0x80000000 when out of range)
 constexpr std::uintptr_t sqrt_helper_va = 0x00412440, ftol_helper_va = 0x0052b5d0;
 constexpr unsigned sqrt_helper_length = 15, ftol_helper_length = 28;
-constexpr unsigned char sqrt_helper[sqrt_helper_length] = {0x55,0x8b,0xec,0x83,0xe4,0xf8,0xd9,0x45,0x08,0xd9,0xfa,0x8b,0xe5,0x5d,0xc3};
-constexpr unsigned char ftol_helper[ftol_helper_length] = {
-    0x83,0x3d,0xec,0x19,0x66,0x00,0x00, 0x74,0x2d, 0x55,0x8b,0xec, 0x83,0xec,0x08, 0x83,0xe4,0xf8, 0xdd,0x1c,0x24, 0xf2,0x0f,0x2c,0x04,0x24, 0xc9,0xc3};
+constexpr unsigned char sqrt_helper[sqrt_helper_length] = {0x55, 0x8b, 0xec, 0x83, 0xe4, 0xf8, 0xd9, 0x45,
+                                                           0x08, 0xd9, 0xfa, 0x8b, 0xe5, 0x5d, 0xc3};
+constexpr unsigned char ftol_helper[ftol_helper_length] = {0x83, 0x3d, 0xec, 0x19, 0x66, 0x00, 0x00, 0x74, 0x2d, 0x55,
+                                                           0x8b, 0xec, 0x83, 0xec, 0x08, 0x83, 0xe4, 0xf8, 0xdd, 0x1c,
+                                                           0x24, 0xf2, 0x0f, 0x2c, 0x04, 0x24, 0xc9, 0xc3};
 // Object layout the stubs read (every field dereferenced by the engine on the
 // same pair before or right after the site): class word, physics block, radius.
 constexpr unsigned class_offset = 0x48, physics_offset = 0x70, radius_offset = 0xa4, position_offset = 0x30;
-constexpr std::uint16_t class_gate = 7;   // class-7 pairs reuse the distance at 0x0045d6e4: never short-circuited
+constexpr std::uint16_t class_gate = 7; // class-7 pairs reuse the distance at 0x0045d6e4: never short-circuited
 constexpr unsigned ret_pop = 4;
 // The margin: T = R' + (R' >> 5) + 64 at P1 with R' = r (the engine's R is
 // (r*0x1028f + 0x8000) >> 16 < 1.01 r + 0.5), T = R + 64 at P2. The engine's
@@ -144,7 +151,9 @@ inline std::int32_t wrapped_difference(std::int32_t a, std::int32_t b) {
 }
 inline bool box_reject(std::int32_t dx, std::int32_t dy, std::int32_t dz, std::int32_t threshold) {
     // |d| as the stub computes it (INT_MIN stays INT_MIN: unsigned max then the cap catches it).
-    auto mag = [](std::int32_t d) { return d < 0 ? static_cast<std::uint32_t>(0u - static_cast<std::uint32_t>(d)) : static_cast<std::uint32_t>(d); };
+    auto mag = [](std::int32_t d) {
+        return d < 0 ? static_cast<std::uint32_t>(0u - static_cast<std::uint32_t>(d)) : static_cast<std::uint32_t>(d);
+    };
     std::uint32_t m = mag(dx);
     if (mag(dy) > m) m = mag(dy);
     if (mag(dz) > m) m = mag(dz);
@@ -157,9 +166,11 @@ inline bool p1_threshold(std::int32_t radius_sum, std::int32_t* threshold) {
     if (radius_sum < 0) return false;
     const std::int64_t t = std::int64_t(radius_sum) + (radius_sum >> 5) + margin;
     if (t > 0x7fffffff) return false;
-    *threshold = static_cast<std::int32_t>(t); return true;
+    *threshold = static_cast<std::int32_t>(t);
+    return true;
 }
-inline bool p1_box_reject(std::uint16_t class_a, std::uint16_t class_b, std::int32_t dx, std::int32_t dy, std::int32_t dz, std::int32_t radius_sum) {
+inline bool p1_box_reject(std::uint16_t class_a, std::uint16_t class_b, std::int32_t dx, std::int32_t dy,
+                          std::int32_t dz, std::int32_t radius_sum) {
     std::int32_t t = 0;
     if (class_a == class_gate || class_b == class_gate || !p1_threshold(radius_sum, &t)) return false;
     return box_reject(dx, dy, dz, t);
@@ -171,9 +182,11 @@ inline bool p2_threshold(std::int32_t candidate_radius, std::int32_t sweep, std:
     if (r > 0x7fffffff || r < -0x7fffffff - 1) return false;
     const std::int64_t t = r + margin;
     if (t > 0x7fffffff) return false;
-    *threshold = static_cast<std::int32_t>(t); return true;
+    *threshold = static_cast<std::int32_t>(t);
+    return true;
 }
-inline bool p2_box_reject(std::int32_t dx, std::int32_t dy, std::int32_t dz, std::int32_t candidate_radius, std::int32_t sweep) {
+inline bool p2_box_reject(std::int32_t dx, std::int32_t dy, std::int32_t dz, std::int32_t candidate_radius,
+                          std::int32_t sweep) {
     std::int32_t t = 0;
     if (!p2_threshold(candidate_radius, sweep, &t)) return false;
     return box_reject(dx, dy, dz, t);
@@ -198,7 +211,8 @@ inline std::int32_t p1_engine_threshold(std::int32_t radius_sum) {
 inline bool p1_engine_reject(std::int32_t dx, std::int32_t dy, std::int32_t dz, std::int32_t radius_sum) {
     return engine_distance(dx, dy, dz) > p1_engine_threshold(radius_sum);
 }
-inline bool p2_engine_reject(std::int32_t dx, std::int32_t dy, std::int32_t dz, std::int32_t candidate_radius, std::int32_t sweep) {
+inline bool p2_engine_reject(std::int32_t dx, std::int32_t dy, std::int32_t dz, std::int32_t candidate_radius,
+                             std::int32_t sweep) {
     return engine_distance(dx, dy, dz) > wrapped_difference(candidate_radius, wrapped_difference(0, sweep));
 }
 
@@ -209,16 +223,34 @@ inline bool p2_engine_reject(std::int32_t dx, std::int32_t dy, std::int32_t dz, 
 // site does (the first instruction after either site writes them). The
 // counters are `inc dword [abs32]` on fixed slots, present only when the
 // install asked for them (the fixture measures both variants).
-struct Counters { std::uint32_t entered, rejected; };   // absolute addresses, 0 = no counters
+struct Counters {
+    std::uint32_t entered, rejected;
+}; // absolute addresses, 0 = no counters
 constexpr unsigned stub_capacity = 160;
 class StubWriter {
 public:
     unsigned length() const { return n_; }
-    void byte(unsigned char b) { if (n_ < stub_capacity) out_[n_] = b; ++n_; }
-    void bytes(const unsigned char* p, unsigned n) { for (unsigned i = 0; i < n; ++i) byte(p[i]); }
-    void dword(std::uint32_t v) { byte(v & 0xff); byte((v >> 8) & 0xff); byte((v >> 16) & 0xff); byte((v >> 24) & 0xff); }
+    void byte(unsigned char b) {
+        if (n_ < stub_capacity) out_[n_] = b;
+        ++n_;
+    }
+    void bytes(const unsigned char* p, unsigned n) {
+        for (unsigned i = 0; i < n; ++i) byte(p[i]);
+    }
+    void dword(std::uint32_t v) {
+        byte(v & 0xff);
+        byte((v >> 8) & 0xff);
+        byte((v >> 16) & 0xff);
+        byte((v >> 24) & 0xff);
+    }
     // Short jump to a label resolved later (labels 0..3).
-    void jcc(unsigned char opcode, unsigned label) { byte(opcode); fix_[fixes_].at = n_; fix_[fixes_].label = label; ++fixes_; byte(0); }
+    void jcc(unsigned char opcode, unsigned label) {
+        byte(opcode);
+        fix_[fixes_].at = n_;
+        fix_[fixes_].label = label;
+        ++fixes_;
+        byte(0);
+    }
     void label(unsigned id) { label_[id] = n_; }
     bool resolve() {
         if (n_ > stub_capacity) return false;
@@ -229,17 +261,34 @@ public:
         }
         return true;
     }
-    explicit StubWriter(unsigned char* out) : out_(out) {}
+    explicit StubWriter(unsigned char* out)
+        : out_(out) {}
+
 private:
-    unsigned char* out_; unsigned n_ = 0;
-    struct Fix { unsigned at, label; } fix_[16]{}; unsigned fixes_ = 0;
+    unsigned char* out_;
+    unsigned n_ = 0;
+    struct Fix {
+        unsigned at, label;
+    } fix_[16]{};
+    unsigned fixes_ = 0;
     unsigned label_[4]{};
 };
 constexpr unsigned label_continue = 0, label_reject = 1, label_skip_a = 2, label_skip_b = 3;
-inline void emit_inc(StubWriter& w, std::uint32_t slot) { if (slot) { w.byte(0xff); w.byte(0x05); w.dword(slot); } }
+inline void emit_inc(StubWriter& w, std::uint32_t slot) {
+    if (slot) {
+        w.byte(0xff);
+        w.byte(0x05);
+        w.dword(slot);
+    }
+}
 // |reg| = reg < 0 ? -reg : reg on the wrapped difference: TEST; JNS +2; NEG.
 inline void emit_abs(StubWriter& w, unsigned char test_modrm, unsigned char neg_modrm) {
-    w.byte(0x85); w.byte(test_modrm); w.byte(0x79); w.byte(0x02); w.byte(0xf7); w.byte(neg_modrm);
+    w.byte(0x85);
+    w.byte(test_modrm);
+    w.byte(0x79);
+    w.byte(0x02);
+    w.byte(0xf7);
+    w.byte(neg_modrm);
 }
 // P1 stub. Free registers at the site: EAX/ECX/EDX (written by the displaced
 // MOVs and 0x0045d594) and EDI (first touch on every path is a write: the
@@ -248,41 +297,109 @@ inline void emit_abs(StubWriter& w, unsigned char test_modrm, unsigned char neg_
 //   cmp byte [enabled],0 ; je continue
 //   [inc dword [entered]]
 //   cmp word [ebx+0x48],7 ; je continue ; cmp word [esi+0x48],7 ; je continue
-//   mov eax,[esp+0x24] ; test eax,eax ; js continue ; mov edx,eax ; sar edx,5 ; add eax,edx ; jo continue ; add eax,64 ; jo continue
-//   mov ecx,[ebx+0x70] ; mov edx,[esi+0x70]
-//   mov edi,[ecx+0x30] ; sub edi,[edx+0x30] ; |edi|
-//   push eax
-//   mov eax,[ecx+0x34] ; sub eax,[edx+0x34] ; |eax| ; cmp edi,eax ; cmovb edi,eax
-//   mov eax,[ecx+0x38] ; sub eax,[edx+0x38] ; |eax| ; cmp edi,eax ; cmovb edi,eax
-//   pop eax
-//   cmp edi,0x40000000 ; jae continue ; cmp edi,eax ; jg reject
+//   mov eax,[esp+0x24] ; test eax,eax ; js continue ; mov edx,eax ; sar edx,5 ; add eax,edx ; jo continue ; add eax,64
+//   ; jo continue mov ecx,[ebx+0x70] ; mov edx,[esi+0x70] mov edi,[ecx+0x30] ; sub edi,[edx+0x30] ; |edi| push eax mov
+//   eax,[ecx+0x34] ; sub eax,[edx+0x34] ; |eax| ; cmp edi,eax ; cmovb edi,eax mov eax,[ecx+0x38] ; sub eax,[edx+0x38] ;
+//   |eax| ; cmp edi,eax ; cmovb edi,eax pop eax cmp edi,0x40000000 ; jae continue ; cmp edi,eax ; jg reject
 // continue: jmp [next]
 // reject: [inc dword [rejected]] ; mov edi,7 ; jmp continue_label
-inline unsigned encode_p1_stub(std::uint32_t at, std::uint32_t enabled, Counters counters, std::uint32_t next_slot, std::uint32_t continue_target, unsigned char out[stub_capacity]) {
+inline unsigned encode_p1_stub(std::uint32_t at, std::uint32_t enabled, Counters counters, std::uint32_t next_slot,
+                               std::uint32_t continue_target, unsigned char out[stub_capacity]) {
     StubWriter w(out);
-    w.byte(0x80); w.byte(0x3d); w.dword(enabled); w.byte(0x00); w.jcc(0x74, label_continue);
+    w.byte(0x80);
+    w.byte(0x3d);
+    w.dword(enabled);
+    w.byte(0x00);
+    w.jcc(0x74, label_continue);
     emit_inc(w, counters.entered);
-    w.byte(0x66); w.byte(0x83); w.byte(0x7b); w.byte(0x48); w.byte(0x07); w.jcc(0x74, label_continue);
-    w.byte(0x66); w.byte(0x83); w.byte(0x7e); w.byte(0x48); w.byte(0x07); w.jcc(0x74, label_continue);
-    w.byte(0x8b); w.byte(0x44); w.byte(0x24); w.byte(0x24);
-    w.byte(0x85); w.byte(0xc0); w.jcc(0x78, label_continue);
-    w.byte(0x8b); w.byte(0xd0); w.byte(0xc1); w.byte(0xfa); w.byte(0x05); w.byte(0x03); w.byte(0xc2); w.jcc(0x70, label_continue);
-    w.byte(0x83); w.byte(0xc0); w.byte(static_cast<unsigned char>(margin)); w.jcc(0x70, label_continue);
-    w.byte(0x8b); w.byte(0x4b); w.byte(0x70); w.byte(0x8b); w.byte(0x56); w.byte(0x70);
-    w.byte(0x8b); w.byte(0x79); w.byte(0x30); w.byte(0x2b); w.byte(0x7a); w.byte(0x30); emit_abs(w, 0xff, 0xdf);
+    w.byte(0x66);
+    w.byte(0x83);
+    w.byte(0x7b);
+    w.byte(0x48);
+    w.byte(0x07);
+    w.jcc(0x74, label_continue);
+    w.byte(0x66);
+    w.byte(0x83);
+    w.byte(0x7e);
+    w.byte(0x48);
+    w.byte(0x07);
+    w.jcc(0x74, label_continue);
+    w.byte(0x8b);
+    w.byte(0x44);
+    w.byte(0x24);
+    w.byte(0x24);
+    w.byte(0x85);
+    w.byte(0xc0);
+    w.jcc(0x78, label_continue);
+    w.byte(0x8b);
+    w.byte(0xd0);
+    w.byte(0xc1);
+    w.byte(0xfa);
+    w.byte(0x05);
+    w.byte(0x03);
+    w.byte(0xc2);
+    w.jcc(0x70, label_continue);
+    w.byte(0x83);
+    w.byte(0xc0);
+    w.byte(static_cast<unsigned char>(margin));
+    w.jcc(0x70, label_continue);
+    w.byte(0x8b);
+    w.byte(0x4b);
+    w.byte(0x70);
+    w.byte(0x8b);
+    w.byte(0x56);
+    w.byte(0x70);
+    w.byte(0x8b);
+    w.byte(0x79);
+    w.byte(0x30);
+    w.byte(0x2b);
+    w.byte(0x7a);
+    w.byte(0x30);
+    emit_abs(w, 0xff, 0xdf);
     w.byte(0x50);
-    w.byte(0x8b); w.byte(0x41); w.byte(0x34); w.byte(0x2b); w.byte(0x42); w.byte(0x34); emit_abs(w, 0xc0, 0xd8);
-    w.byte(0x3b); w.byte(0xf8); w.byte(0x0f); w.byte(0x42); w.byte(0xf8);
-    w.byte(0x8b); w.byte(0x41); w.byte(0x38); w.byte(0x2b); w.byte(0x42); w.byte(0x38); emit_abs(w, 0xc0, 0xd8);
-    w.byte(0x3b); w.byte(0xf8); w.byte(0x0f); w.byte(0x42); w.byte(0xf8);
+    w.byte(0x8b);
+    w.byte(0x41);
+    w.byte(0x34);
+    w.byte(0x2b);
+    w.byte(0x42);
+    w.byte(0x34);
+    emit_abs(w, 0xc0, 0xd8);
+    w.byte(0x3b);
+    w.byte(0xf8);
+    w.byte(0x0f);
+    w.byte(0x42);
+    w.byte(0xf8);
+    w.byte(0x8b);
+    w.byte(0x41);
+    w.byte(0x38);
+    w.byte(0x2b);
+    w.byte(0x42);
+    w.byte(0x38);
+    emit_abs(w, 0xc0, 0xd8);
+    w.byte(0x3b);
+    w.byte(0xf8);
+    w.byte(0x0f);
+    w.byte(0x42);
+    w.byte(0xf8);
     w.byte(0x58);
-    w.byte(0x81); w.byte(0xff); w.dword(static_cast<std::uint32_t>(axis_cap)); w.jcc(0x73, label_continue);
-    w.byte(0x3b); w.byte(0xf8); w.jcc(0x7f, label_reject);
-    w.label(label_continue); w.byte(0xff); w.byte(0x25); w.dword(next_slot);
-    w.label(label_reject); emit_inc(w, counters.rejected);
-    w.byte(0xbf); w.dword(class_gate);
+    w.byte(0x81);
+    w.byte(0xff);
+    w.dword(static_cast<std::uint32_t>(axis_cap));
+    w.jcc(0x73, label_continue);
+    w.byte(0x3b);
+    w.byte(0xf8);
+    w.jcc(0x7f, label_reject);
+    w.label(label_continue);
+    w.byte(0xff);
+    w.byte(0x25);
+    w.dword(next_slot);
+    w.label(label_reject);
+    emit_inc(w, counters.rejected);
+    w.byte(0xbf);
+    w.dword(class_gate);
     const std::uint32_t here = at + w.length() + 5;
-    w.byte(0xe9); w.dword(continue_target - here);
+    w.byte(0xe9);
+    w.dword(continue_target - here);
     return w.resolve() ? w.length() : 0;
 }
 // P2 stub. Free registers at the site: EAX/ECX/EDX (written by the displaced
@@ -300,28 +417,84 @@ inline unsigned encode_p1_stub(std::uint32_t at, std::uint32_t enabled, Counters
 //   cmp esi,0x40000000 ; jae continue ; cmp esi,ecx ; jg reject
 // continue: jmp [next]
 // reject: [inc dword [rejected]] ; mov esi,edx (= [ebx+0x70], as 0x0045cc82 leaves it) ; jmp continue_label
-inline unsigned encode_p2_stub(std::uint32_t at, std::uint32_t enabled, Counters counters, std::uint32_t next_slot, std::uint32_t continue_target, unsigned char out[stub_capacity]) {
+inline unsigned encode_p2_stub(std::uint32_t at, std::uint32_t enabled, Counters counters, std::uint32_t next_slot,
+                               std::uint32_t continue_target, unsigned char out[stub_capacity]) {
     StubWriter w(out);
-    w.byte(0x80); w.byte(0x3d); w.dword(enabled); w.byte(0x00); w.jcc(0x74, label_continue);
+    w.byte(0x80);
+    w.byte(0x3d);
+    w.dword(enabled);
+    w.byte(0x00);
+    w.jcc(0x74, label_continue);
     emit_inc(w, counters.entered);
-    w.byte(0x8b); w.byte(0x8f); w.dword(radius_offset);
-    w.byte(0x03); w.byte(0x4c); w.byte(0x24); w.byte(static_cast<unsigned char>(p2_sweep_slot)); w.jcc(0x70, label_continue);
-    w.byte(0x83); w.byte(0xc1); w.byte(static_cast<unsigned char>(margin)); w.jcc(0x70, label_continue);
-    w.byte(0x8b); w.byte(0x47); w.byte(0x70); w.byte(0x8b); w.byte(0x53); w.byte(0x70);
-    w.byte(0x8b); w.byte(0x70); w.byte(0x30); w.byte(0x2b); w.byte(0x72); w.byte(0x30); emit_abs(w, 0xf6, 0xde);
+    w.byte(0x8b);
+    w.byte(0x8f);
+    w.dword(radius_offset);
+    w.byte(0x03);
+    w.byte(0x4c);
+    w.byte(0x24);
+    w.byte(static_cast<unsigned char>(p2_sweep_slot));
+    w.jcc(0x70, label_continue);
+    w.byte(0x83);
+    w.byte(0xc1);
+    w.byte(static_cast<unsigned char>(margin));
+    w.jcc(0x70, label_continue);
+    w.byte(0x8b);
+    w.byte(0x47);
+    w.byte(0x70);
+    w.byte(0x8b);
+    w.byte(0x53);
+    w.byte(0x70);
+    w.byte(0x8b);
+    w.byte(0x70);
+    w.byte(0x30);
+    w.byte(0x2b);
+    w.byte(0x72);
+    w.byte(0x30);
+    emit_abs(w, 0xf6, 0xde);
     w.byte(0x51);
-    w.byte(0x8b); w.byte(0x48); w.byte(0x34); w.byte(0x2b); w.byte(0x4a); w.byte(0x34); emit_abs(w, 0xc9, 0xd9);
-    w.byte(0x3b); w.byte(0xf1); w.byte(0x0f); w.byte(0x42); w.byte(0xf1);
-    w.byte(0x8b); w.byte(0x48); w.byte(0x38); w.byte(0x2b); w.byte(0x4a); w.byte(0x38); emit_abs(w, 0xc9, 0xd9);
-    w.byte(0x3b); w.byte(0xf1); w.byte(0x0f); w.byte(0x42); w.byte(0xf1);
+    w.byte(0x8b);
+    w.byte(0x48);
+    w.byte(0x34);
+    w.byte(0x2b);
+    w.byte(0x4a);
+    w.byte(0x34);
+    emit_abs(w, 0xc9, 0xd9);
+    w.byte(0x3b);
+    w.byte(0xf1);
+    w.byte(0x0f);
+    w.byte(0x42);
+    w.byte(0xf1);
+    w.byte(0x8b);
+    w.byte(0x48);
+    w.byte(0x38);
+    w.byte(0x2b);
+    w.byte(0x4a);
+    w.byte(0x38);
+    emit_abs(w, 0xc9, 0xd9);
+    w.byte(0x3b);
+    w.byte(0xf1);
+    w.byte(0x0f);
+    w.byte(0x42);
+    w.byte(0xf1);
     w.byte(0x59);
-    w.byte(0x81); w.byte(0xfe); w.dword(static_cast<std::uint32_t>(axis_cap)); w.jcc(0x73, label_continue);
-    w.byte(0x3b); w.byte(0xf1); w.jcc(0x7f, label_reject);
-    w.label(label_continue); w.byte(0xff); w.byte(0x25); w.dword(next_slot);
-    w.label(label_reject); emit_inc(w, counters.rejected);
-    w.byte(0x8b); w.byte(0xf2);
+    w.byte(0x81);
+    w.byte(0xfe);
+    w.dword(static_cast<std::uint32_t>(axis_cap));
+    w.jcc(0x73, label_continue);
+    w.byte(0x3b);
+    w.byte(0xf1);
+    w.jcc(0x7f, label_reject);
+    w.label(label_continue);
+    w.byte(0xff);
+    w.byte(0x25);
+    w.dword(next_slot);
+    w.label(label_reject);
+    emit_inc(w, counters.rejected);
+    w.byte(0x8b);
+    w.byte(0xf2);
     const std::uint32_t here = at + w.length() + 5;
-    w.byte(0xe9); w.dword(continue_target - here);
+    w.byte(0xe9);
+    w.dword(continue_target - here);
     return w.resolve() ? w.length() : 0;
 }
 constexpr unsigned p1_stub_length_counted = 139, p1_stub_length_plain = 127;
@@ -330,34 +503,73 @@ constexpr unsigned p2_stub_length_counted = 117, p2_stub_length_plain = 105;
 // ---- per-frame counters and the window ----
 // The four counters are read and zeroed once per Present; the window keeps
 // 300 frames and closes with the nearest-rank p50 and the max of each.
-constexpr unsigned counter_count = 4;   // p1 entered, p1 rejected, p2 entered, p2 rejected
-inline constexpr const char* const counter_names[counter_count] = {"p1_pairs", "p1_rejected", "p2_cands", "p2_rejected"};
+constexpr unsigned counter_count = 4; // p1 entered, p1 rejected, p2 entered, p2 rejected
+inline constexpr const char* const counter_names[counter_count] = {"p1_pairs", "p1_rejected", "p2_cands",
+                                                                   "p2_rejected"};
 constexpr unsigned window_frames = 300;
-struct WindowSummary { std::uint64_t frame = 0; unsigned frames = 0; std::uint64_t p50[counter_count]{}, max[counter_count]{}, sum[counter_count]{}; };
+struct WindowSummary {
+    std::uint64_t frame = 0;
+    unsigned frames = 0;
+    std::uint64_t p50[counter_count]{}, max[counter_count]{}, sum[counter_count]{};
+};
 class Window {
 public:
     unsigned count() const { return count_; }
     bool full() const { return count_ >= window_frames; }
     void add(std::uint64_t frame, const std::uint32_t values[counter_count]) {
-        if (count_ < window_frames) { for (unsigned i = 0; i < counter_count; ++i) values_[i][count_] = values[i]; ++count_; }
-        for (unsigned i = 0; i < counter_count; ++i) { if (values[i] > max_[i]) max_[i] = values[i]; sum_[i] += values[i]; }
+        if (count_ < window_frames) {
+            for (unsigned i = 0; i < counter_count; ++i) values_[i][count_] = values[i];
+            ++count_;
+        }
+        for (unsigned i = 0; i < counter_count; ++i) {
+            if (values[i] > max_[i]) max_[i] = values[i];
+            sum_[i] += values[i];
+        }
         last_frame_ = frame;
     }
     bool close(WindowSummary& out) {
-        if (!count_) { reset(); return false; }
-        out.frame = last_frame_; out.frames = count_;
-        for (unsigned i = 0; i < counter_count; ++i) { out.p50[i] = percentile(values_[i], 50); out.max[i] = max_[i]; out.sum[i] = sum_[i]; }
-        reset(); return true;
+        if (!count_) {
+            reset();
+            return false;
+        }
+        out.frame = last_frame_;
+        out.frames = count_;
+        for (unsigned i = 0; i < counter_count; ++i) {
+            out.p50[i] = percentile(values_[i], 50);
+            out.max[i] = max_[i];
+            out.sum[i] = sum_[i];
+        }
+        reset();
+        return true;
     }
-    void reset() { count_ = 0; last_frame_ = 0; for (unsigned i = 0; i < counter_count; ++i) { max_[i] = 0; sum_[i] = 0; } }
+    void reset() {
+        count_ = 0;
+        last_frame_ = 0;
+        for (unsigned i = 0; i < counter_count; ++i) {
+            max_[i] = 0;
+            sum_[i] = 0;
+        }
+    }
+
 private:
     // Nearest-rank percentile through an insertion into a scratch copy (300 entries, once per window).
     std::uint64_t percentile(const std::uint64_t* values, unsigned p) {
-        for (unsigned i = 0; i < count_; ++i) { std::uint64_t v = values[i]; unsigned j = i; while (j && scratch_[j - 1] > v) { scratch_[j] = scratch_[j - 1]; --j; } scratch_[j] = v; }
-        unsigned index = (count_ * p) / 100; if (index >= count_) index = count_ - 1;
+        for (unsigned i = 0; i < count_; ++i) {
+            std::uint64_t v = values[i];
+            unsigned j = i;
+            while (j && scratch_[j - 1] > v) {
+                scratch_[j] = scratch_[j - 1];
+                --j;
+            }
+            scratch_[j] = v;
+        }
+        unsigned index = (count_ * p) / 100;
+        if (index >= count_) index = count_ - 1;
         return scratch_[index];
     }
-    std::uint64_t values_[counter_count][window_frames]{}, scratch_[window_frames]{}, max_[counter_count]{}, sum_[counter_count]{};
-    unsigned count_ = 0; std::uint64_t last_frame_ = 0;
+    std::uint64_t values_[counter_count][window_frames]{}, scratch_[window_frames]{}, max_[counter_count]{},
+        sum_[counter_count]{};
+    unsigned count_ = 0;
+    std::uint64_t last_frame_ = 0;
 };
 }

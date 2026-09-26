@@ -19,20 +19,21 @@ namespace x3m::media_cue::sites {
 enum Index : unsigned { MediaCreateEnter = 0, Count = 1 };
 constexpr unsigned kSiteCount = Count;
 constexpr engine_patch::SiteSpec kSites[Count] = {
-    {"media_create_enter",0x00498140,{0x53,0x8b,0x5c,0x24,0x08},5,0,0},
+    {"media_create_enter", 0x00498140, {0x53, 0x8b, 0x5c, 0x24, 0x08}, 5, 0, 0},
 };
-static_assert(sizeof(kSites)/sizeof(kSites[0]) == Count, "One gate site");
+static_assert(sizeof(kSites) / sizeof(kSites[0]) == Count, "One gate site");
 // The return addresses at [esp] on entry, one per direct caller (the complete
 // entry set: no data reference to 0x00498140 exists in the image), the
 // selector's return address at [esp+0xc] behind the play helper 0x004f65f0
 // (`push ecx` frame slot + `push esi` id between its own return address and
 // the call) and the cue kind it pushes (`0x0045c605 push 0x5a`) at [esp+0x10].
-inline constexpr std::uint32_t kQueryReturn = 0x0049873f;      // 0x00498730 stop/query helper
-inline constexpr std::uint32_t kSavegameReturn = 0x00498bb3;   // 0x00498ad0 savegame MOVI restore
-inline constexpr std::uint32_t kScriptReturn = 0x00498cdd;     // 0x00498c90 play-by-id (script VM)
-inline constexpr std::uint32_t kSpeechReturn = 0x00498efd;     // 0x00498e30 speech cue
-inline constexpr std::uint32_t kHelperReturn = 0x004f6615;     // 0x004f65f0 track/emitter play helper
-inline constexpr std::uint32_t kSelectorReturn = 0x0045c60c;   // 0x0045b720 sector selector, `call 0x004f65f0` at 0x0045c607
+inline constexpr std::uint32_t kQueryReturn = 0x0049873f;    // 0x00498730 stop/query helper
+inline constexpr std::uint32_t kSavegameReturn = 0x00498bb3; // 0x00498ad0 savegame MOVI restore
+inline constexpr std::uint32_t kScriptReturn = 0x00498cdd;   // 0x00498c90 play-by-id (script VM)
+inline constexpr std::uint32_t kSpeechReturn = 0x00498efd;   // 0x00498e30 speech cue
+inline constexpr std::uint32_t kHelperReturn = 0x004f6615;   // 0x004f65f0 track/emitter play helper
+inline constexpr std::uint32_t kSelectorReturn = 0x0045c60c; // 0x0045b720 sector selector, `call 0x004f65f0` at
+                                                             // 0x0045c607
 inline constexpr std::uint32_t kSelectorKind = 0x5a;
 // The video consumer `0x004d0c40(IDirectDrawSurface*, IDirect3DSurface9*)`
 // decodes gap-free to its `ret`, which lies before the next function, the

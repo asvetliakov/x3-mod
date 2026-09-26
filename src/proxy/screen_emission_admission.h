@@ -28,6 +28,7 @@ struct Pair {
 };
 
 // Row 19 (the only observed screen population) first.
+// clang-format off
 constexpr Pair pairs[] = {
     {0x5e484a06672e28fbull, 0xec1f5c4a2f4e1445ull, true},
     {0x1b6863a088a177afull, 0x84d3de8887c963c5ull, true},
@@ -39,6 +40,7 @@ constexpr Pair pairs[] = {
     {0x88620f88d6e0a00eull, 0xa5c3495e27270b4aull, false},
     {0xf9755e1154244f58ull, 0xa5c3495e27270b4aull, false},
 };
+// clang-format on
 constexpr unsigned pair_count = sizeof pairs / sizeof pairs[0];
 static_assert(pair_count == 9, "nine exact SM1 pairs");
 
@@ -47,14 +49,16 @@ static_assert(pair_count == 9, "nine exact SM1 pairs");
 // rectangle. Only the bound-capable (bullet) bodies.
 inline bool admitted_vertex_shader(std::uint64_t hash) noexcept {
     if (!hash) return false;
-    for (const auto& p : pairs) if (p.bullet && p.vertex == hash) return true;
+    for (const auto& p : pairs)
+        if (p.bullet && p.vertex == hash) return true;
     return false;
 }
 
 // Step C: the exact pair identity of a packed-screen candidate draw.
 inline bool admitted_pair(std::uint64_t vertex, std::uint64_t pixel) noexcept {
     if (!vertex || !pixel) return false;
-    for (const auto& p : pairs) if (p.vertex == vertex && p.pixel == pixel) return true;
+    for (const auto& p : pairs)
+        if (p.vertex == vertex && p.pixel == pixel) return true;
     return false;
 }
 
@@ -72,7 +76,8 @@ inline unsigned admitted_pair_index(std::uint64_t vertex, std::uint64_t pixel) n
 // registration (each serves one or two pairs).
 inline bool admitted_pixel_shader(std::uint64_t pixel) noexcept {
     if (!pixel) return false;
-    for (const auto& p : pairs) if (p.pixel == pixel) return true;
+    for (const auto& p : pairs)
+        if (p.pixel == pixel) return true;
     return false;
 }
 

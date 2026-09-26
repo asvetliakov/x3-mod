@@ -68,8 +68,8 @@ inline constexpr std::uint64_t state_calibration_ns = 0;
 inline constexpr unsigned state_entry_slots = 32; // power of two
 inline constexpr unsigned state_top_count = 6;    // entries reported per window
 struct TopEntry {
-    unsigned slot = 0;         // index into the process-wide name table
-    std::uint64_t calls = 0;   // window p50 of that entry's per-frame calls
+    unsigned slot = 0;       // index into the process-wide name table
+    std::uint64_t calls = 0; // window p50 of that entry's per-frame calls
 };
 
 // ---- count-only window diagnostics ----------------------------------------
@@ -90,7 +90,9 @@ inline constexpr unsigned draw_pair_top_count = 8;
 
 class DrawPairs {
 public:
-    struct Pair { std::uint64_t vs = 0, ps = 0, draws = 0; };
+    struct Pair {
+        std::uint64_t vs = 0, ps = 0, draws = 0;
+    };
 
     // The two qualified cutout pairs, in report order: hull then station.
     static constexpr unsigned cutout_pair_count = 2;
@@ -100,22 +102,30 @@ public:
         // Counted before and independently of the table: a late-arriving pair
         // can land in overflow_, so a zero drawn from the table would not
         // prove the pair never drew. These two counters always do.
-        if (vs == cutout::pair_hashes[2] && ps == cutout::pair_hashes[3]) ++cutout_[0];
-        else if (vs == cutout::pair_hashes[0] && ps == cutout::pair_hashes[1]) ++cutout_[1];
+        if (vs == cutout::pair_hashes[2] && ps == cutout::pair_hashes[3])
+            ++cutout_[0];
+        else if (vs == cutout::pair_hashes[0] && ps == cutout::pair_hashes[1])
+            ++cutout_[1];
         const unsigned mix = static_cast<unsigned>(vs ^ (vs >> 32) ^ ps ^ (ps >> 17));
         for (unsigned probe = 0; probe < 8; ++probe) {
             Pair& slot = slots_[(mix + probe) & (draw_pair_slots - 1)];
-            if (slot.draws && slot.vs == vs && slot.ps == ps) { ++slot.draws; return; }
-            if (!slot.draws) { slot.vs = vs; slot.ps = ps; slot.draws = 1; return; }
+            if (slot.draws && slot.vs == vs && slot.ps == ps) {
+                ++slot.draws;
+                return;
+            }
+            if (!slot.draws) {
+                slot.vs = vs;
+                slot.ps = ps;
+                slot.draws = 1;
+                return;
+            }
         }
         ++overflow_;
     }
     std::uint64_t draws() const noexcept { return draws_; }
     std::uint64_t overflow() const noexcept { return overflow_; }
     // Exact, whatever the table did: 0 is the hull pair, 1 the station pair.
-    std::uint64_t cutout_draws(unsigned pair) const noexcept {
-        return pair < cutout_pair_count ? cutout_[pair] : 0;
-    }
+    std::uint64_t cutout_draws(unsigned pair) const noexcept { return pair < cutout_pair_count ? cutout_[pair] : 0; }
     // Draws counted for one exact pair; zero when the pair never drew.
     std::uint64_t draws_of(std::uint64_t vs, std::uint64_t ps) const noexcept {
         for (const Pair& slot : slots_)
@@ -172,14 +182,24 @@ public:
         if (set != static_cast<unsigned>(StateSet::RenderState)) return;
         for (unsigned probe = 0; probe < 8; ++probe) {
             Entry& slot = entries_[(entry + probe) & (redundant_entry_slots - 1)];
-            if (slot.count && slot.entry == entry) { ++slot.count; return; }
-            if (!slot.count) { slot.entry = entry; slot.count = 1; return; }
+            if (slot.count && slot.entry == entry) {
+                ++slot.count;
+                return;
+            }
+            if (!slot.count) {
+                slot.entry = entry;
+                slot.count = 1;
+                return;
+            }
         }
         // No slot: the aggregate above still counts it, the attribution does not.
     }
     std::uint64_t redundant(unsigned set) const noexcept { return set < state_set_count ? redundant_[set] : 0; }
     std::uint64_t shadowed(unsigned set) const noexcept { return set < state_set_count ? shadowed_[set] : 0; }
-    struct Entry { unsigned entry = 0; std::uint64_t count = 0; };
+    struct Entry {
+        unsigned entry = 0;
+        std::uint64_t count = 0;
+    };
     unsigned top(Entry* out, unsigned capacity) const noexcept {
         unsigned used = 0;
         for (const Entry& slot : entries_) {
@@ -230,8 +250,12 @@ public:
         ++draws_;
         // A user-memory draw is its own count and breaks the chain: neither it
         // nor the draw after it may be compared against a stale stream shadow.
-        if (key.user_memory) { ++user_memory_; previous_ = DrawKey{}; return; }
-        classify(key);          // compares in place, before the key replaces it
+        if (key.user_memory) {
+            ++user_memory_;
+            previous_ = DrawKey{};
+            return;
+        }
+        classify(key); // compares in place, before the key replaces it
         previous_ = key;
     }
     // A draw is only compared with a draw of the same frame.
@@ -251,12 +275,18 @@ private:
     void classify(const DrawKey& key) noexcept {
         if (!key.valid || !previous_.valid) return;
         if (key.vs != previous_.vs || key.ps != previous_.ps) return;
-        for (unsigned i = 0; i < 4; ++i) if (key.textures[i] != previous_.textures[i]) return;
-        if (key.stream0 != previous_.stream0 || key.indices != previous_.indices
-            || key.declaration != previous_.declaration) { ++same_material_; return; }
-        if (key.primitive_type == previous_.primitive_type && key.primitives == previous_.primitives
-            && key.base_vertex == previous_.base_vertex && key.start_index == previous_.start_index) ++same_mesh_;
-        else ++same_mesh_any_range_;
+        for (unsigned i = 0; i < 4; ++i)
+            if (key.textures[i] != previous_.textures[i]) return;
+        if (key.stream0 != previous_.stream0 || key.indices != previous_.indices ||
+            key.declaration != previous_.declaration) {
+            ++same_material_;
+            return;
+        }
+        if (key.primitive_type == previous_.primitive_type && key.primitives == previous_.primitives &&
+            key.base_vertex == previous_.base_vertex && key.start_index == previous_.start_index)
+            ++same_mesh_;
+        else
+            ++same_mesh_any_range_;
     }
 
     DrawKey previous_{};
@@ -277,7 +307,7 @@ struct Frame {
     std::uint64_t bucket_us[bucket_count]{};
     std::uint64_t draw_native_us = 0;
     std::uint64_t bucket_calls[bucket_count]{};
-    const char* slow_call = "";      // slowest single hooked call of the frame
+    const char* slow_call = ""; // slowest single hooked call of the frame
     std::uint64_t slow_call_us = 0;
     // The frame's unhooked time split by position (Gap above). The three sum
     // with the buckets and present_us to dt_us unless a gap clamped at zero.
@@ -299,7 +329,7 @@ struct Summary {
     std::uint64_t draw_native_p50 = 0, draw_native_max = 0;
     std::uint64_t gap_p50[gap_count]{}, gap_p95[gap_count]{}, gap_max[gap_count]{};
     std::uint64_t gap_draw_per_draw_ns = 0; // window p50 gap_draw divided by the p50 draw count
-    TopEntry state_top[state_top_count]{}; // most-called state entries, descending
+    TopEntry state_top[state_top_count]{};  // most-called state entries, descending
     unsigned state_top_used = 0;
     std::uint64_t state_other_p50 = 0;
     std::uint32_t slow = 0; // frames with dt above twice the window p50
@@ -327,8 +357,7 @@ public:
             }
             draw_native_[count_] = sample.draw_native_us;
             for (unsigned g = 0; g < gap_count; ++g) gap_[g][count_] = sample.gap_us[g];
-            for (unsigned e = 0; e < state_entry_slots; ++e)
-                state_entry_[e][count_] = sample.state_entry_calls[e];
+            for (unsigned e = 0; e < state_entry_slots; ++e) state_entry_[e][count_] = sample.state_entry_calls[e];
             state_other_[count_] = sample.state_other_calls;
             ++count_;
         }
@@ -346,7 +375,10 @@ public:
     // Reduces the collected samples and restarts the window. False (and an
     // untouched summary) when no frame was collected.
     bool close(Summary& out) noexcept {
-        if (!count_) { reset(); return false; }
+        if (!count_) {
+            reset();
+            return false;
+        }
         out = Summary{};
         out.frame = last_frame_;
         out.frames = count_;
@@ -370,7 +402,8 @@ public:
             out.gap_max[g] = percentile(gap_[g], 100);
         }
         out.gap_draw_per_draw_ns = out.draws_p50
-            ? out.gap_p50[static_cast<unsigned>(Gap::Draw)] * 1000ull / out.draws_p50 : 0;
+                                       ? out.gap_p50[static_cast<unsigned>(Gap::Draw)] * 1000ull / out.draws_p50
+                                       : 0;
         out.draw_native_p50 = percentile(draw_native_, 50);
         out.draw_native_max = percentile(draw_native_, 100);
         // Per-entry medians, then the six most-called, descending; ties keep
@@ -382,7 +415,8 @@ public:
             unsigned at = out.state_top_used;
             while (at > 0 && out.state_top[at - 1].calls < calls) --at;
             if (at >= state_top_count) continue;
-            for (unsigned i = out.state_top_used < state_top_count ? out.state_top_used : state_top_count - 1; i > at; --i)
+            for (unsigned i = out.state_top_used < state_top_count ? out.state_top_used : state_top_count - 1; i > at;
+                 --i)
                 out.state_top[i] = out.state_top[i - 1];
             out.state_top[at] = TopEntry{e, calls};
             if (out.state_top_used < state_top_count) ++out.state_top_used;
@@ -396,7 +430,11 @@ public:
         return true;
     }
 
-    void reset() noexcept { count_ = 0; slow_count_ = 0; last_frame_ = 0; }
+    void reset() noexcept {
+        count_ = 0;
+        slow_count_ = 0;
+        last_frame_ = 0;
+    }
 
 private:
     // Nearest-rank on the collected samples: index min(count-1, count*p/100)
@@ -448,7 +486,7 @@ struct ScopeState {
     const char* entry;
     unsigned bucket;
     bool outermost;
-    bool timed;    // stamped: false for a counted-only state call
+    bool timed; // stamped: false for a counted-only state call
     bool entered = false;
 };
 void scope_begin_impl(ScopeState& state, unsigned bucket, const char* entry) noexcept;
@@ -465,10 +503,14 @@ public:
     Scope(Bucket bucket, const char* entry) noexcept {
         if (active) detail::scope_begin_impl(state_, static_cast<unsigned>(bucket), entry);
     }
-    ~Scope() { if (state_.entered) detail::scope_end_impl(state_); }
+    ~Scope() {
+        if (state_.entered) detail::scope_end_impl(state_);
+    }
     // Ends the measurement early, before the rest of the hook's scope; a second
     // call and the destructor then do nothing.
-    void close() noexcept { if (state_.entered) detail::scope_end_impl(state_); }
+    void close() noexcept {
+        if (state_.entered) detail::scope_end_impl(state_);
+    }
     Scope(const Scope&) = delete;
     Scope& operator=(const Scope&) = delete;
 
@@ -477,20 +519,32 @@ private:
 };
 
 // Option off: one predictable branch on a process-global bool, no call.
-inline void present_begin() noexcept { if (active) detail::present_begin_impl(); }
-inline void present_end() noexcept { if (active) detail::present_end_impl(); }
-inline void draw(unsigned primitives) noexcept { if (active) detail::draw_impl(primitives); }
+inline void present_begin() noexcept {
+    if (active) detail::present_begin_impl();
+}
+inline void present_end() noexcept {
+    if (active) detail::present_end_impl();
+}
+inline void draw(unsigned primitives) noexcept {
+    if (active) detail::draw_impl(primitives);
+}
 // Around the forwarded native draw call only, in the same position as
 // present_begin/present_end relative to before_original/after_original.
-inline void draw_native_begin() noexcept { if (active) detail::draw_native_begin_impl(); }
-inline void draw_native_end() noexcept { if (active) detail::draw_native_end_impl(); }
+inline void draw_native_begin() noexcept {
+    if (active) detail::draw_native_begin_impl();
+}
+inline void draw_native_end() noexcept {
+    if (active) detail::draw_native_end_impl();
+}
 inline void frame(std::uint64_t frame_index, std::uint64_t draws) noexcept {
     if (active) detail::frame_impl(frame_index, draws);
 }
 // One call per hooked draw, from the draw path, with the bindings the proxy
 // already shadows: counts the program pair and classifies the draw against the
 // previous draw of the frame. The caller builds the key only when `active`.
-inline void draw_state(const DrawKey& key) noexcept { if (active) detail::draw_state_impl(key); }
+inline void draw_state(const DrawKey& key) noexcept {
+    if (active) detail::draw_state_impl(key);
+}
 // One call per shadowed state write, from inside the shadow update. `shadowed`
 // is false when the shadow holds no current value for the entry; the write is
 // then neither a redundancy nor a denominator. Nothing is elided either way.

@@ -41,14 +41,17 @@ namespace x3m::cull_small_parts::core {
 // x87 stack empty (fld/fstp at 0x0047d0f2/0x0047d0fa balanced). EDX, EBX,
 // EBP, ESI and ESP are untouched by the stub.
 constexpr std::uintptr_t function_va = 0x0047cfe0, function_end_va = 0x0047d552;
-constexpr std::uintptr_t window_va = 0x0047d294, site_va = 0x0047d2a2, next_va = 0x0047d2a7, je_va = 0x0047d2ad, cull_va = 0x0047d2c3, after_cull_va = 0x0047d2d1;
+constexpr std::uintptr_t window_va = 0x0047d294, site_va = 0x0047d2a2, next_va = 0x0047d2a7, je_va = 0x0047d2ad,
+                         cull_va = 0x0047d2c3, after_cull_va = 0x0047d2d1;
 constexpr unsigned window_length = 56, site_offset = 14, site_length = 5, cull_offset = 47;
+// clang-format off
 constexpr unsigned char window[window_length] = {
     0x83,0xfe,0x14, 0x7d,0x09, 0x33,0xf6, 0x83,0xa7,0x2c,0x01,0x00,0x00,0xfd,
     0x8b,0x4f,0x18, 0x85,0xc9, 0x8b,0x87,0xd8,0x01,0x00,0x00, 0x74,0x0c, 0x8b,0x89,0xd8,0x01,0x00,0x00,
     0x3b,0xc8, 0x7e,0x02, 0x8b,0xc1, 0x85,0xc0, 0x7e,0x0d, 0x3b,0xf0, 0x7d,0x09,
     0x83,0xa7,0x2c,0x01,0x00,0x00,0xfd, 0xeb,0x05};
-constexpr unsigned char site[site_length] = {0x8b,0x4f,0x18, 0x85,0xc9};
+// clang-format on
+constexpr unsigned char site[site_length] = {0x8b, 0x4f, 0x18, 0x85, 0xc9};
 constexpr unsigned ret_pop = 8;
 // Node fields the stub reads: the same ones the displaced span and its
 // successors read on the same node (parent link, own and parent threshold),
@@ -67,16 +70,23 @@ inline bool parse_px(const char* text, double* out) {
     if (!text || !*text) return false;
     const char* p = text;
     if (*p == '+') ++p;
-    double value = 0; unsigned digits = 0;
+    double value = 0;
+    unsigned digits = 0;
     for (; *p >= '0' && *p <= '9'; ++p, ++digits) value = value * 10.0 + (*p - '0');
     if (*p == '.') {
         double scale = 0.1;
-        for (++p; *p >= '0' && *p <= '9'; ++p, ++digits) { value += (*p - '0') * scale; scale *= 0.1; }
+        for (++p; *p >= '0' && *p <= '9'; ++p, ++digits) {
+            value += (*p - '0') * scale;
+            scale *= 0.1;
+        }
     }
     if (*p != '\0' || digits == 0) return false;
-    *out = value; return true;
+    *out = value;
+    return true;
 }
-inline bool valid_px(double px) { return std::isfinite(px) && px > px_min && px <= px_max; }
+inline bool valid_px(double px) {
+    return std::isfinite(px) && px > px_min && px <= px_max;
+}
 // The pixel scale of `s`: px = s * m00 * width / 1280 * focus / 0x4000
 // (s is the projected radius at a 640-wide reference, m00 the projection's
 // P[0], width the back buffer's). The engine computes s = r*640/D' with
@@ -124,14 +134,19 @@ inline std::uint32_t focus_from_projection(float m00, float m11) {
 // registry base F is the fallback, applied to the live projection's aspect.
 constexpr unsigned scene_max_age = 8;
 enum class Source : unsigned char { registry = 0, scene = 1 };
-inline const char* source_name(Source source) { return source == Source::scene ? "scene" : "registry"; }
+inline const char* source_name(Source source) {
+    return source == Source::scene ? "scene" : "registry";
+}
 // Why the registry: no_scene = nothing latched since install (the motion
 // output is off, or its selector never reached the scene phase, e.g. a
 // multisampled main target), reset = nothing since a Reset dropped the
 // latch, aged = no scene Clear for more than scene_max_age frames.
 enum class Fallback : unsigned char { none = 0, no_scene = 1, reset = 2, aged = 3 };
 inline const char* fallback_name(Fallback fallback) {
-    return fallback == Fallback::no_scene ? "no_scene" : fallback == Fallback::reset ? "reset" : fallback == Fallback::aged ? "aged" : "none";
+    return fallback == Fallback::no_scene ? "no_scene"
+           : fallback == Fallback::reset  ? "reset"
+           : fallback == Fallback::aged   ? "aged"
+                                          : "none";
 }
 struct SceneLatch {
     float m00 = 0, m11 = 0;
@@ -142,19 +157,29 @@ struct SceneLatch {
     void note(float p00, float p11) {
         const std::uint32_t f = focus_from_projection(p00, p11);
         if (!f) return;
-        m00 = p00; m11 = p11; focus = f; age = 0;
+        m00 = p00;
+        m11 = p11;
+        focus = f;
+        age = 0;
     }
     bool usable() const { return focus != 0 && age <= scene_max_age; }
     Fallback fallback() const { return usable() ? Fallback::none : focus == 0 ? empty : Fallback::aged; }
-    void advance() { if (age <= scene_max_age) ++age; }
-    void clear() { *this = SceneLatch{}; empty = Fallback::reset; }
+    void advance() {
+        if (age <= scene_max_age) ++age;
+    }
+    void clear() {
+        *this = SceneLatch{};
+        empty = Fallback::reset;
+    }
 };
 // The registry fallback's P[0]: the live projection rescaled to the base F,
 // cot(F/2)/W with W = cot_live/m00_live (cot_live = max(0.75*m11, m00), as in
 // focus_from_projection), so only the aspect is taken from the live view. The
 // live P[0] unchanged when its P[5] is unusable or F is outside the band.
 inline float fallback_m00(float live_m00, float live_m11, std::uint32_t focus) {
-    if (!std::isfinite(live_m00) || !std::isfinite(live_m11) || !(live_m00 > 0.0f) || !(live_m11 > 0.0f) || focus < focus_min || focus > focus_max) return live_m00;
+    if (!std::isfinite(live_m00) || !std::isfinite(live_m11) || !(live_m00 > 0.0f) || !(live_m11 > 0.0f) ||
+        focus < focus_min || focus > focus_max)
+        return live_m00;
     const double cot_live = std::fmax(0.75 * static_cast<double>(live_m11), static_cast<double>(live_m00));
     const double cot = 1.0 / std::tan(static_cast<double>(focus) * 3.14159265358979323846 / 65536.0);
     return static_cast<float>(static_cast<double>(live_m00) * cot / cot_live);
@@ -162,15 +187,22 @@ inline float fallback_m00(float live_m00, float live_m11, std::uint32_t focus) {
 // The frame's P[0] and F from a valid live projection: the scene latch when
 // usable, else registry_focus (read by the caller only in that case) applied
 // to the live projection.
-struct Choice { float m00; std::uint32_t focus; Source source; Fallback fallback; };
+struct Choice {
+    float m00;
+    std::uint32_t focus;
+    Source source;
+    Fallback fallback;
+};
 inline Choice choose(const SceneLatch& scene, float live_m00, float live_m11, std::uint32_t registry_focus) {
     if (scene.usable()) return Choice{scene.m00, scene.focus, Source::scene, Fallback::none};
     return Choice{fallback_m00(live_m00, live_m11, registry_focus), registry_focus, Source::registry, scene.fallback()};
 }
 inline std::int32_t threshold_for(double px, float m00, unsigned width, std::uint32_t focus = focus_default) {
-    if (!valid_px(px) || !std::isfinite(m00) || !(m00 > 0.05f) || !(m00 < 20.0f) || width < 64 || width > 16384) return 0;
+    if (!valid_px(px) || !std::isfinite(m00) || !(m00 > 0.05f) || !(m00 < 20.0f) || width < 64 || width > 16384)
+        return 0;
     if (focus < focus_min || focus > focus_max) return 0;
-    const double px_per_s = static_cast<double>(m00) * static_cast<double>(width) / 1280.0 * (static_cast<double>(focus) / static_cast<double>(focus_default));
+    const double px_per_s = static_cast<double>(m00) * static_cast<double>(width) / 1280.0 *
+                            (static_cast<double>(focus) / static_cast<double>(focus_default));
     double t = std::ceil(px / px_per_s);
     while (t > 1.0 && (t - 1.0) * px_per_s >= px) t -= 1.0;
     while (t * px_per_s < px) t += 1.0;
@@ -200,12 +232,19 @@ constexpr std::uint32_t projectile_flag = 0x20000000;
 // 00441242  09 90 30 01 00 00         OR  [EAX+0x130],EDX
 constexpr std::uintptr_t marker_store_va = 0x004401ae, marker_or_va = 0x0044123b;
 constexpr unsigned marker_store_length = 8, marker_or_length = 13;
-constexpr unsigned char marker_store[marker_store_length] = {0xc7,0x44,0x24,0x20, 0x00,0x00,0x80,0x20};
-constexpr unsigned char marker_or[marker_or_length] = {0x8b,0x45,0x70, 0x8b,0x54,0x24,0x20, 0x09,0x90,0x30,0x01,0x00,0x00};
+constexpr unsigned char marker_store[marker_store_length] = {0xc7, 0x44, 0x24, 0x20, 0x00, 0x00, 0x80, 0x20};
+constexpr unsigned char marker_or[marker_or_length] = {0x8b, 0x45, 0x70, 0x8b, 0x54, 0x24, 0x20,
+                                                       0x09, 0x90, 0x30, 0x01, 0x00, 0x00};
 // `on` (also unset or empty) exempts marked nodes; `off` culls them like any node; anything else is refused.
 inline bool parse_projectiles(const char* text, bool* exempt) {
-    if (!text || !*text || !std::strcmp(text, "on")) { *exempt = true; return true; }
-    if (!std::strcmp(text, "off")) { *exempt = false; return true; }
+    if (!text || !*text || !std::strcmp(text, "on")) {
+        *exempt = true;
+        return true;
+    }
+    if (!std::strcmp(text, "off")) {
+        *exempt = false;
+        return true;
+    }
     return false;
 }
 
@@ -231,7 +270,8 @@ inline bool parse_projectiles(const char* text, bool* exempt) {
 //   59  ff 05 abs32         INC  dword [culled]         ; cull: per-frame count, render thread only
 //   65  e9 rel32            JMP  0x0047d2c3             ; the engine's `and [edi+0x12c],~2; jmp 0x0047d2d1`
 //   70  ff 05 abs32         INC  dword [exempt]         ; exempt: per-frame count, then the vanilla compare
-//   76  ff 25 abs32         JMP  [next]                 ; continue: the tail (displaced MOV+TEST, jump back to 0x0047d2a7)
+//   76  ff 25 abs32         JMP  [next]                 ; continue: the tail (displaced MOV+TEST, jump back to
+//   0x0047d2a7)
 // No call, no Win32, no floating point: LastError and the x87 stack are
 // untouched by construction; EFLAGS are dead on every exit (the tail's
 // displaced TEST regenerates them, the cull AND overwrites them). The marker
@@ -241,33 +281,76 @@ inline bool parse_projectiles(const char* text, bool* exempt) {
 // Projectiles `off` replaces bytes 22..33 with `eb 0a` (JMP 34) and int3
 // padding: the marker is not read and the exempt block is unreachable.
 //
-constexpr unsigned stub_length = 82, stub_projectile = 22, stub_replay = 34, stub_cull = 59, stub_exempt = 70, stub_continue = 76;
-inline void encode_stub(std::uint32_t at, std::uint32_t threshold, std::uint32_t culled, std::uint32_t exempt, std::uint32_t cull_target, std::uint32_t next_slot,
-                        unsigned char out[stub_length], bool exempt_projectiles) {
-    out[0] = 0x83; out[1] = 0x3d; std::memcpy(out + 2, &threshold, 4); out[6] = 0x00;
-    out[7] = 0x7e; out[8] = static_cast<unsigned char>(stub_continue - 9);
+constexpr unsigned stub_length = 82, stub_projectile = 22, stub_replay = 34, stub_cull = 59, stub_exempt = 70,
+                   stub_continue = 76;
+inline void encode_stub(std::uint32_t at, std::uint32_t threshold, std::uint32_t culled, std::uint32_t exempt,
+                        std::uint32_t cull_target, std::uint32_t next_slot, unsigned char out[stub_length],
+                        bool exempt_projectiles) {
+    out[0] = 0x83;
+    out[1] = 0x3d;
+    std::memcpy(out + 2, &threshold, 4);
+    out[6] = 0x00;
+    out[7] = 0x7e;
+    out[8] = static_cast<unsigned char>(stub_continue - 9);
     out[9] = 0x50;
-    out[10] = 0xa1; std::memcpy(out + 11, &threshold, 4);
-    out[15] = 0x39; out[16] = 0x44; out[17] = 0x24; out[18] = 0x30;
+    out[10] = 0xa1;
+    std::memcpy(out + 11, &threshold, 4);
+    out[15] = 0x39;
+    out[16] = 0x44;
+    out[17] = 0x24;
+    out[18] = 0x30;
     out[19] = 0x58;
-    out[20] = 0x7d; out[21] = static_cast<unsigned char>(stub_continue - 22);
-    out[22] = 0xf7; out[23] = 0x87; out[24] = flags130_offset & 0xff; out[25] = flags130_offset >> 8; out[26] = 0x00; out[27] = 0x00;
+    out[20] = 0x7d;
+    out[21] = static_cast<unsigned char>(stub_continue - 22);
+    out[22] = 0xf7;
+    out[23] = 0x87;
+    out[24] = flags130_offset & 0xff;
+    out[25] = flags130_offset >> 8;
+    out[26] = 0x00;
+    out[27] = 0x00;
     std::memcpy(out + 28, &projectile_flag, 4);
-    out[32] = 0x75; out[33] = static_cast<unsigned char>(stub_exempt - 34);
-    out[34] = 0x8b; out[35] = 0x4f; out[36] = 0x18;
-    out[37] = 0x85; out[38] = 0xc9;
-    out[39] = 0x8b; out[40] = 0x87; out[41] = 0xd8; out[42] = 0x01; out[43] = 0x00; out[44] = 0x00;
-    out[45] = 0x74; out[46] = static_cast<unsigned char>(stub_cull - 47);
-    out[47] = 0x8b; out[48] = 0x89; out[49] = 0xd8; out[50] = 0x01; out[51] = 0x00; out[52] = 0x00;
-    out[53] = 0x3b; out[54] = 0xc8;
-    out[55] = 0x7e; out[56] = static_cast<unsigned char>(stub_cull - 57);
-    out[57] = 0x8b; out[58] = 0xc1;
-    out[59] = 0xff; out[60] = 0x05; std::memcpy(out + 61, &culled, 4);
-    out[65] = 0xe9; const std::uint32_t rel = cull_target - (at + stub_exempt); std::memcpy(out + 66, &rel, 4);
-    out[70] = 0xff; out[71] = 0x05; std::memcpy(out + 72, &exempt, 4);
-    out[76] = 0xff; out[77] = 0x25; std::memcpy(out + 78, &next_slot, 4);
+    out[32] = 0x75;
+    out[33] = static_cast<unsigned char>(stub_exempt - 34);
+    out[34] = 0x8b;
+    out[35] = 0x4f;
+    out[36] = 0x18;
+    out[37] = 0x85;
+    out[38] = 0xc9;
+    out[39] = 0x8b;
+    out[40] = 0x87;
+    out[41] = 0xd8;
+    out[42] = 0x01;
+    out[43] = 0x00;
+    out[44] = 0x00;
+    out[45] = 0x74;
+    out[46] = static_cast<unsigned char>(stub_cull - 47);
+    out[47] = 0x8b;
+    out[48] = 0x89;
+    out[49] = 0xd8;
+    out[50] = 0x01;
+    out[51] = 0x00;
+    out[52] = 0x00;
+    out[53] = 0x3b;
+    out[54] = 0xc8;
+    out[55] = 0x7e;
+    out[56] = static_cast<unsigned char>(stub_cull - 57);
+    out[57] = 0x8b;
+    out[58] = 0xc1;
+    out[59] = 0xff;
+    out[60] = 0x05;
+    std::memcpy(out + 61, &culled, 4);
+    out[65] = 0xe9;
+    const std::uint32_t rel = cull_target - (at + stub_exempt);
+    std::memcpy(out + 66, &rel, 4);
+    out[70] = 0xff;
+    out[71] = 0x05;
+    std::memcpy(out + 72, &exempt, 4);
+    out[76] = 0xff;
+    out[77] = 0x25;
+    std::memcpy(out + 78, &next_slot, 4);
     if (!exempt_projectiles) {
-        out[22] = 0xeb; out[23] = static_cast<unsigned char>(stub_replay - 24);
+        out[22] = 0xeb;
+        out[23] = static_cast<unsigned char>(stub_replay - 24);
         std::memset(out + 24, 0xcc, stub_replay - 24);
     }
 }

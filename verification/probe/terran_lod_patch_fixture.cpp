@@ -25,7 +25,7 @@
 #include "../../src/proxy/terran_station_lod.h"
 #include "../../src/proxy/terran_lod_sites.h"
 #include "../../src/proxy/engine_patch.h"
-#include "terran_lod_patch_fixture_shim.h"  // declarations only: X3M_TERRAN_LOD_SHIM is not defined here
+#include "terran_lod_patch_fixture_shim.h" // declarations only: X3M_TERRAN_LOD_SHIM is not defined here
 #include <windows.h>
 #include <cstdarg>
 #include <cstdio>
@@ -40,22 +40,29 @@ namespace engine_patch = x3m::engine_patch;
 // ---- the fault seam (declared in terran_lod_patch_fixture_shim.h) ----
 namespace {
 struct Faults {
-    unsigned protect_fail = 0;   // bit i: the i-th VirtualProtect since arm() fails (ERROR_ACCESS_DENIED)
-    unsigned read_fail = 0;      // bit i: the i-th read_code fails
-    unsigned write_drop = 0;     // bit i: the i-th write_code stores nothing (and reports the atomic path)
-    unsigned write_corrupt = 0;  // bit i: the i-th write_code stores eb 06 instead of the requested bytes
-    bool skip_flush = false;     // FlushInstructionCache returns TRUE without flushing
+    unsigned protect_fail = 0;  // bit i: the i-th VirtualProtect since arm() fails (ERROR_ACCESS_DENIED)
+    unsigned read_fail = 0;     // bit i: the i-th read_code fails
+    unsigned write_drop = 0;    // bit i: the i-th write_code stores nothing (and reports the atomic path)
+    unsigned write_corrupt = 0; // bit i: the i-th write_code stores eb 06 instead of the requested bytes
+    bool skip_flush = false;    // FlushInstructionCache returns TRUE without flushing
     unsigned protects = 0, reads = 0, writes = 0, flushes = 0, atomic_writes = 0;
-    DWORD first_previous = 0, first_during = 0;  // what the first VirtualProtect returned / VirtualQuery saw after it
+    DWORD first_previous = 0, first_during = 0; // what the first VirtualProtect returned / VirtualQuery saw after it
 };
 Faults g;
-void arm(const Faults& f = Faults{}) { g = f; }
-bool bit(unsigned mask, unsigned i) { return i < 32 && ((mask >> i) & 1u); }
+void arm(const Faults& f = Faults{}) {
+    g = f;
+}
+bool bit(unsigned mask, unsigned i) {
+    return i < 32 && ((mask >> i) & 1u);
+}
 }
 namespace x3m::terran_lod_fixture {
 BOOL WINAPI virtual_protect(LPVOID address, SIZE_T size, DWORD protection, PDWORD previous) {
     const unsigned i = g.protects++;
-    if (bit(g.protect_fail, i)) { SetLastError(ERROR_ACCESS_DENIED); return FALSE; }
+    if (bit(g.protect_fail, i)) {
+        SetLastError(ERROR_ACCESS_DENIED);
+        return FALSE;
+    }
     const BOOL ok = ::VirtualProtect(address, size, protection, previous);
     if (ok && i == 0) {
         g.first_previous = *previous;
@@ -79,7 +86,11 @@ bool fixture_write_code(std::uintptr_t address, const unsigned char* bytes, unsi
     const unsigned i = g.writes++;
     if (bit(g.write_drop, i)) return true;
     unsigned char corrupt[8]{};
-    if (bit(g.write_corrupt, i) && n == 2) { corrupt[0] = 0xeb; corrupt[1] = 0x06; bytes = corrupt; }
+    if (bit(g.write_corrupt, i) && n == 2) {
+        corrupt[0] = 0xeb;
+        corrupt[1] = 0x06;
+        bytes = corrupt;
+    }
     const bool atomic = write_code(address, bytes, n);
     if (atomic) ++g.atomic_writes;
     return atomic;
@@ -103,9 +114,15 @@ void log(const char* format, ...) {
     log_lines.emplace_back(text);
     std::printf("LOG %s\n", text);
 }
-HANDLE log_handle() noexcept { return restore_log; }
+HANDLE log_handle() noexcept {
+    return restore_log;
 }
-namespace x3m::object_trace { bool executable_verified() { return executable_ok; } }
+}
+namespace x3m::object_trace {
+bool executable_verified() {
+    return executable_ok;
+}
+}
 
 // ---- the stub: its own image section .x3mlod, linked at 0x0047d000 (MEM_IMAGE), window at +0x12 = 0x0047d012 ----
 extern "C" unsigned char terran_engine_page[];
@@ -148,7 +165,9 @@ int run(const unsigned char* page, bool flag31) {
     return reinterpret_cast<Stub>(reinterpret_cast<std::uintptr_t>(page))(flag31 ? node_flag : node_clear);
 }
 // One BRANCH row per executed step: flag31 (1 = je not taken, 0 = jump taken) and the control node.
-struct Branch { int flag31, clear; };
+struct Branch {
+    int flag31, clear;
+};
 Branch branch(const char* memory, const char* step, const unsigned char* page) {
     Branch b{run(page, true), run(page, false)};
     std::printf("BRANCH memory=%s step=%s flag31=%d clear=%d\n", memory, step, b.flag31, b.clear);
@@ -169,14 +188,17 @@ bool site_is(const unsigned char* page, const unsigned char want[2]) {
 // The protection a PAGE_EXECUTE_READWRITE request leaves on an image page: this Wine reports
 // PAGE_EXECUTE_WRITECOPY before and after the store (measured); on Windows the page is expected
 // (inferred, not verified) to read PAGE_EXECUTE_READWRITE once the store has made a private copy.
-bool writable_image(DWORD protect) { return protect == PAGE_EXECUTE_READWRITE || protect == PAGE_EXECUTE_WRITECOPY; }
+bool writable_image(DWORD protect) {
+    return protect == PAGE_EXECUTE_READWRITE || protect == PAGE_EXECUTE_WRITECOPY;
+}
 // The page equals `reference` except for the two site bytes, which must be `site`.
 bool page_is(const unsigned char* page, const unsigned char* reference, const unsigned char site[2]) {
     unsigned char now[page_size];
     SIZE_T n = 0;
     if (!ReadProcessMemory(GetCurrentProcess(), page, now, page_size, &n) || n != page_size) return false;
     const unsigned s = window_offset + sites::site_offset;
-    return !std::memcmp(now, reference, s) && !std::memcmp(now + s, site, 2) && !std::memcmp(now + s + 2, reference + s + 2, page_size - s - 2);
+    return !std::memcmp(now, reference, s) && !std::memcmp(now + s, site, 2) &&
+           !std::memcmp(now + s + 2, reference + s + 2, page_size - s - 2);
 }
 // Fixture setup writes (not the patch): raw Win32, bypassing the seam.
 bool poke(unsigned char* at, const unsigned char* bytes, unsigned n) {
@@ -187,9 +209,13 @@ bool poke(unsigned char* at, const unsigned char* bytes, unsigned n) {
     ::FlushInstructionCache(GetCurrentProcess(), at, n);
     return ok;
 }
-void set_mode(const wchar_t* value) { SetEnvironmentVariableW(L"X3M_TERRAN_STATION_LOD", value); }
+void set_mode(const wchar_t* value) {
+    SetEnvironmentVariableW(L"X3M_TERRAN_STATION_LOD", value);
+}
 // The last install row, and the restore rows written to the log handle since the previous call.
-std::string last_log() { return log_lines.empty() ? std::string() : log_lines.back(); }
+std::string last_log() {
+    return log_lines.empty() ? std::string() : log_lines.back();
+}
 std::string new_restore_rows() {
     std::string out;
     if (restore_log == INVALID_HANDLE_VALUE) return out;
@@ -207,13 +233,16 @@ std::string new_restore_rows() {
         std::printf("LOG %s\n", out.substr(start, nl - start).c_str());
     return out;
 }
-bool contains(const std::string& text, const char* needle) { return text.find(needle) != std::string::npos; }
+bool contains(const std::string& text, const char* needle) {
+    return text.find(needle) != std::string::npos;
+}
 bool one_row(const std::string& rows, const char* needle) {
     std::size_t lines = 0;
     for (char c : rows) lines += c == '\n';
     return lines == 1 && contains(rows, needle);
 }
-std::string install_row(const char* status, const char* reason, const char* mode, const char* setting, const char* write) {
+std::string install_row(const char* status, const char* reason, const char* mode, const char* setting,
+                        const char* write) {
     char text[200];
     std::snprintf(text, sizeof text, "terran_station_lod site=%08lx status=%s reason=%s mode=%s setting=%s write=%s",
                   static_cast<unsigned long>(sites::site_va), status, reason, mode, setting, write);
@@ -249,7 +278,8 @@ std::string shutdown_rows(const char* name) {
 
 // A fault anywhere ends the run with one row instead of the Wine debugger.
 LONG WINAPI unhandled(EXCEPTION_POINTERS* e) {
-    std::printf("CRASH code=%08lx address=%p checks=%u\n", e->ExceptionRecord->ExceptionCode, e->ExceptionRecord->ExceptionAddress, checks);
+    std::printf("CRASH code=%08lx address=%p checks=%u\n", e->ExceptionRecord->ExceptionCode,
+                e->ExceptionRecord->ExceptionAddress, checks);
     std::printf("RESULT checks=%u failures=%u\n", checks + 1, failures + 1);
     std::fflush(stdout);
     ExitProcess(3);
@@ -257,7 +287,7 @@ LONG WINAPI unhandled(EXCEPTION_POINTERS* e) {
 }
 
 int main() {
-    std::setvbuf(stdout, nullptr, _IONBF, 0);  // the msvcrt treats _IOLBF as full buffering
+    std::setvbuf(stdout, nullptr, _IONBF, 0); // the msvcrt treats _IOLBF as full buffering
     SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX);
     SetUnhandledExceptionFilter(unhandled);
     reinterpret_cast<std::uint32_t&>(node_flag[sites::flags_offset]) = sites::root_flag;
@@ -279,12 +309,15 @@ int main() {
         return 1;
     }
     check(reinterpret_cast<std::uintptr_t>(engine) + window_offset == sites::window_va &&
-          !std::memcmp(engine + window_offset, sites::expected_window, sites::window_length), "engine_window_at_window_va_is_expected_window");
-    check(((reinterpret_cast<std::uintptr_t>(engine) + window_offset + sites::site_offset) & 7u) == 4u, "engine_site_offset_4_of_its_qword");
+              !std::memcmp(engine + window_offset, sites::expected_window, sites::window_length),
+          "engine_window_at_window_va_is_expected_window");
+    check(((reinterpret_cast<std::uintptr_t>(engine) + window_offset + sites::site_offset) & 7u) == 4u,
+          "engine_site_offset_4_of_its_qword");
     unsigned char reference[page_size];
     std::memcpy(reference, engine, page_size);
 
-    auto* const priv = static_cast<unsigned char*>(VirtualAlloc(nullptr, page_size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE));
+    auto* const priv = static_cast<unsigned char*>(
+        VirtualAlloc(nullptr, page_size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE));
     check(priv != nullptr, "private_page_allocated");
     if (!priv) {
         std::printf("RESULT checks=%u failures=%u\n", checks, failures);
@@ -293,15 +326,19 @@ int main() {
     std::memcpy(priv, reference, page_size);
     std::memcpy(priv + window_offset, sites::expected_window, sites::window_length);
     DWORD old = 0;
-    check(::VirtualProtect(priv, page_size, PAGE_EXECUTE_READ, &old) && ::FlushInstructionCache(GetCurrentProcess(), priv, page_size), "private_page_execute_read");
+    check(::VirtualProtect(priv, page_size, PAGE_EXECUTE_READ, &old) &&
+              ::FlushInstructionCache(GetCurrentProcess(), priv, page_size),
+          "private_page_execute_read");
     char detail[160];
 
     MEMORY_BASIC_INFORMATION mi{};
     VirtualQuery(engine, &mi, sizeof mi);
-    std::printf("MEMORY memory=engine type=0x%lx protect=0x%lx allocation_protect=0x%lx\n", mi.Type, mi.Protect, mi.AllocationProtect);
+    std::printf("MEMORY memory=engine type=0x%lx protect=0x%lx allocation_protect=0x%lx\n", mi.Type, mi.Protect,
+                mi.AllocationProtect);
     check(mi.Type == MEM_IMAGE && mi.Protect == PAGE_EXECUTE_READ, "engine_page_is_mem_image_execute_read");
     VirtualQuery(priv, &mi, sizeof mi);
-    std::printf("MEMORY memory=private type=0x%lx protect=0x%lx allocation_protect=0x%lx\n", mi.Type, mi.Protect, mi.AllocationProtect);
+    std::printf("MEMORY memory=private type=0x%lx protect=0x%lx allocation_protect=0x%lx\n", mi.Type, mi.Protect,
+                mi.AllocationProtect);
     check(mi.Type == MEM_PRIVATE && mi.Protect == PAGE_EXECUTE_READ, "private_page_is_mem_private_execute_read");
 
     Branch b = branch("engine", "before", engine);
@@ -310,7 +347,12 @@ int main() {
     check(b.flag31 == 1 && b.clear == 0, "private_before_je");
 
     // ---- refusals through initialize(): nothing is protected, written or flushed ----
-    struct Refusal { const wchar_t* setting; bool exe; const char* name; const char* row; };
+    struct Refusal {
+        const wchar_t* setting;
+        bool exe;
+        const char* name;
+        const char* row;
+    };
     const std::string distance_row = install_row("off", "distance", "distance", "distance", "none");
     const std::string invalid_row = install_row("refused", "invalid_setting", "-", "Size", "none");
     const std::string long_row = install_row("refused", "too_long", "-", "?", "none");
@@ -326,8 +368,9 @@ int main() {
         const bool applied = initialize_checked(r.name);
         char name[96];
         std::snprintf(name, sizeof name, "%s_row_and_untouched", r.name);
-        check(!applied && !lod::patched() && last_log() == r.row && g.protects == 0 && g.writes == 0 && g.flushes == 0 &&
-              page_is(engine, reference, original), name, last_log().c_str());
+        check(!applied && !lod::patched() && last_log() == r.row && g.protects == 0 && g.writes == 0 &&
+                  g.flushes == 0 && page_is(engine, reference, original),
+              name, last_log().c_str());
     }
     set_mode(nullptr);
     executable_ok = true;
@@ -341,14 +384,17 @@ int main() {
     arm();
     bool r = initialize_checked("refuse_changed_window");
     check(!r && lod::state() == std::string("bytes_mismatch") && g.protects == 0 && g.writes == 0 &&
-          page_is(engine, changed_reference, original) && last_log() == install_row("refused", "bytes_mismatch", "size", "-", "none"),
+              page_is(engine, changed_reference, original) &&
+              last_log() == install_row("refused", "bytes_mismatch", "size", "-", "none"),
           "refuse_changed_window_untouched", last_log().c_str());
     check(poke(engine + window_offset + 9, &restored_byte, 1), "setup_restore_window_byte");
     check(poke(engine + window_offset + sites::site_offset, patched, 2), "setup_foreign_patch");
     arm();
-    check(!initialize_checked("refuse_already_patched") && lod::state() == std::string("bytes_mismatch") && g.protects == 0 && g.writes == 0 &&
-          page_is(engine, reference, patched), "refuse_already_patched_window_untouched");
-    check(poke(engine + window_offset + sites::site_offset, original, 2) && page_is(engine, reference, original), "setup_foreign_patch_removed");
+    check(!initialize_checked("refuse_already_patched") && lod::state() == std::string("bytes_mismatch") &&
+              g.protects == 0 && g.writes == 0 && page_is(engine, reference, patched),
+          "refuse_already_patched_window_untouched");
+    check(poke(engine + window_offset + sites::site_offset, original, 2) && page_is(engine, reference, original),
+          "setup_foreign_patch_removed");
 
     // Injected protect failure: protect_failed, nothing written, branch unchanged.
     Faults f;
@@ -356,7 +402,8 @@ int main() {
     arm(f);
     r = initialize_checked("refuse_protect_failed");
     check(!r && !lod::patched() && g.writes == 0 && g.flushes == 0 && page_is(engine, reference, original) &&
-          protection(engine) == PAGE_EXECUTE_READ && last_log() == install_row("refused", "protect_failed", "size", "-", "none"),
+              protection(engine) == PAGE_EXECUTE_READ &&
+              last_log() == install_row("refused", "protect_failed", "size", "-", "none"),
           "refuse_protect_failed_untouched", last_log().c_str());
     b = branch("engine", "after_protect_failed", engine);
     check(b.flag31 == 1 && b.clear == 0, "engine_after_protect_failed_je");
@@ -367,30 +414,40 @@ int main() {
     QueryPerformanceCounter(&t0);
     const bool applied = initialize_checked("install");
     QueryPerformanceCounter(&t1);
-    check(applied && lod::patched() && lod::state() == std::string("ok") && lod::write_path() == std::string("atomic") &&
-          last_log() == install_row("patched", "ok", "size", "-", "atomic"), "install_ok_atomic_row", last_log().c_str());
-    std::snprintf(detail, sizeof detail, "protects=%u reads=%u writes=%u atomic=%u flushes=%u previous=0x%lx during=0x%lx", g.protects, g.reads,
-                  g.writes, g.atomic_writes, g.flushes, g.first_previous, g.first_during);
-    check(g.protects == 2 && g.reads == 2 && g.writes == 1 && g.atomic_writes == 1 && g.flushes == 1 && g.first_previous == PAGE_EXECUTE_READ &&
-          writable_image(g.first_during), "install_sequence_counts", detail);
-    std::printf("PROTECT memory=engine step=install previous=0x%lx during=0x%lx after=0x%lx\n", g.first_previous, g.first_during, protection(engine));
-    check(site_is(engine, patched) && page_is(engine, reference, patched), "install_readback_eb05_rest_of_page_unchanged");
+    check(applied && lod::patched() && lod::state() == std::string("ok") &&
+              lod::write_path() == std::string("atomic") &&
+              last_log() == install_row("patched", "ok", "size", "-", "atomic"),
+          "install_ok_atomic_row", last_log().c_str());
+    std::snprintf(detail, sizeof detail,
+                  "protects=%u reads=%u writes=%u atomic=%u flushes=%u previous=0x%lx during=0x%lx", g.protects,
+                  g.reads, g.writes, g.atomic_writes, g.flushes, g.first_previous, g.first_during);
+    check(g.protects == 2 && g.reads == 2 && g.writes == 1 && g.atomic_writes == 1 && g.flushes == 1 &&
+              g.first_previous == PAGE_EXECUTE_READ && writable_image(g.first_during),
+          "install_sequence_counts", detail);
+    std::printf("PROTECT memory=engine step=install previous=0x%lx during=0x%lx after=0x%lx\n", g.first_previous,
+                g.first_during, protection(engine));
+    check(site_is(engine, patched) && page_is(engine, reference, patched),
+          "install_readback_eb05_rest_of_page_unchanged");
     check(protection(engine) == PAGE_EXECUTE_READ, "install_protection_restored");
     b = branch("engine", "after_patch", engine);
     check(b.flag31 == 0 && b.clear == 0, "engine_after_patch_jmp");
     arm();
-    check(!lod::install_at(sites::window_va) && lod::patched() && lod::state() == std::string("already_installed") && g.protects == 0 && g.writes == 0 &&
-          site_is(engine, patched), "second_install_refused_already_installed");
-    check(initialize_checked("initialize_again") && lod::patched() && g.writes == 0, "initialize_again_no_second_write");
+    check(!lod::install_at(sites::window_va) && lod::patched() && lod::state() == std::string("already_installed") &&
+              g.protects == 0 && g.writes == 0 && site_is(engine, patched),
+          "second_install_refused_already_installed");
+    check(initialize_checked("initialize_again") && lod::patched() && g.writes == 0,
+          "initialize_again_no_second_write");
     arm();
     QueryPerformanceCounter(&t2);
     const bool clean = shutdown_checked("restore");
     QueryPerformanceCounter(&t3);
     std::string rows = new_restore_rows();
-    check(clean && !lod::patched() && lod::state() == std::string("restored") && one_row(rows, "terran_station_lod_restore site=0047d01c status=restored found=eb05 registered=0"),
+    check(clean && !lod::patched() && lod::state() == std::string("restored") &&
+              one_row(rows, "terran_station_lod_restore site=0047d01c status=restored found=eb05 registered=0"),
           "restore_row", rows.c_str());
-    check(g.protects == 2 && g.writes == 1 && g.atomic_writes == 1 && g.flushes == 1 && site_is(engine, original) && page_is(engine, reference, original) &&
-          protection(engine) == PAGE_EXECUTE_READ, "restore_readback_7405_protection");
+    check(g.protects == 2 && g.writes == 1 && g.atomic_writes == 1 && g.flushes == 1 && site_is(engine, original) &&
+              page_is(engine, reference, original) && protection(engine) == PAGE_EXECUTE_READ,
+          "restore_readback_7405_protection");
     b = branch("engine", "after_restore", engine);
     check(b.flag31 == 1 && b.clear == 0, "engine_after_restore_je");
     check(shutdown_checked("restore_again") && new_restore_rows().empty(), "restore_again_no_row");
@@ -403,21 +460,25 @@ int main() {
     arm(f);
     r = initialize_checked("rollback_readback");
     check(!r && !lod::patched() && lod::state() == std::string("patch_rolled_back") &&
-          last_log() == install_row("refused", "patch_rolled_back", "size", "-", "atomic") && g.writes == 2 && g.atomic_writes == 2 &&
-          page_is(engine, reference, original) && protection(engine) == PAGE_EXECUTE_READ, "rollback_readback_rolled_back", last_log().c_str());
+              last_log() == install_row("refused", "patch_rolled_back", "size", "-", "atomic") && g.writes == 2 &&
+              g.atomic_writes == 2 && page_is(engine, reference, original) && protection(engine) == PAGE_EXECUTE_READ,
+          "rollback_readback_rolled_back", last_log().c_str());
     b = branch("engine", "after_rollback", engine);
     check(b.flag31 == 1 && b.clear == 0, "engine_after_rollback_je");
     // The store does not land: read-back mismatch, rolled back.
     f = Faults{};
     f.write_drop = 1;
     arm(f);
-    check(!initialize_checked("rollback_dropped_write") && !lod::patched() && lod::state() == std::string("patch_rolled_back") &&
-          page_is(engine, reference, original) && protection(engine) == PAGE_EXECUTE_READ, "rollback_dropped_write_rolled_back");
+    check(!initialize_checked("rollback_dropped_write") && !lod::patched() &&
+              lod::state() == std::string("patch_rolled_back") && page_is(engine, reference, original) &&
+              protection(engine) == PAGE_EXECUTE_READ,
+          "rollback_dropped_write_rolled_back");
     // Re-protect and the post-rollback protect fail: original bytes back, page left writable.
     f = Faults{};
     f.protect_fail = 2 | 4;
     arm(f);
-    const bool unprotected = !initialize_checked("rollback_unprotected") && !lod::patched() && lod::state() == std::string("rollback_unprotected") &&
+    const bool unprotected = !initialize_checked("rollback_unprotected") && !lod::patched() &&
+                             lod::state() == std::string("rollback_unprotected") &&
                              page_is(engine, reference, original);
     const DWORD left = protection(engine);
     std::snprintf(detail, sizeof detail, "protect=0x%lx", left);
@@ -434,40 +495,51 @@ int main() {
     arm(f);
     r = initialize_checked("rollback_failed");
     check(!r && lod::patched() && lod::state() == std::string("rollback_failed") &&
-          last_log() == install_row("patched_unverified", "rollback_failed", "size", "-", "atomic") && site_is(engine, reinterpret_cast<const unsigned char*>("\xeb\x06")) &&
-          protection(engine) == PAGE_EXECUTE_READ, "rollback_failed_registered", last_log().c_str());
-    std::printf("BRANCH memory=engine step=after_rollback_failed flag31=- clear=- (eb 06 not executed: mid-instruction target)\n");
+              last_log() == install_row("patched_unverified", "rollback_failed", "size", "-", "atomic") &&
+              site_is(engine, reinterpret_cast<const unsigned char*>("\xeb\x06")) &&
+              protection(engine) == PAGE_EXECUTE_READ,
+          "rollback_failed_registered", last_log().c_str());
+    std::printf(
+        "BRANCH memory=engine step=after_rollback_failed flag31=- clear=- (eb 06 not executed: mid-instruction target)\n");
     f = Faults{};
     f.write_drop = 1;
     arm(f);
     rows = shutdown_rows("restore_dropped");
     check(lod::patched() && lod::state() == std::string("restore_failed") &&
-          one_row(rows, "status=restore_failed found=eb06 registered=1") && site_is(engine, reinterpret_cast<const unsigned char*>("\xeb\x06")),
+              one_row(rows, "status=restore_failed found=eb06 registered=1") &&
+              site_is(engine, reinterpret_cast<const unsigned char*>("\xeb\x06")),
           "restore_dropped_write_failed_registered", rows.c_str());
     f = Faults{};
     f.protect_fail = 1;
     arm(f);
     rows = shutdown_rows("restore_protect_failed");
-    check(lod::patched() && one_row(rows, "status=restore_failed found=eb06 registered=1") && g.writes == 0, "restore_protect_failed_registered", rows.c_str());
+    check(lod::patched() && one_row(rows, "status=restore_failed found=eb06 registered=1") && g.writes == 0,
+          "restore_protect_failed_registered", rows.c_str());
     arm();
     rows = shutdown_rows("restore_not_owned");
-    check(!lod::patched() && one_row(rows, "status=restore_not_owned found=eb06 registered=0") && page_is(engine, reference, original) &&
-          protection(engine) == PAGE_EXECUTE_READ, "restore_not_owned_7405", rows.c_str());
+    check(!lod::patched() && one_row(rows, "status=restore_not_owned found=eb06 registered=0") &&
+              page_is(engine, reference, original) && protection(engine) == PAGE_EXECUTE_READ,
+          "restore_not_owned_7405", rows.c_str());
     b = branch("engine", "after_restore_not_owned", engine);
     check(b.flag31 == 1 && b.clear == 0, "engine_after_restore_not_owned_je");
     // Restore when the site already holds 74 05 (no write), and when the first read fails (74 05 written, found --).
     arm();
-    check(initialize_checked("install_2") && poke(engine + window_offset + sites::site_offset, original, 2), "setup_install_then_external_restore");
+    check(initialize_checked("install_2") && poke(engine + window_offset + sites::site_offset, original, 2),
+          "setup_install_then_external_restore");
     arm();
     rows = shutdown_rows("restore_already_original");
-    check(!lod::patched() && one_row(rows, "status=restored found=7405 registered=0") && g.writes == 0 && g.protects == 0, "restore_already_original_no_write", rows.c_str());
+    check(!lod::patched() && one_row(rows, "status=restored found=7405 registered=0") && g.writes == 0 &&
+              g.protects == 0,
+          "restore_already_original_no_write", rows.c_str());
     arm();
     check(initialize_checked("install_3"), "setup_install_3");
     f = Faults{};
     f.read_fail = 1;
     arm(f);
     rows = shutdown_rows("restore_unreadable");
-    check(!lod::patched() && one_row(rows, "status=restore_not_owned found=-- registered=0") && page_is(engine, reference, original), "restore_unreadable_found_unread", rows.c_str());
+    check(!lod::patched() && one_row(rows, "status=restore_not_owned found=-- registered=0") &&
+              page_is(engine, reference, original),
+          "restore_unreadable_found_unread", rows.c_str());
 
     // ---- FlushInstructionCache: the same install and restore without the flush (measured, not required) ----
     for (int i = 0; i < 64; ++i) run(engine, true);
@@ -483,16 +555,20 @@ int main() {
     for (int i = 0; i < 64; ++i) run(engine, true);
     arm(f);
     rows = shutdown_rows("restore_no_flush");
-    check(!lod::patched() && one_row(rows, "status=restored found=eb05 registered=0") && site_is(engine, original), "restore_no_flush_bytes_7405", rows.c_str());
+    check(!lod::patched() && one_row(rows, "status=restored found=eb05 registered=0") && site_is(engine, original),
+          "restore_no_flush_bytes_7405", rows.c_str());
     b = branch("engine", "after_restore_no_flush", engine);
     const int noflush_restore = b.flag31;
     ::FlushInstructionCache(GetCurrentProcess(), engine + window_offset + sites::site_offset, 2);
     b = branch("engine", "after_restore_flushed", engine);
     check(b.flag31 == 1 && b.clear == 0, "engine_after_restore_flushed_je");
-    std::printf("FLUSH patch_without_flush_flag31=%d (0 = new jmp executed) restore_without_flush_flag31=%d (1 = je executed)\n", noflush_patch, noflush_restore);
+    std::printf(
+        "FLUSH patch_without_flush_flag31=%d (0 = new jmp executed) restore_without_flush_flag31=%d (1 = je executed)\n",
+        noflush_patch, noflush_restore);
     // The same without any protection change either: an already PAGE_EXECUTE_READWRITE page, run hot,
     // then engine_patch::write_code alone (no VirtualProtect, no flush) -- does the emulator see the store?
-    auto* const hot = static_cast<unsigned char*>(VirtualAlloc(nullptr, page_size, MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE));
+    auto* const hot = static_cast<unsigned char*>(
+        VirtualAlloc(nullptr, page_size, MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE));
     check(hot != nullptr, "hot_page_allocated");
     if (hot) {
         std::memcpy(hot, reference, page_size);
@@ -516,18 +592,24 @@ int main() {
 
     // ---- the private page (MEM_PRIVATE, PAGE_EXECUTE_READ): install_at + shutdown ----
     arm();
-    check(lod::install_at(reinterpret_cast<std::uintptr_t>(priv + window_offset)) && lod::write_path() == std::string("atomic") && site_is(priv, patched) &&
-          page_is(priv, reference, patched), "private_install_ok_atomic_readback");
-    std::printf("PROTECT memory=private step=install previous=0x%lx during=0x%lx after=0x%lx\n", g.first_previous, g.first_during, protection(priv));
+    check(lod::install_at(reinterpret_cast<std::uintptr_t>(priv + window_offset)) &&
+              lod::write_path() == std::string("atomic") && site_is(priv, patched) && page_is(priv, reference, patched),
+          "private_install_ok_atomic_readback");
+    std::printf("PROTECT memory=private step=install previous=0x%lx during=0x%lx after=0x%lx\n", g.first_previous,
+                g.first_during, protection(priv));
     VirtualQuery(priv, &mi, sizeof mi);
-    std::printf("MEMORY memory=private_after_patch type=0x%lx protect=0x%lx allocation_protect=0x%lx\n", mi.Type, mi.Protect, mi.AllocationProtect);
-    check(g.first_previous == PAGE_EXECUTE_READ && g.first_during == PAGE_EXECUTE_READWRITE && protection(priv) == PAGE_EXECUTE_READ && mi.Type == MEM_PRIVATE,
+    std::printf("MEMORY memory=private_after_patch type=0x%lx protect=0x%lx allocation_protect=0x%lx\n", mi.Type,
+                mi.Protect, mi.AllocationProtect);
+    check(g.first_previous == PAGE_EXECUTE_READ && g.first_during == PAGE_EXECUTE_READWRITE &&
+              protection(priv) == PAGE_EXECUTE_READ && mi.Type == MEM_PRIVATE,
           "private_protection_restored");
     b = branch("private", "after_patch", priv);
     check(b.flag31 == 0 && b.clear == 0, "private_after_patch_jmp");
     arm();
     rows = shutdown_rows("private_restore");
-    check(!lod::patched() && one_row(rows, "status=restored found=eb05 registered=0") && page_is(priv, reference, original) && protection(priv) == PAGE_EXECUTE_READ, "private_restore_7405", rows.c_str());
+    check(!lod::patched() && one_row(rows, "status=restored found=eb05 registered=0") &&
+              page_is(priv, reference, original) && protection(priv) == PAGE_EXECUTE_READ,
+          "private_restore_7405", rows.c_str());
     b = branch("private", "after_restore", priv);
     check(b.flag31 == 1 && b.clear == 0, "private_after_restore_je");
 
@@ -535,22 +617,27 @@ int main() {
     // (not executed: under this Wine a jump into a pagefile-backed FILE_MAP_EXECUTE view faults although
     // VirtualQuery reports PAGE_EXECUTE_READ; the check here is the refused protection and untouched bytes)
     HANDLE section = CreateFileMappingW(INVALID_HANDLE_VALUE, nullptr, PAGE_EXECUTE_READWRITE, 0, page_size, nullptr);
-    auto* writer = static_cast<unsigned char*>(section ? MapViewOfFile(section, FILE_MAP_WRITE, 0, 0, page_size) : nullptr);
-    auto* roview = static_cast<unsigned char*>(section ? MapViewOfFile(section, FILE_MAP_READ | FILE_MAP_EXECUTE, 0, 0, page_size) : nullptr);
+    auto* writer = static_cast<unsigned char*>(section ? MapViewOfFile(section, FILE_MAP_WRITE, 0, 0, page_size)
+                                                       : nullptr);
+    auto* roview = static_cast<unsigned char*>(
+        section ? MapViewOfFile(section, FILE_MAP_READ | FILE_MAP_EXECUTE, 0, 0, page_size) : nullptr);
     check(writer && roview, "roview_mapped");
     if (writer && roview) {
         std::memcpy(writer, reference, page_size);
         ::FlushInstructionCache(GetCurrentProcess(), roview, page_size);
         DWORD previous = 0;
-        const BOOL raised = ::VirtualProtect(roview + window_offset + sites::site_offset, 2, PAGE_EXECUTE_READWRITE, &previous);
+        const BOOL raised = ::VirtualProtect(roview + window_offset + sites::site_offset, 2, PAGE_EXECUTE_READWRITE,
+                                             &previous);
         const DWORD error = raised ? 0 : GetLastError();
         std::printf("ROVIEW protect=0x%lx raise=%d error=%lu\n", protection(roview), raised ? 1 : 0, error);
         if (raised) ::VirtualProtect(roview + window_offset + sites::site_offset, 2, previous, &previous);
         check(!raised, "roview_raise_refused_by_os");
         if (!raised) {
             arm();
-            check(!lod::install_at(reinterpret_cast<std::uintptr_t>(roview + window_offset)) && !lod::patched() && lod::state() == std::string("protect_failed") &&
-                  lod::write_path() == std::string("none") && g.writes == 0 && page_is(roview, reference, original), "roview_install_protect_failed");
+            check(!lod::install_at(reinterpret_cast<std::uintptr_t>(roview + window_offset)) && !lod::patched() &&
+                      lod::state() == std::string("protect_failed") && lod::write_path() == std::string("none") &&
+                      g.writes == 0 && page_is(roview, reference, original),
+                  "roview_install_protect_failed");
         }
     }
 
@@ -558,11 +645,13 @@ int main() {
     engine_patch::close_install_window("fixture");
     arm();
     r = initialize_checked("late");
-    check(!r && last_log() == install_row("refused", "late_claim", "size", "-", "none") && g.protects == 0 && g.writes == 0 &&
-          page_is(engine, reference, original), "late_initialize_refused", last_log().c_str());
+    check(!r && last_log() == install_row("refused", "late_claim", "size", "-", "none") && g.protects == 0 &&
+              g.writes == 0 && page_is(engine, reference, original),
+          "late_initialize_refused", last_log().c_str());
     arm();
-    check(!lod::install_at(reinterpret_cast<std::uintptr_t>(priv + window_offset)) && lod::state() == std::string("late_claim") && g.protects == 0 &&
-          page_is(priv, reference, original), "late_install_at_refused");
+    check(!lod::install_at(reinterpret_cast<std::uintptr_t>(priv + window_offset)) &&
+              lod::state() == std::string("late_claim") && g.protects == 0 && page_is(priv, reference, original),
+          "late_install_at_refused");
     b = branch("engine", "after_late", engine);
     check(b.flag31 == 1 && b.clear == 0, "engine_after_late_je");
 

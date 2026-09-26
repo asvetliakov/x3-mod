@@ -10,15 +10,30 @@ namespace x3m::renderer::fog_field {
 
 // IDs are persistent packet identities; keep the original two unchanged.
 enum class Profile : std::uint32_t {
-    None = 0, Bluewell = 1, Foggreenoutlands = 2,
-    Fogbluedistance = 3, Fogcyancorner = 4, Fogdeepred = 5, Foggreeneye = 6,
-    Fogparanid = 7, Fogred = 8, Uranus = 9, Uranus3 = 10, Whitenexus = 11,
-    Fogblue = 12, Fogkhaak = 13, Khaakhive = 14
+    None = 0,
+    Bluewell = 1,
+    Foggreenoutlands = 2,
+    Fogbluedistance = 3,
+    Fogcyancorner = 4,
+    Fogdeepred = 5,
+    Foggreeneye = 6,
+    Fogparanid = 7,
+    Fogred = 8,
+    Uranus = 9,
+    Uranus3 = 10,
+    Whitenexus = 11,
+    Fogblue = 12,
+    Fogkhaak = 13,
+    Khaakhive = 14
 };
-struct FamilyProfile { const char* family; Profile profile; };
+struct FamilyProfile {
+    const char* family;
+    Profile profile;
+};
 // All asset-backed positive-card families in the stock AP census: 11 mapped
 // plus 3 unused. Missing-asset families (xtmgreenring, earth) remain native.
 // Neither card count nor fade chooses a density.
+// clang-format off
 inline constexpr FamilyProfile family_profiles[] = {
     {"bluewell", Profile::Bluewell}, {"foggreenoutlands", Profile::Foggreenoutlands},
     {"fogbluedistance", Profile::Fogbluedistance}, {"fogcyancorner", Profile::Fogcyancorner},
@@ -27,12 +42,25 @@ inline constexpr FamilyProfile family_profiles[] = {
     {"uranus", Profile::Uranus}, {"uranus3", Profile::Uranus3}, {"whitenexus", Profile::Whitenexus},
     {"fogblue", Profile::Fogblue}, {"fogkhaak", Profile::Fogkhaak}, {"khaakhive", Profile::Khaakhive}
 };
+// clang-format on
 inline constexpr std::uint32_t qualified_recipe_id = 1;
 
 enum class Status : std::uint32_t {
-    Ok = 0, InvalidArgument, InvalidProfile, ResourceNotFound, ResourceLoadFailed,
-    ResourceLockFailed, BadMagic, WrongVersion, MetadataMismatch, Truncated,
-    InvalidRun, TrailingBytes, InvalidHalf, ChecksumMismatch, AllocationFailed
+    Ok = 0,
+    InvalidArgument,
+    InvalidProfile,
+    ResourceNotFound,
+    ResourceLoadFailed,
+    ResourceLockFailed,
+    BadMagic,
+    WrongVersion,
+    MetadataMismatch,
+    Truncated,
+    InvalidRun,
+    TrailingBytes,
+    InvalidHalf,
+    ChecksumMismatch,
+    AllocationFailed
 };
 
 struct ProfileInfo {
@@ -51,10 +79,9 @@ struct Result {
 };
 
 const ProfileInfo* profile_info(Profile profile) noexcept;
-Result decode_packet(const std::uint8_t* packet, std::size_t packet_size,
-                     const ProfileInfo& expected, std::vector<std::uint16_t>& output) noexcept;
-Result decode_from_resource(void* module, Profile profile,
-                            std::vector<std::uint16_t>& output) noexcept;
+Result decode_packet(const std::uint8_t* packet, std::size_t packet_size, const ProfileInfo& expected,
+                     std::vector<std::uint16_t>& output) noexcept;
+Result decode_from_resource(void* module, Profile profile, std::vector<std::uint16_t>& output) noexcept;
 const char* status_name(Status status) noexcept;
 
 // Data-driven families (docs/architecture/fog-family-data.md, "Implementation"): the generated
@@ -66,8 +93,8 @@ inline constexpr std::uint32_t family_file_version = 1, family_file_header_bytes
 inline constexpr std::uint32_t family_row_bytes = 112, family_packet_row_bytes = 80;
 inline constexpr std::uint32_t family_file_max_rows = 256, family_dynamic_id_bit = 0x10000u;
 inline constexpr std::uint32_t family_flag_background_palette = 1u, family_flag_override = 2u;
-inline constexpr std::uint32_t family_table_max_bytes =
-    family_file_max_rows * (family_row_bytes + family_packet_row_bytes);
+inline constexpr std::uint32_t family_table_max_bytes = family_file_max_rows *
+                                                        (family_row_bytes + family_packet_row_bytes);
 
 // Persistent file-family id: FNV-1a 32 of the name with bit 16 set (never 1..14, never 0).
 constexpr std::uint32_t family_name_id(const char* name) noexcept {
@@ -145,7 +172,7 @@ bool family_profile_info(const FamilyTable& table, Profile profile, ProfileInfo&
 // "none" disables. load_family_table() loads once and returns true only for the loading call.
 bool load_family_table() noexcept;
 const FamilyTable* family_table() noexcept; // nullptr until the load has completed
-const char* family_table_path() noexcept; // UTF-8, possibly truncated, for the log line
+const char* family_table_path() noexcept;   // UTF-8, possibly truncated, for the log line
 bool family_info(Profile profile, ProfileInfo& info) noexcept;
 Result decode_family(Profile profile, std::vector<std::uint16_t>& output) noexcept;
 

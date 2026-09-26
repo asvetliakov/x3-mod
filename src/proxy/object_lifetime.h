@@ -8,9 +8,19 @@
 // complete validated quiescent installation snapshot; never lazily during draws.
 namespace x3m::object_lifetime {
 enum class Reason : std::uint32_t {
-    Known, Disabled, MutationInProgress, RegistryUnavailable, RegistryMismatch,
-    UnknownNodeBirth, UnknownCameraBirth, PointerMismatch, LookupUnavailable,
-    RegistryChanged, CapacityExhausted, CounterExhausted, ObserverFailure
+    Known,
+    Disabled,
+    MutationInProgress,
+    RegistryUnavailable,
+    RegistryMismatch,
+    UnknownNodeBirth,
+    UnknownCameraBirth,
+    PointerMismatch,
+    LookupUnavailable,
+    RegistryChanged,
+    CapacityExhausted,
+    CounterExhausted,
+    ObserverFailure
 };
 struct Snapshot {
     bool known = false;
@@ -18,14 +28,17 @@ struct Snapshot {
     std::uint64_t observer_epoch = 0, load_epoch = 0, registry_epoch = 0;
     std::uint64_t node_serial = 0, camera_serial = 0, mutation_revision = 0;
 };
-struct Stats { bool baseline_complete=false; std::uint32_t baseline_entries=0; };
+struct Stats {
+    bool baseline_complete = false;
+    std::uint32_t baseline_entries = 0;
+};
 bool initialize(); // X3M_OBJECT_LIFETIME=1, exact executable + in-memory code gate
 bool active();
 bool recovery_required(); // code/protection ownership remains while disabled
 const char* status();
 Stats stats();
-bool current(std::uintptr_t registry, std::uintptr_t node, std::uint32_t node_handle,
-             std::uintptr_t camera, std::uint32_t camera_handle, Snapshot* out);
+bool current(std::uintptr_t registry, std::uintptr_t node, std::uint32_t node_handle, std::uintptr_t camera,
+             std::uint32_t camera_handle, Snapshot* out);
 bool shutdown(); // does not overwrite a foreign replacement; retry is supported
 
 // Bounded retirement journal (shadow-caster-retention.md, "Retirement"). Fixed
@@ -68,7 +81,10 @@ struct JournalDrain {
     bool invalid = false;    // out == nullptr or capacity == 0: nothing done, cursor unmoved, more=false
     std::uint64_t load_epoch = 0, registry_epoch = 0, mutation_revision = 0;
 };
-struct JournalStats { std::uint64_t head = 0; std::uint32_t consumers = 0; };
+struct JournalStats {
+    std::uint64_t head = 0;
+    std::uint32_t consumers = 0;
+};
 // Starts journaling with the first consumer. Refused (invalid cursor, no count
 // taken, so no unregister is owed) when the consumer count is saturated.
 JournalCursor journal_register();
@@ -89,8 +105,8 @@ struct FixtureSites {
     void* load_target = nullptr;
     std::uintptr_t engine_slot = 0;
 };
-bool fixture_install(const FixtureSites&, unsigned capacity = 16384,
-                     unsigned fail_stage = 0, unsigned fail_site = 0, bool initial_snapshot = true,
+bool fixture_install(const FixtureSites&, unsigned capacity = 16384, unsigned fail_stage = 0, unsigned fail_site = 0,
+                     bool initial_snapshot = true,
                      bool retain_dispatch = false); // false: fixture guarantees no retained callers
 bool fixture_shutdown(unsigned fail_stage = 0, unsigned fail_site = 0);
 void fixture_journal_consumers(unsigned count); // saturation seam only

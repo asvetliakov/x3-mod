@@ -40,17 +40,19 @@ struct ShadowReplayCascade {
     double depth_range() const noexcept { return double(depth_toward_light) + double(depth_behind); }
     double depth_half() const noexcept { return .5 * depth_range(); } // what sun_shadow_apply_bias doubles again
 };
-inline double shadow_replay_world_texel(const ShadowReplayCascade& c) noexcept { return c.size ? 2. * double(c.half_extent) / double(c.size) : 0.; }
+inline double shadow_replay_world_texel(const ShadowReplayCascade& c) noexcept {
+    return c.size ? 2. * double(c.half_extent) / double(c.size) : 0.;
+}
 struct ShadowReplayBasis {
     bool valid = false;
     float right[3]{}, up[3]{}, forward[3]{}; // sun-space axes in world space (forward = direction the light travels)
-    float center[3]{};                        // snapped cascade centre in world space
+    float center[3]{};                       // snapped cascade centre in world space
     // The same in double: what every row is built from. Narrowing the snapped
     // centre to float quantises it (0.0078 units at |c| = 7e4, a visible swim
     // of a 0.06-unit texel), so the centre and the axes are folded into the
     // rows in double and only the finished rows are narrowed; the floats above
     // are for the logs and the seam readback.
-    double axes[3][3]{};                      // right, up, forward
+    double axes[3][3]{}; // right, up, forward
     double center_d[3]{};
 };
 // No libm on the i686 build (check_no_x87.py): GCC's std::sqrt(double) keeps
@@ -72,7 +74,8 @@ inline double snap_floor(double v) noexcept {
 // World sun direction validity: finite, unit within 5 % (the engine writes a
 // normalized object->light vector quantized to 1/65536, w = 0).
 inline bool shadow_replay_sun_valid(const float sun[4]) noexcept {
-    for (unsigned i = 0; i < 3; ++i) if (!std::isfinite(sun[i])) return false;
+    for (unsigned i = 0; i < 3; ++i)
+        if (!std::isfinite(sun[i])) return false;
     const double n = sqrt_sd(double(sun[0]) * sun[0] + double(sun[1]) * sun[1] + double(sun[2]) * sun[2]);
     return n > .95 && n < 1.05;
 }
@@ -88,24 +91,35 @@ inline bool shadow_replay_basis(const CameraState& camera, const float sun[4], c
                                 ShadowReplayBasis& out, const double* anchor = nullptr) noexcept {
     out = ShadowReplayBasis{};
     if (!camera.valid || !shadow_replay_sun_valid(sun) || !cascade.size) return false;
-    if (!(cascade.half_extent > 0.f) || !(cascade.depth_toward_light > 0.f) || !(cascade.depth_behind > 0.f) || !std::isfinite(cascade.forward_offset)) return false;
+    if (!(cascade.half_extent > 0.f) || !(cascade.depth_toward_light > 0.f) || !(cascade.depth_behind > 0.f) ||
+        !std::isfinite(cascade.forward_offset))
+        return false;
     double f[3], n = 0;
-    for (unsigned i = 0; i < 3; ++i) { f[i] = -double(sun[i]); n += f[i] * f[i]; }
+    for (unsigned i = 0; i < 3; ++i) {
+        f[i] = -double(sun[i]);
+        n += f[i] * f[i];
+    }
     n = sqrt_sd(n);
     for (double& v : f) v /= n;
     double hint[3] = {0, 1, 0};
-    if (f[1] > .99 || f[1] < -.99) { hint[0] = 1; hint[1] = 0; } // no std::fabs: the mingw build emits x87 fabs for it
-    double right[3] = {hint[1] * f[2] - hint[2] * f[1], hint[2] * f[0] - hint[0] * f[2], hint[0] * f[1] - hint[1] * f[0]};
+    if (f[1] > .99 || f[1] < -.99) {
+        hint[0] = 1;
+        hint[1] = 0;
+    } // no std::fabs: the mingw build emits x87 fabs for it
+    double right[3] = {hint[1] * f[2] - hint[2] * f[1], hint[2] * f[0] - hint[0] * f[2],
+                       hint[0] * f[1] - hint[1] * f[0]};
     double rn = sqrt_sd(right[0] * right[0] + right[1] * right[1] + right[2] * right[2]);
     if (!(rn > 1e-6)) return false;
     for (double& v : right) v /= rn;
-    const double up[3] = {f[1] * right[2] - f[2] * right[1], f[2] * right[0] - f[0] * right[2], f[0] * right[1] - f[1] * right[0]};
+    const double up[3] = {f[1] * right[2] - f[2] * right[1], f[2] * right[0] - f[0] * right[2],
+                          f[0] * right[1] - f[1] * right[0]};
     // Camera position and forward in world space (camera_reprojection.h convention).
     // Both through the latch's exact world-from-view basis (camera_world_basis), as every other recovery site.
     double position[3], forward[3], scratch[9];
     const double* wv = camera_world_basis(camera, scratch);
     for (unsigned i = 0; i < 3; ++i) {
-        position[i] = 0; forward[i] = wv[i * 3 + 2];
+        position[i] = 0;
+        forward[i] = wv[i * 3 + 2];
         for (unsigned j = 0; j < 3; ++j) position[i] -= double(camera.t[j]) * wv[i * 3 + j];
     }
     double center[3];
@@ -113,13 +127,25 @@ inline bool shadow_replay_basis(const CameraState& camera, const float sun[4], c
     // Snap the centre to the texel grid in sun space.
     const double texel = 2. * double(cascade.half_extent) / double(cascade.size);
     double cx = 0, cy = 0, cz = 0;
-    for (unsigned i = 0; i < 3; ++i) { const double rel = anchor ? center[i] - anchor[i] : center[i]; cx += rel * right[i]; cy += rel * up[i]; cz += rel * f[i]; }
-    cx = snap_floor(cx / texel + .5) * texel; cy = snap_floor(cy / texel + .5) * texel;
+    for (unsigned i = 0; i < 3; ++i) {
+        const double rel = anchor ? center[i] - anchor[i] : center[i];
+        cx += rel * right[i];
+        cy += rel * up[i];
+        cz += rel * f[i];
+    }
+    cx = snap_floor(cx / texel + .5) * texel;
+    cy = snap_floor(cy / texel + .5) * texel;
     for (unsigned i = 0; i < 3; ++i) {
         const double c = right[i] * cx + up[i] * cy + f[i] * cz + (anchor ? anchor[i] : 0.);
         if (!std::isfinite(c)) return false;
-        out.center[i] = float(c); out.right[i] = float(right[i]); out.up[i] = float(up[i]); out.forward[i] = float(f[i]);
-        out.center_d[i] = c; out.axes[0][i] = right[i]; out.axes[1][i] = up[i]; out.axes[2][i] = f[i];
+        out.center[i] = float(c);
+        out.right[i] = float(right[i]);
+        out.up[i] = float(up[i]);
+        out.forward[i] = float(f[i]);
+        out.center_d[i] = c;
+        out.axes[0][i] = right[i];
+        out.axes[1][i] = up[i];
+        out.axes[2][i] = f[i];
     }
     out.valid = true;
     return true;
@@ -130,16 +156,24 @@ inline bool shadow_replay_basis(const CameraState& camera, const float sun[4], c
 inline bool shadow_replay_light_rows(const CameraState& camera, const float rows[16], const ShadowReplayBasis& basis,
                                      const ShadowReplayCascade& cascade, float out[16]) noexcept {
     if (!camera.valid || !basis.valid || !rows || !out) return false;
-    for (unsigned i = 0; i < 16; ++i) if (!std::isfinite(rows[i])) return false;
+    for (unsigned i = 0; i < 16; ++i)
+        if (!std::isfinite(rows[i])) return false;
     // A: pos -> (view.x, view.y, view.z, 1).
     double A[4][4] = {};
-    for (unsigned k = 0; k < 4; ++k) { A[0][k] = double(rows[k]) / camera.m00; A[1][k] = double(rows[4 + k]) / camera.m11; A[2][k] = double(rows[12 + k]); }
+    for (unsigned k = 0; k < 4; ++k) {
+        A[0][k] = double(rows[k]) / camera.m00;
+        A[1][k] = double(rows[4 + k]) / camera.m11;
+        A[2][k] = double(rows[12 + k]);
+    }
     A[3][3] = 1;
     // W: view -> world, w_i = sum_j (v_j - t_j) wv[i*3+j].
     double W[4][4] = {}, scratch[9];
     const double* wv = camera_world_basis(camera, scratch);
     for (unsigned i = 0; i < 3; ++i) {
-        for (unsigned j = 0; j < 3; ++j) { W[i][j] = wv[i * 3 + j]; W[i][3] -= double(camera.t[j]) * wv[i * 3 + j]; }
+        for (unsigned j = 0; j < 3; ++j) {
+            W[i][j] = wv[i * 3 + j];
+            W[i][3] -= double(camera.t[j]) * wv[i * 3 + j];
+        }
     }
     W[3][3] = 1;
     // S: world -> sun-space NDC.
@@ -155,12 +189,17 @@ inline bool shadow_replay_light_rows(const CameraState& camera, const float rows
     }
     S[3][3] = 1;
     double WA[4][4] = {}, M[4][4] = {};
-    for (unsigned i = 0; i < 4; ++i) for (unsigned j = 0; j < 4; ++j) for (unsigned k = 0; k < 4; ++k) WA[i][j] += W[i][k] * A[k][j];
-    for (unsigned i = 0; i < 4; ++i) for (unsigned j = 0; j < 4; ++j) for (unsigned k = 0; k < 4; ++k) M[i][j] += S[i][k] * WA[k][j];
-    for (unsigned i = 0; i < 4; ++i) for (unsigned j = 0; j < 4; ++j) {
-        if (!std::isfinite(M[i][j]) || M[i][j] > 1e15 || M[i][j] < -1e15) return false;
-        out[i * 4 + j] = float(M[i][j]);
-    }
+    for (unsigned i = 0; i < 4; ++i)
+        for (unsigned j = 0; j < 4; ++j)
+            for (unsigned k = 0; k < 4; ++k) WA[i][j] += W[i][k] * A[k][j];
+    for (unsigned i = 0; i < 4; ++i)
+        for (unsigned j = 0; j < 4; ++j)
+            for (unsigned k = 0; k < 4; ++k) M[i][j] += S[i][k] * WA[k][j];
+    for (unsigned i = 0; i < 4; ++i)
+        for (unsigned j = 0; j < 4; ++j) {
+            if (!std::isfinite(M[i][j]) || M[i][j] > 1e15 || M[i][j] < -1e15) return false;
+            out[i * 4 + j] = float(M[i][j]);
+        }
     return true;
 }
 // The frame's view -> sun-space rows for the scene-end apply quad
@@ -168,13 +207,16 @@ inline bool shadow_replay_light_rows(const CameraState& camera, const float rows
 // per-draw product above without the draw's clip rows, three dp4 rows applied
 // to the view position (x, y, z, 1) giving sun-space NDC x, y and the
 // normalized depth. out[12] row-major.
-inline bool shadow_replay_view_rows(const CameraState& camera, const ShadowReplayBasis& basis, const ShadowReplayCascade& cascade,
-                                    float out[12]) noexcept {
+inline bool shadow_replay_view_rows(const CameraState& camera, const ShadowReplayBasis& basis,
+                                    const ShadowReplayCascade& cascade, float out[12]) noexcept {
     if (!camera.valid || !basis.valid || !out) return false;
     double W[3][4] = {}, scratch[9];
     const double* wv = camera_world_basis(camera, scratch);
     for (unsigned i = 0; i < 3; ++i) {
-        for (unsigned j = 0; j < 3; ++j) { W[i][j] = wv[i * 3 + j]; W[i][3] -= double(camera.t[j]) * wv[i * 3 + j]; }
+        for (unsigned j = 0; j < 3; ++j) {
+            W[i][j] = wv[i * 3 + j];
+            W[i][3] -= double(camera.t[j]) * wv[i * 3 + j];
+        }
     }
     const double E = double(cascade.half_extent), L = double(cascade.depth_toward_light), R = cascade.depth_range();
     if (!(E > 0.) || !(L > 0.) || !(R > L)) return false;
@@ -204,78 +246,120 @@ inline bool shadow_replay_view_rows(const CameraState& camera, const ShadowRepla
 // one; the fifth slot is for a 150,000-unit reach (250 / 1,500 / 7,500 / 37,500
 // / 150,000: docs/architecture/shadow-cascade-extents.md, section 3).
 constexpr unsigned shadow_cascade_max = 5;
-static_assert(shadow_cascade_footprint_max_cascades == shadow_cascade_max, "the footprint law's array bound is the cascade count");
+static_assert(shadow_cascade_footprint_max_cascades == shadow_cascade_max,
+              "the footprint law's array bound is the cascade count");
 constexpr unsigned shadow_cascade_default_count = 4;
-constexpr float shadow_cascade_extent_defaults[shadow_cascade_default_count] = {250.f, 1500.f, 7500.f, 25000.f}; // the intended set
+constexpr float shadow_cascade_extent_defaults[shadow_cascade_default_count] = {250.f, 1500.f, 7500.f,
+                                                                                25000.f}; // the
+                                                                                          // intended
+                                                                                          // set
 constexpr float shadow_cascade_extent_min = 50.f, shadow_cascade_extent_max = 150000.f;
 constexpr unsigned shadow_cascade_size_default = 4096;
 constexpr unsigned shadow_cascade_cap_defaults[shadow_cascade_max] = {128, 512, 1024, 1024, 1024};
-constexpr unsigned shadow_cascade_cap_max = 4096; // = shadow_cascade_records_max: a cap beyond its cascade's records is bounded by them (ShadowCascadeSet::bound)
+constexpr unsigned shadow_cascade_cap_max = 4096; // = shadow_cascade_records_max: a cap beyond its cascade's records is
+                                                  // bounded by them (ShadowCascadeSet::bound)
 // Caster pool control (docs/architecture/shadow-cascade-extents.md, "Caster pool control"):
 // per-cascade record capacity (X3M_SHADOW_CASCADE_RECORDS; the record list holds the largest),
 // the first static-only cascade (X3M_SHADOW_CASCADE_STATIC_FROM; shadow_cascade_max = none) and
 // the drop order at a cap (X3M_SHADOW_CASCADE_DROP_ORDER: submission, or importance = largest
 // projected size first). Every default reproduces the single 1,024-record list byte for byte.
-constexpr unsigned shadow_cascade_records_default = 1024, shadow_cascade_records_min = 1, shadow_cascade_records_max = 4096;
-constexpr unsigned shadow_cascade_static_from_none = ~0u; // never a cascade index: a set of N cascades takes static_from in 1..N-1 or none
-constexpr float shadow_cascade_large_min_max = 1e6f; // X3M_SHADOW_CASCADE_LARGE_MIN: 0 (off) .. this, world units
+constexpr unsigned shadow_cascade_records_default = 1024, shadow_cascade_records_min = 1,
+                   shadow_cascade_records_max = 4096;
+constexpr unsigned shadow_cascade_static_from_none = ~0u; // never a cascade index: a set of N cascades takes
+                                                          // static_from in 1..N-1 or none
+constexpr float shadow_cascade_large_min_max = 1e6f;      // X3M_SHADOW_CASCADE_LARGE_MIN: 0 (off) .. this, world units
 // Back-face casters (directional-shadows.md, "Run 40 A (run116) diagnosis", cause 2): a
 // cascade whose world texel is at or above this holds its casters' BACK faces (the replay
 // inverts CW <-> CCW; NONE unchanged), so a lit front face compares against the far side of its
 // own body (residual = thickness, off the compare's knife edge) instead of its own depth
 // re-rolled by the jittered receiver. X3M_SHADOW_CASCADE_BACKFACE_FROM = K overrides the
 // texel law with cascades i >= K (0: every cascade; "none": no cascade).
-constexpr double shadow_cascade_backface_texel_default = 8.; // world units per texel: 37,500 / 4096 (18.3 u) qualifies, 7,500 / 4096 (3.7 u) does not
-constexpr unsigned shadow_cascade_backface_from_texel = ~0u - 1u; // the texel law (the option absent); shadow_cascade_static_from_none = no cascade
-constexpr unsigned shadow_cascade_budget_default = 640, shadow_cascade_budget_min = 1, shadow_cascade_budget_max = 4096; // draw issues per frame
+constexpr double shadow_cascade_backface_texel_default = 8.; // world units per texel: 37,500 / 4096 (18.3 u) qualifies,
+                                                             // 7,500 / 4096 (3.7 u) does not
+constexpr unsigned shadow_cascade_backface_from_texel = ~0u - 1u; // the texel law (the option absent);
+                                                                  // shadow_cascade_static_from_none = no cascade
+constexpr unsigned shadow_cascade_budget_default = 640, shadow_cascade_budget_min = 1,
+                   shadow_cascade_budget_max = 4096; // draw issues per frame
 constexpr float shadow_cascade_depth_light_factor = 2.f, shadow_cascade_depth_behind_factor = 2.f;
-constexpr float shadow_cascade_select_margin = .95f; // a pixel belongs to the first cascade with max(|x|, |y|) <= margin (room for the 3x3 kernel)
-constexpr float shadow_cascade_blend_band = .10f;    // the outer band of that margin blends into the next cascade (the last one fades to lit)
+constexpr float shadow_cascade_select_margin = .95f; // a pixel belongs to the first cascade with max(|x|, |y|) <=
+                                                     // margin (room for the 3x3 kernel)
+constexpr float shadow_cascade_blend_band = .10f;    // the outer band of that margin blends into the next cascade (the
+                                                     // last one fades to lit)
 struct ShadowCascadeSet {
     unsigned count = 0; // 0: no cascades, no map (the sun shadows are off)
     ShadowReplayCascade cascades[shadow_cascade_max]{};
     unsigned caps[shadow_cascade_max]{};
     unsigned budget = shadow_cascade_budget_default;
-    unsigned records[shadow_cascade_max] = {shadow_cascade_records_default, shadow_cascade_records_default, shadow_cascade_records_default, shadow_cascade_records_default, shadow_cascade_records_default};
+    unsigned records[shadow_cascade_max] = {shadow_cascade_records_default, shadow_cascade_records_default,
+                                            shadow_cascade_records_default, shadow_cascade_records_default,
+                                            shadow_cascade_records_default};
     unsigned static_from = shadow_cascade_static_from_none; // cascades i >= static_from admit static casters only
-    bool importance = false;                                // a cascade over its cap keeps the largest projected casters, not the first submitted
-    float large_min = 0.f;                                  // a static-only cascade also admits a moving caster whose world AABB extent is >= this (0: never)
-    float min_footprint_px = 0.f;                           // per-part minimum light-space footprint in screen pixels (shadow_cascade_footprint_core.h; 0: off, bit-identical)
-    unsigned backface_from = shadow_cascade_backface_from_texel; // cascades i >= this replay back faces; the texel law by default (shadow_cascade_backface_texel_default)
+    bool importance = false; // a cascade over its cap keeps the largest projected casters, not the first submitted
+    float large_min = 0.f;   // a static-only cascade also admits a moving caster whose world AABB extent is >= this (0:
+                             // never)
+    float min_footprint_px = 0.f; // per-part minimum light-space footprint in screen pixels
+                                  // (shadow_cascade_footprint_core.h; 0: off, bit-identical)
+    unsigned backface_from = shadow_cascade_backface_from_texel; // cascades i >= this replay back faces; the texel law
+                                                                 // by default (shadow_cascade_backface_texel_default)
     // The issues cascade i can carry: its cap bounded by its records (the storage the issue list was sized with).
-    unsigned bound(unsigned i) const noexcept { return i < shadow_cascade_max ? (caps[i] < records[i] ? caps[i] : records[i]) : 0u; }
-    // The record list's capacity: the largest per-cascade records (the boxes nest, so the union of the cascades' casters is about the outermost's).
-    unsigned record_capacity() const noexcept { unsigned m = 0; for (unsigned i = 0; i < count; ++i) if (records[i] > m) m = records[i]; return m; }
+    unsigned bound(unsigned i) const noexcept {
+        return i < shadow_cascade_max ? (caps[i] < records[i] ? caps[i] : records[i]) : 0u;
+    }
+    // The record list's capacity: the largest per-cascade records (the boxes nest, so the union of the cascades'
+    // casters is about the outermost's).
+    unsigned record_capacity() const noexcept {
+        unsigned m = 0;
+        for (unsigned i = 0; i < count; ++i)
+            if (records[i] > m) m = records[i];
+        return m;
+    }
     bool static_only(unsigned i) const noexcept { return i >= static_from; }
-    std::uint8_t static_only_mask() const noexcept { std::uint8_t m = 0; for (unsigned i = static_from; i < count; ++i) m |= std::uint8_t(1u << i); return m; }
+    std::uint8_t static_only_mask() const noexcept {
+        std::uint8_t m = 0;
+        for (unsigned i = static_from; i < count; ++i) m |= std::uint8_t(1u << i);
+        return m;
+    }
     // Bit i: cascade i replays back faces (the option's index law, else the texel law on the live extents and sizes).
     bool backface(unsigned i) const noexcept {
         if (i >= count) return false;
-        if (backface_from == shadow_cascade_backface_from_texel) return shadow_replay_world_texel(cascades[i]) >= shadow_cascade_backface_texel_default;
+        if (backface_from == shadow_cascade_backface_from_texel)
+            return shadow_replay_world_texel(cascades[i]) >= shadow_cascade_backface_texel_default;
         return i >= backface_from;
     }
-    std::uint8_t backface_mask() const noexcept { std::uint8_t m = 0; for (unsigned i = 0; i < count; ++i) if (backface(i)) m |= std::uint8_t(1u << i); return m; }
+    std::uint8_t backface_mask() const noexcept {
+        std::uint8_t m = 0;
+        for (unsigned i = 0; i < count; ++i)
+            if (backface(i)) m |= std::uint8_t(1u << i);
+        return m;
+    }
     // Bit i: cascade i is active. A cascade the sliding ladder dropped
     // (shadow_cascade_adapt_c0: its slid extent reached the next one's) keeps
     // its map, size, cap and records but has an empty box (no record carries
     // its bit, nothing replays into it, the apply quad has no slot for it).
     // Cascade 0 is always active.
     unsigned active = 0;
-    bool checked = true; // the production laws (forward offset, depth-behind floor); false: the fixture seam's unit geometry
+    bool checked = true; // the production laws (forward offset, depth-behind floor); false: the fixture seam's unit
+                         // geometry
 };
 // The pool policy on a built set: records (one per cascade, null = default), the first
 // static-only cascade (shadow_cascade_static_from_none = none; count or more means none too),
 // the drop order, the mover threshold and the first back-face cascade (the texel law by
 // default; shadow_cascade_static_from_none = no cascade; 0..count-1 = that cascade and beyond).
 // False on an out-of-range value; `out` is untouched then.
-inline bool shadow_cascade_pool(ShadowCascadeSet& out, const unsigned* records, unsigned static_from, bool importance, float large_min = 0.f,
-                                unsigned backface_from = shadow_cascade_backface_from_texel, float min_footprint_px = 0.f) noexcept {
+inline bool shadow_cascade_pool(ShadowCascadeSet& out, const unsigned* records, unsigned static_from, bool importance,
+                                float large_min = 0.f, unsigned backface_from = shadow_cascade_backface_from_texel,
+                                float min_footprint_px = 0.f) noexcept {
     if (!out.count) return false;
-    if (static_from != shadow_cascade_static_from_none && (static_from < 1 || static_from >= out.count)) return false; // cascade 0 always admits movers; == count would be a no-op
+    if (static_from != shadow_cascade_static_from_none && (static_from < 1 || static_from >= out.count))
+        return false; // cascade 0 always admits movers; == count would be a no-op
     if (!(large_min >= 0.f) || large_min > shadow_cascade_large_min_max) return false; // NaN refused
-    if (min_footprint_px != 0.f && !shadow_cascade_min_footprint_valid(double(min_footprint_px))) return false; // 0 = off; NaN and out of band refused
-    if (backface_from != shadow_cascade_backface_from_texel && backface_from != shadow_cascade_static_from_none && backface_from >= out.count) return false; // == count would be a silent no-op
-    for (unsigned i = 0; records && i < out.count; ++i) if (records[i] < shadow_cascade_records_min || records[i] > shadow_cascade_records_max) return false;
+    if (min_footprint_px != 0.f && !shadow_cascade_min_footprint_valid(double(min_footprint_px)))
+        return false; // 0 = off; NaN and out of band refused
+    if (backface_from != shadow_cascade_backface_from_texel && backface_from != shadow_cascade_static_from_none &&
+        backface_from >= out.count)
+        return false; // == count would be a silent no-op
+    for (unsigned i = 0; records && i < out.count; ++i)
+        if (records[i] < shadow_cascade_records_min || records[i] > shadow_cascade_records_max) return false;
     for (unsigned i = 0; records && i < out.count; ++i) out.records[i] = records[i];
     out.static_from = static_from;
     out.importance = importance;
@@ -284,7 +368,9 @@ inline bool shadow_cascade_pool(ShadowCascadeSet& out, const unsigned* records, 
     out.min_footprint_px = min_footprint_px;
     return true;
 }
-inline bool shadow_cascade_active(const ShadowCascadeSet& set, unsigned cascade) noexcept { return cascade < set.count && (set.active >> cascade & 1u) != 0; }
+inline bool shadow_cascade_active(const ShadowCascadeSet& set, unsigned cascade) noexcept {
+    return cascade < set.count && (set.active >> cascade & 1u) != 0;
+}
 // The static/moving drift threshold of cascade i (directional-shadows.md, "Run 40 A (run116)
 // diagnosis", cause 3): a static-only cascade tolerates one eighth of its world texel per
 // sighting (37,500 / 4096: 2.3 u; 150,000 / 4096: 9.2 u), never less than the base eps, so a
@@ -299,8 +385,8 @@ inline double shadow_cascade_class_eps(const ShadowCascadeSet& set, unsigned i, 
 // `checked` false is the fixture seam (unit-size geometry below the production
 // minimum: no forward offset, depth behind exactly the factor). False on a
 // non-ascending, nonfinite or out-of-range input.
-inline bool shadow_cascade_set(const float* extents, unsigned count, const unsigned* sizes, const unsigned* caps, unsigned budget,
-                               ShadowCascadeSet& out, bool checked = true) noexcept {
+inline bool shadow_cascade_set(const float* extents, unsigned count, const unsigned* sizes, const unsigned* caps,
+                               unsigned budget, ShadowCascadeSet& out, bool checked = true) noexcept {
     out = ShadowCascadeSet{};
     if (!extents || count < 1 || count > shadow_cascade_max) return false;
     if (budget < shadow_cascade_budget_min || budget > shadow_cascade_budget_max) return false;
@@ -308,17 +394,27 @@ inline bool shadow_cascade_set(const float* extents, unsigned count, const unsig
         const float e = extents[i];
         if (!std::isfinite(e) || !(e > 0.f) || (i && !(e > extents[i - 1]))) return false;
         if (checked && (e < shadow_cascade_extent_min || e > shadow_cascade_extent_max)) return false;
-        const unsigned size = sizes ? sizes[i] : shadow_cascade_size_default, cap = caps ? caps[i] : shadow_cascade_cap_defaults[i];
-        if (size < shadow_replay_size_min || size > shadow_replay_size_max || cap < 1 || cap > shadow_cascade_cap_max) return false;
+        const unsigned size = sizes ? sizes[i] : shadow_cascade_size_default,
+                       cap = caps ? caps[i] : shadow_cascade_cap_defaults[i];
+        if (size < shadow_replay_size_min || size > shadow_replay_size_max || cap < 1 || cap > shadow_cascade_cap_max)
+            return false;
         auto& c = out.cascades[i];
-        c.half_extent = e; c.size = size; out.caps[i] = cap;
+        c.half_extent = e;
+        c.size = size;
+        out.caps[i] = cap;
         const float forward = e * (shadow_replay_forward_offset_default / shadow_replay_extent_default);
-        c.forward_offset = i || !checked ? 0.f : forward < shadow_replay_forward_offset_default ? forward : shadow_replay_forward_offset_default;
+        c.forward_offset = i || !checked                                    ? 0.f
+                           : forward < shadow_replay_forward_offset_default ? forward
+                                                                            : shadow_replay_forward_offset_default;
         const float behind = e * shadow_cascade_depth_behind_factor;
-        c.depth_behind = checked && behind < shadow_replay_depth_half_default ? shadow_replay_depth_half_default : behind;
+        c.depth_behind = checked && behind < shadow_replay_depth_half_default ? shadow_replay_depth_half_default
+                                                                              : behind;
         c.depth_toward_light = extents[count - 1] * shadow_cascade_depth_light_factor;
     }
-    out.count = count; out.budget = budget; out.active = (1u << count) - 1u; out.checked = checked;
+    out.count = count;
+    out.budget = budget;
+    out.active = (1u << count) - 1u;
+    out.checked = checked;
     return true;
 }
 // ---- own-ship-adaptive cascade 0 (docs/architecture/shadow-cascade-extents.md, section 5) ----
@@ -335,15 +431,19 @@ inline bool shadow_cascade_set(const float* extents, unsigned count, const unsig
 // keeps a full set: no 11x gap behind cascade 0). A slid cascade re-anchors
 // its texel grid and voids its retained map; maps stay allocated at their
 // configured sizes. E0 at the configured value: the configured set as it is.
-constexpr float shadow_cascade_adaptive_k_default = 1.5f, shadow_cascade_adaptive_k_min = .5f, shadow_cascade_adaptive_k_max = 8.f;
-constexpr float shadow_cascade_ladder_ratio_default = 5.f, shadow_cascade_ladder_ratio_min = 2.f, shadow_cascade_ladder_ratio_max = 16.f;
-constexpr float shadow_cascade_adaptive_hysteresis = .2f; // relative radius change that moves E0
-constexpr unsigned shadow_cascade_adaptive_stable_frames = 8; // scene ends a changed radius must persist (a ship change commits at once)
+constexpr float shadow_cascade_adaptive_k_default = 1.5f, shadow_cascade_adaptive_k_min = .5f,
+                shadow_cascade_adaptive_k_max = 8.f;
+constexpr float shadow_cascade_ladder_ratio_default = 5.f, shadow_cascade_ladder_ratio_min = 2.f,
+                shadow_cascade_ladder_ratio_max = 16.f;
+constexpr float shadow_cascade_adaptive_hysteresis = .2f;     // relative radius change that moves E0
+constexpr unsigned shadow_cascade_adaptive_stable_frames = 8; // scene ends a changed radius must persist (a ship change
+                                                              // commits at once)
 // The slid extent of cascade i (i >= 1) for a cascade 0 at e0: max(configured,
 // e0 x ratio^i) capped at the last cascade's configured extent; the last
 // cascade itself keeps its configured extent. Configured e0: the configured set.
 inline float shadow_cascade_ladder_extent(const ShadowCascadeSet& config, unsigned i, float e0, float ratio) noexcept {
-    if (i >= config.count || i >= shadow_cascade_max) return 0.f / 0.f; // no such cascade: refused (NaN, never an extent)
+    if (i >= config.count || i >= shadow_cascade_max)
+        return 0.f / 0.f; // no such cascade: refused (NaN, never an extent)
     if (!i) return config.cascades[0].half_extent;
     const float configured = config.cascades[i].half_extent, last = config.cascades[config.count - 1].half_extent;
     if (i + 1 == config.count || !(e0 > config.cascades[0].half_extent)) return configured;
@@ -357,7 +457,8 @@ inline float shadow_cascade_ladder_extent(const ShadowCascadeSet& config, unsign
 // aside) below the next cascade's, so the kept cascades strictly ascend.
 inline unsigned shadow_cascade_ladder_mask(const ShadowCascadeSet& set) noexcept {
     if (!set.count) return 0;
-    unsigned mask = 1; const float e0 = set.cascades[0].half_extent;
+    unsigned mask = 1;
+    const float e0 = set.cascades[0].half_extent;
     for (unsigned i = 1; i < set.count; ++i) {
         const float e = set.cascades[i].half_extent;
         if (e > e0 && (i + 1 == set.count || e < set.cascades[i + 1].half_extent)) mask |= 1u << i;
@@ -367,7 +468,8 @@ inline unsigned shadow_cascade_ladder_mask(const ShadowCascadeSet& set) noexcept
 // Bit i: cascade i's extent differs between two sets of the same count.
 inline unsigned shadow_cascade_extent_delta_mask(const ShadowCascadeSet& a, const ShadowCascadeSet& b) noexcept {
     unsigned mask = 0;
-    for (unsigned i = 0; i < a.count && i < b.count && i < shadow_cascade_max; ++i) if (a.cascades[i].half_extent != b.cascades[i].half_extent) mask |= 1u << i;
+    for (unsigned i = 0; i < a.count && i < b.count && i < shadow_cascade_max; ++i)
+        if (a.cascades[i].half_extent != b.cascades[i].half_extent) mask |= 1u << i;
     return mask;
 }
 // Bit i: cascade i's extent OR active bit differs between two sets: what a
@@ -381,11 +483,15 @@ inline unsigned shadow_cascade_change_mask(const ShadowCascadeSet& a, const Shad
 // ratio, a tie going to the larger one): the per-cascade policies of a slid
 // set are those of the configured cascades the live extents now stand at.
 inline unsigned shadow_cascade_policy_match(const ShadowCascadeSet& config, float extent) noexcept {
-    unsigned best = 0; float best_ratio = 0.f;
+    unsigned best = 0;
+    float best_ratio = 0.f;
     for (unsigned j = 0; j < config.count && j < shadow_cascade_max; ++j) {
         const float e = config.cascades[j].half_extent;
         const float r = extent > e ? extent / e : e / extent;
-        if (!j || r <= best_ratio) { best = j; best_ratio = r; }
+        if (!j || r <= best_ratio) {
+            best = j;
+            best_ratio = r;
+        }
     }
     return best;
 }
@@ -400,36 +506,47 @@ inline unsigned shadow_cascade_policy_match(const ShadowCascadeSet& config, floa
 inline void shadow_cascade_ladder_policy(const ShadowCascadeSet& config, ShadowCascadeSet& out) noexcept {
     if (!config.count || !shadow_cascade_extent_delta_mask(config, out)) return;
     unsigned matched[shadow_cascade_max]{};
-    out.static_from = shadow_cascade_static_from_none; out.large_min = 0.f;
+    out.static_from = shadow_cascade_static_from_none;
+    out.large_min = 0.f;
     // An index-law back-face policy slides like static_from (the first live cascade matching a
     // configured back-face one); the texel law and "none" carry over as they are.
-    const bool backface_index = config.backface_from != shadow_cascade_backface_from_texel && config.backface_from != shadow_cascade_static_from_none;
+    const bool backface_index = config.backface_from != shadow_cascade_backface_from_texel &&
+                                config.backface_from != shadow_cascade_static_from_none;
     if (backface_index) out.backface_from = shadow_cascade_static_from_none;
     unsigned budget = 0, wanted = 0;
     for (unsigned i = 0; i < out.count && i < shadow_cascade_max; ++i) {
         const unsigned j = matched[i] = shadow_cascade_policy_match(config, out.cascades[i].half_extent);
-        out.caps[i] = shadow_cascade_active(out, i) ? config.caps[j] : 0u; out.records[i] = config.records[j];
-        budget += config.bound(i); wanted += out.bound(i);
-        if (out.static_from == shadow_cascade_static_from_none && i && shadow_cascade_active(out, i) && config.static_only(j)) {
+        out.caps[i] = shadow_cascade_active(out, i) ? config.caps[j] : 0u;
+        out.records[i] = config.records[j];
+        budget += config.bound(i);
+        wanted += out.bound(i);
+        if (out.static_from == shadow_cascade_static_from_none && i && shadow_cascade_active(out, i) &&
+            config.static_only(j)) {
             out.static_from = i;
             out.large_min = config.large_min * (out.cascades[i].half_extent / config.cascades[j].half_extent);
         }
-        if (backface_index && out.backface_from == shadow_cascade_static_from_none && shadow_cascade_active(out, i) && j >= config.backface_from) out.backface_from = i;
+        if (backface_index && out.backface_from == shadow_cascade_static_from_none && shadow_cascade_active(out, i) &&
+            j >= config.backface_from)
+            out.backface_from = i;
     }
-    if (wanted > budget) for (unsigned i = 0; i < out.count && i < shadow_cascade_max; ++i) {
-        if (!out.caps[i]) continue;
-        const unsigned scaled = unsigned(double(out.caps[i]) * double(budget) / double(wanted));
-        out.caps[i] = scaled ? scaled : 1u;
-    }
+    if (wanted > budget)
+        for (unsigned i = 0; i < out.count && i < shadow_cascade_max; ++i) {
+            if (!out.caps[i]) continue;
+            const unsigned scaled = unsigned(double(out.caps[i]) * double(budget) / double(wanted));
+            out.caps[i] = scaled ? scaled : 1u;
+        }
 }
 // The configured set with cascade 0's half-extent replaced (its forward
 // offset and depth-behind follow the set's own laws; the depth towards the
 // light is the last cascade's and does not change because e0 is clamped to
 // it), the ladder slid behind it and the active mask applied. False on a
 // nonfinite or non-positive e0 or a ratio outside its range.
-inline bool shadow_cascade_adapt_c0(const ShadowCascadeSet& config, float e0, ShadowCascadeSet& out, float ratio = shadow_cascade_ladder_ratio_default) noexcept {
+inline bool shadow_cascade_adapt_c0(const ShadowCascadeSet& config, float e0, ShadowCascadeSet& out,
+                                    float ratio = shadow_cascade_ladder_ratio_default) noexcept {
     out = config;
-    if (!config.count || !std::isfinite(e0) || !(e0 > 0.f) || !(ratio >= shadow_cascade_ladder_ratio_min) || !(ratio <= shadow_cascade_ladder_ratio_max)) return false;
+    if (!config.count || !std::isfinite(e0) || !(e0 > 0.f) || !(ratio >= shadow_cascade_ladder_ratio_min) ||
+        !(ratio <= shadow_cascade_ladder_ratio_max))
+        return false;
     for (unsigned i = 0; i < config.count; ++i) {
         auto& c = out.cascades[i];
         const float e = i ? shadow_cascade_ladder_extent(config, i, e0, ratio) : e0;
@@ -437,9 +554,12 @@ inline bool shadow_cascade_adapt_c0(const ShadowCascadeSet& config, float e0, Sh
         if (e == c.half_extent) continue; // an unslid cascade keeps its laws (and its grid)
         c.half_extent = e;
         const float forward = e * (shadow_replay_forward_offset_default / shadow_replay_extent_default);
-        c.forward_offset = i || !config.checked ? 0.f : forward < shadow_replay_forward_offset_default ? forward : shadow_replay_forward_offset_default;
+        c.forward_offset = i || !config.checked                             ? 0.f
+                           : forward < shadow_replay_forward_offset_default ? forward
+                                                                            : shadow_replay_forward_offset_default;
         const float behind = e * shadow_cascade_depth_behind_factor;
-        c.depth_behind = config.checked && behind < shadow_replay_depth_half_default ? shadow_replay_depth_half_default : behind;
+        c.depth_behind = config.checked && behind < shadow_replay_depth_half_default ? shadow_replay_depth_half_default
+                                                                                     : behind;
     }
     out.active = shadow_cascade_ladder_mask(out);
     shadow_cascade_ladder_policy(config, out);
@@ -449,12 +569,13 @@ inline bool shadow_cascade_adapt_c0(const ShadowCascadeSet& config, float e0, Sh
 // (0: none, E0 stays configured); `radius` is the committed radius.
 struct ShadowCascadeAdaptive {
     std::uintptr_t node = 0;
-    float radius = 0.f, e0 = 0.f;      // committed radius and the E0 it produced
-    float pending = 0.f;                // a candidate radius outside the hysteresis band, and how many frame boundaries it held
+    float radius = 0.f, e0 = 0.f; // committed radius and the E0 it produced
+    float pending = 0.f; // a candidate radius outside the hysteresis band, and how many frame boundaries it held
     unsigned pending_frames = 0;
-    unsigned held_frames = 0;           // boundaries with no measured own-ship draw (cockpit view, menu, loading): E0 held
-    unsigned slid = 0;                  // bit i: cascade i's extent differs from the configured one (cascade 0 included)
-    unsigned changed = 0;               // bit i: cascade i's extent or active bit changed at the last commit that changed the set (its grid re-anchored, its retained map void)
+    unsigned held_frames = 0; // boundaries with no measured own-ship draw (cockpit view, menu, loading): E0 held
+    unsigned slid = 0;        // bit i: cascade i's extent differs from the configured one (cascade 0 included)
+    unsigned changed = 0;     // bit i: cascade i's extent or active bit changed at the last commit that changed the set
+                              // (its grid re-anchored, its retained map void)
 };
 // The E0 the law yields for a radius: max(config E0, k x radius), clamped to
 // the last cascade's extent (the depth range towards the light stays) and the
@@ -480,31 +601,54 @@ inline float shadow_cascade_adaptive_extent(const ShadowCascadeSet& config, floa
 // true when E0 changed: `set` then holds the adapted set (every cascade in
 // state.changed re-snaps to its new texel grid and its retained map is void;
 // the others keep theirs). `reason` names a commit: "node", "radius", or null.
-inline bool shadow_cascade_adaptive_update(ShadowCascadeAdaptive& state, std::uintptr_t node, float radius, float k, float ratio,
-                                           const ShadowCascadeSet& config, ShadowCascadeSet& set, const char** reason = nullptr) noexcept {
+inline bool shadow_cascade_adaptive_update(ShadowCascadeAdaptive& state, std::uintptr_t node, float radius, float k,
+                                           float ratio, const ShadowCascadeSet& config, ShadowCascadeSet& set,
+                                           const char** reason = nullptr) noexcept {
     if (reason) *reason = nullptr;
-    if (!std::isfinite(radius) || !(radius > 0.f) || !node) { ++state.held_frames; return false; }
+    if (!std::isfinite(radius) || !(radius > 0.f) || !node) {
+        ++state.held_frames;
+        return false;
+    }
     const float band = shadow_cascade_adaptive_hysteresis * state.radius;
     const float delta = radius > state.radius ? radius - state.radius : state.radius - radius;
-    bool commit = false; const char* why = nullptr;
-    if (node != state.node) { commit = true; why = "node"; }
-    else if (state.radius == 0.f) { commit = true; why = "radius"; }
-    else if (delta > band) {
+    bool commit = false;
+    const char* why = nullptr;
+    if (node != state.node) {
+        commit = true;
+        why = "node";
+    } else if (state.radius == 0.f) {
+        commit = true;
+        why = "radius";
+    } else if (delta > band) {
         const float pending_band = shadow_cascade_adaptive_hysteresis * state.pending;
         const float pending_delta = radius > state.pending ? radius - state.pending : state.pending - radius;
-        if (state.pending_frames && pending_delta <= pending_band) ++state.pending_frames;
-        else { state.pending = radius; state.pending_frames = 1; }
-        if (state.pending_frames >= shadow_cascade_adaptive_stable_frames) { commit = true; why = "radius"; radius = state.pending; }
-    } else state.pending_frames = 0;
+        if (state.pending_frames && pending_delta <= pending_band)
+            ++state.pending_frames;
+        else {
+            state.pending = radius;
+            state.pending_frames = 1;
+        }
+        if (state.pending_frames >= shadow_cascade_adaptive_stable_frames) {
+            commit = true;
+            why = "radius";
+            radius = state.pending;
+        }
+    } else
+        state.pending_frames = 0;
     if (!commit) return false;
-    state.node = node; state.radius = radius; state.pending = 0.f; state.pending_frames = 0;
+    state.node = node;
+    state.radius = radius;
+    state.pending = 0.f;
+    state.pending_frames = 0;
     if (reason) *reason = why;
     const float e0 = shadow_cascade_adaptive_extent(config, k, state.radius);
     if (e0 == state.e0) return false; // the same ship class: the grid stays
     ShadowCascadeSet adapted{};
     if (!shadow_cascade_adapt_c0(config, e0, adapted, ratio)) return false;
-    state.changed = shadow_cascade_change_mask(set, adapted); state.slid = shadow_cascade_extent_delta_mask(config, adapted);
-    set = adapted; state.e0 = e0;
+    state.changed = shadow_cascade_change_mask(set, adapted);
+    state.slid = shadow_cascade_extent_delta_mask(config, adapted);
+    set = adapted;
+    state.e0 = e0;
     return true;
 }
 // The apply quad's slots: the active cascades in order, so a dropped cascade
@@ -513,7 +657,8 @@ inline bool shadow_cascade_adaptive_update(ShadowCascadeAdaptive& state, std::ui
 // cascade left in place would end the band at a hard edge). Returns the count.
 inline unsigned shadow_cascade_apply_slots(const ShadowCascadeSet& set, unsigned out[shadow_cascade_max]) noexcept {
     unsigned n = 0;
-    for (unsigned i = 0; i < set.count && i < shadow_cascade_max; ++i) if (shadow_cascade_active(set, i)) out[n++] = i;
+    for (unsigned i = 0; i < set.count && i < shadow_cascade_max; ++i)
+        if (shadow_cascade_active(set, i)) out[n++] = i;
     return n;
 }
 // The state at attach and after a device reset: the configured set as it is.
@@ -525,14 +670,18 @@ inline void shadow_cascade_adaptive_reset(ShadowCascadeAdaptive& state, const Sh
 // units (world-scaled: the view is a rotation of the world), from the draw's
 // object origin to a corner of its object-space AABB through its clip rows,
 // as shadow_cascade_bounds_mask maps the corners. Nonfinite: 0.
-inline float shadow_cascade_draw_radius(const CameraState& camera, const float rows[16], const float lo[3], const float hi[3]) noexcept {
+inline float shadow_cascade_draw_radius(const CameraState& camera, const float rows[16], const float lo[3],
+                                        const float hi[3]) noexcept {
     if (!camera.valid || !rows || !lo || !hi || !(camera.m00 > 0.f) || !(camera.m11 > 0.f)) return 0.f;
     // corner - origin through the rows is the linear part alone (the offset column cancels).
     const float ix = 1.f / camera.m00, iy = 1.f / camera.m11;
     float best = 0.f;
     for (unsigned corner = 0; corner < 8; ++corner) {
-        const float x = (corner & 1) ? hi[0] : lo[0], y = (corner & 2) ? hi[1] : lo[1], z = (corner & 4) ? hi[2] : lo[2];
-        const float dx = (rows[0] * x + rows[1] * y + rows[2] * z) * ix, dy = (rows[4] * x + rows[5] * y + rows[6] * z) * iy, dw = rows[12] * x + rows[13] * y + rows[14] * z;
+        const float x = (corner & 1) ? hi[0] : lo[0], y = (corner & 2) ? hi[1] : lo[1],
+                    z = (corner & 4) ? hi[2] : lo[2];
+        const float dx = (rows[0] * x + rows[1] * y + rows[2] * z) * ix,
+                    dy = (rows[4] * x + rows[5] * y + rows[6] * z) * iy,
+                    dw = rows[12] * x + rows[13] * y + rows[14] * z;
         const float d2 = dx * dx + dy * dy + dw * dw;
         if (!std::isfinite(d2)) return 0.f;
         if (d2 > best) best = d2;
@@ -542,7 +691,8 @@ inline float shadow_cascade_draw_radius(const CameraState& camera, const float r
 // The far-cascade policy: the last cascade of a multi-cascade set replays every
 // frame while the frame's issues fit the budget, otherwise on even frames only
 // and always in full; the others replay every frame.
-inline bool shadow_cascade_replays(unsigned cascade, unsigned count, unsigned issues, unsigned budget, std::uint64_t frame) noexcept {
+inline bool shadow_cascade_replays(unsigned cascade, unsigned count, unsigned issues, unsigned budget,
+                                   std::uint64_t frame) noexcept {
     return count < 2 || cascade + 1 != count || issues <= budget || (frame & 1u) == 0;
 }
 // The frame's box test for every cascade at once: the view -> sun-space rows in
@@ -560,43 +710,61 @@ struct ShadowCascadeBounds {
     float cascade_rows[shadow_cascade_max][9]{}; // read when !shared
     float lo[shadow_cascade_max][3]{}, hi[shadow_cascade_max][3]{};
 };
-// `suns`: four floats per cascade (object -> light, world space); `anchors`: three doubles per cascade or null (shadow_replay_basis).
-inline bool shadow_cascade_bounds_suns(const CameraState& camera, const float* suns, const ShadowCascadeSet& set, ShadowCascadeBounds& out, const double* anchors = nullptr) noexcept {
+// `suns`: four floats per cascade (object -> light, world space); `anchors`: three doubles per cascade or null
+// (shadow_replay_basis).
+inline bool shadow_cascade_bounds_suns(const CameraState& camera, const float* suns, const ShadowCascadeSet& set,
+                                       ShadowCascadeBounds& out, const double* anchors = nullptr) noexcept {
     out = ShadowCascadeBounds{};
     if (!suns || !set.count || set.count > shadow_cascade_max) return false;
-    for (unsigned c = 1; c < set.count; ++c) for (unsigned i = 0; i < 3; ++i) if (suns[c * 4 + i] != suns[i]) out.shared = false;
+    for (unsigned c = 1; c < set.count; ++c)
+        for (unsigned i = 0; i < 3; ++i)
+            if (suns[c * 4 + i] != suns[i]) out.shared = false;
     double position[3], scratch[9];
     const double* wv = camera_world_basis(camera, scratch);
-    for (unsigned i = 0; i < 3; ++i) { position[i] = 0; for (unsigned j = 0; j < 3; ++j) position[i] -= double(camera.t[j]) * wv[i * 3 + j]; }
+    for (unsigned i = 0; i < 3; ++i) {
+        position[i] = 0;
+        for (unsigned j = 0; j < 3; ++j) position[i] -= double(camera.t[j]) * wv[i * 3 + j];
+    }
     for (unsigned c = 0; c < set.count; ++c) {
-        if (c && !shadow_cascade_active(set, c)) { // dropped by the ladder: an empty box (in world units: no extent spans it), no bit for any draw
-            for (unsigned a = 0; a < 3; ++a) { out.lo[c][a] = 3.4028235e38f; out.hi[c][a] = -3.4028235e38f; }
+        if (c && !shadow_cascade_active(set, c)) { // dropped by the ladder: an empty box (in world units: no extent
+                                                   // spans it), no bit for any draw
+            for (unsigned a = 0; a < 3; ++a) {
+                out.lo[c][a] = 3.4028235e38f;
+                out.hi[c][a] = -3.4028235e38f;
+            }
             continue;
         }
         ShadowReplayBasis basis{};
-        if (!shadow_replay_basis(camera, suns + c * 4, set.cascades[c], basis, anchors ? anchors + c * 3 : nullptr)) return false;
+        if (!shadow_replay_basis(camera, suns + c * 4, set.cascades[c], basis, anchors ? anchors + c * 3 : nullptr))
+            return false;
         const auto& axes = basis.axes;
         for (unsigned a = 0; a < 3; ++a) {
-            if (!c || !out.shared) for (unsigned j = 0; j < 3; ++j) { // sun_rel[a] = sum_j (sum_k axes[a][k] wv[k*3+j]) view_j
-                double m = 0;
-                for (unsigned k = 0; k < 3; ++k) m += axes[a][k] * wv[k * 3 + j];
-                if (!c) out.rows[a * 3 + j] = float(m);
-                out.cascade_rows[c][a * 3 + j] = float(m);
-            }
+            if (!c || !out.shared)
+                for (unsigned j = 0; j < 3; ++j) { // sun_rel[a] = sum_j (sum_k axes[a][k] wv[k*3+j]) view_j
+                    double m = 0;
+                    for (unsigned k = 0; k < 3; ++k) m += axes[a][k] * wv[k * 3 + j];
+                    if (!c) out.rows[a * 3 + j] = float(m);
+                    out.cascade_rows[c][a * 3 + j] = float(m);
+                }
             double centre = 0;
             for (unsigned k = 0; k < 3; ++k) centre += axes[a][k] * (basis.center_d[k] - position[k]);
             const auto& s = set.cascades[c];
-            const double below = a == 2 ? double(s.depth_toward_light) : double(s.half_extent), above = a == 2 ? double(s.depth_behind) : double(s.half_extent);
+            const double below = a == 2 ? double(s.depth_toward_light) : double(s.half_extent),
+                         above = a == 2 ? double(s.depth_behind) : double(s.half_extent);
             if (!std::isfinite(centre)) return false;
-            out.lo[c][a] = float(centre - below); out.hi[c][a] = float(centre + above);
+            out.lo[c][a] = float(centre - below);
+            out.hi[c][a] = float(centre + above);
         }
     }
     out.count = set.count;
     return true;
 }
-inline bool shadow_cascade_bounds(const CameraState& camera, const float sun[4], const ShadowCascadeSet& set, ShadowCascadeBounds& out) noexcept {
+inline bool shadow_cascade_bounds(const CameraState& camera, const float sun[4], const ShadowCascadeSet& set,
+                                  ShadowCascadeBounds& out) noexcept {
     float suns[shadow_cascade_max * 4]{};
-    if (sun) for (unsigned c = 0; c < shadow_cascade_max; ++c) for (unsigned i = 0; i < 4; ++i) suns[c * 4 + i] = sun[i];
+    if (sun)
+        for (unsigned c = 0; c < shadow_cascade_max; ++c)
+            for (unsigned i = 0; i < 4; ++i) suns[c * 4 + i] = sun[i];
     return shadow_cascade_bounds_suns(camera, sun ? suns : nullptr, set, out);
 }
 // Bit i set: the draw's object-space AABB (eight corners through its clip rows,
@@ -611,9 +779,14 @@ inline bool shadow_cascade_bounds(const CameraState& camera, const float sun[4],
 // both are rigid quantities of the world-space box). Zero for a degenerate box.
 inline float shadow_cascade_projected_size(const float smin[3], const float smax[3]) noexcept {
     float diag2 = 0.f, dist2 = 0.f;
-    for (unsigned a = 0; a < 3; ++a) { const float e = smax[a] - smin[a], c = .5f * (smax[a] + smin[a]); diag2 += e * e; dist2 += c * c; }
+    for (unsigned a = 0; a < 3; ++a) {
+        const float e = smax[a] - smin[a], c = .5f * (smax[a] + smin[a]);
+        diag2 += e * e;
+        dist2 += c * c;
+    }
     // SSE square roots (sqrt_sd): this runs on the draw path under the light call boundary (no x87).
-    const float dist = float(sqrt_sd(double(dist2 > 1.f ? dist2 : 1.f))); // within one unit of the eye the size is the diagonal itself
+    const float dist = float(sqrt_sd(double(dist2 > 1.f ? dist2 : 1.f))); // within one unit of the eye the size is the
+                                                                          // diagonal itself
     const float size = float(sqrt_sd(double(diag2))) / dist;
     return std::isfinite(size) ? size : 0.f;
 }
@@ -628,48 +801,63 @@ inline float shadow_cascade_projected_size(const float smin[3], const float smax
 // same value, as the box is the same). Zero with an unknown mask (-1).
 inline float shadow_cascade_box_extent(const float smin[3], const float smax[3]) noexcept {
     float e = 0.f;
-    for (unsigned a = 0; a < 3; ++a) if (smax[a] - smin[a] > e) e = smax[a] - smin[a];
+    for (unsigned a = 0; a < 3; ++a)
+        if (smax[a] - smin[a] > e) e = smax[a] - smin[a];
     return std::isfinite(e) ? e : 0.f;
 }
-inline int shadow_cascade_bounds_mask(const CameraState& camera, const float rows[16], const ShadowCascadeBounds& bounds,
-                                      const float lo[3], const float hi[3], float* projected = nullptr, float* extent = nullptr,
+inline int shadow_cascade_bounds_mask(const CameraState& camera, const float rows[16],
+                                      const ShadowCascadeBounds& bounds, const float lo[3], const float hi[3],
+                                      float* projected = nullptr, float* extent = nullptr,
                                       float* lateral = nullptr) noexcept {
     if (projected) *projected = 0.f;
     if (extent) *extent = 0.f;
-    if (lateral) for (unsigned c = 0; c < shadow_cascade_max; ++c) lateral[c] = 0.f;
+    if (lateral)
+        for (unsigned c = 0; c < shadow_cascade_max; ++c) lateral[c] = 0.f;
     if (!camera.valid || !rows || !lo || !hi || !bounds.count || !(camera.m00 > 0.f) || !(camera.m11 > 0.f)) return -1;
     float size = 0.f, box = 0.f; // written to the outputs only with a known mask
-    float smin[3] = {3.4028235e38f, 3.4028235e38f, 3.4028235e38f}, smax[3] = {-3.4028235e38f, -3.4028235e38f, -3.4028235e38f};
+    float smin[3] = {3.4028235e38f, 3.4028235e38f, 3.4028235e38f},
+          smax[3] = {-3.4028235e38f, -3.4028235e38f, -3.4028235e38f};
     const float ix = 1.f / camera.m00, iy = 1.f / camera.m11;
     if (!bounds.shared) {
         float v[8][3];
         for (unsigned corner = 0; corner < 8; ++corner) {
-            const float x = (corner & 1) ? hi[0] : lo[0], y = (corner & 2) ? hi[1] : lo[1], z = (corner & 4) ? hi[2] : lo[2];
-            v[corner][0] = (rows[0] * x + rows[1] * y + rows[2] * z + rows[3]) * ix; v[corner][1] = (rows[4] * x + rows[5] * y + rows[6] * z + rows[7]) * iy;
+            const float x = (corner & 1) ? hi[0] : lo[0], y = (corner & 2) ? hi[1] : lo[1],
+                        z = (corner & 4) ? hi[2] : lo[2];
+            v[corner][0] = (rows[0] * x + rows[1] * y + rows[2] * z + rows[3]) * ix;
+            v[corner][1] = (rows[4] * x + rows[5] * y + rows[6] * z + rows[7]) * iy;
             v[corner][2] = rows[12] * x + rows[13] * y + rows[14] * z + rows[15];
         }
         int mask = 0;
         for (unsigned c = 0; c < bounds.count; ++c) {
             const float* m = bounds.cascade_rows[c];
-            float cmin[3] = {3.4028235e38f, 3.4028235e38f, 3.4028235e38f}, cmax[3] = {-3.4028235e38f, -3.4028235e38f, -3.4028235e38f};
-            for (unsigned corner = 0; corner < 8; ++corner) for (unsigned a = 0; a < 3; ++a) {
-                const float s = m[a * 3] * v[corner][0] + m[a * 3 + 1] * v[corner][1] + m[a * 3 + 2] * v[corner][2];
-                if (!std::isfinite(s)) return -1;
-                if (s < cmin[a]) cmin[a] = s;
-                if (s > cmax[a]) cmax[a] = s;
+            float cmin[3] = {3.4028235e38f, 3.4028235e38f, 3.4028235e38f},
+                  cmax[3] = {-3.4028235e38f, -3.4028235e38f, -3.4028235e38f};
+            for (unsigned corner = 0; corner < 8; ++corner)
+                for (unsigned a = 0; a < 3; ++a) {
+                    const float s = m[a * 3] * v[corner][0] + m[a * 3 + 1] * v[corner][1] + m[a * 3 + 2] * v[corner][2];
+                    if (!std::isfinite(s)) return -1;
+                    if (s < cmin[a]) cmin[a] = s;
+                    if (s > cmax[a]) cmax[a] = s;
+                }
+            if (c == 0) {
+                size = shadow_cascade_projected_size(cmin, cmax);
+                box = shadow_cascade_box_extent(cmin, cmax);
             }
-            if (c == 0) { size = shadow_cascade_projected_size(cmin, cmax); box = shadow_cascade_box_extent(cmin, cmax); }
             if (lateral) lateral[c] = shadow_cascade_footprint_lateral(cmin, cmax);
-            const float* l = bounds.lo[c]; const float* h = bounds.hi[c];
-            if (cmax[0] >= l[0] && cmin[0] <= h[0] && cmax[1] >= l[1] && cmin[1] <= h[1] && cmin[2] <= h[2]) mask |= 1 << c; // the light side is open (pancaked)
+            const float* l = bounds.lo[c];
+            const float* h = bounds.hi[c];
+            if (cmax[0] >= l[0] && cmin[0] <= h[0] && cmax[1] >= l[1] && cmin[1] <= h[1] && cmin[2] <= h[2])
+                mask |= 1 << c; // the light side is open (pancaked)
         }
         if (projected) *projected = size;
         if (extent) *extent = box;
         return mask;
     }
     for (unsigned corner = 0; corner < 8; ++corner) {
-        const float x = (corner & 1) ? hi[0] : lo[0], y = (corner & 2) ? hi[1] : lo[1], z = (corner & 4) ? hi[2] : lo[2];
-        const float v[3] = {(rows[0] * x + rows[1] * y + rows[2] * z + rows[3]) * ix, (rows[4] * x + rows[5] * y + rows[6] * z + rows[7]) * iy,
+        const float x = (corner & 1) ? hi[0] : lo[0], y = (corner & 2) ? hi[1] : lo[1],
+                    z = (corner & 4) ? hi[2] : lo[2];
+        const float v[3] = {(rows[0] * x + rows[1] * y + rows[2] * z + rows[3]) * ix,
+                            (rows[4] * x + rows[5] * y + rows[6] * z + rows[7]) * iy,
                             rows[12] * x + rows[13] * y + rows[14] * z + rows[15]};
         for (unsigned a = 0; a < 3; ++a) {
             const float s = bounds.rows[a * 3] * v[0] + bounds.rows[a * 3 + 1] * v[1] + bounds.rows[a * 3 + 2] * v[2];
@@ -680,11 +868,16 @@ inline int shadow_cascade_bounds_mask(const CameraState& camera, const float row
     }
     if (projected) *projected = shadow_cascade_projected_size(smin, smax);
     if (extent) *extent = shadow_cascade_box_extent(smin, smax);
-    if (lateral) { const float side = shadow_cascade_footprint_lateral(smin, smax); for (unsigned c = 0; c < shadow_cascade_max; ++c) lateral[c] = side; }
+    if (lateral) {
+        const float side = shadow_cascade_footprint_lateral(smin, smax);
+        for (unsigned c = 0; c < shadow_cascade_max; ++c) lateral[c] = side;
+    }
     int mask = 0; // every corner was finite: the outputs above stand
     for (unsigned c = 0; c < bounds.count; ++c) {
-        const float* l = bounds.lo[c]; const float* h = bounds.hi[c];
-        if (smax[0] >= l[0] && smin[0] <= h[0] && smax[1] >= l[1] && smin[1] <= h[1] && smin[2] <= h[2]) mask |= 1 << c; // the light side is open (pancaked)
+        const float* l = bounds.lo[c];
+        const float* h = bounds.hi[c];
+        if (smax[0] >= l[0] && smin[0] <= h[0] && smax[1] >= l[1] && smin[1] <= h[1] && smin[2] <= h[2])
+            mask |= 1 << c; // the light side is open (pancaked)
     }
     return mask;
 }
@@ -696,30 +889,39 @@ inline int shadow_cascade_bounds_mask(const CameraState& camera, const float row
 // shadow_cascade_light_rows scales and offsets them into one cascade's NDC
 // (c0-c2 of the authored vertex program; c3 is (0, 0, 0, 1): the projection is orthographic).
 inline bool shadow_replay_axes_equal(const ShadowReplayBasis& a, const ShadowReplayBasis& b) noexcept {
-    for (unsigned i = 0; i < 3; ++i) for (unsigned j = 0; j < 3; ++j) if (a.axes[i][j] != b.axes[i][j]) return false;
+    for (unsigned i = 0; i < 3; ++i)
+        for (unsigned j = 0; j < 3; ++j)
+            if (a.axes[i][j] != b.axes[i][j]) return false;
     return true;
 }
-inline bool shadow_cascade_draw_rows(const CameraState& camera, const float rows[16], const ShadowReplayBasis& basis, double base[3][4]) noexcept {
+inline bool shadow_cascade_draw_rows(const CameraState& camera, const float rows[16], const ShadowReplayBasis& basis,
+                                     double base[3][4]) noexcept {
     if (!camera.valid || !basis.valid || !rows || !base) return false;
-    for (unsigned i = 0; i < 16; ++i) if (!std::isfinite(rows[i])) return false;
+    for (unsigned i = 0; i < 16; ++i)
+        if (!std::isfinite(rows[i])) return false;
     double WA[3][4], scratch[9];
     const double* wv = camera_world_basis(camera, scratch);
-    for (unsigned i = 0; i < 3; ++i) for (unsigned k = 0; k < 4; ++k) {
-        // world_i = sum_j (view_j - t_j) wv[i*3+j], view = (clip.x / m00, clip.y / m11, clip.w)
-        const double vx = double(rows[k]) / camera.m00, vy = double(rows[4 + k]) / camera.m11, vz = double(rows[12 + k]);
-        double m = vx * wv[i * 3] + vy * wv[i * 3 + 1] + vz * wv[i * 3 + 2];
-        if (k == 3) for (unsigned j = 0; j < 3; ++j) m -= double(camera.t[j]) * wv[i * 3 + j];
-        WA[i][k] = m;
-    }
+    for (unsigned i = 0; i < 3; ++i)
+        for (unsigned k = 0; k < 4; ++k) {
+            // world_i = sum_j (view_j - t_j) wv[i*3+j], view = (clip.x / m00, clip.y / m11, clip.w)
+            const double vx = double(rows[k]) / camera.m00, vy = double(rows[4 + k]) / camera.m11,
+                         vz = double(rows[12 + k]);
+            double m = vx * wv[i * 3] + vy * wv[i * 3 + 1] + vz * wv[i * 3 + 2];
+            if (k == 3)
+                for (unsigned j = 0; j < 3; ++j) m -= double(camera.t[j]) * wv[i * 3 + j];
+            WA[i][k] = m;
+        }
     const auto& axes = basis.axes;
-    for (unsigned a = 0; a < 3; ++a) for (unsigned k = 0; k < 4; ++k) {
-        const double m = axes[a][0] * WA[0][k] + axes[a][1] * WA[1][k] + axes[a][2] * WA[2][k];
-        if (!std::isfinite(m)) return false;
-        base[a][k] = m;
-    }
+    for (unsigned a = 0; a < 3; ++a)
+        for (unsigned k = 0; k < 4; ++k) {
+            const double m = axes[a][0] * WA[0][k] + axes[a][1] * WA[1][k] + axes[a][2] * WA[2][k];
+            if (!std::isfinite(m)) return false;
+            base[a][k] = m;
+        }
     return true;
 }
-inline bool shadow_cascade_light_rows(const double base[3][4], const ShadowReplayBasis& basis, const ShadowReplayCascade& cascade, float out[12]) noexcept {
+inline bool shadow_cascade_light_rows(const double base[3][4], const ShadowReplayBasis& basis,
+                                      const ShadowReplayCascade& cascade, float out[12]) noexcept {
     if (!basis.valid || !base || !out) return false;
     const double E = double(cascade.half_extent), L = double(cascade.depth_toward_light), R = cascade.depth_range();
     if (!(E > 0.) || !(L > 0.) || !(R > L)) return false;

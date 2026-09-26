@@ -42,8 +42,16 @@ struct CodeOps {
 // The setting as one printable token for the log line: "-" when unset, "?"
 // when too long, every character outside 0x21..0x7e shown as '?'.
 void printable(const wchar_t* text, DWORD length, char* out) {
-    if (!length) { out[0] = '-'; out[1] = 0; return; }
-    if (length >= setting_capacity) { out[0] = '?'; out[1] = 0; return; }
+    if (!length) {
+        out[0] = '-';
+        out[1] = 0;
+        return;
+    }
+    if (length >= setting_capacity) {
+        out[0] = '?';
+        out[1] = 0;
+        return;
+    }
     for (DWORD i = 0; i < length; ++i) out[i] = (text[i] >= 0x21 && text[i] <= 0x7e) ? static_cast<char>(text[i]) : '?';
     out[length] = 0;
 }
@@ -51,19 +59,30 @@ void printable(const wchar_t* text, DWORD length, char* out) {
 
 namespace x3m::terran_station_lod {
 bool install_at(std::uintptr_t window_address) {
-    if (patched_) { state_ = "already_installed"; return false; }
+    if (patched_) {
+        state_ = "already_installed";
+        return false;
+    }
     CodeOps ops;
     bool live = false, atomic = false;
-    const char* reason = sites::install(ops, window_address, engine_patch::install_window_open(), &live, &atomic, &site_protection);
-    const bool wrote = live || !std::strcmp(reason, "patch_rolled_back") || !std::strcmp(reason, "rollback_unprotected");
+    const char* reason = sites::install(ops, window_address, engine_patch::install_window_open(), &live, &atomic,
+                                        &site_protection);
+    const bool wrote = live || !std::strcmp(reason, "patch_rolled_back") ||
+                       !std::strcmp(reason, "rollback_unprotected");
     write_ = wrote ? (atomic ? "atomic" : "plain") : "none";
-    if (live) { patched_ = true; site_ = window_address + site_offset; } // "ok", or rollback_failed kept registered for shutdown()
+    if (live) {
+        patched_ = true;
+        site_ = window_address + site_offset;
+    } // "ok", or rollback_failed kept registered for shutdown()
     state_ = reason;
     return patched_ && !std::strcmp(reason, "ok");
 }
 bool initialize() {
     const DWORD error = GetLastError();
-    if (patched_) { SetLastError(error); return true; }
+    if (patched_) {
+        SetLastError(error);
+        return true;
+    }
     // Unset or empty = the DLL default (size, patched); 1..31 characters must be
     // exactly size or distance; anything else is refused and nothing is patched.
     wchar_t text[setting_capacity]{};
@@ -72,14 +91,24 @@ bool initialize() {
     printable(text, length, setting);
     Mode mode = default_mode;
     bool applied = false, parsed = true;
-    if (length >= setting_capacity) { state_ = "too_long"; parsed = false; }
-    else if (length && !parse_mode(text, &mode)) { state_ = "invalid_setting"; parsed = false; }
-    else if (mode == Mode::distance) state_ = "distance";
-    else if (!object_trace::executable_verified()) state_ = "executable_mismatch";
-    else applied = install_at(window_va);
+    if (length >= setting_capacity) {
+        state_ = "too_long";
+        parsed = false;
+    } else if (length && !parse_mode(text, &mode)) {
+        state_ = "invalid_setting";
+        parsed = false;
+    } else if (mode == Mode::distance)
+        state_ = "distance";
+    else if (!object_trace::executable_verified())
+        state_ = "executable_mismatch";
+    else
+        applied = install_at(window_va);
     // rollback_failed leaves the site registered with bytes that may still be patched (or neither
     // original nor patched): the one failure that modifies the engine is not reported as a refusal.
-    const char* status = applied ? "patched" : patched_ ? "patched_unverified" : parsed && mode == Mode::distance ? "off" : "refused";
+    const char* status = applied                            ? "patched"
+                         : patched_                         ? "patched_unverified"
+                         : parsed && mode == Mode::distance ? "off"
+                                                            : "refused";
     log("terran_station_lod site=%08lx status=%s reason=%s mode=%s setting=%s write=%s",
         static_cast<unsigned long>(site_va), status, state_, parsed ? mode_name(mode) : "-", setting, write_);
     SetLastError(error);
@@ -100,7 +129,8 @@ bool shutdown() {
     if (handle && handle != INVALID_HANDLE_VALUE) {
         char line[160], bytes[8] = "--";
         if (found_read) std::snprintf(bytes, sizeof bytes, "%02x%02x", found[0], found[1]);
-        const int n = std::snprintf(line, sizeof line, "terran_station_lod_restore site=%08lx status=%s found=%s registered=%u\n",
+        const int n = std::snprintf(line, sizeof line,
+                                    "terran_station_lod_restore site=%08lx status=%s found=%s registered=%u\n",
                                     static_cast<unsigned long>(site_), reason, bytes, patched_ ? 1u : 0u);
         DWORD written = 0;
         if (n > 0 && unsigned(n) < sizeof line) WriteFile(handle, line, DWORD(n), &written, nullptr);
@@ -108,7 +138,13 @@ bool shutdown() {
     SetLastError(error);
     return !patched_;
 }
-const char* state() { return state_; }
-const char* write_path() { return write_; }
-bool patched() { return patched_; }
+const char* state() {
+    return state_;
+}
+const char* write_path() {
+    return write_;
+}
+bool patched() {
+    return patched_;
+}
 }

@@ -20,17 +20,22 @@ bool scope(std::uintptr_t* descriptor, std::uint32_t* depth) noexcept {
 bool content(std::uintptr_t wrapper, std::uint64_t* revision) noexcept {
     ownership::BufferContentView view{};
     const HRESULT hr = ownership::get_buffer_content_view(reinterpret_cast<IDirect3DResource9*>(wrapper), &view);
-    if (FAILED(hr) || FAILED(view.status) || !view.requested || !view.known || view.ambiguous || view.pending_locks) return false;
+    if (FAILED(hr) || FAILED(view.status) || !view.requested || !view.known || view.ambiguous || view.pending_locks)
+        return false;
     *revision = view.revision;
     return true;
 }
 // The wrapper pointer is again a registry key only; the view carries the
 // published scan's positions (prefix::Table::lookup) or its refusal.
-bool prefix_bound(std::uintptr_t wrapper, std::uint32_t vertex_count, const float** positions, std::uint32_t* scanned, std::uint64_t* revision, unsigned* refusal) noexcept {
+bool prefix_bound(std::uintptr_t wrapper, std::uint32_t vertex_count, const float** positions, std::uint32_t* scanned,
+                  std::uint64_t* revision, unsigned* refusal) noexcept {
     ownership::LockedPrefixView view{};
     // An admitted draw marks its buffer: the next DISCARD lock is sentinelled and its Unlock scanned.
-    const HRESULT hr = ownership::get_locked_prefix_view(reinterpret_cast<IDirect3DResource9*>(wrapper), vertex_count, true, &view);
-    *refusal = view.reason; *revision = view.revision; *scanned = view.scanned;
+    const HRESULT hr = ownership::get_locked_prefix_view(reinterpret_cast<IDirect3DResource9*>(wrapper), vertex_count,
+                                                         true, &view);
+    *refusal = view.reason;
+    *revision = view.revision;
+    *scanned = view.scanned;
     if (FAILED(hr) || !view.requested || !view.known || !view.positions) return false;
     *positions = view.positions;
     return true;
@@ -38,7 +43,9 @@ bool prefix_bound(std::uintptr_t wrapper, std::uint32_t vertex_count, const floa
 const Environment production{&read_memory, &scope, &content, &prefix_bound};
 }
 
-const Environment& production_environment() noexcept { return production; }
+const Environment& production_environment() noexcept {
+    return production;
+}
 
 Result resolve(BoundTable& table, const Query& query) noexcept {
     const DWORD error = GetLastError();
@@ -64,21 +71,28 @@ Result resolve_locked_prefix(const Query& query, std::uint32_t vertex_count) noe
 bool recheck_locked_prefix(const Query& query, std::uint32_t vertex_count, std::uint64_t revision) noexcept {
     const DWORD error = GetLastError();
     ownership::LockedPrefixView view{};
-    const HRESULT hr = ownership::get_locked_prefix_view(reinterpret_cast<IDirect3DResource9*>(query.vb), vertex_count, false, &view);
+    const HRESULT hr = ownership::get_locked_prefix_view(reinterpret_cast<IDirect3DResource9*>(query.vb), vertex_count,
+                                                         false, &view);
     SetLastError(error);
     return SUCCEEDED(hr) && view.requested && view.known && view.revision == revision;
 }
-bool locked_prefix_vertices(const Query& query, std::uint32_t vertex_count, const float** positions, const std::uint32_t** extras,
-                            std::uint64_t* revision, unsigned* refusal) noexcept {
-    *positions = nullptr; *extras = nullptr; *revision = 0; *refusal = unsigned(prefix::Lookup::Unknown);
+bool locked_prefix_vertices(const Query& query, std::uint32_t vertex_count, const float** positions,
+                            const std::uint32_t** extras, std::uint64_t* revision, unsigned* refusal) noexcept {
+    *positions = nullptr;
+    *extras = nullptr;
+    *revision = 0;
+    *refusal = unsigned(prefix::Lookup::Unknown);
     if (!query.vb_id || !query.vb || !vertex_count) return false;
     const DWORD error = GetLastError();
     ownership::LockedPrefixView view{};
-    const HRESULT hr = ownership::get_locked_prefix_view(reinterpret_cast<IDirect3DResource9*>(query.vb), vertex_count, true, &view);
+    const HRESULT hr = ownership::get_locked_prefix_view(reinterpret_cast<IDirect3DResource9*>(query.vb), vertex_count,
+                                                         true, &view);
     SetLastError(error);
-    *refusal = view.reason; *revision = view.revision;
+    *refusal = view.reason;
+    *revision = view.revision;
     if (FAILED(hr) || !view.requested || !view.known || !view.positions || !view.extras) return false;
-    *positions = view.positions; *extras = view.extras;
+    *positions = view.positions;
+    *extras = view.extras;
     return true;
 }
 

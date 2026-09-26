@@ -53,9 +53,9 @@ constexpr float world_limit = 16777216.f;
 constexpr std::uint32_t sentinel_word = 0xffffffffu;
 
 struct Scan {
-    std::uint32_t vertices = 0;      // written vertices: up to the first sentinel, the window end or max_vertices
-    std::uint32_t bad_from = ~0u;    // first vertex holding NaN, +-inf or a component beyond world_limit
-    bool window_end = false;         // no sentinel met: the scan ran to the window end (stale tail not sentinel)
+    std::uint32_t vertices = 0;   // written vertices: up to the first sentinel, the window end or max_vertices
+    std::uint32_t bad_from = ~0u; // first vertex holding NaN, +-inf or a component beyond world_limit
+    bool window_end = false;      // no sentinel met: the scan ran to the window end (stale tail not sentinel)
 };
 
 // Writes the sentinel over the leading min(length, vertices*stride) bytes of
@@ -75,7 +75,8 @@ inline std::size_t write_sentinel(void* bytes, std::size_t length, std::uint32_t
 // (capacity storage_words). Integer and SSE scalar float only (compiled with
 // -mfpmath=sse): no x87 on the Unlock path. Cost proportional to the vertices
 // written: ~12 (24 with extras) bytes read and as many written per vertex.
-inline std::uint32_t scan(const void* bytes, std::size_t length, float* positions, Scan* out, std::uint32_t* extras = nullptr) noexcept {
+inline std::uint32_t scan(const void* bytes, std::size_t length, float* positions, Scan* out,
+                          std::uint32_t* extras = nullptr) noexcept {
     *out = Scan{};
     if (!bytes || !positions) return 0;
     const std::size_t count_size = length / stride;
@@ -104,12 +105,14 @@ inline std::uint32_t scan(const void* bytes, std::size_t length, float* position
 // Why a lookup gave no bound; Bound == 0 as everywhere in the region code.
 enum class Lookup : unsigned {
     Bound = 0,
-    Unknown = 1,    // no scan for this buffer (unmarked, marked but not locked since, erased, evicted, cleared or storage unavailable)
-    Pending = 2,    // locked now, or locked again since the last publication (also: the record changed under the draw)
-    Invalid = 3,    // the last lock was not scanned (non-DISCARD, size unknown, thread mismatch, failed Unlock, ProcessVertices)
-    Empty = 4,      // vertex_count 0
-    Beyond = 5,     // vertex_count past the scanned vertices (or max_vertices)
-    NonFinite = 6,  // the drawn prefix holds NaN, inf or a component beyond world_limit
+    Unknown = 1, // no scan for this buffer (unmarked, marked but not locked since, erased, evicted, cleared or storage
+                 // unavailable)
+    Pending = 2, // locked now, or locked again since the last publication (also: the record changed under the draw)
+    Invalid = 3, // the last lock was not scanned (non-DISCARD, size unknown, thread mismatch, failed Unlock,
+                 // ProcessVertices)
+    Empty = 4,   // vertex_count 0
+    Beyond = 5,  // vertex_count past the scanned vertices (or max_vertices)
+    NonFinite = 6, // the drawn prefix holds NaN, inf or a component beyond world_limit
     Count = 7
 };
 inline const char* lookup_name(Lookup l) noexcept {
@@ -141,9 +144,16 @@ public:
         Entry& e = entries_[index];
         if (!storage_[index]) storage_[index].reset(new (std::nothrow) float[storage_floats]);
         if (!extras_[index]) extras_[index].reset(new (std::nothrow) std::uint32_t[storage_words]);
-        if (!storage_[index] || !extras_[index]) { e = Entry{}; return false; }
-        e.key = key; e.stamp = ++clock_; e.state = State::Marked;
-        e.positions = storage_[index].get(); e.extras = extras_[index].get(); e.sentinel_vertices = max_vertices;
+        if (!storage_[index] || !extras_[index]) {
+            e = Entry{};
+            return false;
+        }
+        e.key = key;
+        e.stamp = ++clock_;
+        e.state = State::Marked;
+        e.positions = storage_[index].get();
+        e.extras = extras_[index].get();
+        e.sentinel_vertices = max_vertices;
         return true;
     }
     // A successful Lock of a marked buffer (unmarked buffers are ignored:
@@ -152,13 +162,17 @@ public:
     // Invalid until the next fresh lock. A fresh scannable lock writes the
     // sentinel over the previous prefix's slots (the whole window the first
     // time). Returns the new revision.
-    std::uint64_t begin_lock(std::uintptr_t key, bool scannable, void* mapping, std::size_t length, std::uint32_t thread) noexcept {
+    std::uint64_t begin_lock(std::uintptr_t key, bool scannable, void* mapping, std::size_t length,
+                             std::uint32_t thread) noexcept {
         Entry* e = find(key);
         if (!e) return 0;
         const bool nested = e->state == State::Pending;
-        e->revision += 1; e->stamp = ++clock_;
+        e->revision += 1;
+        e->stamp = ++clock_;
         const bool pending = !nested && scannable && mapping && length;
-        e->mapping = pending ? mapping : nullptr; e->length = pending ? length : 0; e->thread = thread;
+        e->mapping = pending ? mapping : nullptr;
+        e->length = pending ? length : 0;
+        e->thread = thread;
         e->state = pending ? State::Pending : State::Invalid;
         if (pending) sentinel_bytes_ += write_sentinel(mapping, length, e->sentinel_vertices);
         return e->revision;
@@ -169,31 +183,43 @@ public:
     std::uint32_t finish_lock(std::uintptr_t key, std::uint32_t thread) noexcept {
         Entry* e = find(key);
         if (!e) return 0;
-        if (e->state != State::Pending || e->thread != thread) { e->state = State::Invalid; return 0; }
+        if (e->state != State::Pending || e->thread != thread) {
+            e->state = State::Invalid;
+            return 0;
+        }
         const std::uint32_t vertices = scan(e->mapping, e->length, e->positions, &e->scan, e->extras);
-        e->mapping = nullptr; e->length = 0;
+        e->mapping = nullptr;
+        e->length = 0;
         // Next lock: sentinel exactly the slots this prefix used (the scan
         // overshoot included, so a recycled non-sentinel tail is covered once).
         e->sentinel_vertices = vertices;
-        e->state = State::Published; ++publications_; scanned_vertices_ += vertices;
+        e->state = State::Published;
+        ++publications_;
+        scanned_vertices_ += vertices;
         if (e->scan.window_end) ++window_end_scans_;
         return vertices;
     }
     // A failed Unlock, ProcessVertices into the buffer, or any doubt.
-    void invalidate(std::uintptr_t key) noexcept { if (Entry* e = find(key)) e->state = State::Invalid; }
+    void invalidate(std::uintptr_t key) noexcept {
+        if (Entry* e = find(key)) e->state = State::Invalid;
+    }
     bool marked(std::uintptr_t key) const noexcept { return find(key) != nullptr; }
     // The buffer is gone; its identity may recur for a new allocation. The
     // slot's storage stays pooled.
-    void erase(std::uintptr_t key) noexcept { if (Entry* e = find(key)) *e = Entry{}; }
-    void clear() noexcept { for (auto& e : entries_) e = Entry{}; }
+    void erase(std::uintptr_t key) noexcept {
+        if (Entry* e = find(key)) *e = Entry{};
+    }
+    void clear() noexcept {
+        for (auto& e : entries_) e = Entry{};
+    }
     // Per draw: one linear probe of the fixed table; no allocation, no scan.
     // Bound hands out the record's positions (3 floats per vertex, at least
     // vertex_count of them), on request the vertices' other 3 words (extras),
     // and its revision; the caller projects them and rechecks the revision
     // afterwards (a Lock on another thread in between advances it). revision
     // reports the record's revision when present; scanned the published count.
-    Lookup lookup(std::uintptr_t key, std::uint32_t vertex_count, const float** positions, std::uint64_t* revision, std::uint32_t* scanned,
-                  const std::uint32_t** extras = nullptr) const noexcept {
+    Lookup lookup(std::uintptr_t key, std::uint32_t vertex_count, const float** positions, std::uint64_t* revision,
+                  std::uint32_t* scanned, const std::uint32_t** extras = nullptr) const noexcept {
         const Entry* e = find(key);
         if (!e || e->state == State::Marked) return Lookup::Unknown;
         if (revision) *revision = e->revision;
@@ -207,13 +233,22 @@ public:
         if (extras) *extras = e->extras;
         return Lookup::Bound;
     }
-    unsigned used() const noexcept { unsigned n = 0; for (const auto& e : entries_) n += e.state != State::Free; return n; }
+    unsigned used() const noexcept {
+        unsigned n = 0;
+        for (const auto& e : entries_) n += e.state != State::Free;
+        return n;
+    }
     std::uint64_t evictions() const noexcept { return evictions_; }
     std::uint64_t publications() const noexcept { return publications_; }
     std::uint64_t scanned_vertices() const noexcept { return scanned_vertices_; }
     std::uint64_t sentinel_bytes() const noexcept { return sentinel_bytes_; }
     std::uint64_t window_end_scans() const noexcept { return window_end_scans_; }
-    unsigned allocated() const noexcept { unsigned n = 0; for (const auto& s : storage_) n += s != nullptr; return n; }
+    unsigned allocated() const noexcept {
+        unsigned n = 0;
+        for (const auto& s : storage_) n += s != nullptr;
+        return n;
+    }
+
 private:
     struct Entry {
         std::uintptr_t key = 0;
@@ -223,22 +258,27 @@ private:
         std::uint32_t thread = 0;
         std::uint32_t sentinel_vertices = max_vertices; // slots to sentinel at the next fresh lock
         State state = State::Free;
-        float* positions = nullptr; // the slot's pooled storage
+        float* positions = nullptr;      // the slot's pooled storage
         std::uint32_t* extras = nullptr; // the slot's pooled UV/colour words
         Scan scan{};
     };
     Entry* find(std::uintptr_t key) noexcept {
-        for (auto& e : entries_) if (e.state != State::Free && e.key == key) return &e;
+        for (auto& e : entries_)
+            if (e.state != State::Free && e.key == key) return &e;
         return nullptr;
     }
     const Entry* find(std::uintptr_t key) const noexcept { return const_cast<Table*>(this)->find(key); }
     unsigned slot_for(std::uintptr_t key) noexcept {
         (void)key;
-        unsigned oldest = 0; bool found = false;
+        unsigned oldest = 0;
+        bool found = false;
         for (unsigned i = 0; i < capacity; ++i) {
             const Entry& e = entries_[i];
             if (e.state == State::Free) return i;
-            if (!found || e.stamp < entries_[oldest].stamp) { oldest = i; found = true; }
+            if (!found || e.stamp < entries_[oldest].stamp) {
+                oldest = i;
+                found = true;
+            }
         }
         ++evictions_;
         entries_[oldest] = Entry{};
@@ -247,7 +287,8 @@ private:
     Entry entries_[capacity]{};
     std::unique_ptr<float[]> storage_[capacity];
     std::unique_ptr<std::uint32_t[]> extras_[capacity];
-    std::uint64_t clock_ = 0, evictions_ = 0, publications_ = 0, scanned_vertices_ = 0, sentinel_bytes_ = 0, window_end_scans_ = 0;
+    std::uint64_t clock_ = 0, evictions_ = 0, publications_ = 0, scanned_vertices_ = 0, sentinel_bytes_ = 0,
+                  window_end_scans_ = 0;
 };
 
 } // namespace x3m::fade_region::prefix

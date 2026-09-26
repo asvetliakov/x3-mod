@@ -32,10 +32,10 @@ namespace engine_patch = x3m::engine_patch;
 namespace engine_memory = x3m::engine_memory;
 namespace sites = x3m::fov::sites;
 bool patched_ = false;
-bool identity_ = false;          // the executable was verified at initialize(): engine reads allowed
+bool identity_ = false; // the executable was verified at initialize(): engine reads allowed
 std::uintptr_t write_at_ = 0;
 std::uint32_t site_protection = 0;
-std::uint32_t focus_ = sites::engine_focus;  // the value in the immediate while patched_
+std::uint32_t focus_ = sites::engine_focus; // the value in the immediate while patched_
 std::uint32_t configured_ = sites::engine_focus;
 const char* state_ = "not_initialized";
 const char* write_ = "none";
@@ -46,7 +46,7 @@ engine_patch::Site setfocus_site_{};
 bool setfocus_live_ = false;
 const char* setfocus_ = "none";
 const char* setfocus_write_ = "none";
-std::uintptr_t setfocus_table_ = 0;  // the INS_SetFocus block's 81 F' entries, which the load stub reads too
+std::uintptr_t setfocus_table_ = 0; // the INS_SetFocus block's 81 F' entries, which the load stub reads too
 // The registry serializer's load store, the same four facts as the INS_SetFocus claim.
 engine_patch::Site load_site_{};
 bool load_live_ = false;
@@ -54,7 +54,7 @@ const char* load_ = "none";
 const char* load_write_ = "none";
 bool confirm_done_ = false, absent_logged_ = false;
 unsigned confirm_polls_ = 0;
-constexpr unsigned confirm_poll_limit = 1u << 20;  // Presents to wait for a registry that never appears
+constexpr unsigned confirm_poll_limit = 1u << 20; // Presents to wait for a registry that never appears
 
 // The engine's code page through documented Win32 calls.
 struct CodeOps {
@@ -75,8 +75,16 @@ struct CodeOps {
 // The setting as one printable token for the log line: "-" when unset, "?"
 // when too long, every character outside 0x21..0x7e shown as '?'.
 void printable(const wchar_t* text, DWORD length, char* out) {
-    if (!length) { out[0] = '-'; out[1] = 0; return; }
-    if (length >= sites::setting_capacity) { out[0] = '?'; out[1] = 0; return; }
+    if (!length) {
+        out[0] = '-';
+        out[1] = 0;
+        return;
+    }
+    if (length >= sites::setting_capacity) {
+        out[0] = '?';
+        out[1] = 0;
+        return;
+    }
     for (DWORD i = 0; i < length; ++i) out[i] = (text[i] >= 0x21 && text[i] <= 0x7e) ? static_cast<char>(text[i]) : '?';
     out[length] = 0;
 }
@@ -88,7 +96,7 @@ bool code_is(std::uintptr_t at, const unsigned char* expected, unsigned n) {
 // entries in one arena block; 0 when the arena is full. *table_out: the table.
 std::uintptr_t emit_setfocus_stub(void*** slot_out, std::uintptr_t* table_out) {
     std::uint16_t values[sites::remap_count];
-    sites::build_remap_table(values);  // once, at install
+    sites::build_remap_table(values); // once, at install
     engine_patch::Emitter e(sites::stub_length + 3 + 4 + sizeof values);
     if (!e.ok()) return 0;
     const std::uintptr_t at = reinterpret_cast<std::uintptr_t>(e.here());
@@ -98,7 +106,7 @@ std::uintptr_t emit_setfocus_stub(void*** slot_out, std::uintptr_t* table_out) {
     e.bytes(code, sites::stub_length);
     while (e.ok() && reinterpret_cast<std::uintptr_t>(e.here()) < slot) e.byte(0xcc);
     e.dword(0);
-    e.bytes(values, sizeof values);  // x86 little endian: the stub's movzx reads them as stored
+    e.bytes(values, sizeof values); // x86 little endian: the stub's movzx reads them as stored
     if (!e.finish()) return 0;
     *slot_out = reinterpret_cast<void**>(slot);
     *table_out = slot + 4;
@@ -109,7 +117,7 @@ std::uintptr_t emit_setfocus_stub(void*** slot_out, std::uintptr_t* table_out) {
 // block's F' table (immutable, never freed). 0 when the arena is full.
 std::uintptr_t emit_load_stub(std::uintptr_t table, void*** slot_out) {
     std::uint16_t vanilla[sites::remap_count];
-    sites::build_vanilla_table(vanilla);  // once, at install
+    sites::build_vanilla_table(vanilla); // once, at install
     engine_patch::Emitter e(sites::load_stub_length + 3 + 4 + sizeof vanilla);
     if (!e.ok()) return 0;
     const std::uintptr_t at = reinterpret_cast<std::uintptr_t>(e.here());
@@ -137,7 +145,11 @@ const char* install_setfocus(std::uintptr_t site) {
     if (!stub || !slot) return "arena_full";
     setfocus_table_ = table;
     engine_patch::SiteSpec spec{};
-    spec.name = "fov_setfocus"; spec.address = site; spec.length = sites::setfocus_site_length; spec.ret_pop = 0; spec.rel32_offset = 0;
+    spec.name = "fov_setfocus";
+    spec.address = site;
+    spec.length = sites::setfocus_site_length;
+    spec.ret_pop = 0;
+    spec.rel32_offset = 0;
     std::memcpy(spec.expected, sites::expected_setfocus_site, sites::setfocus_site_length);
     setfocus_site_ = engine_patch::Site{};
     const bool claimed = engine_patch::claim(setfocus_site_, spec);
@@ -147,10 +159,13 @@ const char* install_setfocus(std::uintptr_t site) {
     if (!claimed) return setfocus_live_ ? "rollback_failed" : setfocus_site_.status;
     const char* failure = nullptr;
     unsigned char now[5]{};
-    if (!engine_patch::store_pointer(slot, *setfocus_site_.entry) || !engine_patch::push_front(setfocus_site_, reinterpret_cast<void*>(stub))) failure = "chain_failed";
-    else if (!engine_patch::read_code(site, now, sizeof now) || std::memcmp(now, setfocus_site_.patched, sizeof now)) failure = "readback_failed";
+    if (!engine_patch::store_pointer(slot, *setfocus_site_.entry) ||
+        !engine_patch::push_front(setfocus_site_, reinterpret_cast<void*>(stub)))
+        failure = "chain_failed";
+    else if (!engine_patch::read_code(site, now, sizeof now) || std::memcmp(now, setfocus_site_.patched, sizeof now))
+        failure = "readback_failed";
     if (!failure) return "ok";
-    engine_patch::restore(setfocus_site_);  // judged by the registration it leaves, not the protection result
+    engine_patch::restore(setfocus_site_); // judged by the registration it leaves, not the protection result
     setfocus_live_ = setfocus_site_.patched_in;
     return setfocus_live_ ? "rollback_failed" : failure;
 }
@@ -166,7 +181,11 @@ const char* install_load(std::uintptr_t site) {
     const std::uintptr_t stub = emit_load_stub(setfocus_table_, &slot);
     if (!stub || !slot) return "arena_full";
     engine_patch::SiteSpec spec{};
-    spec.name = "fov_load"; spec.address = site; spec.length = sites::load_site_length; spec.ret_pop = 0; spec.rel32_offset = 0;
+    spec.name = "fov_load";
+    spec.address = site;
+    spec.length = sites::load_site_length;
+    spec.ret_pop = 0;
+    spec.rel32_offset = 0;
     std::memcpy(spec.expected, sites::expected_load_site, sites::load_site_length);
     load_site_ = engine_patch::Site{};
     const bool claimed = engine_patch::claim(load_site_, spec);
@@ -176,11 +195,14 @@ const char* install_load(std::uintptr_t site) {
     if (!claimed) return load_live_ ? "rollback_failed" : load_site_.status;
     const char* failure = nullptr;
     unsigned char now[sites::load_site_length]{};
-    if (!engine_patch::store_pointer(slot, *load_site_.entry) || !engine_patch::push_front(load_site_, reinterpret_cast<void*>(stub))) failure = "chain_failed";
+    if (!engine_patch::store_pointer(slot, *load_site_.entry) ||
+        !engine_patch::push_front(load_site_, reinterpret_cast<void*>(stub)))
+        failure = "chain_failed";
     else if (!engine_patch::read_code(site, now, sizeof now) || std::memcmp(now, load_site_.patched, 5) ||
-             now[5] != sites::expected_load_site[5] || *load_site_.entry != reinterpret_cast<void*>(stub)) failure = "readback_failed";
+             now[5] != sites::expected_load_site[5] || *load_site_.entry != reinterpret_cast<void*>(stub))
+        failure = "readback_failed";
     if (!failure) return "ok";
-    engine_patch::restore(load_site_);  // judged by the registration it leaves, not the protection result
+    engine_patch::restore(load_site_); // judged by the registration it leaves, not the protection result
     load_live_ = load_site_.patched_in;
     return load_live_ ? "rollback_failed" : failure;
 }
@@ -196,7 +218,8 @@ bool rollback_constructor() {
     CodeOps ops;
     unsigned char found[sites::write_length]{};
     bool found_read = false;
-    if (std::strcmp(sites::restore(ops, write_at_, focus_, site_protection, found, &found_read), "restored")) return false;
+    if (std::strcmp(sites::restore(ops, write_at_, focus_, site_protection, found, &found_read), "restored"))
+        return false;
     patched_ = false;
     return true;
 }
@@ -205,8 +228,10 @@ bool rollback_constructor() {
 // plausible. *registry is set whenever the slot itself was read.
 bool read_registry(std::uint32_t* registry, std::uint32_t* focus) {
     *registry = 0;
-    if (!engine_memory::read(sites::registry_slot_va, registry, sizeof *registry) || !*registry || (*registry & 3u)) return false;
-    return engine_memory::read(std::uintptr_t(*registry) + sites::registry_focus_offset, focus, sizeof *focus) && sites::plausible_focus(*focus);
+    if (!engine_memory::read(sites::registry_slot_va, registry, sizeof *registry) || !*registry || (*registry & 3u))
+        return false;
+    return engine_memory::read(std::uintptr_t(*registry) + sites::registry_focus_offset, focus, sizeof *focus) &&
+           sites::plausible_focus(*focus);
 }
 // The one-off data write of registry+0x24 when the registry already exists at
 // install: a plausible current value, a committed writable page (VirtualQuery),
@@ -229,26 +254,40 @@ const char* write_registry(std::uint32_t focus, std::uint32_t* before, bool* bef
         field + sizeof(LONG) > reinterpret_cast<std::uintptr_t>(m.BaseAddress) + m.RegionSize)
         return "skipped";
     const LONG expected = static_cast<LONG>(*before);
-    if (InterlockedCompareExchange(reinterpret_cast<volatile LONG*>(field), static_cast<LONG>(focus), expected) != expected) return "skipped";
+    if (InterlockedCompareExchange(reinterpret_cast<volatile LONG*>(field), static_cast<LONG>(focus), expected) !=
+        expected)
+        return "skipped";
     return "written";
 }
 }
 
 namespace x3m::fov {
 bool install_at(std::uintptr_t window_address, std::uint32_t focus) {
-    if (patched_) { state_ = "already_installed"; return false; }
+    if (patched_) {
+        state_ = "already_installed";
+        return false;
+    }
     CodeOps ops;
     bool live = false, atomic = false;
-    const char* reason = sites::install(ops, window_address, engine_patch::install_window_open(), focus, &live, &atomic, &site_protection);
-    const bool wrote = live || !std::strcmp(reason, "patch_rolled_back") || !std::strcmp(reason, "rollback_unprotected");
+    const char* reason = sites::install(ops, window_address, engine_patch::install_window_open(), focus, &live, &atomic,
+                                        &site_protection);
+    const bool wrote = live || !std::strcmp(reason, "patch_rolled_back") ||
+                       !std::strcmp(reason, "rollback_unprotected");
     write_ = wrote ? (atomic ? "atomic" : "plain") : "none";
-    if (live) { patched_ = true; focus_ = focus; write_at_ = window_address + sites::write_offset; } // "ok", or rollback_failed kept registered for shutdown()
+    if (live) {
+        patched_ = true;
+        focus_ = focus;
+        write_at_ = window_address + sites::write_offset;
+    } // "ok", or rollback_failed kept registered for shutdown()
     state_ = reason;
     return patched_ && !std::strcmp(reason, "ok");
 }
 bool initialize() {
     const DWORD error = GetLastError();
-    if (patched_ || setfocus_live_ || load_live_) { SetLastError(error); return true; }
+    if (patched_ || setfocus_live_ || load_live_) {
+        SetLastError(error);
+        return true;
+    }
     // Unset, empty or `game` = the engine's own model (nothing patched); 1..31 characters of
     // the game's degrees N in [70, 100]; anything else is refused and nothing is patched.
     wchar_t text[sites::setting_capacity]{};
@@ -265,32 +304,59 @@ bool initialize() {
     double degrees = 0;
     std::uint32_t focus = sites::engine_focus;
     bool applied = false, requested = false;
-    const sites::Parse parsed = length >= sites::setting_capacity ? sites::Parse::invalid : sites::parse_setting(text, &degrees);
-    if (length >= sites::setting_capacity) state_ = "too_long";
-    else if (parsed == sites::Parse::invalid) state_ = "invalid_setting";
-    else if (parsed == sites::Parse::game) state_ = "game";
-    else if (!sites::in_range(degrees)) state_ = "out_of_range";
-    else if (!identity_) { state_ = "executable_mismatch"; requested = true; }
-    else if (!code_is(sites::reader_va, sites::expected_reader, sites::reader_length) ||
-             !code_is(sites::setfocus_va, sites::expected_setfocus, sites::setfocus_length)) { state_ = "reader_mismatch"; requested = true; }
-    else if (!code_is(sites::setfocus_case_va, sites::expected_setfocus_case, sites::setfocus_case_length) ||
-             !code_is(sites::setfocus_callee_va, sites::expected_setfocus_callee, sites::setfocus_callee_length)) { state_ = "setfocus_mismatch"; requested = true; }
-    else if (!code_is(sites::load_window_va, sites::expected_load_window, sites::load_window_length) ||
-             !code_is(sites::load_caller_va, sites::expected_load_caller, sites::load_caller_length)) { state_ = "load_mismatch"; requested = true; }
-    else {
+    const sites::Parse parsed = length >= sites::setting_capacity ? sites::Parse::invalid
+                                                                  : sites::parse_setting(text, &degrees);
+    if (length >= sites::setting_capacity)
+        state_ = "too_long";
+    else if (parsed == sites::Parse::invalid)
+        state_ = "invalid_setting";
+    else if (parsed == sites::Parse::game)
+        state_ = "game";
+    else if (!sites::in_range(degrees))
+        state_ = "out_of_range";
+    else if (!identity_) {
+        state_ = "executable_mismatch";
         requested = true;
-        applied = install_at(sites::window_va, focus = sites::constructor_focus(degrees));  // F'(N), off any vanilla value
+    } else if (!code_is(sites::reader_va, sites::expected_reader, sites::reader_length) ||
+               !code_is(sites::setfocus_va, sites::expected_setfocus, sites::setfocus_length)) {
+        state_ = "reader_mismatch";
+        requested = true;
+    } else if (!code_is(sites::setfocus_case_va, sites::expected_setfocus_case, sites::setfocus_case_length) ||
+               !code_is(sites::setfocus_callee_va, sites::expected_setfocus_callee, sites::setfocus_callee_length)) {
+        state_ = "setfocus_mismatch";
+        requested = true;
+    } else if (!code_is(sites::load_window_va, sites::expected_load_window, sites::load_window_length) ||
+               !code_is(sites::load_caller_va, sites::expected_load_caller, sites::load_caller_length)) {
+        state_ = "load_mismatch";
+        requested = true;
+    } else {
+        requested = true;
+        applied = install_at(sites::window_va, focus = sites::constructor_focus(degrees)); // F'(N), off any vanilla
+                                                                                           // value
         if (applied) {
             // The second site; both or neither: its failure takes the immediate back out.
             const char* second = install_setfocus(sites::setfocus_site_va);
-            if (!std::strcmp(second, "ok")) setfocus_ = "active";
-            else { setfocus_ = second; applied = false; state_ = "setfocus_failed"; rollback_constructor(); }
+            if (!std::strcmp(second, "ok"))
+                setfocus_ = "active";
+            else {
+                setfocus_ = second;
+                applied = false;
+                state_ = "setfocus_failed";
+                rollback_constructor();
+            }
         }
         if (applied) {
             // The third site; all or none: its failure takes the INS_SetFocus jmp and the immediate back out.
             const char* third = install_load(sites::load_site_va);
-            if (!std::strcmp(third, "ok")) load_ = "active";
-            else { load_ = third; applied = false; state_ = "load_failed"; rollback_setfocus(); rollback_constructor(); }
+            if (!std::strcmp(third, "ok"))
+                load_ = "active";
+            else {
+                load_ = third;
+                applied = false;
+                state_ = "load_failed";
+                rollback_setfocus();
+                rollback_constructor();
+            }
         }
     }
     std::uint32_t before = 0;
@@ -302,7 +368,9 @@ bool initialize() {
         // (0), which the small-parts cull treats as a vanilla frame.
         unsigned char now[sites::write_length]{};
         const std::uint32_t found = engine_patch::read_code(write_at_, now, sites::write_length)
-            ? std::uint32_t(now[0]) | std::uint32_t(now[1]) << 8 | std::uint32_t(now[2]) << 16 | std::uint32_t(now[3]) << 24 : 0u;
+                                        ? std::uint32_t(now[0]) | std::uint32_t(now[1]) << 8 |
+                                              std::uint32_t(now[2]) << 16 | std::uint32_t(now[3]) << 24
+                                        : 0u;
         configured_ = sites::plausible_focus(found) ? found : 0u;
     } else {
         configured_ = patched_ ? focus_ : sites::engine_focus;
@@ -310,12 +378,16 @@ bool initialize() {
     // rollback_failed leaves a site registered with bytes that may still be patched (or neither
     // original nor patched): the one failure that modifies the engine is not reported as a refusal.
     const bool off = !requested && parsed == sites::Parse::game;
-    const char* status = applied ? "patched" : (patched_ || setfocus_live_ || load_live_) ? "patched_unverified" : off ? "off" : "refused";
+    const char* status = applied                                      ? "patched"
+                         : (patched_ || setfocus_live_ || load_live_) ? "patched_unverified"
+                         : off                                        ? "off"
+                                                                      : "refused";
     char previous[16] = "-";
     if (before_read) std::snprintf(previous, sizeof previous, "0x%04lx", static_cast<unsigned long>(before));
     log("fov site=%08lx status=%s reason=%s value=0x%04lx vertical_deg=%.2f setting=%s write=%s registry=%s registry_before=%s setfocus=%s setfocus_write=%s load=%s load_write=%s",
         static_cast<unsigned long>(sites::write_va), status, state_, static_cast<unsigned long>(configured_),
-        sites::vertical_for_focus(configured_), setting, write_, registry_, previous, setfocus_, setfocus_write_, load_, load_write_);
+        sites::vertical_for_focus(configured_), setting, write_, registry_, previous, setfocus_, setfocus_write_, load_,
+        load_write_);
     SetLastError(error);
     return applied;
 }
@@ -327,14 +399,14 @@ bool shutdown() {
     const char* second = "none";
     if (setfocus_live_) {
         engine_patch::restore(setfocus_site_);
-        second = setfocus_site_.status;  // restored, restore_not_owned, restore_protect_failed, restore_failed
-        setfocus_live_ = setfocus_site_.patched_in;  // only restore_not_owned keeps it registered
+        second = setfocus_site_.status; // restored, restore_not_owned, restore_protect_failed, restore_failed
+        setfocus_live_ = setfocus_site_.patched_in; // only restore_not_owned keeps it registered
         if (!setfocus_live_) setfocus_ = "none";
     }
     const char* third = "none";
     if (load_live_) {
         engine_patch::restore(load_site_);
-        third = load_site_.status;  // the same four outcomes
+        third = load_site_.status; // the same four outcomes
         load_live_ = load_site_.patched_in;
         if (!load_live_) load_ = "none";
     }
@@ -344,7 +416,10 @@ bool shutdown() {
     const char* reason = "none";
     if (patched_) {
         reason = sites::restore(ops, write_at_, focus_, site_protection, found, &found_read);
-        if (!std::strcmp(reason, "restored")) { patched_ = false; configured_ = sites::engine_focus; } // restore_not_owned and restore_failed keep the site registered
+        if (!std::strcmp(reason, "restored")) {
+            patched_ = false;
+            configured_ = sites::engine_focus;
+        } // restore_not_owned and restore_failed keep the site registered
     }
     state_ = std::strcmp(reason, "none") ? reason : second;
     // One row, written straight to the log's OS handle: this runs inside DllMain (dynamic
@@ -353,15 +428,19 @@ bool shutdown() {
     if (handle && handle != INVALID_HANDLE_VALUE) {
         char line[240], bytes[12] = "--";
         if (found_read) std::snprintf(bytes, sizeof bytes, "%02x%02x%02x%02x", found[0], found[1], found[2], found[3]);
-        const int n = std::snprintf(line, sizeof line, "fov_restore site=%08lx status=%s found=%s registered=%u setfocus=%s load=%s\n",
-                                    static_cast<unsigned long>(write_at_), reason, bytes, (patched_ || setfocus_live_ || load_live_) ? 1u : 0u, second, third);
+        const int n = std::snprintf(line, sizeof line,
+                                    "fov_restore site=%08lx status=%s found=%s registered=%u setfocus=%s load=%s\n",
+                                    static_cast<unsigned long>(write_at_), reason, bytes,
+                                    (patched_ || setfocus_live_ || load_live_) ? 1u : 0u, second, third);
         DWORD written = 0;
         if (n > 0 && unsigned(n) < sizeof line) WriteFile(handle, line, DWORD(n), &written, nullptr);
     }
     SetLastError(error);
     return !patched_ && !setfocus_live_ && !load_live_;
 }
-std::uint32_t configured_focus() { return configured_; }  // 0 = unknown (rollback_failed with unreadable or implausible bytes)
+std::uint32_t configured_focus() {
+    return configured_;
+} // 0 = unknown (rollback_failed with unreadable or implausible bytes)
 std::uint32_t current_focus() {
     if (!identity_) return configured_;
     const DWORD error = GetLastError();
@@ -379,8 +458,9 @@ void present(unsigned long long frame) {
         // registry+0x24 against the configured value; the sector camera's +0x298 is not
         // exposed by the camera reader (camera_state latches the projection buffers only).
         log("fov_confirm frame=%llu registry=%08lx focus=0x%04lx expected=0x%04lx match=%u vertical_deg=%.2f camera=skipped",
-            frame, static_cast<unsigned long>(registry), static_cast<unsigned long>(live ? focus : 0u), static_cast<unsigned long>(configured_),
-            live && focus == configured_ ? 1u : 0u, live ? sites::vertical_for_focus(focus) : 0.0);
+            frame, static_cast<unsigned long>(registry), static_cast<unsigned long>(live ? focus : 0u),
+            static_cast<unsigned long>(configured_), live && focus == configured_ ? 1u : 0u,
+            live ? sites::vertical_for_focus(focus) : 0.0);
         confirm_done_ = true;
     } else {
         if (!absent_logged_) {
@@ -400,19 +480,36 @@ void loaded(unsigned long long frame) {
     // expected= stays the configured (new-game) value: a savegame's own base may differ (match=0).
     if (live || registry)
         log("fov_confirm frame=%llu registry=%08lx focus=0x%04lx expected=0x%04lx match=%u vertical_deg=%.2f camera=skipped after=save_load_complete",
-            frame, static_cast<unsigned long>(registry), static_cast<unsigned long>(live ? focus : 0u), static_cast<unsigned long>(configured_),
-            live && focus == configured_ ? 1u : 0u, live ? sites::vertical_for_focus(focus) : 0.0);
+            frame, static_cast<unsigned long>(registry), static_cast<unsigned long>(live ? focus : 0u),
+            static_cast<unsigned long>(configured_), live && focus == configured_ ? 1u : 0u,
+            live ? sites::vertical_for_focus(focus) : 0.0);
     else
         log("fov_confirm frame=%llu registry=absent focus=- expected=0x%04lx match=0 vertical_deg=- camera=skipped after=save_load_complete",
             frame, static_cast<unsigned long>(configured_));
     SetLastError(error);
 }
-const char* state() { return state_; }
-const char* write_path() { return write_; }
-const char* registry_state() { return registry_; }
-const char* setfocus_state() { return setfocus_; }
-const char* load_state() { return load_; }
-bool patched() { return patched_ || setfocus_live_ || load_live_; }
-bool setfocus_patched() { return setfocus_live_; }
-bool load_patched() { return load_live_; }
+const char* state() {
+    return state_;
+}
+const char* write_path() {
+    return write_;
+}
+const char* registry_state() {
+    return registry_;
+}
+const char* setfocus_state() {
+    return setfocus_;
+}
+const char* load_state() {
+    return load_;
+}
+bool patched() {
+    return patched_ || setfocus_live_ || load_live_;
+}
+bool setfocus_patched() {
+    return setfocus_live_;
+}
+bool load_patched() {
+    return load_live_;
+}
 }

@@ -16,7 +16,7 @@ struct SurfaceLeaseIdentity {
 namespace detail {
 inline bool same_surface_identity(const SurfaceLeaseIdentity& a, const SurfaceLeaseIdentity& b) noexcept {
     return a.device_serial == b.device_serial && a.device_generation == b.device_generation &&
-        a.surface_serial == b.surface_serial;
+           a.surface_serial == b.surface_serial;
 }
 // Exhaustion permanently refuses new IDs/epochs rather than allowing ABA.
 inline std::uint64_t next_surface_serial(std::uint64_t& last) noexcept {
@@ -32,10 +32,10 @@ enum class SurfaceLookup { Ready, Invalid, Unavailable, Overflow };
 // Null expected means snapshot only; a retain always requires an exact identity.
 // No allocations, COM calls or vtable reads occur here. Publication/removal and
 // final logical decrement must use this same mutex.
-template<class Mutex, class Registry, class Key, class Kind, class Describe>
-SurfaceLookup lookup_surface(Mutex& mutex, Registry& registry, Key device_key, Key surface_key,
-        Kind device_kind, Kind surface_kind, Describe describe,
-        const SurfaceLeaseIdentity* expected, SurfaceLeaseIdentity& identity) {
+template <class Mutex, class Registry, class Key, class Kind, class Describe>
+SurfaceLookup lookup_surface(Mutex& mutex, Registry& registry, Key device_key, Key surface_key, Kind device_kind,
+                             Kind surface_kind, Describe describe, const SurfaceLeaseIdentity* expected,
+                             SurfaceLeaseIdentity& identity) {
     identity = {};
     if (expected && !expected->valid()) return SurfaceLookup::Invalid;
     std::lock_guard<Mutex> lock(mutex);
@@ -43,8 +43,9 @@ SurfaceLookup lookup_surface(Mutex& mutex, Registry& registry, Key device_key, K
     if (d == registry.end() || s == registry.end()) return SurfaceLookup::Invalid;
     auto* device = d->second;
     auto* surface = s->second;
-    if (device->kind != device_kind || surface->kind != surface_kind ||
-        !device->refs || !surface->refs || surface->parent != device) return SurfaceLookup::Invalid;
+    if (device->kind != device_kind || surface->kind != surface_kind || !device->refs || !surface->refs ||
+        surface->parent != device)
+        return SurfaceLookup::Invalid;
     const auto current = describe(device, surface);
     if (!current.valid()) return SurfaceLookup::Unavailable;
     if (expected) {
@@ -59,21 +60,28 @@ SurfaceLookup lookup_surface(Mutex& mutex, Registry& registry, Key device_key, K
 // Owns exactly one already retained logical COM reference. Clear before Release
 // so reentrant cleanup cannot release it twice. Borrowed get() expires at reset.
 // Single-owner/single-thread object; moving transfers, never AddRefs.
-template<class Interface> class LogicalSurfaceLease {
+template <class Interface> class LogicalSurfaceLease {
 public:
     LogicalSurfaceLease() noexcept = default;
     ~LogicalSurfaceLease() noexcept { reset(); }
     LogicalSurfaceLease(const LogicalSurfaceLease&) = delete;
     LogicalSurfaceLease& operator=(const LogicalSurfaceLease&) = delete;
-    LogicalSurfaceLease(LogicalSurfaceLease&& other) noexcept : value_(std::exchange(other.value_, nullptr)) {}
+    LogicalSurfaceLease(LogicalSurfaceLease&& other) noexcept
+        : value_(std::exchange(other.value_, nullptr)) {}
     LogicalSurfaceLease& operator=(LogicalSurfaceLease&& other) noexcept {
-        if (this != &other) { reset(); value_ = std::exchange(other.value_, nullptr); }
+        if (this != &other) {
+            reset();
+            value_ = std::exchange(other.value_, nullptr);
+        }
         return *this;
     }
     Interface* get() const noexcept { return value_; }
-    void reset() noexcept { if (auto* value = std::exchange(value_, nullptr)) value->Release(); }
+    void reset() noexcept {
+        if (auto* value = std::exchange(value_, nullptr)) value->Release();
+    }
     // Internal ownership transfer only; caller guarantees empty and +1 retained.
     void adopt_retained(Interface* value) noexcept { value_ = value; }
+
 private:
     Interface* value_ = nullptr;
 };

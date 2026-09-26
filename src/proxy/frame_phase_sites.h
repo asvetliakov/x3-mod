@@ -25,9 +25,10 @@ enum Index : unsigned {
     ViewSubmitBegin = 8, // 472270: setup ends, layer loop begins
     ViewSubmitEnd = 9,   // 4722c8: layer loop ends
     Count = 10,
-    CoreCount = 7        // ordered once-per-frame boundaries; the rest accumulate per view
+    CoreCount = 7 // ordered once-per-frame boundaries; the rest accumulate per view
 };
 constexpr unsigned kSiteCount = Count;
+// clang-format off
 constexpr engine_patch::SiteSpec kSites[Count] = {
     {"frame_phase_prologue",0x00471f6c,{0xe8,0x4f,0x30,0x08,0x00},5,0,1},
     {"frame_phase_scene_update",0x00472044,{0xe8,0x77,0xf4,0xff,0xff},5,0,1},
@@ -40,5 +41,6 @@ constexpr engine_patch::SiteSpec kSites[Count] = {
     {"frame_phase_view_submit_begin",0x00472270,{0x8b,0x46,0x1c,0x8b,0x68,0x4c},6,0,0},
     {"frame_phase_view_submit_end",0x004722c8,{0x8b,0x15,0x18,0x85,0x60,0x00},6,0,0},
 };
-static_assert(sizeof(kSites)/sizeof(kSites[0]) == Count, "All frame stamps are one group");
+// clang-format on
+static_assert(sizeof(kSites) / sizeof(kSites[0]) == Count, "All frame stamps are one group");
 }

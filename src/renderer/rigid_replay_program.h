@@ -16,6 +16,5 @@ const std::array<std::uint32_t, 54>& rigid_replay_program() noexcept;
 // compatibility: finite payload, original declaration conversion, buffer
 // stability, lifetime/correspondence and opaque coverage remain caller gates.
 // Legacy source models and WXYZ output order deliberately remain unsupported.
-const RigidPositionProfile* find_rigid_replay_profile(
-    const std::uint32_t* words, std::size_t word_count) noexcept;
+const RigidPositionProfile* find_rigid_replay_profile(const std::uint32_t* words, std::size_t word_count) noexcept;
 } // namespace x3m::renderer

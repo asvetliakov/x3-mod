@@ -32,16 +32,29 @@ enum class Verdict : std::uint8_t { Miss = 0, Moving = 1, Static = 2 };
 // evicts the older way and the evicted draw misses once when next seen.
 struct Ring {
     static constexpr unsigned ways = 2;
-    struct Entry { std::uint64_t key = 0; std::uint32_t stamp = 0; double world[12]{}; };
+    struct Entry {
+        std::uint64_t key = 0;
+        std::uint32_t stamp = 0;
+        double world[12]{};
+    };
     std::unique_ptr<Entry[]> entries;
     unsigned sets = 0;
-    explicit Ring(unsigned set_count) noexcept : entries(new (std::nothrow) Entry[std::size_t(set_count ? set_count : 1u) * ways]), sets(set_count ? set_count : 1u) {}
+    explicit Ring(unsigned set_count) noexcept
+        : entries(new (std::nothrow) Entry[std::size_t(set_count ? set_count : 1u) * ways])
+        , sets(set_count ? set_count : 1u) {}
     bool valid() const noexcept { return entries != nullptr; }
     unsigned size() const noexcept { return sets * ways; }
-    static std::uint64_t key_of(std::uint64_t serial, std::uint64_t vb, std::uint32_t first, std::int32_t base_vertex, std::uint32_t count) noexcept {
+    static std::uint64_t key_of(std::uint64_t serial, std::uint64_t vb, std::uint32_t first, std::int32_t base_vertex,
+                                std::uint32_t count) noexcept {
         return shadow_replay::caster_key(serial, vb, first, base_vertex, count);
     }
-    void clear() noexcept { if (entries) for (unsigned i = 0; i < size(); ++i) { entries[i].key = 0; entries[i].stamp = 0; } }
+    void clear() noexcept {
+        if (entries)
+            for (unsigned i = 0; i < size(); ++i) {
+                entries[i].key = 0;
+                entries[i].stamp = 0;
+            }
+    }
     // `world`: this sighting's rows; `lo`/`hi`: the draw's own extent (zero
     // boxes compare the origin alone); `frame`: the current frame. The squared
     // corner drift from the anchor (drift2), or -1 on a miss (no anchor; the
@@ -50,17 +63,27 @@ struct Ring {
     // thresholds (renderer::shadow_cascade_class_eps) compares the one drift
     // against each: a far cascade's coarser eps sees the step since the last
     // beyond-base placement, as the store's tiers do.
-    double drift(std::uint64_t key, const double world[12], const float lo[3], const float hi[3], double anchor_eps, std::uint32_t frame) noexcept {
+    double drift(std::uint64_t key, const double world[12], const float lo[3], const float hi[3], double anchor_eps,
+                 std::uint32_t frame) noexcept {
         if (!entries) return -1.;
         Entry* set = entries.get() + std::size_t(key % sets) * ways;
-        Entry* found = nullptr; Entry* victim = set;
+        Entry* found = nullptr;
+        Entry* victim = set;
         for (unsigned w = 0; w < ways; ++w) {
-            if (set[w].key == key) { found = &set[w]; break; }
-            if (set[w].key == 0) { victim = &set[w]; break; }
+            if (set[w].key == key) {
+                found = &set[w];
+                break;
+            }
+            if (set[w].key == 0) {
+                victim = &set[w];
+                break;
+            }
             if (set[w].stamp < victim->stamp) victim = &set[w];
         }
         if (!found) {
-            victim->key = key; victim->stamp = frame; std::memcpy(victim->world, world, sizeof victim->world);
+            victim->key = key;
+            victim->stamp = frame;
+            std::memcpy(victim->world, world, sizeof victim->world);
             return -1.;
         }
         found->stamp = frame;
@@ -70,7 +93,8 @@ struct Ring {
     }
     // The one-threshold verdict: Static within eps of the anchor (which stays), Moving beyond it
     // (the sighting becomes the new anchor), Miss without an anchor.
-    Verdict test(std::uint64_t key, const double world[12], const float lo[3], const float hi[3], double eps, std::uint32_t frame) noexcept {
+    Verdict test(std::uint64_t key, const double world[12], const float lo[3], const float hi[3], double eps,
+                 std::uint32_t frame) noexcept {
         const double d2 = drift(key, world, lo, hi, eps, frame);
         return d2 < 0. ? Verdict::Miss : d2 <= eps * eps ? Verdict::Static : Verdict::Moving;
     }

@@ -51,15 +51,17 @@
 // byte-pattern branch and no absolute reference lands in the window
 // (verify_sun_flare_site.py).
 namespace x3m::sun_flare_fix::sites {
-constexpr std::uintptr_t gate_va = 0x0047e315, gate_end_va = 0x0047e402;   // the collector's gate; 0x0047e402 = on-screen path
+constexpr std::uintptr_t gate_va = 0x0047e315, gate_end_va = 0x0047e402; // the collector's gate; 0x0047e402 = on-screen
+                                                                         // path
 constexpr std::uintptr_t window_va = 0x0047e365, site_va = 0x0047e391, jge_va = 0x0047e397, y_test_va = 0x0047e39d;
-constexpr std::uintptr_t off_screen_va = 0x0047e5b6;                        // the JGE's target: record+0x30 stays 0
+constexpr std::uintptr_t off_screen_va = 0x0047e5b6; // the JGE's target: record+0x30 stays 0
 constexpr unsigned window_length = 56, site_offset = 0x2c, site_length = 6;
 constexpr unsigned char expected_window[window_length] = {
-    0x8b,0x44,0x24,0x1c, 0x8b,0x54,0x24,0x10, 0xf7,0xea, 0x05,0x00,0x80,0x00,0x00, 0x83,0xd2,0x00, 0x0f,0xac,0xd0,0x10,
-    0x89,0x44,0x24,0x10, 0x8b,0x44,0x24,0x18, 0x8b,0x54,0x24,0x10, 0xf7,0xea, 0x05,0x00,0x80,0x00,0x00, 0x83,0xd2,0x00,
-    0x0f,0xac,0xd0,0x10, 0x3b,0xc8, 0x0f,0x8d,0x19,0x02,0x00,0x00};
-constexpr unsigned char expected_site[site_length] = {0x0f,0xac,0xd0,0x10, 0x3b,0xc8};   // SHRD EAX,EDX,16; CMP ECX,EAX
+    0x8b, 0x44, 0x24, 0x1c, 0x8b, 0x54, 0x24, 0x10, 0xf7, 0xea, 0x05, 0x00, 0x80, 0x00, 0x00, 0x83, 0xd2, 0x00, 0x0f,
+    0xac, 0xd0, 0x10, 0x89, 0x44, 0x24, 0x10, 0x8b, 0x44, 0x24, 0x18, 0x8b, 0x54, 0x24, 0x10, 0xf7, 0xea, 0x05, 0x00,
+    0x80, 0x00, 0x00, 0x83, 0xd2, 0x00, 0x0f, 0xac, 0xd0, 0x10, 0x3b, 0xc8, 0x0f, 0x8d, 0x19, 0x02, 0x00, 0x00};
+constexpr unsigned char expected_site[site_length] = {0x0f, 0xac, 0xd0,
+                                                      0x10, 0x3b, 0xc8}; // SHRD EAX,EDX,16; CMP ECX,EAX
 
 // The stub pushed in front of the chain: 20 bytes, then the abs32 of its
 // continuation slot (the previous chain head, i.e. the tail).
@@ -69,8 +71,8 @@ constexpr unsigned char expected_site[site_length] = {0x0f,0xac,0xd0,0x10, 0x3b,
 //   +0d b8 ff ff ff ff      MOV EAX,0xffffffff   ; the displaced SHRD then yields 0x7fffffff
 //   +12 ff 25 <slot>        JMP [slot]           ; tail: SHRD; CMP; JMP 0x0047e397
 constexpr unsigned stub_code_length = 20, stub_length = 24;
-constexpr unsigned char stub_code[stub_code_length] = {
-    0x81,0xfa,0x00,0x80,0x00,0x00, 0x7c,0x0a, 0xba,0xff,0x7f,0x00,0x00, 0xb8,0xff,0xff,0xff,0xff, 0xff,0x25};
+constexpr unsigned char stub_code[stub_code_length] = {0x81, 0xfa, 0x00, 0x80, 0x00, 0x00, 0x7c, 0x0a, 0xba, 0xff,
+                                                       0x7f, 0x00, 0x00, 0xb8, 0xff, 0xff, 0xff, 0xff, 0xff, 0x25};
 inline void encode_stub(std::uint32_t slot, unsigned char out[stub_length]) {
     std::memcpy(out, stub_code, stub_code_length);
     for (unsigned i = 0; i < 4; ++i) out[stub_code_length + i] = static_cast<unsigned char>(slot >> (8 * i));
@@ -79,12 +81,17 @@ inline void encode_stub(std::uint32_t slot, unsigned char out[stub_length]) {
 // EDX:EAX after the ADD/ADC rounding (the host test's model; the Wine fixture
 // executes the bytes).
 inline std::int32_t fixed_bound(std::int64_t rounded_product) {
-    std::uint32_t hi = static_cast<std::uint32_t>(static_cast<std::uint64_t>(rounded_product) >> 32), lo = static_cast<std::uint32_t>(rounded_product);
-    if (static_cast<std::int32_t>(hi) >= 0x8000) { hi = 0x7fff; lo = 0xffffffffu; }
+    std::uint32_t hi = static_cast<std::uint32_t>(static_cast<std::uint64_t>(rounded_product) >> 32),
+                  lo = static_cast<std::uint32_t>(rounded_product);
+    if (static_cast<std::int32_t>(hi) >= 0x8000) {
+        hi = 0x7fff;
+        lo = 0xffffffffu;
+    }
     return static_cast<std::int32_t>((lo >> 16) | (hi << 16));
 }
 inline std::int32_t vanilla_bound(std::int64_t rounded_product) {
-    const std::uint32_t hi = static_cast<std::uint32_t>(static_cast<std::uint64_t>(rounded_product) >> 32), lo = static_cast<std::uint32_t>(rounded_product);
+    const std::uint32_t hi = static_cast<std::uint32_t>(static_cast<std::uint64_t>(rounded_product) >> 32),
+                        lo = static_cast<std::uint32_t>(rounded_product);
     return static_cast<std::int32_t>((lo >> 16) | (hi << 16));
 }
 
@@ -92,19 +99,27 @@ inline std::int32_t vanilla_bound(std::int64_t rounded_product) {
 // variable is unset), on = the stub. The launcher sends on by default.
 enum class Mode : unsigned char { off = 0, on = 1 };
 constexpr Mode default_mode = Mode::off;
-constexpr unsigned setting_capacity = 32;  // 1..31 characters; 32 or more is too_long
-inline const char* mode_name(Mode m) { return m == Mode::on ? "on" : "off"; }
+constexpr unsigned setting_capacity = 32; // 1..31 characters; 32 or more is too_long
+inline const char* mode_name(Mode m) {
+    return m == Mode::on ? "on" : "off";
+}
 // Exactly "on" or "off" (lower case, nothing else).
-template <class Char>
-inline bool parse_mode(const Char* text, Mode* out) {
+template <class Char> inline bool parse_mode(const Char* text, Mode* out) {
     if (!text) return false;
     auto equals = [text](const char* word) {
         unsigned i = 0;
-        for (; word[i]; ++i) if (text[i] != Char(word[i])) return false;
+        for (; word[i]; ++i)
+            if (text[i] != Char(word[i])) return false;
         return text[i] == Char(0);
     };
-    if (equals("on")) { *out = Mode::on; return true; }
-    if (equals("off")) { *out = Mode::off; return true; }
+    if (equals("on")) {
+        *out = Mode::on;
+        return true;
+    }
+    if (equals("off")) {
+        *out = Mode::off;
+        return true;
+    }
     return false;
 }
 // The install decision on the bytes read at the window: nullptr when the
@@ -114,17 +129,31 @@ inline const char* plan(const unsigned char current[window_length]) {
     return std::memcmp(current, expected_window, window_length) ? "bytes_mismatch" : nullptr;
 }
 // The engine_patch claim of the span (whole instructions, no relative branch, ret_pop 0).
-struct ClaimSpec { const char* name; std::uintptr_t address; unsigned char expected[site_length]; unsigned length, ret_pop, rel32_offset; };
-constexpr ClaimSpec claim_spec = {"lens_collector_x_bound", 0x0047e391, {0x0f,0xac,0xd0,0x10,0x3b,0xc8}, 6, 0, 0};
+struct ClaimSpec {
+    const char* name;
+    std::uintptr_t address;
+    unsigned char expected[site_length];
+    unsigned length, ret_pop, rel32_offset;
+};
+constexpr ClaimSpec claim_spec = {"lens_collector_x_bound", 0x0047e391, {0x0f, 0xac, 0xd0, 0x10, 0x3b, 0xc8}, 6, 0, 0};
 
 constexpr bool window_holds_site() {
-    for (unsigned i = 0; i < site_length; ++i) if (expected_window[site_offset + i] != expected_site[i] || claim_spec.expected[i] != expected_site[i]) return false;
+    for (unsigned i = 0; i < site_length; ++i)
+        if (expected_window[site_offset + i] != expected_site[i] || claim_spec.expected[i] != expected_site[i])
+            return false;
     return true;
 }
-static_assert(window_va + site_offset == site_va && site_va + site_length == jge_va && jge_va + 6 == y_test_va && window_va + window_length == y_test_va, "offsets");
-static_assert(window_holds_site() && claim_spec.address == site_va && claim_spec.length == site_length, "the window carries the claimed bytes");
-static_assert((site_va & ~std::uintptr_t(7)) == ((site_va + 4) & ~std::uintptr_t(7)), "the five patch bytes lie in one aligned 8-byte word (atomic write)");
-static_assert(jge_va + 6 + 0x219 == off_screen_va && expected_window[window_length - 4] == 0x19 && expected_window[window_length - 3] == 0x02, "JGE rel32 0x219 reaches the off-screen path");
-static_assert(gate_va < window_va && y_test_va < gate_end_va && gate_end_va < off_screen_va, "inside the collector's gate");
+static_assert(window_va + site_offset == site_va && site_va + site_length == jge_va && jge_va + 6 == y_test_va &&
+                  window_va + window_length == y_test_va,
+              "offsets");
+static_assert(window_holds_site() && claim_spec.address == site_va && claim_spec.length == site_length,
+              "the window carries the claimed bytes");
+static_assert((site_va & ~std::uintptr_t(7)) == ((site_va + 4) & ~std::uintptr_t(7)),
+              "the five patch bytes lie in one aligned 8-byte word (atomic write)");
+static_assert(jge_va + 6 + 0x219 == off_screen_va && expected_window[window_length - 4] == 0x19 &&
+                  expected_window[window_length - 3] == 0x02,
+              "JGE rel32 0x219 reaches the off-screen path");
+static_assert(gate_va < window_va && y_test_va < gate_end_va && gate_end_va < off_screen_va,
+              "inside the collector's gate");
 static_assert(stub_code[6] == 0x7c && 8 + stub_code[7] == stub_code_length - 2, "JL skips to the JMP [slot]");
 }

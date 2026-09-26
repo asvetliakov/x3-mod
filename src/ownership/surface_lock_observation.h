@@ -18,12 +18,12 @@
 namespace x3m::ownership {
 enum class SurfaceLockPhase : unsigned char { LockEnter, LockResult, UnlockEnter, UnlockResult };
 struct SurfaceLockEvent {
-    IDirect3DSurface9* surface;     // the application-visible surface (identity the caller holds)
-    IDirect3DSurface9* native;      // borrowed for this call only
-    const void* return_address;     // the shell's caller
-    const RECT* rect;               // LockRect phases only
-    DWORD flags;                    // LockRect phases only
-    HRESULT result;                 // *Result phases; S_FALSE on *Enter
+    IDirect3DSurface9* surface; // the application-visible surface (identity the caller holds)
+    IDirect3DSurface9* native;  // borrowed for this call only
+    const void* return_address; // the shell's caller
+    const RECT* rect;           // LockRect phases only
+    DWORD flags;                // LockRect phases only
+    HRESULT result;             // *Result phases; S_FALSE on *Enter
     SurfaceLockPhase phase;
 };
 using SurfaceLockObserver = void (*)(const SurfaceLockEvent&);

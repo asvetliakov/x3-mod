@@ -2,7 +2,7 @@
 #define CINTERFACE
 #include <d3d9.h>
 #include <cstddef>
-#define SLOT(type, method, index) static_assert(offsetof(type, method) == (index)*sizeof(void*), #method)
+#define SLOT(type, method, index) static_assert(offsetof(type, method) == (index) * sizeof(void*), #method)
 SLOT(IDirect3D9Vtbl, Release, 2);
 SLOT(IDirect3D9Vtbl, CreateDevice, 16);
 SLOT(IDirect3DDevice9Vtbl, SetCursorProperties, 10);
@@ -88,9 +88,9 @@ SLOT(IDirect3DStateBlock9Vtbl, Capture, 4);
 SLOT(IDirect3DStateBlock9Vtbl, Apply, 5);
 SLOT(IDirect3DQuery9Vtbl, Release, 2);
 SLOT(IDirect3DQuery9Vtbl, Issue, 6);
-static_assert(sizeof(IDirect3DQuery9Vtbl) == 8*sizeof(void*));
-static_assert(sizeof(IDirect3DStateBlock9Vtbl) == 6*sizeof(void*));
-static_assert(sizeof(IDirect3D9Vtbl) == 17*sizeof(void*));
-static_assert(sizeof(IDirect3D9ExVtbl) == 22*sizeof(void*));
-static_assert(sizeof(IDirect3DDevice9Vtbl) == 119*sizeof(void*));
-static_assert(sizeof(IDirect3DDevice9ExVtbl) == 134*sizeof(void*));
+static_assert(sizeof(IDirect3DQuery9Vtbl) == 8 * sizeof(void*));
+static_assert(sizeof(IDirect3DStateBlock9Vtbl) == 6 * sizeof(void*));
+static_assert(sizeof(IDirect3D9Vtbl) == 17 * sizeof(void*));
+static_assert(sizeof(IDirect3D9ExVtbl) == 22 * sizeof(void*));
+static_assert(sizeof(IDirect3DDevice9Vtbl) == 119 * sizeof(void*));
+static_assert(sizeof(IDirect3DDevice9ExVtbl) == 134 * sizeof(void*));

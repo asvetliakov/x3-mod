@@ -14,24 +14,24 @@ namespace x3m {
 // and restore() brings the saved image back unchanged.
 struct CpuState {
     alignas(16) unsigned char x87[108]{};
-    std::uint32_t mxcsr=0;
-    DWORD error=0;
+    std::uint32_t mxcsr = 0;
+    DWORD error = 0;
     void capture() noexcept {
-        error=GetLastError();
-        asm volatile("fnsave %0\n\tfninit\n\tstmxcsr %1"
-                     : "=m"(x87),"=m"(mxcsr) :: "memory");
+        error = GetLastError();
+        asm volatile("fnsave %0\n\tfninit\n\tstmxcsr %1" : "=m"(x87), "=m"(mxcsr)::"memory");
     }
     void restore() const noexcept {
-        asm volatile("frstor %0\n\tldmxcsr %1" :: "m"(x87),"m"(mxcsr) : "memory");
+        asm volatile("frstor %0\n\tldmxcsr %1" ::"m"(x87), "m"(mxcsr) : "memory");
         SetLastError(error);
     }
 };
 class PreserveCpuState {
 public:
     PreserveCpuState() noexcept { saved_.capture(); }
-    ~PreserveCpuState(){saved_.restore();}
-    PreserveCpuState(const PreserveCpuState&)=delete;
-    PreserveCpuState& operator=(const PreserveCpuState&)=delete;
+    ~PreserveCpuState() { saved_.restore(); }
+    PreserveCpuState(const PreserveCpuState&) = delete;
+    PreserveCpuState& operator=(const PreserveCpuState&) = delete;
+
 private:
     CpuState saved_;
 };
@@ -40,14 +40,18 @@ private:
 // restoration happens after timing, lock and COM-resource destructors.
 class CpuCallBoundary {
 public:
-    CpuCallBoundary() noexcept { incoming_.capture();outgoing_=incoming_; }
-    ~CpuCallBoundary(){outgoing_.restore();}
-    void before_original() const noexcept {incoming_.restore();}
-    void after_original() noexcept {outgoing_.capture();}
-    CpuCallBoundary(const CpuCallBoundary&)=delete;
-    CpuCallBoundary& operator=(const CpuCallBoundary&)=delete;
+    CpuCallBoundary() noexcept {
+        incoming_.capture();
+        outgoing_ = incoming_;
+    }
+    ~CpuCallBoundary() { outgoing_.restore(); }
+    void before_original() const noexcept { incoming_.restore(); }
+    void after_original() noexcept { outgoing_.capture(); }
+    CpuCallBoundary(const CpuCallBoundary&) = delete;
+    CpuCallBoundary& operator=(const CpuCallBoundary&) = delete;
+
 private:
-    CpuState incoming_,outgoing_;
+    CpuState incoming_, outgoing_;
 };
 // Runs f under a full CpuState save/restore through a call the static audit
 // cannot follow (check_no_x87.py stops at indirect calls). For the two draw-path
@@ -56,10 +60,10 @@ private:
 // light-guarded caller at run time, and the indirect call keeps their x87 code
 // out of the light hooks' audited graph. Paid only when the callee runs (a log
 // line, a once-per-second summary), never per call.
-template<class F> void call_preserved(F&& f) {
+template <class F> void call_preserved(F&& f) {
     PreserveCpuState saved;
-    using Thunk=void(*)(void*);
-    Thunk volatile thunk=[](void* p){(*static_cast<std::remove_reference_t<F>*>(p))();};
+    using Thunk = void (*)(void*);
+    Thunk volatile thunk = [](void* p) { (*static_cast<std::remove_reference_t<F>*>(p))(); };
     thunk(static_cast<void*>(&f));
 }
 // Same contract as CpuCallBoundary for hooks whose own code executes no x87
@@ -79,16 +83,29 @@ template<class F> void call_preserved(F&& f) {
 // through call_preserved above rather than widening the hook's envelope.
 class LightCallBoundary {
 public:
-    LightCallBoundary() noexcept { capture(incoming_); outgoing_=incoming_; }
-    ~LightCallBoundary(){ restore(outgoing_); }
+    LightCallBoundary() noexcept {
+        capture(incoming_);
+        outgoing_ = incoming_;
+    }
+    ~LightCallBoundary() { restore(outgoing_); }
     void before_original() const noexcept { restore(incoming_); }
     void after_original() noexcept { capture(outgoing_); }
-    LightCallBoundary(const LightCallBoundary&)=delete;
-    LightCallBoundary& operator=(const LightCallBoundary&)=delete;
+    LightCallBoundary(const LightCallBoundary&) = delete;
+    LightCallBoundary& operator=(const LightCallBoundary&) = delete;
+
 private:
-    struct State { std::uint32_t mxcsr=0; DWORD error=0; };
-    static void capture(State& s) noexcept { s.error=GetLastError(); asm volatile("stmxcsr %0" : "=m"(s.mxcsr) :: "memory"); }
-    static void restore(const State& s) noexcept { asm volatile("ldmxcsr %0" :: "m"(s.mxcsr) : "memory"); SetLastError(s.error); }
-    State incoming_,outgoing_;
+    struct State {
+        std::uint32_t mxcsr = 0;
+        DWORD error = 0;
+    };
+    static void capture(State& s) noexcept {
+        s.error = GetLastError();
+        asm volatile("stmxcsr %0" : "=m"(s.mxcsr)::"memory");
+    }
+    static void restore(const State& s) noexcept {
+        asm volatile("ldmxcsr %0" ::"m"(s.mxcsr) : "memory");
+        SetLastError(s.error);
+    }
+    State incoming_, outgoing_;
 };
 } // namespace x3m

@@ -21,13 +21,15 @@
 // restore keep the site registered); the opcode and the instruction boundaries are the same in both
 // states, so a thread inside the submission decodes either jne.
 namespace x3m::lod_occlusion {
-bool initialize();  // backend-load path only; logs one lod_occlusion line
-bool shutdown();    // writes c9 00 00 00 back only over the patched 00 00 00 00 (dynamic-unload detach only; other bytes: restore_not_owned, no write) and logs one lod_occlusion_restore row; true when nothing stays registered
+bool initialize(); // backend-load path only; logs one lod_occlusion line
+bool shutdown(); // writes c9 00 00 00 back only over the patched 00 00 00 00 (dynamic-unload detach only; other bytes:
+                 // restore_not_owned, no write) and logs one lod_occlusion_restore row; true when nothing stays
+                 // registered
 // Verifies the window at `window` (the engine's 0x004c34e7, or a fixture's
 // copy) and writes the rel32. Returns whether the patch is live; state()
 // carries the reason either way.
 bool install_at(std::uintptr_t window);
 const char* state();
-const char* write_path();  // none|atomic|plain: which engine_patch::write_code path wrote the rel32
+const char* write_path(); // none|atomic|plain: which engine_patch::write_code path wrote the rel32
 bool patched();
 }

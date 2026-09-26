@@ -15,19 +15,25 @@ union LARGE_INTEGER {
 };
 
 namespace x3m_win32_standin {
-inline long long clock_ticks = 0;         // scripted QueryPerformanceCounter
-inline long long frequency = 1000000;     // 1 tick = 1 microsecond
-inline bool real_clock = false;           // cost mode: read the host clock
+inline long long clock_ticks = 0;     // scripted QueryPerformanceCounter
+inline long long frequency = 1000000; // 1 tick = 1 microsecond
+inline bool real_clock = false;       // cost mode: read the host clock
 inline DWORD last_error = 0;
 inline const wchar_t* environment = nullptr;        // X3M_FRAME_TIMING value, or none
 inline const wchar_t* environment_stamps = nullptr; // X3M_FRAME_TIMING_STATE_STAMPS, or none
 inline unsigned environment_reads = 0;
 inline unsigned counter_reads = 0;
-inline void advance(long long ticks) { clock_ticks += ticks; }
+inline void advance(long long ticks) {
+    clock_ticks += ticks;
+}
 }
 
-inline DWORD GetLastError() { return x3m_win32_standin::last_error; }
-inline void SetLastError(DWORD value) { x3m_win32_standin::last_error = value; }
+inline DWORD GetLastError() {
+    return x3m_win32_standin::last_error;
+}
+inline void SetLastError(DWORD value) {
+    x3m_win32_standin::last_error = value;
+}
 
 inline int QueryPerformanceCounter(LARGE_INTEGER* value) {
     ++x3m_win32_standin::counter_reads;

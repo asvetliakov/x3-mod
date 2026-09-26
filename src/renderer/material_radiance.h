@@ -22,8 +22,12 @@ struct RadianceProfile {
     unsigned zero_component = 0;
 };
 enum class RadianceResult {
-    Applied, UnsupportedShader, InvalidInput, ProfileMismatch,
-    InvalidProfile, AllocationFailure
+    Applied,
+    UnsupportedShader,
+    InvalidInput,
+    ProfileMismatch,
+    InvalidProfile,
+    AllocationFailure
 };
 
 // No D3D calls, global mutation or game assets. Build an owned shader variant
@@ -32,16 +36,14 @@ enum class RadianceResult {
 // Success replaces output atomically. Failure leaves output unchanged; callers
 // must use it only after Applied. Source/output aliasing is supported.
 // The known-profile entry point rejects unrecognized shaders without patching.
-RadianceResult material_radiance_variant(const std::uint32_t* source,
-    std::size_t word_count, std::vector<std::uint32_t>& output) noexcept;
+RadianceResult material_radiance_variant(const std::uint32_t* source, std::size_t word_count,
+                                         std::vector<std::uint32_t>& output) noexcept;
 
 // Explicit reviewed profiles also support original synthetic verification
 // shaders. This validates structural constraints, not arbitrary shader semantics;
 // profile authors must verify that COLOR0 carries radiance at every named site.
-RadianceResult apply_radiance_profile(const RadianceProfile& profile,
-    const std::uint32_t* source, std::size_t word_count,
-    std::vector<std::uint32_t>& output) noexcept;
-std::uint64_t shader_fingerprint(const std::uint32_t* source,
-    std::size_t word_count) noexcept;
+RadianceResult apply_radiance_profile(const RadianceProfile& profile, const std::uint32_t* source,
+                                      std::size_t word_count, std::vector<std::uint32_t>& output) noexcept;
+std::uint64_t shader_fingerprint(const std::uint32_t* source, std::size_t word_count) noexcept;
 const RadianceProfile* material_radiance_profiles(std::size_t* count) noexcept;
 } // namespace x3m::renderer

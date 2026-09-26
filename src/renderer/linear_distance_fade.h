@@ -15,16 +15,13 @@ std::uint32_t linear_distance_fade_sampler_mask(std::uint64_t vs, std::uint64_t 
 // pairs). Distinct from linear_material_asteroid_pair, which stays the
 // six-pair Asteroid family classifier (the shimmer trace that used it went on 2026-09-25).
 bool linear_distance_fade_pair(std::uint64_t vs, std::uint64_t ps) noexcept;
-LinearMaterialResult linear_distance_fade_vertex_variant(
-    const std::uint32_t *original, std::size_t words,
-    const LinearMaterialConfig &config,
-    std::vector<std::uint32_t> &output) noexcept;
-LinearMaterialResult
-linear_distance_fade_pixel_variant(const std::uint32_t *original,
-                                   std::size_t words,
-                                   const LinearMaterialConfig &config,
-                                   std::vector<std::uint32_t> &output,
-                                   // Written on every return when supplied;
-                                   // false exposes a fail-closed fill refusal.
-                                   bool *fill_applied = nullptr) noexcept;
+LinearMaterialResult linear_distance_fade_vertex_variant(const std::uint32_t* original, std::size_t words,
+                                                         const LinearMaterialConfig& config,
+                                                         std::vector<std::uint32_t>& output) noexcept;
+LinearMaterialResult linear_distance_fade_pixel_variant(const std::uint32_t* original, std::size_t words,
+                                                        const LinearMaterialConfig& config,
+                                                        std::vector<std::uint32_t>& output,
+                                                        // Written on every return when supplied;
+                                                        // false exposes a fail-closed fill refusal.
+                                                        bool* fill_applied = nullptr) noexcept;
 } // namespace x3m::renderer

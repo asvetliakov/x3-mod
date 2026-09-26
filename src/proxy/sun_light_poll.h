@@ -38,20 +38,33 @@
 #include <cstdint>
 
 namespace x3m::sun_light_poll {
-enum class Status : std::uint32_t { Ok = 0, Disabled = 1, ExecutableMismatch = 2, SlotUnreadable = 3, NullContext = 4, Unreadable = 5, Layout = 6, NoDirectional = 7 };
+enum class Status : std::uint32_t {
+    Ok = 0,
+    Disabled = 1,
+    ExecutableMismatch = 2,
+    SlotUnreadable = 3,
+    NullContext = 4,
+    Unreadable = 5,
+    Layout = 6,
+    NoDirectional = 7
+};
 const char* status_name(Status status);
 struct Sample {
     Status status = Status::Disabled;
-    std::int32_t position[3]{};      // engine integers (world units = x 0.01 in a gameplay view)
-    std::int32_t colour[3]{};        // the chosen node's colour words +0x150/152/154 (/ 256 = LightDir_Color0; the volumetric fog's E_sun)
-    std::uint32_t score = 0;         // the chosen node's engine score (rounded luma, + 0x300 when directional)
-    std::uint32_t second_score = 0;  // the next candidate's under the same rule (0: none); equal scores are an engine tie
-    bool engine_rule = false;        // the result is the engine rule's winner (else the admission rule's)
-    bool rules_agree = false;        // both rules chose the same node
-    std::int32_t admission_position[3]{}; // the admission rule's winner
-    std::uint32_t candidates = 0, directional = 0, slot_admitted = 0; // array entries; admission-rule and engine-rule candidates
-    std::uint32_t flags = 0;         // the chosen node's +0x12c
-    float record_position[3]{};      // [node+0x16c]+0x34: the D3DLIGHT9 position the engine derived (context-scaled), diagnostics
+    std::int32_t position[3]{}; // engine integers (world units = x 0.01 in a gameplay view)
+    std::int32_t colour[3]{}; // the chosen node's colour words +0x150/152/154 (/ 256 = LightDir_Color0; the volumetric
+                              // fog's E_sun)
+    std::uint32_t score = 0;  // the chosen node's engine score (rounded luma, + 0x300 when directional)
+    std::uint32_t second_score = 0; // the next candidate's under the same rule (0: none); equal scores are an engine
+                                    // tie
+    bool engine_rule = false;       // the result is the engine rule's winner (else the admission rule's)
+    bool rules_agree = false;       // both rules chose the same node
+    std::int32_t admission_position[3]{};                             // the admission rule's winner
+    std::uint32_t candidates = 0, directional = 0, slot_admitted = 0; // array entries; admission-rule and engine-rule
+                                                                      // candidates
+    std::uint32_t flags = 0;                                          // the chosen node's +0x12c
+    float record_position[3]{}; // [node+0x16c]+0x34: the D3DLIGHT9 position the engine derived (context-scaled),
+                                // diagnostics
     bool record_valid = false;
 };
 // X3M_MOTION_OUTPUT=1 with X3M_SHADOW_REPLAY_DEPTH=1 and a cascade list

@@ -15,8 +15,8 @@ struct CreationPlan {
     DWORD native_usage = 0;
     bool converted = false;
 };
-CreationPlan plan_creation(bool finite_capture, UINT bytes, DWORD usage,
-                           D3DPOOL pool, const HANDLE* shared_handle) noexcept;
+CreationPlan plan_creation(bool finite_capture, UINT bytes, DWORD usage, D3DPOOL pool,
+                           const HANDLE* shared_handle) noexcept;
 
 // Public descriptor snapshot from a caller-owned live native COM resource.
 // No heap pointer, private backend fields, module identity or map-count claim.
@@ -32,7 +32,9 @@ bool inspect(IDirect3DVertexBuffer9* native, BufferContract* out) noexcept;
 bool inspect(IDirect3DIndexBuffer9* native, BufferContract* out) noexcept;
 bool same_description(IDirect3DResource9* current_native, const BufferContract&) noexcept;
 
-struct Window { UINT offset = 0, size = 0; };
+struct Window {
+    UINT offset = 0, size = 0;
+};
 // Normalize ONLY the pointer/range from this buffer's already successful normal
 // application Lock. The owner proves one observed pending lock, same thread,
 // exact pointer identity, revision/generation and unchanged wrapper routing.

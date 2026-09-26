@@ -16,21 +16,25 @@ engine_patch::CallSite site_{};
 
 bool bytes_match(std::uintptr_t at, const unsigned char* expected, unsigned length) {
     unsigned char actual[64]{};
-    return length <= sizeof actual && engine_patch::read_code(at, actual, length) && !std::memcmp(actual, expected, length);
+    return length <= sizeof actual && engine_patch::read_code(at, actual, length) &&
+           !std::memcmp(actual, expected, length);
 }
 bool callee_matches() {
     static unsigned char body[sat_callee_length];
-    return engine_patch::read_code(sat_target_va, body, sat_callee_length) && fnv1a(body, sat_callee_length) == sat_callee_fnv1a;
+    return engine_patch::read_code(sat_target_va, body, sat_callee_length) &&
+           fnv1a(body, sat_callee_length) == sat_callee_fnv1a;
 }
 // Pins this DLL for the process lifetime (documented: GET_MODULE_HANDLE_EX_FLAG_PIN): the engine calls into it.
 bool pin_self() {
     HMODULE module = nullptr;
-    return GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_PIN, reinterpret_cast<LPCWSTR>(&patched_), &module) != FALSE && module != nullptr;
+    return GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_PIN,
+                              reinterpret_cast<LPCWSTR>(&patched_), &module) != FALSE &&
+           module != nullptr;
 }
 }
 
 extern "C" {
-const std::uint32_t x3m_collide_sat_mxcsr = 0x1f80;   // round to nearest, all exceptions masked, no DAZ/FZ
+const std::uint32_t x3m_collide_sat_mxcsr = 0x1f80; // round to nearest, all exceptions masked, no DAZ/FZ
 int __cdecl x3m_collide_sat_sse2(const float* R, const float* b_extents, const float* T, const float* a_extents) {
     return obb_disjoint(R, b_extents, T, a_extents);
 }
@@ -86,15 +90,24 @@ _x3m_collide_sat_thunk:
 namespace x3m::collide_sat_sse2 {
 bool install_at(const Addresses& a) {
     const DWORD error = GetLastError();
-    const auto done = [&](const char* reason, bool ok) { state_ = reason; SetLastError(error); return ok; };
+    const auto done = [&](const char* reason, bool ok) {
+        state_ = reason;
+        SetLastError(error);
+        return ok;
+    };
     if (patched_) return done("already_installed", false);
     if (!a.site || !a.target) return done("invalid_site", false);
     if (!engine_patch::install_window_open()) return done("late_claim", false);
-    if (!bytes_match(a.site - sat_pre_length, sat_pre_window, sat_pre_length) || !bytes_match(a.site + call_length, sat_post_window, sat_post_length)) return done("bytes_mismatch", false);
+    if (!bytes_match(a.site - sat_pre_length, sat_pre_window, sat_pre_length) ||
+        !bytes_match(a.site + call_length, sat_post_window, sat_post_length))
+        return done("bytes_mismatch", false);
     if (!pin_self()) return done("pin_failed", false);
     site_ = engine_patch::CallSite{};
     if (!engine_patch::claim_call(site_, a.site, a.target, reinterpret_cast<void*>(&x3m_collide_sat_thunk))) {
-        if (site_.patched_in && !engine_patch::restore_call(site_)) { patched_ = true; return done("rollback_failed", false); }   // registered: shutdown() tries again
+        if (site_.patched_in && !engine_patch::restore_call(site_)) {
+            patched_ = true;
+            return done("rollback_failed", false);
+        } // registered: shutdown() tries again
         return done(site_.status, false);
     }
     patched_ = true;
@@ -102,19 +115,32 @@ bool install_at(const Addresses& a) {
 }
 bool initialize() {
     const DWORD error = GetLastError();
-    if (patched_) { SetLastError(error); return true; }
+    if (patched_) {
+        SetLastError(error);
+        return true;
+    }
     wchar_t setting[4]{};
     const DWORD length = x3m::config::get(L"X3M_COLLIDE_SAT_SSE2", setting, 4);
-    if (length == 0) { state_ = "disabled"; SetLastError(error); return false; }
+    if (length == 0) {
+        state_ = "disabled";
+        SetLastError(error);
+        return false;
+    }
     bool applied = false;
     const bool requested = length == 1 && setting[0] == L'1';
-    if (!requested) state_ = "disabled";
-    else if (!object_trace::executable_verified()) state_ = "executable_mismatch";
-    else if (!callee_matches()) state_ = "callee_mismatch";   // the body being replaced, outside the windows install_at compares
-    else applied = install_at(Addresses{sat_site_va, sat_target_va});
+    if (!requested)
+        state_ = "disabled";
+    else if (!object_trace::executable_verified())
+        state_ = "executable_mismatch";
+    else if (!callee_matches())
+        state_ = "callee_mismatch"; // the body being replaced, outside the windows install_at compares
+    else
+        applied = install_at(Addresses{sat_site_va, sat_target_va});
     log("collide_sat_sse2 requested=%u patched=%u reason=%s site=0x%08lx target=0x%08lx write=%s handler=0x%08lx",
-        requested ? 1u : 0u, patched_ ? 1u : 0u, state_, static_cast<unsigned long>(sat_site_va), static_cast<unsigned long>(sat_target_va),
-        site_.patched_in ? (site_.atomic_write ? "atomic" : "plain") : "none", static_cast<unsigned long>(reinterpret_cast<std::uintptr_t>(&x3m_collide_sat_thunk)));
+        requested ? 1u : 0u, patched_ ? 1u : 0u, state_, static_cast<unsigned long>(sat_site_va),
+        static_cast<unsigned long>(sat_target_va),
+        site_.patched_in ? (site_.atomic_write ? "atomic" : "plain") : "none",
+        static_cast<unsigned long>(reinterpret_cast<std::uintptr_t>(&x3m_collide_sat_thunk)));
     SetLastError(error);
     return applied;
 }
@@ -127,5 +153,7 @@ bool shutdown() {
     SetLastError(error);
     return back;
 }
-const char* state() { return state_; }
+const char* state() {
+    return state_;
+}
 }

@@ -11,7 +11,7 @@ bool installed();
 // and monitor visits. Only a successful camera write publishes a new witness.
 void invalidate_pose();
 void camera_context(std::uintptr_t cockpit, std::uintptr_t ship, std::uintptr_t camera, bool applied,
-                    const chase::Mat3 *camera_basis = nullptr, const chase::Mat3 *view_rel = nullptr);
+                    const chase::Mat3* camera_basis = nullptr, const chase::Mat3* view_rel = nullptr);
 // Called by the actual cockpit lifecycle/update boundaries; owns no engine data.
 void native_timing_invalidate(std::uintptr_t cockpit, std::uint32_t thread) noexcept;
 void report(std::uint64_t frame);

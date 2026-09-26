@@ -21,9 +21,20 @@
 #include <new>
 
 static bool refuse_allocation = false;
-void* operator new(std::size_t n) { if (refuse_allocation) { std::fprintf(stderr, "allocated\n"); std::abort(); } if (void* p = std::malloc(n)) return p; throw std::bad_alloc(); }
-void operator delete(void* p) noexcept { std::free(p); }
-void operator delete(void* p, std::size_t) noexcept { std::free(p); }
+void* operator new(std::size_t n) {
+    if (refuse_allocation) {
+        std::fprintf(stderr, "allocated\n");
+        std::abort();
+    }
+    if (void* p = std::malloc(n)) return p;
+    throw std::bad_alloc();
+}
+void operator delete(void* p) noexcept {
+    std::free(p);
+}
+void operator delete(void* p, std::size_t) noexcept {
+    std::free(p);
+}
 
 // The production translation unit, with its Win32 stand-in and its log sink.
 #include "../../src/proxy/frame_timing.cpp"
@@ -100,9 +111,15 @@ static long long simulate_gap_frame(std::uint64_t index) {
         x3m_win32_standin::advance(5);
     }
     x3m_win32_standin::advance(500); // game time between hooked calls
-    { Scope state_scope(Bucket::State, "set_texture"); x3m_win32_standin::advance(7); }
+    {
+        Scope state_scope(Bucket::State, "set_texture");
+        x3m_win32_standin::advance(7);
+    }
     x3m_win32_standin::advance(600);
-    { Scope draw_scope(Bucket::Draw, "draw_primitive"); x3m_win32_standin::advance(30); }
+    {
+        Scope draw_scope(Bucket::Draw, "draw_primitive");
+        x3m_win32_standin::advance(30);
+    }
     x3m_win32_standin::advance(900); // game time after the last draw
     {
         Scope scene_scope(Bucket::Scene, "present");
@@ -125,7 +142,9 @@ static double cost_per_call(bool on) {
     timespec begin{}, end{};
     const unsigned long calls = 2000000;
     clock_gettime(CLOCK_MONOTONIC_RAW, &begin);
-    for (unsigned long i = 0; i < calls; ++i) { Scope scope(Bucket::State, "set_texture"); }
+    for (unsigned long i = 0; i < calls; ++i) {
+        Scope scope(Bucket::State, "set_texture");
+    }
     clock_gettime(CLOCK_MONOTONIC_RAW, &end);
     const double ns = double(end.tv_sec - begin.tv_sec) * 1e9 + double(end.tv_nsec - begin.tv_nsec);
     x3m_win32_standin::real_clock = false;
@@ -136,20 +155,36 @@ static double cost_per_call(bool on) {
 // only the program pair varying. The callers below change one field at a time.
 static DrawKey make_key(std::uint64_t vs, std::uint64_t ps) {
     DrawKey key;
-    key.vs = vs; key.ps = ps;
-    key.stream0 = 3; key.indices = 4; key.declaration = 5;
-    key.textures[0] = 6; key.textures[1] = 7; key.textures[2] = 8; key.textures[3] = 9;
-    key.primitive_type = 4; key.primitives = 10;
+    key.vs = vs;
+    key.ps = ps;
+    key.stream0 = 3;
+    key.indices = 4;
+    key.declaration = 5;
+    key.textures[0] = 6;
+    key.textures[1] = 7;
+    key.textures[2] = 8;
+    key.textures[3] = 9;
+    key.primitive_type = 4;
+    key.primitives = 10;
     key.valid = true;
     return key;
 }
 // Runs frames `first`..`last` of a window: one microsecond each, no hooked call.
 static void run_frames(std::uint64_t first, std::uint64_t last) {
-    for (std::uint64_t f = first; f <= last; ++f) { x3m_win32_standin::advance(1); frame(f, 0); }
+    for (std::uint64_t f = first; f <= last; ++f) {
+        x3m_win32_standin::advance(1);
+        frame(f, 0);
+    }
 }
 
 static unsigned checks = 0;
-static void check_impl(bool value, int line) { ++checks; if (!value) { std::fprintf(stderr, "check %u failed (line %d)\n", checks, line); std::exit(1); } }
+static void check_impl(bool value, int line) {
+    ++checks;
+    if (!value) {
+        std::fprintf(stderr, "check %u failed (line %d)\n", checks, line);
+        std::exit(1);
+    }
+}
 #define check(expression) check_impl((expression), __LINE__)
 
 static Window reduction; // static storage: the production window is a global too
@@ -161,8 +196,7 @@ int main(int argc, char** argv) {
 
     // Ascending series: dt 10..3000 us, draws 0..299, present 0..598.
     refuse_allocation = true;
-    for (unsigned i = 0; i < window_frames; ++i)
-        reduction.add({i, (i + 1) * 10ull, i * 2ull, i, i * 7ull});
+    for (unsigned i = 0; i < window_frames; ++i) reduction.add({i, (i + 1) * 10ull, i * 2ull, i, i * 7ull});
     check(reduction.full() && reduction.count() == window_frames);
     check(reduction.close(summary));
     refuse_allocation = false;
@@ -173,8 +207,10 @@ int main(int argc, char** argv) {
     check(summary.slow == 0); // no frame exceeds twice the median here
     check(summary.slow_frames_count == 4);
     check(summary.slow_frames[0].frame == 299 && summary.slow_frames[0].dt_us == 3000);
-    check(summary.slow_frames[0].draws == 299 && summary.slow_frames[0].present_us == 598 && summary.slow_frames[0].prims == 299 * 7);
-    check(summary.slow_frames[1].frame == 298 && summary.slow_frames[2].frame == 297 && summary.slow_frames[3].frame == 296);
+    check(summary.slow_frames[0].draws == 299 && summary.slow_frames[0].present_us == 598 &&
+          summary.slow_frames[0].prims == 299 * 7);
+    check(summary.slow_frames[1].frame == 298 && summary.slow_frames[2].frame == 297 &&
+          summary.slow_frames[3].frame == 296);
     check(reduction.count() == 0); // close restarts the window
     check(!reduction.close(summary));
 
@@ -211,7 +247,8 @@ int main(int argc, char** argv) {
     // One sample: every percentile is that sample and nothing is slow.
     reduction.add({77, 9000, 8000, 12, 34});
     check(reduction.close(summary));
-    check(summary.frames == 1 && summary.frame == 77 && summary.dt_p50 == 9000 && summary.dt_p95 == 9000 && summary.dt_max == 9000);
+    check(summary.frames == 1 && summary.frame == 77 && summary.dt_p50 == 9000 && summary.dt_p95 == 9000 &&
+          summary.dt_max == 9000);
     check(summary.draws_p50 == 12 && summary.present_p95 == 8000 && summary.slow == 0);
     check(summary.slow_frames_count == 1 && summary.slow_frames[0].prims == 34);
 
@@ -223,7 +260,6 @@ int main(int argc, char** argv) {
     check(reduction.count() == window_frames);
     check(reduction.close(summary));
     check(summary.frames == 300 && summary.frame == 349 && summary.dt_max == 1000);
-
 
     // Buckets: draw/scene/state microseconds, their call counts and the
     // slowest single hooked call travel with the sample and reduce like dt.
@@ -273,7 +309,6 @@ int main(int argc, char** argv) {
     check(summary.draw_native_max == 0 && summary.slow_frames[0].slow_call_us == 0);
     check(summary.slow_frames[0].slow_call && !summary.slow_frames[0].slow_call[0]);
 
-
     // The production accumulation, executed. One read of the option, then a
     // steady 300-frame window of hooked calls: per frame two draws of 30 us
     // each (20 us of it the forwarded native draw), five state calls totalling
@@ -296,8 +331,7 @@ int main(int argc, char** argv) {
     check(x3m_win32_standin::counter_reads - counter_before == 23);
     check(frame_ticks == 2180 && depth == 0); // the depth returns to zero
     bool steady = true;
-    for (std::uint64_t f = 2; f <= window_frames + 1; ++f)
-        steady = steady && simulate_frame(f) == 2180 && depth == 0;
+    for (std::uint64_t f = 2; f <= window_frames + 1; ++f) steady = steady && simulate_frame(f) == 2180 && depth == 0;
     check(steady); // every frame of the window, and the depth back to zero
     refuse_allocation = false;
     // The native Present is subtracted from the enclosing scope exactly once
@@ -354,11 +388,13 @@ int main(int argc, char** argv) {
     // Option off: the scope is inert and reads no clock.
     active = false;
     const unsigned reads_before = x3m_win32_standin::counter_reads;
-    { Scope scope(Bucket::Draw, "draw_primitive"); x3m_win32_standin::advance(50); }
+    {
+        Scope scope(Bucket::Draw, "draw_primitive");
+        x3m_win32_standin::advance(50);
+    }
     check(x3m_win32_standin::counter_reads == reads_before && depth == 0);
     // The per-frame accumulators were reset at the last frame boundary.
     check(bucket_calls[unsigned(Bucket::Draw)] == 0 && bucket_ticks[unsigned(Bucket::Draw)] == 0);
-
 
     // Default: state calls are counted, never stamped. The same scripted frame
     // with explicit game time between the hooked calls, 301 frames, so the
@@ -424,8 +460,8 @@ int main(int argc, char** argv) {
     // gaps and the buckets still sum to dt: no unhooked time is left over here,
     // and there is no draw, so all three gaps are zero.
     check(sampled.gap_p50[0] == 0 && sampled.gap_p50[1] == 0 && sampled.gap_p50[2] == 0);
-    check(sampled.bucket_p50[unsigned(Bucket::State)] + sampled.gap_p50[0] + sampled.gap_p50[1]
-          + sampled.gap_p50[2] == sampled.dt_p50);
+    check(sampled.bucket_p50[unsigned(Bucket::State)] + sampled.gap_p50[0] + sampled.gap_p50[1] + sampled.gap_p50[2] ==
+          sampled.dt_p50);
     check(sampled.state_top_used == 1 && sampled.state_top[0].calls == 8);
     check(logged_count == 0); // one frame is not a window
     // The same at N=4 with draws and unhooked time around them: four state
@@ -434,13 +470,19 @@ int main(int argc, char** argv) {
     frame(2, 0); // restart the interval after the closed window
     {
         x3m_win32_standin::advance(200);
-        { Scope draw_scope(Bucket::Draw, "draw_primitive"); x3m_win32_standin::advance(40); }
+        {
+            Scope draw_scope(Bucket::Draw, "draw_primitive");
+            x3m_win32_standin::advance(40);
+        }
         for (unsigned c = 0; c < 4; ++c) {
             Scope state_scope(Bucket::State, "set_render_state");
             x3m_win32_standin::advance(25);
         }
         x3m_win32_standin::advance(300);
-        { Scope draw_scope(Bucket::Draw, "draw_primitive"); x3m_win32_standin::advance(60); }
+        {
+            Scope draw_scope(Bucket::Draw, "draw_primitive");
+            x3m_win32_standin::advance(60);
+        }
         x3m_win32_standin::advance(400);
     }
     frame(3, 2);
@@ -450,8 +492,9 @@ int main(int argc, char** argv) {
     check(spread.bucket_p50[unsigned(Bucket::Draw)] == 100);
     check(spread.bucket_p50[unsigned(Bucket::State)] == 100); // 25 us stamped, scaled by 4
     check(spread.gap_p50[0] == 200 && spread.gap_p50[1] == 300 && spread.gap_p50[2] == 400);
-    check(spread.bucket_p50[unsigned(Bucket::Draw)] + spread.bucket_p50[unsigned(Bucket::State)]
-          + spread.gap_p50[0] + spread.gap_p50[1] + spread.gap_p50[2] == spread.dt_p50);
+    check(spread.bucket_p50[unsigned(Bucket::Draw)] + spread.bucket_p50[unsigned(Bucket::State)] + spread.gap_p50[0] +
+              spread.gap_p50[1] + spread.gap_p50[2] ==
+          spread.dt_p50);
 
     // Per-entry counting with no stamps: distinct static entry names, counted
     // once each, reentrant calls excluded, reported most-called first.
@@ -462,9 +505,18 @@ int main(int argc, char** argv) {
     initialize();
     frame(0, 0);
     const unsigned mix_reads = x3m_win32_standin::counter_reads;
-    for (unsigned c = 0; c < 8; ++c) { Scope scope(Bucket::State, texture); x3m_win32_standin::advance(1); }
-    for (unsigned c = 0; c < 3; ++c) { Scope scope(Bucket::State, render); x3m_win32_standin::advance(1); }
-    for (unsigned c = 0; c < 5; ++c) { Scope scope(Bucket::State, sampler); x3m_win32_standin::advance(1); }
+    for (unsigned c = 0; c < 8; ++c) {
+        Scope scope(Bucket::State, texture);
+        x3m_win32_standin::advance(1);
+    }
+    for (unsigned c = 0; c < 3; ++c) {
+        Scope scope(Bucket::State, render);
+        x3m_win32_standin::advance(1);
+    }
+    for (unsigned c = 0; c < 5; ++c) {
+        Scope scope(Bucket::State, sampler);
+        x3m_win32_standin::advance(1);
+    }
     for (unsigned c = 0; c < 2; ++c) {
         Scope outer(Bucket::State, texture);
         Scope reentered(Bucket::State, sampler); // the proxy's own call: not counted
@@ -482,7 +534,6 @@ int main(int argc, char** argv) {
     check(!std::strcmp(state_entry_name[mix.state_top[1].slot], sampler));
     check(!std::strcmp(state_entry_name[mix.state_top[2].slot], render));
 
-
     // The three count-only window diagnostics, driven through the production
     // accumulators and emitted by the production window boundary. Window A:
     // the program-pair mix with the two cutout pairs, the three batch classes,
@@ -494,23 +545,25 @@ int main(int argc, char** argv) {
     frame(0, 0); // only starts the interval
     refuse_allocation = true;
     const std::uint64_t cutout_vs = 0x4944d81dfe531b37ull, cutout_ps = 0x5e0a10fe752b6140ull;
-    draw_state(make_key(cutout_vs, cutout_ps));  // 1: first draw of the frame, no predecessor
-    draw_state(make_key(cutout_vs, cutout_ps));  // 2: identical bindings and range -> same_mesh
+    draw_state(make_key(cutout_vs, cutout_ps)); // 1: first draw of the frame, no predecessor
+    draw_state(make_key(cutout_vs, cutout_ps)); // 2: identical bindings and range -> same_mesh
     DrawKey key = make_key(0x11, 0x22);
-    draw_state(key);                             // 3: another pair -> no class
-    draw_state(key);                             // 4: same_mesh
+    draw_state(key); // 3: another pair -> no class
+    draw_state(key); // 4: same_mesh
     key.start_index = 12;
-    draw_state(key);                             // 5: another range of the same mesh
+    draw_state(key); // 5: another range of the same mesh
     key.stream0 = 99;
-    draw_state(key);                             // 6: same material, another mesh
-    key.stream0 = 3; key.start_index = 0; key.textures[2] = 77;
-    draw_state(key);                             // 7: another texture -> no class
-    draw_state(DrawKey{});                       // 8: no live shadow -> not classified
-    draw_state(make_key(0, 0));                  // 9: predecessor was not classified
+    draw_state(key); // 6: same material, another mesh
+    key.stream0 = 3;
+    key.start_index = 0;
+    key.textures[2] = 77;
+    draw_state(key);            // 7: another texture -> no class
+    draw_state(DrawKey{});      // 8: no live shadow -> not classified
+    draw_state(make_key(0, 0)); // 9: predecessor was not classified
     DrawKey up = make_key(0, 0);
     up.user_memory = true;
-    draw_state(up);                              // 10: user memory, counted apart
-    draw_state(up);                              // 11: never batched with the one before it
+    draw_state(up); // 10: user memory, counted apart
+    draw_state(up); // 11: never batched with the one before it
     // Redundant state sets: the shadowed denominators and the equal writes.
     for (unsigned i = 0; i < 3; ++i) state_write(StateSet::RenderState, 7, true, true);
     state_write(StateSet::RenderState, 7, true, false);
@@ -542,7 +595,9 @@ int main(int argc, char** argv) {
     // The two qualified pairs are reported explicitly, the second at zero.
     check(std::strstr(pairs_line, "cutout_pairs=2,0") != nullptr);
     const char* batch_line = last_line("draw_batch frame=");
-    check(std::strstr(batch_line, "draw_batch frame=300 same_mesh=2 same_mesh_any_range=1 same_material=1 up=2 draws=12") != nullptr);
+    check(std::strstr(batch_line,
+                      "draw_batch frame=300 same_mesh=2 same_mesh_any_range=1 same_material=1 up=2 draws=12") !=
+          nullptr);
     const char* counted = last_line("frame_timing qpc=");
     check(std::strstr(counted, "state_redundant=5,1,4 state_shadowed=6,2,4 redundant_top=7:3,14:2") != nullptr);
 
@@ -565,7 +620,8 @@ int main(int argc, char** argv) {
     check(std::strstr(overflow_line, "draw_pairs frame=600 draws=68 draw_pairs_overflow=4") != nullptr);
     check(std::strstr(overflow_line, "cutout_pairs=1,0") != nullptr);
     check(std::strstr(last_line("draw_batch frame="),
-                      "draw_batch frame=600 same_mesh=2 same_mesh_any_range=0 same_material=0 up=0 draws=68") != nullptr);
+                      "draw_batch frame=600 same_mesh=2 same_mesh_any_range=0 same_material=0 up=0 draws=68") !=
+          nullptr);
     check(std::strstr(last_line("frame_timing qpc="),
                       "state_redundant=0,0,0 state_shadowed=0,0,0 redundant_top=none") != nullptr);
 
@@ -574,7 +630,8 @@ int main(int argc, char** argv) {
     // the production scope with the stand-in reading the host monotonic clock
     // in place of QueryPerformanceCounter.
     if (argc > 1 && !std::strcmp(argv[1], "--cost")) {
-        cost_per_call(false); cost_per_call(true); // warm up
+        cost_per_call(false);
+        cost_per_call(true); // warm up
         const double off = cost_per_call(false);
         state_stamps = 0; // the default: the state call is counted, not stamped
         const double counted = cost_per_call(true);

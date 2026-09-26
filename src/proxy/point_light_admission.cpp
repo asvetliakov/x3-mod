@@ -34,7 +34,10 @@ std::atomic<std::uint32_t> outcomes[outcome_count]{};
 // thread; an entry is valid only for the current frame serial, which Present
 // and Reset bump (next_frame). A stale or colliding entry costs one walk.
 constexpr unsigned memo_size = 256;
-struct Memo { std::uint32_t node, light, frame; std::uint32_t admit; };
+struct Memo {
+    std::uint32_t node, light, frame;
+    std::uint32_t admit;
+};
 Memo memo[memo_size]{};
 std::atomic<std::uint32_t> frame_serial{1};
 std::atomic<std::uint32_t> memo_hits{0}, walks{0};
@@ -42,11 +45,18 @@ std::atomic<std::uint32_t> memo_hits{0}, walks{0};
 // nodes of a frame whose sampling was enabled by begin_frame(true); logged at
 // present(). Fixed storage, written by the submission thread only.
 constexpr unsigned max_samples = 64;
-struct Sample { std::uint32_t node, root; unsigned depth; std::int32_t dist, reach, root_dist, root_reach, node_scale, root_scale; Outcome verdict; };
+struct Sample {
+    std::uint32_t node, root;
+    unsigned depth;
+    std::int32_t dist, reach, root_dist, root_reach, node_scale, root_scale;
+    Outcome verdict;
+};
 Sample samples[max_samples]{};
 std::atomic<std::uint32_t> sample_count{0};
 std::atomic<bool> sampling{false};
-inline std::int32_t clip32(std::int64_t v) { return v > INT32_MAX ? INT32_MAX : v < INT32_MIN ? INT32_MIN : std::int32_t(v); }
+inline std::int32_t clip32(std::int64_t v) {
+    return v > INT32_MAX ? INT32_MAX : v < INT32_MIN ? INT32_MIN : std::int32_t(v);
+}
 inline unsigned memo_slot(std::uint32_t node, std::uint32_t light) {
     return ((node >> 4) * 0x9e3779b1u ^ (light >> 4) * 0x85ebca6bu) >> 24;
 }
@@ -68,11 +78,13 @@ bool swap(void* code, const unsigned char* bytes, bool* atomic) {
 bool pin_self() {
     HMODULE module = nullptr;
     return GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_PIN,
-                              reinterpret_cast<LPCWSTR>(&patched_), &module) != FALSE && module != nullptr;
+                              reinterpret_cast<LPCWSTR>(&patched_), &module) != FALSE &&
+           module != nullptr;
 }
 bool bytes_match(std::uintptr_t at, const unsigned char* expected, unsigned length) {
     unsigned char actual[window_length]{};
-    return length <= window_length && engine_patch::read_code(at, actual, length) && !std::memcmp(actual, expected, length);
+    return length <= window_length && engine_patch::read_code(at, actual, length) &&
+           !std::memcmp(actual, expected, length);
 }
 bool read_engine(std::uint32_t address, void* out, unsigned size) {
     return x3m::engine_memory::read(address, out, size);
@@ -105,10 +117,14 @@ extern "C" int x3m_point_light_root_admits(std::uint32_t node, std::uint32_t lig
             if (!read_engine(node + scale_offset, &node_scale, 4)) node_scale = 0;
             if (!read_engine(light + range_offset, &range, 4)) range = 0;
             Sample& s = samples[index];
-            s.node = node; s.root = detail.root; s.depth = detail.depth;
+            s.node = node;
+            s.root = detail.root;
+            s.depth = detail.depth;
             s.reach = std::int32_t(range + node_scale);
-            s.dist = std::int32_t(std::uint32_t(remainder) + range + node_scale);   // the engine's trunc(sqrt) value, reconstructed from the remainder
-            s.node_scale = std::int32_t(node_scale); s.root_scale = detail.root_scale;
+            s.dist = std::int32_t(std::uint32_t(remainder) + range + node_scale); // the engine's trunc(sqrt) value,
+                                                                                  // reconstructed from the remainder
+            s.node_scale = std::int32_t(node_scale);
+            s.root_scale = detail.root_scale;
             s.root_dist = clip32(std::int64_t(isqrt64(detail.root_dist_sq)));
             s.root_reach = clip32(detail.root_reach);
             s.verdict = outcome;
@@ -117,55 +133,78 @@ extern "C" int x3m_point_light_root_admits(std::uint32_t node, std::uint32_t lig
     }
     SetLastError(error);
     const bool admit = outcome == Outcome::admitted;
-    slot.frame = 0; // key and verdict first, the frame last: a reader on another thread never pairs a stale verdict with a fresh key
-    slot.node = node; slot.light = light; slot.admit = admit ? 1u : 0u;
+    slot.frame = 0; // key and verdict first, the frame last: a reader on another thread never pairs a stale verdict
+                    // with a fresh key
+    slot.node = node;
+    slot.light = light;
+    slot.admit = admit ? 1u : 0u;
     slot.frame = frame;
     return admit;
 }
 
 namespace x3m::point_light_admission {
 bool install_at(std::uintptr_t site) {
-    if (patched_) { state_ = "already_installed"; return false; }
-    const std::uintptr_t window = site - site_offset, admit = site + site_length, reject = admit + std::uint32_t(site_rel32);
+    if (patched_) {
+        state_ = "already_installed";
+        return false;
+    }
+    const std::uintptr_t window = site - site_offset, admit = site + site_length,
+                         reject = admit + std::uint32_t(site_rel32);
     const char* reason = nullptr;
     write_ = "none";
-    if (!site || window > site) reason = "invalid_site";
-    else if (!engine_patch::install_window_open()) reason = "late_claim";
-    else if (!bytes_match(window, expected_window, window_length) || !bytes_match(reject, expected_reject_prefix, reject_prefix_length)) reason = "bytes_mismatch";
-    else if (!pin_self()) reason = "pin_failed";
+    if (!site || window > site)
+        reason = "invalid_site";
+    else if (!engine_patch::install_window_open())
+        reason = "late_claim";
+    else if (!bytes_match(window, expected_window, window_length) ||
+             !bytes_match(reject, expected_reject_prefix, reject_prefix_length))
+        reason = "bytes_mismatch";
+    else if (!pin_self())
+        reason = "pin_failed";
     if (!reason) {
         engine_patch::Emitter e(detour_length + 4);
-        if (!e.ok()) reason = "arena_full";
+        if (!e.ok())
+            reason = "arena_full";
         else {
             unsigned char detour[detour_length];
             const std::uint32_t at = std::uint32_t(reinterpret_cast<std::uintptr_t>(e.here()));
-            encode_detour(at, std::uint32_t(reinterpret_cast<std::uintptr_t>(&x3m_point_light_root_admits)), std::uint32_t(admit), std::uint32_t(reject),
+            encode_detour(at, std::uint32_t(reinterpret_cast<std::uintptr_t>(&x3m_point_light_root_admits)),
+                          std::uint32_t(admit), std::uint32_t(reject),
                           std::uint32_t(reinterpret_cast<std::uintptr_t>(&x3m_point_light_fast_admit)), detour);
             e.bytes(detour, detour_length);
-            if (!e.finish()) reason = "emit_failed";
-            else detour_ = at;
+            if (!e.finish())
+                reason = "emit_failed";
+            else
+                detour_ = at;
         }
     }
     if (!reason) {
         std::memcpy(original, expected_site, site_length);
         encode_site_patch(std::uint32_t(site), std::uint32_t(detour_), replacement);
         auto* code = reinterpret_cast<unsigned char*>(site);
-        if (!protect(code, PAGE_EXECUTE_READWRITE, &site_protection)) reason = "protect_failed";
+        if (!protect(code, PAGE_EXECUTE_READWRITE, &site_protection))
+            reason = "protect_failed";
         else {
-            patched_ = true; site_ = site; // ownership published before the mutation, so a failed rollback stays registered
+            patched_ = true;
+            site_ = site; // ownership published before the mutation, so a failed rollback stays registered
             bool atomic = false;
             const bool flushed = swap(code, replacement, &atomic);
             write_ = atomic ? "atomic" : "plain";
             unsigned char current[site_length]{};
-            const bool verified = flushed && engine_patch::read_code(site, current, site_length) && !std::memcmp(current, replacement, site_length);
+            const bool verified = flushed && engine_patch::read_code(site, current, site_length) &&
+                                  !std::memcmp(current, replacement, site_length);
             DWORD unused = 0;
             const bool protected_again = protect(code, site_protection, &unused);
             if (!verified || !protected_again) {
                 DWORD writable = 0;
-                if (protect(code, PAGE_EXECUTE_READWRITE, &writable) && swap(code, original, nullptr) && protect(code, site_protection, &unused)) {
-                    patched_ = false; reason = "patch_rolled_back";
-                } else reason = "rollback_failed"; // live bytes kept registered for shutdown()
-            } else reason = "ok";
+                if (protect(code, PAGE_EXECUTE_READWRITE, &writable) && swap(code, original, nullptr) &&
+                    protect(code, site_protection, &unused)) {
+                    patched_ = false;
+                    reason = "patch_rolled_back";
+                } else
+                    reason = "rollback_failed"; // live bytes kept registered for shutdown()
+            } else
+                reason = "ok";
         }
     }
     state_ = reason;
@@ -173,17 +212,28 @@ bool install_at(std::uintptr_t site) {
 }
 bool initialize() {
     const DWORD error = GetLastError();
-    if (patched_) { SetLastError(error); return true; }
+    if (patched_) {
+        SetLastError(error);
+        return true;
+    }
     wchar_t setting[4]{};
     const DWORD length = x3m::config::get(L"X3M_POINT_LIGHT_ROOT_ADMISSION", setting, 4);
-    if (length == 0) { state_ = "disabled"; SetLastError(error); return false; }
+    if (length == 0) {
+        state_ = "disabled";
+        SetLastError(error);
+        return false;
+    }
     bool applied = false;
     const bool requested = length == 1 && setting[0] == L'1';
-    if (!requested) state_ = "disabled";
-    else if (!object_trace::executable_verified()) state_ = "executable_mismatch";
-    else applied = install_at(site_va);
+    if (!requested)
+        state_ = "disabled";
+    else if (!object_trace::executable_verified())
+        state_ = "executable_mismatch";
+    else
+        applied = install_at(site_va);
     log("point_light_root_admission requested=%u patched=%u reason=%s write=%s site=0x%08lx detour=0x%08lx handler=0x%08lx",
-        requested ? 1u : 0u, patched_ ? 1u : 0u, state_, write_, static_cast<unsigned long>(site_va), static_cast<unsigned long>(patched_ ? detour_ : 0),
+        requested ? 1u : 0u, patched_ ? 1u : 0u, state_, write_, static_cast<unsigned long>(site_va),
+        static_cast<unsigned long>(patched_ ? detour_ : 0),
         static_cast<unsigned long>(reinterpret_cast<std::uintptr_t>(&x3m_point_light_root_admits)));
     SetLastError(error);
     return applied;
@@ -193,11 +243,17 @@ bool shutdown() {
     const DWORD error = GetLastError();
     unsigned char current[site_length]{};
     if (!engine_patch::read_code(site_, current, site_length) || std::memcmp(current, replacement, site_length)) {
-        state_ = "restore_not_owned"; SetLastError(error); return false;
+        state_ = "restore_not_owned";
+        SetLastError(error);
+        return false;
     }
     auto* code = reinterpret_cast<unsigned char*>(site_);
     DWORD previous = 0, unused = 0;
-    if (!protect(code, PAGE_EXECUTE_READWRITE, &previous)) { state_ = "restore_protect_failed"; SetLastError(error); return false; }
+    if (!protect(code, PAGE_EXECUTE_READWRITE, &previous)) {
+        state_ = "restore_protect_failed";
+        SetLastError(error);
+        return false;
+    }
     const bool flushed = swap(code, original, nullptr);
     const bool protected_again = protect(code, site_protection, &unused);
     patched_ = false; // the detour stays in the arena (a thread may still be inside it)
@@ -205,10 +261,18 @@ bool shutdown() {
     SetLastError(error);
     return flushed && protected_again;
 }
-const char* state() { return state_; }
-const char* write_path() { return write_; }
-std::uintptr_t detour_address() { return patched_ ? detour_ : 0; }
-void next_frame() { frame_serial.fetch_add(1, std::memory_order_relaxed); }
+const char* state() {
+    return state_;
+}
+const char* write_path() {
+    return write_;
+}
+std::uintptr_t detour_address() {
+    return patched_ ? detour_ : 0;
+}
+void next_frame() {
+    frame_serial.fetch_add(1, std::memory_order_relaxed);
+}
 void begin_frame(bool capture) {
     if (!patched_) return;
     sampling.store(capture, std::memory_order_relaxed);
@@ -216,33 +280,41 @@ void begin_frame(bool capture) {
 Stats stats() {
     Stats s{};
     for (unsigned i = 0; i < outcome_count; ++i) s.outcomes[i] = outcomes[i].load(std::memory_order_relaxed);
-    s.walks = walks.load(std::memory_order_relaxed); s.memo_hits = memo_hits.load(std::memory_order_relaxed);
+    s.walks = walks.load(std::memory_order_relaxed);
+    s.memo_hits = memo_hits.load(std::memory_order_relaxed);
     s.fast_admit = x3m_point_light_fast_admit;
-    s.reject = s.walks + s.memo_hits; s.tests = s.fast_admit + s.reject;
+    s.reject = s.walks + s.memo_hits;
+    s.tests = s.fast_admit + s.reject;
     s.frame = frame_serial.load(std::memory_order_relaxed);
     s.samples = sample_count.load(std::memory_order_relaxed);
     return s;
 }
 void present(unsigned long long device, unsigned long long frame, bool captured) {
-    if (!patched_) { next_frame(); return; }
+    if (!patched_) {
+        next_frame();
+        return;
+    }
     const DWORD error = GetLastError();
     const Stats s = stats();
     log("point_light_admission_frame device=%llu frame=%llu tests=%lu fast_admit=%lu reject=%lu walks=%lu memo_hits=%lu root_admit=%lu root_reject=%lu chain_unreadable=%lu chain_too_deep=%lu chain_cycle=%lu node_is_root=%lu root_unreadable=%lu light_unreadable=%lu reach_negative=%lu samples=%lu",
-        device, frame, (unsigned long)s.tests, (unsigned long)s.fast_admit, (unsigned long)s.reject, (unsigned long)s.walks, (unsigned long)s.memo_hits,
-        (unsigned long)s.outcomes[0], (unsigned long)s.outcomes[8], (unsigned long)s.outcomes[2], (unsigned long)s.outcomes[3], (unsigned long)s.outcomes[4],
-        (unsigned long)s.outcomes[1], (unsigned long)s.outcomes[5], (unsigned long)s.outcomes[6], (unsigned long)s.outcomes[7], (unsigned long)s.samples);
+        device, frame, (unsigned long)s.tests, (unsigned long)s.fast_admit, (unsigned long)s.reject,
+        (unsigned long)s.walks, (unsigned long)s.memo_hits, (unsigned long)s.outcomes[0], (unsigned long)s.outcomes[8],
+        (unsigned long)s.outcomes[2], (unsigned long)s.outcomes[3], (unsigned long)s.outcomes[4],
+        (unsigned long)s.outcomes[1], (unsigned long)s.outcomes[5], (unsigned long)s.outcomes[6],
+        (unsigned long)s.outcomes[7], (unsigned long)s.samples);
     if (captured) {
         const std::uint32_t count = sample_count.load(std::memory_order_relaxed);
         for (std::uint32_t i = 0; i < count && i < max_samples; ++i) {
             const Sample& x = samples[i];
             log("point_light_node device=%llu frame=%llu node=%08lx root=%08lx depth=%u dist=%ld reach=%ld root_dist=%ld root_reach=%ld verdict=%s node_scale=%ld root_scale=%ld",
-                device, frame, (unsigned long)x.node, (unsigned long)x.root, x.depth, (long)x.dist, (long)x.reach, (long)x.root_dist, (long)x.root_reach,
-                outcome_name(x.verdict), (long)x.node_scale, (long)x.root_scale);
+                device, frame, (unsigned long)x.node, (unsigned long)x.root, x.depth, (long)x.dist, (long)x.reach,
+                (long)x.root_dist, (long)x.root_reach, outcome_name(x.verdict), (long)x.node_scale, (long)x.root_scale);
         }
     }
     // Reset for the next frame (the submission thread is idle between Present and the next frame's draws).
     for (unsigned i = 0; i < outcome_count; ++i) outcomes[i].store(0, std::memory_order_relaxed);
-    walks.store(0, std::memory_order_relaxed); memo_hits.store(0, std::memory_order_relaxed);
+    walks.store(0, std::memory_order_relaxed);
+    memo_hits.store(0, std::memory_order_relaxed);
     x3m_point_light_fast_admit = 0;
     sample_count.store(0, std::memory_order_relaxed);
     sampling.store(false, std::memory_order_relaxed);

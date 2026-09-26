@@ -2,19 +2,21 @@
 // d3d9-free arithmetic of the volumetric sun fog (docs/architecture/volumetric-fog.md,
 // "Stage 1 implementation"), compiled natively by
 // verification/analysis/test_fog_pass_math.py: option ranges, the
-// strength ladder (the fixture seam's; its Ctrl+Alt+F10 key was removed 2026-09-26), the sun radiance from the tracked light's colour words, the
-// capability decision and the sector latch of the automatic rule.
+// strength ladder (the fixture seam's; its Ctrl+Alt+F10 key was removed 2026-09-26), the sun radiance from the tracked
+// light's colour words, the capability decision and the sector latch of the automatic rule.
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
 namespace x3m::renderer {
-constexpr float fog_strength_default = .02f, fog_strength_min = 0.f, fog_strength_max = .1f; // tau_max
+constexpr float fog_strength_default = .02f, fog_strength_min = 0.f, fog_strength_max = .1f;      // tau_max
 constexpr float fog_anisotropy_default = .3f, fog_anisotropy_min = 0.f, fog_anisotropy_max = .9f; // Henyey-Greenstein g
 constexpr float fog_radius_default = 10000.f; // view units; 99.98 % of the density lies inside cascade 3 (84k units)
-// volumetric_fog_step (a fixture seam since the Ctrl+Alt+F10 key was removed 2026-09-26) steps through these; a launcher value between two steps moves to the next one above it.
+// volumetric_fog_step (a fixture seam since the Ctrl+Alt+F10 key was removed 2026-09-26) steps through these; a
+// launcher value between two steps moves to the next one above it.
 constexpr float fog_strength_steps[] = {.005f, .01f, .02f, .03f, .05f};
 inline float fog_strength_next(float current) noexcept {
-    for (float step : fog_strength_steps) if (step > current + 1e-6f) return step;
+    for (float step : fog_strength_steps)
+        if (step > current + 1e-6f) return step;
     return fog_strength_steps[0];
 }
 // E_sun in linear light from the engine's sun light node colour words
@@ -36,7 +38,10 @@ inline bool fog_sun_radiance(const std::int32_t colour[3], float out[3]) noexcep
 }
 // The neutral stand-in while the light node cannot be read (foreign
 // executable, poll off): colour words 256 (Color0 = 1), E = pi.
-inline void fog_sun_radiance_fallback(float out[3]) noexcept { const std::int32_t white[3] = {256, 256, 256}; fog_sun_radiance(white, out); }
+inline void fog_sun_radiance_fallback(float out[3]) noexcept {
+    const std::int32_t white[3] = {256, 256, 256};
+    fog_sun_radiance(white, out);
+}
 // Upper bound of the radiance one pixel can gain (the fixture's energy bound):
 // hue <= 4, F <= 1, phase <= p_HG(cos = 1).
 inline double fog_phase(double g, double cosine) noexcept {
@@ -49,13 +54,13 @@ inline bool fog_shadow_current(std::uint64_t frame, std::uint64_t map_frame) noe
 }
 inline bool fog_shadow_rows(const float rows[12], float bias) noexcept {
     if (!std::isfinite(bias) || bias < 0.f || bias > 1.f) return false;
-    for (unsigned r=0;r<3;++r) {
-        double norm=0;
-        for(unsigned c=0;c<4;++c) {
-            if (!std::isfinite(rows[4*r+c])) return false;
-            if(c<3) norm+=double(rows[4*r+c])*rows[4*r+c];
+    for (unsigned r = 0; r < 3; ++r) {
+        double norm = 0;
+        for (unsigned c = 0; c < 4; ++c) {
+            if (!std::isfinite(rows[4 * r + c])) return false;
+            if (c < 3) norm += double(rows[4 * r + c]) * rows[4 * r + c];
         }
-        if (!(norm>0) || norm>1e12) return false;
+        if (!(norm > 0) || norm > 1e12) return false;
     }
     return true;
 }
@@ -103,24 +108,33 @@ inline FogFailureAction fog_failure_action(bool device_lost, bool targets_stage,
 }
 class FogSectorLatch {
 public:
-    void card(std::uint64_t frame) noexcept { seen_ = true; last_card_ = frame; }
+    void card(std::uint64_t frame) noexcept {
+        seen_ = true;
+        last_card_ = frame;
+    }
     // A camera cut at this frame's scene end (the route's cut detector: a gate
     // jump, a load, a view switch): the hold ends at once unless a card was
     // bound in this very frame (the cards are the scene's last draws, so a cut
     // inside a fog sector keeps the latch); the weight still ramps down.
-    void cut(std::uint64_t frame) noexcept { if (last_card_ != frame) seen_ = false; }
+    void cut(std::uint64_t frame) noexcept {
+        if (last_card_ != frame) seen_ = false;
+    }
     // Once per frame at the scene end.
     float update(std::uint64_t frame) noexcept {
         const bool on = seen_ && frame >= last_card_ && frame - last_card_ <= fog_card_hold;
         const std::uint64_t elapsed = primed_ && frame > last_update_ ? frame - last_update_ : 1;
         const float step = float(elapsed > fog_card_ramp ? fog_card_ramp : elapsed) / float(fog_card_ramp);
         weight_ = on ? (weight_ + step > 1.f ? 1.f : weight_ + step) : (weight_ - step < 0.f ? 0.f : weight_ - step);
-        last_update_ = frame; primed_ = true;
+        last_update_ = frame;
+        primed_ = true;
         return weight_;
     }
     float weight() const noexcept { return weight_; }
-    bool cards_recent(std::uint64_t frame) const noexcept { return seen_ && frame >= last_card_ && frame - last_card_ <= fog_card_hold; }
+    bool cards_recent(std::uint64_t frame) const noexcept {
+        return seen_ && frame >= last_card_ && frame - last_card_ <= fog_card_hold;
+    }
     void reset() noexcept { *this = {}; }
+
 private:
     std::uint64_t last_card_ = 0, last_update_ = 0;
     float weight_ = 0.f;

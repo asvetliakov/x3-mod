@@ -45,15 +45,17 @@ inline bool shadow_cascade_min_footprint_valid(double px) noexcept {
 // (the option off, an inactive cascade, or an unusable cascade).
 struct ShadowCascadeFootprintLaw {
     unsigned count = 0;
-    float px = 0.f;                                          // the option's value, for the log line
+    float px = 0.f;                                           // the option's value, for the log line
     float min_units[shadow_cascade_footprint_max_cascades]{}; // 0: cascade k is not gated
     bool gates() const noexcept {
-        for (unsigned i = 0; i < count && i < shadow_cascade_footprint_max_cascades; ++i) if (min_units[i] > 0.f) return true;
+        for (unsigned i = 0; i < count && i < shadow_cascade_footprint_max_cascades; ++i)
+            if (min_units[i] > 0.f) return true;
         return false;
     }
     bool operator==(const ShadowCascadeFootprintLaw& o) const noexcept {
         if (count != o.count || px != o.px) return false;
-        for (unsigned i = 0; i < shadow_cascade_footprint_max_cascades; ++i) if (min_units[i] != o.min_units[i]) return false;
+        for (unsigned i = 0; i < shadow_cascade_footprint_max_cascades; ++i)
+            if (min_units[i] != o.min_units[i]) return false;
         return true;
     }
     bool operator!=(const ShadowCascadeFootprintLaw& o) const noexcept { return !(*this == o); }
@@ -64,8 +66,9 @@ struct ShadowCascadeFootprintLaw {
 // the screen term out (the texel floor alone still holds, being a property of
 // the map). False and a cleared law when the option is off or the inputs are
 // unusable: the gate then drops nothing.
-inline bool shadow_cascade_footprint_law(float px, float m00, unsigned width, const float* extents, const unsigned* sizes,
-                                        const unsigned* active, unsigned count, ShadowCascadeFootprintLaw& out) noexcept {
+inline bool shadow_cascade_footprint_law(float px, float m00, unsigned width, const float* extents,
+                                         const unsigned* sizes, const unsigned* active, unsigned count,
+                                         ShadowCascadeFootprintLaw& out) noexcept {
     out = ShadowCascadeFootprintLaw{};
     if (!shadow_cascade_min_footprint_valid(double(px)) || !extents || !sizes) return false;
     if (!count || count > shadow_cascade_footprint_max_cascades) return false;
@@ -73,14 +76,16 @@ inline bool shadow_cascade_footprint_law(float px, float m00, unsigned width, co
     // small-parts cull's scale): usable only with a live perspective latch.
     const bool screen_ok = std::isfinite(m00) && m00 > .05f && m00 < 20.f && width >= 16 && width <= 16384;
     const double per_pixel = screen_ok ? 2. / (double(m00) * double(width)) : 0.;
-    out.count = count; out.px = px;
+    out.count = count;
+    out.px = px;
     float previous = 0.f; // the nearest active cascade below k, its half-extent
     for (unsigned k = 0; k < count; ++k) {
         const bool on = !active || ((*active >> k) & 1u) != 0;
         const float e = extents[k];
         const unsigned size = sizes[k];
         if (!on || !std::isfinite(e) || !(e > 0.f) || !size) continue;
-        const double screen = double(px) * double(shadow_cascade_footprint_select_margin) * double(previous) * per_pixel;
+        const double screen = double(px) * double(shadow_cascade_footprint_select_margin) * double(previous) *
+                              per_pixel;
         const double texel = double(shadow_cascade_footprint_texels) * 2. * double(e) / double(size);
         const double min_units = screen > texel ? screen : texel;
         out.min_units[k] = std::isfinite(min_units) ? float(min_units) : 0.f;
@@ -91,7 +96,8 @@ inline bool shadow_cascade_footprint_law(float px, float m00, unsigned width, co
 // The drop decision for one caster and one cascade: `footprint` is the largest
 // of the two lateral sides of its sun-space AABB, in world units. A caster
 // whose footprint is unknown (0 or nonfinite: no extent read yet) is kept.
-inline bool shadow_cascade_footprint_drops(const ShadowCascadeFootprintLaw& law, unsigned cascade, float footprint) noexcept {
+inline bool shadow_cascade_footprint_drops(const ShadowCascadeFootprintLaw& law, unsigned cascade,
+                                           float footprint) noexcept {
     if (cascade >= law.count || cascade >= shadow_cascade_footprint_max_cascades) return false;
     const float min_units = law.min_units[cascade];
     if (!(min_units > 0.f) || !(footprint > 0.f) || !std::isfinite(footprint)) return false;
@@ -101,14 +107,16 @@ inline bool shadow_cascade_footprint_drops(const ShadowCascadeFootprintLaw& law,
 // `refused`, the bits the gate removed. `footprints` holds one measure per
 // cascade (the per-cascade suns each form their own box; one shared box
 // repeats its value).
-inline unsigned shadow_cascade_footprint_gate(const ShadowCascadeFootprintLaw& law, unsigned mask, const float* footprints, unsigned* refused = nullptr) noexcept {
+inline unsigned shadow_cascade_footprint_gate(const ShadowCascadeFootprintLaw& law, unsigned mask,
+                                              const float* footprints, unsigned* refused = nullptr) noexcept {
     if (refused) *refused = 0;
     if (!law.count || !footprints || !mask) return mask;
     unsigned out = mask, dropped = 0;
     for (unsigned k = 0; k < law.count && k < shadow_cascade_footprint_max_cascades; ++k) {
         if (!((mask >> k) & 1u)) continue;
         if (!shadow_cascade_footprint_drops(law, k, footprints[k])) continue;
-        out &= ~(1u << k); dropped |= 1u << k;
+        out &= ~(1u << k);
+        dropped |= 1u << k;
     }
     if (refused) *refused = dropped;
     return out;

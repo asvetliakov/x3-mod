@@ -23,6 +23,16 @@ void* emit(const void* handler, unsigned index, void*** next_out);
 // handler by contract. Same preconditions as `emit`: no x87 save, so the
 // handler executes no x87 opcode and the x87 stack is never touched.
 constexpr unsigned context_reserve = 176, context_emitted = 128;
-enum SavedRegister : unsigned { SavedEdi = 0, SavedEsi, SavedEbp, SavedEsp, SavedEbx, SavedEdx, SavedEcx, SavedEax, SavedEflags };
+enum SavedRegister : unsigned {
+    SavedEdi = 0,
+    SavedEsi,
+    SavedEbp,
+    SavedEsp,
+    SavedEbx,
+    SavedEdx,
+    SavedEcx,
+    SavedEax,
+    SavedEflags
+};
 void* emit_context(const void* handler, unsigned index, void*** next_out);
 }

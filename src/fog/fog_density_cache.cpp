@@ -27,24 +27,35 @@ constexpr std::int64_t kFar = std::int64_t(1) << 40; // beyond any reachable nod
 // Node keys fit int32 for every admitted camera (|p| <= 1e12 render units: |p/512| < 2^31); the
 // int32 conversion keeps the i686 build on SSE2 (a double -> int64 conversion goes through x87).
 // Truncate-and-correct floor (cvttsd2si): no CRT floor call, whose cdecl double return is an x87 move.
-inline std::int32_t floor_i32(double q) noexcept { const std::int32_t t = static_cast<std::int32_t>(q); return t - (q < double(t) ? 1 : 0); }
-inline std::int64_t floor_node(double q) noexcept { return floor_i32(q); }
+inline std::int32_t floor_i32(double q) noexcept {
+    const std::int32_t t = static_cast<std::int32_t>(q);
+    return t - (q < double(t) ? 1 : 0);
+}
+inline std::int64_t floor_node(double q) noexcept {
+    return floor_i32(q);
+}
 inline bool admitted(const double camera[3]) noexcept {
     for (int a = 0; a < 3; ++a)
-        if (!(camera[a] <= kCameraLimit && camera[a] >= -kCameraLimit)) return false; // ordered compares: NaN is refused
+        if (!(camera[a] <= kCameraLimit && camera[a] >= -kCameraLimit))
+            return false; // ordered compares: NaN is refused
     return true;
 }
-inline std::int64_t key_axis(const NodeKey& k, int a) noexcept { return a == 0 ? k.x : a == 1 ? k.y : k.z; }
+inline std::int64_t key_axis(const NodeKey& k, int a) noexcept {
+    return a == 0 ? k.x : a == 1 ? k.y : k.z;
+}
 // Hand-over instrumentation, integer microseconds only (no x87 on i686).
 inline std::int64_t now_us() noexcept {
-    return std::int64_t(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now().time_since_epoch()).count());
+    return std::int64_t(
+        std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now().time_since_epoch())
+            .count());
 }
 // The calling thread's CPU time (kernel + user); -1 when the platform does not report it.
 std::int64_t thread_cpu_us() noexcept {
 #ifdef _WIN32
     FILETIME created, exited, kernel, user;
     if (!GetThreadTimes(GetCurrentThread(), &created, &exited, &kernel, &user)) return -1;
-    const std::uint64_t k = std::uint64_t(kernel.dwHighDateTime) << 32 | kernel.dwLowDateTime, u = std::uint64_t(user.dwHighDateTime) << 32 | user.dwLowDateTime;
+    const std::uint64_t k = std::uint64_t(kernel.dwHighDateTime) << 32 | kernel.dwLowDateTime,
+                        u = std::uint64_t(user.dwHighDateTime) << 32 | user.dwLowDateTime;
     return std::int64_t((k + u) / 10);
 #else
     timespec t{};
@@ -52,7 +63,7 @@ std::int64_t thread_cpu_us() noexcept {
     return std::int64_t(t.tv_sec) * 1000000 + std::int64_t(t.tv_nsec) / 1000;
 #endif
 }
-}  // namespace
+} // namespace
 
 // --- Boxes ---------------------------------------------------------------
 
@@ -75,8 +86,12 @@ std::uint64_t NodeBox::nodes() const noexcept {
     for (int a = 0; a < 3; ++a) n *= std::uint64_t(hi[a] - lo[a] + 1);
     return n;
 }
-NodeBox empty_box() noexcept { return {{0, 0, 0}, {-1, -1, -1}}; }
-NodeBox universe_box() noexcept { return {{-kFar, -kFar, -kFar}, {kFar, kFar, kFar}}; }
+NodeBox empty_box() noexcept {
+    return {{0, 0, 0}, {-1, -1, -1}};
+}
+NodeBox universe_box() noexcept {
+    return {{-kFar, -kFar, -kFar}, {kFar, kFar, kFar}};
+}
 NodeBox intersect(const NodeBox& a, const NodeBox& b) noexcept {
     if (a.empty() || b.empty()) return empty_box();
     NodeBox r;
@@ -138,8 +153,10 @@ std::size_t plan_jobs(const NodeBox& slab, int level, const double camera[3], Jo
                 job.box = {{x, y, z}, {x1, y1, z1}};
                 job.distance2 = 0;
                 for (int a = 0; a < 3; ++a) {
-                    // Converted one by one: lo + hi leaves int32 beyond 5.5e11 units, and an int64 conversion would be x87.
-                    const double d = .5 * (double(std::int32_t(job.box.lo[a])) + double(std::int32_t(job.box.hi[a]))) - camera[a] / delta;
+                    // Converted one by one: lo + hi leaves int32 beyond 5.5e11 units, and an int64 conversion would be
+                    // x87.
+                    const double d = .5 * (double(std::int32_t(job.box.lo[a])) + double(std::int32_t(job.box.hi[a]))) -
+                                     camera[a] / delta;
                     job.distance2 += d * d;
                 }
                 x = x1 + 1;
@@ -161,8 +178,13 @@ bool next_slab(const NodeBox& have, const NodeBox& want, const NodeBox& need, No
                 const bool urgent = !need.empty() && (side ? need.hi[a] > have.hi[a] : need.lo[a] < have.lo[a]);
                 if (!missing || (pass == 0 && !urgent)) continue;
                 slab = have;
-                if (side) { slab.lo[a] = have.hi[a] + 1; slab.hi[a] = want.hi[a]; }
-                else { slab.lo[a] = want.lo[a]; slab.hi[a] = have.lo[a] - 1; }
+                if (side) {
+                    slab.lo[a] = have.hi[a] + 1;
+                    slab.hi[a] = want.hi[a];
+                } else {
+                    slab.lo[a] = want.lo[a];
+                    slab.hi[a] = have.lo[a] - 1;
+                }
                 return true;
             }
     return false;
@@ -217,7 +239,9 @@ bool DensityCache::start() noexcept {
     if (!pinned.load(std::memory_order_relaxed)) {
         static const char anchor = 0;
         HMODULE module = nullptr;
-        if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_PIN | GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS, reinterpret_cast<LPCWSTR>(&anchor), &module)) return false;
+        if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_PIN | GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
+                                reinterpret_cast<LPCWSTR>(&anchor), &module))
+            return false;
         pinned.store(true, std::memory_order_relaxed);
     }
 #endif
@@ -228,7 +252,8 @@ bool DensityCache::start() noexcept {
     stop_flag_.store(false);
     try {
 #ifdef X3M_FOG_DENSITY_TEST_HOOKS
-        if (test_fail_thread_.load()) throw std::system_error(std::make_error_code(std::errc::resource_unavailable_try_again));
+        if (test_fail_thread_.load())
+            throw std::system_error(std::make_error_code(std::errc::resource_unavailable_try_again));
 #endif
         sync().thread = std::thread([this] { run(); });
     } catch (...) {
@@ -246,7 +271,8 @@ void DensityCache::stop() noexcept {
     if (!running_) return;
     stop_flag_.store(true);
     std::unique_lock<std::mutex> lock(sync().mutex, std::defer_lock);
-    for (int attempt = 0; attempt < 250 && !lock.try_lock(); ++attempt) std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    for (int attempt = 0; attempt < 250 && !lock.try_lock(); ++attempt)
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
     if (!lock.owns_lock()) { // held for far longer than any commit: the holder is gone
         abandon();
         return;
@@ -293,7 +319,8 @@ void DensityCache::commit_locked(int level, const NodeBox& job, const std::uint1
     std::uint8_t* atlas = cache_[level];
     const int group = storage_index(job.lo[2]) / kLanes;
     const int sx0 = storage_index(job.lo[0]), sy0 = storage_index(job.lo[1]);
-    const int nx = int(job.hi[0] - job.lo[0]) + 1, ny = int(job.hi[1] - job.lo[1]) + 1, nz = int(job.hi[2] - job.lo[2]) + 1;
+    const int nx = int(job.hi[0] - job.lo[0]) + 1, ny = int(job.hi[1] - job.lo[1]) + 1,
+              nz = int(job.hi[2] - job.lo[2]) + 1;
     const int tile_x = (group % kGroupsPerRow) * kTileTexels, tile_y = (group / kGroupsPerRow) * kTileTexels;
     for (int z = 0; z < nz; ++z) {
         const std::size_t lane = std::size_t(storage_index(job.lo[2] + z) % kLanes) * 2;
@@ -303,7 +330,8 @@ void DensityCache::commit_locked(int level, const NodeBox& job, const std::uint1
                 const std::uint8_t bytes[2] = {std::uint8_t(word & 0xff), std::uint8_t(word >> 8)};
                 const int sx = sx0 + x, sy = sy0 + y;
                 auto put = [&](int tx, int ty) {
-                    std::uint8_t* at = atlas + std::size_t(tile_y + ty) * kAtlasPitch + std::size_t(tile_x + tx) * kTexelBytes + lane;
+                    std::uint8_t* at = atlas + std::size_t(tile_y + ty) * kAtlasPitch +
+                                       std::size_t(tile_x + tx) * kTexelBytes + lane;
                     at[0] = bytes[0];
                     at[1] = bytes[1];
                 };
@@ -317,33 +345,55 @@ void DensityCache::commit_locked(int level, const NodeBox& job, const std::uint1
     dirty_locked(level, group, 0, sx0, sy0, sx0 + nx - 1, sy0 + ny - 1);
     if (sx0 == 0) dirty_locked(level, group, kTileRegions - 2, kWindowNodes, sy0, kWindowNodes, sy0 + ny - 1);
     if (sy0 == 0) dirty_locked(level, group, kTileRegions - 1, sx0, kWindowNodes, sx0 + nx - 1, kWindowNodes);
-    if (sy0 == 0 && sx0 == 0) dirty_locked(level, group, kTileRegions - 1, kWindowNodes, kWindowNodes, kWindowNodes, kWindowNodes); // corner rides with the row
+    if (sy0 == 0 && sx0 == 0)
+        dirty_locked(level, group, kTileRegions - 1, kWindowNodes, kWindowNodes, kWindowNodes, kWindowNodes); // corner
+                                                                                                              // rides
+                                                                                                              // with
+                                                                                                              // the row
 }
 void DensityCache::dirty_locked(int level, int group, int region, int x0, int y0, int x1, int y1) noexcept {
     TileDirty& tile = shared_[level].tiles[group];
     auto unite = [](Region& r, int ax0, int ay0, int ax1, int ay1) {
-        r.x0 = std::min(r.x0, ax0); r.y0 = std::min(r.y0, ay0);
-        r.x1 = std::max(r.x1, ax1); r.y1 = std::max(r.y1, ay1);
+        r.x0 = std::min(r.x0, ax0);
+        r.y0 = std::min(r.y0, ay0);
+        r.x1 = std::max(r.x1, ax1);
+        r.y1 = std::max(r.y1, ay1);
     };
     auto area = [](int ax0, int ay0, int ax1, int ay1) { return (ax1 - ax0 + 1) * (ay1 - ay0 + 1); };
     if (region != 0) { // border strips: one bounding box each
         Region& r = tile.region[region];
-        if (r.dirty) unite(r, x0, y0, x1, y1); else r = {x0, y0, x1, y1, true};
+        if (r.dirty)
+            unite(r, x0, y0, x1, y1);
+        else
+            r = {x0, y0, x1, y1, true};
     } else {
         const int body = kTileRegions - 2;
         Region* slot = nullptr;
         for (int i = 0; i < body; ++i) {
             Region& r = tile.region[i];
-            if (!r.dirty) { if (!slot) slot = &r; continue; }
-            const int ux0 = std::min(r.x0, x0), uy0 = std::min(r.y0, y0), ux1 = std::max(r.x1, x1), uy1 = std::max(r.y1, y1);
-            if (area(ux0, uy0, ux1, uy1) <= area(r.x0, r.y0, r.x1, r.y1) + area(x0, y0, x1, y1)) { r = {ux0, uy0, ux1, uy1, true}; slot = &r; x0 = -1; break; }
+            if (!r.dirty) {
+                if (!slot) slot = &r;
+                continue;
+            }
+            const int ux0 = std::min(r.x0, x0), uy0 = std::min(r.y0, y0), ux1 = std::max(r.x1, x1),
+                      uy1 = std::max(r.y1, y1);
+            if (area(ux0, uy0, ux1, uy1) <= area(r.x0, r.y0, r.x1, r.y1) + area(x0, y0, x1, y1)) {
+                r = {ux0, uy0, ux1, uy1, true};
+                slot = &r;
+                x0 = -1;
+                break;
+            }
         }
         if (x0 >= 0) {
-            if (slot) *slot = {x0, y0, x1, y1, true};
+            if (slot)
+                *slot = {x0, y0, x1, y1, true};
             else { // full: collapse the body to one bounding box
                 Region& first = tile.region[0];
                 unite(first, x0, y0, x1, y1);
-                for (int i = 1; i < body; ++i) { unite(first, tile.region[i].x0, tile.region[i].y0, tile.region[i].x1, tile.region[i].y1); tile.region[i].dirty = false; }
+                for (int i = 1; i < body; ++i) {
+                    unite(first, tile.region[i].x0, tile.region[i].y0, tile.region[i].x1, tile.region[i].y1);
+                    tile.region[i].dirty = false;
+                }
             }
         }
     }
@@ -354,7 +404,8 @@ void DensityCache::dirty_locked(int level, int group, int region, int x0, int y0
     }
 }
 
-bool DensityCache::fill_slab(int level, const NodeBox& slab, std::uint64_t epoch, const WorldOffset& offset, const double camera[3]) noexcept {
+bool DensityCache::fill_slab(int level, const NodeBox& slab, std::uint64_t epoch, const WorldOffset& offset,
+                             const double camera[3]) noexcept {
     const std::size_t count = plan_jobs(slab, level, camera, jobs_, kMaxJobs);
     const double delta = kLevelDelta[level];
     for (std::size_t j = 0; j < count; ++j) {
@@ -366,7 +417,10 @@ bool DensityCache::fill_slab(int level, const NodeBox& slab, std::uint64_t epoch
         for (key.z = box.lo[2]; key.z <= box.hi[2]; ++key.z)
             for (key.y = box.lo[1]; key.y <= box.hi[1]; ++key.y)
                 for (key.x = box.lo[0]; key.x <= box.hi[0]; ++key.x) *word++ = node_word(delta, key, offset);
-        busy_us_.fetch_add(std::uint64_t(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - begin).count()), std::memory_order_relaxed);
+        busy_us_.fetch_add(std::uint64_t(std::chrono::duration_cast<std::chrono::microseconds>(
+                                             std::chrono::steady_clock::now() - begin)
+                                             .count()),
+                           std::memory_order_relaxed);
         {
             std::lock_guard<std::mutex> lock(sync().mutex);
             if (request_.stop || request_.epoch != epoch) return false;
@@ -395,7 +449,10 @@ bool DensityCache::work_once(bool& idle) noexcept {
         worker_busy_base_ = std::int64_t(busy_us_.load(std::memory_order_relaxed));
         worker_cpu_base_ = thread_cpu_us();
     }
-    if (!request.camera_valid) { idle_serial_.store(request.serial, std::memory_order_relaxed); return true; }
+    if (!request.camera_valid) {
+        idle_serial_.store(request.serial, std::memory_order_relaxed);
+        return true;
+    }
     // Far need first (it gates drawing), then fine need, then the background growth
     // to the full window, fine first because its margin is the tighter one.
     int level = -1;
@@ -404,17 +461,25 @@ bool DensityCache::work_once(bool& idle) noexcept {
     // Cold fill: the far box must hold the need box with the readiness guard before the whole-atlas latch, so the
     // latched level is steppable at once (a prefill centred elsewhere extends toward it under the hold).
     const NodeBox far_target = request.cold_hold ? grow(need[1], kReadinessGuard) : need[1];
-    if (!worker_[1].box.contains(far_target)) level = 1;
-    else if (!worker_[0].box.contains(need[0])) level = 0;
+    if (!worker_[1].box.contains(far_target))
+        level = 1;
+    else if (!worker_[0].box.contains(need[0]))
+        level = 0;
     for (int l : {0, 1})
-        if (level < 0 && (retarget_needed(l, worker_[l].origin, request.camera) || !(worker_[l].box == window_box(worker_[l].origin)))) level = l;
+        if (level < 0 && (retarget_needed(l, worker_[l].origin, request.camera) ||
+                          !(worker_[l].box == window_box(worker_[l].origin))))
+            level = l;
     // Cold fill: only the far need box until the render thread has latched it (whole atlas).
-    if (level < 0 || (request.cold_hold && !(level == 1 && !worker_[1].box.contains(far_target)))) { idle_serial_.store(request.serial, std::memory_order_relaxed); return true; }
+    if (level < 0 || (request.cold_hold && !(level == 1 && !worker_[1].box.contains(far_target)))) {
+        idle_serial_.store(request.serial, std::memory_order_relaxed);
+        return true;
+    }
     idle = false;
     WorkerLevel& state = worker_[level];
     const bool first = state.box.empty();
     if (first || retarget_needed(level, state.origin, request.camera)) {
-        const NodeKey origin = window_origin(kLevelDelta[level], request.camera[0], request.camera[1], request.camera[2]);
+        const NodeKey origin = window_origin(kLevelDelta[level], request.camera[0], request.camera[1],
+                                             request.camera[2]);
         const NodeBox window = window_box(origin);
         {
             std::lock_guard<std::mutex> lock(sync().mutex);
@@ -441,7 +506,10 @@ bool DensityCache::work_once(bool& idle) noexcept {
         // nodes before the latch. The growth to the full window resumes once the latch releases the hold.
         NodeBox want = window;
         if (level == 1 && request.cold_hold)
-            for (int a = 0; a < 3; ++a) { want.lo[a] = std::max(window.lo[a], std::min(state.box.lo[a], far_target.lo[a])); want.hi[a] = std::min(window.hi[a], std::max(state.box.hi[a], far_target.hi[a])); }
+            for (int a = 0; a < 3; ++a) {
+                want.lo[a] = std::max(window.lo[a], std::min(state.box.lo[a], far_target.lo[a]));
+                want.hi[a] = std::min(window.hi[a], std::max(state.box.hi[a], far_target.hi[a]));
+            }
         if (!next_slab(state.box, want, level == 1 ? far_target : need[level], slab)) return true;
         grown = state.box;
         for (int a = 0; a < 3; ++a) {
@@ -449,8 +517,12 @@ bool DensityCache::work_once(bool& idle) noexcept {
             grown.hi[a] = std::max(grown.hi[a], slab.hi[a]);
         }
     }
-    if (slab.empty() || slab.nodes() > std::uint64_t(kWindowNodes) * kWindowNodes * kWindowNodes) { idle = true; return true; } // unreachable by construction
-    if (!fill_slab(level, slab, worker_epoch_, request.offset, request.camera)) return !stop_flag_.load(std::memory_order_relaxed);
+    if (slab.empty() || slab.nodes() > std::uint64_t(kWindowNodes) * kWindowNodes * kWindowNodes) {
+        idle = true;
+        return true;
+    } // unreachable by construction
+    if (!fill_slab(level, slab, worker_epoch_, request.offset, request.camera))
+        return !stop_flag_.load(std::memory_order_relaxed);
     // The epoch's first far box holding the need box: when, and the worker's busy and CPU time until then.
     const bool far_need = level == 1 && !worker_far_published_ && grown.contains(need[1]);
     std::int64_t far_at = -1, far_busy = -1, far_cpu = -1;
@@ -467,7 +539,11 @@ bool DensityCache::work_once(bool& idle) noexcept {
         shared_[level].box = grown;
         shared_[level].box_seq = shared_[level].commit_seq;
         publication_pending_.store(true, std::memory_order_relaxed);
-        if (far_need) { far_published_us_ = far_at; far_fill_busy_us_ = far_busy; far_fill_cpu_us_ = far_cpu; }
+        if (far_need) {
+            far_published_us_ = far_at;
+            far_fill_busy_us_ = far_busy;
+            far_fill_cpu_us_ = far_cpu;
+        }
     }
     if (far_need) worker_far_published_ = true;
     state.box = grown;
@@ -532,7 +608,10 @@ void DensityCache::invalidate() noexcept {
     pending_.cold_fill = handover_cold_fill_;
     pending_invalidate_ = true;
     std::unique_lock<std::mutex> lock(sync().mutex, std::try_to_lock);
-    if (!lock.owns_lock()) { ++missed_locks_; return; }
+    if (!lock.owns_lock()) {
+        ++missed_locks_;
+        return;
+    }
     post_locked();
     lock.unlock();
     sync().wake.notify_one();
@@ -541,11 +620,17 @@ bool DensityCache::prefill(const CacheIdentity& identity, const double camera[3]
     if (!(running_ || stepped_) || !admitted(camera)) return false;
     // A prefill is always a cold start (run273 case A): the same identity re-centred at the destination's
     // origin steps and latches like a new one, instead of the warm ramp a lost residency would run.
-    if (identity == identity_) invalidate(); else configure(identity);
+    if (identity == identity_)
+        invalidate();
+    else
+        configure(identity);
     for (int a = 0; a < 3; ++a) camera_[a] = camera[a];
     pending_camera_ = true;
     std::unique_lock<std::mutex> lock(sync().mutex, std::try_to_lock);
-    if (!lock.owns_lock()) { ++missed_locks_; return false; }
+    if (!lock.owns_lock()) {
+        ++missed_locks_;
+        return false;
+    }
     post_locked();
     lock.unlock();
     sync().wake.notify_one();
@@ -583,13 +668,19 @@ FrameState DensityCache::step(const double camera[3], std::uint64_t frame) noexc
     std::uint64_t elapsed = !frame_primed_ ? 1 : frame > last_frame_ ? frame - last_frame_ : 0;
     if (elapsed > kReadinessRampFrames) elapsed = kReadinessRampFrames;
     const float ramp = float(elapsed) / float(kReadinessRampFrames);
-    if (cold_frame_pending_) { pending_.arm_frame = frame; cold_frame_pending_ = false; }
+    if (cold_frame_pending_) {
+        pending_.arm_frame = frame;
+        cold_frame_pending_ = false;
+    }
     for (int l = 0; l < kLevelCount; ++l) {
         const bool hard = resident_[l] && gpu_box_[l].contains(need[l]);
         const bool soft = hard && gpu_box_[l].contains(grow(need[l], kReadinessGuard));
-        if (!hard) ready_[l] = 0;
-        else if (soft) ready_[l] = l == 1 && cold_step_ ? 1.f : std::min(1.f, ready_[l] + ramp); // cold start: step, not ramp
-        else ready_[l] = std::max(0.f, ready_[l] - ramp);
+        if (!hard)
+            ready_[l] = 0;
+        else if (soft)
+            ready_[l] = l == 1 && cold_step_ ? 1.f : std::min(1.f, ready_[l] + ramp); // cold start: step, not ramp
+        else
+            ready_[l] = std::max(0.f, ready_[l] - ramp);
         out.ready[l] = ready_[l];
         out.resident[l] = hard;
         camera_local(l, camera, out.local[l]);
@@ -629,9 +720,13 @@ void DensityCache::gpu_reset() noexcept {
         ready_[l] = 0;
     }
 }
-unsigned DensityCache::take_uploads(const StagingView views[kLevelCount], std::size_t byte_budget, TileRect* out, unsigned capacity) noexcept {
+unsigned DensityCache::take_uploads(const StagingView views[kLevelCount], std::size_t byte_budget, TileRect* out,
+                                    unsigned capacity) noexcept {
     std::unique_lock<std::mutex> lock(sync().mutex, std::try_to_lock);
-    if (!lock.owns_lock()) { ++missed_locks_; return 0; }
+    if (!lock.owns_lock()) {
+        ++missed_locks_;
+        return 0;
+    }
     bool wake = pending_invalidate_ || pending_camera_;
     post_locked();
     unsigned count = 0;
@@ -677,8 +772,10 @@ unsigned DensityCache::take_uploads(const StagingView views[kLevelCount], std::s
         std::uint64_t flushed = s.commit_seq;
         unsigned reload_left = 0;
         const bool cold = l == 1 && cold_latch_;
-        if (cold && (s.box_seq == 0 || !views[l].bits || count == capacity || !s.box.contains(grow(need_box(l, camera_), kReadinessGuard)))) {
-            // Cold fill: nothing of the far level goes up before a box holding the posted camera's need box is published.
+        if (cold && (s.box_seq == 0 || !views[l].bits || count == capacity ||
+                     !s.box.contains(grow(need_box(l, camera_), kReadinessGuard)))) {
+            // Cold fill: nothing of the far level goes up before a box holding the posted camera's need box is
+            // published.
             reload_left_[l] = 1; // not resident before the whole-atlas latch
             unpublished = unpublished || s.box_seq != transferred_seq_[l];
             continue;
@@ -687,7 +784,8 @@ unsigned DensityCache::take_uploads(const StagingView views[kLevelCount], std::s
             // The whole far atlas in one rectangle, past the byte budget, once per cold start; the
             // fine level waits for the next latch. Dirty and reload state of every tile is covered.
             for (int y = 0; y < kAtlasHeight; ++y)
-                std::memcpy(views[l].bits + std::size_t(y) * views[l].pitch, cache_[l] + std::size_t(y) * kAtlasPitch, kAtlasPitch);
+                std::memcpy(views[l].bits + std::size_t(y) * views[l].pitch, cache_[l] + std::size_t(y) * kAtlasPitch,
+                            kAtlasPitch);
             out[count++] = TileRect{l, 0, 0, 0, kAtlasWidth, kAtlasHeight};
             bytes += kAtlasBytes;
             for (auto& tile : s.tiles) tile = {};
@@ -695,54 +793,70 @@ unsigned DensityCache::take_uploads(const StagingView views[kLevelCount], std::s
             full = true;
             pending_.whole_atlas = whole_in_flight_ = true;
             release_hold();
-        } else for (int g = 0; g < kTileCount; ++g) {
-            TileDirty& tile = s.tiles[g];
-            if (!tile.dirty) continue;
-            bool remaining = false;
-            for (Region& r : tile.region) {
-                if (!r.dirty) continue;
-                TileRect rect{l, g, (g % kGroupsPerRow) * kTileTexels + r.x0, (g / kGroupsPerRow) * kTileTexels + r.y0, r.x1 - r.x0 + 1, r.y1 - r.y0 + 1};
-                if (!views[l].bits || full || count == capacity || bytes + rect.bytes() > byte_budget) {
-                    full = full || views[l].bits != nullptr;
-                    remaining = true;
-                    continue;
+        } else
+            for (int g = 0; g < kTileCount; ++g) {
+                TileDirty& tile = s.tiles[g];
+                if (!tile.dirty) continue;
+                bool remaining = false;
+                for (Region& r : tile.region) {
+                    if (!r.dirty) continue;
+                    TileRect rect{l,
+                                  g,
+                                  (g % kGroupsPerRow) * kTileTexels + r.x0,
+                                  (g / kGroupsPerRow) * kTileTexels + r.y0,
+                                  r.x1 - r.x0 + 1,
+                                  r.y1 - r.y0 + 1};
+                    if (!views[l].bits || full || count == capacity || bytes + rect.bytes() > byte_budget) {
+                        full = full || views[l].bits != nullptr;
+                        remaining = true;
+                        continue;
+                    }
+                    for (int y = 0; y < rect.height; ++y)
+                        std::memcpy(views[l].bits + std::size_t(rect.y + y) * views[l].pitch +
+                                        std::size_t(rect.x) * kTexelBytes,
+                                    cache_[l] + std::size_t(rect.y + y) * kAtlasPitch +
+                                        std::size_t(rect.x) * kTexelBytes,
+                                    std::size_t(rect.width) * kTexelBytes);
+                    bytes += rect.bytes();
+                    out[count++] = rect;
+                    r.dirty = false;
                 }
-                for (int y = 0; y < rect.height; ++y)
-                    std::memcpy(views[l].bits + std::size_t(rect.y + y) * views[l].pitch + std::size_t(rect.x) * kTexelBytes,
-                                cache_[l] + std::size_t(rect.y + y) * kAtlasPitch + std::size_t(rect.x) * kTexelBytes, std::size_t(rect.width) * kTexelBytes);
-                bytes += rect.bytes();
-                out[count++] = rect;
-                r.dirty = false;
+                if (remaining) {
+                    flushed = std::min(flushed, tile.first_seq - 1);
+                    reload_left += tile.reload;
+                } else {
+                    tile.dirty = tile.reload = false;
+                    dirty_tiles_[l].fetch_sub(1, std::memory_order_relaxed);
+                }
             }
-            if (remaining) {
-                flushed = std::min(flushed, tile.first_seq - 1);
-                reload_left += tile.reload;
-            } else {
-                tile.dirty = tile.reload = false;
-                dirty_tiles_[l].fetch_sub(1, std::memory_order_relaxed);
-            }
-        }
         reload_left_[l] = reload_left + (reupload_[l] ? 1u : 0u);
         if (s.box_seq != transferred_seq_[l] && flushed >= s.box_seq) {
             candidate_box_[l] = s.box;
             candidate_seq_[l] = s.box_seq;
             candidate_valid_[l] = true;
         }
-        unpublished = unpublished || (s.box_seq != transferred_seq_[l] && !(candidate_valid_[l] && candidate_seq_[l] == s.box_seq));
+        unpublished = unpublished ||
+                      (s.box_seq != transferred_seq_[l] && !(candidate_valid_[l] && candidate_seq_[l] == s.box_seq));
     }
     publication_pending_.store(unpublished, std::memory_order_relaxed);
     lock.unlock();
     if (wake) sync().wake.notify_one();
     upload_bytes_ += bytes;
     upload_rects_ += count;
-    if (cold_ && count && pending_.drawable_us < 0) { ++pending_.latches; pending_.upload_bytes += bytes; }
+    if (cold_ && count && pending_.drawable_us < 0) {
+        ++pending_.latches;
+        pending_.upload_bytes += bytes;
+    }
     return count;
 }
 void DensityCache::confirm_uploads(bool succeeded) noexcept {
     if (!succeeded) {
         // The copies handed out may not have reached the GPU: upload everything again. A lost whole-atlas latch
         // is taken again (the report counts the latch that reached the GPU).
-        if (whole_in_flight_ && cold_) { cold_latch_ = handover_cold_fill_; pending_.whole_atlas = false; }
+        if (whole_in_flight_ && cold_) {
+            cold_latch_ = handover_cold_fill_;
+            pending_.whole_atlas = false;
+        }
         whole_in_flight_ = false;
         gpu_reset();
         return;
@@ -771,5 +885,5 @@ CacheStats DensityCache::stats() const noexcept {
     return s;
 }
 
-}  // namespace fog
-}  // namespace x3m
+} // namespace fog
+} // namespace x3m

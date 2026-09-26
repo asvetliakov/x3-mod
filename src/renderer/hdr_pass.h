@@ -32,13 +32,13 @@ namespace x3m::renderer {
 struct HdrCaps {
     bool enabled = false;
     const char* reason = "off";
-    HRESULT fp16_target = S_FALSE;       // CheckDeviceFormat RENDERTARGET, A16B16G16R16F texture
-    HRESULT fp16_blending = S_FALSE;     // ... D3DUSAGE_QUERY_POSTPIXELSHADER_BLENDING
-    HRESULT fp16_filter = S_FALSE;       // ... D3DUSAGE_QUERY_FILTER (stage 2 bloom only; logged, not a gate)
-    HRESULT fp16_sampling = S_FALSE;     // ... usage 0 (the write-back samples the target)
-    HRESULT stretch_conversion = S_FALSE;// CheckDeviceFormatConversion A16B16G16R16F -> main format (unwind step 2)
-    bool mrt_blending = false;           // D3DPMISCCAPS_MRTPOSTPIXELSHADERBLENDING (informational)
-    unsigned self_test_targets = 0;      // formats the self test drew into (2 or 3)
+    HRESULT fp16_target = S_FALSE;        // CheckDeviceFormat RENDERTARGET, A16B16G16R16F texture
+    HRESULT fp16_blending = S_FALSE;      // ... D3DUSAGE_QUERY_POSTPIXELSHADER_BLENDING
+    HRESULT fp16_filter = S_FALSE;        // ... D3DUSAGE_QUERY_FILTER (stage 2 bloom only; logged, not a gate)
+    HRESULT fp16_sampling = S_FALSE;      // ... usage 0 (the write-back samples the target)
+    HRESULT stretch_conversion = S_FALSE; // CheckDeviceFormatConversion A16B16G16R16F -> main format (unwind step 2)
+    bool mrt_blending = false;            // D3DPMISCCAPS_MRTPOSTPIXELSHADERBLENDING (informational)
+    unsigned self_test_targets = 0;       // formats the self test drew into (2 or 3)
     char self_test_detail[448] = "-";
     // Stage 2: the tonemap and the meter gate themselves inside the enabled
     // feature (a refusal falls back to the identity write-back, never
@@ -80,9 +80,9 @@ struct HdrConfig {
     HdrTonemap tonemap = HdrTonemap::Identity;
     x3::temporal::AgxDecode decode = x3::temporal::AgxDecode::gamma22;
     x3::temporal::AgxLook look = x3::temporal::AgxLook::none;
-    float clamp_max = 0.f;               // <= 0: off (65504 uploaded)
+    float clamp_max = 0.f; // <= 0: off (65504 uploaded)
     ExposureMode exposure = ExposureMode::Auto;
-    bool allow_auto_toggle = false;      // prepare optional meter, even in fixed mode
+    bool allow_auto_toggle = false; // prepare optional meter, even in fixed mode
     float ev_manual = 0.f;
     ExposureParams params{};
     float fixed_dt = 0.f;
@@ -134,26 +134,38 @@ struct HdrDisplaySnapshot {
     // c23 is unused/default for an unsharpened draw, including its fallback.
     float sharpen = 0.f;
     x3::temporal::SharpenConstants sharpen_constants{};
-    bool resolved = false;              // the caller's non-null `source` was sampled
-    UINT width = 0, height = 0;          // dimensions used for the write-back quad
+    bool resolved = false;      // the caller's non-null `source` was sampled
+    UINT width = 0, height = 0; // dimensions used for the write-back quad
 };
 // The meter readback and adaptation step taken at a latch (begin_frame).
 struct HdrFrameBegin {
-    bool stepped = false;                // a meter of the previous frame was consumed
-    HRESULT readback = S_FALSE;          // LockRect of the ring surface (S_FALSE: nothing pending)
-    float avg_log_l = 0.f, dt = 0.f;     // what the step consumed (dt after the clamp; the statistic is in the state)
+    bool stepped = false;            // a meter of the previous frame was consumed
+    HRESULT readback = S_FALSE;      // LockRect of the ring surface (S_FALSE: nothing pending)
+    float avg_log_l = 0.f, dt = 0.f; // what the step consumed (dt after the clamp; the statistic is in the state)
     ReadbackTiming readback_timing{};
-    std::uint64_t ticks_readback = 0;    // the copy, the lock and the host statistic
+    std::uint64_t ticks_readback = 0; // the copy, the lock and the host statistic
 };
 // Fault injection points of the fixture seam (verification/probe/
 // motion_output_fixture.cpp, case 4 of the design's section 7): each kind
 // fires `count` times. Production builds never fire one (fault() is constant
 // false there); the enumeration exists in both so the call sites compile once.
 enum class HdrFault : unsigned {
-    None = 0, CapsTarget = 1, CapsBlending = 2, SelfTest = 3, Draw = 4, Lost = 5,
-    Stretch = 6, Restore = 7, TargetCreate = 8, Bind = 9, Clear = 10, // Clear: the latching Clear reports failure (consumed by MotionOutput)
-    TonemapDraw = 11, TonemapShader = 12, Meter = 13, // stage 2: the tonemap draw fails, its creation fails at attach, the chain fails
-    Resolve = 14, // stage 3: the temporal resolve on the FP16 scene fails (consumed by MotionOutput::resolve; the pass is not run)
+    None = 0,
+    CapsTarget = 1,
+    CapsBlending = 2,
+    SelfTest = 3,
+    Draw = 4,
+    Lost = 5,
+    Stretch = 6,
+    Restore = 7,
+    TargetCreate = 8,
+    Bind = 9,
+    Clear = 10, // Clear: the latching Clear reports failure (consumed by MotionOutput)
+    TonemapDraw = 11,
+    TonemapShader = 12,
+    Meter = 13,   // stage 2: the tonemap draw fails, its creation fails at attach, the chain fails
+    Resolve = 14, // stage 3: the temporal resolve on the FP16 scene fails (consumed by MotionOutput::resolve; the pass
+                  // is not run)
     ReadbackUnlock = 15, // seam only: report failure after the real unlock, without retaining a test mapping
     MeterTestUnlock = 16 // same returned-HRESULT injection for the attach self-test readback
 };
@@ -176,21 +188,30 @@ public:
     // the write-back shader (one device reference) and, when configured, the
     // tonemap and meter programs (each gated on its own, falling back to the
     // identity write-back). On failure of the feature nothing is kept.
-    void attach(IDirect3DDevice9* device, void* const* native, const D3DCAPS9& caps, D3DFORMAT main_format, bool with_depth) noexcept;
+    void attach(IDirect3DDevice9* device, void* const* native, const D3DCAPS9& caps, D3DFORMAT main_format,
+                bool with_depth) noexcept;
     bool enabled() const noexcept { return caps_.enabled; }
     const HdrCaps& caps() const noexcept { return caps_; }
     // The AgX write-back is in use (configured, created, self-tested and not
     // disabled after repeated draw failures); the meter chain runs with it in
     // auto exposure.
-    bool tonemap_active() const noexcept { return caps_.tonemap && tonemap_shader_ && tonemap_failures_ < tonemap_failure_limit; }
-    bool meter_active() const noexcept { return tonemap_active() && caps_.meter && config_.exposure == ExposureMode::Auto; }
+    bool tonemap_active() const noexcept {
+        return caps_.tonemap && tonemap_shader_ && tonemap_failures_ < tonemap_failure_limit;
+    }
+    bool meter_active() const noexcept {
+        return tonemap_active() && caps_.meter && config_.exposure == ExposureMode::Auto;
+    }
     // The sharpen programs are in use (configured, created and not disabled
     // after repeated draw failures); applied only to a resolved source.
-    bool sharpen_active() const noexcept { return caps_.sharpen && sharpen_shader_ && sharpen_failures_ < tonemap_failure_limit; }
+    bool sharpen_active() const noexcept {
+        return caps_.sharpen && sharpen_shader_ && sharpen_failures_ < tonemap_failure_limit;
+    }
     // The identity write-back program in use: the dithered twin when the
     // display dither is on and it was created, else the plain copy (which the
     // self test always uses).
-    IDirect3DPixelShader9* identity_shader() const noexcept { return caps_.dither && writeback_dither_shader_ ? writeback_dither_shader_ : shader_; }
+    IDirect3DPixelShader9* identity_shader() const noexcept {
+        return caps_.dither && writeback_dither_shader_ ? writeback_dither_shader_ : shader_;
+    }
     const ExposureState& exposure() const noexcept { return exposure_; }
     ExposureMode exposure_mode() const noexcept { return config_.exposure; }
     // At the latch of a frame (after the redirect bound): copies the previous
@@ -251,8 +272,9 @@ public:
     // populated only for a clean AgX shader write; identity, rebind-only and
     // every failed/unwound write leave it invalid. Snapshotting neither meters
     // nor adapts exposure, and a null output adds no copies or validation.
-    HdrWriteback write_back(IDirect3DSurface9* main, IDirect3DSurface9* final_rt0, bool scene_open, bool write, bool timing,
-                            IDirect3DTexture9* source = nullptr, HdrDisplaySnapshot* display = nullptr) noexcept;
+    HdrWriteback write_back(IDirect3DSurface9* main, IDirect3DSurface9* final_rt0, bool scene_open, bool write,
+                            bool timing, IDirect3DTexture9* source = nullptr,
+                            HdrDisplaySnapshot* display = nullptr) noexcept;
     // Device references held (target surface, the shaders, the quad vertex
     // program and declaration, the meter chain's level surfaces, ring targets
     // and readback surfaces).
@@ -260,7 +282,10 @@ public:
     void before_reset() noexcept { release_target(); }
     void shutdown() noexcept;
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
-    void set_fault(HdrFault kind, unsigned count) noexcept { fault_ = kind; fault_count_ = count; }
+    void set_fault(HdrFault kind, unsigned count) noexcept {
+        fault_ = kind;
+        fault_count_ = count;
+    }
     bool take_fault(HdrFault kind) noexcept { return fault(kind); }
     // FP16 target as floats (4 per pixel), row-major.
     HRESULT fixture_readback(float* out, std::size_t floats, UINT* width, UINT* height) noexcept;
@@ -273,33 +298,40 @@ private:
     struct Program {
         IDirect3DPixelShader9* shader = nullptr;
         const float* constants = nullptr;
-        const float* sharpen = nullptr;     // c23 when set (SharpenConstants::values)
+        const float* sharpen = nullptr; // c23 when set (SharpenConstants::values)
         bool meter = false;
         HRESULT meter_result = S_FALSE;
         std::uint64_t ticks_meter = 0;
         bool timing = false;
     };
     static constexpr unsigned tonemap_failure_limit = 3;
-    static constexpr unsigned chain_max_levels = 8;   // 4^8 = 65536 px per axis (levels before the tile image)
-    static constexpr unsigned constant_count = x3::temporal::kSharpenRegister + 1; // c0..c23 saved (meter c0..c3, AgX c8..c21, sharpen c23)
-    template<class Fn> Fn call(unsigned slot) const noexcept { return reinterpret_cast<Fn>(native_[slot]); }
+    static constexpr unsigned chain_max_levels = 8; // 4^8 = 65536 px per axis (levels before the tile image)
+    static constexpr unsigned constant_count = x3::temporal::kSharpenRegister + 1; // c0..c23 saved (meter c0..c3, AgX
+                                                                                   // c8..c21, sharpen c23)
+    template <class Fn> Fn call(unsigned slot) const noexcept { return reinterpret_cast<Fn>(native_[slot]); }
     bool self_test(bool with_depth, bool scene_open, char* detail, std::size_t detail_size) noexcept;
     HRESULT save(SavedState& saved) noexcept;
     HRESULT restore(const SavedState& saved, IDirect3DSurface9* rt0) noexcept;
-    HRESULT copy_draw(IDirect3DSurface9* source_target, IDirect3DTexture9* source_texture, IDirect3DSurface9* destination,
-                      UINT width, UINT height, IDirect3DSurface9* final_rt0, HRESULT* restoration,
-                      HRESULT injected_draw, bool injected_restore, Program* program = nullptr) noexcept;
+    HRESULT copy_draw(IDirect3DSurface9* source_target, IDirect3DTexture9* source_texture,
+                      IDirect3DSurface9* destination, UINT width, UINT height, IDirect3DSurface9* final_rt0,
+                      HRESULT* restoration, HRESULT injected_draw, bool injected_restore,
+                      Program* program = nullptr) noexcept;
     HRESULT meter_chain(IDirect3DTexture9* scene_texture, UINT width, UINT height, HRESULT injected) noexcept;
     HRESULT ensure_chain(UINT width, UINT height) noexcept;
     void release_chain() noexcept;
     void prepare_constants() noexcept;
-    HRESULT mrt_draw(IDirect3DSurface9* rt0, IDirect3DSurface9* rt1, IDirect3DSurface9* rt2, IDirect3DPixelShader9* shader,
-                     UINT width, UINT height, bool additive, HRESULT* restoration) noexcept;
+    HRESULT mrt_draw(IDirect3DSurface9* rt0, IDirect3DSurface9* rt1, IDirect3DSurface9* rt2,
+                     IDirect3DPixelShader9* shader, UINT width, UINT height, bool additive,
+                     HRESULT* restoration) noexcept;
     HRESULT bind_quad_program() noexcept;
     HRESULT quad(UINT width, UINT height) noexcept;
     std::uint64_t stamp(bool timing) const noexcept;
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
-    bool fault(HdrFault kind) noexcept { if (fault_ != kind || !fault_count_) return false; --fault_count_; return true; }
+    bool fault(HdrFault kind) noexcept {
+        if (fault_ != kind || !fault_count_) return false;
+        --fault_count_;
+        return true;
+    }
 #else
     static constexpr bool fault(HdrFault) noexcept { return false; }
 #endif
@@ -310,7 +342,7 @@ private:
     bool with_depth_ = false;
     HdrCaps caps_{};
     HdrConfig config_{};
-    IDirect3DPixelShader9* shader_ = nullptr;   // embedded ps_3_0 identity copy
+    IDirect3DPixelShader9* shader_ = nullptr;                  // embedded ps_3_0 identity copy
     IDirect3DPixelShader9* writeback_dither_shader_ = nullptr; // its display-dithered twin (X3M_HDR_DITHER)
     // The vs_3_0 pass-through and declaration of every quad this pass draws
     // (quad_vertex_program.h); created at attach, surviving Reset, one device
@@ -318,9 +350,9 @@ private:
     IDirect3DVertexShader9* quad_vs_ = nullptr;
     IDirect3DVertexDeclaration9* quad_declaration_ = nullptr;
     bool quad_fvf_ = false;
-    IDirect3DSurface9* target_ = nullptr;       // level 0 of the owned FP16 texture (its container is obtained per use)
+    IDirect3DSurface9* target_ = nullptr; // level 0 of the owned FP16 texture (its container is obtained per use)
     UINT width_ = 0, height_ = 0;
-    UINT last_width_ = 0, last_height_ = 0;     // dimensions of the last created target (exposure reset on change)
+    UINT last_width_ = 0, last_height_ = 0; // dimensions of the last created target (exposure reset on change)
     // Stage 2: the AgX program and its constant block, the meter programs,
     // the chain levels (level-0 surfaces of two-channel float textures,
     // containers obtained per use), the tile-image ring targets and their
@@ -338,19 +370,20 @@ private:
     x3::temporal::AgxConstants agx_{};
     IDirect3DSurface9* chain_[chain_max_levels]{};
     UINT chain_width_[chain_max_levels]{}, chain_height_[chain_max_levels]{};
-    unsigned chain_count_ = 0;                  // levels before the tile-image ring
-    UINT tile_width_ = 0, tile_height_ = 0;     // the ring's (tile image's) size
-    unsigned chain_texel_bytes_ = 0;            // 8 (G32R32F) or 16 (A32B32G32R32F)
-    IDirect3DSurface9* chain_ring_[2]{};        // tile-image render targets (level 0 of textures)
-    IDirect3DSurface9* chain_readback_[2]{};    // tile-image system-memory surfaces
-    std::unique_ptr<float[]> tile_mean_, tile_max_, tile_weight_;   // host copies and the centre weights, tile_capacity_ each
-    std::unique_ptr<TileSample[]> tile_scratch_;                     // the statistic's working copy
+    unsigned chain_count_ = 0;                                    // levels before the tile-image ring
+    UINT tile_width_ = 0, tile_height_ = 0;                       // the ring's (tile image's) size
+    unsigned chain_texel_bytes_ = 0;                              // 8 (G32R32F) or 16 (A32B32G32R32F)
+    IDirect3DSurface9* chain_ring_[2]{};                          // tile-image render targets (level 0 of textures)
+    IDirect3DSurface9* chain_readback_[2]{};                      // tile-image system-memory surfaces
+    std::unique_ptr<float[]> tile_mean_, tile_max_, tile_weight_; // host copies and the centre weights, tile_capacity_
+                                                                  // each
+    std::unique_ptr<TileSample[]> tile_scratch_;                  // the statistic's working copy
     unsigned tile_capacity_ = 0;
-    unsigned chain_slot_ = 0;                   // ring slot the current frame's chain writes
-    bool chain_pending_[2]{};                   // ring[slot] holds a meter not yet copied and consumed
+    unsigned chain_slot_ = 0; // ring slot the current frame's chain writes
+    bool chain_pending_[2]{}; // ring[slot] holds a meter not yet copied and consumed
     ExposureState exposure_{};
     unsigned tonemap_failures_ = 0;
-    std::uint64_t latch_ticks_ = 0;             // QPC of the previous begin_frame (0: none)
+    std::uint64_t latch_ticks_ = 0; // QPC of the previous begin_frame (0: none)
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     HdrFault fault_ = HdrFault::None;
     unsigned fault_count_ = 0;

@@ -32,7 +32,8 @@ void frame_impl(std::uint64_t frame, bool sampled, std::uint64_t views_us, std::
 // accumulation is discarded.
 inline void frame(std::uint64_t frame_index, bool sampled, std::uint64_t views_us, std::uint64_t view_setup_us,
                   std::uint64_t view_submit_us, std::uint32_t views) noexcept {
-    if (active.load(std::memory_order_relaxed)) detail::frame_impl(frame_index, sampled, views_us, view_setup_us, view_submit_us, views);
+    if (active.load(std::memory_order_relaxed))
+        detail::frame_impl(frame_index, sampled, views_us, view_setup_us, view_submit_us, views);
 }
 #ifdef X3M_GAME_PHASE_FIXTURE
 // The production install transaction on fixture spans (the fixture supplies
@@ -42,7 +43,7 @@ inline void frame(std::uint64_t frame_index, bool sampled, std::uint64_t views_u
 bool fixture_install(const engine_patch::SiteSpec* specs, const char** status);
 bool fixture_uninstall();
 void* fixture_emit(unsigned index, void*** next); // the production lean stub
-bool fixture_last_sample(detail::Sample* out);   // owner thread only
+bool fixture_last_sample(detail::Sample* out);    // owner thread only
 const detail::Accumulator* fixture_accumulator();
 const detail::Gate* fixture_gate();
 std::uint64_t fixture_dropped();

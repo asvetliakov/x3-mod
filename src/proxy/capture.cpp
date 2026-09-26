@@ -108,7 +108,8 @@ bool motion_capture_requested = false;
 bool motion_output_requested = false;
 bool motion_jitter_requested = false;
 bool taa_requested = false, taa_debug_requested = false;
-float taa_k_override = -1.f; // X3M_FIXTURE_TAA_K (seam DLL only): fixed k of the resolve's luminance weighting on the HDR path; negative (always in production): derived from the exposure
+float taa_k_override = -1.f; // X3M_FIXTURE_TAA_K (seam DLL only): fixed k of the resolve's luminance weighting on the
+                             // HDR path; negative (always in production): derived from the exposure
 // X3M_TAA_MIP_BIAS=<float> (default -0.5 with X3M_TAA=1, otherwise 0 = off,
 // bit-identical): D3DSAMP_MIPMAPLODBIAS the route applies to the mip-mapped
 // stages of routed draws while the jitter is on (docs/architecture/
@@ -120,13 +121,17 @@ float taa_mip_bias = 0.f;
 // temporal-integration.md, "Post-resolve sharpen"); an explicit 0 is off, with
 // bit-identical output. Off entirely without TAA.
 float taa_sharpen = 0.f;
-float taa_far[6] = {0.f, 0.f, 60.f, 68.f, .03f, .25f}; // X3M_TAA_FAR_STABILISER=W[,A[,F0,F1[,LO,HI]]]: far weight (0 off), far filter A (0 off), gate footprints, speed gate px/frame
+float taa_far[6] = {0.f,  0.f, 60.f, 68.f,
+                    .03f, .25f}; // X3M_TAA_FAR_STABILISER=W[,A[,F0,F1[,LO,HI]]]: far weight (0 off), far filter A (0
+                                 // off), gate footprints, speed gate px/frame
 float taa_thin_region[4] = {0.f, 1.f, .03f, .25f}; // X3M_TAA_THIN_REGION=W[,RELAX[,LO,HI]]
 bool taa_thin_gate_given = false;
-float taa_thin_emissive = 0.f; // X3M_TAA_THIN_REGION_EMISSIVE=E (thin-glow-lines.md 8.3 R3): emissive vote of the thin region (0 off)
-bool taa_thin_camera_gate = false; // the camera-relative gate (taa-lattice-crawl.md section 32.1): on whenever the thin region is
-bool taa_alpha_history = false;  // X3M_TAA_ALPHA_HISTORY=1
-float taa_history_weight = .9f;  // X3M_TAA_HISTORY_WEIGHT (0.5..0.98)
+float taa_thin_emissive = 0.f; // X3M_TAA_THIN_REGION_EMISSIVE=E (thin-glow-lines.md 8.3 R3): emissive vote of the thin
+                               // region (0 off)
+bool taa_thin_camera_gate = false; // the camera-relative gate (taa-lattice-crawl.md section 32.1): on whenever the thin
+                                   // region is
+bool taa_alpha_history = false;    // X3M_TAA_ALPHA_HISTORY=1
+float taa_history_weight = .9f;    // X3M_TAA_HISTORY_WEIGHT (0.5..0.98)
 // X3M_HDR=1 (default off; requires X3M_MOTION_OUTPUT=1): the FP16 HDR scene
 // path (docs/architecture/hdr-scene-path.md). Stage 2 switches, all
 // defaulting to the stage-1 identity behaviour: X3M_HDR_TONEMAP=agx|identity,
@@ -146,27 +151,48 @@ float taa_history_weight = .9f;  // X3M_TAA_HISTORY_WEIGHT (0.5..0.98)
 bool hdr_requested = false;
 bool linear_emission_requested = false;
 bool linear_distance_fade_requested = false;
-bool screen_emission_requested = false; // X3M_SCREEN_EMISSION=1: packed screen policy 8 (screen-emission-region.md step C)
-bool screen_emission_timing_requested = false; // X3M_SCREEN_EMISSION_TIMING=1: per-Present screen_emission_frame line, needs the option
-float screen_emission_gain = 1.f;       // X3M_SCREEN_EMISSION_GAIN: step E composition gain g, finite 0.5..8, default 1
-float emission_source_gain = 1.f;       // X3M_EMISSION_SOURCE_GAIN: source-only encoded gain of the twenty additive/screen emission pairs, finite 1..8, 1 = off (requires X3M_HDR=1)
-float hull_emission_gain = 1.f;         // X3M_HULL_EMISSION_GAIN: the same gain over the twelve hull programs' ADD ONE/ONE draws (emitter plan phase 3), finite 1..8, 1 = off (requires X3M_HDR=1 only; independent of the effects gain; its Ctrl+Shift+F4 key was removed 2026-09-26)
-float original_fill = 0.f;             // X3M_ORIGINAL_FILL: linear-light fill inside the original hull pixel programs, finite 0..0.5, 0 = off (requires X3M_HDR=1, excludes X3M_LINEAR_MATERIALS=1)
-bool lightmap_far_fade_requested = false; // X3M_LIGHT_MAP_FAR_FADE=P0,P1[,G]: the hull light-map gain fades to G (default 1) as the draw's footprint grows from P0 to P1 units/px; needs the gain
+bool screen_emission_requested = false; // X3M_SCREEN_EMISSION=1: packed screen policy 8 (screen-emission-region.md step
+                                        // C)
+bool screen_emission_timing_requested = false; // X3M_SCREEN_EMISSION_TIMING=1: per-Present screen_emission_frame line,
+                                               // needs the option
+float screen_emission_gain = 1.f; // X3M_SCREEN_EMISSION_GAIN: step E composition gain g, finite 0.5..8, default 1
+float emission_source_gain = 1.f; // X3M_EMISSION_SOURCE_GAIN: source-only encoded gain of the twenty additive/screen
+                                  // emission pairs, finite 1..8, 1 = off (requires X3M_HDR=1)
+float hull_emission_gain = 1.f;   // X3M_HULL_EMISSION_GAIN: the same gain over the twelve hull programs' ADD ONE/ONE
+                                  // draws (emitter plan phase 3), finite 1..8, 1 = off (requires X3M_HDR=1 only;
+                                  // independent of the effects gain; its Ctrl+Shift+F4 key was removed 2026-09-26)
+float original_fill = 0.f; // X3M_ORIGINAL_FILL: linear-light fill inside the original hull pixel programs, finite
+                           // 0..0.5, 0 = off (requires X3M_HDR=1, excludes X3M_LINEAR_MATERIALS=1)
+bool lightmap_far_fade_requested = false; // X3M_LIGHT_MAP_FAR_FADE=P0,P1[,G]: the hull light-map gain fades to G
+                                          // (default 1) as the draw's footprint grows from P0 to P1 units/px; needs the
+                                          // gain
 float lightmap_far_fade[3] = {0.f, 0.f, 1.f};
-bool sun_occlusion_core_f = true; // X3M_SUN_OCCLUSION_CORE_F: the clipped core bodies are also scaled by f (default on with the override; =0 restores clip-only)
-float sun_occlusion_radius = sun_occlusion::core::radius_default_u, sun_occlusion_curve = 1.f; // X3M_SUN_OCCLUSION_RADIUS (0.005..0.25, the disc's half-width as a fraction of the back-buffer width), X3M_SUN_OCCLUSION_CURVE (0.25..4, exponent on the used fraction)
-bool hull_emissive_widening_requested = false; // X3M_HULL_EMISSIVE_WIDENING=K[,B] (hull-emissive-widening.md 8.3): the light-map fetch of the gained hull variants widens to k x k px, k = clamp(K . texels per pixel, 1, K) per pixel, thin emitters boosted by B; needs the gain
+bool sun_occlusion_core_f = true; // X3M_SUN_OCCLUSION_CORE_F: the clipped core bodies are also scaled by f (default on
+                                  // with the override; =0 restores clip-only)
+float sun_occlusion_radius = sun_occlusion::core::radius_default_u,
+      sun_occlusion_curve = 1.f; // X3M_SUN_OCCLUSION_RADIUS (0.005..0.25, the disc's half-width as a fraction of the
+                                 // back-buffer width), X3M_SUN_OCCLUSION_CURVE (0.25..4, exponent on the used fraction)
+bool hull_emissive_widening_requested = false; // X3M_HULL_EMISSIVE_WIDENING=K[,B] (hull-emissive-widening.md 8.3): the
+                                               // light-map fetch of the gained hull variants widens to k x k px, k =
+                                               // clamp(K . texels per pixel, 1, K) per pixel, thin emitters boosted by
+                                               // B; needs the gain
 float hull_emissive_widening[2] = {1.f, 1.f};
-float hull_lightmap_gain = 1.f;        // X3M_HULL_LIGHTMAP_GAIN: gain on the light-map (self-illumination) term inside the original hull pixel programs, finite 1..8, 1 = off (requires X3M_HDR=1, excludes X3M_LINEAR_MATERIALS=1; the Ctrl+Shift+F4 key was removed 2026-09-26)
-bool screen_emission_additive_requested = false; // X3M_SCREEN_EMISSION_ADDITIVE=G: in-place ADD/ONE/ONE bullets with a colour gain (screen-emission-region.md, "Additive option")
+float hull_lightmap_gain = 1.f; // X3M_HULL_LIGHTMAP_GAIN: gain on the light-map (self-illumination) term inside the
+                                // original hull pixel programs, finite 1..8, 1 = off (requires X3M_HDR=1, excludes
+                                // X3M_LINEAR_MATERIALS=1; the Ctrl+Shift+F4 key was removed 2026-09-26)
+bool screen_emission_additive_requested = false; // X3M_SCREEN_EMISSION_ADDITIVE=G: in-place ADD/ONE/ONE bullets with a
+                                                 // colour gain (screen-emission-region.md, "Additive option")
 float screen_emission_additive_gain = 1.f;       // G, finite 1..8; anything else refuses the option
-bool bolt_footprint_requested = false; // X3M_BOLT_FOOTPRINT=W[,L]: minimum on-screen bolt width and length on the additive draws (bolt-footprint.md, option A', Run 73 B rule)
+bool bolt_footprint_requested = false; // X3M_BOLT_FOOTPRINT=W[,L]: minimum on-screen bolt width and length on the
+                                       // additive draws (bolt-footprint.md, option A', Run 73 B rule)
 float bolt_footprint_w = 3.f, bolt_footprint_l = 12.f;
-bool screen_emission_additive_alpha_requested = false; // X3M_SCREEN_EMISSION_ADDITIVE_ALPHA=K: per-source bloom attenuation of the additive draw (bloom-per-source-attenuation.md, option 1)
-float screen_emission_additive_alpha = 1.f;      // K, finite 0..1; absent or invalid keeps the native alpha law a + D.a
-unsigned fade_witness_frames = 0; // X3M_FADE_WITNESS=<k>, 0 = off
-unsigned fade_route_threshold = 500; // X3M_FADE_ROUTE=<permille>|off: fade-band motion arm threshold (fade_route_core.h), default 500
+bool screen_emission_additive_alpha_requested = false; // X3M_SCREEN_EMISSION_ADDITIVE_ALPHA=K: per-source bloom
+                                                       // attenuation of the additive draw
+                                                       // (bloom-per-source-attenuation.md, option 1)
+float screen_emission_additive_alpha = 1.f; // K, finite 0..1; absent or invalid keeps the native alpha law a + D.a
+unsigned fade_witness_frames = 0;           // X3M_FADE_WITNESS=<k>, 0 = off
+unsigned fade_route_threshold = 500;        // X3M_FADE_ROUTE=<permille>|off: fade-band motion arm threshold
+                                            // (fade_route_core.h), default 500
 // X3M_FPS_OVERLAY=1 or X3M_PERF=1 (comparison-hotkeys.md, "FPS overlay"; default
 // off): the frame-rate line on the presented image, shown for the whole session
 // (no key since 2026-09-26). Off, the Present path pays one branch.
@@ -185,10 +211,10 @@ bool volumetric_fog_requested = false, volumetric_fog_timing = false;
 // X3M_VOLUMETRIC_FOG_RANGE=legacy|stored (default legacy; fog-density-runtime-integration.md):
 // stored selects the two-level stored-density field with its 30-40 km horizon. Anything else is legacy.
 bool volumetric_fog_range_stored = false;
-// X3M_FOG_MARCH_SCALE=2|4 (docs/architecture/fog-gpu-cost.md, step C; launcher --fog-march-scale, default 4 since Run 77
-// C2): the stored look's march spacing in full pixels. Absent or exactly "4" selects the quarter-resolution programs (the
-// default); exactly "2" keeps the half-resolution march (the opt-out); any other value is logged as invalid and keeps the
-// default. The legacy range never reads the variable.
+// X3M_FOG_MARCH_SCALE=2|4 (docs/architecture/fog-gpu-cost.md, step C; launcher --fog-march-scale, default 4 since Run
+// 77 C2): the stored look's march spacing in full pixels. Absent or exactly "4" selects the quarter-resolution programs
+// (the default); exactly "2" keeps the half-resolution march (the opt-out); any other value is logged as invalid and
+// keeps the default. The legacy range never reads the variable.
 unsigned volumetric_fog_march_scale = x3m::renderer::fog_march_scale_default;
 // X3M_FOG_HANDOVER_STEP / X3M_FOG_HANDOVER_COLDFILL (docs/architecture/fog-handover.md, "Implementation"; launcher
 // --fog-handover-step / --fog-handover-coldfill, default on, exactly "0" is off): the stored range's cold-start
@@ -202,14 +228,15 @@ bool volumetric_fog_docked = false;
 // tail (fog_prefill.h) at most once per 250 ms and start the far fill of the destination sector. Stored range only.
 bool volumetric_fog_prefill = false;
 // X3M_FOG_DUST_MOTES=N,SIZE,STREAK (docs/architecture/fog-dust-motes.md; launcher --fog-dust-motes; absent under the
-// stored range: 1300,3,128 with MAX_PX 8 since 2026-09-23 after Run 70 B/B2, else off; 0 is the opt-out): the stored range's
-// near-camera dust motes, drawn after the repair; X3M_FOG_MOTES_MAX_PX is the one tunable left (the launcher sends 8).
-// Stored range only.
+// stored range: 1300,3,128 with MAX_PX 8 since 2026-09-23 after Run 70 B/B2, else off; 0 is the opt-out): the stored
+// range's near-camera dust motes, drawn after the repair; X3M_FOG_MOTES_MAX_PX is the one tunable left (the launcher
+// sends 8). Stored range only.
 x3m::renderer::FogMoteTuning volumetric_fog_motes{};
 // The single stored-range look: the accepted L2 constants of renderer::FogLookTuning (the X3M_FOG_LOOK_<NAME>
 // overrides were removed on 2026-09-26).
 x3m::renderer::FogLookTuning volumetric_fog_look_tuning{};
-float volumetric_fog_strength = x3m::renderer::fog_strength_default, volumetric_fog_anisotropy = x3m::renderer::fog_anisotropy_default;
+float volumetric_fog_strength = x3m::renderer::fog_strength_default,
+      volumetric_fog_anisotropy = x3m::renderer::fog_anisotropy_default;
 float emission_gain = 1.f;
 bool linear_material_requested = false;
 x3m::renderer::LinearMaterialConfig linear_material_config{};
@@ -226,7 +253,8 @@ bool motion_rt_lazy = false;
 unsigned motion_frame_log = 60;
 // X3M_SHADOW_TIMING=1 or X3M_PERF=1: shadow_replay_depth and sun_shadow_apply_frame every frame (logging tiers).
 bool shadow_timing_requested = false;
-// X3M_SHADOW_ROWS=1 or X3M_DEBUG=1: the five shadow/sun state rows every frame (logging tiers; the family cadence otherwise).
+// X3M_SHADOW_ROWS=1 or X3M_DEBUG=1: the five shadow/sun state rows every frame (logging tiers; the family cadence
+// otherwise).
 bool shadow_rows_requested = false;
 // X3M_STATE_SHADOW selects the render-state configuration (hybrid unhook,
 // docs/architecture/state-call-fast-path.md step 5). Unset (auto, -1): the
@@ -249,7 +277,8 @@ int motion_state_shadow = -1;
 // X3M_FIXTURE_TAA_SENTINEL=auto|1|2 (1: current-only; 2: strict, skip the
 // resolve without one) for the fixtures that pin those policies;
 // X3M_CAMERA_CUT_DEG bounds the camera rotation per frame before a cut is
-// declared (default 20); X3M_CAMERA_LOG is the camera_state line cadence (unset: capture frames only, 1 with X3M_DEBUG=1).
+// declared (default 20); X3M_CAMERA_LOG is the camera_state line cadence (unset: capture frames only, 1 with
+// X3M_DEBUG=1).
 x3m::renderer::SentinelMode taa_sentinel_mode = x3m::renderer::SentinelMode::Auto;
 float camera_cut_degrees = 20.f;
 // X3M_TAA_UNMATCHED_STATIC=node|all|off (requires X3M_TAA=1): a routed draw
@@ -271,25 +300,28 @@ bool taa_sky_history_strict = false;
 // at which the dilated sky band beside a silhouette stops taking its history.
 float taa_sky_history_band_px = 3.f;
 // X3M_TAA_SKY_HISTORY_EXIT_PX (0 off, else 0.125..the band threshold; default 0.25 under
-// strict since 2026-09-23 after Run 68 A, 0 without strict; docs/architecture/seta-sky-hull-share-decay.md): the exit reset's parallax floor,
-// px/frame at which a band pixel that took a silhouette's history is marked in the age
-// target and dropped the frame it leaves the band. Refused without strict; needs an age
-// program (far stabiliser or thin region), which motion_output judges.
+// strict since 2026-09-23 after Run 68 A, 0 without strict; docs/architecture/seta-sky-hull-share-decay.md): the exit
+// reset's parallax floor, px/frame at which a band pixel that took a silhouette's history is marked in the age target
+// and dropped the frame it leaves the band. Refused without strict; needs an age program (far stabiliser or thin
+// region), which motion_output judges.
 float taa_sky_history_exit_px = 0.f;
-// X3M_TAA_BOX_RESOLUTION (full|half; unset is full here, the launcher sends half by default on --taa launches since Run 82;
-// docs/architecture/taa-high-resolution.md S4): the camera gate's box at full or half resolution
+// X3M_TAA_BOX_RESOLUTION (full|half; unset is full here, the launcher sends half by default on --taa launches since Run
+// 82; docs/architecture/taa-high-resolution.md S4): the camera gate's box at full or half resolution
 // (TemporalPass::configure_box_resolution). Invalid or oversized: stays full, logged.
-// X3M_TAA_BOX_RESOLUTION_DEFAULT=1 marks a value the launcher filled in from its default (the creation row's default=1).
+// X3M_TAA_BOX_RESOLUTION_DEFAULT=1 marks a value the launcher filled in from its default (the creation row's
+// default=1).
 bool taa_box_half = false, taa_box_resolution_default = false;
 // X3M_TAA_FAR_GATE (camera|screen; unset is camera here, the launcher sends camera by default on --taa launches;
-// docs/architecture/taa-mask-fold.md section 4.2 addendum): the far weight's motion gate on the camera-gate resolve, the
-// camera-relative openness or the screen speed (the gate before 2026-09-25). Invalid or oversized: stays camera, logged.
-// X3M_TAA_FAR_GATE_DEFAULT=1 marks a camera the launcher filled in from its default (the creation row's default=1).
+// docs/architecture/taa-mask-fold.md section 4.2 addendum): the far weight's motion gate on the camera-gate resolve,
+// the camera-relative openness or the screen speed (the gate before 2026-09-25). Invalid or oversized: stays camera,
+// logged. X3M_TAA_FAR_GATE_DEFAULT=1 marks a camera the launcher filled in from its default (the creation row's
+// default=1).
 bool taa_far_camera_gate = true, taa_far_gate_given = false, taa_far_gate_default = false;
 // X3M_TAA_FAR_CLIP (7x7|3x3; unset is 7x7 here, the launcher sends 7x7 by default on --taa launches;
-// docs/architecture/taa-mask-fold.md section 4.2 addendum "far clip"): the history clip of a far pixel (farw * openC > 0)
-// outside the thin region on the camera-gate resolve, the 7x7 min / max or the 3x3 variance clip (the clip before 2026-09-25).
-// Invalid or oversized: stays 7x7, logged. X3M_TAA_FAR_CLIP_DEFAULT=1 marks a 7x7 the launcher filled in from its default.
+// docs/architecture/taa-mask-fold.md section 4.2 addendum "far clip"): the history clip of a far pixel (farw * openC >
+// 0) outside the thin region on the camera-gate resolve, the 7x7 min / max or the 3x3 variance clip (the clip before
+// 2026-09-25). Invalid or oversized: stays 7x7, logged. X3M_TAA_FAR_CLIP_DEFAULT=1 marks a 7x7 the launcher filled in
+// from its default.
 bool taa_far_clip_7x7 = true, taa_far_clip_given = false, taa_far_clip_default = false;
 // X3M_TAA_THIN_VOTE (on|off; unset is off here, the launcher sends on by default since Run 81;
 // docs/architecture/taa-thin-geometry-alternatives.md section 3.2): the draw-time thin
@@ -298,16 +330,17 @@ bool taa_far_clip_7x7 = true, taa_far_clip_given = false, taa_far_clip_default =
 // X3M_TAA_THIN_VOTE_DEFAULT=1 marks a value the launcher filled in from its default (the configured row's default=1).
 bool taa_thin_vote = false;
 bool taa_thin_vote_given = false, taa_thin_vote_default = false;
-// The thin region's flag source (docs/architecture/taa-thin-geometry-alternatives.md section 3.2): 0 both (the fragmented-depth
-// search and the vote), 2 the thin vote alone. Derived from X3M_TAA_THIN_VOTE since X3M_TAA_THIN_REGION_SOURCE was removed
-// (2026-09-25); motion_output resolves and logs it per device (taa_thin_region_source requested= configured= reason= default=).
+// The thin region's flag source (docs/architecture/taa-thin-geometry-alternatives.md section 3.2): 0 both (the
+// fragmented-depth search and the vote), 2 the thin vote alone. Derived from X3M_TAA_THIN_VOTE since
+// X3M_TAA_THIN_REGION_SOURCE was removed (2026-09-25); motion_output resolves and logs it per device
+// (taa_thin_region_source requested= configured= reason= default=).
 unsigned taa_thin_region_source = 0;
 bool taa_thin_region_source_given = false, taa_thin_region_source_default = false;
 // X3M_FADE_RT2_OWNER (on|off; unset is off here, the launcher sends on by default since Run 81;
 // docs/architecture/fade-rt2-ownership.md): every draw the fade-band arm routes owns
 // RT2 (exact depth through the engine's blend) and, under original shading, the arm's pair identity widens to every
-// reviewed pair with a fade_route::registers row. Invalid or oversized: stays off, logged. Takes effect with the arm's own prerequisites
-// (the route, TAA, the FP16 scene, X3M_FADE_ROUTE not off), resolved at hook_device.
+// reviewed pair with a fade_route::registers row. Invalid or oversized: stays off, logged. Takes effect with the arm's
+// own prerequisites (the route, TAA, the FP16 scene, X3M_FADE_ROUTE not off), resolved at hook_device.
 // X3M_FADE_RT2_OWNER_DEFAULT=1 marks a value the launcher filled in from its default (the configured row's default=1).
 bool fade_rt2_owner = false;
 bool fade_rt2_owner_given = false, fade_rt2_owner_default = false;
@@ -317,11 +350,11 @@ bool fade_rt2_owner_given = false, fade_rt2_owner_default = false;
 bool thin_vote_gate = false;
 // X3M_TAA_MOTION_WEIGHT=F[,V0,V1] (F 0 off, else 0.5..0.99; 0 <= V0 < V1 <= 64 px/frame, default 2,8;
 // absent: 0.7,2,8 since 2026-09-23 after Run 70 A with the TAA route, an age program and a sentinel policy other
-// than 1 (always, in production), else off; invalid or oversized: off, logged; docs/architecture/taa-motion-history-weight.md): the age programs cap the history
-// keep weight at F for a pixel whose correspondence moves V1 px/frame or more of translation
-// parallax against the rotation-only camera path (1 at or below V0, a quadratic ramp between), so
-// a hull under SETA accumulates a shorter history; the gate is the smaller of that parallax and the
-// pixel's own screen motion, so a pan, a co-moving hull (the player's ship, an escort) and rest keep
+// than 1 (always, in production), else off; invalid or oversized: off, logged;
+// docs/architecture/taa-motion-history-weight.md): the age programs cap the history keep weight at F for a pixel whose
+// correspondence moves V1 px/frame or more of translation parallax against the rotation-only camera path (1 at or below
+// V0, a quadratic ramp between), so a hull under SETA accumulates a shorter history; the gate is the smaller of that
+// parallax and the pixel's own screen motion, so a pan, a co-moving hull (the player's ship, an escort) and rest keep
 // their weight. Needs an age program (far stabiliser or thin region), which motion_output judges;
 // inert (cap 1) without the camera path (the seam's X3M_FIXTURE_TAA_SENTINEL=1, or no camera transform this frame).
 float taa_motion_weight[3] = {0.f, 2.f, 8.f};
@@ -363,12 +396,8 @@ struct Hooks {
         table.assign(original, original + size);
     }
     void install(void* object) { *static_cast<void***>(object) = table.data(); }
-    template<typename Fn> Fn get(size_t slot) const {
-        return reinterpret_cast<Fn>(original[slot]);
-    }
-    template<typename Fn> void set(size_t slot, Fn fn) {
-        table[slot] = reinterpret_cast<void*>(fn);
-    }
+    template <typename Fn> Fn get(size_t slot) const { return reinterpret_cast<Fn>(original[slot]); }
+    template <typename Fn> void set(size_t slot, Fn fn) { table[slot] = reinterpret_cast<void*>(fn); }
 };
 struct CompositorInvocation;
 struct Device : Hooks {
@@ -388,7 +417,7 @@ struct Device : Hooks {
     // and at the final release like bloom's); null when off or refused.
     std::unique_ptr<renderer::GpuSyncTiming> gpu_sync;
     bool gpu_sync_summary_logged = false;
-    FpsOverlay fps_overlay; // X3M_FPS_OVERLAY / X3M_PERF accumulator
+    FpsOverlay fps_overlay;          // X3M_FPS_OVERLAY / X3M_PERF accumulator
     ComparisonNotice fps_notice{72}; // its bitmap (the notice panel class, one panel down)
 
     CompositorInvocation* compositor = nullptr; // capture mutex; invocation owns its CPU/native pins
@@ -405,7 +434,9 @@ struct Device : Hooks {
 #endif
     unsigned bloom_busy = 0; // suppress all final-reference inference during injected operations
     // shadow_retention_probe rows (release_device): the tuples logged so far, at most 16 per device.
-    struct RetentionProbeRow { std::uint32_t now, device, bloom, gpu_sync, retained, fired; };
+    struct RetentionProbeRow {
+        std::uint32_t now, device, bloom, gpu_sync, retained, fired;
+    };
     RetentionProbeRow retention_probe_rows[16]{};
     unsigned retention_probe_logged = 0;
     bool retention_probe_fired = false;
@@ -424,7 +455,8 @@ struct Device : Hooks {
     std::uint64_t fog_ready_frame = 0;
     object_capture::Cache object_evidence; // capture-only; existing HookGuard owns it
     bool key_down = false;
-    explicit Device(void* object, size_t size) : Hooks(object, size) {}
+    explicit Device(void* object, size_t size)
+        : Hooks(object, size) {}
 };
 // Preserve the original serialization while exposing its CPU-side wait cost.
 struct CaptureLock {
@@ -432,7 +464,12 @@ struct CaptureLock {
 };
 struct HeldHookLock {
     std::unique_lock<std::recursive_mutex> lock;
-    HeldHookLock():lock(mutex,std::defer_lock){const auto start=telemetry::now();lock.lock();telemetry::record(telemetry::process(),telemetry::Metric::LockWait,telemetry::now()-start);}
+    HeldHookLock()
+        : lock(mutex, std::defer_lock) {
+        const auto start = telemetry::now();
+        lock.lock();
+        telemetry::record(telemetry::process(), telemetry::Metric::LockWait, telemetry::now() - start);
+    }
 };
 // The guards carry the X3M_FRAME_TIMING scope of the hooked entry point: the
 // lock member is declared first, so the frame-timing stamps are taken with the
@@ -443,35 +480,58 @@ struct HeldHookLock {
 struct HookGuard {
     HeldHookLock held;
     frame_timing::Scope timing;
-    explicit HookGuard(frame_timing::Bucket bucket=frame_timing::Bucket::State,
-                       const char* entry=__builtin_FUNCTION()):timing(bucket,entry){}
+    explicit HookGuard(frame_timing::Bucket bucket = frame_timing::Bucket::State,
+                       const char* entry = __builtin_FUNCTION())
+        : timing(bucket, entry) {}
 };
 // Same serialization without the lock-wait telemetry (two QPC stamps per
 // call), for the hot setter, binding and draw hooks of the motion route.
 struct PlainHookGuard {
     std::lock_guard<std::recursive_mutex> lock{mutex};
     frame_timing::Scope timing;
-    explicit PlainHookGuard(frame_timing::Bucket bucket=frame_timing::Bucket::State,
-                            const char* entry=__builtin_FUNCTION()):timing(bucket,entry){}
+    explicit PlainHookGuard(frame_timing::Bucket bucket = frame_timing::Bucket::State,
+                            const char* entry = __builtin_FUNCTION())
+        : timing(bucket, entry) {}
 };
 // The outer stamps feed CaptureCpu (capture frames only) and the inner pair a
 // backend metric; the draw hooks pass `backend` as their DrawBackend enable so
 // an uncaptured draw with per-draw telemetry off takes no QPC stamp at all.
 struct CallTimer {
-    Device& ctx; uint64_t start, backend_start=0, backend_ticks=0;
+    Device& ctx;
+    uint64_t start, backend_start = 0, backend_ticks = 0;
     bool captured, stamps;
-    explicit CallTimer(Device& value,bool backend=true):ctx(value),start(value.capture?telemetry::now():0),captured(value.capture),stamps(backend||value.capture){}
-    void begin(){if(stamps)backend_start=telemetry::now();}
-    void end(){if(stamps)backend_ticks=telemetry::now()-backend_start;}
-    ~CallTimer(){if(captured)telemetry::record(ctx.stats,telemetry::Metric::CaptureCpu,telemetry::now()-start-backend_ticks);}
+    explicit CallTimer(Device& value, bool backend = true)
+        : ctx(value)
+        , start(value.capture ? telemetry::now() : 0)
+        , captured(value.capture)
+        , stamps(backend || value.capture) {}
+    void begin() {
+        if (stamps) backend_start = telemetry::now();
+    }
+    void end() {
+        if (stamps) backend_ticks = telemetry::now() - backend_start;
+    }
+    ~CallTimer() {
+        if (captured)
+            telemetry::record(ctx.stats, telemetry::Metric::CaptureCpu, telemetry::now() - start - backend_ticks);
+    }
 };
-void presentation_parameters(const char* phase,uint64_t device,HWND focus,const D3DPRESENT_PARAMETERS* p){
-    if(!telemetry::enabled())return;
-    if(!p){log("telemetry_presentation phase=%s device=%llu focus_window=%p params_null=1",phase,device,focus);return;}
-    log("telemetry_presentation phase=%s device=%llu thread=%lu focus_window=%p device_window=%p width=%u height=%u format=%u count=%u msaa=%u quality=%lu swap_effect=%u windowed=%d auto_depth=%d depth_format=%u flags=%08lx refresh=%u interval=%u",phase,device,GetCurrentThreadId(),focus,p->hDeviceWindow,p->BackBufferWidth,p->BackBufferHeight,p->BackBufferFormat,p->BackBufferCount,p->MultiSampleType,p->MultiSampleQuality,p->SwapEffect,p->Windowed,p->EnableAutoDepthStencil,p->AutoDepthStencilFormat,p->Flags,p->FullScreen_RefreshRateInHz,p->PresentationInterval);
+void presentation_parameters(const char* phase, uint64_t device, HWND focus, const D3DPRESENT_PARAMETERS* p) {
+    if (!telemetry::enabled()) return;
+    if (!p) {
+        log("telemetry_presentation phase=%s device=%llu focus_window=%p params_null=1", phase, device, focus);
+        return;
+    }
+    log("telemetry_presentation phase=%s device=%llu thread=%lu focus_window=%p device_window=%p width=%u height=%u format=%u count=%u msaa=%u quality=%lu swap_effect=%u windowed=%d auto_depth=%d depth_format=%u flags=%08lx refresh=%u interval=%u",
+        phase, device, GetCurrentThreadId(), focus, p->hDeviceWindow, p->BackBufferWidth, p->BackBufferHeight,
+        p->BackBufferFormat, p->BackBufferCount, p->MultiSampleType, p->MultiSampleQuality, p->SwapEffect, p->Windowed,
+        p->EnableAutoDepthStencil, p->AutoDepthStencilFormat, p->Flags, p->FullScreen_RefreshRateInHz,
+        p->PresentationInterval);
 }
-void capture_event(Device& ctx,const char* operation,HRESULT result,bool before_draw=false){
-    if(ctx.capture)log("capture_event device=%llu frame=%llu seq=%llu after_draw=%llu op=%s result=%08lx qpc=%llu",ctx.id,ctx.frame,++ctx.events,ctx.draws-(before_draw?1:0),operation,result,telemetry::now());
+void capture_event(Device& ctx, const char* operation, HRESULT result, bool before_draw = false) {
+    if (ctx.capture)
+        log("capture_event device=%llu frame=%llu seq=%llu after_draw=%llu op=%s result=%08lx qpc=%llu", ctx.id,
+            ctx.frame, ++ctx.events, ctx.draws - (before_draw ? 1 : 0), operation, result, telemetry::now());
 }
 std::map<IDirect3D9*, std::unique_ptr<Hooks>> factories;
 std::map<IDirect3DDevice9*, std::shared_ptr<Device>> devices;
@@ -488,11 +548,17 @@ std::map<IDirect3DDevice9*, std::shared_ptr<Device>> devices;
 // had no handler either: both outcomes end the process, this one at the fault.
 IDirect3DDevice9* cached_device_key = nullptr;
 Device* cached_device_context = nullptr;
-void forget_cached_device() noexcept { cached_device_key = nullptr; cached_device_context = nullptr; }
-Device& device_context(IDirect3DDevice9* d) { return *devices.at(d); }
+void forget_cached_device() noexcept {
+    cached_device_key = nullptr;
+    cached_device_context = nullptr;
+}
+Device& device_context(IDirect3DDevice9* d) {
+    return *devices.at(d);
+}
 __attribute__((noinline)) Device& adopt_cached_device(IDirect3DDevice9* d) noexcept {
     Device& ctx = *devices.at(d);
-    cached_device_key = d; cached_device_context = &ctx;
+    cached_device_key = d;
+    cached_device_context = &ctx;
     return ctx;
 }
 inline Device& hooked_device(IDirect3DDevice9* d) noexcept {
@@ -507,12 +573,16 @@ inline Device& hooked_device(IDirect3DDevice9* d) noexcept {
 // itself is unchanged (one published acquire load, already on this path).
 class LightAdmissionScope {
 public:
-    LightAdmissionScope() noexcept : monitor_(ownership::process_admission_monitor_published()) {
+    LightAdmissionScope() noexcept
+        : monitor_(ownership::process_admission_monitor_published()) {
         if (monitor_) new (storage_) ownership::ApplicationAdmissionAbi(monitor_);
     }
-    ~LightAdmissionScope() { if (monitor_) adapter()->~ApplicationAdmissionAbi(); }
+    ~LightAdmissionScope() {
+        if (monitor_) adapter()->~ApplicationAdmissionAbi();
+    }
     LightAdmissionScope(const LightAdmissionScope&) = delete;
     LightAdmissionScope& operator=(const LightAdmissionScope&) = delete;
+
 private:
     ownership::ApplicationAdmissionAbi* adapter() noexcept {
         return std::launder(reinterpret_cast<ownership::ApplicationAdmissionAbi*>(storage_));
@@ -541,30 +611,37 @@ static_assert(alignof(CompositorInvocation) <= 16, "bridge invocation alignment"
 // production Release/Reset/cleanup. The fixture owns these borrowed inputs.
 struct BloomLifetimeFixture {
     X3mCompositorBinding binding{};
-    IDirect3DDevice9* device=nullptr;
-    IDirect3DTexture9* scene=nullptr;
-    IDirect3DSurface9* main=nullptr;
-    IDirect3DSurface9* depth=nullptr;
+    IDirect3DDevice9* device = nullptr;
+    IDirect3DTexture9* scene = nullptr;
+    IDirect3DSurface9* main = nullptr;
+    IDirect3DSurface9* depth = nullptr;
     std::weak_ptr<Device> owner;
     unsigned counts[17]{};
-    bool bound=false;
+    bool bound = false;
 } bloom_lifetime_fixture;
 #endif
 struct BloomOperation {
     Device& owner;
-    explicit BloomOperation(Device& d) noexcept : owner(d) { ++owner.bloom_busy; }
+    explicit BloomOperation(Device& d) noexcept
+        : owner(d) {
+        ++owner.bloom_busy;
+    }
     ~BloomOperation() { --owner.bloom_busy; }
 };
-template<class T> void bloom_drop(T*& value) noexcept {
-    T* old = value; value = nullptr; if (old) old->Release();
+template <class T> void bloom_drop(T*& value) noexcept {
+    T* old = value;
+    value = nullptr;
+    if (old) old->Release();
 }
 void revoke_compositor(Device& ctx) noexcept {
     if (auto* call = ctx.compositor) {
-        call->revoked = true; call->ready = false;
+        call->revoked = true;
+        call->ready = false;
         call->input.boundary.admitted = false;
         // Native pin deliberately survives Reset and reference cleanup.
         BloomOperation internal(ctx);
-        bloom_drop(call->candidate.surface); call->candidate = {};
+        bloom_drop(call->candidate.surface);
+        call->candidate = {};
         bloom_drop(call->input.scene);
         bloom_drop(call->input.boundary.main);
         bloom_drop(call->input.boundary.depth);
@@ -576,7 +653,9 @@ void revoke_compositor(Device& ctx) noexcept {
 // stays valid for the block's lifetime. Slots verified in abi_check.cpp.
 struct StateBlockHooks : Hooks {
     IDirect3DDevice9* device;
-    StateBlockHooks(void* object,IDirect3DDevice9* owner):Hooks(object,6),device(owner){}
+    StateBlockHooks(void* object, IDirect3DDevice9* owner)
+        : Hooks(object, 6)
+        , device(owner) {}
 };
 std::map<IDirect3DStateBlock9*, std::unique_ptr<StateBlockHooks>> stateblocks;
 // Queries change their result with every draw between Issue(BEGIN) and
@@ -586,8 +665,10 @@ std::map<IDirect3DStateBlock9*, std::unique_ptr<StateBlockHooks>> stateblocks;
 // and never count.
 struct QueryHooks : Hooks {
     IDirect3DDevice9* device;
-    bool active=false;
-    QueryHooks(void* object,IDirect3DDevice9* owner):Hooks(object,8),device(owner){}
+    bool active = false;
+    QueryHooks(void* object, IDirect3DDevice9* owner)
+        : Hooks(object, 8)
+        , device(owner) {}
 };
 std::map<IDirect3DQuery9*, std::unique_ptr<QueryHooks>> queries;
 }
@@ -599,7 +680,10 @@ namespace {
 uint64_t hash_bytes(const void* data, size_t size) {
     uint64_t hash = 14695981039346656037ull;
     auto bytes = static_cast<const unsigned char*>(data);
-    for (size_t i = 0; i < size; ++i) { hash ^= bytes[i]; hash *= 1099511628211ull; }
+    for (size_t i = 0; i < size; ++i) {
+        hash ^= bytes[i];
+        hash *= 1099511628211ull;
+    }
     return hash;
 }
 struct ObservedDraw {
@@ -609,108 +693,121 @@ struct ObservedDraw {
     bool lifetime_observed = false;
     bool scene_draw = false;
 };
-ObservedDraw read_draw_input(Device& ctx,IDirect3DDevice9* device,const DrawArguments& arguments) {
-    if(!ctx.capture)return {};
+ObservedDraw read_draw_input(Device& ctx, IDirect3DDevice9* device, const DrawArguments& arguments) {
+    if (!ctx.capture) return {};
     ObservedDraw draw{};
     object_trace::Snapshot scope{};
-    const bool scoped=object_trace::current(&scope);
-    draw.scene_draw=ctx.scene_depth.collecting_scene();
-    draw.input=ctx.draw_inputs.read(device,arguments,scoped?&scope:nullptr,
-        draw.scene_draw?ctx.motion.geometry_frame():ownership::GeometryFrameHandle{});
-    draw.lifetime_observed=object_lifetime::active();
-    if(draw.lifetime_observed)draw.lifetime.reason=object_lifetime::Reason::LookupUnavailable;
-    if(scoped&&!(draw.input.blockers&ObjectScope)) {
-        draw.registry=scope.registry;
-        if(object_lifetime::current(scope.registry,scope.node,scope.node_handle,
-                                    scope.camera,scope.camera_handle,&draw.lifetime)) {
-            auto& observation=draw.input.observation;
-            observation.key.object_lifetime=draw.lifetime.node_serial;
-            observation.key.camera_lifetime=draw.lifetime.camera_serial;
-            observation.proofs|=renderer::LifetimeVerified;
+    const bool scoped = object_trace::current(&scope);
+    draw.scene_draw = ctx.scene_depth.collecting_scene();
+    draw.input = ctx.draw_inputs.read(device, arguments, scoped ? &scope : nullptr,
+                                      draw.scene_draw ? ctx.motion.geometry_frame() : ownership::GeometryFrameHandle{});
+    draw.lifetime_observed = object_lifetime::active();
+    if (draw.lifetime_observed) draw.lifetime.reason = object_lifetime::Reason::LookupUnavailable;
+    if (scoped && !(draw.input.blockers & ObjectScope)) {
+        draw.registry = scope.registry;
+        if (object_lifetime::current(scope.registry, scope.node, scope.node_handle, scope.camera, scope.camera_handle,
+                                     &draw.lifetime)) {
+            auto& observation = draw.input.observation;
+            observation.key.object_lifetime = draw.lifetime.node_serial;
+            observation.key.camera_lifetime = draw.lifetime.camera_serial;
+            observation.proofs |= renderer::LifetimeVerified;
         }
     }
     return draw;
 }
-void record_draw_input(Device& ctx,ObservedDraw& draw,HRESULT result) {
-    if(!ctx.capture)return;
-    auto& input=draw.input;
-    DrawInputReader::complete(input,result);
-    const auto& o=input.observation;const auto& k=o.key;
+void record_draw_input(Device& ctx, ObservedDraw& draw, HRESULT result) {
+    if (!ctx.capture) return;
+    auto& input = draw.input;
+    DrawInputReader::complete(input, result);
+    const auto& o = input.observation;
+    const auto& k = o.key;
     object_lifetime::Snapshot after{};
-    if(draw.lifetime.known) {
-        const bool known=object_lifetime::current(draw.registry,k.node,k.node_handle,k.camera,k.camera_handle,&after);
-        if(!known||after.observer_epoch!=draw.lifetime.observer_epoch||after.load_epoch!=draw.lifetime.load_epoch||
-           after.registry_epoch!=draw.lifetime.registry_epoch||after.mutation_revision!=draw.lifetime.mutation_revision||
-           after.node_serial!=draw.lifetime.node_serial||after.camera_serial!=draw.lifetime.camera_serial)
-            input.observation.proofs&=~renderer::LifetimeVerified;
-    } else after=draw.lifetime;
-    if(draw.scene_draw)ctx.motion.observe(input,draw.registry,draw.lifetime);
+    if (draw.lifetime.known) {
+        const bool known = object_lifetime::current(draw.registry, k.node, k.node_handle, k.camera, k.camera_handle,
+                                                    &after);
+        if (!known || after.observer_epoch != draw.lifetime.observer_epoch ||
+            after.load_epoch != draw.lifetime.load_epoch || after.registry_epoch != draw.lifetime.registry_epoch ||
+            after.mutation_revision != draw.lifetime.mutation_revision ||
+            after.node_serial != draw.lifetime.node_serial || after.camera_serial != draw.lifetime.camera_serial)
+            input.observation.proofs &= ~renderer::LifetimeVerified;
+    } else
+        after = draw.lifetime;
+    if (draw.scene_draw) ctx.motion.observe(input, draw.registry, draw.lifetime);
     log("motion_input device=%llu frame=%llu index=%llu blockers=%08lx proofs=%lu position_path=%u vs=%016llx ps=%016llx declaration=%016llx rows_hash=%016llx color=%llu depth=%llu width=%u height=%u cull=%u vb=%llu vb_revision=%llu ib=%llu ib_revision=%llu position_offset=%u position_type=%u lifetime_verified=%u vertex_finite_verified=%u",
-        ctx.id,ctx.frame,ctx.draws,static_cast<DWORD>(input.blockers),static_cast<DWORD>(o.proofs),unsigned(input.position_path),
-        input.vertex_program,input.pixel_program,k.declaration,hash_bytes(o.submitted_wvp.data(),sizeof(o.submitted_wvp)),
-        input.color_target,input.depth_target,input.width,input.height,unsigned(input.cull),
-        k.vertex_buffer,k.vertex_revision,k.index_buffer,k.index_revision,k.position_offset,k.position_type,
-        (o.proofs&renderer::LifetimeVerified)!=0,input.vertex_finite_verified);
-    const auto& finite=input.finite_positions;const auto& indices=input.indices;
+        ctx.id, ctx.frame, ctx.draws, static_cast<DWORD>(input.blockers), static_cast<DWORD>(o.proofs),
+        unsigned(input.position_path), input.vertex_program, input.pixel_program, k.declaration,
+        hash_bytes(o.submitted_wvp.data(), sizeof(o.submitted_wvp)), input.color_target, input.depth_target,
+        input.width, input.height, unsigned(input.cull), k.vertex_buffer, k.vertex_revision, k.index_buffer,
+        k.index_revision, k.position_offset, k.position_type, (o.proofs & renderer::LifetimeVerified) != 0,
+        input.vertex_finite_verified);
+    const auto& finite = input.finite_positions;
+    const auto& indices = input.indices;
     log("motion_geometry device=%llu frame=%llu index=%llu source_qualified=%u source_hash=%016llx source_words=%u finite_requested=%u finite_state=%u finite_reason=%u finite_status=%08lx finite_generation=%llu finite_revision=%llu index_required=%u index_requested=%u index_known=%u index_range_verified=%u index_exact=%u index_min=%u index_max=%u index_reason=%u index_status=%08lx index_generation=%llu index_revision=%llu",
-        ctx.id,ctx.frame,ctx.draws,input.replay_source.qualified(),input.replay_source.source_hash(),input.replay_source.source_words(),
-        finite.requested,unsigned(finite.state),unsigned(finite.reason),finite.status,finite.generation,finite.revision,
-        k.indexed,indices.requested,indices.known,input.index_range_verified,indices.exact_range,indices.minimum,indices.maximum,
-        unsigned(indices.reason),indices.status,indices.generation,indices.revision);
+        ctx.id, ctx.frame, ctx.draws, input.replay_source.qualified(), input.replay_source.source_hash(),
+        input.replay_source.source_words(), finite.requested, unsigned(finite.state), unsigned(finite.reason),
+        finite.status, finite.generation, finite.revision, k.indexed, indices.requested, indices.known,
+        input.index_range_verified, indices.exact_range, indices.minimum, indices.maximum, unsigned(indices.reason),
+        indices.status, indices.generation, indices.revision);
     // Preserve the terminal failure record if the observer disabled itself
     // during either lookup. Its current active state must not hide that cause.
-    if(draw.lifetime_observed)
+    if (draw.lifetime_observed)
         log("motion_lifetime device=%llu frame=%llu index=%llu before_known=%u after_known=%u before_reason=%u after_reason=%u registry=%p observer_epoch=%llu load_epoch=%llu registry_epoch=%llu mutation_before=%llu mutation_after=%llu node_serial=%llu camera_serial=%llu observer_epoch_after=%llu load_epoch_after=%llu registry_epoch_after=%llu node_serial_after=%llu camera_serial_after=%llu",
-            ctx.id,ctx.frame,ctx.draws,draw.lifetime.known,after.known,unsigned(draw.lifetime.reason),unsigned(after.reason),
-            reinterpret_cast<void*>(draw.registry),draw.lifetime.observer_epoch,draw.lifetime.load_epoch,draw.lifetime.registry_epoch,
-            draw.lifetime.mutation_revision,after.mutation_revision,draw.lifetime.node_serial,draw.lifetime.camera_serial,
-            after.observer_epoch,after.load_epoch,after.registry_epoch,after.node_serial,after.camera_serial);
+            ctx.id, ctx.frame, ctx.draws, draw.lifetime.known, after.known, unsigned(draw.lifetime.reason),
+            unsigned(after.reason), reinterpret_cast<void*>(draw.registry), draw.lifetime.observer_epoch,
+            draw.lifetime.load_epoch, draw.lifetime.registry_epoch, draw.lifetime.mutation_revision,
+            after.mutation_revision, draw.lifetime.node_serial, draw.lifetime.camera_serial, after.observer_epoch,
+            after.load_epoch, after.registry_epoch, after.node_serial, after.camera_serial);
 }
 // Drains the pending unknown-program lines and, when `population` is set and
 // a counter moved, the session population line. Called from Present at the
 // 300-frame cadence and once more when a device is destroyed, so the last
 // movement of a session is not lost. Telemetry only; no other output.
 void report_shader_population(bool population) {
-    if(!telemetry::enabled())return;
+    if (!telemetry::enabled()) return;
     renderer::ShaderPopulation::Entry unknown{};
-    while(shader_population.take(unknown))
-        log("shader_unknown kind=%s id=%016llx version=%08lx bytes=%lu tables=%lu",
-            unknown.vertex?"vs":"ps",static_cast<unsigned long long>(unknown.hash),
-            static_cast<unsigned long>(unknown.version),static_cast<unsigned long>(unknown.bytes),
-            static_cast<unsigned long>(renderer::shader_table_count()));
-    if(population&&shader_population.counts_changed())
+    while (shader_population.take(unknown))
+        log("shader_unknown kind=%s id=%016llx version=%08lx bytes=%lu tables=%lu", unknown.vertex ? "vs" : "ps",
+            static_cast<unsigned long long>(unknown.hash), static_cast<unsigned long>(unknown.version),
+            static_cast<unsigned long>(unknown.bytes), static_cast<unsigned long>(renderer::shader_table_count()));
+    if (population && shader_population.counts_changed())
         log("shader_population known=%lu unknown=%lu overflow=%lu",
             static_cast<unsigned long>(shader_population.known()),
             static_cast<unsigned long>(shader_population.unknown()),
             static_cast<unsigned long>(shader_population.overflow()));
 }
-template<typename Shader> uint64_t shader_id(Shader* shader, const char* kind) {
+template <typename Shader> uint64_t shader_id(Shader* shader, const char* kind) {
     if (!shader) return 0;
-    telemetry::Scope inspect(telemetry::process(),telemetry::Metric::ShaderInspect);
-    const auto get_begin=telemetry::now();
+    telemetry::Scope inspect(telemetry::process(), telemetry::Metric::ShaderInspect);
+    const auto get_begin = telemetry::now();
     UINT bytes = 0;
-    if (FAILED(shader->GetFunction(nullptr, &bytes)) || !bytes || bytes > 4*1024*1024) return 0;
+    if (FAILED(shader->GetFunction(nullptr, &bytes)) || !bytes || bytes > 4 * 1024 * 1024) return 0;
     std::vector<unsigned char> code(bytes);
     if (FAILED(shader->GetFunction(code.data(), &bytes))) return 0;
-    telemetry::record(telemetry::process(),telemetry::Metric::ShaderGetFunction,telemetry::now()-get_begin);
-    const auto hash_begin=telemetry::now();
+    telemetry::record(telemetry::process(), telemetry::Metric::ShaderGetFunction, telemetry::now() - get_begin);
+    const auto hash_begin = telemetry::now();
     auto hash = hash_bytes(code.data(), bytes);
-    telemetry::record(telemetry::process(),telemetry::Metric::ShaderHash,telemetry::now()-hash_begin,false,bytes);
+    telemetry::record(telemetry::process(), telemetry::Metric::ShaderHash, telemetry::now() - hash_begin, false, bytes);
     if (dumped.insert(hash).second) {
-        const auto dump_begin=telemetry::now();
-        size_t written=0;bool dump_ok=false;
+        const auto dump_begin = telemetry::now();
+        size_t written = 0;
+        bool dump_ok = false;
         // Once per distinct program, from the draw hooks' capture path: the
         // wide formatter is x87 CRT code, so the dump runs under its own
         // CPU-state envelope (cpu_state.h call_preserved).
-        call_preserved([&]{
+        call_preserved([&] {
             wchar_t suffix[80];
             swprintf(suffix, 80, L"\\%hs_%016llx.bin", kind, static_cast<unsigned long long>(hash));
             FILE* file = _wfopen((directory + suffix).c_str(), L"wb");
-            if (file) { written=fwrite(code.data(),1,bytes,file);const int closed=fclose(file);dump_ok=written==bytes&&closed==0; }
+            if (file) {
+                written = fwrite(code.data(), 1, bytes, file);
+                const int closed = fclose(file);
+                dump_ok = written == bytes && closed == 0;
+            }
         });
-        telemetry::record(telemetry::process(),telemetry::Metric::ShaderDump,telemetry::now()-dump_begin,!dump_ok,written);
-        log("shader kind=%s id=%016llx bytes=%u dumped=%u", kind,
-            static_cast<unsigned long long>(hash), bytes, dump_ok);
+        telemetry::record(telemetry::process(), telemetry::Metric::ShaderDump, telemetry::now() - dump_begin, !dump_ok,
+                          written);
+        log("shader kind=%s id=%016llx bytes=%u dumped=%u", kind, static_cast<unsigned long long>(hash), bytes,
+            dump_ok);
         // Classify this distinct program against every table the proxy keys
         // on, so a mod that changes what the game compiles is visible in the
         // log. Telemetry only, once per program, never per draw; the line
@@ -718,25 +815,31 @@ template<typename Shader> uint64_t shader_id(Shader* shader, const char* kind) {
         if (telemetry::enabled()) {
             std::uint32_t version = 0;
             if (bytes >= sizeof version) std::memcpy(&version, code.data(), sizeof version);
-            shader_population.observe(hash, kind[0]=='v', version, bytes);
+            shader_population.observe(hash, kind[0] == 'v', version, bytes);
         }
     }
     return hash;
 }
 void surface_info(const char* name, IDirect3DSurface9* surface) {
-    if (!surface) { log("surface role=%s ptr=0 identity=0",name); return; }
+    if (!surface) {
+        log("surface role=%s ptr=0 identity=0", name);
+        return;
+    }
     IDirect3DBaseTexture9* container = nullptr;
-    const HRESULT container_result=surface->GetContainer(IID_IDirect3DBaseTexture9,reinterpret_cast<void**>(&container));
-    const auto parent_id=resource_id(container);
-    const UINT parent_type=container ? container->GetType() : 0;
+    const HRESULT container_result = surface->GetContainer(IID_IDirect3DBaseTexture9,
+                                                           reinterpret_cast<void**>(&container));
+    const auto parent_id = resource_id(container);
+    const UINT parent_type = container ? container->GetType() : 0;
     if (container) container->Release();
-    const auto id=resource_id(surface);
+    const auto id = resource_id(surface);
     D3DSURFACE_DESC desc{};
-    const HRESULT result=surface->GetDesc(&desc);
+    const HRESULT result = surface->GetDesc(&desc);
     if (SUCCEEDED(result))
-        log("surface role=%s ptr=%p identity=%llu width=%u height=%u format=%u usage=%lu msaa=%u container=%llu container_type=%u container_result=%08lx", name,
-            surface,id,desc.Width,desc.Height,desc.Format,desc.Usage,desc.MultiSampleType,parent_id,parent_type,container_result);
-    else log("surface role=%s ptr=%p identity=%llu result=%08lx",name,surface,id,result);
+        log("surface role=%s ptr=%p identity=%llu width=%u height=%u format=%u usage=%lu msaa=%u container=%llu container_type=%u container_result=%08lx",
+            name, surface, id, desc.Width, desc.Height, desc.Format, desc.Usage, desc.MultiSampleType, parent_id,
+            parent_type, container_result);
+    else
+        log("surface role=%s ptr=%p identity=%llu result=%08lx", name, surface, id, result);
 }
 void ownership_depth_info(IDirect3DDevice9* d, uint64_t device, uint64_t frame, const char* phase) {
     // This is a borrowed diagnostic snapshot, never a resource adoption or a
@@ -746,46 +849,63 @@ void ownership_depth_info(IDirect3DDevice9* d, uint64_t device, uint64_t frame, 
     const HRESULT result = ownership::get_copy_depth_view(d, &view);
     const auto& desc = view.source_desc;
     log("ownership_copy_depth phase=%s device=%llu frame=%llu result=%08lx status=%08lx requested=%u available=%u source_bound=%u copy_valid=%u generation=%llu source_epoch=%llu copy_epoch=%llu source_width=%u source_height=%u source_format=%u source_type=%u source_usage=%lu source_pool=%u source_msaa=%u source_quality=%lu",
-        phase,device, frame,result,view.status,view.requested,view.available,view.source_bound,view.copy_valid,
-        view.generation,view.source_epoch,view.copy_epoch,desc.Width,desc.Height,desc.Format,desc.Type,
-        desc.Usage,desc.Pool,desc.MultiSampleType,desc.MultiSampleQuality);
+        phase, device, frame, result, view.status, view.requested, view.available, view.source_bound, view.copy_valid,
+        view.generation, view.source_epoch, view.copy_epoch, desc.Width, desc.Height, desc.Format, desc.Type,
+        desc.Usage, desc.Pool, desc.MultiSampleType, desc.MultiSampleQuality);
 }
 // First successful BeginScene, with a Present fallback for frames without one.
 // Existing CPU boundary and HookGuard cover this reader; it adds no GPU work.
 void sector_background_context(Device& ctx, bool scene_authority = false) {
-    if(!(sector_background_requested || volumetric_fog_requested) || !ctx.sector_background_evidence.begin(ctx.frame))return;
-    const DWORD saved_error=GetLastError();
-    struct RestoreError { DWORD value; ~RestoreError(){SetLastError(value);} } restore_error{saved_error};
+    if (!(sector_background_requested || volumetric_fog_requested) || !ctx.sector_background_evidence.begin(ctx.frame))
+        return;
+    const DWORD saved_error = GetLastError();
+    struct RestoreError {
+        DWORD value;
+        ~RestoreError() { SetLastError(value); }
+    } restore_error{saved_error};
     sector_background::Sample value;
-    if(object_trace::executable_verified()) {
+    if (object_trace::executable_verified()) {
         // Even without the motion route, revalidate pages after a load/realloc.
         engine_memory::revalidate(); // an epoch only: not a Present (engine_memory.h)
-        auto read=[](std::uintptr_t p,void* out,std::size_t n){return engine_memory::read(p,out,n);};
-        value=sector_background::sample(read,volumetric_fog_docked?sector_background::anchor_walk_limit:0u);
+        auto read = [](std::uintptr_t p, void* out, std::size_t n) { return engine_memory::read(p, out, n); };
+        value = sector_background::sample(read, volumetric_fog_docked ? sector_background::anchor_walk_limit : 0u);
         // R3: the Ready sector's id [sector+8], read once per sector and again after any break in Ready samples
         // (a transit), for the prefill walk's id check and its confirmation.
-        if(volumetric_fog_prefill && scene_authority && value.status==sector_background::Status::Ready) {
-            if(value.sector!=ctx.fog_ready_sector || ctx.frame!=ctx.fog_ready_frame+1) {
-                std::uint32_t id=0;
-                if(engine_memory::read(std::uintptr_t(value.sector)+8,&id,sizeof id)){ctx.fog_ready_sector=value.sector;ctx.fog_ready_sector_id=id;}
-                else ctx.fog_ready_sector=ctx.fog_ready_sector_id=0;
+        if (volumetric_fog_prefill && scene_authority && value.status == sector_background::Status::Ready) {
+            if (value.sector != ctx.fog_ready_sector || ctx.frame != ctx.fog_ready_frame + 1) {
+                std::uint32_t id = 0;
+                if (engine_memory::read(std::uintptr_t(value.sector) + 8, &id, sizeof id)) {
+                    ctx.fog_ready_sector = value.sector;
+                    ctx.fog_ready_sector_id = id;
+                } else
+                    ctx.fog_ready_sector = ctx.fog_ready_sector_id = 0;
             }
-            ctx.fog_ready_frame=ctx.frame;
-            value.sector_id=value.sector==ctx.fog_ready_sector?ctx.fog_ready_sector_id:0;
+            ctx.fog_ready_frame = ctx.frame;
+            value.sector_id = value.sector == ctx.fog_ready_sector ? ctx.fog_ready_sector_id : 0;
         }
-    } else value.status=sector_background::Status::ForeignExecutable;
-    if(scene_authority && volumetric_fog_requested){
-        // Docked view: one line when a walked span starts (or its outcome changes); a failed walk keeps anchor_mismatch (native cards).
-        if(volumetric_fog_docked && ctx.fog_docked_span.update(value) && ctx.fog_docked_logs<256u && ++ctx.fog_docked_logs)
+    } else
+        value.status = sector_background::Status::ForeignExecutable;
+    if (scene_authority && volumetric_fog_requested) {
+        // Docked view: one line when a walked span starts (or its outcome changes); a failed walk keeps anchor_mismatch
+        // (native cards).
+        if (volumetric_fog_docked && ctx.fog_docked_span.update(value) && ctx.fog_docked_logs < 256u &&
+            ++ctx.fog_docked_logs)
             log("volumetric_fog_docked device=%llu frame=%llu walk=%s depth=%u ref_object=%08x ref_parent=%08x last=%08x sector=%08x anchor_check=%s fallback=%s",
-                ctx.id,ctx.frame,sector_background::name(value.anchor_walk),value.anchor_depth,value.ref_object,value.ref_sector,value.anchor_last,value.sector,
-                sector_background::name(value.anchor_check),value.anchor_walk==sector_background::AnchorWalk::Found?"none":"native_cards");
-        ctx.motion_output.volumetric_fog_sector_sample(ctx.frame,value);
+                ctx.id, ctx.frame, sector_background::name(value.anchor_walk), value.anchor_depth, value.ref_object,
+                value.ref_sector, value.anchor_last, value.sector, sector_background::name(value.anchor_check),
+                value.anchor_walk == sector_background::AnchorWalk::Found ? "none" : "native_cards");
+        ctx.motion_output.volumetric_fog_sector_sample(ctx.frame, value);
     }
-    if(!sector_background_requested || !ctx.sector_background_evidence.emit(value,GetTickCount64()))return;
+    if (!sector_background_requested || !ctx.sector_background_evidence.emit(value, GetTickCount64())) return;
     log("sector_background device=%llu frame=%llu status=%s registry=%08x active_handle=%u cockpit=%08x sector=%08x class48=%d index=%d count=%d table=%08x R=%08x row_valid=%u name_ptr=%08x name_valid=%u name=\"%s\" dust=%d near=%d far=%d stardust=%d rate0=%d rate1=%d rate2=%d rate3=%d rate4=%d rate5=%d rate6=%d rate7=%d neb=%08x stars=%08x camera=%08x camera_valid=%u cam_near=%d cam_far=%d flags270=%08x camera_check=%s config_valid=%u config768=%d far_floor=%d effective_far=%d ref_object=%08x ref_sector=%08x anchor_check=%s",
-        ctx.id,ctx.frame,sector_background::name(value.status),value.registry,value.handle,value.cockpit,value.sector,int(value.class48),value.index,value.count,value.table,value.record,unsigned(value.row_valid),value.name_pointer,unsigned(value.name_valid),value.family,
-        value.dust,value.fog_near,value.fog_far,value.stardust,value.rates[0],value.rates[1],value.rates[2],value.rates[3],value.rates[4],value.rates[5],value.rates[6],value.rates[7],value.neb,value.stars,value.camera,unsigned(value.camera_valid),value.cam_near,value.cam_far,value.flags270,sector_background::name(value.camera_check),unsigned(value.config_valid),value.config,value.far_floor,value.effective_far,value.ref_object,value.ref_sector,sector_background::name(value.anchor_check));
+        ctx.id, ctx.frame, sector_background::name(value.status), value.registry, value.handle, value.cockpit,
+        value.sector, int(value.class48), value.index, value.count, value.table, value.record,
+        unsigned(value.row_valid), value.name_pointer, unsigned(value.name_valid), value.family, value.dust,
+        value.fog_near, value.fog_far, value.stardust, value.rates[0], value.rates[1], value.rates[2], value.rates[3],
+        value.rates[4], value.rates[5], value.rates[6], value.rates[7], value.neb, value.stars, value.camera,
+        unsigned(value.camera_valid), value.cam_near, value.cam_far, value.flags270,
+        sector_background::name(value.camera_check), unsigned(value.config_valid), value.config, value.far_floor,
+        value.effective_far, value.ref_object, value.ref_sector, sector_background::name(value.anchor_check));
 }
 // R3 (fog-handover.md, "R3 implementation"): from the resource-creation hooks. Outside a stall the cost is one
 // GetTickCount64 and one compare; inside, at most one bounded walk (<= 25 validated reads) per 250 ms on the
@@ -793,75 +913,97 @@ void sector_background_context(Device& ctx, bool scene_authority = false) {
 // sector precedes the session's first stored frame: the FogPass object and the density worker (8.5 MB of caches
 // and a thread, FogPass::prefill_density), at most once per stall; a failed start is refused for the stall.
 void fog_prefill_poll(Device& ctx) {
-    const std::uint64_t now=GetTickCount64();
-    if(!ctx.fog_prefill_gate.stalled(now))return;
-    if(GetCurrentThreadId()!=ctx.fog_prefill_thread || !ctx.fog_prefill_gate.take(now))return; // another thread never uses the slot
-    const DWORD saved_error=GetLastError();
-    struct RestoreError { DWORD value; ~RestoreError(){SetLastError(value);} } restore_error{saved_error};
-    if(!object_trace::executable_verified())return;
-    engine_memory::revalidate(); // the stall reallocates: revalidate pages (an epoch only: neither ends the stall bound nor the shutdown signal)
-    auto read=[](std::uintptr_t p,void* out,std::size_t n){return engine_memory::read(p,out,n);};
-    const fog_prefill::Result result=fog_prefill::walk(read,ctx.fog_ready_sector_id);
-    ctx.motion_output.volumetric_fog_prefill(result,now-ctx.fog_prefill_gate.present_ms);
+    const std::uint64_t now = GetTickCount64();
+    if (!ctx.fog_prefill_gate.stalled(now)) return;
+    if (GetCurrentThreadId() != ctx.fog_prefill_thread || !ctx.fog_prefill_gate.take(now))
+        return; // another thread never uses the slot
+    const DWORD saved_error = GetLastError();
+    struct RestoreError {
+        DWORD value;
+        ~RestoreError() { SetLastError(value); }
+    } restore_error{saved_error};
+    if (!object_trace::executable_verified()) return;
+    engine_memory::revalidate(); // the stall reallocates: revalidate pages (an epoch only: neither ends the stall bound
+                                 // nor the shutdown signal)
+    auto read = [](std::uintptr_t p, void* out, std::size_t n) { return engine_memory::read(p, out, n); };
+    const fog_prefill::Result result = fog_prefill::walk(read, ctx.fog_ready_sector_id);
+    ctx.motion_output.volumetric_fog_prefill(result, now - ctx.fog_prefill_gate.present_ms);
 }
 void object_context(Device& ctx) {
     // Capture-only checked reads and logging must not leak a Windows error.
-    const DWORD saved_error=GetLastError();
-    struct RestoreError { DWORD value; ~RestoreError(){SetLastError(value);} } restore_error{saved_error};
+    const DWORD saved_error = GetLastError();
+    struct RestoreError {
+        DWORD value;
+        ~RestoreError() { SetLastError(value); }
+    } restore_error{saved_error};
     if (!object_trace::active()) return;
     object_trace::Snapshot value{};
-    const bool scoped=object_trace::current(&value);
+    const bool scoped = object_trace::current(&value);
     log("object_context device=%llu frame=%llu index=%llu scoped=%u valid=%lu session=%llu scope_depth=%lu mesh=%p node=%p node_handle=%lu camera=%p camera_handle=%lu registry=%p engine=%p model=%08lx lod=%08lx flags12c=%08lx flags130=%08lx",
-        ctx.id,ctx.frame,ctx.draws,scoped,static_cast<unsigned long>(value.valid),value.session,
-        static_cast<unsigned long>(value.scope_depth),reinterpret_cast<void*>(value.mesh),
-        reinterpret_cast<void*>(value.node),static_cast<unsigned long>(value.node_handle),
-        reinterpret_cast<void*>(value.camera),static_cast<unsigned long>(value.camera_handle),
-        reinterpret_cast<void*>(value.registry),reinterpret_cast<void*>(value.engine),
-        static_cast<unsigned long>(value.model),static_cast<unsigned long>(value.lod),
-        static_cast<unsigned long>(value.flags12c),static_cast<unsigned long>(value.flags130));
-    if(!scoped)return;
-    auto read=[](std::uintptr_t p,void* out,std::size_t n){return engine_memory::read(p,out,n);};
-    auto& evidence=ctx.object_evidence;
-    if(evidence.begin(ctx.frame,ctx.reset_generation,read,0x608504)) {
-        const auto& t=evidence.selected;
+        ctx.id, ctx.frame, ctx.draws, scoped, static_cast<unsigned long>(value.valid), value.session,
+        static_cast<unsigned long>(value.scope_depth), reinterpret_cast<void*>(value.mesh),
+        reinterpret_cast<void*>(value.node), static_cast<unsigned long>(value.node_handle),
+        reinterpret_cast<void*>(value.camera), static_cast<unsigned long>(value.camera_handle),
+        reinterpret_cast<void*>(value.registry), reinterpret_cast<void*>(value.engine),
+        static_cast<unsigned long>(value.model), static_cast<unsigned long>(value.lod),
+        static_cast<unsigned long>(value.flags12c), static_cast<unsigned long>(value.flags130));
+    if (!scoped) return;
+    auto read = [](std::uintptr_t p, void* out, std::size_t n) { return engine_memory::read(p, out, n); };
+    auto& evidence = ctx.object_evidence;
+    if (evidence.begin(ctx.frame, ctx.reset_generation, read, 0x608504)) {
+        const auto& t = evidence.selected;
         log("object_target device=%llu frame=%llu reset=%llu epoch=%llu index=%llu status=%s registry=%08x active_handle=%u cockpit=%08x camera=%08x target=%08x target_id=%u root=%08x root_handle=%u",
-            ctx.id,ctx.frame,ctx.reset_generation,evidence.epoch,ctx.draws,object_capture::name(t.status),t.registry,t.handle,t.cockpit,t.camera,t.target,t.target_id,t.root,t.root_handle);
+            ctx.id, ctx.frame, ctx.reset_generation, evidence.epoch, ctx.draws, object_capture::name(t.status),
+            t.registry, t.handle, t.cockpit, t.camera, t.target, t.target_id, t.root, t.root_handle);
     }
-    unsigned ancestry_id=0,camera_id=0;bool fresh=false;
-    if(value.valid&object_trace::Node) {
-        ancestry_id=evidence.node(std::uint32_t(value.node),value.node_handle,value.parent,fresh);
-        if(fresh) {
-            const auto a=object_capture::ancestry(read,std::uint32_t(value.node),value.node_handle,value.parent,evidence.selected);
-            log("object_ancestry device=%llu frame=%llu reset=%llu epoch=%llu index=%llu id=%u status=%s count=%u",ctx.id,ctx.frame,ctx.reset_generation,evidence.epoch,ctx.draws,ancestry_id,object_capture::name(a.status),a.count);
-            for(unsigned i=0;i<a.count;++i)log("object_ancestor device=%llu frame=%llu reset=%llu epoch=%llu id=%u link=%u node=%08x handle=%u",ctx.id,ctx.frame,ctx.reset_generation,evidence.epoch,ancestry_id,i,a.links[i].node,a.links[i].handle);
+    unsigned ancestry_id = 0, camera_id = 0;
+    bool fresh = false;
+    if (value.valid & object_trace::Node) {
+        ancestry_id = evidence.node(std::uint32_t(value.node), value.node_handle, value.parent, fresh);
+        if (fresh) {
+            const auto a = object_capture::ancestry(read, std::uint32_t(value.node), value.node_handle, value.parent,
+                                                    evidence.selected);
+            log("object_ancestry device=%llu frame=%llu reset=%llu epoch=%llu index=%llu id=%u status=%s count=%u",
+                ctx.id, ctx.frame, ctx.reset_generation, evidence.epoch, ctx.draws, ancestry_id,
+                object_capture::name(a.status), a.count);
+            for (unsigned i = 0; i < a.count; ++i)
+                log("object_ancestor device=%llu frame=%llu reset=%llu epoch=%llu id=%u link=%u node=%08x handle=%u",
+                    ctx.id, ctx.frame, ctx.reset_generation, evidence.epoch, ancestry_id, i, a.links[i].node,
+                    a.links[i].handle);
         }
     }
-    if(value.valid&object_trace::Camera) {
-        camera_id=evidence.camera(std::uint32_t(value.camera),value.camera_handle,fresh);
-        if(fresh) {
-            const auto f=object_capture::fade(read,std::uint32_t(value.camera),0x606f34);
+    if (value.valid & object_trace::Camera) {
+        camera_id = evidence.camera(std::uint32_t(value.camera), value.camera_handle, fresh);
+        if (fresh) {
+            const auto f = object_capture::fade(read, std::uint32_t(value.camera), 0x606f34);
             log("object_fade device=%llu frame=%llu reset=%llu epoch=%llu index=%llu id=%u camera=%08x handle=%u valid=%u context=%08x flags270=%08x position=%08x,%08x,%08x near36c=%08x far370=%08x scale_bits=%08x config768=%08x",
-                ctx.id,ctx.frame,ctx.reset_generation,evidence.epoch,ctx.draws,camera_id,std::uint32_t(value.camera),value.camera_handle,f.valid,f.context,f.flags,f.position[0],f.position[1],f.position[2],f.near_bits,f.far_bits,f.scale_bits,f.config);
+                ctx.id, ctx.frame, ctx.reset_generation, evidence.epoch, ctx.draws, camera_id,
+                std::uint32_t(value.camera), value.camera_handle, f.valid, f.context, f.flags, f.position[0],
+                f.position[1], f.position[2], f.near_bits, f.far_bits, f.scale_bits, f.config);
         }
     }
     log("object_evidence device=%llu frame=%llu reset=%llu epoch=%llu index=%llu node_valid=%u parent=%08x alpha13c=%08x ancestry_id=%u ancestry_capacity=%u camera_valid=%u fade_id=%u fade_capacity=%u",
-        ctx.id,ctx.frame,ctx.reset_generation,evidence.epoch,ctx.draws,bool(value.valid&object_trace::Node),value.parent,value.alpha13c,ancestry_id,
-        bool(value.valid&object_trace::Node)&&!ancestry_id,bool(value.valid&object_trace::Camera),camera_id,bool(value.valid&object_trace::Camera)&&!camera_id);
-    const auto rows=[&](const char* role,const uint32_t* bits,unsigned count){
-        for(unsigned row=0;row<count;++row)
-            log("object_matrix role=%s row=%u bits=%08lx,%08lx,%08lx,%08lx",role,row,
-                static_cast<unsigned long>(bits[row*4]),static_cast<unsigned long>(bits[row*4+1]),
-                static_cast<unsigned long>(bits[row*4+2]),static_cast<unsigned long>(bits[row*4+3]));
+        ctx.id, ctx.frame, ctx.reset_generation, evidence.epoch, ctx.draws, bool(value.valid & object_trace::Node),
+        value.parent, value.alpha13c, ancestry_id, bool(value.valid & object_trace::Node) && !ancestry_id,
+        bool(value.valid & object_trace::Camera), camera_id, bool(value.valid & object_trace::Camera) && !camera_id);
+    const auto rows = [&](const char* role, const uint32_t* bits, unsigned count) {
+        for (unsigned row = 0; row < count; ++row)
+            log("object_matrix role=%s row=%u bits=%08lx,%08lx,%08lx,%08lx", role, row,
+                static_cast<unsigned long>(bits[row * 4]), static_cast<unsigned long>(bits[row * 4 + 1]),
+                static_cast<unsigned long>(bits[row * 4 + 2]), static_cast<unsigned long>(bits[row * 4 + 3]));
     };
-    if(value.valid&object_trace::World)rows("world",value.world,4);
-    if(value.valid&object_trace::WorldBasis)rows("world_basis",value.world_basis,4);
-    if(value.valid&object_trace::View)rows("view",value.view,4);
-    if(value.valid&object_trace::Projection)rows("projection",value.projection,4);
-    if(value.valid&object_trace::Node){
-        log("object_position bits=%08lx,%08lx,%08lx",static_cast<unsigned long>(value.position[0]),static_cast<unsigned long>(value.position[1]),static_cast<unsigned long>(value.position[2]));
-        rows("scale",value.scale,1);
-        for(unsigned row=0;row<3;++row)
-            log("object_basis row=%u bits=%08lx,%08lx,%08lx",row,static_cast<unsigned long>(value.basis[row*3]),static_cast<unsigned long>(value.basis[row*3+1]),static_cast<unsigned long>(value.basis[row*3+2]));
+    if (value.valid & object_trace::World) rows("world", value.world, 4);
+    if (value.valid & object_trace::WorldBasis) rows("world_basis", value.world_basis, 4);
+    if (value.valid & object_trace::View) rows("view", value.view, 4);
+    if (value.valid & object_trace::Projection) rows("projection", value.projection, 4);
+    if (value.valid & object_trace::Node) {
+        log("object_position bits=%08lx,%08lx,%08lx", static_cast<unsigned long>(value.position[0]),
+            static_cast<unsigned long>(value.position[1]), static_cast<unsigned long>(value.position[2]));
+        rows("scale", value.scale, 1);
+        for (unsigned row = 0; row < 3; ++row)
+            log("object_basis row=%u bits=%08lx,%08lx,%08lx", row, static_cast<unsigned long>(value.basis[row * 3]),
+                static_cast<unsigned long>(value.basis[row * 3 + 1]),
+                static_cast<unsigned long>(value.basis[row * 3 + 2]));
     }
 }
 // X3M_FRAME_TIMING only: the per-draw program-pair and batchability counters
@@ -874,8 +1016,11 @@ void frame_timing_draw_state(Device& ctx, D3DPRIMITIVETYPE type, UINT primitives
     if (!frame_timing::active) return;
     const auto bindings = ctx.motion_output.binding_shadow();
     frame_timing::DrawKey key;
-    key.vs = bindings.vs_hash; key.ps = bindings.ps_hash;
-    key.stream0 = bindings.stream0; key.indices = bindings.indices; key.declaration = bindings.declaration;
+    key.vs = bindings.vs_hash;
+    key.ps = bindings.ps_hash;
+    key.stream0 = bindings.stream0;
+    key.indices = bindings.indices;
+    key.declaration = bindings.declaration;
     for (unsigned stage = 0; stage < 4; ++stage) key.textures[stage] = bindings.textures[stage];
     key.primitive_type = static_cast<std::uint32_t>(type);
     key.primitives = static_cast<std::uint32_t>(primitives);
@@ -885,205 +1030,263 @@ void frame_timing_draw_state(Device& ctx, D3DPRIMITIVETYPE type, UINT primitives
     key.user_memory = user_memory; // D3D9 clears stream 0: never batched against a shadowed mesh
     frame_timing::draw_state(key);
 }
-void snapshot(IDirect3DDevice9* d, const char* kind, D3DPRIMITIVETYPE type, UINT primitives, bool user_memory=false,
-              INT base_vertex=0, UINT start_index=0) {
+void snapshot(IDirect3DDevice9* d, const char* kind, D3DPRIMITIVETYPE type, UINT primitives, bool user_memory = false,
+              INT base_vertex = 0, UINT start_index = 0) {
     auto& ctx = *devices.at(d);
     ++ctx.draws;
     frame_timing::draw(primitives); // X3M_FRAME_TIMING only: one branch, one add
-    frame_timing_draw_state(ctx,type,primitives,base_vertex,start_index,user_memory);
+    frame_timing_draw_state(ctx, type, primitives, base_vertex, start_index, user_memory);
     if (!ctx.capture) return;
-    telemetry::Scope timed(ctx.stats,telemetry::Metric::Snapshot);
-    capture_event(ctx,"draw_begin",S_OK,true);
+    telemetry::Scope timed(ctx.stats, telemetry::Metric::Snapshot);
+    capture_event(ctx, "draw_begin", S_OK, true);
     IDirect3DVertexShader9* vs = nullptr;
     IDirect3DPixelShader9* ps = nullptr;
-    d->GetVertexShader(&vs); d->GetPixelShader(&ps);
-    const auto vhash = shader_id(vs,"vs"), phash = shader_id(ps,"ps");
+    d->GetVertexShader(&vs);
+    d->GetPixelShader(&ps);
+    const auto vhash = shader_id(vs, "vs"), phash = shader_id(ps, "ps");
     if (vs) vs->Release();
     if (ps) ps->Release();
-    log("draw device=%llu frame=%llu index=%llu kind=%s topology=%u primitives=%u vs=%016llx ps=%016llx",
-        ctx.id,ctx.frame,ctx.draws,kind,type,primitives,vhash,phash);
+    log("draw device=%llu frame=%llu index=%llu kind=%s topology=%u primitives=%u vs=%016llx ps=%016llx", ctx.id,
+        ctx.frame, ctx.draws, kind, type, primitives, vhash, phash);
     object_context(ctx);
-    capture_geometry(d,user_memory,ctx.caps);
+    capture_geometry(d, user_memory, ctx.caps);
     IDirect3DSurface9* rt = nullptr;
     for (DWORD i = 0; i < 4; ++i) {
-        if (SUCCEEDED(d->GetRenderTarget(i,&rt)) && rt) {
-            const char role[4]={'r','t',char('0'+i),'\0'}; // no snprintf: the draw hooks are light-envelope code and the CRT formatter is x87
-            surface_info(role,rt); rt->Release(); rt = nullptr;
+        if (SUCCEEDED(d->GetRenderTarget(i, &rt)) && rt) {
+            const char role[4] = {'r', 't', char('0' + i), '\0'}; // no snprintf: the draw hooks are light-envelope code
+                                                                  // and the CRT formatter is x87
+            surface_info(role, rt);
+            rt->Release();
+            rt = nullptr;
         }
     }
-    if (SUCCEEDED(d->GetDepthStencilSurface(&rt)) && rt) { surface_info("depth",rt); rt->Release(); }
-    for (auto state : {D3DRS_FOGENABLE,D3DRS_ZENABLE,D3DRS_ZWRITEENABLE,D3DRS_ZFUNC,D3DRS_ALPHATESTENABLE,
-                       D3DRS_ALPHAREF,D3DRS_ALPHAFUNC,D3DRS_ALPHABLENDENABLE,D3DRS_SRCBLEND,
-                       D3DRS_DESTBLEND,D3DRS_BLENDOP,D3DRS_CULLMODE,D3DRS_COLORWRITEENABLE,
-                       D3DRS_SRGBWRITEENABLE,D3DRS_SEPARATEALPHABLENDENABLE,
-                       // Alpha can inherit a different equation from RGB. Keep
-                       // its factors/op and constant in the same F8 snapshot.
-                       D3DRS_SRCBLENDALPHA,D3DRS_DESTBLENDALPHA,D3DRS_BLENDOPALPHA,
-                       D3DRS_BLENDFACTOR,
-                       D3DRS_STENCILENABLE,D3DRS_STENCILFUNC,D3DRS_STENCILREF,
-                       D3DRS_STENCILMASK,D3DRS_STENCILWRITEMASK,D3DRS_STENCILFAIL,
-                       D3DRS_STENCILZFAIL,D3DRS_STENCILPASS,D3DRS_TWOSIDEDSTENCILMODE,
-                       D3DRS_CCW_STENCILFUNC,D3DRS_CCW_STENCILFAIL,
-                       D3DRS_CCW_STENCILZFAIL,D3DRS_CCW_STENCILPASS}) {
+    if (SUCCEEDED(d->GetDepthStencilSurface(&rt)) && rt) {
+        surface_info("depth", rt);
+        rt->Release();
+    }
+    for (auto state :
+         {D3DRS_FOGENABLE, D3DRS_ZENABLE, D3DRS_ZWRITEENABLE, D3DRS_ZFUNC, D3DRS_ALPHATESTENABLE, D3DRS_ALPHAREF,
+          D3DRS_ALPHAFUNC, D3DRS_ALPHABLENDENABLE, D3DRS_SRCBLEND, D3DRS_DESTBLEND, D3DRS_BLENDOP, D3DRS_CULLMODE,
+          D3DRS_COLORWRITEENABLE, D3DRS_SRGBWRITEENABLE, D3DRS_SEPARATEALPHABLENDENABLE,
+          // Alpha can inherit a different equation from RGB. Keep
+          // its factors/op and constant in the same F8 snapshot.
+          D3DRS_SRCBLENDALPHA, D3DRS_DESTBLENDALPHA, D3DRS_BLENDOPALPHA, D3DRS_BLENDFACTOR, D3DRS_STENCILENABLE,
+          D3DRS_STENCILFUNC, D3DRS_STENCILREF, D3DRS_STENCILMASK, D3DRS_STENCILWRITEMASK, D3DRS_STENCILFAIL,
+          D3DRS_STENCILZFAIL, D3DRS_STENCILPASS, D3DRS_TWOSIDEDSTENCILMODE, D3DRS_CCW_STENCILFUNC,
+          D3DRS_CCW_STENCILFAIL, D3DRS_CCW_STENCILZFAIL, D3DRS_CCW_STENCILPASS}) {
         DWORD value = 0;
-        HRESULT hr = d->GetRenderState(state,&value);
-        if (SUCCEEDED(hr)) log("state id=%u value=%lu",state,value);
+        HRESULT hr = d->GetRenderState(state, &value);
+        if (SUCCEEDED(hr)) log("state id=%u value=%lu", state, value);
     }
     D3DVIEWPORT9 vp{};
-    if (SUCCEEDED(d->GetViewport(&vp))) log("viewport x=%lu y=%lu w=%lu h=%lu minz=%g maxz=%g",vp.X,vp.Y,vp.Width,vp.Height,vp.MinZ,vp.MaxZ);
-    for (DWORD i=0; i<16; ++i) {
+    if (SUCCEEDED(d->GetViewport(&vp)))
+        log("viewport x=%lu y=%lu w=%lu h=%lu minz=%g maxz=%g", vp.X, vp.Y, vp.Width, vp.Height, vp.MinZ, vp.MaxZ);
+    for (DWORD i = 0; i < 16; ++i) {
         IDirect3DBaseTexture9* texture = nullptr;
-        if (SUCCEEDED(d->GetTexture(i,&texture)) && texture) {
-            log("texture stage=%lu ptr=%p type=%u identity=%llu levels=%lu",i,texture,texture->GetType(),resource_id(texture),texture->GetLevelCount());
-            if (texture->GetType()==D3DRTYPE_TEXTURE) {
+        if (SUCCEEDED(d->GetTexture(i, &texture)) && texture) {
+            log("texture stage=%lu ptr=%p type=%u identity=%llu levels=%lu", i, texture, texture->GetType(),
+                resource_id(texture), texture->GetLevelCount());
+            if (texture->GetType() == D3DRTYPE_TEXTURE) {
                 D3DSURFACE_DESC desc{};
-                if (SUCCEEDED(static_cast<IDirect3DTexture9*>(texture)->GetLevelDesc(0,&desc)))
-                    log("texture_desc stage=%lu w=%u h=%u format=%u",i,desc.Width,desc.Height,desc.Format);
+                if (SUCCEEDED(static_cast<IDirect3DTexture9*>(texture)->GetLevelDesc(0, &desc)))
+                    log("texture_desc stage=%lu w=%u h=%u format=%u", i, desc.Width, desc.Height, desc.Format);
             }
             texture->Release();
         }
-        for (auto state : {D3DSAMP_MINFILTER,D3DSAMP_MAGFILTER,D3DSAMP_MIPFILTER,D3DSAMP_MAXANISOTROPY,D3DSAMP_SRGBTEXTURE}) {
+        for (auto state :
+             {D3DSAMP_MINFILTER, D3DSAMP_MAGFILTER, D3DSAMP_MIPFILTER, D3DSAMP_MAXANISOTROPY, D3DSAMP_SRGBTEXTURE}) {
             DWORD value = 0;
-            if (SUCCEEDED(d->GetSamplerState(i,state,&value))) log("sampler stage=%lu state=%u value=%lu",i,state,value);
+            if (SUCCEEDED(d->GetSamplerState(i, state, &value)))
+                log("sampler stage=%lu state=%u value=%lu", i, state, value);
         }
         // The LOD bias is a float bit pattern in the DWORD: logged raw (same
         // line shape as above) and reinterpreted; MAXMIPLEVEL shows whether
         // level 0 of the chain is reachable (sampler-states-and-mips.md, 5).
         DWORD value = 0;
-        if (SUCCEEDED(d->GetSamplerState(i,D3DSAMP_MIPMAPLODBIAS,&value))) {
-            float bias = 0.f; memcpy(&bias,&value,sizeof bias);
-            log("sampler stage=%lu state=%u value=%lu bias=%g",i,unsigned(D3DSAMP_MIPMAPLODBIAS),value,double(bias));
+        if (SUCCEEDED(d->GetSamplerState(i, D3DSAMP_MIPMAPLODBIAS, &value))) {
+            float bias = 0.f;
+            memcpy(&bias, &value, sizeof bias);
+            log("sampler stage=%lu state=%u value=%lu bias=%g", i, unsigned(D3DSAMP_MIPMAPLODBIAS), value,
+                double(bias));
         }
-        if (SUCCEEDED(d->GetSamplerState(i,D3DSAMP_MAXMIPLEVEL,&value))) log("sampler stage=%lu state=%u value=%lu",i,unsigned(D3DSAMP_MAXMIPLEVEL),value);
+        if (SUCCEEDED(d->GetSamplerState(i, D3DSAMP_MAXMIPLEVEL, &value)))
+            log("sampler stage=%lu state=%u value=%lu", i, unsigned(D3DSAMP_MAXMIPLEVEL), value);
     }
     IDirect3DVertexDeclaration9* declaration = nullptr;
     if (SUCCEEDED(d->GetVertexDeclaration(&declaration)) && declaration) {
-        D3DVERTEXELEMENT9 elements[MAXD3DDECLLENGTH+1]{}; UINT count=MAXD3DDECLLENGTH+1;
-        if (SUCCEEDED(declaration->GetDeclaration(elements,&count)))
-            for (UINT i=0; i<count; ++i) log("vertex_element stream=%u offset=%u type=%u method=%u usage=%u index=%u",elements[i].Stream,elements[i].Offset,elements[i].Type,elements[i].Method,elements[i].Usage,elements[i].UsageIndex);
+        D3DVERTEXELEMENT9 elements[MAXD3DDECLLENGTH + 1]{};
+        UINT count = MAXD3DDECLLENGTH + 1;
+        if (SUCCEEDED(declaration->GetDeclaration(elements, &count)))
+            for (UINT i = 0; i < count; ++i)
+                log("vertex_element stream=%u offset=%u type=%u method=%u usage=%u index=%u", elements[i].Stream,
+                    elements[i].Offset, elements[i].Type, elements[i].Method, elements[i].Usage,
+                    elements[i].UsageIndex);
         declaration->Release();
     }
-    for (auto state : {D3DTS_WORLD,D3DTS_VIEW,D3DTS_PROJECTION}) {
+    for (auto state : {D3DTS_WORLD, D3DTS_VIEW, D3DTS_PROJECTION}) {
         D3DMATRIX m{};
-        if (SUCCEEDED(d->GetTransform(state,&m)))
-            for (unsigned i=0;i<4;++i) log("transform state=%u row=%u values=%.9g,%.9g,%.9g,%.9g",state,i,m.m[i][0],m.m[i][1],m.m[i][2],m.m[i][3]);
+        if (SUCCEEDED(d->GetTransform(state, &m)))
+            for (unsigned i = 0; i < 4; ++i)
+                log("transform state=%u row=%u values=%.9g,%.9g,%.9g,%.9g", state, i, m.m[i][0], m.m[i][1], m.m[i][2],
+                    m.m[i][3]);
     }
-    capture_constants(d,true,ctx.caps); capture_constants(d,false,ctx.caps);
+    capture_constants(d, true, ctx.caps);
+    capture_constants(d, false, ctx.caps);
 }
-void final_admission_metric(ownership::AdmissionMonitor* monitor,const char* phase) {
-    const auto state=ownership::admission_snapshot(monitor);
+void final_admission_metric(ownership::AdmissionMonitor* monitor, const char* phase) {
+    const auto state = ownership::admission_snapshot(monitor);
     log("application_admission_final phase=%s active_roots=%llu waiting_roots=%llu admitted_roots=%llu promotions=%llu vetoes=%u first_veto=%u enabled=%u",
-        phase,state.active_roots,state.waiting_roots,state.admitted_roots,state.promotions,
-        unsigned(state.vetoes),unsigned(state.first_veto),monitor!=nullptr);
+        phase, state.active_roots, state.waiting_roots, state.admitted_roots, state.promotions, unsigned(state.vetoes),
+        unsigned(state.first_veto), monitor != nullptr);
 }
 // --gpu-sync-timing (engine-frame-time.md, "GPU sync timing"). Every helper is a
 // no-op when the option is off or the device refused the event queries.
-void gpu_sync_attach(Device& ctx,IDirect3DDevice9* d) {
-    try { ctx.gpu_sync=std::make_unique<renderer::GpuSyncTiming>(); } catch (...) { log("gpu_sync_timing available=0 reason=allocation result=%08lx device=%llu event=create",E_OUTOFMEMORY,ctx.id); return; }
-    const HRESULT hr=ctx.gpu_sync->attach(d,ctx.original);
+void gpu_sync_attach(Device& ctx, IDirect3DDevice9* d) {
+    try {
+        ctx.gpu_sync = std::make_unique<renderer::GpuSyncTiming>();
+    } catch (...) {
+        log("gpu_sync_timing available=0 reason=allocation result=%08lx device=%llu event=create", E_OUTOFMEMORY,
+            ctx.id);
+        return;
+    }
+    const HRESULT hr = ctx.gpu_sync->attach(d, ctx.original);
     log("gpu_sync_timing available=%u reason=%s result=%08lx device=%llu event=create queries=%u references=%u window=%u spin_limit_ms=%u census=%u",
-        unsigned(ctx.gpu_sync->available()),ctx.gpu_sync->reason(),hr,ctx.id,ctx.gpu_sync->available()?gpu_sync_timing::boundary_count:0u,
-        ctx.gpu_sync->references(),ctx.gpu_sync->tracker().window(),renderer::GpuSyncTiming::spin_limit_ms,unsigned(ctx.gpu_sync->census_available()));
-    if(!ctx.gpu_sync->available()){ctx.gpu_sync.reset();return;} // soft fail: nothing held, no per-frame work
+        unsigned(ctx.gpu_sync->available()), ctx.gpu_sync->reason(), hr, ctx.id,
+        ctx.gpu_sync->available() ? gpu_sync_timing::boundary_count : 0u, ctx.gpu_sync->references(),
+        ctx.gpu_sync->tracker().window(), renderer::GpuSyncTiming::spin_limit_ms,
+        unsigned(ctx.gpu_sync->census_available()));
+    if (!ctx.gpu_sync->available()) {
+        ctx.gpu_sync.reset();
+        return;
+    } // soft fail: nothing held, no per-frame work
     ctx.motion_output.configure_gpu_sync_timing(ctx.gpu_sync.get());
 }
-unsigned gpu_sync_references(const Device& ctx) noexcept { return ctx.gpu_sync?ctx.gpu_sync->references():0u; }
+unsigned gpu_sync_references(const Device& ctx) noexcept {
+    return ctx.gpu_sync ? ctx.gpu_sync->references() : 0u;
+}
 // The caster retention store's final-Release probe (release_device): one row for the first
 // probe and one per distinct tuple of the accounting terms and the verdict (device, bloom,
 // gpu_sync, fired; now and retained move with the application's objects and the store's
 // size every frame and are reported, not keyed), at most 16 per device, of which one slot
 // is kept for the first fired row so a mid-session flush is always on record. Reached only
 // while the store holds a reference (never with the option off).
-void retention_probe_log(Device& ctx, ULONG now, unsigned device_term, unsigned bloom_term, unsigned gpu_sync_term, unsigned retained, bool fired) {
+void retention_probe_log(Device& ctx, ULONG now, unsigned device_term, unsigned bloom_term, unsigned gpu_sync_term,
+                         unsigned retained, bool fired) {
     constexpr unsigned limit = sizeof ctx.retention_probe_rows / sizeof ctx.retention_probe_rows[0];
-    if (ctx.retention_probe_logged >= limit || (!fired && ctx.retention_probe_logged + 1 >= limit && !ctx.retention_probe_fired)) return;
-    const Device::RetentionProbeRow row{std::uint32_t(now), device_term, bloom_term, gpu_sync_term, retained, fired ? 1u : 0u};
+    if (ctx.retention_probe_logged >= limit ||
+        (!fired && ctx.retention_probe_logged + 1 >= limit && !ctx.retention_probe_fired))
+        return;
+    const Device::RetentionProbeRow row{std::uint32_t(now), device_term, bloom_term,
+                                        gpu_sync_term,      retained,    fired ? 1u : 0u};
     for (unsigned i = 0; i < ctx.retention_probe_logged; ++i) {
         const auto& seen = ctx.retention_probe_rows[i];
-        if (seen.device == row.device && seen.bloom == row.bloom && seen.gpu_sync == row.gpu_sync && seen.fired == row.fired) return;
+        if (seen.device == row.device && seen.bloom == row.bloom && seen.gpu_sync == row.gpu_sync &&
+            seen.fired == row.fired)
+            return;
     }
     ctx.retention_probe_rows[ctx.retention_probe_logged++] = row;
     ctx.retention_probe_fired |= fired;
     log("shadow_retention_probe frame=%llu now=%lu device=%u bloom=%u gpu_sync=%u retained=%u fired=%u id=%llu rows=%u",
-        ctx.frame, now, device_term, bloom_term, gpu_sync_term, retained, fired ? 1u : 0u, ctx.id, ctx.retention_probe_logged);
+        ctx.frame, now, device_term, bloom_term, gpu_sync_term, retained, fired ? 1u : 0u, ctx.id,
+        ctx.retention_probe_logged);
 }
-void gpu_sync_mark(Device& ctx,unsigned pass,bool begin) noexcept {
-    if(!ctx.gpu_sync)return;
-    if(begin)ctx.gpu_sync->begin(pass); else ctx.gpu_sync->end(pass);
+void gpu_sync_mark(Device& ctx, unsigned pass, bool begin) noexcept {
+    if (!ctx.gpu_sync) return;
+    if (begin)
+        ctx.gpu_sync->begin(pass);
+    else
+        ctx.gpu_sync->end(pass);
 }
 void gpu_sync_log_summary(Device& ctx) {
-    if(!ctx.gpu_sync||ctx.gpu_sync_summary_logged)return;
-    ctx.gpu_sync_summary_logged=true;
-    const auto r=ctx.gpu_sync->summary(); const auto& s=ctx.gpu_sync->stats();
-    unsigned rows=0;
-    for(unsigned pass=0;pass<gpu_sync_timing::pass_count;++pass){
-        const auto& p=r.pass[pass].session;
-        if(!p.n&&(rows||pass+1<gpu_sync_timing::pass_count))continue; // one row at least, so the dt and counters are always reported
+    if (!ctx.gpu_sync || ctx.gpu_sync_summary_logged) return;
+    ctx.gpu_sync_summary_logged = true;
+    const auto r = ctx.gpu_sync->summary();
+    const auto& s = ctx.gpu_sync->stats();
+    unsigned rows = 0;
+    for (unsigned pass = 0; pass < gpu_sync_timing::pass_count; ++pass) {
+        const auto& p = r.pass[pass].session;
+        if (!p.n && (rows || pass + 1 < gpu_sync_timing::pass_count))
+            continue; // one row at least, so the dt and counters are always reported
         ++rows;
         log("gpu_sync_timing_summary device=%llu pass=%s n=%u median_us=%u p90_us=%u dt_n=%u dt_median_us=%u dt_p90_us=%u windows=%llu frames=%llu syncs=%llu polls=%llu dropped_frames=%llu timeouts=%llu issue_failures=%llu data_failures=%llu available=%u reason=%s",
-            ctx.id,p.n?gpu_sync_timing::pass_name(pass):"none",p.n,p.median,p.p90,r.dt_session.n,r.dt_session.median,r.dt_session.p90,r.window,ctx.frame,
-            s.syncs,s.polls,s.dropped_frames,s.timeouts,s.issue_failures,s.data_failures,unsigned(ctx.gpu_sync->available()),ctx.gpu_sync->reason());
+            ctx.id, p.n ? gpu_sync_timing::pass_name(pass) : "none", p.n, p.median, p.p90, r.dt_session.n,
+            r.dt_session.median, r.dt_session.p90, r.window, ctx.frame, s.syncs, s.polls, s.dropped_frames, s.timeouts,
+            s.issue_failures, s.data_failures, unsigned(ctx.gpu_sync->available()), ctx.gpu_sync->reason());
     }
 }
 // The final release: the session rows, then the queries go (their device references with them).
 void gpu_sync_release(Device& ctx) {
-    if(!ctx.gpu_sync)return;
+    if (!ctx.gpu_sync) return;
     gpu_sync_log_summary(ctx);
     ctx.gpu_sync->detach();
 }
-void gpu_sync_before_reset(Device& ctx) { if(ctx.gpu_sync)ctx.gpu_sync->before_reset(); }
-void gpu_sync_after_reset(Device& ctx,HRESULT hr) {
-    if(!ctx.gpu_sync)return;
+void gpu_sync_before_reset(Device& ctx) {
+    if (ctx.gpu_sync) ctx.gpu_sync->before_reset();
+}
+void gpu_sync_after_reset(Device& ctx, HRESULT hr) {
+    if (!ctx.gpu_sync) return;
     ctx.gpu_sync->after_reset(hr);
-    if(SUCCEEDED(hr))log("gpu_sync_timing available=%u reason=%s result=%08lx device=%llu event=reset references=%u",
-        unsigned(ctx.gpu_sync->available()),ctx.gpu_sync->reason(),ctx.gpu_sync->create_result(),ctx.id,ctx.gpu_sync->references());
+    if (SUCCEEDED(hr))
+        log("gpu_sync_timing available=%u reason=%s result=%08lx device=%llu event=reset references=%u",
+            unsigned(ctx.gpu_sync->available()), ctx.gpu_sync->reason(), ctx.gpu_sync->create_result(), ctx.id,
+            ctx.gpu_sync->references());
 }
 // After the native Present: closes the Present pair, files the frame and, per
 // completed window, one row per measured pass (window and session figures, the
 // window's Present-to-Present CPU dt of the serialised frames).
 void gpu_sync_present(Device& ctx) {
-    if(!ctx.gpu_sync)return;
+    if (!ctx.gpu_sync) return;
     ctx.gpu_sync->end(gpu_sync_timing::Present);
-    if(ctx.gpu_sync->release_pending()){ // the failure cut-off tripped this frame: the queries go here, outside every pass
-        {BloomOperation internal(ctx);ctx.gpu_sync->release_deferred();} // their final Release re-enters release_device: no final-release accounting meanwhile
+    if (ctx.gpu_sync->release_pending()) { // the failure cut-off tripped this frame: the queries go here, outside every
+                                           // pass
+        {
+            BloomOperation internal(ctx);
+            ctx.gpu_sync->release_deferred();
+        } // their final Release re-enters release_device: no final-release accounting meanwhile
         log("gpu_sync_timing available=0 reason=%s result=%08lx device=%llu event=cutoff frame=%llu timeouts=%llu issue_failures=%llu data_failures=%llu",
-            ctx.gpu_sync->reason(),ctx.gpu_sync->create_result(),ctx.id,ctx.frame,ctx.gpu_sync->stats().timeouts,ctx.gpu_sync->stats().issue_failures,ctx.gpu_sync->stats().data_failures);
+            ctx.gpu_sync->reason(), ctx.gpu_sync->create_result(), ctx.id, ctx.frame, ctx.gpu_sync->stats().timeouts,
+            ctx.gpu_sync->stats().issue_failures, ctx.gpu_sync->stats().data_failures);
     }
     gpu_sync_timing::Report r;
-    if(!ctx.gpu_sync->frame(ctx.frame,&r))return;
-    unsigned rows=0;
-    for(unsigned pass=0;pass<gpu_sync_timing::pass_count;++pass){
-        const auto& p=r.pass[pass];
-        if(!p.window.n&&(rows||pass+1<gpu_sync_timing::pass_count))continue; // a window without any pass still reports its dt
+    if (!ctx.gpu_sync->frame(ctx.frame, &r)) return;
+    unsigned rows = 0;
+    for (unsigned pass = 0; pass < gpu_sync_timing::pass_count; ++pass) {
+        const auto& p = r.pass[pass];
+        if (!p.window.n && (rows || pass + 1 < gpu_sync_timing::pass_count))
+            continue; // a window without any pass still reports its dt
         ++rows;
         log("gpu_sync_timing window=%llu pass=%s median_us=%u p90_us=%u n=%u wait_median_us=%u session_n=%u session_median_us=%u session_p90_us=%u dt_median_us=%u dt_p90_us=%u frames=%llu..%llu window_frames=%u dropped=%u unclosed=%u device=%llu",
-            r.window,p.window.n?gpu_sync_timing::pass_name(pass):"none",p.window.median,p.window.p90,p.window.n,p.wait_median,p.session.n,p.session.median,p.session.p90,
-            r.dt_window.median,r.dt_window.p90,r.first_frame,r.last_frame,r.frames,r.dropped,r.unclosed,ctx.id);
+            r.window, p.window.n ? gpu_sync_timing::pass_name(pass) : "none", p.window.median, p.window.p90, p.window.n,
+            p.wait_median, p.session.n, p.session.median, p.session.p90, r.dt_window.median, r.dt_window.p90,
+            r.first_frame, r.last_frame, r.frames, r.dropped, r.unclosed, ctx.id);
     }
     // The fog repair-pixel census (fog-gpu-cost.md, step A): per frame with a repair draw, the pixels its clip kept as
     // ppm of the target; n=0 when no fog frame ran in the window. Step C: needs_* are the pixels the repair marches at
     // the drawn march spacing (needs_scale 2 or 4; 0: none counted), per frame, as pixel counts; needs_missed counts
     // frames whose needs query was not read (not ready, lost or refused).
-    if(ctx.gpu_sync->census_available())
+    if (ctx.gpu_sync->census_available())
         log("volumetric_fog_repair_census window=%llu frames=%llu..%llu n=%u median_ppm=%u p90_ppm=%u max_ppm=%u last_pixels=%u area=%u unread=%u lost=%u failed=%u needs_n=%u needs_px=%u needs_p90_px=%u needs_max_px=%u needs_scale=%u needs_missed=%u device=%llu",
-            r.window,r.first_frame,r.last_frame,r.census.ppm.n,r.census.ppm.median,r.census.ppm.p90,r.census.max_ppm,r.census.pixels,r.census.area,r.census.unread,
-            r.census.lost,r.census.failed,r.needs.px.n,r.needs.px.median,r.needs.px.p90,r.needs.max_px,r.needs.tag,r.needs.unread+r.needs.lost+r.needs.failed,ctx.id);
+            r.window, r.first_frame, r.last_frame, r.census.ppm.n, r.census.ppm.median, r.census.ppm.p90,
+            r.census.max_ppm, r.census.pixels, r.census.area, r.census.unread, r.census.lost, r.census.failed,
+            r.needs.px.n, r.needs.px.median, r.needs.px.p90, r.needs.max_px, r.needs.tag,
+            r.needs.unread + r.needs.lost + r.needs.failed, ctx.id);
 }
 ULONG WINAPI release_device(IDirect3DDevice9* d) {
     CpuCallBoundary cpu;
-    auto* monitor=ownership::process_admission_monitor();
+    auto* monitor = ownership::process_admission_monitor();
     ownership::ApplicationAdmissionAbi admission(monitor);
-    ULONG refs;bool last_device_destroyed=false;
+    ULONG refs;
+    bool last_device_destroyed = false;
     {
         HookGuard lock;
-        auto& ctx=*devices.at(d);
-        auto fn=ctx.get<ULONG (WINAPI*)(IDirect3DDevice9*)>(2);
+        auto& ctx = *devices.at(d);
+        auto fn = ctx.get<ULONG(WINAPI*)(IDirect3DDevice9*)>(2);
         // A registered invocation owns an explicit native pin. Delay final
         // retirement until its cleanup drops transient aliases and releases that
         // pin through this hook. Never count transient surface aliases as native
         // device references or manufacture a zero return for the application.
-        const bool accounting = !ctx.compositor && !ctx.bloom_busy
-            && !ctx.motion_output.reference_accounting_busy() && !ctx.bloom.releasing();
+        const bool accounting = !ctx.compositor && !ctx.bloom_busy && !ctx.motion_output.reference_accounting_busy() &&
+                                !ctx.bloom.releasing();
         // Caster retention (shadow-caster-retention.md, "References"): a retained
         // resource the application already released pins one device reference the
         // accounting below cannot see, so the final-Release probe would never
@@ -1093,10 +1296,12 @@ ULONG WINAPI release_device(IDirect3DDevice9* d) {
         if (accounting) {
             const unsigned retained = ctx.motion_output.retention_references();
             if (retained) {
-                ctx.get<ULONG (WINAPI*)(IDirect3DDevice9*)>(1)(d);
+                ctx.get<ULONG(WINAPI*)(IDirect3DDevice9*)>(1)(d);
                 const ULONG now = fn(d);
-                const unsigned device_term = ctx.motion_output.device_references(), bloom_term = ctx.bloom.references(), gpu_sync_term = gpu_sync_references(ctx);
-                const bool fired = std::uint64_t(now) <= std::uint64_t(device_term) + bloom_term + gpu_sync_term + 1 + retained; // 64-bit: a wrapped term can never satisfy it
+                const unsigned device_term = ctx.motion_output.device_references(), bloom_term = ctx.bloom.references(),
+                               gpu_sync_term = gpu_sync_references(ctx);
+                const bool fired = std::uint64_t(now) <= std::uint64_t(device_term) + bloom_term + gpu_sync_term + 1 +
+                                                             retained; // 64-bit: a wrapped term can never satisfy it
                 // The probe's terms (run336: a drifted term flushed the store every frame and
                 // nothing recorded why): the first probe, then once per distinct tuple, at
                 // most 16 rows per device; only while the store holds a reference.
@@ -1104,325 +1309,437 @@ ULONG WINAPI release_device(IDirect3DDevice9* d) {
                 if (fired) ctx.motion_output.retention_before_final_release();
             }
         }
-        const unsigned held = accounting
-            ? ctx.motion_output.device_references() + ctx.bloom.references() + gpu_sync_references(ctx) : 0;
+        const unsigned held = accounting ? ctx.motion_output.device_references() + ctx.bloom.references() +
+                                               gpu_sync_references(ctx)
+                                         : 0;
         if (held) {
             ctx.motion_output.restore_bindings();
-            const ULONG count=ctx.get<ULONG (WINAPI*)(IDirect3DDevice9*)>(1)(d);
-            const ULONG after=fn(d);
-            if(after==held+1){
+            const ULONG count = ctx.get<ULONG(WINAPI*)(IDirect3DDevice9*)>(1)(d);
+            const ULONG after = fn(d);
+            if (after == held + 1) {
                 BloomOperation internal(ctx);
-                gpu_sync_release(ctx); ctx.bloom.shutdown(); ctx.motion_output.release_resources();
-                log("motion_output_release device=%llu held=%u count=%lu released=1",ctx.id,held,count);
+                gpu_sync_release(ctx);
+                ctx.bloom.shutdown();
+                ctx.motion_output.release_resources();
+                log("motion_output_release device=%llu held=%u count=%lu released=1", ctx.id, held, count);
             }
         }
         cpu.before_original();
-        refs=fn(d);cpu.after_original();
-        if(!refs){game_phases::invalidate_device();report_shader_population(true); // session end: flush the last count movement
-        telemetry::summary(devices.at(d)->stats,"device_destroy",devices.at(d)->frame);telemetry::summary(telemetry::process(),"device_destroy",devices.at(d)->frame);log("device_destroy ptr=%p device=%llu",d,devices.at(d)->id);window_trace::detach(devices.at(d)->id);forget_cached_device();devices.erase(d);}
-        last_device_destroyed=!refs&&devices.empty();
-        if(last_device_destroyed)engine_memory_refused_line(); // per last-device destroy, not at detach (DllMain's detach must not log); later reads are uncounted
+        refs = fn(d);
+        cpu.after_original();
+        if (!refs) {
+            game_phases::invalidate_device();
+            report_shader_population(true); // session end: flush the last count movement
+            telemetry::summary(devices.at(d)->stats, "device_destroy", devices.at(d)->frame);
+            telemetry::summary(telemetry::process(), "device_destroy", devices.at(d)->frame);
+            log("device_destroy ptr=%p device=%llu", d, devices.at(d)->id);
+            window_trace::detach(devices.at(d)->id);
+            forget_cached_device();
+            devices.erase(d);
+        }
+        last_device_destroyed = !refs && devices.empty();
+        if (last_device_destroyed)
+            engine_memory_refused_line(); // per last-device destroy, not at detach (DllMain's detach must not log);
+                                          // later reads are uncounted
     }
     // The profiler's quiescent stop: the last device is gone and the capture
     // mutex is released, so its final report cannot wait on a lock we hold.
-    if(last_device_destroyed){
+    if (last_device_destroyed) {
         sampling_profiler::shutdown();
         // The scene patch/binding remains installed for process lifetime. A
         // bridge may still be returning after this final native Release.
-        chase_camera::note_last_device(); // kept for the process lifetime (review 31 A3): a recreated device could not re-claim the site
-        resource_reader::report(); // final summary without telemetry; the reader itself stays installed (loading continues without a device)
-        loading_trace::crypt_cache_report("session"); // cumulative totals; bounded native cache retained until process exit
-        voice_dmo_fallback::shutdown(); // disarms the fault witness; the site patch stays with the other claims
-        session_log::report("last_device"); // telemetry on: the log writer's last window (render-side format cost, drain cost)
-        session_log::park_writer("last_device"); // the writer ends and drops its module reference (FreeLibrary can unload); the next device re-arms it
-        ownership::set_surface_lock_observer(nullptr); // the video blit witness: no surface outlives the last device, and the log closes after this
+        chase_camera::note_last_device(); // kept for the process lifetime (review 31 A3): a recreated device could not
+                                          // re-claim the site
+        resource_reader::report();        // final summary without telemetry; the reader itself stays installed (loading
+                                          // continues without a device)
+        loading_trace::crypt_cache_report("session"); // cumulative totals; bounded native cache retained until process
+                                                      // exit
+        voice_dmo_fallback::shutdown();     // disarms the fault witness; the site patch stays with the other claims
+        session_log::report("last_device"); // telemetry on: the log writer's last window (render-side format cost,
+                                            // drain cost)
+        session_log::park_writer("last_device"); // the writer ends and drops its module reference (FreeLibrary can
+                                                 // unload); the next device re-arms it
+        ownership::set_surface_lock_observer(nullptr); // the video blit witness: no surface outlives the last device,
+                                                       // and the log closes after this
     }
-    if(!refs){
+    if (!refs) {
         // A nested final factory Release can report this device root still
         // active. Finish the outer device root only after its own cleanup.
         admission.finish();
-        final_admission_metric(monitor,"device");
+        final_admission_metric(monitor, "device");
     }
     return refs;
 }
 // Exact owner qualification remains separate from the game-call transport.
 // This work is once per compositor, not part of any draw/setter hook.
-enum class BloomRefusal : unsigned { Caller, Owner, Device, Nested, Thread, Reset, Glow,
-    Scene, Pass, Boundary, Post, Count };
-constexpr const char* bloom_refusal_names[] = {"caller", "owner", "device", "nested", "thread", "reset",
-    "glow_off", "scene_handoff", "pass_unavailable", "boundary", "post_qualification"};
+enum class BloomRefusal : unsigned {
+    Caller,
+    Owner,
+    Device,
+    Nested,
+    Thread,
+    Reset,
+    Glow,
+    Scene,
+    Pass,
+    Boundary,
+    Post,
+    Count
+};
+constexpr const char* bloom_refusal_names[] = {"caller",
+                                               "owner",
+                                               "device",
+                                               "nested",
+                                               "thread",
+                                               "reset",
+                                               "glow_off",
+                                               "scene_handoff",
+                                               "pass_unavailable",
+                                               "boundary",
+                                               "post_qualification"};
 std::uint64_t bloom_calls = 0, bloom_refusals[unsigned(BloomRefusal::Count)]{};
-void bloom_refuse(BloomRefusal reason,const Device* ctx=nullptr) noexcept {
-    const auto index=unsigned(reason);
-    const auto count=++bloom_refusals[index];
-    if(count==1)log("bloom_refusal reason=%s count=%llu device=%llu ordinary_signal=%u",
-        bloom_refusal_names[index],count,ctx?ctx->id:0,
-        unsigned(reason==BloomRefusal::Glow || reason==BloomRefusal::Scene || reason==BloomRefusal::Pass
-            || reason==BloomRefusal::Boundary || reason==BloomRefusal::Post));
+void bloom_refuse(BloomRefusal reason, const Device* ctx = nullptr) noexcept {
+    const auto index = unsigned(reason);
+    const auto count = ++bloom_refusals[index];
+    if (count == 1)
+        log("bloom_refusal reason=%s count=%llu device=%llu ordinary_signal=%u", bloom_refusal_names[index], count,
+            ctx ? ctx->id : 0,
+            unsigned(reason == BloomRefusal::Glow || reason == BloomRefusal::Scene || reason == BloomRefusal::Pass ||
+                     reason == BloomRefusal::Boundary || reason == BloomRefusal::Post));
 }
 bool compositor_glow_enabled(std::uintptr_t base) noexcept {
-    std::uint32_t settings=0; unsigned char flags=0; SIZE_T copied=0;
-    if(!ReadProcessMemory(GetCurrentProcess(),reinterpret_cast<void*>(base+0x206f34),
-            &settings,sizeof settings,&copied) || copied!=sizeof settings
-            || !settings || settings>UINT32_MAX-0x100u)return false;
-    return ReadProcessMemory(GetCurrentProcess(),reinterpret_cast<void*>(settings+0x100u),
-        &flags,sizeof flags,&copied) && copied==sizeof flags && (flags&0x80u);
+    std::uint32_t settings = 0;
+    unsigned char flags = 0;
+    SIZE_T copied = 0;
+    if (!ReadProcessMemory(GetCurrentProcess(), reinterpret_cast<void*>(base + 0x206f34), &settings, sizeof settings,
+                           &copied) ||
+        copied != sizeof settings || !settings || settings > UINT32_MAX - 0x100u)
+        return false;
+    return ReadProcessMemory(GetCurrentProcess(), reinterpret_cast<void*>(settings + 0x100u), &flags, sizeof flags,
+                             &copied) &&
+           copied == sizeof flags && (flags & 0x80u);
 }
-void retain_compositor_scene(void* storage,const MotionHdrScene& scene) noexcept {
-    auto& call=*static_cast<CompositorInvocation*>(storage);
-    const auto& ctx=*call.owner;
-    if(call.revoked || call.input.scene || scene.device!=call.device || scene.device_id!=ctx.id
-            || scene.frame!=ctx.frame || !scene.display.valid || !scene.scene || !scene.main)return;
+void retain_compositor_scene(void* storage, const MotionHdrScene& scene) noexcept {
+    auto& call = *static_cast<CompositorInvocation*>(storage);
+    const auto& ctx = *call.owner;
+    if (call.revoked || call.input.scene || scene.device != call.device || scene.device_id != ctx.id ||
+        scene.frame != ctx.frame || !scene.display.valid || !scene.scene || !scene.main)
+        return;
     // Synchronous retain/copy only. MotionOutput still owns its writeback state;
     // no preparation, Reset or renderer reentry until scene_end_hook returns.
-    scene.scene->AddRef(); call.input.scene=scene.scene;
-    scene.main->AddRef(); call.input.boundary.main=scene.main;
-    call.input.agx=scene.display.agx;
-    call.input.decode=scene.display.decode;
-    call.input.sharpen=scene.display.sharpen;
-    call.input.sharpen_constants=scene.display.sharpen_constants;
-    call.input.exact_sharpen=true;
+    scene.scene->AddRef();
+    call.input.scene = scene.scene;
+    scene.main->AddRef();
+    call.input.boundary.main = scene.main;
+    call.input.agx = scene.display.agx;
+    call.input.decode = scene.display.decode;
+    call.input.sharpen = scene.display.sharpen;
+    call.input.sharpen_constants = scene.display.sharpen_constants;
+    call.input.exact_sharpen = true;
     // Restore the native scene alpha's authored colored-glow intent before
     // AgX, with a complementary HDR-highlight contribution. These are linear
     // art weights, not a reproduction of the native display-space screen blend.
     // Favor the finer pyramid levels for a tighter core, with a small authored
     // gain increase and less weight in the widest halo.
-    call.input.filter.authored_glow_gain=0.375f;
-    call.input.filter.scatter=0.65f;
-    call.input.filter.highlight_gain=0.05f;
+    call.input.filter.authored_glow_gain = 0.375f;
+    call.input.filter.scatter = 0.65f;
+    call.input.filter.highlight_gain = 0.05f;
     // Bloom-only source ceiling: the pyramid sees at most this decoded code,
     // the presented scene keeps its full HDR value (bloom-falloff.md).
-    call.input.filter.source_clamp=bloom_source_clamp;
-    call.input.filter.strength=1.f; // full gain (the Ctrl+Shift+F10 zero-gain A/B went on 2026-09-26)
+    call.input.filter.source_clamp = bloom_source_clamp;
+    call.input.filter.strength = 1.f; // full gain (the Ctrl+Shift+F10 zero-gain A/B went on 2026-09-26)
 }
-bool compositor_current(const CompositorInvocation& call,bool refresh_owner=true) noexcept {
-    if(!call.owner || !call.native_pin || call.revoked)return false;
-    const Device& ctx=*call.owner;
-    const auto found=devices.find(call.device);
-    if(found==devices.end() || found->second.get()!=&ctx || ctx.compositor!=&call
-            || ctx.reset_active || ctx.reset_generation!=call.input.boundary.reset
-            || ctx.frame!=call.input.boundary.frame || ctx.scene_thread!=call.input.boundary.thread
-            || GetCurrentThreadId()!=ctx.scene_thread || !ctx.motion_output.bloom_boundary_available())return false;
-    if(!refresh_owner)return true;
+bool compositor_current(const CompositorInvocation& call, bool refresh_owner = true) noexcept {
+    if (!call.owner || !call.native_pin || call.revoked) return false;
+    const Device& ctx = *call.owner;
+    const auto found = devices.find(call.device);
+    if (found == devices.end() || found->second.get() != &ctx || ctx.compositor != &call || ctx.reset_active ||
+        ctx.reset_generation != call.input.boundary.reset || ctx.frame != call.input.boundary.frame ||
+        ctx.scene_thread != call.input.boundary.thread || GetCurrentThreadId() != ctx.scene_thread ||
+        !ctx.motion_output.bloom_boundary_available())
+        return false;
+    if (!refresh_owner) return true;
     compositor_owner::Snapshot now{};
-    const auto base=reinterpret_cast<std::uintptr_t>(GetModuleHandleW(nullptr));
-    return compositor_owner::read(base,now)==compositor_owner::Result::Ok
-        && compositor_owner::same(call.identity,now) && compositor_glow_enabled(base);
+    const auto base = reinterpret_cast<std::uintptr_t>(GetModuleHandleW(nullptr));
+    return compositor_owner::read(base, now) == compositor_owner::Result::Ok &&
+           compositor_owner::same(call.identity, now) && compositor_glow_enabled(base);
 }
-void compositor_pre(const X3mCompositorFrame* frame,void* storage,void*) {
+void compositor_pre(const X3mCompositorFrame* frame, void* storage, void*) {
     // This constructor is nonthrowing; cleanup can always destroy the object,
     // including when admission declines before a context is acquired.
-    auto& call=*new(storage) CompositorInvocation{};
+    auto& call = *new (storage) CompositorInvocation{};
     CaptureLock lock;
-    frame_timing::Scope timing(frame_timing::Bucket::Scene,"compositor_pre"); // X3M_FRAME_TIMING only
-    if(++bloom_calls%300==0&&telemetry::enabled()) // the 300-call window: a telemetry row since the logging tiers
+    frame_timing::Scope timing(frame_timing::Bucket::Scene, "compositor_pre"); // X3M_FRAME_TIMING only
+    if (++bloom_calls % 300 == 0 && telemetry::enabled()) // the 300-call window: a telemetry row since the logging
+                                                          // tiers
         log("bloom_admission calls=%llu caller=%llu owner=%llu device=%llu nested=%llu thread=%llu reset=%llu glow_off=%llu scene_handoff=%llu pass_unavailable=%llu boundary=%llu post_qualification=%llu",
-            bloom_calls,bloom_refusals[0],bloom_refusals[1],bloom_refusals[2],bloom_refusals[3],bloom_refusals[4],bloom_refusals[5],
-            bloom_refusals[6],bloom_refusals[7],bloom_refusals[8],bloom_refusals[9],bloom_refusals[10]);
-    if(!scene_hook::compositor_active() || frame->caller_pc!=scene_hook::compositor_caller_pc()
-            || !frame->caller_stack || (frame->caller_stack&3u)){bloom_refuse(BloomRefusal::Caller);return;}
-    const auto base=reinterpret_cast<std::uintptr_t>(GetModuleHandleW(nullptr));
-    if(compositor_owner::read(base,call.identity)!=compositor_owner::Result::Ok){bloom_refuse(BloomRefusal::Owner);return;}
-    call.device=reinterpret_cast<IDirect3DDevice9*>(call.identity.device);
-    const auto found=devices.find(call.device);
-    if(found==devices.end()){bloom_refuse(BloomRefusal::Device);return;}
-    Device& ctx=*found->second;
-    if(ctx.compositor){
+            bloom_calls, bloom_refusals[0], bloom_refusals[1], bloom_refusals[2], bloom_refusals[3], bloom_refusals[4],
+            bloom_refusals[5], bloom_refusals[6], bloom_refusals[7], bloom_refusals[8], bloom_refusals[9],
+            bloom_refusals[10]);
+    if (!scene_hook::compositor_active() || frame->caller_pc != scene_hook::compositor_caller_pc() ||
+        !frame->caller_stack || (frame->caller_stack & 3u)) {
+        bloom_refuse(BloomRefusal::Caller);
+        return;
+    }
+    const auto base = reinterpret_cast<std::uintptr_t>(GetModuleHandleW(nullptr));
+    if (compositor_owner::read(base, call.identity) != compositor_owner::Result::Ok) {
+        bloom_refuse(BloomRefusal::Owner);
+        return;
+    }
+    call.device = reinterpret_cast<IDirect3DDevice9*>(call.identity.device);
+    const auto found = devices.find(call.device);
+    if (found == devices.end()) {
+        bloom_refuse(BloomRefusal::Device);
+        return;
+    }
+    Device& ctx = *found->second;
+    if (ctx.compositor) {
         // A nested original still executes, but invalidates the outer ticket;
         // no separately retained resources are destroyed inside its GPU call.
-        ctx.compositor->revoked=true; ctx.compositor->ready=false; bloom_refuse(BloomRefusal::Nested,&ctx);return;
+        ctx.compositor->revoked = true;
+        ctx.compositor->ready = false;
+        bloom_refuse(BloomRefusal::Nested, &ctx);
+        return;
     }
-    if(ctx.reset_active){bloom_refuse(BloomRefusal::Reset,&ctx);return;}
-    if(!ctx.scene_thread || ctx.scene_thread!=GetCurrentThreadId()){bloom_refuse(BloomRefusal::Thread,&ctx);return;}
-    call.owner=found->second;
-    ctx.get<ULONG (WINAPI*)(IDirect3DDevice9*)>(1)(call.device); call.native_pin=true;
-    ctx.compositor=&call;
-    call.input.boundary.frame=ctx.frame; call.input.boundary.reset=ctx.reset_generation;
-    call.input.boundary.thread=ctx.scene_thread;
+    if (ctx.reset_active) {
+        bloom_refuse(BloomRefusal::Reset, &ctx);
+        return;
+    }
+    if (!ctx.scene_thread || ctx.scene_thread != GetCurrentThreadId()) {
+        bloom_refuse(BloomRefusal::Thread, &ctx);
+        return;
+    }
+    call.owner = found->second;
+    ctx.get<ULONG(WINAPI*)(IDirect3DDevice9*)>(1)(call.device);
+    call.native_pin = true;
+    ctx.compositor = &call;
+    call.input.boundary.frame = ctx.frame;
+    call.input.boundary.reset = ctx.reset_generation;
+    call.input.boundary.thread = ctx.scene_thread;
     BloomOperation internal(ctx);
-    const bool glow=compositor_glow_enabled(base);
+    const bool glow = compositor_glow_enabled(base);
     // Even glow-off and unavailable replacement retain the ordinary route's
     // scene-end resolve/writeback. New work consumes its exact completed image.
-    ctx.motion_output.scene_end_hook(glow ? &retain_compositor_scene : nullptr,&call);
-    if(!glow){bloom_refuse(BloomRefusal::Glow,&ctx);return;}
-    if(!call.input.scene || !call.input.boundary.main || !compositor_current(call,false)){
-        bloom_refuse(BloomRefusal::Scene,&ctx);return;
+    ctx.motion_output.scene_end_hook(glow ? &retain_compositor_scene : nullptr, &call);
+    if (!glow) {
+        bloom_refuse(BloomRefusal::Glow, &ctx);
+        return;
     }
-    if(!ctx.bloom_attempted){
-        ctx.bloom_attempted=true;
-        const HRESULT hr=ctx.bloom.attach(call.device,ctx.original,ctx.caps,renderer::bloom_programs());
-        log("bloom_attach device=%llu result=%08lx reason=%s references=%u",ctx.id,hr,ctx.bloom.caps().reason,ctx.bloom.references());
+    if (!call.input.scene || !call.input.boundary.main || !compositor_current(call, false)) {
+        bloom_refuse(BloomRefusal::Scene, &ctx);
+        return;
     }
-    if(!ctx.bloom.enabled()){bloom_refuse(BloomRefusal::Pass,&ctx);return;}
-    const HRESULT main=call.input.boundary.main->GetDesc(&call.input.boundary.main_desc);
-    const HRESULT depth=ctx.get<HRESULT (WINAPI*)(IDirect3DDevice9*,IDirect3DSurface9**)>(40)
-        (call.device,&call.input.boundary.depth);
-    if(FAILED(main) || (FAILED(depth)&&depth!=D3DERR_NOTFOUND)
-            || (call.input.boundary.depth && FAILED(call.input.boundary.depth->GetDesc(&call.input.boundary.depth_desc)))){
-        bloom_refuse(BloomRefusal::Boundary,&ctx);return;
+    if (!ctx.bloom_attempted) {
+        ctx.bloom_attempted = true;
+        const HRESULT hr = ctx.bloom.attach(call.device, ctx.original, ctx.caps, renderer::bloom_programs());
+        log("bloom_attach device=%llu result=%08lx reason=%s references=%u", ctx.id, hr, ctx.bloom.caps().reason,
+            ctx.bloom.references());
     }
-    call.input.boundary.admitted=true;
-    const auto begin=telemetry::now();
-    gpu_sync_mark(ctx,gpu_sync_timing::Bloom,true); // --gpu-sync-timing only
-    const auto prepared=ctx.bloom.prepare(call.input);
-    gpu_sync_mark(ctx,gpu_sync_timing::Bloom,false);
-    if(!prepared.state_preserved)ctx.motion_output.stateblock_applied();
-    if(prepared.ready){
-        call.candidate=prepared.candidate;
+    if (!ctx.bloom.enabled()) {
+        bloom_refuse(BloomRefusal::Pass, &ctx);
+        return;
+    }
+    const HRESULT main = call.input.boundary.main->GetDesc(&call.input.boundary.main_desc);
+    const HRESULT depth = ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*, IDirect3DSurface9**)>(40)(
+        call.device, &call.input.boundary.depth);
+    if (FAILED(main) || (FAILED(depth) && depth != D3DERR_NOTFOUND) ||
+        (call.input.boundary.depth && FAILED(call.input.boundary.depth->GetDesc(&call.input.boundary.depth_desc)))) {
+        bloom_refuse(BloomRefusal::Boundary, &ctx);
+        return;
+    }
+    call.input.boundary.admitted = true;
+    const auto begin = telemetry::now();
+    gpu_sync_mark(ctx, gpu_sync_timing::Bloom, true); // --gpu-sync-timing only
+    const auto prepared = ctx.bloom.prepare(call.input);
+    gpu_sync_mark(ctx, gpu_sync_timing::Bloom, false);
+    if (!prepared.state_preserved) ctx.motion_output.stateblock_applied();
+    if (prepared.ready) {
+        call.candidate = prepared.candidate;
         call.candidate.surface->AddRef();
-        call.ready=compositor_current(call);
-        if(call.ready)++ctx.bloom_prepared;
+        call.ready = compositor_current(call);
+        if (call.ready) ++ctx.bloom_prepared;
     }
-    if((call.ready && ctx.bloom_prepared==1) || (!prepared.ready && ctx.bloom_failure_reports++<8) || (ctx.frame%300==0&&telemetry::enabled()))
-    {
+    if ((call.ready && ctx.bloom_prepared == 1) || (!prepared.ready && ctx.bloom_failure_reports++ < 8) ||
+        (ctx.frame % 300 == 0 && telemetry::enabled())) {
         char clamp_text[24];
-        const float clamp=call.input.filter.source_clamp;
-        if(clamp<x3::temporal::kAgxClampOff)std::snprintf(clamp_text,sizeof clamp_text,"%g",double(clamp));
-        else std::snprintf(clamp_text,sizeof clamp_text,"none");
+        const float clamp = call.input.filter.source_clamp;
+        if (clamp < x3::temporal::kAgxClampOff)
+            std::snprintf(clamp_text, sizeof clamp_text, "%g", double(clamp));
+        else
+            std::snprintf(clamp_text, sizeof clamp_text, "none");
         log("bloom_prepare device=%llu frame=%llu ready=%u reason=%s operation=%08lx restore=%08lx state_preserved=%u clamp=%s cpu_ticks=%llu bytes=%llu",
-            ctx.id,ctx.frame,call.ready,prepared.reason,prepared.operation,prepared.restore,prepared.state_preserved,
-            clamp_text,telemetry::now()-begin,ctx.bloom.resource_bytes());
+            ctx.id, ctx.frame, call.ready, prepared.reason, prepared.operation, prepared.restore,
+            prepared.state_preserved, clamp_text, telemetry::now() - begin, ctx.bloom.resource_bytes());
     }
 }
-void compositor_post(const X3mCompositorFrame*,void* storage,void*) {
-    auto& call=*static_cast<CompositorInvocation*>(storage);
+void compositor_post(const X3mCompositorFrame*, void* storage, void*) {
+    auto& call = *static_cast<CompositorInvocation*>(storage);
     CaptureLock lock;
-    frame_timing::Scope timing(frame_timing::Bucket::Scene,"compositor_post"); // X3M_FRAME_TIMING only
-    if(!call.ready)return;
-    if(!compositor_current(call)){bloom_refuse(BloomRefusal::Post,call.owner.get());return;}
-    Device& ctx=*call.owner;
+    frame_timing::Scope timing(frame_timing::Bucket::Scene, "compositor_post"); // X3M_FRAME_TIMING only
+    if (!call.ready) return;
+    if (!compositor_current(call)) {
+        bloom_refuse(BloomRefusal::Post, call.owner.get());
+        return;
+    }
+    Device& ctx = *call.owner;
     BloomOperation internal(ctx);
-    const auto begin=telemetry::now();
-    gpu_sync_mark(ctx,gpu_sync_timing::Bloom,true); // --gpu-sync-timing only: the commit adds to the prepare's span
-    const auto result=ctx.bloom.commit(call.candidate,call.input.boundary);
-    gpu_sync_mark(ctx,gpu_sync_timing::Bloom,false);
-    call.ready=false; // every candidate is consumed at most once
-    if(!result.state_preserved)ctx.motion_output.stateblock_applied();
-    if(result.committed){
+    const auto begin = telemetry::now();
+    gpu_sync_mark(ctx, gpu_sync_timing::Bloom, true); // --gpu-sync-timing only: the commit adds to the prepare's span
+    const auto result = ctx.bloom.commit(call.candidate, call.input.boundary);
+    gpu_sync_mark(ctx, gpu_sync_timing::Bloom, false);
+    call.ready = false; // every candidate is consumed at most once
+    if (!result.state_preserved) ctx.motion_output.stateblock_applied();
+    if (result.committed) {
         ++ctx.bloom_committed;
     }
-    if((result.committed && ctx.bloom_committed==1) || (!result.committed && ctx.bloom_failure_reports++<8) || (ctx.frame%300==0&&telemetry::enabled()))
+    if ((result.committed && ctx.bloom_committed == 1) || (!result.committed && ctx.bloom_failure_reports++ < 8) ||
+        (ctx.frame % 300 == 0 && telemetry::enabled()))
         log("bloom_commit device=%llu frame=%llu committed=%u reason=%s operation=%08lx restore=%08lx recovery=%08lx recovery_restore=%08lx original_preserved=%u state_preserved=%u cpu_ticks=%llu",
-            ctx.id,ctx.frame,result.committed,result.reason,result.operation,result.restore,result.recovery,result.recovery_restore,
-            result.original_preserved,result.state_preserved,telemetry::now()-begin);
+            ctx.id, ctx.frame, result.committed, result.reason, result.operation, result.restore, result.recovery,
+            result.recovery_restore, result.original_preserved, result.state_preserved, telemetry::now() - begin);
 }
-void compositor_cleanup(const X3mCompositorFrame*,void* storage,void*,int abnormal) {
-    auto& call=*static_cast<CompositorInvocation*>(storage);
-    IDirect3DDevice9* pin=nullptr;
+void compositor_cleanup(const X3mCompositorFrame*, void* storage, void*, int abnormal) {
+    auto& call = *static_cast<CompositorInvocation*>(storage);
+    IDirect3DDevice9* pin = nullptr;
     {
         CaptureLock lock;
-        if(call.owner){
-            Device& ctx=*call.owner;
-            if(ctx.compositor==&call){
+        if (call.owner) {
+            Device& ctx = *call.owner;
+            if (ctx.compositor == &call) {
                 revoke_compositor(ctx);
-                ctx.compositor=nullptr;
+                ctx.compositor = nullptr;
             }
-            if(abnormal && ctx.bloom_failure_reports++<8)
-                log("bloom_original_abnormal device=%llu frame=%llu",ctx.id,call.input.boundary.frame);
+            if (abnormal && ctx.bloom_failure_reports++ < 8)
+                log("bloom_original_abnormal device=%llu frame=%llu", ctx.id, call.input.boundary.frame);
         }
-        if(call.native_pin){call.native_pin=false;pin=call.device;}
+        if (call.native_pin) {
+            call.native_pin = false;
+            pin = call.device;
+        }
     }
     // Keep capture mutex released: terminal Release can stop the profiler and
     // emit final reports. The CPU pin survives any map erase inside this hook.
-    if(pin)release_device(pin);
+    if (pin) release_device(pin);
     call.~CompositorInvocation();
 }
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
-void bloom_fixture_pre(const X3mCompositorFrame*,void* storage,void*) {
-    auto& call=*new(storage) CompositorInvocation{};
+void bloom_fixture_pre(const X3mCompositorFrame*, void* storage, void*) {
+    auto& call = *new (storage) CompositorInvocation{};
     CaptureLock lock;
-    auto& f=bloom_lifetime_fixture; ++f.counts[0];
-    const auto found=devices.find(f.device);
-    if(found==devices.end() || found->second->compositor)return;
-    auto& ctx=*found->second;
-    f.counts[14]=ctx.motion_output.device_references();
-    f.counts[15]=ctx.motion_output.hdr_enabled();
-    f.counts[16]=ctx.motion_output.taa_enabled();
-    call.owner=found->second; f.owner=call.owner; call.device=f.device;
-    ctx.get<ULONG (WINAPI*)(IDirect3DDevice9*)>(1)(f.device); call.native_pin=true;
-    ctx.compositor=&call;
-    ctx.scene_thread=GetCurrentThreadId();
-    call.input.boundary.frame=ctx.frame; call.input.boundary.reset=ctx.reset_generation;
-    call.input.boundary.thread=ctx.scene_thread;
+    auto& f = bloom_lifetime_fixture;
+    ++f.counts[0];
+    const auto found = devices.find(f.device);
+    if (found == devices.end() || found->second->compositor) return;
+    auto& ctx = *found->second;
+    f.counts[14] = ctx.motion_output.device_references();
+    f.counts[15] = ctx.motion_output.hdr_enabled();
+    f.counts[16] = ctx.motion_output.taa_enabled();
+    call.owner = found->second;
+    f.owner = call.owner;
+    call.device = f.device;
+    ctx.get<ULONG(WINAPI*)(IDirect3DDevice9*)>(1)(f.device);
+    call.native_pin = true;
+    ctx.compositor = &call;
+    ctx.scene_thread = GetCurrentThreadId();
+    call.input.boundary.frame = ctx.frame;
+    call.input.boundary.reset = ctx.reset_generation;
+    call.input.boundary.thread = ctx.scene_thread;
     BloomOperation internal(ctx);
-    if(!f.scene || !f.main)return;
-    f.scene->AddRef();call.input.scene=f.scene;
-    f.main->AddRef();call.input.boundary.main=f.main;
-    if(f.depth){f.depth->AddRef();call.input.boundary.depth=f.depth;}
-    if(FAILED(f.main->GetDesc(&call.input.boundary.main_desc))
-            || (f.depth && FAILED(f.depth->GetDesc(&call.input.boundary.depth_desc))))return;
-    x3::temporal::prepare(call.input.agx,1.f,65504.f,x3::temporal::AgxDecode::gamma22,x3::temporal::AgxLook::none);
-    call.input.sharpen=0.37f;
-    x3::temporal::prepare_sharpen(call.input.sharpen_constants,call.input.sharpen,
-        call.input.boundary.main_desc.Width,call.input.boundary.main_desc.Height);
-    call.input.exact_sharpen=true;
-    call.input.boundary.admitted=true;
-    if(!ctx.bloom_attempted){
-        ctx.bloom_attempted=true;
-        f.counts[12]=unsigned(ctx.bloom.attach(f.device,ctx.original,ctx.caps,renderer::bloom_programs()));
+    if (!f.scene || !f.main) return;
+    f.scene->AddRef();
+    call.input.scene = f.scene;
+    f.main->AddRef();
+    call.input.boundary.main = f.main;
+    if (f.depth) {
+        f.depth->AddRef();
+        call.input.boundary.depth = f.depth;
     }
-    if(!ctx.bloom.enabled())return;
-    const auto prepared=ctx.bloom.prepare(call.input);
-    f.counts[12]=unsigned(prepared.operation);
-    if(prepared.ready){
-        call.candidate=prepared.candidate;call.candidate.surface->AddRef();
-        call.ready=true;++f.counts[4];
+    if (FAILED(f.main->GetDesc(&call.input.boundary.main_desc)) ||
+        (f.depth && FAILED(f.depth->GetDesc(&call.input.boundary.depth_desc))))
+        return;
+    x3::temporal::prepare(call.input.agx, 1.f, 65504.f, x3::temporal::AgxDecode::gamma22, x3::temporal::AgxLook::none);
+    call.input.sharpen = 0.37f;
+    x3::temporal::prepare_sharpen(call.input.sharpen_constants, call.input.sharpen, call.input.boundary.main_desc.Width,
+                                  call.input.boundary.main_desc.Height);
+    call.input.exact_sharpen = true;
+    call.input.boundary.admitted = true;
+    if (!ctx.bloom_attempted) {
+        ctx.bloom_attempted = true;
+        f.counts[12] = unsigned(ctx.bloom.attach(f.device, ctx.original, ctx.caps, renderer::bloom_programs()));
+    }
+    if (!ctx.bloom.enabled()) return;
+    const auto prepared = ctx.bloom.prepare(call.input);
+    f.counts[12] = unsigned(prepared.operation);
+    if (prepared.ready) {
+        call.candidate = prepared.candidate;
+        call.candidate.surface->AddRef();
+        call.ready = true;
+        ++f.counts[4];
     }
 }
-void bloom_fixture_post(const X3mCompositorFrame*,void* storage,void*) {
-    auto& call=*static_cast<CompositorInvocation*>(storage);
+void bloom_fixture_post(const X3mCompositorFrame*, void* storage, void*) {
+    auto& call = *static_cast<CompositorInvocation*>(storage);
     CaptureLock lock;
-    auto& f=bloom_lifetime_fixture; ++f.counts[1];
-    if(!call.owner || !call.ready || call.revoked)return;
-    auto& ctx=*call.owner;
-    if(ctx.compositor!=&call || ctx.reset_active || ctx.reset_generation!=call.input.boundary.reset
-            || ctx.frame!=call.input.boundary.frame || GetCurrentThreadId()!=call.input.boundary.thread)return;
+    auto& f = bloom_lifetime_fixture;
+    ++f.counts[1];
+    if (!call.owner || !call.ready || call.revoked) return;
+    auto& ctx = *call.owner;
+    if (ctx.compositor != &call || ctx.reset_active || ctx.reset_generation != call.input.boundary.reset ||
+        ctx.frame != call.input.boundary.frame || GetCurrentThreadId() != call.input.boundary.thread)
+        return;
     BloomOperation internal(ctx);
-    const auto committed=ctx.bloom.commit(call.candidate,call.input.boundary);
-    call.ready=false;f.counts[13]=unsigned(committed.operation);
-    if(committed.committed)++f.counts[5];
+    const auto committed = ctx.bloom.commit(call.candidate, call.input.boundary);
+    call.ready = false;
+    f.counts[13] = unsigned(committed.operation);
+    if (committed.committed) ++f.counts[5];
 }
-void bloom_fixture_cleanup(const X3mCompositorFrame* frame,void* storage,void* context,int abnormal) {
+void bloom_fixture_cleanup(const X3mCompositorFrame* frame, void* storage, void* context, int abnormal) {
     ++bloom_lifetime_fixture.counts[2];
-    if(abnormal)++bloom_lifetime_fixture.counts[3];
-    compositor_cleanup(frame,storage,context,abnormal);
+    if (abnormal) ++bloom_lifetime_fixture.counts[3];
+    compositor_cleanup(frame, storage, context, abnormal);
 }
 #endif
-void finite_upload_metrics(IDirect3DDevice9* device,const Device& ctx,const char* phase) {
-    if(!finite_positions_requested)return;
+void finite_upload_metrics(IDirect3DDevice9* device, const Device& ctx, const char* phase) {
+    if (!finite_positions_requested) return;
     ownership::FiniteUploadStatistics s{};
-    const HRESULT hr=ownership::get_finite_upload_statistics(device,&s);
+    const HRESULT hr = ownership::get_finite_upload_statistics(device, &s);
     // Cumulative per-owner counters and current process reservations, emitted in
     // batches. No resource uploads or payload contents are logged individually.
     log("finite_upload_metric device=%llu frame=%llu phase=%s result=%08lx status=%08lx requested=%u active=%u generation=%llu payload_bytes=%llu peak_payload_bytes=%llu sidecars=%llu metadata_bytes=%llu global_payload_bytes=%llu global_sidecars=%llu uploads=%llu publications=%llu invalidations=%llu allocation_failures=%llu scans=%llu classified_bytes=%llu scan_ticks=%llu qualifier_ticks=%llu queries=%llu query_ticks=%llu query_cache_hits=%llu position_components=%llu",
-        ctx.id,ctx.frame,phase,hr,s.status,s.requested,s.active,s.generation,s.payload_bytes,s.peak_payload_bytes,s.sidecars,s.metadata_bytes,
-        s.global_payload_bytes,s.global_sidecars,s.uploads,s.publications,s.invalidations,s.allocation_failures,s.scans,s.classified_bytes,
-        s.scan_ticks,s.qualifier_ticks,s.queries,s.query_ticks,s.query_cache_hits,s.position_components);
-    if(s.first_refusal.available){
-        const auto& f=s.first_refusal;
+        ctx.id, ctx.frame, phase, hr, s.status, s.requested, s.active, s.generation, s.payload_bytes,
+        s.peak_payload_bytes, s.sidecars, s.metadata_bytes, s.global_payload_bytes, s.global_sidecars, s.uploads,
+        s.publications, s.invalidations, s.allocation_failures, s.scans, s.classified_bytes, s.scan_ticks,
+        s.qualifier_ticks, s.queries, s.query_ticks, s.query_cache_hits, s.position_components);
+    if (s.first_refusal.available) {
+        const auto& f = s.first_refusal;
         log("finite_upload_first_refusal device=%llu frame=%llu phase=%s reason=%u name=%s type=%u format=%u pool=%u size=%u usage=%08lx lock_flags=%08lx",
-            ctx.id,ctx.frame,phase,unsigned(f.reason),ownership::finite_evidence_reason_name(f.reason),
-            unsigned(f.type),unsigned(f.format),unsigned(f.pool),f.size,static_cast<DWORD>(f.usage),static_cast<DWORD>(f.lock_flags));
+            ctx.id, ctx.frame, phase, unsigned(f.reason), ownership::finite_evidence_reason_name(f.reason),
+            unsigned(f.type), unsigned(f.format), unsigned(f.pool), f.size, static_cast<DWORD>(f.usage),
+            static_cast<DWORD>(f.lock_flags));
     }
-    for(unsigned i=0;i<ownership::finite_evidence_reason_count;++i)if(s.reasons[i])
-        log("finite_upload_reason device=%llu frame=%llu phase=%s reason=%u name=%s count=%llu",ctx.id,ctx.frame,phase,i,
-            ownership::finite_evidence_reason_name(static_cast<ownership::FiniteEvidenceReason>(i)),s.reasons[i]);
+    for (unsigned i = 0; i < ownership::finite_evidence_reason_count; ++i)
+        if (s.reasons[i])
+            log("finite_upload_reason device=%llu frame=%llu phase=%s reason=%u name=%s count=%llu", ctx.id, ctx.frame,
+                phase, i, ownership::finite_evidence_reason_name(static_cast<ownership::FiniteEvidenceReason>(i)),
+                s.reasons[i]);
 }
 bool comparison_foreground() noexcept {
-    DWORD process=0;
-    const HWND window=GetForegroundWindow();
-    return window && GetWindowThreadProcessId(window,&process) && process==GetCurrentProcessId();
+    DWORD process = 0;
+    const HWND window = GetForegroundWindow();
+    return window && GetWindowThreadProcessId(window, &process) && process == GetCurrentProcessId();
 }
-HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,const RGNDATA* r) {
+HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w, const RGNDATA* r) {
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     // Declare before the outer lock: final retirement can stop the profiler,
     // and must run after that lock is released. The holder keeps the CPU owner
     // alive through its normal hooked Release and any reentrant callbacks.
     struct NoticePin {
-        IDirect3DDevice9* device=nullptr;
+        IDirect3DDevice9* device = nullptr;
         std::shared_ptr<Device> owner;
-        ~NoticePin(){if(device)device->Release();}
+        ~NoticePin() {
+            if (device) device->Release();
+        }
     } notice_pin;
     // Scene bucket: the proxy work of this hook is scene-end work (the pre-present
     // flush and the optional notice). Its scope closes after frame_timing::frame,
@@ -1431,733 +1748,1065 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
     HookGuard lock(frame_timing::Bucket::Scene);
     // The optional notice can reenter through documented device/surface APIs.
     // Pin CPU ownership for this entry; its native pin lasts through Present.
-    auto owner=devices.at(d);
-    auto& ctx=*owner;
-    auto fn=ctx.get<HRESULT (WINAPI*)(IDirect3DDevice9*,const RECT*,const RECT*,HWND,const RGNDATA*)>(17);
-    gpu_sync_mark(ctx,gpu_sync_timing::Present,true); // --gpu-sync-timing only: the proxy's Present work and the native Present
-    if(volumetric_fog_prefill){ctx.fog_prefill_gate.present(GetTickCount64());ctx.fog_prefill_thread=GetCurrentThreadId();} // R3 stall gate
-    if(sector_background_requested || volumetric_fog_requested)sector_background_context(ctx); // menus/loading without BeginScene
+    auto owner = devices.at(d);
+    auto& ctx = *owner;
+    auto fn = ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*, const RECT*, const RECT*, HWND, const RGNDATA*)>(17);
+    gpu_sync_mark(ctx, gpu_sync_timing::Present, true); // --gpu-sync-timing only: the proxy's Present work and the
+                                                        // native Present
+    if (volumetric_fog_prefill) {
+        ctx.fog_prefill_gate.present(GetTickCount64());
+        ctx.fog_prefill_thread = GetCurrentThreadId();
+    } // R3 stall gate
+    if (sector_background_requested || volumetric_fog_requested)
+        sector_background_context(ctx); // menus/loading without BeginScene
     ctx.motion_output.before_present();
     // The FPS overlay (comparison-hotkeys.md, "FPS overlay"): admitted at a
     // clean frame boundary with the process in the foreground, its own bitmap.
     // Off, this is the one branch the option costs per frame.
-    if(ctx.fps_overlay.visible() && comparison_foreground()
-            && !ctx.reset_active && !ctx.compositor && !ctx.bloom_busy
-            && ctx.motion_output.comparison_boundary_available()){
-        ctx.get<ULONG (WINAPI*)(IDirect3DDevice9*)>(1)(d);notice_pin.device=d;notice_pin.owner=owner;
+    if (ctx.fps_overlay.visible() && comparison_foreground() && !ctx.reset_active && !ctx.compositor &&
+        !ctx.bloom_busy && ctx.motion_output.comparison_boundary_available()) {
+        ctx.get<ULONG(WINAPI*)(IDirect3DDevice9*)>(1)(d);
+        notice_pin.device = d;
+        notice_pin.owner = owner;
         BloomOperation internal(ctx);
-        const auto overlay=ctx.fps_notice.draw(d,ctx.original,ctx.caps.NumSimultaneousRTs);
-        if(FAILED(overlay.restore))ctx.motion_output.comparison_state_failed(overlay.restore);
+        const auto overlay = ctx.fps_notice.draw(d, ctx.original, ctx.caps.NumSimultaneousRTs);
+        if (FAILED(overlay.restore)) ctx.motion_output.comparison_state_failed(overlay.restore);
         // A failure keeps the mode on and retries next frame (a lost device
         // recovers by itself after Reset); one line per failure episode.
-        if(ctx.fps_overlay.draw_outcome(FAILED(overlay.operation)||FAILED(overlay.restore)))
-            log("renderer_fps_overlay device=%llu frame=%llu operation=%08lx restore=%08lx drawn=%u",ctx.id,ctx.frame,overlay.operation,overlay.restore,overlay.drawn);
+        if (ctx.fps_overlay.draw_outcome(FAILED(overlay.operation) || FAILED(overlay.restore)))
+            log("renderer_fps_overlay device=%llu frame=%llu operation=%08lx restore=%08lx drawn=%u", ctx.id, ctx.frame,
+                overlay.operation, overlay.restore, overlay.drawn);
     }
-    gpu_sync_mark(ctx,gpu_sync_timing::Scene,false); // --gpu-sync-timing only: the whole-scene bracket ends just before the native Present
-    const auto begin=telemetry::now();
-    frame_phases::present_begin(); // X3M_FRAME_PHASES only: the present phase begins; same placement rule as frame_timing
-    frame_timing::present_begin(); // ahead of before_original: pre-call instrumentation must not alter the native input state (cpu_state.h)
+    gpu_sync_mark(ctx, gpu_sync_timing::Scene, false); // --gpu-sync-timing only: the whole-scene bracket ends just
+                                                       // before the native Present
+    const auto begin = telemetry::now();
+    frame_phases::present_begin(); // X3M_FRAME_PHASES only: the present phase begins; same placement rule as
+                                   // frame_timing
+    frame_timing::present_begin(); // ahead of before_original: pre-call instrumentation must not alter the native input
+                                   // state (cpu_state.h)
     cpu.before_original();
-    const HRESULT hr=fn(d,a,b,w,r);cpu.after_original();
+    const HRESULT hr = fn(d, a, b, w, r);
+    cpu.after_original();
     frame_timing::present_end();
     frame_phases::present_end(); // X3M_FRAME_PHASES only: closes the frame at the native Present return
-    gpu_sync_present(ctx); // --gpu-sync-timing only: the Present pair, the frame's spans, one row per pass per 300 frames
+    gpu_sync_present(ctx); // --gpu-sync-timing only: the Present pair, the frame's spans, one row per pass per 300
+                           // frames
     ctx.motion_output.after_present(hr);
-    const bool scene_confirmed=ctx.scene_depth.end_frame(hr);
-    const bool motion_committed=ctx.motion.end_frame(scene_confirmed,hr);
-    if(ctx.capture && motion_capture_requested)
+    const bool scene_confirmed = ctx.scene_depth.end_frame(hr);
+    const bool motion_committed = ctx.motion.end_frame(scene_confirmed, hr);
+    if (ctx.capture && motion_capture_requested)
         log("motion_frame device=%llu frame=%llu scene_confirmed=%u storage_history_committed=%u present=%08lx temporal_history_committed=0",
-            ctx.id,ctx.frame,scene_confirmed,motion_committed,hr);
-    const auto end=telemetry::now();
-    game_phases::present_endpoint(reinterpret_cast<std::uintptr_t>(d),ctx.id,ctx.reset_generation,ctx.frame,ctx.capture,end,static_cast<std::uint32_t>(hr));
-    const bool save_loaded=game_phases::loading_phase_present(ctx.id,ctx.reset_generation,ctx.frame); // cadence-derived loading_phase lines, every mode
+            ctx.id, ctx.frame, scene_confirmed, motion_committed, hr);
+    const auto end = telemetry::now();
+    game_phases::present_endpoint(reinterpret_cast<std::uintptr_t>(d), ctx.id, ctx.reset_generation, ctx.frame,
+                                  ctx.capture, end, static_cast<std::uint32_t>(hr));
+    const bool save_loaded = game_phases::loading_phase_present(ctx.id, ctx.reset_generation,
+                                                                ctx.frame); // cadence-derived
+                                                                            // loading_phase
+                                                                            // lines,
+                                                                            // every mode
     voice_dmo_fallback::report(); // one atomic load per Present; lines only after an activation
-    point_light_admission::present(ctx.id,ctx.frame,ctx.capture); // option on only: one point_light_admission_frame line, point_light_node samples on capture frames, memo serial bump
-    cull_census::present(ctx.id,ctx.frame,ctx.capture); // X3M_CULL_CENSUS=1 only: the cull_census_frame row and the entry rows of a captured frame, then the ring is cleared
-    collide_box_cull::present(ctx.id,ctx.frame,ctx.capture); // X3M_COLLIDE_BOX_CULL=1 only: reads and zeroes the four pair counters; one collide_census line per 300 frames, one collide_census_frame line per capture frame
-    collide_narrow_census::present(ctx.id,ctx.frame,ctx.capture); // X3M_COLLIDE_NARROW_CENSUS=1 only: swaps the accepted-pair ring; one collide_narrow line per 300 frames, collide_narrow_pair rows on a capture frame
-    sun_occlusion::present(ctx.frame+1); // X3M_SUN_OCCLUSION / _LOG only: the probe override's frame boundary
-    collide_memo::present(ctx.id,ctx.frame,ctx.capture); // X3M_COLLIDE_MEMO=1 only: advances the memo's frame (entries expire after one frame untouched); one collide_memo line per 300 frames
-    music_keep::present(ctx.id,ctx.frame,ctx.capture); // X3M_MUSIC_KEEP=1 / X3M_MUSIC_TRACE=1 only: stores the frame counter the music lines carry
-    cull_small_parts::present(ctx.id,ctx.frame,ctx.capture); // X3M_CULL_SMALL_PARTS_PX only: the frame's threshold and culled count on a captured frame
-    telemetry::present(ctx.stats,ctx.frame,ctx.capture,begin,end,hr);
-    window_trace::present(ctx.stats.window,ctx.id,ctx.frame); // hooks installed only: the cursor re-assert step, the trace's flush and snapshots
-    if(ctx.fps_overlay.visible()){
+    point_light_admission::present(ctx.id, ctx.frame, ctx.capture); // option on only: one point_light_admission_frame
+                                                                    // line, point_light_node samples on capture frames,
+                                                                    // memo serial bump
+    cull_census::present(ctx.id, ctx.frame, ctx.capture); // X3M_CULL_CENSUS=1 only: the cull_census_frame row and the
+                                                          // entry rows of a captured frame, then the ring is cleared
+    collide_box_cull::present(ctx.id, ctx.frame, ctx.capture); // X3M_COLLIDE_BOX_CULL=1 only: reads and zeroes the four
+                                                               // pair counters; one collide_census line per 300 frames,
+                                                               // one collide_census_frame line per capture frame
+    collide_narrow_census::present(ctx.id, ctx.frame, ctx.capture); // X3M_COLLIDE_NARROW_CENSUS=1 only: swaps the
+                                                                    // accepted-pair ring; one collide_narrow line per
+                                                                    // 300 frames, collide_narrow_pair rows on a capture
+                                                                    // frame
+    sun_occlusion::present(ctx.frame + 1); // X3M_SUN_OCCLUSION / _LOG only: the probe override's frame boundary
+    collide_memo::present(ctx.id, ctx.frame, ctx.capture); // X3M_COLLIDE_MEMO=1 only: advances the memo's frame
+                                                           // (entries expire after one frame untouched); one
+                                                           // collide_memo line per 300 frames
+    music_keep::present(ctx.id, ctx.frame, ctx.capture); // X3M_MUSIC_KEEP=1 / X3M_MUSIC_TRACE=1 only: stores the frame
+                                                         // counter the music lines carry
+    cull_small_parts::present(ctx.id, ctx.frame, ctx.capture); // X3M_CULL_SMALL_PARTS_PX only: the frame's threshold
+                                                               // and culled count on a captured frame
+    telemetry::present(ctx.stats, ctx.frame, ctx.capture, begin, end, hr);
+    window_trace::present(ctx.stats.window, ctx.id, ctx.frame); // hooks installed only: the cursor re-assert step, the
+                                                                // trace's flush and snapshots
+    if (ctx.fps_overlay.visible()) {
         // Shown only: one QueryPerformanceCounter per Present (the frame_end
         // clock), the text rebuilt when a 250 ms bucket closes.
-        LARGE_INTEGER stamp{};QueryPerformanceCounter(&stamp);
-        const bool refreshed=ctx.fps_overlay.frame(uint64_t(stamp.QuadPart),ctx.draws);
+        LARGE_INTEGER stamp{};
+        QueryPerformanceCounter(&stamp);
+        const bool refreshed = ctx.fps_overlay.frame(uint64_t(stamp.QuadPart), ctx.draws);
         // With --volumetric-fog the second line carries the fog state and its strength;
         // IDLE = the sector rule holds the medium at zero.
-        const int fog=ctx.motion_output.volumetric_fog_overlay_state();
-        if(ctx.fps_overlay.fog(fog)||refreshed){ // a state change rewrites the line the same frame
+        const int fog = ctx.motion_output.volumetric_fog_overlay_state();
+        if (ctx.fps_overlay.fog(fog) || refreshed) { // a state change rewrites the line the same frame
             char second[40];
-            if(fog<0)second[0]='\0';
-            else if(!(fog&1))std::snprintf(second,sizeof second,"FOG OFF");
-            else std::snprintf(second,sizeof second,"FOG %.2fx%s%s",double(ctx.motion_output.volumetric_fog_strength() / .02f),(fog&2)?"":" IDLE",
-                               (fog&MotionOutput::fog_overlay_motes)?" MOTES":"");
-            ctx.fps_notice.text(ctx.fps_overlay.line(),second);
+            if (fog < 0)
+                second[0] = '\0';
+            else if (!(fog & 1))
+                std::snprintf(second, sizeof second, "FOG OFF");
+            else
+                std::snprintf(second, sizeof second, "FOG %.2fx%s%s",
+                              double(ctx.motion_output.volumetric_fog_strength() / .02f), (fog & 2) ? "" : " IDLE",
+                              (fog & MotionOutput::fog_overlay_motes) ? " MOTES" : "");
+            ctx.fps_notice.text(ctx.fps_overlay.line(), second);
         }
     }
-    if(telemetry::enabled()&&(!ctx.stats.present_override_known||ctx.stats.present_override!=w)){
-        log("telemetry_present_window device=%llu frame=%llu override=%p device_window=%p result=%08lx",ctx.id,ctx.frame,w,ctx.stats.window,hr);
-        ctx.stats.present_override_known=true;ctx.stats.present_override=w;
+    if (telemetry::enabled() && (!ctx.stats.present_override_known || ctx.stats.present_override != w)) {
+        log("telemetry_present_window device=%llu frame=%llu override=%p device_window=%p result=%08lx", ctx.id,
+            ctx.frame, w, ctx.stats.window, hr);
+        ctx.stats.present_override_known = true;
+        ctx.stats.present_override = w;
     }
     // The first presented frame closes the trampoline install window: every
     // engine_patch claim belongs to initialize_log (before the device existed);
     // a later claim would write over code the loading threads may be executing.
-    if(engine_patch::install_window_open())engine_patch::close_install_window("first_present");
-    fov::present(ctx.frame); // one fov_confirm row (registry+0x24 against the configured focus) at the first Present, one more if the registry appears later; then a flag test
-    if(save_loaded)fov::loaded(ctx.frame); // one fov_confirm row per save_load_complete marker: the base the savegame left
-    frame_timing::frame(ctx.frame,ctx.draws); // X3M_FRAME_TIMING only: per-frame sample, one line per 300-frame window
-    frame_phases::frame(ctx.frame); // X3M_FRAME_PHASES only: takes the closed frame, one frame_phases line per 300-frame window
-    media_cue::frame(ctx.frame); // X3M_MEDIA_CUE_* only: admits this thread, closes the frame's attempt count, drains the trace ring
+    if (engine_patch::install_window_open()) engine_patch::close_install_window("first_present");
+    fov::present(ctx.frame); // one fov_confirm row (registry+0x24 against the configured focus) at the first Present,
+                             // one more if the registry appears later; then a flag test
+    if (save_loaded)
+        fov::loaded(ctx.frame); // one fov_confirm row per save_load_complete marker: the base the savegame left
+    frame_timing::frame(ctx.frame, ctx.draws); // X3M_FRAME_TIMING only: per-frame sample, one line per 300-frame window
+    frame_phases::frame(ctx.frame); // X3M_FRAME_PHASES only: takes the closed frame, one frame_phases line per
+                                    // 300-frame window
+    media_cue::frame(ctx.frame); // X3M_MEDIA_CUE_* only: admits this thread, closes the frame's attempt count, drains
+                                 // the trace ring
     // Programs the game compiled that are in none of the proxy's tables
     // (docs/architecture/mod-compatibility.md, "Making unknown programs
     // visible"). One line per distinct unknown, at the first Present after it
     // was created; the population line follows the 300-frame cadence and only
     // when the counts moved.
-    report_shader_population(ctx.frame%300==0);
-    if (ctx.capture || ctx.frame%frame_end_stride==0) {
+    report_shader_population(ctx.frame % 300 == 0);
+    if (ctx.capture || ctx.frame % frame_end_stride == 0) {
         // One QPC per logged line (every frame_end_stride frames or a capture frame), in every
         // mode: elapsed_ms since DllMain and dt_ms since the previous frame_end
         // line make load times readable from a plain --direct log. Integer only.
-        static uint64_t frequency=0;
-        if(!frequency){LARGE_INTEGER f{};QueryPerformanceFrequency(&f);frequency=f.QuadPart>0?uint64_t(f.QuadPart):1;}
-        LARGE_INTEGER stamp{};QueryPerformanceCounter(&stamp);const uint64_t now=uint64_t(stamp.QuadPart);
-        const uint64_t elapsed_ms=(now-dll_load_qpc)*1000ull/frequency;
-        const uint64_t dt_ms=ctx.frame_end_qpc?(now-ctx.frame_end_qpc)*1000ull/frequency:0;
-        ctx.frame_end_qpc=now;
-        log("frame_end device=%llu frame=%llu draws=%llu capture=%u present=%08lx elapsed_ms=%llu dt_ms=%llu qpc=%llu",ctx.id,ctx.frame,ctx.draws,ctx.capture,hr,elapsed_ms,dt_ms,now);
+        static uint64_t frequency = 0;
+        if (!frequency) {
+            LARGE_INTEGER f{};
+            QueryPerformanceFrequency(&f);
+            frequency = f.QuadPart > 0 ? uint64_t(f.QuadPart) : 1;
+        }
+        LARGE_INTEGER stamp{};
+        QueryPerformanceCounter(&stamp);
+        const uint64_t now = uint64_t(stamp.QuadPart);
+        const uint64_t elapsed_ms = (now - dll_load_qpc) * 1000ull / frequency;
+        const uint64_t dt_ms = ctx.frame_end_qpc ? (now - ctx.frame_end_qpc) * 1000ull / frequency : 0;
+        ctx.frame_end_qpc = now;
+        log("frame_end device=%llu frame=%llu draws=%llu capture=%u present=%08lx elapsed_ms=%llu dt_ms=%llu qpc=%llu",
+            ctx.id, ctx.frame, ctx.draws, ctx.capture, hr, elapsed_ms, dt_ms, now);
     }
     // The chase reports keep their own 300-frame cadence: --frame-end-stride
     // shortens the frame_end line only.
-    if (ctx.capture || ctx.frame%300==0) {
-        chase_camera::report(ctx.frame); // X3M_CAMERA=chase only (no line otherwise)
-        chase_aim_trace::report(ctx.frame); // bounded cursor-fire diagnostics with telemetry
+    if (ctx.capture || ctx.frame % 300 == 0) {
+        chase_camera::report(ctx.frame);     // X3M_CAMERA=chase only (no line otherwise)
+        chase_aim_trace::report(ctx.frame);  // bounded cursor-fire diagnostics with telemetry
         chase_transition::report(ctx.frame); // bounded native view/lifetime observations
-        chase_lead::report(ctx.frame); // predictive marker results, no per-draw reporting
+        chase_lead::report(ctx.frame);       // predictive marker results, no per-draw reporting
     }
-    if(ctx.capture||ctx.frame%300==0)finite_upload_metrics(d,ctx,"present");
+    if (ctx.capture || ctx.frame % 300 == 0) finite_upload_metrics(d, ctx, "present");
     // With the route requested, log the wrapper's copy-depth epochs per capture
     // frame: source_epoch counts the application's depth clears that found the
     // original depth bound, so it witnesses that the route's own depth unbind
     // (the sentinel fill, restored inside the draw hook) never reached one.
-    if(ctx.capture&&motion_output_requested)ownership_depth_info(d,ctx.id,ctx.frame,"present");
-    if(ctx.capture||ctx.frame%300==0){
-        if(auto* monitor=ownership::process_admission_monitor()){
-            const auto state=ownership::admission_snapshot(monitor);
+    if (ctx.capture && motion_output_requested) ownership_depth_info(d, ctx.id, ctx.frame, "present");
+    if (ctx.capture || ctx.frame % 300 == 0) {
+        if (auto* monitor = ownership::process_admission_monitor()) {
+            const auto state = ownership::admission_snapshot(monitor);
             log("admission_metric device=%llu frame=%llu phase=present active_roots=%llu waiting_roots=%llu admitted_roots=%llu promotions=%llu veto_bits=%lu first_reason=%u replay_active=%u live_replay_enabled=0 coverage_complete=0",
-                ctx.id,ctx.frame,state.active_roots,state.waiting_roots,state.admitted_roots,state.promotions,
-                static_cast<DWORD>(state.vetoes),unsigned(state.first_veto),state.replay_active);
+                ctx.id, ctx.frame, state.active_roots, state.waiting_roots, state.admitted_roots, state.promotions,
+                static_cast<DWORD>(state.vetoes), unsigned(state.first_veto), state.replay_active);
         }
     }
     if (ctx.capture && ctx.remaining) --ctx.remaining;
-    ++ctx.frame; ctx.draws=0; ctx.composition_scene_owner=false;
+    ++ctx.frame;
+    ctx.draws = 0;
+    ctx.composition_scene_owner = false;
     session_log::note_frame(); // session_end frames= and the exception row's frame=: one interlocked add
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
-    ctx.fixture_emission_source_calls=0; ctx.fixture_primitive_source_calls=0;
+    ctx.fixture_emission_source_calls = 0;
+    ctx.fixture_primitive_source_calls = 0;
 #endif
-    ctx.events=0; ctx.stats.frame=ctx.frame;
+    ctx.events = 0;
+    ctx.stats.frame = ctx.frame;
     // F8 is the one in-game key (comparison-hotkeys.md, "Removed 2026-09-26"):
     // polled only under X3M_DEBUG=1 (cached at initialize_log), where its press edge starts a burst of
     // X3M_CAPTURE_FRAMES frames at once; without it the key is never queried.
     // X3M_CAPTURE_START: the launcher sends 999999 (never); the fixtures set their start (0 or unset = never).
-    const bool down=log_tier::cached_debug && (GetAsyncKeyState(VK_F8)&0x8000)!=0;
-    if ((down && !ctx.key_down) || (capture_count && ctx.frame==capture_start)) ctx.remaining=capture_count ? capture_count : 1;
-    ctx.key_down=down; ctx.capture=ctx.remaining>0;
+    const bool down = log_tier::cached_debug && (GetAsyncKeyState(VK_F8) & 0x8000) != 0;
+    if ((down && !ctx.key_down) || (capture_count && ctx.frame == capture_start))
+        ctx.remaining = capture_count ? capture_count : 1;
+    ctx.key_down = down;
+    ctx.capture = ctx.remaining > 0;
     point_light_admission::begin_frame(ctx.capture); // option on only: enables the per-node sample for a capture frame
     cull_census::begin_frame(ctx.capture); // X3M_CULL_CENSUS=1 only: arms the two pass stubs for a capture frame
-    cull_small_parts::begin_frame(); // X3M_CULL_SMALL_PARTS_PX only: this frame's threshold from the scene view's projection (else the registry F) and the back-buffer width
-    ctx.scene_depth.begin_frame(d,ctx.id,ctx.frame,ctx.capture);
-    ctx.motion_output.begin_frame(ctx.frame,ctx.capture);
+    cull_small_parts::begin_frame();       // X3M_CULL_SMALL_PARTS_PX only: this frame's threshold from the scene view's
+                                           // projection (else the registry F) and the back-buffer width
+    ctx.scene_depth.begin_frame(d, ctx.id, ctx.frame, ctx.capture);
+    ctx.motion_output.begin_frame(ctx.frame, ctx.capture);
     ctx.motion_output.volumetric_fog_begin_frame(); // fog option only (returns at once without it)
-    ctx.motion.begin_frame(d,ctx.frame,ctx.capture && motion_capture_requested && motion_live_replay_available &&
-        object_trace::active() && object_lifetime::active());
-    if (ctx.capture) log("frame_begin device=%llu frame=%llu",ctx.id,ctx.frame);
+    ctx.motion.begin_frame(d, ctx.frame,
+                           ctx.capture && motion_capture_requested && motion_live_replay_available &&
+                               object_trace::active() && object_lifetime::active());
+    if (ctx.capture) log("frame_begin device=%llu frame=%llu", ctx.id, ctx.frame);
     // No flush here since the logging tiers: the writer thread drains the log (session_log.h). The only
     // log metric left is log_wake (telemetry.cpp): the SetEvent a telemetry summary uses to wake the writer.
     return hr;
 }
-HRESULT reset_common(IDirect3DDevice9* d,D3DPRESENT_PARAMETERS* p,D3DDISPLAYMODEEX* mode,bool extended) {
+HRESULT reset_common(IDirect3DDevice9* d, D3DPRESENT_PARAMETERS* p, D3DDISPLAYMODEEX* mode, bool extended) {
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     // Named for the hook the game called, not for this shared body.
-    HookGuard lock(frame_timing::Bucket::State,extended?"reset_ex":"reset");
-    auto& ctx=*devices.at(d);
-    game_phases::invalidate_device(); // includes a refused reentrant attempt
+    HookGuard lock(frame_timing::Bucket::State, extended ? "reset_ex" : "reset");
+    auto& ctx = *devices.at(d);
+    game_phases::invalidate_device();            // includes a refused reentrant attempt
     ctx.sector_background_evidence.invalidate(); // also on refused Reset; no retained engine memory
-    ctx.object_evidence.invalidate(); // diagnostic association also ends on refused Reset
+    ctx.object_evidence.invalidate();            // diagnostic association also ends on refused Reset
     // A Reset reentered from injected GPU work cannot destroy that work's
     // stack-local saved state. Ordinary Reset during original is supported.
-    if(ctx.bloom_busy || ctx.motion_output.composition_operation_active())return D3DERR_INVALIDCALL;
-    ++ctx.reset_generation; ctx.reset_active=true; ctx.scene_thread=0; ctx.composition_scene_owner=false;
-    ctx.fps_overlay.reset();ctx.fps_notice.text("",""); // the window restarts after Reset; the overlay stays on
+    if (ctx.bloom_busy || ctx.motion_output.composition_operation_active()) return D3DERR_INVALIDCALL;
+    ++ctx.reset_generation;
+    ctx.reset_active = true;
+    ctx.scene_thread = 0;
+    ctx.composition_scene_owner = false;
+    ctx.fps_overlay.reset();
+    ctx.fps_notice.text("", ""); // the window restarts after Reset; the overlay stays on
     revoke_compositor(ctx);
-    ctx.capture=false; ctx.remaining=0;ctx.stats.had_present=false;ctx.stats.last_frame_capture=false;++ctx.stats.resets;
+    ctx.capture = false;
+    ctx.remaining = 0;
+    ctx.stats.had_present = false;
+    ctx.stats.last_frame_capture = false;
+    ++ctx.stats.resets;
     ctx.scene_depth.invalidate();
     ctx.motion.invalidate();
     {
         BloomOperation internal(ctx);
-        ctx.bloom.before_reset(); ctx.bloom_attempted=false;
+        ctx.bloom.before_reset();
+        ctx.bloom_attempted = false;
         gpu_sync_before_reset(ctx); // the boundary queries go before the Reset (device resources)
         ctx.motion_output.before_reset();
     }
-    presentation_parameters("reset_before",ctx.id,ctx.stats.focus_window,p);
+    presentation_parameters("reset_before", ctx.id, ctx.stats.focus_window, p);
     // X3M_WINDOW_MONITOR_RECT=1 only: the game repositioned at the work-area origin before this Reset (0x4dac90's
     // mode-change path); the same predicate moves its window back to the monitor rectangle (window_mode.h).
-    if(p)window_mode::apply("reset_before",ctx.stats.focus_window,p->hDeviceWindow,p->Windowed!=FALSE,p->BackBufferWidth,p->BackBufferHeight);
-    log("reset_begin ptr=%p device=%llu",d,ctx.id);
+    if (p)
+        window_mode::apply("reset_before", ctx.stats.focus_window, p->hDeviceWindow, p->Windowed != FALSE,
+                           p->BackBufferWidth, p->BackBufferHeight);
+    log("reset_begin ptr=%p device=%llu", d, ctx.id);
     session_log::note_reset();
-    finite_upload_metrics(d,ctx,"reset_before");
-    const auto begin=telemetry::now();
+    finite_upload_metrics(d, ctx, "reset_before");
+    const auto begin = telemetry::now();
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
-    if(bloom_lifetime_fixture.bound && bloom_lifetime_fixture.device==d){
-        auto& counts=bloom_lifetime_fixture.counts; ++counts[6];
-        if(auto* call=ctx.compositor){
-            if(!call->input.scene && !call->input.boundary.main && !call->input.boundary.depth
-                    && !call->candidate.surface)++counts[7];
-            if(call->native_pin)++counts[10];
+    if (bloom_lifetime_fixture.bound && bloom_lifetime_fixture.device == d) {
+        auto& counts = bloom_lifetime_fixture.counts;
+        ++counts[6];
+        if (auto* call = ctx.compositor) {
+            if (!call->input.scene && !call->input.boundary.main && !call->input.boundary.depth &&
+                !call->candidate.surface)
+                ++counts[7];
+            if (call->native_pin) ++counts[10];
         }
     }
 #endif
     cpu.before_original();
-    const HRESULT hr=extended
-        ? ctx.get<HRESULT (WINAPI*)(IDirect3DDevice9*,D3DPRESENT_PARAMETERS*,D3DDISPLAYMODEEX*)>(132)(d,p,mode)
-        : ctx.get<HRESULT (WINAPI*)(IDirect3DDevice9*,D3DPRESENT_PARAMETERS*)>(16)(d,p);
-    cpu.after_original(); ctx.reset_active=false;
-    telemetry::record(ctx.stats,telemetry::Metric::Reset,telemetry::now()-begin,FAILED(hr));
-    presentation_parameters("reset_after",ctx.id,ctx.stats.focus_window,p);
+    const HRESULT hr = extended
+                           ? ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*, D3DPRESENT_PARAMETERS*, D3DDISPLAYMODEEX*)>(
+                                 132)(d, p, mode)
+                           : ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*, D3DPRESENT_PARAMETERS*)>(16)(d, p);
+    cpu.after_original();
+    ctx.reset_active = false;
+    telemetry::record(ctx.stats, telemetry::Metric::Reset, telemetry::now() - begin, FAILED(hr));
+    presentation_parameters("reset_after", ctx.id, ctx.stats.focus_window, p);
     ctx.motion_output.after_reset(hr);
-    gpu_sync_after_reset(ctx,hr); // recreated after a successful Reset
+    gpu_sync_after_reset(ctx, hr);       // recreated after a successful Reset
     point_light_admission::next_frame(); // a Reset also retires the frame's root verdicts
     cull_census::reset(); // a Reset disarms the census stubs, drops the partial frame and re-seeds the LOD-switch table
     sun_occlusion::device_reset(); // the 1x1 visibility targets went with the Reset: vanilla until a pass has run again
-    collide_memo::device_reset(); // X3M_COLLIDE_MEMO=1 only: a Reset (device loss, mode change, the pause around it) drops the whole memo
-    cull_small_parts::after_reset(p ? p->BackBufferWidth : 0u); // a Reset disarms the small-parts stub until the next frame's projection read; new back-buffer width
-    ownership_depth_info(d,ctx.id,ctx.frame,"reset_after");
-    finite_upload_metrics(d,ctx,"reset_after");
-    if(SUCCEEDED(hr)&&p&&p->hDeviceWindow)ctx.stats.window=p->hDeviceWindow;
-    telemetry::summary(ctx.stats,"reset",ctx.frame);
-    log("reset_end device=%llu result=%08lx",ctx.id,hr); return hr;
+    collide_memo::device_reset();  // X3M_COLLIDE_MEMO=1 only: a Reset (device loss, mode change, the pause around it)
+                                   // drops the whole memo
+    cull_small_parts::after_reset(p ? p->BackBufferWidth : 0u); // a Reset disarms the small-parts stub until the next
+                                                                // frame's projection read; new back-buffer width
+    ownership_depth_info(d, ctx.id, ctx.frame, "reset_after");
+    finite_upload_metrics(d, ctx, "reset_after");
+    if (SUCCEEDED(hr) && p && p->hDeviceWindow) ctx.stats.window = p->hDeviceWindow;
+    telemetry::summary(ctx.stats, "reset", ctx.frame);
+    log("reset_end device=%llu result=%08lx", ctx.id, hr);
+    return hr;
 }
-HRESULT WINAPI reset(IDirect3DDevice9* d,D3DPRESENT_PARAMETERS* p) {
-    return reset_common(d,p,nullptr,false);
+HRESULT WINAPI reset(IDirect3DDevice9* d, D3DPRESENT_PARAMETERS* p) {
+    return reset_common(d, p, nullptr, false);
 }
-HRESULT WINAPI reset_ex(IDirect3DDevice9* d,D3DPRESENT_PARAMETERS* p,D3DDISPLAYMODEEX* mode) {
-    return reset_common(d,p,mode,true);
+HRESULT WINAPI reset_ex(IDirect3DDevice9* d, D3DPRESENT_PARAMETERS* p, D3DDISPLAYMODEEX* mode) {
+    return reset_common(d, p, mode, true);
 }
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
 void fixture_observe_wrap(Device& ctx, IDirect3DDevice9* device) {
     if (!ctx.fixture_observe_native_wrap) return;
     auto& result = ctx.fixture_wrap;
-    ++result.sequence; result.valid = 0; result.result = S_OK;
-    using GetState = HRESULT (WINAPI*)(IDirect3DDevice9*,D3DRENDERSTATETYPE,DWORD*);
+    ++result.sequence;
+    result.valid = 0;
+    result.result = S_OK;
+    using GetState = HRESULT(WINAPI*)(IDirect3DDevice9*, D3DRENDERSTATETYPE, DWORD*);
     // Slot58 is the saved native GetRenderState entry, not the application
     // getter hook: observation cannot flush a lazy MRT/WRAP transaction.
     for (unsigned index = 0; index < 16; ++index) {
         result.values[index] = 0;
-        const auto state = D3DRENDERSTATETYPE(index < 8 ? D3DRS_WRAP0+index : D3DRS_WRAP8+index-8);
-        const HRESULT hr = ctx.get<GetState>(58)(device,state,&result.values[index]);
+        const auto state = D3DRENDERSTATETYPE(index < 8 ? D3DRS_WRAP0 + index : D3DRS_WRAP8 + index - 8);
+        const HRESULT hr = ctx.get<GetState>(58)(device, state, &result.values[index]);
         if (FAILED(hr) && SUCCEEDED(result.result)) result.result = hr;
     }
     result.valid = SUCCEEDED(result.result);
 }
 #endif
-HRESULT WINAPI draw_primitive(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,UINT s,UINT c) {
+HRESULT WINAPI draw_primitive(IDirect3DDevice9* d, D3DPRIMITIVETYPE t, UINT s, UINT c) {
     LightCallBoundary cpu; // draw path audited x87-free: check_no_x87.py roots here (state-call-fast-path.md, Envelope)
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     PlainHookGuard lock(frame_timing::Bucket::Draw);
-    auto& ctx=*devices.at(d);CallTimer timer(ctx,telemetry::enabled(telemetry::Metric::DrawBackend));
-    if(ctx.motion_output.draw_submission_blocked())return ctx.motion_output.before_draw({false,false,t,c,s,0,0,0}).submission_error;
-    if(ctx.capture)ctx.motion_output.restore_bindings(); // Capture diagnostics below read the application's bindings.
-    auto input=read_draw_input(ctx,d,{DrawMethod::Primitive,t,c,s});
-    ctx.scene_depth.before_draw(d,t,c);
-    snapshot(d,"primitive",t,c,false,0,s); // s is StartVertex: the range field of a non-indexed draw
-    if (devices.at(d)->capture) log("draw_args start_vertex=%u",s);
+    auto& ctx = *devices.at(d);
+    CallTimer timer(ctx, telemetry::enabled(telemetry::Metric::DrawBackend));
+    if (ctx.motion_output.draw_submission_blocked())
+        return ctx.motion_output.before_draw({false, false, t, c, s, 0, 0, 0}).submission_error;
+    if (ctx.capture) ctx.motion_output.restore_bindings(); // Capture diagnostics below read the application's bindings.
+    auto input = read_draw_input(ctx, d, {DrawMethod::Primitive, t, c, s});
+    ctx.scene_depth.before_draw(d, t, c);
+    snapshot(d, "primitive", t, c, false, 0, s); // s is StartVertex: the range field of a non-indexed draw
+    if (devices.at(d)->capture) log("draw_args start_vertex=%u", s);
     // Step C (screen-emission-region.md): the bullet screen draws are
     // non-indexed; they get the same scene/thread permission and draw scope
     // as the indexed DIP so the packed bracket can admit them.
-    const bool composition_permission=ctx.composition_scene_owner && ctx.composition_scene_frame==ctx.frame && ctx.scene_thread==GetCurrentThreadId()
-        && !ctx.reset_active && !ctx.compositor && !ctx.bloom_busy && !ctx.composition_draw_depth
-        && !ctx.motion_output.reference_accounting_busy();
+    const bool composition_permission = ctx.composition_scene_owner && ctx.composition_scene_frame == ctx.frame &&
+                                        ctx.scene_thread == GetCurrentThreadId() && !ctx.reset_active &&
+                                        !ctx.compositor && !ctx.bloom_busy && !ctx.composition_draw_depth &&
+                                        !ctx.motion_output.reference_accounting_busy();
     struct CompositionDrawScope {
-        unsigned& depth; bool enabled;
-        CompositionDrawScope(unsigned& d,bool e):depth(d),enabled(e){if(enabled)++depth;}
-        ~CompositionDrawScope(){if(enabled)--depth;}
-    } composition_scope(ctx.composition_draw_depth,ctx.motion_output.composition_requested());
-    const MotionDrawCall draw_call{false,false,t,c,s,0,0,0,composition_permission};
-    auto route=ctx.motion_output.before_draw(draw_call);
-    if(sun_occlusion::bracket_open())ctx.motion_output.prepare_lens(draw_call,route); // X3M_SUN_OCCLUSION only, lens-scene draws only: one flag test otherwise
+        unsigned& depth;
+        bool enabled;
+        CompositionDrawScope(unsigned& d, bool e)
+            : depth(d)
+            , enabled(e) {
+            if (enabled) ++depth;
+        }
+        ~CompositionDrawScope() {
+            if (enabled) --depth;
+        }
+    } composition_scope(ctx.composition_draw_depth, ctx.motion_output.composition_requested());
+    const MotionDrawCall draw_call{false, false, t, c, s, 0, 0, 0, composition_permission};
+    auto route = ctx.motion_output.before_draw(draw_call);
+    if (sun_occlusion::bracket_open())
+        ctx.motion_output.prepare_lens(draw_call, route); // X3M_SUN_OCCLUSION only, lens-scene draws only: one flag
+                                                          // test otherwise
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
-    if(route.submit)++ctx.fixture_primitive_source_calls;
+    if (route.submit) ++ctx.fixture_primitive_source_calls;
 #endif
     frame_timing::draw_native_begin(); // ahead of before_original, like present_begin (cpu_state.h)
     timer.begin();
     cpu.before_original();
-    const HRESULT result=route.submit?devices.at(d)->get<HRESULT (WINAPI*)(IDirect3DDevice9*,D3DPRIMITIVETYPE,UINT,UINT)>(81)(d,t,s,c):route.submission_error;cpu.after_original();
+    const HRESULT result = route.submit
+                               ? devices.at(d)->get<HRESULT(WINAPI*)(IDirect3DDevice9*, D3DPRIMITIVETYPE, UINT, UINT)>(
+                                     81)(d, t, s, c)
+                               : route.submission_error;
+    cpu.after_original();
     frame_timing::draw_native_end();
-    timer.end();telemetry::record(ctx.stats,telemetry::Metric::DrawBackend,timer.backend_ticks,FAILED(result));
-    ctx.motion_output.after_draw(route,result);
+    timer.end();
+    telemetry::record(ctx.stats, telemetry::Metric::DrawBackend, timer.backend_ticks, FAILED(result));
+    ctx.motion_output.after_draw(route, result);
     ctx.scene_depth.after_draw(result);
-    record_draw_input(ctx,input,result);
-    if (devices.at(d)->capture) log("draw_result device=%llu frame=%llu index=%llu result=%08lx",devices.at(d)->id,devices.at(d)->frame,devices.at(d)->draws,result);
+    record_draw_input(ctx, input, result);
+    if (devices.at(d)->capture)
+        log("draw_result device=%llu frame=%llu index=%llu result=%08lx", devices.at(d)->id, devices.at(d)->frame,
+            devices.at(d)->draws, result);
     return result;
 }
-HRESULT WINAPI draw_indexed(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,INT b,UINT m,UINT n,UINT s,UINT c) {
+HRESULT WINAPI draw_indexed(IDirect3DDevice9* d, D3DPRIMITIVETYPE t, INT b, UINT m, UINT n, UINT s, UINT c) {
     LightCallBoundary cpu; // draw path audited x87-free: check_no_x87.py roots here (state-call-fast-path.md, Envelope)
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     PlainHookGuard lock(frame_timing::Bucket::Draw);
-    auto& ctx=*devices.at(d);CallTimer timer(ctx,telemetry::enabled(telemetry::Metric::DrawBackend));
-    if(ctx.motion_output.draw_submission_blocked())return ctx.motion_output.before_draw({true,false,t,c,s,b,m,n}).submission_error;
-    if(ctx.capture)ctx.motion_output.restore_bindings(); // Capture diagnostics below read the application's bindings.
-    auto input=read_draw_input(ctx,d,{DrawMethod::Indexed,t,c,s,b,m,n});
-    ctx.scene_depth.before_draw(d,t,c);
-    snapshot(d,"indexed",t,c,false,b,s);
-    if (devices.at(d)->capture) log("draw_args base_vertex=%d min_vertex=%u num_vertices=%u start_index=%u",b,m,n,s);
-    const bool composition_permission=ctx.composition_scene_owner && ctx.composition_scene_frame==ctx.frame && ctx.scene_thread==GetCurrentThreadId()
-        && !ctx.reset_active && !ctx.compositor && !ctx.bloom_busy && !ctx.composition_draw_depth
-        && !ctx.motion_output.reference_accounting_busy();
+    auto& ctx = *devices.at(d);
+    CallTimer timer(ctx, telemetry::enabled(telemetry::Metric::DrawBackend));
+    if (ctx.motion_output.draw_submission_blocked())
+        return ctx.motion_output.before_draw({true, false, t, c, s, b, m, n}).submission_error;
+    if (ctx.capture) ctx.motion_output.restore_bindings(); // Capture diagnostics below read the application's bindings.
+    auto input = read_draw_input(ctx, d, {DrawMethod::Indexed, t, c, s, b, m, n});
+    ctx.scene_depth.before_draw(d, t, c);
+    snapshot(d, "indexed", t, c, false, b, s);
+    if (devices.at(d)->capture)
+        log("draw_args base_vertex=%d min_vertex=%u num_vertices=%u start_index=%u", b, m, n, s);
+    const bool composition_permission = ctx.composition_scene_owner && ctx.composition_scene_frame == ctx.frame &&
+                                        ctx.scene_thread == GetCurrentThreadId() && !ctx.reset_active &&
+                                        !ctx.compositor && !ctx.bloom_busy && !ctx.composition_draw_depth &&
+                                        !ctx.motion_output.reference_accounting_busy();
     struct CompositionDrawScope {
-        unsigned& depth; bool enabled;
-        CompositionDrawScope(unsigned& d,bool e):depth(d),enabled(e){if(enabled)++depth;}
-        ~CompositionDrawScope(){if(enabled)--depth;}
-    } composition_scope(ctx.composition_draw_depth,ctx.motion_output.composition_requested());
-    const MotionDrawCall draw_call{true,false,t,c,s,b,m,n,composition_permission};
-    auto route=ctx.motion_output.before_draw(draw_call);
-    if(sun_occlusion::bracket_open())ctx.motion_output.prepare_lens(draw_call,route); // X3M_SUN_OCCLUSION only, lens-scene draws only: one flag test otherwise
+        unsigned& depth;
+        bool enabled;
+        CompositionDrawScope(unsigned& d, bool e)
+            : depth(d)
+            , enabled(e) {
+            if (enabled) ++depth;
+        }
+        ~CompositionDrawScope() {
+            if (enabled) --depth;
+        }
+    } composition_scope(ctx.composition_draw_depth, ctx.motion_output.composition_requested());
+    const MotionDrawCall draw_call{true, false, t, c, s, b, m, n, composition_permission};
+    auto route = ctx.motion_output.before_draw(draw_call);
+    if (sun_occlusion::bracket_open())
+        ctx.motion_output.prepare_lens(draw_call, route); // X3M_SUN_OCCLUSION only, lens-scene draws only: one flag
+                                                          // test otherwise
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
-    if(route.submit){++ctx.fixture_emission_source_calls;fixture_observe_wrap(ctx,d);}
+    if (route.submit) {
+        ++ctx.fixture_emission_source_calls;
+        fixture_observe_wrap(ctx, d);
+    }
 #endif
     frame_timing::draw_native_begin(); // ahead of before_original, like present_begin (cpu_state.h)
     timer.begin();
     cpu.before_original();
-    const HRESULT result=route.submit?devices.at(d)->get<HRESULT (WINAPI*)(IDirect3DDevice9*,D3DPRIMITIVETYPE,INT,UINT,UINT,UINT,UINT)>(82)(d,t,b,m,n,s,c):route.submission_error;cpu.after_original();
+    const HRESULT result = route.submit ? devices.at(d)
+                                              ->get<HRESULT(WINAPI*)(IDirect3DDevice9*, D3DPRIMITIVETYPE, INT, UINT,
+                                                                     UINT, UINT, UINT)>(82)(d, t, b, m, n, s, c)
+                                        : route.submission_error;
+    cpu.after_original();
     frame_timing::draw_native_end();
-    timer.end();telemetry::record(ctx.stats,telemetry::Metric::DrawBackend,timer.backend_ticks,FAILED(result));
-    ctx.motion_output.after_draw(route,result);
+    timer.end();
+    telemetry::record(ctx.stats, telemetry::Metric::DrawBackend, timer.backend_ticks, FAILED(result));
+    ctx.motion_output.after_draw(route, result);
     ctx.scene_depth.after_draw(result);
-    record_draw_input(ctx,input,result);
-    if (devices.at(d)->capture) log("draw_result device=%llu frame=%llu index=%llu result=%08lx",devices.at(d)->id,devices.at(d)->frame,devices.at(d)->draws,result);
+    record_draw_input(ctx, input, result);
+    if (devices.at(d)->capture)
+        log("draw_result device=%llu frame=%llu index=%llu result=%08lx", devices.at(d)->id, devices.at(d)->frame,
+            devices.at(d)->draws, result);
     return result;
 }
-HRESULT WINAPI draw_up(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,UINT c,const void* data,UINT stride) {
+HRESULT WINAPI draw_up(IDirect3DDevice9* d, D3DPRIMITIVETYPE t, UINT c, const void* data, UINT stride) {
     LightCallBoundary cpu; // draw path audited x87-free: check_no_x87.py roots here (state-call-fast-path.md, Envelope)
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     PlainHookGuard lock(frame_timing::Bucket::Draw);
-    auto& ctx=*devices.at(d);CallTimer timer(ctx,telemetry::enabled(telemetry::Metric::DrawBackend));
-    if(ctx.motion_output.draw_submission_blocked())return ctx.motion_output.before_draw({false,true,t,c,0,0,0,0}).submission_error;
-    if(ctx.capture)ctx.motion_output.restore_bindings(); // Capture diagnostics below read the application's bindings.
-    auto input=read_draw_input(ctx,d,{DrawMethod::UserMemory,t,c});
-    ctx.scene_depth.before_draw(d,t,c);
-    snapshot(d,"up",t,c,true);
-    if (devices.at(d)->capture) log("draw_args vertex_ptr=%p stride=%u",data,stride);
-    const MotionDrawCall draw_call{false,true,t,c,0,0,0,0};
-    auto route=ctx.motion_output.before_draw(draw_call);
-    if(sun_occlusion::bracket_open())ctx.motion_output.prepare_lens(draw_call,route); // X3M_SUN_OCCLUSION only, lens-scene draws only: one flag test otherwise
-    frame_timing::draw_native_begin(); // ahead of before_original, like present_begin (cpu_state.h)
+    auto& ctx = *devices.at(d);
+    CallTimer timer(ctx, telemetry::enabled(telemetry::Metric::DrawBackend));
+    if (ctx.motion_output.draw_submission_blocked())
+        return ctx.motion_output.before_draw({false, true, t, c, 0, 0, 0, 0}).submission_error;
+    if (ctx.capture) ctx.motion_output.restore_bindings(); // Capture diagnostics below read the application's bindings.
+    auto input = read_draw_input(ctx, d, {DrawMethod::UserMemory, t, c});
+    ctx.scene_depth.before_draw(d, t, c);
+    snapshot(d, "up", t, c, true);
+    if (devices.at(d)->capture) log("draw_args vertex_ptr=%p stride=%u", data, stride);
+    const MotionDrawCall draw_call{false, true, t, c, 0, 0, 0, 0};
+    auto route = ctx.motion_output.before_draw(draw_call);
+    if (sun_occlusion::bracket_open())
+        ctx.motion_output.prepare_lens(draw_call, route); // X3M_SUN_OCCLUSION only, lens-scene draws only: one flag
+                                                          // test otherwise
+    frame_timing::draw_native_begin();                    // ahead of before_original, like present_begin (cpu_state.h)
     timer.begin();
     cpu.before_original();
-    const HRESULT result=route.submit?devices.at(d)->get<HRESULT (WINAPI*)(IDirect3DDevice9*,D3DPRIMITIVETYPE,UINT,const void*,UINT)>(83)(d,t,c,data,stride):route.submission_error;cpu.after_original();
+    const HRESULT result = route.submit ? devices.at(d)
+                                              ->get<HRESULT(WINAPI*)(IDirect3DDevice9*, D3DPRIMITIVETYPE, UINT,
+                                                                     const void*, UINT)>(83)(d, t, c, data, stride)
+                                        : route.submission_error;
+    cpu.after_original();
     frame_timing::draw_native_end();
-    timer.end();telemetry::record(ctx.stats,telemetry::Metric::DrawBackend,timer.backend_ticks,FAILED(result));
-    ctx.motion_output.after_draw(route,result);
+    timer.end();
+    telemetry::record(ctx.stats, telemetry::Metric::DrawBackend, timer.backend_ticks, FAILED(result));
+    ctx.motion_output.after_draw(route, result);
     ctx.scene_depth.after_draw(result);
-    record_draw_input(ctx,input,result);
-    if (devices.at(d)->capture) log("draw_result device=%llu frame=%llu index=%llu result=%08lx",devices.at(d)->id,devices.at(d)->frame,devices.at(d)->draws,result);
+    record_draw_input(ctx, input, result);
+    if (devices.at(d)->capture)
+        log("draw_result device=%llu frame=%llu index=%llu result=%08lx", devices.at(d)->id, devices.at(d)->frame,
+            devices.at(d)->draws, result);
     return result;
 }
-HRESULT WINAPI draw_indexed_up(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,UINT m,UINT n,UINT c,const void* indices,D3DFORMAT f,const void* data,UINT stride) {
+HRESULT WINAPI draw_indexed_up(IDirect3DDevice9* d, D3DPRIMITIVETYPE t, UINT m, UINT n, UINT c, const void* indices,
+                               D3DFORMAT f, const void* data, UINT stride) {
     LightCallBoundary cpu; // draw path audited x87-free: check_no_x87.py roots here (state-call-fast-path.md, Envelope)
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     PlainHookGuard lock(frame_timing::Bucket::Draw);
-    auto& ctx=*devices.at(d);CallTimer timer(ctx,telemetry::enabled(telemetry::Metric::DrawBackend));
-    if(ctx.motion_output.draw_submission_blocked())return ctx.motion_output.before_draw({true,true,t,c,0,0,m,n}).submission_error;
-    if(ctx.capture)ctx.motion_output.restore_bindings(); // Capture diagnostics below read the application's bindings.
-    auto input=read_draw_input(ctx,d,{DrawMethod::IndexedUserMemory,t,c,0,0,m,n});
-    ctx.scene_depth.before_draw(d,t,c);
-    snapshot(d,"indexed_up",t,c,true);
-    if (devices.at(d)->capture) log("draw_args min_vertex=%u num_vertices=%u vertex_ptr=%p stride=%u index_ptr=%p index_format=%u",m,n,data,stride,indices,f);
-    const MotionDrawCall draw_call{true,true,t,c,0,0,m,n};
-    auto route=ctx.motion_output.before_draw(draw_call);
-    if(sun_occlusion::bracket_open())ctx.motion_output.prepare_lens(draw_call,route); // X3M_SUN_OCCLUSION only, lens-scene draws only: one flag test otherwise
-    frame_timing::draw_native_begin(); // ahead of before_original, like present_begin (cpu_state.h)
+    auto& ctx = *devices.at(d);
+    CallTimer timer(ctx, telemetry::enabled(telemetry::Metric::DrawBackend));
+    if (ctx.motion_output.draw_submission_blocked())
+        return ctx.motion_output.before_draw({true, true, t, c, 0, 0, m, n}).submission_error;
+    if (ctx.capture) ctx.motion_output.restore_bindings(); // Capture diagnostics below read the application's bindings.
+    auto input = read_draw_input(ctx, d, {DrawMethod::IndexedUserMemory, t, c, 0, 0, m, n});
+    ctx.scene_depth.before_draw(d, t, c);
+    snapshot(d, "indexed_up", t, c, true);
+    if (devices.at(d)->capture)
+        log("draw_args min_vertex=%u num_vertices=%u vertex_ptr=%p stride=%u index_ptr=%p index_format=%u", m, n, data,
+            stride, indices, f);
+    const MotionDrawCall draw_call{true, true, t, c, 0, 0, m, n};
+    auto route = ctx.motion_output.before_draw(draw_call);
+    if (sun_occlusion::bracket_open())
+        ctx.motion_output.prepare_lens(draw_call, route); // X3M_SUN_OCCLUSION only, lens-scene draws only: one flag
+                                                          // test otherwise
+    frame_timing::draw_native_begin();                    // ahead of before_original, like present_begin (cpu_state.h)
     timer.begin();
     cpu.before_original();
-    const HRESULT result=route.submit?devices.at(d)->get<HRESULT (WINAPI*)(IDirect3DDevice9*,D3DPRIMITIVETYPE,UINT,UINT,UINT,const void*,D3DFORMAT,const void*,UINT)>(84)(d,t,m,n,c,indices,f,data,stride):route.submission_error;cpu.after_original();
+    const HRESULT result = route.submit ? devices.at(d)
+                                              ->get<HRESULT(WINAPI*)(IDirect3DDevice9*, D3DPRIMITIVETYPE, UINT, UINT,
+                                                                     UINT, const void*, D3DFORMAT, const void*, UINT)>(
+                                                  84)(d, t, m, n, c, indices, f, data, stride)
+                                        : route.submission_error;
+    cpu.after_original();
     frame_timing::draw_native_end();
-    timer.end();telemetry::record(ctx.stats,telemetry::Metric::DrawBackend,timer.backend_ticks,FAILED(result));
-    ctx.motion_output.after_draw(route,result);
+    timer.end();
+    telemetry::record(ctx.stats, telemetry::Metric::DrawBackend, timer.backend_ticks, FAILED(result));
+    ctx.motion_output.after_draw(route, result);
     ctx.scene_depth.after_draw(result);
-    record_draw_input(ctx,input,result);
-    if (devices.at(d)->capture) log("draw_result device=%llu frame=%llu index=%llu result=%08lx",devices.at(d)->id,devices.at(d)->frame,devices.at(d)->draws,result);
+    record_draw_input(ctx, input, result);
+    if (devices.at(d)->capture)
+        log("draw_result device=%llu frame=%llu index=%llu result=%08lx", devices.at(d)->id, devices.at(d)->frame,
+            devices.at(d)->draws, result);
     return result;
 }
-HRESULT WINAPI clear(IDirect3DDevice9* d,DWORD n,const D3DRECT* r,DWORD f,D3DCOLOR c,float z,DWORD s) {
+HRESULT WINAPI clear(IDirect3DDevice9* d, DWORD n, const D3DRECT* r, DWORD f, D3DCOLOR c, float z, DWORD s) {
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    HookGuard lock;auto& ctx=*devices.at(d);CallTimer timer(ctx);
-    const auto motion_boundary=ctx.scene_depth.before_clear(d,n,r,f,z);
-    if(motion_boundary.valid && motion_capture_requested && motion_live_replay_available){
-        const auto begin=telemetry::now();
-        const auto motion=ctx.motion.before_clear(d,motion_boundary);
+    HookGuard lock;
+    auto& ctx = *devices.at(d);
+    CallTimer timer(ctx);
+    const auto motion_boundary = ctx.scene_depth.before_clear(d, n, r, f, z);
+    if (motion_boundary.valid && motion_capture_requested && motion_live_replay_available) {
+        const auto begin = telemetry::now();
+        const auto motion = ctx.motion.before_clear(d, motion_boundary);
         log("motion_replay device=%llu frame=%llu event=%llu attempted=%u candidate_produced=%u observations=%llu eligible=%llu matched=%llu rejected=%llu completed=%llu operation=%08lx restoration=%08lx cpu_ticks=%llu execution_known=%u execution_reason=%u active_queries=%llu continuity_known=%u color_coverage_known=%u temporal_consumed=0",
-            ctx.id,ctx.frame,motion_boundary.sequence,motion.attempted,motion.produced,motion.observations,
-            motion.eligible,motion.matched,motion.rejected,motion.completed,motion.operation,motion.restoration,
-            telemetry::now()-begin,motion.execution.known,unsigned(motion.execution.reason),motion.execution.active_queries,
-            motion.continuity_known,motion.color_coverage_known);
+            ctx.id, ctx.frame, motion_boundary.sequence, motion.attempted, motion.produced, motion.observations,
+            motion.eligible, motion.matched, motion.rejected, motion.completed, motion.operation, motion.restoration,
+            telemetry::now() - begin, motion.execution.known, unsigned(motion.execution.reason),
+            motion.execution.active_queries, motion.continuity_known, motion.color_coverage_known);
     }
-    ctx.motion_output.before_clear(n,f,z);
+    ctx.motion_output.before_clear(n, f, z);
     timer.begin();
     cpu.before_original();
-    const HRESULT result=ctx.get<HRESULT (WINAPI*)(IDirect3DDevice9*,DWORD,const D3DRECT*,DWORD,D3DCOLOR,float,DWORD)>(43)(d,n,r,f,c,z,s);
+    const HRESULT result = ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*, DWORD, const D3DRECT*, DWORD, D3DCOLOR, float,
+                                                    DWORD)>(43)(d, n, r, f, c, z, s);
     cpu.after_original();
     timer.end();
     ctx.motion_output.after_clear(result);
-    const bool motion_confirmed=ctx.scene_depth.after_clear(d,result);
-    if(motion_boundary.valid)ctx.motion.after_clear(motion_confirmed);
-    if(ctx.capture){
-        capture_event(ctx,"clear",result);
-        log("clear flags=%lu color=%08lx z=%g stencil=%lu rect_count=%lu rect_ptr=%p",f,c,z,s,n,r);
-        if(SUCCEEDED(result)&&r&&n){
-            const DWORD count=n<16?n:16;
-            log("clear_rects recorded=%lu omitted=%lu",count,n-count);
-            for(DWORD i=0;i<count;++i)log("clear_rect index=%lu left=%ld top=%ld right=%ld bottom=%ld",i,r[i].x1,r[i].y1,r[i].x2,r[i].y2);
+    const bool motion_confirmed = ctx.scene_depth.after_clear(d, result);
+    if (motion_boundary.valid) ctx.motion.after_clear(motion_confirmed);
+    if (ctx.capture) {
+        capture_event(ctx, "clear", result);
+        log("clear flags=%lu color=%08lx z=%g stencil=%lu rect_count=%lu rect_ptr=%p", f, c, z, s, n, r);
+        if (SUCCEEDED(result) && r && n) {
+            const DWORD count = n < 16 ? n : 16;
+            log("clear_rects recorded=%lu omitted=%lu", count, n - count);
+            for (DWORD i = 0; i < count; ++i)
+                log("clear_rect index=%lu left=%ld top=%ld right=%ld bottom=%ld", i, r[i].x1, r[i].y1, r[i].x2,
+                    r[i].y2);
         }
         // A depth-only Clear can divide scene and HUD without a target rebind.
-        IDirect3DSurface9* surface=nullptr;
-        if(SUCCEEDED(d->GetRenderTarget(0,&surface))&&surface){surface_info("clear_rt0",surface);surface->Release();surface=nullptr;}
-        if(SUCCEEDED(d->GetDepthStencilSurface(&surface))&&surface){surface_info("clear_depth",surface);surface->Release();}
+        IDirect3DSurface9* surface = nullptr;
+        if (SUCCEEDED(d->GetRenderTarget(0, &surface)) && surface) {
+            surface_info("clear_rt0", surface);
+            surface->Release();
+            surface = nullptr;
+        }
+        if (SUCCEEDED(d->GetDepthStencilSurface(&surface)) && surface) {
+            surface_info("clear_depth", surface);
+            surface->Release();
+        }
         D3DVIEWPORT9 vp{};
-        const HRESULT vp_result=d->GetViewport(&vp);
-        log("clear_viewport result=%08lx x=%lu y=%lu w=%lu h=%lu minz=%.9g maxz=%.9g",vp_result,vp.X,vp.Y,vp.Width,vp.Height,vp.MinZ,vp.MaxZ);
+        const HRESULT vp_result = d->GetViewport(&vp);
+        log("clear_viewport result=%08lx x=%lu y=%lu w=%lu h=%lu minz=%.9g maxz=%.9g", vp_result, vp.X, vp.Y, vp.Width,
+            vp.Height, vp.MinZ, vp.MaxZ);
     }
     return result;
 }
-HRESULT WINAPI set_rt(IDirect3DDevice9* d,DWORD index,IDirect3DSurface9* rt) {
+HRESULT WINAPI set_rt(IDirect3DDevice9* d, DWORD index, IDirect3DSurface9* rt) {
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    HookGuard lock;auto& ctx=*devices.at(d);CallTimer timer(ctx);
+    HookGuard lock;
+    auto& ctx = *devices.at(d);
+    CallTimer timer(ctx);
     ctx.motion_output.restore_bindings();
     // HDR redirect: the application's main surface maps to the FP16 target
     // while the scene is redirected; the shadow below records the logical binding.
-    IDirect3DSurface9* physical=ctx.motion_output.before_set_render_target(index,rt);
+    IDirect3DSurface9* physical = ctx.motion_output.before_set_render_target(index, rt);
     timer.begin();
     cpu.before_original();
-    const HRESULT result=ctx.get<HRESULT (WINAPI*)(IDirect3DDevice9*,DWORD,IDirect3DSurface9*)>(37)(d,index,physical);cpu.after_original();timer.end();
-    ctx.scene_depth.after_set_rt(d,index,result);
-    ctx.motion_output.after_set_render_target(index,rt,result);
-    if(ctx.capture){capture_event(ctx,"set_rt",result);log("set_rt index=%lu result=%08lx ptr=%p",index,result,rt);if(SUCCEEDED(result))surface_info("binding",rt);}
+    const HRESULT result = ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*, DWORD, IDirect3DSurface9*)>(37)(d, index,
+                                                                                                       physical);
+    cpu.after_original();
+    timer.end();
+    ctx.scene_depth.after_set_rt(d, index, result);
+    ctx.motion_output.after_set_render_target(index, rt, result);
+    if (ctx.capture) {
+        capture_event(ctx, "set_rt", result);
+        log("set_rt index=%lu result=%08lx ptr=%p", index, result, rt);
+        if (SUCCEEDED(result)) surface_info("binding", rt);
+    }
     return result;
 }
-HRESULT WINAPI set_depth(IDirect3DDevice9* d,IDirect3DSurface9* depth) {
+HRESULT WINAPI set_depth(IDirect3DDevice9* d, IDirect3DSurface9* depth) {
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    HookGuard lock;auto& ctx=*devices.at(d);CallTimer timer(ctx);
+    HookGuard lock;
+    auto& ctx = *devices.at(d);
+    CallTimer timer(ctx);
     // D3D9 validates the depth surface against every bound target, so a held
     // RT1/RT2 (lazy RT mode) goes back first: the call sees the application's bindings.
     ctx.motion_output.restore_bindings();
     timer.begin();
     cpu.before_original();
-    const HRESULT result=ctx.get<HRESULT (WINAPI*)(IDirect3DDevice9*,IDirect3DSurface9*)>(39)(d,depth);cpu.after_original();timer.end();
-    ctx.scene_depth.after_set_depth(d,result);
-    ctx.motion_output.after_set_depth(depth,result);
-    if(ctx.capture){capture_event(ctx,"set_depth",result);log("set_depth ptr=%p result=%08lx",depth,result);if(SUCCEEDED(result))surface_info("depth_binding",depth);}
+    const HRESULT result = ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*, IDirect3DSurface9*)>(39)(d, depth);
+    cpu.after_original();
+    timer.end();
+    ctx.scene_depth.after_set_depth(d, result);
+    ctx.motion_output.after_set_depth(depth, result);
+    if (ctx.capture) {
+        capture_event(ctx, "set_depth", result);
+        log("set_depth ptr=%p result=%08lx", depth, result);
+        if (SUCCEEDED(result)) surface_info("depth_binding", depth);
+    }
     return result;
 }
-HRESULT WINAPI stretch_rect(IDirect3DDevice9* d,IDirect3DSurface9* source,const RECT* source_rect,IDirect3DSurface9* dest,const RECT* dest_rect,D3DTEXTUREFILTERTYPE filter){
+HRESULT WINAPI stretch_rect(IDirect3DDevice9* d, IDirect3DSurface9* source, const RECT* source_rect,
+                            IDirect3DSurface9* dest, const RECT* dest_rect, D3DTEXTUREFILTERTYPE filter) {
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    HookGuard lock;auto& ctx=*devices.at(d);CallTimer timer(ctx);
+    HookGuard lock;
+    auto& ctx = *devices.at(d);
+    CallTimer timer(ctx);
     // The temporal resolve runs here, before the application's bloom copy of
     // the main target, so the copy and everything after it see the resolved image.
-    ctx.motion_output.before_stretch(source,source_rect,dest,dest_rect);
+    ctx.motion_output.before_stretch(source, source_rect, dest, dest_rect);
     timer.begin();
     cpu.before_original();
-    const HRESULT result=ctx.get<HRESULT (WINAPI*)(IDirect3DDevice9*,IDirect3DSurface9*,const RECT*,IDirect3DSurface9*,const RECT*,D3DTEXTUREFILTERTYPE)>(34)(d,source,source_rect,dest,dest_rect,filter);cpu.after_original();timer.end();
+    const HRESULT result = ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*, IDirect3DSurface9*, const RECT*,
+                                                    IDirect3DSurface9*, const RECT*, D3DTEXTUREFILTERTYPE)>(34)(
+        d, source, source_rect, dest, dest_rect, filter);
+    cpu.after_original();
+    timer.end();
     // The application's own copy (the resolve above is excluded: it runs before timer.begin).
-    telemetry::record(ctx.stats,telemetry::Metric::StretchBackend,timer.backend_ticks,FAILED(result));
-    ctx.scene_depth.after_stretch(d,source,source_rect,dest,dest_rect,result);
-    ctx.motion_output.after_stretch(source,source_rect,dest,dest_rect,result);
-    if(ctx.capture){
-        capture_event(ctx,"stretch_rect",result);log("stretch_rect source=%p dest=%p filter=%u source_rect_null=%u dest_rect_null=%u",source,dest,filter,source_rect==nullptr,dest_rect==nullptr);
-        if(SUCCEEDED(result)){
-            if(source_rect)log("stretch_source_rect left=%ld top=%ld right=%ld bottom=%ld",source_rect->left,source_rect->top,source_rect->right,source_rect->bottom);
-            if(dest_rect)log("stretch_dest_rect left=%ld top=%ld right=%ld bottom=%ld",dest_rect->left,dest_rect->top,dest_rect->right,dest_rect->bottom);
-            surface_info("stretch_source",source);surface_info("stretch_dest",dest);
+    telemetry::record(ctx.stats, telemetry::Metric::StretchBackend, timer.backend_ticks, FAILED(result));
+    ctx.scene_depth.after_stretch(d, source, source_rect, dest, dest_rect, result);
+    ctx.motion_output.after_stretch(source, source_rect, dest, dest_rect, result);
+    if (ctx.capture) {
+        capture_event(ctx, "stretch_rect", result);
+        log("stretch_rect source=%p dest=%p filter=%u source_rect_null=%u dest_rect_null=%u", source, dest, filter,
+            source_rect == nullptr, dest_rect == nullptr);
+        if (SUCCEEDED(result)) {
+            if (source_rect)
+                log("stretch_source_rect left=%ld top=%ld right=%ld bottom=%ld", source_rect->left, source_rect->top,
+                    source_rect->right, source_rect->bottom);
+            if (dest_rect)
+                log("stretch_dest_rect left=%ld top=%ld right=%ld bottom=%ld", dest_rect->left, dest_rect->top,
+                    dest_rect->right, dest_rect->bottom);
+            surface_info("stretch_source", source);
+            surface_info("stretch_dest", dest);
         }
     }
     return result;
 }
-HRESULT WINAPI begin_scene(IDirect3DDevice9* d){
+HRESULT WINAPI begin_scene(IDirect3DDevice9* d) {
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    HookGuard lock;auto& ctx=*devices.at(d);
+    HookGuard lock;
+    auto& ctx = *devices.at(d);
     cpu.before_original();
-    const HRESULT hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*)>(41)(d);cpu.after_original();
-    if(SUCCEEDED(hr)&&ctx.gpu_sync){ctx.gpu_sync->begin(gpu_sync_timing::Scene);ctx.gpu_sync->begin(gpu_sync_timing::Engine);} // --gpu-sync-timing only: the frame's first BeginScene opens both (first per frame only)
-    if(SUCCEEDED(hr)&&(sector_background_requested || volumetric_fog_requested))sector_background_context(ctx,true);
+    const HRESULT hr = ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*)>(41)(d);
+    cpu.after_original();
+    if (SUCCEEDED(hr) && ctx.gpu_sync) {
+        ctx.gpu_sync->begin(gpu_sync_timing::Scene);
+        ctx.gpu_sync->begin(gpu_sync_timing::Engine);
+    } // --gpu-sync-timing only: the frame's first BeginScene opens both (first per frame only)
+    if (SUCCEEDED(hr) && (sector_background_requested || volumetric_fog_requested))
+        sector_background_context(ctx, true);
     ctx.motion_output.after_begin_scene(hr);
-    if(SUCCEEDED(hr)) {
-        ctx.scene_thread=GetCurrentThreadId(); ctx.composition_scene_owner=false; ctx.composition_scene_frame=ctx.frame;
-        if(ctx.motion_output.composition_requested() && scene_hook::active()) {
+    if (SUCCEEDED(hr)) {
+        ctx.scene_thread = GetCurrentThreadId();
+        ctx.composition_scene_owner = false;
+        ctx.composition_scene_frame = ctx.frame;
+        if (ctx.motion_output.composition_requested() && scene_hook::active()) {
             compositor_owner::Snapshot identity{};
-            ctx.composition_scene_owner=compositor_owner::read(reinterpret_cast<std::uintptr_t>(GetModuleHandleW(nullptr)),identity)==compositor_owner::Result::Ok
-                && reinterpret_cast<IDirect3DDevice9*>(identity.device)==d;
+            ctx.composition_scene_owner = compositor_owner::read(
+                                              reinterpret_cast<std::uintptr_t>(GetModuleHandleW(nullptr)), identity) ==
+                                              compositor_owner::Result::Ok &&
+                                          reinterpret_cast<IDirect3DDevice9*>(identity.device) == d;
         }
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
-        if(ctx.motion_output.fixture_emission_owner())ctx.composition_scene_owner=true;
+        if (ctx.motion_output.fixture_emission_owner()) ctx.composition_scene_owner = true;
 #endif
     }
     return hr;
 }
-HRESULT WINAPI end_scene(IDirect3DDevice9* d){
+HRESULT WINAPI end_scene(IDirect3DDevice9* d) {
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    HookGuard lock(frame_timing::Bucket::Scene);auto& ctx=*devices.at(d);
+    HookGuard lock(frame_timing::Bucket::Scene);
+    auto& ctx = *devices.at(d);
     ctx.motion_output.restore_bindings();
     ctx.motion_output.before_end_scene(); // HDR: flush the FP16 content while draws are legal
     cpu.before_original();
-    const HRESULT hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*)>(42)(d);cpu.after_original();
+    const HRESULT hr = ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*)>(42)(d);
+    cpu.after_original();
     ctx.motion_output.after_end_scene(hr);
-    ctx.composition_scene_owner=false;
+    ctx.composition_scene_owner = false;
     return hr;
 }
-ULONG WINAPI query_release(IDirect3DQuery9* query){
+ULONG WINAPI query_release(IDirect3DQuery9* query) {
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     HookGuard lock;
-    auto& hooks=*queries.at(query);
-    auto fn=hooks.get<ULONG(WINAPI*)(IDirect3DQuery9*)>(2);
+    auto& hooks = *queries.at(query);
+    auto fn = hooks.get<ULONG(WINAPI*)(IDirect3DQuery9*)>(2);
     cpu.before_original();
-    const ULONG refs=fn(query);cpu.after_original();
-    if(!refs){
+    const ULONG refs = fn(query);
+    cpu.after_original();
+    if (!refs) {
         // An open query released without END no longer changes with draws.
-        const auto device=devices.find(hooks.device);
-        if(hooks.active&&device!=devices.end())device->second->motion_output.query_active(false);
+        const auto device = devices.find(hooks.device);
+        if (hooks.active && device != devices.end()) device->second->motion_output.query_active(false);
         queries.erase(query);
     }
     return refs;
 }
-HRESULT WINAPI query_issue(IDirect3DQuery9* query,DWORD flags){
+HRESULT WINAPI query_issue(IDirect3DQuery9* query, DWORD flags) {
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     HookGuard lock;
-    auto& hooks=*queries.at(query);
-    const auto device=devices.find(hooks.device);
+    auto& hooks = *queries.at(query);
+    const auto device = devices.find(hooks.device);
     // A query bracket must cover the application's bindings only.
-    if(device!=devices.end())device->second->motion_output.restore_bindings();
+    if (device != devices.end()) device->second->motion_output.restore_bindings();
     cpu.before_original();
-    const HRESULT hr=hooks.get<HRESULT(WINAPI*)(IDirect3DQuery9*,DWORD)>(6)(query,flags);cpu.after_original();
-    if(SUCCEEDED(hr)&&device!=devices.end()){
-        const bool begin=(flags&D3DISSUE_BEGIN)!=0, end=(flags&D3DISSUE_END)!=0;
-        if(begin&&!end&&!hooks.active){hooks.active=true;device->second->motion_output.query_active(true);}
-        else if(end&&hooks.active){hooks.active=false;device->second->motion_output.query_active(false);}
+    const HRESULT hr = hooks.get<HRESULT(WINAPI*)(IDirect3DQuery9*, DWORD)>(6)(query, flags);
+    cpu.after_original();
+    if (SUCCEEDED(hr) && device != devices.end()) {
+        const bool begin = (flags & D3DISSUE_BEGIN) != 0, end = (flags & D3DISSUE_END) != 0;
+        if (begin && !end && !hooks.active) {
+            hooks.active = true;
+            device->second->motion_output.query_active(true);
+        } else if (end && hooks.active) {
+            hooks.active = false;
+            device->second->motion_output.query_active(false);
+        }
     }
     return hr;
 }
-HRESULT WINAPI create_query(IDirect3DDevice9* d,D3DQUERYTYPE type,IDirect3DQuery9** out){
+HRESULT WINAPI create_query(IDirect3DDevice9* d, D3DQUERYTYPE type, IDirect3DQuery9** out) {
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    HookGuard lock;auto& ctx=*devices.at(d);
+    HookGuard lock;
+    auto& ctx = *devices.at(d);
     cpu.before_original();
-    const HRESULT hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,D3DQUERYTYPE,IDirect3DQuery9**)>(118)(d,type,out);cpu.after_original();
-    if(ctx.capture)log("create_query type=%u result=%08lx ptr=%p",unsigned(type),hr,out?*out:nullptr);
-    if(SUCCEEDED(hr)&&out&&*out&&!queries.count(*out)){
-        auto hooks=std::make_unique<QueryHooks>(*out,d);
-        hooks->set(2,query_release);hooks->set(6,query_issue);
-        auto entry=queries.emplace(*out,std::move(hooks));
+    const HRESULT hr = ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*, D3DQUERYTYPE, IDirect3DQuery9**)>(118)(d, type, out);
+    cpu.after_original();
+    if (ctx.capture) log("create_query type=%u result=%08lx ptr=%p", unsigned(type), hr, out ? *out : nullptr);
+    if (SUCCEEDED(hr) && out && *out && !queries.count(*out)) {
+        auto hooks = std::make_unique<QueryHooks>(*out, d);
+        hooks->set(2, query_release);
+        hooks->set(6, query_issue);
+        auto entry = queries.emplace(*out, std::move(hooks));
         entry.first->second->install(*out);
     }
     return hr;
 }
 // Optional scene capture must not mistake omitted GPU writes for a contiguous
 // known render sequence. Forward these calls unchanged and reject the candidate.
-HRESULT WINAPI update_surface(IDirect3DDevice9* d,IDirect3DSurface9* source,const RECT* rect,IDirect3DSurface9* dest,const POINT* point){
+HRESULT WINAPI update_surface(IDirect3DDevice9* d, IDirect3DSurface9* source, const RECT* rect, IDirect3DSurface9* dest,
+                              const POINT* point) {
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    HookGuard lock;auto& ctx=*devices.at(d);
+    HookGuard lock;
+    auto& ctx = *devices.at(d);
     ctx.motion_output.restore_bindings();
     ctx.motion_output.before_render_target_write(dest); // HDR: a write into the main target ends the redirect first
     cpu.before_original();
-    const auto hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,IDirect3DSurface9*,const RECT*,IDirect3DSurface9*,const POINT*)>(30)(d,source,rect,dest,point);cpu.after_original();
-    ctx.scene_depth.unsupported("UpdateSurface",hr);ctx.motion_output.unsupported(hr);return hr;
+    const auto hr = ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*, IDirect3DSurface9*, const RECT*, IDirect3DSurface9*,
+                                             const POINT*)>(30)(d, source, rect, dest, point);
+    cpu.after_original();
+    ctx.scene_depth.unsupported("UpdateSurface", hr);
+    ctx.motion_output.unsupported(hr);
+    return hr;
 }
-HRESULT WINAPI update_texture(IDirect3DDevice9* d,IDirect3DBaseTexture9* source,IDirect3DBaseTexture9* dest){
+HRESULT WINAPI update_texture(IDirect3DDevice9* d, IDirect3DBaseTexture9* source, IDirect3DBaseTexture9* dest) {
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    HookGuard lock;auto& ctx=*devices.at(d);
+    HookGuard lock;
+    auto& ctx = *devices.at(d);
     ctx.motion_output.restore_bindings();
     ctx.motion_output.before_texture_write(dest);
     cpu.before_original();
-    const auto hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,IDirect3DBaseTexture9*,IDirect3DBaseTexture9*)>(31)(d,source,dest);cpu.after_original();
-    ctx.scene_depth.unsupported("UpdateTexture",hr);ctx.motion_output.unsupported(hr);return hr;
+    const auto hr = ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*, IDirect3DBaseTexture9*, IDirect3DBaseTexture9*)>(31)(
+        d, source, dest);
+    cpu.after_original();
+    ctx.scene_depth.unsupported("UpdateTexture", hr);
+    ctx.motion_output.unsupported(hr);
+    return hr;
 }
-HRESULT WINAPI color_fill(IDirect3DDevice9* d,IDirect3DSurface9* surface,const RECT* rect,D3DCOLOR color){
+HRESULT WINAPI color_fill(IDirect3DDevice9* d, IDirect3DSurface9* surface, const RECT* rect, D3DCOLOR color) {
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    HookGuard lock;auto& ctx=*devices.at(d);
+    HookGuard lock;
+    auto& ctx = *devices.at(d);
     ctx.motion_output.restore_bindings();
     ctx.motion_output.before_render_target_write(surface); // HDR: a fill of the main target ends the redirect first
     cpu.before_original();
-    const auto hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,IDirect3DSurface9*,const RECT*,D3DCOLOR)>(35)(d,surface,rect,color);cpu.after_original();
-    ctx.scene_depth.after_color_fill(d,surface,rect,hr);
-    ctx.motion_output.after_color_fill(surface,rect,hr);
-    if(ctx.capture){
-        capture_event(ctx,"color_fill",hr);
-        log("color_fill target=%p rect=%p result=%08lx color=%08lx rect_null=%u",surface,rect,hr,color,rect==nullptr);
+    const auto hr = ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*, IDirect3DSurface9*, const RECT*, D3DCOLOR)>(35)(
+        d, surface, rect, color);
+    cpu.after_original();
+    ctx.scene_depth.after_color_fill(d, surface, rect, hr);
+    ctx.motion_output.after_color_fill(surface, rect, hr);
+    if (ctx.capture) {
+        capture_event(ctx, "color_fill", hr);
+        log("color_fill target=%p rect=%p result=%08lx color=%08lx rect_null=%u", surface, rect, hr, color,
+            rect == nullptr);
         // A failed native call may reject before reading either pointer. Logging
         // must not make a previously untouched invalid argument observable.
-        if(SUCCEEDED(hr)){
-            if(rect)log("color_fill_rect left=%ld top=%ld right=%ld bottom=%ld",rect->left,rect->top,rect->right,rect->bottom);
-            if(surface)surface_info("color_fill_target",surface);
+        if (SUCCEEDED(hr)) {
+            if (rect)
+                log("color_fill_rect left=%ld top=%ld right=%ld bottom=%ld", rect->left, rect->top, rect->right,
+                    rect->bottom);
+            if (surface) surface_info("color_fill_target", surface);
         }
     }
     return hr;
 }
-HRESULT WINAPI draw_rect_patch(IDirect3DDevice9* d,UINT handle,const float* segments,const D3DRECTPATCH_INFO* info){
+HRESULT WINAPI draw_rect_patch(IDirect3DDevice9* d, UINT handle, const float* segments, const D3DRECTPATCH_INFO* info) {
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    HookGuard lock;auto& ctx=*devices.at(d);
+    HookGuard lock;
+    auto& ctx = *devices.at(d);
     ctx.motion_output.restore_bindings();
     cpu.before_original();
-    const auto hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,UINT,const float*,const D3DRECTPATCH_INFO*)>(115)(d,handle,segments,info);cpu.after_original();
-    ctx.scene_depth.unsupported("DrawRectPatch",hr);ctx.motion_output.unsupported(hr);return hr;
+    const auto hr = ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*, UINT, const float*, const D3DRECTPATCH_INFO*)>(115)(
+        d, handle, segments, info);
+    cpu.after_original();
+    ctx.scene_depth.unsupported("DrawRectPatch", hr);
+    ctx.motion_output.unsupported(hr);
+    return hr;
 }
-HRESULT WINAPI draw_tri_patch(IDirect3DDevice9* d,UINT handle,const float* segments,const D3DTRIPATCH_INFO* info){
+HRESULT WINAPI draw_tri_patch(IDirect3DDevice9* d, UINT handle, const float* segments, const D3DTRIPATCH_INFO* info) {
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    HookGuard lock;auto& ctx=*devices.at(d);
+    HookGuard lock;
+    auto& ctx = *devices.at(d);
     ctx.motion_output.restore_bindings();
     cpu.before_original();
-    const auto hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,UINT,const float*,const D3DTRIPATCH_INFO*)>(116)(d,handle,segments,info);cpu.after_original();
-    ctx.scene_depth.unsupported("DrawTriPatch",hr);ctx.motion_output.unsupported(hr);return hr;
+    const auto hr = ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*, UINT, const float*, const D3DTRIPATCH_INFO*)>(116)(
+        d, handle, segments, info);
+    cpu.after_original();
+    ctx.scene_depth.unsupported("DrawTriPatch", hr);
+    ctx.motion_output.unsupported(hr);
+    return hr;
 }
 // These resource hooks are installed only when CPU telemetry is enabled. The
 // backend receives every pointer/flag unchanged; returned objects are not wrapped.
-HRESULT WINAPI create_texture(IDirect3DDevice9* d,UINT w,UINT h,UINT levels,DWORD usage,D3DFORMAT format,D3DPOOL pool,IDirect3DTexture9** out,HANDLE* shared){
-    CpuCallBoundary cpu;
-    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    HookGuard lock;auto& ctx=*devices.at(d);const auto begin=telemetry::now();
-    cpu.before_original();
-    const auto result=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,UINT,UINT,UINT,DWORD,D3DFORMAT,D3DPOOL,IDirect3DTexture9**,HANDLE*)>(23)(d,w,h,levels,usage,format,pool,out,shared);cpu.after_original();
-    if(volumetric_fog_prefill)fog_prefill_poll(ctx); // R3: one compare outside a stall
-    telemetry::record(ctx.stats,telemetry::Metric::Texture,telemetry::now()-begin,FAILED(result));return result;
-}
-HRESULT WINAPI create_volume(IDirect3DDevice9* d,UINT w,UINT h,UINT depth,UINT levels,DWORD usage,D3DFORMAT format,D3DPOOL pool,IDirect3DVolumeTexture9** out,HANDLE* shared){
-    CpuCallBoundary cpu;
-    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    HookGuard lock;auto& ctx=*devices.at(d);const auto begin=telemetry::now();
-    cpu.before_original();
-    const auto result=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,UINT,UINT,UINT,UINT,DWORD,D3DFORMAT,D3DPOOL,IDirect3DVolumeTexture9**,HANDLE*)>(24)(d,w,h,depth,levels,usage,format,pool,out,shared);cpu.after_original();
-    telemetry::record(ctx.stats,telemetry::Metric::VolumeTexture,telemetry::now()-begin,FAILED(result));return result;
-}
-HRESULT WINAPI create_cube(IDirect3DDevice9* d,UINT edge,UINT levels,DWORD usage,D3DFORMAT format,D3DPOOL pool,IDirect3DCubeTexture9** out,HANDLE* shared){
-    CpuCallBoundary cpu;
-    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    HookGuard lock;auto& ctx=*devices.at(d);const auto begin=telemetry::now();
-    cpu.before_original();
-    const auto result=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,UINT,UINT,DWORD,D3DFORMAT,D3DPOOL,IDirect3DCubeTexture9**,HANDLE*)>(25)(d,edge,levels,usage,format,pool,out,shared);cpu.after_original();
-    telemetry::record(ctx.stats,telemetry::Metric::CubeTexture,telemetry::now()-begin,FAILED(result));return result;
-}
-HRESULT WINAPI create_vb(IDirect3DDevice9* d,UINT length,DWORD usage,DWORD fvf,D3DPOOL pool,IDirect3DVertexBuffer9** out,HANDLE* shared){
-    CpuCallBoundary cpu;
-    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    HookGuard lock;auto& ctx=*devices.at(d);const auto begin=telemetry::now();
-    cpu.before_original();
-    const auto result=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,UINT,DWORD,DWORD,D3DPOOL,IDirect3DVertexBuffer9**,HANDLE*)>(26)(d,length,usage,fvf,pool,out,shared);cpu.after_original();
-    if(volumetric_fog_prefill)fog_prefill_poll(ctx); // R3: one compare outside a stall
-    telemetry::record(ctx.stats,telemetry::Metric::VertexBuffer,telemetry::now()-begin,FAILED(result),SUCCEEDED(result)?length:0);return result;
-}
-HRESULT WINAPI create_ib(IDirect3DDevice9* d,UINT length,DWORD usage,D3DFORMAT format,D3DPOOL pool,IDirect3DIndexBuffer9** out,HANDLE* shared){
-    CpuCallBoundary cpu;
-    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    HookGuard lock;auto& ctx=*devices.at(d);const auto begin=telemetry::now();
-    cpu.before_original();
-    const auto result=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,UINT,DWORD,D3DFORMAT,D3DPOOL,IDirect3DIndexBuffer9**,HANDLE*)>(27)(d,length,usage,format,pool,out,shared);cpu.after_original();
-    telemetry::record(ctx.stats,telemetry::Metric::IndexBuffer,telemetry::now()-begin,FAILED(result),SUCCEEDED(result)?length:0);return result;
-}
-HRESULT WINAPI create_rt(IDirect3DDevice9* d,UINT w,UINT h,D3DFORMAT format,D3DMULTISAMPLE_TYPE ms, DWORD quality,BOOL lockable,IDirect3DSurface9** out,HANDLE* shared){
-    CpuCallBoundary cpu;
-    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    HookGuard lock;auto& ctx=*devices.at(d);const auto begin=telemetry::now();
-    cpu.before_original();
-    const auto result=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,UINT,UINT,D3DFORMAT,D3DMULTISAMPLE_TYPE,DWORD,BOOL,IDirect3DSurface9**,HANDLE*)>(28)(d,w,h,format,ms,quality,lockable,out,shared);cpu.after_original();
-    telemetry::record(ctx.stats,telemetry::Metric::RenderTarget,telemetry::now()-begin,FAILED(result));return result;
-}
-HRESULT WINAPI create_depth(IDirect3DDevice9* d,UINT w,UINT h,D3DFORMAT format,D3DMULTISAMPLE_TYPE ms,DWORD quality,BOOL discard,IDirect3DSurface9** out,HANDLE* shared){
-    CpuCallBoundary cpu;
-    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    HookGuard lock;auto& ctx=*devices.at(d);const auto begin=telemetry::now();
-    cpu.before_original();
-    const auto result=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,UINT,UINT,D3DFORMAT,D3DMULTISAMPLE_TYPE,DWORD,BOOL,IDirect3DSurface9**,HANDLE*)>(29)(d,w,h,format,ms,quality,discard,out,shared);cpu.after_original();
-    telemetry::record(ctx.stats,telemetry::Metric::DepthStencil,telemetry::now()-begin,FAILED(result));return result;
-}
-bool cursor_change_allowed(telemetry::State& stats){
-    const auto stamp=telemetry::now();if(stats.last_cursor_change && stamp-stats.last_cursor_change<telemetry::frequency()/4){++stats.cursor_changes_suppressed;return false;}stats.last_cursor_change=stamp;return true;
-}
-HRESULT WINAPI cursor_properties(IDirect3DDevice9* d,UINT x,UINT y,IDirect3DSurface9* surface){
-    CpuCallBoundary cpu;
-    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    HookGuard lock;auto& ctx=*devices.at(d);auto& stats=ctx.stats;const auto begin=telemetry::now();
-    cpu.before_original();
-    const HRESULT result=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,UINT,UINT,IDirect3DSurface9*)>(10)(d,x,y,surface);cpu.after_original();
-    telemetry::record(stats,telemetry::Metric::CursorProperties,telemetry::now()-begin,FAILED(result));
-    if((!stats.properties_known||stats.cursor_x!=x||stats.cursor_y!=y||stats.cursor_surface!=surface||FAILED(result))&&cursor_change_allowed(stats))log("telemetry_cursor_api device=%llu frame=%llu op=properties hotspot=%u,%u surface=%p result=%08lx",ctx.id,ctx.frame,x,y,surface,result);
-    if(SUCCEEDED(result)){stats.properties_known=true;stats.cursor_x=x;stats.cursor_y=y;stats.cursor_surface=surface;}
-    return result;
-}
-void WINAPI cursor_position(IDirect3DDevice9* d,int x,int y,DWORD flags){
-    CpuCallBoundary cpu;
-    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    HookGuard lock;auto& ctx=*devices.at(d);auto& stats=ctx.stats;const auto begin=telemetry::now();
-    cpu.before_original();
-    ctx.get<void(WINAPI*)(IDirect3DDevice9*,int,int,DWORD)>(11)(d,x,y,flags);cpu.after_original();
-    telemetry::record(stats,telemetry::Metric::CursorPosition,telemetry::now()-begin);
-    const auto stamp=telemetry::now();
-    if((!stats.last_position||x!=stats.logged_position_x||y!=stats.logged_position_y||flags!=stats.logged_position_flags) && (!stats.last_position||stamp-stats.last_position>=telemetry::frequency()/4)){log("telemetry_cursor_api device=%llu frame=%llu op=position x=%d y=%d flags=%lu",ctx.id,ctx.frame,x,y,flags);stats.last_position=stamp;stats.logged_position_x=x;stats.logged_position_y=y;stats.logged_position_flags=flags;}
-    else ++stats.position_suppressed;
-
-}
-BOOL WINAPI cursor_show(IDirect3DDevice9* d,BOOL show){
-    CpuCallBoundary cpu;
-    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    HookGuard lock;auto& ctx=*devices.at(d);auto& stats=ctx.stats;const auto begin=telemetry::now();
-    cpu.before_original();
-    const BOOL previous=ctx.get<BOOL(WINAPI*)(IDirect3DDevice9*,BOOL)>(12)(d,show);cpu.after_original();
-    telemetry::record(stats,telemetry::Metric::CursorShow,telemetry::now()-begin);
-    if((!stats.api_show_known||stats.api_show!=show)&&cursor_change_allowed(stats))log("telemetry_cursor_api device=%llu frame=%llu op=show requested=%d previous_visible=%d",ctx.id,ctx.frame,show,previous);
-    stats.api_show_known=true;stats.api_show=show;return previous;
-}
-HRESULT WINAPI create_vs(IDirect3DDevice9* d,const DWORD* code,IDirect3DVertexShader9** out) {
+HRESULT WINAPI create_texture(IDirect3DDevice9* d, UINT w, UINT h, UINT levels, DWORD usage, D3DFORMAT format,
+                              D3DPOOL pool, IDirect3DTexture9** out, HANDLE* shared) {
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     HookGuard lock;
-    const auto begin=telemetry::now();
+    auto& ctx = *devices.at(d);
+    const auto begin = telemetry::now();
     cpu.before_original();
-    HRESULT hr=devices.at(d)->get<HRESULT (WINAPI*)(IDirect3DDevice9*,const DWORD*,IDirect3DVertexShader9**)>(91)(d,code,out);cpu.after_original();
-    telemetry::record(devices.at(d)->stats,telemetry::Metric::ShaderVS,telemetry::now()-begin,FAILED(hr));
-    if(SUCCEEDED(hr)&&out){
-        const auto hash=shader_id(*out,"vs");
-        UINT bytes=0;
-        if(motion_output_requested&&*out&&SUCCEEDED((*out)->GetFunction(nullptr,&bytes)))
-            devices.at(d)->motion_output.register_vertex_shader(*out,code,bytes,hash);
+    const auto result = ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*, UINT, UINT, UINT, DWORD, D3DFORMAT, D3DPOOL,
+                                                 IDirect3DTexture9**, HANDLE*)>(23)(d, w, h, levels, usage, format,
+                                                                                    pool, out, shared);
+    cpu.after_original();
+    if (volumetric_fog_prefill) fog_prefill_poll(ctx); // R3: one compare outside a stall
+    telemetry::record(ctx.stats, telemetry::Metric::Texture, telemetry::now() - begin, FAILED(result));
+    return result;
+}
+HRESULT WINAPI create_volume(IDirect3DDevice9* d, UINT w, UINT h, UINT depth, UINT levels, DWORD usage,
+                             D3DFORMAT format, D3DPOOL pool, IDirect3DVolumeTexture9** out, HANDLE* shared) {
+    CpuCallBoundary cpu;
+    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
+    HookGuard lock;
+    auto& ctx = *devices.at(d);
+    const auto begin = telemetry::now();
+    cpu.before_original();
+    const auto result = ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*, UINT, UINT, UINT, UINT, DWORD, D3DFORMAT, D3DPOOL,
+                                                 IDirect3DVolumeTexture9**, HANDLE*)>(24)(d, w, h, depth, levels, usage,
+                                                                                          format, pool, out, shared);
+    cpu.after_original();
+    telemetry::record(ctx.stats, telemetry::Metric::VolumeTexture, telemetry::now() - begin, FAILED(result));
+    return result;
+}
+HRESULT WINAPI create_cube(IDirect3DDevice9* d, UINT edge, UINT levels, DWORD usage, D3DFORMAT format, D3DPOOL pool,
+                           IDirect3DCubeTexture9** out, HANDLE* shared) {
+    CpuCallBoundary cpu;
+    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
+    HookGuard lock;
+    auto& ctx = *devices.at(d);
+    const auto begin = telemetry::now();
+    cpu.before_original();
+    const auto result = ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*, UINT, UINT, DWORD, D3DFORMAT, D3DPOOL,
+                                                 IDirect3DCubeTexture9**, HANDLE*)>(25)(d, edge, levels, usage, format,
+                                                                                        pool, out, shared);
+    cpu.after_original();
+    telemetry::record(ctx.stats, telemetry::Metric::CubeTexture, telemetry::now() - begin, FAILED(result));
+    return result;
+}
+HRESULT WINAPI create_vb(IDirect3DDevice9* d, UINT length, DWORD usage, DWORD fvf, D3DPOOL pool,
+                         IDirect3DVertexBuffer9** out, HANDLE* shared) {
+    CpuCallBoundary cpu;
+    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
+    HookGuard lock;
+    auto& ctx = *devices.at(d);
+    const auto begin = telemetry::now();
+    cpu.before_original();
+    const auto result = ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*, UINT, DWORD, DWORD, D3DPOOL,
+                                                 IDirect3DVertexBuffer9**, HANDLE*)>(26)(d, length, usage, fvf, pool,
+                                                                                         out, shared);
+    cpu.after_original();
+    if (volumetric_fog_prefill) fog_prefill_poll(ctx); // R3: one compare outside a stall
+    telemetry::record(ctx.stats, telemetry::Metric::VertexBuffer, telemetry::now() - begin, FAILED(result),
+                      SUCCEEDED(result) ? length : 0);
+    return result;
+}
+HRESULT WINAPI create_ib(IDirect3DDevice9* d, UINT length, DWORD usage, D3DFORMAT format, D3DPOOL pool,
+                         IDirect3DIndexBuffer9** out, HANDLE* shared) {
+    CpuCallBoundary cpu;
+    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
+    HookGuard lock;
+    auto& ctx = *devices.at(d);
+    const auto begin = telemetry::now();
+    cpu.before_original();
+    const auto result = ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*, UINT, DWORD, D3DFORMAT, D3DPOOL,
+                                                 IDirect3DIndexBuffer9**, HANDLE*)>(27)(d, length, usage, format, pool,
+                                                                                        out, shared);
+    cpu.after_original();
+    telemetry::record(ctx.stats, telemetry::Metric::IndexBuffer, telemetry::now() - begin, FAILED(result),
+                      SUCCEEDED(result) ? length : 0);
+    return result;
+}
+HRESULT WINAPI create_rt(IDirect3DDevice9* d, UINT w, UINT h, D3DFORMAT format, D3DMULTISAMPLE_TYPE ms, DWORD quality,
+                         BOOL lockable, IDirect3DSurface9** out, HANDLE* shared) {
+    CpuCallBoundary cpu;
+    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
+    HookGuard lock;
+    auto& ctx = *devices.at(d);
+    const auto begin = telemetry::now();
+    cpu.before_original();
+    const auto result = ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*, UINT, UINT, D3DFORMAT, D3DMULTISAMPLE_TYPE, DWORD,
+                                                 BOOL, IDirect3DSurface9**, HANDLE*)>(28)(d, w, h, format, ms, quality,
+                                                                                          lockable, out, shared);
+    cpu.after_original();
+    telemetry::record(ctx.stats, telemetry::Metric::RenderTarget, telemetry::now() - begin, FAILED(result));
+    return result;
+}
+HRESULT WINAPI create_depth(IDirect3DDevice9* d, UINT w, UINT h, D3DFORMAT format, D3DMULTISAMPLE_TYPE ms,
+                            DWORD quality, BOOL discard, IDirect3DSurface9** out, HANDLE* shared) {
+    CpuCallBoundary cpu;
+    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
+    HookGuard lock;
+    auto& ctx = *devices.at(d);
+    const auto begin = telemetry::now();
+    cpu.before_original();
+    const auto result = ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*, UINT, UINT, D3DFORMAT, D3DMULTISAMPLE_TYPE, DWORD,
+                                                 BOOL, IDirect3DSurface9**, HANDLE*)>(29)(d, w, h, format, ms, quality,
+                                                                                          discard, out, shared);
+    cpu.after_original();
+    telemetry::record(ctx.stats, telemetry::Metric::DepthStencil, telemetry::now() - begin, FAILED(result));
+    return result;
+}
+bool cursor_change_allowed(telemetry::State& stats) {
+    const auto stamp = telemetry::now();
+    if (stats.last_cursor_change && stamp - stats.last_cursor_change < telemetry::frequency() / 4) {
+        ++stats.cursor_changes_suppressed;
+        return false;
+    }
+    stats.last_cursor_change = stamp;
+    return true;
+}
+HRESULT WINAPI cursor_properties(IDirect3DDevice9* d, UINT x, UINT y, IDirect3DSurface9* surface) {
+    CpuCallBoundary cpu;
+    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
+    HookGuard lock;
+    auto& ctx = *devices.at(d);
+    auto& stats = ctx.stats;
+    const auto begin = telemetry::now();
+    cpu.before_original();
+    const HRESULT result = ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*, UINT, UINT, IDirect3DSurface9*)>(10)(d, x, y,
+                                                                                                            surface);
+    cpu.after_original();
+    telemetry::record(stats, telemetry::Metric::CursorProperties, telemetry::now() - begin, FAILED(result));
+    if ((!stats.properties_known || stats.cursor_x != x || stats.cursor_y != y || stats.cursor_surface != surface ||
+         FAILED(result)) &&
+        cursor_change_allowed(stats))
+        log("telemetry_cursor_api device=%llu frame=%llu op=properties hotspot=%u,%u surface=%p result=%08lx", ctx.id,
+            ctx.frame, x, y, surface, result);
+    if (SUCCEEDED(result)) {
+        stats.properties_known = true;
+        stats.cursor_x = x;
+        stats.cursor_y = y;
+        stats.cursor_surface = surface;
+    }
+    return result;
+}
+void WINAPI cursor_position(IDirect3DDevice9* d, int x, int y, DWORD flags) {
+    CpuCallBoundary cpu;
+    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
+    HookGuard lock;
+    auto& ctx = *devices.at(d);
+    auto& stats = ctx.stats;
+    const auto begin = telemetry::now();
+    cpu.before_original();
+    ctx.get<void(WINAPI*)(IDirect3DDevice9*, int, int, DWORD)>(11)(d, x, y, flags);
+    cpu.after_original();
+    telemetry::record(stats, telemetry::Metric::CursorPosition, telemetry::now() - begin);
+    const auto stamp = telemetry::now();
+    if ((!stats.last_position || x != stats.logged_position_x || y != stats.logged_position_y ||
+         flags != stats.logged_position_flags) &&
+        (!stats.last_position || stamp - stats.last_position >= telemetry::frequency() / 4)) {
+        log("telemetry_cursor_api device=%llu frame=%llu op=position x=%d y=%d flags=%lu", ctx.id, ctx.frame, x, y,
+            flags);
+        stats.last_position = stamp;
+        stats.logged_position_x = x;
+        stats.logged_position_y = y;
+        stats.logged_position_flags = flags;
+    } else
+        ++stats.position_suppressed;
+}
+BOOL WINAPI cursor_show(IDirect3DDevice9* d, BOOL show) {
+    CpuCallBoundary cpu;
+    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
+    HookGuard lock;
+    auto& ctx = *devices.at(d);
+    auto& stats = ctx.stats;
+    const auto begin = telemetry::now();
+    cpu.before_original();
+    const BOOL previous = ctx.get<BOOL(WINAPI*)(IDirect3DDevice9*, BOOL)>(12)(d, show);
+    cpu.after_original();
+    telemetry::record(stats, telemetry::Metric::CursorShow, telemetry::now() - begin);
+    if ((!stats.api_show_known || stats.api_show != show) && cursor_change_allowed(stats))
+        log("telemetry_cursor_api device=%llu frame=%llu op=show requested=%d previous_visible=%d", ctx.id, ctx.frame,
+            show, previous);
+    stats.api_show_known = true;
+    stats.api_show = show;
+    return previous;
+}
+HRESULT WINAPI create_vs(IDirect3DDevice9* d, const DWORD* code, IDirect3DVertexShader9** out) {
+    CpuCallBoundary cpu;
+    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
+    HookGuard lock;
+    const auto begin = telemetry::now();
+    cpu.before_original();
+    HRESULT hr = devices.at(d)->get<HRESULT(WINAPI*)(IDirect3DDevice9*, const DWORD*, IDirect3DVertexShader9**)>(91)(
+        d, code, out);
+    cpu.after_original();
+    telemetry::record(devices.at(d)->stats, telemetry::Metric::ShaderVS, telemetry::now() - begin, FAILED(hr));
+    if (SUCCEEDED(hr) && out) {
+        const auto hash = shader_id(*out, "vs");
+        UINT bytes = 0;
+        if (motion_output_requested && *out && SUCCEEDED((*out)->GetFunction(nullptr, &bytes)))
+            devices.at(d)->motion_output.register_vertex_shader(*out, code, bytes, hash);
     }
     return hr;
 }
-HRESULT WINAPI create_ps(IDirect3DDevice9* d,const DWORD* code,IDirect3DPixelShader9** out) {
+HRESULT WINAPI create_ps(IDirect3DDevice9* d, const DWORD* code, IDirect3DPixelShader9** out) {
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     HookGuard lock;
-    const auto begin=telemetry::now();
+    const auto begin = telemetry::now();
     cpu.before_original();
-    HRESULT hr=devices.at(d)->get<HRESULT (WINAPI*)(IDirect3DDevice9*,const DWORD*,IDirect3DPixelShader9**)>(106)(d,code,out);cpu.after_original();
-    telemetry::record(devices.at(d)->stats,telemetry::Metric::ShaderPS,telemetry::now()-begin,FAILED(hr));
-    if(SUCCEEDED(hr)&&out){
-        const auto hash=shader_id(*out,"ps");
-        UINT bytes=0;
-        if(motion_output_requested&&*out&&SUCCEEDED((*out)->GetFunction(nullptr,&bytes)))
-            devices.at(d)->motion_output.register_pixel_shader(*out,code,bytes,hash);
+    HRESULT hr = devices.at(d)->get<HRESULT(WINAPI*)(IDirect3DDevice9*, const DWORD*, IDirect3DPixelShader9**)>(106)(
+        d, code, out);
+    cpu.after_original();
+    telemetry::record(devices.at(d)->stats, telemetry::Metric::ShaderPS, telemetry::now() - begin, FAILED(hr));
+    if (SUCCEEDED(hr) && out) {
+        const auto hash = shader_id(*out, "ps");
+        UINT bytes = 0;
+        if (motion_output_requested && *out && SUCCEEDED((*out)->GetFunction(nullptr, &bytes)))
+            devices.at(d)->motion_output.register_pixel_shader(*out, code, bytes, hash);
     }
     return hr;
 }
@@ -2187,42 +2836,63 @@ HRESULT WINAPI create_ps(IDirect3DDevice9* d,const DWORD* code,IDirect3DPixelSha
 // exception region the call otherwise carries. The binding shadows
 // (stream/indices/declaration/FVF) are per-draw, not per-state-write, and keep
 // the direct adapter, the map lookup and the plain slot type.
-#define X3M_SHADOW_HOOK(boundary,guard,admission_scope,lookup,native_spec,name,slot,signature,call,update) \
-HRESULT WINAPI name signature { \
-    boundary cpu; \
-    admission_scope admission; \
-    guard lock;auto& ctx=lookup(d); \
-    cpu.before_original(); \
-    const HRESULT hr=ctx.get<HRESULT(WINAPI*)signature native_spec>(slot)call;cpu.after_original(); \
-    if(SUCCEEDED(hr))ctx.motion_output.update; \
-    return hr; \
-}
-X3M_SHADOW_HOOK(LightCallBoundary,PlainHookGuard,LightAdmissionScope,hooked_device,noexcept,set_vs,92,(IDirect3DDevice9* d,IDirect3DVertexShader9* shader),(d,shader),set_vertex_shader(shader))
-X3M_SHADOW_HOOK(LightCallBoundary,PlainHookGuard,LightAdmissionScope,hooked_device,noexcept,set_ps,107,(IDirect3DDevice9* d,IDirect3DPixelShader9* shader),(d,shader),set_pixel_shader(shader))
-X3M_SHADOW_HOOK(LightCallBoundary,PlainHookGuard,LightAdmissionScope,hooked_device,noexcept,set_vs_constant_f,94,(IDirect3DDevice9* d,UINT start,const float* data,UINT count),(d,start,data,count),set_vertex_constants_f(start,data,count))
-X3M_SHADOW_HOOK(LightCallBoundary,PlainHookGuard,LightAdmissionScope,hooked_device,noexcept,set_vs_constant_i,96,(IDirect3DDevice9* d,UINT start,const int* data,UINT count),(d,start,data,count),set_vertex_constants_i(start,data,count))
-X3M_SHADOW_HOOK(LightCallBoundary,PlainHookGuard,LightAdmissionScope,hooked_device,noexcept,set_ps_constant_f,109,(IDirect3DDevice9* d,UINT start,const float* data,UINT count),(d,start,data,count),set_pixel_constants_f(start,data,count))
-X3M_SHADOW_HOOK(LightCallBoundary,PlainHookGuard,DirectAdmissionScope,device_context,,set_stream_source,100,(IDirect3DDevice9* d,UINT stream,IDirect3DVertexBuffer9* buffer,UINT offset,UINT stride),(d,stream,buffer,offset,stride),set_stream_source(stream,buffer,offset,stride))
-X3M_SHADOW_HOOK(LightCallBoundary,PlainHookGuard,DirectAdmissionScope,device_context,,set_indices,104,(IDirect3DDevice9* d,IDirect3DIndexBuffer9* buffer),(d,buffer),set_indices(buffer))
-X3M_SHADOW_HOOK(LightCallBoundary,PlainHookGuard,LightAdmissionScope,hooked_device,noexcept,set_viewport,47,(IDirect3DDevice9* d,const D3DVIEWPORT9* viewport),(d,viewport),set_viewport(viewport))
-X3M_SHADOW_HOOK(LightCallBoundary,PlainHookGuard,DirectAdmissionScope,device_context,,set_declaration,87,(IDirect3DDevice9* d,IDirect3DVertexDeclaration9* declaration),(d,declaration),set_vertex_declaration(declaration))
-X3M_SHADOW_HOOK(LightCallBoundary,PlainHookGuard,DirectAdmissionScope,device_context,,set_fvf,89,(IDirect3DDevice9* d,DWORD fvf),(d,fvf),set_fvf(fvf))
+#define X3M_SHADOW_HOOK(boundary, guard, admission_scope, lookup, native_spec, name, slot, signature, call, update)    \
+    HRESULT WINAPI name signature {                                                                                    \
+        boundary cpu;                                                                                                  \
+        admission_scope admission;                                                                                     \
+        guard lock;                                                                                                    \
+        auto& ctx = lookup(d);                                                                                         \
+        cpu.before_original();                                                                                         \
+        const HRESULT hr = ctx.get<HRESULT(WINAPI*) signature native_spec>(slot) call;                                 \
+        cpu.after_original();                                                                                          \
+        if (SUCCEEDED(hr)) ctx.motion_output.update;                                                                   \
+        return hr;                                                                                                     \
+    }
+X3M_SHADOW_HOOK(LightCallBoundary, PlainHookGuard, LightAdmissionScope, hooked_device, noexcept, set_vs, 92,
+                (IDirect3DDevice9 * d, IDirect3DVertexShader9* shader), (d, shader), set_vertex_shader(shader))
+X3M_SHADOW_HOOK(LightCallBoundary, PlainHookGuard, LightAdmissionScope, hooked_device, noexcept, set_ps, 107,
+                (IDirect3DDevice9 * d, IDirect3DPixelShader9* shader), (d, shader), set_pixel_shader(shader))
+X3M_SHADOW_HOOK(LightCallBoundary, PlainHookGuard, LightAdmissionScope, hooked_device, noexcept, set_vs_constant_f, 94,
+                (IDirect3DDevice9 * d, UINT start, const float* data, UINT count), (d, start, data, count),
+                set_vertex_constants_f(start, data, count))
+X3M_SHADOW_HOOK(LightCallBoundary, PlainHookGuard, LightAdmissionScope, hooked_device, noexcept, set_vs_constant_i, 96,
+                (IDirect3DDevice9 * d, UINT start, const int* data, UINT count), (d, start, data, count),
+                set_vertex_constants_i(start, data, count))
+X3M_SHADOW_HOOK(LightCallBoundary, PlainHookGuard, LightAdmissionScope, hooked_device, noexcept, set_ps_constant_f, 109,
+                (IDirect3DDevice9 * d, UINT start, const float* data, UINT count), (d, start, data, count),
+                set_pixel_constants_f(start, data, count))
+X3M_SHADOW_HOOK(LightCallBoundary, PlainHookGuard, DirectAdmissionScope, device_context, , set_stream_source, 100,
+                (IDirect3DDevice9 * d, UINT stream, IDirect3DVertexBuffer9* buffer, UINT offset, UINT stride),
+                (d, stream, buffer, offset, stride), set_stream_source(stream, buffer, offset, stride))
+X3M_SHADOW_HOOK(LightCallBoundary, PlainHookGuard, DirectAdmissionScope, device_context, , set_indices, 104,
+                (IDirect3DDevice9 * d, IDirect3DIndexBuffer9* buffer), (d, buffer), set_indices(buffer))
+X3M_SHADOW_HOOK(LightCallBoundary, PlainHookGuard, LightAdmissionScope, hooked_device, noexcept, set_viewport, 47,
+                (IDirect3DDevice9 * d, const D3DVIEWPORT9* viewport), (d, viewport), set_viewport(viewport))
+X3M_SHADOW_HOOK(LightCallBoundary, PlainHookGuard, DirectAdmissionScope, device_context, , set_declaration, 87,
+                (IDirect3DDevice9 * d, IDirect3DVertexDeclaration9* declaration), (d, declaration),
+                set_vertex_declaration(declaration))
+X3M_SHADOW_HOOK(LightCallBoundary, PlainHookGuard, DirectAdmissionScope, device_context, , set_fvf, 89,
+                (IDirect3DDevice9 * d, DWORD fvf), (d, fvf), set_fvf(fvf))
 #undef X3M_SHADOW_HOOK
 // Render-state shadow (X3M_STATE_SHADOW, default on). Light boundary like the
 // other hot setters: nothing before the native call (lazy RT mode never holds
 // a write mask: route-per-draw-cost.md lever 3), after it the shadow store;
 // check_no_x87.py walks this hook too.
-HRESULT WINAPI set_render_state(IDirect3DDevice9* d,D3DRENDERSTATETYPE state,DWORD value){
+HRESULT WINAPI set_render_state(IDirect3DDevice9* d, D3DRENDERSTATETYPE state, DWORD value) {
     LightCallBoundary cpu;
     LightAdmissionScope admission;
-    PlainHookGuard lock;auto& ctx=hooked_device(d);
+    PlainHookGuard lock;
+    auto& ctx = hooked_device(d);
     cpu.before_original();
-    HRESULT hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,D3DRENDERSTATETYPE,DWORD)noexcept>(57)(d,state,value);cpu.after_original();
+    HRESULT hr = ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*, D3DRENDERSTATETYPE, DWORD) noexcept>(57)(d, state, value);
+    cpu.after_original();
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
-    hr=ctx.motion_output.fixture_setter_result(hr,57,unsigned(state));
+    hr = ctx.motion_output.fixture_setter_result(hr, 57, unsigned(state));
 #endif
-    if(SUCCEEDED(hr))ctx.motion_output.set_render_state(state,value);
-    else ctx.motion_output.render_state_failed(state);
+    if (SUCCEEDED(hr))
+        ctx.motion_output.set_render_state(state, value);
+    else
+        ctx.motion_output.render_state_failed(state);
     return hr;
 }
 // Texture tracking serves mip bias and emission reader identity. Sampler
@@ -2236,48 +2906,58 @@ HRESULT WINAPI set_render_state(IDirect3DDevice9* d,D3DRENDERSTATETYPE state,DWO
 // indirect call check_no_x87.py does not walk (same as the native slot). The
 // hull emissive widening reads the level-0 size the same way (GetType,
 // GetLevelDesc(0)), once per pointer change, never per draw.
-HRESULT WINAPI set_texture(IDirect3DDevice9* d,DWORD stage,IDirect3DBaseTexture9* texture){
+HRESULT WINAPI set_texture(IDirect3DDevice9* d, DWORD stage, IDirect3DBaseTexture9* texture) {
     LightCallBoundary cpu;
     LightAdmissionScope admission;
-    PlainHookGuard lock;auto& ctx=hooked_device(d);
+    PlainHookGuard lock;
+    auto& ctx = hooked_device(d);
     // Widening: the resource identity (the proxy's private-data id) keys the size shadow of the two light-map
     // stages, read only on a pointer change or while the shadow's identity is unknown; GetPrivateData is a resource
     // accessor like GetLevelCount.
-    const std::uint64_t identity=ctx.motion_output.texture_identity_wanted(stage,texture)?resource_id(texture):0;
-    const bool query=ctx.motion_output.texture_levels_wanted(stage,texture,identity);
-    const bool size=query&&ctx.motion_output.texture_size_wanted();
+    const std::uint64_t identity = ctx.motion_output.texture_identity_wanted(stage, texture) ? resource_id(texture) : 0;
+    const bool query = ctx.motion_output.texture_levels_wanted(stage, texture, identity);
+    const bool size = query && ctx.motion_output.texture_size_wanted();
     cpu.before_original();
-    const HRESULT hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,DWORD,IDirect3DBaseTexture9*)noexcept>(65)(d,stage,texture);
-    const DWORD levels=SUCCEEDED(hr)&&query?texture->GetLevelCount():0;
-    DWORD width=0,height=0;
-    if(SUCCEEDED(hr)&&size)ctx.motion_output.texture_level0_size(texture,width,height);
-    const int reader=SUCCEEDED(hr)?ctx.motion_output.composition_texture_reader(stage,texture):2;
+    const HRESULT hr = ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*, DWORD, IDirect3DBaseTexture9*) noexcept>(65)(
+        d, stage, texture);
+    const DWORD levels = SUCCEEDED(hr) && query ? texture->GetLevelCount() : 0;
+    DWORD width = 0, height = 0;
+    if (SUCCEEDED(hr) && size) ctx.motion_output.texture_level0_size(texture, width, height);
+    const int reader = SUCCEEDED(hr) ? ctx.motion_output.composition_texture_reader(stage, texture) : 2;
     cpu.after_original();
-    if(SUCCEEDED(hr))ctx.motion_output.set_texture(stage,texture,levels,query,reader,width,height,identity);
+    if (SUCCEEDED(hr)) ctx.motion_output.set_texture(stage, texture, levels, query, reader, width, height, identity);
     return hr;
 }
-HRESULT WINAPI set_sampler_state(IDirect3DDevice9* d,DWORD stage,D3DSAMPLERSTATETYPE type,DWORD value){
+HRESULT WINAPI set_sampler_state(IDirect3DDevice9* d, DWORD stage, D3DSAMPLERSTATETYPE type, DWORD value) {
     LightCallBoundary cpu;
     LightAdmissionScope admission;
-    PlainHookGuard lock;auto& ctx=hooked_device(d);
-    if(type==D3DSAMP_MIPMAPLODBIAS)ctx.motion_output.before_set_sampler_state(stage,type); // the only type it acts on
+    PlainHookGuard lock;
+    auto& ctx = hooked_device(d);
+    if (type == D3DSAMP_MIPMAPLODBIAS)
+        ctx.motion_output.before_set_sampler_state(stage, type); // the only type it acts on
     cpu.before_original();
-    HRESULT hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,DWORD,D3DSAMPLERSTATETYPE,DWORD)noexcept>(69)(d,stage,type,value);cpu.after_original();
+    HRESULT hr = ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*, DWORD, D3DSAMPLERSTATETYPE, DWORD) noexcept>(69)(
+        d, stage, type, value);
+    cpu.after_original();
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
-    if(type==D3DSAMP_SRGBTEXTURE)hr=ctx.motion_output.fixture_setter_result(hr,69,stage);
+    if (type == D3DSAMP_SRGBTEXTURE) hr = ctx.motion_output.fixture_setter_result(hr, 69, stage);
 #endif
-    if(SUCCEEDED(hr))ctx.motion_output.set_sampler_state(stage,type,value);
-    else ctx.motion_output.sampler_state_failed(stage,type);
+    if (SUCCEEDED(hr))
+        ctx.motion_output.set_sampler_state(stage, type, value);
+    else
+        ctx.motion_output.sampler_state_failed(stage, type);
     return hr;
 }
-HRESULT WINAPI begin_stateblock(IDirect3DDevice9* d){
+HRESULT WINAPI begin_stateblock(IDirect3DDevice9* d) {
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    HookGuard lock;auto& ctx=*devices.at(d);
+    HookGuard lock;
+    auto& ctx = *devices.at(d);
     ctx.motion_output.restore_bindings(); // Recording starts from the application's bindings.
     cpu.before_original();
-    const HRESULT hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*)>(60)(d);cpu.after_original();
-    if(SUCCEEDED(hr))ctx.motion_output.begin_stateblock();
+    const HRESULT hr = ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*)>(60)(d);
+    cpu.after_original();
+    if (SUCCEEDED(hr)) ctx.motion_output.begin_stateblock();
     return hr;
 }
 // Lazy-mode and HDR hooks (X3M_MOTION_RT_MODE=lazy, X3M_HDR=1): the
@@ -2286,214 +2966,285 @@ HRESULT WINAPI begin_stateblock(IDirect3DDevice9* d){
 // target, GetRenderTarget(0) answers with the application's logical main
 // surface (the logical-binding shim) and a read of the main target's contents
 // receives the pending FP16 content first.
-HRESULT WINAPI get_rt(IDirect3DDevice9* d,DWORD index,IDirect3DSurface9** out){
+HRESULT WINAPI get_rt(IDirect3DDevice9* d, DWORD index, IDirect3DSurface9** out) {
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    HookGuard lock;auto& ctx=*devices.at(d);
+    HookGuard lock;
+    auto& ctx = *devices.at(d);
     ctx.motion_output.restore_bindings();
-    if(ctx.motion_output.hdr_logical_render_target(index,out))return S_OK;
+    if (ctx.motion_output.hdr_logical_render_target(index, out)) return S_OK;
     cpu.before_original();
-    const HRESULT hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,DWORD,IDirect3DSurface9**)>(38)(d,index,out);cpu.after_original();
+    const HRESULT hr = ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*, DWORD, IDirect3DSurface9**)>(38)(d, index, out);
+    cpu.after_original();
     return hr;
 }
-HRESULT WINAPI get_rt_data(IDirect3DDevice9* d,IDirect3DSurface9* source,IDirect3DSurface9* dest){
+HRESULT WINAPI get_rt_data(IDirect3DDevice9* d, IDirect3DSurface9* source, IDirect3DSurface9* dest) {
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    HookGuard lock;auto& ctx=*devices.at(d);
+    HookGuard lock;
+    auto& ctx = *devices.at(d);
     ctx.motion_output.restore_bindings();
     ctx.motion_output.before_render_target_read(source);
     cpu.before_original();
-    const HRESULT hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,IDirect3DSurface9*,IDirect3DSurface9*)>(32)(d,source,dest);cpu.after_original();
+    const HRESULT hr = ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*, IDirect3DSurface9*, IDirect3DSurface9*)>(32)(
+        d, source, dest);
+    cpu.after_original();
     return hr;
 }
-ULONG WINAPI stateblock_release(IDirect3DStateBlock9* block){
+ULONG WINAPI stateblock_release(IDirect3DStateBlock9* block) {
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     HookGuard lock;
-    auto fn=stateblocks.at(block)->get<ULONG(WINAPI*)(IDirect3DStateBlock9*)>(2);
+    auto fn = stateblocks.at(block)->get<ULONG(WINAPI*)(IDirect3DStateBlock9*)>(2);
     cpu.before_original();
-    const ULONG refs=fn(block);cpu.after_original();
-    if(!refs)stateblocks.erase(block);
+    const ULONG refs = fn(block);
+    cpu.after_original();
+    if (!refs) stateblocks.erase(block);
     return refs;
 }
-HRESULT WINAPI stateblock_apply(IDirect3DStateBlock9* block){
+HRESULT WINAPI stateblock_apply(IDirect3DStateBlock9* block) {
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     HookGuard lock;
-    auto& hooks=*stateblocks.at(block);
-    const auto device=devices.find(hooks.device);
-    if(device!=devices.end())device->second->motion_output.restore_bindings(); // Apply must land on the application's bindings.
+    auto& hooks = *stateblocks.at(block);
+    const auto device = devices.find(hooks.device);
+    if (device != devices.end())
+        device->second->motion_output.restore_bindings(); // Apply must land on the application's bindings.
     cpu.before_original();
-    const HRESULT hr=hooks.get<HRESULT(WINAPI*)(IDirect3DStateBlock9*)>(5)(block);cpu.after_original();
-    if(SUCCEEDED(hr)&&device!=devices.end())device->second->motion_output.stateblock_applied();
+    const HRESULT hr = hooks.get<HRESULT(WINAPI*)(IDirect3DStateBlock9*)>(5)(block);
+    cpu.after_original();
+    if (SUCCEEDED(hr) && device != devices.end()) device->second->motion_output.stateblock_applied();
     return hr;
 }
-void hook_stateblock(IDirect3DDevice9* d,IDirect3DStateBlock9* block){
-    if(!block||stateblocks.count(block))return;
-    auto hooks=std::make_unique<StateBlockHooks>(block,d);
-    hooks->set(2,stateblock_release);hooks->set(5,stateblock_apply);
-    auto entry=stateblocks.emplace(block,std::move(hooks));
+void hook_stateblock(IDirect3DDevice9* d, IDirect3DStateBlock9* block) {
+    if (!block || stateblocks.count(block)) return;
+    auto hooks = std::make_unique<StateBlockHooks>(block, d);
+    hooks->set(2, stateblock_release);
+    hooks->set(5, stateblock_apply);
+    auto entry = stateblocks.emplace(block, std::move(hooks));
     entry.first->second->install(block);
 }
-HRESULT WINAPI create_stateblock(IDirect3DDevice9* d,D3DSTATEBLOCKTYPE type,IDirect3DStateBlock9** out){
+HRESULT WINAPI create_stateblock(IDirect3DDevice9* d, D3DSTATEBLOCKTYPE type, IDirect3DStateBlock9** out) {
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    HookGuard lock;auto& ctx=*devices.at(d);
+    HookGuard lock;
+    auto& ctx = *devices.at(d);
     ctx.motion_output.restore_bindings(); // The block captures the application's bindings.
     cpu.before_original();
-    const HRESULT hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,D3DSTATEBLOCKTYPE,IDirect3DStateBlock9**)>(59)(d,type,out);cpu.after_original();
-    if(SUCCEEDED(hr)&&out)hook_stateblock(d,*out);
+    const HRESULT hr = ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*, D3DSTATEBLOCKTYPE, IDirect3DStateBlock9**)>(59)(
+        d, type, out);
+    cpu.after_original();
+    if (SUCCEEDED(hr) && out) hook_stateblock(d, *out);
     return hr;
 }
-HRESULT WINAPI end_stateblock(IDirect3DDevice9* d,IDirect3DStateBlock9** out){
+HRESULT WINAPI end_stateblock(IDirect3DDevice9* d, IDirect3DStateBlock9** out) {
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    HookGuard lock;auto& ctx=*devices.at(d);
+    HookGuard lock;
+    auto& ctx = *devices.at(d);
     ctx.motion_output.restore_bindings();
     cpu.before_original();
-    const HRESULT hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,IDirect3DStateBlock9**)>(61)(d,out);cpu.after_original();
+    const HRESULT hr = ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*, IDirect3DStateBlock9**)>(61)(d, out);
+    cpu.after_original();
     // Recording ends whether or not the block was produced; the shadow resyncs.
     ctx.motion_output.end_stateblock();
-    if(SUCCEEDED(hr)&&out)hook_stateblock(d,*out);
+    if (SUCCEEDED(hr) && out) hook_stateblock(d, *out);
     return hr;
 }
-void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
+void hook_device(IDirect3DDevice9* d, HWND window, HWND focus) {
     if (devices.count(d)) return;
     session_log::note_device();
-    session_log::start_writer(telemetry::enabled()); // re-arms a writer parked by the previous last-device release (no-op while one runs)
-    IDirect3DDevice9Ex* ex=nullptr;
-    const bool supports_ex=SUCCEEDED(d->QueryInterface(IID_IDirect3DDevice9Ex,reinterpret_cast<void**>(&ex)))
-        && static_cast<void*>(ex)==static_cast<void*>(d);
-    if(ex) ex->Release();
-    auto ctx=std::make_shared<Device>(d,supports_ex?134:119);
+    session_log::start_writer(telemetry::enabled()); // re-arms a writer parked by the previous last-device release
+                                                     // (no-op while one runs)
+    IDirect3DDevice9Ex* ex = nullptr;
+    const bool supports_ex = SUCCEEDED(d->QueryInterface(IID_IDirect3DDevice9Ex, reinterpret_cast<void**>(&ex))) &&
+                             static_cast<void*>(ex) == static_cast<void*>(d);
+    if (ex) ex->Release();
+    auto ctx = std::make_shared<Device>(d, supports_ex ? 134 : 119);
     ctx->scene_depth.configure(scene_depth_capture_requested);
-    ctx->stats.device=ctx->id;ctx->stats.window=window;ctx->stats.focus_window=focus;
-    const HRESULT caps_result=d->GetDeviceCaps(&ctx->caps);
-    log("capture_caps result=%08lx streams=%lu vs_float_count=%lu ps_version=%08lx",caps_result,ctx->caps.MaxStreams,ctx->caps.MaxVertexShaderConst,ctx->caps.PixelShaderVersion);
-    ctx->set(2,release_device); ctx->set(16,reset); ctx->set(17,present);
-    if(supports_ex)ctx->set(132,reset_ex);
-    ctx->set(37,set_rt);ctx->set(43,clear);
-    if(scene_depth_capture_requested){
-        ctx->set(34,stretch_rect);ctx->set(39,set_depth);
-        ctx->set(30,update_surface);ctx->set(31,update_texture);ctx->set(35,color_fill);
-        ctx->set(115,draw_rect_patch);ctx->set(116,draw_tri_patch);
+    ctx->stats.device = ctx->id;
+    ctx->stats.window = window;
+    ctx->stats.focus_window = focus;
+    const HRESULT caps_result = d->GetDeviceCaps(&ctx->caps);
+    log("capture_caps result=%08lx streams=%lu vs_float_count=%lu ps_version=%08lx", caps_result, ctx->caps.MaxStreams,
+        ctx->caps.MaxVertexShaderConst, ctx->caps.PixelShaderVersion);
+    ctx->set(2, release_device);
+    ctx->set(16, reset);
+    ctx->set(17, present);
+    if (supports_ex) ctx->set(132, reset_ex);
+    ctx->set(37, set_rt);
+    ctx->set(43, clear);
+    if (scene_depth_capture_requested) {
+        ctx->set(34, stretch_rect);
+        ctx->set(39, set_depth);
+        ctx->set(30, update_surface);
+        ctx->set(31, update_texture);
+        ctx->set(35, color_fill);
+        ctx->set(115, draw_rect_patch);
+        ctx->set(116, draw_tri_patch);
     }
-    if(telemetry::enabled()){
-        ctx->set(34,stretch_rect);ctx->set(39,set_depth);
-        ctx->set(10,cursor_properties);ctx->set(11,cursor_position);ctx->set(12,cursor_show);
-        ctx->set(23,create_texture);ctx->set(24,create_volume);ctx->set(25,create_cube);
-        ctx->set(26,create_vb);ctx->set(27,create_ib);ctx->set(28,create_rt);ctx->set(29,create_depth);
+    if (telemetry::enabled()) {
+        ctx->set(34, stretch_rect);
+        ctx->set(39, set_depth);
+        ctx->set(10, cursor_properties);
+        ctx->set(11, cursor_position);
+        ctx->set(12, cursor_show);
+        ctx->set(23, create_texture);
+        ctx->set(24, create_volume);
+        ctx->set(25, create_cube);
+        ctx->set(26, create_vb);
+        ctx->set(27, create_ib);
+        ctx->set(28, create_rt);
+        ctx->set(29, create_depth);
     }
-    if(volumetric_fog_prefill && !telemetry::enabled()){ctx->set(23,create_texture);ctx->set(26,create_vb);} // R3 poll sites
-    ctx->set(81,draw_primitive); ctx->set(82,draw_indexed); ctx->set(83,draw_up); ctx->set(84,draw_indexed_up);
-    ctx->set(91,create_vs); ctx->set(106,create_ps);
+    if (volumetric_fog_prefill && !telemetry::enabled()) {
+        ctx->set(23, create_texture);
+        ctx->set(26, create_vb);
+    } // R3 poll sites
+    ctx->set(81, draw_primitive);
+    ctx->set(82, draw_indexed);
+    ctx->set(83, draw_up);
+    ctx->set(84, draw_indexed_up);
+    ctx->set(91, create_vs);
+    ctx->set(106, create_ps);
     // Publish only after the owning map allocation succeeds.
     forget_cached_device(); // a reused address must not answer from a retired context
-    auto entry=devices.emplace(d,std::move(ctx));
+    auto entry = devices.emplace(d, std::move(ctx));
     entry.first->second->install(d);
-    log("device_hooked ptr=%p device=%llu ex=%u",d,devices.at(d)->id,supports_ex);
-    window_trace::attach(window,devices.at(d)->id); // X3M_WINDOW_TRACE / X3M_CURSOR_REASSERT only: the window-thread message hooks (refused off the window thread)
+    log("device_hooked ptr=%p device=%llu ex=%u", d, devices.at(d)->id, supports_ex);
+    window_trace::attach(window, devices.at(d)->id); // X3M_WINDOW_TRACE / X3M_CURSOR_REASSERT only: the window-thread
+                                                     // message hooks (refused off the window thread)
     // Attach after install: the route's own device calls use the native table
     // captured by Hooks, so nothing here re-enters the hooks.
-    auto& hooked=*devices.at(d);
+    auto& hooked = *devices.at(d);
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     fixture_apply(hooked);
 #endif
-    hooked.motion_output.configure_jitter(motion_jitter_requested,motion_jitter_samples);
-    hooked.motion_output.configure_cut_bounds(motion_cut_median_px,motion_cut_missing);
-    hooked.motion_output.configure_taa(taa_requested,taa_debug_requested);
+    hooked.motion_output.configure_jitter(motion_jitter_requested, motion_jitter_samples);
+    hooked.motion_output.configure_cut_bounds(motion_cut_median_px, motion_cut_missing);
+    hooked.motion_output.configure_taa(taa_requested, taa_debug_requested);
     hooked.motion_output.configure_taa_k(taa_k_override);
     hooked.motion_output.configure_mip_bias(taa_mip_bias);
     hooked.motion_output.configure_taa_sharpen(taa_sharpen);
-    hooked.motion_output.configure_sun_occlusion({sun_occlusion::override_enabled(),sun_occlusion::logging(),sun_occlusion_radius,sun_occlusion_curve,sun_occlusion_core_f});
+    hooked.motion_output.configure_sun_occlusion({sun_occlusion::override_enabled(), sun_occlusion::logging(),
+                                                  sun_occlusion_radius, sun_occlusion_curve, sun_occlusion_core_f});
     hooked.motion_output.configure_taa_resolve(taa_history_weight);
-    hooked.motion_output.configure_taa_far(taa_far[0],taa_far[1],taa_far[2],taa_far[3],taa_far[4],taa_far[5]);
-    hooked.motion_output.configure_taa_thin_region(taa_thin_region[0],taa_thin_region[1],taa_thin_region[2],taa_thin_region[3],taa_thin_gate_given,taa_thin_camera_gate,taa_thin_emissive);
+    hooked.motion_output.configure_taa_far(taa_far[0], taa_far[1], taa_far[2], taa_far[3], taa_far[4], taa_far[5]);
+    hooked.motion_output.configure_taa_thin_region(taa_thin_region[0], taa_thin_region[1], taa_thin_region[2],
+                                                   taa_thin_region[3], taa_thin_gate_given, taa_thin_camera_gate,
+                                                   taa_thin_emissive);
     hooked.motion_output.configure_taa_flicker(taa_alpha_history);
     hooked.motion_output.configure_rt_mode(motion_rt_lazy);
     hooked.motion_output.configure_frame_log(motion_frame_log);
     hooked.motion_output.configure_shadow_timing(shadow_timing_requested);
     hooked.motion_output.configure_shadow_rows(shadow_rows_requested);
-    hooked.motion_output.configure_sentinel(taa_sentinel_mode,camera_cut_degrees,camera_log_frames);
+    hooked.motion_output.configure_sentinel(taa_sentinel_mode, camera_cut_degrees, camera_log_frames);
     hooked.motion_output.configure_unmatched_static(taa_unmatched_static);
-    hooked.motion_output.configure_sky_history(taa_sky_history_strict,taa_sky_history_band_px,taa_sky_history_exit_px);
-    hooked.motion_output.configure_box_resolution(taa_box_half,taa_box_resolution_default);
-    hooked.motion_output.configure_far_gate(taa_far_camera_gate,taa_far_gate_given,taa_far_gate_default);
-    hooked.motion_output.configure_far_clip(taa_far_clip_7x7,taa_far_clip_given,taa_far_clip_default);
-    hooked.motion_output.configure_thin_region_source(taa_thin_region_source,taa_thin_region_source_given,taa_thin_region_source_default);
-    hooked.motion_output.configure_motion_weight(taa_motion_weight[0],taa_motion_weight[1],taa_motion_weight[2]);
+    hooked.motion_output.configure_sky_history(taa_sky_history_strict, taa_sky_history_band_px,
+                                               taa_sky_history_exit_px);
+    hooked.motion_output.configure_box_resolution(taa_box_half, taa_box_resolution_default);
+    hooked.motion_output.configure_far_gate(taa_far_camera_gate, taa_far_gate_given, taa_far_gate_default);
+    hooked.motion_output.configure_far_clip(taa_far_clip_7x7, taa_far_clip_given, taa_far_clip_default);
+    hooked.motion_output.configure_thin_region_source(taa_thin_region_source, taa_thin_region_source_given,
+                                                      taa_thin_region_source_default);
+    hooked.motion_output.configure_motion_weight(taa_motion_weight[0], taa_motion_weight[1], taa_motion_weight[2]);
     // Render-state configuration (hybrid unhook): the reasons that keep the
     // SetRenderState/SetSamplerState hooks installed, then the capability
     // check of the documented reads the unhooked route depends on (the proxy
     // strips PUREDEVICE, so a non-pure device answers Get*; a device that
     // does not fails closed to the hooked configuration). Both reads go
     // through the saved native entries (58, 68), never through a hook.
-    const char* state_hooks_reason=motion_state_shadow==1?"explicit":frame_timing::active?"frame_timing":nullptr;
-    if(!state_hooks_reason){
-        DWORD value=0;
-        const bool get_ok=SUCCEEDED(hooked.get<HRESULT(WINAPI*)(IDirect3DDevice9*,D3DRENDERSTATETYPE,DWORD*)>(58)(d,D3DRS_ZENABLE,&value))
-            &&SUCCEEDED(hooked.get<HRESULT(WINAPI*)(IDirect3DDevice9*,DWORD,D3DSAMPLERSTATETYPE,DWORD*)>(68)(d,0,D3DSAMP_SRGBTEXTURE,&value));
-        if(!get_ok)state_hooks_reason="get_failed";
+    const char* state_hooks_reason = motion_state_shadow == 1 ? "explicit"
+                                     : frame_timing::active   ? "frame_timing"
+                                                              : nullptr;
+    if (!state_hooks_reason) {
+        DWORD value = 0;
+        const bool get_ok = SUCCEEDED(hooked.get<HRESULT(WINAPI*)(IDirect3DDevice9*, D3DRENDERSTATETYPE, DWORD*)>(58)(
+                                d, D3DRS_ZENABLE, &value)) &&
+                            SUCCEEDED(
+                                hooked.get<HRESULT(WINAPI*)(IDirect3DDevice9*, DWORD, D3DSAMPLERSTATETYPE, DWORD*)>(68)(
+                                    d, 0, D3DSAMP_SRGBTEXTURE, &value));
+        if (!get_ok) state_hooks_reason = "get_failed";
     }
-    const bool state_hooks=state_hooks_reason!=nullptr;
+    const bool state_hooks = state_hooks_reason != nullptr;
     hooked.motion_output.configure_state_hooks(state_hooks);
-    hooked.motion_output.configure_state_shadow(state_hooks&&motion_state_shadow!=0);
-    log("state_hooks device=%llu installed=%u reason=%s state_shadow=%u rs_mode=%s",hooked.id,state_hooks,state_hooks_reason?state_hooks_reason:"none",
-        hooked.motion_output.state_shadow(),hooked.motion_output.render_state_mode());
+    hooked.motion_output.configure_state_shadow(state_hooks && motion_state_shadow != 0);
+    log("state_hooks device=%llu installed=%u reason=%s state_shadow=%u rs_mode=%s", hooked.id, state_hooks,
+        state_hooks_reason ? state_hooks_reason : "none", hooked.motion_output.state_shadow(),
+        hooked.motion_output.render_state_mode());
     // Production scene patch and immutable binding persist across devices.
     hooked.motion_output.configure_scene_hook(scene_hook::active());
-    hooked.motion_output.configure_hdr(hdr_requested,hdr_config);
-    hooked.motion_output.configure_linear_materials(linear_material_requested,linear_material_config);
-    hooked.motion_output.configure_linear_emissions(linear_emission_requested,emission_gain);
+    hooked.motion_output.configure_hdr(hdr_requested, hdr_config);
+    hooked.motion_output.configure_linear_materials(linear_material_requested, linear_material_config);
+    hooked.motion_output.configure_linear_emissions(linear_emission_requested, emission_gain);
     hooked.motion_output.configure_linear_distance_fade(linear_distance_fade_requested);
-    hooked.motion_output.configure_screen_emission(screen_emission_requested,screen_emission_gain);
+    hooked.motion_output.configure_screen_emission(screen_emission_requested, screen_emission_gain);
     hooked.motion_output.configure_emission_source_gain(emission_source_gain);
     hooked.motion_output.configure_hull_emission_gain(hull_emission_gain);
     hooked.motion_output.configure_original_fill(original_fill);
     hooked.motion_output.configure_hull_lightmap_gain(hull_lightmap_gain);
-    if(lightmap_far_fade_requested){
-        const bool accepted=hooked.motion_output.configure_lightmap_far_fade(lightmap_far_fade[0],lightmap_far_fade[1],lightmap_far_fade[2]);
-        log("light_map_far_fade_configured accepted=%u",unsigned(accepted));
+    if (lightmap_far_fade_requested) {
+        const bool accepted = hooked.motion_output.configure_lightmap_far_fade(
+            lightmap_far_fade[0], lightmap_far_fade[1], lightmap_far_fade[2]);
+        log("light_map_far_fade_configured accepted=%u", unsigned(accepted));
     }
-    if(hull_emissive_widening_requested){
-        const bool accepted=hooked.motion_output.configure_hull_emissive_widening(hull_emissive_widening[0],hull_emissive_widening[1]);
-        log("hull_emissive_widening_configured accepted=%u k=%g b=%g",unsigned(accepted),double(hull_emissive_widening[0]),double(hull_emissive_widening[1]));
+    if (hull_emissive_widening_requested) {
+        const bool accepted = hooked.motion_output.configure_hull_emissive_widening(hull_emissive_widening[0],
+                                                                                    hull_emissive_widening[1]);
+        log("hull_emissive_widening_configured accepted=%u k=%g b=%g", unsigned(accepted),
+            double(hull_emissive_widening[0]), double(hull_emissive_widening[1]));
     }
-    hooked.motion_output.configure_screen_emission_additive(screen_emission_additive_requested,screen_emission_additive_gain,screen_emission_additive_alpha_requested,screen_emission_additive_alpha);
-    hooked.motion_output.configure_bolt_footprint(bolt_footprint_requested,bolt_footprint_w,bolt_footprint_l);
+    hooked.motion_output.configure_screen_emission_additive(
+        screen_emission_additive_requested, screen_emission_additive_gain, screen_emission_additive_alpha_requested,
+        screen_emission_additive_alpha);
+    hooked.motion_output.configure_bolt_footprint(bolt_footprint_requested, bolt_footprint_w, bolt_footprint_l);
     hooked.motion_output.configure_fade_witness(fade_witness_frames);
     hooked.motion_output.configure_fade_route(fade_route_threshold);
     // Sun-share lane (directional-shadows.md section 2; legacy-sun-application.md
     // section 4.1): the route, TAA and the FP16 scene; no linear-material
     // prerequisite since the original share producer (original shading binds
     // its own share variant, the converted materials theirs).
-    bool sun_lane_enabled=false;
-    { wchar_t lane[4]{};
-      const bool asked=x3m::config::get(L"X3M_SUN_SHADOW_LANE",lane,4)==1&&lane[0]==L'1';
-      sun_lane_enabled=asked&&motion_output_requested&&taa_requested&&hdr_requested;
-      // The lane's RT2 is A32B32G32R32F with .b = the clip w (shadow-receiver-depth.md);
-      // the former X3M_SUN_SHADOW_RECEIVER_DEPTH option is gone (the launcher refuses
-      // `device`, accepts `linear` as a no-op) and the DLL reads no such variable.
-      hooked.motion_output.configure_sun_shadow_lane(sun_lane_enabled); }
+    bool sun_lane_enabled = false;
+    {
+        wchar_t lane[4]{};
+        const bool asked = x3m::config::get(L"X3M_SUN_SHADOW_LANE", lane, 4) == 1 && lane[0] == L'1';
+        sun_lane_enabled = asked && motion_output_requested && taa_requested && hdr_requested;
+        // The lane's RT2 is A32B32G32R32F with .b = the clip w (shadow-receiver-depth.md);
+        // the former X3M_SUN_SHADOW_RECEIVER_DEPTH option is gone (the launcher refuses
+        // `device`, accepts `linear` as a no-op) and the DLL reads no such variable.
+        hooked.motion_output.configure_sun_shadow_lane(sun_lane_enabled);
+    }
     // Thin vote (X3M_TAA_THIN_VOTE): the vote travels in the lane's RT2 .a and the histograms are read through the
     // ownership wrapper (loader.cpp enables the lock bookends on the same switch). The material transformer is switched
     // here, at device creation, before the application creates any program on this device; off it is untouched.
-    { wchar_t setting[4]{};
-      const bool wrapped=x3m::config::get(L"X3M_OWNERSHIP",setting,4)==1&&setting[0]==L'1';
-      const bool enabled=thin_vote_gate&&sun_lane_enabled; // the loader armed the readable policy on the same gate
-      if(taa_thin_vote_given)log("taa_thin_vote_configured requested=%u enabled=%u default=%u motion_output=%u taa=%u lane=%u ownership=%u",
-          unsigned(taa_thin_vote),enabled,unsigned(taa_thin_vote_default),motion_output_requested,taa_requested,sun_lane_enabled,wrapped);
-      if(enabled)renderer::material_motion_configure_thin_vote(true);
-      hooked.motion_output.configure_thin_vote(taa_thin_vote,enabled); }
+    {
+        wchar_t setting[4]{};
+        const bool wrapped = x3m::config::get(L"X3M_OWNERSHIP", setting, 4) == 1 && setting[0] == L'1';
+        const bool enabled = thin_vote_gate && sun_lane_enabled; // the loader armed the readable policy on the same
+                                                                 // gate
+        if (taa_thin_vote_given)
+            log("taa_thin_vote_configured requested=%u enabled=%u default=%u motion_output=%u taa=%u lane=%u ownership=%u",
+                unsigned(taa_thin_vote), enabled, unsigned(taa_thin_vote_default), motion_output_requested,
+                taa_requested, sun_lane_enabled, wrapped);
+        if (enabled) renderer::material_motion_configure_thin_vote(true);
+        hooked.motion_output.configure_thin_vote(taa_thin_vote, enabled);
+    }
     // Fade owner (X3M_FADE_RT2_OWNER): the fade-band arm's own prerequisites (route, TAA, FP16 scene, the arm on). The
-    // material transformer is switched here, before the application creates any program on this device; off it is untouched.
-    { const bool enabled=fade_rt2_owner&&motion_output_requested&&taa_requested&&hdr_requested&&fade_route_threshold<=1000u;
-      // tested: the arm also admits alpha-tested fade-band draws (fade-alpha-cutout-ownership.md), original shading only.
-      if(fade_rt2_owner_given)log("fade_rt2_owner_configured requested=%u enabled=%u default=%u motion_output=%u taa=%u hdr=%u fade_route=%u lane=%u tested=%u",
-          unsigned(fade_rt2_owner),enabled,unsigned(fade_rt2_owner_default),motion_output_requested,taa_requested,hdr_requested,fade_route_threshold,sun_lane_enabled,
-          unsigned(enabled&&!hooked.motion_output.linear_materials_requested()));
-      if(enabled)renderer::material_motion_configure_fade_owner(true);
-      hooked.motion_output.configure_fade_rt2_owner(fade_rt2_owner,enabled); }
+    // material transformer is switched here, before the application creates any program on this device; off it is
+    // untouched.
+    {
+        const bool enabled = fade_rt2_owner && motion_output_requested && taa_requested && hdr_requested &&
+                             fade_route_threshold <= 1000u;
+        // tested: the arm also admits alpha-tested fade-band draws (fade-alpha-cutout-ownership.md), original shading
+        // only.
+        if (fade_rt2_owner_given)
+            log("fade_rt2_owner_configured requested=%u enabled=%u default=%u motion_output=%u taa=%u hdr=%u fade_route=%u lane=%u tested=%u",
+                unsigned(fade_rt2_owner), enabled, unsigned(fade_rt2_owner_default), motion_output_requested,
+                taa_requested, hdr_requested, fade_route_threshold, sun_lane_enabled,
+                unsigned(enabled && !hooked.motion_output.linear_materials_requested()));
+        if (enabled) renderer::material_motion_configure_fade_owner(true);
+        hooked.motion_output.configure_fade_rt2_owner(fade_rt2_owner, enabled);
+    }
     // Caster-candidate counter (shadow-replay-gates.md section 3): the route
     // plus the ownership wrapper (loader.cpp enables the lock bookends on the
     // same switch); no TAA, HDR, linear-material or lane prerequisite.
@@ -2504,253 +3255,486 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     // variables (X3M_SHADOW_REPLAY_SIZE/_EXTENT/_DEPTH_HALF/_CAP) were removed on
     // 2026-09-25 (docs/architecture/directional-shadows.md, "Single map
     // removed"): a set variable is ignored and named in one row per process.
-    { wchar_t setting[4]{};
-      const bool asked=x3m::config::get(L"X3M_SHADOW_REPLAY_CANDIDATES",setting,4)==1&&setting[0]==L'1';
-      const bool depth_asked=x3m::config::get(L"X3M_SHADOW_REPLAY_DEPTH",setting,4)==1&&setting[0]==L'1';
-      const bool wrapped=x3m::config::get(L"X3M_OWNERSHIP",setting,4)==1&&setting[0]==L'1';
-      const bool enabled=(asked||depth_asked)&&motion_output_requested&&wrapped;
-      { static LONG removed_logged=0;
-        const unsigned size_set=x3m::config::get(L"X3M_SHADOW_REPLAY_SIZE",nullptr,0)>0, extent_set=x3m::config::get(L"X3M_SHADOW_REPLAY_EXTENT",nullptr,0)>0;
-        const unsigned half_set=x3m::config::get(L"X3M_SHADOW_REPLAY_DEPTH_HALF",nullptr,0)>0, cap_set=x3m::config::get(L"X3M_SHADOW_REPLAY_CAP",nullptr,0)>0;
-        if((size_set|extent_set|half_set|cap_set)&&InterlockedExchange(&removed_logged,1)==0)
-            log("shadow_replay_config size=%u extent=%u depth_half=%u cap=%u single_map=removed ignored=1",size_set,extent_set,half_set,cap_set); }
-      if(asked||depth_asked)log("shadow_replay_candidates_mode requested=1 enabled=%u motion_output=%u ownership=%u",enabled,motion_output_requested,wrapped);
-      hooked.motion_output.configure_shadow_replay_candidates(enabled,enabled?ownership::process_admission_monitor():nullptr);
-      // Object bounds log (docs/architecture/engine-frame-time.md, "Object bounds log";
-      // X3M_OBJECT_BOUNDS_LOG=1, default off): on F8 capture frames only, one object_bounds
-      // line per routed draw whose object box the candidate route already computed, with the
-      // box's projected screen rectangle, depth range and frustum corner count. It rides that
-      // counter (no box without it) and needs the verified submission identity that object_context
-      // needs, because node=/model= are the scope's. Refused otherwise, and always noted.
-      { wchar_t flag[4]{};
-        const bool bounds_asked=log_tier::debug()||(x3m::config::get(L"X3M_OBJECT_BOUNDS_LOG",flag,4)==1&&flag[0]==L'1'); // or X3M_DEBUG=1
-        if(bounds_asked){
-            const bool traced=object_trace::active();
-            const bool bounds_enabled=enabled&&traced;
-            log("object_bounds_mode requested=1 enabled=%u candidates=%u object_trace=%u",bounds_enabled,enabled,traced);
-            hooked.motion_output.configure_object_bounds_log(bounds_enabled);
-        } }
-      bool cascades_configured=false; // a valid cascade set for the depth replay: the sun-shadow apply needs its maps
-      if(depth_asked){
-          log("shadow_replay_depth_mode requested=1 enabled=%u motion_output=%u ownership=%u",enabled,motion_output_requested,wrapped);
-          hooked.motion_output.configure_shadow_replay_depth(enabled);
-          // Alpha-tested casters (shadow-replay-gates.md, "Alpha-tested casters"):
-          // X3M_SHADOW_ALPHA_CASTERS=1 (default off) lets alpha-tested routed draws
-          // cast with their own alpha test; rides the depth replay.
-          { wchar_t alpha[4]{};
-            if(x3m::config::get(L"X3M_SHADOW_ALPHA_CASTERS",alpha,4)==1&&alpha[0]==L'1'){
-                log("shadow_alpha_casters_mode requested=1 enabled=%u",enabled);
-                hooked.motion_output.configure_shadow_alpha_casters(enabled);
-            } }
-          // Sun-shadow cascades (docs/architecture/shadow-cascades.md): X3M_SHADOW_CASCADES
-          // is the ascending half-extent list (1..5 values, 50..150000 units); absent,
-          // empty or "0" is no map: the replayed sun shadows are off (one
-          // shadow_cascades_mode row with reason=off). X3M_SHADOW_CASCADE_SIZES (one
-          // value for all or one per cascade, 64..4096, default 4096),
-          // X3M_SHADOW_CASCADE_CAPS (likewise, 1..4096, defaults 128,512,1024,1024,1024)
-          // and X3M_SHADOW_CASCADE_BUDGET (issues per frame, 1..4096, default 640).
-          // Caster pool control (shadow-cascade-extents.md): X3M_SHADOW_CASCADE_RECORDS
-          // (records per cascade, 1..4096, default 1024), X3M_SHADOW_CASCADE_STATIC_FROM
-          // (the first static-only cascade, 1..count-1; absent: none; the count or more is refused) and
-          // X3M_SHADOW_CASCADE_DROP_ORDER (submission | importance) and X3M_SHADOW_CASCADE_LARGE_MIN
-          // (world units, 0..1e6, default 0: a static-only cascade also admits moving casters of that extent).
-          // X3M_SHADOW_CASCADE_BACKFACE_FROM (0..count-1 | none; absent: every cascade whose world texel is
-          // 8 u or more) selects the cascades that replay back faces.
-          // A malformed list leaves the cascades off (no map).
-          { wchar_t list[128]{};
-            const auto parse=[](const wchar_t* text,double* out,unsigned capacity)->unsigned{
-                unsigned count=0; const wchar_t* cursor=text;
-                while(*cursor){ if(count>=capacity)return 0; wchar_t* end=nullptr; const double v=wcstod(cursor,&end); if(end==cursor)return 0; out[count++]=v; if(*end==L',')cursor=end+1; else if(*end==L'\0')break; else return 0; if(!*cursor)return 0; }
-                return count; };
-            const DWORD length=x3m::config::get(L"X3M_SHADOW_CASCADES",list,128);
-            if(!(length>0&&length<128&&!(length==1&&list[0]==L'0')))
-                log("shadow_cascades_mode requested=0 enabled=0 reason=%s cascades=0",length>=128?"extents":"off");
-            else {
-                double values[renderer::shadow_cascade_max]{}; float extents[renderer::shadow_cascade_max]{};
-                unsigned sizes[renderer::shadow_cascade_max], caps[renderer::shadow_cascade_max], budget=renderer::shadow_cascade_budget_default;
-                for(unsigned i=0;i<renderer::shadow_cascade_max;++i){ sizes[i]=renderer::shadow_cascade_size_default; caps[i]=renderer::shadow_cascade_cap_defaults[i]; }
-                const unsigned count=parse(list,values,renderer::shadow_cascade_max);
-                const char* reason=count?nullptr:"extents";
-                for(unsigned i=0;i<count;++i)extents[i]=float(values[i]);
-                const auto integers=[&](const wchar_t* name,unsigned* out)->bool{
-                    const DWORD n=x3m::config::get(name,list,128); if(!n)return true; if(n>=128)return false;
-                    double v[renderer::shadow_cascade_max]{}; const unsigned got=parse(list,v,renderer::shadow_cascade_max);
-                    if(got!=1&&got!=count)return false;
-                    for(unsigned i=0;i<count;++i){ const double x=v[got==1?0:i]; if(!(x>=1.&&x<=65536.)||x!=double(unsigned(x)))return false; out[i]=unsigned(x); }
-                    return true; };
-                if(!reason&&!integers(L"X3M_SHADOW_CASCADE_SIZES",sizes))reason="sizes";
-                if(!reason&&!integers(L"X3M_SHADOW_CASCADE_CAPS",caps))reason="caps";
-                if(!reason&&x3m::config::get(L"X3M_SHADOW_CASCADE_BUDGET",list,128)>0){ wchar_t* end=nullptr; const unsigned long v=wcstoul(list,&end,10); if(end==list||*end!=L'\0'||v<renderer::shadow_cascade_budget_min||v>renderer::shadow_cascade_budget_max)reason="budget"; else budget=unsigned(v); }
-                unsigned records[renderer::shadow_cascade_max]; for(unsigned i=0;i<renderer::shadow_cascade_max;++i)records[i]=renderer::shadow_cascade_records_default;
-                unsigned static_from=renderer::shadow_cascade_static_from_none; bool importance=false; float large_min=0.f;
-                if(!reason&&!integers(L"X3M_SHADOW_CASCADE_RECORDS",records))reason="records";
-                if(!reason&&x3m::config::get(L"X3M_SHADOW_CASCADE_STATIC_FROM",list,128)>0){ wchar_t* end=nullptr; const unsigned long v=wcstoul(list,&end,10); if(end==list||*end!=L'\0'||v<1||v>=count)reason="static_from"; else static_from=unsigned(v); }
-                if(!reason&&x3m::config::get(L"X3M_SHADOW_CASCADE_DROP_ORDER",list,128)>0){ if(!wcscmp(list,L"importance"))importance=true; else if(wcscmp(list,L"submission"))reason="drop_order"; }
-                renderer::ShadowCascadeSet set{};
-                char static_text[12]; std::snprintf(static_text,sizeof static_text,"%u",static_from<renderer::shadow_cascade_max?static_from:0u);
-                if(!reason&&!renderer::shadow_cascade_set(extents,count,sizes,caps,budget,set))reason="range";
-                if(!reason&&x3m::config::get(L"X3M_SHADOW_CASCADE_LARGE_MIN",list,128)>0){ wchar_t* end=nullptr; const double v=wcstod(list,&end); if(end==list||*end!=L'\0'||!(v>=0.)||v>double(renderer::shadow_cascade_large_min_max))reason="large_min"; else large_min=float(v); }
-                // Back-face casters (shadow_replay_projection.h, shadow_cascade_backface_texel_default): absent, the texel
-                // law (every cascade whose world texel is 8 u or more); X3M_SHADOW_CASCADE_BACKFACE_FROM = K (0..count-1)
-                // that cascade and beyond; "none" no cascade; the count or more is refused (never a silent no-op).
-                unsigned backface_from=renderer::shadow_cascade_backface_from_texel;
-                if(!reason&&x3m::config::get(L"X3M_SHADOW_CASCADE_BACKFACE_FROM",list,128)>0){
-                    if(!wcscmp(list,L"none"))backface_from=renderer::shadow_cascade_static_from_none;
-                    else { wchar_t* end=nullptr; const unsigned long v=wcstoul(list,&end,10); if(end==list||*end!=L'\0'||v>=count)reason="backface_from"; else backface_from=unsigned(v); } }
-                // Per-part minimum light-space footprint (shadow-cascades.md, "Minimum caster
-                // footprint"): X3M_SHADOW_CASCADE_MIN_FOOTPRINT = P screen pixels within
-                // (0, 64]. Absent is the default 8 px (shadow_cascade_min_footprint_default, the
-                // launcher's default); any parsed value at or below zero ("0", "0.0", "-1") is
-                // off (bit-identical): a zero footprint never disables the cascades. Malformed
-                // text, a value above the band and a truncated variable (128 wide characters or
-                // more: `list` would hold no usable value) leave the cascades off, never a silent
-                // no-op.
-                float min_footprint=renderer::shadow_cascade_min_footprint_default;
-                if(!reason){ const DWORD n=x3m::config::get(L"X3M_SHADOW_CASCADE_MIN_FOOTPRINT",list,128);
-                    if(n>=128)reason="min_footprint";
-                    else if(n>0){ wchar_t* end=nullptr; const double v=wcstod(list,&end);
-                        if(end==list||*end!=L'\0'||!(v==v))reason="min_footprint";                       // malformed text, or NaN
-                        else if(v<=0.)min_footprint=0.f;                                                 // explicit off
-                        else if(!renderer::shadow_cascade_min_footprint_valid(v))reason="min_footprint";  // above the band
-                        else min_footprint=float(v); } }
-                if(!reason&&!renderer::shadow_cascade_pool(set,records,static_from,importance,large_min,backface_from,min_footprint))reason="pool";
-                if(reason||!enabled)set=renderer::ShadowCascadeSet{};
-                // Own-ship-adaptive cascade 0 (shadow-cascade-extents.md, section 5):
-                // X3M_SHADOW_CASCADE_ADAPTIVE_C0 = k within [0.5, 8] (E0 = max(E0, k x
-                // own-ship radius) with hysteresis; the ladder behind it slides with E0
-                // at X3M_SHADOW_CASCADE_LADDER_RATIO per cascade, within [2, 16], default 5);
-                // absent, "0" or out of range: off (a ratio out of range: the default).
-                float adaptive_k=0.f, ladder_ratio=renderer::shadow_cascade_ladder_ratio_default;
-                if(set.count&&x3m::config::get(L"X3M_SHADOW_CASCADE_ADAPTIVE_C0",list,128)>0){ wchar_t* end=nullptr; const double v=wcstod(list,&end);
-                    if(end!=list&&*end==L'\0'&&v>=double(renderer::shadow_cascade_adaptive_k_min)&&v<=double(renderer::shadow_cascade_adaptive_k_max))adaptive_k=float(v); }
-                if(adaptive_k>0.f&&x3m::config::get(L"X3M_SHADOW_CASCADE_LADDER_RATIO",list,128)>0){ wchar_t* end=nullptr; const double v=wcstod(list,&end);
-                    if(end!=list&&*end==L'\0'&&v>=double(renderer::shadow_cascade_ladder_ratio_min)&&v<=double(renderer::shadow_cascade_ladder_ratio_max))ladder_ratio=float(v); }
-                static_assert(renderer::shadow_cascade_max==5,"the mode line lists five cascades");
-                const auto ext=[&](unsigned i){ return double(set.count>i?set.cascades[i].half_extent:0.f); };
-                const auto sz=[&](unsigned i){ return set.count>i?set.cascades[i].size:0u; };
-                char backface_text[12]; std::snprintf(backface_text,sizeof backface_text,"%u",set.backface_from<set.count?set.backface_from:0u);
-                log("shadow_cascades_mode requested=1 enabled=%u reason=%s cascades=%u extents=%.9g,%.9g,%.9g,%.9g,%.9g sizes=%u,%u,%u,%u,%u caps=%u,%u,%u,%u,%u budget=%u depth_light=%.9g records=%u,%u,%u,%u,%u static_from=%s drop_order=%s large_min=%.9g adaptive_c0=%.9g ladder_ratio=%.9g backface_from=%s backface_mask=%u min_footprint=%.9g",
-                    set.count!=0,reason?reason:enabled?"ok":"replay",set.count,ext(0),ext(1),ext(2),ext(3),ext(4),sz(0),sz(1),sz(2),sz(3),sz(4),
-                    set.caps[0],set.caps[1],set.caps[2],set.caps[3],set.caps[4],set.budget,double(set.count?set.cascades[0].depth_toward_light:0.f),
-                    set.records[0],set.records[1],set.records[2],set.records[3],set.records[4],set.static_from<set.count?static_text:"none",set.importance?"importance":"submission",double(set.large_min),double(adaptive_k),double(ladder_ratio),
-                    !set.count?"none":set.backface_from==renderer::shadow_cascade_backface_from_texel?"texel":set.backface_from<set.count?backface_text:"none",unsigned(set.count?set.backface_mask():0u),double(set.min_footprint_px));
-                hooked.motion_output.configure_shadow_cascades(set);
-                cascades_configured=set.count!=0;
-                hooked.motion_output.configure_shadow_cascade_adaptive(adaptive_k,ladder_ratio);
-                // Per-frame sun trace (X3M_SHADOW_SUN_TRACE=1, default off): one
-                // shadow_sun_frame line per frame while the cascades are on, for the
-                // re-derivation rate between the sparse shadow_replay_sun_point lines.
-                { const bool trace_asked=log_tier::debug_flag(L"X3M_SHADOW_SUN_TRACE"); // X3M_SHADOW_SUN_TRACE=1 or X3M_DEBUG=1
-                  if(trace_asked)log("shadow_sun_trace_mode requested=1 enabled=%u cascades=%u",set.count!=0,set.count);
-                  hooked.motion_output.configure_shadow_sun_trace(trace_asked&&set.count!=0); } } }
-          // Sun-shadow caster retention (docs/architecture/shadow-caster-retention.md), cascades only, default off:
-          // X3M_SHADOW_RETENTION_CENSUS=1 runs the store without references or replay (stage 1),
-          // X3M_SHADOW_CASTER_RETENTION=1 replays retained static casters (stage 2; wins over the census).
-          // X3M_SHADOW_CASTER_RETENTION_AGE (frames, 1..10000000, default 7200) and
-          // X3M_SHADOW_CASTER_RETENTION_EPS (units, 1e-4..100, default 0.05) calibrate both;
-          // X3M_SHADOW_RETENTION_TIMING=1 adds the per-draw cost to the frame line (two counter reads per recorded draw).
-          { const auto flag=[&](const wchar_t* name){ return x3m::config::get(name,setting,4)==1&&setting[0]==L'1'; };
-            const bool census=flag(L"X3M_SHADOW_RETENTION_CENSUS")||log_tier::debug(), live=flag(L"X3M_SHADOW_CASTER_RETENTION"); // census: or X3M_DEBUG=1
-            if(census||live){
-                std::uint32_t age=shadow_retention::age_cap_default; double eps=shadow_retention::eps_default; wchar_t number[32]{}; wchar_t* stop=nullptr;
-                if(x3m::config::get(L"X3M_SHADOW_CASTER_RETENTION_AGE",number,32)>0){ const unsigned long v=wcstoul(number,&stop,10); if(stop!=number&&*stop==L'\0'&&v>=shadow_retention::age_cap_min&&v<=shadow_retention::age_cap_max)age=std::uint32_t(v); }
-                if(x3m::config::get(L"X3M_SHADOW_CASTER_RETENTION_EPS",number,32)>0){ stop=nullptr; const double v=wcstod(number,&stop); if(stop!=number&&*stop==L'\0'&&v>=shadow_retention::eps_min&&v<=shadow_retention::eps_max)eps=v; }
-                const shadow_retention::Mode mode=!enabled?shadow_retention::Mode::Off:live?shadow_retention::Mode::Live:shadow_retention::Mode::Census;
-                log("shadow_retention_mode requested=1 enabled=%u mode=%s age_cap=%u eps=%.9g",enabled,!enabled?"off":live?"live":"census",unsigned(age),eps);
-                hooked.motion_output.configure_shadow_retention(mode,age,eps,flag(L"X3M_SHADOW_RETENTION_TIMING")); } } }
-      // Scene-end sun-shadow application (legacy-sun-application.md section 2;
-      // X3M_SUN_SHADOW_APPLY=1): the lane and the cascade maps of the same
-      // frame; exponent 1 on original shading, 1 / 2.2 with linear materials.
-      // Without a cascade set there is no map to sample: the apply stays off
-      // (its mode row says cascades=0) and the lighting is the lane's alone.
-      // X3M_SUN_SHADOW_BIAS_UNITS (world units, 0..1000, default 0.53571875)
-      // is the constant compare bias and X3M_SUN_SHADOW_BIAS_CLAMP_TEXELS
-      // (1..64, default 20.97152) the receiver-plane clamp and non-planar
-      // fallback in world texels, both resolved per frame with the cascade.
-      { const bool apply_asked=x3m::config::get(L"X3M_SUN_SHADOW_APPLY",setting,4)==1&&setting[0]==L'1';
-        const bool apply_enabled=apply_asked&&sun_lane_enabled&&depth_asked&&enabled&&cascades_configured;
-        // X3M_SUN_SHADOW_BIAS_SLOPE_TEXELS (0..8, default 0.2) is the cascade
-        // program's slope-scaled margin in texels of the receiver plane's
-        // depth slope (sun_shadow_apply_pass.h).
-        double bias_units=renderer::sun_shadow_bias_units_default, clamp_texels=renderer::sun_shadow_bias_clamp_texels_default, slope_texels=renderer::sun_shadow_bias_slope_texels_default; wchar_t text[32]{}; wchar_t* end=nullptr;
-        if(x3m::config::get(L"X3M_SUN_SHADOW_BIAS_UNITS",text,32)>0){ end=nullptr; const double v=wcstod(text,&end); if(end!=text&&*end==L'\0'&&v>=renderer::sun_shadow_bias_units_min&&v<=renderer::sun_shadow_bias_units_max)bias_units=v; }
-        if(x3m::config::get(L"X3M_SUN_SHADOW_BIAS_CLAMP_TEXELS",text,32)>0){ end=nullptr; const double v=wcstod(text,&end); if(end!=text&&*end==L'\0'&&v>=renderer::sun_shadow_bias_clamp_texels_min&&v<=renderer::sun_shadow_bias_clamp_texels_max)clamp_texels=v; }
-        { wchar_t slope_text[32]{}; if(x3m::config::get(L"X3M_SUN_SHADOW_BIAS_SLOPE_TEXELS",slope_text,32)>0){ end=nullptr; const double v=wcstod(slope_text,&end); if(end!=slope_text&&*end==L'\0'&&v>=renderer::sun_shadow_bias_slope_texels_min&&v<=renderer::sun_shadow_bias_slope_texels_max)slope_texels=v; } }
-        if(apply_asked)log("sun_shadow_apply_mode requested=1 enabled=%u lane=%u replay=%u linear_materials=%u bias_units=%.9g clamp_texels=%.9g slope_texels=%.9g cascades=%u",apply_enabled,sun_lane_enabled,depth_asked&&enabled,linear_material_requested,bias_units,clamp_texels,slope_texels,unsigned(cascades_configured));
-        hooked.motion_output.configure_sun_shadow_apply(apply_enabled,bias_units,clamp_texels,slope_texels); } }
-    hooked.motion_output.configure_volumetric_fog(volumetric_fog_requested,volumetric_fog_strength,volumetric_fog_anisotropy,volumetric_fog_timing,volumetric_fog_cards_replace);
+    {
+        wchar_t setting[4]{};
+        const bool asked = x3m::config::get(L"X3M_SHADOW_REPLAY_CANDIDATES", setting, 4) == 1 && setting[0] == L'1';
+        const bool depth_asked = x3m::config::get(L"X3M_SHADOW_REPLAY_DEPTH", setting, 4) == 1 && setting[0] == L'1';
+        const bool wrapped = x3m::config::get(L"X3M_OWNERSHIP", setting, 4) == 1 && setting[0] == L'1';
+        const bool enabled = (asked || depth_asked) && motion_output_requested && wrapped;
+        {
+            static LONG removed_logged = 0;
+            const unsigned size_set = x3m::config::get(L"X3M_SHADOW_REPLAY_SIZE", nullptr, 0) > 0,
+                           extent_set = x3m::config::get(L"X3M_SHADOW_REPLAY_EXTENT", nullptr, 0) > 0;
+            const unsigned half_set = x3m::config::get(L"X3M_SHADOW_REPLAY_DEPTH_HALF", nullptr, 0) > 0,
+                           cap_set = x3m::config::get(L"X3M_SHADOW_REPLAY_CAP", nullptr, 0) > 0;
+            if ((size_set | extent_set | half_set | cap_set) && InterlockedExchange(&removed_logged, 1) == 0)
+                log("shadow_replay_config size=%u extent=%u depth_half=%u cap=%u single_map=removed ignored=1",
+                    size_set, extent_set, half_set, cap_set);
+        }
+        if (asked || depth_asked)
+            log("shadow_replay_candidates_mode requested=1 enabled=%u motion_output=%u ownership=%u", enabled,
+                motion_output_requested, wrapped);
+        hooked.motion_output.configure_shadow_replay_candidates(
+            enabled, enabled ? ownership::process_admission_monitor() : nullptr);
+        // Object bounds log (docs/architecture/engine-frame-time.md, "Object bounds log";
+        // X3M_OBJECT_BOUNDS_LOG=1, default off): on F8 capture frames only, one object_bounds
+        // line per routed draw whose object box the candidate route already computed, with the
+        // box's projected screen rectangle, depth range and frustum corner count. It rides that
+        // counter (no box without it) and needs the verified submission identity that object_context
+        // needs, because node=/model= are the scope's. Refused otherwise, and always noted.
+        {
+            wchar_t flag[4]{};
+            const bool bounds_asked = log_tier::debug() || (x3m::config::get(L"X3M_OBJECT_BOUNDS_LOG", flag, 4) == 1 &&
+                                                            flag[0] == L'1'); // or X3M_DEBUG=1
+            if (bounds_asked) {
+                const bool traced = object_trace::active();
+                const bool bounds_enabled = enabled && traced;
+                log("object_bounds_mode requested=1 enabled=%u candidates=%u object_trace=%u", bounds_enabled, enabled,
+                    traced);
+                hooked.motion_output.configure_object_bounds_log(bounds_enabled);
+            }
+        }
+        bool cascades_configured = false; // a valid cascade set for the depth replay: the sun-shadow apply needs its
+                                          // maps
+        if (depth_asked) {
+            log("shadow_replay_depth_mode requested=1 enabled=%u motion_output=%u ownership=%u", enabled,
+                motion_output_requested, wrapped);
+            hooked.motion_output.configure_shadow_replay_depth(enabled);
+            // Alpha-tested casters (shadow-replay-gates.md, "Alpha-tested casters"):
+            // X3M_SHADOW_ALPHA_CASTERS=1 (default off) lets alpha-tested routed draws
+            // cast with their own alpha test; rides the depth replay.
+            {
+                wchar_t alpha[4]{};
+                if (x3m::config::get(L"X3M_SHADOW_ALPHA_CASTERS", alpha, 4) == 1 && alpha[0] == L'1') {
+                    log("shadow_alpha_casters_mode requested=1 enabled=%u", enabled);
+                    hooked.motion_output.configure_shadow_alpha_casters(enabled);
+                }
+            }
+            // Sun-shadow cascades (docs/architecture/shadow-cascades.md): X3M_SHADOW_CASCADES
+            // is the ascending half-extent list (1..5 values, 50..150000 units); absent,
+            // empty or "0" is no map: the replayed sun shadows are off (one
+            // shadow_cascades_mode row with reason=off). X3M_SHADOW_CASCADE_SIZES (one
+            // value for all or one per cascade, 64..4096, default 4096),
+            // X3M_SHADOW_CASCADE_CAPS (likewise, 1..4096, defaults 128,512,1024,1024,1024)
+            // and X3M_SHADOW_CASCADE_BUDGET (issues per frame, 1..4096, default 640).
+            // Caster pool control (shadow-cascade-extents.md): X3M_SHADOW_CASCADE_RECORDS
+            // (records per cascade, 1..4096, default 1024), X3M_SHADOW_CASCADE_STATIC_FROM
+            // (the first static-only cascade, 1..count-1; absent: none; the count or more is refused) and
+            // X3M_SHADOW_CASCADE_DROP_ORDER (submission | importance) and X3M_SHADOW_CASCADE_LARGE_MIN
+            // (world units, 0..1e6, default 0: a static-only cascade also admits moving casters of that extent).
+            // X3M_SHADOW_CASCADE_BACKFACE_FROM (0..count-1 | none; absent: every cascade whose world texel is
+            // 8 u or more) selects the cascades that replay back faces.
+            // A malformed list leaves the cascades off (no map).
+            {
+                wchar_t list[128]{};
+                const auto parse = [](const wchar_t* text, double* out, unsigned capacity) -> unsigned {
+                    unsigned count = 0;
+                    const wchar_t* cursor = text;
+                    while (*cursor) {
+                        if (count >= capacity) return 0;
+                        wchar_t* end = nullptr;
+                        const double v = wcstod(cursor, &end);
+                        if (end == cursor) return 0;
+                        out[count++] = v;
+                        if (*end == L',')
+                            cursor = end + 1;
+                        else if (*end == L'\0')
+                            break;
+                        else
+                            return 0;
+                        if (!*cursor) return 0;
+                    }
+                    return count;
+                };
+                const DWORD length = x3m::config::get(L"X3M_SHADOW_CASCADES", list, 128);
+                if (!(length > 0 && length < 128 && !(length == 1 && list[0] == L'0')))
+                    log("shadow_cascades_mode requested=0 enabled=0 reason=%s cascades=0",
+                        length >= 128 ? "extents" : "off");
+                else {
+                    double values[renderer::shadow_cascade_max]{};
+                    float extents[renderer::shadow_cascade_max]{};
+                    unsigned sizes[renderer::shadow_cascade_max], caps[renderer::shadow_cascade_max],
+                        budget = renderer::shadow_cascade_budget_default;
+                    for (unsigned i = 0; i < renderer::shadow_cascade_max; ++i) {
+                        sizes[i] = renderer::shadow_cascade_size_default;
+                        caps[i] = renderer::shadow_cascade_cap_defaults[i];
+                    }
+                    const unsigned count = parse(list, values, renderer::shadow_cascade_max);
+                    const char* reason = count ? nullptr : "extents";
+                    for (unsigned i = 0; i < count; ++i) extents[i] = float(values[i]);
+                    const auto integers = [&](const wchar_t* name, unsigned* out) -> bool {
+                        const DWORD n = x3m::config::get(name, list, 128);
+                        if (!n) return true;
+                        if (n >= 128) return false;
+                        double v[renderer::shadow_cascade_max]{};
+                        const unsigned got = parse(list, v, renderer::shadow_cascade_max);
+                        if (got != 1 && got != count) return false;
+                        for (unsigned i = 0; i < count; ++i) {
+                            const double x = v[got == 1 ? 0 : i];
+                            if (!(x >= 1. && x <= 65536.) || x != double(unsigned(x))) return false;
+                            out[i] = unsigned(x);
+                        }
+                        return true;
+                    };
+                    if (!reason && !integers(L"X3M_SHADOW_CASCADE_SIZES", sizes)) reason = "sizes";
+                    if (!reason && !integers(L"X3M_SHADOW_CASCADE_CAPS", caps)) reason = "caps";
+                    if (!reason && x3m::config::get(L"X3M_SHADOW_CASCADE_BUDGET", list, 128) > 0) {
+                        wchar_t* end = nullptr;
+                        const unsigned long v = wcstoul(list, &end, 10);
+                        if (end == list || *end != L'\0' || v < renderer::shadow_cascade_budget_min ||
+                            v > renderer::shadow_cascade_budget_max)
+                            reason = "budget";
+                        else
+                            budget = unsigned(v);
+                    }
+                    unsigned records[renderer::shadow_cascade_max];
+                    for (unsigned i = 0; i < renderer::shadow_cascade_max; ++i)
+                        records[i] = renderer::shadow_cascade_records_default;
+                    unsigned static_from = renderer::shadow_cascade_static_from_none;
+                    bool importance = false;
+                    float large_min = 0.f;
+                    if (!reason && !integers(L"X3M_SHADOW_CASCADE_RECORDS", records)) reason = "records";
+                    if (!reason && x3m::config::get(L"X3M_SHADOW_CASCADE_STATIC_FROM", list, 128) > 0) {
+                        wchar_t* end = nullptr;
+                        const unsigned long v = wcstoul(list, &end, 10);
+                        if (end == list || *end != L'\0' || v < 1 || v >= count)
+                            reason = "static_from";
+                        else
+                            static_from = unsigned(v);
+                    }
+                    if (!reason && x3m::config::get(L"X3M_SHADOW_CASCADE_DROP_ORDER", list, 128) > 0) {
+                        if (!wcscmp(list, L"importance"))
+                            importance = true;
+                        else if (wcscmp(list, L"submission"))
+                            reason = "drop_order";
+                    }
+                    renderer::ShadowCascadeSet set{};
+                    char static_text[12];
+                    std::snprintf(static_text, sizeof static_text, "%u",
+                                  static_from < renderer::shadow_cascade_max ? static_from : 0u);
+                    if (!reason && !renderer::shadow_cascade_set(extents, count, sizes, caps, budget, set))
+                        reason = "range";
+                    if (!reason && x3m::config::get(L"X3M_SHADOW_CASCADE_LARGE_MIN", list, 128) > 0) {
+                        wchar_t* end = nullptr;
+                        const double v = wcstod(list, &end);
+                        if (end == list || *end != L'\0' || !(v >= 0.) ||
+                            v > double(renderer::shadow_cascade_large_min_max))
+                            reason = "large_min";
+                        else
+                            large_min = float(v);
+                    }
+                    // Back-face casters (shadow_replay_projection.h, shadow_cascade_backface_texel_default): absent,
+                    // the texel law (every cascade whose world texel is 8 u or more); X3M_SHADOW_CASCADE_BACKFACE_FROM
+                    // = K (0..count-1) that cascade and beyond; "none" no cascade; the count or more is refused (never
+                    // a silent no-op).
+                    unsigned backface_from = renderer::shadow_cascade_backface_from_texel;
+                    if (!reason && x3m::config::get(L"X3M_SHADOW_CASCADE_BACKFACE_FROM", list, 128) > 0) {
+                        if (!wcscmp(list, L"none"))
+                            backface_from = renderer::shadow_cascade_static_from_none;
+                        else {
+                            wchar_t* end = nullptr;
+                            const unsigned long v = wcstoul(list, &end, 10);
+                            if (end == list || *end != L'\0' || v >= count)
+                                reason = "backface_from";
+                            else
+                                backface_from = unsigned(v);
+                        }
+                    }
+                    // Per-part minimum light-space footprint (shadow-cascades.md, "Minimum caster
+                    // footprint"): X3M_SHADOW_CASCADE_MIN_FOOTPRINT = P screen pixels within
+                    // (0, 64]. Absent is the default 8 px (shadow_cascade_min_footprint_default, the
+                    // launcher's default); any parsed value at or below zero ("0", "0.0", "-1") is
+                    // off (bit-identical): a zero footprint never disables the cascades. Malformed
+                    // text, a value above the band and a truncated variable (128 wide characters or
+                    // more: `list` would hold no usable value) leave the cascades off, never a silent
+                    // no-op.
+                    float min_footprint = renderer::shadow_cascade_min_footprint_default;
+                    if (!reason) {
+                        const DWORD n = x3m::config::get(L"X3M_SHADOW_CASCADE_MIN_FOOTPRINT", list, 128);
+                        if (n >= 128)
+                            reason = "min_footprint";
+                        else if (n > 0) {
+                            wchar_t* end = nullptr;
+                            const double v = wcstod(list, &end);
+                            if (end == list || *end != L'\0' || !(v == v))
+                                reason = "min_footprint"; // malformed text, or NaN
+                            else if (v <= 0.)
+                                min_footprint = 0.f; // explicit off
+                            else if (!renderer::shadow_cascade_min_footprint_valid(v))
+                                reason = "min_footprint"; // above the band
+                            else
+                                min_footprint = float(v);
+                        }
+                    }
+                    if (!reason && !renderer::shadow_cascade_pool(set, records, static_from, importance, large_min,
+                                                                  backface_from, min_footprint))
+                        reason = "pool";
+                    if (reason || !enabled) set = renderer::ShadowCascadeSet{};
+                    // Own-ship-adaptive cascade 0 (shadow-cascade-extents.md, section 5):
+                    // X3M_SHADOW_CASCADE_ADAPTIVE_C0 = k within [0.5, 8] (E0 = max(E0, k x
+                    // own-ship radius) with hysteresis; the ladder behind it slides with E0
+                    // at X3M_SHADOW_CASCADE_LADDER_RATIO per cascade, within [2, 16], default 5);
+                    // absent, "0" or out of range: off (a ratio out of range: the default).
+                    float adaptive_k = 0.f, ladder_ratio = renderer::shadow_cascade_ladder_ratio_default;
+                    if (set.count && x3m::config::get(L"X3M_SHADOW_CASCADE_ADAPTIVE_C0", list, 128) > 0) {
+                        wchar_t* end = nullptr;
+                        const double v = wcstod(list, &end);
+                        if (end != list && *end == L'\0' && v >= double(renderer::shadow_cascade_adaptive_k_min) &&
+                            v <= double(renderer::shadow_cascade_adaptive_k_max))
+                            adaptive_k = float(v);
+                    }
+                    if (adaptive_k > 0.f && x3m::config::get(L"X3M_SHADOW_CASCADE_LADDER_RATIO", list, 128) > 0) {
+                        wchar_t* end = nullptr;
+                        const double v = wcstod(list, &end);
+                        if (end != list && *end == L'\0' && v >= double(renderer::shadow_cascade_ladder_ratio_min) &&
+                            v <= double(renderer::shadow_cascade_ladder_ratio_max))
+                            ladder_ratio = float(v);
+                    }
+                    static_assert(renderer::shadow_cascade_max == 5, "the mode line lists five cascades");
+                    const auto ext = [&](unsigned i) {
+                        return double(set.count > i ? set.cascades[i].half_extent : 0.f);
+                    };
+                    const auto sz = [&](unsigned i) { return set.count > i ? set.cascades[i].size : 0u; };
+                    char backface_text[12];
+                    std::snprintf(backface_text, sizeof backface_text, "%u",
+                                  set.backface_from < set.count ? set.backface_from : 0u);
+                    log("shadow_cascades_mode requested=1 enabled=%u reason=%s cascades=%u extents=%.9g,%.9g,%.9g,%.9g,%.9g sizes=%u,%u,%u,%u,%u caps=%u,%u,%u,%u,%u budget=%u depth_light=%.9g records=%u,%u,%u,%u,%u static_from=%s drop_order=%s large_min=%.9g adaptive_c0=%.9g ladder_ratio=%.9g backface_from=%s backface_mask=%u min_footprint=%.9g",
+                        set.count != 0,
+                        reason    ? reason
+                        : enabled ? "ok"
+                                  : "replay",
+                        set.count, ext(0), ext(1), ext(2), ext(3), ext(4), sz(0), sz(1), sz(2), sz(3), sz(4),
+                        set.caps[0], set.caps[1], set.caps[2], set.caps[3], set.caps[4], set.budget,
+                        double(set.count ? set.cascades[0].depth_toward_light : 0.f), set.records[0], set.records[1],
+                        set.records[2], set.records[3], set.records[4],
+                        set.static_from < set.count ? static_text : "none",
+                        set.importance ? "importance" : "submission", double(set.large_min), double(adaptive_k),
+                        double(ladder_ratio),
+                        !set.count                                                          ? "none"
+                        : set.backface_from == renderer::shadow_cascade_backface_from_texel ? "texel"
+                        : set.backface_from < set.count                                     ? backface_text
+                                                                                            : "none",
+                        unsigned(set.count ? set.backface_mask() : 0u), double(set.min_footprint_px));
+                    hooked.motion_output.configure_shadow_cascades(set);
+                    cascades_configured = set.count != 0;
+                    hooked.motion_output.configure_shadow_cascade_adaptive(adaptive_k, ladder_ratio);
+                    // Per-frame sun trace (X3M_SHADOW_SUN_TRACE=1, default off): one
+                    // shadow_sun_frame line per frame while the cascades are on, for the
+                    // re-derivation rate between the sparse shadow_replay_sun_point lines.
+                    {
+                        const bool trace_asked = log_tier::debug_flag(
+                            L"X3M_SHADOW_SUN_TRACE"); // X3M_SHADOW_SUN_TRACE=1
+                                                      // or X3M_DEBUG=1
+                        if (trace_asked)
+                            log("shadow_sun_trace_mode requested=1 enabled=%u cascades=%u", set.count != 0, set.count);
+                        hooked.motion_output.configure_shadow_sun_trace(trace_asked && set.count != 0);
+                    }
+                }
+            }
+            // Sun-shadow caster retention (docs/architecture/shadow-caster-retention.md), cascades only, default off:
+            // X3M_SHADOW_RETENTION_CENSUS=1 runs the store without references or replay (stage 1),
+            // X3M_SHADOW_CASTER_RETENTION=1 replays retained static casters (stage 2; wins over the census).
+            // X3M_SHADOW_CASTER_RETENTION_AGE (frames, 1..10000000, default 7200) and
+            // X3M_SHADOW_CASTER_RETENTION_EPS (units, 1e-4..100, default 0.05) calibrate both;
+            // X3M_SHADOW_RETENTION_TIMING=1 adds the per-draw cost to the frame line (two counter reads per recorded
+            // draw).
+            {
+                const auto flag = [&](const wchar_t* name) {
+                    return x3m::config::get(name, setting, 4) == 1 && setting[0] == L'1';
+                };
+                const bool census = flag(L"X3M_SHADOW_RETENTION_CENSUS") || log_tier::debug(),
+                           live = flag(L"X3M_SHADOW_CASTER_RETENTION"); // census: or X3M_DEBUG=1
+                if (census || live) {
+                    std::uint32_t age = shadow_retention::age_cap_default;
+                    double eps = shadow_retention::eps_default;
+                    wchar_t number[32]{};
+                    wchar_t* stop = nullptr;
+                    if (x3m::config::get(L"X3M_SHADOW_CASTER_RETENTION_AGE", number, 32) > 0) {
+                        const unsigned long v = wcstoul(number, &stop, 10);
+                        if (stop != number && *stop == L'\0' && v >= shadow_retention::age_cap_min &&
+                            v <= shadow_retention::age_cap_max)
+                            age = std::uint32_t(v);
+                    }
+                    if (x3m::config::get(L"X3M_SHADOW_CASTER_RETENTION_EPS", number, 32) > 0) {
+                        stop = nullptr;
+                        const double v = wcstod(number, &stop);
+                        if (stop != number && *stop == L'\0' && v >= shadow_retention::eps_min &&
+                            v <= shadow_retention::eps_max)
+                            eps = v;
+                    }
+                    const shadow_retention::Mode mode = !enabled ? shadow_retention::Mode::Off
+                                                        : live   ? shadow_retention::Mode::Live
+                                                                 : shadow_retention::Mode::Census;
+                    log("shadow_retention_mode requested=1 enabled=%u mode=%s age_cap=%u eps=%.9g", enabled,
+                        !enabled ? "off"
+                        : live   ? "live"
+                                 : "census",
+                        unsigned(age), eps);
+                    hooked.motion_output.configure_shadow_retention(mode, age, eps,
+                                                                    flag(L"X3M_SHADOW_RETENTION_TIMING"));
+                }
+            }
+        }
+        // Scene-end sun-shadow application (legacy-sun-application.md section 2;
+        // X3M_SUN_SHADOW_APPLY=1): the lane and the cascade maps of the same
+        // frame; exponent 1 on original shading, 1 / 2.2 with linear materials.
+        // Without a cascade set there is no map to sample: the apply stays off
+        // (its mode row says cascades=0) and the lighting is the lane's alone.
+        // X3M_SUN_SHADOW_BIAS_UNITS (world units, 0..1000, default 0.53571875)
+        // is the constant compare bias and X3M_SUN_SHADOW_BIAS_CLAMP_TEXELS
+        // (1..64, default 20.97152) the receiver-plane clamp and non-planar
+        // fallback in world texels, both resolved per frame with the cascade.
+        {
+            const bool apply_asked = x3m::config::get(L"X3M_SUN_SHADOW_APPLY", setting, 4) == 1 && setting[0] == L'1';
+            const bool apply_enabled = apply_asked && sun_lane_enabled && depth_asked && enabled && cascades_configured;
+            // X3M_SUN_SHADOW_BIAS_SLOPE_TEXELS (0..8, default 0.2) is the cascade
+            // program's slope-scaled margin in texels of the receiver plane's
+            // depth slope (sun_shadow_apply_pass.h).
+            double bias_units = renderer::sun_shadow_bias_units_default,
+                   clamp_texels = renderer::sun_shadow_bias_clamp_texels_default,
+                   slope_texels = renderer::sun_shadow_bias_slope_texels_default;
+            wchar_t text[32]{};
+            wchar_t* end = nullptr;
+            if (x3m::config::get(L"X3M_SUN_SHADOW_BIAS_UNITS", text, 32) > 0) {
+                end = nullptr;
+                const double v = wcstod(text, &end);
+                if (end != text && *end == L'\0' && v >= renderer::sun_shadow_bias_units_min &&
+                    v <= renderer::sun_shadow_bias_units_max)
+                    bias_units = v;
+            }
+            if (x3m::config::get(L"X3M_SUN_SHADOW_BIAS_CLAMP_TEXELS", text, 32) > 0) {
+                end = nullptr;
+                const double v = wcstod(text, &end);
+                if (end != text && *end == L'\0' && v >= renderer::sun_shadow_bias_clamp_texels_min &&
+                    v <= renderer::sun_shadow_bias_clamp_texels_max)
+                    clamp_texels = v;
+            }
+            {
+                wchar_t slope_text[32]{};
+                if (x3m::config::get(L"X3M_SUN_SHADOW_BIAS_SLOPE_TEXELS", slope_text, 32) > 0) {
+                    end = nullptr;
+                    const double v = wcstod(slope_text, &end);
+                    if (end != slope_text && *end == L'\0' && v >= renderer::sun_shadow_bias_slope_texels_min &&
+                        v <= renderer::sun_shadow_bias_slope_texels_max)
+                        slope_texels = v;
+                }
+            }
+            if (apply_asked)
+                log("sun_shadow_apply_mode requested=1 enabled=%u lane=%u replay=%u linear_materials=%u bias_units=%.9g clamp_texels=%.9g slope_texels=%.9g cascades=%u",
+                    apply_enabled, sun_lane_enabled, depth_asked && enabled, linear_material_requested, bias_units,
+                    clamp_texels, slope_texels, unsigned(cascades_configured));
+            hooked.motion_output.configure_sun_shadow_apply(apply_enabled, bias_units, clamp_texels, slope_texels);
+        }
+    }
+    hooked.motion_output.configure_volumetric_fog(volumetric_fog_requested, volumetric_fog_strength,
+                                                  volumetric_fog_anisotropy, volumetric_fog_timing,
+                                                  volumetric_fog_cards_replace);
     hooked.motion_output.configure_volumetric_fog_range(volumetric_fog_range_stored);
     hooked.motion_output.configure_volumetric_fog_look(volumetric_fog_look_tuning);
     hooked.motion_output.configure_volumetric_fog_march_scale(volumetric_fog_march_scale);
     hooked.motion_output.configure_volumetric_fog_dust_motes(volumetric_fog_motes);
-    hooked.motion_output.configure_volumetric_fog_handover(volumetric_fog_handover_step,volumetric_fog_handover_coldfill);
+    hooked.motion_output.configure_volumetric_fog_handover(volumetric_fog_handover_step,
+                                                           volumetric_fog_handover_coldfill);
     hooked.motion_output.configure_volumetric_fog_prefill(volumetric_fog_prefill);
-    { LARGE_INTEGER frequency{};QueryPerformanceFrequency(&frequency); // the frame_end clock; one read per device
-      hooked.fps_overlay.configure(fps_overlay_requested,frequency.QuadPart>0?uint64_t(frequency.QuadPart):1); }
+    {
+        LARGE_INTEGER frequency{};
+        QueryPerformanceFrequency(&frequency); // the frame_end clock; one read per device
+        hooked.fps_overlay.configure(fps_overlay_requested, frequency.QuadPart > 0 ? uint64_t(frequency.QuadPart) : 1);
+    }
     hooked.motion_output.configure_screen_emission_timing(screen_emission_timing_requested);
-    if(gpu_sync_timing_requested)gpu_sync_attach(hooked,d); // engine-frame-time.md, "GPU sync timing": the boundary queries, or one available=0 line and nothing else
-    hooked.motion_output.attach(d,hooked.original,hooked.id,hooked.caps,motion_output_requested,&hooked.stats);
+    if (gpu_sync_timing_requested)
+        gpu_sync_attach(hooked, d); // engine-frame-time.md, "GPU sync timing": the boundary queries, or one available=0
+                                    // line and nothing else
+    hooked.motion_output.attach(d, hooked.original, hooked.id, hooked.caps, motion_output_requested, &hooked.stats);
     // The engine-memory reader's counters at device creation (integers only;
     // telemetry::summary repeats the line with phase=summary).
-    engine_memory_line("create",hooked.id,hooked.frame);
-    if(sector_background_requested)hooked.set(41,begin_scene); // standalone diagnostic needs no motion route
-    if(hooked.motion_output.enabled()){
+    engine_memory_line("create", hooked.id, hooked.frame);
+    if (sector_background_requested) hooked.set(41, begin_scene); // standalone diagnostic needs no motion route
+    if (hooked.motion_output.enabled()) {
         // The route needs the complete selector event stream plus setter
         // shadows. Installed only after the capability gate passed, so a device
         // the route refuses pays nothing per setter call; the private table is
         // already live, so these slots take effect immediately.
-        hooked.set(34,stretch_rect);hooked.set(39,set_depth);
-        hooked.set(30,update_surface);hooked.set(31,update_texture);hooked.set(35,color_fill);
-        hooked.set(115,draw_rect_patch);hooked.set(116,draw_tri_patch);
-        hooked.set(92,set_vs);hooked.set(107,set_ps);hooked.set(94,set_vs_constant_f);hooked.set(96,set_vs_constant_i);
-        hooked.set(109,set_ps_constant_f);hooked.set(100,set_stream_source);hooked.set(104,set_indices);
-        hooked.set(87,set_declaration);hooked.set(89,set_fvf);hooked.set(47,set_viewport);
-        hooked.set(59,create_stateblock);hooked.set(60,begin_stateblock);hooked.set(61,end_stateblock);
+        hooked.set(34, stretch_rect);
+        hooked.set(39, set_depth);
+        hooked.set(30, update_surface);
+        hooked.set(31, update_texture);
+        hooked.set(35, color_fill);
+        hooked.set(115, draw_rect_patch);
+        hooked.set(116, draw_tri_patch);
+        hooked.set(92, set_vs);
+        hooked.set(107, set_ps);
+        hooked.set(94, set_vs_constant_f);
+        hooked.set(96, set_vs_constant_i);
+        hooked.set(109, set_ps_constant_f);
+        hooked.set(100, set_stream_source);
+        hooked.set(104, set_indices);
+        hooked.set(87, set_declaration);
+        hooked.set(89, set_fvf);
+        hooked.set(47, set_viewport);
+        hooked.set(59, create_stateblock);
+        hooked.set(60, begin_stateblock);
+        hooked.set(61, end_stateblock);
         // Scene and query tracking for the resolve's caller contract.
-        hooked.set(41,begin_scene);hooked.set(42,end_scene);hooked.set(118,create_query);
+        hooked.set(41, begin_scene);
+        hooked.set(42, end_scene);
+        hooked.set(118, create_query);
         // Render-state shadow: the application's render-state writes, only in
         // the hooked configuration (state_hooks above: explicit shadow, frame
         // timing's state-call counts, or a failed Get* check). Otherwise the route reads at the draw.
-        if(hooked.motion_output.state_hooks())hooked.set(57,set_render_state);
+        if (hooked.motion_output.state_hooks()) hooked.set(57, set_render_state);
         // Texture levels are needed for mip bias and for the hull emissive
         // widening's mip-chain gate; the composition reader identity stays on
         // SetTexture in both configurations.
-        if(hooked.motion_output.mip_bias_active()||hooked.motion_output.hull_emissive_widening()||hooked.motion_output.composition_requested())hooked.set(65,set_texture);
+        if (hooked.motion_output.mip_bias_active() || hooked.motion_output.hull_emissive_widening() ||
+            hooked.motion_output.composition_requested())
+            hooked.set(65, set_texture);
         // Sampler writes (mip-bias restore ahead of an application LODBIAS
         // write, sRGB decode shadow of the material and screen gates) in the
         // hooked configuration only; frame timing counts them like the rest.
-        if(hooked.motion_output.state_hooks()&&(hooked.motion_output.mip_bias_active()||hooked.motion_output.hull_emissive_widening()||hooked.motion_output.linear_materials_requested()||hooked.motion_output.screen_emission_requested()||hooked.motion_output.screen_emission_additive_requested()||frame_timing::active))hooked.set(69,set_sampler_state);
+        if (hooked.motion_output.state_hooks() &&
+            (hooked.motion_output.mip_bias_active() || hooked.motion_output.hull_emissive_widening() ||
+             hooked.motion_output.linear_materials_requested() || hooked.motion_output.screen_emission_requested() ||
+             hooked.motion_output.screen_emission_additive_requested() || frame_timing::active))
+            hooked.set(69, set_sampler_state);
         // Lazy binding: the application's target getters restore first (its
         // write masks are never held, so GetRenderState stays unhooked).
-        if(hooked.motion_output.lazy_rt_mode()){hooked.set(38,get_rt);hooked.set(32,get_rt_data);}
+        if (hooked.motion_output.lazy_rt_mode()) {
+            hooked.set(38, get_rt);
+            hooked.set(32, get_rt_data);
+        }
         // HDR redirect: the application's GetRenderTarget(0) and its reads of
         // the main target's contents go through the logical-binding shim.
-        if(hooked.motion_output.hdr_enabled()){hooked.set(38,get_rt);hooked.set(32,get_rt_data);}
+        if (hooked.motion_output.hdr_enabled()) {
+            hooked.set(38, get_rt);
+            hooked.set(32, get_rt_data);
+        }
     }
-    ownership_depth_info(d,devices.at(d)->id,devices.at(d)->frame,"create_after");
+    ownership_depth_info(d, devices.at(d)->id, devices.at(d)->frame, "create_after");
 }
 ULONG WINAPI release_factory(IDirect3D9* d) {
     CpuCallBoundary cpu;
-    auto* monitor=ownership::process_admission_monitor();
+    auto* monitor = ownership::process_admission_monitor();
     ownership::ApplicationAdmissionAbi admission(monitor);
     ULONG refs;
     {
         HookGuard lock;
         cpu.before_original();
-        refs=factories.at(d)->get<ULONG (WINAPI*)(IDirect3D9*)>(2)(d);
+        refs = factories.at(d)->get<ULONG(WINAPI*)(IDirect3D9*)>(2)(d);
         cpu.after_original();
-        if(!refs)factories.erase(d);
+        if (!refs) factories.erase(d);
     }
-    if(!refs){
+    if (!refs) {
         // End this application root after native/map cleanup and after releasing
         // capture's mutex. An outer caller may still be active; this snapshot is
         // diagnostic, never a general assertion of process-wide quiescence.
         admission.finish();
-        final_admission_metric(monitor,"factory");
+        final_admission_metric(monitor, "factory");
     }
     return refs;
 }
-HRESULT WINAPI create_device(IDirect3D9* d,UINT adapter,D3DDEVTYPE type,HWND window,DWORD flags,D3DPRESENT_PARAMETERS* p,IDirect3DDevice9** out) {
+HRESULT WINAPI create_device(IDirect3D9* d, UINT adapter, D3DDEVTYPE type, HWND window, DWORD flags,
+                             D3DPRESENT_PARAMETERS* p, IDirect3DDevice9** out) {
     // Which copy of the shipped-twice helper DLL this process loaded: the game
     // directory carries its own d3dx9_37.dll next to the system one. Logged at
     // the first device creation, when the game's imports are resolved. Ahead of
@@ -2759,11 +3743,14 @@ HRESULT WINAPI create_device(IDirect3D9* d,UINT adapter,D3DDEVTYPE type,HWND win
     // state bucket; its own cost is reported as hash_us=.
     {
         static std::atomic<bool> helper_module_logged{false};
-        if(!helper_module_logged.exchange(true)){LightCallBoundary boundary;proxy_identity::log_loaded_module(L"d3dx9_37.dll");}
+        if (!helper_module_logged.exchange(true)) {
+            LightCallBoundary boundary;
+            proxy_identity::log_loaded_module(L"d3dx9_37.dll");
+        }
     }
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    HRESULT hr=E_FAIL;
+    HRESULT hr = E_FAIL;
     HookGuard lock;
     // The startup motion route (including HDR/TAA/bloom) saves and resyncs
     // state through documented Get* calls. PUREDEVICE forbids those reads.
@@ -2771,66 +3758,106 @@ HRESULT WINAPI create_device(IDirect3D9* d,UINT adapter,D3DDEVTYPE type,HWND win
     // normalize only this optional optimization before either the native or
     // ownership-wrapped factory creates the device. No retry with pure flags:
     // one native call retains its ordinary failure/output/parameter semantics.
-    const DWORD effective_flags=motion_output_requested ? flags & ~D3DCREATE_PUREDEVICE : flags;
-    log("device_creation_policy requested=%08lx effective=%08lx state_reads=%u",flags,effective_flags,unsigned(motion_output_requested));
-    presentation_parameters("create_before",0,window,p);
+    const DWORD effective_flags = motion_output_requested ? flags & ~D3DCREATE_PUREDEVICE : flags;
+    log("device_creation_policy requested=%08lx effective=%08lx state_reads=%u", flags, effective_flags,
+        unsigned(motion_output_requested));
+    presentation_parameters("create_before", 0, window, p);
     // X3M_WINDOW_MONITOR_RECT=1 only: the game has placed its WS_POPUP window at the work-area origin (0x4db040);
-    // one SetWindowPos to the monitor rectangle when window_mode_core.h's predicate holds, before the native device sees it.
-    if(p)window_mode::apply("create_before",window,p->hDeviceWindow,p->Windowed!=FALSE,p->BackBufferWidth,p->BackBufferHeight);
-    if(p) log("create_device adapter=%u flags=%08lx width=%u height=%u format=%u windowed=%u msaa=%u interval=%u",adapter,flags,p->BackBufferWidth,p->BackBufferHeight,p->BackBufferFormat,p->Windowed,p->MultiSampleType,p->PresentationInterval);
-    const auto begin=telemetry::now();
+    // one SetWindowPos to the monitor rectangle when window_mode_core.h's predicate holds, before the native device
+    // sees it.
+    if (p)
+        window_mode::apply("create_before", window, p->hDeviceWindow, p->Windowed != FALSE, p->BackBufferWidth,
+                           p->BackBufferHeight);
+    if (p)
+        log("create_device adapter=%u flags=%08lx width=%u height=%u format=%u windowed=%u msaa=%u interval=%u",
+            adapter, flags, p->BackBufferWidth, p->BackBufferHeight, p->BackBufferFormat, p->Windowed,
+            p->MultiSampleType, p->PresentationInterval);
+    const auto begin = telemetry::now();
     cpu.before_original();
-    hr=factories.at(d)->get<HRESULT (WINAPI*)(IDirect3D9*,UINT,D3DDEVTYPE,HWND,DWORD,D3DPRESENT_PARAMETERS*,IDirect3DDevice9**)>(16)(d,adapter,type,window,effective_flags,p,out);cpu.after_original();
-    telemetry::record(telemetry::process(),telemetry::Metric::CreateDevice,telemetry::now()-begin,FAILED(hr));
-    presentation_parameters("create_after",0,window,p);
-    if(SUCCEEDED(hr)&&p) cull_small_parts::set_backbuffer_width(p->BackBufferWidth); // X3M_CULL_SMALL_PARTS_PX only: the pixel scale of the threshold
-    log("create_device_result hr=%08lx",hr);
-    if(SUCCEEDED(hr)&&out&&*out){hook_device(*out,p&&p->hDeviceWindow?p->hDeviceWindow:window,window);}
+    hr = factories.at(d)
+             ->get<HRESULT(WINAPI*)(IDirect3D9*, UINT, D3DDEVTYPE, HWND, DWORD, D3DPRESENT_PARAMETERS*,
+                                    IDirect3DDevice9**)>(16)(d, adapter, type, window, effective_flags, p, out);
+    cpu.after_original();
+    telemetry::record(telemetry::process(), telemetry::Metric::CreateDevice, telemetry::now() - begin, FAILED(hr));
+    presentation_parameters("create_after", 0, window, p);
+    if (SUCCEEDED(hr) && p)
+        cull_small_parts::set_backbuffer_width(p->BackBufferWidth); // X3M_CULL_SMALL_PARTS_PX only: the pixel scale of
+                                                                    // the threshold
+    log("create_device_result hr=%08lx", hr);
+    if (SUCCEEDED(hr) && out && *out) {
+        hook_device(*out, p && p->hDeviceWindow ? p->hDeviceWindow : window, window);
+    }
     return hr;
 }
 }
-bool screen_emission_route_enabled() noexcept { return screen_emission_requested; } // the one gate the loader's scan enable shares
-bool bolt_footprint_requested_gate() noexcept { return bolt_footprint_requested; } // the second consumer of the loader's scan enable
-bool thin_vote_route_gate() noexcept { return thin_vote_gate; } // the loader's readable policy and bookends; hook_device's enable
+bool screen_emission_route_enabled() noexcept {
+    return screen_emission_requested;
+} // the one gate the loader's scan enable shares
+bool bolt_footprint_requested_gate() noexcept {
+    return bolt_footprint_requested;
+} // the second consumer of the loader's scan enable
+bool thin_vote_route_gate() noexcept {
+    return thin_vote_gate;
+} // the loader's readable policy and bookends; hook_device's enable
 // The lens bracket's listener (src/proxy/sun_occlusion.h): the engine's render thread, inside its
 // `call 0x0047e6e0` for the lens scene, under the thunk's full CPU-state boundary.
-void sun_lens_begin() { CaptureLock lock; for(auto& entry:devices) entry.second->motion_output.sun_occlusion_begin(); }
-void sun_lens_end() { CaptureLock lock; for(auto& entry:devices) entry.second->motion_output.sun_occlusion_end(); }
+void sun_lens_begin() {
+    CaptureLock lock;
+    for (auto& entry : devices) entry.second->motion_output.sun_occlusion_begin();
+}
+void sun_lens_end() {
+    CaptureLock lock;
+    for (auto& entry : devices) entry.second->motion_output.sun_occlusion_end();
+}
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
 // Seam only: the render-thread cost of log() (format + append, no file I/O) per row, its worst single call, the calls
 // over 100 us and 1 ms, and the rows the buffer dropped while the writer drained; wall_ms covers the whole burst.
 void log_fixture_bench(unsigned rows) {
-    static char pad[1601]; std::memset(pad,'x',1600); pad[1600]=0; // with the prefix about one motion_output_frame row (1,765 B)
-    LARGE_INTEGER frequency{},begin{},a{},b{},end{}; QueryPerformanceFrequency(&frequency);
-    const unsigned dropped=session_log::dropped_total();
-    unsigned long long total=0,worst=0; unsigned over_100us=0,over_1ms=0;
+    static char pad[1601];
+    std::memset(pad, 'x', 1600);
+    pad[1600] = 0; // with the prefix about one motion_output_frame row (1,765 B)
+    LARGE_INTEGER frequency{}, begin{}, a{}, b{}, end{};
+    QueryPerformanceFrequency(&frequency);
+    const unsigned dropped = session_log::dropped_total();
+    unsigned long long total = 0, worst = 0;
+    unsigned over_100us = 0, over_1ms = 0;
     QueryPerformanceCounter(&begin);
-    for(unsigned i=0;i<rows;++i){
+    for (unsigned i = 0; i < rows; ++i) {
         QueryPerformanceCounter(&a);
-        log("log_bench_row i=%u value=%.3f pad=%s",i,double(i)*.5,pad);
+        log("log_bench_row i=%u value=%.3f pad=%s", i, double(i) * .5, pad);
         QueryPerformanceCounter(&b);
-        const unsigned long long t=static_cast<unsigned long long>(b.QuadPart-a.QuadPart);
-        total+=t; if(t>worst)worst=t;
-        over_100us+=t*10000ull>static_cast<unsigned long long>(frequency.QuadPart); over_1ms+=t*1000ull>static_cast<unsigned long long>(frequency.QuadPart);
+        const unsigned long long t = static_cast<unsigned long long>(b.QuadPart - a.QuadPart);
+        total += t;
+        if (t > worst) worst = t;
+        over_100us += t * 10000ull > static_cast<unsigned long long>(frequency.QuadPart);
+        over_1ms += t * 1000ull > static_cast<unsigned long long>(frequency.QuadPart);
     }
     QueryPerformanceCounter(&end);
-    const double us=1e6/double(frequency.QuadPart);
-    log("log_bench rows=%u row_bytes=%u mean_us=%.3f max_us=%.1f over_100us=%u over_1ms=%u wall_ms=%.1f dropped=%u",rows,1600u+34u,
-        double(total)*us/double(rows),double(worst)*us,over_100us,over_1ms,double(end.QuadPart-begin.QuadPart)*us/1000.,session_log::dropped_total()-dropped);
+    const double us = 1e6 / double(frequency.QuadPart);
+    log("log_bench rows=%u row_bytes=%u mean_us=%.3f max_us=%.1f over_100us=%u over_1ms=%u wall_ms=%.1f dropped=%u",
+        rows, 1600u + 34u, double(total) * us / double(rows), double(worst) * us, over_100us, over_1ms,
+        double(end.QuadPart - begin.QuadPart) * us / 1000., session_log::dropped_total() - dropped);
 }
 #endif
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
 LONG WINAPI fixture_exception_resume(EXCEPTION_POINTERS* info) {
-    return info&&info->ExceptionRecord&&info->ExceptionRecord->ExceptionCode==EXCEPTION_ACCESS_VIOLATION&&info->ExceptionRecord->NumberParameters==2&&
-        info->ExceptionRecord->ExceptionInformation[1]==0x0badf00du?EXCEPTION_CONTINUE_EXECUTION:EXCEPTION_CONTINUE_SEARCH;
+    return info && info->ExceptionRecord && info->ExceptionRecord->ExceptionCode == EXCEPTION_ACCESS_VIOLATION &&
+                   info->ExceptionRecord->NumberParameters == 2 &&
+                   info->ExceptionRecord->ExceptionInformation[1] == 0x0badf00du
+               ? EXCEPTION_CONTINUE_EXECUTION
+               : EXCEPTION_CONTINUE_SEARCH;
 }
 void log_fixture_exception() {
     log("fixture_exception_marker before=1");
-    const ULONG_PTR information[2]={0,0x0badf00du}; // a read of 0x0badf00d, handled by nobody: it reaches the crash filter
-    RaiseException(EXCEPTION_ACCESS_VIOLATION,0,2,information);
+    const ULONG_PTR information[2] = {0, 0x0badf00du}; // a read of 0x0badf00d, handled by nobody: it reaches the crash
+                                                       // filter
+    RaiseException(EXCEPTION_ACCESS_VIOLATION, 0, 2, information);
     log("fixture_exception_marker after=1");
 }
-bool fixture_exception_requested() { wchar_t raise[4]{}; return GetEnvironmentVariableW(L"X3M_FIXTURE_EXCEPTION",raise,4)==1&&raise[0]==L'1'; }
+bool fixture_exception_requested() {
+    wchar_t raise[4]{};
+    return GetEnvironmentVariableW(L"X3M_FIXTURE_EXCEPTION", raise, 4) == 1 && raise[0] == L'1';
+}
 #endif
 void initialize_log(HMODULE module) {
     // x3m.ini and the defaults (docs/architecture/config-file.md): first, so every read below, the tier flags and the
@@ -2846,14 +3873,14 @@ void initialize_log(HMODULE module) {
     // follows the captures directory.
     // Rows are buffered in memory from here on and written by one writer thread (started after
     // telemetry::initialize below): no file I/O on a game thread after this point.
-    session_log::Opened opened=session_log::open(module);
-    directory=opened.captures;
-    log("log_open file=%s source=%s previous=%s session=%s stale_removed=%u%s",opened.path.c_str(),opened.source,opened.previous,opened.session,
-        opened.stale_removed,opened.override_failed?" override=failed":"");
+    session_log::Opened opened = session_log::open(module);
+    directory = opened.captures;
+    log("log_open file=%s source=%s previous=%s session=%s stale_removed=%u%s", opened.path.c_str(), opened.source,
+        opened.previous, opened.session, opened.stale_removed, opened.override_failed ? " override=failed" : "");
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     // Seam only: the filter that resumes the seam's own access violation, installed first, so the session log's crash
     // filter chains to it (the way it chains to whatever filter the process had).
-    if(fixture_exception_requested())SetUnhandledExceptionFilter(&fixture_exception_resume);
+    if (fixture_exception_requested()) SetUnhandledExceptionFilter(&fixture_exception_resume);
 #endif
     session_log::arm_exception_witness(module); // the crash filter: one exception row for the first unhandled exception
     {
@@ -2861,10 +3888,16 @@ void initialize_log(HMODULE module) {
         // runs in the "C" locale and drops the whole line on a character it
         // cannot represent (a non-ASCII user name under %LOCALAPPDATA%, a
         // non-ASCII game path). The profile prefix is redacted (logging-tiers.md section 6).
-        std::string utf8(static_cast<std::size_t>(WideCharToMultiByte(CP_UTF8,0,directory.c_str(),-1,nullptr,0,nullptr,nullptr)),'\0');
-        if(utf8.size()>1) utf8.resize(static_cast<std::size_t>(WideCharToMultiByte(CP_UTF8,0,directory.c_str(),-1,&utf8[0],static_cast<int>(utf8.size()),nullptr,nullptr))-1);
-        else utf8.clear();
-        log("capture_dir=%s source=%s",session_log::redact_path(utf8).c_str(),opened.captures_source);
+        std::string utf8(static_cast<std::size_t>(
+                             WideCharToMultiByte(CP_UTF8, 0, directory.c_str(), -1, nullptr, 0, nullptr, nullptr)),
+                         '\0');
+        if (utf8.size() > 1)
+            utf8.resize(static_cast<std::size_t>(WideCharToMultiByte(CP_UTF8, 0, directory.c_str(), -1, &utf8[0],
+                                                                     static_cast<int>(utf8.size()), nullptr, nullptr)) -
+                        1);
+        else
+            utf8.clear();
+        log("capture_dir=%s source=%s", session_log::redact_path(utf8).c_str(), opened.captures_source);
     }
     // Wall-clock anchor of this session (docs/verification/sampling-profiler.md,
     // "Audio correlation"): one UTC instant read next to one QueryPerformanceCounter
@@ -2875,27 +3908,34 @@ void initialize_log(HMODULE module) {
     {
         // GetSystemTimePreciseAsFileTime is documented since Windows 8; resolved
         // dynamically so an older system falls back to the coarser documented call.
-        using PreciseTimeFn=void(WINAPI*)(LPFILETIME);
-        const HMODULE kernel=GetModuleHandleW(L"kernel32.dll");
-        const FARPROC precise_proc=kernel?GetProcAddress(kernel,"GetSystemTimePreciseAsFileTime"):nullptr;
-        const PreciseTimeFn precise=precise_proc?reinterpret_cast<PreciseTimeFn>(reinterpret_cast<void*>(precise_proc)):nullptr; // via void*: -Wcast-function-type (fixture builds use -Werror)
-        LARGE_INTEGER counter{},frequency{};
+        using PreciseTimeFn = void(WINAPI*)(LPFILETIME);
+        const HMODULE kernel = GetModuleHandleW(L"kernel32.dll");
+        const FARPROC precise_proc = kernel ? GetProcAddress(kernel, "GetSystemTimePreciseAsFileTime") : nullptr;
+        const PreciseTimeFn precise = precise_proc
+                                          ? reinterpret_cast<PreciseTimeFn>(reinterpret_cast<void*>(precise_proc))
+                                          : nullptr; // via void*: -Wcast-function-type (fixture builds use -Werror)
+        LARGE_INTEGER counter{}, frequency{};
         FILETIME utc{};
         QueryPerformanceFrequency(&frequency);
         QueryPerformanceCounter(&counter);
-        if(precise) precise(&utc); else GetSystemTimeAsFileTime(&utc);
+        if (precise)
+            precise(&utc);
+        else
+            GetSystemTimeAsFileTime(&utc);
         TIME_ZONE_INFORMATION zone{};
-        const DWORD kind=GetTimeZoneInformation(&zone);
+        const DWORD kind = GetTimeZoneInformation(&zone);
         // Win32 states UTC = local + bias, so the local offset is the negated bias.
-        const long bias=kind==TIME_ZONE_ID_INVALID?0:zone.Bias+(kind==TIME_ZONE_ID_DAYLIGHT?zone.DaylightBias:zone.StandardBias);
+        const long bias = kind == TIME_ZONE_ID_INVALID
+                              ? 0
+                              : zone.Bias + (kind == TIME_ZONE_ID_DAYLIGHT ? zone.DaylightBias : zone.StandardBias);
         SYSTEMTIME moment{};
-        if(FileTimeToSystemTime(&utc,&moment))
+        if (FileTimeToSystemTime(&utc, &moment))
             log("clock_anchor utc=%04u-%02u-%02uT%02u:%02u:%02u.%03uZ qpc=%llu qpc_frequency=%llu local_offset_min=%ld",
-                unsigned(moment.wYear),unsigned(moment.wMonth),unsigned(moment.wDay),unsigned(moment.wHour),unsigned(moment.wMinute),
-                unsigned(moment.wSecond),unsigned(moment.wMilliseconds),
-                counter.QuadPart>0?static_cast<unsigned long long>(counter.QuadPart):0ull,
-                frequency.QuadPart>0?static_cast<unsigned long long>(frequency.QuadPart):0ull,
-                kind==TIME_ZONE_ID_INVALID?0l:-bias);
+                unsigned(moment.wYear), unsigned(moment.wMonth), unsigned(moment.wDay), unsigned(moment.wHour),
+                unsigned(moment.wMinute), unsigned(moment.wSecond), unsigned(moment.wMilliseconds),
+                counter.QuadPart > 0 ? static_cast<unsigned long long>(counter.QuadPart) : 0ull,
+                frequency.QuadPart > 0 ? static_cast<unsigned long long>(frequency.QuadPart) : 0ull,
+                kind == TIME_ZONE_ID_INVALID ? 0l : -bias);
     }
     // Session identity ahead of every derived *_mode line, so that a gameplay
     // log always names the DLL and the options it came from (docs/architecture/
@@ -2904,50 +3944,67 @@ void initialize_log(HMODULE module) {
     proxy_identity::log_identity(module);
     config::log_rows(); // config_open, config_key, config_file: what x3m.ini contributed (always tier)
     wchar_t setting[32]{};
-    if(x3m::config::get(L"X3M_CAPTURE_START",setting,32)>0) capture_start=wcstoul(setting,nullptr,10); // launcher 999999, fixtures their start
-    if(x3m::config::get(L"X3M_CAPTURE_FRAMES",setting,32)>0) capture_count=wcstoul(setting,nullptr,10);
+    if (x3m::config::get(L"X3M_CAPTURE_START", setting, 32) > 0)
+        capture_start = wcstoul(setting, nullptr, 10); // launcher 999999, fixtures their start
+    if (x3m::config::get(L"X3M_CAPTURE_FRAMES", setting, 32) > 0) capture_count = wcstoul(setting, nullptr, 10);
     // 64: a plain frame counter (ctx.remaining); above 8 serves the raw TAA
     // debug dumps (about 40 MB per 1280x768 frame), see tools/manage.py.
-    if(capture_count>64) capture_count=64;
+    if (capture_count > 64) capture_count = 64;
     // X3M_FRAME_END_STRIDE (1..100000): frames between frame_end lines. An explicit
     // valid value wins; unset or invalid: 1 with a logging group, else the default
     // 3600 (about one row a minute). frame_end_stride_mode is logged for any
     // stride but the default.
-    {   bool given=false;
-        if(x3m::config::get(L"X3M_FRAME_END_STRIDE",setting,32)>0){
-            wchar_t* stop=nullptr; const unsigned long v=wcstoul(setting,&stop,10);
-            if(stop!=setting&&*stop==L'\0'&&v>=1&&v<=frame_end_stride_max){frame_end_stride=unsigned(v);given=true;}
+    {
+        bool given = false;
+        if (x3m::config::get(L"X3M_FRAME_END_STRIDE", setting, 32) > 0) {
+            wchar_t* stop = nullptr;
+            const unsigned long v = wcstoul(setting, &stop, 10);
+            if (stop != setting && *stop == L'\0' && v >= 1 && v <= frame_end_stride_max) {
+                frame_end_stride = unsigned(v);
+                given = true;
+            }
         }
-        if(!given)frame_end_stride=log_tier::cadence_default(log_tier::perf()||log_tier::debug(),1u,frame_end_stride_default);
-        if(frame_end_stride!=frame_end_stride_default)log("frame_end_stride_mode stride=%u",frame_end_stride);
+        if (!given)
+            frame_end_stride = log_tier::cadence_default(log_tier::perf() || log_tier::debug(), 1u,
+                                                         frame_end_stride_default);
+        if (frame_end_stride != frame_end_stride_default) log("frame_end_stride_mode stride=%u", frame_end_stride);
     }
     // X3M_FPS_OVERLAY=1 (default off): the on-screen frame-rate line, on for the session.
-    fps_overlay_requested=log_tier::perf_flag(L"X3M_FPS_OVERLAY"); // X3M_FPS_OVERLAY=1 or X3M_PERF=1
-    shadow_timing_requested=log_tier::perf_flag(L"X3M_SHADOW_TIMING");
-    shadow_rows_requested=log_tier::debug_flag(L"X3M_SHADOW_ROWS");
-    if(fps_overlay_requested)log("fps_overlay_mode requested=1 refresh_ms=250 window_ms=1000");
-    // X3M_GPU_SYNC_TIMING=1 (default off): serialising event-query spins at the proxy's pass boundaries (one diagnostic flight).
-    gpu_sync_timing_requested=x3m::config::get(L"X3M_GPU_SYNC_TIMING",setting,32)==1 && setting[0]==L'1';
-    if(gpu_sync_timing_requested)log("gpu_sync_timing_mode requested=1 passes=%u boundaries=%u window=%u serialises=1",gpu_sync_timing::pass_count,gpu_sync_timing::boundary_count,gpu_sync_timing::window_frames_default);
-    scene_depth_capture_requested=x3m::config::get(L"X3M_SCENE_DEPTH_CAPTURE",setting,32)==1 && setting[0]==L'1';
-    finite_positions_requested=x3m::config::get(L"X3M_FINITE_POSITIONS",setting,32)==1 && setting[0]==L'1';
-    motion_capture_requested=x3m::config::get(L"X3M_MOTION_CAPTURE",setting,32)==1 && setting[0]==L'1' &&
-        scene_depth_capture_requested && finite_positions_requested;
-    log("motion_capture_mode requested=%u enabled=0 reason=write_exclusion_unavailable scope=private_rigid_diagnostic temporal_consumer=0",motion_capture_requested);
-    motion_output_requested=x3m::config::get(L"X3M_MOTION_OUTPUT",setting,32)==1 && setting[0]==L'1';
+    fps_overlay_requested = log_tier::perf_flag(L"X3M_FPS_OVERLAY"); // X3M_FPS_OVERLAY=1 or X3M_PERF=1
+    shadow_timing_requested = log_tier::perf_flag(L"X3M_SHADOW_TIMING");
+    shadow_rows_requested = log_tier::debug_flag(L"X3M_SHADOW_ROWS");
+    if (fps_overlay_requested) log("fps_overlay_mode requested=1 refresh_ms=250 window_ms=1000");
+    // X3M_GPU_SYNC_TIMING=1 (default off): serialising event-query spins at the proxy's pass boundaries (one diagnostic
+    // flight).
+    gpu_sync_timing_requested = x3m::config::get(L"X3M_GPU_SYNC_TIMING", setting, 32) == 1 && setting[0] == L'1';
+    if (gpu_sync_timing_requested)
+        log("gpu_sync_timing_mode requested=1 passes=%u boundaries=%u window=%u serialises=1",
+            gpu_sync_timing::pass_count, gpu_sync_timing::boundary_count, gpu_sync_timing::window_frames_default);
+    scene_depth_capture_requested = x3m::config::get(L"X3M_SCENE_DEPTH_CAPTURE", setting, 32) == 1 &&
+                                    setting[0] == L'1';
+    finite_positions_requested = x3m::config::get(L"X3M_FINITE_POSITIONS", setting, 32) == 1 && setting[0] == L'1';
+    motion_capture_requested = x3m::config::get(L"X3M_MOTION_CAPTURE", setting, 32) == 1 && setting[0] == L'1' &&
+                               scene_depth_capture_requested && finite_positions_requested;
+    log("motion_capture_mode requested=%u enabled=0 reason=write_exclusion_unavailable scope=private_rigid_diagnostic temporal_consumer=0",
+        motion_capture_requested);
+    motion_output_requested = x3m::config::get(L"X3M_MOTION_OUTPUT", setting, 32) == 1 && setting[0] == L'1';
     // Per-draw jitter (off by default) with its Halton sample count, and the
     // cut detector bounds (median origin displacement at 1280 px width,
     // missing-key fraction); see docs/architecture/temporal-integration.md.
-    motion_jitter_requested=x3m::config::get(L"X3M_MOTION_JITTER",setting,32)==1 && setting[0]==L'1';
-    if(x3m::config::get(L"X3M_MOTION_JITTER_SAMPLES",setting,32)>0){const unsigned long n=wcstoul(setting,nullptr,10);if(n>=2&&n<=64)motion_jitter_samples=unsigned(n);}
-    if(x3m::config::get(L"X3M_MOTION_CUT_MEDIAN_PX",setting,32)>0)motion_cut_median_px=wcstof(setting,nullptr);
-    if(x3m::config::get(L"X3M_MOTION_CUT_MISSING",setting,32)>0)motion_cut_missing=wcstof(setting,nullptr);
+    motion_jitter_requested = x3m::config::get(L"X3M_MOTION_JITTER", setting, 32) == 1 && setting[0] == L'1';
+    if (x3m::config::get(L"X3M_MOTION_JITTER_SAMPLES", setting, 32) > 0) {
+        const unsigned long n = wcstoul(setting, nullptr, 10);
+        if (n >= 2 && n <= 64) motion_jitter_samples = unsigned(n);
+    }
+    if (x3m::config::get(L"X3M_MOTION_CUT_MEDIAN_PX", setting, 32) > 0) motion_cut_median_px = wcstof(setting, nullptr);
+    if (x3m::config::get(L"X3M_MOTION_CUT_MISSING", setting, 32) > 0) motion_cut_missing = wcstof(setting, nullptr);
     // The temporal resolve at the bloom copy (temporal step 3): requires the
     // route and implies the jitter; X3M_TAA_DEBUG=<n> (n > 0) writes the
     // resolved FP16 image and the pre-resolve color in capture frames.
-    taa_requested=motion_output_requested && x3m::config::get(L"X3M_TAA",setting,32)==1 && setting[0]==L'1';
-    if(taa_requested)motion_jitter_requested=true;
-    taa_debug_requested=taa_requested && x3m::config::get(L"X3M_TAA_DEBUG",setting,32)>0 && wcstoul(setting,nullptr,10)>0;
+    taa_requested = motion_output_requested && x3m::config::get(L"X3M_TAA", setting, 32) == 1 && setting[0] == L'1';
+    if (taa_requested) motion_jitter_requested = true;
+    taa_debug_requested = taa_requested && x3m::config::get(L"X3M_TAA_DEBUG", setting, 32) > 0 &&
+                          wcstoul(setting, nullptr, 10) > 0;
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     // Seam only: X3M_FIXTURE_TAA_K=<k> (0 <= k <= 65504) fixes the resolve's
     // luminance-weighting constant on the FP16 scene (0: the unweighted
@@ -2955,7 +4012,11 @@ void initialize_log(HMODULE module) {
     // the write-back's exposure (0 is a valid value, so a failed conversion,
     // which wcstof reports as 0, must not be taken: the whole string has to be
     // consumed). Production never reads it: k is always derived.
-    if(GetEnvironmentVariableW(L"X3M_FIXTURE_TAA_K",setting,32)>0){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&*end==L'\0'&&v>=0.f&&v<=65504.f)taa_k_override=v;}
+    if (GetEnvironmentVariableW(L"X3M_FIXTURE_TAA_K", setting, 32) > 0) {
+        wchar_t* end = nullptr;
+        const float v = wcstof(setting, &end);
+        if (end != setting && *end == L'\0' && v >= 0.f && v <= 65504.f) taa_k_override = v;
+    }
 #endif
     // X3M_TAA_MIP_BIAS=<bias> (-8 <= bias <= 8, whole string consumed; unset or
     // invalid: -0.5 with the TAA resolve on, otherwise off): requires the route
@@ -2963,89 +4024,204 @@ void initialize_log(HMODULE module) {
     // only while the jitter is active. An explicit 0 disables it (the launcher
     // always forwards a value in TAA mode, so this fallback covers a direct
     // WINEDLLOVERRIDES start).
-    taa_mip_bias=taa_requested?-0.5f:0.f;
-    if(motion_jitter_requested && x3m::config::get(L"X3M_TAA_MIP_BIAS",setting,32)>0){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&*end==L'\0'&&v>=-8.f&&v<=8.f)taa_mip_bias=v;}
+    taa_mip_bias = taa_requested ? -0.5f : 0.f;
+    if (motion_jitter_requested && x3m::config::get(L"X3M_TAA_MIP_BIAS", setting, 32) > 0) {
+        wchar_t* end = nullptr;
+        const float v = wcstof(setting, &end);
+        if (end != setting && *end == L'\0' && v >= -8.f && v <= 8.f) taa_mip_bias = v;
+    }
     // X3M_TAA_SHARPEN=<s> (0 <= s <= 1): the post-resolve sharpen; the whole
     // string must parse (0 is off, so a failed conversion must not be taken).
     // Unset or invalid with the resolve on: 0.75; off entirely without TAA.
-    taa_sharpen=taa_requested?0.75f:0.f;
-    if(taa_requested&&x3m::config::get(L"X3M_TAA_SHARPEN",setting,32)>0){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&*end==L'\0'&&v>=0.f&&v<=1.f)taa_sharpen=v;}
-    // X3M_TAA_FAR_STABILISER=<W>[,<A>[,<F0>,<F1>[,<LO>,<HI>]]] (0 <= LO < HI <= 64 px/frame, the weight's speed gate) (docs/architecture/taa-distant-line-fade.md section 9; unset: off):
-    // W 0 or 0.5..0.99 (checked against the history weight at attach), A 0..4, 0 < F0 < F1 <= 1e6 units per pixel.
-    // The whole string must parse (1, 2, 4 or 6 fields); anything else keeps the option off.
-    {wchar_t far_setting[64];const DWORD length=taa_requested?x3m::config::get(L"X3M_TAA_FAR_STABILISER",far_setting,64):0;
-        if(length>0&&length<64){float v[6]={0.f,0.f,60.f,68.f,.03f,.25f};unsigned count=0;wchar_t* cursor=far_setting;bool ok=true;
-            while(ok&&count<6){wchar_t* end=nullptr;v[count]=wcstof(cursor,&end);ok=end!=cursor;++count;if(!ok||*end==L'\0')break;ok=*end==L',';cursor=end+1;if(count==6)ok=false;}
-            ok=ok&&(count==1||count==2||count==4||count==6)&&v[4]>=0.f&&v[5]>v[4]&&v[5]<=64.f&&(v[0]==0.f||(v[0]>=.5f&&v[0]<=.99f))&&v[1]>=0.f&&v[1]<=4.f&&v[2]>0.f&&v[3]>v[2]&&v[3]<=1e6f;
-            if(ok)for(unsigned i=0;i<6;++i)taa_far[i]=v[i];else log("taa_far_setting invalid=1");}
-        else if(length>=64)log("taa_far_setting invalid=1 reason=too_long length=%lu",length);}
-    // X3M_TAA_THIN_REGION=<W>[,<RELAX>[,<LO>,<HI>]] (docs/architecture/taa-lattice-crawl.md section 13; unset: off): W 0 or
-    // 0.5..0.99, RELAX 0..1 (default 1: clip off on the region), 0 <= LO < HI <= 64 px/frame (given: replaces the far
-    // stabiliser's gate, which the two share). 1, 2 or 4 fields; anything else keeps the option off.
-    {wchar_t thin_setting[48];const DWORD length=taa_requested?x3m::config::get(L"X3M_TAA_THIN_REGION",thin_setting,48):0;
-        if(length>0&&length<48){float v[4]={0.f,1.f,.03f,.25f};unsigned count=0;wchar_t* cursor=thin_setting;bool ok=true;
-            while(ok&&count<4){wchar_t* end=nullptr;v[count]=wcstof(cursor,&end);ok=end!=cursor;++count;if(!ok||*end==L'\0')break;ok=*end==L',';cursor=end+1;if(count==4)ok=false;}
-            ok=ok&&(count==1||count==2||count==4)&&(v[0]==0.f||(v[0]>=.5f&&v[0]<=.99f))&&v[1]>=0.f&&v[1]<=1.f&&v[2]>=0.f&&v[3]>v[2]&&v[3]<=64.f;
-            if(ok){for(unsigned i=0;i<4;++i)taa_thin_region[i]=v[i];taa_thin_gate_given=count==4;}else log("taa_thin_region_setting invalid=1");}
-        else if(length>=48)log("taa_thin_region_setting invalid=1 reason=too_long length=%lu",length);}
-    // X3M_TAA_THIN_REGION_EMISSIVE=<E> (docs/architecture/thin-glow-lines.md 8.3 R3; unset or 0: off, the mask bit for bit):
-    // E >= 0 in scene luma also puts a routed local luminance peak (own luma above E, 3x3 luma minimum below that luma / 3)
-    // into the thin region, so thin emissive strips on distant hulls take the region's history weight. One field; anything
-    // else, or the thin region off, keeps it off. Suggested 1.0 (hull 0.16, strips 1.6-3.7 in run231's capture) with X3M_HDR=1:
-    // the 8-bit route's scene copy is display-referred, so no E >= 1 can fire there.
-    {wchar_t emissive_setting[32];const DWORD length=taa_requested?x3m::config::get(L"X3M_TAA_THIN_REGION_EMISSIVE",emissive_setting,32):0;
-        if(length>0&&length<32){wchar_t* end=nullptr;const float v=wcstof(emissive_setting,&end);
-            if(end!=emissive_setting&&*end==L'\0'&&v>=0.f&&v<=65000.f)taa_thin_emissive=v;else log("taa_thin_region_emissive_setting invalid=1");}
-        else if(length>=32)log("taa_thin_region_emissive_setting invalid=1 reason=too_long length=%lu",length);}
+    taa_sharpen = taa_requested ? 0.75f : 0.f;
+    if (taa_requested && x3m::config::get(L"X3M_TAA_SHARPEN", setting, 32) > 0) {
+        wchar_t* end = nullptr;
+        const float v = wcstof(setting, &end);
+        if (end != setting && *end == L'\0' && v >= 0.f && v <= 1.f) taa_sharpen = v;
+    }
+    // X3M_TAA_FAR_STABILISER=<W>[,<A>[,<F0>,<F1>[,<LO>,<HI>]]] (0 <= LO < HI <= 64 px/frame, the weight's speed gate)
+    // (docs/architecture/taa-distant-line-fade.md section 9; unset: off): W 0 or 0.5..0.99 (checked against the history
+    // weight at attach), A 0..4, 0 < F0 < F1 <= 1e6 units per pixel. The whole string must parse (1, 2, 4 or 6 fields);
+    // anything else keeps the option off.
+    {
+        wchar_t far_setting[64];
+        const DWORD length = taa_requested ? x3m::config::get(L"X3M_TAA_FAR_STABILISER", far_setting, 64) : 0;
+        if (length > 0 && length < 64) {
+            float v[6] = {0.f, 0.f, 60.f, 68.f, .03f, .25f};
+            unsigned count = 0;
+            wchar_t* cursor = far_setting;
+            bool ok = true;
+            while (ok && count < 6) {
+                wchar_t* end = nullptr;
+                v[count] = wcstof(cursor, &end);
+                ok = end != cursor;
+                ++count;
+                if (!ok || *end == L'\0') break;
+                ok = *end == L',';
+                cursor = end + 1;
+                if (count == 6) ok = false;
+            }
+            ok = ok && (count == 1 || count == 2 || count == 4 || count == 6) && v[4] >= 0.f && v[5] > v[4] &&
+                 v[5] <= 64.f && (v[0] == 0.f || (v[0] >= .5f && v[0] <= .99f)) && v[1] >= 0.f && v[1] <= 4.f &&
+                 v[2] > 0.f && v[3] > v[2] && v[3] <= 1e6f;
+            if (ok)
+                for (unsigned i = 0; i < 6; ++i) taa_far[i] = v[i];
+            else
+                log("taa_far_setting invalid=1");
+        } else if (length >= 64)
+            log("taa_far_setting invalid=1 reason=too_long length=%lu", length);
+    }
+    // X3M_TAA_THIN_REGION=<W>[,<RELAX>[,<LO>,<HI>]] (docs/architecture/taa-lattice-crawl.md section 13; unset: off): W
+    // 0 or 0.5..0.99, RELAX 0..1 (default 1: clip off on the region), 0 <= LO < HI <= 64 px/frame (given: replaces the
+    // far stabiliser's gate, which the two share). 1, 2 or 4 fields; anything else keeps the option off.
+    {
+        wchar_t thin_setting[48];
+        const DWORD length = taa_requested ? x3m::config::get(L"X3M_TAA_THIN_REGION", thin_setting, 48) : 0;
+        if (length > 0 && length < 48) {
+            float v[4] = {0.f, 1.f, .03f, .25f};
+            unsigned count = 0;
+            wchar_t* cursor = thin_setting;
+            bool ok = true;
+            while (ok && count < 4) {
+                wchar_t* end = nullptr;
+                v[count] = wcstof(cursor, &end);
+                ok = end != cursor;
+                ++count;
+                if (!ok || *end == L'\0') break;
+                ok = *end == L',';
+                cursor = end + 1;
+                if (count == 4) ok = false;
+            }
+            ok = ok && (count == 1 || count == 2 || count == 4) && (v[0] == 0.f || (v[0] >= .5f && v[0] <= .99f)) &&
+                 v[1] >= 0.f && v[1] <= 1.f && v[2] >= 0.f && v[3] > v[2] && v[3] <= 64.f;
+            if (ok) {
+                for (unsigned i = 0; i < 4; ++i) taa_thin_region[i] = v[i];
+                taa_thin_gate_given = count == 4;
+            } else
+                log("taa_thin_region_setting invalid=1");
+        } else if (length >= 48)
+            log("taa_thin_region_setting invalid=1 reason=too_long length=%lu", length);
+    }
+    // X3M_TAA_THIN_REGION_EMISSIVE=<E> (docs/architecture/thin-glow-lines.md 8.3 R3; unset or 0: off, the mask bit for
+    // bit): E >= 0 in scene luma also puts a routed local luminance peak (own luma above E, 3x3 luma minimum below that
+    // luma / 3) into the thin region, so thin emissive strips on distant hulls take the region's history weight. One
+    // field; anything else, or the thin region off, keeps it off. Suggested 1.0 (hull 0.16, strips 1.6-3.7 in run231's
+    // capture) with X3M_HDR=1: the 8-bit route's scene copy is display-referred, so no E >= 1 can fire there.
+    {
+        wchar_t emissive_setting[32];
+        const DWORD length = taa_requested ? x3m::config::get(L"X3M_TAA_THIN_REGION_EMISSIVE", emissive_setting, 32)
+                                           : 0;
+        if (length > 0 && length < 32) {
+            wchar_t* end = nullptr;
+            const float v = wcstof(emissive_setting, &end);
+            if (end != emissive_setting && *end == L'\0' && v >= 0.f && v <= 65000.f)
+                taa_thin_emissive = v;
+            else
+                log("taa_thin_region_emissive_setting invalid=1");
+        } else if (length >= 32)
+            log("taa_thin_region_emissive_setting invalid=1 reason=too_long length=%lu", length);
+    }
     // The camera-relative gate (section 32.1, Run 59): the thin region's only gate since the screen-speed gate's option
     // (X3M_TAA_THIN_REGION_GATE) was removed on 2026-09-25; on whenever the thin region is.
-    taa_thin_camera_gate=taa_requested&&taa_thin_region[0]>0.f;
+    taa_thin_camera_gate = taa_requested && taa_thin_region[0] > 0.f;
     // X3M_TAA_HISTORY_WEIGHT=<w> (0.5 <= w <= 0.98; unset: 0.9): the resolve's history weight (docs/verification/
     // motion-output.md, "Run 139"). The whole string must parse; an invalid value keeps the default.
-    if(taa_requested&&x3m::config::get(L"X3M_TAA_HISTORY_WEIGHT",setting,32)>0){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&*end==L'\0'&&v>=.5f&&v<=.98f)taa_history_weight=v;}
+    if (taa_requested && x3m::config::get(L"X3M_TAA_HISTORY_WEIGHT", setting, 32) > 0) {
+        wchar_t* end = nullptr;
+        const float v = wcstof(setting, &end);
+        if (end != setting && *end == L'\0' && v >= .5f && v <= .98f) taa_history_weight = v;
+    }
     // Flicker suppression (docs/architecture/taa-flicker-suppression.md), off
     // when unset or invalid: X3M_TAA_ALPHA_HISTORY=1 (HDR route only). The thin
     // clip and adaptive weight were removed 2026-09-23 (cleanup batch 6).
     // GetEnvironmentVariableW returns the required size (>= 32) without writing
     // when the value does not fit, leaving the previous variable's text in the
     // buffer: such a value is invalid (option off, one log line), never parsed.
-    auto flicker_setting=[&](const wchar_t* name,const char* label){const DWORD length=x3m::config::get(name,setting,32);if(length>=32){log("taa_flicker_setting name=%s invalid=1 reason=too_long length=%lu",label,length);return false;}return length>0;};
-    taa_alpha_history=taa_requested&&flicker_setting(L"X3M_TAA_ALPHA_HISTORY","X3M_TAA_ALPHA_HISTORY")&&setting[0]==L'1'&&setting[1]==L'\0';
+    auto flicker_setting = [&](const wchar_t* name, const char* label) {
+        const DWORD length = x3m::config::get(name, setting, 32);
+        if (length >= 32) {
+            log("taa_flicker_setting name=%s invalid=1 reason=too_long length=%lu", label, length);
+            return false;
+        }
+        return length > 0;
+    };
+    taa_alpha_history = taa_requested && flicker_setting(L"X3M_TAA_ALPHA_HISTORY", "X3M_TAA_ALPHA_HISTORY") &&
+                        setting[0] == L'1' && setting[1] == L'\0';
     // The FP16 HDR scene path (stage 1: redirect, identity write-back) needs
     // the route's hooks and selector.
-    hdr_requested=motion_output_requested && x3m::config::get(L"X3M_HDR",setting,32)==1 && setting[0]==L'1';
-    hdr_config=x3m::renderer::HdrConfig{};
+    hdr_requested = motion_output_requested && x3m::config::get(L"X3M_HDR", setting, 32) == 1 && setting[0] == L'1';
+    hdr_config = x3m::renderer::HdrConfig{};
     // The selected production appearance is Auto capped at +1.3 EV. Keep
     // standalone component defaults independent; fixed EV0 remains available.
-    hdr_config.exposure=x3m::renderer::ExposureMode::Auto;
-    hdr_config.params.ev_max=1.3f;
-    hdr_config.allow_auto_toggle=true;
-    if(x3m::config::get(L"X3M_HDR_TONEMAP",setting,32)>0 && (!wcscmp(setting,L"agx")||!wcscmp(setting,L"1")))hdr_config.tonemap=x3m::renderer::HdrTonemap::Agx;
-    if(x3m::config::get(L"X3M_HDR_DECODE",setting,32)>0){
-        if(!wcscmp(setting,L"none"))hdr_config.decode=x3::temporal::AgxDecode::none;
-        else if(!wcscmp(setting,L"srgb"))hdr_config.decode=x3::temporal::AgxDecode::srgb;
-        else hdr_config.decode=x3::temporal::AgxDecode::gamma22; // gamma2.2 | pow22 | gamma
+    hdr_config.exposure = x3m::renderer::ExposureMode::Auto;
+    hdr_config.params.ev_max = 1.3f;
+    hdr_config.allow_auto_toggle = true;
+    if (x3m::config::get(L"X3M_HDR_TONEMAP", setting, 32) > 0 && (!wcscmp(setting, L"agx") || !wcscmp(setting, L"1")))
+        hdr_config.tonemap = x3m::renderer::HdrTonemap::Agx;
+    if (x3m::config::get(L"X3M_HDR_DECODE", setting, 32) > 0) {
+        if (!wcscmp(setting, L"none"))
+            hdr_config.decode = x3::temporal::AgxDecode::none;
+        else if (!wcscmp(setting, L"srgb"))
+            hdr_config.decode = x3::temporal::AgxDecode::srgb;
+        else
+            hdr_config.decode = x3::temporal::AgxDecode::gamma22; // gamma2.2 | pow22 | gamma
     }
-    if(x3m::config::get(L"X3M_HDR_LOOK",setting,32)>0){
-        if(!wcscmp(setting,L"golden"))hdr_config.look=x3::temporal::AgxLook::golden;
-        else if(!wcscmp(setting,L"punchy"))hdr_config.look=x3::temporal::AgxLook::punchy;
+    if (x3m::config::get(L"X3M_HDR_LOOK", setting, 32) > 0) {
+        if (!wcscmp(setting, L"golden"))
+            hdr_config.look = x3::temporal::AgxLook::golden;
+        else if (!wcscmp(setting, L"punchy"))
+            hdr_config.look = x3::temporal::AgxLook::punchy;
     }
-    {const DWORD n=x3m::config::get(L"X3M_HDR_CLAMP",setting,32);if(n>0&&n<32){const float v=wcstof(setting,nullptr);if(v>0&&v<=65504.f)hdr_config.clamp_max=v;}}
+    {
+        const DWORD n = x3m::config::get(L"X3M_HDR_CLAMP", setting, 32);
+        if (n > 0 && n < 32) {
+            const float v = wcstof(setting, nullptr);
+            if (v > 0 && v <= 65504.f) hdr_config.clamp_max = v;
+        }
+    }
     // X3M_HDR_DITHER=1|on: +-0.5 code static display dither of every write of
     // the FP16 image into the 8-bit target (off when unset; the launcher's
     // --hdr-dither defaults to on).
-    {const DWORD n=x3m::config::get(L"X3M_HDR_DITHER",setting,32);if(n>0&&n<32)hdr_config.dither=!wcscmp(setting,L"1")||!wcscmp(setting,L"on");}
-    const DWORD exposure_length=x3m::config::get(L"X3M_HDR_EXPOSURE",setting,32);
-    if(exposure_length>0)hdr_config.exposure=(exposure_length<32 && !wcscmp(setting,L"auto"))
-        ? x3m::renderer::ExposureMode::Auto : x3m::renderer::ExposureMode::Manual;
-    if(x3m::config::get(L"X3M_HDR_EV_MANUAL",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>=-16.f&&v<=16.f){hdr_config.exposure=x3m::renderer::ExposureMode::Manual;hdr_config.ev_manual=v;}}
-    if(x3m::config::get(L"X3M_HDR_EV",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>=-16.f&&v<=16.f)hdr_config.params.ev_offset=v;}
-    if(x3m::config::get(L"X3M_HDR_KEY",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>0&&v<=64.f)hdr_config.params.key=v;}
-    if(x3m::config::get(L"X3M_HDR_EV_MIN",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>=-16.f&&v<=16.f)hdr_config.params.ev_min=v;}
-    if(x3m::config::get(L"X3M_HDR_EV_MAX",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>=-16.f&&v<=16.f)hdr_config.params.ev_max=v;}
-    if(hdr_config.params.ev_min>hdr_config.params.ev_max)hdr_config.params.ev_min=hdr_config.params.ev_max;
-    if(x3m::config::get(L"X3M_HDR_ADAPT_UP",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>0&&v<=60.f)hdr_config.params.tau_up=v;}
-    if(x3m::config::get(L"X3M_HDR_ADAPT_DOWN",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>0&&v<=60.f)hdr_config.params.tau_down=v;}
+    {
+        const DWORD n = x3m::config::get(L"X3M_HDR_DITHER", setting, 32);
+        if (n > 0 && n < 32) hdr_config.dither = !wcscmp(setting, L"1") || !wcscmp(setting, L"on");
+    }
+    const DWORD exposure_length = x3m::config::get(L"X3M_HDR_EXPOSURE", setting, 32);
+    if (exposure_length > 0)
+        hdr_config.exposure = (exposure_length < 32 && !wcscmp(setting, L"auto")) ? x3m::renderer::ExposureMode::Auto
+                                                                                  : x3m::renderer::ExposureMode::Manual;
+    if (x3m::config::get(L"X3M_HDR_EV_MANUAL", setting, 32) > 0) {
+        const float v = wcstof(setting, nullptr);
+        if (v >= -16.f && v <= 16.f) {
+            hdr_config.exposure = x3m::renderer::ExposureMode::Manual;
+            hdr_config.ev_manual = v;
+        }
+    }
+    if (x3m::config::get(L"X3M_HDR_EV", setting, 32) > 0) {
+        const float v = wcstof(setting, nullptr);
+        if (v >= -16.f && v <= 16.f) hdr_config.params.ev_offset = v;
+    }
+    if (x3m::config::get(L"X3M_HDR_KEY", setting, 32) > 0) {
+        const float v = wcstof(setting, nullptr);
+        if (v > 0 && v <= 64.f) hdr_config.params.key = v;
+    }
+    if (x3m::config::get(L"X3M_HDR_EV_MIN", setting, 32) > 0) {
+        const float v = wcstof(setting, nullptr);
+        if (v >= -16.f && v <= 16.f) hdr_config.params.ev_min = v;
+    }
+    if (x3m::config::get(L"X3M_HDR_EV_MAX", setting, 32) > 0) {
+        const float v = wcstof(setting, nullptr);
+        if (v >= -16.f && v <= 16.f) hdr_config.params.ev_max = v;
+    }
+    if (hdr_config.params.ev_min > hdr_config.params.ev_max) hdr_config.params.ev_min = hdr_config.params.ev_max;
+    if (x3m::config::get(L"X3M_HDR_ADAPT_UP", setting, 32) > 0) {
+        const float v = wcstof(setting, nullptr);
+        if (v > 0 && v <= 60.f) hdr_config.params.tau_up = v;
+    }
+    if (x3m::config::get(L"X3M_HDR_ADAPT_DOWN", setting, 32) > 0) {
+        const float v = wcstof(setting, nullptr);
+        if (v > 0 && v <= 60.f) hdr_config.params.tau_down = v;
+    }
     // Configuration only: reject truncation and malformed values before a
     // zero-valued control can silently disable a meter safeguard.
     const auto meter_parameter = [&](const wchar_t* name, float low, float high, float& output) {
@@ -3058,53 +4234,75 @@ void initialize_log(HMODULE module) {
     meter_parameter(L"X3M_HDR_KEY_PULL", 0.f, 1.f, hdr_config.params.key_pull);
     meter_parameter(L"X3M_HDR_EV_DEADBAND", 0.f, 8.f, hdr_config.params.ev_deadband);
     meter_parameter(L"X3M_HDR_METER_EDGE_WEIGHT", 0.f, 1.f, hdr_config.params.meter_edge_weight);
-    if(x3m::config::get(L"X3M_HDR_DT_MS",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>0&&v<=1000.f)hdr_config.fixed_dt=v/1000.f;}
-    const bool material_requested=x3m::config::get(L"X3M_LINEAR_MATERIALS",setting,32)==1 && setting[0]==L'1';
-    linear_material_config=x3m::renderer::LinearMaterialConfig{};
+    if (x3m::config::get(L"X3M_HDR_DT_MS", setting, 32) > 0) {
+        const float v = wcstof(setting, nullptr);
+        if (v > 0 && v <= 1000.f) hdr_config.fixed_dt = v / 1000.f;
+    }
+    const bool material_requested = x3m::config::get(L"X3M_LINEAR_MATERIALS", setting, 32) == 1 && setting[0] == L'1';
+    linear_material_config = x3m::renderer::LinearMaterialConfig{};
     // Production material mode uses a small readability floor. Keep the
     // shared config's zero default for explicit K=0 byte-identical artifacts.
-    linear_material_config.fill=0.05f;
-    bool material_config_valid=true;
-    const auto material_gain = [&](const wchar_t* name,float& output,float maximum=16.f) {
+    linear_material_config.fill = 0.05f;
+    bool material_config_valid = true;
+    const auto material_gain = [&](const wchar_t* name, float& output, float maximum = 16.f) {
         SetLastError(ERROR_SUCCESS);
-        const DWORD length=x3m::config::get(name,setting,32);
-        if(!length && GetLastError()==ERROR_ENVVAR_NOT_FOUND)return;
-        if(!length || length>=32){material_config_valid=false;return;}
-        wchar_t* end=nullptr;
-        const float value=wcstof(setting,&end);
-        if(end==setting || *end || !std::isfinite(value) || value<0.f || value>maximum){material_config_valid=false;return;}
-        output=value;
+        const DWORD length = x3m::config::get(name, setting, 32);
+        if (!length && GetLastError() == ERROR_ENVVAR_NOT_FOUND) return;
+        if (!length || length >= 32) {
+            material_config_valid = false;
+            return;
+        }
+        wchar_t* end = nullptr;
+        const float value = wcstof(setting, &end);
+        if (end == setting || *end || !std::isfinite(value) || value < 0.f || value > maximum) {
+            material_config_valid = false;
+            return;
+        }
+        output = value;
     };
-    material_gain(L"X3M_MATERIAL_DIRECT_GAIN",linear_material_config.direct_gain);
-    material_gain(L"X3M_MATERIAL_EMISSIVE_GAIN",linear_material_config.material_emissive_gain);
-    material_gain(L"X3M_LIGHTMAP_EMISSIVE_GAIN",linear_material_config.lightmap_emissive_gain);
+    material_gain(L"X3M_MATERIAL_DIRECT_GAIN", linear_material_config.direct_gain);
+    material_gain(L"X3M_MATERIAL_EMISSIVE_GAIN", linear_material_config.material_emissive_gain);
+    material_gain(L"X3M_LIGHTMAP_EMISSIVE_GAIN", linear_material_config.lightmap_emissive_gain);
     // Constant hemispherical fill, 0..0.5. Explicit 0 is off and produces
     // byte-identical shader programs (docs/architecture/fill-light.md).
-    material_gain(L"X3M_MATERIAL_FILL",linear_material_config.fill,0.5f);
+    material_gain(L"X3M_MATERIAL_FILL", linear_material_config.fill, 0.5f);
     // Unlike the legacy decoder's permissive aliases, an explicit unknown or
     // truncated decode setting cannot authorize the material color contract.
-    const DWORD material_decode_length=x3m::config::get(L"X3M_HDR_DECODE",setting,32);
-    const bool material_decode_valid=material_decode_length<32 && (!material_decode_length || !wcscmp(setting,L"gamma2.2") || !wcscmp(setting,L"pow22") || !wcscmp(setting,L"gamma"));
-    const DWORD material_tonemap_length=x3m::config::get(L"X3M_HDR_TONEMAP",setting,32);
-    const bool material_tonemap_valid=material_tonemap_length>0 && material_tonemap_length<32 && (!wcscmp(setting,L"agx") || !wcscmp(setting,L"1"));
-    linear_material_requested=material_requested && material_config_valid && material_decode_valid && material_tonemap_valid && motion_output_requested && hdr_requested
-        && hdr_config.tonemap==x3m::renderer::HdrTonemap::Agx && hdr_config.decode==x3::temporal::AgxDecode::gamma22;
-    if(material_requested)
+    const DWORD material_decode_length = x3m::config::get(L"X3M_HDR_DECODE", setting, 32);
+    const bool material_decode_valid = material_decode_length < 32 &&
+                                       (!material_decode_length || !wcscmp(setting, L"gamma2.2") ||
+                                        !wcscmp(setting, L"pow22") || !wcscmp(setting, L"gamma"));
+    const DWORD material_tonemap_length = x3m::config::get(L"X3M_HDR_TONEMAP", setting, 32);
+    const bool material_tonemap_valid = material_tonemap_length > 0 && material_tonemap_length < 32 &&
+                                        (!wcscmp(setting, L"agx") || !wcscmp(setting, L"1"));
+    linear_material_requested = material_requested && material_config_valid && material_decode_valid &&
+                                material_tonemap_valid && motion_output_requested && hdr_requested &&
+                                hdr_config.tonemap == x3m::renderer::HdrTonemap::Agx &&
+                                hdr_config.decode == x3::temporal::AgxDecode::gamma22;
+    if (material_requested)
         log("linear_material_mode requested=1 enabled=%u config_valid=%u decode_valid=%u tonemap_valid=%u direct_gain=%g material_emissive_gain=%g lightmap_emissive_gain=%g fill=%g",
-            linear_material_requested,material_config_valid,material_decode_valid,material_tonemap_valid,double(linear_material_config.direct_gain),
-            double(linear_material_config.material_emissive_gain),double(linear_material_config.lightmap_emissive_gain),double(linear_material_config.fill));
-    const bool emission_requested=x3m::config::get(L"X3M_LINEAR_EMISSIONS",setting,32)==1 && setting[0]==L'1';
-    emission_gain=1.f;
-    const bool saved_material_valid=material_config_valid;
-    material_config_valid=true; material_gain(L"X3M_EMISSION_GAIN",emission_gain);
-    const bool emission_config_valid=material_config_valid; material_config_valid=saved_material_valid;
-    linear_emission_requested=emission_requested && emission_config_valid && material_decode_valid && material_tonemap_valid
-        && motion_output_requested && taa_requested && hdr_requested
-        && hdr_config.tonemap==x3m::renderer::HdrTonemap::Agx && hdr_config.decode==x3::temporal::AgxDecode::gamma22;
-    if(emission_requested) log("linear_emission_mode requested=1 enabled=%u config_valid=%u gain=%g",linear_emission_requested,emission_config_valid,double(emission_gain));
-    const bool fade_requested=x3m::config::get(L"X3M_LINEAR_DISTANCE_FADE",setting,32)==1 && setting[0]==L'1';
-    linear_distance_fade_requested=fade_requested && linear_material_requested && taa_requested;
-    if(fade_requested)log("linear_distance_fade_mode requested=1 enabled=%u materials=%u taa=%u",linear_distance_fade_requested,linear_material_requested,taa_requested);
+            linear_material_requested, material_config_valid, material_decode_valid, material_tonemap_valid,
+            double(linear_material_config.direct_gain), double(linear_material_config.material_emissive_gain),
+            double(linear_material_config.lightmap_emissive_gain), double(linear_material_config.fill));
+    const bool emission_requested = x3m::config::get(L"X3M_LINEAR_EMISSIONS", setting, 32) == 1 && setting[0] == L'1';
+    emission_gain = 1.f;
+    const bool saved_material_valid = material_config_valid;
+    material_config_valid = true;
+    material_gain(L"X3M_EMISSION_GAIN", emission_gain);
+    const bool emission_config_valid = material_config_valid;
+    material_config_valid = saved_material_valid;
+    linear_emission_requested = emission_requested && emission_config_valid && material_decode_valid &&
+                                material_tonemap_valid && motion_output_requested && taa_requested && hdr_requested &&
+                                hdr_config.tonemap == x3m::renderer::HdrTonemap::Agx &&
+                                hdr_config.decode == x3::temporal::AgxDecode::gamma22;
+    if (emission_requested)
+        log("linear_emission_mode requested=1 enabled=%u config_valid=%u gain=%g", linear_emission_requested,
+            emission_config_valid, double(emission_gain));
+    const bool fade_requested = x3m::config::get(L"X3M_LINEAR_DISTANCE_FADE", setting, 32) == 1 && setting[0] == L'1';
+    linear_distance_fade_requested = fade_requested && linear_material_requested && taa_requested;
+    if (fade_requested)
+        log("linear_distance_fade_mode requested=1 enabled=%u materials=%u taa=%u", linear_distance_fade_requested,
+            linear_material_requested, taa_requested);
     // X3M_FADE_ROUTE=<permille>|off (default 500): the fade-band motion arm
     // threshold (docs/architecture/linear-distance-fade-region.md, "Fade-band
     // route"). The arm needs TAA and the FP16 HDR scene, not the material
@@ -3114,41 +4312,64 @@ void initialize_log(HMODULE module) {
     // the default and is reported as source=default. The line is emitted at
     // startup whether or not the variable is set: the default-on arm leaves
     // startup evidence of its threshold.
-    fade_route_threshold=500;
-    bool fade_route_from_env=false;
-    {const DWORD length=x3m::config::get(L"X3M_FADE_ROUTE",setting,32);
-     if(length>0&&length<32){
-        if(!wcscmp(setting,L"off")){fade_route_threshold=x3m::fade_route::threshold_off;fade_route_from_env=true;}
-        else{bool digits=true;for(DWORD i=0;i<length;++i)digits=digits&&setting[i]>=L'0'&&setting[i]<=L'9';
-             const unsigned long n=digits?wcstoul(setting,nullptr,10):1001ul;
-             if(digits&&n<=1000ul){fade_route_threshold=unsigned(n);fade_route_from_env=true;}}}}
+    fade_route_threshold = 500;
+    bool fade_route_from_env = false;
+    {
+        const DWORD length = x3m::config::get(L"X3M_FADE_ROUTE", setting, 32);
+        if (length > 0 && length < 32) {
+            if (!wcscmp(setting, L"off")) {
+                fade_route_threshold = x3m::fade_route::threshold_off;
+                fade_route_from_env = true;
+            } else {
+                bool digits = true;
+                for (DWORD i = 0; i < length; ++i) digits = digits && setting[i] >= L'0' && setting[i] <= L'9';
+                const unsigned long n = digits ? wcstoul(setting, nullptr, 10) : 1001ul;
+                if (digits && n <= 1000ul) {
+                    fade_route_threshold = unsigned(n);
+                    fade_route_from_env = true;
+                }
+            }
+        }
+    }
     log("fade_route_mode threshold=%u hysteresis=%u enabled=%u taa=%u hdr=%u linear_materials=%u source=%s",
-        fade_route_threshold,unsigned(x3m::fade_route::Hysteresis::band),
-        unsigned(fade_route_threshold<=1000u&&taa_requested&&hdr_requested),
-        unsigned(taa_requested),unsigned(hdr_requested),unsigned(linear_material_requested),
-        fade_route_from_env?"env":"default");
+        fade_route_threshold, unsigned(x3m::fade_route::Hysteresis::band),
+        unsigned(fade_route_threshold <= 1000u && taa_requested && hdr_requested), unsigned(taa_requested),
+        unsigned(hdr_requested), unsigned(linear_material_requested), fade_route_from_env ? "env" : "default");
     // X3M_SCREEN_EMISSION=1: the packed screen bracket (policy 8) for the
     // nine SM1 screen pairs; the same HDR/TAA prerequisites as the additive
     // emission route (the pass composes into the AgX FP16 scene, whose
     // encoding is the native one with or without linear hulls:
     // docs/architecture/linear-material-decoupling.md). Default off.
-    {const bool asked=x3m::config::get(L"X3M_SCREEN_EMISSION",setting,32)==1 && setting[0]==L'1';
-     const bool screen_hdr=material_decode_valid && material_tonemap_valid && motion_output_requested && hdr_requested
-        && hdr_config.tonemap==x3m::renderer::HdrTonemap::Agx && hdr_config.decode==x3::temporal::AgxDecode::gamma22;
-     // The bound comes from the ownership Unlock scan (loader.cpp): without
-     // X3M_OWNERSHIP=1 there is no locked prefix, so the option is refused
-     // here like its other prerequisites instead of admitting nothing silently.
-     const bool screen_ownership=x3m::config::get(L"X3M_OWNERSHIP",setting,32)==1 && setting[0]==L'1';
-     screen_emission_requested=asked && screen_hdr && taa_requested && screen_ownership;
-     // X3M_SCREEN_EMISSION_GAIN: the step E gain g (default 1, native by
-     // construction); unparsable or outside [0.5, 8] keeps 1 and logs.
-     screen_emission_gain=1.f;bool gain_valid=true;
-     SetLastError(ERROR_SUCCESS);
-     const DWORD gain_length=x3m::config::get(L"X3M_SCREEN_EMISSION_GAIN",setting,32);
-     if(gain_length||GetLastError()!=ERROR_ENVVAR_NOT_FOUND){
-         wchar_t* end=nullptr;const float value=gain_length&&gain_length<32?wcstof(setting,&end):0.f;
-         if(gain_length&&gain_length<32&&end!=setting&&!*end&&std::isfinite(value)&&value>=.5f&&value<=8.f)screen_emission_gain=value;else gain_valid=false;}
-     if(asked)log("screen_emission_mode requested=1 enabled=%u hdr=%u taa=%u ownership=%u materials=%u policy=8 gain=%g gain_valid=%u",screen_emission_requested,screen_hdr,taa_requested,screen_ownership,linear_material_requested,double(screen_emission_gain),unsigned(gain_valid));}
+    {
+        const bool asked = x3m::config::get(L"X3M_SCREEN_EMISSION", setting, 32) == 1 && setting[0] == L'1';
+        const bool screen_hdr = material_decode_valid && material_tonemap_valid && motion_output_requested &&
+                                hdr_requested && hdr_config.tonemap == x3m::renderer::HdrTonemap::Agx &&
+                                hdr_config.decode == x3::temporal::AgxDecode::gamma22;
+        // The bound comes from the ownership Unlock scan (loader.cpp): without
+        // X3M_OWNERSHIP=1 there is no locked prefix, so the option is refused
+        // here like its other prerequisites instead of admitting nothing silently.
+        const bool screen_ownership = x3m::config::get(L"X3M_OWNERSHIP", setting, 32) == 1 && setting[0] == L'1';
+        screen_emission_requested = asked && screen_hdr && taa_requested && screen_ownership;
+        // X3M_SCREEN_EMISSION_GAIN: the step E gain g (default 1, native by
+        // construction); unparsable or outside [0.5, 8] keeps 1 and logs.
+        screen_emission_gain = 1.f;
+        bool gain_valid = true;
+        SetLastError(ERROR_SUCCESS);
+        const DWORD gain_length = x3m::config::get(L"X3M_SCREEN_EMISSION_GAIN", setting, 32);
+        if (gain_length || GetLastError() != ERROR_ENVVAR_NOT_FOUND) {
+            wchar_t* end = nullptr;
+            const float value = gain_length && gain_length < 32 ? wcstof(setting, &end) : 0.f;
+            if (gain_length && gain_length < 32 && end != setting && !*end && std::isfinite(value) && value >= .5f &&
+                value <= 8.f)
+                screen_emission_gain = value;
+            else
+                gain_valid = false;
+        }
+        if (asked)
+            log("screen_emission_mode requested=1 enabled=%u hdr=%u taa=%u ownership=%u materials=%u policy=8 gain=%g gain_valid=%u",
+                screen_emission_requested, screen_hdr, taa_requested, screen_ownership, linear_material_requested,
+                double(screen_emission_gain), unsigned(gain_valid));
+    }
     // X3M_EMISSION_SOURCE_GAIN=<g>: source-only encoded gain of the twenty
     // PS2 emission pairs (engine glow, gate, impact, muzzle and explosion
     // sprites alike; docs/architecture/linear-emission-cost.md, "Implemented"
@@ -3157,18 +4378,31 @@ void initialize_log(HMODULE module) {
     // X3M_MOTION_OUTPUT=1: the shader registration and state shadow live
     // there); no linear-material, linear-emission, TAA or ownership
     // prerequisite. Unparsable or out of range keeps 1 and logs.
-    {emission_source_gain=1.f;bool gain_valid=true;float value=1.f;
-     SetLastError(ERROR_SUCCESS);
-     const DWORD gain_length=x3m::config::get(L"X3M_EMISSION_SOURCE_GAIN",setting,32);
-     if(gain_length||GetLastError()!=ERROR_ENVVAR_NOT_FOUND){
-         wchar_t* end=nullptr;value=gain_length&&gain_length<32?wcstof(setting,&end):0.f;
-         if(gain_length&&gain_length<32&&end!=setting&&!*end&&std::isfinite(value)&&value>=1.f&&value<=8.f)emission_source_gain=value;else gain_valid=false;}
-     // Exclusive with the linear emission route: its bracket carries its own
-     // gain (X3M_EMISSION_GAIN) for the same pairs; the launcher rejects the
-     // pair of options, the DLL refuses with the reason logged.
-     const bool excluded=linear_emission_requested;
-     if(!hdr_requested||excluded)emission_source_gain=1.f;
-     if(!gain_valid||value!=1.f)log("emission_source_gain_mode requested=1 enabled=%u hdr=%u linear_emissions=%u gain=%g gain_valid=%u%s",emission_source_gain!=1.f,hdr_requested,unsigned(excluded),double(emission_source_gain),unsigned(gain_valid),excluded?" refused=linear_emissions":"");}
+    {
+        emission_source_gain = 1.f;
+        bool gain_valid = true;
+        float value = 1.f;
+        SetLastError(ERROR_SUCCESS);
+        const DWORD gain_length = x3m::config::get(L"X3M_EMISSION_SOURCE_GAIN", setting, 32);
+        if (gain_length || GetLastError() != ERROR_ENVVAR_NOT_FOUND) {
+            wchar_t* end = nullptr;
+            value = gain_length && gain_length < 32 ? wcstof(setting, &end) : 0.f;
+            if (gain_length && gain_length < 32 && end != setting && !*end && std::isfinite(value) && value >= 1.f &&
+                value <= 8.f)
+                emission_source_gain = value;
+            else
+                gain_valid = false;
+        }
+        // Exclusive with the linear emission route: its bracket carries its own
+        // gain (X3M_EMISSION_GAIN) for the same pairs; the launcher rejects the
+        // pair of options, the DLL refuses with the reason logged.
+        const bool excluded = linear_emission_requested;
+        if (!hdr_requested || excluded) emission_source_gain = 1.f;
+        if (!gain_valid || value != 1.f)
+            log("emission_source_gain_mode requested=1 enabled=%u hdr=%u linear_emissions=%u gain=%g gain_valid=%u%s",
+                emission_source_gain != 1.f, hdr_requested, unsigned(excluded), double(emission_source_gain),
+                unsigned(gain_valid), excluded ? " refused=linear_emissions" : "");
+    }
     // X3M_HULL_EMISSION_GAIN=<g>: a source gain over the twelve hull programs'
     // ADD ONE/ONE emitter draws (emitter plan phase 3; the launcher passes
     // --hull-emission-gain G, or the effects gain's value under
@@ -3177,15 +4411,28 @@ void initialize_log(HMODULE module) {
     // population can be bracketed alone;
     // the DLL refuses without HDR with the reason logged. Unparsable or out
     // of range keeps 1 and logs.
-    {hull_emission_gain=1.f;bool gain_valid=true;float value=1.f;
-     SetLastError(ERROR_SUCCESS);
-     const DWORD gain_length=x3m::config::get(L"X3M_HULL_EMISSION_GAIN",setting,32);
-     if(gain_length||GetLastError()!=ERROR_ENVVAR_NOT_FOUND){
-         wchar_t* end=nullptr;value=gain_length&&gain_length<32?wcstof(setting,&end):0.f;
-         if(gain_length&&gain_length<32&&end!=setting&&!*end&&std::isfinite(value)&&value>=1.f&&value<=8.f)hull_emission_gain=value;else gain_valid=false;}
-     const bool excluded=!hdr_requested;
-     if(excluded)hull_emission_gain=1.f;
-     if(!gain_valid||value!=1.f)log("hull_emission_gain_mode requested=1 enabled=%u source_gain=%g gain=%g gain_valid=%u%s",hull_emission_gain!=1.f,double(emission_source_gain),double(hull_emission_gain),unsigned(gain_valid),excluded?" refused=hdr":"");}
+    {
+        hull_emission_gain = 1.f;
+        bool gain_valid = true;
+        float value = 1.f;
+        SetLastError(ERROR_SUCCESS);
+        const DWORD gain_length = x3m::config::get(L"X3M_HULL_EMISSION_GAIN", setting, 32);
+        if (gain_length || GetLastError() != ERROR_ENVVAR_NOT_FOUND) {
+            wchar_t* end = nullptr;
+            value = gain_length && gain_length < 32 ? wcstof(setting, &end) : 0.f;
+            if (gain_length && gain_length < 32 && end != setting && !*end && std::isfinite(value) && value >= 1.f &&
+                value <= 8.f)
+                hull_emission_gain = value;
+            else
+                gain_valid = false;
+        }
+        const bool excluded = !hdr_requested;
+        if (excluded) hull_emission_gain = 1.f;
+        if (!gain_valid || value != 1.f)
+            log("hull_emission_gain_mode requested=1 enabled=%u source_gain=%g gain=%g gain_valid=%u%s",
+                hull_emission_gain != 1.f, double(emission_source_gain), double(hull_emission_gain),
+                unsigned(gain_valid), excluded ? " refused=hdr" : "");
+    }
     // X3M_ORIGINAL_FILL=<k>: fill in linear light inside the ORIGINAL hull
     // pixel programs (docs/architecture/original-shading-critique.md 1a,
     // option C): finite 0..0.5, 0 (unset) is off; the launcher sends 0.02 on
@@ -3195,20 +4442,35 @@ void initialize_log(HMODULE module) {
     // the motion-output registry and the FP16 scene (X3M_HDR=1); no TAA,
     // ownership or tonemap prerequisite. Unparsable or out of range keeps 0
     // and logs.
-    {original_fill=0.f;bool fill_valid=true;float value=0.f;
-     SetLastError(ERROR_SUCCESS);
-     const DWORD fill_length=x3m::config::get(L"X3M_ORIGINAL_FILL",setting,32);
-     if(fill_length||GetLastError()!=ERROR_ENVVAR_NOT_FOUND){
-         wchar_t* end=nullptr;value=fill_length&&fill_length<32?wcstof(setting,&end):0.f;
-         if(fill_length&&fill_length<32&&end!=setting&&!*end&&std::isfinite(value)&&value>=0.f&&value<=.5f)original_fill=value;else fill_valid=false;}
-     // Exclusive with the linear-material route: its converted programs carry
-     // their own fill (X3M_MATERIAL_FILL); the launcher rejects the pair of
-     // options, the DLL refuses with the reason logged.
-     const bool excluded=linear_material_requested;
-     if(!hdr_requested||excluded)original_fill=0.f;
-     // The launcher's marker counts only with an enabled fill and only as exactly "1".
-     const bool fill_default=original_fill!=0.f&&x3m::config::get(L"X3M_ORIGINAL_FILL_DEFAULT",setting,32)==1&&setting[0]==L'1';
-     if(!fill_valid||value!=0.f)log("original_fill_mode requested=1 enabled=%u hdr=%u linear_materials=%u fill=%g fill_valid=%u default=%u%s",original_fill!=0.f,hdr_requested,unsigned(excluded),double(original_fill),unsigned(fill_valid),unsigned(fill_default),excluded?" refused=linear_materials":"");}
+    {
+        original_fill = 0.f;
+        bool fill_valid = true;
+        float value = 0.f;
+        SetLastError(ERROR_SUCCESS);
+        const DWORD fill_length = x3m::config::get(L"X3M_ORIGINAL_FILL", setting, 32);
+        if (fill_length || GetLastError() != ERROR_ENVVAR_NOT_FOUND) {
+            wchar_t* end = nullptr;
+            value = fill_length && fill_length < 32 ? wcstof(setting, &end) : 0.f;
+            if (fill_length && fill_length < 32 && end != setting && !*end && std::isfinite(value) && value >= 0.f &&
+                value <= .5f)
+                original_fill = value;
+            else
+                fill_valid = false;
+        }
+        // Exclusive with the linear-material route: its converted programs carry
+        // their own fill (X3M_MATERIAL_FILL); the launcher rejects the pair of
+        // options, the DLL refuses with the reason logged.
+        const bool excluded = linear_material_requested;
+        if (!hdr_requested || excluded) original_fill = 0.f;
+        // The launcher's marker counts only with an enabled fill and only as exactly "1".
+        const bool fill_default = original_fill != 0.f &&
+                                  x3m::config::get(L"X3M_ORIGINAL_FILL_DEFAULT", setting, 32) == 1 &&
+                                  setting[0] == L'1';
+        if (!fill_valid || value != 0.f)
+            log("original_fill_mode requested=1 enabled=%u hdr=%u linear_materials=%u fill=%g fill_valid=%u default=%u%s",
+                original_fill != 0.f, hdr_requested, unsigned(excluded), double(original_fill), unsigned(fill_valid),
+                unsigned(fill_default), excluded ? " refused=linear_materials" : "");
+    }
     // X3M_HULL_LIGHTMAP_GAIN=<g>: a gain on the light-map (self-illumination)
     // term inside the ORIGINAL hull pixel programs (station windows and hull
     // lights; docs/reverse-engineering/hull-self-illumination.md 5): finite
@@ -3217,39 +4479,77 @@ void initialize_log(HMODULE module) {
     // FP16 scene (X3M_HDR=1) only; exclusive with the linear-material route,
     // whose converted programs carry X3M_LIGHTMAP_EMISSIVE_GAIN. Unparsable or
     // out of range keeps 1 and logs.
-    {hull_lightmap_gain=1.f;bool gain_valid=true;float value=1.f;
-     SetLastError(ERROR_SUCCESS);
-     const DWORD gain_length=x3m::config::get(L"X3M_HULL_LIGHTMAP_GAIN",setting,32);
-     if(gain_length||GetLastError()!=ERROR_ENVVAR_NOT_FOUND){
-         wchar_t* end=nullptr;value=gain_length&&gain_length<32?wcstof(setting,&end):0.f;
-         if(gain_length&&gain_length<32&&end!=setting&&!*end&&std::isfinite(value)&&value>=1.f&&value<=8.f)hull_lightmap_gain=value;else gain_valid=false;}
-     const bool excluded=linear_material_requested;
-     if(!hdr_requested||excluded)hull_lightmap_gain=1.f;
-     if(!gain_valid||value!=1.f)log("hull_lightmap_gain_mode requested=1 enabled=%u hdr=%u linear_materials=%u gain=%g gain_valid=%u%s",hull_lightmap_gain!=1.f,hdr_requested,unsigned(excluded),double(hull_lightmap_gain),unsigned(gain_valid),excluded?" refused=linear_materials":!hdr_requested?" refused=hdr":"");}
+    {
+        hull_lightmap_gain = 1.f;
+        bool gain_valid = true;
+        float value = 1.f;
+        SetLastError(ERROR_SUCCESS);
+        const DWORD gain_length = x3m::config::get(L"X3M_HULL_LIGHTMAP_GAIN", setting, 32);
+        if (gain_length || GetLastError() != ERROR_ENVVAR_NOT_FOUND) {
+            wchar_t* end = nullptr;
+            value = gain_length && gain_length < 32 ? wcstof(setting, &end) : 0.f;
+            if (gain_length && gain_length < 32 && end != setting && !*end && std::isfinite(value) && value >= 1.f &&
+                value <= 8.f)
+                hull_lightmap_gain = value;
+            else
+                gain_valid = false;
+        }
+        const bool excluded = linear_material_requested;
+        if (!hdr_requested || excluded) hull_lightmap_gain = 1.f;
+        if (!gain_valid || value != 1.f)
+            log("hull_lightmap_gain_mode requested=1 enabled=%u hdr=%u linear_materials=%u gain=%g gain_valid=%u%s",
+                hull_lightmap_gain != 1.f, hdr_requested, unsigned(excluded), double(hull_lightmap_gain),
+                unsigned(gain_valid),
+                excluded         ? " refused=linear_materials"
+                : !hdr_requested ? " refused=hdr"
+                                 : "");
+    }
     // X3M_LIGHT_MAP_FAR_FADE=P0,P1[,G] (taa-distant-line-fade.md section 11):
     // the gain above fades to G (default 1, the game's own brightness; 0..gain)
     // as the draw's pixel footprint grows from P0 to P1 world units per pixel
     // (finite, 0 < P0 < P1). Unset or empty = off; malformed, out of range or
     // no gain to fade keeps it off and logs.
-    {lightmap_far_fade_requested=false;lightmap_far_fade[0]=lightmap_far_fade[1]=0.f;lightmap_far_fade[2]=1.f;
-     wchar_t fade_setting[96]{};
-     const DWORD fade_length=x3m::config::get(L"X3M_LIGHT_MAP_FAR_FADE",fade_setting,96);
-     if(fade_length){
-         float parsed[3]={0.f,0.f,1.f};unsigned count=0;bool valid=fade_length<96;
-         const wchar_t* at=fade_setting;
-         while(valid&&count<3){
-             wchar_t* end=nullptr;parsed[count]=wcstof(at,&end);
-             if(end==at||!std::isfinite(parsed[count])){valid=false;break;}
-             ++count;if(!*end)break;
-             if(*end!=L','||count==3){valid=false;break;}
-             at=end+1;}
-         valid=valid&&count>=2&&parsed[0]>0.f&&parsed[1]>parsed[0]&&parsed[1]<=1e6f&&parsed[2]>=0.f&&parsed[2]<=hull_lightmap_gain;
-         const bool gained=hull_lightmap_gain!=1.f;
-         lightmap_far_fade_requested=valid&&gained;
-         if(lightmap_far_fade_requested){lightmap_far_fade[0]=parsed[0];lightmap_far_fade[1]=parsed[1];lightmap_far_fade[2]=parsed[2];
-             camera_state::request_consumer();} // the footprint's P[0]: armed only for an accepted value
-         log("light_map_far_fade_mode requested=1 enabled=%u valid=%u p0=%g p1=%g floor=%g gain=%g%s",unsigned(lightmap_far_fade_requested),unsigned(valid),
-             double(parsed[0]),double(parsed[1]),double(parsed[2]),double(hull_lightmap_gain),valid&&!gained?" refused=no_gain":"");}}
+    {
+        lightmap_far_fade_requested = false;
+        lightmap_far_fade[0] = lightmap_far_fade[1] = 0.f;
+        lightmap_far_fade[2] = 1.f;
+        wchar_t fade_setting[96]{};
+        const DWORD fade_length = x3m::config::get(L"X3M_LIGHT_MAP_FAR_FADE", fade_setting, 96);
+        if (fade_length) {
+            float parsed[3] = {0.f, 0.f, 1.f};
+            unsigned count = 0;
+            bool valid = fade_length < 96;
+            const wchar_t* at = fade_setting;
+            while (valid && count < 3) {
+                wchar_t* end = nullptr;
+                parsed[count] = wcstof(at, &end);
+                if (end == at || !std::isfinite(parsed[count])) {
+                    valid = false;
+                    break;
+                }
+                ++count;
+                if (!*end) break;
+                if (*end != L',' || count == 3) {
+                    valid = false;
+                    break;
+                }
+                at = end + 1;
+            }
+            valid = valid && count >= 2 && parsed[0] > 0.f && parsed[1] > parsed[0] && parsed[1] <= 1e6f &&
+                    parsed[2] >= 0.f && parsed[2] <= hull_lightmap_gain;
+            const bool gained = hull_lightmap_gain != 1.f;
+            lightmap_far_fade_requested = valid && gained;
+            if (lightmap_far_fade_requested) {
+                lightmap_far_fade[0] = parsed[0];
+                lightmap_far_fade[1] = parsed[1];
+                lightmap_far_fade[2] = parsed[2];
+                camera_state::request_consumer();
+            } // the footprint's P[0]: armed only for an accepted value
+            log("light_map_far_fade_mode requested=1 enabled=%u valid=%u p0=%g p1=%g floor=%g gain=%g%s",
+                unsigned(lightmap_far_fade_requested), unsigned(valid), double(parsed[0]), double(parsed[1]),
+                double(parsed[2]), double(hull_lightmap_gain), valid && !gained ? " refused=no_gain" : "");
+        }
+    }
     // X3M_HULL_EMISSIVE_WIDENING=K[,B] (docs/architecture/hull-emissive-widening.md 8.3):
     // the gained hull variants' light-map fetch widens to a k x k pixel
     // footprint (texldd with the pixel's own gradients times k), k =
@@ -3258,62 +4558,93 @@ void initialize_log(HMODULE module) {
     // are boosted by B (finite, 1 < K <= 8, 1 <= B <= K; B defaults to K).
     // Unset or empty = off; malformed, out of range or no gain to widen keeps
     // it off and logs. No camera latch: the footprint is the light map's.
-    {hull_emissive_widening_requested=false;hull_emissive_widening[0]=1.f;hull_emissive_widening[1]=1.f;
-     wchar_t widen_setting[96]{};
-     const DWORD widen_length=x3m::config::get(L"X3M_HULL_EMISSIVE_WIDENING",widen_setting,96);
-     if(widen_length){
-         float parsed[2]={1.f,0.f};unsigned count=0;bool valid=widen_length<96;
-         const wchar_t* at=widen_setting;
-         while(valid&&count<2){
-             wchar_t* end=nullptr;parsed[count]=wcstof(at,&end);
-             if(end==at||!std::isfinite(parsed[count])){valid=false;break;}
-             ++count;if(!*end)break;
-             if(*end!=L','||count==2){valid=false;break;}
-             at=end+1;}
-         if(valid&&count==1)parsed[1]=parsed[0]; // B defaults to K (I . w for a sub-pixel strip)
-         valid=valid&&count>=1&&parsed[0]>1.f&&parsed[0]<=8.f&&parsed[1]>=1.f&&parsed[1]<=parsed[0];
-         const bool gained=hull_lightmap_gain!=1.f;
-         hull_emissive_widening_requested=valid&&gained;
-         if(hull_emissive_widening_requested){hull_emissive_widening[0]=parsed[0];hull_emissive_widening[1]=parsed[1];}
-         log("hull_emissive_widening_mode requested=1 enabled=%u valid=%u k=%g b=%g gain=%g%s",unsigned(hull_emissive_widening_requested),unsigned(valid),
-             double(parsed[0]),double(parsed[1]),double(hull_lightmap_gain),valid&&!gained?" refused=no_gain":"");}}
+    {
+        hull_emissive_widening_requested = false;
+        hull_emissive_widening[0] = 1.f;
+        hull_emissive_widening[1] = 1.f;
+        wchar_t widen_setting[96]{};
+        const DWORD widen_length = x3m::config::get(L"X3M_HULL_EMISSIVE_WIDENING", widen_setting, 96);
+        if (widen_length) {
+            float parsed[2] = {1.f, 0.f};
+            unsigned count = 0;
+            bool valid = widen_length < 96;
+            const wchar_t* at = widen_setting;
+            while (valid && count < 2) {
+                wchar_t* end = nullptr;
+                parsed[count] = wcstof(at, &end);
+                if (end == at || !std::isfinite(parsed[count])) {
+                    valid = false;
+                    break;
+                }
+                ++count;
+                if (!*end) break;
+                if (*end != L',' || count == 2) {
+                    valid = false;
+                    break;
+                }
+                at = end + 1;
+            }
+            if (valid && count == 1) parsed[1] = parsed[0]; // B defaults to K (I . w for a sub-pixel strip)
+            valid = valid && count >= 1 && parsed[0] > 1.f && parsed[0] <= 8.f && parsed[1] >= 1.f &&
+                    parsed[1] <= parsed[0];
+            const bool gained = hull_lightmap_gain != 1.f;
+            hull_emissive_widening_requested = valid && gained;
+            if (hull_emissive_widening_requested) {
+                hull_emissive_widening[0] = parsed[0];
+                hull_emissive_widening[1] = parsed[1];
+            }
+            log("hull_emissive_widening_mode requested=1 enabled=%u valid=%u k=%g b=%g gain=%g%s",
+                unsigned(hull_emissive_widening_requested), unsigned(valid), double(parsed[0]), double(parsed[1]),
+                double(hull_lightmap_gain), valid && !gained ? " refused=no_gain" : "");
+        }
+    }
     // X3M_SCREEN_EMISSION_ADDITIVE=G (finite 1..8; unset, 0 or invalid = off):
     // the additive option of the same nine screen pairs, drawn in place with
     // DESTBLEND ONE and a colour gain G into the FP16 target. Needs the
     // motion-output hooks and X3M_HDR=1 only (no TAA, ownership or linear
     // materials: no bound, no bracket); exclusive with X3M_SCREEN_EMISSION=1,
     // which wins here as the launcher already refuses the combination.
-    {screen_emission_additive_requested=false;screen_emission_additive_gain=1.f;
-     screen_emission_additive_alpha_requested=false;screen_emission_additive_alpha=1.f;wchar_t alpha_setting[32]{};
-     SetLastError(ERROR_SUCCESS);
-     const DWORD length=x3m::config::get(L"X3M_SCREEN_EMISSION_ADDITIVE",setting,32);
-     wchar_t* end=nullptr;const float value=length&&length<32?wcstof(setting,&end):0.f;
-     const bool parsed=length&&length<32&&end!=setting&&!*end;
-     if(length&&length<32&&!(parsed&&value==0.f)){ // "0" / "0.0" is the explicit off value: silent
-         const bool valid=parsed&&std::isfinite(value)&&value>=1.f&&value<=8.f;
-         const bool conflict=screen_emission_requested;
-         screen_emission_additive_requested=valid&&motion_output_requested&&hdr_requested&&!conflict;
-         if(valid)screen_emission_additive_gain=value;
-         // X3M_SCREEN_EMISSION_ADDITIVE_ALPHA=K (finite 0..1): the admitted
-         // additive draw writes k*a + D.a to the scene alpha the bloom extract
-         // weighs by, leaving the colour law G*q + D and every other emitter's
-         // authored alpha alone (bloom-per-source-attenuation.md, option 1).
-         // Absent or unparsable keeps the native law; it needs the option.
-         SetLastError(ERROR_SUCCESS);
-         wchar_t* alpha_end=nullptr;
-         const DWORD alpha_length=x3m::config::get(L"X3M_SCREEN_EMISSION_ADDITIVE_ALPHA",alpha_setting,32);
-         const bool alpha_present=alpha_length||GetLastError()!=ERROR_ENVVAR_NOT_FOUND;
-         const float alpha_value=alpha_length&&alpha_length<32?wcstof(alpha_setting,&alpha_end):-1.f;
-         const bool alpha_valid=alpha_length&&alpha_length<32&&alpha_end!=alpha_setting&&!*alpha_end
-             &&std::isfinite(alpha_value)&&alpha_value>=0.f&&alpha_value<=1.f;
-         screen_emission_additive_alpha_requested=alpha_valid&&screen_emission_additive_requested;
-         screen_emission_additive_alpha=screen_emission_additive_alpha_requested?alpha_value:1.f;
-         char alpha_text[24];
-         if(screen_emission_additive_alpha_requested)std::snprintf(alpha_text,sizeof alpha_text,"%g",double(screen_emission_additive_alpha));
-         else std::snprintf(alpha_text,sizeof alpha_text,"native");
-         log("screen_emission_additive_mode requested=1 enabled=%u gain=%g gain_valid=%u motion=%u hdr=%u packed_conflict=%u alpha=%s alpha_requested=%u alpha_valid=%u",
-             screen_emission_additive_requested,double(screen_emission_additive_gain),unsigned(valid),motion_output_requested,hdr_requested,unsigned(conflict),
-             alpha_text,unsigned(alpha_present),unsigned(alpha_valid));}}
+    {
+        screen_emission_additive_requested = false;
+        screen_emission_additive_gain = 1.f;
+        screen_emission_additive_alpha_requested = false;
+        screen_emission_additive_alpha = 1.f;
+        wchar_t alpha_setting[32]{};
+        SetLastError(ERROR_SUCCESS);
+        const DWORD length = x3m::config::get(L"X3M_SCREEN_EMISSION_ADDITIVE", setting, 32);
+        wchar_t* end = nullptr;
+        const float value = length && length < 32 ? wcstof(setting, &end) : 0.f;
+        const bool parsed = length && length < 32 && end != setting && !*end;
+        if (length && length < 32 && !(parsed && value == 0.f)) { // "0" / "0.0" is the explicit off value: silent
+            const bool valid = parsed && std::isfinite(value) && value >= 1.f && value <= 8.f;
+            const bool conflict = screen_emission_requested;
+            screen_emission_additive_requested = valid && motion_output_requested && hdr_requested && !conflict;
+            if (valid) screen_emission_additive_gain = value;
+            // X3M_SCREEN_EMISSION_ADDITIVE_ALPHA=K (finite 0..1): the admitted
+            // additive draw writes k*a + D.a to the scene alpha the bloom extract
+            // weighs by, leaving the colour law G*q + D and every other emitter's
+            // authored alpha alone (bloom-per-source-attenuation.md, option 1).
+            // Absent or unparsable keeps the native law; it needs the option.
+            SetLastError(ERROR_SUCCESS);
+            wchar_t* alpha_end = nullptr;
+            const DWORD alpha_length = x3m::config::get(L"X3M_SCREEN_EMISSION_ADDITIVE_ALPHA", alpha_setting, 32);
+            const bool alpha_present = alpha_length || GetLastError() != ERROR_ENVVAR_NOT_FOUND;
+            const float alpha_value = alpha_length && alpha_length < 32 ? wcstof(alpha_setting, &alpha_end) : -1.f;
+            const bool alpha_valid = alpha_length && alpha_length < 32 && alpha_end != alpha_setting && !*alpha_end &&
+                                     std::isfinite(alpha_value) && alpha_value >= 0.f && alpha_value <= 1.f;
+            screen_emission_additive_alpha_requested = alpha_valid && screen_emission_additive_requested;
+            screen_emission_additive_alpha = screen_emission_additive_alpha_requested ? alpha_value : 1.f;
+            char alpha_text[24];
+            if (screen_emission_additive_alpha_requested)
+                std::snprintf(alpha_text, sizeof alpha_text, "%g", double(screen_emission_additive_alpha));
+            else
+                std::snprintf(alpha_text, sizeof alpha_text, "native");
+            log("screen_emission_additive_mode requested=1 enabled=%u gain=%g gain_valid=%u motion=%u hdr=%u packed_conflict=%u alpha=%s alpha_requested=%u alpha_valid=%u",
+                screen_emission_additive_requested, double(screen_emission_additive_gain), unsigned(valid),
+                motion_output_requested, hdr_requested, unsigned(conflict), alpha_text, unsigned(alpha_present),
+                unsigned(alpha_valid));
+        }
+    }
     // X3M_BOLT_FOOTPRINT=W[,L] (px, full extents; finite, 0 < W <= 64,
     // W <= L <= 256, L defaults to 12; unset, "0" or invalid = off): the bolt
     // footprint of docs/architecture/bolt-footprint.md (option A', Run 73 B
@@ -3324,313 +4655,570 @@ void initialize_log(HMODULE module) {
     // above: motion output and X3M_HDR=1) and the ownership Unlock scan
     // (X3M_OWNERSHIP=1: the loader enables the locked-prefix scan through
     // bolt_footprint_requested()).
-    {bolt_footprint_requested=false;bolt_footprint_w=3.f;bolt_footprint_l=12.f;
-     SetLastError(ERROR_SUCCESS);
-     const DWORD length=x3m::config::get(L"X3M_BOLT_FOOTPRINT",setting,32);
-     const bool fits=length&&length<32; // a value of 31+ characters is not parsed: refused below, never silently off
-     wchar_t* end=nullptr;const float w=fits?wcstof(setting,&end):0.f;
-     const bool w_parsed=fits&&end!=setting;
-     float l=12.f;bool l_parsed=true;
-     if(w_parsed&&*end==L','){wchar_t* l_end=nullptr;l=wcstof(end+1,&l_end);l_parsed=l_end!=end+1&&!*l_end;}
-     else if(w_parsed&&*end)l_parsed=false;
-     const bool parsed=w_parsed&&l_parsed;
-     if(length&&!(parsed&&w==0.f)){ // "0" is the explicit off value: silent
-         const bool valid=parsed&&std::isfinite(w)&&std::isfinite(l)&&w>0.f&&w<=64.f&&l>=w&&l<=256.f;
-         const bool ownership=x3m::config::get(L"X3M_OWNERSHIP",setting,32)==1&&setting[0]==L'1';
-         bolt_footprint_requested=valid&&screen_emission_additive_requested&&ownership;
-         if(valid){bolt_footprint_w=w;bolt_footprint_l=l;}
-         log("bolt_footprint_mode requested=1 enabled=%u w=%g l=%g valid=%u additive=%u ownership=%u view_gate=chase_camera",
-             unsigned(bolt_footprint_requested),double(bolt_footprint_w),double(bolt_footprint_l),unsigned(valid),
-             unsigned(screen_emission_additive_requested),unsigned(ownership));}}
+    {
+        bolt_footprint_requested = false;
+        bolt_footprint_w = 3.f;
+        bolt_footprint_l = 12.f;
+        SetLastError(ERROR_SUCCESS);
+        const DWORD length = x3m::config::get(L"X3M_BOLT_FOOTPRINT", setting, 32);
+        const bool fits = length && length < 32; // a value of 31+ characters is not parsed: refused below, never
+                                                 // silently off
+        wchar_t* end = nullptr;
+        const float w = fits ? wcstof(setting, &end) : 0.f;
+        const bool w_parsed = fits && end != setting;
+        float l = 12.f;
+        bool l_parsed = true;
+        if (w_parsed && *end == L',') {
+            wchar_t* l_end = nullptr;
+            l = wcstof(end + 1, &l_end);
+            l_parsed = l_end != end + 1 && !*l_end;
+        } else if (w_parsed && *end)
+            l_parsed = false;
+        const bool parsed = w_parsed && l_parsed;
+        if (length && !(parsed && w == 0.f)) { // "0" is the explicit off value: silent
+            const bool valid = parsed && std::isfinite(w) && std::isfinite(l) && w > 0.f && w <= 64.f && l >= w &&
+                               l <= 256.f;
+            const bool ownership = x3m::config::get(L"X3M_OWNERSHIP", setting, 32) == 1 && setting[0] == L'1';
+            bolt_footprint_requested = valid && screen_emission_additive_requested && ownership;
+            if (valid) {
+                bolt_footprint_w = w;
+                bolt_footprint_l = l;
+            }
+            log("bolt_footprint_mode requested=1 enabled=%u w=%g l=%g valid=%u additive=%u ownership=%u view_gate=chase_camera",
+                unsigned(bolt_footprint_requested), double(bolt_footprint_w), double(bolt_footprint_l), unsigned(valid),
+                unsigned(screen_emission_additive_requested), unsigned(ownership));
+        }
+    }
     // X3M_SCREEN_EMISSION_TIMING=1: the option's opt-in per-frame timing
     // diagnostic (one screen_emission_frame line per Present). Needs the
     // enabled option; the option itself stays free of per-frame logging.
-    {const bool asked=x3m::config::get(L"X3M_SCREEN_EMISSION_TIMING",setting,32)==1 && setting[0]==L'1';
-     screen_emission_timing_requested=asked && screen_emission_requested;
-     if(asked)log("screen_emission_timing_mode requested=1 enabled=%u screen=%u",screen_emission_timing_requested,screen_emission_requested);}
+    {
+        const bool asked = x3m::config::get(L"X3M_SCREEN_EMISSION_TIMING", setting, 32) == 1 && setting[0] == L'1';
+        screen_emission_timing_requested = asked && screen_emission_requested;
+        if (asked)
+            log("screen_emission_timing_mode requested=1 enabled=%u screen=%u", screen_emission_timing_requested,
+                screen_emission_requested);
+    }
     // X3M_FADE_WITNESS=<k> (1..100000): every k-th frame the fade-region
     // witness reads the M coverage target back once (default off; needs the
     // distance-fade route; docs/architecture/linear-distance-fade-region.md).
-    fade_witness_frames=0;
-    {const DWORD length=x3m::config::get(L"X3M_FADE_WITNESS",setting,32);
-     if(length>0&&length<32){bool digits=true;for(DWORD i=0;i<length;++i)digits=digits&&setting[i]>=L'0'&&setting[i]<=L'9';
-        const unsigned long n=digits?wcstoul(setting,nullptr,10):0ul;if(digits&&n>=1&&n<=100000)fade_witness_frames=unsigned(n);
-        log("fade_witness_mode requested=%lu digits=%u enabled=%u fade=%u screen=%u",n,digits,fade_witness_frames&&(linear_distance_fade_requested||screen_emission_requested),linear_distance_fade_requested,screen_emission_requested);}
-     else if(length)log("fade_witness_mode requested=overlong enabled=0 fade=%u screen=%u",linear_distance_fade_requested,screen_emission_requested);}
-    bloom_requested=x3m::config::get(L"X3M_HDR_BLOOM",setting,32)==1 && setting[0]==L'1';
+    fade_witness_frames = 0;
+    {
+        const DWORD length = x3m::config::get(L"X3M_FADE_WITNESS", setting, 32);
+        if (length > 0 && length < 32) {
+            bool digits = true;
+            for (DWORD i = 0; i < length; ++i) digits = digits && setting[i] >= L'0' && setting[i] <= L'9';
+            const unsigned long n = digits ? wcstoul(setting, nullptr, 10) : 0ul;
+            if (digits && n >= 1 && n <= 100000) fade_witness_frames = unsigned(n);
+            log("fade_witness_mode requested=%lu digits=%u enabled=%u fade=%u screen=%u", n, digits,
+                fade_witness_frames && (linear_distance_fade_requested || screen_emission_requested),
+                linear_distance_fade_requested, screen_emission_requested);
+        } else if (length)
+            log("fade_witness_mode requested=overlong enabled=0 fade=%u screen=%u", linear_distance_fade_requested,
+                screen_emission_requested);
+    }
+    bloom_requested = x3m::config::get(L"X3M_HDR_BLOOM", setting, 32) == 1 && setting[0] == L'1';
     // X3M_BLOOM_SOURCE_CLAMP=C (finite, >0, at most 64): decoded-space ceiling
     // on the bloom extraction source only. Needs the bloom replacement; absent,
     // unparsable or out of range keeps today's unbounded feed.
-    {bloom_source_clamp=x3::temporal::kAgxClampOff;
-     SetLastError(ERROR_SUCCESS);
-     const DWORD length=x3m::config::get(L"X3M_BLOOM_SOURCE_CLAMP",setting,32);
-     const bool present=length||GetLastError()!=ERROR_ENVVAR_NOT_FOUND;
-     wchar_t* end=nullptr;
-     const float value=length&&length<32?wcstof(setting,&end):0.f;
-     const bool valid=length&&length<32&&end!=setting&&!*end&&std::isfinite(value)&&value>0.f&&value<=64.f;
-     if(valid&&bloom_requested)bloom_source_clamp=value;
-     // Always one line, so a log audit separates "variable absent" from "the
-     // option was never built into this DLL".
-     log("bloom_source_clamp_mode requested=%u enabled=%u clamp=%g clamp_valid=%u bloom=%u",
-         unsigned(present),unsigned(bloom_source_clamp<x3::temporal::kAgxClampOff),
-         double(value),unsigned(valid),unsigned(bloom_requested));}
-    sector_background_requested=log_tier::debug_flag(L"X3M_SECTOR_BACKGROUND"); // X3M_SECTOR_BACKGROUND=1 or X3M_DEBUG=1
+    {
+        bloom_source_clamp = x3::temporal::kAgxClampOff;
+        SetLastError(ERROR_SUCCESS);
+        const DWORD length = x3m::config::get(L"X3M_BLOOM_SOURCE_CLAMP", setting, 32);
+        const bool present = length || GetLastError() != ERROR_ENVVAR_NOT_FOUND;
+        wchar_t* end = nullptr;
+        const float value = length && length < 32 ? wcstof(setting, &end) : 0.f;
+        const bool valid = length && length < 32 && end != setting && !*end && std::isfinite(value) && value > 0.f &&
+                           value <= 64.f;
+        if (valid && bloom_requested) bloom_source_clamp = value;
+        // Always one line, so a log audit separates "variable absent" from "the
+        // option was never built into this DLL".
+        log("bloom_source_clamp_mode requested=%u enabled=%u clamp=%g clamp_valid=%u bloom=%u", unsigned(present),
+            unsigned(bloom_source_clamp < x3::temporal::kAgxClampOff), double(value), unsigned(valid),
+            unsigned(bloom_requested));
+    }
+    sector_background_requested = log_tier::debug_flag(L"X3M_SECTOR_BACKGROUND"); // X3M_SECTOR_BACKGROUND=1 or
+                                                                                  // X3M_DEBUG=1
     // X3M_VOLUMETRIC_FOG=1: the sun-lit medium at the scene end (needs the route and
     // the resolve, which accumulates the jittered march). Whole strings must
     // parse; out of range keeps the default. Strength 0 is a detached pass.
-    {const auto fog_env=[&](const wchar_t* name){const DWORD n=x3m::config::get(name,setting,32);return n>0&&n<32?n:0ul;};
-     const bool asked=fog_env(L"X3M_VOLUMETRIC_FOG")==1 && setting[0]==L'1';
-     volumetric_fog_strength=renderer::fog_strength_default;volumetric_fog_anisotropy=renderer::fog_anisotropy_default;
-     if(fog_env(L"X3M_VOLUMETRIC_FOG_STRENGTH")){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&*end==L'\0'&&v>=renderer::fog_strength_min&&v<=renderer::fog_strength_max)volumetric_fog_strength=v;}
-     // The launcher's prerequisites (tools/manage.py), so a hand-set environment cannot arm a pass that would
-     // skip every frame: the FP16 scene path, the depth replay and a cascade list (validated per device later).
-     const bool fog_replay=fog_env(L"X3M_SHADOW_REPLAY_DEPTH")==1 && setting[0]==L'1';
-     wchar_t fog_cascades[4]{};const bool fog_cascade_list=x3m::config::get(L"X3M_SHADOW_CASCADES",fog_cascades,4)>0;
-     volumetric_fog_requested=asked && motion_output_requested && taa_requested && hdr_requested && fog_replay && fog_cascade_list && volumetric_fog_strength>0.f;
-     volumetric_fog_timing=volumetric_fog_requested && (log_tier::perf() || (fog_env(L"X3M_VOLUMETRIC_FOG_TIMING")==1 && setting[0]==L'1')); // or X3M_PERF=1
-     volumetric_fog_cards_replace=volumetric_fog_requested && fog_env(L"X3M_VOLUMETRIC_FOG_CARDS")==7 && !wcscmp(setting,L"replace");
-     volumetric_fog_range_stored=volumetric_fog_requested && fog_env(L"X3M_VOLUMETRIC_FOG_RANGE")==6 && !wcscmp(setting,L"stored");
-     volumetric_fog_march_scale=renderer::fog_march_scale_default;
-     // Default on: absent or anything but exactly "0" keeps the switch (fog-handover.md, "Implementation").
-     const auto fog_default_on=[&](const wchar_t* name){return !(fog_env(name)==1 && setting[0]==L'0');};
-     volumetric_fog_handover_step=volumetric_fog_range_stored && fog_default_on(L"X3M_FOG_HANDOVER_STEP");
-     volumetric_fog_handover_coldfill=volumetric_fog_range_stored && fog_default_on(L"X3M_FOG_HANDOVER_COLDFILL");
-     volumetric_fog_docked=volumetric_fog_requested && fog_default_on(L"X3M_FOG_DOCKED");
-     volumetric_fog_prefill=volumetric_fog_range_stored && fog_default_on(L"X3M_FOG_HANDOVER_PREFILL");
-     if(asked)log("volumetric_fog_handover_mode step=%u coldfill=%u prefill=%u docked=%u walk_limit=%u stored=%u",unsigned(volumetric_fog_handover_step),
-        unsigned(volumetric_fog_handover_coldfill),unsigned(volumetric_fog_prefill),unsigned(volumetric_fog_docked),sector_background::anchor_walk_limit,unsigned(volumetric_fog_range_stored));
-     volumetric_fog_look_tuning={}; // the accepted L2 constants (renderer::FogLookTuning); no overrides since 2026-09-26
-     if(volumetric_fog_range_stored){
-        log("volumetric_fog_look_mode look=single constants=baked");
-        // X3M_FOG_MARCH_SCALE (step C), echoed with anything outside [0-9A-Za-z._+-] as '?' (a hand-set string cannot break the
-        // row): 4 (absent, "4" or invalid) under the stored range; exactly "2" is the half-resolution opt-out. The echo of an
-        // absent variable is the default, "4".
-        char march_scale_value[40]="4";const char* march_scale_refusal="none";bool march_scale_half=false;
-        const DWORD march_scale_length=x3m::config::get(L"X3M_FOG_MARCH_SCALE",setting,32);
-        if(march_scale_length>=32){std::snprintf(march_scale_value,sizeof march_scale_value,"overlong_%lu",static_cast<unsigned long>(march_scale_length));march_scale_refusal="invalid";}
-        else if(march_scale_length>0){
-            for(DWORD i=0;i<march_scale_length;++i){const wchar_t c=setting[i];
-                march_scale_value[i]=(c>=L'0'&&c<=L'9')||(c>=L'A'&&c<=L'Z')||(c>=L'a'&&c<=L'z')||c==L'.'||c==L'_'||c==L'+'||c==L'-'?char(c):'?';}
-            march_scale_value[march_scale_length]='\0';
-            march_scale_half=!wcscmp(setting,L"2");
-            if(!march_scale_half&&wcscmp(setting,L"4"))march_scale_refusal="invalid";
+    {
+        const auto fog_env = [&](const wchar_t* name) {
+            const DWORD n = x3m::config::get(name, setting, 32);
+            return n > 0 && n < 32 ? n : 0ul;
+        };
+        const bool asked = fog_env(L"X3M_VOLUMETRIC_FOG") == 1 && setting[0] == L'1';
+        volumetric_fog_strength = renderer::fog_strength_default;
+        volumetric_fog_anisotropy = renderer::fog_anisotropy_default;
+        if (fog_env(L"X3M_VOLUMETRIC_FOG_STRENGTH")) {
+            wchar_t* end = nullptr;
+            const float v = wcstof(setting, &end);
+            if (end != setting && *end == L'\0' && v >= renderer::fog_strength_min && v <= renderer::fog_strength_max)
+                volumetric_fog_strength = v;
         }
-        volumetric_fog_march_scale=march_scale_half?renderer::fog_march_scale_half:renderer::fog_march_scale_quarter;
-        log("volumetric_fog_march_scale scale=%u requested=%s refused=%s",volumetric_fog_march_scale,march_scale_value,march_scale_refusal);
-     }
-     // X3M_FOG_DUST_MOTES=N,SIZE,STREAK: the whole string must parse (N 0 or 64..8192, SIZE 2..16, STREAK 0..512), anything
-     // else keeps the motes off; the tunables are read only with the option on (one volumetric_fog_motes_mode line). A
-     // value of 32 or more characters, or a count above 0 without the stored range, says so in one line instead.
-     // Absent under the stored range: the Run 70 B/B2 default 1300,3,128 (2026-09-23), tunables read the same way.
-     volumetric_fog_motes={};
-     const DWORD motes_length=x3m::config::get(L"X3M_FOG_DUST_MOTES",setting,32);
-     if(motes_length>=32)log("volumetric_fog_motes_mode enabled=0 invalid=1 reason=overlong length=%lu",motes_length);
-     else if(motes_length&&!volumetric_fog_range_stored){
-        wchar_t* end=nullptr;const unsigned long n=wcstoul(setting,&end,10);
-        if(end==setting||n!=0)log("volumetric_fog_motes_mode enabled=0 reason=requires_stored_range count=%lu stored=0 fog=%u",n,unsigned(volumetric_fog_requested));
-     } else if(motes_length||volumetric_fog_range_stored){
-        unsigned long n=renderer::fog_mote_default_count;float values[2]{renderer::fog_mote_default_size,renderer::fog_mote_default_streak};bool valid=true;
-        if(motes_length){
-            wchar_t* end=nullptr;n=wcstoul(setting,&end,10);valid=end!=setting&&*end==L',';
-            for(unsigned i=0;i<2&&valid;++i){wchar_t* at=end+1;values[i]=wcstof(at,&end);valid=end!=at&&*end==(i?L'\0':L',');}
-        }
-        renderer::FogMoteTuning motes{};
-        if(valid&&n<=renderer::fog_mote_count_max&&renderer::fog_mote_option(unsigned(n),values[0],values[1],motes)&&motes.count){
-            unsigned overrides=0;
-            for(const auto& field:renderer::fog_mote_fields){
-                wchar_t name[48]{};std::swprintf(name,std::size(name),L"X3M_FOG_MOTES_%hs",field.name);
-                if(!fog_env(name))continue;
-                wchar_t* stop=nullptr;const float v=wcstof(setting,&stop);
-                if(stop!=setting&&*stop==L'\0')overrides+=renderer::fog_mote_set(motes,field,v);
+        // The launcher's prerequisites (tools/manage.py), so a hand-set environment cannot arm a pass that would
+        // skip every frame: the FP16 scene path, the depth replay and a cascade list (validated per device later).
+        const bool fog_replay = fog_env(L"X3M_SHADOW_REPLAY_DEPTH") == 1 && setting[0] == L'1';
+        wchar_t fog_cascades[4]{};
+        const bool fog_cascade_list = x3m::config::get(L"X3M_SHADOW_CASCADES", fog_cascades, 4) > 0;
+        volumetric_fog_requested = asked && motion_output_requested && taa_requested && hdr_requested && fog_replay &&
+                                   fog_cascade_list && volumetric_fog_strength > 0.f;
+        volumetric_fog_timing = volumetric_fog_requested &&
+                                (log_tier::perf() ||
+                                 (fog_env(L"X3M_VOLUMETRIC_FOG_TIMING") == 1 && setting[0] == L'1')); // or X3M_PERF=1
+        volumetric_fog_cards_replace = volumetric_fog_requested && fog_env(L"X3M_VOLUMETRIC_FOG_CARDS") == 7 &&
+                                       !wcscmp(setting, L"replace");
+        volumetric_fog_range_stored = volumetric_fog_requested && fog_env(L"X3M_VOLUMETRIC_FOG_RANGE") == 6 &&
+                                      !wcscmp(setting, L"stored");
+        volumetric_fog_march_scale = renderer::fog_march_scale_default;
+        // Default on: absent or anything but exactly "0" keeps the switch (fog-handover.md, "Implementation").
+        const auto fog_default_on = [&](const wchar_t* name) { return !(fog_env(name) == 1 && setting[0] == L'0'); };
+        volumetric_fog_handover_step = volumetric_fog_range_stored && fog_default_on(L"X3M_FOG_HANDOVER_STEP");
+        volumetric_fog_handover_coldfill = volumetric_fog_range_stored && fog_default_on(L"X3M_FOG_HANDOVER_COLDFILL");
+        volumetric_fog_docked = volumetric_fog_requested && fog_default_on(L"X3M_FOG_DOCKED");
+        volumetric_fog_prefill = volumetric_fog_range_stored && fog_default_on(L"X3M_FOG_HANDOVER_PREFILL");
+        if (asked)
+            log("volumetric_fog_handover_mode step=%u coldfill=%u prefill=%u docked=%u walk_limit=%u stored=%u",
+                unsigned(volumetric_fog_handover_step), unsigned(volumetric_fog_handover_coldfill),
+                unsigned(volumetric_fog_prefill), unsigned(volumetric_fog_docked), sector_background::anchor_walk_limit,
+                unsigned(volumetric_fog_range_stored));
+        volumetric_fog_look_tuning = {}; // the accepted L2 constants (renderer::FogLookTuning); no overrides since
+                                         // 2026-09-26
+        if (volumetric_fog_range_stored) {
+            log("volumetric_fog_look_mode look=single constants=baked");
+            // X3M_FOG_MARCH_SCALE (step C), echoed with anything outside [0-9A-Za-z._+-] as '?' (a hand-set string
+            // cannot break the row): 4 (absent, "4" or invalid) under the stored range; exactly "2" is the
+            // half-resolution opt-out. The echo of an absent variable is the default, "4".
+            char march_scale_value[40] = "4";
+            const char* march_scale_refusal = "none";
+            bool march_scale_half = false;
+            const DWORD march_scale_length = x3m::config::get(L"X3M_FOG_MARCH_SCALE", setting, 32);
+            if (march_scale_length >= 32) {
+                std::snprintf(march_scale_value, sizeof march_scale_value, "overlong_%lu",
+                              static_cast<unsigned long>(march_scale_length));
+                march_scale_refusal = "invalid";
+            } else if (march_scale_length > 0) {
+                for (DWORD i = 0; i < march_scale_length; ++i) {
+                    const wchar_t c = setting[i];
+                    march_scale_value[i] = (c >= L'0' && c <= L'9') || (c >= L'A' && c <= L'Z') ||
+                                                   (c >= L'a' && c <= L'z') || c == L'.' || c == L'_' || c == L'+' ||
+                                                   c == L'-'
+                                               ? char(c)
+                                               : '?';
+                }
+                march_scale_value[march_scale_length] = '\0';
+                march_scale_half = !wcscmp(setting, L"2");
+                if (!march_scale_half && wcscmp(setting, L"4")) march_scale_refusal = "invalid";
             }
-            renderer::fog_mote_normalize(motes);
-            volumetric_fog_motes=motes;
-            log("volumetric_fog_motes_mode enabled=1 count=%u size=%g streak=%g overrides=%u RADIUS=%g NEAR=%g MAX_PX=%g GAIN=%g SOFT=%g DRIFT=%g SEED=%u source=%s",
-                motes.count,double(motes.size),double(motes.streak),overrides,double(motes.radius),double(motes.near_fade),double(motes.max_px),double(motes.gain),double(motes.soft),double(motes.drift),unsigned(motes.seed),motes_length?"env":"default");
-        } else if(valid&&n==0)log("volumetric_fog_motes_mode enabled=0 reason=off");
-        else log("volumetric_fog_motes_mode enabled=0 invalid=1 reason=%s",valid?"out_of_range":"unparsable");
-     }
-     if(asked)log("volumetric_fog_range mode=%s atlas_bytes=%u levels=2 cpu_bytes=%u upload_budget_bytes=%u upload_rects=%u ramp_frames=%u worker_threads=%u",volumetric_fog_range_stored?"stored":"legacy",
-        volumetric_fog_range_stored?unsigned(fog::kAtlasBytes):0u,volumetric_fog_range_stored?unsigned(4*fog::kAtlasBytes):0u,volumetric_fog_range_stored?unsigned(fog::kDefaultUploadBudget):0u,
-        volumetric_fog_range_stored?fog::kDefaultUploadRects:0u,volumetric_fog_range_stored?fog::kReadinessRampFrames:0u,unsigned(volumetric_fog_range_stored));
-     if(asked)log("volumetric_fog_mode requested=1 enabled=%u motion_output=%u taa=%u hdr=%u shadow_replay_depth=%u shadow_cascades=%u strength=%g density_scale=%g anisotropy=%g timing=%u cards=%s rule=current_engine_family",volumetric_fog_requested,motion_output_requested,taa_requested,hdr_requested,unsigned(fog_replay),unsigned(fog_cascade_list),double(volumetric_fog_strength),double(volumetric_fog_strength / .02f),double(volumetric_fog_anisotropy),volumetric_fog_timing,volumetric_fog_cards_replace?"replace":"keep");}
-    hdr_config.sharpen=taa_sharpen; // the HDR write-back sharpens the resolved image with the same setting
-    motion_rt_lazy=x3m::config::get(L"X3M_MOTION_RT_MODE",setting,32)>0 && !wcscmp(setting,L"lazy");
-    if(x3m::config::get(L"X3M_STATE_SHADOW",setting,32)>0){ // exactly "1" or "0"; anything else is auto, noted
-        if(!wcscmp(setting,L"1"))motion_state_shadow=1;
-        else if(!wcscmp(setting,L"0"))motion_state_shadow=0;
-        else log("state_shadow_setting ignored=1 length=%u mode=auto",unsigned(wcslen(setting)));
+            volumetric_fog_march_scale = march_scale_half ? renderer::fog_march_scale_half
+                                                          : renderer::fog_march_scale_quarter;
+            log("volumetric_fog_march_scale scale=%u requested=%s refused=%s", volumetric_fog_march_scale,
+                march_scale_value, march_scale_refusal);
+        }
+        // X3M_FOG_DUST_MOTES=N,SIZE,STREAK: the whole string must parse (N 0 or 64..8192, SIZE 2..16, STREAK 0..512),
+        // anything else keeps the motes off; the tunables are read only with the option on (one
+        // volumetric_fog_motes_mode line). A value of 32 or more characters, or a count above 0 without the stored
+        // range, says so in one line instead. Absent under the stored range: the Run 70 B/B2 default 1300,3,128
+        // (2026-09-23), tunables read the same way.
+        volumetric_fog_motes = {};
+        const DWORD motes_length = x3m::config::get(L"X3M_FOG_DUST_MOTES", setting, 32);
+        if (motes_length >= 32)
+            log("volumetric_fog_motes_mode enabled=0 invalid=1 reason=overlong length=%lu", motes_length);
+        else if (motes_length && !volumetric_fog_range_stored) {
+            wchar_t* end = nullptr;
+            const unsigned long n = wcstoul(setting, &end, 10);
+            if (end == setting || n != 0)
+                log("volumetric_fog_motes_mode enabled=0 reason=requires_stored_range count=%lu stored=0 fog=%u", n,
+                    unsigned(volumetric_fog_requested));
+        } else if (motes_length || volumetric_fog_range_stored) {
+            unsigned long n = renderer::fog_mote_default_count;
+            float values[2]{renderer::fog_mote_default_size, renderer::fog_mote_default_streak};
+            bool valid = true;
+            if (motes_length) {
+                wchar_t* end = nullptr;
+                n = wcstoul(setting, &end, 10);
+                valid = end != setting && *end == L',';
+                for (unsigned i = 0; i < 2 && valid; ++i) {
+                    wchar_t* at = end + 1;
+                    values[i] = wcstof(at, &end);
+                    valid = end != at && *end == (i ? L'\0' : L',');
+                }
+            }
+            renderer::FogMoteTuning motes{};
+            if (valid && n <= renderer::fog_mote_count_max &&
+                renderer::fog_mote_option(unsigned(n), values[0], values[1], motes) && motes.count) {
+                unsigned overrides = 0;
+                for (const auto& field : renderer::fog_mote_fields) {
+                    wchar_t name[48]{};
+                    std::swprintf(name, std::size(name), L"X3M_FOG_MOTES_%hs", field.name);
+                    if (!fog_env(name)) continue;
+                    wchar_t* stop = nullptr;
+                    const float v = wcstof(setting, &stop);
+                    if (stop != setting && *stop == L'\0') overrides += renderer::fog_mote_set(motes, field, v);
+                }
+                renderer::fog_mote_normalize(motes);
+                volumetric_fog_motes = motes;
+                log("volumetric_fog_motes_mode enabled=1 count=%u size=%g streak=%g overrides=%u RADIUS=%g NEAR=%g MAX_PX=%g GAIN=%g SOFT=%g DRIFT=%g SEED=%u source=%s",
+                    motes.count, double(motes.size), double(motes.streak), overrides, double(motes.radius),
+                    double(motes.near_fade), double(motes.max_px), double(motes.gain), double(motes.soft),
+                    double(motes.drift), unsigned(motes.seed), motes_length ? "env" : "default");
+            } else if (valid && n == 0)
+                log("volumetric_fog_motes_mode enabled=0 reason=off");
+            else
+                log("volumetric_fog_motes_mode enabled=0 invalid=1 reason=%s", valid ? "out_of_range" : "unparsable");
+        }
+        if (asked)
+            log("volumetric_fog_range mode=%s atlas_bytes=%u levels=2 cpu_bytes=%u upload_budget_bytes=%u upload_rects=%u ramp_frames=%u worker_threads=%u",
+                volumetric_fog_range_stored ? "stored" : "legacy",
+                volumetric_fog_range_stored ? unsigned(fog::kAtlasBytes) : 0u,
+                volumetric_fog_range_stored ? unsigned(4 * fog::kAtlasBytes) : 0u,
+                volumetric_fog_range_stored ? unsigned(fog::kDefaultUploadBudget) : 0u,
+                volumetric_fog_range_stored ? fog::kDefaultUploadRects : 0u,
+                volumetric_fog_range_stored ? fog::kReadinessRampFrames : 0u, unsigned(volumetric_fog_range_stored));
+        if (asked)
+            log("volumetric_fog_mode requested=1 enabled=%u motion_output=%u taa=%u hdr=%u shadow_replay_depth=%u shadow_cascades=%u strength=%g density_scale=%g anisotropy=%g timing=%u cards=%s rule=current_engine_family",
+                volumetric_fog_requested, motion_output_requested, taa_requested, hdr_requested, unsigned(fog_replay),
+                unsigned(fog_cascade_list), double(volumetric_fog_strength), double(volumetric_fog_strength / .02f),
+                double(volumetric_fog_anisotropy), volumetric_fog_timing,
+                volumetric_fog_cards_replace ? "replace" : "keep");
     }
-    const bool scene_hook_requested=scene_hook::wanted(); // default on with the route (X3M_SCENE_HOOK=0 turns it off)
+    hdr_config.sharpen = taa_sharpen; // the HDR write-back sharpens the resolved image with the same setting
+    motion_rt_lazy = x3m::config::get(L"X3M_MOTION_RT_MODE", setting, 32) > 0 && !wcscmp(setting, L"lazy");
+    if (x3m::config::get(L"X3M_STATE_SHADOW", setting, 32) > 0) { // exactly "1" or "0"; anything else is auto, noted
+        if (!wcscmp(setting, L"1"))
+            motion_state_shadow = 1;
+        else if (!wcscmp(setting, L"0"))
+            motion_state_shadow = 0;
+        else
+            log("state_shadow_setting ignored=1 length=%u mode=auto", unsigned(wcslen(setting)));
+    }
+    const bool scene_hook_requested = scene_hook::wanted(); // default on with the route (X3M_SCENE_HOOK=0 turns it off)
     // X3M_MOTION_FRAME_LOG: an explicit valid value wins; else 1 with X3M_DEBUG=1, else 60.
-    motion_frame_log=log_tier::cadence_default(log_tier::debug(),1u,60u);
-    if(x3m::config::get(L"X3M_MOTION_FRAME_LOG",setting,32)>0){const unsigned long n=wcstoul(setting,nullptr,10);if(n>=1&&n<=100000)motion_frame_log=unsigned(n);}
+    motion_frame_log = log_tier::cadence_default(log_tier::debug(), 1u, 60u);
+    if (x3m::config::get(L"X3M_MOTION_FRAME_LOG", setting, 32) > 0) {
+        const unsigned long n = wcstoul(setting, nullptr, 10);
+        if (n >= 1 && n <= 100000) motion_frame_log = unsigned(n);
+    }
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     // Seam only: policies 1 and 2 for the fixtures; production stays auto.
-    if(GetEnvironmentVariableW(L"X3M_FIXTURE_TAA_SENTINEL",setting,32)>0){
-        if(!wcscmp(setting,L"1"))taa_sentinel_mode=x3m::renderer::SentinelMode::CurrentOnly;
-        else if(!wcscmp(setting,L"2"))taa_sentinel_mode=x3m::renderer::SentinelMode::Camera;
-        else taa_sentinel_mode=x3m::renderer::SentinelMode::Auto;
+    if (GetEnvironmentVariableW(L"X3M_FIXTURE_TAA_SENTINEL", setting, 32) > 0) {
+        if (!wcscmp(setting, L"1"))
+            taa_sentinel_mode = x3m::renderer::SentinelMode::CurrentOnly;
+        else if (!wcscmp(setting, L"2"))
+            taa_sentinel_mode = x3m::renderer::SentinelMode::Camera;
+        else
+            taa_sentinel_mode = x3m::renderer::SentinelMode::Auto;
     }
 #endif
-    if(x3m::config::get(L"X3M_TAA_UNMATCHED_STATIC",setting,32)>0){
-        if(!wcscmp(setting,L"node"))taa_unmatched_static=1;
-        else if(!wcscmp(setting,L"all"))taa_unmatched_static=2;
-        else if(wcscmp(setting,L"0")!=0&&wcscmp(setting,L"off")!=0)log("taa_unmatched_static_setting invalid=1");
+    if (x3m::config::get(L"X3M_TAA_UNMATCHED_STATIC", setting, 32) > 0) {
+        if (!wcscmp(setting, L"node"))
+            taa_unmatched_static = 1;
+        else if (!wcscmp(setting, L"all"))
+            taa_unmatched_static = 2;
+        else if (wcscmp(setting, L"0") != 0 && wcscmp(setting, L"off") != 0)
+            log("taa_unmatched_static_setting invalid=1");
+    } else if (taa_requested)
+        taa_unmatched_static = 1; // run212: node is the default with the TAA route (an explicit "off"/"0" opts out)
+    taa_sky_history_strict = taa_requested; // Run 68 A (2026-09-23): strict is the default with the TAA route; an
+                                            // invalid value keeps it
+    if (const DWORD n = x3m::config::get(L"X3M_TAA_SKY_HISTORY", setting, 32); n > 0 && n < 32) { // a truncated value
+                                                                                                  // would be the
+                                                                                                  // buffer's previous
+                                                                                                  // text
+        if (!wcscmp(setting, L"loose") || !wcscmp(setting, L"0") || !wcscmp(setting, L"off"))
+            taa_sky_history_strict = false;
+        else if (wcscmp(setting, L"strict") != 0 && wcscmp(setting, L"1") != 0)
+            log("taa_sky_history_setting invalid=1");
     }
-    else if(taa_requested)taa_unmatched_static=1; // run212: node is the default with the TAA route (an explicit "off"/"0" opts out)
-    taa_sky_history_strict=taa_requested; // Run 68 A (2026-09-23): strict is the default with the TAA route; an invalid value keeps it
-    if(const DWORD n=x3m::config::get(L"X3M_TAA_SKY_HISTORY",setting,32);n>0&&n<32){ // a truncated value would be the buffer's previous text
-        if(!wcscmp(setting,L"loose")||!wcscmp(setting,L"0")||!wcscmp(setting,L"off"))taa_sky_history_strict=false;
-        else if(wcscmp(setting,L"strict")!=0&&wcscmp(setting,L"1")!=0)log("taa_sky_history_setting invalid=1");
+    if (const DWORD n = x3m::config::get(L"X3M_TAA_SKY_HISTORY_BAND_PX", setting, 32); n > 0 && n < 32) {
+        const float v = wcstof(setting, nullptr);
+        if (v >= 1.f && v <= 16.f)
+            taa_sky_history_band_px = v;
+        else
+            log("taa_sky_history_band_px_setting invalid=1");
     }
-    if(const DWORD n=x3m::config::get(L"X3M_TAA_SKY_HISTORY_BAND_PX",setting,32);n>0&&n<32){
-        const float v=wcstof(setting,nullptr);
-        if(v>=1.f&&v<=16.f)taa_sky_history_band_px=v;else log("taa_sky_history_band_px_setting invalid=1");
+    if (const DWORD n = x3m::config::get(L"X3M_TAA_SKY_HISTORY_EXIT_PX", setting, 32); n >= 32)
+        log("taa_sky_history_exit_px_setting invalid=1"); // oversized: invalid, stays off
+    else if (n > 0) {
+        wchar_t* end = nullptr;
+        const float v = wcstof(setting, &end); // a value that is not a number (wcstof's 0 with nothing consumed, or
+                                               // trailing text) is invalid, never "off"
+        if (end == setting || *end || !x3::temporal::valid_sky_history_exit(v, taa_sky_history_band_px))
+            log("taa_sky_history_exit_px_setting invalid=1");
+        else if (v > 0.f && !taa_sky_history_strict)
+            log("taa_sky_history_exit_px_setting refused=1 reason=requires_strict");
+        else
+            taa_sky_history_exit_px = v;
+    } else if (taa_sky_history_strict)
+        taa_sky_history_exit_px = .25f; // Run 68 A (2026-09-23): the default under strict (0 is the opt-out);
+                                        // motion_output drops it without an age program
+    if (const DWORD n = x3m::config::get(L"X3M_TAA_BOX_RESOLUTION", setting, 32); n >= 32)
+        log("taa_box_resolution_setting invalid=1 reason=too_long length=%lu", n); // oversized: invalid, stays full
+    else if (n > 0) {
+        if (!wcscmp(setting, L"half"))
+            taa_box_half = true;
+        else if (wcscmp(setting, L"full") != 0)
+            log("taa_box_resolution_setting invalid=1");
+        taa_box_resolution_default = taa_box_half &&
+                                     x3m::config::get(L"X3M_TAA_BOX_RESOLUTION_DEFAULT", setting, 32) == 1 &&
+                                     setting[0] == L'1';
     }
-    if(const DWORD n=x3m::config::get(L"X3M_TAA_SKY_HISTORY_EXIT_PX",setting,32);n>=32)log("taa_sky_history_exit_px_setting invalid=1"); // oversized: invalid, stays off
-    else if(n>0){
-        wchar_t* end=nullptr;const float v=wcstof(setting,&end); // a value that is not a number (wcstof's 0 with nothing consumed, or trailing text) is invalid, never "off"
-        if(end==setting||*end||!x3::temporal::valid_sky_history_exit(v,taa_sky_history_band_px))log("taa_sky_history_exit_px_setting invalid=1");
-        else if(v>0.f&&!taa_sky_history_strict)log("taa_sky_history_exit_px_setting refused=1 reason=requires_strict");
-        else taa_sky_history_exit_px=v;
+    if (const DWORD n = x3m::config::get(L"X3M_TAA_FAR_GATE", setting, 32); n >= 32)
+        log("taa_far_gate_setting invalid=1 reason=too_long length=%lu", n); // oversized: invalid, stays camera
+    else if (n > 0) {
+        if (!wcscmp(setting, L"screen")) {
+            taa_far_camera_gate = false;
+            taa_far_gate_given = true;
+        } else if (!wcscmp(setting, L"camera"))
+            taa_far_gate_given = true;
+        else
+            log("taa_far_gate_setting invalid=1");
+        taa_far_gate_default = taa_far_gate_given && taa_far_camera_gate &&
+                               x3m::config::get(L"X3M_TAA_FAR_GATE_DEFAULT", setting, 32) == 1 && setting[0] == L'1';
     }
-    else if(taa_sky_history_strict)taa_sky_history_exit_px=.25f; // Run 68 A (2026-09-23): the default under strict (0 is the opt-out); motion_output drops it without an age program
-    if(const DWORD n=x3m::config::get(L"X3M_TAA_BOX_RESOLUTION",setting,32);n>=32)log("taa_box_resolution_setting invalid=1 reason=too_long length=%lu",n); // oversized: invalid, stays full
-    else if(n>0){
-        if(!wcscmp(setting,L"half"))taa_box_half=true;
-        else if(wcscmp(setting,L"full")!=0)log("taa_box_resolution_setting invalid=1");
-        taa_box_resolution_default=taa_box_half&&x3m::config::get(L"X3M_TAA_BOX_RESOLUTION_DEFAULT",setting,32)==1&&setting[0]==L'1';
+    if (const DWORD n = x3m::config::get(L"X3M_TAA_FAR_CLIP", setting, 32); n >= 32)
+        log("taa_far_clip_setting invalid=1 reason=too_long length=%lu", n); // oversized: invalid, stays 7x7
+    else if (n > 0) {
+        if (!wcscmp(setting, L"3x3")) {
+            taa_far_clip_7x7 = false;
+            taa_far_clip_given = true;
+        } else if (!wcscmp(setting, L"7x7"))
+            taa_far_clip_given = true;
+        else
+            log("taa_far_clip_setting invalid=1");
+        taa_far_clip_default = taa_far_clip_given && taa_far_clip_7x7 &&
+                               x3m::config::get(L"X3M_TAA_FAR_CLIP_DEFAULT", setting, 32) == 1 && setting[0] == L'1';
     }
-    if(const DWORD n=x3m::config::get(L"X3M_TAA_FAR_GATE",setting,32);n>=32)log("taa_far_gate_setting invalid=1 reason=too_long length=%lu",n); // oversized: invalid, stays camera
-    else if(n>0){
-        if(!wcscmp(setting,L"screen")){taa_far_camera_gate=false;taa_far_gate_given=true;}
-        else if(!wcscmp(setting,L"camera"))taa_far_gate_given=true;
-        else log("taa_far_gate_setting invalid=1");
-        taa_far_gate_default=taa_far_gate_given&&taa_far_camera_gate&&x3m::config::get(L"X3M_TAA_FAR_GATE_DEFAULT",setting,32)==1&&setting[0]==L'1';
+    if (const DWORD n = x3m::config::get(L"X3M_TAA_THIN_VOTE", setting, 32); n >= 32)
+        log("taa_thin_vote_setting invalid=1 reason=too_long length=%lu", n); // oversized: invalid, stays off
+    else if (n > 0) {
+        if (!wcscmp(setting, L"on"))
+            taa_thin_vote = taa_thin_vote_given = true;
+        else if (!wcscmp(setting, L"off"))
+            taa_thin_vote_given = true;
+        else
+            log("taa_thin_vote_setting invalid=1");
+        taa_thin_vote_default = taa_thin_vote_given &&
+                                x3m::config::get(L"X3M_TAA_THIN_VOTE_DEFAULT", setting, 32) == 1 && setting[0] == L'1';
     }
-    if(const DWORD n=x3m::config::get(L"X3M_TAA_FAR_CLIP",setting,32);n>=32)log("taa_far_clip_setting invalid=1 reason=too_long length=%lu",n); // oversized: invalid, stays 7x7
-    else if(n>0){
-        if(!wcscmp(setting,L"3x3")){taa_far_clip_7x7=false;taa_far_clip_given=true;}
-        else if(!wcscmp(setting,L"7x7"))taa_far_clip_given=true;
-        else log("taa_far_clip_setting invalid=1");
-        taa_far_clip_default=taa_far_clip_given&&taa_far_clip_7x7&&x3m::config::get(L"X3M_TAA_FAR_CLIP_DEFAULT",setting,32)==1&&setting[0]==L'1';
+    // The thin region's flag source follows the vote since X3M_TAA_THIN_REGION_SOURCE was removed on 2026-09-25: the
+    // vote alone (2) whenever it and the thin region are on (what the launcher sent by default), marked default= as the
+    // vote's own row is; otherwise both (the fragmented-depth search), no row.
+    taa_thin_region_source_given = taa_thin_vote && taa_thin_region[0] > 0.f;
+    taa_thin_region_source = taa_thin_region_source_given ? 2u : 0u;
+    taa_thin_region_source_default = taa_thin_region_source_given && taa_thin_vote_default;
+    if (const DWORD n = x3m::config::get(L"X3M_FADE_RT2_OWNER", setting, 32); n >= 32)
+        log("fade_rt2_owner_setting invalid=1 reason=too_long length=%lu", n); // oversized: invalid, stays off
+    else if (n > 0) {
+        if (!wcscmp(setting, L"on"))
+            fade_rt2_owner = fade_rt2_owner_given = true;
+        else if (!wcscmp(setting, L"off"))
+            fade_rt2_owner_given = true;
+        else
+            log("fade_rt2_owner_setting invalid=1");
+        fade_rt2_owner_default = fade_rt2_owner_given &&
+                                 x3m::config::get(L"X3M_FADE_RT2_OWNER_DEFAULT", setting, 32) == 1 &&
+                                 setting[0] == L'1';
     }
-    if(const DWORD n=x3m::config::get(L"X3M_TAA_THIN_VOTE",setting,32);n>=32)log("taa_thin_vote_setting invalid=1 reason=too_long length=%lu",n); // oversized: invalid, stays off
-    else if(n>0){
-        if(!wcscmp(setting,L"on"))taa_thin_vote=taa_thin_vote_given=true;
-        else if(!wcscmp(setting,L"off"))taa_thin_vote_given=true;
-        else log("taa_thin_vote_setting invalid=1");
-        taa_thin_vote_default=taa_thin_vote_given&&x3m::config::get(L"X3M_TAA_THIN_VOTE_DEFAULT",setting,32)==1&&setting[0]==L'1';
+    {
+        wchar_t flag[4]{};
+        const bool lane = x3m::config::get(L"X3M_SUN_SHADOW_LANE", flag, 4) == 1 && flag[0] == L'1';
+        const bool wrapped = x3m::config::get(L"X3M_OWNERSHIP", flag, 4) == 1 && flag[0] == L'1';
+        thin_vote_gate = taa_thin_vote && motion_output_requested && taa_requested && hdr_requested && lane && wrapped;
     }
-    // The thin region's flag source follows the vote since X3M_TAA_THIN_REGION_SOURCE was removed on 2026-09-25: the vote alone
-    // (2) whenever it and the thin region are on (what the launcher sent by default), marked default= as the vote's own row is;
-    // otherwise both (the fragmented-depth search), no row.
-    taa_thin_region_source_given=taa_thin_vote&&taa_thin_region[0]>0.f;
-    taa_thin_region_source=taa_thin_region_source_given?2u:0u;
-    taa_thin_region_source_default=taa_thin_region_source_given&&taa_thin_vote_default;
-    if(const DWORD n=x3m::config::get(L"X3M_FADE_RT2_OWNER",setting,32);n>=32)log("fade_rt2_owner_setting invalid=1 reason=too_long length=%lu",n); // oversized: invalid, stays off
-    else if(n>0){
-        if(!wcscmp(setting,L"on"))fade_rt2_owner=fade_rt2_owner_given=true;
-        else if(!wcscmp(setting,L"off"))fade_rt2_owner_given=true;
-        else log("fade_rt2_owner_setting invalid=1");
-        fade_rt2_owner_default=fade_rt2_owner_given&&x3m::config::get(L"X3M_FADE_RT2_OWNER_DEFAULT",setting,32)==1&&setting[0]==L'1';
+    // X3M_TAA_MOTION_WEIGHT=<F>[,<V0>,<V1>]: the whole string must parse (1 or 3 fields) and lie in range; anything
+    // else keeps the option off.
+    if (const DWORD n = x3m::config::get(L"X3M_TAA_MOTION_WEIGHT", setting, 32); n >= 32)
+        log("taa_motion_weight_setting invalid=1 reason=too_long length=%lu", n); // oversized: invalid, stays off
+    else if (n > 0) {
+        float v[3] = {0.f, 2.f, 8.f};
+        unsigned count = 0;
+        wchar_t* cursor = setting;
+        bool ok = true;
+        while (ok && count < 3) {
+            wchar_t* end = nullptr;
+            v[count] = wcstof(cursor, &end);
+            ok = end != cursor;
+            ++count;
+            if (!ok || *end == L'\0') break;
+            ok = *end == L',';
+            cursor = end + 1;
+            if (count == 3) ok = false;
+        }
+        ok = ok && (count == 1 || count == 3) && x3::temporal::valid_motion_weight(v[0], v[1], v[2]);
+        if (ok)
+            for (unsigned i = 0; i < 3; ++i) taa_motion_weight[i] = v[i];
+        else
+            log("taa_motion_weight_setting invalid=1");
+    } else if (taa_requested && taa_sentinel_mode != x3m::renderer::SentinelMode::CurrentOnly &&
+               (taa_far[0] > 0.f || taa_far[1] > 0.f || taa_thin_region[0] > 0.f))
+        taa_motion_weight[0] = .7f; // Run 70 A (2026-09-23, run262/run263): 0.7,2,8 with an age program under a policy
+                                    // that can reach 2 (0 is the opt-out)
+    if (x3m::config::get(L"X3M_CAMERA_CUT_DEG", setting, 32) > 0) {
+        const float v = wcstof(setting, nullptr);
+        if (v > 0 && v <= 180) camera_cut_degrees = v;
     }
-    { wchar_t flag[4]{};
-      const bool lane=x3m::config::get(L"X3M_SUN_SHADOW_LANE",flag,4)==1&&flag[0]==L'1';
-      const bool wrapped=x3m::config::get(L"X3M_OWNERSHIP",flag,4)==1&&flag[0]==L'1';
-      thin_vote_gate=taa_thin_vote&&motion_output_requested&&taa_requested&&hdr_requested&&lane&&wrapped; }
-    // X3M_TAA_MOTION_WEIGHT=<F>[,<V0>,<V1>]: the whole string must parse (1 or 3 fields) and lie in range; anything else keeps the option off.
-    if(const DWORD n=x3m::config::get(L"X3M_TAA_MOTION_WEIGHT",setting,32);n>=32)log("taa_motion_weight_setting invalid=1 reason=too_long length=%lu",n); // oversized: invalid, stays off
-    else if(n>0){
-        float v[3]={0.f,2.f,8.f};unsigned count=0;wchar_t* cursor=setting;bool ok=true;
-        while(ok&&count<3){wchar_t* end=nullptr;v[count]=wcstof(cursor,&end);ok=end!=cursor;++count;if(!ok||*end==L'\0')break;ok=*end==L',';cursor=end+1;if(count==3)ok=false;}
-        ok=ok&&(count==1||count==3)&&x3::temporal::valid_motion_weight(v[0],v[1],v[2]);
-        if(ok)for(unsigned i=0;i<3;++i)taa_motion_weight[i]=v[i];else log("taa_motion_weight_setting invalid=1");
-    }
-    else if(taa_requested&&taa_sentinel_mode!=x3m::renderer::SentinelMode::CurrentOnly&&(taa_far[0]>0.f||taa_far[1]>0.f||taa_thin_region[0]>0.f))
-        taa_motion_weight[0]=.7f; // Run 70 A (2026-09-23, run262/run263): 0.7,2,8 with an age program under a policy that can reach 2 (0 is the opt-out)
-    if(x3m::config::get(L"X3M_CAMERA_CUT_DEG",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>0&&v<=180)camera_cut_degrees=v;}
     // X3M_CAMERA_LOG: an explicit valid value wins; else 1 with X3M_DEBUG=1, else 0 (capture frames only).
-    camera_log_frames=log_tier::cadence_default(log_tier::debug(),1u,0u);
-    if(x3m::config::get(L"X3M_CAMERA_LOG",setting,32)>0){const unsigned long n=wcstoul(setting,nullptr,10);if(n>=1&&n<=1000000)camera_log_frames=unsigned(n);}
+    camera_log_frames = log_tier::cadence_default(log_tier::debug(), 1u, 0u);
+    if (x3m::config::get(L"X3M_CAMERA_LOG", setting, 32) > 0) {
+        const unsigned long n = wcstoul(setting, nullptr, 10);
+        if (n >= 1 && n <= 1000000) camera_log_frames = unsigned(n);
+    }
     log("motion_output_mode requested=%u scope=live_same_draw_diagnostic history_requires=object_trace,object_lifetime temporal_consumer=%u taa=%u taa_debug=%u jitter=%u jitter_samples=%u cut_median_px=%.3f cut_missing=%.3f rt_mode=%s frame_log=%u sentinel=%s unmatched_static=%u sky_history=%s sky_history_band_px=%.2f sky_history_exit_px=%.3f motion_weight=%.3f,%g,%g camera_cut_deg=%.2f camera_log=%u state_shadow=%s scene_hook=%u hdr=%u taa_k=%.5f mip_bias=%g taa_sharpen=%.3f taa_history_weight=%.3f",
-        motion_output_requested,taa_requested,taa_requested,taa_debug_requested,motion_jitter_requested,motion_jitter_samples,motion_cut_median_px,motion_cut_missing,motion_rt_lazy?"lazy":"perdraw",motion_frame_log,
-        taa_sentinel_mode==x3m::renderer::SentinelMode::CurrentOnly?"1":taa_sentinel_mode==x3m::renderer::SentinelMode::Camera?"2":"auto",taa_unmatched_static,taa_sky_history_strict?"strict":"loose",taa_sky_history_band_px,double(taa_sky_history_exit_px),double(taa_motion_weight[0]),double(taa_motion_weight[1]),double(taa_motion_weight[2]),camera_cut_degrees,camera_log_frames,motion_state_shadow<0?"auto":motion_state_shadow?"1":"0",scene_hook_requested,hdr_requested,taa_k_override,double(taa_mip_bias),taa_sharpen,double(taa_history_weight));
-    log("x3-modern-renderer version=0.4 schema=2 capture_start=%u capture_frames=%u pointer_bits=32",capture_start,capture_count);
+        motion_output_requested, taa_requested, taa_requested, taa_debug_requested, motion_jitter_requested,
+        motion_jitter_samples, motion_cut_median_px, motion_cut_missing, motion_rt_lazy ? "lazy" : "perdraw",
+        motion_frame_log,
+        taa_sentinel_mode == x3m::renderer::SentinelMode::CurrentOnly ? "1"
+        : taa_sentinel_mode == x3m::renderer::SentinelMode::Camera    ? "2"
+                                                                      : "auto",
+        taa_unmatched_static, taa_sky_history_strict ? "strict" : "loose", taa_sky_history_band_px,
+        double(taa_sky_history_exit_px), double(taa_motion_weight[0]), double(taa_motion_weight[1]),
+        double(taa_motion_weight[2]), camera_cut_degrees, camera_log_frames,
+        motion_state_shadow < 0 ? "auto"
+        : motion_state_shadow   ? "1"
+                                : "0",
+        scene_hook_requested, hdr_requested, taa_k_override, double(taa_mip_bias), taa_sharpen,
+        double(taa_history_weight));
+    log("x3-modern-renderer version=0.4 schema=2 capture_start=%u capture_frames=%u pointer_bits=32", capture_start,
+        capture_count);
     telemetry::initialize(&session_log::request_drain); // a summary wakes the writer; no I/O on the caller
-    session_log::start_writer(telemetry::enabled()); // telemetry on: per-row QPC cost and the 10 s log_writer rows
+    session_log::start_writer(telemetry::enabled());    // telemetry on: per-row QPC cost and the 10 s log_writer rows
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     // Seam only (docs/architecture/logging-tiers.md, "Writer thread"): X3M_FIXTURE_LOG_BENCH=<rows> times that many
     // motion_output_frame-sized rows through log() on this thread while the writer drains them, then one log_bench row.
-    { wchar_t bench[16]{}; if(GetEnvironmentVariableW(L"X3M_FIXTURE_LOG_BENCH",bench,16)>0){ const unsigned long rows=wcstoul(bench,nullptr,10); if(rows>=1&&rows<=1000000)log_fixture_bench(unsigned(rows)); } }
-    // Seam only: X3M_FIXTURE_EXCEPTION=1 raises one continuable access violation here (between two marker rows), which
-    // nobody handles: the session log's crash filter writes its row and chains to the seam's resuming filter.
-    if(fixture_exception_requested())log_fixture_exception();
-#endif
-    window_mode::initialize(); // X3M_WINDOW_MONITOR_RECT (+ _DEFAULT marker): one window_mode_config row when set
-    cursor_reassert::initialize(); // X3M_CURSOR_REASSERT=1 only
-    window_trace::initialize(telemetry::enabled(),&loading_trace::light::cursor_drain); // X3M_WINDOW_TRACE=1 with X3M_TELEMETRY=1 only
-    if(window_trace::enabled())loading_trace::light::cursor_observe(true); // the EXE's SetCursor/SetCursorPos rows record changes (patched by loading_trace below)
-    game_phases::initialize(); // X3M_GAME_PHASES=1 or X3M_DRAW_TRACE=1: all 33 claims here, before the first Present
-    frame_phases::initialize(); // X3M_FRAME_PHASES=1, X3M_PERF=1, X3M_DEBUG=1 or X3M_DRAW_TRACE=1 (the stamp families pair with it): ten render-routine stamps through the game-phase stub, same window
-    pass_phases::initialize(); // X3M_PASS_PHASES=1 or X3M_DRAW_TRACE=1: four effect-pass stamps through the lean stub, needs the frame group, same window
-    residual_phases::initialize(); // X3M_RESIDUAL_PHASES=1 or X3M_DRAW_TRACE=1: two residual stamps through the lean stub, needs the frame and pass groups, same window
-    light_phases::initialize(); // X3M_LIGHT_PHASES=1 or X3M_DRAW_TRACE=1: R7 whole-call timer
-    submit_phases::initialize(); // X3M_SUBMIT_PHASES=1 only (fixtures; in no group, it claims the sun-occlusion lens call): twenty-two view_submit candidate stamps through the context lean stub, needs the frame group, same window
-    loop_phases::initialize(); // X3M_LOOP_PHASES=1 or X3M_DRAW_TRACE=1: six per-sector update stamps through the lean stub, needs the frame group, same window
-    media_cue::initialize(); // default ID2 skip plus optional trace/cache: one verified allocator gate
-    if(const auto observer=media_cue::video_lock_observer()){ // trace on: the surface shell's lock witness (needs --ownership to see the game's surfaces)
-        ownership::set_surface_lock_observer(observer);
-        log("media_video_witness registered=1 blit_range=%08lx-%08lx interval=%u",static_cast<unsigned long>(media_cue::sites::kVideoBlitBegin),static_cast<unsigned long>(media_cue::sites::kVideoBlitEnd),media_cue::detail::video_blit_line_interval);
-    }
-    voice_dmo_fallback::initialize(); // X3M_VOICE_DMO_FALLBACK=1 only; one claim, same window
-    frame_timing::initialize(); // X3M_FRAME_TIMING=1 only; one environment read, no allocation afterwards
-    terran_station_lod::initialize(); // X3M_TERRAN_STATION_LOD=size|distance, unset = size: the bit-31 reader's je at 0x0047d01c becomes jmp (two bytes), same window, disjoint from the other cull/LOD pass claims
-    lod_occlusion::initialize(); // X3M_LOD_OCCLUSION=record0|all, unset = record0: all sets the rel32 of the LOD-0 occlusion gate's jne at 0x004c34f7 to 0 (four bytes), same window, disjoint from the point-light site in the same function
-    fov::initialize(); // X3M_FOV=game|N (the game's degrees 70..100, horizontal on 16:9), unset = game: the registry constructor's imm32 at 0x0041c9dc becomes F'(N) and INS_SetFocus's MOV EDX at 0x0042dbf8 is claimed for the remap stub (both or neither), plus a one-off registry+0x24 write when the registry already exists, same window, disjoint from every other claim
-    sun_flare_fix::initialize(); // X3M_SUN_FLARE_FIX=on|off, unset = off (the launcher sends on): the lens collector's horizontal bound SHRD/CMP at 0x0047e391 (six bytes) claimed through engine_patch with a saturating stub in front of the tail, same window, disjoint from every other claim
-    point_light_admission::initialize(); // X3M_POINT_LIGHT_ROOT_ADMISSION=1 only; six-byte JG site at 0x004c27af, same window
-    collide_box_cull::initialize(); // X3M_COLLIDE_BOX_CULL=1 only; two box early-out trampolines on the sector collision pair tests (0x0045d58e, 0x0045cc7c), same window
-    collide_narrow_census::initialize(); // X3M_COLLIDE_NARROW_CENSUS=1 only; narrow-phase census: two call redirects (0x0045d665, 0x0048a9a5) and one entry trampoline (0x004e2530), same window, disjoint from the box-cull claims
-    collide_sat_sse2::initialize(); // X3M_COLLIDE_SAT_SSE2=1 only; the sole call of the OBB separating-axis test 0x004e3280 (at 0x004e25a3) redirected to an SSE2 reimplementation, same window, disjoint from every other claim
-    pause_key_only::initialize(); // X3M_PAUSE_KEY_ONLY=1 only; 12-byte in-place rewrite of the flight pause's key exit at 0x004043a5 (key X3M_PAUSE_KEY, default 0x1b5), same window, disjoint from every other claim
-    collide_memo::initialize(); // X3M_COLLIDE_MEMO=1 only; the sole call of 0x004e29f0 (at 0x0047f329, inside the mesh-pair query) redirected to the no-contact memo's thunk, same window, after the census and the SAT so the bytes it hashes are settled
-    music_keep::initialize(); // X3M_MUSIC_KEEP=1: stop-all classifier trampoline (0x004982db) and the play seek call redirect (0x00498d54); X3M_MUSIC_TRACE=1: three entry trampolines (0x004982b0, 0x00498c90, 0x00498810); same window, disjoint from every other claim
-    // X3M_SUN_OCCLUSION=1 / X3M_SUN_OCCLUSION_LOG=1 only (docs/architecture/sun-partial-occlusion.md): the flare probe's call
-    // 0x00471630 and the lens traversal's call 0x00472491, same window, disjoint from every other claim except
-    // X3M_SUBMIT_PHASES' stamp at 0x00472490 (refused by name). The override needs the route's RT2 (X3M_MOTION_OUTPUT=1).
     {
-        wchar_t value[32]{};
-        if(x3m::config::get(L"X3M_SUN_OCCLUSION_RADIUS",value,32)>0){wchar_t* end=nullptr;const float v=wcstof(value,&end);if(end!=value&&*end==L'\0'&&v>=sun_occlusion::core::radius_option_min_u&&v<=sun_occlusion::core::radius_option_max_u)sun_occlusion_radius=v;}
-        if(x3m::config::get(L"X3M_SUN_OCCLUSION_CURVE",value,32)>0){wchar_t* end=nullptr;const float v=wcstof(value,&end);if(end!=value&&*end==L'\0'&&v>=.25f&&v<=4.f)sun_occlusion_curve=v;}
-        sun_occlusion_core_f=!(x3m::config::get(L"X3M_SUN_OCCLUSION_CORE_F",value,32)==1&&value[0]==L'0'); // default on; only an explicit "0" restores clip-only
-        sun_occlusion::set_listener(&sun_lens_begin,&sun_lens_end);
-        if(sun_occlusion::initialize()){
-            // X3M_SUN_OCCLUSION_DEFAULT=1: the launcher filled the override in from its Run 83 default (read only when the override is on).
-            const bool from_default=sun_occlusion::override_enabled()&&x3m::config::get(L"X3M_SUN_OCCLUSION_DEFAULT",value,32)==1&&value[0]==L'1';
-            log("sun_occlusion_config override=%u log=%u route=%u radius_u=%.4f curve=%.3f core_f=%u default=%u",sun_occlusion::override_enabled()?1u:0u,sun_occlusion::logging()?1u:0u,motion_output_requested?1u:0u,double(sun_occlusion_radius),double(sun_occlusion_curve),sun_occlusion_core_f?1u:0u,from_default?1u:0u);
+        wchar_t bench[16]{};
+        if (GetEnvironmentVariableW(L"X3M_FIXTURE_LOG_BENCH", bench, 16) > 0) {
+            const unsigned long rows = wcstoul(bench, nullptr, 10);
+            if (rows >= 1 && rows <= 1000000) log_fixture_bench(unsigned(rows));
         }
     }
-    cull_census::initialize(); // X3M_CULL_CENSUS=1 only; two read-only trampolines on the cull/LOD pass (0x0047d258, 0x0047d528), same window
-    cull_small_parts::initialize(); // X3M_CULL_SMALL_PARTS_PX only; one trampoline on the cull/LOD pass (0x0047d2a2), same window, disjoint from the census claims
-    if(telemetry::enabled()||gz_buffer::requested()||crypt_cache::requested()||loading_trace::mesh_adjacency_requested())loading_trace::initialize(); // X3M_GZ_BUFFER=1 / X3M_CRYPT_CACHE=1 / X3M_MESH_ADJACENCY=fast patch their rows alone (fast arms without telemetry since 2026-09-25)
-    resource_reader::initialize(); // X3M_RESOURCE_READ=verify|fast, X3M_DAT_HANDLES=1; after the probes so its stub chains behind theirs
+    // Seam only: X3M_FIXTURE_EXCEPTION=1 raises one continuable access violation here (between two marker rows), which
+    // nobody handles: the session log's crash filter writes its row and chains to the seam's resuming filter.
+    if (fixture_exception_requested()) log_fixture_exception();
+#endif
+    window_mode::initialize();     // X3M_WINDOW_MONITOR_RECT (+ _DEFAULT marker): one window_mode_config row when set
+    cursor_reassert::initialize(); // X3M_CURSOR_REASSERT=1 only
+    window_trace::initialize(telemetry::enabled(), &loading_trace::light::cursor_drain); // X3M_WINDOW_TRACE=1 with
+                                                                                         // X3M_TELEMETRY=1 only
+    if (window_trace::enabled())
+        loading_trace::light::cursor_observe(true); // the EXE's SetCursor/SetCursorPos rows record changes (patched by
+                                                    // loading_trace below)
+    game_phases::initialize();  // X3M_GAME_PHASES=1 or X3M_DRAW_TRACE=1: all 33 claims here, before the first Present
+    frame_phases::initialize(); // X3M_FRAME_PHASES=1, X3M_PERF=1, X3M_DEBUG=1 or X3M_DRAW_TRACE=1 (the stamp families
+                                // pair with it): ten render-routine stamps through the game-phase stub, same window
+    pass_phases::initialize();  // X3M_PASS_PHASES=1 or X3M_DRAW_TRACE=1: four effect-pass stamps through the lean stub,
+                                // needs the frame group, same window
+    residual_phases::initialize(); // X3M_RESIDUAL_PHASES=1 or X3M_DRAW_TRACE=1: two residual stamps through the lean
+                                   // stub, needs the frame and pass groups, same window
+    light_phases::initialize();    // X3M_LIGHT_PHASES=1 or X3M_DRAW_TRACE=1: R7 whole-call timer
+    submit_phases::initialize();   // X3M_SUBMIT_PHASES=1 only (fixtures; in no group, it claims the sun-occlusion lens
+                                 // call): twenty-two view_submit candidate stamps through the context lean stub, needs
+                                 // the frame group, same window
+    loop_phases::initialize(); // X3M_LOOP_PHASES=1 or X3M_DRAW_TRACE=1: six per-sector update stamps through the lean
+                               // stub, needs the frame group, same window
+    media_cue::initialize();   // default ID2 skip plus optional trace/cache: one verified allocator gate
+    if (const auto observer = media_cue::video_lock_observer()) { // trace on: the surface shell's lock witness (needs
+                                                                  // --ownership to see the game's surfaces)
+        ownership::set_surface_lock_observer(observer);
+        log("media_video_witness registered=1 blit_range=%08lx-%08lx interval=%u",
+            static_cast<unsigned long>(media_cue::sites::kVideoBlitBegin),
+            static_cast<unsigned long>(media_cue::sites::kVideoBlitEnd), media_cue::detail::video_blit_line_interval);
+    }
+    voice_dmo_fallback::initialize(); // X3M_VOICE_DMO_FALLBACK=1 only; one claim, same window
+    frame_timing::initialize();       // X3M_FRAME_TIMING=1 only; one environment read, no allocation afterwards
+    terran_station_lod::initialize(); // X3M_TERRAN_STATION_LOD=size|distance, unset = size: the bit-31 reader's je at
+                                      // 0x0047d01c becomes jmp (two bytes), same window, disjoint from the other
+                                      // cull/LOD pass claims
+    lod_occlusion::initialize();      // X3M_LOD_OCCLUSION=record0|all, unset = record0: all sets the rel32 of the LOD-0
+                                 // occlusion gate's jne at 0x004c34f7 to 0 (four bytes), same window, disjoint from the
+                                 // point-light site in the same function
+    fov::initialize(); // X3M_FOV=game|N (the game's degrees 70..100, horizontal on 16:9), unset = game: the registry
+                       // constructor's imm32 at 0x0041c9dc becomes F'(N) and INS_SetFocus's MOV EDX at 0x0042dbf8 is
+                       // claimed for the remap stub (both or neither), plus a one-off registry+0x24 write when the
+                       // registry already exists, same window, disjoint from every other claim
+    sun_flare_fix::initialize(); // X3M_SUN_FLARE_FIX=on|off, unset = off (the launcher sends on): the lens collector's
+                                 // horizontal bound SHRD/CMP at 0x0047e391 (six bytes) claimed through engine_patch
+                                 // with a saturating stub in front of the tail, same window, disjoint from every other
+                                 // claim
+    point_light_admission::initialize(); // X3M_POINT_LIGHT_ROOT_ADMISSION=1 only; six-byte JG site at 0x004c27af, same
+                                         // window
+    collide_box_cull::initialize();      // X3M_COLLIDE_BOX_CULL=1 only; two box early-out trampolines on the sector
+                                         // collision pair tests (0x0045d58e, 0x0045cc7c), same window
+    collide_narrow_census::initialize(); // X3M_COLLIDE_NARROW_CENSUS=1 only; narrow-phase census: two call redirects
+                                         // (0x0045d665, 0x0048a9a5) and one entry trampoline (0x004e2530), same window,
+                                         // disjoint from the box-cull claims
+    collide_sat_sse2::initialize();      // X3M_COLLIDE_SAT_SSE2=1 only; the sole call of the OBB separating-axis test
+                                    // 0x004e3280 (at 0x004e25a3) redirected to an SSE2 reimplementation, same window,
+                                    // disjoint from every other claim
+    pause_key_only::initialize(); // X3M_PAUSE_KEY_ONLY=1 only; 12-byte in-place rewrite of the flight pause's key exit
+                                  // at 0x004043a5 (key X3M_PAUSE_KEY, default 0x1b5), same window, disjoint from every
+                                  // other claim
+    collide_memo::initialize();   // X3M_COLLIDE_MEMO=1 only; the sole call of 0x004e29f0 (at 0x0047f329, inside the
+                                  // mesh-pair query) redirected to the no-contact memo's thunk, same window, after the
+                                  // census and the SAT so the bytes it hashes are settled
+    music_keep::initialize(); // X3M_MUSIC_KEEP=1: stop-all classifier trampoline (0x004982db) and the play seek call
+                              // redirect (0x00498d54); X3M_MUSIC_TRACE=1: three entry trampolines (0x004982b0,
+                              // 0x00498c90, 0x00498810); same window, disjoint from every other claim
+    // X3M_SUN_OCCLUSION=1 / X3M_SUN_OCCLUSION_LOG=1 only (docs/architecture/sun-partial-occlusion.md): the flare
+    // probe's call 0x00471630 and the lens traversal's call 0x00472491, same window, disjoint from every other claim
+    // except X3M_SUBMIT_PHASES' stamp at 0x00472490 (refused by name). The override needs the route's RT2
+    // (X3M_MOTION_OUTPUT=1).
+    {
+        wchar_t value[32]{};
+        if (x3m::config::get(L"X3M_SUN_OCCLUSION_RADIUS", value, 32) > 0) {
+            wchar_t* end = nullptr;
+            const float v = wcstof(value, &end);
+            if (end != value && *end == L'\0' && v >= sun_occlusion::core::radius_option_min_u &&
+                v <= sun_occlusion::core::radius_option_max_u)
+                sun_occlusion_radius = v;
+        }
+        if (x3m::config::get(L"X3M_SUN_OCCLUSION_CURVE", value, 32) > 0) {
+            wchar_t* end = nullptr;
+            const float v = wcstof(value, &end);
+            if (end != value && *end == L'\0' && v >= .25f && v <= 4.f) sun_occlusion_curve = v;
+        }
+        sun_occlusion_core_f = !(x3m::config::get(L"X3M_SUN_OCCLUSION_CORE_F", value, 32) == 1 &&
+                                 value[0] == L'0'); // default on; only an explicit "0" restores clip-only
+        sun_occlusion::set_listener(&sun_lens_begin, &sun_lens_end);
+        if (sun_occlusion::initialize()) {
+            // X3M_SUN_OCCLUSION_DEFAULT=1: the launcher filled the override in from its Run 83 default (read only when
+            // the override is on).
+            const bool from_default = sun_occlusion::override_enabled() &&
+                                      x3m::config::get(L"X3M_SUN_OCCLUSION_DEFAULT", value, 32) == 1 &&
+                                      value[0] == L'1';
+            log("sun_occlusion_config override=%u log=%u route=%u radius_u=%.4f curve=%.3f core_f=%u default=%u",
+                sun_occlusion::override_enabled() ? 1u : 0u, sun_occlusion::logging() ? 1u : 0u,
+                motion_output_requested ? 1u : 0u, double(sun_occlusion_radius), double(sun_occlusion_curve),
+                sun_occlusion_core_f ? 1u : 0u, from_default ? 1u : 0u);
+        }
+    }
+    cull_census::initialize(); // X3M_CULL_CENSUS=1 only; two read-only trampolines on the cull/LOD pass (0x0047d258,
+                               // 0x0047d528), same window
+    cull_small_parts::initialize(); // X3M_CULL_SMALL_PARTS_PX only; one trampoline on the cull/LOD pass (0x0047d2a2),
+                                    // same window, disjoint from the census claims
+    if (telemetry::enabled() || gz_buffer::requested() || crypt_cache::requested() ||
+        loading_trace::mesh_adjacency_requested())
+        loading_trace::initialize(); // X3M_GZ_BUFFER=1 / X3M_CRYPT_CACHE=1 / X3M_MESH_ADJACENCY=fast patch their rows
+                                     // alone (fast arms without telemetry since 2026-09-25)
+    resource_reader::initialize();   // X3M_RESOURCE_READ=verify|fast, X3M_DAT_HANDLES=1; after the probes so its stub
+                                     // chains behind theirs
     sampling_profiler::initialize(); // X3M_PROFILE=1 only; outside loader lock, after the log exists
 }
-const wchar_t* capture_directory() { return directory.c_str(); }
+const wchar_t* capture_directory() {
+    return directory.c_str();
+}
 // engine_memory phase=create|summary: the reader's counters from a guarded copy
 // of its statistics (hits = validated reads answered from the region cache
 // without a VirtualQuery). Validated direct reads are the only path since
 // 2026-09-22. No per-draw work: called at device creation and by the telemetry
 // summary.
-void engine_memory_line(const char* phase,unsigned long long device,unsigned long long frame) {
-    const auto s=engine_memory::stats();
-    const unsigned long long reads=s.reads,queries=s.queries;
+void engine_memory_line(const char* phase, unsigned long long device, unsigned long long frame) {
+    const auto s = engine_memory::stats();
+    const unsigned long long reads = s.reads, queries = s.queries;
     log("engine_memory phase=%s device=%llu path=direct reads=%llu queries=%llu hits=%llu rejected=%llu frame=%llu",
-        phase,static_cast<unsigned long long>(device),
-        reads,queries,reads>=queries?reads-queries:0ull,static_cast<unsigned long long>(s.rejected),
-        static_cast<unsigned long long>(frame?frame:s.frame));
+        phase, static_cast<unsigned long long>(device), reads, queries, reads >= queries ? reads - queries : 0ull,
+        static_cast<unsigned long long>(s.rejected), static_cast<unsigned long long>(frame ? frame : s.frame));
 }
 // engine_memory_read_refused: the reader's cumulative refusals, one row each
 // time the last live device is destroyed (normally once, at the game's
@@ -3642,39 +5230,53 @@ void engine_memory_line(const char* phase,unsigned long long device,unsigned lon
 // modes. The refusing readers (object_lifetime read_registry, object_trace
 // current) log nothing per read.
 void engine_memory_refused_line() {
-    const auto s=engine_memory::stats();
+    const auto s = engine_memory::stats();
     log("engine_memory_read_refused reason=%s count=%llu shutdown=%llu stalled=%llu stalled_reads=%llu strict_reads=%llu signals=%llu signal=%s",
-        s.refused_shutdown?"shutdown":s.refused_stalled?"stalled":s.rejected?"uncommitted":"none",
-        static_cast<unsigned long long>(s.rejected),static_cast<unsigned long long>(s.refused_shutdown),
-        static_cast<unsigned long long>(s.refused_stalled),static_cast<unsigned long long>(s.stalled_reads),
-        static_cast<unsigned long long>(s.strict_reads),
-        static_cast<unsigned long long>(s.shutdown_signals),s.shutdown_source?s.shutdown_source:"none");
+        s.refused_shutdown  ? "shutdown"
+        : s.refused_stalled ? "stalled"
+        : s.rejected        ? "uncommitted"
+                            : "none",
+        static_cast<unsigned long long>(s.rejected), static_cast<unsigned long long>(s.refused_shutdown),
+        static_cast<unsigned long long>(s.refused_stalled), static_cast<unsigned long long>(s.stalled_reads),
+        static_cast<unsigned long long>(s.strict_reads), static_cast<unsigned long long>(s.shutdown_signals),
+        s.shutdown_source ? s.shutdown_source : "none");
 }
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
 // Fixture-only exports (verification/probe/motion_output_fixture.cpp). Absent
 // from production builds; the seam DLL is linked by build_motion_output.sh.
-namespace { MotionOutputFixtureConfig fixture_config{}; bool fixture_configured=false; unsigned fixture_hdr_fault_kind=0, fixture_hdr_fault_count=0; }
+namespace {
+MotionOutputFixtureConfig fixture_config{};
+bool fixture_configured = false;
+unsigned fixture_hdr_fault_kind = 0, fixture_hdr_fault_count = 0;
+}
 void fixture_apply(Device& ctx) {
-    if(fixture_configured) {
+    if (fixture_configured) {
         ctx.motion_output.fixture_configure(fixture_config);
         ctx.fixture_observe_native_wrap = fixture_config.observe_native_wrap != 0;
     }
-    if(fixture_hdr_fault_count){ctx.motion_output.fixture_hdr_fault(fixture_hdr_fault_kind,fixture_hdr_fault_count);fixture_hdr_fault_count=0;}
+    if (fixture_hdr_fault_count) {
+        ctx.motion_output.fixture_hdr_fault(fixture_hdr_fault_kind, fixture_hdr_fault_count);
+        fixture_hdr_fault_count = 0;
+    }
 }
 #endif
 
 // The engine scene-end signal: render thread, outside any device hook; every
 // route sees it under the same mutex the hooks hold.
 const X3mCompositorBinding* compositor_binding() noexcept {
-    static const X3mCompositorBinding callbacks{nullptr,&compositor_pre,&compositor_post,&compositor_cleanup,nullptr};
-    return bloom_requested && motion_output_requested && hdr_requested
-        && hdr_config.tonemap==renderer::HdrTonemap::Agx && scene_hook::wanted() ? &callbacks : nullptr;
+    static const X3mCompositorBinding callbacks{nullptr, &compositor_pre, &compositor_post, &compositor_cleanup,
+                                                nullptr};
+    return bloom_requested && motion_output_requested && hdr_requested &&
+                   hdr_config.tonemap == renderer::HdrTonemap::Agx && scene_hook::wanted()
+               ? &callbacks
+               : nullptr;
 }
 // DllMain DLL_PROCESS_DETACH, before the CRT destroys `devices` (whose ~MotionOutput would
 // otherwise join a worker the OS already killed, under the loader lock). Deliberately without
 // the capture mutex (a killed thread may hold it) and without logging.
 void abandon_fog_density_workers() noexcept {
-    for(auto& entry:devices)if(entry.second)entry.second->motion_output.abandon_volumetric_fog_worker();
+    for (auto& entry : devices)
+        if (entry.second) entry.second->motion_output.abandon_volumetric_fog_worker();
 }
 // DllMain DLL_PROCESS_DETACH at process exit only (lpReserved != NULL), after abandon_fog_density_workers and before
 // the CRT's static destructors: every device context still alive (the application never released its device, or an
@@ -3683,89 +5285,105 @@ void abandon_fog_density_workers() noexcept {
 // whose threads are gone and wait forever (the seam-exit-path case). The process is ending: its memory and handles go
 // with it. No allocation, no lock, no D3D call, no logging.
 void abandon_devices_at_exit() noexcept {
-    using Map=decltype(devices);
+    using Map = decltype(devices);
     alignas(Map) static unsigned char storage[sizeof(Map)];
-    Map* kept=new(storage) Map(); // placement: never destroyed
+    Map* kept = new (storage) Map(); // placement: never destroyed
     kept->swap(devices);
 }
 void scene_end_signal() {
     CaptureLock lock;
-    frame_timing::Scope timing(frame_timing::Bucket::Scene,"scene_end_signal"); // X3M_FRAME_TIMING only
-    for(auto& entry:devices) entry.second->motion_output.scene_end_hook();
+    frame_timing::Scope timing(frame_timing::Bucket::Scene, "scene_end_signal"); // X3M_FRAME_TIMING only
+    for (auto& entry : devices) entry.second->motion_output.scene_end_hook();
 }
 // Self-preserving: the CRT formatter is x87 code (%g/%f, the MinGW pformat),
 // and log() is reachable from the light-envelope hooks (draw capture lines,
 // the stream hooks' metadata-failure line). session_log::vlog formats behind
 // call_preserved into stack scratch and appends the row to the in-memory buffer
 // under its own lock (not the capture lock); the writer thread does the I/O.
-void log(const char* format,...) {
-    va_list args; va_start(args,format);
-    session_log::vlog(format,args);
+void log(const char* format, ...) {
+    va_list args;
+    va_start(args, format);
+    session_log::vlog(format, args);
     va_end(args);
 }
-HANDLE log_handle() noexcept { return session_log::handle(); }
+HANDLE log_handle() noexcept {
+    return session_log::handle();
+}
 void hook_direct3d(IDirect3D9* d) {
     CaptureLock lock;
-    if(factories.count(d)) return;
-    IDirect3D9Ex* ex=nullptr;
-    const bool supports_ex=SUCCEEDED(d->QueryInterface(IID_IDirect3D9Ex,reinterpret_cast<void**>(&ex)))
-        && static_cast<void*>(ex)==static_cast<void*>(d);
-    if(ex) ex->Release();
-    auto ctx=std::make_unique<Hooks>(d,supports_ex?22:17);
-    ctx->set(2,release_factory); ctx->set(16,create_device);
-    auto entry=factories.emplace(d,std::move(ctx));
+    if (factories.count(d)) return;
+    IDirect3D9Ex* ex = nullptr;
+    const bool supports_ex = SUCCEEDED(d->QueryInterface(IID_IDirect3D9Ex, reinterpret_cast<void**>(&ex))) &&
+                             static_cast<void*>(ex) == static_cast<void*>(d);
+    if (ex) ex->Release();
+    auto ctx = std::make_unique<Hooks>(d, supports_ex ? 22 : 17);
+    ctx->set(2, release_factory);
+    ctx->set(16, create_device);
+    auto entry = factories.emplace(d, std::move(ctx));
     entry.first->second->install(d);
     D3DADAPTER_IDENTIFIER9 id{};
-    if(SUCCEEDED(d->GetAdapterIdentifier(D3DADAPTER_DEFAULT,0,&id))) log("adapter description=%s driver=%s vendor=%08lx device=%08lx",id.Description,id.Driver,id.VendorId,id.DeviceId);
+    if (SUCCEEDED(d->GetAdapterIdentifier(D3DADAPTER_DEFAULT, 0, &id)))
+        log("adapter description=%s driver=%s vendor=%08lx device=%08lx", id.Description, id.Driver, id.VendorId,
+            id.DeviceId);
 }
 }
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
-extern "C" __declspec(dllexport) void x3m_motion_output_fixture_configure(const x3m::MotionOutputFixtureConfig* config) {
+extern "C"
+    __declspec(dllexport) void x3m_motion_output_fixture_configure(const x3m::MotionOutputFixtureConfig* config) {
     x3m::CaptureLock lock;
-    if(!config||config->size!=sizeof(x3m::MotionOutputFixtureConfig)) return;
-    x3m::fixture_config=*config; x3m::fixture_configured=true;
-    for(auto& entry:x3m::devices) x3m::fixture_apply(*entry.second);
+    if (!config || config->size != sizeof(x3m::MotionOutputFixtureConfig)) return;
+    x3m::fixture_config = *config;
+    x3m::fixture_configured = true;
+    for (auto& entry : x3m::devices) x3m::fixture_apply(*entry.second);
 }
-extern "C" __declspec(dllexport) HRESULT x3m_motion_output_fixture_wrap_snapshot(IDirect3DDevice9* device,x3m::MotionOutputFixtureWrapSnapshot* out) {
+extern "C" __declspec(dllexport) HRESULT
+x3m_motion_output_fixture_wrap_snapshot(IDirect3DDevice9* device, x3m::MotionOutputFixtureWrapSnapshot* out) {
     x3m::CaptureLock lock;
-    const auto it=x3m::devices.find(device);
-    if(it==x3m::devices.end() || !out)return D3DERR_INVALIDCALL;
-    *out=it->second->fixture_wrap;
+    const auto it = x3m::devices.find(device);
+    if (it == x3m::devices.end() || !out) return D3DERR_INVALIDCALL;
+    *out = it->second->fixture_wrap;
     return S_OK;
 }
-extern "C" __declspec(dllexport) void x3m_linear_emission_fixture_fault(IDirect3DDevice9* device,unsigned kind,unsigned count) {
+extern "C" __declspec(dllexport) void x3m_linear_emission_fixture_fault(IDirect3DDevice9* device, unsigned kind,
+                                                                        unsigned count) {
     x3m::CaptureLock lock;
-    const auto it=x3m::devices.find(device);
-    if(it!=x3m::devices.end())it->second->motion_output.fixture_emission_fault(kind,count);
+    const auto it = x3m::devices.find(device);
+    if (it != x3m::devices.end()) it->second->motion_output.fixture_emission_fault(kind, count);
 }
-extern "C" __declspec(dllexport) unsigned x3m_linear_emission_fixture_status(IDirect3DDevice9* device,unsigned key) {
+extern "C" __declspec(dllexport) unsigned x3m_linear_emission_fixture_status(IDirect3DDevice9* device, unsigned key) {
     x3m::CaptureLock lock;
-    const auto it=x3m::devices.find(device);
-    if(it==x3m::devices.end())return 0;
-    if(key==12)return it->second->fixture_emission_source_calls;
-    if(key==49)return it->second->fixture_primitive_source_calls;
+    const auto it = x3m::devices.find(device);
+    if (it == x3m::devices.end()) return 0;
+    if (key == 12) return it->second->fixture_emission_source_calls;
+    if (key == 49) return it->second->fixture_primitive_source_calls;
     return it->second->motion_output.fixture_emission_status(key);
 }
 // Thin-vote script (motion_output_thin_vote_inc.h): arm or disarm the readable-MANAGED creation policy of the
 // application device (the loader arms it at wrap_factory with X3M_TAA_THIN_VOTE=on), to create buffers before arming.
-extern "C" __declspec(dllexport) HRESULT x3m_thin_vote_fixture_readable_policy(IDirect3DDevice9* device,int on) {
-    return x3m::ownership::configure_readable_managed_buffers(device,on!=0);
+extern "C" __declspec(dllexport) HRESULT x3m_thin_vote_fixture_readable_policy(IDirect3DDevice9* device, int on) {
+    return x3m::ownership::configure_readable_managed_buffers(device, on != 0);
 }
-extern "C" __declspec(dllexport) HRESULT x3m_motion_output_fixture_readback_target(IDirect3DDevice9* device,unsigned target,float* out,unsigned floats,unsigned* width,unsigned* height) {
+extern "C" __declspec(dllexport) HRESULT x3m_motion_output_fixture_readback_target(IDirect3DDevice9* device,
+                                                                                   unsigned target, float* out,
+                                                                                   unsigned floats, unsigned* width,
+                                                                                   unsigned* height) {
     x3m::CaptureLock lock;
-    const auto it=x3m::devices.find(device);
-    if(it==x3m::devices.end()) return D3DERR_INVALIDCALL;
-    return it->second->motion_output.fixture_readback(target,out,floats,width,height);
+    const auto it = x3m::devices.find(device);
+    if (it == x3m::devices.end()) return D3DERR_INVALIDCALL;
+    return it->second->motion_output.fixture_readback(target, out, floats, width, height);
 }
 // Compatibility spellings: RT1 (motion, 4 floats per pixel) and RT2 (depth, 1 float per pixel).
-extern "C" __declspec(dllexport) HRESULT x3m_motion_output_fixture_readback(IDirect3DDevice9* device,float* out,unsigned floats,unsigned* width,unsigned* height) {
-    return x3m_motion_output_fixture_readback_target(device,1,out,floats,width,height);
+extern "C" __declspec(dllexport) HRESULT x3m_motion_output_fixture_readback(IDirect3DDevice9* device, float* out,
+                                                                            unsigned floats, unsigned* width,
+                                                                            unsigned* height) {
+    return x3m_motion_output_fixture_readback_target(device, 1, out, floats, width, height);
 }
 // The fixture executable's own camera pointer slots stand in for the engine
 // globals (camera_state::fixture_install); the identity gate is bypassed.
-extern "C" __declspec(dllexport) void x3m_camera_state_fixture_install(const float* const* projection_slot,const float* const* view_slot) {
+extern "C" __declspec(dllexport) void x3m_camera_state_fixture_install(const float* const* projection_slot,
+                                                                       const float* const* view_slot) {
     x3m::CaptureLock lock;
-    x3m::camera_state::fixture_install(projection_slot,view_slot);
+    x3m::camera_state::fixture_install(projection_slot, view_slot);
 }
 // The fixture executable's own render-context slot stands in for 0x00608518
 // (sun_light_poll::fixture_install); the identity gate is bypassed.
@@ -3775,36 +5393,41 @@ extern "C" __declspec(dllexport) void x3m_sun_light_poll_fixture_install(const s
 }
 // Engine scene-end hook seam: the fixture executable's own E8 callsite and
 // compositor stand in for 0x004721b1 / 0x004c4750; identity gate bypassed.
-extern "C" __declspec(dllexport) int x3m_scene_hook_fixture_install(void* site,void* target) {
+extern "C" __declspec(dllexport) int x3m_scene_hook_fixture_install(void* site, void* target) {
     x3m::CaptureLock lock;
-    const bool result=x3m::scene_hook::fixture_install(site,target,&x3m::scene_end_signal);
-    for(auto& entry:x3m::devices) entry.second->motion_output.configure_scene_hook(x3m::scene_hook::active());
+    const bool result = x3m::scene_hook::fixture_install(site, target, &x3m::scene_end_signal);
+    for (auto& entry : x3m::devices) entry.second->motion_output.configure_scene_hook(x3m::scene_hook::active());
     return result;
 }
 extern "C" __declspec(dllexport) int x3m_scene_hook_fixture_shutdown() {
     x3m::CaptureLock lock;
-    const bool result=x3m::scene_hook::fixture_shutdown();
-    for(auto& entry:x3m::devices) entry.second->motion_output.configure_scene_hook(x3m::scene_hook::active());
+    const bool result = x3m::scene_hook::fixture_shutdown();
+    for (auto& entry : x3m::devices) entry.second->motion_output.configure_scene_hook(x3m::scene_hook::active());
     return result;
 }
 // Synthetic owner only: renderer data, bridge, pin cleanup and native device
 // hooks are real. The fixture uses its own original function and outer SEH catch.
-extern "C" __declspec(dllexport) int x3m_bloom_lifetime_fixture_bind(void (*original)(),
-        IDirect3DDevice9* device,IDirect3DTexture9* scene,IDirect3DSurface9* main,IDirect3DSurface9* depth) {
+extern "C" __declspec(dllexport) int x3m_bloom_lifetime_fixture_bind(void (*original)(), IDirect3DDevice9* device,
+                                                                     IDirect3DTexture9* scene, IDirect3DSurface9* main,
+                                                                     IDirect3DSurface9* depth) {
     x3m::CaptureLock lock;
-    auto& f=x3m::bloom_lifetime_fixture;
-    if(!original || !device || f.bound || x3m_compositor_bridge_active())return 0;
-    if(x3m::devices.find(device)==x3m::devices.end()){
+    auto& f = x3m::bloom_lifetime_fixture;
+    if (!original || !device || f.bound || x3m_compositor_bridge_active()) return 0;
+    if (x3m::devices.find(device) == x3m::devices.end()) {
         // Production's separate Create9Ex factory currently passes through.
         // Adopt the fixture's genuine Ex device explicitly to exercise the
         // actual 134-slot ResetEx hook; this is not production Ex admission.
         D3DDEVICE_CREATION_PARAMETERS creation{};
-        if(FAILED(device->GetCreationParameters(&creation)))return 0;
-        x3m::hook_device(device,creation.hFocusWindow,creation.hFocusWindow);
+        if (FAILED(device->GetCreationParameters(&creation))) return 0;
+        x3m::hook_device(device, creation.hFocusWindow, creation.hFocusWindow);
     }
-    f={}; f.device=device;f.scene=scene;f.main=main;f.depth=depth;
-    f.binding={original,&x3m::bloom_fixture_pre,&x3m::bloom_fixture_post,&x3m::bloom_fixture_cleanup,nullptr};
-    f.bound=x3m_compositor_bridge_bind(&f.binding)!=0;
+    f = {};
+    f.device = device;
+    f.scene = scene;
+    f.main = main;
+    f.depth = depth;
+    f.binding = {original, &x3m::bloom_fixture_pre, &x3m::bloom_fixture_post, &x3m::bloom_fixture_cleanup, nullptr};
+    f.bound = x3m_compositor_bridge_bind(&f.binding) != 0;
     return f.bound;
 }
 extern "C" __declspec(dllexport) void* x3m_bloom_lifetime_fixture_entry() {
@@ -3812,102 +5435,132 @@ extern "C" __declspec(dllexport) void* x3m_bloom_lifetime_fixture_entry() {
 }
 extern "C" __declspec(dllexport) int x3m_bloom_lifetime_fixture_unbind() {
     x3m::CaptureLock lock;
-    auto& f=x3m::bloom_lifetime_fixture;
-    if(!f.bound || x3m_compositor_bridge_active() || !x3m_compositor_bridge_unbind())return 0;
-    f.bound=false;return 1;
+    auto& f = x3m::bloom_lifetime_fixture;
+    if (!f.bound || x3m_compositor_bridge_active() || !x3m_compositor_bridge_unbind()) return 0;
+    f.bound = false;
+    return 1;
 }
 extern "C" __declspec(dllexport) unsigned x3m_bloom_lifetime_fixture_query(unsigned key) {
     x3m::CaptureLock lock;
-    auto& f=x3m::bloom_lifetime_fixture;
-    if(key==8)return x3m::devices.find(f.device)==x3m::devices.end();
-    if(key==9)return f.owner.expired();
-    if(key==11)return x3m_compositor_bridge_active();
-    return key<17?f.counts[key]:~0u;
+    auto& f = x3m::bloom_lifetime_fixture;
+    if (key == 8) return x3m::devices.find(f.device) == x3m::devices.end();
+    if (key == 9) return f.owner.expired();
+    if (key == 11) return x3m_compositor_bridge_active();
+    return key < 17 ? f.counts[key] : ~0u;
 }
-extern "C" __declspec(dllexport) unsigned x3m_scene_hook_fixture_signals() { return unsigned(x3m::scene_hook::signals()); }
-extern "C" __declspec(dllexport) const char* x3m_scene_hook_fixture_status() { return x3m::scene_hook::status(); }
-extern "C" __declspec(dllexport) HRESULT x3m_motion_output_fixture_last_pixel_abi(IDirect3DDevice9* device,float* out,unsigned floats) {
+extern "C" __declspec(dllexport) unsigned x3m_scene_hook_fixture_signals() {
+    return unsigned(x3m::scene_hook::signals());
+}
+extern "C" __declspec(dllexport) const char* x3m_scene_hook_fixture_status() {
+    return x3m::scene_hook::status();
+}
+extern "C" __declspec(dllexport) HRESULT x3m_motion_output_fixture_last_pixel_abi(IDirect3DDevice9* device, float* out,
+                                                                                  unsigned floats) {
     x3m::CaptureLock lock;
-    const auto it=x3m::devices.find(device);
-    if(it==x3m::devices.end()) return D3DERR_INVALIDCALL;
-    return it->second->motion_output.fixture_last_pixel_abi(out,floats);
+    const auto it = x3m::devices.find(device);
+    if (it == x3m::devices.end()) return D3DERR_INVALIDCALL;
+    return it->second->motion_output.fixture_last_pixel_abi(out, floats);
 }
-extern "C" __declspec(dllexport) HRESULT x3m_motion_output_fixture_readback_depth(IDirect3DDevice9* device,float* out,unsigned floats,unsigned* width,unsigned* height) {
-    return x3m_motion_output_fixture_readback_target(device,2,out,floats,width,height);
+extern "C" __declspec(dllexport) HRESULT x3m_motion_output_fixture_readback_depth(IDirect3DDevice9* device, float* out,
+                                                                                  unsigned floats, unsigned* width,
+                                                                                  unsigned* height) {
+    return x3m_motion_output_fixture_readback_target(device, 2, out, floats, width, height);
 }
 // Depth replay seam: the private sun-space map as floats plus the last
 // replayed frame's basis (16 floats; motion_output_shadow_replay_inc.h).
-extern "C" __declspec(dllexport) HRESULT x3m_shadow_replay_fixture_readback(IDirect3DDevice9* device,float* out,unsigned floats,unsigned* width,unsigned* height,float* params,unsigned param_floats) {
+extern "C" __declspec(dllexport) HRESULT x3m_shadow_replay_fixture_readback(IDirect3DDevice9* device, float* out,
+                                                                            unsigned floats, unsigned* width,
+                                                                            unsigned* height, float* params,
+                                                                            unsigned param_floats) {
     x3m::CaptureLock lock;
-    const auto it=x3m::devices.find(device);
-    if(it==x3m::devices.end()) return D3DERR_INVALIDCALL;
-    return it->second->motion_output.fixture_shadow_replay_readback(out,floats,width,height,params,param_floats);
+    const auto it = x3m::devices.find(device);
+    if (it == x3m::devices.end()) return D3DERR_INVALIDCALL;
+    return it->second->motion_output.fixture_shadow_replay_readback(out, floats, width, height, params, param_floats);
 }
 // The same per cascade (shadow-cascades.md): 19 params, the retained basis.
-extern "C" __declspec(dllexport) HRESULT x3m_shadow_replay_fixture_cascade_readback(IDirect3DDevice9* device,unsigned cascade,float* out,unsigned floats,unsigned* width,unsigned* height,float* params,unsigned param_floats) {
+extern "C" __declspec(dllexport) HRESULT x3m_shadow_replay_fixture_cascade_readback(IDirect3DDevice9* device,
+                                                                                    unsigned cascade, float* out,
+                                                                                    unsigned floats, unsigned* width,
+                                                                                    unsigned* height, float* params,
+                                                                                    unsigned param_floats) {
     x3m::CaptureLock lock;
-    const auto it=x3m::devices.find(device);
-    if(it==x3m::devices.end()) return D3DERR_INVALIDCALL;
-    return it->second->motion_output.fixture_shadow_replay_readback(out,floats,width,height,params,param_floats,cascade);
+    const auto it = x3m::devices.find(device);
+    if (it == x3m::devices.end()) return D3DERR_INVALIDCALL;
+    return it->second->motion_output.fixture_shadow_replay_readback(out, floats, width, height, params, param_floats,
+                                                                    cascade);
 }
 // Own-ship-adaptive cascade 0 seam (shadow-cascade-extents.md, section 5):
 // the fixture executable's synthetic own-ship root node stands in for the
 // registry walk of the verified executable; the scope nodes of its draws are
 // compared against it. Pressed at a frame boundary, before the frame's draws.
-extern "C" __declspec(dllexport) int x3m_shadow_own_ship_fixture_install(IDirect3DDevice9* device,std::uintptr_t node,std::uint32_t handle,std::uintptr_t part,std::uint32_t part_handle) {
+extern "C" __declspec(dllexport) int x3m_shadow_own_ship_fixture_install(IDirect3DDevice9* device, std::uintptr_t node,
+                                                                         std::uint32_t handle, std::uintptr_t part,
+                                                                         std::uint32_t part_handle) {
     x3m::CaptureLock lock;
-    const auto it=x3m::devices.find(device);
-    if(it==x3m::devices.end())return -1;
-    it->second->motion_output.fixture_own_ship(node,handle,part,part_handle);
+    const auto it = x3m::devices.find(device);
+    if (it == x3m::devices.end()) return -1;
+    it->second->motion_output.fixture_own_ship(node, handle, part, part_handle);
     return 0;
 }
 // Caster retention seam (shadow-caster-retention.md): the store's levels and
 // counters, and the synthetic lifetime observer (births, retirements, journal).
-extern "C" __declspec(dllexport) unsigned x3m_shadow_retention_fixture_stats(IDirect3DDevice9* device,std::uint64_t* out,unsigned count) {
+extern "C" __declspec(dllexport) unsigned x3m_shadow_retention_fixture_stats(IDirect3DDevice9* device,
+                                                                             std::uint64_t* out, unsigned count) {
     x3m::CaptureLock lock;
-    const auto it=x3m::devices.find(device);
-    return it==x3m::devices.end()?0u:it->second->motion_output.fixture_shadow_retention_stats(out,count);
+    const auto it = x3m::devices.find(device);
+    return it == x3m::devices.end() ? 0u : it->second->motion_output.fixture_shadow_retention_stats(out, count);
 }
 // The route's own mid-session device-object lifecycle (the sun bracket's RT2 reference: 1 releases the
 // previous one and acquires, 0 releases; 2 acquires outside the accounting (main's shape, the one-sided
-// release that drove taa_references_ negative), 3 acquires under it and releases outside); 1 while held, -1 unknown device.
-extern "C" __declspec(dllexport) int x3m_sun_occlusion_fixture_lens_depth(IDirect3DDevice9* device,unsigned acquire) {
+// release that drove taa_references_ negative), 3 acquires under it and releases outside); 1 while held, -1 unknown
+// device.
+extern "C" __declspec(dllexport) int x3m_sun_occlusion_fixture_lens_depth(IDirect3DDevice9* device, unsigned acquire) {
     x3m::CaptureLock lock;
-    const auto it=x3m::devices.find(device);
-    return it==x3m::devices.end()?-1:it->second->motion_output.fixture_lens_depth(acquire);
+    const auto it = x3m::devices.find(device);
+    return it == x3m::devices.end() ? -1 : it->second->motion_output.fixture_lens_depth(acquire);
 }
-extern "C" __declspec(dllexport) void x3m_shadow_retention_fixture_lifetime(unsigned op,std::uint64_t a,std::uint64_t b) {
+extern "C" __declspec(dllexport) void x3m_shadow_retention_fixture_lifetime(unsigned op, std::uint64_t a,
+                                                                            std::uint64_t b) {
     x3m::CaptureLock lock;
-    if(op==8){ for(auto& entry:x3m::devices) entry.second->motion_output.fixture_shadow_retention_device_lost(); return; } // 8: device loss on every hooked device
-    x3m::shadow_retention_fixture_lifetime(op,a,b);
+    if (op == 8) {
+        for (auto& entry : x3m::devices) entry.second->motion_output.fixture_shadow_retention_device_lost();
+        return;
+    } // 8: device loss on every hooked device
+    x3m::shadow_retention_fixture_lifetime(op, a, b);
 }
 // HDR seam: fault injection (renderer::HdrFault kinds, `count` firings; a null
 // device queues the fault for every hooked device and the next attach) and
 // the FP16 target as floats.
-extern "C" __declspec(dllexport) void x3m_hdr_fixture_fault(IDirect3DDevice9* device,unsigned kind,unsigned count) {
+extern "C" __declspec(dllexport) void x3m_hdr_fixture_fault(IDirect3DDevice9* device, unsigned kind, unsigned count) {
     x3m::CaptureLock lock;
-    for(auto& entry:x3m::devices) if(!device||entry.first==device) entry.second->motion_output.fixture_hdr_fault(kind,count);
-    if(!device){x3m::fixture_hdr_fault_kind=kind;x3m::fixture_hdr_fault_count=count;}
+    for (auto& entry : x3m::devices)
+        if (!device || entry.first == device) entry.second->motion_output.fixture_hdr_fault(kind, count);
+    if (!device) {
+        x3m::fixture_hdr_fault_kind = kind;
+        x3m::fixture_hdr_fault_count = count;
+    }
 }
-extern "C" __declspec(dllexport) HRESULT x3m_hdr_fixture_readback(IDirect3DDevice9* device,float* out,unsigned floats,unsigned* width,unsigned* height) {
+extern "C" __declspec(dllexport) HRESULT x3m_hdr_fixture_readback(IDirect3DDevice9* device, float* out, unsigned floats,
+                                                                  unsigned* width, unsigned* height) {
     x3m::CaptureLock lock;
-    const auto it=x3m::devices.find(device);
-    if(it==x3m::devices.end()) return D3DERR_INVALIDCALL;
-    return it->second->motion_output.fixture_hdr_readback(out,floats,width,height);
+    const auto it = x3m::devices.find(device);
+    if (it == x3m::devices.end()) return D3DERR_INVALIDCALL;
+    return it->second->motion_output.fixture_hdr_readback(out, floats, width, height);
 }
 // Stage 2: the exposure state (ev, ev_adapted, ev_target, avg_log_l, dt, exposure, steps, k).
-extern "C" __declspec(dllexport) HRESULT x3m_hdr_fixture_exposure(IDirect3DDevice9* device,float* out,unsigned floats) {
+extern "C" __declspec(dllexport) HRESULT x3m_hdr_fixture_exposure(IDirect3DDevice9* device, float* out,
+                                                                  unsigned floats) {
     x3m::CaptureLock lock;
-    const auto it=x3m::devices.find(device);
-    if(it==x3m::devices.end()) return D3DERR_INVALIDCALL;
-    return it->second->motion_output.fixture_hdr_exposure(out,floats);
+    const auto it = x3m::devices.find(device);
+    if (it == x3m::devices.end()) return D3DERR_INVALIDCALL;
+    return it->second->motion_output.fixture_hdr_exposure(out, floats);
 }
 // Fixture seam (the Ctrl+Shift+F4/F6 keys went on 2026-09-26): the hull-family
 // A/B between frames, lightmap!=0 for the light-map gain, 0 for the guide lights.
-extern "C" __declspec(dllexport) int x3m_hull_emission_fixture_toggle(IDirect3DDevice9* device,int lightmap) {
+extern "C" __declspec(dllexport) int x3m_hull_emission_fixture_toggle(IDirect3DDevice9* device, int lightmap) {
     x3m::CaptureLock lock;
-    const auto it=x3m::devices.find(device);
-    if(it==x3m::devices.end()) return -2;
-    return it->second->motion_output.hull_emission_gain_toggle(lightmap!=0);
+    const auto it = x3m::devices.find(device);
+    if (it == x3m::devices.end()) return -2;
+    return it->second->motion_output.hull_emission_gain_toggle(lightmap != 0);
 }
 #endif

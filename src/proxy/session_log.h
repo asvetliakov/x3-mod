@@ -16,14 +16,14 @@
 namespace x3m::session_log {
 struct Opened {
     HANDLE file = INVALID_HANDLE_VALUE;
-    std::wstring captures;          // capture directory (dumps, readbacks), no trailing separator
-    std::string path;               // the log file, UTF-8, redacted (resolved by GetFinalPathNameByHandleW when available)
-    const char* source = "game";    // game | localappdata | override
-    const char* previous = "absent"; // renamed | absent | busy | none (override: no rotation)
+    std::wstring captures;       // capture directory (dumps, readbacks), no trailing separator
+    std::string path;            // the log file, UTF-8, redacted (resolved by GetFinalPathNameByHandleW when available)
+    const char* source = "game"; // game | localappdata | override
+    const char* previous = "absent";      // renamed | absent | busy | none (override: no rotation)
     const char* captures_source = "game"; // game | localappdata
-    bool override_failed = false;   // X3M_LOG_FILE was set but could not be opened
-    unsigned stale_removed = 0;     // x3m-<pid>.log files older than x3m.prev.log deleted at open
-    char session[40] = {};          // YYYYMMDD-HHMMSS-<pid>
+    bool override_failed = false;         // X3M_LOG_FILE was set but could not be opened
+    unsigned stale_removed = 0;           // x3m-<pid>.log files older than x3m.prev.log deleted at open
+    char session[40] = {};                // YYYYMMDD-HHMMSS-<pid>
 };
 // Opens the session log per the policy above and makes it the target of log() (rows buffer
 // until start_writer); writes nothing itself.

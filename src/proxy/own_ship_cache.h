@@ -14,29 +14,58 @@
 
 namespace x3m::own_ship {
 constexpr unsigned cache_size = 64, cache_frames = 256, walks_per_frame = 64;
-struct Entry { std::uintptr_t node = 0; std::uint32_t handle = 0, stamp = 0; bool own = false; };
+struct Entry {
+    std::uintptr_t node = 0;
+    std::uint32_t handle = 0, stamp = 0;
+    bool own = false;
+};
 struct Cache {
     Entry entries[cache_size]{};
-    std::uintptr_t root = 0; std::uint32_t root_handle = 0;
+    std::uintptr_t root = 0;
+    std::uint32_t root_handle = 0;
     std::uint64_t load_epoch = 0, registry_epoch = 0;
     std::uint32_t frame = 0;
     unsigned walks = 0, deferred = 0, hits = 0; // this frame
     unsigned flushes = 0, walks_total = 0;      // since attach
-    void flush() noexcept { for (auto& e : entries) e = Entry{}; ++flushes; }
+    void flush() noexcept {
+        for (auto& e : entries) e = Entry{};
+        ++flushes;
+    }
     // The frame's root and epochs; any change flushes. A new frame resets the walk budget and the counters.
     void bind(std::uint32_t now, std::uintptr_t r, std::uint32_t rh, std::uint64_t le, std::uint64_t re) noexcept {
-        if (r != root || rh != root_handle || le != load_epoch || re != registry_epoch) { flush(); root = r; root_handle = rh; load_epoch = le; registry_epoch = re; }
-        if (now != frame) { frame = now; walks = 0; deferred = 0; hits = 0; }
+        if (r != root || rh != root_handle || le != load_epoch || re != registry_epoch) {
+            flush();
+            root = r;
+            root_handle = rh;
+            load_epoch = le;
+            registry_epoch = re;
+        }
+        if (now != frame) {
+            frame = now;
+            walks = 0;
+            deferred = 0;
+            hits = 0;
+        }
     }
     // Whether (node, handle) is the root or descends from it; `walk(node, handle)` decides a miss.
     template <class Walk> bool own(std::uintptr_t node, std::uint32_t handle, Walk walk) noexcept {
         if (!node || !root) return false;
         if (node == root) return handle == root_handle;
         Entry& e = entries[(node >> 4) % cache_size];
-        if (e.node == node && e.handle == handle && frame - e.stamp < cache_frames) { ++hits; return e.own; }
-        if (walks >= walks_per_frame) { ++deferred; return false; }
-        ++walks; ++walks_total;
-        e.node = node; e.handle = handle; e.stamp = frame; e.own = walk(node, handle);
+        if (e.node == node && e.handle == handle && frame - e.stamp < cache_frames) {
+            ++hits;
+            return e.own;
+        }
+        if (walks >= walks_per_frame) {
+            ++deferred;
+            return false;
+        }
+        ++walks;
+        ++walks_total;
+        e.node = node;
+        e.handle = handle;
+        e.stamp = frame;
+        e.own = walk(node, handle);
         return e.own;
     }
 };

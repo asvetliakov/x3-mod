@@ -32,13 +32,13 @@
 // taken; only a site whose first five bytes straddle a qword boundary falls
 // back to a plain copy).
 namespace x3m::engine_patch {
-constexpr unsigned max_prologue=16;
+constexpr unsigned max_prologue = 16;
 struct SiteSpec {
     const char* name;
-    uintptr_t address;              // function entry (the game's preferred VA, or a fixture function)
+    uintptr_t address; // function entry (the game's preferred VA, or a fixture function)
     unsigned char expected[max_prologue];
-    unsigned length;                // bytes displaced (>= 5, whole instructions)
-    unsigned ret_pop;               // bytes the function's `ret n` pops (0 for `ret`)
+    unsigned length;  // bytes displaced (>= 5, whole instructions)
+    unsigned ret_pop; // bytes the function's `ret n` pops (0 for `ret`)
     // Offset of the 4-byte rel32 field of the one relative branch the displaced
     // span may contain (a `0F 8x rel32` Jcc or an `E8/E9 rel32`), 0 = none.
     // The tail copy re-bases that rel32 so the branch keeps its absolute
@@ -49,28 +49,30 @@ struct SiteSpec {
 };
 struct Site {
     SiteSpec spec{};
-    void* tail=nullptr;             // displaced prologue + jmp back
-    void* dispatcher=nullptr;       // jmp [entry]
-    void** entry=nullptr;           // the chain head (arena data)
-    unsigned char original[max_prologue]{},patched[5]{};
-    DWORD protection=0;
-    bool claimed=false,patched_in=false,atomic_write=false;
-    const char* status="unclaimed";
+    void* tail = nullptr;       // displaced prologue + jmp back
+    void* dispatcher = nullptr; // jmp [entry]
+    void** entry = nullptr;     // the chain head (arena data)
+    unsigned char original[max_prologue]{}, patched[5]{};
+    DWORD protection = 0;
+    bool claimed = false, patched_in = false, atomic_write = false;
+    const char* status = "unclaimed";
 };
 // Small x86 byte emitter into the arena (executable memory; writable only while emitting).
 class Emitter {
 public:
     explicit Emitter(unsigned reserve);
     ~Emitter();
-    bool ok() const { return cursor_!=nullptr; }
+    bool ok() const { return cursor_ != nullptr; }
     void* here() const { return cursor_; }
     void byte(unsigned char b);
-    void bytes(const void* p,unsigned n);
+    void bytes(const void* p, unsigned n);
     void dword(uint32_t v);
     void rel32(const void* target); // for E8/E9 already emitted: displacement from the next byte
     void* finish();                 // makes the block executable again; returns its start
 private:
-    unsigned char* start_=nullptr; unsigned char* cursor_=nullptr; unsigned reserve_=0;
+    unsigned char* start_ = nullptr;
+    unsigned char* cursor_ = nullptr;
+    unsigned reserve_ = 0;
 };
 // Closes the install window (idempotent; the first reason is kept). After this
 // claim() and claim_call() fail with status late_claim.
@@ -80,22 +82,22 @@ const char* install_window_reason(); // nullptr while open
 // Writes n code bytes at address: one lock cmpxchg8b when [address, address+n)
 // lies inside an aligned 8-byte word (n <= 8), else a plain copy. The caller
 // holds the page writable. Returns whether the atomic path was used.
-bool write_code(uintptr_t address,const unsigned char* bytes,unsigned n);
+bool write_code(uintptr_t address, const unsigned char* bytes, unsigned n);
 // Claims and patches one site; false with site.status set on any mismatch.
 // A failed post-write step leaves the original bytes in place (patch_rolled_back)
 // or, when even that fails, keeps the site registered as patched
 // (rollback_failed, patched_in=true) so restore() still tries at shutdown.
-bool claim(Site& site,const SiteSpec& spec);
+bool claim(Site& site, const SiteSpec& spec);
 // Installs stub in front of the chain; returns the previous head (the stub's continuation).
-void* push_front(Site& site,void* stub);
+void* push_front(Site& site, void* stub);
 // Writes a pointer word that lives in the arena (a stub's continuation slot).
-bool store_pointer(void** slot,void* value);
+bool store_pointer(void** slot, void* value);
 // Restores the original bytes (the chain stays callable for threads already inside it).
 bool restore(Site& site);
 // Whether the expected bytes are what the site holds now (before any patch).
-bool verify_bytes(uintptr_t address,const unsigned char* expected,unsigned length);
+bool verify_bytes(uintptr_t address, const unsigned char* expected, unsigned length);
 // Reads count bytes from a code address into out (false when unreadable).
-bool read_code(uintptr_t address,unsigned char* out,unsigned count);
+bool read_code(uintptr_t address, unsigned char* out, unsigned count);
 // Arena accounting for reports.
 unsigned arena_used();
 unsigned arena_capacity();
@@ -104,9 +106,13 @@ const void* arena_base(); // nullptr before the first claim; for fault diagnosti
 // convention (the pool's _fopen/_fclose call sites). Verified against the
 // expected callee; fails closed.
 struct CallSite {
-    uintptr_t address=0,expected_target=0; void* replacement=nullptr;
-    unsigned char original[5]{},patched[5]{}; DWORD protection=0; bool patched_in=false,atomic_write=false; const char* status="unclaimed";
+    uintptr_t address = 0, expected_target = 0;
+    void* replacement = nullptr;
+    unsigned char original[5]{}, patched[5]{};
+    DWORD protection = 0;
+    bool patched_in = false, atomic_write = false;
+    const char* status = "unclaimed";
 };
-bool claim_call(CallSite& site,uintptr_t address,uintptr_t expected_target,void* replacement);
+bool claim_call(CallSite& site, uintptr_t address, uintptr_t expected_target, void* replacement);
 bool restore_call(CallSite& site);
 }

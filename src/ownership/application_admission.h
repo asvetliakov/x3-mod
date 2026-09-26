@@ -13,30 +13,44 @@ namespace x3m::ownership {
 class ApplicationAdmission;
 class ReplayAdmission;
 enum class AdmissionVeto : std::uint32_t {
-    None=0, PrivateUnknown=1, UnobservedRoute=2, ExternalResource=4,
-    ForeignRouting=8, SameThreadReentry=16, ScopeOrder=32, CounterExhaustion=64
+    None = 0,
+    PrivateUnknown = 1,
+    UnobservedRoute = 2,
+    ExternalResource = 4,
+    ForeignRouting = 8,
+    SameThreadReentry = 16,
+    ScopeOrder = 32,
+    CounterExhaustion = 64
 };
 enum class AdmissionResult {
-    Admitted, InactiveBoundary, NestedBoundary, OtherApplications, WaitingApplications,
-    Vetoed, ReplayAlreadyActive, SameThreadReentry, DifferentMonitor
+    Admitted,
+    InactiveBoundary,
+    NestedBoundary,
+    OtherApplications,
+    WaitingApplications,
+    Vetoed,
+    ReplayAlreadyActive,
+    SameThreadReentry,
+    DifferentMonitor
 };
 struct AdmissionSnapshot {
-    std::uint64_t active_roots=0, waiting_roots=0, admitted_roots=0;
-    std::uint64_t promotions=0;
-    std::uint32_t vetoes=0;
-    AdmissionVeto first_veto=AdmissionVeto::None;
-    bool replay_active=false;
+    std::uint64_t active_roots = 0, waiting_roots = 0, admitted_roots = 0;
+    std::uint64_t promotions = 0;
+    std::uint32_t vetoes = 0;
+    AdmissionVeto first_veto = AdmissionVeto::None;
+    bool replay_active = false;
 };
 class AdmissionMonitor final {
 public:
-    AdmissionMonitor()=default;
-    AdmissionMonitor(const AdmissionMonitor&)=delete;
-    AdmissionMonitor& operator=(const AdmissionMonitor&)=delete;
+    AdmissionMonitor() = default;
+    AdmissionMonitor(const AdmissionMonitor&) = delete;
+    AdmissionMonitor& operator=(const AdmissionMonitor&) = delete;
     // Must precede native registration/escape under application admission.
     // Permanent for the monitor lifetime, including failed registration attempts.
     // A veto never prevents ordinary application work or clears existing scopes.
     void veto(AdmissionVeto);
     AdmissionSnapshot snapshot() const;
+
 private:
     friend class ApplicationAdmission;
     friend class ReplayAdmission;
@@ -52,18 +66,19 @@ class ApplicationAdmission final {
 public:
     explicit ApplicationAdmission(AdmissionMonitor&);
     ~ApplicationAdmission();
-    ApplicationAdmission(const ApplicationAdmission&)=delete;
-    ApplicationAdmission& operator=(const ApplicationAdmission&)=delete;
+    ApplicationAdmission(const ApplicationAdmission&) = delete;
+    ApplicationAdmission& operator=(const ApplicationAdmission&) = delete;
     AdmissionResult result() const noexcept { return result_; }
     bool admitted() const noexcept { return active_; }
     bool finish();
+
 private:
     friend class ReplayAdmission;
     AdmissionMonitor& monitor_;
-    ApplicationAdmission* previous_=nullptr;
+    ApplicationAdmission* previous_ = nullptr;
     std::thread::id thread_;
-    AdmissionResult result_=AdmissionResult::Admitted;
-    bool active_=false;
+    AdmissionResult result_ = AdmissionResult::Admitted;
+    bool active_ = false;
 };
 
 // Nonblocking promotion of the sole outer application boundary. Declare AFTER
@@ -76,15 +91,16 @@ class ReplayAdmission final {
 public:
     explicit ReplayAdmission(ApplicationAdmission&);
     ~ReplayAdmission();
-    ReplayAdmission(const ReplayAdmission&)=delete;
-    ReplayAdmission& operator=(const ReplayAdmission&)=delete;
+    ReplayAdmission(const ReplayAdmission&) = delete;
+    ReplayAdmission& operator=(const ReplayAdmission&) = delete;
     AdmissionResult result() const noexcept { return result_; }
     bool admitted() const noexcept { return active_; }
     bool finish();
+
 private:
     ApplicationAdmission& boundary_;
     std::thread::id thread_;
-    AdmissionResult result_=AdmissionResult::InactiveBoundary;
-    bool active_=false;
+    AdmissionResult result_ = AdmissionResult::InactiveBoundary;
+    bool active_ = false;
 };
 }

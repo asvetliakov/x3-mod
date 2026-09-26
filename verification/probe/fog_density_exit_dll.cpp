@@ -12,11 +12,19 @@ HANDLE marks = INVALID_HANDLE_VALUE;
 int abandon_at_detach = 0;
 void mark(const char* text) {
     if (marks == INVALID_HANDLE_VALUE) return;
-    char line[128]; const int n = wsprintfA(line, "%s tick=%lu\r\n", text, GetTickCount()); DWORD written = 0;
-    WriteFile(marks, line, DWORD(n), &written, nullptr); FlushFileBuffers(marks);
+    char line[128];
+    const int n = wsprintfA(line, "%s tick=%lu\r\n", text, GetTickCount());
+    DWORD written = 0;
+    WriteFile(marks, line, DWORD(n), &written, nullptr);
+    FlushFileBuffers(marks);
 }
 struct Owner {
-    ~Owner() { mark("static_destructor_begin"); DensityCache::retire(cache); cache = nullptr; mark("static_destructor_end"); }
+    ~Owner() {
+        mark("static_destructor_begin");
+        DensityCache::retire(cache);
+        cache = nullptr;
+        mark("static_destructor_end");
+    }
 } owner;
 }
 extern "C" __declspec(dllexport) int __cdecl fixture_start(const wchar_t* path, int abandon, int midfill) {
@@ -26,30 +34,40 @@ extern "C" __declspec(dllexport) int __cdecl fixture_start(const wchar_t* path, 
     if (marks == INVALID_HANDLE_VALUE || !cache->start()) return 0;
     cache->gpu_reset();
     const double camera[3] = {95576., 97323., 82698.};
-    std::vector<std::uint8_t> staging[kLevelCount]; for (auto& s : staging) s.assign(kAtlasBytes, 0);
-    std::uint64_t frame = 0; const DWORD begin = GetTickCount();
+    std::vector<std::uint8_t> staging[kLevelCount];
+    for (auto& s : staging) s.assign(kAtlasBytes, 0);
+    std::uint64_t frame = 0;
+    const DWORD begin = GetTickCount();
     for (;;) {
         cache->step(camera, ++frame);
         if (cache->has_work()) {
-            StagingView views[kLevelCount]; for (int l = 0; l < kLevelCount; ++l) views[l] = {staging[l].data(), kAtlasPitch};
-            TileRect rects[kDefaultUploadRects]; cache->take_uploads(views, kDefaultUploadBudget, rects, kDefaultUploadRects); cache->confirm_uploads(true);
+            StagingView views[kLevelCount];
+            for (int l = 0; l < kLevelCount; ++l) views[l] = {staging[l].data(), kAtlasPitch};
+            TileRect rects[kDefaultUploadRects];
+            cache->take_uploads(views, kDefaultUploadBudget, rects, kDefaultUploadRects);
+            cache->confirm_uploads(true);
         }
         if (midfill ? GetTickCount() - begin > 150 : cache->idle()) break;
         if (GetTickCount() - begin > 120000) return 0;
         Sleep(1);
     }
     if (midfill) { // the worker must be generating right now, not parked
-        const std::uint64_t a = cache->stats().nodes_generated; Sleep(40);
+        const std::uint64_t a = cache->stats().nodes_generated;
+        Sleep(40);
         if (cache->stats().nodes_generated == a || cache->idle()) return 0;
         mark("worker_generating");
-    } else mark("worker_parked");
+    } else
+        mark("worker_parked");
     mark("ready");
     return 1;
 }
 BOOL WINAPI DllMain(HINSTANCE, DWORD reason, LPVOID reserved) {
     if (reason == DLL_PROCESS_DETACH) {
         mark(reserved ? "dllmain_detach_process_exit" : "dllmain_detach_freelibrary");
-        if (abandon_at_detach && cache) { cache->abandon(); cache = nullptr; } // FogPass::abandon_density_worker
+        if (abandon_at_detach && cache) {
+            cache->abandon();
+            cache = nullptr;
+        } // FogPass::abandon_density_worker
         mark("dllmain_detach_end");
     }
     return TRUE;

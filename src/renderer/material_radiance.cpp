@@ -19,14 +19,13 @@ bool bounded(const std::uint32_t* source, std::size_t count) noexcept {
 // SM3 lengths include operand DWORDs, not the instruction token. Comments have
 // their own length field and may contain arbitrary data resembling instructions.
 // This framing check never treats a constant/comment word as a patch site.
-bool validate(const RadianceProfile& profile, const std::uint32_t* source,
-              std::size_t count, std::uint32_t& zero_source) noexcept {
-    if (source[0] != ps_3_0 || !profile.site_count || profile.site_count > 2 ||
-        profile.zero_component > 3) return false;
+bool validate(const RadianceProfile& profile, const std::uint32_t* source, std::size_t count,
+              std::uint32_t& zero_source) noexcept {
+    if (source[0] != ps_3_0 || !profile.site_count || profile.site_count > 2 || profile.zero_component > 3)
+        return false;
     for (unsigned i = 0; i < profile.site_count; ++i) {
         const auto& site = profile.sites[i];
-        if (!site.offset || site.offset >= count ||
-            (i && site.offset <= profile.sites[i - 1].offset)) return false;
+        if (!site.offset || site.offset >= count || (i && site.offset <= profile.sites[i - 1].offset)) return false;
         // Temporary r0..r31, RGB only, SAT required; optional PP preserved.
         // No destination shift, centroid, predicate or source modification.
         const auto destination = site.destination & ~std::uint32_t(0x0020001f);
@@ -38,46 +37,42 @@ bool validate(const RadianceProfile& profile, const std::uint32_t* source,
         const auto token = source[offset];
         const auto opcode = token & 0xffff;
         if (opcode == 0xffff)
-            return token == end && offset == count - 1 && zero_seen &&
-                sites_seen == profile.site_count;
-        const std::size_t operands = opcode == 0xfffe
-            ? ((token >> 16) & 0x7fff) : ((token >> 24) & 0xf);
+            return token == end && offset == count - 1 && zero_seen && sites_seen == profile.site_count;
+        const std::size_t operands = opcode == 0xfffe ? ((token >> 16) & 0x7fff) : ((token >> 24) & 0xf);
         if (operands > count - offset - 1) return false;
         if (offset == profile.zero_def_offset) {
             if (token != def || operands != 5) return false;
             const auto destination = source[offset + 1];
             // Shader-local DEF c0..c223, all four components; never reserve an
             // external application constant or modify its value.
-            if ((destination & ~std::uint32_t(0x7ff)) != 0xa00f0000 ||
-                (destination & 0x7ff) >= 224 ||
-                source[offset + 2 + profile.zero_component] != 0) return false;
-            zero_source = 0xa0000000 | (destination & 0x7ff) |
-                ((profile.zero_component * 0x55) << 16);
+            if ((destination & ~std::uint32_t(0x7ff)) != 0xa00f0000 || (destination & 0x7ff) >= 224 ||
+                source[offset + 2 + profile.zero_component] != 0)
+                return false;
+            zero_source = 0xa0000000 | (destination & 0x7ff) | ((profile.zero_component * 0x55) << 16);
             zero_seen = true;
         }
         bool named_site = false;
         for (unsigned i = 0; i < profile.site_count; ++i) {
             const auto& site = profile.sites[i];
             if (offset != site.offset) continue;
-            if (token != mov || operands != 2 ||
-                source[offset + 1] != site.destination ||
-                source[offset + 2] != site.source || !zero_seen) return false;
+            if (token != mov || operands != 2 || source[offset + 1] != site.destination ||
+                source[offset + 2] != site.source || !zero_seen)
+                return false;
             ++sites_seen;
             named_site = true;
         }
         // A profile may not silently omit another identical RGB-input clamp
         // (for example, the other arm of the material's boolean branch).
         if (token == mov && operands == 2 && source[offset + 2] == 0x90e40000 &&
-            (source[offset + 1] & ~std::uint32_t(0x0020001f)) == 0x80170000 &&
-            !named_site) return false;
+            (source[offset + 1] & ~std::uint32_t(0x0020001f)) == 0x80170000 && !named_site)
+            return false;
         offset += operands + 1;
     }
     return false; // Missing terminal END.
 }
 } // namespace
 
-std::uint64_t shader_fingerprint(const std::uint32_t* source,
-                                 std::size_t count) noexcept {
+std::uint64_t shader_fingerprint(const std::uint32_t* source, std::size_t count) noexcept {
     if (!bounded(source, count)) return 0;
     std::uint64_t hash = 14695981039346656037ull;
     for (std::size_t i = 0; i < count; ++i)
@@ -93,9 +88,8 @@ const RadianceProfile* material_radiance_profiles(std::size_t* count) noexcept {
     return profiles;
 }
 
-RadianceResult apply_radiance_profile(const RadianceProfile& profile,
-    const std::uint32_t* source, std::size_t count,
-    std::vector<std::uint32_t>& output) noexcept {
+RadianceResult apply_radiance_profile(const RadianceProfile& profile, const std::uint32_t* source, std::size_t count,
+                                      std::vector<std::uint32_t>& output) noexcept {
     if (!bounded(source, count)) return RadianceResult::InvalidInput;
     if (profile.word_count != count || profile.fnv != shader_fingerprint(source, count))
         return RadianceResult::ProfileMismatch;
@@ -117,11 +111,13 @@ RadianceResult apply_radiance_profile(const RadianceProfile& profile,
         variant.insert(variant.end(), source + begin, source + count);
         output.swap(variant);
         return RadianceResult::Applied;
-    } catch (...) { return RadianceResult::AllocationFailure; }
+    } catch (...) {
+        return RadianceResult::AllocationFailure;
+    }
 }
 
-RadianceResult material_radiance_variant(const std::uint32_t* source,
-    std::size_t count, std::vector<std::uint32_t>& output) noexcept {
+RadianceResult material_radiance_variant(const std::uint32_t* source, std::size_t count,
+                                         std::vector<std::uint32_t>& output) noexcept {
     if (!bounded(source, count)) return RadianceResult::InvalidInput;
     const auto hash = shader_fingerprint(source, count);
     for (const auto& profile : profiles)

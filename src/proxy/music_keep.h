@@ -66,25 +66,31 @@
 // runs on the WndProc/main-loop thread and the play inside the script step
 // of the main loop; the hold table is touched only by those handlers.
 namespace x3m::music_keep {
-bool initialize();   // backend-load path only; logs one music_keep line and one music_trace line when the variables are set
+bool initialize();   // backend-load path only; logs one music_keep line and one music_trace line when the variables are
+                     // set
 bool shutdown();     // restores every live site (dynamic-unload detach only); true when nothing is installed
-const char* state();          // keep: ok / disabled / <refusal>
-const char* trace_state();    // trace: ok / disabled / <refusal>
+const char* state(); // keep: ok / disabled / <refusal>
+const char* trace_state(); // trace: ok / disabled / <refusal>
 // Stores the Present frame counter for the lines (no other per-frame work).
 void present(unsigned long long device, unsigned long long frame, bool captured);
 }
 extern "C" {
-// Called by the Patch A stub: ESI = record, the stop-all's return address. Returns the StopMode as unsigned (1 = keep_running: jump to 0x00498322; 3 = skip_all: jump to 0x00498359).
+// Called by the Patch A stub: ESI = record, the stop-all's return address. Returns the StopMode as unsigned (1 =
+// keep_running: jump to 0x00498322; 3 = skip_all: jump to 0x00498359).
 unsigned __cdecl x3m_music_keep_stop_all(std::uint32_t record, std::uint32_t return_va);
-// Called by the Patch D thunk: ECX = record. Returns 1 to answer "playing" (the thunk returns AX = 1), 0 to forward to 0x004d14e0.
+// Called by the Patch D thunk: ECX = record. Returns 1 to answer "playing" (the thunk returns AX = 1), 0 to forward to
+// 0x004d14e0.
 unsigned __cdecl x3m_music_keep_status(std::uint32_t record);
-// Called by the Patch C thunk: EAX = record, [esp+4] = start ms. Returns the SeekAction (0 vanilla, 1 skip, 2 pause x3m_music_keep_pause_record then vanilla).
+// Called by the Patch C thunk: EAX = record, [esp+4] = start ms. Returns the SeekAction (0 vanilla, 1 skip, 2 pause
+// x3m_music_keep_pause_record then vanilla).
 unsigned __cdecl x3m_music_keep_seek(std::uint32_t record, std::int32_t start_ms);
-// Block handlers; `block` points at the stub's saved-register block: [0] edx, [1] ecx, [2] eax, [3] eflags, [4] return address, [5..] stack arguments.
-std::uint32_t __cdecl x3m_music_keep_stop_all_entry(const std::uint32_t* block);   // next orphaned keep-running record to pause, 0 when none
-void __cdecl x3m_music_keep_stop_movie(const std::uint32_t* block);               // drops the holds of the id in EAX
+// Block handlers; `block` points at the stub's saved-register block: [0] edx, [1] ecx, [2] eax, [3] eflags, [4] return
+// address, [5..] stack arguments.
+std::uint32_t __cdecl x3m_music_keep_stop_all_entry(const std::uint32_t* block); // next orphaned keep-running record to
+                                                                                 // pause, 0 when none
+void __cdecl x3m_music_keep_stop_movie(const std::uint32_t* block);              // drops the holds of the id in EAX
 void __cdecl x3m_music_trace_stop(const std::uint32_t* block);
 void __cdecl x3m_music_trace_play(const std::uint32_t* block);
 void __cdecl x3m_music_trace_stop_movie(const std::uint32_t* block);
-extern std::uint32_t x3m_music_keep_pause_record;   // written by x3m_music_keep_seek before returning 2
+extern std::uint32_t x3m_music_keep_pause_record; // written by x3m_music_keep_seek before returning 2
 }

@@ -30,8 +30,7 @@ struct RigidPositionProfile {
 // A match establishes the reviewed shader's POSITION.xyz / forced W=1 row-dot
 // path, not object lifetime, input declaration, opaque coverage or stable buffers.
 // Caller supplies a readable complete shader DWORD span; no COM calls/allocations.
-const RigidPositionProfile* find_rigid_position(const std::uint32_t* words,
-                                              std::size_t word_count) noexcept;
+const RigidPositionProfile* find_rigid_position(const std::uint32_t* words, std::size_t word_count) noexcept;
 
 // Every reviewed archive VS is classified, but only HomogeneousRowDots is
 // returned by find_rigid_position. These categories are routing facts, never
@@ -43,8 +42,7 @@ enum class VertexPositionPath : std::uint8_t {
     DirectClipXYZWOne = 3,
     ViewXYBillboardProjection = 4
 };
-VertexPositionPath classify_vertex_position(const std::uint32_t* words,
-                                            std::size_t word_count) noexcept;
+VertexPositionPath classify_vertex_position(const std::uint32_t* words, std::size_t word_count) noexcept;
 
 struct PixelCoverageProfile {
     std::uint64_t hash;
@@ -53,6 +51,5 @@ struct PixelCoverageProfile {
 // Positive exact-profile proof of no shader discard/texkill or explicit/legacy
 // depth output. Null means unproved, not necessarily unsafe. Render-state alpha
 // testing, blending, stencil, MSAA, coverage and all replay gates remain external.
-const PixelCoverageProfile* find_pixel_coverage(const std::uint32_t* words,
-                                              std::size_t word_count) noexcept;
+const PixelCoverageProfile* find_pixel_coverage(const std::uint32_t* words, std::size_t word_count) noexcept;
 } // namespace x3m::renderer

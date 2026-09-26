@@ -28,7 +28,8 @@
 // ShowCursor/ClipCursor and the Cocoa cursor are not instrumented (labelled in
 // window_trace_scope). The trace never shows, hides, warps or captures.
 namespace x3m::window_trace {
-using CursorSource = unsigned (*)(std::uint32_t after, core::CursorEvent* out, unsigned capacity, std::uint32_t* newest, core::CursorCounts* counts) noexcept;
+using CursorSource = unsigned (*)(std::uint32_t after, core::CursorEvent* out, unsigned capacity, std::uint32_t* newest,
+                                  core::CursorCounts* counts) noexcept;
 // Reads X3M_WINDOW_TRACE; the trace is on only with telemetry. source drains
 // the light rows' cursor events (nullptr: no cursor_call rows).
 void initialize(bool telemetry, CursorSource source);

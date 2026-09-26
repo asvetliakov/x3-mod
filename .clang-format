@@ -8,7 +8,10 @@ UseTab: Never
 ColumnLimit: 120
 AccessModifierOffset: -4
 NamespaceIndentation: None
-FixNamespaceComments: true
+# Whitespace only: no inserted or rewritten namespace-closing comments (a one-line namespace keeps its own comment),
+# no reordered using-declarations.
+FixNamespaceComments: false
+SortUsingDeclarations: Never
 BreakBeforeBraces: Attach
 AllowShortIfStatementsOnASingleLine: WithoutElse
 AllowShortLoopsOnASingleLine: true
@@ -37,5 +40,9 @@ IndentPPDirectives: None
 BreakConstructorInitializers: BeforeComma
 Cpp11BracedListStyle: true
 SpacesBeforeTrailingComments: 1
-PenaltyBreakAssignment: 50
+# Log-row format strings stay whole so a row key can be found in the source with one grep.
+BreakStringLiterals: false
+# A trailing comment past column 120 wraps onto aligned comment lines; the code before it is not split at `=`.
+PenaltyBreakAssignment: 1000
+PenaltyBreakComment: 10
 PenaltyReturnTypeOnItsOwnLine: 1000

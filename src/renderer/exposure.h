@@ -42,12 +42,12 @@ struct ExposureParams {
     float dt_max = 1.f / 5.f;
     float meter_floor = 1e-4f;
     float meter_clip = 64.f;
-    float meter_bg = 1.f / 512.f;     // tiles whose geometric-mean luminance is below this are background
-    float meter_min_lit = 0.01f;      // lit fraction below which the target is neutral (EV 0 + offset)
-    float white_target = 0.9f;        // fraction of the tonemapper's white the p99 tile maximum may reach
-    float key_pull = 0.25f;           // fraction of the key rule applied when the lit median is brighter than the key
-    float ev_deadband = 0.25f;        // the held target moves only when the fresh target differs from it by more than this
-    float meter_edge_weight = 0.35f;  // tile weight at the frame corners (1 at the centre) for the lit statistic
+    float meter_bg = 1.f / 512.f; // tiles whose geometric-mean luminance is below this are background
+    float meter_min_lit = 0.01f;  // lit fraction below which the target is neutral (EV 0 + offset)
+    float white_target = 0.9f;    // fraction of the tonemapper's white the p99 tile maximum may reach
+    float key_pull = 0.25f;       // fraction of the key rule applied when the lit median is brighter than the key
+    float ev_deadband = 0.25f;    // the held target moves only when the fresh target differs from it by more than this
+    float meter_edge_weight = 0.35f; // tile weight at the frame corners (1 at the centre) for the lit statistic
 };
 enum class ExposureMode : unsigned { Auto = 0, Manual = 1 };
 enum class ExposureDecode : unsigned { Gamma22 = 0, Srgb = 1, None = 2 };
@@ -61,8 +61,7 @@ inline constexpr unsigned kMeterTileMax = 128;
 // GetEnvironmentVariableW return value for a 32-wchar buffer, so >=32 means
 // missing/truncated storage and must be refused before reading it. A valid
 // complete finite value in [low, high] replaces output; refusal leaves it intact.
-bool parse_meter_parameter(const wchar_t* text, std::size_t length,
-                           float low, float high, float& output) noexcept;
+bool parse_meter_parameter(const wchar_t* text, std::size_t length, float low, float high, float& output) noexcept;
 
 // --- Metering (host references of the GPU chain; not run per frame) --------
 // Engine-space value -> scene-linear (section 2), the decode agx.hlsl and the
@@ -103,11 +102,14 @@ struct MeterStatistics {
     float lit_median_log = 0.f;
     float lit_mean_log = 0.f;
     float p99_max_log = 0.f;
-    float lit_weight = 0.f;            // the lit tiles' total weight
+    float lit_weight = 0.f; // the lit tiles' total weight
     bool neutral = true;
 };
 // One lit tile of the selection's working copy.
-struct TileSample { float value; float weight; };
+struct TileSample {
+    float value;
+    float weight;
+};
 // The centre weights of a width x height tile image (row-major, `out` holds
 // width*height floats): a raised cosine of the distance from the frame
 // centre, 1 at the centre, edge_weight at the corners.
@@ -117,7 +119,9 @@ void tile_weights(float* out, unsigned width, unsigned height, float edge_weight
 MeterStatistics meter_statistics(const float* mean_log, const float* max_log, const float* weights, unsigned tiles,
                                  TileSample* scratch, const ExposureParams& p) noexcept;
 // The fresh target of one statistic: ev_target = clamp(min(ev_key, ev_limit)).
-struct ExposureTarget { float ev_key = 0.f, ev_limit = 0.f, ev_target = 0.f; };
+struct ExposureTarget {
+    float ev_key = 0.f, ev_limit = 0.f, ev_target = 0.f;
+};
 ExposureTarget exposure_target(const MeterStatistics& m, const ExposureParams& p) noexcept;
 // The dead band: the held target `held` moves to `fresh` only when the two
 // differ by more than ev_deadband (`first`: no held target yet, take fresh).
@@ -161,8 +165,8 @@ public:
     float exposure() const noexcept { return exposure_multiplier(ev()); }
     float k() const noexcept { return taa_k(exposure()); }
     float ev_adapted() const noexcept { return ev_adapted_; }
-    float ev_target() const noexcept { return ev_target_; }        // the held target the adaptation drives towards
-    float ev_fresh() const noexcept { return target_.ev_target; }  // this step's target before the dead band
+    float ev_target() const noexcept { return ev_target_; }       // the held target the adaptation drives towards
+    float ev_fresh() const noexcept { return target_.ev_target; } // this step's target before the dead band
     float ev_key() const noexcept { return target_.ev_key; }
     float ev_limit() const noexcept { return target_.ev_limit; }
     float avg_log_l() const noexcept { return meter_.avg_log_l; }
@@ -171,6 +175,7 @@ public:
     unsigned steps() const noexcept { return steps_; }
     ExposureMode mode() const noexcept { return mode_; }
     const ExposureParams& params() const noexcept { return params_; }
+
 private:
     ExposureParams params_{};
     ExposureMode mode_ = ExposureMode::Auto;

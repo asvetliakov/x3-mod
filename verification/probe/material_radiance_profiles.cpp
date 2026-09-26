@@ -13,8 +13,7 @@ int main(int argc, char** argv) {
     if (bytes.empty() || bytes.size() % 4) return 2;
     std::vector<std::uint32_t> words(bytes.size() / 4), variant;
     for (std::size_t i = 0; i < words.size(); ++i)
-        for (unsigned b = 0; b < 4; ++b)
-            words[i] |= std::uint32_t(bytes[i * 4 + b]) << (b * 8);
+        for (unsigned b = 0; b < 4; ++b) words[i] |= std::uint32_t(bytes[i * 4 + b]) << (b * 8);
     const auto result = x3m::renderer::material_radiance_variant(words.data(), words.size(), variant);
     if (result != x3m::renderer::RadianceResult::Applied) {
         std::cerr << "Rejected result=" << unsigned(result) << '\n';

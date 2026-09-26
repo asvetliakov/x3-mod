@@ -19,13 +19,16 @@ using Disassemble = HRESULT(WINAPI*)(const DWORD*, BOOL, LPCSTR, LPD3DXBUFFER*);
 Disassemble disassemble = nullptr;
 unsigned slots(const std::uint32_t* words, std::size_t count, const std::string& label, bool keep = false) {
     LPD3DXBUFFER text = nullptr;
-    if (FAILED(disassemble(reinterpret_cast<const DWORD*>(words), FALSE, nullptr, &text)) || !text) throw std::runtime_error(label);
+    if (FAILED(disassemble(reinterpret_cast<const DWORD*>(words), FALSE, nullptr, &text)) || !text)
+        throw std::runtime_error(label);
     const std::string listing(static_cast<const char*>(text->GetBufferPointer()), text->GetBufferSize());
     text->Release();
-    if (keep) { // beside the executable (untracked: it holds the game program); the runner keeps our fragments' lines only
+    if (keep) { // beside the executable (untracked: it holds the game program); the runner keeps our fragments' lines
+                // only
         FILE* file = std::fopen((label + ".asm").c_str(), "wb");
         if (!file) throw std::runtime_error(label);
-        std::fwrite(listing.data(), 1, std::strlen(listing.c_str()), file); std::fclose(file);
+        std::fwrite(listing.data(), 1, std::strlen(listing.c_str()), file);
+        std::fclose(file);
     }
     const auto at = listing.find("instruction slots used");
     unsigned n = 0;
@@ -45,31 +48,48 @@ int main(int argc, char** argv) {
         if (argc < 3) throw std::runtime_error("usage: fade_owner_probe.exe <d3dx9_37.dll> <ps_*.bin>...");
         HMODULE d3dx = LoadLibraryA(argv[1]);
         if (!d3dx) throw std::runtime_error("d3dx9_37");
-        disassemble = reinterpret_cast<Disassemble>(reinterpret_cast<void*>(GetProcAddress(d3dx, "D3DXDisassembleShader")));
+        disassemble = reinterpret_cast<Disassemble>(
+            reinterpret_cast<void*>(GetProcAddress(d3dx, "D3DXDisassembleShader")));
         if (!disassemble) throw std::runtime_error("D3DXDisassembleShader");
         slots(r::current_depth_pixel_program(), std::size(r::current_depth_pixel_program()), "current_depth");
-        slots(r::current_depth_thin_pixel_program(), std::size(r::current_depth_thin_pixel_program()), "current_depth_thin");
-        slots(r::current_depth_owner_pixel_program(), std::size(r::current_depth_owner_pixel_program()), "current_depth_owner");
+        slots(r::current_depth_thin_pixel_program(), std::size(r::current_depth_thin_pixel_program()),
+              "current_depth_thin");
+        slots(r::current_depth_owner_pixel_program(), std::size(r::current_depth_owner_pixel_program()),
+              "current_depth_owner");
         for (int i = 2; i < argc; ++i) {
             FILE* file = std::fopen(argv[i], "rb");
             if (!file) throw std::runtime_error(argv[i]);
             std::vector<std::uint32_t> original(65536);
-            const std::size_t count = std::fread(original.data(), 4, original.size(), file); std::fclose(file);
+            const std::size_t count = std::fread(original.data(), 4, original.size(), file);
+            std::fclose(file);
             original.resize(count);
             std::string name(argv[i]);
-            name = name.substr(name.find_last_of("/\\") + 1); name = name.substr(0, name.find('.'));
+            name = name.substr(name.find_last_of("/\\") + 1);
+            name = name.substr(0, name.find('.'));
             slots(original.data(), original.size(), name + "_original", true);
-            const struct { const char* label; bool thin, owner; } modes[] = {{"off", false, false}, {"thin", true, false}, {"owner", false, true}, {"owner_thin", true, true}};
+            const struct {
+                const char* label;
+                bool thin, owner;
+            } modes[] = {
+                {"off", false, false}, {"thin", true, false}, {"owner", false, true}, {"owner_thin", true, true}};
             for (const auto& m : modes) {
-                r::material_motion_configure_thin_vote(m.thin); r::material_motion_configure_fade_owner(m.owner);
+                r::material_motion_configure_thin_vote(m.thin);
+                r::material_motion_configure_fade_owner(m.owner);
                 std::vector<std::uint32_t> variant;
                 const auto result = r::material_motion_pixel_variant(original.data(), original.size(), variant, true);
-                if (result != r::MaterialMotionResult::Applied) { std::printf("VARIANT program=%s mode=%s result=%d\n", name.c_str(), m.label, int(result)); continue; }
+                if (result != r::MaterialMotionResult::Applied) {
+                    std::printf("VARIANT program=%s mode=%s result=%d\n", name.c_str(), m.label, int(result));
+                    continue;
+                }
                 slots(variant.data(), variant.size(), name + "_variant_" + m.label, true);
             }
-            r::material_motion_configure_thin_vote(false); r::material_motion_configure_fade_owner(false);
+            r::material_motion_configure_thin_vote(false);
+            r::material_motion_configure_fade_owner(false);
         }
         std::printf("RESULT PASS\n");
         return 0;
-    } catch (const std::exception& e) { std::printf("RESULT FAIL %s\n", e.what()); return 1; }
+    } catch (const std::exception& e) {
+        std::printf("RESULT FAIL %s\n", e.what());
+        return 1;
+    }
 }

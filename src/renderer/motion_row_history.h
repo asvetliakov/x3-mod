@@ -40,8 +40,7 @@ public:
     // consumed so a second current draw with the same key gets no history.
     // Invalid keys are neither recorded nor matched. Exceeding capacity stops
     // recording and poisons the whole frame at commit (fail closed).
-    bool lookup_and_record(const RigidDrawKey& key, const SubmittedMatrix& current,
-                           SubmittedMatrix& previous) noexcept;
+    bool lookup_and_record(const RigidDrawKey& key, const SubmittedMatrix& current, SubmittedMatrix& previous) noexcept;
     // Miss classification for the static-world option (called only after a
     // failed lookup_and_record; never on the matched path). 0: `key` has an
     // entry in the previous frame (poisoned, consumed or non-finite: a repeated

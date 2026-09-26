@@ -16,14 +16,27 @@ inline std::uint32_t ps3_program_slots(const std::uint32_t* words, std::size_t c
     std::size_t i = 1;
     while (i < count - 1) {
         const std::uint32_t token = words[i];
-        if ((token & 0xffffu) == 0xfffeu) { i += 1 + ((token >> 16) & 0x7fffu); continue; } // comment
+        if ((token & 0xffffu) == 0xfffeu) {
+            i += 1 + ((token >> 16) & 0x7fffu);
+            continue;
+        } // comment
         const std::uint32_t op = token & 0xffffu, operands = (token >> 24) & 15u;
         std::uint32_t cost = 1;
         switch (op) {
-        case 31: case 48: case 81: case 46: cost = 0; break;                   // dcl, defi, def, defb
-        case 37: cost = 8; break;                                              // sincos
-        case 38: case 36: case 32: cost = 3; break;                            // rep, nrm, pow
-        case 33: case 90: case 18: case 91: case 92: case 95: cost = 2; break; // crs, dp2add, lrp, dsx, dsy, texldl
+        case 31:
+        case 48:
+        case 81:
+        case 46: cost = 0; break; // dcl, defi, def, defb
+        case 37: cost = 8; break; // sincos
+        case 38:
+        case 36:
+        case 32: cost = 3; break; // rep, nrm, pow
+        case 33:
+        case 90:
+        case 18:
+        case 91:
+        case 92:
+        case 95: cost = 2; break; // crs, dp2add, lrp, dsx, dsy, texldl
         default: break;
         }
         slots += cost;

@@ -14,28 +14,31 @@ class ApplicationAdmissionAbi final {
 public:
     explicit ApplicationAdmissionAbi(AdmissionMonitor* monitor) noexcept;
     ~ApplicationAdmissionAbi() noexcept;
-    ApplicationAdmissionAbi(const ApplicationAdmissionAbi&)=delete;
-    ApplicationAdmissionAbi& operator=(const ApplicationAdmissionAbi&)=delete;
-    bool requested() const noexcept {return requested_;}
-    bool admitted() const noexcept {return present_&&core()->admitted();}
+    ApplicationAdmissionAbi(const ApplicationAdmissionAbi&) = delete;
+    ApplicationAdmissionAbi& operator=(const ApplicationAdmissionAbi&) = delete;
+    bool requested() const noexcept { return requested_; }
+    bool admitted() const noexcept { return present_ && core()->admitted(); }
     // Constructor decision only: it can remain Admitted after finish.
     // admitted()/boundary() report current activity.
     // Disabled returns InactiveBoundary, never an invented successful admission.
     // The ordinary option-off call may proceed; callers distinguish requested().
-    AdmissionResult result() const noexcept {return result_;}
+    AdmissionResult result() const noexcept { return result_; }
     // Finish AND core destruction happen within one independent state guard.
     // Supports child-to-parent final Release handoff; repeat finish is harmless.
     bool finish();
     // Borrow only while this same-thread scope is active. Do not retain across
     // finish/destruction or invoke raw core bookkeeping without its own guard.
     ApplicationAdmission* boundary() noexcept;
+
 private:
-    bool requested_=false,present_=false;
+    bool requested_ = false, present_ = false;
     std::thread::id thread_;
-    AdmissionResult result_=AdmissionResult::InactiveBoundary;
+    AdmissionResult result_ = AdmissionResult::InactiveBoundary;
     alignas(ApplicationAdmission) unsigned char storage_[sizeof(ApplicationAdmission)];
-    ApplicationAdmission* core() noexcept {return std::launder(reinterpret_cast<ApplicationAdmission*>(storage_));}
-    const ApplicationAdmission* core() const noexcept {return std::launder(reinterpret_cast<const ApplicationAdmission*>(storage_));}
+    ApplicationAdmission* core() noexcept { return std::launder(reinterpret_cast<ApplicationAdmission*>(storage_)); }
+    const ApplicationAdmission* core() const noexcept {
+        return std::launder(reinterpret_cast<const ApplicationAdmission*>(storage_));
+    }
 };
 
 class ReplayAdmissionAbi final {
@@ -45,21 +48,24 @@ public:
     // The owning application adapter must remain alive until replay is finished.
     explicit ReplayAdmissionAbi(ApplicationAdmission* boundary);
     ~ReplayAdmissionAbi();
-    ReplayAdmissionAbi(const ReplayAdmissionAbi&)=delete;
-    ReplayAdmissionAbi& operator=(const ReplayAdmissionAbi&)=delete;
-    bool admitted() const noexcept {return present_&&core()->admitted();}
-    AdmissionResult result() const noexcept {return result_;}
+    ReplayAdmissionAbi(const ReplayAdmissionAbi&) = delete;
+    ReplayAdmissionAbi& operator=(const ReplayAdmissionAbi&) = delete;
+    bool admitted() const noexcept { return present_ && core()->admitted(); }
+    AdmissionResult result() const noexcept { return result_; }
     bool finish();
+
 private:
-    bool requested_=false,present_=false;
+    bool requested_ = false, present_ = false;
     std::thread::id thread_;
-    AdmissionResult result_=AdmissionResult::InactiveBoundary;
+    AdmissionResult result_ = AdmissionResult::InactiveBoundary;
     alignas(ReplayAdmission) unsigned char storage_[sizeof(ReplayAdmission)];
-    ReplayAdmission* core() noexcept {return std::launder(reinterpret_cast<ReplayAdmission*>(storage_));}
-    const ReplayAdmission* core() const noexcept {return std::launder(reinterpret_cast<const ReplayAdmission*>(storage_));}
+    ReplayAdmission* core() noexcept { return std::launder(reinterpret_cast<ReplayAdmission*>(storage_)); }
+    const ReplayAdmission* core() const noexcept {
+        return std::launder(reinterpret_cast<const ReplayAdmission*>(storage_));
+    }
 };
 
-void admission_veto(AdmissionMonitor* monitor,AdmissionVeto reason);
+void admission_veto(AdmissionMonitor* monitor, AdmissionVeto reason);
 AdmissionSnapshot admission_snapshot(const AdmissionMonitor* monitor);
 
 // Shared by loader, capture, ownership and loading hooks. Reads X3M_ADMISSION=1

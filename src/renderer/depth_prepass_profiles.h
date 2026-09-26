@@ -24,10 +24,10 @@
 namespace x3m::renderer {
 
 struct DepthPrepassProfile {
-    std::uint64_t vertex_fingerprint;  // FNV-1a 64 over the original VS bytes.
-    std::uint32_t vertex_dword_count;  // Exact original length including END.
-    std::uint32_t vertex_version;      // Version token (0xfffe0101: vs_1_1).
-    std::uint16_t matrix_register;     // c<n>: first of four clip rows.
+    std::uint64_t vertex_fingerprint; // FNV-1a 64 over the original VS bytes.
+    std::uint32_t vertex_dword_count; // Exact original length including END.
+    std::uint32_t vertex_version;     // Version token (0xfffe0101: vs_1_1).
+    std::uint16_t matrix_register;    // c<n>: first of four clip rows.
 };
 
 // z_only aliases (docs/reverse-engineering/shader-fingerprints.md): 356 and

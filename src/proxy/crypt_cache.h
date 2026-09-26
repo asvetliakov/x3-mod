@@ -27,26 +27,36 @@
 // hot calls. LastError is preserved around cache bookkeeping and set explicitly
 // for an emulated absent-delete failure. See docs/verification/crypt-cache.md.
 namespace x3m::crypt_cache {
-using AcquireFn=BOOL (WINAPI*)(HCRYPTPROV*,LPCSTR,LPCSTR,DWORD,DWORD);
-using ReleaseFn=BOOL (WINAPI*)(HCRYPTPROV,DWORD);
-using ImportFn=BOOL (WINAPI*)(HCRYPTPROV,const BYTE*,DWORD,HCRYPTKEY,DWORD,HCRYPTKEY*);
-using DestroyKeyFn=BOOL (WINAPI*)(HCRYPTKEY);
-struct Originals { AcquireFn acquire=nullptr; ReleaseFn release=nullptr; ImportFn import_key=nullptr; DestroyKeyFn destroy_key=nullptr; };
-constexpr unsigned provider_slots=4,key_slots=4,name_limit=96,blob_limit=512;
-bool requested();                          // X3M_CRYPT_CACHE=1
-bool initialize(const Originals& originals, const char* scratch_container="X2EgosoftCSPContainer") noexcept; // exact scratch name may be changed only by a standalone fixture
+using AcquireFn = BOOL(WINAPI*)(HCRYPTPROV*, LPCSTR, LPCSTR, DWORD, DWORD);
+using ReleaseFn = BOOL(WINAPI*)(HCRYPTPROV, DWORD);
+using ImportFn = BOOL(WINAPI*)(HCRYPTPROV, const BYTE*, DWORD, HCRYPTKEY, DWORD, HCRYPTKEY*);
+using DestroyKeyFn = BOOL(WINAPI*)(HCRYPTKEY);
+struct Originals {
+    AcquireFn acquire = nullptr;
+    ReleaseFn release = nullptr;
+    ImportFn import_key = nullptr;
+    DestroyKeyFn destroy_key = nullptr;
+};
+constexpr unsigned provider_slots = 4, key_slots = 4, name_limit = 96, blob_limit = 512;
+bool requested(); // X3M_CRYPT_CACHE=1
+bool initialize(const Originals& originals,
+                const char* scratch_container = "X2EgosoftCSPContainer") noexcept; // exact scratch name may be changed
+                                                                                   // only by a standalone fixture
 bool enabled() noexcept;
-BOOL WINAPI acquire(HCRYPTPROV* out,LPCSTR container,LPCSTR provider,DWORD type,DWORD flags);
-BOOL WINAPI release(HCRYPTPROV provider,DWORD flags);
-BOOL WINAPI import_key(HCRYPTPROV provider,const BYTE* data,DWORD length,HCRYPTKEY public_key,DWORD flags,HCRYPTKEY* out);
+BOOL WINAPI acquire(HCRYPTPROV* out, LPCSTR container, LPCSTR provider, DWORD type, DWORD flags);
+BOOL WINAPI release(HCRYPTPROV provider, DWORD flags);
+BOOL WINAPI import_key(HCRYPTPROV provider, const BYTE* data, DWORD length, HCRYPTKEY public_key, DWORD flags,
+                       HCRYPTKEY* out);
 BOOL WINAPI destroy_key(HCRYPTKEY key);
 // Explicit quiescent cleanup only; NEVER call from DllMain. Refuses known
 // outstanding provider/key ownership. Native operations happen outside the lock.
 bool shutdown() noexcept;
 struct Statistics {
-    uint64_t acquires=0,hits=0,misses=0,failed_passthrough=0,busy_passthrough=0,deletes_emulated=0,deletes_passthrough=0,evictions=0;
-    uint64_t releases=0,releases_suppressed=0,imports=0,import_hits=0,import_passthrough=0,destroys=0,destroys_suppressed=0;
-    uint32_t providers_cached=0,keys_cached=0,probe_error=0;
+    uint64_t acquires = 0, hits = 0, misses = 0, failed_passthrough = 0, busy_passthrough = 0, deletes_emulated = 0,
+             deletes_passthrough = 0, evictions = 0;
+    uint64_t releases = 0, releases_suppressed = 0, imports = 0, import_hits = 0, import_passthrough = 0, destroys = 0,
+             destroys_suppressed = 0;
+    uint32_t providers_cached = 0, keys_cached = 0, probe_error = 0;
 };
 Statistics statistics() noexcept; // cumulative, read under the lock
 }

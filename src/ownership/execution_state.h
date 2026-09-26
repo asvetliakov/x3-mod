@@ -8,9 +8,22 @@ namespace x3m::ownership {
 // snapshots are not replay exclusion leases. Native access is a closed-world
 // boundary: unseen native application calls cannot be discovered by this core.
 enum class ExecutionReason : std::uint8_t {
-    None, Disabled, TransitionFailure, ContradictoryTransition, UnsupportedQuery,
-    UnknownQuery, InvalidIssue, ActiveQueryDestroyed, DeviceLost, Resetting,
-    ResetFailed, NativeBypass, CounterOverflow, ActiveQueryReset, NativeCallInFlight, OverlappingNativeCalls
+    None,
+    Disabled,
+    TransitionFailure,
+    ContradictoryTransition,
+    UnsupportedQuery,
+    UnknownQuery,
+    InvalidIssue,
+    ActiveQueryDestroyed,
+    DeviceLost,
+    Resetting,
+    ResetFailed,
+    NativeBypass,
+    CounterOverflow,
+    ActiveQueryReset,
+    NativeCallInFlight,
+    OverlappingNativeCalls
 };
 struct ExecutionView {
     bool requested = false, known = false, scene_open = false;
@@ -27,6 +40,7 @@ public:
     ExecutionQuery() = default;
     ExecutionQuery(const ExecutionQuery&) = delete;
     ExecutionQuery& operator=(const ExecutionQuery&) = delete;
+
 private:
     friend class ObservedExecutionState;
     std::atomic<const ObservedExecutionState*> owner_{nullptr};
@@ -44,6 +58,7 @@ public:
     void complete() noexcept;
     ExecutionObservation(const ExecutionObservation&) = delete;
     ExecutionObservation& operator=(const ExecutionObservation&) = delete;
+
 private:
     friend class ObservedExecutionState;
     explicit ExecutionObservation(ObservedExecutionState&) noexcept;
@@ -76,6 +91,7 @@ public:
     // Permanent for this device lifetime; successful Reset cannot erase an
     // unseen native query scope or restore closed-world interception coverage.
     void unknown_native_execution() noexcept;
+
 private:
     friend class ExecutionObservation;
     void start_native(ExecutionObservation&) noexcept;

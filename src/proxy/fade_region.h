@@ -18,6 +18,6 @@ bool recheck_locked_prefix(const Query& query, std::uint32_t vertex_count, std::
 // prefix::Lookup reason in *refusal (1 = unknown, also for an unrecognised
 // wrapper or an ownership layer without the scan). Valid while the revision
 // holds: recheck_locked_prefix afterwards. LastError preserved.
-bool locked_prefix_vertices(const Query& query, std::uint32_t vertex_count, const float** positions, const std::uint32_t** extras,
-                            std::uint64_t* revision, unsigned* refusal) noexcept;
+bool locked_prefix_vertices(const Query& query, std::uint32_t vertex_count, const float** positions,
+                            const std::uint32_t** extras, std::uint64_t* revision, unsigned* refusal) noexcept;
 }

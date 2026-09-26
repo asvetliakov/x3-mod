@@ -14,8 +14,8 @@
 
 namespace x3m::engine_memory {
 namespace {
-constexpr unsigned region_count = 32;   // distinct heap/image regions touched per frame are a handful
-constexpr DWORD max_age_ms = 100;       // a cached region's own age bound, in time sampled on every read
+constexpr unsigned region_count = 32; // distinct heap/image regions touched per frame are a handful
+constexpr DWORD max_age_ms = 100;     // a cached region's own age bound, in time sampled on every read
 // Frames count as advancing while the last next_frame() (a Present) is at most
 // this old. Past it (a load stall, the game's shutdown) a cached region is
 // trusted only for stalled_age_ms after its own validation: one VirtualQuery
@@ -28,21 +28,27 @@ constexpr DWORD stalled_age_ms = 5;
 enum class Trust { Frame, Stalled, None };
 constexpr DWORD readable_protection = PAGE_READONLY | PAGE_READWRITE | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE |
                                       PAGE_WRITECOPY | PAGE_EXECUTE_WRITECOPY;
-struct Region { std::uintptr_t begin = 0, end = 0; std::uint32_t frame = 0; DWORD tick = 0; };
+struct Region {
+    std::uintptr_t begin = 0, end = 0;
+    std::uint32_t frame = 0;
+    DWORD tick = 0;
+};
 Region regions[region_count];
 unsigned victim = 0;
 std::atomic<std::uint32_t> current_frame{1};
 std::atomic_flag cache_lock = ATOMIC_FLAG_INIT;
 Stats counters;
-DWORD frame_tick = 0;                   // GetTickCount at the last next_frame(), under cache_lock
-bool frames_seen = false;               // no next_frame() yet: the region age bound alone applies
+DWORD frame_tick = 0;     // GetTickCount at the last next_frame(), under cache_lock
+bool frames_seen = false; // no next_frame() yet: the region age bound alone applies
 // Set by begin_shutdown(), cleared only by next_frame() (a Present; not by
 // revalidate()): after an engine teardown the game presents no further frame,
 // so at exit it holds to the end.
 std::atomic<bool> shutdown_flag{false};
 std::atomic<const char*> shutdown_source{nullptr};
 struct Guard {
-    Guard() { while (cache_lock.test_and_set(std::memory_order_acquire)) {} }
+    Guard() {
+        while (cache_lock.test_and_set(std::memory_order_acquire)) {}
+    }
     ~Guard() { cache_lock.clear(std::memory_order_release); }
 };
 // The copy itself uses string moves, not the CRT memcpy: it touches no XMM or
@@ -61,7 +67,9 @@ bool query(std::uintptr_t address, Region& out) {
     const SIZE_T size = VirtualQuery(reinterpret_cast<const void*>(address), &info, sizeof info);
     SetLastError(error);
     if (size != sizeof info) return false;
-    if (info.State != MEM_COMMIT || (info.Protect & (PAGE_NOACCESS | PAGE_GUARD)) || !(info.Protect & readable_protection)) return false;
+    if (info.State != MEM_COMMIT || (info.Protect & (PAGE_NOACCESS | PAGE_GUARD)) ||
+        !(info.Protect & readable_protection))
+        return false;
     out.begin = reinterpret_cast<std::uintptr_t>(info.BaseAddress);
     out.end = out.begin + info.RegionSize;
     if (out.end < out.begin) out.end = UINTPTR_MAX;
@@ -81,13 +89,20 @@ bool validated(std::uintptr_t address, std::uintptr_t end, std::uint32_t frame, 
     while (address < end) {
         Region* hit = nullptr;
         for (auto& r : regions)
-            if (r.end && address >= r.begin && address < r.end) { hit = &r; break; }
-        if (hit && (trust == Trust::None || hit->frame != frame || older(tick, hit->tick, age))) { hit->end = 0; hit = nullptr; }
+            if (r.end && address >= r.begin && address < r.end) {
+                hit = &r;
+                break;
+            }
+        if (hit && (trust == Trust::None || hit->frame != frame || older(tick, hit->tick, age))) {
+            hit->end = 0;
+            hit = nullptr;
+        }
         if (!hit) {
             Region fresh{};
             ++counters.queries;
             if (!query(address, fresh)) return false;
-            fresh.frame = frame; fresh.tick = tick;
+            fresh.frame = frame;
+            fresh.tick = tick;
             // Drop every stale entry overlapping the fresh region, then fill the
             // first empty slot or evict round robin.
             Region* slot = nullptr;
@@ -95,8 +110,12 @@ bool validated(std::uintptr_t address, std::uintptr_t end, std::uint32_t frame, 
                 if (r.end && r.begin < fresh.end && fresh.begin < r.end) r.end = 0;
                 if (!r.end && !slot) slot = &r;
             }
-            if (!slot) { slot = &regions[victim]; victim = (victim + 1) % region_count; }
-            *slot = fresh; hit = slot;
+            if (!slot) {
+                slot = &regions[victim];
+                victim = (victim + 1) % region_count;
+            }
+            *slot = fresh;
+            hit = slot;
         }
         address = hit->end;
     }
@@ -116,12 +135,16 @@ bool read(std::uintptr_t address, void* out, std::size_t size) {
         const bool shutdown = shutdown_flag.load(std::memory_order_relaxed); // stored under the same lock
         const bool stalled = frames_seen && older(tick, frame_tick, stall_ms);
         const Trust trust = shutdown ? Trust::None : stalled ? Trust::Stalled : Trust::Frame;
-        if (shutdown) ++counters.strict_reads;
-        else if (stalled) ++counters.stalled_reads;
+        if (shutdown)
+            ++counters.strict_reads;
+        else if (stalled)
+            ++counters.stalled_reads;
         if (!validated(address, address + size, frame, tick, trust)) {
             ++counters.rejected;
-            if (shutdown) ++counters.refused_shutdown;
-            else if (stalled) ++counters.refused_stalled;
+            if (shutdown)
+                ++counters.refused_shutdown;
+            else if (stalled)
+                ++counters.refused_stalled;
             return false;
         }
     }
@@ -131,17 +154,24 @@ bool read(std::uintptr_t address, void* out, std::size_t size) {
 void next_frame() {
     const DWORD tick = GetTickCount();
     current_frame.fetch_add(1, std::memory_order_relaxed);
-    Guard guard; frame_tick = tick; frames_seen = true;
+    Guard guard;
+    frame_tick = tick;
+    frames_seen = true;
     shutdown_flag.store(false, std::memory_order_release);
 }
-void revalidate() { current_frame.fetch_add(1, std::memory_order_relaxed); }
+void revalidate() {
+    current_frame.fetch_add(1, std::memory_order_relaxed);
+}
 void begin_shutdown(const char* source) {
     const char* expected = nullptr;
     shutdown_source.compare_exchange_strong(expected, source ? source : "unnamed", std::memory_order_relaxed);
-    Guard guard; ++counters.shutdown_signals;
+    Guard guard;
+    ++counters.shutdown_signals;
     shutdown_flag.store(true, std::memory_order_release);
 }
-bool shutting_down() { return shutdown_flag.load(std::memory_order_acquire); }
+bool shutting_down() {
+    return shutdown_flag.load(std::memory_order_acquire);
+}
 void reset() {
     Guard guard;
     for (auto& r : regions) r = Region{};

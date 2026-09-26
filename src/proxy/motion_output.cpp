@@ -50,13 +50,19 @@ namespace {
 // windows than the shadow holds, or a bounded row whose loop could reach its
 // own clip rows, fails here rather than routing draws the shadow never
 // captured.
-struct MatrixWindows { UINT base[motion_matrix_windows_max]; std::size_t count; };
+struct MatrixWindows {
+    UINT base[motion_matrix_windows_max];
+    std::size_t count;
+};
 constexpr void add_matrix_window(MatrixWindows& windows, UINT matrix_register) noexcept {
     if (windows.count > motion_matrix_windows_max) return; // the overflow sentinel stands; base[] holds `max` entries
     bool seen = false;
     for (std::size_t i = 0; i < windows.count; ++i) seen = seen || windows.base[i] == matrix_register;
     if (seen) return;
-    if (windows.count == motion_matrix_windows_max) { windows.count = motion_matrix_windows_max + 1; return; }
+    if (windows.count == motion_matrix_windows_max) {
+        windows.count = motion_matrix_windows_max + 1;
+        return;
+    }
     windows.base[windows.count++] = matrix_register;
 }
 // Clip-row windows of every jittered program: the pair table's VS rows and
@@ -89,7 +95,9 @@ constexpr bool rows_match_shadow() noexcept {
     }
     return true;
 }
-static_assert(rows_match_shadow(), "every profile row must name a shadowed clip-row window and, when bounded, the i0.x <= 8 bound below its rows");
+static_assert(
+    rows_match_shadow(),
+    "every profile row must name a shadowed clip-row window and, when bounded, the i0.x <= 8 bound below its rows");
 constexpr bool prepass_rows_match_shadow() noexcept {
     for (const auto& row : renderer::depth_prepass_profiles)
         if (window_of(row.matrix_register) >= motion_matrix_windows_max) return false;
@@ -98,6 +106,7 @@ constexpr bool prepass_rows_match_shadow() noexcept {
 static_assert(prepass_rows_match_shadow(), "every depth-prepass row must name a shadowed clip-row window");
 // IDirect3DDevice9 vtable slots, verified against the MinGW d3d9.h method order
 // by verification/probe/abi_check.cpp (compile-time offsetof assertions).
+// clang-format off
 enum Slot : unsigned {
     AddRef = 1, Release = 2, GetDirect3D = 6, GetDisplayMode = 8, GetCreationParameters = 9,
     CreateTexture = 23, CreateVertexBuffer = 26, CreateRenderTarget = 28, GetRenderTargetData = 32, StretchRect = 34, ColorFill = 35,
@@ -113,6 +122,7 @@ enum Slot : unsigned {
     CreatePixelShader = 106, SetPixelShader = 107, GetPixelShader = 108,
     SetPixelShaderConstantF = 109, GetPixelShaderConstantF = 110, CreateQuery = 118
 };
+// clang-format on
 using D = IDirect3DDevice9*;
 using SetRenderTargetFn = HRESULT(WINAPI*)(D, DWORD, IDirect3DSurface9*);
 using GetRenderTargetFn = HRESULT(WINAPI*)(D, DWORD, IDirect3DSurface9**);
@@ -151,14 +161,16 @@ using CreatePsFn = HRESULT(WINAPI*)(D, const DWORD*, IDirect3DPixelShader9**);
 using SetPsFn = HRESULT(WINAPI*)(D, IDirect3DPixelShader9*);
 using GetPsFn = HRESULT(WINAPI*)(D, IDirect3DPixelShader9**);
 using CreateTextureFn = HRESULT(WINAPI*)(D, UINT, UINT, UINT, DWORD, D3DFORMAT, D3DPOOL, IDirect3DTexture9**, HANDLE*);
-using CreateRtFn = HRESULT(WINAPI*)(D, UINT, UINT, D3DFORMAT, D3DMULTISAMPLE_TYPE, DWORD, BOOL, IDirect3DSurface9**, HANDLE*);
+using CreateRtFn = HRESULT(WINAPI*)(D, UINT, UINT, D3DFORMAT, D3DMULTISAMPLE_TYPE, DWORD, BOOL, IDirect3DSurface9**,
+                                    HANDLE*);
 using CreateOffscreenFn = HRESULT(WINAPI*)(D, UINT, UINT, D3DFORMAT, D3DPOOL, IDirect3DSurface9**, HANDLE*);
 using GetRtDataFn = HRESULT(WINAPI*)(D, IDirect3DSurface9*, IDirect3DSurface9*);
 using GetDirect3DFn = HRESULT(WINAPI*)(D, IDirect3D9**);
 using GetDisplayModeFn = HRESULT(WINAPI*)(D, UINT, D3DDISPLAYMODE*);
 using GetCreationFn = HRESULT(WINAPI*)(D, D3DDEVICE_CREATION_PARAMETERS*);
 using CountFn = ULONG(WINAPI*)(D);
-using StretchFn = HRESULT(WINAPI*)(D, IDirect3DSurface9*, const RECT*, IDirect3DSurface9*, const RECT*, D3DTEXTUREFILTERTYPE);
+using StretchFn = HRESULT(WINAPI*)(D, IDirect3DSurface9*, const RECT*, IDirect3DSurface9*, const RECT*,
+                                   D3DTEXTUREFILTERTYPE);
 using ColorFillFn = HRESULT(WINAPI*)(D, IDirect3DSurface9*, const RECT*, D3DCOLOR);
 using CreateQueryFn = HRESULT(WINAPI*)(D, D3DQUERYTYPE, IDirect3DQuery9**);
 
@@ -168,18 +180,17 @@ using CreateQueryFn = HRESULT(WINAPI*)(D, D3DQUERYTYPE, IDirect3DQuery9**);
 // token; `def` and `mov oC0/oC1/oC2` encode identically in ps_2_0 and ps_3_0.
 // ps_3_0: def c0, 0, 0, 0, -1 ; mov oC0, c0 ; end. Writes the invalid-history
 // sentinel of the RGBA32F motion ABI (alpha -1) to every covered texel.
-constexpr DWORD sentinel_program[] = {
-    0xffff0300u, 0x05000051u, 0xa00f0000u, 0x00000000u, 0x00000000u, 0x00000000u, 0xbf800000u,
-    0x02000001u, 0x800f0800u, 0xa0e40000u, 0x0000ffffu};
+constexpr DWORD sentinel_program[] = {0xffff0300u, 0x05000051u, 0xa00f0000u, 0x00000000u, 0x00000000u, 0x00000000u,
+                                      0xbf800000u, 0x02000001u, 0x800f0800u, 0xa0e40000u, 0x0000ffffu};
 // The same with a second output: oC1 = c0.wwww = (-1, -1, -1, -1) fills the
 // R32F depth target (which stores .x only) with its sentinel -1 in the same
 // draw; ps_3_0 `def c0, 0, 0, 0, -1; mov oC0, c0; mov oC1, c0.wwww`.
-constexpr DWORD sentinel_mrt_program[] = {
-    0xffff0300u, 0x05000051u, 0xa00f0000u, 0x00000000u, 0x00000000u, 0x00000000u, 0xbf800000u,
-    0x02000001u, 0x800f0800u, 0xa0e40000u,
-    0x02000001u, 0x800f0801u, 0xa0ff0000u, 0x0000ffffu};
+constexpr DWORD sentinel_mrt_program[] = {0xffff0300u, 0x05000051u, 0xa00f0000u, 0x00000000u, 0x00000000u,
+                                          0x00000000u, 0xbf800000u, 0x02000001u, 0x800f0800u, 0xa0e40000u,
+                                          0x02000001u, 0x800f0801u, 0xa0ff0000u, 0x0000ffffu};
 // ps_3_0 self-test: oC0 = (0.25, 0.5, 0.75, 1) into A8R8G8B8, oC1 = (1, 2, 3, -1)
 // into A32B32G32R32F. Both targets are read back to prove mixed-format MRT.
+// clang-format off
 constexpr DWORD self_test_program[] = {
     0xffff0300u,
     0x05000051u, 0xa00f0000u, 0x3e800000u, 0x3f000000u, 0x3f400000u, 0x3f800000u,
@@ -197,21 +208,29 @@ constexpr DWORD self_test_depth_program[] = {
     0x02000001u, 0x800f0801u, 0xa0e40001u,
     0x02000001u, 0x800f0802u, 0xa0e40002u,
     0x0000ffffu};
+// clang-format on
 constexpr float self_test_depth_value = 0.625f;
 // Halton sequences in bases 2 and 3 give the jitter offsets; index is 1-based
 // so no sample lands on the raster centre twice in a row.
 float halton(unsigned index, unsigned base) noexcept {
     float fraction = 1.f, result = 0.f;
-    while (index) { fraction /= float(base); result += fraction * float(index % base); index /= base; }
+    while (index) {
+        fraction /= float(base);
+        result += fraction * float(index % base);
+        index /= base;
+    }
     return result;
 }
 // Render states the injected fullscreen draws set; each is saved and restored.
+// clang-format off
 constexpr D3DRENDERSTATETYPE touched_states[] = {
     D3DRS_ZENABLE, D3DRS_ZWRITEENABLE, D3DRS_ALPHATESTENABLE, D3DRS_ALPHABLENDENABLE,
     D3DRS_CULLMODE, D3DRS_FILLMODE, D3DRS_COLORWRITEENABLE, D3DRS_SCISSORTESTENABLE,
     D3DRS_STENCILENABLE, D3DRS_FOGENABLE, D3DRS_SRGBWRITEENABLE, D3DRS_CLIPPLANEENABLE,
     D3DRS_COLORWRITEENABLE1, D3DRS_COLORWRITEENABLE2};
-constexpr DWORD touched_values[] = {FALSE, FALSE, FALSE, FALSE, D3DCULL_NONE, D3DFILL_SOLID, 15, FALSE, FALSE, FALSE, FALSE, 0, 15, 15};
+// clang-format on
+constexpr DWORD touched_values[] = {FALSE, FALSE, FALSE, FALSE, D3DCULL_NONE, D3DFILL_SOLID, 15, FALSE, FALSE, FALSE,
+                                    FALSE, 0,     15,    15};
 constexpr unsigned touched_count = sizeof(touched_states) / sizeof(touched_states[0]);
 static_assert(touched_count == sizeof(touched_values) / sizeof(touched_values[0]));
 constexpr unsigned failure_log_limit = 16;
@@ -222,6 +241,7 @@ constexpr unsigned failure_log_limit = 16;
 // here and the route issues no GetRenderState for them after the first read.
 // Slots 8–23 cache WRAP0–15; routed draws query only their owned indices.
 // Slots 24–31 are the eight selected cutout states; opaque draws do not query them.
+// clang-format off
 constexpr D3DRENDERSTATETYPE shadow_states[motion_shadow_state_count] = {
     D3DRS_ZENABLE, D3DRS_ZWRITEENABLE, D3DRS_ALPHATESTENABLE, D3DRS_ALPHABLENDENABLE,
     D3DRS_COLORWRITEENABLE, D3DRS_SRGBWRITEENABLE, D3DRS_COLORWRITEENABLE1, D3DRS_COLORWRITEENABLE2,
@@ -229,24 +249,28 @@ constexpr D3DRENDERSTATETYPE shadow_states[motion_shadow_state_count] = {
     D3DRS_WRAP8, D3DRS_WRAP9, D3DRS_WRAP10, D3DRS_WRAP11, D3DRS_WRAP12, D3DRS_WRAP13, D3DRS_WRAP14, D3DRS_WRAP15,
     D3DRS_ALPHAFUNC, D3DRS_ALPHAREF, D3DRS_ZFUNC, D3DRS_FOGENABLE, D3DRS_DITHERENABLE,
     D3DRS_STENCILENABLE, D3DRS_CULLMODE, D3DRS_FILLMODE};
+// clang-format on
 // Blend states kept outside the indexed shadow: the nine-state fade check's
 // triple plus SEPARATEALPHABLENDENABLE, then the separate alpha triple that
 // only the source-gain refusal lines read (never a gate), then BLENDFACTOR,
 // which only the additive option's alpha attenuation writes and restores.
 constexpr unsigned composition_blend_count = 8;
 constexpr D3DRENDERSTATETYPE composition_blend_states[composition_blend_count] = {
-    D3DRS_SRCBLEND, D3DRS_DESTBLEND, D3DRS_BLENDOP, D3DRS_SEPARATEALPHABLENDENABLE,
+    D3DRS_SRCBLEND,      D3DRS_DESTBLEND,      D3DRS_BLENDOP,      D3DRS_SEPARATEALPHABLENDENABLE,
     D3DRS_SRCBLENDALPHA, D3DRS_DESTBLENDALPHA, D3DRS_BLENDOPALPHA, D3DRS_BLENDFACTOR};
 constexpr unsigned composition_blend_index_scan(D3DRENDERSTATETYPE state) noexcept {
-    for (unsigned i = 0; i < composition_blend_count; ++i) if (composition_blend_states[i] == state) return i;
+    for (unsigned i = 0; i < composition_blend_count; ++i)
+        if (composition_blend_states[i] == state) return i;
     return composition_blend_count;
 }
 constexpr unsigned shadow_index_scan(D3DRENDERSTATETYPE state) noexcept {
     // WRAP8 starts a second, non-contiguous D3DRENDERSTATETYPE range.
     if (state >= D3DRS_WRAP0 && state <= D3DRS_WRAP7) return 8u + unsigned(state - D3DRS_WRAP0);
     if (state >= D3DRS_WRAP8 && state <= D3DRS_WRAP15) return 16u + unsigned(state - D3DRS_WRAP8);
-    for (unsigned i = 0; i < 8; ++i) if (shadow_states[i] == state) return i;
-    for (unsigned i = 24; i < motion_shadow_state_count; ++i) if (shadow_states[i] == state) return i;
+    for (unsigned i = 0; i < 8; ++i)
+        if (shadow_states[i] == state) return i;
+    for (unsigned i = 24; i < motion_shadow_state_count; ++i)
+        if (shadow_states[i] == state) return i;
     return unsigned(motion_shadow_state_count);
 }
 // Dispatch trim (docs/architecture/state-call-fast-path.md, step 4): the
@@ -263,8 +287,10 @@ static_assert(motion_shadow_state_count < state_index_table_size && composition_
 // arm below can only be reached by a state neither shadow tracks (largest
 // today: D3DRS_BLENDOPALPHA, 209).
 constexpr bool states_within_index_table() noexcept {
-    for (const D3DRENDERSTATETYPE state : shadow_states) if (unsigned(state) >= state_index_table_size) return false;
-    for (const D3DRENDERSTATETYPE state : composition_blend_states) if (unsigned(state) >= state_index_table_size) return false;
+    for (const D3DRENDERSTATETYPE state : shadow_states)
+        if (unsigned(state) >= state_index_table_size) return false;
+    for (const D3DRENDERSTATETYPE state : composition_blend_states)
+        if (unsigned(state) >= state_index_table_size) return false;
     return unsigned(D3DRS_WRAP7) < state_index_table_size && unsigned(D3DRS_WRAP15) < state_index_table_size;
 }
 static_assert(states_within_index_table(), "every shadowed render state is inside the index tables");
@@ -284,8 +310,9 @@ constexpr StateIndexTables state_index_tables = make_state_index_tables();
 // The table equals the scan for every value it covers, proved at compile time.
 constexpr bool state_index_tables_match_scans() noexcept {
     for (unsigned i = 0; i < state_index_table_size; ++i)
-        if (state_index_tables.shadow[i] != shadow_index_scan(D3DRENDERSTATETYPE(i))
-            || state_index_tables.blend[i] != composition_blend_index_scan(D3DRENDERSTATETYPE(i))) return false;
+        if (state_index_tables.shadow[i] != shadow_index_scan(D3DRENDERSTATETYPE(i)) ||
+            state_index_tables.blend[i] != composition_blend_index_scan(D3DRENDERSTATETYPE(i)))
+            return false;
     return true;
 }
 static_assert(state_index_tables_match_scans(), "state index tables equal the scans for 0..255");
@@ -298,19 +325,27 @@ constexpr unsigned composition_blend_index(D3DRENDERSTATETYPE state) noexcept {
     return value < state_index_table_size ? state_index_tables.blend[value] : composition_blend_count;
 }
 const char* scene_end_source_name(std::uint32_t source) noexcept {
-    return source == unsigned(SceneEndSource::Hook) ? "hook" : source == unsigned(SceneEndSource::StretchRect) ? "stretchrect" : "none";
+    return source == unsigned(SceneEndSource::Hook)          ? "hook"
+           : source == unsigned(SceneEndSource::StretchRect) ? "stretchrect"
+                                                             : "none";
 }
 const char* hdr_end_name(std::uint32_t end) noexcept {
     switch (static_cast<HdrEnd>(end)) {
-    case HdrEnd::Hook: return "hook"; case HdrEnd::BloomCopy: return "bloom_copy"; case HdrEnd::ContentWrite: return "content_write";
-    case HdrEnd::Present: return "present"; case HdrEnd::ClearFailed: return "clear_failed"; case HdrEnd::Dropped: return "dropped";
+    case HdrEnd::Hook: return "hook";
+    case HdrEnd::BloomCopy: return "bloom_copy";
+    case HdrEnd::ContentWrite: return "content_write";
+    case HdrEnd::Present: return "present";
+    case HdrEnd::ClearFailed: return "clear_failed";
+    case HdrEnd::Dropped: return "dropped";
     default: return "none";
     }
 }
 const char* hdr_source_name(std::uint32_t source) noexcept {
     switch (static_cast<renderer::HdrWritebackSource>(source)) {
-    case renderer::HdrWritebackSource::Shader: return "shader"; case renderer::HdrWritebackSource::Stretch: return "stretch";
-    case renderer::HdrWritebackSource::Restore: return "restore"; default: return "none";
+    case renderer::HdrWritebackSource::Shader: return "shader";
+    case renderer::HdrWritebackSource::Stretch: return "stretch";
+    case renderer::HdrWritebackSource::Restore: return "restore";
+    default: return "none";
     }
 }
 constexpr unsigned hdr_recheck_interval = 60; // latches between recovery self tests while blocked
@@ -318,11 +353,19 @@ constexpr unsigned hdr_recheck_interval = 60; // latches between recovery self t
 std::uint64_t hash_bytes(const void* data, std::size_t size) noexcept {
     std::uint64_t hash = 14695981039346656037ull;
     auto bytes = static_cast<const unsigned char*>(data);
-    for (std::size_t i = 0; i < size; ++i) { hash ^= bytes[i]; hash *= 1099511628211ull; }
+    for (std::size_t i = 0; i < size; ++i) {
+        hash ^= bytes[i];
+        hash *= 1099511628211ull;
+    }
     return hash;
 }
 // Clears the member before the COM call so a re-entrant path never sees it.
-template<class T> void release(T*& object) noexcept { if (T* held = object) { object = nullptr; held->Release(); } }
+template <class T> void release(T*& object) noexcept {
+    if (T* held = object) {
+        object = nullptr;
+        held->Release();
+    }
+}
 bool same(const renderer::Surface& a, const renderer::Surface& b) noexcept {
     return a.known && b.known && a.identity && a.identity == b.identity && a.container == b.container &&
            a.width == b.width && a.height == b.height && a.format == b.format && a.msaa == b.msaa;
@@ -350,12 +393,18 @@ struct MotionOutput::SavedState {
     unsigned target_count = 1;
     ~SavedState() {
         for (auto& target : targets) release(target);
-        release(depth); release(declaration); release(vs); release(ps); release(stream);
+        release(depth);
+        release(declaration);
+        release(vs);
+        release(ps);
+        release(stream);
     }
 };
 
 MotionOutput::MotionOutput() noexcept = default;
-MotionOutput::~MotionOutput() { release_resources(); }
+MotionOutput::~MotionOutput() {
+    release_resources();
+}
 
 unsigned MotionOutput::device_references() const noexcept {
     if (reference_accounting_busy()) return 0;
@@ -363,17 +412,44 @@ unsigned MotionOutput::device_references() const noexcept {
     if (hdr_) count += hdr_->references();
     if (composition_) count += composition_->references();
     if (depth_surface_) ++count;
-    if (fade_witness_.copy) ++count; // the witness's retained system-memory readback surface
+    if (fade_witness_.copy) ++count;  // the witness's retained system-memory readback surface
     if (packed_sample_.copy) ++count; // the packed_sample diagnostic's retained readback surfaces (post and pre)
     if (packed_sample_.pre_copy) ++count;
     if (sentinel_ps_) ++count;
     if (sentinel_mrt_ps_) ++count;
     if (sun_sentinel_ps_) ++count;
-    for (const auto* stamp : sun_stamp_ps_) if (stamp) ++count;
+    for (const auto* stamp : sun_stamp_ps_)
+        if (stamp) ++count;
     if (quad_vs_) ++count;
     if (quad_declaration_) ++count;
-    for (const auto& entry : vertex_) { if (entry.second.variant) ++count; if (entry.second.material_variant) ++count; if (entry.second.xt_default_ordinary_variant) ++count; if (entry.second.xt_default_linear_variant) ++count; if (entry.second.distance_fade_variant) ++count; }
-    for (const auto& entry : pixel_) { if (entry.second.variant) ++count; if (entry.second.material_variant) ++count; if (entry.second.xt_default_ordinary_variant) ++count; if (entry.second.xt_default_linear_variant) ++count; if (entry.second.distance_fade_variant) ++count; if (entry.second.emission_variant) ++count; if (entry.second.source_gain_variant) ++count; if (entry.second.hull_gain_variant) ++count; if (entry.second.original_fill_variant) ++count; if (entry.second.hull_lightmap_variant) ++count; if (entry.second.screen_variant) ++count; if (entry.second.screen_additive_variant) ++count; if(entry.second.sun_motion_variant)++count; if(entry.second.sun_material_variant)++count; if(entry.second.sun_xt_variant)++count; if(entry.second.sun_original_variant)++count;if(entry.second.sun_original_lightmap_variant)++count; if(entry.second.hull_lightmap_widen_variant)++count; if(entry.second.sun_original_lightmap_widen_variant)++count; }
+    for (const auto& entry : vertex_) {
+        if (entry.second.variant) ++count;
+        if (entry.second.material_variant) ++count;
+        if (entry.second.xt_default_ordinary_variant) ++count;
+        if (entry.second.xt_default_linear_variant) ++count;
+        if (entry.second.distance_fade_variant) ++count;
+    }
+    for (const auto& entry : pixel_) {
+        if (entry.second.variant) ++count;
+        if (entry.second.material_variant) ++count;
+        if (entry.second.xt_default_ordinary_variant) ++count;
+        if (entry.second.xt_default_linear_variant) ++count;
+        if (entry.second.distance_fade_variant) ++count;
+        if (entry.second.emission_variant) ++count;
+        if (entry.second.source_gain_variant) ++count;
+        if (entry.second.hull_gain_variant) ++count;
+        if (entry.second.original_fill_variant) ++count;
+        if (entry.second.hull_lightmap_variant) ++count;
+        if (entry.second.screen_variant) ++count;
+        if (entry.second.screen_additive_variant) ++count;
+        if (entry.second.sun_motion_variant) ++count;
+        if (entry.second.sun_material_variant) ++count;
+        if (entry.second.sun_xt_variant) ++count;
+        if (entry.second.sun_original_variant) ++count;
+        if (entry.second.sun_original_lightmap_variant) ++count;
+        if (entry.second.hull_lightmap_widen_variant) ++count;
+        if (entry.second.sun_original_lightmap_widen_variant) ++count;
+    }
     return count;
 }
 
@@ -390,44 +466,136 @@ void MotionOutput::release_resources() noexcept {
     shadow_.xt_default_pair = shadow_.xt_default_ready = false;
     shadow_.vs_xt_default_ordinary = shadow_.vs_xt_default_linear = nullptr;
     shadow_.ps_xt_default_ordinary = nullptr;
-    shadow_.ps_sun_motion=shadow_.ps_sun_material=shadow_.ps_sun_xt=nullptr;shadow_.ps_sun_extraction=false; shadow_.ps_sun_original=nullptr;shadow_.ps_sun_original_lightmap=nullptr;shadow_.ps_sun_original_lightmap_widen=nullptr;shadow_.ps_hull_lightmap_widen=nullptr;shadow_.hull_lightmap_stage=0; shadow_.original_share_pair=false; shadow_.original_share_refused=false;
+    shadow_.ps_sun_motion = shadow_.ps_sun_material = shadow_.ps_sun_xt = nullptr;
+    shadow_.ps_sun_extraction = false;
+    shadow_.ps_sun_original = nullptr;
+    shadow_.ps_sun_original_lightmap = nullptr;
+    shadow_.ps_sun_original_lightmap_widen = nullptr;
+    shadow_.ps_hull_lightmap_widen = nullptr;
+    shadow_.hull_lightmap_stage = 0;
+    shadow_.original_share_pair = false;
+    shadow_.original_share_refused = false;
     shadow_.material_contract = {};
     shadow_.cutout_pair = false;
-    shadow_.fade_sampler_mask = 0; shadow_.emission_pair = false; shadow_.emission_eligible_variant = nullptr; shadow_.ps_emission_variant = nullptr;
-    shadow_.ps_source_gain_variant = nullptr; shadow_.source_gain_eligible_variant = nullptr; shadow_.source_gain_pair = renderer::linear_emission_pair_count; shadow_.ps_hull_program = false; shadow_.ps_hull_gain_variant = nullptr; shadow_.ps_original_fill_variant = nullptr; shadow_.ps_hull_lightmap_variant = nullptr; shadow_.original_fill_pair = false; shadow_.hull_lightmap_pair = false; shadow_.original_share_pair = false; shadow_.original_share_refused = false;
-    shadow_.screen_pair = false; shadow_.screen_eligible_variant = nullptr; shadow_.ps_screen_variant = nullptr;
-    shadow_.screen_additive_pair = false; shadow_.screen_additive_index = screen_emission::pair_count; shadow_.ps_screen_additive_variant = nullptr;
-    shadow_.vs_registered = false; shadow_.vs_fade_variant = nullptr; shadow_.ps_registered = false; shadow_.ps_fade_variant = nullptr;
+    shadow_.fade_sampler_mask = 0;
+    shadow_.emission_pair = false;
+    shadow_.emission_eligible_variant = nullptr;
+    shadow_.ps_emission_variant = nullptr;
+    shadow_.ps_source_gain_variant = nullptr;
+    shadow_.source_gain_eligible_variant = nullptr;
+    shadow_.source_gain_pair = renderer::linear_emission_pair_count;
+    shadow_.ps_hull_program = false;
+    shadow_.ps_hull_gain_variant = nullptr;
+    shadow_.ps_original_fill_variant = nullptr;
+    shadow_.ps_hull_lightmap_variant = nullptr;
+    shadow_.original_fill_pair = false;
+    shadow_.hull_lightmap_pair = false;
+    shadow_.original_share_pair = false;
+    shadow_.original_share_refused = false;
+    shadow_.screen_pair = false;
+    shadow_.screen_eligible_variant = nullptr;
+    shadow_.ps_screen_variant = nullptr;
+    shadow_.screen_additive_pair = false;
+    shadow_.screen_additive_index = screen_emission::pair_count;
+    shadow_.ps_screen_additive_variant = nullptr;
+    shadow_.vs_registered = false;
+    shadow_.vs_fade_variant = nullptr;
+    shadow_.ps_registered = false;
+    shadow_.ps_fade_variant = nullptr;
     drop_redirect();
-    if (composition_) { composition_->detach(); composition_.reset(); }
+    if (composition_) {
+        composition_->detach();
+        composition_.reset();
+    }
     fade_bounds_.clear();
-    release_fade_witness(); release_packed_sample(); release_bolt_buffer();
+    release_fade_witness();
+    release_packed_sample();
+    release_bolt_buffer();
     release_target();
     // The passes are destroyed with their objects: the destructor's second call
     // of this function must not probe a device that no longer exists.
-    if (hdr_) { hdr_->shutdown(); hdr_.reset(); hdr_enabled_ = false; }
-    if (taa_) { taa_call([&] { taa_->shutdown(); }); taa_.reset(); }
+    if (hdr_) {
+        hdr_->shutdown();
+        hdr_.reset();
+        hdr_enabled_ = false;
+    }
+    if (taa_) {
+        taa_call([&] { taa_->shutdown(); });
+        taa_.reset();
+    }
     // Joins the stored-density worker and frees its caches, staging and DEFAULT atlases with the
     // other passes. This is the device release path, not DllMain (FogPass::abandon_density_worker).
-    if (fog_) { taa_call([&] { fog_->detach(); }); fog_.reset(); fog_frame_ = ~std::uint64_t(0); }
-    fog_density_refused_ = fog_density_prepared_ = fog_density_camera_valid_ = fog_density_config_logged_ = false; // a new pass may be refused for another reason
+    if (fog_) {
+        taa_call([&] { fog_->detach(); });
+        fog_.reset();
+        fog_frame_ = ~std::uint64_t(0);
+    }
+    fog_density_refused_ = fog_density_prepared_ = fog_density_camera_valid_ = fog_density_config_logged_ =
+        false; // a new pass may be refused for another reason
     fog_motes_drawn_ = false;
-    release_depth_leases(); release_candidate_extents(); release_thin_votes();
+    release_depth_leases();
+    release_candidate_extents();
+    release_thin_votes();
     detach_shadow_retention(); // every held reference goes before the device does (flush=teardown)
-    if (depth_replay_) { taa_call([&] { depth_replay_->detach(); }); depth_replay_.reset(); }
-    if (sun_apply_) { taa_call([&] { sun_apply_->detach(); }); sun_apply_.reset(); }
-    if (sun_occlusion_pass_) { taa_call([&] { sun_occlusion_pass_->detach(); }); sun_occlusion_pass_.reset(); }
+    if (depth_replay_) {
+        taa_call([&] { depth_replay_->detach(); });
+        depth_replay_.reset();
+    }
+    if (sun_apply_) {
+        taa_call([&] { sun_apply_->detach(); });
+        sun_apply_.reset();
+    }
+    if (sun_occlusion_pass_) {
+        taa_call([&] { sun_occlusion_pass_->detach(); });
+        sun_occlusion_pass_.reset();
+    }
     release_lens_depth();
-    lens_frame_active_ = lens_suppress_ = false; lens_record_ = 0; sun_occlusion_attach_failed_ = false;
+    lens_frame_active_ = lens_suppress_ = false;
+    lens_record_ = 0;
+    sun_occlusion_attach_failed_ = false;
     release(sentinel_ps_);
-    release(sentinel_mrt_ps_); release(sun_sentinel_ps_);
+    release(sentinel_mrt_ps_);
+    release(sun_sentinel_ps_);
     for (auto& stamp : sun_stamp_ps_) release(stamp);
     sun_stamp_ps_failed_[0] = sun_stamp_ps_failed_[1] = false;
-    release(quad_vs_); release(quad_declaration_);
-    for (auto& entry : vertex_) { entry.second.registered = false; release(entry.second.variant); release(entry.second.material_variant); release(entry.second.xt_default_ordinary_variant); release(entry.second.xt_default_linear_variant); release(entry.second.distance_fade_variant); }
-    for (auto& entry : pixel_) { entry.second.registered = false; release(entry.second.variant); release(entry.second.material_variant); release(entry.second.xt_default_ordinary_variant); release(entry.second.xt_default_linear_variant); release(entry.second.distance_fade_variant); release(entry.second.emission_variant); release(entry.second.source_gain_variant); release(entry.second.hull_gain_variant); entry.second.hull_program = false; release(entry.second.original_fill_variant); release(entry.second.hull_lightmap_variant); release(entry.second.screen_variant); release(entry.second.screen_additive_variant); release(entry.second.sun_motion_variant); release(entry.second.sun_material_variant); release(entry.second.sun_xt_variant); release(entry.second.sun_original_variant); release(entry.second.sun_original_lightmap_variant); release(entry.second.hull_lightmap_widen_variant); release(entry.second.sun_original_lightmap_widen_variant); entry.second.hull_lightmap_stage = 0; }
-    shadow_.vs_variant = nullptr; shadow_.ps_variant = nullptr;
-    shadow_.vs_material_variant = nullptr; shadow_.ps_material_variant = nullptr;
+    release(quad_vs_);
+    release(quad_declaration_);
+    for (auto& entry : vertex_) {
+        entry.second.registered = false;
+        release(entry.second.variant);
+        release(entry.second.material_variant);
+        release(entry.second.xt_default_ordinary_variant);
+        release(entry.second.xt_default_linear_variant);
+        release(entry.second.distance_fade_variant);
+    }
+    for (auto& entry : pixel_) {
+        entry.second.registered = false;
+        release(entry.second.variant);
+        release(entry.second.material_variant);
+        release(entry.second.xt_default_ordinary_variant);
+        release(entry.second.xt_default_linear_variant);
+        release(entry.second.distance_fade_variant);
+        release(entry.second.emission_variant);
+        release(entry.second.source_gain_variant);
+        release(entry.second.hull_gain_variant);
+        entry.second.hull_program = false;
+        release(entry.second.original_fill_variant);
+        release(entry.second.hull_lightmap_variant);
+        release(entry.second.screen_variant);
+        release(entry.second.screen_additive_variant);
+        release(entry.second.sun_motion_variant);
+        release(entry.second.sun_material_variant);
+        release(entry.second.sun_xt_variant);
+        release(entry.second.sun_original_variant);
+        release(entry.second.sun_original_lightmap_variant);
+        release(entry.second.hull_lightmap_widen_variant);
+        release(entry.second.sun_original_lightmap_widen_variant);
+        entry.second.hull_lightmap_stage = 0;
+    }
+    shadow_.vs_variant = nullptr;
+    shadow_.ps_variant = nullptr;
+    shadow_.vs_material_variant = nullptr;
+    shadow_.ps_material_variant = nullptr;
     shadow_.material_contract = {};
     shadow_.cutout_pair = false;
     history_.invalidate();
@@ -442,26 +610,30 @@ void MotionOutput::release_resources() noexcept {
         // Once: the destructor reaches this function a second time.
         mip_bias_summary_logged_ = true;
         log("motion_output_mip_bias_summary device=%llu bias=%g sets=%lu restores=%lu reads=%lu game_writes=%lu failures=%lu biased_now=%04lx",
-            id_, double(mip_bias_), static_cast<unsigned long>(mip_bias_total_sets_), static_cast<unsigned long>(mip_bias_total_restores_),
-            static_cast<unsigned long>(mip_bias_total_reads_), static_cast<unsigned long>(mip_bias_total_game_writes_),
+            id_, double(mip_bias_), static_cast<unsigned long>(mip_bias_total_sets_),
+            static_cast<unsigned long>(mip_bias_total_restores_), static_cast<unsigned long>(mip_bias_total_reads_),
+            static_cast<unsigned long>(mip_bias_total_game_writes_),
             static_cast<unsigned long>(mip_bias_total_failures_), static_cast<unsigned long>(sampler_biased_mask_));
     }
     if (lightmap_widen_ && !lightmap_widen_summary_logged_) {
         // Session summary of the widening: the k range the widened draws saw
         // (the per-frame line carries the frame's). Once, as the bias summary.
         lightmap_widen_summary_logged_ = true;
-        log("hull_lightmap_widen_summary device=%llu k=%g b=%g variants=%lu widened_draws=%lu filter_sets=%lu",
-            id_, double(lightmap_widen_k_), double(lightmap_widen_b_), static_cast<unsigned long>(lightmap_widen_variants_),
-            static_cast<unsigned long>(lightmap_widen_session_draws_), static_cast<unsigned long>(lightmap_widen_session_filter_sets_));
+        log("hull_lightmap_widen_summary device=%llu k=%g b=%g variants=%lu widened_draws=%lu filter_sets=%lu", id_,
+            double(lightmap_widen_k_), double(lightmap_widen_b_), static_cast<unsigned long>(lightmap_widen_variants_),
+            static_cast<unsigned long>(lightmap_widen_session_draws_),
+            static_cast<unsigned long>(lightmap_widen_session_filter_sets_));
     }
     releasing_ = false;
 }
 
 void MotionOutput::release_target() noexcept {
-    sun_frame_.available=false; sun_lane_active_=false;
+    sun_frame_.available = false;
+    sun_lane_active_ = false;
     release(depth_surface_);
     release(target_surface_);
-    target_width_ = target_height_ = 0; target_generation_ = 0;
+    target_width_ = target_height_ = 0;
+    target_generation_ = 0;
 }
 
 void MotionOutput::configure_jitter(bool enabled, unsigned samples) noexcept {
@@ -470,24 +642,35 @@ void MotionOutput::configure_jitter(bool enabled, unsigned samples) noexcept {
 }
 void MotionOutput::configure_cut_bounds(float median_px_at_1280, float missing_fraction) noexcept {
     if (std::isfinite(median_px_at_1280) && median_px_at_1280 > 0) cut_median_bound_ = median_px_at_1280;
-    if (std::isfinite(missing_fraction) && missing_fraction > 0 && missing_fraction <= 1) cut_missing_bound_ = missing_fraction;
+    if (std::isfinite(missing_fraction) && missing_fraction > 0 && missing_fraction <= 1)
+        cut_missing_bound_ = missing_fraction;
 }
-void MotionOutput::configure_taa(bool requested, bool debug) noexcept { taa_requested_ = requested; taa_debug_ = debug; }
+void MotionOutput::configure_taa(bool requested, bool debug) noexcept {
+    taa_requested_ = requested;
+    taa_debug_ = debug;
+}
 void MotionOutput::configure_sentinel(renderer::SentinelMode mode, float cut_degrees, unsigned log_frames) noexcept {
     sentinel_mode_ = mode;
     camera_cut_degrees_ = std::isfinite(cut_degrees) && cut_degrees > 0 ? cut_degrees : 20.f;
-    camera_log_interval_ = log_frames; // 0: capture frames only (the default since the logging tiers; X3M_DEBUG=1 gives 1)
+    camera_log_interval_ = log_frames; // 0: capture frames only (the default since the logging tiers; X3M_DEBUG=1 gives
+                                       // 1)
 }
 
 // ---- cost telemetry --------------------------------------------------------
 
 // QPC stamp while telemetry is on (begin_frame latches the switch), else 0:
 // every tick total below then stays zero and no metric is recorded.
-std::uint64_t MotionOutput::stamp() const noexcept { return telemetry_ ? telemetry::now() : 0; }
+std::uint64_t MotionOutput::stamp() const noexcept {
+    return telemetry_ ? telemetry::now() : 0;
+}
 // Per-draw stamps (gate, apply/undo, SetRenderTarget, jitter, lazy flush) also
 // need X3M_TELEMETRY_DRAW=1: under Wine every QPC is a syscall and a routed
 // draw took up to 24 of them (docs/verification/route-cost-run1.md, 2.4).
-namespace { inline std::uint64_t draw_stamp() noexcept { return telemetry::draw_enabled() ? telemetry::now() : 0; } }
+namespace {
+inline std::uint64_t draw_stamp() noexcept {
+    return telemetry::draw_enabled() ? telemetry::now() : 0;
+}
+}
 void MotionOutput::record(unsigned metric, std::uint64_t ticks, bool failed, std::uint64_t bytes) noexcept {
     if (telemetry_ && stats_) telemetry::record(*stats_, static_cast<telemetry::Metric>(metric), ticks, failed, bytes);
 }
@@ -497,7 +680,8 @@ HRESULT MotionOutput::bind_target(DWORD index, IDirect3DSurface9* surface) noexc
     const std::uint64_t begin = draw_stamp();
     const HRESULT hr = native<SetRenderTargetFn>(SetRenderTarget)(device_, index, surface);
     const std::uint64_t ticks = draw_stamp() - begin;
-    ++counters_.set_rt; counters_.set_rt_ticks += ticks;
+    ++counters_.set_rt;
+    counters_.set_rt_ticks += ticks;
     record(unsigned(telemetry::Metric::RouteSetRenderTarget), ticks, FAILED(hr));
     return hr;
 }
@@ -512,8 +696,14 @@ HRESULT MotionOutput::bind_targets(MotionRoute& route) noexcept {
     // mutate, so retain the attempt until rollback restores the slot.
     if (!lazy_mode_) {
         hr = render_state(D3DRS_COLORWRITEENABLE1, &route.saved_write1);
-        if (SUCCEEDED(hr)) { route.rt_set = true; hr = bind_target(1, target_surface_); }
-        if (SUCCEEDED(hr)) { route.write_set = true; hr = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_COLORWRITEENABLE1, 15); }
+        if (SUCCEEDED(hr)) {
+            route.rt_set = true;
+            hr = bind_target(1, target_surface_);
+        }
+        if (SUCCEEDED(hr)) {
+            route.write_set = true;
+            hr = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_COLORWRITEENABLE1, 15);
+        }
         if (SUCCEEDED(hr) && route.depth) {
             // A fade-band draw keeps RT2 bound for its oC2 write but masks it
             // off: the depth fragment's alpha is z/w, which the draw's
@@ -522,8 +712,15 @@ HRESULT MotionOutput::bind_targets(MotionRoute& route) noexcept {
             // RT2 with mask 15, its fragment's .a = 1 (c218.y) makes the blend
             // store src * 1 + dst * 0 (fade-rt2-ownership.md section 2).
             hr = render_state(D3DRS_COLORWRITEENABLE2, &route.saved_write2);
-            if (SUCCEEDED(hr)) { route.rt2_set = true; hr = bind_target(2, depth_surface_); }
-            if (SUCCEEDED(hr)) { route.write2_set = true; hr = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_COLORWRITEENABLE2, route.fade_arm && !route.fade_owner ? 0 : 15); }
+            if (SUCCEEDED(hr)) {
+                route.rt2_set = true;
+                hr = bind_target(2, depth_surface_);
+            }
+            if (SUCCEEDED(hr)) {
+                route.write2_set = true;
+                hr = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_COLORWRITEENABLE2,
+                                                   route.fade_arm && !route.fade_owner ? 0 : 15);
+            }
         }
         return hr;
     }
@@ -536,27 +733,36 @@ HRESULT MotionOutput::bind_targets(MotionRoute& route) noexcept {
     // and reads of them need no hook.
     DWORD write1 = 15, write2 = 15;
     hr = render_state(D3DRS_COLORWRITEENABLE1, &write1);
-    if (SUCCEEDED(hr) && !lazy_rt1_) { lazy_rt1_ = true; hr = bind_target(1, target_surface_); }
+    if (SUCCEEDED(hr) && !lazy_rt1_) {
+        lazy_rt1_ = true;
+        hr = bind_target(1, target_surface_);
+    }
     bool masked = false; // the application holds a write mask other than 15 on a target this draw writes
     if (SUCCEEDED(hr) && write1 != 15) {
         masked = true;
-        route.saved_write1 = write1; route.write_set = true;
+        route.saved_write1 = write1;
+        route.write_set = true;
         hr = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_COLORWRITEENABLE1, 15);
     }
     if (SUCCEEDED(hr) && route.depth) {
         hr = render_state(D3DRS_COLORWRITEENABLE2, &write2);
-        if (SUCCEEDED(hr) && !lazy_rt2_) { lazy_rt2_ = true; hr = bind_target(2, depth_surface_); }
+        if (SUCCEEDED(hr) && !lazy_rt2_) {
+            lazy_rt2_ = true;
+            hr = bind_target(2, depth_surface_);
+        }
         // A fade-band draw keeps RT2 bound but masks it off, a fade owner writes it (see above).
         const DWORD wanted = route.fade_arm && !route.fade_owner ? 0 : 15;
         if (SUCCEEDED(hr) && write2 != 15) masked = true;
         if (SUCCEEDED(hr) && write2 != wanted) {
-            route.saved_write2 = write2; route.write2_set = true;
+            route.saved_write2 = write2;
+            route.write2_set = true;
             hr = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_COLORWRITEENABLE2, wanted);
         }
     } else if (SUCCEEDED(hr) && lazy_rt2_) {
         // A motion-only row after a depth row: its variant writes no oC2, so
         // RT2 goes back exactly as the per-draw mode would leave it.
-        hr = bind_target(2, nullptr); lazy_rt2_ = FAILED(hr);
+        hr = bind_target(2, nullptr);
+        lazy_rt2_ = FAILED(hr);
     }
     if (masked) ++counters_.lazy_mask_writes;
     return hr;
@@ -578,8 +784,15 @@ HRESULT MotionOutput::restore_bindings_checked() noexcept {
     // restore point before draw admission, leaves unknown state quarantined.
     auto quarantine = [&](HRESULT hr) {
         if (SUCCEEDED(hr)) return;
-        if (!motion_state_lost_) { motion_state_lost_ = true; motion_state_error_ = hr; invalidate_taa(TaaInvalidateSite::RestoreFailed); }
-        if (composition_effective_) { composition_state_lost_ = true; composition_frame_stopped_ = true; }
+        if (!motion_state_lost_) {
+            motion_state_lost_ = true;
+            motion_state_error_ = hr;
+            invalidate_taa(TaaInvalidateSite::RestoreFailed);
+        }
+        if (composition_effective_) {
+            composition_state_lost_ = true;
+            composition_frame_stopped_ = true;
+        }
     };
     quarantine(first);
     if (lazy_rt1_ || lazy_rt2_) {
@@ -587,7 +800,8 @@ HRESULT MotionOutput::restore_bindings_checked() noexcept {
         if (SUCCEEDED(first)) first = lazy;
         if (FAILED(first) && logged_failures_ < failure_log_limit) {
             ++logged_failures_;
-            log("motion_output_restore_failed device=%llu frame=%llu index=%lu result=%08lx what=lazy_flush", id_, frame_, counters_.draws, first);
+            log("motion_output_restore_failed device=%llu frame=%llu index=%lu result=%08lx what=lazy_flush", id_,
+                frame_, counters_.draws, first);
         }
     }
     quarantine(first);
@@ -598,12 +812,15 @@ HRESULT MotionOutput::restore_bindings_checked() noexcept {
 HRESULT MotionOutput::flush_bindings() noexcept {
     const std::uint64_t begin = draw_stamp();
     HRESULT first = S_OK;
-    auto step = [&](HRESULT hr) { if (SUCCEEDED(first) && FAILED(hr)) first = hr; };
+    auto step = [&](HRESULT hr) {
+        if (SUCCEEDED(first) && FAILED(hr)) first = hr;
+    };
     auto unbind = [&](DWORD index) {
         const std::uint64_t b = draw_stamp();
         const HRESULT hr = native<SetRenderTargetFn>(SetRenderTarget)(device_, index, nullptr);
         const std::uint64_t ticks = draw_stamp() - b;
-        ++counters_.set_rt; counters_.set_rt_ticks += ticks;
+        ++counters_.set_rt;
+        counters_.set_rt_ticks += ticks;
         record(unsigned(telemetry::Metric::RouteSetRenderTarget), ticks, FAILED(hr));
         return hr;
     };
@@ -611,12 +828,21 @@ HRESULT MotionOutput::flush_bindings() noexcept {
     if (lazy_rt1_) step(unbind(1));
     lazy_rt1_ = lazy_rt2_ = false;
     const std::uint64_t ticks = draw_stamp() - begin;
-    ++counters_.lazy_flushes; counters_.lazy_flush_ticks += ticks;
+    ++counters_.lazy_flushes;
+    counters_.lazy_flush_ticks += ticks;
     if (FAILED(first)) {
-        ++counters_.restore_failures; invalidate_render_states();
+        ++counters_.restore_failures;
+        invalidate_render_states();
         // A later wrapper cannot erase state loss by consuming the HRESULT.
-        if (!motion_state_lost_) { motion_state_lost_ = true; motion_state_error_ = first; invalidate_taa(TaaInvalidateSite::RestoreFailed); }
-        if (composition_effective_) { composition_state_lost_ = true; composition_frame_stopped_ = true; }
+        if (!motion_state_lost_) {
+            motion_state_lost_ = true;
+            motion_state_error_ = first;
+            invalidate_taa(TaaInvalidateSite::RestoreFailed);
+        }
+        if (composition_effective_) {
+            composition_state_lost_ = true;
+            composition_frame_stopped_ = true;
+        }
     }
     record(unsigned(telemetry::Metric::RouteLazyFlush), ticks, FAILED(first));
     return first;
@@ -684,9 +910,13 @@ void MotionOutput::configure_screen_emission(bool requested, float gain) noexcep
     // sRGB shadow the readiness gate reads is fed for this route below.
     screen_emission_requested_ = requested && taa_requested_;
     screen_emission_gain_ = gain;
-    if (screen_emission_requested_) { screen_additive_requested_ = false; screen_additive_gain_ = 1.f; } // exclusive in either configure order
+    if (screen_emission_requested_) {
+        screen_additive_requested_ = false;
+        screen_additive_gain_ = 1.f;
+    } // exclusive in either configure order
 }
-void MotionOutput::configure_screen_emission_additive(bool requested, float gain, bool alpha_requested, float alpha) noexcept {
+void MotionOutput::configure_screen_emission_additive(bool requested, float gain, bool alpha_requested,
+                                                      float alpha) noexcept {
     if (device_) return; // Process-start shader-cache configuration only.
     // Exclusive with the packed route (the caller already refuses both; the
     // DLL keeps the packed route). No TAA/ownership/linear-material need: the
@@ -703,7 +933,8 @@ void MotionOutput::configure_screen_emission_additive(bool requested, float gain
     screen_additive_alpha_ = screen_additive_alpha_requested_ ? alpha : 1.f;
     // Only a k strictly between 0 and 1 needs the blend constant; 0 is ZERO
     // and 1 is ONE, so those two need no D3DPBLENDCAPS_BLENDFACTOR.
-    screen_additive_alpha_constant_ = screen_additive_alpha_requested_ && screen_additive_alpha_ > 0.f && screen_additive_alpha_ < 1.f;
+    screen_additive_alpha_constant_ = screen_additive_alpha_requested_ && screen_additive_alpha_ > 0.f &&
+                                      screen_additive_alpha_ < 1.f;
     const DWORD quantised = DWORD(screen_additive_alpha_ * 255.f + .5f);
     screen_additive_alpha_factor_ = (quantised << 24) | (quantised << 16) | (quantised << 8) | quantised;
 }
@@ -718,7 +949,8 @@ void MotionOutput::configure_bolt_footprint(bool requested, float w_px, float l_
     if (!requested || !screen_additive_requested_ || !bolt_footprint::valid_parameters(w_px, l_px)) return;
     if (!bolt_plans_) bolt_plans_.reset(new (std::nothrow) bolt_footprint::Plan[bolt_footprint::max_instances]);
     if (!bolt_plans_) return;
-    bolt_footprint_w_ = w_px; bolt_footprint_l_ = l_px;
+    bolt_footprint_w_ = w_px;
+    bolt_footprint_l_ = l_px;
     bolt_footprint_requested_ = true;
 }
 void MotionOutput::configure_fade_route(unsigned threshold_permille) noexcept {
@@ -741,48 +973,77 @@ void MotionOutput::configure_gpu_sync_timing(gpu_sync_timing::Marks* marks) noex
 
 void MotionOutput::configure_mip_bias(float bias) noexcept {
     mip_bias_ = bias;
-    if (bias == 0.f || !std::isfinite(bias)) { mip_bias_ = 0.f; mip_bias_bits_ = 0; return; }
+    if (bias == 0.f || !std::isfinite(bias)) {
+        mip_bias_ = 0.f;
+        mip_bias_bits_ = 0;
+        return;
+    }
     std::memcpy(&mip_bias_bits_, &mip_bias_, sizeof mip_bias_bits_);
 }
 bool MotionOutput::texture_identity_wanted(DWORD stage, IDirect3DBaseTexture9* texture) const noexcept {
-    return lightmap_widen_ && texture && (stage == 2 || stage == 3) && (samplers_[stage].texture != texture || samplers_[stage].identity == 0);
+    return lightmap_widen_ && texture && (stage == 2 || stage == 3) &&
+           (samplers_[stage].texture != texture || samplers_[stage].identity == 0);
 }
-bool MotionOutput::texture_levels_wanted(DWORD stage, IDirect3DBaseTexture9* texture, std::uint64_t identity) const noexcept {
+bool MotionOutput::texture_levels_wanted(DWORD stage, IDirect3DBaseTexture9* texture,
+                                         std::uint64_t identity) const noexcept {
     // A new pointer, or a read identity (light-map stages, widening on) that differs from the shadow's: a light map
     // whose identity the shadow never learned is re-read once it is known.
-    return (mip_bias_bits_ || lightmap_widen_) && texture && stage < sampler_stage_count
-        && (samplers_[stage].texture != texture || (identity != 0 && samplers_[stage].identity != identity));
+    return (mip_bias_bits_ || lightmap_widen_) && texture && stage < sampler_stage_count &&
+           (samplers_[stage].texture != texture || (identity != 0 && samplers_[stage].identity != identity));
 }
 void MotionOutput::texture_level0_size(IDirect3DBaseTexture9* texture, DWORD& width, DWORD& height) noexcept {
     width = height = 0;
     if (!texture || texture->GetType() != D3DRTYPE_TEXTURE) return;
     D3DSURFACE_DESC desc{};
-    if (SUCCEEDED(static_cast<IDirect3DTexture9*>(texture)->GetLevelDesc(0, &desc))) { width = desc.Width; height = desc.Height; }
+    if (SUCCEEDED(static_cast<IDirect3DTexture9*>(texture)->GetLevelDesc(0, &desc))) {
+        width = desc.Width;
+        height = desc.Height;
+    }
 }
-void MotionOutput::set_texture(DWORD stage, IDirect3DBaseTexture9* texture, DWORD levels, bool queried, int reader, DWORD width, DWORD height, std::uint64_t identity) noexcept {
+void MotionOutput::set_texture(DWORD stage, IDirect3DBaseTexture9* texture, DWORD levels, bool queried, int reader,
+                               DWORD width, DWORD height, std::uint64_t identity) noexcept {
     if (composition_requested() && !shadow_.recording) {
-        const unsigned i = stage < 16 ? unsigned(stage) : stage >= D3DVERTEXTEXTURESAMPLER0 && stage <= D3DVERTEXTEXTURESAMPLER3 ? 16u + stage - D3DVERTEXTEXTURESAMPLER0 : stage == D3DDMAPSAMPLER ? 20u : 21u;
+        const unsigned i = stage < 16 ? unsigned(stage)
+                           : stage >= D3DVERTEXTEXTURESAMPLER0 && stage <= D3DVERTEXTEXTURESAMPLER3
+                               ? 16u + stage - D3DVERTEXTEXTURESAMPLER0
+                           : stage == D3DDMAPSAMPLER ? 20u
+                                                     : 21u;
         if (i < 21) {
             composition_textures_[i] = texture;
             const unsigned bit = 1u << i;
             if (reader != 2) {
-                composition_reader_known_mask_ = reader < 0 ? composition_reader_known_mask_ & ~bit : composition_reader_known_mask_ | bit;
-                composition_main_sampler_mask_ = reader == 1 ? composition_main_sampler_mask_ | bit : composition_main_sampler_mask_ & ~bit;
+                composition_reader_known_mask_ = reader < 0 ? composition_reader_known_mask_ & ~bit
+                                                            : composition_reader_known_mask_ | bit;
+                composition_main_sampler_mask_ = reader == 1 ? composition_main_sampler_mask_ | bit
+                                                             : composition_main_sampler_mask_ & ~bit;
                 composition_readers_known_ = composition_reader_known_mask_ == 0x1fffffu;
             }
         }
     }
     if (stage >= sampler_stage_count || shadow_.recording) return;
     auto& s = samplers_[stage];
-    if (queried) { s.levels = levels; s.width = width; s.height = height; s.identity = identity; } // a new pointer or identity: the count and size the hook read from it
-    else if (!texture) { s.levels = 0; s.width = s.height = 0; s.identity = 0; }                  // unbound
+    if (queried) {
+        s.levels = levels;
+        s.width = width;
+        s.height = height;
+        s.identity = identity;
+    } // a new pointer or identity: the count and size the hook read from it
+    else if (!texture) {
+        s.levels = 0;
+        s.width = s.height = 0;
+        s.identity = 0;
+    } // unbound
     // Count-only diagnostic (X3M_FRAME_TIMING): rebinding the texture already
     // on the stage. The pointer shadow always holds a current value (no
     // texture is bound at attach and after Reset), so every call is a
     // denominator. Never elided.
     frame_timing::state_write(frame_timing::StateSet::Texture, unsigned(stage), true, s.texture == texture);
-    if (!state_hooks_ && s.texture != texture && !s.biased) { s.mipfilter_known = false; s.saved_known = false; s.minfilter_known = false; } // hooks off: re-read for the new binding
-    s.texture = texture;                 // same pointer, still bound: the count stands
+    if (!state_hooks_ && s.texture != texture && !s.biased) {
+        s.mipfilter_known = false;
+        s.saved_known = false;
+        s.minfilter_known = false;
+    } // hooks off: re-read for the new binding
+    s.texture = texture; // same pointer, still bound: the count stands
     const std::uint32_t bit = 1u << stage;
     sampler_bound_mask_ = texture ? sampler_bound_mask_ | bit : sampler_bound_mask_ & ~bit;
 }
@@ -793,35 +1054,53 @@ void MotionOutput::set_sampler_state(DWORD stage, D3DSAMPLERSTATETYPE type, DWOR
     // states: a write of the value already on the device. Never elided.
     if (type == D3DSAMP_SRGBTEXTURE) {
         frame_timing::state_write(frame_timing::StateSet::SamplerState, unsigned(type), s.srgb_known, s.srgb == value);
-        s.srgb = value; s.srgb_known = true; return;
+        s.srgb = value;
+        s.srgb_known = true;
+        return;
     }
     if (type == D3DSAMP_MINFILTER) {
         // Hull emissive widening: the application's minification filter is the value a widened draw restores.
-        if (lightmap_widen_) { frame_timing::state_write(frame_timing::StateSet::SamplerState, unsigned(type), s.minfilter_known, s.minfilter == value); s.minfilter = value; s.minfilter_known = true; }
+        if (lightmap_widen_) {
+            frame_timing::state_write(frame_timing::StateSet::SamplerState, unsigned(type), s.minfilter_known,
+                                      s.minfilter == value);
+            s.minfilter = value;
+            s.minfilter_known = true;
+        }
         return;
     }
     if (!mip_bias_bits_) return;
     if (type == D3DSAMP_MIPFILTER) {
-        frame_timing::state_write(frame_timing::StateSet::SamplerState, unsigned(type), s.mipfilter_known, s.mipfilter == value);
-        s.mipfilter = value; s.mipfilter_known = true; return;
+        frame_timing::state_write(frame_timing::StateSet::SamplerState, unsigned(type), s.mipfilter_known,
+                                  s.mipfilter == value);
+        s.mipfilter = value;
+        s.mipfilter_known = true;
+        return;
     }
     if (type != D3DSAMP_MIPMAPLODBIAS) return;
-    frame_timing::state_write(frame_timing::StateSet::SamplerState, unsigned(type), s.saved_known, s.saved_bias == value);
+    frame_timing::state_write(frame_timing::StateSet::SamplerState, unsigned(type), s.saved_known,
+                              s.saved_bias == value);
     // The application's own write replaced whatever the device held: it is
     // the value to restore, and the route's bias is no longer on the device.
-    s.saved_bias = value; s.saved_known = true;
-    if (s.biased) { s.biased = false; sampler_biased_mask_ &= ~(1u << stage); }
-    ++counters_.mip_bias_game_writes; ++mip_bias_total_game_writes_;
-    mip_bias_game_write_stage_ = stage; mip_bias_game_write_value_ = value;
+    s.saved_bias = value;
+    s.saved_known = true;
+    if (s.biased) {
+        s.biased = false;
+        sampler_biased_mask_ &= ~(1u << stage);
+    }
+    ++counters_.mip_bias_game_writes;
+    ++mip_bias_total_game_writes_;
+    mip_bias_game_write_stage_ = stage;
+    mip_bias_game_write_value_ = value;
 }
 // Logged from the heavy path (the light hook has no formatter): the first
 // failure_log_limit application writes, one line per heavy call at most.
 void MotionOutput::log_mip_bias_game_write() noexcept {
     if (mip_bias_logged_game_writes_ == mip_bias_total_game_writes_) return;
     if (mip_bias_logged_game_writes_ < failure_log_limit) {
-        float value = 0.f; std::memcpy(&value, &mip_bias_game_write_value_, sizeof value);
-        log("motion_output_mip_bias_game_write device=%llu frame=%llu stage=%lu value=%08lx bias=%g writes=%lu",
-            id_, frame_, mip_bias_game_write_stage_, mip_bias_game_write_value_, double(value),
+        float value = 0.f;
+        std::memcpy(&value, &mip_bias_game_write_value_, sizeof value);
+        log("motion_output_mip_bias_game_write device=%llu frame=%llu stage=%lu value=%08lx bias=%g writes=%lu", id_,
+            frame_, mip_bias_game_write_stage_, mip_bias_game_write_value_, double(value),
             static_cast<unsigned long>(mip_bias_total_game_writes_));
     }
     mip_bias_logged_game_writes_ = mip_bias_total_game_writes_;
@@ -835,22 +1114,40 @@ void MotionOutput::restore_mip_bias_stage(unsigned stage, HRESULT* first) noexce
     // accepted application write or Reset clears it. Only a trusted saved
     // value is ever written: after a failed application write there is none.
     if (sampler_restore_failed_mask_ & bit) return;
-    if (!s.saved_known) { sampler_restore_failed_mask_ |= bit; return; }
+    if (!s.saved_known) {
+        sampler_restore_failed_mask_ |= bit;
+        return;
+    }
     const HRESULT hr = direct_call<SetSamplerStateFn>(SetSamplerState, stage, D3DSAMP_MIPMAPLODBIAS, s.saved_bias);
-    ++counters_.mip_bias_restores; ++mip_bias_total_restores_;
-    if (SUCCEEDED(hr)) { s.biased = false; sampler_biased_mask_ &= ~bit; return; }
-    sampler_restore_failed_mask_ |= bit; if (SUCCEEDED(*first)) *first = hr;
+    ++counters_.mip_bias_restores;
+    ++mip_bias_total_restores_;
+    if (SUCCEEDED(hr)) {
+        s.biased = false;
+        sampler_biased_mask_ &= ~bit;
+        return;
+    }
+    sampler_restore_failed_mask_ |= bit;
+    if (SUCCEEDED(*first)) *first = hr;
 }
-void MotionOutput::release_mip_bias_retry_bound() noexcept { sampler_restore_failed_mask_ = 0; }
+void MotionOutput::release_mip_bias_retry_bound() noexcept {
+    sampler_restore_failed_mask_ = 0;
+}
 HRESULT MotionOutput::restore_mip_bias() noexcept {
     HRESULT first = S_OK;
-    for (std::uint32_t mask = sampler_biased_mask_; mask; mask &= mask - 1) restore_mip_bias_stage(unsigned(__builtin_ctz(mask)), &first);
+    for (std::uint32_t mask = sampler_biased_mask_; mask; mask &= mask - 1)
+        restore_mip_bias_stage(unsigned(__builtin_ctz(mask)), &first);
     if (FAILED(first)) {
-        if (composition_effective_) { composition_state_lost_ = true; composition_frame_stopped_ = true; }
-        ++counters_.mip_bias_failures; ++mip_bias_total_failures_; ++counters_.restore_failures;
+        if (composition_effective_) {
+            composition_state_lost_ = true;
+            composition_frame_stopped_ = true;
+        }
+        ++counters_.mip_bias_failures;
+        ++mip_bias_total_failures_;
+        ++counters_.restore_failures;
         if (logged_failures_ < failure_log_limit) {
             ++logged_failures_;
-            log("motion_output_restore_failed device=%llu frame=%llu index=%lu result=%08lx what=mip_bias", id_, frame_, counters_.draws, first);
+            log("motion_output_restore_failed device=%llu frame=%llu index=%lu result=%08lx what=mip_bias", id_, frame_,
+                counters_.draws, first);
         }
     }
     return first;
@@ -867,30 +1164,55 @@ void MotionOutput::apply_mip_bias() noexcept {
         bool eligible = s.texture && s.levels > 1;
         if (eligible && !s.mipfilter_known) {
             DWORD value = 0;
-            ++counters_.mip_bias_reads; ++mip_bias_total_reads_;
-            if (SUCCEEDED(direct_call<GetSamplerStateFn>(GetSamplerState, stage, D3DSAMP_MIPFILTER, &value))) { s.mipfilter = value; s.mipfilter_known = true; }
-            else eligible = false;
+            ++counters_.mip_bias_reads;
+            ++mip_bias_total_reads_;
+            if (SUCCEEDED(direct_call<GetSamplerStateFn>(GetSamplerState, stage, D3DSAMP_MIPFILTER, &value))) {
+                s.mipfilter = value;
+                s.mipfilter_known = true;
+            } else
+                eligible = false;
         }
         if (eligible) eligible = s.mipfilter != D3DTEXF_NONE;
-        if (eligible == s.biased) { any = any || s.biased; continue; }
-        if (!eligible) { restore_mip_bias_stage(stage, &first); continue; }
+        if (eligible == s.biased) {
+            any = any || s.biased;
+            continue;
+        }
+        if (!eligible) {
+            restore_mip_bias_stage(stage, &first);
+            continue;
+        }
         if (!s.saved_known) {
             DWORD value = 0;
-            ++counters_.mip_bias_reads; ++mip_bias_total_reads_;
-            if (FAILED(direct_call<GetSamplerStateFn>(GetSamplerState, stage, D3DSAMP_MIPMAPLODBIAS, &value))) { if (SUCCEEDED(first)) first = E_FAIL; continue; }
-            s.saved_bias = value; s.saved_known = true;
+            ++counters_.mip_bias_reads;
+            ++mip_bias_total_reads_;
+            if (FAILED(direct_call<GetSamplerStateFn>(GetSamplerState, stage, D3DSAMP_MIPMAPLODBIAS, &value))) {
+                if (SUCCEEDED(first)) first = E_FAIL;
+                continue;
+            }
+            s.saved_bias = value;
+            s.saved_known = true;
         }
-        const HRESULT hr = direct_call<SetSamplerStateFn>(SetSamplerState, stage, D3DSAMP_MIPMAPLODBIAS, mip_bias_bits_);
-        ++counters_.mip_bias_sets; ++mip_bias_total_sets_;
-        if (FAILED(hr)) { if (SUCCEEDED(first)) first = hr; continue; }
-        s.biased = true; sampler_biased_mask_ |= 1u << stage; counters_.mip_bias_stages |= 1u << stage; any = true;
+        const HRESULT hr = direct_call<SetSamplerStateFn>(SetSamplerState, stage, D3DSAMP_MIPMAPLODBIAS,
+                                                          mip_bias_bits_);
+        ++counters_.mip_bias_sets;
+        ++mip_bias_total_sets_;
+        if (FAILED(hr)) {
+            if (SUCCEEDED(first)) first = hr;
+            continue;
+        }
+        s.biased = true;
+        sampler_biased_mask_ |= 1u << stage;
+        counters_.mip_bias_stages |= 1u << stage;
+        any = true;
     }
     if (any) ++counters_.mip_bias_draws;
     if (FAILED(first)) {
-        ++counters_.mip_bias_failures; ++mip_bias_total_failures_;
+        ++counters_.mip_bias_failures;
+        ++mip_bias_total_failures_;
         if (logged_failures_ < failure_log_limit) {
             ++logged_failures_;
-            log("motion_output_apply_failed device=%llu frame=%llu index=%lu result=%08lx what=mip_bias", id_, frame_, counters_.draws, first);
+            log("motion_output_apply_failed device=%llu frame=%llu index=%lu result=%08lx what=mip_bias", id_, frame_,
+                counters_.draws, first);
         }
     }
 }
@@ -902,15 +1224,19 @@ void MotionOutput::apply_mip_bias() noexcept {
 // The union of reviewed material requirements is s0-s5. Each exact pair
 // admits only its own cached mask; unrelated stages do not affect admission.
 void MotionOutput::resync_samplers() noexcept {
-    sampler_bound_mask_ = sampler_biased_mask_ = 0; release_mip_bias_retry_bound();
-    composition_main_sampler_mask_ = composition_reader_known_mask_ = 0; composition_readers_known_ = true;
+    sampler_bound_mask_ = sampler_biased_mask_ = 0;
+    release_mip_bias_retry_bound();
+    composition_main_sampler_mask_ = composition_reader_known_mask_ = 0;
+    composition_readers_known_ = true;
     for (auto& texture : composition_textures_) texture = nullptr;
     for (unsigned stage = 0; stage < sampler_stage_count; ++stage) {
         auto& s = samplers_[stage];
         s = SamplerShadow{};
         // The packed screen readiness gate reads stage 0 only (the diffuse sampler).
-        if (state_hooks_ && ((linear_material_requested_ && stage < 6) || ((screen_emission_requested_ || screen_additive_requested_) && stage == 0)))
-            s.srgb_known = SUCCEEDED(direct_call<GetSamplerStateFn>(GetSamplerState, stage, D3DSAMP_SRGBTEXTURE, &s.srgb));
+        if (state_hooks_ && ((linear_material_requested_ && stage < 6) ||
+                             ((screen_emission_requested_ || screen_additive_requested_) && stage == 0)))
+            s.srgb_known = SUCCEEDED(
+                direct_call<GetSamplerStateFn>(GetSamplerState, stage, D3DSAMP_SRGBTEXTURE, &s.srgb));
         if (!mip_bias_bits_ && !lightmap_widen_ && !composition_requested()) continue;
         IDirect3DBaseTexture9* texture = nullptr;
         const HRESULT get = native<GetTextureFn>(GetTexture)(device_, stage, &texture);
@@ -919,25 +1245,32 @@ void MotionOutput::resync_samplers() noexcept {
             set_texture(stage, texture, 0, false, reader);
         }
         if (SUCCEEDED(get) && texture) {
-            s.texture = texture; s.levels = (mip_bias_bits_ || lightmap_widen_) ? texture->GetLevelCount() : 0;
-            if (lightmap_widen_) { texture_level0_size(texture, s.width, s.height); s.identity = resource_id(texture); s.minfilter_known = false; }
+            s.texture = texture;
+            s.levels = (mip_bias_bits_ || lightmap_widen_) ? texture->GetLevelCount() : 0;
+            if (lightmap_widen_) {
+                texture_level0_size(texture, s.width, s.height);
+                s.identity = resource_id(texture);
+                s.minfilter_known = false;
+            }
             sampler_bound_mask_ |= 1u << stage;
         }
         release(texture);
     }
-    if (composition_requested()) for (unsigned i = 16; i < 21; ++i) {
-        const DWORD stage = i < 20 ? D3DVERTEXTEXTURESAMPLER0 + i - 16 : D3DDMAPSAMPLER;
-        const bool supported = i < 20 ? caps_.VertexTextureFilterCaps != 0 : (caps_.DevCaps2 & D3DDEVCAPS2_DMAPNPATCH) != 0;
-        IDirect3DBaseTexture9* texture = nullptr;
-        const HRESULT hr = supported ? native<GetTextureFn>(GetTexture)(device_, stage, &texture) : S_OK;
-        set_texture(stage, texture, 0, false, FAILED(hr) ? -1 : composition_texture_reader(stage, texture));
-        release(texture);
-    }
+    if (composition_requested())
+        for (unsigned i = 16; i < 21; ++i) {
+            const DWORD stage = i < 20 ? D3DVERTEXTEXTURESAMPLER0 + i - 16 : D3DDMAPSAMPLER;
+            const bool supported = i < 20 ? caps_.VertexTextureFilterCaps != 0
+                                          : (caps_.DevCaps2 & D3DDEVCAPS2_DMAPNPATCH) != 0;
+            IDirect3DBaseTexture9* texture = nullptr;
+            const HRESULT hr = supported ? native<GetTextureFn>(GetTexture)(device_, stage, &texture) : S_OK;
+            set_texture(stage, texture, 0, false, FAILED(hr) ? -1 : composition_texture_reader(stage, texture));
+            release(texture);
+        }
 }
 
 // ---- selected native cutout admission -------------------------------------
-static_assert(D3DCMP_GREATEREQUAL == cutout::values[0] && D3DCMP_LESSEQUAL == cutout::values[2]
-    && D3DCULL_NONE == cutout::values[6] && D3DFILL_SOLID == cutout::values[7]);
+static_assert(D3DCMP_GREATEREQUAL == cutout::values[0] && D3DCMP_LESSEQUAL == cutout::values[2] &&
+              D3DCULL_NONE == cutout::values[6] && D3DFILL_SOLID == cutout::values[7]);
 static_assert(static_cast<std::uint32_t>(D3DERR_NOTAVAILABLE) == 0x8876086au);
 void MotionOutput::probe_cutout_caps(bool force) noexcept {
     // Two consumers share the verdict: the linear-material cutout arm and the
@@ -950,9 +1283,12 @@ void MotionOutput::probe_cutout_caps(bool force) noexcept {
     // runs when either consumer is configured; the cutout arm itself stays
     // gated on the linear-material request (cutout_arm_configured).
     if ((!linear_material_requested_ && fade_route_threshold_ > 1000u) || !device_ || cutout_reset_pending_) return;
-    if (!force && (cutout_caps_ == cutout::Capability::Ready || cutout_caps_ == cutout::Capability::Unsupported
-        || (cutout_probe_frame_known_ && cutout_probe_frame_ == frame_))) return;
-    cutout_probe_frame_ = frame_; cutout_probe_frame_known_ = true; ++cutout_cap_queries_;
+    if (!force && (cutout_caps_ == cutout::Capability::Ready || cutout_caps_ == cutout::Capability::Unsupported ||
+                   (cutout_probe_frame_known_ && cutout_probe_frame_ == frame_)))
+        return;
+    cutout_probe_frame_ = frame_;
+    cutout_probe_frame_known_ = true;
+    ++cutout_cap_queries_;
     D3DCAPS9 caps = caps_;
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     switch (fixture_cutout_cap_fault_) {
@@ -964,30 +1300,38 @@ void MotionOutput::probe_cutout_caps(bool force) noexcept {
     default: break;
     }
 #endif
-    constexpr DWORD required = D3DPMISCCAPS_MRTINDEPENDENTBITDEPTHS
-        | D3DPMISCCAPS_INDEPENDENTWRITEMASKS | D3DPMISCCAPS_MRTPOSTPIXELSHADERBLENDING;
+    constexpr DWORD required = D3DPMISCCAPS_MRTINDEPENDENTBITDEPTHS | D3DPMISCCAPS_INDEPENDENTWRITEMASKS |
+                               D3DPMISCCAPS_MRTPOSTPIXELSHADERBLENDING;
     HRESULT result = D3DERR_NOTAVAILABLE;
     auto verdict = cutout::Capability::Unsupported;
-    HRESULT formats[3] = {S_FALSE,S_FALSE,S_FALSE};
-    D3DDEVICE_CREATION_PARAMETERS creation{}; D3DDISPLAYMODE display{};
-    if (caps.NumSimultaneousRTs >= 3 && (caps.PrimitiveMiscCaps & required) == required
-        && (caps.AlphaCmpCaps & D3DPCMPCAPS_GREATEREQUAL)) {
+    HRESULT formats[3] = {S_FALSE, S_FALSE, S_FALSE};
+    D3DDEVICE_CREATION_PARAMETERS creation{};
+    D3DDISPLAYMODE display{};
+    if (caps.NumSimultaneousRTs >= 3 && (caps.PrimitiveMiscCaps & required) == required &&
+        (caps.AlphaCmpCaps & D3DPCMPCAPS_GREATEREQUAL)) {
         IDirect3D9* factory = nullptr;
         result = native<GetDirect3DFn>(GetDirect3D)(device_, &factory);
         if (SUCCEEDED(result) && !factory) result = E_FAIL;
         if (SUCCEEDED(result)) result = native<GetCreationFn>(GetCreationParameters)(device_, &creation);
         if (SUCCEEDED(result)) result = native<GetDisplayModeFn>(GetDisplayMode)(device_, 0, &display);
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
-        if (SUCCEEDED(result) && fixture_cutout_cap_fault_ == 10) { fixture_cutout_cap_fault_ = 0; result = E_FAIL; }
+        if (SUCCEEDED(result) && fixture_cutout_cap_fault_ == 10) {
+            fixture_cutout_cap_fault_ = 0;
+            result = E_FAIL;
+        }
 #endif
         const bool metadata_ready = SUCCEEDED(result);
-        const D3DFORMAT targets[] = {D3DFMT_A16B16G16R16F,D3DFMT_A32B32G32R32F,D3DFMT_R32F};
-        for (unsigned i=0;i<3 && SUCCEEDED(result);++i) {
-            result = factory->CheckDeviceFormat(creation.AdapterOrdinal,creation.DeviceType,display.Format,
-                D3DUSAGE_RENDERTARGET | D3DUSAGE_QUERY_POSTPIXELSHADER_BLENDING,D3DRTYPE_TEXTURE,targets[i]);
+        const D3DFORMAT targets[] = {D3DFMT_A16B16G16R16F, D3DFMT_A32B32G32R32F, D3DFMT_R32F};
+        for (unsigned i = 0; i < 3 && SUCCEEDED(result); ++i) {
+            result = factory->CheckDeviceFormat(creation.AdapterOrdinal, creation.DeviceType, display.Format,
+                                                D3DUSAGE_RENDERTARGET | D3DUSAGE_QUERY_POSTPIXELSHADER_BLENDING,
+                                                D3DRTYPE_TEXTURE, targets[i]);
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
-            if (fixture_cutout_cap_fault_ == i+6) result = D3DERR_NOTAVAILABLE;
-            if (!i && fixture_cutout_cap_fault_ == 9) { fixture_cutout_cap_fault_ = 0; result = E_OUTOFMEMORY; }
+            if (fixture_cutout_cap_fault_ == i + 6) result = D3DERR_NOTAVAILABLE;
+            if (!i && fixture_cutout_cap_fault_ == 9) {
+                fixture_cutout_cap_fault_ = 0;
+                result = E_OUTOFMEMORY;
+            }
 #endif
             formats[i] = result;
         }
@@ -996,15 +1340,17 @@ void MotionOutput::probe_cutout_caps(bool force) noexcept {
         verdict = metadata_ready ? cutout::query_result(result) : cutout::Capability::Retry;
         release(factory);
     }
-    cutout_cap_result_ = result; cutout_caps_ = verdict;
+    cutout_cap_result_ = result;
+    cutout_caps_ = verdict;
     // The verdict is capability configuration, not transient HDR state: it
     // refreshes the frame's arm latch (the probe runs at the HDR latch).
     cutout_arm_active_ = cutout_arm_configured();
     if (cutout_cap_logs_ < failure_log_limit) {
         ++cutout_cap_logs_;
         log("linear_cutout_device device=%llu verdict=%u result=%08lx attempts=%lu mrt=%lu misc=%08lx alpha=%08lx adapter=%u type=%u display=%u fp16=%08lx motion=%08lx depth=%08lx",
-            id_,unsigned(cutout_caps_),result,cutout_cap_queries_,caps.NumSimultaneousRTs,caps.PrimitiveMiscCaps,
-            caps.AlphaCmpCaps,creation.AdapterOrdinal,unsigned(creation.DeviceType),unsigned(display.Format),formats[0],formats[1],formats[2]);
+            id_, unsigned(cutout_caps_), result, cutout_cap_queries_, caps.NumSimultaneousRTs, caps.PrimitiveMiscCaps,
+            caps.AlphaCmpCaps, creation.AdapterOrdinal, unsigned(creation.DeviceType), unsigned(display.Format),
+            formats[0], formats[1], formats[2]);
     }
 }
 // The cutout arm is configured active by the session's options and the
@@ -1021,14 +1367,15 @@ bool MotionOutput::cutout_arm_configured() const noexcept {
     return linear_material_requested_ && cutout_caps_ == cutout::Capability::Ready && hdr_enabled_ && !mip_bias_bits_;
 }
 bool MotionOutput::cutout_draw_state() noexcept {
-    if (cutout_caps_ != cutout::Capability::Ready || cutout_reset_pending_ || !hdr_enabled_
-        || hdr_state_ != HdrState::Active || !hdr_target_.known || hdr_target_.format != D3DFMT_A16B16G16R16F
-        || mip_bias_bits_) return false;
-    std::array<std::uint32_t,8> states{};
-    for (unsigned i=0;i<states.size();++i) {
-        DWORD value=0;
-        if (FAILED(render_state(shadow_states[24+i],&value))) return false;
-        states[i]=value;
+    if (cutout_caps_ != cutout::Capability::Ready || cutout_reset_pending_ || !hdr_enabled_ ||
+        hdr_state_ != HdrState::Active || !hdr_target_.known || hdr_target_.format != D3DFMT_A16B16G16R16F ||
+        mip_bias_bits_)
+        return false;
+    std::array<std::uint32_t, 8> states{};
+    for (unsigned i = 0; i < states.size(); ++i) {
+        DWORD value = 0;
+        if (FAILED(render_state(shadow_states[24 + i], &value))) return false;
+        states[i] = value;
     }
     return cutout::state(states);
 }
@@ -1060,71 +1407,108 @@ bool MotionOutput::cutout_draw_state() noexcept {
 // render-state reads (blend, test, sRGB, mask, the blend triple and the
 // separate-alpha switch; shadow slots with the hooks on), the frequency
 // getter and one identity read; a draw with z write on reaches no getter.
-bool MotionOutput::fade_arm_admits(MotionRoute& route, const MotionDrawCall& call, DWORD z, DWORD z_write, std::size_t window, bool loop_bounded) noexcept {
+bool MotionOutput::fade_arm_admits(MotionRoute& route, const MotionDrawCall& call, DWORD z, DWORD z_write,
+                                   std::size_t window, bool loop_bounded) noexcept {
     const bool overlay = !shadow_.fade_route_pair;
-    if ((overlay && (fade_route_threshold_ > 1000u || linear_material_requested_)) || call.user_memory || z != 1 || z_write != 0) return false;
+    if ((overlay && (fade_route_threshold_ > 1000u || linear_material_requested_)) || call.user_memory || z != 1 ||
+        z_write != 0)
+        return false;
     DWORD blend = 0, test = 1, srgb = 1, color = 0, factor[4] = {0, 0, 0, 1};
     if (FAILED(render_state(D3DRS_ALPHABLENDENABLE, &blend)) || !blend) return false;
-    if (FAILED(render_state(D3DRS_ALPHATESTENABLE, &test)) || FAILED(render_state(D3DRS_SRGBWRITEENABLE, &srgb))
-        || FAILED(render_state(D3DRS_COLORWRITEENABLE, &color))) return false;
-    constexpr D3DRENDERSTATETYPE blend_states[4] = {D3DRS_SRCBLEND, D3DRS_DESTBLEND, D3DRS_BLENDOP, D3DRS_SEPARATEALPHABLENDENABLE};
+    if (FAILED(render_state(D3DRS_ALPHATESTENABLE, &test)) || FAILED(render_state(D3DRS_SRGBWRITEENABLE, &srgb)) ||
+        FAILED(render_state(D3DRS_COLORWRITEENABLE, &color)))
+        return false;
+    constexpr D3DRENDERSTATETYPE blend_states[4] = {D3DRS_SRCBLEND, D3DRS_DESTBLEND, D3DRS_BLENDOP,
+                                                    D3DRS_SEPARATEALPHABLENDENABLE};
     for (unsigned i = 0; i < 4; ++i) { // blend_known: the shadow's flag (hooks on) or this draw's cache (hooks off)
-        if (blend_known(i)) factor[i] = shadow_.composition_blend[i];
-        else if (FAILED(render_state(blend_states[i], &factor[i]))) return false;
+        if (blend_known(i))
+            factor[i] = shadow_.composition_blend[i];
+        else if (FAILED(render_state(blend_states[i], &factor[i])))
+            return false;
     }
     // fade-alpha-cutout-ownership.md option A: a fade pair (not the overlay arm, whose alpha-tested draws are material
     // transparency of unknown alpha law) may be alpha tested while the RT2 owner is on under original shading; the
     // engine's own test discards before every target write, so RT1/RT2 coverage is the colour draw's.
     const bool tested_ok = !overlay && fade_rt2_owner_ && !linear_material_requested_;
-    if (!fade_route::state(z, z_write, test, blend, color, srgb, factor[0], factor[1], factor[2], factor[3], tested_ok)) return false;
+    if (!fade_route::state(z, z_write, test, blend, color, srgb, factor[0], factor[1], factor[2], factor[3], tested_ok))
+        return false;
     // Recognised fade-band draw of a fade pair: a refusal below is counted.
     UINT frequency = 0;
-    if (cutout_caps_ != cutout::Capability::Ready || cutout_reset_pending_ || !taa_enabled_ || !hdr_enabled_
-        || hdr_state_ != HdrState::Active || !hdr_target_.known || hdr_target_.format != D3DFMT_A16B16G16R16F
-        || FAILED(direct_call<GetStreamFreqFn>(GetStreamSourceFreq, 0, &frequency))
-        || (route.stream0_frequency = frequency, route.stream0_frequency_known = true, false) // the read travels with the route as in the opaque chain
-        || (frequency & D3DSTREAMSOURCE_INDEXEDDATA) || (frequency & 0x3fffffffu) > 1
-        || window >= motion_matrix_windows_max || !shadow_.rows_known[window] || !loop_bounded
-        || !shadow_.stream0 || !shadow_.stream0_stride || !shadow_.declaration || !call.primitives
-        || (call.indexed && !shadow_.indices)) {
+    if (cutout_caps_ != cutout::Capability::Ready || cutout_reset_pending_ || !taa_enabled_ || !hdr_enabled_ ||
+        hdr_state_ != HdrState::Active || !hdr_target_.known || hdr_target_.format != D3DFMT_A16B16G16R16F ||
+        FAILED(direct_call<GetStreamFreqFn>(GetStreamSourceFreq, 0, &frequency)) ||
+        (route.stream0_frequency = frequency, route.stream0_frequency_known = true, false) // the read travels with the
+                                                                                           // route as in the opaque
+                                                                                           // chain
+        || (frequency & D3DSTREAMSOURCE_INDEXEDDATA) || (frequency & 0x3fffffffu) > 1 ||
+        window >= motion_matrix_windows_max || !shadow_.rows_known[window] || !loop_bounded || !shadow_.stream0 ||
+        !shadow_.stream0_stride || !shadow_.declaration || !call.primitives || (call.indexed && !shadow_.indices)) {
         // Diagnostics (unmatched=): the first failing group, in the chain's order.
-        route.unmatched = cutout_caps_ != cutout::Capability::Ready || cutout_reset_pending_ || !taa_enabled_ || !hdr_enabled_
-                || hdr_state_ != HdrState::Active || !hdr_target_.known || hdr_target_.format != D3DFMT_A16B16G16R16F ? UnmatchedReason::FadeCaps
-            : (frequency & D3DSTREAMSOURCE_INDEXEDDATA) || (frequency & 0x3fffffffu) > 1 ? UnmatchedReason::FadeInstanced
-            : window >= motion_matrix_windows_max || !shadow_.rows_known[window] || !loop_bounded ? UnmatchedReason::FadeRows
-            : UnmatchedReason::FadeGeometry; // a failed frequency getter counts as geometry: frequency stays 0
-        ++(overlay ? counters_.overlay_refused : counters_.fade_refused); return false;
+        route.unmatched = cutout_caps_ != cutout::Capability::Ready || cutout_reset_pending_ || !taa_enabled_ ||
+                                  !hdr_enabled_ || hdr_state_ != HdrState::Active || !hdr_target_.known ||
+                                  hdr_target_.format != D3DFMT_A16B16G16R16F
+                              ? UnmatchedReason::FadeCaps
+                          : (frequency & D3DSTREAMSOURCE_INDEXEDDATA) || (frequency & 0x3fffffffu) > 1
+                              ? UnmatchedReason::FadeInstanced
+                          : window >= motion_matrix_windows_max || !shadow_.rows_known[window] || !loop_bounded
+                              ? UnmatchedReason::FadeRows
+                              : UnmatchedReason::FadeGeometry; // a failed frequency getter counts as geometry:
+                                                               // frequency stays 0
+        ++(overlay ? counters_.overlay_refused : counters_.fade_refused);
+        return false;
     }
     if (overlay) {
         const std::uint64_t node = fade_identity();
-        if (!node || last_routed_frame_ != frame_ || counters_.draws != last_routed_draw_ + 1 || node != last_routed_node_) {
-            route.unmatched = UnmatchedReason::OverlayNode; ++counters_.overlay_refused; return false;
+        if (!node || last_routed_frame_ != frame_ || counters_.draws != last_routed_draw_ + 1 ||
+            node != last_routed_node_) {
+            route.unmatched = UnmatchedReason::OverlayNode;
+            ++counters_.overlay_refused;
+            return false;
         }
-        route.fade_permille = 1000u; route.fade_arm = true; route.overlay = true;
+        route.fade_permille = 1000u;
+        route.fade_arm = true;
+        route.overlay = true;
         return true;
     }
-    float alpha[4]{}, fog[4]{}; BOOL enable = FALSE; float distance = 0.f;
+    float alpha[4]{}, fog[4]{};
+    BOOL enable = FALSE;
+    float distance = 0.f;
     const auto& r = shadow_.fade_route_registers;
-    if (FAILED(native<GetConstantsFFn>(GetVertexShaderConstantF)(device_, r.alpha, alpha, 1))
-        || FAILED(native<GetConstantsFFn>(GetVertexShaderConstantF)(device_, r.fog, fog, 1))
-        || FAILED(native<GetConstantsBFn>(GetVertexShaderConstantB)(device_, 0, &enable, 1))) {
-        route.unmatched = UnmatchedReason::FadeConstants; ++counters_.fade_refused; return false;
+    if (FAILED(native<GetConstantsFFn>(GetVertexShaderConstantF)(device_, r.alpha, alpha, 1)) ||
+        FAILED(native<GetConstantsFFn>(GetVertexShaderConstantF)(device_, r.fog, fog, 1)) ||
+        FAILED(native<GetConstantsBFn>(GetVertexShaderConstantB)(device_, 0, &enable, 1))) {
+        route.unmatched = UnmatchedReason::FadeConstants;
+        ++counters_.fade_refused;
+        return false;
     }
     // Run 130: the origin distance is defined for an origin behind the camera
     // plane too (fade_route_core.h); only a nonfinite row or camera refuses.
     if (!fade_route::origin_distance(shadow_.rows[window], camera_scene_.valid, camera_scene_.m00, camera_scene_.m11,
                                      camera_scene_.m20, camera_scene_.m21, distance)) {
-        route.unmatched = UnmatchedReason::FadeOrigin; ++counters_.fade_refused; return false;
+        route.unmatched = UnmatchedReason::FadeOrigin;
+        ++counters_.fade_refused;
+        return false;
     }
-    route.fade_permille = fade_route::permille(fade_route::fraction(alpha[0], enable != FALSE, fog[0], fog[1], distance));
+    route.fade_permille = fade_route::permille(
+        fade_route::fraction(alpha[0], enable != FALSE, fog[0], fog[1], distance));
     bool held = false;
-    const bool admitted = fade_hysteresis_.admit(fade_identity(), frame_, route.fade_permille, fade_route_threshold_, held);
-    if (fade_hysteresis_.evicted) { counters_.fade_evicted += fade_hysteresis_.evicted; fade_hysteresis_.evicted = 0; } // a full table: the oldest node restarts at the threshold
+    const bool admitted = fade_hysteresis_.admit(fade_identity(), frame_, route.fade_permille, fade_route_threshold_,
+                                                 held);
+    if (fade_hysteresis_.evicted) {
+        counters_.fade_evicted += fade_hysteresis_.evicted;
+        fade_hysteresis_.evicted = 0;
+    } // a full table: the oldest node restarts at the threshold
     if (!admitted) {
-        route.unmatched = UnmatchedReason::FadeThreshold; ++counters_.fade_refused; return false;
+        route.unmatched = UnmatchedReason::FadeThreshold;
+        ++counters_.fade_refused;
+        return false;
     }
-    // X3M_FADE_RT2_OWNER: routed is owner (the same threshold and band, no second one; fade-rt2-ownership.md section 3).
-    route.fade_arm = true; route.fade_held = held; route.fade_owner = fade_rt2_owner_; route.fade_tested = test != 0;
+    // X3M_FADE_RT2_OWNER: routed is owner (the same threshold and band, no second one; fade-rt2-ownership.md section
+    // 3).
+    route.fade_arm = true;
+    route.fade_held = held;
+    route.fade_owner = fade_rt2_owner_;
+    route.fade_tested = test != 0;
     return true;
 }
 // The node identity of the current draw for the arm's hysteresis, read the
@@ -1144,7 +1528,7 @@ void MotionOutput::mark_cutout_candidate(MotionRoute& route) noexcept {
     // Retry pending, HDR off by configuration or a nonzero bias never raise a
     // reactive Unavailable.
     if (!shadow_.cutout_pair || !cutout_arm_active_) return;
-    route.cutout_test_known = SUCCEEDED(render_state(D3DRS_ALPHATESTENABLE,&route.cutout_test));
+    route.cutout_test_known = SUCCEEDED(render_state(D3DRS_ALPHATESTENABLE, &route.cutout_test));
     if (route.cutout_test_known && !route.cutout_test) return;
     // The game's source-over pass of the same pair (blend on, SRCALPHA /
     // INVSRCALPHA, observed exactly; ZWRITEENABLE is deliberately not part of
@@ -1156,23 +1540,28 @@ void MotionOutput::mark_cutout_candidate(MotionRoute& route) noexcept {
     // factors come from the composition blend shadow when it is maintained
     // (composition requested) and otherwise from one native GetRenderState
     // each, only on a blended exact-pair draw.
-    route.cutout_blend_known = SUCCEEDED(render_state(D3DRS_ALPHABLENDENABLE,&route.cutout_blend));
+    route.cutout_blend_known = SUCCEEDED(render_state(D3DRS_ALPHABLENDENABLE, &route.cutout_blend));
     if (route.cutout_blend_known && route.cutout_blend) {
-        DWORD factor[2]{}; bool known[2]{};
+        DWORD factor[2]{};
+        bool known[2]{};
         const D3DRENDERSTATETYPE states[2] = {D3DRS_SRCBLEND, D3DRS_DESTBLEND};
         for (unsigned i = 0; i < 2; ++i) {
-            if (blend_known(i)) { factor[i] = shadow_.composition_blend[i]; known[i] = true; }
-            else known[i] = SUCCEEDED(render_state(states[i], &factor[i]));
+            if (blend_known(i)) {
+                factor[i] = shadow_.composition_blend[i];
+                known[i] = true;
+            } else
+                known[i] = SUCCEEDED(render_state(states[i], &factor[i]));
         }
-        route.cutout_source_over = cutout::source_over(true, route.cutout_blend, known[0], factor[0], known[1], factor[1]);
+        route.cutout_source_over = cutout::source_over(true, route.cutout_blend, known[0], factor[0], known[1],
+                                                       factor[1]);
         if (route.cutout_source_over) return;
     }
-    route.cutout_color_known = SUCCEEDED(render_state(D3DRS_COLORWRITEENABLE,&route.cutout_color));
+    route.cutout_color_known = SUCCEEDED(render_state(D3DRS_COLORWRITEENABLE, &route.cutout_color));
     if (route.cutout_color_known && !(route.cutout_color & 7u)) return;
     route.cutout_candidate = true;
-    route.cutout_alpha_known = SUCCEEDED(render_state(D3DRS_ALPHAFUNC,&route.cutout_alpha));
-    route.cutout_z_known = SUCCEEDED(render_state(D3DRS_ZENABLE,&route.cutout_z));
-    route.cutout_zfunc_known = SUCCEEDED(render_state(D3DRS_ZFUNC,&route.cutout_zfunc));
+    route.cutout_alpha_known = SUCCEEDED(render_state(D3DRS_ALPHAFUNC, &route.cutout_alpha));
+    route.cutout_z_known = SUCCEEDED(render_state(D3DRS_ZENABLE, &route.cutout_z));
+    route.cutout_zfunc_known = SUCCEEDED(render_state(D3DRS_ZFUNC, &route.cutout_zfunc));
 }
 
 // ---- render-state shadow ---------------------------------------------------
@@ -1185,23 +1574,33 @@ void MotionOutput::set_render_state(D3DRENDERSTATETYPE state, DWORD value) noexc
         // Count-only diagnostic (X3M_FRAME_TIMING): a write of the value the
         // device already holds. Nothing is elided, the native call already
         // happened (docs/architecture/state-call-fast-path.md, section (d)).
-        frame_timing::state_write(frame_timing::StateSet::RenderState, unsigned(state),
-                                  shadow_.states_known[i], shadow_.states[i] == value);
-        shadow_.states[i] = value; shadow_.states_known[i] = true;
+        frame_timing::state_write(frame_timing::StateSet::RenderState, unsigned(state), shadow_.states_known[i],
+                                  shadow_.states[i] == value);
+        shadow_.states[i] = value;
+        shadow_.states_known[i] = true;
     }
     if (blend_shadow_requested()) {
         const unsigned blend = composition_blend_index(state);
-        if (blend < composition_blend_count) { shadow_.composition_blend[blend] = value; shadow_.composition_blend_known[blend] = true; }
+        if (blend < composition_blend_count) {
+            shadow_.composition_blend[blend] = value;
+            shadow_.composition_blend_known[blend] = true;
+        }
     }
-    if ((composition_requested() || screen_emission_bound_) && state == D3DRS_FILLMODE) { shadow_.fill_mode = value; shadow_.fill_mode_known = true; }
+    if ((composition_requested() || screen_emission_bound_) && state == D3DRS_FILLMODE) {
+        shadow_.fill_mode = value;
+        shadow_.fill_mode_known = true;
+    }
 }
 // X3M_FRAME_TIMING only, once per hooked draw: a copy of the binding shadow
 // the game last set. No device call, no allocation.
 MotionOutput::BindingShadow MotionOutput::binding_shadow() const noexcept {
     BindingShadow out;
     if (!enabled_ || shadow_.recording) return out;
-    out.vs_hash = shadow_.vs_hash; out.ps_hash = shadow_.ps_hash;
-    out.stream0 = shadow_.stream0; out.indices = shadow_.indices; out.declaration = shadow_.declaration;
+    out.vs_hash = shadow_.vs_hash;
+    out.ps_hash = shadow_.ps_hash;
+    out.stream0 = shadow_.stream0;
+    out.indices = shadow_.indices;
+    out.declaration = shadow_.declaration;
     for (unsigned stage = 0; stage < 4; ++stage)
         out.textures[stage] = static_cast<std::uint64_t>(reinterpret_cast<std::uintptr_t>(samplers_[stage].texture));
     out.valid = true;
@@ -1215,18 +1614,24 @@ long MotionOutput::shadow_state_field(D3DRENDERSTATETYPE state) const noexcept {
     return i < motion_shadow_state_count && shadow_.states_known[i] ? long(shadow_.states[i]) : -1;
 }
 long MotionOutput::composition_blend_field(unsigned index) const noexcept {
-    return index < composition_blend_count && shadow_.composition_blend_known[index] ? long(shadow_.composition_blend[index]) : -1;
+    return index < composition_blend_count && shadow_.composition_blend_known[index]
+               ? long(shadow_.composition_blend[index])
+               : -1;
 }
 void MotionOutput::render_state_failed(D3DRENDERSTATETYPE state) noexcept {
     if (!enabled_ || shadow_.recording) return;
-    const unsigned i=shadow_index(state);
-    if (i<motion_shadow_state_count) { shadow_.states_known[i]=false; ++counters_.rs_invalidations; }
-    const unsigned blend=composition_blend_index(state);
-    if (blend<composition_blend_count) shadow_.composition_blend_known[blend]=false;
+    const unsigned i = shadow_index(state);
+    if (i < motion_shadow_state_count) {
+        shadow_.states_known[i] = false;
+        ++counters_.rs_invalidations;
+    }
+    const unsigned blend = composition_blend_index(state);
+    if (blend < composition_blend_count) shadow_.composition_blend_known[blend] = false;
 }
 void MotionOutput::before_set_sampler_state(DWORD stage, D3DSAMPLERSTATETYPE type) noexcept {
-    if (!enabled_ || shadow_.recording || stage >= sampler_stage_count
-        || type != D3DSAMP_MIPMAPLODBIAS || !samplers_[stage].biased) return;
+    if (!enabled_ || shadow_.recording || stage >= sampler_stage_count || type != D3DSAMP_MIPMAPLODBIAS ||
+        !samplers_[stage].biased)
+        return;
     // Put back only this stage's owned bias before the application's write.
     // Otherwise a failed setter with/without mutation is indistinguishable:
     // either retaining or clearing our obligation could overwrite/leak state.
@@ -1236,17 +1641,29 @@ void MotionOutput::before_set_sampler_state(DWORD stage, D3DSAMPLERSTATETYPE typ
     HRESULT restored = S_OK;
     restore_mip_bias_stage(unsigned(stage), &restored);
     if (FAILED(restored)) {
-        ++counters_.mip_bias_failures; ++mip_bias_total_failures_; ++counters_.restore_failures;
-        if (!motion_state_lost_) { motion_state_lost_ = true; motion_state_error_ = restored; invalidate_taa(TaaInvalidateSite::RestoreFailed); }
-        if (composition_effective_) { composition_state_lost_ = true; composition_frame_stopped_ = true; }
+        ++counters_.mip_bias_failures;
+        ++mip_bias_total_failures_;
+        ++counters_.restore_failures;
+        if (!motion_state_lost_) {
+            motion_state_lost_ = true;
+            motion_state_error_ = restored;
+            invalidate_taa(TaaInvalidateSite::RestoreFailed);
+        }
+        if (composition_effective_) {
+            composition_state_lost_ = true;
+            composition_frame_stopped_ = true;
+        }
         // No log() here: this hook is an audited light root and even an
         // integer-only format reaches the CRT's x87 formatter. Keep the first
         // unreported failure; the counters above carry any that follow.
         auto& event = mip_bias_game_write_failure_;
         if (!event.pending && logged_failures_ < failure_log_limit) {
             ++logged_failures_;
-            event.device = id_; event.frame = frame_; event.index = counters_.draws;
-            event.result = static_cast<unsigned long>(restored); event.pending = true;
+            event.device = id_;
+            event.frame = frame_;
+            event.index = counters_.draws;
+            event.result = static_cast<unsigned long>(restored);
+            event.pending = true;
         }
     }
 }
@@ -1257,17 +1674,17 @@ void MotionOutput::report_mip_bias_game_write_failure() noexcept {
     log("motion_output_restore_failed device=%llu frame=%llu index=%lu result=%08lx what=mip_bias_game_write",
         event.device, event.frame, event.index, event.result);
 }
-void MotionOutput::sampler_state_failed(DWORD stage,D3DSAMPLERSTATETYPE type) noexcept {
-    if (stage>=sampler_stage_count || shadow_.recording) return;
-    auto& s=samplers_[stage];
-    if (type==D3DSAMP_SRGBTEXTURE) s.srgb_known=false;
-    if (type==D3DSAMP_MIPFILTER) s.mipfilter_known=false;
-    if (type==D3DSAMP_MIPMAPLODBIAS) {
+void MotionOutput::sampler_state_failed(DWORD stage, D3DSAMPLERSTATETYPE type) noexcept {
+    if (stage >= sampler_stage_count || shadow_.recording) return;
+    auto& s = samplers_[stage];
+    if (type == D3DSAMP_SRGBTEXTURE) s.srgb_known = false;
+    if (type == D3DSAMP_MIPFILTER) s.mipfilter_known = false;
+    if (type == D3DSAMP_MIPMAPLODBIAS) {
         // before_set_sampler_state restored any owned bias; if that restore
         // failed the obligation is still recorded. Both native mutation
         // outcomes leave the device value unknown: the saved value is no
         // longer trusted, so no retry may overwrite the application's value.
-        s.saved_known=false;
+        s.saved_known = false;
     }
 }
 HRESULT MotionOutput::get_render_state_native(D3DRENDERSTATETYPE state, DWORD* value) noexcept {
@@ -1281,11 +1698,16 @@ HRESULT MotionOutput::render_state(D3DRENDERSTATETYPE state, DWORD* value) noexc
     // the hooks (begin_draw_reads drops it; every state is read once per draw).
     const bool cached = state_shadow_ || !state_hooks_;
     if (cached && i < motion_shadow_state_count && shadow_.states_known[i]) {
-        *value = shadow_.states[i]; ++counters_.rs_hits; return S_OK;
+        *value = shadow_.states[i];
+        ++counters_.rs_hits;
+        return S_OK;
     }
     const HRESULT hr = get_render_state_native(state, value);
     // The getter reports the device state whether or not a block is recording.
-    if (cached && i < motion_shadow_state_count && SUCCEEDED(hr)) { shadow_.states[i] = *value; shadow_.states_known[i] = true; }
+    if (cached && i < motion_shadow_state_count && SUCCEEDED(hr)) {
+        shadow_.states[i] = *value;
+        shadow_.states_known[i] = true;
+    }
     return hr;
 }
 // Hybrid unhook (hooks off): the per-draw cache. Dropped at the top of every
@@ -1300,35 +1722,51 @@ void MotionOutput::begin_draw_reads() noexcept {
     std::memset(shadow_.states_known, 0, sizeof shadow_.states_known);
     std::memset(shadow_.composition_blend_known, 0, sizeof shadow_.composition_blend_known);
     shadow_.fill_mode_known = false;
-    for (auto& s : samplers_) { s.srgb_known = false; s.mipfilter_known = false; if (!s.biased) s.saved_known = false; }
+    for (auto& s : samplers_) {
+        s.srgb_known = false;
+        s.mipfilter_known = false;
+        if (!s.biased) s.saved_known = false;
+    }
 }
 bool MotionOutput::state_known(unsigned index) noexcept {
     if (index >= motion_shadow_state_count) return false;
     if (state_hooks_) return shadow_.states_known[index];
     ++counters_.rs_queries;
-    if (shadow_.states_known[index]) { ++counters_.rs_hits; return true; }
+    if (shadow_.states_known[index]) {
+        ++counters_.rs_hits;
+        return true;
+    }
     DWORD value = 0;
     if (FAILED(get_render_state_native(shadow_states[index], &value))) return false;
-    shadow_.states[index] = value; shadow_.states_known[index] = true;
+    shadow_.states[index] = value;
+    shadow_.states_known[index] = true;
     return true;
 }
 bool MotionOutput::blend_known(unsigned index) noexcept {
     if (index >= composition_blend_count) return false;
     if (state_hooks_) return shadow_.composition_blend_known[index];
     ++counters_.rs_queries;
-    if (shadow_.composition_blend_known[index]) { ++counters_.rs_hits; return true; }
+    if (shadow_.composition_blend_known[index]) {
+        ++counters_.rs_hits;
+        return true;
+    }
     DWORD value = 0;
     if (FAILED(get_render_state_native(composition_blend_states[index], &value))) return false;
-    shadow_.composition_blend[index] = value; shadow_.composition_blend_known[index] = true;
+    shadow_.composition_blend[index] = value;
+    shadow_.composition_blend_known[index] = true;
     return true;
 }
 bool MotionOutput::fill_mode_known() noexcept {
     if (state_hooks_) return shadow_.fill_mode_known;
     ++counters_.rs_queries;
-    if (shadow_.fill_mode_known) { ++counters_.rs_hits; return true; }
+    if (shadow_.fill_mode_known) {
+        ++counters_.rs_hits;
+        return true;
+    }
     DWORD value = 0;
     if (FAILED(get_render_state_native(D3DRS_FILLMODE, &value))) return false;
-    shadow_.fill_mode = value; shadow_.fill_mode_known = true;
+    shadow_.fill_mode = value;
+    shadow_.fill_mode_known = true;
     return true;
 }
 bool MotionOutput::sampler_srgb_known(unsigned stage) noexcept {
@@ -1336,11 +1774,15 @@ bool MotionOutput::sampler_srgb_known(unsigned stage) noexcept {
     auto& s = samplers_[stage];
     if (state_hooks_) return s.srgb_known;
     ++counters_.rs_queries; // counted with the render-state reads: one query, a hit or one native read
-    if (s.srgb_known) { ++counters_.rs_hits; return true; }
+    if (s.srgb_known) {
+        ++counters_.rs_hits;
+        return true;
+    }
     ++counters_.rs_gets;
     DWORD value = 0;
     if (FAILED(direct_call<GetSamplerStateFn>(GetSamplerState, stage, D3DSAMP_SRGBTEXTURE, &value))) return false;
-    s.srgb = value; s.srgb_known = true;
+    s.srgb = value;
+    s.srgb_known = true;
     return true;
 }
 long MotionOutput::state_field(unsigned index) noexcept {
@@ -1374,7 +1816,8 @@ HRESULT MotionOutput::apply_wrap_states(MotionRoute& route, const renderer::Moti
     if (motion == capacity || (route.depth && (depth == capacity || depth == motion))) return D3DERR_INVALIDCALL;
     const auto& contract = shadow_.material_contract;
     const unsigned transports = route.linear_material ? contract.scalar_transport_count : 0;
-    if (transports > contract.scalar_transport.size() || (transports && !contract.sampler_mask)) return D3DERR_INVALIDCALL;
+    if (transports > contract.scalar_transport.size() || (transports && !contract.sampler_mask))
+        return D3DERR_INVALIDCALL;
     unsigned sources[2]{}, destinations[2]{};
     DWORD destination_bits[capacity]{};
     for (unsigned i = 0; i < transports; ++i) {
@@ -1382,8 +1825,8 @@ HRESULT MotionOutput::apply_wrap_states(MotionRoute& route, const renderer::Moti
         if (map.source_component >= 4 || map.destination_component >= 4) return D3DERR_INVALIDCALL;
         destinations[i] = slot(map.destination_texcoord);
         sources[i] = slot(map.source_texcoord);
-        if (sources[i] == capacity || destinations[i] == capacity ||
-            sources[i] == motion || sources[i] == depth || destinations[i] == motion || destinations[i] == depth)
+        if (sources[i] == capacity || destinations[i] == capacity || sources[i] == motion || sources[i] == depth ||
+            destinations[i] == motion || destinations[i] == depth)
             return D3DERR_INVALIDCALL;
         const DWORD bit = DWORD(1) << map.destination_component;
         if (destination_bits[destinations[i]] & bit) return D3DERR_INVALIDCALL;
@@ -1406,7 +1849,8 @@ HRESULT MotionOutput::apply_wrap_states(MotionRoute& route, const renderer::Moti
     for (unsigned i = 0; i < route.wrap_count; ++i) {
         if (desired[i] == route.saved_wrap[i]) continue;
         route.wrap_attempted |= std::uint8_t(1u << i);
-        const HRESULT hr = direct_call<SetRenderStateFn>(SetRenderState, shadow_states[8u + route.wrap_index[i]], desired[i]);
+        const HRESULT hr = direct_call<SetRenderStateFn>(SetRenderState, shadow_states[8u + route.wrap_index[i]],
+                                                         desired[i]);
         if (FAILED(hr)) return hr;
     }
     return S_OK;
@@ -1415,7 +1859,8 @@ HRESULT MotionOutput::restore_wrap_states(MotionRoute& route) noexcept {
     HRESULT first = S_OK;
     for (unsigned i = route.wrap_count; i-- > 0;) {
         if (!(route.wrap_attempted & (1u << i))) continue;
-        const HRESULT hr = direct_call<SetRenderStateFn>(SetRenderState, shadow_states[8u + route.wrap_index[i]], route.saved_wrap[i]);
+        const HRESULT hr = direct_call<SetRenderStateFn>(SetRenderState, shadow_states[8u + route.wrap_index[i]],
+                                                         route.saved_wrap[i]);
         if (SUCCEEDED(first) && FAILED(hr)) first = hr;
     }
     route.wrap_attempted = route.wrap_count = 0;
@@ -1431,7 +1876,10 @@ void MotionOutput::recover_motion_state() noexcept {
         shadow_.states_known[i] = SUCCEEDED(hr);
         known = known && SUCCEEDED(hr);
     }
-    if (known) { motion_state_lost_ = false; motion_state_error_ = D3DERR_INVALIDCALL; }
+    if (known) {
+        motion_state_lost_ = false;
+        motion_state_error_ = D3DERR_INVALIDCALL;
+    }
 }
 
 // ---- temporal resolve ------------------------------------------------------
@@ -1447,7 +1895,7 @@ ULONG MotionOutput::probe_references() noexcept {
 // wrapper's parent release, and a count that still includes the objects being
 // released could match the hook's final-release probe by coincidence. The
 // application cannot issue its final Release inside a hook, so nothing is missed.
-template<typename Fn> void MotionOutput::taa_call(Fn&& fn, const char* site) noexcept {
+template <typename Fn> void MotionOutput::taa_call(Fn&& fn, const char* site) noexcept {
     taa_busy_ = true;
     const ULONG before = probe_references();
     fn();
@@ -1459,9 +1907,14 @@ template<typename Fn> void MotionOutput::taa_call(Fn&& fn, const char* site) noe
     const long delta = long(after) - long(before);
     const long next = long(taa_references_) + delta;
     if (next < 0) {
-        if (!taa_underflow_logged_) { taa_underflow_logged_ = true; log("taa_references_underflow device=%llu frame=%llu site=%s delta=%ld references=%u", id_, frame_, site ? site : "unnamed", delta, taa_references_); }
+        if (!taa_underflow_logged_) {
+            taa_underflow_logged_ = true;
+            log("taa_references_underflow device=%llu frame=%llu site=%s delta=%ld references=%u", id_, frame_,
+                site ? site : "unnamed", delta, taa_references_);
+        }
         taa_references_ = 0;
-    } else taa_references_ = unsigned(next);
+    } else
+        taa_references_ = unsigned(next);
     taa_busy_ = false;
 }
 // Integer-only (light setter paths reach it): the site is recorded and logged
@@ -1472,11 +1925,27 @@ void MotionOutput::invalidate_taa(TaaInvalidateSite site) noexcept {
     taa_invalidate_pending_ |= 1u << unsigned(site);
 }
 const char* taa_invalidate_site_name(TaaInvalidateSite site) noexcept {
-    static const char* const names[unsigned(TaaInvalidateSite::Count)] = {
-        "restore_failed", "state_lost", "skip", "target", "container", "resolve_failed", "not_resolved", "present_failed",
-        "reset", "comparison_exposure", "comparison_state_failed", "composition_state_lost", "composition_readers",
-        "composition_export", "composition_attach", "composition_begin", "composition_refused", "composition_prepare",
-        "composition_incomplete", "cutout_missed", "fog_transition"};
+    static const char* const names[unsigned(TaaInvalidateSite::Count)] = {"restore_failed",
+                                                                          "state_lost",
+                                                                          "skip",
+                                                                          "target",
+                                                                          "container",
+                                                                          "resolve_failed",
+                                                                          "not_resolved",
+                                                                          "present_failed",
+                                                                          "reset",
+                                                                          "comparison_exposure",
+                                                                          "comparison_state_failed",
+                                                                          "composition_state_lost",
+                                                                          "composition_readers",
+                                                                          "composition_export",
+                                                                          "composition_attach",
+                                                                          "composition_begin",
+                                                                          "composition_refused",
+                                                                          "composition_prepare",
+                                                                          "composition_incomplete",
+                                                                          "cutout_missed",
+                                                                          "fog_transition"};
     return unsigned(site) < unsigned(TaaInvalidateSite::Count) ? names[unsigned(site)] : "unknown";
 }
 void MotionOutput::flush_taa_invalidate_log() noexcept {
@@ -1484,12 +1953,15 @@ void MotionOutput::flush_taa_invalidate_log() noexcept {
     if (!pending) return;
     taa_invalidate_pending_ = 0;
     for (unsigned site = 0; pending; ++site, pending >>= 1)
-        if ((pending & 1u) && telemetry_) log("taa_invalidate device=%llu frame=%llu site=%s", id_, frame_, taa_invalidate_site_name(TaaInvalidateSite(site)));
+        if ((pending & 1u) && telemetry_)
+            log("taa_invalidate device=%llu frame=%llu site=%s", id_, frame_,
+                taa_invalidate_site_name(TaaInvalidateSite(site)));
 }
 
 void MotionOutput::comparison_state_failed(HRESULT result) noexcept {
     if (FAILED(result) && !motion_state_lost_) {
-        motion_state_lost_ = true; motion_state_error_ = result;
+        motion_state_lost_ = true;
+        motion_state_error_ = result;
         invalidate_taa(TaaInvalidateSite::ComparisonStateFailed);
     }
 }
@@ -1498,17 +1970,28 @@ void MotionOutput::comparison_state_failed(HRESULT result) noexcept {
 bool MotionOutput::ensure_taa() noexcept {
     if (taa_ && !taa_failed_) return true;
     if (taa_failed_) return false;
-    try { taa_ = std::make_unique<renderer::TemporalPass>(); } catch (...) { taa_failed_ = true; return false; }
-    taa_fold_logged_ = false; taa_box_refused_logged_ = false; taa_box_reason_logged_ = nullptr; taa_box_reason_rows_ = 0;
+    try {
+        taa_ = std::make_unique<renderer::TemporalPass>();
+    } catch (...) {
+        taa_failed_ = true;
+        return false;
+    }
+    taa_fold_logged_ = false;
+    taa_box_refused_logged_ = false;
+    taa_box_reason_logged_ = nullptr;
+    taa_box_reason_rows_ = 0;
     HRESULT hr = E_FAIL;
     // The sharpen program is created only when the switch is on: with it off
     // the pass is the pre-sharpen pass, shader for shader.
     // The identity copy program (the HDR write-back's) serves the draw copy
     // mode; it is created in both modes so the pass holds the same references
     // whichever mode the device decided (taa_copy in motion_output_device).
-    taa_call([&] { hr = taa_->initialize(device_, nullptr, reinterpret_cast<const DWORD*>(renderer::temporal_resolve_program()), native_,
-                                         taa_sharpen_ > 0.f ? reinterpret_cast<const DWORD*>(renderer::taa_sharpen_program()) : nullptr,
-                                         reinterpret_cast<const DWORD*>(renderer::hdr_writeback_program())); });
+    taa_call([&] {
+        hr = taa_->initialize(
+            device_, nullptr, reinterpret_cast<const DWORD*>(renderer::temporal_resolve_program()), native_,
+            taa_sharpen_ > 0.f ? reinterpret_cast<const DWORD*>(renderer::taa_sharpen_program()) : nullptr,
+            reinterpret_cast<const DWORD*>(renderer::hdr_writeback_program()));
+    });
     if (SUCCEEDED(hr)) taa_->configure_copy(taa_copy_draw_);
     if (SUCCEEDED(hr) && !taa_->snapshot_available())
         log("motion_output_taa_snapshot device=%llu unavailable=1 create=%08lx", id_, taa_->snapshot_result());
@@ -1525,114 +2008,162 @@ bool MotionOutput::ensure_taa() noexcept {
     // Far stabiliser: its program exists only when asked for. Refused below the
     // history weight and on a device without the age caps or that refuses the
     // program (one log line, option off).
-    // Each option is judged on its own: an out-of-range thin-region weight takes only the thin region out (and the other way round);
-    // what both need (the program, the age caps) takes both. One log line each.
-    if (SUCCEEDED(hr) && taa_thin_weight_ > 0.f && !x3::temporal::valid_far_weight(taa_thin_weight_, taa_history_weight_)) {
-        log("motion_output_taa_thin_region device=%llu unavailable=1 reason=weight_range weight=%.4f history_weight=%.3f far_weight=%.4f far_filter=%.3f", id_, double(taa_thin_weight_), double(taa_history_weight_), double(taa_far_weight_), double(taa_far_filter_));
+    // Each option is judged on its own: an out-of-range thin-region weight takes only the thin region out (and the
+    // other way round); what both need (the program, the age caps) takes both. One log line each.
+    if (SUCCEEDED(hr) && taa_thin_weight_ > 0.f &&
+        !x3::temporal::valid_far_weight(taa_thin_weight_, taa_history_weight_)) {
+        log("motion_output_taa_thin_region device=%llu unavailable=1 reason=weight_range weight=%.4f history_weight=%.3f far_weight=%.4f far_filter=%.3f",
+            id_, double(taa_thin_weight_), double(taa_history_weight_), double(taa_far_weight_),
+            double(taa_far_filter_));
         taa_thin_weight_ = 0.f;
     }
     if (SUCCEEDED(hr) && (taa_far_weight_ > 0.f || taa_far_filter_ > 0.f)) {
-        const char* reason = !x3::temporal::valid_far_weight(taa_far_weight_, taa_history_weight_) ? "weight_range" : nullptr;
+        const char* reason = !x3::temporal::valid_far_weight(taa_far_weight_, taa_history_weight_) ? "weight_range"
+                                                                                                   : nullptr;
         if (reason) {
-            log("motion_output_taa_far device=%llu unavailable=1 reason=%s create=%08lx weight=%.4f filter=%.3f thin_region=%.4f", id_, reason, 0ul, double(taa_far_weight_), double(taa_far_filter_), double(taa_thin_weight_));
+            log("motion_output_taa_far device=%llu unavailable=1 reason=%s create=%08lx weight=%.4f filter=%.3f thin_region=%.4f",
+                id_, reason, 0ul, double(taa_far_weight_), double(taa_far_filter_), double(taa_thin_weight_));
             taa_far_weight_ = taa_far_filter_ = 0.f;
         }
     }
     if (SUCCEEDED(hr) && (taa_far_weight_ > 0.f || taa_far_filter_ > 0.f || taa_thin_weight_ > 0.f)) {
-        const char* reason = nullptr; HRESULT far_result = S_OK;
-        taa_call([&] { far_result = taa_->configure_far(); }); if (FAILED(far_result) || !taa_->far_available()) reason = "program_or_age_caps";
+        const char* reason = nullptr;
+        HRESULT far_result = S_OK;
+        taa_call([&] { far_result = taa_->configure_far(); });
+        if (FAILED(far_result) || !taa_->far_available()) reason = "program_or_age_caps";
         if (reason) {
-            log("motion_output_taa_far device=%llu unavailable=1 reason=%s create=%08lx weight=%.4f filter=%.3f thin_region=%.4f", id_, reason, far_result, double(taa_far_weight_), double(taa_far_filter_), double(taa_thin_weight_));
+            log("motion_output_taa_far device=%llu unavailable=1 reason=%s create=%08lx weight=%.4f filter=%.3f thin_region=%.4f",
+                id_, reason, far_result, double(taa_far_weight_), double(taa_far_filter_), double(taa_thin_weight_));
             taa_far_weight_ = taa_far_filter_ = taa_thin_weight_ = 0.f;
         }
     }
     // Camera-relative gate of the thin region (section 32.1) with the region hold, its only form since Run 79 A (A',
-    // taa-plan-lifted-slot-cap.md step 1) and the mask fold (taa-mask-fold.md): the folded hold resolve and its region-gated
-    // box are created by configure_far above. A device that refuses one of them or has fewer than three simultaneous render
-    // targets turns the thin region off: one line, no fallback program set (AGENTS.md
-    // "Shader slot budget"). Without the thin region the gate is dropped with its own line.
+    // taa-plan-lifted-slot-cap.md step 1) and the mask fold (taa-mask-fold.md): the folded hold resolve and its
+    // region-gated box are created by configure_far above. A device that refuses one of them or has fewer than three
+    // simultaneous render targets turns the thin region off: one line, no fallback program set (AGENTS.md "Shader slot
+    // budget"). Without the thin region the gate is dropped with its own line.
     if (SUCCEEDED(hr) && taa_thin_camera_gate_ && taa_thin_weight_ <= 0.f) {
-        log("motion_output_taa_thin_region device=%llu camera_gate_unavailable=1 reason=thin_region_off thin_region=%.4f", id_, double(taa_thin_weight_));
+        log("motion_output_taa_thin_region device=%llu camera_gate_unavailable=1 reason=thin_region_off thin_region=%.4f",
+            id_, double(taa_thin_weight_));
         taa_thin_camera_gate_ = false;
     } else if (SUCCEEDED(hr) && taa_thin_camera_gate_ && !taa_->camera_gate_available()) {
-        // (A device without the history filters never gets here: initialize refuses it, and the attach refuses TAA first.)
-        const char* reason = taa_->simultaneous_render_targets() < 3 ? "render_targets" : "program"; // the folded resolve writes three targets
+        // (A device without the history filters never gets here: initialize refuses it, and the attach refuses TAA
+        // first.)
+        const char* reason = taa_->simultaneous_render_targets() < 3 ? "render_targets" : "program"; // the folded
+                                                                                                     // resolve writes
+                                                                                                     // three targets
         log("motion_output_taa_region_hold device=%llu unavailable=1 reason=%s create=%08lx bilinear=%u history_taps=%u thin_region=%.4f effect=thin_region_off",
-            id_, reason, taa_->camera_programs_result(), unsigned(taa_->bilinear_history_available()), 5u, double(taa_thin_weight_));
-        taa_thin_weight_ = 0.f; taa_thin_camera_gate_ = false;
+            id_, reason, taa_->camera_programs_result(), unsigned(taa_->bilinear_history_available()), 5u,
+            double(taa_thin_weight_));
+        taa_thin_weight_ = 0.f;
+        taa_thin_camera_gate_ = false;
     }
-    // The emissive vote (thin-glow-lines.md 8.3 R3) lives in the thin region's own mask: without the region it has nowhere to land.
+    // The emissive vote (thin-glow-lines.md 8.3 R3) lives in the thin region's own mask: without the region it has
+    // nowhere to land.
     if (SUCCEEDED(hr) && taa_thin_emissive_ > 0.f && taa_thin_weight_ <= 0.f) {
-        log("motion_output_taa_thin_region device=%llu emissive_unavailable=1 reason=thin_region_off requested=%.3f", id_, double(taa_thin_emissive_));
+        log("motion_output_taa_thin_region device=%llu emissive_unavailable=1 reason=thin_region_off requested=%.3f",
+            id_, double(taa_thin_emissive_));
         taa_thin_emissive_ = 0.f;
     }
-    // S4 (X3M_TAA_BOX_RESOLUTION=half, the launcher default on --taa since Run 82): the half-resolution box pair, created only
-    // when asked. One row, only when asked: requested=half with the effect at creation and default= (1: the launcher's default); a device that refuses a program, or a session without the camera gate (no box
-    // to halve), keeps the full-resolution box (no fallback program set). The default (full) creates and logs nothing.
+    // S4 (X3M_TAA_BOX_RESOLUTION=half, the launcher default on --taa since Run 82): the half-resolution box pair,
+    // created only when asked. One row, only when asked: requested=half with the effect at creation and default= (1:
+    // the launcher's default); a device that refuses a program, or a session without the camera gate (no box to halve),
+    // keeps the full-resolution box (no fallback program set). The default (full) creates and logs nothing.
     if (SUCCEEDED(hr) && taa_box_half_) {
-        HRESULT created = S_OK; const char* reason = "ok";
-        if (!taa_thin_camera_gate_) reason = "camera_gate_off";
-        else { taa_call([&] { created = taa_->configure_box_resolution(2); }); if (FAILED(created) || taa_->box_resolution() != 2) reason = "program"; }
+        HRESULT created = S_OK;
+        const char* reason = "ok";
+        if (!taa_thin_camera_gate_)
+            reason = "camera_gate_off";
+        else {
+            taa_call([&] { created = taa_->configure_box_resolution(2); });
+            if (FAILED(created) || taa_->box_resolution() != 2) reason = "program";
+        }
         log("motion_output_taa_box_resolution device=%llu requested=half configured=%s reason=%s create=%08lx default=%u",
             id_, taa_->box_resolution() == 2 ? "half" : "full", reason, created, unsigned(taa_box_default_));
     }
-    // Thin vote: the screen-gate chain's tests-draw twin, created only when the option is on (its absence keeps the plain tests
-    // draw). The camera-gate resolve reads the vote itself (the mask fold): no program to create.
+    // Thin vote: the screen-gate chain's tests-draw twin, created only when the option is on (its absence keeps the
+    // plain tests draw). The camera-gate resolve reads the vote itself (the mask fold): no program to create.
     if (SUCCEEDED(hr) && thin_vote_upload_ && !taa_thin_camera_gate_) {
         HRESULT created = E_FAIL;
         taa_call([&] { created = taa_->configure_thin_vote(); });
-        if (FAILED(created) || !taa_->thin_vote_available()) log("thin_vote_tests device=%llu unavailable=1 create=%08lx", id_, created);
+        if (FAILED(created) || !taa_->thin_vote_available())
+            log("thin_vote_tests device=%llu unavailable=1 create=%08lx", id_, created);
     }
-    // Thin-region source: capture.cpp asks for vote whenever the thin vote and the thin region are on (the variable and its
-    // both / screen values were removed on 2026-09-25); vote needs the vote (the route's .a) and a program that reads it (the
-    // camera-gate resolve, or the screen-gate chain's twin). The screen value (1) stays in the enum for the pass and the
-    // fixtures and is refused under the camera gate. Anything missing configures both. One row whenever vote was asked.
+    // Thin-region source: capture.cpp asks for vote whenever the thin vote and the thin region are on (the variable and
+    // its both / screen values were removed on 2026-09-25); vote needs the vote (the route's .a) and a program that
+    // reads it (the camera-gate resolve, or the screen-gate chain's twin). The screen value (1) stays in the enum for
+    // the pass and the fixtures and is refused under the camera gate. Anything missing configures both. One row
+    // whenever vote was asked.
     taa_thin_source_configured_ = 0;
     if (SUCCEEDED(hr) && taa_thin_source_given_) {
         static const char* const names[3] = {"both", "screen", "vote"};
         const bool twins = taa_->thin_vote_available();
-        const char* reason = taa_thin_source_ != 0 && taa_thin_weight_ <= 0.f ? "thin_region_off" : taa_thin_source_ == 1 && taa_thin_camera_gate_ ? "screen_refused_camera_gate" :
-            taa_thin_source_ == 2 && !thin_vote_upload_ ? "thin_vote_off" : taa_thin_source_ == 2 && !twins ? "program" : "ok";
+        const char* reason = taa_thin_source_ != 0 && taa_thin_weight_ <= 0.f ? "thin_region_off"
+                             : taa_thin_source_ == 1 && taa_thin_camera_gate_ ? "screen_refused_camera_gate"
+                             : taa_thin_source_ == 2 && !thin_vote_upload_    ? "thin_vote_off"
+                             : taa_thin_source_ == 2 && !twins                ? "program"
+                                                                              : "ok";
         taa_thin_source_configured_ = std::strcmp(reason, "ok") == 0 ? taa_thin_source_ : 0u;
-        log("taa_thin_region_source device=%llu requested=%s configured=%s reason=%s thin_region=%.4f thin_vote=%u twins=%u camera_gate=%u default=%u", id_,
-            names[taa_thin_source_], names[taa_thin_source_configured_], reason, double(taa_thin_weight_), unsigned(thin_vote_upload_), unsigned(twins), unsigned(taa_thin_camera_gate_),
+        log("taa_thin_region_source device=%llu requested=%s configured=%s reason=%s thin_region=%.4f thin_vote=%u twins=%u camera_gate=%u default=%u",
+            id_, names[taa_thin_source_], names[taa_thin_source_configured_], reason, double(taa_thin_weight_),
+            unsigned(thin_vote_upload_), unsigned(twins), unsigned(taa_thin_camera_gate_),
             unsigned(taa_thin_source_default_));
     }
-    // Exit reset of the strict sky history (seta-sky-hull-share-decay.md): carried in the age target, so it needs one of the
-    // age programs to be in effect on this device (the far stabiliser's rule: one log line, option off otherwise).
-    if (SUCCEEDED(hr) && sky_history_exit_px_ > 0.f && !(taa_far_weight_ > 0.f || taa_far_filter_ > 0.f || taa_thin_weight_ > 0.f)) {
-        log("motion_output_taa_sky_history_exit device=%llu unavailable=1 reason=no_age_program requested=%.3f", id_, double(sky_history_exit_px_));
+    // Exit reset of the strict sky history (seta-sky-hull-share-decay.md): carried in the age target, so it needs one
+    // of the age programs to be in effect on this device (the far stabiliser's rule: one log line, option off
+    // otherwise).
+    if (SUCCEEDED(hr) && sky_history_exit_px_ > 0.f &&
+        !(taa_far_weight_ > 0.f || taa_far_filter_ > 0.f || taa_thin_weight_ > 0.f)) {
+        log("motion_output_taa_sky_history_exit device=%llu unavailable=1 reason=no_age_program requested=%.3f", id_,
+            double(sky_history_exit_px_));
         sky_history_exit_px_ = 0.f;
     }
     // Motion history weight (taa-motion-history-weight.md): the cap lives in the age programs, the same rule.
-    if (SUCCEEDED(hr) && motion_weight_[0] > 0.f && !(taa_far_weight_ > 0.f || taa_far_filter_ > 0.f || taa_thin_weight_ > 0.f)) {
-        log("motion_output_taa_motion_weight device=%llu unavailable=1 reason=no_age_program requested=%.3f,%g,%g", id_, double(motion_weight_[0]), double(motion_weight_[1]), double(motion_weight_[2]));
+    if (SUCCEEDED(hr) && motion_weight_[0] > 0.f &&
+        !(taa_far_weight_ > 0.f || taa_far_filter_ > 0.f || taa_thin_weight_ > 0.f)) {
+        log("motion_output_taa_motion_weight device=%llu unavailable=1 reason=no_age_program requested=%.3f,%g,%g", id_,
+            double(motion_weight_[0]), double(motion_weight_[1]), double(motion_weight_[2]));
         motion_weight_[0] = 0.f;
     }
-    // Far weight's gate (X3M_TAA_FAR_GATE): the camera gate exists only on the camera-gate resolve; elsewhere the far program's
-    // screen speed gate is configured. One row when camera was requested explicitly (not the launcher's default, which every
+    // Far weight's gate (X3M_TAA_FAR_GATE): the camera gate exists only on the camera-gate resolve; elsewhere the far
+    // program's screen speed gate is configured. One row when camera was requested explicitly (not the launcher's
+    // default, which every
     // --taa launch sends) for a far weight that has no camera gate.
     const bool far_camera_gate = taa_far_camera_gate_ && taa_thin_camera_gate_ && taa_thin_weight_ > 0.f;
-    if (SUCCEEDED(hr) && taa_far_gate_given_ && !taa_far_gate_default_ && taa_far_camera_gate_ && !far_camera_gate && taa_far_weight_ > 0.f)
+    if (SUCCEEDED(hr) && taa_far_gate_given_ && !taa_far_gate_default_ && taa_far_camera_gate_ && !far_camera_gate &&
+        taa_far_weight_ > 0.f)
         log("motion_output_taa_far_gate device=%llu requested=camera configured=screen reason=%s", id_,
             taa_thin_weight_ > 0.f ? "screen_gate" : "thin_region_off");
-    // Far clip (X3M_TAA_FAR_CLIP): the camera-gate resolve only, and only where farw exists (a far weight or filter). One row when
-    // 7x7 was requested explicitly (not the launcher's default) where it cannot act.
+    // Far clip (X3M_TAA_FAR_CLIP): the camera-gate resolve only, and only where farw exists (a far weight or filter).
+    // One row when 7x7 was requested explicitly (not the launcher's default) where it cannot act.
     const bool far_gate_on = taa_far_weight_ > 0.f || taa_far_filter_ > 0.f;
     const bool far_clip = taa_far_clip_7x7_ && taa_thin_camera_gate_ && taa_thin_weight_ > 0.f && far_gate_on;
     if (SUCCEEDED(hr) && taa_far_clip_given_ && !taa_far_clip_default_ && taa_far_clip_7x7_ && !far_clip)
         log("motion_output_taa_far_clip device=%llu requested=7x7 configured=3x3 reason=%s", id_,
-            !far_gate_on ? "far_off" : taa_thin_weight_ > 0.f ? "screen_gate" : "thin_region_off");
+            !far_gate_on             ? "far_off"
+            : taa_thin_weight_ > 0.f ? "screen_gate"
+                                     : "thin_region_off");
     taa_failed_ = FAILED(hr);
-    // reason: why initialize refused (the missing history filter as TemporalPass reports it, "device_caps" when the caps check
-    // refused first, "program" for a failed creation), "ok" otherwise. From the next latched frame the jitter and mip bias stop.
-    const char* initialize_reason = SUCCEEDED(hr) ? "ok" : !taa_->bilinear_history_available()
-        ? (std::strcmp(taa_->bilinear_history_reason(), "not_initialized") ? taa_->bilinear_history_reason() : "device_caps") : "program";
-    // ps30_slots: D3DCAPS9::MaxPixelShader30InstructionSlots at initialize (AGENTS.md "Shader slot budget": logged, never a gate).
-    log("motion_output_taa device=%llu initialize=%08lx references=%u sharpen=%.3f history_weight=%.3f copy=%s alpha_history=%u age_bytes_per_pixel=%u far_weight=%.4f far_filter=%.3f far_f0=%.1f far_f1=%.1f far_speed_lo=%.3f far_speed_hi=%.3f thin_region=%.4f thin_relax=%.3f thin_gate=%s thin_emissive=%.3f ps30_slots=%u far_gate=%s default=%u far_clip=%s far_clip_default=%u reason=%s", id_, hr, taa_references_, double(taa_sharpen_), double(taa_history_weight_), taa_copy_draw_ ? "draw" : "stretch",
-        unsigned(taa_alpha_history_), taa_far_weight_ > 0.f || taa_far_filter_ > 0.f || taa_thin_weight_ > 0.f ? 8u : 0u, double(taa_far_weight_), double(taa_far_filter_), double(taa_far_f0_), double(taa_far_f1_), double(taa_far_lo_), double(taa_far_hi_), double(taa_thin_weight_), double(taa_thin_relax_), taa_thin_camera_gate_ ? "camera" : "screen", double(taa_thin_emissive_),
-        taa_ ? taa_->ps30_instruction_slots() : 0u, far_camera_gate ? "camera" : "screen", unsigned(far_camera_gate && taa_far_gate_default_),
-        far_clip ? "7x7" : "3x3", unsigned(far_clip && taa_far_clip_default_), initialize_reason);
+    // reason: why initialize refused (the missing history filter as TemporalPass reports it, "device_caps" when the
+    // caps check refused first, "program" for a failed creation), "ok" otherwise. From the next latched frame the
+    // jitter and mip bias stop.
+    const char* initialize_reason = SUCCEEDED(hr) ? "ok"
+                                    : !taa_->bilinear_history_available()
+                                        ? (std::strcmp(taa_->bilinear_history_reason(), "not_initialized")
+                                               ? taa_->bilinear_history_reason()
+                                               : "device_caps")
+                                        : "program";
+    // ps30_slots: D3DCAPS9::MaxPixelShader30InstructionSlots at initialize (AGENTS.md "Shader slot budget": logged,
+    // never a gate).
+    log("motion_output_taa device=%llu initialize=%08lx references=%u sharpen=%.3f history_weight=%.3f copy=%s alpha_history=%u age_bytes_per_pixel=%u far_weight=%.4f far_filter=%.3f far_f0=%.1f far_f1=%.1f far_speed_lo=%.3f far_speed_hi=%.3f thin_region=%.4f thin_relax=%.3f thin_gate=%s thin_emissive=%.3f ps30_slots=%u far_gate=%s default=%u far_clip=%s far_clip_default=%u reason=%s",
+        id_, hr, taa_references_, double(taa_sharpen_), double(taa_history_weight_),
+        taa_copy_draw_ ? "draw" : "stretch", unsigned(taa_alpha_history_),
+        taa_far_weight_ > 0.f || taa_far_filter_ > 0.f || taa_thin_weight_ > 0.f ? 8u : 0u, double(taa_far_weight_),
+        double(taa_far_filter_), double(taa_far_f0_), double(taa_far_f1_), double(taa_far_lo_), double(taa_far_hi_),
+        double(taa_thin_weight_), double(taa_thin_relax_), taa_thin_camera_gate_ ? "camera" : "screen",
+        double(taa_thin_emissive_), taa_ ? taa_->ps30_instruction_slots() : 0u, far_camera_gate ? "camera" : "screen",
+        unsigned(far_camera_gate && taa_far_gate_default_), far_clip ? "7x7" : "3x3",
+        unsigned(far_clip && taa_far_clip_default_), initialize_reason);
     return !taa_failed_;
 }
 // The whole resolve at the bloom copy: RT1/RT2 containers as inputs, the
@@ -1641,28 +2172,40 @@ bool MotionOutput::ensure_taa() noexcept {
 // untouched, invalidates history and is logged once for the frame.
 HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9* hdr_scene) noexcept {
     auto& t = counters_.taa;
-    IDirect3DTexture9* motion = nullptr; IDirect3DTexture9* depth = nullptr;
+    IDirect3DTexture9* motion = nullptr;
+    IDirect3DTexture9* depth = nullptr;
     renderer::Output out{};
     HRESULT hr = E_FAIL;
     hdr_resolved_ = nullptr;
-    t.hdr = hdr_scene != nullptr; t.k = hdr_scene ? hdr_taa_k_ : 0.f;
+    t.hdr = hdr_scene != nullptr;
+    t.k = hdr_scene ? hdr_taa_k_ : 0.f;
     // Debug readback of the pre-resolve colour on the HDR path: the 8-bit
     // main target holds the previous write-back, so the unresolved scene is
     // written back first (a flush; the redirect continues) and read.
     if (hdr_scene && capture_ && taa_debug_) {
-        composition_diagnostic_export_ = true; flush_redirect(); composition_diagnostic_export_ = false;
+        composition_diagnostic_export_ = true;
+        flush_redirect();
+        composition_diagnostic_export_ = false;
     }
     taa_call([&] {
         hr = target_surface_->GetContainer(IID_IDirect3DTexture9, reinterpret_cast<void**>(&motion));
         if (SUCCEEDED(hr)) hr = depth_surface_->GetContainer(IID_IDirect3DTexture9, reinterpret_cast<void**>(&depth));
         if (SUCCEEDED(hr) && (!motion || !depth)) hr = E_NOINTERFACE;
-        if (FAILED(hr)) { t.skip = unsigned(TaaSkip::Container); t.result = hr; invalidate_taa(TaaInvalidateSite::Container); }
-        else {
+        if (FAILED(hr)) {
+            t.skip = unsigned(TaaSkip::Container);
+            t.result = hr;
+            invalidate_taa(TaaInvalidateSite::Container);
+        } else {
             if (capture_ && taa_debug_)
                 // GetRenderTargetData needs the exact format of the main target (A8R8G8B8 or X8R8G8B8).
-                readback_surface(main_surface, static_cast<D3DFORMAT>(main_.format), 4, L"color", L"bgra8", "motion_output_color_readback", "bgra8_row_major", target_width_, target_height_);
+                readback_surface(main_surface, static_cast<D3DFORMAT>(main_.format), 4, L"color", L"bgra8",
+                                 "motion_output_color_readback", "bgra8_row_major", target_width_, target_height_);
             renderer::FrameInputs in{};
-            if (hdr_scene) { in.color = hdr_scene; in.luminance_k = hdr_taa_k_; } else in.color_surface = main_surface;
+            if (hdr_scene) {
+                in.color = hdr_scene;
+                in.luminance_k = hdr_taa_k_;
+            } else
+                in.color_surface = main_surface;
             // Post-resolve sharpen on the 8-bit route: the pass draws RCAS of
             // its history into the main target in place of the copy-back
             // below (the HDR route sharpens in the write-back instead).
@@ -1672,18 +2215,33 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
             // Alpha history (false unless requested) only where the resolved alpha feeds bloom (FP16 input).
             in.alpha_history = taa_alpha_history_ && hdr_scene != nullptr;
             // Far stabiliser: the gate follows this frame's latched projection and the target width; without a valid
-            // latch far_gate leaves d0 = inv = 0 and the mask is off for the frame (the program stays bound: no history cut).
-            in.far_weight = taa_far_weight_; in.far_filter = taa_far_filter_; in.far_speed_lo = taa_far_lo_; in.far_speed_hi = taa_far_hi_;
-            in.thin_region_weight = taa_thin_weight_; in.thin_region_relax = taa_thin_relax_; in.thin_region_camera_gate = taa_thin_camera_gate_; in.thin_region_emissive = taa_thin_emissive_;
+            // latch far_gate leaves d0 = inv = 0 and the mask is off for the frame (the program stays bound: no history
+            // cut).
+            in.far_weight = taa_far_weight_;
+            in.far_filter = taa_far_filter_;
+            in.far_speed_lo = taa_far_lo_;
+            in.far_speed_hi = taa_far_hi_;
+            in.thin_region_weight = taa_thin_weight_;
+            in.thin_region_relax = taa_thin_relax_;
+            in.thin_region_camera_gate = taa_thin_camera_gate_;
+            in.thin_region_emissive = taa_thin_emissive_;
             in.far_camera_gate = taa_far_camera_gate_; // X3M_TAA_FAR_GATE; read by the camera-gate resolve only
-            in.far_clip = taa_far_clip_7x7_ ? x3::temporal::kFarClipThreshold : x3::temporal::kFarClipOff; // X3M_TAA_FAR_CLIP; read by the camera-gate resolve only
+            in.far_clip = taa_far_clip_7x7_ ? x3::temporal::kFarClipThreshold
+                                            : x3::temporal::kFarClipOff; // X3M_TAA_FAR_CLIP; read by the camera-gate
+                                                                         // resolve only
             in.thin_region_hold_frames = jitter_samples_; // A' (camera gate): the hold covers one jitter cycle (2..64)
-            in.thin_vote = thin_vote_upload_ && sun_lane_active_; // the vote travels in the lane's .a; the R32F RT2 has none
-            in.thin_region_source = static_cast<renderer::ThinRegionSource>(taa_thin_source_configured_); // both unless configured otherwise
+            in.thin_vote = thin_vote_upload_ && sun_lane_active_; // the vote travels in the lane's .a; the R32F RT2 has
+                                                                  // none
+            in.thin_region_source = static_cast<renderer::ThinRegionSource>(taa_thin_source_configured_); // both unless
+                                                                                                          // configured
+                                                                                                          // otherwise
             if ((taa_far_weight_ > 0.f || taa_far_filter_ > 0.f) && camera_scene_.valid)
-                x3::temporal::far_gate(camera_scene_.m00, camera_scene_.m22, camera_scene_.m32, main_.width, taa_far_f0_, taa_far_f1_, in.far_d0, in.far_inv);
-            in.current_depth = depth; in.motion = motion;
-            in.width = main_.width; in.height = main_.height;
+                x3::temporal::far_gate(camera_scene_.m00, camera_scene_.m22, camera_scene_.m32, main_.width,
+                                       taa_far_f0_, taa_far_f1_, in.far_d0, in.far_inv);
+            in.current_depth = depth;
+            in.motion = motion;
+            in.width = main_.width;
+            in.height = main_.height;
             in.epoch = generation_; // Dimension changes are compared by the pass itself.
             // Depth-sentinel policy: sentinel pixels (RT2 -1, RT1 alpha -1) are
             // reprojected at the far plane through the camera transform built
@@ -1693,40 +2251,61 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
             // identity, which the resolve then never applies (docs/architecture/
             // temporal-integration.md, "Camera reprojection for sentinel pixels").
             t.camera_previous_valid = camera_previous_.valid;
-            const auto decision = renderer::camera_sentinel_policy(sentinel_mode_, camera_scene_, camera_previous_, camera_cut_degrees_);
-            t.camera_policy = decision.policy; t.camera_reason = unsigned(decision.reason);
-            t.camera_cut = decision.cut; t.camera_rotation_deg = decision.rotation_degrees;
+            const auto decision = renderer::camera_sentinel_policy(sentinel_mode_, camera_scene_, camera_previous_,
+                                                                   camera_cut_degrees_);
+            t.camera_policy = decision.policy;
+            t.camera_reason = unsigned(decision.reason);
+            t.camera_cut = decision.cut;
+            t.camera_rotation_deg = decision.rotation_degrees;
             std::memcpy(in.clip_to_previous, decision.matrix, sizeof decision.matrix);
             in.sentinel_camera = decision.policy == 2;
-            in.sentinel_strict_sky = sky_history_strict_ && decision.policy == 2; // the resolve's c7.z term: seta-motion.md
-            in.sky_history_band_px = sky_history_band_px_; // the band term's threshold, c5.y squared: seta-motion.md section 4
-            in.sky_history_exit_px = sky_history_exit_px_; // the exit reset's floor, c25.x squared under strict with an age program: seta-sky-hull-share-decay.md
-            // The motion history weight's cap (c25.yzw) only against a real camera path: relative is the translation parallax
-            // under policy 2 and the screen motion otherwise (a pan would then be capped). taa-motion-history-weight.md.
-            if (decision.policy == 2) { in.motion_weight = motion_weight_[0]; in.motion_weight_v0 = motion_weight_[1]; in.motion_weight_v1 = motion_weight_[2]; }
-            // Camera gate (taa-lattice-crawl.md section 32.3): the depth / translation term beside the far-plane matrix, from the
-            // same two views and this frame's latched depth law; zero (the far-plane path) without the transform or a plausible law.
+            in.sentinel_strict_sky = sky_history_strict_ && decision.policy == 2; // the resolve's c7.z term:
+                                                                                  // seta-motion.md
+            in.sky_history_band_px = sky_history_band_px_; // the band term's threshold, c5.y squared: seta-motion.md
+                                                           // section 4
+            in.sky_history_exit_px = sky_history_exit_px_; // the exit reset's floor, c25.x squared under strict with an
+                                                           // age program: seta-sky-hull-share-decay.md
+            // The motion history weight's cap (c25.yzw) only against a real camera path: relative is the translation
+            // parallax under policy 2 and the screen motion otherwise (a pan would then be capped).
+            // taa-motion-history-weight.md.
+            if (decision.policy == 2) {
+                in.motion_weight = motion_weight_[0];
+                in.motion_weight_v0 = motion_weight_[1];
+                in.motion_weight_v1 = motion_weight_[2];
+            }
+            // Camera gate (taa-lattice-crawl.md section 32.3): the depth / translation term beside the far-plane
+            // matrix, from the same two views and this frame's latched depth law; zero (the far-plane path) without the
+            // transform or a plausible law.
             if (taa_thin_camera_gate_ && decision.transform) {
                 renderer::camera_depth_parallax(camera_scene_, camera_previous_, in.camera_depth_parallax);
-                renderer::camera_lane_parallax(camera_scene_, camera_previous_, in.camera_lane_parallax); // preferred wherever RT2 is the four-channel lane (.b = view z)
+                renderer::camera_lane_parallax(camera_scene_, camera_previous_,
+                                               in.camera_lane_parallax); // preferred
+                                                                         // wherever
+                                                                         // RT2 is the
+                                                                         // four-channel
+                                                                         // lane (.b =
+                                                                         // view z)
             }
-            in.current_jitter[0] = jitter_[0]; in.current_jitter[1] = jitter_[1];
-            in.previous_jitter[0] = jitter_previous_[0]; in.previous_jitter[1] = jitter_previous_[1];
+            in.current_jitter[0] = jitter_[0];
+            in.current_jitter[1] = jitter_[1];
+            in.previous_jitter[0] = jitter_previous_[0];
+            in.previous_jitter[1] = jitter_previous_[1];
             in.motion_policy = renderer::MotionPolicy::PerPixel;
             in.reactive_policy = renderer::ReactivePolicy::DerivedFromDepthSentinel;
             IDirect3DTexture9* composition_mask = nullptr;
             if (composition_effective_ || composition_required_producers_) {
                 in.reactive_policy = renderer::ReactivePolicy::Unavailable;
-                if (!composition_quarantined_ && !composition_state_lost_ && !composition_frame_stopped_
-                    && composition_ && composition_->coverage_valid() && composition_->coverage_target()
-                    && SUCCEEDED(composition_->coverage_target()->GetContainer(IID_IDirect3DTexture9, reinterpret_cast<void**>(&composition_mask)))
-                    && composition_mask) {
+                if (!composition_quarantined_ && !composition_state_lost_ && !composition_frame_stopped_ &&
+                    composition_ && composition_->coverage_valid() && composition_->coverage_target() &&
+                    SUCCEEDED(composition_->coverage_target()->GetContainer(
+                        IID_IDirect3DTexture9, reinterpret_cast<void**>(&composition_mask))) &&
+                    composition_mask) {
                     in.reactive = composition_mask;
                     in.reactive_policy = renderer::ReactivePolicy::SupplementalMaskWithDepthSentinel;
                 }
             }
-            if (cutout::unavailable(cutout_coverage_missed_,
-                    composition_effective_ || composition_required_producers_, composition_mask != nullptr)) {
+            if (cutout::unavailable(cutout_coverage_missed_, composition_effective_ || composition_required_producers_,
+                                    composition_mask != nullptr)) {
                 in.reactive = nullptr;
                 in.reactive_policy = renderer::ReactivePolicy::Unavailable; // no reuse AND no history seed
             }
@@ -1737,14 +2316,17 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
             // below invalidates this history, so submitting the cut here may
             // advance its cursor even if no resolved image is published.
             const bool chase_snap = chase_snap_cursor_.observe(chase_camera::snap_generation());
-            in.history_allowed = true; in.cut = counters_.cut || decision.cut || chase_snap;
+            in.history_allowed = true;
+            in.cut = counters_.cut || decision.cut || chase_snap;
             if (chase_snap) t.camera_cut = true;
-            in.caller_scene_open = scene_open_; in.caller_stateblock_recording = shadow_.recording;
+            in.caller_scene_open = scene_open_;
+            in.caller_stateblock_recording = shadow_.recording;
             in.caller_queries_idle = active_queries_ == 0;
             // Phase timing of the run (telemetry only): the pass stamps its own
             // five phases; the whole call is timed here and nests them.
             taa_->configure_timing(telemetry_);
-            taa_->configure_sync_timing(gpu_sync_); // --gpu-sync-timing only: the taa_* sub-pass pairs inside the Taa pair
+            taa_->configure_sync_timing(gpu_sync_); // --gpu-sync-timing only: the taa_* sub-pass pairs inside the Taa
+                                                    // pair
             const std::uint64_t run_begin = stamp();
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
             // Fixture seam (HdrFault::Resolve): the run "fails" without touching
@@ -1754,64 +2336,85 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
             constexpr bool injected = false;
 #endif
             if (gpu_sync_) gpu_sync_->begin(gpu_sync_timing::Taa); // --gpu-sync-timing only
-            if (injected) { hr = E_FAIL; taa_->invalidate(); } else hr = taa_->run(in, &out);
+            if (injected) {
+                hr = E_FAIL;
+                taa_->invalidate();
+            } else
+                hr = taa_->run(in, &out);
             if (gpu_sync_) gpu_sync_->end(gpu_sync_timing::Taa);
             if (taa_->line_masks_failed() && !taa_masks_logged_) {
                 taa_masks_logged_ = true;
-                log("motion_output_taa_masks device=%llu unavailable=1 create=%08lx far_weight=%.4f far_filter=%.3f effect=options_off_for_session", id_, taa_->line_masks_result(), double(taa_far_weight_), double(taa_far_filter_));
+                log("motion_output_taa_masks device=%llu unavailable=1 create=%08lx far_weight=%.4f far_filter=%.3f effect=options_off_for_session",
+                    id_, taa_->line_masks_result(), double(taa_far_weight_), double(taa_far_filter_));
             }
-            // A' (the camera gate's only path): refused box targets turn the thin region off in the pass until a Reset re-arms
-            // the allocation (no fallback program set); one line per failure, the refusal row's shape.
+            // A' (the camera gate's only path): refused box targets turn the thin region off in the pass until a Reset
+            // re-arms the allocation (no fallback program set); one line per failure, the refusal row's shape.
             if (taa_->camera_gate_failed() != taa_box_refused_logged_) {
                 taa_box_refused_logged_ = taa_->camera_gate_failed();
                 if (taa_box_refused_logged_)
                     log("motion_output_taa_region_hold device=%llu unavailable=1 reason=box_target create=%08lx bilinear=%u history_taps=%u thin_region=%.4f effect=thin_region_off far_gate=screen far_clip=3x3",
-                        id_, taa_->camera_gate_result(), unsigned(taa_->bilinear_history_available()), 5u, double(taa_thin_weight_));
+                        id_, taa_->camera_gate_result(), unsigned(taa_->bilinear_history_available()), 5u,
+                        double(taa_thin_weight_));
             }
             release(composition_mask);
             const std::uint64_t run_ticks = stamp() - run_begin;
             const auto diagnostics = taa_->diagnostics();
-            t.result = injected ? hr : diagnostics.operation; t.restore = diagnostics.restoration;
+            t.result = injected ? hr : diagnostics.operation;
+            t.restore = diagnostics.restoration;
             // The depth-copy fold (taa-high-resolution.md S1): one line on the attachment's first completed run.
             if (!taa_fold_logged_ && !injected && SUCCEEDED(diagnostics.operation)) {
                 taa_fold_logged_ = true;
-                log("motion_output_taa_depth_fold device=%llu depth_fold=%u reason=%s", id_, unsigned(diagnostics.depth_folded), diagnostics.depth_fold_reason);
-                // S3: the history reconstruction the first run drew (always 5 taps: requested=5 since the 16-tap form went);
-                // region_hold: that run was a camera-gate run (A'); mask_targets: the owned mask targets it left allocated (none
-                // for a camera-gate run since the mask fold, two for the screen-gate chain or the far stabiliser alone, 0 without a far run).
-                log("motion_output_taa_history_taps device=%llu requested=%u drawn=%u bilinear=%u reason=%s region_hold=%u mask_targets=%u", id_, 5u, diagnostics.history_taps,
-                    unsigned(taa_->bilinear_history_available()), taa_->bilinear_history_reason(), unsigned(diagnostics.region_hold), taa_->line_mask_targets());
+                log("motion_output_taa_depth_fold device=%llu depth_fold=%u reason=%s", id_,
+                    unsigned(diagnostics.depth_folded), diagnostics.depth_fold_reason);
+                // S3: the history reconstruction the first run drew (always 5 taps: requested=5 since the 16-tap form
+                // went); region_hold: that run was a camera-gate run (A'); mask_targets: the owned mask targets it left
+                // allocated (none for a camera-gate run since the mask fold, two for the screen-gate chain or the far
+                // stabiliser alone, 0 without a far run).
+                log("motion_output_taa_history_taps device=%llu requested=%u drawn=%u bilinear=%u reason=%s region_hold=%u mask_targets=%u",
+                    id_, 5u, diagnostics.history_taps, unsigned(taa_->bilinear_history_available()),
+                    taa_->bilinear_history_reason(), unsigned(diagnostics.region_hold), taa_->line_mask_targets());
             }
-            // Thin vote: once per attachment, the first completed run that could not read the vote (the lane-off R32F RT2 has no
-            // .a, or no thin region; on the screen-gate chain also no fold or twin program): the flag is absent, the draws still
-            // upload c218.
-            if (thin_vote_upload_ && !injected && SUCCEEDED(diagnostics.operation) && !diagnostics.thin_vote && !thin_vote_fold_logged_) {
+            // Thin vote: once per attachment, the first completed run that could not read the vote (the lane-off R32F
+            // RT2 has no .a, or no thin region; on the screen-gate chain also no fold or twin program): the flag is
+            // absent, the draws still upload c218.
+            if (thin_vote_upload_ && !injected && SUCCEEDED(diagnostics.operation) && !diagnostics.thin_vote &&
+                !thin_vote_fold_logged_) {
                 thin_vote_fold_logged_ = true;
-                log("thin_vote_absent device=%llu frame=%llu lane=%u reason=%s depth_fold=%u depth_fold_reason=%s thin_region=%u twins=%u", id_, frame_, unsigned(sun_lane_active_),
-                    sun_lane_active_ ? diagnostics.thin_vote_reason : "lane_off_r32f", unsigned(diagnostics.depth_folded), diagnostics.depth_fold_reason,
-                    unsigned(taa_thin_weight_ > 0.f), unsigned(taa_->thin_vote_available()));
+                log("thin_vote_absent device=%llu frame=%llu lane=%u reason=%s depth_fold=%u depth_fold_reason=%s thin_region=%u twins=%u",
+                    id_, frame_, unsigned(sun_lane_active_),
+                    sun_lane_active_ ? diagnostics.thin_vote_reason : "lane_off_r32f",
+                    unsigned(diagnostics.depth_folded), diagnostics.depth_fold_reason, unsigned(taa_thin_weight_ > 0.f),
+                    unsigned(taa_->thin_vote_available()));
             }
-            // S4: what the runs actually draw, one row per change of reason ("half", or "odd_size" / "target" / "no_camera_gate"
-            // where a run falls back to the full-resolution box), the first 8 changes per attachment and then one
-            // suppressed=1 row (a gate toggling every frame cannot flood the log); nothing unless half resolution was configured.
-            if (taa_box_half_ && taa_->box_resolution() == 2 && !injected && SUCCEEDED(diagnostics.operation) && diagnostics.box_resolution_reason != taa_box_reason_logged_) {
+            // S4: what the runs actually draw, one row per change of reason ("half", or "odd_size" / "target" /
+            // "no_camera_gate" where a run falls back to the full-resolution box), the first 8 changes per attachment
+            // and then one suppressed=1 row (a gate toggling every frame cannot flood the log); nothing unless half
+            // resolution was configured.
+            if (taa_box_half_ && taa_->box_resolution() == 2 && !injected && SUCCEEDED(diagnostics.operation) &&
+                diagnostics.box_resolution_reason != taa_box_reason_logged_) {
                 taa_box_reason_logged_ = diagnostics.box_resolution_reason;
                 if (++taa_box_reason_rows_ <= 8)
-                    log("motion_output_taa_box_resolution device=%llu frame=%llu drawn=%s reason=%s width=%u height=%u target_create=%08lx", id_, frame_,
-                        diagnostics.box_half ? "half" : "full", diagnostics.box_resolution_reason, main_.width, main_.height, taa_->box_half_result());
+                    log("motion_output_taa_box_resolution device=%llu frame=%llu drawn=%s reason=%s width=%u height=%u target_create=%08lx",
+                        id_, frame_, diagnostics.box_half ? "half" : "full", diagnostics.box_resolution_reason,
+                        main_.width, main_.height, taa_->box_half_result());
                 else if (taa_box_reason_rows_ == 9)
-                    log("motion_output_taa_box_resolution device=%llu frame=%llu suppressed=1 changes=9 reason=%s (further changes of reason not logged for this attachment)", id_, frame_, diagnostics.box_resolution_reason);
+                    log("motion_output_taa_box_resolution device=%llu frame=%llu suppressed=1 changes=9 reason=%s (further changes of reason not logged for this attachment)",
+                        id_, frame_, diagnostics.box_resolution_reason);
             }
             auto& c = counters_;
-            c.taa_run_ticks += run_ticks; c.taa_capture_ticks += diagnostics.ticks_capture;
-            c.taa_copy_color_ticks += diagnostics.ticks_copy_color; c.taa_copy_depth_ticks += diagnostics.ticks_copy_depth;
-            c.taa_draw_ticks += diagnostics.ticks_draw; c.taa_apply_ticks += diagnostics.ticks_apply;
+            c.taa_run_ticks += run_ticks;
+            c.taa_capture_ticks += diagnostics.ticks_capture;
+            c.taa_copy_color_ticks += diagnostics.ticks_copy_color;
+            c.taa_copy_depth_ticks += diagnostics.ticks_copy_depth;
+            c.taa_draw_ticks += diagnostics.ticks_draw;
+            c.taa_apply_ticks += diagnostics.ticks_apply;
             record(unsigned(telemetry::Metric::TaaRun), run_ticks, FAILED(hr));
             record(unsigned(telemetry::Metric::TaaStateCapture), diagnostics.ticks_capture);
             record(unsigned(telemetry::Metric::TaaCopyColor), diagnostics.ticks_copy_color);
             record(unsigned(telemetry::Metric::TaaCopyDepth), diagnostics.ticks_copy_depth);
             record(unsigned(telemetry::Metric::TaaResolveDraw), diagnostics.ticks_draw);
-            record(unsigned(telemetry::Metric::TaaStateApply), diagnostics.ticks_apply, FAILED(diagnostics.restoration));
+            record(unsigned(telemetry::Metric::TaaStateApply), diagnostics.ticks_apply,
+                   FAILED(diagnostics.restoration));
             if (FAILED(diagnostics.restoration)) invalidate_render_states();
             if (SUCCEEDED(hr) && !out.color_surface) hr = E_FAIL;
             if (SUCCEEDED(hr)) {
@@ -1819,24 +2422,28 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
                     || (fixture_configured_ && fixture_.force_taa_readback)
 #endif
-                    )
-                    readback_surface(out.color_surface, D3DFMT_A16B16G16R16F, 8, L"taa", L"rgba16f", "motion_output_taa_readback", "rgba16f_row_major", target_width_, target_height_);
+                )
+                    readback_surface(out.color_surface, D3DFMT_A16B16G16R16F, 8, L"taa", L"rgba16f",
+                                     "motion_output_taa_readback", "rgba16f_row_major", target_width_, target_height_);
                 // Capture frames only: the age target of the far programs.
                 if (capture_ && taa_debug_ && out.age) {
                     IDirect3DSurface9* age = nullptr;
                     if (SUCCEEDED(out.age->GetSurfaceLevel(0, &age)) && age) {
-                        readback_surface(age, D3DFMT_R32F, 4, L"taa_age", L"r32f", "motion_output_taa_age_readback", "r32f_row_major", target_width_, target_height_);
+                        readback_surface(age, D3DFMT_R32F, 4, L"taa_age", L"r32f", "motion_output_taa_age_readback",
+                                         "r32f_row_major", target_width_, target_height_);
                         age->Release();
                     }
                 }
                 // The final stabiliser mask the resolve read at s8 (r filter weight, g far gate, b camera-gated and a
-                // screen-gated thin-region strength; the sentinel stabiliser shows in b). Under the region hold (A') it is
-                // the tests target instead (r screen openness, g far weight, b flag / class code, a camera openness), and the
-                // taa_age dump carries the holds in its fraction: floor(|age|) is the count.
+                // screen-gated thin-region strength; the sentinel stabiliser shows in b). Under the region hold (A') it
+                // is the tests target instead (r screen openness, g far weight, b flag / class code, a camera
+                // openness), and the taa_age dump carries the holds in its fraction: floor(|age|) is the count.
                 if (capture_ && taa_debug_ && out.stabiliser_mask) {
                     IDirect3DSurface9* mask = nullptr;
                     if (SUCCEEDED(out.stabiliser_mask->GetSurfaceLevel(0, &mask)) && mask) {
-                        readback_surface(mask, D3DFMT_A8R8G8B8, 4, L"taa_mask", L"bgra8", "motion_output_taa_mask_readback", "bgra8_row_major", target_width_, target_height_);
+                        readback_surface(mask, D3DFMT_A8R8G8B8, 4, L"taa_mask", L"bgra8",
+                                         "motion_output_taa_mask_readback", "bgra8_row_major", target_width_,
+                                         target_height_);
                         mask->Release();
                     }
                 }
@@ -1844,12 +2451,14 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
                     // Stage 3: no copy. The write-back that ends the redirect
                     // samples the resolved FP16 image (tonemap and meter), and
                     // the history already holds it.
-                    hdr_resolved_ = out.color; t.copy = S_FALSE;
+                    hdr_resolved_ = out.color;
+                    t.copy = S_FALSE;
                 } else if (out.display_written) {
                     // The pass drew the display image into the main target
                     // itself (the sharpened image, or the draw copy mode's
                     // identity write-back): no copy-back (taa_copy stays S_FALSE).
-                    t.copy = S_FALSE; t.sharpened = in.sharpen > 0.f;
+                    t.copy = S_FALSE;
+                    t.sharpened = in.sharpen > 0.f;
                 } else {
                     if (in.sharpen > 0.f) {
                         // The sharpened draw failed without losing the device: the
@@ -1859,34 +2468,42 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
                         if (logged_failures_ < failure_log_limit) {
                             ++logged_failures_;
                             log("motion_output_sharpen_failed device=%llu frame=%llu result=%08lx failures=%u disabled=%u",
-                                id_, frame_, out.sharpen_result, taa_sharpen_failures_, taa_sharpen_failures_ >= sharpen_failure_limit);
+                                id_, frame_, out.sharpen_result, taa_sharpen_failures_,
+                                taa_sharpen_failures_ >= sharpen_failure_limit);
                         }
                     }
                     // Point-filtered full-rect copy of the resolved FP16 image back into
                     // the 8-bit main target; StretchRect changes no device state.
                     const std::uint64_t copy_begin = stamp();
-                    hr = native<StretchFn>(StretchRect)(device_, out.color_surface, nullptr, main_surface, nullptr, D3DTEXF_POINT);
+                    hr = native<StretchFn>(StretchRect)(device_, out.color_surface, nullptr, main_surface, nullptr,
+                                                        D3DTEXF_POINT);
                     const std::uint64_t copy_ticks = stamp() - copy_begin;
                     counters_.taa_copy_back_ticks += copy_ticks;
                     record(unsigned(telemetry::Metric::TaaCopyBack), copy_ticks, FAILED(hr));
                     t.copy = hr;
                 }
-                if (FAILED(hr)) invalidate_taa(TaaInvalidateSite::ResolveFailed);
+                if (FAILED(hr))
+                    invalidate_taa(TaaInvalidateSite::ResolveFailed);
                 else {
-                    t.resolved = true; t.used_history = out.used_history;
+                    t.resolved = true;
+                    t.used_history = out.used_history;
                     // The history now holds this frame: its scene view is the
                     // previous view of the next resolve (invalid when unread).
-                    camera_previous_ = camera_scene_; camera_previous_frame_ = frame_;
+                    camera_previous_ = camera_scene_;
+                    camera_previous_frame_ = frame_;
                 }
                 // --taa-debug: the main target after the sharpen draw or the
                 // copy-back, i.e. the image this resolve presents (the taa
                 // readback above is the unsharpened history input); the HDR
                 // route reads it after its write-back instead (hdr_writeback).
                 if (SUCCEEDED(hr) && !hdr_scene && capture_ && taa_debug_)
-                    readback_surface(main_surface, static_cast<D3DFORMAT>(main_.format), 4, L"present", L"bgra8", "motion_output_present_readback", "bgra8_row_major", target_width_, target_height_);
+                    readback_surface(main_surface, static_cast<D3DFORMAT>(main_.format), 4, L"present", L"bgra8",
+                                     "motion_output_present_readback", "bgra8_row_major", target_width_,
+                                     target_height_);
             }
         }
-        release(depth); release(motion);
+        release(depth);
+        release(motion);
     });
     if (FAILED(hr) && logged_failures_ < failure_log_limit) {
         ++logged_failures_;
@@ -1913,19 +2530,31 @@ bool MotionOutput::resolve_hdr(SceneEndSource source) noexcept {
     const HRESULT hr = native<GetRenderTargetFn>(GetRenderTarget)(device_, 0, &rt0);
     const bool bound = SUCCEEDED(hr) && rt0 == hdr_->target();
     release(rt0);
-    if (!bound) { t.skip = unsigned(TaaSkip::Target); t.result = FAILED(hr) ? hr : E_FAIL; t.hdr = true; invalidate_taa(TaaInvalidateSite::Target); return true; }
+    if (!bound) {
+        t.skip = unsigned(TaaSkip::Target);
+        t.result = FAILED(hr) ? hr : E_FAIL;
+        t.hdr = true;
+        invalidate_taa(TaaInvalidateSite::Target);
+        return true;
+    }
     // The target's texture (the pass validates format, size and device; one
     // reference for the duration of the run).
     IDirect3DTexture9* scene = nullptr;
     HRESULT container = hdr_->target()->GetContainer(IID_IDirect3DTexture9, reinterpret_cast<void**>(&scene));
     if (SUCCEEDED(container) && !scene) container = E_NOINTERFACE;
-    if (FAILED(container)) { t.skip = unsigned(TaaSkip::Container); t.result = container; t.hdr = true; invalidate_taa(TaaInvalidateSite::Container); return true; }
+    if (FAILED(container)) {
+        t.skip = unsigned(TaaSkip::Container);
+        t.result = container;
+        t.hdr = true;
+        invalidate_taa(TaaInvalidateSite::Container);
+        return true;
+    }
     resolve(hdr_main_, scene);
     release(scene);
     return true;
 }
-void MotionOutput::before_stretch(IDirect3DSurface9* source, const RECT* source_rect,
-                                  IDirect3DSurface9* destination, const RECT* destination_rect) noexcept {
+void MotionOutput::before_stretch(IDirect3DSurface9* source, const RECT* source_rect, IDirect3DSurface9* destination,
+                                  const RECT* destination_rect) noexcept {
     // The application's copy (and the resolve, which samples RT1/RT2) must
     // see the application's bindings.
     restore_bindings();
@@ -1936,9 +2565,14 @@ void MotionOutput::before_stretch(IDirect3DSurface9* source, const RECT* source_
     bool bloom = false;
     if (selector_.state() == renderer::BoundaryState::AwaitCopy) {
         renderer::Event e{};
-        e.kind = renderer::EventKind::Copy; e.sequence = sequence_ + 1; e.result_known = true; e.result = 0;
-        e.source = describe_surface(source); e.destination = describe_surface(destination);
-        e.source_rect_null = source_rect == nullptr; e.destination_rect_null = destination_rect == nullptr;
+        e.kind = renderer::EventKind::Copy;
+        e.sequence = sequence_ + 1;
+        e.result_known = true;
+        e.result = 0;
+        e.source = describe_surface(source);
+        e.destination = describe_surface(destination);
+        e.source_rect_null = source_rect == nullptr;
+        e.destination_rect_null = destination_rect == nullptr;
         renderer::SceneBoundarySelector probe = selector_;
         probe.observe(e);
         bloom = probe.state() == renderer::BoundaryState::AwaitBloomTarget;
@@ -1948,14 +2582,25 @@ void MotionOutput::before_stretch(IDirect3DSurface9* source, const RECT* source_
     // of the main target, so the application copies the resolved image); any
     // other copy reading the main target flushes first, one writing it ends
     // first.
-    if (bloom && gpu_sync_) gpu_sync_->end(gpu_sync_timing::Engine); // --gpu-sync-timing only: the copy fallback's scene end (a no-op after the hook's)
-    if(bloom&&!counters_.hook_scene_end){publish_sun_lane("copy");if(candidates_requested_)publish_shadow_replay_candidates();if(thin_vote_read_count_)read_thin_votes();if(sun_apply_requested_)run_sun_shadow_apply();}
+    if (bloom && gpu_sync_)
+        gpu_sync_->end(gpu_sync_timing::Engine); // --gpu-sync-timing only: the copy fallback's scene end (a no-op after
+                                                 // the hook's)
+    if (bloom && !counters_.hook_scene_end) {
+        publish_sun_lane("copy");
+        if (candidates_requested_) publish_shadow_replay_candidates();
+        if (thin_vote_read_count_) read_thin_votes();
+        if (sun_apply_requested_) run_sun_shadow_apply();
+    }
     if (bloom && fog_requested_) run_volumetric_fog(); // once per frame (fog_frame_), as at the hook
     if (motion_state_lost_ || composition_state_lost_) return;
     if (hdr_state_ != HdrState::Off) {
-        if (bloom) { resolve_hdr(SceneEndSource::StretchRect); end_redirect(HdrEnd::BloomCopy); }
-        else if (hdr_is_main(destination)) end_redirect(HdrEnd::ContentWrite);
-        else if (hdr_is_main(source)) flush_redirect();
+        if (bloom) {
+            resolve_hdr(SceneEndSource::StretchRect);
+            end_redirect(HdrEnd::BloomCopy);
+        } else if (hdr_is_main(destination))
+            end_redirect(HdrEnd::ContentWrite);
+        else if (hdr_is_main(source))
+            flush_redirect();
     }
     if (!bloom) return;
     counters_.bloom_copy_seen = true; // The selector's scene end (cross-checked against the engine hook at Present).
@@ -1971,10 +2616,18 @@ void MotionOutput::before_stretch(IDirect3DSurface9* source, const RECT* source_
 // of a second attempt in one frame).
 bool MotionOutput::resolve_allowed(SceneEndSource source) noexcept {
     auto& t = counters_.taa;
-    if (composition_state_lost_ || motion_state_lost_) { invalidate_taa(TaaInvalidateSite::StateLost); return false; }
+    if (composition_state_lost_ || motion_state_lost_) {
+        invalidate_taa(TaaInvalidateSite::StateLost);
+        return false;
+    }
     if (t.attempted) return false;
-    t.attempted = true; t.source = unsigned(source);
-    auto skip = [&](TaaSkip why) { t.skip = unsigned(why); invalidate_taa(TaaInvalidateSite::Skip); return false; };
+    t.attempted = true;
+    t.source = unsigned(source);
+    auto skip = [&](TaaSkip why) {
+        t.skip = unsigned(why);
+        invalidate_taa(TaaInvalidateSite::Skip);
+        return false;
+    };
     // A multisampled main target routed nothing (no RT1/RT2, no jitter).
     if (main_msaa_) return skip(TaaSkip::Msaa);
     // The resolve without jitter is a no-op visually and would only blur.
@@ -1991,10 +2644,14 @@ bool MotionOutput::resolve_allowed(SceneEndSource source) noexcept {
     // that is how the history and its view are established.
     if (sentinel_mode_ == renderer::SentinelMode::Camera) {
         t.camera_previous_valid = camera_previous_.valid;
-        const auto decision = renderer::camera_sentinel_policy(sentinel_mode_, camera_scene_, camera_previous_, camera_cut_degrees_);
-        if (decision.reason == renderer::SentinelReason::CurrentInvalid || decision.reason == renderer::SentinelReason::TransformFailed) {
-            t.camera_policy = decision.policy; t.camera_reason = unsigned(decision.reason);
-            t.camera_cut = decision.cut; t.camera_rotation_deg = decision.rotation_degrees;
+        const auto decision = renderer::camera_sentinel_policy(sentinel_mode_, camera_scene_, camera_previous_,
+                                                               camera_cut_degrees_);
+        if (decision.reason == renderer::SentinelReason::CurrentInvalid ||
+            decision.reason == renderer::SentinelReason::TransformFailed) {
+            t.camera_policy = decision.policy;
+            t.camera_reason = unsigned(decision.reason);
+            t.camera_cut = decision.cut;
+            t.camera_rotation_deg = decision.rotation_degrees;
             return skip(TaaSkip::CameraState);
         }
     }
@@ -2017,7 +2674,8 @@ void MotionOutput::scene_end_hook(MotionHdrSceneCallback callback, void* context
     if (state != renderer::BoundaryState::Scene || counters_.hook_scene_end) {
         // Outside the Scene phase (menu, rejected or environment-map frame) or
         // a second signal: nothing to end; the cross-check at Present reports it.
-        ++counters_.hook_outside_scene; counters_.hook_state = unsigned(state);
+        ++counters_.hook_outside_scene;
+        counters_.hook_state = unsigned(state);
         return;
     }
     restore_bindings();
@@ -2026,11 +2684,16 @@ void MotionOutput::scene_end_hook(MotionHdrSceneCallback callback, void* context
     // Capture-frame marker (ambient-occlusion.md section 8, "In-scene HUD"):
     // the frame's draw counter at the signal, so draws after the scene end
     // are identifiable by index in the per-draw capture log.
-    if (capture_) log("scene_end_marker device=%llu frame=%llu draw_index=%lu", id_, frame_, static_cast<unsigned long>(counters_.draws));
-    if (gpu_sync_) gpu_sync_->end(gpu_sync_timing::Engine); // --gpu-sync-timing only: the engine's draw span ends where the proxy's scene-end work begins
+    if (capture_)
+        log("scene_end_marker device=%llu frame=%llu draw_index=%lu", id_, frame_,
+            static_cast<unsigned long>(counters_.draws));
+    if (gpu_sync_)
+        gpu_sync_->end(gpu_sync_timing::Engine); // --gpu-sync-timing only: the engine's draw span ends where the
+                                                 // proxy's scene-end work begins
     publish_sun_lane("hook");
     if (candidates_requested_) publish_shadow_replay_candidates();
-    if (thin_vote_read_count_) read_thin_votes(); // the subsets first drawn this frame: histograms for the next frames' votes
+    if (thin_vote_read_count_)
+        read_thin_votes(); // the subsets first drawn this frame: histograms for the next frames' votes
     // Sun-shadow application (legacy-sun-application.md section 2): after the
     // replay produced this frame's map, before the fog and the resolve.
     if (sun_apply_requested_) run_sun_shadow_apply();
@@ -2054,77 +2717,109 @@ void MotionOutput::scene_end_hook(MotionHdrSceneCallback callback, void* context
     IDirect3DSurface9* rt0 = nullptr;
     const HRESULT hr = native<GetRenderTargetFn>(GetRenderTarget)(device_, 0, &rt0);
     if (FAILED(hr) || !rt0 || !same(describe_surface(rt0), main_)) {
-        counters_.taa.skip = unsigned(TaaSkip::Target); counters_.taa.result = FAILED(hr) ? hr : E_FAIL;
-        invalidate_taa(TaaInvalidateSite::Target); release(rt0); return;
+        counters_.taa.skip = unsigned(TaaSkip::Target);
+        counters_.taa.result = FAILED(hr) ? hr : E_FAIL;
+        invalidate_taa(TaaInvalidateSite::Target);
+        release(rt0);
+        return;
     }
     resolve(rt0, nullptr);
     release(rt0);
 }
 
 void MotionOutput::publish_sun_lane(const char* source) noexcept {
-    if(!sun_lane_requested_)return;
-    const bool coverage=composition_&&sun_coverage_current_&&composition_->coverage_valid()&&
-        !composition_frame_stopped_&&!composition_quarantined_&&!composition_state_lost_&&!composition_busy_;
-    const bool owner=hdr_enabled_&&hdr_state_==HdrState::Active&&hdr_&&hdr_->tonemap_active()&&
-        hdr_target_.known&&hdr_target_.format==D3DFMT_A16B16G16R16F&&
-        hdr_config_.decode==x3::temporal::AgxDecode::gamma22&&hdr_config_.tonemap==renderer::HdrTonemap::Agx&&
-        counters_.filled&&!motion_state_lost_&&!composition_state_lost_&&!composition_frame_stopped_&&
-        !composition_quarantined_&&!composition_busy_&&!cutout_coverage_missed_;
-    sun_frame_.failed=sun_frame_.failed||sun_lane_failed_;
-    sun_owner_valid_=owner;
-    const bool available=sun_frame_.publish(sun_lane_active_&&depth_surface_,owner,coverage);
+    if (!sun_lane_requested_) return;
+    const bool coverage = composition_ && sun_coverage_current_ && composition_->coverage_valid() &&
+                          !composition_frame_stopped_ && !composition_quarantined_ && !composition_state_lost_ &&
+                          !composition_busy_;
+    const bool owner = hdr_enabled_ && hdr_state_ == HdrState::Active && hdr_ && hdr_->tonemap_active() &&
+                       hdr_target_.known && hdr_target_.format == D3DFMT_A16B16G16R16F &&
+                       hdr_config_.decode == x3::temporal::AgxDecode::gamma22 &&
+                       hdr_config_.tonemap == renderer::HdrTonemap::Agx && counters_.filled && !motion_state_lost_ &&
+                       !composition_state_lost_ && !composition_frame_stopped_ && !composition_quarantined_ &&
+                       !composition_busy_ && !cutout_coverage_missed_;
+    sun_frame_.failed = sun_frame_.failed || sun_lane_failed_;
+    sun_owner_valid_ = owner;
+    const bool available = sun_frame_.publish(sun_lane_active_ && depth_surface_, owner, coverage);
     // cutout_opaque_*: the tested-opaque arm's cutout-pair counts of this frame
     // (also on linear_material_frame with linear materials on); original_variants
     // / original_refused: the original share producer's create-time totals.
-    if(shadow_state_row())log("sun_shadow_lane_frame device=%llu frame=%llu source=%s format=%u available=%u receiver_draws=%u covered_draws=%u untracked_writers=%u non_depth_writers=%u failed=%u owner=%u exclusion_required=%u exclusion_valid=%u shadows=%u cutout_opaque_routed=%u cutout_opaque_lane=%u cutout_opaque_refused=%u original_variants=%u original_refused=%u original_refused_draws=%u stamped=%u stamp_refused=%u stamped_prims=%u",
-        id_,frame_,source,unsigned(lane_depth_format()),available,sun_frame_.receivers,sun_frame_.covered,sun_frame_.untracked,sun_frame_.non_writers,sun_frame_.failed,owner,sun_frame_.coverage_required,coverage,
-        unsigned(sun_apply_requested_),counters_.cutout_opaque_routed,counters_.cutout_opaque_lane,counters_.cutout_opaque_refused,sun_original_variants_,sun_original_refused_,sun_original_refused_draws_,sun_stamps_,sun_stamp_refused_,sun_stamp_prims_);
+    if (shadow_state_row())
+        log("sun_shadow_lane_frame device=%llu frame=%llu source=%s format=%u available=%u receiver_draws=%u covered_draws=%u untracked_writers=%u non_depth_writers=%u failed=%u owner=%u exclusion_required=%u exclusion_valid=%u shadows=%u cutout_opaque_routed=%u cutout_opaque_lane=%u cutout_opaque_refused=%u original_variants=%u original_refused=%u original_refused_draws=%u stamped=%u stamp_refused=%u stamped_prims=%u",
+            id_, frame_, source, unsigned(lane_depth_format()), available, sun_frame_.receivers, sun_frame_.covered,
+            sun_frame_.untracked, sun_frame_.non_writers, sun_frame_.failed, owner, sun_frame_.coverage_required,
+            coverage, unsigned(sun_apply_requested_), counters_.cutout_opaque_routed, counters_.cutout_opaque_lane,
+            counters_.cutout_opaque_refused, sun_original_variants_, sun_original_refused_, sun_original_refused_draws_,
+            sun_stamps_, sun_stamp_refused_, sun_stamp_prims_);
     // Refusal buckets for the untracked-writer veto: one line per frame with
     // untracked writers, never per draw (docs/verification/directional-shadows.md).
     // Bounded since the logging tiers (the row is in every tier): every frame with the family rows every frame
-    // (X3M_SHADOW_ROWS / X3M_DEBUG=1 / X3M_MOTION_FRAME_LOG=1 with telemetry), otherwise the first 16 rows per device and
-    // then one row per 600 frames, the frames skipped in between counted by one sun_shadow_lane_refusals_skipped row.
-    if(!sun_frame_.untracked)return;
-    const bool every_frame=shadow_rows_||(telemetry_&&frame_log_interval_==1);
-    if(!every_frame&&sun_refusal_rows_>=16&&frame_-sun_refusal_last_frame_<600){++sun_refusal_skipped_;return;}
-    if(sun_refusal_skipped_)log("sun_shadow_lane_refusals_skipped device=%llu frame=%llu skipped=%u since_frame=%llu",id_,frame_,sun_refusal_skipped_,sun_refusal_last_frame_);
-    ++sun_refusal_rows_;sun_refusal_last_frame_=frame_;sun_refusal_skipped_=0;
-    char buckets[320]; int used=0;
-    for(unsigned i=0;i<renderer::sun_untracked_reason_count&&used>=0&&std::size_t(used)<sizeof buckets;++i){
-        const int n=std::snprintf(buckets+used,sizeof buckets-std::size_t(used)," %s=%lu",renderer::sun_untracked_reason_name(i),static_cast<unsigned long>(sun_frame_.reasons[i]));
-        used=n<0?-1:used+n;
+    // (X3M_SHADOW_ROWS / X3M_DEBUG=1 / X3M_MOTION_FRAME_LOG=1 with telemetry), otherwise the first 16 rows per device
+    // and then one row per 600 frames, the frames skipped in between counted by one sun_shadow_lane_refusals_skipped
+    // row.
+    if (!sun_frame_.untracked) return;
+    const bool every_frame = shadow_rows_ || (telemetry_ && frame_log_interval_ == 1);
+    if (!every_frame && sun_refusal_rows_ >= 16 && frame_ - sun_refusal_last_frame_ < 600) {
+        ++sun_refusal_skipped_;
+        return;
     }
-    if(used<0||std::size_t(used)>=sizeof buckets)buckets[0]='\0';
-    log("sun_shadow_lane_refusals device=%llu frame=%llu untracked=%lu%s signatures=%u overflow=%u",
-        id_,frame_,static_cast<unsigned long>(sun_frame_.untracked),buckets,sun_writer_count_,sun_writer_overflow_);
+    if (sun_refusal_skipped_)
+        log("sun_shadow_lane_refusals_skipped device=%llu frame=%llu skipped=%u since_frame=%llu", id_, frame_,
+            sun_refusal_skipped_, sun_refusal_last_frame_);
+    ++sun_refusal_rows_;
+    sun_refusal_last_frame_ = frame_;
+    sun_refusal_skipped_ = 0;
+    char buckets[320];
+    int used = 0;
+    for (unsigned i = 0; i < renderer::sun_untracked_reason_count && used >= 0 && std::size_t(used) < sizeof buckets;
+         ++i) {
+        const int n = std::snprintf(buckets + used, sizeof buckets - std::size_t(used), " %s=%lu",
+                                    renderer::sun_untracked_reason_name(i),
+                                    static_cast<unsigned long>(sun_frame_.reasons[i]));
+        used = n < 0 ? -1 : used + n;
+    }
+    if (used < 0 || std::size_t(used) >= sizeof buckets) buckets[0] = '\0';
+    log("sun_shadow_lane_refusals device=%llu frame=%llu untracked=%lu%s signatures=%u overflow=%u", id_, frame_,
+        static_cast<unsigned long>(sun_frame_.untracked), buckets, sun_writer_count_, sun_writer_overflow_);
 }
 // Distinct untracked-writer identity (program pair, refusal reason, z state,
 // declaration and stride): logged once per signature per device, at most
 // sun_writer_capacity entries; the rest only increment the overflow counter.
 // Reached only for a draw the frame already counted untracked (lane on).
 void MotionOutput::note_sun_untracked_writer(const MotionRoute& route, renderer::SunUntrackedReason reason) noexcept {
-    const SunWriterSignature signature{shadow_.vs_hash,shadow_.ps_hash,shadow_.declaration,
-        std::uint32_t(shadow_.stream0_stride),std::uint8_t(reason),route.sun_z_state,std::uint8_t(shadow_.ps_registered?1u:0u)};
-    for(unsigned i=0;i<sun_writer_count_;++i){
-        const auto& s=sun_writers_[i];
-        if(s.vs==signature.vs&&s.ps==signature.ps&&s.declaration==signature.declaration&&s.stride==signature.stride&&
-           s.reason==signature.reason&&s.z_state==signature.z_state&&s.registered==signature.registered)return;
+    const SunWriterSignature signature{shadow_.vs_hash,
+                                       shadow_.ps_hash,
+                                       shadow_.declaration,
+                                       std::uint32_t(shadow_.stream0_stride),
+                                       std::uint8_t(reason),
+                                       route.sun_z_state,
+                                       std::uint8_t(shadow_.ps_registered ? 1u : 0u)};
+    for (unsigned i = 0; i < sun_writer_count_; ++i) {
+        const auto& s = sun_writers_[i];
+        if (s.vs == signature.vs && s.ps == signature.ps && s.declaration == signature.declaration &&
+            s.stride == signature.stride && s.reason == signature.reason && s.z_state == signature.z_state &&
+            s.registered == signature.registered)
+            return;
     }
-    if(sun_writer_count_>=sun_writer_capacity){++sun_writer_overflow_;return;}
-    sun_writers_[sun_writer_count_++]=signature;
+    if (sun_writer_count_ >= sun_writer_capacity) {
+        ++sun_writer_overflow_;
+        return;
+    }
+    sun_writers_[sun_writer_count_++] = signature;
     // The gate-4 states the chain read for this draw at the first sighting (-1
     // when the chain did not read them; not part of the signature key): alpha
     // test, RT0 mask, sRGB write, plus cutout-pair identity and whether the
     // exact cutout arm was configured on the frame, so a `state` refusal names
     // its failing term (run 28 session B: the two cutout pairs refused on every
     // frame under a nonzero mip bias, arm=0).
-    const unsigned s=route.sun_draw_state;
+    const unsigned s = route.sun_draw_state;
     log("sun_shadow_lane_writer device=%llu frame=%llu index=%u vs=%016llx ps=%016llx reason=%s gate=%u registered=%u z=%u zwrite=%u z_known=%u declaration=%016llx stride=%lu test=%d mask=%d srgb=%d cutout_pair=%u arm=%u",
-        id_,frame_,sun_writer_count_,signature.vs,signature.ps,renderer::sun_untracked_reason_name(unsigned(reason)),unsigned(route.gate),unsigned(signature.registered),
-        unsigned(signature.z_state&1u),unsigned((signature.z_state>>1)&1u),unsigned((signature.z_state>>2)&1u),
-        signature.declaration,static_cast<unsigned long>(signature.stride),
-        (s&(1u<<7))?int((s>>4)&1u):-1,(s&(1u<<6))?int(s&15u):-1,(s&(1u<<8))?int((s>>5)&1u):-1,
-        unsigned(shadow_.cutout_pair),unsigned(cutout_arm_active_));
+        id_, frame_, sun_writer_count_, signature.vs, signature.ps,
+        renderer::sun_untracked_reason_name(unsigned(reason)), unsigned(route.gate), unsigned(signature.registered),
+        unsigned(signature.z_state & 1u), unsigned((signature.z_state >> 1) & 1u),
+        unsigned((signature.z_state >> 2) & 1u), signature.declaration, static_cast<unsigned long>(signature.stride),
+        (s & (1u << 7)) ? int((s >> 4) & 1u) : -1, (s & (1u << 6)) ? int(s & 15u) : -1,
+        (s & (1u << 8)) ? int((s >> 5) & 1u) : -1, unsigned(shadow_.cutout_pair), unsigned(cutout_arm_active_));
 }
 
 namespace {
@@ -2141,8 +2836,9 @@ constexpr float projection_default_m22 = 1.000003f, projection_default_m32 = -6.
 // enabled= is the state of the family= driven; both states are logged.
 bool MotionOutput::configure_lightmap_far_fade(float p0, float p1, float floor) noexcept {
     if (device_) return lightmap_far_fade_; // Creation-time shader variant: immutable after attach.
-    lightmap_far_fade_ = hull_lightmap_gain_requested_ && std::isfinite(p0) && std::isfinite(p1) && std::isfinite(floor)
-        && p0 > 0.f && p1 > p0 && p1 <= 1e6f && floor >= 0.f && floor <= hull_lightmap_gain_;
+    lightmap_far_fade_ = hull_lightmap_gain_requested_ && std::isfinite(p0) && std::isfinite(p1) &&
+                         std::isfinite(floor) && p0 > 0.f && p1 > p0 && p1 <= 1e6f && floor >= 0.f &&
+                         floor <= hull_lightmap_gain_;
     lightmap_fade_p0_ = lightmap_far_fade_ ? p0 : 0.f;
     lightmap_fade_inv_ = lightmap_far_fade_ ? 1.f / (p1 - p0) : 0.f;
     lightmap_fade_floor_ = lightmap_far_fade_ ? floor : 1.f;
@@ -2150,8 +2846,8 @@ bool MotionOutput::configure_lightmap_far_fade(float p0, float p1, float floor) 
 }
 bool MotionOutput::configure_hull_emissive_widening(float k, float b) noexcept {
     if (device_) return lightmap_widen_; // Creation-time shader variant: immutable after attach.
-    lightmap_widen_ = hull_lightmap_gain_requested_ && std::isfinite(k) && std::isfinite(b)
-        && k > 1.f && k <= 8.f && b >= 1.f && b <= k;
+    lightmap_widen_ = hull_lightmap_gain_requested_ && std::isfinite(k) && std::isfinite(b) && k > 1.f && k <= 8.f &&
+                      b >= 1.f && b <= k;
     lightmap_widen_k_ = lightmap_widen_ ? k : 1.f;
     lightmap_widen_b_ = lightmap_widen_ ? b : 1.f;
     return lightmap_widen_;
@@ -2159,22 +2855,29 @@ bool MotionOutput::configure_hull_emissive_widening(float k, float b) noexcept {
 int MotionOutput::hull_emission_gain_toggle(bool lightmap) noexcept {
     const bool available = lightmap ? hull_lightmap_gain_requested_ : hull_emission_gain_requested_;
     if (available) {
-        if (lightmap) hull_lightmap_enabled_ = !hull_lightmap_enabled_;
-        else hull_gain_enabled_ = !hull_gain_enabled_;
+        if (lightmap)
+            hull_lightmap_enabled_ = !hull_lightmap_enabled_;
+        else
+            hull_gain_enabled_ = !hull_gain_enabled_;
     }
     const bool state = lightmap ? hull_lightmap_enabled_ : hull_gain_enabled_;
     log("hull_emission_gain_toggle device=%llu frame=%llu family=%s accepted=%u enabled=%u requested=%u gain=%g lightmap_requested=%u lightmap_gain=%g hull_enabled=%u lightmap_enabled=%u",
         id_, frame_, lightmap ? "lightmap" : "guide", unsigned(available), unsigned(state),
-        unsigned(hull_emission_gain_requested_), double(hull_emission_gain_),
-        unsigned(hull_lightmap_gain_requested_), double(hull_lightmap_gain_),
-        unsigned(hull_gain_enabled_), unsigned(hull_lightmap_enabled_));
+        unsigned(hull_emission_gain_requested_), double(hull_emission_gain_), unsigned(hull_lightmap_gain_requested_),
+        double(hull_lightmap_gain_), unsigned(hull_gain_enabled_), unsigned(hull_lightmap_enabled_));
     return available ? (state ? 1 : 0) : -1;
 }
-void MotionOutput::after_begin_scene(HRESULT result) noexcept { if (enabled_ && SUCCEEDED(result)) scene_open_ = true; }
-void MotionOutput::after_end_scene(HRESULT result) noexcept { if (enabled_ && SUCCEEDED(result)) scene_open_ = false; }
+void MotionOutput::after_begin_scene(HRESULT result) noexcept {
+    if (enabled_ && SUCCEEDED(result)) scene_open_ = true;
+}
+void MotionOutput::after_end_scene(HRESULT result) noexcept {
+    if (enabled_ && SUCCEEDED(result)) scene_open_ = false;
+}
 void MotionOutput::query_active(bool active) noexcept {
-    if (active) ++active_queries_;
-    else if (active_queries_) --active_queries_;
+    if (active)
+        ++active_queries_;
+    else if (active_queries_)
+        --active_queries_;
 }
 
 // Lazily (re)creates the RGBA32F motion target and, when the device produces
@@ -2188,23 +2891,23 @@ void MotionOutput::query_active(bool active) noexcept {
 // device_references() would then under-count by one and the release hook's
 // final-Release probe would never match, leaking the device.
 bool MotionOutput::ensure_target(UINT width, UINT height) noexcept {
-    const bool lane=sun_lane_requested_&&sun_lane_qualified_&&!sun_lane_failed_&&
-        sun_lane_depth_qualified(static_cast<D3DFORMAT>(main_depth_.format));
+    const bool lane = sun_lane_requested_ && sun_lane_qualified_ && !sun_lane_failed_ &&
+                      sun_lane_depth_qualified(static_cast<D3DFORMAT>(main_depth_.format));
     // Scene latch only, before any fill/routing. Switching an exact qualified
     // attachment or retiring a failed lane never changes storage mid-frame.
-    if (target_surface_ && target_width_ == width && target_height_ == height && sun_lane_active_==lane) return true;
+    if (target_surface_ && target_width_ == width && target_height_ == height && sun_lane_active_ == lane) return true;
     // Only a failed enhanced lane changing storage within this exact device,
     // size and reset generation may retain row correspondence. R32F temporal
     // history already contains the prior G32 input's point-copied .r; the new
     // current RT1/RT2 receive the ordinary sentinel fill before any draw.
-    const bool preserve_rows = target_surface_ && sun_lane_active_ && !lane && sun_lane_failed_
-        && target_generation_ == generation_ && target_width_ == width && target_height_ == height;
+    const bool preserve_rows = target_surface_ && sun_lane_active_ && !lane && sun_lane_failed_ &&
+                               target_generation_ == generation_ && target_width_ == width && target_height_ == height;
     release_target();
     if (target_failed_ || !width || !height) return false;
-    sun_lane_active_=lane;
+    sun_lane_active_ = lane;
     IDirect3DTexture9* texture = nullptr;
     HRESULT hr = native<CreateTextureFn>(CreateTexture)(device_, width, height, 1, D3DUSAGE_RENDERTARGET,
-        D3DFMT_A32B32G32R32F, D3DPOOL_DEFAULT, &texture, nullptr);
+                                                        D3DFMT_A32B32G32R32F, D3DPOOL_DEFAULT, &texture, nullptr);
     HRESULT level = E_FAIL, depth_hr = S_FALSE, depth_level = S_FALSE;
     if (SUCCEEDED(hr) && texture) level = texture->GetSurfaceLevel(0, &target_surface_);
     release(texture);
@@ -2216,21 +2919,30 @@ bool MotionOutput::ensure_target(UINT width, UINT height) noexcept {
         // shadow-receiver-depth.md), in the lane's CheckDeviceFormat list
         // (sun_share_lane_inc.h); R32F off the lane.
         depth_hr = native<CreateTextureFn>(CreateTexture)(device_, width, height, 1, D3DUSAGE_RENDERTARGET,
-            lane_depth_format(), D3DPOOL_DEFAULT, &texture, nullptr);
+                                                          lane_depth_format(), D3DPOOL_DEFAULT, &texture, nullptr);
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
-        {char fault[16]{};GetEnvironmentVariableA("X3M_FIXTURE_SUN_LANE_FAULT",fault,sizeof fault);
-         if(sun_lane_active_&&!std::strcmp(fault,"allocation")){release(texture);depth_hr=E_OUTOFMEMORY;}}
+        {
+            char fault[16]{};
+            GetEnvironmentVariableA("X3M_FIXTURE_SUN_LANE_FAULT", fault, sizeof fault);
+            if (sun_lane_active_ && !std::strcmp(fault, "allocation")) {
+                release(texture);
+                depth_hr = E_OUTOFMEMORY;
+            }
+        }
 #endif
         depth_level = E_FAIL;
         if (SUCCEEDED(depth_hr) && texture) depth_level = texture->GetSurfaceLevel(0, &depth_surface_);
         release(texture);
-        if(sun_lane_active_&&(FAILED(depth_hr)||FAILED(depth_level)||!depth_surface_)){
+        if (sun_lane_active_ && (FAILED(depth_hr) || FAILED(depth_level) || !depth_surface_)) {
             // Discard the incomplete enhancement and retry only the ordinary
             // depth allocation. RT1 and all ordinary cached shaders survive.
-            release(depth_surface_); sun_lane_active_=false; sun_lane_failed_=true;
-            depth_hr=native<CreateTextureFn>(CreateTexture)(device_,width,height,1,D3DUSAGE_RENDERTARGET,D3DFMT_R32F,D3DPOOL_DEFAULT,&texture,nullptr);
-            depth_level=E_FAIL;
-            if(SUCCEEDED(depth_hr)&&texture)depth_level=texture->GetSurfaceLevel(0,&depth_surface_);
+            release(depth_surface_);
+            sun_lane_active_ = false;
+            sun_lane_failed_ = true;
+            depth_hr = native<CreateTextureFn>(CreateTexture)(device_, width, height, 1, D3DUSAGE_RENDERTARGET,
+                                                              D3DFMT_R32F, D3DPOOL_DEFAULT, &texture, nullptr);
+            depth_level = E_FAIL;
+            if (SUCCEEDED(depth_hr) && texture) depth_level = texture->GetSurfaceLevel(0, &depth_surface_);
             release(texture);
         }
         if (FAILED(depth_hr) || FAILED(depth_level) || !depth_surface_) hr = FAILED(depth_hr) ? depth_hr : E_FAIL;
@@ -2242,7 +2954,9 @@ bool MotionOutput::ensure_target(UINT width, UINT height) noexcept {
         target_failed_ = true; // Retry only after Reset; do not spam allocation per frame.
         return false;
     }
-    target_width_ = width; target_height_ = height; target_generation_ = generation_;
+    target_width_ = width;
+    target_height_ = height;
+    target_generation_ = generation_;
     if (!preserve_rows) history_.invalidate();
     log("motion_output_target device=%llu width=%u height=%u create=%08lx level=%08lx depth=%u depth_create=%08lx depth_level=%08lx",
         id_, width, height, hr, level, depth_enabled_, depth_hr, depth_level);
@@ -2261,13 +2975,20 @@ void MotionOutput::bind_direct() noexcept {
     void** const table = monitored ? nullptr : *reinterpret_cast<void***>(borrowed);
     bool complete = table != nullptr;
     if (table) {
-        static constexpr unsigned slots[] = { SetRenderState, GetRenderState, GetSamplerState, SetSamplerState,
-            SetVertexShaderConstantF, GetStreamSourceFreq, SetPixelShaderConstantF };
+        static constexpr unsigned slots[] = {SetRenderState,         GetRenderState,           GetSamplerState,
+                                             SetSamplerState,        SetVertexShaderConstantF, GetStreamSourceFreq,
+                                             SetPixelShaderConstantF};
         for (void*& entry : direct_slots_) entry = nullptr;
-        for (const unsigned slot : slots) { direct_slots_[slot] = table[slot]; complete = complete && table[slot]; }
+        for (const unsigned slot : slots) {
+            direct_slots_[slot] = table[slot];
+            complete = complete && table[slot];
+        }
     }
     static_assert(SetPixelShaderConstantF < direct_slot_count, "direct_slots_ must cover every direct_call slot");
-    if (complete) { direct_ = direct_slots_; direct_device_ = borrowed; }
+    if (complete) {
+        direct_ = direct_slots_;
+        direct_device_ = borrowed;
+    }
     log("motion_direct device=%llu enabled=%u admission=%u slots=7", id_, unsigned(complete), unsigned(monitored));
 }
 __attribute__((noinline, cold)) HRESULT MotionOutput::direct_failed(HRESULT hr) const noexcept {
@@ -2284,78 +3005,142 @@ __attribute__((noinline, cold)) HRESULT MotionOutput::direct_failed(HRESULT hr) 
     return ownership::observe_native_result(device_, hr);
 }
 
-void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::uint64_t device_id,
-                          const D3DCAPS9& caps, bool requested, telemetry::State* stats) noexcept {
-    device_ = device; native_ = native_table; id_ = device_id; caps_ = caps; requested_ = requested;
+void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::uint64_t device_id, const D3DCAPS9& caps,
+                          bool requested, telemetry::State* stats) noexcept {
+    device_ = device;
+    native_ = native_table;
+    id_ = device_id;
+    caps_ = caps;
+    requested_ = requested;
     bind_direct();
-    stats_ = stats; lazy_rt1_ = lazy_rt2_ = false;
-    enabled_ = false; depth_enabled_ = false;
+    stats_ = stats;
+    lazy_rt1_ = lazy_rt2_ = false;
+    enabled_ = false;
+    depth_enabled_ = false;
     sun_writer_count_ = sun_writer_overflow_ = 0; // signature cache is per device
-    candidate_witnesses_ = 0; candidates_.reset(); candidate_pools_ = {}; candidates_published_frame_ = ~std::uint64_t(0); // witness cap, pool cache and frame serial are per device
-    release_depth_leases(); depth_replay_attach_failed_ = false; // depth replay state is per device
-    release_candidate_extents(); candidate_extents_.clear(); candidate_bounds_state_ = 0; // extent cache and queue are per device
-    release_thin_votes(); if (thin_vote_cache_) thin_vote_cache_->clear(); // the subset histograms are keyed by this device's allocation ids
-    thin_vote_logged_ = thin_vote_fold_logged_ = false; thin_vote_totals_ = {}; thin_vote_frame_ = {};
-    sun_latch_.reset(); sun_verdict_ = shadow_replay::SunVerdict::None; candidate_ps_written_ = 0; candidate_bounds_unavailable_ = 0; // the validated sun and the register shadow are per device
-    point_sun_.reset(); point_sun_poll_ticks_ = 0; point_sun_sample_ = {}; point_sun_logged_ = shadow_replay::PointSunReason::Count;
+    candidate_witnesses_ = 0;
+    candidates_.reset();
+    candidate_pools_ = {};
+    candidates_published_frame_ = ~std::uint64_t(0); // witness cap, pool cache and frame serial are per device
+    release_depth_leases();
+    depth_replay_attach_failed_ = false; // depth replay state is per device
+    release_candidate_extents();
+    candidate_extents_.clear();
+    candidate_bounds_state_ = 0; // extent cache and queue are per device
+    release_thin_votes();
+    if (thin_vote_cache_) thin_vote_cache_->clear(); // the subset histograms are keyed by this device's allocation ids
+    thin_vote_logged_ = thin_vote_fold_logged_ = false;
+    thin_vote_totals_ = {};
+    thin_vote_frame_ = {};
+    sun_latch_.reset();
+    sun_verdict_ = shadow_replay::SunVerdict::None;
+    candidate_ps_written_ = 0;
+    candidate_bounds_unavailable_ = 0; // the validated sun and the register shadow are per device
+    point_sun_.reset();
+    point_sun_poll_ticks_ = 0;
+    point_sun_sample_ = {};
+    point_sun_logged_ = shadow_replay::PointSunReason::Count;
     for (unsigned& logged : depth_refusal_logs_) logged = 0;
-    depth_cascades_ = depth_replay_requested_ ? depth_cascade_config_ : renderer::ShadowCascadeSet{}; depth_cascade_frame_ok_ = false;
+    depth_cascades_ = depth_replay_requested_ ? depth_cascade_config_ : renderer::ShadowCascadeSet{};
+    depth_cascade_frame_ok_ = false;
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     { // Seam only: X3M_FIXTURE_SHADOW_CASCADES="e0,e1[,e2[,e3[,e4]]]" replaces the
-      // configured extents by the fixture's unit-size ones (unchecked set: no
-      // forward offset, depth behind 2 E_i, towards the light 2 E_last); sizes,
-      // caps and the budget stay the configured ones.
-      char cascades_text[96]{};
-      if (depth_cascades_.count && GetEnvironmentVariableA("X3M_FIXTURE_SHADOW_CASCADES", cascades_text, sizeof cascades_text) > 0) {
-          float extents[renderer::shadow_cascade_max]{}; unsigned sizes[renderer::shadow_cascade_max]{}, count = 0;
-          char* cursor = cascades_text;
-          while (count < renderer::shadow_cascade_max && *cursor) { char* end = nullptr; extents[count] = std::strtof(cursor, &end); if (end == cursor) break; ++count; cursor = *end == ',' ? end + 1 : end; if (*end != ',') break; }
-          for (unsigned i = 0; i < renderer::shadow_cascade_max; ++i) sizes[i] = depth_cascades_.cascades[i < depth_cascades_.count ? i : 0].size;
-          renderer::ShadowCascadeSet narrowed{};
-          if (count == depth_cascades_.count && renderer::shadow_cascade_set(extents, count, sizes, depth_cascades_.caps, depth_cascades_.budget, narrowed, false)
-              // The minimum-footprint pixels ride along (a policy in screen pixels, independent of the
-              // extents); the back-face selector keeps the narrowing's long-standing behaviour (the
-              // texel law re-evaluated on the narrowed extents, not the configured index).
-              && renderer::shadow_cascade_pool(narrowed, depth_cascades_.records, depth_cascades_.static_from, depth_cascades_.importance, depth_cascades_.large_min,
-                                               renderer::shadow_cascade_backface_from_texel, depth_cascades_.min_footprint_px)) depth_cascades_ = narrowed; // the pool policy stays the configured one
-      } }
+        // configured extents by the fixture's unit-size ones (unchecked set: no
+        // forward offset, depth behind 2 E_i, towards the light 2 E_last); sizes,
+        // caps and the budget stay the configured ones.
+        char cascades_text[96]{};
+        if (depth_cascades_.count &&
+            GetEnvironmentVariableA("X3M_FIXTURE_SHADOW_CASCADES", cascades_text, sizeof cascades_text) > 0) {
+            float extents[renderer::shadow_cascade_max]{};
+            unsigned sizes[renderer::shadow_cascade_max]{}, count = 0;
+            char* cursor = cascades_text;
+            while (count < renderer::shadow_cascade_max && *cursor) {
+                char* end = nullptr;
+                extents[count] = std::strtof(cursor, &end);
+                if (end == cursor) break;
+                ++count;
+                cursor = *end == ',' ? end + 1 : end;
+                if (*end != ',') break;
+            }
+            for (unsigned i = 0; i < renderer::shadow_cascade_max; ++i)
+                sizes[i] = depth_cascades_.cascades[i < depth_cascades_.count ? i : 0].size;
+            renderer::ShadowCascadeSet narrowed{};
+            if (count == depth_cascades_.count &&
+                renderer::shadow_cascade_set(extents, count, sizes, depth_cascades_.caps, depth_cascades_.budget,
+                                             narrowed, false)
+                // The minimum-footprint pixels ride along (a policy in screen pixels, independent of the
+                // extents); the back-face selector keeps the narrowing's long-standing behaviour (the
+                // texel law re-evaluated on the narrowed extents, not the configured index).
+                && renderer::shadow_cascade_pool(narrowed, depth_cascades_.records, depth_cascades_.static_from,
+                                                 depth_cascades_.importance, depth_cascades_.large_min,
+                                                 renderer::shadow_cascade_backface_from_texel,
+                                                 depth_cascades_.min_footprint_px))
+                depth_cascades_ = narrowed; // the pool policy stays the configured one
+        }
+    }
 #endif
     // The record list's storage for the set's records (the inline arrays
     // unless a cascade asks for more), then the transaction's issue storage:
     // once per device, the sum of the per-cascade bounds; an allocation
     // failure leaves the cascades off for this device (no map, no replay).
-    if (depth_cascades_.count && !attach_candidate_storage()) { log("shadow_replay_cascades_refused device=%llu reason=allocation records=%u", id_, depth_cascades_.record_capacity()); depth_cascades_ = renderer::ShadowCascadeSet{}; }
+    if (depth_cascades_.count && !attach_candidate_storage()) {
+        log("shadow_replay_cascades_refused device=%llu reason=allocation records=%u", id_,
+            depth_cascades_.record_capacity());
+        depth_cascades_ = renderer::ShadowCascadeSet{};
+    }
     if (depth_cascades_.count) {
         unsigned capacity = 0;
         for (unsigned i = 0; i < depth_cascades_.count; ++i) capacity += depth_cascades_.bound(i);
-        if (capacity > depth_issue_capacity_) { depth_issues_.reset(new (std::nothrow) renderer::ShadowReplayIssue[capacity]); depth_issue_capacity_ = depth_issues_ ? capacity : 0; }
-        if (!depth_issues_) { log("shadow_replay_cascades_refused device=%llu reason=allocation issues=%u", id_, capacity); depth_cascades_ = renderer::ShadowCascadeSet{}; }
+        if (capacity > depth_issue_capacity_) {
+            depth_issues_.reset(new (std::nothrow) renderer::ShadowReplayIssue[capacity]);
+            depth_issue_capacity_ = depth_issues_ ? capacity : 0;
+        }
+        if (!depth_issues_) {
+            log("shadow_replay_cascades_refused device=%llu reason=allocation issues=%u", id_, capacity);
+            depth_cascades_ = renderer::ShadowCascadeSet{};
+        }
     }
     if (!depth_cascades_.count) attach_candidate_storage(); // the inline arrays (a refused set drops back to them)
-    // The own-ship-adaptive cascade 0 starts from this device's set as configured (motion_output_shadow_adaptive_inc.h).
-    depth_cascade_base_ = depth_cascades_; renderer::shadow_cascade_adaptive_reset(cascade_adaptive_, depth_cascade_base_);
+    // The own-ship-adaptive cascade 0 starts from this device's set as configured
+    // (motion_output_shadow_adaptive_inc.h).
+    depth_cascade_base_ = depth_cascades_;
+    renderer::shadow_cascade_adaptive_reset(cascade_adaptive_, depth_cascade_base_);
     // The counter serves the depth replay's cascades: requested with the depth replay but without a cascade set on this
     // device (--no-shadow-cascades, or the set refused above) nothing would consume it, so it does not run (no extent
     // read, no record, no shadow_replay_candidates or shadow_alpha_casters row); one row says so. Requested alone
     // (X3M_SHADOW_REPLAY_CANDIDATES without the depth replay) it stays the diagnostic.
     candidates_requested_ = candidates_config_ && (!depth_replay_requested_ || depth_cascades_.count != 0);
-    if (candidates_config_ && !candidates_requested_) log("shadow_replay_candidates_device device=%llu enabled=0 reason=no_cascades", id_);
-    own_ship_frame_ = ~std::uint64_t(0); own_ship_node_ = 0; own_ship_handle_ = 0; own_ship_status_ = 0; own_radius_frame_ = 0.f; own_draws_frame_ = 0;
+    if (candidates_config_ && !candidates_requested_)
+        log("shadow_replay_candidates_device device=%llu enabled=0 reason=no_cascades", id_);
+    own_ship_frame_ = ~std::uint64_t(0);
+    own_ship_node_ = 0;
+    own_ship_handle_ = 0;
+    own_ship_status_ = 0;
+    own_radius_frame_ = 0.f;
+    own_draws_frame_ = 0;
     own_cache_ = own_ship::Cache{};
-    if (retention_mode_ != shadow_retention::Mode::Off || retention_) attach_shadow_retention(); // caster retention rides the cascades (off: nothing runs)
+    if (retention_mode_ != shadow_retention::Mode::Off || retention_)
+        attach_shadow_retention(); // caster retention rides the cascades (off: nothing runs)
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     { // Seam only: X3M_FIXTURE_SLICE_NEAR moves the slice-0 near bound so the
-      // fixture's unit-distance triangles are candidates; production keeps 6.
-      char near_text[16]{}; candidate_slice_near_ = shadow_replay::slice0_near;
-      if (GetEnvironmentVariableA("X3M_FIXTURE_SLICE_NEAR", near_text, sizeof near_text) > 0) {
-          const float value = std::strtof(near_text, nullptr);
-          if (std::isfinite(value) && value >= 0.f) candidate_slice_near_ = value;
-      } }
+        // fixture's unit-distance triangles are candidates; production keeps 6.
+        char near_text[16]{};
+        candidate_slice_near_ = shadow_replay::slice0_near;
+        if (GetEnvironmentVariableA("X3M_FIXTURE_SLICE_NEAR", near_text, sizeof near_text) > 0) {
+            const float value = std::strtof(near_text, nullptr);
+            if (std::isfinite(value) && value >= 0.f) candidate_slice_near_ = value;
+        }
+    }
 #endif
     if (!requested) return;
     probe_cutout_caps(true);
     history_ = renderer::MotionRowHistory(4096); // Reserves both tables once; ready() false on failure.
-    try { displacements_.reserve(4096); } catch (...) { displacements_.clear(); displacements_.shrink_to_fit(); }
+    try {
+        displacements_.reserve(4096);
+    } catch (...) {
+        displacements_.clear();
+        displacements_.shrink_to_fit();
+    }
     history_available_ = object_trace::active() && object_lifetime::active();
     const char* reason = "ok";
     const char* depth_reason = "ok";
@@ -2363,63 +3148,98 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
     char detail[160] = "";
     HRESULT format_result = S_OK, depth_format_result = S_OK, taa_format_result = S_OK, stretch_query = S_OK;
     quad_fvf_ = renderer::quad_fvf_requested();
-    taa_copy_draw_ = false; std::snprintf(taa_stretch_test_, sizeof taa_stretch_test_, "off");
+    taa_copy_draw_ = false;
+    std::snprintf(taa_stretch_test_, sizeof taa_stretch_test_, "off");
     // Step C implies step B through the route's own gate (the option with its
     // prerequisites, capture.cpp), never through the raw variable.
-    { wchar_t setting[8]{}; screen_emission_bound_ = screen_emission_requested_
-        || (x3m::config::get(L"X3M_SCREEN_EMISSION_BOUND", setting, 8) == 1 && setting[0] == L'1'); }
-    { wchar_t setting[8]{}; locked_prefix_log_ = x3m::config::get(L"X3M_LOCKED_PREFIX_LOG", setting, 8) == 1 && setting[0] == L'1'; }
-#ifdef X3M_MOTION_OUTPUT_FIXTURE
-    { char setting[8]{}; fixture_stretch_fault_ = GetEnvironmentVariableA("X3M_FIXTURE_STRETCH_FAULT", setting, sizeof setting) == 1 && setting[0] == '1'; }
-    { char setting[8]{}; fixture_taa_filter_fault_ = GetEnvironmentVariableA("X3M_FIXTURE_TAA_FILTER_FAULT", setting, sizeof setting) == 1 && setting[0] == '1'; }
     {
-        char setting[64]{}; long l = 0, t = 0, r = 0, b = 0;
-        fixture_fade_rect_set_ = GetEnvironmentVariableA("X3M_FIXTURE_FADE_RECT", setting, sizeof setting) > 0
-            && std::sscanf(setting, "%ld,%ld,%ld,%ld", &l, &t, &r, &b) == 4 && l < r && t < b;
-        if (fixture_fade_rect_set_) fixture_fade_rect_ = {std::int32_t(l), std::int32_t(t), std::int32_t(r), std::int32_t(b)};
-        char screen_setting[64]{}; l = t = r = b = 0;
-        fixture_screen_rect_set_ = GetEnvironmentVariableA("X3M_FIXTURE_SCREEN_RECT", screen_setting, sizeof screen_setting) > 0
-            && std::sscanf(screen_setting, "%ld,%ld,%ld,%ld", &l, &t, &r, &b) == 4 && l < r && t < b;
-        if (fixture_screen_rect_set_) fixture_screen_rect_ = {std::int32_t(l), std::int32_t(t), std::int32_t(r), std::int32_t(b)};
+        wchar_t setting[8]{};
+        screen_emission_bound_ = screen_emission_requested_ ||
+                                 (x3m::config::get(L"X3M_SCREEN_EMISSION_BOUND", setting, 8) == 1 &&
+                                  setting[0] == L'1');
+    }
+    {
+        wchar_t setting[8]{};
+        locked_prefix_log_ = x3m::config::get(L"X3M_LOCKED_PREFIX_LOG", setting, 8) == 1 && setting[0] == L'1';
+    }
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+    {
+        char setting[8]{};
+        fixture_stretch_fault_ = GetEnvironmentVariableA("X3M_FIXTURE_STRETCH_FAULT", setting, sizeof setting) == 1 &&
+                                 setting[0] == '1';
+    }
+    {
+        char setting[8]{};
+        fixture_taa_filter_fault_ = GetEnvironmentVariableA("X3M_FIXTURE_TAA_FILTER_FAULT", setting, sizeof setting) ==
+                                        1 &&
+                                    setting[0] == '1';
+    }
+    {
+        char setting[64]{};
+        long l = 0, t = 0, r = 0, b = 0;
+        fixture_fade_rect_set_ = GetEnvironmentVariableA("X3M_FIXTURE_FADE_RECT", setting, sizeof setting) > 0 &&
+                                 std::sscanf(setting, "%ld,%ld,%ld,%ld", &l, &t, &r, &b) == 4 && l < r && t < b;
+        if (fixture_fade_rect_set_)
+            fixture_fade_rect_ = {std::int32_t(l), std::int32_t(t), std::int32_t(r), std::int32_t(b)};
+        char screen_setting[64]{};
+        l = t = r = b = 0;
+        fixture_screen_rect_set_ = GetEnvironmentVariableA("X3M_FIXTURE_SCREEN_RECT", screen_setting,
+                                                           sizeof screen_setting) > 0 &&
+                                   std::sscanf(screen_setting, "%ld,%ld,%ld,%ld", &l, &t, &r, &b) == 4 && l < r &&
+                                   t < b;
+        if (fixture_screen_rect_set_)
+            fixture_screen_rect_ = {std::int32_t(l), std::int32_t(t), std::int32_t(r), std::int32_t(b)};
         char caps_setting[8]{};
-        fixture_screen_caps_fault_ = GetEnvironmentVariableA("X3M_FIXTURE_SCREEN_CAPS_FAULT", caps_setting, sizeof caps_setting) == 1 && caps_setting[0] == '1';
+        fixture_screen_caps_fault_ = GetEnvironmentVariableA("X3M_FIXTURE_SCREEN_CAPS_FAULT", caps_setting,
+                                                             sizeof caps_setting) == 1 &&
+                                     caps_setting[0] == '1';
     }
 #endif
-    if (caps.NumSimultaneousRTs < 2) reason = "mrt_count";
-    else if (caps.MaxVertexShaderConst < 256) reason = "vs_constants";
-    else if (!(caps.PrimitiveMiscCaps & D3DPMISCCAPS_MRTINDEPENDENTBITDEPTHS)) reason = "mrt_bit_depths";
+    if (caps.NumSimultaneousRTs < 2)
+        reason = "mrt_count";
+    else if (caps.MaxVertexShaderConst < 256)
+        reason = "vs_constants";
+    else if (!(caps.PrimitiveMiscCaps & D3DPMISCCAPS_MRTINDEPENDENTBITDEPTHS))
+        reason = "mrt_bit_depths";
     else if (D3DSHADER_VERSION_MAJOR(caps.VertexShaderVersion) < 3 ||
-             D3DSHADER_VERSION_MAJOR(caps.PixelShaderVersion) < 3) reason = "shader_model";
+             D3DSHADER_VERSION_MAJOR(caps.PixelShaderVersion) < 3)
+        reason = "shader_model";
     else {
         IDirect3D9* factory = nullptr;
         D3DDEVICE_CREATION_PARAMETERS creation{};
         D3DDISPLAYMODE mode{};
-        if (FAILED(native<GetDirect3DFn>(GetDirect3D)(device_, &factory)) || !factory) reason = "factory";
+        if (FAILED(native<GetDirect3DFn>(GetDirect3D)(device_, &factory)) || !factory)
+            reason = "factory";
         else if (FAILED(native<GetCreationFn>(GetCreationParameters)(device_, &creation)) ||
-                 FAILED(native<GetDisplayModeFn>(GetDisplayMode)(device_, 0, &mode))) reason = "adapter_query";
+                 FAILED(native<GetDisplayModeFn>(GetDisplayMode)(device_, 0, &mode)))
+            reason = "adapter_query";
         else {
             format_result = factory->CheckDeviceFormat(creation.AdapterOrdinal, creation.DeviceType, mode.Format,
-                D3DUSAGE_RENDERTARGET, D3DRTYPE_TEXTURE, D3DFMT_A32B32G32R32F);
+                                                       D3DUSAGE_RENDERTARGET, D3DRTYPE_TEXTURE, D3DFMT_A32B32G32R32F);
             if (FAILED(format_result)) reason = "rgba32f_target";
             // The current-depth target needs a third simultaneous target and
             // an R32F render target; without them the route stays motion-only.
-            if (caps.NumSimultaneousRTs < 3) depth_reason = "mrt_count";
+            if (caps.NumSimultaneousRTs < 3)
+                depth_reason = "mrt_count";
             else {
-                depth_format_result = factory->CheckDeviceFormat(creation.AdapterOrdinal, creation.DeviceType, mode.Format,
-                    D3DUSAGE_RENDERTARGET, D3DRTYPE_TEXTURE, D3DFMT_R32F);
+                depth_format_result = factory->CheckDeviceFormat(creation.AdapterOrdinal, creation.DeviceType,
+                                                                 mode.Format, D3DUSAGE_RENDERTARGET, D3DRTYPE_TEXTURE,
+                                                                 D3DFMT_R32F);
                 if (FAILED(depth_format_result)) depth_reason = "r32f_target";
             }
             // The resolve needs FP16 render targets (history, scratch) and
             // point-sampled FP16, RGBA32F and R32F textures; it also needs RT2
             // (checked below) and the jitter.
             if (taa_requested_) {
-                taa_format_result = factory->CheckDeviceFormat(creation.AdapterOrdinal, creation.DeviceType, mode.Format,
-                    D3DUSAGE_RENDERTARGET, D3DRTYPE_TEXTURE, D3DFMT_A16B16G16R16F);
+                taa_format_result = factory->CheckDeviceFormat(creation.AdapterOrdinal, creation.DeviceType,
+                                                               mode.Format, D3DUSAGE_RENDERTARGET, D3DRTYPE_TEXTURE,
+                                                               D3DFMT_A16B16G16R16F);
                 if (FAILED(taa_format_result)) taa_reason = "fp16_target";
                 for (D3DFORMAT sampled : {D3DFMT_A16B16G16R16F, D3DFMT_A32B32G32R32F, D3DFMT_R32F}) {
-                    if (!std::strcmp(taa_reason, "ok") &&
-                        FAILED(taa_format_result = factory->CheckDeviceFormat(creation.AdapterOrdinal, creation.DeviceType, mode.Format,
-                            0, D3DRTYPE_TEXTURE, sampled))) taa_reason = "float_sampling";
+                    if (!std::strcmp(taa_reason, "ok") && FAILED(taa_format_result = factory->CheckDeviceFormat(
+                                                                     creation.AdapterOrdinal, creation.DeviceType,
+                                                                     mode.Format, 0, D3DRTYPE_TEXTURE, sampled)))
+                        taa_reason = "float_sampling";
                 }
                 // The FP16 scratch copy and the copy-back may convert between
                 // the 8-bit main target and A16B16G16R16F through StretchRect,
@@ -2430,10 +3250,11 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
                 // StretchRect and identity draws.
                 for (D3DFORMAT eight_bit : {D3DFMT_A8R8G8B8, D3DFMT_X8R8G8B8}) {
                     if (SUCCEEDED(stretch_query) &&
-                        (FAILED(stretch_query = factory->CheckDeviceFormatConversion(creation.AdapterOrdinal, creation.DeviceType,
-                             eight_bit, D3DFMT_A16B16G16R16F)) ||
-                         FAILED(stretch_query = factory->CheckDeviceFormatConversion(creation.AdapterOrdinal, creation.DeviceType,
-                             D3DFMT_A16B16G16R16F, eight_bit)))) break;
+                        (FAILED(stretch_query = factory->CheckDeviceFormatConversion(
+                                    creation.AdapterOrdinal, creation.DeviceType, eight_bit, D3DFMT_A16B16G16R16F)) ||
+                         FAILED(stretch_query = factory->CheckDeviceFormatConversion(
+                                    creation.AdapterOrdinal, creation.DeviceType, D3DFMT_A16B16G16R16F, eight_bit))))
+                        break;
                 }
             }
         }
@@ -2442,68 +3263,107 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     // Attach-only capability-subset witness: exercise the existing motion-only
     // variant/target path without changing the device's advertised caps.
-    { char setting[8]{};
-      if(GetEnvironmentVariableA("X3M_FIXTURE_MOTION_DEPTH",setting,sizeof setting)==1&&setting[0]=='0')
-          depth_reason="fixture_motion_only";
+    {
+        char setting[8]{};
+        if (GetEnvironmentVariableA("X3M_FIXTURE_MOTION_DEPTH", setting, sizeof setting) == 1 && setting[0] == '0')
+            depth_reason = "fixture_motion_only";
     }
 #endif
     depth_enabled_ = !std::strcmp(reason, "ok") && !std::strcmp(depth_reason, "ok");
     if (!std::strcmp(reason, "ok")) {
         // The quad's vs_3_0 pass-through and declaration (every route quad binds them).
-        HRESULT hr = native<CreateVsFn>(CreateVertexShader)(device_, reinterpret_cast<const DWORD*>(renderer::quad_vertex_program()), &quad_vs_);
-        if (SUCCEEDED(hr)) hr = native<CreateDeclarationFn>(CreateVertexDeclaration)(device_, renderer::quad_declaration, &quad_declaration_);
-        if (FAILED(hr) || !quad_vs_ || !quad_declaration_) { reason = "quad_shader"; std::snprintf(detail, sizeof detail, "%08lx", hr); release(quad_vs_); release(quad_declaration_); }
+        HRESULT hr = native<CreateVsFn>(CreateVertexShader)(
+            device_, reinterpret_cast<const DWORD*>(renderer::quad_vertex_program()), &quad_vs_);
+        if (SUCCEEDED(hr))
+            hr = native<CreateDeclarationFn>(CreateVertexDeclaration)(device_, renderer::quad_declaration,
+                                                                      &quad_declaration_);
+        if (FAILED(hr) || !quad_vs_ || !quad_declaration_) {
+            reason = "quad_shader";
+            std::snprintf(detail, sizeof detail, "%08lx", hr);
+            release(quad_vs_);
+            release(quad_declaration_);
+        }
     }
     if (!std::strcmp(reason, "ok")) {
         const HRESULT hr = native<CreatePsFn>(CreatePixelShader)(device_, sentinel_program, &sentinel_ps_);
-        if (FAILED(hr) || !sentinel_ps_) { reason = "sentinel_shader"; std::snprintf(detail, sizeof detail, "%08lx", hr); }
+        if (FAILED(hr) || !sentinel_ps_) {
+            reason = "sentinel_shader";
+            std::snprintf(detail, sizeof detail, "%08lx", hr);
+        }
     }
     if (!std::strcmp(reason, "ok") && depth_enabled_) {
         const HRESULT hr = native<CreatePsFn>(CreatePixelShader)(device_, sentinel_mrt_program, &sentinel_mrt_ps_);
-        if (FAILED(hr) || !sentinel_mrt_ps_) { depth_enabled_ = false; depth_reason = "sentinel_shader"; release(sentinel_mrt_ps_); }
+        if (FAILED(hr) || !sentinel_mrt_ps_) {
+            depth_enabled_ = false;
+            depth_reason = "sentinel_shader";
+            release(sentinel_mrt_ps_);
+        }
     }
     // The three-format self test proves depth; if it fails, the two-format
     // test decides whether the route runs motion-only.
     char depth_detail[160] = "";
     if (!std::strcmp(reason, "ok") && depth_enabled_ && !self_test(true, depth_detail, sizeof depth_detail)) {
-        depth_enabled_ = false; depth_reason = "self_test"; release(sentinel_mrt_ps_);
+        depth_enabled_ = false;
+        depth_reason = "self_test";
+        release(sentinel_mrt_ps_);
     }
     if (!std::strcmp(reason, "ok") && !depth_enabled_ && !self_test(false, detail, sizeof detail)) reason = "self_test";
     if (!std::strcmp(reason, "ok") && depth_enabled_) std::memcpy(detail, depth_detail, sizeof detail);
     enabled_ = !std::strcmp(reason, "ok");
-    if (!enabled_) { release(sentinel_ps_); release(sentinel_mrt_ps_); release(quad_vs_); release(quad_declaration_); depth_enabled_ = false; }
-    else { resync_shadow(); begin_frame(0, false); } // The first frame has no preceding Present.
+    if (!enabled_) {
+        release(sentinel_ps_);
+        release(sentinel_mrt_ps_);
+        release(quad_vs_);
+        release(quad_declaration_);
+        depth_enabled_ = false;
+    } else {
+        resync_shadow();
+        begin_frame(0, false);
+    } // The first frame has no preceding Present.
     if (!history_available_) history_.invalidate();
     if (taa_requested_ && !std::strcmp(taa_reason, "ok")) {
-        if (!enabled_) taa_reason = "route";
-        else if (!depth_enabled_) taa_reason = "depth";
-        else if (!jitter_requested_) taa_reason = "jitter";
+        if (!enabled_)
+            taa_reason = "route";
+        else if (!depth_enabled_)
+            taa_reason = "depth";
+        else if (!jitter_requested_)
+            taa_reason = "jitter";
     }
     taa_enabled_ = taa_requested_ && !std::strcmp(taa_reason, "ok");
-    // The resolve's 5-tap history needs linear filtering of FP16 and R32F textures (TemporalPass S3; no fallback program set
-    // since the 16-tap programs went on 2026-09-25). Decided here, before the first frame latches, so a device that cannot
-    // filter never jitters a draw it would not resolve: TAA and its jitter and mip bias are off from the first frame, one
-    // motion_output_taa row with the missing filter, no pass created (no device reference held). Documented D3D9 queries only.
+    // The resolve's 5-tap history needs linear filtering of FP16 and R32F textures (TemporalPass S3; no fallback
+    // program set since the 16-tap programs went on 2026-09-25). Decided here, before the first frame latches, so a
+    // device that cannot filter never jitters a draw it would not resolve: TAA and its jitter and mip bias are off from
+    // the first frame, one motion_output_taa row with the missing filter, no pass created (no device reference held).
+    // Documented D3D9 queries only.
     if (taa_enabled_) {
         const char* filter = "ok";
         HRESULT filtering = renderer::TemporalPass::query_history_filtering(device_, native_, &filter);
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
-        if (fixture_taa_filter_fault_) { filtering = D3DERR_NOTAVAILABLE; filter = "fp16_filter"; }
+        if (fixture_taa_filter_fault_) {
+            filtering = D3DERR_NOTAVAILABLE;
+            filter = "fp16_filter";
+        }
 #endif
         if (FAILED(filtering)) {
-            taa_reason = "no_filter"; taa_enabled_ = false; taa_failed_ = true; jitter_active_ = false;
-            log("motion_output_taa device=%llu initialize=%08lx references=0 reason=%s effect=taa_off jitter=0 mip_bias=0", id_, filtering, filter);
+            taa_reason = "no_filter";
+            taa_enabled_ = false;
+            taa_failed_ = true;
+            jitter_active_ = false;
+            log("motion_output_taa device=%llu initialize=%08lx references=0 reason=%s effect=taa_off jitter=0 mip_bias=0",
+                id_, filtering, filter);
         }
     }
     // Thin vote (X3M_TAA_THIN_VOTE): the histogram cache once per enabled device (fixed storage, never per draw); a
     // failed allocation keeps the upload (c218.x = 1, no vote) and measures nothing.
-    if (thin_vote_upload_ && enabled_ && depth_enabled_ && !thin_vote_cache_) thin_vote_cache_.reset(new (std::nothrow) thin_vote::Cache());
+    if (thin_vote_upload_ && enabled_ && depth_enabled_ && !thin_vote_cache_)
+        thin_vote_cache_.reset(new (std::nothrow) thin_vote::Cache());
     if (thin_vote_requested_ && !thin_vote_logged_) {
         thin_vote_logged_ = true;
         log("thin_vote_mode device=%llu requested=1 enabled=%u route=%u depth=%u taa=%u lane=%u cache=%u window_px=%.2f..%.2f vote_fraction=%.2f bins=%u sample_cap=%u reads_per_frame=%u triangles_per_frame=%u",
-            id_, unsigned(thin_vote_upload_), unsigned(enabled_), unsigned(depth_enabled_), unsigned(taa_enabled_), unsigned(sun_lane_requested_),
-            unsigned(thin_vote_cache_ != nullptr), double(thin_vote::window_low_px), double(thin_vote::window_high_px), double(thin_vote::vote_fraction),
-            thin_vote::bins, unsigned(thin_vote::sample_cap), thin_vote::reads_per_frame, unsigned(thin_vote::triangles_per_frame));
+            id_, unsigned(thin_vote_upload_), unsigned(enabled_), unsigned(depth_enabled_), unsigned(taa_enabled_),
+            unsigned(sun_lane_requested_), unsigned(thin_vote_cache_ != nullptr), double(thin_vote::window_low_px),
+            double(thin_vote::window_high_px), double(thin_vote::vote_fraction), thin_vote::bins,
+            unsigned(thin_vote::sample_cap), thin_vote::reads_per_frame, unsigned(thin_vote::triangles_per_frame));
     }
     // D1: the format-converting StretchRect is used only where the adapter
     // grants the conversion AND a live 4x4 round trip per 8-bit format
@@ -2512,18 +3372,23 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
     if (taa_enabled_) {
         taa_copy_draw_ = true;
         char stretch_detail[96] = "";
-        if (fixture_stretch_fault()) std::snprintf(taa_stretch_test_, sizeof taa_stretch_test_, "fault");
-        else if (FAILED(stretch_query)) std::snprintf(taa_stretch_test_, sizeof taa_stretch_test_, "query:%08lx", stretch_query);
+        if (fixture_stretch_fault())
+            std::snprintf(taa_stretch_test_, sizeof taa_stretch_test_, "fault");
+        else if (FAILED(stretch_query))
+            std::snprintf(taa_stretch_test_, sizeof taa_stretch_test_, "query:%08lx", stretch_query);
         else {
             bool pass = true;
             for (D3DFORMAT eight_bit : {D3DFMT_A8R8G8B8, D3DFMT_X8R8G8B8})
                 if (pass && !stretch_round_trip(eight_bit, stretch_detail, sizeof stretch_detail)) pass = false;
-            if (pass) std::snprintf(taa_stretch_test_, sizeof taa_stretch_test_, "pass");
-            else std::snprintf(taa_stretch_test_, sizeof taa_stretch_test_, "%s", stretch_detail);
+            if (pass)
+                std::snprintf(taa_stretch_test_, sizeof taa_stretch_test_, "pass");
+            else
+                std::snprintf(taa_stretch_test_, sizeof taa_stretch_test_, "%s", stretch_detail);
             taa_copy_draw_ = !pass;
         }
     }
-    scene_open_ = false; active_queries_ = 0;
+    scene_open_ = false;
+    active_queries_ = 0;
     // FP16 HDR scene path: the pass gates itself (section 5 of the design) and
     // runs the four-format self test outside the application's scene.
     hdr_enabled_ = false;
@@ -2532,55 +3397,76 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
         renderer::HdrCaps hdr_caps{};
         D3DFORMAT hdr_main_format = D3DFMT_A8R8G8B8;
         if (enabled_) {
-            try { hdr_ = std::make_unique<renderer::HdrPass>(); } catch (...) { hdr_.reset(); }
+            try {
+                hdr_ = std::make_unique<renderer::HdrPass>();
+            } catch (...) {
+                hdr_.reset();
+            }
             if (hdr_) {
                 hdr_->configure_sync_timing(gpu_sync_); // --gpu-sync-timing only: the meter's pair
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
-                if (fixture_hdr_fault_count_) { hdr_->set_fault(static_cast<renderer::HdrFault>(fixture_hdr_fault_kind_), fixture_hdr_fault_count_); fixture_hdr_fault_count_ = 0; }
+                if (fixture_hdr_fault_count_) {
+                    hdr_->set_fault(static_cast<renderer::HdrFault>(fixture_hdr_fault_kind_), fixture_hdr_fault_count_);
+                    fixture_hdr_fault_count_ = 0;
+                }
 #endif
                 // The back buffer's format (A8R8G8B8 for the game, X8R8G8B8
                 // possible) decides the emergency StretchRect conversion query.
-                IDirect3DSurface9* rt0 = nullptr; D3DSURFACE_DESC rt0_desc{};
-                if (SUCCEEDED(native<GetRenderTargetFn>(GetRenderTarget)(device_, 0, &rt0)) && rt0 && SUCCEEDED(rt0->GetDesc(&rt0_desc)) && rt0_desc.Format != D3DFMT_UNKNOWN)
+                IDirect3DSurface9* rt0 = nullptr;
+                D3DSURFACE_DESC rt0_desc{};
+                if (SUCCEEDED(native<GetRenderTargetFn>(GetRenderTarget)(device_, 0, &rt0)) && rt0 &&
+                    SUCCEEDED(rt0->GetDesc(&rt0_desc)) && rt0_desc.Format != D3DFMT_UNKNOWN)
                     hdr_main_format = rt0_desc.Format;
                 release(rt0);
                 hdr_->configure(hdr_config_);
                 hdr_->attach(device_, native_, caps, hdr_main_format, depth_enabled_);
-                hdr_caps = hdr_->caps(); hdr_reason = hdr_caps.reason;
+                hdr_caps = hdr_->caps();
+                hdr_reason = hdr_caps.reason;
                 hdr_enabled_ = hdr_->enabled();
-                if (!hdr_enabled_) { hdr_->shutdown(); hdr_.reset(); }
-            } else hdr_reason = "allocation";
+                if (!hdr_enabled_) {
+                    hdr_->shutdown();
+                    hdr_.reset();
+                }
+            } else
+                hdr_reason = "allocation";
         }
         log("hdr_device device=%llu enabled=%u reason=%s fp16_target=%08lx fp16_blending=%08lx fp16_filter=%08lx fp16_sampling=%08lx stretch_conversion=%08lx main_format=%u mrt_blending=%u self_test_targets=%u self_test=%s route=%u depth=%u",
-            id_, hdr_enabled_, hdr_reason, hdr_caps.fp16_target, hdr_caps.fp16_blending, hdr_caps.fp16_filter, hdr_caps.fp16_sampling,
-            hdr_caps.stretch_conversion, unsigned(hdr_main_format), hdr_caps.mrt_blending, hdr_caps.self_test_targets, hdr_caps.self_test_detail, enabled_, depth_enabled_);
+            id_, hdr_enabled_, hdr_reason, hdr_caps.fp16_target, hdr_caps.fp16_blending, hdr_caps.fp16_filter,
+            hdr_caps.fp16_sampling, hdr_caps.stretch_conversion, unsigned(hdr_main_format), hdr_caps.mrt_blending,
+            hdr_caps.self_test_targets, hdr_caps.self_test_detail, enabled_, depth_enabled_);
         // Stage 2: the tonemap and meter verdicts and the switches in force.
-        const auto& c = hdr_config_; const auto& x = c.params;
+        const auto& c = hdr_config_;
+        const auto& x = c.params;
         log("hdr_tonemap device=%llu enabled=%u requested=%s tonemap=%u tonemap_reason=%s meter=%u meter_reason=%s look=%s decode=%s clamp=%g exposure=%s ev_manual=%.4f ev_offset=%.4f key=%.4f ev_min=%.2f ev_max=%.2f tau_up=%.3f tau_down=%.3f meter_floor=%g meter_clip=%g meter_bg=%g meter_min_lit=%g white_target=%g key_pull=%g ev_deadband=%g edge_weight=%g tile_max=%u fixed_dt_ms=%.3f tonemap_shader=%08lx meter_shader=%08lx chain_format=%s chain_target=%08lx chain_sampling=%08lx dither=%u dither_reason=%s dither_shader=%08lx",
-            id_, hdr_enabled_, renderer::hdr_tonemap_name(c.tonemap), hdr_caps.tonemap, hdr_caps.tonemap_reason, hdr_caps.meter, hdr_caps.meter_reason,
-            renderer::hdr_look_name(c.look), renderer::hdr_decode_name(c.decode), double(c.clamp_max), renderer::hdr_exposure_name(c.exposure),
-            double(c.ev_manual), double(x.ev_offset), double(x.key), double(x.ev_min), double(x.ev_max), double(x.tau_up), double(x.tau_down),
-            double(x.meter_floor), double(x.meter_clip), double(x.meter_bg), double(x.meter_min_lit), double(x.white_target), double(x.key_pull),
-            double(x.ev_deadband), double(x.meter_edge_weight), renderer::kMeterTileMax,
-            double(c.fixed_dt) * 1000., hdr_caps.tonemap_shader, hdr_caps.meter_shader, hdr_caps.chain_format_name, hdr_caps.chain_target, hdr_caps.chain_sampling,
-            hdr_caps.dither, hdr_caps.dither_reason, hdr_caps.dither_shader);
-        hdr_tonemap_disabled_logged_ = false; hdr_taa_k_ = 0.f;
+            id_, hdr_enabled_, renderer::hdr_tonemap_name(c.tonemap), hdr_caps.tonemap, hdr_caps.tonemap_reason,
+            hdr_caps.meter, hdr_caps.meter_reason, renderer::hdr_look_name(c.look), renderer::hdr_decode_name(c.decode),
+            double(c.clamp_max), renderer::hdr_exposure_name(c.exposure), double(c.ev_manual), double(x.ev_offset),
+            double(x.key), double(x.ev_min), double(x.ev_max), double(x.tau_up), double(x.tau_down),
+            double(x.meter_floor), double(x.meter_clip), double(x.meter_bg), double(x.meter_min_lit),
+            double(x.white_target), double(x.key_pull), double(x.ev_deadband), double(x.meter_edge_weight),
+            renderer::kMeterTileMax, double(c.fixed_dt) * 1000., hdr_caps.tonemap_shader, hdr_caps.meter_shader,
+            hdr_caps.chain_format_name, hdr_caps.chain_target, hdr_caps.chain_sampling, hdr_caps.dither,
+            hdr_caps.dither_reason, hdr_caps.dither_shader);
+        hdr_tonemap_disabled_logged_ = false;
+        hdr_taa_k_ = 0.f;
     }
     qualify_sun_lane();
     if (composition_requested() && taa_enabled_ && hdr_enabled_) {
         D3DDISPLAYMODE display{};
         composition_busy_ = true;
-        if (SUCCEEDED(native<GetDisplayModeFn>(GetDisplayMode)(device_, 0, &display))) composition_adapter_format_ = display.Format;
+        if (SUCCEEDED(native<GetDisplayModeFn>(GetDisplayMode)(device_, 0, &display)))
+            composition_adapter_format_ = display.Format;
         composition_busy_ = false;
     }
     log("motion_output_device device=%llu enabled=%u reason=%s detail=%s mrt=%lu vs_constants=%lu misc=%08lx vs=%08lx ps=%08lx rgba32f=%08lx history_available=%u history_capacity=%u depth=%u depth_reason=%s depth_detail=%s r32f=%08lx jitter=%u jitter_samples=%u taa=%u taa_reason=%s taa_format=%08lx taa_copy=%s taa_stretch_query=%08lx taa_stretch_test=%s taa_debug=%u rt_mode=%s camera=%s sentinel=%u camera_cut_deg=%.2f camera_log=%u state_shadow=%u state_hooks=%u scene_hook=%u hdr=%u mip_bias=%g quad_fvf=%u",
         id_, enabled_, reason, detail[0] ? detail : "-", caps.NumSimultaneousRTs, caps.MaxVertexShaderConst,
-        caps.PrimitiveMiscCaps, caps.VertexShaderVersion, caps.PixelShaderVersion, format_result,
-        history_available_, unsigned(history_.stats().capacity), depth_enabled_, depth_reason,
-        depth_detail[0] ? depth_detail : "-", depth_format_result, jitter_requested_, jitter_samples_,
-        taa_enabled_, taa_reason, taa_format_result, taa_enabled_ ? (taa_copy_draw_ ? "draw" : "stretch") : "off", stretch_query, taa_stretch_test_, taa_debug_, lazy_mode_ ? "lazy" : "perdraw",
-        camera_state::status(), unsigned(sentinel_mode_), camera_cut_degrees_, camera_log_interval_, state_shadow_, state_hooks_, scene_hook_installed_, hdr_enabled_,
-        double(mip_bias_), quad_fvf_);
+        caps.PrimitiveMiscCaps, caps.VertexShaderVersion, caps.PixelShaderVersion, format_result, history_available_,
+        unsigned(history_.stats().capacity), depth_enabled_, depth_reason, depth_detail[0] ? depth_detail : "-",
+        depth_format_result, jitter_requested_, jitter_samples_, taa_enabled_, taa_reason, taa_format_result,
+        taa_enabled_ ? (taa_copy_draw_ ? "draw" : "stretch") : "off", stretch_query, taa_stretch_test_, taa_debug_,
+        lazy_mode_ ? "lazy" : "perdraw", camera_state::status(), unsigned(sentinel_mode_), camera_cut_degrees_,
+        camera_log_interval_, state_shadow_, state_hooks_, scene_hook_installed_, hdr_enabled_, double(mip_bias_),
+        quad_fvf_);
 }
 
 // One 4x4 round trip of `format` through A16B16G16R16F and back with the
@@ -2593,23 +3479,43 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
 // the FP16 values must be within 1/1024 of v/255. Nothing here changes device
 // state. `detail` receives a single-token verdict for the device line.
 bool MotionOutput::stretch_round_trip(D3DFORMAT format, char* detail, std::size_t detail_size) noexcept {
-    IDirect3DSurface9* source = nullptr; IDirect3DSurface9* result = nullptr;
-    IDirect3DTexture9* middle = nullptr; IDirect3DSurface9* middle_surface = nullptr;
-    IDirect3DSurface9* source_copy = nullptr; IDirect3DSurface9* result_copy = nullptr; IDirect3DSurface9* middle_copy = nullptr;
+    IDirect3DSurface9* source = nullptr;
+    IDirect3DSurface9* result = nullptr;
+    IDirect3DTexture9* middle = nullptr;
+    IDirect3DSurface9* middle_surface = nullptr;
+    IDirect3DSurface9* source_copy = nullptr;
+    IDirect3DSurface9* result_copy = nullptr;
+    IDirect3DSurface9* middle_copy = nullptr;
     const char* stage = "create";
     HRESULT hr = S_OK, first = S_FALSE, second = S_FALSE, scene = S_OK;
     unsigned byte_errors = 0, half_errors = 0;
     bool ok = false;
     const DWORD mask = format == D3DFMT_X8R8G8B8 ? 0x00ffffffu : 0xffffffffu;
-    auto pattern = [](unsigned i) { return D3DCOLOR(((255u - i * 13u) << 24) | ((i * 16u + 7u) << 16) | ((255u - i * 16u) << 8) | ((i * 37u + 3u) & 255u)); };
+    auto pattern = [](unsigned i) {
+        return D3DCOLOR(((255u - i * 13u) << 24) | ((i * 16u + 7u) << 16) | ((255u - i * 16u) << 8) |
+                        ((i * 37u + 3u) & 255u));
+    };
     do {
-        if (FAILED(hr = native<CreateRtFn>(CreateRenderTarget)(device_, 4, 4, format, D3DMULTISAMPLE_NONE, 0, FALSE, &source, nullptr))) break;
-        if (FAILED(hr = native<CreateRtFn>(CreateRenderTarget)(device_, 4, 4, format, D3DMULTISAMPLE_NONE, 0, FALSE, &result, nullptr))) break;
-        if (FAILED(hr = native<CreateTextureFn>(CreateTexture)(device_, 4, 4, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A16B16G16R16F, D3DPOOL_DEFAULT, &middle, nullptr))) break;
+        if (FAILED(hr = native<CreateRtFn>(CreateRenderTarget)(device_, 4, 4, format, D3DMULTISAMPLE_NONE, 0, FALSE,
+                                                               &source, nullptr)))
+            break;
+        if (FAILED(hr = native<CreateRtFn>(CreateRenderTarget)(device_, 4, 4, format, D3DMULTISAMPLE_NONE, 0, FALSE,
+                                                               &result, nullptr)))
+            break;
+        if (FAILED(hr = native<CreateTextureFn>(CreateTexture)(device_, 4, 4, 1, D3DUSAGE_RENDERTARGET,
+                                                               D3DFMT_A16B16G16R16F, D3DPOOL_DEFAULT, &middle,
+                                                               nullptr)))
+            break;
         if (FAILED(hr = middle->GetSurfaceLevel(0, &middle_surface))) break;
-        if (FAILED(hr = native<CreateOffscreenFn>(CreateOffscreenPlainSurface)(device_, 4, 4, format, D3DPOOL_SYSTEMMEM, &source_copy, nullptr))) break;
-        if (FAILED(hr = native<CreateOffscreenFn>(CreateOffscreenPlainSurface)(device_, 4, 4, format, D3DPOOL_SYSTEMMEM, &result_copy, nullptr))) break;
-        if (FAILED(hr = native<CreateOffscreenFn>(CreateOffscreenPlainSurface)(device_, 4, 4, D3DFMT_A16B16G16R16F, D3DPOOL_SYSTEMMEM, &middle_copy, nullptr))) break;
+        if (FAILED(hr = native<CreateOffscreenFn>(CreateOffscreenPlainSurface)(device_, 4, 4, format, D3DPOOL_SYSTEMMEM,
+                                                                               &source_copy, nullptr)))
+            break;
+        if (FAILED(hr = native<CreateOffscreenFn>(CreateOffscreenPlainSurface)(device_, 4, 4, format, D3DPOOL_SYSTEMMEM,
+                                                                               &result_copy, nullptr)))
+            break;
+        if (FAILED(hr = native<CreateOffscreenFn>(CreateOffscreenPlainSurface)(
+                       device_, 4, 4, D3DFMT_A16B16G16R16F, D3DPOOL_SYSTEMMEM, &middle_copy, nullptr)))
+            break;
         stage = "fill";
         for (unsigned i = 0; i < 16 && SUCCEEDED(hr); ++i) {
             const RECT cell{LONG(i % 4), LONG(i / 4), LONG(i % 4 + 1), LONG(i / 4 + 1)};
@@ -2618,46 +3524,78 @@ bool MotionOutput::stretch_round_trip(D3DFORMAT format, char* detail, std::size_
         if (FAILED(hr)) break;
         if (FAILED(hr = native<ColorFillFn>(ColorFill)(device_, result, nullptr, 0))) break;
         stage = "scene";
-        if (FAILED(scene = native<SceneFn>(BeginScene)(device_))) { hr = scene; break; }
+        if (FAILED(scene = native<SceneFn>(BeginScene)(device_))) {
+            hr = scene;
+            break;
+        }
         stage = "stretch";
         first = native<StretchFn>(StretchRect)(device_, source, nullptr, middle_surface, nullptr, D3DTEXF_POINT);
-        if (SUCCEEDED(first)) second = native<StretchFn>(StretchRect)(device_, middle_surface, nullptr, result, nullptr, D3DTEXF_POINT);
+        if (SUCCEEDED(first))
+            second = native<StretchFn>(StretchRect)(device_, middle_surface, nullptr, result, nullptr, D3DTEXF_POINT);
         scene = native<SceneFn>(EndScene)(device_);
-        if (FAILED(first)) { hr = first; break; }
-        if (FAILED(second)) { hr = second; break; }
-        if (FAILED(scene)) { hr = scene; break; }
+        if (FAILED(first)) {
+            hr = first;
+            break;
+        }
+        if (FAILED(second)) {
+            hr = second;
+            break;
+        }
+        if (FAILED(scene)) {
+            hr = scene;
+            break;
+        }
         stage = "readback";
         if (FAILED(hr = native<GetRtDataFn>(GetRenderTargetData)(device_, source, source_copy))) break;
         if (FAILED(hr = native<GetRtDataFn>(GetRenderTargetData)(device_, result, result_copy))) break;
         if (FAILED(hr = native<GetRtDataFn>(GetRenderTargetData)(device_, middle_surface, middle_copy))) break;
         D3DLOCKED_RECT in{}, out{}, mid{};
         if (FAILED(hr = source_copy->LockRect(&in, nullptr, D3DLOCK_READONLY))) break;
-        if (FAILED(hr = result_copy->LockRect(&out, nullptr, D3DLOCK_READONLY))) { source_copy->UnlockRect(); break; }
-        if (FAILED(hr = middle_copy->LockRect(&mid, nullptr, D3DLOCK_READONLY))) { result_copy->UnlockRect(); source_copy->UnlockRect(); break; }
-        stage = "compare";
-        for (unsigned y = 0; y < 4; ++y) for (unsigned x = 0; x < 4; ++x) {
-            DWORD a = 0, b = 0;
-            std::memcpy(&a, static_cast<const char*>(in.pBits) + y * in.Pitch + x * 4, 4);
-            std::memcpy(&b, static_cast<const char*>(out.pBits) + y * out.Pitch + x * 4, 4);
-            if ((a & mask) != (b & mask)) ++byte_errors;
-            unsigned short h[4]; std::memcpy(h, static_cast<const char*>(mid.pBits) + y * mid.Pitch + x * 8, 8);
-            const unsigned channels = format == D3DFMT_X8R8G8B8 ? 3u : 4u;
-            for (unsigned c = 0; c < channels; ++c) {
-                // FP16 channel c holds R, G, B, A; the 8-bit word is A8 R8 G8 B8.
-                const unsigned code = c == 3 ? (a >> 24) & 255u : (a >> (16 - 8 * c)) & 255u;
-                const float expected = float(code) / 255.f;
-                const unsigned exponent = (h[c] >> 10) & 31u, mantissa = h[c] & 1023u;
-                const float value = (h[c] & 0x8000u ? -1.f : 1.f) *
-                    (exponent == 0 ? std::ldexp(float(mantissa), -24) : exponent == 31 ? 65504.f * 2.f : std::ldexp(float(1024u + mantissa), int(exponent) - 25));
-                if (!(std::fabs(value - expected) <= 1.f / 1024.f)) ++half_errors;
-            }
+        if (FAILED(hr = result_copy->LockRect(&out, nullptr, D3DLOCK_READONLY))) {
+            source_copy->UnlockRect();
+            break;
         }
-        middle_copy->UnlockRect(); result_copy->UnlockRect(); source_copy->UnlockRect();
+        if (FAILED(hr = middle_copy->LockRect(&mid, nullptr, D3DLOCK_READONLY))) {
+            result_copy->UnlockRect();
+            source_copy->UnlockRect();
+            break;
+        }
+        stage = "compare";
+        for (unsigned y = 0; y < 4; ++y)
+            for (unsigned x = 0; x < 4; ++x) {
+                DWORD a = 0, b = 0;
+                std::memcpy(&a, static_cast<const char*>(in.pBits) + y * in.Pitch + x * 4, 4);
+                std::memcpy(&b, static_cast<const char*>(out.pBits) + y * out.Pitch + x * 4, 4);
+                if ((a & mask) != (b & mask)) ++byte_errors;
+                unsigned short h[4];
+                std::memcpy(h, static_cast<const char*>(mid.pBits) + y * mid.Pitch + x * 8, 8);
+                const unsigned channels = format == D3DFMT_X8R8G8B8 ? 3u : 4u;
+                for (unsigned c = 0; c < channels; ++c) {
+                    // FP16 channel c holds R, G, B, A; the 8-bit word is A8 R8 G8 B8.
+                    const unsigned code = c == 3 ? (a >> 24) & 255u : (a >> (16 - 8 * c)) & 255u;
+                    const float expected = float(code) / 255.f;
+                    const unsigned exponent = (h[c] >> 10) & 31u, mantissa = h[c] & 1023u;
+                    const float value = (h[c] & 0x8000u ? -1.f : 1.f) *
+                                        (exponent == 0    ? std::ldexp(float(mantissa), -24)
+                                         : exponent == 31 ? 65504.f * 2.f
+                                                          : std::ldexp(float(1024u + mantissa), int(exponent) - 25));
+                    if (!(std::fabs(value - expected) <= 1.f / 1024.f)) ++half_errors;
+                }
+            }
+        middle_copy->UnlockRect();
+        result_copy->UnlockRect();
+        source_copy->UnlockRect();
         ok = !byte_errors && !half_errors;
     } while (false);
-    release(middle_copy); release(result_copy); release(source_copy);
-    release(middle_surface); release(middle); release(result); release(source);
-    std::snprintf(detail, detail_size, "%s:format=%u:stage=%s:result=%08lx:to_fp16=%08lx:to_8bit=%08lx:byte_errors=%u:half_errors=%u",
+    release(middle_copy);
+    release(result_copy);
+    release(source_copy);
+    release(middle_surface);
+    release(middle);
+    release(result);
+    release(source);
+    std::snprintf(detail, detail_size,
+                  "%s:format=%u:stage=%s:result=%08lx:to_fp16=%08lx:to_8bit=%08lx:byte_errors=%u:half_errors=%u",
                   ok ? "pass" : "fail", unsigned(format), stage, hr, first, second, byte_errors, half_errors);
     return ok;
 }
@@ -2667,68 +3605,118 @@ bool MotionOutput::stretch_round_trip(D3DFORMAT format, char* detail, std::size_
 // through system memory. A device that reports the capability but cannot
 // execute the combination is refused here rather than during gameplay.
 bool MotionOutput::self_test(bool with_depth, char* reason, std::size_t reason_size) noexcept {
-    IDirect3DSurface9* color = nullptr; IDirect3DTexture9* motion = nullptr; IDirect3DSurface9* motion_surface = nullptr;
-    IDirect3DTexture9* depth = nullptr; IDirect3DSurface9* depth_surface = nullptr;
-    IDirect3DSurface9* color_copy = nullptr; IDirect3DSurface9* motion_copy = nullptr; IDirect3DSurface9* depth_copy = nullptr;
+    IDirect3DSurface9* color = nullptr;
+    IDirect3DTexture9* motion = nullptr;
+    IDirect3DSurface9* motion_surface = nullptr;
+    IDirect3DTexture9* depth = nullptr;
+    IDirect3DSurface9* depth_surface = nullptr;
+    IDirect3DSurface9* color_copy = nullptr;
+    IDirect3DSurface9* motion_copy = nullptr;
+    IDirect3DSurface9* depth_copy = nullptr;
     IDirect3DPixelShader9* shader = nullptr;
     bool ok = false;
     HRESULT hr = S_OK, restore = S_OK, draw = S_OK, scene = S_OK;
     unsigned color_errors = 0, motion_errors = 0, depth_errors = 0;
     const char* stage = "create";
     do {
-        if (FAILED(hr = native<CreateRtFn>(CreateRenderTarget)(device_, 4, 4, D3DFMT_A8R8G8B8, D3DMULTISAMPLE_NONE, 0, FALSE, &color, nullptr))) break;
-        if (FAILED(hr = native<CreateTextureFn>(CreateTexture)(device_, 4, 4, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A32B32G32R32F, D3DPOOL_DEFAULT, &motion, nullptr))) break;
+        if (FAILED(hr = native<CreateRtFn>(CreateRenderTarget)(device_, 4, 4, D3DFMT_A8R8G8B8, D3DMULTISAMPLE_NONE, 0,
+                                                               FALSE, &color, nullptr)))
+            break;
+        if (FAILED(hr = native<CreateTextureFn>(CreateTexture)(device_, 4, 4, 1, D3DUSAGE_RENDERTARGET,
+                                                               D3DFMT_A32B32G32R32F, D3DPOOL_DEFAULT, &motion,
+                                                               nullptr)))
+            break;
         if (FAILED(hr = motion->GetSurfaceLevel(0, &motion_surface))) break;
-        if (FAILED(hr = native<CreateOffscreenFn>(CreateOffscreenPlainSurface)(device_, 4, 4, D3DFMT_A8R8G8B8, D3DPOOL_SYSTEMMEM, &color_copy, nullptr))) break;
-        if (FAILED(hr = native<CreateOffscreenFn>(CreateOffscreenPlainSurface)(device_, 4, 4, D3DFMT_A32B32G32R32F, D3DPOOL_SYSTEMMEM, &motion_copy, nullptr))) break;
+        if (FAILED(hr = native<CreateOffscreenFn>(CreateOffscreenPlainSurface)(
+                       device_, 4, 4, D3DFMT_A8R8G8B8, D3DPOOL_SYSTEMMEM, &color_copy, nullptr)))
+            break;
+        if (FAILED(hr = native<CreateOffscreenFn>(CreateOffscreenPlainSurface)(
+                       device_, 4, 4, D3DFMT_A32B32G32R32F, D3DPOOL_SYSTEMMEM, &motion_copy, nullptr)))
+            break;
         if (with_depth) {
-            if (FAILED(hr = native<CreateTextureFn>(CreateTexture)(device_, 4, 4, 1, D3DUSAGE_RENDERTARGET, D3DFMT_R32F, D3DPOOL_DEFAULT, &depth, nullptr))) break;
+            if (FAILED(hr = native<CreateTextureFn>(CreateTexture)(device_, 4, 4, 1, D3DUSAGE_RENDERTARGET, D3DFMT_R32F,
+                                                                   D3DPOOL_DEFAULT, &depth, nullptr)))
+                break;
             if (FAILED(hr = depth->GetSurfaceLevel(0, &depth_surface))) break;
-            if (FAILED(hr = native<CreateOffscreenFn>(CreateOffscreenPlainSurface)(device_, 4, 4, D3DFMT_R32F, D3DPOOL_SYSTEMMEM, &depth_copy, nullptr))) break;
+            if (FAILED(hr = native<CreateOffscreenFn>(CreateOffscreenPlainSurface)(
+                           device_, 4, 4, D3DFMT_R32F, D3DPOOL_SYSTEMMEM, &depth_copy, nullptr)))
+                break;
         }
-        if (FAILED(hr = native<CreatePsFn>(CreatePixelShader)(device_, with_depth ? self_test_depth_program : self_test_program, &shader))) break;
+        if (FAILED(hr = native<CreatePsFn>(CreatePixelShader)(
+                       device_, with_depth ? self_test_depth_program : self_test_program, &shader)))
+            break;
         stage = "scene";
         // Attach runs right after CreateDevice, outside any application scene.
-        if (FAILED(scene = native<SceneFn>(BeginScene)(device_))) { hr = scene; break; }
+        if (FAILED(scene = native<SceneFn>(BeginScene)(device_))) {
+            hr = scene;
+            break;
+        }
         stage = "draw";
         draw = draw_quad(color, motion_surface, depth_surface, shader, 4, 4, &restore);
         scene = native<SceneFn>(EndScene)(device_);
-        if (FAILED(draw)) { hr = draw; break; }
-        if (FAILED(restore)) { hr = restore; stage = "restore"; break; }
-        if (FAILED(scene)) { hr = scene; break; }
+        if (FAILED(draw)) {
+            hr = draw;
+            break;
+        }
+        if (FAILED(restore)) {
+            hr = restore;
+            stage = "restore";
+            break;
+        }
+        if (FAILED(scene)) {
+            hr = scene;
+            break;
+        }
         stage = "readback";
         if (FAILED(hr = native<GetRtDataFn>(GetRenderTargetData)(device_, color, color_copy))) break;
         if (FAILED(hr = native<GetRtDataFn>(GetRenderTargetData)(device_, motion_surface, motion_copy))) break;
-        if (with_depth && FAILED(hr = native<GetRtDataFn>(GetRenderTargetData)(device_, depth_surface, depth_copy))) break;
+        if (with_depth && FAILED(hr = native<GetRtDataFn>(GetRenderTargetData)(device_, depth_surface, depth_copy)))
+            break;
         D3DLOCKED_RECT lock{};
         if (FAILED(hr = color_copy->LockRect(&lock, nullptr, D3DLOCK_READONLY))) break;
-        for (unsigned y = 0; y < 4; ++y) for (unsigned x = 0; x < 4; ++x) {
-            DWORD value = 0; std::memcpy(&value, static_cast<const char*>(lock.pBits) + y * lock.Pitch + x * 4, 4);
-            const int a = int(value >> 24), r = int((value >> 16) & 255), g = int((value >> 8) & 255), b = int(value & 255);
-            if (a != 255 || r < 62 || r > 66 || g < 126 || g > 130 || b < 189 || b > 193) ++color_errors;
-        }
+        for (unsigned y = 0; y < 4; ++y)
+            for (unsigned x = 0; x < 4; ++x) {
+                DWORD value = 0;
+                std::memcpy(&value, static_cast<const char*>(lock.pBits) + y * lock.Pitch + x * 4, 4);
+                const int a = int(value >> 24), r = int((value >> 16) & 255), g = int((value >> 8) & 255),
+                          b = int(value & 255);
+                if (a != 255 || r < 62 || r > 66 || g < 126 || g > 130 || b < 189 || b > 193) ++color_errors;
+            }
         color_copy->UnlockRect();
         if (FAILED(hr = motion_copy->LockRect(&lock, nullptr, D3DLOCK_READONLY))) break;
-        for (unsigned y = 0; y < 4; ++y) for (unsigned x = 0; x < 4; ++x) {
-            float value[4]; std::memcpy(value, static_cast<const char*>(lock.pBits) + y * lock.Pitch + x * 16, 16);
-            if (value[0] != 1.f || value[1] != 2.f || value[2] != 3.f || value[3] != -1.f) ++motion_errors;
-        }
+        for (unsigned y = 0; y < 4; ++y)
+            for (unsigned x = 0; x < 4; ++x) {
+                float value[4];
+                std::memcpy(value, static_cast<const char*>(lock.pBits) + y * lock.Pitch + x * 16, 16);
+                if (value[0] != 1.f || value[1] != 2.f || value[2] != 3.f || value[3] != -1.f) ++motion_errors;
+            }
         motion_copy->UnlockRect();
         if (with_depth) {
             if (FAILED(hr = depth_copy->LockRect(&lock, nullptr, D3DLOCK_READONLY))) break;
-            for (unsigned y = 0; y < 4; ++y) for (unsigned x = 0; x < 4; ++x) {
-                float value; std::memcpy(&value, static_cast<const char*>(lock.pBits) + y * lock.Pitch + x * 4, 4);
-                if (value != self_test_depth_value) ++depth_errors;
-            }
+            for (unsigned y = 0; y < 4; ++y)
+                for (unsigned x = 0; x < 4; ++x) {
+                    float value;
+                    std::memcpy(&value, static_cast<const char*>(lock.pBits) + y * lock.Pitch + x * 4, 4);
+                    if (value != self_test_depth_value) ++depth_errors;
+                }
             depth_copy->UnlockRect();
         }
         stage = "compare";
         ok = !color_errors && !motion_errors && !depth_errors;
     } while (false);
-    release(shader); release(depth_copy); release(motion_copy); release(color_copy);
-    release(depth_surface); release(depth); release(motion_surface); release(motion); release(color);
-    std::snprintf(reason, reason_size, "stage=%s result=%08lx draw=%08lx restore=%08lx scene=%08lx color_errors=%u motion_errors=%u depth_errors=%u targets=%u",
-                  stage, hr, draw, restore, scene, color_errors, motion_errors, depth_errors, with_depth ? 3u : 2u);
+    release(shader);
+    release(depth_copy);
+    release(motion_copy);
+    release(color_copy);
+    release(depth_surface);
+    release(depth);
+    release(motion_surface);
+    release(motion);
+    release(color);
+    std::snprintf(
+        reason, reason_size,
+        "stage=%s result=%08lx draw=%08lx restore=%08lx scene=%08lx color_errors=%u motion_errors=%u depth_errors=%u targets=%u",
+        stage, hr, draw, restore, scene, color_errors, motion_errors, depth_errors, with_depth ? 3u : 2u);
     return ok;
 }
 
@@ -2752,7 +3740,8 @@ HRESULT MotionOutput::save_state(SavedState& saved) noexcept {
     if (FAILED(hr = native<GetDeclarationFn>(GetVertexDeclaration)(device_, &saved.declaration))) return hr;
     if (FAILED(hr = native<GetVsFn>(GetVertexShader)(device_, &saved.vs))) return hr;
     if (FAILED(hr = native<GetPsFn>(GetPixelShader)(device_, &saved.ps))) return hr;
-    if (FAILED(hr = native<GetStreamFn>(GetStreamSource)(device_, 0, &saved.stream, &saved.offset, &saved.stride))) return hr;
+    if (FAILED(hr = native<GetStreamFn>(GetStreamSource)(device_, 0, &saved.stream, &saved.offset, &saved.stride)))
+        return hr;
     for (unsigned i = 0; i < touched_count; ++i)
         if (FAILED(hr = get_render_state_native(touched_states[i], &saved.states[i]))) return hr;
     return S_OK;
@@ -2764,15 +3753,19 @@ HRESULT MotionOutput::save_state(SavedState& saved) noexcept {
 // application used; DrawPrimitiveUP clears stream 0, so it is rebound.
 HRESULT MotionOutput::restore_state(const SavedState& saved) noexcept {
     HRESULT first = S_OK;
-    auto step = [&](HRESULT hr) { if (SUCCEEDED(first) && FAILED(hr)) first = hr; };
+    auto step = [&](HRESULT hr) {
+        if (SUCCEEDED(first) && FAILED(hr)) first = hr;
+    };
     step(native<SetRenderTargetFn>(SetRenderTarget)(device_, 0, saved.targets[0]));
     for (unsigned i = 1; i < saved.target_count; ++i)
         step(native<SetRenderTargetFn>(SetRenderTarget)(device_, i, saved.targets[i]));
     step(native<SetDepthFn>(SetDepthStencilSurface)(device_, saved.depth));
     step(native<SetViewportFn>(SetViewport)(device_, &saved.viewport));
     step(native<SetScissorFn>(SetScissorRect)(device_, &saved.scissor));
-    if (saved.fvf) step(native<SetFvfFn>(SetFVF)(device_, saved.fvf));
-    else step(native<SetDeclarationFn>(SetVertexDeclaration)(device_, saved.declaration));
+    if (saved.fvf)
+        step(native<SetFvfFn>(SetFVF)(device_, saved.fvf));
+    else
+        step(native<SetDeclarationFn>(SetVertexDeclaration)(device_, saved.declaration));
     step(native<SetVsFn>(SetVertexShader)(device_, saved.vs));
     step(native<SetPsFn>(SetPixelShader)(device_, saved.ps));
     step(native<SetStreamFn>(SetStreamSource)(device_, 0, saved.stream, saved.offset, saved.stride));
@@ -2802,7 +3795,9 @@ HRESULT MotionOutput::draw_quad(IDirect3DSurface9* rt0, IDirect3DSurface9* rt1, 
     HRESULT hr = save_state(saved);
     if (FAILED(hr)) return hr;
     HRESULT op = S_OK;
-    auto step = [&](HRESULT result) { if (SUCCEEDED(op) && FAILED(result)) op = result; };
+    auto step = [&](HRESULT result) {
+        if (SUCCEEDED(op) && FAILED(result)) op = result;
+    };
     step(native<SetRenderTargetFn>(SetRenderTarget)(device_, 0, rt0));
     for (unsigned i = 1; i < saved.target_count; ++i)
         step(native<SetRenderTargetFn>(SetRenderTarget)(device_, i, i == 1 ? rt1 : i == 2 ? rt2 : nullptr));
@@ -2816,7 +3811,10 @@ HRESULT MotionOutput::draw_quad(IDirect3DSurface9* rt0, IDirect3DSurface9* rt1, 
     if (SUCCEEDED(op)) {
         // The -0.5 pixel shift of quad_vertices covers every texel centre.
         renderer::QuadVertex quad[4];
-        if (quad_fvf_) renderer::quad_vertices_xyzrhw(width, height, quad); else renderer::quad_vertices(width, height, quad);
+        if (quad_fvf_)
+            renderer::quad_vertices_xyzrhw(width, height, quad);
+        else
+            renderer::quad_vertices(width, height, quad);
         step(native<DrawUpFn>(DrawPrimitiveUP)(device_, D3DPT_TRIANGLESTRIP, 2, quad, sizeof quad[0]));
     }
     *restore = restore_state(saved);
@@ -2829,39 +3827,67 @@ HRESULT MotionOutput::draw_quad(IDirect3DSurface9* rt0, IDirect3DSurface9* rt1, 
 // runs inside the application's BeginScene/EndScene, on both Windows and Wine.
 void MotionOutput::fill_sentinel() noexcept {
     fill_pending_ = false;
-    restore_bindings(); // The fill's saved state must be the application's (never bound here in practice: the latching Clear restored).
+    restore_bindings(); // The fill's saved state must be the application's (never bound here in practice: the latching
+                        // Clear restored).
     const bool depth = depth_enabled_ && depth_surface_ && sentinel_mrt_ps_;
-    if (!target_surface_ || !sentinel_ps_ || shadow_.recording || (depth_enabled_ && !depth)) { counters_.fill_result = E_ABORT; return; }
+    if (!target_surface_ || !sentinel_ps_ || shadow_.recording || (depth_enabled_ && !depth)) {
+        counters_.fill_result = E_ABORT;
+        return;
+    }
     HRESULT restore = S_OK;
     const std::uint64_t begin = stamp();
     const HRESULT hr = draw_quad(target_surface_, depth ? depth_surface_ : nullptr, nullptr,
-                                 depth ? (sun_lane_active_?sun_sentinel_ps_:sentinel_mrt_ps_) : sentinel_ps_, target_width_, target_height_, &restore);
+                                 depth ? (sun_lane_active_ ? sun_sentinel_ps_ : sentinel_mrt_ps_) : sentinel_ps_,
+                                 target_width_, target_height_, &restore);
     const std::uint64_t ticks = stamp() - begin;
     counters_.fill_ticks += ticks;
     record(unsigned(telemetry::Metric::RouteFill), ticks, FAILED(hr) || FAILED(restore));
-    counters_.fill_result = hr; counters_.fill_restore = restore;
+    counters_.fill_result = hr;
+    counters_.fill_restore = restore;
     counters_.filled = SUCCEEDED(hr) && SUCCEEDED(restore);
     if ((FAILED(hr) || FAILED(restore)) && logged_failures_ < failure_log_limit) {
         ++logged_failures_;
         log("motion_output_fill_failed device=%llu frame=%llu result=%08lx restore=%08lx", id_, frame_, hr, restore);
     }
-    if (FAILED(restore)) { ++counters_.restore_failures; invalidate_render_states(); }
+    if (FAILED(restore)) {
+        ++counters_.restore_failures;
+        invalidate_render_states();
+    }
 }
 
 void MotionOutput::before_reset() noexcept {
     sun_writer_count_ = sun_writer_overflow_ = 0; // declaration ids may be recycled across Reset
-    cutout_caps_ = cutout::Capability::Pending; cutout_cap_result_ = S_FALSE;
-    cutout_probe_frame_known_ = false; cutout_reset_pending_ = true;
-    for (auto& logged : source_gain_logged_) logged = 0; // a new device epoch may log its refusal samples again (same per-reason cap)
+    cutout_caps_ = cutout::Capability::Pending;
+    cutout_cap_result_ = S_FALSE;
+    cutout_probe_frame_known_ = false;
+    cutout_reset_pending_ = true;
+    for (auto& logged : source_gain_logged_)
+        logged = 0;               // a new device epoch may log its refusal samples again (same per-reason cap)
     source_gain_pair_logged_ = 0; // and its first admission per pair
     for (auto& logged : hull_gain_logged_) logged = 0; // same for the hull-emitter gain
     hull_gain_program_logged_ = 0;
     shadow_.xt_default_pair = shadow_.xt_default_ready = false;
     shadow_.material_contract = {};
     shadow_.cutout_pair = false;
-    shadow_.fade_sampler_mask = 0; shadow_.emission_pair = false; shadow_.emission_eligible_variant = nullptr; shadow_.ps_emission_variant = nullptr;
-    shadow_.ps_source_gain_variant = nullptr; shadow_.source_gain_eligible_variant = nullptr; shadow_.source_gain_pair = renderer::linear_emission_pair_count; shadow_.ps_hull_program = false; shadow_.ps_hull_gain_variant = nullptr; shadow_.ps_original_fill_variant = nullptr; shadow_.ps_hull_lightmap_variant = nullptr; shadow_.original_fill_pair = false; shadow_.hull_lightmap_pair = false; shadow_.original_share_pair = false; shadow_.original_share_refused = false;
-    shadow_.vs_registered = false; shadow_.vs_fade_variant = nullptr; shadow_.ps_registered = false; shadow_.ps_fade_variant = nullptr;
+    shadow_.fade_sampler_mask = 0;
+    shadow_.emission_pair = false;
+    shadow_.emission_eligible_variant = nullptr;
+    shadow_.ps_emission_variant = nullptr;
+    shadow_.ps_source_gain_variant = nullptr;
+    shadow_.source_gain_eligible_variant = nullptr;
+    shadow_.source_gain_pair = renderer::linear_emission_pair_count;
+    shadow_.ps_hull_program = false;
+    shadow_.ps_hull_gain_variant = nullptr;
+    shadow_.ps_original_fill_variant = nullptr;
+    shadow_.ps_hull_lightmap_variant = nullptr;
+    shadow_.original_fill_pair = false;
+    shadow_.hull_lightmap_pair = false;
+    shadow_.original_share_pair = false;
+    shadow_.original_share_refused = false;
+    shadow_.vs_registered = false;
+    shadow_.vs_fade_variant = nullptr;
+    shadow_.ps_registered = false;
+    shadow_.ps_fade_variant = nullptr;
     // D3DPOOL_DEFAULT objects must not exist across Reset; shaders survive it.
     // The pass releases its histories, scratch and state block after RT1/RT2
     // and keeps its resolve shader. A lazily bound RT1/RT2 is unbound first.
@@ -2873,40 +3899,79 @@ void MotionOutput::before_reset() noexcept {
     if (hdr_state_ == HdrState::Active && hdr_ && hdr_main_) hdr_->bind(hdr_main_, nullptr);
     drop_redirect(); // The FP16 target goes with RT1/RT2.
     release_target();
-    if (composition_) { composition_busy_ = true; composition_->before_reset(); composition_busy_ = false; }
-    fade_bounds_.clear(); // relearned after Reset; allocation ids never recur
+    if (composition_) {
+        composition_busy_ = true;
+        composition_->before_reset();
+        composition_busy_ = false;
+    }
+    fade_bounds_.clear();     // relearned after Reset; allocation ids never recur
     fade_hysteresis_.clear(); // the arm starts again at the threshold after Reset
-    last_routed_node_ = last_routed_lifetime_ = 0; last_routed_frame_ = ~std::uint64_t{0}; last_routed_draw_ = 0; // no overlay witness survives Reset
-    release_fade_witness(); release_packed_sample(); // the M target is recreated after Reset; the copies follow its size
-    release_bolt_buffer(); // DEFAULT pool: goes before Reset, recreated by the next draw that needs it
-    composition_state_lost_ = false; composition_frame_stopped_ = false; composition_attach_attempted_ = false;
+    last_routed_node_ = last_routed_lifetime_ = 0;
+    last_routed_frame_ = ~std::uint64_t{0};
+    last_routed_draw_ = 0; // no overlay witness survives Reset
+    release_fade_witness();
+    release_packed_sample(); // the M target is recreated after Reset; the copies follow its size
+    release_bolt_buffer();   // DEFAULT pool: goes before Reset, recreated by the next draw that needs it
+    composition_state_lost_ = false;
+    composition_frame_stopped_ = false;
+    composition_attach_attempted_ = false;
     composition_adapter_format_ = D3DFMT_UNKNOWN; // Reset may change the adapter display format.
     if (hdr_) hdr_->before_reset();
-    hdr_target_failed_ = false; hdr_blocked_ = false; hdr_blocked_latches_ = 0; // a Reset clears the cause of an unwind
+    hdr_target_failed_ = false;
+    hdr_blocked_ = false;
+    hdr_blocked_latches_ = 0; // a Reset clears the cause of an unwind
     if (taa_) taa_call([&] { taa_->before_reset(); });
     if (candidates_requested_) release_candidate_extents();
-    release_thin_votes(); // queued subset reads hold wrapper references; the MANAGED buffers and their histograms survive the Reset
-    if (retention_) flush_shadow_retention(shadow_retention::Flush::Reset); // every Reset attempt, before the native call: all held references released, the store empty
-    if (depth_replay_requested_) { release_depth_leases(); if (depth_replay_) taa_call([&] { depth_replay_->before_reset(); }); depth_replay_attach_failed_ = false; }
-    depth_replayed_ = 0; depth_cascade_frame_ok_ = false; sun_apply_applied_ = sun_apply_attempted_ = false;
-    candidate_ps_written_ = 0; // Reset clears the device's shader constants; the validated sun itself is world-fixed and stays
+    release_thin_votes(); // queued subset reads hold wrapper references; the MANAGED buffers and their histograms
+                          // survive the Reset
+    if (retention_)
+        flush_shadow_retention(shadow_retention::Flush::Reset); // every Reset attempt, before the native call: all held
+                                                                // references released, the store empty
+    if (depth_replay_requested_) {
+        release_depth_leases();
+        if (depth_replay_) taa_call([&] { depth_replay_->before_reset(); });
+        depth_replay_attach_failed_ = false;
+    }
+    depth_replayed_ = 0;
+    depth_cascade_frame_ok_ = false;
+    sun_apply_applied_ = sun_apply_attempted_ = false;
+    candidate_ps_written_ = 0; // Reset clears the device's shader constants; the validated sun itself is world-fixed
+                               // and stays
     if (sun_apply_) taa_call([&] { sun_apply_->before_reset(); });
-    // The two 1x1 DEFAULT-pool targets go; the override is vanilla until a pass has run again (sun_occlusion::device_reset).
+    // The two 1x1 DEFAULT-pool targets go; the override is vanilla until a pass has run again
+    // (sun_occlusion::device_reset).
     if (sun_occlusion_pass_) taa_call([&] { sun_occlusion_pass_->before_reset(); });
     release_lens_depth();
-    lens_frame_active_ = lens_suppress_ = false; lens_record_ = 0; lens_pass_qpc_ = 0; lens_hold_ = {}; sun_occlusion_attach_failed_ = false;
+    lens_frame_active_ = lens_suppress_ = false;
+    lens_record_ = 0;
+    lens_pass_qpc_ = 0;
+    lens_hold_ = {};
+    sun_occlusion_attach_failed_ = false;
     if (fog_) taa_call([&] { fog_->before_reset(); });
-    fog_sector_ = {}; fog_cards_ = {}; fog_card_ready_checked_ = fog_card_ready_ = false; fog_card_fault_reason_ = "none"; fog_card_refusal_ = fog_card_last_refusal_ = fog_card_ready_reason_ = nullptr; fog_card_refusal_ready_ = false;
-    fog_failures_ = 0; fog_attach_failed_ = false; // a transient failure or attach refusal is retried after Reset
+    fog_sector_ = {};
+    fog_cards_ = {};
+    fog_card_ready_checked_ = fog_card_ready_ = false;
+    fog_card_fault_reason_ = "none";
+    fog_card_refusal_ = fog_card_last_refusal_ = fog_card_ready_reason_ = nullptr;
+    fog_card_refusal_ready_ = false;
+    fog_failures_ = 0;
+    fog_attach_failed_ = false;    // a transient failure or attach refusal is retried after Reset
     fog_density_prepared_ = false; // the worker, both CPU caches and the staging survive; only the DEFAULT atlases went
     sun_apply_attach_failed_ = false; // a transient attach failure is retried after Reset
     target_failed_ = false;
     history_.invalidate();
     selector_.invalidate();
-    fill_pending_ = false; pending_valid_ = false;
-    main_ = {}; main_depth_ = {}; main_msaa_ = false; main_msaa_samples_ = 0; msaa_logged_ = false;
-    camera_state::reset(); camera_previous_ = renderer::CameraState{};
-    taa_invalidate_pending_ |= 1u << unsigned(TaaInvalidateSite::Reset); // logged by after_reset's begin_frame (the frame begun at the last Present)
+    fill_pending_ = false;
+    pending_valid_ = false;
+    main_ = {};
+    main_depth_ = {};
+    main_msaa_ = false;
+    main_msaa_samples_ = 0;
+    msaa_logged_ = false;
+    camera_state::reset();
+    camera_previous_ = renderer::CameraState{};
+    taa_invalidate_pending_ |= 1u << unsigned(TaaInvalidateSite::Reset); // logged by after_reset's begin_frame (the
+                                                                         // frame begun at the last Present)
 }
 void MotionOutput::after_reset(HRESULT result) noexcept {
     ++generation_;
@@ -2914,42 +3979,84 @@ void MotionOutput::after_reset(HRESULT result) noexcept {
     if (depth_replay_) depth_replay_->after_reset(result);
     if (sun_apply_) sun_apply_->after_reset(result);
     if (sun_occlusion_pass_) sun_occlusion_pass_->after_reset(result);
-    if (fog_) { fog_->after_reset(result); fog_frame_ = ~std::uint64_t(0); }
-    sun_apply_frame_ = ~std::uint64_t(0); depth_replayed_frame_ = ~std::uint64_t(0); // a successful Reset continues the frame counter: the replay and the quad may run again
-    scene_open_ = false; // Reset ends any application scene; BeginScene follows.
+    if (fog_) {
+        fog_->after_reset(result);
+        fog_frame_ = ~std::uint64_t(0);
+    }
+    sun_apply_frame_ = ~std::uint64_t(0);
+    depth_replayed_frame_ = ~std::uint64_t(0); // a successful Reset continues the frame counter: the replay and the
+                                               // quad may run again
+    scene_open_ = false;                       // Reset ends any application scene; BeginScene follows.
     if (!enabled_) return;
     // The interrupted frame continues after a successful Reset; capture is off.
-    if (SUCCEEDED(result)) { sun_lane_failed_=false; qualify_sun_lane(); cutout_reset_pending_ = false; probe_cutout_caps(true); resync_shadow(); recover_motion_state(); begin_frame(frame_, false); }
-    log("motion_output_reset device=%llu result=%08lx generation=%llu taa_references=%u", id_, result, generation_, taa_references_);
+    if (SUCCEEDED(result)) {
+        sun_lane_failed_ = false;
+        qualify_sun_lane();
+        cutout_reset_pending_ = false;
+        probe_cutout_caps(true);
+        resync_shadow();
+        recover_motion_state();
+        begin_frame(frame_, false);
+    }
+    log("motion_output_reset device=%llu result=%08lx generation=%llu taa_references=%u", id_, result, generation_,
+        taa_references_);
 }
 
 // ---- shader registry -------------------------------------------------------
 
-void MotionOutput::register_vertex_shader(IDirect3DVertexShader9* shader, const DWORD* code,
-                                          std::size_t bytes, std::uint64_t hash) noexcept {
+void MotionOutput::register_vertex_shader(IDirect3DVertexShader9* shader, const DWORD* code, std::size_t bytes,
+                                          std::uint64_t hash) noexcept {
     // Invalidate before map allocation, any early exit or owned-object
     // Release: a reentrant observer must never see the replaced pair contract.
     if (shader && shadow_.vs == shader) {
-        shadow_.fade_sampler_mask = 0; shadow_.emission_pair = false; shadow_.emission_eligible_variant = nullptr; shadow_.source_gain_eligible_variant = nullptr; shadow_.source_gain_pair = renderer::linear_emission_pair_count; shadow_.original_fill_pair = false; shadow_.hull_lightmap_pair = false; shadow_.original_share_pair = false; shadow_.original_share_refused = false; shadow_.screen_pair = false; shadow_.screen_eligible_variant = nullptr; shadow_.screen_additive_pair = false; shadow_.screen_additive_index = screen_emission::pair_count; shadow_.vs_registered = false; shadow_.vs_fade_variant = nullptr;
+        shadow_.fade_sampler_mask = 0;
+        shadow_.emission_pair = false;
+        shadow_.emission_eligible_variant = nullptr;
+        shadow_.source_gain_eligible_variant = nullptr;
+        shadow_.source_gain_pair = renderer::linear_emission_pair_count;
+        shadow_.original_fill_pair = false;
+        shadow_.hull_lightmap_pair = false;
+        shadow_.original_share_pair = false;
+        shadow_.original_share_refused = false;
+        shadow_.screen_pair = false;
+        shadow_.screen_eligible_variant = nullptr;
+        shadow_.screen_additive_pair = false;
+        shadow_.screen_additive_index = screen_emission::pair_count;
+        shadow_.vs_registered = false;
+        shadow_.vs_fade_variant = nullptr;
         shadow_.material_contract = {};
-    shadow_.cutout_pair = false;
+        shadow_.cutout_pair = false;
         shadow_.xt_default_pair = shadow_.xt_default_ready = false;
         shadow_.vs_xt_default_ordinary = shadow_.vs_xt_default_linear = nullptr;
-        shadow_.vs_hash = 0; shadow_.vs_variant = nullptr; shadow_.vs_material_variant = nullptr; shadow_.vs_row = nullptr; shadow_.vs_prepass = nullptr;
+        shadow_.vs_hash = 0;
+        shadow_.vs_variant = nullptr;
+        shadow_.vs_material_variant = nullptr;
+        shadow_.vs_row = nullptr;
+        shadow_.vs_prepass = nullptr;
     }
     if (!requested_ || !shader) return;
     try {
         auto& entry = vertex_[shader];
         entry.registered = false;
         release(entry.variant);
-        release(entry.sun_motion_variant); release(entry.sun_material_variant); release(entry.sun_xt_variant); release(entry.sun_original_variant); release(entry.sun_original_lightmap_variant); release(entry.hull_lightmap_widen_variant); release(entry.sun_original_lightmap_widen_variant); entry.hull_lightmap_stage=0; entry.sun_extraction=false;
+        release(entry.sun_motion_variant);
+        release(entry.sun_material_variant);
+        release(entry.sun_xt_variant);
+        release(entry.sun_original_variant);
+        release(entry.sun_original_lightmap_variant);
+        release(entry.hull_lightmap_widen_variant);
+        release(entry.sun_original_lightmap_widen_variant);
+        entry.hull_lightmap_stage = 0;
+        entry.sun_extraction = false;
         release(entry.material_variant);
         release(entry.xt_default_ordinary_variant);
         release(entry.xt_default_linear_variant);
         release(entry.distance_fade_variant);
         entry.hash = hash;
-        entry.major = code && bytes >= 4 && (code[0] >> 16) == 0xfffeu ? std::uint8_t((code[0] >> 8) & 0xffu) : std::uint8_t(0);
-        entry.row = nullptr; entry.prepass = nullptr;
+        entry.major = code && bytes >= 4 && (code[0] >> 16) == 0xfffeu ? std::uint8_t((code[0] >> 8) & 0xffu)
+                                                                       : std::uint8_t(0);
+        entry.row = nullptr;
+        entry.prepass = nullptr;
         if (!enabled_ || !code || !bytes || bytes % 4) return;
         if (distance_fade_requested_) {
             std::vector<std::uint32_t> words;
@@ -2958,11 +4065,15 @@ void MotionOutput::register_vertex_shader(IDirect3DVertexShader9* shader, const 
             IDirect3DVertexShader9* variant = nullptr;
             HRESULT hr = E_FAIL;
             if (transformed == renderer::LinearMaterialResult::Applied)
-                hr = native<CreateVsFn>(CreateVertexShader)(device_, reinterpret_cast<const DWORD*>(words.data()), &variant);
-            if (SUCCEEDED(hr) && variant) entry.distance_fade_variant = variant;
-            else release(variant);
+                hr = native<CreateVsFn>(CreateVertexShader)(device_, reinterpret_cast<const DWORD*>(words.data()),
+                                                            &variant);
+            if (SUCCEEDED(hr) && variant)
+                entry.distance_fade_variant = variant;
+            else
+                release(variant);
             if (transformed != renderer::LinearMaterialResult::UnsupportedShader)
-                log("linear_distance_fade_variant device=%llu kind=vertex original=%016llx transform=%u create=%08lx words=%u", id_, hash, unsigned(transformed), hr, unsigned(words.size()));
+                log("linear_distance_fade_variant device=%llu kind=vertex original=%016llx transform=%u create=%08lx words=%u",
+                    id_, hash, unsigned(transformed), hr, unsigned(words.size()));
         }
         // One variant per original program: rows sharing this VS agree on its
         // side of the splice (static_assert in motion_output_profiles.h), so
@@ -2975,25 +4086,34 @@ void MotionOutput::register_vertex_shader(IDirect3DVertexShader9* shader, const 
         if (!entry.row) entry.prepass = renderer::depth_prepass_vertex_row(hash, bytes / 4, code[0]);
         if (entry.row) {
             std::vector<std::uint32_t> words;
-            const auto result = renderer::material_motion_vertex_variant(reinterpret_cast<const std::uint32_t*>(code), bytes / 4, words, depth_enabled_);
+            const auto result = renderer::material_motion_vertex_variant(reinterpret_cast<const std::uint32_t*>(code),
+                                                                         bytes / 4, words, depth_enabled_);
             IDirect3DVertexShader9* variant = nullptr;
             HRESULT hr = E_FAIL;
             if (result == renderer::MaterialMotionResult::Applied)
-                hr = native<CreateVsFn>(CreateVertexShader)(device_, reinterpret_cast<const DWORD*>(words.data()), &variant);
-            if (SUCCEEDED(hr) && variant) entry.variant = variant;
-            else release(variant);
+                hr = native<CreateVsFn>(CreateVertexShader)(device_, reinterpret_cast<const DWORD*>(words.data()),
+                                                            &variant);
+            if (SUCCEEDED(hr) && variant)
+                entry.variant = variant;
+            else
+                release(variant);
             log("motion_output_variant device=%llu kind=vs original=%016llx transform=%u create=%08lx words=%u depth=%u",
-                id_, hash, unsigned(result), hr, unsigned(words.size()), renderer::material_motion_vertex_exports_depth(*entry.row, depth_enabled_));
+                id_, hash, unsigned(result), hr, unsigned(words.size()),
+                renderer::material_motion_vertex_exports_depth(*entry.row, depth_enabled_));
             if (linear_material_requested_ && entry.variant) {
                 words.clear();
                 const auto material = renderer::linear_material_vertex_variant(
-                    reinterpret_cast<const std::uint32_t*>(code), bytes / 4, linear_material_config_, words, depth_enabled_);
+                    reinterpret_cast<const std::uint32_t*>(code), bytes / 4, linear_material_config_, words,
+                    depth_enabled_);
                 IDirect3DVertexShader9* combined = nullptr;
                 HRESULT material_hr = E_FAIL;
                 if (material == renderer::LinearMaterialResult::Applied)
-                    material_hr = native<CreateVsFn>(CreateVertexShader)(device_, reinterpret_cast<const DWORD*>(words.data()), &combined);
-                if (SUCCEEDED(material_hr) && combined) entry.material_variant = combined;
-                else release(combined);
+                    material_hr = native<CreateVsFn>(CreateVertexShader)(
+                        device_, reinterpret_cast<const DWORD*>(words.data()), &combined);
+                if (SUCCEEDED(material_hr) && combined)
+                    entry.material_variant = combined;
+                else
+                    release(combined);
                 if (material != renderer::LinearMaterialResult::UnsupportedShader)
                     log("linear_material_variant device=%llu kind=vs original=%016llx transform=%u create=%08lx words=%u depth=%u fill_applied=0",
                         id_, hash, unsigned(material), material_hr, unsigned(words.size()), depth_enabled_);
@@ -3004,15 +4124,20 @@ void MotionOutput::register_vertex_shader(IDirect3DVertexShader9* shader, const 
                 for (bool linear : {false, true}) {
                     words.clear();
                     const auto result = renderer::linear_material_xt_default_vertex_variant(
-                        reinterpret_cast<const std::uint32_t*>(code), bytes / 4, linear_material_config_, words, depth_enabled_, linear);
+                        reinterpret_cast<const std::uint32_t*>(code), bytes / 4, linear_material_config_, words,
+                        depth_enabled_, linear);
                     IDirect3DVertexShader9* repaired = nullptr;
                     HRESULT hr = E_FAIL;
                     if (result == renderer::LinearMaterialResult::Applied)
-                        hr = native<CreateVsFn>(CreateVertexShader)(device_, reinterpret_cast<const DWORD*>(words.data()), &repaired);
+                        hr = native<CreateVsFn>(CreateVertexShader)(
+                            device_, reinterpret_cast<const DWORD*>(words.data()), &repaired);
                     if (SUCCEEDED(hr) && repaired) {
-                        if (linear) entry.xt_default_linear_variant = repaired;
-                        else entry.xt_default_ordinary_variant = repaired;
-                    } else release(repaired);
+                        if (linear)
+                            entry.xt_default_linear_variant = repaired;
+                        else
+                            entry.xt_default_ordinary_variant = repaired;
+                    } else
+                        release(repaired);
                     if (result != renderer::LinearMaterialResult::UnsupportedShader)
                         log("linear_material_xt_default_variant device=%llu kind=vs original=%016llx linear=%u transform=%u create=%08lx words=%u depth=%u",
                             id_, hash, linear, unsigned(result), hr, unsigned(words.size()), depth_enabled_);
@@ -3023,32 +4148,73 @@ void MotionOutput::register_vertex_shader(IDirect3DVertexShader9* shader, const 
         if (shadow_.vs == shader) set_vertex_shader(shader);
     } catch (...) {}
 }
-void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DWORD* code,
-                                         std::size_t bytes, std::uint64_t hash) noexcept {
+void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DWORD* code, std::size_t bytes,
+                                         std::uint64_t hash) noexcept {
     // Invalidate before map allocation, any early exit or owned-object
     // Release: a reentrant observer must never see the replaced pair contract.
     if (shader && shadow_.ps == shader) {
-        shadow_.fade_sampler_mask = 0; shadow_.emission_pair = false; shadow_.emission_eligible_variant = nullptr; shadow_.screen_pair = false; shadow_.screen_eligible_variant = nullptr; shadow_.screen_additive_pair = false; shadow_.screen_additive_index = screen_emission::pair_count; shadow_.ps_screen_additive_variant = nullptr; shadow_.ps_registered = false; shadow_.ps_fade_variant = nullptr; shadow_.ps_emission_variant = nullptr; shadow_.ps_source_gain_variant = nullptr; shadow_.source_gain_eligible_variant = nullptr; shadow_.source_gain_pair = renderer::linear_emission_pair_count; shadow_.ps_hull_program = false; shadow_.ps_hull_gain_variant = nullptr; shadow_.ps_original_fill_variant = nullptr; shadow_.ps_hull_lightmap_variant = nullptr; shadow_.original_fill_pair = false; shadow_.hull_lightmap_pair = false; shadow_.original_share_pair = false; shadow_.original_share_refused = false; shadow_.ps_screen_variant = nullptr;
+        shadow_.fade_sampler_mask = 0;
+        shadow_.emission_pair = false;
+        shadow_.emission_eligible_variant = nullptr;
+        shadow_.screen_pair = false;
+        shadow_.screen_eligible_variant = nullptr;
+        shadow_.screen_additive_pair = false;
+        shadow_.screen_additive_index = screen_emission::pair_count;
+        shadow_.ps_screen_additive_variant = nullptr;
+        shadow_.ps_registered = false;
+        shadow_.ps_fade_variant = nullptr;
+        shadow_.ps_emission_variant = nullptr;
+        shadow_.ps_source_gain_variant = nullptr;
+        shadow_.source_gain_eligible_variant = nullptr;
+        shadow_.source_gain_pair = renderer::linear_emission_pair_count;
+        shadow_.ps_hull_program = false;
+        shadow_.ps_hull_gain_variant = nullptr;
+        shadow_.ps_original_fill_variant = nullptr;
+        shadow_.ps_hull_lightmap_variant = nullptr;
+        shadow_.original_fill_pair = false;
+        shadow_.hull_lightmap_pair = false;
+        shadow_.original_share_pair = false;
+        shadow_.original_share_refused = false;
+        shadow_.ps_screen_variant = nullptr;
         shadow_.material_contract = {};
-    shadow_.cutout_pair = false;
+        shadow_.cutout_pair = false;
         shadow_.xt_default_pair = shadow_.xt_default_ready = false;
         shadow_.ps_xt_default_ordinary = nullptr;
-        shadow_.ps_hash = 0; shadow_.ps_variant = nullptr; shadow_.ps_material_variant = nullptr;
-        shadow_.ps_sun_motion=shadow_.ps_sun_material=shadow_.ps_sun_xt=nullptr; shadow_.ps_sun_extraction=false; shadow_.ps_sun_original=nullptr;shadow_.ps_sun_original_lightmap=nullptr;shadow_.ps_sun_original_lightmap_widen=nullptr;shadow_.ps_hull_lightmap_widen=nullptr;shadow_.hull_lightmap_stage=0; shadow_.original_share_pair=false; shadow_.original_share_refused=false;
+        shadow_.ps_hash = 0;
+        shadow_.ps_variant = nullptr;
+        shadow_.ps_material_variant = nullptr;
+        shadow_.ps_sun_motion = shadow_.ps_sun_material = shadow_.ps_sun_xt = nullptr;
+        shadow_.ps_sun_extraction = false;
+        shadow_.ps_sun_original = nullptr;
+        shadow_.ps_sun_original_lightmap = nullptr;
+        shadow_.ps_sun_original_lightmap_widen = nullptr;
+        shadow_.ps_hull_lightmap_widen = nullptr;
+        shadow_.hull_lightmap_stage = 0;
+        shadow_.original_share_pair = false;
+        shadow_.original_share_refused = false;
     }
     if (!requested_ || !shader) return;
     try {
         auto& entry = pixel_[shader];
         entry.registered = false;
         release(entry.variant);
-        release(entry.sun_motion_variant); release(entry.sun_material_variant); release(entry.sun_xt_variant); release(entry.sun_original_variant); release(entry.sun_original_lightmap_variant); release(entry.hull_lightmap_widen_variant); release(entry.sun_original_lightmap_widen_variant); entry.hull_lightmap_stage=0; entry.sun_extraction=false;
+        release(entry.sun_motion_variant);
+        release(entry.sun_material_variant);
+        release(entry.sun_xt_variant);
+        release(entry.sun_original_variant);
+        release(entry.sun_original_lightmap_variant);
+        release(entry.hull_lightmap_widen_variant);
+        release(entry.sun_original_lightmap_widen_variant);
+        entry.hull_lightmap_stage = 0;
+        entry.sun_extraction = false;
         release(entry.material_variant);
         release(entry.xt_default_ordinary_variant);
         release(entry.xt_default_linear_variant);
         release(entry.distance_fade_variant);
         release(entry.emission_variant);
         release(entry.source_gain_variant);
-        release(entry.hull_gain_variant); entry.hull_program = false;
+        release(entry.hull_gain_variant);
+        entry.hull_program = false;
         release(entry.original_fill_variant);
         release(entry.hull_lightmap_variant);
         release(entry.screen_variant);
@@ -3056,15 +4222,19 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
         entry.hash = hash;
         entry.row = nullptr;
         entry.sun_register = -1;
-        entry.major = code && bytes >= 4 && (code[0] >> 16) == 0xffffu ? std::uint8_t((code[0] >> 8) & 0xffu) : std::uint8_t(0);
-        entry.depth_out = renderer::pixel_program_writes_depth(reinterpret_cast<const std::uint32_t*>(code), code && bytes % 4 == 0 ? bytes / 4 : 0);
+        entry.major = code && bytes >= 4 && (code[0] >> 16) == 0xffffu ? std::uint8_t((code[0] >> 8) & 0xffu)
+                                                                       : std::uint8_t(0);
+        entry.depth_out = renderer::pixel_program_writes_depth(reinterpret_cast<const std::uint32_t*>(code),
+                                                               code && bytes % 4 == 0 ? bytes / 4 : 0);
         if (code && bytes && bytes % 4 == 0) {
             // The program's own sun register (c4, c5 or c0 in the engine's hull
             // programs); a program without the constant contributes no sun.
             // Resolved for every program at creation (one walk of its leading
             // comment), whatever is configured or enabled by then.
-            const int sun = renderer::shader_float_constant_register(reinterpret_cast<const std::uint32_t*>(code), bytes / 4, shadow_replay::depth_sun_constant_name);
-            entry.sun_register = sun >= 0 && sun < int(shadow_replay::sun_register_limit) ? std::int8_t(sun) : std::int8_t(-1);
+            const int sun = renderer::shader_float_constant_register(reinterpret_cast<const std::uint32_t*>(code),
+                                                                     bytes / 4, shadow_replay::depth_sun_constant_name);
+            entry.sun_register = sun >= 0 && sun < int(shadow_replay::sun_register_limit) ? std::int8_t(sun)
+                                                                                          : std::int8_t(-1);
         }
         if (!enabled_ || !code || !bytes || bytes % 4) return;
         if (distance_fade_requested_) {
@@ -3075,9 +4245,12 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
             IDirect3DPixelShader9* variant = nullptr;
             HRESULT hr = E_FAIL;
             if (transformed == renderer::LinearMaterialResult::Applied)
-                hr = native<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(words.data()), &variant);
-            if (SUCCEEDED(hr) && variant) entry.distance_fade_variant = variant;
-            else release(variant);
+                hr = native<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(words.data()),
+                                                           &variant);
+            if (SUCCEEDED(hr) && variant)
+                entry.distance_fade_variant = variant;
+            else
+                release(variant);
             if (transformed != renderer::LinearMaterialResult::UnsupportedShader)
                 log("linear_distance_fade_variant device=%llu kind=pixel original=%016llx transform=%u create=%08lx words=%u fill_applied=%u",
                     id_, hash, unsigned(transformed), hr, unsigned(words.size()), unsigned(fill_applied));
@@ -3086,14 +4259,17 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
         // must complete independently, retaining the original VS and native oC0.
         if (linear_emission_requested_) {
             std::vector<std::uint32_t> words;
-            const auto result = renderer::linear_emission_pixel_variant(
-                reinterpret_cast<const std::uint32_t*>(code), bytes / 4, linear_emission_config_, words);
+            const auto result = renderer::linear_emission_pixel_variant(reinterpret_cast<const std::uint32_t*>(code),
+                                                                        bytes / 4, linear_emission_config_, words);
             IDirect3DPixelShader9* variant = nullptr;
             HRESULT hr = E_FAIL;
             if (result == renderer::LinearEmissionResult::Applied)
-                hr = native<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(words.data()), &variant);
-            if (SUCCEEDED(hr) && variant) entry.emission_variant = variant;
-            else release(variant);
+                hr = native<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(words.data()),
+                                                           &variant);
+            if (SUCCEEDED(hr) && variant)
+                entry.emission_variant = variant;
+            else
+                release(variant);
             if (result != renderer::LinearEmissionResult::UnsupportedShader)
                 log("linear_emission_variant device=%llu original=%016llx transform=%u create=%08lx words=%u gain=%g coverage=1",
                     id_, hash, unsigned(result), hr, unsigned(words.size()), double(linear_emission_config_.gain));
@@ -3109,9 +4285,12 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
             IDirect3DPixelShader9* variant = nullptr;
             HRESULT hr = E_FAIL;
             if (result == renderer::LinearEmissionResult::Applied)
-                hr = native<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(words.data()), &variant);
-            if (SUCCEEDED(hr) && variant) entry.source_gain_variant = variant;
-            else release(variant);
+                hr = native<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(words.data()),
+                                                           &variant);
+            if (SUCCEEDED(hr) && variant)
+                entry.source_gain_variant = variant;
+            else
+                release(variant);
             if (result != renderer::LinearEmissionResult::UnsupportedShader)
                 log("emission_source_gain_variant device=%llu original=%016llx transform=%u create=%08lx words=%u gain=%g",
                     id_, hash, unsigned(result), hr, unsigned(words.size()), double(emission_source_gain_));
@@ -3129,12 +4308,16 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
             IDirect3DPixelShader9* variant = nullptr;
             HRESULT hr = E_FAIL;
             if (result == renderer::LinearEmissionResult::Applied)
-                hr = native<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(words.data()), &variant);
-            if (SUCCEEDED(hr) && variant) entry.hull_gain_variant = variant;
-            else release(variant);
+                hr = native<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(words.data()),
+                                                           &variant);
+            if (SUCCEEDED(hr) && variant)
+                entry.hull_gain_variant = variant;
+            else
+                release(variant);
             entry.hull_program = true;
             log("hull_emission_variant device=%llu original=%016llx program=%u transform=%u create=%08lx words=%u gain=%g",
-                id_, hash, renderer::linear_emission_hull_program_index(hash), unsigned(result), hr, unsigned(words.size()), double(hull_emission_gain_));
+                id_, hash, renderer::linear_emission_hull_program_index(hash), unsigned(result), hr,
+                unsigned(words.size()), double(hull_emission_gain_));
         }
         // Step C (screen-emission-region.md): the promoted PackedScreen
         // producer of one of the six SM1 screen pixel shaders, from the
@@ -3144,55 +4327,83 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
         if (screen_emission_requested_ && screen_emission::admitted_pixel_shader(hash)) {
             std::vector<std::uint32_t> words;
             renderer::LinearEmissionSm1Config config{};
-            config.gain = linear_emission_config_.gain; config.outputs = renderer::LinearEmissionSm1Outputs::PackedScreen;
+            config.gain = linear_emission_config_.gain;
+            config.outputs = renderer::LinearEmissionSm1Outputs::PackedScreen;
             const auto result = renderer::linear_emission_sm1_pixel_variant(
                 reinterpret_cast<const std::uint32_t*>(code), bytes / 4, config, words);
             IDirect3DPixelShader9* variant = nullptr;
             HRESULT hr = E_FAIL;
             if (result == renderer::LinearEmissionResult::Applied)
-                hr = native<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(words.data()), &variant);
-            if (SUCCEEDED(hr) && variant) entry.screen_variant = variant;
-            else release(variant);
+                hr = native<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(words.data()),
+                                                           &variant);
+            if (SUCCEEDED(hr) && variant)
+                entry.screen_variant = variant;
+            else
+                release(variant);
             log("screen_emission_variant device=%llu original=%016llx transform=%u create=%08lx words=%u gain=%g outputs=packed",
                 id_, hash, unsigned(result), hr, unsigned(words.size()), double(config.gain));
         }
         // Additive option: the native PS2 path with its colour lanes times G
         // (AdditiveGain), created once here; G = 1 binds the original instead.
-        if (screen_additive_requested_ && screen_additive_gain_ != 1.f && screen_emission::admitted_pixel_shader(hash)) {
+        if (screen_additive_requested_ && screen_additive_gain_ != 1.f &&
+            screen_emission::admitted_pixel_shader(hash)) {
             std::vector<std::uint32_t> words;
             renderer::LinearEmissionSm1Config config{};
-            config.gain = screen_additive_gain_; config.outputs = renderer::LinearEmissionSm1Outputs::AdditiveGain;
+            config.gain = screen_additive_gain_;
+            config.outputs = renderer::LinearEmissionSm1Outputs::AdditiveGain;
             const auto result = renderer::linear_emission_sm1_pixel_variant(
                 reinterpret_cast<const std::uint32_t*>(code), bytes / 4, config, words);
             IDirect3DPixelShader9* variant = nullptr;
             HRESULT hr = E_FAIL;
             if (result == renderer::LinearEmissionResult::Applied)
-                hr = native<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(words.data()), &variant);
-            if (SUCCEEDED(hr) && variant) entry.screen_additive_variant = variant;
-            else release(variant);
+                hr = native<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(words.data()),
+                                                           &variant);
+            if (SUCCEEDED(hr) && variant)
+                entry.screen_additive_variant = variant;
+            else
+                release(variant);
             log("screen_emission_additive_variant device=%llu original=%016llx transform=%u create=%08lx words=%u gain=%g",
                 id_, hash, unsigned(result), hr, unsigned(words.size()), double(config.gain));
         }
         entry.row = renderer::material_motion_pixel_row(hash, bytes / 4);
         if (entry.row) {
             std::vector<std::uint32_t> words;
-            const auto result = renderer::material_motion_pixel_variant(reinterpret_cast<const std::uint32_t*>(code), bytes / 4, words, depth_enabled_);
+            const auto result = renderer::material_motion_pixel_variant(reinterpret_cast<const std::uint32_t*>(code),
+                                                                        bytes / 4, words, depth_enabled_);
             IDirect3DPixelShader9* variant = nullptr;
             HRESULT hr = E_FAIL;
             if (result == renderer::MaterialMotionResult::Applied)
-                hr = native<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(words.data()), &variant);
-            if (SUCCEEDED(hr) && variant) entry.variant = variant;
-            else release(variant);
-            if(sun_lane_requested_&&entry.variant&&renderer::material_motion_pixel_writes_depth(*entry.row,depth_enabled_)) {
-                const HRESULT lane_hr=renderer::material_motion_invalid_sun_share(words)?native<CreatePsFn>(CreatePixelShader)(device_,reinterpret_cast<const DWORD*>(words.data()),&entry.sun_motion_variant):E_FAIL;
-                if(FAILED(lane_hr)||!entry.sun_motion_variant){release(entry.sun_motion_variant);sun_lane_failed_=true;}
+                hr = native<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(words.data()),
+                                                           &variant);
+            if (SUCCEEDED(hr) && variant)
+                entry.variant = variant;
+            else
+                release(variant);
+            if (sun_lane_requested_ && entry.variant &&
+                renderer::material_motion_pixel_writes_depth(*entry.row, depth_enabled_)) {
+                const HRESULT lane_hr = renderer::material_motion_invalid_sun_share(words)
+                                            ? native<CreatePsFn>(CreatePixelShader)(
+                                                  device_, reinterpret_cast<const DWORD*>(words.data()),
+                                                  &entry.sun_motion_variant)
+                                            : E_FAIL;
+                if (FAILED(lane_hr) || !entry.sun_motion_variant) {
+                    release(entry.sun_motion_variant);
+                    sun_lane_failed_ = true;
+                }
             }
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
-            {char fault[16]{};GetEnvironmentVariableA("X3M_FIXTURE_SUN_LANE_FAULT",fault,sizeof fault);
-             if(sun_lane_active_&&!std::strcmp(fault,"late_shader")){release(entry.sun_motion_variant);sun_lane_failed_=true;}}
+            {
+                char fault[16]{};
+                GetEnvironmentVariableA("X3M_FIXTURE_SUN_LANE_FAULT", fault, sizeof fault);
+                if (sun_lane_active_ && !std::strcmp(fault, "late_shader")) {
+                    release(entry.sun_motion_variant);
+                    sun_lane_failed_ = true;
+                }
+            }
 #endif
             log("motion_output_variant device=%llu kind=ps original=%016llx transform=%u create=%08lx words=%u depth=%u",
-                id_, hash, unsigned(result), hr, unsigned(words.size()), renderer::material_motion_pixel_writes_depth(*entry.row, depth_enabled_));
+                id_, hash, unsigned(result), hr, unsigned(words.size()),
+                renderer::material_motion_pixel_writes_depth(*entry.row, depth_enabled_));
             // Option C fill (original-shading-critique.md 1a): the same motion
             // variant with the fill block, created once here and selected in
             // bind_variant_pair for the routed reviewed pair. fill_applied=0 is
@@ -3202,16 +4413,21 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
                 words.clear();
                 bool fill_applied = false;
                 const auto filled = renderer::linear_material_original_fill_pixel_variant(
-                    reinterpret_cast<const std::uint32_t*>(code), bytes / 4, original_fill_, words, depth_enabled_, fill_applied);
+                    reinterpret_cast<const std::uint32_t*>(code), bytes / 4, original_fill_, words, depth_enabled_,
+                    fill_applied);
                 IDirect3DPixelShader9* variant = nullptr;
                 HRESULT fill_hr = E_FAIL;
                 if (filled == renderer::LinearMaterialResult::Applied && fill_applied)
-                    fill_hr = native<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(words.data()), &variant);
-                if (SUCCEEDED(fill_hr) && variant) entry.original_fill_variant = variant;
-                else release(variant);
+                    fill_hr = native<CreatePsFn>(CreatePixelShader)(
+                        device_, reinterpret_cast<const DWORD*>(words.data()), &variant);
+                if (SUCCEEDED(fill_hr) && variant)
+                    entry.original_fill_variant = variant;
+                else
+                    release(variant);
                 if (filled != renderer::LinearMaterialResult::UnsupportedShader)
                     log("original_fill_variant device=%llu original=%016llx transform=%u create=%08lx words=%u depth=%u fill=%g fill_applied=%u",
-                        id_, hash, unsigned(filled), fill_hr, unsigned(words.size()), depth_enabled_, double(original_fill_), unsigned(fill_applied));
+                        id_, hash, unsigned(filled), fill_hr, unsigned(words.size()), depth_enabled_,
+                        double(original_fill_), unsigned(fill_applied));
             }
             // Hull light-map gain (hull-self-illumination.md 5): the fill
             // variant (K, or K=0) plus the one MUL after the light-map fetch,
@@ -3223,18 +4439,23 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
                 words.clear();
                 bool fill_applied = false, gain_applied = false;
                 const auto gained = renderer::linear_material_hull_lightmap_gain_pixel_variant(
-                    reinterpret_cast<const std::uint32_t*>(code), bytes / 4, original_fill_requested_ ? original_fill_ : 0.f, hull_lightmap_gain_,
-                    words, depth_enabled_, fill_applied, gain_applied, lightmap_far_fade_);
+                    reinterpret_cast<const std::uint32_t*>(code), bytes / 4,
+                    original_fill_requested_ ? original_fill_ : 0.f, hull_lightmap_gain_, words, depth_enabled_,
+                    fill_applied, gain_applied, lightmap_far_fade_);
                 IDirect3DPixelShader9* variant = nullptr;
                 HRESULT gain_hr = E_FAIL;
                 if (gained == renderer::LinearMaterialResult::Applied && gain_applied)
-                    gain_hr = native<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(words.data()), &variant);
-                if (SUCCEEDED(gain_hr) && variant) entry.hull_lightmap_variant = variant;
-                else release(variant);
+                    gain_hr = native<CreatePsFn>(CreatePixelShader)(
+                        device_, reinterpret_cast<const DWORD*>(words.data()), &variant);
+                if (SUCCEEDED(gain_hr) && variant)
+                    entry.hull_lightmap_variant = variant;
+                else
+                    release(variant);
                 if (gained != renderer::LinearMaterialResult::UnsupportedShader)
                     log("hull_lightmap_variant device=%llu original=%016llx transform=%u create=%08lx words=%u depth=%u fill=%g gain=%g fill_applied=%u gain_applied=%u",
-                        id_, hash, unsigned(gained), gain_hr, unsigned(words.size()), depth_enabled_, double(original_fill_requested_ ? original_fill_ : 0.f),
-                        double(hull_lightmap_gain_), unsigned(fill_applied), unsigned(gain_applied));
+                        id_, hash, unsigned(gained), gain_hr, unsigned(words.size()), depth_enabled_,
+                        double(original_fill_requested_ ? original_fill_ : 0.f), double(hull_lightmap_gain_),
+                        unsigned(fill_applied), unsigned(gain_applied));
                 // Hull emissive widening (hull-emissive-widening.md 2.2): the
                 // same gained variant with the light-map texld replaced by the
                 // gradient-scaled texldd, created only beside a created gained
@@ -3247,18 +4468,25 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
                     bool widen_fill = false, widen_gain = false, widen_applied = false;
                     const renderer::HullLightmapWiden parameters{lightmap_widen_k_, lightmap_widen_b_};
                     const auto widened = renderer::linear_material_hull_lightmap_gain_pixel_variant(
-                        reinterpret_cast<const std::uint32_t*>(code), bytes / 4, original_fill_requested_ ? original_fill_ : 0.f, hull_lightmap_gain_,
-                        words, depth_enabled_, widen_fill, widen_gain, lightmap_far_fade_, &parameters, &widen_applied);
+                        reinterpret_cast<const std::uint32_t*>(code), bytes / 4,
+                        original_fill_requested_ ? original_fill_ : 0.f, hull_lightmap_gain_, words, depth_enabled_,
+                        widen_fill, widen_gain, lightmap_far_fade_, &parameters, &widen_applied);
                     IDirect3DPixelShader9* widen_variant = nullptr;
                     HRESULT widen_hr = E_FAIL;
                     if (widened == renderer::LinearMaterialResult::Applied && widen_applied)
-                        widen_hr = native<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(words.data()), &widen_variant);
+                        widen_hr = native<CreatePsFn>(CreatePixelShader)(
+                            device_, reinterpret_cast<const DWORD*>(words.data()), &widen_variant);
                     const unsigned stage = renderer::linear_material_hull_lightmap_stage(hash, bytes / 4);
-                    if (SUCCEEDED(widen_hr) && widen_variant && stage) { entry.hull_lightmap_widen_variant = widen_variant; entry.hull_lightmap_stage = std::uint8_t(stage); ++lightmap_widen_variants_; }
-                    else release(widen_variant);
+                    if (SUCCEEDED(widen_hr) && widen_variant && stage) {
+                        entry.hull_lightmap_widen_variant = widen_variant;
+                        entry.hull_lightmap_stage = std::uint8_t(stage);
+                        ++lightmap_widen_variants_;
+                    } else
+                        release(widen_variant);
                     if (widened != renderer::LinearMaterialResult::UnsupportedShader)
                         log("hull_lightmap_widen_variant device=%llu original=%016llx transform=%u create=%08lx words=%u depth=%u k=%g b=%g stage=%u widen_applied=%u",
-                            id_, hash, unsigned(widened), widen_hr, unsigned(words.size()), depth_enabled_, double(lightmap_widen_k_), double(lightmap_widen_b_), stage, unsigned(widen_applied));
+                            id_, hash, unsigned(widened), widen_hr, unsigned(words.size()), depth_enabled_,
+                            double(lightmap_widen_k_), double(lightmap_widen_b_), stage, unsigned(widen_applied));
                 }
             }
             // Original-shading share producer (legacy-sun-application.md section
@@ -3268,25 +4496,37 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
             // the lane on and linear materials off; share_applied=0 or a failed
             // create is the fail-closed refusal (counted): no object, the draw
             // binds the plain lane motion variant (invalid share) as before.
-            if (sun_lane_requested_ && !linear_material_requested_ && entry.variant && renderer::material_motion_pixel_writes_depth(*entry.row, depth_enabled_)) {
+            if (sun_lane_requested_ && !linear_material_requested_ && entry.variant &&
+                renderer::material_motion_pixel_writes_depth(*entry.row, depth_enabled_)) {
                 words.clear();
                 bool share_applied = false;
                 const auto shared = renderer::linear_material_original_sun_share_pixel_variant(
-                    reinterpret_cast<const std::uint32_t*>(code), bytes / 4, original_fill_requested_ ? original_fill_ : 0.f, words, depth_enabled_, share_applied);
+                    reinterpret_cast<const std::uint32_t*>(code), bytes / 4,
+                    original_fill_requested_ ? original_fill_ : 0.f, words, depth_enabled_, share_applied);
                 IDirect3DPixelShader9* variant = nullptr;
                 HRESULT share_hr = E_FAIL;
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
                 // Fixture seam: X3M_FIXTURE_SUN_LANE_FAULT=original_share refuses the producer (fail-closed witness).
-                {char fault[16]{};GetEnvironmentVariableA("X3M_FIXTURE_SUN_LANE_FAULT",fault,sizeof fault);
-                 if(!std::strcmp(fault,"original_share"))share_applied=false;}
+                {
+                    char fault[16]{};
+                    GetEnvironmentVariableA("X3M_FIXTURE_SUN_LANE_FAULT", fault, sizeof fault);
+                    if (!std::strcmp(fault, "original_share")) share_applied = false;
+                }
 #endif
                 if (shared == renderer::LinearMaterialResult::Applied && share_applied)
-                    share_hr = native<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(words.data()), &variant);
-                if (SUCCEEDED(share_hr) && variant) { entry.sun_original_variant = variant; ++sun_original_variants_; }
-                else { release(variant); if (shared != renderer::LinearMaterialResult::UnsupportedShader) ++sun_original_refused_; }
+                    share_hr = native<CreatePsFn>(CreatePixelShader)(
+                        device_, reinterpret_cast<const DWORD*>(words.data()), &variant);
+                if (SUCCEEDED(share_hr) && variant) {
+                    entry.sun_original_variant = variant;
+                    ++sun_original_variants_;
+                } else {
+                    release(variant);
+                    if (shared != renderer::LinearMaterialResult::UnsupportedShader) ++sun_original_refused_;
+                }
                 if (shared != renderer::LinearMaterialResult::UnsupportedShader)
                     log("sun_shadow_original_variant device=%llu original=%016llx transform=%u create=%08lx words=%u depth=%u fill=%g share_applied=%u",
-                        id_, hash, unsigned(shared), share_hr, unsigned(words.size()), depth_enabled_, double(original_fill_requested_ ? original_fill_ : 0.f), unsigned(share_applied));
+                        id_, hash, unsigned(shared), share_hr, unsigned(words.size()), depth_enabled_,
+                        double(original_fill_requested_ ? original_fill_ : 0.f), unsigned(share_applied));
                 // The same share producer composed with the hull light-map gain
                 // (hull-self-illumination.md 5), created only beside a created
                 // share variant so the light-map flag can fall back to it; the lane
@@ -3295,36 +4535,50 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
                     words.clear();
                     bool gained_share = false, gain_applied = false;
                     const auto gained = renderer::linear_material_original_sun_share_pixel_variant(
-                        reinterpret_cast<const std::uint32_t*>(code), bytes / 4, original_fill_requested_ ? original_fill_ : 0.f, words, depth_enabled_, gained_share,
+                        reinterpret_cast<const std::uint32_t*>(code), bytes / 4,
+                        original_fill_requested_ ? original_fill_ : 0.f, words, depth_enabled_, gained_share,
                         hull_lightmap_gain_, &gain_applied, lightmap_far_fade_);
                     IDirect3DPixelShader9* gained_variant = nullptr;
                     HRESULT gain_hr = E_FAIL;
                     if (gained == renderer::LinearMaterialResult::Applied && gained_share && gain_applied)
-                        gain_hr = native<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(words.data()), &gained_variant);
-                    if (SUCCEEDED(gain_hr) && gained_variant) { entry.sun_original_lightmap_variant = gained_variant; ++sun_original_lightmap_variants_; }
-                    else release(gained_variant);
+                        gain_hr = native<CreatePsFn>(CreatePixelShader)(
+                            device_, reinterpret_cast<const DWORD*>(words.data()), &gained_variant);
+                    if (SUCCEEDED(gain_hr) && gained_variant) {
+                        entry.sun_original_lightmap_variant = gained_variant;
+                        ++sun_original_lightmap_variants_;
+                    } else
+                        release(gained_variant);
                     if (gained != renderer::LinearMaterialResult::UnsupportedShader)
                         log("sun_shadow_original_lightmap_variant device=%llu original=%016llx transform=%u create=%08lx words=%u depth=%u fill=%g gain=%g share_applied=%u gain_applied=%u",
-                            id_, hash, unsigned(gained), gain_hr, unsigned(words.size()), depth_enabled_, double(original_fill_requested_ ? original_fill_ : 0.f),
-                            double(hull_lightmap_gain_), unsigned(gained_share), unsigned(gain_applied));
+                            id_, hash, unsigned(gained), gain_hr, unsigned(words.size()), depth_enabled_,
+                            double(original_fill_requested_ ? original_fill_ : 0.f), double(hull_lightmap_gain_),
+                            unsigned(gained_share), unsigned(gain_applied));
                     // Its widened form (hull emissive widening), beside a created gained share variant.
                     if (lightmap_widen_ && entry.sun_original_lightmap_variant) {
                         words.clear();
                         bool widen_share = false, widen_gain = false, widen_applied = false;
                         const renderer::HullLightmapWiden parameters{lightmap_widen_k_, lightmap_widen_b_};
                         const auto widened = renderer::linear_material_original_sun_share_pixel_variant(
-                            reinterpret_cast<const std::uint32_t*>(code), bytes / 4, original_fill_requested_ ? original_fill_ : 0.f, words, depth_enabled_, widen_share,
+                            reinterpret_cast<const std::uint32_t*>(code), bytes / 4,
+                            original_fill_requested_ ? original_fill_ : 0.f, words, depth_enabled_, widen_share,
                             hull_lightmap_gain_, &widen_gain, lightmap_far_fade_, &parameters, &widen_applied);
                         IDirect3DPixelShader9* widen_variant = nullptr;
                         HRESULT widen_hr = E_FAIL;
                         if (widened == renderer::LinearMaterialResult::Applied && widen_share && widen_applied)
-                            widen_hr = native<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(words.data()), &widen_variant);
+                            widen_hr = native<CreatePsFn>(CreatePixelShader)(
+                                device_, reinterpret_cast<const DWORD*>(words.data()), &widen_variant);
                         const unsigned stage = renderer::linear_material_hull_lightmap_stage(hash, bytes / 4);
-                        if (SUCCEEDED(widen_hr) && widen_variant && stage) { entry.sun_original_lightmap_widen_variant = widen_variant; entry.hull_lightmap_stage = std::uint8_t(stage); ++lightmap_widen_variants_; }
-                        else release(widen_variant);
+                        if (SUCCEEDED(widen_hr) && widen_variant && stage) {
+                            entry.sun_original_lightmap_widen_variant = widen_variant;
+                            entry.hull_lightmap_stage = std::uint8_t(stage);
+                            ++lightmap_widen_variants_;
+                        } else
+                            release(widen_variant);
                         if (widened != renderer::LinearMaterialResult::UnsupportedShader)
                             log("sun_shadow_original_lightmap_widen_variant device=%llu original=%016llx transform=%u create=%08lx words=%u depth=%u k=%g b=%g stage=%u share_applied=%u widen_applied=%u",
-                                id_, hash, unsigned(widened), widen_hr, unsigned(words.size()), depth_enabled_, double(lightmap_widen_k_), double(lightmap_widen_b_), stage, unsigned(widen_share), unsigned(widen_applied));
+                                id_, hash, unsigned(widened), widen_hr, unsigned(words.size()), depth_enabled_,
+                                double(lightmap_widen_k_), double(lightmap_widen_b_), stage, unsigned(widen_share),
+                                unsigned(widen_applied));
                     }
                 }
             }
@@ -3332,45 +4586,73 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
                 words.clear();
                 bool fill_applied = false;
                 const auto material = renderer::linear_material_pixel_variant_fill(
-                    reinterpret_cast<const std::uint32_t*>(code), bytes / 4, linear_material_config_, words, depth_enabled_, fill_applied);
+                    reinterpret_cast<const std::uint32_t*>(code), bytes / 4, linear_material_config_, words,
+                    depth_enabled_, fill_applied);
                 IDirect3DPixelShader9* combined = nullptr;
                 HRESULT material_hr = E_FAIL;
                 if (material == renderer::LinearMaterialResult::Applied)
-                    material_hr = native<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(words.data()), &combined);
-                if (SUCCEEDED(material_hr) && combined) entry.material_variant = combined;
-                else release(combined);
-                if(sun_lane_requested_&&entry.material_variant&&renderer::material_motion_pixel_writes_depth(*entry.row,depth_enabled_)) {
+                    material_hr = native<CreatePsFn>(CreatePixelShader)(
+                        device_, reinterpret_cast<const DWORD*>(words.data()), &combined);
+                if (SUCCEEDED(material_hr) && combined)
+                    entry.material_variant = combined;
+                else
+                    release(combined);
+                if (sun_lane_requested_ && entry.material_variant &&
+                    renderer::material_motion_pixel_writes_depth(*entry.row, depth_enabled_)) {
                     std::vector<std::uint32_t> lane;
-                    bool extraction=false;
-                    const auto extracted=renderer::linear_material_pixel_variant_sun_share(
-                        reinterpret_cast<const std::uint32_t*>(code),bytes/4,linear_material_config_,lane,depth_enabled_,extraction);
-                    bool ready=extracted==renderer::LinearMaterialResult::Applied;
-                    if(!ready){lane.swap(words);ready=renderer::material_motion_invalid_sun_share(lane);}
-                    HRESULT lane_hr=E_FAIL;
-                    if(ready)lane_hr=native<CreatePsFn>(CreatePixelShader)(device_,reinterpret_cast<const DWORD*>(lane.data()),&entry.sun_material_variant);
-                    if(FAILED(lane_hr)||!entry.sun_material_variant){release(entry.sun_material_variant);sun_lane_failed_=true;}
-                    entry.sun_extraction=entry.sun_material_variant&&extraction;
-                    log("sun_shadow_lane_variant device=%llu original=%016llx extraction=%u create=%08lx words=%u",id_,hash,unsigned(entry.sun_extraction),lane_hr,unsigned(lane.size()));
+                    bool extraction = false;
+                    const auto extracted = renderer::linear_material_pixel_variant_sun_share(
+                        reinterpret_cast<const std::uint32_t*>(code), bytes / 4, linear_material_config_, lane,
+                        depth_enabled_, extraction);
+                    bool ready = extracted == renderer::LinearMaterialResult::Applied;
+                    if (!ready) {
+                        lane.swap(words);
+                        ready = renderer::material_motion_invalid_sun_share(lane);
+                    }
+                    HRESULT lane_hr = E_FAIL;
+                    if (ready)
+                        lane_hr = native<CreatePsFn>(CreatePixelShader)(
+                            device_, reinterpret_cast<const DWORD*>(lane.data()), &entry.sun_material_variant);
+                    if (FAILED(lane_hr) || !entry.sun_material_variant) {
+                        release(entry.sun_material_variant);
+                        sun_lane_failed_ = true;
+                    }
+                    entry.sun_extraction = entry.sun_material_variant && extraction;
+                    log("sun_shadow_lane_variant device=%llu original=%016llx extraction=%u create=%08lx words=%u", id_,
+                        hash, unsigned(entry.sun_extraction), lane_hr, unsigned(lane.size()));
                 }
                 // fill_applied=0 with a configured fill is the fail-closed
                 // refusal of a program without a unique lobe sum.
                 if (material != renderer::LinearMaterialResult::UnsupportedShader)
                     log("linear_material_variant device=%llu kind=ps original=%016llx transform=%u create=%08lx words=%u depth=%u fill_applied=%u",
-                        id_, hash, unsigned(material), material_hr, unsigned(words.size()), depth_enabled_, unsigned(fill_applied));
+                        id_, hash, unsigned(material), material_hr, unsigned(words.size()), depth_enabled_,
+                        unsigned(fill_applied));
             }
             if (linear_material_requested_) {
                 words.clear();
                 const auto result = renderer::linear_material_xt_default_pixel_variant(
-                    reinterpret_cast<const std::uint32_t*>(code), bytes / 4, linear_material_config_, words, depth_enabled_, false);
+                    reinterpret_cast<const std::uint32_t*>(code), bytes / 4, linear_material_config_, words,
+                    depth_enabled_, false);
                 IDirect3DPixelShader9* repaired = nullptr;
                 HRESULT hr = E_FAIL;
                 if (result == renderer::LinearMaterialResult::Applied)
-                    hr = native<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(words.data()), &repaired);
-                if (SUCCEEDED(hr) && repaired) entry.xt_default_ordinary_variant = repaired;
-                else release(repaired);
-                if(sun_lane_requested_&&entry.xt_default_ordinary_variant&&renderer::material_motion_pixel_writes_depth(*entry.row,depth_enabled_)) {
-                    const HRESULT lane_hr=renderer::material_motion_invalid_sun_share(words)?native<CreatePsFn>(CreatePixelShader)(device_,reinterpret_cast<const DWORD*>(words.data()),&entry.sun_xt_variant):E_FAIL;
-                    if(FAILED(lane_hr)||!entry.sun_xt_variant){release(entry.sun_xt_variant);sun_lane_failed_=true;}
+                    hr = native<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(words.data()),
+                                                               &repaired);
+                if (SUCCEEDED(hr) && repaired)
+                    entry.xt_default_ordinary_variant = repaired;
+                else
+                    release(repaired);
+                if (sun_lane_requested_ && entry.xt_default_ordinary_variant &&
+                    renderer::material_motion_pixel_writes_depth(*entry.row, depth_enabled_)) {
+                    const HRESULT lane_hr = renderer::material_motion_invalid_sun_share(words)
+                                                ? native<CreatePsFn>(CreatePixelShader)(
+                                                      device_, reinterpret_cast<const DWORD*>(words.data()),
+                                                      &entry.sun_xt_variant)
+                                                : E_FAIL;
+                    if (FAILED(lane_hr) || !entry.sun_xt_variant) {
+                        release(entry.sun_xt_variant);
+                        sun_lane_failed_ = true;
+                    }
                 }
                 if (result != renderer::LinearMaterialResult::UnsupportedShader)
                     log("linear_material_xt_default_variant device=%llu kind=ps original=%016llx linear=0 transform=%u create=%08lx words=%u depth=%u",
@@ -3386,19 +4668,40 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
 
 void MotionOutput::set_vertex_shader(IDirect3DVertexShader9* shader) noexcept {
     if (!enabled_ || shadow_.recording) return;
-    shadow_.fade_sampler_mask = 0; shadow_.emission_pair = false; shadow_.emission_eligible_variant = nullptr; shadow_.source_gain_eligible_variant = nullptr; shadow_.source_gain_pair = renderer::linear_emission_pair_count; shadow_.original_fill_pair = false; shadow_.hull_lightmap_pair = false; shadow_.original_share_pair = false; shadow_.original_share_refused = false; shadow_.screen_pair = false; shadow_.screen_eligible_variant = nullptr; shadow_.screen_additive_pair = false; shadow_.screen_additive_index = screen_emission::pair_count; shadow_.vs_registered = false; shadow_.vs_fade_variant = nullptr;
+    shadow_.fade_sampler_mask = 0;
+    shadow_.emission_pair = false;
+    shadow_.emission_eligible_variant = nullptr;
+    shadow_.source_gain_eligible_variant = nullptr;
+    shadow_.source_gain_pair = renderer::linear_emission_pair_count;
+    shadow_.original_fill_pair = false;
+    shadow_.hull_lightmap_pair = false;
+    shadow_.original_share_pair = false;
+    shadow_.original_share_refused = false;
+    shadow_.screen_pair = false;
+    shadow_.screen_eligible_variant = nullptr;
+    shadow_.screen_additive_pair = false;
+    shadow_.screen_additive_index = screen_emission::pair_count;
+    shadow_.vs_registered = false;
+    shadow_.vs_fade_variant = nullptr;
     shadow_.material_contract = {};
     shadow_.cutout_pair = false;
     shadow_.xt_default_pair = shadow_.xt_default_ready = false;
     shadow_.vs_xt_default_ordinary = shadow_.vs_xt_default_linear = nullptr;
     shadow_.fog_card_pair = false;
-    shadow_.vs = shader; shadow_.vs_major = 0; shadow_.vs_hash = 0; shadow_.vs_variant = nullptr; shadow_.vs_material_variant = nullptr; shadow_.vs_row = nullptr; shadow_.vs_prepass = nullptr;
+    shadow_.vs = shader;
+    shadow_.vs_major = 0;
+    shadow_.vs_hash = 0;
+    shadow_.vs_variant = nullptr;
+    shadow_.vs_material_variant = nullptr;
+    shadow_.vs_row = nullptr;
+    shadow_.vs_prepass = nullptr;
     if (!shader) return;
     const auto it = vertex_.find(shader);
     if (it == vertex_.end()) return;
     shadow_.vs_hash = it->second.hash;
     shadow_.fog_card_pair = fog_cards_replace_ && fog_card_pair(shadow_.vs_hash, shadow_.ps_hash);
-    shadow_.vs_registered = it->second.registered; shadow_.vs_major = it->second.major;
+    shadow_.vs_registered = it->second.registered;
+    shadow_.vs_major = it->second.major;
     shadow_.vs_fade_variant = static_cast<IDirect3DVertexShader9*>(it->second.distance_fade_variant);
     shadow_.vs_variant = static_cast<IDirect3DVertexShader9*>(it->second.variant);
     shadow_.vs_row = it->second.row;
@@ -3411,29 +4714,70 @@ void MotionOutput::set_vertex_shader(IDirect3DVertexShader9* shader) noexcept {
 }
 void MotionOutput::set_pixel_shader(IDirect3DPixelShader9* shader) noexcept {
     if (!enabled_ || shadow_.recording) return;
-    shadow_.fade_sampler_mask = 0; shadow_.emission_pair = false; shadow_.emission_eligible_variant = nullptr; shadow_.screen_pair = false; shadow_.screen_eligible_variant = nullptr; shadow_.screen_additive_pair = false; shadow_.screen_additive_index = screen_emission::pair_count; shadow_.ps_screen_additive_variant = nullptr; shadow_.ps_registered = false; shadow_.ps_fade_variant = nullptr; shadow_.ps_emission_variant = nullptr; shadow_.ps_source_gain_variant = nullptr; shadow_.source_gain_eligible_variant = nullptr; shadow_.source_gain_pair = renderer::linear_emission_pair_count; shadow_.ps_hull_program = false; shadow_.ps_hull_gain_variant = nullptr; shadow_.ps_original_fill_variant = nullptr; shadow_.ps_hull_lightmap_variant = nullptr; shadow_.original_fill_pair = false; shadow_.hull_lightmap_pair = false; shadow_.original_share_pair = false; shadow_.original_share_refused = false; shadow_.ps_screen_variant = nullptr;
+    shadow_.fade_sampler_mask = 0;
+    shadow_.emission_pair = false;
+    shadow_.emission_eligible_variant = nullptr;
+    shadow_.screen_pair = false;
+    shadow_.screen_eligible_variant = nullptr;
+    shadow_.screen_additive_pair = false;
+    shadow_.screen_additive_index = screen_emission::pair_count;
+    shadow_.ps_screen_additive_variant = nullptr;
+    shadow_.ps_registered = false;
+    shadow_.ps_fade_variant = nullptr;
+    shadow_.ps_emission_variant = nullptr;
+    shadow_.ps_source_gain_variant = nullptr;
+    shadow_.source_gain_eligible_variant = nullptr;
+    shadow_.source_gain_pair = renderer::linear_emission_pair_count;
+    shadow_.ps_hull_program = false;
+    shadow_.ps_hull_gain_variant = nullptr;
+    shadow_.ps_original_fill_variant = nullptr;
+    shadow_.ps_hull_lightmap_variant = nullptr;
+    shadow_.original_fill_pair = false;
+    shadow_.hull_lightmap_pair = false;
+    shadow_.original_share_pair = false;
+    shadow_.original_share_refused = false;
+    shadow_.ps_screen_variant = nullptr;
     shadow_.material_contract = {};
     shadow_.cutout_pair = false;
     shadow_.xt_default_pair = shadow_.xt_default_ready = false;
     shadow_.ps_xt_default_ordinary = nullptr;
-    shadow_.ps_sun_motion=nullptr; shadow_.ps_sun_material=nullptr; shadow_.ps_sun_xt=nullptr; shadow_.ps_sun_extraction=false; shadow_.ps_sun_original=nullptr;shadow_.ps_sun_original_lightmap=nullptr;shadow_.ps_sun_original_lightmap_widen=nullptr;shadow_.ps_hull_lightmap_widen=nullptr;shadow_.hull_lightmap_stage=0; shadow_.original_share_pair=false; shadow_.original_share_refused=false;
+    shadow_.ps_sun_motion = nullptr;
+    shadow_.ps_sun_material = nullptr;
+    shadow_.ps_sun_xt = nullptr;
+    shadow_.ps_sun_extraction = false;
+    shadow_.ps_sun_original = nullptr;
+    shadow_.ps_sun_original_lightmap = nullptr;
+    shadow_.ps_sun_original_lightmap_widen = nullptr;
+    shadow_.ps_hull_lightmap_widen = nullptr;
+    shadow_.hull_lightmap_stage = 0;
+    shadow_.original_share_pair = false;
+    shadow_.original_share_refused = false;
     shadow_.fog_card_pair = false;
     shadow_.fog_card_source = false;
-    shadow_.ps = shader; shadow_.ps_hash = 0; shadow_.ps_variant = nullptr; shadow_.ps_material_variant = nullptr;
-    shadow_.ps_sun_register = -1; shadow_.ps_major = 0; shadow_.ps_depth_out = false;
+    shadow_.ps = shader;
+    shadow_.ps_hash = 0;
+    shadow_.ps_variant = nullptr;
+    shadow_.ps_material_variant = nullptr;
+    shadow_.ps_sun_register = -1;
+    shadow_.ps_major = 0;
+    shadow_.ps_depth_out = false;
     if (!shader) return;
     const auto it = pixel_.find(shader);
     if (it == pixel_.end()) return;
     shadow_.ps_hash = it->second.hash;
     shadow_.fog_card_source = fog_cards_replace_ && shadow_.ps_hash == renderer::fog_card_pixel_hash;
     shadow_.fog_card_pair = fog_cards_replace_ && fog_card_pair(shadow_.vs_hash, shadow_.ps_hash);
-    if (fog_requested_ && shadow_.ps_hash == renderer::fog_card_pixel_hash) fog_latch_.card(frame_); // the sector's nebulafog cards: the fog rule's latch
-    shadow_.ps_sun_register = it->second.sun_register; shadow_.ps_major = it->second.major; shadow_.ps_depth_out = it->second.depth_out;
+    if (fog_requested_ && shadow_.ps_hash == renderer::fog_card_pixel_hash)
+        fog_latch_.card(frame_); // the sector's nebulafog cards: the fog rule's latch
+    shadow_.ps_sun_register = it->second.sun_register;
+    shadow_.ps_major = it->second.major;
+    shadow_.ps_depth_out = it->second.depth_out;
     shadow_.ps_registered = it->second.registered;
     shadow_.ps_fade_variant = static_cast<IDirect3DPixelShader9*>(it->second.distance_fade_variant);
     shadow_.ps_emission_variant = it->second.emission_variant;
     shadow_.ps_source_gain_variant = it->second.source_gain_variant;
-    shadow_.ps_hull_program = it->second.hull_program; shadow_.ps_hull_gain_variant = it->second.hull_gain_variant;
+    shadow_.ps_hull_program = it->second.hull_program;
+    shadow_.ps_hull_gain_variant = it->second.hull_gain_variant;
     shadow_.ps_original_fill_variant = it->second.original_fill_variant;
     shadow_.ps_hull_lightmap_variant = it->second.hull_lightmap_variant;
     shadow_.ps_hull_lightmap_widen = it->second.hull_lightmap_widen_variant;
@@ -3443,12 +4787,12 @@ void MotionOutput::set_pixel_shader(IDirect3DPixelShader9* shader) noexcept {
     shadow_.ps_screen_additive_variant = it->second.screen_additive_variant;
     shadow_.ps_variant = static_cast<IDirect3DPixelShader9*>(it->second.variant);
     shadow_.ps_material_variant = static_cast<IDirect3DPixelShader9*>(it->second.material_variant);
-    shadow_.ps_sun_motion=it->second.sun_motion_variant;
-    shadow_.ps_sun_material=it->second.sun_material_variant;
-    shadow_.ps_sun_xt=it->second.sun_xt_variant;
-    shadow_.ps_sun_extraction=it->second.sun_extraction;
-    shadow_.ps_sun_original=it->second.sun_original_variant;
-    shadow_.ps_sun_original_lightmap=it->second.sun_original_lightmap_variant;
+    shadow_.ps_sun_motion = it->second.sun_motion_variant;
+    shadow_.ps_sun_material = it->second.sun_material_variant;
+    shadow_.ps_sun_xt = it->second.sun_xt_variant;
+    shadow_.ps_sun_extraction = it->second.sun_extraction;
+    shadow_.ps_sun_original = it->second.sun_original_variant;
+    shadow_.ps_sun_original_lightmap = it->second.sun_original_lightmap_variant;
     shadow_.ps_xt_default_ordinary = static_cast<IDirect3DPixelShader9*>(it->second.xt_default_ordinary_variant);
     refresh_linear_material_contract();
     refresh_linear_emission_contract();
@@ -3481,7 +4825,8 @@ void MotionOutput::set_vertex_constants_i(UINT start, const int* data, UINT coun
 void MotionOutput::set_pixel_constants_f(UINT start, const float* data, UINT count) noexcept {
     if (!enabled_ || shadow_.recording || !data || !count || start > 4096 || count > 4096) return;
     const UINT end = start + count;
-    const UINT reserved_end = upload_c218() ? 219u : 218u; // the thin vote's and the fade owner's upload covers c218 too
+    const UINT reserved_end = upload_c218() ? 219u : 218u; // the thin vote's and the fade owner's upload covers c218
+                                                           // too
     if (start < reserved_end && end > 216) {
         const UINT lo = start > 216 ? start : 216, hi = end < reserved_end ? end : reserved_end;
         std::memcpy(shadow_.ps_reserved + (lo - 216) * 4, data + (lo - start) * 4, (hi - lo) * 16);
@@ -3499,7 +4844,8 @@ void MotionOutput::set_stream_source(UINT stream, IDirect3DVertexBuffer9* buffer
     if (!enabled_ || shadow_.recording || stream) return;
     shadow_.stream0 = buffer ? resource_id(buffer) : 0;
     shadow_.stream0_identity = shadow_.stream0 ? reinterpret_cast<std::uintptr_t>(buffer) : 0;
-    shadow_.stream0_offset = offset; shadow_.stream0_stride = stride;
+    shadow_.stream0_offset = offset;
+    shadow_.stream0_stride = stride;
     if (candidates_requested_) shadow_.stream0_pool = candidate_pool_of(shadow_.stream0, buffer, true);
 }
 void MotionOutput::set_indices(IDirect3DIndexBuffer9* buffer) noexcept {
@@ -3512,7 +4858,9 @@ void MotionOutput::set_indices(IDirect3DIndexBuffer9* buffer) noexcept {
 // the stream-0 POSITION0 layout the key records.
 void MotionOutput::set_vertex_declaration(IDirect3DVertexDeclaration9* declaration) noexcept {
     if (!enabled_ || shadow_.recording) return;
-    shadow_.declaration = 0; shadow_.position_offset = shadow_.position_type = 0; shadow_.declaration_stream0_only = shadow_.declaration_uv0 = false;
+    shadow_.declaration = 0;
+    shadow_.position_offset = shadow_.position_type = 0;
+    shadow_.declaration_stream0_only = shadow_.declaration_uv0 = false;
     if (!declaration) return;
     D3DVERTEXELEMENT9 elements[MAXD3DDECLLENGTH + 1]{};
     UINT count = MAXD3DDECLLENGTH + 1;
@@ -3520,9 +4868,12 @@ void MotionOutput::set_vertex_declaration(IDirect3DVertexDeclaration9* declarati
     bool position = false, stream0_only = true, uv0 = false;
     for (UINT i = 0; i + 1 < count; ++i) {
         if (elements[i].Stream != 0) stream0_only = false;
-        if (elements[i].Stream == 0 && elements[i].Usage == D3DDECLUSAGE_TEXCOORD && elements[i].UsageIndex == 0) uv0 = true;
+        if (elements[i].Stream == 0 && elements[i].Usage == D3DDECLUSAGE_TEXCOORD && elements[i].UsageIndex == 0)
+            uv0 = true;
         if (elements[i].Stream == 0 && elements[i].Usage == D3DDECLUSAGE_POSITION && elements[i].UsageIndex == 0) {
-            position = true; shadow_.position_offset = elements[i].Offset; shadow_.position_type = elements[i].Type;
+            position = true;
+            shadow_.position_offset = elements[i].Offset;
+            shadow_.position_type = elements[i].Type;
         }
     }
     if (!position) return;
@@ -3535,17 +4886,36 @@ void MotionOutput::set_fvf(DWORD) noexcept {
     if (!enabled_ || shadow_.recording) return;
     // SetFVF binds a runtime-owned declaration; identify it the same way.
     IDirect3DVertexDeclaration9* declaration = nullptr;
-    if (SUCCEEDED(native<GetDeclarationFn>(GetVertexDeclaration)(device_, &declaration))) set_vertex_declaration(declaration);
-    else { shadow_.declaration = 0; shadow_.position_offset = shadow_.position_type = 0; shadow_.declaration_uv0 = false; }
+    if (SUCCEEDED(native<GetDeclarationFn>(GetVertexDeclaration)(device_, &declaration)))
+        set_vertex_declaration(declaration);
+    else {
+        shadow_.declaration = 0;
+        shadow_.position_offset = shadow_.position_type = 0;
+        shadow_.declaration_uv0 = false;
+    }
     release(declaration);
 }
 void MotionOutput::set_viewport(const D3DVIEWPORT9* viewport) noexcept {
     if (!enabled_ || shadow_.recording || !viewport) return;
-    shadow_.viewport = {true, viewport->X, viewport->Y, viewport->Width, viewport->Height, viewport->MinZ, viewport->MaxZ};
+    shadow_.viewport = {true,           viewport->X,   viewport->Y, viewport->Width, viewport->Height,
+                        viewport->MinZ, viewport->MaxZ};
 }
-void MotionOutput::begin_stateblock() noexcept { if (enabled_) shadow_.recording = true; }
-void MotionOutput::end_stateblock() noexcept { if (enabled_) { shadow_.recording = false; ++counters_.sb_resyncs; resync_shadow(); } }
-void MotionOutput::stateblock_applied() noexcept { if (enabled_ && !shadow_.recording) { ++counters_.sb_resyncs; resync_shadow(); } }
+void MotionOutput::begin_stateblock() noexcept {
+    if (enabled_) shadow_.recording = true;
+}
+void MotionOutput::end_stateblock() noexcept {
+    if (enabled_) {
+        shadow_.recording = false;
+        ++counters_.sb_resyncs;
+        resync_shadow();
+    }
+}
+void MotionOutput::stateblock_applied() noexcept {
+    if (enabled_ && !shadow_.recording) {
+        ++counters_.sb_resyncs;
+        resync_shadow();
+    }
+}
 
 void MotionOutput::describe_binding(DWORD index, IDirect3DSurface9* surface) noexcept {
     if (index == 0) {
@@ -3553,9 +4923,12 @@ void MotionOutput::describe_binding(DWORD index, IDirect3DSurface9* surface) noe
         // SetRenderTarget(0) resets the viewport to the new target: read it once.
         D3DVIEWPORT9 viewport{};
         if (SUCCEEDED(native<GetViewportFn>(GetViewport)(device_, &viewport)))
-            shadow_.viewport = {true, viewport.X, viewport.Y, viewport.Width, viewport.Height, viewport.MinZ, viewport.MaxZ};
-        else shadow_.viewport = {};
-    } else if (index < 4) shadow_.extra_rt[index] = surface != nullptr;
+            shadow_.viewport = {true,          viewport.X,   viewport.Y, viewport.Width, viewport.Height,
+                                viewport.MinZ, viewport.MaxZ};
+        else
+            shadow_.viewport = {};
+    } else if (index < 4)
+        shadow_.extra_rt[index] = surface != nullptr;
 }
 
 // Full shadow resynchronization from public getters. Used at attach, after
@@ -3564,31 +4937,40 @@ void MotionOutput::describe_binding(DWORD index, IDirect3DSurface9* surface) noe
 void MotionOutput::resync_shadow() noexcept {
     shadow_ = Shadow{}; // Render states included: they refill lazily from the next query.
     ++counters_.rs_resyncs;
-    IDirect3DVertexShader9* vs = nullptr; IDirect3DPixelShader9* ps = nullptr;
+    IDirect3DVertexShader9* vs = nullptr;
+    IDirect3DPixelShader9* ps = nullptr;
     if (SUCCEEDED(native<GetVsFn>(GetVertexShader)(device_, &vs))) set_vertex_shader(vs);
     release(vs);
     if (SUCCEEDED(native<GetPsFn>(GetPixelShader)(device_, &ps))) set_pixel_shader(ps);
     release(ps);
     for (std::size_t w = 0; w < matrix_windows.count; ++w)
-        shadow_.rows_known[w] = SUCCEEDED(native<GetConstantsFFn>(GetVertexShaderConstantF)(device_, matrix_windows.base[w], shadow_.rows[w], 4));
-    shadow_.vs_reserved_written = SUCCEEDED(native<GetConstantsFFn>(GetVertexShaderConstantF)(device_, 252, shadow_.vs_reserved, 4));
-    shadow_.integer0_known = SUCCEEDED(native<GetConstantsIFn>(GetVertexShaderConstantI)(device_, 0, shadow_.integer0, 1));
-    shadow_.ps_reserved_written = SUCCEEDED(native<GetConstantsFFn>(GetPixelShaderConstantF)(device_, 216, shadow_.ps_reserved, upload_c218() ? 3u : 2u));
-    IDirect3DVertexBuffer9* stream = nullptr; UINT offset = 0, stride = 0;
-    if (SUCCEEDED(native<GetStreamFn>(GetStreamSource)(device_, 0, &stream, &offset, &stride))) set_stream_source(0, stream, offset, stride);
+        shadow_.rows_known[w] = SUCCEEDED(
+            native<GetConstantsFFn>(GetVertexShaderConstantF)(device_, matrix_windows.base[w], shadow_.rows[w], 4));
+    shadow_.vs_reserved_written = SUCCEEDED(
+        native<GetConstantsFFn>(GetVertexShaderConstantF)(device_, 252, shadow_.vs_reserved, 4));
+    shadow_.integer0_known = SUCCEEDED(
+        native<GetConstantsIFn>(GetVertexShaderConstantI)(device_, 0, shadow_.integer0, 1));
+    shadow_.ps_reserved_written = SUCCEEDED(
+        native<GetConstantsFFn>(GetPixelShaderConstantF)(device_, 216, shadow_.ps_reserved, upload_c218() ? 3u : 2u));
+    IDirect3DVertexBuffer9* stream = nullptr;
+    UINT offset = 0, stride = 0;
+    if (SUCCEEDED(native<GetStreamFn>(GetStreamSource)(device_, 0, &stream, &offset, &stride)))
+        set_stream_source(0, stream, offset, stride);
     release(stream);
     IDirect3DIndexBuffer9* indices = nullptr;
     if (SUCCEEDED(native<GetIndicesFn>(GetIndices)(device_, &indices))) set_indices(indices);
     release(indices);
     IDirect3DVertexDeclaration9* declaration = nullptr;
-    if (SUCCEEDED(native<GetDeclarationFn>(GetVertexDeclaration)(device_, &declaration))) set_vertex_declaration(declaration);
+    if (SUCCEEDED(native<GetDeclarationFn>(GetVertexDeclaration)(device_, &declaration)))
+        set_vertex_declaration(declaration);
     release(declaration);
     IDirect3DSurface9* surface = nullptr;
     if (SUCCEEDED(native<GetRenderTargetFn>(GetRenderTarget)(device_, 0, &surface))) {
         shadow_.rt0 = describe_surface(surface);
         // The device holds the FP16 target while redirected; the shadow keeps
         // the application's logical binding (the latched main surface).
-        if (hdr_state_ == HdrState::Active && hdr_main_ && same(shadow_.rt0, hdr_target_)) shadow_.rt0 = describe_surface(hdr_main_);
+        if (hdr_state_ == HdrState::Active && hdr_main_ && same(shadow_.rt0, hdr_target_))
+            shadow_.rt0 = describe_surface(hdr_main_);
     }
     release(surface);
     const unsigned targets = caps_.NumSimultaneousRTs < 4 ? unsigned(caps_.NumSimultaneousRTs) : 4;
@@ -3598,25 +4980,32 @@ void MotionOutput::resync_shadow() noexcept {
         release(surface);
     }
     const HRESULT depth_hr = native<GetDepthFn>(GetDepthStencilSurface)(device_, &surface);
-    if (SUCCEEDED(depth_hr)) shadow_.depth = describe_surface(surface);
-    else if (depth_hr == D3DERR_NOTFOUND && !surface) shadow_.depth.known = true;
+    if (SUCCEEDED(depth_hr))
+        shadow_.depth = describe_surface(surface);
+    else if (depth_hr == D3DERR_NOTFOUND && !surface)
+        shadow_.depth.known = true;
     release(surface);
     D3DVIEWPORT9 viewport{};
     if (SUCCEEDED(native<GetViewportFn>(GetViewport)(device_, &viewport)))
-        shadow_.viewport = {true, viewport.X, viewport.Y, viewport.Width, viewport.Height, viewport.MinZ, viewport.MaxZ};
+        shadow_.viewport = {true,          viewport.X,   viewport.Y, viewport.Width, viewport.Height,
+                            viewport.MinZ, viewport.MaxZ};
     if (blend_shadow_requested() && state_hooks_) { // hooks off: the next draw reads what it needs
         // Admission reads only cached state. Refresh the consumed common state
         // even with the ordinary motion state-shadow experiment disabled.
         for (unsigned i = 0; i < 6; ++i)
-            shadow_.states_known[i] = SUCCEEDED(direct_call<GetRenderStateFn>(GetRenderState, shadow_states[i], &shadow_.states[i]));
+            shadow_.states_known[i] = SUCCEEDED(
+                direct_call<GetRenderStateFn>(GetRenderState, shadow_states[i], &shadow_.states[i]));
         for (unsigned i = 0; i < composition_blend_count; ++i)
-            shadow_.composition_blend_known[i] = SUCCEEDED(direct_call<GetRenderStateFn>(GetRenderState, composition_blend_states[i], &shadow_.composition_blend[i]));
+            shadow_.composition_blend_known[i] = SUCCEEDED(direct_call<GetRenderStateFn>(
+                GetRenderState, composition_blend_states[i], &shadow_.composition_blend[i]));
     }
     if ((composition_requested() || screen_emission_bound_) && state_hooks_)
-        shadow_.fill_mode_known = SUCCEEDED(direct_call<GetRenderStateFn>(GetRenderState, D3DRS_FILLMODE, &shadow_.fill_mode));
+        shadow_.fill_mode_known = SUCCEEDED(
+            direct_call<GetRenderStateFn>(GetRenderState, D3DRS_FILLMODE, &shadow_.fill_mode));
     if (fog_cards_replace_ && state_hooks_) {
         for (unsigned i : {29u, 30u, 31u})
-            shadow_.states_known[i] = SUCCEEDED(direct_call<GetRenderStateFn>(GetRenderState, shadow_states[i], &shadow_.states[i]));
+            shadow_.states_known[i] = SUCCEEDED(
+                direct_call<GetRenderStateFn>(GetRenderState, shadow_states[i], &shadow_.states[i]));
     }
     resync_samplers();
 }
@@ -3632,14 +5021,20 @@ renderer::SceneSignatures MotionOutput::signatures() const noexcept {
     return result;
 }
 renderer::Event MotionOutput::event(renderer::EventKind kind) noexcept {
-    renderer::Event result{}; result.kind = kind; result.sequence = ++sequence_; return result;
+    renderer::Event result{};
+    result.kind = kind;
+    result.sequence = ++sequence_;
+    return result;
 }
 void MotionOutput::bindings(renderer::Event& e) const noexcept {
-    e.rt = shadow_.rt0; e.depth = shadow_.depth; e.viewport = shadow_.viewport;
+    e.rt = shadow_.rt0;
+    e.depth = shadow_.depth;
+    e.viewport = shadow_.viewport;
     e.only_rt0 = !(shadow_.extra_rt[1] || shadow_.extra_rt[2] || shadow_.extra_rt[3]);
 }
 void MotionOutput::observe(renderer::Event& e, HRESULT result) noexcept {
-    e.result_known = true; e.result = static_cast<std::uint32_t>(result);
+    e.result_known = true;
+    e.result = static_cast<std::uint32_t>(result);
     const bool was_scene = selector_.state() == renderer::BoundaryState::Scene;
     selector_.observe(e);
     // The scene phase ends with the event that moves the selector past Scene
@@ -3654,45 +5049,87 @@ void MotionOutput::observe(renderer::Event& e, HRESULT result) noexcept {
 }
 bool MotionOutput::scene_bound() const noexcept {
     const auto& v = shadow_.viewport;
-    return selector_.state() == renderer::BoundaryState::Scene && !counters_.hook_scene_end && same(shadow_.rt0, main_) &&
-           same(shadow_.depth, main_depth_) && v.known && !v.x && !v.y && v.width == main_.width &&
-           v.height == main_.height && v.min_z == 0 && v.max_z == 1 &&
+    return selector_.state() == renderer::BoundaryState::Scene && !counters_.hook_scene_end &&
+           same(shadow_.rt0, main_) && same(shadow_.depth, main_depth_) && v.known && !v.x && !v.y &&
+           v.width == main_.width && v.height == main_.height && v.min_z == 0 && v.max_z == 1 &&
            !(shadow_.extra_rt[1] || shadow_.extra_rt[2] || shadow_.extra_rt[3]);
 }
 
 void MotionOutput::begin_frame(std::uint64_t frame, bool capture) noexcept {
-    flush_taa_invalidate_log(); // sites that fired since the last flush (Reset) carry the frame begun at the last Present
-    if (cascade_adaptive_on() && frame != frame_) update_adaptive_cascades(); // the previous frame's own ship and radius commit at the boundary (its frame number and capture flag); a Reset's repeated begin of the same frame is no boundary
+    flush_taa_invalidate_log(); // sites that fired since the last flush (Reset) carry the frame begun at the last
+                                // Present
+    if (cascade_adaptive_on() && frame != frame_)
+        update_adaptive_cascades(); // the previous frame's own ship and radius commit at the boundary (its frame number
+                                    // and capture flag); a Reset's repeated begin of the same frame is no boundary
     if (fog_cards_replace_ && fog_cards_.suppressed && !fog_cards_.finished) fault_fog_cards("scene_end_missing");
-    frame_ = frame; capture_ = capture; telemetry_ = telemetry::enabled();
-    packed_sample_.valid = false; packed_sample_.sampled = 0; // an unmatched pre never pairs with a later frame's post
+    frame_ = frame;
+    capture_ = capture;
+    telemetry_ = telemetry::enabled();
+    packed_sample_.valid = false;
+    packed_sample_.sampled = 0;  // an unmatched pre never pairs with a later frame's post
     engine_memory::next_frame(); // the object observers' direct-read regions are re-validated once per frame
-    counters_ = {}; sun_frame_={}; sun_stamps_=sun_stamp_refused_=sun_stamp_prims_=0; sun_coverage_current_=sun_composition_completed_=false;
+    counters_ = {};
+    sun_frame_ = {};
+    sun_stamps_ = sun_stamp_refused_ = sun_stamp_prims_ = 0;
+    sun_coverage_current_ = sun_composition_completed_ = false;
     lens_chain_drawn_ = false;
-    sun_apply_applied_=sun_apply_attempted_=false; // fixture keys 70/71 describe this frame
-    sun_original_refused_draws_=0;
-    if (thin_vote_upload_) { if (thin_vote_cache_) thin_vote_cache_->begin_frame(); release_thin_votes();
-        const std::uint32_t previous_opaque = thin_vote_frame_.opaque; thin_vote_frame_ = {};
-        thin_vote_frame_.sample_at = 1u + (previous_opaque ? std::uint32_t(frame_ % previous_opaque) : 0u); // the frame's sampled opaque draw
-        if (ownership::buffer_invalidations_pending()) drain_thin_invalidations(); } // reads queued by a frame without a scene end are dropped (its next draws re-queue)
-    if (retention_) retention_frame_begin(); // retirements are consumed here too; sightings of a frame without a scene end leave
-    if (candidates_requested_) { if (depth_replay_requested_) release_depth_leases(); sun_latch_.begin_frame(); point_sun_.begin_frame(); point_sun_poll_ticks_ = 0; candidate_bounds_unavailable_ = 0; candidate_extents_.begin_frame(); candidate_bounds_state_ = 0; release_candidate_extents(); candidates_.reset(); alpha_caster_counts_ = {}; } // a frame that never reached a scene end keeps no records, leases or queued reads; the sun and the box rows are per frame
+    sun_apply_applied_ = sun_apply_attempted_ = false; // fixture keys 70/71 describe this frame
+    sun_original_refused_draws_ = 0;
+    if (thin_vote_upload_) {
+        if (thin_vote_cache_) thin_vote_cache_->begin_frame();
+        release_thin_votes();
+        const std::uint32_t previous_opaque = thin_vote_frame_.opaque;
+        thin_vote_frame_ = {};
+        thin_vote_frame_.sample_at = 1u + (previous_opaque ? std::uint32_t(frame_ % previous_opaque) : 0u); // the
+                                                                                                            // frame's
+                                                                                                            // sampled
+                                                                                                            // opaque
+                                                                                                            // draw
+        if (ownership::buffer_invalidations_pending()) drain_thin_invalidations();
+    } // reads queued by a frame without a scene end are dropped (its next draws re-queue)
+    if (retention_)
+        retention_frame_begin(); // retirements are consumed here too; sightings of a frame without a scene end leave
+    if (candidates_requested_) {
+        if (depth_replay_requested_) release_depth_leases();
+        sun_latch_.begin_frame();
+        point_sun_.begin_frame();
+        point_sun_poll_ticks_ = 0;
+        candidate_bounds_unavailable_ = 0;
+        candidate_extents_.begin_frame();
+        candidate_bounds_state_ = 0;
+        release_candidate_extents();
+        candidates_.reset();
+        alpha_caster_counts_ = {};
+    } // a frame that never reached a scene end keeps no records, leases or queued reads; the sun and the box rows are
+      // per frame
     // Keep failed-lane storage until the next scene latch can compare its
     // exact dimensions/generation before transactionally replacing it. The
     // reset frame snapshot above is unavailable; no stale lane is published.
-    cutout_coverage_missed_ = false; cutout_arm_active_ = cutout_arm_configured();
+    cutout_coverage_missed_ = false;
+    cutout_arm_active_ = cutout_arm_configured();
     composition_required_producers_ = 0;
-    composition_counts_ = {}; composition_enhanced_ = false; composition_frame_stopped_ = false; composition_published_ = false;
+    composition_counts_ = {};
+    composition_enhanced_ = false;
+    composition_frame_stopped_ = false;
+    composition_published_ = false;
     if (fade_witness_interval_) {
         auto& w = fade_witness_;
-        w.count = w.prepared_count = w.logged = 0; w.last = FadeWitness::rect_capacity; w.overflow = false;
+        w.count = w.prepared_count = w.logged = 0;
+        w.last = FadeWitness::rect_capacity;
+        w.overflow = false;
         std::memset(w.f_hist, 0, sizeof w.f_hist);
     }
     fade_refused_count_ = 0;
-    counters_.cut_median_bound_px = cut_median_bound_; counters_.cut_missing_bound = cut_missing_bound_;
-    sequence_ = 0; pending_valid_ = false; fill_pending_ = false; jitter_active_ = false; cut_finished_ = false;
+    counters_.cut_median_bound_px = cut_median_bound_;
+    counters_.cut_missing_bound = cut_missing_bound_;
+    sequence_ = 0;
+    pending_valid_ = false;
+    fill_pending_ = false;
+    jitter_active_ = false;
+    cut_finished_ = false;
     displacements_.clear();
-    camera_scene_ = camera_background_ = renderer::CameraState{}; lightmap_fade_m00_ = 0.f;
+    camera_scene_ = camera_background_ = renderer::CameraState{};
+    lightmap_fade_m00_ = 0.f;
     camera_projection_address_ = camera_view_address_ = 0;
     if (!enabled_) return;
     selector_ = renderer::SceneBoundarySelector{signatures()};
@@ -3704,19 +5141,26 @@ void MotionOutput::before_clear(DWORD count, DWORD flags, float z) noexcept {
     restore_bindings(); // The Clear must cover the application's targets only.
     pending_ = event(renderer::EventKind::Clear);
     bindings(pending_);
-    pending_.clear_flags = flags; pending_.rect_count = count; pending_.clear_z = z;
+    pending_.clear_flags = flags;
+    pending_.rect_count = count;
+    pending_.clear_z = z;
     pending_valid_ = true;
     // The latching Clear redirects RT0 to the FP16 target before it runs, so
     // the application's own Clear clears the target; a later Clear with the
     // target flag while redirected clears it too (content pending).
     if (hdr_enabled_) {
-        if (hdr_state_ == HdrState::Off) begin_redirect();
-        else if (hdr_state_ == HdrState::Active && (flags & D3DCLEAR_TARGET)) hdr_dirty_ = true;
+        if (hdr_state_ == HdrState::Off)
+            begin_redirect();
+        else if (hdr_state_ == HdrState::Active && (flags & D3DCLEAR_TARGET))
+            hdr_dirty_ = true;
     }
 }
 void MotionOutput::after_clear(HRESULT result) noexcept {
     if (!enabled_) return;
-    if (!pending_valid_) { selector_.invalidate(); return; }
+    if (!pending_valid_) {
+        selector_.invalidate();
+        return;
+    }
     pending_valid_ = false;
     const auto before = selector_.state();
     observe(pending_, result);
@@ -3730,13 +5174,17 @@ void MotionOutput::after_clear(HRESULT result) noexcept {
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
         if (hdr_ && hdr_->take_fault(renderer::HdrFault::Clear)) failed = true; // seam: the Clear "failed"
 #endif
-        if (failed) { hdr_dirty_ = false; end_redirect(HdrEnd::ClearFailed); }
-        else begin_composition_frame();
+        if (failed) {
+            hdr_dirty_ = false;
+            end_redirect(HdrEnd::ClearFailed);
+        } else
+            begin_composition_frame();
     }
     // The scene view's camera is final at the depth-only Clear that starts the
     // scene phase (the view activation issues that Clear right after building
     // the matrices); the background view's at the latching Clear (diagnostics).
-    if (before == renderer::BoundaryState::Background && selector_.state() == renderer::BoundaryState::Scene) read_camera(true);
+    if (before == renderer::BoundaryState::Background && selector_.state() == renderer::BoundaryState::Scene)
+        read_camera(true);
     // D3: a multisampled RT0 never latches (the selector's main-target rule
     // requires a single-sampled A8R8G8B8 surface), so a frame whose initial
     // Clear lands on one is refused here by name: RT1/RT2 textures cannot
@@ -3745,40 +5193,54 @@ void MotionOutput::after_clear(HRESULT result) noexcept {
     // (TaaSkip::Msaa), the history drops, the frame line carries msaa=; the
     // HDR redirect refuses on its own (refused_msaa). Logged once until a
     // single-sampled frame latches or Reset changes the sample count.
-    if (before == renderer::BoundaryState::AwaitInitialClear && selector_.state() != renderer::BoundaryState::Background &&
-        SUCCEEDED(result) && pending_.rt.known && pending_.rt.identity && pending_.rt.msaa && pending_.rt.format == 21 && pending_.rt.width && pending_.rt.height) {
-        main_msaa_ = true; main_msaa_samples_ = pending_.rt.msaa;
-        jitter_active_ = false; history_.invalidate();
+    if (before == renderer::BoundaryState::AwaitInitialClear &&
+        selector_.state() != renderer::BoundaryState::Background && SUCCEEDED(result) && pending_.rt.known &&
+        pending_.rt.identity && pending_.rt.msaa && pending_.rt.format == 21 && pending_.rt.width &&
+        pending_.rt.height) {
+        main_msaa_ = true;
+        main_msaa_samples_ = pending_.rt.msaa;
+        jitter_active_ = false;
+        history_.invalidate();
         if (!msaa_logged_) {
             msaa_logged_ = true;
             log("motion_output_msaa_refused device=%llu frame=%llu msaa=%lu width=%lu height=%lu", id_, frame_,
-                static_cast<unsigned long>(pending_.rt.msaa), static_cast<unsigned long>(pending_.rt.width), static_cast<unsigned long>(pending_.rt.height));
+                static_cast<unsigned long>(pending_.rt.msaa), static_cast<unsigned long>(pending_.rt.width),
+                static_cast<unsigned long>(pending_.rt.height));
         }
     }
-    if (before == renderer::BoundaryState::AwaitInitialClear && selector_.state() == renderer::BoundaryState::Background) {
+    if (before == renderer::BoundaryState::AwaitInitialClear &&
+        selector_.state() == renderer::BoundaryState::Background) {
         read_camera(false);
         // The frame's main color/depth pair is latched: own a matching motion
         // target and schedule the sentinel fill for the next draw.
-        main_ = pending_.rt; main_depth_ = pending_.depth;
+        main_ = pending_.rt;
+        main_depth_ = pending_.depth;
         counters_.latched = true;
-        main_msaa_ = false; main_msaa_samples_ = 0; msaa_logged_ = false; // a single-sampled frame latched (the selector admits no other)
+        main_msaa_ = false;
+        main_msaa_samples_ = 0;
+        msaa_logged_ = false; // a single-sampled frame latched (the selector admits no other)
         // Advance the jitter sequence once per latched frame: the previous
         // latched frame's jitter is what routed draws report in PS c216.zw.
-        jitter_previous_[0] = jitter_[0]; jitter_previous_[1] = jitter_[1];
+        jitter_previous_[0] = jitter_[0];
+        jitter_previous_[1] = jitter_[1];
         const unsigned index = jitter_latched_++ % jitter_samples_;
-        // With TAA requested the jitter (and the mip bias that follows it) runs only while the resolve is available: a device
-        // whose pass was refused (the filter query at attach, or initialize) presents unjittered frames. Without TAA the
-        // jitter follows its own switch (X3M_MOTION_JITTER, a motion-output diagnostic).
+        // With TAA requested the jitter (and the mip bias that follows it) runs only while the resolve is available: a
+        // device whose pass was refused (the filter query at attach, or initialize) presents unjittered frames. Without
+        // TAA the jitter follows its own switch (X3M_MOTION_JITTER, a motion-output diagnostic).
         jitter_active_ = jitter_requested_ && (!taa_requested_ || (taa_enabled_ && !taa_failed_));
         jitter_[0] = jitter_active_ ? motion_jitter_sample(index + 1, 0) : 0.f;
         jitter_[1] = jitter_active_ ? motion_jitter_sample(index + 1, 1) : 0.f;
-        counters_.jitter_active = jitter_active_; counters_.jitter_index = index;
-        counters_.jitter[0] = jitter_[0]; counters_.jitter[1] = jitter_[1];
-        counters_.jitter_previous[0] = jitter_previous_[0]; counters_.jitter_previous[1] = jitter_previous_[1];
+        counters_.jitter_active = jitter_active_;
+        counters_.jitter_index = index;
+        counters_.jitter[0] = jitter_[0];
+        counters_.jitter[1] = jitter_[1];
+        counters_.jitter_previous[0] = jitter_previous_[0];
+        counters_.jitter_previous[1] = jitter_previous_[1];
         if (ensure_target(main_.width, main_.height)) {
             fill_pending_ = true;
             history_.begin_frame({generation_, main_.width, main_.height});
-        } else history_.invalidate();
+        } else
+            history_.invalidate();
     }
 }
 void MotionOutput::after_set_render_target(DWORD index, IDirect3DSurface9* surface, HRESULT result) noexcept {
@@ -3791,7 +5253,10 @@ void MotionOutput::after_set_render_target(DWORD index, IDirect3DSurface9* surfa
         const auto next = static_cast<HdrState>(hdr_pending_state_);
         hdr_pending_state_ = 0;
         if (SUCCEEDED(result) && next != hdr_state_) {
-            if (next == HdrState::Suspended) ++counters_.hdr.suspended; else ++counters_.hdr.resumed;
+            if (next == HdrState::Suspended)
+                ++counters_.hdr.suspended;
+            else
+                ++counters_.hdr.resumed;
             hdr_state_ = next;
         }
     }
@@ -3807,12 +5272,16 @@ void MotionOutput::after_set_depth(IDirect3DSurface9* surface, HRESULT result) n
     e.depth = shadow_.depth;
     observe(e, result);
 }
-void MotionOutput::after_stretch(IDirect3DSurface9* source, const RECT* source_rect,
-                                 IDirect3DSurface9* destination, const RECT* destination_rect, HRESULT result) noexcept {
+void MotionOutput::after_stretch(IDirect3DSurface9* source, const RECT* source_rect, IDirect3DSurface9* destination,
+                                 const RECT* destination_rect, HRESULT result) noexcept {
     if (!enabled_) return;
     auto e = event(renderer::EventKind::Copy);
-    if (SUCCEEDED(result)) { e.source = describe_surface(source); e.destination = describe_surface(destination); }
-    e.source_rect_null = source_rect == nullptr; e.destination_rect_null = destination_rect == nullptr;
+    if (SUCCEEDED(result)) {
+        e.source = describe_surface(source);
+        e.destination = describe_surface(destination);
+    }
+    e.source_rect_null = source_rect == nullptr;
+    e.destination_rect_null = destination_rect == nullptr;
     observe(e, result);
 }
 void MotionOutput::after_color_fill(IDirect3DSurface9* destination, const RECT* rect, HRESULT result) noexcept {
@@ -3836,11 +5305,21 @@ bool MotionOutput::sample_scope(MotionRoute& route) noexcept {
     if (fixture_configured_) {
         const auto& s = fixture_.scope;
         if (!s.known) return false;
-        key.object_lifetime = s.node_serial; key.camera_lifetime = s.camera_serial;
-        key.node = s.node; key.camera = s.camera; key.mesh = s.mesh;
-        key.node_handle = s.node_handle; key.camera_handle = s.camera_handle; key.model = s.model; key.lod = s.lod;
-        route.load_epoch = s.load_epoch; route.registry_epoch = s.registry_epoch;
-        route.registry = s.registry; route.node_flags12c = s.flags12c; route.node_flags130 = s.flags130; route.observer_epoch = s.observer_epoch;
+        key.object_lifetime = s.node_serial;
+        key.camera_lifetime = s.camera_serial;
+        key.node = s.node;
+        key.camera = s.camera;
+        key.mesh = s.mesh;
+        key.node_handle = s.node_handle;
+        key.camera_handle = s.camera_handle;
+        key.model = s.model;
+        key.lod = s.lod;
+        route.load_epoch = s.load_epoch;
+        route.registry_epoch = s.registry_epoch;
+        route.registry = s.registry;
+        route.node_flags12c = s.flags12c;
+        route.node_flags130 = s.flags130;
+        route.observer_epoch = s.observer_epoch;
         key.draw_domain = (((s.load_epoch & 0xffffffffull) << 32) | (s.registry_epoch & 0xffffffffull)) + 1;
         return true;
     }
@@ -3851,13 +5330,25 @@ bool MotionOutput::sample_scope(MotionRoute& route) noexcept {
     constexpr std::uint32_t required = object_trace::Node | object_trace::Camera | object_trace::Registry;
     if ((scope.valid & required) != required || !scope.node || !scope.camera) return false;
     object_lifetime::Snapshot lifetime{};
-    if (!object_lifetime::current(scope.registry, scope.node, scope.node_handle, scope.camera, scope.camera_handle, &lifetime) ||
-        !lifetime.known || !lifetime.node_serial || !lifetime.camera_serial) return false;
-    key.object_lifetime = lifetime.node_serial; key.camera_lifetime = lifetime.camera_serial;
-    key.node = scope.node; key.camera = scope.camera; key.mesh = scope.mesh;
-    key.node_handle = scope.node_handle; key.camera_handle = scope.camera_handle; key.model = scope.model; key.lod = scope.lod;
-    route.load_epoch = lifetime.load_epoch; route.registry_epoch = lifetime.registry_epoch;
-    route.observer_epoch = lifetime.observer_epoch; route.registry = scope.registry; route.node_flags12c = scope.flags12c; route.node_flags130 = scope.flags130;
+    if (!object_lifetime::current(scope.registry, scope.node, scope.node_handle, scope.camera, scope.camera_handle,
+                                  &lifetime) ||
+        !lifetime.known || !lifetime.node_serial || !lifetime.camera_serial)
+        return false;
+    key.object_lifetime = lifetime.node_serial;
+    key.camera_lifetime = lifetime.camera_serial;
+    key.node = scope.node;
+    key.camera = scope.camera;
+    key.mesh = scope.mesh;
+    key.node_handle = scope.node_handle;
+    key.camera_handle = scope.camera_handle;
+    key.model = scope.model;
+    key.lod = scope.lod;
+    route.load_epoch = lifetime.load_epoch;
+    route.registry_epoch = lifetime.registry_epoch;
+    route.observer_epoch = lifetime.observer_epoch;
+    route.registry = scope.registry;
+    route.node_flags12c = scope.flags12c;
+    route.node_flags130 = scope.flags130;
     key.draw_domain = (((lifetime.load_epoch & 0xffffffffull) << 32) | (lifetime.registry_epoch & 0xffffffffull)) + 1;
     return true;
 }
@@ -3869,22 +5360,40 @@ bool MotionOutput::sample_scope(MotionRoute& route) noexcept {
 // bound) is evaluated once per frame; the key must be new (a poisoned,
 // consumed or non-finite entry is a repeated miss and keeps the sentinel) and,
 // in mode 1, its object must have been drawn last frame under another key.
-bool MotionOutput::unmatched_static_rows(const MotionRoute& route, const renderer::SubmittedMatrix& rows, renderer::SubmittedMatrix& previous) noexcept {
+bool MotionOutput::unmatched_static_rows(const MotionRoute& route, const renderer::SubmittedMatrix& rows,
+                                         renderer::SubmittedMatrix& previous) noexcept {
     // Verdict and rows share one snapshot of the two latches; a scene latch re-read
     // within the frame (the draw's rows then belong to the new view) retakes both.
-    if (unmatched_static_frame_ != frame_ || std::memcmp(&unmatched_static_current_, &camera_scene_, sizeof camera_scene_) != 0) {
+    if (unmatched_static_frame_ != frame_ ||
+        std::memcmp(&unmatched_static_current_, &camera_scene_, sizeof camera_scene_) != 0) {
         unmatched_static_frame_ = frame_;
-        unmatched_static_current_ = camera_scene_; unmatched_static_previous_ = camera_previous_;
-        unmatched_static_camera_ = taa_enabled_ && camera_scene_.valid && camera_previous_.valid && camera_previous_frame_ + 1 == frame_
-            && std::isfinite(camera_cut_degrees_) && camera_cut_degrees_ > 0
-            // The cut bound as a cosine: no acos on the draw path (check_no_x87.py); a bound of 180 or more never cuts.
-            && (camera_cut_degrees_ >= 180.f || renderer::camera_rotation_within(unmatched_static_current_, unmatched_static_previous_, renderer::cosine_of_degrees(double(camera_cut_degrees_))));
+        unmatched_static_current_ = camera_scene_;
+        unmatched_static_previous_ = camera_previous_;
+        unmatched_static_camera_ = taa_enabled_ && camera_scene_.valid && camera_previous_.valid &&
+                                   camera_previous_frame_ + 1 == frame_ && std::isfinite(camera_cut_degrees_) &&
+                                   camera_cut_degrees_ > 0
+                                   // The cut bound as a cosine: no acos on the draw path (check_no_x87.py); a bound of
+                                   // 180 or more never cuts.
+                                   && (camera_cut_degrees_ >= 180.f ||
+                                       renderer::camera_rotation_within(
+                                           unmatched_static_current_, unmatched_static_previous_,
+                                           renderer::cosine_of_degrees(double(camera_cut_degrees_))));
     }
     const unsigned kind = history_.classify_miss(route.key);
     if (!kind) return false;
-    if (!unmatched_static_camera_) { ++unmatched_static_camera_refused_; return false; }
-    if (kind == 1 && unmatched_static_ != 2) { ++unmatched_static_object_unknown_; return false; }
-    if (!renderer::static_previous_rows(unmatched_static_current_, unmatched_static_previous_, rows.data(), previous.data())) { ++unmatched_static_rows_refused_; return false; }
+    if (!unmatched_static_camera_) {
+        ++unmatched_static_camera_refused_;
+        return false;
+    }
+    if (kind == 1 && unmatched_static_ != 2) {
+        ++unmatched_static_object_unknown_;
+        return false;
+    }
+    if (!renderer::static_previous_rows(unmatched_static_current_, unmatched_static_previous_, rows.data(),
+                                        previous.data())) {
+        ++unmatched_static_rows_refused_;
+        return false;
+    }
     ++unmatched_static_applied_;
     if (unmatched_static_logged_ < 64) {
         ++unmatched_static_logged_;
@@ -3895,11 +5404,17 @@ bool MotionOutput::unmatched_static_rows(const MotionRoute& route, const rendere
         const float* r = rows.data();
         // scalar::sqrt (sqrtss): diagnostics precision, no libm call on the draw path.
         const double wn = double(scalar::sqrt(r[12] * r[12] + r[13] * r[13] + r[14] * r[14]));
-        const double sx = wn > 0 ? double(scalar::sqrt(r[0] * r[0] + r[1] * r[1] + r[2] * r[2])) / (double(unmatched_static_current_.m00) * wn) : 0.;
-        const double sy = wn > 0 ? double(scalar::sqrt(r[4] * r[4] + r[5] * r[5] + r[6] * r[6])) / (double(unmatched_static_current_.m11) * wn) : 0.;
+        const double sx = wn > 0 ? double(scalar::sqrt(r[0] * r[0] + r[1] * r[1] + r[2] * r[2])) /
+                                       (double(unmatched_static_current_.m00) * wn)
+                                 : 0.;
+        const double sy = wn > 0 ? double(scalar::sqrt(r[4] * r[4] + r[5] * r[5] + r[6] * r[6])) /
+                                       (double(unmatched_static_current_.m11) * wn)
+                                 : 0.;
         log("motion_unmatched_static device=%llu frame=%llu index=%lu object_known=%u node_serial=%llu model=%08lx lod=%08lx vb=%llu ib=%llu first=%u primitives=%u vertex_count=%u vs=%016llx camera_handle=%lu projection_x=%.5f projection_y=%.5f w=%.6g",
-            id_, frame_, static_cast<unsigned long>(counters_.draws), kind == 2, k.object_lifetime, static_cast<unsigned long>(k.model), static_cast<unsigned long>(k.lod),
-            k.vertex_buffer, k.index_buffer, k.first, k.primitives, k.vertex_count, k.position_program, static_cast<unsigned long>(k.camera_handle), sx, sy, double(r[15]));
+            id_, frame_, static_cast<unsigned long>(counters_.draws), kind == 2, k.object_lifetime,
+            static_cast<unsigned long>(k.model), static_cast<unsigned long>(k.lod), k.vertex_buffer, k.index_buffer,
+            k.first, k.primitives, k.vertex_count, k.position_program, static_cast<unsigned long>(k.camera_handle), sx,
+            sy, double(r[15]));
     }
     return true;
 }
@@ -3919,28 +5434,39 @@ bool MotionOutput::unmatched_static_rows(const MotionRoute& route, const rendere
 // injection before any native state changes.
 HRESULT MotionOutput::acquire_restore(MotionRoute& route) noexcept {
     if (route.restore_held) return S_OK;
-    IDirect3DVertexShader9* vs = nullptr; IDirect3DPixelShader9* ps = nullptr;
+    IDirect3DVertexShader9* vs = nullptr;
+    IDirect3DPixelShader9* ps = nullptr;
     ++counters_.restore_getters;
     HRESULT hr = native<GetVsFn>(GetVertexShader)(device_, &vs);
-    if (SUCCEEDED(hr)) { ++counters_.restore_getters; hr = native<GetPsFn>(GetPixelShader)(device_, &ps); }
+    if (SUCCEEDED(hr)) {
+        ++counters_.restore_getters;
+        hr = native<GetPsFn>(GetPixelShader)(device_, &ps);
+    }
     if (FAILED(hr)) {
-        release(vs); release(ps);
+        release(vs);
+        release(ps);
         ++counters_.restore_declines;
         if (logged_failures_ < failure_log_limit) {
             ++logged_failures_;
-            log("motion_output_restore_declined device=%llu frame=%llu index=%lu result=%08lx", id_, frame_, counters_.draws, hr);
+            log("motion_output_restore_declined device=%llu frame=%llu index=%lu result=%08lx", id_, frame_,
+                counters_.draws, hr);
         }
         return hr;
     }
-    route.restore_vs = vs; route.restore_ps = ps; route.restore_held = true;
+    route.restore_vs = vs;
+    route.restore_ps = ps;
+    route.restore_held = true;
     return S_OK;
 }
 void MotionOutput::release_restore(MotionRoute& route) noexcept {
     if (!route.restore_held) return;
     route.restore_held = false;
-    IDirect3DVertexShader9* vs = route.restore_vs; IDirect3DPixelShader9* ps = route.restore_ps;
-    route.restore_vs = nullptr; route.restore_ps = nullptr;
-    release(ps); release(vs);
+    IDirect3DVertexShader9* vs = route.restore_vs;
+    IDirect3DPixelShader9* ps = route.restore_ps;
+    route.restore_vs = nullptr;
+    route.restore_ps = nullptr;
+    release(ps);
+    release(vs);
 }
 
 // Hull emissive widening: the light-map stage's MINFILTER for a widened draw.
@@ -3956,24 +5482,42 @@ bool MotionOutput::ensure_widen_filter(MotionRoute& route) noexcept {
     if (!s.minfilter_known) {
         DWORD value = 0;
         ++lightmap_widen_filter_reads_;
-        if (FAILED(direct_call<GetSamplerStateFn>(GetSamplerState, stage, D3DSAMP_MINFILTER, &value))) { ++lightmap_widen_filter_failures_; return false; }
-        s.minfilter = value; s.minfilter_known = true;
+        if (FAILED(direct_call<GetSamplerStateFn>(GetSamplerState, stage, D3DSAMP_MINFILTER, &value))) {
+            ++lightmap_widen_filter_failures_;
+            return false;
+        }
+        s.minfilter = value;
+        s.minfilter_known = true;
     }
     if (s.minfilter == D3DTEXF_ANISOTROPIC) return true;
     const HRESULT hr = direct_call<SetSamplerStateFn>(SetSamplerState, stage, D3DSAMP_MINFILTER, D3DTEXF_ANISOTROPIC);
-    if (FAILED(hr)) { ++lightmap_widen_filter_failures_; return false; }
-    ++lightmap_widen_filter_sets_; ++lightmap_widen_session_filter_sets_;
-    route.widen_filter_set = true; route.widen_filter_stage = std::uint8_t(stage); route.widen_filter_saved = s.minfilter;
+    if (FAILED(hr)) {
+        ++lightmap_widen_filter_failures_;
+        return false;
+    }
+    ++lightmap_widen_filter_sets_;
+    ++lightmap_widen_session_filter_sets_;
+    route.widen_filter_set = true;
+    route.widen_filter_stage = std::uint8_t(stage);
+    route.widen_filter_saved = s.minfilter;
     return true;
 }
 // Undo whatever before_draw already applied, in reverse order.
 HRESULT MotionOutput::undo(MotionRoute& route) noexcept {
     HRESULT first = restore_wrap_states(route);
-    auto step = [&](HRESULT hr) { if (SUCCEEDED(first) && FAILED(hr)) first = hr; };
-    if (route.widen_filter_set) { route.widen_filter_set = false; step(direct_call<SetSamplerStateFn>(SetSamplerState, route.widen_filter_stage, D3DSAMP_MINFILTER, route.widen_filter_saved)); }
-    if (route.write2_set) step(direct_call<SetRenderStateFn>(SetRenderState, D3DRS_COLORWRITEENABLE2, route.saved_write2));
+    auto step = [&](HRESULT hr) {
+        if (SUCCEEDED(first) && FAILED(hr)) first = hr;
+    };
+    if (route.widen_filter_set) {
+        route.widen_filter_set = false;
+        step(direct_call<SetSamplerStateFn>(SetSamplerState, route.widen_filter_stage, D3DSAMP_MINFILTER,
+                                            route.widen_filter_saved));
+    }
+    if (route.write2_set)
+        step(direct_call<SetRenderStateFn>(SetRenderState, D3DRS_COLORWRITEENABLE2, route.saved_write2));
     if (route.rt2_set) step(bind_target(2, nullptr));
-    if (route.write_set) step(direct_call<SetRenderStateFn>(SetRenderState, D3DRS_COLORWRITEENABLE1, route.saved_write1));
+    if (route.write_set)
+        step(direct_call<SetRenderStateFn>(SetRenderState, D3DRS_COLORWRITEENABLE1, route.saved_write1));
     if (route.rt_set) step(bind_target(1, nullptr));
     if (route.ps_set) step(native<SetPsFn>(SetPixelShader)(device_, route.restore_ps));
     if (route.vs_set) step(native<SetVsFn>(SetVertexShader)(device_, route.restore_vs));
@@ -3988,12 +5532,17 @@ HRESULT MotionOutput::undo(MotionRoute& route) noexcept {
     route.write2_set = route.rt2_set = false;
     route.vs_constants_set = route.ps_constants_set = false;
     if (FAILED(first)) {
-        if (!motion_state_lost_) { motion_state_lost_ = true; motion_state_error_ = first; }
+        if (!motion_state_lost_) {
+            motion_state_lost_ = true;
+            motion_state_error_ = first;
+        }
         invalidate_taa(TaaInvalidateSite::RestoreFailed);
-        ++counters_.restore_failures; invalidate_render_states();
+        ++counters_.restore_failures;
+        invalidate_render_states();
         if (logged_failures_ < failure_log_limit) {
             ++logged_failures_;
-            log("motion_output_restore_failed device=%llu frame=%llu index=%lu result=%08lx", id_, frame_, counters_.draws, first);
+            log("motion_output_restore_failed device=%llu frame=%llu index=%lu result=%08lx", id_, frame_,
+                counters_.draws, first);
         }
     }
     return first;
@@ -4005,11 +5554,13 @@ HRESULT MotionOutput::undo(MotionRoute& route) noexcept {
 void MotionOutput::rollback_route(MotionRoute& route) noexcept {
     const HRESULT bindings_restored = restore_bindings_checked();
     if (FAILED(bindings_restored) && !motion_state_lost_) {
-        motion_state_lost_ = true; motion_state_error_ = bindings_restored;
+        motion_state_lost_ = true;
+        motion_state_error_ = bindings_restored;
     }
     undo(route); // Latches only if no earlier restoration failed.
     if (motion_state_lost_) {
-        route.submit = false; route.submission_error = motion_state_error_;
+        route.submit = false;
+        route.submission_error = motion_state_error_;
         invalidate_taa(TaaInvalidateSite::RestoreFailed);
     }
 }
@@ -4029,14 +5580,17 @@ void MotionOutput::apply_jitter(MotionRoute& route) noexcept {
     if (!shadow_.rows_known[window] || !main_.width || !main_.height) return;
     float rows[16];
     std::memcpy(rows, shadow_.rows[window], sizeof rows);
-    fade_region::jitter_rows(rows, jitter_[0], jitter_[1], main_.width, main_.height); // shared with the region projection
+    fade_region::jitter_rows(rows, jitter_[0], jitter_[1], main_.width, main_.height); // shared with the region
+                                                                                       // projection
     const std::uint64_t begin = draw_stamp();
     const HRESULT hr = direct_call<SetConstantsFFn>(SetVertexShaderConstantF, matrix_register, rows, 4);
     const std::uint64_t ticks = draw_stamp() - begin;
-    ++counters_.jitter_writes; counters_.jitter_ticks += ticks;
+    ++counters_.jitter_writes;
+    counters_.jitter_ticks += ticks;
     record(unsigned(telemetry::Metric::RouteJitter), ticks, FAILED(hr));
     if (SUCCEEDED(hr)) {
-        route.jittered = true; route.jitter_register = matrix_register;
+        route.jittered = true;
+        route.jitter_register = matrix_register;
         ++counters_.jittered;
     }
 }
@@ -4045,16 +5599,20 @@ void MotionOutput::restore_jitter(MotionRoute& route) noexcept {
     const std::size_t window = window_of(route.jitter_register);
     const std::uint64_t begin = draw_stamp();
     const HRESULT hr = window < motion_matrix_windows_max
-        ? direct_call<SetConstantsFFn>(SetVertexShaderConstantF, route.jitter_register, shadow_.rows[window], 4) : E_FAIL;
+                           ? direct_call<SetConstantsFFn>(SetVertexShaderConstantF, route.jitter_register,
+                                                          shadow_.rows[window], 4)
+                           : E_FAIL;
     const std::uint64_t ticks = draw_stamp() - begin;
-    ++counters_.jitter_writes; counters_.jitter_ticks += ticks;
+    ++counters_.jitter_writes;
+    counters_.jitter_ticks += ticks;
     record(unsigned(telemetry::Metric::RouteJitter), ticks, FAILED(hr));
     route.jittered = false;
     if (FAILED(hr)) {
         ++counters_.restore_failures;
         if (logged_failures_ < failure_log_limit) {
             ++logged_failures_;
-            log("motion_output_restore_failed device=%llu frame=%llu index=%lu result=%08lx what=jitter_rows", id_, frame_, counters_.draws, hr);
+            log("motion_output_restore_failed device=%llu frame=%llu index=%lu result=%08lx what=jitter_rows", id_,
+                frame_, counters_.draws, hr);
         }
     }
 }
@@ -4067,24 +5625,43 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
     MotionRoute route{};
     ++counters_.draws;
     if (motion_state_lost_) {
-        route.submit = false; route.submission_error = motion_state_error_;
-        ++counters_.gates[1]; invalidate_taa(TaaInvalidateSite::StateLost); return route;
+        route.submit = false;
+        route.submission_error = motion_state_error_;
+        ++counters_.gates[1];
+        invalidate_taa(TaaInvalidateSite::StateLost);
+        return route;
     }
-    if (!enabled_) { route.gate = MotionGate::Feature; ++counters_.gates[1]; return route; }
+    if (!enabled_) {
+        route.gate = MotionGate::Feature;
+        ++counters_.gates[1];
+        return route;
+    }
     if (!state_hooks_) begin_draw_reads(); // hooks off: this draw's state comes from Get*, read once each below
     if (hdr_state_ == HdrState::Active) hdr_dirty_ = true; // every application draw lands in the FP16 target
     if (mip_bias_total_game_writes_ != mip_bias_logged_game_writes_) log_mip_bias_game_write();
-    const std::uint64_t begin = draw_stamp(), fill_before = counters_.fill_ticks, flush_before = counters_.lazy_flush_ticks;
-    if (composition_state_lost_ || composition_busy_) { route.submit = false; ++composition_counts_.suppressed; if (composition_state_lost_) invalidate_taa(TaaInvalidateSite::CompositionStateLost); return route; }
-    if (composition_effective_ && hdr_state_ != HdrState::Off && composition_enhanced_ && !composition_readers_known_) {
-        composition_frame_stopped_ = true; invalidate_taa(TaaInvalidateSite::CompositionReaders);
+    const std::uint64_t begin = draw_stamp(), fill_before = counters_.fill_ticks,
+                        flush_before = counters_.lazy_flush_ticks;
+    if (composition_state_lost_ || composition_busy_) {
+        route.submit = false;
+        ++composition_counts_.suppressed;
+        if (composition_state_lost_) invalidate_taa(TaaInvalidateSite::CompositionStateLost);
+        return route;
     }
-    if (composition_published_ && hdr_state_ != HdrState::Off && (composition_main_sampler_mask_ || !composition_readers_known_)) composition_export();
+    if (composition_effective_ && hdr_state_ != HdrState::Off && composition_enhanced_ && !composition_readers_known_) {
+        composition_frame_stopped_ = true;
+        invalidate_taa(TaaInvalidateSite::CompositionReaders);
+    }
+    if (composition_published_ && hdr_state_ != HdrState::Off &&
+        (composition_main_sampler_mask_ || !composition_readers_known_))
+        composition_export();
     route.evaluated = true;
-    route.sun_color_writer=sun_lane_active_&&call.primitives&&selector_.state()==renderer::BoundaryState::Scene&&
-        !counters_.hook_scene_end&&(hdr_state_==HdrState::Active||scene_bound())&&state_field(4)!=0; // slot 4: COLORWRITEENABLE
+    route.sun_color_writer = sun_lane_active_ && call.primitives &&
+                             selector_.state() == renderer::BoundaryState::Scene && !counters_.hook_scene_end &&
+                             (hdr_state_ == HdrState::Active || scene_bound()) &&
+                             state_field(4) != 0; // slot 4: COLORWRITEENABLE
     evaluate_draw(call, route);
-    if (route.sun_color_writer && !route.routed) arm_sun_stamp(call, route); // unroutable depth writer: see sun_stamp_draw
+    if (route.sun_color_writer && !route.routed)
+        arm_sun_stamp(call, route); // unroutable depth writer: see sun_stamp_draw
     // Step B rectangle before step C's admission: an admitted screen draw
     // composes inside it; without it the draw stays native.
     if (screen_emission_bound_) derive_prefix_region(call, route);
@@ -4097,9 +5674,16 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
         if (FAILED(restored)) {
             // An unavailable pair still forwards only after known restoration,
             // independently of the optional emission route.
-            if (!motion_state_lost_) { motion_state_lost_ = true; motion_state_error_ = restored; }
-            route.submit = false; route.submission_error = motion_state_error_;
-            if (composition_effective_) { composition_state_lost_ = true; ++composition_counts_.suppressed; }
+            if (!motion_state_lost_) {
+                motion_state_lost_ = true;
+                motion_state_error_ = restored;
+            }
+            route.submit = false;
+            route.submission_error = motion_state_error_;
+            if (composition_effective_) {
+                composition_state_lost_ = true;
+                ++composition_counts_.suppressed;
+            }
             invalidate_taa(TaaInvalidateSite::RestoreFailed);
         } else if (route.submit) {
             if (shadow_.fog_card_source) prepare_fog_card(call, route);
@@ -4115,17 +5699,20 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
     }
     // Source-only gain: a null pointer test when the option is off or the
     // bound pair is not one of the twenty; the bracket routes take precedence.
-    if (shadow_.source_gain_eligible_variant
-            && !route.routed && !route.composition && !route.fog_card_mask.masked && route.submit) prepare_source_gain(call, route);
+    if (shadow_.source_gain_eligible_variant && !route.routed && !route.composition && !route.fog_card_mask.masked &&
+        route.submit)
+        prepare_source_gain(call, route);
     // Hull-emitter gain: one bool test when the option is off or the bound PS
     // is not one of the twelve; its own flag (a fixture seam toggles it).
     // A routed or composed draw takes the same blend verdict inside.
-    if (shadow_.ps_hull_program && hull_gain_enabled_ && !route.fog_card_mask.masked && route.submit) prepare_hull_gain(call, route);
+    if (shadow_.ps_hull_program && hull_gain_enabled_ && !route.fog_card_mask.masked && route.submit)
+        prepare_hull_gain(call, route);
     if (!route.routed && !route.composition && route.submit && route.scene && call.primitives)
         mark_cutout_candidate(route);
     if (telemetry::draw_enabled()) {
-        const std::uint64_t total = draw_stamp() - begin,
-            excluded = route.ticks + (counters_.fill_ticks - fill_before) + (counters_.lazy_flush_ticks - flush_before);
+        const std::uint64_t total = draw_stamp() - begin, excluded = route.ticks +
+                                                                     (counters_.fill_ticks - fill_before) +
+                                                                     (counters_.lazy_flush_ticks - flush_before);
         const std::uint64_t gate = total > excluded ? total - excluded : 0;
         counters_.gate_ticks += gate;
         record(unsigned(telemetry::Metric::RouteGate), gate);
@@ -4136,7 +5723,11 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
 // within the caller's native CPU section, never while evaluating a draw.
 int MotionOutput::composition_texture_reader(DWORD stage, IDirect3DBaseTexture9* texture) noexcept {
     if (!composition_requested()) return 2;
-    const unsigned i = stage < 16 ? unsigned(stage) : stage >= D3DVERTEXTEXTURESAMPLER0 && stage <= D3DVERTEXTEXTURESAMPLER3 ? 16u + stage - D3DVERTEXTEXTURESAMPLER0 : stage == D3DDMAPSAMPLER ? 20u : 21u;
+    const unsigned i = stage < 16 ? unsigned(stage)
+                       : stage >= D3DVERTEXTEXTURESAMPLER0 && stage <= D3DVERTEXTEXTURESAMPLER3
+                           ? 16u + stage - D3DVERTEXTEXTURESAMPLER0
+                       : stage == D3DDMAPSAMPLER ? 20u
+                                                 : 21u;
     if (i >= 21) return 2;
     if (texture == composition_textures_[i] && (composition_reader_known_mask_ & (1u << i))) return 2;
     if (!texture) return 0;
@@ -4150,36 +5741,46 @@ int MotionOutput::composition_texture_reader(DWORD stage, IDirect3DBaseTexture9*
 }
 void MotionOutput::before_texture_write(IDirect3DBaseTexture9* texture) noexcept {
     if (!composition_requested() || !texture || !hdr_main_ || hdr_state_ == HdrState::Off) return;
-    if (texture == composition_main_texture_) { before_render_target_write(hdr_main_); return; }
+    if (texture == composition_main_texture_) {
+        before_render_target_write(hdr_main_);
+        return;
+    }
     // A back-buffer-only main has no texture destination. Unknown container
     // identity is different: finish the redirect before the incoming write.
     if (composition_identity_known_ && !composition_main_identity_) return;
-    const bool busy = composition_busy_; composition_busy_ = true;
+    const bool busy = composition_busy_;
+    composition_busy_ = true;
     IUnknown* identity = nullptr;
     const HRESULT hr = texture->QueryInterface(IID_IUnknown, reinterpret_cast<void**>(&identity));
     const bool unknown = FAILED(hr) || !identity || !composition_identity_known_;
     const bool main = !unknown && identity == composition_main_identity_;
-    release(identity); composition_busy_ = busy;
+    release(identity);
+    composition_busy_ = busy;
     if (main || unknown) before_render_target_write(hdr_main_);
 }
 
 void MotionOutput::release_composition_identity() noexcept {
-    const bool busy = composition_busy_; composition_busy_ = true;
-    composition_main_identity_ = nullptr; composition_main_sampler_mask_ = 0;
+    const bool busy = composition_busy_;
+    composition_busy_ = true;
+    composition_main_identity_ = nullptr;
+    composition_main_sampler_mask_ = 0;
     release(composition_main_texture_); // App-owned alias: excluded from device-object inventory.
     composition_busy_ = busy;
 }
 void MotionOutput::composition_export() noexcept {
     if (!composition_requested() || !composition_enhanced_ || composition_quarantined_) return;
-    composition_quarantined_ = true; composition_frame_stopped_ = true;
-    ++composition_counts_.exports; invalidate_taa(TaaInvalidateSite::CompositionExport);
+    composition_quarantined_ = true;
+    composition_frame_stopped_ = true;
+    ++composition_counts_.exports;
+    invalidate_taa(TaaInvalidateSite::CompositionExport);
 }
 void MotionOutput::begin_composition_frame() noexcept {
     if (!composition_requested()) return;
     composition_frame_stopped_ = true;
-    if (composition_quarantined_ || composition_state_lost_ || motion_state_lost_ || !taa_enabled_
-        || !hdr_enabled_ || !hdr_ || !hdr_->tonemap_active()
-        || hdr_config_.tonemap != renderer::HdrTonemap::Agx || hdr_config_.decode != x3::temporal::AgxDecode::gamma22) return;
+    if (composition_quarantined_ || composition_state_lost_ || motion_state_lost_ || !taa_enabled_ || !hdr_enabled_ ||
+        !hdr_ || !hdr_->tonemap_active() || hdr_config_.tonemap != renderer::HdrTonemap::Agx ||
+        hdr_config_.decode != x3::temporal::AgxDecode::gamma22)
+        return;
     composition_busy_ = true;
     // Producer bits 1|2 name the required coverage; bit 4 asks for the in-place
     // fade bracket beside the exchange fade (policy 2 stays the fallback when the
@@ -4203,7 +5804,8 @@ void MotionOutput::begin_composition_frame() noexcept {
         if (FAILED(hr) || display.Format == D3DFMT_UNKNOWN) {
             const HRESULT failure = FAILED(hr) ? hr : D3DERR_INVALIDCALL;
             if (failure != composition_attach_result_)
-                log("linear_composition_device device=%llu result=%08lx requested=%u supported=0 available=0 reason=adapter_query", id_, failure, requested);
+                log("linear_composition_device device=%llu result=%08lx requested=%u supported=0 available=0 reason=adapter_query",
+                    id_, failure, requested);
             composition_attach_result_ = failure;
             composition_required_producers_ = producers;
             composition_busy_ = false;
@@ -4213,25 +5815,30 @@ void MotionOutput::begin_composition_frame() noexcept {
         composition_adapter_format_ = display.Format;
     }
     const auto depth_format = static_cast<D3DFORMAT>(pending_.depth.format);
-    const bool retry = composition_attach_result_ == E_OUTOFMEMORY
-        || (composition_ && composition_->caps().supported_policies
-            && composition_->caps().available_policies != composition_->caps().supported_policies);
+    const bool retry = composition_attach_result_ == E_OUTOFMEMORY ||
+                       (composition_ && composition_->caps().supported_policies &&
+                        composition_->caps().available_policies != composition_->caps().supported_policies);
     if (!composition_attach_attempted_ || depth_format != composition_depth_format_ || retry || !composition_) {
         const bool first = !composition_attach_attempted_;
-        composition_depth_format_ = depth_format; composition_attach_attempted_ = true;
-        try { if (!composition_) composition_ = std::make_unique<renderer::LinearEmissionPass>(); } catch (...) {}
+        composition_depth_format_ = depth_format;
+        composition_attach_attempted_ = true;
+        try {
+            if (!composition_) composition_ = std::make_unique<renderer::LinearEmissionPass>();
+        } catch (...) {}
         if ((requested & 2u) && !fade_bounds_.reserved() && !fade_bounds_.reserve())
             log("fade_region_table device=%llu reserve=failed", id_);
         if (composition_) {
             // Step E: the packed composite carries the gain as a literal; a
             // refused value (out of the pass's domain) leaves the default 1.
             if ((requested & 8u) && !composition_->configure_packed_gain(screen_emission_gain_))
-                log("screen_emission_gain device=%llu requested=%g refused=1 applied=%g", id_, double(screen_emission_gain_), double(composition_->packed_gain()));
-            const HRESULT hr = composition_->attach(device_, native_, caps_, composition_adapter_format_, depth_format, requested);
+                log("screen_emission_gain device=%llu requested=%g refused=1 applied=%g", id_,
+                    double(screen_emission_gain_), double(composition_->packed_gain()));
+            const HRESULT hr = composition_->attach(device_, native_, caps_, composition_adapter_format_, depth_format,
+                                                    requested);
             if (first || hr != composition_attach_result_)
-                log("linear_composition_device device=%llu result=%08lx requested=%u supported=%u available=%u reason=%s depth_format=%u", id_, hr,
-                    requested, composition_->caps().supported_policies, composition_->caps().available_policies,
-                    composition_->caps().reason, unsigned(depth_format));
+                log("linear_composition_device device=%llu result=%08lx requested=%u supported=%u available=%u reason=%s depth_format=%u",
+                    id_, hr, requested, composition_->caps().supported_policies,
+                    composition_->caps().available_policies, composition_->caps().reason, unsigned(depth_format));
             composition_attach_result_ = hr;
         }
     }
@@ -4242,14 +5849,24 @@ void MotionOutput::begin_composition_frame() noexcept {
         composition_required_producers_ = producers; // Impl allocation failed before caps could be retained.
     composition_effective_ = composition_effective_ || (composition_ && composition_->caps().supported_policies != 0);
     if (!composition_ || !composition_->caps().enabled ||
-        (composition_->caps().available_policies & composition_required_producers_) != composition_required_producers_) {
-        composition_busy_ = false; if (composition_effective_ || composition_required_producers_) invalidate_taa(TaaInvalidateSite::CompositionAttach); return;
+        (composition_->caps().available_policies & composition_required_producers_) !=
+            composition_required_producers_) {
+        composition_busy_ = false;
+        if (composition_effective_ || composition_required_producers_)
+            invalidate_taa(TaaInvalidateSite::CompositionAttach);
+        return;
     }
-    release(composition_main_texture_); composition_main_identity_ = nullptr; composition_identity_known_ = true;
-    const HRESULT container = hdr_main_ ? hdr_main_->GetContainer(IID_IDirect3DTexture9, reinterpret_cast<void**>(&composition_main_texture_)) : E_FAIL;
+    release(composition_main_texture_);
+    composition_main_identity_ = nullptr;
+    composition_identity_known_ = true;
+    const HRESULT container = hdr_main_ ? hdr_main_->GetContainer(IID_IDirect3DTexture9,
+                                                                  reinterpret_cast<void**>(&composition_main_texture_))
+                                        : E_FAIL;
     if (SUCCEEDED(container) && composition_main_texture_) {
         IUnknown* identity = nullptr;
-        composition_identity_known_ = SUCCEEDED(composition_main_texture_->QueryInterface(IID_IUnknown, reinterpret_cast<void**>(&identity))) && identity;
+        composition_identity_known_ = SUCCEEDED(composition_main_texture_->QueryInterface(
+                                          IID_IUnknown, reinterpret_cast<void**>(&identity))) &&
+                                      identity;
         if (composition_identity_known_) composition_main_identity_ = identity;
         release(identity);
     } else {
@@ -4258,8 +5875,11 @@ void MotionOutput::begin_composition_frame() noexcept {
     }
     const HRESULT restored = restore_bindings_checked();
     if (SUCCEEDED(restored)) resync_samplers(); // Includes prebound pixel/vertex readers, once at latch.
-    if (FAILED(restored)) { composition_state_lost_ = true; composition_frame_stopped_ = true; }
-    else if (FAILED(composition_->ensure_targets(hdr_->width(), hdr_->height()))) composition_frame_stopped_ = true;
+    if (FAILED(restored)) {
+        composition_state_lost_ = true;
+        composition_frame_stopped_ = true;
+    } else if (FAILED(composition_->ensure_targets(hdr_->width(), hdr_->height())))
+        composition_frame_stopped_ = true;
     else {
         const auto begin = composition_->begin_frame(frame_);
         composition_frame_stopped_ = !begin.ready;
@@ -4281,13 +5901,17 @@ void MotionOutput::prepare_composition(const MotionDrawCall& call, MotionRoute& 
         for (unsigned i = 0; i < 6; ++i) known = state_known(i) && known;
         for (unsigned i = 0; i < 3; ++i) known = blend_known(i) && known; // the blend triple only
         if (!known) {
-            if (composition_required_producers_ & 2u) { composition_frame_stopped_ = true; invalidate_taa(TaaInvalidateSite::CompositionRefused); }
-            ++composition_counts_.refused; ++composition_counts_.refusal[2]; return;
+            if (composition_required_producers_ & 2u) {
+                composition_frame_stopped_ = true;
+                invalidate_taa(TaaInvalidateSite::CompositionRefused);
+            }
+            ++composition_counts_.refused;
+            ++composition_counts_.refusal[2];
+            return;
         }
-        fade = shadow_.states[0] == D3DZB_TRUE && !shadow_.states[1] && !shadow_.states[2]
-            && shadow_.states[3] && shadow_.states[4] == 7 && !shadow_.states[5]
-            && shadow_.composition_blend[0] == D3DBLEND_SRCALPHA
-            && shadow_.composition_blend[1] == D3DBLEND_INVSRCALPHA && shadow_.composition_blend[2] == D3DBLENDOP_ADD;
+        fade = shadow_.states[0] == D3DZB_TRUE && !shadow_.states[1] && !shadow_.states[2] && shadow_.states[3] &&
+               shadow_.states[4] == 7 && !shadow_.states[5] && shadow_.composition_blend[0] == D3DBLEND_SRCALPHA &&
+               shadow_.composition_blend[1] == D3DBLEND_INVSRCALPHA && shadow_.composition_blend[2] == D3DBLENDOP_ADD;
     }
     // Step C (screen-emission-region.md, section 4): an exact SM1 screen pair
     // in the native screen state (ALPHABLENDENABLE, ADD, ONE/INVSRCCOLOR,
@@ -4301,13 +5925,21 @@ void MotionOutput::prepare_composition(const MotionDrawCall& call, MotionRoute& 
         for (unsigned i : {1u, 3u, 4u, 5u}) known = state_known(i) && known;
         for (unsigned i = 0; i < 4; ++i) known = blend_known(i) && known;
         DWORD dither = 0; // shadowed lazily like the cutout states (one Get, then the shadow)
-        if (!known || FAILED(render_state(D3DRS_DITHERENABLE, &dither))) { ++composition_counts_.refused; ++composition_counts_.refusal[2]; return; }
-        screen = shadow_.states[3] && !shadow_.states[1] && shadow_.states[4] == 15 && !shadow_.states[5] && !dither
-            && shadow_.composition_blend[0] == D3DBLEND_ONE && shadow_.composition_blend[1] == D3DBLEND_INVSRCCOLOR
-            && shadow_.composition_blend[2] == D3DBLENDOP_ADD && !shadow_.composition_blend[3];
+        if (!known || FAILED(render_state(D3DRS_DITHERENABLE, &dither))) {
+            ++composition_counts_.refused;
+            ++composition_counts_.refusal[2];
+            return;
+        }
+        screen = shadow_.states[3] && !shadow_.states[1] && shadow_.states[4] == 15 && !shadow_.states[5] && !dither &&
+                 shadow_.composition_blend[0] == D3DBLEND_ONE && shadow_.composition_blend[1] == D3DBLEND_INVSRCCOLOR &&
+                 shadow_.composition_blend[2] == D3DBLENDOP_ADD && !shadow_.composition_blend[3];
     }
     const bool emitter = shadow_.emission_pair;
-    if (!fade && !emitter && !screen) { ++composition_counts_.refused; ++composition_counts_.refusal[0]; return; }
+    if (!fade && !emitter && !screen) {
+        ++composition_counts_.refused;
+        ++composition_counts_.refusal[0];
+        return;
+    }
     if (fade) ++composition_counts_.eligible_fade;
     if (screen) {
         ++composition_counts_.packed_eligible;
@@ -4316,36 +5948,55 @@ void MotionOutput::prepare_composition(const MotionDrawCall& call, MotionRoute& 
         // layout, scalar-fade body) stays native, never the full viewport;
         // so does one whose device lacks policy 8. Neither is a refusal of
         // the histogram: the native draw is the status quo of every bullet.
-        if (!route.prefix_evaluated || !route.prefix_region.bound) { ++composition_counts_.packed_unbounded_refused; return; }
-        if (!composition_ || !composition_->caps().supports(renderer::LinearCompositionPolicy::PackedScreenInPlace)) { ++composition_counts_.packed_caps_refused; return; }
+        if (!route.prefix_evaluated || !route.prefix_region.bound) {
+            ++composition_counts_.packed_unbounded_refused;
+            return;
+        }
+        if (!composition_ || !composition_->caps().supports(renderer::LinearCompositionPolicy::PackedScreenInPlace)) {
+            ++composition_counts_.packed_caps_refused;
+            return;
+        }
     }
     const unsigned producer = fade ? 2u : screen ? 8u : 1u;
     // Fade composes in place (section 3 of linear-distance-fade-region.md) when
     // the pass offers policy 4; otherwise the exchange policy 2 remains the
     // route. Emission keeps its exchange bracket in either case. The packed
     // screen bracket is in place only (policy 8; no exchange, no full viewport).
-    const bool in_place = screen || (fade && composition_ && composition_->caps().supports(renderer::LinearCompositionPolicy::DistanceFadeInPlace));
-    const auto policy = screen ? renderer::LinearCompositionPolicy::PackedScreenInPlace
-        : in_place ? renderer::LinearCompositionPolicy::DistanceFadeInPlace
-        : fade ? renderer::LinearCompositionPolicy::DistanceFade : renderer::LinearCompositionPolicy::AdditiveEmission;
+    const bool in_place = screen ||
+                          (fade && composition_ &&
+                           composition_->caps().supports(renderer::LinearCompositionPolicy::DistanceFadeInPlace));
+    const auto policy = screen     ? renderer::LinearCompositionPolicy::PackedScreenInPlace
+                        : in_place ? renderer::LinearCompositionPolicy::DistanceFadeInPlace
+                        : fade     ? renderer::LinearCompositionPolicy::DistanceFade
+                                   : renderer::LinearCompositionPolicy::AdditiveEmission;
     const bool required = (composition_required_producers_ & producer) != 0;
     unsigned refusal = 6;
     // The bullet screen draws are non-indexed (DrawPrimitive from StartVertex
     // 0, the bound's contract); the fade/emission sources are indexed DIPs.
-    if (!call.composition_permission || (screen ? call.indexed : !call.indexed) || call.user_memory || !call.primitives
-        || !scene_open_ || active_queries_ || shadow_.recording || !scene_bound() || main_msaa_) refusal = 1;
-    else if (!taa_enabled_ || !hdr_enabled_ || hdr_state_ != HdrState::Active || !hdr_ || !hdr_->tonemap_active()
-        || hdr_config_.decode != x3::temporal::AgxDecode::gamma22 || hdr_config_.tonemap != renderer::HdrTonemap::Agx
-        || !composition_ || !composition_->caps().supports(policy) || composition_busy_
-        || (fade ? (!shadow_.vs_fade_variant || !shadow_.ps_fade_variant) : screen ? !shadow_.screen_eligible_variant : !shadow_.emission_eligible_variant)) refusal = 2;
-    else if (!composition_readers_known_ || composition_main_sampler_mask_) refusal = 3;
-    else if (composition_frame_stopped_ || composition_quarantined_) refusal = 4;
+    if (!call.composition_permission || (screen ? call.indexed : !call.indexed) || call.user_memory ||
+        !call.primitives || !scene_open_ || active_queries_ || shadow_.recording || !scene_bound() || main_msaa_)
+        refusal = 1;
+    else if (!taa_enabled_ || !hdr_enabled_ || hdr_state_ != HdrState::Active || !hdr_ || !hdr_->tonemap_active() ||
+             hdr_config_.decode != x3::temporal::AgxDecode::gamma22 ||
+             hdr_config_.tonemap != renderer::HdrTonemap::Agx || !composition_ ||
+             !composition_->caps().supports(policy) || composition_busy_ ||
+             (fade     ? (!shadow_.vs_fade_variant || !shadow_.ps_fade_variant)
+              : screen ? !shadow_.screen_eligible_variant
+                       : !shadow_.emission_eligible_variant))
+        refusal = 2;
+    else if (!composition_readers_known_ || composition_main_sampler_mask_)
+        refusal = 3;
+    else if (composition_frame_stopped_ || composition_quarantined_)
+        refusal = 4;
     if (refusal == 6 && fade) {
         // Every sampler the mask names (Asteroid s0-s3, hull BUMPMAP s0-s4).
         for (unsigned stage = 0; stage < 8; ++stage)
-            if ((shadow_.fade_sampler_mask & (1u << stage)) && (!sampler_srgb_known(stage) || samplers_[stage].srgb)) refusal = 2;
+            if ((shadow_.fade_sampler_mask & (1u << stage)) && (!sampler_srgb_known(stage) || samplers_[stage].srgb))
+                refusal = 2;
         const auto* row = shadow_.vs_row;
-        if (!row || (row->light_loop_bound_required && (!shadow_.integer0_known || shadow_.integer0[0] < 0 || shadow_.integer0[0] > int(row->light_loop_max_count)))) refusal = 2;
+        if (!row || (row->light_loop_bound_required && (!shadow_.integer0_known || shadow_.integer0[0] < 0 ||
+                                                        shadow_.integer0[0] > int(row->light_loop_max_count))))
+            refusal = 2;
     }
     if (refusal == 6 && screen) {
         // The diffuse sampler must not decode sRGB (the promoted PS samples
@@ -4353,15 +6004,20 @@ void MotionOutput::prepare_composition(const MotionDrawCall& call, MotionRoute& 
         // coordinates: the SM1 originals leave W undefined under PROJECTED
         // (linear-emission-sm1.md). One documented Get per bounded candidate.
         DWORD flags = 0;
-        if (!sampler_srgb_known(0) || samplers_[0].srgb
-            || FAILED(native<GetStageFn>(GetTextureStageState)(device_, 0, D3DTSS_TEXTURETRANSFORMFLAGS, &flags))
-            || (flags & D3DTTFF_PROJECTED)) refusal = 2;
+        if (!sampler_srgb_known(0) || samplers_[0].srgb ||
+            FAILED(native<GetStageFn>(GetTextureStageState)(device_, 0, D3DTSS_TEXTURETRANSFORMFLAGS, &flags)) ||
+            (flags & D3DTTFF_PROJECTED))
+            refusal = 2;
     }
     if (refusal != 6) {
-        ++composition_counts_.refused; ++composition_counts_.refusal[refusal];
+        ++composition_counts_.refused;
+        ++composition_counts_.refusal[refusal];
         // Only missing required scene-source coverage poisons this frame.
         // Unrelated draws and permanently unsupported policies stay native.
-        if (required && route.scene) { composition_frame_stopped_ = true; invalidate_taa(TaaInvalidateSite::CompositionRefused); }
+        if (required && route.scene) {
+            composition_frame_stopped_ = true;
+            invalidate_taa(TaaInvalidateSite::CompositionRefused);
+        }
         if (fade && capture_) record_fade_refused(route, refusal);
         return;
     }
@@ -4371,24 +6027,38 @@ void MotionOutput::prepare_composition(const MotionDrawCall& call, MotionRoute& 
         // rectangle does (derive_fade_region records those); prepared below.
         auto& w = fade_witness_;
         w.last = FadeWitness::rect_capacity;
-        if (w.count < FadeWitness::rect_capacity) { w.last = w.count; w.rects[w.count] = route.prefix_region.rect; w.prepared[w.count] = false; }
-        else w.overflow = true;
+        if (w.count < FadeWitness::rect_capacity) {
+            w.last = w.count;
+            w.rects[w.count] = route.prefix_region.rect;
+            w.prepared[w.count] = false;
+        } else
+            w.overflow = true;
         ++w.count;
         const unsigned permille = route.prefix_region_permille;
-        const unsigned bucket = permille <= 10 ? 0u : permille <= 20 ? 1u : permille <= 50 ? 2u : permille <= 100 ? 3u
-            : permille <= 250 ? 4u : permille <= 500 ? 5u : permille < 1000 ? 6u : 7u;
+        const unsigned bucket = permille <= 10    ? 0u
+                                : permille <= 20  ? 1u
+                                : permille <= 50  ? 2u
+                                : permille <= 100 ? 3u
+                                : permille <= 250 ? 4u
+                                : permille <= 500 ? 5u
+                                : permille < 1000 ? 6u
+                                                  : 7u;
         ++w.f_hist[bucket];
         const bool witness_line = w.logged < FadeWitness::line_budget;
         if (witness_line) ++w.logged;
         if (capture_ || witness_line) {
             const auto& r = route.prefix_region.rect;
             log("packed_region device=%llu frame=%llu index=%lu vs=%016llx ps=%016llx vb=%llu rect=%ld,%ld,%ld,%ld f_permille=%u",
-                id_, frame_, static_cast<unsigned long>(counters_.draws), shadow_.vs_hash, shadow_.ps_hash, shadow_.stream0,
-                long(r.left), long(r.top), long(r.right), long(r.bottom), permille);
+                id_, frame_, static_cast<unsigned long>(counters_.draws), shadow_.vs_hash, shadow_.ps_hash,
+                shadow_.stream0, long(r.left), long(r.top), long(r.right), long(r.bottom), permille);
         }
     }
     composition_busy_ = true;
-    renderer::LinearEmissionBoundary boundary{hdr_->target(), fade ? shadow_.ps_fade_variant : screen ? shadow_.screen_eligible_variant : shadow_.emission_eligible_variant, frame_, true};
+    renderer::LinearEmissionBoundary boundary{hdr_->target(),
+                                              fade     ? shadow_.ps_fade_variant
+                                              : screen ? shadow_.screen_eligible_variant
+                                                       : shadow_.emission_eligible_variant,
+                                              frame_, true};
     boundary.policy = policy;
     boundary.augmented_vertex = fade ? shadow_.vs_fade_variant : nullptr; // packed: the VS stays the application's
     if (in_place) {
@@ -4406,24 +6076,43 @@ void MotionOutput::prepare_composition(const MotionDrawCall& call, MotionRoute& 
     composition_counts_.prepare = FAILED(prepared.saved) ? prepared.saved : prepared.operation;
     composition_counts_.prepare_restore = prepared.restore;
     if (prepared.ready) {
-        route.composition = true; route.composition_policy = policy;
+        route.composition = true;
+        route.composition_policy = policy;
         ++composition_counts_.prepared;
         if (fade) ++composition_counts_.prepared_fade;
-        if (screen) { ++composition_counts_.packed_admitted; if (capture_) sample_packed_pre(route); }
-        if ((fade || screen) && witness_frame() && fade_witness_.last < FadeWitness::rect_capacity) {
-            fade_witness_.prepared[fade_witness_.last] = true; ++fade_witness_.prepared_count;
+        if (screen) {
+            ++composition_counts_.packed_admitted;
+            if (capture_) sample_packed_pre(route);
         }
-        if (in_place) ++composition_counts_.in_place; // traffic and region pixels are added at finish from the pass's rectangle
-        else composition_counts_.pool_traffic_bytes += std::uint64_t(hdr_->width()) * hdr_->height() * 56u;
+        if ((fade || screen) && witness_frame() && fade_witness_.last < FadeWitness::rect_capacity) {
+            fade_witness_.prepared[fade_witness_.last] = true;
+            ++fade_witness_.prepared_count;
+        }
+        if (in_place)
+            ++composition_counts_.in_place; // traffic and region pixels are added at finish from the pass's rectangle
+        else
+            composition_counts_.pool_traffic_bytes += std::uint64_t(hdr_->width()) * hdr_->height() * 56u;
         return;
     }
-    composition_busy_ = false; ++composition_counts_.refused; ++composition_counts_.refusal[5]; ++composition_counts_.prepare_failures;
+    composition_busy_ = false;
+    ++composition_counts_.refused;
+    ++composition_counts_.refusal[5];
+    ++composition_counts_.prepare_failures;
     if (fade && capture_) record_fade_refused(route, 5);
-    if (required) { composition_frame_stopped_ = true; invalidate_taa(TaaInvalidateSite::CompositionPrepare); }
+    if (required) {
+        composition_frame_stopped_ = true;
+        invalidate_taa(TaaInvalidateSite::CompositionPrepare);
+    }
     if (!prepared.state_preserved) {
-        composition_state_lost_ = true; composition_frame_stopped_ = true; route.submit = false;
-        route.submission_error = FAILED(prepared.saved) ? prepared.saved : FAILED(prepared.operation) ? prepared.operation : FAILED(prepared.restore) ? prepared.restore : D3DERR_INVALIDCALL;
-        ++composition_counts_.suppressed; invalidate_taa(TaaInvalidateSite::CompositionStateLost);
+        composition_state_lost_ = true;
+        composition_frame_stopped_ = true;
+        route.submit = false;
+        route.submission_error = FAILED(prepared.saved)       ? prepared.saved
+                                 : FAILED(prepared.operation) ? prepared.operation
+                                 : FAILED(prepared.restore)   ? prepared.restore
+                                                              : D3DERR_INVALIDCALL;
+        ++composition_counts_.suppressed;
+        invalidate_taa(TaaInvalidateSite::CompositionStateLost);
     }
 }
 // Additive option (screen-emission-region.md, "Additive option"): an exact
@@ -4437,40 +6126,69 @@ void MotionOutput::prepare_composition(const MotionDrawCall& call, MotionRoute& 
 void MotionOutput::prepare_screen_additive(const MotionDrawCall& call, MotionRoute& route) noexcept {
     // Refusal reasons, each logged once per device (the counters are the
     // fixture's key 61 in total; the reason names are the log's vocabulary).
-    static constexpr const char* reasons[] = {"state", "draw_shape", "scene", "no_fp16_target", "no_variant", "srgb_sampler", "projected", "dither",
-        "alpha_state", "alpha_caps"};
+    static constexpr const char* reasons[] = {"state",        "draw_shape", "scene",  "no_fp16_target", "no_variant",
+                                              "srgb_sampler", "projected",  "dither", "alpha_state",    "alpha_caps"};
     constexpr unsigned reason_count = sizeof reasons / sizeof reasons[0];
     static_assert(reason_count == screen_additive_reason_count, "the window row prints every reason");
     const auto refuse = [&](unsigned reason) {
-        ++screen_additive_refused_; ++screen_additive_frame_refused_;
+        ++screen_additive_refused_;
+        ++screen_additive_frame_refused_;
         if (reason < reason_count) ++screen_additive_window_.refused[reason];
         if (reason < reason_count && !(screen_additive_refusal_logged_ & (1u << reason))) {
             screen_additive_refusal_logged_ |= 1u << reason;
-            log("screen_emission_additive_refused device=%llu frame=%llu index=%lu reason=%s", id_, frame_, counters_.draws, reasons[reason]);
+            log("screen_emission_additive_refused device=%llu frame=%llu index=%lu reason=%s", id_, frame_,
+                counters_.draws, reasons[reason]);
         }
     };
     bool known = true;
     for (unsigned i : {1u, 3u, 4u, 5u}) known = state_known(i) && known;
     for (unsigned i = 0; i < 4; ++i) known = blend_known(i) && known;
     DWORD dither = 0; // shadowed lazily like the packed route (one Get, then the shadow)
-    if (!known || FAILED(render_state(D3DRS_DITHERENABLE, &dither))) { refuse(0); return; }
-    if (!(shadow_.states[3] && !shadow_.states[1] && shadow_.states[4] == 15 && !shadow_.states[5]
-        && shadow_.composition_blend[0] == D3DBLEND_ONE && shadow_.composition_blend[1] == D3DBLEND_INVSRCCOLOR
-        && shadow_.composition_blend[2] == D3DBLENDOP_ADD && !shadow_.composition_blend[3])) { refuse(0); return; }
-    if (dither) { refuse(7); return; }
+    if (!known || FAILED(render_state(D3DRS_DITHERENABLE, &dither))) {
+        refuse(0);
+        return;
+    }
+    if (!(shadow_.states[3] && !shadow_.states[1] && shadow_.states[4] == 15 && !shadow_.states[5] &&
+          shadow_.composition_blend[0] == D3DBLEND_ONE && shadow_.composition_blend[1] == D3DBLEND_INVSRCCOLOR &&
+          shadow_.composition_blend[2] == D3DBLENDOP_ADD && !shadow_.composition_blend[3])) {
+        refuse(0);
+        return;
+    }
+    if (dither) {
+        refuse(7);
+        return;
+    }
     // The packed route's draw-shape and scene guards (non-indexed from device
     // memory, an open bound scene, no active query, no recording block, no MSAA).
-    if (!call.primitives || call.indexed || call.user_memory) { refuse(1); return; }
-    if (!scene_open_ || active_queries_ || shadow_.recording || !scene_bound() || main_msaa_) { refuse(2); return; }
-    if (hdr_state_ != HdrState::Active || !hdr_) { refuse(3); return; }
+    if (!call.primitives || call.indexed || call.user_memory) {
+        refuse(1);
+        return;
+    }
+    if (!scene_open_ || active_queries_ || shadow_.recording || !scene_bound() || main_msaa_) {
+        refuse(2);
+        return;
+    }
+    if (hdr_state_ != HdrState::Active || !hdr_) {
+        refuse(3);
+        return;
+    }
     const bool gained = screen_additive_gain_ != 1.f;
-    if (gained && !shadow_.ps_screen_additive_variant) { refuse(4); return; }
+    if (gained && !shadow_.ps_screen_additive_variant) {
+        refuse(4);
+        return;
+    }
     // The PS2 promotion samples the diffuse texture itself: the packed route's
     // sRGB-sampler refusal applies (unknown or decoding sampler 0 refuses).
-    if (!sampler_srgb_known(0) || samplers_[0].srgb) { refuse(5); return; }
+    if (!sampler_srgb_known(0) || samplers_[0].srgb) {
+        refuse(5);
+        return;
+    }
     DWORD flags = 0;
-    if (FAILED(native<GetStageFn>(GetTextureStageState)(device_, 0, D3DTSS_TEXTURETRANSFORMFLAGS, &flags))
-        || (flags & D3DTTFF_PROJECTED)) { refuse(6); return; }
+    if (FAILED(native<GetStageFn>(GetTextureStageState)(device_, 0, D3DTSS_TEXTURETRANSFORMFLAGS, &flags)) ||
+        (flags & D3DTTFF_PROJECTED)) {
+        refuse(6);
+        return;
+    }
     // Per-source bloom attenuation (bloom-per-source-attenuation.md, option 1):
     // the alpha law becomes k*a + D.a for this draw only. Everything it needs
     // is checked before the first setter, so a refusal leaves the draw native.
@@ -4479,18 +6197,34 @@ void MotionOutput::prepare_screen_additive(const MotionDrawCall& call, MotionRou
     if (screen_additive_alpha_requested_) {
         bool alpha_known = true;
         for (unsigned i = 4; i < composition_blend_count; ++i) alpha_known = blend_known(i) && alpha_known;
-        if (!alpha_known) { refuse(8); return; }
-        if (!(caps_.PrimitiveMiscCaps & D3DPMISCCAPS_SEPARATEALPHABLEND)) { refuse(9); return; }
-        if (screen_additive_alpha_constant_ && !(caps_.SrcBlendCaps & D3DPBLENDCAPS_BLENDFACTOR)) { refuse(9); return; }
+        if (!alpha_known) {
+            refuse(8);
+            return;
+        }
+        if (!(caps_.PrimitiveMiscCaps & D3DPMISCCAPS_SEPARATEALPHABLEND)) {
+            refuse(9);
+            return;
+        }
+        if (screen_additive_alpha_constant_ && !(caps_.SrcBlendCaps & D3DPBLENDCAPS_BLENDFACTOR)) {
+            refuse(9);
+            return;
+        }
     }
     // The gained draw binds a program: own the restoration bindings first.
-    if (gained && FAILED(acquire_restore(route))) { ++screen_additive_failures_; return; } // nothing applied: the draw stays native
+    if (gained && FAILED(acquire_restore(route))) {
+        ++screen_additive_failures_;
+        return;
+    } // nothing applied: the draw stays native
     HRESULT hr = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_DESTBLEND, D3DBLEND_ONE);
-    if (FAILED(hr)) { ++screen_additive_failures_; return; } // nothing applied: the draw stays native
+    if (FAILED(hr)) {
+        ++screen_additive_failures_;
+        return;
+    } // nothing applied: the draw stays native
     route.screen_additive = true;
     if (gained) {
         hr = native<SetPsFn>(SetPixelShader)(device_, shadow_.ps_screen_additive_variant);
-        if (SUCCEEDED(hr)) route.screen_additive_ps = true;
+        if (SUCCEEDED(hr))
+            route.screen_additive_ps = true;
         else {
             // Roll the first step back; a failed rollback leaves the device
             // state unknown exactly as a failed route undo does.
@@ -4498,8 +6232,13 @@ void MotionOutput::prepare_screen_additive(const MotionDrawCall& call, MotionRou
             const HRESULT back = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_DESTBLEND, D3DBLEND_INVSRCCOLOR);
             route.screen_additive = false;
             if (FAILED(back)) {
-                if (!motion_state_lost_) { motion_state_lost_ = true; motion_state_error_ = back; }
-                ++counters_.restore_failures; invalidate_render_states(); invalidate_taa(TaaInvalidateSite::RestoreFailed);
+                if (!motion_state_lost_) {
+                    motion_state_lost_ = true;
+                    motion_state_error_ = back;
+                }
+                ++counters_.restore_failures;
+                invalidate_render_states();
+                invalidate_taa(TaaInvalidateSite::RestoreFailed);
             }
             return;
         }
@@ -4512,19 +6251,27 @@ void MotionOutput::prepare_screen_additive(const MotionDrawCall& call, MotionRou
             ++screen_additive_failures_;
             const HRESULT alpha_back = restore_screen_additive_alpha();
             HRESULT back = route.screen_additive_ps ? native<SetPsFn>(SetPixelShader)(device_, route.restore_ps) : S_OK;
-            const HRESULT destination = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_DESTBLEND, D3DBLEND_INVSRCCOLOR);
+            const HRESULT destination = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_DESTBLEND,
+                                                                      D3DBLEND_INVSRCCOLOR);
             if (SUCCEEDED(back)) back = destination;
             if (FAILED(alpha_back) && SUCCEEDED(back)) back = alpha_back;
             route.screen_additive = route.screen_additive_ps = false;
             if (FAILED(back)) {
-                if (!motion_state_lost_) { motion_state_lost_ = true; motion_state_error_ = back; }
-                ++counters_.restore_failures; invalidate_render_states(); invalidate_taa(TaaInvalidateSite::RestoreFailed);
+                if (!motion_state_lost_) {
+                    motion_state_lost_ = true;
+                    motion_state_error_ = back;
+                }
+                ++counters_.restore_failures;
+                invalidate_render_states();
+                invalidate_taa(TaaInvalidateSite::RestoreFailed);
             }
             return;
         }
         route.screen_additive_alpha = true;
     }
-    ++screen_additive_admitted_; ++screen_additive_frame_admitted_; ++screen_additive_window_.admitted;
+    ++screen_additive_admitted_;
+    ++screen_additive_frame_admitted_;
+    ++screen_additive_window_.admitted;
     if (shadow_.screen_additive_index < screen_emission::pair_count)
         screen_additive_frame_pairs_ |= 1u << shadow_.screen_additive_index;
     // Bolt footprint: one bool test unless requested; it never changes the
@@ -4536,22 +6283,29 @@ void MotionOutput::prepare_screen_additive(const MotionDrawCall& call, MotionRou
 // first on the way back so the triple is inert again before it is restored.
 // BLENDFACTOR is only touched when k is strictly between 0 and 1.
 namespace {
-unsigned screen_additive_alpha_steps(float alpha, bool constant, DWORD factor,
-    D3DRENDERSTATETYPE* states, DWORD* values) noexcept {
+unsigned screen_additive_alpha_steps(float alpha, bool constant, DWORD factor, D3DRENDERSTATETYPE* states,
+                                     DWORD* values) noexcept {
     unsigned count = 0;
-    if (constant) { states[count] = D3DRS_BLENDFACTOR; values[count++] = factor; }
+    if (constant) {
+        states[count] = D3DRS_BLENDFACTOR;
+        values[count++] = factor;
+    }
     states[count] = D3DRS_SRCBLENDALPHA;
     values[count++] = alpha == 0.f ? D3DBLEND_ZERO : constant ? D3DBLEND_BLENDFACTOR : D3DBLEND_ONE;
-    states[count] = D3DRS_DESTBLENDALPHA; values[count++] = D3DBLEND_ONE;
-    states[count] = D3DRS_BLENDOPALPHA; values[count++] = D3DBLENDOP_ADD;
-    states[count] = D3DRS_SEPARATEALPHABLENDENABLE; values[count++] = TRUE;
+    states[count] = D3DRS_DESTBLENDALPHA;
+    values[count++] = D3DBLEND_ONE;
+    states[count] = D3DRS_BLENDOPALPHA;
+    values[count++] = D3DBLENDOP_ADD;
+    states[count] = D3DRS_SEPARATEALPHABLENDENABLE;
+    values[count++] = TRUE;
     return count;
 }
 } // namespace
 HRESULT MotionOutput::apply_screen_additive_alpha() noexcept {
-    D3DRENDERSTATETYPE states[5]{}; DWORD values[5]{};
+    D3DRENDERSTATETYPE states[5]{};
+    DWORD values[5]{};
     const unsigned count = screen_additive_alpha_steps(screen_additive_alpha_, screen_additive_alpha_constant_,
-        screen_additive_alpha_factor_, states, values);
+                                                       screen_additive_alpha_factor_, states, values);
     screen_additive_alpha_applied_ = 0;
     for (unsigned i = 0; i < count; ++i) {
         const HRESULT hr = direct_call<SetRenderStateFn>(SetRenderState, states[i], values[i]);
@@ -4564,13 +6318,15 @@ HRESULT MotionOutput::apply_screen_additive_alpha() noexcept {
 // hook's shadow with the hooks on, this draw's Get* cache with them off); the
 // admission refused unless every one of them was known. Only the states this draw actually applied are written.
 HRESULT MotionOutput::restore_screen_additive_alpha() noexcept {
-    D3DRENDERSTATETYPE states[5]{}; DWORD values[5]{};
-    screen_additive_alpha_steps(screen_additive_alpha_, screen_additive_alpha_constant_,
-        screen_additive_alpha_factor_, states, values);
+    D3DRENDERSTATETYPE states[5]{};
+    DWORD values[5]{};
+    screen_additive_alpha_steps(screen_additive_alpha_, screen_additive_alpha_constant_, screen_additive_alpha_factor_,
+                                states, values);
     HRESULT first = S_OK;
     for (unsigned i = screen_additive_alpha_applied_; i; --i) {
         const unsigned index = composition_blend_index(states[i - 1]);
-        const HRESULT hr = direct_call<SetRenderStateFn>(SetRenderState, states[i - 1], shadow_.composition_blend[index]);
+        const HRESULT hr = direct_call<SetRenderStateFn>(SetRenderState, states[i - 1],
+                                                         shadow_.composition_blend[index]);
         if (SUCCEEDED(first) && FAILED(hr)) first = hr;
     }
     screen_additive_alpha_applied_ = 0;
@@ -4579,15 +6335,29 @@ HRESULT MotionOutput::restore_screen_additive_alpha() noexcept {
 void MotionOutput::finish_screen_additive(MotionRoute& route) noexcept {
     if (route.bolt_footprint) finish_bolt_footprint(route); // the substitute stream first: the draw is over
     HRESULT first = S_OK;
-    if (route.screen_additive_alpha) { const HRESULT hr = restore_screen_additive_alpha(); if (FAILED(hr)) first = hr; route.screen_additive_alpha = false; }
-    if (route.screen_additive_ps) { const HRESULT hr = native<SetPsFn>(SetPixelShader)(device_, route.restore_ps); if (FAILED(hr)) first = hr; }
-    const HRESULT hr = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_DESTBLEND, D3DBLEND_INVSRCCOLOR); // the admitted value
+    if (route.screen_additive_alpha) {
+        const HRESULT hr = restore_screen_additive_alpha();
+        if (FAILED(hr)) first = hr;
+        route.screen_additive_alpha = false;
+    }
+    if (route.screen_additive_ps) {
+        const HRESULT hr = native<SetPsFn>(SetPixelShader)(device_, route.restore_ps);
+        if (FAILED(hr)) first = hr;
+    }
+    const HRESULT hr = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_DESTBLEND, D3DBLEND_INVSRCCOLOR); // the
+                                                                                                             // admitted
+                                                                                                             // value
     if (SUCCEEDED(first) && FAILED(hr)) first = hr;
     route.screen_additive = route.screen_additive_ps = false;
     if (FAILED(first)) {
         ++screen_additive_failures_;
-        if (!motion_state_lost_) { motion_state_lost_ = true; motion_state_error_ = first; }
-        ++counters_.restore_failures; invalidate_render_states(); invalidate_taa(TaaInvalidateSite::RestoreFailed);
+        if (!motion_state_lost_) {
+            motion_state_lost_ = true;
+            motion_state_error_ = first;
+        }
+        ++counters_.restore_failures;
+        invalidate_render_states();
+        invalidate_taa(TaaInvalidateSite::RestoreFailed);
     }
 }
 
@@ -4616,8 +6386,17 @@ namespace {
 struct BoltTiming {
     LARGE_INTEGER begin{};
     std::uint64_t* sink;
-    BoltTiming(bool on, std::uint64_t& s) noexcept : sink(on ? &s : nullptr) { if (sink) QueryPerformanceCounter(&begin); }
-    ~BoltTiming() { if (sink) { LARGE_INTEGER end{}; QueryPerformanceCounter(&end); *sink += std::uint64_t(end.QuadPart - begin.QuadPart); } }
+    BoltTiming(bool on, std::uint64_t& s) noexcept
+        : sink(on ? &s : nullptr) {
+        if (sink) QueryPerformanceCounter(&begin);
+    }
+    ~BoltTiming() {
+        if (sink) {
+            LARGE_INTEGER end{};
+            QueryPerformanceCounter(&end);
+            *sink += std::uint64_t(end.QuadPart - begin.QuadPart);
+        }
+    }
 };
 }
 void MotionOutput::prepare_bolt_footprint(const MotionDrawCall& call, MotionRoute& route) noexcept {
@@ -4626,7 +6405,9 @@ void MotionOutput::prepare_bolt_footprint(const MotionDrawCall& call, MotionRout
     // uses): six of the nine additive pairs are other SM1 screen emitters that
     // transform through their own matrices, never c0-3 world positions.
     if (!screen_emission::admitted_vertex_shader(shadow_.vs_hash)) return;
-    static constexpr const char* reasons[] = {"shape", "rows", "viewport", "nonfinite", "degenerate", "not_perspective", "buffer", "instanced", "period", "recheck", "binding"};
+    static constexpr const char* reasons[] = {"shape",           "rows",   "viewport",  "nonfinite", "degenerate",
+                                              "not_perspective", "buffer", "instanced", "period",    "recheck",
+                                              "binding"};
     constexpr unsigned reason_count = sizeof reasons / sizeof reasons[0];
     auto& c = bolt_window_;
     ++c.draws;
@@ -4643,14 +6424,17 @@ void MotionOutput::prepare_bolt_footprint(const MotionDrawCall& call, MotionRout
         if (reason < reason_count && !(bolt_refusal_logged_ & (1u << reason))) {
             bolt_refusal_logged_ |= 1u << reason;
             UINT stream0_bytes = 0;
-            IDirect3DVertexBuffer9* bound = nullptr; UINT bound_offset = 0, bound_stride = 0;
-            if (SUCCEEDED(native<GetStreamFn>(GetStreamSource)(device_, 0, &bound, &bound_offset, &bound_stride)) && bound) {
+            IDirect3DVertexBuffer9* bound = nullptr;
+            UINT bound_offset = 0, bound_stride = 0;
+            if (SUCCEEDED(native<GetStreamFn>(GetStreamSource)(device_, 0, &bound, &bound_offset, &bound_stride)) &&
+                bound) {
                 D3DVERTEXBUFFER_DESC desc{};
                 if (SUCCEEDED(bound->GetDesc(&desc))) stream0_bytes = desc.Size;
             }
             release(bound);
             log("bolt_footprint_refused device=%llu frame=%llu index=%lu reason=%s detail=%u primitives=%u stream0_bytes=%lu",
-                id_, frame_, counters_.draws, reasons[reason], detail, unsigned(call.primitives), static_cast<unsigned long>(stream0_bytes));
+                id_, frame_, counters_.draws, reasons[reason], detail, unsigned(call.primitives),
+                static_cast<unsigned long>(stream0_bytes));
         }
     };
     // The bullet writer's draw shape (derive_prefix_region's tests): a
@@ -4669,85 +6453,171 @@ void MotionOutput::prepare_bolt_footprint(const MotionDrawCall& call, MotionRout
     // refused primitive count (refused_max_prims) of these site-0 refusals
     // only; instanced (7) and binding (10) count in refused_shape too but
     // update neither field.
-    if (call.topology != D3DPT_TRIANGLELIST || call.first != 0 || call.primitives > max_vertices / 3u
-        || !shadow_.stream0 || !shadow_.stream0_identity || shadow_.stream0_stride != stride || shadow_.stream0_offset != 0
-        || !shadow_.declaration || shadow_.position_offset != 0 || shadow_.position_type != D3DDECLTYPE_FLOAT3) {
-        const unsigned bits = (call.topology != D3DPT_TRIANGLELIST ? 1u : 0u) | (call.first != 0 ? 2u : 0u)
-            | (call.primitives > max_vertices / 3u ? 4u : 0u) | (!shadow_.stream0 || !shadow_.stream0_identity ? 8u : 0u)
-            | (shadow_.stream0_stride != stride ? 16u : 0u) | (shadow_.stream0_offset != 0 ? 32u : 0u)
-            | (!shadow_.declaration ? 64u : 0u) | (shadow_.position_offset != 0 || shadow_.position_type != D3DDECLTYPE_FLOAT3 ? 128u : 0u);
-        ++c.refused_shape; c.refused_shape_bits |= bits;
+    if (call.topology != D3DPT_TRIANGLELIST || call.first != 0 || call.primitives > max_vertices / 3u ||
+        !shadow_.stream0 || !shadow_.stream0_identity || shadow_.stream0_stride != stride ||
+        shadow_.stream0_offset != 0 || !shadow_.declaration || shadow_.position_offset != 0 ||
+        shadow_.position_type != D3DDECLTYPE_FLOAT3) {
+        const unsigned bits = (call.topology != D3DPT_TRIANGLELIST ? 1u : 0u) | (call.first != 0 ? 2u : 0u) |
+                              (call.primitives > max_vertices / 3u ? 4u : 0u) |
+                              (!shadow_.stream0 || !shadow_.stream0_identity ? 8u : 0u) |
+                              (shadow_.stream0_stride != stride ? 16u : 0u) | (shadow_.stream0_offset != 0 ? 32u : 0u) |
+                              (!shadow_.declaration ? 64u : 0u) |
+                              (shadow_.position_offset != 0 || shadow_.position_type != D3DDECLTYPE_FLOAT3 ? 128u : 0u);
+        ++c.refused_shape;
+        c.refused_shape_bits |= bits;
         if (call.primitives > c.refused_max_prims) c.refused_max_prims = std::uint32_t(call.primitives);
-        refuse_once(0, bits); return;
+        refuse_once(0, bits);
+        return;
     }
     const std::uint32_t count = call.primitives * 3u;
     // The rows the bullet VS uses (c0-3, window 0) and the viewport, as shadowed.
     const std::size_t window = window_of(0u);
     const auto& v = shadow_.viewport;
-    if (window >= motion_matrix_windows_max || !shadow_.rows_known[window]) { ++c.refused_rows; refuse_once(1, 0); return; }
-    if (!v.known || !v.width || !v.height) { ++c.refused_rows; refuse_once(2, 0); return; }
+    if (window >= motion_matrix_windows_max || !shadow_.rows_known[window]) {
+        ++c.refused_rows;
+        refuse_once(1, 0);
+        return;
+    }
+    if (!v.known || !v.width || !v.height) {
+        ++c.refused_rows;
+        refuse_once(2, 0);
+        return;
+    }
     Frame frame;
     const FrameReason fr = prepare_frame(shadow_.rows[window], v.x, v.y, v.width, v.height, &frame);
-    if (fr != FrameReason::Ok) { ++c.refused_rows; refuse_once(1u + unsigned(fr), 0); return; }
+    if (fr != FrameReason::Ok) {
+        ++c.refused_rows;
+        refuse_once(1u + unsigned(fr), 0);
+        return;
+    }
     // The scanned vertices (marks the buffer: the first draw of a buffer is refused by design).
-    const fade_region::Query query{shadow_.stream0, shadow_.indices, shadow_.stream0_identity, shadow_.indices_identity};
-    const float* positions = nullptr; const std::uint32_t* extras = nullptr; std::uint64_t revision = 0; unsigned refusal = 0;
-    if (!fade_region::locked_prefix_vertices(query, count, &positions, &extras, &revision, &refusal)) { ++c.refused_buffer; refuse_once(6, refusal); return; }
+    const fade_region::Query query{shadow_.stream0, shadow_.indices, shadow_.stream0_identity,
+                                   shadow_.indices_identity};
+    const float* positions = nullptr;
+    const std::uint32_t* extras = nullptr;
+    std::uint64_t revision = 0;
+    unsigned refusal = 0;
+    if (!fade_region::locked_prefix_vertices(query, count, &positions, &extras, &revision, &refusal)) {
+        ++c.refused_buffer;
+        refuse_once(6, refusal);
+        return;
+    }
     // Instanced geometry draws more than the prefix: one documented Get.
     UINT frequency = 0;
-    if (FAILED(direct_call<GetStreamFreqFn>(GetStreamSourceFreq, 0, &frequency)) || frequency != 1) { ++c.refused_shape; refuse_once(7, frequency); return; }
+    if (FAILED(direct_call<GetStreamFreqFn>(GetStreamSourceFreq, 0, &frequency)) || frequency != 1) {
+        ++c.refused_shape;
+        refuse_once(7, frequency);
+        return;
+    }
     // The view gate: only the external back view with this frame's chase pose
     // is ever written; first person and every other view draw the game's
     // bytes and only fill the cheap bounding-box histogram (no plan, no
     // moments; bolt-footprint.md, "Run 73 B").
     const bool chase_view = chase_camera::pose_applied_since(chase_pose_mark_);
     if (!chase_view) {
-        if (!histogram_draw(frame, positions, extras, count, &bolt_hist_[1])) { ++c.refused_period; refuse_once(8, count); return; }
-        ++c.gated; return;
+        if (!histogram_draw(frame, positions, extras, count, &bolt_hist_[1])) {
+            ++c.refused_period;
+            refuse_once(8, count);
+            return;
+        }
+        ++c.gated;
+        return;
     }
     DrawStats stats;
-    if (!plan_draw(frame, positions, extras, count, bolt_footprint_w_, bolt_footprint_l_, bolt_plans_.get(), max_instances, &stats, &bolt_hist_[0])) {
-        ++c.refused_period; refuse_once(8, count); return;
+    if (!plan_draw(frame, positions, extras, count, bolt_footprint_w_, bolt_footprint_l_, bolt_plans_.get(),
+                   max_instances, &stats, &bolt_hist_[0])) {
+        ++c.refused_period;
+        refuse_once(8, count);
+        return;
     }
-    c.instances += stats.instances; c.refused_w += stats.refused_w; c.world_axis += stats.world_axis; c.disc += stats.disc;
-    if (!stats.expanded) { ++c.untouched; return; } // every instance is large enough (or refused): the game's bytes draw
+    c.instances += stats.instances;
+    c.refused_w += stats.refused_w;
+    c.world_axis += stats.world_axis;
+    c.disc += stats.disc;
+    if (!stats.expanded) {
+        ++c.untouched;
+        return;
+    } // every instance is large enough (or refused): the game's bytes draw
     const UINT bytes = count * stride;
-    if (!ensure_bolt_buffer(bytes)) { ++c.failures; return; }
+    if (!ensure_bolt_buffer(bytes)) {
+        ++c.failures;
+        return;
+    }
     void* mapping = nullptr;
     HRESULT hr = bolt_vb_->Lock(0, bytes, &mapping, D3DLOCK_DISCARD);
-    if (FAILED(hr) || !mapping) { ++c.failures; if (SUCCEEDED(hr)) bolt_vb_->Unlock(); return; }
+    if (FAILED(hr) || !mapping) {
+        ++c.failures;
+        if (SUCCEEDED(hr)) bolt_vb_->Unlock();
+        return;
+    }
     ++c.locks;
-    const std::uint32_t expanded = write_draw(frame, positions, extras, count, stats.period, bolt_plans_.get(), static_cast<unsigned char*>(mapping));
+    const std::uint32_t expanded = write_draw(frame, positions, extras, count, stats.period, bolt_plans_.get(),
+                                              static_cast<unsigned char*>(mapping));
     hr = bolt_vb_->Unlock();
-    if (FAILED(hr)) { ++c.failures; return; }
+    if (FAILED(hr)) {
+        ++c.failures;
+        return;
+    }
     // The storage was read without the registry mutex: the record must still
     // be published at the revision the lookup saw (a Lock on another thread
     // in between rewrites it under the copy).
-    if (!fade_region::recheck_locked_prefix(query, count, revision)) { ++c.refused_recheck; refuse_once(9, 0); return; }
-    if (!expanded) { ++c.untouched; return; }
+    if (!fade_region::recheck_locked_prefix(query, count, revision)) {
+        ++c.refused_recheck;
+        refuse_once(9, 0);
+        return;
+    }
+    if (!expanded) {
+        ++c.untouched;
+        return;
+    }
     // Own the application's binding for the restore; it must be the buffer
     // the shadow saw, else the shadow is stale and the draw is left alone.
-    IDirect3DVertexBuffer9* stream = nullptr; UINT offset = 0, bound_stride = 0;
+    IDirect3DVertexBuffer9* stream = nullptr;
+    UINT offset = 0, bound_stride = 0;
     hr = native<GetStreamFn>(GetStreamSource)(device_, 0, &stream, &offset, &bound_stride);
-    if (FAILED(hr)) { ++c.failures; return; }
-    if (!stream || reinterpret_cast<std::uintptr_t>(stream) != shadow_.stream0_identity || offset != 0 || bound_stride != stride) {
-        release(stream); ++c.refused_shape; refuse_once(10, bound_stride); return;
+    if (FAILED(hr)) {
+        ++c.failures;
+        return;
+    }
+    if (!stream || reinterpret_cast<std::uintptr_t>(stream) != shadow_.stream0_identity || offset != 0 ||
+        bound_stride != stride) {
+        release(stream);
+        ++c.refused_shape;
+        refuse_once(10, bound_stride);
+        return;
     }
     hr = native<SetStreamFn>(SetStreamSource)(device_, 0, bolt_vb_, 0, stride);
-    if (FAILED(hr)) { release(stream); ++c.failures; return; }
-    route.bolt_footprint = true; route.bolt_restore_stream = stream; route.bolt_restore_offset = offset; route.bolt_restore_stride = bound_stride;
-    ++c.written; c.expanded += expanded; c.lengthened += stats.lengthened; c.widened += stats.widened;
+    if (FAILED(hr)) {
+        release(stream);
+        ++c.failures;
+        return;
+    }
+    route.bolt_footprint = true;
+    route.bolt_restore_stream = stream;
+    route.bolt_restore_offset = offset;
+    route.bolt_restore_stride = bound_stride;
+    ++c.written;
+    c.expanded += expanded;
+    c.lengthened += stats.lengthened;
+    c.widened += stats.widened;
 }
 // After the draw, before the additive route's own restores: the
 // application's stream 0 back, the owned reference released.
 void MotionOutput::finish_bolt_footprint(MotionRoute& route) noexcept {
-    const HRESULT hr = native<SetStreamFn>(SetStreamSource)(device_, 0, route.bolt_restore_stream, route.bolt_restore_offset, route.bolt_restore_stride);
+    const HRESULT hr = native<SetStreamFn>(SetStreamSource)(device_, 0, route.bolt_restore_stream,
+                                                            route.bolt_restore_offset, route.bolt_restore_stride);
     release(route.bolt_restore_stream);
-    route.bolt_footprint = false; route.bolt_restore_offset = route.bolt_restore_stride = 0;
+    route.bolt_footprint = false;
+    route.bolt_restore_offset = route.bolt_restore_stride = 0;
     if (FAILED(hr)) {
         ++bolt_window_.failures;
-        if (!motion_state_lost_) { motion_state_lost_ = true; motion_state_error_ = hr; }
-        ++counters_.restore_failures; invalidate_render_states(); invalidate_taa(TaaInvalidateSite::RestoreFailed);
+        if (!motion_state_lost_) {
+            motion_state_lost_ = true;
+            motion_state_error_ = hr;
+        }
+        ++counters_.restore_failures;
+        invalidate_render_states();
+        invalidate_taa(TaaInvalidateSite::RestoreFailed);
     }
 }
 // The substitute buffer: DYNAMIC | WRITEONLY in the DEFAULT pool, created
@@ -4759,14 +6629,21 @@ bool MotionOutput::ensure_bolt_buffer(UINT bytes) noexcept {
     if (bolt_vb_failed_) return false;
     const UINT size = UINT(fade_region::prefix::max_bytes);
     if (size < bytes) return false;
-    const HRESULT hr = native<CreateVbFn>(CreateVertexBuffer)(device_, size, D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY, 0, D3DPOOL_DEFAULT, &bolt_vb_, nullptr);
-    if (FAILED(hr) || !bolt_vb_) { bolt_vb_ = nullptr; bolt_vb_failed_ = true; }
-    else bolt_vb_bytes_ = size;
-    log("bolt_footprint_buffer device=%llu frame=%llu bytes=%lu hr=%08lx", id_, frame_, static_cast<unsigned long>(size), static_cast<unsigned long>(hr));
+    const HRESULT hr = native<CreateVbFn>(CreateVertexBuffer)(device_, size, D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY, 0,
+                                                              D3DPOOL_DEFAULT, &bolt_vb_, nullptr);
+    if (FAILED(hr) || !bolt_vb_) {
+        bolt_vb_ = nullptr;
+        bolt_vb_failed_ = true;
+    } else
+        bolt_vb_bytes_ = size;
+    log("bolt_footprint_buffer device=%llu frame=%llu bytes=%lu hr=%08lx", id_, frame_,
+        static_cast<unsigned long>(size), static_cast<unsigned long>(hr));
     return bolt_vb_ != nullptr;
 }
 void MotionOutput::release_bolt_buffer() noexcept {
-    release(bolt_vb_); bolt_vb_bytes_ = 0; bolt_vb_failed_ = false;
+    release(bolt_vb_);
+    bolt_vb_bytes_ = 0;
+    bolt_vb_failed_ = false;
 }
 // One line per 300 frames: this window's draws and instances, then the
 // session totals accumulate. `us` is the CPU time of prepare_bolt_footprint
@@ -4777,81 +6654,121 @@ void MotionOutput::release_bolt_buffer() noexcept {
 // plan's axes in the chase view (measure=axis), from the projected bounding
 // box in the gated views (measure=bbox).
 void MotionOutput::log_bolt_footprint_window() noexcept {
-    auto& w = bolt_window_; auto& s = bolt_session_;
-    LARGE_INTEGER frequency{}; QueryPerformanceFrequency(&frequency);
+    auto& w = bolt_window_;
+    auto& s = bolt_session_;
+    LARGE_INTEGER frequency{};
+    QueryPerformanceFrequency(&frequency);
     const double us = frequency.QuadPart ? double(w.ticks) * 1e6 / double(frequency.QuadPart) : 0.0;
-    s.draws += w.draws; s.written += w.written; s.untouched += w.untouched; s.instances += w.instances; s.expanded += w.expanded;
-    s.refused_shape += w.refused_shape; s.refused_rows += w.refused_rows; s.refused_buffer += w.refused_buffer; s.refused_period += w.refused_period;
-    s.refused_w += w.refused_w; s.refused_recheck += w.refused_recheck; s.failures += w.failures; s.locks += w.locks; s.ticks += w.ticks; s.timed += w.timed;
-    s.lengthened += w.lengthened; s.widened += w.widened; s.world_axis += w.world_axis; s.disc += w.disc; s.gated += w.gated;
+    s.draws += w.draws;
+    s.written += w.written;
+    s.untouched += w.untouched;
+    s.instances += w.instances;
+    s.expanded += w.expanded;
+    s.refused_shape += w.refused_shape;
+    s.refused_rows += w.refused_rows;
+    s.refused_buffer += w.refused_buffer;
+    s.refused_period += w.refused_period;
+    s.refused_w += w.refused_w;
+    s.refused_recheck += w.refused_recheck;
+    s.failures += w.failures;
+    s.locks += w.locks;
+    s.ticks += w.ticks;
+    s.timed += w.timed;
+    s.lengthened += w.lengthened;
+    s.widened += w.widened;
+    s.world_axis += w.world_axis;
+    s.disc += w.disc;
+    s.gated += w.gated;
     ++bolt_windows_;
     // The 300-frame health windows are telemetry rows since the logging tiers (X3M_TELEMETRY=1 or a group);
     // the mode, first-applied and refusal rows stay in every tier.
-    if (telemetry_) log("bolt_footprint device=%llu frame=%llu frames=%u draws=%u written=%u untouched=%u gated=%u instances=%u expanded=%u lengthened=%u widened=%u world_axis=%u disc=%u refused_period=%u refused_w=%u refused_buffer=%u refused_rows=%u refused_shape=%u refused_recheck=%u failures=%u locks=%u timed_draws=%u us=%.1f session_draws=%u session_written=%u session_expanded=%u session_gated=%u buffer_bytes=%lu refused_max_prims=%u refused_shape_bits=%u",
-        id_, frame_, bolt_window_frames_, w.draws, w.written, w.untouched, w.gated, w.instances, w.expanded, w.lengthened, w.widened, w.world_axis, w.disc,
-        w.refused_period, w.refused_w, w.refused_buffer, w.refused_rows, w.refused_shape, w.refused_recheck,
-        w.failures, w.locks, w.timed, us, s.draws, s.written, s.expanded, s.gated, static_cast<unsigned long>(bolt_vb_bytes_), w.refused_max_prims, w.refused_shape_bits);
+    if (telemetry_)
+        log("bolt_footprint device=%llu frame=%llu frames=%u draws=%u written=%u untouched=%u gated=%u instances=%u expanded=%u lengthened=%u widened=%u world_axis=%u disc=%u refused_period=%u refused_w=%u refused_buffer=%u refused_rows=%u refused_shape=%u refused_recheck=%u failures=%u locks=%u timed_draws=%u us=%.1f session_draws=%u session_written=%u session_expanded=%u session_gated=%u buffer_bytes=%lu refused_max_prims=%u refused_shape_bits=%u",
+            id_, frame_, bolt_window_frames_, w.draws, w.written, w.untouched, w.gated, w.instances, w.expanded,
+            w.lengthened, w.widened, w.world_axis, w.disc, w.refused_period, w.refused_w, w.refused_buffer,
+            w.refused_rows, w.refused_shape, w.refused_recheck, w.failures, w.locks, w.timed, us, s.draws, s.written,
+            s.expanded, s.gated, static_cast<unsigned long>(bolt_vb_bytes_), w.refused_max_prims, w.refused_shape_bits);
     for (unsigned view = 0; view < 2; ++view) {
         const auto& h = bolt_hist_[view];
         if (!h.instances || !telemetry_) continue;
         char lengths[bolt_footprint::hist_buckets * 11 + 1], widths[bolt_footprint::hist_buckets * 11 + 1];
         int at_l = 0, at_w = 0;
         for (unsigned i = 0; i < bolt_footprint::hist_buckets; ++i) {
-            at_l += std::snprintf(lengths + at_l, sizeof lengths - std::size_t(at_l), i ? ",%u" : "%u", unsigned(h.half_length[i]));
-            at_w += std::snprintf(widths + at_w, sizeof widths - std::size_t(at_w), i ? ",%u" : "%u", unsigned(h.width[i]));
+            at_l += std::snprintf(lengths + at_l, sizeof lengths - std::size_t(at_l), i ? ",%u" : "%u",
+                                  unsigned(h.half_length[i]));
+            at_w += std::snprintf(widths + at_w, sizeof widths - std::size_t(at_w), i ? ",%u" : "%u",
+                                  unsigned(h.width[i]));
         }
         log("bolt_footprint_hist device=%llu frame=%llu frames=%u view=%s measure=%s instances=%u edges_px=0.5,1,1.5,2,3,4,6,8,12,16,32 half_length=%s width=%s min_width=%g min_length=%g",
-            id_, frame_, bolt_window_frames_, view ? "other" : "chase", view ? "bbox" : "axis", unsigned(h.instances), lengths, widths,
-            double(bolt_footprint_w_), double(bolt_footprint_l_));
+            id_, frame_, bolt_window_frames_, view ? "other" : "chase", view ? "bbox" : "axis", unsigned(h.instances),
+            lengths, widths, double(bolt_footprint_w_), double(bolt_footprint_l_));
     }
-    w = BoltCounters{}; bolt_window_frames_ = 0;
-    bolt_hist_[0] = bolt_footprint::Histogram{}; bolt_hist_[1] = bolt_footprint::Histogram{};
+    w = BoltCounters{};
+    bolt_window_frames_ = 0;
+    bolt_hist_[0] = bolt_footprint::Histogram{};
+    bolt_hist_[1] = bolt_footprint::Histogram{};
 }
 // One line per 300 frames while the additive route is requested (telemetry
 // or not): the window's additive-pair draws, admissions, refusals per reason
 // and apply failures; not_reached = the pair draws the route never evaluated
-// (routed, composed, fog-masked, not submitted after a failed restore). A window without any bullet draw logs pair_draws=0,
-// which tells "nothing to admit" from a refusal.
+// (routed, composed, fog-masked, not submitted after a failed restore). A window without any bullet draw logs
+// pair_draws=0, which tells "nothing to admit" from a refusal.
 void MotionOutput::log_screen_additive_window() noexcept {
     auto& w = screen_additive_window_;
     std::uint32_t refused = 0;
     for (unsigned i = 0; i < screen_additive_reason_count; ++i) refused += w.refused[i];
     const std::uint32_t evaluated = w.admitted + refused + w.apply_failures;
-    if (telemetry_) log("screen_emission_additive_refused_window device=%llu frame=%llu frames=%u pair_draws=%u admitted=%u refused=%u apply_failures=%u not_reached=%u "
-        "state=%u draw_shape=%u scene=%u no_fp16_target=%u no_variant=%u srgb_sampler=%u projected=%u dither=%u alpha_state=%u alpha_caps=%u",
-        id_, frame_, screen_additive_window_frames_, w.pair_draws, w.admitted, refused, w.apply_failures, w.pair_draws > evaluated ? w.pair_draws - evaluated : 0u,
-        w.refused[0], w.refused[1], w.refused[2], w.refused[3], w.refused[4], w.refused[5], w.refused[6], w.refused[7], w.refused[8], w.refused[9]);
-    w = ScreenAdditiveWindow{}; screen_additive_window_frames_ = 0;
+    if (telemetry_)
+        log("screen_emission_additive_refused_window device=%llu frame=%llu frames=%u pair_draws=%u admitted=%u refused=%u apply_failures=%u not_reached=%u "
+            "state=%u draw_shape=%u scene=%u no_fp16_target=%u no_variant=%u srgb_sampler=%u projected=%u dither=%u alpha_state=%u alpha_caps=%u",
+            id_, frame_, screen_additive_window_frames_, w.pair_draws, w.admitted, refused, w.apply_failures,
+            w.pair_draws > evaluated ? w.pair_draws - evaluated : 0u, w.refused[0], w.refused[1], w.refused[2],
+            w.refused[3], w.refused[4], w.refused[5], w.refused[6], w.refused[7], w.refused[8], w.refused[9]);
+    w = ScreenAdditiveWindow{};
+    screen_additive_window_frames_ = 0;
 }
 bool MotionOutput::publish_composition() noexcept {
     auto** slot = composition_->owning_candidate();
     if (!slot) return false;
     HRESULT exchange;
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
-    if (fixture_emission_exchange_fault_) { --fixture_emission_exchange_fault_; exchange = E_FAIL; }
-    else
+    if (fixture_emission_exchange_fault_) {
+        --fixture_emission_exchange_fault_;
+        exchange = E_FAIL;
+    } else
 #endif
-    exchange = hdr_->exchange_target(*slot);
+        exchange = hdr_->exchange_target(*slot);
     const HRESULT ack = composition_->acknowledge_exchange(SUCCEEDED(exchange));
-    composition_counts_.exchange = exchange; composition_counts_.ack = ack;
+    composition_counts_.exchange = exchange;
+    composition_counts_.ack = ack;
     if (FAILED(exchange)) ++composition_counts_.exchange_failures;
     if (FAILED(ack)) ++composition_counts_.ack_failures;
     if (FAILED(exchange)) return false;
-    if (FAILED(ack)) { composition_state_lost_ = true; return false; }
+    if (FAILED(ack)) {
+        composition_state_lost_ = true;
+        return false;
+    }
     // The pass has already restored bindings around this exact owning target.
-    hdr_target_ = describe_surface(hdr_->target()); hdr_dirty_ = true; hdr_resolved_ = nullptr;
+    hdr_target_ = describe_surface(hdr_->target());
+    hdr_dirty_ = true;
+    hdr_resolved_ = nullptr;
     ++composition_counts_.exchanged;
-    if (!hdr_target_.known) { composition_state_lost_ = true; return false; }
+    if (!hdr_target_.known) {
+        composition_state_lost_ = true;
+        return false;
+    }
     return true;
 }
 void MotionOutput::finish_composition(HRESULT source, renderer::LinearCompositionPolicy policy) noexcept {
-    sun_composition_completed_=false;
+    sun_composition_completed_ = false;
     composition_counts_.source = source;
     auto completed = composition_->finish(source);
-    composition_counts_.composition = completed.composition; composition_counts_.restore = completed.restore;
+    composition_counts_.composition = completed.composition;
+    composition_counts_.restore = completed.restore;
     if (FAILED(completed.composition)) ++composition_counts_.composition_failures;
     if (FAILED(completed.restore)) ++composition_counts_.restore_failures;
-    if (policy == renderer::LinearCompositionPolicy::DistanceFadeInPlace || policy == renderer::LinearCompositionPolicy::PackedScreenInPlace) {
+    if (policy == renderer::LinearCompositionPolicy::DistanceFadeInPlace ||
+        policy == renderer::LinearCompositionPolicy::PackedScreenInPlace) {
         // Policy 8 takes the same branch: the packed composite lands in A|R,
         // the failure ladder is the fade one (screen-emission-region.md,
         // section 2), 112 bytes of pool traffic per region pixel.
@@ -4867,7 +6784,8 @@ void MotionOutput::finish_composition(HRESULT source, renderer::LinearCompositio
         // device state unknown, as a failed exchange acknowledgement does.
         const auto& r = completed.region;
         const std::uint64_t pixels = r.right > r.left && r.bottom > r.top
-            ? std::uint64_t(r.right - r.left) * std::uint64_t(r.bottom - r.top) : 0u;
+                                         ? std::uint64_t(r.right - r.left) * std::uint64_t(r.bottom - r.top)
+                                         : 0u;
         composition_counts_.region_pixels += pixels;
         composition_counts_.pool_traffic_bytes += pixels * (packed ? 112u : 48u);
         if (packed) composition_counts_.packed_region_pixels += pixels;
@@ -4876,15 +6794,22 @@ void MotionOutput::finish_composition(HRESULT source, renderer::LinearCompositio
         if (FAILED(completed.recovery)) ++composition_counts_.recovery_failures;
         if (FAILED(completed.restore)) composition_state_lost_ = true;
         composition_busy_ = false;
-        if (FAILED(source) || completed.image != renderer::LinearEmissionImage::Linear || composition_state_lost_ || !composition_->coverage_valid()) {
-            ++composition_counts_.incomplete; ++composition_counts_.in_place_incomplete;
+        if (FAILED(source) || completed.image != renderer::LinearEmissionImage::Linear || composition_state_lost_ ||
+            !composition_->coverage_valid()) {
+            ++composition_counts_.incomplete;
+            ++composition_counts_.in_place_incomplete;
             if (packed) ++composition_counts_.packed_incomplete;
-            composition_frame_stopped_ = true; invalidate_taa(TaaInvalidateSite::CompositionIncomplete);
+            composition_frame_stopped_ = true;
+            invalidate_taa(TaaInvalidateSite::CompositionIncomplete);
         } else {
-            ++composition_counts_.linear; ++composition_counts_.in_place_linear;
-            if (packed) ++composition_counts_.packed_linear; else ++composition_counts_.linear_fade;
+            ++composition_counts_.linear;
+            ++composition_counts_.in_place_linear;
+            if (packed)
+                ++composition_counts_.packed_linear;
+            else
+                ++composition_counts_.linear_fade;
             composition_enhanced_ = true;
-            sun_coverage_current_=sun_composition_completed_=true;
+            sun_coverage_current_ = sun_composition_completed_ = true;
         }
         return;
     }
@@ -4897,58 +6822,74 @@ void MotionOutput::finish_composition(HRESULT source, renderer::LinearCompositio
     }
     composition_busy_ = false;
     if (!published) composition_state_lost_ = true;
-    if (FAILED(source) || completed.image == renderer::LinearEmissionImage::Incomplete || !published || !composition_->coverage_valid()) {
-        ++composition_counts_.incomplete; composition_frame_stopped_ = true; invalidate_taa(TaaInvalidateSite::CompositionIncomplete);
+    if (FAILED(source) || completed.image == renderer::LinearEmissionImage::Incomplete || !published ||
+        !composition_->coverage_valid()) {
+        ++composition_counts_.incomplete;
+        composition_frame_stopped_ = true;
+        invalidate_taa(TaaInvalidateSite::CompositionIncomplete);
     } else if (completed.image == renderer::LinearEmissionImage::Linear) {
-        sun_coverage_current_=sun_composition_completed_=true;
-        ++composition_counts_.linear; composition_enhanced_ = true;
+        sun_coverage_current_ = sun_composition_completed_ = true;
+        ++composition_counts_.linear;
+        composition_enhanced_ = true;
         if (policy == renderer::LinearCompositionPolicy::DistanceFade) ++composition_counts_.linear_fade;
-    } else {++composition_counts_.native;sun_coverage_current_=sun_composition_completed_=true;}
+    } else {
+        ++composition_counts_.native;
+        sun_coverage_current_ = sun_composition_completed_ = true;
+    }
 }
 void MotionOutput::refresh_linear_material_contract() noexcept {
     // Pair identity and complete corrected availability are computed only
     // at binding/registration. No stage-wide DEFAULT substitution is safe.
-    shadow_.xt_default_pair = linear_material_requested_
-        && renderer::linear_material_xt_default_pair(shadow_.vs_hash, shadow_.ps_hash);
-    shadow_.xt_default_ready = shadow_.xt_default_pair && shadow_.vs_registered && shadow_.ps_registered
-        && shadow_.vs_xt_default_ordinary
-        && shadow_.vs_xt_default_linear && shadow_.ps_xt_default_ordinary && shadow_.ps_material_variant;
-    const auto contract = linear_material_requested_ && shadow_.vs_variant && shadow_.ps_variant
-        && (!shadow_.xt_default_pair || shadow_.xt_default_ready)
-        ? renderer::linear_material_pair_contract(shadow_.vs_hash, shadow_.ps_hash) : renderer::LinearMaterialPairContract{};
+    shadow_.xt_default_pair = linear_material_requested_ &&
+                              renderer::linear_material_xt_default_pair(shadow_.vs_hash, shadow_.ps_hash);
+    shadow_.xt_default_ready = shadow_.xt_default_pair && shadow_.vs_registered && shadow_.ps_registered &&
+                               shadow_.vs_xt_default_ordinary && shadow_.vs_xt_default_linear &&
+                               shadow_.ps_xt_default_ordinary && shadow_.ps_material_variant;
+    const auto contract = linear_material_requested_ && shadow_.vs_variant && shadow_.ps_variant &&
+                                  (!shadow_.xt_default_pair || shadow_.xt_default_ready)
+                              ? renderer::linear_material_pair_contract(shadow_.vs_hash, shadow_.ps_hash)
+                              : renderer::LinearMaterialPairContract{};
     shadow_.material_contract = contract;
     // Original fill: the draws the linear route would convert (the reviewed
     // exact pairs) with both ordinary motion variants; the draw-time gates
     // (opaque state, scene, FP16 target) are the ordinary route's.
-    shadow_.original_fill_pair = original_fill_requested_ && shadow_.ps_original_fill_variant && shadow_.vs_variant && shadow_.ps_variant
-        && shadow_.vs_registered && shadow_.ps_registered && renderer::linear_material_pair_reviewed(shadow_.vs_hash, shadow_.ps_hash);
+    shadow_.original_fill_pair = original_fill_requested_ && shadow_.ps_original_fill_variant && shadow_.vs_variant &&
+                                 shadow_.ps_variant && shadow_.vs_registered && shadow_.ps_registered &&
+                                 renderer::linear_material_pair_reviewed(shadow_.vs_hash, shadow_.ps_hash);
     // Hull light-map gain: the same reviewed pairs, the gained variant present.
-    shadow_.hull_lightmap_pair = hull_lightmap_gain_requested_ && shadow_.ps_hull_lightmap_variant && shadow_.vs_variant && shadow_.ps_variant
-        && shadow_.vs_registered && shadow_.ps_registered && renderer::linear_material_pair_reviewed(shadow_.vs_hash, shadow_.ps_hash);
+    shadow_.hull_lightmap_pair = hull_lightmap_gain_requested_ && shadow_.ps_hull_lightmap_variant &&
+                                 shadow_.vs_variant && shadow_.ps_variant && shadow_.vs_registered &&
+                                 shadow_.ps_registered &&
+                                 renderer::linear_material_pair_reviewed(shadow_.vs_hash, shadow_.ps_hash);
     // Original share: the lane's bind pair on original shading for the same
     // reviewed pairs (the two cutout pairs included), both motion variants present.
     {
-        const bool original_reviewed = sun_lane_requested_ && !linear_material_requested_ && shadow_.vs_variant && shadow_.ps_variant
-            && shadow_.vs_registered && shadow_.ps_registered && renderer::linear_material_pair_reviewed(shadow_.vs_hash, shadow_.ps_hash);
+        const bool original_reviewed = sun_lane_requested_ && !linear_material_requested_ && shadow_.vs_variant &&
+                                       shadow_.ps_variant && shadow_.vs_registered && shadow_.ps_registered &&
+                                       renderer::linear_material_pair_reviewed(shadow_.vs_hash, shadow_.ps_hash);
         shadow_.original_share_pair = original_reviewed && shadow_.ps_sun_original;
         shadow_.original_share_refused = original_reviewed && !shadow_.ps_sun_original;
     }
     // Identity for the exact cutout arm (linear materials) and the tested-opaque
     // arm with its cutout_opaque_* counters (the lane, with or without linear
     // materials); the default configuration skips the lookup and the counting.
-    shadow_.cutout_pair = (linear_material_requested_ || sun_lane_requested_) && cutout::pair(shadow_.vs_hash, shadow_.ps_hash);
+    shadow_.cutout_pair = (linear_material_requested_ || sun_lane_requested_) &&
+                          cutout::pair(shadow_.vs_hash, shadow_.ps_hash);
     // Diagnostic only, and only while the trace is on: integer table lookup at
     // the shader setter, never at a draw.
     if (shadow_.xt_default_pair && !shadow_.xt_default_ready && !xt_default_unavailable_.seen) {
         // Called by lightweight shader hooks: even integer-only printf formats
         // can reach the CRT's x87 formatter. Keep this path integer-only.
         auto& event = xt_default_unavailable_;
-        event.device = id_; event.vs = shadow_.vs_hash; event.ps = shadow_.ps_hash;
-        event.ready_mask = unsigned(bool(shadow_.vs_xt_default_ordinary))
-            | (unsigned(bool(shadow_.vs_xt_default_linear)) << 1)
-            | (unsigned(bool(shadow_.ps_xt_default_ordinary)) << 2)
-            | (unsigned(bool(shadow_.ps_material_variant)) << 3);
-        event.seen = true; event.pending = true;
+        event.device = id_;
+        event.vs = shadow_.vs_hash;
+        event.ps = shadow_.ps_hash;
+        event.ready_mask = unsigned(bool(shadow_.vs_xt_default_ordinary)) |
+                           (unsigned(bool(shadow_.vs_xt_default_linear)) << 1) |
+                           (unsigned(bool(shadow_.ps_xt_default_ordinary)) << 2) |
+                           (unsigned(bool(shadow_.ps_material_variant)) << 3);
+        event.seen = true;
+        event.pending = true;
     }
 }
 void MotionOutput::report_xt_default_unavailable() noexcept {
@@ -4962,22 +6903,26 @@ void MotionOutput::report_xt_default_unavailable() noexcept {
 void MotionOutput::refresh_linear_emission_contract() noexcept {
     // One pair lookup at the setter serves the linear route and the
     // source-only gain; the draw-time checks read the cached pointers.
-    const bool lookup = (linear_emission_requested_ || (emission_source_gain_requested_ && shadow_.ps_source_gain_variant))
-        && shadow_.vs_registered && shadow_.ps_registered;
-    const unsigned index = lookup ? renderer::linear_emission_pair_index(shadow_.vs_hash, shadow_.ps_hash) : renderer::linear_emission_pair_count;
+    const bool lookup = (linear_emission_requested_ ||
+                         (emission_source_gain_requested_ && shadow_.ps_source_gain_variant)) &&
+                        shadow_.vs_registered && shadow_.ps_registered;
+    const unsigned index = lookup ? renderer::linear_emission_pair_index(shadow_.vs_hash, shadow_.ps_hash)
+                                  : renderer::linear_emission_pair_count;
     const bool pair_reviewed = index < renderer::linear_emission_pair_count;
     shadow_.emission_pair = linear_emission_requested_ && pair_reviewed;
     shadow_.emission_eligible_variant = shadow_.emission_pair ? shadow_.ps_emission_variant : nullptr;
     shadow_.source_gain_pair = index;
     shadow_.source_gain_eligible_variant = pair_reviewed ? shadow_.ps_source_gain_variant : nullptr;
-    shadow_.screen_pair = screen_emission_requested_ && shadow_.vs_registered && shadow_.ps_registered
-        && screen_emission::admitted_pair(shadow_.vs_hash, shadow_.ps_hash);
+    shadow_.screen_pair = screen_emission_requested_ && shadow_.vs_registered && shadow_.ps_registered &&
+                          screen_emission::admitted_pair(shadow_.vs_hash, shadow_.ps_hash);
     shadow_.screen_eligible_variant = shadow_.screen_pair ? shadow_.ps_screen_variant : nullptr;
     shadow_.screen_additive_index = screen_additive_requested_ && shadow_.vs_registered && shadow_.ps_registered
-        ? screen_emission::admitted_pair_index(shadow_.vs_hash, shadow_.ps_hash) : screen_emission::pair_count;
+                                        ? screen_emission::admitted_pair_index(shadow_.vs_hash, shadow_.ps_hash)
+                                        : screen_emission::pair_count;
     shadow_.screen_additive_pair = shadow_.screen_additive_index < screen_emission::pair_count;
     shadow_.fade_sampler_mask = distance_fade_requested_ && shadow_.vs_registered && shadow_.ps_registered
-        ? renderer::linear_distance_fade_sampler_mask(shadow_.vs_hash, shadow_.ps_hash) : 0;
+                                    ? renderer::linear_distance_fade_sampler_mask(shadow_.vs_hash, shadow_.ps_hash)
+                                    : 0;
     // The fade-band arm keys on the pair identity alone (independent of the
     // fade route switch: the arm needs no bracket); the draw-time gate adds
     // the state, the device readiness and the fraction. X3M_FADE_RT2_OWNER
@@ -4987,9 +6932,11 @@ void MotionOutput::refresh_linear_emission_contract() noexcept {
     // overlay arm those pairs came through: with linear materials requested a
     // blended hull pair may belong to the composition or glass bracket, whose
     // colour path no fixture has verified through this arm.
-    shadow_.fade_route_pair = fade_route_threshold_ <= 1000u && shadow_.vs_registered && shadow_.ps_registered
-        && fade_route::arm_pair(fade_route::registers(shadow_.vs_hash, shadow_.fade_route_registers),
-                                renderer::linear_distance_fade_pair(shadow_.vs_hash, shadow_.ps_hash), fade_rt2_owner_ && !linear_material_requested_);
+    shadow_.fade_route_pair = fade_route_threshold_ <= 1000u && shadow_.vs_registered && shadow_.ps_registered &&
+                              fade_route::arm_pair(
+                                  fade_route::registers(shadow_.vs_hash, shadow_.fade_route_registers),
+                                  renderer::linear_distance_fade_pair(shadow_.vs_hash, shadow_.ps_hash),
+                                  fade_rt2_owner_ && !linear_material_requested_);
 }
 // Called only after the ordinary opaque/no-MSAA motion gates. All fields are
 // cached and no bytecode is revalidated in this draw-time check; the sampler
@@ -4997,10 +6944,12 @@ void MotionOutput::refresh_linear_emission_contract() noexcept {
 // one GetSamplerState per required stage per draw (sampler_srgb_known).
 unsigned MotionOutput::linear_material_refusal() noexcept {
     if (!shadow_.material_contract.sampler_mask) return 1;
-    if (shadow_.xt_default_pair ? !shadow_.xt_default_ready : (!shadow_.vs_material_variant || !shadow_.ps_material_variant)) return 2;
-    if (!hdr_enabled_ || hdr_state_ != HdrState::Active || !hdr_ || !hdr_->tonemap_active()
-        || hdr_config_.tonemap != renderer::HdrTonemap::Agx
-        || hdr_config_.decode != x3::temporal::AgxDecode::gamma22) return 3;
+    if (shadow_.xt_default_pair ? !shadow_.xt_default_ready
+                                : (!shadow_.vs_material_variant || !shadow_.ps_material_variant))
+        return 2;
+    if (!hdr_enabled_ || hdr_state_ != HdrState::Active || !hdr_ || !hdr_->tonemap_active() ||
+        hdr_config_.tonemap != renderer::HdrTonemap::Agx || hdr_config_.decode != x3::temporal::AgxDecode::gamma22)
+        return 3;
     for (std::uint32_t mask = shadow_.material_contract.sampler_mask; mask; mask &= mask - 1) {
         const unsigned stage = unsigned(__builtin_ctz(mask));
         if (!sampler_srgb_known(stage) || samplers_[stage].srgb != FALSE) return 4;
@@ -5016,15 +6965,21 @@ HRESULT MotionOutput::bind_variant_pair(MotionRoute& route, bool material) noexc
     // Own the actual bindings before the first injected bind; a failed getter
     // declines with nothing bound (vs_set/ps_set stay false), so the caller's
     // rollback restores no shader and the native draw goes out unchanged.
-    { const HRESULT held = acquire_restore(route); if (FAILED(held)) { if (SUCCEEDED(route.preparation_error)) route.preparation_error = held; return held; } }
+    {
+        const HRESULT held = acquire_restore(route);
+        if (FAILED(held)) {
+            if (SUCCEEDED(route.preparation_error)) route.preparation_error = held;
+            return held;
+        }
+    }
     // Attempted setters may mutate before reporting failure. Every attempted
     // stage must therefore be restored, including the setter that failed.
     const auto vs = shadow_.xt_default_ready
-        ? (material ? shadow_.vs_xt_default_linear : shadow_.vs_xt_default_ordinary)
-        : (material ? shadow_.vs_material_variant : shadow_.vs_variant);
+                        ? (material ? shadow_.vs_xt_default_linear : shadow_.vs_xt_default_ordinary)
+                        : (material ? shadow_.vs_material_variant : shadow_.vs_variant);
     auto ps = !material && shadow_.xt_default_ready ? shadow_.ps_xt_default_ordinary
-        : (material ? shadow_.ps_material_variant : shadow_.ps_variant);
-    route.sun_receiver=false;
+                                                    : (material ? shadow_.ps_material_variant : shadow_.ps_variant);
+    route.sun_receiver = false;
     bool fill = false;
     bool lightmap = false; // a light-map gain variant (plain or share) selected: counted on the frame line
     // Hull emissive widening: the widened form of the selected gain variant
@@ -5039,8 +6994,8 @@ HRESULT MotionOutput::bind_variant_pair(MotionRoute& route, bool material) noexc
 #else
     constexpr bool widen_suppressed = false;
 #endif
-    const bool widen_draw = lightmap_widen_draw_scale_[0] > 0.f && !widen_suppressed && !route.alpha_tested && shadow_.hull_lightmap_stage
-        && samplers_[shadow_.hull_lightmap_stage].levels > 1;
+    const bool widen_draw = lightmap_widen_draw_scale_[0] > 0.f && !widen_suppressed && !route.alpha_tested &&
+                            shadow_.hull_lightmap_stage && samplers_[shadow_.hull_lightmap_stage].levels > 1;
     // The block's axis-separated gate needs anisotropic minification on the light-map stage (an isotropic LOD is
     // the larger axis's and both coarse fetches collapse to one): at the two selection points below a stage
     // shadowed at anything else is raised to ANISOTROPIC for this draw (ensure_widen_filter, restored by undo);
@@ -5052,62 +7007,105 @@ HRESULT MotionOutput::bind_variant_pair(MotionRoute& route, bool material) noexc
         // not a receiver), so it binds the motion variant's invalid-share twin (material_motion_invalid_sun_share:
         // the same program plus mov oC2.g, -1). A row without one (material, XT, a failed twin) keeps RT2 masked
         // exactly as before (fail closed, fade_owner_masked on the frame line).
-        if (ps == shadow_.ps_variant && shadow_.ps_sun_motion) ps = shadow_.ps_sun_motion;
-        else { route.fade_owner = false; ++counters_.fade_owner_masked; }
+        if (ps == shadow_.ps_variant && shadow_.ps_sun_motion)
+            ps = shadow_.ps_sun_motion;
+        else {
+            route.fade_owner = false;
+            ++counters_.fade_owner_masked;
+        }
     }
-    if(sun_lane_active_&&route.depth&&!route.fade_arm&&!material&&shadow_.original_share_refused&&!shadow_.xt_default_ready){
+    if (sun_lane_active_ && route.depth && !route.fade_arm && !material && shadow_.original_share_refused &&
+        !shadow_.xt_default_ready) {
         // Fail closed (legacy-sun-application.md section 4.1): a reviewed
         // original pair whose share producer refused keeps its ordinary
         // fill/motion bind pair (the fill K is never dropped) and, writing no
         // share, leaves RT2 incomplete: the frame's lane is failed and the draw
         // counted (original_refused_draws on the lane line).
-        sun_frame_.failed=true;++sun_original_refused_draws_;
-    } else if(sun_lane_active_&&route.depth&&!route.fade_arm){
+        sun_frame_.failed = true;
+        ++sun_original_refused_draws_;
+    } else if (sun_lane_active_ && route.depth && !route.fade_arm) {
         // Original shading (legacy-sun-application.md section 4.1): a reviewed
         // original pair binds its share variant (composed with the fill K) and
         // is a receiver; the fill needs the FP16 target as the plain fill does.
-        const bool original=!material&&shadow_.original_share_pair&&!shadow_.xt_default_ready
-            &&(!original_fill_requested_||hdr_state_==HdrState::Active);
+        const bool original = !material && shadow_.original_share_pair && !shadow_.xt_default_ready &&
+                              (!original_fill_requested_ || hdr_state_ == HdrState::Active);
         // The gained share variant (hull light-map gain) over the plain one
         // while the light-map flag is on; the same reviewed pair, the FP16 scene.
-        const bool gained_original=original&&hull_lightmap_enabled_&&shadow_.ps_sun_original_lightmap&&hdr_state_==HdrState::Active;
-        const bool widened_original=gained_original&&widen_draw&&shadow_.ps_sun_original_lightmap_widen&&ensure_widen_filter(route);
-        const auto lane=material?shadow_.ps_sun_material:widened_original?shadow_.ps_sun_original_lightmap_widen:gained_original?shadow_.ps_sun_original_lightmap:original?shadow_.ps_sun_original:shadow_.xt_default_ready?shadow_.ps_sun_xt:shadow_.ps_sun_motion;
-        if(lane){ps=lane;route.sun_receiver=material?shadow_.ps_sun_extraction:original;fill=original&&original_fill_requested_;lightmap=gained_original;widen=widened_original;}
-        else {sun_frame_.failed=true;sun_lane_failed_=true;}
+        const bool gained_original = original && hull_lightmap_enabled_ && shadow_.ps_sun_original_lightmap &&
+                                     hdr_state_ == HdrState::Active;
+        const bool widened_original = gained_original && widen_draw && shadow_.ps_sun_original_lightmap_widen &&
+                                      ensure_widen_filter(route);
+        const auto lane = material                   ? shadow_.ps_sun_material
+                          : widened_original         ? shadow_.ps_sun_original_lightmap_widen
+                          : gained_original          ? shadow_.ps_sun_original_lightmap
+                          : original                 ? shadow_.ps_sun_original
+                          : shadow_.xt_default_ready ? shadow_.ps_sun_xt
+                                                     : shadow_.ps_sun_motion;
+        if (lane) {
+            ps = lane;
+            route.sun_receiver = material ? shadow_.ps_sun_extraction : original;
+            fill = original && original_fill_requested_;
+            lightmap = gained_original;
+            widen = widened_original;
+        } else {
+            sun_frame_.failed = true;
+            sun_lane_failed_ = true;
+        }
     }
     // Original fill: the same one bind pair, the PS being the motion variant
     // with the fill block. Only the ordinary (non-material) route, never over
     // an XT repaired or sun-lane program, only into the FP16 scene target.
-    if (shadow_.original_fill_pair && !material && !shadow_.xt_default_ready && hdr_state_ == HdrState::Active
-        && ps == shadow_.ps_variant && !route.fade_arm && shadow_.ps_original_fill_variant) { ps = shadow_.ps_original_fill_variant; fill = true; }
+    if (shadow_.original_fill_pair && !material && !shadow_.xt_default_ready && hdr_state_ == HdrState::Active &&
+        ps == shadow_.ps_variant && !route.fade_arm && shadow_.ps_original_fill_variant) {
+        ps = shadow_.ps_original_fill_variant;
+        fill = true;
+    }
     // Hull light-map gain: over the plain or fill-composed motion variant of
     // the same one bind pair while the light-map flag is on; the gained variant
     // carries the fill K itself. Never over a sun-lane, XT repaired or
     // material program, only into the FP16 scene target.
-    if (shadow_.hull_lightmap_pair && hull_lightmap_enabled_ && !material && !shadow_.xt_default_ready && hdr_state_ == HdrState::Active
-        && (ps == shadow_.ps_variant || (fill && ps == shadow_.ps_original_fill_variant)) && !route.fade_arm && shadow_.ps_hull_lightmap_variant) {
-        ps = shadow_.ps_hull_lightmap_variant; lightmap = true;
-        if (widen_draw && shadow_.ps_hull_lightmap_widen && ensure_widen_filter(route)) { ps = shadow_.ps_hull_lightmap_widen; widen = true; }
+    if (shadow_.hull_lightmap_pair && hull_lightmap_enabled_ && !material && !shadow_.xt_default_ready &&
+        hdr_state_ == HdrState::Active &&
+        (ps == shadow_.ps_variant || (fill && ps == shadow_.ps_original_fill_variant)) && !route.fade_arm &&
+        shadow_.ps_hull_lightmap_variant) {
+        ps = shadow_.ps_hull_lightmap_variant;
+        lightmap = true;
+        if (widen_draw && shadow_.ps_hull_lightmap_widen && ensure_widen_filter(route)) {
+            ps = shadow_.ps_hull_lightmap_widen;
+            widen = true;
+        }
     }
     route.vs_set = true;
     HRESULT hr = native<SetVsFn>(SetVertexShader)(device_, vs);
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
-    if (route.cutout && material && SUCCEEDED(hr) && fixture_cutout_vs_fault_) { --fixture_cutout_vs_fault_; hr = E_FAIL; }
+    if (route.cutout && material && SUCCEEDED(hr) && fixture_cutout_vs_fault_) {
+        --fixture_cutout_vs_fault_;
+        hr = E_FAIL;
+    }
 #endif
     if (SUCCEEDED(hr)) {
         route.ps_set = true;
         hr = native<SetPsFn>(SetPixelShader)(device_, ps);
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
-        if (route.cutout && material && SUCCEEDED(hr) && fixture_cutout_ps_fault_) { --fixture_cutout_ps_fault_; hr = E_FAIL; }
+        if (route.cutout && material && SUCCEEDED(hr) && fixture_cutout_ps_fault_) {
+            --fixture_cutout_ps_fault_;
+            hr = E_FAIL;
+        }
 #endif
     }
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
-    {char fault[16]{};GetEnvironmentVariableA("X3M_FIXTURE_SUN_LANE_FAULT",fault,sizeof fault);
-     if(sun_lane_active_&&!sun_lane_failed_&&!std::strcmp(fault,"bind"))hr=E_FAIL;}
+    {
+        char fault[16]{};
+        GetEnvironmentVariableA("X3M_FIXTURE_SUN_LANE_FAULT", fault, sizeof fault);
+        if (sun_lane_active_ && !sun_lane_failed_ && !std::strcmp(fault, "bind")) hr = E_FAIL;
+    }
 #endif
     if (FAILED(hr) && SUCCEEDED(route.preparation_error)) route.preparation_error = hr;
-    if(sun_lane_active_&&FAILED(hr)){sun_frame_.failed=true;sun_lane_failed_=true;route.sun_receiver=false;}
+    if (sun_lane_active_ && FAILED(hr)) {
+        sun_frame_.failed = true;
+        sun_lane_failed_ = true;
+        route.sun_receiver = false;
+    }
     if (material && FAILED(hr)) {
         ++counters_.material_bind_failures;
         const HRESULT restored = undo(route);
@@ -5148,7 +7146,8 @@ HRESULT MotionOutput::bind_variant_pair(MotionRoute& route, bool material) noexc
 // (-1 = not shadowed). Per-draw cost of the addition: one SetRenderState
 // before and one after a screen draw; an additive draw is unchanged.
 void MotionOutput::prepare_source_gain(const MotionDrawCall& call, MotionRoute& route) noexcept {
-    if (hdr_state_ != HdrState::Active || !route.scene || !scene_open_ || shadow_.recording || !call.primitives || main_msaa_) {
+    if (hdr_state_ != HdrState::Active || !route.scene || !scene_open_ || shadow_.recording || !call.primitives ||
+        main_msaa_) {
         // Run 27 counted 66,024 of these (refused_other) without a witness:
         // the first failure_log_limit per device epoch carry the state bits
         // and the shadowed blend triple so the population can be named.
@@ -5156,29 +7155,44 @@ void MotionOutput::prepare_source_gain(const MotionDrawCall& call, MotionRoute& 
         if (source_gain_logged_[3] < failure_log_limit) {
             ++source_gain_logged_[3];
             log("emission_source_gain_refused_state device=%llu frame=%llu vs=%016llx ps=%016llx hdr=%u scene=%u open=%u recording=%u primitives=%lu msaa=%u blend=%ld src=%ld dst=%ld op=%ld sepalpha=%ld",
-                id_, frame_, shadow_.vs_hash, shadow_.ps_hash,
-                unsigned(hdr_state_ == HdrState::Active), unsigned(route.scene), unsigned(scene_open_), unsigned(shadow_.recording), static_cast<unsigned long>(call.primitives), unsigned(main_msaa_),
-                shadow_.states_known[3] ? long(shadow_.states[3]) : -1L, composition_blend_field(0), composition_blend_field(1), composition_blend_field(2), composition_blend_field(3));
+                id_, frame_, shadow_.vs_hash, shadow_.ps_hash, unsigned(hdr_state_ == HdrState::Active),
+                unsigned(route.scene), unsigned(scene_open_), unsigned(shadow_.recording),
+                static_cast<unsigned long>(call.primitives), unsigned(main_msaa_),
+                shadow_.states_known[3] ? long(shadow_.states[3]) : -1L, composition_blend_field(0),
+                composition_blend_field(1), composition_blend_field(2), composition_blend_field(3));
         }
         return;
     }
-    bool known = state_known(3); known = state_known(5) && known;
-    for (unsigned i = 0; i < 3; ++i) known = blend_known(i) && known; // the colour triple gates; sepalpha and the alpha triple are logged only
-    if (!known) { ++source_gain_counts_.refused_unknown; return; }
-    const auto verdict = renderer::linear_emission_source_gain_blend(shadow_.states[3], shadow_.states[5],
-        shadow_.composition_blend[0], shadow_.composition_blend[1], shadow_.composition_blend[2]);
+    bool known = state_known(3);
+    known = state_known(5) && known;
+    for (unsigned i = 0; i < 3; ++i)
+        known = blend_known(i) && known; // the colour triple gates; sepalpha and the alpha triple are logged only
+    if (!known) {
+        ++source_gain_counts_.refused_unknown;
+        return;
+    }
+    const auto verdict = renderer::linear_emission_source_gain_blend(
+        shadow_.states[3], shadow_.states[5], shadow_.composition_blend[0], shadow_.composition_blend[1],
+        shadow_.composition_blend[2]);
     if (verdict == renderer::SourceGainBlend::Blend) {
         ++source_gain_counts_.refused_blend;
         if (source_gain_logged_[0] < failure_log_limit) {
             ++source_gain_logged_[0];
             log("emission_source_gain_refused device=%llu frame=%llu vs=%016llx ps=%016llx reason=blend blend=%lu src=%lu dst=%lu op=%lu sepalpha=%ld srcalpha=%ld dstalpha=%ld opalpha=%ld srgb=%lu",
-                id_, frame_, shadow_.vs_hash, shadow_.ps_hash, shadow_.states[3], shadow_.composition_blend[0], shadow_.composition_blend[1],
-                shadow_.composition_blend[2], composition_blend_field(3), composition_blend_field(4), composition_blend_field(5), composition_blend_field(6), shadow_.states[5]);
+                id_, frame_, shadow_.vs_hash, shadow_.ps_hash, shadow_.states[3], shadow_.composition_blend[0],
+                shadow_.composition_blend[1], shadow_.composition_blend[2], composition_blend_field(3),
+                composition_blend_field(4), composition_blend_field(5), composition_blend_field(6), shadow_.states[5]);
         }
         return;
     }
     const bool screen = verdict == renderer::SourceGainBlend::Screen;
-    { const HRESULT held = acquire_restore(route); if (FAILED(held)) { ++source_gain_counts_.bind_failures; return; } } // nothing applied: the draw stays native
+    {
+        const HRESULT held = acquire_restore(route);
+        if (FAILED(held)) {
+            ++source_gain_counts_.bind_failures;
+            return;
+        }
+    } // nothing applied: the draw stays native
     if (screen) {
         // Screen substitution: DESTBLEND ONE for this draw. The shadow holds
         // the application's INVSRCCOLOR (known: the law just read it), which
@@ -5191,8 +7205,10 @@ void MotionOutput::prepare_source_gain(const MotionDrawCall& call, MotionRoute& 
             if (source_gain_logged_[1] < failure_log_limit) {
                 ++source_gain_logged_[1];
                 log("emission_source_gain_refused device=%llu frame=%llu vs=%016llx ps=%016llx reason=screen_substitute_failed blend=%lu src=%lu dst=%lu op=%lu sepalpha=%ld srcalpha=%ld dstalpha=%ld opalpha=%ld srgb=%lu result=%08lx",
-                    id_, frame_, shadow_.vs_hash, shadow_.ps_hash, shadow_.states[3], shadow_.composition_blend[0], shadow_.composition_blend[1],
-                    shadow_.composition_blend[2], composition_blend_field(3), composition_blend_field(4), composition_blend_field(5), composition_blend_field(6), shadow_.states[5], hr);
+                    id_, frame_, shadow_.vs_hash, shadow_.ps_hash, shadow_.states[3], shadow_.composition_blend[0],
+                    shadow_.composition_blend[1], shadow_.composition_blend[2], composition_blend_field(3),
+                    composition_blend_field(4), composition_blend_field(5), composition_blend_field(6),
+                    shadow_.states[5], hr);
             }
             return;
         }
@@ -5207,19 +7223,26 @@ void MotionOutput::prepare_source_gain(const MotionDrawCall& call, MotionRoute& 
         ++source_gain_counts_.bind_failures;
         HRESULT restored = native<SetPsFn>(SetPixelShader)(device_, route.restore_ps);
         if (route.source_gain_screen) {
-            const HRESULT back = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_DESTBLEND, shadow_.composition_blend[1]);
+            const HRESULT back = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_DESTBLEND,
+                                                               shadow_.composition_blend[1]);
             route.source_gain_screen = false;
             if (SUCCEEDED(restored) && FAILED(back)) restored = back;
             if (FAILED(back)) invalidate_render_states();
         }
         if (FAILED(restored)) {
-            if (!motion_state_lost_) { motion_state_lost_ = true; motion_state_error_ = restored; }
-            route.submit = false; route.submission_error = motion_state_error_;
-            ++counters_.restore_failures; invalidate_taa(TaaInvalidateSite::RestoreFailed);
+            if (!motion_state_lost_) {
+                motion_state_lost_ = true;
+                motion_state_error_ = restored;
+            }
+            route.submit = false;
+            route.submission_error = motion_state_error_;
+            ++counters_.restore_failures;
+            invalidate_taa(TaaInvalidateSite::RestoreFailed);
         }
         if (source_gain_logged_[2] < failure_log_limit) {
             ++source_gain_logged_[2];
-            log("emission_source_gain_bind_failed device=%llu frame=%llu ps=%016llx screen=%u result=%08lx restore=%08lx", id_, frame_, shadow_.ps_hash, unsigned(screen), hr, restored);
+            log("emission_source_gain_bind_failed device=%llu frame=%llu ps=%016llx screen=%u result=%08lx restore=%08lx",
+                id_, frame_, shadow_.ps_hash, unsigned(screen), hr, restored);
         }
         return;
     }
@@ -5228,11 +7251,13 @@ void MotionOutput::prepare_source_gain(const MotionDrawCall& call, MotionRoute& 
     if (screen) ++source_gain_counts_.admitted_screen;
     // First admission of each pair per device epoch (at most twenty lines):
     // which pairs actually draw gained, and whether the first one substituted.
-    const std::uint32_t bit = shadow_.source_gain_pair < renderer::linear_emission_pair_count ? 1u << shadow_.source_gain_pair : 0u;
+    const std::uint32_t bit = shadow_.source_gain_pair < renderer::linear_emission_pair_count
+                                  ? 1u << shadow_.source_gain_pair
+                                  : 0u;
     if (bit && !(source_gain_pair_logged_ & bit)) {
         source_gain_pair_logged_ |= bit;
-        log("emission_source_gain_pair device=%llu frame=%llu vs=%016llx ps=%016llx gain=%g screen=%u",
-            id_, frame_, shadow_.vs_hash, shadow_.ps_hash, double(emission_source_gain_), unsigned(screen));
+        log("emission_source_gain_pair device=%llu frame=%llu vs=%016llx ps=%016llx gain=%g screen=%u", id_, frame_,
+            shadow_.vs_hash, shadow_.ps_hash, double(emission_source_gain_), unsigned(screen));
     }
 }
 // After the native draw: the application's program, then its DESTBLEND when
@@ -5245,15 +7270,24 @@ void MotionOutput::finish_source_gain(MotionRoute& route) noexcept {
     HRESULT first = native<SetPsFn>(SetPixelShader)(device_, route.restore_ps);
     if (route.source_gain_screen) {
         route.source_gain_screen = false;
-        const HRESULT back = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_DESTBLEND, shadow_.composition_blend[1]);
-        if (FAILED(back)) { invalidate_render_states(); if (SUCCEEDED(first)) first = back; }
+        const HRESULT back = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_DESTBLEND,
+                                                           shadow_.composition_blend[1]);
+        if (FAILED(back)) {
+            invalidate_render_states();
+            if (SUCCEEDED(first)) first = back;
+        }
     }
     if (FAILED(first)) {
-        if (!motion_state_lost_) { motion_state_lost_ = true; motion_state_error_ = first; }
-        ++counters_.restore_failures; invalidate_taa(TaaInvalidateSite::RestoreFailed);
+        if (!motion_state_lost_) {
+            motion_state_lost_ = true;
+            motion_state_error_ = first;
+        }
+        ++counters_.restore_failures;
+        invalidate_taa(TaaInvalidateSite::RestoreFailed);
         if (logged_failures_ < failure_log_limit) {
             ++logged_failures_;
-            log("motion_output_restore_failed device=%llu frame=%llu index=%lu result=%08lx what=source_gain", id_, frame_, counters_.draws, first);
+            log("motion_output_restore_failed device=%llu frame=%llu index=%lu result=%08lx what=source_gain", id_,
+                frame_, counters_.draws, first);
         }
     }
 }
@@ -5280,32 +7314,49 @@ void MotionOutput::finish_source_gain(MotionRoute& route) noexcept {
 // cache hit with the hooks off); the factor reads are the cached draw-time
 // shadow.
 void MotionOutput::prepare_hull_gain(const MotionDrawCall& call, MotionRoute& route) noexcept {
-    if (hdr_state_ != HdrState::Active || !route.scene || !scene_open_ || shadow_.recording || !call.primitives || main_msaa_) {
+    if (hdr_state_ != HdrState::Active || !route.scene || !scene_open_ || shadow_.recording || !call.primitives ||
+        main_msaa_) {
         ++hull_gain_counts_.refused_state;
         if (hull_gain_logged_[2] < failure_log_limit) {
             ++hull_gain_logged_[2];
             log("hull_emission_refused_state device=%llu frame=%llu vs=%016llx ps=%016llx hdr=%u scene=%u open=%u recording=%u primitives=%lu msaa=%u blend=%ld src=%ld dst=%ld op=%ld",
-                id_, frame_, shadow_.vs_hash, shadow_.ps_hash,
-                unsigned(hdr_state_ == HdrState::Active), unsigned(route.scene), unsigned(scene_open_), unsigned(shadow_.recording), static_cast<unsigned long>(call.primitives), unsigned(main_msaa_),
-                shadow_.states_known[3] ? long(shadow_.states[3]) : -1L, composition_blend_field(0), composition_blend_field(1), composition_blend_field(2));
+                id_, frame_, shadow_.vs_hash, shadow_.ps_hash, unsigned(hdr_state_ == HdrState::Active),
+                unsigned(route.scene), unsigned(scene_open_), unsigned(shadow_.recording),
+                static_cast<unsigned long>(call.primitives), unsigned(main_msaa_),
+                shadow_.states_known[3] ? long(shadow_.states[3]) : -1L, composition_blend_field(0),
+                composition_blend_field(1), composition_blend_field(2));
         }
         return;
     }
-    if (!state_known(3)) { ++hull_gain_counts_.refused_unknown; return; }
-    if (!shadow_.states[3]) { ++hull_gain_counts_.refused_blend; ++hull_gain_counts_.refused_opaque; return; } // the law refuses blend off whatever the factors are
+    if (!state_known(3)) {
+        ++hull_gain_counts_.refused_unknown;
+        return;
+    }
+    if (!shadow_.states[3]) {
+        ++hull_gain_counts_.refused_blend;
+        ++hull_gain_counts_.refused_opaque;
+        return;
+    } // the law refuses blend off whatever the factors are
     bool known = state_known(5);
-    for (unsigned i = 0; i < 3; ++i) known = blend_known(i) && known; // the colour triple gates; the alpha triple is native either way
-    if (!known) { ++hull_gain_counts_.refused_unknown; return; }
-    const auto verdict = renderer::linear_emission_hull_source_gain_blend(shadow_.states[3], shadow_.states[5],
-        shadow_.composition_blend[0], shadow_.composition_blend[1], shadow_.composition_blend[2]);
+    for (unsigned i = 0; i < 3; ++i)
+        known = blend_known(i) && known; // the colour triple gates; the alpha triple is native either way
+    if (!known) {
+        ++hull_gain_counts_.refused_unknown;
+        return;
+    }
+    const auto verdict = renderer::linear_emission_hull_source_gain_blend(
+        shadow_.states[3], shadow_.states[5], shadow_.composition_blend[0], shadow_.composition_blend[1],
+        shadow_.composition_blend[2]);
     if (verdict != renderer::SourceGainBlend::Admit) {
         ++hull_gain_counts_.refused_blend;
-        if (shadow_.composition_blend[0] == D3DBLEND_SRCALPHA && shadow_.composition_blend[1] == D3DBLEND_INVSRCALPHA) ++hull_gain_counts_.refused_alpha;
+        if (shadow_.composition_blend[0] == D3DBLEND_SRCALPHA && shadow_.composition_blend[1] == D3DBLEND_INVSRCALPHA)
+            ++hull_gain_counts_.refused_alpha;
         if (hull_gain_logged_[0] < failure_log_limit) {
             ++hull_gain_logged_[0];
             log("hull_emission_refused device=%llu frame=%llu vs=%016llx ps=%016llx reason=blend blend=%lu src=%lu dst=%lu op=%lu sepalpha=%ld srgb=%lu",
-                id_, frame_, shadow_.vs_hash, shadow_.ps_hash, shadow_.states[3], shadow_.composition_blend[0], shadow_.composition_blend[1],
-                shadow_.composition_blend[2], composition_blend_field(3), shadow_.states[5]);
+                id_, frame_, shadow_.vs_hash, shadow_.ps_hash, shadow_.states[3], shadow_.composition_blend[0],
+                shadow_.composition_blend[1], shadow_.composition_blend[2], composition_blend_field(3),
+                shadow_.states[5]);
         }
         return;
     }
@@ -5314,12 +7365,19 @@ void MotionOutput::prepare_hull_gain(const MotionDrawCall& call, MotionRoute& ro
         if (hull_gain_logged_[3] < failure_log_limit) {
             ++hull_gain_logged_[3];
             log("hull_emission_refused device=%llu frame=%llu vs=%016llx ps=%016llx reason=routed routed=%u composition=%u fade_arm=%u",
-                id_, frame_, shadow_.vs_hash, shadow_.ps_hash, unsigned(route.routed), unsigned(route.composition), unsigned(route.fade_arm));
+                id_, frame_, shadow_.vs_hash, shadow_.ps_hash, unsigned(route.routed), unsigned(route.composition),
+                unsigned(route.fade_arm));
         }
         return;
     }
-    if (!shadow_.ps_hull_gain_variant) { ++hull_gain_counts_.refused_variant; return; } // creation failed for this program (logged at registration)
-    if (FAILED(acquire_restore(route))) { ++hull_gain_counts_.bind_failures; return; } // nothing applied: the draw stays native
+    if (!shadow_.ps_hull_gain_variant) {
+        ++hull_gain_counts_.refused_variant;
+        return;
+    } // creation failed for this program (logged at registration)
+    if (FAILED(acquire_restore(route))) {
+        ++hull_gain_counts_.bind_failures;
+        return;
+    } // nothing applied: the draw stays native
     const HRESULT hr = native<SetPsFn>(SetPixelShader)(device_, shadow_.ps_hull_gain_variant);
     if (FAILED(hr)) {
         // A failed setter may have mutated the binding: put the application's
@@ -5328,13 +7386,19 @@ void MotionOutput::prepare_hull_gain(const MotionDrawCall& call, MotionRoute& ro
         ++hull_gain_counts_.bind_failures;
         const HRESULT restored = native<SetPsFn>(SetPixelShader)(device_, route.restore_ps);
         if (FAILED(restored)) {
-            if (!motion_state_lost_) { motion_state_lost_ = true; motion_state_error_ = restored; }
-            route.submit = false; route.submission_error = motion_state_error_;
-            ++counters_.restore_failures; invalidate_taa(TaaInvalidateSite::RestoreFailed);
+            if (!motion_state_lost_) {
+                motion_state_lost_ = true;
+                motion_state_error_ = restored;
+            }
+            route.submit = false;
+            route.submission_error = motion_state_error_;
+            ++counters_.restore_failures;
+            invalidate_taa(TaaInvalidateSite::RestoreFailed);
         }
         if (hull_gain_logged_[1] < failure_log_limit) {
             ++hull_gain_logged_[1];
-            log("hull_emission_bind_failed device=%llu frame=%llu ps=%016llx result=%08lx restore=%08lx", id_, frame_, shadow_.ps_hash, hr, restored);
+            log("hull_emission_bind_failed device=%llu frame=%llu ps=%016llx result=%08lx restore=%08lx", id_, frame_,
+                shadow_.ps_hash, hr, restored);
         }
         return;
     }
@@ -5346,7 +7410,8 @@ void MotionOutput::prepare_hull_gain(const MotionDrawCall& call, MotionRoute& ro
     // First admission of each program per device epoch (at most twelve lines).
     if (bit && !(hull_gain_program_logged_ & bit)) {
         hull_gain_program_logged_ |= bit;
-        log("hull_emission_program device=%llu frame=%llu vs=%016llx ps=%016llx program=%u gain=%g", id_, frame_, shadow_.vs_hash, shadow_.ps_hash, program, double(hull_emission_gain_));
+        log("hull_emission_program device=%llu frame=%llu vs=%016llx ps=%016llx program=%u gain=%g", id_, frame_,
+            shadow_.vs_hash, shadow_.ps_hash, program, double(hull_emission_gain_));
     }
     if (capture_) log_hull_emission_draw(call, program);
 }
@@ -5364,24 +7429,27 @@ void MotionOutput::log_hull_emission_draw(const MotionDrawCall& call, unsigned p
     MotionRoute identity{};
     const bool known = sample_scope(identity);
     const auto& k = identity.key;
-    bool origin = false; float x = 0.f, y = 0.f, w = 0.f;
+    bool origin = false;
+    float x = 0.f, y = 0.f, w = 0.f;
     if (shadow_.vs_row) {
         const std::size_t window = window_of(shadow_.vs_row->matrix_register);
         if (window < motion_matrix_windows_max && shadow_.rows_known[window]) {
             const float* c = shadow_.rows[window];
             w = c[15];
             if (w > 1e-6f) {
-                x = (c[3] / w * .5f + .5f) * float(target_width_); y = (.5f - c[7] / w * .5f) * float(target_height_);
+                x = (c[3] / w * .5f + .5f) * float(target_width_);
+                y = (.5f - c[7] / w * .5f) * float(target_height_);
                 origin = std::isfinite(x) && std::isfinite(y);
             }
         }
     }
     log("hull_emission_draw device=%llu frame=%llu index=%lu vs=%016llx ps=%016llx program=%u routed=0 gain=%g known=%u node=%p node_handle=%lu node_serial=%llu camera_handle=%lu model=%08lx lod=%08lx load_epoch=%llu registry_epoch=%llu primitives=%lu vertices=%lu indexed=%u origin_known=%u origin_px=%.1f,%.1f origin_w=%.6g",
-        id_, frame_, counters_.draws, shadow_.vs_hash, shadow_.ps_hash, program, double(hull_emission_gain_), unsigned(known),
-        reinterpret_cast<void*>(k.node), static_cast<unsigned long>(k.node_handle), k.object_lifetime, static_cast<unsigned long>(k.camera_handle),
-        static_cast<unsigned long>(k.model), static_cast<unsigned long>(k.lod), identity.load_epoch, identity.registry_epoch,
-        static_cast<unsigned long>(call.primitives), static_cast<unsigned long>(call.vertex_count), unsigned(call.indexed),
-        unsigned(origin), double(x), double(y), double(w));
+        id_, frame_, counters_.draws, shadow_.vs_hash, shadow_.ps_hash, program, double(hull_emission_gain_),
+        unsigned(known), reinterpret_cast<void*>(k.node), static_cast<unsigned long>(k.node_handle), k.object_lifetime,
+        static_cast<unsigned long>(k.camera_handle), static_cast<unsigned long>(k.model),
+        static_cast<unsigned long>(k.lod), identity.load_epoch, identity.registry_epoch,
+        static_cast<unsigned long>(call.primitives), static_cast<unsigned long>(call.vertex_count),
+        unsigned(call.indexed), unsigned(origin), double(x), double(y), double(w));
 }
 // After the native draw: the application's program back (the shadowed
 // pointer; nothing of the application's runs between prepare and finish,
@@ -5390,15 +7458,19 @@ void MotionOutput::finish_hull_gain(MotionRoute& route) noexcept {
     route.hull_gain = false;
     const HRESULT first = native<SetPsFn>(SetPixelShader)(device_, route.restore_ps);
     if (FAILED(first)) {
-        if (!motion_state_lost_) { motion_state_lost_ = true; motion_state_error_ = first; }
-        ++counters_.restore_failures; invalidate_taa(TaaInvalidateSite::RestoreFailed);
+        if (!motion_state_lost_) {
+            motion_state_lost_ = true;
+            motion_state_error_ = first;
+        }
+        ++counters_.restore_failures;
+        invalidate_taa(TaaInvalidateSite::RestoreFailed);
         if (logged_failures_ < failure_log_limit) {
             ++logged_failures_;
-            log("motion_output_restore_failed device=%llu frame=%llu index=%lu result=%08lx what=hull_gain", id_, frame_, counters_.draws, first);
+            log("motion_output_restore_failed device=%llu frame=%llu index=%lu result=%08lx what=hull_gain", id_,
+                frame_, counters_.draws, first);
         }
     }
 }
-
 
 void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route) noexcept {
     // Selector event for this draw; z states are the only per-draw getters and
@@ -5410,34 +7482,56 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
     HRESULT z_hr = E_FAIL, write_hr = E_FAIL;
     if (tracking) {
         bindings(pending_);
-        pending_.topology = call.topology; pending_.primitives = call.primitives;
-        pending_.vs = shadow_.vs_hash; pending_.ps = shadow_.ps_hash; pending_.texture0 = 0;
+        pending_.topology = call.topology;
+        pending_.primitives = call.primitives;
+        pending_.vs = shadow_.vs_hash;
+        pending_.ps = shadow_.ps_hash;
+        pending_.texture0 = 0;
         z_hr = render_state(D3DRS_ZENABLE, &z);
         write_hr = render_state(D3DRS_ZWRITEENABLE, &write);
-        pending_.z_enable = z; pending_.z_write = write;
+        pending_.z_enable = z;
+        pending_.z_write = write;
         pending_.draw_state_known = SUCCEEDED(z_hr) && SUCCEEDED(write_hr) && pending_.vs && pending_.ps &&
                                     shadow_.rt0.known && shadow_.depth.known && shadow_.viewport.known;
         // Diagnostics and the non-writer verdict: bit0 is any depth test
         // (D3DZB_TRUE or D3DZB_USEW: both write depth with z write on, so
         // USEW is a writer, fail closed), bit1 z write on, bit2 both read.
         if (route.sun_color_writer)
-            route.sun_z_state = std::uint8_t((z != 0 ? 1u : 0u) | (write != 0 ? 2u : 0u) | (SUCCEEDED(z_hr) && SUCCEEDED(write_hr) ? 4u : 0u));
+            route.sun_z_state = std::uint8_t((z != 0 ? 1u : 0u) | (write != 0 ? 2u : 0u) |
+                                             (SUCCEEDED(z_hr) && SUCCEEDED(write_hr) ? 4u : 0u));
     }
     pending_valid_ = true;
     if (fill_pending_) fill_sentinel();
     // A draw after the engine's scene-end signal belongs to compositing or an
     // overlay: it neither routes nor jitters (scene_bound refuses); counted
     // for the cross-check (a disagreement when the bloom copy follows it).
-    if (counters_.hook_scene_end && state == renderer::BoundaryState::Scene && !counters_.bloom_copy_seen) ++counters_.draws_after_hook;
+    if (counters_.hook_scene_end && state == renderer::BoundaryState::Scene && !counters_.bloom_copy_seen)
+        ++counters_.draws_after_hook;
     // Gate 1: feature/capability, target owned, not recording a state block.
-    if (!target_surface_ || shadow_.recording || main_msaa_) { route.gate = MotionGate::Feature; ++counters_.gates[1]; route.sun_refusal = std::uint8_t(renderer::SunUntrackedReason::Feature); route.unmatched = UnmatchedReason::Feature; return; }
+    if (!target_surface_ || shadow_.recording || main_msaa_) {
+        route.gate = MotionGate::Feature;
+        ++counters_.gates[1];
+        route.sun_refusal = std::uint8_t(renderer::SunUntrackedReason::Feature);
+        route.unmatched = UnmatchedReason::Feature;
+        return;
+    }
     // Gate 2: scene phase with the latched main color/depth bound.
-    if (!scene_bound()) { route.gate = MotionGate::Scene; ++counters_.gates[2]; route.sun_refusal = std::uint8_t(renderer::SunUntrackedReason::Scene); route.unmatched = UnmatchedReason::Scene; return; }
+    if (!scene_bound()) {
+        route.gate = MotionGate::Scene;
+        ++counters_.gates[2];
+        route.sun_refusal = std::uint8_t(renderer::SunUntrackedReason::Scene);
+        route.unmatched = UnmatchedReason::Scene;
+        return;
+    }
     route.scene = true;
     // Unavailable repair is feature refusal, not an enhanced fallback through
     // the malformed original linkage. Preserve the original bindings and rows.
     if (shadow_.xt_default_pair && !shadow_.xt_default_ready) {
-        route.gate = MotionGate::Pair; ++counters_.gates[3]; route.sun_refusal = std::uint8_t(renderer::SunUntrackedReason::Pair); route.unmatched = UnmatchedReason::XtPair; return;
+        route.gate = MotionGate::Pair;
+        ++counters_.gates[3];
+        route.sun_refusal = std::uint8_t(renderer::SunUntrackedReason::Pair);
+        route.unmatched = UnmatchedReason::XtPair;
+        return;
     }
     // Every scene draw whose VS has a table row or is a reviewed depth-only
     // prepass program is jittered, routed or not, so the rasterized coverage
@@ -5445,19 +7539,25 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
     // still goes out unjittered is counted: it breaks that invariant for every
     // later jittered draw depth-tested against it (asteroid-fog-temporal.md).
     if (jitter_active_ && (shadow_.vs_row || shadow_.vs_prepass)) apply_jitter(route);
-    if (jitter_active_ && !route.jittered && SUCCEEDED(z_hr) && SUCCEEDED(write_hr) && z == 1 && write == 1) ++counters_.unjittered_depth_writers;
+    if (jitter_active_ && !route.jittered && SUCCEEDED(z_hr) && SUCCEEDED(write_hr) && z == 1 && write == 1)
+        ++counters_.unjittered_depth_writers;
     // Gate 3: exact reviewed pair (one profile-table row) with both variants
     // registered. Variants are per program; the pair check is what keys
     // eligibility, so a VS alias shared with an unreviewed PS never routes.
     const renderer::MotionOutputProfile* pair = shadow_.vs_variant && shadow_.ps_variant && shadow_.vs_row
-        ? renderer::material_motion_profile(shadow_.vs_hash, shadow_.ps_hash) : nullptr;
+                                                    ? renderer::material_motion_profile(shadow_.vs_hash,
+                                                                                        shadow_.ps_hash)
+                                                    : nullptr;
     if (!pair || !renderer::material_motion_pair_reviewed(shadow_.vs_hash, shadow_.ps_hash)) {
-        route.gate = MotionGate::Pair; ++counters_.gates[3];
+        route.gate = MotionGate::Pair;
+        ++counters_.gates[3];
         // Diagnostics: a program outside the registry (unknown PS, VS without
         // a profile row) versus a registered row without a reviewed pair.
         route.sun_refusal = std::uint8_t(!shadow_.ps_hash || !shadow_.ps_registered || !shadow_.vs_row
-            ? renderer::SunUntrackedReason::Unregistered : renderer::SunUntrackedReason::Pair);
-        route.unmatched = !shadow_.ps_hash || !shadow_.ps_registered || !shadow_.vs_row ? UnmatchedReason::Unregistered : UnmatchedReason::Pair;
+                                             ? renderer::SunUntrackedReason::Unregistered
+                                             : renderer::SunUntrackedReason::Pair);
+        route.unmatched = !shadow_.ps_hash || !shadow_.ps_registered || !shadow_.vs_row ? UnmatchedReason::Unregistered
+                                                                                        : UnmatchedReason::Pair;
         return;
     }
     route.depth = depth_enabled_ && renderer::material_motion_pixel_writes_depth(*pair, depth_enabled_);
@@ -5496,8 +7596,10 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
     const auto& profile = *shadow_.vs_row;
     const std::size_t window = window_of(profile.matrix_register);
     const bool loop_bounded = !profile.light_loop_bound_required ||
-        (shadow_.integer0_known && shadow_.integer0[0] >= 0 && shadow_.integer0[0] <= int(profile.light_loop_max_count));
-    DWORD blend = 1, test = 1, srgb = 1, color = 0; UINT frequency = 0;
+                              (shadow_.integer0_known && shadow_.integer0[0] >= 0 &&
+                               shadow_.integer0[0] <= int(profile.light_loop_max_count));
+    DWORD blend = 1, test = 1, srgb = 1, color = 0;
+    UINT frequency = 0;
     // read_failed / cutout_ok exist for the sun-lane refusal buckets only: the
     // chain below is unchanged in order and in the getters it calls.
     bool read_failed = false, cutout_ok = true;
@@ -5505,65 +7607,89 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
     // the test/mask/sRGB values were actually read, for the writer line only.
     std::uint32_t read_ok = 0;
     const auto read = [&](D3DRENDERSTATETYPE state, DWORD* value) noexcept {
-        const bool ok = SUCCEEDED(render_state(state, value)); read_failed |= !ok;
-        if (ok) read_ok |= state == D3DRS_ALPHATESTENABLE ? 1u : state == D3DRS_COLORWRITEENABLE ? 2u : state == D3DRS_SRGBWRITEENABLE ? 4u : 0u;
+        const bool ok = SUCCEEDED(render_state(state, value));
+        read_failed |= !ok;
+        if (ok)
+            read_ok |= state == D3DRS_ALPHATESTENABLE    ? 1u
+                       : state == D3DRS_COLORWRITEENABLE ? 2u
+                       : state == D3DRS_SRGBWRITEENABLE  ? 4u
+                                                         : 0u;
         return ok;
     };
-    // The frequency read travels with the route: the depth lease (fill_depth_geometry) reuses it instead of a second getter.
+    // The frequency read travels with the route: the depth lease (fill_depth_geometry) reuses it instead of a second
+    // getter.
     const auto read_frequency = [&]() noexcept {
-        const bool ok = SUCCEEDED(direct_call<GetStreamFreqFn>(GetStreamSourceFreq, 0, &frequency)); read_failed |= !ok;
-        if (ok) { route.stream0_frequency = frequency; route.stream0_frequency_known = true; }
+        const bool ok = SUCCEEDED(direct_call<GetStreamFreqFn>(GetStreamSourceFreq, 0, &frequency));
+        read_failed |= !ok;
+        if (ok) {
+            route.stream0_frequency = frequency;
+            route.stream0_frequency_known = true;
+        }
         return ok;
     };
     const bool draw_state_ok = !call.user_memory && SUCCEEDED(z_hr) && SUCCEEDED(write_hr) && z == 1 && write == 1 &&
-        read(D3DRS_ALPHABLENDENABLE, &blend) && !blend &&
-        read(D3DRS_ALPHATESTENABLE, &test) &&
-        read(D3DRS_SRGBWRITEENABLE, &srgb) && !srgb &&
-        read(D3DRS_COLORWRITEENABLE, &color) &&
-        ((!test && color == 15) || (test == 1 && color == 7 && shadow_.cutout_pair && linear_material_requested_ && (cutout_ok = cutout_draw_state()))
-         || (sun_lane_active_ && !(shadow_.cutout_pair && cutout_arm_active_) && test <= 1 && color != 0)) &&
-        read_frequency() &&
-        !(frequency & D3DSTREAMSOURCE_INDEXEDDATA) && (frequency & 0x3fffffffu) <= 1 &&
-        shadow_.rows_known[window] && loop_bounded &&
-        shadow_.stream0 && shadow_.stream0_stride && shadow_.declaration && call.primitives &&
-        (!call.indexed || shadow_.indices);
+                               read(D3DRS_ALPHABLENDENABLE, &blend) && !blend && read(D3DRS_ALPHATESTENABLE, &test) &&
+                               read(D3DRS_SRGBWRITEENABLE, &srgb) && !srgb && read(D3DRS_COLORWRITEENABLE, &color) &&
+                               ((!test && color == 15) ||
+                                (test == 1 && color == 7 && shadow_.cutout_pair && linear_material_requested_ &&
+                                 (cutout_ok = cutout_draw_state())) ||
+                                (sun_lane_active_ && !(shadow_.cutout_pair && cutout_arm_active_) && test <= 1 &&
+                                 color != 0)) &&
+                               read_frequency() && !(frequency & D3DSTREAMSOURCE_INDEXEDDATA) &&
+                               (frequency & 0x3fffffffu) <= 1 && shadow_.rows_known[window] && loop_bounded &&
+                               shadow_.stream0 && shadow_.stream0_stride && shadow_.declaration && call.primitives &&
+                               (!call.indexed || shadow_.indices);
     // The fade-band arm (fade_route_core.h): a fade pair in the engine's
     // exact fade-band state whose fade fraction estimate reaches the
     // threshold routes like an opaque draw (RT1 from its own rows, RT2
     // masked); every other refusal stays gate 4.
     if (!draw_state_ok && !fade_arm_admits(route, call, z, write, window, loop_bounded)) {
-        route.gate = MotionGate::DrawState; ++counters_.gates[4];
+        route.gate = MotionGate::DrawState;
+        ++counters_.gates[4];
         // Diagnostics only (unmatched=): the fade arm recorded its own step for a
         // recognised fade-band draw; otherwise the first failing check of the
         // opaque chain, from the values it read (no getter is repeated).
         if (route.unmatched == UnmatchedReason::None)
-            route.unmatched =
-                call.user_memory ? UnmatchedReason::UserMemory
-                : (read_failed || FAILED(z_hr) || FAILED(write_hr)) ? UnmatchedReason::ReadFailed
-                : !(z == 1 && write == 1) ? UnmatchedReason::NoZWrite
-                : blend ? UnmatchedReason::Blended
-                : (srgb || !((!test && color == 15) || (test == 1 && color == 7 && shadow_.cutout_pair && linear_material_requested_ && cutout_ok)
-                             || (sun_lane_active_ && !(shadow_.cutout_pair && cutout_arm_active_) && test <= 1 && color != 0))) ? UnmatchedReason::State
-                : ((frequency & D3DSTREAMSOURCE_INDEXEDDATA) || (frequency & 0x3fffffffu) > 1) ? UnmatchedReason::Instanced
-                : (!shadow_.rows_known[window] || !loop_bounded) ? UnmatchedReason::Rows
-                : UnmatchedReason::Geometry; // stream, declaration, primitives or indices
+            route.unmatched = call.user_memory                                    ? UnmatchedReason::UserMemory
+                              : (read_failed || FAILED(z_hr) || FAILED(write_hr)) ? UnmatchedReason::ReadFailed
+                              : !(z == 1 && write == 1)                           ? UnmatchedReason::NoZWrite
+                              : blend                                             ? UnmatchedReason::Blended
+                              : (srgb || !((!test && color == 15) ||
+                                           (test == 1 && color == 7 && shadow_.cutout_pair &&
+                                            linear_material_requested_ && cutout_ok) ||
+                                           (sun_lane_active_ && !(shadow_.cutout_pair && cutout_arm_active_) &&
+                                            test <= 1 && color != 0)))
+                                  ? UnmatchedReason::State
+                              : ((frequency & D3DSTREAMSOURCE_INDEXEDDATA) || (frequency & 0x3fffffffu) > 1)
+                                  ? UnmatchedReason::Instanced
+                              : (!shadow_.rows_known[window] || !loop_bounded)
+                                  ? UnmatchedReason::Rows
+                                  : UnmatchedReason::Geometry; // stream, declaration, primitives or indices
         // Diagnostics only (lane on): the first failing check in the chain's
         // order, using the values the chain read (a failed getter is its own
         // bucket; the cutout verdict is the one the chain computed). No
         // getter is repeated.
         if (route.sun_color_writer) {
             using renderer::SunUntrackedReason;
-            route.sun_draw_state = std::uint16_t((color & 15u) | (test ? 16u : 0u) | (srgb ? 32u : 0u) | ((read_ok & 7u) << 6));
+            route.sun_draw_state = std::uint16_t((color & 15u) | (test ? 16u : 0u) | (srgb ? 32u : 0u) |
+                                                 ((read_ok & 7u) << 6));
             route.sun_refusal = std::uint8_t(
-                call.user_memory ? SunUntrackedReason::Geometry
+                call.user_memory                                    ? SunUntrackedReason::Geometry
                 : (read_failed || FAILED(z_hr) || FAILED(write_hr)) ? SunUntrackedReason::ReadFailed
-                : !(z == 1 && write == 1) ? SunUntrackedReason::NoZWrite
-                : blend ? SunUntrackedReason::Blended
-                : (srgb || !((!test && color == 15) || (test == 1 && color == 7 && shadow_.cutout_pair && linear_material_requested_ && cutout_ok)
-                             || (sun_lane_active_ && !(shadow_.cutout_pair && cutout_arm_active_) && test <= 1 && color != 0))) ? SunUntrackedReason::State
-                : ((frequency & D3DSTREAMSOURCE_INDEXEDDATA) || (frequency & 0x3fffffffu) > 1) ? SunUntrackedReason::Geometry
+                : !(z == 1 && write == 1)                           ? SunUntrackedReason::NoZWrite
+                : blend                                             ? SunUntrackedReason::Blended
+                : (srgb ||
+                   !((!test && color == 15) ||
+                     (test == 1 && color == 7 && shadow_.cutout_pair && linear_material_requested_ && cutout_ok) ||
+                     (sun_lane_active_ && !(shadow_.cutout_pair && cutout_arm_active_) && test <= 1 && color != 0)))
+                    ? SunUntrackedReason::State
+                : ((frequency & D3DSTREAMSOURCE_INDEXEDDATA) || (frequency & 0x3fffffffu) > 1)
+                    ? SunUntrackedReason::Geometry
                 : (!shadow_.rows_known[window] || !loop_bounded) ? SunUntrackedReason::Rows
-                : SunUntrackedReason::Geometry); // stream, declaration, primitives or indices
+                                                                 : SunUntrackedReason::Geometry); // stream,
+                                                                                                  // declaration,
+                                                                                                  // primitives or
+                                                                                                  // indices
         }
         return;
     }
@@ -5577,21 +7703,32 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
     // its native LOD bias so the alpha source, and with it the alpha-tested
     // coverage, is the native draw's (and the unbiased prepass's).
     route.native_mip_bias = route.alpha_tested && (shadow_.cutout_pair || route.fade_arm);
-    route.cutout = route.alpha_tested && shadow_.cutout_pair && cutout_arm_active_; // the exact cutout arm only (cutout_routed, fixture faults); never the tested-opaque arm
+    route.cutout = route.alpha_tested && shadow_.cutout_pair && cutout_arm_active_; // the exact cutout arm only
+                                                                                    // (cutout_routed, fixture faults);
+                                                                                    // never the tested-opaque arm
     // Key geometry fields come from the shadowed bindings and draw arguments.
     auto& key = route.key;
-    key.vertex_buffer = shadow_.stream0; key.stream_offset = shadow_.stream0_offset; key.stride = shadow_.stream0_stride;
-    key.index_buffer = call.indexed ? shadow_.indices : 0; key.declaration = shadow_.declaration;
-    key.position_program = shadow_.vs_hash; key.position_offset = shadow_.position_offset; key.position_type = shadow_.position_type;
-    key.topology = call.topology; key.first = call.first; key.primitives = call.primitives;
-    key.base_vertex = call.base_vertex; key.min_vertex = call.min_vertex; key.vertex_count = call.vertex_count;
+    key.vertex_buffer = shadow_.stream0;
+    key.stream_offset = shadow_.stream0_offset;
+    key.stride = shadow_.stream0_stride;
+    key.index_buffer = call.indexed ? shadow_.indices : 0;
+    key.declaration = shadow_.declaration;
+    key.position_program = shadow_.vs_hash;
+    key.position_offset = shadow_.position_offset;
+    key.position_type = shadow_.position_type;
+    key.topology = call.topology;
+    key.first = call.first;
+    key.primitives = call.primitives;
+    key.base_vertex = call.base_vertex;
+    key.min_vertex = call.min_vertex;
+    key.vertex_count = call.vertex_count;
     key.indexed = call.indexed;
     // Pass field: gate 2 established the Scene phase on the latched main pair,
     // the only pass the route keys today (motion_history.h, MotionPass).
     key.pass = renderer::PassMainScene;
     renderer::SubmittedMatrix rows{}, previous{};
     std::memcpy(rows.data(), shadow_.rows[window], sizeof shadow_.rows[window]);
-    if (capture_) route.rows_hash = hash_bytes(rows.data(), sizeof rows); // Diagnostics only.
+    if (capture_) route.rows_hash = hash_bytes(rows.data(), sizeof rows);   // Diagnostics only.
     if (candidates_requested_) note_candidate_distance(route, rows.data()); // Diagnostics only (candidate counter).
     // Gate 5: verified object/camera scope. Failure still routes with mode 0 so
     // covered pixels of this material carry the sentinel, never stale history.
@@ -5599,30 +7736,52 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
     // Overlay arm, second half of the same-node witness: the scope must verify
     // and carry the last routed draw's node and lifetime serial. Nothing has
     // been applied or recorded yet, so the mismatch is the plain gate-4 refusal.
-    if (route.overlay && (!sample_scope(route) || key.node != last_routed_node_ || key.object_lifetime != last_routed_lifetime_)) {
-        route.overlay = false; route.fade_arm = false; route.fade_owner = false; route.fade_permille = 0; route.key = {};
-        route.gate = MotionGate::DrawState; ++counters_.gates[4]; ++counters_.overlay_refused;
+    if (route.overlay &&
+        (!sample_scope(route) || key.node != last_routed_node_ || key.object_lifetime != last_routed_lifetime_)) {
+        route.overlay = false;
+        route.fade_arm = false;
+        route.fade_owner = false;
+        route.fade_permille = 0;
+        route.key = {};
+        route.gate = MotionGate::DrawState;
+        ++counters_.gates[4];
+        ++counters_.overlay_refused;
         route.unmatched = UnmatchedReason::OverlayNode;
         return;
     }
-    if (!route.overlay && !sample_scope(route)) { route.gate = MotionGate::Scope; ++counters_.gates[5]; route.sun_refusal = std::uint8_t(renderer::SunUntrackedReason::Scope); route.unmatched = UnmatchedReason::Scope; }
-    else if (!history_.lookup_and_record(key, rows, previous)) {
-        route.gate = MotionGate::History; ++counters_.gates[6]; ++counters_.keyed; ++counters_.missing; route.sun_refusal = std::uint8_t(renderer::SunUntrackedReason::History); route.unmatched = UnmatchedReason::History;
+    if (!route.overlay && !sample_scope(route)) {
+        route.gate = MotionGate::Scope;
+        ++counters_.gates[5];
+        route.sun_refusal = std::uint8_t(renderer::SunUntrackedReason::Scope);
+        route.unmatched = UnmatchedReason::Scope;
+    } else if (!history_.lookup_and_record(key, rows, previous)) {
+        route.gate = MotionGate::History;
+        ++counters_.gates[6];
+        ++counters_.keyed;
+        ++counters_.missing;
+        route.sun_refusal = std::uint8_t(renderer::SunUntrackedReason::History);
+        route.unmatched = UnmatchedReason::History;
         // X3M_TAA_UNMATCHED_STATIC: the miss path only; gates, counters and the
         // cut detector's missing fraction stay the miss's.
         if (unmatched_static_) route.static_assumed = unmatched_static_rows(route, rows, previous);
+    } else {
+        matched = true;
+        route.gate = MotionGate::None;
+        ++counters_.gates[0];
+        ++counters_.keyed;
     }
-    else { matched = true; route.gate = MotionGate::None; ++counters_.gates[0]; ++counters_.keyed; }
     const bool previous_rows = matched || route.static_assumed;
     if (matched) {
         // Cut detector sample: screen displacement of the projected object
         // origin (translation column over w) between the previous and the
         // current unjittered rows. Bounded storage, reserved at attach.
-        const float* c = rows.data(); const float* p = previous.data();
+        const float* c = rows.data();
+        const float* p = previous.data();
         if (c[15] > 1e-6f && p[15] > 1e-6f && displacements_.size() < displacements_.capacity()) {
             const float dx = (c[3] / c[15] - p[3] / p[15]) * .5f * float(target_width_);
             const float dy = (c[7] / c[15] - p[7] / p[15]) * .5f * float(target_height_);
-            const float magnitude = scalar::sqrt(dx * dx + dy * dy); // sse_scalar.h: the draw path is light-envelope code
+            const float magnitude = scalar::sqrt(dx * dx + dy * dy); // sse_scalar.h: the draw path is light-envelope
+                                                                     // code
             if (std::isfinite(magnitude)) displacements_.push_back(magnitude);
         }
     }
@@ -5642,9 +7801,10 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
     // before, with the option off or for a pair without a gain variant.
     const bool gain_pair = shadow_.hull_lightmap_pair || shadow_.ps_sun_original_lightmap;
     lightmap_fade_gain_ = lightmap_far_fade_ && gain_pair
-        ? fade_route::lightmap_far_gain(rows[15], lightmap_fade_m00_ > 0.f, lightmap_fade_m00_, float(target_width_),
-                                        hull_lightmap_gain_, lightmap_fade_floor_, lightmap_fade_p0_, lightmap_fade_inv_)
-        : 0.f;
+                              ? fade_route::lightmap_far_gain(
+                                    rows[15], lightmap_fade_m00_ > 0.f, lightmap_fade_m00_, float(target_width_),
+                                    hull_lightmap_gain_, lightmap_fade_floor_, lightmap_fade_p0_, lightmap_fade_inv_)
+                              : 0.f;
     // c217.yz: the hull emissive widening's per-draw texel-footprint scale
     // ((W K)^2, (H K)^2) of the light map on the pair's stage (the widened
     // variants' MUL operand; every other program ignores the lanes; the block
@@ -5654,12 +7814,19 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
     lightmap_widen_draw_size_[0] = lightmap_widen_draw_size_[1] = 0;
     if (lightmap_widen_ && gain_pair && shadow_.hull_lightmap_stage) {
         const auto& stage = samplers_[shadow_.hull_lightmap_stage];
-        lightmap_widen_draw_size_[0] = stage.width; lightmap_widen_draw_size_[1] = stage.height;
+        lightmap_widen_draw_size_[0] = stage.width;
+        lightmap_widen_draw_size_[1] = stage.height;
         lightmap_widen_draw_scale_[0] = fade_route::lightmap_widen_scale(stage.width, lightmap_widen_k_);
         lightmap_widen_draw_scale_[1] = fade_route::lightmap_widen_scale(stage.height, lightmap_widen_k_);
     }
-    const float pixel[8] = {1.f / float(target_width_), 1.f / float(target_height_), 0.f, 0.f,
-                            previous_rows ? 1.f : 0.f, lightmap_widen_draw_scale_[0], lightmap_widen_draw_scale_[1], lightmap_fade_gain_};
+    const float pixel[8] = {1.f / float(target_width_),
+                            1.f / float(target_height_),
+                            0.f,
+                            0.f,
+                            previous_rows ? 1.f : 0.f,
+                            lightmap_widen_draw_scale_[0],
+                            lightmap_widen_draw_scale_[1],
+                            lightmap_fade_gain_};
     // Thin vote (X3M_TAA_THIN_VOTE) or fade owner (X3M_FADE_RT2_OWNER) only: c218 joins the same upload, 12 floats,
     // c216 and c217 the eight above. c218.x is the thin vote's RT2 .a, 1 - thin on an opaque routed row, 1 otherwise
     // (0 with the vote off). With the fade owner the depth fragment writes .a = max(w * c218.z + c218.x, c218.y):
@@ -5667,7 +7834,8 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
     // plain fragment's value), so only fade owners change. Off: the eight alone, as before.
     float pixel_thin[12];
     if (upload_c218()) {
-        std::memcpy(pixel_thin, pixel, sizeof pixel); pixel_thin[8] = pixel_thin[9] = pixel_thin[10] = pixel_thin[11] = 0.f;
+        std::memcpy(pixel_thin, pixel, sizeof pixel);
+        pixel_thin[8] = pixel_thin[9] = pixel_thin[10] = pixel_thin[11] = 0.f;
         if (thin_vote_upload_) thin_vote_alpha(route, rows.data(), pixel_thin[8]);
     } // c218.y/.z (the fade owner's lanes) after bind_variant_pair, which may withdraw the ownership (lane RT2)
     const std::uint64_t apply_begin = draw_stamp();
@@ -5686,11 +7854,14 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
                 // (sampler_srgb_known), so "unknown" means a failed read there.
                 std::uint32_t unknown = 0, srgb_enabled = 0;
                 for (unsigned stage = 0; stage < 6; ++stage) {
-                    if (!sampler_srgb_known(stage)) unknown |= 1u << stage;
-                    else if (samplers_[stage].srgb != FALSE) srgb_enabled |= 1u << stage;
+                    if (!sampler_srgb_known(stage))
+                        unknown |= 1u << stage;
+                    else if (samplers_[stage].srgb != FALSE)
+                        srgb_enabled |= 1u << stage;
                 }
                 log("linear_material_refused device=%llu reason=%u vs=%016llx ps=%016llx required=%02lx unknown=%02lx srgb_enabled=%02lx",
-                    id_, refusal, shadow_.vs_hash, shadow_.ps_hash, static_cast<unsigned long>(shadow_.material_contract.sampler_mask),
+                    id_, refusal, shadow_.vs_hash, shadow_.ps_hash,
+                    static_cast<unsigned long>(shadow_.material_contract.sampler_mask),
                     static_cast<unsigned long>(unknown), static_cast<unsigned long>(srgb_enabled));
             }
         }
@@ -5699,15 +7870,25 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
     if (SUCCEEDED(hr)) {
         route.vs_constants_set = true;
         hr = direct_call<SetConstantsFFn>(SetVertexShaderConstantF,
-            renderer::MaterialMotionAbi::previous_vertex_constant, previous_rows ? previous.data() : zeros, 4);
+                                          renderer::MaterialMotionAbi::previous_vertex_constant,
+                                          previous_rows ? previous.data() : zeros, 4);
     }
     if (SUCCEEDED(hr)) {
         route.ps_constants_set = true;
-        if (fade_rt2_owner_) { pixel_thin[9] = route.fade_owner ? 1.f : 0.f; pixel_thin[10] = thin_vote_upload_ || route.fade_owner ? 0.f : 1.f; }
+        if (fade_rt2_owner_) {
+            pixel_thin[9] = route.fade_owner ? 1.f : 0.f;
+            pixel_thin[10] = thin_vote_upload_ || route.fade_owner ? 0.f : 1.f;
+        }
         hr = direct_call<SetConstantsFFn>(SetPixelShaderConstantF,
-            renderer::MaterialMotionAbi::pixel_coordinates_constant, upload_c218() ? pixel_thin : pixel, upload_c218() ? 3u : 2u);
+                                          renderer::MaterialMotionAbi::pixel_coordinates_constant,
+                                          upload_c218() ? pixel_thin : pixel, upload_c218() ? 3u : 2u);
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
-        if (SUCCEEDED(hr)) { std::memset(fixture_last_pixel_abi_, 0, sizeof fixture_last_pixel_abi_); std::memcpy(fixture_last_pixel_abi_, upload_c218() ? pixel_thin : pixel, (upload_c218() ? 12u : 8u) * sizeof(float)); fixture_abi_known_ = true; } // the uploaded registers only
+        if (SUCCEEDED(hr)) {
+            std::memset(fixture_last_pixel_abi_, 0, sizeof fixture_last_pixel_abi_);
+            std::memcpy(fixture_last_pixel_abi_, upload_c218() ? pixel_thin : pixel,
+                        (upload_c218() ? 12u : 8u) * sizeof(float));
+            fixture_abi_known_ = true;
+        } // the uploaded registers only
 #endif
     }
     if (SUCCEEDED(hr)) hr = bind_targets(route);
@@ -5721,25 +7902,42 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
         route.sun_refusal = std::uint8_t(renderer::SunUntrackedReason::ApplyFailed);
         if (logged_failures_ < failure_log_limit) {
             ++logged_failures_;
-            log("motion_output_apply_failed device=%llu frame=%llu index=%lu result=%08lx first_prepare=%08lx", id_, frame_, counters_.draws, hr, route.preparation_error);
+            log("motion_output_apply_failed device=%llu frame=%llu index=%lu result=%08lx first_prepare=%08lx", id_,
+                frame_, counters_.draws, hr, route.preparation_error);
         }
         return;
     }
-    route.routed = true; route.matched = matched;
-    last_routed_node_ = key.node; last_routed_lifetime_ = key.object_lifetime; last_routed_frame_ = frame_; last_routed_draw_ = counters_.draws; // the overlay arm's witness
-    if (route.overlay) ++counters_.overlay_routed;
-    else if (route.fade_arm) { ++counters_.fade_routed; if (route.fade_held) ++counters_.fade_held; if (route.fade_tested) ++counters_.fade_tested; }
+    route.routed = true;
+    route.matched = matched;
+    last_routed_node_ = key.node;
+    last_routed_lifetime_ = key.object_lifetime;
+    last_routed_frame_ = frame_;
+    last_routed_draw_ = counters_.draws; // the overlay arm's witness
+    if (route.overlay)
+        ++counters_.overlay_routed;
+    else if (route.fade_arm) {
+        ++counters_.fade_routed;
+        if (route.fade_held) ++counters_.fade_held;
+        if (route.fade_tested) ++counters_.fade_tested;
+    }
     if (route.linear_material) {
         ++counters_.material_routed;
         if (shadow_.material_contract.bump) ++counters_.material_bump_routed;
     }
-    ++counters_.routed; if (matched) ++counters_.matched; if (route.depth) ++counters_.depth_routed;
+    ++counters_.routed;
+    if (matched) ++counters_.matched;
+    if (route.depth) ++counters_.depth_routed;
     // The mip LOD bias of the routed material stages, while the jitter is on
     // (a failed sampler call is counted and logged; the draw still routes).
     // A cutout pair on the tested-opaque arm instead restores any stage still
     // holding the route's bias (one SetSamplerState per biased stage, none when
     // no stage is biased; the next ordinary routed draw re-applies it).
-    if (mip_bias_bits_ && jitter_active_) { if (route.native_mip_bias) restore_mip_bias(); else apply_mip_bias(); }
+    if (mip_bias_bits_ && jitter_active_) {
+        if (route.native_mip_bias)
+            restore_mip_bias();
+        else
+            apply_mip_bias();
+    }
 }
 
 // Step 1 of the region design: the rectangle for an admitted fade draw, from
@@ -5754,8 +7952,10 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
 // Get, no float formatting (the per-draw line carries the fraction as an
 // integer per mille of the viewport area, or of the target area when the
 // viewport is unknown).
-fade_region::Region MotionOutput::fade_rectangle(const MotionRoute& route, fade_region::Result& bound, bool& of_viewport, unsigned& permille, bool read_only,
-                                                 fade_region::BoundSource source, std::uint32_t vertex_count, std::uint64_t* aabb_px) noexcept {
+fade_region::Region MotionOutput::fade_rectangle(const MotionRoute& route, fade_region::Result& bound,
+                                                 bool& of_viewport, unsigned& permille, bool read_only,
+                                                 fade_region::BoundSource source, std::uint32_t vertex_count,
+                                                 std::uint64_t* aabb_px) noexcept {
     using namespace fade_region;
     const Query query{shadow_.stream0, shadow_.indices, shadow_.stream0_identity, shadow_.indices_identity};
     // The admitted route learns (resolve); the capture-only diagnostic only
@@ -5763,7 +7963,8 @@ fade_region::Region MotionOutput::fade_rectangle(const MotionRoute& route, fade_
     // draw the route did not admit. The locked-prefix source (step B) has no
     // table here: one ownership lookup of the scan published at Unlock.
     bound = source == BoundSource::LockedPrefix ? fade_region::resolve_locked_prefix(query, vertex_count)
-        : read_only ? fade_region::peek(fade_bounds_, query) : fade_region::resolve(fade_bounds_, query);
+            : read_only                         ? fade_region::peek(fade_bounds_, query)
+                                                : fade_region::resolve(fade_bounds_, query);
     const auto& v = shadow_.viewport;
     const Viewport viewport{v.x, v.y, v.known ? v.width : 0u, v.known ? v.height : 0u};
     const float* rows = nullptr;
@@ -5773,10 +7974,12 @@ fade_region::Region MotionOutput::fade_rectangle(const MotionRoute& route, fade_
     // g_mViewProjection at c0-3 only, effects-engine-remaining-emission.md).
     const bool rows_addressed = source == BoundSource::LockedPrefix || shadow_.vs_row;
     if (rows_addressed) {
-        const std::size_t window = window_of(source == BoundSource::LockedPrefix ? 0u : shadow_.vs_row->matrix_register);
+        const std::size_t window = window_of(source == BoundSource::LockedPrefix ? 0u
+                                                                                 : shadow_.vs_row->matrix_register);
         if (window < motion_matrix_windows_max && shadow_.rows_known[window]) {
             std::memcpy(jittered, shadow_.rows[window], sizeof jittered);
-            if (route.jittered && main_.width && main_.height) jitter_rows(jittered, jitter_[0], jitter_[1], main_.width, main_.height);
+            if (route.jittered && main_.width && main_.height)
+                jitter_rows(jittered, jitter_[0], jitter_[1], main_.width, main_.height);
             rows = jittered;
         }
     }
@@ -5785,7 +7988,13 @@ fade_region::Region MotionOutput::fade_rectangle(const MotionRoute& route, fade_
     // locked-prefix diagnostic without it, the application's RT0 (step C
     // composes into the HDR target and takes the first branch).
     const bool rt0_target = source == BoundSource::LockedPrefix && !hdr_ && shadow_.rt0.known;
-    const Rect target{0, 0, std::int32_t(hdr_ ? hdr_->width() : rt0_target ? shadow_.rt0.width : 0u), std::int32_t(hdr_ ? hdr_->height() : rt0_target ? shadow_.rt0.height : 0u)};
+    const Rect target{0, 0,
+                      std::int32_t(hdr_         ? hdr_->width()
+                                   : rt0_target ? shadow_.rt0.width
+                                                : 0u),
+                      std::int32_t(hdr_         ? hdr_->height()
+                                   : rt0_target ? shadow_.rt0.height
+                                                : 0u)};
     // The locked prefix (step D) is the drawn vertices themselves, cut per
     // triangle against the D3D near plane (z >= 0) before the divide: a
     // bullet batch that starts behind the camera is bounded by its visible
@@ -5794,7 +8003,8 @@ fade_region::Region MotionOutput::fade_rectangle(const MotionRoute& route, fade_
     Region region{};
     if (source == BoundSource::LockedPrefix) {
         PrefixHull hull{};
-        region = derive_prefix(rows, bound.status == Status::Bound ? bound.positions : nullptr, vertex_count, viewport, fill_solid, target, &hull);
+        region = derive_prefix(rows, bound.status == Status::Bound ? bound.positions : nullptr, vertex_count, viewport,
+                               fill_solid, target, &hull);
         bound.box = hull.aabb;
         // The step-B comparison: the near-clipped rectangle of the prefix's
         // own AABB (eight corner projections; the per-draw and frame lines
@@ -5803,13 +8013,20 @@ fade_region::Region MotionOutput::fade_rectangle(const MotionRoute& route, fade_
         if (aabb_px && (capture_ || screen_emission_timing_)) {
             *aabb_px = 0;
             if (region.bound) {
-                Rect box_rect{}; NearClip cut{true, 0};
-                if (project_box(rows, hull.aabb, viewport, &box_rect, &cut) == Reason::Bound) *aabb_px = area(intersect(box_rect, target));
+                Rect box_rect{};
+                NearClip cut{true, 0};
+                if (project_box(rows, hull.aabb, viewport, &box_rect, &cut) == Reason::Bound)
+                    *aabb_px = area(intersect(box_rect, target));
             }
         }
-    } else region = derive(rows, bound.status == Status::Bound, bound.box, viewport, fill_solid, target, false);
+    } else
+        region = derive(rows, bound.status == Status::Bound, bound.box, viewport, fill_solid, target, false);
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
-    if (fixture_fade_rect_set_ && source == BoundSource::Part) { region.rect = fixture_fade_rect_; region.reason = Reason::Bound; region.bound = true; }
+    if (fixture_fade_rect_set_ && source == BoundSource::Part) {
+        region.rect = fixture_fade_rect_;
+        region.reason = Reason::Bound;
+        region.bound = true;
+    }
 #endif
     // Never beyond the owning target, on every path; empty -> 1x1 at its origin.
     region.rect = intersect(region.rect, target);
@@ -5830,36 +8047,54 @@ void MotionOutput::derive_fade_region(MotionRoute& route) noexcept {
     const Region region = fade_rectangle(route, bound, of_viewport, permille, false);
     auto& counts = composition_counts_;
     ++counts.region_status[unsigned(bound.status) < unsigned(Status::Count) ? unsigned(bound.status) : 0u];
-    if (bound.hit) ++counts.region_hit; else if (bound.status == Status::Bound) ++counts.region_miss;
+    if (bound.hit)
+        ++counts.region_hit;
+    else if (bound.status == Status::Bound)
+        ++counts.region_miss;
     if (bound.poisoned_now) ++counts.region_poisoned;
     if (bound.evicted) ++counts.region_evicted;
     route.fade_region = region;
     ++counts.region_reason[unsigned(region.reason) < unsigned(Reason::Count) ? unsigned(region.reason) : 0u];
     counts.region_permille_sum += permille;
     route.fade_region_permille = permille;
-    if (region.bound) ++counts.region_bound; else ++counts.region_full;
+    if (region.bound)
+        ++counts.region_bound;
+    else
+        ++counts.region_full;
     const bool witness_frame = this->witness_frame();
     bool witness_line = false;
     if (witness_frame) {
         auto& w = fade_witness_;
         w.last = FadeWitness::rect_capacity;
-        if (w.count < FadeWitness::rect_capacity) { w.last = w.count; w.rects[w.count] = region.rect; w.prepared[w.count] = false; }
-        else w.overflow = true;
+        if (w.count < FadeWitness::rect_capacity) {
+            w.last = w.count;
+            w.rects[w.count] = region.rect;
+            w.prepared[w.count] = false;
+        } else
+            w.overflow = true;
         ++w.count;
         witness_line = w.logged < FadeWitness::line_budget;
         if (witness_line) ++w.logged;
         // Buckets of the viewport-area fraction f (per mille): <=10, <=20, <=50, <=100, <=250, <=500, <1000, full.
-        const unsigned bucket = permille <= 10 ? 0u : permille <= 20 ? 1u : permille <= 50 ? 2u : permille <= 100 ? 3u
-            : permille <= 250 ? 4u : permille <= 500 ? 5u : permille < 1000 ? 6u : 7u;
+        const unsigned bucket = permille <= 10    ? 0u
+                                : permille <= 20  ? 1u
+                                : permille <= 50  ? 2u
+                                : permille <= 100 ? 3u
+                                : permille <= 250 ? 4u
+                                : permille <= 500 ? 5u
+                                : permille < 1000 ? 6u
+                                                  : 7u;
         ++w.f_hist[bucket];
     }
     if (capture_ || witness_line)
         log("fade_region device=%llu frame=%llu index=%lu bound=%u reason=%u status=%s hit=%u poisoned=%u evicted=%u depth=%lu descriptor=%p part=%p aabb=%ld,%ld,%ld,%ld,%ld,%ld vb=%llu ib=%llu vb_rev=%llu ib_rev=%llu jittered=%u rect=%ld,%ld,%ld,%ld f_permille=%u f_of=%s table_used=%u table_poisoned=%u",
-            id_, frame_, static_cast<unsigned long>(counters_.draws), region.bound, unsigned(region.reason), status_name(bound.status), bound.hit, bound.poisoned_now, bound.evicted,
-            static_cast<unsigned long>(bound.depth), reinterpret_cast<void*>(bound.descriptor), reinterpret_cast<void*>(bound.part),
-            long(bound.aabb[0]), long(bound.aabb[1]), long(bound.aabb[2]), long(bound.aabb[3]), long(bound.aabb[4]), long(bound.aabb[5]),
-            shadow_.stream0, shadow_.indices, bound.vb_revision, bound.ib_revision, route.jittered,
-            long(region.rect.left), long(region.rect.top), long(region.rect.right), long(region.rect.bottom), permille, of_viewport ? "viewport" : "target",
+            id_, frame_, static_cast<unsigned long>(counters_.draws), region.bound, unsigned(region.reason),
+            status_name(bound.status), bound.hit, bound.poisoned_now, bound.evicted,
+            static_cast<unsigned long>(bound.depth), reinterpret_cast<void*>(bound.descriptor),
+            reinterpret_cast<void*>(bound.part), long(bound.aabb[0]), long(bound.aabb[1]), long(bound.aabb[2]),
+            long(bound.aabb[3]), long(bound.aabb[4]), long(bound.aabb[5]), shadow_.stream0, shadow_.indices,
+            bound.vb_revision, bound.ib_revision, route.jittered, long(region.rect.left), long(region.rect.top),
+            long(region.rect.right), long(region.rect.bottom), permille, of_viewport ? "viewport" : "target",
             fade_bounds_.used(), fade_bounds_.poisoned());
 }
 
@@ -5885,25 +8120,35 @@ void MotionOutput::derive_prefix_region(const MotionDrawCall& call, MotionRoute&
     // unrelated stride-24 draws never get a bound from the wrong matrix and
     // only their buffers are marked for the Unlock scan.
     if (!screen_emission::admitted_vertex_shader(shadow_.vs_hash)) return;
-    if (call.indexed || call.user_memory || call.topology != D3DPT_TRIANGLELIST || call.first != 0 || !call.primitives) return;
-    if (!shadow_.stream0 || !shadow_.stream0_identity || shadow_.stream0_stride != prefix::stride || shadow_.stream0_offset != 0) return;
+    if (call.indexed || call.user_memory || call.topology != D3DPT_TRIANGLELIST || call.first != 0 || !call.primitives)
+        return;
+    if (!shadow_.stream0 || !shadow_.stream0_identity || shadow_.stream0_stride != prefix::stride ||
+        shadow_.stream0_offset != 0)
+        return;
     if (!shadow_.declaration || shadow_.position_offset != 0 || shadow_.position_type != D3DDECLTYPE_FLOAT3) return;
     const std::uint64_t begin = draw_stamp();
     auto& counts = composition_counts_;
     ++counts.prefix_draws;
     route.prefix_evaluated = true;
     // primCount*3 without overflow: anything past the scan bound is refused.
-    const std::uint32_t vertex_count = call.primitives > prefix::max_vertices ? prefix::max_vertices + 1u : call.primitives * 3u;
+    const std::uint32_t vertex_count = call.primitives > prefix::max_vertices ? prefix::max_vertices + 1u
+                                                                              : call.primitives * 3u;
     Result bound{};
     bool of_viewport = false;
     unsigned permille = 0;
     std::uint64_t aabb_px = 0; // 0 outside capture frames / the timing diagnostic
-    Region region = fade_rectangle(route, bound, of_viewport, permille, true, BoundSource::LockedPrefix, vertex_count, &aabb_px);
+    Region region = fade_rectangle(route, bound, of_viewport, permille, true, BoundSource::LockedPrefix, vertex_count,
+                                   &aabb_px);
     // The positions were projected without the registry mutex: the record
     // must still be published at the revision the lookup saw (a Lock in
     // between may have rewritten them under the projection).
-    if (region.bound && !fade_region::recheck_locked_prefix(Query{shadow_.stream0, shadow_.indices, shadow_.stream0_identity, shadow_.indices_identity}, vertex_count, bound.vb_revision)) {
-        region.bound = false; region.reason = Reason::BoundUnknown; bound.status = Status::ContentUnknown; bound.prefix_refusal = unsigned(prefix::Lookup::Pending);
+    if (region.bound && !fade_region::recheck_locked_prefix(
+                            Query{shadow_.stream0, shadow_.indices, shadow_.stream0_identity, shadow_.indices_identity},
+                            vertex_count, bound.vb_revision)) {
+        region.bound = false;
+        region.reason = Reason::BoundUnknown;
+        bound.status = Status::ContentUnknown;
+        bound.prefix_refusal = unsigned(prefix::Lookup::Pending);
         ++counts.prefix_rechecks;
     }
     // Instanced geometry (stream 0 frequency other than the default 1) draws
@@ -5911,7 +8156,9 @@ void MotionOutput::derive_prefix_region(const MotionDrawCall& call, MotionRoute&
     // when it fails.
     UINT frequency = 0;
     if (region.bound && (FAILED(direct_call<GetStreamFreqFn>(GetStreamSourceFreq, 0, &frequency)) || frequency != 1)) {
-        region.bound = false; region.reason = Reason::BoundUnknown; ++counts.prefix_instanced;
+        region.bound = false;
+        region.reason = Reason::BoundUnknown;
+        ++counts.prefix_instanced;
     }
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     // Straddling case of the live fixture: a bound rectangle smaller than
@@ -5920,11 +8167,17 @@ void MotionOutput::derive_prefix_region(const MotionDrawCall& call, MotionRoute&
     if (fixture_screen_rect_set_ && region.bound) {
         region.rect = fixture_screen_rect_;
         const auto& v = shadow_.viewport;
-        const std::uint64_t whole = of_viewport ? std::uint64_t(v.width) * v.height : std::uint64_t(hdr_ ? hdr_->width() : 0u) * (hdr_ ? hdr_->height() : 0u);
+        const std::uint64_t whole = of_viewport
+                                        ? std::uint64_t(v.width) * v.height
+                                        : std::uint64_t(hdr_ ? hdr_->width() : 0u) * (hdr_ ? hdr_->height() : 0u);
         permille = whole ? unsigned(area(region.rect) * 1000u / whole) : 1000u;
     }
 #endif
-    if (!region.bound) { region.rect = {0, 0, 0, 0}; permille = 0; aabb_px = 0; } // never the full viewport for this kind
+    if (!region.bound) {
+        region.rect = {0, 0, 0, 0};
+        permille = 0;
+        aabb_px = 0;
+    } // never the full viewport for this kind
     const std::uint64_t hull_px = region.bound ? area(region.rect) : 0u;
     route.prefix_region = region;
     route.prefix_region_permille = permille;
@@ -5934,16 +8187,24 @@ void MotionOutput::derive_prefix_region(const MotionDrawCall& call, MotionRoute&
     ++counts.prefix_reason[unsigned(region.reason) < unsigned(Reason::Count) ? unsigned(region.reason) : 0u];
     ++counts.prefix_lookup[bound.prefix_refusal < unsigned(prefix::Lookup::Count) ? bound.prefix_refusal : 0u];
     if (region.bound) {
-        ++counts.prefix_bound; counts.prefix_permille_sum += permille; if (region.clipped) ++counts.prefix_clipped;
-        counts.prefix_hull_px += hull_px; counts.prefix_aabb_px += aabb_px; counts.prefix_vertices += vertex_count;
-    } else ++counts.prefix_refused;
+        ++counts.prefix_bound;
+        counts.prefix_permille_sum += permille;
+        if (region.clipped) ++counts.prefix_clipped;
+        counts.prefix_hull_px += hull_px;
+        counts.prefix_aabb_px += aabb_px;
+        counts.prefix_vertices += vertex_count;
+    } else
+        ++counts.prefix_refused;
     if (capture_ || locked_prefix_log_)
         log("locked_prefix device=%llu frame=%llu index=%lu bound=%u reason=%u clipped=%u pad=%u status=%s lookup=%s vb=%llu rev=%llu vertices=%lu scanned=%lu box=%.3f,%.3f,%.3f,%.3f,%.3f,%.3f rect=%ld,%ld,%ld,%ld f_permille=%u f_of=%s hull_px=%llu aabb_px=%llu ticks=%llu",
-            id_, frame_, static_cast<unsigned long>(counters_.draws), region.bound, unsigned(region.reason), region.clipped, region.pad, status_name(bound.status), prefix::lookup_name(prefix::Lookup(bound.prefix_refusal)),
-            shadow_.stream0, bound.vb_revision, static_cast<unsigned long>(vertex_count), static_cast<unsigned long>(bound.scanned),
-            bound.box.centre[0], bound.box.centre[1], bound.box.centre[2], bound.box.half[0], bound.box.half[1], bound.box.half[2],
-            long(region.rect.left), long(region.rect.top), long(region.rect.right), long(region.rect.bottom), permille, of_viewport ? "viewport" : "target",
-            static_cast<unsigned long long>(hull_px), static_cast<unsigned long long>(aabb_px), static_cast<unsigned long long>(ticks));
+            id_, frame_, static_cast<unsigned long>(counters_.draws), region.bound, unsigned(region.reason),
+            region.clipped, region.pad, status_name(bound.status),
+            prefix::lookup_name(prefix::Lookup(bound.prefix_refusal)), shadow_.stream0, bound.vb_revision,
+            static_cast<unsigned long>(vertex_count), static_cast<unsigned long>(bound.scanned), bound.box.centre[0],
+            bound.box.centre[1], bound.box.centre[2], bound.box.half[0], bound.box.half[1], bound.box.half[2],
+            long(region.rect.left), long(region.rect.top), long(region.rect.right), long(region.rect.bottom), permille,
+            of_viewport ? "viewport" : "target", static_cast<unsigned long long>(hull_px),
+            static_cast<unsigned long long>(aabb_px), static_cast<unsigned long long>(ticks));
 }
 
 // Capture frames only (zero cost otherwise: one bool test per admitted
@@ -5968,35 +8229,57 @@ static inline float packed_sample_half(std::uint16_t h) noexcept {
     const unsigned sign = unsigned(h) & 0x8000u, exponent = (h >> 10) & 31u, mantissa = h & 1023u;
     unsigned bits;
     if (!exponent) {
-        if (!mantissa) bits = sign << 16;
-        else { unsigned e = 113, m = mantissa; while (!(m & 1024u)) { m <<= 1; --e; } bits = (sign << 16) | (e << 23) | ((m & 1023u) << 13); }
-    } else if (exponent == 31) bits = (sign << 16) | 0x7f800000u | (mantissa << 13);
-    else bits = (sign << 16) | ((exponent + 112u) << 23) | (mantissa << 13);
-    float value; std::memcpy(&value, &bits, 4); return value;
+        if (!mantissa)
+            bits = sign << 16;
+        else {
+            unsigned e = 113, m = mantissa;
+            while (!(m & 1024u)) {
+                m <<= 1;
+                --e;
+            }
+            bits = (sign << 16) | (e << 23) | ((m & 1023u) << 13);
+        }
+    } else if (exponent == 31)
+        bits = (sign << 16) | 0x7f800000u | (mantissa << 13);
+    else
+        bits = (sign << 16) | ((exponent + 112u) << 23) | (mantissa << 13);
+    float value;
+    std::memcpy(&value, &bits, 4);
+    return value;
 }
 static unsigned packed_sample_pixel_bytes(std::uint32_t format) noexcept {
     switch (D3DFORMAT(format)) {
     case D3DFMT_A16B16G16R16F: return 8;
     case D3DFMT_A32B32G32R32F: return 16;
-    case D3DFMT_A8R8G8B8: case D3DFMT_X8R8G8B8: return 4;
+    case D3DFMT_A8R8G8B8:
+    case D3DFMT_X8R8G8B8: return 4;
     default: return 0; // fail closed: no decode for other formats
     }
 }
-HRESULT MotionOutput::sample_target_pixel(IDirect3DSurface9* surface, const renderer::Surface& description, bool pre, std::int32_t x, std::int32_t y, float out[4]) noexcept {
+HRESULT MotionOutput::sample_target_pixel(IDirect3DSurface9* surface, const renderer::Surface& description, bool pre,
+                                          std::int32_t x, std::int32_t y, float out[4]) noexcept {
     out[0] = out[1] = out[2] = out[3] = 0.f;
     if (!surface || !description.known || !description.width || !description.height) return D3DERR_NOTFOUND;
-    if (x < 0 || y < 0 || std::uint32_t(x) >= description.width || std::uint32_t(y) >= description.height) return D3DERR_INVALIDCALL;
+    if (x < 0 || y < 0 || std::uint32_t(x) >= description.width || std::uint32_t(y) >= description.height)
+        return D3DERR_INVALIDCALL;
     const auto format = D3DFORMAT(description.format);
     const unsigned bytes = packed_sample_pixel_bytes(description.format);
     if (!bytes) return D3DERR_NOTAVAILABLE;
     auto& s = packed_sample_;
-    if ((s.copy || s.pre_copy) && (s.copy_width != description.width || s.copy_height != description.height || s.copy_format != description.format)) release_packed_sample();
+    if ((s.copy || s.pre_copy) && (s.copy_width != description.width || s.copy_height != description.height ||
+                                   s.copy_format != description.format))
+        release_packed_sample();
     IDirect3DSurface9*& slot = pre ? s.pre_copy : s.copy;
     HRESULT hr = S_OK;
     if (!slot) {
-        hr = native<CreateOffscreenFn>(CreateOffscreenPlainSurface)(device_, description.width, description.height, format, D3DPOOL_SYSTEMMEM, &slot, nullptr);
-        if (SUCCEEDED(hr)) { s.copy_width = description.width; s.copy_height = description.height; s.copy_format = description.format; }
-        else slot = nullptr;
+        hr = native<CreateOffscreenFn>(CreateOffscreenPlainSurface)(device_, description.width, description.height,
+                                                                    format, D3DPOOL_SYSTEMMEM, &slot, nullptr);
+        if (SUCCEEDED(hr)) {
+            s.copy_width = description.width;
+            s.copy_height = description.height;
+            s.copy_format = description.format;
+        } else
+            slot = nullptr;
     }
     IDirect3DSurface9* copy = slot;
     if (SUCCEEDED(hr)) hr = native<GetRtDataFn>(GetRenderTargetData)(device_, surface, copy);
@@ -6006,16 +8289,21 @@ HRESULT MotionOutput::sample_target_pixel(IDirect3DSurface9* surface, const rend
         hr = copy->LockRect(&lock, &pixel, D3DLOCK_READONLY);
         if (SUCCEEDED(hr)) {
             const auto* bits = static_cast<const unsigned char*>(lock.pBits);
-            if (bytes == 16) std::memcpy(out, bits, 16);
+            if (bytes == 16)
+                std::memcpy(out, bits, 16);
             else if (bytes == 8) {
                 // The same decoder the rectangle scan uses (packed_sample_half).
                 for (unsigned c = 0; c < 4; ++c) {
-                    std::uint16_t h = 0; std::memcpy(&h, bits + 2 * c, 2);
+                    std::uint16_t h = 0;
+                    std::memcpy(&h, bits + 2 * c, 2);
                     out[c] = packed_sample_half(h);
                 }
             } else {
-                DWORD v = 0; std::memcpy(&v, bits, 4);
-                out[0] = float((v >> 16) & 255u) / 255.f; out[1] = float((v >> 8) & 255u) / 255.f; out[2] = float(v & 255u) / 255.f;
+                DWORD v = 0;
+                std::memcpy(&v, bits, 4);
+                out[0] = float((v >> 16) & 255u) / 255.f;
+                out[1] = float((v >> 8) & 255u) / 255.f;
+                out[2] = float(v & 255u) / 255.f;
                 out[3] = format == D3DFMT_X8R8G8B8 ? 1.f : float((v >> 24) & 255u) / 255.f;
             }
             copy->UnlockRect();
@@ -6025,9 +8313,12 @@ HRESULT MotionOutput::sample_target_pixel(IDirect3DSurface9* surface, const rend
 }
 void MotionOutput::release_packed_sample() noexcept {
     auto& s = packed_sample_;
-    release(s.copy); s.copy = nullptr;
-    release(s.pre_copy); s.pre_copy = nullptr;
-    s.copy_width = s.copy_height = s.copy_format = 0; s.valid = false;
+    release(s.copy);
+    s.copy = nullptr;
+    release(s.pre_copy);
+    s.pre_copy = nullptr;
+    s.copy_width = s.copy_height = s.copy_format = 0;
+    s.valid = false;
 }
 // Capture frames only, at most packed_sample_cap rectangles per frame: one
 // pass over the bound rectangle (clipped to the copies' extent) comparing the
@@ -6046,50 +8337,80 @@ HRESULT MotionOutput::scan_packed_rect(const fade_region::Rect& rect, PackedScan
     HRESULT hr = s.pre_copy->LockRect(&pre_lock, &box, D3DLOCK_READONLY);
     if (FAILED(hr)) return hr;
     hr = s.copy->LockRect(&post_lock, &box, D3DLOCK_READONLY);
-    if (FAILED(hr)) { s.pre_copy->UnlockRect(); return hr; }
+    if (FAILED(hr)) {
+        s.pre_copy->UnlockRect();
+        return hr;
+    }
     const unsigned width = unsigned(box.right - box.left), height = unsigned(box.bottom - box.top);
     const unsigned rgb_bytes = bytes == 4 ? 3u : bytes / 4u * 3u;
     double max_pre = -1.0, max_post = -1.0;
     for (unsigned row = 0; row < height; ++row) {
-        const auto* a = static_cast<const unsigned char*>(pre_lock.pBits) + std::size_t(row) * std::size_t(pre_lock.Pitch);
-        const auto* b = static_cast<const unsigned char*>(post_lock.pBits) + std::size_t(row) * std::size_t(post_lock.Pitch);
+        const auto* a = static_cast<const unsigned char*>(pre_lock.pBits) +
+                        std::size_t(row) * std::size_t(pre_lock.Pitch);
+        const auto* b = static_cast<const unsigned char*>(post_lock.pBits) +
+                        std::size_t(row) * std::size_t(post_lock.Pitch);
         for (unsigned column = 0; column < width; ++column, a += bytes, b += bytes) {
             float pre_rgb[3], post_rgb[3];
-            if (bytes == 8) for (unsigned c = 0; c < 3; ++c) {
-                std::uint16_t ha = 0, hb = 0; std::memcpy(&ha, a + 2 * c, 2); std::memcpy(&hb, b + 2 * c, 2);
-                pre_rgb[c] = packed_sample_half(ha); post_rgb[c] = packed_sample_half(hb);
-            } else if (bytes == 16) { std::memcpy(pre_rgb, a, 12); std::memcpy(post_rgb, b, 12); }
-            else {
-                std::uint32_t va = 0, vb = 0; std::memcpy(&va, a, 4); std::memcpy(&vb, b, 4);
-                pre_rgb[0] = float((va >> 16) & 255u) / 255.f; pre_rgb[1] = float((va >> 8) & 255u) / 255.f; pre_rgb[2] = float(va & 255u) / 255.f;
-                post_rgb[0] = float((vb >> 16) & 255u) / 255.f; post_rgb[1] = float((vb >> 8) & 255u) / 255.f; post_rgb[2] = float(vb & 255u) / 255.f;
+            if (bytes == 8)
+                for (unsigned c = 0; c < 3; ++c) {
+                    std::uint16_t ha = 0, hb = 0;
+                    std::memcpy(&ha, a + 2 * c, 2);
+                    std::memcpy(&hb, b + 2 * c, 2);
+                    pre_rgb[c] = packed_sample_half(ha);
+                    post_rgb[c] = packed_sample_half(hb);
+                }
+            else if (bytes == 16) {
+                std::memcpy(pre_rgb, a, 12);
+                std::memcpy(post_rgb, b, 12);
+            } else {
+                std::uint32_t va = 0, vb = 0;
+                std::memcpy(&va, a, 4);
+                std::memcpy(&vb, b, 4);
+                pre_rgb[0] = float((va >> 16) & 255u) / 255.f;
+                pre_rgb[1] = float((va >> 8) & 255u) / 255.f;
+                pre_rgb[2] = float(va & 255u) / 255.f;
+                post_rgb[0] = float((vb >> 16) & 255u) / 255.f;
+                post_rgb[1] = float((vb >> 8) & 255u) / 255.f;
+                post_rgb[2] = float(vb & 255u) / 255.f;
             }
-            const bool changed = std::memcmp(a, b, rgb_bytes) != 0; // A8R8G8B8 stores B,G,R,A: the first three bytes are the colour
+            const bool changed = std::memcmp(a, b, rgb_bytes) != 0; // A8R8G8B8 stores B,G,R,A: the first three bytes
+                                                                    // are the colour
             if (changed) ++scan.changed;
             const double pre_y = 0.2126 * pre_rgb[0] + 0.7152 * pre_rgb[1] + 0.0722 * pre_rgb[2];
             const double post_y = 0.2126 * post_rgb[0] + 0.7152 * post_rgb[1] + 0.0722 * post_rgb[2];
-            scan.sum_pre += pre_y; scan.sum_post += post_y;
+            scan.sum_pre += pre_y;
+            scan.sum_post += post_y;
             if (pre_y > max_pre) max_pre = pre_y;
             if (post_y > max_post) {
                 max_post = post_y;
-                scan.argmax_x = std::int32_t(box.left) + std::int32_t(column); scan.argmax_y = std::int32_t(box.top) + std::int32_t(row);
-                for (unsigned c = 0; c < 3; ++c) { scan.argmax_pre[c] = pre_rgb[c]; scan.argmax_post[c] = post_rgb[c]; }
+                scan.argmax_x = std::int32_t(box.left) + std::int32_t(column);
+                scan.argmax_y = std::int32_t(box.top) + std::int32_t(row);
+                for (unsigned c = 0; c < 3; ++c) {
+                    scan.argmax_pre[c] = pre_rgb[c];
+                    scan.argmax_post[c] = post_rgb[c];
+                }
             }
         }
     }
-    scan.max_pre = max_pre < 0.0 ? 0.0 : max_pre; scan.max_post = max_post < 0.0 ? 0.0 : max_post;
+    scan.max_pre = max_pre < 0.0 ? 0.0 : max_pre;
+    scan.max_post = max_post < 0.0 ? 0.0 : max_post;
     scan.pixels = static_cast<unsigned long>(width) * height;
-    s.copy->UnlockRect(); s.pre_copy->UnlockRect();
+    s.copy->UnlockRect();
+    s.pre_copy->UnlockRect();
     return S_OK;
 }
 void MotionOutput::sample_packed_pre(const MotionRoute& route) noexcept {
     auto& s = packed_sample_;
-    if (s.sampled >= packed_sample_cap) { ++composition_counts_.packed_sample_skipped; return; }
+    if (s.sampled >= packed_sample_cap) {
+        ++composition_counts_.packed_sample_skipped;
+        return;
+    }
     ++s.sampled;
     s.rect = route.prefix_region.rect;
     s.clipped = route.prefix_region.clipped;
     s.index = counters_.draws;
-    s.x = s.rect.left + (s.rect.right - s.rect.left) / 2; s.y = s.rect.top + (s.rect.bottom - s.rect.top) / 2;
+    s.x = s.rect.left + (s.rect.right - s.rect.left) / 2;
+    s.y = s.rect.top + (s.rect.bottom - s.rect.top) / 2;
     // A target size/format change releases both copies inside the readback and
     // clears the pending pre, so the slot is armed after it: every admitted
     // sampled draw keeps its packed_sample line (with the readback's result),
@@ -6102,7 +8423,8 @@ void MotionOutput::sample_packed_post(const RECT& composed) noexcept {
     if (!s.valid) return;
     s.valid = false;
     float post[4];
-    const HRESULT post_result = sample_target_pixel(hdr_ ? hdr_->target() : nullptr, hdr_target_, false, s.x, s.y, post);
+    const HRESULT post_result = sample_target_pixel(hdr_ ? hdr_->target() : nullptr, hdr_target_, false, s.x, s.y,
+                                                    post);
     PackedScan scan{};
     // Both readbacks must have landed for the rectangle comparison to mean
     // anything; a failed one leaves the scan fields at zero with its result.
@@ -6110,14 +8432,15 @@ void MotionOutput::sample_packed_post(const RECT& composed) noexcept {
     auto luminance = [](const float* c) { return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
     log("packed_sample device=%llu frame=%llu index=%lu rect=%ld,%ld,%ld,%ld clipped=%u composed=%ld,%ld,%ld,%ld centre=%ld,%ld format=%u pre=%.6g,%.6g,%.6g,%.6g pre_y=%.6g post=%.6g,%.6g,%.6g,%.6g post_y=%.6g pre_result=%08lx post_result=%08lx"
         " scan_result=%08lx scan_px=%lu changed_px=%lu max_pre_y=%.6g max_post_y=%.6g sum_pre_y=%.6g sum_post_y=%.6g argmax=%ld,%ld argmax_pre=%.6g,%.6g,%.6g argmax_post=%.6g,%.6g,%.6g",
-        id_, frame_, static_cast<unsigned long>(s.index), long(s.rect.left), long(s.rect.top), long(s.rect.right), long(s.rect.bottom), s.clipped,
-        long(composed.left), long(composed.top), long(composed.right), long(composed.bottom), long(s.x), long(s.y), unsigned(hdr_target_.format),
-        double(s.pre[0]), double(s.pre[1]), double(s.pre[2]), double(s.pre[3]), luminance(s.pre),
-        double(post[0]), double(post[1]), double(post[2]), double(post[3]), luminance(post), static_cast<unsigned long>(s.pre_result), static_cast<unsigned long>(post_result),
-        static_cast<unsigned long>(scan.result), scan.pixels, scan.changed, scan.max_pre, scan.max_post, scan.sum_pre, scan.sum_post,
-        long(scan.argmax_x), long(scan.argmax_y),
-        double(scan.argmax_pre[0]), double(scan.argmax_pre[1]), double(scan.argmax_pre[2]),
-        double(scan.argmax_post[0]), double(scan.argmax_post[1]), double(scan.argmax_post[2]));
+        id_, frame_, static_cast<unsigned long>(s.index), long(s.rect.left), long(s.rect.top), long(s.rect.right),
+        long(s.rect.bottom), s.clipped, long(composed.left), long(composed.top), long(composed.right),
+        long(composed.bottom), long(s.x), long(s.y), unsigned(hdr_target_.format), double(s.pre[0]), double(s.pre[1]),
+        double(s.pre[2]), double(s.pre[3]), luminance(s.pre), double(post[0]), double(post[1]), double(post[2]),
+        double(post[3]), luminance(post), static_cast<unsigned long>(s.pre_result),
+        static_cast<unsigned long>(post_result), static_cast<unsigned long>(scan.result), scan.pixels, scan.changed,
+        scan.max_pre, scan.max_post, scan.sum_pre, scan.sum_post, long(scan.argmax_x), long(scan.argmax_y),
+        double(scan.argmax_pre[0]), double(scan.argmax_pre[1]), double(scan.argmax_pre[2]), double(scan.argmax_post[0]),
+        double(scan.argmax_post[1]), double(scan.argmax_post[2]));
 }
 
 // Capture frames only. The draw was recognised (fade pair in the exact
@@ -6134,24 +8457,41 @@ void MotionOutput::record_fade_refused(const MotionRoute& route, unsigned refusa
     unsigned permille = 0;
     const auto region = fade_rectangle(route, bound, of_viewport, permille, true);
     auto& r = fade_refused_[slot];
-    r.vs = shadow_.vs_hash; r.ps = shadow_.ps_hash;
+    r.vs = shadow_.vs_hash;
+    r.ps = shadow_.ps_hash;
     r.index = std::uint32_t(counters_.draws);
     r.refusal = std::uint8_t(refusal);
     // Gate 4 refused the draw before scope sampling filled the key: read the
     // object context once, without the lifetime lookup (identity only).
-    r.node = 0; r.model = 0; r.lod = 0;
+    r.node = 0;
+    r.model = 0;
+    r.lod = 0;
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     if (fixture_configured_) {
-        if (fixture_.scope.known) { r.node = fixture_.scope.node; r.model = std::uint32_t(fixture_.scope.model); r.lod = std::uint32_t(fixture_.scope.lod); }
+        if (fixture_.scope.known) {
+            r.node = fixture_.scope.node;
+            r.model = std::uint32_t(fixture_.scope.model);
+            r.lod = std::uint32_t(fixture_.scope.lod);
+        }
     } else
 #endif
     {
         object_trace::Snapshot scope{};
-        if (object_trace::current(&scope, false) && (scope.valid & object_trace::Node)) { r.node = scope.node; r.model = scope.model; r.lod = scope.lod; }
+        if (object_trace::current(&scope, false) && (scope.valid & object_trace::Node)) {
+            r.node = scope.node;
+            r.model = scope.model;
+            r.lod = scope.lod;
+        }
     }
-    r.rect[0] = region.rect.left; r.rect[1] = region.rect.top; r.rect[2] = region.rect.right; r.rect[3] = region.rect.bottom;
-    r.permille = permille; r.reason = std::uint8_t(region.reason); r.status = std::uint8_t(bound.status);
-    r.bound = region.bound; r.of_viewport = of_viewport;
+    r.rect[0] = region.rect.left;
+    r.rect[1] = region.rect.top;
+    r.rect[2] = region.rect.right;
+    r.rect[3] = region.rect.bottom;
+    r.permille = permille;
+    r.reason = std::uint8_t(region.reason);
+    r.status = std::uint8_t(bound.status);
+    r.bound = region.bound;
+    r.of_viewport = of_viewport;
 }
 void MotionOutput::log_fade_refused() noexcept {
     const unsigned logged = fade_refused_count_ < fade_refused_capacity ? fade_refused_count_ : fade_refused_capacity;
@@ -6160,9 +8500,10 @@ void MotionOutput::log_fade_refused() noexcept {
         log("fade_refused_rect device=%llu frame=%llu index=%lu refusal=%u vs=%016llx ps=%016llx node=%llu model=%08lx lod=%08lx"
             " bound=%u reason=%u status=%s rect=%ld,%ld,%ld,%ld f_permille=%lu f_of=%s refused_total=%u",
             id_, frame_, static_cast<unsigned long>(r.index), unsigned(r.refusal), r.vs, r.ps, r.node,
-            static_cast<unsigned long>(r.model), static_cast<unsigned long>(r.lod), unsigned(r.bound), unsigned(r.reason),
-            fade_region::status_name(fade_region::Status(r.status)), long(r.rect[0]), long(r.rect[1]), long(r.rect[2]), long(r.rect[3]),
-            static_cast<unsigned long>(r.permille), r.of_viewport ? "viewport" : "target", fade_refused_count_);
+            static_cast<unsigned long>(r.model), static_cast<unsigned long>(r.lod), unsigned(r.bound),
+            unsigned(r.reason), fade_region::status_name(fade_region::Status(r.status)), long(r.rect[0]),
+            long(r.rect[1]), long(r.rect[2]), long(r.rect[3]), static_cast<unsigned long>(r.permille),
+            r.of_viewport ? "viewport" : "target", fade_refused_count_);
     }
     fade_refused_count_ = 0;
 }
@@ -6196,7 +8537,7 @@ void MotionOutput::note_cutout_opaque(const MotionRoute& route, HRESULT result) 
         case MotionGate::Scope: reason = unsigned(renderer::SunUntrackedReason::Scope); break;
         case MotionGate::History: reason = unsigned(renderer::SunUntrackedReason::History); break;
         default: break; // MotionGate::None without a reason: apply rollback before it was recorded
-    }
+        }
     ++counters_.cutout_opaque_reasons[reason < renderer::sun_untracked_reason_count ? reason : 0u];
 }
 
@@ -6204,18 +8545,25 @@ void MotionOutput::after_draw(MotionRoute& route, HRESULT result) noexcept {
     // The route's owned restoration references outlive every restore below
     // (undo, the finish_* paths, the sun stamp) and are released on every
     // return, inside the draw hook while its device pin is held.
-    struct RestoreScope { MotionOutput& self; MotionRoute& route; ~RestoreScope() { self.release_restore(route); } } restore_scope{*this, route};
-    if (route.lens.applied) finish_lens(route); // before every other restore: the wrap sits on top of the application's own bindings
+    struct RestoreScope {
+        MotionOutput& self;
+        MotionRoute& route;
+        ~RestoreScope() { self.release_restore(route); }
+    } restore_scope{*this, route};
+    if (route.lens.applied)
+        finish_lens(route); // before every other restore: the wrap sits on top of the application's own bindings
     if (route.fog_card_mask.masked) finish_fog_card(route, result);
     if (!enabled_ || !route.evaluated) return;
     const bool jittered = route.jittered;
     if (route.composition) finish_composition(result, route.composition_policy);
     if (route.screen_additive) finish_screen_additive(route);
     if (cutout::missed(route.cutout_candidate, route.submit, SUCCEEDED(result), route.routed || route.composition,
-            route.cutout_test_known, route.cutout_test, route.cutout_color_known, route.cutout_color,
-            route.cutout_alpha_known, route.cutout_alpha, route.cutout_z_known, route.cutout_z,
-            route.cutout_zfunc_known, route.cutout_zfunc, route.cutout_source_over)) {
-        cutout_coverage_missed_ = true; ++counters_.cutout_missed; invalidate_taa(TaaInvalidateSite::CutoutMissed);
+                       route.cutout_test_known, route.cutout_test, route.cutout_color_known, route.cutout_color,
+                       route.cutout_alpha_known, route.cutout_alpha, route.cutout_z_known, route.cutout_z,
+                       route.cutout_zfunc_known, route.cutout_zfunc, route.cutout_source_over)) {
+        cutout_coverage_missed_ = true;
+        ++counters_.cutout_missed;
+        invalidate_taa(TaaInvalidateSite::CutoutMissed);
     }
     if (route.routed && route.cutout && SUCCEEDED(result)) ++counters_.cutout_routed;
     // One branch by default (shadow_.cutout_pair is false without the lane or linear materials).
@@ -6223,30 +8571,36 @@ void MotionOutput::after_draw(MotionRoute& route, HRESULT result) noexcept {
     if (route.routed && route.original_fill && SUCCEEDED(result)) ++original_fill_draws_;
     if (route.routed && route.hull_lightmap && SUCCEEDED(result)) {
         if (lightmap_far_fade_ && lightmap_fade_gain_ < hull_lightmap_gain_) {
-            if (!lightmap_fade_draws_++ || lightmap_fade_gain_ < lightmap_fade_min_) lightmap_fade_min_ = lightmap_fade_gain_;
+            if (!lightmap_fade_draws_++ || lightmap_fade_gain_ < lightmap_fade_min_)
+                lightmap_fade_min_ = lightmap_fade_gain_;
         }
         if (route.hull_lightmap_widen) {
-            ++lightmap_widen_draws_; ++lightmap_widen_session_draws_;
+            ++lightmap_widen_draws_;
+            ++lightmap_widen_session_draws_;
             // Capture frames: the light map's level-0 size and the footprint
             // constant c (= K) of every widened draw (k itself is per pixel).
             if (capture_)
                 log("hull_lightmap_widen_draw device=%llu frame=%llu index=%lu ps=%016llx stage=%u size=%lux%lu c=%g scale=%g,%g",
                     id_, frame_, counters_.draws, shadow_.ps_hash, unsigned(shadow_.hull_lightmap_stage),
-                    static_cast<unsigned long>(lightmap_widen_draw_size_[0]), static_cast<unsigned long>(lightmap_widen_draw_size_[1]),
-                    double(lightmap_widen_k_), double(lightmap_widen_draw_scale_[0]), double(lightmap_widen_draw_scale_[1]));
-        } else if (lightmap_widen_) ++lightmap_widen_held_;
+                    static_cast<unsigned long>(lightmap_widen_draw_size_[0]),
+                    static_cast<unsigned long>(lightmap_widen_draw_size_[1]), double(lightmap_widen_k_),
+                    double(lightmap_widen_draw_scale_[0]), double(lightmap_widen_draw_scale_[1]));
+        } else if (lightmap_widen_)
+            ++lightmap_widen_held_;
         ++hull_lightmap_draws_;
     }
     if (route.source_gain) finish_source_gain(route);
     if (route.hull_gain) finish_hull_gain(route);
-    if(sun_lane_active_&&route.sun_color_writer){
-        const bool coverage=route.composition&&sun_composition_completed_&&sun_coverage_current_&&composition_&&composition_->coverage_valid()&&
-            !composition_frame_stopped_&&!composition_state_lost_&&!composition_quarantined_;
+    if (sun_lane_active_ && route.sun_color_writer) {
+        const bool coverage = route.composition && sun_composition_completed_ && sun_coverage_current_ &&
+                              composition_ && composition_->coverage_valid() && !composition_frame_stopped_ &&
+                              !composition_state_lost_ && !composition_quarantined_;
         // Diagnostics only: the refusal reason travels with the draw; the
         // bookkeeping decides untracked exactly as before.
-        const auto reason=route.routed
-            ?(route.fade_arm?renderer::SunUntrackedReason::FadeArm:!route.depth?renderer::SunUntrackedReason::NoDepth:renderer::SunUntrackedReason(route.sun_refusal))
-            :renderer::SunUntrackedReason(route.sun_refusal);
+        const auto reason = route.routed ? (route.fade_arm ? renderer::SunUntrackedReason::FadeArm
+                                            : !route.depth ? renderer::SunUntrackedReason::NoDepth
+                                                           : renderer::SunUntrackedReason(route.sun_refusal))
+                                         : renderer::SunUntrackedReason(route.sun_refusal);
         // Only an actual depth writer (z test and z write on, both read) can
         // veto: a color-only draw leaves the tracked depth intact.
         // An unroutable depth writer (gate 3) stamps share -1 over the pixels it
@@ -6254,13 +8608,21 @@ void MotionOutput::after_draw(MotionRoute& route, HRESULT result) noexcept {
         // leaves the draw an untracked writer exactly as before.
         // Runs after finish_source_gain / finish_hull_gain: the device holds the
         // application's PS and constants again, which the stamp's restore assumes.
-        bool stamped=false;
-        if(route.sun_stamp&&route.submit&&SUCCEEDED(result)&&!route.composition&&!route.screen_additive&&(route.sun_z_state&7u)==7u){
-            stamped=sun_stamp_draw(route);
-            if(stamped){++sun_stamps_;sun_stamp_prims_+=sun_stamp_call_.primitives;}else ++sun_stamp_refused_;
+        bool stamped = false;
+        if (route.sun_stamp && route.submit && SUCCEEDED(result) && !route.composition && !route.screen_additive &&
+            (route.sun_z_state & 7u) == 7u) {
+            stamped = sun_stamp_draw(route);
+            if (stamped) {
+                ++sun_stamps_;
+                sun_stamp_prims_ += sun_stamp_call_.primitives;
+            } else
+                ++sun_stamp_refused_;
         }
-        if(sun_frame_.draw(route.submit&&SUCCEEDED(result),route.routed&&route.depth&&!route.fade_arm&&route.sun_receiver,coverage,stamped||(route.routed&&route.depth&&!route.fade_arm),reason,(route.sun_z_state&7u)==7u))
-            note_sun_untracked_writer(route,reason);
+        if (sun_frame_.draw(route.submit && SUCCEEDED(result),
+                            route.routed && route.depth && !route.fade_arm && route.sun_receiver, coverage,
+                            stamped || (route.routed && route.depth && !route.fade_arm), reason,
+                            (route.sun_z_state & 7u) == 7u))
+            note_sun_untracked_writer(route, reason);
     }
     if (candidates_requested_ && route.routed && SUCCEEDED(result)) note_candidate_draw(route);
     if (route.routed) {
@@ -6277,22 +8639,26 @@ void MotionOutput::after_draw(MotionRoute& route, HRESULT result) noexcept {
     // SetSamplerState per biased stage (the mask is empty otherwise).
     if (!state_hooks_ && sampler_biased_mask_) restore_mip_bias();
     if (route.jittered && !composition_state_lost_) restore_jitter(route);
-    if (pending_valid_) { pending_valid_ = false; observe(pending_, result); }
+    if (pending_valid_) {
+        pending_valid_ = false;
+        observe(pending_, result);
+    }
     if (capture_ && route.scene) {
         const auto& k = route.key;
         log("motion_route device=%llu frame=%llu index=%lu gate=%u routed=%u matched=%u depth=%u jittered=%u vs=%016llx ps=%016llx node=%p camera=%p node_handle=%lu camera_handle=%lu node_serial=%llu camera_serial=%llu load_epoch=%llu registry_epoch=%llu model=%08lx lod=%08lx vb=%llu ib=%llu declaration=%016llx offset=%u stride=%u position_offset=%u position_type=%u topology=%u first=%u primitives=%u base_vertex=%d min_vertex=%u vertex_count=%u indexed=%u pass=%lu rows_hash=%016llx result=%08lx"
             " zwrite=%ld blend=%ld src=%ld dst=%ld atest=%ld mask=%ld sepalpha=%ld fog=%ld fade_arm=%u fade_permille=%u fade_held=%u unmatched=%s",
-            id_, frame_, counters_.draws, unsigned(route.gate), route.routed, route.matched, route.routed && route.depth, jittered, shadow_.vs_hash, shadow_.ps_hash,
-            reinterpret_cast<void*>(k.node), reinterpret_cast<void*>(k.camera), static_cast<unsigned long>(k.node_handle),
-            static_cast<unsigned long>(k.camera_handle), k.object_lifetime, k.camera_lifetime, route.load_epoch, route.registry_epoch,
-            static_cast<unsigned long>(k.model), static_cast<unsigned long>(k.lod), k.vertex_buffer, k.index_buffer, k.declaration,
-            k.stream_offset, k.stride, k.position_offset, k.position_type, k.topology, k.first, k.primitives, k.base_vertex,
-            k.min_vertex, k.vertex_count, k.indexed, static_cast<unsigned long>(k.pass), route.rows_hash, result,
-            shadow_state_field(D3DRS_ZWRITEENABLE), shadow_state_field(D3DRS_ALPHABLENDENABLE),
-            composition_blend_field(0), composition_blend_field(1),
+            id_, frame_, counters_.draws, unsigned(route.gate), route.routed, route.matched,
+            route.routed && route.depth, jittered, shadow_.vs_hash, shadow_.ps_hash, reinterpret_cast<void*>(k.node),
+            reinterpret_cast<void*>(k.camera), static_cast<unsigned long>(k.node_handle),
+            static_cast<unsigned long>(k.camera_handle), k.object_lifetime, k.camera_lifetime, route.load_epoch,
+            route.registry_epoch, static_cast<unsigned long>(k.model), static_cast<unsigned long>(k.lod),
+            k.vertex_buffer, k.index_buffer, k.declaration, k.stream_offset, k.stride, k.position_offset,
+            k.position_type, k.topology, k.first, k.primitives, k.base_vertex, k.min_vertex, k.vertex_count, k.indexed,
+            static_cast<unsigned long>(k.pass), route.rows_hash, result, shadow_state_field(D3DRS_ZWRITEENABLE),
+            shadow_state_field(D3DRS_ALPHABLENDENABLE), composition_blend_field(0), composition_blend_field(1),
             shadow_state_field(D3DRS_ALPHATESTENABLE), shadow_state_field(D3DRS_COLORWRITEENABLE),
-            composition_blend_field(3), shadow_state_field(D3DRS_FOGENABLE), unsigned(route.fade_arm), route.fade_permille, unsigned(route.fade_held),
-            unmatched_reason_name(route.unmatched));
+            composition_blend_field(3), shadow_state_field(D3DRS_FOGENABLE), unsigned(route.fade_arm),
+            route.fade_permille, unsigned(route.fade_held), unmatched_reason_name(route.unmatched));
     }
 }
 
@@ -6324,7 +8690,10 @@ IDirect3DSurface9* MotionOutput::before_set_render_target(DWORD index, IDirect3D
     hdr_pending_state_ = 0;
     if (composition_state_lost_ || motion_state_lost_) return surface;
     if (index != 0 || hdr_state_ == HdrState::Off || !hdr_ || !hdr_->target()) return surface;
-    if (hdr_is_main(surface)) { hdr_pending_state_ = std::uint32_t(HdrState::Active); return hdr_->target(); }
+    if (hdr_is_main(surface)) {
+        hdr_pending_state_ = std::uint32_t(HdrState::Active);
+        return hdr_->target();
+    }
     // Another surface (an environment-map face): forwarded verbatim; the scene
     // so far is written back first so the main target is valid whether or not
     // the application ever rebinds it.
@@ -6344,7 +8713,9 @@ void MotionOutput::before_render_target_read(IDirect3DSurface9* surface) noexcep
 void MotionOutput::before_render_target_write(IDirect3DSurface9* surface) noexcept {
     if (hdr_state_ != HdrState::Off && hdr_is_main(surface)) end_redirect(HdrEnd::ContentWrite);
 }
-void MotionOutput::before_end_scene() noexcept { if (hdr_state_ == HdrState::Active) flush_redirect(); }
+void MotionOutput::before_end_scene() noexcept {
+    if (hdr_state_ == HdrState::Active) flush_redirect();
+}
 
 // At the latching Clear, before it is forwarded: only the Clear the selector
 // will latch (probed on a copy), never a multisampled target, never while
@@ -6355,10 +8726,14 @@ void MotionOutput::begin_redirect() noexcept {
     if (selector_.state() != renderer::BoundaryState::AwaitInitialClear || !hdr_) return;
     renderer::SceneBoundarySelector probe = selector_;
     renderer::Event e = pending_;
-    e.result_known = true; e.result = 0;
+    e.result_known = true;
+    e.result = 0;
     probe.observe(e);
     if (probe.state() != renderer::BoundaryState::Background) return;
-    if (pending_.rt.msaa || pending_.depth.msaa) { h.refused_msaa = true; return; }
+    if (pending_.rt.msaa || pending_.depth.msaa) {
+        h.refused_msaa = true;
+        return;
+    }
     if (hdr_blocked_) {
         h.blocked = true;
         if (hdr_blocked_latches_++ % hdr_recheck_interval != 0) return;
@@ -6367,58 +8742,88 @@ void MotionOutput::begin_redirect() noexcept {
         const bool passed = hdr_->recheck(scene_open_, detail, sizeof detail);
         h.recheck_ticks = stamp() - begin;
         record(unsigned(telemetry::Metric::HdrRecheck), h.recheck_ticks, !passed);
-        h.recheck_ran = true; h.recheck_passed = passed;
+        h.recheck_ran = true;
+        h.recheck_passed = passed;
         log("hdr_recheck device=%llu frame=%llu passed=%u %s", id_, frame_, passed, detail);
         if (!passed) return;
-        hdr_blocked_ = false; hdr_blocked_latches_ = 0; h.blocked = false;
+        hdr_blocked_ = false;
+        hdr_blocked_latches_ = 0;
+        h.blocked = false;
     }
     if (hdr_target_failed_) return;
-    const bool had_target = hdr_->target() && hdr_->width() == pending_.rt.width && hdr_->height() == pending_.rt.height;
+    const bool had_target = hdr_->target() && hdr_->width() == pending_.rt.width &&
+                            hdr_->height() == pending_.rt.height;
     const HRESULT create = hdr_->ensure_target(pending_.rt.width, pending_.rt.height);
     h.target_create = create;
     if (!had_target || FAILED(create))
         log("hdr_target device=%llu frame=%llu width=%u height=%u format=A16B16G16R16F bytes=%llu create=%08lx chain_levels=%u chain_bytes=%llu meter=%u meter_reason=%s",
             id_, frame_, pending_.rt.width, pending_.rt.height, FAILED(create) ? 0ull : hdr_->target_bytes(), create,
             hdr_->chain_levels(), hdr_->chain_bytes(), hdr_->caps().meter, hdr_->caps().meter_reason);
-    if (FAILED(create)) { hdr_target_failed_ = true; return; } // Retry only after Reset, like the motion target.
+    if (FAILED(create)) {
+        hdr_target_failed_ = true;
+        return;
+    } // Retry only after Reset, like the motion target.
     // The application's RT0 (one reference, held until the redirect ends) must
     // be the logical binding the shadow describes; else nothing is redirected.
     IDirect3DSurface9* main = nullptr;
     HRESULT hr = native<GetRenderTargetFn>(GetRenderTarget)(device_, 0, &main);
     if (FAILED(hr) || !main || !same(describe_surface(main), pending_.rt)) {
-        if (hdr_logged_ < failure_log_limit) { ++hdr_logged_; log("hdr_redirect_refused device=%llu frame=%llu reason=binding result=%08lx", id_, frame_, hr); }
-        release(main); return;
+        if (hdr_logged_ < failure_log_limit) {
+            ++hdr_logged_;
+            log("hdr_redirect_refused device=%llu frame=%llu reason=binding result=%08lx", id_, frame_, hr);
+        }
+        release(main);
+        return;
     }
     std::uint64_t ticks = 0;
     hr = hdr_->bind(hdr_->target(), telemetry_ ? &ticks : nullptr);
-    h.latch_bind = hr; h.redirect_ticks = ticks;
+    h.latch_bind = hr;
+    h.redirect_ticks = ticks;
     record(unsigned(telemetry::Metric::HdrRedirect), ticks, FAILED(hr));
     if (FAILED(hr)) {
         // A failed bind changes nothing (D3D9 keeps the previous target); the
         // frame runs without the redirect.
-        if (hdr_logged_ < failure_log_limit) { ++hdr_logged_; log("hdr_redirect_refused device=%llu frame=%llu reason=bind result=%08lx", id_, frame_, hr); }
-        release(main); return;
+        if (hdr_logged_ < failure_log_limit) {
+            ++hdr_logged_;
+            log("hdr_redirect_refused device=%llu frame=%llu reason=bind result=%08lx", id_, frame_, hr);
+        }
+        release(main);
+        return;
     }
     hdr_main_ = main;
     hdr_target_ = describe_surface(hdr_->target());
-    hdr_state_ = HdrState::Active; hdr_dirty_ = true; hdr_latch_pending_ = true;
+    hdr_state_ = HdrState::Active;
+    hdr_dirty_ = true;
+    hdr_latch_pending_ = true;
     h.redirected = true;
     if (fog_requested_) {
         prepare_volumetric_fog_targets(pending_.rt.width, pending_.rt.height);
-        if (fog_density_requested_) { gpu_sync_timing::Span span(gpu_sync_, gpu_sync_timing::FogFill); prepare_volumetric_fog_density(pending_.rt.width, pending_.rt.height); } // --gpu-sync-timing: the fill's pair
+        if (fog_density_requested_) {
+            gpu_sync_timing::Span span(gpu_sync_, gpu_sync_timing::FogFill);
+            prepare_volumetric_fog_density(pending_.rt.width, pending_.rt.height);
+        } // --gpu-sync-timing: the fill's pair
     }
     probe_cutout_caps(); // a transient verdict retries at this boundary, never a draw
     // Stage 2: consume the previous frame's meter and adapt the EV this
     // frame's tonemap consumes (a no-op with the identity write-back).
     if (hdr_->tonemap_active()) {
         static std::uint64_t frequency = 0;
-        if (!frequency) { LARGE_INTEGER f{}; QueryPerformanceFrequency(&f); frequency = std::uint64_t(f.QuadPart); }
-        LARGE_INTEGER now{}; QueryPerformanceCounter(&now);
+        if (!frequency) {
+            LARGE_INTEGER f{};
+            QueryPerformanceFrequency(&f);
+            frequency = std::uint64_t(f.QuadPart);
+        }
+        LARGE_INTEGER now{};
+        QueryPerformanceCounter(&now);
         if (gpu_sync_) gpu_sync_->begin(gpu_sync_timing::HdrReadback); // --gpu-sync-timing only
         const renderer::HdrFrameBegin b = hdr_->begin_frame(std::uint64_t(now.QuadPart), frequency, telemetry_);
         if (gpu_sync_) gpu_sync_->end(gpu_sync_timing::HdrReadback);
-        h.stepped = b.stepped; h.readback = b.readback; h.readback_ticks = b.ticks_readback; h.readback_timing = b.readback_timing;
-        if (b.readback != S_FALSE) record(unsigned(telemetry::Metric::HdrMeterReadback), b.ticks_readback, FAILED(b.readback));
+        h.stepped = b.stepped;
+        h.readback = b.readback;
+        h.readback_ticks = b.ticks_readback;
+        h.readback_timing = b.readback_timing;
+        if (b.readback != S_FALSE)
+            record(unsigned(telemetry::Metric::HdrMeterReadback), b.ticks_readback, FAILED(b.readback));
     }
     // Stage 3: k of the resolve's luminance weighting for this frame = the
     // exposure multiplier exp2(EV) the AgX write-back applies to the resolved
@@ -6432,38 +8837,59 @@ void MotionOutput::begin_redirect() noexcept {
 // readback of the FP16 image before the first one of the frame, the
 // telemetry and the block after an unwind.
 renderer::HdrWriteback MotionOutput::hdr_writeback(IDirect3DSurface9* final_rt0, bool write,
-                                                renderer::HdrDisplaySnapshot* display) noexcept {
+                                                   renderer::HdrDisplaySnapshot* display) noexcept {
     auto& h = counters_.hdr;
-    if (write && composition_enhanced_ && !composition_terminal_export_ && !composition_diagnostic_export_) composition_export();
+    if (write && composition_enhanced_ && !composition_terminal_export_ && !composition_diagnostic_export_)
+        composition_export();
     if (write && composition_enhanced_) composition_published_ = true;
     if (write && capture_ && !h.writebacks && hdr_->target())
-        readback_surface(hdr_->target(), D3DFMT_A16B16G16R16F, 8, L"hdr", L"rgba16f", "hdr_readback", "rgba16f_row_major", hdr_->width(), hdr_->height());
+        readback_surface(hdr_->target(), D3DFMT_A16B16G16R16F, 8, L"hdr", L"rgba16f", "hdr_readback",
+                         "rgba16f_row_major", hdr_->width(), hdr_->height());
     const std::uint64_t begin = stamp();
-    if (gpu_sync_) gpu_sync_->begin(gpu_sync_timing::HdrWriteback); // --gpu-sync-timing only (flushes add up; the meter's pair nests inside)
-    const renderer::HdrWriteback r = hdr_->write_back(hdr_main_, final_rt0, scene_open_, write, telemetry_, hdr_resolved_, display);
+    if (gpu_sync_)
+        gpu_sync_->begin(gpu_sync_timing::HdrWriteback); // --gpu-sync-timing only (flushes add up; the meter's pair
+                                                         // nests inside)
+    const renderer::HdrWriteback r = hdr_->write_back(hdr_main_, final_rt0, scene_open_, write, telemetry_,
+                                                      hdr_resolved_, display);
     if (gpu_sync_) gpu_sync_->end(gpu_sync_timing::HdrWriteback);
     const std::uint64_t ticks = stamp() - begin;
     if (write) {
-        ++h.writebacks; h.source = unsigned(r.source);
-        h.writeback_ticks += ticks; h.writeback_draw_ticks += r.ticks_draw; h.writeback_stretch_ticks += r.ticks_stretch;
-        h.tonemap = r.tonemap; h.fallback = h.fallback || r.fallback; h.tonemap_draw = r.tonemap_draw;
-        h.sharpened = r.sharpened; h.sharpen_fallback = h.sharpen_fallback || r.sharpen_fallback;
+        ++h.writebacks;
+        h.source = unsigned(r.source);
+        h.writeback_ticks += ticks;
+        h.writeback_draw_ticks += r.ticks_draw;
+        h.writeback_stretch_ticks += r.ticks_stretch;
+        h.tonemap = r.tonemap;
+        h.fallback = h.fallback || r.fallback;
+        h.tonemap_draw = r.tonemap_draw;
+        h.sharpened = r.sharpened;
+        h.sharpen_fallback = h.sharpen_fallback || r.sharpen_fallback;
         if (r.sharpened) counters_.taa.sharpened = true;
-        if (r.meter != S_FALSE) { h.meter = r.meter; h.meter_ticks += r.ticks_meter; record(unsigned(telemetry::Metric::HdrMeter), r.ticks_meter, FAILED(r.meter)); }
+        if (r.meter != S_FALSE) {
+            h.meter = r.meter;
+            h.meter_ticks += r.ticks_meter;
+            record(unsigned(telemetry::Metric::HdrMeter), r.ticks_meter, FAILED(r.meter));
+        }
         record(unsigned(telemetry::Metric::HdrWriteback), ticks, r.unwind);
         record(unsigned(telemetry::Metric::HdrWritebackDraw), r.ticks_draw, FAILED(r.draw) || FAILED(r.restore));
-        if (r.ticks_stretch) record(unsigned(telemetry::Metric::HdrWritebackStretch), r.ticks_stretch, FAILED(r.stretch));
+        if (r.ticks_stretch)
+            record(unsigned(telemetry::Metric::HdrWritebackStretch), r.ticks_stretch, FAILED(r.stretch));
         if (r.fallback && !hdr_->tonemap_active() && !hdr_tonemap_disabled_logged_) {
             hdr_tonemap_disabled_logged_ = true;
-            log("hdr_tonemap_disabled device=%llu frame=%llu reason=draw_failures draw=%08lx", id_, frame_, r.tonemap_draw);
+            log("hdr_tonemap_disabled device=%llu frame=%llu reason=draw_failures draw=%08lx", id_, frame_,
+                r.tonemap_draw);
         }
         // --taa-debug: the 8-bit main target after the write-back of a resolved
         // frame (tonemapped and/or sharpened as configured): the presented image
         // of this resolve, the counterpart of the 8-bit route's readback in resolve().
         if (capture_ && taa_debug_ && hdr_resolved_ && !r.unwind)
-            readback_surface(hdr_main_, static_cast<D3DFORMAT>(main_.format), 4, L"present", L"bgra8", "motion_output_present_readback", "bgra8_row_major", target_width_, target_height_);
+            readback_surface(hdr_main_, static_cast<D3DFORMAT>(main_.format), 4, L"present", L"bgra8",
+                             "motion_output_present_readback", "bgra8_row_major", target_width_, target_height_);
     }
-    if (r.ticks_bind) { h.bind_ticks += r.ticks_bind; record(unsigned(telemetry::Metric::HdrBind), r.ticks_bind, FAILED(r.bind)); }
+    if (r.ticks_bind) {
+        h.bind_ticks += r.ticks_bind;
+        record(unsigned(telemetry::Metric::HdrBind), r.ticks_bind, FAILED(r.bind));
+    }
     hdr_dirty_ = false;
     if (r.unwind) {
         // The must-unwind ladder was taken: the main target holds the shader
@@ -6471,21 +8897,31 @@ renderer::HdrWriteback MotionOutput::hdr_writeback(IDirect3DSurface9* final_rt0,
         // main target again (or the target, for a flush). The device state may
         // be unknown after a failed restoration; the next latch redirects only
         // after the recovery self test passes.
-        h.unwind = true; h.unwind_reason = r.unwind_reason;
-        h.unwind_draw = r.draw; h.unwind_restore = r.restore; h.unwind_stretch = r.stretch; h.unwind_bind = r.bind;
-        hdr_blocked_ = true; hdr_blocked_latches_ = 0;
-        if (FAILED(r.restore)) { ++counters_.restore_failures; invalidate_render_states(); }
+        h.unwind = true;
+        h.unwind_reason = r.unwind_reason;
+        h.unwind_draw = r.draw;
+        h.unwind_restore = r.restore;
+        h.unwind_stretch = r.stretch;
+        h.unwind_bind = r.bind;
+        hdr_blocked_ = true;
+        hdr_blocked_latches_ = 0;
+        if (FAILED(r.restore)) {
+            ++counters_.restore_failures;
+            invalidate_render_states();
+        }
         if (hdr_logged_ < failure_log_limit) {
             ++hdr_logged_;
             log("hdr_unwind=%s device=%llu frame=%llu source=%s draw=%08lx restore=%08lx stretch=%08lx bind=%08lx write=%u final=%s",
-                r.unwind_reason, id_, frame_, hdr_source_name(unsigned(r.source)), r.draw, r.restore, r.stretch, r.bind, write,
-                final_rt0 == hdr_main_ ? "main" : "target");
+                r.unwind_reason, id_, frame_, hdr_source_name(unsigned(r.source)), r.draw, r.restore, r.stretch, r.bind,
+                write, final_rt0 == hdr_main_ ? "main" : "target");
         }
     }
     return r;
 }
 void MotionOutput::flush_redirect() noexcept {
-    if (composition_state_lost_ || motion_state_lost_ || hdr_state_ != HdrState::Active || !hdr_dirty_ || !hdr_ || !hdr_main_) return;
+    if (composition_state_lost_ || motion_state_lost_ || hdr_state_ != HdrState::Active || !hdr_dirty_ || !hdr_ ||
+        !hdr_main_)
+        return;
     ++counters_.hdr.flushes;
     hdr_writeback(hdr_->target(), true);
 }
@@ -6498,20 +8934,20 @@ void MotionOutput::end_redirect(HdrEnd reason, MotionHdrSceneCallback callback, 
         // This optional handoff is stricter than the display fallback: failed
         // or skipped TAA still presents the unresolved image as before, but
         // cannot arm bloom or trigger another resolve through this callback.
-        const bool handoff = callback && reason == HdrEnd::Hook && bloom_boundary_available()
-            && selector_.state() == renderer::BoundaryState::Scene && counters_.hook_scene_end
-            && !main_msaa_
-            && (!taa_enabled_ || (hdr_resolved_ && t.attempted && t.resolved && t.hdr
-                && t.source == unsigned(SceneEndSource::Hook) && SUCCEEDED(t.result) && SUCCEEDED(t.restore)));
+        const bool handoff = callback && reason == HdrEnd::Hook && bloom_boundary_available() &&
+                             selector_.state() == renderer::BoundaryState::Scene && counters_.hook_scene_end &&
+                             !main_msaa_ &&
+                             (!taa_enabled_ || (hdr_resolved_ && t.attempted && t.resolved && t.hdr &&
+                                                t.source == unsigned(SceneEndSource::Hook) && SUCCEEDED(t.result) &&
+                                                SUCCEEDED(t.restore)));
         if (handoff) {
             renderer::HdrDisplaySnapshot display;
             const auto r = hdr_writeback(hdr_main_, write, &display);
-            if (display.valid && !r.unwind && r.tonemap && r.source == renderer::HdrWritebackSource::Shader
-                && SUCCEEDED(r.draw) && SUCCEEDED(r.restore)
-                && display.resolved == (hdr_resolved_ != nullptr)
-                && display.width && display.height && display.width == hdr_->width() && display.height == hdr_->height()
-                && display.width == main_.width && display.height == main_.height
-                && same(describe_surface(hdr_main_), main_)) {
+            if (display.valid && !r.unwind && r.tonemap && r.source == renderer::HdrWritebackSource::Shader &&
+                SUCCEEDED(r.draw) && SUCCEEDED(r.restore) && display.resolved == (hdr_resolved_ != nullptr) &&
+                display.width && display.height && display.width == hdr_->width() && display.height == hdr_->height() &&
+                display.width == main_.width && display.height == main_.height &&
+                same(describe_surface(hdr_main_), main_)) {
                 IDirect3DTexture9* scene = hdr_resolved_;
                 const bool temporary = scene == nullptr;
                 HRESULT container = S_OK;
@@ -6526,22 +8962,34 @@ void MotionOutput::end_redirect(HdrEnd reason, MotionHdrSceneCallback callback, 
                 }
                 if (temporary) release(scene); // includes a non-null output accompanying a failed HRESULT
             }
-        } else hdr_writeback(hdr_main_, write);
+        } else
+            hdr_writeback(hdr_main_, write);
     }
     // Suspended: the application bound another surface itself and the main
     // target already holds the write-back of the switch; nothing to rebind.
     release_composition_identity();
     release(hdr_main_);
-    hdr_state_ = HdrState::Off; hdr_dirty_ = false; hdr_latch_pending_ = false; hdr_pending_state_ = 0; hdr_resolved_ = nullptr;
+    hdr_state_ = HdrState::Off;
+    hdr_dirty_ = false;
+    hdr_latch_pending_ = false;
+    hdr_pending_state_ = 0;
+    hdr_resolved_ = nullptr;
     counters_.hdr.end = std::uint32_t(reason);
     composition_terminal_export_ = false;
 }
 void MotionOutput::drop_redirect() noexcept {
     hdr_resolved_ = nullptr;
-    if (hdr_state_ == HdrState::Off) { release_composition_identity(); release(hdr_main_); return; }
+    if (hdr_state_ == HdrState::Off) {
+        release_composition_identity();
+        release(hdr_main_);
+        return;
+    }
     release_composition_identity();
     release(hdr_main_);
-    hdr_state_ = HdrState::Off; hdr_dirty_ = false; hdr_latch_pending_ = false; hdr_pending_state_ = 0;
+    hdr_state_ = HdrState::Off;
+    hdr_dirty_ = false;
+    hdr_latch_pending_ = false;
+    hdr_pending_state_ = 0;
     counters_.hdr.end = std::uint32_t(HdrEnd::Dropped);
 }
 void MotionOutput::log_hdr_frame() noexcept {
@@ -6561,20 +9009,23 @@ void MotionOutput::log_hdr_frame() noexcept {
     const auto& e = hdr_ ? hdr_->exposure() : renderer::ExposureState{};
     const auto& c = hdr_ ? hdr_->config() : renderer::HdrConfig{};
     log("hdr_frame device=%llu frame=%llu hdr=%u redirected=%u end=%s writebacks=%lu flushes=%lu writeback_source=%s unwind=%u unwind_reason=%s unwind_draw=%08lx unwind_restore=%08lx unwind_stretch=%08lx unwind_bind=%08lx blocked=%u recheck=%s suspended=%lu resumed=%lu dirty_at_present=%u refused_msaa=%u target_create=%08lx latch_bind=%08lx target=%ux%u target_bytes=%llu caps=%s stretch_conversion=%08lx timing=%s redirect_us=%.1f writeback_us=%.1f writeback_draw_us=%.1f writeback_stretch_us=%.1f bind_us=%.1f recheck_us=%.1f tonemap=%s tonemapped=%u look=%s decode=%s clamp=%g exposure=%s ev=%.5f ev_adapted=%.5f ev_target=%.5f avg_log_l=%.5f luma_mean=%.6g lit_fraction=%.4f luma_lit=%.6g luma_p99=%.6g ev_key=%.5f ev_limit=%.5f ev_fresh=%.5f tiles=%u lit=%u dt_ms=%.3f stepped=%u steps=%u meter=%08lx readback=%08lx tonemap_draw=%08lx fallback=%u meter_us=%.1f readback_us=%.1f readback_transfer_lock_us=%.1f readback_extract_unlock_us=%.1f readback_statistics_adapt_us=%.1f readback_clock_errors=%u k=%.5f chain_bytes=%llu sharpen=%s sharpened=%u sharpen_fallback=%u",
-        id_, frame_, hdr_enabled_, h.redirected, hdr_end_name(h.end), static_cast<unsigned long>(h.writebacks), static_cast<unsigned long>(h.flushes),
-        hdr_source_name(h.source), h.unwind, h.unwind_reason, h.unwind_draw, h.unwind_restore, h.unwind_stretch, h.unwind_bind,
-        h.blocked, h.recheck_ran ? (h.recheck_passed ? "pass" : "fail") : "none", static_cast<unsigned long>(h.suspended),
+        id_, frame_, hdr_enabled_, h.redirected, hdr_end_name(h.end), static_cast<unsigned long>(h.writebacks),
+        static_cast<unsigned long>(h.flushes), hdr_source_name(h.source), h.unwind, h.unwind_reason, h.unwind_draw,
+        h.unwind_restore, h.unwind_stretch, h.unwind_bind, h.blocked,
+        h.recheck_ran ? (h.recheck_passed ? "pass" : "fail") : "none", static_cast<unsigned long>(h.suspended),
         static_cast<unsigned long>(h.resumed), h.dirty_at_present, h.refused_msaa, h.target_create, h.latch_bind,
-        hdr_ ? hdr_->width() : 0u, hdr_ ? hdr_->height() : 0u, hdr_ ? hdr_->target_bytes() : 0ull, caps.reason, caps.stretch_conversion,
-        telemetry_ ? "cpu_qpc" : "off", us(h.redirect_ticks), us(h.writeback_ticks), us(h.writeback_draw_ticks), us(h.writeback_stretch_ticks),
-        us(h.bind_ticks), us(h.recheck_ticks),
-        tonemap ? "agx" : "identity", h.tonemap, renderer::hdr_look_name(c.look), renderer::hdr_decode_name(c.decode), double(c.clamp_max),
-        renderer::hdr_exposure_name(c.exposure), double(e.ev()), double(e.ev_adapted()), double(e.ev_target()), double(e.avg_log_l()),
-        double(std::exp2(e.avg_log_l())), double(e.meter().lit_fraction), double(std::exp2(e.meter().lit_median_log)), double(std::exp2(e.meter().p99_max_log)),
-        double(e.ev_key()), double(e.ev_limit()), double(e.ev_fresh()), e.meter().tiles, e.meter().lit,
-        double(e.dt()) * 1000., h.stepped, e.steps(), h.meter, h.readback, h.tonemap_draw, h.fallback,
-        us(h.meter_ticks), us(h.readback_ticks), us(h.readback_timing.ticks[0]), us(h.readback_timing.ticks[1]), us(h.readback_timing.ticks[2]), h.readback_timing.clock_errors, double(hdr_taa_k_), hdr_ ? hdr_->chain_bytes() : 0ull,
-        caps.sharpen_reason, h.sharpened, h.sharpen_fallback);
+        hdr_ ? hdr_->width() : 0u, hdr_ ? hdr_->height() : 0u, hdr_ ? hdr_->target_bytes() : 0ull, caps.reason,
+        caps.stretch_conversion, telemetry_ ? "cpu_qpc" : "off", us(h.redirect_ticks), us(h.writeback_ticks),
+        us(h.writeback_draw_ticks), us(h.writeback_stretch_ticks), us(h.bind_ticks), us(h.recheck_ticks),
+        tonemap ? "agx" : "identity", h.tonemap, renderer::hdr_look_name(c.look), renderer::hdr_decode_name(c.decode),
+        double(c.clamp_max), renderer::hdr_exposure_name(c.exposure), double(e.ev()), double(e.ev_adapted()),
+        double(e.ev_target()), double(e.avg_log_l()), double(std::exp2(e.avg_log_l())), double(e.meter().lit_fraction),
+        double(std::exp2(e.meter().lit_median_log)), double(std::exp2(e.meter().p99_max_log)), double(e.ev_key()),
+        double(e.ev_limit()), double(e.ev_fresh()), e.meter().tiles, e.meter().lit, double(e.dt()) * 1000., h.stepped,
+        e.steps(), h.meter, h.readback, h.tonemap_draw, h.fallback, us(h.meter_ticks), us(h.readback_ticks),
+        us(h.readback_timing.ticks[0]), us(h.readback_timing.ticks[1]), us(h.readback_timing.ticks[2]),
+        h.readback_timing.clock_errors, double(hdr_taa_k_), hdr_ ? hdr_->chain_bytes() : 0ull, caps.sharpen_reason,
+        h.sharpened, h.sharpen_fallback);
 }
 
 // ---- frame end -------------------------------------------------------------
@@ -6582,21 +9033,27 @@ void MotionOutput::log_hdr_frame() noexcept {
 // Copies one owned target through system memory to <prefix>_<device>_<frame>.<extension>
 // beside the capture log (row-major, bytes_per_pixel per pixel, no header).
 HRESULT MotionOutput::readback_surface(IDirect3DSurface9* surface, D3DFORMAT format, unsigned bytes_per_pixel,
-                                       const wchar_t* prefix, const wchar_t* extension, const char* tag, const char* format_name,
-                                       UINT width, UINT height) noexcept {
+                                       const wchar_t* prefix, const wchar_t* extension, const char* tag,
+                                       const char* format_name, UINT width, UINT height) noexcept {
     const std::uint64_t begin = stamp(); // route_readback: allocation, GetRenderTargetData, lock, file write.
     IDirect3DSurface9* copy = nullptr;
-    HRESULT hr = !width || !height ? E_INVALIDARG : native<CreateOffscreenFn>(CreateOffscreenPlainSurface)(device_, width, height,
-        format, D3DPOOL_SYSTEMMEM, &copy, nullptr);
+    HRESULT hr = !width || !height ? E_INVALIDARG
+                                   : native<CreateOffscreenFn>(CreateOffscreenPlainSurface)(
+                                         device_, width, height, format, D3DPOOL_SYSTEMMEM, &copy, nullptr);
     if (SUCCEEDED(hr)) hr = native<GetRtDataFn>(GetRenderTargetData)(device_, surface, copy);
     std::size_t written = 0;
     // Fixed buffers: this runs inside a noexcept hook path, so no std::wstring.
     wchar_t name[96]{}, path[MAX_PATH + 96]{};
     const wchar_t* dir = capture_directory();
     const std::size_t dir_length = std::wcslen(dir);
-    swprintf(name, 96, L"\\%ls_%llu_%llu.%ls", prefix, static_cast<unsigned long long>(id_), static_cast<unsigned long long>(frame_), extension);
-    if (dir_length + std::wcslen(name) + 1 > sizeof path / sizeof path[0]) hr = E_FAIL;
-    else { std::wmemcpy(path, dir, dir_length); std::wcscpy(path + dir_length, name); }
+    swprintf(name, 96, L"\\%ls_%llu_%llu.%ls", prefix, static_cast<unsigned long long>(id_),
+             static_cast<unsigned long long>(frame_), extension);
+    if (dir_length + std::wcslen(name) + 1 > sizeof path / sizeof path[0])
+        hr = E_FAIL;
+    else {
+        std::wmemcpy(path, dir, dir_length);
+        std::wcscpy(path + dir_length, name);
+    }
     if (SUCCEEDED(hr)) {
         D3DLOCKED_RECT lock{};
         hr = copy->LockRect(&lock, nullptr, D3DLOCK_READONLY);
@@ -6604,18 +9061,21 @@ HRESULT MotionOutput::readback_surface(IDirect3DSurface9* surface, D3DFORMAT for
             FILE* file = _wfopen(path, L"wb");
             if (file) {
                 for (UINT y = 0; y < height; ++y)
-                    written += std::fwrite(static_cast<const char*>(lock.pBits) + y * lock.Pitch, 1, std::size_t(width) * bytes_per_pixel, file);
+                    written += std::fwrite(static_cast<const char*>(lock.pBits) + y * lock.Pitch, 1,
+                                           std::size_t(width) * bytes_per_pixel, file);
                 if (std::fclose(file)) hr = E_FAIL;
-            } else hr = E_FAIL;
+            } else
+                hr = E_FAIL;
             copy->UnlockRect();
         }
     }
     release(copy);
     const std::uint64_t ticks = stamp() - begin;
-    ++counters_.readbacks; counters_.readback_ticks += ticks;
+    ++counters_.readbacks;
+    counters_.readback_ticks += ticks;
     record(unsigned(telemetry::Metric::RouteReadback), ticks, FAILED(hr), written);
-    log("%s device=%llu frame=%llu file=%ls_%llu_%llu.%ls width=%u height=%u format=%s result=%08lx bytes=%u",
-        tag, id_, frame_, prefix, id_, frame_, extension, width, height, format_name, hr, unsigned(written));
+    log("%s device=%llu frame=%llu file=%ls_%llu_%llu.%ls width=%u height=%u format=%s result=%08lx bytes=%u", tag, id_,
+        frame_, prefix, id_, frame_, extension, width, height, format_name, hr, unsigned(written));
     return hr;
 }
 // Capture frames: RT1 as motion_<device>_<frame>.rgba32f and, when produced,
@@ -6624,11 +9084,16 @@ HRESULT MotionOutput::readback_surface(IDirect3DSurface9* surface, D3DFORMAT for
 // .r = z/w, .g = share, .b = .a = clip w).
 void MotionOutput::readback() noexcept {
     if (!target_surface_ || !counters_.filled) return;
-    readback_surface(target_surface_, D3DFMT_A32B32G32R32F, 16, L"motion", L"rgba32f", "motion_output_readback", "rgba32f_row_major", target_width_, target_height_);
+    readback_surface(target_surface_, D3DFMT_A32B32G32R32F, 16, L"motion", L"rgba32f", "motion_output_readback",
+                     "rgba32f_row_major", target_width_, target_height_);
     if (depth_enabled_ && depth_surface_)
-        readback_surface(depth_surface_, lane_depth_format(), sun_lane_active_?16:4, L"depth", sun_lane_active_?L"rgba32f":L"r32f", "motion_output_depth_readback", sun_lane_active_?"rgba32f_row_major":"r32f_row_major", target_width_, target_height_);
-    if(sun_lane_active_&&sun_frame_.available&&sun_frame_.coverage_required&&sun_coverage_current_&&composition_)
-        readback_surface(composition_->coverage_target(),D3DFMT_A16B16G16R16F,8,L"sun_coverage",L"rgba16f","sun_shadow_lane_coverage_readback","rgba16f_row_major",target_width_,target_height_);
+        readback_surface(depth_surface_, lane_depth_format(), sun_lane_active_ ? 16 : 4, L"depth",
+                         sun_lane_active_ ? L"rgba32f" : L"r32f", "motion_output_depth_readback",
+                         sun_lane_active_ ? "rgba32f_row_major" : "r32f_row_major", target_width_, target_height_);
+    if (sun_lane_active_ && sun_frame_.available && sun_frame_.coverage_required && sun_coverage_current_ &&
+        composition_)
+        readback_surface(composition_->coverage_target(), D3DFMT_A16B16G16R16F, 8, L"sun_coverage", L"rgba16f",
+                         "sun_shadow_lane_coverage_readback", "rgba16f_row_major", target_width_, target_height_);
     // The depth replay's map (R32F, size x size, 4 MiB at 1024^2) beside the
     // RT2 readback, with the frame's view -> sun rows and basis, so the would-be
     // mask can be judged offline without the lane (legacy-sun-application.md
@@ -6638,21 +9103,28 @@ void MotionOutput::readback() noexcept {
         // section 3): the basis is the one the map was last replayed with, so
         // the far line's replayed_frame may lag the capture frame; an absent
         // cascade (valid=0) has no readback.
-        static constexpr const wchar_t* stems[renderer::shadow_cascade_max] = {L"shadow_map0", L"shadow_map1", L"shadow_map2", L"shadow_map3", L"shadow_map4"};
+        static constexpr const wchar_t* stems[renderer::shadow_cascade_max] = {
+            L"shadow_map0", L"shadow_map1", L"shadow_map2", L"shadow_map3", L"shadow_map4"};
         for (unsigned i = 0; i < depth_cascades_.count; ++i) {
             const auto* kept = depth_replay_->retained(i);
             const auto& cascade = depth_cascades_.cascades[i];
             const unsigned size = depth_replay_->size(i);
-            if (kept && depth_replay_->map_surface(i)) readback_surface(depth_replay_->map_surface(i), D3DFMT_R32F, 4, stems[i], L"r32f", "shadow_replay_map_readback", "r32f_row_major", size, size);
+            if (kept && depth_replay_->map_surface(i))
+                readback_surface(depth_replay_->map_surface(i), D3DFMT_R32F, 4, stems[i], L"r32f",
+                                 "shadow_replay_map_readback", "r32f_row_major", size, size);
             const renderer::ShadowReplayBasis none{};
             const auto& b = kept ? kept->basis : none;
             const float* frame_sun = sun_latch_.frame_sun();
             log("shadow_replay_map_basis device=%llu frame=%llu cascade=%u cascades=%u replayed=%u replayed_frame=%lld size=%u valid=%u right=%.9g,%.9g,%.9g up=%.9g,%.9g,%.9g forward=%.9g,%.9g,%.9g center=%.12g,%.12g,%.12g extent=%.9g depth_light=%.9g depth_behind=%.9g"
                 " sun=%.9g,%.9g,%.9g sun_register=%d sun_verdict=%s",
-                id_, frame_, i, depth_cascades_.count, kept ? kept->draws : 0u, kept ? static_cast<long long>(kept->frame) : -1ll, size, unsigned(kept != nullptr),
-                double(b.right[0]), double(b.right[1]), double(b.right[2]), double(b.up[0]), double(b.up[1]), double(b.up[2]), double(b.forward[0]), double(b.forward[1]), double(b.forward[2]),
-                b.center_d[0], b.center_d[1], b.center_d[2], double(cascade.half_extent), double(cascade.depth_toward_light), double(cascade.depth_behind),
-                double(frame_sun ? frame_sun[0] : 0.f), double(frame_sun ? frame_sun[1] : 0.f), double(frame_sun ? frame_sun[2] : 0.f), sun_latch_.source_register, shadow_replay::sun_verdict_name(sun_verdict_));
+                id_, frame_, i, depth_cascades_.count, kept ? kept->draws : 0u,
+                kept ? static_cast<long long>(kept->frame) : -1ll, size, unsigned(kept != nullptr), double(b.right[0]),
+                double(b.right[1]), double(b.right[2]), double(b.up[0]), double(b.up[1]), double(b.up[2]),
+                double(b.forward[0]), double(b.forward[1]), double(b.forward[2]), b.center_d[0], b.center_d[1],
+                b.center_d[2], double(cascade.half_extent), double(cascade.depth_toward_light),
+                double(cascade.depth_behind), double(frame_sun ? frame_sun[0] : 0.f),
+                double(frame_sun ? frame_sun[1] : 0.f), double(frame_sun ? frame_sun[2] : 0.f),
+                sun_latch_.source_register, shadow_replay::sun_verdict_name(sun_verdict_));
         }
     }
 }
@@ -6686,8 +9158,10 @@ void MotionOutput::read_camera(bool scene) noexcept {
         camera_scene_ = sample.state;
         lightmap_fade_m00_ = valid ? sample.state.m00 : 0.f;
         counters_.camera_scene_valid = valid;
-        counters_.camera_read_failure = sample.read_failure; counters_.camera_failure = unsigned(sample.failure);
-        camera_projection_address_ = sample.projection; camera_view_address_ = sample.view;
+        counters_.camera_read_failure = sample.read_failure;
+        counters_.camera_failure = unsigned(sample.failure);
+        camera_projection_address_ = sample.projection;
+        camera_view_address_ = sample.view;
     } else {
         camera_background_ = sample.state;
         counters_.camera_background_valid = valid;
@@ -6708,11 +9182,12 @@ void MotionOutput::log_camera_state() noexcept {
         " history_view_valid=%u history_view_frame=%llu rotation_deg=%.4f policy=%lu reason=%lu camera_cut=%u mode=%u cut_deg=%.2f prev_valid_at_policy=%u p22=%.9g p32=%.9g",
         id_, frame_, camera_state::status(), static_cast<unsigned long>(counters_.camera_reads), c.valid,
         static_cast<unsigned long>(counters_.camera_read_failure), static_cast<unsigned long>(counters_.camera_failure),
-        reinterpret_cast<void*>(camera_projection_address_), reinterpret_cast<void*>(camera_view_address_),
-        c.m00, c.m11, c.m20, c.m21, c.r[0], c.r[1], c.r[2], c.r[3], c.r[4], c.r[5], c.r[6], c.r[7], c.r[8], c.t[0], c.t[1], c.t[2],
-        b.valid, b.m00, b.m11, background_rotation,
-        camera_previous_.valid, camera_previous_frame_, t.camera_rotation_deg, static_cast<unsigned long>(t.camera_policy),
-        static_cast<unsigned long>(t.camera_reason), t.camera_cut, unsigned(sentinel_mode_), camera_cut_degrees_, t.camera_previous_valid, double(c.m22), double(c.m32));
+        reinterpret_cast<void*>(camera_projection_address_), reinterpret_cast<void*>(camera_view_address_), c.m00,
+        c.m11, c.m20, c.m21, c.r[0], c.r[1], c.r[2], c.r[3], c.r[4], c.r[5], c.r[6], c.r[7], c.r[8], c.t[0], c.t[1],
+        c.t[2], b.valid, b.m00, b.m11, background_rotation, camera_previous_.valid, camera_previous_frame_,
+        t.camera_rotation_deg, static_cast<unsigned long>(t.camera_policy), static_cast<unsigned long>(t.camera_reason),
+        t.camera_cut, unsigned(sentinel_mode_), camera_cut_degrees_, t.camera_previous_valid, double(c.m22),
+        double(c.m32));
 }
 
 // End of the frame's scene phase (consumed by the resolve at the copy): the median of the
@@ -6722,13 +9197,17 @@ void MotionOutput::log_camera_state() noexcept {
 // frame that never left it (the synthetic fixtures, or a rejected frame).
 void MotionOutput::finish_cut_detector() noexcept {
     cut_finished_ = true;
-    if (unmatched_static_ && (unmatched_static_applied_ | unmatched_static_object_unknown_ | unmatched_static_camera_refused_ | unmatched_static_rows_refused_)) {
+    if (unmatched_static_ && (unmatched_static_applied_ | unmatched_static_object_unknown_ |
+                              unmatched_static_camera_refused_ | unmatched_static_rows_refused_)) {
         // Only frames where the assumption applied, capped like the detail line (new keys occur on most flight frames).
         if (unmatched_static_applied_ && unmatched_static_frames_logged_ < 256 && ++unmatched_static_frames_logged_)
-          log("motion_unmatched_static_frame device=%llu frame=%llu mode=%u applied=%lu object_unknown=%lu camera_refused=%lu rows_refused=%lu",
-            id_, frame_, unmatched_static_, static_cast<unsigned long>(unmatched_static_applied_), static_cast<unsigned long>(unmatched_static_object_unknown_),
-            static_cast<unsigned long>(unmatched_static_camera_refused_), static_cast<unsigned long>(unmatched_static_rows_refused_));
-        unmatched_static_applied_ = unmatched_static_object_unknown_ = unmatched_static_camera_refused_ = unmatched_static_rows_refused_ = 0;
+            log("motion_unmatched_static_frame device=%llu frame=%llu mode=%u applied=%lu object_unknown=%lu camera_refused=%lu rows_refused=%lu",
+                id_, frame_, unmatched_static_, static_cast<unsigned long>(unmatched_static_applied_),
+                static_cast<unsigned long>(unmatched_static_object_unknown_),
+                static_cast<unsigned long>(unmatched_static_camera_refused_),
+                static_cast<unsigned long>(unmatched_static_rows_refused_));
+        unmatched_static_applied_ = unmatched_static_object_unknown_ = unmatched_static_camera_refused_ =
+            unmatched_static_rows_refused_ = 0;
     }
     auto& c = counters_;
     c.displacement_samples = std::uint32_t(displacements_.size());
@@ -6746,8 +9225,9 @@ void MotionOutput::finish_cut_detector() noexcept {
             (c.keyed && c.cut_missing_fraction > c.cut_missing_bound);
     if (capture_)
         log("motion_output_cut device=%llu frame=%llu samples=%lu median_px=%.4f keyed=%lu missing=%lu missing_fraction=%.4f bound_px=%.3f bound_missing=%.3f cut=%u",
-            id_, frame_, static_cast<unsigned long>(c.displacement_samples), c.cut_median_px, static_cast<unsigned long>(c.keyed),
-            static_cast<unsigned long>(c.missing), c.cut_missing_fraction, c.cut_median_bound_px, c.cut_missing_bound, c.cut);
+            id_, frame_, static_cast<unsigned long>(c.displacement_samples), c.cut_median_px,
+            static_cast<unsigned long>(c.keyed), static_cast<unsigned long>(c.missing), c.cut_missing_fraction,
+            c.cut_median_bound_px, c.cut_missing_bound, c.cut);
 }
 
 void MotionOutput::before_present() noexcept {
@@ -6756,7 +9236,10 @@ void MotionOutput::before_present() noexcept {
     // Terminal end of the redirect: a frame without a recognized scene end
     // (glow off without the engine hook, the synthetic scripts) is written
     // back here (normally flushed at EndScene already: nothing pending).
-    if (hdr_state_ != HdrState::Off) { counters_.hdr.dirty_at_present = hdr_state_ == HdrState::Active && hdr_dirty_; end_redirect(HdrEnd::Present); }
+    if (hdr_state_ != HdrState::Off) {
+        counters_.hdr.dirty_at_present = hdr_state_ == HdrState::Active && hdr_dirty_;
+        end_redirect(HdrEnd::Present);
+    }
     if (!cut_finished_) finish_cut_detector();
     // Engine hook against selector: the verdict of this frame (SceneEndCheck).
     // A frame that never latched a scene (menu) has nothing to compare.
@@ -6764,12 +9247,17 @@ void MotionOutput::before_present() noexcept {
         auto& c = counters_;
         const bool hook = c.hook_scene_end, copy = c.bloom_copy_seen;
         unsigned check = unsigned(SceneEndCheck::None);
-        if (!c.latched) check = unsigned(SceneEndCheck::None);
-        else if (c.hook_outside_scene || c.hook_signals > 1 || (hook && copy && c.draws_after_hook) || (!hook && copy && scene_hook_installed_))
+        if (!c.latched)
+            check = unsigned(SceneEndCheck::None);
+        else if (c.hook_outside_scene || c.hook_signals > 1 || (hook && copy && c.draws_after_hook) ||
+                 (!hook && copy && scene_hook_installed_))
             check = unsigned(SceneEndCheck::Disagree);
-        else if (hook && copy) check = unsigned(SceneEndCheck::Agree);
-        else if (hook) check = unsigned(SceneEndCheck::HookOnly);
-        else if (copy) check = unsigned(SceneEndCheck::StretchOnly);
+        else if (hook && copy)
+            check = unsigned(SceneEndCheck::Agree);
+        else if (hook)
+            check = unsigned(SceneEndCheck::HookOnly);
+        else if (copy)
+            check = unsigned(SceneEndCheck::StretchOnly);
         c.scene_end_check = check;
         // Own log budget (iteration 10: a latch-only transition screen, nothing
         // routed and nothing resolved by either boundary, produced 16 consecutive
@@ -6777,8 +9265,9 @@ void MotionOutput::before_present() noexcept {
         if (check == unsigned(SceneEndCheck::Disagree) && hook_disagreements_logged_ < failure_log_limit) {
             ++hook_disagreements_logged_;
             log("motion_output_scene_hook_disagreement device=%llu frame=%llu installed=%u signals=%lu outside_scene=%lu selector_state=%lu draws_after_hook=%lu bloom_copy_seen=%u hook_scene_end=%u routed=%lu",
-                id_, frame_, scene_hook_installed_, static_cast<unsigned long>(c.hook_signals), static_cast<unsigned long>(c.hook_outside_scene),
-                static_cast<unsigned long>(c.hook_state), static_cast<unsigned long>(c.draws_after_hook), copy, hook, static_cast<unsigned long>(c.routed));
+                id_, frame_, scene_hook_installed_, static_cast<unsigned long>(c.hook_signals),
+                static_cast<unsigned long>(c.hook_outside_scene), static_cast<unsigned long>(c.hook_state),
+                static_cast<unsigned long>(c.draws_after_hook), copy, hook, static_cast<unsigned long>(c.routed));
         }
     }
     // A frame that did not resolve (menu, rejected before the copy,
@@ -6789,10 +9278,12 @@ void MotionOutput::before_present() noexcept {
     if (taa_enabled_) {
         if (!t.attempted) t.skip = unsigned(main_msaa_ ? TaaSkip::Msaa : TaaSkip::NotReached);
         if (!t.resolved) invalidate_taa(TaaInvalidateSite::NotResolved);
-    } else t.skip = unsigned(TaaSkip::Disabled);
+    } else
+        t.skip = unsigned(TaaSkip::Disabled);
     witness_readback();
     if (capture_) readback();
-    sun_lens_present_readback(); // --sun-occlusion-log, capture frames: the back buffer with the lens chain (drawn after every other dump)
+    sun_lens_present_readback(); // --sun-occlusion-log, capture frames: the back buffer with the lens chain (drawn
+                                 // after every other dump)
 }
 // Fade-region witness (X3M_FADE_WITNESS=k): on every k-th frame the M
 // coverage target (A16B16G16R16F, cleared once per frame by begin_frame and
@@ -6814,10 +9305,15 @@ void MotionOutput::witness_readback() noexcept {
     const unsigned emission_prepared = cc.prepared - cc.prepared_fade - cc.packed_admitted;
     IDirect3DSurface9* mask = composition_ ? composition_->coverage_target() : nullptr;
     const char* reason = "sampled";
-    if ((!distance_fade_requested_ && !screen_emission_requested_) || !composition_ || !mask) reason = "no_pass";
-    else if (!w.count) reason = "no_fade";
-    else if (emission_prepared) reason = "emission";
-    else if (composition_frame_stopped_ || composition_quarantined_ || composition_state_lost_ || !composition_->coverage_valid()) reason = "mask_invalid";
+    if ((!distance_fade_requested_ && !screen_emission_requested_) || !composition_ || !mask)
+        reason = "no_pass";
+    else if (!w.count)
+        reason = "no_fade";
+    else if (emission_prepared)
+        reason = "emission";
+    else if (composition_frame_stopped_ || composition_quarantined_ || composition_state_lost_ ||
+             !composition_->coverage_valid())
+        reason = "mask_invalid";
     HRESULT hr = S_FALSE;
     UINT width = 0, height = 0;
     unsigned covered = 0, outside = 0;
@@ -6827,17 +9323,27 @@ void MotionOutput::witness_readback() noexcept {
         const std::uint64_t begin = stamp();
         D3DSURFACE_DESC desc{};
         hr = mask->GetDesc(&desc);
-        if (SUCCEEDED(hr) && (desc.Format != D3DFMT_A16B16G16R16F || !desc.Width || !desc.Height)) hr = D3DERR_INVALIDCALL;
+        if (SUCCEEDED(hr) && (desc.Format != D3DFMT_A16B16G16R16F || !desc.Width || !desc.Height))
+            hr = D3DERR_INVALIDCALL;
         if (SUCCEEDED(hr)) {
-            width = desc.Width; height = desc.Height;
+            width = desc.Width;
+            height = desc.Height;
             if (w.copy && (w.copy_width != width || w.copy_height != height)) release_fade_witness();
             if (!w.copy) {
-                hr = native<CreateOffscreenFn>(CreateOffscreenPlainSurface)(device_, width, height, D3DFMT_A16B16G16R16F, D3DPOOL_SYSTEMMEM, &w.copy, nullptr);
+                hr = native<CreateOffscreenFn>(CreateOffscreenPlainSurface)(
+                    device_, width, height, D3DFMT_A16B16G16R16F, D3DPOOL_SYSTEMMEM, &w.copy, nullptr);
                 if (SUCCEEDED(hr)) {
-                    w.copy_width = width; w.copy_height = height;
-                    w.row = new (std::nothrow) unsigned char[width]; w.row_width = w.row ? width : 0u;
-                    if (!w.row) { release_fade_witness(); hr = E_OUTOFMEMORY; }
-                } else { w.copy = nullptr; }
+                    w.copy_width = width;
+                    w.copy_height = height;
+                    w.row = new (std::nothrow) unsigned char[width];
+                    w.row_width = w.row ? width : 0u;
+                    if (!w.row) {
+                        release_fade_witness();
+                        hr = E_OUTOFMEMORY;
+                    }
+                } else {
+                    w.copy = nullptr;
+                }
             }
         }
         if (SUCCEEDED(hr)) hr = native<GetRtDataFn>(GetRenderTargetData)(device_, mask, w.copy);
@@ -6851,10 +9357,12 @@ void MotionOutput::witness_readback() noexcept {
                     if (!w.prepared[i]) continue; // an unprepared draw wrote nothing through the pass
                     const auto& r = w.rects[i];
                     if (std::int32_t(y) < r.top || std::int32_t(y) >= r.bottom) continue;
-                    const std::int32_t left = r.left < 0 ? 0 : r.left, right = r.right > std::int32_t(width) ? std::int32_t(width) : r.right;
+                    const std::int32_t left = r.left < 0 ? 0 : r.left,
+                                       right = r.right > std::int32_t(width) ? std::int32_t(width) : r.right;
                     if (left < right) std::memset(w.row + left, 1, std::size_t(right - left));
                 }
-                const auto* pixels = reinterpret_cast<const std::uint16_t*>(static_cast<const char*>(lock.pBits) + std::size_t(y) * lock.Pitch);
+                const auto* pixels = reinterpret_cast<const std::uint16_t*>(static_cast<const char*>(lock.pBits) +
+                                                                            std::size_t(y) * lock.Pitch);
                 for (UINT x = 0; x < width; ++x) {
                     union_area += w.row[x];
                     const std::uint16_t* p = pixels + std::size_t(x) * 4;
@@ -6868,19 +9376,25 @@ void MotionOutput::witness_readback() noexcept {
             w.copy->UnlockRect();
         }
         const std::uint64_t ticks = stamp() - begin;
-        ++counters_.readbacks; counters_.readback_ticks += ticks;
+        ++counters_.readbacks;
+        counters_.readback_ticks += ticks;
         record(unsigned(telemetry::Metric::RouteReadback), ticks, FAILED(hr), std::uint64_t(width) * height * 8u);
     }
     log("fade_witness device=%llu frame=%llu k=%u sampled=%u reason=%s result=%08lx width=%u height=%u rects=%u rects_prepared=%u rects_unprepared=%u overflow=%u lines_truncated=%u covered=%u outside=%u union=%llu fade_prepared=%u emission_prepared=%u packed_prepared=%u f_hist=%u,%u,%u,%u,%u,%u,%u,%u",
-        id_, frame_, fade_witness_interval_, unsigned(sample), reason, hr, unsigned(width), unsigned(height), w.count, w.prepared_count,
-        w.count - w.prepared_count, unsigned(w.overflow), w.count > w.logged ? w.count - w.logged : 0u, covered, outside,
-        static_cast<unsigned long long>(union_area), cc.prepared_fade, emission_prepared, cc.packed_admitted,
-        w.f_hist[0], w.f_hist[1], w.f_hist[2], w.f_hist[3], w.f_hist[4], w.f_hist[5], w.f_hist[6], w.f_hist[7]);
+        id_, frame_, fade_witness_interval_, unsigned(sample), reason, hr, unsigned(width), unsigned(height), w.count,
+        w.prepared_count, w.count - w.prepared_count, unsigned(w.overflow),
+        w.count > w.logged ? w.count - w.logged : 0u, covered, outside, static_cast<unsigned long long>(union_area),
+        cc.prepared_fade, emission_prepared, cc.packed_admitted, w.f_hist[0], w.f_hist[1], w.f_hist[2], w.f_hist[3],
+        w.f_hist[4], w.f_hist[5], w.f_hist[6], w.f_hist[7]);
 }
 void MotionOutput::release_fade_witness() noexcept {
     auto& w = fade_witness_;
-    release(w.copy); w.copy = nullptr; w.copy_width = w.copy_height = 0;
-    delete[] w.row; w.row = nullptr; w.row_width = 0;
+    release(w.copy);
+    w.copy = nullptr;
+    w.copy_width = w.copy_height = 0;
+    delete[] w.row;
+    w.row = nullptr;
+    w.row_width = 0;
 }
 // One diagnostic line per Present with X3M_SCREEN_EMISSION_TIMING=1 (the
 // screen-emission option's opt-in timing): this frame's packed admissions and
@@ -6889,11 +9403,14 @@ void MotionOutput::release_fade_witness() noexcept {
 void MotionOutput::log_screen_emission_frame() noexcept {
     LARGE_INTEGER now{};
     const std::uint64_t stamp = QueryPerformanceCounter(&now) ? std::uint64_t(now.QuadPart) : 0u;
-    if (!qpc_frequency_) { LARGE_INTEGER f{}; if (QueryPerformanceFrequency(&f) && f.QuadPart > 0) qpc_frequency_ = std::uint64_t(f.QuadPart); }
+    if (!qpc_frequency_) {
+        LARGE_INTEGER f{};
+        if (QueryPerformanceFrequency(&f) && f.QuadPart > 0) qpc_frequency_ = std::uint64_t(f.QuadPart);
+    }
     const std::uint64_t ticks = stamp > present_qpc_ && present_qpc_ ? stamp - present_qpc_ : 0u;
     present_qpc_ = stamp;
-    log("screen_emission_frame device=%llu frame=%llu packed_admitted=%u brackets_px=%llu cpu_us=%llu",
-        id_, frame_, composition_counts_.packed_admitted, composition_counts_.packed_region_pixels,
+    log("screen_emission_frame device=%llu frame=%llu packed_admitted=%u brackets_px=%llu cpu_us=%llu", id_, frame_,
+        composition_counts_.packed_admitted, composition_counts_.packed_region_pixels,
         qpc_frequency_ ? ticks * 1000000u / qpc_frequency_ : 0u);
 }
 // One line per Present with telemetry on (the option itself stays free of
@@ -6901,15 +9418,16 @@ void MotionOutput::log_screen_emission_frame() noexcept {
 // frame and how many draws were refused. `pairs` is a hex bit mask over
 // screen_emission::pairs indices.
 void MotionOutput::log_screen_additive_frame() noexcept {
-    log("screen_emission_additive_frame device=%llu frame=%llu admitted=%u refused=%u pairs=%03x",
-        id_, frame_, screen_additive_frame_admitted_, screen_additive_frame_refused_,
-        screen_additive_frame_pairs_);
+    log("screen_emission_additive_frame device=%llu frame=%llu admitted=%u refused=%u pairs=%03x", id_, frame_,
+        screen_additive_frame_admitted_, screen_additive_frame_refused_, screen_additive_frame_pairs_);
 }
 void MotionOutput::after_present(HRESULT result) noexcept {
     report_xt_default_unavailable();
     report_mip_bias_game_write_failure();
     release_mip_bias_retry_bound();
-    if (retention_ && FAILED(result)) flush_shadow_retention(shadow_retention::Flush::Device); // a lost device: an outstanding reference would outlive it
+    if (retention_ && FAILED(result))
+        flush_shadow_retention(shadow_retention::Flush::Device); // a lost device: an outstanding reference would
+                                                                 // outlive it
     if (!enabled_) return;
     if (FAILED(result)) invalidate_taa(TaaInvalidateSite::PresentFailed);
     const bool committed = history_.commit(SUCCEEDED(result) && counters_.filled);
@@ -6917,10 +9435,13 @@ void MotionOutput::after_present(HRESULT result) noexcept {
     if (screen_emission_timing_) log_screen_emission_frame();
     if (screen_additive_requested_) {
         if (telemetry_) log_screen_additive_frame();
-        screen_additive_frame_admitted_ = screen_additive_frame_refused_ = screen_additive_frame_pairs_ = 0; // this frame only
+        screen_additive_frame_admitted_ = screen_additive_frame_refused_ = screen_additive_frame_pairs_ = 0; // this
+                                                                                                             // frame
+                                                                                                             // only
         if (++screen_additive_window_frames_ >= 300u) log_screen_additive_window();
     }
-    if (bolt_footprint_requested_) chase_pose_mark_ = chase_camera::pose_write_count(); // the next frame's gate needs a fresh chase pose
+    if (bolt_footprint_requested_)
+        chase_pose_mark_ = chase_camera::pose_write_count(); // the next frame's gate needs a fresh chase pose
     if (bolt_footprint_requested_ && ++bolt_window_frames_ >= 300u) log_bolt_footprint_window();
     if (fade_refused_count_) log_fade_refused();
     if (emission_source_gain_requested_) {
@@ -6931,7 +9452,8 @@ void MotionOutput::after_present(HRESULT result) noexcept {
         const std::uint32_t other = g.refused_unknown + g.refused_state + g.bind_failures;
         if (g.admitted || g.refused_blend || g.refused_screen || other)
             log("emission_source_gain_frame device=%llu frame=%llu gain=%g admitted=%u admitted_screen=%u refused_blend=%u refused_screen=%u refused_other=%u refused_unknown=%u refused_state=%u bind_failures=%u",
-                id_, frame_, double(emission_source_gain_), g.admitted, g.admitted_screen, g.refused_blend, g.refused_screen, other, g.refused_unknown, g.refused_state, g.bind_failures);
+                id_, frame_, double(emission_source_gain_), g.admitted, g.admitted_screen, g.refused_blend,
+                g.refused_screen, other, g.refused_unknown, g.refused_state, g.bind_failures);
         source_gain_counts_ = {}; // this frame only, logged or not
     }
     if (hull_emission_gain_requested_) {
@@ -6944,27 +9466,37 @@ void MotionOutput::after_present(HRESULT result) noexcept {
         const std::uint32_t other = g.refused_routed + g.refused_unknown + g.refused_state + g.bind_failures;
         if (g.admitted || g.refused_blend || g.refused_variant || other)
             log("hull_emission_frame device=%llu frame=%llu gain=%g admitted=%u refused_blend=%u refused_variant=%u programs=%03x refused_other=%u refused_routed=%u refused_unknown=%u refused_state=%u bind_failures=%u opaque=%u alpha=%u toggled=%u",
-                id_, frame_, double(hull_emission_gain_), g.admitted, g.refused_blend, g.refused_variant, g.programs, other, g.refused_routed, g.refused_unknown, g.refused_state, g.bind_failures,
-                g.refused_opaque, g.refused_alpha, unsigned(hull_gain_enabled_));
+                id_, frame_, double(hull_emission_gain_), g.admitted, g.refused_blend, g.refused_variant, g.programs,
+                other, g.refused_routed, g.refused_unknown, g.refused_state, g.bind_failures, g.refused_opaque,
+                g.refused_alpha, unsigned(hull_gain_enabled_));
         hull_gain_counts_ = {};
     }
     if (original_fill_requested_ && original_fill_draws_) {
-        log("original_fill_frame device=%llu frame=%llu fill=%g admitted=%u", id_, frame_, double(original_fill_), original_fill_draws_);
+        log("original_fill_frame device=%llu frame=%llu fill=%g admitted=%u", id_, frame_, double(original_fill_),
+            original_fill_draws_);
         original_fill_draws_ = 0;
     }
     if (hull_lightmap_gain_requested_ && hull_lightmap_draws_) {
-        log("hull_lightmap_frame device=%llu frame=%llu gain=%g fill=%g admitted=%u toggled=%u",
-            id_, frame_, double(hull_lightmap_gain_), double(original_fill_), hull_lightmap_draws_, unsigned(hull_lightmap_enabled_));
+        log("hull_lightmap_frame device=%llu frame=%llu gain=%g fill=%g admitted=%u toggled=%u", id_, frame_,
+            double(hull_lightmap_gain_), double(original_fill_), hull_lightmap_draws_,
+            unsigned(hull_lightmap_enabled_));
         if (lightmap_far_fade_)
             log("hull_lightmap_far_fade_frame device=%llu frame=%llu admitted=%u faded=%u min_gain=%g floor=%g camera=%u",
-                id_, frame_, hull_lightmap_draws_, lightmap_fade_draws_, double(lightmap_fade_draws_ ? lightmap_fade_min_ : hull_lightmap_gain_),
-                double(lightmap_fade_floor_), unsigned(lightmap_fade_m00_ > 0.f));
+                id_, frame_, hull_lightmap_draws_, lightmap_fade_draws_,
+                double(lightmap_fade_draws_ ? lightmap_fade_min_ : hull_lightmap_gain_), double(lightmap_fade_floor_),
+                unsigned(lightmap_fade_m00_ > 0.f));
         if (lightmap_widen_)
             log("hull_lightmap_widen_frame device=%llu frame=%llu admitted=%u widened=%u held=%u k=%g b=%g filter_sets=%u filter_reads=%u filter_failures=%u",
-                id_, frame_, hull_lightmap_draws_, lightmap_widen_draws_, lightmap_widen_held_, double(lightmap_widen_k_), double(lightmap_widen_b_),
-                lightmap_widen_filter_sets_, lightmap_widen_filter_reads_, lightmap_widen_filter_failures_);
-        hull_lightmap_draws_ = 0; lightmap_fade_draws_ = 0; lightmap_widen_draws_ = 0; lightmap_widen_held_ = 0;
-        lightmap_widen_filter_sets_ = 0; lightmap_widen_filter_reads_ = 0; lightmap_widen_filter_failures_ = 0;
+                id_, frame_, hull_lightmap_draws_, lightmap_widen_draws_, lightmap_widen_held_,
+                double(lightmap_widen_k_), double(lightmap_widen_b_), lightmap_widen_filter_sets_,
+                lightmap_widen_filter_reads_, lightmap_widen_filter_failures_);
+        hull_lightmap_draws_ = 0;
+        lightmap_fade_draws_ = 0;
+        lightmap_widen_draws_ = 0;
+        lightmap_widen_held_ = 0;
+        lightmap_widen_filter_sets_ = 0;
+        lightmap_widen_filter_reads_ = 0;
+        lightmap_widen_filter_failures_ = 0;
     }
     if (capture_ || (telemetry_ && frame_ % frame_log_interval_ == 0)) {
         // Appended cost fields (totals for this frame; docs/verification/telemetry.md):
@@ -6974,63 +9506,97 @@ void MotionOutput::after_present(HRESULT result) noexcept {
         if (composition_requested())
             log("%s_frame device=%llu frame=%llu prepared=%u linear=%u native=%u incomplete=%u refused=%u suppressed=%u exports=%u quarantine=%u state_lost=%u mask_valid=%u fade_eligible=%u fade_prepared=%u fade_linear=%u pool_traffic_estimate_bytes=%llu in_place=%u in_place_linear=%u in_place_incomplete=%u region_pixels=%llu"
                 " packed_eligible=%u packed_admitted=%u packed_linear=%u packed_incomplete=%u packed_unbounded_refused=%u packed_caps_refused=%u packed_region_pixels=%llu packed_sample_skipped=%u",
-                distance_fade_requested_ || screen_emission_requested_ ? "linear_composition" : "linear_emission", id_, frame_, composition_counts_.prepared, composition_counts_.linear, composition_counts_.native, composition_counts_.incomplete,
-                composition_counts_.refused, composition_counts_.suppressed, composition_counts_.exports, composition_quarantined_, composition_state_lost_,
-                composition_ && composition_->coverage_valid() && !composition_frame_stopped_ && !composition_quarantined_,
-                composition_counts_.eligible_fade, composition_counts_.prepared_fade, composition_counts_.linear_fade, composition_counts_.pool_traffic_bytes,
-                composition_counts_.in_place, composition_counts_.in_place_linear, composition_counts_.in_place_incomplete, composition_counts_.region_pixels,
-                composition_counts_.packed_eligible, composition_counts_.packed_admitted, composition_counts_.packed_linear, composition_counts_.packed_incomplete,
-                composition_counts_.packed_unbounded_refused, composition_counts_.packed_caps_refused, composition_counts_.packed_region_pixels, composition_counts_.packed_sample_skipped);
+                distance_fade_requested_ || screen_emission_requested_ ? "linear_composition" : "linear_emission", id_,
+                frame_, composition_counts_.prepared, composition_counts_.linear, composition_counts_.native,
+                composition_counts_.incomplete, composition_counts_.refused, composition_counts_.suppressed,
+                composition_counts_.exports, composition_quarantined_, composition_state_lost_,
+                composition_ && composition_->coverage_valid() && !composition_frame_stopped_ &&
+                    !composition_quarantined_,
+                composition_counts_.eligible_fade, composition_counts_.prepared_fade, composition_counts_.linear_fade,
+                composition_counts_.pool_traffic_bytes, composition_counts_.in_place,
+                composition_counts_.in_place_linear, composition_counts_.in_place_incomplete,
+                composition_counts_.region_pixels, composition_counts_.packed_eligible,
+                composition_counts_.packed_admitted, composition_counts_.packed_linear,
+                composition_counts_.packed_incomplete, composition_counts_.packed_unbounded_refused,
+                composition_counts_.packed_caps_refused, composition_counts_.packed_region_pixels,
+                composition_counts_.packed_sample_skipped);
         if (distance_fade_requested_ && (composition_counts_.region_bound || composition_counts_.region_full))
             log("fade_region_frame device=%llu frame=%llu bound=%u full=%u hit=%u miss=%u poisoned=%u evicted=%u f_mean=%.4f reason_viewport=%u reason_rows=%u reason_unknown=%u reason_w=%u reason_nonfinite=%u reason_fill=%u status_no_table=%u status_no_scope=%u status_content=%u status_poisoned=%u status_read=%u status_back_link=%u status_no_record=%u status_invalid=%u table_used=%u table_poisoned=%u table_evictions=%u",
-                id_, frame_, composition_counts_.region_bound, composition_counts_.region_full, composition_counts_.region_hit, composition_counts_.region_miss, composition_counts_.region_poisoned, composition_counts_.region_evicted,
-                double(composition_counts_.region_permille_sum) / (1000.0 * double(composition_counts_.region_bound + composition_counts_.region_full)),
-                composition_counts_.region_reason[1], composition_counts_.region_reason[2], composition_counts_.region_reason[3], composition_counts_.region_reason[4],
-                composition_counts_.region_reason[5], composition_counts_.region_reason[6], composition_counts_.region_status[1], composition_counts_.region_status[2], composition_counts_.region_status[3],
-                composition_counts_.region_status[4], composition_counts_.region_status[5], composition_counts_.region_status[6], composition_counts_.region_status[7], composition_counts_.region_status[8],
-                fade_bounds_.used(), fade_bounds_.poisoned(), fade_bounds_.evictions());
+                id_, frame_, composition_counts_.region_bound, composition_counts_.region_full,
+                composition_counts_.region_hit, composition_counts_.region_miss, composition_counts_.region_poisoned,
+                composition_counts_.region_evicted,
+                double(composition_counts_.region_permille_sum) /
+                    (1000.0 * double(composition_counts_.region_bound + composition_counts_.region_full)),
+                composition_counts_.region_reason[1], composition_counts_.region_reason[2],
+                composition_counts_.region_reason[3], composition_counts_.region_reason[4],
+                composition_counts_.region_reason[5], composition_counts_.region_reason[6],
+                composition_counts_.region_status[1], composition_counts_.region_status[2],
+                composition_counts_.region_status[3], composition_counts_.region_status[4],
+                composition_counts_.region_status[5], composition_counts_.region_status[6],
+                composition_counts_.region_status[7], composition_counts_.region_status[8], fade_bounds_.used(),
+                fade_bounds_.poisoned(), fade_bounds_.evictions());
         if (screen_emission_bound_ && composition_counts_.prefix_draws) {
             const auto& pc = composition_counts_;
             ownership::LockedPrefixStatistics s{};
             ownership::get_locked_prefix_statistics(&s);
             log("locked_prefix_frame device=%llu frame=%llu draws=%u bound=%u refused=%u instanced=%u clipped=%u rechecks=%u f_mean=%.4f hull_px=%llu aabb_px=%llu vertices=%llu derive_us=%.1f reason_viewport=%u reason_rows=%u reason_unknown=%u reason_w=%u reason_nonfinite=%u reason_fill=%u reason_near=%u lookup_unknown=%u lookup_pending=%u lookup_invalid=%u lookup_empty=%u lookup_beyond=%u lookup_nonfinite=%u locks=%llu scans=%llu scanned_vertices=%llu scan_us=%.1f sentinel_bytes=%llu sentinel_us=%.1f window_end_scans=%llu lookups=%llu bounds=%llu marks=%llu table_used=%u table_evictions=%llu",
-                id_, frame_, pc.prefix_draws, pc.prefix_bound, pc.prefix_refused, pc.prefix_instanced, pc.prefix_clipped, pc.prefix_rechecks, pc.prefix_bound ? double(pc.prefix_permille_sum) / (1000.0 * double(pc.prefix_bound)) : 0.0,
-                static_cast<unsigned long long>(pc.prefix_hull_px), static_cast<unsigned long long>(pc.prefix_aabb_px), static_cast<unsigned long long>(pc.prefix_vertices), telemetry::microseconds(pc.prefix_ticks),
-                pc.prefix_reason[1], pc.prefix_reason[2], pc.prefix_reason[3], pc.prefix_reason[4], pc.prefix_reason[5], pc.prefix_reason[6], pc.prefix_reason[7],
-                pc.prefix_lookup[1], pc.prefix_lookup[2], pc.prefix_lookup[3], pc.prefix_lookup[4], pc.prefix_lookup[5], pc.prefix_lookup[6],
-                static_cast<unsigned long long>(s.locks), static_cast<unsigned long long>(s.scans), static_cast<unsigned long long>(s.scanned_vertices),
+                id_, frame_, pc.prefix_draws, pc.prefix_bound, pc.prefix_refused, pc.prefix_instanced,
+                pc.prefix_clipped, pc.prefix_rechecks,
+                pc.prefix_bound ? double(pc.prefix_permille_sum) / (1000.0 * double(pc.prefix_bound)) : 0.0,
+                static_cast<unsigned long long>(pc.prefix_hull_px), static_cast<unsigned long long>(pc.prefix_aabb_px),
+                static_cast<unsigned long long>(pc.prefix_vertices), telemetry::microseconds(pc.prefix_ticks),
+                pc.prefix_reason[1], pc.prefix_reason[2], pc.prefix_reason[3], pc.prefix_reason[4], pc.prefix_reason[5],
+                pc.prefix_reason[6], pc.prefix_reason[7], pc.prefix_lookup[1], pc.prefix_lookup[2], pc.prefix_lookup[3],
+                pc.prefix_lookup[4], pc.prefix_lookup[5], pc.prefix_lookup[6], static_cast<unsigned long long>(s.locks),
+                static_cast<unsigned long long>(s.scans), static_cast<unsigned long long>(s.scanned_vertices),
                 s.qpc_frequency ? double(s.scan_ticks) * 1e6 / double(s.qpc_frequency) : 0.0,
-                static_cast<unsigned long long>(s.sentinel_bytes), s.qpc_frequency ? double(s.sentinel_ticks) * 1e6 / double(s.qpc_frequency) : 0.0, static_cast<unsigned long long>(s.window_end_scans),
-                static_cast<unsigned long long>(s.lookups), static_cast<unsigned long long>(s.bounds), static_cast<unsigned long long>(s.marks), s.used, static_cast<unsigned long long>(s.evictions));
+                static_cast<unsigned long long>(s.sentinel_bytes),
+                s.qpc_frequency ? double(s.sentinel_ticks) * 1e6 / double(s.qpc_frequency) : 0.0,
+                static_cast<unsigned long long>(s.window_end_scans), static_cast<unsigned long long>(s.lookups),
+                static_cast<unsigned long long>(s.bounds), static_cast<unsigned long long>(s.marks), s.used,
+                static_cast<unsigned long long>(s.evictions));
         }
         if (composition_requested())
             log("%s_refusals device=%llu frame=%llu pair=%u permission_scene=%u readiness=%u readers=%u frame_stop=%u preparation=%u prepare_failures=%u composition_failures=%u restore_failures=%u exchange_failures=%u ack_failures=%u recovery_failures=%u last_prepare=%08lx last_prepare_restore=%08lx last_source=%08lx last_composition=%08lx last_restore=%08lx last_exchange=%08lx last_ack=%08lx last_recovery=%08lx",
-                distance_fade_requested_ || screen_emission_requested_ ? "linear_composition" : "linear_emission", id_, frame_, composition_counts_.refusal[0], composition_counts_.refusal[1], composition_counts_.refusal[2], composition_counts_.refusal[3], composition_counts_.refusal[4], composition_counts_.refusal[5],
-                composition_counts_.prepare_failures, composition_counts_.composition_failures, composition_counts_.restore_failures, composition_counts_.exchange_failures, composition_counts_.ack_failures, composition_counts_.recovery_failures,
-                composition_counts_.prepare, composition_counts_.prepare_restore, composition_counts_.source, composition_counts_.composition, composition_counts_.restore, composition_counts_.exchange, composition_counts_.ack, composition_counts_.recovery);
+                distance_fade_requested_ || screen_emission_requested_ ? "linear_composition" : "linear_emission", id_,
+                frame_, composition_counts_.refusal[0], composition_counts_.refusal[1], composition_counts_.refusal[2],
+                composition_counts_.refusal[3], composition_counts_.refusal[4], composition_counts_.refusal[5],
+                composition_counts_.prepare_failures, composition_counts_.composition_failures,
+                composition_counts_.restore_failures, composition_counts_.exchange_failures,
+                composition_counts_.ack_failures, composition_counts_.recovery_failures, composition_counts_.prepare,
+                composition_counts_.prepare_restore, composition_counts_.source, composition_counts_.composition,
+                composition_counts_.restore, composition_counts_.exchange, composition_counts_.ack,
+                composition_counts_.recovery);
         if (linear_material_requested_) {
             // Top three refusal buckets of the tested-opaque arm's cutout
             // pairs, formatted into a fixed stack buffer (no allocation, once
             // per frame line): name:count, descending, "none" when empty.
-            char cutout_top[64] = "none"; unsigned written = 0;
+            char cutout_top[64] = "none";
+            unsigned written = 0;
             std::uint32_t taken = 0;
             for (unsigned slot = 0; slot < 3; ++slot) {
                 unsigned best = renderer::sun_untracked_reason_count, best_count = 0;
                 for (unsigned reason = 0; reason < renderer::sun_untracked_reason_count; ++reason)
-                    if (!(taken & (1u << reason)) && c.cutout_opaque_reasons[reason] > best_count) { best = reason; best_count = c.cutout_opaque_reasons[reason]; }
+                    if (!(taken & (1u << reason)) && c.cutout_opaque_reasons[reason] > best_count) {
+                        best = reason;
+                        best_count = c.cutout_opaque_reasons[reason];
+                    }
                 if (best == renderer::sun_untracked_reason_count) break;
                 taken |= 1u << best;
                 const int length = std::snprintf(cutout_top + written, sizeof cutout_top - written, "%s%s:%lu",
-                    written ? "," : "", renderer::sun_untracked_reason_name(best), static_cast<unsigned long>(best_count));
+                                                 written ? "," : "", renderer::sun_untracked_reason_name(best),
+                                                 static_cast<unsigned long>(best_count));
                 if (length <= 0 || unsigned(length) >= sizeof cutout_top - written) break;
                 written += unsigned(length);
             }
             log("linear_material_frame device=%llu frame=%llu routed=%lu bump_routed=%lu refused=%lu bind_failures=%lu cutout_routed=%lu cutout_missed=%lu cutout_unavailable=%u cutout_caps=%u fade_routed=%lu fade_refused=%lu fade_held=%lu fade_route=%u"
                 " cutout_opaque_routed=%lu cutout_opaque_refused=%lu cutout_opaque_lane=%lu cutout_opaque_refused_top=%s overlay_routed=%lu overlay_refused=%lu",
-                id_, frame_, static_cast<unsigned long>(c.material_routed), static_cast<unsigned long>(c.material_bump_routed), static_cast<unsigned long>(c.material_refused),
+                id_, frame_, static_cast<unsigned long>(c.material_routed),
+                static_cast<unsigned long>(c.material_bump_routed), static_cast<unsigned long>(c.material_refused),
                 static_cast<unsigned long>(c.material_bind_failures), static_cast<unsigned long>(c.cutout_routed),
                 static_cast<unsigned long>(c.cutout_missed), unsigned(cutout_coverage_missed_), unsigned(cutout_caps_),
-                static_cast<unsigned long>(c.fade_routed), static_cast<unsigned long>(c.fade_refused), static_cast<unsigned long>(c.fade_held), fade_route_threshold_,
+                static_cast<unsigned long>(c.fade_routed), static_cast<unsigned long>(c.fade_refused),
+                static_cast<unsigned long>(c.fade_held), fade_route_threshold_,
                 static_cast<unsigned long>(c.cutout_opaque_routed), static_cast<unsigned long>(c.cutout_opaque_refused),
                 static_cast<unsigned long>(c.cutout_opaque_lane), cutout_top,
                 static_cast<unsigned long>(c.overlay_routed), static_cast<unsigned long>(c.overlay_refused));
@@ -7039,10 +9605,11 @@ void MotionOutput::after_present(HRESULT result) noexcept {
             // probe's verdict (run 125: frame-level evidence for the arm
             // without the linear_material_frame line).
             log("fade_route_frame device=%llu frame=%llu fade_routed=%lu fade_refused=%lu fade_held=%lu fade_route=%u cutout_caps=%u overlay_routed=%lu overlay_refused=%lu fade_evicted=%lu fade_owner=%u fade_owner_masked=%lu fade_tested=%lu",
-                id_, frame_, static_cast<unsigned long>(c.fade_routed), static_cast<unsigned long>(c.fade_refused), static_cast<unsigned long>(c.fade_held),
-                fade_route_threshold_, unsigned(cutout_caps_), static_cast<unsigned long>(c.overlay_routed), static_cast<unsigned long>(c.overlay_refused),
-                static_cast<unsigned long>(c.fade_evicted), unsigned(fade_rt2_owner_), static_cast<unsigned long>(c.fade_owner_masked),
-                static_cast<unsigned long>(c.fade_tested));
+                id_, frame_, static_cast<unsigned long>(c.fade_routed), static_cast<unsigned long>(c.fade_refused),
+                static_cast<unsigned long>(c.fade_held), fade_route_threshold_, unsigned(cutout_caps_),
+                static_cast<unsigned long>(c.overlay_routed), static_cast<unsigned long>(c.overlay_refused),
+                static_cast<unsigned long>(c.fade_evicted), unsigned(fade_rt2_owner_),
+                static_cast<unsigned long>(c.fade_owner_masked), static_cast<unsigned long>(c.fade_tested));
         }
         const auto us = [](std::uint64_t ticks) { return telemetry::microseconds(ticks); };
         log("motion_output_frame device=%llu frame=%llu latched=%u msaa=%lu filled=%u fill_result=%08lx fill_restore=%08lx draws=%lu routed=%lu matched=%lu gate1=%lu gate2=%lu gate3=%lu gate4=%lu gate5=%lu gate6=%lu apply_failures=%lu restore_failures=%lu history_previous=%u history_current=%u committed=%u selector_state=%u present=%08lx depth=%u depth_routed=%lu jitter=%u jitter_index=%u jitter_x=%.6f jitter_y=%.6f jitter_previous_x=%.6f jitter_previous_y=%.6f jittered=%lu unjittered_depth_writers=%lu cut=%u cut_median_px=%.4f cut_missing=%.4f cut_samples=%lu taa=%u taa_attempted=%u taa_resolved=%u taa_history=%u taa_skip=%lu taa_result=%08lx taa_restore=%08lx taa_copy=%08lx taa_hdr=%u taa_k=%.5f taa_sharpen=%u taa_filter=%.3f taa_weight=%.3f scene_open=%u active_queries=%lu taa_references=%u"
@@ -7050,33 +9617,44 @@ void MotionOutput::after_present(HRESULT result) noexcept {
             " rt_mode=%s timing=%s set_rt=%lu lazy_flushes=%lu lazy_mask_writes=%lu jitter_writes=%lu readbacks=%lu gate_us=%.1f route_draw_us=%.1f set_rt_us=%.1f lazy_flush_us=%.1f jitter_us=%.1f fill_us=%.1f taa_run_us=%.1f taa_capture_us=%.1f taa_copy_color_us=%.1f taa_copy_depth_us=%.1f taa_draw_us=%.1f taa_apply_us=%.1f taa_copy_back_us=%.1f readback_us=%.1f"
             " state_shadow=%u rs_mode=%s rs_queries=%lu rs_hits=%lu rs_gets=%lu rs_resyncs=%lu rs_invalidations=%lu sb_resyncs=%lu scene_hook=%u scene_end_source=%s scene_end_check=%lu hook_signals=%lu hook_outside_scene=%lu hook_state=%lu draws_after_hook=%lu bloom_copy_seen=%u"
             " mip_bias=%g mip_bias_sets=%lu mip_bias_restores=%lu mip_bias_draws=%lu mip_bias_stages=%04lx mip_bias_reads=%lu mip_bias_game_writes=%lu mip_bias_game_writes_total=%lu mip_bias_failures=%lu mip_bias_biased_now=%04lx restore_getters=%lu restore_declines=%lu",
-            id_, frame_, counters_.latched, static_cast<unsigned long>(main_msaa_ ? main_msaa_samples_ : 0u), counters_.filled, counters_.fill_result, counters_.fill_restore,
-            static_cast<unsigned long>(counters_.draws), static_cast<unsigned long>(counters_.routed), static_cast<unsigned long>(counters_.matched),
-            static_cast<unsigned long>(counters_.gates[1]), static_cast<unsigned long>(counters_.gates[2]), static_cast<unsigned long>(counters_.gates[3]),
-            static_cast<unsigned long>(counters_.gates[4]), static_cast<unsigned long>(counters_.gates[5]), static_cast<unsigned long>(counters_.gates[6]),
-            static_cast<unsigned long>(counters_.apply_failures), static_cast<unsigned long>(counters_.restore_failures),
-            unsigned(stats.previous), unsigned(stats.current), committed, unsigned(selector_.state()), result,
-            depth_enabled_, static_cast<unsigned long>(counters_.depth_routed), counters_.jitter_active, counters_.jitter_index,
+            id_, frame_, counters_.latched, static_cast<unsigned long>(main_msaa_ ? main_msaa_samples_ : 0u),
+            counters_.filled, counters_.fill_result, counters_.fill_restore,
+            static_cast<unsigned long>(counters_.draws), static_cast<unsigned long>(counters_.routed),
+            static_cast<unsigned long>(counters_.matched), static_cast<unsigned long>(counters_.gates[1]),
+            static_cast<unsigned long>(counters_.gates[2]), static_cast<unsigned long>(counters_.gates[3]),
+            static_cast<unsigned long>(counters_.gates[4]), static_cast<unsigned long>(counters_.gates[5]),
+            static_cast<unsigned long>(counters_.gates[6]), static_cast<unsigned long>(counters_.apply_failures),
+            static_cast<unsigned long>(counters_.restore_failures), unsigned(stats.previous), unsigned(stats.current),
+            committed, unsigned(selector_.state()), result, depth_enabled_,
+            static_cast<unsigned long>(counters_.depth_routed), counters_.jitter_active, counters_.jitter_index,
             counters_.jitter[0], counters_.jitter[1], counters_.jitter_previous[0], counters_.jitter_previous[1],
-            static_cast<unsigned long>(counters_.jittered), static_cast<unsigned long>(counters_.unjittered_depth_writers),
-            counters_.cut, counters_.cut_median_px, counters_.cut_missing_fraction,
-            static_cast<unsigned long>(counters_.displacement_samples), taa_enabled_, counters_.taa.attempted, counters_.taa.resolved,
-            counters_.taa.used_history, static_cast<unsigned long>(counters_.taa.skip), counters_.taa.result, counters_.taa.restore,
-            counters_.taa.copy, counters_.taa.hdr, counters_.taa.k, counters_.taa.sharpened, 0.0 /* taa_filter: the removed global current filter, kept 0 for log parsers */, double(taa_history_weight_), scene_open_, static_cast<unsigned long>(active_queries_), taa_references_,
-            counters_.camera_scene_valid, counters_.camera_background_valid, static_cast<unsigned long>(counters_.camera_reads),
-            static_cast<unsigned long>(counters_.taa.camera_policy), static_cast<unsigned long>(counters_.taa.camera_reason),
-            counters_.taa.camera_cut, counters_.taa.camera_rotation_deg,
-            lazy_mode_ ? "lazy" : "perdraw", telemetry_ ? "cpu_qpc" : "off",
-            static_cast<unsigned long>(c.set_rt), static_cast<unsigned long>(c.lazy_flushes), static_cast<unsigned long>(c.lazy_mask_writes), static_cast<unsigned long>(c.jitter_writes),
-            static_cast<unsigned long>(c.readbacks), us(c.gate_ticks), us(c.route_draw_ticks), us(c.set_rt_ticks), us(c.lazy_flush_ticks),
-            us(c.jitter_ticks), us(c.fill_ticks), us(c.taa_run_ticks), us(c.taa_capture_ticks), us(c.taa_copy_color_ticks),
-            us(c.taa_copy_depth_ticks), us(c.taa_draw_ticks), us(c.taa_apply_ticks), us(c.taa_copy_back_ticks), us(c.readback_ticks),
-            state_shadow_, render_state_mode(), static_cast<unsigned long>(c.rs_queries), static_cast<unsigned long>(c.rs_hits), static_cast<unsigned long>(c.rs_gets),
-            static_cast<unsigned long>(c.rs_resyncs), static_cast<unsigned long>(c.rs_invalidations), static_cast<unsigned long>(c.sb_resyncs), scene_hook_installed_, scene_end_source_name(c.taa.source), static_cast<unsigned long>(c.scene_end_check),
-            static_cast<unsigned long>(c.hook_signals), static_cast<unsigned long>(c.hook_outside_scene), static_cast<unsigned long>(c.hook_state),
-            static_cast<unsigned long>(c.draws_after_hook), c.bloom_copy_seen,
-            double(mip_bias_), static_cast<unsigned long>(c.mip_bias_sets), static_cast<unsigned long>(c.mip_bias_restores),
-            static_cast<unsigned long>(c.mip_bias_draws), static_cast<unsigned long>(c.mip_bias_stages), static_cast<unsigned long>(c.mip_bias_reads),
+            static_cast<unsigned long>(counters_.jittered),
+            static_cast<unsigned long>(counters_.unjittered_depth_writers), counters_.cut, counters_.cut_median_px,
+            counters_.cut_missing_fraction, static_cast<unsigned long>(counters_.displacement_samples), taa_enabled_,
+            counters_.taa.attempted, counters_.taa.resolved, counters_.taa.used_history,
+            static_cast<unsigned long>(counters_.taa.skip), counters_.taa.result, counters_.taa.restore,
+            counters_.taa.copy, counters_.taa.hdr, counters_.taa.k, counters_.taa.sharpened,
+            0.0 /* taa_filter: the removed global current filter, kept 0 for log parsers */,
+            double(taa_history_weight_), scene_open_, static_cast<unsigned long>(active_queries_), taa_references_,
+            counters_.camera_scene_valid, counters_.camera_background_valid,
+            static_cast<unsigned long>(counters_.camera_reads), static_cast<unsigned long>(counters_.taa.camera_policy),
+            static_cast<unsigned long>(counters_.taa.camera_reason), counters_.taa.camera_cut,
+            counters_.taa.camera_rotation_deg, lazy_mode_ ? "lazy" : "perdraw", telemetry_ ? "cpu_qpc" : "off",
+            static_cast<unsigned long>(c.set_rt), static_cast<unsigned long>(c.lazy_flushes),
+            static_cast<unsigned long>(c.lazy_mask_writes), static_cast<unsigned long>(c.jitter_writes),
+            static_cast<unsigned long>(c.readbacks), us(c.gate_ticks), us(c.route_draw_ticks), us(c.set_rt_ticks),
+            us(c.lazy_flush_ticks), us(c.jitter_ticks), us(c.fill_ticks), us(c.taa_run_ticks), us(c.taa_capture_ticks),
+            us(c.taa_copy_color_ticks), us(c.taa_copy_depth_ticks), us(c.taa_draw_ticks), us(c.taa_apply_ticks),
+            us(c.taa_copy_back_ticks), us(c.readback_ticks), state_shadow_, render_state_mode(),
+            static_cast<unsigned long>(c.rs_queries), static_cast<unsigned long>(c.rs_hits),
+            static_cast<unsigned long>(c.rs_gets), static_cast<unsigned long>(c.rs_resyncs),
+            static_cast<unsigned long>(c.rs_invalidations), static_cast<unsigned long>(c.sb_resyncs),
+            scene_hook_installed_, scene_end_source_name(c.taa.source), static_cast<unsigned long>(c.scene_end_check),
+            static_cast<unsigned long>(c.hook_signals), static_cast<unsigned long>(c.hook_outside_scene),
+            static_cast<unsigned long>(c.hook_state), static_cast<unsigned long>(c.draws_after_hook), c.bloom_copy_seen,
+            double(mip_bias_), static_cast<unsigned long>(c.mip_bias_sets),
+            static_cast<unsigned long>(c.mip_bias_restores), static_cast<unsigned long>(c.mip_bias_draws),
+            static_cast<unsigned long>(c.mip_bias_stages), static_cast<unsigned long>(c.mip_bias_reads),
             static_cast<unsigned long>(c.mip_bias_game_writes), static_cast<unsigned long>(mip_bias_total_game_writes_),
             static_cast<unsigned long>(c.mip_bias_failures), static_cast<unsigned long>(sampler_biased_mask_),
             static_cast<unsigned long>(c.restore_getters), static_cast<unsigned long>(c.restore_declines));
@@ -7084,37 +9662,63 @@ void MotionOutput::after_present(HRESULT result) noexcept {
     if (taa_enabled_ && (capture_ || (camera_log_interval_ && frame_ % camera_log_interval_ == 0))) log_camera_state();
     if (thin_vote_upload_ && (capture_ || (telemetry_ && frame_ % frame_log_interval_ == 0))) log_thin_vote_frame();
     if (telemetry_ && frame_ % frame_log_interval_ == 0)
-        log("shadow_lease_retirement device=%llu frame=%llu calls=%u records=%u refs=%u us=%.1f clock_errors=%u",
-            id_,frame_,counters_.lease_retire_calls,counters_.lease_retire_records,counters_.lease_retire_refs,
-            telemetry::microseconds(counters_.lease_retire_ticks),counters_.lease_retire_clock_errors);
+        log("shadow_lease_retirement device=%llu frame=%llu calls=%u records=%u refs=%u us=%.1f clock_errors=%u", id_,
+            frame_, counters_.lease_retire_calls, counters_.lease_retire_records, counters_.lease_retire_refs,
+            telemetry::microseconds(counters_.lease_retire_ticks), counters_.lease_retire_clock_errors);
     if (hdr_enabled_ && (capture_ || (telemetry_ && frame_ % frame_log_interval_ == 0))) log_hdr_frame();
     flush_taa_invalidate_log();
 }
 
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
 void MotionOutput::fixture_configure(const MotionOutputFixtureConfig& config) noexcept {
-    fixture_ = config; fixture_configured_ = true;
+    fixture_ = config;
+    fixture_configured_ = true;
 }
 void MotionOutput::fixture_emission_fault(unsigned kind, unsigned count) noexcept {
-    if (kind == 200) { fixture_cutout_cap_fault_ = count; cutout_caps_ = cutout::Capability::Pending;
-        cutout_cap_result_ = S_FALSE; cutout_probe_frame_known_ = false; return; }
-    if (kind == 210) { fixture_cutout_vs_fault_ = count; return; }
-    if (kind == 211) { fixture_cutout_ps_fault_ = count; return; }
-    if (kind == 220) { fixture_cutout_rs_fault_ = count; return; }
-    if (kind == 221) { fixture_cutout_sampler_fault_ = count; return; }
-    if (kind == 101) { fixture_emission_exchange_fault_ = count; return; }
+    if (kind == 200) {
+        fixture_cutout_cap_fault_ = count;
+        cutout_caps_ = cutout::Capability::Pending;
+        cutout_cap_result_ = S_FALSE;
+        cutout_probe_frame_known_ = false;
+        return;
+    }
+    if (kind == 210) {
+        fixture_cutout_vs_fault_ = count;
+        return;
+    }
+    if (kind == 211) {
+        fixture_cutout_ps_fault_ = count;
+        return;
+    }
+    if (kind == 220) {
+        fixture_cutout_rs_fault_ = count;
+        return;
+    }
+    if (kind == 221) {
+        fixture_cutout_sampler_fault_ = count;
+        return;
+    }
+    if (kind == 101) {
+        fixture_emission_exchange_fault_ = count;
+        return;
+    }
 #ifdef X3M_LINEAR_EMISSION_PASS_FIXTURE
-    if (composition_ && kind <= unsigned(renderer::LinearEmissionPassFault::FrameClear)) composition_->inject(static_cast<renderer::LinearEmissionPassFault>(kind), count);
+    if (composition_ && kind <= unsigned(renderer::LinearEmissionPassFault::FrameClear))
+        composition_->inject(static_cast<renderer::LinearEmissionPassFault>(kind), count);
 #else
-    (void)kind; (void)count;
+    (void)kind;
+    (void)count;
 #endif
 }
 unsigned MotionOutput::fixture_emission_status(unsigned key) const noexcept {
     // 400 + SunUntrackedReason: the tested-opaque arm's refusal buckets.
-    if (key >= 400 && key < 400 + renderer::sun_untracked_reason_count) return counters_.cutout_opaque_reasons[key - 400];
+    if (key >= 400 && key < 400 + renderer::sun_untracked_reason_count)
+        return counters_.cutout_opaque_reasons[key - 400];
     switch (key) {
     case 0: return composition_effective_;
-    case 1: return composition_ && composition_->coverage_valid() && !composition_frame_stopped_ && !composition_quarantined_ && !composition_state_lost_;
+    case 1:
+        return composition_ && composition_->coverage_valid() && !composition_frame_stopped_ &&
+               !composition_quarantined_ && !composition_state_lost_;
     case 2: return composition_state_lost_;
     case 3: return composition_quarantined_;
     case 4: return composition_counts_.prepared;
@@ -7157,7 +9761,7 @@ unsigned MotionOutput::fixture_emission_status(unsigned key) const noexcept {
     case 33: return counters_.cutout_routed;
     case 34: return counters_.cutout_missed;
     case 35: return static_cast<unsigned>(cutout_cap_result_);
-    case 37: return counters_.cutout_opaque_routed;  // fixture: tested-opaque arm cutout pairs this frame
+    case 37: return counters_.cutout_opaque_routed; // fixture: tested-opaque arm cutout pairs this frame
     case 38: return counters_.cutout_opaque_refused;
     case 39: return counters_.cutout_opaque_lane;
     case 89: return counters_.routed;   // fixture: routed draws this frame
@@ -7169,18 +9773,22 @@ unsigned MotionOutput::fixture_emission_status(unsigned key) const noexcept {
     case 44: return composition_counts_.packed_unbounded_refused;
     case 45: return composition_counts_.packed_caps_refused;
     case 60: return screen_additive_admitted_;
-    case 70: return sun_apply_applied_;          // fixture: the apply quad drew this frame
-    case 71: return sun_apply_attempted_;        // fixture: the apply ran its gate this frame
+    case 70: return sun_apply_applied_;   // fixture: the apply quad drew this frame
+    case 71: return sun_apply_attempted_; // fixture: the apply ran its gate this frame
     case 72: return depth_replayed_frame_ == frame_ ? depth_replayed_ : 0u; // fixture: draws replayed this frame
-    case 73: return sun_original_variants_;      // fixture: original share variants created
-    case 74: return sun_original_refused_;       // fixture: original share producer refusals
-    case 76: return sun_original_refused_draws_; // fixture: routed depth writers of a share-refused reviewed pair this frame
-    case 77: return original_fill_draws_;        // fixture: original-fill draws admitted this frame (reset by the frame line)
-    case 78: return hull_lightmap_draws_;        // fixture: hull light-map gain draws admitted this frame (reset by the frame line)
+    case 73: return sun_original_variants_;                                 // fixture: original share variants created
+    case 74: return sun_original_refused_;                                  // fixture: original share producer refusals
+    case 76:
+        return sun_original_refused_draws_; // fixture: routed depth writers of a share-refused reviewed pair this frame
+    case 77: return original_fill_draws_; // fixture: original-fill draws admitted this frame (reset by the frame line)
+    case 78:
+        return hull_lightmap_draws_; // fixture: hull light-map gain draws admitted this frame (reset by the frame line)
     case 79: return sun_original_lightmap_variants_; // fixture: gained original share variants created
-    case 80: return lightmap_widen_draws_;           // fixture: widened light-map draws this frame (reset by the frame line)
-    case 81: return lightmap_widen_variants_;        // fixture: widened variants created (plain and share)
-    case 82: return lightmap_widen_filter_sets_;     // fixture: light-map stages raised to ANISOTROPIC this frame (reset by the frame line)
+    case 80: return lightmap_widen_draws_;    // fixture: widened light-map draws this frame (reset by the frame line)
+    case 81: return lightmap_widen_variants_; // fixture: widened variants created (plain and share)
+    case 82:
+        return lightmap_widen_filter_sets_; // fixture: light-map stages raised to ANISOTROPIC this frame (reset by the
+                                            // frame line)
     case 75: return sun_apply_ && sun_apply_->caps().enabled;
     case 61: return screen_additive_refused_;
     case 62: return screen_additive_failures_;
@@ -7193,29 +9801,39 @@ unsigned MotionOutput::fixture_emission_status(unsigned key) const noexcept {
     case 53: return counters_.fade_held;
     case 54: return counters_.overlay_routed;
     case 55: return counters_.overlay_refused;
-    case 83: return unsigned(fade_rt2_owner_);            // fixture: X3M_FADE_RT2_OWNER resolved on
-    case 84: return counters_.fade_owner_masked;          // fixture: fade-arm rows kept masked on the lane RT2 this frame
-    case 85: return counters_.fade_evicted;               // fixture: hysteresis evictions this frame
-    case 86: return counters_.fade_tested;                // fixture: fade-arm rows admitted with the alpha test on this frame
-    case 36: { static_assert(motion_shadow_state_count <= 32); unsigned mask=0;
-        for (unsigned i=0;i<motion_shadow_state_count;++i) if (shadow_.states_known[i]) mask |= std::uint32_t{1} << i;
-        return mask; }
+    case 83: return unsigned(fade_rt2_owner_);   // fixture: X3M_FADE_RT2_OWNER resolved on
+    case 84: return counters_.fade_owner_masked; // fixture: fade-arm rows kept masked on the lane RT2 this frame
+    case 85: return counters_.fade_evicted;      // fixture: hysteresis evictions this frame
+    case 86: return counters_.fade_tested;       // fixture: fade-arm rows admitted with the alpha test on this frame
+    case 36: {
+        static_assert(motion_shadow_state_count <= 32);
+        unsigned mask = 0;
+        for (unsigned i = 0; i < motion_shadow_state_count; ++i)
+            if (shadow_.states_known[i]) mask |= std::uint32_t{1} << i;
+        return mask;
+    }
     default: return 0;
     }
 }
-HRESULT MotionOutput::fixture_setter_result(HRESULT result,unsigned slot,unsigned selector) noexcept {
+HRESULT MotionOutput::fixture_setter_result(HRESULT result, unsigned slot, unsigned selector) noexcept {
     if (FAILED(result)) return result;
-    if (slot==57 && fixture_cutout_rs_fault_ && fixture_cutout_rs_fault_==selector) {
-        fixture_cutout_rs_fault_=0; return E_FAIL;
+    if (slot == 57 && fixture_cutout_rs_fault_ && fixture_cutout_rs_fault_ == selector) {
+        fixture_cutout_rs_fault_ = 0;
+        return E_FAIL;
     }
-    if (slot==69 && fixture_cutout_sampler_fault_ && fixture_cutout_sampler_fault_-1==selector) {
-        fixture_cutout_sampler_fault_=0; return E_FAIL;
+    if (slot == 69 && fixture_cutout_sampler_fault_ && fixture_cutout_sampler_fault_ - 1 == selector) {
+        fixture_cutout_sampler_fault_ = 0;
+        return E_FAIL;
     }
     return result;
 }
 void MotionOutput::fixture_hdr_fault(unsigned kind, unsigned count) noexcept {
-    if (hdr_) hdr_->set_fault(static_cast<renderer::HdrFault>(kind), count);
-    else { fixture_hdr_fault_kind_ = kind; fixture_hdr_fault_count_ = count; }
+    if (hdr_)
+        hdr_->set_fault(static_cast<renderer::HdrFault>(kind), count);
+    else {
+        fixture_hdr_fault_kind_ = kind;
+        fixture_hdr_fault_count_ = count;
+    }
 }
 HRESULT MotionOutput::fixture_hdr_readback(float* out, std::size_t floats, UINT* width, UINT* height) noexcept {
     if (!hdr_) return D3DERR_NOTAVAILABLE;
@@ -7225,47 +9843,75 @@ HRESULT MotionOutput::fixture_hdr_exposure(float* out, std::size_t floats) const
     if (!hdr_) return D3DERR_NOTAVAILABLE;
     if (!out || floats < 8) return D3DERR_MOREDATA;
     const auto& e = hdr_->exposure();
-    out[0] = e.ev(); out[1] = e.ev_adapted(); out[2] = e.ev_target(); out[3] = e.avg_log_l();
-    out[4] = e.dt(); out[5] = e.exposure(); out[6] = float(e.steps()); out[7] = hdr_taa_k_;
+    out[0] = e.ev();
+    out[1] = e.ev_adapted();
+    out[2] = e.ev_target();
+    out[3] = e.avg_log_l();
+    out[4] = e.dt();
+    out[5] = e.exposure();
+    out[6] = float(e.steps());
+    out[7] = hdr_taa_k_;
     if (floats >= 16) {
         const auto& m = e.meter();
-        out[8] = m.lit_fraction; out[9] = m.lit_median_log; out[10] = m.p99_max_log; out[11] = e.ev_key();
-        out[12] = e.ev_limit(); out[13] = float(m.tiles); out[14] = float(m.lit); out[15] = m.lit_mean_log;
+        out[8] = m.lit_fraction;
+        out[9] = m.lit_median_log;
+        out[10] = m.p99_max_log;
+        out[11] = e.ev_key();
+        out[12] = e.ev_limit();
+        out[13] = float(m.tiles);
+        out[14] = float(m.lit);
+        out[15] = m.lit_mean_log;
     }
-    if (floats >= 18) { out[16] = e.ev_fresh(); out[17] = e.meter().lit_weight; }
+    if (floats >= 18) {
+        out[16] = e.ev_fresh();
+        out[17] = e.meter().lit_weight;
+    }
     return S_OK;
 }
 HRESULT MotionOutput::fixture_last_pixel_abi(float* out, std::size_t floats) const noexcept {
     if (!out || floats < 8) return D3DERR_MOREDATA;
     if (!fixture_abi_known_) return D3DERR_NOTFOUND;
-    std::memcpy(out, fixture_last_pixel_abi_, (floats >= 12 ? 12u : 8u) * sizeof(float)); // 12: c218 of the thin vote as well
+    std::memcpy(out, fixture_last_pixel_abi_, (floats >= 12 ? 12u : 8u) * sizeof(float)); // 12: c218 of the thin vote
+                                                                                          // as well
     return S_OK;
 }
-HRESULT MotionOutput::fixture_readback(unsigned target, float* out, std::size_t floats, UINT* width, UINT* height) noexcept {
+HRESULT MotionOutput::fixture_readback(unsigned target, float* out, std::size_t floats, UINT* width,
+                                       UINT* height) noexcept {
     if (width) *width = target_width_;
     if (height) *height = target_height_;
     if (target != 1 && target != 2 && target != 3) return D3DERR_INVALIDCALL;
-    IDirect3DSurface9* surface = target == 1 ? target_surface_ : target == 2 ? depth_surface_ : composition_ ? composition_->coverage_target() : nullptr;
-    const unsigned components = target == 2 ? (sun_lane_active_?4u:1u) : 4u;
+    IDirect3DSurface9* surface = target == 1    ? target_surface_
+                                 : target == 2  ? depth_surface_
+                                 : composition_ ? composition_->coverage_target()
+                                                : nullptr;
+    const unsigned components = target == 2 ? (sun_lane_active_ ? 4u : 1u) : 4u;
     if (!surface) return D3DERR_NOTFOUND;
     if (!out || floats < std::size_t(target_width_) * target_height_ * components) return D3DERR_MOREDATA;
     IDirect3DSurface9* copy = nullptr;
     HRESULT hr = native<CreateOffscreenFn>(CreateOffscreenPlainSurface)(device_, target_width_, target_height_,
-        target == 1 ? D3DFMT_A32B32G32R32F : target == 2 ? lane_depth_format() : D3DFMT_A16B16G16R16F, D3DPOOL_SYSTEMMEM, &copy, nullptr);
+                                                                        target == 1   ? D3DFMT_A32B32G32R32F
+                                                                        : target == 2 ? lane_depth_format()
+                                                                                      : D3DFMT_A16B16G16R16F,
+                                                                        D3DPOOL_SYSTEMMEM, &copy, nullptr);
     if (SUCCEEDED(hr)) hr = native<GetRtDataFn>(GetRenderTargetData)(device_, surface, copy);
     D3DLOCKED_RECT lock{};
     if (SUCCEEDED(hr)) hr = copy->LockRect(&lock, nullptr, D3DLOCK_READONLY);
     if (SUCCEEDED(hr)) {
         for (UINT y = 0; y < target_height_; ++y) {
             const auto* row = static_cast<const char*>(lock.pBits) + y * lock.Pitch;
-            if (target != 3) std::memcpy(out + std::size_t(y) * target_width_ * components, row, std::size_t(target_width_) * components * 4);
-            else for (UINT x = 0; x < target_width_ * 4; ++x) {
-                const auto h = reinterpret_cast<const std::uint16_t*>(row)[x];
-                const unsigned exponent = (h >> 10) & 31u, mantissa = h & 1023u;
-                float value = exponent == 31 ? (mantissa ? std::numeric_limits<float>::quiet_NaN() : std::numeric_limits<float>::infinity())
-                    : std::ldexp(float(exponent ? 1024u + mantissa : mantissa), int(exponent ? exponent : 1) - 25);
-                out[std::size_t(y) * target_width_ * 4 + x] = h & 0x8000u ? -value : value;
-            }
+            if (target != 3)
+                std::memcpy(out + std::size_t(y) * target_width_ * components, row,
+                            std::size_t(target_width_) * components * 4);
+            else
+                for (UINT x = 0; x < target_width_ * 4; ++x) {
+                    const auto h = reinterpret_cast<const std::uint16_t*>(row)[x];
+                    const unsigned exponent = (h >> 10) & 31u, mantissa = h & 1023u;
+                    float value = exponent == 31 ? (mantissa ? std::numeric_limits<float>::quiet_NaN()
+                                                             : std::numeric_limits<float>::infinity())
+                                                 : std::ldexp(float(exponent ? 1024u + mantissa : mantissa),
+                                                              int(exponent ? exponent : 1) - 25);
+                    out[std::size_t(y) * target_width_ * 4 + x] = h & 0x8000u ? -value : value;
+                }
         }
         copy->UnlockRect();
     }
@@ -7292,19 +9938,28 @@ void MotionOutput::thin_vote_alpha(const MotionRoute& route, const float* rows, 
     // supported position element with the shadowed stream and indices equal to the key's.
     if (route.alpha_tested || route.fade_arm || route.overlay || !thin_vote_cache_ || !sun_lane_active_) return;
     if (k.topology != D3DPT_TRIANGLELIST || !thin_vote::position_type_supported(k.position_type) || !k.primitives ||
-        shadow_.stream0 != k.vertex_buffer || (k.indexed && shadow_.indices != k.index_buffer) || !shadow_.stream0_identity ||
-        (k.indexed && !shadow_.indices_identity)) return;
+        shadow_.stream0 != k.vertex_buffer || (k.indexed && shadow_.indices != k.index_buffer) ||
+        !shadow_.stream0_identity || (k.indexed && !shadow_.indices_identity))
+        return;
     ++f.opaque;
     // Per-draw time needs X3M_TELEMETRY_DRAW=1 (draw_us; a QPC is a syscall under Wine); without it one opaque draw per
-    // frame is timed while telemetry is on (sample_us), plus one empty QPC pair (stamp_us) to show the clock's own cost.
+    // frame is timed while telemetry is on (sample_us), plus one empty QPC pair (stamp_us) to show the clock's own
+    // cost.
     const bool sample = telemetry_ && f.opaque == f.sample_at, per_draw = telemetry::draw_enabled();
-    if (!sample && !per_draw) { thin_vote_lookup(route, rows, alpha); return; }
+    if (!sample && !per_draw) {
+        thin_vote_lookup(route, rows, alpha);
+        return;
+    }
     const std::uint64_t before = sample ? telemetry::now() : 0, begin = telemetry::now();
     thin_vote_lookup(route, rows, alpha);
     if (!begin) return; // telemetry off: now() is 0
     const std::uint64_t ticks = telemetry::now() - begin;
     if (per_draw) f.ticks += ticks;
-    if (sample) { f.sampled = 1; f.sample_ticks = ticks; f.stamp_ticks = begin - before; }
+    if (sample) {
+        f.sampled = 1;
+        f.sample_ticks = ticks;
+        f.stamp_ticks = begin - before;
+    }
 }
 void MotionOutput::thin_vote_lookup(const MotionRoute& route, const float* rows, float& alpha) noexcept {
     auto& f = thin_vote_frame_;
@@ -7313,39 +9968,68 @@ void MotionOutput::thin_vote_lookup(const MotionRoute& route, const float* rows,
     // atomic load here, a drain only when a watched buffer was written since.
     if (ownership::buffer_invalidations_pending()) drain_thin_invalidations();
     thin_vote::Key key;
-    key.vb = k.vertex_buffer; key.ib = k.indexed ? k.index_buffer : 0; key.stream_offset = k.stream_offset; key.stride = k.stride;
-    key.position_offset = k.position_offset; key.position_type = k.position_type; key.first = k.first; key.primitives = k.primitives;
-    key.min_vertex = k.indexed ? k.min_vertex : 0; key.vertex_count = k.indexed ? k.vertex_count : 0; key.base_vertex = k.indexed ? k.base_vertex : 0;
+    key.vb = k.vertex_buffer;
+    key.ib = k.indexed ? k.index_buffer : 0;
+    key.stream_offset = k.stream_offset;
+    key.stride = k.stride;
+    key.position_offset = k.position_offset;
+    key.position_type = k.position_type;
+    key.first = k.first;
+    key.primitives = k.primitives;
+    key.min_vertex = k.indexed ? k.min_vertex : 0;
+    key.vertex_count = k.indexed ? k.vertex_count : 0;
+    key.base_vertex = k.indexed ? k.base_vertex : 0;
     const thin_vote::Entry* e = thin_vote_cache_->find(key);
     if (!e || e->state == thin_vote::State::Retry) {
         ++f.missed;
-        for (unsigned i = 0; i < thin_vote_read_count_; ++i) if (thin_vote_reads_[i].key == key) { ++f.already_queued; return; }
-        if (thin_vote_read_count_ >= thin_vote::reads_per_frame) { ++f.dropped; return; } // the next frame's draw re-queues
+        for (unsigned i = 0; i < thin_vote_read_count_; ++i)
+            if (thin_vote_reads_[i].key == key) {
+                ++f.already_queued;
+                return;
+            }
+        if (thin_vote_read_count_ >= thin_vote::reads_per_frame) {
+            ++f.dropped;
+            return;
+        } // the next frame's draw re-queues
         auto& q = thin_vote_reads_[thin_vote_read_count_++];
-        q.key = key; q.vb = shadow_.stream0_identity; q.ib = k.indexed ? shadow_.indices_identity : 0;
+        q.key = key;
+        q.vb = shadow_.stream0_identity;
+        q.ib = k.indexed ? shadow_.indices_identity : 0;
         reinterpret_cast<IUnknown*>(q.vb)->AddRef();
         if (q.ib) reinterpret_cast<IUnknown*>(q.ib)->AddRef();
         ++f.queued;
         return;
     }
-    if (e->state != thin_vote::State::Known) { ++f.unreadable; return; }
+    if (e->state != thin_vote::State::Known) {
+        ++f.unreadable;
+        return;
+    }
     ++f.known;
     float scale = 0.f;
-    if (!thin_vote::log2_pixels_per_unit(rows, float(target_width_), scale)) { ++f.no_scale; return; }
+    if (!thin_vote::log2_pixels_per_unit(rows, float(target_width_), scale)) {
+        ++f.no_scale;
+        return;
+    }
     const float fraction = thin_vote::thin_fraction(e->histogram, scale);
     alpha = thin_vote::rt2_alpha(fraction);
-    if (alpha < 1.f) { ++f.voted; if (alpha < f.min_alpha) f.min_alpha = alpha; }
-    else if (fraction > f.max_unvoted) f.max_unvoted = fraction; // the closest miss of the frame (telemetry only)
+    if (alpha < 1.f) {
+        ++f.voted;
+        if (alpha < f.min_alpha) f.min_alpha = alpha;
+    } else if (fraction > f.max_unvoted)
+        f.max_unvoted = fraction; // the closest miss of the frame (telemetry only)
 }
 void MotionOutput::drain_thin_invalidations() noexcept {
     bool overflow = false;
-    const unsigned n = ownership::drain_buffer_invalidations(thin_vote_drained_, unsigned(std::size(thin_vote_drained_)), &overflow);
+    const unsigned n = ownership::drain_buffer_invalidations(thin_vote_drained_,
+                                                             unsigned(std::size(thin_vote_drained_)), &overflow);
     auto& t = thin_vote_totals_;
     t.invalidated += n;
     if (!thin_vote_cache_) return;
     if (overflow) { // more writes than the queue holds: every histogram and queued read may be stale (and a lost
         // release may leave a write count on a reused pointer): the cache starts over
-        ++t.overflows; thin_vote_cache_->clear(); thin_vote_cache_->volatility.clear();
+        ++t.overflows;
+        thin_vote_cache_->clear();
+        thin_vote_cache_->volatility.clear();
         for (unsigned i = 0; i < thin_vote_read_count_; ++i) thin_vote_reads_[i].stale = true;
         return;
     }
@@ -7355,8 +10039,10 @@ void MotionOutput::drain_thin_invalidations() noexcept {
     // through the identity index.
     for (unsigned i = 0; i < n; ++i) {
         const std::uintptr_t id = thin_vote_drained_[i] & ~std::uintptr_t(1);
-        if (thin_vote_drained_[i] & 1u) thin_vote_cache_->volatility.forget(id);
-        else if (thin_vote_cache_->volatility.bump(id) == thin_vote::volatile_after) ++t.volatile_buffers;
+        if (thin_vote_drained_[i] & 1u)
+            thin_vote_cache_->volatility.forget(id);
+        else if (thin_vote_cache_->volatility.bump(id) == thin_vote::volatile_after)
+            ++t.volatile_buffers;
         t.dropped_entries += thin_vote_cache_->invalidate(id);
         thin_vote_drained_[i] = id;
     }
@@ -7378,65 +10064,112 @@ void MotionOutput::read_thin_votes() noexcept {
         auto& q = thin_vote_reads_[i];
         auto* vb = reinterpret_cast<IDirect3DVertexBuffer9*>(q.vb);
         auto* ib = reinterpret_cast<IDirect3DIndexBuffer9*>(q.ib);
-        if (thin_vote_cache_ && triangles < thin_vote::triangles_per_frame && !(thin_vote_cache_->find(q.key) && thin_vote_cache_->find(q.key)->state != thin_vote::State::Retry)) {
+        if (thin_vote_cache_ && triangles < thin_vote::triangles_per_frame &&
+            !(thin_vote_cache_->find(q.key) && thin_vote_cache_->find(q.key)->state != thin_vote::State::Retry)) {
             const auto& k = q.key;
             enum class Outcome { Measured, Unreadable, Retry, Stale } outcome = Outcome::Retry;
             ownership::BufferLockView vv{}, iv{};
             const auto quiet = [](IDirect3DResource9* b, ownership::BufferLockView& v) noexcept {
-                return SUCCEEDED(ownership::get_buffer_lock_view(b, &v)) && v.known && !v.pending_locks && !v.in_flight_locks && !v.in_flight_unlocks;
+                return SUCCEEDED(ownership::get_buffer_lock_view(b, &v)) && v.known && !v.pending_locks &&
+                       !v.in_flight_locks && !v.in_flight_unlocks;
             };
-            D3DVERTEXBUFFER_DESC vd{}; D3DINDEXBUFFER_DESC id{};
+            D3DVERTEXBUFFER_DESC vd{};
+            D3DINDEXBUFFER_DESC id{};
             const bool indexed = ib != nullptr;
             // The vertex window: [base + min, + count) indexed, [first, + 3 primitives) otherwise.
-            const std::int64_t first_vertex = indexed ? std::int64_t(k.base_vertex) + k.min_vertex : std::int64_t(k.first);
+            const std::int64_t first_vertex = indexed ? std::int64_t(k.base_vertex) + k.min_vertex
+                                                      : std::int64_t(k.first);
             const std::uint64_t window = indexed ? k.vertex_count : std::uint64_t(k.primitives) * 3u;
-            const std::uint64_t v_offset = std::uint64_t(k.stream_offset) + std::uint64_t(first_vertex < 0 ? 0 : first_vertex) * k.stride;
-            const std::uint64_t v_size = window ? (window - 1) * k.stride + k.position_offset + thin_vote::position_bytes(k.position_type) : 0;
+            const std::uint64_t v_offset = std::uint64_t(k.stream_offset) +
+                                           std::uint64_t(first_vertex < 0 ? 0 : first_vertex) * k.stride;
+            const std::uint64_t v_size = window ? (window - 1) * k.stride + k.position_offset +
+                                                      thin_vote::position_bytes(k.position_type)
+                                                : 0;
             ownership::BufferReadability vr{}, ir{};
             bool watch = false; // an Unreadable entry that a write or release of its wrappers must drop
-            if (q.stale) { outcome = Outcome::Stale; ++t.stale; }
-            else if (thin_vote_cache_->volatility.is_volatile(q.vb) || (q.ib && thin_vote_cache_->volatility.is_volatile(q.ib))) {
+            if (q.stale) {
+                outcome = Outcome::Stale;
+                ++t.stale;
+            } else if (thin_vote_cache_->volatility.is_volatile(q.vb) ||
+                       (q.ib && thin_vote_cache_->volatility.is_volatile(q.ib))) {
                 // Rewritten volatile_after times since its reads began: refused without a Lock, still watched so its
                 // release forgets the count.
-                outcome = Outcome::Unreadable; ++t.volatile_refused; watch = true;
-            } else if (!quiet(vb, vv) || (indexed && !quiet(ib, iv))) { outcome = Outcome::Retry; ++t.not_quiet; }
-            else if (FAILED(ownership::get_buffer_readability(vb, &vr)) || (indexed && FAILED(ownership::get_buffer_readability(ib, &ir)))) { outcome = Outcome::Retry; ++t.lock_failed; }
-            else if (vr.pool != D3DPOOL_MANAGED || (vr.native_usage & D3DUSAGE_DYNAMIC) || (indexed && (ir.pool != D3DPOOL_MANAGED || (ir.native_usage & D3DUSAGE_DYNAMIC)))) {
-                outcome = Outcome::Unreadable; ++t.not_managed;
+                outcome = Outcome::Unreadable;
+                ++t.volatile_refused;
+                watch = true;
+            } else if (!quiet(vb, vv) || (indexed && !quiet(ib, iv))) {
+                outcome = Outcome::Retry;
+                ++t.not_quiet;
+            } else if (FAILED(ownership::get_buffer_readability(vb, &vr)) ||
+                       (indexed && FAILED(ownership::get_buffer_readability(ib, &ir)))) {
+                outcome = Outcome::Retry;
+                ++t.lock_failed;
+            } else if (vr.pool != D3DPOOL_MANAGED || (vr.native_usage & D3DUSAGE_DYNAMIC) ||
+                       (indexed && (ir.pool != D3DPOOL_MANAGED || (ir.native_usage & D3DUSAGE_DYNAMIC)))) {
+                outcome = Outcome::Unreadable;
+                ++t.not_managed;
             } else if (!vr.readable || (indexed && !ir.readable)) {
-                // MANAGED but WRITEONLY native storage (created before the readable policy was armed, or refused by it):
-                // a READONLY Lock of it is not documented readable, so no Lock at all.
-                outcome = Outcome::Unreadable; ++t.not_readable;
-            } else if (FAILED(vb->GetDesc(&vd)) || (indexed && FAILED(ib->GetDesc(&id)))) { outcome = Outcome::Retry; ++t.lock_failed; }
-            else {
-                const std::uint32_t index_bytes = indexed ? (id.Format == D3DFMT_INDEX32 ? 4u : id.Format == D3DFMT_INDEX16 ? 2u : 0u) : 0u;
-                const std::uint64_t i_offset = std::uint64_t(k.first) * index_bytes, i_size = std::uint64_t(k.primitives) * 3u * index_bytes;
-                if (first_vertex < 0 || !window || window > 0xFFFFFFFFull || v_offset + v_size > vd.Size || (indexed && (!index_bytes || i_offset + i_size > id.Size))) {
-                    outcome = Outcome::Unreadable; ++t.range;
+                // MANAGED but WRITEONLY native storage (created before the readable policy was armed, or refused by
+                // it): a READONLY Lock of it is not documented readable, so no Lock at all.
+                outcome = Outcome::Unreadable;
+                ++t.not_readable;
+            } else if (FAILED(vb->GetDesc(&vd)) || (indexed && FAILED(ib->GetDesc(&id)))) {
+                outcome = Outcome::Retry;
+                ++t.lock_failed;
+            } else {
+                const std::uint32_t index_bytes = indexed ? (id.Format == D3DFMT_INDEX32   ? 4u
+                                                             : id.Format == D3DFMT_INDEX16 ? 2u
+                                                                                           : 0u)
+                                                          : 0u;
+                const std::uint64_t i_offset = std::uint64_t(k.first) * index_bytes,
+                                    i_size = std::uint64_t(k.primitives) * 3u * index_bytes;
+                if (first_vertex < 0 || !window || window > 0xFFFFFFFFull || v_offset + v_size > vd.Size ||
+                    (indexed && (!index_bytes || i_offset + i_size > id.Size))) {
+                    outcome = Outcome::Unreadable;
+                    ++t.range;
                 } else {
                     const std::uint64_t lock_begin = stamp();
-                    void* vdata = nullptr; void* idata = nullptr;
+                    void* vdata = nullptr;
+                    void* idata = nullptr;
                     // A successful Lock is always unlocked, even when it returned no pointer.
                     const bool vheld = SUCCEEDED(vb->Lock(UINT(v_offset), UINT(v_size), &vdata, D3DLOCK_READONLY));
-                    const bool iheld = vheld && vdata && indexed && SUCCEEDED(ib->Lock(UINT(i_offset), UINT(i_size), &idata, D3DLOCK_READONLY));
+                    const bool iheld = vheld && vdata && indexed &&
+                                       SUCCEEDED(ib->Lock(UINT(i_offset), UINT(i_size), &idata, D3DLOCK_READONLY));
                     std::uint64_t lock_ticks = stamp() - lock_begin;
                     if (vheld && vdata && (!indexed || (iheld && idata))) {
                         const std::uint64_t measure_begin = stamp();
                         thin_vote::Histogram h;
-                        const bool ok = thin_vote::measure(static_cast<const unsigned char*>(vdata), std::uint32_t(window), k.stride, k.position_offset, k.position_type,
-                                                           idata, index_bytes == 4, indexed ? k.min_vertex : 0u, k.primitives, h);
+                        const bool ok = thin_vote::measure(static_cast<const unsigned char*>(vdata),
+                                                           std::uint32_t(window), k.stride, k.position_offset,
+                                                           k.position_type, idata, index_bytes == 4,
+                                                           indexed ? k.min_vertex : 0u, k.primitives, h);
                         const std::uint64_t measure_ticks = stamp() - measure_begin;
-                        t.measure_ticks += measure_ticks; if (measure_ticks > t.max_measure_ticks) t.max_measure_ticks = measure_ticks;
-                        const std::uint32_t measured_triangles = k.primitives < thin_vote::sample_cap ? k.primitives : thin_vote::sample_cap;
-                        triangles += measured_triangles; t.triangles += measured_triangles;
+                        t.measure_ticks += measure_ticks;
+                        if (measure_ticks > t.max_measure_ticks) t.max_measure_ticks = measure_ticks;
+                        const std::uint32_t measured_triangles = k.primitives < thin_vote::sample_cap
+                                                                     ? k.primitives
+                                                                     : thin_vote::sample_cap;
+                        triangles += measured_triangles;
+                        t.triangles += measured_triangles;
                         if (ok && thin_vote_cache_->store(k, &h, q.vb, q.ib)) {
                             // Watch both wrappers from here on: a later write or their release drops this entry.
                             ownership::watch_buffer_writes(vb);
                             if (ib) ownership::watch_buffer_writes(ib);
-                            ++t.measured; outcome = Outcome::Measured;
-                        } else if (ok) { ++t.measured; outcome = Outcome::Measured; } // stored nowhere (every way used this frame): read again later
-                        else { outcome = Outcome::Unreadable; ++t.geometry; watch = true; } // a rewrite may make it measurable
-                    } else { outcome = Outcome::Retry; ++t.lock_failed; }
+                            ++t.measured;
+                            outcome = Outcome::Measured;
+                        } else if (ok) {
+                            ++t.measured;
+                            outcome = Outcome::Measured;
+                        } // stored nowhere (every way used this frame): read again later
+                        else {
+                            outcome = Outcome::Unreadable;
+                            ++t.geometry;
+                            watch = true;
+                        } // a rewrite may make it measurable
+                    } else {
+                        outcome = Outcome::Retry;
+                        ++t.lock_failed;
+                    }
                     const std::uint64_t unlock_begin = stamp();
                     if (iheld) ib->Unlock();
                     if (vheld) vb->Unlock();
@@ -7451,9 +10184,12 @@ void MotionOutput::read_thin_votes() noexcept {
                     if (ib) ownership::watch_buffer_writes(ib);
                 }
                 ++t.unreadable;
+            } else if (outcome == Outcome::Retry) {
+                thin_vote_cache_->retry(k);
+                ++t.retries;
             }
-            else if (outcome == Outcome::Retry) { thin_vote_cache_->retry(k); ++t.retries; }
-            // Outcome::Stale: the buffer was written after the draw that queued it: no entry (the next draw queues its new revision).
+            // Outcome::Stale: the buffer was written after the draw that queued it: no entry (the next draw queues its
+            // new revision).
         }
         if (ib) ib->Release();
         if (vb) vb->Release();
@@ -7475,23 +10211,27 @@ void MotionOutput::release_thin_votes() noexcept {
     SetLastError(error);
 }
 void MotionOutput::log_thin_vote_frame() noexcept {
-    const auto& f = thin_vote_frame_; const auto& t = thin_vote_totals_;
+    const auto& f = thin_vote_frame_;
+    const auto& t = thin_vote_totals_;
     log("thin_vote_frame device=%llu frame=%llu lane=%u draws=%u opaque=%u known=%u voted=%u min_alpha=%.4f max_unvoted_fraction=%.4f unreadable=%u missed=%u queued=%u dropped=%u no_scale=%u "
         "draw_us=%.2f reads=%llu measured=%llu unreadable_total=%llu retries=%llu not_managed=%llu not_readable=%llu stale=%llu range=%llu geometry=%llu "
         "invalidated=%llu dropped_entries=%llu overflows=%llu volatile_buffers=%llu volatile_refused=%llu "
         "not_quiet=%llu lock_failed=%llu triangles=%llu lock_us=%.1f measure_us=%.1f max_measure_us=%.1f refused=%u "
         "deferred_cap=%u already_queued=%u draw_timing=%u sampled=%u sample_at=%u sample_us=%.2f stamp_us=%.2f",
-        id_, frame_, unsigned(sun_lane_active_), f.draws, f.opaque, f.known, f.voted, double(f.min_alpha), double(f.max_unvoted), f.unreadable, f.missed, f.queued, f.dropped, f.no_scale,
-        telemetry::microseconds(f.ticks),
-        static_cast<unsigned long long>(t.reads), static_cast<unsigned long long>(t.measured), static_cast<unsigned long long>(t.unreadable),
-        static_cast<unsigned long long>(t.retries), static_cast<unsigned long long>(t.not_managed), static_cast<unsigned long long>(t.not_readable),
-        static_cast<unsigned long long>(t.stale), static_cast<unsigned long long>(t.range),
-        static_cast<unsigned long long>(t.geometry), static_cast<unsigned long long>(t.invalidated), static_cast<unsigned long long>(t.dropped_entries),
-        static_cast<unsigned long long>(t.overflows), static_cast<unsigned long long>(t.volatile_buffers), static_cast<unsigned long long>(t.volatile_refused),
-        static_cast<unsigned long long>(t.not_quiet), static_cast<unsigned long long>(t.lock_failed),
-        static_cast<unsigned long long>(t.triangles), telemetry::microseconds(t.lock_ticks), telemetry::microseconds(t.measure_ticks),
-        telemetry::microseconds(t.max_measure_ticks), thin_vote_cache_ ? thin_vote_cache_->refused : 0u,
-        f.dropped, f.already_queued, unsigned(telemetry::draw_enabled() && telemetry_), f.sampled, f.sample_at,
+        id_, frame_, unsigned(sun_lane_active_), f.draws, f.opaque, f.known, f.voted, double(f.min_alpha),
+        double(f.max_unvoted), f.unreadable, f.missed, f.queued, f.dropped, f.no_scale,
+        telemetry::microseconds(f.ticks), static_cast<unsigned long long>(t.reads),
+        static_cast<unsigned long long>(t.measured), static_cast<unsigned long long>(t.unreadable),
+        static_cast<unsigned long long>(t.retries), static_cast<unsigned long long>(t.not_managed),
+        static_cast<unsigned long long>(t.not_readable), static_cast<unsigned long long>(t.stale),
+        static_cast<unsigned long long>(t.range), static_cast<unsigned long long>(t.geometry),
+        static_cast<unsigned long long>(t.invalidated), static_cast<unsigned long long>(t.dropped_entries),
+        static_cast<unsigned long long>(t.overflows), static_cast<unsigned long long>(t.volatile_buffers),
+        static_cast<unsigned long long>(t.volatile_refused), static_cast<unsigned long long>(t.not_quiet),
+        static_cast<unsigned long long>(t.lock_failed), static_cast<unsigned long long>(t.triangles),
+        telemetry::microseconds(t.lock_ticks), telemetry::microseconds(t.measure_ticks),
+        telemetry::microseconds(t.max_measure_ticks), thin_vote_cache_ ? thin_vote_cache_->refused : 0u, f.dropped,
+        f.already_queued, unsigned(telemetry::draw_enabled() && telemetry_), f.sampled, f.sample_at,
         telemetry::microseconds(f.sample_ticks), telemetry::microseconds(f.stamp_ticks));
 }
 
@@ -7503,7 +10243,8 @@ void MotionOutput::log_thin_vote_frame() noexcept {
 // established plus, for a managed slice-0 candidate, two registry snapshots of
 // the buffer-lock bookends (CPU only); at scene end the same snapshots again,
 // one log line, at most 16 witness lines per device. No allocation.
-shadow_replay::PoolClass MotionOutput::candidate_pool_of(std::uint64_t id, IDirect3DResource9* buffer, bool vertex) noexcept {
+shadow_replay::PoolClass MotionOutput::candidate_pool_of(std::uint64_t id, IDirect3DResource9* buffer,
+                                                         bool vertex) noexcept {
     using shadow_replay::PoolClass;
     if (!id || !buffer) return PoolClass::Unknown;
     const PoolClass cached = candidate_pools_.find(id);
@@ -7516,10 +10257,12 @@ shadow_replay::PoolClass MotionOutput::candidate_pool_of(std::uint64_t id, IDire
     PoolClass value = PoolClass::Unknown;
     if (vertex) {
         D3DVERTEXBUFFER_DESC desc{};
-        if (SUCCEEDED(static_cast<IDirect3DVertexBuffer9*>(buffer)->GetDesc(&desc))) value = shadow_replay::classify_pool(desc.Pool, desc.Usage);
+        if (SUCCEEDED(static_cast<IDirect3DVertexBuffer9*>(buffer)->GetDesc(&desc)))
+            value = shadow_replay::classify_pool(desc.Pool, desc.Usage);
     } else {
         D3DINDEXBUFFER_DESC desc{};
-        if (SUCCEEDED(static_cast<IDirect3DIndexBuffer9*>(buffer)->GetDesc(&desc))) value = shadow_replay::classify_pool(desc.Pool, desc.Usage);
+        if (SUCCEEDED(static_cast<IDirect3DIndexBuffer9*>(buffer)->GetDesc(&desc)))
+            value = shadow_replay::classify_pool(desc.Pool, desc.Usage);
     }
     SetLastError(error);
     if (value != PoolClass::Unknown) candidate_pools_.store(id, value);
@@ -7528,8 +10271,11 @@ shadow_replay::PoolClass MotionOutput::candidate_pool_of(std::uint64_t id, IDire
 void MotionOutput::note_candidate_distance(MotionRoute& route, const float* rows) noexcept {
     float distance = 0.f;
     // The w > 0 form: the fade arm's behind-camera distance (run 130) must not give a shadow candidate an origin rule.
-    route.candidate_distance = fade_route::origin_distance_front(rows, camera_scene_.valid, camera_scene_.m00, camera_scene_.m11,
-                                                                 camera_scene_.m20, camera_scene_.m21, distance) ? distance : -1.f;
+    route.candidate_distance = fade_route::origin_distance_front(rows, camera_scene_.valid, camera_scene_.m00,
+                                                                 camera_scene_.m11, camera_scene_.m20,
+                                                                 camera_scene_.m21, distance)
+                                   ? distance
+                                   : -1.f;
 }
 // The record list's parallel arrays for this device's cascade set
 // (shadow-cascade-extents.md, "Caster pool control"): the inline
@@ -7541,15 +10287,24 @@ void MotionOutput::note_candidate_distance(MotionRoute& route, const float* rows
 bool MotionOutput::attach_candidate_storage() noexcept {
     const auto& set = depth_cascades_;
     const unsigned wanted = set.count ? set.record_capacity() : 0u;
-    const unsigned capacity = wanted > shadow_replay::record_capacity ? (wanted < shadow_replay::record_capacity_max ? wanted : shadow_replay::record_capacity_max) : shadow_replay::record_capacity;
+    const unsigned capacity = wanted > shadow_replay::record_capacity
+                                  ? (wanted < shadow_replay::record_capacity_max ? wanted
+                                                                                 : shadow_replay::record_capacity_max)
+                                  : shadow_replay::record_capacity;
     if (capacity > shadow_replay::record_capacity && (!candidate_records_ext_ || candidate_capacity_ < capacity)) {
         candidate_records_ext_.reset(new (std::nothrow) shadow_replay::Record[capacity]);
         depth_geometry_ext_.reset(new (std::nothrow) shadow_replay::DepthGeometry[capacity]);
         depth_draws_ext_.reset(new (std::nothrow) renderer::ShadowReplayDraw[capacity]);
         candidate_quiet_ext_.reset(new (std::nothrow) bool[capacity]);
         if (!candidate_records_ext_ || !depth_geometry_ext_ || !depth_draws_ext_ || !candidate_quiet_ext_) {
-            candidate_records_ext_.reset(); depth_geometry_ext_.reset(); depth_draws_ext_.reset(); candidate_quiet_ext_.reset();
-            candidate_capacity_ = shadow_replay::record_capacity; candidates_.attach_storage(nullptr, 0); depth_geometry_ = depth_geometry_inline_; depth_draws_ = depth_draws_inline_;
+            candidate_records_ext_.reset();
+            depth_geometry_ext_.reset();
+            depth_draws_ext_.reset();
+            candidate_quiet_ext_.reset();
+            candidate_capacity_ = shadow_replay::record_capacity;
+            candidates_.attach_storage(nullptr, 0);
+            depth_geometry_ = depth_geometry_inline_;
+            depth_draws_ = depth_draws_inline_;
             return false;
         }
         candidate_capacity_ = capacity;
@@ -7559,27 +10314,41 @@ bool MotionOutput::attach_candidate_storage() noexcept {
     candidates_.attach_storage(ext ? candidate_records_ext_.get() : nullptr, ext ? candidate_capacity_ : 0);
     depth_geometry_ = ext ? depth_geometry_ext_.get() : depth_geometry_inline_;
     depth_draws_ = ext ? depth_draws_ext_.get() : depth_draws_inline_;
-    for (unsigned i = 0; i < renderer::shadow_cascade_max; ++i) depth_cascade_draw_caps_[i] = set.count && set.importance ? candidate_capacity_ : set.bound(i);
+    for (unsigned i = 0; i < renderer::shadow_cascade_max; ++i)
+        depth_cascade_draw_caps_[i] = set.count && set.importance ? candidate_capacity_ : set.bound(i);
     if (set.count && set.importance) {
-        if (!candidate_select_scratch_) candidate_select_scratch_.reset(new (std::nothrow) std::uint16_t[shadow_replay::record_capacity_max]);
-        if (!candidate_kept_last_) candidate_kept_last_.reset(new (std::nothrow) shadow_replay::KeptEntry[2u * shadow_replay::record_capacity_max]);
+        if (!candidate_select_scratch_)
+            candidate_select_scratch_.reset(new (std::nothrow) std::uint16_t[shadow_replay::record_capacity_max]);
+        if (!candidate_kept_last_)
+            candidate_kept_last_.reset(new (std::nothrow)
+                                           shadow_replay::KeptEntry[2u * shadow_replay::record_capacity_max]);
         if (!candidate_select_scratch_ || !candidate_kept_last_) return false;
         candidates_.attach_kept(candidate_kept_last_.get(), 2u * candidate_capacity_); // per device: cleared
-    } else candidates_.attach_kept(nullptr, 0);
+    } else
+        candidates_.attach_kept(nullptr, 0);
     // Cascade-membership flips (shadow-caster-retention.md, "Membership flips"):
     // one table per device while cascades are on, two slots per record as the
     // kept table; allocated once here, never per frame. Cascades off: detached,
     // no key is built and no field is emitted.
     if (set.count) {
-        if (!candidate_flip_entries_) candidate_flip_entries_.reset(new (std::nothrow) shadow_replay::FlipEntry[2u * shadow_replay::record_capacity_max]);
+        if (!candidate_flip_entries_)
+            candidate_flip_entries_.reset(new (std::nothrow)
+                                              shadow_replay::FlipEntry[2u * shadow_replay::record_capacity_max]);
         if (!candidate_flip_entries_) return false;
         candidate_flips_.attach(candidate_flip_entries_.get(), 2u * candidate_capacity_); // per device: cleared
-    } else candidate_flips_.attach(nullptr, 0);
+    } else
+        candidate_flips_.attach(nullptr, 0);
     refresh_cascade_policy();
     if (depth_cascade_static_mask_) {
-        // Two ring entries per record of the list: a full list of distinct casters fits (shadow-cascade-extents.md, the ring's limit).
-        if (!candidate_class_ring_ || candidate_class_ring_->sets < candidate_capacity_ || !candidate_class_ring_->valid()) candidate_class_ring_.reset(new (std::nothrow) shadow_caster_class::Ring(candidate_capacity_));
-        if (!candidate_class_ring_ || !candidate_class_ring_->valid()) { candidate_class_ring_.reset(); return false; }
+        // Two ring entries per record of the list: a full list of distinct casters fits (shadow-cascade-extents.md, the
+        // ring's limit).
+        if (!candidate_class_ring_ || candidate_class_ring_->sets < candidate_capacity_ ||
+            !candidate_class_ring_->valid())
+            candidate_class_ring_.reset(new (std::nothrow) shadow_caster_class::Ring(candidate_capacity_));
+        if (!candidate_class_ring_ || !candidate_class_ring_->valid()) {
+            candidate_class_ring_.reset();
+            return false;
+        }
         candidate_class_ring_->clear(); // per device: a previous device's sightings are not this one's
     }
     return true;
@@ -7591,7 +10360,8 @@ void MotionOutput::refresh_cascade_policy() noexcept {
     const auto& set = depth_cascades_;
     depth_cascade_static_mask_ = set.count ? set.static_only_mask() : std::uint8_t(0);
     depth_cascade_backface_mask_ = set.count ? set.backface_mask() : std::uint8_t(0);
-    for (unsigned i = 0; i < renderer::shadow_cascade_max; ++i) depth_cascade_class_eps_[i] = renderer::shadow_cascade_class_eps(set, i, retention_eps_);
+    for (unsigned i = 0; i < renderer::shadow_cascade_max; ++i)
+        depth_cascade_class_eps_[i] = renderer::shadow_cascade_class_eps(set, i, retention_eps_);
 }
 // The static/moving verdict of one live caster draw per static-only cascade
 // it met (`wanted`; shadow_caster_class.h): bit i of the result = static at
@@ -7605,7 +10375,8 @@ void MotionOutput::refresh_cascade_policy() noexcept {
 // rows) for an open cascade: moving there this frame, counted class_miss<i>
 // by the caller per cascade it refused. Counted class_store when the store
 // answered every wanted cascade, class_ring when the ring answered.
-std::uint8_t MotionOutput::classify_candidate_static(const MotionRoute& route, const float* rows, const float* lo, const float* hi, std::uint8_t wanted, bool& miss) noexcept {
+std::uint8_t MotionOutput::classify_candidate_static(const MotionRoute& route, const float* rows, const float* lo,
+                                                     const float* hi, std::uint8_t wanted, bool& miss) noexcept {
     auto& c = candidates_.counts;
     miss = false;
     std::uint8_t decided = 0, statics = 0;
@@ -7614,19 +10385,31 @@ std::uint8_t MotionOutput::classify_candidate_static(const MotionRoute& route, c
         const std::uint16_t index = retention_->store.find_node(serial);
         if (index != shadow_retention::none) {
             const auto& n = retention_->store.nodes[index];
-            decided = std::uint8_t(wanted & (n.static_mask | n.moved_mask)); statics = std::uint8_t(wanted & n.static_mask);
-            if (decided == wanted) { ++c.class_store; return statics; }
+            decided = std::uint8_t(wanted & (n.static_mask | n.moved_mask));
+            statics = std::uint8_t(wanted & n.static_mask);
+            if (decided == wanted) {
+                ++c.class_store;
+                return statics;
+            }
         }
     }
     const std::uint8_t open = std::uint8_t(wanted & ~decided);
     double world[12];
-    if (!candidate_class_ring_ || !serial || !rows || !shadow_retention::world_rows(camera_scene_, rows, world)) { miss = true; return statics; }
+    if (!candidate_class_ring_ || !serial || !rows || !shadow_retention::world_rows(camera_scene_, rows, world)) {
+        miss = true;
+        return statics;
+    }
     const auto& k = route.key;
     const std::uint32_t count = k.indexed ? k.vertex_count : shadow_replay::vertices_of(k.topology, k.primitives);
-    const std::uint64_t key = shadow_replay::caster_key(serial, k.vertex_buffer, k.indexed ? k.min_vertex : k.first, k.indexed ? k.base_vertex : 0, count);
+    const std::uint64_t key = shadow_replay::caster_key(serial, k.vertex_buffer, k.indexed ? k.min_vertex : k.first,
+                                                        k.indexed ? k.base_vertex : 0, count);
     const float zero[3] = {0.f, 0.f, 0.f};
-    const double d2 = candidate_class_ring_->drift(key, world, lo ? lo : zero, hi ? hi : zero, retention_eps_, std::uint32_t(frame_));
-    if (d2 < 0.) { miss = true; return statics; }
+    const double d2 = candidate_class_ring_->drift(key, world, lo ? lo : zero, hi ? hi : zero, retention_eps_,
+                                                   std::uint32_t(frame_));
+    if (d2 < 0.) {
+        miss = true;
+        return statics;
+    }
     ++c.class_ring;
     for (unsigned i = 0; i < depth_cascades_.count; ++i) {
         if (!(open & (1u << i))) continue;
@@ -7657,9 +10440,10 @@ void MotionOutput::note_candidate_draw(const MotionRoute& route) noexcept {
     const bool bounds_near_ok = near_ok || d < 0.f;
     // The pool class and the bookend identities are the shadow's; they are
     // attributed only when the shadowed binding ids are the route key's.
-    const bool shadow_ok = shadow_.stream0 == route.key.vertex_buffer && (!route.key.indexed || shadow_.indices == route.key.index_buffer);
-    const bool managed = shadow_.stream0_pool == shadow_replay::PoolClass::Managed
-        && (!route.key.indexed || shadow_.indices_pool == shadow_replay::PoolClass::Managed);
+    const bool shadow_ok = shadow_.stream0 == route.key.vertex_buffer &&
+                           (!route.key.indexed || shadow_.indices == route.key.index_buffer);
+    const bool managed = shadow_.stream0_pool == shadow_replay::PoolClass::Managed &&
+                         (!route.key.indexed || shadow_.indices_pool == shadow_replay::PoolClass::Managed);
     bool admitted = origin_rule, by_bounds = false, vb_known = false;
     // Alpha-tested draws are excluded (W3) unless the alpha casters are on and the
     // attached pass holds their programs (shadow-replay-gates.md, "Alpha-tested
@@ -7669,29 +10453,42 @@ void MotionOutput::note_candidate_draw(const MotionRoute& route) noexcept {
     std::uint8_t verdict_source = std::uint8_t(shadow_replay::VerdictSource::Origin);
     // The frame's sun: one sample per z-writing routed draw from the bound
     // program's own LightDir_Dir0 register (none: counted, contributes nothing).
-    float draw_sun[4]{}; int draw_sun_register = -1; bool draw_sun_agrees = false;
+    float draw_sun[4]{};
+    int draw_sun_register = -1;
+    bool draw_sun_agrees = false;
     if (zwrite) draw_sun_agrees = sample_candidate_sun(draw_sun, draw_sun_register);
     // Cascades on: one mask per draw. Without an extent the origin rule stands
     // in per cascade (the origin within that cascade's half-extent).
     const bool cascades = depth_cascades_on();
     std::uint8_t cascade_mask = 0;
     if (cascades) {
-        if (near_ok) for (unsigned i = 0; i < depth_cascades_.count; ++i) if (d <= depth_cascades_.cascades[i].half_extent && renderer::shadow_cascade_active(depth_cascades_, i)) cascade_mask |= std::uint8_t(1u << i);
+        if (near_ok)
+            for (unsigned i = 0; i < depth_cascades_.count; ++i)
+                if (d <= depth_cascades_.cascades[i].half_extent && renderer::shadow_cascade_active(depth_cascades_, i))
+                    cascade_mask |= std::uint8_t(1u << i);
         admitted = cascade_mask != 0;
     }
-    const shadow_replay::ExtentEntry* exact_extent = nullptr; // the range's own extent of this revision (caster retention's payload)
-    const float* class_lo = nullptr; const float* class_hi = nullptr; // the extent the box test used (the static test's corners)
-    float projected = 0.f; // importance drop order: the draw's projected size at the camera (0 without an extent)
-    float box_extent = 0.f; // static-only cascades: the draw's world AABB extent (0 without an extent), the large-caster admission's measure
+    const shadow_replay::ExtentEntry* exact_extent = nullptr; // the range's own extent of this revision (caster
+                                                              // retention's payload)
+    const float* class_lo = nullptr;
+    const float* class_hi = nullptr; // the extent the box test used (the static test's corners)
+    float projected = 0.f;  // importance drop order: the draw's projected size at the camera (0 without an extent)
+    float box_extent = 0.f; // static-only cascades: the draw's world AABB extent (0 without an extent), the
+                            // large-caster admission's measure
     // The draw's own clip rows: the box test's, the static test's.
     const auto draw_rows = [this]() noexcept -> const float* {
-        const UINT matrix_register = shadow_.vs_row ? shadow_.vs_row->matrix_register : shadow_.vs_prepass ? shadow_.vs_prepass->matrix_register : ~0u;
+        const UINT matrix_register = shadow_.vs_row       ? shadow_.vs_row->matrix_register
+                                     : shadow_.vs_prepass ? shadow_.vs_prepass->matrix_register
+                                                          : ~0u;
         const std::size_t window = matrix_register == ~0u ? motion_matrix_windows_max : window_of(matrix_register);
         return window < motion_matrix_windows_max && shadow_.rows_known[window] ? shadow_.rows[window] : nullptr;
     };
     ownership::BufferLockView vb{}, ib{};
     const auto view = [](std::uintptr_t identity, ownership::BufferLockView& out) noexcept {
-        return identity && SUCCEEDED(ownership::get_buffer_lock_view_light(reinterpret_cast<IDirect3DResource9*>(identity), &out)) && out.known;
+        return identity &&
+               SUCCEEDED(
+                   ownership::get_buffer_lock_view_light(reinterpret_cast<IDirect3DResource9*>(identity), &out)) &&
+               out.known;
     };
     if (zwrite && shadow_ok && managed && !alpha_excluded) {
         // Bookend view at the draw: registry snapshot keyed by the wrapper
@@ -7700,14 +10497,21 @@ void MotionOutput::note_candidate_draw(const MotionRoute& route) noexcept {
         if (vb_known) {
             const auto& k = route.key;
             shadow_replay::ExtentKey key{};
-            key.vb = k.vertex_buffer; key.revision = vb.revision; key.stream_offset = k.stream_offset; key.stride = k.stride;
-            key.position_offset = k.position_offset; key.position_type = k.position_type;
+            key.vb = k.vertex_buffer;
+            key.revision = vb.revision;
+            key.stream_offset = k.stream_offset;
+            key.stride = k.stride;
+            key.position_offset = k.position_offset;
+            key.position_type = k.position_type;
             const std::int64_t first = k.indexed ? std::int64_t(k.base_vertex) + k.min_vertex : std::int64_t(k.first);
-            const std::uint32_t count = k.indexed ? k.vertex_count : shadow_replay::vertices_of(k.topology, k.primitives);
-            const bool range_ok = first >= 0 && first <= 0xFFFFFFFFll && count && k.stride && shadow_replay::extent_type_supported(k.position_type)
-                && k.position_offset + shadow_replay::extent_type_bytes(k.position_type) <= k.stride;
+            const std::uint32_t count = k.indexed ? k.vertex_count
+                                                  : shadow_replay::vertices_of(k.topology, k.primitives);
+            const bool range_ok = first >= 0 && first <= 0xFFFFFFFFll && count && k.stride &&
+                                  shadow_replay::extent_type_supported(k.position_type) &&
+                                  k.position_offset + shadow_replay::extent_type_bytes(k.position_type) <= k.stride;
             if (range_ok) {
-                key.first = std::uint32_t(first); key.count = count;
+                key.first = std::uint32_t(first);
+                key.count = count;
                 // The range's own extent, else the extent of an earlier revision
                 // of the same range while the new one is read (the verdict does
                 // not drop to the origin rule in between).
@@ -7718,29 +10522,51 @@ void MotionOutput::note_candidate_draw(const MotionRoute& route) noexcept {
                 const shadow_replay::ExtentEntry* stale = nullptr;
                 const shadow_replay::ExtentEntry* e = candidate_extents_.find(key, &stale);
                 if (e && e->state == shadow_replay::ExtentState::Known) exact_extent = e;
-                if (!e && !(stale && stale->abandoned())) queue_candidate_extent(key, shadow_.stream0_identity, stale != nullptr);
+                if (!e && !(stale && stale->abandoned()))
+                    queue_candidate_extent(key, shadow_.stream0_identity, stale != nullptr);
                 shadow_replay::ExtentEntry inflated{};
                 bool old = false;
                 if (!e && stale) {
                     e = stale;
-                    old = stale->abandoned() || candidate_extents_.stale_age(*stale) > shadow_replay::extent_stale_frames;
-                    if (old) { inflated = *stale; stale->inflated(inflated.lo, inflated.hi); e = &inflated; }
+                    old = stale->abandoned() ||
+                          candidate_extents_.stale_age(*stale) > shadow_replay::extent_stale_frames;
+                    if (old) {
+                        inflated = *stale;
+                        stale->inflated(inflated.lo, inflated.hi);
+                        e = &inflated;
+                    }
                 }
                 if (e) {
                     // Object bounds log: the box this draw's verdict uses, projected
                     // through the draw's own clip rows. Capture frames only, and only
                     // with X3M_OBJECT_BOUNDS_LOG; the corners are the route's own.
-                    if (object_bounds_log_ && capture_ && e->state == shadow_replay::ExtentState::Known) log_object_bounds(route, draw_rows(), e->lo, e->hi, route.alpha_tested);
+                    if (object_bounds_log_ && capture_ && e->state == shadow_replay::ExtentState::Known)
+                        log_object_bounds(route, draw_rows(), e->lo, e->hi, route.alpha_tested);
                     // The box test is the cascades' (no cascade, no box: the origin rule alone counts).
-                    if (!cascades) {}
-                    else if (e->state == shadow_replay::ExtentState::Known && !ensure_candidate_bounds_rows()) ++candidate_bounds_unavailable_;
+                    if (!cascades) {
+                    } else if (e->state == shadow_replay::ExtentState::Known && !ensure_candidate_bounds_rows())
+                        ++candidate_bounds_unavailable_;
                     else if (e->state == shadow_replay::ExtentState::Known) {
                         const float* rows = draw_rows();
-                        const int mask = rows ? renderer::shadow_cascade_bounds_mask(camera_scene_, rows, candidate_cascade_bounds_, e->lo, e->hi, depth_cascades_.importance ? &projected : nullptr,
-                                                                                        depth_cascade_static_mask_ && depth_cascades_.large_min > 0.f ? &box_extent : nullptr,
-                                                                                        candidate_footprint_law_.count ? candidate_footprint_ : nullptr) : -1;
-                        if (mask >= 0) { by_bounds = true; cascade_mask = bounds_near_ok ? std::uint8_t(mask) : std::uint8_t(0); admitted = cascade_mask != 0; class_lo = e->lo; class_hi = e->hi; }
-                        if (by_bounds) verdict_source = std::uint8_t(old ? shadow_replay::VerdictSource::Inflated : e == stale ? shadow_replay::VerdictSource::Retained : shadow_replay::VerdictSource::Bounds);
+                        const int mask = rows ? renderer::shadow_cascade_bounds_mask(
+                                                    camera_scene_, rows, candidate_cascade_bounds_, e->lo, e->hi,
+                                                    depth_cascades_.importance ? &projected : nullptr,
+                                                    depth_cascade_static_mask_ && depth_cascades_.large_min > 0.f
+                                                        ? &box_extent
+                                                        : nullptr,
+                                                    candidate_footprint_law_.count ? candidate_footprint_ : nullptr)
+                                              : -1;
+                        if (mask >= 0) {
+                            by_bounds = true;
+                            cascade_mask = bounds_near_ok ? std::uint8_t(mask) : std::uint8_t(0);
+                            admitted = cascade_mask != 0;
+                            class_lo = e->lo;
+                            class_hi = e->hi;
+                        }
+                        if (by_bounds)
+                            verdict_source = std::uint8_t(old          ? shadow_replay::VerdictSource::Inflated
+                                                          : e == stale ? shadow_replay::VerdictSource::Retained
+                                                                       : shadow_replay::VerdictSource::Bounds);
                     }
                 }
             }
@@ -7757,19 +10583,27 @@ void MotionOutput::note_candidate_draw(const MotionRoute& route) noexcept {
         if (view(shadow_.stream0_identity, alpha_vb)) {
             const auto& k = route.key;
             shadow_replay::ExtentKey key{};
-            key.vb = k.vertex_buffer; key.revision = alpha_vb.revision; key.stream_offset = k.stream_offset; key.stride = k.stride;
-            key.position_offset = k.position_offset; key.position_type = k.position_type;
+            key.vb = k.vertex_buffer;
+            key.revision = alpha_vb.revision;
+            key.stream_offset = k.stream_offset;
+            key.stride = k.stride;
+            key.position_offset = k.position_offset;
+            key.position_type = k.position_type;
             const std::int64_t first = k.indexed ? std::int64_t(k.base_vertex) + k.min_vertex : std::int64_t(k.first);
-            const std::uint32_t count = k.indexed ? k.vertex_count : shadow_replay::vertices_of(k.topology, k.primitives);
-            if (first >= 0 && first <= 0xFFFFFFFFll && count && k.stride && shadow_replay::extent_type_supported(k.position_type)
-                && k.position_offset + shadow_replay::extent_type_bytes(k.position_type) <= k.stride) {
-                key.first = std::uint32_t(first); key.count = count;
+            const std::uint32_t count = k.indexed ? k.vertex_count
+                                                  : shadow_replay::vertices_of(k.topology, k.primitives);
+            if (first >= 0 && first <= 0xFFFFFFFFll && count && k.stride &&
+                shadow_replay::extent_type_supported(k.position_type) &&
+                k.position_offset + shadow_replay::extent_type_bytes(k.position_type) <= k.stride) {
+                key.first = std::uint32_t(first);
+                key.count = count;
                 const shadow_replay::ExtentEntry* stale = nullptr;
                 const shadow_replay::ExtentEntry* e = candidate_extents_.find(key, &stale);
                 if (!e && !(stale && stale->abandoned())) note_object_bounds_alpha_read(key, shadow_.stream0_identity);
                 const bool old = !e && stale;
                 if (!e) e = stale;
-                if (capture_ && e && e->state == shadow_replay::ExtentState::Known) log_object_bounds(route, draw_rows(), e->lo, e->hi, true, old);
+                if (capture_ && e && e->state == shadow_replay::ExtentState::Known)
+                    log_object_bounds(route, draw_rows(), e->lo, e->hi, true, old);
             }
         }
     }
@@ -7783,13 +10617,18 @@ void MotionOutput::note_candidate_draw(const MotionRoute& route) noexcept {
     // static gate's refusal is (run116 cause 1).
     if (cascades && cascade_mask && by_bounds && candidate_footprint_law_.count) {
         unsigned refused = 0;
-        const unsigned kept = renderer::shadow_cascade_footprint_gate(candidate_footprint_law_, cascade_mask, candidate_footprint_, &refused);
+        const unsigned kept = renderer::shadow_cascade_footprint_gate(candidate_footprint_law_, cascade_mask,
+                                                                      candidate_footprint_, &refused);
         if (refused) {
-            for (unsigned i = 0; i < renderer::shadow_cascade_max; ++i) if (refused & (1u << i)) ++candidates_.counts.footprint_refused[i];
+            for (unsigned i = 0; i < renderer::shadow_cascade_max; ++i)
+                if (refused & (1u << i)) ++candidates_.counts.footprint_refused[i];
             cascade_mask = std::uint8_t(kept);
             const bool was_admitted = admitted;
             admitted = cascade_mask != 0;
-            if (was_admitted && !admitted && retention_ && depth_replay_requested_ && candidates_published_frame_ != frame_ && vb_known && !route.alpha_tested) note_refused_sighting(route, vb, exact_extent); // an alpha-tested draw is never retained (it would be re-issued without its test)
+            if (was_admitted && !admitted && retention_ && depth_replay_requested_ &&
+                candidates_published_frame_ != frame_ && vb_known && !route.alpha_tested)
+                note_refused_sighting(route, vb, exact_extent); // an alpha-tested draw is never retained (it would be
+                                                                // re-issued without its test)
         }
     }
     // Static-only cascades (shadow-cascade-extents.md, "Caster pool control"): a
@@ -7800,7 +10639,8 @@ void MotionOutput::note_candidate_draw(const MotionRoute& route) noexcept {
     if (cascades && (cascade_mask & depth_cascade_static_mask_) && zwrite && shadow_ok && managed && !alpha_excluded) {
         const std::uint8_t wanted = std::uint8_t(cascade_mask & depth_cascade_static_mask_);
         bool miss = false;
-        const std::uint8_t refused = std::uint8_t(wanted & ~classify_candidate_static(route, draw_rows(), class_lo, class_hi, wanted, miss));
+        const std::uint8_t refused = std::uint8_t(
+            wanted & ~classify_candidate_static(route, draw_rows(), class_lo, class_hi, wanted, miss));
         if (refused) {
             const bool large = depth_cascades_.large_min > 0.f && box_extent >= depth_cascades_.large_min;
             for (unsigned i = 0; i < depth_cascades_.count; ++i) {
@@ -7816,42 +10656,76 @@ void MotionOutput::note_candidate_draw(const MotionRoute& route) noexcept {
                 // no lease), but it is still a sighting of its node for the retention store: without
                 // it the node would be unseen at the scene end, dropped as moving, and readmitted fresh
                 // by the ring next frame (directional-shadows.md, "Run 40 A (run116) diagnosis", cause 1).
-                if (was_admitted && !admitted && retention_ && depth_replay_requested_ && candidates_published_frame_ != frame_ && vb_known && !route.alpha_tested) note_refused_sighting(route, vb, exact_extent);
+                if (was_admitted && !admitted && retention_ && depth_replay_requested_ &&
+                    candidates_published_frame_ != frame_ && vb_known && !route.alpha_tested)
+                    note_refused_sighting(route, vb, exact_extent);
             }
         }
     }
     // Own-ship-adaptive cascade 0: the own ship's z-writing draws with a known extent feed the frame's radius.
-    if (zwrite && cascade_adaptive_on() && exact_extent && own_ship_draw(std::uintptr_t(route.key.node), route.key.node_handle, route.load_epoch, route.registry_epoch)) note_own_ship_draw(*exact_extent);
+    if (zwrite && cascade_adaptive_on() && exact_extent &&
+        own_ship_draw(std::uintptr_t(route.key.node), route.key.node_handle, route.load_epoch, route.registry_epoch))
+        note_own_ship_draw(*exact_extent);
     // An included alpha-tested draw that would be a managed candidate: its own
     // alpha test as a caster (one ALPHAFUNC/ALPHAREF read from the state shadow
     // and, for a tested caster, the stage-0 texture's type and level-0 pool; its
     // reference becomes the lease: alpha_caster_source). Refused: excluded.
-    IDirect3DBaseTexture9* alpha_texture = nullptr; float alpha_threshold = 0.f;
-    if (route.alpha_tested && !alpha_excluded && zwrite && admitted && shadow_ok && managed) alpha_excluded = !alpha_caster_source(alpha_texture, alpha_threshold);
-    if (!candidates_.draw(zwrite, admitted, by_bounds, origin_rule, alpha_excluded, shadow_ok, shadow_.stream0_pool, shadow_.indices_pool, route.key.indexed,
-                          cascades ? candidate_capacity_ : shadow_replay::default_cap, cascades ? &cascade_mask : nullptr, cascades ? depth_cascade_draw_caps_ : nullptr)) { release(alpha_texture); return; }
+    IDirect3DBaseTexture9* alpha_texture = nullptr;
+    float alpha_threshold = 0.f;
+    if (route.alpha_tested && !alpha_excluded && zwrite && admitted && shadow_ok && managed)
+        alpha_excluded = !alpha_caster_source(alpha_texture, alpha_threshold);
+    if (!candidates_.draw(zwrite, admitted, by_bounds, origin_rule, alpha_excluded, shadow_ok, shadow_.stream0_pool,
+                          shadow_.indices_pool, route.key.indexed,
+                          cascades ? candidate_capacity_ : shadow_replay::default_cap,
+                          cascades ? &cascade_mask : nullptr, cascades ? depth_cascade_draw_caps_ : nullptr)) {
+        release(alpha_texture);
+        return;
+    }
     // A managed candidate without a known view for every buffer it uses is
     // counted managed but not leased.
-    if (!vb_known) { release(alpha_texture); return; }
-    if (route.key.indexed && !view(shadow_.indices_identity, ib)) { release(alpha_texture); return; }
+    if (!vb_known) {
+        release(alpha_texture);
+        return;
+    }
+    if (route.key.indexed && !view(shadow_.indices_identity, ib)) {
+        release(alpha_texture);
+        return;
+    }
     auto& r = candidates_.record(cascades ? cascade_mask : std::uint8_t(1));
     if (cascades) candidates_.count_cascades(cascade_mask);
-    r.verdict = verdict_source; r.serial = route.key.object_lifetime; r.size = projected;
-    if (cascades) { const auto& k = route.key; r.key = shadow_replay::caster_key(r.serial, k.vertex_buffer, k.indexed ? k.min_vertex : k.first, k.indexed ? k.base_vertex : 0, k.indexed ? k.vertex_count : shadow_replay::vertices_of(k.topology, k.primitives)); }
-    r.vb = route.key.vertex_buffer; r.vb_identity = shadow_.stream0_identity;
-    r.ib = route.key.indexed ? route.key.index_buffer : 0; r.ib_identity = route.key.indexed ? shadow_.indices_identity : 0;
+    r.verdict = verdict_source;
+    r.serial = route.key.object_lifetime;
+    r.size = projected;
+    if (cascades) {
+        const auto& k = route.key;
+        r.key = shadow_replay::caster_key(
+            r.serial, k.vertex_buffer, k.indexed ? k.min_vertex : k.first, k.indexed ? k.base_vertex : 0,
+            k.indexed ? k.vertex_count : shadow_replay::vertices_of(k.topology, k.primitives));
+    }
+    r.vb = route.key.vertex_buffer;
+    r.vb_identity = shadow_.stream0_identity;
+    r.ib = route.key.indexed ? route.key.index_buffer : 0;
+    r.ib_identity = route.key.indexed ? shadow_.indices_identity : 0;
     r.vb_view = static_cast<const ownership::BufferLockObservation&>(vb);
     r.ib_view = static_cast<const ownership::BufferLockObservation&>(ib);
-    r.vb_generation = vb.generation; r.ib_generation = ib.generation;
+    r.vb_generation = vb.generation;
+    r.ib_generation = ib.generation;
     ++candidates_.counts.leased;
     if (cascades) { // the depth replay's lease: only a cascade set has a map to replay into
         note_depth_geometry(route, candidates_.record_count - 1);
         auto& g = depth_geometry_[candidates_.record_count - 1];
-        g.sun_register = std::int8_t(draw_sun_register); g.sun_known = draw_sun_agrees; std::memcpy(g.sun, draw_sun, sizeof g.sun);
-        if (alpha_texture && g.leased) { g.alpha_texture = alpha_texture; g.alpha_threshold = alpha_threshold; alpha_texture = nullptr; } // the texture joins the lease
+        g.sun_register = std::int8_t(draw_sun_register);
+        g.sun_known = draw_sun_agrees;
+        std::memcpy(g.sun, draw_sun, sizeof g.sun);
+        if (alpha_texture && g.leased) {
+            g.alpha_texture = alpha_texture;
+            g.alpha_threshold = alpha_threshold;
+            alpha_texture = nullptr;
+        } // the texture joins the lease
         // A draw after the frame's scene end is not a sighting; an alpha-tested caster is never
         // retained (the store re-issues its records with the depth-only program).
-        if (retention_ && candidates_published_frame_ != frame_ && !route.alpha_tested) note_retention_draw(route, r, g, exact_extent);
+        if (retention_ && candidates_published_frame_ != frame_ && !route.alpha_tested)
+            note_retention_draw(route, r, g, exact_extent);
     }
     release(alpha_texture); // not leased (no cascade map, or an unleased record)
 }
@@ -7863,29 +10737,36 @@ void MotionOutput::note_candidate_draw(const MotionRoute& route) noexcept {
 // marks a box straddling the eye plane, whose screen box is the whole viewport
 // and whose zmin is pinned to 0; `alpha_tested=1` marks an alpha-tested draw
 // (its box is logged only, never used for a verdict), `stale=1` after it a box
-// that is an earlier buffer revision's (also one whose re-read was abandoned). No line when the rows or the target size are
-// unknown, or when a corner is nonfinite. Diagnostics only: the analysis is
-// tools/analysis/draw_accounting.py.
-void MotionOutput::log_object_bounds(const MotionRoute& route, const float* rows, const float* lo, const float* hi, bool alpha_tested, bool stale) noexcept {
+// that is an earlier buffer revision's (also one whose re-read was abandoned). No line when the rows or the target size
+// are unknown, or when a corner is nonfinite. Diagnostics only: the analysis is tools/analysis/draw_accounting.py.
+void MotionOutput::log_object_bounds(const MotionRoute& route, const float* rows, const float* lo, const float* hi,
+                                     bool alpha_tested, bool stale) noexcept {
     renderer::ObjectScreenBox box{};
     if (!renderer::object_screen_box(rows, lo, hi, target_width_, target_height_, box)) return;
     log("object_bounds device=%llu frame=%llu index=%lu node=%p model=%08lx sx0=%.1f sy0=%.1f sx1=%.1f sy1=%.1f zmin=%.6f zmax=%.6f inside=%u%s%s%s%s",
-        id_, frame_, counters_.draws, reinterpret_cast<void*>(route.key.node), static_cast<unsigned long>(route.key.model),
-        double(box.x0), double(box.y0), double(box.x1), double(box.y1), double(box.zmin), double(box.zmax), box.inside,
-        box.offscreen ? " offscreen=1" : "", box.crosses_near ? " near=1" : "", alpha_tested ? " alpha_tested=1" : "", stale ? " stale=1" : "");
+        id_, frame_, counters_.draws, reinterpret_cast<void*>(route.key.node),
+        static_cast<unsigned long>(route.key.model), double(box.x0), double(box.y0), double(box.x1), double(box.y1),
+        double(box.zmin), double(box.zmax), box.inside, box.offscreen ? " offscreen=1" : "",
+        box.crosses_near ? " near=1" : "", alpha_tested ? " alpha_tested=1" : "", stale ? " stale=1" : "");
 }
 // The bound program's LightDir_Dir0 as the application last wrote it, fed to
 // the frame's latch. False without a register, before its first write, or
 // when the sample does not agree with the validated sun.
 bool MotionOutput::sample_candidate_sun(float out[4], int& reg) noexcept {
     reg = shadow_.ps_sun_register;
-    if (reg < 0 || reg >= int(shadow_replay::sun_register_limit) || !((candidate_ps_written_ >> reg) & 1u)) { reg = reg < 0 ? -1 : reg; sun_latch_.no_register(); if (depth_cascades_on()) poll_point_sun(out, false); return false; }
+    if (reg < 0 || reg >= int(shadow_replay::sun_register_limit) || !((candidate_ps_written_ >> reg) & 1u)) {
+        reg = reg < 0 ? -1 : reg;
+        sun_latch_.no_register();
+        if (depth_cascades_on()) poll_point_sun(out, false);
+        return false;
+    }
     std::memcpy(out, candidate_ps_constants_[reg], 16);
     const bool latched = sun_latch_.valid;
     const bool agrees = sun_latch_.sample(out, reg, shadow_.ps_hash);
     if (!latched && sun_latch_.valid) // two draws agreed: the first one's value, register and program
         log("shadow_replay_sun_latch device=%llu frame=%llu event=latch register=%d program=%016llx sun=%.9g,%.9g,%.9g",
-            id_, frame_, sun_latch_.source_register, static_cast<unsigned long long>(sun_latch_.source_program), double(sun_latch_.sun[0]), double(sun_latch_.sun[1]), double(sun_latch_.sun[2]));
+            id_, frame_, sun_latch_.source_register, static_cast<unsigned long long>(sun_latch_.source_program),
+            double(sun_latch_.sun[0]), double(sun_latch_.sun[1]), double(sun_latch_.sun[2]));
     if (depth_cascades_on()) poll_point_sun(out, agrees);
     return agrees;
 }
@@ -7897,24 +10778,36 @@ bool MotionOutput::sample_candidate_sun(float out[4], int& reg) noexcept {
 void MotionOutput::poll_point_sun(const float constant[4], bool agrees) noexcept {
     if (!point_sun_.polled) {
         const bool available = sun_light_poll::available();
-        if (!available) { sun_light_poll::read(&point_sun_sample_) /* why: its status */; point_sun_.set_poll(nullptr, shadow_replay::PointSunReason::Unavailable); return; }
+        if (!available) {
+            sun_light_poll::read(&point_sun_sample_) /* why: its status */;
+            point_sun_.set_poll(nullptr, shadow_replay::PointSunReason::Unavailable);
+            return;
+        }
         LARGE_INTEGER t0{}, t1{};
         QueryPerformanceCounter(&t0);
         const bool ok = sun_light_poll::read(&point_sun_sample_);
         QueryPerformanceCounter(&t1);
         point_sun_poll_ticks_ = t1.QuadPart - t0.QuadPart;
-        point_sun_.set_poll(ok ? point_sun_sample_.position : nullptr, ok ? shadow_replay::PointSunReason::Point
-            : point_sun_sample_.status == sun_light_poll::Status::NoDirectional ? shadow_replay::PointSunReason::NoLight : shadow_replay::PointSunReason::Unavailable);
+        point_sun_.set_poll(ok ? point_sun_sample_.position : nullptr,
+                            ok ? shadow_replay::PointSunReason::Point
+                            : point_sun_sample_.status == sun_light_poll::Status::NoDirectional
+                                ? shadow_replay::PointSunReason::NoLight
+                                : shadow_replay::PointSunReason::Unavailable);
     }
     if (!agrees || !point_sun_.wants_check()) return;
-    const UINT matrix_register = shadow_.vs_row ? shadow_.vs_row->matrix_register : shadow_.vs_prepass ? shadow_.vs_prepass->matrix_register : ~0u;
+    const UINT matrix_register = shadow_.vs_row       ? shadow_.vs_row->matrix_register
+                                 : shadow_.vs_prepass ? shadow_.vs_prepass->matrix_register
+                                                      : ~0u;
     const std::size_t window = matrix_register == ~0u ? motion_matrix_windows_max : window_of(matrix_register);
     double origin[3];
-    if (window >= motion_matrix_windows_max || !shadow_.rows_known[window] || !shadow_replay::PointSun::draw_origin(camera_scene_, shadow_.rows[window], origin)) return;
+    if (window >= motion_matrix_windows_max || !shadow_.rows_known[window] ||
+        !shadow_replay::PointSun::draw_origin(camera_scene_, shadow_.rows[window], origin))
+        return;
     point_sun_.check(constant, origin);
 }
 const float* MotionOutput::cascade_sun(unsigned cascade) noexcept {
-    if (point_sun_.decide(depth_cascades_on(), camera_scene_, depth_cascades_)) return point_sun_.sun(cascade); // an unavailable poll is its own reason
+    if (point_sun_.decide(depth_cascades_on(), camera_scene_, depth_cascades_))
+        return point_sun_.sun(cascade); // an unavailable poll is its own reason
     return sun_latch_.frame_sun();
 }
 // The frame's cascade boxes for the draw-time box test, from the camera
@@ -7932,9 +10825,14 @@ bool MotionOutput::ensure_candidate_bounds_rows() noexcept {
     // sun position, else the latch's for all: the shared one-transform path).
     float suns[renderer::shadow_cascade_max * 4]{};
     for (unsigned k = 0; k < depth_cascades_.count; ++k) std::memcpy(suns + k * 4, cascade_sun(k), 16);
-    const bool ok = camera_scene_.valid && renderer::shadow_cascade_bounds_suns(camera_scene_, suns, depth_cascades_, candidate_cascade_bounds_, point_sun_.grid_anchors());
+    const bool ok = camera_scene_.valid &&
+                    renderer::shadow_cascade_bounds_suns(camera_scene_, suns, depth_cascades_,
+                                                         candidate_cascade_bounds_, point_sun_.grid_anchors());
     candidate_bounds_state_ = ok ? 1 : -1;
-    if (ok) refresh_footprint_law(); else candidate_footprint_law_ = renderer::ShadowCascadeFootprintLaw{};
+    if (ok)
+        refresh_footprint_law();
+    else
+        candidate_footprint_law_ = renderer::ShadowCascadeFootprintLaw{};
     return ok;
 }
 // The frame's minimum-footprint thresholds (shadow_cascade_footprint_core.h),
@@ -7944,19 +10842,30 @@ bool MotionOutput::ensure_candidate_bounds_rows() noexcept {
 // cleared, which drops nothing. One line per distinct resolved law, bounded.
 void MotionOutput::refresh_footprint_law() noexcept {
     const auto& set = depth_cascades_;
-    if (!set.count || !(set.min_footprint_px > 0.f)) { candidate_footprint_law_ = renderer::ShadowCascadeFootprintLaw{}; return; }
-    float extents[renderer::shadow_cascade_max]{}; unsigned sizes[renderer::shadow_cascade_max]{};
-    for (unsigned i = 0; i < set.count && i < renderer::shadow_cascade_max; ++i) { extents[i] = set.cascades[i].half_extent; sizes[i] = set.cascades[i].size; }
+    if (!set.count || !(set.min_footprint_px > 0.f)) {
+        candidate_footprint_law_ = renderer::ShadowCascadeFootprintLaw{};
+        return;
+    }
+    float extents[renderer::shadow_cascade_max]{};
+    unsigned sizes[renderer::shadow_cascade_max]{};
+    for (unsigned i = 0; i < set.count && i < renderer::shadow_cascade_max; ++i) {
+        extents[i] = set.cascades[i].half_extent;
+        sizes[i] = set.cascades[i].size;
+    }
     const unsigned active = set.active;
-    renderer::shadow_cascade_footprint_law(set.min_footprint_px, camera_scene_.m00, target_width_, extents, sizes, &active, set.count, candidate_footprint_law_);
-    if (candidate_footprint_law_ != candidate_footprint_logged_ && candidate_footprint_lines_ < shadow_replay::footprint_line_max) {
+    renderer::shadow_cascade_footprint_law(set.min_footprint_px, camera_scene_.m00, target_width_, extents, sizes,
+                                           &active, set.count, candidate_footprint_law_);
+    if (candidate_footprint_law_ != candidate_footprint_logged_ &&
+        candidate_footprint_lines_ < shadow_replay::footprint_line_max) {
         ++candidate_footprint_lines_;
         candidate_footprint_logged_ = candidate_footprint_law_;
         static_assert(renderer::shadow_cascade_max == 5, "the footprint line lists five cascades");
-        const auto min_of = [&](unsigned i) { return double(i < renderer::shadow_cascade_max ? candidate_footprint_law_.min_units[i] : 0.f); };
+        const auto min_of = [&](unsigned i) {
+            return double(i < renderer::shadow_cascade_max ? candidate_footprint_law_.min_units[i] : 0.f);
+        };
         log("shadow_cascade_footprint device=%llu frame=%llu px=%.9g m00=%.9g width=%u cascades=%u active=%u min0=%.9g min1=%.9g min2=%.9g min3=%.9g min4=%.9g",
-            id_, frame_, double(set.min_footprint_px), double(camera_scene_.m00), target_width_, candidate_footprint_law_.count, active,
-            min_of(0), min_of(1), min_of(2), min_of(3), min_of(4));
+            id_, frame_, double(set.min_footprint_px), double(camera_scene_.m00), target_width_,
+            candidate_footprint_law_.count, active, min_of(0), min_of(1), min_of(2), min_of(3), min_of(4));
     }
 }
 // Queues one extent read for the scene end (deduplicated; at most
@@ -7965,24 +10874,31 @@ void MotionOutput::refresh_footprint_law() noexcept {
 // range answers with a stale extent) goes to the front of the queue, which is
 // read in order under the byte budget, and evicts the last ordinary read when
 // the queue is full; an ordinary read never displaces anything.
-void MotionOutput::queue_candidate_extent(const shadow_replay::ExtentKey& key, std::uintptr_t identity, bool priority) noexcept {
+void MotionOutput::queue_candidate_extent(const shadow_replay::ExtentKey& key, std::uintptr_t identity,
+                                          bool priority) noexcept {
     if (!identity) return;
     constexpr unsigned capacity = shadow_replay::extent_reads_per_frame;
-    for (unsigned i = 0; i < candidate_extent_read_count_; ++i) if (candidate_extent_reads_[i].key == key) return;
+    for (unsigned i = 0; i < candidate_extent_read_count_; ++i)
+        if (candidate_extent_reads_[i].key == key) return;
     unsigned slot = candidate_extent_read_count_;
     if (priority) {
         if (candidate_extent_priority_count_ >= capacity) return;
-        if (candidate_extent_read_count_ >= capacity) { // full: the last ordinary read gives way (its next draw re-queues it)
+        if (candidate_extent_read_count_ >= capacity) { // full: the last ordinary read gives way (its next draw
+                                                        // re-queues it)
             auto& last = candidate_extent_reads_[capacity - 1];
             if (last.identity) reinterpret_cast<IUnknown*>(last.identity)->Release();
-            last = {}; candidate_extent_read_count_ = capacity - 1;
+            last = {};
+            candidate_extent_read_count_ = capacity - 1;
         }
         slot = candidate_extent_priority_count_++;
-        candidate_extent_reads_[candidate_extent_read_count_] = candidate_extent_reads_[slot]; // the first ordinary read moves to the end
-    } else if (slot >= capacity) return;
+        candidate_extent_reads_[candidate_extent_read_count_] = candidate_extent_reads_[slot]; // the first ordinary
+                                                                                               // read moves to the end
+    } else if (slot >= capacity)
+        return;
     ++candidate_extent_read_count_;
     auto& q = candidate_extent_reads_[slot];
-    q.key = key; q.identity = identity;
+    q.key = key;
+    q.identity = identity;
     reinterpret_cast<IUnknown*>(identity)->AddRef();
 }
 // The scene end, after this frame's bookend verdicts: one READONLY Lock of the
@@ -8004,21 +10920,30 @@ void MotionOutput::read_candidate_extents() noexcept {
         auto* buffer = reinterpret_cast<IDirect3DVertexBuffer9*>(q.identity);
         if (bytes < shadow_replay::extent_read_bytes_per_frame && !candidate_extents_.find(q.key)) {
             const std::uint64_t offset = std::uint64_t(q.key.stream_offset) + std::uint64_t(q.key.first) * q.key.stride;
-            const std::uint64_t size = std::uint64_t(q.key.count - 1) * q.key.stride + q.key.position_offset + shadow_replay::extent_type_bytes(q.key.position_type);
+            const std::uint64_t size = std::uint64_t(q.key.count - 1) * q.key.stride + q.key.position_offset +
+                                       shadow_replay::extent_type_bytes(q.key.position_type);
             float lo[3], hi[3];
             bool locked = false, finite = false;
             ownership::BufferLockView view{};
-            const bool quiet = SUCCEEDED(ownership::get_buffer_lock_view(buffer, &view)) && view.known && view.revision == q.key.revision
-                && !view.pending_locks && !view.in_flight_locks && !view.in_flight_unlocks;
+            const bool quiet = SUCCEEDED(ownership::get_buffer_lock_view(buffer, &view)) && view.known &&
+                               view.revision == q.key.revision && !view.pending_locks && !view.in_flight_locks &&
+                               !view.in_flight_unlocks;
             void* data = nullptr;
-            if (quiet && offset + size <= 0xFFFFFFFFull && SUCCEEDED(buffer->Lock(UINT(offset), UINT(size), &data, D3DLOCK_READONLY))) {
+            if (quiet && offset + size <= 0xFFFFFFFFull &&
+                SUCCEEDED(buffer->Lock(UINT(offset), UINT(size), &data, D3DLOCK_READONLY))) {
                 locked = true;
-                finite = data && shadow_replay::extent_of(static_cast<const unsigned char*>(data), q.key.stride, q.key.position_offset, q.key.position_type, q.key.count, lo, hi);
+                finite = data &&
+                         shadow_replay::extent_of(static_cast<const unsigned char*>(data), q.key.stride,
+                                                  q.key.position_offset, q.key.position_type, q.key.count, lo, hi);
                 buffer->Unlock();
                 bytes += size;
             }
-            if (locked) candidate_extents_.store(q.key, finite ? lo : nullptr, finite ? hi : nullptr, finite ? shadow_replay::ExtentState::Known : shadow_replay::ExtentState::Unreadable);
-            else candidate_extents_.retry(q.key);
+            if (locked)
+                candidate_extents_.store(q.key, finite ? lo : nullptr, finite ? hi : nullptr,
+                                         finite ? shadow_replay::ExtentState::Known
+                                                : shadow_replay::ExtentState::Unreadable);
+            else
+                candidate_extents_.retry(q.key);
             candidates_.counts.reads += locked;
         }
         buffer->Release();
@@ -8029,7 +10954,8 @@ void MotionOutput::read_candidate_extents() noexcept {
 }
 void MotionOutput::release_candidate_extents() noexcept {
     for (unsigned i = 0; i < candidate_extent_read_count_; ++i) {
-        if (candidate_extent_reads_[i].identity) reinterpret_cast<IUnknown*>(candidate_extent_reads_[i].identity)->Release();
+        if (candidate_extent_reads_[i].identity)
+            reinterpret_cast<IUnknown*>(candidate_extent_reads_[i].identity)->Release();
         candidate_extent_reads_[i] = {};
     }
     candidate_extent_read_count_ = candidate_extent_priority_count_ = 0;
@@ -8038,11 +10964,14 @@ void MotionOutput::release_candidate_extents() noexcept {
 // X3M_OBJECT_BOUNDS_LOG only: an alpha-tested draw's missing extent, held (with
 // its own reference) until the caster reads of the frame are all queued. At
 // most extent_reads_per_frame distinct keys; the rest wait for a later frame.
-void MotionOutput::note_object_bounds_alpha_read(const shadow_replay::ExtentKey& key, std::uintptr_t identity) noexcept {
+void MotionOutput::note_object_bounds_alpha_read(const shadow_replay::ExtentKey& key,
+                                                 std::uintptr_t identity) noexcept {
     if (!identity || object_bounds_alpha_read_count_ >= shadow_replay::extent_reads_per_frame) return;
-    for (unsigned i = 0; i < object_bounds_alpha_read_count_; ++i) if (object_bounds_alpha_reads_[i].key == key) return;
+    for (unsigned i = 0; i < object_bounds_alpha_read_count_; ++i)
+        if (object_bounds_alpha_reads_[i].key == key) return;
     auto& q = object_bounds_alpha_reads_[object_bounds_alpha_read_count_++];
-    q.key = key; q.identity = identity;
+    q.key = key;
+    q.identity = identity;
     reinterpret_cast<IUnknown*>(identity)->AddRef();
 }
 // Just before the scene end's reads: the held alpha-tested keys go to the end of
@@ -8054,7 +10983,11 @@ void MotionOutput::queue_object_bounds_alpha_reads() noexcept {
     for (unsigned i = 0; i < object_bounds_alpha_read_count_; ++i) {
         auto& a = object_bounds_alpha_reads_[i];
         bool queued = false;
-        for (unsigned j = 0; j < candidate_extent_read_count_; ++j) if (candidate_extent_reads_[j].key == a.key) { queued = true; break; }
+        for (unsigned j = 0; j < candidate_extent_read_count_; ++j)
+            if (candidate_extent_reads_[j].key == a.key) {
+                queued = true;
+                break;
+            }
         if (!queued && candidate_extent_read_count_ < shadow_replay::extent_reads_per_frame) {
             candidate_extent_reads_[candidate_extent_read_count_++] = a; // the reference moves with it
         } else if (a.identity) {
@@ -8066,7 +10999,8 @@ void MotionOutput::queue_object_bounds_alpha_reads() noexcept {
 }
 void MotionOutput::release_object_bounds_alpha_reads() noexcept {
     for (unsigned i = 0; i < object_bounds_alpha_read_count_; ++i) {
-        if (object_bounds_alpha_reads_[i].identity) reinterpret_cast<IUnknown*>(object_bounds_alpha_reads_[i].identity)->Release();
+        if (object_bounds_alpha_reads_[i].identity)
+            reinterpret_cast<IUnknown*>(object_bounds_alpha_reads_[i].identity)->Release();
         object_bounds_alpha_reads_[i] = {};
     }
     object_bounds_alpha_read_count_ = 0;
@@ -8092,15 +11026,33 @@ void MotionOutput::publish_shadow_replay_candidates() noexcept {
         for (unsigned i = 0; i < depth_cascades_.count; ++i) caps[i] = depth_cascades_.bound(i);
         candidates_.select_cascades(caps, depth_cascades_.count, candidate_select_scratch_.get());
         candidates_.compact(
-            [this](unsigned i) noexcept { if (!depth_replay_requested_) return; auto& g = depth_geometry_[i]; release(g.declaration); release(g.vertex_buffer); release(g.index_buffer); release(g.alpha_texture); g = {}; },
-            [this](unsigned from, unsigned to) noexcept { if (!depth_replay_requested_) return; depth_geometry_[to] = depth_geometry_[from]; depth_geometry_[from] = {}; }); // the lease moves with the record
+            [this](unsigned i) noexcept {
+                if (!depth_replay_requested_) return;
+                auto& g = depth_geometry_[i];
+                release(g.declaration);
+                release(g.vertex_buffer);
+                release(g.index_buffer);
+                release(g.alpha_texture);
+                g = {};
+            },
+            [this](unsigned from, unsigned to) noexcept {
+                if (!depth_replay_requested_) return;
+                depth_geometry_[to] = depth_geometry_[from];
+                depth_geometry_[from] = {};
+            }); // the lease moves with the record
         QueryPerformanceCounter(&t1);
-        if (!qpc_frequency_) { LARGE_INTEGER f{}; if (QueryPerformanceFrequency(&f) && f.QuadPart > 0) qpc_frequency_ = std::uint64_t(f.QuadPart); }
+        if (!qpc_frequency_) {
+            LARGE_INTEGER f{};
+            if (QueryPerformanceFrequency(&f) && f.QuadPart > 0) qpc_frequency_ = std::uint64_t(f.QuadPart);
+        }
         c.select_us = qpc_frequency_ ? double(t1.QuadPart - t0.QuadPart) * 1e6 / double(qpc_frequency_) : 0.;
         SetLastError(error);
     }
-    bool quiet_inline[shadow_replay::record_capacity]{}; // per record: compared, not stale, every buffer quiet (depth replay admission)
-    bool* const quiet_records = candidate_capacity_ > shadow_replay::record_capacity && candidate_quiet_ext_ ? candidate_quiet_ext_.get() : quiet_inline;
+    bool quiet_inline[shadow_replay::record_capacity]{}; // per record: compared, not stale, every buffer quiet (depth
+                                                         // replay admission)
+    bool* const quiet_records = candidate_capacity_ > shadow_replay::record_capacity && candidate_quiet_ext_
+                                    ? candidate_quiet_ext_.get()
+                                    : quiet_inline;
     if (quiet_records != quiet_inline) std::memset(quiet_records, 0, candidate_capacity_);
     for (unsigned i = 0; i < candidates_.record_count; ++i) {
         const auto& r = candidates_.records[i];
@@ -8109,7 +11061,8 @@ void MotionOutput::publish_shadow_replay_candidates() noexcept {
         // view of another allocation or generation (identity reused by a new
         // wrapper, or a Reset in between) is stale: counted, never compared.
         ownership::BufferLockView end{};
-        BufferVerdict verdicts[2]{}; bool present[2]{};
+        BufferVerdict verdicts[2]{};
+        bool present[2]{};
         const std::uintptr_t identities[2] = {r.vb_identity, r.ib_identity};
         const std::uint64_t generations[2] = {r.vb_generation, r.ib_generation};
         const ownership::BufferLockObservation* at_draw[2] = {&r.vb_view, &r.ib_view};
@@ -8117,29 +11070,53 @@ void MotionOutput::publish_shadow_replay_candidates() noexcept {
         bool stale = false;
         for (unsigned b = 0; b < buffers; ++b) {
             end = {};
-            present[b] = SUCCEEDED(ownership::get_buffer_lock_view(reinterpret_cast<IDirect3DResource9*>(identities[b]), &end)) && end.requested;
+            present[b] = SUCCEEDED(ownership::get_buffer_lock_view(reinterpret_cast<IDirect3DResource9*>(identities[b]),
+                                                                   &end)) &&
+                         end.requested;
             if (!present[b]) continue;
-            if (end.allocation_id != at_draw[b]->allocation_id || end.generation != generations[b]) { stale = true; break; }
-            verdicts[b] = shadow_replay::compare(*at_draw[b], static_cast<const ownership::BufferLockObservation&>(end), presenting);
+            if (end.allocation_id != at_draw[b]->allocation_id || end.generation != generations[b]) {
+                stale = true;
+                break;
+            }
+            verdicts[b] = shadow_replay::compare(*at_draw[b], static_cast<const ownership::BufferLockObservation&>(end),
+                                                 presenting);
         }
-        if (stale) { ++c.stale; continue; }
-        bool serial = false, readonly = false, writable = false, pending = false, in_flight = false, cold = false, quiet = true;
+        if (stale) {
+            ++c.stale;
+            continue;
+        }
+        bool serial = false, readonly = false, writable = false, pending = false, in_flight = false, cold = false,
+             quiet = true;
         for (unsigned b = 0; b < buffers; ++b) {
-            if (!present[b]) { quiet = false; continue; }
+            if (!present[b]) {
+                quiet = false;
+                continue;
+            }
             const auto& v = verdicts[b];
-            serial |= v.serial_changed; readonly |= v.readonly_after; writable |= v.writable_after;
-            pending |= v.pending; in_flight |= v.in_flight; cold |= v.cold_thread; quiet &= v.quiet;
+            serial |= v.serial_changed;
+            readonly |= v.readonly_after;
+            writable |= v.writable_after;
+            pending |= v.pending;
+            in_flight |= v.in_flight;
+            cold |= v.cold_thread;
+            quiet &= v.quiet;
         }
-        c.serial_changed += serial; c.readonly_after += readonly && !writable; c.writable_after += writable;
-        c.pending += pending; c.in_flight += in_flight; c.cold_thread += cold; c.quiet += quiet;
+        c.serial_changed += serial;
+        c.readonly_after += readonly && !writable;
+        c.writable_after += writable;
+        c.pending += pending;
+        c.in_flight += in_flight;
+        c.cold_thread += cold;
+        c.quiet += quiet;
         quiet_records[i] = quiet;
         for (unsigned b = 0; b < buffers && candidate_witnesses_ < shadow_replay::witness_capacity; ++b) {
             if (!present[b] || !verdicts[b].changed) continue;
             ++candidate_witnesses_;
             const auto& w = verdicts[b].witness;
             log("shadow_replay_lock_witness device=%llu frame=%llu allocation=%llu flags=%08x offset=%u size=%u thread=%u serial_delta=%llu revision_delta=%llu",
-                id_, frame_, static_cast<unsigned long long>(w.allocation), unsigned(w.flags), unsigned(w.offset), unsigned(w.size), unsigned(w.thread),
-                static_cast<unsigned long long>(w.serial_delta), static_cast<unsigned long long>(w.revision_delta));
+                id_, frame_, static_cast<unsigned long long>(w.allocation), unsigned(w.flags), unsigned(w.offset),
+                unsigned(w.size), unsigned(w.thread), static_cast<unsigned long long>(w.serial_delta),
+                static_cast<unsigned long long>(w.revision_delta));
         }
     }
     // Admission roots from the process monitor when X3M_ADMISSION=1 (zero
@@ -8147,7 +11124,8 @@ void MotionOutput::publish_shadow_replay_candidates() noexcept {
     // boundary (a second or out-of-phase signal), the observable C1 refusal.
     if (candidates_monitor_) {
         const auto s = ownership::admission_snapshot(candidates_monitor_);
-        c.roots = s.active_roots; c.waiting = s.waiting_roots;
+        c.roots = s.active_roots;
+        c.waiting = s.waiting_roots;
     }
     c.nested = counters_.hook_outside_scene;
     // The queued extent reads, after every verdict above (a READONLY Lock
@@ -8165,10 +11143,15 @@ void MotionOutput::publish_shadow_replay_candidates() noexcept {
         const float* sun = sun_latch_.frame_sun();
         if (sun_verdict_ == shadow_replay::SunVerdict::Relatched)
             log("shadow_replay_sun_latch device=%llu frame=%llu event=relatch register=%d program=%016llx sun=%.9g,%.9g,%.9g",
-                id_, frame_, sun_latch_.source_register, static_cast<unsigned long long>(sun_latch_.source_program), double(sun[0]), double(sun[1]), double(sun[2]));
-        if (shadow_state_row()) log("shadow_replay_sun device=%llu frame=%llu verdict=%s register=%d samples=%u agree=%u disagree=%u invalid=%u no_register=%u unlatched=%u bounds_state=%d bounds_unavailable=%u extent_refused=%u sun=%.6f,%.6f,%.6f",
-            id_, frame_, shadow_replay::sun_verdict_name(sun_verdict_), sun_latch_.source_register, samples.samples, samples.agree, samples.disagree, samples.invalid, samples.no_register, samples.unlatched,
-            candidate_bounds_state_, candidate_bounds_unavailable_, candidate_extents_.refused_frame /* extent_refused: this frame's refused stores */, double(sun ? sun[0] : 0.f), double(sun ? sun[1] : 0.f), double(sun ? sun[2] : 0.f));
+                id_, frame_, sun_latch_.source_register, static_cast<unsigned long long>(sun_latch_.source_program),
+                double(sun[0]), double(sun[1]), double(sun[2]));
+        if (shadow_state_row())
+            log("shadow_replay_sun device=%llu frame=%llu verdict=%s register=%d samples=%u agree=%u disagree=%u invalid=%u no_register=%u unlatched=%u bounds_state=%d bounds_unavailable=%u extent_refused=%u sun=%.6f,%.6f,%.6f",
+                id_, frame_, shadow_replay::sun_verdict_name(sun_verdict_), sun_latch_.source_register, samples.samples,
+                samples.agree, samples.disagree, samples.invalid, samples.no_register, samples.unlatched,
+                candidate_bounds_state_, candidate_bounds_unavailable_,
+                candidate_extents_.refused_frame /* extent_refused: this frame's refused stores */,
+                double(sun ? sun[0] : 0.f), double(sun ? sun[1] : 0.f), double(sun ? sun[2] : 0.f));
     }
     bool sun_source_switched = false; // point <-> latch: caster retention treats it as a sun re-latch
     // Cascades: the frame's sun source (decided here unless the box test already
@@ -8188,9 +11171,17 @@ void MotionOutput::publish_shadow_replay_candidates() noexcept {
 #endif
         if (point_sun_logged_ != point_sun_.reason) {
             event = true;
-            if (point_sun_logged_ != shadow_replay::PointSunReason::Count && (point || point_sun_logged_ == shadow_replay::PointSunReason::Point)) { sun_source_switched = true; if (depth_replay_) depth_replay_->invalidate_retained(); }
-            log("shadow_replay_sun_source device=%llu frame=%llu source=%s reason=%s previous=%s poll=%s", id_, frame_, point ? "point" : "latch", shadow_replay::point_sun_reason_name(point_sun_.reason),
-                point_sun_logged_ == shadow_replay::PointSunReason::Count ? "none" : shadow_replay::point_sun_reason_name(point_sun_logged_), sun_light_poll::status_name(point_sun_sample_.status));
+            if (point_sun_logged_ != shadow_replay::PointSunReason::Count &&
+                (point || point_sun_logged_ == shadow_replay::PointSunReason::Point)) {
+                sun_source_switched = true;
+                if (depth_replay_) depth_replay_->invalidate_retained();
+            }
+            log("shadow_replay_sun_source device=%llu frame=%llu source=%s reason=%s previous=%s poll=%s", id_, frame_,
+                point ? "point" : "latch", shadow_replay::point_sun_reason_name(point_sun_.reason),
+                point_sun_logged_ == shadow_replay::PointSunReason::Count
+                    ? "none"
+                    : shadow_replay::point_sun_reason_name(point_sun_logged_),
+                sun_light_poll::status_name(point_sun_sample_.status));
             point_sun_logged_ = point_sun_.reason;
         }
         constexpr unsigned point_sun_summary_frames = 300;
@@ -8199,9 +11190,15 @@ void MotionOutput::publish_shadow_replay_candidates() noexcept {
             const auto& n = point_sun_.frames_latch;
             using R = shadow_replay::PointSunReason;
             log("shadow_replay_sun_point_summary device=%llu frame=%llu frames_point=%llu off=%llu unavailable=%llu no_light=%llu camera=%llu near=%llu unchecked=%llu disagrees=%llu cooldown=%llu rederivations=%llu",
-                id_, frame_, static_cast<unsigned long long>(point_sun_.frames_point), static_cast<unsigned long long>(n[unsigned(R::Off)]), static_cast<unsigned long long>(n[unsigned(R::Unavailable)]),
-                static_cast<unsigned long long>(n[unsigned(R::NoLight)]), static_cast<unsigned long long>(n[unsigned(R::Camera)]), static_cast<unsigned long long>(n[unsigned(R::Near)]),
-                static_cast<unsigned long long>(n[unsigned(R::Unchecked)]), static_cast<unsigned long long>(n[unsigned(R::Disagrees)]), static_cast<unsigned long long>(n[unsigned(R::Cooldown)]),
+                id_, frame_, static_cast<unsigned long long>(point_sun_.frames_point),
+                static_cast<unsigned long long>(n[unsigned(R::Off)]),
+                static_cast<unsigned long long>(n[unsigned(R::Unavailable)]),
+                static_cast<unsigned long long>(n[unsigned(R::NoLight)]),
+                static_cast<unsigned long long>(n[unsigned(R::Camera)]),
+                static_cast<unsigned long long>(n[unsigned(R::Near)]),
+                static_cast<unsigned long long>(n[unsigned(R::Unchecked)]),
+                static_cast<unsigned long long>(n[unsigned(R::Disagrees)]),
+                static_cast<unsigned long long>(n[unsigned(R::Cooldown)]),
                 static_cast<unsigned long long>(point_sun_.rederivations));
         }
         // Per-frame sun trace (X3M_SHADOW_SUN_TRACE=1, default off): the source,
@@ -8211,34 +11208,50 @@ void MotionOutput::publish_shadow_replay_candidates() noexcept {
         // reads it, so the sparse lines above keep their cadence.
         if (point_sun_trace_)
             log("shadow_sun_frame device=%llu frame=%llu source=%s reason=%s poll=%s rederived=%u rederived_mask=%u carried=%u checks=%u disagreements=%u agreement_deg=%.6f distance=%.9g cascades=%u",
-                id_, frame_, point ? "point" : "latch", shadow_replay::point_sun_reason_name(point_sun_.reason), sun_light_poll::status_name(point_sun_sample_.status),
-                point_sun_.rederived, point_sun_.rederived_mask, point_sun_.carried_frame ? point_sun_.carried : 0u, point_sun_.checks, point_sun_.disagreements,
+                id_, frame_, point ? "point" : "latch", shadow_replay::point_sun_reason_name(point_sun_.reason),
+                sun_light_poll::status_name(point_sun_sample_.status), point_sun_.rederived, point_sun_.rederived_mask,
+                point_sun_.carried_frame ? point_sun_.carried : 0u, point_sun_.checks, point_sun_.disagreements,
                 point_sun_.agreement_degrees(), point_sun_.distance, depth_cascades_.count);
         if (event || capture_) {
-        char text[768]; int used = 0;
-        for (unsigned k = 0; k < depth_cascades_.count && used >= 0 && used < int(sizeof text); ++k) {
-            const float* s = cascade_sun(k);
-            const double* a = point_sun_.grid_anchor(k); // the texel grid's anchor (point source only)
-            used += std::snprintf(text + used, sizeof text - used, " dir%u=%.9g,%.9g,%.9g anchor%u=%.12g,%.12g,%.12g", k, double(s ? s[0] : 0.f), double(s ? s[1] : 0.f), double(s ? s[2] : 0.f),
-                                  k, a ? a[0] : 0., a ? a[1] : 0., a ? a[2] : 0.);
-        }
-        if (used < 0 || used >= int(sizeof text)) text[0] = 0;
-        const auto& p = point_sun_; const auto& q = point_sun_sample_;
-        const double scale = q.record_valid && q.position[0] ? double(q.record_position[0]) / double(q.position[0]) : 0.;
-        if (!qpc_frequency_) { LARGE_INTEGER f{}; if (QueryPerformanceFrequency(&f) && f.QuadPart > 0) qpc_frequency_ = std::uint64_t(f.QuadPart); }
-        const double poll_us = qpc_frequency_ ? double(point_sun_poll_ticks_) * 1e6 / double(qpc_frequency_) : 0.;
-        log("shadow_replay_sun_point device=%llu frame=%llu source=%s reason=%s poll=%s light=%.9g,%.9g,%.9g native=%d,%d,%d distance=%.9g checks=%u disagreements=%u agreement_deg=%.6f rederived=%u carried=%u"
-            " candidates=%u directional=%u slot_admitted=%u rule=%s rules_agree=%u admission_native=%d,%d,%d score=%u second_score=%u flags=%08x record_scale=%.6g poll_us=%.1f frames_point=%llu%s",
-            id_, frame_, point ? "point" : "latch", shadow_replay::point_sun_reason_name(p.reason), sun_light_poll::status_name(q.status), p.light_valid ? p.light[0] : 0., p.light_valid ? p.light[1] : 0.,
-            p.light_valid ? p.light[2] : 0., int(q.position[0]), int(q.position[1]), int(q.position[2]), p.distance, p.checks, p.disagreements, p.agreement_degrees(), p.rederived, p.carried_frame ? p.carried : 0u,
-            q.candidates, q.directional, q.slot_admitted, q.engine_rule ? "engine" : "admission", unsigned(q.rules_agree), int(q.admission_position[0]), int(q.admission_position[1]), int(q.admission_position[2]),
-            q.score, q.second_score, q.flags, scale, poll_us, static_cast<unsigned long long>(p.frames_point), text);
+            char text[768];
+            int used = 0;
+            for (unsigned k = 0; k < depth_cascades_.count && used >= 0 && used < int(sizeof text); ++k) {
+                const float* s = cascade_sun(k);
+                const double* a = point_sun_.grid_anchor(k); // the texel grid's anchor (point source only)
+                used += std::snprintf(text + used, sizeof text - used,
+                                      " dir%u=%.9g,%.9g,%.9g anchor%u=%.12g,%.12g,%.12g", k, double(s ? s[0] : 0.f),
+                                      double(s ? s[1] : 0.f), double(s ? s[2] : 0.f), k, a ? a[0] : 0., a ? a[1] : 0.,
+                                      a ? a[2] : 0.);
+            }
+            if (used < 0 || used >= int(sizeof text)) text[0] = 0;
+            const auto& p = point_sun_;
+            const auto& q = point_sun_sample_;
+            const double scale = q.record_valid && q.position[0] ? double(q.record_position[0]) / double(q.position[0])
+                                                                 : 0.;
+            if (!qpc_frequency_) {
+                LARGE_INTEGER f{};
+                if (QueryPerformanceFrequency(&f) && f.QuadPart > 0) qpc_frequency_ = std::uint64_t(f.QuadPart);
+            }
+            const double poll_us = qpc_frequency_ ? double(point_sun_poll_ticks_) * 1e6 / double(qpc_frequency_) : 0.;
+            log("shadow_replay_sun_point device=%llu frame=%llu source=%s reason=%s poll=%s light=%.9g,%.9g,%.9g native=%d,%d,%d distance=%.9g checks=%u disagreements=%u agreement_deg=%.6f rederived=%u carried=%u"
+                " candidates=%u directional=%u slot_admitted=%u rule=%s rules_agree=%u admission_native=%d,%d,%d score=%u second_score=%u flags=%08x record_scale=%.6g poll_us=%.1f frames_point=%llu%s",
+                id_, frame_, point ? "point" : "latch", shadow_replay::point_sun_reason_name(p.reason),
+                sun_light_poll::status_name(q.status), p.light_valid ? p.light[0] : 0., p.light_valid ? p.light[1] : 0.,
+                p.light_valid ? p.light[2] : 0., int(q.position[0]), int(q.position[1]), int(q.position[2]), p.distance,
+                p.checks, p.disagreements, p.agreement_degrees(), p.rederived, p.carried_frame ? p.carried : 0u,
+                q.candidates, q.directional, q.slot_admitted, q.engine_rule ? "engine" : "admission",
+                unsigned(q.rules_agree), int(q.admission_position[0]), int(q.admission_position[1]),
+                int(q.admission_position[2]), q.score, q.second_score, q.flags, scale, poll_us,
+                static_cast<unsigned long long>(p.frames_point), text);
         }
     }
     // Caster retention: retirements, the sun flush, the seen nodes' classes and
     // the unseen walk, before the replay that issues the admitted records and
     // after the frame's sun source is decided (each cascade's own basis).
-    if (retention_) { gpu_sync_timing::Span span(gpu_sync_, gpu_sync_timing::Retention); retention_scene_end(sun_source_switched); } // --gpu-sync-timing: the walk's pair
+    if (retention_) {
+        gpu_sync_timing::Span span(gpu_sync_, gpu_sync_timing::Retention);
+        retention_scene_end(sun_source_switched);
+    } // --gpu-sync-timing: the walk's pair
     // Capture frames: one line per record (what admitted it, into which
     // cascades, and what its own program said the sun was).
     if (capture_) {
@@ -8251,21 +11264,29 @@ void MotionOutput::publish_shadow_replay_candidates() noexcept {
             // the pairs of one frame triangulate the light's distance (directional-shadows.md, Open).
             double origin[3] = {0, 0, 0};
             if (camera_scene_.valid && camera_scene_.m00 > 0.f && camera_scene_.m11 > 0.f) {
-                const double view[3] = {double(g.rows[3]) / camera_scene_.m00, double(g.rows[7]) / camera_scene_.m11, double(g.rows[15])};
+                const double view[3] = {double(g.rows[3]) / camera_scene_.m00, double(g.rows[7]) / camera_scene_.m11,
+                                        double(g.rows[15])};
                 double scratch[9];
                 const double* wv = renderer::camera_world_basis(camera_scene_, scratch);
-                for (unsigned k = 0; k < 3; ++k) for (unsigned j = 0; j < 3; ++j) origin[k] += (view[j] - double(camera_scene_.t[j])) * wv[k * 3 + j];
+                for (unsigned k = 0; k < 3; ++k)
+                    for (unsigned j = 0; j < 3; ++j)
+                        origin[k] += (view[j] - double(camera_scene_.t[j])) * wv[k * 3 + j];
             }
             log("shadow_replay_caster device=%llu frame=%llu record=%u vb=%llu cascades=%u verdict=%s leased=%u quiet=%u sun_register=%d sun_agrees=%u sun=%.9g,%.9g,%.9g primitives=%u origin=%.9g,%.9g,%.9g%s",
-                id_, frame_, i, static_cast<unsigned long long>(r.vb), unsigned(r.cascades), shadow_replay::verdict_source_name(r.verdict), unsigned(g.leased), unsigned(quiet_records[i]),
-                int(g.sun_register), unsigned(g.sun_known), double(g.sun[0]), double(g.sun[1]), double(g.sun[2]), unsigned(g.primitives), origin[0], origin[1], origin[2], retention_ ? " retained=0" : "");
+                id_, frame_, i, static_cast<unsigned long long>(r.vb), unsigned(r.cascades),
+                shadow_replay::verdict_source_name(r.verdict), unsigned(g.leased), unsigned(quiet_records[i]),
+                int(g.sun_register), unsigned(g.sun_known), double(g.sun[0]), double(g.sun[1]), double(g.sun[2]),
+                unsigned(g.primitives), origin[0], origin[1], origin[2], retention_ ? " retained=0" : "");
         }
-        // Retained records the replay issues this frame (live retention): the node's last recorded draw, not submitted now.
-        if (retention_live()) for (unsigned q = 0; q < retention_->store.admitted_count; ++q) {
-            const auto& d = retention_->store.draws[retention_->store.admitted[q]];
-            log("shadow_replay_caster device=%llu frame=%llu record=%u vb=%llu cascades=%u verdict=node leased=1 quiet=1 sun_register=-1 sun_agrees=0 sun=0,0,0 primitives=%u origin=%.9g,%.9g,%.9g retained=1",
-                id_, frame_, candidates_.record_count + q, static_cast<unsigned long long>(d.key.vb), unsigned(d.cascades), unsigned(d.key.primitives), d.world[3], d.world[7], d.world[11]);
-        }
+        // Retained records the replay issues this frame (live retention): the node's last recorded draw, not submitted
+        // now.
+        if (retention_live())
+            for (unsigned q = 0; q < retention_->store.admitted_count; ++q) {
+                const auto& d = retention_->store.draws[retention_->store.admitted[q]];
+                log("shadow_replay_caster device=%llu frame=%llu record=%u vb=%llu cascades=%u verdict=node leased=1 quiet=1 sun_register=-1 sun_agrees=0 sun=0,0,0 primitives=%u origin=%.9g,%.9g,%.9g retained=1",
+                    id_, frame_, candidates_.record_count + q, static_cast<unsigned long long>(d.key.vb),
+                    unsigned(d.cascades), unsigned(d.key.primitives), d.world[3], d.world[7], d.world[11]);
+            }
     }
     // Cascades on: the per-cascade record counts and cap drops follow the
     // unchanged fields (c0= .. capped0= .., one pair per configured cascade).
@@ -8283,20 +11304,33 @@ void MotionOutput::publish_shadow_replay_candidates() noexcept {
     // line stays well formed), counted in candidates_line_truncated_ and
     // reported on its own line, never blanked silently.
     static_assert(renderer::shadow_cascade_max <= 10, "the bound assumes one-digit cascade indices");
-    constexpr std::size_t cascade_fields_bound = renderer::shadow_cascade_max * (14 + 20 + 33 + 28 + 24 + 31 + 19 + 22 + 31 + 29) + 45 + 32 + 42 + 1;
-    char cascade_fields[cascade_fields_bound]; cascade_fields[0] = 0;
-    const bool row = shadow_state_row(); // the flip tracker below runs every frame; the fields are formatted only for a written row
+    constexpr std::size_t cascade_fields_bound = renderer::shadow_cascade_max *
+                                                     (14 + 20 + 33 + 28 + 24 + 31 + 19 + 22 + 31 + 29) +
+                                                 45 + 32 + 42 + 1;
+    char cascade_fields[cascade_fields_bound];
+    cascade_fields[0] = 0;
+    const bool row = shadow_state_row(); // the flip tracker below runs every frame; the fields are formatted only for a
+                                         // written row
     if (depth_cascades_on()) {
-        std::size_t used = 0; bool truncated = false;
+        std::size_t used = 0;
+        bool truncated = false;
         const auto put = [&](const char* format, auto... values) {
             if (!row) return;
             const int n = std::snprintf(cascade_fields + used, sizeof cascade_fields - used, format, values...);
-            if (n < 0 || std::size_t(n) >= sizeof cascade_fields - used) { cascade_fields[used] = 0; truncated = true; } else used += std::size_t(n);
+            if (n < 0 || std::size_t(n) >= sizeof cascade_fields - used) {
+                cascade_fields[used] = 0;
+                truncated = true;
+            } else
+                used += std::size_t(n);
         };
         for (unsigned i = 0; i < depth_cascades_.count; ++i) put(" c%u=%u", i, c.cascade[i]);
         for (unsigned i = 0; i < depth_cascades_.count; ++i) put(" capped%u=%u", i, c.cascade_capped[i]);
-        if (depth_cascade_static_mask_ || depth_cascade_base_.static_only_mask()) { // the static group whenever the configured set has a static-only cascade (a slid set may have none this commit)
-            for (unsigned i = 0; i < depth_cascades_.count; ++i) put(" static_only_refused%u=%u", i, c.static_only_refused[i]);
+        if (depth_cascade_static_mask_ || depth_cascade_base_.static_only_mask()) { // the static group whenever the
+                                                                                    // configured set has a static-only
+                                                                                    // cascade (a slid set may have none
+                                                                                    // this commit)
+            for (unsigned i = 0; i < depth_cascades_.count; ++i)
+                put(" static_only_refused%u=%u", i, c.static_only_refused[i]);
             for (unsigned i = 0; i < depth_cascades_.count; ++i) put(" large_admitted%u=%u", i, c.large_admitted[i]);
             for (unsigned i = 0; i < depth_cascades_.count; ++i) put(" class_miss%u=%u", i, c.class_miss[i]);
             put(" class_store=%u class_ring=%u", c.class_store, c.class_ring);
@@ -8305,12 +11339,16 @@ void MotionOutput::publish_shadow_replay_candidates() noexcept {
         // draws the gate dropped (footprint_refused<i>) and the retained records it dropped in the
         // store's unseen walk (footprint_aged<i>; the walk ran before this line, its counts are reset
         // after it). Absent while the option is off, so a log of the off path parses as before.
-        if (depth_cascades_.min_footprint_px > 0.f) { // configured, not merely resolved: a frame that read no extent yet reports zeros
-            for (unsigned i = 0; i < depth_cascades_.count; ++i) put(" footprint_refused%u=%u", i, c.footprint_refused[i]);
-            for (unsigned i = 0; i < depth_cascades_.count; ++i) put(" footprint_aged%u=%u", i, retention_ ? retention_->store.frame.footprint_refused[i] : 0u);
+        if (depth_cascades_.min_footprint_px > 0.f) { // configured, not merely resolved: a frame that read no extent
+                                                      // yet reports zeros
+            for (unsigned i = 0; i < depth_cascades_.count; ++i)
+                put(" footprint_refused%u=%u", i, c.footprint_refused[i]);
+            for (unsigned i = 0; i < depth_cascades_.count; ++i)
+                put(" footprint_aged%u=%u", i, retention_ ? retention_->store.frame.footprint_refused[i] : 0u);
         }
         if (depth_cascades_.importance) {
-            for (unsigned i = 0; i < depth_cascades_.count; ++i) put(" dropped_min_size%u=%.4g", i, double(c.dropped_size[i]));
+            for (unsigned i = 0; i < depth_cascades_.count; ++i)
+                put(" dropped_min_size%u=%.4g", i, double(c.dropped_size[i]));
             put(" select_us=%.1f", c.select_us);
         }
         // Cascade-membership flips since the previous frame (shadow-caster-retention.md,
@@ -8324,36 +11362,46 @@ void MotionOutput::publish_shadow_replay_candidates() noexcept {
         // first frame, a gap in the scene ends (menu, load, the A/B off), or a
         // cascade shape change (count or the adaptive ladder's active mask).
         std::uint32_t flips[renderer::shadow_cascade_max]{}, period2[renderer::shadow_cascade_max]{};
-        candidate_flips_.update(candidates_.records, candidates_.record_count, depth_cascades_.count, depth_cascades_.active, frame_, flips, period2);
+        candidate_flips_.update(candidates_.records, candidates_.record_count, depth_cascades_.count,
+                                depth_cascades_.active, frame_, flips, period2);
         for (unsigned i = 0; i < depth_cascades_.count; ++i) put(" flip_c%u=%u", i, flips[i]);
         for (unsigned i = 0; i < depth_cascades_.count; ++i) put(" period2_c%u=%u", i, period2[i]);
         put(" flip_untracked=%u flip_reset=%u", candidate_flips_.untracked, unsigned(candidate_flips_.reset));
         if (truncated) {
             ++candidates_line_truncated_;
-            log("shadow_replay_candidates_truncated device=%llu frame=%llu count=%u bound=%u used=%u total=%u", id_, frame_, depth_cascades_.count, unsigned(cascade_fields_bound), unsigned(used), candidates_line_truncated_);
+            log("shadow_replay_candidates_truncated device=%llu frame=%llu count=%u bound=%u used=%u total=%u", id_,
+                frame_, depth_cascades_.count, unsigned(cascade_fields_bound), unsigned(used),
+                candidates_line_truncated_);
         }
     }
-    if (row) log("shadow_replay_candidates device=%llu frame=%llu routed=%u zwrite=%u slice0=%u bounds=%u origin=%u fallback=%u managed=%u dynamic=%u default_pool=%u excluded=%u unknown=%u shadow_mismatch=%u"
-        " leased=%u capped=%u reads=%u serial_changed=%u readonly_after=%u writable_after=%u pending=%u in_flight=%u quiet=%u cold_thread=%u stale=%u roots=%llu waiting=%llu nested=%u overflow=%u%s",
-        id_, frame_, c.routed, c.zwrite, c.slice0, c.bounds, c.origin, c.fallback, c.managed, c.dynamic, c.default_pool, c.excluded, c.unknown, c.shadow_mismatch,
-        c.leased, c.capped, c.reads, c.serial_changed, c.readonly_after, c.writable_after, c.pending, c.in_flight, c.quiet, c.cold_thread, c.stale,
-        static_cast<unsigned long long>(c.roots), static_cast<unsigned long long>(c.waiting), c.nested, c.overflow, cascade_fields);
+    if (row)
+        log("shadow_replay_candidates device=%llu frame=%llu routed=%u zwrite=%u slice0=%u bounds=%u origin=%u fallback=%u managed=%u dynamic=%u default_pool=%u excluded=%u unknown=%u shadow_mismatch=%u"
+            " leased=%u capped=%u reads=%u serial_changed=%u readonly_after=%u writable_after=%u pending=%u in_flight=%u quiet=%u cold_thread=%u stale=%u roots=%llu waiting=%llu nested=%u overflow=%u%s",
+            id_, frame_, c.routed, c.zwrite, c.slice0, c.bounds, c.origin, c.fallback, c.managed, c.dynamic,
+            c.default_pool, c.excluded, c.unknown, c.shadow_mismatch, c.leased, c.capped, c.reads, c.serial_changed,
+            c.readonly_after, c.writable_after, c.pending, c.in_flight, c.quiet, c.cold_thread, c.stale,
+            static_cast<unsigned long long>(c.roots), static_cast<unsigned long long>(c.waiting), c.nested, c.overflow,
+            cascade_fields);
     // Alpha-tested casters (option on only): what the frame's alpha-tested
     // draws that reached the candidate decision became.
     if (alpha_casters_requested_) {
         const auto& a = alpha_caster_counts_;
-        if (row) log("shadow_alpha_casters device=%llu frame=%llu ready=%u seen=%u tested=%u opaque=%u refused_state=%u refused_function=%u refused_uv=%u refused_texture=%u refused_pool=%u",
-            id_, frame_, unsigned(alpha_casters_ready()), a.seen, a.tested, a.opaque, a.state, a.function, a.uv, a.texture, a.pool);
+        if (row)
+            log("shadow_alpha_casters device=%llu frame=%llu ready=%u seen=%u tested=%u opaque=%u refused_state=%u refused_function=%u refused_uv=%u refused_texture=%u refused_pool=%u",
+                id_, frame_, unsigned(alpha_casters_ready()), a.seen, a.tested, a.opaque, a.state, a.function, a.uv,
+                a.texture, a.pool);
         alpha_caster_counts_ = {};
     }
     // The cascade replay transaction (the Ctrl+Shift+F12 off state went on
     // 2026-09-26: the shadows run whenever the launch configured them).
     {
-    // --gpu-sync-timing only: the replay transaction's pair (its per-frame line included); nothing without a replay.
-    gpu_sync_timing::Span shadow_span(gpu_sync_ && depth_cascades_on() ? gpu_sync_ : nullptr, gpu_sync_timing::ShadowDepth);
-    if (depth_cascades_on()) run_shadow_replay_cascades(quiet_records);
-    // No cascade set: no map and no lease were taken; nothing replays (the
-    // single camera-centred map was removed on 2026-09-25).
+        // --gpu-sync-timing only: the replay transaction's pair (its per-frame line included); nothing without a
+        // replay.
+        gpu_sync_timing::Span shadow_span(gpu_sync_ && depth_cascades_on() ? gpu_sync_ : nullptr,
+                                          gpu_sync_timing::ShadowDepth);
+        if (depth_cascades_on()) run_shadow_replay_cascades(quiet_records);
+        // No cascade set: no map and no lease were taken; nothing replays (the
+        // single camera-centred map was removed on 2026-09-25).
     }
     if (retention_) publish_shadow_retention(); // the frame line reads this frame's live counts: before the reset
     candidates_.reset();
@@ -8365,7 +11413,14 @@ bool MotionOutput::ensure_sun_shadow_apply() noexcept {
     if (sun_apply_ && sun_apply_->caps().enabled) return true;
     if (sun_apply_attach_failed_) return false;
     sun_apply_attach_failed_ = true;
-    if (!sun_apply_) { try { sun_apply_ = std::make_unique<renderer::SunShadowApplyPass>(); } catch (...) { sun_apply_attach_result_ = E_OUTOFMEMORY; return false; } }
+    if (!sun_apply_) {
+        try {
+            sun_apply_ = std::make_unique<renderer::SunShadowApplyPass>();
+        } catch (...) {
+            sun_apply_attach_result_ = E_OUTOFMEMORY;
+            return false;
+        }
+    }
     D3DDISPLAYMODE display{};
     HRESULT hr = native<GetDisplayModeFn>(GetDisplayMode)(device_, 0, &display);
     const char* reason = "adapter_query";
@@ -8377,7 +11432,8 @@ bool MotionOutput::ensure_sun_shadow_apply() noexcept {
     sun_apply_attach_result_ = hr;
     const auto& caps = sun_apply_->caps();
     log("sun_shadow_apply_device device=%llu attached=%u reason=%s result=%08lx formats=%08lx programs=%08lx slots=%u adapter_format=%u",
-        id_, !sun_apply_attach_failed_, sun_apply_attach_failed_ ? reason : "ok", hr, caps.formats, caps.programs, caps.program_slots, unsigned(display.Format));
+        id_, !sun_apply_attach_failed_, sun_apply_attach_failed_ ? reason : "ok", hr, caps.formats, caps.programs,
+        caps.program_slots, unsigned(display.Format));
     return !sun_apply_attach_failed_;
 }
 // Once per frame at the scene end, after publish_sun_lane and the depth
@@ -8391,10 +11447,12 @@ bool MotionOutput::ensure_sun_shadow_apply() noexcept {
 void MotionOutput::run_sun_shadow_apply() noexcept {
     if (sun_apply_frame_ == frame_) return; // the hook and the bloom-copy sites both qualify
     sun_apply_frame_ = frame_;
-    sun_apply_applied_ = false; sun_apply_attempted_ = true;
+    sun_apply_applied_ = false;
+    sun_apply_attempted_ = true;
     const float exponent = linear_material_requested_ ? 1.f / 2.2f : 1.f;
     const char* skip = nullptr;
-    IDirect3DSurface9* rt0 = nullptr; IDirect3DTexture9* depth = nullptr;
+    IDirect3DSurface9* rt0 = nullptr;
+    IDirect3DTexture9* depth = nullptr;
     renderer::SunShadowApplyResult out{};
     double us = 0.;
     unsigned sampled = 0; // cascade maps the quad actually sampled this frame (apply_cascades=)
@@ -8402,19 +11460,30 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
     if (!sun_lane_active_ || !sun_frame_.published || !sun_frame_.available) skip = "lane";
     // No cascade set on this device (capture.cpp enables the apply only with one; an
     // allocation refusal at attach can still drop it): no map, the frame stays as it is.
-    else if (!depth_cascades_on()) skip = "replay";
-    else if (!shadow_replay::sun_verdict_usable(sun_verdict_)) skip = "sun"; // no latched sun, or every sample of this frame disagreed with it
-    else if (!depth_replay_ || depth_replayed_frame_ != frame_ || !depth_cascade_frame_ok_) skip = "replay";
-    else if (!sun_owner_valid_ || hdr_state_ != HdrState::Active || !hdr_ || !hdr_->target()) skip = "owner";
-    else if (!counters_.filled || !depth_surface_ || !depth_enabled_) skip = "depth";
-    else if (shadow_.recording) skip = "recording";
-    else if (active_queries_) skip = "queries";
-    else if (!camera_scene_.valid) skip = "camera";
+    else if (!depth_cascades_on())
+        skip = "replay";
+    else if (!shadow_replay::sun_verdict_usable(sun_verdict_))
+        skip = "sun"; // no latched sun, or every sample of this frame disagreed with it
+    else if (!depth_replay_ || depth_replayed_frame_ != frame_ || !depth_cascade_frame_ok_)
+        skip = "replay";
+    else if (!sun_owner_valid_ || hdr_state_ != HdrState::Active || !hdr_ || !hdr_->target())
+        skip = "owner";
+    else if (!counters_.filled || !depth_surface_ || !depth_enabled_)
+        skip = "depth";
+    else if (shadow_.recording)
+        skip = "recording";
+    else if (active_queries_)
+        skip = "queries";
+    else if (!camera_scene_.valid)
+        skip = "camera";
     else {
         hr = native<GetRenderTargetFn>(GetRenderTarget)(device_, 0, &rt0);
-        if (FAILED(hr) || !rt0 || rt0 != hdr_->target()) skip = "target";
-        else if (!ensure_sun_shadow_apply()) skip = "attach";
-        else if (sun_apply_->reset_pending()) skip = "reset_pending";
+        if (FAILED(hr) || !rt0 || rt0 != hdr_->target())
+            skip = "target";
+        else if (!ensure_sun_shadow_apply())
+            skip = "attach";
+        else if (sun_apply_->reset_pending())
+            skip = "reset_pending";
         else {
             hr = depth_surface_->GetContainer(IID_IDirect3DTexture9, reinterpret_cast<void**>(&depth));
             if (SUCCEEDED(hr) && !depth) hr = E_NOINTERFACE;
@@ -8430,7 +11499,10 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
         // older, never replayed, or from before a Reset or refusal is absent
         // (lit) and takes this frame's would-be basis for its pixel ownership.
         renderer::SunShadowCascadeFrame in{};
-        in.depth_share = depth; in.target = rt0; in.width = target_width_; in.height = target_height_;
+        in.depth_share = depth;
+        in.target = rt0;
+        in.width = target_width_;
+        in.height = target_height_;
         // The latch: the jitter RT2 was rasterised under (jitter_rows adds
         // jitter_ in pixels to the routed rows' clip x/y, +2 jx / width and
         // -2 jy / height in NDC; the engine's own projection latch carries
@@ -8441,9 +11513,17 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
         const float jitter_y = in.height ? -2.f * jitter_[1] / float(in.height) : 0.f;
         const float centre_x = in.width ? renderer::quad_pixel_centre_m20(in.width) : 0.f;
         const float centre_y = in.height ? renderer::quad_pixel_centre_m21(in.height) : 0.f;
-        const float raster_x = camera_scene_.m20 + jitter_x, raster_y = camera_scene_.m21 + jitter_y; // the latch RT2 was rasterised under
-        in.m00 = camera_scene_.m00; in.m11 = camera_scene_.m11; in.m20 = raster_x + centre_x; in.m21 = raster_y + centre_y;
-        in.m22 = projection_default_m22; in.m32 = projection_default_m32; in.jitter_index = counters_.jitter_index; in.exponent = exponent;
+        const float raster_x = camera_scene_.m20 + jitter_x, raster_y = camera_scene_.m21 + jitter_y; // the latch RT2
+                                                                                                      // was rasterised
+                                                                                                      // under
+        in.m00 = camera_scene_.m00;
+        in.m11 = camera_scene_.m11;
+        in.m20 = raster_x + centre_x;
+        in.m21 = raster_y + centre_y;
+        in.m22 = projection_default_m22;
+        in.m32 = projection_default_m32;
+        in.jitter_index = counters_.jitter_index;
+        in.exponent = exponent;
         // The receiver is the jittered sample on every cascade (the point the scene shaded; the
         // TAA resolve averages the per-sample factors as it does every other shading term).
         // The quad's slots are the ACTIVE cascades in order (shadow_cascade_apply_slots):
@@ -8460,42 +11540,75 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
             auto& k = in.cascades[s];
             const auto* kept = depth_replay_->retained(i);
             const bool far_kept = s + 1 == in.count && in.count > 1;
-            const bool valid = kept && (kept->frame == frame_ || (far_kept && kept->frame + 1 == frame_)) && depth_replay_->map_texture(i);
+            const bool valid = kept && (kept->frame == frame_ || (far_kept && kept->frame + 1 == frame_)) &&
+                               depth_replay_->map_texture(i);
             renderer::ShadowReplayBasis current{};
-            const float* sun = valid ? nullptr : cascade_sun(i); // an absent cascade's would-be basis: its own sun of this frame
-            if (!valid && (!sun || !renderer::shadow_replay_basis(camera_scene_, sun, cascade, current, point_sun_.grid_anchor(i)))) { skip = "basis"; break; }
-            if (!renderer::shadow_replay_view_rows(camera_scene_, valid ? kept->basis : current, cascade, k.rows)) { skip = "rows"; break; }
-            if (!renderer::sun_shadow_apply_bias(sun_apply_bias_units_, sun_apply_clamp_texels_, double(cascade.half_extent), cascade.depth_half(), depth_replay_->size(i), biases[s])) { skip = "bias"; break; }
-            k.bias_constant = biases[s].constant; k.bias_max = biases[s].max; k.slope_texels = float(sun_apply_slope_texels_); k.valid = valid; k.map = valid ? depth_replay_->map_texture(i) : nullptr;
+            const float* sun = valid ? nullptr : cascade_sun(i); // an absent cascade's would-be basis: its own sun of
+                                                                 // this frame
+            if (!valid && (!sun || !renderer::shadow_replay_basis(camera_scene_, sun, cascade, current,
+                                                                  point_sun_.grid_anchor(i)))) {
+                skip = "basis";
+                break;
+            }
+            if (!renderer::shadow_replay_view_rows(camera_scene_, valid ? kept->basis : current, cascade, k.rows)) {
+                skip = "rows";
+                break;
+            }
+            if (!renderer::sun_shadow_apply_bias(sun_apply_bias_units_, sun_apply_clamp_texels_,
+                                                 double(cascade.half_extent), cascade.depth_half(),
+                                                 depth_replay_->size(i), biases[s])) {
+                skip = "bias";
+                break;
+            }
+            k.bias_constant = biases[s].constant;
+            k.bias_max = biases[s].max;
+            k.slope_texels = float(sun_apply_slope_texels_);
+            k.valid = valid;
+            k.map = valid ? depth_replay_->map_texture(i) : nullptr;
             map_frames[s] = valid ? kept->frame : ~std::uint64_t(0);
         }
-        in.caller_scene_open = scene_open_; in.caller_stateblock_recording = shadow_.recording;
-        for (unsigned s = 0; s < in.count; ++s) if (in.cascades[s].valid) ++sampled; // an absent cascade is lit: its slot samples no map
+        in.caller_scene_open = scene_open_;
+        in.caller_stateblock_recording = shadow_.recording;
+        for (unsigned s = 0; s < in.count; ++s)
+            if (in.cascades[s].valid) ++sampled; // an absent cascade is lit: its slot samples no map
         LARGE_INTEGER t0{}, t1{}, f{};
         QueryPerformanceCounter(&t0);
-        if (!skip) { gpu_sync_timing::Span span(gpu_sync_, gpu_sync_timing::SunApply); taa_call([&] { hr = sun_apply_->execute_cascades(in, &out); }); } // --gpu-sync-timing: the quad's pair
+        if (!skip) {
+            gpu_sync_timing::Span span(gpu_sync_, gpu_sync_timing::SunApply);
+            taa_call([&] { hr = sun_apply_->execute_cascades(in, &out); });
+        } // --gpu-sync-timing: the quad's pair
         QueryPerformanceCounter(&t1);
         QueryPerformanceFrequency(&f);
         us = f.QuadPart ? double(t1.QuadPart - t0.QuadPart) * 1e6 / double(f.QuadPart) : 0.;
         if (FAILED(out.restore)) invalidate_render_states();
-        if (skip) {}
-        else if (out.skipped) skip = out.skipped_reason;
-        else if (FAILED(hr)) skip = "failed";
+        if (skip) {
+        } else if (out.skipped)
+            skip = out.skipped_reason;
+        else if (FAILED(hr))
+            skip = "failed";
         sun_apply_applied_ = !skip && SUCCEEDED(hr) && out.applied;
         // Capture frames: the shared inputs and, per cascade i, valid<i> map<i>
         // map_frame<i> (the frame its map was replayed on) bias<i> bias_max<i>
         // slope<i> texel_world<i> extent<i> depth_light<i> depth_behind<i> rows<i>, for
         // the twin (verification/probe/sun_shadow_apply.py, frame_params).
         if (capture_ && !skip) {
-            char text[2560]; int used = 0;
+            char text[2560];
+            int used = 0;
             for (unsigned s = 0; s < in.count && used >= 0 && used < int(sizeof text); ++s) {
-                const unsigned i = slots[s]; const auto& k = in.cascades[s]; const auto& cascade = depth_cascades_.cascades[i];
-                used += std::snprintf(text + used, sizeof text - used, " valid%u=%u map%u=%u map_frame%u=%lld bias%u=%.9g bias_max%u=%.9g slope%u=%.9g texel_world%u=%.9g extent%u=%.9g depth_light%u=%.9g depth_behind%u=%.9g source%u=%u backface%u=%u"
-                                      " rows%u=%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g",
-                                      s, unsigned(k.valid), s, depth_replay_->size(i), s, k.valid ? static_cast<long long>(map_frames[s]) : -1ll, s, double(k.bias_constant), s, double(k.bias_max), s, double(k.slope_texels),
-                                      s, double(biases[s].texel_world), s, double(cascade.half_extent), s, double(cascade.depth_toward_light), s, double(cascade.depth_behind), s, i, s, unsigned(depth_cascade_backface_mask_ >> i & 1u), s,
-                                      double(k.rows[0]), double(k.rows[1]), double(k.rows[2]), double(k.rows[3]), double(k.rows[4]), double(k.rows[5]),
-                                      double(k.rows[6]), double(k.rows[7]), double(k.rows[8]), double(k.rows[9]), double(k.rows[10]), double(k.rows[11]));
+                const unsigned i = slots[s];
+                const auto& k = in.cascades[s];
+                const auto& cascade = depth_cascades_.cascades[i];
+                used += std::snprintf(
+                    text + used, sizeof text - used,
+                    " valid%u=%u map%u=%u map_frame%u=%lld bias%u=%.9g bias_max%u=%.9g slope%u=%.9g texel_world%u=%.9g extent%u=%.9g depth_light%u=%.9g depth_behind%u=%.9g source%u=%u backface%u=%u"
+                    " rows%u=%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g",
+                    s, unsigned(k.valid), s, depth_replay_->size(i), s,
+                    k.valid ? static_cast<long long>(map_frames[s]) : -1ll, s, double(k.bias_constant), s,
+                    double(k.bias_max), s, double(k.slope_texels), s, double(biases[s].texel_world), s,
+                    double(cascade.half_extent), s, double(cascade.depth_toward_light), s, double(cascade.depth_behind),
+                    s, i, s, unsigned(depth_cascade_backface_mask_ >> i & 1u), s, double(k.rows[0]), double(k.rows[1]),
+                    double(k.rows[2]), double(k.rows[3]), double(k.rows[4]), double(k.rows[5]), double(k.rows[6]),
+                    double(k.rows[7]), double(k.rows[8]), double(k.rows[9]), double(k.rows[10]), double(k.rows[11]));
             }
             if (used < 0 || used >= int(sizeof text)) text[0] = 0;
             // raster_m20/m21: the latch without the pixel-centre term, and pixel_centre=1 says m20/m21 carry it
@@ -8503,20 +11616,26 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
             log("sun_shadow_apply_params device=%llu frame=%llu m00=%.9g m11=%.9g jitter_x=%.6f jitter_y=%.6f m20=%.9g m21=%.9g m22=%.9g m32=%.9g"
                 " planar_step=%.9g exponent=%.6f jitter_index=%u width=%u height=%u bias_units=%.9g clamp_texels=%.9g cascades=%u margin=%.9g band=%.9g"
                 " raster_m20=%.9g raster_m21=%.9g pixel_centre=1 backface_mask=%u depth_encoding=%s%s",
-                id_, frame_, double(in.m00), double(in.m11), double(jitter_[0]), double(jitter_[1]), double(in.m20), double(in.m21), double(in.m22), double(in.m32),
-                double(in.planar_step), double(in.exponent), in.jitter_index, in.width, in.height, sun_apply_bias_units_, sun_apply_clamp_texels_, in.count,
-                double(renderer::shadow_cascade_select_margin), double(renderer::shadow_cascade_blend_band), double(raster_x), double(raster_y), unsigned(depth_cascade_backface_mask_),
-                "linear", text); // depth_encoding: the twin's key; linear is the only encoding (old device records keep theirs)
+                id_, frame_, double(in.m00), double(in.m11), double(jitter_[0]), double(jitter_[1]), double(in.m20),
+                double(in.m21), double(in.m22), double(in.m32), double(in.planar_step), double(in.exponent),
+                in.jitter_index, in.width, in.height, sun_apply_bias_units_, sun_apply_clamp_texels_, in.count,
+                double(renderer::shadow_cascade_select_margin), double(renderer::shadow_cascade_blend_band),
+                double(raster_x), double(raster_y), unsigned(depth_cascade_backface_mask_), "linear",
+                text); // depth_encoding: the twin's key; linear is the only encoding (old device records keep theirs)
         }
     }
-    release(depth); release(rt0);
+    release(depth);
+    release(rt0);
     // The pass's own cost and reach for the shadow frame line (apply_us=,
     // apply_cascades=): the apply runs after the replay of the same frame, so
     // the next frame's line carries these (run 40 triage: the replay's us= and
     // the apply's cost on one line, without joining two line kinds).
-    sun_apply_us_ = us; sun_apply_sampled_ = sun_apply_applied_ ? sampled : 0;
-    if (shadow_timing_ || family_row()) log("sun_shadow_apply_frame device=%llu frame=%llu applied=%u skip_reason=%s exponent=%.6f us=%.1f map=%u result=%08lx restore=%08lx stage=%u",
-        id_, frame_, unsigned(sun_apply_applied_), skip ? skip : "none", double(exponent), us, out.map_size, out.operation, out.restore, unsigned(out.failed));
+    sun_apply_us_ = us;
+    sun_apply_sampled_ = sun_apply_applied_ ? sampled : 0;
+    if (shadow_timing_ || family_row())
+        log("sun_shadow_apply_frame device=%llu frame=%llu applied=%u skip_reason=%s exponent=%.6f us=%.1f map=%u result=%08lx restore=%08lx stage=%u",
+            id_, frame_, unsigned(sun_apply_applied_), skip ? skip : "none", double(exponent), us, out.map_size,
+            out.operation, out.restore, unsigned(out.failed));
 }
 #include "motion_output_shadow_replay_inc.h"
 #include "motion_output_shadow_adaptive_inc.h"

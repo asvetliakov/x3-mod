@@ -10,17 +10,21 @@ constexpr float fog_mote_size_min = 2.f, fog_mote_size_max = 16.f, fog_mote_stre
 // (the user also accepted SIZE 2); 0 is the explicit off.
 constexpr unsigned fog_mote_default_count = 1300;
 constexpr float fog_mote_default_size = 3.f, fog_mote_default_streak = 128.f;
-constexpr unsigned fog_mote_vs_rows = 12;          // c0..c11 of the mote vertex program, one upload
-constexpr unsigned fog_mote_vertex_bytes = 20;     // unit seed xyz, corner xy (float)
+constexpr unsigned fog_mote_vs_rows = 12;      // c0..c11 of the mote vertex program, one upload
+constexpr unsigned fog_mote_vertex_bytes = 20; // unit seed xyz, corner xy (float)
 struct FogMoteTuning {
-    unsigned count = 0;                            // N; 0: the option is off and nothing exists
-    float size = 4.f, streak = 128.f;              // minimum capsule width and streak cap, pixels
-    float radius = 1000.f, near_fade = 25.f;       // window radius R (cube side 2R) and near fade, render units
+    unsigned count = 0;                      // N; 0: the option is off and nothing exists
+    float size = 4.f, streak = 128.f;        // minimum capsule width and streak cap, pixels
+    float radius = 1000.f, near_fade = 25.f; // window radius R (cube side 2R) and near fade, render units
     float max_px = 8.f, gain = 1.f, soft = .02f, drift = 20.f;
-    std::uint32_t seed = 1;                        // radius, near_fade, gain, soft, drift, seed: baked since 2026-09-26
-                                                   // (their X3M_FOG_MOTES_<NAME> reads were removed); max_px stays a read
+    std::uint32_t seed = 1; // radius, near_fade, gain, soft, drift, seed: baked since 2026-09-26
+                            // (their X3M_FOG_MOTES_<NAME> reads were removed); max_px stays a read
 };
-struct FogMoteField { const char* name; float FogMoteTuning::* field; float minimum, maximum; };
+struct FogMoteField {
+    const char* name;
+    float FogMoteTuning::* field;
+    float minimum, maximum;
+};
 // X3M_FOG_MOTES_<NAME>: MAX_PX only since 2026-09-26; raised to SIZE when below it (the range's lower end is SIZE).
 constexpr FogMoteField fog_mote_fields[] = {
     {"MAX_PX", &FogMoteTuning::max_px, fog_mote_size_min, 64.f},
@@ -28,19 +32,30 @@ constexpr FogMoteField fog_mote_fields[] = {
 // A value outside its range (or NaN) keeps the default; true when it was taken.
 inline bool fog_mote_set(FogMoteTuning& tuning, const FogMoteField& field, float value) noexcept {
     if (!(value >= field.minimum && value <= field.maximum)) return false;
-    tuning.*field.field = value; return true;
+    tuning.*field.field = value;
+    return true;
 }
 // The launch triple: N 0 (explicit off) or 64..8192, SIZE 2..16, STREAK 0..512. False for anything else.
 inline bool fog_mote_option(unsigned count, float size, float streak, FogMoteTuning& tuning) noexcept {
     if (count != 0 && (count < fog_mote_count_min || count > fog_mote_count_max)) return false;
-    if (!(size >= fog_mote_size_min && size <= fog_mote_size_max) || !(streak >= 0.f && streak <= fog_mote_streak_max)) return false;
-    tuning.count = count; tuning.size = size; tuning.streak = streak;
+    if (!(size >= fog_mote_size_min && size <= fog_mote_size_max) || !(streak >= 0.f && streak <= fog_mote_streak_max))
+        return false;
+    tuning.count = count;
+    tuning.size = size;
+    tuning.streak = streak;
     return true;
 }
-inline void fog_mote_normalize(FogMoteTuning& tuning) noexcept { if (tuning.max_px < tuning.size) tuning.max_px = tuning.size; }
+inline void fog_mote_normalize(FogMoteTuning& tuning) noexcept {
+    if (tuning.max_px < tuning.size) tuning.max_px = tuning.size;
+}
 // lowbias32 (Wellons): the seed lattice is a pure function of (index, SEED), no RNG state.
 inline std::uint32_t fog_mote_hash(std::uint32_t x) noexcept {
-    x ^= x >> 16; x *= 0x7feb352du; x ^= x >> 15; x *= 0x846ca68bu; x ^= x >> 16; return x;
+    x ^= x >> 16;
+    x *= 0x7feb352du;
+    x ^= x >> 15;
+    x *= 0x846ca68bu;
+    x ^= x >> 16;
+    return x;
 }
 // Unit seed of mote `index` in [0,1)^3, 24-bit exact; the vertex program scales it by the cube side 2R.
 inline void fog_mote_seed(std::uint32_t index, std::uint32_t seed, float out[3]) noexcept {

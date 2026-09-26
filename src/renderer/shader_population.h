@@ -64,7 +64,11 @@ public:
     std::uint32_t overflow() const noexcept { return overflow_; }
     // True exactly once after any counter moved, so the periodic line is
     // emitted only when the population changed.
-    bool counts_changed() noexcept { const bool changed = changed_; changed_ = false; return changed; }
+    bool counts_changed() noexcept {
+        const bool changed = changed_;
+        changed_ = false;
+        return changed;
+    }
 
 private:
     Entry entries_[capacity]{};

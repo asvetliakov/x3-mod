@@ -9,10 +9,9 @@
 // x3m_collide_sat_thunk. The box test only prunes the BVH descent (contacts
 // come from the leaf triangle test alone), and the replacement separates only
 // where the engine's own compare separates with a 2^-20 relative margin to
-// spare (and, like the engine, on an unordered compare), so it visits a superset of the engine's node pairs in the same order
-// and finds the same contacts. Independent of X3M_COLLIDE_BOX_CULL and of
-// X3M_COLLIDE_NARROW_CENSUS (site 7 of the census is the entry 0x004e2530, a
-// different claim): any combination may be on.
+// spare (and, like the engine, on an unordered compare), so it visits a superset of the engine's node pairs in the same
+// order and finds the same contacts. Independent of X3M_COLLIDE_BOX_CULL and of X3M_COLLIDE_NARROW_CENSUS (site 7 of
+// the census is the entry 0x004e2530, a different claim): any combination may be on.
 //
 // Hot path (about 2.3e5 calls per frame next to a station): no lock, no
 // counter, no log, no API call. The thunk keeps ECX and EDX (the original
@@ -23,9 +22,11 @@
 // never touched. XMM0-7 are clobbered: the engine's descent is x87-only code
 // and holds nothing in them (verify_collide_sites.py, `sat_no_xmm_in_descent`).
 namespace x3m::collide_sat_sse2 {
-struct Addresses { std::uintptr_t site, target; };
-bool initialize();  // backend-load path only; logs one collide_sat_sse2 line when the variable is set
-bool shutdown();    // restores the call (dynamic-unload detach only); true when nothing is installed
+struct Addresses {
+    std::uintptr_t site, target;
+};
+bool initialize(); // backend-load path only; logs one collide_sat_sse2 line when the variable is set
+bool shutdown();   // restores the call (dynamic-unload detach only); true when nothing is installed
 // Verifies the windows before and after the call (offsets relative to the
 // site, so the fixture passes a layout-preserving copy) and redirects it.
 bool install_at(const Addresses& addresses);

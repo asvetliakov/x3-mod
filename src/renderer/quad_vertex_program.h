@@ -23,11 +23,15 @@ inline constexpr std::uint32_t quad_vertex_words[] = {
 #include "quad_vertex_program_inc.h"
 };
 }
-inline constexpr const auto& quad_vertex_program() noexcept { return detail::quad_vertex_words; }
+inline constexpr const auto& quad_vertex_program() noexcept {
+    return detail::quad_vertex_words;
+}
 // Stride 24: POSITION float4 (clip space) then TEXCOORD0 float2. The same
 // layout the pre-transformed quads used ({x, y, z, rhw, u, v}), so the
 // fixture-only XYZRHW twin (X3M_QUAD_FVF_SWITCH) draws the same bytes.
-struct QuadVertex { float x, y, z, w, u, v; };
+struct QuadVertex {
+    float x, y, z, w, u, v;
+};
 inline constexpr D3DVERTEXELEMENT9 quad_declaration[] = {
     {0, 0, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0},
     {0, 16, D3DDECLTYPE_FLOAT2, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 0},
@@ -37,8 +41,10 @@ inline constexpr DWORD quad_fvf = D3DFVF_XYZRHW | D3DFVF_TEX1;
 inline void quad_vertices(UINT width, UINT height, QuadVertex (&out)[4]) noexcept {
     const float dx = 1.f / float(width), dy = 1.f / float(height);
     const float x0 = -1.f - dx, x1 = 1.f - dx, y0 = 1.f + dy, y1 = -1.f + dy;
-    out[0] = {x0, y0, 0.f, 1.f, 0.f, 0.f}; out[1] = {x1, y0, 0.f, 1.f, 1.f, 0.f};
-    out[2] = {x0, y1, 0.f, 1.f, 0.f, 1.f}; out[3] = {x1, y1, 0.f, 1.f, 1.f, 1.f};
+    out[0] = {x0, y0, 0.f, 1.f, 0.f, 0.f};
+    out[1] = {x1, y0, 0.f, 1.f, 1.f, 0.f};
+    out[2] = {x0, y1, 0.f, 1.f, 0.f, 1.f};
+    out[3] = {x1, y1, 0.f, 1.f, 1.f, 1.f};
 }
 // The pixel-centre term of a quad program that reconstructs the pixel's
 // position from its interpolated uv. D3D9 rasterises pixel (i, j) at window
@@ -53,8 +59,12 @@ inline void quad_vertices(UINT width, UINT height, QuadVertex (&out)[4]) noexcep
 // the m20 / m21 it latches. Without them every receiver sits z / (W m00)
 // beside the surface RT2 sampled, an error that grows with view distance
 // (directional-shadows.md, "Run 39 A (run115) diagnosis").
-inline constexpr float quad_pixel_centre_m20(UINT width) noexcept { return 1.f / float(width); }
-inline constexpr float quad_pixel_centre_m21(UINT height) noexcept { return -1.f / float(height); }
+inline constexpr float quad_pixel_centre_m20(UINT width) noexcept {
+    return 1.f / float(width);
+}
+inline constexpr float quad_pixel_centre_m21(UINT height) noexcept {
+    return -1.f / float(height);
+}
 // The pre-transformed twin of quad_vertices: raster coordinates shifted by
 // -0.5, rhw 1 (the path every pass drew before the vs_3_0 program). Fixture
 // builds compiled with X3M_QUAD_FVF_SWITCH select it through the environment
@@ -62,8 +72,10 @@ inline constexpr float quad_pixel_centre_m21(UINT height) noexcept { return -1.f
 // Preview backend; production never compiles the switch.
 inline void quad_vertices_xyzrhw(UINT width, UINT height, QuadVertex (&out)[4]) noexcept {
     const float w = float(width) - .5f, h = float(height) - .5f;
-    out[0] = {-.5f, -.5f, 0.f, 1.f, 0.f, 0.f}; out[1] = {w, -.5f, 0.f, 1.f, 1.f, 0.f};
-    out[2] = {-.5f, h, 0.f, 1.f, 0.f, 1.f}; out[3] = {w, h, 0.f, 1.f, 1.f, 1.f};
+    out[0] = {-.5f, -.5f, 0.f, 1.f, 0.f, 0.f};
+    out[1] = {w, -.5f, 0.f, 1.f, 1.f, 0.f};
+    out[2] = {-.5f, h, 0.f, 1.f, 0.f, 1.f};
+    out[3] = {w, h, 0.f, 1.f, 1.f, 1.f};
 }
 #ifdef X3M_QUAD_FVF_SWITCH
 inline bool quad_fvf_requested() noexcept {
@@ -71,6 +83,8 @@ inline bool quad_fvf_requested() noexcept {
     return GetEnvironmentVariableA("X3M_FIXTURE_QUAD_FVF", setting, sizeof setting) == 1 && setting[0] == '1';
 }
 #else
-inline constexpr bool quad_fvf_requested() noexcept { return false; }
+inline constexpr bool quad_fvf_requested() noexcept {
+    return false;
+}
 #endif
 } // namespace x3m::renderer

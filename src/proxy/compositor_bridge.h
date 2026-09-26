@@ -35,7 +35,7 @@ extern "C" {
 #endif
 
 typedef struct X3mCompositorCpu {
-    uint32_t regs[9]; /* PUSHAD order: EDI ESI EBP ESP EBX EDX ECX EAX EFLAGS */
+    uint32_t regs[9];       /* PUSHAD order: EDI ESI EBP ESP EBX EDX ECX EAX EFLAGS */
     unsigned char x87[108]; /* FNSAVE/FRSTOR legacy state, not our arithmetic */
     uint32_t mxcsr, error;
     unsigned char xmm[128];

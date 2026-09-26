@@ -14,8 +14,12 @@ constexpr unsigned temp = 0, color_output = 8;
 std::uint32_t reg(unsigned type, unsigned number) {
     return 0x80000000u | ((type & 7u) << 28) | ((type & 24u) << 8) | number;
 }
-std::uint32_t dst(unsigned type, unsigned number, unsigned lanes = 7) { return reg(type, number) | (lanes << 16); }
-std::uint32_t src(unsigned type, unsigned number) { return reg(type, number) | (identity << 16); }
+std::uint32_t dst(unsigned type, unsigned number, unsigned lanes = 7) {
+    return reg(type, number) | (lanes << 16);
+}
+std::uint32_t src(unsigned type, unsigned number) {
+    return reg(type, number) | (identity << 16);
+}
 void emit(Words& out, unsigned opcode, std::initializer_list<std::uint32_t> operands) {
     out.push_back((static_cast<std::uint32_t>(operands.size()) << 24) | opcode);
     out.insert(out.end(), operands.begin(), operands.end());
@@ -28,8 +32,10 @@ Words program(std::initializer_list<unsigned> sums, bool output_form = false) {
     Words words{0xffff0300u};
     emit(words, 2, {dst(temp, 2) | pp, src(temp, 4), src(temp, 5)});
     for (unsigned sum : sums) {
-        if (output_form) emit(words, 5, {dst(color_output, 0) | pp, src(temp, sum), src(temp, 3)});
-        else albedo_multiply(words, sum);
+        if (output_form)
+            emit(words, 5, {dst(color_output, 0) | pp, src(temp, sum), src(temp, 3)});
+        else
+            albedo_multiply(words, sum);
     }
     words.push_back(0xffffu);
     return words;
@@ -40,20 +46,22 @@ Words composite_program(unsigned composite_lanes = 7) {
     emit(words, 1, {dst(temp, 6, composite_lanes) | pp, src(temp, 3)});
     albedo_multiply(words, 2);
     // Replace the direct albedo operand with the one-step composite r6.
-    words[words.size()-2] = src(temp, 6);
+    words[words.size() - 2] = src(temp, 6);
     words.push_back(0xffffu);
     return words;
 }
 unsigned failures = 0;
 void check(bool condition, const char* what) {
-    if (!condition) { std::cerr << "FAIL " << what << '\n'; ++failures; }
+    if (!condition) {
+        std::cerr << "FAIL " << what << '\n';
+        ++failures;
+    }
 }
 } // namespace
 int main() {
     unsigned sum = 99, at = 99;
     const auto one = program({2});
-    check(linear_material_fill_sum(one.data(), one.size(), 3, sum, at) && sum == 2 && at == 5,
-          "one lobe sum resolves");
+    check(linear_material_fill_sum(one.data(), one.size(), 3, sum, at) && sum == 2 && at == 5, "one lobe sum resolves");
     // Two candidate destinations: ambiguous, so the fill is refused.
     unsigned ambiguous_sum = 99, ambiguous_at = 99;
     const auto two = program({2, 4});
@@ -79,12 +87,10 @@ int main() {
     check(!linear_material_fill_sum(foreign.data(), foreign.size(), 6, sum, at), "foreign multiplier refuses");
     auto aliased = one;
     aliased[8] = aliased[7];
-    check(!linear_material_fill_sum(aliased.data(), aliased.size(), 3, sum, at),
-          "aliased sum and albedo refuse");
+    check(!linear_material_fill_sum(aliased.data(), aliased.size(), 3, sum, at), "aliased sum and albedo refuse");
     auto swizzled = one;
     swizzled[7] &= ~(0xffu << 16);
-    check(!linear_material_fill_sum(swizzled.data(), swizzled.size(), 3, sum, at),
-          "swizzled sum read refuses");
+    check(!linear_material_fill_sum(swizzled.data(), swizzled.size(), 3, sum, at), "swizzled sum read refuses");
     auto wrong_destination = one;
     wrong_destination[6] = dst(temp, 0) | pp;
     check(!linear_material_fill_sum(wrong_destination.data(), wrong_destination.size(), 3, sum, at),

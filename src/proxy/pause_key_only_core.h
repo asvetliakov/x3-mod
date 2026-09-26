@@ -39,6 +39,7 @@ namespace x3m::pause_key_only::core {
 constexpr std::uintptr_t window_va = 0x004043a0, site_va = 0x004043a5;
 constexpr std::uintptr_t mouse_test_va = 0x004043b1, exit_va = 0x004043d8;
 constexpr unsigned site_offset = 5, site_length = 12, window_length = 79;
+// clang-format off
 constexpr unsigned char window[window_length] = {
     0x66,0x85,0xf6, 0x74,0x0c,
     0x8b,0xce, 0x33,0xcb, 0xf7,0xc1,0xff,0x0f,0x00,0x00, 0x75,0x27,
@@ -50,38 +51,51 @@ constexpr unsigned char window[window_length] = {
     0x0f,0xb7,0xf0, 0xeb,0xc8,
     0xa1,0x60,0xfc,0x57,0x00,
     0x8b,0x88,0xa0,0x04,0x00,0x00, 0x83,0xe1,0xfe, 0x83,0xc9,0x02, 0x89,0x88,0xa0,0x04,0x00,0x00};
-constexpr unsigned char original[site_length] = {0x8b,0xce, 0x33,0xcb, 0xf7,0xc1,0xff,0x0f,0x00,0x00, 0x75,0x27};
+// clang-format on
+constexpr unsigned char original[site_length] = {0x8b, 0xce, 0x33, 0xcb, 0xf7, 0xc1,
+                                                 0xff, 0x0f, 0x00, 0x00, 0x75, 0x27};
 // Engine key codes: the reader's 12-bit code, | 0x1000 while a Shift key is
 // held (0x004d3b60). DIK_PAUSE maps to 0x1b5 (0x004d6b30). The 12-bit part
 // must not be 0: 0 is "no key" (the loop never reaches the site with it) and
 // 0x1000 would be Shift alone, which the reader never produces as a key.
 constexpr std::uint32_t default_key = 0x1b5, max_key = 0x1fff;
-inline bool key_valid(std::uint32_t key) { return key >= 1 && key <= max_key && (key & 0xfff) != 0; }
+inline bool key_valid(std::uint32_t key) {
+    return key >= 1 && key <= max_key && (key & 0xfff) != 0;
+}
 // The replacement: 66 81 fe KK KK (cmp si,imm16) 75 05 (jne +5 -> 0x004043b1)
 // 66 39 de (cmp si,bx) 75 27 (jne +0x27 -> 0x004043d8; the original last
 // instruction, unchanged). Both rel8 are relative to the site, so the bytes do
 // not depend on where the window sits. False for an invalid key.
 inline bool encode_site(std::uint32_t key, unsigned char out[site_length]) {
     if (!key_valid(key)) return false;
+    // clang-format off
     const unsigned char bytes[site_length] = {0x66,0x81,0xfe, static_cast<unsigned char>(key & 0xff), static_cast<unsigned char>((key >> 8) & 0xff),
                                               0x75,0x05, 0x66,0x39,0xde, 0x75,0x27};
+    // clang-format on
     std::memcpy(out, bytes, site_length);
     return true;
 }
 // X3M_PAUSE_KEY: "0x" hex or decimal digits, nothing else, in [1, max_key] with a non-zero 12-bit part.
-template<class Char>
-inline bool parse_key(const Char* text, std::uint32_t* key) {
+template <class Char> inline bool parse_key(const Char* text, std::uint32_t* key) {
     if (!text || !*text) return false;
     unsigned base = 10;
-    if (text[0] == Char('0') && (text[1] == Char('x') || text[1] == Char('X'))) { base = 16; text += 2; if (!*text) return false; }
+    if (text[0] == Char('0') && (text[1] == Char('x') || text[1] == Char('X'))) {
+        base = 16;
+        text += 2;
+        if (!*text) return false;
+    }
     std::uint32_t value = 0;
     for (; *text; ++text) {
         const Char c = *text;
         unsigned digit;
-        if (c >= Char('0') && c <= Char('9')) digit = unsigned(c - Char('0'));
-        else if (base == 16 && c >= Char('a') && c <= Char('f')) digit = unsigned(c - Char('a')) + 10;
-        else if (base == 16 && c >= Char('A') && c <= Char('F')) digit = unsigned(c - Char('A')) + 10;
-        else return false;
+        if (c >= Char('0') && c <= Char('9'))
+            digit = unsigned(c - Char('0'));
+        else if (base == 16 && c >= Char('a') && c <= Char('f'))
+            digit = unsigned(c - Char('a')) + 10;
+        else if (base == 16 && c >= Char('A') && c <= Char('F'))
+            digit = unsigned(c - Char('A')) + 10;
+        else
+            return false;
         value = value * base + digit;
         if (value > max_key) return false;
     }
@@ -98,7 +112,8 @@ inline const char* plan(const unsigned char current[window_length], std::uint32_
     return encode_site(key, out) ? nullptr : "bad_key";
 }
 constexpr bool window_holds_original() {
-    for (unsigned i = 0; i < site_length; ++i) if (window[site_offset + i] != original[i]) return false;
+    for (unsigned i = 0; i < site_length; ++i)
+        if (window[site_offset + i] != original[i]) return false;
     return true;
 }
 static_assert(window_va + site_offset == site_va, "site offset");

@@ -42,7 +42,8 @@ enum class Status : unsigned {
     Count = 9
 };
 inline const char* status_name(Status status) noexcept {
-    static const char* const names[] = {"bound", "no_table", "no_scope", "content_unknown", "poisoned", "read_failed", "back_link", "no_record", "invalid"};
+    static const char* const names[] = {"bound",       "no_table",  "no_scope",  "content_unknown", "poisoned",
+                                        "read_failed", "back_link", "no_record", "invalid"};
     const unsigned i = unsigned(status);
     return i < unsigned(Status::Count) ? names[i] : "invalid";
 }
@@ -65,7 +66,8 @@ struct Environment {
     // ownership layer): 3 floats per vertex, valid while the revision holds;
     // false with the prefix::Lookup reason in *refusal. Null when the
     // production binding is absent (host table driver).
-    bool (*prefix)(std::uintptr_t wrapper, std::uint32_t vertex_count, const float** positions, std::uint32_t* scanned, std::uint64_t* revision, unsigned* refusal) noexcept;
+    bool (*prefix)(std::uintptr_t wrapper, std::uint32_t vertex_count, const float** positions, std::uint32_t* scanned,
+                   std::uint64_t* revision, unsigned* refusal) noexcept;
 };
 
 struct Query {
@@ -74,18 +76,19 @@ struct Query {
 };
 struct Result {
     Status status = Status::NoTable;
-    bool hit = false;            // served from an existing entry
-    bool poisoned_now = false;   // this call poisoned the entry
-    bool evicted = false;        // this call reused an entry's slot
-    std::uint32_t depth = 0;     // seam scope depth (0: none)
+    bool hit = false;          // served from an existing entry
+    bool poisoned_now = false; // this call poisoned the entry
+    bool evicted = false;      // this call reused an entry's slot
+    std::uint32_t depth = 0;   // seam scope depth (0: none)
     std::uintptr_t descriptor = 0, part = 0;
-    std::int32_t aabb[6]{};      // centre x4, half-extent x4 (raw int32 fields)
+    std::int32_t aabb[6]{}; // centre x4, half-extent x4 (raw int32 fields)
     std::uint64_t vb_revision = 0, ib_revision = 0;
-    Box box{};                   // POSITION0 units when status == Bound
+    Box box{}; // POSITION0 units when status == Bound
     BoundSource source = BoundSource::Part;
-    std::uint32_t vertex_count = 0, scanned = 0; // LockedPrefix: the drawn prefix and the vertices the Unlock scan published
-    const float* positions = nullptr;             // LockedPrefix: the prefix's positions (3 floats per vertex) when status == Bound
-    unsigned prefix_refusal = 0; // LockedPrefix: prefix::Lookup when status != Bound
+    std::uint32_t vertex_count = 0, scanned = 0; // LockedPrefix: the drawn prefix and the vertices the Unlock scan
+                                                 // published
+    const float* positions = nullptr; // LockedPrefix: the prefix's positions (3 floats per vertex) when status == Bound
+    unsigned prefix_refusal = 0;      // LockedPrefix: prefix::Lookup when status != Bound
 };
 
 namespace layout {
@@ -93,10 +96,10 @@ constexpr std::uintptr_t part_aabb = 0x40;          // int32 centre x4 at +0x40/
 constexpr std::uintptr_t part_descriptor = 0x64;    // back-link to the descriptor
 constexpr std::uintptr_t descriptor_records = 0x0c; // subset record array; count (short) at +0x08
 constexpr std::uintptr_t record_stride = 0x1a8;
-constexpr std::uintptr_t record_buffers = 0x0c;     // VB at +0x0c, IB at +0x10
+constexpr std::uintptr_t record_buffers = 0x0c; // VB at +0x0c, IB at +0x10
 constexpr unsigned record_cap = 16;
-constexpr double units = 1.0 / 65536.0;             // 4 x int16 / 16384: POSITION0 units
-constexpr std::int64_t domain = 2 * 65536;          // |centre| + half must stay within |p| <= 2
+constexpr double units = 1.0 / 65536.0;    // 4 x int16 / 16384: POSITION0 units
+constexpr std::int64_t domain = 2 * 65536; // |centre| + half must stay within |p| <= 2
 }
 
 // Step B/D: the positions of a non-indexed TRIANGLELIST draw from
@@ -111,17 +114,34 @@ constexpr std::int64_t domain = 2 * 65536;          // |centre| + half must stay
 // out.positions (project_prefix) and then rechecks the revision.
 inline Result resolve_locked_prefix(const Query& query, std::uint32_t vertex_count, const Environment& env) noexcept {
     Result out{};
-    out.source = BoundSource::LockedPrefix; out.vertex_count = vertex_count;
-    if (!query.vb_id || !query.vb || !vertex_count) { out.status = Status::NoScope; return out; }
-    if (!env.prefix) { out.status = Status::ContentUnknown; return out; }
-    const float* positions = nullptr; std::uint32_t scanned = 0; std::uint64_t revision = 0; unsigned refusal = 0;
-    if (!env.prefix(query.vb, vertex_count, &positions, &scanned, &revision, &refusal) || !positions) {
-        out.prefix_refusal = refusal; out.vb_revision = revision; out.scanned = scanned;
-        const auto reason = prefix::Lookup(refusal);
-        out.status = reason == prefix::Lookup::Empty || reason == prefix::Lookup::Beyond || reason == prefix::Lookup::NonFinite ? Status::Invalid : Status::ContentUnknown;
+    out.source = BoundSource::LockedPrefix;
+    out.vertex_count = vertex_count;
+    if (!query.vb_id || !query.vb || !vertex_count) {
+        out.status = Status::NoScope;
         return out;
     }
-    out.positions = positions; out.vb_revision = revision; out.scanned = scanned;
+    if (!env.prefix) {
+        out.status = Status::ContentUnknown;
+        return out;
+    }
+    const float* positions = nullptr;
+    std::uint32_t scanned = 0;
+    std::uint64_t revision = 0;
+    unsigned refusal = 0;
+    if (!env.prefix(query.vb, vertex_count, &positions, &scanned, &revision, &refusal) || !positions) {
+        out.prefix_refusal = refusal;
+        out.vb_revision = revision;
+        out.scanned = scanned;
+        const auto reason = prefix::Lookup(refusal);
+        out.status = reason == prefix::Lookup::Empty || reason == prefix::Lookup::Beyond ||
+                             reason == prefix::Lookup::NonFinite
+                         ? Status::Invalid
+                         : Status::ContentUnknown;
+        return out;
+    }
+    out.positions = positions;
+    out.vb_revision = revision;
+    out.scanned = scanned;
     out.status = Status::Bound;
     return out;
 }
@@ -136,11 +156,16 @@ public:
     bool reserve() noexcept {
         if (entries_) return true;
         entries_.reset(new (std::nothrow) Entry[capacity]);
-        used_ = poisoned_ = evictions_ = 0; clock_ = 0;
+        used_ = poisoned_ = evictions_ = 0;
+        clock_ = 0;
         return entries_ != nullptr;
     }
     // Drops every entry and the storage (Reset, teardown).
-    void clear() noexcept { entries_.reset(); used_ = poisoned_ = evictions_ = 0; clock_ = 0; }
+    void clear() noexcept {
+        entries_.reset();
+        used_ = poisoned_ = evictions_ = 0;
+        clock_ = 0;
+    }
     bool reserved() const noexcept { return entries_ != nullptr; }
     unsigned used() const noexcept { return used_; }
     unsigned poisoned() const noexcept { return poisoned_; }
@@ -151,26 +176,46 @@ public:
     // allocation. The caller preserves LastError around this call.
     Result resolve(const Query& query, const Environment& env) noexcept {
         Result out{};
-        if (!entries_) { out.status = Status::NoTable; return out; }
-        std::uintptr_t descriptor = 0; std::uint32_t depth = 0;
+        if (!entries_) {
+            out.status = Status::NoTable;
+            return out;
+        }
+        std::uintptr_t descriptor = 0;
+        std::uint32_t depth = 0;
         const bool scoped = env.scope(&descriptor, &depth) && descriptor && depth;
-        out.depth = depth; out.descriptor = descriptor;
-        if (!scoped || !query.vb_id || !query.ib_id || !query.vb || !query.ib) { out.status = Status::NoScope; return out; }
+        out.depth = depth;
+        out.descriptor = descriptor;
+        if (!scoped || !query.vb_id || !query.ib_id || !query.vb || !query.ib) {
+            out.status = Status::NoScope;
+            return out;
+        }
         ++clock_;
         Entry* entry = find(query.vb_id);
         if (entry) {
             entry->stamp = clock_;
-            out.hit = true; out.part = entry->part;
+            out.hit = true;
+            out.part = entry->part;
             std::memcpy(out.aabb, entry->aabb, sizeof out.aabb);
-            if (entry->poisoned) { out.status = Status::Poisoned; return out; }
+            if (entry->poisoned) {
+                out.status = Status::Poisoned;
+                return out;
+            }
             std::uint64_t vb_revision = 0, ib_revision = 0;
-            const bool valid = entry->ib == query.ib_id && entry->descriptor == descriptor
-                && entry->vb_wrapper == query.vb && entry->ib_wrapper == query.ib
-                && env.content(query.vb, &vb_revision) && env.content(query.ib, &ib_revision)
-                && vb_revision == entry->vb_revision && ib_revision == entry->ib_revision;
-            out.vb_revision = vb_revision; out.ib_revision = ib_revision;
-            if (!valid) { entry->poisoned = true; ++poisoned_; out.poisoned_now = true; out.status = Status::Poisoned; return out; }
-        } else if (!learn(query, descriptor, env, out)) return out;
+            const bool valid = entry->ib == query.ib_id && entry->descriptor == descriptor &&
+                               entry->vb_wrapper == query.vb && entry->ib_wrapper == query.ib &&
+                               env.content(query.vb, &vb_revision) && env.content(query.ib, &ib_revision) &&
+                               vb_revision == entry->vb_revision && ib_revision == entry->ib_revision;
+            out.vb_revision = vb_revision;
+            out.ib_revision = ib_revision;
+            if (!valid) {
+                entry->poisoned = true;
+                ++poisoned_;
+                out.poisoned_now = true;
+                out.status = Status::Poisoned;
+                return out;
+            }
+        } else if (!learn(query, descriptor, env, out))
+            return out;
         finish(out);
         return out;
     }
@@ -181,30 +226,49 @@ public:
     // validated reads into `out` only. Table counters never change.
     Result peek(const Query& query, const Environment& env) const noexcept {
         Result out{};
-        if (!entries_) { out.status = Status::NoTable; return out; }
-        std::uintptr_t descriptor = 0; std::uint32_t depth = 0;
+        if (!entries_) {
+            out.status = Status::NoTable;
+            return out;
+        }
+        std::uintptr_t descriptor = 0;
+        std::uint32_t depth = 0;
         const bool scoped = env.scope(&descriptor, &depth) && descriptor && depth;
-        out.depth = depth; out.descriptor = descriptor;
-        if (!scoped || !query.vb_id || !query.ib_id || !query.vb || !query.ib) { out.status = Status::NoScope; return out; }
+        out.depth = depth;
+        out.descriptor = descriptor;
+        if (!scoped || !query.vb_id || !query.ib_id || !query.vb || !query.ib) {
+            out.status = Status::NoScope;
+            return out;
+        }
         if (const Entry* entry = find(query.vb_id)) {
-            out.hit = true; out.part = entry->part;
+            out.hit = true;
+            out.part = entry->part;
             std::memcpy(out.aabb, entry->aabb, sizeof out.aabb);
-            if (entry->poisoned) { out.status = Status::Poisoned; return out; }
+            if (entry->poisoned) {
+                out.status = Status::Poisoned;
+                return out;
+            }
             std::uint64_t vb_revision = 0, ib_revision = 0;
-            const bool valid = entry->ib == query.ib_id && entry->descriptor == descriptor
-                && entry->vb_wrapper == query.vb && entry->ib_wrapper == query.ib
-                && env.content(query.vb, &vb_revision) && env.content(query.ib, &ib_revision)
-                && vb_revision == entry->vb_revision && ib_revision == entry->ib_revision;
-            out.vb_revision = vb_revision; out.ib_revision = ib_revision;
-            if (!valid) { out.status = Status::Poisoned; return out; }
+            const bool valid = entry->ib == query.ib_id && entry->descriptor == descriptor &&
+                               entry->vb_wrapper == query.vb && entry->ib_wrapper == query.ib &&
+                               env.content(query.vb, &vb_revision) && env.content(query.ib, &ib_revision) &&
+                               vb_revision == entry->vb_revision && ib_revision == entry->ib_revision;
+            out.vb_revision = vb_revision;
+            out.ib_revision = ib_revision;
+            if (!valid) {
+                out.status = Status::Poisoned;
+                return out;
+            }
         } else {
-            std::uintptr_t part = 0; std::uint64_t vb_revision = 0, ib_revision = 0;
+            std::uintptr_t part = 0;
+            std::uint64_t vb_revision = 0, ib_revision = 0;
             if (!read_box(query, descriptor, env, out, part, vb_revision, ib_revision)) return out;
-            out.vb_revision = vb_revision; out.ib_revision = ib_revision;
+            out.vb_revision = vb_revision;
+            out.ib_revision = ib_revision;
         }
         finish(out);
         return out;
     }
+
 private:
     struct Entry {
         std::uint64_t vb = 0, ib = 0;
@@ -241,36 +305,67 @@ private:
     static bool read_box(const Query& query, std::uintptr_t descriptor, const Environment& env, Result& out,
                          std::uintptr_t& part, std::uint64_t& vb_revision, std::uint64_t& ib_revision) noexcept {
         std::uint32_t head[4]{}; // +0 part, +4 (+6 short 1), +8 count (short), +c records
-        if (!env.read(descriptor, head, sizeof head)) { out.status = Status::ReadFailed; return false; }
+        if (!env.read(descriptor, head, sizeof head)) {
+            out.status = Status::ReadFailed;
+            return false;
+        }
         part = head[0];
         out.part = part;
-        if (!part) { out.status = Status::BackLink; return false; }
-        std::int32_t fields[7]{}; std::uint32_t back = 0;
-        if (!env.read(part + layout::part_aabb, fields, sizeof fields) || !env.read(part + layout::part_descriptor, &back, sizeof back)) {
-            out.status = Status::ReadFailed; return false;
+        if (!part) {
+            out.status = Status::BackLink;
+            return false;
         }
-        if (back != descriptor) { out.status = Status::BackLink; return false; }
-        out.aabb[0] = fields[0]; out.aabb[1] = fields[1]; out.aabb[2] = fields[2];
-        out.aabb[3] = fields[4]; out.aabb[4] = fields[5]; out.aabb[5] = fields[6];
+        std::int32_t fields[7]{};
+        std::uint32_t back = 0;
+        if (!env.read(part + layout::part_aabb, fields, sizeof fields) ||
+            !env.read(part + layout::part_descriptor, &back, sizeof back)) {
+            out.status = Status::ReadFailed;
+            return false;
+        }
+        if (back != descriptor) {
+            out.status = Status::BackLink;
+            return false;
+        }
+        out.aabb[0] = fields[0];
+        out.aabb[1] = fields[1];
+        out.aabb[2] = fields[2];
+        out.aabb[3] = fields[4];
+        out.aabb[4] = fields[5];
+        out.aabb[5] = fields[6];
         // Negative extents, or a box outside the |p| <= 2 POSITION0 domain
         // (int16/16384 encoding limit, 2 x 65536 in these units) that the
         // 2^-10 half-float expansion is justified for, are not a bound.
         for (unsigned a = 0; a < 3; ++a) {
             const std::int64_t centre = fields[a], half = fields[4 + a];
-            if (half < 0 || (centre < 0 ? -centre : centre) + half > layout::domain) { out.status = Status::Invalid; return false; }
+            if (half < 0 || (centre < 0 ? -centre : centre) + half > layout::domain) {
+                out.status = Status::Invalid;
+                return false;
+            }
         }
         const unsigned count = head[2] & 0xffffu;
         const std::uintptr_t records = head[3];
-        if (!count || !records) { out.status = Status::NoRecord; return false; }
+        if (!count || !records) {
+            out.status = Status::NoRecord;
+            return false;
+        }
         const unsigned walk = count < layout::record_cap ? count : layout::record_cap;
         bool matched = false;
         for (unsigned i = 0; i < walk && !matched; ++i) {
             std::uint32_t buffers[2]{};
-            if (!env.read(records + i * layout::record_stride + layout::record_buffers, buffers, sizeof buffers)) { out.status = Status::ReadFailed; return false; }
+            if (!env.read(records + i * layout::record_stride + layout::record_buffers, buffers, sizeof buffers)) {
+                out.status = Status::ReadFailed;
+                return false;
+            }
             matched = std::uintptr_t(buffers[0]) == query.vb && std::uintptr_t(buffers[1]) == query.ib;
         }
-        if (!matched) { out.status = Status::NoRecord; return false; }
-        if (!env.content(query.vb, &vb_revision) || !env.content(query.ib, &ib_revision)) { out.status = Status::ContentUnknown; return false; }
+        if (!matched) {
+            out.status = Status::NoRecord;
+            return false;
+        }
+        if (!env.content(query.vb, &vb_revision) || !env.content(query.ib, &ib_revision)) {
+            out.status = Status::ContentUnknown;
+            return false;
+        }
         return true;
     }
     // A free slot in the window, else the oldest unpoisoned entry, else the
@@ -278,29 +373,44 @@ private:
     // by learn only after every read and lookup succeeded.
     Entry* slot_for(std::uint64_t vb) noexcept {
         const std::uint32_t start = slot_of(vb);
-        Entry* oldest = nullptr; Entry* oldest_poisoned = nullptr;
+        Entry* oldest = nullptr;
+        Entry* oldest_poisoned = nullptr;
         for (unsigned i = 0; i < probe_window; ++i) {
             Entry& e = entries_[(start + i) & (capacity - 1)];
             if (!e.used) return &e;
-            if (e.poisoned) { if (!oldest_poisoned || e.stamp < oldest_poisoned->stamp) oldest_poisoned = &e; }
-            else if (!oldest || e.stamp < oldest->stamp) oldest = &e;
+            if (e.poisoned) {
+                if (!oldest_poisoned || e.stamp < oldest_poisoned->stamp) oldest_poisoned = &e;
+            } else if (!oldest || e.stamp < oldest->stamp)
+                oldest = &e;
         }
         return oldest ? oldest : oldest_poisoned;
     }
     bool learn(const Query& query, std::uintptr_t descriptor, const Environment& env, Result& out) noexcept {
         Entry* entry = slot_for(query.vb_id); // table checked before any game read
-        std::uintptr_t part = 0; std::uint64_t vb_revision = 0, ib_revision = 0;
+        std::uintptr_t part = 0;
+        std::uint64_t vb_revision = 0, ib_revision = 0;
         if (!read_box(query, descriptor, env, out, part, vb_revision, ib_revision)) return false;
-        if (entry->used) { out.evicted = true; ++evictions_; --used_; if (entry->poisoned) --poisoned_; }
+        if (entry->used) {
+            out.evicted = true;
+            ++evictions_;
+            --used_;
+            if (entry->poisoned) --poisoned_;
+        }
         *entry = Entry{};
-        entry->used = true; entry->stamp = clock_;
-        entry->vb = query.vb_id; entry->ib = query.ib_id;
-        entry->descriptor = descriptor; entry->part = part;
-        entry->vb_wrapper = query.vb; entry->ib_wrapper = query.ib;
-        entry->vb_revision = vb_revision; entry->ib_revision = ib_revision;
+        entry->used = true;
+        entry->stamp = clock_;
+        entry->vb = query.vb_id;
+        entry->ib = query.ib_id;
+        entry->descriptor = descriptor;
+        entry->part = part;
+        entry->vb_wrapper = query.vb;
+        entry->ib_wrapper = query.ib;
+        entry->vb_revision = vb_revision;
+        entry->ib_revision = ib_revision;
         std::memcpy(entry->aabb, out.aabb, sizeof entry->aabb);
         ++used_;
-        out.vb_revision = vb_revision; out.ib_revision = ib_revision;
+        out.vb_revision = vb_revision;
+        out.ib_revision = ib_revision;
         return true;
     }
     std::unique_ptr<Entry[]> entries_;

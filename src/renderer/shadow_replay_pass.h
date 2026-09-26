@@ -23,8 +23,8 @@
 namespace x3m::renderer {
 constexpr unsigned shadow_replay_maps_max = shadow_cascade_max;
 struct ShadowReplayDraw {
-    IDirect3DVertexBuffer9* vertex_buffer = nullptr;   // borrowed for the call: the caller holds the lease
-    IDirect3DIndexBuffer9* index_buffer = nullptr;     // null for a non-indexed draw
+    IDirect3DVertexBuffer9* vertex_buffer = nullptr; // borrowed for the call: the caller holds the lease
+    IDirect3DIndexBuffer9* index_buffer = nullptr;   // null for a non-indexed draw
     IDirect3DVertexDeclaration9* declaration = nullptr;
     UINT stream_offset = 0, stride = 0;
     D3DPRIMITIVETYPE topology = D3DPT_TRIANGLELIST;
@@ -53,17 +53,44 @@ struct ShadowReplayCaps {
 };
 // One draw issue of a cascade transaction: the draw (index into the shared
 // draw list) and that cascade's light rows c0-c2 (shadow_cascade_light_rows).
-struct ShadowReplayIssue { std::uint16_t draw = 0; float rows[12]{}; };
+struct ShadowReplayIssue {
+    std::uint16_t draw = 0;
+    float rows[12]{};
+};
 // invert_cull: this map holds the casters' BACK faces (CW <-> CCW per draw; NONE unchanged:
 // shadow_replay_projection.h, shadow_cascade_backface_texel_default). Off by default.
-struct ShadowReplayMapList { unsigned map = 0; const ShadowReplayIssue* issues = nullptr; unsigned count = 0; bool invert_cull = false; };
-inline DWORD shadow_replay_cull_mode(DWORD cull, bool invert) noexcept { return !invert ? cull : cull == D3DCULL_CW ? DWORD(D3DCULL_CCW) : cull == D3DCULL_CCW ? DWORD(D3DCULL_CW) : cull; }
-struct ShadowReplayRetained { ShadowReplayBasis basis{}; std::uint64_t frame = 0; unsigned draws = 0; bool valid = false; };
-enum class ShadowReplayStage : unsigned { None, Validate, Targets, Block, Capture, Scene, Bind, Clear, Draw, EndScene, Restore };
+struct ShadowReplayMapList {
+    unsigned map = 0;
+    const ShadowReplayIssue* issues = nullptr;
+    unsigned count = 0;
+    bool invert_cull = false;
+};
+inline DWORD shadow_replay_cull_mode(DWORD cull, bool invert) noexcept {
+    return !invert ? cull : cull == D3DCULL_CW ? DWORD(D3DCULL_CCW) : cull == D3DCULL_CCW ? DWORD(D3DCULL_CW) : cull;
+}
+struct ShadowReplayRetained {
+    ShadowReplayBasis basis{};
+    std::uint64_t frame = 0;
+    unsigned draws = 0;
+    bool valid = false;
+};
+enum class ShadowReplayStage : unsigned {
+    None,
+    Validate,
+    Targets,
+    Block,
+    Capture,
+    Scene,
+    Bind,
+    Clear,
+    Draw,
+    EndScene,
+    Restore
+};
 struct ShadowReplayResult {
     HRESULT operation = S_FALSE, restore = S_FALSE;
     ShadowReplayStage failed = ShadowReplayStage::None;
-    unsigned drawn = 0; // draws re-issued before the first failure
+    unsigned drawn = 0;                           // draws re-issued before the first failure
     unsigned drawn_map[shadow_replay_maps_max]{}; // execute_cascades: per map
     // Native non-draw device calls the pass made per map (execute_cascades):
     // the map's bind, viewport and Clear, then per
@@ -85,7 +112,8 @@ public:
     // own sizes. A size above MaxTextureWidth/Height is halved until it fits
     // (caps().halved counts the maps affected; size(i) is what was kept), and
     // refused below 64. A refusal leaves the pass detached with caps().reason.
-    HRESULT attach_cascades(IDirect3DDevice9*, void* const* native, const D3DCAPS9&, D3DFORMAT adapter_format, const unsigned* sizes, unsigned count) noexcept;
+    HRESULT attach_cascades(IDirect3DDevice9*, void* const* native, const D3DCAPS9&, D3DFORMAT adapter_format,
+                            const unsigned* sizes, unsigned count) noexcept;
     // Whether the next attach also creates the alpha-tested caster programs (kept across
     // detach and attach; default off, then nothing differs from the depth-only pass).
     void request_alpha_programs(bool requested) noexcept { alpha_requested_ = requested; }
@@ -99,8 +127,9 @@ public:
     // invalidated first; the owner retains again on success. A failed step
     // restores and reports its stage; a lost device stops restoration as the
     // other passes do.
-    HRESULT execute_cascades(const ShadowReplayDraw* draws, unsigned draw_count, const ShadowReplayMapList* lists, unsigned list_count,
-                             bool caller_scene_open, bool caller_stateblock_recording, ShadowReplayResult*) noexcept;
+    HRESULT execute_cascades(const ShadowReplayDraw* draws, unsigned draw_count, const ShadowReplayMapList* lists,
+                             unsigned list_count, bool caller_scene_open, bool caller_stateblock_recording,
+                             ShadowReplayResult*) noexcept;
     void before_reset() noexcept;
     void after_reset(HRESULT) noexcept;
     void detach() noexcept;
@@ -112,32 +141,49 @@ public:
     unsigned maps() const noexcept { return count_; }
     unsigned depth_size() const noexcept { return depth_size_; }
     bool targets_ready() const noexcept { return map_surfaces_[0] != nullptr && depth_ != nullptr; }
-    IDirect3DSurface9* map_surface(unsigned map = 0) const noexcept { return map < shadow_replay_maps_max ? map_surfaces_[map] : nullptr; } // borrowed; null until prepared
+    IDirect3DSurface9* map_surface(unsigned map = 0) const noexcept {
+        return map < shadow_replay_maps_max ? map_surfaces_[map] : nullptr;
+    } // borrowed; null until prepared
     // What the scene-end apply quad consumes (legacy-sun-application.md,
     // section 2): the map as a texture (borrowed; null until prepared or
     // after before_reset).
-    IDirect3DTexture9* map_texture(unsigned map = 0) const noexcept { return map < shadow_replay_maps_max ? maps_[map] : nullptr; }
+    IDirect3DTexture9* map_texture(unsigned map = 0) const noexcept {
+        return map < shadow_replay_maps_max ? maps_[map] : nullptr;
+    }
     // The basis a map was last replayed with (the apply composes it with the
     // current camera); null while the map is absent: never replayed, rewritten
     // by a failed or running transaction, or released by before_reset/detach.
-    const ShadowReplayRetained* retained(unsigned map) const noexcept { return map < count_ && retained_[map].valid ? &retained_[map] : nullptr; }
+    const ShadowReplayRetained* retained(unsigned map) const noexcept {
+        return map < count_ && retained_[map].valid ? &retained_[map] : nullptr;
+    }
     void retain(unsigned map, const ShadowReplayBasis& basis, std::uint64_t frame, unsigned draws) noexcept {
-        if (map < count_ && basis.valid && maps_[map]) { retained_[map].basis = basis; retained_[map].frame = frame; retained_[map].draws = draws; retained_[map].valid = true; }
+        if (map < count_ && basis.valid && maps_[map]) {
+            retained_[map].basis = basis;
+            retained_[map].frame = frame;
+            retained_[map].draws = draws;
+            retained_[map].valid = true;
+        }
     }
     // Everything a past replay published (the per-cascade bases), so no
     // consumer (the apply quad, the F8 dump) can read a map the current state
     // no longer stands behind.
-    void invalidate_retained() noexcept { for (auto& r : retained_) r.valid = false; }
-    void invalidate_retained(unsigned map) noexcept { if (map < shadow_replay_maps_max) retained_[map].valid = false; }
+    void invalidate_retained() noexcept {
+        for (auto& r : retained_) r.valid = false;
+    }
+    void invalidate_retained(unsigned map) noexcept {
+        if (map < shadow_replay_maps_max) retained_[map].valid = false;
+    }
+
 private:
     struct SavedState;
-    template<class Fn> Fn call(unsigned slot) const noexcept {
+    template <class Fn> Fn call(unsigned slot) const noexcept {
         return reinterpret_cast<Fn>((vtable_ ? vtable_ : *reinterpret_cast<void* const* const*>(device_))[slot]);
     }
     HRESULT ensure_block() noexcept;
     HRESULT bind() noexcept;
     HRESULT bind_map(unsigned map) noexcept;
-    HRESULT issue(const ShadowReplayDraw&, const float* rows, unsigned vectors, bool invert_cull = false, unsigned* state_calls = nullptr) noexcept;
+    HRESULT issue(const ShadowReplayDraw&, const float* rows, unsigned vectors, bool invert_cull = false,
+                  unsigned* state_calls = nullptr) noexcept;
     HRESULT bind_alpha(const ShadowReplayDraw&, unsigned& made) noexcept;
     void release_targets() noexcept;
     IDirect3DDevice9* device_ = nullptr;

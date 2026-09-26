@@ -64,9 +64,8 @@ std::uint64_t fnv1a(const std::uint8_t* data, std::size_t size) {
 int mode_constants() {
     // R is private to the generator; print it from the same literal law so the
     // test can compare against NumPy's array([[1,2,2],[2,1,-2],[-2,2,-1]])/3 and R@R.
-    const double r[3][3] = {{1.0 / 3.0, 2.0 / 3.0, 2.0 / 3.0},
-                            {2.0 / 3.0, 1.0 / 3.0, -2.0 / 3.0},
-                            {-2.0 / 3.0, 2.0 / 3.0, -1.0 / 3.0}};
+    const double r[3][3] = {
+        {1.0 / 3.0, 2.0 / 3.0, 2.0 / 3.0}, {2.0 / 3.0, 1.0 / 3.0, -2.0 / 3.0}, {-2.0 / 3.0, 2.0 / 3.0, -1.0 / 3.0}};
     for (int i = 0; i < 3; ++i) {
         for (int j = 0; j < 3; ++j) std::printf("%s%016llx", j ? " " : "", (unsigned long long)double_bits(r[i][j]));
         std::printf("\n");
@@ -110,7 +109,8 @@ int mode_half() {
 
 int mode_unhalf() {
     unsigned int bits;
-    while (std::scanf("%x", &bits) == 1) std::printf("%08x\n", float_bits(half_to_float(static_cast<std::uint16_t>(bits))));
+    while (std::scanf("%x", &bits) == 1)
+        std::printf("%08x\n", float_bits(half_to_float(static_cast<std::uint16_t>(bits))));
     return 0;
 }
 
@@ -118,8 +118,8 @@ int mode_lod() {
     double s;
     while (std::scanf("%lf", &s) == 1) {
         const LodWeights w = lod_weights(s);
-        std::printf("%016llx %016llx %d %d\n", (unsigned long long)double_bits(w.lambda), (unsigned long long)double_bits(w.taper),
-                    w.fine_level ? 1 : 0, w.far_level ? 1 : 0);
+        std::printf("%016llx %016llx %d %d\n", (unsigned long long)double_bits(w.lambda),
+                    (unsigned long long)double_bits(w.taper), w.fine_level ? 1 : 0, w.far_level ? 1 : 0);
     }
     return 0;
 }
@@ -147,7 +147,8 @@ int mode_border(int argc, char** argv) {
         for (int x = 0; x < kAtlasWidth; ++x)
             for (int lane = 0; lane < kLanes; ++lane) {
                 const std::uint16_t word = static_cast<std::uint16_t>(x * 7 + y * 13 + lane);
-                std::uint8_t* at = atlas.data() + std::size_t(y) * kAtlasPitch + std::size_t(x) * kTexelBytes + 2 * lane;
+                std::uint8_t* at = atlas.data() + std::size_t(y) * kAtlasPitch + std::size_t(x) * kTexelBytes +
+                                   2 * lane;
                 at[0] = static_cast<std::uint8_t>(word & 0xff);
                 at[1] = static_cast<std::uint8_t>(word >> 8);
             }
@@ -230,18 +231,21 @@ int mode_bench(int argc, char** argv) {
                     "\"tile_nodes_per_second\":%.1f,\"tile_group0_fnv1a\":\"%016llx\"}",
                     level ? "," : "", level ? "far" : "fine", delta, (long long)origins[level].x,
                     (long long)origins[level].y, (long long)origins[level].z, bricks, elapsed, nodes / elapsed,
-                    (unsigned long long)checksum, tile_seconds, double(kWindowNodes * kWindowNodes * kLanes) / tile_seconds,
+                    (unsigned long long)checksum, tile_seconds,
+                    double(kWindowNodes * kWindowNodes * kLanes) / tile_seconds,
                     (unsigned long long)fnv1a(tile.data(), tile.size()));
     }
     std::printf("}}\n");
     return 0;
 }
 
-}  // namespace
+} // namespace
 
 int main(int argc, char** argv) {
     if (argc < 2) {
-        std::fprintf(stderr, "usage: fog_density_generator_host constants|field|words|half|unhalf|lod|layout|border|address|tile|bench ...\n");
+        std::fprintf(
+            stderr,
+            "usage: fog_density_generator_host constants|field|words|half|unhalf|lod|layout|border|address|tile|bench ...\n");
         return 2;
     }
     const std::string mode = argv[1];

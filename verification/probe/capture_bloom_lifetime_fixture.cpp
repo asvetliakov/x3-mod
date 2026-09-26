@@ -28,8 +28,15 @@ constexpr HRESULT D3DERR_NOTFOUND = static_cast<HRESULT>(0x88760866u);
 #define FAILED(value) ((value) < 0)
 
 struct D3DCAPS9 {};
-struct D3DSURFACE_DESC { UINT Width = 1, Height = 1; };
-struct D3DPRESENT_PARAMETERS { UINT BackBufferWidth = 0; HWND hDeviceWindow = nullptr; UINT BackBufferHeight = 0; UINT Windowed = 1; };
+struct D3DSURFACE_DESC {
+    UINT Width = 1, Height = 1;
+};
+struct D3DPRESENT_PARAMETERS {
+    UINT BackBufferWidth = 0;
+    HWND hDeviceWindow = nullptr;
+    UINT BackBufferHeight = 0;
+    UINT Windowed = 1;
+};
 #ifndef FALSE
 #define FALSE 0
 #endif
@@ -43,6 +50,7 @@ struct IDirect3DSurface9 {
         if (value) *value = {};
         return S_OK;
     }
+
 protected:
     ~IDirect3DSurface9() = default;
 };
@@ -56,7 +64,10 @@ struct NativeDevice {
     bool reset_observed_defaults_dropped = false;
     bool reset_observed_pin_alive = false;
 };
-struct IDirect3DDevice9 { NativeDevice* native = nullptr; ULONG Release(); };
+struct IDirect3DDevice9 {
+    NativeDevice* native = nullptr;
+    ULONG Release();
+};
 
 static ULONG WINAPI native_addref(IDirect3DDevice9* device) {
     ++device->native->addref_calls;
@@ -74,12 +85,20 @@ static DWORD GetCurrentThreadId() {
     thread_local const DWORD id = next++;
     return id;
 }
-static void* GetModuleHandleW(const wchar_t*) { return reinterpret_cast<void*>(0x400000u); }
+static void* GetModuleHandleW(const wchar_t*) {
+    return reinterpret_cast<void*>(0x400000u);
+}
 
 // Bloom source clamp ABI (src/temporal/bloom.h): only the extracted
 // bloom_prepare logging reads it here.
-namespace x3 { namespace temporal { constexpr float kAgxClampOff = 65504.f;
-struct BloomParams { float source_clamp = kAgxClampOff; }; } }
+namespace x3 {
+namespace temporal {
+constexpr float kAgxClampOff = 65504.f;
+struct BloomParams {
+    float source_clamp = kAgxClampOff;
+};
+}
+}
 namespace x3m {
 
 struct Device;
@@ -94,7 +113,9 @@ struct Surface final : IDirect3DSurface9 {
     ULONG refs = 1;
     unsigned releases = 0;
     bool dead = false;
-    Surface(IDirect3DDevice9* owner, AliasModel kind) : device(owner), model(kind) {
+    Surface(IDirect3DDevice9* owner, AliasModel kind)
+        : device(owner)
+        , model(kind) {
         native_addref(device); // the resource's persistent device ownership
     }
     ULONG AddRef() override {
@@ -128,7 +149,9 @@ struct BloomPrepare {
     int agx = 0, decode = 0;
     float sharpen = 0;
 };
-struct BloomCandidate { IDirect3DSurface9* surface = nullptr; };
+struct BloomCandidate {
+    IDirect3DSurface9* surface = nullptr;
+};
 struct BloomPrepared {
     BloomCandidate candidate{};
     bool ready = false, state_preserved = true;
@@ -140,9 +163,14 @@ struct BloomCommitted {
     const char* reason = "stub";
     HRESULT operation = S_OK, restore = S_OK, recovery = S_OK, recovery_restore = S_OK;
 };
-struct BloomCaps { const char* reason = "stub"; };
+struct BloomCaps {
+    const char* reason = "stub";
+};
 struct BloomPrograms {};
-static const BloomPrograms& bloom_programs() { static BloomPrograms value; return value; }
+static const BloomPrograms& bloom_programs() {
+    static BloomPrograms value;
+    return value;
+}
 
 struct BloomPass {
     std::vector<Surface*> resources;
@@ -151,17 +179,28 @@ struct BloomPass {
     unsigned references() const noexcept { return static_cast<unsigned>(resources.size()); }
     bool releasing() const noexcept { return releasing_; }
     void release_all() noexcept {
-        const bool prior = releasing_; releasing_ = true;
+        const bool prior = releasing_;
+        releasing_ = true;
         for (auto* resource : resources) resource->Release();
-        resources.clear(); releasing_ = prior;
+        resources.clear();
+        releasing_ = prior;
     }
-    void shutdown() noexcept { ++shutdowns; release_all(); }
-    void before_reset() noexcept { ++resets; release_all(); }
+    void shutdown() noexcept {
+        ++shutdowns;
+        release_all();
+    }
+    void before_reset() noexcept {
+        ++resets;
+        release_all();
+    }
     bool enabled() const noexcept { return enabled_; }
     HRESULT attach(IDirect3DDevice9*, void* const*, const D3DCAPS9&, const BloomPrograms&) noexcept { return S_OK; }
     BloomCaps caps() const noexcept { return {}; }
     BloomPrepared prepare(const BloomPrepare&) noexcept { return {}; }
-    BloomCommitted commit(const BloomCandidate&, const BloomBoundary&) noexcept { ++commits; return {}; }
+    BloomCommitted commit(const BloomCandidate&, const BloomBoundary&) noexcept {
+        ++commits;
+        return {};
+    }
     std::uint64_t resource_bytes() const noexcept { return 0; }
 };
 } // namespace renderer
@@ -179,36 +218,56 @@ struct MotionOutput {
     void restore_bindings() noexcept { ++restores; }
     void release_resources() noexcept {
         ++releases;
-        const bool prior = releasing_; releasing_ = true;
+        const bool prior = releasing_;
+        releasing_ = true;
         for (auto* resource : resources) resource->Release();
-        resources.clear(); releasing_ = prior;
+        resources.clear();
+        releasing_ = prior;
     }
     // Caster retention (shadow-caster-retention.md, "References"): application
     // resources the store still holds after the application released them; each
     // pins one device reference that device_references() does not count.
     std::vector<Surface*> retained;
     unsigned retention_flushes = 0;
-    unsigned retention_references() const noexcept { return reference_accounting_busy() ? 0u : static_cast<unsigned>(retained.size()); }
+    unsigned retention_references() const noexcept {
+        return reference_accounting_busy() ? 0u : static_cast<unsigned>(retained.size());
+    }
     void retention_before_final_release() noexcept {
         ++retention_flushes;
-        std::vector<Surface*> pending; pending.swap(retained);
-        const bool prior = taa_busy_; taa_busy_ = true; // as the production flush: the accounting is busy while the references go
+        std::vector<Surface*> pending;
+        pending.swap(retained);
+        const bool prior = taa_busy_;
+        taa_busy_ = true; // as the production flush: the accounting is busy while the references go
         for (auto* resource : pending) resource->Release();
         taa_busy_ = prior;
     }
-    void before_reset() noexcept { ++resets; release_resources(); }
+    void before_reset() noexcept {
+        ++resets;
+        release_resources();
+    }
     void after_reset(HRESULT) noexcept { ++after_resets; }
     bool bloom_boundary_available() const noexcept { return boundary_available; }
     void stateblock_applied() noexcept { ++stateblocks; }
-    using SceneCallback = void(*)(void*, const struct MotionHdrScene&);
+    using SceneCallback = void (*)(void*, const struct MotionHdrScene&);
     void scene_end_hook(SceneCallback callback, void*) noexcept {
         ++scene_end_hooks;
         if (callback) ++scene_end_callbacks;
     }
 };
-struct SceneCapture { unsigned invalidations = 0; void invalidate() { ++invalidations; } };
-struct MotionCapture { unsigned invalidations = 0; void invalidate() { ++invalidations; } };
-namespace object_capture { struct Cache { unsigned invalidations = 0; void invalidate() noexcept { ++invalidations; } }; }
+struct SceneCapture {
+    unsigned invalidations = 0;
+    void invalidate() { ++invalidations; }
+};
+struct MotionCapture {
+    unsigned invalidations = 0;
+    void invalidate() { ++invalidations; }
+};
+namespace object_capture {
+struct Cache {
+    unsigned invalidations = 0;
+    void invalidate() noexcept { ++invalidations; }
+};
+}
 struct Stats {
     bool had_present = false, last_frame_capture = false;
     unsigned resets = 0;
@@ -216,7 +275,7 @@ struct Stats {
 };
 struct Hooks {
     void* original[134]{};
-    template<class Function> Function get(std::size_t slot) const {
+    template <class Function> Function get(std::size_t slot) const {
         return reinterpret_cast<Function>(original[slot]);
     }
 };
@@ -227,24 +286,31 @@ struct Device : Hooks {
     SceneCapture scene_depth{};
     MotionCapture motion{};
     object_capture::Cache sector_background_evidence{}; // diagnostic invalidation only; reader is qualified separately
-    object_capture::Cache object_evidence{}; // diagnostic association; inert here
+    object_capture::Cache object_evidence{};            // diagnostic association; inert here
     MotionOutput motion_output{};
     renderer::BloomPass bloom{};
     struct Notice {
-        unsigned hides=0;char first[64]{},second[64]{};
-        void hide() noexcept {++hides;}
-        void text(const char* a,const char* b) noexcept {
-            std::snprintf(first,sizeof first,"%s",a);std::snprintf(second,sizeof second,"%s",b);
+        unsigned hides = 0;
+        char first[64]{}, second[64]{};
+        void hide() noexcept { ++hides; }
+        void text(const char* a, const char* b) noexcept {
+            std::snprintf(first, sizeof first, "%s", a);
+            std::snprintf(second, sizeof second, "%s", b);
         }
     };
-    struct Overlay { unsigned resets=0; void reset() noexcept {++resets;} } fps_overlay; // inert mirror of the --fps-overlay accumulator
+    struct Overlay {
+        unsigned resets = 0;
+        void reset() noexcept { ++resets; }
+    } fps_overlay;     // inert mirror of the --fps-overlay accumulator
     Notice fps_notice; // inert mirror of the overlay bitmap
     CompositorInvocation* compositor = nullptr;
     std::uint64_t reset_generation = 0;
     DWORD scene_thread = 0;
     unsigned bloom_busy = 0;
     // shadow_retention_probe rows (release_device), as capture.cpp declares them.
-    struct RetentionProbeRow { std::uint32_t now, device, bloom, gpu_sync, retained, fired; };
+    struct RetentionProbeRow {
+        std::uint32_t now, device, bloom, gpu_sync, retained, fired;
+    };
     RetentionProbeRow retention_probe_rows[16]{};
     unsigned retention_probe_logged = 0;
     bool retention_probe_fired = false;
@@ -262,33 +328,63 @@ std::map<IDirect3DDevice9*, std::shared_ptr<Device>> devices;
 // extracted release path drops it before erasing. Inert here; this fixture
 // exercises lifetime, not the setter fast path.
 void forget_cached_device() noexcept {}
-bool bloom_requested=true;
+bool bloom_requested = true;
 // --gpu-sync-timing helpers (capture.cpp): off here (no object, no references), so the
 // extracted release, Reset and bloom paths see the production calls with zero contribution.
-struct GpuSyncCalls { unsigned references = 0, releases = 0, before_resets = 0, after_resets = 0, marks = 0; } gpu_sync_calls;
-unsigned gpu_sync_references(const Device&) noexcept { ++gpu_sync_calls.references; return 0; }
-// The final-Release probe's diagnostic row (capture.cpp retention_probe_log): the calls and the verdicts, no rate limit here.
-struct RetentionProbeRowSeen { ULONG now = 0; unsigned device = 0, bloom = 0, gpu_sync = 0, retained = 0; unsigned sum() const { return device + bloom + gpu_sync + 1 + retained; } };
-struct RetentionProbeCalls { unsigned calls = 0, fired = 0; RetentionProbeRowSeen last, fired_row; } retention_probe_calls;
-void retention_probe_log(Device&, ULONG now, unsigned device_term, unsigned bloom_term, unsigned gpu_sync_term, unsigned retained, bool fired) {
+struct GpuSyncCalls {
+    unsigned references = 0, releases = 0, before_resets = 0, after_resets = 0, marks = 0;
+} gpu_sync_calls;
+unsigned gpu_sync_references(const Device&) noexcept {
+    ++gpu_sync_calls.references;
+    return 0;
+}
+// The final-Release probe's diagnostic row (capture.cpp retention_probe_log): the calls and the verdicts, no rate limit
+// here.
+struct RetentionProbeRowSeen {
+    ULONG now = 0;
+    unsigned device = 0, bloom = 0, gpu_sync = 0, retained = 0;
+    unsigned sum() const { return device + bloom + gpu_sync + 1 + retained; }
+};
+struct RetentionProbeCalls {
+    unsigned calls = 0, fired = 0;
+    RetentionProbeRowSeen last, fired_row;
+} retention_probe_calls;
+void retention_probe_log(Device&, ULONG now, unsigned device_term, unsigned bloom_term, unsigned gpu_sync_term,
+                         unsigned retained, bool fired) {
     ++retention_probe_calls.calls;
     retention_probe_calls.last = {now, device_term, bloom_term, gpu_sync_term, retained};
-    if (fired) { ++retention_probe_calls.fired; retention_probe_calls.fired_row = retention_probe_calls.last; }
+    if (fired) {
+        ++retention_probe_calls.fired;
+        retention_probe_calls.fired_row = retention_probe_calls.last;
+    }
 }
-void gpu_sync_release(Device&) { ++gpu_sync_calls.releases; }
-void gpu_sync_before_reset(Device&) { ++gpu_sync_calls.before_resets; }
-void gpu_sync_after_reset(Device&,HRESULT) { ++gpu_sync_calls.after_resets; }
-void gpu_sync_mark(Device&,unsigned,bool) noexcept { ++gpu_sync_calls.marks; }
+void gpu_sync_release(Device&) {
+    ++gpu_sync_calls.releases;
+}
+void gpu_sync_before_reset(Device&) {
+    ++gpu_sync_calls.before_resets;
+}
+void gpu_sync_after_reset(Device&, HRESULT) {
+    ++gpu_sync_calls.after_resets;
+}
+void gpu_sync_mark(Device&, unsigned, bool) noexcept {
+    ++gpu_sync_calls.marks;
+}
 
 namespace compositor_owner {
-struct Snapshot { std::uintptr_t renderer = 1, record = 2, device = 0, manager = 3, manager_device = 0; };
+struct Snapshot {
+    std::uintptr_t renderer = 1, record = 2, device = 0, manager = 3, manager_device = 0;
+};
 enum class Result { Ok, Failed };
 static Snapshot current{};
 static Result result = Result::Ok;
-static Result read(std::uintptr_t, Snapshot& output) noexcept { output = current; return result; }
+static Result read(std::uintptr_t, Snapshot& output) noexcept {
+    output = current;
+    return result;
+}
 static bool same(const Snapshot& a, const Snapshot& b) noexcept {
-    return a.renderer == b.renderer && a.record == b.record && a.device == b.device
-        && a.manager == b.manager && a.manager_device == b.manager_device;
+    return a.renderer == b.renderer && a.record == b.record && a.device == b.device && a.manager == b.manager &&
+           a.manager_device == b.manager_device;
 }
 } // namespace compositor_owner
 
@@ -302,53 +398,87 @@ struct CompositorInvocation {
 };
 struct BloomOperation {
     Device& owner;
-    explicit BloomOperation(Device& value) noexcept : owner(value) { ++owner.bloom_busy; }
+    explicit BloomOperation(Device& value) noexcept
+        : owner(value) {
+        ++owner.bloom_busy;
+    }
     ~BloomOperation() { --owner.bloom_busy; }
 };
-template<class T> static void bloom_drop(T*& value) noexcept {
-    T* old = value; value = nullptr; if (old) old->Release();
+template <class T> static void bloom_drop(T*& value) noexcept {
+    T* old = value;
+    value = nullptr;
+    if (old) old->Release();
 }
 
-struct X3mCompositorFrame { std::uintptr_t caller_pc = 0, caller_stack = 0; };
+struct X3mCompositorFrame {
+    std::uintptr_t caller_pc = 0, caller_stack = 0;
+};
 struct MotionHdrScene {};
 namespace scene_hook {
 static bool active = true;
 static std::uintptr_t pc = 0x4721b6u;
-static bool compositor_active() noexcept { return active; }
-static std::uintptr_t compositor_caller_pc() noexcept { return pc; }
+static bool compositor_active() noexcept {
+    return active;
+}
+static std::uintptr_t compositor_caller_pc() noexcept {
+    return pc;
+}
 } // namespace scene_hook
-enum class BloomRefusal : unsigned { Caller, Owner, Device, Nested, Thread, Reset, Glow,
-    Scene, Pass, Boundary, Post, Count };
+enum class BloomRefusal : unsigned {
+    Caller,
+    Owner,
+    Device,
+    Nested,
+    Thread,
+    Reset,
+    Glow,
+    Scene,
+    Pass,
+    Boundary,
+    Post,
+    Count
+};
 static std::uint64_t bloom_calls = 0;
 static std::uint64_t bloom_refusals[unsigned(BloomRefusal::Count)]{};
 static void bloom_refuse(BloomRefusal reason, const Device* = nullptr) noexcept {
     ++bloom_refusals[unsigned(reason)];
 }
 static bool glow_enabled = true;
-static bool compositor_glow_enabled(std::uintptr_t) noexcept { return glow_enabled; }
+static bool compositor_glow_enabled(std::uintptr_t) noexcept {
+    return glow_enabled;
+}
 static void retain_compositor_scene(void*, const MotionHdrScene&) noexcept {}
 
 // Inert mirror of the X3M_FRAME_TIMING scope (src/proxy/frame_timing.h): the
 // extracted compositor callbacks declare one, and it measures nothing here.
 namespace frame_timing {
 enum class Bucket : unsigned { Draw = 0, Scene = 1, State = 2 };
-struct Scope { Scope(Bucket,const char*) noexcept {} };
+struct Scope {
+    Scope(Bucket, const char*) noexcept {}
+};
 }
 
-static thread_local unsigned hook_guard_depth=0;
+static thread_local unsigned hook_guard_depth = 0;
 struct HookGuard {
     std::unique_lock<std::recursive_mutex> lock{mutex};
     // The bucket and entry name of the production guard are inert here.
-    explicit HookGuard(frame_timing::Bucket=frame_timing::Bucket::State,const char* =nullptr){++hook_guard_depth;}
-    ~HookGuard(){--hook_guard_depth;}
+    explicit HookGuard(frame_timing::Bucket = frame_timing::Bucket::State, const char* = nullptr) {
+        ++hook_guard_depth;
+    }
+    ~HookGuard() { --hook_guard_depth; }
 };
 // The media-integrated capture base names the same recursive lock explicitly.
 using CaptureLock = HookGuard;
-struct CpuCallBoundary { void before_original() noexcept {} void after_original() noexcept {} };
+struct CpuCallBoundary {
+    void before_original() noexcept {}
+    void after_original() noexcept {}
+};
 namespace ownership {
 struct AdmissionMonitor {};
 static AdmissionMonitor monitor;
-static AdmissionMonitor* process_admission_monitor() noexcept { return &monitor; }
+static AdmissionMonitor* process_admission_monitor() noexcept {
+    return &monitor;
+}
 struct ApplicationAdmissionAbi {
     explicit ApplicationAdmissionAbi(AdmissionMonitor*) noexcept {}
     void finish() noexcept {}
@@ -363,38 +493,81 @@ static void set_surface_lock_observer(SurfaceLockObserver) noexcept {}
 namespace telemetry {
 enum class Metric { Reset };
 struct State {};
-static std::uint64_t now() noexcept { static std::atomic<std::uint64_t> n{0}; return ++n; }
-static State& process() noexcept { static State value; return value; }
-template<class... Args> static void record(Args&&...) noexcept {}
-template<class... Args> static void summary(Args&&...) noexcept {}
-static bool enabled() noexcept { return false; } // the 300-frame bloom windows are telemetry rows (logging tiers)
+static std::uint64_t now() noexcept {
+    static std::atomic<std::uint64_t> n{0};
+    return ++n;
+}
+static State& process() noexcept {
+    static State value;
+    return value;
+}
+template <class... Args> static void record(Args&&...) noexcept {}
+template <class... Args> static void summary(Args&&...) noexcept {}
+static bool enabled() noexcept {
+    return false;
+} // the 300-frame bloom windows are telemetry rows (logging tiers)
 } // namespace telemetry
 // The session log's counters and its last-device writer row (src/proxy/session_log.h): no lifetime work, inert here.
-namespace session_log { static void note_reset() noexcept {} static void report(const char*) noexcept {} static void park_writer(const char*) noexcept {} }
-namespace game_phases { static void invalidate_device() noexcept {} }
+namespace session_log {
+static void note_reset() noexcept {}
+static void report(const char*) noexcept {}
+static void park_writer(const char*) noexcept {}
+}
+namespace game_phases {
+static void invalidate_device() noexcept {}
+}
 // Inert mirror of the production diagnostic: the shader-population report does
 // no lifetime or Reset work, so it has nothing to contribute to this seam.
 static void report_shader_population(bool) noexcept {}
 // The engine reader's teardown row: counted, one per last-device destruction.
-static unsigned engine_memory_refused_rows=0;
-static void engine_memory_refused_line() noexcept {++engine_memory_refused_rows;}
-namespace sampling_profiler {
-static unsigned shutdown_under_lock=0;
-static void shutdown() noexcept {if(hook_guard_depth)++shutdown_under_lock;}
+static unsigned engine_memory_refused_rows = 0;
+static void engine_memory_refused_line() noexcept {
+    ++engine_memory_refused_rows;
 }
-namespace chase_camera { static void note_last_device() noexcept {} }
+namespace sampling_profiler {
+static unsigned shutdown_under_lock = 0;
+static void shutdown() noexcept {
+    if (hook_guard_depth) ++shutdown_under_lock;
+}
+}
+namespace chase_camera {
+static void note_last_device() noexcept {}
+}
 // Point-light root admission (src/proxy/point_light_admission.h): the extracted
 // lifetime paths only retire the per-frame root verdicts.
-namespace point_light_admission { unsigned frame_retires = 0; static void next_frame() noexcept { ++frame_retires; } }
-namespace cull_census { static void reset() noexcept {} } // X3M_CULL_CENSUS disarm on Reset (src/proxy/cull_census.h); no-op on the host
-namespace cull_small_parts { static void after_reset(unsigned) noexcept {} } // X3M_CULL_SMALL_PARTS_PX disarm on Reset (src/proxy/cull_small_parts.h); no-op on the host
-namespace window_mode { static void apply(const char*, HWND, HWND, bool, UINT, UINT) noexcept {} } // X3M_WINDOW_MONITOR_RECT move at reset_before (src/proxy/window_mode.h); no-op on the host
-namespace window_trace { static void detach(unsigned long long) noexcept {} } // the window-thread hooks' removal at the final Release (src/proxy/window_trace.h); no-op on the host
-namespace collide_memo { static void device_reset() noexcept {} } // memo table drop on Reset (src/proxy/collide_memo.h); no-op on the host
-namespace sun_occlusion { static void device_reset() noexcept {} } // X3M_SUN_OCCLUSION visibility-target drop on Reset (src/proxy/sun_occlusion.h); no-op on the host
-namespace resource_reader { static void report() noexcept {} }
-namespace loading_trace { static void crypt_cache_report(const char*) noexcept {} }
-namespace voice_dmo_fallback { static void shutdown() noexcept {} } // disarms the fault witness at the last device destroy (capture.cpp, voice DMO fallback hook)
+namespace point_light_admission {
+unsigned frame_retires = 0;
+static void next_frame() noexcept {
+    ++frame_retires;
+}
+}
+namespace cull_census {
+static void reset() noexcept {}
+} // X3M_CULL_CENSUS disarm on Reset (src/proxy/cull_census.h); no-op on the host
+namespace cull_small_parts {
+static void after_reset(unsigned) noexcept {}
+} // X3M_CULL_SMALL_PARTS_PX disarm on Reset (src/proxy/cull_small_parts.h); no-op on the host
+namespace window_mode {
+static void apply(const char*, HWND, HWND, bool, UINT, UINT) noexcept {}
+} // X3M_WINDOW_MONITOR_RECT move at reset_before (src/proxy/window_mode.h); no-op on the host
+namespace window_trace {
+static void detach(unsigned long long) noexcept {}
+} // the window-thread hooks' removal at the final Release (src/proxy/window_trace.h); no-op on the host
+namespace collide_memo {
+static void device_reset() noexcept {}
+} // memo table drop on Reset (src/proxy/collide_memo.h); no-op on the host
+namespace sun_occlusion {
+static void device_reset() noexcept {}
+} // X3M_SUN_OCCLUSION visibility-target drop on Reset (src/proxy/sun_occlusion.h); no-op on the host
+namespace resource_reader {
+static void report() noexcept {}
+}
+namespace loading_trace {
+static void crypt_cache_report(const char*) noexcept {}
+}
+namespace voice_dmo_fallback {
+static void shutdown() noexcept {}
+} // disarms the fault witness at the last device destroy (capture.cpp, voice DMO fallback hook)
 static void log(const char*, ...) noexcept {}
 static void final_admission_metric(ownership::AdmissionMonitor*, const char*) noexcept {}
 static void presentation_parameters(const char*, std::uint64_t, HWND, const D3DPRESENT_PARAMETERS*) noexcept {}
@@ -420,20 +593,22 @@ static bool native_reset_witness(IDirect3DDevice9* device, bool) {
     if (found == devices.end()) return false;
     const auto& ctx = *found->second;
     const auto* call = ctx.compositor;
-    device->native->reset_observed_revoked = call && call->revoked && !call->ready
-        && !call->input.boundary.admitted;
-    device->native->reset_observed_defaults_dropped = call && !call->candidate.surface
-        && !call->input.scene && !call->input.boundary.main && !call->input.boundary.depth
-        && ctx.motion_output.resources.empty() && ctx.bloom.resources.empty();
-    device->native->reset_observed_pin_alive = call && call->native_pin
-        && device->native->refs.load() != 0;
+    device->native->reset_observed_revoked = call && call->revoked && !call->ready && !call->input.boundary.admitted;
+    device->native->reset_observed_defaults_dropped = call && !call->candidate.surface && !call->input.scene &&
+                                                      !call->input.boundary.main && !call->input.boundary.depth &&
+                                                      ctx.motion_output.resources.empty() &&
+                                                      ctx.bloom.resources.empty();
+    device->native->reset_observed_pin_alive = call && call->native_pin && device->native->refs.load() != 0;
     return true;
 }
 
 static unsigned failures = 0, checks = 0, scenarios = 0;
 static void check(bool condition, const char* label) {
     ++checks;
-    if (!condition) { ++failures; std::fprintf(stderr, "FAIL: %s\n", label); }
+    if (!condition) {
+        ++failures;
+        std::fprintf(stderr, "FAIL: %s\n", label);
+    }
 }
 
 struct Environment {
@@ -442,7 +617,8 @@ struct Environment {
     IDirect3DDevice9 device{&native};
     std::shared_ptr<Device> ctx = std::make_shared<Device>();
     std::vector<std::unique_ptr<Surface>> surfaces;
-    explicit Environment(AliasModel value, unsigned motion_count=2, unsigned bloom_count=2) : model(value) {
+    explicit Environment(AliasModel value, unsigned motion_count = 2, unsigned bloom_count = 2)
+        : model(value) {
         ctx->scene_thread = GetCurrentThreadId();
         ctx->original[1] = reinterpret_cast<void*>(&native_addref);
         ctx->original[2] = reinterpret_cast<void*>(&native_release);
@@ -453,11 +629,11 @@ struct Environment {
                                      reinterpret_cast<std::uintptr_t>(&device)};
         compositor_owner::result = compositor_owner::Result::Ok;
         glow_enabled = true;
-        for (unsigned i=0; i<motion_count; ++i) {
+        for (unsigned i = 0; i < motion_count; ++i) {
             surfaces.push_back(std::make_unique<Surface>(&device, model));
             ctx->motion_output.resources.push_back(surfaces.back().get());
         }
-        for (unsigned i=0; i<bloom_count; ++i) {
+        for (unsigned i = 0; i < bloom_count; ++i) {
             surfaces.push_back(std::make_unique<Surface>(&device, model));
             ctx->bloom.resources.push_back(surfaces.back().get());
         }
@@ -475,8 +651,8 @@ struct Environment {
     Surface* bloom(unsigned index) { return ctx->bloom.resources.at(index); }
 };
 
-static void construct_invocation(Environment& env, CompositorInvocation* call, bool aliases=true) {
-    new(call) CompositorInvocation{};
+static void construct_invocation(Environment& env, CompositorInvocation* call, bool aliases = true) {
+    new (call) CompositorInvocation{};
     call->owner = env.ctx;
     call->device = &env.device;
     call->identity = compositor_owner::current;
@@ -489,10 +665,14 @@ static void construct_invocation(Environment& env, CompositorInvocation* call, b
     call->input.boundary.thread = env.ctx->scene_thread;
     env.ctx->compositor = call;
     if (aliases) {
-        call->input.scene = env.motion(0); call->input.scene->AddRef();
-        call->input.boundary.main = env.motion(1); call->input.boundary.main->AddRef();
-        call->input.boundary.depth = env.motion(0); call->input.boundary.depth->AddRef();
-        call->candidate.surface = env.bloom(0); call->candidate.surface->AddRef();
+        call->input.scene = env.motion(0);
+        call->input.scene->AddRef();
+        call->input.boundary.main = env.motion(1);
+        call->input.boundary.main->AddRef();
+        call->input.boundary.depth = env.motion(0);
+        call->input.boundary.depth->AddRef();
+        call->candidate.surface = env.bloom(0);
+        call->candidate.surface->AddRef();
     }
 }
 
@@ -510,39 +690,47 @@ static void nonterminal_get_device(AliasModel model) {
 
 // Actual production holder, with the same declaration order as Present. The
 // independent wiring assertion binds this lifetime witness to that call site.
-static void notice_pin_lifetime(AliasModel model,unsigned drop_at) {
+static void notice_pin_lifetime(AliasModel model, unsigned drop_at) {
     ++scenarios;
     Environment env(model);
-    std::weak_ptr<Device> cpu=env.ctx;
-    const unsigned bad_shutdowns=sampling_profiler::shutdown_under_lock;
-    const unsigned refused_rows=engine_memory_refused_rows;
-    unsigned present_calls=0;
+    std::weak_ptr<Device> cpu = env.ctx;
+    const unsigned bad_shutdowns = sampling_profiler::shutdown_under_lock;
+    const unsigned refused_rows = engine_memory_refused_rows;
+    unsigned present_calls = 0;
     {
         NoticePin pin;
         HookGuard outer;
-        auto owner=env.ctx;
-        native_addref(&env.device);pin.device=&env.device;pin.owner=owner;
+        auto owner = env.ctx;
+        native_addref(&env.device);
+        pin.device = &env.device;
+        pin.owner = owner;
         {
             BloomOperation injected(*owner);
-            Surface* alias=env.motion(0);alias->AddRef();
-            if(drop_at==1)release_device(&env.device); // reentry during notice
+            Surface* alias = env.motion(0);
+            alias->AddRef();
+            if (drop_at == 1) release_device(&env.device); // reentry during notice
             alias->Release();
         }
-        check(env.native.destroyed==0&&!owner->bloom.shutdowns,"notice pin survives callback and temporary aliases");
+        check(env.native.destroyed == 0 && !owner->bloom.shutdowns,
+              "notice pin survives callback and temporary aliases");
         ++present_calls;
-        if(drop_at==2)release_device(&env.device); // reentry from native Present
-        check(env.native.destroyed==0&&devices.count(&env.device)==1,"notice pin remains through native Present");
-        if(drop_at)env.ctx.reset();
+        if (drop_at == 2) release_device(&env.device); // reentry from native Present
+        check(env.native.destroyed == 0 && devices.count(&env.device) == 1,
+              "notice pin remains through native Present");
+        if (drop_at) env.ctx.reset();
     }
-    check(present_calls==1,"notice path submits original Present once");
-    check(sampling_profiler::shutdown_under_lock==bad_shutdowns,"final notice-pin retirement runs after outer lock");
-    if(drop_at){
-        check(env.native.destroyed==1&&devices.count(&env.device)==0,"normal pin Release retires last owned resources");
-        check(cpu.expired(),"notice CPU owner outlives native/map retirement");
-        check(engine_memory_refused_rows==refused_rows+1,"last-device destruction writes one engine_memory_read_refused row");
-    }else check(env.native.destroyed==0&&devices.count(&env.device)==1&&!env.ctx->bloom.shutdowns,"nonterminal notice pin keeps application resources");
+    check(present_calls == 1, "notice path submits original Present once");
+    check(sampling_profiler::shutdown_under_lock == bad_shutdowns, "final notice-pin retirement runs after outer lock");
+    if (drop_at) {
+        check(env.native.destroyed == 1 && devices.count(&env.device) == 0,
+              "normal pin Release retires last owned resources");
+        check(cpu.expired(), "notice CPU owner outlives native/map retirement");
+        check(engine_memory_refused_rows == refused_rows + 1,
+              "last-device destruction writes one engine_memory_read_refused row");
+    } else
+        check(env.native.destroyed == 0 && devices.count(&env.device) == 1 && !env.ctx->bloom.shutdowns,
+              "nonterminal notice pin keeps application resources");
 }
-
 
 static void final_during_invocation(AliasModel model, bool worker) {
     ++scenarios;
@@ -556,7 +744,8 @@ static void final_during_invocation(AliasModel model, bool worker) {
     if (worker) {
         std::thread thread([&] { result = release_device(&env.device); });
         thread.join();
-    } else result = release_device(&env.device); // final application Release from original
+    } else
+        result = release_device(&env.device); // final application Release from original
     check(result > 0 && env.native.destroyed == 0, "explicit pin defers native destruction");
     check(devices.count(&env.device) == 1 && env.ctx->bloom.shutdowns == shutdowns,
           "invocation Release neither retires CPU owner nor persistent resources");
@@ -577,23 +766,37 @@ static void retained_orphans_release(AliasModel model) {
     ++scenarios;
     Environment env(model);
     std::vector<std::unique_ptr<Surface>> orphans, application;
-    for (unsigned i = 0; i < 3; ++i) { orphans.push_back(std::make_unique<Surface>(&env.device, model)); env.ctx->motion_output.retained.push_back(orphans.back().get()); }
-    for (unsigned i = 0; i < 8; ++i) application.push_back(std::make_unique<Surface>(&env.device, model)); // the application's own live resources
+    for (unsigned i = 0; i < 3; ++i) {
+        orphans.push_back(std::make_unique<Surface>(&env.device, model));
+        env.ctx->motion_output.retained.push_back(orphans.back().get());
+    }
+    for (unsigned i = 0; i < 8; ++i)
+        application.push_back(std::make_unique<Surface>(&env.device, model)); // the application's own live resources
     retention_probe_calls = {};
     native_addref(&env.device); // scripted GetDevice
     release_device(&env.device);
-    check(env.ctx->motion_output.retention_flushes == 0 && env.ctx->motion_output.retained.size() == 3, "a Release far from the final count leaves the store alone");
-    check(retention_probe_calls.calls == 1 && retention_probe_calls.fired == 0 && retention_probe_calls.last.retained == 3
-          && retention_probe_calls.last.now > retention_probe_calls.last.sum(), "the probe row reports the terms of a Release that did not fire");
-    for (auto& resource : application) resource->Release(); // teardown: the application releases its resources, then the device
+    check(env.ctx->motion_output.retention_flushes == 0 && env.ctx->motion_output.retained.size() == 3,
+          "a Release far from the final count leaves the store alone");
+    check(retention_probe_calls.calls == 1 && retention_probe_calls.fired == 0 &&
+              retention_probe_calls.last.retained == 3 &&
+              retention_probe_calls.last.now > retention_probe_calls.last.sum(),
+          "the probe row reports the terms of a Release that did not fire");
+    for (auto& resource : application)
+        resource->Release(); // teardown: the application releases its resources, then the device
     const ULONG result = release_device(&env.device);
-    // Within the store's references of the final count the flush may come one Release early (a false positive costs only the off-screen shadows).
-    check(env.ctx->motion_output.retention_flushes >= 1 && env.ctx->motion_output.retained.empty(), "the store is flushed by the final Release at the latest");
-    // The application's resource Releases re-enter the hook (one probe each, unfired while the count is far), then the fired one.
-    check(retention_probe_calls.calls >= 2 && retention_probe_calls.fired == 1 && retention_probe_calls.fired_row.retained == 3
-          && retention_probe_calls.fired_row.now <= retention_probe_calls.fired_row.sum(), "exactly one probe row reports fired=1, with the count within the store's references of the sum");
+    // Within the store's references of the final count the flush may come one Release early (a false positive costs
+    // only the off-screen shadows).
+    check(env.ctx->motion_output.retention_flushes >= 1 && env.ctx->motion_output.retained.empty(),
+          "the store is flushed by the final Release at the latest");
+    // The application's resource Releases re-enter the hook (one probe each, unfired while the count is far), then the
+    // fired one.
+    check(retention_probe_calls.calls >= 2 && retention_probe_calls.fired == 1 &&
+              retention_probe_calls.fired_row.retained == 3 &&
+              retention_probe_calls.fired_row.now <= retention_probe_calls.fired_row.sum(),
+          "exactly one probe row reports fired=1, with the count within the store's references of the sum");
     check(orphans[0]->dead && orphans[1]->dead && orphans[2]->dead, "every retained reference is released");
-    check(result == 0 && env.native.destroyed == 1 && devices.count(&env.device) == 0, "the device retires although the store held orphaned resources");
+    check(result == 0 && env.native.destroyed == 1 && devices.count(&env.device) == 0,
+          "the device retires although the store held orphaned resources");
 }
 
 static void nested_busy_release(AliasModel model) {
@@ -622,10 +825,10 @@ static void reset_case(AliasModel model, bool extended, bool success) {
     const unsigned adds = env.native.addref_calls;
     D3DPRESENT_PARAMETERS parameters{};
     D3DDISPLAYMODEEX mode{};
-    const HRESULT result = extended ? reset_ex(&env.device, &parameters, &mode)
-                                    : reset(&env.device, &parameters);
+    const HRESULT result = extended ? reset_ex(&env.device, &parameters, &mode) : reset(&env.device, &parameters);
     check(bool(SUCCEEDED(result)) == success, "Reset/ResetEx forwards exact success or failure");
-    check(env.ctx->sector_background_evidence.invalidations == 1, "sector diagnostic invalidates on successful and failed native Reset");
+    check(env.ctx->sector_background_evidence.invalidations == 1,
+          "sector diagnostic invalidates on successful and failed native Reset");
     check(env.native.reset_observed_revoked && env.native.reset_observed_defaults_dropped,
           "invocation aliases and DEFAULT resources drop before native Reset");
     check(env.native.reset_observed_pin_alive && call->native_pin,
@@ -634,7 +837,7 @@ static void reset_case(AliasModel model, bool extended, bool success) {
     check(env.ctx->reset_generation == 1 && !env.ctx->reset_active && env.ctx->scene_thread == 0,
           "Reset generation/thread state remains revoked after result");
     check(!env.ctx->composition_scene_owner, "Reset revokes prior emission scene admission");
-    check(env.ctx->fps_overlay.resets==1,"Reset restarts the FPS overlay window");
+    check(env.ctx->fps_overlay.resets == 1, "Reset restarts the FPS overlay window");
     check((extended ? env.native.reset_ex_calls.load() : env.native.reset_calls.load()) == 1,
           "correct Reset vtable slot called once");
     compositor_cleanup(nullptr, storage, nullptr, success ? 0 : 1);
@@ -652,10 +855,10 @@ static void composition_busy_reset(AliasModel model, bool extended) {
     env.ctx->composition_scene_owner = true;
     D3DPRESENT_PARAMETERS parameters{};
     D3DDISPLAYMODEEX mode{};
-    const HRESULT result = extended ? reset_ex(&env.device, &parameters, &mode)
-                                    : reset(&env.device, &parameters);
+    const HRESULT result = extended ? reset_ex(&env.device, &parameters, &mode) : reset(&env.device, &parameters);
     check(result == D3DERR_INVALIDCALL, "active emission rejects reentrant Reset/ResetEx");
-    check(env.ctx->sector_background_evidence.invalidations == 1, "sector diagnostic invalidates even on refused reentrant Reset");
+    check(env.ctx->sector_background_evidence.invalidations == 1,
+          "sector diagnostic invalidates even on refused reentrant Reset");
     check(env.native.reset_calls == 0 && env.native.reset_ex_calls == 0,
           "rejected emission Reset never reaches either native slot");
     check(env.ctx->motion_output.resets == 0 && env.ctx->bloom.resets == 0,
@@ -708,8 +911,7 @@ static void pre_refusal(PreRefusal refusal) {
     const unsigned adds = env.native.addref_calls;
     compositor_pre(&frame, storage, nullptr);
     auto* call = reinterpret_cast<CompositorInvocation*>(storage);
-    check(env.ctx->motion_output.scene_end_hooks == 0,
-          "early pre refusal does not broadcast scene-end work");
+    check(env.ctx->motion_output.scene_end_hooks == 0, "early pre refusal does not broadcast scene-end work");
     check(!call->native_pin && !call->owner && env.ctx->compositor == nullptr,
           "early pre refusal acquires no invocation ownership");
     check(env.native.addref_calls == adds, "early pre refusal takes no native pin");
@@ -725,14 +927,12 @@ static void pre_glow_off() {
     glow_enabled = false;
     compositor_pre(&frame, storage, nullptr);
     auto* call = reinterpret_cast<CompositorInvocation*>(storage);
-    check(env.ctx->motion_output.scene_end_hooks == 1
-              && env.ctx->motion_output.scene_end_callbacks == 0,
+    check(env.ctx->motion_output.scene_end_hooks == 1 && env.ctx->motion_output.scene_end_callbacks == 0,
           "safe-owner glow-off path performs one ordinary scene-end hook");
     check(call->native_pin && call->owner == env.ctx && env.ctx->compositor == call,
           "glow-off refusal retains registered cleanup ownership");
     check(env.native.addref_calls == adds + 1, "glow-off path takes exactly one native pin");
-    check(!call->ready && !call->input.scene,
-          "glow-off path declines replacement after ordinary scene-end work");
+    check(!call->ready && !call->input.scene, "glow-off path declines replacement after ordinary scene-end work");
     compositor_cleanup(nullptr, storage, nullptr, 0);
 }
 
@@ -755,7 +955,9 @@ static void nested_invocation() {
 
 } // namespace x3m
 
-ULONG IDirect3DDevice9::Release(){return x3m::release_device(this);}
+ULONG IDirect3DDevice9::Release() {
+    return x3m::release_device(this);
+}
 
 int main() {
     using namespace x3m;
@@ -765,16 +967,17 @@ int main() {
         final_during_invocation(model, true);
         nested_busy_release(model);
         retained_orphans_release(model);
-        for(unsigned drop_at:{0u,1u,2u})notice_pin_lifetime(model,drop_at);
-        for (bool extended : {false, true}) for (bool success : {false, true})
-            reset_case(model, extended, success);
+        for (unsigned drop_at : {0u, 1u, 2u}) notice_pin_lifetime(model, drop_at);
+        for (bool extended : {false, true})
+            for (bool success : {false, true}) reset_case(model, extended, success);
         for (bool extended : {false, true}) composition_busy_reset(model, extended);
     }
-    for (auto mismatch : {Mismatch::None, Mismatch::Frame, Mismatch::Thread,
-                          Mismatch::Generation, Mismatch::Owner, Mismatch::Glow}) post_case(mismatch);
-    for (auto refusal : {PreRefusal::InvalidCaller, PreRefusal::UnreadableOwner,
-                         PreRefusal::MissingDevice, PreRefusal::WrongThread,
-                         PreRefusal::ResetActive}) pre_refusal(refusal);
+    for (auto mismatch :
+         {Mismatch::None, Mismatch::Frame, Mismatch::Thread, Mismatch::Generation, Mismatch::Owner, Mismatch::Glow})
+        post_case(mismatch);
+    for (auto refusal : {PreRefusal::InvalidCaller, PreRefusal::UnreadableOwner, PreRefusal::MissingDevice,
+                         PreRefusal::WrongThread, PreRefusal::ResetActive})
+        pre_refusal(refusal);
     pre_glow_off();
     nested_invocation();
     std::printf("capture_bloom_lifetime scenarios=%u checks=%u failures=%u\n", scenarios, checks, failures);

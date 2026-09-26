@@ -46,7 +46,7 @@ constexpr int kTileCount = kGroupCount;
 constexpr std::size_t kDefaultUploadBudget = 8 * kTileBytes; // 1,065,024 B per frame
 // Cameras beyond this magnitude (render units) are refused: node keys stay inside int32.
 constexpr double kCameraLimit = 1e12;
-constexpr unsigned kDefaultUploadRects = 64;                 // UpdateSurface calls per frame
+constexpr unsigned kDefaultUploadRects = 64; // UpdateSurface calls per frame
 constexpr int kTileRegions = 6;
 
 // Inclusive node box; empty when lo > hi on any axis.
@@ -98,7 +98,8 @@ struct CacheIdentity {
     std::uint32_t recipe = 0;
     WorldOffset offset = kNoOffset;
     bool operator==(const CacheIdentity& o) const noexcept {
-        return sector_key == o.sector_key && recipe == o.recipe && offset.x == o.offset.x && offset.y == o.offset.y && offset.z == o.offset.z;
+        return sector_key == o.sector_key && recipe == o.recipe && offset.x == o.offset.x && offset.y == o.offset.y &&
+               offset.z == o.offset.z;
     }
 };
 
@@ -108,9 +109,9 @@ struct StagingView {
 };
 
 struct FrameState {
-    float ready[kLevelCount]{};        // 0..1 ramps: [0] fine (lambda), [1] far (density)
-    float local[kLevelCount][3]{};     // camera modulo 128*delta, centred
-    bool resident[kLevelCount]{};      // need box resident on the GPU this frame
+    float ready[kLevelCount]{};    // 0..1 ramps: [0] fine (lambda), [1] far (density)
+    float local[kLevelCount][3]{}; // camera modulo 128*delta, centred
+    bool resident[kLevelCount]{};  // need box resident on the GPU this frame
 };
 
 struct CacheStats {
@@ -152,9 +153,16 @@ public:
     // resident instead of ramping over kReadinessRampFrames (warm refills keep the ramp).
     // cold_fill: the worker fills only the far need box, the far level goes up in one whole-atlas
     // latch past the byte budget, then the fine level and the growth continue under the budget.
-    void set_handover(bool step, bool cold_fill) noexcept { handover_step_ = step; handover_cold_fill_ = cold_fill; }
+    void set_handover(bool step, bool cold_fill) noexcept {
+        handover_step_ = step;
+        handover_cold_fill_ = cold_fill;
+    }
     // The report of the last completed cold start, once (due), then cleared.
-    HandoverReport take_handover() noexcept { HandoverReport r = report_; report_.due = false; return r; }
+    HandoverReport take_handover() noexcept {
+        HandoverReport r = report_;
+        report_.due = false;
+        return r;
+    }
     // A changed identity is an invalidation.
     void configure(const CacheIdentity& identity) noexcept;
     // R3 prefill (fog-handover.md, "R3 implementation"): configure(identity) (a cold start even for the resident
@@ -182,7 +190,8 @@ public:
         if (level == 1 && cold_latch_ && !publication_pending_.load(std::memory_order_relaxed)) return false;
         return dirty_tiles_[level].load(std::memory_order_relaxed) != 0 || reupload_[level];
     }
-    unsigned take_uploads(const StagingView views[kLevelCount], std::size_t byte_budget, TileRect* out, unsigned capacity) noexcept;
+    unsigned take_uploads(const StagingView views[kLevelCount], std::size_t byte_budget, TileRect* out,
+                          unsigned capacity) noexcept;
     void confirm_uploads(bool succeeded) noexcept;
     // The DEFAULT atlases were lost or recreated: nothing is resident until every
     // tile with committed content has been uploaded again from the CPU cache.
@@ -206,9 +215,19 @@ private:
     // storage wrap, instead of one whole-tile box), then the duplicate column 128 and the
     // duplicate row 128 with the corner. Body rectangles merge only when the union wastes
     // nothing; a fifth collapses the body to its bounding box.
-    struct Region { int x0, y0, x1, y1; bool dirty; };
-    struct TileDirty { Region region[kTileRegions]; std::uint64_t first_seq; bool dirty, reload; };
-    struct WorkerLevel { NodeKey origin{}; NodeBox box; };
+    struct Region {
+        int x0, y0, x1, y1;
+        bool dirty;
+    };
+    struct TileDirty {
+        Region region[kTileRegions];
+        std::uint64_t first_seq;
+        bool dirty, reload;
+    };
+    struct WorkerLevel {
+        NodeKey origin{};
+        NodeBox box;
+    };
     struct SharedLevel {
         NodeBox box, shrink;
         std::uint64_t box_seq = 0, commit_seq = 0; // box_seq: commit_seq when `box` last grew
@@ -217,7 +236,8 @@ private:
     bool allocate() noexcept;
     void run() noexcept;
     bool work_once(bool& idle) noexcept;
-    bool fill_slab(int level, const NodeBox& slab, std::uint64_t epoch, const WorldOffset& offset, const double camera[3]) noexcept;
+    bool fill_slab(int level, const NodeBox& slab, std::uint64_t epoch, const WorldOffset& offset,
+                   const double camera[3]) noexcept;
     void commit_locked(int level, const NodeBox& job, const std::uint16_t* words) noexcept;
     void dirty_locked(int level, int group, int region, int x0, int y0, int x1, int y1) noexcept;
     void post_locked() noexcept;
@@ -226,7 +246,11 @@ private:
 
     // Mutex, condition variable and thread live in raw storage so that an abandoned cache never
     // runs their destructors (~condition_variable waits for a waiter the OS already killed).
-    struct Sync { std::mutex mutex; std::condition_variable wake; std::thread thread; };
+    struct Sync {
+        std::mutex mutex;
+        std::condition_variable wake;
+        std::thread thread;
+    };
     alignas(Sync) mutable unsigned char sync_storage_[sizeof(Sync)];
     Sync& sync() const noexcept { return *reinterpret_cast<Sync*>(sync_storage_); }
 #ifdef X3M_FOG_DENSITY_TEST_HOOKS
@@ -234,7 +258,12 @@ private:
 #endif
     // Shared, guarded by sync().mutex.
     // cold_hold: a cold fill in progress; the worker generates the far need box only.
-    struct Request { std::uint64_t epoch = 0, serial = 0; WorldOffset offset = kNoOffset; double camera[3]{}; bool camera_valid = false, stop = false, cold_hold = false; } request_;
+    struct Request {
+        std::uint64_t epoch = 0, serial = 0;
+        WorldOffset offset = kNoOffset;
+        double camera[3]{};
+        bool camera_valid = false, stop = false, cold_hold = false;
+    } request_;
     SharedLevel shared_[kLevelCount];
     std::uint8_t* cache_[kLevelCount]{};
     // The epoch's far need box publication (steady-clock us) and the worker's busy / CPU time until then; -1 until.
@@ -254,7 +283,8 @@ private:
     NodeBox gpu_box_[kLevelCount], candidate_box_[kLevelCount];
     std::uint64_t candidate_seq_[kLevelCount]{}, transferred_seq_[kLevelCount]{};
     bool candidate_valid_[kLevelCount]{}, resident_[kLevelCount]{}, reupload_[kLevelCount]{};
-    bool pending_invalidate_ = false, pending_camera_ = false, running_ = false, stepped_ = false, abandoned_ = false, frame_primed_ = false;
+    bool pending_invalidate_ = false, pending_camera_ = false, running_ = false, stepped_ = false, abandoned_ = false,
+         frame_primed_ = false;
     double camera_[3]{};
     NodeBox posted_need_[kLevelCount];
     std::uint64_t last_frame_ = 0, posted_serial_ = 0;
@@ -262,7 +292,8 @@ private:
     unsigned reload_left_[kLevelCount]{};
     // Cold start: cold_ from configure/invalidate until the far readiness reaches 1; cold_latch_ until the
     // whole-atlas latch (cold_fill only). pending_ is the report in progress, report_ the last completed one.
-    bool handover_step_ = false, handover_cold_fill_ = false, cold_ = false, cold_step_ = false, cold_latch_ = false, cold_frame_pending_ = false, whole_in_flight_ = false;
+    bool handover_step_ = false, handover_cold_fill_ = false, cold_ = false, cold_step_ = false, cold_latch_ = false,
+         cold_frame_pending_ = false, whole_in_flight_ = false;
     std::int64_t cold_at_us_ = 0, cold_busy_base_ = 0;
     HandoverReport pending_{}, report_{};
 
@@ -270,9 +301,10 @@ private:
     std::atomic<unsigned> dirty_tiles_[kLevelCount];
     std::atomic<bool> publication_pending_{false}, stop_flag_{false};
     std::atomic<std::uint64_t> idle_serial_{~std::uint64_t(0)}; // request serial the worker last went idle on
-    std::atomic<std::uint64_t> nodes_generated_{0}, jobs_done_{0}, slabs_done_{0}, retargets_{0}, first_fills_{0}, busy_us_{0};
+    std::atomic<std::uint64_t> nodes_generated_{0}, jobs_done_{0}, slabs_done_{0}, retargets_{0}, first_fills_{0},
+        busy_us_{0};
     std::uint64_t upload_bytes_ = 0, upload_rects_ = 0, missed_locks_ = 0;
 };
 
-}  // namespace fog
-}  // namespace x3m
+} // namespace fog
+} // namespace x3m

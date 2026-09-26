@@ -16,7 +16,13 @@ using SubmittedMatrix = std::array<float, 16>; // Exact shader-register rows.
 // (a depth prepass or a shadow pass) can be keyed apart before it exists.
 // Environment-map faces are never keyed (the selector rejects those frames).
 // PassUnknown never keys the live route; the capture/replay path leaves it 0.
-enum MotionPass : std::uint32_t { PassUnknown = 0, PassMainScene = 1, PassDepthOnly = 2, PassShadow = 3, PassEnvironmentMap = 4 };
+enum MotionPass : std::uint32_t {
+    PassUnknown = 0,
+    PassMainScene = 1,
+    PassDepthOnly = 2,
+    PassShadow = 3,
+    PassEnvironmentMap = 4
+};
 
 struct RigidDrawKey {
     // Lifetimes must come from a verified lifecycle producer, not pointer values,
@@ -39,17 +45,17 @@ struct RigidDrawKey {
 };
 
 enum RigidProof : std::uint32_t {
-    LifetimeVerified = 1,      // Both object and camera lifetimes, including reuse.
-    GeometryUnchanged = 2,     // Complete known VB/IB revisions; no pending writes.
-    PositionReviewed = 4,     // Exact ordinary POSITION.xyz/W=1 shader semantics.
-    CoverageSupported = 8,    // Opaque, ordinary depth/raster path; no instancing.
+    LifetimeVerified = 1,  // Both object and camera lifetimes, including reuse.
+    GeometryUnchanged = 2, // Complete known VB/IB revisions; no pending writes.
+    PositionReviewed = 4,  // Exact ordinary POSITION.xyz/W=1 shader semantics.
+    CoverageSupported = 8, // Opaque, ordinary depth/raster path; no instancing.
     SubmissionSucceeded = 16,
     AllRigidProofs = 31
 };
 struct RigidObservation {
     RigidDrawKey key{};
     SubmittedMatrix submitted_wvp{}; // Actual rows, never reconstructed W*V*P.
-    std::uint32_t proofs = 0; // Unknown is ineligible, not camera-only fallback.
+    std::uint32_t proofs = 0;        // Unknown is ineligible, not camera-only fallback.
 };
 enum class MotionHistoryPurpose { TemporalAccumulation, DiagnosticStorageCorrespondence };
 enum class MotionContinuity { Unknown, Discontinuity, Continuous };
@@ -63,8 +69,15 @@ struct MotionFrame {
     MotionContinuity continuity = MotionContinuity::Unknown;
 };
 enum class Correspondence {
-    Matched, NotSealed, MissingCurrent, InvalidKey, MissingProof,
-    InvalidMatrix, Ambiguous, NoPreviousFrame, MissingPrevious
+    Matched,
+    NotSealed,
+    MissingCurrent,
+    InvalidKey,
+    MissingProof,
+    InvalidMatrix,
+    Ambiguous,
+    NoPreviousFrame,
+    MissingPrevious
 };
 struct RigidMotionPair {
     Correspondence status = Correspondence::NotSealed;
@@ -73,9 +86,8 @@ struct RigidMotionPair {
     SubmittedMatrix current{}, previous{};
     // Only caller continuity evidence, not color/depth/jitter/exposure readiness.
     bool temporal_continuity_attested() const noexcept {
-        return status == Correspondence::Matched &&
-            purpose == MotionHistoryPurpose::TemporalAccumulation &&
-            continuity == MotionContinuity::Continuous;
+        return status == Correspondence::Matched && purpose == MotionHistoryPurpose::TemporalAccumulation &&
+               continuity == MotionContinuity::Continuous;
     }
 };
 
@@ -92,7 +104,7 @@ struct RigidMotionPair {
 class MotionHistory {
 public:
     explicit MotionHistory(std::size_t capacity = 8192,
-        MotionHistoryPurpose purpose = MotionHistoryPurpose::TemporalAccumulation) noexcept;
+                           MotionHistoryPurpose purpose = MotionHistoryPurpose::TemporalAccumulation) noexcept;
     bool begin_frame(MotionFrame frame) noexcept;
     // True means stored, not eligible. Ineligible entries remain to poison any
     // duplicate key; only lookup().status == Matched authorizes correspondence.

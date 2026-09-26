@@ -14,14 +14,17 @@
 // +0x00 until the sentinel whose next is 0.
 namespace x3m::music_keep::core {
 constexpr std::uint32_t list_head_va = 0x00606f44;
-constexpr unsigned record_id = 0x10, record_context = 0x14, record_slot = 0x18, record_media = 0x24, record_flags = 0x2c;
+constexpr unsigned record_id = 0x10, record_context = 0x14, record_slot = 0x18, record_media = 0x24,
+                   record_flags = 0x2c;
 constexpr std::uint32_t flag_loop = 1, flag_playing = 2, flag_directsound = 0x40, flag_music = 0x80;
-constexpr unsigned list_walk_limit = 4096;   // nodes visited at most (the engine's own walks are unbounded; a cut walk is logged); walked only on a music play or stop
+constexpr unsigned list_walk_limit = 4096; // nodes visited at most (the engine's own walks are unbounded; a cut walk is
+                                           // logged); walked only on a music play or stop
 
 // ---- Patch A: the stop-all classifier, 0x004982db (two whole instructions) ----
 constexpr std::uint32_t stop_all_va = 0x004982b0, stop_all_end_va = 0x00498367;
 constexpr std::uint32_t a_site_va = 0x004982db, a_next_va = 0x004982e1, a_skip_va = 0x00498322;
-constexpr unsigned a_site_length = 6, a_return_slot = 0x10;   // four pushes since entry: the caller's return address is at [esp+0x10]
+constexpr unsigned a_site_length = 6, a_return_slot = 0x10; // four pushes since entry: the caller's return address is
+                                                            // at [esp+0x10]
 // From the second push: push ebp; mov ebp,[eax]; cmp [ebp],ebx; je; push esi; push edi; mov edi,edi; mov esi,ebp;
 // test [esi+0x2c],2; mov ebp,[ebp]; je; <site>; je; mov eax,[edi+0x74]. With `push ebx` at 0x004982b5 (stop_all_head)
 // these are the four pushes that put the caller's return address at [esp+0x10] at the site.
@@ -30,35 +33,42 @@ constexpr unsigned a_window_length = 38, a_site_offset = a_site_va - a_window_va
 constexpr unsigned char a_window[a_window_length] = {
     0x55, 0x8b, 0x28, 0x39, 0x5d, 0x00, 0x0f, 0x84, 0x98, 0x00, 0x00, 0x00, 0x56, 0x57, 0x8b, 0xff, 0x8b, 0xf5, 0xf6,
     0x46, 0x2c, 0x02, 0x8b, 0x6d, 0x00, 0x74, 0x7e, 0x8b, 0x7e, 0x24, 0x39, 0x5f, 0x04, 0x74, 0x13, 0x8b, 0x47, 0x74};
-constexpr unsigned a_skip_length = 15;                          // mov ecx,[0x6085e4]; and [esi+0x2c],~2; cmp ecx,ebx; mov eax,[esi+0x18]
-constexpr unsigned char a_skip_window[a_skip_length] = {0x8b, 0x0d, 0xe4, 0x85, 0x60, 0x00, 0x83, 0x66, 0x2c, 0xfd, 0x3b, 0xcb, 0x8b, 0x46, 0x18};
+constexpr unsigned a_skip_length = 15; // mov ecx,[0x6085e4]; and [esi+0x2c],~2; cmp ecx,ebx; mov eax,[esi+0x18]
+constexpr unsigned char a_skip_window[a_skip_length] = {0x8b, 0x0d, 0xe4, 0x85, 0x60, 0x00, 0x83, 0x66,
+                                                        0x2c, 0xfd, 0x3b, 0xcb, 0x8b, 0x46, 0x18};
 // The per-record loop's continue: `cmp [ebp],ebx; jne 0x004982d0` then the epilogue (pop edi/esi/ebp/ebx; ret). It is
 // the target of the loop's own `je 0x00498359` at 0x004982d9 (in a_window: `74 7e`), taken for a record without flag 2,
 // so the skip_all exit reaches it in exactly that state: EBP = next node (loaded at 0x004982d6, before the site),
 // EBX = 0, the stack four pushes deep; ESI/EDI/EAX/ECX/EDX and the flags are dead there (rewritten before any read).
 constexpr std::uint32_t a_next_record_va = 0x00498359, a_loop_head_va = 0x004982d0, a_not_playing_je_va = 0x004982d9;
 constexpr unsigned a_next_record_length = 14;
-constexpr unsigned char a_next_record_window[a_next_record_length] = {0x39, 0x5d, 0x00, 0x0f, 0x85, 0x6e, 0xff, 0xff, 0xff, 0x5f, 0x5e, 0x5d, 0x5b, 0xc3};
+constexpr unsigned char a_next_record_window[a_next_record_length] = {0x39, 0x5d, 0x00, 0x0f, 0x85, 0x6e, 0xff,
+                                                                      0xff, 0xff, 0x5f, 0x5e, 0x5d, 0x5b, 0xc3};
 
 // ---- Patch C: the seek call of the play routine, 0x00498d54 -> 0x004d0430 ----
 constexpr std::uint32_t play_va = 0x00498c90, play_end_va = 0x00498e28;
 constexpr std::uint32_t c_site_va = 0x00498d54, c_target_va = 0x004d0430, c_return_va = 0x00498d59;
-constexpr std::uint32_t c_pre_va = 0x00498d4d, c_post_va = 0x00498d59, c_run_call_va = 0x00498d71, run_va = 0x004d1870, pause_va = 0x004d1810;
+constexpr std::uint32_t c_pre_va = 0x00498d4d, c_post_va = 0x00498d59, c_run_call_va = 0x00498d71, run_va = 0x004d1870,
+                        pause_va = 0x004d1810;
 constexpr unsigned call_length = 5;
-constexpr unsigned c_pre_length = 7;                            // add edi,[esp+0x2c]; mov eax,esi; push edi
+constexpr unsigned c_pre_length = 7; // add edi,[esp+0x2c]; mov eax,esi; push edi
 constexpr unsigned char c_pre_window[c_pre_length] = {0x03, 0x7c, 0x24, 0x2c, 0x8b, 0xc6, 0x57};
-constexpr unsigned c_post_length = 29;                          // add esp,4; test eax,eax; je; xor ebp,ebp; cmp ebx,ebp; jle; mov eax,[esi+0x24]; mov [eax+0x94],ebx; mov eax,esi; call run
-constexpr unsigned char c_post_window[c_post_length] = {
-    0x83, 0xc4, 0x04, 0x85, 0xc0, 0x74, 0x7e, 0x33, 0xed, 0x3b, 0xdd, 0x7e, 0x09, 0x8b, 0x46, 0x24,
-    0x89, 0x98, 0x94, 0x00, 0x00, 0x00, 0x8b, 0xc6, 0xe8, 0xfa, 0x8a, 0x03, 0x00};
-constexpr std::uint32_t play_set_playing_va = 0x00498d8c;      // or ecx,2; or [esi+0x2c],ecx
+constexpr unsigned c_post_length = 29; // add esp,4; test eax,eax; je; xor ebp,ebp; cmp ebx,ebp; jle; mov
+                                       // eax,[esi+0x24]; mov [eax+0x94],ebx; mov eax,esi; call run
+constexpr unsigned char c_post_window[c_post_length] = {0x83, 0xc4, 0x04, 0x85, 0xc0, 0x74, 0x7e, 0x33, 0xed, 0x3b,
+                                                        0xdd, 0x7e, 0x09, 0x8b, 0x46, 0x24, 0x89, 0x98, 0x94, 0x00,
+                                                        0x00, 0x00, 0x8b, 0xc6, 0xe8, 0xfa, 0x8a, 0x03, 0x00};
+constexpr std::uint32_t play_set_playing_va = 0x00498d8c; // or ecx,2; or [esi+0x2c],ecx
 constexpr unsigned play_set_playing_length = 6;
 constexpr unsigned char play_set_playing_window[play_set_playing_length] = {0x83, 0xc9, 0x02, 0x09, 0x4e, 0x2c};
-constexpr unsigned seek_head_length = 26;                       // 0x004d0430: push ebp; mov ebp,esp; and esp,-0x40; sub esp,0x34; push ebx; push esi; mov esi,[eax+0x24]; ...
-constexpr unsigned char seek_head[seek_head_length] = {
-    0x55, 0x8b, 0xec, 0x83, 0xe4, 0xc0, 0x83, 0xec, 0x34, 0x53, 0x56, 0x8b, 0x70, 0x24, 0xbb, 0x01,
-    0x00, 0x00, 0x00, 0x39, 0x5e, 0x48, 0x57, 0x8b, 0x7d, 0x08};
-constexpr unsigned pause_body_length = 0x57;                    // 0x004d1810 whole: EAX = record; Pause + DirectSound Stop; clobbers EAX/ECX/EDX only
+constexpr unsigned seek_head_length = 26; // 0x004d0430: push ebp; mov ebp,esp; and esp,-0x40; sub esp,0x34; push ebx;
+                                          // push esi; mov esi,[eax+0x24]; ...
+constexpr unsigned char seek_head[seek_head_length] = {0x55, 0x8b, 0xec, 0x83, 0xe4, 0xc0, 0x83, 0xec, 0x34,
+                                                       0x53, 0x56, 0x8b, 0x70, 0x24, 0xbb, 0x01, 0x00, 0x00,
+                                                       0x00, 0x39, 0x5e, 0x48, 0x57, 0x8b, 0x7d, 0x08};
+constexpr unsigned pause_body_length = 0x57; // 0x004d1810 whole: EAX = record; Pause + DirectSound Stop; clobbers
+                                             // EAX/ECX/EDX only
+// clang-format off
 constexpr unsigned char pause_body[pause_body_length] = {
     0x56, 0x8b, 0x70, 0x24, 0x83, 0x7e, 0x04, 0x00, 0x74, 0x13, 0x8b, 0x46, 0x74, 0x85, 0xc0, 0x74,
     0x0c, 0x8b, 0x08, 0x8b, 0x51, 0x20, 0x50, 0xff, 0xd2, 0x85, 0xc0, 0x7c, 0x21, 0x8b, 0x86, 0x8c,
@@ -66,8 +76,11 @@ constexpr unsigned char pause_body[pause_body_length] = {
     0x74, 0x10, 0x8b, 0x08, 0x8b, 0x51, 0x48, 0x50, 0xff, 0xd2, 0x85, 0xc0, 0x7d, 0x04, 0x33, 0xc0,
     0x5e, 0xc3, 0xc7, 0x46, 0x48, 0x01, 0x00, 0x00, 0x00, 0xc7, 0x46, 0x64, 0x01, 0x00, 0x00, 0x00,
     0xb8, 0x01, 0x00, 0x00, 0x00, 0x5e, 0xc3};
-constexpr unsigned run_head_length = 14;                        // 0x004d1870: sub esp,0x70; push ebx; mov ebx,[eax+0x24]; test byte [ebx+0x8c],0x10
-constexpr unsigned char run_head[run_head_length] = {0x83, 0xec, 0x70, 0x53, 0x8b, 0x58, 0x24, 0xf6, 0x83, 0x8c, 0x00, 0x00, 0x00, 0x10};
+// clang-format on
+constexpr unsigned run_head_length = 14; // 0x004d1870: sub esp,0x70; push ebx; mov ebx,[eax+0x24]; test byte
+                                         // [ebx+0x8c],0x10
+constexpr unsigned char run_head[run_head_length] = {0x83, 0xec, 0x70, 0x53, 0x8b, 0x58, 0x24,
+                                                     0xf6, 0x83, 0x8c, 0x00, 0x00, 0x00, 0x10};
 
 // ---- Patch D: the status query call of the media update, 0x004983d9 -> 0x004d14e0 ----
 // The update 0x00498370 asks 0x004d14e0 (its only caller; ECX = record, EAX = [rec+0x28]; returns AX: 1 playing,
@@ -75,33 +88,44 @@ constexpr unsigned char run_head[run_head_length] = {0x83, 0xec, 0x70, 0x53, 0x8
 // flag [0x00608adc] is 0 and the RunInBackground bit 0x4000 of the input flags word [*0x00606f3c] is clear, the query
 // answers 2 without looking (0x004d14f2..0x004d1500 -> 0x004d15a0), and 2 ends the record (0x0049842b: flag 2 cleared,
 // completion (ctx,1); a looped record re-seeks at 0x0049840a). A skip_all record keeps flag 2 through the alt-tab, so
-// the thunk answers 1 (playing: the caller only reads the position into a discarded local, 0x004983ed) for it in exactly
-// that state and forwards every other call unchanged.
+// the thunk answers 1 (playing: the caller only reads the position into a discarded local, 0x004983ed) for it in
+// exactly that state and forwards every other call unchanged.
 constexpr std::uint32_t d_site_va = 0x004983d9, d_target_va = 0x004d14e0, d_return_va = 0x004983de;
 constexpr std::uint32_t active_flag_va = 0x00608adc, input_flags_ptr_va = 0x00606f3c, run_in_background_bit = 0x4000;
 constexpr std::uint32_t d_caller_va = 0x004983d4, status_ended_va = 0x004d15a0, status_normal_va = 0x004d1506;
-constexpr unsigned d_caller_length = 41;                        // mov eax,[edi+0x28]; mov ecx,edi; call; movzx eax,ax; cmp ax,1; jne; lea esi,[esp+0x10]; mov eax,edi; call 0x4d0600; jmp; cmp ax,2; jne
+constexpr unsigned d_caller_length = 41; // mov eax,[edi+0x28]; mov ecx,edi; call; movzx eax,ax; cmp ax,1; jne; lea
+                                         // esi,[esp+0x10]; mov eax,edi; call 0x4d0600; jmp; cmp ax,2; jne
 constexpr unsigned char d_caller_window[d_caller_length] = {
-    0x8b, 0x47, 0x28, 0x8b, 0xcf, 0xe8, 0x02, 0x91, 0x03, 0x00, 0x0f, 0xb7, 0xc0, 0x66, 0x3d, 0x01, 0x00, 0x75, 0x10, 0x8d, 0x74,
-    0x24, 0x10, 0x8b, 0xc7, 0xe8, 0x0e, 0x82, 0x03, 0x00, 0xe9, 0xbe, 0x00, 0x00, 0x00, 0x66, 0x3d, 0x02, 0x00, 0x75, 0x71};
-constexpr unsigned status_head_length = 38;                     // sub esp,0x24; push ebx/ebp/esi; mov esi,[ecx+0x24]; xor ebp,ebp; cmp [0x608adc],ebp; push edi; jne; mov edx,[0x606f3c]; test [edx],0x4000; je 0x4d15a0
+    0x8b, 0x47, 0x28, 0x8b, 0xcf, 0xe8, 0x02, 0x91, 0x03, 0x00, 0x0f, 0xb7, 0xc0, 0x66,
+    0x3d, 0x01, 0x00, 0x75, 0x10, 0x8d, 0x74, 0x24, 0x10, 0x8b, 0xc7, 0xe8, 0x0e, 0x82,
+    0x03, 0x00, 0xe9, 0xbe, 0x00, 0x00, 0x00, 0x66, 0x3d, 0x02, 0x00, 0x75, 0x71};
+constexpr unsigned status_head_length = 38; // sub esp,0x24; push ebx/ebp/esi; mov esi,[ecx+0x24]; xor ebp,ebp; cmp
+                                            // [0x608adc],ebp; push edi; jne; mov edx,[0x606f3c]; test [edx],0x4000; je
+                                            // 0x4d15a0
 constexpr unsigned char status_head[status_head_length] = {
     0x83, 0xec, 0x24, 0x53, 0x55, 0x56, 0x8b, 0x71, 0x24, 0x33, 0xed, 0x39, 0x2d, 0xdc, 0x8a, 0x60, 0x00, 0x57, 0x75,
     0x12, 0x8b, 0x15, 0x3c, 0x6f, 0x60, 0x00, 0xf7, 0x02, 0x00, 0x40, 0x00, 0x00, 0x0f, 0x84, 0x9a, 0x00, 0x00, 0x00};
-constexpr unsigned status_ended_length = 12;                    // mov ax,2; pop edi/esi/ebp/ebx; add esp,0x24; ret
-constexpr unsigned char status_ended_window[status_ended_length] = {0x66, 0xb8, 0x02, 0x00, 0x5f, 0x5e, 0x5d, 0x5b, 0x83, 0xc4, 0x24, 0xc3};
+constexpr unsigned status_ended_length = 12; // mov ax,2; pop edi/esi/ebp/ebx; add esp,0x24; ret
+constexpr unsigned char status_ended_window[status_ended_length] = {0x66, 0xb8, 0x02, 0x00, 0x5f, 0x5e,
+                                                                    0x5d, 0x5b, 0x83, 0xc4, 0x24, 0xc3};
 
 // ---- Trace sites: three entry trampolines ----
-constexpr std::uint32_t t_stop_all_site_va = stop_all_va;            // mov eax,[0x606f44] (5 bytes, absolute operand)
+constexpr std::uint32_t t_stop_all_site_va = stop_all_va; // mov eax,[0x606f44] (5 bytes, absolute operand)
 constexpr unsigned t_stop_all_length = 5, stop_all_head_length = 16;
-constexpr unsigned char stop_all_head[stop_all_head_length] = {0xa1, 0x44, 0x6f, 0x60, 0x00, 0x53, 0x33, 0xdb, 0x3b, 0xc3, 0x0f, 0x84, 0xa5, 0x00, 0x00, 0x00};
-constexpr std::uint32_t t_play_site_va = play_va;                    // push ecx; push ebx; mov ebx,[esp+0x14] (6 bytes; ESP-relative, replayed at the entry ESP)
+constexpr unsigned char stop_all_head[stop_all_head_length] = {0xa1, 0x44, 0x6f, 0x60, 0x00, 0x53, 0x33, 0xdb,
+                                                               0x3b, 0xc3, 0x0f, 0x84, 0xa5, 0x00, 0x00, 0x00};
+constexpr std::uint32_t t_play_site_va = play_va; // push ecx; push ebx; mov ebx,[esp+0x14] (6 bytes; ESP-relative,
+                                                  // replayed at the entry ESP)
 constexpr unsigned t_play_length = 6, play_head_length = 18;
-constexpr unsigned char play_head[play_head_length] = {0x51, 0x53, 0x8b, 0x5c, 0x24, 0x14, 0x55, 0x8b, 0x6c, 0x24, 0x28, 0x56, 0x57, 0xbf, 0x02, 0x00, 0x00, 0x00};
-constexpr std::uint32_t t_stop_movie_site_va = 0x00498810;           // mov ecx,[0x606f44] (6 bytes); EAX = id, [esp+4] = context, EDI = slot
+constexpr unsigned char play_head[play_head_length] = {0x51, 0x53, 0x8b, 0x5c, 0x24, 0x14, 0x55, 0x8b, 0x6c,
+                                                       0x24, 0x28, 0x56, 0x57, 0xbf, 0x02, 0x00, 0x00, 0x00};
+constexpr std::uint32_t t_stop_movie_site_va = 0x00498810; // mov ecx,[0x606f44] (6 bytes); EAX = id, [esp+4] = context,
+                                                           // EDI = slot
 constexpr unsigned t_stop_movie_length = 6, stop_movie_head_length = 14;
-constexpr unsigned char stop_movie_head[stop_movie_head_length] = {0x8b, 0x0d, 0x44, 0x6f, 0x60, 0x00, 0x55, 0x8b, 0x6c, 0x24, 0x08, 0x56, 0x8b, 0x31};
-// Play routine arguments at its entry frame (dwords from the return address): a1 slot, a2 context, a3 id, a4 minutes, a5 seconds, a6 ms, a7..a9 end, a10 loop.
+constexpr unsigned char stop_movie_head[stop_movie_head_length] = {0x8b, 0x0d, 0x44, 0x6f, 0x60, 0x00, 0x55,
+                                                                   0x8b, 0x6c, 0x24, 0x08, 0x56, 0x8b, 0x31};
+// Play routine arguments at its entry frame (dwords from the return address): a1 slot, a2 context, a3 id, a4 minutes,
+// a5 seconds, a6 ms, a7..a9 end, a10 loop.
 constexpr unsigned play_arg_id = 3, play_arg_minutes = 4, play_arg_seconds = 5, play_arg_ms = 6;
 constexpr unsigned trace_line_cap = 1000;
 
@@ -111,7 +135,12 @@ constexpr unsigned trace_line_cap = 1000;
 // servicing the record; save and pause block the loop, so they pause (keep_running / paused). skip_all needs Patch D
 // (the false "ended" of the status query while the active flag is 0); without it alt-tab falls back to paused.
 enum class StopMode : unsigned { vanilla = 0, keep_running = 1, paused = 2, skip_all = 3 };
-struct StopCaller { std::uint32_t call_va, return_va; const char* name; StopMode mode; };
+struct StopCaller {
+    std::uint32_t call_va, return_va;
+    const char* name;
+    StopMode mode;
+};
+// clang-format off
 constexpr StopCaller stop_callers[] = {
     {0x004d36bd, 0x004d36c2, "alt_tab", StopMode::skip_all},        // WndProc WM_ACTIVATE inactive arm
     {0x0040455c, 0x00404561, "save", StopMode::keep_running},       // save routine 0x00404530, first statement
@@ -120,61 +149,96 @@ constexpr StopCaller stop_callers[] = {
     {0x00497bb6, 0x00497bbb, "p_leave", StopMode::vanilla},         // P_Leave
     {0x00403878, 0x0040387d, "session_start", StopMode::vanilla},   // main-loop entry 0x00403840
 };
+// clang-format on
 constexpr unsigned stop_caller_count = sizeof stop_callers / sizeof stop_callers[0];
-struct PlayCaller { std::uint32_t call_va, return_va; const char* name; };
+struct PlayCaller {
+    std::uint32_t call_va, return_va;
+    const char* name;
+};
 constexpr PlayCaller play_callers[] = {
     {0x0049981f, 0x00499824, "MOV_PlayMovie"},
     {0x00499982, 0x00499987, "MOV_PlayMovieFrom"},
     {0x004f6668, 0x004f666d, "helper_0x004f6640"},
 };
 constexpr unsigned play_caller_count = sizeof play_callers / sizeof play_callers[0];
-constexpr PlayCaller stop_movie_callers[] = {   // the three direct callers of the MOV_StopMovie native 0x00498810 (EAX = id)
+constexpr PlayCaller stop_movie_callers[] = {
+    // the three direct callers of the MOV_StopMovie native 0x00498810 (EAX = id)
     {0x00499881, 0x00499886, "MOV_StopMovie"},
-    {0x0045c27d, 0x0045c282, "selector_0x0045b720"},    // the per-sector object pass (station screens), sector-post-pass.md
+    {0x0045c27d, 0x0045c282, "selector_0x0045b720"}, // the per-sector object pass (station screens),
+                                                     // sector-post-pass.md
     {0x004f66be, 0x004f66c3, "caller_0x004f66be"},
 };
 constexpr unsigned stop_movie_caller_count = sizeof stop_movie_callers / sizeof stop_movie_callers[0];
 inline const StopCaller* stop_caller(std::uint32_t return_va) {
-    for (const auto& c : stop_callers) if (c.return_va == return_va) return &c;
+    for (const auto& c : stop_callers)
+        if (c.return_va == return_va) return &c;
     return nullptr;
 }
-inline const char* stop_caller_name(std::uint32_t return_va) { const StopCaller* c = stop_caller(return_va); return c ? c->name : "unknown"; }
-inline StopMode stop_mode(std::uint32_t return_va) { const StopCaller* c = stop_caller(return_va); return c ? c->mode : StopMode::vanilla; }
+inline const char* stop_caller_name(std::uint32_t return_va) {
+    const StopCaller* c = stop_caller(return_va);
+    return c ? c->name : "unknown";
+}
+inline StopMode stop_mode(std::uint32_t return_va) {
+    const StopCaller* c = stop_caller(return_va);
+    return c ? c->mode : StopMode::vanilla;
+}
 inline const char* play_caller_name(std::uint32_t return_va) {
-    for (const auto& c : play_callers) if (c.return_va == return_va) return c.name;
+    for (const auto& c : play_callers)
+        if (c.return_va == return_va) return c.name;
     return "unknown";
 }
 inline const char* stop_movie_caller_name(std::uint32_t return_va) {
-    for (const auto& c : stop_movie_callers) if (c.return_va == return_va) return c.name;
+    for (const auto& c : stop_movie_callers)
+        if (c.return_va == return_va) return c.name;
     return "unknown";
 }
 inline const char* mode_name(StopMode m) {
-    return m == StopMode::keep_running ? "keep_running" : m == StopMode::paused ? "paused" : m == StopMode::skip_all ? "skip_all" : "vanilla";
+    return m == StopMode::keep_running ? "keep_running"
+           : m == StopMode::paused     ? "paused"
+           : m == StopMode::skip_all   ? "skip_all"
+                                       : "vanilla";
 }
 
 // ---- Holds ----
 // A hold is a music record the classifier let through a preserve caller:
 // (record, id, media) identify it without dereferencing the record later;
 // mode says whether its graph is still running (keep_running) or paused.
-struct Hold { std::uint32_t record, id, media; StopMode mode; };
+struct Hold {
+    std::uint32_t record, id, media;
+    StopMode mode;
+};
 constexpr unsigned hold_capacity = 4;
 struct Holds {
     Hold slots[hold_capacity]{};
-    unsigned count = 0, next = 0;   // next: the slot replaced when full (oldest first)
-    void clear() { count = 0; next = 0; }
+    unsigned count = 0, next = 0; // next: the slot replaced when full (oldest first)
+    void clear() {
+        count = 0;
+        next = 0;
+    }
     const Hold* find(std::uint32_t record, std::uint32_t id, std::uint32_t media) const {
-        for (unsigned i = 0; i < count; ++i) if (slots[i].record == record && slots[i].id == id && slots[i].media == media) return &slots[i];
+        for (unsigned i = 0; i < count; ++i)
+            if (slots[i].record == record && slots[i].id == id && slots[i].media == media) return &slots[i];
         return nullptr;
     }
     void add(const Hold& h) {
-        for (unsigned i = 0; i < count; ++i) if (slots[i].record == h.record) { slots[i] = h; return; }
-        if (count < hold_capacity) { slots[count++] = h; return; }
-        slots[next] = h; next = (next + 1) % hold_capacity;
+        for (unsigned i = 0; i < count; ++i)
+            if (slots[i].record == h.record) {
+                slots[i] = h;
+                return;
+            }
+        if (count < hold_capacity) {
+            slots[count++] = h;
+            return;
+        }
+        slots[next] = h;
+        next = (next + 1) % hold_capacity;
     }
 };
 
 // What a live-list lookup reports for a held record: its flags and completion context.
-struct LiveRecord { std::uint32_t flags, context; };
+struct LiveRecord {
+    std::uint32_t flags, context;
+};
 
 // Patch A decision. In: the record's flags, the stop-all caller's return
 // address. Out: the mode; the stub falls through to the vanilla Pause on
@@ -190,11 +254,17 @@ struct LiveRecord { std::uint32_t flags, context; };
 // kind, which only Patch D reads (decide_status) and the seek rule ignores (a
 // skip_all hold must not make the next start-0 play after the natural end skip
 // the seek). Without Patch D alt-tab takes the flown paused mode.
-struct StopDecision { StopMode mode; bool held; };
-inline StopDecision decide_stop(Holds& holds, std::uint32_t record, std::uint32_t flags, std::uint32_t id, std::uint32_t media, std::uint32_t return_va,
-                                bool skip_all_available) {
+struct StopDecision {
+    StopMode mode;
+    bool held;
+};
+inline StopDecision decide_stop(Holds& holds, std::uint32_t record, std::uint32_t flags, std::uint32_t id,
+                                std::uint32_t media, std::uint32_t return_va, bool skip_all_available) {
     StopMode mode = stop_mode(return_va);
-    if (mode == StopMode::vanilla) { holds.clear(); return {StopMode::vanilla, false}; }
+    if (mode == StopMode::vanilla) {
+        holds.clear();
+        return {StopMode::vanilla, false};
+    }
     if (!(flags & flag_music)) return {StopMode::vanilla, false};
     if (mode == StopMode::skip_all && !skip_all_available) mode = StopMode::paused;
     if (mode == StopMode::keep_running && (flags & flag_directsound)) mode = StopMode::paused;
@@ -210,15 +280,16 @@ inline StopDecision decide_stop(Holds& holds, std::uint32_t record, std::uint32_
 // pause; 0 when nothing is left. The stub loops until 0 (bounded by
 // hold_capacity). Paused-mode holds stay: their graph is already paused and
 // the replay after the alt-tab still needs them.
-template<class Lookup>
-inline std::uint32_t stale_hold_to_pause(Holds& holds, Lookup&& live) {
+template <class Lookup> inline std::uint32_t stale_hold_to_pause(Holds& holds, Lookup&& live) {
     for (unsigned i = 0; i < holds.count; ++i) {
         const Hold h = holds.slots[i];
         if (h.mode != StopMode::keep_running) continue;
         for (unsigned j = i + 1; j < holds.count; ++j) holds.slots[j - 1] = holds.slots[j];
-        --holds.count; holds.next = 0;
+        --holds.count;
+        holds.next = 0;
         LiveRecord r{};
-        if (live(h.record, h.id, h.media, r) && !(r.flags & flag_playing) && r.context == 0 && (r.flags & flag_music)) return h.record;
+        if (live(h.record, h.id, h.media, r) && !(r.flags & flag_playing) && r.context == 0 && (r.flags & flag_music))
+            return h.record;
         return stale_hold_to_pause(holds, live);
     }
     return 0;
@@ -229,9 +300,14 @@ inline std::uint32_t stale_hold_to_pause(Holds& holds, Lookup&& live) {
 inline unsigned drop_holds_by_id(Holds& holds, std::uint32_t id) {
     unsigned dropped = 0;
     for (unsigned i = 0; i < holds.count;) {
-        if (holds.slots[i].id != id) { ++i; continue; }
+        if (holds.slots[i].id != id) {
+            ++i;
+            continue;
+        }
         for (unsigned j = i + 1; j < holds.count; ++j) holds.slots[j - 1] = holds.slots[j];
-        --holds.count; holds.next = 0; ++dropped;
+        --holds.count;
+        holds.next = 0;
+        ++dropped;
     }
     return dropped;
 }
@@ -243,12 +319,17 @@ inline unsigned drop_holds_by_id(Holds& holds, std::uint32_t id) {
 // vanilla (original seek), pause_then_vanilla (the engine's 0x004d1810 on
 // `pause_record`, then the original seek). Holds are dropped by every music play.
 enum class SeekAction : unsigned { vanilla = 0, skip = 1, pause_then_vanilla = 2 };
-struct SeekDecision { SeekAction action; std::uint32_t pause_record; std::uint32_t hold_id; };
-template<class Lookup>
-inline SeekDecision decide_seek(Holds& holds, std::uint32_t record, std::uint32_t flags, std::uint32_t id, std::uint32_t media, std::int32_t start_ms, Lookup&& live) {
+struct SeekDecision {
+    SeekAction action;
+    std::uint32_t pause_record;
+    std::uint32_t hold_id;
+};
+template <class Lookup>
+inline SeekDecision decide_seek(Holds& holds, std::uint32_t record, std::uint32_t flags, std::uint32_t id,
+                                std::uint32_t media, std::int32_t start_ms, Lookup&& live) {
     if (!(flags & flag_music)) return {SeekAction::vanilla, 0, 0};
     const Hold* mine = holds.find(record, id, media);
-    if (mine && mine->mode == StopMode::skip_all) mine = nullptr;   // flag 2 alone decides for a skip_all record
+    if (mine && mine->mode == StopMode::skip_all) mine = nullptr; // flag 2 alone decides for a skip_all record
     if (start_ms == 0 && (mine || (flags & flag_playing))) {
         const std::uint32_t hold_id = mine ? mine->id : id;
         holds.clear();
@@ -277,7 +358,8 @@ inline SeekDecision decide_seek(Holds& holds, std::uint32_t record, std::uint32_
 // skip_all hold, while the active flag is 0 and the RunInBackground bit is
 // clear: exactly the state in which the query would answer "ended" without
 // looking. With the bit set the engine's own answer is genuine and forwarded.
-inline bool decide_status(const Holds& holds, std::uint32_t record, std::uint32_t flags, std::uint32_t id, std::uint32_t media, std::uint32_t active, std::uint32_t input_flags) {
+inline bool decide_status(const Holds& holds, std::uint32_t record, std::uint32_t flags, std::uint32_t id,
+                          std::uint32_t media, std::uint32_t active, std::uint32_t input_flags) {
     if (active != 0 || (input_flags & run_in_background_bit)) return false;
     if ((flags & (flag_music | flag_playing)) != (flag_music | flag_playing)) return false;
     const Hold* h = holds.find(record, id, media);
@@ -290,9 +372,15 @@ inline bool decide_status(const Holds& holds, std::uint32_t record, std::uint32_
 // window checks of the second feature must therefore see through the first feature's live claim: a read
 // that overlaps a live claim of ours whose bytes are still exactly the claim's own patch is overlaid with
 // the claim's original bytes; any other byte there (a foreign write) stays and fails the comparison.
-struct LiveClaim { std::uint32_t site; const unsigned char* original; const unsigned char* patched; unsigned patch_length; };
+struct LiveClaim {
+    std::uint32_t site;
+    const unsigned char* original;
+    const unsigned char* patched;
+    unsigned patch_length;
+};
 // Returns false when an overlapping claim's bytes are not its own patch (every other claim is still overlaid).
-inline bool overlay_claims(std::uint32_t at, unsigned char* bytes, unsigned length, const LiveClaim* claims, unsigned count) {
+inline bool overlay_claims(std::uint32_t at, unsigned char* bytes, unsigned length, const LiveClaim* claims,
+                           unsigned count) {
     bool all_own = true;
     for (unsigned c = 0; c < count; ++c) {
         const LiveClaim& k = claims[c];
@@ -302,7 +390,10 @@ inline bool overlay_claims(std::uint32_t at, unsigned char* bytes, unsigned leng
             const std::uint32_t va = k.site + i;
             if (va >= at && va < at + length && bytes[va - at] != k.patched[i]) own = false;
         }
-        if (!own) { all_own = false; continue; }   // not our patch: leave the bytes as read (the comparison fails)
+        if (!own) {
+            all_own = false;
+            continue;
+        } // not our patch: leave the bytes as read (the comparison fails)
         for (unsigned i = 0; i < k.patch_length; ++i) {
             const std::uint32_t va = k.site + i;
             if (va >= at && va < at + length) bytes[va - at] = k.original[i];
@@ -311,12 +402,15 @@ inline bool overlay_claims(std::uint32_t at, unsigned char* bytes, unsigned leng
     return all_own;
 }
 // Whether [at, at+length) holds `expected` in the unpatched image. `read(at, out, n)` reads code bytes.
-template<class Read>
-inline bool window_matches(Read&& read, std::uint32_t at, const unsigned char* expected, unsigned length, const LiveClaim* claims, unsigned count) {
+template <class Read>
+inline bool window_matches(Read&& read, std::uint32_t at, const unsigned char* expected, unsigned length,
+                           const LiveClaim* claims, unsigned count) {
     unsigned char actual[128]{};
     if (length > sizeof actual || !read(at, actual, length)) return false;
-    if (!overlay_claims(at, actual, length, claims, count)) return false;   // a foreign write over a live claim: fail closed
-    for (unsigned i = 0; i < length; ++i) if (actual[i] != expected[i]) return false;
+    if (!overlay_claims(at, actual, length, claims, count))
+        return false; // a foreign write over a live claim: fail closed
+    for (unsigned i = 0; i < length; ++i)
+        if (actual[i] != expected[i]) return false;
     return true;
 }
 // The shared claim: `Ops` supplies claim(site, spec) -> bool, status(site) -> const char*, push(site, stub,
@@ -325,13 +419,23 @@ inline bool window_matches(Read&& read, std::uint32_t at, const unsigned char* e
 // chains; a push that fails on a fresh claim restores it. A feature that later fails its install releases
 // the site: the last user restores the bytes; while another user remains, the failed feature's stub stays
 // chained and its armed flag keeps it inert. Independent of which feature comes first.
-template<class Site> struct SharedSite { Site site{}; unsigned users = 0; };
-template<class Ops, class Site, class Spec, class Stub, class Slot>
-inline bool acquire_shared(Ops& ops, SharedSite<Site>& s, const Spec& spec, Stub stub, Slot& continuation, const char** reason) {
+template <class Site> struct SharedSite {
+    Site site{};
+    unsigned users = 0;
+};
+template <class Ops, class Site, class Spec, class Stub, class Slot>
+inline bool acquire_shared(Ops& ops, SharedSite<Site>& s, const Spec& spec, Stub stub, Slot& continuation,
+                           const char** reason) {
     if (!s.users) {
-        if (ops.live(s.site)) { *reason = "site_live"; return false; }   // an unrestored claim (failed rollback): refuse, never forget it
+        if (ops.live(s.site)) {
+            *reason = "site_live";
+            return false;
+        } // an unrestored claim (failed rollback): refuse, never forget it
         s.site = Site{};
-        if (!ops.claim(s.site, spec)) { *reason = ops.status(s.site); return false; }
+        if (!ops.claim(s.site, spec)) {
+            *reason = ops.status(s.site);
+            return false;
+        }
     }
     if (!ops.push(s.site, stub, continuation)) {
         *reason = "chain_failed";
@@ -341,9 +445,10 @@ inline bool acquire_shared(Ops& ops, SharedSite<Site>& s, const Spec& spec, Stub
     ++s.users;
     return true;
 }
-template<class Ops, class Site>
-inline bool release_shared(Ops& ops, SharedSite<Site>& s) {
-    if (!s.users) return !ops.live(s.site) || ops.restore(s.site);   // a claim whose push failed: already restored by acquire_shared
+template <class Ops, class Site> inline bool release_shared(Ops& ops, SharedSite<Site>& s) {
+    if (!s.users)
+        return !ops.live(s.site) || ops.restore(s.site); // a claim whose push failed: already restored by
+                                                         // acquire_shared
     if (--s.users) return true;
     return ops.restore(s.site);
 }

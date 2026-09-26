@@ -7,16 +7,36 @@
 using namespace x3m::renderer;
 namespace {
 unsigned checks = 0;
-void require(bool ok, const char* what) { if (!ok) throw std::runtime_error(what); }
-void passed(const char* name) { ++checks; std::printf("CHECK %s\n", name); }
+void require(bool ok, const char* what) {
+    if (!ok) throw std::runtime_error(what);
+}
+void passed(const char* name) {
+    ++checks;
+    std::printf("CHECK %s\n", name);
+}
 RigidDrawKey key(std::uint64_t node_serial, std::uint32_t first = 0) {
     RigidDrawKey k{};
-    k.object_lifetime = node_serial; k.camera_lifetime = 21; k.draw_domain = 5; k.node = 0x1000 + node_serial; k.camera = 0x2000;
-    k.vertex_buffer = 7; k.declaration = 9; k.position_program = 0x53a0a641107ed76cull; k.stride = 24; k.primitives = 1;
-    k.first = first; k.topology = 4; k.pass = PassMainScene;
+    k.object_lifetime = node_serial;
+    k.camera_lifetime = 21;
+    k.draw_domain = 5;
+    k.node = 0x1000 + node_serial;
+    k.camera = 0x2000;
+    k.vertex_buffer = 7;
+    k.declaration = 9;
+    k.position_program = 0x53a0a641107ed76cull;
+    k.stride = 24;
+    k.primitives = 1;
+    k.first = first;
+    k.topology = 4;
+    k.pass = PassMainScene;
     return k;
 }
-SubmittedMatrix rows(float t) { SubmittedMatrix m{}; m[0] = m[5] = m[10] = m[15] = 1; m[3] = t; return m; }
+SubmittedMatrix rows(float t) {
+    SubmittedMatrix m{};
+    m[0] = m[5] = m[10] = m[15] = 1;
+    m[3] = t;
+    return m;
+}
 const MotionRowFrame frame{1, 64, 64};
 } // namespace
 
@@ -46,12 +66,16 @@ int main() {
         passed("previous_duplicate_poisons_key");
 
         h.begin_frame(frame);
-        RigidDrawKey invalid = key(1); invalid.object_lifetime = 0;
+        RigidDrawKey invalid = key(1);
+        invalid.object_lifetime = 0;
         require(!h.lookup_and_record(invalid, rows(0), previous) && h.stats().current == 0, "invalid key not recorded");
         require(!MotionRowHistory::key_valid(invalid), "key_valid rejects zero lifetime");
-        invalid = key(1); invalid.indexed = true; invalid.index_buffer = 0;
+        invalid = key(1);
+        invalid.indexed = true;
+        invalid.index_buffer = 0;
         require(!MotionRowHistory::key_valid(invalid), "indexed key needs index buffer identity");
-        require(h.lookup_and_record(key(1), rows(.4f), previous) && previous[3] == .3f, "valid key after invalid attempt");
+        require(h.lookup_and_record(key(1), rows(.4f), previous) && previous[3] == .3f,
+                "valid key after invalid attempt");
         require(h.commit(true), "commit");
         passed("invalid_keys_rejected");
 
@@ -78,7 +102,8 @@ int main() {
         passed("capacity_overflow_fails_closed");
 
         h.begin_frame({2, 32, 64});
-        SubmittedMatrix bad = rows(0); bad[0] = std::numeric_limits<float>::infinity();
+        SubmittedMatrix bad = rows(0);
+        bad[0] = std::numeric_limits<float>::infinity();
         require(!h.lookup_and_record(key(1), bad, previous), "stored regardless");
         require(h.commit(true), "commit");
         h.begin_frame({2, 32, 64});
@@ -91,11 +116,15 @@ int main() {
         MotionRowHistory none(0);
         require(!none.ready(), "zero capacity is not ready");
         none.begin_frame(frame);
-        require(!none.lookup_and_record(key(1), rows(0), previous) && !none.commit(true), "not-ready table reports nothing");
+        require(!none.lookup_and_record(key(1), rows(0), previous) && !none.commit(true),
+                "not-ready table reports nothing");
         h.invalidate();
         require(!h.stats().previous_valid && !h.stats().collecting, "invalidate clears state");
         passed("not_ready_and_invalidate");
         std::printf("RESULT PASS checks=%u\n", checks);
         return 0;
-    } catch (const std::exception& e) { std::printf("RESULT FAIL %s\n", e.what()); return 1; }
+    } catch (const std::exception& e) {
+        std::printf("RESULT FAIL %s\n", e.what());
+        return 1;
+    }
 }

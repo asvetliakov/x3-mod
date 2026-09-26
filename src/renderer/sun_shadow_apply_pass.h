@@ -20,7 +20,7 @@ struct SunShadowApplyCaps {
     bool enabled = false;
     const char* reason = "detached"; // gate name or creation failure
     HRESULT formats = S_FALSE, programs = S_FALSE;
-    unsigned program_slots = 0;      // conservative ps_3_0 slot count of the embedded cascade program
+    unsigned program_slots = 0; // conservative ps_3_0 slot count of the embedded cascade program
 };
 // Bias in world units (legacy-sun-application.md, section 2, "Bias"): the
 // constant subtracted from every compare is bias_units plus one world texel
@@ -34,8 +34,10 @@ struct SunShadowApplyCaps {
 // and 0.01) at the default cascade 250 / 512 / 1024: 0.53571875 + 0.48828125
 // = 1.024 = 0.001 x 1024 and 20.97152 x 0.48828125 = 10.24 = 0.01 x 1024.
 // Double arithmetic, one rounding to float per value.
-constexpr double sun_shadow_bias_units_default = 0.53571875, sun_shadow_bias_units_min = 0., sun_shadow_bias_units_max = 1000.;
-constexpr double sun_shadow_bias_clamp_texels_default = 20.97152, sun_shadow_bias_clamp_texels_min = 1., sun_shadow_bias_clamp_texels_max = 64.;
+constexpr double sun_shadow_bias_units_default = 0.53571875, sun_shadow_bias_units_min = 0.,
+                 sun_shadow_bias_units_max = 1000.;
+constexpr double sun_shadow_bias_clamp_texels_default = 20.97152, sun_shadow_bias_clamp_texels_min = 1.,
+                 sun_shadow_bias_clamp_texels_max = 64.;
 // Slope-scaled margin of the cascade program (directional-shadows.md, "Run 40 B
 // (run119) near flicker"): every tap's reference is lowered by slope_texels
 // texels of the receiver plane's depth slope |dz/du| + |dz/dv| (clamped like
@@ -46,13 +48,20 @@ constexpr double sun_shadow_bias_clamp_texels_default = 20.97152, sun_shadow_bia
 // texel, above the constant bias; 0.2 texels put the reference under it
 // (run119 16528 C1: 10.6 % -> 1.1 % of the owned pixels re-roll under +-1 ULP;
 // the face-on cascades move by < 0.6 pp). X3M_SUN_SHADOW_BIAS_SLOPE_TEXELS, 0..8.
-constexpr double sun_shadow_bias_slope_texels_default = 0.2, sun_shadow_bias_slope_texels_min = 0., sun_shadow_bias_slope_texels_max = 8.;
-struct SunShadowBias { float constant = 0.f, max = 0.f; float texel_world = 0.f; };
-inline bool sun_shadow_apply_bias(double bias_units, double clamp_texels, double half_extent, double depth_half, unsigned size, SunShadowBias& out) noexcept {
+constexpr double sun_shadow_bias_slope_texels_default = 0.2, sun_shadow_bias_slope_texels_min = 0.,
+                 sun_shadow_bias_slope_texels_max = 8.;
+struct SunShadowBias {
+    float constant = 0.f, max = 0.f;
+    float texel_world = 0.f;
+};
+inline bool sun_shadow_apply_bias(double bias_units, double clamp_texels, double half_extent, double depth_half,
+                                  unsigned size, SunShadowBias& out) noexcept {
     out = {};
     if (!(bias_units >= 0.) || !(clamp_texels > 0.) || !(half_extent > 0.) || !(depth_half > 0.) || !size) return false;
     const double texel = 2. * half_extent / double(size), constant = (bias_units + texel) / (2. * depth_half);
-    out.constant = float(constant); out.max = float(clamp_texels * texel / (2. * depth_half)); out.texel_world = float(texel);
+    out.constant = float(constant);
+    out.max = float(clamp_texels * texel / (2. * depth_half));
+    out.texel_world = float(texel);
     return out.constant >= 0.f && out.max >= 0.f && out.max <= 1.f && out.constant <= 1.f;
 }
 // Cascades (docs/architecture/shadow-cascades.md, section 2;
@@ -64,33 +73,46 @@ struct SunShadowCascadeInput {
     IDirect3DTexture9* map = nullptr;
     float rows[12]{};
     float bias_constant = 0.f, bias_max = 0.f;
-    float slope_texels = 0.f;         // slope-scaled margin in texels of the plane's depth slope (sun_shadow_bias_slope_texels_*); 0 = the constant + plane law alone
+    float slope_texels = 0.f; // slope-scaled margin in texels of the plane's depth slope
+                              // (sun_shadow_bias_slope_texels_*); 0 = the constant + plane law alone
     bool valid = false;
 };
 struct SunShadowCascadeFrame {
-    IDirect3DTexture9* depth_share = nullptr;       // RT2 A32B32G32R32F, width x height (.r = z/w with -1 sentinel, .g = share, .b = view depth); R32F/G32R32F skip("format")
-    IDirect3DSurface9* target = nullptr;            // owning scene target of the attached format
+    IDirect3DTexture9* depth_share = nullptr; // RT2 A32B32G32R32F, width x height (.r = z/w with -1 sentinel, .g =
+                                              // share, .b = view depth); R32F/G32R32F skip("format")
+    IDirect3DSurface9* target = nullptr;      // owning scene target of the attached format
     UINT width = 0, height = 0;
     // The route's jittered projection latch (camera_reprojection.h; the reconstruction
     // law): view z = m32 / (d - m22), x = (ndc.x - m20) z / m00, y = (ndc.y - m21) z / m11.
     float m00 = 0, m11 = 0, m20 = 0, m21 = 0, m22 = 0, m32 = 0;
-    unsigned jitter_index = 0;                      // rotates the 3x3 kernel (8 steps of pi / 8)
-    float exponent = 1.f;                           // 1 for original shading, 1 / 2.2 for converted materials
-    float planar_step = .05f;                       // relative view-depth change per pixel above which the plane fit is dropped
-    unsigned count = 0;                                   // configured cascades, 1..shadow_cascade_max
+    unsigned jitter_index = 0; // rotates the 3x3 kernel (8 steps of pi / 8)
+    float exponent = 1.f;      // 1 for original shading, 1 / 2.2 for converted materials
+    float planar_step = .05f;  // relative view-depth change per pixel above which the plane fit is dropped
+    unsigned count = 0;        // configured cascades, 1..shadow_cascade_max
     SunShadowCascadeInput cascades[shadow_cascade_max]{};
     bool caller_scene_open = true;
     bool caller_stateblock_recording = false;
 };
-enum class SunShadowApplyStage : unsigned { None, Validate, Block, Capture, Normalize, Scene, Constants, Apply, EndScene, Restore };
+enum class SunShadowApplyStage : unsigned {
+    None,
+    Validate,
+    Block,
+    Capture,
+    Normalize,
+    Scene,
+    Constants,
+    Apply,
+    EndScene,
+    Restore
+};
 struct SunShadowApplyResult {
     HRESULT operation = S_FALSE, restore = S_FALSE;
     SunShadowApplyStage failed = SunShadowApplyStage::None;
-    bool applied = false;             // the quad drew into the target
-    bool skipped = false;             // a missing or invalid input: nothing touched, execute returns S_FALSE
-    const char* skipped_reason = "";  // detached, reset_pending, input, params, format, device, absent
-    unsigned map_size = 0;            // the first sampled map's side
-    unsigned cascades_bound = 0;      // maps sampled (valid cascades)
+    bool applied = false;            // the quad drew into the target
+    bool skipped = false;            // a missing or invalid input: nothing touched, execute returns S_FALSE
+    const char* skipped_reason = ""; // detached, reset_pending, input, params, format, device, absent
+    unsigned map_size = 0;           // the first sampled map's side
+    unsigned cascades_bound = 0;     // maps sampled (valid cascades)
 };
 class SunShadowApplyPass {
 public:
@@ -104,7 +126,8 @@ public:
     // post-pixel-shader blending on target_format, then creates the program
     // pair and the declaration (surviving Reset). A refusal leaves the pass
     // detached with caps().reason set (no fallback program).
-    HRESULT attach(IDirect3DDevice9*, void* const* native, const D3DCAPS9&, D3DFORMAT adapter_format, D3DFORMAT target_format) noexcept;
+    HRESULT attach(IDirect3DDevice9*, void* const* native, const D3DCAPS9&, D3DFORMAT adapter_format,
+                   D3DFORMAT target_format) noexcept;
     const SunShadowApplyCaps& caps() const noexcept { return caps_; }
     // One quad: capture the owned block and the bindings, normalize, upload
     // the constants, draw, restore. Any missing input returns S_FALSE with
@@ -112,18 +135,19 @@ public:
     // valid: nothing to darken, the frame stays byte-identical); a failed
     // device call restores and names its stage; a lost device stops restoration.
     HRESULT execute_cascades(const SunShadowCascadeFrame&, SunShadowApplyResult*) noexcept;
-    void before_reset() noexcept;              // releases the block, refuses execute until after_reset(SUCCEEDED)
+    void before_reset() noexcept; // releases the block, refuses execute until after_reset(SUCCEEDED)
     void after_reset(HRESULT) noexcept;
-    void detach() noexcept;                    // full teardown including programs
+    void detach() noexcept; // full teardown including programs
     bool reset_pending() const noexcept { return reset_pending_; }
-    unsigned references() const noexcept;      // persistent interfaces held
+    unsigned references() const noexcept; // persistent interfaces held
 private:
     struct SavedState;
-    template<class Fn> Fn call(unsigned slot) const noexcept {
+    template <class Fn> Fn call(unsigned slot) const noexcept {
         return reinterpret_cast<Fn>((vtable_ ? vtable_ : *reinterpret_cast<void* const* const*>(device_))[slot]);
     }
     HRESULT ensure_block() noexcept;
-    HRESULT normalize(IDirect3DSurface9* target, UINT w, UINT h, IDirect3DPixelShader9* program, UINT samplers) noexcept;
+    HRESULT normalize(IDirect3DSurface9* target, UINT w, UINT h, IDirect3DPixelShader9* program,
+                      UINT samplers) noexcept;
     IDirect3DDevice9* device_ = nullptr;
     void* const* vtable_ = nullptr;
     SunShadowApplyCaps caps_{};

@@ -21,10 +21,14 @@ int main(int argc, char** argv) {
         std::ifstream input(argv[i], std::ios::binary);
         std::vector<char> data{std::istreambuf_iterator<char>(input), {}};
         ID3DXBuffer* text = nullptr;
-        if (FAILED(disassemble(reinterpret_cast<const DWORD*>(data.data()), FALSE, nullptr, &text)) || !text) { std::printf("%s FAILED\n", argv[i]); continue; }
+        if (FAILED(disassemble(reinterpret_cast<const DWORD*>(data.data()), FALSE, nullptr, &text)) || !text) {
+            std::printf("%s FAILED\n", argv[i]);
+            continue;
+        }
         std::istringstream lines(static_cast<const char*>(text->GetBufferPointer()));
         std::string line;
-        while (std::getline(lines, line)) if (line.find("instruction slots used") != std::string::npos) std::printf("%s %s\n", argv[i], line.c_str());
+        while (std::getline(lines, line))
+            if (line.find("instruction slots used") != std::string::npos) std::printf("%s %s\n", argv[i], line.c_str());
         text->Release();
     }
     FreeLibrary(module);

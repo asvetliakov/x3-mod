@@ -40,7 +40,7 @@ detail::Accumulator* shared_accumulator() noexcept;
 bool fixture_install(const engine_patch::SiteSpec* specs, const char** status);
 bool fixture_uninstall();
 void* fixture_emit(unsigned index, void*** next); // the production lean stub
-bool fixture_last_sample(detail::Sample* out);   // owner thread only
+bool fixture_last_sample(detail::Sample* out);    // owner thread only
 const detail::Accumulator* fixture_accumulator();
 const detail::Gate* fixture_gate();
 std::uint64_t fixture_dropped();

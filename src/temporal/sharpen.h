@@ -17,7 +17,7 @@ constexpr unsigned kSharpenRegister = 23;
 constexpr float kSharpenMaxStops = 2.f;
 
 struct SharpenConstants {
-    float values[4]{1.f, 0.f, 0.f, 0.f};   // c23: gain, 1/width, 1/height, 0
+    float values[4]{1.f, 0.f, 0.f, 0.f}; // c23: gain, 1/width, 1/height, 0
 };
 
 // sharpness in [0, 1] is the switch's domain; 0 means the pass is off and is
@@ -27,7 +27,7 @@ inline bool valid_sharpen(float sharpness) noexcept {
 }
 
 inline bool prepare_sharpen(SharpenConstants& out, float sharpness, unsigned width, unsigned height) noexcept {
-    if(!valid_sharpen(sharpness) || sharpness <= 0.f || !width || !height) return false;
+    if (!valid_sharpen(sharpness) || sharpness <= 0.f || !width || !height) return false;
     out.values[0] = std::exp2(-kSharpenMaxStops * (1.f - sharpness));
     out.values[1] = 1.f / float(width);
     out.values[2] = 1.f / float(height);

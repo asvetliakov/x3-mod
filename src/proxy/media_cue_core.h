@@ -19,17 +19,27 @@ inline constexpr bool refuse_id2_video(std::uint32_t id, std::uint32_t incoming_
     return id == 2 && (incoming_flags == 0 || incoming_flags == 8);
 }
 
-enum Caller : unsigned char { selector = 0, speech = 1, script = 2, savegame = 3, query = 4, other = 5, caller_count = 6 };
-inline constexpr const char* const caller_names[caller_count] = {"selector", "speech", "script", "savegame", "query", "other"};
+enum Caller : unsigned char {
+    selector = 0,
+    speech = 1,
+    script = 2,
+    savegame = 3,
+    query = 4,
+    other = 5,
+    caller_count = 6
+};
+inline constexpr const char* const caller_names[caller_count] = {"selector", "speech", "script",
+                                                                 "savegame", "query",  "other"};
 
 // The discriminators (media_cue_sites.h holds the EXE's values; the CPU fixture
 // supplies its own trampolines).
 struct Addresses {
     std::uint32_t query_return = 0, savegame_return = 0, script_return = 0, speech_return = 0;
-    std::uint32_t helper_return = 0;    // [esp]: the play helper 0x004f65f0
-    std::uint32_t selector_return = 0;  // [esp+0xc] behind the helper: the sector selector
-    std::uint32_t selector_kind = 0;    // [esp+0x10] behind the helper: the cue kind
-    std::uint32_t blit_begin = 0, blit_end = 0;  // the video consumer 0x004d0c40 up to the next function 0x004d14e0 (media-cue-playback.md, 8.6)
+    std::uint32_t helper_return = 0;            // [esp]: the play helper 0x004f65f0
+    std::uint32_t selector_return = 0;          // [esp+0xc] behind the helper: the sector selector
+    std::uint32_t selector_kind = 0;            // [esp+0x10] behind the helper: the cue kind
+    std::uint32_t blit_begin = 0, blit_end = 0; // the video consumer 0x004d0c40 up to the next function 0x004d14e0
+                                                // (media-cue-playback.md, 8.6)
 };
 // `ret` is [esp] at entry, `slot_c` is [esp+0xc]. The selector is the play
 // helper called from the selector; every other helper caller is `other`.
@@ -52,7 +62,7 @@ struct Entry {
     std::uint32_t id = 0, kind = 0, flags = 0, result = 0, attempt = 0;
     Caller caller = other;
     Outcome outcome = unobserved;
-    bool scoped = false;  // selector path with the selector's kind
+    bool scoped = false; // selector path with the selector's kind
 };
 
 // Fixed table of ids whose last scoped build returned 0, with the failure's
@@ -60,39 +70,64 @@ struct Entry {
 // caller clears it. Refusals inside the retry interval are counted per slot.
 inline constexpr unsigned cache_entries = 32;
 struct NegativeCache {
-    struct Slot { std::uint32_t id = 0; std::uint64_t failed_qpc = 0; std::uint32_t failures = 0, refusals = 0; bool used = false; };
+    struct Slot {
+        std::uint32_t id = 0;
+        std::uint64_t failed_qpc = 0;
+        std::uint32_t failures = 0, refusals = 0;
+        bool used = false;
+    };
     Slot slots[cache_entries]{};
     unsigned used = 0;
     std::uint64_t evictions = 0, clock_errors = 0;
     Slot* find(std::uint32_t id) noexcept {
-        for (auto& s : slots) if (s.used && s.id == id) return &s;
+        for (auto& s : slots)
+            if (s.used && s.id == id) return &s;
         return nullptr;
     }
     bool refuses(std::uint32_t id, std::uint64_t now, std::uint64_t retry_ticks) noexcept {
         Slot* s = find(id);
         if (!s) return false;
-        if (now < s->failed_qpc) { ++clock_errors; return false; }  // a backward clock never refuses
-        if (now - s->failed_qpc >= retry_ticks) return false;       // the retry is due
+        if (now < s->failed_qpc) {
+            ++clock_errors;
+            return false;
+        } // a backward clock never refuses
+        if (now - s->failed_qpc >= retry_ticks) return false; // the retry is due
         ++s->refusals;
         return true;
     }
     void fail(std::uint32_t id, std::uint64_t now) noexcept {
         Slot* s = find(id);
         if (!s) {
-            for (auto& candidate : slots) if (!candidate.used) { s = &candidate; break; }
+            for (auto& candidate : slots)
+                if (!candidate.used) {
+                    s = &candidate;
+                    break;
+                }
             if (!s) {
                 s = &slots[0];
-                for (auto& candidate : slots) if (candidate.failed_qpc < s->failed_qpc) s = &candidate;
+                for (auto& candidate : slots)
+                    if (candidate.failed_qpc < s->failed_qpc) s = &candidate;
                 ++evictions;
-            } else ++used;
-            *s = Slot{}; s->used = true; s->id = id;
+            } else
+                ++used;
+            *s = Slot{};
+            s->used = true;
+            s->id = id;
         }
-        s->failed_qpc = now; ++s->failures;
+        s->failed_qpc = now;
+        ++s->failures;
     }
     void success(std::uint32_t id) noexcept {
-        if (Slot* s = find(id)) { *s = Slot{}; --used; }
+        if (Slot* s = find(id)) {
+            *s = Slot{};
+            --used;
+        }
     }
-    void clear() noexcept { for (auto& s : slots) s = Slot{}; used = 0; evictions = clock_errors = 0; }
+    void clear() noexcept {
+        for (auto& s : slots) s = Slot{};
+        used = 0;
+        evictions = clock_errors = 0;
+    }
 };
 
 // Proceeded entries whose return the gate captured, innermost last. A nested
@@ -118,9 +153,16 @@ struct PendingStack {
     std::uint64_t overflow = 0, stale = 0, lost = 0, mismatched = 0;
     std::uint32_t last_return = 0;
     bool push(const Pending& p) noexcept {
-        while (depth && items[depth - 1].esp <= p.esp) { --depth; ++stale; }  // unwound frames at or below the new call
-        if (depth >= pending_depth) { ++overflow; return false; }
-        items[depth++] = p; last_return = p.ret;
+        while (depth && items[depth - 1].esp <= p.esp) {
+            --depth;
+            ++stale;
+        } // unwound frames at or below the new call
+        if (depth >= pending_depth) {
+            ++overflow;
+            return false;
+        }
+        items[depth++] = p;
+        last_return = p.ret;
         if (depth > max_depth) max_depth = depth;
         return true;
     }
@@ -146,12 +188,18 @@ struct TraceRing {
     std::uint64_t dropped = 0;
     void push(const Entry& e) noexcept {
         items[(head + count) % ring_entries] = e;
-        if (count < ring_entries) ++count;
-        else { head = (head + 1) % ring_entries; ++dropped; }
+        if (count < ring_entries)
+            ++count;
+        else {
+            head = (head + 1) % ring_entries;
+            ++dropped;
+        }
     }
     bool pop(Entry& out) noexcept {
         if (!count) return false;
-        out = items[head]; head = (head + 1) % ring_entries; --count;
+        out = items[head];
+        head = (head + 1) % ring_entries;
+        --count;
         return true;
     }
 };
@@ -166,10 +214,19 @@ struct RateLimit {
     std::uint64_t second_start = 0, suppressed = 0;
     unsigned emitted = 0;
     bool admit(std::uint64_t now, std::uint64_t frequency) noexcept {
-        if (!now) { ++suppressed; return false; }  // a failed clock read suppresses rather than admitting every call
+        if (!now) {
+            ++suppressed;
+            return false;
+        } // a failed clock read suppresses rather than admitting every call
         if (!frequency) frequency = 1;
-        if (!second_start || now < second_start || now - second_start >= frequency) { second_start = now; emitted = 0; }
-        if (emitted < lines_per_second) { ++emitted; return true; }
+        if (!second_start || now < second_start || now - second_start >= frequency) {
+            second_start = now;
+            emitted = 0;
+        }
+        if (emitted < lines_per_second) {
+            ++emitted;
+            return true;
+        }
         ++suppressed;
         return false;
     }
@@ -188,29 +245,49 @@ struct RateLimit {
 // as a re-entry and writes nothing, so the outer pair stays matched.
 inline constexpr unsigned video_blit_line_interval = 60;
 inline bool video_blit_caller(std::uint32_t ret, const Addresses& a) noexcept {
-    return ret - a.blit_begin < a.blit_end - a.blit_begin;  // unsigned wrap: an empty range admits nothing
+    return ret - a.blit_begin < a.blit_end - a.blit_begin; // unsigned wrap: an empty range admits nothing
 }
 struct VideoBlit {
-    std::uint64_t locks = 0, unlocks = 0, failures = 0, suppressed = 0, reentries = 0;  // the window's counters
-    std::uint64_t locks_total = 0;                                                      // the line cadence
-    unsigned depth = 0;                                                                 // entered, not yet resulted
+    std::uint64_t locks = 0, unlocks = 0, failures = 0, suppressed = 0, reentries = 0; // the window's counters
+    std::uint64_t locks_total = 0;                                                     // the line cadence
+    unsigned depth = 0;                                                                // entered, not yet resulted
     bool unlock_written = false, lock_line = false, unlock_line = false;
     // Enter-side decisions; the matching result line follows the same decision.
     bool lock_enter() noexcept {
-        if (depth++) { ++reentries; return false; }
-        ++locks; ++locks_total; lock_line = (locks_total - 1) % video_blit_line_interval == 0; return lock_line;
+        if (depth++) {
+            ++reentries;
+            return false;
+        }
+        ++locks;
+        ++locks_total;
+        lock_line = (locks_total - 1) % video_blit_line_interval == 0;
+        return lock_line;
     }
     bool unlock_enter() noexcept {
-        if (depth++) { ++reentries; return false; }
-        ++unlocks; unlock_line = !unlock_written; unlock_written = true; return unlock_line;
+        if (depth++) {
+            ++reentries;
+            return false;
+        }
+        ++unlocks;
+        unlock_line = !unlock_written;
+        unlock_written = true;
+        return unlock_line;
     }
     bool lock_result(bool failed) noexcept {
-        failures += failed; if (depth) --depth; if (depth) return false;
-        const bool line = lock_line; lock_line = false; return line;
+        failures += failed;
+        if (depth) --depth;
+        if (depth) return false;
+        const bool line = lock_line;
+        lock_line = false;
+        return line;
     }
     bool unlock_result(bool failed) noexcept {
-        failures += failed; if (depth) --depth; if (depth) return false;
-        const bool line = unlock_line; unlock_line = false; return line;
+        failures += failed;
+        if (depth) --depth;
+        if (depth) return false;
+        const bool line = unlock_line;
+        unlock_line = false;
+        return line;
     }
     void close() noexcept { locks = unlocks = failures = suppressed = reentries = 0; }
 };
@@ -222,7 +299,9 @@ struct VideoBlit {
 inline constexpr std::uint64_t pass_dispatch_cost_ns = 280, refuse_dispatch_cost_ns = 116;
 
 inline constexpr unsigned window_frames = 300, id_slots = 8;
-struct IdCount { std::uint32_t id = 0, count = 0; };
+struct IdCount {
+    std::uint32_t id = 0, count = 0;
+};
 struct Summary {
     std::uint64_t frame = 0;
     unsigned frames = 0;
@@ -231,7 +310,7 @@ struct Summary {
     std::uint32_t attempts_frame_max = 0;
     IdCount ids[id_slots]{};
     unsigned id_count = 0;
-    std::uint64_t id_overflow = 0;  // attempts for ids beyond the eight slots
+    std::uint64_t id_overflow = 0; // attempts for ids beyond the eight slots
 };
 // Fixed 300-frame window: `frame` stores the frame's attempt count, `entry`
 // adds a drained entry; `close` runs one std::nth_element, once per window.
@@ -246,30 +325,53 @@ public:
     }
     void entry(const Entry& e) noexcept {
         ++attempts_total_;
-        if (e.outcome == refused) ++refused_;
-        else if (e.outcome == unobserved) ++unobserved_;
-        else if (e.result) ++successes_;
-        else ++failures_;
-        for (unsigned i = 0; i < id_count_; ++i) if (ids_[i].id == e.id) { ++ids_[i].count; return; }
-        if (id_count_ < id_slots) { ids_[id_count_].id = e.id; ids_[id_count_++].count = 1; }
-        else ++id_overflow_;
+        if (e.outcome == refused)
+            ++refused_;
+        else if (e.outcome == unobserved)
+            ++unobserved_;
+        else if (e.result)
+            ++successes_;
+        else
+            ++failures_;
+        for (unsigned i = 0; i < id_count_; ++i)
+            if (ids_[i].id == e.id) {
+                ++ids_[i].count;
+                return;
+            }
+        if (id_count_ < id_slots) {
+            ids_[id_count_].id = e.id;
+            ids_[id_count_++].count = 1;
+        } else
+            ++id_overflow_;
     }
     bool close(Summary& out) noexcept {
-        if (!frames_) { reset(); return false; }
+        if (!frames_) {
+            reset();
+            return false;
+        }
         out = Summary{};
-        out.frame = last_frame_; out.frames = frames_;
-        out.attempts = attempts_total_; out.failures = failures_; out.successes = successes_;
-        out.refused = refused_; out.unobserved = unobserved_;
+        out.frame = last_frame_;
+        out.frames = frames_;
+        out.attempts = attempts_total_;
+        out.failures = failures_;
+        out.successes = successes_;
+        out.refused = refused_;
+        out.unobserved = unobserved_;
         out.attempts_frame_p50 = x3m::stamp::percentile(attempts_, frames_, 50, scratch_);
         out.attempts_frame_max = max_;
-        out.id_count = id_count_; out.id_overflow = id_overflow_;
+        out.id_count = id_count_;
+        out.id_overflow = id_overflow_;
         for (unsigned i = 0; i < id_count_; ++i) out.ids[i] = ids_[i];
         reset();
         return true;
     }
     void reset() noexcept {
-        frames_ = 0; last_frame_ = 0; max_ = 0; attempts_total_ = failures_ = successes_ = refused_ = unobserved_ = 0;
-        id_count_ = 0; id_overflow_ = 0;
+        frames_ = 0;
+        last_frame_ = 0;
+        max_ = 0;
+        attempts_total_ = failures_ = successes_ = refused_ = unobserved_ = 0;
+        id_count_ = 0;
+        id_overflow_ = 0;
         for (auto& c : ids_) c = IdCount{};
     }
 

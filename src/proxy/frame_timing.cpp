@@ -9,7 +9,9 @@
 // this translation unit uses nothing else from the proxy, so the host probe
 // compiles it as it is against a Win32 stand-in and its own log sink
 // (verification/probe/frame_timing_host.cpp).
-namespace x3m { void log(const char* format, ...); }
+namespace x3m {
+void log(const char* format, ...);
+}
 
 namespace x3m::frame_timing {
 
@@ -74,19 +76,29 @@ std::uint64_t stamp() noexcept {
     QueryPerformanceCounter(&value);
     return static_cast<std::uint64_t>(value.QuadPart);
 }
-std::uint64_t microseconds(std::uint64_t ticks) noexcept { return ticks * 1000000ull / frequency; }
-std::uint64_t difference(std::uint64_t a, std::uint64_t b) noexcept { return a > b ? a - b : 0; }
+std::uint64_t microseconds(std::uint64_t ticks) noexcept {
+    return ticks * 1000000ull / frequency;
+}
+std::uint64_t difference(std::uint64_t a, std::uint64_t b) noexcept {
+    return a > b ? a - b : 0;
+}
 
 // One hash, one pointer compare and one increment for a repeated entry; at
 // most eight probes before the call is counted as "other". No allocation and
 // no clock read: this is the whole cost of an unstamped hooked state call.
 unsigned count_state_entry(const char* entry) noexcept {
-    if (!entry) { ++state_other_calls; return state_entry_slots; }
+    if (!entry) {
+        ++state_other_calls;
+        return state_entry_slots;
+    }
     const std::uintptr_t key = reinterpret_cast<std::uintptr_t>(entry);
     const unsigned hash = static_cast<unsigned>((key >> 4) ^ (key >> 9));
     for (unsigned probe = 0; probe < 8; ++probe) {
         const unsigned slot = (hash + probe) & (state_entry_slots - 1);
-        if (state_entry_name[slot] == entry) { ++state_entry_calls[slot]; return slot; }
+        if (state_entry_name[slot] == entry) {
+            ++state_entry_calls[slot];
+            return slot;
+        }
         if (!state_entry_name[slot]) {
             state_entry_name[slot] = entry;
             ++state_entry_calls[slot];
@@ -126,7 +138,9 @@ void initialize() noexcept {
         QueryPerformanceFrequency(&f);
         frequency = f.QuadPart > 0 ? static_cast<std::uint64_t>(f.QuadPart) : 1;
         window.reset();
-        draw_pairs.reset(); redundant_states.reset(); draw_batch.reset();
+        draw_pairs.reset();
+        redundant_states.reset();
+        draw_batch.reset();
         previous_qpc = present_stamp = present_us = prims = 0;
         draw_native_ticks = draw_native_stamp = slow_call_ticks = native_excluded = 0;
         slow_call_entry = "";
@@ -229,11 +243,16 @@ void scope_end_impl(ScopeState& state) noexcept {
         last_draw_stamp = now;
         hooked_at_last_draw = hooked_ticks;
     }
-    if (ticks > slow_call_ticks) { slow_call_ticks = ticks; slow_call_entry = state.entry; }
+    if (ticks > slow_call_ticks) {
+        slow_call_ticks = ticks;
+        slow_call_entry = state.entry;
+    }
     SetLastError(saved);
 }
 
-void draw_impl(unsigned primitives) noexcept { prims += primitives; }
+void draw_impl(unsigned primitives) noexcept {
+    prims += primitives;
+}
 
 // Per-draw counters: one table mix with at most eight probes for the program
 // pair, and one comparison of the key against the previous draw of the frame.
@@ -287,15 +306,15 @@ void frame_impl(std::uint64_t frame, std::uint64_t draws) noexcept {
         const unsigned mid = static_cast<unsigned>(Gap::Draw);
         const unsigned post = static_cast<unsigned>(Gap::Post);
         if (first_draw_stamp >= previous_qpc && last_draw_stamp >= first_draw_stamp && first_draw_stamp) {
-            sample.gap_us[pre] = microseconds(difference(first_draw_stamp - previous_qpc,
-                                                        difference(hooked_at_first_draw, hooked_at_frame_start)));
-            sample.gap_us[mid] = microseconds(difference(last_draw_stamp - first_draw_stamp,
-                                                        difference(hooked_at_last_draw, hooked_at_first_draw)));
-            sample.gap_us[post] = microseconds(difference(difference(now, last_draw_stamp),
-                                                         difference(hooked_ticks, hooked_at_last_draw)));
+            sample.gap_us[pre] = microseconds(
+                difference(first_draw_stamp - previous_qpc, difference(hooked_at_first_draw, hooked_at_frame_start)));
+            sample.gap_us[mid] = microseconds(
+                difference(last_draw_stamp - first_draw_stamp, difference(hooked_at_last_draw, hooked_at_first_draw)));
+            sample.gap_us[post] = microseconds(
+                difference(difference(now, last_draw_stamp), difference(hooked_ticks, hooked_at_last_draw)));
         } else { // no draw in the frame: the whole remainder is post-draw time
-            sample.gap_us[post] = microseconds(difference(now - previous_qpc,
-                                                         difference(hooked_ticks, hooked_at_frame_start)));
+            sample.gap_us[post] = microseconds(
+                difference(now - previous_qpc, difference(hooked_ticks, hooked_at_frame_start)));
         }
         window.add(sample);
     }
@@ -333,12 +352,11 @@ void frame_impl(std::uint64_t frame, std::uint64_t draws) noexcept {
             const unsigned redundant_used = redundant_states.top(redundant, redundant_top_count);
             char redundant_top[96];
             int redundant_length = 0;
-            for (unsigned i = 0; i < redundant_used && redundant_length >= 0
-                                 && redundant_length < int(sizeof redundant_top) - 1; ++i) {
-                const int written = std::snprintf(redundant_top + redundant_length,
-                                                  sizeof redundant_top - std::size_t(redundant_length), "%s%u:%llu",
-                                                  i ? "," : "", redundant[i].entry,
-                                                  static_cast<unsigned long long>(redundant[i].count));
+            for (unsigned i = 0;
+                 i < redundant_used && redundant_length >= 0 && redundant_length < int(sizeof redundant_top) - 1; ++i) {
+                const int written = std::snprintf(
+                    redundant_top + redundant_length, sizeof redundant_top - std::size_t(redundant_length), "%s%u:%llu",
+                    i ? "," : "", redundant[i].entry, static_cast<unsigned long long>(redundant[i].count));
                 if (written <= 0) break;
                 redundant_length += written;
             }
@@ -359,23 +377,18 @@ void frame_impl(std::uint64_t frame, std::uint64_t draws) noexcept {
                 " gap_post_p50_us=%llu gap_post_p95_us=%llu gap_post_max_us=%llu gap_draw_per_draw_us=%llu.%03llu"
                 " state_top=%s state_other_p50=%llu"
                 " state_redundant=%llu,%llu,%llu state_shadowed=%llu,%llu,%llu redundant_top=%s",
-                now, s.frame, s.frames, s.dt_p50, s.dt_p95, s.dt_max, s.draws_p50, s.draws_max,
-                s.present_p50, s.present_p95, s.present_max,
-                s.bucket_p50[draw_bucket], s.bucket_p95[draw_bucket], s.bucket_max[draw_bucket],
-                s.draw_native_p50, s.draw_native_max,
-                s.bucket_p50[scene_bucket], s.bucket_p95[scene_bucket], s.bucket_max[scene_bucket],
+                now, s.frame, s.frames, s.dt_p50, s.dt_p95, s.dt_max, s.draws_p50, s.draws_max, s.present_p50,
+                s.present_p95, s.present_max, s.bucket_p50[draw_bucket], s.bucket_p95[draw_bucket],
+                s.bucket_max[draw_bucket], s.draw_native_p50, s.draw_native_max, s.bucket_p50[scene_bucket],
+                s.bucket_p95[scene_bucket], s.bucket_max[scene_bucket],
                 static_cast<long long>(s.bucket_p50[state_bucket]), static_cast<long long>(s.bucket_p95[state_bucket]),
-                static_cast<long long>(s.bucket_max[state_bucket]),
-                s.bucket_calls_p50[draw_bucket], s.bucket_calls_p50[scene_bucket], s.bucket_calls_p50[state_bucket],
-                state_stamps, s.slow,
-                s.gap_p50[0], s.gap_p95[0], s.gap_max[0],
-                s.gap_p50[1], s.gap_p95[1], s.gap_max[1],
-                s.gap_p50[2], s.gap_p95[2], s.gap_max[2],
-                s.gap_draw_per_draw_ns / 1000ull, s.gap_draw_per_draw_ns % 1000ull,
-                top, s.state_other_p50,
-                redundant_states.redundant(rs), redundant_states.redundant(ss), redundant_states.redundant(tex),
-                redundant_states.shadowed(rs), redundant_states.shadowed(ss), redundant_states.shadowed(tex),
-                redundant_top);
+                static_cast<long long>(s.bucket_max[state_bucket]), s.bucket_calls_p50[draw_bucket],
+                s.bucket_calls_p50[scene_bucket], s.bucket_calls_p50[state_bucket], state_stamps, s.slow, s.gap_p50[0],
+                s.gap_p95[0], s.gap_max[0], s.gap_p50[1], s.gap_p95[1], s.gap_max[1], s.gap_p50[2], s.gap_p95[2],
+                s.gap_max[2], s.gap_draw_per_draw_ns / 1000ull, s.gap_draw_per_draw_ns % 1000ull, top,
+                s.state_other_p50, redundant_states.redundant(rs), redundant_states.redundant(ss),
+                redundant_states.redundant(tex), redundant_states.shadowed(rs), redundant_states.shadowed(ss),
+                redundant_states.shadowed(tex), redundant_top);
             // The window's program-pair mix, most-drawn first, and the two
             // qualified cutout pairs explicitly (zero is the finding).
             DrawPairs::Pair pairs[draw_pair_top_count]{};
@@ -384,36 +397,42 @@ void frame_impl(std::uint64_t frame, std::uint64_t draws) noexcept {
             int pair_length = 0;
             for (unsigned i = 0; i < pairs_used && pair_length >= 0 && pair_length < int(sizeof pair_top) - 1; ++i) {
                 char vs[20], ps[20];
-                if (pairs[i].vs) std::snprintf(vs, sizeof vs, "%016llx", static_cast<unsigned long long>(pairs[i].vs));
-                else std::snprintf(vs, sizeof vs, "none");
-                if (pairs[i].ps) std::snprintf(ps, sizeof ps, "%016llx", static_cast<unsigned long long>(pairs[i].ps));
-                else std::snprintf(ps, sizeof ps, "none");
+                if (pairs[i].vs)
+                    std::snprintf(vs, sizeof vs, "%016llx", static_cast<unsigned long long>(pairs[i].vs));
+                else
+                    std::snprintf(vs, sizeof vs, "none");
+                if (pairs[i].ps)
+                    std::snprintf(ps, sizeof ps, "%016llx", static_cast<unsigned long long>(pairs[i].ps));
+                else
+                    std::snprintf(ps, sizeof ps, "none");
                 const int written = std::snprintf(pair_top + pair_length, sizeof pair_top - std::size_t(pair_length),
                                                   "%s%s/%s:%llu", i ? "," : "", vs, ps,
                                                   static_cast<unsigned long long>(pairs[i].draws));
                 if (written <= 0) break;
                 pair_length += written;
             }
-            if (pair_length <= 0 || pair_length >= int(sizeof pair_top)) std::snprintf(pair_top, sizeof pair_top, "none");
-            log("draw_pairs frame=%llu draws=%llu draw_pairs_overflow=%llu top=%s cutout_pairs=%llu,%llu",
-                s.frame, draw_pairs.draws(), draw_pairs.overflow(), pair_top,
-                draw_pairs.cutout_draws(0), draw_pairs.cutout_draws(1));
+            if (pair_length <= 0 || pair_length >= int(sizeof pair_top))
+                std::snprintf(pair_top, sizeof pair_top, "none");
+            log("draw_pairs frame=%llu draws=%llu draw_pairs_overflow=%llu top=%s cutout_pairs=%llu,%llu", s.frame,
+                draw_pairs.draws(), draw_pairs.overflow(), pair_top, draw_pairs.cutout_draws(0),
+                draw_pairs.cutout_draws(1));
             log("draw_batch frame=%llu same_mesh=%llu same_mesh_any_range=%llu same_material=%llu up=%llu draws=%llu",
-                s.frame, draw_batch.same_mesh(), draw_batch.same_mesh_any_range(),
-                draw_batch.same_material(), draw_batch.user_memory(), draw_batch.draws());
-            draw_pairs.reset(); redundant_states.reset(); draw_batch.reset();
+                s.frame, draw_batch.same_mesh(), draw_batch.same_mesh_any_range(), draw_batch.same_material(),
+                draw_batch.user_memory(), draw_batch.draws());
+            draw_pairs.reset();
+            redundant_states.reset();
+            draw_batch.reset();
             for (unsigned i = 0; i < s.slow_frames_count; ++i) {
                 const Frame& f = s.slow_frames[i];
                 log("frame_timing_slow frame=%llu dt_us=%llu draws=%llu present_us=%llu prims=%llu"
                     " draw_us=%llu draw_native_us=%llu scene_us=%llu state_us=%lld"
                     " draw_calls=%llu scene_calls=%llu state_calls=%llu slow_call=%s slow_call_us=%llu"
                     " gap_pre_us=%llu gap_draw_us=%llu gap_post_us=%llu",
-                    f.frame, f.dt_us, f.draws, f.present_us, f.prims,
-                    f.bucket_us[draw_bucket], f.draw_native_us, f.bucket_us[scene_bucket],
-                    static_cast<long long>(f.bucket_us[state_bucket]),
+                    f.frame, f.dt_us, f.draws, f.present_us, f.prims, f.bucket_us[draw_bucket], f.draw_native_us,
+                    f.bucket_us[scene_bucket], static_cast<long long>(f.bucket_us[state_bucket]),
                     f.bucket_calls[draw_bucket], f.bucket_calls[scene_bucket], f.bucket_calls[state_bucket],
-                    f.slow_call && f.slow_call[0] ? f.slow_call : "none", f.slow_call_us,
-                    f.gap_us[0], f.gap_us[1], f.gap_us[2]);
+                    f.slow_call && f.slow_call[0] ? f.slow_call : "none", f.slow_call_us, f.gap_us[0], f.gap_us[1],
+                    f.gap_us[2]);
             }
         }
     }

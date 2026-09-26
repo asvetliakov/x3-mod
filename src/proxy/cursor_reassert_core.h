@@ -26,7 +26,7 @@ enum class State : unsigned char { idle, armed, disabled };
 struct Machine {
     State state = State::idle;
     unsigned frames_left = 0;
-    std::uint32_t armed_by = 0;         // the arming message, or arm_launch_source
+    std::uint32_t armed_by = 0; // the arming message, or arm_launch_source
     unsigned arms = 0, fires = 0, refusals = 0, mismatches = 0;
 };
 // The arming messages: WM_ACTIVATE with LOWORD(wParam) != WA_INACTIVE, WM_ACTIVATEAPP with wParam != 0.
@@ -38,17 +38,25 @@ inline bool arming_message(std::uint32_t message, std::uint32_t wparam) {
 inline bool observe(Machine& m, std::uint32_t message, std::uint32_t wparam) {
     if (!arming_message(message, wparam)) return false;
     if (m.state != State::idle && !(m.state == State::armed && m.armed_by == arm_launch_source)) return false;
-    m.state = State::armed; m.frames_left = window_frames; m.armed_by = message; ++m.arms;
+    m.state = State::armed;
+    m.frames_left = window_frames;
+    m.armed_by = message;
+    ++m.arms;
     return true;
 }
 // Launch step (device creation, window thread; the caller keeps it to once per process).
 // True when it armed an idle machine.
 inline bool arm_launch(Machine& m) {
     if (m.state != State::idle) return false;
-    m.state = State::armed; m.frames_left = window_frames; m.armed_by = arm_launch_source; ++m.arms;
+    m.state = State::armed;
+    m.frames_left = window_frames;
+    m.armed_by = arm_launch_source;
+    ++m.arms;
     return true;
 }
-inline const char* arm_source(std::uint32_t armed_by) { return armed_by == arm_launch_source ? "launch" : "activate"; }
+inline const char* arm_source(std::uint32_t armed_by) {
+    return armed_by == arm_launch_source ? "launch" : "activate";
+}
 inline const char* arm_message(std::uint32_t armed_by) {
     return armed_by == wm_activate ? "WM_ACTIVATE" : armed_by == wm_activateapp ? "WM_ACTIVATEAPP" : "none";
 }
@@ -61,7 +69,10 @@ struct Gates {
     bool clip_is_client = false;    // GetClipCursor equals the client rectangle
 };
 enum class Step : unsigned char { none, wait, fire, refuse };
-struct Decision { Step step; const char* reason; };
+struct Decision {
+    Step step;
+    const char* reason;
+};
 inline const char* failing_gate(const Gates& g) {
     if (!g.same_thread) return "thread";
     if (!g.foreground) return "foreground";
@@ -76,15 +87,22 @@ inline Decision present(Machine& m, const Gates& g) {
     if (const char* reason = failing_gate(g)) {
         if (m.frames_left) --m.frames_left;
         if (m.frames_left) return {Step::wait, reason};
-        m.state = State::idle; ++m.refusals;
+        m.state = State::idle;
+        ++m.refusals;
         return {Step::refuse, reason};
     }
-    m.state = State::idle; m.frames_left = 0; ++m.fires;
+    m.state = State::idle;
+    m.frames_left = 0;
+    ++m.fires;
     return {Step::fire, "gates_passed"};
 }
 // The balanced sequence. Api: void* arrow(); void* set_cursor(void*); int show_cursor(bool).
-struct Sequence { void* arrow = nullptr; void* previous = nullptr; int up = 0, down = 0; };
-template<class Api> Sequence run_sequence(Api& api) {
+struct Sequence {
+    void* arrow = nullptr;
+    void* previous = nullptr;
+    int up = 0, down = 0;
+};
+template <class Api> Sequence run_sequence(Api& api) {
     Sequence s;
     s.arrow = api.arrow();
     s.previous = api.set_cursor(s.arrow); // handle change while hidden: no driver call
@@ -96,12 +114,20 @@ template<class Api> Sequence run_sequence(Api& api) {
 // Expected pairs: started hidden by a count of -1 (dinput exclusive acquire) -> (0, -1);
 // started at 0 (no acquire) -> (1, 0). Anything else, or a Win32 end state that differs
 // from the start, is a mismatch and disables the option for the process.
-inline bool expected_counts(int up, int down) { return (up == 0 && down == -1) || (up == 1 && down == 0); }
-inline bool balanced(const Sequence& s, std::uint32_t flags_before, std::uint32_t flags_after, const void* cursor_before, const void* cursor_after) {
+inline bool expected_counts(int up, int down) {
+    return (up == 0 && down == -1) || (up == 1 && down == 0);
+}
+inline bool balanced(const Sequence& s, std::uint32_t flags_before, std::uint32_t flags_after,
+                     const void* cursor_before, const void* cursor_after) {
     return expected_counts(s.up, s.down) && flags_before == flags_after && cursor_before == cursor_after;
 }
 inline void after_fire(Machine& m, bool was_balanced) {
-    if (!was_balanced) { m.state = State::disabled; ++m.mismatches; }
+    if (!was_balanced) {
+        m.state = State::disabled;
+        ++m.mismatches;
+    }
 }
-inline const char* step_name(Step s) { return s == Step::fire ? "fired" : s == Step::refuse ? "refused" : s == Step::wait ? "wait" : "none"; }
+inline const char* step_name(Step s) {
+    return s == Step::fire ? "fired" : s == Step::refuse ? "refused" : s == Step::wait ? "wait" : "none";
+}
 }

@@ -23,8 +23,8 @@
 // helper checks, with this module pinned; a failed second claim rolls the
 // first back.
 namespace x3m::collide_box_cull {
-bool initialize();  // backend-load path only; logs one collide_box_cull line when the variable is set
-bool shutdown();    // restores both sites (dynamic-unload detach only); true when nothing is installed
+bool initialize(); // backend-load path only; logs one collide_box_cull line when the variable is set
+bool shutdown();   // restores both sites (dynamic-unload detach only); true when nothing is installed
 // Verifies the windows around the two sites (offsets relative to each site,
 // so the fixture passes a layout-preserving synthetic copy), claims them,
 // emits the stubs (with or without the counters) and chains them in.

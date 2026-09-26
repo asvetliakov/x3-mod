@@ -17,7 +17,7 @@ namespace x3m::ownership {
 // identity but NO reference: caller must independently qualify engine binding
 // publication/raw reads, thread admission and the whole copy/Reset interval.
 HRESULT snapshot_surface_identity(IDirect3DDevice9* device, IDirect3DSurface9* candidate,
-    SurfaceLeaseIdentity* out) noexcept;
+                                  SurfaceLeaseIdentity* out) noexcept;
 
 class SurfaceLease final {
 public:
@@ -31,10 +31,11 @@ public:
     // May perform final backend cleanup/reenter. Call after UnlockRect and
     // BEFORE dropping the separately qualified owned-copy/Reset exclusion.
     void reset() noexcept { retained_.reset(); }
+
 private:
     detail::LogicalSurfaceLease<IDirect3DSurface9> retained_;
-    friend HRESULT acquire_surface_lease(IDirect3DDevice9*, IDirect3DSurface9*,
-        const SurfaceLeaseIdentity&, SurfaceLease&) noexcept;
+    friend HRESULT acquire_surface_lease(IDirect3DDevice9*, IDirect3DSurface9*, const SurfaceLeaseIdentity&,
+                                         SurfaceLease&) noexcept;
 };
 // Empty output required (nonempty refuses unchanged). S_OK logically retains
 // exactly once under the registry mutex, without backend AddRef or vtable read.
@@ -47,13 +48,18 @@ private:
 // Lease keeps the canonical surface's existing native ref AND logical parent
 // device alive. It does not keep engine tables, slots or media records alive.
 HRESULT acquire_surface_lease(IDirect3DDevice9* device, IDirect3DSurface9* candidate,
-    const SurfaceLeaseIdentity& expected, SurfaceLease& out) noexcept;
+                              const SurfaceLeaseIdentity& expected, SurfaceLease& out) noexcept;
 
 // Serialized startup registration; callbacks are CPU-only, noexcept and run
 // outside the registry mutex under an ordinary-return CPU/LastError shell.
 enum class ResetPhase { begin, end };
-struct ResetEvent {IDirect3DDevice9* application=nullptr;std::uint64_t device_serial=0,generation=0;ResetPhase phase=ResetPhase::begin;HRESULT result=S_FALSE;};
-using ResetObserver=void(*)(const ResetEvent&) noexcept;
+struct ResetEvent {
+    IDirect3DDevice9* application = nullptr;
+    std::uint64_t device_serial = 0, generation = 0;
+    ResetPhase phase = ResetPhase::begin;
+    HRESULT result = S_FALSE;
+};
+using ResetObserver = void (*)(const ResetEvent&) noexcept;
 // Exclusive process-lifetime registration. Null/replacement claims refuse.
 bool claim_reset_observer(ResetObserver) noexcept;
 bool reset_observer_is(ResetObserver) noexcept;
@@ -95,8 +101,7 @@ struct Options {
 
 // On success, consumes exactly the caller's owned native reference. On failure,
 // the caller retains it. Native Ex factories are rejected before wrapper mode.
-HRESULT wrap_factory(IDirect3D9* owned_native, IDirect3D9** out,
-                     const Options& options = {}) noexcept;
+HRESULT wrap_factory(IDirect3D9* owned_native, IDirect3D9** out, const Options& options = {}) noexcept;
 
 // S_OK means recognized wrapper; inspect requested/known before using any bits.
 // Serialize application calls, this snapshot and injected work. All application
@@ -113,7 +118,7 @@ struct BufferContentView {
     DWORD last_lock_flags = 0;
     HRESULT status = S_FALSE;
     bool requested = false;
-    bool known = false; // False while locked, ambiguous, missing metadata or failed tracking.
+    bool known = false;     // False while locked, ambiguous, missing metadata or failed tracking.
     bool ambiguous = false; // Sticky uncertainty; revision must not imply stability.
 };
 
@@ -134,9 +139,9 @@ HRESULT get_buffer_content_view(IDirect3DResource9* application, BufferContentVi
 // Ordinary returns preserve x87/MXCSR/LastError. Bookkeeping exceptions are caught
 // internally and return S_FALSE with unknown evidence (status E_FAIL).
 struct BufferLockView : BufferLockObservation {
-    std::uint64_t generation=0;
-    HRESULT status=S_FALSE;
-    bool requested=false, known=false;
+    std::uint64_t generation = 0;
+    HRESULT status = S_FALSE;
+    bool requested = false, known = false;
 };
 HRESULT get_buffer_lock_view(IDirect3DResource9* application, BufferLockView* out) noexcept;
 // Same view without the FNSAVE/FRSTOR shell: preserves NOTHING itself. Only for
@@ -166,15 +171,18 @@ struct LockedPrefixView {
     bool requested = false, known = false;
     unsigned reason = 1; // prefix::Lookup::Unknown
     std::uint64_t revision = 0;
-    std::uint32_t scanned = 0;          // vertices the Unlock scan published
-    const float* positions = nullptr;   // known only
+    std::uint32_t scanned = 0;             // vertices the Unlock scan published
+    const float* positions = nullptr;      // known only
     const std::uint32_t* extras = nullptr; // known only
 };
-HRESULT get_locked_prefix_view(IDirect3DResource9* application, std::uint32_t vertex_count, bool mark, LockedPrefixView* out) noexcept;
+HRESULT get_locked_prefix_view(IDirect3DResource9* application, std::uint32_t vertex_count, bool mark,
+                               LockedPrefixView* out) noexcept;
 struct LockedPrefixStatistics {
     std::uint64_t locks = 0, scans = 0, scanned_vertices = 0, scan_ticks = 0, qpc_frequency = 0;
     std::uint64_t lookups = 0, bounds = 0, marks = 0, evictions = 0;
-    std::uint64_t sentinel_bytes = 0, sentinel_ticks = 0, window_end_scans = 0; // step D: sentinel written at Lock (bytes, QPC ticks); scans that met no sentinel
+    std::uint64_t sentinel_bytes = 0, sentinel_ticks = 0, window_end_scans = 0; // step D: sentinel written at Lock
+                                                                                // (bytes, QPC ticks); scans that met no
+                                                                                // sentinel
     unsigned used = 0;
 };
 void get_locked_prefix_statistics(LockedPrefixStatistics* out) noexcept;
@@ -228,96 +236,119 @@ unsigned drain_buffer_invalidations(std::uintptr_t* out, unsigned capacity, bool
 IDirect3DIndexBuffer9* borrowed_native_buffer_for_lock_contract(IDirect3DIndexBuffer9* wrapped) noexcept;
 
 enum class FiniteEvidenceReason : std::uint32_t {
-    None, Disabled, Unrecognized, DeviceUnavailable, TrackingUnavailable,
-    MissingAllocation, RevisionMismatch, Pending, Ambiguous, NativeContract,
-    UnsupportedWrite, ThreadMismatch, MappingMismatch, UnlockFailed,
-    InvalidLayout, InvalidRange, UnknownCells, NonFinite, IndexUnknown,
-    AllocationFailure, Budget, MetadataTampered, ProcessVertices, Count
+    None,
+    Disabled,
+    Unrecognized,
+    DeviceUnavailable,
+    TrackingUnavailable,
+    MissingAllocation,
+    RevisionMismatch,
+    Pending,
+    Ambiguous,
+    NativeContract,
+    UnsupportedWrite,
+    ThreadMismatch,
+    MappingMismatch,
+    UnlockFailed,
+    InvalidLayout,
+    InvalidRange,
+    UnknownCells,
+    NonFinite,
+    IndexUnknown,
+    AllocationFailure,
+    Budget,
+    MetadataTampered,
+    ProcessVertices,
+    Count
 };
-constexpr unsigned finite_evidence_reason_count=static_cast<unsigned>(FiniteEvidenceReason::Count);
+constexpr unsigned finite_evidence_reason_count = static_cast<unsigned>(FiniteEvidenceReason::Count);
 const char* finite_evidence_reason_name(FiniteEvidenceReason reason) noexcept;
 struct FinitePositionRequest {
-    std::uint64_t expected_revision=0;
-    std::uint64_t stream_offset=0;
-    std::uint32_t stride=0,position_offset=0;
-    std::int64_t first_vertex=0;
-    std::uint64_t vertex_count=0;
-    D3DDECLTYPE position_type=D3DDECLTYPE_UNUSED; // FLOAT3 or FLOAT16_4; XYZ only, W ignored.
+    std::uint64_t expected_revision = 0;
+    std::uint64_t stream_offset = 0;
+    std::uint32_t stride = 0, position_offset = 0;
+    std::int64_t first_vertex = 0;
+    std::uint64_t vertex_count = 0;
+    D3DDECLTYPE position_type = D3DDECLTYPE_UNUSED; // FLOAT3 or FLOAT16_4; XYZ only, W ignored.
 };
 struct FinitePositionView {
-    FiniteStatus state=FiniteStatus::Unknown;
-    FiniteEvidenceReason reason=FiniteEvidenceReason::Disabled;
-    HRESULT status=S_FALSE;
-    std::uint64_t generation=0,revision=0;
-    bool requested=false;
+    FiniteStatus state = FiniteStatus::Unknown;
+    FiniteEvidenceReason reason = FiniteEvidenceReason::Disabled;
+    HRESULT status = S_FALSE;
+    std::uint64_t generation = 0, revision = 0;
+    bool requested = false;
 };
 struct IndexRangeRequest {
-    std::uint64_t expected_revision=0;
-    D3DFORMAT format=D3DFMT_UNKNOWN;
-    std::uint64_t start_index=0,index_count=0;
+    std::uint64_t expected_revision = 0;
+    D3DFORMAT format = D3DFMT_UNKNOWN;
+    std::uint64_t start_index = 0, index_count = 0;
 };
 struct IndexRangeView {
-    bool known=false,requested=false,exact_range=false;
-    FiniteEvidenceReason reason=FiniteEvidenceReason::Disabled;
-    HRESULT status=S_FALSE;
-    std::uint64_t generation=0,revision=0;
-    std::uint32_t minimum=0,maximum=0;
+    bool known = false, requested = false, exact_range = false;
+    FiniteEvidenceReason reason = FiniteEvidenceReason::Disabled;
+    HRESULT status = S_FALSE;
+    std::uint64_t generation = 0, revision = 0;
+    std::uint32_t minimum = 0, maximum = 0;
     // For a proper subdraw, known extrema conservatively cover the whole IB.
 };
 struct FiniteRefusalDetail {
-    bool available=false;
-    FiniteEvidenceReason reason=FiniteEvidenceReason::None;
-    D3DRESOURCETYPE type=D3DRTYPE_VERTEXBUFFER;
-    D3DFORMAT format=D3DFMT_UNKNOWN;
-    D3DPOOL pool=D3DPOOL_DEFAULT;
-    std::uint32_t size=0,usage=0,lock_flags=0;
+    bool available = false;
+    FiniteEvidenceReason reason = FiniteEvidenceReason::None;
+    D3DRESOURCETYPE type = D3DRTYPE_VERTEXBUFFER;
+    D3DFORMAT format = D3DFMT_UNKNOWN;
+    D3DPOOL pool = D3DPOOL_DEFAULT;
+    std::uint32_t size = 0, usage = 0, lock_flags = 0;
 };
 struct FiniteUploadStatistics {
-    bool requested=false,active=false;
-    HRESULT status=S_FALSE;
-    std::uint64_t generation=0;
-    std::uint64_t payload_bytes=0,peak_payload_bytes=0,sidecars=0,metadata_bytes=0;
-    std::uint64_t global_payload_bytes=0,global_sidecars=0;
-    std::uint64_t uploads=0,publications=0,invalidations=0,allocation_failures=0;
-    std::uint64_t scans=0,classified_bytes=0,scan_ticks=0,queries=0,query_cache_hits=0,position_components=0;
-    std::uint64_t qualifier_ticks=0,query_ticks=0;
+    bool requested = false, active = false;
+    HRESULT status = S_FALSE;
+    std::uint64_t generation = 0;
+    std::uint64_t payload_bytes = 0, peak_payload_bytes = 0, sidecars = 0, metadata_bytes = 0;
+    std::uint64_t global_payload_bytes = 0, global_sidecars = 0;
+    std::uint64_t uploads = 0, publications = 0, invalidations = 0, allocation_failures = 0;
+    std::uint64_t scans = 0, classified_bytes = 0, scan_ticks = 0, queries = 0, query_cache_hits = 0,
+                  position_components = 0;
+    std::uint64_t qualifier_ticks = 0, query_ticks = 0;
     FiniteRefusalDetail first_refusal;
-    std::array<std::uint64_t,finite_evidence_reason_count> reasons{};
+    std::array<std::uint64_t, finite_evidence_reason_count> reasons{};
 };
 // Application wrappers only. Hold their references and serialize uploads, queries,
 // reset/destruction and foreign vtable changes. S_OK means a recognized wrapper;
 // inspect state/known/reason. Queries never Lock/read back payload or issue draws.
 // Trusted borrowed-native code must obey the observer boundary: completed foreign
 // writes that bypass every wrapper cannot be detected or certified by this API.
-HRESULT get_finite_position_view(IDirect3DVertexBuffer9* application,
-    const FinitePositionRequest& request, FinitePositionView* out) noexcept;
-HRESULT get_index_range_view(IDirect3DIndexBuffer9* application,
-    const IndexRangeRequest& request, IndexRangeView* out) noexcept;
-HRESULT get_finite_upload_statistics(IDirect3DDevice9* application,
-    FiniteUploadStatistics* out) noexcept;
+HRESULT get_finite_position_view(IDirect3DVertexBuffer9* application, const FinitePositionRequest& request,
+                                 FinitePositionView* out) noexcept;
+HRESULT get_index_range_view(IDirect3DIndexBuffer9* application, const IndexRangeRequest& request,
+                             IndexRangeView* out) noexcept;
+HRESULT get_finite_upload_statistics(IDirect3DDevice9* application, FiniteUploadStatistics* out) noexcept;
 
 // Frame-scoped native geometry reservations for a renderer. These opaque values
 // never own an application wrapper reference and are never reused in a process.
-struct GeometryFrameHandle { std::uint64_t value=0; };
-struct GeometryLeaseHandle { std::uint64_t value=0; };
-constexpr std::uint32_t geometry_frame_limit=64;
-constexpr std::uint32_t geometry_leases_per_frame=4096;
-constexpr std::uint32_t geometry_lease_limit=8192;
-constexpr std::uint64_t geometry_native_byte_limit=512ull*1024ull*1024ull;
+struct GeometryFrameHandle {
+    std::uint64_t value = 0;
+};
+struct GeometryLeaseHandle {
+    std::uint64_t value = 0;
+};
+constexpr std::uint32_t geometry_frame_limit = 64;
+constexpr std::uint32_t geometry_leases_per_frame = 4096;
+constexpr std::uint32_t geometry_lease_limit = 8192;
+constexpr std::uint64_t geometry_native_byte_limit = 512ull * 1024ull * 1024ull;
 struct GeometryLeaseRequest {
-    std::uint64_t expected_generation=0;
+    std::uint64_t expected_generation = 0;
     FinitePositionRequest positions;
-    bool indexed=false;
+    bool indexed = false;
     IndexRangeRequest indices; // Ignored only when indexed=false and IB=null.
 };
 struct GeometryLeaseView {
-    HRESULT status=S_FALSE;
-    FiniteEvidenceReason reason=FiniteEvidenceReason::Unrecognized;
+    HRESULT status = S_FALSE;
+    FiniteEvidenceReason reason = FiniteEvidenceReason::Unrecognized;
     GeometryFrameHandle frame;
     GeometryLeaseHandle lease;
-    std::uint64_t generation=0;
-    IDirect3DVertexBuffer9* vertex_buffer=nullptr; // Borrowed native, never application-visible.
-    IDirect3DIndexBuffer9* index_buffer=nullptr;
+    std::uint64_t generation = 0;
+    IDirect3DVertexBuffer9* vertex_buffer = nullptr; // Borrowed native, never application-visible.
+    IDirect3DIndexBuffer9* index_buffer = nullptr;
     FinitePositionView positions;
     IndexRangeView indices;
 };
@@ -328,15 +359,16 @@ struct GeometryLeaseView {
 // S_OK acquisition consumes no caller refs; it acquires its own native refs.
 // S_FALSE means evidence refused; failed HRESULT means invalid handle/arguments,
 // unavailable device or capacity. Every failed acquisition leaves out->value=0.
-HRESULT begin_geometry_frame(IDirect3DDevice9* application,GeometryFrameHandle* out) noexcept;
-HRESULT acquire_geometry_lease(GeometryFrameHandle frame,IDirect3DVertexBuffer9* vertex_buffer,
-    IDirect3DIndexBuffer9* index_buffer,const GeometryLeaseRequest& request,GeometryLeaseHandle* out) noexcept;
+HRESULT begin_geometry_frame(IDirect3DDevice9* application, GeometryFrameHandle* out) noexcept;
+HRESULT acquire_geometry_lease(GeometryFrameHandle frame, IDirect3DVertexBuffer9* vertex_buffer,
+                               IDirect3DIndexBuffer9* index_buffer, const GeometryLeaseRequest& request,
+                               GeometryLeaseHandle* out) noexcept;
 // Revalidates the exact stored requests on held native allocations without
 // recreating wrappers. S_OK/status S_OK alone exposes borrowed native pointers.
 // Content refusal returns S_FALSE with null pointers; stale handles E_INVALIDARG.
 // Borrowed pointers expire on release/end/Reset/loss/final logical device release.
-HRESULT inspect_geometry_lease(GeometryFrameHandle frame,GeometryLeaseHandle lease,GeometryLeaseView* out) noexcept;
-HRESULT release_geometry_lease(GeometryFrameHandle frame,GeometryLeaseHandle lease) noexcept;
+HRESULT inspect_geometry_lease(GeometryFrameHandle frame, GeometryLeaseHandle lease, GeometryLeaseView* out) noexcept;
+HRESULT release_geometry_lease(GeometryFrameHandle frame, GeometryLeaseHandle lease) noexcept;
 HRESULT end_geometry_frame(GeometryFrameHandle frame) noexcept;
 
 struct CopyDepthView {
@@ -345,7 +377,7 @@ struct CopyDepthView {
     IDirect3DTexture9* texture = nullptr;
     std::uint64_t generation = 0;
     std::uint64_t source_epoch = 0; // Successful clears of the original source.
-    std::uint64_t copy_epoch = 0; // Source epoch of the last successful copy.
+    std::uint64_t copy_epoch = 0;   // Source epoch of the last successful copy.
     D3DSURFACE_DESC source_desc{};
     HRESULT status = S_FALSE;
     bool requested = false;

@@ -45,9 +45,9 @@ bool readable_buffers_enabled = false; // X3M_TAA_THIN_VOTE=on under ownership: 
 INIT_ONCE once = INIT_ONCE_STATIC_INIT;
 BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
     x3m::initialize_log(self_module); // logs the proxy_identity/proxy_options header first
-    const bool admission_requested=x3m::ownership::process_admission_monitor()!=nullptr;
+    const bool admission_requested = x3m::ownership::process_admission_monitor() != nullptr;
     x3m::log("application_admission_mode requested=%u enabled=%u live_replay=0 coverage_complete=0",
-        admission_requested,admission_requested);
+             admission_requested, admission_requested);
     // Process-local experimental switch; default remains the native capture
     // path. Read once, outside loader lock, before exposing any factory.
     wchar_t setting[8]{};
@@ -58,9 +58,11 @@ BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
     finite_positions_enabled = ownership_enabled && finite_requested;
     // Caster-candidate counter (shadow-replay-gates.md section 3): the lock
     // bookends ride the same switch; capture.cpp gates the route side.
-    const bool bookends_requested = (x3m::config::get(L"X3M_SHADOW_REPLAY_CANDIDATES", setting, 8) == 1 && setting[0] == L'1')
-        || (x3m::config::get(L"X3M_SHADOW_REPLAY_DEPTH", setting, 8) == 1 && setting[0] == L'1') // the depth replay needs the same bookends
-        || x3m::thin_vote_route_gate(); // so do the thin vote's histogram reads
+    const bool bookends_requested = (x3m::config::get(L"X3M_SHADOW_REPLAY_CANDIDATES", setting, 8) == 1 &&
+                                     setting[0] == L'1') ||
+                                    (x3m::config::get(L"X3M_SHADOW_REPLAY_DEPTH", setting, 8) == 1 &&
+                                     setting[0] == L'1')            // the depth replay needs the same bookends
+                                    || x3m::thin_vote_route_gate(); // so do the thin vote's histogram reads
     lock_bookends_enabled = ownership_enabled && bookends_requested;
     // The thin vote reads its subsets' histograms through READONLY Locks: those buffers must be created readable,
     // from the first creation on (wrap_factory at Direct3DCreate9 below), whatever the game asks for. Armed only when
@@ -74,18 +76,26 @@ BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
     // launcher sets both variables, the DLL accepts either.
     // The bolt footprint (X3M_BOLT_FOOTPRINT, bolt-footprint.md) reads the
     // same scan's vertices and enables it through its own gate.
-    const bool bound_requested = (x3m::config::get(L"X3M_SCREEN_EMISSION_BOUND", setting, 8) == 1 && setting[0] == L'1')
-        || x3m::screen_emission_route_enabled();
+    const bool bound_requested = (x3m::config::get(L"X3M_SCREEN_EMISSION_BOUND", setting, 8) == 1 &&
+                                  setting[0] == L'1') ||
+                                 x3m::screen_emission_route_enabled();
     const bool footprint_requested = x3m::bolt_footprint_requested_gate();
     const bool prefix_requested = bound_requested || footprint_requested;
     locked_prefix_enabled = ownership_enabled && prefix_requested;
     if (prefix_requested)
-        x3m::log("screen_emission_bound requested=1 enabled=%u scope=discard_locked_vertex_buffers payload_retained=0 source=%s", locked_prefix_enabled,
-                 bound_requested && footprint_requested ? "bound+bolt_footprint" : footprint_requested ? "bolt_footprint_only" : "bound");
+        x3m::log(
+            "screen_emission_bound requested=1 enabled=%u scope=discard_locked_vertex_buffers payload_retained=0 source=%s",
+            locked_prefix_enabled,
+            bound_requested && footprint_requested ? "bound+bolt_footprint"
+            : footprint_requested                  ? "bolt_footprint_only"
+                                                   : "bound");
     if (ownership_enabled || depth_requested)
-        x3m::log("ownership_mode requested=%u depth_copy_requested=%u depth_copy_enabled=%u scope=normal9 fallback=native", ownership_enabled, depth_requested, depth_copy_enabled);
+        x3m::log(
+            "ownership_mode requested=%u depth_copy_requested=%u depth_copy_enabled=%u scope=normal9 fallback=native",
+            ownership_enabled, depth_requested, depth_copy_enabled);
     if (finite_requested)
-        x3m::log("finite_upload_mode requested=1 enabled=%u scope=verified_managed_uploads payload_retained=0", finite_positions_enabled);
+        x3m::log("finite_upload_mode requested=1 enabled=%u scope=verified_managed_uploads payload_retained=0",
+                 finite_positions_enabled);
     wchar_t path[32768]{};
     // Absolute system path avoids reloading this app-local proxy. Never search PATH.
     UINT length = GetSystemDirectoryW(path, 32750);
@@ -96,47 +106,53 @@ BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
     const DWORD load_error = GetLastError();
     const auto load_end = x3m::telemetry::now();
     if (x3m::telemetry::enabled())
-        x3m::log("telemetry_span name=backend_load qpc_begin=%llu qpc_end=%llu thread=%lu success=%u error=%lu",load_begin,load_end,GetCurrentThreadId(),backend!=nullptr,load_error);
+        x3m::log("telemetry_span name=backend_load qpc_begin=%llu qpc_end=%llu thread=%lu success=%u error=%lu",
+                 load_begin, load_end, GetCurrentThreadId(), backend != nullptr, load_error);
     if (backend == self_module) {
         FreeLibrary(backend);
         backend = nullptr;
     }
     if (backend) {
         GetModuleFileNameW(backend, path, 32768);
-        x3m::log("backend path=%s", x3m::session_log::redact_wide_path(path).c_str()); // profile prefix redacted (always tier)
+        x3m::log("backend path=%s", x3m::session_log::redact_wide_path(path).c_str()); // profile prefix redacted
+                                                                                       // (always tier)
         x3m::session_log::name_module(backend, "system_d3d9"); // the exception row's module= for a fault in the backend
         // Which D3D9 implementation this process forwards to, by path, size and
         // hash prefix (builtin, a replacement in the system directory, ...): one
         // hash of the loaded file, once, never classified by name here.
         x3m::proxy_identity::log_loaded_module(backend, "d3d9.dll");
         x3m::object_trace::initialize();
-        x3m::log("object_trace active=%u status=%s recovery_required=%u",x3m::object_trace::active(),x3m::object_trace::status(),x3m::object_trace::recovery_required());
+        x3m::log("object_trace active=%u status=%s recovery_required=%u", x3m::object_trace::active(),
+                 x3m::object_trace::status(), x3m::object_trace::recovery_required());
         x3m::object_lifetime::initialize();
-        x3m::camera_state::initialize(); // X3M_MOTION_OUTPUT=1 with X3M_TAA=1 or the shadow-replay switches; reads only, no patch
-        x3m::log("camera_state active=%u status=%s",x3m::camera_state::available(),x3m::camera_state::status());
-        x3m::sun_light_poll::initialize(); // cascades only (X3M_SHADOW_SUN_POLL=0 off): reads only, no patch; unavailable keeps the LightDir_Dir0 latch
-        x3m::log("sun_light_poll active=%u status=%s",x3m::sun_light_poll::available(),x3m::sun_light_poll::status());
+        x3m::camera_state::initialize(); // X3M_MOTION_OUTPUT=1 with X3M_TAA=1 or the shadow-replay switches; reads
+                                         // only, no patch
+        x3m::log("camera_state active=%u status=%s", x3m::camera_state::available(), x3m::camera_state::status());
+        x3m::sun_light_poll::initialize(); // cascades only (X3M_SHADOW_SUN_POLL=0 off): reads only, no patch;
+                                           // unavailable keeps the LightDir_Dir0 latch
+        x3m::log("sun_light_poll active=%u status=%s", x3m::sun_light_poll::available(), x3m::sun_light_poll::status());
         // X3M_SCENE_HOOK (default on with X3M_MOTION_OUTPUT=1, 0 off): the frame
         // routine's compositing callsite, exact executable and exact bytes
         // only, otherwise fails closed (the route keeps the copy/selector
         // boundary). Keep the site and immutable optional bloom bridge for the
         // process lifetime: device destruction does not prove code quiescence.
         x3m::scene_hook::initialize(&x3m::scene_end_signal, x3m::compositor_binding());
-        x3m::log("scene_hook active=%u status=%s",x3m::scene_hook::active(),x3m::scene_hook::status());
+        x3m::log("scene_hook active=%u status=%s", x3m::scene_hook::active(), x3m::scene_hook::status());
         // X3M_CAMERA=chase: the cockpit-update trampoline (exact executable and
         // bytes, install window open here); unset or anything else leaves the
         // vanilla camera and patches nothing. Kept for the process lifetime.
-        if(x3m::chase_camera::wanted() && x3m::chase_camera::initialize()) {
+        if (x3m::chase_camera::wanted() && x3m::chase_camera::initialize()) {
             // Observe real cockpit lifetimes before admitting the lead marker.
             // Optional diagnostics never change the native view selection.
             x3m::chase_transition::initialize();
             x3m::chase_lead::initialize();
             x3m::chase_aim_trace::initialize(); // chase + telemetry, observation only
         }
-        const auto lifetime_stats=x3m::object_lifetime::stats();
+        const auto lifetime_stats = x3m::object_lifetime::stats();
         x3m::log("object_lifetime active=%u status=%s recovery_required=%u baseline_complete=%u baseline_entries=%lu",
-            x3m::object_lifetime::active(),x3m::object_lifetime::status(),x3m::object_lifetime::recovery_required(),
-            lifetime_stats.baseline_complete,static_cast<DWORD>(lifetime_stats.baseline_entries));
+                 x3m::object_lifetime::active(), x3m::object_lifetime::status(),
+                 x3m::object_lifetime::recovery_required(), lifetime_stats.baseline_complete,
+                 static_cast<DWORD>(lifetime_stats.baseline_entries));
     } else {
         x3m::log("ERROR backend load failed error=%lu", load_error);
     }
@@ -152,8 +168,10 @@ FARPROC entry(const char* name) {
 // proxy's hooks (unproxied=1 also vetoes admission for the process).
 void log_export(const char* name, bool forwarded, int unproxied, volatile LONG* logged) {
     if (InterlockedExchange(logged, 1) != 0) return;
-    if (unproxied < 0) x3m::log("d3d9_export name=%s forwarded=%u", name, forwarded);
-    else x3m::log("d3d9_export name=%s forwarded=%u unproxied=%u", name, forwarded, unproxied);
+    if (unproxied < 0)
+        x3m::log("d3d9_export name=%s forwarded=%u", name, forwarded);
+    else
+        x3m::log("d3d9_export name=%s forwarded=%u unproxied=%u", name, forwarded, unproxied);
 }
 volatile LONG logged_create9ex = 0, logged_on12 = 0, logged_on12ex = 0;
 }
@@ -169,47 +187,47 @@ volatile LONG logged_create9ex = 0, logged_on12 = 0, logged_on12ex = 0;
 // unchanged. Fallbacks return 0 and pop the documented argument bytes
 // (DebugSetLevel 4, PSGPError 12, PSGPSampleTexture 20, the maximized-window
 // shim 4: the stdcall decorations of the D3D9 SDK import library,
-// _DebugSetLevel@4 / _PSGPError@12 / _PSGPSampleTexture@20 / ..Shim@4) so a backend lacking the export (Wine lacks the shim) still gets a
-// well-formed return. The resolver runs outside loader lock, like `entry`.
+// _DebugSetLevel@4 / _PSGPError@12 / _PSGPSampleTexture@20 / ..Shim@4) so a backend lacking the export (Wine lacks the
+// shim) still gets a well-formed return. The resolver runs outside loader lock, like `entry`.
 extern "C" FARPROC __cdecl x3m_resolve_export(const char* name, FARPROC fallback, FARPROC* slot, FARPROC resolver) {
     FARPROC target = entry(name);
     const bool forwarded = target != nullptr;
     if (!target) target = fallback;
     // First publisher logs; a concurrent first call resolves the same target.
-    if (InterlockedCompareExchangePointer(reinterpret_cast<void* volatile*>(slot), reinterpret_cast<void*>(target), reinterpret_cast<void*>(resolver)) == reinterpret_cast<void*>(resolver))
+    if (InterlockedCompareExchangePointer(reinterpret_cast<void* volatile*>(slot), reinterpret_cast<void*>(target),
+                                          reinterpret_cast<void*>(resolver)) == reinterpret_cast<void*>(resolver))
         x3m::log("d3d9_export name=%s forwarded=%u", name, forwarded);
     return target;
 }
-#define X3M_FORWARDED_EXPORT(name, ret_instruction) \
-extern "C" void x3m_resolve_##name(); \
-extern "C" void x3m_fallback_##name(); \
-extern "C" const char x3m_name_##name[]; \
-extern "C" FARPROC x3m_slot_##name; \
-const char x3m_name_##name[] = #name; \
-FARPROC x3m_slot_##name = reinterpret_cast<FARPROC>(&x3m_resolve_##name); \
-__asm__( \
-    ".text\n" \
-    ".globl _" #name "\n" \
-    "_" #name ":\n" \
-    "    jmp *_x3m_slot_" #name "\n" \
-    ".globl _x3m_resolve_" #name "\n" \
-    "_x3m_resolve_" #name ":\n" \
-    "    pushfl\n" \
-    "    pushal\n" \
-    "    pushl $_x3m_resolve_" #name "\n" \
-    "    pushl $_x3m_slot_" #name "\n" \
-    "    pushl $_x3m_fallback_" #name "\n" \
-    "    pushl $_x3m_name_" #name "\n" \
-    "    call _x3m_resolve_export\n" \
-    "    addl $16, %esp\n" \
-    "    popal\n" \
-    "    popfl\n" \
-    "    jmp *_x3m_slot_" #name "\n" \
-    ".globl _x3m_fallback_" #name "\n" \
-    "_x3m_fallback_" #name ":\n" \
-    "    xorl %eax, %eax\n" \
-    "    " ret_instruction "\n" \
-    ".text\n");
+#define X3M_FORWARDED_EXPORT(name, ret_instruction)                                                                    \
+    extern "C" void x3m_resolve_##name();                                                                              \
+    extern "C" void x3m_fallback_##name();                                                                             \
+    extern "C" const char x3m_name_##name[];                                                                           \
+    extern "C" FARPROC x3m_slot_##name;                                                                                \
+    const char x3m_name_##name[] = #name;                                                                              \
+    FARPROC x3m_slot_##name = reinterpret_cast<FARPROC>(&x3m_resolve_##name);                                          \
+    __asm__(".text\n"                                                                                                  \
+            ".globl _" #name "\n"                                                                                      \
+            "_" #name ":\n"                                                                                            \
+            "    jmp *_x3m_slot_" #name "\n"                                                                           \
+            ".globl _x3m_resolve_" #name "\n"                                                                          \
+            "_x3m_resolve_" #name ":\n"                                                                                \
+            "    pushfl\n"                                                                                             \
+            "    pushal\n"                                                                                             \
+            "    pushl $_x3m_resolve_" #name "\n"                                                                      \
+            "    pushl $_x3m_slot_" #name "\n"                                                                         \
+            "    pushl $_x3m_fallback_" #name "\n"                                                                     \
+            "    pushl $_x3m_name_" #name "\n"                                                                         \
+            "    call _x3m_resolve_export\n"                                                                           \
+            "    addl $16, %esp\n"                                                                                     \
+            "    popal\n"                                                                                              \
+            "    popfl\n"                                                                                              \
+            "    jmp *_x3m_slot_" #name "\n"                                                                           \
+            ".globl _x3m_fallback_" #name "\n"                                                                         \
+            "_x3m_fallback_" #name ":\n"                                                                               \
+            "    xorl %eax, %eax\n"                                                                                    \
+            "    " ret_instruction "\n"                                                                                \
+            ".text\n");
 X3M_FORWARDED_EXPORT(DebugSetLevel, "ret $4")
 X3M_FORWARDED_EXPORT(PSGPError, "ret $12")
 X3M_FORWARDED_EXPORT(PSGPSampleTexture, "ret $20")
@@ -219,14 +237,15 @@ X3M_FORWARDED_EXPORT(Direct3D9EnableMaximizedWindowedModeShim, "ret $4")
 extern "C" IDirect3D9* WINAPI Direct3DCreate9(UINT sdk) {
     x3m::CpuCallBoundary cpu;
     x3m::ownership::ApplicationAdmissionAbi admission(x3m::ownership::process_admission_monitor());
-    auto fn = reinterpret_cast<IDirect3D9* (WINAPI*)(UINT)>(entry("Direct3DCreate9"));
+    auto fn = reinterpret_cast<IDirect3D9*(WINAPI*)(UINT)>(entry("Direct3DCreate9"));
     const auto begin = x3m::telemetry::now();
     cpu.before_original();
     IDirect3D9* result = fn ? fn(sdk) : nullptr;
     cpu.after_original();
     const auto end = x3m::telemetry::now();
     if (x3m::telemetry::enabled())
-        x3m::log("telemetry_span name=direct3d_create9 qpc_begin=%llu qpc_end=%llu thread=%lu success=%u",begin,end,GetCurrentThreadId(),result!=nullptr);
+        x3m::log("telemetry_span name=direct3d_create9 qpc_begin=%llu qpc_end=%llu thread=%lu success=%u", begin, end,
+                 GetCurrentThreadId(), result != nullptr);
     if (result && ownership_enabled) {
         IDirect3D9* wrapped = nullptr;
         x3m::ownership::Options options{};
@@ -253,14 +272,14 @@ extern "C" IDirect3D9* WINAPI Direct3DCreate9(UINT sdk) {
         } else {
             // Failed adoption leaves the original reference with this caller.
             x3m::ownership::admission_veto(x3m::ownership::process_admission_monitor(),
-                x3m::ownership::AdmissionVeto::UnobservedRoute);
+                                           x3m::ownership::AdmissionVeto::UnobservedRoute);
             x3m::log("ownership_factory mode=native_fallback native=%p result=%08lx", result, adopted);
         }
-    } else if(result) {
+    } else if (result) {
         // Capture patches only selected native slots; it is not full admission
         // coverage for an unwrapped factory/device returned to the application.
         x3m::ownership::admission_veto(x3m::ownership::process_admission_monitor(),
-            x3m::ownership::AdmissionVeto::UnobservedRoute);
+                                       x3m::ownership::AdmissionVeto::UnobservedRoute);
     }
     if (result) x3m::hook_direct3d(result);
     return result;
@@ -270,16 +289,20 @@ extern "C" HRESULT WINAPI Direct3DCreate9Ex(UINT sdk, IDirect3D9Ex** out) {
     x3m::ownership::ApplicationAdmissionAbi admission(x3m::ownership::process_admission_monitor());
     // X3AP imports only Create9. The native Ex object is not wrapped; its escape
     // must permanently refuse replay, while keeping the original API result.
-    auto fn = reinterpret_cast<HRESULT (WINAPI*)(UINT, IDirect3D9Ex**)>(entry("Direct3DCreate9Ex"));
-    if (!fn) { log_export("Direct3DCreate9Ex", false, 0, &logged_create9ex); if (out) *out = nullptr; return D3DERR_NOTAVAILABLE; }
+    auto fn = reinterpret_cast<HRESULT(WINAPI*)(UINT, IDirect3D9Ex**)>(entry("Direct3DCreate9Ex"));
+    if (!fn) {
+        log_export("Direct3DCreate9Ex", false, 0, &logged_create9ex);
+        if (out) *out = nullptr;
+        return D3DERR_NOTAVAILABLE;
+    }
     cpu.before_original();
-    const HRESULT result=fn(sdk,out);
+    const HRESULT result = fn(sdk, out);
     cpu.after_original();
-    const bool escaped=SUCCEEDED(result)&&out&&*out;
+    const bool escaped = SUCCEEDED(result) && out && *out;
     log_export("Direct3DCreate9Ex", true, escaped, &logged_create9ex);
-    if(escaped)
+    if (escaped)
         x3m::ownership::admission_veto(x3m::ownership::process_admission_monitor(),
-            x3m::ownership::AdmissionVeto::UnobservedRoute);
+                                       x3m::ownership::AdmissionVeto::UnobservedRoute);
     return result;
 }
 // The D3D9On12 factories (Windows 10 2004+; absent from Wine's d3d9 for the
@@ -290,82 +313,114 @@ extern "C" HRESULT WINAPI Direct3DCreate9Ex(UINT sdk, IDirect3D9Ex** out) {
 extern "C" IDirect3D9* WINAPI Direct3DCreate9On12(UINT sdk, void* overrides, UINT override_count) {
     x3m::CpuCallBoundary cpu;
     x3m::ownership::ApplicationAdmissionAbi admission(x3m::ownership::process_admission_monitor());
-    auto fn = reinterpret_cast<IDirect3D9* (WINAPI*)(UINT, void*, UINT)>(entry("Direct3DCreate9On12"));
-    if (!fn) { log_export("Direct3DCreate9On12", false, 0, &logged_on12); return nullptr; }
+    auto fn = reinterpret_cast<IDirect3D9*(WINAPI*)(UINT, void*, UINT)>(entry("Direct3DCreate9On12"));
+    if (!fn) {
+        log_export("Direct3DCreate9On12", false, 0, &logged_on12);
+        return nullptr;
+    }
     cpu.before_original();
     IDirect3D9* result = fn(sdk, overrides, override_count);
     cpu.after_original();
     log_export("Direct3DCreate9On12", true, result != nullptr, &logged_on12);
-    if (result) x3m::ownership::admission_veto(x3m::ownership::process_admission_monitor(), x3m::ownership::AdmissionVeto::UnobservedRoute);
+    if (result)
+        x3m::ownership::admission_veto(x3m::ownership::process_admission_monitor(),
+                                       x3m::ownership::AdmissionVeto::UnobservedRoute);
     return result;
 }
 extern "C" HRESULT WINAPI Direct3DCreate9On12Ex(UINT sdk, void* overrides, UINT override_count, IDirect3D9Ex** out) {
     x3m::CpuCallBoundary cpu;
     x3m::ownership::ApplicationAdmissionAbi admission(x3m::ownership::process_admission_monitor());
-    auto fn = reinterpret_cast<HRESULT (WINAPI*)(UINT, void*, UINT, IDirect3D9Ex**)>(entry("Direct3DCreate9On12Ex"));
-    if (!fn) { log_export("Direct3DCreate9On12Ex", false, 0, &logged_on12ex); if (out) *out = nullptr; return D3DERR_NOTAVAILABLE; }
+    auto fn = reinterpret_cast<HRESULT(WINAPI*)(UINT, void*, UINT, IDirect3D9Ex**)>(entry("Direct3DCreate9On12Ex"));
+    if (!fn) {
+        log_export("Direct3DCreate9On12Ex", false, 0, &logged_on12ex);
+        if (out) *out = nullptr;
+        return D3DERR_NOTAVAILABLE;
+    }
     cpu.before_original();
     const HRESULT result = fn(sdk, overrides, override_count, out);
     cpu.after_original();
     const bool escaped = SUCCEEDED(result) && out && *out;
     log_export("Direct3DCreate9On12Ex", true, escaped, &logged_on12ex);
-    if (escaped) x3m::ownership::admission_veto(x3m::ownership::process_admission_monitor(), x3m::ownership::AdmissionVeto::UnobservedRoute);
+    if (escaped)
+        x3m::ownership::admission_veto(x3m::ownership::process_admission_monitor(),
+                                       x3m::ownership::AdmissionVeto::UnobservedRoute);
     return result;
 }
 extern "C" int WINAPI D3DPERF_BeginEvent(D3DCOLOR c, LPCWSTR n) {
     x3m::CpuCallBoundary cpu;
     x3m::ownership::ApplicationAdmissionAbi admission(x3m::ownership::process_admission_monitor());
-    auto fn = reinterpret_cast<int (WINAPI*)(D3DCOLOR,LPCWSTR)>(entry("D3DPERF_BeginEvent"));
-    cpu.before_original();const int result=fn ? fn(c,n) : -1;cpu.after_original();return result;
+    auto fn = reinterpret_cast<int(WINAPI*)(D3DCOLOR, LPCWSTR)>(entry("D3DPERF_BeginEvent"));
+    cpu.before_original();
+    const int result = fn ? fn(c, n) : -1;
+    cpu.after_original();
+    return result;
 }
 extern "C" int WINAPI D3DPERF_EndEvent() {
     x3m::CpuCallBoundary cpu;
     x3m::ownership::ApplicationAdmissionAbi admission(x3m::ownership::process_admission_monitor());
-    auto fn = reinterpret_cast<int (WINAPI*)()>(entry("D3DPERF_EndEvent"));
-    cpu.before_original();const int result=fn ? fn() : -1;cpu.after_original();return result;
+    auto fn = reinterpret_cast<int(WINAPI*)()>(entry("D3DPERF_EndEvent"));
+    cpu.before_original();
+    const int result = fn ? fn() : -1;
+    cpu.after_original();
+    return result;
 }
 extern "C" DWORD WINAPI D3DPERF_GetStatus() {
     x3m::CpuCallBoundary cpu;
     x3m::ownership::ApplicationAdmissionAbi admission(x3m::ownership::process_admission_monitor());
-    auto fn = reinterpret_cast<DWORD (WINAPI*)()>(entry("D3DPERF_GetStatus"));
-    cpu.before_original();const DWORD result=fn ? fn() : 0;cpu.after_original();return result;
+    auto fn = reinterpret_cast<DWORD(WINAPI*)()>(entry("D3DPERF_GetStatus"));
+    cpu.before_original();
+    const DWORD result = fn ? fn() : 0;
+    cpu.after_original();
+    return result;
 }
 extern "C" BOOL WINAPI D3DPERF_QueryRepeatFrame() {
     x3m::CpuCallBoundary cpu;
     x3m::ownership::ApplicationAdmissionAbi admission(x3m::ownership::process_admission_monitor());
-    auto fn = reinterpret_cast<BOOL (WINAPI*)()>(entry("D3DPERF_QueryRepeatFrame"));
-    cpu.before_original();const BOOL result=fn ? fn() : FALSE;cpu.after_original();return result;
+    auto fn = reinterpret_cast<BOOL(WINAPI*)()>(entry("D3DPERF_QueryRepeatFrame"));
+    cpu.before_original();
+    const BOOL result = fn ? fn() : FALSE;
+    cpu.after_original();
+    return result;
 }
-#define FORWARD_MARKER(name) \
-extern "C" void WINAPI name(D3DCOLOR c, LPCWSTR n) { \
-    x3m::CpuCallBoundary cpu; \
-    x3m::ownership::ApplicationAdmissionAbi admission(x3m::ownership::process_admission_monitor()); \
-    auto fn = reinterpret_cast<void (WINAPI*)(D3DCOLOR,LPCWSTR)>(entry(#name)); \
-    cpu.before_original();if (fn) fn(c,n);cpu.after_original(); \
-}
+#define FORWARD_MARKER(name)                                                                                           \
+    extern "C" void WINAPI name(D3DCOLOR c, LPCWSTR n) {                                                               \
+        x3m::CpuCallBoundary cpu;                                                                                      \
+        x3m::ownership::ApplicationAdmissionAbi admission(x3m::ownership::process_admission_monitor());                \
+        auto fn = reinterpret_cast<void(WINAPI*)(D3DCOLOR, LPCWSTR)>(entry(#name));                                    \
+        cpu.before_original();                                                                                         \
+        if (fn) fn(c, n);                                                                                              \
+        cpu.after_original();                                                                                          \
+    }
 FORWARD_MARKER(D3DPERF_SetMarker)
 FORWARD_MARKER(D3DPERF_SetRegion)
 extern "C" void WINAPI D3DPERF_SetOptions(DWORD o) {
     x3m::CpuCallBoundary cpu;
     x3m::ownership::ApplicationAdmissionAbi admission(x3m::ownership::process_admission_monitor());
-    auto fn = reinterpret_cast<void (WINAPI*)(DWORD)>(entry("D3DPERF_SetOptions"));
-    cpu.before_original();if (fn) fn(o);cpu.after_original();
+    auto fn = reinterpret_cast<void(WINAPI*)(DWORD)>(entry("D3DPERF_SetOptions"));
+    cpu.before_original();
+    if (fn) fn(o);
+    cpu.after_original();
 }
 extern "C" void WINAPI DebugSetMute() {
     x3m::CpuCallBoundary cpu;
     x3m::ownership::ApplicationAdmissionAbi admission(x3m::ownership::process_admission_monitor());
-    auto fn = reinterpret_cast<void (WINAPI*)()>(entry("DebugSetMute"));
-    cpu.before_original();if (fn) fn();cpu.after_original();
+    auto fn = reinterpret_cast<void(WINAPI*)()>(entry("DebugSetMute"));
+    cpu.before_original();
+    if (fn) fn();
+    cpu.after_original();
 }
 extern "C" void* WINAPI Direct3DShaderValidatorCreate9() {
     x3m::CpuCallBoundary cpu;
     x3m::ownership::ApplicationAdmissionAbi admission(x3m::ownership::process_admission_monitor());
-    auto fn = reinterpret_cast<void* (WINAPI*)()>(entry("Direct3DShaderValidatorCreate9"));
-    cpu.before_original();void* result=fn ? fn() : nullptr;cpu.after_original();
+    auto fn = reinterpret_cast<void*(WINAPI*)()>(entry("Direct3DShaderValidatorCreate9"));
+    cpu.before_original();
+    void* result = fn ? fn() : nullptr;
+    cpu.after_original();
     // A future validated D3DX helper may supply narrow lifetime authority.
     // Nested admission by itself does not certify the returned native interface.
-    if(result)x3m::ownership::admission_veto(x3m::ownership::process_admission_monitor(),
-        x3m::ownership::AdmissionVeto::UnobservedRoute);
+    if (result)
+        x3m::ownership::admission_veto(x3m::ownership::process_admission_monitor(),
+                                       x3m::ownership::AdmissionVeto::UnobservedRoute);
     return result;
 }
 BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
@@ -373,7 +428,9 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
     if (reason == DLL_PROCESS_ATTACH) {
         self_module = module;
         DisableThreadLibraryCalls(module);
-        LARGE_INTEGER stamp{}; QueryPerformanceCounter(&stamp); x3m::dll_load_qpc = static_cast<unsigned long long>(stamp.QuadPart);
+        LARGE_INTEGER stamp{};
+        QueryPerformanceCounter(&stamp);
+        x3m::dll_load_qpc = static_cast<unsigned long long>(stamp.QuadPart);
     } else if (reason == DLL_PROCESS_DETACH) {
         // The session log's rows from here on never wait on its buffer lock (a terminated thread may hold it).
         x3m::session_log::closing();
@@ -383,8 +440,10 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
         // capture lock, and the module pin makes a FreeLibrary with a worker unreachable anyway.
         if (reserved != nullptr) x3m::abandon_fog_density_workers();
         if (reserved != nullptr) x3m::abandon_devices_at_exit(); // no D3D call from the static teardown at ExitProcess
-        x3m::voice_dmo_fallback::shutdown(); // one RemoveVectoredExceptionHandler; safe under the loader lock, idempotent
-        x3m::ownership::set_surface_lock_observer(nullptr); // one relaxed store, idempotent: a late surface call forwards natively
+        x3m::voice_dmo_fallback::shutdown(); // one RemoveVectoredExceptionHandler; safe under the loader lock,
+                                             // idempotent
+        x3m::ownership::set_surface_lock_observer(nullptr); // one relaxed store, idempotent: a late surface call
+                                                            // forwards natively
         // FreeLibrary only, and only if window_trace's pin failed (a pinned module never reaches this with hooks):
         // the window-thread hooks go before their procedures' code does; at process exit (reserved != NULL) the
         // threads are gone and no user32 call is made from the loader lock.
@@ -395,21 +454,34 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
         // process exit (reserved != NULL) the threads are already gone and no
         // code is rewritten.
         if (reserved == nullptr) x3m::point_light_admission::shutdown(); // six bytes back only on FreeLibrary
-        if (reserved == nullptr) x3m::collide_box_cull::shutdown(); // same rule: the two collide sites back only on FreeLibrary
-        if (reserved == nullptr) x3m::pause_key_only::shutdown(); // same rule: the 12 pause-loop bytes back only on FreeLibrary
-        if (reserved == nullptr) x3m::terran_station_lod::shutdown(); // same rule: the two reader bytes back only on FreeLibrary
-        if (reserved == nullptr) x3m::lod_occlusion::shutdown(); // same rule: the four rel32 bytes back only on FreeLibrary
-        if (reserved == nullptr) x3m::fov::shutdown(); // same rule: the constructor's imm32 back only on FreeLibrary, only over our value
-        if (reserved == nullptr) x3m::sun_flare_fix::shutdown(); // same rule: the six SHRD/CMP bytes back only on FreeLibrary, only over our jump
-        if (reserved == nullptr) x3m::collide_narrow_census::shutdown(); // same rule: the four narrow-census sites back only on FreeLibrary
+        if (reserved == nullptr)
+            x3m::collide_box_cull::shutdown(); // same rule: the two collide sites back only on FreeLibrary
+        if (reserved == nullptr)
+            x3m::pause_key_only::shutdown(); // same rule: the 12 pause-loop bytes back only on FreeLibrary
+        if (reserved == nullptr)
+            x3m::terran_station_lod::shutdown(); // same rule: the two reader bytes back only on FreeLibrary
+        if (reserved == nullptr)
+            x3m::lod_occlusion::shutdown(); // same rule: the four rel32 bytes back only on FreeLibrary
+        if (reserved == nullptr)
+            x3m::fov::shutdown(); // same rule: the constructor's imm32 back only on FreeLibrary, only over our value
+        if (reserved == nullptr)
+            x3m::sun_flare_fix::shutdown(); // same rule: the six SHRD/CMP bytes back only on FreeLibrary, only over our
+                                            // jump
+        if (reserved == nullptr)
+            x3m::collide_narrow_census::shutdown(); // same rule: the four narrow-census sites back only on FreeLibrary
         if (reserved == nullptr) x3m::collide_sat_sse2::shutdown(); // same rule: the SAT call back only on FreeLibrary
-        if (reserved == nullptr) x3m::sun_occlusion::shutdown(); // same rule: the probe and lens calls back only on FreeLibrary
+        if (reserved == nullptr)
+            x3m::sun_occlusion::shutdown(); // same rule: the probe and lens calls back only on FreeLibrary
         if (reserved == nullptr) x3m::collide_memo::shutdown(); // same rule: the memo's call back only on FreeLibrary
-        if (reserved == nullptr) x3m::music_keep::shutdown(); // same rule: the music keep and trace sites back only on FreeLibrary
-        if (reserved == nullptr) x3m::cull_census::shutdown(); // same rule: the two census sites back only on FreeLibrary
-        if (reserved == nullptr) x3m::cull_small_parts::shutdown(); // same rule: the small-parts site back only on FreeLibrary
+        if (reserved == nullptr)
+            x3m::music_keep::shutdown(); // same rule: the music keep and trace sites back only on FreeLibrary
+        if (reserved == nullptr)
+            x3m::cull_census::shutdown(); // same rule: the two census sites back only on FreeLibrary
+        if (reserved == nullptr)
+            x3m::cull_small_parts::shutdown(); // same rule: the small-parts site back only on FreeLibrary
         // Last: the exception handler goes, the writer is signalled and waited for (at most 1 s; at process exit it is
-        // already gone), and at process exit the buffered rows and one session_end row are written through the OS handle.
+        // already gone), and at process exit the buffered rows and one session_end row are written through the OS
+        // handle.
         x3m::session_log::detach(reserved != nullptr);
     }
     return TRUE;

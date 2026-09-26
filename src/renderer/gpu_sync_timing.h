@@ -36,18 +36,21 @@
 
 namespace x3m::renderer {
 struct GpuSyncTimingStats {
-    std::uint64_t syncs = 0, polls = 0, issue_failures = 0, data_failures = 0, timeouts = 0, dropped_frames = 0, not_cooperative = 0;
+    std::uint64_t syncs = 0, polls = 0, issue_failures = 0, data_failures = 0, timeouts = 0, dropped_frames = 0,
+                  not_cooperative = 0;
     HRESULT last_failure = S_OK;
 };
 class GpuSyncTiming final : public gpu_sync_timing::Marks {
 public:
     GpuSyncTiming() = default;
     ~GpuSyncTiming() { detach(); }
-    GpuSyncTiming(const GpuSyncTiming&) = delete; GpuSyncTiming& operator=(const GpuSyncTiming&) = delete;
+    GpuSyncTiming(const GpuSyncTiming&) = delete;
+    GpuSyncTiming& operator=(const GpuSyncTiming&) = delete;
     // Creates the boundary queries. S_OK when available; the support probe's or
     // the first failed CreateQuery's result otherwise, with nothing held.
     // `native` is the device's original vtable; `window` frames per report.
-    HRESULT attach(IDirect3DDevice9* device, void* const* native, unsigned window = gpu_sync_timing::window_frames_default) noexcept;
+    HRESULT attach(IDirect3DDevice9* device, void* const* native,
+                   unsigned window = gpu_sync_timing::window_frames_default) noexcept;
     void before_reset() noexcept;             // releases every query; the frame in flight is dropped
     void after_reset(HRESULT reset) noexcept; // a successful Reset recreates them; a failed one leaves them released
     void detach() noexcept;
@@ -60,13 +63,21 @@ public:
     // The failure cut-off switched the boundaries off; the queries (and their
     // references) are still held until release_deferred() runs them down.
     bool release_pending() const noexcept { return release_pending_; }
-    void release_deferred() noexcept { if (release_pending_) release(); }
+    void release_deferred() noexcept {
+        if (release_pending_) release();
+    }
     bool tripped() const noexcept { return tripped_; } // the sticky timeout cut-off
-    void begin(unsigned pass) noexcept override { if (available_) mark(pass, true); }
-    void end(unsigned pass) noexcept override { if (available_) mark(pass, false); }
+    void begin(unsigned pass) noexcept override {
+        if (available_) mark(pass, true);
+    }
+    void end(unsigned pass) noexcept override {
+        if (available_) mark(pass, false);
+    }
     void census_begin() noexcept override { census_open(0); }
     void census_end(std::uint32_t area) noexcept override { census_close(0, area, 0); }
-    bool needs_wanted() noexcept override { return available_ && census_[1] && census_state_[1] == Census::Idle && !tracker_.abandoned(); }
+    bool needs_wanted() noexcept override {
+        return available_ && census_[1] && census_state_[1] == Census::Idle && !tracker_.abandoned();
+    }
     void needs_begin() noexcept override { census_open(1); }
     void needs_end(std::uint32_t area, std::uint32_t scale) noexcept override { census_close(1, area, scale); }
     bool census_available() const noexcept { return census_[0] != nullptr; }
@@ -82,6 +93,7 @@ public:
     // boundary failed (consecutive_failures_ > 0), so a stuck driver costs one
     // long spin and then short ones until the cut-off.
     static constexpr unsigned spin_limit_ms = 500, spin_retry_limit_ms = 50, spin_failure_limit = 4;
+
 private:
     HRESULT create() noexcept;
     void release() noexcept;

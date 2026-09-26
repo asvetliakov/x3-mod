@@ -9,15 +9,17 @@
 namespace x3m::light_phases {
 extern std::atomic<bool> active;
 bool initialize();
-namespace detail { void frame_impl(std::uint64_t frame,bool sampled) noexcept; }
-inline void frame(std::uint64_t index,bool sampled) noexcept {
-    if(active.load(std::memory_order_relaxed))detail::frame_impl(index,sampled);
+namespace detail {
+void frame_impl(std::uint64_t frame, bool sampled) noexcept;
+}
+inline void frame(std::uint64_t index, bool sampled) noexcept {
+    if (active.load(std::memory_order_relaxed)) detail::frame_impl(index, sampled);
 }
 #ifdef X3M_GAME_PHASE_FIXTURE
-bool fixture_install(const engine_patch::SiteSpec*,const char**);
+bool fixture_install(const engine_patch::SiteSpec*, const char**);
 bool fixture_uninstall();
 const detail::Accumulator* fixture_accumulator();
 const detail::Gate* fixture_gate();
-void fixture_returns(std::uint32_t cockpit,std::uint32_t traversal);
+void fixture_returns(std::uint32_t cockpit, std::uint32_t traversal);
 #endif
 }

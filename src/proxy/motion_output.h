@@ -61,9 +61,17 @@
 #include "../renderer/shadow_replay_pass.h"
 #include "../renderer/shadow_replay_projection.h"
 #include "../renderer/sun_shadow_apply_pass.h"
-namespace x3m::renderer { struct MotionOutputProfile; class TemporalPass; }
-namespace x3m::ownership { class AdmissionMonitor; struct BufferLockView; }
-namespace x3m::telemetry { struct State; }
+namespace x3m::renderer {
+struct MotionOutputProfile;
+class TemporalPass;
+}
+namespace x3m::ownership {
+class AdmissionMonitor;
+struct BufferLockView;
+}
+namespace x3m::telemetry {
+struct State;
+}
 namespace x3m {
 // Distinct clip-row constant windows the profile table names (c24-27 for the
 // point-light programs, c0-3 for the light-free variants). The route's shadow
@@ -93,6 +101,7 @@ enum class MotionGate : unsigned { None = 0, Feature = 1, Scene = 2, Pair = 3, D
 // the refusal path from values the gate already read; no getter, no lookup.
 // Gate 4 records the first failing check of the opaque chain, or, for a
 // recognised fade-band draw of a fade pair, the fade arm's own refusal step.
+// clang-format off
 enum class UnmatchedReason : std::uint8_t {
     None = 0,
     Feature, Scene, XtPair, Unregistered, Pair,                       // gates 1-3
@@ -102,12 +111,13 @@ enum class UnmatchedReason : std::uint8_t {
     Scope, History,                                                   // gates 5-6 (routed, mode 0 / no previous rows)
     Count
 };
+// clang-format on
 constexpr const char* unmatched_reason_name(UnmatchedReason reason) noexcept {
     constexpr const char* names[unsigned(UnmatchedReason::Count)] = {
-        "none", "feature", "scene", "xt_pair", "unregistered", "pair",
-        "user_memory", "read_failed", "no_zwrite", "blended", "state", "instanced", "rows", "geometry",
-        "fade_caps", "fade_instanced", "fade_rows", "fade_geometry", "fade_constants", "fade_origin", "fade_threshold",
-        "overlay_node", "scope", "history"};
+        "none",           "feature",     "scene",          "xt_pair",        "unregistered", "pair",
+        "user_memory",    "read_failed", "no_zwrite",      "blended",        "state",        "instanced",
+        "rows",           "geometry",    "fade_caps",      "fade_instanced", "fade_rows",    "fade_geometry",
+        "fade_constants", "fade_origin", "fade_threshold", "overlay_node",   "scope",        "history"};
     return unsigned(reason) < unsigned(UnmatchedReason::Count) ? names[unsigned(reason)] : "unknown";
 }
 // Per-draw decision. Stack object; carries what after_draw must undo.
@@ -115,26 +125,36 @@ struct MotionRoute {
     MotionGate gate = MotionGate::Feature;
     UnmatchedReason unmatched = UnmatchedReason::None;
     bool routed = false, matched = false, scene = false;
-    bool static_assumed = false; // X3M_TAA_UNMATCHED_STATIC: a new key's previous rows came from the static-world assumption (matched stays false)
+    bool static_assumed = false; // X3M_TAA_UNMATCHED_STATIC: a new key's previous rows came from the static-world
+                                 // assumption (matched stays false)
     bool composition = false, submit = true, evaluated = false;
     HRESULT submission_error = D3DERR_INVALIDCALL;
     HRESULT preparation_error = S_OK; // First internal failure; never replaces the native draw result.
     renderer::LinearCompositionPolicy composition_policy = renderer::LinearCompositionPolicy::AdditiveEmission;
-    bool cutout_candidate = false, cutout = false; // requested exact scene pair; admitted exact cutout arm (cutout pair)
-    bool alpha_tested = false; // admitted with alpha test on (cutout arm, tested-opaque arm or an owned fade-band cutout); excluded from replay candidates (W3)
-    bool cutout_test_known = false, cutout_color_known = false, cutout_alpha_known = false, cutout_z_known = false, cutout_zfunc_known = false;
+    bool cutout_candidate = false, cutout = false; // requested exact scene pair; admitted exact cutout arm (cutout
+                                                   // pair)
+    bool alpha_tested = false; // admitted with alpha test on (cutout arm, tested-opaque arm or an owned fade-band
+                               // cutout); excluded from replay candidates (W3)
+    bool cutout_test_known = false, cutout_color_known = false, cutout_alpha_known = false, cutout_z_known = false,
+         cutout_zfunc_known = false;
     bool cutout_blend_known = false, cutout_source_over = false; // exact observed source-over triple: not a miss
     DWORD cutout_test = 0, cutout_color = 0, cutout_alpha = 0, cutout_z = 0, cutout_zfunc = 0, cutout_blend = 0;
     bool linear_material = false; // Combined color+motion pair actually bound.
     FogCardMask fog_card_mask{};
-    bool source_gain = false;     // Source-gain PS bound natively for this draw; restored after it.
-    bool source_gain_screen = false; // ... and DESTBLEND ONE substituted for the native INVSRCCOLOR (screen substitution); restored after it.
-    bool hull_gain = false;       // Hull-emitter gain PS bound natively for this ONE/ONE draw (emitter plan phase 3); restored after it.
-    bool original_fill = false;   // Original-fill PS selected in the routed pair (undone with the route).
-    bool hull_lightmap = false;   // Hull light-map gain PS (fill K composed) selected in the routed pair (undone with the route).
-    bool hull_lightmap_widen = false; // The widened light-map variant (per-draw texel footprint lanes in c217.yz) selected instead of the gained one.
-    bool widen_filter_set = false;    // The light-map stage's MINFILTER raised to ANISOTROPIC for this widened draw (undo restores widen_filter_saved).
-    std::uint8_t widen_filter_stage = 0; DWORD widen_filter_saved = 0;
+    bool source_gain = false;        // Source-gain PS bound natively for this draw; restored after it.
+    bool source_gain_screen = false; // ... and DESTBLEND ONE substituted for the native INVSRCCOLOR (screen
+                                     // substitution); restored after it.
+    bool hull_gain = false;     // Hull-emitter gain PS bound natively for this ONE/ONE draw (emitter plan phase 3);
+                                // restored after it.
+    bool original_fill = false; // Original-fill PS selected in the routed pair (undone with the route).
+    bool hull_lightmap = false; // Hull light-map gain PS (fill K composed) selected in the routed pair (undone with the
+                                // route).
+    bool hull_lightmap_widen = false; // The widened light-map variant (per-draw texel footprint lanes in c217.yz)
+                                      // selected instead of the gained one.
+    bool widen_filter_set = false; // The light-map stage's MINFILTER raised to ANISOTROPIC for this widened draw (undo
+                                   // restores widen_filter_saved).
+    std::uint8_t widen_filter_stage = 0;
+    DWORD widen_filter_saved = 0;
     bool vs_set = false, ps_set = false, rt_set = false, write_set = false;
     bool vs_constants_set = false, ps_constants_set = false;
     // Scoped shader restoration (docs/architecture/ownership-shadow-lifetime-diagnosis.md):
@@ -145,9 +165,10 @@ struct MotionRoute {
     IDirect3DVertexShader9* restore_vs = nullptr;
     IDirect3DPixelShader9* restore_ps = nullptr;
     bool restore_held = false;
-    renderer::LensDraw lens{};    // Partial sun occlusion: what the lens wrap bound for this draw; put back by after_draw.
+    renderer::LensDraw lens{}; // Partial sun occlusion: what the lens wrap bound for this draw; put back by after_draw.
     bool sun_receiver = false, sun_color_writer = false;
-    bool sun_stamp = false; // gate-3 refused scene draw the lane may stamp invalid after the native draw (sun_stamp_call_ holds its arguments)
+    bool sun_stamp = false; // gate-3 refused scene draw the lane may stamp invalid after the native draw
+                            // (sun_stamp_call_ holds its arguments)
     // Sun-lane refusal diagnostics (sun_share_frame.h): the gate reason
     // recorded while the lane is on, and the z/z-write states the selector
     // read (bit0 z, bit1 z write, bit2 both known). Never consulted by
@@ -161,10 +182,11 @@ struct MotionRoute {
     // unconfigured): drawn with its native MIPMAPLODBIAS so alpha-test coverage
     // matches the native draw (biased stages are restored before the draw).
     bool native_mip_bias = false;
-    bool depth = false, rt2_set = false, write2_set = false;   // RT2 bound for this draw (row has depth_output).
-    bool stream0_frequency_known = false; UINT stream0_frequency = 0; // gate 4's GetStreamSourceFreq(0) of this draw, reused by the depth lease
-    bool jittered = false;                                     // Jittered rows written; restore after the draw.
-    UINT jitter_register = 0;                                  // The VS row's clip-row window base.
+    bool depth = false, rt2_set = false, write2_set = false; // RT2 bound for this draw (row has depth_output).
+    bool stream0_frequency_known = false;
+    UINT stream0_frequency = 0; // gate 4's GetStreamSourceFreq(0) of this draw, reused by the depth lease
+    bool jittered = false;      // Jittered rows written; restore after the draw.
+    UINT jitter_register = 0;   // The VS row's clip-row window base.
     DWORD saved_write1 = 15, saved_write2 = 15;
     // Temporal/depth plus at most two scalar destinations and their sources.
     // Read-only snapshots have no attempted bit; all snapshots precede writes.
@@ -178,7 +200,7 @@ struct MotionRoute {
     std::uint64_t observer_epoch = 0;
     std::uintptr_t registry = 0;
     std::uint32_t node_flags12c = 0, node_flags130 = 0;
-    std::uint64_t ticks = 0;  // CPU ticks of apply (before_draw) plus undo (after_draw); telemetry only.
+    std::uint64_t ticks = 0; // CPU ticks of apply (before_draw) plus undo (after_draw); telemetry only.
     // Conservative screen rectangle of an admitted distance-fade draw
     // (docs/architecture/linear-distance-fade-region.md, step 1): derived
     // after admission, logged and counted; the bracket does not consume it yet.
@@ -199,9 +221,11 @@ struct MotionRoute {
     // is bound with its write mask cleared for such a draw; RT1 blends
     // exactly (motion alpha 1 under SRCALPHA/INVSRCALPHA).
     bool fade_arm = false;
-    bool fade_held = false; // admitted below the threshold by the hysteresis band only
-    bool fade_owner = false; // X3M_FADE_RT2_OWNER: a fade-arm row (not the overlay arm) that writes RT2 (mask 15, .a = 1)
-    bool fade_tested = false; // a fade-arm row admitted with the alpha test on (fade-alpha-cutout-ownership.md; owner on, original shading)
+    bool fade_held = false;   // admitted below the threshold by the hysteresis band only
+    bool fade_owner = false;  // X3M_FADE_RT2_OWNER: a fade-arm row (not the overlay arm) that writes RT2 (mask 15, .a =
+                              // 1)
+    bool fade_tested = false; // a fade-arm row admitted with the alpha test on (fade-alpha-cutout-ownership.md; owner
+                              // on, original shading)
     // Overlay arm (asteroid-fog-temporal.md "Run 130"): a reviewed non-fade
     // pair's source-over sub-mesh (the hull glass/window layer) drawn right
     // after a routed draw of the same node, admitted through the fade arm at
@@ -230,8 +254,20 @@ struct MotionRoute {
 // Target: the engine scene-end hook fired while RT0 was not the latched main target.
 // Msaa: the latched main target is multisampled (the route refused the frame:
 // RT1/RT2 textures cannot share its sample count; motion_output_msaa_refused).
-enum class TaaSkip : unsigned { None = 0, Disabled = 1, NotReached = 2, NoJitter = 3, NotFilled = 4,
-                                Recording = 5, Queries = 6, Initialize = 7, Container = 8, CameraState = 9, Target = 10, Msaa = 11 };
+enum class TaaSkip : unsigned {
+    None = 0,
+    Disabled = 1,
+    NotReached = 2,
+    NoJitter = 3,
+    NotFilled = 4,
+    Recording = 5,
+    Queries = 6,
+    Initialize = 7,
+    Container = 8,
+    CameraState = 9,
+    Target = 10,
+    Msaa = 11
+};
 // Every path that drops the TAA history and the history's camera view
 // (invalidate_taa), for the consolidated `taa_invalidate site=<name>` line:
 // one bit per site, logged at most once per frame per site at the frame's
@@ -283,17 +319,27 @@ enum class SceneEndCheck : unsigned { None = 0, Agree = 1, HookOnly = 2, Stretch
 // UpdateSurface), at Present (the terminal fallback: every frame without a
 // recognized scene end, e.g. glow off without the engine hook), after the
 // latching Clear failed, or dropped without a write-back (Reset, release).
-enum class HdrEnd : unsigned { None = 0, Hook = 1, BloomCopy = 2, ContentWrite = 3, Present = 4, ClearFailed = 5, Dropped = 6 };
+enum class HdrEnd : unsigned {
+    None = 0,
+    Hook = 1,
+    BloomCopy = 2,
+    ContentWrite = 3,
+    Present = 4,
+    ClearFailed = 5,
+    Dropped = 6
+};
 struct MotionHdrCounters {
-    bool redirected = false;     // the latching Clear bound the FP16 target as RT0
-    std::uint32_t end = 0;       // HdrEnd
+    bool redirected = false; // the latching Clear bound the FP16 target as RT0
+    std::uint32_t end = 0;   // HdrEnd
     std::uint32_t writebacks = 0, flushes = 0, suspended = 0, resumed = 0;
-    std::uint32_t source = 0;    // renderer::HdrWritebackSource of the last write-back
-    bool unwind = false;         // a write-back did not complete cleanly (ladder taken)
+    std::uint32_t source = 0; // renderer::HdrWritebackSource of the last write-back
+    bool unwind = false;      // a write-back did not complete cleanly (ladder taken)
     const char* unwind_reason = "none";
     HRESULT unwind_draw = S_FALSE, unwind_restore = S_FALSE, unwind_stretch = S_FALSE, unwind_bind = S_FALSE;
-    bool blocked = false, recheck_ran = false, recheck_passed = false; // blocked after an unwind; the recovery self test
-    bool dirty_at_present = false; // content reached the target after the last write-back and Present ended the redirect
+    bool blocked = false, recheck_ran = false, recheck_passed = false; // blocked after an unwind; the recovery self
+                                                                       // test
+    bool dirty_at_present = false; // content reached the target after the last write-back and Present ended the
+                                   // redirect
     bool refused_msaa = false;
     HRESULT target_create = S_FALSE, latch_bind = S_FALSE;
     std::uint64_t redirect_ticks = 0, writeback_ticks = 0, writeback_draw_ticks = 0, writeback_stretch_ticks = 0;
@@ -310,20 +356,20 @@ struct MotionHdrCounters {
     bool sharpened = false, sharpen_fallback = false;
 };
 struct MotionTaaCounters {
-    bool attempted = false;      // The main-target bloom copy was recognized this frame.
-    bool resolved = false;       // run() and the copy-back both succeeded: the main target holds the resolved image.
-    bool used_history = false;   // The resolve blended the previous frame (false on the first frame, cuts, Reset).
-    std::uint32_t skip = 0;      // TaaSkip
+    bool attempted = false;    // The main-target bloom copy was recognized this frame.
+    bool resolved = false;     // run() and the copy-back both succeeded: the main target holds the resolved image.
+    bool used_history = false; // The resolve blended the previous frame (false on the first frame, cuts, Reset).
+    std::uint32_t skip = 0;    // TaaSkip
     HRESULT result = S_FALSE, restore = S_OK, copy = S_FALSE;
     // Depth-sentinel policy the resolve ran with (renderer::SentinelDecision):
     // 2 reprojects sentinel pixels through the camera at the far plane.
     std::uint32_t camera_policy = 1, camera_reason = 1;
-    bool camera_cut = false;     // rotation since the previous resolved frame exceeded X3M_CAMERA_CUT_DEG
+    bool camera_cut = false; // rotation since the previous resolved frame exceeded X3M_CAMERA_CUT_DEG
     float camera_rotation_deg = 0;
     // The history's camera view was valid at the sentinel-policy call (before
     // the resolve relatches it): camera_state prev_valid_at_policy.
     bool camera_previous_valid = false;
-    std::uint32_t source = 0;    // SceneEndSource of the attempt
+    std::uint32_t source = 0; // SceneEndSource of the attempt
     // Stage 3 of the HDR scene path: the resolve ran on the FP16 scene target
     // (in.color, no copy; its output is what the write-back samples) with k
     // of the luminance weighting (0 on the 8-bit path).
@@ -352,11 +398,15 @@ struct MotionFrameCounters {
     // by the arm, and those recognised but refused (fraction below the
     // threshold, unreadable constants, device not ready), which then take
     // the fade bracket or the native path exactly as before.
-    std::uint32_t fade_routed = 0, fade_refused = 0, fade_held = 0; // fade_held: of fade_routed, admitted by the hysteresis band
-    std::uint32_t overlay_routed = 0, overlay_refused = 0; // overlay arm (same-node source-over sub-mesh); not in fade_routed/fade_refused
-    std::uint32_t fade_evicted = 0; // hysteresis entries a full table displaced this frame (fade_route::Hysteresis::capacity)
+    std::uint32_t fade_routed = 0, fade_refused = 0, fade_held = 0; // fade_held: of fade_routed, admitted by the
+                                                                    // hysteresis band
+    std::uint32_t overlay_routed = 0, overlay_refused = 0; // overlay arm (same-node source-over sub-mesh); not in
+                                                           // fade_routed/fade_refused
+    std::uint32_t fade_evicted = 0;                        // hysteresis entries a full table displaced this frame
+                                                           // (fade_route::Hysteresis::capacity)
     std::uint32_t fade_tested = 0; // of fade_routed, admitted with the alpha test on (fade-alpha-cutout-ownership.md)
-    std::uint32_t fade_owner_masked = 0; // X3M_FADE_RT2_OWNER: fade-arm rows kept masked on the lane RT2 (no invalid-share twin)
+    std::uint32_t fade_owner_masked = 0; // X3M_FADE_RT2_OWNER: fade-arm rows kept masked on the lane RT2 (no
+                                         // invalid-share twin)
     std::uint32_t depth_routed = 0, jittered = 0;
     // Scene draws with ZENABLE and ZWRITEENABLE on that went out unjittered
     // while the jitter was active: every one breaks the "whole scene moves
@@ -401,7 +451,8 @@ struct MotionFrameCounters {
     std::uint32_t set_rt = 0, jitter_writes = 0, lazy_flushes = 0, lazy_mask_writes = 0, readbacks = 0;
     std::uint64_t gate_ticks = 0, route_draw_ticks = 0, set_rt_ticks = 0, jitter_ticks = 0, fill_ticks = 0;
     std::uint64_t lease_retire_ticks = 0;
-    std::uint32_t lease_retire_calls = 0, lease_retire_records = 0, lease_retire_refs = 0, lease_retire_clock_errors = 0;
+    std::uint32_t lease_retire_calls = 0, lease_retire_records = 0, lease_retire_refs = 0,
+                  lease_retire_clock_errors = 0;
     std::uint64_t lazy_flush_ticks = 0, readback_ticks = 0;
     std::uint64_t taa_run_ticks = 0, taa_capture_ticks = 0, taa_copy_color_ticks = 0, taa_copy_depth_ticks = 0;
     std::uint64_t taa_draw_ticks = 0, taa_apply_ticks = 0, taa_copy_back_ticks = 0;
@@ -464,9 +515,10 @@ struct MotionOutputFixtureConfig {
     std::uint64_t background_vs[3]{}, background_ps[3]{};
     MotionOutputFixtureScope scope{};
     std::uint32_t emission_scene_owner = 0;
-    std::uint32_t force_taa_readback = 0; // Successful resolve output only; no per-draw capture.
-    std::uint32_t observe_native_wrap = 0; // Native indexed-draw observation only.
-    std::uint32_t suppress_lightmap_widen = 0; // Bind the gained variant instead of the widened one (the widening script's texld against the block at k = 1).
+    std::uint32_t force_taa_readback = 0;      // Successful resolve output only; no per-draw capture.
+    std::uint32_t observe_native_wrap = 0;     // Native indexed-draw observation only.
+    std::uint32_t suppress_lightmap_widen = 0; // Bind the gained variant instead of the widened one (the widening
+                                               // script's texld against the block at k = 1).
 };
 // Device-owned last native indexed submission. Failure is diagnostic only and
 // never changes source submission, route state, or the caller's WRAP values.
@@ -505,18 +557,22 @@ public:
     // MRT self test; on failure the route stays disabled for this device.
     // `stats` (may be null) receives the route's CPU telemetry metrics
     // (telemetry::Metric::Route*/Taa*) when telemetry is enabled.
-    void attach(IDirect3DDevice9* device, void** native, std::uint64_t device_id,
-                const D3DCAPS9& caps, bool requested, telemetry::State* stats = nullptr) noexcept;
+    void attach(IDirect3DDevice9* device, void** native, std::uint64_t device_id, const D3DCAPS9& caps, bool requested,
+                telemetry::State* stats = nullptr) noexcept;
     bool enabled() const noexcept { return enabled_; }
     // The capture owner must not apply a combined resource-reference heuristic
     // during child destruction or the temporal pass's reference-count probe.
-    bool reference_accounting_busy() const noexcept { return releasing_ || taa_busy_ || composition_busy_ || (composition_ && composition_->reference_accounting_busy()); }
+    bool reference_accounting_busy() const noexcept {
+        return releasing_ || taa_busy_ || composition_busy_ ||
+               (composition_ && composition_->reference_accounting_busy());
+    }
     // Current CPU-side admission only: the capture caller also qualifies the
     // owner/thread/frame/Reset ticket and actual post-compositor device state.
     // The redirect itself is Off after a successful handoff.
     bool bloom_boundary_available() const noexcept {
-        return enabled_ && hdr_enabled_ && scene_open_ && !active_queries_ && !shadow_.recording
-            && !reference_accounting_busy() && !motion_state_lost_ && !hdr_blocked_ && !counters_.hdr.unwind && !counters_.restore_failures;
+        return enabled_ && hdr_enabled_ && scene_open_ && !active_queries_ && !shadow_.recording &&
+               !reference_accounting_busy() && !motion_state_lost_ && !hdr_blocked_ && !counters_.hdr.unwind &&
+               !counters_.restore_failures;
     }
     // RT2 (R32F current depth) is produced on this device: three simultaneous
     // targets, R32F render-target support and the three-format self test.
@@ -526,8 +582,8 @@ public:
     // routed fragments' interpolated clip w, the apply quad's receiver depth. Off
     // the lane RT2 is R32F. The format is fixed at target creation and rebuilt
     // after Reset.
-    void configure_sun_shadow_lane(bool requested) noexcept { sun_lane_requested_=requested; }
-    D3DFORMAT lane_depth_format() const noexcept { return sun_lane_active_?D3DFMT_A32B32G32R32F:D3DFMT_R32F; }
+    void configure_sun_shadow_lane(bool requested) noexcept { sun_lane_requested_ = requested; }
+    D3DFORMAT lane_depth_format() const noexcept { return sun_lane_active_ ? D3DFMT_A32B32G32R32F : D3DFMT_R32F; }
     // Scene-end sun-shadow application (docs/architecture/legacy-sun-application.md,
     // section 2; X3M_SUN_SHADOW_APPLY=1): one quad multiplying the FP16 scene
     // target by 1 - (1 - f) s after the depth replay of the same frame and
@@ -540,13 +596,22 @@ public:
     // resolves both per frame with the cascade. slope_texels: the cascade
     // program's slope-scaled margin in texels of the receiver plane's depth
     // slope (X3M_SUN_SHADOW_BIAS_SLOPE_TEXELS; sun_shadow_apply_pass.h). Out-of-range values keep the defaults.
-    void configure_sun_shadow_apply(bool requested, double bias_units=renderer::sun_shadow_bias_units_default,
-                                    double clamp_texels=renderer::sun_shadow_bias_clamp_texels_default,
-                                    double slope_texels=renderer::sun_shadow_bias_slope_texels_default) noexcept {
-        sun_apply_requested_=requested;
-        sun_apply_bias_units_=bias_units>=renderer::sun_shadow_bias_units_min&&bias_units<=renderer::sun_shadow_bias_units_max?bias_units:renderer::sun_shadow_bias_units_default;
-        sun_apply_clamp_texels_=clamp_texels>=renderer::sun_shadow_bias_clamp_texels_min&&clamp_texels<=renderer::sun_shadow_bias_clamp_texels_max?clamp_texels:renderer::sun_shadow_bias_clamp_texels_default;
-        sun_apply_slope_texels_=slope_texels>=renderer::sun_shadow_bias_slope_texels_min&&slope_texels<=renderer::sun_shadow_bias_slope_texels_max?slope_texels:renderer::sun_shadow_bias_slope_texels_default;
+    void configure_sun_shadow_apply(bool requested, double bias_units = renderer::sun_shadow_bias_units_default,
+                                    double clamp_texels = renderer::sun_shadow_bias_clamp_texels_default,
+                                    double slope_texels = renderer::sun_shadow_bias_slope_texels_default) noexcept {
+        sun_apply_requested_ = requested;
+        sun_apply_bias_units_ = bias_units >= renderer::sun_shadow_bias_units_min &&
+                                        bias_units <= renderer::sun_shadow_bias_units_max
+                                    ? bias_units
+                                    : renderer::sun_shadow_bias_units_default;
+        sun_apply_clamp_texels_ = clamp_texels >= renderer::sun_shadow_bias_clamp_texels_min &&
+                                          clamp_texels <= renderer::sun_shadow_bias_clamp_texels_max
+                                      ? clamp_texels
+                                      : renderer::sun_shadow_bias_clamp_texels_default;
+        sun_apply_slope_texels_ = slope_texels >= renderer::sun_shadow_bias_slope_texels_min &&
+                                          slope_texels <= renderer::sun_shadow_bias_slope_texels_max
+                                      ? slope_texels
+                                      : renderer::sun_shadow_bias_slope_texels_default;
     }
     // Caster-candidate counter (shadow_replay_candidates.h; X3M_SHADOW_REPLAY_CANDIDATES=1):
     // integer bookkeeping per routed draw, one shadow_replay_candidates line per
@@ -557,7 +622,8 @@ public:
     // bring their own per-cascade caps and box test; without a cascade set on the
     // device it does not run at all (attach: no extent read, record or per-frame row).
     void configure_shadow_replay_candidates(bool requested, ownership::AdmissionMonitor* monitor) noexcept {
-        candidates_config_=candidates_requested_=requested; candidates_monitor_=requested?monitor:nullptr;
+        candidates_config_ = candidates_requested_ = requested;
+        candidates_monitor_ = requested ? monitor : nullptr;
     }
     // Object bounds log (docs/architecture/engine-frame-time.md, "Object bounds
     // log"; X3M_OBJECT_BOUNDS_LOG=1): on capture frames only, one object_bounds
@@ -572,40 +638,54 @@ public:
     // above (the caller enables both) and a cascade set (configure_shadow_cascades):
     // without one there is no map, no lease and no transaction (the single
     // camera-centred map was removed on 2026-09-25). Off: nothing.
-    void configure_shadow_replay_depth(bool requested) noexcept { depth_replay_requested_=requested&&candidates_config_; }
+    void configure_shadow_replay_depth(bool requested) noexcept {
+        depth_replay_requested_ = requested && candidates_config_;
+    }
     // Alpha-tested casters (shadow-replay-gates.md, "Alpha-tested casters";
     // X3M_SHADOW_ALPHA_CASTERS=1, default off): alpha-tested routed draws become
     // caster candidates whose replay keeps their alpha test (their stage-0
     // texture at TEXCOORD0 against their own ALPHAFUNC/ALPHAREF). Rides the depth
     // replay (call after configure_shadow_replay_depth); off: no code runs.
-    void configure_shadow_alpha_casters(bool requested) noexcept { alpha_casters_requested_=requested&&depth_replay_requested_; }
+    void configure_shadow_alpha_casters(bool requested) noexcept {
+        alpha_casters_requested_ = requested && depth_replay_requested_;
+    }
     // Sun-shadow cascades (docs/architecture/shadow-cascades.md; X3M_SHADOW_CASCADES):
     // a set with count >= 1 is that many camera-centred maps in one replay
     // transaction, a cascade mask per candidate, per-cascade caps, the issue
     // budget with the far cascade on alternate frames, and the apply program.
     // Requires the depth replay (the caller enables both); count 0 (the
     // default) is no map: the replayed sun shadows are off.
-    void configure_shadow_cascades(const renderer::ShadowCascadeSet& set) noexcept { depth_cascade_config_=set; }
+    void configure_shadow_cascades(const renderer::ShadowCascadeSet& set) noexcept { depth_cascade_config_ = set; }
     // Own-ship-adaptive cascade 0 (shadow-cascade-extents.md, section 5;
     // X3M_SHADOW_CASCADE_ADAPTIVE_C0 = k, 0 or absent off): E0 = max(configured,
     // k x own-ship radius) with hysteresis, and the ladder behind it sliding
     // with E0 at `ratio` per cascade (X3M_SHADOW_CASCADE_LADDER_RATIO, default 5).
-    void configure_shadow_cascade_adaptive(float k, float ratio=renderer::shadow_cascade_ladder_ratio_default) noexcept { cascade_adaptive_k_=k; cascade_ladder_ratio_=ratio; }
+    void configure_shadow_cascade_adaptive(float k,
+                                           float ratio = renderer::shadow_cascade_ladder_ratio_default) noexcept {
+        cascade_adaptive_k_ = k;
+        cascade_ladder_ratio_ = ratio;
+    }
     // Per-frame sun trace (X3M_SHADOW_SUN_TRACE=1, launcher --shadow-sun-trace;
     // default off): one `shadow_sun_frame` line per frame while the cascades are
     // on, so the re-derivation rate is measurable between the sparse
     // shadow_replay_sun_point lines. No effect on any decision.
-    void configure_shadow_sun_trace(bool trace) noexcept { point_sun_trace_=trace; }
+    void configure_shadow_sun_trace(bool trace) noexcept { point_sun_trace_ = trace; }
     // Caster retention (shadow-caster-retention.md): census or live, on the cascades only; off by default.
-    void configure_shadow_retention(shadow_retention::Mode mode, std::uint32_t age_cap, double eps, bool timing) noexcept {
-        retention_mode_=mode; retention_age_cap_=age_cap; retention_eps_=eps; retention_timing_=timing;
+    void configure_shadow_retention(shadow_retention::Mode mode, std::uint32_t age_cap, double eps,
+                                    bool timing) noexcept {
+        retention_mode_ = mode;
+        retention_age_cap_ = age_cap;
+        retention_eps_ = eps;
+        retention_timing_ = timing;
     }
     // The device Release hook: a held application resource the application has
     // already released pins one device reference that device_references() cannot
     // count. When a Release could be the application's final one (the count is
     // within retention_references() of it) the hook flushes the store first;
     // a false positive costs only the off-screen shadows until resubmission.
-    unsigned retention_references() const noexcept { return retention_&&!reference_accounting_busy()?retention_->store.references():0u; }
+    unsigned retention_references() const noexcept {
+        return retention_ && !reference_accounting_busy() ? retention_->store.references() : 0u;
+    }
     void retention_before_final_release() noexcept { flush_shadow_retention(shadow_retention::Flush::Teardown); }
     const renderer::ShadowCascadeSet& shadow_cascades() const noexcept { return depth_cascades_; }
     bool sun_shadow_lane_enabled() const noexcept { return sun_lane_active_; }
@@ -613,7 +693,8 @@ public:
     const renderer::SunShareFrame& sun_shadow_frame() const noexcept { return sun_frame_; }
     // Borrowed same-frame exclusion M; valid only while sun_shadow_frame().available.
     IDirect3DSurface9* sun_shadow_coverage() const noexcept {
-        return sun_frame_.available&&sun_frame_.coverage_required&&composition_?composition_->coverage_target():nullptr;
+        return sun_frame_.available && sun_frame_.coverage_required && composition_ ? composition_->coverage_target()
+                                                                                    : nullptr;
     }
     // Per-draw jitter (X3M_MOTION_JITTER=1) with a Halton(2,3) sequence of
     // `samples` entries advanced at each latching Clear; effective from the
@@ -641,67 +722,98 @@ public:
     // X3M_TAA_UNMATCHED_STATIC (default off): 0 off, 1 "node" (a new key whose
     // object was drawn last frame under another key), 2 "all" (any new key).
     void configure_unmatched_static(unsigned mode) noexcept { unmatched_static_ = mode <= 2 ? mode : 0; }
-    // X3M_TAA_SKY_HISTORY=strict (default with the TAA route since Run 68 A, resolved by the caller): the resolve's strict sky term whenever the
-    // camera path is in effect. A sky pixel whose 3x3 holds no routed geometry
-    // accepts sentinel history taps only (docs/architecture/seta-motion.md).
-    // band_px: X3M_TAA_SKY_HISTORY_BAND_PX (1..16, default 3), the band term's threshold in px/frame (seta-motion.md section 4).
-    // exit_px: X3M_TAA_SKY_HISTORY_EXIT_PX (0 off, else 0.125..band_px; the caller's default 0.25 under strict since Run 68 A), the exit reset's parallax floor
-    // (docs/architecture/seta-sky-hull-share-decay.md); needs strict (the caller refuses it otherwise) and an age program
-    // (the far stabiliser or the thin region: taa_initialize logs it unavailable and drops it otherwise).
-    // X3M_TAA_BOX_RESOLUTION (full|half, DLL default full when the variable is unset; the launcher sends half on --taa launches
-    // since Run 82; docs/architecture/taa-high-resolution.md S4): the camera gate's box at half resolution,
-    // TemporalPass::configure_box_resolution(2); full is the pass without the call, bit for bit and log for log.
-    // `launcher_default` (X3M_TAA_BOX_RESOLUTION_DEFAULT=1 with half) is logged as default= on the creation row.
-    void configure_box_resolution(bool half, bool launcher_default) noexcept { taa_box_half_ = half; taa_box_default_ = half && launcher_default; }
-    // X3M_TAA_FAR_GATE (camera|screen, DLL default camera when the variable is unset; the launcher sends camera on --taa launches;
-    // docs/architecture/taa-mask-fold.md section 4.2 addendum): the far weight's motion gate on the camera-gate resolve,
-    // FrameInputs::far_camera_gate. The far program without the camera gate always uses the screen speed (far_gate=screen on
-    // the creation row; one motion_output_taa_far_gate row when camera was requested explicitly for a far weight there). `launcher_default`
-    // (X3M_TAA_FAR_GATE_DEFAULT=1 with camera) is logged as default= on the creation row.
-    void configure_far_gate(bool camera, bool given, bool launcher_default) noexcept { taa_far_camera_gate_ = camera; taa_far_gate_given_ = given; taa_far_gate_default_ = given && camera && launcher_default; }
+    // X3M_TAA_SKY_HISTORY=strict (default with the TAA route since Run 68 A, resolved by the caller): the resolve's
+    // strict sky term whenever the camera path is in effect. A sky pixel whose 3x3 holds no routed geometry accepts
+    // sentinel history taps only (docs/architecture/seta-motion.md). band_px: X3M_TAA_SKY_HISTORY_BAND_PX (1..16,
+    // default 3), the band term's threshold in px/frame (seta-motion.md section 4). exit_px:
+    // X3M_TAA_SKY_HISTORY_EXIT_PX (0 off, else 0.125..band_px; the caller's default 0.25 under strict since Run 68 A),
+    // the exit reset's parallax floor (docs/architecture/seta-sky-hull-share-decay.md); needs strict (the caller
+    // refuses it otherwise) and an age program (the far stabiliser or the thin region: taa_initialize logs it
+    // unavailable and drops it otherwise). X3M_TAA_BOX_RESOLUTION (full|half, DLL default full when the variable is
+    // unset; the launcher sends half on --taa launches since Run 82; docs/architecture/taa-high-resolution.md S4): the
+    // camera gate's box at half resolution, TemporalPass::configure_box_resolution(2); full is the pass without the
+    // call, bit for bit and log for log. `launcher_default` (X3M_TAA_BOX_RESOLUTION_DEFAULT=1 with half) is logged as
+    // default= on the creation row.
+    void configure_box_resolution(bool half, bool launcher_default) noexcept {
+        taa_box_half_ = half;
+        taa_box_default_ = half && launcher_default;
+    }
+    // X3M_TAA_FAR_GATE (camera|screen, DLL default camera when the variable is unset; the launcher sends camera on
+    // --taa launches; docs/architecture/taa-mask-fold.md section 4.2 addendum): the far weight's motion gate on the
+    // camera-gate resolve, FrameInputs::far_camera_gate. The far program without the camera gate always uses the screen
+    // speed (far_gate=screen on the creation row; one motion_output_taa_far_gate row when camera was requested
+    // explicitly for a far weight there). `launcher_default` (X3M_TAA_FAR_GATE_DEFAULT=1 with camera) is logged as
+    // default= on the creation row.
+    void configure_far_gate(bool camera, bool given, bool launcher_default) noexcept {
+        taa_far_camera_gate_ = camera;
+        taa_far_gate_given_ = given;
+        taa_far_gate_default_ = given && camera && launcher_default;
+    }
     // X3M_TAA_FAR_CLIP (7x7|3x3, DLL default 7x7 when the variable is unset; the launcher sends 7x7 on --taa launches;
-    // docs/architecture/taa-mask-fold.md section 4.2 addendum "far clip"): on the camera-gate resolve a pixel outside the thin
-    // region with farw * openC > 0 clips its history against the 7x7 min / max instead of the 3x3 variance clip
-    // (FrameInputs::far_clip = x3::temporal::kFarClipThreshold 0; 3x3 = kFarClipOff 2). openC is the camera-relative openness
-    // whatever X3M_TAA_FAR_GATE selects for the far weight. Effective only with the far gate (a far weight or
-    // filter) on the camera-gate resolve (far_clip=7x7 on the creation row; one motion_output_taa_far_clip row when 7x7 was
-    // requested explicitly where it cannot act). `launcher_default` (X3M_TAA_FAR_CLIP_DEFAULT=1 with 7x7) is logged as
-    // far_clip_default= on the creation row.
-    void configure_far_clip(bool box7, bool given, bool launcher_default) noexcept { taa_far_clip_7x7_ = box7; taa_far_clip_given_ = given; taa_far_clip_default_ = given && box7 && launcher_default; }
+    // docs/architecture/taa-mask-fold.md section 4.2 addendum "far clip"): on the camera-gate resolve a pixel outside
+    // the thin region with farw * openC > 0 clips its history against the 7x7 min / max instead of the 3x3 variance
+    // clip (FrameInputs::far_clip = x3::temporal::kFarClipThreshold 0; 3x3 = kFarClipOff 2). openC is the
+    // camera-relative openness whatever X3M_TAA_FAR_GATE selects for the far weight. Effective only with the far gate
+    // (a far weight or filter) on the camera-gate resolve (far_clip=7x7 on the creation row; one
+    // motion_output_taa_far_clip row when 7x7 was requested explicitly where it cannot act). `launcher_default`
+    // (X3M_TAA_FAR_CLIP_DEFAULT=1 with 7x7) is logged as far_clip_default= on the creation row.
+    void configure_far_clip(bool box7, bool given, bool launcher_default) noexcept {
+        taa_far_clip_7x7_ = box7;
+        taa_far_clip_given_ = given;
+        taa_far_clip_default_ = given && box7 && launcher_default;
+    }
     // X3M_TAA_THIN_REGION_SOURCE (both|screen|vote as 0|1|2, renderer::ThinRegionSource; docs/architecture/
     // taa-thin-geometry-alternatives.md section 3.2, taa-mask-fold.md): what feeds the thin region's flag. Resolved per
-    // device at initialisation (screen and vote need the thin region, vote also the thin vote; screen is refused under the
-    // camera gate, whose resolve has no plain program since the mask fold; anything missing configures both) and logged
-    // there only when given. `launcher_default` (X3M_TAA_THIN_REGION_SOURCE_DEFAULT=1) is logged as default= on that row.
-    void configure_thin_region_source(unsigned source, bool given, bool launcher_default = false) noexcept { taa_thin_source_ = source <= 2 ? source : 0u; taa_thin_source_given_ = given; taa_thin_source_default_ = given && launcher_default; }
-    // X3M_TAA_THIN_VOTE (on|off, DLL default off when the variable is unset; the launcher sends on since Run 81; docs/architecture/taa-thin-geometry-alternatives.md section 3.2): the
-    // draw-time thin vote of the thin region. `enabled` is the caller's resolution (requested with the route, TAA, the
-    // sun-share lane and the ownership wrapper); it also switched the material transformer
-    // (renderer::material_motion_configure_thin_vote) before any program was created. Enabled: every routed draw uploads
-    // c216-c218 in one call (c218.x = RT2 .a: 1 - thin on an opaque routed row, 1 otherwise), each subset's triangle-height
-    // histogram is read once at a scene end through the application's wrapper (READONLY, MANAGED only) and the tests draw
-    // is the thin-vote twin. Off: nothing runs and the upload is c216-c217 as before.
-    void configure_thin_vote(bool requested, bool enabled) noexcept { thin_vote_requested_ = requested; thin_vote_upload_ = enabled; }
-    // X3M_FADE_RT2_OWNER (on|off, DLL default off when the variable is unset; the launcher sends on since Run 81; docs/architecture/fade-rt2-ownership.md): every draw the fade-band arm
-    // routes owns RT2 (COLORWRITEENABLE2 15 instead of 0; the owner depth fragment's .a = 1 from c218.y makes the
-    // engine's SRCALPHA/INVSRCALPHA blend store the exact depth) and the arm's pair identity widens from the seven
-    // distance_fade_rows pairs to every reviewed pair with a fade_route::registers row (original shading only, the
-    // overlay arm's boundary: under linear materials the seven pairs keep the arm alone). `enabled` is the caller's
-    // resolution (requested with the route, TAA, HDR and the arm on); it also switched the material transformer
-    // (renderer::material_motion_configure_fade_owner) before any program was created. Enabled: every routed draw
-    // uploads c216-c218 in one call. The overlay arm (a reviewed pair without a registers row) keeps RT2 masked.
-    void configure_fade_rt2_owner(bool requested, bool enabled) noexcept { fade_rt2_owner_requested_ = requested; fade_rt2_owner_ = enabled; }
-    void configure_sky_history(bool strict, float band_px = 3.f, float exit_px = 0.f) noexcept {
-        sky_history_strict_ = strict; sky_history_band_px_ = band_px >= 1.f && band_px <= 16.f ? band_px : 3.f;
-        sky_history_exit_px_ = strict && x3::temporal::valid_sky_history_exit(exit_px, sky_history_band_px_) ? exit_px : 0.f;
+    // device at initialisation (screen and vote need the thin region, vote also the thin vote; screen is refused under
+    // the camera gate, whose resolve has no plain program since the mask fold; anything missing configures both) and
+    // logged there only when given. `launcher_default` (X3M_TAA_THIN_REGION_SOURCE_DEFAULT=1) is logged as default= on
+    // that row.
+    void configure_thin_region_source(unsigned source, bool given, bool launcher_default = false) noexcept {
+        taa_thin_source_ = source <= 2 ? source : 0u;
+        taa_thin_source_given_ = given;
+        taa_thin_source_default_ = given && launcher_default;
     }
-    // X3M_TAA_MOTION_WEIGHT=F[,V0,V1] (F 0 off, else 0.5..0.99, 0 <= V0 < V1 <= 64 px/frame; default 0.7,2,8 with an age program since Run 70 A, resolved by the caller), the parallax-gated
-    // cap on the age programs' history keep weight (docs/architecture/taa-motion-history-weight.md): FrameInputs::motion_weight
-    // whenever the camera path is in effect (policy 2; the parallax is measured against it). Needs an age program (the far
-    // stabiliser, the thin region or the thin region: taa_initialize logs it unavailable and drops it otherwise).
+    // X3M_TAA_THIN_VOTE (on|off, DLL default off when the variable is unset; the launcher sends on since Run 81;
+    // docs/architecture/taa-thin-geometry-alternatives.md section 3.2): the draw-time thin vote of the thin region.
+    // `enabled` is the caller's resolution (requested with the route, TAA, the sun-share lane and the ownership
+    // wrapper); it also switched the material transformer (renderer::material_motion_configure_thin_vote) before any
+    // program was created. Enabled: every routed draw uploads c216-c218 in one call (c218.x = RT2 .a: 1 - thin on an
+    // opaque routed row, 1 otherwise), each subset's triangle-height histogram is read once at a scene end through the
+    // application's wrapper (READONLY, MANAGED only) and the tests draw is the thin-vote twin. Off: nothing runs and
+    // the upload is c216-c217 as before.
+    void configure_thin_vote(bool requested, bool enabled) noexcept {
+        thin_vote_requested_ = requested;
+        thin_vote_upload_ = enabled;
+    }
+    // X3M_FADE_RT2_OWNER (on|off, DLL default off when the variable is unset; the launcher sends on since Run 81;
+    // docs/architecture/fade-rt2-ownership.md): every draw the fade-band arm routes owns RT2 (COLORWRITEENABLE2 15
+    // instead of 0; the owner depth fragment's .a = 1 from c218.y makes the engine's SRCALPHA/INVSRCALPHA blend store
+    // the exact depth) and the arm's pair identity widens from the seven distance_fade_rows pairs to every reviewed
+    // pair with a fade_route::registers row (original shading only, the overlay arm's boundary: under linear materials
+    // the seven pairs keep the arm alone). `enabled` is the caller's resolution (requested with the route, TAA, HDR and
+    // the arm on); it also switched the material transformer (renderer::material_motion_configure_fade_owner) before
+    // any program was created. Enabled: every routed draw uploads c216-c218 in one call. The overlay arm (a reviewed
+    // pair without a registers row) keeps RT2 masked.
+    void configure_fade_rt2_owner(bool requested, bool enabled) noexcept {
+        fade_rt2_owner_requested_ = requested;
+        fade_rt2_owner_ = enabled;
+    }
+    void configure_sky_history(bool strict, float band_px = 3.f, float exit_px = 0.f) noexcept {
+        sky_history_strict_ = strict;
+        sky_history_band_px_ = band_px >= 1.f && band_px <= 16.f ? band_px : 3.f;
+        sky_history_exit_px_ = strict && x3::temporal::valid_sky_history_exit(exit_px, sky_history_band_px_) ? exit_px
+                                                                                                             : 0.f;
+    }
+    // X3M_TAA_MOTION_WEIGHT=F[,V0,V1] (F 0 off, else 0.5..0.99, 0 <= V0 < V1 <= 64 px/frame; default 0.7,2,8 with an
+    // age program since Run 70 A, resolved by the caller), the parallax-gated cap on the age programs' history keep
+    // weight (docs/architecture/taa-motion-history-weight.md): FrameInputs::motion_weight whenever the camera path is
+    // in effect (policy 2; the parallax is measured against it). Needs an age program (the far stabiliser, the thin
+    // region or the thin region: taa_initialize logs it unavailable and drops it otherwise).
     void configure_motion_weight(float f, float v0, float v1) noexcept {
         const bool ok = x3::temporal::valid_motion_weight(f, v0, v1);
-        motion_weight_[0] = ok ? f : 0.f; motion_weight_[1] = ok ? v0 : 2.f; motion_weight_[2] = ok ? v1 : 8.f;
+        motion_weight_[0] = ok ? f : 0.f;
+        motion_weight_[1] = ok ? v0 : 2.f;
+        motion_weight_[2] = ok ? v1 : 8.f;
     }
     // RT1/RT2 binding policy (X3M_MOTION_RT_MODE). perdraw (default): each
     // routed draw binds RT1/RT2 and COLORWRITEENABLE1/2 and after_draw puts
@@ -740,7 +852,9 @@ public:
     // the shadow's flags unchanged.
     void configure_state_hooks(bool installed) noexcept { state_hooks_ = installed; }
     bool state_hooks() const noexcept { return state_hooks_; }
-    const char* render_state_mode() const noexcept { return !state_hooks_ ? "get" : state_shadow_ ? "shadow" : "native"; }
+    const char* render_state_mode() const noexcept {
+        return !state_hooks_ ? "get" : state_shadow_ ? "shadow" : "native";
+    }
     // After a successful application SetRenderState; ignored while recording.
     void set_render_state(D3DRENDERSTATETYPE state, DWORD value) noexcept;
     void render_state_failed(D3DRENDERSTATETYPE state) noexcept;
@@ -766,7 +880,10 @@ public:
     // the scene end (hook, bloom copy) or, failing those, flushes at EndScene
     // and ends at Present. Every consumer of the proxy keeps seeing the
     // application's logical RT0 through the methods below.
-    void configure_hdr(bool requested, const renderer::HdrConfig& config) noexcept { hdr_requested_ = requested; hdr_config_ = config; }
+    void configure_hdr(bool requested, const renderer::HdrConfig& config) noexcept {
+        hdr_requested_ = requested;
+        hdr_config_ = config;
+    }
     bool hdr_enabled() const noexcept { return hdr_enabled_; }
     // Stage 2: the adapted exposure multiplier as the TAA luminance weighting
     // k (exported for stage 3; nothing consumes it yet; 0 without the meter).
@@ -878,8 +995,8 @@ public:
     // form), finite 0..1, applied only when `alpha_requested`. Absent (the
     // default) leaves the alpha law at today's `a + D.a` and touches no alpha
     // state per draw; an out-of-range k is dropped the same way.
-    void configure_screen_emission_additive(bool requested, float gain,
-        bool alpha_requested = false, float alpha = 1.f) noexcept;
+    void configure_screen_emission_additive(bool requested, float gain, bool alpha_requested = false,
+                                            float alpha = 1.f) noexcept;
     bool screen_emission_additive_requested() const noexcept { return screen_additive_requested_; }
     // Diagnostic fade-region witness (X3M_FADE_WITNESS=<k>, note section 7,
     // step 1): every k-th frame without an admitted emission draw the M
@@ -916,19 +1033,27 @@ public:
     // latch and the resolve mark their pairs on it, and it is handed to the
     // HDR and fog passes (meter, motes). Null (the default): one branch per boundary.
     void configure_gpu_sync_timing(gpu_sync_timing::Marks* marks) noexcept;
-    bool composition_requested() const noexcept { return linear_emission_requested_ || distance_fade_requested_ || screen_emission_requested_; }
+    bool composition_requested() const noexcept {
+        return linear_emission_requested_ || distance_fade_requested_ || screen_emission_requested_;
+    }
     // The blend-state shadow (SRCBLEND/DESTBLEND/BLENDOP/SEPARATEALPHA) is fed
     // for the composition producers and for the source-gain admission.
-    bool blend_shadow_requested() const noexcept { return composition_requested() || emission_source_gain_requested_ || hull_emission_gain_requested_ || screen_additive_requested_ || fog_cards_replace_; }
+    bool blend_shadow_requested() const noexcept {
+        return composition_requested() || emission_source_gain_requested_ || hull_emission_gain_requested_ ||
+               screen_additive_requested_ || fog_cards_replace_;
+    }
     bool composition_operation_active() const noexcept { return composition_busy_; }
-    bool draw_submission_blocked() const noexcept { return composition_busy_ || composition_state_lost_ || motion_state_lost_; }
+    bool draw_submission_blocked() const noexcept {
+        return composition_busy_ || composition_state_lost_ || motion_state_lost_;
+    }
     void configure_mip_bias(float bias) noexcept;
     float mip_bias() const noexcept { return mip_bias_; }
     bool mip_bias_active() const noexcept { return mip_bias_bits_ != 0 && jitter_requested_; }
     // After a successful application SetTexture / SetSamplerState (light
     // hooks). `levels` is the texture's level count when `queried` (the hook
     // asks the texture once per pointer change, inside its native section).
-    void set_texture(DWORD stage, IDirect3DBaseTexture9* texture, DWORD levels, bool queried, int reader = 2, DWORD width = 0, DWORD height = 0, std::uint64_t identity = 0) noexcept;
+    void set_texture(DWORD stage, IDirect3DBaseTexture9* texture, DWORD levels, bool queried, int reader = 2,
+                     DWORD width = 0, DWORD height = 0, std::uint64_t identity = 0) noexcept;
     int composition_texture_reader(DWORD stage, IDirect3DBaseTexture9* texture) noexcept; // native CPU section
     void before_texture_write(IDirect3DBaseTexture9* texture) noexcept;
     bool texture_levels_wanted(DWORD stage, IDirect3DBaseTexture9* texture, std::uint64_t identity = 0) const noexcept;
@@ -973,8 +1098,13 @@ public:
     // draw (the draw hooks call it only while sun_occlusion::bracket_open()).
     // radius_u: the disc's half-width as a fraction of the back-buffer width (X3M_SUN_OCCLUSION_RADIUS; the
     // engine's record size saturates for the sun, so the radius is configured, not derived).
-    // core_fraction (X3M_SUN_OCCLUSION_CORE_F, default on; =0 = clipped only): a clipped core body is also multiplied by f, like the ghosts.
-    struct SunOcclusionConfig { bool requested = false, log = false; float radius_u = sun_occlusion::core::radius_default_u, curve = 1.f; bool core_fraction = false; };
+    // core_fraction (X3M_SUN_OCCLUSION_CORE_F, default on; =0 = clipped only): a clipped core body is also multiplied
+    // by f, like the ghosts.
+    struct SunOcclusionConfig {
+        bool requested = false, log = false;
+        float radius_u = sun_occlusion::core::radius_default_u, curve = 1.f;
+        bool core_fraction = false;
+    };
     void configure_sun_occlusion(const SunOcclusionConfig& config) noexcept { sun_occlusion_ = config; }
     void sun_occlusion_begin() noexcept;
     void sun_occlusion_end() noexcept;
@@ -986,7 +1116,14 @@ public:
     // sections 9-10), off by default: far history weight W (0 off), far current
     // filter A (0 off), gate footprints F0 < F1 in world units per pixel, speed
     // gate of the weight LO < HI in px/frame.
-    void configure_taa_far(float weight, float filter, float f0, float f1, float lo, float hi) noexcept { taa_far_weight_ = weight; taa_far_filter_ = filter; taa_far_f0_ = f0; taa_far_f1_ = f1; taa_far_lo_ = lo; taa_far_hi_ = hi; }
+    void configure_taa_far(float weight, float filter, float f0, float f1, float lo, float hi) noexcept {
+        taa_far_weight_ = weight;
+        taa_far_filter_ = filter;
+        taa_far_f0_ = f0;
+        taa_far_f1_ = f1;
+        taa_far_lo_ = lo;
+        taa_far_hi_ = hi;
+    }
     // X3M_TAA_THIN_REGION=W[,RELAX[,LO,HI]] (docs/architecture/taa-lattice-crawl.md
     // section 13), off by default: history weight W on fragmented-depth regions
     // (0 off), clip relaxation RELAX (1 = clip off there), speed gate LO < HI
@@ -998,7 +1135,17 @@ public:
     // turned off at initialisation with the thin region off, and the mask is then
     // bit for bit what it was. E is in the units of the scene the pass binds, so
     // E >= 1 needs the HDR route (the 8-bit route's copy never exceeds 1).
-    void configure_taa_thin_region(float weight, float relax, float lo, float hi, bool gate_given, bool camera_gate = false, float emissive = 0.f) noexcept { taa_thin_weight_ = weight; taa_thin_relax_ = relax; taa_thin_camera_gate_ = camera_gate; taa_thin_emissive_ = emissive; if (gate_given) { taa_far_lo_ = lo; taa_far_hi_ = hi; } }
+    void configure_taa_thin_region(float weight, float relax, float lo, float hi, bool gate_given,
+                                   bool camera_gate = false, float emissive = 0.f) noexcept {
+        taa_thin_weight_ = weight;
+        taa_thin_relax_ = relax;
+        taa_thin_camera_gate_ = camera_gate;
+        taa_thin_emissive_ = emissive;
+        if (gate_given) {
+            taa_far_lo_ = lo;
+            taa_far_hi_ = hi;
+        }
+    }
     // X3M_TAA_ALPHA_HISTORY (docs/architecture/taa-flicker-suppression.md; HDR route only), off by default: with it
     // off the pass never creates the variant program. (The thin clip and adaptive weight of the same note were
     // removed 2026-09-23, cleanup batch 6.) Before attach, like the others.
@@ -1009,8 +1156,13 @@ public:
     // `timing`
     // logs one volumetric_fog_frame line per frame. Off: one branch per scene end
     // and one hash compare per pixel-shader bind are skipped entirely.
-    void configure_volumetric_fog(bool requested, float strength, float anisotropy, bool timing, bool replace_cards = false) noexcept {
-        fog_requested_ = requested; fog_strength_ = strength; fog_anisotropy_ = anisotropy; fog_timing_ = timing; fog_cards_replace_ = requested && replace_cards;
+    void configure_volumetric_fog(bool requested, float strength, float anisotropy, bool timing,
+                                  bool replace_cards = false) noexcept {
+        fog_requested_ = requested;
+        fog_strength_ = strength;
+        fog_anisotropy_ = anisotropy;
+        fog_timing_ = timing;
+        fog_cards_replace_ = requested && replace_cards;
     }
     // X3M_VOLUMETRIC_FOG_RANGE=stored (fog-density-runtime-integration.md): the two-level
     // stored-density field out to 30-40 km instead of the family atlas. Off (legacy): one
@@ -1021,25 +1173,31 @@ public:
     void configure_volumetric_fog_look(const renderer::FogLookTuning& tuning) noexcept {
         fog_density_config_.look = tuning;
     }
-    // X3M_FOG_MARCH_SCALE (fog-gpu-cost.md step C): the march spacing 2 or 4 of the stored look, read once at init; FogPass
-    // creates the matching programs and quarter target at prepare_density and refuses any other spacing.
+    // X3M_FOG_MARCH_SCALE (fog-gpu-cost.md step C): the march spacing 2 or 4 of the stored look, read once at init;
+    // FogPass creates the matching programs and quarter target at prepare_density and refuses any other spacing.
     void configure_volumetric_fog_march_scale(unsigned scale) noexcept { fog_density_config_.march_scale = scale; }
     // X3M_FOG_DUST_MOTES (fog-dust-motes.md): the stored range's dust motes, read once at init; count 0 is off.
     void configure_volumetric_fog_dust_motes(const renderer::FogMoteTuning& motes) noexcept {
-        fog_dust_motes_launch_ = motes.count > 0; fog_density_config_.motes = motes; fog_density_config_.dust_motes = motes.count > 0;
+        fog_dust_motes_launch_ = motes.count > 0;
+        fog_density_config_.motes = motes;
+        fog_density_config_.dust_motes = motes.count > 0;
     }
     // X3M_FOG_HANDOVER_STEP / X3M_FOG_HANDOVER_COLDFILL (docs/architecture/fog-handover.md, "Implementation"; launcher
     // default on): the stored range's cold-start step and cold fill. One volumetric_fog_handover line per cold start.
     void configure_volumetric_fog_handover(bool step, bool coldfill) noexcept {
-        fog_density_config_.handover_step = step; fog_density_config_.handover_coldfill = coldfill;
+        fog_density_config_.handover_step = step;
+        fog_density_config_.handover_coldfill = coldfill;
     }
-    // Fixture seam (the Ctrl+Alt+F11 key went on 2026-09-26; launched with the motes only): flips the mote stage the next
-    // owner latch hands to FogPass::prepare_density; off keeps the mote programs and buffers. One fog_dust_motes_toggle
-    // line per call; returns the new state, -1 without the option.
+    // Fixture seam (the Ctrl+Alt+F11 key went on 2026-09-26; launched with the motes only): flips the mote stage the
+    // next owner latch hands to FogPass::prepare_density; off keeps the mote programs and buffers. One
+    // fog_dust_motes_toggle line per call; returns the new state, -1 without the option.
     int volumetric_fog_dust_motes_toggle() noexcept;
-    static constexpr int fog_overlay_motes = 1 << 24; // volumetric_fog_overlay_state: the motes were drawn last fog frame
+    static constexpr int fog_overlay_motes = 1 << 24; // volumetric_fog_overlay_state: the motes were drawn last fog
+                                                      // frame
     // DllMain DLL_PROCESS_DETACH only (FogPass::abandon_density_worker): no join, no lock, no log.
-    void abandon_volumetric_fog_worker() noexcept { if (fog_) fog_->abandon_density_worker(); }
+    void abandon_volumetric_fog_worker() noexcept {
+        if (fog_) fog_->abandon_density_worker();
+    }
     void volumetric_fog_sector_sample(std::uint64_t frame, const sector_background::Sample&) noexcept;
     // R3 (fog-handover.md, "R3 implementation"): one walk result from a stalled frame's resource-creation hook
     // (capture.cpp, at most one per 250 ms); starts the far fill of a found fog sector, never authority. One
@@ -1054,8 +1212,10 @@ public:
     int volumetric_fog_step() noexcept;
     // FPS overlay second line: -1 option off, else (enabled, strength in 1/1000, current active family).
     int volumetric_fog_overlay_state() const noexcept {
-        return !fog_requested_ ? -1 : int(fog_enabled_) | int(fog_sector_.current(frame_) && !fog_cards_.fault) << 1 | int(fog_strength_ * 1000.f + .5f) << 2 |
-            (fog_motes_drawn_ ? fog_overlay_motes : 0);
+        return !fog_requested_
+                   ? -1
+                   : int(fog_enabled_) | int(fog_sector_.current(frame_) && !fog_cards_.fault) << 1 |
+                         int(fog_strength_ * 1000.f + .5f) << 2 | (fog_motes_drawn_ ? fog_overlay_motes : 0);
     }
     float volumetric_fog_strength() const noexcept { return fog_strength_; }
     bool hdr_redirected() const noexcept { return hdr_state_ != HdrState::Off; }
@@ -1088,8 +1248,9 @@ public:
     // X3M_SHADOW_TIMING=1 or X3M_PERF=1 (docs/architecture/logging-tiers.md): the two shadow cost rows
     // (shadow_replay_depth, sun_shadow_apply_frame) every frame; otherwise they follow family_row().
     void configure_shadow_timing(bool every_frame) noexcept { shadow_timing_ = every_frame; }
-    // X3M_SHADOW_ROWS=1 or X3M_DEBUG=1: the five shadow/sun state rows (shadow_retention_frame, shadow_replay_candidates,
-    // shadow_replay_sun, shadow_alpha_casters, sun_shadow_lane_frame) every frame; otherwise they follow family_row().
+    // X3M_SHADOW_ROWS=1 or X3M_DEBUG=1: the five shadow/sun state rows (shadow_retention_frame,
+    // shadow_replay_candidates, shadow_replay_sun, shadow_alpha_casters, sun_shadow_lane_frame) every frame; otherwise
+    // they follow family_row().
     void configure_shadow_rows(bool every_frame) noexcept { shadow_rows_ = every_frame; }
     // Device references held by owned objects (variants, sentinel shader,
     // motion target surface), one per object in every reference model the
@@ -1108,18 +1269,17 @@ public:
 
     // Late FPS overlay admission. Present still follows a refused overlay.
     bool comparison_boundary_available() const noexcept {
-        return enabled_ && !scene_open_ && !active_queries_ && !shadow_.recording
-            && !reference_accounting_busy() && !draw_submission_blocked()
-            && hdr_state_ == HdrState::Off && !hdr_blocked_;
+        return enabled_ && !scene_open_ && !active_queries_ && !shadow_.recording && !reference_accounting_busy() &&
+               !draw_submission_blocked() && hdr_state_ == HdrState::Off && !hdr_blocked_;
     }
     void comparison_state_failed(HRESULT result) noexcept;
 
     // Variant registry: called after a successful native create with the hash
     // the capture already computed. Pointer reuse replaces the old entry.
-    void register_vertex_shader(IDirect3DVertexShader9* shader, const DWORD* code,
-                                std::size_t bytes, std::uint64_t hash) noexcept;
-    void register_pixel_shader(IDirect3DPixelShader9* shader, const DWORD* code,
-                               std::size_t bytes, std::uint64_t hash) noexcept;
+    void register_vertex_shader(IDirect3DVertexShader9* shader, const DWORD* code, std::size_t bytes,
+                                std::uint64_t hash) noexcept;
+    void register_pixel_shader(IDirect3DPixelShader9* shader, const DWORD* code, std::size_t bytes,
+                               std::uint64_t hash) noexcept;
 
     // Shadow updates from successful application setter calls. Ignored while a
     // state block is recording, because recorded calls do not reach the device.
@@ -1151,10 +1311,10 @@ public:
     // application copies (and later presents) the resolved image. Every device
     // call goes through the native slots; the main target is written only
     // after a completely successful run. Nothing happens otherwise.
-    void before_stretch(IDirect3DSurface9* source, const RECT* source_rect,
-                        IDirect3DSurface9* destination, const RECT* destination_rect) noexcept;
-    void after_stretch(IDirect3DSurface9* source, const RECT* source_rect,
-                       IDirect3DSurface9* destination, const RECT* destination_rect, HRESULT result) noexcept;
+    void before_stretch(IDirect3DSurface9* source, const RECT* source_rect, IDirect3DSurface9* destination,
+                        const RECT* destination_rect) noexcept;
+    void after_stretch(IDirect3DSurface9* source, const RECT* source_rect, IDirect3DSurface9* destination,
+                       const RECT* destination_rect, HRESULT result) noexcept;
     // Scene and query tracking for the resolve's caller contract: the pass
     // borrows an open scene and refuses to draw while an application query is
     // between Issue(BEGIN) and Issue(END). Called after the application call.
@@ -1200,56 +1360,61 @@ private:
     // recorded once at registration. SetShader caches both owned variants;
     // per-draw checks use the original pair and cached state only. The material
     // object never replaces the ordinary motion fallback for shared stages.
-    struct ShaderEntry { std::uint64_t hash = 0; IUnknown* variant = nullptr;
-                         IUnknown* material_variant = nullptr;
-                         IDirect3DPixelShader9* sun_motion_variant = nullptr;
-                         IDirect3DPixelShader9* sun_material_variant = nullptr;
-                         IDirect3DPixelShader9* sun_xt_variant = nullptr;
-                         bool sun_extraction = false;
-                         // Original-shading share producer (legacy-sun-application.md
-                         // section 1): the motion/depth variant composed with the
-                         // --original-fill K plus the code-value share in oC2.g. PS
-                         // only; created once at registration with the lane on and
-                         // linear materials off; null is the fail-closed refusal.
-                         IDirect3DPixelShader9* sun_original_variant = nullptr;
-                         // The same share variant composed with the hull light-map gain
-                         // (X3M_HULL_LIGHTMAP_GAIN); selected over sun_original_variant while
-                         // the light-map flag is on; null without the option or the term.
-                         IDirect3DPixelShader9* sun_original_lightmap_variant = nullptr;
-                         // The widened forms of the two gained variants above
-                         // (X3M_HULL_EMISSIVE_WIDENING); null without the option or the term.
-                         IDirect3DPixelShader9* sun_original_lightmap_widen_variant = nullptr;
-                         IDirect3DPixelShader9* hull_lightmap_widen_variant = nullptr;
-                         std::uint8_t hull_lightmap_stage = 0; // the light-map sampler stage (2/3) of a widened program; 0 = none
-                         // XT DEFAULT is pair-specific: the shared VS retains
-                         // its generic objects for every earlier exact pair.
-                         IUnknown* xt_default_ordinary_variant = nullptr;
-                         IDirect3DVertexShader9* xt_default_linear_variant = nullptr;
-                         IDirect3DPixelShader9* emission_variant = nullptr;
-                         IDirect3DPixelShader9* source_gain_variant = nullptr; // colour-MUL variant at the source gain (PS only; the VS stays original)
-                         // Hull-emitter gain (emitter plan phase 3): the whole-output
-                         // variant of one of the twelve hull programs, keyed on the PS
-                         // alone; hull_program marks a covered original whether or not
-                         // its variant was created (a covered draw without one is counted).
-                         IDirect3DPixelShader9* hull_gain_variant = nullptr;
-                         bool hull_program = false;
-                         IDirect3DPixelShader9* original_fill_variant = nullptr; // motion variant plus the option C fill block (PS only)
-                         IDirect3DPixelShader9* hull_lightmap_variant = nullptr; // the fill variant (K, or the motion variant at K=0) plus the light-map gain MUL (PS only)
-                         IDirect3DPixelShader9* screen_variant = nullptr; // step C packed producer (PS only; the VS stays original)
-                         IDirect3DPixelShader9* screen_additive_variant = nullptr; // additive option, gain != 1 only (AdditiveGain)
-                         IUnknown* distance_fade_variant = nullptr;
-                         bool registered = false; // Valid original, independent of motion support.
-                         const renderer::MotionOutputProfile* row = nullptr;
-                         // Depth-only prepass program (depth_prepass_profiles.h):
-                         // jittered like a row's VS, never routed. Exclusive with row.
-                         const renderer::DepthPrepassProfile* prepass = nullptr;
-                         // LightDir_Dir0's float register from the program's own
-                         // constant table (caster counter on; -1: none or beyond
-                         // the shadowed c0..c31): the sun is at c4, c5 or c0
-                         // depending on the program.
-                         std::int8_t sun_register = -1;
-                         std::uint8_t major = 0; // version token major (0 until registered)
-                         bool depth_out = false; }; // PS: renderer::pixel_program_writes_depth, one walk at registration
+    struct ShaderEntry {
+        std::uint64_t hash = 0;
+        IUnknown* variant = nullptr;
+        IUnknown* material_variant = nullptr;
+        IDirect3DPixelShader9* sun_motion_variant = nullptr;
+        IDirect3DPixelShader9* sun_material_variant = nullptr;
+        IDirect3DPixelShader9* sun_xt_variant = nullptr;
+        bool sun_extraction = false;
+        // Original-shading share producer (legacy-sun-application.md
+        // section 1): the motion/depth variant composed with the
+        // --original-fill K plus the code-value share in oC2.g. PS
+        // only; created once at registration with the lane on and
+        // linear materials off; null is the fail-closed refusal.
+        IDirect3DPixelShader9* sun_original_variant = nullptr;
+        // The same share variant composed with the hull light-map gain
+        // (X3M_HULL_LIGHTMAP_GAIN); selected over sun_original_variant while
+        // the light-map flag is on; null without the option or the term.
+        IDirect3DPixelShader9* sun_original_lightmap_variant = nullptr;
+        // The widened forms of the two gained variants above
+        // (X3M_HULL_EMISSIVE_WIDENING); null without the option or the term.
+        IDirect3DPixelShader9* sun_original_lightmap_widen_variant = nullptr;
+        IDirect3DPixelShader9* hull_lightmap_widen_variant = nullptr;
+        std::uint8_t hull_lightmap_stage = 0; // the light-map sampler stage (2/3) of a widened program; 0 = none
+        // XT DEFAULT is pair-specific: the shared VS retains
+        // its generic objects for every earlier exact pair.
+        IUnknown* xt_default_ordinary_variant = nullptr;
+        IDirect3DVertexShader9* xt_default_linear_variant = nullptr;
+        IDirect3DPixelShader9* emission_variant = nullptr;
+        IDirect3DPixelShader9* source_gain_variant = nullptr; // colour-MUL variant at the source gain (PS only; the VS
+                                                              // stays original)
+        // Hull-emitter gain (emitter plan phase 3): the whole-output
+        // variant of one of the twelve hull programs, keyed on the PS
+        // alone; hull_program marks a covered original whether or not
+        // its variant was created (a covered draw without one is counted).
+        IDirect3DPixelShader9* hull_gain_variant = nullptr;
+        bool hull_program = false;
+        IDirect3DPixelShader9* original_fill_variant = nullptr; // motion variant plus the option C fill block (PS only)
+        IDirect3DPixelShader9* hull_lightmap_variant = nullptr; // the fill variant (K, or the motion variant at K=0)
+                                                                // plus the light-map gain MUL (PS only)
+        IDirect3DPixelShader9* screen_variant = nullptr; // step C packed producer (PS only; the VS stays original)
+        IDirect3DPixelShader9* screen_additive_variant = nullptr; // additive option, gain != 1 only (AdditiveGain)
+        IUnknown* distance_fade_variant = nullptr;
+        bool registered = false; // Valid original, independent of motion support.
+        const renderer::MotionOutputProfile* row = nullptr;
+        // Depth-only prepass program (depth_prepass_profiles.h):
+        // jittered like a row's VS, never routed. Exclusive with row.
+        const renderer::DepthPrepassProfile* prepass = nullptr;
+        // LightDir_Dir0's float register from the program's own
+        // constant table (caster counter on; -1: none or beyond
+        // the shadowed c0..c31): the sun is at c4, c5 or c0
+        // depending on the program.
+        std::int8_t sun_register = -1;
+        std::uint8_t major = 0; // version token major (0 until registered)
+        bool depth_out = false;
+    }; // PS: renderer::pixel_program_writes_depth, one walk at registration
     struct Shadow {
         IDirect3DVertexShader9* vs = nullptr;
         IDirect3DPixelShader9* ps = nullptr;
@@ -1261,21 +1426,25 @@ private:
         // is a reviewed pair with both motion variants under original shading
         // (refreshed with the pair identities, never at a draw).
         IDirect3DPixelShader9* ps_sun_original = nullptr;
-        IDirect3DPixelShader9* ps_sun_original_lightmap = nullptr; // the bound PS's gained share variant (light-map gain)
+        IDirect3DPixelShader9* ps_sun_original_lightmap = nullptr; // the bound PS's gained share variant (light-map
+                                                                   // gain)
         bool original_share_pair = false;
-        bool original_share_refused = false; // reviewed original pair whose share producer refused: fill/motion variant, frame failed
+        bool original_share_refused = false; // reviewed original pair whose share producer refused: fill/motion
+                                             // variant, frame failed
         std::uint64_t vs_hash = 0, ps_hash = 0;
         bool vs_registered = false, ps_registered = false;
         bool fog_card_pair = false, fog_card_source = false;
-        bool ps_depth_out = false; // the bound PS writes oDepth / texdepth (ShaderEntry::depth_out)
-        std::uint8_t vs_major = 0, ps_major = 0; // the bound programs' shader-model major versions (0: unbound or unknown)
-        std::int8_t ps_sun_register = -1; // the bound PS's LightDir_Dir0 register (ShaderEntry::sun_register)
+        bool ps_depth_out = false;               // the bound PS writes oDepth / texdepth (ShaderEntry::depth_out)
+        std::uint8_t vs_major = 0, ps_major = 0; // the bound programs' shader-model major versions (0: unbound or
+                                                 // unknown)
+        std::int8_t ps_sun_register = -1;        // the bound PS's LightDir_Dir0 register (ShaderEntry::sun_register)
         IDirect3DPixelShader9* ps_emission_variant = nullptr;
         IDirect3DPixelShader9* ps_source_gain_variant = nullptr;
         // The bound PS's source-gain variant when the bound VS/PS is one of
         // the twenty reviewed pairs; null otherwise (one pointer test per draw).
         IDirect3DPixelShader9* source_gain_eligible_variant = nullptr;
-        unsigned source_gain_pair = renderer::linear_emission_pair_count; // registry index of the bound pair (first-admission log)
+        unsigned source_gain_pair = renderer::linear_emission_pair_count; // registry index of the bound pair
+                                                                          // (first-admission log)
         // Hull-emitter gain: the bound PS is a covered hull program (one bool
         // test per draw; false without the option) and its variant (null when
         // creation failed: counted refused_variant at the draw).
@@ -1303,7 +1472,8 @@ private:
         // Additive option: the same pair identity keyed on its own request
         // (never joins the packed route's counters) and its gained PS.
         bool screen_additive_pair = false;
-        unsigned screen_additive_index = screen_emission::pair_count; // table index of the bound pair (per-frame telemetry mask)
+        unsigned screen_additive_index = screen_emission::pair_count; // table index of the bound pair (per-frame
+                                                                      // telemetry mask)
         IDirect3DPixelShader9* ps_screen_additive_variant = nullptr;
         IDirect3DVertexShader9* vs_fade_variant = nullptr;
         IDirect3DPixelShader9* ps_fade_variant = nullptr;
@@ -1332,14 +1502,15 @@ private:
         // Published only at registration/SetShader; draws neither look up nor
         // validate the four objects. An incomplete pair stays native-forward.
         bool xt_default_pair = false, xt_default_ready = false;
-        bool cutout_pair = false; // identity (cutout::pair) independent of variant, capability and linear-material availability
+        bool cutout_pair = false; // identity (cutout::pair) independent of variant, capability and linear-material
+                                  // availability
         const renderer::MotionOutputProfile* vs_row = nullptr;
         const renderer::DepthPrepassProfile* vs_prepass = nullptr; // jitter-only clip rows (no pair, never routes)
-        float rows[motion_matrix_windows_max][16]{}; // Each window's four rows as submitted
+        float rows[motion_matrix_windows_max][16]{};               // Each window's four rows as submitted
         bool rows_known[motion_matrix_windows_max]{};
-        float vs_reserved[16]{};      // application c252-255, restored only if written
+        float vs_reserved[16]{}; // application c252-255, restored only if written
         bool vs_reserved_written = false;
-        float ps_reserved[12]{};      // application c216-217 (c218 too with the thin vote)
+        float ps_reserved[12]{}; // application c216-217 (c218 too with the thin vote)
         bool ps_reserved_written = false;
         int integer0[4]{};
         bool integer0_known = false;
@@ -1351,8 +1522,9 @@ private:
         // holds exactly these.
         std::uintptr_t stream0_identity = 0, indices_identity = 0;
         // Pool class of the bound buffers (candidate counter on only; Unknown otherwise).
-        shadow_replay::PoolClass stream0_pool = shadow_replay::PoolClass::Unknown, indices_pool = shadow_replay::PoolClass::Unknown;
-        DWORD fill_mode = 0;          // D3DRS_FILLMODE, kept only with composition requested
+        shadow_replay::PoolClass stream0_pool = shadow_replay::PoolClass::Unknown,
+                                 indices_pool = shadow_replay::PoolClass::Unknown;
+        DWORD fill_mode = 0; // D3DRS_FILLMODE, kept only with composition requested
         bool fill_mode_known = false;
         std::uint32_t position_offset = 0, position_type = 0;
         // Every element of the bound declaration reads stream 0 (from the same
@@ -1364,7 +1536,7 @@ private:
         bool extra_rt[4]{};
         renderer::Viewport viewport;
         bool recording = false;
-        DWORD states[motion_shadow_state_count]{};      // application render states (shadow_states order)
+        DWORD states[motion_shadow_state_count]{}; // application render states (shadow_states order)
         bool states_known[motion_shadow_state_count]{};
         // SRCBLEND, DESTBLEND, BLENDOP, SEPARATEALPHABLENDENABLE. The first
         // three are the nine-state fade check's blend triple; the fourth is
@@ -1377,57 +1549,68 @@ private:
         bool composition_blend_known[8]{};
     };
     struct SavedState;
-    template<typename Fn> Fn native(unsigned slot) const noexcept { return reinterpret_cast<Fn>(native_[slot]); }
+    template <typename Fn> Fn native(unsigned slot) const noexcept { return reinterpret_cast<Fn>(native_[slot]); }
     bool sun_lane_self_test(D3DFORMAT depth_format, char* reason, std::size_t reason_size) noexcept;
     void qualify_sun_lane() noexcept;
     void publish_sun_lane(const char* source) noexcept;
-    bool sun_lane_requested_=false, sun_lane_qualified_=false, sun_lane_active_=false, sun_lane_failed_=false;
-    bool sun_owner_valid_=false; // publish_sun_lane's owner term of this frame (the apply quad's precondition)
-    unsigned sun_original_variants_=0, sun_original_refused_=0; // original share producer: created / refused (fail closed to the fill or motion variant)
-    unsigned sun_original_refused_draws_=0; // this frame's routed depth writers of a share-refused reviewed pair (frame failed)
+    bool sun_lane_requested_ = false, sun_lane_qualified_ = false, sun_lane_active_ = false, sun_lane_failed_ = false;
+    bool sun_owner_valid_ = false; // publish_sun_lane's owner term of this frame (the apply quad's precondition)
+    unsigned sun_original_variants_ = 0, sun_original_refused_ = 0; // original share producer: created / refused (fail
+                                                                    // closed to the fill or motion variant)
+    unsigned sun_original_refused_draws_ = 0; // this frame's routed depth writers of a share-refused reviewed pair
+                                              // (frame failed)
     // Scene-end apply pass (sun_shadow_apply_pass.h): attached once per device
     // epoch for the FP16 target (a refusal is final until Reset), run once per
     // frame after the depth replay. Storage only: no per-draw cost.
-    bool sun_apply_requested_=false, sun_apply_attach_failed_=false, sun_apply_applied_=false, sun_apply_attempted_=false;
-    double sun_apply_bias_units_=renderer::sun_shadow_bias_units_default;         // world units; resolved per frame with the cascade (sun_shadow_apply_bias)
-    double sun_apply_clamp_texels_=renderer::sun_shadow_bias_clamp_texels_default; // world texels; the receiver-plane clamp and non-planar fallback
-    double sun_apply_slope_texels_=renderer::sun_shadow_bias_slope_texels_default; // texels of the plane's depth slope; the cascade program's slope-scaled margin
+    bool sun_apply_requested_ = false, sun_apply_attach_failed_ = false, sun_apply_applied_ = false,
+         sun_apply_attempted_ = false;
+    double sun_apply_bias_units_ = renderer::sun_shadow_bias_units_default; // world units; resolved per frame with the
+                                                                            // cascade (sun_shadow_apply_bias)
+    double sun_apply_clamp_texels_ = renderer::sun_shadow_bias_clamp_texels_default; // world texels; the receiver-plane
+                                                                                     // clamp and non-planar fallback
+    double sun_apply_slope_texels_ = renderer::sun_shadow_bias_slope_texels_default; // texels of the plane's depth
+                                                                                     // slope; the cascade program's
+                                                                                     // slope-scaled margin
     std::unique_ptr<renderer::SunShadowApplyPass> sun_apply_;
-    HRESULT sun_apply_attach_result_=S_FALSE;
-    std::uint64_t sun_apply_frame_=~std::uint64_t(0);
-    unsigned sun_apply_logs_=0;
+    HRESULT sun_apply_attach_result_ = S_FALSE;
+    std::uint64_t sun_apply_frame_ = ~std::uint64_t(0);
+    unsigned sun_apply_logs_ = 0;
     // Sun-shadow apply cost, as the shadow frame line reports it (apply_us=,
     // apply_cascades=): the QPC around the pass's submission and the number of
     // cascade maps the quad actually sampled. The apply runs after the replay of
     // the same frame, so the frame line carries the previous frame's apply, and
     // zeros when that frame ran no apply (`sun_apply_frame_` says which).
-    double sun_apply_us_=0.;
-    unsigned sun_apply_sampled_=0;
+    double sun_apply_us_ = 0.;
+    unsigned sun_apply_sampled_ = 0;
     void run_sun_shadow_apply() noexcept;
     bool ensure_sun_shadow_apply() noexcept;
     // Partial sun occlusion (motion_output_sun_occlusion_inc.h). Storage only outside the lens bracket.
     SunOcclusionConfig sun_occlusion_{};
     std::unique_ptr<renderer::SunOcclusionPass> sun_occlusion_pass_;
     bool sun_occlusion_attach_failed_ = false;
-    bool lens_frame_active_ = false, lens_suppress_ = false; // this bracket: draws are wrapped / dropped (the override answered but no fraction exists)
-    std::uintptr_t lens_record_ = 0;                          // the record the fraction belongs to (another one seeds)
+    bool lens_frame_active_ = false, lens_suppress_ = false; // this bracket: draws are wrapped / dropped (the override
+                                                             // answered but no fraction exists)
+    std::uintptr_t lens_record_ = 0;                         // the record the fraction belongs to (another one seeds)
     std::uint64_t lens_pass_qpc_ = 0;
-    sun_occlusion::core::Hold lens_hold_{};                   // a skipped pass keeps the last fraction for at most four frames
-    unsigned lens_draws_ = 0, lens_wrapped_ = 0, lens_clipped_ = 0, lens_refused_ = 0, lens_dropped_ = 0, lens_other_ = 0;
+    sun_occlusion::core::Hold lens_hold_{}; // a skipped pass keeps the last fraction for at most four frames
+    unsigned lens_draws_ = 0, lens_wrapped_ = 0, lens_clipped_ = 0, lens_refused_ = 0, lens_dropped_ = 0,
+             lens_other_ = 0;
     // Step 2: this bracket's RT2 (one reference, begin .. end), its size and the sun's uv for the body classification.
     IDirect3DTexture9* lens_depth_ = nullptr;
     unsigned lens_depth_width_ = 0, lens_depth_height_ = 0;
     float lens_sun_u_ = .5f, lens_sun_v_ = .5f;
-    bool lens_chain_drawn_ = false;                           // a bracket with draws ran this frame (the Present-time back-buffer readback under the log)
+    bool lens_chain_drawn_ = false; // a bracket with draws ran this frame (the Present-time back-buffer readback under
+                                    // the log)
     bool ensure_sun_occlusion() noexcept;
     void finish_lens(MotionRoute& route) noexcept;
     void release_lens_depth() noexcept;
-    IDirect3DTexture9* acquire_lens_depth() noexcept;      // RT2's container under taa_call (its release is under it too)
+    IDirect3DTexture9* acquire_lens_depth() noexcept; // RT2's container under taa_call (its release is under it too)
     void sun_lens_present_readback() noexcept;
     D3DFORMAT sun_lane_depth_formats_[3]{};
-    unsigned sun_lane_depth_count_=0;
+    unsigned sun_lane_depth_count_ = 0;
     bool sun_lane_depth_qualified(D3DFORMAT format) const noexcept {
-        for(unsigned i=0;i<sun_lane_depth_count_;++i)if(sun_lane_depth_formats_[i]==format)return true;
+        for (unsigned i = 0; i < sun_lane_depth_count_; ++i)
+            if (sun_lane_depth_formats_[i] == format) return true;
         return false;
     }
     renderer::SunShareFrame sun_frame_{};
@@ -1435,13 +1618,17 @@ private:
     // logged once (sun_shadow_lane_writer); overflow counts the rest. Fixed
     // storage cleared at attach and before Reset; a linear scan of at most 64
     // entries per draw already counted untracked (lane on only).
-    struct SunWriterSignature { std::uint64_t vs, ps, declaration; std::uint32_t stride; std::uint8_t reason, z_state, registered; };
+    struct SunWriterSignature {
+        std::uint64_t vs, ps, declaration;
+        std::uint32_t stride;
+        std::uint8_t reason, z_state, registered;
+    };
     static constexpr unsigned sun_writer_capacity = 64;
     SunWriterSignature sun_writers_[sun_writer_capacity]{};
     unsigned sun_writer_count_ = 0, sun_writer_overflow_ = 0;
     void note_sun_untracked_writer(const MotionRoute& route, renderer::SunUntrackedReason reason) noexcept;
-    bool sun_coverage_current_=false, sun_composition_completed_=false;
-    IDirect3DPixelShader9* sun_sentinel_ps_=nullptr;
+    bool sun_coverage_current_ = false, sun_composition_completed_ = false;
+    IDirect3DPixelShader9* sun_sentinel_ps_ = nullptr;
     // Invalid-share stamp (directional-shadows.md "Unroutable depth writer"): a gate-3
     // refused depth writer after a receiver is re-issued once with the application's own
     // VS/geometry, ZFUNC EQUAL, no depth write, RT0/RT1 masked and RT2 masked to .g,
@@ -1450,22 +1637,26 @@ private:
     IDirect3DPixelShader9* sun_stamp_ps_[2]{};
     bool sun_stamp_ps_failed_[2]{}; // created on first use; a failed create is not retried on this device
     MotionDrawCall sun_stamp_call_{};
-    unsigned sun_stamp_prims_=0; // primitives re-issued by this frame's successful stamps (flight sanity figure)
-    unsigned sun_stamps_=0, sun_stamp_refused_=0; // per frame; refused: a candidate whose stamp did not run or failed (vetoes as before)
+    unsigned sun_stamp_prims_ = 0; // primitives re-issued by this frame's successful stamps (flight sanity figure)
+    unsigned sun_stamps_ = 0, sun_stamp_refused_ = 0; // per frame; refused: a candidate whose stamp did not run or
+                                                      // failed (vetoes as before)
     void arm_sun_stamp(const MotionDrawCall& call, MotionRoute& route) noexcept;
     bool sun_stamp_draw(MotionRoute& route) noexcept;
     // Caster-candidate counter storage: fixed, cleared at begin_frame and after
     // publication; the witness count is per device (attach clears it).
-    bool candidates_config_=false;    // X3M_SHADOW_REPLAY_CANDIDATES (or the depth replay) as configured
-    bool candidates_requested_=false; // this device's counter: the configuration, off when the depth replay has no cascade set (attach)
-    bool object_bounds_log_=false; // X3M_OBJECT_BOUNDS_LOG: object_bounds lines on capture frames (diagnostic)
-    ownership::AdmissionMonitor* candidates_monitor_=nullptr;
+    bool candidates_config_ = false;    // X3M_SHADOW_REPLAY_CANDIDATES (or the depth replay) as configured
+    bool candidates_requested_ = false; // this device's counter: the configuration, off when the depth replay has no
+                                        // cascade set (attach)
+    bool object_bounds_log_ = false;    // X3M_OBJECT_BOUNDS_LOG: object_bounds lines on capture frames (diagnostic)
+    ownership::AdmissionMonitor* candidates_monitor_ = nullptr;
     shadow_replay::Frame candidates_{};
     shadow_replay::PoolCache candidate_pools_{};
-    unsigned candidate_witnesses_=0;
-    std::uint64_t candidates_published_frame_=~std::uint64_t(0); // frame serial of the last frame line (once per frame)
-    std::uint32_t candidates_line_truncated_=0; // frame lines whose cascade tail did not fit its bound (never expected; shadow_replay_candidates_truncated lines)
-    float candidate_slice_near_=shadow_replay::slice0_near; // production constant; the seam fixture may lower it
+    unsigned candidate_witnesses_ = 0;
+    std::uint64_t candidates_published_frame_ = ~std::uint64_t(0); // frame serial of the last frame line (once per
+                                                                   // frame)
+    std::uint32_t candidates_line_truncated_ = 0; // frame lines whose cascade tail did not fit its bound (never
+                                                  // expected; shadow_replay_candidates_truncated lines)
+    float candidate_slice_near_ = shadow_replay::slice0_near; // production constant; the seam fixture may lower it
     // Casters by bounds (shadow-replay-gates.md): the vertex-extent cache, the
     // frame's queued extent reads (wrapper AddRef held until the scene-end
     // read or the release), and the frame's cascade boxes for the box test
@@ -1473,12 +1664,18 @@ private:
     // LightDir_Dir0 write or, before one, the previous frame's).
     shadow_replay::ExtentCache candidate_extents_{};
     shadow_replay::PendingExtent candidate_extent_reads_[shadow_replay::extent_reads_per_frame]{};
-    unsigned candidate_extent_read_count_=0;
-    unsigned candidate_extent_priority_count_=0; // the queue's first entries: re-reads of ranges answering stale (read first, never crowded out by new ranges)
-    shadow_replay::PendingExtent object_bounds_alpha_reads_[shadow_replay::extent_reads_per_frame]{}; // X3M_OBJECT_BOUNDS_LOG: alpha-tested extents, queued after the casters
-    unsigned object_bounds_alpha_read_count_=0;
+    unsigned candidate_extent_read_count_ = 0;
+    unsigned candidate_extent_priority_count_ = 0; // the queue's first entries: re-reads of ranges answering stale
+                                                   // (read first, never crowded out by new ranges)
+    shadow_replay::PendingExtent
+        object_bounds_alpha_reads_[shadow_replay::extent_reads_per_frame]{}; // X3M_OBJECT_BOUNDS_LOG:
+                                                                             // alpha-tested
+                                                                             // extents, queued
+                                                                             // after the
+                                                                             // casters
+    unsigned object_bounds_alpha_read_count_ = 0;
     renderer::ShadowCascadeBounds candidate_cascade_bounds_{}; // every cascade's box for the one bounds pass
-    int candidate_bounds_state_=0; // 0 not computed this frame, 1 valid, -1 unavailable
+    int candidate_bounds_state_ = 0;                           // 0 not computed this frame, 1 valid, -1 unavailable
     // Minimum light-space footprint (X3M_SHADOW_CASCADE_MIN_FOOTPRINT;
     // renderer/shadow_cascade_footprint_core.h): the frame's resolved thresholds
     // (recomputed with the bounds latch, so a ladder commit, an FOV change or a
@@ -1486,41 +1683,55 @@ private:
     // Off: the law is cleared, the mask test passes no measure array at all and
     // the draw path is byte-identical.
     renderer::ShadowCascadeFootprintLaw candidate_footprint_law_{};
-    renderer::ShadowCascadeFootprintLaw candidate_footprint_logged_{}; // the last law the shadow_cascade_footprint line reported
-    unsigned candidate_footprint_lines_=0;                             // bounded diagnostics (footprint_line_max)
-    float candidate_footprint_[renderer::shadow_cascade_max]{};        // the draw's lateral sun-space footprint per cascade
-    void refresh_footprint_law() noexcept;                             // the law from the live set, the camera latch and the target width
+    renderer::ShadowCascadeFootprintLaw candidate_footprint_logged_{}; // the last law the shadow_cascade_footprint line
+                                                                       // reported
+    unsigned candidate_footprint_lines_ = 0;                           // bounded diagnostics (footprint_line_max)
+    float candidate_footprint_[renderer::shadow_cascade_max]{}; // the draw's lateral sun-space footprint per cascade
+    void refresh_footprint_law() noexcept; // the law from the live set, the camera latch and the target width
     // The frame's one validated sun (shadow_replay_sun.h): pixel float
     // registers c0..c31 shadowed as the application writes them, sampled at
     // every routed z-writing draw from the bound program's own LightDir_Dir0
     // register; the latch survives Reset (the sun is world-fixed) and is per device.
     float candidate_ps_constants_[shadow_replay::sun_register_limit][4]{};
-    std::uint32_t candidate_ps_written_=0;
+    std::uint32_t candidate_ps_written_ = 0;
     shadow_replay::SunLatch sun_latch_{};
-    shadow_replay::SunVerdict sun_verdict_=shadow_replay::SunVerdict::None; // this frame's, resolved once at the scene end
-    std::uint32_t candidate_bounds_unavailable_=0; // this frame's extent-known draws that found no sun for the box test
+    shadow_replay::SunVerdict sun_verdict_ = shadow_replay::SunVerdict::None; // this frame's, resolved once at the
+                                                                              // scene end
+    std::uint32_t candidate_bounds_unavailable_ = 0; // this frame's extent-known draws that found no sun for the box
+                                                     // test
     // Cascades: the sun as a polled world position, one held direction per
     // cascade (shadow_replay_sun_point.h); the latch above stays the source
     // whenever the poll is unavailable, unvalidated or implausible.
     shadow_replay::PointSun point_sun_{};
-    unsigned point_sun_summary_count_=0;  // frames since the last shadow_replay_sun_point_summary line
-    std::int64_t point_sun_poll_ticks_=0; // this frame's poll in QPC ticks (the draw path stays integer-only: a 64-bit conversion is x87 on i686)
+    unsigned point_sun_summary_count_ = 0;  // frames since the last shadow_replay_sun_point_summary line
+    std::int64_t point_sun_poll_ticks_ = 0; // this frame's poll in QPC ticks (the draw path stays integer-only: a
+                                            // 64-bit conversion is x87 on i686)
     sun_light_poll::Sample point_sun_sample_{};
-    shadow_replay::PointSunReason point_sun_logged_=shadow_replay::PointSunReason::Count; // the last source/reason an event line reported
-    bool point_sun_trace_=false;          // X3M_SHADOW_SUN_TRACE: one shadow_sun_frame line per cascaded frame
+    shadow_replay::PointSunReason point_sun_logged_ = shadow_replay::PointSunReason::Count; // the last source/reason an
+                                                                                            // event line reported
+    bool point_sun_trace_ = false; // X3M_SHADOW_SUN_TRACE: one shadow_sun_frame line per cascaded frame
     void poll_point_sun(const float constant[4], bool agrees) noexcept;
-    const float* cascade_sun(unsigned cascade) noexcept; // the frame's sun of one cascade: the held point direction, else the latch's
+    const float* cascade_sun(unsigned cascade) noexcept; // the frame's sun of one cascade: the held point direction,
+                                                         // else the latch's
     bool sample_candidate_sun(float out[4], int& reg) noexcept;
     shadow_replay::PoolClass candidate_pool_of(std::uint64_t id, IDirect3DResource9* buffer, bool vertex) noexcept;
     void note_candidate_distance(MotionRoute& route, const float* rows) noexcept;
     void note_candidate_draw(const MotionRoute& route) noexcept;
-    void log_object_bounds(const MotionRoute& route, const float* rows, const float* lo, const float* hi, bool alpha_tested = false, bool stale = false) noexcept;
-    void note_object_bounds_alpha_read(const shadow_replay::ExtentKey& key, std::uintptr_t identity) noexcept; // X3M_OBJECT_BOUNDS_LOG: hold an alpha-tested draw's missing extent
+    void log_object_bounds(const MotionRoute& route, const float* rows, const float* lo, const float* hi,
+                           bool alpha_tested = false, bool stale = false) noexcept;
+    void note_object_bounds_alpha_read(const shadow_replay::ExtentKey& key,
+                                       std::uintptr_t identity) noexcept; // X3M_OBJECT_BOUNDS_LOG:
+                                                                          // hold
+                                                                          // an
+                                                                          // alpha-tested
+                                                                          // draw's
+                                                                          // missing
+                                                                          // extent
     void queue_object_bounds_alpha_reads() noexcept;   // ... queue the held keys behind the frame's caster reads
     void release_object_bounds_alpha_reads() noexcept; // ... drop them (with release_candidate_extents)
     bool ensure_candidate_bounds_rows() noexcept;
     void queue_candidate_extent(const shadow_replay::ExtentKey& key, std::uintptr_t identity, bool priority) noexcept;
-    void read_candidate_extents() noexcept;    // the scene end: Lock READONLY through the wrapper, scan, cache, release
+    void read_candidate_extents() noexcept; // the scene end: Lock READONLY through the wrapper, scan, cache, release
     // ---- thin vote (X3M_TAA_THIN_VOTE; thin_vote_core.h) ----
     // thin_vote_upload_: the transformer carries the thin fragments, so every routed draw uploads c218 (the resolved
     // option); thin_vote_cache_ (allocated once at configuration of an enabled device) maps a subset to its histogram;
@@ -1530,85 +1741,130 @@ private:
     // uploads c216-c218 (upload_c218()).
     bool fade_rt2_owner_requested_ = false, fade_rt2_owner_ = false;
     bool upload_c218() const noexcept { return thin_vote_upload_ || fade_rt2_owner_; }
-    bool thin_vote_logged_ = false;          // the one thin_vote_mode line per attachment
-    bool thin_vote_fold_logged_ = false;     // the one line for a run whose tests draw was not the thin-vote twin (the lane-off R32F RT2 included)
+    bool thin_vote_logged_ = false;      // the one thin_vote_mode line per attachment
+    bool thin_vote_fold_logged_ = false; // the one line for a run whose tests draw was not the thin-vote twin (the
+                                         // lane-off R32F RT2 included)
     std::unique_ptr<thin_vote::Cache> thin_vote_cache_;
-    struct ThinVoteRead { thin_vote::Key key{}; std::uintptr_t vb = 0, ib = 0; bool stale = false; };
+    struct ThinVoteRead {
+        thin_vote::Key key{};
+        std::uintptr_t vb = 0, ib = 0;
+        bool stale = false;
+    };
     ThinVoteRead thin_vote_reads_[thin_vote::reads_per_frame]{};
     unsigned thin_vote_read_count_ = 0;
     struct ThinVoteCounters {
-        // missed: opaque draws without a usable histogram = queued (a new read) + dropped (deferred by the reads_per_frame
-        // cap; the next frame's draw re-queues) + already_queued (the subset's read is queued this frame). A subset past
-        // read_attempts is Unreadable (Cache::retry) and counts under unreadable, not missed.
-        std::uint32_t draws = 0, opaque = 0, known = 0, voted = 0, unreadable = 0, missed = 0, queued = 0, dropped = 0, no_scale = 0;
+        // missed: opaque draws without a usable histogram = queued (a new read) + dropped (deferred by the
+        // reads_per_frame cap; the next frame's draw re-queues) + already_queued (the subset's read is queued this
+        // frame). A subset past read_attempts is Unreadable (Cache::retry) and counts under unreadable, not missed.
+        std::uint32_t draws = 0, opaque = 0, known = 0, voted = 0, unreadable = 0, missed = 0, queued = 0, dropped = 0,
+                      no_scale = 0;
         std::uint32_t already_queued = 0;
-        std::uint64_t ticks = 0;             // thin_vote_alpha's own time (telemetry draw metrics only)
+        std::uint64_t ticks = 0; // thin_vote_alpha's own time (telemetry draw metrics only)
         // One sampled lookup per frame while telemetry is on (with or without the draw metrics): the opaque draw number
-        // sample_at (rotating over the previous frame's opaque count), its lookup ticks and the empty QPC pair before it.
+        // sample_at (rotating over the previous frame's opaque count), its lookup ticks and the empty QPC pair before
+        // it.
         std::uint32_t sample_at = 0, sampled = 0;
         std::uint64_t sample_ticks = 0, stamp_ticks = 0;
         float min_alpha = 1.f;
-        // The largest thin fraction among the known opaque draws that did not vote this frame (below thin_vote::vote_fraction;
-        // 0 when none): how close the unvoted draws come to the vote (docs/architecture/taa-thin-classification.md section 7).
+        // The largest thin fraction among the known opaque draws that did not vote this frame (below
+        // thin_vote::vote_fraction; 0 when none): how close the unvoted draws come to the vote
+        // (docs/architecture/taa-thin-classification.md section 7).
         float max_unvoted = 0.f;
     } thin_vote_frame_{};
     struct ThinVoteTotals {
-        std::uint64_t reads = 0, measured = 0, unreadable = 0, retries = 0, triangles = 0, lock_ticks = 0, measure_ticks = 0;
+        std::uint64_t reads = 0, measured = 0, unreadable = 0, retries = 0, triangles = 0, lock_ticks = 0,
+                      measure_ticks = 0;
         std::uint64_t max_measure_ticks = 0, not_managed = 0, range = 0, not_quiet = 0, lock_failed = 0, geometry = 0;
-        std::uint64_t not_readable = 0, stale = 0; // WRITEONLY native storage (no readable creation); written between the draw and the read
-        std::uint64_t invalidated = 0, overflows = 0, dropped_entries = 0; // write invalidations drained; queue overflows (cache cleared); entries dropped
-        std::uint64_t volatile_buffers = 0, volatile_refused = 0; // wrappers that reached volatile_after writes; reads refused for them
+        std::uint64_t not_readable = 0, stale = 0; // WRITEONLY native storage (no readable creation); written between
+                                                   // the draw and the read
+        std::uint64_t invalidated = 0, overflows = 0, dropped_entries = 0; // write invalidations drained; queue
+                                                                           // overflows (cache cleared); entries dropped
+        std::uint64_t volatile_buffers = 0, volatile_refused = 0; // wrappers that reached volatile_after writes; reads
+                                                                  // refused for them
     } thin_vote_totals_{};
-    void thin_vote_alpha(const MotionRoute& route, const float* rows, float& alpha) noexcept; // per routed draw: c218.x (by reference: an i686 float return is x87 st(0))
-    void thin_vote_lookup(const MotionRoute& route, const float* rows, float& alpha) noexcept; // its opaque-row part (cache, window)
-    void drain_thin_invalidations() noexcept; // ownership's write invalidations of watched buffers: drop their entries and queued reads
+    void thin_vote_alpha(const MotionRoute& route, const float* rows, float& alpha) noexcept; // per routed draw: c218.x
+                                                                                              // (by reference: an i686
+                                                                                              // float return is x87
+                                                                                              // st(0))
+    void thin_vote_lookup(const MotionRoute& route, const float* rows, float& alpha) noexcept; // its opaque-row part
+                                                                                               // (cache, window)
+    void drain_thin_invalidations() noexcept;  // ownership's write invalidations of watched buffers: drop their entries
+                                               // and queued reads
     std::uintptr_t thin_vote_drained_[1024]{}; // drain scratch (ownership's queue capacity)
-    void read_thin_votes() noexcept;    // the scene end: the queued subsets' READONLY reads, histograms, cache
+    void read_thin_votes() noexcept;           // the scene end: the queued subsets' READONLY reads, histograms, cache
     void release_thin_votes() noexcept; // drop the queue without reading (frame without scene end, Reset, teardown)
     void log_thin_vote_frame() noexcept;
-    void release_candidate_extents() noexcept; // drop the queue without reading (frame without scene end, Reset, teardown)
+    void release_candidate_extents() noexcept; // drop the queue without reading (frame without scene end, Reset,
+                                               // teardown)
     // Count-only tested-opaque-arm bookkeeping for a cutout pair (after_draw).
     void note_cutout_opaque(const MotionRoute& route, HRESULT result) noexcept;
     void publish_shadow_replay_candidates() noexcept;
     // Depth replay storage (motion_output_shadow_replay_inc.h): the geometry
     // leases parallel to candidates_.records, the frame's sun constant as the
     // slot-109 hook last saw it, the pass and its attach verdict.
-    bool depth_replay_requested_=false, depth_replay_attach_failed_=false;
+    bool depth_replay_requested_ = false, depth_replay_attach_failed_ = false;
     std::unique_ptr<renderer::ShadowReplayPass> depth_replay_;
-    HRESULT depth_replay_attach_result_=S_FALSE;
+    HRESULT depth_replay_attach_result_ = S_FALSE;
     // Alpha-tested casters: requested (with the depth replay), and ready once the
     // attached pass holds its alpha programs (a refused program: never, one row).
-    bool alpha_casters_requested_=false;
-    bool alpha_casters_ready() const noexcept { return alpha_casters_requested_&&depth_replay_&&depth_replay_->caps().enabled&&depth_replay_->caps().alpha; }
+    bool alpha_casters_requested_ = false;
+    bool alpha_casters_ready() const noexcept {
+        return alpha_casters_requested_ && depth_replay_ && depth_replay_->caps().enabled &&
+               depth_replay_->caps().alpha;
+    }
     shadow_replay::AlphaCasterCounts alpha_caster_counts_{};
     // The record list's parallel arrays: the inline storage for record_capacity
     // records, or (a cascade set with more records: shadow-cascade-extents.md,
     // "Caster pool control") storage allocated once at attach, candidate_capacity_
     // entries each; the pointers select which. No allocation after attach.
     shadow_replay::DepthGeometry depth_geometry_inline_[shadow_replay::record_capacity]{};
-    renderer::ShadowReplayDraw depth_draws_inline_[shadow_replay::record_capacity]{}; // the scene-end transaction's draw list (too large for the stack at 512)
-    shadow_replay::DepthGeometry* depth_geometry_=depth_geometry_inline_;
-    renderer::ShadowReplayDraw* depth_draws_=depth_draws_inline_;
-    unsigned candidate_capacity_=shadow_replay::record_capacity;
+    renderer::ShadowReplayDraw depth_draws_inline_[shadow_replay::record_capacity]{}; // the scene-end transaction's
+                                                                                      // draw list (too large for the
+                                                                                      // stack at 512)
+    shadow_replay::DepthGeometry* depth_geometry_ = depth_geometry_inline_;
+    renderer::ShadowReplayDraw* depth_draws_ = depth_draws_inline_;
+    unsigned candidate_capacity_ = shadow_replay::record_capacity;
     std::unique_ptr<shadow_replay::Record[]> candidate_records_ext_;
     std::unique_ptr<shadow_replay::DepthGeometry[]> depth_geometry_ext_;
     std::unique_ptr<renderer::ShadowReplayDraw[]> depth_draws_ext_;
-    std::unique_ptr<bool[]> candidate_quiet_ext_;            // the scene end's per-record quiet verdicts beyond the inline stack array
-    std::unique_ptr<std::uint16_t[]> candidate_select_scratch_; // importance drop order: one index per record (allocated while the option is on)
-    std::unique_ptr<shadow_caster_class::Ring> candidate_class_ring_; // static-only cascades: the per-draw anchor ring, sized to the record capacity (allocated while the option is on)
-    std::unique_ptr<shadow_replay::KeptEntry[]> candidate_kept_last_;  // importance order: last frame's kept casters (two slots per record; allocated while the option is on)
-    std::unique_ptr<shadow_replay::FlipEntry[]> candidate_flip_entries_; // cascade-membership flips: the previous frame's mask per caster key (two slots per record; allocated while cascades are on)
-    shadow_replay::FlipTable candidate_flips_;                           // the table over that storage (detached while cascades are off: no work, no fields)
-    unsigned depth_cascade_draw_caps_[renderer::shadow_cascade_max]{}; // the per-cascade bound the draw path applies (the cap, or the record capacity under the importance order)
-    std::uint8_t depth_cascade_static_mask_=0; // bit i: cascade i admits static casters only (none by default)
-    std::uint8_t depth_cascade_backface_mask_=0; // bit i: cascade i replays back faces (ShadowCascadeSet::backface_mask; the texel law by default)
-    double depth_cascade_class_eps_[renderer::shadow_cascade_max]{}; // per cascade the static/moving drift threshold (renderer::shadow_cascade_class_eps of the live set)
+    std::unique_ptr<bool[]> candidate_quiet_ext_; // the scene end's per-record quiet verdicts beyond the inline stack
+                                                  // array
+    std::unique_ptr<std::uint16_t[]> candidate_select_scratch_;       // importance drop order: one index per record
+                                                                      // (allocated while the option is on)
+    std::unique_ptr<shadow_caster_class::Ring> candidate_class_ring_; // static-only cascades: the per-draw anchor ring,
+                                                                      // sized to the record capacity (allocated while
+                                                                      // the option is on)
+    std::unique_ptr<shadow_replay::KeptEntry[]> candidate_kept_last_; // importance order: last frame's kept casters
+                                                                      // (two slots per record; allocated while the
+                                                                      // option is on)
+    std::unique_ptr<shadow_replay::FlipEntry[]> candidate_flip_entries_; // cascade-membership flips: the previous
+                                                                         // frame's mask per caster key (two slots per
+                                                                         // record; allocated while cascades are on)
+    shadow_replay::FlipTable candidate_flips_; // the table over that storage (detached while cascades are off: no work,
+                                               // no fields)
+    unsigned depth_cascade_draw_caps_[renderer::shadow_cascade_max]{}; // the per-cascade bound the draw path applies
+                                                                       // (the cap, or the record capacity under the
+                                                                       // importance order)
+    std::uint8_t depth_cascade_static_mask_ = 0;   // bit i: cascade i admits static casters only (none by default)
+    std::uint8_t depth_cascade_backface_mask_ = 0; // bit i: cascade i replays back faces
+                                                   // (ShadowCascadeSet::backface_mask; the texel law by default)
+    double depth_cascade_class_eps_[renderer::shadow_cascade_max]{}; // per cascade the static/moving drift threshold
+                                                                     // (renderer::shadow_cascade_class_eps of the live
+                                                                     // set)
     void refresh_cascade_policy() noexcept; // the three above from depth_cascades_ (attach, and every ladder commit)
-    std::uint8_t classify_candidate_static(const MotionRoute& route, const float* rows, const float* lo, const float* hi, std::uint8_t wanted, bool& miss) noexcept; // shadow_caster_class.h: bit i = static at cascade i's eps
-    void note_refused_sighting(const MotionRoute& route, const ownership::BufferLockView& vb, const shadow_replay::ExtentEntry* extent) noexcept; // the static gate's refusal is still a sighting (cause 1)
-    bool attach_candidate_storage() noexcept; // sizes the arrays above for depth_cascades_; false leaves the cascades off
-    unsigned depth_replayed_=0;                  // draws replayed on depth_replayed_frame_ (0: the map is not this frame's)
-    std::uint64_t depth_replayed_frame_=~std::uint64_t(0);
+    std::uint8_t classify_candidate_static(const MotionRoute& route, const float* rows, const float* lo,
+                                           const float* hi, std::uint8_t wanted,
+                                           bool& miss) noexcept; // shadow_caster_class.h:
+                                                                 // bit i = static
+                                                                 // at cascade i's
+                                                                 // eps
+    void note_refused_sighting(const MotionRoute& route, const ownership::BufferLockView& vb,
+                               const shadow_replay::ExtentEntry* extent) noexcept; // the static gate's refusal is still
+                                                                                   // a sighting (cause 1)
+    bool attach_candidate_storage() noexcept; // sizes the arrays above for depth_cascades_; false leaves the cascades
+                                              // off
+    unsigned depth_replayed_ = 0; // draws replayed on depth_replayed_frame_ (0: the map is not this frame's)
+    std::uint64_t depth_replayed_frame_ = ~std::uint64_t(0);
     unsigned depth_refusal_logs_[shadow_replay::depth_reason_count]{};
     // Cascades (shadow-cascades.md): the configured set, this device's set
     // (the seam override and the sizes the pass kept after halving), and the
@@ -1616,9 +1872,9 @@ private:
     // none while cascades are off). The retained bases live in the pass.
     renderer::ShadowCascadeSet depth_cascade_config_{}, depth_cascades_{};
     std::unique_ptr<renderer::ShadowReplayIssue[]> depth_issues_;
-    unsigned depth_issue_capacity_=0;
-    bool depth_cascade_frame_ok_=false; // this frame's cascade transaction was not refused (the apply's precondition)
-    bool depth_cascades_on() const noexcept { return depth_replay_requested_&&depth_cascades_.count!=0; }
+    unsigned depth_issue_capacity_ = 0;
+    bool depth_cascade_frame_ok_ = false; // this frame's cascade transaction was not refused (the apply's precondition)
+    bool depth_cascades_on() const noexcept { return depth_replay_requested_ && depth_cascades_.count != 0; }
     void run_shadow_replay_cascades(const bool* quiet) noexcept;
     // Own-ship-adaptive cascade 0 (motion_output_shadow_adaptive_inc.h): the
     // device's configured set (the seam narrowing and the halved sizes applied)
@@ -1626,44 +1882,66 @@ private:
     // once per frame at its first candidate draw) and the frame's radius
     // accumulator; the node cache answers "descends from the own root" per
     // scope node without repeating the walk. Off (k = 0): none of it runs.
-    float cascade_adaptive_k_=0.f, cascade_ladder_ratio_=renderer::shadow_cascade_ladder_ratio_default;
+    float cascade_adaptive_k_ = 0.f, cascade_ladder_ratio_ = renderer::shadow_cascade_ladder_ratio_default;
     renderer::ShadowCascadeSet depth_cascade_base_{};
     renderer::ShadowCascadeAdaptive cascade_adaptive_{};
-    std::uint64_t own_ship_frame_=~std::uint64_t(0);
-    std::uintptr_t own_ship_node_=0; std::uint32_t own_ship_handle_=0, own_ship_status_=0;
-    float own_radius_frame_=0.f; unsigned own_draws_frame_=0;
-    own_ship::Cache own_cache_{}; // (node, handle) -> descends from the root; flushed on root / epoch change (own_ship_cache.h)
-    bool cascade_adaptive_on() const noexcept { return cascade_adaptive_k_>0.f&&depth_cascades_on(); }
+    std::uint64_t own_ship_frame_ = ~std::uint64_t(0);
+    std::uintptr_t own_ship_node_ = 0;
+    std::uint32_t own_ship_handle_ = 0, own_ship_status_ = 0;
+    float own_radius_frame_ = 0.f;
+    unsigned own_draws_frame_ = 0;
+    own_ship::Cache own_cache_{}; // (node, handle) -> descends from the root; flushed on root / epoch change
+                                  // (own_ship_cache.h)
+    bool cascade_adaptive_on() const noexcept { return cascade_adaptive_k_ > 0.f && depth_cascades_on(); }
     void resolve_own_ship() noexcept;
-    bool own_ship_draw(std::uintptr_t node, std::uint32_t handle, std::uint64_t load_epoch, std::uint64_t registry_epoch) noexcept;
+    bool own_ship_draw(std::uintptr_t node, std::uint32_t handle, std::uint64_t load_epoch,
+                       std::uint64_t registry_epoch) noexcept;
     void note_own_ship_draw(const shadow_replay::ExtentEntry& extent) noexcept;
     void update_adaptive_cascades() noexcept;
     void log_cascade_set(const char* reason) noexcept;
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
-    bool fixture_own_ship_set_=false; std::uintptr_t fixture_own_ship_node_=0, fixture_own_part_node_=0; std::uint32_t fixture_own_ship_handle_=0, fixture_own_part_handle_=0;
+    bool fixture_own_ship_set_ = false;
+    std::uintptr_t fixture_own_ship_node_ = 0, fixture_own_part_node_ = 0;
+    std::uint32_t fixture_own_ship_handle_ = 0, fixture_own_part_handle_ = 0;
+
 public:
-    // The seam's player ship (root node and handle) and one synthetic part (node, handle) that the walk treats as descending from it.
-    void fixture_own_ship(std::uintptr_t node, std::uint32_t handle, std::uintptr_t part, std::uint32_t part_handle) noexcept {
-        fixture_own_ship_set_=true; fixture_own_ship_node_=node; fixture_own_ship_handle_=handle; fixture_own_part_node_=part; fixture_own_part_handle_=part_handle; own_ship_frame_=~std::uint64_t(0);
+    // The seam's player ship (root node and handle) and one synthetic part (node, handle) that the walk treats as
+    // descending from it.
+    void fixture_own_ship(std::uintptr_t node, std::uint32_t handle, std::uintptr_t part,
+                          std::uint32_t part_handle) noexcept {
+        fixture_own_ship_set_ = true;
+        fixture_own_ship_node_ = node;
+        fixture_own_ship_handle_ = handle;
+        fixture_own_part_node_ = part;
+        fixture_own_part_handle_ = part_handle;
+        own_ship_frame_ = ~std::uint64_t(0);
     }
+
 private:
 #endif
     void note_depth_geometry(const MotionRoute& route, unsigned index) noexcept;
-    bool alpha_caster_source(IDirect3DBaseTexture9*& texture, float& threshold) noexcept; // the draw's alpha test as a caster: false refuses it
-    bool fill_depth_geometry(const MotionRoute& route, shadow_replay::DepthGeometry& g) noexcept; // rows, keys, cull mode and the declaration's own reference; no lease
+    bool alpha_caster_source(IDirect3DBaseTexture9*& texture, float& threshold) noexcept; // the draw's alpha test as a
+                                                                                          // caster: false refuses it
+    bool fill_depth_geometry(const MotionRoute& route, shadow_replay::DepthGeometry& g) noexcept; // rows, keys, cull
+                                                                                                  // mode and the
+                                                                                                  // declaration's own
+                                                                                                  // reference; no lease
     void release_depth_leases() noexcept;
     bool ensure_shadow_replay_depth() noexcept;
-    void log_depth_refusal(shadow_replay::DepthReason reason, const char* detail, HRESULT result, unsigned stage) noexcept;
+    void log_depth_refusal(shadow_replay::DepthReason reason, const char* detail, HRESULT result,
+                           unsigned stage) noexcept;
     // Caster retention (motion_output_shadow_retention_inc.h): the configured
     // mode and this device's state (null while off: every site tests it).
-    shadow_retention::Mode retention_mode_=shadow_retention::Mode::Off;
-    std::uint32_t retention_age_cap_=shadow_retention::age_cap_default;
-    double retention_eps_=shadow_retention::eps_default;
-    bool retention_timing_=false;
+    shadow_retention::Mode retention_mode_ = shadow_retention::Mode::Off;
+    std::uint32_t retention_age_cap_ = shadow_retention::age_cap_default;
+    double retention_eps_ = shadow_retention::eps_default;
+    bool retention_timing_ = false;
     std::unique_ptr<ShadowRetention> retention_;
-    bool retention_live() const noexcept { return retention_&&retention_->mode==shadow_retention::Mode::Live; }
+    bool retention_live() const noexcept { return retention_ && retention_->mode == shadow_retention::Mode::Live; }
     void attach_shadow_retention() noexcept;
-    void note_retention_draw(const MotionRoute& route, const shadow_replay::Record& record, const shadow_replay::DepthGeometry& geometry, const shadow_replay::ExtentEntry* extent) noexcept;
+    void note_retention_draw(const MotionRoute& route, const shadow_replay::Record& record,
+                             const shadow_replay::DepthGeometry& geometry,
+                             const shadow_replay::ExtentEntry* extent) noexcept;
     void retention_scene_end(bool sun_source_switched) noexcept;
     void publish_shadow_retention() noexcept;
     void log_shadow_retention_summary(bool final) noexcept;
@@ -1674,11 +1952,15 @@ private:
     void detach_shadow_retention() noexcept;
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
 public:
-    HRESULT fixture_shadow_replay_readback(float* out, std::size_t floats, UINT* width, UINT* height, float* params, unsigned param_floats, unsigned cascade=0) noexcept;
+    HRESULT fixture_shadow_replay_readback(float* out, std::size_t floats, UINT* width, UINT* height, float* params,
+                                           unsigned param_floats, unsigned cascade = 0) noexcept;
     // Retention seam: the store's levels and cumulative counters (index list in the inc file).
     unsigned fixture_shadow_retention_stats(std::uint64_t* out, unsigned count) noexcept;
-    int fixture_lens_depth(unsigned mode) noexcept; // the bracket's RT2 reference lifecycle (x3m_sun_occlusion_fixture_lens_depth)
-    void fixture_shadow_retention_device_lost() noexcept { flush_shadow_retention(shadow_retention::Flush::Device); } // as a failed Present reports it
+    int fixture_lens_depth(unsigned mode) noexcept; // the bracket's RT2 reference lifecycle
+                                                    // (x3m_sun_occlusion_fixture_lens_depth)
+    void fixture_shadow_retention_device_lost() noexcept {
+        flush_shadow_retention(shadow_retention::Flush::Device);
+    } // as a failed Present reports it
 private:
 #endif
     bool self_test(bool with_depth, char* reason, std::size_t reason_size) noexcept;
@@ -1707,7 +1989,8 @@ private:
     bool cutout_draw_state() noexcept;
     // Fade-band arm evaluation at gate 4 (the six shadowed states already
     // read); true admits the draw as a routed fade-band draw.
-    bool fade_arm_admits(MotionRoute& route, const MotionDrawCall& call, DWORD z, DWORD z_write, std::size_t window, bool loop_bounded) noexcept;
+    bool fade_arm_admits(MotionRoute& route, const MotionDrawCall& call, DWORD z, DWORD z_write, std::size_t window,
+                         bool loop_bounded) noexcept;
     std::uint64_t fade_identity() noexcept; // the draw's node identity for the arm's hysteresis (0: unknown)
     void mark_cutout_candidate(MotionRoute& route) noexcept;
     void report_xt_default_unavailable() noexcept;
@@ -1738,16 +2021,18 @@ private:
     // fill mode, clip to the owning target); the counters, witness and log
     // stay in derive_fade_region. Shared by the admitted route and the
     // capture-only refused-draw diagnostic.
-    fade_region::Region fade_rectangle(const MotionRoute& route, fade_region::Result& bound, bool& of_viewport, unsigned& permille, bool read_only,
-                                       fade_region::BoundSource source = fade_region::BoundSource::Part, std::uint32_t vertex_count = 0,
-                                       std::uint64_t* aabb_px = nullptr) noexcept;
+    fade_region::Region fade_rectangle(const MotionRoute& route, fade_region::Result& bound, bool& of_viewport,
+                                       unsigned& permille, bool read_only,
+                                       fade_region::BoundSource source = fade_region::BoundSource::Part,
+                                       std::uint32_t vertex_count = 0, std::uint64_t* aabb_px = nullptr) noexcept;
     // Step B locked-prefix rectangle (screen-emission-region.md): counted and
     // logged per draw in capture frames; nothing consumes it before step C.
     void derive_prefix_region(const MotionDrawCall&, MotionRoute&) noexcept;
     // Capture-only packed-bracket luminance sample (packed_sample line).
     // `pre` selects the retained copy the readback fills: the pre copy is kept
     // whole until the post readback, so the rectangle can be compared.
-    HRESULT sample_target_pixel(IDirect3DSurface9*, const renderer::Surface&, bool pre, std::int32_t x, std::int32_t y, float out[4]) noexcept;
+    HRESULT sample_target_pixel(IDirect3DSurface9*, const renderer::Surface&, bool pre, std::int32_t x, std::int32_t y,
+                                float out[4]) noexcept;
     void sample_packed_pre(const MotionRoute&) noexcept;
     void sample_packed_post(const RECT& composed) noexcept;
     void release_packed_sample() noexcept;
@@ -1757,14 +2042,14 @@ private:
         HRESULT result = D3DERR_NOTFOUND;
         unsigned long pixels = 0, changed = 0; // scanned pixels (rectangle clipped to the target) and RGB-changed ones
         double max_pre = 0.0, max_post = 0.0, sum_pre = 0.0, sum_post = 0.0; // Rec.709 luminance
-        std::int32_t argmax_x = 0, argmax_y = 0; // location of the post maximum
+        std::int32_t argmax_x = 0, argmax_y = 0;                             // location of the post maximum
         float argmax_pre[3]{}, argmax_post[3]{};
     };
     HRESULT scan_packed_rect(const fade_region::Rect&, PackedScan&) noexcept;
     struct PackedSample {
         bool valid = false;
-        unsigned sampled = 0; // this frame's samples (reset in begin_frame)
-        IDirect3DSurface9* copy = nullptr; // retained system-memory readback surface (post), one per size/format
+        unsigned sampled = 0;                  // this frame's samples (reset in begin_frame)
+        IDirect3DSurface9* copy = nullptr;     // retained system-memory readback surface (post), one per size/format
         IDirect3DSurface9* pre_copy = nullptr; // the same for the pre image, held until the post scan
         std::uint32_t copy_width = 0, copy_height = 0, copy_format = 0;
         fade_region::Rect rect{};
@@ -1781,8 +2066,8 @@ private:
     long composition_blend_field(unsigned index) const noexcept;
     void record_fade_refused(const MotionRoute& route, unsigned refusal) noexcept;
     void log_fade_refused() noexcept;
-    void witness_readback() noexcept;       // Present boundary, every k-th frame, one bounded readback
-    void release_fade_witness() noexcept;   // Reset and retirement drop the system-memory copy
+    void witness_readback() noexcept;     // Present boundary, every k-th frame, one bounded readback
+    void release_fade_witness() noexcept; // Reset and retirement drop the system-memory copy
     void finish_composition(HRESULT, renderer::LinearCompositionPolicy) noexcept;
     bool publish_composition() noexcept;
     void begin_composition_frame() noexcept;
@@ -1848,7 +2133,7 @@ private:
     // Runs a TemporalPass call and folds the device references it created or
     // released into taa_references_ by probing the count before and after,
     // which is exact in both reference models (native and wrapper).
-    template<typename Fn> void taa_call(Fn&& fn, const char* site = nullptr) noexcept;
+    template <typename Fn> void taa_call(Fn&& fn, const char* site = nullptr) noexcept;
     bool taa_underflow_logged_ = false; // one taa_references_underflow row per session
     HRESULT save_state(SavedState& saved) noexcept;
     HRESULT restore_state(const SavedState& saved) noexcept;
@@ -1873,12 +2158,12 @@ private:
     void readback() noexcept;
     // HDR redirect (hdr_pass.h performs the device work; the policy is here).
     enum class HdrState { Off, Active, Suspended };
-    void begin_redirect() noexcept;             // at the latching Clear (before it is forwarded)
+    void begin_redirect() noexcept; // at the latching Clear (before it is forwarded)
     void end_redirect(HdrEnd reason, MotionHdrSceneCallback callback = nullptr, void* context = nullptr) noexcept;
-    void flush_redirect() noexcept;             // write back, keep the FP16 target bound
-    void drop_redirect() noexcept;              // Reset/release: no write-back
+    void flush_redirect() noexcept; // write back, keep the FP16 target bound
+    void drop_redirect() noexcept;  // Reset/release: no write-back
     renderer::HdrWriteback hdr_writeback(IDirect3DSurface9* final_rt0, bool write,
-                                       renderer::HdrDisplaySnapshot* display = nullptr) noexcept;
+                                         renderer::HdrDisplaySnapshot* display = nullptr) noexcept;
     bool hdr_is_main(IDirect3DSurface9* surface) noexcept;
     void log_hdr_frame() noexcept;
 
@@ -1897,11 +2182,14 @@ private:
     IDirect3DDevice9* direct_device_ = nullptr;
     void* direct_slots_[direct_slot_count]{};
     void bind_direct() noexcept;
-    void drop_direct() noexcept { direct_ = native_; direct_device_ = device_; }
+    void drop_direct() noexcept {
+        direct_ = native_;
+        direct_device_ = device_;
+    }
     // A failing direct call: hand the result to the wrapper's observe_result so
     // device loss is observed as through the forwarder. Cold.
     HRESULT direct_failed(HRESULT hr) const noexcept;
-    template<typename Fn, typename... Args> HRESULT direct_call(unsigned slot, Args... args) const noexcept {
+    template <typename Fn, typename... Args> HRESULT direct_call(unsigned slot, Args... args) const noexcept {
         const HRESULT hr = reinterpret_cast<Fn>(direct_[slot])(direct_device_, args...);
         return __builtin_expect(FAILED(hr), 0) ? direct_failed(hr) : hr;
     }
@@ -1928,10 +2216,14 @@ private:
     // which screen-substituted), refusals by blend state, screen draws refused
     // because the DESTBLEND substitution failed, by unknown state, by device
     // state, bind failures.
-    struct { std::uint32_t admitted = 0, admitted_screen = 0, refused_blend = 0, refused_screen = 0, refused_unknown = 0, refused_state = 0, bind_failures = 0; } source_gain_counts_;
+    struct {
+        std::uint32_t admitted = 0, admitted_screen = 0, refused_blend = 0, refused_screen = 0, refused_unknown = 0,
+                      refused_state = 0, bind_failures = 0;
+    } source_gain_counts_;
     // Per-device sample caps, one per logged reason: blend, screen_substitute_failed, bind_failed, state.
     std::uint32_t source_gain_logged_[4]{};
-    std::uint32_t source_gain_pair_logged_ = 0; // bit per registry pair: first admission logged this device epoch (at most 20 lines)
+    std::uint32_t source_gain_pair_logged_ = 0; // bit per registry pair: first admission logged this device epoch (at
+                                                // most 20 lines)
     // Hull-emitter gain (emitter plan phase 3): X3M_HULL_EMISSION_GAIN=G
     // (finite 1..8, 1 = off, needs HDR only), one whole-output variant
     // per covered hull program at creation, ONE/ONE admission per draw; its
@@ -1945,22 +2237,29 @@ private:
     bool hull_emission_gain_requested_ = false;
     float hull_emission_gain_ = 1.f;
     bool hull_gain_enabled_ = true; // on outside the fixture seam; gates entry to prepare_hull_gain only
-    struct { std::uint32_t admitted = 0, refused_blend = 0, refused_variant = 0, refused_routed = 0, refused_unknown = 0, refused_state = 0, bind_failures = 0, programs = 0, refused_opaque = 0, refused_alpha = 0; } hull_gain_counts_;
-    std::uint32_t hull_gain_logged_[4]{}; // per-device sample caps: blend, bind_failed, state, routed
-    std::uint32_t hull_gain_program_logged_ = 0; // bit per hull program: first admission logged this device epoch (at most 12 lines)
-    bool original_fill_requested_ = false; // X3M_ORIGINAL_FILL=K (finite 0..0.5), exclusive with linear materials
+    struct {
+        std::uint32_t admitted = 0, refused_blend = 0, refused_variant = 0, refused_routed = 0, refused_unknown = 0,
+                      refused_state = 0, bind_failures = 0, programs = 0, refused_opaque = 0, refused_alpha = 0;
+    } hull_gain_counts_;
+    std::uint32_t hull_gain_logged_[4]{};        // per-device sample caps: blend, bind_failed, state, routed
+    std::uint32_t hull_gain_program_logged_ = 0; // bit per hull program: first admission logged this device epoch (at
+                                                 // most 12 lines)
+    bool original_fill_requested_ = false;       // X3M_ORIGINAL_FILL=K (finite 0..0.5), exclusive with linear materials
     float original_fill_ = 0.f;
-    std::uint32_t original_fill_draws_ = 0; // routed draws that bound the fill variant this frame (frame line only)
-    bool hull_lightmap_gain_requested_ = false; // X3M_HULL_LIGHTMAP_GAIN=G (finite 1..8, 1 = off), exclusive with linear materials
+    std::uint32_t original_fill_draws_ = 0;     // routed draws that bound the fill variant this frame (frame line only)
+    bool hull_lightmap_gain_requested_ = false; // X3M_HULL_LIGHTMAP_GAIN=G (finite 1..8, 1 = off), exclusive with
+                                                // linear materials
     float hull_lightmap_gain_ = 1.f;
     bool hull_lightmap_enabled_ = true; // on outside the fixture seam; gates the light-map variant selection only
-    bool lightmap_far_fade_ = false;            // X3M_LIGHT_MAP_FAR_FADE accepted: dynamic gain variants, c217.w per draw
+    bool lightmap_far_fade_ = false;    // X3M_LIGHT_MAP_FAR_FADE accepted: dynamic gain variants, c217.w per draw
     float lightmap_fade_p0_ = 0.f, lightmap_fade_inv_ = 0.f, lightmap_fade_floor_ = 1.f;
-    float lightmap_fade_m00_ = 0.f;             // the far fade's own P[0] latch (0 = none); camera_scene_ stays the TAA/candidate consumers' alone
-    float lightmap_fade_gain_ = 0.f;            // this draw's uploaded gain (0 when the pair has no gain variant)
-    float lightmap_fade_min_ = 0.f;             // frame line: least gain drawn
-    std::uint32_t lightmap_fade_draws_ = 0;     // frame line: gain draws below the configured gain
-    std::uint32_t hull_lightmap_draws_ = 0; // routed draws that bound a light-map gain variant (plain or share) this frame (frame line only)
+    float lightmap_fade_m00_ = 0.f;  // the far fade's own P[0] latch (0 = none); camera_scene_ stays the TAA/candidate
+                                     // consumers' alone
+    float lightmap_fade_gain_ = 0.f; // this draw's uploaded gain (0 when the pair has no gain variant)
+    float lightmap_fade_min_ = 0.f;  // frame line: least gain drawn
+    std::uint32_t lightmap_fade_draws_ = 0; // frame line: gain draws below the configured gain
+    std::uint32_t hull_lightmap_draws_ = 0; // routed draws that bound a light-map gain variant (plain or share) this
+                                            // frame (frame line only)
     // Hull emissive widening (X3M_HULL_EMISSIVE_WIDENING=K[,B]): K and B are
     // baked into the variants' DEFs; per draw the route uploads the bound
     // light map's texel-footprint scale ((W K)^2, (H K)^2) in c217.yz
@@ -1970,15 +2269,18 @@ private:
     bool lightmap_widen_ = false;
     float lightmap_widen_k_ = 1.f, lightmap_widen_b_ = 1.f;
     float lightmap_widen_draw_scale_[2] = {0.f, 0.f};
-    DWORD lightmap_widen_draw_size_[2] = {0, 0};                         // this draw's light-map level-0 size (capture-frame draw line)
-    std::uint32_t lightmap_widen_draws_ = 0, lightmap_widen_held_ = 0;  // frame line: widened draws / gain draws that kept the un-widened variant
-    std::uint32_t lightmap_widen_filter_sets_ = 0, lightmap_widen_filter_reads_ = 0, lightmap_widen_filter_failures_ = 0; // frame line: MINFILTER raised / read / failed
+    DWORD lightmap_widen_draw_size_[2] = {0, 0}; // this draw's light-map level-0 size (capture-frame draw line)
+    std::uint32_t lightmap_widen_draws_ = 0, lightmap_widen_held_ = 0; // frame line: widened draws / gain draws that
+                                                                       // kept the un-widened variant
+    std::uint32_t lightmap_widen_filter_sets_ = 0, lightmap_widen_filter_reads_ = 0,
+                  lightmap_widen_filter_failures_ = 0; // frame line: MINFILTER raised / read / failed
     std::uint32_t lightmap_widen_session_filter_sets_ = 0;
     bool ensure_widen_filter(MotionRoute& route) noexcept;
     std::uint32_t lightmap_widen_session_draws_ = 0, lightmap_widen_variants_ = 0;
     bool lightmap_widen_summary_logged_ = false;
     std::uint32_t sun_original_lightmap_variants_ = 0; // gained share variants created (fixture counter)
-    bool screen_additive_requested_ = false; // X3M_SCREEN_EMISSION_ADDITIVE=G (finite 1..8), exclusive with the packed route
+    bool screen_additive_requested_ = false; // X3M_SCREEN_EMISSION_ADDITIVE=G (finite 1..8), exclusive with the packed
+                                             // route
     // Bolt footprint (bolt_footprint_core.h). The plans (one per instance,
     // max_instances) are allocated once at configure; the substitute buffer
     // (D3DUSAGE_DYNAMIC | WRITEONLY, DEFAULT pool, the scan bound of 147 456
@@ -1993,17 +2295,24 @@ private:
     bool bolt_vb_failed_ = false;
     struct BoltCounters {
         std::uint32_t draws = 0, written = 0, untouched = 0, instances = 0, expanded = 0;
-        std::uint32_t lengthened = 0, widened = 0, world_axis = 0, disc = 0, gated = 0; // gated: outside the chase view, histogram only, never written
-        std::uint32_t refused_shape = 0, refused_rows = 0, refused_buffer = 0, refused_period = 0, refused_w = 0, refused_recheck = 0, failures = 0, locks = 0, timed = 0;
-        std::uint32_t refused_max_prims = 0, refused_shape_bits = 0; // the window's site-0 shape refusals: largest primitive count, OR of their sub-clause masks (window row only; not accumulated into the session)
+        std::uint32_t lengthened = 0, widened = 0, world_axis = 0, disc = 0, gated = 0; // gated: outside the chase
+                                                                                        // view, histogram only, never
+                                                                                        // written
+        std::uint32_t refused_shape = 0, refused_rows = 0, refused_buffer = 0, refused_period = 0, refused_w = 0,
+                      refused_recheck = 0, failures = 0, locks = 0, timed = 0;
+        std::uint32_t refused_max_prims = 0, refused_shape_bits = 0; // the window's site-0 shape refusals: largest
+                                                                     // primitive count, OR of their sub-clause masks
+                                                                     // (window row only; not accumulated into the
+                                                                     // session)
         std::uint64_t ticks = 0;
     } bolt_window_{}, bolt_session_{};
     unsigned bolt_window_frames_ = 0, bolt_windows_ = 0;
     // Pre-expansion size histograms of the window's instances, [0] in the
     // chase view (the plan's axes), [1] in any other view (bounding box only).
     bolt_footprint::Histogram bolt_hist_[2]{};
-    std::uint32_t chase_pose_mark_ = 0; // chase_camera::pose_write_count() at the last Present (the frame-stamped view gate)
-    unsigned bolt_refusal_logged_ = 0; // bit per refusal reason already logged (one line each per device)
+    std::uint32_t chase_pose_mark_ = 0; // chase_camera::pose_write_count() at the last Present (the frame-stamped view
+                                        // gate)
+    unsigned bolt_refusal_logged_ = 0;  // bit per refusal reason already logged (one line each per device)
     float screen_additive_gain_ = 1.f;
     // Per-source bloom attenuation of the additive draw (option 1): the scene
     // alpha the bloom extract weighs by becomes k*a + D.a. 1 = off (no alpha
@@ -2035,7 +2344,7 @@ private:
     } screen_additive_window_{};
     unsigned screen_additive_window_frames_ = 0;
     void log_screen_additive_window() noexcept;
-    unsigned fade_route_threshold_ = 500; // per mille; fade_route::threshold_off = arm off
+    unsigned fade_route_threshold_ = 500;    // per mille; fade_route::threshold_off = arm off
     fade_route::Hysteresis fade_hysteresis_; // per node identity; cleared at Reset
     // The last routed scene draw: node identity, lifetime serial, frame and
     // draw index. The overlay arm admits a source-over sub-mesh only as the
@@ -2060,7 +2369,7 @@ private:
     IDirect3DTexture9* composition_main_texture_ = nullptr; // owning logical identity
     std::uint32_t composition_main_sampler_mask_ = 0, composition_reader_known_mask_ = 0;
     IDirect3DBaseTexture9* composition_textures_[21]{}; // borrowed; setters/resync only
-    IUnknown* composition_main_identity_ = nullptr; // borrowed canonical identity, held by main texture
+    IUnknown* composition_main_identity_ = nullptr;     // borrowed canonical identity, held by main texture
     bool composition_terminal_export_ = false, composition_diagnostic_export_ = false, composition_published_ = false;
     struct CompositionCounters {
         unsigned eligible_fade = 0, prepared_fade = 0, linear_fade = 0;
@@ -2083,22 +2392,27 @@ private:
         std::uint64_t packed_region_pixels = 0;
         unsigned packed_sample_skipped = 0; // capture frames: admitted packed draws beyond packed_sample_cap
         HRESULT recovery = S_FALSE;
-        unsigned prepared = 0, linear = 0, native = 0, incomplete = 0, refused = 0, suppressed = 0, exports = 0, exchanged = 0;
-        HRESULT source = S_FALSE, prepare = S_FALSE, prepare_restore = S_FALSE, composition = S_FALSE, restore = S_FALSE, exchange = S_FALSE, ack = S_FALSE;
+        unsigned prepared = 0, linear = 0, native = 0, incomplete = 0, refused = 0, suppressed = 0, exports = 0,
+                 exchanged = 0;
+        HRESULT source = S_FALSE, prepare = S_FALSE, prepare_restore = S_FALSE, composition = S_FALSE,
+                restore = S_FALSE, exchange = S_FALSE, ack = S_FALSE;
         unsigned refusal[6]{}; // pair, permission/scene, readiness, readers, frame stop, prepare failure
-        unsigned prepare_failures = 0, composition_failures = 0, restore_failures = 0, exchange_failures = 0, ack_failures = 0;
+        unsigned prepare_failures = 0, composition_failures = 0, restore_failures = 0, exchange_failures = 0,
+                 ack_failures = 0;
         // Fade region derivation (step 1): admitted fade draws with a
         // box-derived rectangle versus the full viewport, bound-table outcome
         // and the sum of area fractions (region_fraction_sum / (bound + full)
         // is the mean f of the frame).
-        unsigned region_bound = 0, region_full = 0, region_hit = 0, region_miss = 0, region_poisoned = 0, region_evicted = 0;
+        unsigned region_bound = 0, region_full = 0, region_hit = 0, region_miss = 0, region_poisoned = 0,
+                 region_evicted = 0;
         unsigned region_reason[unsigned(fade_region::Reason::Count)]{};
         unsigned region_status[unsigned(fade_region::Status::Count)]{};
         std::uint64_t region_permille_sum = 0; // integer per-mille fractions; formatted only at the Present boundary
         // Step B locked-prefix bounds: qualifying draws (non-indexed
         // TRIANGLELIST, StartVertex 0, stride-24 FLOAT3 stream), those bound,
         // the lookup outcome and the sum of bound area fractions.
-        unsigned prefix_draws = 0, prefix_bound = 0, prefix_refused = 0, prefix_instanced = 0, prefix_clipped = 0; // clipped: bound after a near-plane cut
+        unsigned prefix_draws = 0, prefix_bound = 0, prefix_refused = 0, prefix_instanced = 0,
+                 prefix_clipped = 0; // clipped: bound after a near-plane cut
         unsigned prefix_reason[unsigned(fade_region::Reason::Count)]{};
         unsigned prefix_lookup[unsigned(fade_region::prefix::Lookup::Count)]{};
         std::uint64_t prefix_permille_sum = 0;
@@ -2108,8 +2422,9 @@ private:
         std::uint64_t prefix_hull_px = 0, prefix_aabb_px = 0, prefix_vertices = 0, prefix_ticks = 0;
         unsigned prefix_rechecks = 0; // bound withdrawn: the record changed under the projection
     } composition_counts_;
-    bool screen_emission_bound_ = false; // X3M_SCREEN_EMISSION_BOUND=1, read once at attach
-    bool locked_prefix_log_ = false;     // X3M_LOCKED_PREFIX_LOG=1: the per-draw locked_prefix line on every frame (fixtures), not only capture frames
+    bool screen_emission_bound_ = false;  // X3M_SCREEN_EMISSION_BOUND=1, read once at attach
+    bool locked_prefix_log_ = false;      // X3M_LOCKED_PREFIX_LOG=1: the per-draw locked_prefix line on every frame
+                                          // (fixtures), not only capture frames
     fade_region::BoundTable fade_bounds_; // reserved with the composition pass, dropped at Reset/teardown
     // Fade-region witness state: this frame's derived rectangles with their
     // prepared flag (the union takes prepared draws only; past the capacity
@@ -2150,7 +2465,8 @@ private:
     };
     static constexpr unsigned fade_refused_capacity = 16;
     FadeRefusedRect fade_refused_[fade_refused_capacity]{};
-    unsigned fade_refused_count_ = 0; // this frame's refused recognised source-over draws; beyond the capacity only counted
+    unsigned fade_refused_count_ = 0; // this frame's refused recognised source-over draws; beyond the capacity only
+                                      // counted
     unsigned material_refusals_logged_ = 0;
     // Lightweight shader setters capture integers only. Formatting is deferred
     // to the existing full CPU-state boundary around Present, once per lifetime.
@@ -2172,8 +2488,8 @@ private:
     UINT target_width_ = 0, target_height_ = 0;
     std::uint64_t target_generation_ = 0; // Successful allocation in this device/reset generation.
     bool target_failed_ = false;
-    IDirect3DPixelShader9* sentinel_ps_ = nullptr;      // One output: motion target alone.
-    IDirect3DPixelShader9* sentinel_mrt_ps_ = nullptr;  // Two outputs: motion and depth targets.
+    IDirect3DPixelShader9* sentinel_ps_ = nullptr;     // One output: motion target alone.
+    IDirect3DPixelShader9* sentinel_mrt_ps_ = nullptr; // Two outputs: motion and depth targets.
     // The vs_3_0 pass-through and declaration of the route's own quads (self
     // test, sentinel fill; renderer/quad_vertex_program.h), created at attach,
     // surviving Reset, one device reference each; quad_fvf_ is the
@@ -2213,20 +2529,27 @@ private:
     chase_camera::SnapCursor chase_snap_cursor_{}; // independent cut observation for this device's history
     std::uintptr_t camera_projection_address_ = 0, camera_view_address_ = 0;
     renderer::SentinelMode sentinel_mode_ = renderer::SentinelMode::Auto;
-    bool sky_history_strict_ = false; // X3M_TAA_SKY_HISTORY=strict: FrameInputs::sentinel_strict_sky with the camera path
+    bool sky_history_strict_ = false; // X3M_TAA_SKY_HISTORY=strict: FrameInputs::sentinel_strict_sky with the camera
+                                      // path
     float sky_history_band_px_ = 3.f; // X3M_TAA_SKY_HISTORY_BAND_PX: FrameInputs::sky_history_band_px
-    float sky_history_exit_px_ = 0.f; // X3M_TAA_SKY_HISTORY_EXIT_PX: FrameInputs::sky_history_exit_px (0 without an age program)
-    float motion_weight_[3] = {0.f, 2.f, 8.f}; // X3M_TAA_MOTION_WEIGHT: FrameInputs::motion_weight, _v0, _v1 (0 without an age program)
+    float sky_history_exit_px_ = 0.f; // X3M_TAA_SKY_HISTORY_EXIT_PX: FrameInputs::sky_history_exit_px (0 without an age
+                                      // program)
+    float motion_weight_[3] = {0.f, 2.f, 8.f}; // X3M_TAA_MOTION_WEIGHT: FrameInputs::motion_weight, _v0, _v1 (0 without
+                                               // an age program)
     // Static-world previous rows for new keys (temporal-integration.md). The
     // camera verdict is evaluated once per frame, on the frame's first miss.
     unsigned unmatched_static_ = 0;
     std::uint64_t unmatched_static_frame_ = ~std::uint64_t{0};
     bool unmatched_static_camera_ = false;
-    renderer::CameraState unmatched_static_current_{}, unmatched_static_previous_{}; // the latches the verdict was taken on; the rows use the same pair
+    renderer::CameraState unmatched_static_current_{}, unmatched_static_previous_{}; // the latches the verdict was
+                                                                                     // taken on; the rows use the same
+                                                                                     // pair
     unsigned unmatched_static_frames_logged_ = 0;
-    std::uint32_t unmatched_static_applied_ = 0, unmatched_static_object_unknown_ = 0, unmatched_static_camera_refused_ = 0, unmatched_static_rows_refused_ = 0;
+    std::uint32_t unmatched_static_applied_ = 0, unmatched_static_object_unknown_ = 0,
+                  unmatched_static_camera_refused_ = 0, unmatched_static_rows_refused_ = 0;
     unsigned unmatched_static_logged_ = 0;
-    bool unmatched_static_rows(const MotionRoute& route, const renderer::SubmittedMatrix& rows, renderer::SubmittedMatrix& previous) noexcept;
+    bool unmatched_static_rows(const MotionRoute& route, const renderer::SubmittedMatrix& rows,
+                               renderer::SubmittedMatrix& previous) noexcept;
     float camera_cut_degrees_ = 20.f;
     unsigned camera_log_interval_ = 300;
     // Temporal resolve: requested switch, capability verdict at attach, lazy
@@ -2249,11 +2572,13 @@ private:
     unsigned hook_disagreements_logged_ = 0; // own budget: a latch-only screen must not starve the failure log
     // Telemetry sink (capture.cpp's per-device State) and frame-line cadence.
     telemetry::State* stats_ = nullptr;
-    gpu_sync_timing::Marks* gpu_sync_ = nullptr; // owned by the device context (capture.cpp); null when --gpu-sync-timing is off
+    gpu_sync_timing::Marks* gpu_sync_ = nullptr; // owned by the device context (capture.cpp); null when
+                                                 // --gpu-sync-timing is off
     unsigned frame_log_interval_ = 60;
     bool shadow_timing_ = false, shadow_rows_ = false; // configure_shadow_timing, configure_shadow_rows
     // sun_shadow_lane_refusals rate limit (publish_sun_lane): rows written, frame of the last, frames skipped since.
-    unsigned sun_refusal_rows_ = 0, sun_refusal_skipped_ = 0; std::uint64_t sun_refusal_last_frame_ = 0;
+    unsigned sun_refusal_rows_ = 0, sun_refusal_skipped_ = 0;
+    std::uint64_t sun_refusal_last_frame_ = 0;
     // The family block's gate (motion_output_frame, hdr_frame, ...): a capture frame, or telemetry on and
     // the frame on the X3M_MOTION_FRAME_LOG cadence (60; X3M_DEBUG=1 gives 1). The shadow/sun state rows
     // share it since the logging tiers (they were written every frame with no gate before).
@@ -2275,9 +2600,13 @@ private:
     struct SamplerShadow {
         IDirect3DBaseTexture9* texture = nullptr;
         DWORD levels = 0, mipfilter = 0, saved_bias = 0;
-        DWORD width = 0, height = 0; // level-0 size of a 2D texture (hull emissive widening only; 0 = unknown or not 2D)
-        std::uint64_t identity = 0;  // the proxy's resource identity of `texture` when the size was read (a freed and reallocated texture at the same address re-reads)
-        DWORD minfilter = 0; bool minfilter_known = false; // the application's MINFILTER (hull emissive widening: restored after a widened draw that raised it)
+        DWORD width = 0, height = 0; // level-0 size of a 2D texture (hull emissive widening only; 0 = unknown or not
+                                     // 2D)
+        std::uint64_t identity = 0;  // the proxy's resource identity of `texture` when the size was read (a freed and
+                                     // reallocated texture at the same address re-reads)
+        DWORD minfilter = 0;
+        bool minfilter_known = false; // the application's MINFILTER (hull emissive widening: restored after a widened
+                                      // draw that raised it)
         DWORD srgb = 0;
         bool srgb_known = false;
         bool mipfilter_known = false, saved_known = false, biased = false;
@@ -2285,7 +2614,8 @@ private:
     static constexpr unsigned sampler_stage_count = 16;
     SamplerShadow samplers_[sampler_stage_count]{};
     std::uint32_t sampler_bound_mask_ = 0, sampler_biased_mask_ = 0;
-    std::uint32_t sampler_restore_failed_mask_ = 0; // stages whose restore failed since the last Present (one attempt each)
+    std::uint32_t sampler_restore_failed_mask_ = 0; // stages whose restore failed since the last Present (one attempt
+                                                    // each)
     bool cutout_arm_active_ = false;                // begin_frame latch of cutout_arm_configured()
     float mip_bias_ = 0.f;
     DWORD mip_bias_bits_ = 0;
@@ -2308,31 +2638,41 @@ private:
     bool hdr_requested_ = false, hdr_enabled_ = false;
     bool hdr_tonemap_disabled_logged_ = false;
     float hdr_taa_k_ = 0.f;
-    float taa_k_override_ = -1.f;             // X3M_FIXTURE_TAA_K, seam only (negative: derived)
-    float taa_sharpen_ = 0.f;                 // X3M_TAA_SHARPEN (0: off)
-    float taa_far_weight_ = 0.f, taa_far_filter_ = 0.f, taa_far_f0_ = 60.f, taa_far_f1_ = 68.f, taa_far_lo_ = .03f, taa_far_hi_ = .25f; // X3M_TAA_FAR_STABILISER (F0 / F1 80 / 130 before 2026-09-25)
+    float taa_k_override_ = -1.f; // X3M_FIXTURE_TAA_K, seam only (negative: derived)
+    float taa_sharpen_ = 0.f;     // X3M_TAA_SHARPEN (0: off)
+    float taa_far_weight_ = 0.f, taa_far_filter_ = 0.f, taa_far_f0_ = 60.f, taa_far_f1_ = 68.f, taa_far_lo_ = .03f,
+          taa_far_hi_ = .25f;                            // X3M_TAA_FAR_STABILISER (F0 / F1 80 / 130 before 2026-09-25)
     float taa_thin_weight_ = 0.f, taa_thin_relax_ = 1.f; // X3M_TAA_THIN_REGION
-    bool taa_thin_camera_gate_ = false; // camera gate, on with the thin region
-    float taa_thin_emissive_ = 0.f;     // X3M_TAA_THIN_REGION_EMISSIVE=E: emissive vote of the thin region (thin-glow-lines.md 8.3 R3)
-    bool taa_masks_logged_ = false;           // the one line for TemporalPass::line_masks_failed()
-    bool taa_box_refused_logged_ = false;     // the one line per TemporalPass::camera_gate_failed() episode (box targets refused: thin region off)
-    bool taa_fold_logged_ = false;            // the one line for TemporalPass::Diagnostics::depth_folded (taa-high-resolution.md S1), per attachment
-    bool taa_box_half_ = false;               // X3M_TAA_BOX_RESOLUTION=half (S4): requested; the pass decides per run (logged only when requested)
-    bool taa_box_default_ = false;            // that half came from the launcher's default (X3M_TAA_BOX_RESOLUTION_DEFAULT=1): default=1 on the creation row
-    bool taa_far_camera_gate_ = true;         // X3M_TAA_FAR_GATE: camera (default) or screen; FrameInputs::far_camera_gate
-    bool taa_far_gate_given_ = false;         // the variable was set to a valid value
-    bool taa_far_gate_default_ = false;       // that camera came from the launcher's default (X3M_TAA_FAR_GATE_DEFAULT=1): default=1 on the creation row
-    bool taa_far_clip_7x7_ = true;            // X3M_TAA_FAR_CLIP: 7x7 (default) or 3x3; FrameInputs::far_clip
-    bool taa_far_clip_given_ = false;         // the variable was set to a valid value
-    bool taa_far_clip_default_ = false;       // that 7x7 came from the launcher's default (X3M_TAA_FAR_CLIP_DEFAULT=1): far_clip_default=1 on the creation row
-    unsigned taa_thin_source_ = 0;            // X3M_TAA_THIN_REGION_SOURCE: requested (0 both, 1 screen, 2 vote)
-    bool taa_thin_source_given_ = false;      // the variable was set to a valid value (the configured row is logged)
-    bool taa_thin_source_default_ = false;    // that value came from the launcher's default (X3M_TAA_THIN_REGION_SOURCE_DEFAULT=1)
-    unsigned taa_thin_source_configured_ = 0; // what taa_initialize resolved it to; FrameInputs::thin_region_source
-    const char* taa_box_reason_logged_ = nullptr; // the last Diagnostics::box_resolution_reason seen for this attachment
-    unsigned taa_box_reason_rows_ = 0;            // changes of that reason: rows for the first 8, one suppressed=1 row at the 9th
-    bool taa_alpha_history_ = false;          // X3M_TAA_ALPHA_HISTORY (HDR route only)
-    float taa_history_weight_ = .9f;          // X3M_TAA_HISTORY_WEIGHT
+    bool taa_thin_camera_gate_ = false;                  // camera gate, on with the thin region
+    float taa_thin_emissive_ = 0.f;       // X3M_TAA_THIN_REGION_EMISSIVE=E: emissive vote of the thin region
+                                          // (thin-glow-lines.md 8.3 R3)
+    bool taa_masks_logged_ = false;       // the one line for TemporalPass::line_masks_failed()
+    bool taa_box_refused_logged_ = false; // the one line per TemporalPass::camera_gate_failed() episode (box targets
+                                          // refused: thin region off)
+    bool taa_fold_logged_ = false; // the one line for TemporalPass::Diagnostics::depth_folded (taa-high-resolution.md
+                                   // S1), per attachment
+    bool taa_box_half_ = false;    // X3M_TAA_BOX_RESOLUTION=half (S4): requested; the pass decides per run (logged only
+                                   // when requested)
+    bool taa_box_default_ = false; // that half came from the launcher's default (X3M_TAA_BOX_RESOLUTION_DEFAULT=1):
+                                   // default=1 on the creation row
+    bool taa_far_camera_gate_ = true;      // X3M_TAA_FAR_GATE: camera (default) or screen; FrameInputs::far_camera_gate
+    bool taa_far_gate_given_ = false;      // the variable was set to a valid value
+    bool taa_far_gate_default_ = false;    // that camera came from the launcher's default (X3M_TAA_FAR_GATE_DEFAULT=1):
+                                           // default=1 on the creation row
+    bool taa_far_clip_7x7_ = true;         // X3M_TAA_FAR_CLIP: 7x7 (default) or 3x3; FrameInputs::far_clip
+    bool taa_far_clip_given_ = false;      // the variable was set to a valid value
+    bool taa_far_clip_default_ = false;    // that 7x7 came from the launcher's default (X3M_TAA_FAR_CLIP_DEFAULT=1):
+                                           // far_clip_default=1 on the creation row
+    unsigned taa_thin_source_ = 0;         // X3M_TAA_THIN_REGION_SOURCE: requested (0 both, 1 screen, 2 vote)
+    bool taa_thin_source_given_ = false;   // the variable was set to a valid value (the configured row is logged)
+    bool taa_thin_source_default_ = false; // that value came from the launcher's default
+                                           // (X3M_TAA_THIN_REGION_SOURCE_DEFAULT=1)
+    unsigned taa_thin_source_configured_ = 0;     // what taa_initialize resolved it to; FrameInputs::thin_region_source
+    const char* taa_box_reason_logged_ = nullptr; // the last Diagnostics::box_resolution_reason seen for this
+                                                  // attachment
+    unsigned taa_box_reason_rows_ = 0; // changes of that reason: rows for the first 8, one suppressed=1 row at the 9th
+    bool taa_alpha_history_ = false;   // X3M_TAA_ALPHA_HISTORY (HDR route only)
+    float taa_history_weight_ = .9f;   // X3M_TAA_HISTORY_WEIGHT
     // 8-bit route: failed sharpened draws (the pass kept the resolve, the
     // copy-back presented it); at the limit the sharpen is no longer requested.
     unsigned taa_sharpen_failures_ = 0;
@@ -2344,35 +2684,43 @@ private:
     renderer::FogSectorLatch fog_latch_{}; // observational only
     FogSectorFrame fog_sector_{};
     bool fog_families_checked_ = false; // the process-wide x3m/fog-families.bin load was requested by this device
-    bool fog_requested_ = false, fog_enabled_ = true, fog_timing_ = false, fog_disabled_ = false, fog_attach_failed_ = false, fog_sun_fallback_logged_ = false;
+    bool fog_requested_ = false, fog_enabled_ = true, fog_timing_ = false, fog_disabled_ = false,
+         fog_attach_failed_ = false, fog_sun_fallback_logged_ = false;
     float fog_strength_ = renderer::fog_strength_default, fog_anisotropy_ = renderer::fog_anisotropy_default;
     unsigned fog_failures_ = 0, fog_logs_ = 0;
     std::uint64_t fog_frame_ = ~std::uint64_t(0), fog_applied_frames_ = 0;
     const char* fog_last_reason_ = "";
     bool fog_cards_replace_ = false, fog_card_ready_checked_ = false, fog_card_ready_ = false;
-    const char* fog_card_refusal_ = nullptr;      // the frame's first card refusal (gate or readiness component), for the cards line
+    const char* fog_card_refusal_ = nullptr; // the frame's first card refusal (gate or readiness component), for the
+                                             // cards line
     const char* fog_card_last_refusal_ = nullptr; // the refusal the last cards line printed (part of its change key)
     bool fog_card_refusal_ready_ = false;         // the refusal is a readiness verdict (printed with the ready: prefix)
     const char* fog_card_ready_reason_ = nullptr; // the frame's readiness verdict when it failed
-    std::uint64_t fog_card_states_log_frame_ = 0; // first frame at which the next refused state vector may be printed (300-frame spacing)
+    std::uint64_t fog_card_states_log_frame_ = 0; // first frame at which the next refused state vector may be printed
+                                                  // (300-frame spacing)
     FogCardPolicy fog_cards_{};
     unsigned fog_card_mode_ = 0, fog_card_logs_ = 0;
-    std::uint64_t fog_card_logged_frame_ = 0, fog_transition_frame_ = ~std::uint64_t(0), fog_card_last_report_ = ~std::uint64_t(0), fog_card_observed_total_ = 0, fog_card_suppressed_total_ = 0, fog_card_refused_total_ = 0;
+    std::uint64_t fog_card_logged_frame_ = 0, fog_transition_frame_ = ~std::uint64_t(0),
+                  fog_card_last_report_ = ~std::uint64_t(0), fog_card_observed_total_ = 0,
+                  fog_card_suppressed_total_ = 0, fog_card_refused_total_ = 0;
     const char* fog_card_fault_reason_ = "none";
     // Stored-density range. The camera is the previous scene end's (read after the owner latch).
-    bool fog_density_requested_ = false, fog_density_refused_ = false, fog_density_prepared_ = false, fog_density_camera_valid_ = false;
+    bool fog_density_requested_ = false, fog_density_refused_ = false, fog_density_prepared_ = false,
+         fog_density_camera_valid_ = false;
     bool fog_density_config_logged_ = false, fog_density_ready_logged_[2]{}, fog_march_scale_refused_logged_ = false;
     // X3M_FOG_DUST_MOTES at launch: arms the dust-motes fixture toggle and the mote fields of volumetric_fog_frame.
     bool fog_dust_motes_launch_ = false, fog_motes_refused_logged_ = false, fog_motes_drawn_ = false;
     long long fog_motes_epoch_qpc_ = 0; // the drift clock's origin (first mote frame)
     unsigned fog_density_logs_ = 0, fog_handover_logs_ = 0;
-    bool fog_prefill_launch_ = false;       // X3M_FOG_HANDOVER_PREFILL under the stored range
-    fog_prefill::Record fog_prefill_{};     // the started prefill until the detector's first Ready sample
+    bool fog_prefill_launch_ = false;   // X3M_FOG_HANDOVER_PREFILL under the stored range
+    fog_prefill::Record fog_prefill_{}; // the started prefill until the detector's first Ready sample
     unsigned fog_prefill_logs_ = 0;
     bool fog_prefill_refused_logged_ = false; // one worker_refused poll line per stall
-    fog_prefill::Decision fog_prefill_confirm(const FogSectorFrame& next, const sector_background::Sample& sample) noexcept;
+    fog_prefill::Decision fog_prefill_confirm(const FogSectorFrame& next,
+                                              const sector_background::Sample& sample) noexcept;
     std::uint64_t fog_density_sample_frame_ = ~std::uint64_t(0), fog_density_key_ = 0;
-    std::uint32_t fog_density_ready_sector_ = 0, fog_density_ready_id_ = 0; // the last Ready sample's sector token and id: a change is a transit or a load
+    std::uint32_t fog_density_ready_sector_ = 0, fog_density_ready_id_ = 0; // the last Ready sample's sector token and
+                                                                            // id: a change is a transit or a load
     long long fog_density_epoch_qpc_ = 0, fog_density_sample_qpc_ = 0;
     static constexpr unsigned fog_density_gap_ms = 500; // a longer gap in scene samples is a load
     double fog_density_camera_[3]{};
@@ -2406,8 +2754,10 @@ private:
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     MotionOutputFixtureConfig fixture_{};
     bool fixture_configured_ = false, fixture_abi_known_ = false;
-    bool fixture_stretch_fault_ = false; // X3M_FIXTURE_STRETCH_FAULT=1: the round-trip self test "fails" (taa_copy=draw)
-    bool fixture_taa_filter_fault_ = false; // X3M_FIXTURE_TAA_FILTER_FAULT=1: the history filter query "refuses" at attach (fp16_filter)
+    bool fixture_stretch_fault_ = false;    // X3M_FIXTURE_STRETCH_FAULT=1: the round-trip self test "fails"
+                                            // (taa_copy=draw)
+    bool fixture_taa_filter_fault_ = false; // X3M_FIXTURE_TAA_FILTER_FAULT=1: the history filter query "refuses" at
+                                            // attach (fp16_filter)
     // X3M_FIXTURE_FADE_RECT=l,t,r,b (fixture seam only): every admitted fade
     // draw reports this rectangle as its bound-derived region, so the witness
     // sees a sub-viewport rectangle (and a deliberately wrong one) although the

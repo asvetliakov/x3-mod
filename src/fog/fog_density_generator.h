@@ -40,12 +40,12 @@ constexpr int kGroupCount = 32;
 constexpr int kGroupsPerRow = 8;
 constexpr int kLanes = 4;
 constexpr int kTileTexels = 129;
-constexpr int kAtlasWidth = kGroupsPerRow * kTileTexels;              // 1032
+constexpr int kAtlasWidth = kGroupsPerRow * kTileTexels;                  // 1032
 constexpr int kAtlasHeight = (kGroupCount / kGroupsPerRow) * kTileTexels; // 516
 constexpr int kTexelBytes = 8;
 constexpr std::size_t kAtlasPitch = std::size_t(kAtlasWidth) * kTexelBytes; // 8256
 constexpr std::size_t kAtlasBytes = kAtlasPitch * kAtlasHeight;             // 4,260,096
-constexpr int kBrickTexels = 32;   // one generation unit: 32×32 texels = 4096 nodes
+constexpr int kBrickTexels = 32; // one generation unit: 32×32 texels = 4096 nodes
 constexpr std::size_t kTilePitch = std::size_t(kTileTexels) * kTexelBytes;
 constexpr std::size_t kTileBytes = kTilePitch * kTileTexels;
 constexpr std::size_t kBrickPitch = std::size_t(kBrickTexels) * kTexelBytes;
@@ -117,8 +117,8 @@ AtlasTexel atlas_texel(int sx, int sy, int sz);
 std::size_t atlas_offset(const AtlasTexel& texel, std::size_t pitch = kAtlasPitch);
 
 struct LodWeights {
-    double lambda; // fine weight 1-smoothstep(20000,30000,s)
-    double taper;  // horizon window 1-smoothstep(150000,200000,s)
+    double lambda;   // fine weight 1-smoothstep(20000,30000,s)
+    double taper;    // horizon window 1-smoothstep(150000,200000,s)
     bool fine_level; // lambda > 0: fine level sampled
     bool far_level;  // lambda < 1: far level sampled (not `far`: windef.h defines that as a macro)
 };
@@ -127,10 +127,10 @@ LodWeights lod_weights(double distance);
 // Full address of a world point at one level relative to a window origin.
 // A level outside {0,1} is refused: level = -1, contained = false, rest zero.
 struct Address {
-    int level;        // 0 fine, 1 far, -1 refused
-    NodeKey key;      // base node floor(p/delta)
-    NodeKey local;    // key - origin (valid 0..126 when contained)
-    AtlasTexel texel; // storage texel of the base node
+    int level;         // 0 fine, 1 far, -1 refused
+    NodeKey key;       // base node floor(p/delta)
+    NodeKey local;     // key - origin (valid 0..126 when contained)
+    AtlasTexel texel;  // storage texel of the base node
     double fx, fy, fz; // trilinear fractions in [0,1)
     bool contained;
 };
@@ -141,17 +141,17 @@ Address address(int level, const NodeKey& origin, double px, double py, double p
 // One 32×32-texel brick (4096 nodes) of Z group `group` (0..31) for the window
 // at `origin`: storage x in [32*brick_x, +32), y in [32*brick_y, +32), lanes
 // z storage 4*group..4*group+3. Writes RGBA16F texels at out + row*pitch.
-void generate_brick(double delta, const NodeKey& origin, const WorldOffset& offset,
-                    int brick_x, int brick_y, int group, std::uint8_t* out, std::size_t pitch);
+void generate_brick(double delta, const NodeKey& origin, const WorldOffset& offset, int brick_x, int brick_y, int group,
+                    std::uint8_t* out, std::size_t pitch);
 
 // One 129×129 tile of a Z group: the 16 bricks plus the duplicate border
 // (column/row 128 copy storage 0). Writes into out + row*pitch (pitch ≥ 129*8).
-void generate_tile(double delta, const NodeKey& origin, const WorldOffset& offset,
-                   int group, std::uint8_t* out, std::size_t pitch);
+void generate_tile(double delta, const NodeKey& origin, const WorldOffset& offset, int group, std::uint8_t* out,
+                   std::size_t pitch);
 
 // Copies the border texels of one tile inside a full atlas (after bricks that
 // touched storage 0 changed): column 128 <- column 0, row 128 <- row 0.
 void duplicate_tile_border(int group, std::uint8_t* atlas, std::size_t pitch = kAtlasPitch);
 
-}  // namespace fog
-}  // namespace x3m
+} // namespace fog
+} // namespace x3m
