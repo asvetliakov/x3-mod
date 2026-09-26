@@ -39,6 +39,8 @@ STAND_SHORT = '--direct --debug --perf'.split()
 EXPECTED_EMPTY = {
     'X3M_BLOOM_SOURCE_CLAMP': '1.0', 'X3M_BOLT_FOOTPRINT': '3,12', 'X3M_CAMERA': 'chase', 'X3M_CAMERA_CUT_DEG': '20.0',
     'X3M_CAPTURE_FRAMES': '8', 'X3M_CAPTURE_START': '999999', 'X3M_CHASE_COMBAT_TIGHTNESS': '0.0',
+    # No settings file and no built-in defaults on a default launch (--config opts in; docs/architecture/config-file.md).
+    'X3M_CONFIG': 'bare',
     'X3M_CHASE_DISTANCE_SCALE': '1.05', 'X3M_CHASE_FOV_COMPENSATE': '1', 'X3M_CHASE_HUD_ANCHOR': 'forward',
     'X3M_CHASE_OFFSET_Y': '0.5', 'X3M_CHASE_PITCH_DOWN_DEG': '0.5', 'X3M_CHASE_SCENE_FIX': '0',
     'X3M_CHASE_VIEW_RESTORE': '1', 'X3M_COLLIDE_BOX_CULL': '1', 'X3M_COLLIDE_MEMO': '1', 'X3M_COLLIDE_SAT_SSE2': '1',
@@ -185,6 +187,18 @@ class LauncherDefaults(unittest.TestCase):
         self.assertEqual(self.env(*STAND_SHORT), {**empty, **STAND_TELEMETRY})
         # The former X3M_MOTION_FRAME_LOG=1 shell prefix is dropped: the DLL's debug group gives the cadence.
         self.assertEqual(self.env(*STAND_SHORT, inherited={'X3M_MOTION_FRAME_LOG': '1'}), {**empty, **STAND_TELEMETRY})
+
+    def test_config_player_mode_sends_only_explicit_options(self):
+        # --config (docs/architecture/config-file.md): the proxy's defaults and the player's file decide; the launcher sends
+        # the launcher-only parts and the options given, an option that switches something off as an empty value.
+        self.assertEqual(self.env('--config'), {})
+        self.assertEqual(self.env('--config', '/tmp/x3m-test.ini'), {'X3M_CONFIG': 'Z:/tmp/x3m-test.ini'})
+        self.assertEqual(self.env('--config', 'C:\\X3\\x3m.ini'), {'X3M_CONFIG': 'C:\\X3\\x3m.ini'})
+        self.assertEqual(self.env('--config', '--no-music-keep', '--taa-sharpen', '0.5', '--taa'),
+                         {'X3M_MUSIC_KEEP': '', 'X3M_TAA_SHARPEN': '0.5', 'X3M_TAA': '1'})
+        _, data, _ = self.launch('--config')
+        self.assertEqual(data['command'][-3:], ['-noabout', '-skipintro', '-runinbg'])
+        self.assertNotEqual(self.launch('--config', vanilla=True)[0], 0)
 
     def test_vanilla_sends_nothing_modded(self):
         env = self.env(vanilla=True)

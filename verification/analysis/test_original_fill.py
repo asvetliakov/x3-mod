@@ -287,7 +287,7 @@ class LauncherGateTests(unittest.TestCase):
     def test_dll_gate_reads_the_variable_and_needs_hdr_without_linear_materials(self):
         source = (ROOT / 'src/proxy/capture.cpp').read_text()
         block = source[source.index('X3M_ORIGINAL_FILL=<k>'):][:2600]
-        self.assertIn('GetEnvironmentVariableW(L"X3M_ORIGINAL_FILL",setting,32)', block)
+        self.assertIn('x3m::config::get(L"X3M_ORIGINAL_FILL",setting,32)', block)
         self.assertIn('value>=0.f&&value<=.5f', block)
         self.assertIn('const bool excluded=linear_material_requested;', block)
         self.assertIn('if(!hdr_requested||excluded)original_fill=0.f;', block)

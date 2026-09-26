@@ -1,4 +1,5 @@
 #include "point_light_admission.h"
+#include "config.h"
 #include "point_light_admission_core.h"
 #include "engine_patch.h"
 #include "engine_memory.h"
@@ -174,7 +175,7 @@ bool initialize() {
     const DWORD error = GetLastError();
     if (patched_) { SetLastError(error); return true; }
     wchar_t setting[4]{};
-    const DWORD length = GetEnvironmentVariableW(L"X3M_POINT_LIGHT_ROOT_ADMISSION", setting, 4);
+    const DWORD length = x3m::config::get(L"X3M_POINT_LIGHT_ROOT_ADMISSION", setting, 4);
     if (length == 0) { state_ = "disabled"; SetLastError(error); return false; }
     bool applied = false;
     const bool requested = length == 1 && setting[0] == L'1';

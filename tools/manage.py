@@ -143,6 +143,62 @@ CAPTURE_START_NEVER = '999999'
 PROMOTED_OFF = '<off>'  # a literal, so the AST-extracting launcher tests carry it with the other constants
 
 
+def config_setting(option):
+    """X3M_CONFIG for --config: None (option absent) -> 'bare' (no file, no built-in defaults: the launcher sends every
+    variable it wants set and an absent one is off, as before the settings file); '' (--config alone) -> None, unset: the
+    x3m.ini next to the proxy; a Windows path (drive letter or leading backslash) verbatim; any other path as
+    Z:<absolute host path> (the Wine drive of the host root)."""
+    if option is None:
+        return 'bare'
+    if option == '':
+        return None
+    if option.startswith('\\') or re.match(r'^[A-Za-z]:', option):
+        return option
+    return 'Z:' + os.path.abspath(option)
+
+
+# Set from the installation (the voice decoder discovery), not from an option: player mode sends it as found.
+PLAYER_INSTALLATION_VARIABLES = ('X3M_VOICE_DMO_FALLBACK',)
+
+
+def config_schema():
+    """tools/config/schema.py (docs/architecture/config-file.md), loaded by path."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location('x3m_config_schema', ROOT / 'tools/config/schema.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def player_environment(env, argv, schema):
+    """--config (player mode): the X3M_* part of `env` reduced to what the developer asked for, so the proxy runs on its
+    built-in defaults and the player's x3m.ini. Kept: a variable whose option was given (`--<name>` or `--no-<name>`,
+    the schema's `launcher` field) and a variable whose value differs from the built-in default (an explicit option's
+    dependants, e.g. --no-taa's TAA knobs); a variable the options switched off (sent on a default launch, absent now)
+    is sent empty, which the proxy's sites read as unset and which beats the file and the default. Dropped: every
+    variable equal to its built-in default (the promoted defaults and the launcher's explicit values). X3M_CONFIG and the
+    installation-set variables stay as assembled. Returns the names kept."""
+    passed = set()
+    for token in argv:
+        if token.startswith('--'):
+            name = token.split('=', 1)[0]
+            passed.add('--' + name[5:] if name.startswith('--no-') else name)
+    defaults = {e['env']: e['default'] for e in schema.SETTINGS if e['default'] is not None}
+    explicit = {e['env'] for e in schema.SETTINGS if e['launcher'] in passed}
+    kept = []
+    for name in sorted({k for k in env if k.startswith('X3M_')} | set(defaults)):
+        if name == 'X3M_CONFIG' or (name in PLAYER_INSTALLATION_VARIABLES and name not in explicit):
+            continue
+        value = env.get(name)
+        if name in explicit or value != defaults.get(name):
+            if value is None:
+                env[name] = ''
+            kept.append(name)
+        else:
+            env.pop(name, None)
+    return kept
+
+
 def apply_promoted_defaults(args):
     """Fills the promoted launcher defaults into the unset options; returns the dests it filled."""
     opted_out = set()
@@ -909,6 +965,7 @@ def main():
     parser.add_argument('--pause-key', type=pause_key_code, default=None, metavar='CODE', help=f'Engine key code that ends the pause under --pause-key-only (X3M_PAUSE_KEY; default 0x{PAUSE_KEY_DEFAULT:x} = DIK_PAUSE): the reader\'s 12-bit code, | 0x1000 for a Shift chord, 0x-hex or decimal in [0x1, 0x{PAUSE_KEY_MAX:x}] with a non-zero low 12 bits; for a rebound Pause key. Needs the patch (refused with --no-pause-key-only and under --vanilla)')
     parser.add_argument('--cull-small-parts', type=float, default=None, metavar='PX', help='[launcher default since 2026-09-25: 4 on every modded launch (was 2); --cull-small-parts 0 = off; not sent under --vanilla] Cull mesh nodes whose projected radius is under PX pixels, 0 < PX <= 64 (X3M_CULL_SMALL_PARTS_PX; launcher default 2 on every modded launch, --cull-small-parts 0 = off, nothing patched; --vanilla forwards nothing and the DLL\'s own fallback stays off): one trampoline on the per-node cull/LOD pass 0x0047cfe0 at 0x0047d2a2 sends a node whose engine metric s = r*640/D is below the per-frame threshold (PX converted with the live projection scale and the back-buffer width, the cull-census bucket rule) down the engine\'s own size-cull instruction at 0x0047d2c3; every other node runs the vanilla compare. Run131 census at the run117 station view: 2 px = 403 of the 878 census-attributed draws (901 in the frame; about 9.6 ms at 23.7 us/draw), 4 px = 458; lower bounds, because a culled node also culls its 0x40000-flagged children (0x0047d055). The threshold applies in every view (small casters leave the shadow and env maps too) and is scaled by the one main-view projection. Exact executable and bytes only, otherwise fails closed to vanilla; risk: popping of thin parts (antennas, clamps) whose radius is small, cascading to their descendants (none seen at 2 px in run 43 B) (docs/architecture/engine-frame-time.md 2.3, docs/reverse-engineering/lod-selection.md "Cull small parts site")')
     parser.add_argument('--cull-small-parts-projectiles', choices=('on', 'off'), default=None, help='Whether --cull-small-parts spares weapon projectiles (X3M_CULL_SMALL_PARTS_PROJECTILES; default on; refused when the cull is off, enables nothing on its own). on = a node carrying the engine\'s class-0 (TBullets) marker, +0x130 & 0x20000000 set at object creation (0x00441242) for every bolt, beam and flak type including mod-added ones, runs the vanilla compare instead of the pixel cull; missiles carry no marker and stay subject to the cull (they rarely fall under a few pixels). Run 75 B at 4 px: 30-33 of 51-54 bolts per frame were culled by the stub one frame after leaving the muzzle; expected cost with on about 31 more bullet instances (~750 primitives) per frame while firing. The DLL turns the exemption off (projectiles=marker_mismatch) when the two marker instructions are not the verified bytes (docs/reverse-engineering/lod-selection.md "Projectile nodes")')
+    parser.add_argument('--config', nargs='?', const='', default=None, metavar='PATH', help='launch only: the settings file x3m.ini (docs/user/config.md, docs/architecture/config-file.md). Default (no --config): X3M_CONFIG=bare, the proxy reads no file and uses no built-in default, the launcher sends every setting itself and an absent variable is off, so a flight depends only on these options. --config: player mode, the release scenario: the launcher sends no promoted default and no explicit off value, only X3M_CONFIG (unset: the x3m.ini next to the proxy; --config PATH: that file, a host path sent as Z:<absolute path> for Wine, a path with a drive letter or a leading backslash verbatim), the launcher-only parts (the X3 switches, the voice decoder variables, the DLL override) and the variables of the options given explicitly, which beat the file (an option that switches something off is sent as an empty value). Refused with --vanilla (no proxy loads).')
     parser.add_argument('--dry-run', action='store_true', help='launch only: validate the options and installation, print the command and X3M_* environment as JSON, and exit without launching')
     args = parser.parse_args()
     args.promoted_defaults = apply_promoted_defaults(args)
@@ -916,6 +973,10 @@ def main():
         parser.error('--dry-run applies to launch only.')
     if args.voice_decoder is not None and args.action != 'launch':
         parser.error('--voice-decoder applies to launch only.')
+    if args.config is not None and args.action != 'launch':
+        parser.error('--config applies to launch only.')
+    if args.config is not None and args.vanilla:
+        parser.error('--config cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so no proxy reads a settings file.')
     if args.object_lifetime and not (args.object_trace and args.ownership):
         parser.error('--object-lifetime requires --object-trace and --ownership.')
     # Logging tiers (docs/architecture/logging-tiers.md, 2026-09-26): --debug and --perf replace --telemetry and the
@@ -1529,6 +1590,15 @@ def main():
         env = os.environ.copy()
         for name in REMOVED_VARIABLES + TIERED_VARIABLES:
             env.pop(name, None)
+        # The settings file (docs/architecture/config-file.md, section 3): X3M_CONFIG=bare unless --config is given (no file,
+        # no built-in defaults), so the dry-run pins and every flight record never depend on a file in the bottle and an
+        # opt-out that works by omission stays off; an inherited value is dropped like the tiers. --config is player
+        # mode, reduced below after the environment is complete.
+        env.pop('X3M_CONFIG', None)
+        if not args.vanilla:
+            config_variable = config_setting(args.config)
+            if config_variable is not None:
+                env['X3M_CONFIG'] = config_variable
         # Logging tiers: the two groups, expanded by the DLL; every other logging variable is sent only by its own
         # developer option below (an inherited value of the tiered set was dropped above, so a stale export cannot
         # change what a flight logs or serialise it).
@@ -1908,6 +1978,11 @@ def main():
             # plugin or arm the DMO hook.
             for name in ('GST_PLUGIN_PATH_1_0', 'GST_REGISTRY_1_0', 'X3M_VOICE_DMO_FALLBACK'):
                 env.pop(name, None)
+        if args.config is not None and not args.vanilla:
+            kept = player_environment(env, sys.argv[1:], config_schema())
+            print(f"config: player mode, X3M_CONFIG={env.get('X3M_CONFIG', '<unset: x3m.ini next to the proxy>')}; "
+                  f"{len(kept)} X3M_* variable(s) from explicit options, every other setting from the proxy's defaults and the file",
+                  file=sys.stderr)
         # --dll applies to this child only, preserving the user's other overrides;
         # ';' separates entries exactly as in WINEDLLOVERRIDES, which is what
         # CrossOver's wine --dll feeds.

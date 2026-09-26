@@ -1,4 +1,5 @@
 #include "capture.h"
+#include "config.h"
 #include "proxy_identity.h"
 #include "session_log.h"
 #include "voice_dmo_fallback.h"
@@ -50,15 +51,15 @@ BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
     // Process-local experimental switch; default remains the native capture
     // path. Read once, outside loader lock, before exposing any factory.
     wchar_t setting[8]{};
-    ownership_enabled = GetEnvironmentVariableW(L"X3M_OWNERSHIP", setting, 8) == 1 && setting[0] == L'1';
-    const bool depth_requested = GetEnvironmentVariableW(L"X3M_DEPTH_COPY", setting, 8) == 1 && setting[0] == L'1';
+    ownership_enabled = x3m::config::get(L"X3M_OWNERSHIP", setting, 8) == 1 && setting[0] == L'1';
+    const bool depth_requested = x3m::config::get(L"X3M_DEPTH_COPY", setting, 8) == 1 && setting[0] == L'1';
     depth_copy_enabled = ownership_enabled && depth_requested;
-    const bool finite_requested = GetEnvironmentVariableW(L"X3M_FINITE_POSITIONS", setting, 8) == 1 && setting[0] == L'1';
+    const bool finite_requested = x3m::config::get(L"X3M_FINITE_POSITIONS", setting, 8) == 1 && setting[0] == L'1';
     finite_positions_enabled = ownership_enabled && finite_requested;
     // Caster-candidate counter (shadow-replay-gates.md section 3): the lock
     // bookends ride the same switch; capture.cpp gates the route side.
-    const bool bookends_requested = (GetEnvironmentVariableW(L"X3M_SHADOW_REPLAY_CANDIDATES", setting, 8) == 1 && setting[0] == L'1')
-        || (GetEnvironmentVariableW(L"X3M_SHADOW_REPLAY_DEPTH", setting, 8) == 1 && setting[0] == L'1') // the depth replay needs the same bookends
+    const bool bookends_requested = (x3m::config::get(L"X3M_SHADOW_REPLAY_CANDIDATES", setting, 8) == 1 && setting[0] == L'1')
+        || (x3m::config::get(L"X3M_SHADOW_REPLAY_DEPTH", setting, 8) == 1 && setting[0] == L'1') // the depth replay needs the same bookends
         || x3m::thin_vote_route_gate(); // so do the thin vote's histogram reads
     lock_bookends_enabled = ownership_enabled && bookends_requested;
     // The thin vote reads its subsets' histograms through READONLY Locks: those buffers must be created readable,
@@ -73,7 +74,7 @@ BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
     // launcher sets both variables, the DLL accepts either.
     // The bolt footprint (X3M_BOLT_FOOTPRINT, bolt-footprint.md) reads the
     // same scan's vertices and enables it through its own gate.
-    const bool bound_requested = (GetEnvironmentVariableW(L"X3M_SCREEN_EMISSION_BOUND", setting, 8) == 1 && setting[0] == L'1')
+    const bool bound_requested = (x3m::config::get(L"X3M_SCREEN_EMISSION_BOUND", setting, 8) == 1 && setting[0] == L'1')
         || x3m::screen_emission_route_enabled();
     const bool footprint_requested = x3m::bolt_footprint_requested_gate();
     const bool prefix_requested = bound_requested || footprint_requested;

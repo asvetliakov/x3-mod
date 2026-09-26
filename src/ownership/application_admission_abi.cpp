@@ -1,4 +1,5 @@
 #include "application_admission_abi.h"
+#include "../proxy/config.h"
 #include <windows.h>
 #include <atomic>
 
@@ -31,7 +32,7 @@ AdmissionMonitor process_monitor;
 INIT_ONCE process_configuration = INIT_ONCE_STATIC_INIT;
 BOOL CALLBACK configure_process_admission(PINIT_ONCE, PVOID, PVOID*) {
     wchar_t setting[2]{};
-    if(GetEnvironmentVariableW(L"X3M_ADMISSION",setting,2)==1 && setting[0]==L'1')
+    if(x3m::config::get(L"X3M_ADMISSION",setting,2)==1 && setting[0]==L'1')
         detail::published_monitor=&process_monitor;
     detail::monitor_published.store(true,std::memory_order_release);
     return TRUE;

@@ -22,6 +22,10 @@
    "300",
    null
   ],
+  "X3M_CONFIG": [
+   null,
+   "bare"
+  ],
   "X3M_CULL_CENSUS": [
    "1",
    null
@@ -279,6 +283,10 @@
   "X3M_CAPTURE_DELAY": [
    "300",
    null
+  ],
+  "X3M_CONFIG": [
+   null,
+   "bare"
   ],
   "X3M_CULL_CENSUS": [
    "1",
@@ -549,8 +557,8 @@
   ]
  },
  "counts": {
-  "empty": 122,
-  "stand": 124,
+  "empty": 123,
+  "stand": 125,
   "recorded": 181
  },
  "checks": {

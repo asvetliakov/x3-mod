@@ -1,4 +1,5 @@
 #include "object_lifetime.h"
+#include "config.h"
 #include "engine_memory.h"
 #include "executable_identity.h"
 #include <wincrypt.h>
@@ -406,7 +407,7 @@ bool initialize(){
     if(any_owned()){const bool result=observation;SetLastError(error);return result;}
     if(retired_dispatch){diagnostic="retired_no_reinstall";SetLastError(error);return false;}
     wchar_t setting[4]{};
-    if(GetEnvironmentVariableW(L"X3M_OBJECT_LIFETIME",setting,4)!=1 || setting[0]!=L'1'){
+    if(x3m::config::get(L"X3M_OBJECT_LIFETIME",setting,4)!=1 || setting[0]!=L'1'){
         diagnostic="disabled";SetLastError(error);return false;
     }
     // The shared executable identity (executable_identity.h: structure, global

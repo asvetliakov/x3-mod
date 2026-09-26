@@ -1,4 +1,5 @@
 #include "collide_sat_sse2.h"
+#include "config.h"
 #include "engine_patch.h"
 #include "object_trace.h"
 #include "capture.h"
@@ -103,7 +104,7 @@ bool initialize() {
     const DWORD error = GetLastError();
     if (patched_) { SetLastError(error); return true; }
     wchar_t setting[4]{};
-    const DWORD length = GetEnvironmentVariableW(L"X3M_COLLIDE_SAT_SSE2", setting, 4);
+    const DWORD length = x3m::config::get(L"X3M_COLLIDE_SAT_SSE2", setting, 4);
     if (length == 0) { state_ = "disabled"; SetLastError(error); return false; }
     bool applied = false;
     const bool requested = length == 1 && setting[0] == L'1';

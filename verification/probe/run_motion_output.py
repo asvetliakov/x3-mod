@@ -375,6 +375,24 @@ LOG_TIERS_CLOCKED = {'telemetry_summary', 'telemetry_metric', 'engine_memory', '
 LOG_TIERS_BENCH_ROWS = 10000
 CASES += [case(f'seam-ownership-shadow-replay-cascades-poll-{m}', 'shadowreplay', 'ownership', camera=True, hdr_env=dict(SHADOW_REPLAY_CASCADES_ENV, X3M_FIXTURE_SHADOW_POLL=m)) for m in SHADOW_POLL_MODES]
 CASES += [case(LOG_TIERS_CASE, 'shadowreplay', 'ownership', camera=True, hdr_env=SHADOW_REPLAY_CASCADES_ENV, tiers=True)]
+# The settings file (docs/architecture/config-file.md): the plain seam script run three times with an x3m.ini that sets
+# four logging cadences and the cut threshold (none of them set by the runner for this case), sets the jitter sample count
+# the runner also sends (the environment wins), repeats a key (the last wins) and carries three unknown keys, two invalid
+# values and one environment-only seam (refused; were it taken, the seam would raise an unhandled exception). Runs:
+# X3M_CONFIG=<the file> (override), X3M_CONFIG unset with the file beside the DLL (game: the release scenario) and
+# X3M_CONFIG=none (the file ignored, the built-in defaults under the runner's environment) and once with the file and
+# X3M_FRAME_END_STRIDE set empty (the launcher's player-mode opt-out: an empty value beats the file and reads as unset);
+# proxy_options lists every effective setting with its source (@env, @file, @default); see run_config_file. Every other
+# case runs under X3M_CONFIG=bare (wine_lock.py, fixture_log.py): no file and no built-in defaults, absent = off as before.
+CONFIG_CASE = 'seam-config-file'
+CONFIG_TEXT = ('; seam-config-file (docs/architecture/config-file.md)\n[logging]\nframe_end_stride = 9\nframe_end_stride = 7\n'
+               'motion-frame-log = 5\ncamera_log = 4\n[graphics]\ncamera_cut_deg = 12.5\nmotion_jitter_samples = 16\n'
+               'unknown_one = 1\nunknown_two = 2\nunknown_three = 3\ntaa = maybe\nhdr_tonemap = sepia\nfixture_exception = 1\n')
+# A line holding a NUL byte is refused whole (config_key problem=nul), never read up to the NUL: camera_log stays 4.
+CONFIG_BYTES = CONFIG_TEXT.encode() + b'camera_log = 9\x00 hidden\n'
+CONFIG_FILE_KEYS = {'frame_end_stride': '7', 'motion_frame_log': '5', 'camera_log': '4', 'camera_cut_deg': '12.5'}
+CONFIG_CLEARED = ('X3M_FRAME_END_STRIDE', 'X3M_MOTION_FRAME_LOG', 'X3M_CAMERA_LOG', 'X3M_CAMERA_CUT_DEG', 'X3M_CONFIG')
+CASES += [case(CONFIG_CASE, 'seam')]
 # Own-ship-adaptive cascade 0 (shadow-cascade-extents.md, section 5): the
 # cascade script under four cascades narrowed to 8 / 48 / 240 / 800 (the set R
 # ratios), K = 1.5, with two hulls drawn every frame: H1 (radius about 1.69
@@ -1802,6 +1820,90 @@ def run_log_tiers(name, command, base_env, directory, wine_log, report):
               'bench_log_writer': volumes['bench']['log_writer'], 'debug_log_writer': volumes['debug']['log_writer'], 'perf_log_writer': volumes['perf']['log_writer'],
               'exception_row': next(fields(l) for l in logs['exception'] if l.startswith('exception '))}
     return result
+
+
+def run_config_file(name, command, base_env, directory, wine_log, report):
+    """The seam-config-file case (CONFIG_CASE above): the rows of the file's load and the values the sites resolved."""
+    captures = directory / 'x3-modern-captures'
+    captures.mkdir(exist_ok=True)
+    override = directory / 'x3m-test.ini'
+    override.write_bytes(CONFIG_BYTES)
+    (directory / 'x3m.ini').write_bytes(CONFIG_BYTES)  # beside the seam d3d9.dll: the module directory
+    base = {k: v for k, v in base_env.items() if k not in CONFIG_CLEARED}
+    stamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
+    runs, checks = {}, 0
+    for index, (how, setting) in enumerate((('override', 'Z:' + str(override.resolve())), ('game', None), ('none', 'none'),
+                                            ('empty', 'Z:' + str(override.resolve())))):
+        log_path = captures / f'session-{stamp}-{index}.log'
+        env = dict(base, X3M_LOG_FILE='Z:' + str(log_path.resolve()))
+        if setting is not None:
+            env['X3M_CONFIG'] = setting
+        if how == 'empty':
+            env['X3M_FRAME_END_STRIDE'] = ''
+        no_game()
+        wine_log.write(f'==== {name} {how}\n'); wine_log.flush()
+        completed = fixture_process.run(command, build_dir=directory, env=env, stdout=subprocess.PIPE, stderr=wine_log, text=True, timeout=360)
+        (directory / f'fixture-stdout-{how}.txt').write_text(completed.stdout)
+        report.append(f'==== {name} {how} exit={completed.returncode}\n{completed.stdout[-1500:]}')
+        lines = log_path.read_text(errors='replace').splitlines() if log_path.is_file() else []
+        opens = [fields(l) for l in lines if l.startswith('config_open ')]
+        mode = next((fields(l) for l in lines if l.startswith('motion_output_mode ')), {})
+        runs[how] = {'exit': completed.returncode, 'result': next((l.split(' ', 2)[1] for l in completed.stdout.splitlines() if l.startswith('RESULT ')), None),
+                     'config_open': opens, 'config_key': [fields(l) for l in lines if l.startswith('config_key ')],
+                     'config_more': sum(l.startswith('config_more') for l in lines),
+                     'config_file': [l for l in lines if l.startswith('config_file')],
+                     'frame_end_stride_mode': [fields(l) for l in lines if l.startswith('frame_end_stride_mode ')],
+                     'mode': {k: mode.get(k) for k in ('frame_log', 'camera_log', 'camera_cut_deg', 'jitter_samples')},
+                     'fixture_exception_marker': sum(l.startswith('fixture_exception_marker') for l in lines),
+                     'exception': sum(l.startswith('exception ') for l in lines),
+                     'bloom_source_clamp_mode': [fields(l) for l in lines if l.startswith('bloom_source_clamp_mode ')],
+                     'proxy_options': dict(token.split('=', 1) for line in lines if line.startswith('proxy_options')
+                                           for token in line.split(' ')[1:] if '=' in token)}
+    samples = str(JITTER_SAMPLES)
+    for how, run in runs.items():
+        assert run['exit'] == 0 and run['result'] == 'PASS', (name, how, run['exit'], run['result'])
+        assert len(run['config_open']) == 1 and run['exception'] == 0 and run['fixture_exception_marker'] == 0, (name, how, run)
+        assert run['mode']['jitter_samples'] == samples, (name, how, run['mode'])  # the environment's value, never the file's 16
+        # The built-in defaults are the base under every profile but bare: the launcher's bloom clamp 1.0 arrives with no
+        # variable and no file key (every other case of this runner, under bare, logs requested=0).
+        assert [(r.get('requested'), r.get('clamp_valid')) for r in run['bloom_source_clamp_mode']] == [('1', '1')], (name, how, run['bloom_source_clamp_mode'])
+        # proxy_options: the effective settings with their source.
+        assert run['proxy_options'].get('X3M_MOTION_JITTER_SAMPLES') == samples + '@env', (name, how, run['proxy_options'].get('X3M_MOTION_JITTER_SAMPLES'))
+        assert run['proxy_options'].get('X3M_BLOOM_SOURCE_CLAMP') == '1.0@default', (name, how, run['proxy_options'].get('X3M_BLOOM_SOURCE_CLAMP'))
+        assert run['proxy_options'].get('X3M_CAMERA_CUT_DEG') == ('20.0@default' if how == 'none' else '12.5@file'), (name, how)
+        checks += 7
+    for how in ('override', 'game', 'empty'):
+        run = runs[how]
+        opened = run['config_open'][0]
+        source = 'override' if how == 'empty' else how
+        assert (opened['source'], opened['keys'], opened['unknown'], opened['invalid'], opened['duplicate'], opened['env_only']) == \
+            (source, '5', '3', '3', '1', '1'), (name, how, opened)
+        problems = sorted((k['key'], k['problem']) for k in run['config_key'])
+        assert problems == sorted([('unknown_one', 'unknown'), ('unknown_two', 'unknown'), ('unknown_three', 'unknown'), ('taa', 'invalid'),
+                                   ('hdr_tonemap', 'invalid'), ('frame_end_stride', 'duplicate'), ('fixture_exception', 'env_only'),
+                                   ('_', 'nul')]), (name, how, problems)
+        assert run['config_more'] == 0 and len(run['config_file']) == 1, (name, how, run)
+        listed = fields(run['config_file'][0])
+        if how == 'empty':  # the empty environment value replaced the file's stride: no cadence row, the site's default
+            assert listed == {k: v for k, v in {**CONFIG_FILE_KEYS, 'overridden_by_env': 'frame_end_stride,motion_jitter_samples'}.items()
+                              if k != 'frame_end_stride'}, (name, how, listed)
+            assert run['frame_end_stride_mode'] == [] and run['proxy_options'].get('X3M_FRAME_END_STRIDE') == '@env', (name, how, run)
+        else:
+            assert listed == {**CONFIG_FILE_KEYS, 'overridden_by_env': 'motion_jitter_samples'}, (name, how, listed)
+            # The file's values reached the sites: the frame_end cadence row and the route's mode row.
+            assert [r.get('stride') for r in run['frame_end_stride_mode']] == ['7'], (name, how, run['frame_end_stride_mode'])
+        assert run['mode'] == {'frame_log': '5', 'camera_log': '4', 'camera_cut_deg': '12.50', 'jitter_samples': samples}, (name, how, run['mode'])
+        assert int(opened['us']) >= 0 and int(opened['bytes']) == len(CONFIG_BYTES), (name, how, opened)
+        checks += 7
+    none = runs['none']
+    opened = none['config_open'][0]
+    assert (opened['source'], opened['keys'], opened['file']) == ('none', '0', '-'), (name, opened)
+    assert not none['config_key'] and not none['config_file'] and not none['frame_end_stride_mode'], (name, none)
+    # No file, no environment value: the site's default for the cadences, the schema default (the launcher's 20) for the cut threshold.
+    assert none['mode'] == {'frame_log': '60', 'camera_log': '0', 'camera_cut_deg': '20.00', 'jitter_samples': samples}, (name, none['mode'])
+    checks += 3
+    return {'checks': checks, 'exit': 0, 'runs': runs, 'us': {how: int(run['config_open'][0]['us']) for how, run in runs.items()},
+            'directory': str(directory.relative_to(ROOT))}
 
 
 def no_game():
@@ -6566,7 +6668,9 @@ def main(argv=None):
                        # Logging tiers (docs/architecture/logging-tiers.md): the rows every case's oracle reads at the cadence they
                        # had before the tiers: the shadow cost and state rows every frame, camera_state every 300 frames, frame_end
                        # every 300 frames; the groups themselves are never inherited (the seam-log-tiers case sets them).
-                       X3M_SHADOW_TIMING='1', X3M_SHADOW_ROWS='1', X3M_CAMERA_LOG='300', X3M_FRAME_END_STRIDE='300')
+                       X3M_SHADOW_TIMING='1', X3M_SHADOW_ROWS='1', X3M_CAMERA_LOG='300', X3M_FRAME_END_STRIDE='300',
+                       # No x3m.ini and no built-in defaults (docs/architecture/config-file.md): absent = off, as every oracle assumes.
+                       X3M_CONFIG='bare')
             env.pop('X3M_DEBUG', None); env.pop('X3M_PERF', None)
             for inherited in ('X3M_SHADOW_CASCADE_SIZES', 'X3M_SHADOW_CASCADE_CAPS', 'X3M_SHADOW_CASCADE_BUDGET', 'X3M_FIXTURE_SHADOW_CASCADES',
                               'X3M_SHADOW_CASTER_RETENTION_AGE', 'X3M_SHADOW_CASTER_RETENTION_EPS', *SHADOW_REPLAY_REMOVED,
@@ -6612,6 +6716,12 @@ def main(argv=None):
                 result['cases'][name] = case
                 save()
                 print(f'{name}: exit={case["exit"]} checks={case["checks"]} variants={case["variants"]}', flush=True)
+                continue
+            if name == CONFIG_CASE:
+                case = run_config_file(name, command, env, directory, wine_log, report)
+                result['cases'][name] = case
+                save()
+                print(f'{name}: exit={case["exit"]} checks={case["checks"]} us={case["us"]}', flush=True)
                 continue
             if tiers:
                 case = run_log_tiers(name, command, env, directory, wine_log, report)

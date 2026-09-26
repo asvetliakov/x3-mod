@@ -158,7 +158,7 @@ class GpuSyncTimingWiring(unittest.TestCase):
     def test_lifetime_and_off_cost(self):
         capture = (ROOT / 'src/proxy/capture.cpp').read_text()
         # Off: no object, the environment read once; the final-release accounting counts the queries.
-        self.assertIn('gpu_sync_timing_requested=GetEnvironmentVariableW(L"X3M_GPU_SYNC_TIMING",setting,32)==1', capture)
+        self.assertIn('gpu_sync_timing_requested=x3m::config::get(L"X3M_GPU_SYNC_TIMING",setting,32)==1', capture)
         self.assertIn('if(gpu_sync_timing_requested)gpu_sync_attach(hooked,d);', capture)
         self.assertEqual(capture.count('gpu_sync_references(ctx)'), 2)
         self.assertIn('gpu_sync_release(ctx); ctx.bloom.shutdown();', capture)

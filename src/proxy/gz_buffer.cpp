@@ -1,4 +1,5 @@
 #include "gz_buffer.h"
+#include "config.h"
 #include "capture.h"
 #include "cpu_state.h"
 #include <atomic>
@@ -128,9 +129,9 @@ void accumulate(const State& s) {
 }
 }
 
-bool requested(){wchar_t setting[8]{};return GetEnvironmentVariableW(L"X3M_GZ_BUFFER",setting,8)==1&&setting[0]==L'1';}
+bool requested(){wchar_t setting[8]{};return x3m::config::get(L"X3M_GZ_BUFFER",setting,8)==1&&setting[0]==L'1';}
 unsigned requested_capacity() {
-    wchar_t setting[16]{};const DWORD n=GetEnvironmentVariableW(L"X3M_GZ_BUFFER_KB",setting,16);
+    wchar_t setting[16]{};const DWORD n=x3m::config::get(L"X3M_GZ_BUFFER_KB",setting,16);
     // Decimal digits only: wcstoul would accept a sign or leading blanks, and a
     // negative value would wrap to the maximum instead of the default.
     unsigned long kb=0;bool digits=n>0&&n<16;

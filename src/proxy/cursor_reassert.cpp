@@ -1,4 +1,5 @@
 #include "cursor_reassert.h"
+#include "config.h"
 
 namespace x3m { void log(const char* format, ...); }
 
@@ -27,7 +28,7 @@ bool client_on_screen(HWND window, RECT* out) {
 }
 void initialize() {
     wchar_t value[4]{};
-    enabled_ = GetEnvironmentVariableW(L"X3M_CURSOR_REASSERT", value, 4) == 1 && value[0] == L'1';
+    enabled_ = x3m::config::get(L"X3M_CURSOR_REASSERT", value, 4) == 1 && value[0] == L'1';
     if (enabled_)
         log("cursor_reassert_mode requested=1 window_frames=%u arm=launch_once,WM_ACTIVATE_active,WM_ACTIVATEAPP_on gates=thread,foreground,visible,cursor_hidden,pointer_in_client_or_clip "
             "sequence=set_arrow,show_true,show_false,set_previous disable_on_mismatch=1", core::window_frames);

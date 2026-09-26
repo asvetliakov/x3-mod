@@ -185,7 +185,7 @@ class TaaImageDefaultsLaunch(unittest.TestCase):
         self.assertIn('else if(wcscmp(setting,L"0")!=0&&wcscmp(setting,L"off")!=0)log("taa_unmatched_static_setting invalid=1");', capture)
         self.assertIn('else if(taa_requested)taa_unmatched_static=1;', capture)
         # The default is resolved after X3M_TAA is parsed, so it sees the final route state.
-        self.assertLess(capture.index('taa_requested=motion_output_requested &&'), capture.index('GetEnvironmentVariableW(L"X3M_TAA_UNMATCHED_STATIC"'))
+        self.assertLess(capture.index('taa_requested=motion_output_requested &&'), capture.index('x3m::config::get(L"X3M_TAA_UNMATCHED_STATIC"'))
         self.assertIn('hooked.motion_output.configure_unmatched_static(taa_unmatched_static);', capture)
         self.assertIn('unsigned unmatched_static_ = 0;', (ROOT / 'src/proxy/motion_output.h').read_text())
         self.assertIn('if (unmatched_static_) route.static_assumed = unmatched_static_rows(route, rows, previous);', (ROOT / 'src/proxy/motion_output.cpp').read_text())
@@ -273,7 +273,7 @@ class TaaImageDefaultsLaunch(unittest.TestCase):
                 self.assertIn('--taa-thin-region-emissive', error)
         source = (ROOT / 'src/proxy/capture.cpp').read_text()
         self.assertIn('float taa_thin_emissive = 0.f;', source)
-        self.assertIn('taa_requested?GetEnvironmentVariableW(L"X3M_TAA_THIN_REGION_EMISSIVE"', source)
+        self.assertIn('taa_requested?x3m::config::get(L"X3M_TAA_THIN_REGION_EMISSIVE"', source)
         # The whole field must parse and stay within range; nothing else may turn it on.
         self.assertIn('wcstof(emissive_setting', source)
         self.assertIn("if(end!=emissive_setting&&*end==L'\\0'&&v>=0.f&&v<=65000.f)taa_thin_emissive=v;", source)
@@ -327,7 +327,7 @@ class TaaImageDefaultsDll(unittest.TestCase):
         self.assertIn('taa_sharpen=taa_requested?0.75f:0.f;', source)
         # The env value is still parsed whole, so an explicit 0 disables either.
         for name in ('X3M_TAA_MIP_BIAS', 'X3M_TAA_SHARPEN', 'X3M_TAA_HISTORY_WEIGHT'):
-            line = next(l for l in source.splitlines() if f'GetEnvironmentVariableW(L"{name}"' in l)
+            line = next(l for l in source.splitlines() if f'x3m::config::get(L"{name}"' in l)
             self.assertIn("*end==L'\\0'", line)
 
     def test_no_filter_device_refuses_taa_at_attach_and_never_jitters(self):
@@ -347,9 +347,9 @@ class TaaImageDefaultsDll(unittest.TestCase):
         # or TAA is not requested.
         source = (ROOT / 'src/proxy/capture.cpp').read_text()
         self.assertIn('taa_thin_camera_gate=taa_requested&&taa_thin_region[0]>0.f;', source)
-        self.assertNotIn('GetEnvironmentVariableW(L"X3M_TAA_THIN_REGION_GATE"', source)
+        self.assertNotIn('x3m::config::get(L"X3M_TAA_THIN_REGION_GATE"', source)
         # The gate is resolved after the thin region is parsed, so it sees the final settings.
-        self.assertLess(source.index('GetEnvironmentVariableW(L"X3M_TAA_THIN_REGION"'), source.index('taa_thin_camera_gate=taa_requested&&'))
+        self.assertLess(source.index('x3m::config::get(L"X3M_TAA_THIN_REGION"'), source.index('taa_thin_camera_gate=taa_requested&&'))
         # A configure-time refusal of the camera-gate programs turns the thin region off (A' only since 2026-09-24: no fallback
         # program set), and so does a box-target allocation failure (in the pass).
         self.assertIn('taa_thin_camera_gate_ = false;', (ROOT / 'src/proxy/motion_output.cpp').read_text())

@@ -62,10 +62,10 @@ class FarGateLaunch(unittest.TestCase):
 class FarGateSource(unittest.TestCase):
     def test_dll_reads_the_setting_and_logs_the_configured_gate(self):
         capture = (ROOT / 'src/proxy/capture.cpp').read_text()
-        self.assertIn('GetEnvironmentVariableW(L"X3M_TAA_FAR_GATE"', capture)
+        self.assertIn('x3m::config::get(L"X3M_TAA_FAR_GATE"', capture)
         self.assertIn('bool taa_far_camera_gate = true, taa_far_gate_given = false, taa_far_gate_default = false;', capture)
         # The launcher's marker counts only with camera and only as exactly "1".
-        self.assertIn('taa_far_gate_default=taa_far_gate_given&&taa_far_camera_gate&&GetEnvironmentVariableW(L"X3M_TAA_FAR_GATE_DEFAULT",setting,32)==1&&setting[0]==L\'1\';', capture)
+        self.assertIn('taa_far_gate_default=taa_far_gate_given&&taa_far_camera_gate&&x3m::config::get(L"X3M_TAA_FAR_GATE_DEFAULT",setting,32)==1&&setting[0]==L\'1\';', capture)
         self.assertIn('taa_far_gate_setting invalid=1 reason=too_long length=%lu', capture)
         self.assertIn('log("taa_far_gate_setting invalid=1");', capture)
         self.assertIn('configure_far_gate(taa_far_camera_gate,taa_far_gate_given,taa_far_gate_default)', capture)

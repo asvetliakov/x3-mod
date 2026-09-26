@@ -1,4 +1,5 @@
 #include "sun_occlusion.h"
+#include "config.h"
 #include "engine_patch.h"
 #include "engine_memory.h"
 #include "object_trace.h"
@@ -236,11 +237,11 @@ bool initialize() {
     const DWORD error = GetLastError();
     if (patched_) { SetLastError(error); return true; }
     wchar_t setting[4]{};
-    const bool requested = GetEnvironmentVariableW(L"X3M_SUN_OCCLUSION", setting, 4) == 1 && setting[0] == L'1';
-    const bool log_requested = GetEnvironmentVariableW(L"X3M_SUN_OCCLUSION_LOG", setting, 4) == 1 && setting[0] == L'1';
+    const bool requested = x3m::config::get(L"X3M_SUN_OCCLUSION", setting, 4) == 1 && setting[0] == L'1';
+    const bool log_requested = x3m::config::get(L"X3M_SUN_OCCLUSION_LOG", setting, 4) == 1 && setting[0] == L'1';
     if (!requested && !log_requested) { state_ = "disabled"; SetLastError(error); return false; }
     bool applied = false;
-    if (GetEnvironmentVariableW(L"X3M_SUBMIT_PHASES", setting, 4) == 1 && setting[0] == L'1') state_ = "submit_phases_conflict"; // its stamp claims 0x00472490..0x00472495
+    if (x3m::config::get(L"X3M_SUBMIT_PHASES", setting, 4) == 1 && setting[0] == L'1') state_ = "submit_phases_conflict"; // its stamp claims 0x00472490..0x00472495
     else if (!object_trace::executable_verified()) state_ = "executable_mismatch";
     else if (!bytes_match(core::probe_context_va, core::probe_context, sizeof core::probe_context)) state_ = "probe_site_mismatch";
     else if (!bytes_match(core::lens_context_va, core::lens_context, sizeof core::lens_context)) state_ = "lens_site_mismatch";

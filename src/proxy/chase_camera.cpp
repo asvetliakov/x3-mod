@@ -1,4 +1,5 @@
 #include "chase_camera.h"
+#include "config.h"
 #include "chase_aim_trace.h"
 #include "chase_fire.h"
 #include "chase_lead.h"
@@ -71,7 +72,7 @@ bool writable(uintptr_t address, size_t size) {
 }
 double env_double(const wchar_t* name, double fallback, bool* bad) {
     wchar_t text[64]{};
-    const DWORD n = GetEnvironmentVariableW(name, text, 64);
+    const DWORD n = x3m::config::get(name, text, 64);
     if (n == 0) return fallback;
     if (n >= 64) { *bad = true; return fallback; }
     wchar_t* end = nullptr;
@@ -82,14 +83,14 @@ double env_double(const wchar_t* name, double fallback, bool* bad) {
 // X3M_CHASE_FOV_COMPENSATE: unset = the compiled default (on); "1" on, "0" off; anything else is invalid.
 bool env_on_off(const wchar_t* name, bool fallback, bool* bad) {
     wchar_t text[8]{};
-    const DWORD n = GetEnvironmentVariableW(name, text, 8);
+    const DWORD n = x3m::config::get(name, text, 8);
     if (n == 0) return fallback;
     if (n == 1 && (text[0] == L'0' || text[0] == L'1')) return text[0] == L'1';
     *bad = true; return fallback;
 }
 bool env_flag(const wchar_t* name) {
     wchar_t text[8]{};
-    return GetEnvironmentVariableW(name, text, 8) == 1 && text[0] == L'1';
+    return x3m::config::get(name, text, 8) == 1 && text[0] == L'1';
 }
 double angle_between_deg(const chase::Mat3& a, const chase::Mat3& b) {
     return chase::length(chase::log_rotation(chase::mul(chase::transpose(a), b))) * 180.0 / chase::pi;
@@ -387,7 +388,7 @@ void* emit_stub(void*** next_out) {
 }
 bool wanted() {
     wchar_t setting[16]{};
-    const DWORD n = GetEnvironmentVariableW(L"X3M_CAMERA", setting, 16);
+    const DWORD n = x3m::config::get(L"X3M_CAMERA", setting, 16);
     return n == 5 && !std::wcscmp(setting, L"chase");
 }
 bool initialize() {

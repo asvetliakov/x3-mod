@@ -73,8 +73,8 @@ class HdrDitherLaunch(unittest.TestCase):
     def test_dll_reads_the_switch_and_every_8bit_write_takes_it(self):
         capture = (ROOT / 'src/proxy/capture.cpp').read_text()
         # A value of 32+ characters is refused (the buffer would still hold the previous variable's text).
-        self.assertIn('{const DWORD n=GetEnvironmentVariableW(L"X3M_HDR_DITHER",setting,32);if(n>0&&n<32)hdr_config.dither=!wcscmp(setting,L"1")||!wcscmp(setting,L"on");}', capture)
-        self.assertIn('{const DWORD n=GetEnvironmentVariableW(L"X3M_HDR_CLAMP",setting,32);if(n>0&&n<32){', capture)
+        self.assertIn('{const DWORD n=x3m::config::get(L"X3M_HDR_DITHER",setting,32);if(n>0&&n<32)hdr_config.dither=!wcscmp(setting,L"1")||!wcscmp(setting,L"on");}', capture)
+        self.assertIn('{const DWORD n=x3m::config::get(L"X3M_HDR_CLAMP",setting,32);if(n>0&&n<32){', capture)
         self.assertIn('bool dither = false;', (ROOT / 'src/renderer/hdr_pass.h').read_text())  # off unless set
         hdr = (ROOT / 'src/renderer/hdr_pass.cpp').read_text()
         self.assertIn('x3::temporal::set_dither(agx_, caps_.dither);', hdr)

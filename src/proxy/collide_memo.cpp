@@ -1,4 +1,5 @@
 #include "collide_memo.h"
+#include "config.h"
 #include "collide_query_phases.h"
 #include "engine_patch.h"
 #include "object_trace.h"
@@ -211,9 +212,9 @@ bool initialize() {
     if (patched_) { SetLastError(error); return true; }
     windows_ = x3m::log_tier::telemetry();
     wchar_t setting[4]{}, verify[4]{};
-    const DWORD length = GetEnvironmentVariableW(L"X3M_COLLIDE_MEMO", setting, 4);
+    const DWORD length = x3m::config::get(L"X3M_COLLIDE_MEMO", setting, 4);
     if (length == 0) { state_ = "disabled"; SetLastError(error); return false; }
-    const bool verify_mode = GetEnvironmentVariableW(L"X3M_COLLIDE_MEMO_VERIFY", verify, 4) == 1 && verify[0] == L'1';
+    const bool verify_mode = x3m::config::get(L"X3M_COLLIDE_MEMO_VERIFY", verify, 4) == 1 && verify[0] == L'1';
     bool applied = false;
     const bool requested = length == 1 && setting[0] == L'1';
     if (!requested) state_ = "disabled";

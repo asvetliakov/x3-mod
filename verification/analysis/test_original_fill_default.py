@@ -64,7 +64,7 @@ class OriginalFillDefaultSource(unittest.TestCase):
         # The DLL default when unset stays 0 (fixtures unchanged).
         self.assertIn('{original_fill=0.f;bool fill_valid=true;float value=0.f;', block)
         # The marker counts only with an enabled fill and only as exactly "1".
-        self.assertIn('const bool fill_default=original_fill!=0.f&&GetEnvironmentVariableW(L"X3M_ORIGINAL_FILL_DEFAULT",setting,32)==1&&setting[0]==L\'1\';', block)
+        self.assertIn('const bool fill_default=original_fill!=0.f&&x3m::config::get(L"X3M_ORIGINAL_FILL_DEFAULT",setting,32)==1&&setting[0]==L\'1\';', block)
         self.assertIn('fill_valid=%u default=%u%s",', block)
         self.assertIn('unsigned(fill_valid),unsigned(fill_default),', block)
         self.assertLess(block.index('if(!hdr_requested||excluded)original_fill=0.f;'), block.index('const bool fill_default='))

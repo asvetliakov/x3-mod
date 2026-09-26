@@ -1,5 +1,6 @@
 #include "proxy_identity.h"
 #include "capture.h"
+#include "config_load.h"
 #include "object_trace.h"
 #include "session_log.h"
 #include "x3m_source_commit_inc.h"
@@ -213,11 +214,22 @@ std::vector<std::string> collect(bool (*select)(const wchar_t*),std::size_t limi
     std::sort(entries.begin(),entries.end());
     return entries;
 }
-// Every X3M_* variable present in the process environment, name=value, sorted;
-// values are not truncated, an option value is the option.
+// The effective settings (docs/architecture/config-file.md): every X3M_* variable of the process environment as
+// name=value@env (values not truncated, an option value is the option), and every setting x3m.ini or the built-in
+// defaults supply as name=value@file / @default (config::effective_below_environment), merged and sorted by name, so a
+// bare DLL's session and a launcher session log comparable lines. One row (log() caps a row at 256 KiB).
 std::string options() {
+    std::vector<std::string> entries=collect(is_option,std::string::npos);
+    for(std::string& entry:entries)entry+="@env";
+    const std::string below=config::effective_below_environment();
+    for(std::size_t at=below.find(' ');at!=std::string::npos;){
+        const std::size_t next=below.find(' ',at+1);
+        entries.push_back(below.substr(at+1,next==std::string::npos?std::string::npos:next-at-1));
+        at=next;
+    }
+    std::sort(entries.begin(),entries.end());
     std::string line;
-    for(const std::string& entry:collect(is_option,std::string::npos)){line+=' ';line+=entry;}
+    for(const std::string& entry:entries){line+=' ';line+=entry;}
     return line;
 }
 // The emulation and Wine/CrossOver variables, same form, with the number of

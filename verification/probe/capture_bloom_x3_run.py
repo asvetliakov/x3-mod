@@ -146,6 +146,7 @@ def main(argv=None):
                        X3M_MOTION_OUTPUT='1', X3M_SCENE_HOOK='0', X3M_TELEMETRY='0',
                        X3M_HDR='1', X3M_HDR_TONEMAP='agx', X3M_TAA='1', X3M_MOTION_JITTER='1',
                        X3M_HDR_EXPOSURE='manual', X3M_HDR_EV_MANUAL='0', X3M_HDR_BLOOM='0',
+                       X3M_CONFIG='bare',  # no x3m.ini and no built-in defaults (docs/architecture/config-file.md)
                        WINEDLLOVERRIDES='d3d9=n,b')
             command = [bottle.WINE, *bottle.wine_args(), '--dll', 'd3d9=n,b',
                        '--workdir', str(run_dir), str(run_dir / exe.name)]

@@ -580,7 +580,7 @@ class SunOcclusionLaunchOption(unittest.TestCase):
         row = re.search(r'log\("sun_occlusion_config [^"]*"', capture).group(0)
         self.assertTrue(row.endswith(' default=%u"'), row)
         sun = (ROOT / 'src/proxy/sun_occlusion.cpp').read_text()                                        # absent = disabled, nothing patched
-        self.assertIn('GetEnvironmentVariableW(L"X3M_SUN_OCCLUSION", setting, 4) == 1 && setting[0] == L\'1\'', sun)
+        self.assertIn('x3m::config::get(L"X3M_SUN_OCCLUSION", setting, 4) == 1 && setting[0] == L\'1\'', sun)
 
     def test_dll_reads_the_variable_as_default_on(self):
         capture = (ROOT / 'src/proxy/capture.cpp').read_text()

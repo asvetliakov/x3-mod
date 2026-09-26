@@ -1,4 +1,5 @@
 #include "music_keep.h"
+#include "config.h"
 #include "engine_patch.h"
 #include "object_trace.h"
 #include "cpu_state.h"
@@ -575,7 +576,7 @@ bool install_trace(const char** reason) {
 }
 bool requested(const wchar_t* name, bool* present) {
     wchar_t setting[4]{};
-    const DWORD length = GetEnvironmentVariableW(name, setting, 4);
+    const DWORD length = x3m::config::get(name, setting, 4);
     *present = length != 0;
     return length == 1 && setting[0] == L'1';
 }

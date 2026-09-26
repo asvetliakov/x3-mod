@@ -2,11 +2,13 @@
 import contextlib
 import io
 import json
+import os
 import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'probe'))
@@ -255,7 +257,8 @@ class LockCliTests(unittest.TestCase):
                     patch.object(wine_lock.subprocess, 'call', return_value=7) as child:
                 self.assertEqual(wine_lock.main(['--timings-json', str(timing), '--holder', 'test', '--', 'host-command', '-q']), 7)
                 preflight.assert_called_once_with()
-                child.assert_called_once_with(['host-command', '-q'])
+                child.assert_called_once_with(['host-command', '-q'], env=mock.ANY)
+                self.assertEqual(child.call_args.kwargs['env']['X3M_CONFIG'], os.environ.get('X3M_CONFIG', 'bare'))
             data = json.loads(timing.read_text())
             self.assertEqual(data['exit_code'], 7)
             self.assertGreaterEqual(data['lock_wait_seconds'], 0)
@@ -290,3 +293,8 @@ class LockCliTests(unittest.TestCase):
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as error:
             wine_lock.main([])
         self.assertEqual(error.exception.code, 2)
+
+    def test_child_environment_is_bare_unless_set(self):
+        # The settings file (docs/architecture/config-file.md): fixtures run the proxy without defaults or x3m.ini.
+        self.assertEqual(wine_lock.child_environment({'PATH': '/bin'}), {'PATH': '/bin', 'X3M_CONFIG': 'bare'})
+        self.assertEqual(wine_lock.child_environment({'X3M_CONFIG': 'none'})['X3M_CONFIG'], 'none')

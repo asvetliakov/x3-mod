@@ -349,8 +349,8 @@ class ThinVoteSource(unittest.TestCase):
         self.assertIn('bool taa_thin_vote = false;', capture)
         # The configured row appears whenever a valid value arrived (on or off) and names the value's source.
         self.assertIn('if(taa_thin_vote_given)log("taa_thin_vote_configured requested=%u enabled=%u default=%u ', capture)
-        self.assertIn('taa_thin_vote_default=taa_thin_vote_given&&GetEnvironmentVariableW(L"X3M_TAA_THIN_VOTE_DEFAULT",setting,32)==1&&setting[0]==L\'1\';', capture)
-        self.assertIn('GetEnvironmentVariableW(L"X3M_TAA_THIN_VOTE",setting,32)', capture)
+        self.assertIn('taa_thin_vote_default=taa_thin_vote_given&&x3m::config::get(L"X3M_TAA_THIN_VOTE_DEFAULT",setting,32)==1&&setting[0]==L\'1\';', capture)
+        self.assertIn('x3m::config::get(L"X3M_TAA_THIN_VOTE",setting,32)', capture)
         self.assertIn('if(enabled)renderer::material_motion_configure_thin_vote(true);', capture)
         motion = (ROOT / 'src/proxy/motion_output.cpp').read_text()
         # c218 is uploaded with the vote or the fade owner (X3M_FADE_RT2_OWNER, fade-rt2-ownership.md) and with neither off.

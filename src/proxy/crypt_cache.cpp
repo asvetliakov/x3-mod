@@ -1,4 +1,5 @@
 #include "crypt_cache.h"
+#include "config.h"
 
 // Compiled with -mno-sse -mno-mmx -mfpmath=387, integer only, no logging: see
 // crypt_cache.h and loading_trace_light.h. Every state change happens under one
@@ -96,7 +97,7 @@ void evict(ProviderEntry& e,RetiredKeys& retired) noexcept {
 }
 }
 
-bool requested(){wchar_t setting[8]{};return GetEnvironmentVariableW(L"X3M_CRYPT_CACHE",setting,8)==1&&setting[0]==L'1';}
+bool requested(){wchar_t setting[8]{};return x3m::config::get(L"X3M_CRYPT_CACHE",setting,8)==1&&setting[0]==L'1';}
 bool initialize(const Originals& originals,const char* scratch_container) noexcept {
     if(!originals.acquire||!originals.release||!originals.import_key||!originals.destroy_key)return false;
     Lock lock;

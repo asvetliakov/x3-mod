@@ -1,4 +1,5 @@
 #include "scene_hook.h"
+#include "config.h"
 #include "object_trace.h"
 #include "cpu_state.h"
 #include "engine_patch.h"
@@ -119,10 +120,10 @@ bool patch(void* site, void* target) {
 // then). Parsed on the startup path only.
 bool wanted() {
     wchar_t setting[4]{};
-    const DWORD length = GetEnvironmentVariableW(L"X3M_SCENE_HOOK", setting, 4);
+    const DWORD length = x3m::config::get(L"X3M_SCENE_HOOK", setting, 4);
     if (length == 1 && setting[0] == L'1') return true;
     if (length == 1 && setting[0] == L'0') return false;
-    return GetEnvironmentVariableW(L"X3M_MOTION_OUTPUT", setting, 4) == 1 && setting[0] == L'1';
+    return x3m::config::get(L"X3M_MOTION_OUTPUT", setting, 4) == 1 && setting[0] == L'1';
 }
 bool initialize(Listener fn, const X3mCompositorBinding* callbacks) {
     const DWORD error = GetLastError();

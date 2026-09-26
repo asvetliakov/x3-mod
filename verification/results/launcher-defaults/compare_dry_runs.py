@@ -19,6 +19,8 @@ removed; the recorded stand sent both as 0) and X3M_CAPTURE_DELAY (--capture-del
 capture trigger; the recorded stand sent 300). --capture-start went the same day, but the launcher still sends
 X3M_CAPTURE_START=999999 (never) on every modded launch, the recorded stand's value. The Run 84 A command is replayed
 without those two options.
+Since the settings file (2026-09-26, docs/architecture/config-file.md) every modded launch also sends X3M_CONFIG=bare (no file and no DLL defaults; the
+game directory's x3m.ini ignored unless --config): the one expected delta against the recorded stand (CONFIG).
 """
 import importlib.util
 import json
@@ -54,6 +56,8 @@ def tiered_variables():
 
 
 NEW = {'X3M_MUSIC_KEEP': '1', 'X3M_SHADOW_ALPHA_CASTERS': '1'}
+# The settings file (2026-09-26): X3M_CONFIG=bare unless --config (player mode).
+CONFIG = {'X3M_CONFIG': [None, 'bare']}
 # Intended functional difference: the promoted map sizes (user decision 2026-09-25) differ from the Run 84 A stand's
 # explicit 2048 x5, which an explicit --shadow-cascade-sizes still selects.
 SIZES = {'X3M_SHADOW_CASCADE_SIZES': ['2048,2048,2048,2048,2048', '2048,4096,4096,4096,2048']}
@@ -114,8 +118,8 @@ def main():
     removed = {k: [v, None] for k, v in REMOVED.items()}
     checks = {
         'empty_vs_stand only the two groups + the promoted map sizes': result['empty_vs_stand'] == {**GROUPS, 'X3M_SHADOW_CASCADE_SIZES': SIZES['X3M_SHADOW_CASCADE_SIZES'][::-1]},
-        'stand vs recorded only the two new defaults, the removed and the logging variables, and the groups': result['stand_vs_recorded_stand'] == {**new_defaults, **removed, **recorded_tiered, **GROUPS},
-        'empty vs recorded: the two new defaults + the map sizes + the removed and the logging variables': result['empty_vs_recorded_stand'] == {**new_defaults, **removed, **recorded_tiered, **SIZES},
+        'stand vs recorded only the two new defaults, the removed and the logging variables, and the groups': result['stand_vs_recorded_stand'] == {**new_defaults, **removed, **recorded_tiered, **GROUPS, **CONFIG},
+        'empty vs recorded: the two new defaults + the map sizes + the removed and the logging variables': result['empty_vs_recorded_stand'] == {**new_defaults, **removed, **recorded_tiered, **SIZES, **CONFIG},
         'same X3AP switches': empty_switches == stand_switches == short_switches == recorded['exe_switches'],
         'short stand command == old stand command but the map sizes': result['short_stand_vs_stand'] == SIZES,
     }

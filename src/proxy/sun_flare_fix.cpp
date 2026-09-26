@@ -1,4 +1,5 @@
 #include "sun_flare_fix.h"
+#include "config.h"
 #include "sun_flare_fix_sites.h"
 #include "engine_patch.h"
 #include "object_trace.h"
@@ -98,7 +99,7 @@ bool initialize() {
     // Unset or empty = the DLL default (off, engine bytes); 1..31 characters must be exactly on or off;
     // anything else is refused and nothing is patched.
     wchar_t text[sites::setting_capacity]{};
-    const DWORD length = GetEnvironmentVariableW(L"X3M_SUN_FLARE_FIX", text, sites::setting_capacity);
+    const DWORD length = x3m::config::get(L"X3M_SUN_FLARE_FIX", text, sites::setting_capacity);
     char setting[sites::setting_capacity]{};
     printable(text, length, setting);
     sites::Mode mode = sites::default_mode;

@@ -1,4 +1,5 @@
 #include "sampling_profiler.h"
+#include "config.h"
 #include "capture.h"
 #include <tlhelp32.h>
 #include <algorithm>
@@ -420,7 +421,7 @@ DWORD WINAPI sampler_main(LPVOID){
     return 0;
 }
 unsigned env_number(const wchar_t* name,unsigned fallback,unsigned lo,unsigned hi){
-    wchar_t value[32]{};if(GetEnvironmentVariableW(name,value,32)==0)return fallback;
+    wchar_t value[32]{};if(x3m::config::get(name,value,32)==0)return fallback;
     const unsigned long n=wcstoul(value,nullptr,10);return n>=lo&&n<=hi?unsigned(n):fallback;
 }
 }
@@ -428,7 +429,7 @@ unsigned env_number(const wchar_t* name,unsigned fallback,unsigned lo,unsigned h
 bool initialize(){
     if(started)return active();
     wchar_t value[8]{};
-    if(!(GetEnvironmentVariableW(L"X3M_PROFILE",value,8)==1&&value[0]==L'1'))return false;
+    if(!(x3m::config::get(L"X3M_PROFILE",value,8)==1&&value[0]==L'1'))return false;
     started=true;
     LARGE_INTEGER f{};if(!QueryPerformanceFrequency(&f)||f.QuadPart<=0){log("profile_start enabled=0 reason=no_qpc");return false;}
     frequency=uint64_t(f.QuadPart);

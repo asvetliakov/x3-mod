@@ -1,0 +1,14 @@
+--no-volumetric-fog: developer X3M_CONFIG=bare sent=121 defaults_picked_up=0[] | player sent=6 ['X3M_FOG_DUST_MOTES', 'X3M_FOG_MOTES_MAX_PX', 'X3M_VOLUMETRIC_FOG', 'X3M_VOLUMETRIC_FOG_CARDS', 'X3M_VOLUMETRIC_FOG_RANGE', 'X3M_VOLUMETRIC_FOG_STRENGTH'] differ_from_developer=0[]
+--no-sun-occlusion: developer X3M_CONFIG=bare sent=119 defaults_picked_up=0[] | player sent=3 ['X3M_SUN_OCCLUSION', 'X3M_SUN_OCCLUSION_CORE_F', 'X3M_SUN_OCCLUSION_DEFAULT'] differ_from_developer=0[]
+--no-taa: developer X3M_CONFIG=bare sent=102 defaults_picked_up=0[] | player sent=28 ['X3M_FADE_RT2_OWNER', 'X3M_FADE_RT2_OWNER_DEFAULT', 'X3M_FOG_DUST_MOTES', 'X3M_FOG_MOTES_MAX_PX', 'X3M_MOTION_JITTER', 'X3M_SUN_SHADOW_APPLY']... differ_from_developer=0[]
+--no-hdr: developer X3M_CONFIG=bare sent=111 defaults_picked_up=0[] | player sent=26 ['X3M_BLOOM_SOURCE_CLAMP', 'X3M_EMISSION_SOURCE_GAIN', 'X3M_FADE_RT2_OWNER', 'X3M_FADE_RT2_OWNER_DEFAULT', 'X3M_FOG_DUST_MOTES', 'X3M_FOG_MOTES_MAX_PX']... differ_from_developer=0[]
+--camera vanilla: developer X3M_CONFIG=bare sent=122 defaults_picked_up=0[] | player sent=3 ['X3M_CAMERA', 'X3M_CHASE_HUD_ANCHOR', 'X3M_CHASE_VIEW_RESTORE'] differ_from_developer=0[]
+--no-shadow-cascades: developer X3M_CONFIG=bare sent=116 defaults_picked_up=0[] | player sent=13 ['X3M_FOG_DUST_MOTES', 'X3M_FOG_MOTES_MAX_PX', 'X3M_SHADOW_CASCADES', 'X3M_SHADOW_CASCADE_ADAPTIVE_C0', 'X3M_SHADOW_CASCADE_DROP_ORDER', 'X3M_SHADOW_CASCADE_MIN_FOOTPRINT']... differ_from_developer=0[]
+--no-lod-occlusion: exit 2 (no such option)
+--no-music-keep: developer X3M_CONFIG=bare sent=121 defaults_picked_up=0[] | player sent=1 ['X3M_MUSIC_KEEP'] differ_from_developer=0[]
+--no-motion-output: developer X3M_CONFIG=bare sent=89 defaults_picked_up=0[] | player sent=59 ['X3M_BLOOM_SOURCE_CLAMP', 'X3M_EMISSION_SOURCE_GAIN', 'X3M_FADE_RT2_OWNER', 'X3M_FADE_RT2_OWNER_DEFAULT', 'X3M_FOG_DUST_MOTES', 'X3M_FOG_MOTES_MAX_PX']... differ_from_developer=0[]
+--no-ownership: developer X3M_CONFIG=bare sent=97 defaults_picked_up=0[] | player sent=42 ['X3M_FADE_RT2_OWNER', 'X3M_FADE_RT2_OWNER_DEFAULT', 'X3M_FOG_DUST_MOTES', 'X3M_FOG_MOTES_MAX_PX', 'X3M_MOTION_JITTER', 'X3M_OBJECT_LIFETIME']... differ_from_developer=0[]
+--cull-small-parts 0: developer X3M_CONFIG=bare sent=120 defaults_picked_up=0[] | player sent=2 ['X3M_CULL_SMALL_PARTS_PROJECTILES', 'X3M_CULL_SMALL_PARTS_PX'] differ_from_developer=0[]
+--no-crypt-cache: developer X3M_CONFIG=bare sent=122 defaults_picked_up=0[] | player sent=1 ['X3M_CRYPT_CACHE'] differ_from_developer=0[]
+--no-direct: developer X3M_CONFIG=bare sent=122 defaults_picked_up=0[] | player sent=0 [] differ_from_developer=0[]
+schema defaults 122

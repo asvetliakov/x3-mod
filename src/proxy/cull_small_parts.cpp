@@ -1,4 +1,5 @@
 #include "cull_small_parts.h"
+#include "config.h"
 #include "cull_small_parts_core.h"
 #include "cull_census.h"
 #include "camera_state.h"
@@ -54,7 +55,7 @@ bool pin_self() {
 // A setting variable as printable ASCII (anything else is logged as "?").
 bool read_setting(const wchar_t* name, char* out, unsigned capacity) {
     wchar_t text[32]{};
-    const DWORD length = GetEnvironmentVariableW(name, text, 32);
+    const DWORD length = x3m::config::get(name, text, 32);
     if (length == 0) return false;
     if (length >= 32 || length + 1 > capacity) { out[0] = '?'; out[1] = 0; return true; }
     for (DWORD i = 0; i < length; ++i) out[i] = (text[i] >= 0x21 && text[i] <= 0x7e) ? static_cast<char>(text[i]) : '?';

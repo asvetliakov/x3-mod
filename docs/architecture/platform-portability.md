@@ -58,7 +58,8 @@ reference across the read.
 
 `manifest_sha256` is the `sha256` value recorded in the `x3-modern-install.json`
 next to the DLL (`none` without a readable manifest); `proxy_options` lists every
-`X3M_*` variable of the process environment, sorted, and nothing else, and `proxy_environment` lists, in the same form and from the same enumeration, every `FEX_*`, `WINE*` and `CX_*` variable sorted, values truncated to 200 characters with `…` and the entry count last, so a run can show which emulation and Wine settings the launcher set actually reached the process. The digest
+`X3M_*` variable of the process environment, sorted, as `NAME=value@env`, and since the settings file (2026-09-26) also
+every setting `x3m.ini` or the built-in defaults supply, as `NAME=value@file` / `@default` (config-file.md), and `proxy_environment` lists, in the same form and from the same enumeration, every `FEX_*`, `WINE*` and `CX_*` variable sorted, values truncated to 200 characters with `…` and the entry count last, so a run can show which emulation and Wine settings the launcher set actually reached the process. The digest
 is the SHA-256 of the loaded module's own file, computed at attach through
 documented Win32 (`GetModuleFileNameW`, `CreateFileW`/`ReadFile` with
 `FILE_FLAG_SEQUENTIAL_SCAN`, CryptoAPI `PROV_RSA_AES`/`CALG_SHA_256`,
@@ -565,6 +566,24 @@ own thread) removed with `UnhookWindowsHookEx`; `GetCursorInfo`, `SetCursor`, `S
 On native Windows with a bottom taskbar the work area starts at the monitor origin, so the window predicate answers noop;
 with a top-docked taskbar the window moves over it (as borderless games do). The re-assert's ShowCursor pair is balanced
 per thread on both platforms (inferred for Windows). Native Windows unverified.
+
+## 2026-09-26: settings file `x3m.ini` (steps 1 and 2)
+
+Design and implementation record [config-file.md](config-file.md). Documented Win32 only: `GetModuleFileNameW` (the
+DLL's directory, as for the log), `CreateFileW` (`GENERIC_READ`, `OPEN_EXISTING`, shared read/write/delete),
+`GetFileSizeEx`, `ReadFile`, `CloseHandle`, `MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS)`, `GetEnvironmentVariableW`,
+`QueryPerformanceCounter`; the grammar (`src/config/config_parse.h`) is plain C++ with its own number reader (no CRT
+float parsing, SSE2 arithmetic) and is compiled and run on the host by `test_config_schema.py`. The file is only read,
+never created or written: a read-only game directory (Program Files without a write grant, UAC virtualisation) does not
+affect it, and no second location is searched (one file next to the DLL is the contract; the log's `%LOCALAPPDATA%`
+fallback does not apply to the settings). A missing, oversized (> 64 KiB) or unreadable file is one `config_open` row and
+the built-in defaults; nothing is fatal. The built-in defaults are the launcher's promoted set, so a native-Windows
+install with no launcher and no file runs the accepted configuration. The launcher (`tools/manage.py`, developer-only,
+CrossOver) sends a host `--config PATH` as the Wine path `Z:<absolute host path>`; a path that already names a drive
+(`C:\...`) or starts with a backslash is sent unchanged, so a developer on native Windows passes an absolute Windows path
+(the DLL resolves a relative `X3M_CONFIG` against its own directory). Without `--config` the launcher sends
+`X3M_CONFIG=bare` (no file, no built-in defaults). `proxy_options` now lists the effective settings with their source
+(`NAME=value@env|@file|@default`). Native Windows unverified.
 
 ## Shader slot budget
 

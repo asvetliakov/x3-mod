@@ -1,4 +1,5 @@
 #include "sun_light_poll.h"
+#include "config.h"
 #include "engine_memory.h"
 #include "object_trace.h"
 #include <windows.h>
@@ -17,7 +18,7 @@ std::uint32_t word(const unsigned char* block,std::uint32_t offset){std::uint32_
 std::int32_t colour(const unsigned char* block,std::uint32_t offset){std::int16_t v=0;std::memcpy(&v,block+(offset-node_block),2);return v;}
 bool flag(const wchar_t* name,bool fallback) {
     wchar_t setting[4]{};
-    const DWORD n=GetEnvironmentVariableW(name,setting,4);
+    const DWORD n=x3m::config::get(name,setting,4);
     return n==1?setting[0]!=L'0':n==0?fallback:true;
 }
 }
@@ -33,7 +34,7 @@ bool initialize() {
     if(active)return true;
     const DWORD error=GetLastError();
     wchar_t list[8]{};
-    const DWORD cascades=GetEnvironmentVariableW(L"X3M_SHADOW_CASCADES",list,8); // a longer list reports its length: set
+    const DWORD cascades=x3m::config::get(L"X3M_SHADOW_CASCADES",list,8); // a longer list reports its length: set
     const bool requested=flag(L"X3M_MOTION_OUTPUT",false)&&flag(L"X3M_SHADOW_REPLAY_DEPTH",false)&&cascades!=0&&!(cascades==1&&list[0]==L'0')&&flag(L"X3M_SHADOW_SUN_POLL",true);
     if(!requested){state=Status::Disabled;SetLastError(error);return false;}
     if(!object_trace::executable_verified()){state=Status::ExecutableMismatch;SetLastError(error);return false;}

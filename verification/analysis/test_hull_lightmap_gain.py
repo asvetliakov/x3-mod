@@ -343,7 +343,7 @@ class LauncherAndProxyGateTests(unittest.TestCase):
     def test_dll_gate_creation_selection_and_the_fixture_toggle(self):
         source = (ROOT / 'src/proxy/capture.cpp').read_text()
         block = source[source.index('X3M_HULL_LIGHTMAP_GAIN=<g>'):][:2200]
-        self.assertIn('GetEnvironmentVariableW(L"X3M_HULL_LIGHTMAP_GAIN",setting,32)', block)
+        self.assertIn('x3m::config::get(L"X3M_HULL_LIGHTMAP_GAIN",setting,32)', block)
         self.assertIn('value>=1.f&&value<=8.f', block)
         self.assertIn('const bool excluded=linear_material_requested;', block)
         self.assertIn('if(!hdr_requested||excluded)hull_lightmap_gain=1.f;', block)

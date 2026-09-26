@@ -1,4 +1,5 @@
 #include "submit_phases.h"
+#include "config.h"
 #include "submit_phase_sites.h"
 #include "frame_phases.h"
 #include "lean_stub.h"
@@ -123,7 +124,7 @@ bool initialize() {
     ErrorGuard error;
     if(initialized)return active.load(std::memory_order_acquire);
     initialized=true;wchar_t value[4]{};
-    const bool wanted=GetEnvironmentVariableW(L"X3M_SUBMIT_PHASES",value,4)==1&&value[0]==L'1';
+    const bool wanted=x3m::config::get(L"X3M_SUBMIT_PHASES",value,4)==1&&value[0]==L'1';
     if(!wanted)return false;
     const char* status="telemetry_off";
     if(telemetry::enabled()){

@@ -1,4 +1,5 @@
 #include "resource_reader.h"
+#include "config.h"
 #include "engine_patch.h"
 #include "loading_probes.h"
 #include "capture.h"
@@ -103,10 +104,10 @@ bool initialize() {
     initialized_=true;
     LARGE_INTEGER f{};QueryPerformanceFrequency(&f);frequency=f.QuadPart>0?uint64_t(f.QuadPart):1;
     wchar_t setting[16]{};
-    const DWORD length=GetEnvironmentVariableW(L"X3M_RESOURCE_READ",setting,16);
+    const DWORD length=x3m::config::get(L"X3M_RESOURCE_READ",setting,16);
     if(length&&length<16){if(!lstrcmpiW(setting,L"fast"))mode_=Mode::Fast;else if(!lstrcmpiW(setting,L"verify"))mode_=Mode::Verify;}
     wchar_t pool_setting[8]{};
-    pool_requested_=GetEnvironmentVariableW(L"X3M_DAT_HANDLES",pool_setting,8)==1&&pool_setting[0]==L'1';
+    pool_requested_=x3m::config::get(L"X3M_DAT_HANDLES",pool_setting,8)==1&&pool_setting[0]==L'1';
     if(mode_==Mode::Native&&!pool_requested_){status_="disabled";SetLastError(error);return false;}
     if(!object_trace::executable_verified()){status_="executable_mismatch";log("resource_reader mode=%s installed=0 status=%s",mode_name(mode_),status_);SetLastError(error);return false;}
     if(mode_!=Mode::Native){

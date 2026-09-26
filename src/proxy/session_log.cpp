@@ -1,4 +1,5 @@
 #include "session_log.h"
+#include "config.h"
 #include "capture.h"
 #include "cpu_state.h"
 #include <cstdint>
@@ -193,10 +194,10 @@ std::string utf8(const std::wstring& text) {
     return out;
 }
 std::wstring environment(const wchar_t* name) {
-    const DWORD size = GetEnvironmentVariableW(name, nullptr, 0);
+    const DWORD size = x3m::config::get(name, nullptr, 0); // X3M_LOG_FILE may come from x3m.ini; other names are the environment's
     if (size < 2) return std::wstring();
     std::wstring value(size, L'\0');
-    const DWORD length = GetEnvironmentVariableW(name, &value[0], size);
+    const DWORD length = x3m::config::get(name, &value[0], size);
     if (!length || length >= size) return std::wstring(); // gone or grown in between
     value.resize(length);
     return value;

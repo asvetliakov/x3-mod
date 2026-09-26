@@ -1,4 +1,5 @@
 #include "motion_output.h"
+#include "config.h"
 #include "../fog/fog_density_cache.h"
 #include "../renderer/shader_constant_register.h"
 #include "sse_scalar.h"
@@ -2365,9 +2366,9 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
     taa_copy_draw_ = false; std::snprintf(taa_stretch_test_, sizeof taa_stretch_test_, "off");
     // Step C implies step B through the route's own gate (the option with its
     // prerequisites, capture.cpp), never through the raw variable.
-    { char setting[8]{}; screen_emission_bound_ = screen_emission_requested_
-        || (GetEnvironmentVariableA("X3M_SCREEN_EMISSION_BOUND", setting, sizeof setting) == 1 && setting[0] == '1'); }
-    { char setting[8]{}; locked_prefix_log_ = GetEnvironmentVariableA("X3M_LOCKED_PREFIX_LOG", setting, sizeof setting) == 1 && setting[0] == '1'; }
+    { wchar_t setting[8]{}; screen_emission_bound_ = screen_emission_requested_
+        || (x3m::config::get(L"X3M_SCREEN_EMISSION_BOUND", setting, 8) == 1 && setting[0] == L'1'); }
+    { wchar_t setting[8]{}; locked_prefix_log_ = x3m::config::get(L"X3M_LOCKED_PREFIX_LOG", setting, 8) == 1 && setting[0] == L'1'; }
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     { char setting[8]{}; fixture_stretch_fault_ = GetEnvironmentVariableA("X3M_FIXTURE_STRETCH_FAULT", setting, sizeof setting) == 1 && setting[0] == '1'; }
     { char setting[8]{}; fixture_taa_filter_fault_ = GetEnvironmentVariableA("X3M_FIXTURE_TAA_FILTER_FAULT", setting, sizeof setting) == 1 && setting[0] == '1'; }

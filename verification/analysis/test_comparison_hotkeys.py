@@ -55,7 +55,7 @@ class InGameKeys(unittest.TestCase):
         self.assertIn(block, present)
         # X3M_CAPTURE_START: 0 (unset) never starts a burst; the launcher sends 999999.
         self.assertIn('unsigned capture_start = 0;', capture)
-        self.assertIn('GetEnvironmentVariableW(L"X3M_CAPTURE_START",setting,32)', capture)
+        self.assertIn('x3m::config::get(L"X3M_CAPTURE_START",setting,32)', capture)
         # The fps overlay has no key: visible whenever requested.
         overlay = (ROOT / 'src/proxy/fps_overlay.h').read_text()
         self.assertIn('bool visible() const noexcept { return requested_; }', overlay)

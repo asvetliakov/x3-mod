@@ -195,7 +195,7 @@ class FogFamilyFileTests(unittest.TestCase):
         passes = (ROOT / 'src/renderer/fog_pass.cpp').read_text()
         self.assertIn('file_family?fog_field::decode_family(profile,atlas_bytes_):fog_field::decode_from_resource(module,profile,atlas_bytes_)', passes)
         assets = (ROOT / 'src/renderer/fog_field_assets.cpp').read_text()
-        for api in ('CreateFileW', 'GetFileSizeEx', 'SetFilePointerEx', 'ReadFile', 'GetModuleFileNameW', 'GetEnvironmentVariableW'):
+        for api in ('CreateFileW', 'GetFileSizeEx', 'SetFilePointerEx', 'ReadFile', 'GetModuleFileNameW', 'x3m::config::get(L"X3M_FOG_FAMILIES"'):
             self.assertIn(api, assets)
 
 

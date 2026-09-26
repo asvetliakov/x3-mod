@@ -293,6 +293,17 @@ class ParseOptions(unittest.TestCase):
     def test_case_insensitive_names(self):
         self.assertEqual(identity.parse_options('proxy_options x3m_taa=1'), {'x3m_taa': '1'})
 
+    def test_source_suffix(self):
+        # Since the settings file (docs/architecture/config-file.md) every value names its source.
+        line = 'proxy_options X3M_CAMERA=chase@default X3M_LOG_FILE=Z:/a@b/x.log@env X3M_TAA=0@file X3M_OLD=1'
+        self.assertEqual(identity.parse_options(line), {'X3M_CAMERA': 'chase', 'X3M_LOG_FILE': 'Z:/a@b/x.log', 'X3M_TAA': '0', 'X3M_OLD': '1'})
+        self.assertEqual(identity.parse_option_sources(line)['X3M_TAA'], ('0', 'file'))
+        self.assertEqual(identity.parse_option_sources(line)['X3M_OLD'], ('1', None))
+        self.assertEqual(identity.parse_option_sources('proxy_options X3M_HDR_EV_MANUAL=@env'), {'X3M_HDR_EV_MANUAL': ('', 'env')})
+        source = (ROOT / 'src/proxy/proxy_identity.cpp').read_text()
+        self.assertIn('entry+="@env";', source)
+        self.assertIn('config::effective_below_environment()', source)
+
     def test_sorted_names_preserved(self):
         options = identity.parse_options('proxy_options X3M_A=1 X3M_B=2 X3M_C=3')
         self.assertEqual(list(options), sorted(options))

@@ -454,7 +454,7 @@ class LauncherAndProxyTests(unittest.TestCase):
     def test_dll_plumbing(self):
         capture = (ROOT / 'src/proxy/capture.cpp').read_text()
         block = capture[capture.index('// X3M_HULL_EMISSIVE_WIDENING=K[,B] (docs/architecture'):][:2800]
-        self.assertIn('GetEnvironmentVariableW(L"X3M_HULL_EMISSIVE_WIDENING",widen_setting,96)', block)
+        self.assertIn('x3m::config::get(L"X3M_HULL_EMISSIVE_WIDENING",widen_setting,96)', block)
         self.assertIn('if(valid&&count==1)parsed[1]=parsed[0]; // B defaults to K', block)
         self.assertIn('valid=valid&&count>=1&&parsed[0]>1.f&&parsed[0]<=8.f&&parsed[1]>=1.f&&parsed[1]<=parsed[0];', block)
         self.assertIn('hull_emissive_widening_requested=valid&&gained;', block)

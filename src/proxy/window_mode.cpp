@@ -1,4 +1,5 @@
 #include "window_mode.h"
+#include "config.h"
 
 namespace x3m { void log(const char* format, ...); }
 
@@ -9,11 +10,11 @@ core::Rect rect_of(const RECT& r) { core::Rect c; c.left = r.left; c.top = r.top
 }
 void initialize() {
     wchar_t value[4]{};
-    const DWORD length = GetEnvironmentVariableW(L"X3M_WINDOW_MONITOR_RECT", value, 4);
+    const DWORD length = x3m::config::get(L"X3M_WINDOW_MONITOR_RECT", value, 4);
     enabled_ = length == 1 && value[0] == L'1';
     if (!length) return; // unset: the fixtures' and plain launches' default, no row
     wchar_t marker[4]{};
-    const bool is_default = GetEnvironmentVariableW(L"X3M_WINDOW_MONITOR_RECT_DEFAULT", marker, 4) == 1 && marker[0] == L'1';
+    const bool is_default = x3m::config::get(L"X3M_WINDOW_MONITOR_RECT_DEFAULT", marker, 4) == 1 && marker[0] == L'1';
     log("window_mode_config requested=%u default=%u phases=create_before,reset_before flags=SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOOWNERZORDER",
         unsigned(enabled_), unsigned(is_default));
 }

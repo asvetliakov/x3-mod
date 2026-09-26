@@ -399,7 +399,7 @@ class FogLauncherTests(unittest.TestCase):
         # The DLL: stored range only, the whole triple must parse, tunables only with the option on, one mode line; an
         # overlong value and a request without the stored range each log one line instead of being ignored silently.
         capture = (ROOT / 'src/proxy/capture.cpp').read_text()
-        self.assertIn('const DWORD motes_length=GetEnvironmentVariableW(L"X3M_FOG_DUST_MOTES",setting,32);', capture)
+        self.assertIn('const DWORD motes_length=x3m::config::get(L"X3M_FOG_DUST_MOTES",setting,32);', capture)
         self.assertIn('volumetric_fog_motes_mode enabled=0 invalid=1 reason=overlong length=%lu', capture)
         self.assertIn('volumetric_fog_motes_mode enabled=0 reason=requires_stored_range count=%lu', capture)
         self.assertIn('renderer::fog_mote_option(unsigned(n),values[0],values[1],motes)&&motes.count', capture)

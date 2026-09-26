@@ -1,4 +1,5 @@
 #include "lod_occlusion.h"
+#include "config.h"
 #include "lod_occlusion_sites.h"
 #include "engine_patch.h"
 #include "object_trace.h"
@@ -68,11 +69,11 @@ bool initialize() {
     // sends all by default since Run 81 and marks it with X3M_LOD_OCCLUSION_DEFAULT=1 (the
     // row's default=1; default=0 for an explicit value or no marker).
     wchar_t text[setting_capacity]{};
-    const DWORD length = GetEnvironmentVariableW(L"X3M_LOD_OCCLUSION", text, setting_capacity);
+    const DWORD length = x3m::config::get(L"X3M_LOD_OCCLUSION", text, setting_capacity);
     char setting[setting_capacity]{};
     printable(text, length, setting);
     wchar_t marker[2]{};
-    const bool from_default = length > 0 && GetEnvironmentVariableW(L"X3M_LOD_OCCLUSION_DEFAULT", marker, 2) == 1 && marker[0] == L'1';
+    const bool from_default = length > 0 && x3m::config::get(L"X3M_LOD_OCCLUSION_DEFAULT", marker, 2) == 1 && marker[0] == L'1';
     Mode mode = default_mode;
     bool applied = false, parsed = true;
     if (length >= setting_capacity) { state_ = "too_long"; parsed = false; }

@@ -1,4 +1,5 @@
 #include "chase_lead.h"
+#include "config.h"
 #include "chase_lead_core.h"
 #include "chase_native_timing_core.h"
 #include "chase_transition.h"
@@ -798,7 +799,7 @@ bool initialize() {
     // A zero return is "unset" only with ERROR_ENVVAR_NOT_FOUND; an empty value also returns 0 and keeps centre.
     // LastError is cleared first and restored to the caller's value on every exit below.
     SetLastError(ERROR_SUCCESS);
-    const DWORD anchor_length = GetEnvironmentVariableW(L"X3M_CHASE_HUD_ANCHOR", anchor, 16);
+    const DWORD anchor_length = x3m::config::get(L"X3M_CHASE_HUD_ANCHOR", anchor, 16);
     const bool anchor_present = anchor_length != 0 || GetLastError() != ERROR_ENVVAR_NOT_FOUND;
     hud_anchor_forward = core::anchor_forward_setting(anchor_present, anchor, anchor_length);
     bool ok = chase_camera::installed() && chase_transition::installed() && object_trace::executable_verified() &&

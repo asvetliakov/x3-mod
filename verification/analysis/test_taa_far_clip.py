@@ -70,10 +70,10 @@ class FarClipLaunch(unittest.TestCase):
 class FarClipSource(unittest.TestCase):
     def test_dll_reads_the_setting_and_logs_the_configured_clip(self):
         capture = (ROOT / 'src/proxy/capture.cpp').read_text()
-        self.assertIn('GetEnvironmentVariableW(L"X3M_TAA_FAR_CLIP"', capture)
+        self.assertIn('x3m::config::get(L"X3M_TAA_FAR_CLIP"', capture)
         self.assertIn('bool taa_far_clip_7x7 = true, taa_far_clip_given = false, taa_far_clip_default = false;', capture)
         # The launcher's marker counts only with 7x7 and only as exactly "1".
-        self.assertIn('taa_far_clip_default=taa_far_clip_given&&taa_far_clip_7x7&&GetEnvironmentVariableW(L"X3M_TAA_FAR_CLIP_DEFAULT",setting,32)==1&&setting[0]==L\'1\';', capture)
+        self.assertIn('taa_far_clip_default=taa_far_clip_given&&taa_far_clip_7x7&&x3m::config::get(L"X3M_TAA_FAR_CLIP_DEFAULT",setting,32)==1&&setting[0]==L\'1\';', capture)
         self.assertIn('taa_far_clip_setting invalid=1 reason=too_long length=%lu', capture)
         self.assertIn('log("taa_far_clip_setting invalid=1");', capture)
         self.assertIn('configure_far_clip(taa_far_clip_7x7,taa_far_clip_given,taa_far_clip_default)', capture)

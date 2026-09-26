@@ -1,4 +1,5 @@
 #include "voice_dmo_fallback.h"
+#include "config.h"
 #include "engine_patch.h"
 #include "engine_memory.h"
 #include "cpu_state.h"
@@ -181,7 +182,7 @@ bool initialize() {
     ErrorGuard error;
     if(initialized)return active.load(std::memory_order_acquire);
     initialized=true;wchar_t value[4]{};
-    if(GetEnvironmentVariableW(L"X3M_VOICE_DMO_FALLBACK",value,4)!=1||value[0]!=L'1')return false;
+    if(x3m::config::get(L"X3M_VOICE_DMO_FALLBACK",value,4)!=1||value[0]!=L'1')return false;
     const char* status="unknown";
     const bool installed=install(status);
     if(installed)fault_handler=AddVectoredExceptionHandler(1,&fault_witness); // armed with the hook only; nothing per frame

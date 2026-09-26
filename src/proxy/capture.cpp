@@ -1,4 +1,6 @@
 #include "capture.h"
+#include "config.h"
+#include "config_load.h"
 #include "capture_state.h"
 #include "../fog/fog_density_cache.h"
 #include "proxy_identity.h"
@@ -2467,7 +2469,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     // its own share variant, the converted materials theirs).
     bool sun_lane_enabled=false;
     { wchar_t lane[4]{};
-      const bool asked=GetEnvironmentVariableW(L"X3M_SUN_SHADOW_LANE",lane,4)==1&&lane[0]==L'1';
+      const bool asked=x3m::config::get(L"X3M_SUN_SHADOW_LANE",lane,4)==1&&lane[0]==L'1';
       sun_lane_enabled=asked&&motion_output_requested&&taa_requested&&hdr_requested;
       // The lane's RT2 is A32B32G32R32F with .b = the clip w (shadow-receiver-depth.md);
       // the former X3M_SUN_SHADOW_RECEIVER_DEPTH option is gone (the launcher refuses
@@ -2477,7 +2479,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     // ownership wrapper (loader.cpp enables the lock bookends on the same switch). The material transformer is switched
     // here, at device creation, before the application creates any program on this device; off it is untouched.
     { wchar_t setting[4]{};
-      const bool wrapped=GetEnvironmentVariableW(L"X3M_OWNERSHIP",setting,4)==1&&setting[0]==L'1';
+      const bool wrapped=x3m::config::get(L"X3M_OWNERSHIP",setting,4)==1&&setting[0]==L'1';
       const bool enabled=thin_vote_gate&&sun_lane_enabled; // the loader armed the readable policy on the same gate
       if(taa_thin_vote_given)log("taa_thin_vote_configured requested=%u enabled=%u default=%u motion_output=%u taa=%u lane=%u ownership=%u",
           unsigned(taa_thin_vote),enabled,unsigned(taa_thin_vote_default),motion_output_requested,taa_requested,sun_lane_enabled,wrapped);
@@ -2503,13 +2505,13 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     // 2026-09-25 (docs/architecture/directional-shadows.md, "Single map
     // removed"): a set variable is ignored and named in one row per process.
     { wchar_t setting[4]{};
-      const bool asked=GetEnvironmentVariableW(L"X3M_SHADOW_REPLAY_CANDIDATES",setting,4)==1&&setting[0]==L'1';
-      const bool depth_asked=GetEnvironmentVariableW(L"X3M_SHADOW_REPLAY_DEPTH",setting,4)==1&&setting[0]==L'1';
-      const bool wrapped=GetEnvironmentVariableW(L"X3M_OWNERSHIP",setting,4)==1&&setting[0]==L'1';
+      const bool asked=x3m::config::get(L"X3M_SHADOW_REPLAY_CANDIDATES",setting,4)==1&&setting[0]==L'1';
+      const bool depth_asked=x3m::config::get(L"X3M_SHADOW_REPLAY_DEPTH",setting,4)==1&&setting[0]==L'1';
+      const bool wrapped=x3m::config::get(L"X3M_OWNERSHIP",setting,4)==1&&setting[0]==L'1';
       const bool enabled=(asked||depth_asked)&&motion_output_requested&&wrapped;
       { static LONG removed_logged=0;
-        const unsigned size_set=GetEnvironmentVariableW(L"X3M_SHADOW_REPLAY_SIZE",nullptr,0)>0, extent_set=GetEnvironmentVariableW(L"X3M_SHADOW_REPLAY_EXTENT",nullptr,0)>0;
-        const unsigned half_set=GetEnvironmentVariableW(L"X3M_SHADOW_REPLAY_DEPTH_HALF",nullptr,0)>0, cap_set=GetEnvironmentVariableW(L"X3M_SHADOW_REPLAY_CAP",nullptr,0)>0;
+        const unsigned size_set=x3m::config::get(L"X3M_SHADOW_REPLAY_SIZE",nullptr,0)>0, extent_set=x3m::config::get(L"X3M_SHADOW_REPLAY_EXTENT",nullptr,0)>0;
+        const unsigned half_set=x3m::config::get(L"X3M_SHADOW_REPLAY_DEPTH_HALF",nullptr,0)>0, cap_set=x3m::config::get(L"X3M_SHADOW_REPLAY_CAP",nullptr,0)>0;
         if((size_set|extent_set|half_set|cap_set)&&InterlockedExchange(&removed_logged,1)==0)
             log("shadow_replay_config size=%u extent=%u depth_half=%u cap=%u single_map=removed ignored=1",size_set,extent_set,half_set,cap_set); }
       if(asked||depth_asked)log("shadow_replay_candidates_mode requested=1 enabled=%u motion_output=%u ownership=%u",enabled,motion_output_requested,wrapped);
@@ -2521,7 +2523,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
       // counter (no box without it) and needs the verified submission identity that object_context
       // needs, because node=/model= are the scope's. Refused otherwise, and always noted.
       { wchar_t flag[4]{};
-        const bool bounds_asked=log_tier::debug()||(GetEnvironmentVariableW(L"X3M_OBJECT_BOUNDS_LOG",flag,4)==1&&flag[0]==L'1'); // or X3M_DEBUG=1
+        const bool bounds_asked=log_tier::debug()||(x3m::config::get(L"X3M_OBJECT_BOUNDS_LOG",flag,4)==1&&flag[0]==L'1'); // or X3M_DEBUG=1
         if(bounds_asked){
             const bool traced=object_trace::active();
             const bool bounds_enabled=enabled&&traced;
@@ -2536,7 +2538,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
           // X3M_SHADOW_ALPHA_CASTERS=1 (default off) lets alpha-tested routed draws
           // cast with their own alpha test; rides the depth replay.
           { wchar_t alpha[4]{};
-            if(GetEnvironmentVariableW(L"X3M_SHADOW_ALPHA_CASTERS",alpha,4)==1&&alpha[0]==L'1'){
+            if(x3m::config::get(L"X3M_SHADOW_ALPHA_CASTERS",alpha,4)==1&&alpha[0]==L'1'){
                 log("shadow_alpha_casters_mode requested=1 enabled=%u",enabled);
                 hooked.motion_output.configure_shadow_alpha_casters(enabled);
             } }
@@ -2560,7 +2562,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
                 unsigned count=0; const wchar_t* cursor=text;
                 while(*cursor){ if(count>=capacity)return 0; wchar_t* end=nullptr; const double v=wcstod(cursor,&end); if(end==cursor)return 0; out[count++]=v; if(*end==L',')cursor=end+1; else if(*end==L'\0')break; else return 0; if(!*cursor)return 0; }
                 return count; };
-            const DWORD length=GetEnvironmentVariableW(L"X3M_SHADOW_CASCADES",list,128);
+            const DWORD length=x3m::config::get(L"X3M_SHADOW_CASCADES",list,128);
             if(!(length>0&&length<128&&!(length==1&&list[0]==L'0')))
                 log("shadow_cascades_mode requested=0 enabled=0 reason=%s cascades=0",length>=128?"extents":"off");
             else {
@@ -2571,28 +2573,28 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
                 const char* reason=count?nullptr:"extents";
                 for(unsigned i=0;i<count;++i)extents[i]=float(values[i]);
                 const auto integers=[&](const wchar_t* name,unsigned* out)->bool{
-                    const DWORD n=GetEnvironmentVariableW(name,list,128); if(!n)return true; if(n>=128)return false;
+                    const DWORD n=x3m::config::get(name,list,128); if(!n)return true; if(n>=128)return false;
                     double v[renderer::shadow_cascade_max]{}; const unsigned got=parse(list,v,renderer::shadow_cascade_max);
                     if(got!=1&&got!=count)return false;
                     for(unsigned i=0;i<count;++i){ const double x=v[got==1?0:i]; if(!(x>=1.&&x<=65536.)||x!=double(unsigned(x)))return false; out[i]=unsigned(x); }
                     return true; };
                 if(!reason&&!integers(L"X3M_SHADOW_CASCADE_SIZES",sizes))reason="sizes";
                 if(!reason&&!integers(L"X3M_SHADOW_CASCADE_CAPS",caps))reason="caps";
-                if(!reason&&GetEnvironmentVariableW(L"X3M_SHADOW_CASCADE_BUDGET",list,128)>0){ wchar_t* end=nullptr; const unsigned long v=wcstoul(list,&end,10); if(end==list||*end!=L'\0'||v<renderer::shadow_cascade_budget_min||v>renderer::shadow_cascade_budget_max)reason="budget"; else budget=unsigned(v); }
+                if(!reason&&x3m::config::get(L"X3M_SHADOW_CASCADE_BUDGET",list,128)>0){ wchar_t* end=nullptr; const unsigned long v=wcstoul(list,&end,10); if(end==list||*end!=L'\0'||v<renderer::shadow_cascade_budget_min||v>renderer::shadow_cascade_budget_max)reason="budget"; else budget=unsigned(v); }
                 unsigned records[renderer::shadow_cascade_max]; for(unsigned i=0;i<renderer::shadow_cascade_max;++i)records[i]=renderer::shadow_cascade_records_default;
                 unsigned static_from=renderer::shadow_cascade_static_from_none; bool importance=false; float large_min=0.f;
                 if(!reason&&!integers(L"X3M_SHADOW_CASCADE_RECORDS",records))reason="records";
-                if(!reason&&GetEnvironmentVariableW(L"X3M_SHADOW_CASCADE_STATIC_FROM",list,128)>0){ wchar_t* end=nullptr; const unsigned long v=wcstoul(list,&end,10); if(end==list||*end!=L'\0'||v<1||v>=count)reason="static_from"; else static_from=unsigned(v); }
-                if(!reason&&GetEnvironmentVariableW(L"X3M_SHADOW_CASCADE_DROP_ORDER",list,128)>0){ if(!wcscmp(list,L"importance"))importance=true; else if(wcscmp(list,L"submission"))reason="drop_order"; }
+                if(!reason&&x3m::config::get(L"X3M_SHADOW_CASCADE_STATIC_FROM",list,128)>0){ wchar_t* end=nullptr; const unsigned long v=wcstoul(list,&end,10); if(end==list||*end!=L'\0'||v<1||v>=count)reason="static_from"; else static_from=unsigned(v); }
+                if(!reason&&x3m::config::get(L"X3M_SHADOW_CASCADE_DROP_ORDER",list,128)>0){ if(!wcscmp(list,L"importance"))importance=true; else if(wcscmp(list,L"submission"))reason="drop_order"; }
                 renderer::ShadowCascadeSet set{};
                 char static_text[12]; std::snprintf(static_text,sizeof static_text,"%u",static_from<renderer::shadow_cascade_max?static_from:0u);
                 if(!reason&&!renderer::shadow_cascade_set(extents,count,sizes,caps,budget,set))reason="range";
-                if(!reason&&GetEnvironmentVariableW(L"X3M_SHADOW_CASCADE_LARGE_MIN",list,128)>0){ wchar_t* end=nullptr; const double v=wcstod(list,&end); if(end==list||*end!=L'\0'||!(v>=0.)||v>double(renderer::shadow_cascade_large_min_max))reason="large_min"; else large_min=float(v); }
+                if(!reason&&x3m::config::get(L"X3M_SHADOW_CASCADE_LARGE_MIN",list,128)>0){ wchar_t* end=nullptr; const double v=wcstod(list,&end); if(end==list||*end!=L'\0'||!(v>=0.)||v>double(renderer::shadow_cascade_large_min_max))reason="large_min"; else large_min=float(v); }
                 // Back-face casters (shadow_replay_projection.h, shadow_cascade_backface_texel_default): absent, the texel
                 // law (every cascade whose world texel is 8 u or more); X3M_SHADOW_CASCADE_BACKFACE_FROM = K (0..count-1)
                 // that cascade and beyond; "none" no cascade; the count or more is refused (never a silent no-op).
                 unsigned backface_from=renderer::shadow_cascade_backface_from_texel;
-                if(!reason&&GetEnvironmentVariableW(L"X3M_SHADOW_CASCADE_BACKFACE_FROM",list,128)>0){
+                if(!reason&&x3m::config::get(L"X3M_SHADOW_CASCADE_BACKFACE_FROM",list,128)>0){
                     if(!wcscmp(list,L"none"))backface_from=renderer::shadow_cascade_static_from_none;
                     else { wchar_t* end=nullptr; const unsigned long v=wcstoul(list,&end,10); if(end==list||*end!=L'\0'||v>=count)reason="backface_from"; else backface_from=unsigned(v); } }
                 // Per-part minimum light-space footprint (shadow-cascades.md, "Minimum caster
@@ -2604,7 +2606,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
                 // more: `list` would hold no usable value) leave the cascades off, never a silent
                 // no-op.
                 float min_footprint=renderer::shadow_cascade_min_footprint_default;
-                if(!reason){ const DWORD n=GetEnvironmentVariableW(L"X3M_SHADOW_CASCADE_MIN_FOOTPRINT",list,128);
+                if(!reason){ const DWORD n=x3m::config::get(L"X3M_SHADOW_CASCADE_MIN_FOOTPRINT",list,128);
                     if(n>=128)reason="min_footprint";
                     else if(n>0){ wchar_t* end=nullptr; const double v=wcstod(list,&end);
                         if(end==list||*end!=L'\0'||!(v==v))reason="min_footprint";                       // malformed text, or NaN
@@ -2619,9 +2621,9 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
                 // at X3M_SHADOW_CASCADE_LADDER_RATIO per cascade, within [2, 16], default 5);
                 // absent, "0" or out of range: off (a ratio out of range: the default).
                 float adaptive_k=0.f, ladder_ratio=renderer::shadow_cascade_ladder_ratio_default;
-                if(set.count&&GetEnvironmentVariableW(L"X3M_SHADOW_CASCADE_ADAPTIVE_C0",list,128)>0){ wchar_t* end=nullptr; const double v=wcstod(list,&end);
+                if(set.count&&x3m::config::get(L"X3M_SHADOW_CASCADE_ADAPTIVE_C0",list,128)>0){ wchar_t* end=nullptr; const double v=wcstod(list,&end);
                     if(end!=list&&*end==L'\0'&&v>=double(renderer::shadow_cascade_adaptive_k_min)&&v<=double(renderer::shadow_cascade_adaptive_k_max))adaptive_k=float(v); }
-                if(adaptive_k>0.f&&GetEnvironmentVariableW(L"X3M_SHADOW_CASCADE_LADDER_RATIO",list,128)>0){ wchar_t* end=nullptr; const double v=wcstod(list,&end);
+                if(adaptive_k>0.f&&x3m::config::get(L"X3M_SHADOW_CASCADE_LADDER_RATIO",list,128)>0){ wchar_t* end=nullptr; const double v=wcstod(list,&end);
                     if(end!=list&&*end==L'\0'&&v>=double(renderer::shadow_cascade_ladder_ratio_min)&&v<=double(renderer::shadow_cascade_ladder_ratio_max))ladder_ratio=float(v); }
                 static_assert(renderer::shadow_cascade_max==5,"the mode line lists five cascades");
                 const auto ext=[&](unsigned i){ return double(set.count>i?set.cascades[i].half_extent:0.f); };
@@ -2647,12 +2649,12 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
           // X3M_SHADOW_CASTER_RETENTION_AGE (frames, 1..10000000, default 7200) and
           // X3M_SHADOW_CASTER_RETENTION_EPS (units, 1e-4..100, default 0.05) calibrate both;
           // X3M_SHADOW_RETENTION_TIMING=1 adds the per-draw cost to the frame line (two counter reads per recorded draw).
-          { const auto flag=[&](const wchar_t* name){ return GetEnvironmentVariableW(name,setting,4)==1&&setting[0]==L'1'; };
+          { const auto flag=[&](const wchar_t* name){ return x3m::config::get(name,setting,4)==1&&setting[0]==L'1'; };
             const bool census=flag(L"X3M_SHADOW_RETENTION_CENSUS")||log_tier::debug(), live=flag(L"X3M_SHADOW_CASTER_RETENTION"); // census: or X3M_DEBUG=1
             if(census||live){
                 std::uint32_t age=shadow_retention::age_cap_default; double eps=shadow_retention::eps_default; wchar_t number[32]{}; wchar_t* stop=nullptr;
-                if(GetEnvironmentVariableW(L"X3M_SHADOW_CASTER_RETENTION_AGE",number,32)>0){ const unsigned long v=wcstoul(number,&stop,10); if(stop!=number&&*stop==L'\0'&&v>=shadow_retention::age_cap_min&&v<=shadow_retention::age_cap_max)age=std::uint32_t(v); }
-                if(GetEnvironmentVariableW(L"X3M_SHADOW_CASTER_RETENTION_EPS",number,32)>0){ stop=nullptr; const double v=wcstod(number,&stop); if(stop!=number&&*stop==L'\0'&&v>=shadow_retention::eps_min&&v<=shadow_retention::eps_max)eps=v; }
+                if(x3m::config::get(L"X3M_SHADOW_CASTER_RETENTION_AGE",number,32)>0){ const unsigned long v=wcstoul(number,&stop,10); if(stop!=number&&*stop==L'\0'&&v>=shadow_retention::age_cap_min&&v<=shadow_retention::age_cap_max)age=std::uint32_t(v); }
+                if(x3m::config::get(L"X3M_SHADOW_CASTER_RETENTION_EPS",number,32)>0){ stop=nullptr; const double v=wcstod(number,&stop); if(stop!=number&&*stop==L'\0'&&v>=shadow_retention::eps_min&&v<=shadow_retention::eps_max)eps=v; }
                 const shadow_retention::Mode mode=!enabled?shadow_retention::Mode::Off:live?shadow_retention::Mode::Live:shadow_retention::Mode::Census;
                 log("shadow_retention_mode requested=1 enabled=%u mode=%s age_cap=%u eps=%.9g",enabled,!enabled?"off":live?"live":"census",unsigned(age),eps);
                 hooked.motion_output.configure_shadow_retention(mode,age,eps,flag(L"X3M_SHADOW_RETENTION_TIMING")); } } }
@@ -2665,15 +2667,15 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
       // is the constant compare bias and X3M_SUN_SHADOW_BIAS_CLAMP_TEXELS
       // (1..64, default 20.97152) the receiver-plane clamp and non-planar
       // fallback in world texels, both resolved per frame with the cascade.
-      { const bool apply_asked=GetEnvironmentVariableW(L"X3M_SUN_SHADOW_APPLY",setting,4)==1&&setting[0]==L'1';
+      { const bool apply_asked=x3m::config::get(L"X3M_SUN_SHADOW_APPLY",setting,4)==1&&setting[0]==L'1';
         const bool apply_enabled=apply_asked&&sun_lane_enabled&&depth_asked&&enabled&&cascades_configured;
         // X3M_SUN_SHADOW_BIAS_SLOPE_TEXELS (0..8, default 0.2) is the cascade
         // program's slope-scaled margin in texels of the receiver plane's
         // depth slope (sun_shadow_apply_pass.h).
         double bias_units=renderer::sun_shadow_bias_units_default, clamp_texels=renderer::sun_shadow_bias_clamp_texels_default, slope_texels=renderer::sun_shadow_bias_slope_texels_default; wchar_t text[32]{}; wchar_t* end=nullptr;
-        if(GetEnvironmentVariableW(L"X3M_SUN_SHADOW_BIAS_UNITS",text,32)>0){ end=nullptr; const double v=wcstod(text,&end); if(end!=text&&*end==L'\0'&&v>=renderer::sun_shadow_bias_units_min&&v<=renderer::sun_shadow_bias_units_max)bias_units=v; }
-        if(GetEnvironmentVariableW(L"X3M_SUN_SHADOW_BIAS_CLAMP_TEXELS",text,32)>0){ end=nullptr; const double v=wcstod(text,&end); if(end!=text&&*end==L'\0'&&v>=renderer::sun_shadow_bias_clamp_texels_min&&v<=renderer::sun_shadow_bias_clamp_texels_max)clamp_texels=v; }
-        { wchar_t slope_text[32]{}; if(GetEnvironmentVariableW(L"X3M_SUN_SHADOW_BIAS_SLOPE_TEXELS",slope_text,32)>0){ end=nullptr; const double v=wcstod(slope_text,&end); if(end!=slope_text&&*end==L'\0'&&v>=renderer::sun_shadow_bias_slope_texels_min&&v<=renderer::sun_shadow_bias_slope_texels_max)slope_texels=v; } }
+        if(x3m::config::get(L"X3M_SUN_SHADOW_BIAS_UNITS",text,32)>0){ end=nullptr; const double v=wcstod(text,&end); if(end!=text&&*end==L'\0'&&v>=renderer::sun_shadow_bias_units_min&&v<=renderer::sun_shadow_bias_units_max)bias_units=v; }
+        if(x3m::config::get(L"X3M_SUN_SHADOW_BIAS_CLAMP_TEXELS",text,32)>0){ end=nullptr; const double v=wcstod(text,&end); if(end!=text&&*end==L'\0'&&v>=renderer::sun_shadow_bias_clamp_texels_min&&v<=renderer::sun_shadow_bias_clamp_texels_max)clamp_texels=v; }
+        { wchar_t slope_text[32]{}; if(x3m::config::get(L"X3M_SUN_SHADOW_BIAS_SLOPE_TEXELS",slope_text,32)>0){ end=nullptr; const double v=wcstod(slope_text,&end); if(end!=slope_text&&*end==L'\0'&&v>=renderer::sun_shadow_bias_slope_texels_min&&v<=renderer::sun_shadow_bias_slope_texels_max)slope_texels=v; } }
         if(apply_asked)log("sun_shadow_apply_mode requested=1 enabled=%u lane=%u replay=%u linear_materials=%u bias_units=%.9g clamp_texels=%.9g slope_texels=%.9g cascades=%u",apply_enabled,sun_lane_enabled,depth_asked&&enabled,linear_material_requested,bias_units,clamp_texels,slope_texels,unsigned(cascades_configured));
         hooked.motion_output.configure_sun_shadow_apply(apply_enabled,bias_units,clamp_texels,slope_texels); } }
     hooked.motion_output.configure_volumetric_fog(volumetric_fog_requested,volumetric_fog_strength,volumetric_fog_anisotropy,volumetric_fog_timing,volumetric_fog_cards_replace);
@@ -2831,6 +2833,9 @@ void log_fixture_exception() {
 bool fixture_exception_requested() { wchar_t raise[4]{}; return GetEnvironmentVariableW(L"X3M_FIXTURE_EXCEPTION",raise,4)==1&&raise[0]==L'1'; }
 #endif
 void initialize_log(HMODULE module) {
+    // x3m.ini and the defaults (docs/architecture/config-file.md): first, so every read below, the tier flags and the
+    // log path included, resolves default < file < environment; logs nothing until log_open (config::log_rows below).
+    config::load(module);
     CaptureLock lock;
     log_tier::init(); // the group flags cached once for the render-path checks (the F8 guard)
     // The session log (docs/architecture/logging-tiers.md, "Log file policy"): <game dir>\x3m.log with the
@@ -2897,9 +2902,10 @@ void initialize_log(HMODULE module) {
     // platform-portability.md, "Session identity"). Attach only: one file hash
     // and one environment scan, never on the render path.
     proxy_identity::log_identity(module);
+    config::log_rows(); // config_open, config_key, config_file: what x3m.ini contributed (always tier)
     wchar_t setting[32]{};
-    if(GetEnvironmentVariableW(L"X3M_CAPTURE_START",setting,32)>0) capture_start=wcstoul(setting,nullptr,10); // launcher 999999, fixtures their start
-    if(GetEnvironmentVariableW(L"X3M_CAPTURE_FRAMES",setting,32)>0) capture_count=wcstoul(setting,nullptr,10);
+    if(x3m::config::get(L"X3M_CAPTURE_START",setting,32)>0) capture_start=wcstoul(setting,nullptr,10); // launcher 999999, fixtures their start
+    if(x3m::config::get(L"X3M_CAPTURE_FRAMES",setting,32)>0) capture_count=wcstoul(setting,nullptr,10);
     // 64: a plain frame counter (ctx.remaining); above 8 serves the raw TAA
     // debug dumps (about 40 MB per 1280x768 frame), see tools/manage.py.
     if(capture_count>64) capture_count=64;
@@ -2908,7 +2914,7 @@ void initialize_log(HMODULE module) {
     // 3600 (about one row a minute). frame_end_stride_mode is logged for any
     // stride but the default.
     {   bool given=false;
-        if(GetEnvironmentVariableW(L"X3M_FRAME_END_STRIDE",setting,32)>0){
+        if(x3m::config::get(L"X3M_FRAME_END_STRIDE",setting,32)>0){
             wchar_t* stop=nullptr; const unsigned long v=wcstoul(setting,&stop,10);
             if(stop!=setting&&*stop==L'\0'&&v>=1&&v<=frame_end_stride_max){frame_end_stride=unsigned(v);given=true;}
         }
@@ -2921,27 +2927,27 @@ void initialize_log(HMODULE module) {
     shadow_rows_requested=log_tier::debug_flag(L"X3M_SHADOW_ROWS");
     if(fps_overlay_requested)log("fps_overlay_mode requested=1 refresh_ms=250 window_ms=1000");
     // X3M_GPU_SYNC_TIMING=1 (default off): serialising event-query spins at the proxy's pass boundaries (one diagnostic flight).
-    gpu_sync_timing_requested=GetEnvironmentVariableW(L"X3M_GPU_SYNC_TIMING",setting,32)==1 && setting[0]==L'1';
+    gpu_sync_timing_requested=x3m::config::get(L"X3M_GPU_SYNC_TIMING",setting,32)==1 && setting[0]==L'1';
     if(gpu_sync_timing_requested)log("gpu_sync_timing_mode requested=1 passes=%u boundaries=%u window=%u serialises=1",gpu_sync_timing::pass_count,gpu_sync_timing::boundary_count,gpu_sync_timing::window_frames_default);
-    scene_depth_capture_requested=GetEnvironmentVariableW(L"X3M_SCENE_DEPTH_CAPTURE",setting,32)==1 && setting[0]==L'1';
-    finite_positions_requested=GetEnvironmentVariableW(L"X3M_FINITE_POSITIONS",setting,32)==1 && setting[0]==L'1';
-    motion_capture_requested=GetEnvironmentVariableW(L"X3M_MOTION_CAPTURE",setting,32)==1 && setting[0]==L'1' &&
+    scene_depth_capture_requested=x3m::config::get(L"X3M_SCENE_DEPTH_CAPTURE",setting,32)==1 && setting[0]==L'1';
+    finite_positions_requested=x3m::config::get(L"X3M_FINITE_POSITIONS",setting,32)==1 && setting[0]==L'1';
+    motion_capture_requested=x3m::config::get(L"X3M_MOTION_CAPTURE",setting,32)==1 && setting[0]==L'1' &&
         scene_depth_capture_requested && finite_positions_requested;
     log("motion_capture_mode requested=%u enabled=0 reason=write_exclusion_unavailable scope=private_rigid_diagnostic temporal_consumer=0",motion_capture_requested);
-    motion_output_requested=GetEnvironmentVariableW(L"X3M_MOTION_OUTPUT",setting,32)==1 && setting[0]==L'1';
+    motion_output_requested=x3m::config::get(L"X3M_MOTION_OUTPUT",setting,32)==1 && setting[0]==L'1';
     // Per-draw jitter (off by default) with its Halton sample count, and the
     // cut detector bounds (median origin displacement at 1280 px width,
     // missing-key fraction); see docs/architecture/temporal-integration.md.
-    motion_jitter_requested=GetEnvironmentVariableW(L"X3M_MOTION_JITTER",setting,32)==1 && setting[0]==L'1';
-    if(GetEnvironmentVariableW(L"X3M_MOTION_JITTER_SAMPLES",setting,32)>0){const unsigned long n=wcstoul(setting,nullptr,10);if(n>=2&&n<=64)motion_jitter_samples=unsigned(n);}
-    if(GetEnvironmentVariableW(L"X3M_MOTION_CUT_MEDIAN_PX",setting,32)>0)motion_cut_median_px=wcstof(setting,nullptr);
-    if(GetEnvironmentVariableW(L"X3M_MOTION_CUT_MISSING",setting,32)>0)motion_cut_missing=wcstof(setting,nullptr);
+    motion_jitter_requested=x3m::config::get(L"X3M_MOTION_JITTER",setting,32)==1 && setting[0]==L'1';
+    if(x3m::config::get(L"X3M_MOTION_JITTER_SAMPLES",setting,32)>0){const unsigned long n=wcstoul(setting,nullptr,10);if(n>=2&&n<=64)motion_jitter_samples=unsigned(n);}
+    if(x3m::config::get(L"X3M_MOTION_CUT_MEDIAN_PX",setting,32)>0)motion_cut_median_px=wcstof(setting,nullptr);
+    if(x3m::config::get(L"X3M_MOTION_CUT_MISSING",setting,32)>0)motion_cut_missing=wcstof(setting,nullptr);
     // The temporal resolve at the bloom copy (temporal step 3): requires the
     // route and implies the jitter; X3M_TAA_DEBUG=<n> (n > 0) writes the
     // resolved FP16 image and the pre-resolve color in capture frames.
-    taa_requested=motion_output_requested && GetEnvironmentVariableW(L"X3M_TAA",setting,32)==1 && setting[0]==L'1';
+    taa_requested=motion_output_requested && x3m::config::get(L"X3M_TAA",setting,32)==1 && setting[0]==L'1';
     if(taa_requested)motion_jitter_requested=true;
-    taa_debug_requested=taa_requested && GetEnvironmentVariableW(L"X3M_TAA_DEBUG",setting,32)>0 && wcstoul(setting,nullptr,10)>0;
+    taa_debug_requested=taa_requested && x3m::config::get(L"X3M_TAA_DEBUG",setting,32)>0 && wcstoul(setting,nullptr,10)>0;
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     // Seam only: X3M_FIXTURE_TAA_K=<k> (0 <= k <= 65504) fixes the resolve's
     // luminance-weighting constant on the FP16 scene (0: the unweighted
@@ -2958,16 +2964,16 @@ void initialize_log(HMODULE module) {
     // always forwards a value in TAA mode, so this fallback covers a direct
     // WINEDLLOVERRIDES start).
     taa_mip_bias=taa_requested?-0.5f:0.f;
-    if(motion_jitter_requested && GetEnvironmentVariableW(L"X3M_TAA_MIP_BIAS",setting,32)>0){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&*end==L'\0'&&v>=-8.f&&v<=8.f)taa_mip_bias=v;}
+    if(motion_jitter_requested && x3m::config::get(L"X3M_TAA_MIP_BIAS",setting,32)>0){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&*end==L'\0'&&v>=-8.f&&v<=8.f)taa_mip_bias=v;}
     // X3M_TAA_SHARPEN=<s> (0 <= s <= 1): the post-resolve sharpen; the whole
     // string must parse (0 is off, so a failed conversion must not be taken).
     // Unset or invalid with the resolve on: 0.75; off entirely without TAA.
     taa_sharpen=taa_requested?0.75f:0.f;
-    if(taa_requested&&GetEnvironmentVariableW(L"X3M_TAA_SHARPEN",setting,32)>0){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&*end==L'\0'&&v>=0.f&&v<=1.f)taa_sharpen=v;}
+    if(taa_requested&&x3m::config::get(L"X3M_TAA_SHARPEN",setting,32)>0){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&*end==L'\0'&&v>=0.f&&v<=1.f)taa_sharpen=v;}
     // X3M_TAA_FAR_STABILISER=<W>[,<A>[,<F0>,<F1>[,<LO>,<HI>]]] (0 <= LO < HI <= 64 px/frame, the weight's speed gate) (docs/architecture/taa-distant-line-fade.md section 9; unset: off):
     // W 0 or 0.5..0.99 (checked against the history weight at attach), A 0..4, 0 < F0 < F1 <= 1e6 units per pixel.
     // The whole string must parse (1, 2, 4 or 6 fields); anything else keeps the option off.
-    {wchar_t far_setting[64];const DWORD length=taa_requested?GetEnvironmentVariableW(L"X3M_TAA_FAR_STABILISER",far_setting,64):0;
+    {wchar_t far_setting[64];const DWORD length=taa_requested?x3m::config::get(L"X3M_TAA_FAR_STABILISER",far_setting,64):0;
         if(length>0&&length<64){float v[6]={0.f,0.f,60.f,68.f,.03f,.25f};unsigned count=0;wchar_t* cursor=far_setting;bool ok=true;
             while(ok&&count<6){wchar_t* end=nullptr;v[count]=wcstof(cursor,&end);ok=end!=cursor;++count;if(!ok||*end==L'\0')break;ok=*end==L',';cursor=end+1;if(count==6)ok=false;}
             ok=ok&&(count==1||count==2||count==4||count==6)&&v[4]>=0.f&&v[5]>v[4]&&v[5]<=64.f&&(v[0]==0.f||(v[0]>=.5f&&v[0]<=.99f))&&v[1]>=0.f&&v[1]<=4.f&&v[2]>0.f&&v[3]>v[2]&&v[3]<=1e6f;
@@ -2976,7 +2982,7 @@ void initialize_log(HMODULE module) {
     // X3M_TAA_THIN_REGION=<W>[,<RELAX>[,<LO>,<HI>]] (docs/architecture/taa-lattice-crawl.md section 13; unset: off): W 0 or
     // 0.5..0.99, RELAX 0..1 (default 1: clip off on the region), 0 <= LO < HI <= 64 px/frame (given: replaces the far
     // stabiliser's gate, which the two share). 1, 2 or 4 fields; anything else keeps the option off.
-    {wchar_t thin_setting[48];const DWORD length=taa_requested?GetEnvironmentVariableW(L"X3M_TAA_THIN_REGION",thin_setting,48):0;
+    {wchar_t thin_setting[48];const DWORD length=taa_requested?x3m::config::get(L"X3M_TAA_THIN_REGION",thin_setting,48):0;
         if(length>0&&length<48){float v[4]={0.f,1.f,.03f,.25f};unsigned count=0;wchar_t* cursor=thin_setting;bool ok=true;
             while(ok&&count<4){wchar_t* end=nullptr;v[count]=wcstof(cursor,&end);ok=end!=cursor;++count;if(!ok||*end==L'\0')break;ok=*end==L',';cursor=end+1;if(count==4)ok=false;}
             ok=ok&&(count==1||count==2||count==4)&&(v[0]==0.f||(v[0]>=.5f&&v[0]<=.99f))&&v[1]>=0.f&&v[1]<=1.f&&v[2]>=0.f&&v[3]>v[2]&&v[3]<=64.f;
@@ -2987,7 +2993,7 @@ void initialize_log(HMODULE module) {
     // into the thin region, so thin emissive strips on distant hulls take the region's history weight. One field; anything
     // else, or the thin region off, keeps it off. Suggested 1.0 (hull 0.16, strips 1.6-3.7 in run231's capture) with X3M_HDR=1:
     // the 8-bit route's scene copy is display-referred, so no E >= 1 can fire there.
-    {wchar_t emissive_setting[32];const DWORD length=taa_requested?GetEnvironmentVariableW(L"X3M_TAA_THIN_REGION_EMISSIVE",emissive_setting,32):0;
+    {wchar_t emissive_setting[32];const DWORD length=taa_requested?x3m::config::get(L"X3M_TAA_THIN_REGION_EMISSIVE",emissive_setting,32):0;
         if(length>0&&length<32){wchar_t* end=nullptr;const float v=wcstof(emissive_setting,&end);
             if(end!=emissive_setting&&*end==L'\0'&&v>=0.f&&v<=65000.f)taa_thin_emissive=v;else log("taa_thin_region_emissive_setting invalid=1");}
         else if(length>=32)log("taa_thin_region_emissive_setting invalid=1 reason=too_long length=%lu",length);}
@@ -2996,54 +3002,54 @@ void initialize_log(HMODULE module) {
     taa_thin_camera_gate=taa_requested&&taa_thin_region[0]>0.f;
     // X3M_TAA_HISTORY_WEIGHT=<w> (0.5 <= w <= 0.98; unset: 0.9): the resolve's history weight (docs/verification/
     // motion-output.md, "Run 139"). The whole string must parse; an invalid value keeps the default.
-    if(taa_requested&&GetEnvironmentVariableW(L"X3M_TAA_HISTORY_WEIGHT",setting,32)>0){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&*end==L'\0'&&v>=.5f&&v<=.98f)taa_history_weight=v;}
+    if(taa_requested&&x3m::config::get(L"X3M_TAA_HISTORY_WEIGHT",setting,32)>0){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&*end==L'\0'&&v>=.5f&&v<=.98f)taa_history_weight=v;}
     // Flicker suppression (docs/architecture/taa-flicker-suppression.md), off
     // when unset or invalid: X3M_TAA_ALPHA_HISTORY=1 (HDR route only). The thin
     // clip and adaptive weight were removed 2026-09-23 (cleanup batch 6).
     // GetEnvironmentVariableW returns the required size (>= 32) without writing
     // when the value does not fit, leaving the previous variable's text in the
     // buffer: such a value is invalid (option off, one log line), never parsed.
-    auto flicker_setting=[&](const wchar_t* name,const char* label){const DWORD length=GetEnvironmentVariableW(name,setting,32);if(length>=32){log("taa_flicker_setting name=%s invalid=1 reason=too_long length=%lu",label,length);return false;}return length>0;};
+    auto flicker_setting=[&](const wchar_t* name,const char* label){const DWORD length=x3m::config::get(name,setting,32);if(length>=32){log("taa_flicker_setting name=%s invalid=1 reason=too_long length=%lu",label,length);return false;}return length>0;};
     taa_alpha_history=taa_requested&&flicker_setting(L"X3M_TAA_ALPHA_HISTORY","X3M_TAA_ALPHA_HISTORY")&&setting[0]==L'1'&&setting[1]==L'\0';
     // The FP16 HDR scene path (stage 1: redirect, identity write-back) needs
     // the route's hooks and selector.
-    hdr_requested=motion_output_requested && GetEnvironmentVariableW(L"X3M_HDR",setting,32)==1 && setting[0]==L'1';
+    hdr_requested=motion_output_requested && x3m::config::get(L"X3M_HDR",setting,32)==1 && setting[0]==L'1';
     hdr_config=x3m::renderer::HdrConfig{};
     // The selected production appearance is Auto capped at +1.3 EV. Keep
     // standalone component defaults independent; fixed EV0 remains available.
     hdr_config.exposure=x3m::renderer::ExposureMode::Auto;
     hdr_config.params.ev_max=1.3f;
     hdr_config.allow_auto_toggle=true;
-    if(GetEnvironmentVariableW(L"X3M_HDR_TONEMAP",setting,32)>0 && (!wcscmp(setting,L"agx")||!wcscmp(setting,L"1")))hdr_config.tonemap=x3m::renderer::HdrTonemap::Agx;
-    if(GetEnvironmentVariableW(L"X3M_HDR_DECODE",setting,32)>0){
+    if(x3m::config::get(L"X3M_HDR_TONEMAP",setting,32)>0 && (!wcscmp(setting,L"agx")||!wcscmp(setting,L"1")))hdr_config.tonemap=x3m::renderer::HdrTonemap::Agx;
+    if(x3m::config::get(L"X3M_HDR_DECODE",setting,32)>0){
         if(!wcscmp(setting,L"none"))hdr_config.decode=x3::temporal::AgxDecode::none;
         else if(!wcscmp(setting,L"srgb"))hdr_config.decode=x3::temporal::AgxDecode::srgb;
         else hdr_config.decode=x3::temporal::AgxDecode::gamma22; // gamma2.2 | pow22 | gamma
     }
-    if(GetEnvironmentVariableW(L"X3M_HDR_LOOK",setting,32)>0){
+    if(x3m::config::get(L"X3M_HDR_LOOK",setting,32)>0){
         if(!wcscmp(setting,L"golden"))hdr_config.look=x3::temporal::AgxLook::golden;
         else if(!wcscmp(setting,L"punchy"))hdr_config.look=x3::temporal::AgxLook::punchy;
     }
-    {const DWORD n=GetEnvironmentVariableW(L"X3M_HDR_CLAMP",setting,32);if(n>0&&n<32){const float v=wcstof(setting,nullptr);if(v>0&&v<=65504.f)hdr_config.clamp_max=v;}}
+    {const DWORD n=x3m::config::get(L"X3M_HDR_CLAMP",setting,32);if(n>0&&n<32){const float v=wcstof(setting,nullptr);if(v>0&&v<=65504.f)hdr_config.clamp_max=v;}}
     // X3M_HDR_DITHER=1|on: +-0.5 code static display dither of every write of
     // the FP16 image into the 8-bit target (off when unset; the launcher's
     // --hdr-dither defaults to on).
-    {const DWORD n=GetEnvironmentVariableW(L"X3M_HDR_DITHER",setting,32);if(n>0&&n<32)hdr_config.dither=!wcscmp(setting,L"1")||!wcscmp(setting,L"on");}
-    const DWORD exposure_length=GetEnvironmentVariableW(L"X3M_HDR_EXPOSURE",setting,32);
+    {const DWORD n=x3m::config::get(L"X3M_HDR_DITHER",setting,32);if(n>0&&n<32)hdr_config.dither=!wcscmp(setting,L"1")||!wcscmp(setting,L"on");}
+    const DWORD exposure_length=x3m::config::get(L"X3M_HDR_EXPOSURE",setting,32);
     if(exposure_length>0)hdr_config.exposure=(exposure_length<32 && !wcscmp(setting,L"auto"))
         ? x3m::renderer::ExposureMode::Auto : x3m::renderer::ExposureMode::Manual;
-    if(GetEnvironmentVariableW(L"X3M_HDR_EV_MANUAL",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>=-16.f&&v<=16.f){hdr_config.exposure=x3m::renderer::ExposureMode::Manual;hdr_config.ev_manual=v;}}
-    if(GetEnvironmentVariableW(L"X3M_HDR_EV",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>=-16.f&&v<=16.f)hdr_config.params.ev_offset=v;}
-    if(GetEnvironmentVariableW(L"X3M_HDR_KEY",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>0&&v<=64.f)hdr_config.params.key=v;}
-    if(GetEnvironmentVariableW(L"X3M_HDR_EV_MIN",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>=-16.f&&v<=16.f)hdr_config.params.ev_min=v;}
-    if(GetEnvironmentVariableW(L"X3M_HDR_EV_MAX",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>=-16.f&&v<=16.f)hdr_config.params.ev_max=v;}
+    if(x3m::config::get(L"X3M_HDR_EV_MANUAL",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>=-16.f&&v<=16.f){hdr_config.exposure=x3m::renderer::ExposureMode::Manual;hdr_config.ev_manual=v;}}
+    if(x3m::config::get(L"X3M_HDR_EV",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>=-16.f&&v<=16.f)hdr_config.params.ev_offset=v;}
+    if(x3m::config::get(L"X3M_HDR_KEY",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>0&&v<=64.f)hdr_config.params.key=v;}
+    if(x3m::config::get(L"X3M_HDR_EV_MIN",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>=-16.f&&v<=16.f)hdr_config.params.ev_min=v;}
+    if(x3m::config::get(L"X3M_HDR_EV_MAX",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>=-16.f&&v<=16.f)hdr_config.params.ev_max=v;}
     if(hdr_config.params.ev_min>hdr_config.params.ev_max)hdr_config.params.ev_min=hdr_config.params.ev_max;
-    if(GetEnvironmentVariableW(L"X3M_HDR_ADAPT_UP",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>0&&v<=60.f)hdr_config.params.tau_up=v;}
-    if(GetEnvironmentVariableW(L"X3M_HDR_ADAPT_DOWN",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>0&&v<=60.f)hdr_config.params.tau_down=v;}
+    if(x3m::config::get(L"X3M_HDR_ADAPT_UP",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>0&&v<=60.f)hdr_config.params.tau_up=v;}
+    if(x3m::config::get(L"X3M_HDR_ADAPT_DOWN",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>0&&v<=60.f)hdr_config.params.tau_down=v;}
     // Configuration only: reject truncation and malformed values before a
     // zero-valued control can silently disable a meter safeguard.
     const auto meter_parameter = [&](const wchar_t* name, float low, float high, float& output) {
-        const DWORD length = GetEnvironmentVariableW(name, setting, 32);
+        const DWORD length = x3m::config::get(name, setting, 32);
         x3m::renderer::parse_meter_parameter(setting, length, low, high, output);
     };
     meter_parameter(L"X3M_HDR_METER_BG", 1e-4f, 64.f, hdr_config.params.meter_bg);
@@ -3052,8 +3058,8 @@ void initialize_log(HMODULE module) {
     meter_parameter(L"X3M_HDR_KEY_PULL", 0.f, 1.f, hdr_config.params.key_pull);
     meter_parameter(L"X3M_HDR_EV_DEADBAND", 0.f, 8.f, hdr_config.params.ev_deadband);
     meter_parameter(L"X3M_HDR_METER_EDGE_WEIGHT", 0.f, 1.f, hdr_config.params.meter_edge_weight);
-    if(GetEnvironmentVariableW(L"X3M_HDR_DT_MS",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>0&&v<=1000.f)hdr_config.fixed_dt=v/1000.f;}
-    const bool material_requested=GetEnvironmentVariableW(L"X3M_LINEAR_MATERIALS",setting,32)==1 && setting[0]==L'1';
+    if(x3m::config::get(L"X3M_HDR_DT_MS",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>0&&v<=1000.f)hdr_config.fixed_dt=v/1000.f;}
+    const bool material_requested=x3m::config::get(L"X3M_LINEAR_MATERIALS",setting,32)==1 && setting[0]==L'1';
     linear_material_config=x3m::renderer::LinearMaterialConfig{};
     // Production material mode uses a small readability floor. Keep the
     // shared config's zero default for explicit K=0 byte-identical artifacts.
@@ -3061,7 +3067,7 @@ void initialize_log(HMODULE module) {
     bool material_config_valid=true;
     const auto material_gain = [&](const wchar_t* name,float& output,float maximum=16.f) {
         SetLastError(ERROR_SUCCESS);
-        const DWORD length=GetEnvironmentVariableW(name,setting,32);
+        const DWORD length=x3m::config::get(name,setting,32);
         if(!length && GetLastError()==ERROR_ENVVAR_NOT_FOUND)return;
         if(!length || length>=32){material_config_valid=false;return;}
         wchar_t* end=nullptr;
@@ -3077,9 +3083,9 @@ void initialize_log(HMODULE module) {
     material_gain(L"X3M_MATERIAL_FILL",linear_material_config.fill,0.5f);
     // Unlike the legacy decoder's permissive aliases, an explicit unknown or
     // truncated decode setting cannot authorize the material color contract.
-    const DWORD material_decode_length=GetEnvironmentVariableW(L"X3M_HDR_DECODE",setting,32);
+    const DWORD material_decode_length=x3m::config::get(L"X3M_HDR_DECODE",setting,32);
     const bool material_decode_valid=material_decode_length<32 && (!material_decode_length || !wcscmp(setting,L"gamma2.2") || !wcscmp(setting,L"pow22") || !wcscmp(setting,L"gamma"));
-    const DWORD material_tonemap_length=GetEnvironmentVariableW(L"X3M_HDR_TONEMAP",setting,32);
+    const DWORD material_tonemap_length=x3m::config::get(L"X3M_HDR_TONEMAP",setting,32);
     const bool material_tonemap_valid=material_tonemap_length>0 && material_tonemap_length<32 && (!wcscmp(setting,L"agx") || !wcscmp(setting,L"1"));
     linear_material_requested=material_requested && material_config_valid && material_decode_valid && material_tonemap_valid && motion_output_requested && hdr_requested
         && hdr_config.tonemap==x3m::renderer::HdrTonemap::Agx && hdr_config.decode==x3::temporal::AgxDecode::gamma22;
@@ -3087,7 +3093,7 @@ void initialize_log(HMODULE module) {
         log("linear_material_mode requested=1 enabled=%u config_valid=%u decode_valid=%u tonemap_valid=%u direct_gain=%g material_emissive_gain=%g lightmap_emissive_gain=%g fill=%g",
             linear_material_requested,material_config_valid,material_decode_valid,material_tonemap_valid,double(linear_material_config.direct_gain),
             double(linear_material_config.material_emissive_gain),double(linear_material_config.lightmap_emissive_gain),double(linear_material_config.fill));
-    const bool emission_requested=GetEnvironmentVariableW(L"X3M_LINEAR_EMISSIONS",setting,32)==1 && setting[0]==L'1';
+    const bool emission_requested=x3m::config::get(L"X3M_LINEAR_EMISSIONS",setting,32)==1 && setting[0]==L'1';
     emission_gain=1.f;
     const bool saved_material_valid=material_config_valid;
     material_config_valid=true; material_gain(L"X3M_EMISSION_GAIN",emission_gain);
@@ -3096,7 +3102,7 @@ void initialize_log(HMODULE module) {
         && motion_output_requested && taa_requested && hdr_requested
         && hdr_config.tonemap==x3m::renderer::HdrTonemap::Agx && hdr_config.decode==x3::temporal::AgxDecode::gamma22;
     if(emission_requested) log("linear_emission_mode requested=1 enabled=%u config_valid=%u gain=%g",linear_emission_requested,emission_config_valid,double(emission_gain));
-    const bool fade_requested=GetEnvironmentVariableW(L"X3M_LINEAR_DISTANCE_FADE",setting,32)==1 && setting[0]==L'1';
+    const bool fade_requested=x3m::config::get(L"X3M_LINEAR_DISTANCE_FADE",setting,32)==1 && setting[0]==L'1';
     linear_distance_fade_requested=fade_requested && linear_material_requested && taa_requested;
     if(fade_requested)log("linear_distance_fade_mode requested=1 enabled=%u materials=%u taa=%u",linear_distance_fade_requested,linear_material_requested,taa_requested);
     // X3M_FADE_ROUTE=<permille>|off (default 500): the fade-band motion arm
@@ -3110,7 +3116,7 @@ void initialize_log(HMODULE module) {
     // startup evidence of its threshold.
     fade_route_threshold=500;
     bool fade_route_from_env=false;
-    {const DWORD length=GetEnvironmentVariableW(L"X3M_FADE_ROUTE",setting,32);
+    {const DWORD length=x3m::config::get(L"X3M_FADE_ROUTE",setting,32);
      if(length>0&&length<32){
         if(!wcscmp(setting,L"off")){fade_route_threshold=x3m::fade_route::threshold_off;fade_route_from_env=true;}
         else{bool digits=true;for(DWORD i=0;i<length;++i)digits=digits&&setting[i]>=L'0'&&setting[i]<=L'9';
@@ -3126,19 +3132,19 @@ void initialize_log(HMODULE module) {
     // emission route (the pass composes into the AgX FP16 scene, whose
     // encoding is the native one with or without linear hulls:
     // docs/architecture/linear-material-decoupling.md). Default off.
-    {const bool asked=GetEnvironmentVariableW(L"X3M_SCREEN_EMISSION",setting,32)==1 && setting[0]==L'1';
+    {const bool asked=x3m::config::get(L"X3M_SCREEN_EMISSION",setting,32)==1 && setting[0]==L'1';
      const bool screen_hdr=material_decode_valid && material_tonemap_valid && motion_output_requested && hdr_requested
         && hdr_config.tonemap==x3m::renderer::HdrTonemap::Agx && hdr_config.decode==x3::temporal::AgxDecode::gamma22;
      // The bound comes from the ownership Unlock scan (loader.cpp): without
      // X3M_OWNERSHIP=1 there is no locked prefix, so the option is refused
      // here like its other prerequisites instead of admitting nothing silently.
-     const bool screen_ownership=GetEnvironmentVariableW(L"X3M_OWNERSHIP",setting,32)==1 && setting[0]==L'1';
+     const bool screen_ownership=x3m::config::get(L"X3M_OWNERSHIP",setting,32)==1 && setting[0]==L'1';
      screen_emission_requested=asked && screen_hdr && taa_requested && screen_ownership;
      // X3M_SCREEN_EMISSION_GAIN: the step E gain g (default 1, native by
      // construction); unparsable or outside [0.5, 8] keeps 1 and logs.
      screen_emission_gain=1.f;bool gain_valid=true;
      SetLastError(ERROR_SUCCESS);
-     const DWORD gain_length=GetEnvironmentVariableW(L"X3M_SCREEN_EMISSION_GAIN",setting,32);
+     const DWORD gain_length=x3m::config::get(L"X3M_SCREEN_EMISSION_GAIN",setting,32);
      if(gain_length||GetLastError()!=ERROR_ENVVAR_NOT_FOUND){
          wchar_t* end=nullptr;const float value=gain_length&&gain_length<32?wcstof(setting,&end):0.f;
          if(gain_length&&gain_length<32&&end!=setting&&!*end&&std::isfinite(value)&&value>=.5f&&value<=8.f)screen_emission_gain=value;else gain_valid=false;}
@@ -3153,7 +3159,7 @@ void initialize_log(HMODULE module) {
     // prerequisite. Unparsable or out of range keeps 1 and logs.
     {emission_source_gain=1.f;bool gain_valid=true;float value=1.f;
      SetLastError(ERROR_SUCCESS);
-     const DWORD gain_length=GetEnvironmentVariableW(L"X3M_EMISSION_SOURCE_GAIN",setting,32);
+     const DWORD gain_length=x3m::config::get(L"X3M_EMISSION_SOURCE_GAIN",setting,32);
      if(gain_length||GetLastError()!=ERROR_ENVVAR_NOT_FOUND){
          wchar_t* end=nullptr;value=gain_length&&gain_length<32?wcstof(setting,&end):0.f;
          if(gain_length&&gain_length<32&&end!=setting&&!*end&&std::isfinite(value)&&value>=1.f&&value<=8.f)emission_source_gain=value;else gain_valid=false;}
@@ -3173,7 +3179,7 @@ void initialize_log(HMODULE module) {
     // of range keeps 1 and logs.
     {hull_emission_gain=1.f;bool gain_valid=true;float value=1.f;
      SetLastError(ERROR_SUCCESS);
-     const DWORD gain_length=GetEnvironmentVariableW(L"X3M_HULL_EMISSION_GAIN",setting,32);
+     const DWORD gain_length=x3m::config::get(L"X3M_HULL_EMISSION_GAIN",setting,32);
      if(gain_length||GetLastError()!=ERROR_ENVVAR_NOT_FOUND){
          wchar_t* end=nullptr;value=gain_length&&gain_length<32?wcstof(setting,&end):0.f;
          if(gain_length&&gain_length<32&&end!=setting&&!*end&&std::isfinite(value)&&value>=1.f&&value<=8.f)hull_emission_gain=value;else gain_valid=false;}
@@ -3191,7 +3197,7 @@ void initialize_log(HMODULE module) {
     // and logs.
     {original_fill=0.f;bool fill_valid=true;float value=0.f;
      SetLastError(ERROR_SUCCESS);
-     const DWORD fill_length=GetEnvironmentVariableW(L"X3M_ORIGINAL_FILL",setting,32);
+     const DWORD fill_length=x3m::config::get(L"X3M_ORIGINAL_FILL",setting,32);
      if(fill_length||GetLastError()!=ERROR_ENVVAR_NOT_FOUND){
          wchar_t* end=nullptr;value=fill_length&&fill_length<32?wcstof(setting,&end):0.f;
          if(fill_length&&fill_length<32&&end!=setting&&!*end&&std::isfinite(value)&&value>=0.f&&value<=.5f)original_fill=value;else fill_valid=false;}
@@ -3201,7 +3207,7 @@ void initialize_log(HMODULE module) {
      const bool excluded=linear_material_requested;
      if(!hdr_requested||excluded)original_fill=0.f;
      // The launcher's marker counts only with an enabled fill and only as exactly "1".
-     const bool fill_default=original_fill!=0.f&&GetEnvironmentVariableW(L"X3M_ORIGINAL_FILL_DEFAULT",setting,32)==1&&setting[0]==L'1';
+     const bool fill_default=original_fill!=0.f&&x3m::config::get(L"X3M_ORIGINAL_FILL_DEFAULT",setting,32)==1&&setting[0]==L'1';
      if(!fill_valid||value!=0.f)log("original_fill_mode requested=1 enabled=%u hdr=%u linear_materials=%u fill=%g fill_valid=%u default=%u%s",original_fill!=0.f,hdr_requested,unsigned(excluded),double(original_fill),unsigned(fill_valid),unsigned(fill_default),excluded?" refused=linear_materials":"");}
     // X3M_HULL_LIGHTMAP_GAIN=<g>: a gain on the light-map (self-illumination)
     // term inside the ORIGINAL hull pixel programs (station windows and hull
@@ -3213,7 +3219,7 @@ void initialize_log(HMODULE module) {
     // out of range keeps 1 and logs.
     {hull_lightmap_gain=1.f;bool gain_valid=true;float value=1.f;
      SetLastError(ERROR_SUCCESS);
-     const DWORD gain_length=GetEnvironmentVariableW(L"X3M_HULL_LIGHTMAP_GAIN",setting,32);
+     const DWORD gain_length=x3m::config::get(L"X3M_HULL_LIGHTMAP_GAIN",setting,32);
      if(gain_length||GetLastError()!=ERROR_ENVVAR_NOT_FOUND){
          wchar_t* end=nullptr;value=gain_length&&gain_length<32?wcstof(setting,&end):0.f;
          if(gain_length&&gain_length<32&&end!=setting&&!*end&&std::isfinite(value)&&value>=1.f&&value<=8.f)hull_lightmap_gain=value;else gain_valid=false;}
@@ -3227,7 +3233,7 @@ void initialize_log(HMODULE module) {
     // no gain to fade keeps it off and logs.
     {lightmap_far_fade_requested=false;lightmap_far_fade[0]=lightmap_far_fade[1]=0.f;lightmap_far_fade[2]=1.f;
      wchar_t fade_setting[96]{};
-     const DWORD fade_length=GetEnvironmentVariableW(L"X3M_LIGHT_MAP_FAR_FADE",fade_setting,96);
+     const DWORD fade_length=x3m::config::get(L"X3M_LIGHT_MAP_FAR_FADE",fade_setting,96);
      if(fade_length){
          float parsed[3]={0.f,0.f,1.f};unsigned count=0;bool valid=fade_length<96;
          const wchar_t* at=fade_setting;
@@ -3254,7 +3260,7 @@ void initialize_log(HMODULE module) {
     // it off and logs. No camera latch: the footprint is the light map's.
     {hull_emissive_widening_requested=false;hull_emissive_widening[0]=1.f;hull_emissive_widening[1]=1.f;
      wchar_t widen_setting[96]{};
-     const DWORD widen_length=GetEnvironmentVariableW(L"X3M_HULL_EMISSIVE_WIDENING",widen_setting,96);
+     const DWORD widen_length=x3m::config::get(L"X3M_HULL_EMISSIVE_WIDENING",widen_setting,96);
      if(widen_length){
          float parsed[2]={1.f,0.f};unsigned count=0;bool valid=widen_length<96;
          const wchar_t* at=widen_setting;
@@ -3280,7 +3286,7 @@ void initialize_log(HMODULE module) {
     {screen_emission_additive_requested=false;screen_emission_additive_gain=1.f;
      screen_emission_additive_alpha_requested=false;screen_emission_additive_alpha=1.f;wchar_t alpha_setting[32]{};
      SetLastError(ERROR_SUCCESS);
-     const DWORD length=GetEnvironmentVariableW(L"X3M_SCREEN_EMISSION_ADDITIVE",setting,32);
+     const DWORD length=x3m::config::get(L"X3M_SCREEN_EMISSION_ADDITIVE",setting,32);
      wchar_t* end=nullptr;const float value=length&&length<32?wcstof(setting,&end):0.f;
      const bool parsed=length&&length<32&&end!=setting&&!*end;
      if(length&&length<32&&!(parsed&&value==0.f)){ // "0" / "0.0" is the explicit off value: silent
@@ -3295,7 +3301,7 @@ void initialize_log(HMODULE module) {
          // Absent or unparsable keeps the native law; it needs the option.
          SetLastError(ERROR_SUCCESS);
          wchar_t* alpha_end=nullptr;
-         const DWORD alpha_length=GetEnvironmentVariableW(L"X3M_SCREEN_EMISSION_ADDITIVE_ALPHA",alpha_setting,32);
+         const DWORD alpha_length=x3m::config::get(L"X3M_SCREEN_EMISSION_ADDITIVE_ALPHA",alpha_setting,32);
          const bool alpha_present=alpha_length||GetLastError()!=ERROR_ENVVAR_NOT_FOUND;
          const float alpha_value=alpha_length&&alpha_length<32?wcstof(alpha_setting,&alpha_end):-1.f;
          const bool alpha_valid=alpha_length&&alpha_length<32&&alpha_end!=alpha_setting&&!*alpha_end
@@ -3320,7 +3326,7 @@ void initialize_log(HMODULE module) {
     // bolt_footprint_requested()).
     {bolt_footprint_requested=false;bolt_footprint_w=3.f;bolt_footprint_l=12.f;
      SetLastError(ERROR_SUCCESS);
-     const DWORD length=GetEnvironmentVariableW(L"X3M_BOLT_FOOTPRINT",setting,32);
+     const DWORD length=x3m::config::get(L"X3M_BOLT_FOOTPRINT",setting,32);
      const bool fits=length&&length<32; // a value of 31+ characters is not parsed: refused below, never silently off
      wchar_t* end=nullptr;const float w=fits?wcstof(setting,&end):0.f;
      const bool w_parsed=fits&&end!=setting;
@@ -3330,7 +3336,7 @@ void initialize_log(HMODULE module) {
      const bool parsed=w_parsed&&l_parsed;
      if(length&&!(parsed&&w==0.f)){ // "0" is the explicit off value: silent
          const bool valid=parsed&&std::isfinite(w)&&std::isfinite(l)&&w>0.f&&w<=64.f&&l>=w&&l<=256.f;
-         const bool ownership=GetEnvironmentVariableW(L"X3M_OWNERSHIP",setting,32)==1&&setting[0]==L'1';
+         const bool ownership=x3m::config::get(L"X3M_OWNERSHIP",setting,32)==1&&setting[0]==L'1';
          bolt_footprint_requested=valid&&screen_emission_additive_requested&&ownership;
          if(valid){bolt_footprint_w=w;bolt_footprint_l=l;}
          log("bolt_footprint_mode requested=1 enabled=%u w=%g l=%g valid=%u additive=%u ownership=%u view_gate=chase_camera",
@@ -3339,25 +3345,25 @@ void initialize_log(HMODULE module) {
     // X3M_SCREEN_EMISSION_TIMING=1: the option's opt-in per-frame timing
     // diagnostic (one screen_emission_frame line per Present). Needs the
     // enabled option; the option itself stays free of per-frame logging.
-    {const bool asked=GetEnvironmentVariableW(L"X3M_SCREEN_EMISSION_TIMING",setting,32)==1 && setting[0]==L'1';
+    {const bool asked=x3m::config::get(L"X3M_SCREEN_EMISSION_TIMING",setting,32)==1 && setting[0]==L'1';
      screen_emission_timing_requested=asked && screen_emission_requested;
      if(asked)log("screen_emission_timing_mode requested=1 enabled=%u screen=%u",screen_emission_timing_requested,screen_emission_requested);}
     // X3M_FADE_WITNESS=<k> (1..100000): every k-th frame the fade-region
     // witness reads the M coverage target back once (default off; needs the
     // distance-fade route; docs/architecture/linear-distance-fade-region.md).
     fade_witness_frames=0;
-    {const DWORD length=GetEnvironmentVariableW(L"X3M_FADE_WITNESS",setting,32);
+    {const DWORD length=x3m::config::get(L"X3M_FADE_WITNESS",setting,32);
      if(length>0&&length<32){bool digits=true;for(DWORD i=0;i<length;++i)digits=digits&&setting[i]>=L'0'&&setting[i]<=L'9';
         const unsigned long n=digits?wcstoul(setting,nullptr,10):0ul;if(digits&&n>=1&&n<=100000)fade_witness_frames=unsigned(n);
         log("fade_witness_mode requested=%lu digits=%u enabled=%u fade=%u screen=%u",n,digits,fade_witness_frames&&(linear_distance_fade_requested||screen_emission_requested),linear_distance_fade_requested,screen_emission_requested);}
      else if(length)log("fade_witness_mode requested=overlong enabled=0 fade=%u screen=%u",linear_distance_fade_requested,screen_emission_requested);}
-    bloom_requested=GetEnvironmentVariableW(L"X3M_HDR_BLOOM",setting,32)==1 && setting[0]==L'1';
+    bloom_requested=x3m::config::get(L"X3M_HDR_BLOOM",setting,32)==1 && setting[0]==L'1';
     // X3M_BLOOM_SOURCE_CLAMP=C (finite, >0, at most 64): decoded-space ceiling
     // on the bloom extraction source only. Needs the bloom replacement; absent,
     // unparsable or out of range keeps today's unbounded feed.
     {bloom_source_clamp=x3::temporal::kAgxClampOff;
      SetLastError(ERROR_SUCCESS);
-     const DWORD length=GetEnvironmentVariableW(L"X3M_BLOOM_SOURCE_CLAMP",setting,32);
+     const DWORD length=x3m::config::get(L"X3M_BLOOM_SOURCE_CLAMP",setting,32);
      const bool present=length||GetLastError()!=ERROR_ENVVAR_NOT_FOUND;
      wchar_t* end=nullptr;
      const float value=length&&length<32?wcstof(setting,&end):0.f;
@@ -3372,14 +3378,14 @@ void initialize_log(HMODULE module) {
     // X3M_VOLUMETRIC_FOG=1: the sun-lit medium at the scene end (needs the route and
     // the resolve, which accumulates the jittered march). Whole strings must
     // parse; out of range keeps the default. Strength 0 is a detached pass.
-    {const auto fog_env=[&](const wchar_t* name){const DWORD n=GetEnvironmentVariableW(name,setting,32);return n>0&&n<32?n:0ul;};
+    {const auto fog_env=[&](const wchar_t* name){const DWORD n=x3m::config::get(name,setting,32);return n>0&&n<32?n:0ul;};
      const bool asked=fog_env(L"X3M_VOLUMETRIC_FOG")==1 && setting[0]==L'1';
      volumetric_fog_strength=renderer::fog_strength_default;volumetric_fog_anisotropy=renderer::fog_anisotropy_default;
      if(fog_env(L"X3M_VOLUMETRIC_FOG_STRENGTH")){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&*end==L'\0'&&v>=renderer::fog_strength_min&&v<=renderer::fog_strength_max)volumetric_fog_strength=v;}
      // The launcher's prerequisites (tools/manage.py), so a hand-set environment cannot arm a pass that would
      // skip every frame: the FP16 scene path, the depth replay and a cascade list (validated per device later).
      const bool fog_replay=fog_env(L"X3M_SHADOW_REPLAY_DEPTH")==1 && setting[0]==L'1';
-     wchar_t fog_cascades[4]{};const bool fog_cascade_list=GetEnvironmentVariableW(L"X3M_SHADOW_CASCADES",fog_cascades,4)>0;
+     wchar_t fog_cascades[4]{};const bool fog_cascade_list=x3m::config::get(L"X3M_SHADOW_CASCADES",fog_cascades,4)>0;
      volumetric_fog_requested=asked && motion_output_requested && taa_requested && hdr_requested && fog_replay && fog_cascade_list && volumetric_fog_strength>0.f;
      volumetric_fog_timing=volumetric_fog_requested && (log_tier::perf() || (fog_env(L"X3M_VOLUMETRIC_FOG_TIMING")==1 && setting[0]==L'1')); // or X3M_PERF=1
      volumetric_fog_cards_replace=volumetric_fog_requested && fog_env(L"X3M_VOLUMETRIC_FOG_CARDS")==7 && !wcscmp(setting,L"replace");
@@ -3400,7 +3406,7 @@ void initialize_log(HMODULE module) {
         // row): 4 (absent, "4" or invalid) under the stored range; exactly "2" is the half-resolution opt-out. The echo of an
         // absent variable is the default, "4".
         char march_scale_value[40]="4";const char* march_scale_refusal="none";bool march_scale_half=false;
-        const DWORD march_scale_length=GetEnvironmentVariableW(L"X3M_FOG_MARCH_SCALE",setting,32);
+        const DWORD march_scale_length=x3m::config::get(L"X3M_FOG_MARCH_SCALE",setting,32);
         if(march_scale_length>=32){std::snprintf(march_scale_value,sizeof march_scale_value,"overlong_%lu",static_cast<unsigned long>(march_scale_length));march_scale_refusal="invalid";}
         else if(march_scale_length>0){
             for(DWORD i=0;i<march_scale_length;++i){const wchar_t c=setting[i];
@@ -3417,7 +3423,7 @@ void initialize_log(HMODULE module) {
      // value of 32 or more characters, or a count above 0 without the stored range, says so in one line instead.
      // Absent under the stored range: the Run 70 B/B2 default 1300,3,128 (2026-09-23), tunables read the same way.
      volumetric_fog_motes={};
-     const DWORD motes_length=GetEnvironmentVariableW(L"X3M_FOG_DUST_MOTES",setting,32);
+     const DWORD motes_length=x3m::config::get(L"X3M_FOG_DUST_MOTES",setting,32);
      if(motes_length>=32)log("volumetric_fog_motes_mode enabled=0 invalid=1 reason=overlong length=%lu",motes_length);
      else if(motes_length&&!volumetric_fog_range_stored){
         wchar_t* end=nullptr;const unsigned long n=wcstoul(setting,&end,10);
@@ -3449,8 +3455,8 @@ void initialize_log(HMODULE module) {
         volumetric_fog_range_stored?fog::kDefaultUploadRects:0u,volumetric_fog_range_stored?fog::kReadinessRampFrames:0u,unsigned(volumetric_fog_range_stored));
      if(asked)log("volumetric_fog_mode requested=1 enabled=%u motion_output=%u taa=%u hdr=%u shadow_replay_depth=%u shadow_cascades=%u strength=%g density_scale=%g anisotropy=%g timing=%u cards=%s rule=current_engine_family",volumetric_fog_requested,motion_output_requested,taa_requested,hdr_requested,unsigned(fog_replay),unsigned(fog_cascade_list),double(volumetric_fog_strength),double(volumetric_fog_strength / .02f),double(volumetric_fog_anisotropy),volumetric_fog_timing,volumetric_fog_cards_replace?"replace":"keep");}
     hdr_config.sharpen=taa_sharpen; // the HDR write-back sharpens the resolved image with the same setting
-    motion_rt_lazy=GetEnvironmentVariableW(L"X3M_MOTION_RT_MODE",setting,32)>0 && !wcscmp(setting,L"lazy");
-    if(GetEnvironmentVariableW(L"X3M_STATE_SHADOW",setting,32)>0){ // exactly "1" or "0"; anything else is auto, noted
+    motion_rt_lazy=x3m::config::get(L"X3M_MOTION_RT_MODE",setting,32)>0 && !wcscmp(setting,L"lazy");
+    if(x3m::config::get(L"X3M_STATE_SHADOW",setting,32)>0){ // exactly "1" or "0"; anything else is auto, noted
         if(!wcscmp(setting,L"1"))motion_state_shadow=1;
         else if(!wcscmp(setting,L"0"))motion_state_shadow=0;
         else log("state_shadow_setting ignored=1 length=%u mode=auto",unsigned(wcslen(setting)));
@@ -3458,7 +3464,7 @@ void initialize_log(HMODULE module) {
     const bool scene_hook_requested=scene_hook::wanted(); // default on with the route (X3M_SCENE_HOOK=0 turns it off)
     // X3M_MOTION_FRAME_LOG: an explicit valid value wins; else 1 with X3M_DEBUG=1, else 60.
     motion_frame_log=log_tier::cadence_default(log_tier::debug(),1u,60u);
-    if(GetEnvironmentVariableW(L"X3M_MOTION_FRAME_LOG",setting,32)>0){const unsigned long n=wcstoul(setting,nullptr,10);if(n>=1&&n<=100000)motion_frame_log=unsigned(n);}
+    if(x3m::config::get(L"X3M_MOTION_FRAME_LOG",setting,32)>0){const unsigned long n=wcstoul(setting,nullptr,10);if(n>=1&&n<=100000)motion_frame_log=unsigned(n);}
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     // Seam only: policies 1 and 2 for the fixtures; production stays auto.
     if(GetEnvironmentVariableW(L"X3M_FIXTURE_TAA_SENTINEL",setting,32)>0){
@@ -3467,22 +3473,22 @@ void initialize_log(HMODULE module) {
         else taa_sentinel_mode=x3m::renderer::SentinelMode::Auto;
     }
 #endif
-    if(GetEnvironmentVariableW(L"X3M_TAA_UNMATCHED_STATIC",setting,32)>0){
+    if(x3m::config::get(L"X3M_TAA_UNMATCHED_STATIC",setting,32)>0){
         if(!wcscmp(setting,L"node"))taa_unmatched_static=1;
         else if(!wcscmp(setting,L"all"))taa_unmatched_static=2;
         else if(wcscmp(setting,L"0")!=0&&wcscmp(setting,L"off")!=0)log("taa_unmatched_static_setting invalid=1");
     }
     else if(taa_requested)taa_unmatched_static=1; // run212: node is the default with the TAA route (an explicit "off"/"0" opts out)
     taa_sky_history_strict=taa_requested; // Run 68 A (2026-09-23): strict is the default with the TAA route; an invalid value keeps it
-    if(const DWORD n=GetEnvironmentVariableW(L"X3M_TAA_SKY_HISTORY",setting,32);n>0&&n<32){ // a truncated value would be the buffer's previous text
+    if(const DWORD n=x3m::config::get(L"X3M_TAA_SKY_HISTORY",setting,32);n>0&&n<32){ // a truncated value would be the buffer's previous text
         if(!wcscmp(setting,L"loose")||!wcscmp(setting,L"0")||!wcscmp(setting,L"off"))taa_sky_history_strict=false;
         else if(wcscmp(setting,L"strict")!=0&&wcscmp(setting,L"1")!=0)log("taa_sky_history_setting invalid=1");
     }
-    if(const DWORD n=GetEnvironmentVariableW(L"X3M_TAA_SKY_HISTORY_BAND_PX",setting,32);n>0&&n<32){
+    if(const DWORD n=x3m::config::get(L"X3M_TAA_SKY_HISTORY_BAND_PX",setting,32);n>0&&n<32){
         const float v=wcstof(setting,nullptr);
         if(v>=1.f&&v<=16.f)taa_sky_history_band_px=v;else log("taa_sky_history_band_px_setting invalid=1");
     }
-    if(const DWORD n=GetEnvironmentVariableW(L"X3M_TAA_SKY_HISTORY_EXIT_PX",setting,32);n>=32)log("taa_sky_history_exit_px_setting invalid=1"); // oversized: invalid, stays off
+    if(const DWORD n=x3m::config::get(L"X3M_TAA_SKY_HISTORY_EXIT_PX",setting,32);n>=32)log("taa_sky_history_exit_px_setting invalid=1"); // oversized: invalid, stays off
     else if(n>0){
         wchar_t* end=nullptr;const float v=wcstof(setting,&end); // a value that is not a number (wcstof's 0 with nothing consumed, or trailing text) is invalid, never "off"
         if(end==setting||*end||!x3::temporal::valid_sky_history_exit(v,taa_sky_history_band_px))log("taa_sky_history_exit_px_setting invalid=1");
@@ -3490,32 +3496,32 @@ void initialize_log(HMODULE module) {
         else taa_sky_history_exit_px=v;
     }
     else if(taa_sky_history_strict)taa_sky_history_exit_px=.25f; // Run 68 A (2026-09-23): the default under strict (0 is the opt-out); motion_output drops it without an age program
-    if(const DWORD n=GetEnvironmentVariableW(L"X3M_TAA_BOX_RESOLUTION",setting,32);n>=32)log("taa_box_resolution_setting invalid=1 reason=too_long length=%lu",n); // oversized: invalid, stays full
+    if(const DWORD n=x3m::config::get(L"X3M_TAA_BOX_RESOLUTION",setting,32);n>=32)log("taa_box_resolution_setting invalid=1 reason=too_long length=%lu",n); // oversized: invalid, stays full
     else if(n>0){
         if(!wcscmp(setting,L"half"))taa_box_half=true;
         else if(wcscmp(setting,L"full")!=0)log("taa_box_resolution_setting invalid=1");
-        taa_box_resolution_default=taa_box_half&&GetEnvironmentVariableW(L"X3M_TAA_BOX_RESOLUTION_DEFAULT",setting,32)==1&&setting[0]==L'1';
+        taa_box_resolution_default=taa_box_half&&x3m::config::get(L"X3M_TAA_BOX_RESOLUTION_DEFAULT",setting,32)==1&&setting[0]==L'1';
     }
-    if(const DWORD n=GetEnvironmentVariableW(L"X3M_TAA_FAR_GATE",setting,32);n>=32)log("taa_far_gate_setting invalid=1 reason=too_long length=%lu",n); // oversized: invalid, stays camera
+    if(const DWORD n=x3m::config::get(L"X3M_TAA_FAR_GATE",setting,32);n>=32)log("taa_far_gate_setting invalid=1 reason=too_long length=%lu",n); // oversized: invalid, stays camera
     else if(n>0){
         if(!wcscmp(setting,L"screen")){taa_far_camera_gate=false;taa_far_gate_given=true;}
         else if(!wcscmp(setting,L"camera"))taa_far_gate_given=true;
         else log("taa_far_gate_setting invalid=1");
-        taa_far_gate_default=taa_far_gate_given&&taa_far_camera_gate&&GetEnvironmentVariableW(L"X3M_TAA_FAR_GATE_DEFAULT",setting,32)==1&&setting[0]==L'1';
+        taa_far_gate_default=taa_far_gate_given&&taa_far_camera_gate&&x3m::config::get(L"X3M_TAA_FAR_GATE_DEFAULT",setting,32)==1&&setting[0]==L'1';
     }
-    if(const DWORD n=GetEnvironmentVariableW(L"X3M_TAA_FAR_CLIP",setting,32);n>=32)log("taa_far_clip_setting invalid=1 reason=too_long length=%lu",n); // oversized: invalid, stays 7x7
+    if(const DWORD n=x3m::config::get(L"X3M_TAA_FAR_CLIP",setting,32);n>=32)log("taa_far_clip_setting invalid=1 reason=too_long length=%lu",n); // oversized: invalid, stays 7x7
     else if(n>0){
         if(!wcscmp(setting,L"3x3")){taa_far_clip_7x7=false;taa_far_clip_given=true;}
         else if(!wcscmp(setting,L"7x7"))taa_far_clip_given=true;
         else log("taa_far_clip_setting invalid=1");
-        taa_far_clip_default=taa_far_clip_given&&taa_far_clip_7x7&&GetEnvironmentVariableW(L"X3M_TAA_FAR_CLIP_DEFAULT",setting,32)==1&&setting[0]==L'1';
+        taa_far_clip_default=taa_far_clip_given&&taa_far_clip_7x7&&x3m::config::get(L"X3M_TAA_FAR_CLIP_DEFAULT",setting,32)==1&&setting[0]==L'1';
     }
-    if(const DWORD n=GetEnvironmentVariableW(L"X3M_TAA_THIN_VOTE",setting,32);n>=32)log("taa_thin_vote_setting invalid=1 reason=too_long length=%lu",n); // oversized: invalid, stays off
+    if(const DWORD n=x3m::config::get(L"X3M_TAA_THIN_VOTE",setting,32);n>=32)log("taa_thin_vote_setting invalid=1 reason=too_long length=%lu",n); // oversized: invalid, stays off
     else if(n>0){
         if(!wcscmp(setting,L"on"))taa_thin_vote=taa_thin_vote_given=true;
         else if(!wcscmp(setting,L"off"))taa_thin_vote_given=true;
         else log("taa_thin_vote_setting invalid=1");
-        taa_thin_vote_default=taa_thin_vote_given&&GetEnvironmentVariableW(L"X3M_TAA_THIN_VOTE_DEFAULT",setting,32)==1&&setting[0]==L'1';
+        taa_thin_vote_default=taa_thin_vote_given&&x3m::config::get(L"X3M_TAA_THIN_VOTE_DEFAULT",setting,32)==1&&setting[0]==L'1';
     }
     // The thin region's flag source follows the vote since X3M_TAA_THIN_REGION_SOURCE was removed on 2026-09-25: the vote alone
     // (2) whenever it and the thin region are on (what the launcher sent by default), marked default= as the vote's own row is;
@@ -3523,19 +3529,19 @@ void initialize_log(HMODULE module) {
     taa_thin_region_source_given=taa_thin_vote&&taa_thin_region[0]>0.f;
     taa_thin_region_source=taa_thin_region_source_given?2u:0u;
     taa_thin_region_source_default=taa_thin_region_source_given&&taa_thin_vote_default;
-    if(const DWORD n=GetEnvironmentVariableW(L"X3M_FADE_RT2_OWNER",setting,32);n>=32)log("fade_rt2_owner_setting invalid=1 reason=too_long length=%lu",n); // oversized: invalid, stays off
+    if(const DWORD n=x3m::config::get(L"X3M_FADE_RT2_OWNER",setting,32);n>=32)log("fade_rt2_owner_setting invalid=1 reason=too_long length=%lu",n); // oversized: invalid, stays off
     else if(n>0){
         if(!wcscmp(setting,L"on"))fade_rt2_owner=fade_rt2_owner_given=true;
         else if(!wcscmp(setting,L"off"))fade_rt2_owner_given=true;
         else log("fade_rt2_owner_setting invalid=1");
-        fade_rt2_owner_default=fade_rt2_owner_given&&GetEnvironmentVariableW(L"X3M_FADE_RT2_OWNER_DEFAULT",setting,32)==1&&setting[0]==L'1';
+        fade_rt2_owner_default=fade_rt2_owner_given&&x3m::config::get(L"X3M_FADE_RT2_OWNER_DEFAULT",setting,32)==1&&setting[0]==L'1';
     }
     { wchar_t flag[4]{};
-      const bool lane=GetEnvironmentVariableW(L"X3M_SUN_SHADOW_LANE",flag,4)==1&&flag[0]==L'1';
-      const bool wrapped=GetEnvironmentVariableW(L"X3M_OWNERSHIP",flag,4)==1&&flag[0]==L'1';
+      const bool lane=x3m::config::get(L"X3M_SUN_SHADOW_LANE",flag,4)==1&&flag[0]==L'1';
+      const bool wrapped=x3m::config::get(L"X3M_OWNERSHIP",flag,4)==1&&flag[0]==L'1';
       thin_vote_gate=taa_thin_vote&&motion_output_requested&&taa_requested&&hdr_requested&&lane&&wrapped; }
     // X3M_TAA_MOTION_WEIGHT=<F>[,<V0>,<V1>]: the whole string must parse (1 or 3 fields) and lie in range; anything else keeps the option off.
-    if(const DWORD n=GetEnvironmentVariableW(L"X3M_TAA_MOTION_WEIGHT",setting,32);n>=32)log("taa_motion_weight_setting invalid=1 reason=too_long length=%lu",n); // oversized: invalid, stays off
+    if(const DWORD n=x3m::config::get(L"X3M_TAA_MOTION_WEIGHT",setting,32);n>=32)log("taa_motion_weight_setting invalid=1 reason=too_long length=%lu",n); // oversized: invalid, stays off
     else if(n>0){
         float v[3]={0.f,2.f,8.f};unsigned count=0;wchar_t* cursor=setting;bool ok=true;
         while(ok&&count<3){wchar_t* end=nullptr;v[count]=wcstof(cursor,&end);ok=end!=cursor;++count;if(!ok||*end==L'\0')break;ok=*end==L',';cursor=end+1;if(count==3)ok=false;}
@@ -3544,10 +3550,10 @@ void initialize_log(HMODULE module) {
     }
     else if(taa_requested&&taa_sentinel_mode!=x3m::renderer::SentinelMode::CurrentOnly&&(taa_far[0]>0.f||taa_far[1]>0.f||taa_thin_region[0]>0.f))
         taa_motion_weight[0]=.7f; // Run 70 A (2026-09-23, run262/run263): 0.7,2,8 with an age program under a policy that can reach 2 (0 is the opt-out)
-    if(GetEnvironmentVariableW(L"X3M_CAMERA_CUT_DEG",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>0&&v<=180)camera_cut_degrees=v;}
+    if(x3m::config::get(L"X3M_CAMERA_CUT_DEG",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>0&&v<=180)camera_cut_degrees=v;}
     // X3M_CAMERA_LOG: an explicit valid value wins; else 1 with X3M_DEBUG=1, else 0 (capture frames only).
     camera_log_frames=log_tier::cadence_default(log_tier::debug(),1u,0u);
-    if(GetEnvironmentVariableW(L"X3M_CAMERA_LOG",setting,32)>0){const unsigned long n=wcstoul(setting,nullptr,10);if(n>=1&&n<=1000000)camera_log_frames=unsigned(n);}
+    if(x3m::config::get(L"X3M_CAMERA_LOG",setting,32)>0){const unsigned long n=wcstoul(setting,nullptr,10);if(n>=1&&n<=1000000)camera_log_frames=unsigned(n);}
     log("motion_output_mode requested=%u scope=live_same_draw_diagnostic history_requires=object_trace,object_lifetime temporal_consumer=%u taa=%u taa_debug=%u jitter=%u jitter_samples=%u cut_median_px=%.3f cut_missing=%.3f rt_mode=%s frame_log=%u sentinel=%s unmatched_static=%u sky_history=%s sky_history_band_px=%.2f sky_history_exit_px=%.3f motion_weight=%.3f,%g,%g camera_cut_deg=%.2f camera_log=%u state_shadow=%s scene_hook=%u hdr=%u taa_k=%.5f mip_bias=%g taa_sharpen=%.3f taa_history_weight=%.3f",
         motion_output_requested,taa_requested,taa_requested,taa_debug_requested,motion_jitter_requested,motion_jitter_samples,motion_cut_median_px,motion_cut_missing,motion_rt_lazy?"lazy":"perdraw",motion_frame_log,
         taa_sentinel_mode==x3m::renderer::SentinelMode::CurrentOnly?"1":taa_sentinel_mode==x3m::renderer::SentinelMode::Camera?"2":"auto",taa_unmatched_static,taa_sky_history_strict?"strict":"loose",taa_sky_history_band_px,double(taa_sky_history_exit_px),double(taa_motion_weight[0]),double(taa_motion_weight[1]),double(taa_motion_weight[2]),camera_cut_degrees,camera_log_frames,motion_state_shadow<0?"auto":motion_state_shadow?"1":"0",scene_hook_requested,hdr_requested,taa_k_override,double(taa_mip_bias),taa_sharpen,double(taa_history_weight));
@@ -3596,13 +3602,13 @@ void initialize_log(HMODULE module) {
     // X3M_SUBMIT_PHASES' stamp at 0x00472490 (refused by name). The override needs the route's RT2 (X3M_MOTION_OUTPUT=1).
     {
         wchar_t value[32]{};
-        if(GetEnvironmentVariableW(L"X3M_SUN_OCCLUSION_RADIUS",value,32)>0){wchar_t* end=nullptr;const float v=wcstof(value,&end);if(end!=value&&*end==L'\0'&&v>=sun_occlusion::core::radius_option_min_u&&v<=sun_occlusion::core::radius_option_max_u)sun_occlusion_radius=v;}
-        if(GetEnvironmentVariableW(L"X3M_SUN_OCCLUSION_CURVE",value,32)>0){wchar_t* end=nullptr;const float v=wcstof(value,&end);if(end!=value&&*end==L'\0'&&v>=.25f&&v<=4.f)sun_occlusion_curve=v;}
-        sun_occlusion_core_f=!(GetEnvironmentVariableW(L"X3M_SUN_OCCLUSION_CORE_F",value,32)==1&&value[0]==L'0'); // default on; only an explicit "0" restores clip-only
+        if(x3m::config::get(L"X3M_SUN_OCCLUSION_RADIUS",value,32)>0){wchar_t* end=nullptr;const float v=wcstof(value,&end);if(end!=value&&*end==L'\0'&&v>=sun_occlusion::core::radius_option_min_u&&v<=sun_occlusion::core::radius_option_max_u)sun_occlusion_radius=v;}
+        if(x3m::config::get(L"X3M_SUN_OCCLUSION_CURVE",value,32)>0){wchar_t* end=nullptr;const float v=wcstof(value,&end);if(end!=value&&*end==L'\0'&&v>=.25f&&v<=4.f)sun_occlusion_curve=v;}
+        sun_occlusion_core_f=!(x3m::config::get(L"X3M_SUN_OCCLUSION_CORE_F",value,32)==1&&value[0]==L'0'); // default on; only an explicit "0" restores clip-only
         sun_occlusion::set_listener(&sun_lens_begin,&sun_lens_end);
         if(sun_occlusion::initialize()){
             // X3M_SUN_OCCLUSION_DEFAULT=1: the launcher filled the override in from its Run 83 default (read only when the override is on).
-            const bool from_default=sun_occlusion::override_enabled()&&GetEnvironmentVariableW(L"X3M_SUN_OCCLUSION_DEFAULT",value,32)==1&&value[0]==L'1';
+            const bool from_default=sun_occlusion::override_enabled()&&x3m::config::get(L"X3M_SUN_OCCLUSION_DEFAULT",value,32)==1&&value[0]==L'1';
             log("sun_occlusion_config override=%u log=%u route=%u radius_u=%.4f curve=%.3f core_f=%u default=%u",sun_occlusion::override_enabled()?1u:0u,sun_occlusion::logging()?1u:0u,motion_output_requested?1u:0u,double(sun_occlusion_radius),double(sun_occlusion_curve),sun_occlusion_core_f?1u:0u,from_default?1u:0u);
         }
     }

@@ -9,15 +9,13 @@
   "src/proxy/engine_patch.h"
  ],
  "source": {
-  "commit": "250cc48d47ea84d72468b2782c2095719c46c80a",
+  "commit": "ce9732a1bdcdc58481bcc860aeb4d9f4bdb0187b",
   "production_sources_dirty": true,
   "dirty_paths": [
-   "src/proxy/sun_flare_fix.cpp",
-   "src/proxy/sun_flare_fix.h",
-   "src/proxy/sun_flare_fix_sites.h"
+   "src/proxy/sun_flare_fix.cpp"
   ],
   "sha256": {
-   "src/proxy/sun_flare_fix.cpp": "4c572c3e71ab6ce4cd5486fb5f6d8c701717f4791b8791ec43f029f0f3985b9f",
+   "src/proxy/sun_flare_fix.cpp": "e87764b2182aacc8592b41873e9c1aa3ff9a416e8ab57ccbf2802d32d20baed3",
    "src/proxy/sun_flare_fix.h": "71cb46d0a2396087bb51a798cd729038bd250e765b8e3af581a3a34aa1e9ff27",
    "src/proxy/sun_flare_fix_sites.h": "28dea31276e71283896ac61f5b71e178827fd941858b266c03e2ff05fe04380f",
    "src/proxy/engine_patch.cpp": "9eb31fbf19e4f88432655ccccfe6e054739d9b8ba5f5be4054dfccf513330a2b",
@@ -35,8 +33,8 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "exit_status": 0,
- "elapsed_s": 5.2,
- "executable_sha256": "3f5b96eb1ff6ad0f777c8276aa749ee86961de9c92f1e2af90abd05cceeb905e",
+ "elapsed_s": 5.1,
+ "executable_sha256": "6a616c0be3081268ea132b2684d6eb275ea6dda6e1f539133fbd7bcc621ff061",
  "toolchain": "i686-w64-mingw32-g++ (GCC) 16.2.0",
  "build_audit": {
   "module_calls_seam": [
@@ -54,7 +52,7 @@
   },
   "gate_at_engine_offset": true,
   "gate_sha256": "132c55c6872e61d7b801bd5c3dc37885892540f44ede9536070b19357b6b8acd",
-  "highest_other_section_end": "00341564",
+  "highest_other_section_end": "0034156c",
   "overlapping_sections": []
  },
  "check_count": 79,
@@ -978,8 +976,8 @@
   "raise": "0"
  },
  "timing_us": {
-  "install_us": 646.0,
-  "restore_us": 586.5
+  "install_us": 531.5,
+  "restore_us": 612.9
  },
  "arena": {
   "used": 364,

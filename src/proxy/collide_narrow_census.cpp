@@ -1,4 +1,5 @@
 #include "collide_narrow_census.h"
+#include "config.h"
 #include "collide_box_cull_core.h"   // the 300-frame p50/max/sum window (four series)
 #include "engine_patch.h"
 #include "object_trace.h"
@@ -178,7 +179,7 @@ bool initialize() {
     const DWORD error = GetLastError();
     if (patched_) { SetLastError(error); return true; }
     wchar_t setting[4]{};
-    const DWORD length = GetEnvironmentVariableW(L"X3M_COLLIDE_NARROW_CENSUS", setting, 4);
+    const DWORD length = x3m::config::get(L"X3M_COLLIDE_NARROW_CENSUS", setting, 4);
     const bool group = log_tier::debug(); // X3M_DEBUG=1 turns the census on as X3M_COLLIDE_NARROW_CENSUS=1 does
     if (length == 0 && !group) { state_ = "disabled"; SetLastError(error); return false; }
     bool applied = false;

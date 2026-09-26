@@ -1,4 +1,5 @@
 #include "chase_transition.h"
+#include "config.h"
 #include "chase_transition_core.h"
 #include "chase_transition_identity_core.h"
 #include "chase_transition_restore_core.h"
@@ -524,7 +525,7 @@ bool restore_sites_install(const engine_patch::SiteSpec* table) {
 }
 bool restore_wanted() {
     wchar_t setting[8]{};
-    return GetEnvironmentVariableW(L"X3M_CHASE_VIEW_RESTORE",setting,8)==1&&setting[0]==L'1';
+    return x3m::config::get(L"X3M_CHASE_VIEW_RESTORE",setting,8)==1&&setting[0]==L'1';
 }
 }
 bool initialize() {

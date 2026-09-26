@@ -11,15 +11,13 @@
   "src/proxy/engine_memory.h"
  ],
  "source": {
-  "commit": "7a1c68f39832bb3f479a83a1dbfd9b6ab6312100",
+  "commit": "ce9732a1bdcdc58481bcc860aeb4d9f4bdb0187b",
   "production_sources_dirty": true,
   "dirty_paths": [
-   "src/proxy/fov.cpp",
-   "src/proxy/fov.h",
-   "src/proxy/fov_sites.h"
+   "src/proxy/fov.cpp"
   ],
   "sha256": {
-   "src/proxy/fov.cpp": "71496ca57f284617389a43692fba9ce52d15ca098c2649d390ce11cc98c80278",
+   "src/proxy/fov.cpp": "dcffce75d1acb7622559b0a1fd8ad630dae4ed65c167936fa573c854b7305dc1",
    "src/proxy/fov.h": "11f2f3e3e5986959bf5e2a9d9eb51944ca3829a797299c73c2ee628a2273b658",
    "src/proxy/fov_sites.h": "71304a21296700a77e1651f742da918d87d0c42536cdbde4b5adaf2a8fdb6563",
    "src/proxy/engine_patch.cpp": "9eb31fbf19e4f88432655ccccfe6e054739d9b8ba5f5be4054dfccf513330a2b",
@@ -39,8 +37,8 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "exit_status": 0,
- "elapsed_s": 5.5,
- "executable_sha256": "ecf3eda3df64bec5fd10a29cfd0c60b143dd7cdc4ca45d053a153bfd8457c9eb",
+ "elapsed_s": 5.6,
+ "executable_sha256": "eee04a107cdf9fe67a74db553ab5353c3871090a6f19e063cebeaa10a266b013",
  "toolchain": "i686-w64-mingw32-g++ (GCC) 16.2.0",
  "build_audit": {
   "module_imports_own_protect_or_flush": [],
@@ -1315,8 +1313,8 @@
   }
  ],
  "timing_us": {
-  "install_us": 1091.1,
-  "restore_us": 331.6
+  "install_us": 928.5,
+  "restore_us": 309.8
  },
  "install_sequence": {
   "step": "install",

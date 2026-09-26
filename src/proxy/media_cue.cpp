@@ -1,4 +1,5 @@
 #include "media_cue.h"
+#include "config.h"
 #include "media_cue_sites.h"
 #include "stamp_install.h"
 #include "cpu_state.h"
@@ -269,9 +270,9 @@ bool initialize() {
     if(initialized)return installed.load(std::memory_order_acquire);
     initialized=true;wchar_t value[16]{};
     const bool trace_wanted=log_tier::debug_flag(L"X3M_MEDIA_CUE_TRACE"); // X3M_MEDIA_CUE_TRACE=1 or X3M_DEBUG=1
-    const bool cache_wanted=GetEnvironmentVariableW(L"X3M_MEDIA_CUE_CACHE",value,4)==1&&value[0]==L'1';
+    const bool cache_wanted=x3m::config::get(L"X3M_MEDIA_CUE_CACHE",value,4)==1&&value[0]==L'1';
     unsigned retry_s=default_retry_s;
-    if(GetEnvironmentVariableW(L"X3M_MEDIA_CUE_RETRY_S",value,16)>0){const unsigned long n=wcstoul(value,nullptr,10);if(n>=1&&n<=max_retry_s)retry_s=unsigned(n);}
+    if(x3m::config::get(L"X3M_MEDIA_CUE_RETRY_S",value,16)>0){const unsigned long n=wcstoul(value,nullptr,10);if(n>=1&&n<=max_retry_s)retry_s=unsigned(n);}
     trace_on=trace_wanted&&telemetry::enabled();
     cache_on=cache_wanted;
     const char* status="unset";

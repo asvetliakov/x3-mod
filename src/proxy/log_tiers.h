@@ -10,11 +10,12 @@
 // render path; integers only (no x87, no allocation). A render-path check
 // reads the flags cached once by init() (initialize_log), never the environment.
 #include <windows.h>
+#include "config.h"
 
 namespace x3m::log_tier {
 inline bool env_flag(const wchar_t* name) noexcept {
     wchar_t value[4]{};
-    return GetEnvironmentVariableW(name, value, 4) == 1 && value[0] == L'1';
+    return x3m::config::get(name, value, 4) == 1 && value[0] == L'1';
 }
 // --debug: every diagnostic whose only effects are log rows and reads on F8
 // frames (family block and camera_state at stride 1, the censuses, traces),

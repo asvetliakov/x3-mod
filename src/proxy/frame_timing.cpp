@@ -1,4 +1,5 @@
 #include "frame_timing.h"
+#include "config.h"
 #include "log_tiers.h"
 #include <cstdio>
 #include <cstdint>
@@ -113,7 +114,7 @@ void initialize() noexcept {
     active = log_tier::perf_flag(L"X3M_FRAME_TIMING"); // X3M_FRAME_TIMING=1 or X3M_PERF=1
     if (active) {
         wchar_t stamps[8]{};
-        state_stamps = stamp_interval(stamps, GetEnvironmentVariableW(L"X3M_FRAME_TIMING_STATE_STAMPS", stamps, 8));
+        state_stamps = stamp_interval(stamps, x3m::config::get(L"X3M_FRAME_TIMING_STATE_STAMPS", stamps, 8));
         for (unsigned e = 0; e <= state_entry_slots; ++e) state_stamp_counter[e] = 0;
         hooked_ticks = hooked_at_frame_start = hooked_at_first_draw = hooked_at_last_draw = 0;
         first_draw_stamp = last_draw_stamp = state_other_calls = 0;

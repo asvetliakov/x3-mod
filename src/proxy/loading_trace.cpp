@@ -1,4 +1,5 @@
 #include "loading_trace.h"
+#include "config.h"
 #include "capture.h"
 #include "mesh_adjacency_fast.h"
 #include "../ownership/d3d9_ownership.h"
@@ -897,7 +898,7 @@ bool install_crypt_group(const crypt_cache::Originals& real,HMODULE target){
 bool mesh_row(const Hook& hook){return &hook==&hooks[static_cast<unsigned>(Operation::MeshCreate)]||&hook==&hooks[static_cast<unsigned>(Operation::MeshClean)];}
 AdjacencyMode adjacency_requested_mode(){
     wchar_t setting[adjacency_fast::mode_capacity]{};
-    return adjacency_fast::parse_mode(setting,GetEnvironmentVariableW(L"X3M_MESH_ADJACENCY",setting,adjacency_fast::mode_capacity));
+    return adjacency_fast::parse_mode(setting,x3m::config::get(L"X3M_MESH_ADJACENCY",setting,adjacency_fast::mode_capacity));
 }
 // One mesh_adjacency_config row per process: enabled=1 when a non-native mode is
 // armed and at least one mesh import row routes meshes to the vtable hooks.

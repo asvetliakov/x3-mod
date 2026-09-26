@@ -1,4 +1,5 @@
 #include "collide_box_cull.h"
+#include "config.h"
 #include "collide_box_cull_core.h"
 #include "engine_patch.h"
 #include "object_trace.h"
@@ -137,7 +138,7 @@ bool initialize() {
     if (patched_) { SetLastError(error); return true; }
     windows_ = x3m::log_tier::telemetry();
     wchar_t setting[4]{};
-    const DWORD length = GetEnvironmentVariableW(L"X3M_COLLIDE_BOX_CULL", setting, 4);
+    const DWORD length = x3m::config::get(L"X3M_COLLIDE_BOX_CULL", setting, 4);
     if (length == 0) { state_ = "disabled"; SetLastError(error); return false; }
     bool applied = false;
     const bool requested = length == 1 && setting[0] == L'1';

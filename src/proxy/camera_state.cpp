@@ -1,4 +1,5 @@
 #include "cull_small_parts_core.h"
+#include "config.h"
 #include "camera_state.h"
 #include "object_trace.h"
 #include <windows.h>
@@ -43,17 +44,17 @@ bool initialize() {
     // The route's temporal consumer, or the shadow-replay counter/depth replay
     // (docs/architecture/shadow-replay-gates.md, W1: the slice-0 test and the
     // cascade-0 projection need the scene camera latch without TAA).
-    const bool motion=GetEnvironmentVariableW(L"X3M_MOTION_OUTPUT",setting,4)==1&&setting[0]==L'1';
-    const bool consumer=(GetEnvironmentVariableW(L"X3M_TAA",setting,4)==1&&setting[0]==L'1')||
-        (GetEnvironmentVariableW(L"X3M_SHADOW_REPLAY_CANDIDATES",setting,4)==1&&setting[0]==L'1')||
-        (GetEnvironmentVariableW(L"X3M_SHADOW_REPLAY_DEPTH",setting,4)==1&&setting[0]==L'1')||
+    const bool motion=x3m::config::get(L"X3M_MOTION_OUTPUT",setting,4)==1&&setting[0]==L'1';
+    const bool consumer=(x3m::config::get(L"X3M_TAA",setting,4)==1&&setting[0]==L'1')||
+        (x3m::config::get(L"X3M_SHADOW_REPLAY_CANDIDATES",setting,4)==1&&setting[0]==L'1')||
+        (x3m::config::get(L"X3M_SHADOW_REPLAY_DEPTH",setting,4)==1&&setting[0]==L'1')||
         // The light-map far fade (P[0] for its per-draw footprint): armed by
         // capture.cpp only after its parser accepted the value (request_consumer).
         extra_consumer;
     // The small-parts cull (X3M_CULL_SMALL_PARTS_PX, cull_small_parts.cpp)
     // reads P[0] once per frame for its pixel threshold: same read-only latch.
     wchar_t px[16]{};
-    const DWORD px_length=GetEnvironmentVariableW(L"X3M_CULL_SMALL_PARTS_PX",px,16);
+    const DWORD px_length=x3m::config::get(L"X3M_CULL_SMALL_PARTS_PX",px,16);
     // Armed only for a value the DLL's own parser accepts (in band, > 0).
     char px_text[16]{};
     bool px_ascii=px_length>=1&&px_length<16;

@@ -1,4 +1,5 @@
 #include "object_trace.h"
+#include "config.h"
 #include "engine_memory.h"
 #include "executable_identity.h"
 #include <excpt.h>
@@ -153,7 +154,7 @@ bool initialize() {
     const DWORD error=GetLastError();
     if(installed){const bool enabled=observation.load();SetLastError(error);return enabled;}
     wchar_t setting[4]{};
-    if(GetEnvironmentVariableW(L"X3M_OBJECT_TRACE",setting,4)!=1||setting[0]!=L'1'){state="disabled";SetLastError(error);return false;}
+    if(x3m::config::get(L"X3M_OBJECT_TRACE",setting,4)!=1||setting[0]!=L'1'){state="disabled";SetLastError(error);return false;}
     const uintptr_t base=0x400000;
     bool valid=verified_image();
     static constexpr unsigned char expected[]={0xe8,0x23,0xaf,0xff,0xff};

@@ -64,10 +64,10 @@ class BoxResolutionLaunch(unittest.TestCase):
 class BoxResolutionSource(unittest.TestCase):
     def test_dll_reads_the_setting_and_configures_the_pass(self):
         capture = (ROOT / 'src/proxy/capture.cpp').read_text()
-        self.assertIn('GetEnvironmentVariableW(L"X3M_TAA_BOX_RESOLUTION"', capture)
+        self.assertIn('x3m::config::get(L"X3M_TAA_BOX_RESOLUTION"', capture)
         self.assertIn('bool taa_box_half = false, taa_box_resolution_default = false;', capture)
         # The launcher's marker counts only with half and only as exactly "1".
-        self.assertIn('taa_box_resolution_default=taa_box_half&&GetEnvironmentVariableW(L"X3M_TAA_BOX_RESOLUTION_DEFAULT",setting,32)==1&&setting[0]==L\'1\';', capture)
+        self.assertIn('taa_box_resolution_default=taa_box_half&&x3m::config::get(L"X3M_TAA_BOX_RESOLUTION_DEFAULT",setting,32)==1&&setting[0]==L\'1\';', capture)
         self.assertIn('taa_box_resolution_setting invalid=1 reason=too_long length=%lu', capture)
         self.assertIn('configure_box_resolution(taa_box_half,taa_box_resolution_default)', capture)
         # A value other than full / half logs one row and stays full.

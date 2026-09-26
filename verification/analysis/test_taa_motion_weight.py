@@ -97,9 +97,9 @@ class MotionWeightLaunch(unittest.TestCase):
         # Absent only (an invalid or oversized value stays off, logged): 0.7 with TAA, a policy other than 1 and an age program.
         fallback = 'else if(taa_requested&&taa_sentinel_mode!=x3m::renderer::SentinelMode::CurrentOnly&&(taa_far[0]>0.f||taa_far[1]>0.f||taa_thin_region[0]>0.f))\n        taa_motion_weight[0]=.7f;'
         self.assertIn(fallback, capture)
-        parse = capture.index('GetEnvironmentVariableW(L"X3M_TAA_MOTION_WEIGHT"')
+        parse = capture.index('x3m::config::get(L"X3M_TAA_MOTION_WEIGHT"')
         self.assertLess(capture.index('GetEnvironmentVariableW(L"X3M_FIXTURE_TAA_SENTINEL"'), parse)
-        self.assertLess(capture.index('GetEnvironmentVariableW(L"X3M_TAA_THIN_REGION"'), parse)
+        self.assertLess(capture.index('x3m::config::get(L"X3M_TAA_THIN_REGION"'), parse)
         self.assertLess(parse, capture.index(fallback))
         manage = load_manage()
         self.assertEqual(manage.TAA_MOTION_WEIGHT_DEFAULT, '0.7,2,8')

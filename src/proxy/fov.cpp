@@ -1,4 +1,5 @@
 #include "fov.h"
+#include "config.h"
 #include "fov_sites.h"
 #include "engine_patch.h"
 #include "engine_memory.h"
@@ -251,7 +252,7 @@ bool initialize() {
     // Unset, empty or `game` = the engine's own model (nothing patched); 1..31 characters of
     // the game's degrees N in [70, 100]; anything else is refused and nothing is patched.
     wchar_t text[sites::setting_capacity]{};
-    const DWORD length = GetEnvironmentVariableW(L"X3M_FOV", text, sites::setting_capacity);
+    const DWORD length = x3m::config::get(L"X3M_FOV", text, sites::setting_capacity);
     char setting[sites::setting_capacity]{};
     printable(text, length, setting);
     identity_ = object_trace::executable_verified();

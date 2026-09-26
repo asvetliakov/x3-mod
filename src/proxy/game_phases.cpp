@@ -1,4 +1,5 @@
 #include "loading_trace.h"
+#include "config.h"
 #include "game_phases.h"
 #include "game_phases_core.h"
 #include "game_phase_sites.h"
@@ -215,7 +216,7 @@ bool initialize() {
     unsigned threshold_ms=20;
     {
         wchar_t raw[16]{};
-        if(GetEnvironmentVariableW(L"X3M_GAME_PHASE_THRESHOLD_MS",raw,16)>0){
+        if(x3m::config::get(L"X3M_GAME_PHASE_THRESHOLD_MS",raw,16)>0){
             const unsigned long n=wcstoul(raw,nullptr,10);
             if(n>=1&&n<=10000)threshold_ms=unsigned(n);
         }

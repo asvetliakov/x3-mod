@@ -9,13 +9,13 @@
   "src/proxy/engine_patch.h"
  ],
  "source": {
-  "commit": "17868e9d88db3b641efcf1a849785c4a5ac3f1ff",
+  "commit": "ce9732a1bdcdc58481bcc860aeb4d9f4bdb0187b",
   "production_sources_dirty": true,
   "dirty_paths": [
    "src/proxy/lod_occlusion.cpp"
   ],
   "sha256": {
-   "src/proxy/lod_occlusion.cpp": "b0dbe0cb398126a2e17cca9dbb9a544b185b50bf0e9d73cb64881e47557bbc2a",
+   "src/proxy/lod_occlusion.cpp": "7458fa0d4cdb7ecbcd00bc7179d66745c028177e7a2ecbda9a715538ef9d5e41",
    "src/proxy/lod_occlusion.h": "5638be117920ed19f6edf4c29e01d1689def06ddf8f1d1dddca1562e4da1f36e",
    "src/proxy/lod_occlusion_sites.h": "7e5a7e7856c74de1f46d2369961fcc6068910fb58971d0b2e0c587d0324b85ba",
    "src/proxy/engine_patch.cpp": "9eb31fbf19e4f88432655ccccfe6e054739d9b8ba5f5be4054dfccf513330a2b",
@@ -33,8 +33,8 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "exit_status": 0,
- "elapsed_s": 5.3,
- "executable_sha256": "a993303f14758011e36b5a75c0164ea9bed52ae9cc82d0f18dbf70982d0b6f52",
+ "elapsed_s": 5.2,
+ "executable_sha256": "b87f8908c0218a045d0be86c4ae690eca5943898fc7aa95f5ef544f53ed67cd3",
  "toolchain": "i686-w64-mingw32-g++ (GCC) 16.2.0",
  "build_audit": {
   "module_imports_own_protect_or_flush": [],
@@ -57,7 +57,7 @@
    "size": 4096,
    "data_readonly": true
   },
-  "highest_other_section_end": "004403d4",
+  "highest_other_section_end": "004403e0",
   "overlapping_sections": []
  },
  "check_count": 108,
@@ -671,8 +671,8 @@
   "raw_restore_lod1": 2
  },
  "timing_us": {
-  "install_us": 216.7,
-  "restore_us": 174.0
+  "install_us": 243.2,
+  "restore_us": 187.9
  },
  "install_rows": [
   {

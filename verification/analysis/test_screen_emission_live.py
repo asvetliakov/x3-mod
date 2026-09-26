@@ -172,7 +172,7 @@ class DllGate(unittest.TestCase):
         source=(ROOT/'src/proxy/capture.cpp').read_text()
         block=source[source.index('X3M_SCREEN_EMISSION",setting'):source.index('screen_emission_mode requested=1')]
         self.assertIn('screen_emission_requested=asked && screen_hdr && taa_requested && screen_ownership;',block)
-        self.assertIn('GetEnvironmentVariableW(L"X3M_OWNERSHIP",setting,32)==1',block)
+        self.assertIn('x3m::config::get(L"X3M_OWNERSHIP",setting,32)==1',block)
         for name in ('material_decode_valid','material_tonemap_valid','motion_output_requested','hdr_requested','HdrTonemap::Agx','AgxDecode::gamma22'):self.assertIn(name,block)
         self.assertNotIn('linear_material_requested &&',block)
         self.assertIn('ownership=%u',source[source.index('screen_emission_mode requested=1'):][:200])

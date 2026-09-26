@@ -1,4 +1,5 @@
 #include "terran_station_lod.h"
+#include "config.h"
 #include "terran_lod_sites.h"
 #include "engine_patch.h"
 #include "object_trace.h"
@@ -66,7 +67,7 @@ bool initialize() {
     // Unset or empty = the DLL default (size, patched); 1..31 characters must be
     // exactly size or distance; anything else is refused and nothing is patched.
     wchar_t text[setting_capacity]{};
-    const DWORD length = GetEnvironmentVariableW(L"X3M_TERRAN_STATION_LOD", text, setting_capacity);
+    const DWORD length = x3m::config::get(L"X3M_TERRAN_STATION_LOD", text, setting_capacity);
     char setting[setting_capacity]{};
     printable(text, length, setting);
     Mode mode = default_mode;

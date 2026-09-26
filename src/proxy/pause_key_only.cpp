@@ -1,4 +1,5 @@
 #include "pause_key_only.h"
+#include "config.h"
 #include "pause_key_only_core.h"
 #include "engine_patch.h"
 #include "object_trace.h"
@@ -83,14 +84,14 @@ bool initialize() {
     const DWORD error = GetLastError();
     if (patched_) { SetLastError(error); return true; }
     wchar_t setting[4]{};
-    const DWORD length = GetEnvironmentVariableW(L"X3M_PAUSE_KEY_ONLY", setting, 4);
+    const DWORD length = x3m::config::get(L"X3M_PAUSE_KEY_ONLY", setting, 4);
     if (length == 0) { state_ = "disabled"; SetLastError(error); return false; }
     bool applied = false;
     const bool requested = length == 1 && setting[0] == L'1';
     // X3M_PAUSE_KEY: absent = DIK_PAUSE's engine code; present but not a key code = refused, nothing patched.
     std::uint32_t key = default_key;
     wchar_t key_text[16]{};
-    const DWORD key_length = GetEnvironmentVariableW(L"X3M_PAUSE_KEY", key_text, 16);
+    const DWORD key_length = x3m::config::get(L"X3M_PAUSE_KEY", key_text, 16);
     const bool key_ok = key_length == 0 || (key_length < 16 && parse_key(key_text, &key));
     if (!key_ok) key = 0;
     if (!requested) state_ = "disabled";

@@ -192,7 +192,7 @@ class LauncherGateTests(unittest.TestCase):
         # Source-substring guard against silent gate drift, not a semantics test.
         source = (ROOT / 'src/proxy/capture.cpp').read_text()
         block = source[source.index('X3M_EMISSION_SOURCE_GAIN=<g>'):][:2400]
-        self.assertIn('GetEnvironmentVariableW(L"X3M_EMISSION_SOURCE_GAIN",setting,32)', block)
+        self.assertIn('x3m::config::get(L"X3M_EMISSION_SOURCE_GAIN",setting,32)', block)
         self.assertIn('value>=1.f&&value<=8.f', block)
         self.assertIn('if(!hdr_requested||excluded)emission_source_gain=1.f;', block)
         self.assertIn('const bool excluded=linear_emission_requested;', block)

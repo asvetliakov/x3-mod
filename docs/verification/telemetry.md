@@ -5,6 +5,11 @@ Set `X3M_TELEMETRY=1` for a process to enable it. Every other value leaves
 telemetry disabled. This is instrumentation, not a graphics or performance fix.
 No game was launched for this verification.
 
+Since 2026-09-26 every variable here can also come from `x3m.ini` (default < file < environment) and the always tier
+carries the settings rows after `proxy_environment`: one `config_open file= source= keys= unknown= invalid= duplicate=
+env_only= renamed= bytes= lines= us=`, at most 32 `config_key key= problem= line= value=` then `config_more=N`, and one
+`config_file <key>=<value> ... overridden_by_env=` when a file was read ([config-file.md](../architecture/config-file.md)).
+
 ## Coverage and interpretation
 
 QPC timing begins during proxy log initialization; it cannot account for process

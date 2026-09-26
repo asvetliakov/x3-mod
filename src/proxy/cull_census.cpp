@@ -1,4 +1,5 @@
 #include "cull_census.h"
+#include "config.h"
 #include "cull_census_core.h"
 #include "engine_patch.h"
 #include "engine_memory.h"
@@ -305,11 +306,11 @@ bool initialize() {
     const DWORD error = GetLastError();
     if (patched_) { SetLastError(error); return true; }
     wchar_t setting[4]{};
-    const DWORD length = GetEnvironmentVariableW(L"X3M_CULL_CENSUS", setting, 4);
+    const DWORD length = x3m::config::get(L"X3M_CULL_CENSUS", setting, 4);
     const bool group = log_tier::debug(); // X3M_DEBUG=1: the census and the LOD switch rows at their default cap
     if (length == 0 && !group) {
         state_ = "disabled";
-        if (GetEnvironmentVariableW(L"X3M_LOD_SWITCH_LOG", setting, 4)) log("cull_census_lod_switch state=census_off cap=0 table=0");
+        if (x3m::config::get(L"X3M_LOD_SWITCH_LOG", setting, 4)) log("cull_census_lod_switch state=census_off cap=0 table=0");
         SetLastError(error); return false;
     }
     bool applied = false;
@@ -320,7 +321,7 @@ bool initialize() {
     // X3M_LOD_SWITCH_LOG=N (rows per frame): only with the census live.
     const char* lod_switch = "off";
     wchar_t cap_text[8]{};
-    const DWORD cap_length = GetEnvironmentVariableW(L"X3M_LOD_SWITCH_LOG", cap_text, 8);
+    const DWORD cap_length = x3m::config::get(L"X3M_LOD_SWITCH_LOG", cap_text, 8);
     unsigned cap = 0;
     if (cap_length && !applied) lod_switch = "census_off";
     else if (cap_length && !parse_lod_switch_cap(cap_text, cap_length < 8 ? unsigned(cap_length) : 8u, &cap)) lod_switch = "invalid";

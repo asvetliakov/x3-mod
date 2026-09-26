@@ -82,7 +82,7 @@ class ThinRegionSourceRow(unittest.TestCase):
 class ThinRegionSourceContract(unittest.TestCase):
     def test_dll_derives_resolves_and_logs(self):
         capture = (ROOT / 'src/proxy/capture.cpp').read_text()
-        self.assertNotIn('GetEnvironmentVariableW(L"X3M_TAA_THIN_REGION_SOURCE', capture)
+        self.assertNotIn('L"X3M_TAA_THIN_REGION_SOURCE', capture)
         self.assertIn('taa_thin_region_source_given=taa_thin_vote&&taa_thin_region[0]>0.f;', capture)
         self.assertIn('taa_thin_region_source=taa_thin_region_source_given?2u:0u;', capture)
         self.assertIn('taa_thin_region_source_default=taa_thin_region_source_given&&taa_thin_vote_default;', capture)

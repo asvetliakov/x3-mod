@@ -6,18 +6,18 @@
   "--perf adds exactly X3M_PERF=1": true,
   "default launch: no X3M_DEBUG/X3M_PERF, no tiered variable": true,
   "inherited tiered values dropped": true,
-  "no functional variable changed against the base (default)": true,
+  "no functional variable changed against the base (default), X3M_CONFIG=bare the one addition": true,
   "no functional variable changed against the base (vanilla)": true,
   "vanilla launch: no tiered variable": true
  },
  "counts": {
   "base_default": 150,
   "base_vanilla": 99,
-  "new_debug": 123,
-  "new_debug_perf": 124,
-  "new_default": 122,
-  "new_perf": 123,
-  "new_perf_draw_trace": 124,
+  "new_debug": 124,
+  "new_debug_perf": 125,
+  "new_default": 123,
+  "new_perf": 124,
+  "new_perf_draw_trace": 125,
   "new_vanilla": 71
  },
  "debug_perf_vs_default": {
@@ -44,6 +44,10 @@
   "X3M_CAPTURE_DELAY": [
    "300",
    null
+  ],
+  "X3M_CONFIG": [
+   null,
+   "bare"
   ],
   "X3M_FPS_OVERLAY": [
    "0",

@@ -224,7 +224,7 @@ class LodOcclusionCore(unittest.TestCase):
                        '"patched_unverified"', 'if (!std::strcmp(reason, "restored")) patched_ = false;', 'log_handle()', 'WriteFile(handle',
                        '"lod_occlusion_restore site=%08lx status=%s found=%s registered=%u\\n"', 'SetLastError(error);',
                        'log("lod_occlusion site=%08lx status=%s reason=%s mode=%s setting=%s write=%s default=%u"',
-                       'GetEnvironmentVariableW(L"X3M_LOD_OCCLUSION_DEFAULT", marker, 2) == 1 && marker[0] == L\'1\''):
+                       'x3m::config::get(L"X3M_LOD_OCCLUSION_DEFAULT", marker, 2) == 1 && marker[0] == L\'1\''):
             self.assertIn(needle, module)
         header = (ROOT / 'src/proxy/lod_occlusion_sites.h').read_text()
         for needle in ('plan(current)', 'memcmp(back, expected_write, write_length)', '"patch_rolled_back"', '"rollback_unprotected"', '"rollback_failed"',

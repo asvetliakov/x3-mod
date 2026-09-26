@@ -16,6 +16,7 @@
 #define NOMINMAX
 #endif
 #include <windows.h>
+#include "../proxy/config.h"
 #else
 #include <sys/stat.h>
 #endif
@@ -446,7 +447,7 @@ bool load_family_table() noexcept {
 #ifdef _WIN32
     const DWORD saved_error = GetLastError();
     wchar_t value[8] = L"";
-    const DWORD env = GetEnvironmentVariableW(L"X3M_FOG_FAMILIES", value, 8);
+    const DWORD env = x3m::config::get(L"X3M_FOG_FAMILIES", value, 8);
     if (env && env < 8 && (!lstrcmpW(value, L"0") || !lstrcmpiW(value, L"none"))) {
         global_table.status = FamilyFileStatus::Disabled; global_table.reason = "env_disabled";
     } else {
@@ -456,7 +457,7 @@ bool load_family_table() noexcept {
         for (;;) {
             buffer = new (std::nothrow) wchar_t[capacity];
             if (!buffer) break;
-            length = env ? GetEnvironmentVariableW(L"X3M_FOG_FAMILIES", buffer, capacity)
+            length = env ? x3m::config::get(L"X3M_FOG_FAMILIES", buffer, capacity)
                          : GetModuleFileNameW(nullptr, buffer, capacity);
             if (length && length + 32 < capacity) break;
             delete[] buffer; buffer = nullptr;

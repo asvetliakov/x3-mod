@@ -44,6 +44,19 @@ import fixture_process
 LOCK_PATH = '/tmp/x3-wine-runner.lock'
 
 
+def child_environment(environ=None):
+    """The wrapped command's environment: this one, with X3M_CONFIG=bare unless it is set.
+
+    Since the settings file (docs/architecture/config-file.md) the proxy's built-in defaults are the launcher's promoted
+    set; `bare` gives every fixture the pre-config "absent = off" behaviour and ignores any x3m.ini. Every runner under the
+    lock inherits it (the runners that start from a stripped environment set it themselves, fixture_log.CONFIG_BARE). The
+    launcher (tools/manage.py launch, also run under this lock by x3run) drops the inherited value and sends its own.
+    """
+    env = dict(os.environ if environ is None else environ)
+    env.setdefault('X3M_CONFIG', 'bare')
+    return env
+
+
 def _basename(token):
     return token.replace('\\', '/').rsplit('/', 1)[-1].lower()
 
@@ -241,7 +254,7 @@ def main(argv=None):
             return status
         try:
             child_started = time.monotonic()
-            status = subprocess.call(command)
+            status = subprocess.call(command, env=child_environment())
         except KeyboardInterrupt:
             status = 130
         finally:

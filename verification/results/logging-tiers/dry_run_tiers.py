@@ -17,6 +17,9 @@ default and vanilla launches send one variable fewer (X3M_VOLUMETRIC_FOG_EVERYWH
 Since the third step of 2026-09-26 (--capture-start / --capture-delay removed, F8 under --debug the only capture trigger) the
 default launch sends one variable fewer (X3M_CAPTURE_DELAY=300, in REMOVED_VARIABLES; X3M_CAPTURE_START=999999 stays
 launcher-sent as "never") and vanilla one fewer (X3M_CAPTURE_START=120: no proxy loads under --vanilla).
+Since the settings file (2026-09-26, docs/architecture/config-file.md) the default launch sends one variable more,
+X3M_CONFIG=bare (no file and no DLL defaults unless --config; not under --vanilla): the single delta against BASE
+that is not a dropped logging or removed variable (CONFIG_DELTA).
 Writes dry-runs.json beside this script.
 
     python3 verification/results/logging-tiers/dry_run_tiers.py
@@ -41,6 +44,8 @@ FORMS = {'default': [], 'debug': ['--debug'], 'perf': ['--perf'], 'debug_perf': 
 REMOVED_2026_09_26 = {'X3M_MESH_ADJACENCY_DUMP', 'X3M_VOLUMETRIC_FOG_EVERYWHERE', 'X3M_CAPTURE_DELAY'}
 # No longer sent under --vanilla since 2026-09-26 (no proxy loads there); modded launches still send 999999.
 VANILLA_NOT_SENT = {'X3M_CAPTURE_START'}
+# Sent since the settings file (2026-09-26) on every modded launch.
+CONFIG_DELTA = {'X3M_CONFIG': [None, 'bare']}
 
 
 def tiered():
@@ -95,8 +100,10 @@ def main():
         '--perf adds exactly X3M_PERF=1': result['perf_vs_default'] == {'X3M_PERF': [None, '1']},
         '--debug --perf adds exactly the two groups': result['debug_perf_vs_default'] == {'X3M_DEBUG': [None, '1'], 'X3M_PERF': [None, '1']},
         '--perf --draw-trace adds exactly X3M_PERF=1 and X3M_DRAW_TRACE=1': result['perf_draw_trace_vs_default'] == {'X3M_PERF': [None, '1'], 'X3M_DRAW_TRACE': [None, '1']},
-        'no functional variable changed against the base (default)': set(result['default_vs_base']) <= names | REMOVED_2026_09_26
-            and all(b is None for a, b in result['default_vs_base'].values()),
+        'no functional variable changed against the base (default), X3M_CONFIG=bare the one addition':
+            {k: v for k, v in result['default_vs_base'].items() if k in CONFIG_DELTA} == CONFIG_DELTA
+            and set(result['default_vs_base']) - set(CONFIG_DELTA) <= names | REMOVED_2026_09_26
+            and all(b is None for k, (a, b) in result['default_vs_base'].items() if k not in CONFIG_DELTA),
         'no functional variable changed against the base (vanilla)': set(result['vanilla_vs_base']) <= names | REMOVED_2026_09_26 | VANILLA_NOT_SENT
             and all(b is None for a, b in result['vanilla_vs_base'].values()),
         'inherited tiered values dropped': result['inherited_tiered_vs_default'] == {},

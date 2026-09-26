@@ -8,6 +8,12 @@ table, the template `assets/x3m.ini` (every line commented, plain-words descript
 and 2 are implemented together in the first candidate (the bare DLL must equal the launcher's default flight, otherwise a
 player's install does not get the accepted look); steps 3 and 4 follow later; the zip is built by `tools/release/package.py`.
 
+**Implemented (steps 1 and 2), 2026-09-26:** see "Implemented (steps 1 and 2)" at the end: the record, the measured
+figures and the deviations from this design. **Revised by the review the same day:** the launcher's default is
+`X3M_CONFIG=bare`, not `none` (under `none` the built-in defaults filled every variable an opt-out leaves unsent, undoing
+`--no-sun-occlusion`, `--no-music-keep`, `--cull-small-parts 0` and the prerequisite opt-outs), and `--config [PATH]` is
+player mode (only the options given explicitly are sent); sections 3 and "Implemented" describe the revised behaviour.
+
 
 Design note, 2026-09-26, read-only survey at `da84d232` (nothing built, no Wine run). Decision: how the
 release scenario works (the player unpacks `d3d9.dll` and a config file into the game directory, opens the
@@ -166,6 +172,8 @@ wins, whatever the file says, so a fixture or the launcher is never surprised by
 is the base); the alternative (a generated "explicit off" environment sent by every runner) would have to
 reach 113 runners of which 13 share a helper, and would drift with the schema.
 
+(Revised 2026-09-26 by the review: the launcher sends `X3M_CONFIG=bare`, and `--config` is player mode; see "Launcher
+modes" under "Implemented". The paragraph below is the original design.)
 **The launcher ignores the game directory's file by default** and sends `X3M_CONFIG=none`. Reasons: the two
 dry-run pins (`compare_dry_runs.py`, `dry_run_tiers.py`) and every flight record must not depend on a file in
 the bottle; the launcher already sends explicit values for its 75 section-1 options, so a file could only act
@@ -346,3 +354,166 @@ assumption, and the seam case exercises the same code under Wine.
 - Whether any read site depends on `GetEnvironmentVariableW` returning 0 to mean "not the launcher" in a way a schema default would change before step 2 (the `*_DEFAULT` marker pattern: `X3M_WINDOW_MONITOR_RECT_DEFAULT` tells the row whether the value was a default). Step 1's `default = off` column keeps them neutral; step 2 must give such markers `source`-aware handling (the row can ask `config::source`). A grep for `_DEFAULT"` sites during step 1 settles the list.
 - Parse cost is inferred, not measured; the `config_open` row can carry `us=` like `proxy_identity attach_us` at no cost.
 - Native Windows: unverified, as everywhere.
+
+## Implemented (steps 1 and 2)
+
+2026-09-26, uncommitted worktree on `ce9732a1`; not flown, no candidate built. Files: `tools/config/schema.py` (the
+schema), `tools/config/generate.py` (writes `src/config/config_schema_inc.h` and `assets/x3m.ini`, `--check`),
+`src/config/config_parse.h` (the grammar, pure C++), `src/proxy/config.h` (the header-only `config::get`),
+`src/proxy/config_load.h` / `config.cpp` (load, resolver, rows), `tools/manage.py` (`--config [PATH]`),
+`tools/release/package.py`, `docs/user/config.md`; tests `verification/analysis/test_config_schema.py` (with the host
+harness `verification/probe/config_parse_host.cpp`) and `test_release_package.py`; motion-output case `seam-config-file`;
+evidence scripts under `verification/results/config-file/`.
+
+**Schema.** 232 entries: the 230 names the DLL reads as literals (direct reads and the nine helpers), the formatted
+`X3M_FOG_MOTES_%hs` read (`X3M_FOG_MOTES_MAX_PX`) and `X3M_CONFIG`. 87 user-facing keys in the template (graphics 12, hdr
+18, shadows 13, fog 11, camera 10, window 4, audio 2, loading 5, engine 8, logging 4) and 145 developer keys, 24 of them
+environment-only (14 `X3M_FIXTURE_*` seams, 9 `*_DEFAULT` markers, `X3M_CONFIG`). Rule: user-facing = a player can want to
+change it and a wrong value is harmless, i.e. the functional options of inventory sections 1 and 3 with a plain meaning;
+developer = the route prerequisites (ownership, object trace/lifetime, motion output, scene hook, RT mode, state shadow,
+replay candidates), the TAA/HDR/shadow tuning knobs behind the promoted defaults, the logging internals and developer
+options of section 2 except `debug`/`perf`/`capture_frames`/`log_file`, the section-5 seams, the removed-option reads kept
+for fixtures, and the markers. `verification/results/config-file/inventory_keys.py`: every named variable of inventory
+sections 1, 2, 3 and 5 is a schema key (98 / 17 / 6 / 58; `X3M_FIXTURE_SHADOW_EXTENT` in section 5 is read by no source).
+
+**Defaults (step 2).** 122 entries carry a default, exactly the 122 `X3M_*` variables of the launcher's default dry run
+before this change (`manage.py launch --direct` on bottle X3), value for value; every other entry has none, so its read
+site keeps its own behaviour, as it did under the launcher. `test_config_schema.test_bare_dll_equals_the_launcher_default_flight`
+pins it on a hermetic dry run: every sent variable is a schema key at its default (or `X3M_CONFIG=bare`, the launcher's
+own), every default is sent, and the Python mirror of the resolver (`tools/config/resolve.py`) gives the launcher's
+environment and an empty one the same values (the voice-DMO fallback is installation-dependent: the hermetic launch finds no decoder, the
+bottle's sends 1). 11 user-facing keys have no default (the launcher does not send them: `taa_history_weight`,
+`taa_alpha_history`, `hdr_key`, `hdr_adapt_up/down`, `cursor_reassert`, `pause_key`, `point_light_root_admission`, `debug`,
+`perf`, `log_file`); the template shows the site's own value from the schema's display-only `builtin` field. Not carried
+by the DLL (launcher concepts): the X3 switches of `--direct`, the voice decoder's GStreamer variables, the DLL override
+and the fog-family/LOD data (`x3m-regenerate`).
+
+**The `*_DEFAULT` markers.** Each told a `*_mode`/configured row (`default=1`) that the launcher filled the marked value
+from its promoted default rather than an explicit option: `X3M_WINDOW_MONITOR_RECT_DEFAULT`, `X3M_ORIGINAL_FILL_DEFAULT`,
+`X3M_LOD_OCCLUSION_DEFAULT`, `X3M_TAA_BOX_RESOLUTION_DEFAULT`, `X3M_TAA_FAR_GATE_DEFAULT`, `X3M_TAA_FAR_CLIP_DEFAULT`,
+`X3M_TAA_THIN_VOTE_DEFAULT`, `X3M_FADE_RT2_OWNER_DEFAULT`, `X3M_SUN_OCCLUSION_DEFAULT`. They are environment-only schema
+entries with `marker_of`: the environment's value wins (the launcher keeps sending them); without one the resolver hands
+out the default `1` only while the marked key itself resolves from the defaults layer (no environment variable, no file
+key); a file that sets the marked key makes the marker absent, so the row says `default=0` for a file choice. Under `bare`
+they are absent, as before. The read sites are unchanged.
+
+**Resolver.** `config::get` (header-only, `src/proxy/config.h`) calls through a function pointer that `config::load`
+publishes last; before that, and in every single-source fixture or host build, it is `GetEnvironmentVariableW`. The
+resolver: `GetEnvironmentVariableW` first (a set variable wins, even empty; the caller's last error restored on a hit),
+then the file's value, then the default (`bare`: the `off` column, `None` everywhere, i.e. unset), else 0 with
+`ERROR_ENVVAR_NOT_FOUND`; a name outside the schema is exactly `GetEnvironmentVariableW`. Binary search over the sorted
+table, no allocation, no lock; the file and its UTF-16 values live in static storage (64 KiB + 64 KiB + table). 173
+literal read sites (`grep -rho 'x3m::config::get(L"X3M_' src`), 16 calls in the helpers (`log_tiers.h env_flag`, `session_log.cpp environment`, `chase_camera.cpp` three,
+`cull_small_parts.cpp read_setting`, `sampling_profiler.cpp env_number`, `music_keep.cpp requested`, `sun_light_poll.cpp
+flag`, the capture lambdas `integers`, `flag`, `flicker_setting`, `meter_parameter`, `material_gain`, `fog_env`) and the two
+production narrow reads of `motion_output.cpp` (`X3M_SCREEN_EMISSION_BOUND`, `X3M_LOCKED_PREFIX_LOG`, now wide) go
+through it; only the reads inside `#ifdef X3M_MOTION_OUTPUT_FIXTURE` / `X3M_QUAD_FVF_SWITCH` stay direct (host test).
+`config::load(module)` is the first statement of `initialize_log`, before `log_tier::init()` and `session_log::open`, so
+`debug = 1` and `log_file` work from the file; `config::log_rows()` follows `proxy_identity`.
+
+**Deviations from the design, with reasons.** (1) `off` is `None` for every entry and `bare` means "unset": the textual
+off values (`0`, `vanilla`) would change rows of sites that log presence (`requested=`), and the fixtures' oracles model
+absence. (2) Keys the launcher does not send have no default (display-only `builtin`), so the bare DLL equals the
+launcher flight exactly instead of approximately. (3) `invalid` is decided by the resolver from the schema (type, range,
+choices, list counts, per-position element ranges) at load, not reported back by the sites (that is step 3's typed
+parse); the ranges equal what the sites accept (see "Ranges"). A check across the elements of one value (ascending
+cascades, far fade end above its start, the far stabiliser's weight 0 or 0.5..0.99) or across keys (the fade's floor up to
+`hull_lightmap_gain`, `shadow_cascade_static_from` below the cascade count) stays with the site, which logs its own invalid
+row and keeps its default; the launcher's cross-option refusals (`--bloom-source-clamp` without `--hdr-bloom`, ...) stay
+launcher-only: a file that sets such a pair gets the DLL's gates, which ignore the dependant. (4) The markers and `X3M_CONFIG` are environment-only too. (5) An empty
+value is valid for string/path keys (the site's own default: `log_file`, `pause_key`) and for `hdr_ev_manual` (default
+empty), so the uncommented template parses with 0 problems. (6) `config_open` also carries `env_only=`, `renamed=`,
+`lines=`; `config_key` carries `line=`; `config_file` ends with `overridden_by_env=` (keys the file set that the
+environment replaced). (7) The template header names the version and the schema date, not a commit, so `--check` stays
+stable across commits; `package.py`'s `README.txt` records the DLL SHA-256 and the source commit. (8) The launcher sends a
+host `--config PATH` as `Z:<absolute path>` and a Windows path verbatim; the DLL resolves a relative `X3M_CONFIG` against
+its directory. (9) Fixtures get `X3M_CONFIG=bare` from `wine_lock.py` (the wrapped command's environment, unless set;
+the launcher run by `x3run` under the lock drops and replaces it) and from `fixture_log.session_log_env`, plus explicitly
+in `run_motion_output.py` and `run_hook_admission_benchmark.py` (which strip `X3M_*`).
+
+**Launcher modes (review, 2026-09-26).** Default launch: `X3M_CONFIG=bare`, the proxy reads no file and resolves no
+built-in default; the launcher sends every setting it wants set and an absent variable is off, exactly as before the
+settings file (the former `none` let the defaults refill the variables an opt-out leaves unsent: 1 to 33 per opt-out,
+`optout_dry_runs.py`). `--config [PATH]`: player mode, the release scenario: `player_environment` in `tools/manage.py`
+drops every `X3M_*` variable equal to its built-in default and keeps the variables of the options given explicitly
+(`--<name>` / `--no-<name>`, the schema's `launcher` field) and those an option moved off the default; one the options
+switched off (sent on a default launch, absent now) is sent empty, which beats the file and the default and which every
+site reads as unset (the presence-sensing sites, e.g. `emission_source_gain`, log it as invalid and stay off).
+`X3M_VOICE_DMO_FALLBACK` is sent as the voice-decoder discovery sets it. `OptOuts` in `test_config_schema.py`: for 17
+opt-outs the opted-out variables resolve off in both modes, the default launch resolves nothing from the defaults, and
+player mode without a file resolves every setting exactly as the default launch; `optout_dry_runs.py` records the same
+for the reviewer's list (`optout_dry_runs.txt`).
+
+**Ranges (review, 2026-09-26).** `range` is a set of intervals with open lower bounds, `elements` per list position,
+`counts` the accepted list lengths (generated `intervals[]` / `element_ranges[]` / `count_mask`); every numeric entry was
+compared with its site (`range_sweep.py`: 49 agree automatically on literal or named bounds, 0 mismatch, 36 compared by
+hand: lists and sites with their own parsers). Fixed against the sites: `hdr_key` (0, 64] (the site takes any value above
+0, not 0.01 as the review suggested), `hdr_adapt_up/down` (0, 60], `bloom_source_clamp` (0, 64], `screen_emission_additive`
+0 or 1..8, `shadow_cascades` 0 or 50..150000 with 1-5 elements, `shadow_cascade_sizes` 64..4096 (was 16..8192),
+`shadow_cascade_records` 1..4096 (was 1..65536), `fog_dust_motes` exactly three: 0 or 64..8192 / 2..16 / 0..512,
+`fog_motes_max_px` 2..64 (was 0..1024), `chase_distance_scale` (0, 10] (was 0.1..10), `light_map_far_fade` (0, 1e6] /
+(0, 1e6] / 0..8, `taa_far_stabiliser` 1, 2, 4 or 6 elements with per-position bounds, `taa_thin_region` 1, 2 or 4
+(0.5..0.99, not 0.995), `bolt_footprint` width 0..64 and length (0, 256], `capture_frames` any count (the site caps at
+64); 45 developer entries gained their sites' ranges, `game_phase_threshold_ms` became an int and `shadow_cascade_caps`
+an int list. The parser is stricter than some sites in syntax only (a trailing character after a number, `inf`, hex):
+refused from the file, as `config_key problem=invalid`.
+
+**Parser and rows (review).** A line holding a NUL byte is refused whole (`config_key problem=nul`), never read up to the
+NUL. `proxy_options` lists the effective settings: every `X3M_*` of the environment as `NAME=value@env` and every setting
+the file or the defaults supply as `@file` / `@default`, merged and sorted, one row (a row is capped at 256 KiB), so a
+bare-DLL flight and a launcher flight log comparable lines; `tools/analysis/proxy_identity.py` strips the suffix
+(`parse_option_sources` keeps it). The resolver's layers are shared C++ (`parse::below_environment` in
+`config_parse.h`) and host-tested through `config_parse_host.cpp resolve` against the Python mirror: the environment's 0
+over the file's 1 for a bool, an enum and a list from the file, a float from the default, an empty environment value over
+the file, and the markers with no file, the key in the file, the key in the environment and under `bare`.
+
+**Evidence (measured 2026-09-26, bottle X3, worktree build; DLL `dfcc6ba76d3519e5…`, 57,206,891 B; before the review).** `generate.py
+--check` PASS (232 settings, 87 in the template; template 13,758 B, longest line < 512 B). Build 0 warnings (the motion
+runner's clean build log and a following `cmake --build build`); `check_no_x87.py build/d3d9.dll` PASS 709 reachable / 0
+violations (no x87 opcode in `config.cpp.obj`). `run_motion_output.py` (585 s under the lock) PASS: the 229 committed
+cases at their counts (345,859 checks, 0 changed, 0 missing) plus `seam-config-file` 29 checks = 230 cases / 345,888
+(`verification/results/config-file/compare_motion_counts.py`, record `motion-cases-config-2026-09-26.json`). The
+seam case, per run: `config_open source=override|game keys=5 unknown=3 invalid=2 duplicate=1 env_only=1`, seven
+`config_key` rows, `config_file frame_end_stride=7 motion_frame_log=5 camera_log=4 camera_cut_deg=12.5
+overridden_by_env=motion_jitter_samples`, and the sites took the values (`frame_end_stride_mode stride=7`,
+`motion_output_mode frame_log=5 camera_log=4 camera_cut_deg=12.50`, `jitter_samples` the environment's 8, not the file's
+16); the refused `fixture_exception` seam never fired; `X3M_CONFIG=none` read nothing and resolved the defaults
+(`camera_cut_deg=20.00`; `bloom_source_clamp_mode requested=1` from the 1.0 default in all three runs, `requested=0` in
+every `bare` case). Load time from `config_open us=`: 2,917 us (override path) and 2,465 us (file beside the DLL) for a
+306-byte file, 19 us with no file (`none`); the cost is the Wine file open, once per process. Other fixtures under
+`bare`: `run_loading_trace.py` PASS (36,091 pinned checks), `run_crypt_cache.py` PASS, `run_cursor_reassert.py` PASS
+(41), `run_d3d9_exports.py --dll build/d3d9.dll` PASS (8 + 8, writable and read-only), `run_sun_share_live.py` PASS (25
+cases); the patch records re-bound to the changed sources: `run_fov_patch.py` 268/268, `run_lod_occlusion_patch.py`
+108/108, `run_sun_flare_fix.py` 79/79; `run_terran_lod_patch.py` 92/92, its record binds to a commit and is rerun after
+this change is committed. Launcher: `compare_dry_runs.py` 5 PASS and `dry_run_tiers.py` 9 PASS with the single delta
+`X3M_CONFIG=none` (default launch 122 -> 123 variables, `--vanilla` 71 unchanged); `--config /some/path` sends
+`X3M_CONFIG=Z:/some/path`, `--config` sends none (122); `--vanilla --config` exits 2; `manage.py --help` exit 0.
+Host suite 269 modules / 2,795 tests, 1 failing (`test_terran_lod_patch_result`, the commit binding above).
+`inventory_keys.py` PASS. `package.py --dll build/d3d9.dll`: `x3m-0.4.0.zip` = `d3d9.dll`, `x3m.ini`,
+`x3m-regenerate.exe`, `x3m-regenerate`, `README.txt` (76,865,602 B). Not verified: a flight of the bare DLL
+(`x3run --config` with the shipped template, nothing uncommented, compared with a default launch by `proxy_options`,
+`config_open`, `config_file` and the look); native Windows.
+
+**Evidence after the review (measured 2026-09-26, bottle X3, worktree build; DLL `aa439d5b973af9c7…`, 57,294,372 B).**
+`generate.py --check` PASS (232 settings, 87 in the template, 100 intervals, 18 element ranges). Build 0 warnings (clean
+build of the motion runner and an incremental build); `check_no_x87.py` PASS 709 / 0. Host: `test_config_schema.py` 16
+tests (parser, resolver layers against the Python mirror, NUL, ranges, opt-outs, bare-DLL pin), `test_launcher_defaults.py`
+8 (the `--config` player-mode pin), `test_proxy_identity.py` (source suffix), `test_wine_lock.py`, `test_release_package.py`
+3; the full host suite 269 modules / 2,801 tests, 1 failing (`test_terran_lod_patch_result`, bound to the commit: rerun after
+the merge). `optout_dry_runs.py` PASS (12 opt-outs + the unknown `--no-lod-occlusion`: 0 defaults picked up on the default
+launch, 0 settings differing between player mode without a file and the default launch). `range_sweep.py` 49 agree, 0
+mismatch, 36 by hand. `run_motion_output.py` (599 s under the lock) PASS: 229 committed cases at 345,859 checks (0 changed,
+0 missing) plus `seam-config-file` 52 checks (four runs: override, game, none, and an empty `X3M_FRAME_END_STRIDE` over the
+file: no cadence row, `proxy_options X3M_FRAME_END_STRIDE=@env`, so Wine passes an empty variable through; the NUL line
+refused as `problem=nul` with `camera_log` still 4; `proxy_options` carries `X3M_MOTION_JITTER_SAMPLES=8@env`,
+`X3M_BLOOM_SOURCE_CLAMP=1.0@default`, `X3M_CAMERA_CUT_DEG=12.5@file` / `20.0@default`); load time `us=` 1,832 (override),
+2,517 (beside the DLL), 765 (override, second file open of the run), 26 (`none`) for a 329-byte file. The partial run of
+the case with `production-taa-on` 83, `seam-taa-on` 164, `seam-ownership-taa-on` 164 and
+`seam-ownership-taa-camera-candidates-on` 216 checks (the committed counts). `run_cursor_reassert.py` PASS (41),
+`run_d3d9_exports.py --dll build/d3d9.dll` PASS (8 + 8). `compare_dry_runs.py` 5 PASS and `dry_run_tiers.py` 9 PASS, the
+single delta `X3M_CONFIG=bare` (default launch 123 variables, vanilla 71); `--config` sends no `X3M_*` but the
+installation's `X3M_VOICE_DMO_FALLBACK=1` on bottle X3, `--config /some/path` adds `X3M_CONFIG=Z:/some/path`, `--config
+--no-taa` 29 variables (the TAA knobs empty, `X3M_TAA=0`). `package.py`: `x3m-0.4.0.zip` 76,905,148 B = `d3d9.dll`,
+`x3m.ini` (14,053 B), `x3m-regenerate.exe`, `x3m-regenerate`, `README.txt` (2,027 B). Not verified: a flight of the
+player mode (`x3run --config`, the shipped template untouched) compared with a default launch by `proxy_options`; native
+Windows.

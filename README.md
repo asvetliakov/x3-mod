@@ -173,6 +173,13 @@ directory (one bundled executable, no Python needed): it rebuilds the fog
 families and the merged-LOD overlay for the installed mods
 ([user guide](docs/user/regenerate.md)).
 
+Settings: `x3m.ini` next to `d3d9.dll` (the commented template is `assets/x3m.ini`, generated from
+`tools/config/schema.py`); without the file the DLL uses the same defaults as the launcher's default launch. The
+launcher sends `X3M_CONFIG=bare` (no file, no built-in defaults: it sends every setting itself) unless `--config [PATH]`
+is given, which is player mode: the DLL's defaults and the file, plus only the options given explicitly
+([user guide](docs/user/config.md), [design](docs/architecture/config-file.md)). The release zip is built by
+`tools/release/package.py`.
+
 ## Scope of instrumentation
 
 Targets X3AP's imported `Direct3DCreate9` path. Shader bytecode is FNV-1a 64 hashed
