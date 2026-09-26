@@ -2,7 +2,7 @@
 
 Archive with `python3 tools/analysis/archive_user_runs.py`.
 
-Updated 2026-09-26 (Run 93 A completed: bullets still erased by the TAA resolve over far geometry, design in progress; rotation weight stays off; no run queued). Earlier: 2026-09-21 (Run56 accepted for media stability; Run57 station-flash correction accepted; fog range remains under investigation). Run 17 crypto acceptance and the first-person/chase
+Updated 2026-09-27 (Run94 installed: bolts through the TAA; Run 94 A queued; Run 93 A completed). Earlier: 2026-09-21 (Run56 accepted for media stability; Run57 station-flash correction accepted; fog range remains under investigation). Run 17 crypto acceptance and the first-person/chase
 left-centre-right diagnostic are complete and are not in this queue. The agent
 never launches the game. Only open runs keep their instructions here; a completed
 run keeps only its row in the table below. The installed build is described in [status](../status.md).
@@ -30,7 +30,32 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 85 A | Run85 (far clip 7x7 + ramp 60/68): plants at rest/pans, regression, combat capture | 0 | Superseded 2026-09-25 by Run 86 A before it was flown (Run86 installed the same night with the opt-ins); its checks are folded into Run 86 A |
 
 
-No run is queued. Completed instructions for Runs 73-88 are in the [archive](../archive/user-runs-completed.md).
+**Run 94 A (queued 2026-09-27; Run94 DLL `338b00d7…` from 2a75e2c3, installed 00:47: bolts through the TAA, on by default).**
+One question: are the bullets right now over distant stations? The late bullet draw flags its pixels, the resolve
+leaves the station's history untouched and the tonemap adds the bolt back at half strength (`--bolt-far-show`, default
+0.5) where the resolve was holding far or thin-region history. Same stand as before (a large station 2-10 km away, and
+a far one if you can); name the sector.
+
+Launch 1 (defaults):
+
+```sh
+env -u CX_DEBUGMSG X3M_FIXTURE_BOTTLE=X3 /Users/asvetl/x3-mod/x3run --direct --debug --perf --taa-debug
+```
+
+1. **Bullets over a station**: fire across a distant station (and a far one) so bolts cross the silhouette. Expected: the
+   bolts stay visible over the hull as over space (a little dimmer over the hull is by design at 0.5); no dark spots or
+   flicker on the hull where the bolts passed, no trail left on the station after the bolts. F8 once while firing.
+   Rows: `bolt_far_composite` once row at start; `bolt_flag=` on the frame lines while firing.
+2. **Bullets over a shadowed hull**: fire at a near ship or station whose hull is in the sun's shadow (self-shadowed
+   side): the bolts must not go dark or vanish over the shadowed part, and the hull must not flicker. F8 once.
+3. **Nothing else changed**: the stand at rest and under a pan looks like Run 93 A launch 1; the bloom around bolts over
+   space unchanged.
+4. Exit through the menu.
+
+Launch 2 (short, optional): the same command plus `--bolt-far-show 1` (full-strength composite) if 0.5 looks too dim
+over the hull; or `--bolt-far-composite off` to see the old behaviour again for comparison.
+
+Run 94 A is the only queued run. Completed instructions for Runs 73-88 are in the [archive](../archive/user-runs-completed.md).
 
 ## Stand command
 
