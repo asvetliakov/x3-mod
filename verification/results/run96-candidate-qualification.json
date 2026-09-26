@@ -1,0 +1,46 @@
+{
+ "schema": 1,
+ "candidate": {
+  "commit": "00d85785",
+  "checkout": "/Users/asvetl/x3-mod (clean tree; built by tools/release/release.py into /tmp/x3m-release-0.5.0/build-release, stripped to /tmp/x3m-release-0.5.0/d3d9.dll)",
+  "dll": "/tmp/x3-run96-candidate/build/d3d9.dll (copy of the shipped stripped DLL; d3d9.debug and d3d9-unstripped.dll beside it)",
+  "sha256": "33f815375d573d3075744b26aedbf473c0d1023473ca4314f0a42106bdfbc49f",
+  "bytes": 39439629,
+  "unstripped_sha256": "045f4f3b6adf90a38efee5bf487a1678f3bf5a603b69b9239934c9c1b44ef9d7",
+  "unstripped_bytes": 57248980,
+  "debug_file_sha256": "3fc4b48a28386293b4027506b613b91785eb5c343b1dae586f4c312779186fed",
+  "embedded_marker": "X3M_SOURCE_COMMIT=00d857851a2a0d81ef7dcd5e72c673874bed32d7 (once)",
+  "configuration": "RelWithDebInfo, DWARF stripped for shipping (strip identity PASS: 10 loaded sections, 17 exports byte-identical)",
+  "toolchain": "cmake/mingw-i686.cmake; i686-w64-mingw32-gcc 16.2.0; cmake 4.4.3; binutils objcopy",
+  "build_warnings": 0,
+  "supersedes": "Run95 25cba248 (35c83e26)"
+ },
+ "scope": "reduced by the user's instruction (build & install; no long fixtures): DLL changes since Run95 = the always-tier gating of six per-frame emitter rows and the resource identity rows (30f41d95: seam-log-tiers 58 checks, seam-log-tiers-emitters 17, four emitter fixtures rerun at their counts by the implementer) and the strip (identity-checked); the shader/route/resolve sources Run94 qualified are unchanged",
+ "release": {
+  "record": "verification/results/release-0.5.0.json",
+  "zip": "/tmp/x3m-release-0.5.0/x3m-0.5.0.zip",
+  "zip_sha256": "e9d1d84a33edaa6cdd20158cca8bc41ae570efdbc11563bc394154df256d995c",
+  "zip_bytes": 58241441,
+  "contents": [
+   "d3d9.dll (stripped) 39,439,629",
+   "x3m.ini 15,383",
+   "x3m-regenerate.exe 29,633,495",
+   "README.txt 2,476"
+  ],
+  "excluded": "macOS x3m-regenerate and the voice decoder (user decision 2026-09-27)",
+  "wall_s": 194.9
+ },
+ "x87_audit": "PASS 0 violations on the unstripped and the stripped DLL (release.py)",
+ "config_check": "generate.py --check PASS 236 settings, 90 in the template",
+ "host_suite": {
+  "modules": 271,
+  "tests": 2825,
+  "failing": 0,
+  "note": "run on main at a4899fd1 (one module needed the bottle-env suffix in its expectations, fixed 8dc1f9b8)"
+ },
+ "wine_sections": "none (user instruction)",
+ "verdict": "QUALIFIED (reduced scope by user instruction)",
+ "installed": false,
+ "native_windows": "unverified",
+ "producer": "main session"
+}

@@ -1,0 +1,58 @@
+{
+ "candidate": {
+  "dll": "/tmp/x3-run96-candidate/build/d3d9.dll",
+  "sha256": "33f815375d573d3075744b26aedbf473c0d1023473ca4314f0a42106bdfbc49f",
+  "bytes": 39439629,
+  "commit": "00d85785",
+  "qualification": "verification/results/run96-candidate-qualification.json",
+  "release": "x3m-0.5.0.zip (stripped DLL; verification/results/release-0.5.0.json)"
+ },
+ "command": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3-run96-candidate/build/d3d9.dll",
+ "cwd": "/Users/asvetl/x3-mod",
+ "exit": 0,
+ "installed_at": "2026-09-27T02:09+04:00",
+ "installed": {
+  "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
+  "sha256": "33f815375d573d3075744b26aedbf473c0d1023473ca4314f0a42106bdfbc49f",
+  "bytes": 39439629,
+  "verified": "sha256 and size read back after install; candidate hash rechecked before install; first stripped DLL installed (loads in the game: to be confirmed by the next launch)"
+ },
+ "config_template": {
+  "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/x3m.ini",
+  "source": "assets/x3m.ini at 00d85785",
+  "sha256_prefix": "7043af8eb130279d"
+ },
+ "unchanged": {
+  "X3AP.exe": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab"
+ },
+ "bottle_configuration": {
+  "cxbottle.conf_before": "cc5d6c00a8afccaf88cbae1a7c46040db513eb163a52693287a3d29aca828e0c",
+  "cxbottle.conf_after": "b06979d14e75100b069fcbb3fceed9034431f872ad217a6c92a151542cf7c82f",
+  "change": "deliberate (user decision 2026-09-27): `manage.py voice-decoder --bottle-env apply --bottle X3` added GST_PLUGIN_PATH_1_0 and GST_REGISTRY_1_0 (the game-directory voice decoder drop-in) to [EnvironmentVariables]; backup cxbottle.conf.x3m-bak; remove with `--bottle-env remove`",
+  "applies_to": "every program started in bottle X3 (including --vanilla launches)"
+ },
+ "previous": {
+  "dll": "/tmp/x3-run95-candidate/build/d3d9.dll",
+  "sha256": "25cba24802207e4ab871428ca922c6a933c7d9a14bd78efe50d6b27255a7a84b",
+  "bytes": 57247320,
+  "commit": "35c83e26"
+ },
+ "rollback": {
+  "dll": "/tmp/x3-run95-candidate/build/d3d9.dll",
+  "sha256": "25cba24802207e4ab871428ca922c6a933c7d9a14bd78efe50d6b27255a7a84b",
+  "bytes": 57247320,
+  "records": [
+   "verification/results/run95-candidate-qualification.json",
+   "verification/results/run95-candidate-install.json"
+  ],
+  "then": "/tmp/x3-run94-candidate/build/d3d9.dll 338b00d7\u2026 (accepted, Run 94 A)"
+ },
+ "game_running_at_install": false,
+ "game_data": "x3m/voice-decoder drop-in installed (13 files, valid); fleet overlay and fog families unchanged; x3m.ini template refreshed",
+ "changes_vs_previous": [
+  "always tier: six per-frame emitter rows and resource identity rows gated (player-mode log ~159 MB/h -> ~3 MB/h inferred) (30f41d95)",
+  "DWARF stripped from the shipped DLL (57.2 MB -> 39.4 MB; d3d9.debug kept beside the record)",
+  "speech from a plain CrossOver launch via the bottle environment setting (a4899fd1)"
+ ],
+ "incidents": []
+}
