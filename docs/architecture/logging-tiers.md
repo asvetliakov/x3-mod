@@ -533,6 +533,64 @@ run337, but a disk sync, an antivirus scan or a page-in on the render thread) is
   far-stabiliser and thin-region tables identical to the committed summary). Adapted but not rerun: the other eleven runners
   that now set `X3M_LOG_FILE` (`verification/probe/fixture_log.py`) and the two collide runners (`X3M_TELEMETRY=1`).
 
+### Per-frame emitter rows (fix of 2026-09-27)
+
+**Defect** (measured on the game directory's `x3m.log`, a launcher-less player-mode session of the installed Run95 DLL:
+24,034,347 B, 34,670 frames in 543.5 s, 63.8 fps, about 159 MB per hour against the specified 0.2): six per-frame rows
+wrote in the always tier, `hull_emission_frame` (34,505 rows), `original_fill_frame`, `hull_lightmap_frame`,
+`hull_lightmap_far_fade_frame`, `hull_lightmap_widen_frame` (32,345 each), `emission_source_gain_frame` (17,962), plus
+11,826 `resource identity=` rows. Section 1 had put the six into the family block (perf at 60, debug at 1), but in
+`MotionOutput::after_present` they sat outside the family condition, gated only on their options, which the launcher
+turns on by default with `--hdr` (and `x3m.ini` in player mode). They predate the tiers (`emission_source_gain_frame`
+3ded9474, 2026-09-15; `original_fill_frame` d8642469, 09-16; `hull_emission_frame` 075578a2, 09-17;
+`hull_lightmap_frame` 27d18716, 09-18; `hull_lightmap_far_fade_frame` 316c99c9, 09-19; `hull_lightmap_widen_frame`
+6837a968, 09-22; `resource` d8dcdd50, 09-10). The 2026-09-26 figures missed them: `tier_volume.py` sums the design's
+membership over run337's measured row sizes (it counts them at the family cadence and never reads the gates), and
+`seam-log-tiers` runs the shadow-replay script without the emitter options, so its always run could not show them.
+
+**Fix**: the six rows log only on `family_row()` (capture frames, or telemetry at the `X3M_MOTION_FRAME_LOG` cadence:
+`--perf` every 60th frame, `--debug` every frame, `X3M_TELEMETRY=1` with the fixtures' own cadence); their counters still
+reset every frame. `resource identity=` rows are capture metadata (`summarize_capture.py` maps a capture's identities to
+types): they log only with `--debug` (where F8 captures exist) or a capture start a fixture scheduled (`X3M_CAPTURE_START`
+not 0 and below the launcher's 999999; `set_resource_rows` at `initialize_log`); the `resource_identity unavailable=` error
+rows stay in every tier. No mode or config row moved.
+
+**Guards**: `test_logging_tiers.PerFrameRowTiers` parses every `log("..._frame` call under `src/proxy` and `src/renderer`
+and requires a tier-derived condition (`log_tier::`, the cached group flags, `family_row()`, `shadow_state_row()`,
+`telemetry_`, capture frames, the member switches `shadow_timing_` / `fog_timing_` / `point_sun_trace_`, or a local alias of
+one) in its statement, an enclosing `if`, or the three lines above; a `log_*` helper without one is checked at each call
+site. Listed exceptions, each with its reason in the test: `volumetric_fog_frame` (the designed 600-frame heartbeat),
+`motion_unmatched_static_frame` (256-row cap), `screen_emission_frame`, `point_light_admission_frame`,
+`scene_depth_frame` (variables the launcher never sends), `lod_switch_frame`, `window_msg_frame` (--debug members),
+`game_phase_slow_frame` (--draw-trace), `profile_frame` (--profile). Against the unfixed source it reports exactly the six
+rows. `seam-log-tiers` now also requires no `*_frame` and no `resource` row in its always run after the first
+`frame_end`; the new case `seam-log-tiers-emitters` runs the light-map script with the launcher's default emitter options
+under the always tier, `--perf` and `--debug`.
+
+**Always tier after the fix**: `verification/results/logging-tiers/always_after_fix.py` over the same player log
+(`always_after_fix.json`): steady rows (after the first `frame_end`) 5.63 per frame, 692.5 B per frame before (measured);
+0.048 rows and 12.9 B per frame after, about 2.8 MB per hour at 60 fps (inferred: the gated rows removed, every other
+row at its measured count). The remainder is event rows, not per-frame ones: `shadow_replay_sun_point` (155 rows, 143 KB,
+the largest), `chase_camera`, `media_cue_window`, `volumetric_fog_prefill`, `motion_unmatched_static_frame` (capped),
+`volumetric_fog_frame` / `volumetric_fog_cards` (the heartbeats), `voice_dmo_fallback`; over a 9-minute session they
+still exceed the 0.2 MB per hour design figure by about 14x (their first-N caps make the hourly extrapolation an upper
+bound).
+
+**Fixture** (`run_motion_output.py seam-log-tiers seam-log-tiers-emitters`, bottle X3, seam DLL from the fixed sources,
+2026-09-27; compact record `verification/results/logging-tiers/seam-tiers-2026-09-27.json` by `extract_seam_tiers.py`):
+`seam-log-tiers` PASS, 58 checks (57 + the new one); its always run without F8 logs 24 steady rows over 8 frames (3.0 per
+frame, 657 B per frame, all lifecycle events: Reset, release, destroy, shadow refusals, the writer's park), no `*_frame`
+and no `resource` row; name equivalence debug 141, perf 125, draw-trace 135; log bench mean 2.62 us, worst 43.5 us.
+`seam-log-tiers-emitters` PASS, 17 checks, 182 frames per run: always 0 emitter rows and no `*_frame` row (15 steady rows,
+0.082 per frame, 8.6 B per frame); `--perf` 4 rows each of `hull_emission_frame`, `original_fill_frame`,
+`hull_lightmap_frame`, `hull_lightmap_far_fade_frame`, `hull_lightmap_widen_frame` (the 60-frame cadence over 182 frames); `--debug` 182
+/ 182 / 181 / 181 / 181. The light-map script draws no emission pair, so `emission_source_gain_frame` is 0 in every tier;
+its gate is the same `family` flag and is pinned by the host tests. The other readers of these rows, rerun on the same
+sources: `seam-taa-fade-route-overlay-lightmap` and `-far-fade` (runner default cadence 60, so the rows now come from the
+capture frames and frame 0: 12 `hull_lightmap_frame` rows, 12 far-fade rows in the far-fade case) 5,101 checks each,
+`seam-lightmap-far-fade-on` 56, `seam-lightmap-widen-k3` 503, all PASS and equal to the 2026-09-26 counts
+(`motion-cases-2026-09-26.json`); `run_sun_share_live.py` sets `X3M_TELEMETRY=1 X3M_MOTION_FRAME_LOG=1` and was not rerun.
+
 ## Verification that would prove it
 
 1. Host: `test_launcher_defaults.py` (new pins), `compare_dry_runs.py` (empty vs `--debug --perf` vs the old

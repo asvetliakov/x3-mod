@@ -1183,6 +1183,18 @@ CASES += [case(name, 'lightmapwiden', camera=True, hdr=True,
           for name, kb in LIGHTMAP_WIDEN_CASES.items()]
 CASES += [case(LIGHTMAP_WIDEN_PROGRAMS_CASE, 'lightmapwiden', camera=True, hdr=True,
                hdr_env=dict(LIGHTMAP_WIDEN_ENV, X3M_HULL_EMISSIVE_WIDENING='3,3', X3M_FIXTURE_WIDEN_SCRIPT='programs'))]
+# seam-log-tiers-emitters (2026-09-27): the light-map script with the launcher's default emitter options (light-map gain,
+# widening, far fade, original fill, hull and source emission gain) under the always tier, --perf and --debug. The six
+# per-frame emitter rows logged every frame in the always tier (160 MB/h in a player-mode session); the always run must
+# log no *_frame row after the first frame_end, --debug must log the light-map rows every frame.
+LOG_TIERS_EMITTERS_CASE = 'seam-log-tiers-emitters'
+LOG_TIERS_EMITTER_ROWS = ('hull_emission_frame', 'original_fill_frame', 'hull_lightmap_frame', 'hull_lightmap_far_fade_frame',
+                          'hull_lightmap_widen_frame', 'emission_source_gain_frame')
+LOG_TIERS_EMITTERS_REQUIRED = ('hull_lightmap_frame', 'hull_lightmap_far_fade_frame', 'hull_lightmap_widen_frame')  # drawn by this script
+CASES += [case(LOG_TIERS_EMITTERS_CASE, 'lightmapwiden', camera=True, hdr=True, tiers='emitters',
+               hdr_env=dict(LIGHTMAP_WIDEN_ENV, X3M_HULL_EMISSIVE_WIDENING='4,4',
+                            X3M_LIGHT_MAP_FAR_FADE='%g,%g,%g' % (*LIGHTMAP_FADE_P, 1.0), X3M_ORIGINAL_FILL='0.01',
+                            X3M_HULL_EMISSION_GAIN='2.0', X3M_EMISSION_SOURCE_GAIN='2.0'))]
 LIGHTMAP_WIDEN_MAP = 64
 LIGHTMAP_WIDEN_PAIRS = 11
 LIGHTMAP_WIDEN_LIGHTMAP_PROGRAMS = 100
@@ -1766,12 +1778,17 @@ def run_exit_path(name, command, base_env, directory, wine_log, report):
     return {'checks': checks, 'exit': 0, 'variants': variants, 'directory': str(directory.relative_to(ROOT))}
 
 
-def run_log_tiers(name, command, base_env, directory, wine_log, report):
-    """The seam-log-tiers case (LOG_TIERS_CASE above): ten runs of one script (always, always without F8, debug, perf and draw-trace with their individuals, bench, exception), row names and volumes compared."""
+def run_log_tiers(name, command, base_env, directory, wine_log, report, variant=True):
+    """The seam-log-tiers case (LOG_TIERS_CASE above): ten runs of one script (always, always without F8, debug, perf and draw-trace with their individuals, bench, exception), row names and volumes compared.
+    variant 'emitters' (LOG_TIERS_EMITTERS_CASE): three runs (always without F8, perf, debug) of the emitter-option script."""
     captures = directory / 'x3-modern-captures'
     captures.mkdir(exist_ok=True)
     base = {k: v for k, v in base_env.items() if k not in LOG_TIERS_CLEARED}
-    runs = {'always': {}, 'always_no_capture': dict(X3M_CAPTURE_START='1000000', X3M_CAPTURE_FRAMES='0'),
+    no_capture = dict(X3M_CAPTURE_START='1000000', X3M_CAPTURE_FRAMES='0')
+    if variant == 'emitters':
+        return run_log_tiers_emitters(name, command, base, directory, wine_log, report,
+                                      {'always_no_capture': no_capture, 'perf': dict(no_capture, X3M_PERF='1'), 'debug': dict(no_capture, X3M_DEBUG='1')})
+    runs = {'always': {}, 'always_no_capture': no_capture,
             'debug': dict(X3M_DEBUG='1'), 'debug_individual': LOG_TIERS_DEBUG, 'perf': dict(X3M_PERF='1'), 'perf_individual': LOG_TIERS_PERF,
             'draw_trace': dict(X3M_PERF='1', X3M_DRAW_TRACE='1'), 'draw_trace_individual': dict(LOG_TIERS_DRAW_TRACE, X3M_PERF='1'),
             'bench': dict(X3M_TELEMETRY='1', X3M_FIXTURE_LOG_BENCH=str(LOG_TIERS_BENCH_ROWS)),
@@ -1842,6 +1859,10 @@ def run_log_tiers(name, command, base_env, directory, wine_log, report):
                   'shadow_retention_frame', 'sun_shadow_lane_frame', 'camera_state', 'telemetry_summary', 'log_writer', 'taa_invalidate'):
         assert gated not in volumes['always_no_capture']['steady_names'], (name, gated)
         checks += 1
+    # 2026-09-27: no *_frame row at all (the frame_end heartbeat is not one) and no resource identity row.
+    frame_rows = [n for n in volumes['always_no_capture']['steady_names'] if n.endswith('_frame') or n == 'resource']
+    assert not frame_rows, (name, frame_rows)
+    checks += 1
     bench = fields(next(l for l in logs['bench'] if l.startswith('log_bench ')))
     assert int(bench['rows']) == LOG_TIERS_BENCH_ROWS, (name, bench)
     checks += 1
@@ -1852,6 +1873,50 @@ def run_log_tiers(name, command, base_env, directory, wine_log, report):
               'bench_log_writer': volumes['bench']['log_writer'], 'debug_log_writer': volumes['debug']['log_writer'], 'perf_log_writer': volumes['perf']['log_writer'],
               'exception_row': next(fields(l) for l in logs['exception'] if l.startswith('exception '))}
     return result
+
+
+def run_log_tiers_emitters(name, command, base, directory, wine_log, report, runs):
+    """seam-log-tiers-emitters: the emitter rows per tier. Always: no *_frame row and no resource row after the first frame_end;
+    --debug: the light-map rows on every frame they drew; --perf: at most the X3M_MOTION_FRAME_LOG cadence (60)."""
+    captures = directory / 'x3-modern-captures'
+    stamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
+    logs, checks, tiers = {}, 0, {}
+    for index, (tier, extra) in enumerate(runs.items()):
+        log_path = captures / f'session-{stamp}-emitters-{index}.log'
+        env = dict(base, **extra, X3M_LOG_FILE='Z:' + str(log_path.resolve()))
+        no_game()
+        wine_log.write(f'==== {name} {tier}\n'); wine_log.flush()
+        completed = fixture_process.run(command, build_dir=directory, env=env, stdout=subprocess.PIPE, stderr=wine_log, text=True, timeout=360)
+        (directory / f'fixture-stdout-{tier}.txt').write_text(completed.stdout)
+        report.append(f'==== {name} {tier} exit={completed.returncode}\n{completed.stdout[-2000:]}')
+        out = completed.stdout.splitlines()
+        assert completed.returncode == 0 and out and out[-1].startswith('RESULT PASS '), (name, tier, completed.returncode, completed.stdout[-400:])
+        assert log_path.is_file(), f'{name} {tier}: no session log at the X3M_LOG_FILE path'
+        logs[tier] = log_path.read_text(errors='replace').splitlines()
+        checks += 2
+    for tier, lines in logs.items():
+        ends = [fields(l) for l in lines if l.startswith('session_end ')]
+        assert len(ends) == 1, (name, tier, len(ends))
+        frames = int(ends[0]['frames'])
+        start = next((i for i, l in enumerate(lines) if l.startswith('frame_end ')), len(lines))
+        steady = [l for l in lines[start + 1:] if not l.startswith('session_end ')]
+        counts = {row: sum(1 for l in lines if l.startswith(row + ' ')) for row in LOG_TIERS_EMITTER_ROWS}
+        modes = sorted({l.split(' ', 1)[0] for l in lines[:start + 1] if l.split(' ', 1)[0].endswith(('_mode', '_config'))})
+        tiers[tier] = {'frames': frames, 'rows': len(lines), 'steady_rows': len(steady), 'steady_bytes': sum(len(l) + 1 for l in steady),
+                       'rows_per_frame': round(len(steady) / frames, 3) if frames else None,
+                       'bytes_per_frame': round(sum(len(l) + 1 for l in steady) / frames, 1) if frames else None,
+                       'emitter_rows': counts, 'steady_frame_names': sorted({l.split(' ', 1)[0] for l in steady if l.split(' ', 1)[0].endswith('_frame')}),
+                       'mode_rows': len(modes)}
+        checks += 1
+    always = tiers['always_no_capture']
+    assert not always['steady_frame_names'] and not any(always['emitter_rows'].values()), (name, always)
+    assert not any(l.startswith('resource ') for l in logs['always_no_capture']), name
+    checks += 2
+    for row in LOG_TIERS_EMITTERS_REQUIRED:  # drawn every frame of the script: --debug logs them at stride 1
+        assert tiers['debug']['emitter_rows'][row] > 0, (name, row, tiers['debug']['emitter_rows'])
+        assert tiers['perf']['emitter_rows'][row] <= tiers['perf']['frames'] // 60 + 1, (name, row, tiers['perf']['emitter_rows'])
+        checks += 2
+    return {'checks': checks, 'exit': 0, 'directory': str(directory.relative_to(ROOT)), 'always': always, 'tiers': tiers}
 
 
 def run_config_file(name, command, base_env, directory, wine_log, report):
@@ -6907,11 +6972,12 @@ def main(argv=None):
                 print(f'{name}: exit={case["exit"]} checks={case["checks"]} us={case["us"]}', flush=True)
                 continue
             if tiers:
-                case = run_log_tiers(name, command, env, directory, wine_log, report)
+                case = run_log_tiers(name, command, env, directory, wine_log, report, tiers)
                 result['cases'][name] = case
                 save()
                 print(f'{name}: exit={case["exit"]} checks={case["checks"]} always_rows_per_frame={case["always"]["rows_per_frame"]} '
-                      f'bench_mean_us={case["bench"]["mean_us"]} bench_max_us={case["bench"]["max_us"]}', flush=True)
+                      + (f'bench_mean_us={case["bench"]["mean_us"]} bench_max_us={case["bench"]["max_us"]}' if 'bench' in case
+                         else f'emitter_rows={ {t: v["emitter_rows"] for t, v in case["tiers"].items()} }'), flush=True)
                 continue
             no_game()
             wine_log.write(f'==== {name}\n'); wine_log.flush()

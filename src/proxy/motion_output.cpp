@@ -9778,13 +9778,18 @@ void MotionOutput::after_present(HRESULT result) noexcept {
         chase_pose_mark_ = chase_camera::pose_write_count(); // the next frame's gate needs a fresh chase pose
     if (bolt_footprint_requested_ && ++bolt_window_frames_ >= 300u) log_bolt_footprint_window();
     if (fade_refused_count_) log_fade_refused();
+    // The six per-frame count rows of the emitter options below are family
+    // rows (logging-tiers.md, "Per-frame emitter rows"): capture frames, or
+    // telemetry at the X3M_MOTION_FRAME_LOG cadence (--perf every 60th frame,
+    // --debug every frame), never the always tier. Counters reset every frame.
+    const bool family = family_row();
     if (emission_source_gain_requested_) {
-        // One line per frame that saw at least one candidate draw (an eligible
-        // pair reaching prepare_source_gain), capture or not: run 26's 16-line
-        // sample cap hid the totals. refused_other = unknown + state + bind.
+        // One line per family frame that saw at least one candidate draw (an
+        // eligible pair reaching prepare_source_gain): run 26's 16-line sample
+        // cap hid the totals. refused_other = unknown + state + bind.
         const auto& g = source_gain_counts_;
         const std::uint32_t other = g.refused_unknown + g.refused_state + g.bind_failures;
-        if (g.admitted || g.refused_blend || g.refused_screen || other)
+        if (family && (g.admitted || g.refused_blend || g.refused_screen || other))
             log("emission_source_gain_frame device=%llu frame=%llu gain=%g admitted=%u admitted_screen=%u refused_blend=%u refused_screen=%u refused_other=%u refused_unknown=%u refused_state=%u bind_failures=%u",
                 id_, frame_, double(emission_source_gain_), g.admitted, g.admitted_screen, g.refused_blend,
                 g.refused_screen, other, g.refused_unknown, g.refused_state, g.bind_failures);
@@ -9798,7 +9803,7 @@ void MotionOutput::after_present(HRESULT result) noexcept {
         // refused_blend; toggled is the light-map flag.
         const auto& g = hull_gain_counts_;
         const std::uint32_t other = g.refused_routed + g.refused_unknown + g.refused_state + g.bind_failures;
-        if (g.admitted || g.refused_blend || g.refused_variant || other)
+        if (family && (g.admitted || g.refused_blend || g.refused_variant || other))
             log("hull_emission_frame device=%llu frame=%llu gain=%g admitted=%u refused_blend=%u refused_variant=%u programs=%03x refused_other=%u refused_routed=%u refused_unknown=%u refused_state=%u bind_failures=%u opaque=%u alpha=%u toggled=%u",
                 id_, frame_, double(hull_emission_gain_), g.admitted, g.refused_blend, g.refused_variant, g.programs,
                 other, g.refused_routed, g.refused_unknown, g.refused_state, g.bind_failures, g.refused_opaque,
@@ -9806,20 +9811,22 @@ void MotionOutput::after_present(HRESULT result) noexcept {
         hull_gain_counts_ = {};
     }
     if (original_fill_requested_ && original_fill_draws_) {
-        log("original_fill_frame device=%llu frame=%llu fill=%g admitted=%u", id_, frame_, double(original_fill_),
-            original_fill_draws_);
+        if (family)
+            log("original_fill_frame device=%llu frame=%llu fill=%g admitted=%u", id_, frame_, double(original_fill_),
+                original_fill_draws_);
         original_fill_draws_ = 0;
     }
     if (hull_lightmap_gain_requested_ && hull_lightmap_draws_) {
-        log("hull_lightmap_frame device=%llu frame=%llu gain=%g fill=%g admitted=%u toggled=%u", id_, frame_,
-            double(hull_lightmap_gain_), double(original_fill_), hull_lightmap_draws_,
-            unsigned(hull_lightmap_enabled_));
-        if (lightmap_far_fade_)
+        if (family)
+            log("hull_lightmap_frame device=%llu frame=%llu gain=%g fill=%g admitted=%u toggled=%u", id_, frame_,
+                double(hull_lightmap_gain_), double(original_fill_), hull_lightmap_draws_,
+                unsigned(hull_lightmap_enabled_));
+        if (family && lightmap_far_fade_)
             log("hull_lightmap_far_fade_frame device=%llu frame=%llu admitted=%u faded=%u min_gain=%g floor=%g camera=%u",
                 id_, frame_, hull_lightmap_draws_, lightmap_fade_draws_,
                 double(lightmap_fade_draws_ ? lightmap_fade_min_ : hull_lightmap_gain_), double(lightmap_fade_floor_),
                 unsigned(lightmap_fade_m00_ > 0.f));
-        if (lightmap_widen_)
+        if (family && lightmap_widen_)
             log("hull_lightmap_widen_frame device=%llu frame=%llu admitted=%u widened=%u held=%u k=%g b=%g filter_sets=%u filter_reads=%u filter_failures=%u",
                 id_, frame_, hull_lightmap_draws_, lightmap_widen_draws_, lightmap_widen_held_,
                 double(lightmap_widen_k_), double(lightmap_widen_b_), lightmap_widen_filter_sets_,

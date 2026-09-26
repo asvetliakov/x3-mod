@@ -192,6 +192,130 @@ class DllGroupReads(unittest.TestCase):
         self.assertIn('inline bool draw_trace_flag(const wchar_t* name) noexcept { return env_flag(name) || draw_trace(); }', header)
 
 
+def _strip_comments(text):
+    """C/C++ text with // and /* */ comments blanked (newlines kept), string and character literals left intact."""
+    out, i, n = [], 0, len(text)
+    while i < n:
+        c = text[i]
+        if c in '"\'':
+            j = i + 1
+            while j < n and text[j] != c:
+                j += 2 if text[j] == '\\' else 1
+            out.append(text[i:j + 1]); i = j + 1
+        elif text.startswith('//', i):
+            j = text.find('\n', i); j = n if j < 0 else j
+            i = j
+        elif text.startswith('/*', i):
+            j = text.find('*/', i + 2); j = n if j < 0 else j + 2
+            out.append(re.sub(r'[^\n]', ' ', text[i:j])); i = j
+        else:
+            out.append(c); i += 1
+    return ''.join(out)
+
+
+class PerFrameRowTiers(unittest.TestCase):
+    """2026-09-27: six per-frame emitter rows (hull_emission_frame, original_fill_frame, hull_lightmap_frame,
+    hull_lightmap_far_fade_frame, hull_lightmap_widen_frame, emission_source_gain_frame) were logged every frame in the
+    always tier (160 MB/h in a player-mode session). Every `log("..._frame` call under src/proxy and src/renderer must sit
+    under a tier-derived condition (its statement, an enclosing if/else-if, or the three lines above it); a row in a
+    `log_*` helper without one is checked at every call site of the helper instead."""
+
+    # Flags that are the tiers or their individual members, read once at initialisation (log_tiers.h and the
+    # configure_* calls fed by it): the family cadence, capture frames (F8 is --debug only; fixtures schedule theirs),
+    # the telemetry gate, the member switches that carry a row at stride 1.
+    GATES = re.compile(r'log_tier::|\bcached_(?:perf|debug|draw_trace)\b|\bfamily_row\(\)|\bshadow_state_row\(\)|\btelemetry_\b'
+                       r'|\bcapture_\b|\bctx\.capture\b|\bcaptured\b|\bshadow_timing_\b|\bfog_timing_\b|\bpoint_sun_trace_\b')
+    # Rows allowed without such a condition, with the reason (the frame_end heartbeat and session_end are not *_frame rows).
+    EXCEPTIONS = {
+        'volumetric_fog_frame': 'always-tier heartbeat by design: every 600th frame and on a state change (fog_timing_ adds every frame)',
+        'motion_unmatched_static_frame': 'first-N witness: at most 256 rows per device',
+        'screen_emission_frame': 'X3M_SCREEN_EMISSION_TIMING=1 only, a diagnostic variable the launcher never sends',
+        'point_light_admission_frame': 'X3M_POINT_LIGHT_ROOT_ADMISSION=1 only, a fixture variable the launcher never sends',
+        'scene_depth_frame': 'the ownership copy-depth view only (fixture builds); no game launch requests it',
+        'lod_switch_frame': 'scan_lod_switches runs only with X3M_LOD_SWITCH_LOG, a --debug member (log_tier::debug_flag)',
+        'window_msg_frame': 'window_trace.cpp records only with X3M_WINDOW_TRACE, a --debug member',
+        'game_phase_slow_frame': 'game_phases.cpp is armed only by X3M_GAME_PHASES, a --draw-trace member',
+        'profile_frame': 'the sampling profiler runs only with --profile, a developer option',
+    }
+    CALL = re.compile(r'\b(?:x3m::)?log\(\s*"([a-z0-9_]+_frame)[ "=]')
+
+    @staticmethod
+    def _context(text, pos):
+        """(gate text, enclosing function name): the statement prefix, the enclosing control headers and the three
+        lines above pos, up to the enclosing function's header."""
+        j = pos - 1
+        while j >= 0 and text[j] not in ';{}':
+            j -= 1
+        parts = [text[j + 1:pos]]
+        line_start = pos
+        for _ in range(4):
+            line_start = text.rfind('\n', 0, line_start) if line_start > 0 else -1
+            if line_start < 0:
+                break
+        parts.append(text[max(line_start, 0):pos])
+        depth, i, function = 0, pos - 1, None
+        while i >= 0:
+            c = text[i]
+            if c == '}':
+                depth += 1
+            elif c == '{':
+                if depth:
+                    depth -= 1
+                else:
+                    k = i - 1
+                    while k >= 0 and text[k] not in ';{}':
+                        k -= 1
+                    header = text[k + 1:i].strip()
+                    if re.match(r'(?:else\b|if\b|for\b|while\b|switch\b|case\b|try\b|\[|$)', header) or header.endswith(')') and ' if' in header:
+                        parts.append(header)
+                    else:
+                        m = re.search(r'(\w+)\s*\([^()]*\)\s*(?:const\s*)?(?:noexcept\s*)?$', header)
+                        function = m.group(1) if m else header
+                        body = text[i:pos]
+                        # A local alias of one tier gate (const bool family = family_row();) counts as that gate.
+                        for alias in re.finditer(r'const bool (\w+) = ([\w:]+\(\)|[\w:]+);', body):
+                            if PerFrameRowTiers.GATES.search(alias.group(2)):
+                                parts = [re.sub(r'\b%s\b' % alias.group(1), alias.group(2), p) for p in parts]
+                        break
+            i -= 1
+        return ' '.join(parts), function
+
+    def test_every_frame_row_sits_under_a_tier_gate(self):
+        files = sorted(p for d in ('src/proxy', 'src/renderer') for p in (ROOT / d).glob('*')
+                       if p.suffix in ('.cpp', '.h'))
+        texts = {p: _strip_comments(p.read_text(errors='replace')) for p in files}
+        seen, ungated = set(), []
+        for path, text in texts.items():
+            for m in self.CALL.finditer(text):
+                row = m.group(1)
+                seen.add(row)
+                if row in self.EXCEPTIONS:
+                    continue
+                gate, function = self._context(text, m.start())
+                if self.GATES.search(gate):
+                    continue
+                # A log_* helper: every call site must be gated instead.
+                calls = [(p, c.start()) for p, t in texts.items() for c in re.finditer(r'(?<![:\w])%s\(\)\s*;' % re.escape(function or '?'), t)] \
+                    if function and function.startswith('log_') else []
+                if calls and all(self.GATES.search(self._context(texts[p], at)[0]) for p, at in calls):
+                    continue
+                ungated.append(f'{path.name}:{text.count(chr(10), 0, m.start()) + 1} {row}')
+        self.assertEqual(ungated, [])
+        # The six rows of 2026-09-27 are found (the scan did not silently miss them) and none is an exception.
+        emitters = {'hull_emission_frame', 'original_fill_frame', 'hull_lightmap_frame', 'hull_lightmap_far_fade_frame',
+                    'hull_lightmap_widen_frame', 'emission_source_gain_frame'}
+        self.assertLessEqual(emitters, seen)
+        self.assertFalse(emitters & set(self.EXCEPTIONS))
+        self.assertLessEqual(set(self.EXCEPTIONS), seen, 'an exception whose row no longer exists')
+
+    def test_resource_identity_row_is_not_always_tier(self):
+        state = (ROOT / 'src/proxy/capture_state.cpp').read_text()
+        self.assertIn('if (resource_rows) log("resource identity=', state)
+        self.assertIn('bool resource_rows = false;', state)
+        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        self.assertIn('set_resource_rows(log_tier::cached_debug || (capture_start && capture_start < 999999u && capture_count));', capture)
+
+
 class SessionLogContracts(unittest.TestCase):
     """Review of 2026-09-26: the exit path, the crash filter and the game-thread I/O rule, pinned in the source."""
 

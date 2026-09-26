@@ -1,0 +1,92 @@
+{
+ "file": "x3m.log",
+ "bytes": 24034347,
+ "lines": 195478,
+ "frames": 34670,
+ "elapsed_s": 543.534,
+ "fps": 63.8,
+ "gated_rows": {
+  "hull_emission_frame": 34505,
+  "original_fill_frame": 32345,
+  "hull_lightmap_frame": 32345,
+  "hull_lightmap_far_fade_frame": 32345,
+  "hull_lightmap_widen_frame": 32345,
+  "emission_source_gain_frame": 17962,
+  "resource": 11826
+ },
+ "before_steady_measured": {
+  "rows_per_frame": 5.634,
+  "bytes_per_frame": 692.53,
+  "MB_per_h_at_60fps": 149.586,
+  "MB_per_h_measured": 159.025
+ },
+ "after_steady_inferred": {
+  "rows_per_frame": 0.0479,
+  "bytes_per_frame": 12.94,
+  "MB_per_h_at_60fps": 2.795,
+  "MB_per_h_measured": 2.971
+ },
+ "after_steady_top": [
+  [
+   "shadow_replay_sun_point",
+   155,
+   142774
+  ],
+  [
+   "chase_camera",
+   117,
+   50481
+  ],
+  [
+   "media_cue_window",
+   115,
+   49691
+  ],
+  [
+   "volumetric_fog_prefill",
+   187,
+   33150
+  ],
+  [
+   "motion_unmatched_static_frame",
+   191,
+   22273
+  ],
+  [
+   "volumetric_fog_frame",
+   60,
+   19765
+  ],
+  [
+   "volumetric_fog_cards",
+   96,
+   19019
+  ],
+  [
+   "shadow_replay_sun_point_summary",
+   107,
+   18308
+  ],
+  [
+   "motion_unmatched_static",
+   64,
+   16635
+  ],
+  [
+   "voice_dmo_fallback",
+   96,
+   15468
+  ],
+  [
+   "motion_output_variant",
+   52,
+   5795
+  ],
+  [
+   "sun_shadow_original_lightmap_variant",
+   26,
+   4339
+  ]
+ ],
+ "header_rows": 148
+}

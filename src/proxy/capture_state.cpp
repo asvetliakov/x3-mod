@@ -10,6 +10,7 @@ namespace {
 // adds no ownership cycle and resource destruction automatically removes the tag.
 const GUID resource_guid = {0xaf21a9ad, 0x728e, 0x487c, {0xa2, 0x37, 0x06, 0xb1, 0x8d, 0xec, 0xa2, 0x78}};
 uint64_t next_resource_id = 1;
+bool resource_rows = false; // set_resource_rows at initialize_log: log_tier::cached_debug or a scheduled capture
 // Revision zero is not evidence of stability unless requested/known are true.
 // Native-only capture explicitly reports unavailable tracking without reading bytes.
 void capture_buffer_content(IDirect3DResource9* resource, uint64_t id, const char* kind) {
@@ -54,8 +55,11 @@ uint64_t resource_id(IDirect3DResource9* resource) {
         log("resource_identity unavailable=%08lx bytes=%u", set, unsigned(sizeof id));
         return 0;
     }
-    log("resource identity=%llu ptr=%p type=%u", id, resource, resource->GetType());
+    if (resource_rows) log("resource identity=%llu ptr=%p type=%u", id, resource, resource->GetType());
     return id;
+}
+void set_resource_rows(bool on) noexcept {
+    resource_rows = on;
 }
 void capture_constants(IDirect3DDevice9* d, bool vertex, const D3DCAPS9& caps) {
     const char* kind = vertex ? "vs" : "ps";

@@ -3982,6 +3982,11 @@ void initialize_log(HMODULE module) {
     // 64: a plain frame counter (ctx.remaining); above 8 serves the raw TAA
     // debug dumps (about 40 MB per 1280x768 frame), see tools/manage.py.
     if (capture_count > 64) capture_count = 64;
+    // The resource identity rows are capture metadata (summarize_capture maps a
+    // capture's identities to types): only where a capture can happen, F8 under
+    // X3M_DEBUG=1 or a start a fixture scheduled (not 0, not the launcher's
+    // 999999 or the fixtures' 1000000 "never"); never in the always tier.
+    set_resource_rows(log_tier::cached_debug || (capture_start && capture_start < 999999u && capture_count));
     // X3M_FRAME_END_STRIDE (1..100000): frames between frame_end lines. An explicit
     // valid value wins; unset or invalid: 1 with a logging group, else the default
     // 3600 (about one row a minute). frame_end_stride_mode is logged for any

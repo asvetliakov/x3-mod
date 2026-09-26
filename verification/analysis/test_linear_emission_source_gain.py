@@ -315,8 +315,10 @@ class LogGrammarTests(unittest.TestCase):
         line = rendered(fmt, 1, 1501, '2', 7, 5, 3, 2, 1, 1, 0, 0)
         match = FRAME.match(line); self.assertIsNotNone(match, line)
         self.assertEqual([int(match.group(i)) for i in range(4, 9)], [7, 5, 3, 2, 1])
-        block = self.motion[self.motion.index('// One line per frame that saw at least one candidate draw'):][:1200]
-        self.assertIn('if (g.admitted || g.refused_blend || g.refused_screen || other)', block)
+        block = self.motion[self.motion.index('// One line per family frame that saw at least one candidate draw'):][:1200]
+        # A family row since 2026-09-27 (logging-tiers.md): capture frames or the telemetry cadence, never the always tier.
+        self.assertIn('const bool family = family_row();', self.motion)
+        self.assertIn('if (family && (g.admitted || g.refused_blend || g.refused_screen || other))', block)
         self.assertIn('const std::uint32_t other = g.refused_unknown + g.refused_state + g.bind_failures;', block)
         self.assertNotIn('if (capture_)', block)
         self.assertIn('source_gain_counts_ = {};', block)

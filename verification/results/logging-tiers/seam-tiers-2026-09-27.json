@@ -1,0 +1,111 @@
+{
+ "seam-log-tiers": {
+  "checks": 58,
+  "exit": 0,
+  "always_no_capture": {
+   "frames": 8,
+   "steady_rows": 24,
+   "steady_bytes": 5258,
+   "rows_per_frame": 3.0,
+   "bytes_per_frame": 657.2,
+   "steady_names": [
+    "application_admission_final",
+    "device_destroy",
+    "engine_memory_read_refused",
+    "linear_cutout_device",
+    "log_writer_parked",
+    "motion_output_release",
+    "motion_output_reset",
+    "motion_output_target",
+    "ownership_copy_depth",
+    "reset_begin",
+    "reset_end",
+    "shadow_replay_depth_refused",
+    "shadow_replay_depth_target",
+    "shadow_replay_lock_witness",
+    "shadow_replay_sun_point"
+   ]
+  },
+  "equivalence_names": {
+   "debug": 141,
+   "perf": 125,
+   "draw_trace": 135
+  },
+  "bench": {
+   "mean_us": 2.621,
+   "max_us": 43.5
+  }
+ },
+ "seam-log-tiers-emitters": {
+  "checks": 17,
+  "exit": 0,
+  "tiers": {
+   "always_no_capture": {
+    "frames": 182,
+    "steady_rows": 15,
+    "steady_bytes": 1571,
+    "rows_per_frame": 0.082,
+    "bytes_per_frame": 8.6,
+    "emitter_rows": {
+     "hull_emission_frame": 0,
+     "original_fill_frame": 0,
+     "hull_lightmap_frame": 0,
+     "hull_lightmap_far_fade_frame": 0,
+     "hull_lightmap_widen_frame": 0,
+     "emission_source_gain_frame": 0
+    },
+    "steady_frame_names": []
+   },
+   "perf": {
+    "frames": 182,
+    "steady_rows": 265,
+    "steady_bytes": 38003,
+    "rows_per_frame": 1.456,
+    "bytes_per_frame": 208.8,
+    "emitter_rows": {
+     "hull_emission_frame": 4,
+     "original_fill_frame": 4,
+     "hull_lightmap_frame": 4,
+     "hull_lightmap_far_fade_frame": 4,
+     "hull_lightmap_widen_frame": 4,
+     "emission_source_gain_frame": 0
+    },
+    "steady_frame_names": [
+     "fade_route_frame",
+     "hdr_frame",
+     "hull_emission_frame",
+     "hull_lightmap_far_fade_frame",
+     "hull_lightmap_frame",
+     "hull_lightmap_widen_frame",
+     "motion_output_frame",
+     "original_fill_frame"
+    ]
+   },
+   "debug": {
+    "frames": 182,
+    "steady_rows": 1876,
+    "steady_bytes": 698627,
+    "rows_per_frame": 10.308,
+    "bytes_per_frame": 3838.6,
+    "emitter_rows": {
+     "hull_emission_frame": 182,
+     "original_fill_frame": 182,
+     "hull_lightmap_frame": 181,
+     "hull_lightmap_far_fade_frame": 181,
+     "hull_lightmap_widen_frame": 181,
+     "emission_source_gain_frame": 0
+    },
+    "steady_frame_names": [
+     "fade_route_frame",
+     "hdr_frame",
+     "hull_emission_frame",
+     "hull_lightmap_far_fade_frame",
+     "hull_lightmap_frame",
+     "hull_lightmap_widen_frame",
+     "motion_output_frame",
+     "original_fill_frame"
+    ]
+   }
+  }
+ }
+}
