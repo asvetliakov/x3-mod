@@ -89,7 +89,7 @@ its `scan`/`scan_log` never raise on log content and report unparsable lines in
 
 ## Current gaps
 
-- The WMA speech decoder (`<game>/x3m/voice-decoder`, shipped in the release zip since 2026-09-27) is a
+- The WMA speech decoder (`<game>/x3m/voice-decoder`, installed by `manage.py voice-decoder --install`; not in the release zip) is a
   CrossOver-only file set; native Windows decodes the voice files itself and never reads the folder. Delivery is
   host-side only: GStreamer reads the Unix environment, so a proxy `SetEnvironmentVariableW` does not reach it
   (measured, `verification/results/voice-decoder-env/`), and the proxy sets no GStreamer variable on any platform.

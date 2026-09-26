@@ -13,8 +13,8 @@ selected in the start menu). After you install, update or remove a mod, run
 1. Install your mods into the X3 directory as usual, and select the mod package
    in the game's start menu if the mod uses one (the tool bakes the selected one).
 2. Quit the game.
-3. Copy `x3m-regenerate.exe` (Windows) or `x3m-regenerate` (macOS) into the game
-   directory, next to `X3AP.exe`. With CrossOver that is
+3. Copy `x3m-regenerate.exe` (the release zip's; a macOS `x3m-regenerate` is only built
+   from source, see below) into the game directory, next to `X3AP.exe`. With CrossOver that is
    `~/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3`.
 4. Double-click it. It starts at once and asks nothing. A console window shows
    the progress; at the end it says `all done` (or which step failed) and waits

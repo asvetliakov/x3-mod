@@ -1,10 +1,10 @@
 """The release zip (tools/release/package.py, docs/architecture/config-file.md section 6): its manifest, its README's
-build line, its determinism and its refusals. Host only: fake DLL and regenerate binaries."""
+build line, its determinism and its refusals. The zip is exactly four entries; the host x3m-regenerate binary and
+the CrossOver voice decoder never ship. Host only: fake DLL and regenerate binaries."""
 import contextlib
 import hashlib
 import importlib.util
 import io
-import shutil
 import tempfile
 import unittest
 import zipfile
@@ -26,7 +26,7 @@ class ReleasePackage(unittest.TestCase):
     def setUpClass(cls):
         cls.package = load_package()
 
-    def build(self, directory, *, windows=True, mac=True, **patches):
+    def build(self, directory, *, windows=True, mac=True, debug=None, **patches):
         base = Path(directory)
         dll = base / 'd3d9.dll'
         dll.write_bytes(b'MZ fake proxy')
@@ -42,7 +42,8 @@ class ReleasePackage(unittest.TestCase):
                 stack.enter_context(mock.patch.object(self.package, name, value))
             stack.enter_context(contextlib.redirect_stdout(io.StringIO()))
             stack.enter_context(contextlib.redirect_stderr(io.StringIO()))
-            code = self.package.main(['--dll', str(dll), '--out', str(out), '--regenerate-dir', str(regenerate)])
+            code = self.package.main(['--dll', str(dll), '--out', str(out), '--regenerate-dir', str(regenerate),
+                                      *(['--debug-file', str(debug)] if debug else [])])
         return code, out / f'x3m-{self.package.generate.version()}.zip'
 
     def test_manifest(self):
@@ -50,42 +51,38 @@ class ReleasePackage(unittest.TestCase):
             code, path = self.build(directory, source_commit=lambda: 'f' * 40)
             self.assertEqual(code, 0)
             with zipfile.ZipFile(path) as archive:
-                voice = self.package.voice_decoder_files.shipped(self.package.VOICE_DECODER)
-                self.assertIn('runtime/plugins/libgstlibav.dylib', voice)
-                self.assertEqual(archive.namelist(), ['d3d9.dll', 'x3m.ini', 'x3m-regenerate.exe', 'x3m-regenerate',
-                                                      *[f'x3m/voice-decoder/{name}' for name in voice], 'README.txt'])
-                for name in voice:
-                    self.assertEqual(archive.read(f'x3m/voice-decoder/{name}'), (self.package.VOICE_DECODER / name).read_bytes())
+                # the host (macOS) binary sits in the dist directory but never ships; no voice decoder tree either
+                self.assertEqual(archive.namelist(), ['d3d9.dll', 'x3m.ini', 'x3m-regenerate.exe', 'README.txt'])
                 self.assertEqual(archive.read('x3m.ini'), (ROOT / 'assets/x3m.ini').read_bytes())
                 self.assertEqual(archive.read('d3d9.dll'), b'MZ fake proxy')
                 readme = archive.read('README.txt').decode()
                 self.assertIn(hashlib.sha256(b'MZ fake proxy').hexdigest(), readme)
                 self.assertIn('source commit ' + 'f' * 40, readme)
                 self.assertIn('\r\n', readme)
-                self.assertIn('Speech under CrossOver needs the folder x3m\\voice-decoder next to d3d9.dll', readme)
+                for word in ('macOS', 'voice-decoder', 'Speech', 'stripped'):
+                    self.assertNotIn(word, readme)
                 self.assertEqual(archive.getinfo('x3m-regenerate.exe').external_attr >> 16, 0o755)
             first = path.read_bytes()
             self.assertEqual(self.build(directory, source_commit=lambda: 'f' * 40)[0], 0)
             self.assertEqual(path.read_bytes(), first)  # fixed timestamps: the same inputs give the same zip
 
-    def test_macos_binary_optional(self):
+    def test_debug_file_line(self):
         with tempfile.TemporaryDirectory() as directory:
-            code, path = self.build(directory, mac=False, source_commit=lambda: 'unknown')
+            debug = Path(directory) / 'd3d9.debug'
+            debug.write_bytes(b'split debug')
+            code, path = self.build(directory, mac=False, debug=debug, source_commit=lambda: 'unknown')
             self.assertEqual(code, 0)
             with zipfile.ZipFile(path) as archive:
-                self.assertNotIn('x3m-regenerate', archive.namelist())
+                self.assertEqual(archive.namelist(), ['d3d9.dll', 'x3m.ini', 'x3m-regenerate.exe', 'README.txt'])
+                self.assertIn('d3d9.dll is stripped of debug information; the developer keeps the matching d3d9.debug '
+                              f'(SHA-256 {hashlib.sha256(b"split debug").hexdigest()}).', archive.read('README.txt').decode())
+            code, _ = self.build(directory, debug=Path(directory) / 'absent.debug', source_commit=lambda: 'unknown')
+            self.assertEqual(code, 1)
 
     def test_refusals(self):
         with tempfile.TemporaryDirectory() as directory:
             code, path = self.build(directory, windows=False, source_commit=lambda: 'unknown')
             self.assertEqual(code, 1)
-            self.assertFalse(path.exists())
-        with tempfile.TemporaryDirectory() as directory:
-            voice = Path(directory) / 'voice'
-            shutil.copytree(self.package.VOICE_DECODER, voice)
-            (voice / 'runtime/plugins/libgstlibav.dylib').write_bytes(b'tampered')
-            code, path = self.build(directory, VOICE_DECODER=voice, source_commit=lambda: 'unknown')
-            self.assertEqual(code, 1)  # a decoder tree failing its artifact-sha256.txt never ships
             self.assertFalse(path.exists())
         stale = {ROOT / 'assets/x3m.ini': 'not the template\n'}
         with tempfile.TemporaryDirectory() as directory, mock.patch.object(self.package.generate, 'outputs', return_value=stale):

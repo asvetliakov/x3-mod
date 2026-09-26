@@ -430,9 +430,9 @@ verifies the destination against its `artifact-sha256.txt` (7 entries verified; 
 the copy runs under the installer lock with the game closed, and a symlinked or case-aliased destination is refused
 (`media_package.safe`). `--check` (the default) prints `valid`, `stale` (a shipped file missing or different, or a
 hash mismatch) or `missing` and exits 0 only when valid. Helpers: `tools/voice_decoder_files.py`; host test
-`verification/analysis/test_voice_decoder_install.py`. `tools/release/package.py` ships the same files under
-`x3m/voice-decoder/` in the release zip (refused when the tree fails its hash list), `release.py` re-checks the
-zip entries against the tree, and README.txt says speech under CrossOver needs that folder next to `d3d9.dll`.
+`verification/analysis/test_voice_decoder_install.py`. The release zip does not carry the tree (user decision
+2026-09-27: speech through the decoder is a CrossOver developer path, not a shipped feature; the zip holds only
+`d3d9.dll`, `x3m.ini`, `x3m-regenerate.exe` and `README.txt`); `manage.py voice-decoder --install` is the way in.
 The launcher's discovery (above) already takes `<game>/x3m/voice-decoder` first.
 
 **The DLL cannot deliver the plugin (measured).** GStreamer runs on the Unix side of winegstreamer and reads the

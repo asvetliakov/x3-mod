@@ -1,5 +1,6 @@
 """The one-command release (tools/release/release.py): argument handling, the dirty-tree refusal, the dry run, the
-record schema with every build step mocked, the version single source (CMakeLists.txt project(VERSION) -> package.py
+record schema with every build step mocked, the debug strip (objcopy mocked over synthetic PE32 images: its arguments,
+the section/export/marker identity check that aborts the release, the --no-strip opt-out), the version single source (CMakeLists.txt project(VERSION) -> package.py
 and the DLL's X3M_VERSION define) and tools/regenerate/build.py's --dist and lock-holder detection. Host only: no
 compiler, PyInstaller or Wine runs."""
 import contextlib
@@ -9,6 +10,7 @@ import io
 import json
 import os
 import re
+import struct
 import sys
 import tempfile
 import subprocess
@@ -25,6 +27,64 @@ def load(name, path):
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+COMMIT = 'b' * 40
+LOADED = [('.text', b'\x55\x89\xe5\xc3' * 64), ('.data', b'data' * 16), ('.rdata', b'X3M_SOURCE_COMMIT=' + COMMIT.encode() + b'\0'),
+          ('.edata', None), ('.idata', b'\0' * 40), ('.reloc', b'\0' * 12)]
+DEBUG = [('.debug_info', b'\x11' * 300), ('.debug_line', b'\x22' * 200)]
+EXPORTS = ['Direct3DCreate9', 'Direct3DCreate9Ex']
+
+
+def make_pe(sections):
+    """A minimal PE32 image: DOS/COFF/optional headers, the sections at 0x1000-aligned RVAs in order, long section
+    names through a COFF string table, and an export table in .edata (None placeholder) naming EXPORTS."""
+    count, table = len(sections), b''
+    header_end = 0x40 + 4 + 20 + 224 + 40 * count
+    raw, rows, va, strings = header_end + (-header_end % 0x200), [], 0x1000, b''
+    edata_va = None
+    for name, body in sections:
+        if body is None:
+            edata_va = va
+            names_at = va + 40
+            text_at = names_at + 4 * len(EXPORTS)
+            pointers, blob = b'', b''
+            for export in EXPORTS:
+                pointers += struct.pack('<I', text_at + len(blob))
+                blob += export.encode() + b'\0'
+            body = struct.pack('<20xII4xI4x', len(EXPORTS), len(EXPORTS), names_at) + pointers + blob
+        encoded = name.encode()
+        if len(encoded) > 8:
+            encoded = b'/%d' % (4 + len(strings))
+            strings += name.encode() + b'\0'
+        size = len(body) + (-len(body) % 0x200)
+        table += struct.pack('<8sIIIIIIHHI', encoded, len(body), va, size, raw, 0, 0, 0, 0, 0x40000040)
+        rows.append((raw, body))
+        raw += size
+        va += 0x1000 + (len(body) // 0x1000) * 0x1000
+    directories = [(0, 0)] * 16
+    if edata_va:
+        directories[0] = (edata_va, 40)
+    optional = bytearray(224)
+    struct.pack_into('<HxxxxxxxxxxxxxxI', optional, 0, 0x10b, 0x1000)
+    struct.pack_into('<I', optional, 28, 0x10000000)
+    struct.pack_into('<I', optional, 92, 16)
+    for i, (rva, length) in enumerate(directories):
+        struct.pack_into('<II', optional, 96 + 8 * i, rva, length)
+    image = bytearray(b'MZ' + b'\0' * 0x3a + struct.pack('<I', 0x40) + b'PE\0\0'
+                      + struct.pack('<HHIIIHH', 0x14c, count, 0, raw if strings else 0, 0, 224, 0x2102)
+                      + bytes(optional) + table)
+    image += b'\0' * (rows[0][0] - len(image)) if rows else b''
+    for offset, body in rows:
+        image += body + b'\0' * (-len(body) % 0x200)
+    if strings:
+        image += struct.pack('<I', 4 + len(strings)) + strings
+    return bytes(image)
+
+
+FULL_PE = make_pe(LOADED + DEBUG)
+STRIPPED_PE = make_pe(LOADED + [('.gnu_debuglink', b'd3d9.debug\0\0' + b'\1\2\3\4')])
+DEBUG_FILE = b'fake split debug file'
 
 
 def quiet(function, *args):
@@ -90,13 +150,16 @@ class ReleaseScript(unittest.TestCase):
                 self.assertIn('NO release zip', text)
                 self.assertIn('package  SKIPPED', text)
 
-    def fake_run(self, out, calls):
+    def fake_run(self, out, calls, stripped=STRIPPED_PE):
         """A stand-in for release.run: fakes each tool's output files and text."""
         def run(cmd, env=None, cwd=None, echo=True):
             cmd = [str(c) for c in cmd]
             calls.append((cmd, env))
+            if cmd[0] == self.release.OBJCOPY:
+                Path(cmd[-1]).write_bytes(DEBUG_FILE if cmd[1] == '--only-keep-debug' else stripped)
+                return 0, ''
             if cmd[0] == 'cmake' and '--build' in cmd:
-                (Path(cmd[cmd.index('--build') + 1]) / 'd3d9.dll').write_bytes(b'MZ fake proxy')
+                (Path(cmd[cmd.index('--build') + 1]) / 'd3d9.dll').write_bytes(FULL_PE)
                 return 0, '[100%] Built target d3d9\n'
             if cmd[0] == 'cmake':
                 build = Path(cmd[cmd.index('-B') + 1])
@@ -121,17 +184,35 @@ class ReleaseScript(unittest.TestCase):
             raise AssertionError(cmd)
         return run
 
-    def test_record_schema(self):
+    @contextlib.contextmanager
+    def mocked_release(self, calls, stripped=STRIPPED_PE):
         self.package = load('release_package_for_release', 'tools/release/package.py')
         with tempfile.TemporaryDirectory() as out, \
-                mock.patch.object(self.release, 'git', side_effect=lambda *a: {'rev-parse': 'b' * 40, 'status': ''}[a[0]]), \
+                mock.patch.object(self.release, 'git', side_effect=lambda *a: {'rev-parse': COMMIT, 'status': ''}[a[0]]), \
                 mock.patch.object(self.release, 'toolchain', return_value={'mingw_gcc': 'gcc', 'cmake': 'cmake', 'python': '3'}), \
                 mock.patch.object(self.release, 'windows_state', return_value=(True, 'ok')), \
                 mock.patch.object(self.release, 'game_guard_clear') as guard, \
-                mock.patch.object(self.package, 'source_commit', return_value='b' * 40):
-            calls = []
-            with mock.patch.object(self.release, 'run', side_effect=self.fake_run(out, calls)):
-                code, text, err = quiet(self.release.main, ['--out', out])
+                mock.patch.object(self.package, 'source_commit', return_value=COMMIT), \
+                mock.patch.object(self.release, 'run', side_effect=self.fake_run(out, calls, stripped)):
+            yield out, guard
+
+    def test_strip_identity_on_synthetic_images(self):
+        identity = self.release.strip_identity(FULL_PE, STRIPPED_PE)
+        self.assertEqual(identity['sections_compared'], [name for name, _ in LOADED])
+        self.assertEqual((identity['exports'], identity['debuglink']), (2, True))
+        self.assertEqual(identity['debug_sections_removed'], ['.debug_info', '.debug_line'])  # long names resolved
+        self.assertEqual(self.release.marker_values(FULL_PE), [COMMIT])
+        for broken, reason in ((make_pe(LOADED[:-1]), 'loaded sections differ'),
+                               (make_pe(LOADED + DEBUG[:1]), 'debug sections left'),
+                               (FULL_PE.replace(b'Direct3DCreate9Ex', b'Direct3DCreate9Xx'), 'export names differ'),
+                               (make_pe(LOADED[:2] + [('.rdata', b'no marker')] + LOADED[3:]), '.rdata bytes differ')):
+            with self.assertRaisesRegex(self.release.ReleaseError, reason):
+                self.release.strip_identity(FULL_PE, broken)
+
+    def test_record_schema(self):
+        calls = []
+        with self.mocked_release(calls) as (out, guard):
+            code, text, err = quiet(self.release.main, ['--out', out])
             self.assertEqual(code, 0, err)
             guard.assert_called_once()
             wine = [(cmd, env) for cmd, env in calls if Path(cmd[1]).name == 'wine_lock.py']
@@ -140,25 +221,65 @@ class ReleaseScript(unittest.TestCase):
             self.assertIn('--windows', wine[0][0])
             version = self.release.generate.version()
             record = json.loads((Path(out) / f'release-{version}.json').read_text())
-            self.assertEqual(record['schema'], 1)
+            self.assertEqual(record['schema'], 2)
             self.assertEqual(set(record), {'schema', 'version', 'complete', 'commit', 'dirty', 'dirty_files', 'toolchain',
-                                           'generate_check', 'dll_warnings', 'x87', 'dll', 'regenerate_source', 'regenerate',
+                                           'generate_check', 'dll_warnings', 'x87', 'source_commit_marker', 'dll',
+                                           'dll_unstripped', 'debug_file', 'strip', 'regenerate_source', 'regenerate',
                                            'regenerate_windows_lock', 'zip', 'wall_seconds'})
             self.assertEqual((record['complete'], record['commit'], record['dirty'], record['generate_check']),
-                             (True, 'b' * 40, False, 'PASS'))
-            self.assertEqual(record['dll']['sha256'], hashlib.sha256(b'MZ fake proxy').hexdigest())
+                             (True, COMMIT, False, 'PASS'))
+            # the strip: objcopy --only-keep-debug, then --strip-debug with the debuglink, both on the kept unstripped copy
+            base = Path(out).resolve()
+            objcopy = [cmd for cmd, _ in calls if cmd[0] == self.release.OBJCOPY]
+            unstripped = str(base / 'unstripped/d3d9.dll')
+            self.assertEqual(objcopy, [[self.release.OBJCOPY, '--only-keep-debug', unstripped, str(base / 'd3d9.debug')],
+                                       [self.release.OBJCOPY, '--strip-debug', f'--add-gnu-debuglink={base / "d3d9.debug"}',
+                                        unstripped, str(base / 'd3d9.dll')]])
+            x87 = [cmd[2] for cmd, _ in calls if len(cmd) > 1 and Path(cmd[1]).name == 'check_no_x87.py']
+            self.assertEqual(x87, [str(base / 'build-release/d3d9.dll'), str(base / 'd3d9.dll')])
+            sha = lambda data: hashlib.sha256(data).hexdigest()  # noqa: E731
+            self.assertEqual((record['dll']['sha256'], record['dll']['bytes'], record['dll']['path']),
+                             (sha(STRIPPED_PE), len(STRIPPED_PE), str(base / 'd3d9.dll')))
+            self.assertEqual((record['dll_unstripped']['sha256'], record['dll_unstripped']['path']), (sha(FULL_PE), unstripped))
+            self.assertEqual((record['debug_file']['sha256'], record['debug_file']['bytes']), (sha(DEBUG_FILE), len(DEBUG_FILE)))
+            self.assertEqual((record['strip']['result'], record['strip']['exports'], record['strip']['x87']['result']),
+                             ('PASS', 2, 'PASS'))
+            self.assertEqual(record['source_commit_marker'], COMMIT)
             self.assertEqual(set(record['regenerate']), {'x3m-regenerate', 'x3m-regenerate.exe'})
             self.assertEqual(record['x87']['violations'], 0)
             for step in ('tree', 'config', 'dll', 'regenerate', 'regenerate_host', 'regenerate_windows', 'package', 'total'):
                 self.assertIn(step, record['wall_seconds'])
             zip_path = Path(record['zip']['path'])
             self.assertEqual(record['zip']['sha256'], hashlib.sha256(zip_path.read_bytes()).hexdigest())
+            self.assertEqual([e['name'] for e in record['zip']['entries']], ['d3d9.dll', 'x3m.ini', 'x3m-regenerate.exe', 'README.txt'])
             with zipfile.ZipFile(zip_path) as archive:
-                self.assertEqual(archive.read('d3d9.dll'), b'MZ fake proxy')
-            voice = [e['name'] for e in record['zip']['entries'] if e['name'].startswith('x3m/voice-decoder/')]
-            self.assertIn('x3m/voice-decoder/runtime/plugins/libgstlibav.dylib', voice)
-            self.assertIn(f'{len(voice)} voice decoder files match', text)
+                self.assertEqual(archive.read('d3d9.dll'), STRIPPED_PE)
+                self.assertIn(f'the matching d3d9.debug (SHA-256 {sha(DEBUG_FILE)})', archive.read('README.txt').decode())
             self.assertIn(f'release {version}', text)
+
+    def test_no_strip_ships_the_build(self):
+        calls = []
+        with self.mocked_release(calls) as (out, _):
+            code, text, err = quiet(self.release.main, ['--out', out, '--keep-debug-in-zip'])
+            self.assertEqual(code, 0, err)
+            self.assertFalse(any(cmd[0] == self.release.OBJCOPY for cmd, _ in calls))
+            record = json.loads((Path(out) / f'release-{self.release.generate.version()}.json').read_text())
+            self.assertEqual((record['strip'], record['debug_file'], record['dll_unstripped']), (None, None, None))
+            with zipfile.ZipFile(record['zip']['path']) as archive:
+                self.assertEqual(archive.read('d3d9.dll'), FULL_PE)
+                self.assertNotIn('stripped', archive.read('README.txt').decode())
+            self.assertFalse((Path(out) / 'd3d9.debug').exists())
+
+    def test_strip_mismatch_aborts(self):
+        broken = bytearray(STRIPPED_PE)
+        broken[broken.index(b'\x55\x89\xe5\xc3') + 1] ^= 0xff  # one .text byte
+        calls = []
+        with self.mocked_release(calls, bytes(broken)) as (out, _):
+            code, _, err = quiet(self.release.main, ['--out', out])
+            self.assertEqual(code, 1)
+            self.assertIn('.text bytes differ', err)
+            self.assertFalse(any(len(cmd) > 1 and Path(cmd[1]).name == 'package.py' for cmd, _ in calls))
+            self.assertFalse(list(Path(out).glob('x3m-*.zip')))
 
     def test_build_warning_fails(self):
         with tempfile.TemporaryDirectory() as out:
@@ -180,7 +301,7 @@ class ReleaseScript(unittest.TestCase):
     def test_skip_windows_makes_no_zip(self):
         self.package = load('release_package_for_skip', 'tools/release/package.py')
         with tempfile.TemporaryDirectory() as out, \
-                mock.patch.object(self.release, 'git', side_effect=lambda *a: {'rev-parse': 'c' * 40, 'status': ''}[a[0]]), \
+                mock.patch.object(self.release, 'git', side_effect=lambda *a: {'rev-parse': COMMIT, 'status': ''}[a[0]]), \
                 mock.patch.object(self.release, 'toolchain', return_value={'mingw_gcc': 'gcc', 'cmake': 'cmake', 'python': '3'}):
             calls = []
             with mock.patch.object(self.release, 'run', side_effect=self.fake_run(out, calls)):
@@ -189,7 +310,7 @@ class ReleaseScript(unittest.TestCase):
             self.assertFalse(any('--windows' in cmd for cmd, _ in calls))
             self.assertFalse(any(Path(cmd[1]).name == 'package.py' for cmd, _ in calls if len(cmd) > 1))
             record = json.loads((Path(out) / f'release-{self.release.generate.version()}.json').read_text())
-            self.assertEqual((record['complete'], record['zip']), (False, None))
+            self.assertEqual((record['complete'], record['zip'], record['strip']['result']), (False, None, 'PASS'))
             self.assertIn('NO release zip', text)
 
     def test_version_single_source(self):

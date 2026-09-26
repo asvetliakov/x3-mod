@@ -293,28 +293,43 @@ after 2 without leaving the file half-working.
 
 ## 6. Release packaging and the upgrade story
 
-The zip: `d3d9.dll`, `x3m.ini` (the generated template, all values commented, the header line naming the
-version/commit it was generated from), `x3m-regenerate.exe` (from `tools/regenerate/build.py --windows`), and
-`README.txt` (a short version of `docs/user/`: unpack next to `X3AP.exe`, run `x3m-regenerate.exe` once,
+The zip holds exactly four files: `d3d9.dll` (stripped of its DWARF sections, see below), `x3m.ini` (the generated
+template, all values commented, the header line naming the version/commit it was generated from),
+`x3m-regenerate.exe` (from `tools/regenerate/build.py --windows`), and `README.txt` (a short version of `docs/user/`: unpack next to `X3AP.exe`, run `x3m-regenerate.exe` once,
 edit `x3m.ini` to change a setting, send `x3m.log` when reporting a problem). The DLL must run without the
 file, and does: every default is compiled in from the schema; the template only documents them. A packaging
 script `tools/release/package.py` (new) assembles the zip from `build/d3d9.dll`, `assets/x3m.ini` and the
-regenerate bundle, records the DLL hash and source commit in the zip's `README.txt`, and refuses when
-`generate.py --check` fails, so a template can never ship stale.
+regenerate bundle, records the DLL hash and source commit in the zip's `README.txt` (with `--debug-file`, one more
+line: the DLL is stripped and the developer keeps `d3d9.debug`, with its SHA-256), and refuses when
+`generate.py --check` fails, so a template can never ship stale. CrossOver/macOS-only files do not ship (user
+decision 2026-09-27): no host `x3m-regenerate` binary (built for the smoke test only) and no `x3m/voice-decoder/`
+tree (a developer path through `manage.py voice-decoder --install`).
 
 `python3 tools/release/release.py --out DIR` runs the whole release in order: (1) refuses tracked changes in
 `git status --porcelain` unless `--allow-dirty` (the zip's `README.txt` names the source commit); (2)
 `generate.py --check`; (3) a fresh CMake build in `DIR/build-release` (a previous one is deleted, never reused;
-any compiler, linker or CMake warning fails), `check_no_x87.py` with 0 violations, DLL SHA-256 and bytes; (4)
+any compiler, linker or CMake warning fails), `check_no_x87.py` with 0 violations, the `X3M_SOURCE_COMMIT=` marker
+once and naming the commit, then the strip: the unstripped build is kept as `DIR/unstripped/d3d9.dll`,
+`i686-w64-mingw32-objcopy --only-keep-debug` writes `DIR/d3d9.debug` and `--strip-debug
+--add-gnu-debuglink=DIR/d3d9.debug` writes the shipped `DIR/d3d9.dll`. The stripped file must keep every loaded
+section identical (name, RVA, virtual size, flags, bytes: `.text .data .rdata .xdata .bss .edata .idata .tls .rsrc
+.reloc`), the entry point, image base and all 16 data directories, the export names (17) and the marker once, carry
+no `.debug_*` section and pass `check_no_x87.py` again; any difference aborts the release. The debuglink adds one
+16-byte `.gnu_debuglink` section after `.reloc` (flags `0x42000040`: initialised data, discardable, read-only; a
+section the loader maps like any other, no data directory points at it) so gdb/addr2line find `d3d9.debug`; the
+unstripped RelWithDebInfo DLL already carries long-named `.debug_*` sections, so the stripped file adds nothing the
+loader has not seen. `--no-strip` (alias `--keep-debug-in-zip`) ships the unstripped build; (4)
 `tools/regenerate/build.py --dist DIR/regenerate` for the host, then `build.py --windows` under
 `X3M_FIXTURE_BOTTLE=X3 wine_lock.py` after `game_guard.game_running()` is empty, each with its smoke test
 (`build.py` runs its Wine commands directly when the lock file names an ancestor as holder, since a nested
 `wine_lock.py` would wait on its own parent; the Wine commands run in the `X3M-Build` bottle, never the game
 bottle); `--regenerate-dir PATH` ships existing binaries instead, `--skip-windows` builds and smoke-tests
-the host binary only and makes no zip; (5) `package.py`, then the zip is CRC-tested and its `d3d9.dll` and
-`x3m-regenerate*` re-hashed against the built files; (6) `DIR/release-<version>.json` (schema 1: commit, dirty
-flag, toolchain lines, DLL/regenerate/zip hashes and bytes, `generate --check` and x87 results, wall seconds
-per step) and a final listing. `--dry-run` prints the plan and the toolchain and bottle check. The version
+the host binary only and makes no zip; (5) `package.py`, then the zip is CRC-tested, its entry list must be
+exactly the four files and its `d3d9.dll` and `x3m-regenerate.exe` are re-hashed against the built files; (6)
+`DIR/release-<version>.json` (schema 2: commit, dirty flag, toolchain lines, `source_commit_marker`, `dll` = the
+shipped DLL, `dll_unstripped`, `debug_file`, `strip` (identity result, compared sections, export count, x87 on
+the stripped file), regenerate/zip hashes and bytes, `generate --check` and x87 results, wall seconds per step)
+and a final listing. `--dry-run` prints the plan and the toolchain and bottle check. The version
 has one source, `project(VERSION)` in `CMakeLists.txt`: `generate.py version()` reads it for the template and
 the zip name, and CMake passes its major.minor to the DLL as `X3M_VERSION` for the `x3-modern-renderer
 version=` log row (`capture.cpp` refuses to compile without it). Tests: `test_release_script.py`.

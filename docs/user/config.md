@@ -9,8 +9,9 @@ Put `x3m.ini` in the game folder, next to `d3d9.dll` and `X3AP.exe` (with CrossO
 starts. The mod also works without the file: every setting has a built-in default, and the shipped file only
 shows those defaults.
 
-Speech under CrossOver needs the folder `x3m\voice-decoder` next to `d3d9.dll` (unpacking the zip places it;
-`python3 tools/manage.py voice-decoder --install` does the same from the repository) and the two GStreamer variables
+Developer builds only: speech under CrossOver needs the folder `x3m\voice-decoder` next to `d3d9.dll` (the release
+zip does not carry it; `python3 tools/manage.py voice-decoder --install` places it from the repository) and the two
+GStreamer variables
 `GST_PLUGIN_PATH_1_0` / `GST_REGISTRY_1_0` in the game's Unix-side environment: the developer launcher sets them; the DLL
 cannot (a Windows-side environment write never reaches winegstreamer, measured 2026-09-27), so a launch from CrossOver
 itself needs a bottle environment setting. Windows does not use it.

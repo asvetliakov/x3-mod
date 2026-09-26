@@ -1,8 +1,8 @@
 """The shipped WMA speech decoder tree and its drop-in copy <game>/x3m/voice-decoder
 (docs/architecture/voice-decoder-adapter.md, "Game-directory drop-in").
 
-Used by `tools/manage.py voice-decoder` (install and check) and `tools/release/package.py` (the zip's
-x3m/voice-decoder/ entries). The shipped set is every regular file of the source tree except registry/, GStreamer's
+Used by `tools/manage.py voice-decoder` (install and check; the release zip does not carry the tree since
+2026-09-27, it is a CrossOver developer path). The shipped set is every regular file of the source tree except registry/, GStreamer's
 cache that the launcher creates next to it; artifact-sha256.txt names the binaries and patches, and one line of it
 (the patched gst-libav source) describes a file that is not shipped.
 """
