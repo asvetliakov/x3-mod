@@ -190,6 +190,8 @@ float screen_emission_additive_gain = 1.f;       // G, finite 1..8; anything els
 bool bolt_footprint_requested = false; // X3M_BOLT_FOOTPRINT=W[,L]: minimum on-screen bolt width and length on the
                                        // additive draws (bolt-footprint.md, option A', Run 73 B rule)
 float bolt_footprint_w = 3.f, bolt_footprint_l = 12.f;
+bool bolt_single_copy_requested = false; // X3M_BOLT_SINGLE_COPY=1: the early copy of the game's twice-drawn bullet
+                                         // batch is dropped (bolt-footprint.md, "Single copy")
 bool screen_emission_additive_alpha_requested = false; // X3M_SCREEN_EMISSION_ADDITIVE_ALPHA=K: per-source bloom
                                                        // attenuation of the additive draw
                                                        // (bloom-per-source-attenuation.md, option 1)
@@ -3202,6 +3204,7 @@ void hook_device(IDirect3DDevice9* d, HWND window, HWND focus) {
         screen_emission_additive_requested, screen_emission_additive_gain, screen_emission_additive_alpha_requested,
         screen_emission_additive_alpha);
     hooked.motion_output.configure_bolt_footprint(bolt_footprint_requested, bolt_footprint_w, bolt_footprint_l);
+    hooked.motion_output.configure_bolt_single_copy(bolt_single_copy_requested);
     hooked.motion_output.configure_fade_witness(fade_witness_frames);
     hooked.motion_output.configure_fade_route(fade_route_threshold);
     // Sun-share lane (directional-shadows.md section 2; legacy-sun-application.md
@@ -4693,6 +4696,11 @@ void initialize_log(HMODULE module) {
                 unsigned(screen_emission_additive_requested), unsigned(ownership));
         }
     }
+    // X3M_BOLT_SINGLE_COPY=1 (bolt-footprint.md, "Single copy"; launcher default on with the additive bullets):
+    // an additive-admitted bullet-producer draw issued before the scene frame's first depth-writing draw is not
+    // forwarded. Anything else, unset included (a bare DLL, the fixtures), leaves both copies. Inert without the
+    // additive route: the rule sits inside its admission.
+    bolt_single_copy_requested = x3m::config::get(L"X3M_BOLT_SINGLE_COPY", setting, 32) == 1 && setting[0] == L'1';
     // X3M_SCREEN_EMISSION_TIMING=1: the option's opt-in per-frame timing
     // diagnostic (one screen_emission_frame line per Present). Needs the
     // enabled option; the option itself stays free of per-frame logging.

@@ -14,6 +14,10 @@
   ]
  },
  "stand_vs_recorded_stand": {
+  "X3M_BOLT_SINGLE_COPY": [
+   null,
+   "1"
+  ],
   "X3M_CAMERA_LOG": [
    "1",
    null
@@ -276,6 +280,10 @@
   ]
  },
  "empty_vs_recorded_stand": {
+  "X3M_BOLT_SINGLE_COPY": [
+   null,
+   "1"
+  ],
   "X3M_CAMERA_LOG": [
    "1",
    null
@@ -557,8 +565,8 @@
   ]
  },
  "counts": {
-  "empty": 123,
-  "stand": 125,
+  "empty": 124,
+  "stand": 126,
   "recorded": 181
  },
  "checks": {

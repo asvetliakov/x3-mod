@@ -1,0 +1,9 @@
+frame=2098 draws=[6, 7, 211, 212] buffers=2 pairs=2 identical=1 revisions=[('450', '451'), ('450', '451')]
+frame=2099 draws=[6, 7, 212, 213] buffers=2 pairs=2 identical=1 revisions=[('452', '453'), ('452', '453')]
+frame=2100 draws=[6, 7, 212, 213] buffers=2 pairs=2 identical=1 revisions=[('454', '455'), ('454', '455')]
+frame=2101 draws=[6, 7, 213, 214] buffers=2 pairs=2 identical=1 revisions=[('456', '457'), ('456', '457')]
+frame=2102 draws=[6, 7, 213, 214] buffers=2 pairs=2 identical=1 revisions=[('458', '459'), ('458', '459')]
+frame=2103 draws=[6, 7, 213, 214] buffers=2 pairs=2 identical=1 revisions=[('460', '461'), ('460', '461')]
+frame=2104 draws=[6, 7, 213, 214] buffers=2 pairs=2 identical=1 revisions=[('462', '463'), ('462', '463')]
+frame=2105 draws=[6, 7, 213, 214] buffers=2 pairs=2 identical=1 revisions=[('464', '465'), ('464', '465')]
+frames=8 identical_pairs=8

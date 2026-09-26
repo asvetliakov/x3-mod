@@ -96,6 +96,11 @@ public:
     // Start again only after a new begin_frame with the current resource generation.
     void invalidate() { reject(BoundaryRejection::Invalidated); }
     BoundaryState state() const { return state_; }
+    // True once the scene phase (after the frame's depth-only Clear) has seen a draw that may have written depth: a
+    // depth writer, or a phase draw whose z state is unknown (fail closed). Meaningful in the scene phase only (false
+    // before it, kept after it); callers test state() == Scene first (the single-copy bullet rule, bolt-footprint.md
+    // "Single copy").
+    bool scene_depth_written() const { return scene_writer_ || scene_unknown_draw_; }
     BoundaryRejection rejection() const { return rejection_; }
     std::uint64_t last_sequence() const { return sequence_; }
     std::uint64_t rejection_sequence() const { return rejection_sequence_; }
@@ -143,7 +148,7 @@ private:
     BoundaryRejection rejection_ = BoundaryRejection::InvalidFrame;
     std::uint64_t device_ = 0, generation_ = 0, frame_ = 0, sequence_ = 0, epoch_ = 0, rejection_sequence_ = 0;
     Surface main_, depth_, copied_, a_, b_, bound_rt_;
-    bool background_draw_ = false, scene_writer_ = false;
+    bool background_draw_ = false, scene_writer_ = false, scene_unknown_draw_ = false;
     unsigned bloom_ = 0;
     void reject(BoundaryRejection why, std::uint64_t event_sequence = 0) {
         if (state_ == BoundaryState::Rejected) return; // Preserve the first cause.
@@ -221,6 +226,7 @@ private:
             // whose relation to the selected color is ambiguous: rejected.
             if (e.kind == EventKind::Draw && phase_draw(e)) {
                 scene_writer_ |= depth_writer(e);
+                scene_unknown_draw_ |= !e.draw_state_known;
                 return true;
             }
             if (e.kind != EventKind::SetDepth || !e.depth.known || e.depth.identity || !scene_writer_) return false;

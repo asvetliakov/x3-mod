@@ -953,6 +953,10 @@ void MotionOutput::configure_bolt_footprint(bool requested, float w_px, float l_
     bolt_footprint_l_ = l_px;
     bolt_footprint_requested_ = true;
 }
+void MotionOutput::configure_bolt_single_copy(bool requested) noexcept {
+    if (device_) return; // Process-start configuration only.
+    bolt_single_copy_ = requested && screen_additive_requested_;
+}
 void MotionOutput::configure_fade_route(unsigned threshold_permille) noexcept {
     if (device_) return; // Process-start configuration only.
     fade_route_threshold_ = threshold_permille <= 1000u ? threshold_permille : fade_route::threshold_off;
@@ -5068,7 +5072,8 @@ void MotionOutput::begin_frame(std::uint64_t frame, bool capture) noexcept {
     packed_sample_.valid = false;
     packed_sample_.sampled = 0; // an unmatched pre never pairs with a later frame's post
     bolt_copy_rows_ = bolt_copy_more_ = 0;
-    engine_memory::next_frame(); // the object observers' direct-read regions are re-validated once per frame
+    bolt_early_dropped_ = bolt_late_ = 0; // single copy: per scene frame (a Reset's repeated begin restarts it)
+    engine_memory::next_frame();          // the object observers' direct-read regions are re-validated once per frame
     counters_ = {};
     sun_frame_ = {};
     sun_stamps_ = sun_stamp_refused_ = sun_stamp_prims_ = 0;
@@ -6211,6 +6216,18 @@ void MotionOutput::prepare_screen_additive(const MotionDrawCall& call, MotionRou
             return;
         }
     }
+    // Single copy (bolt-footprint.md, "Single copy"): every check above passed, so this draw would be admitted. A
+    // bullet-producer draw before the scene frame's first depth-writing draw is the game's early copy of the batch it
+    // draws again after all opaque geometry: it is dropped here, before the first setter, so nothing of the route
+    // (gain, program, footprint plan, substitute buffer) runs and the device keeps every state and binding the
+    // game set. scene_bound() above already required the selector's scene phase (after the depth-only Clear).
+    if (bolt_single_copy_ && screen_emission::admitted_vertex_shader(shadow_.vs_hash)) {
+        if (selector_.state() == renderer::BoundaryState::Scene && !selector_.scene_depth_written()) {
+            drop_early_bolt_copy(call, route);
+            return;
+        }
+        if (bolt_early_dropped_) ++bolt_late_; // the copies that stand in for this frame's dropped ones
+    }
     // The gained draw binds a program: own the restoration bindings first.
     if (gained && FAILED(acquire_restore(route))) {
         ++screen_additive_failures_;
@@ -6278,6 +6295,33 @@ void MotionOutput::prepare_screen_additive(const MotionDrawCall& call, MotionRou
     // Bolt footprint: one bool test unless requested; it never changes the
     // admission above and unwinds nothing but its own binding.
     if (bolt_footprint_requested_) prepare_bolt_footprint(call, route);
+}
+// The single-copy drop: the draw is not forwarded (the hook returns D3D_OK, the game's result for a draw that
+// succeeded) and nothing is set, bound or planned; the frame's counters and the capture-frame row (sharing the
+// bolt_copy cap) record it. The draw was not admitted: the admission counters and the footprint window never see it.
+void MotionOutput::drop_early_bolt_copy(const MotionDrawCall& call, MotionRoute& route) noexcept {
+    route.submit = false;
+    route.submission_error = D3D_OK;
+    ++bolt_early_dropped_;
+    ++bolt_dropped_session_;
+    ++screen_additive_window_.bolt_dropped;
+    if (!capture_) return;
+    if (bolt_copy_rows_ >= bolt_copy_cap) {
+        ++bolt_copy_more_;
+        return;
+    }
+    ++bolt_copy_rows_;
+    log("bolt_copy_dropped device=%llu frame=%llu draw=%u vb=%llu prims=%u", id_, frame_, unsigned(counters_.draws),
+        shadow_.stream0, unsigned(call.primitives));
+}
+// Telemetry (X3M_TELEMETRY: --perf / --debug), one row per frame in which the single-copy rule dropped an early
+// copy: late counts the admitted bullet draws after the frame's first depth writer, so late=0 with early_dropped>0
+// is a frame whose bullets were not drawn at all.
+void MotionOutput::log_bolt_copies() noexcept {
+    if (telemetry_ && (bolt_early_dropped_ || bolt_late_))
+        log("bolt_copies device=%llu frame=%llu early_dropped=%u late=%u", id_, frame_, unsigned(bolt_early_dropped_),
+            unsigned(bolt_late_));
+    bolt_early_dropped_ = bolt_late_ = 0;
 }
 // The attenuation's render states in apply order. SEPARATEALPHABLENDENABLE is
 // last so the alpha triple is already in place when it starts to matter, and
@@ -6764,19 +6808,21 @@ void MotionOutput::log_bolt_footprint_window() noexcept {
 // One line per 300 frames while the additive route is requested (telemetry
 // or not): the window's additive-pair draws, admissions, refusals per reason
 // and apply failures; not_reached = the pair draws the route never evaluated
-// (routed, composed, fog-masked, not submitted after a failed restore). A window without any bullet draw logs
+// (routed, composed, fog-masked, not submitted after a failed restore); bolt_dropped = the early bullet copies the
+// single-copy rule dropped (evaluated, not admitted). A window without any bullet draw logs
 // pair_draws=0, which tells "nothing to admit" from a refusal.
 void MotionOutput::log_screen_additive_window() noexcept {
     auto& w = screen_additive_window_;
     std::uint32_t refused = 0;
     for (unsigned i = 0; i < screen_additive_reason_count; ++i) refused += w.refused[i];
-    const std::uint32_t evaluated = w.admitted + refused + w.apply_failures;
+    const std::uint32_t evaluated = w.admitted + refused + w.apply_failures + w.bolt_dropped;
     if (telemetry_)
         log("screen_emission_additive_refused_window device=%llu frame=%llu frames=%u pair_draws=%u admitted=%u refused=%u apply_failures=%u not_reached=%u "
-            "state=%u draw_shape=%u scene=%u no_fp16_target=%u no_variant=%u srgb_sampler=%u projected=%u dither=%u alpha_state=%u alpha_caps=%u",
+            "state=%u draw_shape=%u scene=%u no_fp16_target=%u no_variant=%u srgb_sampler=%u projected=%u dither=%u alpha_state=%u alpha_caps=%u bolt_dropped=%u",
             id_, frame_, screen_additive_window_frames_, w.pair_draws, w.admitted, refused, w.apply_failures,
             w.pair_draws > evaluated ? w.pair_draws - evaluated : 0u, w.refused[0], w.refused[1], w.refused[2],
-            w.refused[3], w.refused[4], w.refused[5], w.refused[6], w.refused[7], w.refused[8], w.refused[9]);
+            w.refused[3], w.refused[4], w.refused[5], w.refused[6], w.refused[7], w.refused[8], w.refused[9],
+            w.bolt_dropped);
     w = ScreenAdditiveWindow{};
     screen_additive_window_frames_ = 0;
 }
@@ -9490,6 +9536,7 @@ void MotionOutput::after_present(HRESULT result) noexcept {
     const bool committed = history_.commit(SUCCEEDED(result) && counters_.filled);
     const auto stats = history_.stats();
     if (screen_emission_timing_) log_screen_emission_frame();
+    if (bolt_single_copy_) log_bolt_copies();
     if (screen_additive_requested_) {
         if (telemetry_) log_screen_additive_frame();
         screen_additive_frame_admitted_ = screen_additive_frame_refused_ = screen_additive_frame_pairs_ = 0; // this
@@ -9849,6 +9896,7 @@ unsigned MotionOutput::fixture_emission_status(unsigned key) const noexcept {
     case 75: return sun_apply_ && sun_apply_->caps().enabled;
     case 61: return screen_additive_refused_;
     case 62: return screen_additive_failures_;
+    case 63: return bolt_dropped_session_; // fixture: early bullet copies the single-copy rule dropped (session)
     case 46: return unsigned(composition_counts_.packed_region_pixels);
     case 47: return composition_counts_.prefix_bound;
     case 48: return composition_counts_.prefix_refused;

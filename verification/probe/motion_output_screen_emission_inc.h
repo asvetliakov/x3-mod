@@ -270,7 +270,8 @@ void run_screen_emission_integration(Fixture& f,const char* original_path) {
     if(f.boltshape) {
         const bool oversize=bolt_shape_length==5&&!std::strcmp(bolt_shape_setting,"prims"),misdeclared=bolt_shape_length==4&&!std::strcmp(bolt_shape_setting,"decl");
         const bool copies=bolt_shape_length==4&&!std::strcmp(bolt_shape_setting,"copy");
-        require(oversize||misdeclared||copies,"X3M_FIXTURE_BOLT_SHAPE is prims, decl or copy");
+        const bool single=bolt_shape_length==6&&!std::strcmp(bolt_shape_setting,"single"),late_only=bolt_shape_length==4&&!std::strcmp(bolt_shape_setting,"late");
+        require(oversize||misdeclared||copies||single||late_only,"X3M_FIXTURE_BOLT_SHAPE is prims, decl, copy, single or late");
         require(qualified&&additive,"bolt shape script needs the qualified additive configuration");
         // =copy (the bolt_copy capture row; lod-overlay.md, "Run 91 A: bolts
         // behind distant objects"): per frame 1-7 six bullet draws. A fill
@@ -334,6 +335,89 @@ void run_screen_emission_integration(Fixture& f,const char* original_path) {
             }
             api(f.d->SetIndices(nullptr),"bolt copy final index release");api(f.d->SetStreamSource(0,nullptr,0,0),"bolt copy final stream release");
             std::printf("BOLT_COPY frames=%u draws=%u filled_vertices=%u draws_per_frame=%u\n",copy_frames,copy_draws,copy_quads*6,copy_draws_per_frame);
+            return;
+        }
+        // =single / =late (bolt-footprint.md, "Single copy"; lod-overlay.md, "Run 91 A: bolts behind distant
+        // objects"): frames 1-5 draw the functional bolt quad (pixels [W/2,3W/4) x [3H/8,5H/8), clip z .1) twice
+        // from the same bytes around A, the routed opaque depth writer at z .5 (far) shifted by t = 1.25 so it
+        // covers NDC x >= .25: the right half of the bolt. single: the bolt right after the depth-only Clear (no
+        // depth written yet), then A, then the bolt again; late: A first, then the bolt once. The HDR scene target
+        // is read before the early bolt (i0), after A (i2) and after the late bolt (i3): the bolt contribution over
+        // the covered half is i3 - i2 (A overpainted the early copy), over the uncovered half i3 - i0. With
+        // X3M_BOLT_SINGLE_COPY=1 the early draw must return D3D_OK without reaching the device (key 49 +0, key 60
+        // +0, key 63 +1) and both halves carry one copy; off, the early draw is admitted and the uncovered half
+        // carries two. The runner compares the printed means (BOLT_SINGLE rows).
+        if(single||late_only) {
+            char single_setting[8]{};
+            const bool rule=GetEnvironmentVariableA("X3M_BOLT_SINGLE_COPY",single_setting,sizeof single_setting)==1&&single_setting[0]=='1';
+            constexpr unsigned single_frames=6;constexpr float cover_t=1.25f;
+            const LONG split=LONG(std::lround((cover_t-1+1)*f.W/2.)),margin=2;
+            require(quad_rect.left+margin<split-margin&&split+margin<quad_rect.right-margin,"single copy: A's edge splits the bolt");
+            const auto region_mean=[&](const std::vector<float>& after,const std::vector<float>& before,LONG x0,LONG x1,double* out) {
+                unsigned n=0;
+                for(unsigned c=0;c<3;++c)out[c]=0;
+                for(LONG y=quad_rect.top+margin;y<quad_rect.bottom-margin;++y)for(LONG x=x0;x<x1;++x,++n)
+                    for(unsigned c=0;c<3;++c){const std::size_t i=(std::size_t(y)*f.W+std::size_t(x))*4+c;out[c]+=double(after[i])-double(before[i]);}
+                for(unsigned c=0;c<3;++c)out[c]/=double(n);
+                return n;
+            };
+            const auto bolt=[&](const char* what,bool expect_drop) {
+                write_bullets(1);bind_bullets('s');
+                const auto state=f.snapshot();
+                const unsigned native_before=f.emission_status(f.d.p,49),admitted_before=f.emission_status(f.d.p,60),dropped_before=f.emission_status(f.d.p,63);
+                const HRESULT hr=f.d->DrawPrimitive(D3DPT_TRIANGLELIST,0,2);++f.draw_index;
+                require(hr==D3D_OK,"single copy bolt draw returns D3D_OK");
+                f.compare(state,f.snapshot(),"single copy bolt restoration");
+                const unsigned native=f.emission_status(f.d.p,49)-native_before,admitted=f.emission_status(f.d.p,60)-admitted_before,dropped=f.emission_status(f.d.p,63)-dropped_before;
+                std::printf("BOLT_SINGLE_DRAW frame=%llu what=%s native=%u admitted=%u dropped=%u\n",f.frame,what,native,admitted,dropped);
+                require(native==(expect_drop?0u:1u)&&admitted==(expect_drop?0u:1u)&&dropped==(expect_drop?1u:0u),"single copy: the early draw is dropped exactly when the rule is on");
+            };
+            const auto opaque=[&]() { // A's state back after the bullet binding (frame_begin's scene and material state)
+                f.scene_states();f.material_state();
+                api(f.d->SetVertexDeclaration(f.declaration.p),"single copy A declaration");
+                f.draw(f.a,cover_t,0,0,true,true,f.a.recorded,Alter::None,false);
+            };
+            unsigned drawn=0;
+            for(unsigned plan=0;plan<single_frames;++plan) {
+                f.frame_begin();f.linear_material_inputs();f.write_reserved();
+                if(!plan) opaque();
+                else if(single) {
+                    const auto i0=scene();
+                    bolt("early",rule);++drawn;
+                    const auto i1=scene();
+                    opaque();
+                    const auto i2=scene();
+                    bolt("late",false);++drawn;
+                    const auto i3=scene();
+                    double covered[3],uncovered[3],early[3];
+                    region_mean(i3,i2,split+margin,quad_rect.right-margin,covered);
+                    const unsigned n=region_mean(i3,i0,quad_rect.left+margin,split-margin,uncovered);
+                    region_mean(i1,i0,quad_rect.left+margin,quad_rect.right-margin,early);
+                    std::printf("BOLT_SINGLE frame=%llu script=single rule=%u pixels=%u covered=%.6f,%.6f,%.6f uncovered=%.6f,%.6f,%.6f early=%.6f,%.6f,%.6f\n",
+                                f.frame,unsigned(rule),n,covered[0],covered[1],covered[2],uncovered[0],uncovered[1],uncovered[2],early[0],early[1],early[2]);
+                    f.emission_reference_color=i3;
+                } else {
+                    opaque();
+                    const auto i2=scene();
+                    bolt("late",false);++drawn;
+                    const auto i3=scene();
+                    double covered[3],uncovered[3];
+                    region_mean(i3,i2,split+margin,quad_rect.right-margin,covered);
+                    const unsigned n=region_mean(i3,i2,quad_rect.left+margin,split-margin,uncovered);
+                    std::printf("BOLT_SINGLE frame=%llu script=late rule=%u pixels=%u covered=%.6f,%.6f,%.6f uncovered=%.6f,%.6f,%.6f early=0,0,0\n",
+                                f.frame,unsigned(rule),n,covered[0],covered[1],covered[2],uncovered[0],uncovered[1],uncovered[2]);
+                    f.emission_reference_color=i3;
+                }
+                const unsigned required=f.emission_status(f.d.p,16);
+                f.emissions_enabled=required!=0;
+                if(!plan)f.emission_reference_color=scene();
+                raw(3,f.emission_reference_mask);
+                f.emission_mask_valid=required&&f.emission_status(f.d.p,1);
+                require_quiet(f.emission_reference_color.size()==std::size_t(f.W)*f.H*4,"single copy reference image published");
+                f.frame_end();
+            }
+            api(f.d->SetIndices(nullptr),"single copy final index release");api(f.d->SetStreamSource(0,nullptr,0,0),"single copy final stream release");
+            std::printf("BOLT_SINGLE_SUMMARY script=%s rule=%u frames=%u bolt_draws=%u session_dropped=%u\n",bolt_shape_setting,unsigned(rule),single_frames,drawn,f.emission_status(f.d.p,63));
             return;
         }
         constexpr unsigned part_bytes=1024u*72u*stride,big_quads=1100,small_quads=1025; // 6600 and 6150 vertices: both above max_vertices

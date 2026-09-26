@@ -364,3 +364,10 @@ after the depth clear) with the late copy's in the same frame: equal `hash` and 
 the same bolts are drawn twice, equal `qsum` with unequal `hash` the same triangles reordered, unequal `qsum` with equal
 `bbox` the same bolts extruded differently, unequal `bbox` different bolts (`hash=none reason=buffer:<lookup>` when the
 scan held no positions).
+
+**Closed 2026-09-26 (Run 92 A run341).** F8 frames 2098-2105: both bullet buffers' early copy (draws 6, 7) and late
+copy (draws 211-214) carry the same `hash`, `qsum`, `bbox` and `prims` at consecutive revisions in 8 of 8 frames
+(measured, `verification/results/bolt-single-copy/run341_bolt_copy_pairs.py` and `_out.txt`): the same bolts are drawn
+twice. Fix implemented as option 1 without touching COLORWRITEENABLE: the early copy is not forwarded at all
+(`X3M_BOLT_SINGLE_COPY`, launcher `--bolt-single-copy`, default on; `docs/architecture/bolt-footprint.md`, "Single
+copy"), proved by `seam-bolt-single-copy{,-off,-late}` (`verification/results/bolt-single-copy/`).

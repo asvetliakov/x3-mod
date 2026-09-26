@@ -113,6 +113,9 @@ SETTINGS = [
           'so distant shots stay visible. 0 = the game\'s own size; the width up to 64, the length up to 256.', '3,12',
           counts=(1, 2), elements=((0, 64), [R(0, 256, True)]),
           requires=('camera', 'screen_emission_additive'), launcher='--bolt-footprint'),
+    entry('bolt_single_copy', 'bool', 'graphics', 'The game draws its bullets twice, once before and once after the scene; the first '
+          'copy is dropped so bullets keep one brightness whether or not a distant object is behind them. 1 = on, 0 = off '
+          '(both copies, as before).', '1', builtin='0', requires=('screen_emission_additive',), launcher='--bolt-single-copy'),
     # ---------------------------------------------------------------- hdr
     entry('hdr', 'bool', 'hdr', 'High dynamic range rendering: lights brighter than white, automatic exposure and a filmic '
           'tone curve. 1 = on, 0 = off (the game\'s original look). Costs some frame rate and video memory.', '1', launcher='--hdr'),

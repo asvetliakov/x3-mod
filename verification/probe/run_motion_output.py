@@ -887,6 +887,16 @@ CASES += [case(f'seam-ownership-bolt-shape-{script}', 'boltshape', 'ownership', 
 BOLT_COPY_RESULTS = ROOT / 'verification/results/bolt-copy-hash'  # the rows of the case (small, tracked; lod-overlay.md)
 CASES += [case('seam-bolt-copy-hash', 'boltshape', 'ownership', jitter=True, taa=True, lazy=True, camera=True, sentinel='2', hdr=True,
                hdr_env=dict(BOLT_SHAPE_ENV, X3M_FIXTURE_BOLT_SHAPE='copy', X3M_CAPTURE_START='5', X3M_CAPTURE_FRAMES='1'))]
+# The single-copy bullet rule (docs/architecture/bolt-footprint.md, "Single copy"): script single draws per frame 1-5 the
+# bolt right after the depth-only Clear, then the far opaque A over the bolt's right half, then the bolt again from the
+# same bytes; script late draws A first and the bolt once (validate_bolt_single). -single-copy: X3M_BOLT_SINGLE_COPY=1,
+# the early draw dropped, one bolt_copy_dropped row in the one-frame capture window and bolt_copies early_dropped=1
+# late=1 per frame; -off: 0, both copies as before (the uncovered half twice as bright); -late: 1, nothing dropped.
+BOLT_SINGLE_RESULTS = ROOT / 'verification/results/bolt-single-copy'  # the measured means of the cases (small, tracked)
+BOLT_SINGLE_CASES = {'seam-bolt-single-copy': ('single', '1'), 'seam-bolt-single-copy-off': ('single', '0'), 'seam-bolt-single-copy-late': ('late', '1')}
+CASES += [case(name, 'boltshape', 'ownership', jitter=True, taa=True, lazy=True, camera=True, sentinel='2', hdr=True,
+               hdr_env=dict(BOLT_SHAPE_ENV, X3M_FIXTURE_BOLT_SHAPE=script, X3M_BOLT_SINGLE_COPY=rule, X3M_CAPTURE_START='3', X3M_CAPTURE_FRAMES='1'))
+          for name, (script, rule) in BOLT_SINGLE_CASES.items()]
 # Fade-band motion arm scripts (motion_output_fade_route_inc.h, X3M_FIXTURE_FADE_SCRIPT;
 # docs/architecture/linear-distance-fade-region.md "Fade-band route"): twelve
 # static frames over the eight jitter phases with the rotating camera (cut at
@@ -4532,6 +4542,59 @@ def validate_bolt_copy(name, text, trace):
     return dict(checks=1, script='copy', rows=[{k: r[k] for k in keys if k in r} for r in rows])
 
 
+BOLT_SINGLE_ONE_COPY = (1.0, 0.5, 0.25)  # G 2 x the bullet texel (.5, .25, .125) x h 1: one copy's contribution
+BOLT_SINGLE_CODE = 1.0 / 255.0  # "within 1 code"
+
+
+def validate_bolt_single(name, text, trace, script, rule):
+    """The single/late scripts: five bolt frames. Per frame the HDR contribution of the bolt over the half the far
+    opaque A covers (i3 - i2) and over the uncovered half (i3 - i0), channel means over the interior. Rule on (single):
+    the early draw returned D3D_OK without reaching the device, both halves carry one copy (G q) within one code, one
+    bolt_copy_dropped row on the one capture frame beside the late copy's bolt_copy row (same buffer, later draw) and
+    bolt_copies early_dropped=1 late=1 on every bolt frame. Rule off: the early copy admitted, the uncovered half carries
+    two copies, no dropped row and no bolt_copies row. Late: one copy both halves, nothing dropped, no bolt_copies."""
+    lines = text.splitlines(); tl = trace.splitlines()
+    assert any(l.startswith('RESULT PASS ') for l in lines) and not any(l.startswith('RESULT FAIL') for l in lines), name
+    dropping = script == 'single' and rule == '1'
+    summary = [fields(l) for l in lines if l.startswith('BOLT_SINGLE_SUMMARY ')]
+    assert len(summary) == 1 and summary[0]['script'] == script and summary[0]['rule'] == str(int(rule == '1')), (name, summary)
+    assert int(summary[0]['frames']) == 6 and int(summary[0]['bolt_draws']) == (10 if script == 'single' else 5), (name, summary)
+    assert int(summary[0]['session_dropped']) == (5 if dropping else 0), (name, summary)
+    frames = [fields(l) for l in lines if l.startswith('BOLT_SINGLE ')]
+    assert len(frames) == 5 and all(f['script'] == script for f in frames), (name, frames)
+    triple = lambda text: tuple(float(v) for v in text.split(','))
+    measured = []
+    for f in frames:
+        covered, uncovered, early = triple(f['covered']), triple(f['uncovered']), triple(f['early'])
+        assert int(f['pixels']) > 0, (name, f)
+        for c in range(3):
+            assert abs(covered[c] - BOLT_SINGLE_ONE_COPY[c]) <= BOLT_SINGLE_CODE, (name, 'one copy over the covered half', f)
+            if script == 'single' and rule != '1':
+                assert abs(uncovered[c] - 2 * BOLT_SINGLE_ONE_COPY[c]) <= 2 * BOLT_SINGLE_CODE, (name, 'two copies uncovered', f)
+                assert uncovered[c] > covered[c] + BOLT_SINGLE_CODE, (name, 'the uncovered half brighter', f)
+            else:
+                assert abs(uncovered[c] - covered[c]) <= BOLT_SINGLE_CODE, (name, 'one brightness both halves', f)
+            if dropping or script == 'late':
+                assert early[c] == 0.0, (name, 'nothing drawn early', f)
+        measured.append(dict(frame=int(f['frame']), covered=covered, uncovered=uncovered, early=early,
+                             step_codes=max(abs(u - c) for u, c in zip(uncovered, covered)) * 255.0))
+    dropped = [fields(l) for l in tl if l.startswith('bolt_copy_dropped ')]
+    copies = [fields(l) for l in tl if l.startswith('bolt_copies ')]
+    rows = [fields(l) for l in tl if l.startswith('bolt_copy ')]
+    if dropping:
+        assert len(dropped) == 1 and int(dropped[0]['prims']) == 2, (name, dropped)
+        on_frame = [r for r in rows if r['frame'] == dropped[0]['frame'] and r['device'] == dropped[0]['device']]
+        assert len(on_frame) == 1 and on_frame[0]['vb'] == dropped[0]['vb'] and int(on_frame[0]['draw']) > int(dropped[0]['draw']), (name, dropped, on_frame)
+        assert len(copies) == 5 and all((c['early_dropped'], c['late']) == ('1', '1') for c in copies), (name, copies)
+        assert dropped[0]['frame'] in {c['frame'] for c in copies}, (name, dropped, copies)
+    else:
+        assert not dropped and not copies, (name, dropped, copies)
+        assert len(rows) == (2 if script == 'single' else 1) and len({r['vb'] for r in rows}) == 1, (name, rows)
+    return dict(checks=1, script=script, rule=rule, frames=measured, dropped_rows=len(dropped), bolt_copies_rows=len(copies),
+                bolt_copies=[{k: c[k] for k in ('frame', 'early_dropped', 'late')} for c in copies],
+                capture_rows=[{k: r[k] for k in ('frame', 'draw', 'vb', 'prims') if k in r} for r in dropped + rows])
+
+
 def validate_zonly(name, text, trace):
     """The zonly script (asteroid-fog-temporal.md, run 47): nine frames, each a depth-only prepass with the z_only
     vs_1_1 program (null PS, ZWRITEENABLE on, COLORWRITEENABLE 0) followed by the blended, z-write-off material draw
@@ -6811,6 +6874,19 @@ def main(argv=None):
                 result['cases'][name] = case
                 save()
                 print(f'{name}: exit={completed.returncode} checks={case["checks"]} refused_frame={case["refused"]["frame"]}', flush=True)
+                continue
+            if mode == 'boltshape' and name in BOLT_SINGLE_CASES:
+                case = validate_bolt_single(name, text, trace, *BOLT_SINGLE_CASES[name])
+                case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
+                            dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / candidate_exe.name))
+                result['cases'][name] = case
+                save()
+                BOLT_SINGLE_RESULTS.mkdir(parents=True, exist_ok=True)
+                (BOLT_SINGLE_RESULTS / f'{name}.json').write_text(json.dumps(dict(case=name, bottle=os.environ.get('X3M_FIXTURE_BOTTLE', 'Steam'),
+                                                                                  **{k: case[k] for k in ('script', 'rule', 'frames', 'dropped_rows', 'bolt_copies_rows', 'bolt_copies', 'capture_rows')}), indent=1) + '\n')
+                f0 = case['frames'][0]
+                print(f'{name}: exit={completed.returncode} covered={f0["covered"]} uncovered={f0["uncovered"]} step_codes={max(f["step_codes"] for f in case["frames"]):.3f} '
+                      f'dropped_rows={case["dropped_rows"]} bolt_copies_rows={case["bolt_copies_rows"]}', flush=True)
                 continue
             if mode == 'boltshape' and hdr_env['X3M_FIXTURE_BOLT_SHAPE'] == 'copy':
                 case = validate_bolt_copy(name, text, trace)

@@ -919,6 +919,30 @@ class Wiring(unittest.TestCase):
         self.assertIn('CreateVertexBuffer = 26', motion)
         self.assertIn('SLOT(IDirect3DDevice9Vtbl, CreateVertexBuffer, 26);', source_text(ROOT / 'verification/probe/abi_check.cpp'))
 
+    def test_single_copy_rule(self):
+        """bolt-footprint.md "Single copy": the early bullet copy is dropped after every admission check and before the
+        first setter, keyed on the scene selector's depth-writer bit; the drop forwards nothing and returns D3D_OK."""
+        motion = source_text(ROOT / 'src/proxy/motion_output.cpp')
+        additive = motion[motion.index('void MotionOutput::prepare_screen_additive('):motion.index('void MotionOutput::drop_early_bolt_copy(')]
+        rule = 'if (selector_.state() == renderer::BoundaryState::Scene && !selector_.scene_depth_written()) { drop_early_bolt_copy(call, route); return; }'
+        self.assertIn('if (bolt_single_copy_ && screen_emission::admitted_vertex_shader(shadow_.vs_hash)) {', additive)
+        self.assertIn(rule, additive)
+        for check in ('refuse(6);', 'refuse(9);'):
+            self.assertLess(additive.index(check), additive.index(rule), 'after the refusals')
+        for setter in ('acquire_restore(route)', 'SetRenderState, D3DRS_DESTBLEND, D3DBLEND_ONE', '++screen_additive_admitted_', 'prepare_bolt_footprint(call, route)'):
+            self.assertLess(additive.index(rule), additive.index(setter), setter)
+        drop = motion[motion.index('void MotionOutput::drop_early_bolt_copy('):motion.index('void MotionOutput::log_bolt_copies(')]
+        self.assertIn('route.submit = false; route.submission_error = D3D_OK;', drop)
+        for call in ('SetRenderState', 'SetStreamSource', 'SetPixelShader', 'Lock('):
+            self.assertNotIn(call, drop)
+        self.assertIn('bolt_early_dropped_ = bolt_late_ = 0;', motion[motion.index('void MotionOutput::begin_frame('):])
+        self.assertIn('bolt_single_copy_ = requested && screen_additive_requested_;', motion)
+        selector = source_text(ROOT / 'src/renderer/scene_boundary.h')
+        self.assertIn('scene_writer_ |= depth_writer(e); scene_unknown_draw_ |= !e.draw_state_known;', selector)
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
+        self.assertIn('bolt_single_copy_requested = x3m::config::get(L"X3M_BOLT_SINGLE_COPY", setting, 32) == 1 && setting[0] == L\'1\';', capture)
+        self.assertIn('hooked.motion_output.configure_bolt_single_copy(bolt_single_copy_requested);', capture)
+
     def test_dll_gate_and_loader(self):
         capture = source_text(ROOT / 'src/proxy/capture.cpp')
         block = capture[capture.index('X3M_BOLT_FOOTPRINT",setting'):capture.index('bolt_footprint_mode requested=1')]

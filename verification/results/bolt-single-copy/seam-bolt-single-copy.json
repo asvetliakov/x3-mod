@@ -1,0 +1,146 @@
+{
+ "case": "seam-bolt-single-copy",
+ "bottle": "X3",
+ "script": "single",
+ "rule": "1",
+ "frames": [
+  {
+   "frame": 1,
+   "covered": [
+    0.99998,
+    0.5,
+    0.25
+   ],
+   "uncovered": [
+    0.999512,
+    0.499756,
+    0.25
+   ],
+   "early": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "step_codes": 0.11934000000000611
+  },
+  {
+   "frame": 2,
+   "covered": [
+    0.999939,
+    0.5,
+    0.25
+   ],
+   "uncovered": [
+    0.999512,
+    0.499756,
+    0.25
+   ],
+   "early": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "step_codes": 0.10888500000001688
+  },
+  {
+   "frame": 3,
+   "covered": [
+    0.999939,
+    0.5,
+    0.25
+   ],
+   "uncovered": [
+    0.999512,
+    0.499756,
+    0.25
+   ],
+   "early": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "step_codes": 0.10888500000001688
+  },
+  {
+   "frame": 4,
+   "covered": [
+    0.99998,
+    0.5,
+    0.25
+   ],
+   "uncovered": [
+    0.999512,
+    0.499756,
+    0.25
+   ],
+   "early": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "step_codes": 0.11934000000000611
+  },
+  {
+   "frame": 5,
+   "covered": [
+    0.999939,
+    0.5,
+    0.25
+   ],
+   "uncovered": [
+    0.999512,
+    0.499756,
+    0.25
+   ],
+   "early": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "step_codes": 0.10888500000001688
+  }
+ ],
+ "dropped_rows": 1,
+ "bolt_copies_rows": 5,
+ "bolt_copies": [
+  {
+   "frame": "1",
+   "early_dropped": "1",
+   "late": "1"
+  },
+  {
+   "frame": "2",
+   "early_dropped": "1",
+   "late": "1"
+  },
+  {
+   "frame": "3",
+   "early_dropped": "1",
+   "late": "1"
+  },
+  {
+   "frame": "4",
+   "early_dropped": "1",
+   "late": "1"
+  },
+  {
+   "frame": "5",
+   "early_dropped": "1",
+   "late": "1"
+  }
+ ],
+ "capture_rows": [
+  {
+   "frame": "3",
+   "draw": "2",
+   "vb": "8",
+   "prims": "2"
+  },
+  {
+   "frame": "3",
+   "draw": "4",
+   "vb": "8",
+   "prims": "2"
+  }
+ ]
+}

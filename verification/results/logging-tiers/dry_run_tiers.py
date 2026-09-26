@@ -19,7 +19,9 @@ default launch sends one variable fewer (X3M_CAPTURE_DELAY=300, in REMOVED_VARIA
 launcher-sent as "never") and vanilla one fewer (X3M_CAPTURE_START=120: no proxy loads under --vanilla).
 Since the settings file (2026-09-26, docs/architecture/config-file.md) the default launch sends one variable more,
 X3M_CONFIG=bare (no file and no DLL defaults unless --config; not under --vanilla): the single delta against BASE
-that is not a dropped logging or removed variable (CONFIG_DELTA).
+that is not a dropped logging or removed variable (CONFIG_DELTA). The single-copy bullet rule (2026-09-26,
+docs/architecture/bolt-footprint.md "Single copy") adds X3M_BOLT_SINGLE_COPY=1 on the same launches (default 124 variables,
+123 before): the second functional addition, also in CONFIG_DELTA.
 Writes dry-runs.json beside this script.
 
     python3 verification/results/logging-tiers/dry_run_tiers.py
@@ -45,7 +47,7 @@ REMOVED_2026_09_26 = {'X3M_MESH_ADJACENCY_DUMP', 'X3M_VOLUMETRIC_FOG_EVERYWHERE'
 # No longer sent under --vanilla since 2026-09-26 (no proxy loads there); modded launches still send 999999.
 VANILLA_NOT_SENT = {'X3M_CAPTURE_START'}
 # Sent since the settings file (2026-09-26) on every modded launch.
-CONFIG_DELTA = {'X3M_CONFIG': [None, 'bare']}
+CONFIG_DELTA = {'X3M_CONFIG': [None, 'bare'], 'X3M_BOLT_SINGLE_COPY': [None, '1']}
 
 
 def tiered():
@@ -100,7 +102,7 @@ def main():
         '--perf adds exactly X3M_PERF=1': result['perf_vs_default'] == {'X3M_PERF': [None, '1']},
         '--debug --perf adds exactly the two groups': result['debug_perf_vs_default'] == {'X3M_DEBUG': [None, '1'], 'X3M_PERF': [None, '1']},
         '--perf --draw-trace adds exactly X3M_PERF=1 and X3M_DRAW_TRACE=1': result['perf_draw_trace_vs_default'] == {'X3M_PERF': [None, '1'], 'X3M_DRAW_TRACE': [None, '1']},
-        'no functional variable changed against the base (default), X3M_CONFIG=bare the one addition':
+        'no functional variable changed against the base (default), X3M_CONFIG=bare and X3M_BOLT_SINGLE_COPY=1 the additions':
             {k: v for k, v in result['default_vs_base'].items() if k in CONFIG_DELTA} == CONFIG_DELTA
             and set(result['default_vs_base']) - set(CONFIG_DELTA) <= names | REMOVED_2026_09_26
             and all(b is None for k, (a, b) in result['default_vs_base'].items() if k not in CONFIG_DELTA),

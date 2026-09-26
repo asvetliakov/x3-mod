@@ -1016,6 +1016,12 @@ public:
     // option off.
     void configure_bolt_footprint(bool requested, float w_px, float l_px) noexcept;
     bool bolt_footprint_requested() const noexcept { return bolt_footprint_requested_; }
+    // Single copy (X3M_BOLT_SINGLE_COPY=1; bolt-footprint.md, "Single copy"): the game draws its bullet batch twice
+    // per frame from the same bytes, once right after the scene's depth Clear and once after all opaque geometry. An
+    // additive-admitted bullet-producer draw issued before the scene frame's first depth-writing draw (the scene
+    // selector's scene_depth_written) is not forwarded: D3D_OK, no state or binding touched, none of the route's
+    // work. Process-start configuration; inert without the additive route (the rule sits in its admission).
+    void configure_bolt_single_copy(bool requested) noexcept;
     // Fade-band motion arm threshold (X3M_FADE_ROUTE=<permille>, default
     // 500; fade_route::threshold_off disables the arm): a reviewed pair drawn
     // in the exact fade-band state routes (own RT1 motion, RT2 masked, no
@@ -2020,6 +2026,10 @@ private:
     void log_bolt_copy(const MotionDrawCall&, const float* positions, std::uint64_t revision, const char* reason,
                        const char* detail) noexcept;
     void log_screen_additive_frame() noexcept;
+    // The single-copy rule's drop of one early bullet-producer draw (counters and the capture-frame row; nothing is
+    // forwarded or bound); log_bolt_copies writes the per-frame telemetry row at after_present.
+    void drop_early_bolt_copy(const MotionDrawCall&, MotionRoute&) noexcept;
+    void log_bolt_copies() noexcept;
     void derive_fade_region(MotionRoute&) noexcept;
     // Step-1 rectangle of the bound draw (resolve, rows, jitter, viewport,
     // fill mode, clip to the owning target); the counters, witness and log
@@ -2321,6 +2331,10 @@ private:
     // frame, at most bolt_copy_cap; the rest are counted for bolt_copy_more.
     static constexpr unsigned bolt_copy_cap = 16;
     unsigned bolt_copy_rows_ = 0, bolt_copy_more_ = 0;
+    // Single copy: the switch, this frame's dropped early copies and the admitted late ones counted once an early
+    // copy was dropped (reset in begin_frame and after the telemetry row), and the session's drops (fixture key 63).
+    bool bolt_single_copy_ = false;
+    std::uint32_t bolt_early_dropped_ = 0, bolt_late_ = 0, bolt_dropped_session_ = 0;
     float screen_additive_gain_ = 1.f;
     // Per-source bloom attenuation of the additive draw (option 1): the scene
     // alpha the bloom extract weighs by becomes k*a + D.a. 1 = off (no alpha
@@ -2347,7 +2361,9 @@ private:
     // not submitted).
     static constexpr unsigned screen_additive_reason_count = 10;
     struct ScreenAdditiveWindow {
-        std::uint32_t pair_draws = 0, admitted = 0, apply_failures = 0;
+        std::uint32_t pair_draws = 0, admitted = 0, apply_failures = 0, bolt_dropped = 0; // bolt_dropped: the
+                                                                                          // single-copy rule's early
+                                                                                          // bullet draws
         std::uint32_t refused[screen_additive_reason_count]{};
     } screen_additive_window_{};
     unsigned screen_additive_window_frames_ = 0;
