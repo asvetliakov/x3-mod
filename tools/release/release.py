@@ -319,22 +319,22 @@ class Release:
     def listing(self, record_path):
         record = self.record
         print(f'\n=== release {self.version} ===')
-        print(f'commit      {record["commit"]}{" (dirty)" if record["dirty"] else ""}')
-        print(f'toolchain   {record["toolchain"]["mingw_gcc"]}; {record["toolchain"]["cmake"]}')
-        print(f'config      generate.py --check {record["generate_check"]}')
-        print(f'x87         {record["x87"]["result"]}, {record["x87"]["violations"]} violations')
-        print(f'd3d9.dll    {record["dll"]["sha256"]}  {record["dll"]["bytes"]} B')
+        print(f'commit             {record["commit"]}{" (dirty)" if record["dirty"] else ""}')
+        print(f'toolchain          {record["toolchain"]["mingw_gcc"]}; {record["toolchain"]["cmake"]}')
+        print(f'config             generate.py --check {record["generate_check"]}')
+        print(f'x87                {record["x87"]["result"]}, {record["x87"]["violations"]} violations')
+        print(f'd3d9.dll           {record["dll"]["sha256"]}  {record["dll"]["bytes"]} B')
         for name, entry in record['regenerate'].items():
-            print(f'{name:11s} {entry["sha256"]}  {entry["bytes"]} B  ({record["regenerate_source"]})')
+            print(f'{name:18s} {entry["sha256"]}  {entry["bytes"]} B  ({record["regenerate_source"]})')
         if record['zip']:
-            print(f'zip         {record["zip"]["path"]}')
-            print(f'            {record["zip"]["sha256"]}  {record["zip"]["bytes"]} B')
+            print(f'zip                {record["zip"]["path"]}')
+            print(f'                   {record["zip"]["sha256"]}  {record["zip"]["bytes"]} B')
             for entry in record['zip']['entries']:
                 print(f'  {entry["name"]:22s} {entry["bytes"]:>10d}  {entry["sha256"][:16]}')
         else:
-            print('zip         none: ' + SKIP_WINDOWS_NOTE)
-        print('wall        ' + ', '.join(f'{name} {seconds} s' for name, seconds in record['wall_seconds'].items()))
-        print(f'record      {record_path}')
+            print('zip                none: ' + SKIP_WINDOWS_NOTE)
+        print('wall               ' + ', '.join(f'{name} {seconds} s' for name, seconds in record['wall_seconds'].items()))
+        print(f'record             {record_path}')
 
 
 def dry_run(args):
