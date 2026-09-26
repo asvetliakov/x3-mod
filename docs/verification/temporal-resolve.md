@@ -3439,3 +3439,5 @@ section 10 (c26 = A, B, F; rotation-only displacement `cameraUV - dilatedUV` und
    left the screen during run347's pan, so the two pans did not show the same object. Nothing to change in V0 / V1 / F (the
    pans ran above V1). Measured, 0.9 + rotation 0.7 is better than 0.85 on both axes; whether to make it the default is a
    decision for the orchestrator / user (a same-object pan of the adjacent station would be the visible test).
+
+**2026-09-26 Run 93 A decision (user):** the rotation-aware motion weight stays opt-in and off by default; the user noticed shimmer while panning with it on (run347) and prefers the blur of 0.85 to shimmer ("better blurring than shimmering"). Closed; do not re-propose a lower pan weight.
