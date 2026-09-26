@@ -1,0 +1,1848 @@
+{
+ "schema": 1,
+ "candidate": {
+  "commit": "759c2ac7",
+  "commit_full": "759c2ac7b94c0e04cd3a3e6447f58fee8e40eb0f",
+  "branch": "main (detached worktree)",
+  "checkout": "/tmp/x3-run91-candidate/src",
+  "source_clean": true,
+  "source_clean_note": "detached worktree /tmp/x3-run91-candidate/src at 759c2ac7 (verification/probe/build/ created first); git status --short --untracked-files=all empty before the build (0 lines). Runner rewrites of tracked results were copied to /tmp/x3-run91-candidate/results-<tag>/ (lists rewritten-<tag>.txt: admission 0, bloom 1, census 1, chasefire 1, chasetrans 1, collide 1, crypt 2, cull 1, cursor 2, dryrun 0, execution 2, exports 4, fogfam 0, fogpass 0, fogshader 0, fov 1, gamephase 1, gpusync 2, integration 11, loadtrace 5, lodocc 1, motion 44, ownership 1, resreader 2, route 0, sunflare 1, sunocc 1, sunshare 1, temporal 2, terran 1, tiers 0, window 1) and restored by /tmp/x3-run91-candidate/save_restore.sh. git status --short --untracked-files=all empty after every step; main (/Users/asvetl/x3-mod, HEAD 55ddd90b = 759c2ac7 + a docs-only cleanup) carries only this record.",
+  "source_clean_after": true,
+  "dll": "/tmp/x3-run91-candidate/build/d3d9.dll",
+  "sha256": "25adddf84b3466044f0b387633da64ea77684c5ea3a4cd74c143d0a4e9592233",
+  "bytes": 57280486,
+  "embedded_marker": "X3M_SOURCE_COMMIT=759c2ac7b94c0e04cd3a3e6447f58fee8e40eb0f",
+  "embedded_marker_check": "strings -a /tmp/x3-run91-candidate/build/d3d9.dll | grep -c X3M_SOURCE_COMMIT=759c2ac7b94c0e04cd3a3e6447f58fee8e40eb0f -> 1 (grep -c X3M_SOURCE_COMMIT= -> 1)",
+  "configuration": "RelWithDebInfo",
+  "toolchain": "cmake/mingw-i686.cmake",
+  "toolchain_versions": {
+   "i686-w64-mingw32-gcc": "16.2.0",
+   "binutils_ld": "2.47.20260726",
+   "cmake": "4.4.3"
+  },
+  "toolchain_versions_check": "i686-w64-mingw32-gcc 16.2.0, GNU ld 2.47.20260726, cmake 4.4.3 (--version this session, equal to Run90)",
+  "python3": "/usr/bin/python3",
+  "build_commands": [
+   "cmake -S . -B /tmp/x3-run91-candidate/build -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DPython3_EXECUTABLE=/usr/bin/python3",
+   "cmake --build /tmp/x3-run91-candidate/build -j4"
+  ],
+  "build_seconds": 48,
+  "build_seconds_note": "configure + build, fresh build directory",
+  "build_warnings": 0,
+  "build_warnings_check": "grep -ci warning /tmp/x3-run91-candidate/build.log -> 0",
+  "build_log_sha256": "2be22592c8b10dff4f1353dca8baaa6828fb1ced9cc90423d2234e5ad443bc04",
+  "dll_write_protected_after_build": true,
+  "supersedes": "Run90 candidate f9cceb17 (sha256 6f6be732..., installed)",
+  "sha256_recheck_after_fixtures": "25adddf84b3466044f0b387633da64ea77684c5ea3a4cd74c143d0a4e9592233",
+  "size_versus_run90": "56,825,745 -> 57,280,486 bytes (+454741)",
+  "section_size_delta_vs_run90": {
+   ".text": 31756,
+   ".data": 2600,
+   ".rdata": 18816,
+   ".bss": 208320,
+   ".idata": -76,
+   ".reloc": 3492,
+   ".debug_aranges": 32,
+   ".debug_info": 209670,
+   ".debug_abbrev": 6370,
+   ".debug_line": 43855,
+   ".debug_frame": 536,
+   ".debug_str": 1113,
+   ".debug_line_str": 1803,
+   ".debug_loclists": 110297,
+   ".debug_rnglists": 21712
+  },
+  "size_reading": "grew with the config resolver, parser and generated schema table: .text +31756, .rdata +18816, .data +2600 B; debug sections +395388 B (.debug_info +209670, .debug_loclists +110297, .debug_line +43855); .bss +208320 takes no file bytes; .idata -76 (two imports fewer)"
+ },
+ "scope": "Run90 + f9cceb17..759c2ac7 (DLL-relevant: bec1afb5, da84d232, 204d3a09; the rest docs/records): (1) bec1afb5 developer logging options trimmed to --debug/--perf plus --gpu-sync-timing, --taa-debug, --profile, --sun-occlusion-log and the new --draw-trace (X3M_DRAW_TRACE expanded in the DLL), in-game mesh adjacency dump and the --volumetric-fog-everywhere forced profile removed, 33 section-5 variables baked; (2) da84d232 every in-game hotkey removed except F8 (polled only under --debug), the automatic capture path and --capture-start/--capture-delay removed (the launcher still sends X3M_CAPTURE_START=999999), launcher parser allow_abbrev=False; (3) 204d3a09 the settings file x3m.ini: schema-generated table src/config/config_schema_inc.h, INI parser src/config/config_parse.h, resolver src/proxy/config.{h,cpp} loaded as the first statement of initialize_log, config::get at 39 read sites, launcher default X3M_CONFIG=bare and --config player mode. No EXE patch site changed (git diff of verify_*.py empty).",
+ "changed_files_src": [
+  "src/config/config_parse.h",
+  "src/config/config_schema_inc.h",
+  "src/ownership/application_admission_abi.cpp",
+  "src/proxy/camera_state.cpp",
+  "src/proxy/capture.cpp",
+  "src/proxy/capture_arm_core.h",
+  "src/proxy/chase_camera.cpp",
+  "src/proxy/chase_camera_math.h",
+  "src/proxy/chase_lead.cpp",
+  "src/proxy/chase_transition.cpp",
+  "src/proxy/collide_box_cull.cpp",
+  "src/proxy/collide_memo.cpp",
+  "src/proxy/collide_narrow_census.cpp",
+  "src/proxy/collide_sat_sse2.cpp",
+  "src/proxy/comparison_controls.h",
+  "src/proxy/config.cpp",
+  "src/proxy/config.h",
+  "src/proxy/config_load.h",
+  "src/proxy/crypt_cache.cpp",
+  "src/proxy/cull_census.cpp",
+  "src/proxy/cull_small_parts.cpp",
+  "src/proxy/cursor_reassert.cpp",
+  "src/proxy/fog_sector_policy.h",
+  "src/proxy/fov.cpp",
+  "src/proxy/fps_overlay.h",
+  "src/proxy/frame_phases.cpp",
+  "src/proxy/frame_timing.cpp",
+  "src/proxy/game_phases.cpp",
+  "src/proxy/game_phases_core.h",
+  "src/proxy/gz_buffer.cpp",
+  "src/proxy/light_phases.cpp",
+  "src/proxy/loader.cpp",
+  "src/proxy/loading_trace.cpp",
+  "src/proxy/loading_trace.h",
+  "src/proxy/lod_occlusion.cpp",
+  "src/proxy/log_tiers.h",
+  "src/proxy/loop_phases.cpp",
+  "src/proxy/media_cue.cpp",
+  "src/proxy/motion_output.cpp",
+  "src/proxy/motion_output.h",
+  "src/proxy/motion_output_fog_inc.h",
+  "src/proxy/motion_output_shadow_replay_inc.h",
+  "src/proxy/music_keep.cpp",
+  "src/proxy/object_lifetime.cpp",
+  "src/proxy/object_trace.cpp",
+  "src/proxy/pass_phases.cpp",
+  "src/proxy/pause_key_only.cpp",
+  "src/proxy/point_light_admission.cpp",
+  "src/proxy/proxy_identity.cpp",
+  "src/proxy/residual_phases.cpp",
+  "src/proxy/resource_reader.cpp",
+  "src/proxy/sampling_profiler.cpp",
+  "src/proxy/scene_hook.cpp",
+  "src/proxy/session_log.cpp",
+  "src/proxy/submit_phases.cpp",
+  "src/proxy/sun_flare_fix.cpp",
+  "src/proxy/sun_light_poll.cpp",
+  "src/proxy/sun_occlusion.cpp",
+  "src/proxy/telemetry.cpp",
+  "src/proxy/telemetry.h",
+  "src/proxy/terran_station_lod.cpp",
+  "src/proxy/voice_dmo_fallback.cpp",
+  "src/proxy/window_mode.cpp",
+  "src/proxy/window_trace.cpp",
+  "src/proxy/window_trace.h",
+  "src/renderer/fog_field_assets.cpp",
+  "src/renderer/fog_look_math.h",
+  "src/renderer/fog_mote_math.h",
+  "src/renderer/fog_pass.h",
+  "src/renderer/fog_pass_math.h",
+  "src/renderer/hdr_pass.cpp",
+  "src/renderer/hdr_pass.h"
+ ],
+ "changed_files_other_dll_relevant": [
+  "CMakeLists.txt",
+  "tools/manage.py"
+ ],
+ "changed_files_command": "git diff --stat f9cceb17..759c2ac7 -- src/ -> 72 files changed, 1508 insertions(+), 929 deletions(-)",
+ "temporal_pass": {
+  "command": "cd /tmp/x3-run91-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run91-candidate/lock-timings-temporal.json python3 verification/probe/run_temporal_pass.py",
+  "why_run": "full closure qualification (closure unchanged since Run90; rerun because the DLL changed widely)",
+  "result": "PASS",
+  "exit_code": 0,
+  "records_vs_committed": {
+   "temporal-pass-summary.json": {
+    "committed": {
+     "passed": true,
+     "exit_code": 0
+    },
+    "run91": {
+     "passed": true,
+     "exit_code": 0
+    }
+   },
+   "temporal-lattice.txt": {
+    "committed": [
+     "RESULT PASS numerical=598 state_restorations=90 lattice=1"
+    ],
+    "run91": [
+     "RESULT PASS numerical=584 state_restorations=90 lattice=1"
+    ]
+   }
+  },
+  "rewritten_files": 2,
+  "copies": "/tmp/x3-run91-candidate/results-temporal/",
+  "lock": {
+   "lock_wait_seconds": 2.790999999998517e-06,
+   "child_elapsed_seconds": 131.840644042,
+   "exit_code": 0
+  },
+  "run90_innermost": {
+   "result": "PASS",
+   "exit_code": 0,
+   "rewritten_files": 2,
+   "reading": "temporal-pass.txt not rewritten: byte-identical to the committed report (RESULT PASS numerical=744 state_restorations=278 generations=2, = Run89 innermost); temporal-lattice 584/90 (committed file 598 from 22776b6f; 9a668e81 reported 584/90 after the 16-tap programs went)"
+  },
+  "reading": "temporal-pass.txt not rewritten (byte-identical to the committed report, RESULT PASS numerical=744 state_restorations=278 generations=2); temporal-lattice 584/90 = Run90 (the committed file 598 predates the 16-tap removal)"
+ },
+ "gpu_sync_timing": {
+  "command": "cd /tmp/x3-run91-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run91-candidate/lock-timings-gpusync.json python3 verification/probe/run_gpu_sync_timing.py --exe /tmp/x3-run91-candidate/build/gpu_sync_timing_fixture.exe",
+  "why_run": "CMake-built fixture of the candidate tree; closure includes CMakeLists.txt and config read sites",
+  "result": "PASS",
+  "exit_code": 0,
+  "records_vs_committed": {
+   "gpu-sync-timing.json": {
+    "committed": {
+     "passed": true,
+     "expected_checks": 30,
+     "exit_code": 0,
+     "result": 4,
+     "checks": 30,
+     "check_count": 30
+    },
+    "run91": {
+     "passed": true,
+     "expected_checks": 32,
+     "exit_code": 0,
+     "result": 4,
+     "checks": 32,
+     "check_count": 32
+    }
+   },
+   "gpu-sync-timing.txt": {
+    "committed": [
+     "PASS phase=after_reset window=4 pass=present n=16 median_us=118 p90_us=474 wait_median_us=78 session_n=64 session_median_us=90 session_p90_us=204",
+     "RESULT checks=30 failures=0 path=measured PASS"
+    ],
+    "run91": [
+     "PASS phase=after_reset window=4 pass=taa_mask_y n=16 median_us=187 p90_us=323 wait_median_us=179 session_n=64 session_median_us=188 session_p90_us=204",
+     "RESULT checks=32 failures=0 path=measured PASS"
+    ]
+   }
+  },
+  "rewritten_files": 2,
+  "copies": "/tmp/x3-run91-candidate/results-gpusync/",
+  "lock": {
+   "lock_wait_seconds": 3.54200000000221e-06,
+   "child_elapsed_seconds": 2.2357590000000003,
+   "exit_code": 0
+  },
+  "run90_innermost": {
+   "result": "PASS",
+   "exit_code": 0,
+   "rewritten_files": 2,
+   "reading": "32/32 = the Run84 entry carried by Run89 (the committed gpu-sync-timing.json from 614b87fb has 30)"
+  },
+  "reading": "32/32 = Run90 (the committed gpu-sync-timing.json from 614b87fb has 30)"
+ },
+ "bloom_pass": {
+  "command": "cd /tmp/x3-run91-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run91-candidate/lock-timings-bloom.json python3 verification/probe/run_bloom_pass.py",
+  "why_run": "closure includes capture.cpp and hdr sources (config::get read sites)",
+  "result": "PASS",
+  "exit_code": 0,
+  "records_vs_committed": {
+   "bloom-pass-summary.json": {
+    "committed": {
+     "passed": true,
+     "cases": 45,
+     "exit_code": 0,
+     "images": 45
+    },
+    "run91": {
+     "passed": true,
+     "cases": 47,
+     "exit_code": 0,
+     "images": 47
+    }
+   }
+  },
+  "rewritten_files": 1,
+  "copies": "/tmp/x3-run91-candidate/results-bloom/",
+  "lock": {
+   "lock_wait_seconds": 3.500000000000031e-06,
+   "child_elapsed_seconds": 7.624135667,
+   "exit_code": 0
+  },
+  "run90_innermost": {
+   "result": "PASS",
+   "exit_code": 0,
+   "rewritten_files": 1,
+   "reading": "47 cases / 47 images = Run80 entry carried by Run89 (committed summary from 1a778952 has 45)"
+  },
+  "reading": "47 cases / 47 images = Run90 (committed summary from 1a778952 has 45)"
+ },
+ "loading_trace": {
+  "command": "cd /tmp/x3-run91-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run91-candidate/lock-timings-loadtrace.json python3 verification/probe/run_loading_trace.py",
+  "why_run": "loading_trace/loading_probes config read sites; in-game mesh adjacency dump removed (bec1afb5)",
+  "result": "PASS",
+  "exit_code": 0,
+  "records_vs_committed": {
+   "loading-trace-fixture.txt": {
+    "committed": [
+     "engine_patch_rel32 checks=26 failures=0 directions=2 edges=4 late_claim=1",
+     "loading_fixture checks=112 failures=0"
+    ],
+    "run91": [
+     "engine_patch_rel32 checks=26 failures=0 directions=2 edges=4 late_claim=1",
+     "loading_fixture checks=112 failures=0"
+    ]
+   },
+   "loading-mesh-fixture.txt": {
+    "committed": [
+     "LOADING MESH RESULT checks=123 failures=0"
+    ],
+    "run91": [
+     "LOADING MESH RESULT checks=123 failures=0"
+    ]
+   },
+   "mesh-adjacency-fixture.txt": {
+    "committed": [],
+    "run91": [
+     "ADJACENCY_ADMISSION requested_domains=13 distinct_runtime_domains=13 canonicalized_domains=0 registry=8 checks=109 untouched=1 incoming_preserved=1 diagnostic_refused=1",
+     "MESH ADJACENCY RESULT checks=36091 failures=0"
+    ]
+   },
+   "loading-trace-mesh-summary.json": {
+    "committed": {
+     "passed": true,
+     "cases": 4
+    },
+    "run91": {
+     "passed": true,
+     "cases": 3
+    }
+   }
+  },
+  "rewritten_files": 5,
+  "copies": "/tmp/x3-run91-candidate/results-loadtrace/",
+  "lock": {
+   "lock_wait_seconds": 2.999999999999531e-06,
+   "child_elapsed_seconds": 30.384639790999998,
+   "exit_code": 0
+  },
+  "run90_innermost": {
+   "result": "PASS",
+   "exit_code": 0,
+   "rewritten_files": 5,
+   "reading": "loading_fixture 112/0, engine_patch_rel32 26/0, loading mesh 123/0, mesh adjacency 36,091/0; the summary lists 3 cases (committed 4 from 2e5f1af4): mesh-adjacency-cache-off/-on became one mesh-adjacency case with the mesh cache removed in 9a668e81"
+  },
+  "reading": "loading_fixture 112/0, engine_patch_rel32 26/0, loading mesh 123/0, mesh adjacency 36,091/0; 3 summary cases = Run90 (committed file has 4 from before the mesh cache removal)"
+ },
+ "crypt_cache": {
+  "command": "cd /tmp/x3-run91-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run91-candidate/lock-timings-crypt.json python3 verification/probe/run_crypt_cache.py",
+  "why_run": "loading trace/light sources changed (config read sites)",
+  "result": "PASS",
+  "exit_code": 0,
+  "records_vs_committed": {
+   "crypt-cache-fixture.txt": {
+    "committed": [
+     "CRYPT CACHE RESULT checks=237 failures=0"
+    ],
+    "run91": [
+     "CRYPT CACHE RESULT checks=237 failures=0"
+    ]
+   },
+   "crypt-cache-summary.json": {
+    "committed": {
+     "passed": true,
+     "exit_code": 0,
+     "checks": 237,
+     "failures": 0
+    },
+    "run91": {
+     "passed": true,
+     "exit_code": 0,
+     "checks": 237,
+     "failures": 0
+    }
+   }
+  },
+  "rewritten_files": 2,
+  "copies": "/tmp/x3-run91-candidate/results-crypt/",
+  "lock": {
+   "lock_wait_seconds": 3.5419999999987406e-06,
+   "child_elapsed_seconds": 12.221101458,
+   "exit_code": 0
+  },
+  "run90_innermost": {
+   "result": "PASS",
+   "exit_code": 0,
+   "rewritten_files": 2
+  }
+ },
+ "resource_reader": {
+  "command": "cd /tmp/x3-run91-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run91-candidate/lock-timings-resreader.json python3 verification/probe/run_resource_reader.py",
+  "why_run": "loading_probes.cpp changed (config read sites; verify choice of --resource-read removed)",
+  "result": "PASS",
+  "exit_code": 0,
+  "records_vs_committed": {
+   "resource-reader-fixture.txt": {
+    "committed": [
+     "RESOURCE READER RESULT checks=4721 failures=0"
+    ],
+    "run91": [
+     "RESOURCE READER RESULT checks=4721 failures=0"
+    ]
+   },
+   "resource-reader-summary.json": {
+    "committed": {
+     "passed": true,
+     "expected_checks": 4721,
+     "exit_code": 0,
+     "checks": 4721,
+     "failures": 0,
+     "cases": 7
+    },
+    "run91": {
+     "passed": true,
+     "expected_checks": 4721,
+     "exit_code": 0,
+     "checks": 4721,
+     "failures": 0,
+     "cases": 7
+    }
+   }
+  },
+  "rewritten_files": 2,
+  "copies": "/tmp/x3-run91-candidate/results-resreader/",
+  "lock": {
+   "lock_wait_seconds": 3.208000000001071e-06,
+   "child_elapsed_seconds": 24.056710167000002,
+   "exit_code": 0
+  },
+  "run90_innermost": {
+   "result": "PASS",
+   "exit_code": 0,
+   "rewritten_files": 2
+  }
+ },
+ "cursor_reassert": {
+  "command": "cd /tmp/x3-run91-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run91-candidate/lock-timings-cursor.json python3 verification/probe/run_cursor_reassert.py --exe /tmp/x3-run91-candidate/build/cursor_reassert_fixture.exe",
+  "why_run": "window_trace.cpp and the fixture changed (Ctrl+Shift+F7 marker flush removed in da84d232); CMake-built fixture",
+  "result": "PASS",
+  "exit_code": 0,
+  "records_vs_committed": {
+   "cursor-reassert.json": {
+    "committed": {
+     "passed": true,
+     "expected_checks": 42,
+     "exit_code": 0,
+     "result": 3,
+     "checks": 42,
+     "check_count": 42
+    },
+    "run91": {
+     "passed": true,
+     "expected_checks": 41,
+     "exit_code": 0,
+     "result": 3,
+     "checks": 41,
+     "check_count": 41
+    }
+   },
+   "cursor-reassert.txt": {
+    "committed": [
+     "RESULT checks=42 failed=0 PASS"
+    ],
+    "run91": [
+     "RESULT checks=41 failed=0 PASS"
+    ]
+   }
+  },
+  "rewritten_files": 2,
+  "copies": "/tmp/x3-run91-candidate/results-cursor/",
+  "lock": {
+   "lock_wait_seconds": 4.166999999999366e-06,
+   "child_elapsed_seconds": 3.199394125,
+   "exit_code": 0
+  },
+  "run90_innermost": {
+   "result": "PASS",
+   "exit_code": 0,
+   "rewritten_files": 2
+  },
+  "reading": "41/0: EXPECTED_CHECKS 42 -> 41 in run_cursor_reassert.py at da84d232 (the trace-ring marker flush went with Ctrl+Shift+F7); Run90 and the committed record 42"
+ },
+ "d3d9_exports": {
+  "command": "cd /tmp/x3-run91-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run91-candidate/lock-timings-exports.json python3 verification/probe/run_d3d9_exports.py --dll /tmp/x3-run91-candidate/build/d3d9.dll",
+  "why_run": "the resolver runs first in initialize_log (loader path); runs against the frozen candidate DLL (writable and read-only module directory cases)",
+  "result": "PASS",
+  "exit_code": 0,
+  "records_vs_committed": {
+   "d3d9-exports-summary.json": {
+    "committed": {
+     "passed": true,
+     "status": "PASS",
+     "cases": 1
+    },
+    "run91": {
+     "passed": true,
+     "status": "PASS",
+     "cases": 2
+    }
+   },
+   "d3d9-exports.txt": {
+    "committed": [
+     "RESULT PASS checks=8 failures=0"
+    ],
+    "run91": [
+     "RESULT PASS checks=8 failures=0",
+     "RESULT PASS checks=8 failures=0"
+    ]
+   }
+  },
+  "rewritten_files": 4,
+  "copies": "/tmp/x3-run91-candidate/results-exports/",
+  "lock": {
+   "lock_wait_seconds": 3.208000000001071e-06,
+   "child_elapsed_seconds": 6.8757107500000005,
+   "exit_code": 0
+  },
+  "run90_innermost": {
+   "result": "PASS",
+   "exit_code": 0,
+   "rewritten_files": 2,
+   "previous": "d3d9-exports.txt committed RESULT PASS checks=8 (one case)",
+   "reading": "two cases (writable and read-only module directory), RESULT PASS checks=8 each; the committed record (d544b57f) had one case"
+  },
+  "reading": "two cases (writable and read-only module directory), RESULT PASS checks=8 each = Run90; the committed record (d544b57f) had one case"
+ },
+ "game_phase_cpu": {
+  "command": "cd /tmp/x3-run91-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run91-candidate/lock-timings-gamephase.json python3 verification/probe/run_game_phase_cpu.py",
+  "why_run": "game phase sources are config read sites; --game-phases options removed (bec1afb5)",
+  "result": "PASS",
+  "exit_code": 0,
+  "records_vs_committed": {
+   "game_phase_cpu.json": {
+    "committed": {
+     "result": "PASS",
+     "failures": 0
+    },
+    "run91": {
+     "result": "PASS",
+     "failures": 0
+    }
+   }
+  },
+  "rewritten_files": 1,
+  "copies": "/tmp/x3-run91-candidate/results-gamephase/",
+  "lock": {
+   "lock_wait_seconds": 3.4999999999965614e-06,
+   "child_elapsed_seconds": 13.50672625,
+   "exit_code": 0
+  },
+  "run90_innermost": {
+   "result": "PASS",
+   "exit_code": 0,
+   "rewritten_files": 1,
+   "previous": "game_phase_cpu.json committed PASS failures 0"
+  },
+  "reading": "PASS, failures 0; summary stubs 33 / checks 12,025 = Run90 (the committed game_phase_cpu.json from 0e5eddeb, 2026-09-17, has 47 / 8,839: the 14 audio witness sites went in 9a668e81)"
+ },
+ "fov_patch": {
+  "command": "cd /tmp/x3-run91-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run91-candidate/lock-timings-fov.json python3 verification/probe/run_fov_patch.py",
+  "why_run": "engine_patch closure changed (config read sites); record re-recorded at 204d3a09",
+  "result": "PASS",
+  "exit_code": 0,
+  "records_vs_committed": {
+   "fov-patch.json": {
+    "committed": {
+     "passed": true,
+     "result": 2,
+     "checks": 268,
+     "check_count": 268,
+     "exit_status": 0
+    },
+    "run91": {
+     "passed": true,
+     "result": 2,
+     "checks": 268,
+     "check_count": 268,
+     "exit_status": 0
+    }
+   }
+  },
+  "rewritten_files": 1,
+  "copies": "/tmp/x3-run91-candidate/results-fov/",
+  "lock": {
+   "lock_wait_seconds": 3.6669999999988656e-06,
+   "child_elapsed_seconds": 7.6915562500000005,
+   "exit_code": 0
+  },
+  "run90_innermost": {
+   "result": "PASS",
+   "exit_code": 0,
+   "rewritten_files": 1
+  },
+  "reading": "268/268 = the record re-recorded at 204d3a09; the rewritten record differs from the committed one in /source/commit only (plus volatile timing fields; rerun-compare.json); not re-recorded"
+ },
+ "window_mode": {
+  "command": "cd /tmp/x3-run91-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run91-candidate/lock-timings-window.json python3 verification/probe/run_window_mode.py --exe /tmp/x3-run91-candidate/build/window_mode_fixture.exe",
+  "why_run": "CMake-built fixture of the candidate tree; window sources are config read sites",
+  "result": "PASS",
+  "exit_code": 0,
+  "records_vs_committed": {
+   "window-mode.json": {
+    "committed": {
+     "passed": true,
+     "expected_checks": 19,
+     "exit_code": 0,
+     "result": 3,
+     "checks": 19,
+     "check_count": 19
+    },
+    "run91": {
+     "passed": true,
+     "expected_checks": 19,
+     "exit_code": 0,
+     "result": 3,
+     "checks": 19,
+     "check_count": 19
+    }
+   },
+   "window-mode.txt": null
+  },
+  "rewritten_files": 1,
+  "copies": "/tmp/x3-run91-candidate/results-window/",
+  "lock": {
+   "lock_wait_seconds": 3.4169999999986156e-06,
+   "child_elapsed_seconds": 8.819902083,
+   "exit_code": 0
+  },
+  "run90_innermost": {
+   "result": "PASS",
+   "exit_code": 0,
+   "rewritten_files": 2
+  },
+  "reading": "19/19 = committed = Run90; the record differs only in the window_mode.cpp source hash (config read site)"
+ },
+ "sun_flare_fix": {
+  "command": "cd /tmp/x3-run91-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run91-candidate/lock-timings-sunflare.json python3 verification/probe/run_sun_flare_fix.py",
+  "why_run": "engine_patch closure changed; record re-recorded at 204d3a09",
+  "result": "PASS",
+  "exit_code": 0,
+  "records_vs_committed": {
+   "sun-flare-fix.json": {
+    "committed": {
+     "passed": true,
+     "result": 2,
+     "checks": 79,
+     "check_count": 79,
+     "exit_status": 0
+    },
+    "run91": {
+     "passed": true,
+     "result": 2,
+     "checks": 79,
+     "check_count": 79,
+     "exit_status": 0
+    }
+   }
+  },
+  "rewritten_files": 1,
+  "copies": "/tmp/x3-run91-candidate/results-sunflare/",
+  "lock": {
+   "lock_wait_seconds": 3.1669999999983656e-06,
+   "child_elapsed_seconds": 7.20231875,
+   "exit_code": 0
+  },
+  "run90_innermost": {
+   "result": "PASS",
+   "exit_code": 0,
+   "rewritten_files": 1
+  },
+  "reading": "79/79 = the record re-recorded at 204d3a09; differs in /source/commit only, not re-recorded"
+ },
+ "lod_occlusion_patch": {
+  "command": "cd /tmp/x3-run91-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run91-candidate/lock-timings-lodocc.json python3 verification/probe/run_lod_occlusion_patch.py",
+  "why_run": "engine_patch closure changed; record re-recorded at 204d3a09",
+  "result": "PASS",
+  "exit_code": 0,
+  "records_vs_committed": {
+   "lod-occlusion-patch.json": {
+    "committed": {
+     "passed": true,
+     "result": 2,
+     "checks": 108,
+     "check_count": 108,
+     "exit_status": 0
+    },
+    "run91": {
+     "passed": true,
+     "result": 2,
+     "checks": 108,
+     "check_count": 108,
+     "exit_status": 0
+    }
+   }
+  },
+  "rewritten_files": 1,
+  "copies": "/tmp/x3-run91-candidate/results-lodocc/",
+  "lock": {
+   "lock_wait_seconds": 3.374999999999906e-06,
+   "child_elapsed_seconds": 7.0469487090000005,
+   "exit_code": 0
+  },
+  "run90_innermost": {
+   "result": "PASS",
+   "exit_code": 0,
+   "rewritten_files": 1
+  },
+  "reading": "108/108 = the record re-recorded at 204d3a09; differs in /source/commit only, not re-recorded"
+ },
+ "terran_lod_patch": {
+  "command": "cd /tmp/x3-run91-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run91-candidate/lock-timings-terran.json python3 verification/probe/run_terran_lod_patch.py",
+  "why_run": "production EXE patch; engine_patch closure changed; record re-recorded at 44c60abb",
+  "result": "PASS",
+  "exit_code": 0,
+  "records_vs_committed": {
+   "terran-lod-patch.json": {
+    "committed": {
+     "passed": true,
+     "result": 2,
+     "checks": 92,
+     "check_count": 92,
+     "exit_status": 0
+    },
+    "run91": {
+     "passed": true,
+     "result": 2,
+     "checks": 92,
+     "check_count": 92,
+     "exit_status": 0
+    }
+   }
+  },
+  "rewritten_files": 1,
+  "copies": "/tmp/x3-run91-candidate/results-terran/",
+  "lock": {
+   "lock_wait_seconds": 2.9160000000021113e-06,
+   "child_elapsed_seconds": 16.734030208,
+   "exit_code": 0
+  },
+  "run90_innermost": {
+   "result": "PASS",
+   "exit_code": 0,
+   "rewritten_files": 1,
+   "previous": "terran-lod-patch.json committed 92/92"
+  },
+  "reading": "92/92 = the record re-recorded at 44c60abb; differs in /source/commit only, not re-recorded"
+ },
+ "cull_small_parts_fixture": {
+  "command": "cd /tmp/x3-run91-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run91-candidate/lock-timings-cull.json python3 verification/probe/run_cull_small_parts.py (after /usr/bin/python3 verification/probe/build_cull_small_parts.py, host)",
+  "why_run": "cull sources are config read sites",
+  "result": "PASS",
+  "exit_code": 0,
+  "records_vs_committed": {
+   "cull-small-parts-cpu.json": {
+    "committed": {
+     "checks": 119,
+     "failures": 0,
+     "exit_status": 0
+    },
+    "run91": {
+     "checks": 119,
+     "failures": 0,
+     "exit_status": 0
+    }
+   }
+  },
+  "rewritten_files": 1,
+  "copies": "/tmp/x3-run91-candidate/results-cull/",
+  "lock": {
+   "lock_wait_seconds": 3.290999999999017e-06,
+   "child_elapsed_seconds": 5.217795875,
+   "exit_code": 0
+  },
+  "run90_innermost": {
+   "result": "PASS",
+   "exit_code": 0,
+   "rewritten_files": 1,
+   "reading": "119/0 = the committed record of 9a668e81 (153 at Run83: the --cull-small-parts-scope checks went with the option)"
+  },
+  "reading": "119/0 = committed = Run90"
+ },
+ "cull_census": {
+  "command": "cd /tmp/x3-run91-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run91-candidate/lock-timings-census.json python3 verification/probe/run_cull_census.py (after /usr/bin/python3 verification/probe/build_cull_census.py, host)",
+  "why_run": "cull_census sources changed",
+  "result": "PASS",
+  "exit_code": 0,
+  "records_vs_committed": {
+   "cull-census-cpu.json": {
+    "committed": {
+     "checks": 119,
+     "failures": 0,
+     "exit_status": 0
+    },
+    "run91": {
+     "checks": 119,
+     "failures": 0,
+     "exit_status": 0
+    }
+   }
+  },
+  "rewritten_files": 1,
+  "copies": "/tmp/x3-run91-candidate/results-census/",
+  "lock": {
+   "lock_wait_seconds": 3.5419999999987406e-06,
+   "child_elapsed_seconds": 5.340085333,
+   "exit_code": 0
+  },
+  "run90_innermost": {
+   "result": "PASS",
+   "exit_code": 0,
+   "rewritten_files": 1
+  }
+ },
+ "chase_fire": {
+  "command": "cd /tmp/x3-run91-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run91-candidate/lock-timings-chasefire.json python3 verification/probe/run_chase_fire.py",
+  "why_run": "chase_camera.cpp / chase_fire.cpp closure changed (config read sites)",
+  "result": "PASS",
+  "exit_code": 0,
+  "records_vs_committed": {
+   "chase-fire-summary.json": {
+    "committed": {
+     "passed": true
+    },
+    "run91": {
+     "passed": true
+    }
+   }
+  },
+  "rewritten_files": 1,
+  "copies": "/tmp/x3-run91-candidate/results-chasefire/",
+  "lock": {
+   "lock_wait_seconds": 3.54200000000221e-06,
+   "child_elapsed_seconds": 22.990759667,
+   "exit_code": 0
+  },
+  "run90_innermost": {
+   "result": "PASS",
+   "exit_code": 0,
+   "rewritten_files": 1,
+   "reading": "4 modes, 250+22+13+22 = 307 checks, 0 failures (= Run82 entry)"
+  },
+  "reading": "summary passed=true, equal to the committed record and Run90"
+ },
+ "chase_transition_cpu": {
+  "command": "cd /tmp/x3-run91-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run91-candidate/lock-timings-chasetrans.json python3 verification/probe/run_chase_transition_cpu.py (after /usr/bin/python3 verification/probe/build_chase_transition_cpu.py, host)",
+  "why_run": "chase_camera.cpp closure changed (X3M_CHASE_MAX_DT baked in bec1afb5)",
+  "result": "PASS",
+  "exit_code": 0,
+  "records_vs_committed": {
+   "chase-restore-cpu.json": {
+    "committed": {
+     "checks": 771,
+     "failures": 0,
+     "exit_status": 0
+    },
+    "run91": {
+     "checks": 771,
+     "failures": 0,
+     "exit_status": 0
+    }
+   }
+  },
+  "rewritten_files": 1,
+  "copies": "/tmp/x3-run91-candidate/results-chasetrans/",
+  "lock": {
+   "lock_wait_seconds": 2.8340000000001697e-06,
+   "child_elapsed_seconds": 5.733076166999999,
+   "exit_code": 0
+  },
+  "run90_innermost": {
+   "result": "PASS",
+   "exit_code": 0,
+   "rewritten_files": 1,
+   "previous": "chase-restore-cpu.json committed 771/0"
+  }
+ },
+ "collide_query_phases": {
+  "command": "cd /tmp/x3-run91-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run91-candidate/lock-timings-collide.json python3 verification/probe/run_collide_query_phases.py (after /usr/bin/python3 verification/probe/build_collide_query_phases.py, host)",
+  "why_run": "collide sources changed (--collide-memo-verify removed; config read sites)",
+  "result": "PASS",
+  "exit_code": 0,
+  "records_vs_committed": {
+   "collide-query-phases.json": {
+    "committed": {
+     "checks": 142,
+     "failures": 0,
+     "exit_status": 0
+    },
+    "run91": {
+     "checks": 142,
+     "failures": 0,
+     "exit_status": 0
+    }
+   }
+  },
+  "rewritten_files": 1,
+  "copies": "/tmp/x3-run91-candidate/results-collide/",
+  "lock": {
+   "lock_wait_seconds": 3.124999999999656e-06,
+   "child_elapsed_seconds": 8.406289542,
+   "exit_code": 0
+  },
+  "run90_innermost": {
+   "result": "PASS",
+   "exit_code": 0,
+   "rewritten_files": 1,
+   "previous": "collide-query-phases.json committed 142/0"
+  },
+  "reading": "142/0 = committed; the record adds config.h / log_tiers.h to its source hashes"
+ },
+ "motion_output": {
+  "command": "cd /tmp/x3-run91-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run91-candidate/lock-timings-motion.json python3 verification/probe/run_motion_output.py",
+  "why_run": "capture.cpp, motion_output.*, config read sites and the fixture/runner changed (seam-config-file added)",
+  "corpus": "/tmp/x3-shader-sweep/programs present at start, not modified",
+  "status": "PASS",
+  "passed": true,
+  "cases": 230,
+  "case_lines_in_output": 246,
+  "case_lines_nonzero_exit": 0,
+  "checks": 345911,
+  "binaries": {
+   "verification/probe/build/motion_output_fixture.exe": "fb737905c417209f2f0b4d81e32bd65f23114f13d67d80206f493563da0d47f1",
+   "verification/probe/build/motion-output-seam/d3d9.dll": "d428189b48f1e62becc9df15296718a4092f6a2c33ba2686c756e95783ff3cca",
+   "build/d3d9.dll": "e456f079ec5098585e558bbc67c94c144e8509fdeef19653f6c61aed0282103a"
+  },
+  "binaries_note": "the suite fresh-builds the fixture and seam DLL from 759c2ac7 source in the worktree probe build directory; bytes differ from the candidate (seam build)",
+  "copies": "/tmp/x3-run91-candidate/results-motion/, /tmp/x3-run91-candidate/motion-summary-run91.json",
+  "per_case": {
+   "command": "python3 /tmp/x3-run91-candidate/motion_cases.py /tmp/x3-run91-candidate/motion-summary-run91.json",
+   "output": "/tmp/x3-run91-candidate/motion-cases-vs-committed.json",
+   "vs_committed_config_2026_09_26": {
+    "cases": [
+     230,
+     230
+    ],
+    "checks": [
+     345911,
+     345911
+    ],
+    "missing": [],
+    "extra": [],
+    "differing": {}
+   },
+   "vs_run90": {
+    "cases": [
+     231,
+     230
+    ],
+    "checks": [
+     346382,
+     345911
+    ],
+    "deleted": {
+     "seam-ownership-shadow-replay-cascades-toggle": 283,
+     "seam-ownership-shadow-replay-toggle-single": 250
+    },
+    "added": {
+     "seam-config-file": 52
+    },
+    "differing_common": {
+     "seam-log-tiers": [
+      47,
+      57
+     ]
+    },
+    "differing_common_explained_by_committed": {
+     "seam-log-tiers": true
+    }
+   },
+   "violations": [],
+   "reading": "every one of the 230 cases equals verification/results/config-file/motion-cases-config-2026-09-26.json (230 / 345,911); versus Run90 exactly the documented moves: 2 deleted by da84d232 (seam-ownership-shadow-replay-cascades-toggle 283, seam-ownership-shadow-replay-toggle-single 250), 1 added by 204d3a09 (seam-config-file 52); one common case moved, seam-log-tiers 47 -> 57, equal to the committed count (bec1afb5)"
+  },
+  "comparison_to_run90": {
+   "command": "python3 verification/results/sky-history-default/compare_motion_output.py /tmp/x3-run90-candidate/motion-summary-run90.json /tmp/x3-run91-candidate/motion-summary-run91.json",
+   "output": "/tmp/x3-run91-candidate/motion-compare-run90.out",
+   "cases": [
+    231,
+    230
+   ],
+   "missing": "['seam-ownership-shadow-replay-cascades-toggle', 'seam-ownership-shadow-replay-toggle-single']",
+   "added": "['seam-config-file']",
+   "checks": [
+    346382,
+    345911
+   ],
+   "cases_with_differing_stable_fields": 8,
+   "differing": [
+    "seam-log-tiers",
+    "seam-ownership-shadow-replay-cascades",
+    "seam-ownership-shadow-replay-cascades-alpha-on",
+    "seam-ownership-shadow-replay-cascades-casters-20",
+    "seam-ownership-shadow-replay-cascades-poll-agree",
+    "seam-ownership-shadow-replay-cascades-poll-disagree",
+    "seam-ownership-shadow-replay-cascades-poll-null",
+    "seam-ownership-shadow-replay-cascades-poll-refusals"
+   ],
+   "reading": "8 cases with differing stable fields: seam-log-tiers (one more header row, +347 bytes: the config rows) and seven shadow-replay-cascades cases whose per_frame toggle field (the in-game key sampler, removed by da84d232) is absent; check counts of these 7 unchanged"
+  },
+  "comparison_to_committed_summary": {
+   "output": "/tmp/x3-run91-candidate/motion-compare-committed.out",
+   "cases": [
+    234,
+    230
+   ],
+   "checks": [
+    337330,
+    345911
+   ],
+   "reading": "not a reference: verification/results/bottle-X3/motion-output-summary.json at HEAD is from 80394271 (234 cases); the per-case reference is config-file/motion-cases-config-2026-09-26.json"
+  },
+  "lock": {
+   "lock_wait_seconds": 3.3340000000006698e-06,
+   "child_elapsed_seconds": 618.786648666,
+   "exit_code": 0
+  }
+ },
+ "sun_share_live": {
+  "command": "cd /tmp/x3-run91-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run91-candidate/lock-timings-sunshare.json python3 verification/probe/run_sun_share_live.py --fixture verification/probe/build/motion_output_fixture.exe --dll verification/probe/build/motion-output-seam/d3d9.dll",
+  "why_run": "capture.cpp and the sun/shadow config read sites changed; fixture = the motion runner's fresh build at 759c2ac7",
+  "passed": true,
+  "cases": 25,
+  "case_names_vs_committed": {
+   "removed": [
+    "shadow_apply"
+   ],
+   "added": [
+    "shadow_apply_no_cascades"
+   ]
+  },
+  "run90": "25 cases passed=True",
+  "copies": "/tmp/x3-run91-candidate/results-sunshare/",
+  "lock": {
+   "lock_wait_seconds": 3.2919999999984906e-06,
+   "child_elapsed_seconds": 49.193848792000004,
+   "exit_code": 0
+  }
+ },
+ "sun_occlusion": {
+  "command": "cd /tmp/x3-run91-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run91-candidate/lock-timings-sunocc.json python3 verification/probe/run_sun_occlusion.py",
+  "why_run": "sun occlusion config read sites changed",
+  "passed": true,
+  "hook": {
+   "checks": 74,
+   "failures": 0,
+   "exit_status": 0
+  },
+  "gpu": {
+   "checks": 128,
+   "result": {
+    "checks": 128,
+    "failures": 0,
+    "verdict": "PASS"
+   },
+   "exit_status": 0,
+   "failed_checks": 0
+  },
+  "run90": "hook 74/0, gpu 128/0",
+  "copies": "/tmp/x3-run91-candidate/results-sunocc/",
+  "lock": {
+   "lock_wait_seconds": 3.7919999999989906e-06,
+   "child_elapsed_seconds": 17.664664,
+   "exit_code": 0
+  }
+ },
+ "fog_route_bridge": {
+  "commands": [
+   "python3 verification/probe/fog_route_bridge_build.py --production-root /tmp/x3-run91-candidate/src --spatial-root /tmp/x3-run91-candidate/src --asset-data /tmp/x3-run91-candidate/build/generated/fog_field --output /tmp/x3-run91-candidate/route/build",
+   "python3 verification/probe/fog_route_bridge_build.py --baseline --production-root /tmp/x3-run76-candidate/baseline-6f16dbf6 --spatial-root /tmp/x3-run76-candidate/baseline-6f16dbf6 --asset-data /tmp/x3-run91-candidate/build/generated/fog_field --output /tmp/x3-run91-candidate/route/baseline-build",
+   "python3 verification/probe/fog_route_bridge_run.py build-exit --output /tmp/x3-run91-candidate/route",
+   "cd /tmp/x3-run91-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run91-candidate/lock-timings-route.json python3 verification/probe/fog_route_bridge_run.py run --output /tmp/x3-run91-candidate/route --cases /tmp/x3-fog-family-gpu-inputs-final/cases.txt",
+   "python3 verification/probe/fog_route_bridge_run.py check --output /tmp/x3-run91-candidate/route --summary /tmp/x3-run91-candidate/route/summary.json"
+  ],
+  "why_run": "fog pass and bridge closure changed (config read sites, fog_field_assets.cpp)",
+  "result": "PASS",
+  "result_line": "PASS bridge_checks=31301 exit_checks=4",
+  "build_exit": {
+   "dll_sha256": "158a51c9a58e68b95e8e5d487e969f8496eb7ffea4cdd94dea6dd13fcb8ea175",
+   "executable_sha256": "1de5a98d5356b9c4b25c0bb5f0302656c4e6c987090092c760af1bb32535e8ef"
+  },
+  "per_name_vs_run90": {
+   "command": "python3 verification/results/run70-candidate-audit.py bridge /tmp/x3-run90-candidate/route/bridge.log /tmp/x3-run91-candidate/route/bridge.log",
+   "output": "/tmp/x3-run91-candidate/route-bridge-names.json",
+   "checks": [
+    32039,
+    31301
+   ],
+   "names": [
+    95,
+    95
+   ],
+   "only_run90": 0,
+   "only_run91": 0,
+   "count_changed": {
+    "native_card_LastError_preserved": [
+     5307,
+     5184
+    ],
+    "native_card_forward_once": [
+     5307,
+     5184
+    ],
+    "once_only_hook_fallback_guard": [
+     5305,
+     5182
+    ],
+    "one_fog_transaction_maximum": [
+     5305,
+     5182
+    ],
+    "route_RT1_RT2_bytes": [
+     5305,
+     5182
+    ],
+    "route_pass_state_restored": [
+     5305,
+     5182
+    ]
+   }
+  },
+  "gate": "PASS + 95 names + no FAIL row (grep -c FAIL route/bridge.log -> 0)",
+  "reading": "95 names = Run90, none added or removed; the six per-frame names 5,307 -> 5,184 (per-frame count, timing-dependent first fill; the ledger records 31,745 / 31,451 / 31,757 on other runs); every check PASS, exit_checks 4",
+  "versus_run90": "PASS bridge_checks=32039 exit_checks=4",
+  "lock": {
+   "lock_wait_seconds": 2.999999999999531e-06,
+   "child_elapsed_seconds": 76.80842374999999,
+   "exit_code": 0
+  }
+ },
+ "fog_pass": {
+  "commands": [
+   "python3 verification/probe/fog_density_shader_run.py build --output /tmp/x3-run91-candidate/fogpass --asset-data /tmp/x3-run91-candidate/build/generated/fog_field --reference /tmp/x3-run90-candidate/fogref --scale4-reference /tmp/x3-run77-fog-ref-scale4",
+   "cd /tmp/x3-run91-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run91-candidate/lock-timings-fogshader.json python3 verification/probe/fog_density_shader_run.py run --output /tmp/x3-run91-candidate/fogpass --reference /tmp/x3-run90-candidate/fogref --scale4-reference /tmp/x3-run77-fog-ref-scale4",
+   "python3 verification/probe/fog_density_shader_run.py check --output /tmp/x3-run91-candidate/fogpass --reference /tmp/x3-run90-candidate/fogref --scale4-reference /tmp/x3-run77-fog-ref-scale4"
+  ],
+  "why_run": "fog_pass.h and fog_field_assets.cpp changed; fog config read sites",
+  "result": "PASS",
+  "gates_true": 28,
+  "gates": 28,
+  "gate_names_equal_committed": true,
+  "fixture_checks": 29,
+  "pass_fixture": {
+   "checks": 130,
+   "state_restorations": 1007,
+   "atlas_comparisons": 16,
+   "atlas_differing_bytes": 0
+  },
+  "motes_cases": 26,
+  "equal_to_committed": {
+   "pass_off_hashes": true,
+   "reference": true,
+   "shaders": true,
+   "fixture_checks": true
+  },
+  "equal_to_run90": {
+   "pass_off_hashes": true,
+   "reference": true,
+   "shaders": true,
+   "fixture_checks": true
+  },
+  "reference": "/tmp/x3-run90-candidate/fogref (reused, not regenerated)",
+  "reading": "28/28 gates, pass fixture 130/0; pass_off_hashes, reference, shaders and fixture_checks identical to Run90 and to the committed summary. state_restorations 1,007 (Run90 1,136, committed 1,139): the density-fill loop executes one guarded transaction per frame until the worker is ready, so the count follows fill timing (every one restored, failures 0)",
+  "versus_run90": "PASS 28/28, pass fixture 130/0",
+  "output": "/tmp/x3-run91-candidate/fogpass/summary.json",
+  "lock": {
+   "lock_wait_seconds": 3.458000000001321e-06,
+   "child_elapsed_seconds": 91.20310466599999,
+   "exit_code": 0
+  }
+ },
+ "ownership_integration": {
+  "command": "cd /tmp/x3-run91-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run91-candidate/lock-timings-integration.json python3 verification/probe/run_ownership_integration.py",
+  "verifier": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/verify_ownership_integration.py (host) -> exit 0",
+  "why_run": "the runner fresh-builds a Release d3d9.dll of the whole tree (every changed production source)",
+  "result": "PASS",
+  "cases_run": 26,
+  "cases_total": 26,
+  "verification": {
+   "result": "PASS",
+   "limits": [
+    "Motion option cases establish configuration gates and synthetic-executable refusal, not successful replay or temporal consumption.",
+    "Synthetic DLL integration, not gameplay validation.",
+    "Direct3D9Ex remains native and uninstrumented.",
+    "Finite capture verifies readable managed upload/index evidence while POSITIONT/UP inputs remain ineligible; no XYZ or live motion candidate is established.",
+    "Original-preserving depth-copy allocation smoke only; numerical/content behavior has a separate fixture."
+   ],
+   "current_sources_and_binaries_match": true
+  },
+  "verification_cases": 26,
+  "dll_sha256": "f984ff35ad94796050e954aabc3a5b2785e04ae259300ee2fbf7a09d9a2ea300",
+  "build_log_warnings": "10 x -Wnonnull in sun_occlusion_pass.cpp:340/343 in the runner's own Release build (Run90 build log: 10, pre-existing; the candidate build has 0)",
+  "versus_run90": "26 cases PASS -> 26/26",
+  "copies": "/tmp/x3-run91-candidate/results-integration/",
+  "lock": {
+   "lock_wait_seconds": 3.875000000000406e-06,
+   "child_elapsed_seconds": 136.156695833,
+   "exit_code": 0
+  }
+ },
+ "ownership_integration_fallback": {
+  "command": "cd /tmp/x3-run91-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run91-candidate/lock-timings-fallback.json python3 verification/probe/run_ownership_integration_fallback.py",
+  "result": "NOT RUN (runner refused before Wine)",
+  "exit_code": 1,
+  "reason": "AssertionError: Build all current production components first",
+  "reading": "run with the fresh integration manifest in place (before the restore); the Run86 harness defect (production_link_inputs misses fog_field_assets.cpp) still refuses, as at Run89/Run90",
+  "lock": {
+   "lock_wait_seconds": 3.165999999998892e-06,
+   "child_elapsed_seconds": 0.15816912500000002,
+   "exit_code": 1
+  }
+ },
+ "ownership": {
+  "command": "cd /tmp/x3-run91-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run91-candidate/lock-timings-ownership.json python3 verification/probe/run_ownership.py",
+  "verifier": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/verify_ownership.py (host) -> exit 0",
+  "why_run": "closure changed since Run90 (application_admission_abi.cpp now reads X3M_ADMISSION through config::get; src/proxy/config.h), so the Run89 reuse no longer holds",
+  "result": "PASS",
+  "baseline": {
+   "checks": 370,
+   "failures": 0
+  },
+  "wrapped": {
+   "checks": 661,
+   "failures": 0
+  },
+  "backend_observations_equal": true,
+  "shared_hresult_outcomes_equal": true,
+  "versus_previous": "370/0 and 661/0 = the Run86 entry carried by Run89/Run90",
+  "copies": "/tmp/x3-run91-candidate/results-ownership/",
+  "lock": {
+   "lock_wait_seconds": 3.415999999999142e-06,
+   "child_elapsed_seconds": 10.368221416999999,
+   "exit_code": 0
+  }
+ },
+ "ownership_admission": {
+  "command": "cd /tmp/x3-run91-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run91-candidate/lock-timings-admission.json python3 verification/probe/run_ownership_admission.py",
+  "why_run": "closure changed since Run90 (application_admission_abi.cpp, config.h)",
+  "result": "PASS",
+  "modes": 12,
+  "checks": 147,
+  "versus_previous": "12 modes / 147 checks = the Run86 entry carried by Run89/Run90",
+  "output": "/tmp/x3-run91-candidate/admission.out",
+  "lock": {
+   "lock_wait_seconds": 2.9590000000002947e-06,
+   "child_elapsed_seconds": 98.37265724999999,
+   "exit_code": 0
+  }
+ },
+ "execution_ownership": {
+  "command": "cd /tmp/x3-run91-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run91-candidate/lock-timings-execution.json python3 verification/probe/run_execution_ownership.py",
+  "why_run": "closure changed since Run90 (application_admission_abi.cpp, config.h)",
+  "result": "PASS",
+  "checks": 184,
+  "versus_committed": "execution-ownership.txt RESULT PASS checks=184 failures=0 = committed = Run86 entry",
+  "copies": "/tmp/x3-run91-candidate/results-execution/",
+  "lock": {
+   "lock_wait_seconds": 3.6670000000127434e-06,
+   "child_elapsed_seconds": 10.298265874999998,
+   "exit_code": 0
+  }
+ },
+ "fog_family_file_fixture": {
+  "command": "cd /tmp/x3-run91-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run91-candidate/lock-timings-fogfam.json \"/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine\" --bottle X3 --no-update --dll d3d9=b --workdir /tmp/x3-run91-candidate/fogfam-selftest /tmp/x3-run91-candidate/build/fog_family_file_fixture.exe --self-test Z:/tmp/x3-run91-candidate/fogfam-selftest",
+  "why_run": "closure changed since Run90 (fog_field_assets.cpp, config.h); CMake target of the candidate build",
+  "result": "PASS",
+  "result_line": "PASS fog_family_file cases=68 compiled=14",
+  "exe_sha256": "df6a78864e7e21afb523da756cb0b0c5aec8b157a8d42092a7663602166b194a",
+  "versus_previous": "Run80 entry (carried to Run90) cases=67 compiled=14; 68 is the current expectation (verification/analysis/test_fog_family_file.py asserts cases=68; 28cbd43e added the empty-table case)",
+  "lock": {
+   "lock_wait_seconds": 3.124999999999656e-06,
+   "child_elapsed_seconds": 0.849956292,
+   "exit_code": 0
+  }
+ },
+ "site_verifiers": {
+  "command": "python3 verification/probe/verify_game_phase_sites.py (host, read-only EXE)",
+  "result": "PASS",
+  "checks_true": 24,
+  "reason": "git diff f9cceb17 759c2ac7 -- verification/probe/verify_*.py is empty and no hook site source changed; the game-phase verifier was rerun (PASS, 24 true); the other site verifiers are reused (run90_entry)",
+  "run90_entry": {
+   "command": "python3 verification/probe/verify_game_phase_sites.py (host, read-only EXE)",
+   "result": "PASS",
+   "checks_true": 24,
+   "reason": "git diff e2db7813 f9cceb17 -- verification/probe/verify_*.py: verify_game_phase_sites.py lost the 14 audio witness rows (33 sites now), verify_lod_scale_site.py deleted with --lod-scale; the game-phase verifier was rerun (PASS, exe_identity true); the other site verifiers are unchanged and reused (run89_entry)",
+   "run89_entry": {
+    "reused_from": "run88",
+    "reason": "EXE unchanged and git diff --stat 79aafc8b e2db7813 -- verification/probe/verify_*.py verification/results/executable-identity/ is empty; no EXE patch site changed",
+    "run88_entry": {
+     "reused_from": "run87",
+     "reason": "EXE unchanged and git diff --stat 22593133 79aafc8b -- verification/probe/verify_*.py verification/results/executable-identity/ is empty; no EXE patch site changed",
+     "run87_entry": {
+      "reused_from": "run85",
+      "reason": "EXE unchanged and git diff --stat 53e7aba5 22593133 -- verification/probe/verify_*.py verification/results/executable-identity/ is empty; no EXE patch site changed",
+      "run85_entry": {
+       "reused_from": "run84",
+       "reason": "EXE unchanged and git diff --stat 46cd4f9d 53e7aba5 -- verification/probe/verify_*.py verification/results/executable-identity/ is empty",
+       "run84_entry": {
+        "reused_from": "run83",
+        "reason": "EXE unchanged and git diff --stat 80394271 46cd4f9d -- verification/probe/verify_*.py verification/results/executable-identity/ is empty",
+        "run83_entry": {
+         "executable_identity": {
+          "command": "cd verification/results/executable-identity && /usr/bin/python3 run_verifiers.py --output /tmp/x3-run83-candidate/verifiers.json",
+          "result": "PASS",
+          "anchors": 41,
+          "commit": "803942710d567f3476e6323008dfbdbce2b88330",
+          "summary": {
+           "shipped": {
+            "pass": 27,
+            "total": 27,
+            "sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab"
+           },
+           "laa_cleared": {
+            "pass": 27,
+            "total": 27,
+            "sha256": "9d8ddf43f06031f4fb21e5e700d55a2df8881c76bd8c5ce4a9af0866d6dc38c8"
+           },
+           "ntcore_4gb": {
+            "pass": 27,
+            "total": 27,
+            "sha256": "5d6b741e7269b40e2a7df850fc274d593d0b39ac647e0b0205b64737c93190c3"
+           },
+           "unknown_hash": {
+            "pass": 27,
+            "total": 27,
+            "sha256": "712693d9452a6144fe4aec404e5d7243e733000c2a57316e1e76ba3f17d2c8af"
+           }
+          },
+          "site_corrupt": {
+           "verify_chase_camera_site": {
+            "va": "0x00420e0f",
+            "identity_ok": true,
+            "result": "FAIL"
+           },
+           "verify_lod_scale_site": {
+            "va": "0x0047d44d",
+            "identity_ok": true,
+            "result": "FAIL"
+           },
+           "verify_terran_lod_site": {
+            "va": "0x0047d01c",
+            "identity_ok": true,
+            "result": "FAIL"
+           },
+           "verify_lod_occlusion_site": {
+            "va": "0x004c34f9",
+            "identity_ok": true,
+            "result": "FAIL"
+           },
+           "verify_fov_site": {
+            "va": "0x0041c9dd",
+            "identity_ok": true,
+            "result": "FAIL"
+           },
+           "verify_fov_site@setfocus": {
+            "va": "0x0042dbf8",
+            "identity_ok": true,
+            "result": "FAIL"
+           },
+           "verify_fov_site@load": {
+            "va": "0x0041c8c2",
+            "identity_ok": true,
+            "result": "FAIL"
+           },
+           "verify_sun_flare_site": {
+            "va": "0x0047e392",
+            "identity_ok": true,
+            "result": "FAIL"
+           }
+          },
+          "different_build_identity_ok": false,
+          "versus_run82": "27 verifiers per variant = Run82; corrupt-site cases 7 -> 8 (verify_fov_site@load 0x0041c8c2)"
+         },
+         "fov_site": {
+          "command": "/usr/bin/python3 verification/probe/verify_fov_site.py",
+          "result": "PASS",
+          "checks": 44,
+          "checks_passed": 44,
+          "site": "0x41c9d9",
+          "function_instructions": 201,
+          "overlapping_claims": [],
+          "incoming_window_branches": []
+         },
+         "reused_from_run82": {
+          "sun_flare_site": {
+           "command": "/usr/bin/python3 verification/probe/verify_sun_flare_site.py",
+           "result": "PASS",
+           "checks": 19,
+           "checks_passed": 19,
+           "site": "0x47e391",
+           "function_instructions": 865,
+           "overlapping_claims": [],
+           "incoming_window_branches": [],
+           "reused_from": "run82",
+           "reason": "EXE unchanged (identity matrix PASS on the same shipped sha256) and none of these verifier scripts changed in d1a4e360..80394271 (only verify_fov_site.py did)"
+          },
+          "lod_occlusion_site": {
+           "command": "/usr/bin/python3 verification/probe/verify_lod_occlusion_site.py",
+           "result": "PASS",
+           "checks": 20,
+           "checks_passed": 20,
+           "site": "0x4c34f7",
+           "function_instructions": 4695,
+           "overlapping_claims": [],
+           "incoming_window_branches": [],
+           "reused_from": "run82",
+           "reason": "EXE unchanged (identity matrix PASS on the same shipped sha256) and none of these verifier scripts changed in d1a4e360..80394271 (only verify_fov_site.py did)"
+          },
+          "terran_lod_site": {
+           "command": "/usr/bin/python3 verification/probe/verify_terran_lod_site.py",
+           "result": "PASS",
+           "checks": 16,
+           "checks_passed": 16,
+           "site": "0x47d01c",
+           "function_instructions": 373,
+           "overlapping_claims": [],
+           "incoming_window_branches": [],
+           "reused_from": "run82",
+           "reason": "EXE unchanged (identity matrix PASS on the same shipped sha256) and none of these verifier scripts changed in d1a4e360..80394271 (only verify_fov_site.py did)"
+          },
+          "cull_small_parts_site": {
+           "command": "/usr/bin/python3 verification/probe/verify_cull_small_parts_site.py",
+           "result": "PASS",
+           "checks": 21,
+           "checks_passed": 21,
+           "site": "0x47d2a2",
+           "function_instructions": 373,
+           "reused_from": "run82",
+           "reason": "EXE unchanged (identity matrix PASS on the same shipped sha256) and none of these verifier scripts changed in d1a4e360..80394271 (only verify_fov_site.py did)"
+          },
+          "cull_census_sites": {
+           "command": "/usr/bin/python3 verification/probe/verify_cull_census_sites.py",
+           "result": "PASS",
+           "checks": 21,
+           "checks_passed": 21,
+           "function_instructions": 373,
+           "reused_from": "run82",
+           "reason": "EXE unchanged (identity matrix PASS on the same shipped sha256) and none of these verifier scripts changed in d1a4e360..80394271 (only verify_fov_site.py did)"
+          },
+          "pause_sites": {
+           "command": "/usr/bin/python3 verification/results/pause-dialog-input/verify_pause_sites.py",
+           "result": "PASS",
+           "reused_from": "run82",
+           "reason": "EXE unchanged (identity matrix PASS on the same shipped sha256) and none of these verifier scripts changed in d1a4e360..80394271 (only verify_fov_site.py did)"
+          },
+          "music_restart_sites": {
+           "command": "/usr/bin/python3 verification/results/music-restart/verify_music_restart_sites.py",
+           "result": "PASS",
+           "reused_from": "run82",
+           "reason": "EXE unchanged (identity matrix PASS on the same shipped sha256) and none of these verifier scripts changed in d1a4e360..80394271 (only verify_fov_site.py did)"
+          },
+          "music_keep_writes": {
+           "command": "/usr/bin/python3 verification/results/music-restart/verify_music_keep_writes.py",
+           "result": "PASS",
+           "check_count": 48,
+           "reused_from": "run82",
+           "reason": "EXE unchanged (identity matrix PASS on the same shipped sha256) and none of these verifier scripts changed in d1a4e360..80394271 (only verify_fov_site.py did)"
+          }
+         },
+         "exe": "bottle X3 drive_c/X3/X3AP.exe (read-only), shipped (LAA set, CheckSum 0)"
+        }
+       }
+      }
+     }
+    }
+   }
+  }
+ },
+ "reuse_dependency_check": {
+  "command": "python3 /tmp/x3-run91-candidate/reuse_deps.py; python3 /tmp/x3-run91-candidate/comment_only.py",
+  "output": [
+   "/tmp/x3-run91-candidate/reuse-deps.json",
+   "/tmp/x3-run91-candidate/comment-only.json"
+  ],
+  "method": "closure of every run_*.py runner plus the Run89 hand roots (unchanged method); intersected with git diff --name-only f9cceb17 759c2ac7; comment_only.py strips comments/whitespace",
+  "closures": 117,
+  "unchanged_closures": [
+   "application_admission",
+   "bloom_pass_timing",
+   "depth_decode",
+   "depth_resolve",
+   "depth_sampling",
+   "execution_state",
+   "finite_buffer_evidence",
+   "hdr_shared_handles",
+   "managed_upload_contract",
+   "material_motion",
+   "material_motion_structure",
+   "material_radiance",
+   "material_radiance_profiles",
+   "motion_history",
+   "motion_row_history",
+   "port_distance",
+   "rigid_position_profiles",
+   "rigid_replay",
+   "rigid_retirement",
+   "temporal_pass",
+   "vertex_color_hdr",
+   "voice_asf_probe",
+   "voice_native_update",
+   "voice_startup_replica",
+   "voice_stream_probe",
+   "voice_sync_probe"
+  ],
+  "comment_only_closures": [
+   "loading_intervals"
+  ],
+  "code_changed_closures": 90,
+  "selection": "full closure qualification: every Run90 qualification section rerun, including the four sections Run90 reused (ownership, ownership_admission, execution_ownership, fog_family_file_fixture), whose closures now include src/proxy/config.h; temporal_pass has an unchanged closure and was rerun anyway; research runners outside the qualification set not run"
+ },
+ "dry_run": {
+  "command_script": "/tmp/x3-run91-candidate/run91-dryrun.sh",
+  "extractor": "/tmp/x3-run91-candidate/extract_dryrun.py",
+  "cwd": "/tmp/x3-run91-candidate/src",
+  "wrapped": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run91-candidate/lock-timings-dryrun.json sh /tmp/x3-run91-candidate/run91-dryrun.sh",
+  "form": "env -u CX_DEBUGMSG -u <13 stale X3M variables incl. X3M_DEBUG/X3M_PERF> /usr/bin/python3 tools/manage.py launch --dry-run --bottle X3 --dll-source <candidate> --direct [variant]; D: --vanilla",
+  "flight_options": "A = --direct (default launch); B = --direct --debug --perf (the stand command); C = B + --draw-trace; D = --vanilla; F = --direct --config (player mode)",
+  "count_note": "x3m_env_count includes X3M_FIXTURE_BOTTLE=X3 inherited from the wine_lock wrapper prefix (as in Run90); x3m_launcher_count excludes it",
+  "game_launched": false,
+  "output": "/tmp/x3-run91-candidate/dryrun.out",
+  "env_extract": "/tmp/x3-run91-candidate/dryrun-env.json",
+  "variants": {
+   "A_DEFAULT": {
+    "exit": 0,
+    "overrides": "d3d9=n,b",
+    "x3m_env_count": 124,
+    "x3m_launcher_count": 123,
+    "values": {
+     "X3M_FOV": "90",
+     "X3M_TAA_FAR_CLIP": "7x7",
+     "X3M_TAA_FAR_CLIP_DEFAULT": "1",
+     "X3M_TAA_FAR_STABILISER": "0.985,0,60,68,0.03,0.25",
+     "X3M_TAA_FAR_GATE": "camera",
+     "X3M_TAA_FAR_GATE_DEFAULT": "1",
+     "X3M_SUN_OCCLUSION": "1",
+     "X3M_SUN_OCCLUSION_CORE_F": "1",
+     "X3M_SUN_OCCLUSION_DEFAULT": "1",
+     "X3M_ORIGINAL_FILL": "0.01",
+     "X3M_ORIGINAL_FILL_DEFAULT": "1",
+     "X3M_WINDOW_MONITOR_RECT": "1",
+     "X3M_WINDOW_MONITOR_RECT_DEFAULT": "1",
+     "X3M_TAA": "1",
+     "X3M_HDR": "1",
+     "X3M_LOD_OCCLUSION": "all",
+     "X3M_CHASE_VIEW_RESTORE": "1",
+     "X3M_SCREEN_EMISSION_ADDITIVE": "2.0",
+     "X3M_SHADOW_CASCADE_SIZES": "2048,4096,4096,4096,2048",
+     "X3M_SHADOW_CASCADES": "250.0,1500.0,7500.0,37500.0,150000.0",
+     "X3M_SUN_SHADOW_APPLY": "1",
+     "X3M_SHADOW_REPLAY_DEPTH": "1",
+     "X3M_MUSIC_KEEP": "1",
+     "X3M_SHADOW_ALPHA_CASTERS": "1",
+     "X3M_CAPTURE_START": "999999",
+     "X3M_CAPTURE_FRAMES": "8",
+     "X3M_MESH_ADJACENCY": "fast"
+    },
+    "report_lines": [
+     "fog families: ok (0 packets; 14 compiled cover 14 families, 2 refused)",
+     "lod overlay: ok (620 bodies in slots 05/06, 2.72 GB; sources unchanged; no package: ModName empty)"
+    ]
+   },
+   "B_STAND": {
+    "exit": 0,
+    "overrides": "d3d9=n,b",
+    "x3m_env_count": 126,
+    "x3m_launcher_count": 125,
+    "values": {
+     "X3M_FOV": "90",
+     "X3M_TAA_FAR_CLIP": "7x7",
+     "X3M_TAA_FAR_CLIP_DEFAULT": "1",
+     "X3M_TAA_FAR_STABILISER": "0.985,0,60,68,0.03,0.25",
+     "X3M_TAA_FAR_GATE": "camera",
+     "X3M_TAA_FAR_GATE_DEFAULT": "1",
+     "X3M_SUN_OCCLUSION": "1",
+     "X3M_SUN_OCCLUSION_CORE_F": "1",
+     "X3M_SUN_OCCLUSION_DEFAULT": "1",
+     "X3M_ORIGINAL_FILL": "0.01",
+     "X3M_ORIGINAL_FILL_DEFAULT": "1",
+     "X3M_WINDOW_MONITOR_RECT": "1",
+     "X3M_WINDOW_MONITOR_RECT_DEFAULT": "1",
+     "X3M_TAA": "1",
+     "X3M_HDR": "1",
+     "X3M_LOD_OCCLUSION": "all",
+     "X3M_CHASE_VIEW_RESTORE": "1",
+     "X3M_SCREEN_EMISSION_ADDITIVE": "2.0",
+     "X3M_SHADOW_CASCADE_SIZES": "2048,4096,4096,4096,2048",
+     "X3M_SHADOW_CASCADES": "250.0,1500.0,7500.0,37500.0,150000.0",
+     "X3M_SUN_SHADOW_APPLY": "1",
+     "X3M_SHADOW_REPLAY_DEPTH": "1",
+     "X3M_MUSIC_KEEP": "1",
+     "X3M_SHADOW_ALPHA_CASTERS": "1",
+     "X3M_CAPTURE_START": "999999",
+     "X3M_CAPTURE_FRAMES": "8",
+     "X3M_MESH_ADJACENCY": "fast",
+     "X3M_DEBUG": "1",
+     "X3M_PERF": "1"
+    },
+    "report_lines": [
+     "fog families: ok (0 packets; 14 compiled cover 14 families, 2 refused)",
+     "lod overlay: ok (620 bodies in slots 05/06, 2.72 GB; sources unchanged; no package: ModName empty)"
+    ]
+   },
+   "C_DRAW_TRACE": {
+    "exit": 0,
+    "overrides": "d3d9=n,b",
+    "x3m_env_count": 127,
+    "x3m_launcher_count": 126,
+    "values": {
+     "X3M_FOV": "90",
+     "X3M_TAA_FAR_CLIP": "7x7",
+     "X3M_TAA_FAR_CLIP_DEFAULT": "1",
+     "X3M_TAA_FAR_STABILISER": "0.985,0,60,68,0.03,0.25",
+     "X3M_TAA_FAR_GATE": "camera",
+     "X3M_TAA_FAR_GATE_DEFAULT": "1",
+     "X3M_SUN_OCCLUSION": "1",
+     "X3M_SUN_OCCLUSION_CORE_F": "1",
+     "X3M_SUN_OCCLUSION_DEFAULT": "1",
+     "X3M_ORIGINAL_FILL": "0.01",
+     "X3M_ORIGINAL_FILL_DEFAULT": "1",
+     "X3M_WINDOW_MONITOR_RECT": "1",
+     "X3M_WINDOW_MONITOR_RECT_DEFAULT": "1",
+     "X3M_TAA": "1",
+     "X3M_HDR": "1",
+     "X3M_LOD_OCCLUSION": "all",
+     "X3M_CHASE_VIEW_RESTORE": "1",
+     "X3M_SCREEN_EMISSION_ADDITIVE": "2.0",
+     "X3M_SHADOW_CASCADE_SIZES": "2048,4096,4096,4096,2048",
+     "X3M_SHADOW_CASCADES": "250.0,1500.0,7500.0,37500.0,150000.0",
+     "X3M_SUN_SHADOW_APPLY": "1",
+     "X3M_SHADOW_REPLAY_DEPTH": "1",
+     "X3M_MUSIC_KEEP": "1",
+     "X3M_SHADOW_ALPHA_CASTERS": "1",
+     "X3M_CAPTURE_START": "999999",
+     "X3M_CAPTURE_FRAMES": "8",
+     "X3M_MESH_ADJACENCY": "fast",
+     "X3M_DEBUG": "1",
+     "X3M_PERF": "1"
+    },
+    "report_lines": [
+     "fog families: ok (0 packets; 14 compiled cover 14 families, 2 refused)",
+     "lod overlay: ok (620 bodies in slots 05/06, 2.72 GB; sources unchanged; no package: ModName empty)"
+    ]
+   },
+   "D_VANILLA": {
+    "exit": 0,
+    "overrides": "d3d9=b",
+    "x3m_env_count": 72,
+    "x3m_launcher_count": 71,
+    "values": {
+     "X3M_ORIGINAL_FILL": "0.0",
+     "X3M_TAA": "0",
+     "X3M_HDR": "0",
+     "X3M_CHASE_VIEW_RESTORE": "0",
+     "X3M_SCREEN_EMISSION_ADDITIVE": "0",
+     "X3M_SHADOW_CASCADES": "0",
+     "X3M_SUN_SHADOW_APPLY": "0",
+     "X3M_SHADOW_REPLAY_DEPTH": "0",
+     "X3M_SHADOW_ALPHA_CASTERS": "0",
+     "X3M_CAPTURE_FRAMES": "1",
+     "X3M_MESH_ADJACENCY": "native"
+    },
+    "report_lines": []
+   },
+   "F_CONFIG": {
+    "exit": 0,
+    "overrides": "d3d9=n,b",
+    "x3m_env_count": 2,
+    "x3m_launcher_count": 1,
+    "values": {},
+    "report_lines": [
+     "fog families: ok (0 packets; 14 compiled cover 14 families, 2 refused)",
+     "lod overlay: ok (620 bodies in slots 05/06, 2.72 GB; sources unchanged; no package: ModName empty)"
+    ]
+   }
+  },
+  "b_vs_a": {
+   "X3M_DEBUG": [
+    null,
+    "1"
+   ],
+   "X3M_PERF": [
+    null,
+    "1"
+   ]
+  },
+  "c_vs_b": {
+   "X3M_DRAW_TRACE": [
+    null,
+    "1"
+   ]
+  },
+  "f_player_mode": {
+   "variables": [
+    "X3M_FIXTURE_BOTTLE",
+    "X3M_VOICE_DMO_FALLBACK"
+   ],
+   "x3m_config_sent": false,
+   "x3m_capture_start_sent": false,
+   "report_line": "config: player mode, X3M_CONFIG=<unset: x3m.ini next to the proxy>; 1 X3M_* variable(s) from explicit options"
+  },
+  "a_vs_run90_a_default": {
+   "removed": [
+    "X3M_CAPTURE_DELAY",
+    "X3M_VOLUMETRIC_FOG_EVERYWHERE"
+   ],
+   "added": {
+    "X3M_CONFIG": "bare"
+   },
+   "changed": {}
+  },
+  "b_vs_run90_b_stand": {
+   "removed": [
+    "X3M_CAPTURE_DELAY",
+    "X3M_VOLUMETRIC_FOG_EVERYWHERE"
+   ],
+   "added": {
+    "X3M_CONFIG": "bare"
+   },
+   "changed": {}
+  },
+  "vanilla_vs_run90": {
+   "removed": [
+    "X3M_CAPTURE_START",
+    "X3M_VOLUMETRIC_FOG_EVERYWHERE"
+   ],
+   "added": {},
+   "changed": {}
+  },
+  "x3m_capture_start": {
+   "A_DEFAULT": "999999",
+   "B_STAND": "999999",
+   "C_DRAW_TRACE": "999999",
+   "D_VANILLA": null,
+   "F_CONFIG": null
+  },
+  "dry_run_tiers": {
+   "command": "python3 verification/results/logging-tiers/dry_run_tiers.py",
+   "pass": 9,
+   "fail": 0,
+   "counts": "{'new_default': 123, 'new_debug': 124, 'new_perf': 124, 'new_debug_perf': 125, 'new_perf_draw_trace': 125, 'new_vanilla': 71, 'base_default': 150, 'base_vanilla': 99}",
+   "output": "/tmp/x3-run91-candidate/dry_run_tiers.out",
+   "dry_runs_json_equal_committed": true
+  },
+  "compare_dry_runs": {
+   "command": "python3 verification/results/launcher-defaults/compare_dry_runs.py",
+   "pass": 5,
+   "fail": 0,
+   "output": "/tmp/x3-run91-candidate/compare_dry_runs.out",
+   "comparison_json_equal_committed": true
+  },
+  "reading": "A-D and F exit 0. Launcher-sent X3M variables (excluding X3M_FIXTURE_BOTTLE): A default 123, B --debug --perf 125, C + --draw-trace 126, D --vanilla 71, F --config 1 (X3M_VOICE_DMO_FALLBACK only; no X3M_CONFIG, no X3M_CAPTURE_START). B differs from A by exactly X3M_DEBUG=1, X3M_PERF=1; C from B by exactly X3M_DRAW_TRACE=1. Versus Run90: A and B lose X3M_CAPTURE_DELAY and X3M_VOLUMETRIC_FOG_EVERYWHERE and gain X3M_CONFIG=bare, nothing changed; vanilla loses X3M_CAPTURE_START and X3M_VOLUMETRIC_FOG_EVERYWHERE. None of the 33 baked section-5 variables was sent by the Run90 default launch (only X3M_FOG_MOTES_MAX_PX, which stays), so they contribute no delta. X3M_CAPTURE_START=999999 still sent by A, B and C. dry_run_tiers 9 PASS / 0 FAIL, compare_dry_runs 5 PASS / 0 FAIL, both JSON outputs byte-equal to the committed files.",
+  "lock": {
+   "lock_wait_seconds": 3.4590000000007948e-06,
+   "child_elapsed_seconds": 0.909904792,
+   "exit_code": 0
+  }
+ },
+ "verdict": "DLL QUALIFIED at 759c2ac7: build 0 warnings; x87 122 roots / 709 reachable / 0 violations; PE imports 236 -> 234 functions from 14 DLLs (-GetEnvironmentVariableA, -__stdio_common_vswprintf; none added), 17 exports equal to Run90; generate.py --check PASS; host suite 269 modules / 2801 tests / 0 failing; motion 230 cases PASS / 345,911 checks, every case equal to config-file/motion-cases-config-2026-09-26.json (vs Run90: 2 deleted, 1 added, seam-log-tiers 47 -> 57 as committed); sun share live 25 passed=True; sun occlusion hook 74/0 gpu 128/0; fog route bridge PASS bridge_checks=31301 exit_checks=4, 95 names, no FAIL row; fog shader 28/28 gates, pass fixture 130/0, hashes equal to Run90 and committed; ownership integration 26/26 PASS; ownership 370/0 + 661/0, admission 12 modes / 147, execution 184/0, fog family file cases=68; 19 further fixtures PASS; game-phase site verifier PASS; dry runs A/B/C/D/F exit 0 (launcher variables 123 / 125 / 126 / 71 / 1), deltas vs Run90 only the expected ones; dry_run_tiers 9 PASS, compare_dry_runs 5 PASS. ownership_integration_fallback refused by the pre-existing harness defect.",
+ "host_suite": {
+  "command": "/usr/bin/python3 verification/probe/run_host_suite.py",
+  "cwd": "/tmp/x3-run91-candidate/src",
+  "result": "PASS",
+  "modules": 269,
+  "tests": 2801,
+  "failing_modules": 0,
+  "failing": [],
+  "wall_seconds": 93.9,
+  "output": "/tmp/x3-run91-candidate/host-suite.out",
+  "versus_run90": "268/2,792 -> 269/2,801, 0 -> 0 failing",
+  "generate_check": {
+   "command": "python3 tools/config/generate.py --check",
+   "result": "PASS 232 settings, 87 in the template"
+  }
+ },
+ "linked_audit": {
+  "command": "/usr/bin/python3 verification/probe/check_no_x87.py /tmp/x3-run91-candidate/build/d3d9.dll",
+  "result": "PASS",
+  "roots_count": 122,
+  "reachable_functions": 709,
+  "violations": 0,
+  "comparison": {
+   "run90": "122 roots / 709 reachable / 0 violations",
+   "run91": "122 roots / 709 reachable / 0 violations"
+  },
+  "import_delta": {
+   "command": "python3 verification/results/run70-candidate-audit.py pe /tmp/x3-run90-candidate/build/d3d9.dll /tmp/x3-run91-candidate/build/d3d9.dll",
+   "baseline_dll": "/tmp/x3-run90-candidate/build/d3d9.dll (sha256 6f6be732..., equal to the Run90 record)",
+   "imported_dlls": [
+    14,
+    14
+   ],
+   "new_imported_dlls": [],
+   "removed_imported_dlls": [],
+   "total_imported_functions": {
+    "run90": 236,
+    "run91": 234
+   },
+   "per_function_delta": {
+    "new": [],
+    "removed": [
+     "api-ms-win-crt-stdio-l1-1-0.dll!__stdio_common_vswprintf",
+     "kernel32.dll!GetEnvironmentVariableA"
+    ]
+   },
+   "reading": "no import added; removed kernel32 GetEnvironmentVariableA (every setting now read through config::get with the GetEnvironmentVariableW contract) and api-ms-win-crt-stdio __stdio_common_vswprintf; the resolver uses already-imported documented Win32 file APIs; import DLL set unchanged (14)"
+  },
+  "exports": {
+   "count": 17,
+   "names_equal_run90": true,
+   "x3m_exports": []
+  }
+ },
+ "producer": "/tmp/x3-run91-candidate/make_record.py (this record); /tmp/x3-run91-candidate/reuse_deps.py (closures vs Run90); /tmp/x3-run91-candidate/comment_only.py; /tmp/x3-run91-candidate/w.sh (guarded Wine wrapper); /tmp/x3-run91-candidate/save_restore.sh; /tmp/x3-run91-candidate/batch.sh (sequential fixture steps); /tmp/x3-run91-candidate/motion_cases.py (per-case vs committed config-file counts and Run90); /tmp/x3-run91-candidate/result_lines.py and /tmp/x3-run91-candidate/cmp_results.py (records vs committed); verification/results/run70-candidate-audit.py (pe, bridge); verification/results/sky-history-default/compare_motion_output.py; dry-run /tmp/x3-run91-candidate/run91-dryrun.sh + /tmp/x3-run91-candidate/extract_dryrun.py",
+ "bottle": "X3",
+ "wine_arch": "arm64 (cxbottle.conf \"WineArch\" = \"arm64\", checked)",
+ "environment": {
+  "FEX_X87REDUCEDPRECISION": "1",
+  "WINEMSYNC": "1",
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf",
+  "checked": "grep of cxbottle.conf this session: \"WineArch\" = \"arm64\", FEX_X87REDUCEDPRECISION \"1\", WINEMSYNC \"1\""
+ },
+ "native_windows": "unverified: cross-compiled only; no import added (GetEnvironmentVariableA and __stdio_common_vswprintf removed), exports equal to Run90; the config resolver reads x3m.ini next to the module with documented Win32 file APIs and GetEnvironmentVariableW",
+ "game_acceptance": "pending user launch: the launcher default (X3M_CONFIG=bare) flies as Run90 apart from the removed hotkeys (only F8 under --debug) and the removed automatic capture; x3m.log carries config_open/proxy_options rows; --config player mode reads x3m.ini next to the DLL",
+ "installed": false,
+ "wall_times_seconds": {
+  "build": 48,
+  "motion": 618.8,
+  "sunshare": 49.2,
+  "sunocc": 17.7,
+  "route": 76.8,
+  "fogshader": 91.2,
+  "integration": 136.2,
+  "fallback": 0.2,
+  "ownership": 10.4,
+  "admission": 98.4,
+  "execution": 10.3,
+  "fogfam": 0.8,
+  "dryrun": 0.9,
+  "temporal": 131.8,
+  "gpusync": 2.2,
+  "bloom": 7.6,
+  "loadtrace": 30.4,
+  "crypt": 12.2,
+  "resreader": 24.1,
+  "cursor": 3.2,
+  "exports": 6.9,
+  "gamephase": 13.5,
+  "fov": 7.7,
+  "window": 8.8,
+  "sunflare": 7.2,
+  "lodocc": 7.0,
+  "terran": 16.7,
+  "cull": 5.2,
+  "census": 5.3,
+  "chasefire": 23.0,
+  "chasetrans": 5.7,
+  "collide": 8.4,
+  "host_suite": 93.9,
+  "route_builds_host": 15,
+  "fog_shader_build_host": 8,
+  "cpu_fixture_builds_host": 9,
+  "task_elapsed_minutes": "about 47 (worktree 08:05, build 08:06, motion 08:11-08:21, batch 08:21-08:35, record ~08:52)"
+ },
+ "incidents": [
+  "game_guard.game_running() printed [] as a separate command before the build, the motion runner and the batch; w.sh re-checked it before taking the lock for every Wine step; no Wine step overlapped another and no host build ran while the batch was queued (every host build ran before the motion runner; verify_game_phase_sites.py, a read-only EXE check, ran on the host during the motion runner)",
+  "run_fog_pass.py is historical and refuses (exit 2, 'superseded', no build or Wine run), as at Run90; the fog_pass section is the stored-density fixture fog_density_shader_run.py (built, run, checked)",
+  "run_ownership_integration_fallback.py refused before Wine (exit 1, AssertionError 'Build all current production components first' in production_link_inputs): the pre-existing Run86 harness defect, unchanged since Run89/Run90",
+  "no fog shader teardown stall this time: the standalone fixture finished in 91.2 s on the first attempt"
+ ],
+ "host_suite_note": "0 failing on the candidate tree 759c2ac7",
+ "dropped_sections": {
+  "effects_stage": "the effects stage (9375a1e7) was removed from production in 479cd036; its fixture and runner no longer exist at 22593133",
+  "launcher_defect_fix": "dropped in Run89: the Run85 help fix carried since Run86; see run88-candidate-qualification.json",
+  "mesh_cache_hook": "dropped in Run90: runner and option removed in 9a668e81; see run89-candidate-qualification.json",
+  "loading_intervals": "dropped in Run90: runner and option removed in 9a668e81; see run89-candidate-qualification.json",
+  "note": "carried from Run90 unchanged"
+ }
+}

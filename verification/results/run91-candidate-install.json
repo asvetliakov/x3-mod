@@ -1,0 +1,55 @@
+{
+ "candidate": {
+  "dll": "/tmp/x3-run91-candidate/build/d3d9.dll",
+  "sha256": "25adddf84b3466044f0b387633da64ea77684c5ea3a4cd74c143d0a4e9592233",
+  "bytes": 57280486,
+  "commit": "759c2ac7",
+  "qualification": "verification/results/run91-candidate-qualification.json"
+ },
+ "command": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3-run91-candidate/build/d3d9.dll",
+ "cwd": "/Users/asvetl/x3-mod",
+ "exit": 0,
+ "installed_at": "2026-09-26T08:40+04:00",
+ "installed": {
+  "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
+  "sha256": "25adddf84b3466044f0b387633da64ea77684c5ea3a4cd74c143d0a4e9592233",
+  "bytes": 57280486,
+  "verified": "sha256 and size read back after install; candidate hash rechecked before install"
+ },
+ "config_template": {
+  "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/x3m.ini",
+  "source": "assets/x3m.ini at 759c2ac7 (every key commented; the DLL resolves the built-in defaults from it)",
+  "sha256_prefix": "59adc3c146816fe4",
+  "note": "copied by hand after the install for the player-mode flight; not part of manage.py install; delete to remove"
+ },
+ "unchanged": {
+  "X3AP.exe": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+  "cxbottle.conf": "cc5d6c00a8afccaf88cbae1a7c46040db513eb163a52693287a3d29aca828e0c"
+ },
+ "previous": {
+  "dll": "/tmp/x3-run90-candidate/build/d3d9.dll",
+  "sha256": "6f6be732bfd5a8b7b0819ae233d42128e55af5f31e42f727abc4272c54dffb98",
+  "bytes": 56825745,
+  "commit": "f9cceb17"
+ },
+ "rollback": {
+  "dll": "/tmp/x3-run90-candidate/build/d3d9.dll",
+  "sha256": "6f6be732bfd5a8b7b0819ae233d42128e55af5f31e42f727abc4272c54dffb98",
+  "bytes": 56825745,
+  "records": [
+   "verification/results/run90-candidate-qualification.json",
+   "verification/results/run90-candidate-install.json"
+  ],
+  "then": "/tmp/x3-run89-candidate/build/d3d9.dll 0f6acab4\u2026 (unflown), then /tmp/x3-run88-candidate/build/d3d9.dll 6fe194bd\u2026 (accepted, Run 88 A)"
+ },
+ "game_running_at_install": false,
+ "game_data": "fleet overlay install-fleet4 unchanged; x3m/fog-families.bin + .json unchanged; x3m.ini template added next to the DLL; x3-modern-captures emptied and the stale X3AP_d3d9.log removed the same morning (cleanup, user request)",
+ "changes_vs_previous": [
+  "developer logging options trimmed to five (--gpu-sync-timing, --taa-debug, --profile, --sun-occlusion-log, --draw-trace); 33 section-5 variables baked into the DLL (bec1afb5)",
+  "hotkeys removed except F8 (only under --debug); fps overlay on with --perf; --capture-start / --capture-delay removed, no automatic capture in the DLL; launch parser refuses abbreviations (da84d232)",
+  "x3m.ini config file steps 1+2: schema-generated defaults and template, parser + resolver first in initialize_log, default < file < environment, X3M_CONFIG bare|none|path, launcher default sends bare, --config = player mode; rows config_open/config_key/config_file, proxy_options NAME=value@env|@file|@default (204d3a09, records 44c60abb)",
+  "imports 236 -> 234 (GetEnvironmentVariableA and __stdio_common_vswprintf gone); exports 17 unchanged; native Windows unverified",
+  "Run 90 A never flown: folded into Run 91 A"
+ ],
+ "incidents": []
+}
