@@ -1,7 +1,7 @@
 # Chase view across sector transitions: command origin
 
 2026-09-13, bounded read-only continuation after checkpoint `c7eaf91`.
-The [run18 analysis](../verification/run18-camera-loading.md) shows a 44.905 s
+The [run18 analysis](../archive/run18-camera-loading.md) shows a 44.905 s
 load interval with no active cockpit, followed by internal mode 1 and then
 manual return to chase mode 258. There are zero hook failures. This establishes
 safe hook reentry and a native view selection change, not its script cause.

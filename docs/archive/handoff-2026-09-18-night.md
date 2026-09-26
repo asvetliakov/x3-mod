@@ -1,15 +1,15 @@
 # Handoff 2026-09-18 (night)
 
-Short current handoff; [status](status.md) is the authoritative summary, the
-[goals table](goals.md) the acceptance state, [user-runs.md](verification/user-runs.md)
-the run queue. Previous handoffs: [archive/handoff-2026-09-18-evening.md](archive/handoff-2026-09-18-evening.md),
-[archive/handoff-2026-09-18-morning.md](archive/handoff-2026-09-18-morning.md).
+Short current handoff; [status](../status.md) is the authoritative summary, the
+[goals table](../goals.md) the acceptance state, [user-runs.md](../verification/user-runs.md)
+the run queue. Previous handoffs: [archive/handoff-2026-09-18-evening.md](handoff-2026-09-18-evening.md),
+[archive/handoff-2026-09-18-morning.md](handoff-2026-09-18-morning.md).
 
 ## Where things stand
 
 - **Installed:** run42 candidate `1a5dd46c…` from main `903be726`
-  ([build](../verification/results/run42-candidate-build.json),
-  [install](../verification/results/run42-candidate-install.json)), through
+  ([build](../../verification/results/run42-candidate-build.json),
+  [install](../../verification/results/run42-candidate-install.json)), through
   `python3 tools/manage.py install --dll-source <dll>` (always). Rollback run41
   `b6ea8569…` in `/tmp/x3-candidate-Iv6Z6G/rollback`; run40 `c47f039c…` in
   `/tmp/x3-candidate-gHUSU7/rollback`.
@@ -34,7 +34,7 @@ the run queue. Previous handoffs: [archive/handoff-2026-09-18-evening.md](archiv
    fixed with fixture; audit found no second functional gate of that class
    (only the `fade_route_mode` line, fixed). Bolts on the corvette go through
    the shared effects PS and are gained by the effects gain, not the bolt route.
-3. **Engine frame time** design ratified ([note](architecture/engine-frame-time.md)):
+3. **Engine frame time** design ratified ([note](../architecture/engine-frame-time.md)):
    24 fps area = 18 ms game-side pre-render episode (owner unknown); busy
    station = 22/32 ms view submission at 23.7 µs/draw; census (world-scale
    proxy) 50–65 % of draws under 2 px (≈ 12 ms); cull census hook installed to

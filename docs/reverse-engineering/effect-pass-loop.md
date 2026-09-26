@@ -185,7 +185,7 @@ A `--pass-phases` diagnostic therefore needs its own **accumulate-only** stamp:
    The window logic runs once per frame from the existing frame boundary
    (`frame_phases::detail::frame_impl`), not per stamp.
 3. Budget. Measured proxy evidence bounds a QPC-plus-bookkeeping span at
-   0.26 µs for two reads (`docs/verification/iteration-09-cost.md`) and ≤ 0.33 µs
+   0.26 µs for two reads (`docs/archive/iteration-09-cost.md`) and ≤ 0.33 µs
    per stamp (`docs/verification/route-cost-run1.md`), i.e. ~0.10–0.17 µs per
    QPC read under this bottle; the stub envelope itself is **unmeasured**,
    estimated at 0.05–0.15 µs without the x87 save. Expected

@@ -7,7 +7,7 @@ historical; `--media-package` is no longer a launcher/install option. New manage
 installs retire the active selection while retaining the previous installation
 and provider files for rollback. See the [media ledger](../verification/media-cues.md#id2-video-omission-and-owned-playback-retirement-2026-09-21).
 
-The canonical [LavWorker](../../src/media/lav_worker.h) now supplies the actual
+The canonical LavWorker (`../../src/media/lav_worker.h`) now supplies the actual
 transport exercised by the concurrent clock/render and two-fresh-graph EOF
 fixtures. The [qualification record](../../verification/results/media-lav-worker-transport-2026-09-20.json)
 binds the production inputs, two frozen executables, original RGB/time references,
@@ -35,7 +35,7 @@ Exactly three preallocated 1 MiB pixel slots move through FREE, WRITING, READY a
 READING. Only the producer reserves FREE and publishes immutable READY bytes. Main
 holds a move-only FrameLease through upload/Unlock and explicitly releases it.
 The lease retains its storage independently of the service handle. Canonical
-[Clock](../../src/media/owned_clock/clock.h) references those three real leases
+Clock (`../../src/media/owned_clock/clock.h`) references those three real leases
 through metadata; it supplies presentation time and completion policy, not LAV.
 There is no second pixel queue, transport presentation clock or raw-EOF callback.
 

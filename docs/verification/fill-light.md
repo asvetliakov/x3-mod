@@ -36,9 +36,9 @@ sample evidence. Final review passed with no blockers.
 
 | Slice | Result | Evidence |
 | --- | --- | --- |
-| K=0 live route | PASS | 8 configurations, 32,516 checks. The corpus covers actual `evaluate_draw` execution across 148 exact pairs / 115 originals, material on/off, TAA on/off, ownership, Reset, state blocks, cached gains and shader retirement. [`linear-material-fill-live.json`](../../verification/results/bottle-X3/linear-material-fill-live.json) |
-| K=0 detached parity | PASS | The new corpus has 4,177 cases and 37,593 samples across 168 pairs / 137 originals, including 14 XT and six SM3 glass pairs. Against the retained 3,923-case baseline, all 42,596 shared `SAMPLE`/`BASELINE`/`INVARIANT` rows are equal: 0 missing and 0 different. The 4,826 additions are the review-confirmed 254 glass cases × 19. [`linear-material-fill-k0-gpu.json`](../../verification/results/bottle-X3/linear-material-fill-k0-gpu.json), [`/tmp/x3-fill-k0-parity.json`](/tmp/x3-fill-k0-parity.json) |
-| K=0.06 fill oracle | PASS | 23 sun-averted FP16 cases, 23 pairs, 207 FP16 samples and 207 RGBA32F twins. The 17 hull/asteroid/palette families, four XT standard/damage techniques, and glass agree with the one-FP16-code oracle: encoded FP16 RGB tolerance 1, observed maximum 1; alpha is exact. Pre-RT Rec.709 scene-linear luma has tolerance 1 and maximum 0. The separately reconstructed FP16 image has luma maximum 3; it does not strengthen the pre-RT image claim. The 54 ordinary-black samples are included. [`linear-material-fill-gpu.json`](../../verification/results/bottle-X3/linear-material-fill-gpu.json) |
+| K=0 live route | PASS | 8 configurations, 32,516 checks. The corpus covers actual `evaluate_draw` execution across 148 exact pairs / 115 originals, material on/off, TAA on/off, ownership, Reset, state blocks, cached gains and shader retirement. `linear-material-fill-live.json` (`../../verification/results/bottle-X3/linear-material-fill-live.json`) |
+| K=0 detached parity | PASS | The new corpus has 4,177 cases and 37,593 samples across 168 pairs / 137 originals, including 14 XT and six SM3 glass pairs. Against the retained 3,923-case baseline, all 42,596 shared `SAMPLE`/`BASELINE`/`INVARIANT` rows are equal: 0 missing and 0 different. The 4,826 additions are the review-confirmed 254 glass cases × 19. `linear-material-fill-k0-gpu.json` (`../../verification/results/bottle-X3/linear-material-fill-k0-gpu.json`), [`/tmp/x3-fill-k0-parity.json`](/tmp/x3-fill-k0-parity.json) |
+| K=0.06 fill oracle | PASS | 23 sun-averted FP16 cases, 23 pairs, 207 FP16 samples and 207 RGBA32F twins. The 17 hull/asteroid/palette families, four XT standard/damage techniques, and glass agree with the one-FP16-code oracle: encoded FP16 RGB tolerance 1, observed maximum 1; alpha is exact. Pre-RT Rec.709 scene-linear luma has tolerance 1 and maximum 0. The separately reconstructed FP16 image has luma maximum 3; it does not strengthen the pre-RT image claim. The 54 ordinary-black samples are included. `linear-material-fill-gpu.json` (`../../verification/results/bottle-X3/linear-material-fill-gpu.json`) |
 
 The K=0 detached run took 28.184 s inside its child process (lock wait
 0.000003 s); the corrected oracle run took 5.970 s (lock wait 0.000004 s).
@@ -157,9 +157,9 @@ run79 (`0.05`) and run80 (`0.02`); run79/80 log
 `original_fill_mode requested=1 enabled=1 hdr=1 linear_materials=0 fill_valid=1`.
 
 Appearance: the user reports the option works visually. Screenshots
-[`original_fill_0.png`](../../screenshots/original_fill_0.png),
-[`original_fill_05.png`](../../screenshots/original_fill_05.png),
-[`original_fill_02.png`](../../screenshots/original_fill_02.png); the orchestrator's read is that
+`original_fill_0.png` (`../../screenshots/original_fill_0.png`),
+`original_fill_05.png` (`../../screenshots/original_fill_05.png`),
+`original_fill_02.png` (`../../screenshots/original_fill_02.png`); the orchestrator's read is that
 K=0.05 makes the unlit docking modules and the asteroid legible at the cost of a mild flattening of
 hull contrast, and that K=0.02 buys little.
 

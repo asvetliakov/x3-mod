@@ -19,7 +19,7 @@ references to the helper, zero scanned references into overwritten interiors,
 zero whole-file entry/interior literals. Arbitrary computed entry or concurrent
 installation is not proved by that scan.
 
-[`media_presentation_gate.cpp`](../../src/proxy/media_presentation_gate.cpp)
+`media_presentation_gate.cpp` (`../../src/proxy/media_presentation_gate.cpp`)
 emits 27 bytes: PUSHFD, compare an aligned owned-copy word against zero, JNE,
 and POPFD on each arm. Forwarding executes the displaced MOV once and jumps to
 the continuation; deferral jumps directly to the existing store/RET. There is
@@ -30,8 +30,8 @@ performance result. The gate does not suppress other work in the wider rendering
 helper and does not itself resolve or retain a surface.
 
 The portable encoder/state/transaction API is in
-[`media_presentation_gate.h`](../../src/proxy/media_presentation_gate.h).
-The [Win32 adapter](../../src/proxy/media_presentation_gate_win32.cpp) uses
+`media_presentation_gate.h` (`../../src/proxy/media_presentation_gate.h`).
+The Win32 adapter (`../../src/proxy/media_presentation_gate_win32.cpp`) uses
 VirtualAlloc, VirtualProtect, VirtualQuery, ReadProcessMemory,
 InterlockedCompareExchange64 and FlushInstructionCache. Its production
 qualification predicates call the existing executable identity verifier and

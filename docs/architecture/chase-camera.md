@@ -1,9 +1,9 @@
 # Chase camera for the external back view (`X3M_CAMERA=chase`)
 
 Integrated design and implementation (2026-09-13, reviewed:
-[review 31a](../verification/review-31-chase-camera-architecture.md) /
-[31b](../verification/review-31-chase-camera-implementation.md) and
-[review 35](../verification/review-35-chase-integration.md), their findings
+[review 31a](../archive/review-31-chase-camera-architecture.md) /
+[31b](../archive/review-31-chase-camera-implementation.md) and
+[review 35](../archive/review-35-chase-integration.md), their findings
 applied). The first user flight confirmed the hook applies, but reported
 trembling while flying and requested lower framing. The native-anchor
 correction and new framing default await another user run; see
@@ -333,7 +333,7 @@ unset. `snap_coalesce_frames` (3) is compiled in.
    rejects a claim after the install window closes.
 4. **Next user acceptance** (`launch --direct --camera chase --telemetry`, then with the route):
    the acceptance list in
-   [review 31a](../verification/review-31-chase-camera-architecture.md)
+   [review 31a](../archive/review-31-chase-camera-architecture.md)
    ("Acceptance criteria for the first user run") is the checklist: the
    install line `status=active`; the `first_applied` line's inferences; in the
    external back view (F2 cycle) `verdict=0` with `applied` growing,

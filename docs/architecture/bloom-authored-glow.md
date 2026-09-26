@@ -67,7 +67,7 @@ The sweep cannot qualify halo shape because radius was held fixed. If strength
 is sufficient but spread remains too tight, evaluate radius separately. No shader
 recompile, extra draw, resource, texture fetch or CPU work is introduced: the
 existing constant carries the new gain. Gain 0.35 was installed for the completed
-[Run 9 / Run 28 comparison](../verification/run28-glow-materials.md), which shows clear
+[Run 9 / Run 28 comparison](../archive/run28-glow-materials.md), which shows clear
 ON/OFF halos on a ship emitter and station ring. The user asks about a slight
 core increase. The broad halo already looks sufficient; retain the current
 gain while considering local-core emphasis separately from total strength.

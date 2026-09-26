@@ -67,7 +67,7 @@ The corrected loader-owned synthetic PE mapping retains the production site
 addresses and passes all six X3 cases / 124 checks, including actual trace-stub
 CPU-state preservation. A separate X3 camera-math host and the exact DLL export
 load checks also pass. These do not execute the live game camera handler or
-verify native Windows. See [review 49](review-49-chase-aim-trace.md) and the
+verify native Windows. See [review 49](../archive/review-49-chase-aim-trace.md) and the
 [runtime summary](../../verification/results/chase-elevated-runtime-summary.json).
 The installed build remains the version at the top of `docs/status.md`.
 

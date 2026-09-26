@@ -85,7 +85,7 @@ replacement policy and qualification limits.
 
 ## 2. Shader implications
 
-**Who writes colour in the scene** ([iteration-06.md](../verification/iteration-06.md),
+**Who writes colour in the scene** ([iteration-06.md](../archive/iteration-06.md),
 20,076 main-scene draws / 68 frames): `vs_3_0/ps_3_0` 18,605 (92.7%) — the
 169-row transformable population; `vs_1_1`/*null* 915 (`z_only.fb` depth
 prepass, **no colour**); `vs_2_0/ps_2_0` 306 and `vs_1_1/ps_1_1` 250, all

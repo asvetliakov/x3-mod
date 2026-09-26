@@ -333,9 +333,9 @@ evidence, GPU fixture, final artifact provenance and stated limits. Review
 corrected the native-module mapping and required one shared scene for the
 timed two-pass comparison. The table-driven extension (2026-09-12) keeps that
 inventory unchanged and adds the per-row section; its independent review is
-[review-13.md](review-13.md). The class C extension (same day) adds the
+[review-13.md](../archive/review-13.md). The class C extension (same day) adds the
 branching rows, the per-boolean repetition and the declaration-driven sampler
-binding ([review-14.md](review-14.md)). The archive-wide extension (same day)
+binding ([review-14.md](../archive/review-14.md)). The archive-wide extension (same day)
 grows the table from 16 to 169 rows (including six spaced-quad rows), adds
 the tangent/binormal elements, the per-row clip-row register, the probed
 clear color and the sampled mutation sweep; the Argon inventory numbers are

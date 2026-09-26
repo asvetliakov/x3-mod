@@ -1,15 +1,15 @@
 # Handoff 2026-09-18 (evening)
 
-Short current handoff; [status](status.md) is the authoritative summary, the
-[goals table](goals.md) the acceptance state, [user-runs.md](verification/user-runs.md)
-the run queue. Previous handoffs: [archive/handoff-2026-09-18-morning.md](archive/handoff-2026-09-18-morning.md),
-[archive/handoff-2026-09-17-evening.md](archive/handoff-2026-09-17-evening.md).
+Short current handoff; [status](../status.md) is the authoritative summary, the
+[goals table](../goals.md) the acceptance state, [user-runs.md](../verification/user-runs.md)
+the run queue. Previous handoffs: [archive/handoff-2026-09-18-morning.md](handoff-2026-09-18-morning.md),
+[archive/handoff-2026-09-17-evening.md](handoff-2026-09-17-evening.md).
 
 ## Where things stand
 
 - **Installed:** run41 candidate `b6ea8569…` from main `e29d6399`
-  ([build](../verification/results/run41-candidate-build.json),
-  [install](../verification/results/run41-candidate-install.json)), through
+  ([build](../../verification/results/run41-candidate-build.json),
+  [install](../../verification/results/run41-candidate-install.json)), through
   `python3 tools/manage.py install --dll-source <dll>` (always; a direct copy
   leaves the ownership manifest stale). Rollback `c47f039c…` (run40) in
   `/tmp/x3-candidate-gHUSU7/rollback`; older builds in `/tmp/x3-candidate-iK0cir`,
@@ -33,7 +33,7 @@ the run queue. Previous handoffs: [archive/handoff-2026-09-18-morning.md](archiv
    extent is a half-extent (60 km box, 42 km corner, 120 km deep).
 2. **Far-station flicker = RT2 fp32 z/w receiver precision** (13.6 u per ULP at
    37 km; ±1 ULP re-rolls 9–16 % of far-cascade pixels on single-sided faces).
-   Design ratified ([note](architecture/shadow-receiver-depth.md)): RT2
+   Design ratified ([note](../architecture/shadow-receiver-depth.md)): RT2
    A32B32G32R32F with clip w in `.b`, apply reads `.b`; gated
    `--sun-shadow-receiver-depth {device,linear}`, default device this flight,
    flip after. Witness on run117 captures: z/w 9.1/14.2/15.7 % → w 0/0.004/0 %.
@@ -41,7 +41,7 @@ the run queue. Previous handoffs: [archive/handoff-2026-09-18-morning.md](archiv
    extrapolation amplified fp32 noise: slope-scaled margin in the cascade apply
    (default 0.2 texel, program 509/512 slots), 10.6 → 1.4 % per ULP.
 4. **Hull emitters ≠ windows.** Windows are the light-map term added inside 100
-   of 108 opaque hull programs ([RE](reverse-engineering/hull-self-illumination.md));
+   of 108 opaque hull programs ([RE](../reverse-engineering/hull-self-illumination.md));
    `--hull-lightmap-gain G` multiplies it (plain, fill and sun-share variants;
    Ctrl+Shift+F4 pairs it with the guide-light gain).
 5. **FPS overlay** (`--fps-overlay`, Ctrl+Alt+F7) on the bitmap notice;

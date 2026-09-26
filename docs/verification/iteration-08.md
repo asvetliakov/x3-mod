@@ -2,8 +2,8 @@
 
 Second TAA gameplay run, with the jitter-convention fix of commit `162b2f7`
 (history read at the previous position **plus the current jitter**; see
-[review-17](review-17.md)). The run answers the acceptance test
-[iteration 7](iteration-07.md#implications) set: the tremble measurement must
+[review-17](../archive/review-17.md)). The run answers the acceptance test
+[iteration 7](../archive/iteration-07.md#implications) set: the tremble measurement must
 turn from `tracks_jitter` into `stable` and the gradient-energy ratio must move
 away from 0.56.
 
@@ -220,7 +220,7 @@ Four findings, both bursts agreeing:
    flips a silhouette's coverage, the history tap's depth differs from the
    expected depth by more than 1e-4, every tap is dropped, and the pixel falls
    back to the raw jittered sample. It is exactly the limitation
-   [review-17](review-17.md) recorded as a known design consequence, and it is
+   [review-17](../archive/review-17.md) recorded as a known design consequence, and it is
    what the user sees "especially at object edges".
 3. **Thin features are the visible part of it.** 5–7% of the screen, detected
    purely from the raw colour with no knowledge of the classes, carries

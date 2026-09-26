@@ -400,7 +400,7 @@ the screen.
   shape the `TEXCOORD0` it reads; the pass's `normalize` resets both
   (restored by the state block) after the pass fixture's hostile texture
   transform changed the resolve output on the Preview backend
-  ([review 16](../verification/review-16.md)).
+  ([review 16](../archive/review-16.md)).
 - The caller contract of the pass needs positive knowledge of no open
   application query: the route wraps query objects and counts BEGIN/END, so
   EVENT queries (the fixture's timing) never block the resolve and an

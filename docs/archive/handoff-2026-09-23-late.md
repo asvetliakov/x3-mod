@@ -1,22 +1,22 @@
 # Handoff 2026-09-23 (late, updated at night) — Run 68–70 flown, Run70 installed, LOD 0 atlas overlay, Run 71 queued
 
-Replaces the [morning handoff](archive/handoff-2026-09-23-morning.md); its operating rules
+Replaces the [morning handoff](handoff-2026-09-23-morning.md); its operating rules
 still bind (never launch the game; every Wine command through
 `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py`, never `--help` to a runner;
 one candidate owner; install only with `tools/manage.py install --bottle X3 --dll-source <dll>`;
 no host suite or build while the user's game is up — run257's timings were contaminated by one;
 native Windows is a required, unverified target). Installed-build identity lives only in
-[status](status.md). Run authority: [user-runs.md](verification/user-runs.md).
+[status](../status.md). Run authority: [user-runs.md](../verification/user-runs.md).
 
 ## State
 
-- **Installed (night):** Run70 DLL `a773e9f2…` from `0bfa11ac` ([status](status.md)); rollback
+- **Installed (night):** Run70 DLL `a773e9f2…` from `0bfa11ac` ([status](../status.md)); rollback
   Run69 `/tmp/x3-run69-candidate/build/d3d9.dll`. Defaults now: `--taa-motion-weight 0.7,2,8`
   under TAA with an age program; fog dust motes on under the stored range at `1300,3,128` with
   MAX_PX 8 (`--fog-dust-motes 0` opts out). Game data: the merged-LOD overlay `addon/05.cat`
   `d29b0c88…` / `05.dat` `5fd877c1…` (LOD 0 meshes with diffuse/light/bump/specular atlases,
-  ships 2 draws, outpost 4, collision vanilla; [record](../verification/results/lod-overlay-pilot/install.json)).
-- **Run 71 A is queued and ready** ([user-runs.md](verification/user-runs.md)): the LOD 0 atlas
+  ships 2 draws, outpost 4, collision vanilla; [record](../../verification/results/lod-overlay-pilot/install.json)).
+- **Run 71 A is queued and ready** ([user-runs.md](../verification/user-runs.md)): the LOD 0 atlas
   overlay at the stand; the question is whether the switch at 80 / 150 px is visible at all.
 - **An agent may still be running at the compaction:** the fleet-wide overlay eligibility census
   (`tools/analysis/lod_batch_census.py`, worktree `.claude/worktrees/agent-af6a3758990f2ab5f`,
@@ -27,35 +27,35 @@ native Windows is a required, unverified target). Installed-build identity lives
 
 - **A (run262 at 0.8, run263 at 0.7):** the motion weight halves the SETA hull blur at ≥ 8
   px/frame (σ 1.4 → 0.7–1.0, E ratio ×1.7–4) for ×1.1–2 ripple there, unchanged below 2 px/frame;
-  the user prefers 0.7 → default ([temporal-resolve.md](verification/temporal-resolve.md) "Run 262").
+  the user prefers 0.7 → default ([temporal-resolve.md](../verification/temporal-resolve.md) "Run 262").
 - **B (run264, B2):** motes cost nothing (+12 calls, +0.08 ms); 2048,4 was "snow" (~110 discs of
-  6–8 px); 1300,2 liked, settled on size 3 → default on ([volumetric-fog.md](verification/volumetric-fog.md) "Run 264").
+  6–8 px); 1300,2 liked, settled on size 3 → default on ([volumetric-fog.md](../verification/volumetric-fog.md) "Run 264").
 - **C (run265), C2 (run268):** the atlas overlay in effect; the outpost pair matches the fine
   model in sun (100 %) and non-sun (94 %); the NULL specular slot bound a bright placeholder →
   specular atlas; the remaining Titan step (lit windows/exhausts ×1.5) was not reproduced offline
   as mip bleed → the coarse record now uses the LOD 0 mesh (tile-aware mips kept)
-  ([engine-frame-time.md](architecture/engine-frame-time.md) "Run 265", "Run 268").
+  ([engine-frame-time.md](../architecture/engine-frame-time.md) "Run 265", "Run 268").
 - Weapons never read the drawn LOD; collision comes from the last record = the pad = the original
-  coarsest record ([lod-child-hide.md](reverse-engineering/lod-child-hide.md)).
+  coarsest record ([lod-child-hide.md](../reverse-engineering/lod-child-hide.md)).
 
 ## Verdicts since the morning (all measured; ledgers linked)
 
 1. **Run 68 A (run254):** exit reset accepted, 3–12 px genuine dark-sky share 7 % / 6 % (was
    27 % / 34 %); strict + band + exit are the defaults. SETA station blur = history resample
    softening (σ 1.0–1.4 px above 1 px/frame) → `--taa-motion-weight`
-   ([temporal-resolve.md](verification/temporal-resolve.md) "Run 254").
+   ([temporal-resolve.md](../verification/temporal-resolve.md) "Run 254").
 2. **Run 68 B (run255):** 466 draws at the stand; the pilot placement rule corrected
-   ([engine-frame-time.md](architecture/engine-frame-time.md) "Run 255").
+   ([engine-frame-time.md](../architecture/engine-frame-time.md) "Run 255").
 3. **Run 68 C (run256):** the fog shadow-pass toggle works (no notice by design); no visible or
-   median-cost difference → the pass stays default off ([volumetric-fog.md](verification/volumetric-fog.md) "Run 256").
+   median-cost difference → the pass stays default off ([volumetric-fog.md](../verification/volumetric-fog.md) "Run 256").
 4. **Merged-LOD pilot, Run 69 A–D (run257/258/259–260/261):** placement fixed twice
    (pad, then compact: C at index 1, no `0x100000` DEFAULT-technique flag); engine glows are the
    exhaust materials' light maps (glow collapse); 80 / 150 px accepted; "no sun lighting" =
    light-map self-illumination lost (−72 %) plus the dominant material's low diffuse strength
    (−23 %) → glow-area 70 + synthesized material (94 % / 73 % of fine); weapons never read the
-   drawn LOD ([lod-child-hide.md](reverse-engineering/lod-child-hide.md)). Atlas collapse built:
+   drawn LOD ([lod-child-hide.md](../reverse-engineering/lod-child-hide.md)). Atlas collapse built:
    one material per coarse record with diffuse/light/bump atlases, 1 draw per ship, 2 for the
-   outpost, 33 MiB textures for four bodies ([merged-lod-feasibility.md](architecture/merged-lod-feasibility.md) "Overlay tooling").
+   outpost, 33 MiB textures for four bodies ([merged-lod-feasibility.md](../architecture/merged-lod-feasibility.md) "Overlay tooling").
 
 ## Merged since the morning (reviewed; resolve and GPU changes twice)
 

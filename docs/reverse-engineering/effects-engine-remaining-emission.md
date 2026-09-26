@@ -231,7 +231,7 @@ Sources: [complete coverage ledger](../architecture/material-coverage.md),
 [earlier material slice](../architecture/material-next-slice.md),
 [complete sweep](shader-sweep.md), [family review](shader-family-review.md),
 [motion inventory](motion-output-profiles.md),
-[iteration-06 capture analysis](../verification/iteration-06.md),
+[iteration-06 capture analysis](../archive/iteration-06.md),
 `verification/results/shader-sweep-inventory.json`,
 `verification/results/shader-sweep-aliases.json`,
 `verification/results/shader-sweep-families.json`, and

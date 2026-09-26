@@ -59,7 +59,7 @@ observation does not exclude the remaining 29 pairs from conversion scope.
 
 ## Actual opacity and effect state
 
-[Run 27](../verification/run27-glow-selection.md#material-coverage-and-fallback)
+[Run 27](../archive/run27-glow-selection.md#material-coverage-and-fallback)
 records 1,700 sampled material refusals, all for
 `c30104cb0efb6675/a66fb1981ba755b2`. Every detailed captured refused draw has
 Z writes enabled and alpha blending disabled. Several nodes use the pair.

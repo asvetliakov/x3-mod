@@ -262,7 +262,7 @@ its `scan`/`scan_log` never raise on log content and report unparsable lines in
   Ex device under its test-only seam to exercise ResetEx; this does not establish
   production CreateDeviceEx enhancement support. See the
   [authored-glow evidence](bloom-authored-glow.md) and
-  [Run 28 comparison](../verification/run28-glow-materials.md).
+  [Run 28 comparison](../archive/run28-glow-materials.md).
 
 - The opt-in [chase camera](chase-camera.md) modifies validated game structures
   through an x86 trampoline and uses public Win32 memory, protection and timing

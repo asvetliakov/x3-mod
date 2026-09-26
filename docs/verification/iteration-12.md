@@ -598,7 +598,7 @@ passes** where run 6 failed it (0 suspicious pixels against 3.79 %, at a
 genuinely larger maximum displacement of 50.9 px). The `depth` check still
 fails its 0.99 within-fraction, at **0.340 — the best value recorded**
 (iteration 10 run 6 0.335, run 1 0.287, run 2 0.246): **pre-existing, unchanged
-by this build**, and documented in [iteration-10.md](iteration-10.md) as the
+by this build**, and documented in [iteration-10.md](../archive/iteration-10.md) as the
 nearest-sampling previous-depth comparison, not a motion defect.
 
 ### 4.3 Loads and zlib

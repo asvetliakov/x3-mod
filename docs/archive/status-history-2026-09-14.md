@@ -13,7 +13,7 @@ Work resumed 2026-09-14 under the Claude Code routing in `CLAUDE.md`. Unfinished
 work from the pause (cutout source, reviewed fade results, decoder build plans
 and the persistent backup) is recorded in
 [the September 14 morning handoff](handoff-2026-09-14.md); the current
-handoff is [handoff-2026-09-14d.md](../handoff-2026-09-14d.md), written after the late-evening autonomous
+handoff is [handoff-2026-09-14d.md](handoff-2026-09-14d.md), written after the late-evening autonomous
 session (the afternoon one is archived). Nothing merged today is installed.
 Checkpoints today: fade prototypes 1 and 1b committed (`d8e189b`, `3c3479a`),
 with the [per-part AABB finding](../reverse-engineering/render-node-bounds.md) and the
@@ -100,7 +100,7 @@ are in the [completed-run archive](user-runs-completed.md), the
 [region note](../architecture/linear-distance-fade-region.md) and the
 [cutout note](../architecture/alpha-tested-materials.md).
 
-The previous gameplay evidence, [run 28](../verification/run28-glow-materials.md),
+The previous gameplay evidence, [run 28](run28-glow-materials.md),
 user run 9, is saved in `/tmp/x3-bottleX3-run28/` on installed source `d9413fc`. Screenshots show substantial
 colored halos at gain 0.35. The user approved a slightly tighter, stronger core;
 the installed correction uses gain 0.375/scatter 0.65, calibrated against saved
@@ -127,9 +127,9 @@ nonzero audio in both graphs, narrowing the failure to compressed decoding.
 The owning note now records the independently reviewed source and evidence;
 no production audio repair is installed.
 Other unexplained slow-frame residuals remain. The earlier
-[Run 27 delayed publisher](../verification/run27-glow-selection.md) is a separate witness.
+[Run 27 delayed publisher](run27-glow-selection.md) is a separate witness.
 
-[Run 26](../verification/run26-comparison.md) and [Run 23](../verification/run23-material-comparison.md)
+[Run 26](run26-comparison.md) and [Run 23](run23-material-comparison.md)
 retain previous appearance comparisons. The central chase crosshair/distance is
 visible; selection stutter also occurs with chase disabled.
 

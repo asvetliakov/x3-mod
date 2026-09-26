@@ -1,7 +1,7 @@
 # Handoff 2026-09-21 — lattice upload integration and fog runtime design
 
 This replaces the operational instructions in [the September 20 handoff](handoff-2026-09-20.md).
-Read `AGENTS.md`, [status](status.md), [goals](goals.md), [user objective](user-objective.md),
+Read `AGENTS.md`, [status](../status.md), [goals](../goals.md), user objective (`user-objective.md`),
 this file and the relevant owning notes. Do not reread archives unless a specific
 unresolved question requires them. Installed-build identity and rollback details
 remain **only in status.md**. Source main at the work checkpoint is `36860cb4`;
@@ -12,7 +12,7 @@ the subsequent handoff commit contains documentation/inventory only.
 The user requested a clean session handoff. All task agents were asked to freeze
 and stop. No Wine, game, build, numerical experiment or candidate qualification
 is in progress. No game was launched by an agent. No new user flight is queued;
-[user-runs.md](verification/user-runs.md) remains the run authority. Agent handles
+[user-runs.md](../verification/user-runs.md) remains the run authority. Agent handles
 from this conversation are historical: start fresh bounded agents in the next
 session rather than assuming they survive.
 
@@ -82,7 +82,7 @@ Useful recent main checkpoints (already integrated; do not reapply dirty copies)
 
 All pending changes below are **uncommitted working-tree edits**, not commits
 waiting to cherry-pick. Branch HEAD alone does not contain the implementation.
-[Pending file hashes and backup identities](../verification/results/session-handoff-2026-09-21/pending.json)
+[Pending file hashes and backup identities](../../verification/results/session-handoff-2026-09-21/pending.json)
 identify the exact files. Local source-only backup tarballs are under
 `/tmp/x3-session-handoff-2026-09-21/`. Do not reset, clean, remove or blindly merge
 these trees. Compare/copy reviewed deltas into main at a checkpoint.
@@ -93,7 +93,7 @@ these trees. Compare/copy reviewed deltas into main at a checkpoint.
 | `/tmp/x3-lattice-payload-writer` — `investigate/lattice-payload-writer` | `75f04dde` | B2b Capture state writer, two geometry headers, host fixture/test, two standalone builders + gated stubs (nine files). Author `lattice_upload_abi`, reviewer `review_lattice_writer`. Source/host review clean; cross-build closure and actual integrated callback evidence pending. |
 | `/tmp/x3-fog-finite-banks` — `investigate/fog-finite-banks` | `e2270076` | Only NEW `fog_density_runtime_screen.py` and `test_fog_density_runtime_screen.py` are pending. Many other untracked preview scripts here are already copied to main. Author `run57_fog_range_replay`; next review needed. |
 
-The [full worktree inventory](../verification/results/session-handoff-2026-09-21/worktrees.json)
+The [full worktree inventory](../../verification/results/session-handoff-2026-09-21/worktrees.json)
 records every branch/HEAD/dirty entry/ancestry at handoff. Most old worktrees are
 historical evidence, not live pending tasks. In particular, flight-hook,
 flight-lifecycle, payload-reader, upload-ABI and upload-prototype dirty copies
@@ -104,8 +104,8 @@ be unlocked/removed on the strength of its old PID alone; recheck ownership.
 
 ## Lattice: exact next technical state
 
-Owning [lattice architecture §31 onward](architecture/taa-lattice-crawl.md) and
-[mesh rewrite reverse engineering](reverse-engineering/mesh-buffer-rewrite.md)
+Owning [lattice architecture §31 onward](../architecture/taa-lattice-crawl.md) and
+[mesh rewrite reverse engineering](../reverse-engineering/mesh-buffer-rewrite.md)
 carry the evidence. Arithmetic exploration is closed: calibrated GPU point
 observations still did not qualify the CPU interpolation model. Need original
 uploaded geometry, not further rounding/jitter speculation.
@@ -120,11 +120,11 @@ Unlock closures and final identities/revisions validate. Failure wipes storage.
 Durable contracts (retain their scope distinctions; some original proposal
 headings predate ratification):
 
-- [Flight integration stages](architecture/lattice-upload-flight-integration.md):
+- [Flight integration stages](../architecture/lattice-upload-flight-integration.md):
   A accepted; B1 accepted; B2a/B2b incomplete; startup/CLI/build graph still unwired.
-- [Lifecycle contract](architecture/lattice-upload-lifecycle-contract.md): B1
+- [Lifecycle contract](../architecture/lattice-upload-lifecycle-contract.md): B1
   accepted; actual Capture accounting still blocked by the routed fixture.
-- [Packet contract](architecture/lattice-upload-packet-contract.md): root ratified
+- [Packet contract](../architecture/lattice-upload-packet-contract.md): root ratified
   this schema; reader accepted, writer pending integration. New identity metadata
   is pointer-free; legacy state fields retain their existing bounded semantics.
 
@@ -146,7 +146,7 @@ Routed draw with actual renderer refs faults restoring PS:
 Proxy DLL SHA `f5aa5e61f2dc264358f97e7f7b898ebe9a7fd5bfd279991b494eff37147a329f`.
 No Wine/debugger process remains from this run.
 
-[Confirmed diagnosis / pending proposal](architecture/ownership-shadow-lifetime-diagnosis.md):
+[Confirmed diagnosis / pending proposal](../architecture/ownership-shadow-lifetime-diagnosis.md):
 MotionOutput stores weak application VS/PS wrapper pointers. Application releases
 its valid creation references after binding; native backing remains bound but
 ownership destroys the wrapper. Undo later passes the stale wrapper through the
@@ -227,8 +227,8 @@ The modest refinement keeps broad mass and increases internal modulation/edge
 opening. Cloud-only previews are not final game lighting. Strength preference
 is 1.50× (current .03); fog remains opt-in/off by default.
 
-Owning [architecture](architecture/volumetric-fog.md) and
-[verification ledger](verification/volumetric-fog.md). Latest liked direction:
+Owning [architecture](../architecture/volumetric-fog.md) and
+[verification ledger](../verification/volumetric-fog.md). Latest liked direction:
 `/tmp/x3-fog-mass-detail-refinement/green-poseB-refined-detail-cloud-only.png`
 (column1 previous, column3 refined full-distance; bottom white = clearer).
 Two-view numerical reference reviewed; no production integrator selected.
@@ -240,7 +240,7 @@ converged references, T p99/max .002622/.003182 and temporal .004867; ~359 mean
 texture reads versus current48. Do not rerun it or silently sweep step counts.
 Current installed range is still in status/owning notes, not changed by previews.
 
-New [stored-density plan](architecture/fog-density-runtime-plan.md) is ratified
+New [stored-density plan](../architecture/fog-density-runtime-plan.md) is ratified
 for ONE host experiment only. Two anchored128³ scalar grids (102.4m/819.2m),
 fixed eight-point final-density prefilter, 4–6km LOD blend, unchanged 30–40km
 range taper and field/strength. Fixed24 near +40 far samples. Intended8MiB

@@ -153,9 +153,11 @@ settings.
 
 ## Documentation
 
-- `docs/status.md` is the short current handoff and the only place the
-  installed build is described; `docs/goals.md` tracks acceptance state and
-  changes only when that state changes. Update the owning architecture,
+- `docs/status.md` is the single current-state file and the only place the
+  installed build is described; handoffs are written only as archive entries
+  under `docs/archive/` when a session ends with unfinished multi-step work;
+  `docs/goals.md` tracks acceptance state and changes only when that state
+  changes. Update the owning architecture,
   reverse-engineering or verification note instead of mirroring the same facts
   across status, goals, roadmap, README, handoffs and run plans.
 - One verification ledger per feature under `docs/verification/`; append to it.

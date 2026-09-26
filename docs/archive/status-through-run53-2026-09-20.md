@@ -5,14 +5,14 @@ Superseded by the Run54 handoff; retained as historical evidence, not current in
 # Project status
 
 Updated 2026-09-20 (Run53 A/B reported; spatial fog/lattice analysis and media integration continue). This is the
-short current status; the session handoff is [handoff-2026-09-20.md](../handoff-2026-09-20.md).
+short current status; the session handoff is [handoff-2026-09-20.md](handoff-2026-09-20.md).
 Older session sections are in
 [archive/status-sessions-through-2026-09-19.md](../archive/status-sessions-through-2026-09-19.md),
 the earlier narrative in [status history 2026-09-14](../archive/status-history-2026-09-14.md) and
 [status history 2026-09-13](../archive/status-history-2026-09-13.md).
 Read history only for a relevant unresolved question. The
 [goal checklist](../goals.md), [run queue](../verification/user-runs.md) and
-[original objective](../user-objective.md) retain the full scope.
+original objective (`../user-objective.md`) retain the full scope.
 
 ## Installed build
 
@@ -130,7 +130,7 @@ does not justify another engine patch. No repeat timing flight is queued.
 Run 47 is read; **run 48 A/B/C are reported** ([completed run48](../archive/run48-completed-2026-09-20.md)):
 A lattice arm + distant station (baseline vs the intended defaults), B Argon Prime
 shadows and fog, C `--submit-phases` at the busy station. The
-[handoff](../handoff-2026-09-20.md) holds the state of every track, the decisions owed
+[handoff](handoff-2026-09-20.md) holds the state of every track, the decisions owed
 after run 48, the user's preferences and the housekeeping list; the
 [goals table](../goals.md) is current. Run 48 A evidence is recorded in the [motion-output ledger](../verification/motion-output.md):
 stationary improvement confirmed; moving-arm crawl remains open. The moving-lattice

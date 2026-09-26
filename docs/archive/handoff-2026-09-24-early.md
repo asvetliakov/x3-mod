@@ -1,25 +1,25 @@
 # Handoff 2026-09-24 (written 2026-09-23 evening; authoritative)
 
-Previous handoff: [archive/handoff-2026-09-23-late.md](archive/handoff-2026-09-23-late.md) (operating rules
-and closed decisions still bind). Read [status.md](status.md), [goals.md](goals.md), [user-objective.md](user-objective.md).
+Previous handoff: [archive/handoff-2026-09-23-late.md](handoff-2026-09-23-late.md) (operating rules
+and closed decisions still bind). Read [status.md](../status.md), [goals.md](../goals.md), user-objective.md.
 
 ## State
 
-- **Installed:** Run72 DLL `c17792a9…` from `dcf3728b` ([install](../verification/results/run72-candidate-install.json));
+- **Installed:** Run72 DLL `c17792a9…` from `dcf3728b` ([install](../../verification/results/run72-candidate-install.json));
   rollback Run70 `/tmp/x3-run70-candidate/build/d3d9.dll`. Game data: the merged-LOD **batch** overlay of the flown
-  sectors in `addon/05` (19 bodies, 561 → 55 drawn groups, 124 MB; [record](../verification/results/lod-overlay-pilot/install.json)).
+  sectors in `addon/05` (19 bodies, 561 → 55 drawn groups, 124 MB; [record](../../verification/results/lod-overlay-pilot/install.json)).
   No `x3m/fog-families.bin` (vanilla needs none).
-- **Queued:** Run 73 A ([user-runs](verification/user-runs.md)): the batch overlay in a busy sector on the Run72 DLL.
+- **Queued:** Run 73 A ([user-runs](../verification/user-runs.md)): the batch overlay in a busy sector on the Run72 DLL.
 - **On main since Run72 (committed):** GPU sync timing (`--gpu-sync-timing`, opt-in; event queries work on the X3
   bottle, timestamp queries do not), music keep with alt-tab skip_all + Patch D and the trace coexisting (`--music-keep`
   still opt-in; `--music-trace`), executable identity without a file hash (`apply_laa.py` unnecessary: the EXE is already
   LAA), fog families data-driven (`tools/analysis/fog_families.py`, loader in the DLL), batch overlay mode with mod
   support and the text-body reader (text bodies refused until the parser follows the engine's loader rules;
-  [body-text-loader.md](reverse-engineering/body-text-loader.md)).
+  [body-text-loader.md](../reverse-engineering/body-text-loader.md)).
 - **Staged on main, not yet committed (waiting on the last review-fix rounds):** the fog hand-over (R1 readiness
   step, R2 cold far fill with a whole-atlas latch, R3 transit prefill from the object-list tail, docked parent walk;
-  all default on under the stored range; [fog-handover.md](architecture/fog-handover.md)) and the bolt footprint
-  (`--bolt-footprint 3,8` default; [bolt-footprint.md](architecture/bolt-footprint.md)). Gate on the merged tree was
+  all default on under the stored range; [fog-handover.md](../architecture/fog-handover.md)) and the bolt footprint
+  (`--bolt-footprint 3,8` default; [bolt-footprint.md](../architecture/bolt-footprint.md)). Gate on the merged tree was
   green (host suite 242 modules / 2,494 tests; x87 671; fog pass fixture PASS with the HANDOVER row).
 - **In flight (agents):** fog agent (R3 low fixes), text-body agent (engine-loader semantics for parse_text, then
   lifting the three text refusals).

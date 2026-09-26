@@ -9,8 +9,8 @@ The scene model is black cosmos, small stars, large colored
 nebulae, planets/suns, ships and transient effects. Indoor/hangar adaptation
 is not a design premise. The current implementation is described in
 [HDR scene path](hdr-scene-path.md); the actual baseline is
-[run 24](../verification/run24-exposure-baseline.md) and
-[run 25](../verification/run25-bloom-comparison.md).
+[run 24](../archive/run24-exposure-baseline.md) and
+[run 25](../archive/run25-bloom-comparison.md).
 Published practice in other space games is collected separately in
 [the primary-source comparison](../research/space-game-exposure.md).
 

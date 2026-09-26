@@ -22,7 +22,7 @@ source work; the removals below are not claims about that installed build.
 `CMakeLists.txt` and ownership-linked fixtures now list the portable helper rather
 than the legacy managed qualifier. The actual 21-object production link includes
 the portable helper and excludes the historical qualifier; the 18-object forced
-fallback also passes. See [checkpoint review](../verification/review-10.md).
+fallback also passes. See [checkpoint review](../archive/review-10.md).
 Runtime manifests may record the backend version/digest for
 reproducibility without rejecting a different implementation.
 

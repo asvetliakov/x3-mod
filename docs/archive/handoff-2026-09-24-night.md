@@ -1,18 +1,18 @@
 # Handoff 2026-09-24 (night, written before a session compaction)
 
-Previous handoff: [archive/handoff-2026-09-24-early.md](archive/handoff-2026-09-24-early.md). Rules: AGENTS.md, CLAUDE.md;
+Previous handoff: [archive/handoff-2026-09-24-early.md](handoff-2026-09-24-early.md). Rules: AGENTS.md, CLAUDE.md;
 memory rules that matter tonight: no host load during flights, fog merges run the route bridge in the gate,
 **no merges/commits on main while a candidate qualification runs from the checkout** (candidate-tree-frozen).
 
 ## Installed (bottle X3)
 
-- **Run76 DLL `57a7830d…` from `02b34ace`** ([install](../verification/results/run76-candidate-install.json), rollback Run75
+- **Run76 DLL `57a7830d…` from `02b34ace`** ([install](../../verification/results/run76-candidate-install.json), rollback Run75
   `56d6863e…` at /tmp/x3-run75-candidate/build/d3d9.dll). Carries: projectile cull exemption (bolts fixed, Run 76 B
   accepted), docked-load card z/cull admission + `volumetric_fog_card_states` diagnostic, `--fog-far-bins 40|24`
   (40 default; Run 76 D: 24 saves only 0.2–0.5 ms, stays off), fog sub-boundaries + repair census, fog hand-over
   fixes with sector-id transit identity, bolt footprint 3,12, TAA output-identical cuts (first round).
 - **Game data:** `addon/05` overlay of the 22 flown-sector bodies with the bleed guard + share gate
-  ([record](../verification/results/lod-overlay-batch/install-run76b/install.json)). **A fleet-wide bake
+  ([record](../../verification/results/lod-overlay-batch/install-run76b/install.json)). **A fleet-wide bake
   (`lod_overlay.py --batch --sync --install --replace --jobs 2`, all eligible vanilla bodies, ~1,000) was running
   detached (pid 82025, started ~00:55, log scratchpad/bake_fleet.log) when this was written**: it installs into
   `addon/05` at the end (aside + rename, rollback on exception). First thing next session: check

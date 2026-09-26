@@ -3,8 +3,8 @@
 
 
 - **Installed:** run38 candidate `5b4be52e…` from main `e575136`
-  ([build](../verification/results/run38-candidate-build.json),
-  [install](../verification/results/run38-candidate-install.json)); rollback
+  ([build](../../verification/results/run38-candidate-build.json),
+  [install](../../verification/results/run38-candidate-install.json)); rollback
   run37 `61725145…` in `/tmp/x3-candidate-Ek2A0u/rollback`. Every session log opens with
   `proxy_identity` / `proxy_options` / `proxy_environment` (FEX_*, WINE*,
   CX_*), `clock_anchor`, `loaded_module` (with `image_size`, `stamp`,
@@ -16,7 +16,7 @@
   --screen-emission-additive-alpha 0`, engines `--emission-source-gain 2`,
   `--bloom-source-clamp 1.0`, `--state-shadow auto`, `--media-cue-cache on`.
   Decoder runtime `--voice-decoder /tmp/x3-wma-plugin-v4`.
-- **Run 38 is queued** ([user-runs.md](verification/user-runs.md)): A wide
+- **Run 38 is queued** ([user-runs.md](../verification/user-runs.md)): A wide
   single shadow map (extent 1,500, depth half 3,000, 4096², cap 512, clamp 4
   texels), A2 own-ship baseline at 4096², B `--residual-phases` at the busy
   view, C `--hull-emitters` bracket. Runs 28–37 are complete (run74–110).
@@ -32,21 +32,21 @@
    37 B (run109): first visible shadows (hull from station parts, ship on
    nearby parts); station-on-station shadows were limited by the 250-unit
    box; the box, depth range, cap and a world-unit bias with a texel term
-   are launcher options now ([contract](architecture/legacy-sun-application.md),
-   [gates](architecture/shadow-replay-gates.md),
-   [ledger](verification/directional-shadows.md)). The run106 "no shadow" was
+   are launcher options now ([contract](../architecture/legacy-sun-application.md),
+   [gates](../architecture/shadow-replay-gates.md),
+   [ledger](../verification/directional-shadows.md)). The run106 "no shadow" was
    a backlit view; the apply path was proven correct offline with the CPU
    twin (`verification/probe/sun_shadow_apply.py`, reads real captures via
    the `sun_shadow_apply_params` line).
-2. **Cascade design ratified** ([shadow-cascades.md](architecture/shadow-cascades.md)):
+2. **Cascade design ratified** ([shadow-cascades.md](../architecture/shadow-cascades.md)):
    configurable count and extents, intended 250 / 1,500 / 7,500 / 25,000 all
    at 4096², shared depth, far cascade on alternate frames with distance
    fade, per-pixel selection by sun-space extent with a blend band; near-band
    choice (per-object own-ship map vs screen-space contact shadows) after run
    38; survey of shipped space games in
-   [space-shadow-survey.md](architecture/space-shadow-survey.md).
+   [space-shadow-survey.md](../architecture/space-shadow-survey.md).
    Implementation starts after run 38 calibrates the single wide map.
-3. **Busy frame closed at ~22 ms** ([note](architecture/effect-pass-replay.md),
+3. **Busy frame closed at ~22 ms** ([note](../architecture/effect-pass-replay.md),
    decision section): builtin D3DX +32 % (run104/105), FEX TSO off no change,
    wined3d CSMT off +46 % (run107/108); native BeginPass fixture: D3DX's own
    walk is 1.5 µs of the 6.6 with nothing to dedup; pass replay not pursued.
@@ -58,7 +58,7 @@
    post-create stage as MPEG-1 with zero blits witnessed
    (`media_video_blit`, run110): codec-independent Wine `amstream`/DirectDraw
    block; the six remaining candidate sites are in
-   [media-cue-playback.md](reverse-engineering/media-cue-playback.md) §8.
+   [media-cue-playback.md](../reverse-engineering/media-cue-playback.md) §8.
    Music and speech unaffected. `media_cue_enter` line merged.
 5. **Emitter plan phase 3 wired** (`--hull-emitters`): whole-output gain on
    the twelve ONE/ONE hull originals (the art is in the diffuse slot, the

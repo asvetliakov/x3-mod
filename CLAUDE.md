@@ -115,9 +115,9 @@ Every agent definition enforces this shape; hold ad-hoc `Agent` calls to it too.
 - Append verification outcomes to the owning feature ledger under
   `docs/verification/` (one ledger per feature). Do not create new `review-NN`
   or `iteration-NN` files; the numbered series is closed.
-- `docs/status.md` stays a short current handoff. One current handoff file
-  `docs/handoff-<date>.md`; when a new one is written, move the previous
-  handoff, pause snapshot or status archive into `docs/archive/`.
+- `docs/status.md` is the single current-state file. Handoffs are written only
+  as archive entries under `docs/archive/` when a session ends with unfinished
+  multi-step work; there is no current handoff file under `docs/`.
 - `docs/verification/user-runs.md` holds only open runs and the completed-run
   table. Completed run commands and instructions move to
   `docs/archive/user-runs-completed.md`.

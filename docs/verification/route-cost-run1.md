@@ -1,6 +1,6 @@
 # Route CPU cost attributed — iteration 9, run 1
 
-[iteration-09.md §1.4](iteration-09.md) measured the live motion route at
+[iteration-09.md §1.4](../archive/iteration-09.md) measured the live motion route at
 ~5.3 ms of engine-thread CPU per routed frame and asked where it goes. This
 document answers that from the same log, by combining the route's own telemetry
 spans with the in-process sampling profiler that ran throughout the session.

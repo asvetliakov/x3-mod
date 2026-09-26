@@ -144,7 +144,7 @@ a future capture-only build must supply the missing ColorFill target proof.
 
 ## Structural background correction after iteration 06
 
-The [iteration-06 session](../verification/iteration-06.md) captured 68
+The [iteration-06 session](../archive/iteration-06.md) captured 68
 gameplay frames with the live motion route; its selector rejected 32 of them
 although every frame had the complete Clear/background/depth-Clear/scene/
 unbind/fill/copy/bloom/rebind/Clear structure. Replaying the derived events

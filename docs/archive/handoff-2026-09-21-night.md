@@ -1,19 +1,19 @@
 # Handoff 2026-09-21 (night) — Run60 installed, Run 60 queued
 
-Replaces the [morning handoff](archive/handoff-2026-09-21-morning.md), whose
+Replaces the [morning handoff](handoff-2026-09-21-morning.md), whose
 operating rules, user preferences and closed decisions still bind (never launch
 the game; every Wine command through `X3M_FIXTURE_BOTTLE=X3 python3
 verification/probe/wine_lock.py`; one candidate owner; install only with
 `tools/manage.py install --bottle X3 --dll-source <dll>`; native Windows is a
 required, unverified target). Installed-build identity lives only in
-[status](status.md). Main is clean at `a659e2a8`. No agent, Wine process or
-build is running. The run authority is [user-runs.md](verification/user-runs.md).
+[status](../status.md). Main is clean at `a659e2a8`. No agent, Wine process or
+build is running. The run authority is [user-runs.md](../verification/user-runs.md).
 
 ## State
 
 - **Installed:** Run60 DLL `aaa8abb2…` from `39c98242`
-  ([qualification](../verification/results/run60-candidate-qualification.json),
-  [install](../verification/results/run60-candidate-install.json)). Rollback DLLs:
+  ([qualification](../../verification/results/run60-candidate-qualification.json),
+  [install](../../verification/results/run60-candidate-install.json)). Rollback DLLs:
   Run59 `/tmp/x3-run59-candidate/build/d3d9.dll`, Run56 `/tmp/x3-run56-candidate/build/d3d9.dll`.
 - **Waiting on the user:** Run 60, two sessions (commands in user-runs.md).
   A: forward flight with/without SETA, approach flash with
@@ -31,13 +31,13 @@ build is running. The run authority is [user-runs.md](verification/user-runs.md)
    lifetime fix merged (scoped getter refs). B2a Capture accounting was merged
    then removed (it broke the production link); it stays in the preserved
    worktree. **Upload-payload diagnostic is held by user agreement** after the
-   [design review](architecture/lattice-approach-review-2026-09-21.md).
+   [design review](../architecture/lattice-approach-review-2026-09-21.md).
 2. Lattice crawl: root cause is the thin-region gate closing under camera
    motion. Camera-relative gate + 7×7 box clip, accepted by the user for pans in
    Run 59 (run207/run208) and made the default. Forward flight needed a depth- and
    translation-aware camera path (installed in Run60). **Roll residual is
    physical** (gate fully open, residual 0.03–0.1 px); recommend accepting.
-   Owning note: [taa-lattice-crawl.md §32–§32.4](architecture/taa-lattice-crawl.md).
+   Owning note: [taa-lattice-crawl.md §32–§32.4](../architecture/taa-lattice-crawl.md).
 3. User sees strut blur while moving (expected resampling cost of W 0.97, clip
    off). Tentative preference `--taa-thin-region 0.94,1`; **do not change the 0.97
    default until they confirm on Run60**. A speed-eased weight is the fallback
@@ -51,8 +51,8 @@ build is running. The run authority is [user-runs.md](verification/user-runs.md)
    rescaled to half a display code. Checkpoints 1–4 merged; design amended to
    session-stable placement (record index + recipe). Deep lifetime review found a
    quit hang and a use-after-free, both fixed with fixtures. Owning notes:
-   [integration](architecture/fog-density-runtime-integration.md),
-   [ledger](verification/volumetric-fog.md). Proposed, not done: release the
+   [integration](../architecture/fog-density-runtime-integration.md),
+   [ledger](../verification/volumetric-fog.md). Proposed, not done: release the
    legacy atlas in stored mode; GPU cost is unknown until the user's FPS report.
 6. Microsoft Defender quarantines synthetic PE test images
    (Wacatac.C!ml false positive); fixed by decoding headerless code windows in

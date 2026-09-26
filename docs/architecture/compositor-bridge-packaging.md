@@ -2,7 +2,7 @@
 
 2026-09-13. New `src/proxy/compositor_bridge.{h,S}` and
 `compositor_bridge_seh.c` implement the reusable CPU/SEH transport qualified by
-[review 39](../verification/review-39-bloom-return-bridge.md). CMake now links
+[review 39](../archive/review-39-bloom-return-bridge.md). CMake now links
 the bridge, owner helper and BloomPass using the arrangement below. This
 packaging step does not bind or install a game hook, and no game installation changed.
 Native Windows remains untested. Device selection, lifetime pins, Reset

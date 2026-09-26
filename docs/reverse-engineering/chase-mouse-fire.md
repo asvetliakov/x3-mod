@@ -57,7 +57,7 @@ There is no `cockpit+0x150 == 1` view-mode test in this branch. Other routines
 have internal-view tests for turret handling and UI; those tests do not prove
 that main-gun cursor fire is deliberately disabled externally. Likewise,
 aim-gun 0 in one camera sample does not prove every gate above remains open
-at each shot. The [third gameplay run](../verification/chase-third-run.md) now distinguishes
+at each shot. The [third gameplay run](../archive/chase-third-run.md) now distinguishes
 the failing gate: the engine command receives active=0 externally while its
 cursor coordinates continue to update. The read-only camera/trace hooks do
 not write that global. The precise compiled KC condition producing zero has

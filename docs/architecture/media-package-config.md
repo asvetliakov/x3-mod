@@ -18,7 +18,7 @@ Native Windows execution and enabled engine playback remain separate work.
 
 ## Configuration and lifetime
 
-[`load_package_config`](../../src/media/package_config.h) receives the pinned
+`load_package_config` (`../../src/media/package_config.h`) receives the pinned
 proxy HMODULE and resolves its module directory with documented Windows APIs.
 Discovery does not depend on CWD, environment variables or a temporary-directory
 convention. Invoke it during asynchronous service preparation, before graph work;

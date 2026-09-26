@@ -28,7 +28,7 @@ Steam and X3 motion-output suites pass: each has 98 validation cases and
 16 benchmark invocations, with additional derived comparisons in the summary.
 Supporting suites also pass in both bottles; the final independent verdict
 is recorded in review 32. See the
-[handoff](handoff-exposure-meter.md) and [independent review](review-32-exposure.md).
+[handoff](../archive/handoff-exposure-meter.md) and [independent review](../archive/review-32-exposure.md).
 The current source uses `chain_target`/`chain_sampling` and `chain_format`
 for its G32R32F or RGBA32F meter capability, and the self-test verifies
 `meter_max` as well as `meter_value`. Historical `r32f_*` records below do
@@ -305,7 +305,7 @@ the two sizes, on top of the route's RT1/RT2 and the TAA histories.
 `check_no_x87.py build/d3d9.dll` (129 reachable functions, no violation) and
 `python3 -m unittest discover -s verification/analysis` (560 tests): see
 their result files; verdicts are listed in the status record and, for the
-rerun after the fixes, in [review-22.md](review-22.md).
+rerun after the fixes, in [review-22.md](../archive/review-22.md).
 
 ## Stage 2: AgX tonemap and exposure (2026-09-12)
 
@@ -430,7 +430,7 @@ the +1-offset twin, two levels stay inside the band, and the last leaves it.
 Both independent reference margins and observed transitions are asserted.
 These corrections did not change production exposure behavior.
 
-The [offline run-16 counterfactual](run16-exposure-baseline.md) used seven unresolved
+The [offline run-16 counterfactual](../archive/run16-exposure-baseline.md) used seven unresolved
 `hdr_` images, not the actual post-TAA meter input. All seven new-policy
 targets hit the +2 cap: lit-key requests were +4.04…+5.22 EV and ceiling
 requests +4.16…+4.49 EV, versus +5.66…+8 for the old whole-image rule.
@@ -480,7 +480,7 @@ Review 23's rerun reproduced three of the four increments (+0.33 / +0.33 /
 +0.36 ms) but measured 2.653 ms against 0.936 ms (+1.72 ms) at 5120×1440
 with the resolve off, GPU-side (the CPU phases of its timed frames total
 0.7 ms); repeat the two 5120×1440 benches before treating either figure as
-the chain's cost at that size ([review-23.md](review-23.md), observation 9).
+the chain's cost at that size ([review-23.md](../archive/review-23.md), observation 9).
 Two findings, both measured on the bench before this run. (1) The AgX draw
 itself costs nothing measurable: with a manual EV (no chain, no readback)
 the 1280×768 boundary is 0.429 ms against the identity draw's 0.443 ms

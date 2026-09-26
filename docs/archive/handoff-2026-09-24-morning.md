@@ -1,15 +1,15 @@
 # Handoff 2026-09-24 (morning, pre-compaction)
 
-Previous handoff: [archive/handoff-2026-09-24-night.md](archive/handoff-2026-09-24-night.md). Rules: AGENTS.md, CLAUDE.md;
+Previous handoff: [archive/handoff-2026-09-24-night.md](handoff-2026-09-24-night.md). Rules: AGENTS.md, CLAUDE.md;
 memory rules that matter: no host load during flights, fog merges run the route bridge in the gate, the tree is frozen
 only while a qualification agent runs from the checkout (candidates build from a detached worktree), mod trees read-only.
 
 ## 07:00 update (supersedes the sections below where they differ)
 
-- **Installed: Run78 DLL `d4ba9f05…`** (56,270,679 B) from `ee3bbf88` at 06:58 ([qualification](../verification/results/run78-candidate-qualification.json),
-  [install](../verification/results/run78-candidate-install.json)); rollback Run77 `268db207…` (exit crash). Carries the exit fix,
+- **Installed: Run78 DLL `d4ba9f05…`** (56,270,679 B) from `ee3bbf88` at 06:58 ([qualification](../../verification/results/run78-candidate-qualification.json),
+  [install](../../verification/results/run78-candidate-install.json)); rollback Run77 `268db207…` (exit crash). Carries the exit fix,
   scale 4 default, output dither (`--hdr-dither on|off`), TAA S3 (`--taa-history-taps 5|16`). Fleet overlay 611 bodies
-  ([install-fleet2](../verification/results/lod-overlay-batch/install-fleet2/install.json)). **Run 78 A queued** (user-runs.md).
+  ([install-fleet2](../../verification/results/lod-overlay-batch/install-fleet2/install.json)). **Run 78 A queued** (user-runs.md).
 - Landed on main since 04:40: fleet2 record b2e3e474; dither 3d9e4145; **shader slot budget** measured 7a4264a4/8651a230
   and the rule in AGENTS.md (512 is a floor, plan against 32768, no fallback program set, 0dee63cb); **lifted-cap TAA plan**
   ratified cad979ef (docs/architecture/taa-plan-lifted-slot-cap.md: A' in far_camera + exact rest read + fetch sharing,
@@ -24,11 +24,11 @@ only while a qualification agent runs from the checkout (candidates build from a
 
 ## Installed (docs/status.md is authoritative)
 
-- **DLL Run77** `268db207…` from `bc47873b` ([qualification](../verification/results/run77-candidate-qualification.json),
-  [install](../verification/results/run77-candidate-install.json)); rollback Run76 `57a7830d…` at
+- **DLL Run77** `268db207…` from `bc47873b` ([qualification](../../verification/results/run77-candidate-qualification.json),
+  [install](../../verification/results/run77-candidate-install.json)); rollback Run76 `57a7830d…` at
   `/tmp/x3-run76-candidate/build/d3d9.dll`. Known: **crashes on game exit** (our engine-memory reader copies a freed
   engine block; fix on main c45c5dc0, unflown); gameplay unaffected.
-- **Game data:** fleet overlay across `addon/05` + `addon/06` (591 bodies, [record](../verification/results/lod-overlay-batch/install-fleet-split/install.json)).
+- **Game data:** fleet overlay across `addon/05` + `addon/06` (591 bodies, [record](../../verification/results/lod-overlay-batch/install-fleet-split/install.json)).
   A rebake with the new baker (two refusal classes lifted, 33aba284) was running detached at compaction (pid 63938,
   started 04:10, log scratchpad/bake_fleet3.log, ~45 min): it replaces 05/06 at the end and refuses if the game is up.
   Slot 06 is still unproven in flight (no slot-06 body was in view in run287): Run 77 A2 asks for one burst at a Terran
@@ -49,7 +49,7 @@ only while a qualification agent runs from the checkout (candidates build from a
 1. **Output dither** (`aff3f80d9067fb785`, worktree agent-aff3f80d9067fb785): ±0.5-code static IGN dither at the 8-bit
    write (agx.hlsl, agx_sharpen_ps.hlsl, identity write-back), `--hdr-dither on|off` default on, agx_reference test,
    records regenerated natively. Cause: Run 77 C2 rings = 8-bit output contours moving with auto exposure
-   ([triage](../verification/results/run291-293-rings/)). On report: review (Opus), 3-way merge, commit.
+   ([triage](../../verification/results/run291-293-rings/)). On report: review (Opus), 3-way merge, commit.
 2. **TAA S3** (`a5b01ee9bcf70b679`, worktree agent-a5b01ee9bcf70b679): 5-tap bilinear Catmull-Rom history in every
    resolve variant, `--taa-history-taps 16|5` default 5, slots before/after, new references, s3_identity.py. On report:
    review (Opus; Fable second review since it is GPU/look code with new references), merge, commit; needs a flight.

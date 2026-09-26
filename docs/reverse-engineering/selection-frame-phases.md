@@ -9,7 +9,7 @@ and native Windows runtime behavior remain unverified.
 
 ## What the current evidence establishes
 
-[Run 26](../verification/run26-comparison.md) records nine target changes.
+[Run 26](../archive/run26-comparison.md) records nine target changes.
 Six retained, wholly subsequent telemetry windows contain 286–454 ms frame
 maxima, with window bounds 0.276–2.171 seconds after selection. These are
 window bounds, not the precise slow frame's position or duration after the

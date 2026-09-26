@@ -1,15 +1,15 @@
 # Handoff 2026-09-18
 
-Short current handoff; [status](status.md) is the authoritative summary, the
-[goals table](goals.md) the acceptance state, [user-runs.md](verification/user-runs.md)
-the run queue. Previous handoffs: [archive/handoff-2026-09-17-evening.md](archive/handoff-2026-09-17-evening.md),
-[archive/handoff-2026-09-17.md](archive/handoff-2026-09-17.md).
+Short current handoff; [status](../status.md) is the authoritative summary, the
+[goals table](../goals.md) the acceptance state, [user-runs.md](../verification/user-runs.md)
+the run queue. Previous handoffs: [archive/handoff-2026-09-17-evening.md](handoff-2026-09-17-evening.md),
+[archive/handoff-2026-09-17.md](handoff-2026-09-17.md).
 
 ## Where things stand
 
 - **Installed:** run40 candidate `c47f039c…` from main `e8ae3357`
-  ([build](../verification/results/run40-candidate-build.json),
-  [install](../verification/results/run40-candidate-install.json)), installed
+  ([build](../../verification/results/run40-candidate-build.json),
+  [install](../../verification/results/run40-candidate-install.json)), installed
   through `python3 tools/manage.py install --dll-source <dll>` — always use
   that (a direct copy leaves the ownership manifest stale and the launcher
   refuses). Rollback `d4d824a4…` in `/tmp/x3-candidate-iK0cir/rollback`; older
@@ -35,10 +35,10 @@ the run queue. Previous handoffs: [archive/handoff-2026-09-17-evening.md](archiv
    hook-free (`--shadow-sun-poll`, cross-checked per draw). Technique-cache
    trampoline dropped (0.007 ms/frame measured offline). Hull emitters got
    their own toggle and gain (run 38 C: 2 of 12 programs fired).
-2. **Cascades** (N ≤ 5, [extents note](architecture/shadow-cascade-extents.md)
+2. **Cascades** (N ≤ 5, [extents note](../architecture/shadow-cascade-extents.md)
    set R ratified, then widened to 30 km at the user's request), anchored texel
    snapping, half-texel map lookup, pancaking, extent cache; **caster retention**
-   stages 1–2 on the retirement journal ([contract](architecture/shadow-caster-retention.md));
+   stages 1–2 on the retirement journal ([contract](../architecture/shadow-caster-retention.md));
    **caster pool control** (importance drop order with hysteresis, per-cascade
    records to 4,096; static-only + capital-ship rule available but OFF after
    run116 — no cascade ever hit a cap); **own-ship-adaptive C0 with the sliding

@@ -227,7 +227,7 @@ The independent reader review found three issues outside the successful cursor
 fixture cases: the mismatch format omitted `cursor_ok`, fast mode ignored failure
 of the short-class final rewind, and verify instrumentation did not restore
 incoming LastError before the original call. All three are corrected and independently reviewed in source;
-[review 31](review-31-adjacency-reader.md#resource-reader-review-2026-09-13) records
+[review 31](../archive/review-31-adjacency-reader.md#resource-reader-review-2026-09-13) records
 the findings and evidence limits. The old 4,707-check result above predates these
 fixes and its deliberate-mismatch line has shifted fields.
 

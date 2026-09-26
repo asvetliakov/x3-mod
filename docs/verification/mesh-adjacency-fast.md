@@ -152,7 +152,7 @@ correctness field:
   `1e-6` or 0 and TEXCOORD-first layouts with random byte-0 keys. 117 of them
   exercise the normal score (several candidates on one edge) and 460 the weld
   refusal. Before the byte-0 normal rule the same sweep had 2 mismatches, both
-  with the position at offset 8 ([handoff-adjacency-parity.md](handoff-adjacency-parity.md)).
+  with the position at offset 8 ([handoff-adjacency-parity.md](../archive/handoff-adjacency-parity.md)).
 * Dump round trip: the fixture writes `fan-tilted-abc` as
   `mesh-adjacency-selftest.bin` (the game's `X3M_MESH_ADJACENCY_DUMP=1` format),
   reads it back, and its `replay` mode reproduces native; the runner then feeds
@@ -297,7 +297,7 @@ replay with `--normalize generic` equals the in-game array on 37/37. Steam
 returns the module's values for the first differing lookup, a 3-face extract
 reproduces it, and the same extract is equal on X3. Its investigation, the
 16-bit-converter hypothesis and the exact next commands are in
-[handoff-adjacency-parity.md](handoff-adjacency-parity.md); the suites have
+[handoff-adjacency-parity.md](../archive/handoff-adjacency-parity.md); the suites have
 not been rerun since the change (direct fixture runs on Steam: cache-off
 35,984 checks, cache-on 36,041, `near-unit-normals` equal to native), the host
 tests pass (23), `check_no_x87.py`: PASS (196 reachable functions, 0
@@ -518,7 +518,7 @@ controlled comparison.
   `rsqrtss(2.0) = 0x3f34f800`), so on this machine both emulators reproduce the
   hardware instruction and the module's `rsqrtss` equals D3DX's on either bottle
   by construction and by measurement.
-* **Review 28 rerun** ([review-28.md](review-28.md), 2026-09-12 late evening):
+* **Review 28 rerun** ([review-28.md](../archive/review-28.md), 2026-09-12 late evening):
   after the review's three fixes (16-bit meshes above 65,535 vertices and
   multi-stream declarations fall back to native; a failed normal-cache
   allocation recomputes instead of failing the call) and a clean rebuild, every
@@ -544,7 +544,7 @@ The fast service refuses potentially competing SSE2 directed edges before any
 output write, and uses native outside its explicit FP domain. Generic normal
 selection remains available. Verify retains comparisons and separately counts
 what fast would admit. Registry dispatch requires the DWORD type and falls back
-on malformed successful DWORD reads. See [review 31](review-31-adjacency-reader.md#adjacency-implementation-follow-up)
+on malformed successful DWORD reads. See [review 31](../archive/review-31-adjacency-reader.md#adjacency-implementation-follow-up)
 for the proof, counters, 26 host tests and final two-bottle qualification.
 Previous raw-module parity counts do not certify the broader fast domain.
 

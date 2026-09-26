@@ -62,7 +62,7 @@ All 40 cases ran across two generations with a successful Reset and no
 dimension skips: 540 readbacks were produced, of which 38 reconstruction
 images failed the fixed tolerance. The downsample stages and both sampling
 controls passed. This original rejected terminal remains preserved. The
-reviewed [independent precision characterization](review-41-bloom-precision.md)
+reviewed [independent precision characterization](../archive/review-41-bloom-precision.md)
 now qualifies these retained 40 cases on the tested Steam backend: all
 421,446 modeled one-dimensional channels match exactly in both whole-chain
 and local-stage comparisons. Every unmodeled/2D image passes the recomputed

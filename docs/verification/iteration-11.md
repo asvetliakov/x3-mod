@@ -195,7 +195,7 @@ and `tools/manage.py` has no switch for the read path. The read path of a
 session therefore cannot be established from its log, only from the launch
 environment (unset = direct), the installed binary and the fixture suites; the
 VirtualQuery rate and the fallback counts are known only from those fixtures
-(`docs/verification/handoff-engine-reads.md`: `object_trace` route 3.362 µs rpm
+(`docs/archive/handoff-engine-reads.md`: `object_trace` route 3.362 µs rpm
 vs 1.312 µs direct at 0.0040 queries/call, `object_lifetime::current` 7.007 vs
 0.693 µs at 0.0237 queries/call). **Flagged as an observability gap**: one
 cumulative `engine_memory` line per report window would make the claim above

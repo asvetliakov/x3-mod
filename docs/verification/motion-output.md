@@ -15,7 +15,7 @@ python3 verification/probe/check_no_x87.py               # light setter hooks re
 from the seven `LightCallBoundary` setter hooks (`SetRenderState` included since 2026-09-12; 129 reachable functions) and fails on any x87 opcode
 other than the project's own fnsave/frstor transport pairs and the MXCSR
 transfers; it backs the boundary choice recorded in
-[review 12](review-12.md).
+[review 12](../archive/review-12.md).
 
 ## Fixture
 
@@ -679,7 +679,7 @@ enabled runs: `motion-output-<case>-capture.log`; host unit summary:
 
 The iteration-7 run measured 38.5 ms per scene frame with TAA against
 16.1 ms with the route alone, with no metric covering the boundary or the
-route's own calls ([iteration-07.md](iteration-07.md), Timing). The proxy
+route's own calls ([iteration-07.md](../archive/iteration-07.md), Timing). The proxy
 now reports both ([telemetry.md](telemetry.md#route-and-boundary-cost)).
 To attribute the difference, three runs of the **same save, same view,
 same sequence** (load, stand still for ten seconds, turn for ten seconds,

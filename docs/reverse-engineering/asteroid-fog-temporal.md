@@ -9,7 +9,7 @@ not make that draw an opaque replacement of the background.
 This is a bounded static analysis of the existing X3AP.exe (preferred base
 `0x00400000`, SHA-256
 `fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab`), paired
-with the existing [run23 comparison](../verification/run23-material-comparison.md).
+with the existing [run23 comparison](../archive/run23-material-comparison.md).
 No game, Wine or build was run. Extracted effects, shader disassembly and native
 disassembly remain local under `/tmp`. No renderer policy is changed here.
 

@@ -661,7 +661,7 @@ teach the resolve to reject marked history).
 ## 8. Merged from the second design (2026-09-25)
 
 The main session ratified this note's architecture: the single proxy-owned effects stage. This section folds in
-what the independent Fable design found ([effects-modernisation-fable.md](effects-modernisation-fable.md)). The
+what the independent Fable design found ([effects-modernisation-fable.md](../archive/effects-modernisation-fable.md)). The
 edits it forced in sections 2, 3 and 5 are marked there with "merged" or "changed by the merge".
 
 ### 8.1 Measured body facts and the DEFAULT effect VS

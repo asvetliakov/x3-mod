@@ -187,7 +187,7 @@ fund it until the bolt result and that law are in hand.
    threshold term or something outside the bloom pass, and this note's
    recommendation would not help.
 2. **Halo attribution.** Run 28 tests the EV ceiling and sharpen/mip bias
-   first (`docs/handoff-2026-09-16.md`, open question 1). Read its result
+   first (`docs/archive/handoff-2026-09-16.md`, open question 1). Read its result
    before funding this change.
 3. **Engine alpha law** for the per-family extension (see above).
 4. **Bottle caps.** `D3DPBLENDCAPS_BLENDFACTOR` and

@@ -387,7 +387,7 @@ three frames. **Not a motion defect: the certification of the stationary
 material stands** (row-pair consistency 0.076 px over 781,504 px, 0 history
 disagreements over 6,606 predictable draws). `depth` fails at **0.358, the best
 value recorded** (run 10 0.340, run 6 0.335) — pre-existing, the nearest-sampled
-previous-depth comparison documented in [iteration-10.md](iteration-10.md).
+previous-depth comparison documented in [iteration-10.md](../archive/iteration-10.md).
 
 ### 4.3 Loads and frame time
 

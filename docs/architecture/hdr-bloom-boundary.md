@@ -2,8 +2,8 @@
 
 2026-09-13. **Live integration implemented, reviewed and fixture-qualified; gameplay pending.**
 The [GPU executor](../verification/bloom-pass-fixture.md),
-[CPU/SEH bridge](../verification/review-43-compositor-bridge.md), and
-[shader bundle](../verification/review-47-bloom-programs.md) now have scoped
+[CPU/SEH bridge](../archive/review-43-compositor-bridge.md), and
+[shader bundle](../archive/review-47-bloom-programs.md) now have scoped
 standalone qualification. They are connected to the installed renderer behind the opt-in bloom switch;
 see [current status](../status.md) for the installed build. This design uses the verified
 [compositor control flow](../reverse-engineering/compositor-and-glow.md) and
