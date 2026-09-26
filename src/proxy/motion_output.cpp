@@ -963,8 +963,8 @@ void MotionOutput::configure_bolt_single_copy(bool requested) noexcept {
 }
 void MotionOutput::configure_bolt_far_composite(bool requested, float show) noexcept {
     if (device_) return; // Process-start configuration only (the flag variant is created with the cache).
-    bolt_far_requested_ = requested && screen_additive_requested_;
     bolt_far_show_ = x3::temporal::valid_bolt_show(show) ? show : 0.f;
+    bolt_far_requested_ = requested && screen_additive_requested_ && bolt_far_show_ > 0.f; // W = 0: off in full
 }
 void MotionOutput::configure_fade_route(unsigned threshold_permille) noexcept {
     if (device_) return; // Process-start configuration only.
@@ -3045,9 +3045,9 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
         device_id, unsigned((caps.PrimitiveMiscCaps & D3DPMISCCAPS_MRTPOSTPIXELSHADERBLENDING) != 0),
         unsigned((caps.PrimitiveMiscCaps & D3DPMISCCAPS_INDEPENDENTWRITEMASKS) != 0),
         static_cast<unsigned long>(caps.NumSimultaneousRTs));
-    log("bolt_far_composite device=%llu requested=%u show=%g additive=%u gain=%g k=%g", device_id,
-        unsigned(bolt_far_requested_), double(bolt_far_show_), unsigned(screen_additive_requested_),
-        double(screen_additive_gain_), double(x3::temporal::kBoltFlagScale));
+    log("bolt_far_composite device=%llu requested=%u show=%g show_off=%u additive=%u gain=%g k=%g", device_id,
+        unsigned(bolt_far_requested_), double(bolt_far_show_), unsigned(!(bolt_far_show_ > 0.f)),
+        unsigned(screen_additive_requested_), double(screen_additive_gain_), double(x3::temporal::kBoltFlagScale));
     bind_direct();
     stats_ = stats;
     lazy_rt1_ = lazy_rt2_ = false;
@@ -6296,13 +6296,17 @@ void MotionOutput::prepare_screen_additive(const MotionDrawCall& call, MotionRou
         }
     }
     // Bolts through the TAA (bolts-through-taa.md, B'): the late bullet draw marks its coverage in RT2.g. Decided
-    // here, after every admission check and the single-copy drop, and never changing the admission: the four-lane
-    // RT2 (the sun-share lane's A32B32G32R32F; the lane-off R32F has no .g, and the far / thin programs need the
-    // four-lane RT2 anyway), the targets allocated, independent write masks, the flag variant created. A refusal
-    // logs one row per reason and leaves the draw on the route exactly as without the option. One bool for every
-    // admitted draw of a device without the option.
+    // here, after every admission check and the single-copy drop, and never changing the admission. Only a
+    // bullet-producer draw (the admitted bullet vertex shader) issued after the scene frame's first depth writer is
+    // a candidate: the game's late copy, the one the depth test keeps over a distant station; the early copy of a
+    // first firing frame and every other admitted additive draw (the nine pairs' non-bullet effects) never flag.
+    // A candidate needs the four-lane RT2 (the sun-share lane's A32B32G32R32F; the lane-off R32F has no .g, and the
+    // far / thin programs need the four-lane RT2 anyway), the targets allocated, independent write masks and the
+    // flag variant; a refusal logs one row per reason and leaves the draw on the route exactly as without the
+    // option. One bool for every admitted draw of a device without the option.
     bool flag = false;
-    if (bolt_far_requested_) {
+    if (bolt_far_requested_ && screen_emission::admitted_vertex_shader(shadow_.vs_hash) &&
+        selector_.scene_depth_written()) {
         unsigned reason = 0;
         if (!shadow_.ps_screen_additive_flag_variant)
             reason = 1;

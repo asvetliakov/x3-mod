@@ -414,5 +414,5 @@ geometry through the resolve; `run_temporal_pass.py` would need a far-depth quad
 resolve (B'): the late bullet draw flags its pixels in RT2.g, the camera-gate resolve raises the flag in its output alpha
 only, the write-back and the bloom extract composite the current bolt at `--bolt-far-show` (0.5) over the held far pixels.
 Fixtures: `BOLT_FAR_STREAK` (the far-depth quad with the one-frame streak: the streak shows at W of the dropped strength
-within 0.07 code, every unflagged pixel and every later frame's colour, age and depth bit-identical) and
+within 0.12 code, every unflagged pixel and every later frame's colour, age and depth bit-identical) and
 `seam-bolt-far-flag*` (RT2.g + 32 at every bolt pixel, the rest untouched, the R32F lane refused). Run 94 A flies it.

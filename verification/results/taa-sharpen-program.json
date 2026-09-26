@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "source": "src/temporal/taa_sharpen_ps.hlsl",
-  "source_sha256": "d826e381f3d381b54b206102059f138c45f05eb861238c6548735e794e97eb8e",
+  "source_sha256": "dea3605606fd9661633eac3c2b72a5dbee2427b9104be30ec9fd3f4ef68d3d8a",
   "compiler": "native d3dx9_37.dll D3DXCompileShader",
   "compiler_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "entry": "main",
@@ -11,14 +11,15 @@
   "defines": null,
   "includes": {
     "src/temporal/rcas.hlsl": "a5a58522fb31af0ba32ed2779f7c4356a8ff8cf84d3a1c0ea9cfa06945011d81",
-    "src/temporal/display_dither.hlsl": "400f58f16b94c12ea0b018ad8871a729588cfac8f1b34d779eccb0ea676dbcbf"
+    "src/temporal/display_dither.hlsl": "400f58f16b94c12ea0b018ad8871a729588cfac8f1b34d779eccb0ea676dbcbf",
+    "src/temporal/bolt_far.hlsl": "3e2b70ba3613ed50ef31b228ae836119fd420fa2fa0cc9ca1fb8875ffc186d0f"
   },
-  "word_count": 462,
-  "bytecode_sha256": "587b0c21a62887c32e4ba2dfa43ca04509c9dfa89c8707d3615af814e686aa95",
-  "header_sha256": "76acd49a4c07794853151db0e9801a95b6900128a7d4f985a7a827a66b0f9d03",
+  "word_count": 521,
+  "bytecode_sha256": "7a7f0fd9e0309191736480e7561ba77428fb2ed0c52ebeab5754394a63f375ed",
+  "header_sha256": "6de027b48106c3b00387917b30ab912b015ed8fdf912f4a7a488ee334749bfcc",
   "tool_sources": {
     "tools/shaders/compile_rigid_motion_pixel.cpp": "acff68e2c8ebbd580f090baabc8df213aafa3200a1be10c4b3e4cc824cd600c8",
-    "tools/shaders/generate_rigid_motion_pixel.py": "f8c223558759dd1e2d6869b378e08b039b4be16bd776bdb6a9610d3f537b89a9"
+    "tools/shaders/generate_rigid_motion_pixel.py": "347b64fd0cb4558529c1faaacb5e65bef65ea8490f4fb1c30a8ede16350e1010"
   },
   "copyright_scope": "Original authored project shader; no game shader bytes",
   "creates_d3d_device": false

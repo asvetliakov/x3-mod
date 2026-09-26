@@ -127,7 +127,7 @@ retention, which is why W is a tunable rather than 1.
 **Native Windows.** SetRenderTarget on indices 1-2, per-target COLORWRITEENABLE (D3DPMISCCAPS_INDEPENDENTWRITEMASKS, which
 the route already requires), a ps_2_0 oC2 write, float render targets with unclamped shader output, one more sampler on
 full-screen quads: documented D3D9 throughout, no Wine-specific behaviour. The MRT blending cap changes the lane's base
-term only, and the flag test is robust to both. Not verified natively (the user cannot test Windows); tracked in
+term only; the lane's qualification already requires that cap, so the no-blend branch is unreachable (the lane-off RT2 refuses the flag). Not verified natively (the user cannot test Windows); tracked in
 `platform-portability.md` when built.
 
 **Failure modes.** (a) RT2 in R32F (lanes off): the flag is refused at the draw, the route stays as today, one logged
@@ -243,8 +243,22 @@ Built as ratified, with one deviation and one refinement:
   at every unflagged texel (the select never lerps with weight 0, which would propagate a non-finite scene texel).
 - The plain identity write-back (`hdr_writeback_ps.hlsl`) is left untouched: the temporal pass uses it as the lane's
   R32F point copy with nothing at s2 and no c29, where a composite would corrupt the depth history. The composite lives
-  in the dithered identity twin (the launcher default), the AgX program and its RCAS twin, `bloom_agx` and the six
-  extracts. Identity tonemap without dither, and the RCAS-only program (`taa_sharpen_ps`), do not composite.
+  in the dithered identity twin (the launcher default), a new dither-off identity twin (`hdr_writeback_bolt_ps.hlsl`,
+  bound by `identity_shader()` when the composite is on and the dither off: the identity tonemap and the tonemap-failure
+  fallback), the AgX program and its RCAS twin, the identity + RCAS program (`taa_sharpen_ps`, also the 8-bit route's
+  and the bloom candidate's sharpen, where no flag can occur), `bloom_agx` and the six extracts. Only the StretchRect
+  unwind (a failed shader write-back) shows the resolved image as is: its negative alpha clamps to 0 in the 8-bit copy.
+  The `taa_<d>_<f>` capture dumps keep the flag alpha (`capture-format.md`).
+- Only the late bullet copy flags: a candidate is a bullet-producer draw (the admitted bullet vertex shader) issued
+  after the scene frame's first depth writer; the early copy of a first firing frame and the nine pairs' non-bullet
+  additive draws never write the flag (the first build flagged every admitted additive draw).
+- `--bolt-far-show 0` is the option off in full at the request site (no flag written, nothing composited; the once row
+  says `show_off=1`): a flag nothing consumes would only reach the un-composited paths.
+- The sun-shadow cascade apply (on by default, run after the late bullet draw and before the resolve) reads the lane's
+  `.g` as the share; a flagged texel's sum `base + K * add` is not separable (add is any bolt value, the share any value
+  in [0, 1]), so the apply treats `g > 1` as share 0 for that frame: the factor is 1, the hull pixel under the bolt and
+  the bolt keep the scene value, instead of share 1, which at full shadow blacked both out. Pinned by the seam case
+  (apply factor 1.0 at every flagged texel against 0.5 on the unflagged, fully shadowed hull; never darker).
 - The far program (the screen-gate fallback, not the default) has no parity: its s1 is the R32F depth copy and the
   mask's four UNORM8 lanes are all taken, so no lane bit reaches its resolve; the flag never fires there and the bolt
   shows at the ordinary retention. Left as an open item.
@@ -257,7 +271,7 @@ with one logged row per reason (`no_variant`, `no_target`, `r32f_lane`, `write_m
 binds RT1 masked 0 and RT2 masked GREEN with the application's masks saved, `unbind_bolt_flag_targets` undoes in reverse
 order from `finish_screen_additive` and both rollbacks; the flag variant is created with the cache beside the gained one
 and bound at gain 1 too; `motion_output_mrt_blend` and `bolt_far_composite` once at attach; `bolt_flag` /
-`bolt_flag_refused` on the frame line), `resolve.hlsl` (two lines after the alpha history: `boltHeld = max(stabilise.g *
+`bolt_flag_refused` on the frame line), `sun_shadow_cascade_apply_ps.hlsl` (`s = g > 1 ? 0 : saturate(g)`), `resolve.hlsl` (two lines after the alpha history: `boltHeld = max(stabilise.g *
 farOpen, stabilise.b)`, `alpha = lane.g > 1 && boltHeld > 0 ? -1 - boltHeld : alpha`), `bolt_far.hlsl` / `bolt_far.h`
 (s2, c29), `hdr_pass.cpp` (s2 = the target's container per write-back draw, c29 = W, stage and register saved and
 restored only when on; `HdrDisplaySnapshot::bolt_show`), `bloom_pass.cpp` (`BloomPrepare::bolt_scene` / `bolt_show`
@@ -269,34 +283,39 @@ Slots (opcode slots of the embedded bytecode, `texldl` counted once, `tools/anal
 [M]: `temporal_resolve_far_camera_hold` 907 -> 917 (+10; the other resolve programs byte-identical), `hdr_tonemap` 77 ->
 91, `hdr_tonemap_sharpen` 411 -> 425, `hdr_writeback_dither` 12 -> 27 (the branch and its compare), `bloom_agx` 112 ->
 120, the extracts 388 -> 460 (gamma), 416 -> 488 (srgb), 299 -> 371 (none), 172 -> 204 / 184 -> 216 / 132 -> 164
-(even), all inside the bloom bundle's 512-slot gate (srgb generic 506 with `texldl` at two). Per frame at 5120x1440
-by the budget rule (about 1 us per slot per full-screen pass) [I]: the resolve +10 us, the write-back compare +1-2 us
-and a scene fetch only at flagged texels, the bloom extract (half resolution, four taps) +8 us, `bloom_agx` +8 us; the
-flag itself: two SetRenderTarget, two mask reads, two mask writes and their undo per late bullet draw (one or two per
-firing frame), nothing on any other draw.
+(even), all inside the bloom bundle's 512-slot gate (srgb generic 506 with `texldl` at two); the review round added
+`sun_shadow_cascade_apply` 489 -> 491, `taa_sharpen` 95 -> 108 and the dither-off identity twin at 15 (the plain copy
+stays at 1). Per frame at 5120x1440 by the budget rule (about 1 us per slot per full-screen pass) [I]: the resolve
++10 us, the write-back compare +1-2 us and a scene fetch only at flagged texels, the bloom extract (half resolution,
+four taps) +8 us, `bloom_agx` +8 us; measured beside it, the fixture's `FOLD_TIMING` resolve at 5120 px went
+2.850 -> 2.939 ms (rest, vote), 2.868 -> 2.948, 3.216 -> 3.328, 2.865 -> 2.885 (pan), 2.882 -> 2.908, 3.225 -> 3.230:
++6..+112 us, a single run each [M]. The flag itself: two SetRenderTarget, two mask reads, two mask writes and their
+undo per late bullet draw (one or two per firing frame), nothing on any other draw.
 
 Seam evidence (`run_temporal_pass.py`, `BOLT_FAR_STREAK`, two W, the alpha history off (the default flight) and on;
-`temporal_bolt_far_streak_inc.h`) [M]: 128 flagged pixels (the streak over the far hull), 0 on the bright non-bolt band
-or over space; alpha -2.000000 at every flagged pixel (held = 1 inside the far region); frame N colour rgb, age and depth
-history 0 differing bytes against the unflagged run, alpha 0 differing bytes outside the flagged pixels; the write-back 0
-differing bytes over space and over the unflagged hull, largest error against `W * (scene - resolved)` at the flagged
-pixels 0.0623 codes; the streak's output addition over the hull 0.363 (W 0.5) / 0.699 (W 1.0) against 0.409 over space
-(ratio 0.887 / 1.709); frames N+1..N+8 colour rgb, age and depth 0 differing bytes in both alpha modes, and alpha 0
-differing pixels with the alpha history off. With the opt-in alpha history on (`--taa-alpha-history`, builtin off) the
-four hull pixels at the hull / space silhouette in the streak rows carry a decaying alpha residual through all eight
-frames (the flagged texel's negative history alpha enters their alpha blend, clamped to the 3x3 current range, which spans
-[0, 1] there; colour, age and depth never): a limitation of that option, reported by the row, not asserted away. The
-motion fixture (`seam-bolt-far-flag*`, `verification/results/bolt-far-flag/`) [M]: the late bullet draw admitted and
-flagged on every frame with the four-lane RT2, RT2.g + 32.000 at every bolt pixel (K 32 x G 2 x texel 0.5 under the
-ONE/ONE blend: the device blends RT2, `post_pixel_shader_blending=1`), `.r/.b/.a` and every other RT2 and RT1 byte
-unchanged, the state snapshot restored; the lane-off R32F twin refused once per draw (`r32f_lane`), RT2 untouched; the
-composite-off twin flags and refuses nothing.
-
-The sun-shadow cascade apply (condition 4; on in the default launch) reads RT2.g as the share, saturated: at a flagged
-texel it reads 1 for that frame instead of the hull's share. From the seam case the lane's `.g` under the bolt goes
-from 0.025 (the fixture's depth writer's lane value; a shaded hull carries its share s0 in [0, 1]) to 32.025 [M]; the apply's
-factor is `pow(1 - (1 - f) * s, terms.z)` with f the lit fraction, so a bolt pixel over a shadowed hull (f < 1) is
-shaded at share 1 instead of s0 for the one frame the bolt is drawn, i.e. darker by the factor `(1 - (1 - f)) /
-(1 - (1 - f) * s0)` before the exponent [I]; a lit hull (f = 1) and every pixel without a bolt are unchanged. The
-composite then draws the bolt over that shaded scene texel at W; the flight decides whether the darker-in-shadow bolt
-is visible.
+`temporal_bolt_far_streak_inc.h`) [M]: 128 flagged pixels (the streak over the far hull: 96 inside the far band at alpha
+-2.000000, held = 1, and 32 on the ramp columns at alpha -1.501953, held = farw 0.502 after the UNORM8 quantisation: the
+continuous share), 0 on the bright non-bolt band or over space; frame N colour rgb, age and depth history 0 differing
+bytes against the unflagged run, alpha 0 differing bytes outside the flagged pixels; the dithered identity write-back 0
+differing bytes over space and over the unflagged hull, largest error against `W * share * (scene - resolved)` at the
+flagged pixels 0.117 code (W 0.5) / 0.109 (W 1.0); the streak's output addition over the hull 0.325 (W 0.5) / 0.618
+(W 1.0) against 0.409 over space (ratio 0.795 / 1.511; the ramp columns count at half share); frames N+1..N+8 colour
+rgb, age and depth 0 differing bytes in both alpha modes, and alpha 0 differing pixels with the alpha history off. With
+the opt-in alpha history on (`--taa-alpha-history`, builtin off) the four hull pixels at the hull / space silhouette in
+the streak rows carry a decaying alpha residual through all eight frames (the flagged texel's negative history alpha
+enters their alpha blend, clamped to the 3x3 current range, which spans [0, 1] there; colour, age and depth never): a
+limitation of that option, reported by the row, not asserted away. The default chain over the flagged frame (the display
+dither off so the host model needs none): the AgX tonemap and `bloom_agx` within 0.125 code of the same programs over a
+host-composited copy of the resolved image (the FP16 rounding of the copy), the tonemap bit-identical at every unflagged
+pixel, the bloom extract 0.000 code; AgX + RCAS within 0.10 code of the host RCAS over the GPU's composited centre and
+composite-free neighbour taps (the neighbours see the resolved values by design; against the sharpen of the
+host-composited copy it differs by 8.5-14.6 codes at the streak's edges, the informational
+`sharpen_vs_host_composite_codes`). The sun-shadow cascade apply over the flagged frame's lane (one cascade containing
+every pixel, a map of zeros: fully shadowed, exponent 1): factor 0.500000 on the unflagged hull (1 - share 0.5),
+1.000000 at every flagged texel, no flagged pixel darker than without the bolt (0 of 128). The motion fixture
+(`seam-bolt-far-flag*`, `verification/results/bolt-far-flag/`) [M]: the late bullet draw admitted and flagged on every
+frame with the four-lane RT2, RT2.g + 32.000 at every bolt pixel (K 32 x G 2 x texel 0.5 under the ONE/ONE blend: the
+device blends RT2, `post_pixel_shader_blending=1`), `.r/.b/.a` and every other RT2 and RT1 byte unchanged, the state
+snapshot restored; the lane-off R32F twin refused once per draw (`r32f_lane`), RT2 untouched; the composite-off twin
+flags and refuses nothing; the cascade apply case (`sun-shadow-apply-cascades`, 4570 checks, worst 1.000 code) passes
+with the changed program.

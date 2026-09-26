@@ -70,6 +70,13 @@ struct HdrCaps {
     bool dither = false;
     const char* dither_reason = "off";
     HRESULT dither_shader = S_FALSE;
+    // Bolts through the TAA (bolt_far.h, X3M_BOLT_FAR_COMPOSITE with the dither
+    // off): the identity write-back's composite twin; a creation failure leaves
+    // the dither-off identity draws without the composite (reason "shader").
+    // reason "ok", "off" (composite off, or the dithered twin covers it), "shader".
+    bool bolt = false;
+    const char* bolt_reason = "off";
+    HRESULT bolt_shader = S_FALSE;
 };
 enum class HdrTonemap : unsigned { Identity = 0, Agx = 1 };
 // Stage-2 switches (X3M_HDR_TONEMAP, X3M_HDR_DECODE, X3M_HDR_LOOK,
@@ -216,8 +223,12 @@ public:
     // The identity write-back program in use: the dithered twin when the
     // display dither is on and it was created, else the plain copy (which the
     // self test always uses).
+    // The dithered twin (X3M_HDR_DITHER, the launcher default), else the bolt
+    // composite twin (X3M_BOLT_FAR_COMPOSITE), else the plain identity copy.
     IDirect3DPixelShader9* identity_shader() const noexcept {
-        return caps_.dither && writeback_dither_shader_ ? writeback_dither_shader_ : shader_;
+        return caps_.dither && writeback_dither_shader_ ? writeback_dither_shader_
+               : caps_.bolt && writeback_bolt_shader_   ? writeback_bolt_shader_
+                                                        : shader_;
     }
     const ExposureState& exposure() const noexcept { return exposure_; }
     ExposureMode exposure_mode() const noexcept { return config_.exposure; }
@@ -352,6 +363,7 @@ private:
     HdrConfig config_{};
     IDirect3DPixelShader9* shader_ = nullptr;                  // embedded ps_3_0 identity copy
     IDirect3DPixelShader9* writeback_dither_shader_ = nullptr; // its display-dithered twin (X3M_HDR_DITHER)
+    IDirect3DPixelShader9* writeback_bolt_shader_ = nullptr;   // its bolt-composite twin (dither off; bolt_far.h)
     // The vs_3_0 pass-through and declaration of every quad this pass draws
     // (quad_vertex_program.h); created at attach, surviving Reset, one device
     // reference each. quad_fvf_: the fixture-only XYZRHW twin (never in production).

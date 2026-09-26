@@ -22,13 +22,17 @@
 // samples the published history without writing it.
 #include "rcas.hlsl"
 #include "display_dither.hlsl"
+#include "bolt_far.hlsl"
 sampler2D resolved : register(s0);
 
 float4 main(float2 uv : TEXCOORD0, float2 vpos : VPOS) : COLOR0
 {
     float2 dx = float2(sharpenConstants.y, 0);
     float2 dy = float2(0, sharpenConstants.z);
-    float4 e = tex2Dlod(resolved, float4(uv, 0, 0));
+    // Bolts through the TAA (bolt_far.hlsl): the centre tap composites the pre-resolve scene texel at a flagged texel
+    // (s2, c29.x = W; the HDR route's identity + RCAS write-back); the 8-bit route and the bloom candidate's sharpen
+    // never carry the flag (an 8-bit source, or the composited staging image), so they keep their bytes.
+    float4 e = boltCompositeBranch(tex2Dlod(resolved, float4(uv, 0, 0)), uv);
     float3 b = tex2Dlod(resolved, float4(uv - dy, 0, 0)).rgb;
     float3 d = tex2Dlod(resolved, float4(uv - dx, 0, 0)).rgb;
     float3 f = tex2Dlod(resolved, float4(uv + dx, 0, 0)).rgb;

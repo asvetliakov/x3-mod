@@ -1134,9 +1134,9 @@ LINE_CASES
 CHECK line timing: camera-gate programs created PASS
 CHECK line timing: camera-gate programs created PASS
 CHECK line timing: camera-gate programs created PASS
-LINE_TIMING width=1280 height=768 content=all_geometry rounds=6 plain_ms=0.6632 far_stabiliser_ms=0.8649 thin_region_ms=1.4873 far_delta_ms=0.2016 thin_region_delta_ms=0.8241 scope=cpu_wall_with_event_query_drain
-LINE_TIMING_CAMERA width=1280 height=768 rounds=6 no_region_thin_ms=1.4873 no_region_camera_ms=1.1679 no_region_camera_delta_ms=-0.3194 fragmented_pan_thin_ms=0.9513 fragmented_pan_camera_ms=1.1824 fragmented_pan_camera_delta_ms=0.2311 scope=cpu_wall_with_event_query_drain
-LINE_TIMING_CAMERA_LANE width=1280 height=768 rounds=6 r32f_camera_ms=1.1824 lane_input_law_ms=1.2127 lane_input_lane_ms=1.2011 lane_fetch_delta_ms=-0.0116 lane_input_over_r32f_ms=0.0303 scope=cpu_wall_with_event_query_drain
+LINE_TIMING width=1280 height=768 content=all_geometry rounds=6 plain_ms=0.9302 far_stabiliser_ms=1.1022 thin_region_ms=1.8447 far_delta_ms=0.1720 thin_region_delta_ms=0.9146 scope=cpu_wall_with_event_query_drain
+LINE_TIMING_CAMERA width=1280 height=768 rounds=6 no_region_thin_ms=1.8447 no_region_camera_ms=1.7043 no_region_camera_delta_ms=-0.1405 fragmented_pan_thin_ms=1.2706 fragmented_pan_camera_ms=1.4733 fragmented_pan_camera_delta_ms=0.2028 scope=cpu_wall_with_event_query_drain
+LINE_TIMING_CAMERA_LANE width=1280 height=768 rounds=6 r32f_camera_ms=1.4733 lane_input_law_ms=1.5411 lane_input_lane_ms=1.5690 lane_fetch_delta_ms=0.0279 lane_input_over_r32f_ms=0.0677 scope=cpu_wall_with_event_query_drain
 LINE_BASE numerical=190 state_restorations=4
 FAR_CASES
 FAR_GATE ok=1 d0=0.99985647 inv=17734.900 expected_d0=0.99985652 expected_inv=17749.280
@@ -8973,11 +8973,11 @@ CHECK fold timing: the camera gate ran with the half-resolution box PASS
 CHECK fold timing: the camera gate ran with the half-resolution box PASS
 CHECK fold timing: the camera gate ran with the half-resolution box PASS
 CHECK fold timing: every boundary drained PASS
-FOLD_TIMING build=fold width=5120 height=1440 rounds=8 content=station motion=rest config=vote source_drawn=vote copy_ms=0.0305 mask_ms=0.0000 box_ms=1.0931 resolve_ms=2.9388 taa_ms=4.0623 run_ms=4.1928 scope=cpu_wall_with_event_query_drain_fixture
+FOLD_TIMING build=fold width=5120 height=1440 rounds=8 content=station motion=rest config=vote source_drawn=vote copy_ms=0.0258 mask_ms=0.0000 box_ms=1.0815 resolve_ms=2.9003 taa_ms=4.0077 run_ms=4.1070 scope=cpu_wall_with_event_query_drain_fixture
 CHECK fold timing: every boundary drained PASS
-FOLD_TIMING build=fold width=5120 height=1440 rounds=8 content=station motion=rest config=both source_drawn=both copy_ms=0.0354 mask_ms=0.0000 box_ms=1.1027 resolve_ms=2.9477 taa_ms=4.0859 run_ms=4.1826 scope=cpu_wall_with_event_query_drain_fixture
+FOLD_TIMING build=fold width=5120 height=1440 rounds=8 content=station motion=rest config=both source_drawn=both copy_ms=0.0185 mask_ms=0.0000 box_ms=1.0595 resolve_ms=2.8987 taa_ms=3.9767 run_ms=4.0762 scope=cpu_wall_with_event_query_drain_fixture
 CHECK fold timing: every boundary drained PASS
-FOLD_TIMING build=fold width=5120 height=1440 rounds=8 content=station motion=rest config=thin_vote_off source_drawn=both copy_ms=0.0204 mask_ms=0.0000 box_ms=0.8429 resolve_ms=3.3283 taa_ms=4.1916 run_ms=4.2944 scope=cpu_wall_with_event_query_drain_fixture
+FOLD_TIMING build=fold width=5120 height=1440 rounds=8 content=station motion=rest config=thin_vote_off source_drawn=both copy_ms=0.0192 mask_ms=0.0000 box_ms=0.8279 resolve_ms=3.2684 taa_ms=4.1155 run_ms=4.2054 scope=cpu_wall_with_event_query_drain_fixture
 CHECK fold timing: the camera gate ran with the half-resolution box PASS
 CHECK fold timing: the camera gate ran with the half-resolution box PASS
 CHECK fold timing: the camera gate ran with the half-resolution box PASS
@@ -9003,11 +9003,11 @@ CHECK fold timing: the camera gate ran with the half-resolution box PASS
 CHECK fold timing: the camera gate ran with the half-resolution box PASS
 CHECK fold timing: the camera gate ran with the half-resolution box PASS
 CHECK fold timing: every boundary drained PASS
-FOLD_TIMING build=fold width=5120 height=1440 rounds=8 content=station motion=pan config=vote source_drawn=vote copy_ms=0.0182 mask_ms=0.0000 box_ms=1.0594 resolve_ms=2.8847 taa_ms=3.9623 run_ms=4.0405 scope=cpu_wall_with_event_query_drain_fixture
+FOLD_TIMING build=fold width=5120 height=1440 rounds=8 content=station motion=pan config=vote source_drawn=vote copy_ms=0.0180 mask_ms=0.0000 box_ms=1.0522 resolve_ms=2.9096 taa_ms=3.9798 run_ms=4.0618 scope=cpu_wall_with_event_query_drain_fixture
 CHECK fold timing: every boundary drained PASS
-FOLD_TIMING build=fold width=5120 height=1440 rounds=8 content=station motion=pan config=both source_drawn=both copy_ms=0.0186 mask_ms=0.0000 box_ms=1.0471 resolve_ms=2.9076 taa_ms=3.9733 run_ms=4.0571 scope=cpu_wall_with_event_query_drain_fixture
+FOLD_TIMING build=fold width=5120 height=1440 rounds=8 content=station motion=pan config=both source_drawn=both copy_ms=0.0161 mask_ms=0.0000 box_ms=1.0647 resolve_ms=2.9046 taa_ms=3.9855 run_ms=4.0703 scope=cpu_wall_with_event_query_drain_fixture
 CHECK fold timing: every boundary drained PASS
-FOLD_TIMING build=fold width=5120 height=1440 rounds=8 content=station motion=pan config=thin_vote_off source_drawn=both copy_ms=0.0174 mask_ms=0.0000 box_ms=0.8270 resolve_ms=3.2303 taa_ms=4.0747 run_ms=4.1562 scope=cpu_wall_with_event_query_drain_fixture
+FOLD_TIMING build=fold width=5120 height=1440 rounds=8 content=station motion=pan config=thin_vote_off source_drawn=both copy_ms=0.0177 mask_ms=0.0000 box_ms=0.8241 resolve_ms=3.2565 taa_ms=4.0984 run_ms=4.1792 scope=cpu_wall_with_event_query_drain_fixture
 FOLD_TIMING_BASE numerical=547 state_restorations=90
 FAR_CAMERA_PAN_CASES
 CHECK fc far and camera-gate programs available PASS
@@ -15920,6 +15920,7 @@ FAR_JITTER_LINE_BASE numerical=584 state_restorations=90
 BOLT_FAR_STREAK_CASES
 CHECK bfs far gate of the production footprints PASS
 CHECK bfs hull depth inside the farw = 1 band PASS
+CHECK bfs ramp depth between d0 and the hull PASS
 CHECK bfs far, camera-gate and flicker programs available PASS
 CHECK bfs history follows the sequence PASS
 CHECK bfs history follows the sequence PASS
@@ -15980,6 +15981,10 @@ CHECK bfs history follows the sequence PASS
 CHECK bfs history follows the sequence PASS
 CHECK bfs history follows the sequence PASS
 CHECK bfs history follows the sequence PASS
+CHECK bfs agx constants PASS
+CHECK bfs sharpen constants PASS
+CHECK bfs bloom extract constants PASS
+CHECK bfs bloom agx constants PASS
 CHECK bfs history follows the sequence PASS
 CHECK bfs history follows the sequence PASS
 CHECK bfs history follows the sequence PASS
@@ -15988,7 +15993,7 @@ CHECK bfs history follows the sequence PASS
 CHECK bfs history follows the sequence PASS
 CHECK bfs history follows the sequence PASS
 CHECK bfs history follows the sequence PASS
-BOLT_FAR_STREAK show=0.50 alpha_history=0 flagged_px=128 flag_outside=0 alpha_min=-2.000000 alpha_max=-2.000000 color_rgb_diff=0 color_diff=128 age_diff=0 depth_diff=0 alpha_outside_diff=0 wb_space_diff=0 wb_far_diff=0 wb_err_codes=0.0623 far_out_add=0.363186 space_out_add=0.409255 far_over_space=0.8874 after_diff=0 after_alpha_px=0 after_alpha_frames=0 after_frames=8
+BOLT_FAR_STREAK show=0.50 alpha_history=0 flagged_px=128 flag_outside=0 alpha_min=-2.000000 alpha_max=-1.501953 ramp_px=32 ramp_alpha_min=-1.501953 ramp_alpha_max=-1.501953 color_rgb_diff=0 color_diff=160 age_diff=0 depth_diff=0 alpha_outside_diff=0 wb_space_diff=0 wb_far_diff=0 wb_err_codes=0.1166 far_out_add=0.325245 space_out_add=0.409255 far_over_space=0.7947 after_diff=0 after_alpha_px=0 after_alpha_frames=0 after_frames=8 apply_plain=0.500000 apply_flag=1.000000 apply_darker_px=0 agx_err_codes=0.1245 agx_outside_diff=0 sharpen_err_codes=0.1000 sharpen_vs_host_composite_codes=14.6301 bloom_agx_err_codes=0.1245 extract_err_codes=0.0000
 SAMPLE bolt far streak, W 0.50, alpha history off: the streak over the far hull is flagged (128 pixels, alpha <= -1) actual=128.000000000 expected=128.000000000 tolerance=0.000000000 PASS
 SAMPLE bolt far streak, W 0.50, alpha history off: no flag on a bright non-bolt texel or over space actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 SAMPLE bolt far streak, W 0.50, alpha history off: frame N colour bit-identical without the flag (rgb lanes) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
@@ -16000,6 +16005,13 @@ SAMPLE bolt far streak, W 0.50, alpha history off: write-back bit-identical over
 SAMPLE bolt far streak, W 0.50, alpha history off: write-back shows the streak at W of the dropped strength (max error, codes; within 1) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 SAMPLE bolt far streak, W 0.50, alpha history off: frames N+1..N+8 colour rgb, age and depth bit-identical (no residual beyond today's) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 SAMPLE bolt far streak, W 0.50, alpha history off: frames N+1..N+8 alpha bit-identical (the flag is never read back) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 0.50, alpha history off: the streak's ramp pixels carry a fractional share (32 pixels, -2 < alpha < -1) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 0.50, alpha history off: the sun-shadow apply leaves no flagged hull pixel darker than without the bolt actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 0.50, alpha history off: AgX tonemap: the composite at W through the chain (max error, codes; within 1) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 0.50, alpha history off: AgX tonemap bit-identical at the unflagged pixels actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 0.50, alpha history off: AgX + RCAS: the composited centre through RCAS over resolved neighbours (max error against the host RCAS, codes; within 1) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 0.50, alpha history off: bloom_agx: the composite at W through the chain (max error, codes; within 1) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 0.50, alpha history off: bloom extract: the composite at W through the chain (max error, codes; within 1) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 CHECK bfs far, camera-gate and flicker programs available PASS
 CHECK bfs history follows the sequence PASS
 CHECK bfs history follows the sequence PASS
@@ -16060,6 +16072,10 @@ CHECK bfs history follows the sequence PASS
 CHECK bfs history follows the sequence PASS
 CHECK bfs history follows the sequence PASS
 CHECK bfs history follows the sequence PASS
+CHECK bfs agx constants PASS
+CHECK bfs sharpen constants PASS
+CHECK bfs bloom extract constants PASS
+CHECK bfs bloom agx constants PASS
 CHECK bfs history follows the sequence PASS
 CHECK bfs history follows the sequence PASS
 CHECK bfs history follows the sequence PASS
@@ -16068,7 +16084,7 @@ CHECK bfs history follows the sequence PASS
 CHECK bfs history follows the sequence PASS
 CHECK bfs history follows the sequence PASS
 CHECK bfs history follows the sequence PASS
-BOLT_FAR_STREAK show=1.00 alpha_history=0 flagged_px=128 flag_outside=0 alpha_min=-2.000000 alpha_max=-2.000000 color_rgb_diff=0 color_diff=128 age_diff=0 depth_diff=0 alpha_outside_diff=0 wb_space_diff=0 wb_far_diff=0 wb_err_codes=0.0623 far_out_add=0.699465 space_out_add=0.409255 far_over_space=1.7091 after_diff=0 after_alpha_px=0 after_alpha_frames=0 after_frames=8
+BOLT_FAR_STREAK show=1.00 alpha_history=0 flagged_px=128 flag_outside=0 alpha_min=-2.000000 alpha_max=-1.501953 ramp_px=32 ramp_alpha_min=-1.501953 ramp_alpha_max=-1.501953 color_rgb_diff=0 color_diff=160 age_diff=0 depth_diff=0 alpha_outside_diff=0 wb_space_diff=0 wb_far_diff=0 wb_err_codes=0.1087 far_out_add=0.618355 space_out_add=0.409255 far_over_space=1.5109 after_diff=0 after_alpha_px=0 after_alpha_frames=0 after_frames=8 apply_plain=0.500000 apply_flag=1.000000 apply_darker_px=0 agx_err_codes=0.0623 agx_outside_diff=0 sharpen_err_codes=0.0550 sharpen_vs_host_composite_codes=8.4668 bloom_agx_err_codes=0.0623 extract_err_codes=0.0000
 SAMPLE bolt far streak, W 1.00, alpha history off: the streak over the far hull is flagged (128 pixels, alpha <= -1) actual=128.000000000 expected=128.000000000 tolerance=0.000000000 PASS
 SAMPLE bolt far streak, W 1.00, alpha history off: no flag on a bright non-bolt texel or over space actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 SAMPLE bolt far streak, W 1.00, alpha history off: frame N colour bit-identical without the flag (rgb lanes) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
@@ -16080,6 +16096,13 @@ SAMPLE bolt far streak, W 1.00, alpha history off: write-back bit-identical over
 SAMPLE bolt far streak, W 1.00, alpha history off: write-back shows the streak at W of the dropped strength (max error, codes; within 1) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 SAMPLE bolt far streak, W 1.00, alpha history off: frames N+1..N+8 colour rgb, age and depth bit-identical (no residual beyond today's) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 SAMPLE bolt far streak, W 1.00, alpha history off: frames N+1..N+8 alpha bit-identical (the flag is never read back) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 1.00, alpha history off: the streak's ramp pixels carry a fractional share (32 pixels, -2 < alpha < -1) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 1.00, alpha history off: the sun-shadow apply leaves no flagged hull pixel darker than without the bolt actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 1.00, alpha history off: AgX tonemap: the composite at W through the chain (max error, codes; within 1) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 1.00, alpha history off: AgX tonemap bit-identical at the unflagged pixels actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 1.00, alpha history off: AgX + RCAS: the composited centre through RCAS over resolved neighbours (max error against the host RCAS, codes; within 1) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 1.00, alpha history off: bloom_agx: the composite at W through the chain (max error, codes; within 1) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 1.00, alpha history off: bloom extract: the composite at W through the chain (max error, codes; within 1) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 CHECK bfs far, camera-gate and flicker programs available PASS
 CHECK bfs history follows the sequence PASS
 CHECK bfs history follows the sequence PASS
@@ -16140,6 +16163,10 @@ CHECK bfs history follows the sequence PASS
 CHECK bfs history follows the sequence PASS
 CHECK bfs history follows the sequence PASS
 CHECK bfs history follows the sequence PASS
+CHECK bfs agx constants PASS
+CHECK bfs sharpen constants PASS
+CHECK bfs bloom extract constants PASS
+CHECK bfs bloom agx constants PASS
 CHECK bfs history follows the sequence PASS
 CHECK bfs history follows the sequence PASS
 CHECK bfs history follows the sequence PASS
@@ -16148,7 +16175,7 @@ CHECK bfs history follows the sequence PASS
 CHECK bfs history follows the sequence PASS
 CHECK bfs history follows the sequence PASS
 CHECK bfs history follows the sequence PASS
-BOLT_FAR_STREAK show=0.50 alpha_history=1 flagged_px=128 flag_outside=0 alpha_min=-2.000000 alpha_max=-2.000000 color_rgb_diff=0 color_diff=128 age_diff=0 depth_diff=0 alpha_outside_diff=0 wb_space_diff=0 wb_far_diff=0 wb_err_codes=0.0623 far_out_add=0.363186 space_out_add=0.409255 far_over_space=0.8874 after_diff=0 after_alpha_px=32 after_alpha_frames=8 after_frames=8
+BOLT_FAR_STREAK show=0.50 alpha_history=1 flagged_px=128 flag_outside=0 alpha_min=-2.000000 alpha_max=-1.501953 ramp_px=32 ramp_alpha_min=-1.501953 ramp_alpha_max=-1.501953 color_rgb_diff=0 color_diff=160 age_diff=0 depth_diff=0 alpha_outside_diff=0 wb_space_diff=0 wb_far_diff=0 wb_err_codes=0.1166 far_out_add=0.325245 space_out_add=0.409255 far_over_space=0.7947 after_diff=0 after_alpha_px=32 after_alpha_frames=8 after_frames=8 apply_plain=0.500000 apply_flag=1.000000 apply_darker_px=0 agx_err_codes=0.1245 agx_outside_diff=0 sharpen_err_codes=0.1000 sharpen_vs_host_composite_codes=14.6301 bloom_agx_err_codes=0.1245 extract_err_codes=0.0000
 SAMPLE bolt far streak, W 0.50, alpha history on: the streak over the far hull is flagged (128 pixels, alpha <= -1) actual=128.000000000 expected=128.000000000 tolerance=0.000000000 PASS
 SAMPLE bolt far streak, W 0.50, alpha history on: no flag on a bright non-bolt texel or over space actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 SAMPLE bolt far streak, W 0.50, alpha history on: frame N colour bit-identical without the flag (rgb lanes) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
@@ -16159,6 +16186,13 @@ SAMPLE bolt far streak, W 0.50, alpha history on: write-back bit-identical over 
 SAMPLE bolt far streak, W 0.50, alpha history on: write-back bit-identical over the unflagged hull actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 SAMPLE bolt far streak, W 0.50, alpha history on: write-back shows the streak at W of the dropped strength (max error, codes; within 1) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 SAMPLE bolt far streak, W 0.50, alpha history on: frames N+1..N+8 colour rgb, age and depth bit-identical (no residual beyond today's) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 0.50, alpha history on: the streak's ramp pixels carry a fractional share (32 pixels, -2 < alpha < -1) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 0.50, alpha history on: the sun-shadow apply leaves no flagged hull pixel darker than without the bolt actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 0.50, alpha history on: AgX tonemap: the composite at W through the chain (max error, codes; within 1) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 0.50, alpha history on: AgX tonemap bit-identical at the unflagged pixels actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 0.50, alpha history on: AgX + RCAS: the composited centre through RCAS over resolved neighbours (max error against the host RCAS, codes; within 1) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 0.50, alpha history on: bloom_agx: the composite at W through the chain (max error, codes; within 1) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 0.50, alpha history on: bloom extract: the composite at W through the chain (max error, codes; within 1) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 CHECK bfs far, camera-gate and flicker programs available PASS
 CHECK bfs history follows the sequence PASS
 CHECK bfs history follows the sequence PASS
@@ -16219,6 +16253,10 @@ CHECK bfs history follows the sequence PASS
 CHECK bfs history follows the sequence PASS
 CHECK bfs history follows the sequence PASS
 CHECK bfs history follows the sequence PASS
+CHECK bfs agx constants PASS
+CHECK bfs sharpen constants PASS
+CHECK bfs bloom extract constants PASS
+CHECK bfs bloom agx constants PASS
 CHECK bfs history follows the sequence PASS
 CHECK bfs history follows the sequence PASS
 CHECK bfs history follows the sequence PASS
@@ -16227,7 +16265,7 @@ CHECK bfs history follows the sequence PASS
 CHECK bfs history follows the sequence PASS
 CHECK bfs history follows the sequence PASS
 CHECK bfs history follows the sequence PASS
-BOLT_FAR_STREAK show=1.00 alpha_history=1 flagged_px=128 flag_outside=0 alpha_min=-2.000000 alpha_max=-2.000000 color_rgb_diff=0 color_diff=128 age_diff=0 depth_diff=0 alpha_outside_diff=0 wb_space_diff=0 wb_far_diff=0 wb_err_codes=0.0623 far_out_add=0.699465 space_out_add=0.409255 far_over_space=1.7091 after_diff=0 after_alpha_px=32 after_alpha_frames=8 after_frames=8
+BOLT_FAR_STREAK show=1.00 alpha_history=1 flagged_px=128 flag_outside=0 alpha_min=-2.000000 alpha_max=-1.501953 ramp_px=32 ramp_alpha_min=-1.501953 ramp_alpha_max=-1.501953 color_rgb_diff=0 color_diff=160 age_diff=0 depth_diff=0 alpha_outside_diff=0 wb_space_diff=0 wb_far_diff=0 wb_err_codes=0.1087 far_out_add=0.618355 space_out_add=0.409255 far_over_space=1.5109 after_diff=0 after_alpha_px=32 after_alpha_frames=8 after_frames=8 apply_plain=0.500000 apply_flag=1.000000 apply_darker_px=0 agx_err_codes=0.0623 agx_outside_diff=0 sharpen_err_codes=0.0550 sharpen_vs_host_composite_codes=8.4668 bloom_agx_err_codes=0.0623 extract_err_codes=0.0000
 SAMPLE bolt far streak, W 1.00, alpha history on: the streak over the far hull is flagged (128 pixels, alpha <= -1) actual=128.000000000 expected=128.000000000 tolerance=0.000000000 PASS
 SAMPLE bolt far streak, W 1.00, alpha history on: no flag on a bright non-bolt texel or over space actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 SAMPLE bolt far streak, W 1.00, alpha history on: frame N colour bit-identical without the flag (rgb lanes) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
@@ -16238,4 +16276,11 @@ SAMPLE bolt far streak, W 1.00, alpha history on: write-back bit-identical over 
 SAMPLE bolt far streak, W 1.00, alpha history on: write-back bit-identical over the unflagged hull actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 SAMPLE bolt far streak, W 1.00, alpha history on: write-back shows the streak at W of the dropped strength (max error, codes; within 1) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 SAMPLE bolt far streak, W 1.00, alpha history on: frames N+1..N+8 colour rgb, age and depth bit-identical (no residual beyond today's) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
-RESULT PASS numerical=626 state_restorations=90 lattice=1
+SAMPLE bolt far streak, W 1.00, alpha history on: the streak's ramp pixels carry a fractional share (32 pixels, -2 < alpha < -1) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 1.00, alpha history on: the sun-shadow apply leaves no flagged hull pixel darker than without the bolt actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 1.00, alpha history on: AgX tonemap: the composite at W through the chain (max error, codes; within 1) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 1.00, alpha history on: AgX tonemap bit-identical at the unflagged pixels actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 1.00, alpha history on: AgX + RCAS: the composited centre through RCAS over resolved neighbours (max error against the host RCAS, codes; within 1) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 1.00, alpha history on: bloom_agx: the composite at W through the chain (max error, codes; within 1) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 1.00, alpha history on: bloom extract: the composite at W through the chain (max error, codes; within 1) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+RESULT PASS numerical=654 state_restorations=90 lattice=1

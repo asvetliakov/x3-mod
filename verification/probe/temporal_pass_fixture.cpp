@@ -7,7 +7,11 @@
 #include "../../src/renderer/camera_reprojection.h"
 #include "../../src/renderer/hdr_writeback_program.h"
 #include "../../src/renderer/hdr_writeback_dither_program.h"
+#include "../../src/renderer/hdr_tonemap_program.h"
+#include "../../src/renderer/hdr_tonemap_sharpen_program.h"
+#include "../../src/renderer/bloom_programs.h"
 #include "../../src/temporal/bolt_far.h"
+#include "../../src/temporal/bloom.h"
 #include "../../src/renderer/temporal_resolve_program.h"
 #include <algorithm>
 #include <array>

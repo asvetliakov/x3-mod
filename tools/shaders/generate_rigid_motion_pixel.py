@@ -115,6 +115,11 @@ SHADERS = {
     'hdr_writeback_dither': dict(source=ROOT / 'src/temporal/hdr_writeback_dither_ps.hlsl',
                                  header=ROOT / 'src/renderer/hdr_writeback_dither_program_inc.h',
                                  provenance=ROOT / 'verification/results/hdr-writeback-dither-program.json'),
+    # The identity write-back with the bolt composite and no dither (bolts-through-taa.md; X3M_BOLT_FAR_COMPOSITE
+    # with X3M_HDR_DITHER off); the plain program stays pure for the temporal pass's R32F lane copy.
+    'hdr_writeback_bolt': dict(source=ROOT / 'src/temporal/hdr_writeback_bolt_ps.hlsl',
+                               header=ROOT / 'src/renderer/hdr_writeback_bolt_program_inc.h',
+                               provenance=ROOT / 'verification/results/hdr-writeback-bolt-program.json'),
     'hdr_tonemap': dict(source=ROOT / 'src/temporal/agx.hlsl',
                         header=ROOT / 'src/renderer/hdr_tonemap_program_inc.h',
                         provenance=ROOT / 'verification/results/hdr-tonemap-program.json'),

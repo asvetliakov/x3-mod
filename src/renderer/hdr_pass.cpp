@@ -1,6 +1,7 @@
 #include "hdr_pass.h"
 #include "hdr_writeback_program.h"
 #include "hdr_writeback_dither_program.h"
+#include "hdr_writeback_bolt_program.h"
 #include "quad_vertex_program.h"
 #include "hdr_tonemap_program.h"
 #include "taa_sharpen_program.h"
@@ -272,6 +273,7 @@ void HdrPass::shutdown() noexcept {
     release_target();
     drop(shader_);
     drop(writeback_dither_shader_);
+    drop(writeback_bolt_shader_);
     drop(tonemap_shader_);
     drop(meter_level0_shader_);
     drop(meter_reduce_shader_);
@@ -344,9 +346,9 @@ static unsigned chain_geometry(UINT width, UINT height, UINT levels_w[], UINT le
 
 unsigned HdrPass::references() const noexcept {
     unsigned n = (target_ ? 1u : 0u) + (shader_ ? 1u : 0u) + (writeback_dither_shader_ ? 1u : 0u) +
-                 (tonemap_shader_ ? 1u : 0u) + (meter_level0_shader_ ? 1u : 0u) + (meter_reduce_shader_ ? 1u : 0u) +
-                 chain_count_ + (sharpen_shader_ ? 1u : 0u) + (tonemap_sharpen_shader_ ? 1u : 0u) +
-                 (quad_vs_ ? 1u : 0u) + (quad_declaration_ ? 1u : 0u);
+                 (writeback_bolt_shader_ ? 1u : 0u) + (tonemap_shader_ ? 1u : 0u) + (meter_level0_shader_ ? 1u : 0u) +
+                 (meter_reduce_shader_ ? 1u : 0u) + chain_count_ + (sharpen_shader_ ? 1u : 0u) +
+                 (tonemap_sharpen_shader_ ? 1u : 0u) + (quad_vs_ ? 1u : 0u) + (quad_declaration_ ? 1u : 0u);
     for (unsigned i = 0; i < 2; ++i) n += (chain_ring_[i] ? 1u : 0u) + (chain_readback_[i] ? 1u : 0u);
     return n;
 }
@@ -1360,6 +1362,20 @@ void HdrPass::attach(IDirect3DDevice9* device, void* const* native, const D3DCAP
         } else
             caps_.dither_reason = "ok";
     }
+    // Bolts through the TAA: the dither-off identity draws (the identity tonemap
+    // and the tonemap-failure fallback) need the composite twin; with the dither
+    // on its twin composites already. The plain program stays pure (the
+    // temporal pass's lane copy).
+    if (!std::strcmp(reason, "ok") && config_.bolt_show > 0.f && !(caps_.dither && writeback_dither_shader_)) {
+        caps_.bolt = true;
+        caps_.bolt_shader = call<CreatePsFn>(CreatePixelShader)(
+            device_, reinterpret_cast<const DWORD*>(hdr_writeback_bolt_program()), &writeback_bolt_shader_);
+        if (FAILED(caps_.bolt_shader) || !writeback_bolt_shader_) {
+            drop(writeback_bolt_shader_);
+            caps_.bolt_reason = "shader";
+        } else
+            caps_.bolt_reason = "ok";
+    }
     exposure_.configure(config_.params, config_.exposure, config_.ev_manual);
     exposure_.reset();
     tonemap_failures_ = 0;
@@ -1387,6 +1403,7 @@ void HdrPass::attach(IDirect3DDevice9* device, void* const* native, const D3DCAP
     if (!caps_.enabled) {
         drop(shader_);
         drop(writeback_dither_shader_);
+        drop(writeback_bolt_shader_);
         drop(tonemap_shader_);
         drop(meter_level0_shader_);
         drop(meter_reduce_shader_);

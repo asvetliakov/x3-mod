@@ -4730,22 +4730,23 @@ void initialize_log(HMODULE module) {
     bolt_single_copy_requested = x3m::config::get(L"X3M_BOLT_SINGLE_COPY", setting, 32) == 1 && setting[0] == L'1';
     // X3M_BOLT_FAR_COMPOSITE=1 (bolts-through-taa.md, B'; schema default on) with X3M_BOLT_FAR_SHOW=W (finite 0..1,
     // default 0.5): the flag needs the additive route (the DLL refuses it inside that admission); the composite in
-    // the write-back needs the HDR pass and is configured below with W (hdr_config.bolt_show; 0 = off). An absent or
-    // invalid W keeps the default; "0" is the explicit off value of the composite (the flag still travels).
+    // the write-back needs the HDR pass and is configured below with W (hdr_config.bolt_show). An absent or invalid
+    // W keeps the default; "0" is the composite off in full: no flag is written either (a flag nothing consumes
+    // would only reach the un-composited paths), the once row says show_off=1.
     {
-        bolt_far_composite_requested = x3m::config::get(L"X3M_BOLT_FAR_COMPOSITE", setting, 32) == 1 &&
-                                       setting[0] == L'1' && screen_emission_additive_requested;
+        const bool asked = x3m::config::get(L"X3M_BOLT_FAR_COMPOSITE", setting, 32) == 1 && setting[0] == L'1';
         wchar_t* end = nullptr;
         const DWORD length = x3m::config::get(L"X3M_BOLT_FAR_SHOW", setting, 32);
         const float value = length && length < 32 ? wcstof(setting, &end) : -1.f;
         const bool parsed = length && length < 32 && end != setting && !*end && std::isfinite(value) && value >= 0.f &&
                             value <= 1.f;
         if (parsed) bolt_far_show = value;
+        bolt_far_composite_requested = asked && screen_emission_additive_requested && bolt_far_show > 0.f;
         if (bolt_far_composite_requested) hdr_config.bolt_show = bolt_far_show;
-        log("bolt_far_composite_mode requested=%u enabled=%u show=%g show_valid=%u additive=%u hdr=%u",
-            unsigned(x3m::config::get(L"X3M_BOLT_FAR_COMPOSITE", setting, 32) == 1 && setting[0] == L'1'),
-            unsigned(bolt_far_composite_requested), double(bolt_far_show), unsigned(parsed || !length),
-            unsigned(screen_emission_additive_requested), unsigned(hdr_requested));
+        log("bolt_far_composite_mode requested=%u enabled=%u show=%g show_valid=%u show_off=%u additive=%u hdr=%u",
+            unsigned(asked), unsigned(bolt_far_composite_requested), double(bolt_far_show), unsigned(parsed || !length),
+            unsigned(asked && !(bolt_far_show > 0.f)), unsigned(screen_emission_additive_requested),
+            unsigned(hdr_requested));
     }
     // X3M_SCREEN_EMISSION_TIMING=1: the option's opt-in per-frame timing
     // diagnostic (one screen_emission_frame line per Present). Needs the

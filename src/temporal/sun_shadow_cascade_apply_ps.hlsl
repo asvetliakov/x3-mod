@@ -79,7 +79,12 @@ float pcf(sampler tex, float3 sun, float3 dpdx, float3 dpdy, float4 r0, float4 r
 
 float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     float4 ds = tex2D(depthShareTex, uv);
-    float d = ds.r, s = saturate(ds.g);
+    // Bolts through the TAA (docs/architecture/bolts-through-taa.md): the late bullet draw adds K * max(rgb) (K = 32,
+    // rgb the gained bolt texel) to this lane's .g, so g > 1 is a bolt pixel whose share is gone (the sum is not
+    // separable: the bolt term is any value above 2, the share any value in [0, 1]). Such a pixel is left unshadowed
+    // for this one frame (factor 1: the bolt and the hull under it keep the scene value) instead of reading share 1,
+    // which at full shadow would black out the hull pixel and the bolt. Every other pixel is unchanged.
+    float d = ds.r, s = ds.g > 1.0 ? 0.0 : saturate(ds.g);
     float z = ds.b;
     float2 ndc = float2(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0);
     float4 p = float4((ndc.x - view.z) * z / view.x, (ndc.y - view.w) * z / view.y, z, 1.0);

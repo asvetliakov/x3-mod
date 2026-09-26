@@ -591,12 +591,13 @@ Documented D3D9 throughout (`docs/architecture/bolts-through-taa.md`, "Native Wi
 1-2 with per-target `COLORWRITEENABLE1/2` (`D3DPMISCCAPS_INDEPENDENTWRITEMASKS`, checked per draw, refused without
 it), a ps_2_0 `oC2` write from the AdditiveGain variant, float render targets with unclamped shader output, one more
 sampler (s2) and one register (c29) on the full-screen write-back and bloom quads, saved and restored with the rest.
-`D3DPMISCCAPS_MRTPOSTPIXELSHADERBLENDING` is logged once per device (`motion_output_mrt_blend`): with it the lane's
-`.g` becomes `base + K * add`, without it `K * add`, and the resolve's test `g > 1` is robust to both (CrossOver
-reports the cap set; the seam case accepts either). The `.g` base of a shaded hull is the sun-share lane's share, which
-the sun-shadow cascade apply reads back saturated: at a flagged texel it reads 1 for that one frame (measured in the
-seam case: lane `.g` 0.025 -> 32.025 under the bolt). Cross-compiled and fixture-qualified under CrossOver; native
-execution unverified.
+`D3DPMISCCAPS_MRTPOSTPIXELSHADERBLENDING` is logged once per device (`motion_output_mrt_blend`) as a record: the flag
+needs the four-lane RT2, i.e. the sun-share lane, whose qualification already requires that cap (a device without it
+runs the lane-off R32F RT2 and every late bullet draw's flag is refused, `r32f_lane`), so the lane's `.g` is always
+`base + K * add` under the draw's ONE/ONE blend and the no-blend branch of the flag test is unreachable. The `.g` base of
+a shaded hull is the sun-share lane's share, which the sun-shadow cascade apply reads back: a flagged texel (g > 1, the
+share lost in the sum) is left unshadowed for that one frame (factor 1; measured in the seam case: 1.0 against 0.5 on
+the unflagged, fully shadowed hull). Cross-compiled and fixture-qualified under CrossOver; native execution unverified.
 
 ## Shader slot budget
 
