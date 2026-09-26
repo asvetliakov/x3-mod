@@ -13,8 +13,11 @@ Developer builds only: speech under CrossOver needs the folder `x3m\voice-decode
 zip does not carry it; `python3 tools/manage.py voice-decoder --install` places it from the repository) and the two
 GStreamer variables
 `GST_PLUGIN_PATH_1_0` / `GST_REGISTRY_1_0` in the game's Unix-side environment: the developer launcher sets them; the DLL
-cannot (a Windows-side environment write never reaches winegstreamer, measured 2026-09-27), so a launch from CrossOver
-itself needs a bottle environment setting. Windows does not use it.
+cannot (a Windows-side environment write never reaches winegstreamer, measured 2026-09-27). For a launch from CrossOver
+itself, write them once into the bottle's settings with the game closed:
+`python3 tools/manage.py voice-decoder --bottle-env apply --bottle X3` (`--bottle-env check` shows them,
+`--bottle-env remove` takes them out again; the first change keeps a copy `cxbottle.conf.x3m-bak`). They then apply
+to every program started in that bottle. Windows does not use it.
 
 ## Changing a setting
 

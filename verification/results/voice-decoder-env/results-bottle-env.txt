@@ -1,0 +1,17 @@
+voice decoder: <scratch>/X3/cxbottle.conf sha256 before cc5d6c00a8afccaf88cbae1a7c46040db513eb163a52693287a3d29aca828e0c
+voice decoder: bottle env GST_PLUGIN_PATH_1_0: added
+voice decoder: bottle env GST_REGISTRY_1_0: added
+voice decoder: backup <scratch>/X3/cxbottle.conf.x3m-bak created
+voice decoder: <scratch>/X3/cxbottle.conf sha256 after b06979d14e75100b069fcbb3fceed9034431f872ad217a6c92a151542cf7c82f
+apply exit 0
+336a337,338
+> "GST_PLUGIN_PATH_1_0" = "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/x3m/voice-decoder/runtime/plugins"
+> "GST_REGISTRY_1_0" = "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/x3m/voice-decoder/registry/x3-arm64.bin"
+backup identical to the original True
+launcher status set
+voice decoder: <scratch>/X3/cxbottle.conf sha256 before b06979d14e75100b069fcbb3fceed9034431f872ad217a6c92a151542cf7c82f
+voice decoder: bottle env GST_PLUGIN_PATH_1_0: removed "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/x3m/voice-decoder/runtime/plugins"
+voice decoder: bottle env GST_REGISTRY_1_0: removed "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/x3m/voice-decoder/registry/x3-arm64.bin"
+voice decoder: <scratch>/X3/cxbottle.conf sha256 after cc5d6c00a8afccaf88cbae1a7c46040db513eb163a52693287a3d29aca828e0c
+remove exit 0
+remove restored the original bytes True

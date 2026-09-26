@@ -115,3 +115,125 @@ def install(source, dest, safe_path):
     if problems:
         raise TreeError(f'{dest} fails {HASH_LIST} after the copy: ' + ', '.join(problems))
     return copied, unchanged, verified, not_shipped
+
+
+# CrossOver bottle environment (docs/architecture/voice-decoder-adapter.md, "Bottle environment delivery"): the two
+# versioned GStreamer variables in [EnvironmentVariables] of <bottle>/cxbottle.conf, which CrossOver applies to every
+# program started in the bottle, so a plain CrossOver launch finds the drop-in. Entries are `"NAME" = "value"` lines;
+# `;;` starts a comment. Every byte outside the two entries is preserved (line endings included).
+BOTTLE_CONF = 'cxbottle.conf'
+BOTTLE_BACKUP = 'cxbottle.conf.x3m-bak'
+BOTTLE_SECTION = b'[EnvironmentVariables]'
+BOTTLE_VARIABLES = ('GST_PLUGIN_PATH_1_0', 'GST_REGISTRY_1_0')
+
+
+def bottle_env_values(dest):
+    """{name: host path} for the drop-in DEST, exactly what the launcher sets for it (tools/manage.py, voice_env)."""
+    dest = Path(dest)
+    return {'GST_PLUGIN_PATH_1_0': str(dest / 'runtime/plugins'), 'GST_REGISTRY_1_0': str(dest / 'registry' / 'x3-arm64.bin')}
+
+
+def _entry(line):
+    """(name, value) of a `"NAME" = "value"` line (line ending allowed), else None; comments never match."""
+    text = line.strip()
+    if not text.startswith(b'"'):
+        return None
+    close = text.find(b'"', 1)
+    if close < 0:
+        return None
+    rest = text[close + 1:].strip()
+    if not rest.startswith(b'='):
+        return None
+    value = rest[1:].strip()
+    if len(value) < 2 or not value.startswith(b'"') or not value.endswith(b'"'):
+        return None
+    return text[1:close].decode('utf-8', 'replace'), value[1:-1].decode('utf-8', 'replace')
+
+
+def _section(data):
+    """(lines, start, end): LINES keep their endings; lines[start:end] is the body of [EnvironmentVariables].
+    TreeError when the section is absent or repeated."""
+    lines = data.splitlines(keepends=True)
+    headers = [i for i, line in enumerate(lines) if line.strip() == BOTTLE_SECTION]
+    if len(headers) != 1:
+        raise TreeError(f'{BOTTLE_CONF} has {len(headers)} {BOTTLE_SECTION.decode()} sections, expected one')
+    start = end = headers[0] + 1
+    while end < len(lines) and not lines[end].lstrip().startswith(b'['):
+        end += 1
+    return lines, start, end
+
+
+def bottle_env_state(data, values):
+    """{name: 'present' | 'absent' | 'differs: <current value(s)>'} of VALUES in the bottle file bytes DATA."""
+    lines, start, end = _section(data)
+    found = {}
+    for line in lines[start:end]:
+        entry = _entry(line)
+        if entry and entry[0] in values:
+            found.setdefault(entry[0], []).append(entry[1])
+    state = {}
+    for name, value in values.items():
+        current = found.get(name)
+        state[name] = 'absent' if not current else 'present' if current == [value] else 'differs: ' + ' | '.join(current)
+    return state
+
+
+def bottle_env_edit(data, values, *, remove=False):
+    """(new bytes, changes): DATA with each of VALUES set or, with REMOVE, every entry of those names deleted.
+    An identical entry is left alone; a differing one is replaced in place (a later duplicate of the name is
+    dropped); a missing one is added after the section's last non-blank line in the file's line ending."""
+    for value in values.values():
+        if any(c in value for c in '"\\\r\n'):
+            raise TreeError(f'value {value!r} needs quoting the bottle file does not use')
+    lines, start, end = _section(data)
+    eol = next((b'\r\n' if line.endswith(b'\r\n') else b'\n' for line in lines if line.endswith(b'\n')), b'\n')
+    changes, seen, out, body_end = [], set(), [], None
+    for index, line in enumerate(lines):
+        if index == end:
+            body_end = len(out)
+        entry = _entry(line) if start <= index < end else None
+        if entry is None or entry[0] not in values:
+            out.append(line)
+            continue
+        name, current = entry
+        if remove:
+            changes.append(f'{name}: removed "{current}"')
+        elif name in seen:
+            changes.append(f'{name}: duplicate "{current}" removed')
+        else:
+            seen.add(name)
+            if current == values[name]:
+                out.append(line)
+            else:
+                out.append(f'"{name}" = "{values[name]}"'.encode() + (line[len(line.rstrip(b'\r\n')):] or eol))
+                changes.append(f'{name}: replaced "{current}"')
+    missing = [] if remove else [name for name in values if name not in seen]
+    if missing:
+        at = len(out) if body_end is None else body_end
+        while at > start and not out[at - 1].strip():
+            at -= 1
+        if not out[at - 1].endswith(b'\n'):
+            out[at - 1] += eol
+        out[at:at] = [f'"{name}" = "{values[name]}"'.encode() + eol for name in missing]
+        changes += [f'{name}: added' for name in missing]
+    return b''.join(out), changes
+
+
+def write_bottle_conf(path, data):
+    """Replaces PATH by DATA through a temporary file in the same directory and a rename, keeping PATH's mode. The
+    first write also copies the original to cxbottle.conf.x3m-bak (an existing backup is never overwritten).
+    Returns True when the backup was created by this call."""
+    path = Path(path)
+    mode = path.stat().st_mode & 0o777
+    backup = path.with_name(BOTTLE_BACKUP)
+    created = False
+    for target, payload in (((backup, path.read_bytes()),) if not backup.exists() else ()) + ((path, data),):
+        temporary = target.with_name(target.name + '.x3m-new')
+        with open(temporary, 'wb') as stream:
+            stream.write(payload)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.chmod(temporary, mode)
+        os.replace(temporary, target)
+        created = created or target == backup
+    return created

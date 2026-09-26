@@ -358,6 +358,7 @@ def bolt_footprint_env(args):
 
 
 VOICE_DECODER_GAME_SUBDIR = Path('x3m/voice-decoder')  # drop-in location under the game directory
+CROSSOVER_BOTTLES = Path.home() / 'Library/Application Support/CrossOver/Bottles'  # <bottle>/cxbottle.conf, drive_c
 # Shipped copy (tools/voice-decoder/v4/README.md). X3M_VOICE_DECODER_REPO
 # overrides it for tests that run the launcher as a subprocess; an empty value
 # removes the candidate. It is consumed by the launcher and never forwarded.
@@ -754,12 +755,67 @@ def source_commit(dll):
     return repository_source_commit(), 'launcher'
 
 
+def voice_bottle_env_status(bottle_dir, game):
+    """'set' | 'unset' | 'differs' of the drop-in's two GStreamer entries in BOTTLE_DIR/cxbottle.conf; read-only.
+    A missing file or section counts as unset."""
+    values = voice_decoder_files.bottle_env_values(game.resolve() / VOICE_DECODER_GAME_SUBDIR)
+    try:
+        state = voice_decoder_files.bottle_env_state((bottle_dir / voice_decoder_files.BOTTLE_CONF).read_bytes(), values)
+    except (OSError, voice_decoder_files.TreeError):
+        return 'unset'
+    kinds = set(state.values())
+    return 'set' if kinds == {'present'} else 'unset' if kinds == {'absent'} else 'differs'
+
+
+def voice_bottle_env_command(action, bottle_dir, game, source):
+    """`manage.py voice-decoder --bottle-env ACTION`: check, apply or remove the two GStreamer entries of
+    BOTTLE_DIR/cxbottle.conf that point every program of the bottle at GAME's drop-in (the values the launcher computes
+    for it). Returns the exit code: 0 done or both present, 1 check found an entry absent or different, 2 refused."""
+    conf = bottle_dir / voice_decoder_files.BOTTLE_CONF
+    dest = game.resolve() / VOICE_DECODER_GAME_SUBDIR
+    values = voice_decoder_files.bottle_env_values(dest)
+    try:
+        before = conf.read_bytes()
+        if action == 'check':
+            state = voice_decoder_files.bottle_env_state(before, values)
+            for name, value in values.items():
+                print(f'voice decoder: bottle env {name}: {state[name]} (expected "{value}")')
+            drop_in, detail = voice_decoder_files.status(source, dest)
+            print(f'voice decoder: drop-in {drop_in} {dest} ({detail})')
+            return 0 if set(state.values()) == {'present'} else 1
+        if action == 'apply':
+            drop_in, detail = voice_decoder_files.status(source, dest)
+            if drop_in != 'valid':
+                raise voice_decoder_files.TreeError(f'the drop-in {dest} is {drop_in} ({detail}); run manage.py '
+                                                    'voice-decoder --install first')
+            problem = voice_decoder_problem(dest, create_registry=False)
+            if problem is not None:
+                raise voice_decoder_files.TreeError(problem)
+        media_package.assert_game_closed()
+        after, changes = voice_decoder_files.bottle_env_edit(before, values, remove=action == 'remove')
+        print(f'voice decoder: {conf} sha256 before {hashlib.sha256(before).hexdigest()}')
+        backup = voice_decoder_files.write_bottle_conf(conf, after) if after != before else False
+        for change in changes:
+            print(f'voice decoder: bottle env {change}')
+        if not changes:
+            print(f'voice decoder: bottle env unchanged ({"both present" if action == "apply" else "neither present"})')
+        if backup:
+            print(f'voice decoder: backup {conf.with_name(voice_decoder_files.BOTTLE_BACKUP)} created')
+        print(f'voice decoder: {conf} sha256 after {hashlib.sha256(conf.read_bytes()).hexdigest()}')
+    except (voice_decoder_files.TreeError, media_package.PackageError, OSError) as error:
+        print(f'voice decoder: refused: {error}', file=sys.stderr)
+        return 2
+    return 0
+
+
 def voice_decoder_command(argv):
     """`manage.py voice-decoder [--check | --install] [--game-dir DIR | --bottle B] [--source DIR]`: reports or
     installs the drop-in copy <game>/x3m/voice-decoder of the shipped WMA speech decoder (tools/voice_decoder_files.py).
     --check (the default) prints valid, stale or missing and exits 0 only when valid; --install copies the shipped
     files (identical ones are left alone), creates registry/ and verifies artifact-sha256.txt after the copy, under the
-    installer lock with the game closed. Returns the exit code."""
+    installer lock with the game closed. --bottle-env check|apply|remove reads or edits the two GStreamer entries of
+    the bottle's cxbottle.conf [EnvironmentVariables] that point a plain CrossOver launch at the drop-in (check: exit 0
+    only when both are present with the launcher's values). Returns the exit code."""
     parser = argparse.ArgumentParser(prog='manage.py voice-decoder', allow_abbrev=False,
                                      description='Check or install <game>/x3m/voice-decoder, the WMA speech decoder the launcher '
                                                  'delivers under CrossOver (docs/architecture/voice-decoder-adapter.md).')
@@ -767,14 +823,24 @@ def voice_decoder_command(argv):
     mode.add_argument('--check', action='store_true', help='report valid, stale or missing (the default); exit 0 only when valid')
     mode.add_argument('--install', action='store_true', help='copy the shipped tree into <game>/x3m/voice-decoder, leave identical '
                       'files alone, create registry/ and verify artifact-sha256.txt after the copy (the game must be closed)')
+    mode.add_argument('--bottle-env', choices=('check', 'apply', 'remove'), default=None,
+                      help='the CrossOver bottle setting for a launch without this launcher: GST_PLUGIN_PATH_1_0 and '
+                      'GST_REGISTRY_1_0 in [EnvironmentVariables] of <bottles>/<--bottle>/cxbottle.conf, with the host paths '
+                      'the launcher sets for <game>/x3m/voice-decoder. check prints present, absent or differs per variable '
+                      '(exit 0 only when both are present); apply writes them (refused unless the drop-in is valid and the '
+                      'section exists; identical entries are left alone, a differing value is replaced; temporary file and '
+                      'rename; the first write keeps cxbottle.conf.x3m-bak); remove deletes exactly those entries. apply and '
+                      'remove print the file\'s sha256 before and after and need the game closed')
     parser.add_argument('--bottle', default=BOTTLE, help='CrossOver bottle whose drive_c/X3 is the game directory (default: X3; '
                         'X3M_BOTTLE overrides)')
     parser.add_argument('--game-dir', type=Path, default=None, help='game directory, the folder with X3AP.exe (overrides --bottle)')
     parser.add_argument('--source', type=Path, default=VOICE_DECODER_REPO, help='the tree to install or compare against '
                         '(default: the repository copy tools/voice-decoder/v4)')
     args = parser.parse_args(argv)
-    game = args.game_dir or Path.home() / f'Library/Application Support/CrossOver/Bottles/{args.bottle}/drive_c/X3'
+    game = args.game_dir or CROSSOVER_BOTTLES / args.bottle / 'drive_c/X3'
     dest = game / VOICE_DECODER_GAME_SUBDIR
+    if args.bottle_env:
+        return voice_bottle_env_command(args.bottle_env, CROSSOVER_BOTTLES / args.bottle, game, args.source)
     try:
         if args.install:
             if not (game / 'X3AP.exe').is_file():
@@ -811,8 +877,9 @@ def main():
                         help='fog-families [--bottle B] [--check | --install [--replace] | --dry-run] [fog_families.py options]: '
                              'generate, install or check <game>/x3m/fog-families.bin for mod nebula families through '
                              'tools/analysis/fog_families.py on the bottle\'s game directory (default --check; see manage.py fog-families --help). '
-                             'voice-decoder [--check | --install] [--game-dir DIR | --bottle B]: check or install the WMA speech decoder '
-                             '<game>/x3m/voice-decoder from tools/voice-decoder/v4 (see manage.py voice-decoder --help)')
+                             'voice-decoder [--check | --install | --bottle-env check|apply|remove] [--game-dir DIR | --bottle B]: '
+                             'check or install the WMA speech decoder <game>/x3m/voice-decoder from tools/voice-decoder/v4, or its '
+                             'CrossOver bottle environment entries (see manage.py voice-decoder --help)')
     parser.add_argument('--game-dir', type=Path, default=GAME)
     parser.add_argument('--bottle', default=BOTTLE, help='CrossOver bottle (default: X3, the arm64/FEX bottle; X3M_BOTTLE overrides; the old x86_64/Rosetta bottle is Steam)')
     parser.add_argument('--dll-source', type=Path, default=ROOT / 'build/d3d9.dll',
@@ -2058,6 +2125,8 @@ def main():
             if problem is not None:
                 parser.error(f'--voice-decoder: {problem}')
         voice_line = f'voice decoder: {voice_root} ({voice_reason})' if voice_root else f'voice decoder: none ({voice_reason})'
+        if args.dry_run:  # read-only: the bottle setting a launch without this launcher relies on
+            voice_line += f'; bottle env: {voice_bottle_env_status(CROSSOVER_BOTTLES / args.bottle, game)}'
         print(voice_line, file=sys.stderr)
         for line in args.defaults_not_sent:
             print(line, file=sys.stderr)

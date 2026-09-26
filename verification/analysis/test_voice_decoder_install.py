@@ -113,5 +113,114 @@ class VoiceDecoderInstall(unittest.TestCase):
         self.assertEqual((verified, not_shipped, problems), (7, 1, []))
 
 
+# The real layout of [EnvironmentVariables] in a CrossOver Preview cxbottle.conf (bottle X3, 2026-09-27): the
+# section is last, a `;;` comment sits between entries. A section follows it here to cover the end of the body.
+BOTTLE_CONF = ('[Bottle]\n"WineArch" = "win64"\n;; "Updater" = ""\n\n'
+               '[EnvironmentVariables]\n"FEX_X87REDUCEDPRECISION" = "1"\n;;"PROMPT" = "$p$g"\n"WINEMSYNC" = "1"\n'
+               '"CX_GRAPHICS_BACKEND" = "dxmt"\n"D3DM_ENABLE_METALFX" = "1"\n"DXMT_ENABLE_NVEXT" = "1"\n\n'
+               '[Other]\n"Keep" = "1"\n')
+
+
+class VoiceDecoderBottleEnv(unittest.TestCase):
+    """`manage.py voice-decoder --bottle-env check|apply|remove` on a synthetic bottle directory."""
+    setUpClass = VoiceDecoderInstall.__dict__['setUpClass']
+    run_tool = VoiceDecoderInstall.run_tool
+
+    def setUp(self):
+        VoiceDecoderInstall.setUp(self)
+        self.bottles = Path(self.directory.name) / 'bottles'
+        (self.bottles / 'B').mkdir(parents=True)
+        self.conf = self.bottles / 'B/cxbottle.conf'
+        self.backup = self.bottles / 'B/cxbottle.conf.x3m-bak'
+        patcher = mock.patch.object(self.module, 'CROSSOVER_BOTTLES', self.bottles)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.env = ('--bottle', 'B', '--game-dir', str(self.game), '--source', str(self.source))
+        root = self.game.resolve() / 'x3m/voice-decoder'
+        self.lines = [f'"GST_PLUGIN_PATH_1_0" = "{root}/runtime/plugins"', f'"GST_REGISTRY_1_0" = "{root}/registry/x3-arm64.bin"']
+        self.assertEqual(self.run_tool('--install', *self.common)[0], 0)
+
+    def test_apply_check_remove_both_line_endings(self):
+        for eol in ('\n', '\r\n'):
+            with self.subTest(eol=repr(eol)):
+                self.backup.unlink(missing_ok=True)
+                original = BOTTLE_CONF.replace('\n', eol).encode()
+                self.conf.write_bytes(original)
+                self.conf.chmod(0o600)
+                code, output, _ = self.run_tool('--bottle-env', 'check', *self.env)
+                self.assertEqual((code, output.count(': absent (expected')), (1, 2))
+                code, output, error = self.run_tool('--bottle-env', 'apply', *self.env)
+                self.assertEqual(code, 0, error)
+                self.assertIn(f'sha256 before {hashlib.sha256(original).hexdigest()}', output)
+                applied = self.conf.read_bytes()
+                self.assertIn(f'sha256 after {hashlib.sha256(applied).hexdigest()}', output)
+                self.assertEqual(output.count(': added'), 2)
+                self.assertIn('backup', output)
+                expected = original.replace(f'"DXMT_ENABLE_NVEXT" = "1"{eol}'.encode(),
+                                            (f'"DXMT_ENABLE_NVEXT" = "1"{eol}' + ''.join(l + eol for l in self.lines)).encode())
+                self.assertEqual(applied, expected)  # every other byte kept, entries in the file's line ending
+                self.assertEqual(self.backup.read_bytes(), original)
+                self.assertEqual(oct(self.conf.stat().st_mode & 0o777), oct(0o600))
+                self.assertEqual(self.run_tool('--bottle-env', 'check', *self.env)[0], 0)
+                code, output, _ = self.run_tool('--bottle-env', 'apply', *self.env)  # idempotent
+                self.assertEqual(code, 0)
+                self.assertIn('unchanged (both present)', output)
+                self.assertNotIn('backup', output)
+                self.assertEqual(self.conf.read_bytes(), applied)
+                code, output, _ = self.run_tool('--bottle-env', 'remove', *self.env)
+                self.assertEqual((code, output.count(': removed')), (0, 2))
+                self.assertEqual(self.conf.read_bytes(), original)
+                self.assertNotIn('backup', output)  # created once, on the first apply
+                self.assertEqual(self.backup.read_bytes(), original)
+                self.assertIn('unchanged (neither present)', self.run_tool('--bottle-env', 'remove', *self.env)[1])
+                self.assertEqual(sorted(p.name for p in self.conf.parent.iterdir()), ['cxbottle.conf', 'cxbottle.conf.x3m-bak'])
+
+    def test_differing_value_replaced_in_place(self):
+        original = BOTTLE_CONF.replace('"WINEMSYNC" = "1"\n', f'"WINEMSYNC" = "1"\n"GST_REGISTRY_1_0" = "/old/x.bin"\r\n')
+        self.conf.write_bytes(original.encode())
+        code, output, _ = self.run_tool('--bottle-env', 'check', *self.env)
+        self.assertEqual(code, 1)
+        self.assertIn('GST_REGISTRY_1_0: differs: /old/x.bin', output)
+        code, output, error = self.run_tool('--bottle-env', 'apply', *self.env)
+        self.assertEqual(code, 0, error)
+        self.assertIn('GST_REGISTRY_1_0: replaced "/old/x.bin"', output)
+        self.assertIn('GST_PLUGIN_PATH_1_0: added', output)
+        expected = original.replace('"/old/x.bin"\r\n', f'"{self.lines[1].split(" = ")[1][1:-1]}"\r\n')
+        expected = expected.replace('"DXMT_ENABLE_NVEXT" = "1"\n', f'"DXMT_ENABLE_NVEXT" = "1"\n{self.lines[0]}\n')
+        self.assertEqual(self.conf.read_bytes(), expected.encode())  # the replaced line keeps its own CRLF
+
+    def test_refusals_leave_the_file(self):
+        without = BOTTLE_CONF.replace('[EnvironmentVariables]\n', '')
+        self.conf.write_text(without)
+        code, _, error = self.run_tool('--bottle-env', 'apply', *self.env)
+        self.assertEqual(code, 2)
+        self.assertIn('0 [EnvironmentVariables] sections', error)
+        self.assertEqual(self.conf.read_text(), without)
+        self.conf.write_text(BOTTLE_CONF)
+        (self.dest / 'runtime/plugins/libgstlibav.dylib').write_bytes(b'other')  # stale drop-in
+        code, _, error = self.run_tool('--bottle-env', 'apply', *self.env)
+        self.assertEqual(code, 2)
+        self.assertIn('is stale', error)
+        self.assertEqual(self.conf.read_text(), BOTTLE_CONF)
+        self.assertFalse(self.backup.exists())
+        (self.dest / 'runtime/plugins/libgstlibav.dylib').write_bytes(b'plugin')
+        with mock.patch.object(self.module.media_package, 'assert_game_closed',
+                               side_effect=self.module.media_package.PackageError('game running')):
+            with contextlib.redirect_stderr(io.StringIO()):
+                code = self.module.voice_decoder_command(['--bottle-env', 'apply', *self.env])
+        self.assertEqual((code, self.conf.read_text()), (2, BOTTLE_CONF))
+        self.assertEqual(self.run_tool('--bottle-env', 'apply', '--install', *self.env)[0], 2)  # one mode at a time
+
+    def test_launcher_status(self):
+        status = lambda: self.module.voice_bottle_env_status(self.bottles / 'B', self.game)
+        self.assertEqual(status(), 'unset')  # no file
+        self.conf.write_text(BOTTLE_CONF)
+        self.assertEqual(status(), 'unset')
+        self.assertEqual(self.run_tool('--bottle-env', 'apply', *self.env)[0], 0)
+        self.assertEqual(status(), 'set')
+        self.conf.write_text(self.conf.read_text().replace('x3-arm64.bin', 'other.bin'))
+        self.assertEqual(status(), 'differs')
+
+
 if __name__ == '__main__':
     unittest.main()

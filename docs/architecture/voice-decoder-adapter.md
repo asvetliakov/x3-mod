@@ -445,4 +445,28 @@ the proxy's initialisation, is ineffective. The planned `voice_decoder` setting 
 `voice_decoder_env` row were therefore not implemented. The DLL would also need the Unix path of the game directory,
 which only a Wine-specific export gives. A player who starts X3AP.exe from CrossOver without the launcher still gets
 no speech. Delivery options that do reach the Unix environment are the developer launcher (today) and a CrossOver
-bottle environment setting. The second is not process-local and is not decided.
+bottle environment setting. The second is not process-local; it was chosen for launcher-less starts (next paragraph).
+
+**Bottle environment delivery (user decision, 2026-09-27).** Speech from a plain CrossOver launch (no developer
+launcher) is delivered by the bottle's environment setting: `[EnvironmentVariables]` of
+`~/Library/Application Support/CrossOver/Bottles/<bottle>/cxbottle.conf`, which CrossOver applies to every program
+started in that bottle. `python3 tools/manage.py voice-decoder --bottle-env apply --bottle X3` writes exactly two
+`"NAME" = "value"` lines, `GST_PLUGIN_PATH_1_0 = <game>/x3m/voice-decoder/runtime/plugins` and
+`GST_REGISTRY_1_0 = <game>/x3m/voice-decoder/registry/x3-arm64.bin` (host paths, the values the launcher computes
+for the game-directory drop-in), after the section's last entry and in the file's line ending. It is refused unless
+the drop-in is `valid` with a writable `registry/`, the section exists once and the game is closed; an identical
+entry is left alone and a differing one is replaced in place and reported; every other byte is kept; the write goes
+through `cxbottle.conf.x3m-new` and a rename, and the first write keeps `cxbottle.conf.x3m-bak` (never overwritten).
+It prints the file's sha256 before and after, which the install record tracks. `--bottle-env check` prints
+`present`, `absent` or `differs: <value>` per variable and exits 0 only when both are present; `--bottle-env remove`
+deletes exactly those entries. `manage.py launch --dry-run` appends `bottle env: set|unset|differs` to its
+`voice decoder:` line (read-only). Unlike the launcher this is not process-local: the variables reach every program of
+the bottle, which only makes GStreamer there also find the WMA plugin. The DLL side is unchanged:
+`voice_dmo_fallback` defaults to 1 in `x3m.ini` and the bare defaults, so a plain launch arms the hook. What to
+check in `x3m.log` after a launch from CrossOver: the install row
+`voice_dmo_fallback requested=1 installed=1 status=ok ... site_status=... condition=80040154`
+(`condition` is the `REGDB_E_CLASSNOTREG` it reacts to, `status=ok` means the site was claimed), then per game media
+object one `voice_dmo_fallback activation=N ... qi_hr=00000000 init_hr=00000000 ... retries_ok=N retries_failed=0`.
+`init_hr=00000000` is the successful re-init with the registered WMA decoder DMO; with the bottle entries missing or
+wrong the re-init fails (`init_hr` nonzero, `retries_failed` counting) and there is no speech, and the drop-in's
+`registry/x3-arm64.bin` is not written. Not yet applied to the bottle or flown.
