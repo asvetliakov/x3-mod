@@ -366,9 +366,10 @@ bool thin_vote_gate = false;
 float taa_motion_weight[3] = {0.f, 2.f, 8.f};
 // X3M_TAA_MOTION_WEIGHT_ROTATION=F[,V0,V1] (opt-in, 2026-09-26; absent, 0, invalid or oversized: off, the last two
 // logged; else 0.5..0.98 with 0 <= V0 < V1 <= 64 px/frame, default 2,8; docs/architecture/taa-motion-history-weight.md
-// section 10): the age programs cap an ordinary pixel's history keep weight at F where the camera rotation alone moves
+// section 10): the age programs cap the base history keep weight at F where the camera rotation alone moves
 // it V1 px/frame or more on screen (1 at or below V0, linear between), so a static hull under a pan keeps more detail;
-// thin-region, far-weight and sky-band pixels keep their weights. Same prerequisites as X3M_TAA_MOTION_WEIGHT.
+// the cap sits on the base weight before the far and thin-region lerps (full-weight far and thin-region pixels and the
+// sky band keep their weights). Same prerequisites as X3M_TAA_MOTION_WEIGHT.
 float taa_motion_weight_rotation[3] = {0.f, 2.f, 8.f};
 unsigned camera_log_frames = 0; // X3M_CAMERA_LOG; 0 = capture frames only (initialize_log)
 unsigned motion_jitter_samples = 8;
@@ -5077,7 +5078,8 @@ void initialize_log(HMODULE module) {
         taa_motion_weight[0] = .7f; // Run 70 A (2026-09-23, run262/run263): 0.7,2,8 with an age program under a policy
                                     // that can reach 2 (0 is the opt-out)
     // X3M_TAA_MOTION_WEIGHT_ROTATION=<F>[,<V0>,<V1>]: parsed like X3M_TAA_MOTION_WEIGHT (1 or 3 fields, all in range),
-    // no default: absent is off.
+    // no default: absent is off. Blanks around a field are accepted (" 0.7", "0.7 " and "0.7 , 2, 8" alike; wcstof
+    // skips the leading ones, the trailing ones are skipped here).
     if (const DWORD n = x3m::config::get(L"X3M_TAA_MOTION_WEIGHT_ROTATION", setting, 32); n >= 32)
         log("taa_motion_weight_rotation_setting invalid=1 reason=too_long length=%lu", n);
     else if (n > 0) {
@@ -5089,6 +5091,7 @@ void initialize_log(HMODULE module) {
             wchar_t* end = nullptr;
             v[count] = wcstof(cursor, &end);
             ok = end != cursor;
+            while (ok && (*end == L' ' || *end == L'\t')) ++end;
             ++count;
             if (!ok || *end == L'\0') break;
             ok = *end == L',';

@@ -6024,11 +6024,118 @@ CHECK mw history follows the sequence PASS
 CHECK mw history follows the sequence PASS
 CHECK mw history follows the sequence PASS
 CHECK rotation weight: the mixed row holds far, thin and ordinary pixels PASS
-MOTION_WEIGHT_ROTATION_CLASSES program=far_camera pan_px=12.00 weight=0.900 far_px=75636 thin_px=9168 ordinary_px=114600 far_diff=0.000000 thin_diff=0.000000 ordinary_diff=0.141113 far_age_diff=0.000000 thin_age_diff=0.000000 ordinary_age_diff=0.000000 far_probe_far=0.010254 far_probe_thin=0.000000 far_probe_ordinary=0.000000 thin_probe_far=0.000000 thin_probe_thin=0.003906 thin_probe_ordinary=0.000000
+MOTION_WEIGHT_ROTATION_CLASSES program=far_camera pan_px=12.00 weight=0.900 far_px=60144 thin_px=6516 ordinary_px=81528 far_diff=0.000000 thin_diff=0.000000 ordinary_diff=0.056152 far_age_diff=0.000000 thin_age_diff=0.000000 ordinary_age_diff=0.000000 far_probe_far=0.010254 far_probe_thin=0.000000 far_probe_ordinary=0.000000 thin_probe_far=0.000000 thin_probe_thin=0.003906 thin_probe_ordinary=0.000000
 SAMPLE rotation weight, mixed row: far-weight pixels bit-identical to off on both targets actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 SAMPLE rotation weight, mixed row: thin-region pixels bit-identical to off on both targets actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 SAMPLE rotation weight, mixed row: ordinary pixels differ from off by at least 0.01 (min(diff, 0.01)) actual=0.010000000 expected=0.010000000 tolerance=0.000000000 PASS
 SAMPLE rotation weight, mixed row: the far-weight probe moves far pixels only, the thin-weight probe thin pixels only actual=1.000000000 expected=1.000000000 tolerance=0.000000000 PASS
+CHECK mw far-camera program available PASS
+CHECK mw keep-out twin substituted once PASS
+CHECK mw motion target equals the producer contract PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK rotation weight: the contour row reads blend-path weights across the ramp PASS
+MOTION_WEIGHT_ROTATION_CONTOUR program=far_camera pan_px=12.00 weight=0.900 on=0 pairs=46020 slopes=444 max_step=0.001953 slope=0.001010 keep_contour=0.8999 keep_full_far=0.9646
+CHECK mw far-camera program available PASS
+CHECK mw keep-out twin substituted once PASS
+CHECK mw motion target equals the producer contract PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK rotation weight: the contour row reads blend-path weights across the ramp PASS
+MOTION_WEIGHT_ROTATION_CONTOUR program=far_camera pan_px=12.00 weight=0.900 on=1 pairs=46020 slopes=444 max_step=0.005859 slope=0.004138 keep_contour=0.6997 keep_full_far=0.9646
+SAMPLE rotation weight, contour row: the history weight is continuous across the far-weight contour (largest neighbour step within twice the ramp's slope, the slope above 0.002) actual=1.000000000 expected=1.000000000 tolerance=0.000000000 PASS
 CAMERA_CASES
 CHECK camera pose validates PASS
 CHECK camera sequence keeps a history PASS
@@ -13461,11 +13568,118 @@ CHECK mw history follows the sequence PASS
 CHECK mw history follows the sequence PASS
 CHECK mw history follows the sequence PASS
 CHECK rotation weight: the mixed row holds far, thin and ordinary pixels PASS
-MOTION_WEIGHT_ROTATION_CLASSES program=far_camera pan_px=12.00 weight=0.900 far_px=75636 thin_px=9168 ordinary_px=114600 far_diff=0.000000 thin_diff=0.000000 ordinary_diff=0.141113 far_age_diff=0.000000 thin_age_diff=0.000000 ordinary_age_diff=0.000000 far_probe_far=0.010254 far_probe_thin=0.000000 far_probe_ordinary=0.000000 thin_probe_far=0.000000 thin_probe_thin=0.003906 thin_probe_ordinary=0.000000
+MOTION_WEIGHT_ROTATION_CLASSES program=far_camera pan_px=12.00 weight=0.900 far_px=60144 thin_px=6516 ordinary_px=81528 far_diff=0.000000 thin_diff=0.000000 ordinary_diff=0.056152 far_age_diff=0.000000 thin_age_diff=0.000000 ordinary_age_diff=0.000000 far_probe_far=0.010254 far_probe_thin=0.000000 far_probe_ordinary=0.000000 thin_probe_far=0.000000 thin_probe_thin=0.003906 thin_probe_ordinary=0.000000
 SAMPLE rotation weight, mixed row: far-weight pixels bit-identical to off on both targets actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 SAMPLE rotation weight, mixed row: thin-region pixels bit-identical to off on both targets actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 SAMPLE rotation weight, mixed row: ordinary pixels differ from off by at least 0.01 (min(diff, 0.01)) actual=0.010000000 expected=0.010000000 tolerance=0.000000000 PASS
 SAMPLE rotation weight, mixed row: the far-weight probe moves far pixels only, the thin-weight probe thin pixels only actual=1.000000000 expected=1.000000000 tolerance=0.000000000 PASS
+CHECK mw far-camera program available PASS
+CHECK mw keep-out twin substituted once PASS
+CHECK mw motion target equals the producer contract PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK rotation weight: the contour row reads blend-path weights across the ramp PASS
+MOTION_WEIGHT_ROTATION_CONTOUR program=far_camera pan_px=12.00 weight=0.900 on=0 pairs=46020 slopes=444 max_step=0.001953 slope=0.001010 keep_contour=0.8999 keep_full_far=0.9646
+CHECK mw far-camera program available PASS
+CHECK mw keep-out twin substituted once PASS
+CHECK mw motion target equals the producer contract PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK mw history follows the sequence PASS
+CHECK rotation weight: the contour row reads blend-path weights across the ramp PASS
+MOTION_WEIGHT_ROTATION_CONTOUR program=far_camera pan_px=12.00 weight=0.900 on=1 pairs=46020 slopes=444 max_step=0.005859 slope=0.004138 keep_contour=0.6997 keep_full_far=0.9646
+SAMPLE rotation weight, contour row: the history weight is continuous across the far-weight contour (largest neighbour step within twice the ramp's slope, the slope above 0.002) actual=1.000000000 expected=1.000000000 tolerance=0.000000000 PASS
 CAMERA_CASES
 CHECK camera pose validates PASS
 CHECK camera sequence keeps a history PASS
@@ -14853,4 +15067,4 @@ CHECK the refused run left the main target untouched PASS
 CHECK draw copy mode with an FP16 input PASS
 CHECK route atomic outputs valid PASS
 CHECK an FP16 input takes no copy in draw mode PASS
-RESULT PASS numerical=772 state_restorations=278 generations=2
+RESULT PASS numerical=774 state_restorations=278 generations=2

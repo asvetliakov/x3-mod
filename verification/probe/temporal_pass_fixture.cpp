@@ -14,6 +14,7 @@
 #include <cstring>
 #include <fstream>
 #include <iterator>
+#include <memory>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -3708,6 +3709,36 @@ std::vector<std::vector<float>> lattice_model(const EdgeRun& run, double w) {
 // constant 0.8725 (F 0.8725, V0 0, V1 0.5: the ramp's A and B are checked at a binding point, a wrong B fails) and at
 // least 0.01 from off; 12.5 E ratio at least 1.5x off's and its ripple at most 2.5x off's (the first run
 // measured 2.06x).
+// The rotation rows' contour row (taa-motion-history-weight.md section 10): substitutes the X3M_KEEP_OUT twin for the
+// embedded hold program at CreatePixelShader (slot 106) while alive.
+struct KeepSwap {
+    using Create = HRESULT(WINAPI*)(IDirect3DDevice9*, const DWORD*, IDirect3DPixelShader9**);
+    static inline Create original = nullptr;
+    static inline const DWORD* twin = nullptr;
+    static inline unsigned swapped = 0;
+    void** previous;
+    void* table[119];
+    IDirect3DDevice9* device;
+    static HRESULT WINAPI hook(IDirect3DDevice9* dev, const DWORD* words, IDirect3DPixelShader9** out) {
+        if (words == reinterpret_cast<const DWORD*>(x3m::renderer::temporal_resolve_far_camera_hold_program())) {
+            ++swapped;
+            words = twin;
+        }
+        return original(dev, words, out);
+    }
+    KeepSwap(IDirect3DDevice9* dev, const DWORD* program)
+        : previous(*reinterpret_cast<void***>(dev))
+        , device(dev) {
+        std::copy(previous, previous + 119, table);
+        std::memcpy(&original, &table[106], sizeof original);
+        auto fn = &hook;
+        std::memcpy(&table[106], &fn, sizeof fn);
+        twin = program;
+        swapped = 0;
+        *reinterpret_cast<void***>(dev) = table;
+    }
+    ~KeepSwap() { *reinterpret_cast<void***>(device) = previous; }
+};
 void motion_weight_cases(IDirect3DDevice9* d, Compiler compiler, const DWORD* decoder, const DWORD* resolver) {
     std::puts("MOTION_WEIGHT_CASES");
     constexpr UINT W = 512, H = 16, P = 16;
@@ -3740,11 +3771,18 @@ void motion_weight_cases(IDirect3DDevice9* d, Compiler compiler, const DWORD* de
     // The rotation rows' mixed layout (section 10 of taa-motion-history-weight.md): device depth by the content column
     // m = (x - c.x) mod 128 (c.x the content's displacement, so the layout is world-static like the stripe): far (c.z)
     // below m 48, the hull (c.y) elsewhere, the sentinel -1 at m 88 (the fragmented-depth search flags |m - 88| <= 2).
+    // c.w = 1, the contour layout: r = (x - c.x) mod 256, a depth ramp 0.9997 + r x 1.5625e-6 below r 128 (through the
+    // far gate's d0 0.9998 at r 64: farw (r - 64) / 64), 0.9999 (farw 1) above; no class change inside the ramp.
     compile(
         compiler,
         "float4 c:register(c0);float4 main(float2 vpos:VPOS):COLOR0{float u=floor(vpos.x)-c.x;float m=u-128*floor(u/128);"
-        "float d=m<48?c.z:c.y;d=abs(m-88)<0.5?-1:d;return float4(d,d,d,1);}",
+        "float d=m<48?c.z:c.y;d=abs(m-88)<0.5?-1:d;float r=u-256*floor(u/256);"
+        "d=c.w>0.5?(r<128?0.9997+r*1.5625e-6:0.9999):d;return float4(d,d,d,1);}",
         "ps_3_0", &layoutCode.p);
+    // The contour row reads the history weight itself: the hold program's X3M_KEEP_OUT twin (fixture only,
+    // resolve.hlsl), substituted for the embedded words (KeepSwap) while a keep-out pass initialises.
+    Com<ID3DXBuffer> keepCode;
+    compile(compiler, "#define X3M_REGION_HOLD 1\n#define X3M_KEEP_OUT 1\n" + resolveSource, "ps_3_0", &keepCode.p);
     check("mw layout PS", d->CreatePixelShader(static_cast<DWORD*>(layoutCode->GetBufferPointer()), &layoutPS.p));
     compile(
         compiler,
@@ -3807,17 +3845,24 @@ void motion_weight_cases(IDirect3DDevice9* d, Compiler compiler, const DWORD* de
     // which pixels the far and thin-region weights govern.
     struct Extra {
         const float* rotation = nullptr;
-        bool nearGate = false, mixed = false;
+        bool nearGate = false, mixed = false, contour = false, keepOut = false;
         float farWeight = 0, thinWeight = 0;
     };
     auto sequence = [&](unsigned program, double v, double pan, const float* triple, bool comove = false,
                         float weight = .9f, const Extra* extra = nullptr) {
         TemporalPass pass;
-        check("mw initialize", pass.initialize(d, decoder, resolver));
-        if (program) {
-            check("mw configure far", pass.configure_far());
-            require(pass.far_available() && pass.camera_gate_available(), "mw far-camera program available");
-        } else {
+        {
+            std::unique_ptr<KeepSwap> swap;
+            if (extra && extra->keepOut)
+                swap = std::make_unique<KeepSwap>(d, static_cast<const DWORD*>(keepCode->GetBufferPointer()));
+            check("mw initialize", pass.initialize(d, decoder, resolver));
+            if (program) {
+                check("mw configure far", pass.configure_far());
+                require(pass.far_available() && pass.camera_gate_available(), "mw far-camera program available");
+            }
+            if (extra && extra->keepOut) require(KeepSwap::swapped == 1, "mw keep-out twin substituted once");
+        }
+        if (!program) {
             check("mw configure flicker", pass.configure_flicker());
             require(pass.age_available(), "mw age program available");
         }
@@ -3846,11 +3891,12 @@ void motion_weight_cases(IDirect3DDevice9* d, Compiler compiler, const DWORD* de
             }
             s.quad(0, 0, W, H, 0, 0);
             check("mw motion End", d->EndScene());
-            const bool mixed = extra && extra->mixed;
+            const bool contour = extra && extra->contour, mixed = (extra && extra->mixed) || contour;
             target(depthSurface.p, mixed ? layoutPS.p : s.flat.p);
             check("mw depth Begin", d->BeginScene());
             {
-                const float c[4] = {mixed ? float(disp) : hullDepth, mixed ? hullDepth : 0.f, mixed ? .99995f : 0.f, 0};
+                const float c[4] = {mixed ? float(disp) : hullDepth, mixed ? hullDepth : 0.f, mixed ? .99995f : 0.f,
+                                    contour ? 1.f : 0.f};
                 check("mw depth constant", d->SetPixelShaderConstantF(0, c, 1));
             }
             s.quad(0, 0, W, H, 0, 0);
@@ -3907,7 +3953,7 @@ void motion_weight_cases(IDirect3DDevice9* d, Compiler compiler, const DWORD* de
                 in.motion_weight_rotation_v0 = extra->rotation[1];
                 in.motion_weight_rotation_v1 = extra->rotation[2];
             }
-            if (program && extra && (extra->nearGate || extra->mixed)) {
+            if (program && extra && (extra->nearGate || extra->mixed || extra->contour)) {
                 in.far_d0 = .9998f;
                 in.far_inv = 1.f / (.9999f - .9998f);
             }
@@ -4177,6 +4223,10 @@ void motion_weight_cases(IDirect3DDevice9* d, Compiler compiler, const DWORD* de
             for (UINT y = Y0; y < Y1; ++y)
                 for (UINT x = 2; x + 2 < W; ++x) {
                     const long u = long(x) - std::lround(rOff.d[n]), m = ((u % 128) + 128) % 128;
+                    // Content on screen since frame 0 only: its whole lineage is old (the base weight capped first,
+                    // a far or thin-region pixel whose target exceeds the capped base blends to that target exactly);
+                    // content entering under the pan is young and its thin-region weight is the (capped) base.
+                    if (u < 3 || u >= long(W) - 3) continue;
                     const int cls = m >= 8 && m <= 40                               ? 0
                                     : (m >= 86 && m <= 90 && m != 88)               ? 1
                                     : (m >= 56 && m <= 80) || (m >= 96 && m <= 120) ? 2
@@ -4211,6 +4261,49 @@ void motion_weight_cases(IDirect3DDevice9* d, Compiler compiler, const DWORD* de
                 ? 1
                 : 0,
             1, 0);
+        // The contour row (far-camera program, yaw 12 px/frame, base 0.9): the keep-out twin's history weight across
+        // the far-weight contour of a depth ramp (farw 0 below content r 64, rising 1/64 per px to 1 at r 128). With
+        // the cap on the base weight before the far lerp the weight is continuous: the largest step between horizontal
+        // neighbours (r 48..144, blend path, content on screen since frame 0, from two frames after the turn starts)
+        // stays within twice the ramp's own slope (keep(r 128) - keep(r 64)) / 64 (farw's 1 / 255 quantisation and
+        // FP16).
+        for (unsigned m = 0; m < 2; ++m) {
+            Extra c{};
+            c.contour = c.keepOut = true;
+            c.rotation = m ? rotation : nullptr;
+            const Run r = sequence(1, 0, pan, nullptr, false, .9f, &c);
+            // The twin writes -keep on the blend path; a current-only pixel keeps its stripe colour (>= 0.25).
+            double step = 0, slopeSum = 0, lowSum = 0, highSum = 0;
+            unsigned pairs = 0, slopes = 0;
+            for (unsigned n = moveFrom + 2; n < frames; ++n) {
+                const long shift = std::lround(r.d[n]);
+                for (UINT y = Y0; y < Y1; ++y) {
+                    const float* o = &r.output[n][std::size_t(y) * W];
+                    for (UINT x = 2; x + 3 < W; ++x) {
+                        const long u = long(x) - shift, rr = ((u % 256) + 256) % 256;
+                        if (u < 3 || rr < 48 || rr >= 143 || !(o[x] <= 0) || !(o[x + 1] <= 0)) continue;
+                        step = std::max(step, double(std::fabs(o[x + 1] - o[x])));
+                        ++pairs;
+                        if (rr == 64 && x + 64 + 3 < W && o[x + 64] <= 0) {
+                            lowSum += -o[x];
+                            highSum += -o[x + 64];
+                            slopeSum += (o[x] - o[x + 64]) / 64.;
+                            ++slopes;
+                        }
+                    }
+                }
+            }
+            require(pairs > 0 && slopes > 0,
+                    "rotation weight: the contour row reads blend-path weights across the ramp");
+            const double slope = slopeSum / slopes;
+            std::printf(
+                "MOTION_WEIGHT_ROTATION_CONTOUR program=far_camera pan_px=%.2f weight=0.900 on=%u pairs=%u slopes=%u max_step=%.6f slope=%.6f keep_contour=%.4f keep_full_far=%.4f\n",
+                pan, m, pairs, slopes, step, slope, lowSum / slopes, highSum / slopes);
+            if (m)
+                metric("rotation weight, contour row: the history weight is continuous across the far-weight contour "
+                       "(largest neighbour step within twice the ramp's slope, the slope above 0.002)",
+                       step <= 2 * slope && slope > .002 ? 1 : 0, 1, 0);
+        }
     }
     if (!deferredFailures.empty()) throw std::runtime_error(deferredFailures.front());
 }

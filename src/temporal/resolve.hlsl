@@ -191,6 +191,8 @@ float4 luminance : register(c22); // k, current-filter A, alpha history (X3M_THI
 // colour in place: the full-resolution reference box.
 // X3M_FOLD_TESTS_OUT (fixture only, with X3M_REGION_HOLD): COLOR0 = the tests
 // (r, g, b, a) above and nothing else, for the temporal fixture's oracle.
+// X3M_KEEP_OUT (fixture only, with X3M_REGION_HOLD): COLOR0 = the blend's history weight on the blend path (the
+// rotation-aware weight's contour row, taa-motion-history-weight.md section 10).
 #ifdef X3M_REGION_HOLD
 #define X3M_CAMERA_GATE 1
 float4 depthParallax : register(c8); // camera_depth_parallax(): (DX, DY, DW) / m32, m22; xyz = 0 is the far-plane path
@@ -1022,23 +1024,21 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
 #ifdef X3M_REGION_HOLD
     farOpen = holdGate.x > 0.5 ? farOpen : openC;
 #endif
+#ifdef X3M_ROTATION_WEIGHT
+    // The rotation-aware cap on the BASE weight, before the far and thin-region lerps (the sky band keeps it): continuous
+    // in g * farOpen and b, so no seam where the far weight starts; a pixel at the full far or thin-region weight
+    // (g * farOpen = 1 or b = 1 with its target above the capped base) blends to its target exactly. Off: min(w, 1) = w.
+    keep = band > 0 ? keep : min(keep, turnCap);
+#endif
     float farKeep = keep + stabilise.g * farOpen * (min(ramp, flicker.y) - keep);
     keep = stabilise.b > 0 ? max(farKeep, keep + stabilise.b * (min(ramp, history.x) - keep)) : farKeep;
     keep = keeping >= 0 ? keep : 0; // the exit reset (the adaptive form above is 0 through the age)
-#ifdef X3M_ROTATION_WEIGHT
-    // Ordinary pixel for the rotation cap: no far weight in effect (g * farOpen 0), no thin-region weight (b 0) and not
-    // the sky band. Every other pixel keeps its weight exactly (a select, never a blend with the cap).
-    float special = max(stabilise.g * farOpen, stabilise.b) + band;
-#endif
 #else
     keep = min(age / (age + 1), lerp(flicker.y, history.z, saturate((speed - flicker.z) * flicker.w)));
 #ifdef X3M_ROTATION_WEIGHT
-    float special = band;
+    // The rotation-aware cap (no far or thin-region weight on this program; the sky band keeps its weight).
+    keep = band > 0 ? keep : min(keep, turnCap);
 #endif
-#endif
-#ifdef X3M_ROTATION_WEIGHT
-    // The rotation-aware cap (min never raises a weight; exactly keep when off: turnCap is 1 and keep <= 1).
-    keep = special > 0 ? keep : min(keep, turnCap);
 #endif
     // The motion history weight's cap (computed with the depth proof above): min never raises a
     // weight (young pixels, the exit reset's 0); before the alpha history so it uses the same weight.
@@ -1071,6 +1071,11 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     float aged = min(age + 1, 64);
 #ifdef X3M_REGION_HOLD
     aged += holds; // the count and this frame's holds; the sign below stays the exit mark
+#endif
+#ifdef X3M_KEEP_OUT
+    // Fixture only (with X3M_REGION_HOLD): COLOR0 = (-keep, -2, 0, 1) on the blend path, the age chain as usual; a
+    // current-only return keeps its (non-negative) colour, so the fixture reads the history weight per pixel.
+    return emit(float4(-keep, -2, 0, 1), -exiting >= 0 ? aged : -aged);
 #endif
     return emit(float4(unweigh(lerp(weighted, old, keep)), alpha), -exiting >= 0 ? aged : -aged);
 #else

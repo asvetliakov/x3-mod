@@ -816,8 +816,8 @@ public:
         motion_weight_[2] = ok ? v1 : 8.f;
     }
     // X3M_TAA_MOTION_WEIGHT_ROTATION=F[,V0,V1] (opt-in; absent or 0 off, else 0.5..0.98, 0 <= V0 < V1 <= 64 px/frame,
-    // default 2,8; docs/architecture/taa-motion-history-weight.md section 10): the age programs cap an ordinary pixel's
-    // history keep weight over the screen displacement the camera rotation alone produces: FrameInputs::
+    // default 2,8; docs/architecture/taa-motion-history-weight.md section 10): the age programs cap the base history
+    // keep weight over the screen displacement the camera rotation alone produces: FrameInputs::
     // motion_weight_rotation whenever the camera path is in effect (policy 2: c0..c3 is then the rotation-only path).
     // Needs an age program, like X3M_TAA_MOTION_WEIGHT (taa_initialize logs it unavailable and drops it otherwise).
     void configure_motion_weight_rotation(float f, float v0, float v1) noexcept {

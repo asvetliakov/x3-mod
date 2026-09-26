@@ -11,13 +11,13 @@ CHECK embedded_snapshot within the 2048-slot ceiling PASS
 RESOLVE_BUDGET variant=embedded_thin dwords=2013 instruction_slots=517 device_limit=512 headroom=-5 within_ceiling_2048=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_thin within the 2048-slot ceiling PASS
-RESOLVE_BUDGET variant=embedded_age dwords=2143 instruction_slots=544 device_limit=512 headroom=-32 within_ceiling_2048=1
+RESOLVE_BUDGET variant=embedded_age dwords=2193 instruction_slots=555 device_limit=512 headroom=-43 within_ceiling_2048=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_age within the 2048-slot ceiling PASS
 RESOLVE_BUDGET variant=embedded_line_mask dwords=1574 instruction_slots=428 device_limit=512 headroom=84 within_ceiling_2048=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_line_mask within the 2048-slot ceiling PASS
-RESOLVE_BUDGET variant=embedded_far dwords=2144 instruction_slots=545 device_limit=512 headroom=-33 within_ceiling_2048=1
+RESOLVE_BUDGET variant=embedded_far dwords=2194 instruction_slots=556 device_limit=512 headroom=-44 within_ceiling_2048=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_far within the 2048-slot ceiling PASS
 RESOLVE_BUDGET variant=embedded_line_mask_depth dwords=1554 instruction_slots=420 device_limit=512 headroom=92 within_ceiling_2048=1
@@ -26,19 +26,7 @@ CHECK embedded_line_mask_depth within the 2048-slot ceiling PASS
 RESOLVE_BUDGET variant=embedded_line_mask_depth_thin dwords=1583 instruction_slots=435 device_limit=512 headroom=77 within_ceiling_2048=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_line_mask_depth_thin within the 2048-slot ceiling PASS
-RESOLVE_BUDGET variant=embedded_plain_taps16 dwords=1681 instruction_slots=432 device_limit=512 headroom=80 within_ceiling_2048=1
-CHECK resolve instruction budget parsed for ps_3_0 PASS
-CHECK embedded_plain_taps16 within the 2048-slot ceiling PASS
-RESOLVE_BUDGET variant=embedded_thin_taps16 dwords=1818 instruction_slots=465 device_limit=512 headroom=47 within_ceiling_2048=1
-CHECK resolve instruction budget parsed for ps_3_0 PASS
-CHECK embedded_thin_taps16 within the 2048-slot ceiling PASS
-RESOLVE_BUDGET variant=embedded_age_taps16 dwords=1947 instruction_slots=494 device_limit=512 headroom=18 within_ceiling_2048=1
-CHECK resolve instruction budget parsed for ps_3_0 PASS
-CHECK embedded_age_taps16 within the 2048-slot ceiling PASS
-RESOLVE_BUDGET variant=embedded_far_taps16 dwords=1948 instruction_slots=493 device_limit=512 headroom=19 within_ceiling_2048=1
-CHECK resolve instruction budget parsed for ps_3_0 PASS
-CHECK embedded_far_taps16 within the 2048-slot ceiling PASS
-RESOLVE_BUDGET variant=embedded_far_camera_hold dwords=3878 instruction_slots=1017 device_limit=512 headroom=-505 within_ceiling_2048=1
+RESOLVE_BUDGET variant=embedded_far_camera_hold dwords=3928 instruction_slots=1028 device_limit=512 headroom=-516 within_ceiling_2048=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_far_camera_hold within the 2048-slot ceiling PASS
 RESOLVE_BUDGET variant=embedded_thin_box_hold dwords=279 instruction_slots=59 device_limit=512 headroom=453 within_ceiling_2048=1
@@ -1146,9 +1134,9 @@ LINE_CASES
 CHECK line timing: camera-gate programs created PASS
 CHECK line timing: camera-gate programs created PASS
 CHECK line timing: camera-gate programs created PASS
-LINE_TIMING width=1280 height=768 content=all_geometry rounds=6 plain_ms=0.6093 far_stabiliser_ms=0.7044 thin_region_ms=1.2018 far_delta_ms=0.0950 thin_region_delta_ms=0.5924 scope=cpu_wall_with_event_query_drain
-LINE_TIMING_CAMERA width=1280 height=768 rounds=6 no_region_thin_ms=1.2018 no_region_camera_ms=0.9632 no_region_camera_delta_ms=-0.2386 fragmented_pan_thin_ms=1.0067 fragmented_pan_camera_ms=1.1811 fragmented_pan_camera_delta_ms=0.1745 scope=cpu_wall_with_event_query_drain
-LINE_TIMING_CAMERA_LANE width=1280 height=768 rounds=6 r32f_camera_ms=1.1811 lane_input_law_ms=1.2285 lane_input_lane_ms=1.2060 lane_fetch_delta_ms=-0.0225 lane_input_over_r32f_ms=0.0474 scope=cpu_wall_with_event_query_drain
+LINE_TIMING width=1280 height=768 content=all_geometry rounds=6 plain_ms=0.6009 far_stabiliser_ms=0.6912 thin_region_ms=1.2415 far_delta_ms=0.0903 thin_region_delta_ms=0.6406 scope=cpu_wall_with_event_query_drain
+LINE_TIMING_CAMERA width=1280 height=768 rounds=6 no_region_thin_ms=1.2415 no_region_camera_ms=0.9942 no_region_camera_delta_ms=-0.2473 fragmented_pan_thin_ms=1.1871 fragmented_pan_camera_ms=1.4380 fragmented_pan_camera_delta_ms=0.2508 scope=cpu_wall_with_event_query_drain
+LINE_TIMING_CAMERA_LANE width=1280 height=768 rounds=6 r32f_camera_ms=1.4380 lane_input_law_ms=1.5069 lane_input_lane_ms=1.5057 lane_fetch_delta_ms=-0.0011 lane_input_over_r32f_ms=0.0689 scope=cpu_wall_with_event_query_drain
 LINE_BASE numerical=190 state_restorations=4
 FAR_CASES
 FAR_GATE ok=1 d0=0.99985647 inv=17734.900 expected_d0=0.99985652 expected_inv=17749.280
@@ -1347,26 +1335,6 @@ CHECK far history follows the sequence (a mask fallback included) PASS
 FAR_SPEED_GATE_CUSTOM lo=0.100 hi=0.600 ratio_v0.14=0.2218 ratio_v0.30=0.4923 default_v0.14=0.5772 oracle_error=0.000244
 SAMPLE far custom speed gate: shader matches the oracle evaluated with that gate actual=0.000244141 expected=0.000000000 tolerance=0.040000000 PASS
 CHECK a non-default speed gate is followed (a hard-coded default would give the default ramp) PASS
-CHECK far-stabiliser program created on this device PASS
-CHECK far history follows the sequence (a mask fallback included) PASS
-CHECK far-stabiliser program created on this device PASS
-CHECK far history follows the sequence (a mask fallback included) PASS
-CHECK far stabiliser alone: the 16-tap program is bit-identical to the flown resolve_far program PASS
-CHECK far-stabiliser program created on this device PASS
-CHECK far history follows the sequence (a mask fallback included) PASS
-CHECK far-stabiliser program created on this device PASS
-CHECK far history follows the sequence (a mask fallback included) PASS
-CHECK far stabiliser alone: the 16-tap program is bit-identical to the flown resolve_far program PASS
-CHECK far-stabiliser program created on this device PASS
-CHECK far history follows the sequence (a mask fallback included) PASS
-CHECK far-stabiliser program created on this device PASS
-CHECK far history follows the sequence (a mask fallback included) PASS
-CHECK far stabiliser alone: the 16-tap program is bit-identical to the flown resolve_far program PASS
-CHECK far-stabiliser program created on this device PASS
-CHECK far history follows the sequence (a mask fallback included) PASS
-CHECK far-stabiliser program created on this device PASS
-CHECK far history follows the sequence (a mask fallback included) PASS
-CHECK far stabiliser alone: the 16-tap program is bit-identical to the flown resolve_far program PASS
 CHECK far history follows the sequence (a mask fallback included) PASS
 CHECK far-stabiliser program created on this device PASS
 CHECK far history follows the sequence (a mask fallback included) PASS
@@ -1376,7 +1344,7 @@ CHECK far history follows the sequence (a mask fallback included) PASS
 CHECK far stabiliser with inv = 0 (no valid projection) is the plain resolve bit for bit PASS
 CHECK mask-target creation failure: option off for the session, plain resolve bit for bit, history kept PASS
 CHECK mask failure is sticky within the session and re-armed once by a Reset PASS
-FAR_BASE numerical=299 state_restorations=6
+FAR_BASE numerical=295 state_restorations=6
 THIN_REGION_CASES
 CHECK thin region without configure_far is refused PASS
 CHECK thin-region weight outside {0} U [weight, 0.99] is refused PASS
@@ -5645,7 +5613,7 @@ CHECK fold after Reset restores the hostile state PASS
 CHECK fold: a far-program run publishes the colour, depth and age targets and, off the camera gate, the mask PASS
 DEPTH_FOLD_RESET before_folded=2 before_history=1 after_folded=2 after_history=1 bytes_differ=0,0,0,0
 CHECK fold: a device Reset drops the history and the fold resumes byte-identical to the R32F twin PASS
-DEPTH_FOLD_BASE numerical=452 state_restorations=72
+DEPTH_FOLD_BASE numerical=448 state_restorations=72
 HISTORY_TAPS_CASES
 FILTER_PROBE format=fp16 mode=centre width=32 mismatched=0 max_error=0.00000000
 CHECK LINEAR filter at every texel centre addressed as the resolve does returns that texel bit for bit PASS
@@ -5663,484 +5631,10 @@ FILTER_PROBE format=r32f mode=centre width=5120 mismatched=0 max_error=0.0000000
 CHECK LINEAR filter at every texel centre addressed as the resolve does returns that texel bit for bit PASS
 FILTER_PROBE format=r32f mode=fraction samples=1024 max_error=0.00195312 mean_error=0.00097656 half_way=0.500000
 CHECK LINEAR filter interpolates between texels (not point, not beyond 1/128) PASS
-HISTORY_TAPS_CONFIG bilinear=1 reason=ok invalid_refused=1 set=1
-CHECK history taps: 5 / 16 accepted, anything else refused; the FP16 / R32F filter query passes on this device PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-HISTORY_TAPS program=plain motion=rest frames=32 differing=0 max_abs=0.00000000 max_ulps=0.00 max_bound_ratio=0.0000 bound_exceeded=0 drawn=1 caller_16_identical=1
-CHECK history taps: Diagnostics::history_taps names the program drawn; 16 binds the embedded 16-tap words PASS
-CHECK history taps: a still scene is identical within one FP16 ulp (Catmull-Rom of a constant history is the constant) PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-HISTORY_TAPS program=plain motion=drift frames=32 differing=17619 max_abs=0.01708984 max_ulps=54.00 max_bound_ratio=0.0253 bound_exceeded=0 drawn=1 caller_16_identical=1
-CHECK history taps: Diagnostics::history_taps names the program drawn; 16 binds the embedded 16-tap words PASS
-CHECK history taps: under diagonal drift the forms differ and the plain program's difference stays within w times the current 3x3 range PASS
-CHECK taps: far programs available PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: far programs available PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-HISTORY_TAPS program=far motion=rest frames=32 differing=0 max_abs=0.00000000 max_ulps=0.00 max_bound_ratio=0.0000 bound_exceeded=0 drawn=1 caller_16_identical=1
-CHECK history taps: Diagnostics::history_taps names the program drawn; 16 binds the embedded 16-tap words PASS
-CHECK history taps: a still scene is identical within one FP16 ulp (Catmull-Rom of a constant history is the constant) PASS
-CHECK taps: far programs available PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: far programs available PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-HISTORY_TAPS program=far motion=drift frames=32 differing=17619 max_abs=0.01708984 max_ulps=54.00 max_bound_ratio=0.0253 bound_exceeded=0 drawn=1 caller_16_identical=1
-CHECK history taps: Diagnostics::history_taps names the program drawn; 16 binds the embedded 16-tap words PASS
-CHECK history taps: under diagonal drift the far forms differ (reported) PASS
-HISTORY_TAPS_FAR_IDLE motion=rest far_equals_plain=0 mask_max_r=0.0000 mask_max_g=0.0000 mask_max_b=1.0000 mask_max_a=0.0000
-HISTORY_TAPS_FAR_IDLE motion=drift far_equals_plain=1 mask_max_r=0.0000 mask_max_g=0.0000 mask_max_b=0.0000 mask_max_a=0.0000
-CHECK taps: the filter query reached GetDirect3D PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-HISTORY_TAPS_FALLBACK program=plain bilinear=0 reason=adapter_query drawn_16=1 identical_to_16=1
-CHECK history taps: without the filter query every run draws the 16-tap programs, byte-identical PASS
-CHECK taps: the filter query reached GetDirect3D PASS
-CHECK taps: far programs available PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: far programs available PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-CHECK taps: history follows the sequence PASS
-HISTORY_TAPS_FALLBACK program=far bilinear=0 reason=adapter_query drawn_16=1 identical_to_16=1
-CHECK history taps: without the filter query every run draws the 16-tap programs, byte-identical PASS
-HISTORY_TAPS_NO_FILTER_CAMERA bilinear=0 far=1 camera_gate=0 create=8876086a camera_run_refused=1
-CHECK history taps: without the filter query no camera-gate program is created (no fallback set) and a camera-gate run is refused; the far program stays PASS
+HISTORY_TAPS_NO_FILTER bilinear=0 reason=adapter_query initialize=8876086a references=0
+CHECK history taps: without the filter query initialize is refused (no fallback program set) and holds no device reference PASS
+HISTORY_FILTER_QUERY refused=8876086a refused_reason=adapter_query passed=00000000 passed_reason=ok references=0
+CHECK history taps: the standalone filter query refuses without the adapter query, passes on this backend and holds no reference PASS
 CHECK taps: history follows the sequence PASS
 CHECK taps: history follows the sequence PASS
 CHECK taps: history follows the sequence PASS
@@ -6150,7 +5644,7 @@ CHECK taps: history follows the sequence PASS
 CHECK taps: history follows the sequence PASS
 HISTORY_TAPS_RESET before_frames=2 drawn_5=1 identical_to_fresh=1
 CHECK history taps: a 5-tap pass across a device Reset resumes from an empty history, byte-identical to a fresh pass PASS
-HISTORY_TAPS_BASE numerical=473 state_restorations=72
+HISTORY_TAPS_BASE numerical=459 state_restorations=72
 REGION_HOLD_CASES
 CHECK hold identity: fold tests program compiled PASS
 REGION_HOLD_IDENTITY_REFERENCE words=2196 fnv1a=457159f1f8e5c6b3 removed_words=2196 removed_fnv1a=457159f1f8e5c6b3 identical=1
@@ -6176,11 +5670,11 @@ CHECK failed box / resolve draw of a hold run publishes nothing PASS
 CHECK after a failed hold run the resolve restarts without history PASS
 CHECK Reset keeps the camera-gate programs and restarts the history PASS
 CHECK a run from a non-hostile start restores the stream offsets set after the block was created PASS
-REGION_HOLD_STATE refused_path=1 refused_create=8876017c two_targets_refused=1 rt2_restored=1 streams_restored=1 screen_restarts=1 screen_continues=1 camera_keeps=1 taps16_refused=1 taps5_camera=1 masks_camera=0 masks_screen=2 masks_on=0 masks_at_reset=0 masks_after_reset=0 box_refused_region_off=1 masks_box_refused=0 rearmed=1
+REGION_HOLD_STATE refused_path=1 refused_create=8876017c two_targets_refused=1 rt2_restored=1 streams_restored=1 screen_restarts=1 screen_continues=1 camera_keeps=1 taps5_camera=1 masks_camera=0 masks_screen=2 masks_on=0 masks_at_reset=0 masks_after_reset=0 box_refused_region_off=1 masks_box_refused=0 rearmed=1
 CHECK hold resolve refused at creation: no camera-gate program, a camera-gate run refused, the screen gate runs PASS
 CHECK two simultaneous render targets: no camera-gate path (the folded resolve writes three), a camera-gate run refused, the screen gate runs PASS
 CHECK RT2 and its colour-write mask restored; stream offsets restored from a non-hostile start PASS
-CHECK leaving the camera gate restarts the history once, coming back keeps it; 16 taps refuse a camera-gate run PASS
+CHECK leaving the camera gate restarts the history once, coming back keeps it; the camera gate draws 5 taps PASS
 CHECK mask targets: none on a camera-gate run (both released: the mask fold), two on the screen gate, none across Reset or after it PASS
 CHECK box targets refused on a camera-gate run: the thin region off for the session (plain resolve, no mask, history kept), no retry until Reset PASS
 CHECK thin-region history follows the sequence PASS
@@ -7796,7 +7290,7 @@ SAMPLE fade owner: age matches the oracle actual=0.000000000 expected=0.00000000
 SAMPLE fade owner: the published tests target equals the CPU tests draw actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
 CHECK fade owner: before the switch the run is the always-masked run bit for bit PASS
 CHECK fade owner: the class change opens the region at most once per pixel, its extra hold lasts at most L + 1 frames PASS
-REGION_HOLD_BASE numerical=525 state_restorations=75
+REGION_HOLD_BASE numerical=511 state_restorations=75
 BOX_HALF_CASES
 CHECK half-resolution box run restores c0..c13, c22..c24, samplers 0..3 and 7..10, RT1, RT2, COLORWRITEENABLE1 and the viewport PASS
 BOX_HALF_STATE settings=1 refused_program_full_identical=1 half_targets=1 hostile_half=1 failed_draws=1 toggles_keep_history=1 targets_refused_full=1 rearmed=1 odd_size_full=1
@@ -9387,7 +8881,7 @@ BOX_HALF_CONTAINMENT scene=pan_stop frames=96 compared_px=97056 violations=0 mar
 CHECK half-resolution box contains the full-resolution box at every pixel and frame (and the 7x7 where only it runs); at rest the runs are identical PASS
 BOX_HALF_PAN_STOP pan=0.50 stop_frame=64 half_first8=1.983 full_first8=1.983 base_first8=21.072 half_next24=1.995 full_next24=1.995 base_next24=21.220
 CHECK half-resolution box, stop after a pan: step rms at most 0.15 x the plain resolve's, the 8 frames after the stop and the 24 after PASS
-BOX_HALF_BASE numerical=548 state_restorations=76
+BOX_HALF_BASE numerical=534 state_restorations=76
 THIN_SOURCE_CASES
 CHECK thin source: the twin created PASS
 CHECK thin source plain run restores the hostile state PASS
@@ -9452,7 +8946,7 @@ CHECK thin source Reset run restores the hostile state PASS
 CHECK thin source: a thin-region run publishes the colour, depth and age targets and, on the screen gate, the mask PASS
 THIN_SOURCE_RESET drawn_before=vote drawn_after=vote age_bytes_differ=0
 CHECK thin source: after a Reset the vote-only flags are drawn again unchanged PASS
-THIN_SOURCE_BASE numerical=561 state_restorations=90
+THIN_SOURCE_BASE numerical=547 state_restorations=90
 FOLD_TIMING_CASES
 CHECK fold timing: the camera gate ran with the half-resolution box PASS
 CHECK fold timing: the camera gate ran with the half-resolution box PASS
@@ -9479,11 +8973,11 @@ CHECK fold timing: the camera gate ran with the half-resolution box PASS
 CHECK fold timing: the camera gate ran with the half-resolution box PASS
 CHECK fold timing: the camera gate ran with the half-resolution box PASS
 CHECK fold timing: every boundary drained PASS
-FOLD_TIMING build=fold width=5120 height=1440 rounds=8 content=station motion=rest config=vote source_drawn=vote copy_ms=0.0255 mask_ms=0.0000 box_ms=1.0480 resolve_ms=2.8688 taa_ms=3.9423 run_ms=4.0448 scope=cpu_wall_with_event_query_drain_fixture
+FOLD_TIMING build=fold width=5120 height=1440 rounds=8 content=station motion=rest config=vote source_drawn=vote copy_ms=0.0271 mask_ms=0.0000 box_ms=1.0532 resolve_ms=2.8499 taa_ms=3.9303 run_ms=4.0390 scope=cpu_wall_with_event_query_drain_fixture
 CHECK fold timing: every boundary drained PASS
-FOLD_TIMING build=fold width=5120 height=1440 rounds=8 content=station motion=rest config=both source_drawn=both copy_ms=0.0177 mask_ms=0.0000 box_ms=1.1133 resolve_ms=2.8929 taa_ms=4.0239 run_ms=4.1115 scope=cpu_wall_with_event_query_drain_fixture
+FOLD_TIMING build=fold width=5120 height=1440 rounds=8 content=station motion=rest config=both source_drawn=both copy_ms=0.0184 mask_ms=0.0000 box_ms=1.0524 resolve_ms=2.8676 taa_ms=3.9385 run_ms=4.0202 scope=cpu_wall_with_event_query_drain_fixture
 CHECK fold timing: every boundary drained PASS
-FOLD_TIMING build=fold width=5120 height=1440 rounds=8 content=station motion=rest config=thin_vote_off source_drawn=both copy_ms=0.0167 mask_ms=0.0000 box_ms=0.8462 resolve_ms=3.2232 taa_ms=4.0861 run_ms=4.1714 scope=cpu_wall_with_event_query_drain_fixture
+FOLD_TIMING build=fold width=5120 height=1440 rounds=8 content=station motion=rest config=thin_vote_off source_drawn=both copy_ms=0.0198 mask_ms=0.0000 box_ms=0.8185 resolve_ms=3.2158 taa_ms=4.0542 run_ms=4.1448 scope=cpu_wall_with_event_query_drain_fixture
 CHECK fold timing: the camera gate ran with the half-resolution box PASS
 CHECK fold timing: the camera gate ran with the half-resolution box PASS
 CHECK fold timing: the camera gate ran with the half-resolution box PASS
@@ -9509,12 +9003,12 @@ CHECK fold timing: the camera gate ran with the half-resolution box PASS
 CHECK fold timing: the camera gate ran with the half-resolution box PASS
 CHECK fold timing: the camera gate ran with the half-resolution box PASS
 CHECK fold timing: every boundary drained PASS
-FOLD_TIMING build=fold width=5120 height=1440 rounds=8 content=station motion=pan config=vote source_drawn=vote copy_ms=0.0164 mask_ms=0.0000 box_ms=1.0928 resolve_ms=2.9340 taa_ms=4.0432 run_ms=4.1418 scope=cpu_wall_with_event_query_drain_fixture
+FOLD_TIMING build=fold width=5120 height=1440 rounds=8 content=station motion=pan config=vote source_drawn=vote copy_ms=0.0196 mask_ms=0.0000 box_ms=1.0575 resolve_ms=2.8650 taa_ms=3.9421 run_ms=4.0405 scope=cpu_wall_with_event_query_drain_fixture
 CHECK fold timing: every boundary drained PASS
-FOLD_TIMING build=fold width=5120 height=1440 rounds=8 content=station motion=pan config=both source_drawn=both copy_ms=0.0180 mask_ms=0.0000 box_ms=1.0517 resolve_ms=2.9020 taa_ms=3.9717 run_ms=4.0730 scope=cpu_wall_with_event_query_drain_fixture
+FOLD_TIMING build=fold width=5120 height=1440 rounds=8 content=station motion=pan config=both source_drawn=both copy_ms=0.0207 mask_ms=0.0000 box_ms=1.0544 resolve_ms=2.8816 taa_ms=3.9566 run_ms=4.0398 scope=cpu_wall_with_event_query_drain_fixture
 CHECK fold timing: every boundary drained PASS
-FOLD_TIMING build=fold width=5120 height=1440 rounds=8 content=station motion=pan config=thin_vote_off source_drawn=both copy_ms=0.0167 mask_ms=0.0000 box_ms=0.8246 resolve_ms=3.2490 taa_ms=4.0902 run_ms=4.1808 scope=cpu_wall_with_event_query_drain_fixture
-FOLD_TIMING_BASE numerical=561 state_restorations=90
+FOLD_TIMING build=fold width=5120 height=1440 rounds=8 content=station motion=pan config=thin_vote_off source_drawn=both copy_ms=0.0195 mask_ms=0.0000 box_ms=0.8236 resolve_ms=3.2247 taa_ms=4.0679 run_ms=4.1484 scope=cpu_wall_with_event_query_drain_fixture
+FOLD_TIMING_BASE numerical=547 state_restorations=90
 FAR_CAMERA_PAN_CASES
 CHECK fc far and camera-gate programs available PASS
 CHECK fc history follows the sequence PASS
@@ -14240,7 +13734,7 @@ SAMPLE far camera pan, camera-gate program, width 0.4: co-moving 10 px/frame (sc
 SAMPLE far camera pan, camera-gate program, width 0.4: the far weight acts at rest and under the integer yaw (differs from far off; min(diff, 0.001)) actual=0.001000000 expected=0.001000000 tolerance=0.000000000 PASS
 SAMPLE far camera pan, camera-gate program, width 0.4: screen gate (X3M_TAA_FAR_GATE=screen): every row bit-identical to the far program's screen speed gate actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 SAMPLE far camera pan, camera-gate program, width 0.4: screen gate: the integer yaw's sparkle margin above 40 codes (the gate before 2026-09-25; min(margin, 40)) actual=40.000000000 expected=40.000000000 tolerance=0.000000000 PASS
-FAR_CAMERA_PAN_BASE numerical=581 state_restorations=90
+FAR_CAMERA_PAN_BASE numerical=567 state_restorations=90
 FAR_JITTER_LINE_CASES
 CHECK fjl far gate of the production footprints PASS
 CHECK fjl strip depth inside the farw = 1 band PASS
@@ -16422,4 +15916,4 @@ SAMPLE far jitter line, width 0.4: 7x7 far clip, rest: line dimming within 3 cod
 SAMPLE far jitter line, width 0.4: 3x3 clip, rest: one-frame margin above 6 codes (the sparkle the far clip removes; 1 = above) actual=1.000000000 expected=1.000000000 tolerance=0.000000000 PASS
 SAMPLE far jitter line, width 0.4: 3x3 clip, rest: frame-to-frame delta above 6 codes (1 = above) actual=1.000000000 expected=1.000000000 tolerance=0.000000000 PASS
 SAMPLE far jitter line, width 0.4: 7x7 far clip on the screen gate, yaw10.5: one-frame margin above 6 codes (the camera gate's job; 1 = above) actual=1.000000000 expected=1.000000000 tolerance=0.000000000 PASS
-RESULT PASS numerical=598 state_restorations=90 lattice=1
+RESULT PASS numerical=584 state_restorations=90 lattice=1

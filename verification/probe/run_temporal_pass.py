@@ -55,9 +55,9 @@ try:
     # same rows on the far and far-camera programs (six sequences and eleven metrics per generation). 712 / 528: the motion
     # history weight (taa-motion-history-weight.md section 6: ten rows on two age programs, ten metrics per program and generation).
     # 744 / 546: the dust motes' streak over sky, case (m) of fog-dust-motes.md section 5.4 (seven sequences and nine metrics
-    # per generation). 772 / 574: the rotation-aware motion weight (taa-motion-history-weight.md section 10: 26 rows and
-    # the mixed row per generation, fourteen metrics per generation).
-    assert run.returncode==0 and match and tuple(map(int,match.groups()))==(772,278,2) and report['samples']==574 and 'RESET PASS' in text and 'FAIL' not in text,text[-1500:]
+    # per generation). 774 / 576: the rotation-aware motion weight (taa-motion-history-weight.md section 10: 26 rows, the
+    # mixed row and the contour row per generation, fifteen metrics per generation).
+    assert run.returncode==0 and match and tuple(map(int,match.groups()))==(774,278,2) and report['samples']==576 and 'RESET PASS' in text and 'FAIL' not in text,text[-1500:]
     # Motion history weight rows (docs/architecture/taa-motion-history-weight.md): the age programs' keep weight capped by the
     # smaller of the translation parallax and the screen motion. Off path, every slow row, the pan and the co-moving hull
     # bit-identical; the age target never differs; the half-texel 12.5 px/frame row is sharper (E ratio) with the cap 0.8.
@@ -94,6 +94,10 @@ try:
     assert rotation_rows[('age','pan12.5','0.850','0')]['e_ratio']==weight_rows[('age','pan12.5','0')]['e_ratio'],(rotation_rows[('age','pan12.5','0.850','0')],weight_rows[('age','pan12.5','0')])
     report['motion_weight_rotation_classes']=[dict(re.findall(r'(\w+)=(\S+)',line)) for line in text.splitlines() if line.startswith('MOTION_WEIGHT_ROTATION_CLASSES ')]
     assert len(report['motion_weight_rotation_classes'])==2 and all(r['far_diff']=='0.000000' and r['thin_diff']=='0.000000' and r['far_age_diff']=='0.000000' and r['thin_age_diff']=='0.000000' and float(r['ordinary_diff'])>=.01 for r in report['motion_weight_rotation_classes']),report['motion_weight_rotation_classes']
+    # The contour row: the history weight across the far-weight contour with the option on moves by at most twice the ramp's
+    # own slope between neighbours (the cap sits on the base weight before the far lerp).
+    report['motion_weight_rotation_contour']=[dict(re.findall(r'(\w+)=(\S+)',line)) for line in text.splitlines() if line.startswith('MOTION_WEIGHT_ROTATION_CONTOUR ')]
+    assert len(report['motion_weight_rotation_contour'])==4 and all(float(r['max_step'])<=2*float(r['slope']) and float(r['slope'])>.002 for r in report['motion_weight_rotation_contour'] if r['on']=='1'),report['motion_weight_rotation_contour']
     # Case (m): the unrouted streak writes no negative age and, over a dark sky, no trail beyond 3 px; the hull row's marks are
     # the hull's own. The flickering sky's trail and the segment brightness ratios are reported, not gated.
     report['mote_streak']=[dict(re.findall(r'(\w+)=(\S+)',line)) for line in text.splitlines() if line.startswith('MOTE_STREAK ')]

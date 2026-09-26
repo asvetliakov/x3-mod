@@ -272,22 +272,30 @@ program; absent = off, no default; F 0 the explicit off, else 0.5 <= F <= 0.98 w
   under policy 2 (like c25.yzw); without the camera path c0..c3 is not rotation-only and the term stays off.
 - turnCap = saturate(max(F, A r + B)), A = -(1 - F) / (V1 - V0), B = 1 - A V0: 1 at or below V0, F at or above V1, linear
   in r between.
-- At the blend, after the far / thin-region / adaptive keep and the exit reset, before c25's cap:
-  `keep = special > 0 ? keep : min(keep, turnCap)`, special = max(g * farOpen, b) + band on the far programs (any far
-  weight in effect, any thin-region weight, the sky band) and band on the age program. Those pixels keep their weight
-  exactly (a select, never a blend with the cap); the two caps combine as the smaller.
+- On the far programs the cap applies to the BASE weight before the far and thin-region lerps:
+  `keep = band > 0 ? keep : min(keep, turnCap)`, then `farKeep = keep + g farOpen (min(ramp, W_FAR) - keep)` and the
+  thin-region max as before. The weight is continuous in g * farOpen and b (no seam where the far weight starts); a pixel
+  at the full far weight (g * farOpen = 1) or the full thin-region weight (b = 1, its target above the capped base) blends
+  to its target exactly, so it keeps its weight bit for bit; a partial one moves in proportion to its base share, and a
+  young thin-region pixel whose age ramp is below the base takes the capped base. On the age program (no far or thin
+  weight) the cap applies after its adaptive keep. The sky band keeps its weight; the two caps combine as the smaller.
+- "Far pixels keep their weight" holds on the camera gate only (the flown default, `X3M_TAA_FAR_GATE=camera`: farOpen =
+  openC, open for world-static content under a pan). With `X3M_TAA_FAR_GATE=screen` or on the far program (no camera gate)
+  farOpen is the screen speed gate, already closed above 0.25 px/frame, so under a turn far pixels are at the base weight
+  and are capped too, continuously.
 
 **Register.** c26 = (A, B, F, 0), `kRotationRegister` in `resolve.h`, uploaded with c24 / c25 as one three-register block
 for the age programs (`prepare_motion_weight_rotation`; the state block restores it). Off (or an invalid triple) uploads
 0, 1, 1: turnCap is exactly 1 (r is finite after the clamp, so 0 * r + 1 is 1) and `min(keep, 1)` is keep bit for bit. The
 fixture's X3M_CAMERA_GATE-alone reference of REGION_HOLD_IDENTITY (the removed camera program) does not compile the term
-(`X3M_ROTATION_WEIGHT`), so it stays word for word.
+(`X3M_ROTATION_WEIGHT`), so it stays word for word. `X3M_KEEP_OUT` (fixture only, with X3M_REGION_HOLD) writes -keep to
+COLOR0 on the blend path for the contour row.
 
-**Cost (measured, `RESOLVE_BUDGET`).** age 544 -> 555, far 545 -> 558, far_camera_hold 1017 -> 1030 slots; plain, thin and
+**Cost (measured, `RESOLVE_BUDGET`).** age 544 -> 555, far 545 -> 556, far_camera_hold 1017 -> 1028 slots; plain, thin and
 snapshot bytecode unchanged. At the planning figure of about 1 us per slot per frame at 5120x1440 the hold program costs
-about 13 us more per frame [inferred]; the fixture's fold timing rows moved within their run-to-run spread.
+about 11 us more per frame [inferred]; the fixture's fold timing rows moved within their run-to-run spread.
 
-**Fixture (`run_temporal_pass.py`, `MOTION_WEIGHT_ROTATION` rows; 772 / 278, 574 samples).** 512x16 stripe, camera yaw
+**Fixture (`run_temporal_pass.py`, `MOTION_WEIGHT_ROTATION` rows; 774 / 278, 576 samples).** 512x16 stripe, camera yaw
 from frame 16, hull world-static, far gate moved beyond the hull on the far-camera program so the hull is ordinary (the
 adjacent station of Run 92 A had far 0, thin 0). Option 0.7,2,8 (measured, identical on both programs and both generations):
 
@@ -301,16 +309,21 @@ The Run 92 A replay predicted 0.514 and 0.0300 for the pan12.5 row (`verificatio
 `predict_pan_row_w07_out.txt`). At 4 px/frame the ramp is 1 - 0.3 x 2 / 6 = 0.9, so neither base weight is lowered. The
 6 px/frame row is within 0.002 (0 measured) of a run whose cap is the constant 0.8, which pins A and B. The age target is
 identical to off on every row. Mixed row (far-camera program, yaw 12 px/frame on the texel grid so each pixel's history
-lineage stays in its world-static class; 75,636 far, 9,168 thin-region and 114,600 ordinary pixel-frames): far and
-thin-region pixels bit-identical to off on colour and age, ordinary pixels up to 0.141 apart; two off-runs prove the
-classes (far weight 0.985 -> 0.95 moves far pixels only, 0.0103; thin weight 0.97 -> 0.98 thin pixels only, 0.0039). With
-the option unset every committed row of `temporal-pass.txt` is unchanged (only the RESULT line differs;
+lineage stays in its world-static class; content on screen since frame 0, so every lineage is old: 60,144 far, 6,516
+thin-region and 81,528 ordinary pixel-frames): far and thin-region pixels bit-identical to off on colour and age, ordinary
+pixels up to 0.056 apart; two off-runs prove the classes (far weight 0.985 -> 0.95 moves far pixels only, 0.0103; thin
+weight 0.97 -> 0.98 thin pixels only, 0.0039). Contour row (far-camera program, yaw 12, a depth ramp through d0: farw 0
+below content column 64, +1/64 per px to 1 at 128; the history weight read through the X3M_KEEP_OUT twin, 46,020
+neighbour pairs): on, the weight runs 0.700 at the contour to 0.965 at full far weight, slope 0.0041 per px, largest
+neighbour step 0.0059 (1.4x the slope: farw's 1/255 quantisation and FP16); off 0.900 -> 0.965, slope 0.0010, step
+0.0020. A select on the far weight would have stepped 0.7 -> about 0.9 at the contour [inferred]. With the option unset
+every committed row of `temporal-pass.txt` is unchanged (only the RESULT line differs;
 `verification/results/rotation-motion-weight/compare_records.py`).
 
 **Risks, for the A/B flight.** (1) Shimmer during slow turns just above V0: between 2 and 8 px/frame the history is
 shorter and the jitter's alias shows (ripple 0.0276 at 6 px/frame against 0.0142 off). (2) A whole-screen weight change as
 a turn starts or ends: every ordinary pixel changes weight in the same frame, which may read as the image sharpening and
-softening with the turn. (3) The sky proper (sentinel depth, no far weight, not the band) counts as ordinary, so stars and
+softening with the turn. Partial far-weight pixels and young thin-region pixels are capped in proportion (above). (3) The sky proper (sentinel depth, no far weight, not the band) counts as ordinary, so stars and
 the background take the lower weight during a turn. (4) Not measured in flight; pairs with a rest weight of 0.9 in the
 model (0.9 rest, 0.7 above 8 px/frame: +28 % / +35 % at 20 / 30 px/frame over 0.85).
 

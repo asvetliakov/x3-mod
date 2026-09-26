@@ -1,9 +1,64 @@
-verification/results/bottle-X3/temporal-pass.txt: baseline 11772 lines, current 14856; missing from current 1, added 3085
+verification/results/bottle-X3/temporal-pass.txt: baseline 11772 lines, current 15070; missing from current 1, added 3299
   missing x1: RESULT PASS numerical=744 state_restorations=278 generations=2
-  added by kind: {'CHECK': 3002, 'MOTION_WEIGHT_ROTATION': 52, 'MOTION_WEIGHT_ROTATION_CLASSES': 2, 'RESULT': 1, 'SAMPLE': 28}
-verification/results/bottle-X3/temporal-lattice.txt: baseline 16425 lines, current 16425; missing from current 0, added 0
-  added by kind: {}
-MOTION_WEIGHT_ROTATION rows: 54 (two generations)
+  added by kind: {'CHECK': 3210, 'MOTION_WEIGHT_ROTATION': 52, 'MOTION_WEIGHT_ROTATION_CLASSES': 2, 'MOTION_WEIGHT_ROTATION_CONTOUR': 4, 'RESULT': 1, 'SAMPLE': 30}
+verification/results/bottle-X3/temporal-lattice.txt: baseline 16425 lines, current 15919; missing from current 533, added 27
+  missing x1: BOX_HALF_BASE numerical=548 state_restorations=76
+  missing x1: CHECK embedded_age_taps16 within the 2048-slot ceiling PASS
+  missing x1: CHECK embedded_far_taps16 within the 2048-slot ceiling PASS
+  missing x1: CHECK embedded_plain_taps16 within the 2048-slot ceiling PASS
+  missing x1: CHECK embedded_thin_taps16 within the 2048-slot ceiling PASS
+  missing x8: CHECK far history follows the sequence (a mask fallback included) PASS
+  missing x4: CHECK far stabiliser alone: the 16-tap program is bit-identical to the flown resolve_far program PASS
+  missing x8: CHECK far-stabiliser program created on this device PASS
+  missing x1: CHECK history taps: 5 / 16 accepted, anything else refused; the FP16 / R32F filter query passes on this device PASS
+  missing x4: CHECK history taps: Diagnostics::history_taps names the program drawn; 16 binds the embedded 16-tap words PASS
+  missing x2: CHECK history taps: a still scene is identical within one FP16 ulp (Catmull-Rom of a constant history is the constant) PASS
+  missing x1: CHECK history taps: under diagonal drift the far forms differ (reported) PASS
+  missing x1: CHECK history taps: under diagonal drift the forms differ and the plain program's difference stays within w times the current 3x3 range PASS
+  missing x2: CHECK history taps: without the filter query every run draws the 16-tap programs, byte-identical PASS
+  missing x1: CHECK history taps: without the filter query no camera-gate program is created (no fallback set) and a camera-gate run is refused; the far program stays PASS
+  missing x1: CHECK leaving the camera gate restarts the history once, coming back keeps it; 16 taps refuse a camera-gate run PASS
+  missing x4: CHECK resolve instruction budget parsed for ps_3_0 PASS
+  missing x6: CHECK taps: far programs available PASS
+  missing x448: CHECK taps: history follows the sequence PASS
+  missing x2: CHECK taps: the filter query reached GetDirect3D PASS
+  missing x1: DEPTH_FOLD_BASE numerical=452 state_restorations=72
+  missing x1: FAR_BASE numerical=299 state_restorations=6
+  missing x1: FAR_CAMERA_PAN_BASE numerical=581 state_restorations=90
+  missing x1: FOLD_TIMING build=fold width=5120 height=1440 rounds=8 content=station motion=pan config=both source_drawn=both copy_ms=0.0180 mask_ms=0.0000 box_ms=1.0517 resolve_ms=2.9020 taa_ms=3.9717 run_ms=4.073
+  missing x1: FOLD_TIMING build=fold width=5120 height=1440 rounds=8 content=station motion=pan config=thin_vote_off source_drawn=both copy_ms=0.0167 mask_ms=0.0000 box_ms=0.8246 resolve_ms=3.2490 taa_ms=4.0902 run
+  missing x1: FOLD_TIMING build=fold width=5120 height=1440 rounds=8 content=station motion=pan config=vote source_drawn=vote copy_ms=0.0164 mask_ms=0.0000 box_ms=1.0928 resolve_ms=2.9340 taa_ms=4.0432 run_ms=4.141
+  missing x1: FOLD_TIMING build=fold width=5120 height=1440 rounds=8 content=station motion=rest config=both source_drawn=both copy_ms=0.0177 mask_ms=0.0000 box_ms=1.1133 resolve_ms=2.8929 taa_ms=4.0239 run_ms=4.11
+  missing x1: FOLD_TIMING build=fold width=5120 height=1440 rounds=8 content=station motion=rest config=thin_vote_off source_drawn=both copy_ms=0.0167 mask_ms=0.0000 box_ms=0.8462 resolve_ms=3.2232 taa_ms=4.0861 ru
+  missing x1: FOLD_TIMING build=fold width=5120 height=1440 rounds=8 content=station motion=rest config=vote source_drawn=vote copy_ms=0.0255 mask_ms=0.0000 box_ms=1.0480 resolve_ms=2.8688 taa_ms=3.9423 run_ms=4.04
+  missing x1: FOLD_TIMING_BASE numerical=561 state_restorations=90
+  missing x1: HISTORY_TAPS program=far motion=drift frames=32 differing=17619 max_abs=0.01708984 max_ulps=54.00 max_bound_ratio=0.0253 bound_exceeded=0 drawn=1 caller_16_identical=1
+  missing x1: HISTORY_TAPS program=far motion=rest frames=32 differing=0 max_abs=0.00000000 max_ulps=0.00 max_bound_ratio=0.0000 bound_exceeded=0 drawn=1 caller_16_identical=1
+  missing x1: HISTORY_TAPS program=plain motion=drift frames=32 differing=17619 max_abs=0.01708984 max_ulps=54.00 max_bound_ratio=0.0253 bound_exceeded=0 drawn=1 caller_16_identical=1
+  missing x1: HISTORY_TAPS program=plain motion=rest frames=32 differing=0 max_abs=0.00000000 max_ulps=0.00 max_bound_ratio=0.0000 bound_exceeded=0 drawn=1 caller_16_identical=1
+  missing x1: HISTORY_TAPS_BASE numerical=473 state_restorations=72
+  missing x1: HISTORY_TAPS_CONFIG bilinear=1 reason=ok invalid_refused=1 set=1
+  missing x1: HISTORY_TAPS_FALLBACK program=far bilinear=0 reason=adapter_query drawn_16=1 identical_to_16=1
+  missing x1: HISTORY_TAPS_FALLBACK program=plain bilinear=0 reason=adapter_query drawn_16=1 identical_to_16=1
+  missing x1: HISTORY_TAPS_FAR_IDLE motion=drift far_equals_plain=1 mask_max_r=0.0000 mask_max_g=0.0000 mask_max_b=0.0000 mask_max_a=0.0000
+  missing x1: HISTORY_TAPS_FAR_IDLE motion=rest far_equals_plain=0 mask_max_r=0.0000 mask_max_g=0.0000 mask_max_b=1.0000 mask_max_a=0.0000
+  missing x1: HISTORY_TAPS_NO_FILTER_CAMERA bilinear=0 far=1 camera_gate=0 create=8876086a camera_run_refused=1
+  missing x1: LINE_TIMING width=1280 height=768 content=all_geometry rounds=6 plain_ms=0.6093 far_stabiliser_ms=0.7044 thin_region_ms=1.2018 far_delta_ms=0.0950 thin_region_delta_ms=0.5924 scope=cpu_wall_with_event
+  missing x1: LINE_TIMING_CAMERA width=1280 height=768 rounds=6 no_region_thin_ms=1.2018 no_region_camera_ms=0.9632 no_region_camera_delta_ms=-0.2386 fragmented_pan_thin_ms=1.0067 fragmented_pan_camera_ms=1.1811 fr
+  missing x1: LINE_TIMING_CAMERA_LANE width=1280 height=768 rounds=6 r32f_camera_ms=1.1811 lane_input_law_ms=1.2285 lane_input_lane_ms=1.2060 lane_fetch_delta_ms=-0.0225 lane_input_over_r32f_ms=0.0474 scope=cpu_wal
+  missing x1: REGION_HOLD_BASE numerical=525 state_restorations=75
+  missing x1: REGION_HOLD_STATE refused_path=1 refused_create=8876017c two_targets_refused=1 rt2_restored=1 streams_restored=1 screen_restarts=1 screen_continues=1 camera_keeps=1 taps16_refused=1 taps5_camera=1 mas
+  missing x1: RESOLVE_BUDGET variant=embedded_age dwords=2143 instruction_slots=544 device_limit=512 headroom=-32 within_ceiling_2048=1
+  missing x1: RESOLVE_BUDGET variant=embedded_age_taps16 dwords=1947 instruction_slots=494 device_limit=512 headroom=18 within_ceiling_2048=1
+  missing x1: RESOLVE_BUDGET variant=embedded_far dwords=2144 instruction_slots=545 device_limit=512 headroom=-33 within_ceiling_2048=1
+  missing x1: RESOLVE_BUDGET variant=embedded_far_camera_hold dwords=3878 instruction_slots=1017 device_limit=512 headroom=-505 within_ceiling_2048=1
+  missing x1: RESOLVE_BUDGET variant=embedded_far_taps16 dwords=1948 instruction_slots=493 device_limit=512 headroom=19 within_ceiling_2048=1
+  missing x1: RESOLVE_BUDGET variant=embedded_plain_taps16 dwords=1681 instruction_slots=432 device_limit=512 headroom=80 within_ceiling_2048=1
+  missing x1: RESOLVE_BUDGET variant=embedded_thin_taps16 dwords=1818 instruction_slots=465 device_limit=512 headroom=47 within_ceiling_2048=1
+  missing x1: RESULT PASS numerical=598 state_restorations=90 lattice=1
+  missing x1: THIN_SOURCE_BASE numerical=561 state_restorations=90
+  added by kind: {'BOX_HALF_BASE': 1, 'CHECK': 3, 'DEPTH_FOLD_BASE': 1, 'FAR_BASE': 1, 'FAR_CAMERA_PAN_BASE': 1, 'FOLD_TIMING': 6, 'FOLD_TIMING_BASE': 1, 'HISTORY_FILTER_QUERY': 1, 'HISTORY_TAPS_BASE': 1, 'HISTORY_TAPS_NO_FILTER': 1, 'LINE_TIMING': 1, 'LINE_TIMING_CAMERA': 1, 'LINE_TIMING_CAMERA_LANE': 1, 'REGION_HOLD_BASE': 1, 'REGION_HOLD_STATE': 1, 'RESOLVE_BUDGET': 3, 'RESULT': 1, 'THIN_SOURCE_BASE': 1}
+MOTION_WEIGHT_ROTATION rows: 58 (two generations)
    program=age row=pan12.5 pan_px=12.50 weight=0.900 on=0 e_ratio=0.197499 ripple_rms=0.009432 output_diff=0.000000 age_diff=0.000000
    program=age row=pan12.5 pan_px=12.50 weight=0.900 on=1 e_ratio=0.512997 ripple_rms=0.030029 output_diff=0.151123 age_diff=0.000000
    program=age row=pan12.5 pan_px=12.50 weight=0.850 on=0 e_ratio=0.298207 ripple_rms=0.014358 output_diff=0.000000 age_diff=0.000000
@@ -30,5 +85,7 @@ MOTION_WEIGHT_ROTATION rows: 54 (two generations)
    program=far_camera row=pan6 pan_px=6.00 weight=0.900 on=2 e_ratio=0.695914 ripple_rms=0.027558 output_diff=0.000000 age_diff=0.000000
    program=far_camera row=pan6 pan_px=6.00 weight=0.850 on=0 e_ratio=0.673915 ripple_rms=0.020673 output_diff=0.000000 age_diff=0.000000
    program=far_camera row=pan6 pan_px=6.00 weight=0.850 on=1 e_ratio=0.695914 ripple_rms=0.027558 output_diff=0.037598 age_diff=0.000000
-  classes program=far_camera pan_px=12.00 weight=0.900 far_px=75636 thin_px=9168 ordinary_px=114600 far_diff=0.000000 thin_diff=0.000000 ordinary_diff=0.141113 far_age_diff=0.000000 thin_age_diff=0.000000 ordinary_age_diff=0.000000 far_probe_far=0.010254 far_probe_thin=0.000000 far_probe_ordinary=0.000000 thin_probe_far=0.000000 thin_probe_thin=0.003906 thin_probe_ordinary=0.000000
+  classes program=far_camera pan_px=12.00 weight=0.900 far_px=60144 thin_px=6516 ordinary_px=81528 far_diff=0.000000 thin_diff=0.000000 ordinary_diff=0.056152 far_age_diff=0.000000 thin_age_diff=0.000000 ordinary_age_diff=0.000000 far_probe_far=0.010254 far_probe_thin=0.000000 far_probe_ordinary=0.000000 thin_probe_far=0.000000 thin_probe_thin=0.003906 thin_probe_ordinary=0.000000
+  contour program=far_camera pan_px=12.00 weight=0.900 on=0 pairs=46020 slopes=444 max_step=0.001953 slope=0.001010 keep_contour=0.8999 keep_full_far=0.9646
+  contour program=far_camera pan_px=12.00 weight=0.900 on=1 pairs=46020 slopes=444 max_step=0.005859 slope=0.004138 keep_contour=0.6997 keep_full_far=0.9646
 generation 2 identical to generation 1: True

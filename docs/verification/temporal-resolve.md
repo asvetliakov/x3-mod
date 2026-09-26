@@ -3395,17 +3395,25 @@ Built on 1abdd4e8 in response to Run 92 A item 4: `--taa-motion-weight-rotation 
 off by default, requires `--taa` and an age program). Design and as-built: `docs/architecture/taa-motion-history-weight.md`
 section 10 (c26 = A, B, F; rotation-only displacement `cameraUV - dilatedUV` under camera policy 2; ordinary pixels only).
 
-- Fixture, bottle X3, `run_temporal_pass.py` PASS: temporal 772 / 278 (was 744; +28 = fourteen metrics x two
-  generations), 574 samples; lattice 584 / 90 unchanged, REGION_HOLD_IDENTITY_REFERENCE still 2196 words identical=1 (the
-  term is not compiled into the fixture's removed-program reference; the identity case now uploads c26 off). Option unset:
-  every committed line of `temporal-pass.txt` present unchanged, only the RESULT line differs
-  (`verification/results/rotation-motion-weight/compare_records.py`, measured).
+- Fixture, bottle X3, `run_temporal_pass.py` PASS: temporal 774 / 278 (was 744; +30 = fifteen metrics x two
+  generations), 576 samples; lattice 584 / 90, REGION_HOLD_IDENTITY_REFERENCE still 2196 words identical=1 (the term is
+  not compiled into the fixture's removed-program reference; the identity case now uploads c26 off). Option unset: every
+  committed line of `temporal-pass.txt` present unchanged, only the RESULT line differs
+  (`verification/results/rotation-motion-weight/compare_records.py`, measured). `temporal-lattice.txt` re-recorded
+  deliberately: the committed copy was stale since 22776b6f (RESULT 598 and the removed 16-tap rows against the 584 / 90
+  every run since reports); now 15,919 lines, RESULT PASS 584 / 90, its sha matching the summary's lattice.report_sha256.
+- Review fix (same day): the cap moved onto the base weight before the far and thin lerps (continuous across the
+  far-weight contour; full-weight far and thin pixels still exact). Contour row (depth ramp through d0, weight read by the
+  X3M_KEEP_OUT twin): on 0.700 at the contour -> 0.965 at full far weight, slope 0.0041 per px, largest neighbour step
+  0.0059 (bound 2x slope); off slope 0.0010, step 0.0020. `X3M_TAA_FAR_GATE=screen` and the far program cap far pixels too
+  (their gate is closed above 0.25 px/frame). The DLL parse accepts blanks around fields (" 0.7" and "0.7 " alike).
 - 0.7,2,8, pan 12.5 px/frame: E ratio 0.197 -> 0.513 at 0.9 and 0.298 -> 0.513 at 0.85; ripple rms 0.0094 -> 0.0300 and
   0.0144 -> 0.0300 (replay prediction 0.514 / 0.0300). Pan 6 px/frame (ramp 0.8): 0.647 -> 0.696 / 0.674 -> 0.696, within 0
   of the constant-0.8 run. Pan 4 px/frame (ramp 0.9): bit-identical at both weights. Age target identical on every row.
   Both programs (age, far_camera) give the same on-row numbers (measured).
-- Mixed row (far_camera, yaw 12): far-weight and thin-region pixels bit-identical to off on colour and age; ordinary pixels
-  0.141 apart; far-weight probe (0.985 -> 0.95) moves far pixels only, thin probe (0.97 -> 0.98) thin pixels only.
-- Slots: age 544 -> 555, far 545 -> 558, far_camera_hold 1017 -> 1030; plain / thin / snapshot bytecode unchanged.
+- Mixed row (far_camera, yaw 12, content on screen since frame 0): far-weight and thin-region pixels bit-identical to off
+  on colour and age; ordinary pixels 0.056 apart; far-weight probe (0.985 -> 0.95) moves far pixels only, thin probe
+  (0.97 -> 0.98) thin pixels only.
+- Slots: age 544 -> 555, far 545 -> 556, far_camera_hold 1017 -> 1028; plain / thin / snapshot bytecode unchanged.
 - Open: not flown. Risks for the A/B: slow-turn shimmer just above V0, a whole-screen weight change at turn start and end,
   and the sky proper counting as ordinary (stars take the lower weight during a turn).

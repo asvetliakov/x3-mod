@@ -86,12 +86,12 @@ inline void prepare_motion_weight(float out[4], float f, float v0, float v1) noe
 }
 // Rotation-aware motion weight (X3M_TAA_MOTION_WEIGHT_ROTATION=F[,V0,V1], opt-in, 2026-09-26;
 // docs/architecture/taa-motion-history-weight.md section 10): c26 of the age variants, uploaded with c24 / c25 as one
-// three-register block. The age variants cap the history keep weight of an ORDINARY pixel (no far weight in effect, no
-// thin-region weight, not the sky band) at saturate(max(F, A r + B)), r the pixel's screen displacement in px/frame
-// that the camera rotation alone produces (the rotation-only camera path against the pixel, clamped at 64), so a static
-// hull under a pan accumulates a shorter history; translation keeps going through c25.yzw. Linear in r:
-// A = -(1 - F) / (V1 - V0), B = 1 - A V0 (1 at or below V0, F at or above V1). Off uploads 0, 1, 1, 0: the cap is
-// exactly 1 and min(keep, 1) is keep bit for bit. F 0 is off; else 0.5 <= F <= 0.98 with 0 <= V0 < V1 <= 64.
+// three-register block. The age variants cap the BASE history keep weight (before the far and thin-region lerps; not
+// the sky band) at saturate(max(F, A r + B)), r the pixel's screen displacement in px/frame that the camera rotation
+// alone produces (the rotation-only camera path against the pixel, clamped at 64), so a static hull under a pan
+// accumulates a shorter history; translation keeps going through c25.yzw. Linear in r: A = -(1 - F) / (V1 - V0), B = 1
+// - A V0 (1 at or below V0, F at or above V1). Off uploads 0, 1, 1, 0: the cap is exactly 1 and min(keep, 1) is keep
+// bit for bit. F 0 is off; else 0.5 <= F <= 0.98 with 0 <= V0 < V1 <= 64.
 constexpr unsigned kRotationRegister = 26;
 // The pass uploads c24..c26 as one block.
 static_assert(kRotationRegister == kExitRegister + 1 && kRotationRegister == kFlickerRegister + 2);
