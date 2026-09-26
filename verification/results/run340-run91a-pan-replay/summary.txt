@@ -1,0 +1,27 @@
+Run 91 A pan replay on run340 (--direct --debug --perf --taa-debug; bursts 1017-1024 rest, 1424-1431 ship stopped + pan,
+4078-4085 ship moving + pan; 5120x1440, p00 0.5). Ledger: docs/verification/temporal-resolve.md, "2026-09-26 Run 91 A:
+station blur under pan", subsection "run340 replay". Scripts here, outputs *_out.txt beside them. Burst frames 2..8 run ~10x
+slower in game time (rotation 0.23 -> 2.3-2.9 deg/frame at 1424 -> 1425), so only the first frame has normal-rate motion.
+
+Stations (station_blobs.py / station_pixels.py, first frames) [measured]:
+  A  10.4-12.1 km (fp 41-47 u/px): rest 1017 box 4599,24-5120,501, |d| 0.30; pan 1424 box 4193,218-4783,604, |d| 19.7 px/frame;
+     thin 0.000, farw>0 0.000 (base weight 0.90; motion cap 1: camera-relative 0.31 px, camera_parallax.py conv 1)
+  B  30 km (fp 118): 1017 |d| 0.30, 1424 |d| 5.85; thin 0.12-0.13, farw>0 1.000 (0.985)
+  C  8.7 km (fp 34, burst 3, 4078 box 1866,324-2605,634): |d| 6.33, thin 0.638, farw 0 (lattice: 0.97 on 64 %)
+  D  23 km (4078 box 2472,485-2832,824): |d| 6.38, thin 0.666, farw 1
+Sharpness, E(AgX luma gradient^2) / E(current) on station interior [measured, sharpness_measured.py]:
+  A rest: taa 0.667, present 0.910 | A pan 19.7 px/f: taa 0.386, present 0.524 (RCAS 1.0 model 0.637)
+  B rest: 0.350 / 0.373 | B pan 5.85 px/f: 0.294 / 0.319 | C: 0.158 / 0.169 | D: 0.194 / 0.207
+  RCAS model of present_: luma error p50 0.26, p90 0.60 codes on all six.
+Replay model validation (replay_validate.py, one step from the captured history) [measured]:
+  1018 rest p50 0.015 / p99 0.09 codes; 1425 pan p50 0.20 / p90 1.16; 4079 p50 0.016 / p90 0.25 (jitter term +j).
+Steady-state replay on station A's texture (replay_steady.py) [model]: E / E_ideal, taa | RCAS 0.75 | RCAS 1.0, shimmer codes
+  v 0    : 0.90 1.014|1.070|1.110 0.11 ; 0.85 1.018|1.075|1.114 0.17 ; 0.80 1.023|1.081|1.120 0.23
+  v 1.3  : 0.90 0.743|0.875|0.982 1.57 ; 0.85 0.803|0.948|1.061 1.49 ; 0.80 0.853|1.008|1.124 1.47
+  v 5.9  : 0.90 0.755|0.986|1.170 2.31 ; 0.85 0.831|1.087|1.282 2.02 ; 0.80 0.885|1.157|1.358 1.90
+  v 19.7 : 0.90 0.661|0.766|0.844 2.56 ; 0.85 0.699|0.816|0.901 2.22 ; 0.80 0.740|0.867|0.958 1.95
+Real-frame counterfactual, burst 2 (140-175 px/frame burst frames; replay_real.py): E_taa/E_cur at 1425 0.430 / 0.444 / 0.460
+  (w 0.9 / 0.85 / 0.8); RCAS 0.75 0.583 / 0.603 / 0.626; RCAS 1.0 0.708 / 0.731 / 0.756.
+Fixture prediction (predict_motion_weight_pan_row.py, replica of temporal_pass_fixture.cpp MOTION_WEIGHT pan12.5, calibrated:
+  0.9 -> e_ratio 0.1974 / ripple 0.00946 against the committed 0.1968-0.1975 / 0.00943-0.00946):
+  0.85 -> e_ratio 0.2989, ripple_rms 0.01442; 0.80 -> 0.3838, 0.01951.

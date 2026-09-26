@@ -3324,3 +3324,30 @@ of each burst gives the resolved (`taa_`), presented, mask and age dumps for `ta
 weight 0.9 / 0.85 / 0.8 on g = 0, b = 0 pixels. Compatible with the lattice-ghosting decision (2026-09-21): changes to the base
 weight or the sharpen leave the thin region (0.97) and far weight (0.985) that hold crawl; lowering the thin-region weight or the
 far gate `screen` trades back crawl / far sparkles (measured 2026-09-25) and is not.
+
+**run340 replay (2026-09-26; `--taa-debug`, bursts 1017 rest, 1424 ship stopped + pan, 4078 ship moving + pan).** Scripts
+and outputs: `verification/results/run340-run91a-pan-replay/` (`summary.txt`). Burst frames after the first run about 10x
+slower in game time (rotation 0.23 -> 2.3-2.9 deg/frame at 1424 -> 1425), so only first frames are normal-rate.
+1. Station pixels, first frames [M]: station A (10.4-12.1 km, 41-47 units/px) 0.30 px/frame at rest, **19.7 px/frame** at
+   1424 (wide-FOV edge); thin 0.000, far weight 0 (base 0.90); camera-relative motion 0.31 px, so the motion cap is 1 (the
+   motion is the rotation path). Station B (30 km) 5.85 px/frame, thin 0.13, farw 1 (0.985). Burst 3: station C (8.7 km)
+   6.3 px/frame with **thin 0.64** (a lattice station: 0.97 on two thirds of it), station D (23 km) thin 0.67, farw 1.
+2. Sharpness, E(AgX luma gradient^2) / E(current jittered sample) on station interiors [M]: A rest taa 0.667 / presented
+   0.910; A mid-pan 0.386 / 0.524 (the pan costs 42 % of the presented gradient energy); B 0.373 -> 0.319 presented; C 0.169,
+   D 0.207. The RCAS model reproduces `present_` within 0.26 codes p50.
+3. Replay (a numpy copy of the base-pixel resolve, validated one step from the captured history: p99 0.09 codes at rest,
+   p50 0.20 / p90 1.16 mid-pan): steady state on station A's texture, 64 + 16 frames [model], E / E_ideal at 1.3 / 5.9 / 19.7
+   px/frame: w 0.9 0.743 / 0.755 / 0.661, **0.85 0.803 / 0.831 / 0.699** (+8 / +10 / +6 %), 0.8 0.853 / 0.885 / 0.740; after RCAS
+   0.75 at 5.9 px/frame 0.986 / 1.087 / 1.157, RCAS 1.0 on w 0.9 1.170. Flicker proxies: the fixture's MOTION_WEIGHT
+   `ripple_rms` (content-frame frame-to-frame change), replica calibrated to the committed 0.9 row (0.1974 / 0.00946 against
+   0.1968-0.1975 / 0.00943-0.00946): 0.85 -> e_ratio 0.299, ripple 0.0144 (1.52x); 0.8 -> 0.384, 0.0195 (2.06x); on the real
+   texture the rest shimmer (temporal std of output minus the ideal image) 0.11 -> 0.17 codes at 0.85 and it falls under a pan.
+   Real burst frames (140-175 px/frame, not steady state): 0.430 / 0.444 / 0.460 for 0.9 / 0.85 / 0.8.
+4. Recommendation [I]: base history weight **0.85**, sharpen 0.75 unchanged (a user decision of 2026-09-16; 1.0 adds +4 %
+   at rest), thin 0.97 and far 0.985 untouched. It covers station A-type hulls only: lattice stations (C) and far stations
+   (B, D) keep their 0.97 / 0.985 by design. Pin in `verification/probe/temporal_pass_fixture.cpp` `motion_weight_cases`:
+   the pan12.5 row at the production default weight (`x3::temporal::kHistoryWeightDefault`, `src/temporal/resolve.h:152`,
+   now the hard-coded `in.weight = .9f`) asserts e_ratio 0.299 +- 0.01 and ripple_rms at most 0.0155 (the 12.5 px/frame
+   ceiling of that case is 2.5x off); `verification/analysis/test_taa_image_defaults.py` asserts the unset default 0.85.
+   To be flown against 0.9 before it becomes the default (the replica does not render sub-pixel thin detail outside the thin
+   vote).

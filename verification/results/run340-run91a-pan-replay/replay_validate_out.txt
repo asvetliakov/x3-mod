@@ -1,0 +1,9 @@
+frame 1018 variant 0       base px 170398: err codes p50 1.069 p90 5.041 p99 11.09 mean 1.967
+frame 1018 variant +j      base px 170398: err codes p50 0.015 p90 0.052 p99 0.09 mean 0.021
+frame 1018 variant +j,-y   base px 170398: err codes p50 0.332 p90 1.415 p99 3.00 mean 0.566
+frame 1018 variant -j      base px 170398: err codes p50 2.304 p90 10.920 p99 24.11 mean 4.262
+frame 1018 variant -j,+y   base px 170398: err codes p50 2.213 p90 10.502 p99 23.17 mean 4.101
+frame 1018 variant +pj     base px 170398: err codes p50 1.999 p90 9.124 p99 19.94 mean 3.602
+frame 1018 variant +pj,-y  base px 170398: err codes p50 1.415 p90 6.498 p99 14.51 mean 2.559
+frame 1425 variant +j      base px 132923: err codes p50 0.204 p90 1.158 p99 2.89 mean 0.437
+frame 4079 variant +j      base px 7253: err codes p50 0.016 p90 0.251 p99 1.68 mean 0.151

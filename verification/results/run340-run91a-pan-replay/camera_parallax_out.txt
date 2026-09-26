@@ -1,0 +1,3 @@
+frame 1424 conv 1 px 158770: |motion| p50 19.74 |rotation path| p50 19.86 |relative| p50 0.31 p90 0.31  cap p50 1.000 p10 1.000
+frame 1424 conv 1 px 18574: |motion| p50 5.84 |rotation path| p50 5.97 |relative| p50 0.30 p90 0.31  cap p50 1.000 p10 1.000
+frame 4078 conv 1 px 15095: |motion| p50 6.56 |rotation path| p50 6.93 |relative| p50 0.51 p90 0.55  cap p50 1.000 p10 1.000

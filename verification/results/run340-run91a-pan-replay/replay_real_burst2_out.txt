@@ -1,0 +1,12 @@
+w 0.90 frame 1425 |d| p50  163.4 px interior 131161: E_taa/E_cur 0.430  RCAS0.75 0.583  RCAS1.0 0.708
+w 0.90 frame 1426 |d| p50  175.5 px interior 107539: E_taa/E_cur 0.471  RCAS0.75 0.637  RCAS1.0 0.768
+w 0.90 frame 1427 |d| p50  158.9 px interior  73577: E_taa/E_cur 0.497  RCAS0.75 0.661  RCAS1.0 0.782
+w 0.90 frame 1428 |d| p50  140.8 px interior  30626: E_taa/E_cur 0.536  RCAS0.75 0.694  RCAS1.0 0.803
+w 0.85 frame 1425 |d| p50  163.4 px interior 131161: E_taa/E_cur 0.444  RCAS0.75 0.603  RCAS1.0 0.731
+w 0.85 frame 1426 |d| p50  175.5 px interior 107539: E_taa/E_cur 0.488  RCAS0.75 0.661  RCAS1.0 0.795
+w 0.85 frame 1427 |d| p50  158.9 px interior  73577: E_taa/E_cur 0.512  RCAS0.75 0.682  RCAS1.0 0.805
+w 0.85 frame 1428 |d| p50  140.8 px interior  30626: E_taa/E_cur 0.556  RCAS0.75 0.718  RCAS1.0 0.829
+w 0.80 frame 1425 |d| p50  163.4 px interior 131161: E_taa/E_cur 0.460  RCAS0.75 0.626  RCAS1.0 0.756
+w 0.80 frame 1426 |d| p50  175.5 px interior 107539: E_taa/E_cur 0.507  RCAS0.75 0.687  RCAS1.0 0.824
+w 0.80 frame 1427 |d| p50  158.9 px interior  73577: E_taa/E_cur 0.528  RCAS0.75 0.704  RCAS1.0 0.829
+w 0.80 frame 1428 |d| p50  140.8 px interior  30626: E_taa/E_cur 0.576  RCAS0.75 0.743  RCAS1.0 0.856

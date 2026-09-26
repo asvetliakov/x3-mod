@@ -1,0 +1,13 @@
+scene 1017 box 4599,24,5118,501 k 2.462 ev 1.3; crop 320x220, measured 43296 px
+v   0.0 px/frame w 0.90: E/E_ideal taa 1.014 rcas0.75 1.070 rcas1.0 1.110 | shimmer 0.11 codes, |mean residual| 0.02 codes
+v   0.0 px/frame w 0.85: E/E_ideal taa 1.018 rcas0.75 1.075 rcas1.0 1.114 | shimmer 0.17 codes, |mean residual| 0.02 codes
+v   0.0 px/frame w 0.80: E/E_ideal taa 1.023 rcas0.75 1.081 rcas1.0 1.120 | shimmer 0.23 codes, |mean residual| 0.02 codes
+v   1.3 px/frame w 0.90: E/E_ideal taa 0.743 rcas0.75 0.875 rcas1.0 0.982 | shimmer 1.57 codes, |mean residual| 0.13 codes
+v   1.3 px/frame w 0.85: E/E_ideal taa 0.803 rcas0.75 0.948 rcas1.0 1.061 | shimmer 1.49 codes, |mean residual| 0.12 codes
+v   1.3 px/frame w 0.80: E/E_ideal taa 0.853 rcas0.75 1.008 rcas1.0 1.124 | shimmer 1.47 codes, |mean residual| 0.12 codes
+v   5.9 px/frame w 0.90: E/E_ideal taa 0.755 rcas0.75 0.986 rcas1.0 1.170 | shimmer 2.31 codes, |mean residual| 0.43 codes
+v   5.9 px/frame w 0.85: E/E_ideal taa 0.831 rcas0.75 1.087 rcas1.0 1.282 | shimmer 2.02 codes, |mean residual| 0.37 codes
+v   5.9 px/frame w 0.80: E/E_ideal taa 0.885 rcas0.75 1.157 rcas1.0 1.358 | shimmer 1.90 codes, |mean residual| 0.35 codes
+v  19.7 px/frame w 0.90: E/E_ideal taa 0.661 rcas0.75 0.766 rcas1.0 0.844 | shimmer 2.56 codes, |mean residual| 0.32 codes
+v  19.7 px/frame w 0.85: E/E_ideal taa 0.699 rcas0.75 0.816 rcas1.0 0.901 | shimmer 2.22 codes, |mean residual| 0.27 codes
+v  19.7 px/frame w 0.80: E/E_ideal taa 0.740 rcas0.75 0.867 rcas1.0 0.958 | shimmer 1.95 codes, |mean residual| 0.23 codes

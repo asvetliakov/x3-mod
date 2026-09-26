@@ -1,0 +1,18 @@
+frame 1017: routed 0.0409 thin(all px) 0.0065 age p50 64
+  25k-76.8k          px   171504 |d| p50   0.30 p90   0.31 thin 0.000 farw>0 0.000 bbox x 4637-5116 y 54-482
+  >76.8k far         px      815 |d| p50   0.30 p90   0.31 thin 0.005 farw>0 1.000 bbox x 4602-4653 y 297-350
+frame 1017: routed 0.0409 thin(all px) 0.0065 age p50 64
+  25k-76.8k          px     4535 |d| p50   0.30 p90   0.31 thin 0.004 farw>0 0.000 bbox x 2329-2555 y 563-617
+  >76.8k far         px    23573 |d| p50   0.30 p90   0.31 thin 0.121 farw>0 1.000 bbox x 2110-2671 y 553-796
+frame 1424: routed 0.0381 thin(all px) 0.0070 age p50 46
+  25k-76.8k          px   158770 |d| p50  19.74 p90  22.66 thin 0.000 farw>0 0.000 bbox x 4231-4764 y 239-586
+  >76.8k far         px      510 |d| p50  15.88 p90  15.99 thin 0.008 farw>0 1.000 bbox x 4195-4232 y 430-475
+frame 1424: routed 0.0381 thin(all px) 0.0070 age p50 46
+  25k-76.8k          px     4914 |d| p50   5.90 p90   6.15 thin 0.004 farw>0 0.000 bbox x 2199-2432 y 647-702
+  >76.8k far         px    24089 |d| p50   5.85 p90   6.90 thin 0.128 farw>0 1.000 bbox x 1967-2547 y 634-880
+frame 4078: routed 0.0293 thin(all px) 0.0146 age p50 64
+  25k-76.8k          px    38645 |d| p50   6.33 p90   7.04 thin 0.638 farw>0 0.000 bbox x 1884-2594 y 381-619
+  >76.8k far         px    20834 |d| p50   6.49 p90   6.64 thin 0.089 farw>0 1.000 bbox x 1942-2602 y 368-619
+frame 4078: routed 0.0293 thin(all px) 0.0146 age p50 64
+  25k-76.8k          px     1490 |d| p50   6.27 p90   6.30 thin 0.511 farw>0 0.000 bbox x 2496-2597 y 485-509
+  >76.8k far         px    30064 |d| p50   6.38 p90   6.51 thin 0.666 farw>0 1.000 bbox x 2493-2816 y 505-797
