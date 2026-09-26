@@ -42,7 +42,7 @@ int main(int argc, char** argv) {
     try {
         require(argc == 3, "usage: screen_emission_additive_structure <original directory> <local output directory>");
         const float gains[] = {1.f, 2.f, 3.5f, 8.f};
-        unsigned variants = 0, identical = 0, max_words = 0, max_arithmetic = 0;
+        unsigned variants = 0, identical = 0, max_words = 0, max_arithmetic = 0, flag_variants = 0;
         long long ns = 0;
         std::string rows;
         for (unsigned index = 0; index < 9; ++index) {
@@ -89,7 +89,7 @@ int main(int argc, char** argv) {
                     require(original == saved, "input mutated");
                     require(output.size() == native.size() + 10, "one DEF and one MUL added");
                     Budget budget;
-                    require(generated_shape(output, budget, 1) && budget.outputs == 1 && budget.textures == 1,
+                    require(generated_shape(output, budget, 1, 1) && budget.outputs == 1 && budget.textures == 1,
                             "authored single-output shape");
                     max_arithmetic = std::max(max_arithmetic, budget.arithmetic);
                     auto alias = original;
@@ -107,6 +107,28 @@ int main(int argc, char** argv) {
                 write(std::string(argv[2]) + "/additive_" + std::to_string(index) + "-" + std::to_string(g) + ".bin",
                       output);
                 ++variants;
+            }
+            // The far flag (bolts-through-taa.md; LinearEmissionSm1Config::far_flag): the
+            // AdditiveGain variant at gains 1 and 2 with oC2 = c31.z * max(rgb) after the
+            // gain MUL: one DEF (c31 = gain, 1, 32, 0), the gain MUL, two MAX, one MUL and the
+            // oC2 MOV over the native path (25 words); outputs oC0 and oC2, oC1 unwritten.
+            for (unsigned g = 0; g < 2; ++g) {
+                LinearEmissionSm1Config config{gains[g], LinearEmissionSm1Outputs::AdditiveGain, false};
+                config.far_flag = true;
+                Words flagged = {91, 92};
+                require(linear_emission_sm1_pixel_variant(original.data(), original.size(), config, flagged) ==
+                            LinearEmissionResult::Applied,
+                        "far flag promotion");
+                require(original == saved, "far flag input mutated");
+                require(flagged.size() == native.size() + 25, "far flag: one DEF, one MUL, two MAX, one MUL, one MOV");
+                Budget budget;
+                require(generated_shape(flagged, budget, 3, 5) && budget.outputs == 5 && budget.textures == 1,
+                        "authored oC0 + oC2 shape");
+                max_arithmetic = std::max(max_arithmetic, budget.arithmetic);
+                write(std::string(argv[2]) + "/additive_" + std::to_string(index) + "-flag" + std::to_string(g) +
+                          ".bin",
+                      flagged);
+                ++flag_variants;
             }
             // Out-of-range gain and the partial-precision request are refused
             // with the caller's output preserved, including when it aliases.
@@ -159,7 +181,8 @@ int main(int argc, char** argv) {
                     "SM2 original refused by the SM1 registry");
         }
         std::cout << "{\"pairs\":9,\"programs\":6,\"gains\":4,\"variants\":" << variants
-                  << ",\"identical\":" << identical << ",\"checks\":" << checks << ",\"max_words\":" << max_words
+                  << ",\"flag_variants\":" << flag_variants << ",\"identical\":" << identical
+                  << ",\"checks\":" << checks << ",\"max_words\":" << max_words
                   << ",\"max_arithmetic\":" << max_arithmetic << ",\"create_ns\":" << ns << ",\"rows\":[" << rows
                   << "]}\n";
     } catch (const std::exception& e) {

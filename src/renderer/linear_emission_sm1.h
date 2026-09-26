@@ -22,6 +22,11 @@ struct LinearEmissionSm1Config {
     // Applies to the native sample/arithmetic/alpha copy; output MOV and all
     // new decode/gain/coverage math remain full precision.
     bool native_partial_precision = false;
+    // AdditiveGain only (docs/architecture/bolts-through-taa.md): after the
+    // colour gain, oC2 = K * max(rgb) (K = c31.z = 32, a DEF of the variant),
+    // the late bullet draw's coverage flag for the lane's .g under the GREEN
+    // write mask. Two outputs (oC0, oC2), oC1 unwritten (bound masked off).
+    bool far_flag = false;
 };
 bool linear_emission_sm1_pair_reviewed(std::uint64_t vertex, std::uint64_t pixel) noexcept;
 // Six whole-original PS1.1 identities, nine exact pairs; native VS1 is unchanged.

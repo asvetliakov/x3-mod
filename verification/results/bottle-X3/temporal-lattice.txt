@@ -26,7 +26,7 @@ CHECK embedded_line_mask_depth within the 2048-slot ceiling PASS
 RESOLVE_BUDGET variant=embedded_line_mask_depth_thin dwords=1583 instruction_slots=435 device_limit=512 headroom=77 within_ceiling_2048=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_line_mask_depth_thin within the 2048-slot ceiling PASS
-RESOLVE_BUDGET variant=embedded_far_camera_hold dwords=3928 instruction_slots=1028 device_limit=512 headroom=-516 within_ceiling_2048=1
+RESOLVE_BUDGET variant=embedded_far_camera_hold dwords=3968 instruction_slots=1038 device_limit=512 headroom=-526 within_ceiling_2048=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_far_camera_hold within the 2048-slot ceiling PASS
 RESOLVE_BUDGET variant=embedded_thin_box_hold dwords=279 instruction_slots=59 device_limit=512 headroom=453 within_ceiling_2048=1
@@ -1134,9 +1134,9 @@ LINE_CASES
 CHECK line timing: camera-gate programs created PASS
 CHECK line timing: camera-gate programs created PASS
 CHECK line timing: camera-gate programs created PASS
-LINE_TIMING width=1280 height=768 content=all_geometry rounds=6 plain_ms=0.6009 far_stabiliser_ms=0.6912 thin_region_ms=1.2415 far_delta_ms=0.0903 thin_region_delta_ms=0.6406 scope=cpu_wall_with_event_query_drain
-LINE_TIMING_CAMERA width=1280 height=768 rounds=6 no_region_thin_ms=1.2415 no_region_camera_ms=0.9942 no_region_camera_delta_ms=-0.2473 fragmented_pan_thin_ms=1.1871 fragmented_pan_camera_ms=1.4380 fragmented_pan_camera_delta_ms=0.2508 scope=cpu_wall_with_event_query_drain
-LINE_TIMING_CAMERA_LANE width=1280 height=768 rounds=6 r32f_camera_ms=1.4380 lane_input_law_ms=1.5069 lane_input_lane_ms=1.5057 lane_fetch_delta_ms=-0.0011 lane_input_over_r32f_ms=0.0689 scope=cpu_wall_with_event_query_drain
+LINE_TIMING width=1280 height=768 content=all_geometry rounds=6 plain_ms=0.6632 far_stabiliser_ms=0.8649 thin_region_ms=1.4873 far_delta_ms=0.2016 thin_region_delta_ms=0.8241 scope=cpu_wall_with_event_query_drain
+LINE_TIMING_CAMERA width=1280 height=768 rounds=6 no_region_thin_ms=1.4873 no_region_camera_ms=1.1679 no_region_camera_delta_ms=-0.3194 fragmented_pan_thin_ms=0.9513 fragmented_pan_camera_ms=1.1824 fragmented_pan_camera_delta_ms=0.2311 scope=cpu_wall_with_event_query_drain
+LINE_TIMING_CAMERA_LANE width=1280 height=768 rounds=6 r32f_camera_ms=1.1824 lane_input_law_ms=1.2127 lane_input_lane_ms=1.2011 lane_fetch_delta_ms=-0.0116 lane_input_over_r32f_ms=0.0303 scope=cpu_wall_with_event_query_drain
 LINE_BASE numerical=190 state_restorations=4
 FAR_CASES
 FAR_GATE ok=1 d0=0.99985647 inv=17734.900 expected_d0=0.99985652 expected_inv=17749.280
@@ -8973,11 +8973,11 @@ CHECK fold timing: the camera gate ran with the half-resolution box PASS
 CHECK fold timing: the camera gate ran with the half-resolution box PASS
 CHECK fold timing: the camera gate ran with the half-resolution box PASS
 CHECK fold timing: every boundary drained PASS
-FOLD_TIMING build=fold width=5120 height=1440 rounds=8 content=station motion=rest config=vote source_drawn=vote copy_ms=0.0271 mask_ms=0.0000 box_ms=1.0532 resolve_ms=2.8499 taa_ms=3.9303 run_ms=4.0390 scope=cpu_wall_with_event_query_drain_fixture
+FOLD_TIMING build=fold width=5120 height=1440 rounds=8 content=station motion=rest config=vote source_drawn=vote copy_ms=0.0305 mask_ms=0.0000 box_ms=1.0931 resolve_ms=2.9388 taa_ms=4.0623 run_ms=4.1928 scope=cpu_wall_with_event_query_drain_fixture
 CHECK fold timing: every boundary drained PASS
-FOLD_TIMING build=fold width=5120 height=1440 rounds=8 content=station motion=rest config=both source_drawn=both copy_ms=0.0184 mask_ms=0.0000 box_ms=1.0524 resolve_ms=2.8676 taa_ms=3.9385 run_ms=4.0202 scope=cpu_wall_with_event_query_drain_fixture
+FOLD_TIMING build=fold width=5120 height=1440 rounds=8 content=station motion=rest config=both source_drawn=both copy_ms=0.0354 mask_ms=0.0000 box_ms=1.1027 resolve_ms=2.9477 taa_ms=4.0859 run_ms=4.1826 scope=cpu_wall_with_event_query_drain_fixture
 CHECK fold timing: every boundary drained PASS
-FOLD_TIMING build=fold width=5120 height=1440 rounds=8 content=station motion=rest config=thin_vote_off source_drawn=both copy_ms=0.0198 mask_ms=0.0000 box_ms=0.8185 resolve_ms=3.2158 taa_ms=4.0542 run_ms=4.1448 scope=cpu_wall_with_event_query_drain_fixture
+FOLD_TIMING build=fold width=5120 height=1440 rounds=8 content=station motion=rest config=thin_vote_off source_drawn=both copy_ms=0.0204 mask_ms=0.0000 box_ms=0.8429 resolve_ms=3.3283 taa_ms=4.1916 run_ms=4.2944 scope=cpu_wall_with_event_query_drain_fixture
 CHECK fold timing: the camera gate ran with the half-resolution box PASS
 CHECK fold timing: the camera gate ran with the half-resolution box PASS
 CHECK fold timing: the camera gate ran with the half-resolution box PASS
@@ -9003,11 +9003,11 @@ CHECK fold timing: the camera gate ran with the half-resolution box PASS
 CHECK fold timing: the camera gate ran with the half-resolution box PASS
 CHECK fold timing: the camera gate ran with the half-resolution box PASS
 CHECK fold timing: every boundary drained PASS
-FOLD_TIMING build=fold width=5120 height=1440 rounds=8 content=station motion=pan config=vote source_drawn=vote copy_ms=0.0196 mask_ms=0.0000 box_ms=1.0575 resolve_ms=2.8650 taa_ms=3.9421 run_ms=4.0405 scope=cpu_wall_with_event_query_drain_fixture
+FOLD_TIMING build=fold width=5120 height=1440 rounds=8 content=station motion=pan config=vote source_drawn=vote copy_ms=0.0182 mask_ms=0.0000 box_ms=1.0594 resolve_ms=2.8847 taa_ms=3.9623 run_ms=4.0405 scope=cpu_wall_with_event_query_drain_fixture
 CHECK fold timing: every boundary drained PASS
-FOLD_TIMING build=fold width=5120 height=1440 rounds=8 content=station motion=pan config=both source_drawn=both copy_ms=0.0207 mask_ms=0.0000 box_ms=1.0544 resolve_ms=2.8816 taa_ms=3.9566 run_ms=4.0398 scope=cpu_wall_with_event_query_drain_fixture
+FOLD_TIMING build=fold width=5120 height=1440 rounds=8 content=station motion=pan config=both source_drawn=both copy_ms=0.0186 mask_ms=0.0000 box_ms=1.0471 resolve_ms=2.9076 taa_ms=3.9733 run_ms=4.0571 scope=cpu_wall_with_event_query_drain_fixture
 CHECK fold timing: every boundary drained PASS
-FOLD_TIMING build=fold width=5120 height=1440 rounds=8 content=station motion=pan config=thin_vote_off source_drawn=both copy_ms=0.0195 mask_ms=0.0000 box_ms=0.8236 resolve_ms=3.2247 taa_ms=4.0679 run_ms=4.1484 scope=cpu_wall_with_event_query_drain_fixture
+FOLD_TIMING build=fold width=5120 height=1440 rounds=8 content=station motion=pan config=thin_vote_off source_drawn=both copy_ms=0.0174 mask_ms=0.0000 box_ms=0.8270 resolve_ms=3.2303 taa_ms=4.0747 run_ms=4.1562 scope=cpu_wall_with_event_query_drain_fixture
 FOLD_TIMING_BASE numerical=547 state_restorations=90
 FAR_CAMERA_PAN_CASES
 CHECK fc far and camera-gate programs available PASS
@@ -15916,4 +15916,326 @@ SAMPLE far jitter line, width 0.4: 7x7 far clip, rest: line dimming within 3 cod
 SAMPLE far jitter line, width 0.4: 3x3 clip, rest: one-frame margin above 6 codes (the sparkle the far clip removes; 1 = above) actual=1.000000000 expected=1.000000000 tolerance=0.000000000 PASS
 SAMPLE far jitter line, width 0.4: 3x3 clip, rest: frame-to-frame delta above 6 codes (1 = above) actual=1.000000000 expected=1.000000000 tolerance=0.000000000 PASS
 SAMPLE far jitter line, width 0.4: 7x7 far clip on the screen gate, yaw10.5: one-frame margin above 6 codes (the camera gate's job; 1 = above) actual=1.000000000 expected=1.000000000 tolerance=0.000000000 PASS
-RESULT PASS numerical=584 state_restorations=90 lattice=1
+FAR_JITTER_LINE_BASE numerical=584 state_restorations=90
+BOLT_FAR_STREAK_CASES
+CHECK bfs far gate of the production footprints PASS
+CHECK bfs hull depth inside the farw = 1 band PASS
+CHECK bfs far, camera-gate and flicker programs available PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs far, camera-gate and flicker programs available PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+BOLT_FAR_STREAK show=0.50 alpha_history=0 flagged_px=128 flag_outside=0 alpha_min=-2.000000 alpha_max=-2.000000 color_rgb_diff=0 color_diff=128 age_diff=0 depth_diff=0 alpha_outside_diff=0 wb_space_diff=0 wb_far_diff=0 wb_err_codes=0.0623 far_out_add=0.363186 space_out_add=0.409255 far_over_space=0.8874 after_diff=0 after_alpha_px=0 after_alpha_frames=0 after_frames=8
+SAMPLE bolt far streak, W 0.50, alpha history off: the streak over the far hull is flagged (128 pixels, alpha <= -1) actual=128.000000000 expected=128.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 0.50, alpha history off: no flag on a bright non-bolt texel or over space actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 0.50, alpha history off: frame N colour bit-identical without the flag (rgb lanes) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 0.50, alpha history off: frame N age bit-identical without the flag actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 0.50, alpha history off: frame N depth history bit-identical without the flag actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 0.50, alpha history off: frame N alpha bit-identical outside the flagged pixels actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 0.50, alpha history off: write-back bit-identical over space actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 0.50, alpha history off: write-back bit-identical over the unflagged hull actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 0.50, alpha history off: write-back shows the streak at W of the dropped strength (max error, codes; within 1) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 0.50, alpha history off: frames N+1..N+8 colour rgb, age and depth bit-identical (no residual beyond today's) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 0.50, alpha history off: frames N+1..N+8 alpha bit-identical (the flag is never read back) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CHECK bfs far, camera-gate and flicker programs available PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs far, camera-gate and flicker programs available PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+BOLT_FAR_STREAK show=1.00 alpha_history=0 flagged_px=128 flag_outside=0 alpha_min=-2.000000 alpha_max=-2.000000 color_rgb_diff=0 color_diff=128 age_diff=0 depth_diff=0 alpha_outside_diff=0 wb_space_diff=0 wb_far_diff=0 wb_err_codes=0.0623 far_out_add=0.699465 space_out_add=0.409255 far_over_space=1.7091 after_diff=0 after_alpha_px=0 after_alpha_frames=0 after_frames=8
+SAMPLE bolt far streak, W 1.00, alpha history off: the streak over the far hull is flagged (128 pixels, alpha <= -1) actual=128.000000000 expected=128.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 1.00, alpha history off: no flag on a bright non-bolt texel or over space actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 1.00, alpha history off: frame N colour bit-identical without the flag (rgb lanes) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 1.00, alpha history off: frame N age bit-identical without the flag actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 1.00, alpha history off: frame N depth history bit-identical without the flag actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 1.00, alpha history off: frame N alpha bit-identical outside the flagged pixels actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 1.00, alpha history off: write-back bit-identical over space actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 1.00, alpha history off: write-back bit-identical over the unflagged hull actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 1.00, alpha history off: write-back shows the streak at W of the dropped strength (max error, codes; within 1) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 1.00, alpha history off: frames N+1..N+8 colour rgb, age and depth bit-identical (no residual beyond today's) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 1.00, alpha history off: frames N+1..N+8 alpha bit-identical (the flag is never read back) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CHECK bfs far, camera-gate and flicker programs available PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs far, camera-gate and flicker programs available PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+BOLT_FAR_STREAK show=0.50 alpha_history=1 flagged_px=128 flag_outside=0 alpha_min=-2.000000 alpha_max=-2.000000 color_rgb_diff=0 color_diff=128 age_diff=0 depth_diff=0 alpha_outside_diff=0 wb_space_diff=0 wb_far_diff=0 wb_err_codes=0.0623 far_out_add=0.363186 space_out_add=0.409255 far_over_space=0.8874 after_diff=0 after_alpha_px=32 after_alpha_frames=8 after_frames=8
+SAMPLE bolt far streak, W 0.50, alpha history on: the streak over the far hull is flagged (128 pixels, alpha <= -1) actual=128.000000000 expected=128.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 0.50, alpha history on: no flag on a bright non-bolt texel or over space actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 0.50, alpha history on: frame N colour bit-identical without the flag (rgb lanes) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 0.50, alpha history on: frame N age bit-identical without the flag actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 0.50, alpha history on: frame N depth history bit-identical without the flag actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 0.50, alpha history on: frame N alpha bit-identical outside the flagged pixels actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 0.50, alpha history on: write-back bit-identical over space actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 0.50, alpha history on: write-back bit-identical over the unflagged hull actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 0.50, alpha history on: write-back shows the streak at W of the dropped strength (max error, codes; within 1) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 0.50, alpha history on: frames N+1..N+8 colour rgb, age and depth bit-identical (no residual beyond today's) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CHECK bfs far, camera-gate and flicker programs available PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs far, camera-gate and flicker programs available PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+CHECK bfs history follows the sequence PASS
+BOLT_FAR_STREAK show=1.00 alpha_history=1 flagged_px=128 flag_outside=0 alpha_min=-2.000000 alpha_max=-2.000000 color_rgb_diff=0 color_diff=128 age_diff=0 depth_diff=0 alpha_outside_diff=0 wb_space_diff=0 wb_far_diff=0 wb_err_codes=0.0623 far_out_add=0.699465 space_out_add=0.409255 far_over_space=1.7091 after_diff=0 after_alpha_px=32 after_alpha_frames=8 after_frames=8
+SAMPLE bolt far streak, W 1.00, alpha history on: the streak over the far hull is flagged (128 pixels, alpha <= -1) actual=128.000000000 expected=128.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 1.00, alpha history on: no flag on a bright non-bolt texel or over space actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 1.00, alpha history on: frame N colour bit-identical without the flag (rgb lanes) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 1.00, alpha history on: frame N age bit-identical without the flag actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 1.00, alpha history on: frame N depth history bit-identical without the flag actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 1.00, alpha history on: frame N alpha bit-identical outside the flagged pixels actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 1.00, alpha history on: write-back bit-identical over space actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 1.00, alpha history on: write-back bit-identical over the unflagged hull actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 1.00, alpha history on: write-back shows the streak at W of the dropped strength (max error, codes; within 1) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE bolt far streak, W 1.00, alpha history on: frames N+1..N+8 colour rgb, age and depth bit-identical (no residual beyond today's) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+RESULT PASS numerical=626 state_restorations=90 lattice=1

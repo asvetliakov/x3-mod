@@ -22,7 +22,9 @@ float4 main(float2 uv : TEXCOORD0, float2 vpos : VPOS) : COLOR0
 {
     float2 dx = float2(sharpenConstants.y, 0);
     float2 dy = float2(0, sharpenConstants.z);
-    float4 e = agxTonemap(tex2Dlod(sceneColor, float4(uv, 0, 0)));
+    // Bolts through the TAA (bolt_far.hlsl): the centre tap composites the pre-resolve scene texel at a flagged
+    // texel (s2, c29.x = W); the four neighbour taps see the resolved (bolt-free) values.
+    float4 e = agxTonemap(boltCompositeBranch(tex2Dlod(sceneColor, float4(uv, 0, 0)), uv));
     float3 b = agxTonemap(tex2Dlod(sceneColor, float4(uv - dy, 0, 0))).rgb;
     float3 d = agxTonemap(tex2Dlod(sceneColor, float4(uv - dx, 0, 0))).rgb;
     float3 f = agxTonemap(tex2Dlod(sceneColor, float4(uv + dx, 0, 0))).rgb;

@@ -25,6 +25,7 @@
 #include "exposure.h"
 #include "../temporal/agx.h"
 #include "../temporal/sharpen.h"
+#include "../temporal/bolt_far.h"
 #include "gpu_sync_timing_core.h"
 
 namespace x3m::renderer {
@@ -93,6 +94,11 @@ struct HdrConfig {
     // FP16 image into the 8-bit target (display_dither.hlsl). Off unless set;
     // the launcher's default is on.
     bool dither = false;
+    // X3M_BOLT_FAR_SHOW (W in [0, 1]; bolt_far.h): every write-back draw binds
+    // the pre-resolve FP16 scene at s2 and uploads c29.x = W, so the flagged
+    // texels of a resolved image composite the current bolt. 0: off (the
+    // programs then copy every texel as before; nothing is bound).
+    float bolt_show = 0.f;
     bool meter_requested() const noexcept { return exposure == ExposureMode::Auto || allow_auto_toggle; }
 };
 const char* hdr_tonemap_name(HdrTonemap tonemap) noexcept;
@@ -136,6 +142,7 @@ struct HdrDisplaySnapshot {
     x3::temporal::SharpenConstants sharpen_constants{};
     bool resolved = false;      // the caller's non-null `source` was sampled
     UINT width = 0, height = 0; // dimensions used for the write-back quad
+    float bolt_show = 0.f;      // c29.x of the draw (bolt_far.h): the bloom candidate composites with the same W
 };
 // The meter readback and adaptation step taken at a latch (begin_frame).
 struct HdrFrameBegin {
@@ -306,8 +313,9 @@ private:
     };
     static constexpr unsigned tonemap_failure_limit = 3;
     static constexpr unsigned chain_max_levels = 8; // 4^8 = 65536 px per axis (levels before the tile image)
-    static constexpr unsigned constant_count = x3::temporal::kSharpenRegister + 1; // c0..c23 saved (meter c0..c3, AgX
-                                                                                   // c8..c21, sharpen c23)
+    static constexpr unsigned constant_count = x3::temporal::kBoltShowRegister + 1; // c0..c29 saved (meter c0..c3,
+                                                                                    // AgX c8..c21, sharpen c23, the
+                                                                                    // bolt composite c29)
     template <class Fn> Fn call(unsigned slot) const noexcept { return reinterpret_cast<Fn>(native_[slot]); }
     bool self_test(bool with_depth, bool scene_open, char* detail, std::size_t detail_size) noexcept;
     HRESULT save(SavedState& saved) noexcept;

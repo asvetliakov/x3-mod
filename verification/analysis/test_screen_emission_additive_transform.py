@@ -24,7 +24,7 @@ sys.path.insert(0, str(ROOT / 'tools/analysis'))
 import inspect_motion_output_profiles as shader
 
 GAINS = (1., 2., 3.5, 8.)
-DEF, MUL, MOV = 81, 5, 1
+DEF, MUL, MOV, MAX = 81, 5, 1, 11
 PS2_ARITHMETIC_SLOTS, PS2_TEXTURE_SLOTS, PS2_FLOAT_CONSTANTS = 64, 32, 32
 TEXTURE_OPCODES = {66}  # texld
 SLOT_COST = {32: 3}  # pow
@@ -71,7 +71,7 @@ class AdditiveGainTransformTests(unittest.TestCase):
 
     def test_driver_covers_the_nine_pairs_at_four_gains(self):
         self.assertEqual((self.driver['pairs'], self.driver['programs'], self.driver['gains']), (9, 6, 4))
-        self.assertEqual((self.driver['variants'], self.driver['identical']), (36, 9))
+        self.assertEqual((self.driver['variants'], self.driver['identical'], self.driver['flag_variants']), (36, 9, 18))
         self.assertEqual(len(self.rows), 9)
         self.assertEqual(len({row['pixel'] for row in self.rows}), 6)
         self.assertEqual(len({row['vertex'] for row in self.rows}), 9)
@@ -102,6 +102,36 @@ class AdditiveGainTransformTests(unittest.TestCase):
                 # Exactly one added mul; the native path keeps all its own.
                 self.assertEqual(len([i for i in items if i['opcode'] == MUL]),
                                  len([i for i in native_items if i['opcode'] == MUL]) + 1, key)
+
+    def test_far_flag_variant_adds_one_oc2_write_and_the_k_constant(self):
+        """Bolts through the TAA (docs/architecture/bolts-through-taa.md): the AdditiveGain variant with far_flag, at
+        gains 1 and 2, is the gained variant (the gain MUL at gain 1 too, since the original SM1 program cannot write
+        oC2) plus `max r2, r0.x, r0.y; max r2, r2, r0.z; mul r2, r2, c31.z; mov oC2, r2` after the oC0 MOV, with K = 32
+        in the DEF's z lane; oC1 is never written."""
+        for index, row in enumerate(self.rows):
+            native, native_items, _ = self.program(index, 'native')
+            for g, gain in enumerate((1.0, 2.0)):
+                words, items, _ = self.program(index, f'flag{g}')
+                key = (row['pixel'], gain)
+                self.assertEqual(words[0], 0xffff0200, key)
+                self.assertEqual(len(words), len(native) + 25, key)
+                added = [item for item in items if span(words, item) not in {span(native, n) for n in native_items}]
+                self.assertEqual([item['opcode'] for item in added], [DEF, MUL, MAX, MAX, MUL, MOV], key)
+                definition, gain_mul, max_a, max_b, scale, out = added
+                self.assertEqual(shader.register_of(definition['words'][0]), (2, 31), key)
+                self.assertEqual(struct.unpack('<4f', struct.pack('<4I', *definition['words'][1:])), (gain, 1., 32., 0.), key)
+                self.assertEqual((shader.register_of(gain_mul['words'][0]), shader.mask_of(gain_mul['words'][0])), ((0, 0), 'xyz'), key)
+                self.assertEqual((shader.register_of(max_a['words'][1]), shader.swizzle_of(max_a['words'][1])), ((0, 0), 'xxxx'), key)
+                self.assertEqual((shader.register_of(max_a['words'][2]), shader.swizzle_of(max_a['words'][2])), ((0, 0), 'yyyy'), key)
+                self.assertEqual((shader.register_of(max_b['words'][2]), shader.swizzle_of(max_b['words'][2])), ((0, 0), 'zzzz'), key)
+                self.assertEqual((shader.register_of(scale['words'][2]), shader.swizzle_of(scale['words'][2])), ((2, 31), 'zzzz'), key)
+                self.assertEqual((shader.register_of(out['words'][0]), shader.mask_of(out['words'][0])), ((8, 2), 'xyzw'), key)
+                self.assertEqual(shader.register_of(out['words'][1]), (0, 2), key)
+                outputs = sorted(shader.register_of(i['words'][0])[1] for i in items if i['opcode'] == MOV and shader.register_of(i['words'][0])[0] == 8)
+                self.assertEqual(outputs, [0, 2], key)
+                # The oC2 write is the last instruction: the oC0 MOV and the native path precede it.
+                self.assertEqual(items[-1]['opcode'], MOV, key)
+                self.assertEqual(shader.register_of(items[-1]['words'][0]), (8, 2), key)
 
     def test_output_instruction_is_preserved_after_the_mul(self):
         for index, row in enumerate(self.rows):

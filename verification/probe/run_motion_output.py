@@ -901,6 +901,17 @@ BOLT_SINGLE_CASES = {'seam-bolt-single-copy': ('single', '1'), 'seam-bolt-single
 CASES += [case(name, 'boltshape', 'ownership', jitter=True, taa=True, lazy=True, camera=True, sentinel='2', hdr=True,
                hdr_env=dict(BOLT_SHAPE_ENV, X3M_FIXTURE_BOLT_SHAPE=script, X3M_BOLT_SINGLE_COPY=rule, X3M_CAPTURE_START='3', X3M_CAPTURE_FRAMES='1'))
           for name, (script, rule) in BOLT_SINGLE_CASES.items()]
+# Bolts through the TAA (docs/architecture/bolts-through-taa.md, B'; the farflag script above validate_bolt_far_flag): the
+# late bullet draw's coverage flag in RT2.g. lane: the four-lane RT2 (X3M_SUN_SHADOW_LANE=1) with the composite on, the
+# flag written; r32f: the lane off, the flag refused (reason r32f_lane), RT2 untouched; off: the composite off, nothing
+# flagged or refused. No capture window; the runner reads the session log for the once rows and the refusal row.
+BOLT_FAR_RESULTS = ROOT / 'verification/results/bolt-far-flag'  # the rows of the three cases (small, tracked)
+BOLT_FAR_CASES = {'seam-bolt-far-flag': dict(X3M_SUN_SHADOW_LANE='1', X3M_BOLT_FAR_COMPOSITE='1'),
+                  'seam-bolt-far-flag-r32f': dict(X3M_BOLT_FAR_COMPOSITE='1'),
+                  'seam-bolt-far-flag-off': dict(X3M_SUN_SHADOW_LANE='1', X3M_BOLT_FAR_COMPOSITE='0')}
+CASES += [case(name, 'boltshape', 'ownership', jitter=True, taa=True, lazy=True, camera=True, sentinel='2', hdr=True,
+               hdr_env=dict(BOLT_SHAPE_ENV, X3M_FIXTURE_BOLT_SHAPE='farflag', X3M_BOLT_FAR_SHOW='0.5', X3M_LINEAR_MATERIALS='0', **env))
+          for name, env in BOLT_FAR_CASES.items()]
 # Fade-band motion arm scripts (motion_output_fade_route_inc.h, X3M_FIXTURE_FADE_SCRIPT;
 # docs/architecture/linear-distance-fade-region.md "Fade-band route"): twelve
 # static frames over the eight jitter phases with the rotating camera (cut at
@@ -4621,6 +4632,47 @@ def validate_bolt_single(name, text, trace, script, rule):
                 capture_rows=[{k: r[k] for k in ('frame', 'draw', 'vb', 'prims') if k in r} for r in dropped + rows])
 
 
+def validate_bolt_far_flag(name, text, trace, env):
+    """The farflag script: three bolt frames after an A-only frame, each A then one late bolt. The bolt is admitted every
+    frame; with the composite on and the four-lane RT2 it is flagged (key 64 +1) and RT2.g rises by exactly 32 = K * G *
+    max(texel) at every bolt pixel (or reads 32 without MRT post-pixel-shader blending), .r/.b/.a and every other RT2 and
+    RT1 byte untouched; with the lane off the flag is refused once per draw (key 65 +1, one bolt_flag_refused row with
+    reason r32f_lane) and RT2 is untouched; with the composite off nothing is flagged or refused. The once rows
+    (motion_output_mrt_blend, bolt_far_composite) are in the session log."""
+    lines = text.splitlines(); tl = trace.splitlines()
+    assert any(l.startswith('RESULT PASS ') for l in lines) and not any(l.startswith('RESULT FAIL') for l in lines), name
+    lane = env.get('X3M_SUN_SHADOW_LANE') == '1'; composite = env.get('X3M_BOLT_FAR_COMPOSITE') == '1'
+    setup = [fields(l) for l in lines if l.startswith('BOLT_FAR_FLAG_SETUP ')]
+    assert len(setup) == 1 and setup[0]['lane_active'] == str(int(lane)) and setup[0]['composite'] == str(int(composite)), (name, setup)
+    rows = [fields(l) for l in lines if l.startswith('BOLT_FAR_FLAG ')]
+    assert [int(r['plan']) for r in rows] == [1, 2, 3], (name, rows)
+    summary = [fields(l) for l in lines if l.startswith('BOLT_FAR_FLAG_SUMMARY ')]
+    assert len(summary) == 1 and int(summary[0]['flagged']) == (3 if lane and composite else 0) and int(summary[0]['refused']) == (3 if composite and not lane else 0), (name, summary)
+    blend = [fields(l) for l in tl if l.startswith('motion_output_mrt_blend ')]
+    state = [fields(l) for l in tl if l.startswith('bolt_far_composite ')]
+    assert len(blend) >= 1 and blend[0]['post_pixel_shader_blending'] in ('0', '1') and blend[0]['independent_write_masks'] == '1', (name, blend)
+    assert len(state) >= 1 and state[0]['requested'] == str(int(composite)) and state[0]['show'] == '0.5' and state[0]['k'] == '32', (name, state)
+    refusals = [fields(l) for l in tl if l.startswith('bolt_flag_refused ')]
+    if composite and not lane:
+        assert len(refusals) == 1 and refusals[0]['reason'] == 'r32f_lane', (name, refusals)
+    else:
+        assert not refusals, (name, refusals)
+    for r in rows:
+        assert (r['admitted'], r['rt1_changed'], r['rt2_outside_changed']) == ('1', '0', '0'), (name, r)
+        assert int(r['scene_added']) > 100 and (not lane or int(r['bolt_px']) == int(r['scene_added'])), (name, r)  # bolt_px is counted on the four-lane RT2 only
+        if lane and composite:
+            assert (r['flagged'], r['refused'], r['rba_changed']) == ('1', '0', '0'), (name, r)
+            blended = abs(float(r['g_delta_min']) - 32) < 1e-3 and abs(float(r['g_delta_max']) - 32) < 1e-3
+            replaced = abs(float(r['g_after_covered']) - 32) < 1e-3 and abs(float(r['g_after_open']) - 32) < 1e-3
+            assert blended or replaced, (name, r)
+            assert (blend[0]['post_pixel_shader_blending'] == '1') == blended or replaced, (name, r, blend)
+        else:
+            assert (r['flagged'], r['refused']) == ('0', '1' if composite else '0') and float(r['g_delta_max']) == 0 and float(r['g_delta_min']) == 0, (name, r)
+    return dict(checks=1, lane=lane, composite=composite, mrt_post_pixel_shader_blending=blend[0]['post_pixel_shader_blending'],
+                rows=[{k: r[k] for k in ('frame', 'plan', 'admitted', 'flagged', 'refused', 'bolt_px', 'g_delta_min', 'g_delta_max', 'g_before_covered', 'g_after_covered', 'g_before_open', 'g_after_open', 'rba_changed', 'rt1_changed', 'rt2_outside_changed')} for r in rows],
+                refusals=[{k: r[k] for k in ('reason', 'rt2_format')} for r in refusals])
+
+
 def validate_zonly(name, text, trace):
     """The zonly script (asteroid-fog-temporal.md, run 47): nine frames, each a depth-only prepass with the z_only
     vs_1_1 program (null PS, ZWRITEENABLE on, COLORWRITEENABLE 0) followed by the blended, z-write-off material draw
@@ -6914,6 +6966,18 @@ def main(argv=None):
                 print(f'{name}: exit={completed.returncode} frame1 uncovered_t={case["frames"][0]["uncovered_t"]} frame5 uncovered_t={last["uncovered_t"]} '
                       f'covered_l={last["covered_l"]} under_spread_codes={case["under_spread_codes"]:.3f} dropped_rows={case["dropped_rows"]} '
                       f'bolt_copies_rows={case["bolt_copies_rows"]}', flush=True)
+                continue
+            if mode == 'boltshape' and name in BOLT_FAR_CASES:
+                case = validate_bolt_far_flag(name, text, trace, hdr_env)
+                case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
+                            dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / candidate_exe.name))
+                result['cases'][name] = case
+                save()
+                BOLT_FAR_RESULTS.mkdir(parents=True, exist_ok=True)
+                (BOLT_FAR_RESULTS / f'{name}.json').write_text(json.dumps(dict(case=name, bottle=os.environ.get('X3M_FIXTURE_BOTTLE', 'Steam'),
+                                                                               **{k: case[k] for k in ('lane', 'composite', 'mrt_post_pixel_shader_blending', 'rows', 'refusals')}), indent=1) + '\n')
+                print(f'{name}: exit={completed.returncode} lane={case["lane"]} composite={case["composite"]} mrt_blend={case["mrt_post_pixel_shader_blending"]} '
+                      f'rows={len(case["rows"])} g_delta={case["rows"][0]["g_delta_min"]}..{case["rows"][0]["g_delta_max"]} refusals={len(case["refusals"])}', flush=True)
                 continue
             if mode == 'boltshape' and hdr_env['X3M_FIXTURE_BOLT_SHAPE'] == 'copy':
                 case = validate_bolt_copy(name, text, trace)

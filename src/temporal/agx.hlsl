@@ -40,6 +40,7 @@
 //   c20  lookOffset  xyz offset, w 0
 //   c21  lookPower   xyz power, w 0
 #include "display_dither.hlsl"
+#include "bolt_far.hlsl"
 sampler2D sceneColor : register(s0);
 float4 exposure   : register(c8);
 float4 decodeMode : register(c9);
@@ -131,7 +132,9 @@ float4 agxTonemap(float4 scene)
 #ifndef AGX_NO_MAIN
 float4 main(float2 uv : TEXCOORD0, float2 vpos : VPOS) : COLOR0
 {
-    float4 c = agxTonemap(tex2Dlod(sceneColor, float4(uv, 0, 0)));
+    // Bolts through the TAA (bolt_far.hlsl): the flagged texels take the pre-resolve scene texel (s2, c29.x = W)
+    // before the tonemap; every other texel is tonemapped from the resolved value bit for bit as before.
+    float4 c = agxTonemap(boltCompositeBranch(tex2Dlod(sceneColor, float4(uv, 0, 0)), uv));
     return float4(displayDither(c.rgb, vpos, exposure.z), c.a);
 }
 #endif

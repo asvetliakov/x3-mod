@@ -24,7 +24,8 @@ sampler2D reconstructedBloom : register(s1);
 
 float4 main(float2 uv : TEXCOORD0, float2 vpos : VPOS) : COLOR0
 {
-    float4 scene = tex2Dlod(sceneColor, float4(uv, 0, 0));
+    // Bolts through the TAA (bolt_far.hlsl): a flagged texel takes the pre-resolve scene texel (s2, c29.x = W).
+    float4 scene = boltComposite(tex2Dlod(sceneColor, float4(uv, 0, 0)), uv);
     // Preserve the base AgX arithmetic, including identity-decode negatives
     // and exposed channels above 65504. bloomExposed() is ONLY for extraction.
     float3 v = decodeEngine(scene.rgb);

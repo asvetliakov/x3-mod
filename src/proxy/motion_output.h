@@ -236,6 +236,13 @@ struct MotionRoute {
     // Additive option: DESTBLEND ONE applied for this draw (restored to the
     // shadowed INVSRCCOLOR after it) and, with gain != 1, the gained PS bound.
     bool screen_additive = false, screen_additive_ps = false, screen_additive_alpha = false;
+    // Bolts through the TAA (bolts-through-taa.md): the late bullet draw's flag
+    // write into RT2.g. RT1 bound masked off (no MRT gap), RT2 bound with the
+    // GREEN mask, the application's masks saved for the undo; each step's flag
+    // marks exactly what was applied (a failed setter may have mutated).
+    bool bolt_flag = false, bolt_flag_rt1 = false, bolt_flag_write1 = false, bolt_flag_rt2 = false,
+         bolt_flag_write2 = false;
+    DWORD bolt_flag_saved_write1 = 15, bolt_flag_saved_write2 = 15;
     // Bolt footprint (bolt_footprint_core.h): the proxy's substitute vertex
     // buffer bound at stream 0 for this admitted additive draw; the
     // application's own binding (owned through GetStreamSource) is put back
@@ -543,6 +550,10 @@ struct MotionHdrScene {
     IDirect3DSurface9* main;
     std::uint64_t device_id, frame, generation;
     const renderer::HdrDisplaySnapshot& display;
+    // The pre-resolve FP16 scene the write-back composited the flagged bolt
+    // texels from (bolt_far.h; `scene` itself without TAA), borrowed like
+    // `scene`; display.bolt_show is its W. Null when the composite is off.
+    IDirect3DTexture9* bolt_scene;
 };
 using MotionHdrSceneCallback = void (*)(void* context, const MotionHdrScene& scene) noexcept;
 
@@ -1033,6 +1044,12 @@ public:
     // selector's scene_depth_written) is not forwarded: D3D_OK, no state or binding touched, none of the route's
     // work. Process-start configuration; inert without the additive route (the rule sits in its admission).
     void configure_bolt_single_copy(bool requested) noexcept;
+    // X3M_BOLT_FAR_COMPOSITE (bolts-through-taa.md, B'): the late bullet draw
+    // writes its coverage flag into RT2.g through the AdditiveGain variant's
+    // oC2 (created at gain 1 too); `show` is W for the once row (the HDR pass
+    // owns the composite). Needs the additive route.
+    void configure_bolt_far_composite(bool requested, float show) noexcept;
+    bool bolt_far_composite_requested() const noexcept { return bolt_far_requested_; }
     // Fade-band motion arm threshold (X3M_FADE_ROUTE=<permille>, default
     // 500; fade_route::threshold_off disables the arm): a reviewed pair drawn
     // in the exact fade-band state routes (own RT1 motion, RT2 masked, no
@@ -1417,7 +1434,8 @@ private:
         IDirect3DPixelShader9* hull_lightmap_variant = nullptr; // the fill variant (K, or the motion variant at K=0)
                                                                 // plus the light-map gain MUL (PS only)
         IDirect3DPixelShader9* screen_variant = nullptr; // step C packed producer (PS only; the VS stays original)
-        IDirect3DPixelShader9* screen_additive_variant = nullptr; // additive option, gain != 1 only (AdditiveGain)
+        IDirect3DPixelShader9* screen_additive_variant = nullptr;      // additive option, gain != 1 only (AdditiveGain)
+        IDirect3DPixelShader9* screen_additive_flag_variant = nullptr; // AdditiveGain + the RT2.g flag (bolt_far.h)
         IUnknown* distance_fade_variant = nullptr;
         bool registered = false; // Valid original, independent of motion support.
         const renderer::MotionOutputProfile* row = nullptr;
@@ -1492,6 +1510,7 @@ private:
         unsigned screen_additive_index = screen_emission::pair_count; // table index of the bound pair (per-frame
                                                                       // telemetry mask)
         IDirect3DPixelShader9* ps_screen_additive_variant = nullptr;
+        IDirect3DPixelShader9* ps_screen_additive_flag_variant = nullptr;
         IDirect3DVertexShader9* vs_fade_variant = nullptr;
         IDirect3DPixelShader9* ps_fade_variant = nullptr;
         std::uint32_t fade_sampler_mask = 0; // exact six-pair contract, independent of creation readiness
@@ -2024,6 +2043,11 @@ private:
     // Additive option: the exact-state admission, the DESTBLEND/PS apply
     // (rolled back on a failed second step) and the restore after the draw.
     void prepare_screen_additive(const MotionDrawCall&, MotionRoute&) noexcept;
+    // The flag's RT1/RT2 bindings and masks around the late bullet draw, and
+    // their undo in reverse order (finish_screen_additive, the rollbacks).
+    HRESULT bind_bolt_flag_targets(MotionRoute&) noexcept;
+    HRESULT unbind_bolt_flag_targets(MotionRoute&) noexcept;
+    void refuse_bolt_flag(unsigned reason) noexcept;
     HRESULT apply_screen_additive_alpha() noexcept;
     HRESULT restore_screen_additive_alpha() noexcept;
     void finish_screen_additive(MotionRoute&) noexcept;
@@ -2312,6 +2336,15 @@ private:
     std::uint32_t sun_original_lightmap_variants_ = 0; // gained share variants created (fixture counter)
     bool screen_additive_requested_ = false; // X3M_SCREEN_EMISSION_ADDITIVE=G (finite 1..8), exclusive with the packed
                                              // route
+    // Bolts through the TAA (bolts-through-taa.md): X3M_BOLT_FAR_COMPOSITE with
+    // the additive route; W (X3M_BOLT_FAR_SHOW) for the once row. Per frame
+    // and per session: flags written (one per admitted late bullet draw) and
+    // refusals; the refusal reasons are logged once each per device.
+    bool bolt_far_requested_ = false;
+    float bolt_far_show_ = 0.f;
+    std::uint32_t bolt_flag_frame_ = 0, bolt_flag_refused_frame_ = 0, bolt_flag_session_ = 0,
+                  bolt_flag_refused_session_ = 0;
+    unsigned bolt_flag_refusal_logged_ = 0;
     // Bolt footprint (bolt_footprint_core.h). The plans (one per instance,
     // max_instances) are allocated once at configure; the substitute buffer
     // (D3DUSAGE_DYNAMIC | WRITEONLY, DEFAULT pool, the scan bound of 147 456

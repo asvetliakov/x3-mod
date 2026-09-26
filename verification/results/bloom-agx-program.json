@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "source": "src/temporal/bloom_agx_ps.hlsl",
-  "source_sha256": "3adb8c8c6deff6d89bd1a902bc8963bcc60fbf50486ab541f9594d0a3409e915",
+  "source_sha256": "ea8275b1c4eaefba1b5397653a52a1eabfde5a2648bab8bd86c4ebc9a7910c37",
   "compiler": "native d3dx9_37.dll D3DXCompileShader",
   "compiler_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "entry": "main",
@@ -10,15 +10,16 @@
   "flags_name": "D3DXSHADER_OPTIMIZATION_LEVEL3",
   "defines": null,
   "includes": {
-    "src/temporal/agx.hlsl": "cb510151dd3ead31f97ce5b99e139bd062df3fd86bbb7d53cc8de8fbaac875f6",
+    "src/temporal/agx.hlsl": "b737bcee4b226df542cecc50a9b50ca78aedebb6dc353e7de70a18c5423b2bd6",
     "src/temporal/display_dither.hlsl": "400f58f16b94c12ea0b018ad8871a729588cfac8f1b34d779eccb0ea676dbcbf",
+    "src/temporal/bolt_far.hlsl": "3e2b70ba3613ed50ef31b228ae836119fd420fa2fa0cc9ca1fb8875ffc186d0f",
     "src/temporal/bloom_common.hlsl": "40b8ef6cc0a6435aebd53fb643cf7403fcd1b2ec6bca71840f4388d6e03192e8"
   },
-  "word_count": 647,
-  "bytecode_sha256": "3406e729ff26fcdb8da5c205893e696502980214cee5074d15d9629e5ae7457c",
+  "word_count": 693,
+  "bytecode_sha256": "0e9a4320d8e912c74739ebcfe282c2d21ca3b77ae7962fc478600448146ae2be",
   "copyright_scope": "Original authored project shader; no game shader bytes",
   "creates_d3d_device": false,
-  "header_sha256": "bf083ded45750927f98247323ca020c7bbbbaf8ee029aa93bd53e42a56383dce",
+  "header_sha256": "b86d6108c52deb11c4b457dcd7b1f0c9bb3136045d6255ce8d15494479323661",
   "tool_sources": {
     "tools/shaders/compile_rigid_motion_pixel.cpp": "acff68e2c8ebbd580f090baabc8df213aafa3200a1be10c4b3e4cc824cd600c8",
     "tools/shaders/generate_rigid_motion_pixel.py": "f8c223558759dd1e2d6869b378e08b039b4be16bd776bdb6a9610d3f537b89a9",

@@ -1520,7 +1520,14 @@ struct Fixture {
         api(readback(d.p, data.data(), unsigned(data.size()), &w, &h), "fixture readback");
         require(w == W && h == H, "motion target matches the main dimensions");
         if (!(materialwrap || materialxt || materialglass) || materialwrap_depth) {
-            api(readback_depth(d.p, depth_data.data(), unsigned(depth_data.size()), &w, &h), "fixture depth readback");
+            const HRESULT depth_read = readback_depth(d.p, depth_data.data(), unsigned(depth_data.size()), &w, &h);
+            if (depth_read == D3DERR_MOREDATA) { // the four-channel sun-share lane RT2 (X3M_SUN_SHADOW_LANE): .r is the
+                                                 // depth
+                std::vector<float> lanes(std::size_t(W) * H * 4);
+                api(readback_depth(d.p, lanes.data(), unsigned(lanes.size()), &w, &h), "fixture lane depth readback");
+                for (std::size_t i = 0; i < depth_data.size(); ++i) depth_data[i] = lanes[i * 4];
+            } else
+                api(depth_read, "fixture depth readback");
             require(w == W && h == H, "depth target matches the main dimensions");
         } else
             require(readback_depth(d.p, depth_data.data(), unsigned(depth_data.size()), &w, &h) == D3DERR_NOTFOUND,

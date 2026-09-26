@@ -42,6 +42,13 @@ struct BloomBoundary {
 };
 struct BloomPrepare {
     IDirect3DTexture9* scene = nullptr; // borrowed pre-original resolved FP16
+    // Bolts through the TAA (bolt_far.h): the pre-resolve FP16 scene the
+    // write-back composited from (null: no composite), bound at s2 of the
+    // extract and the candidate draws with c29.x = bolt_show (the write-back's
+    // W; 0 turns the composite off). Same format, size and device as `scene`
+    // (it may be the same texture: the composite is then the identity).
+    IDirect3DTexture9* bolt_scene = nullptr;
+    float bolt_show = 0.f;
     BloomBoundary boundary{};
     x3::temporal::BloomParams filter{};
     // Exact block used by the ordinary writeback, including its latched
@@ -147,7 +154,8 @@ private:
     HRESULT restore(const SavedState&, bool inject_partial_failure = false) noexcept;
     HRESULT setup(const SavedState&, DWORD mask) noexcept;
     HRESULT draw(const Image&, IDirect3DPixelShader9*, IDirect3DTexture9*, IDirect3DTexture9*,
-                 const x3::temporal::BloomConstants* = nullptr, bool* issued = nullptr) noexcept;
+                 const x3::temporal::BloomConstants* = nullptr, bool* issued = nullptr,
+                 IDirect3DTexture9* s2 = nullptr) noexcept;
     HRESULT validate_boundary(const BloomBoundary&, const SavedState&, bool full_viewport) const noexcept;
     HRESULT validate_inputs(const BloomPrepare&) const noexcept;
     bool owned(IDirect3DSurface9*) const noexcept;

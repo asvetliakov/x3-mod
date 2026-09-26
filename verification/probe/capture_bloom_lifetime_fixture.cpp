@@ -144,6 +144,9 @@ struct BloomBoundary {
 };
 struct BloomPrepare {
     IDirect3DSurface9* scene = nullptr;
+    IDirect3DSurface9* bolt_scene = nullptr; // bolt_far.h: the pre-resolve scene of the composite, released with
+                                             // `scene`
+    float bolt_show = 0.f;
     BloomBoundary boundary{};
     x3::temporal::BloomParams filter{};
     int agx = 0, decode = 0;

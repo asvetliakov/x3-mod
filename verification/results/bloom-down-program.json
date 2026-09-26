@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "source": "src/temporal/bloom_down_ps.hlsl",
-  "source_sha256": "c5a24fa7256f02fca3b0be88812cc0d088bddfa715dce87d802a1032c06ce555",
+  "source_sha256": "8766010e4a242692d4d52522507c9d1261199f8db050e2ea75ac2aa30517afee",
   "compiler": "native d3dx9_37.dll D3DXCompileShader",
   "compiler_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "entry": "main",
@@ -10,7 +10,8 @@
   "flags_name": "D3DXSHADER_OPTIMIZATION_LEVEL3",
   "defines": null,
   "includes": {
-    "src/temporal/bloom_common.hlsl": "40b8ef6cc0a6435aebd53fb643cf7403fcd1b2ec6bca71840f4388d6e03192e8"
+    "src/temporal/bloom_common.hlsl": "40b8ef6cc0a6435aebd53fb643cf7403fcd1b2ec6bca71840f4388d6e03192e8",
+    "src/temporal/bolt_far.hlsl": "3e2b70ba3613ed50ef31b228ae836119fd420fa2fa0cc9ca1fb8875ffc186d0f"
   },
   "word_count": 358,
   "bytecode_sha256": "9ea94135dd015f57feb39be5310a19e7ccad6d55a35f64bcb69fb242372adf42",

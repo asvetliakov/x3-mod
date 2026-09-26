@@ -338,7 +338,7 @@ int main() {
    assert(capped.radiance[1]==1 && capped.radiance[2]==65504);
    s.source_clamp=8; assert(prepare_bloom(capped,{13,7},{7,4},s,2,4,AgxDecode::srgb));
    assert(capped.radiance[1]==4); }
- assert(kBloomFirstRegister==24 && kBloomRegisterCount==5 && kBloomMaxLevels==6);
+ assert(kBloomFirstRegister==24 && kBloomRegisterCount==6 && kBloomMaxLevels==6);
  assert(bloom_even_extraction({82,2}) && !bloom_even_extraction({82,1}));
  assert(!bloom_even_extraction({0,2}) && !bloom_even_extraction({2,3}));
  BloomExtractShader shader=BloomExtractShader::gamma22;

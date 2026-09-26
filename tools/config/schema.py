@@ -116,6 +116,12 @@ SETTINGS = [
     entry('bolt_single_copy', 'bool', 'graphics', 'The game draws its bullets twice, once before and once after the scene; the first '
           'copy is dropped so bullets keep one brightness whether or not a distant object is behind them. 1 = on, 0 = off '
           '(both copies, as before).', '1', builtin='0', requires=('screen_emission_additive',), launcher='--bolt-single-copy'),
+    entry('bolt_far_composite', 'bool', 'graphics', 'Keeps weapon bolts visible in front of distant stations, where the '
+          'anti-aliasing would otherwise fade a bolt into the station behind it. 1 = on, 0 = off.', '1', builtin='0',
+          requires=('screen_emission_additive', 'hdr'), launcher='--bolt-far-composite'),
+    entry('bolt_far_show', 'float', 'graphics', 'How strongly a bolt in front of a distant station shows, 0 to 1. 1 = its full '
+          'brightness, 0.5 = half (about its look over empty space), 0 = the anti-aliased result.', '0.5', range=(0.0, 1.0),
+          requires=('bolt_far_composite',), launcher='--bolt-far-show'),
     # ---------------------------------------------------------------- hdr
     entry('hdr', 'bool', 'hdr', 'High dynamic range rendering: lights brighter than white, automatic exposure and a filmic '
           'tone curve. 1 = on, 0 = off (the game\'s original look). Costs some frame rate and video memory.', '1', launcher='--hdr'),

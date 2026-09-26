@@ -13,6 +13,7 @@ paths=[root/name for name in ('src/renderer/temporal_pass.h','src/renderer/tempo
     'verification/probe/temporal_fold_timing_inc.h',
     'verification/probe/temporal_far_camera_inc.h',
     'verification/probe/temporal_far_jitter_line_inc.h',
+    'verification/probe/temporal_bolt_far_streak_inc.h','src/temporal/bolt_far.hlsl','src/temporal/bolt_far.h','src/temporal/hdr_writeback_dither_ps.hlsl','src/renderer/hdr_writeback_dither_program_inc.h',
     'verification/probe/temporal_region_hold_inc.h','verification/probe/temporal_box_half_inc.h',
     'verification/probe/temporal_thin_source_inc.h','src/temporal/line_mask_depth_thin_ps.hlsl','src/renderer/temporal_line_mask_depth_thin_program_inc.h',
      'src/temporal/thin_box_rows_half_ps.hlsl','src/renderer/temporal_thin_box_rows_half_program_inc.h','src/temporal/thin_box_columns_half_ps.hlsl','src/renderer/temporal_thin_box_columns_half_program_inc.h','src/temporal/depth_decode.hlsl','src/temporal/sharpen.h','src/temporal/rcas.hlsl','src/temporal/taa_sharpen_ps.hlsl','verification/probe/temporal_pass_fixture.cpp','verification/probe/build_temporal_pass.sh','verification/probe/run_temporal_pass.py')]
@@ -283,7 +284,8 @@ try:
     # the two 16-tap fallbacks went with them; a device without the filter query now refuses initialize (no fallback set).
     # Measured totals after it (2026-09-25): FAR_BASE 299 -> 295 (the far scenes' 16-tap reference identities), the history-taps
     # block 21 -> 10 numerical checks, RESULT 598 -> 583 / 90; the standalone filter query (HISTORY_FILTER_QUERY, MotionOutput's
-    # attach-time decision) adds 1: 584 / 90.
+    # attach-time decision) adds 1: 584 / 90. Bolts through the TAA (2026-09-26, BOLT_FAR_STREAK: 10 metrics per W, two W)
+    # adds 42 (11 metrics per W with the alpha history off, 10 with it on, two W): 626 / 90.
     report['history_taps']={'filter_probe':fields('FILTER_PROBE '),'reset':fields('HISTORY_TAPS_RESET '),'no_filter':fields('HISTORY_TAPS_NO_FILTER '),'query':fields('HISTORY_FILTER_QUERY ')}
     taps=report['history_taps']
     assert [(r['bilinear'],r['reason'],r['initialize'],r['references']) for r in taps['no_filter']]==[('0','adapter_query','8876086a','0')],taps['no_filter']
@@ -313,7 +315,7 @@ try:
     assert [hold['state'][0][k] for k in ('masks_camera','masks_screen','masks_on','masks_at_reset','masks_after_reset','masks_box_refused')]==['0','2','0','0','0','0'],hold['state']
     assert len(hold['thin'])==3 and all(r['square_differs']=='0' and float(r['age_oracle_error'])==0 for r in hold['thin']) and len(hold['motion_start'])==1 and len(hold['pan'])==1 and len(hold['stale'])==1 and len(hold['box_domain'])==1 and len(hold['pan_stop'])==1 and len(hold['box_open'])==1,hold
     assert [(r['scene'],r['box']) for r in hold['fold_fallback']]==[(s,b) for s in ('pan_arm_bars','gap_lattice_7.5px') for b in ('full','half')] and all(int(r['fallback_px_frames'])>0 and float(r['error_in_place_7x7'])<=float(r['bound']) for r in hold['fold_fallback']),hold['fold_fallback']
-    assert lattice.returncode==0 and 'LATTICE_BASE numerical=10 state_restorations=0' in lattice_text and 'FLICKER_BASE numerical=190 state_restorations=4' in lattice_text and 'LINE_BASE numerical=190 state_restorations=4' in lattice_text and 'DEPTH_FOLD_BASE numerical=448 state_restorations=72' in lattice_text and 'HISTORY_TAPS_BASE numerical=459 state_restorations=72' in lattice_text and 'REGION_HOLD_BASE numerical=511 state_restorations=75' in lattice_text and 'BOX_HALF_BASE numerical=534 state_restorations=76' in lattice_text and 'THIN_SOURCE_BASE numerical=547 state_restorations=90' in lattice_text and 'FOLD_TIMING_BASE numerical=547 state_restorations=90' in lattice_text and 'FAR_CAMERA_PAN_BASE numerical=567 state_restorations=90' in lattice_text and 'RESULT PASS numerical=584 state_restorations=90 lattice=1' in lattice_text and 'FAIL' not in lattice_text,lattice_text[-1500:]
+    assert lattice.returncode==0 and 'LATTICE_BASE numerical=10 state_restorations=0' in lattice_text and 'FLICKER_BASE numerical=190 state_restorations=4' in lattice_text and 'LINE_BASE numerical=190 state_restorations=4' in lattice_text and 'DEPTH_FOLD_BASE numerical=448 state_restorations=72' in lattice_text and 'HISTORY_TAPS_BASE numerical=459 state_restorations=72' in lattice_text and 'REGION_HOLD_BASE numerical=511 state_restorations=75' in lattice_text and 'BOX_HALF_BASE numerical=534 state_restorations=76' in lattice_text and 'THIN_SOURCE_BASE numerical=547 state_restorations=90' in lattice_text and 'FOLD_TIMING_BASE numerical=547 state_restorations=90' in lattice_text and 'FAR_CAMERA_PAN_BASE numerical=567 state_restorations=90' in lattice_text and 'RESULT PASS numerical=626 state_restorations=90 lattice=1' in lattice_text and 'FAIL' not in lattice_text,lattice_text[-1500:]
     # The 2,048-slot ceiling per TAA program (docs/architecture/taa-plan-lifted-slot-cap.md section 2; AGENTS.md "Shader slot
     # budget": 512 is the spec minimum, not a limit). device_limit stays a record.
     assert len(report['flicker']['drift'])==64 and len(report['flicker']['near_depth'])==8 and all(float(v['instruction_slots'])<=2048 and v['within_ceiling_2048']==1 for k,v in report['lattice']['budget'].items()),report['lattice']['budget']
@@ -390,6 +392,22 @@ try:
     report['far_jitter_line']=fields('FAR_JITTER_LINE ')
     jit={(r['clip'],r['gate'],r['width'],r['row']):r for r in report['far_jitter_line']}
     assert len(report['far_jitter_line'])==22 and len(jit)==22 and all(r['region_px']=='0' for r in report['far_jitter_line']),report['far_jitter_line']
+    # Bolts through the TAA (docs/architecture/bolts-through-taa.md; temporal_bolt_far_streak_inc.h): per W (0.5 and 1.0) the
+    # one-frame streak over the far hull is flagged (128 pixels, alpha = -(1 + held) with held = 1 inside the far region), never a
+    # bright non-bolt texel or space; frame N colour (rgb), age and depth history and every alpha outside the flagged pixels
+    # bit-identical to the unflagged run; the write-back bit-identical over space and the unflagged hull and within one code
+    # of W * (scene - resolved) at the flagged pixels; frames N+1..N+8 colour rgb, age and depth bit-identical (no residual
+    # beyond today's) and, with the alpha history off (the default flight), alpha too; with the opt-in alpha history on the
+    # silhouette pixels beside the streak carry a decaying alpha residual (the negative flag alpha enters the neighbours'
+    # alpha blend, clamped to the 3x3 current range, which spans [0, 1] there): reported, bounded to the four silhouette
+    # pixels per frame.
+    report['bolt_far_streak']=fields('BOLT_FAR_STREAK ')
+    assert [(r['show'],r['alpha_history']) for r in report['bolt_far_streak']]==[('0.50','0'),('1.00','0'),('0.50','1'),('1.00','1')],report['bolt_far_streak']
+    for r in report['bolt_far_streak']:
+        assert r['flagged_px']=='128' and r['flag_outside']=='0' and float(r['alpha_min'])>=-2 and float(r['alpha_max'])<-1,r
+        assert (r['color_rgb_diff'],r['age_diff'],r['depth_diff'],r['alpha_outside_diff'],r['wb_space_diff'],r['wb_far_diff'],r['after_diff'])==('0',)*7,r
+        assert (r['after_alpha_px']=='0' and r['after_alpha_frames']=='0') if r['alpha_history']=='0' else int(r['after_alpha_px'])<=4*8,r
+        assert float(r['wb_err_codes'])<=1 and float(r['far_out_add'])>0 and float(r['space_out_add'])>0,r
     for width in ('1.0','0.4'):
         assert all(float(jit[('7x7','camera',width,row)]['spike_codes'])<=6 for row in ('rest','yaw10','yaw10.5','yaw8.25')),(width,jit)
         rest=jit[('7x7','camera',width,'rest')]

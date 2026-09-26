@@ -39,6 +39,7 @@ STAND_SHORT = '--direct --debug --perf'.split()
 EXPECTED_EMPTY = {
     'X3M_BLOOM_SOURCE_CLAMP': '1.0', 'X3M_BOLT_FOOTPRINT': '3,12', 'X3M_CAMERA': 'chase', 'X3M_CAMERA_CUT_DEG': '20.0',
     'X3M_BOLT_SINGLE_COPY': '1',  # 2026-09-26: the early bullet copy dropped (bolt-footprint.md, "Single copy")
+    'X3M_BOLT_FAR_COMPOSITE': '1', 'X3M_BOLT_FAR_SHOW': '0.5',  # 2026-09-26: bolts through the TAA (bolts-through-taa.md)
     'X3M_CAPTURE_FRAMES': '8', 'X3M_CAPTURE_START': '999999', 'X3M_CHASE_COMBAT_TIGHTNESS': '0.0',
     # No settings file and no built-in defaults on a default launch (--config opts in; docs/architecture/config-file.md).
     'X3M_CONFIG': 'bare',
@@ -111,6 +112,8 @@ OPT_OUTS = (
     (('--no-screen-emission-additive',), 'X3M_SCREEN_EMISSION_ADDITIVE', '0'),
     (('--no-screen-emission-additive-alpha',), 'X3M_SCREEN_EMISSION_ADDITIVE_ALPHA', None),
     (('--bolt-single-copy', 'off'), 'X3M_BOLT_SINGLE_COPY', '0'),
+    (('--bolt-far-composite', 'off'), 'X3M_BOLT_FAR_COMPOSITE', '0'),
+    (('--bolt-far-show', '0'), 'X3M_BOLT_FAR_SHOW', '0.0'),
     (('--emission-source-gain', '1'), 'X3M_EMISSION_SOURCE_GAIN', '1.0'),
     (('--no-sun-shadow-lane',), 'X3M_SUN_SHADOW_APPLY', '0'),
     (('--no-shadow-replay-depth',), 'X3M_SHADOW_CASCADES', '0'),

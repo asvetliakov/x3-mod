@@ -1065,6 +1065,21 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     if (blendedAlpha >= lowAlpha && blendedAlpha <= highAlpha) alpha = blendedAlpha;
 #endif
 #endif
+#ifdef X3M_REGION_HOLD
+    // Bolts through the TAA (docs/architecture/bolts-through-taa.md, B'): the late bullet draw marks its coverage in
+    // the lane's .g (g = base + 32 * max(rgb) under its ONE/ONE blend; base <= 1 on every non-bolt texel, so g > 1 is a
+    // bolt exactly). Where this frame's far or thin-region weight holds the history over such a texel, the OUTPUT
+    // ALPHA carries -(1 + held) (held = the share those weights add over the base weight, in (0, 1]; negative because
+    // a blended scene alpha is never negative while additive draws do sum it past 2: the ratified 2 + held collided with
+    // two overlapping bolts, seam-bolt-single-copy-empty); the write-back and the bloom extract composite the
+    // pre-resolve scene texel there at W * (-alpha - 1) (bolt_far.hlsl). Colour, age and depth history are untouched; a
+    // texel without the flag, or one the resolve is not holding (a bolt over space, the near hull, a far pixel under a
+    // pan with the camera gate closed), keeps its alpha bit for bit. The stored history alpha at the flagged texel is
+    // negative for one frame; the next frame's alpha blend clamps it to the current 3x3 alpha range (above), so the
+    // flag cannot propagate.
+    float boltHeld = max(stabilise.g * farOpen, stabilise.b);
+    alpha = lane.g > 1 && boltHeld > 0 ? -1 - boltHeld : alpha;
+#endif
 #ifdef X3M_AGE_WEIGHT
     // The count continues (1 after a reset); a marked band pixel writes it negated (the
     // exit mark: -exiting >= 0 is "not exiting", one cmp with a negate modifier).

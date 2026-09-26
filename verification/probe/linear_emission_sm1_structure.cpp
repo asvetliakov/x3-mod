@@ -78,7 +78,7 @@ int main(int argc, char** argv) {
                                   .count();
                         require(original == saved, "input mutated");
                         Budget budget;
-                        require(generated_shape(output, budget, outputs), "authored shape");
+                        require(generated_shape(output, budget, outputs, (1u << outputs) - 1), "authored shape");
                         max_slots[outputs - 1] = std::max(max_slots[outputs - 1], budget.arithmetic);
                         max_words = std::max(max_words, unsigned(output.size()));
                         const auto promoted = output;
@@ -101,16 +101,19 @@ int main(int argc, char** argv) {
                                 auto bad = output;
                                 bad[at + 1] = (bad[at + 1] & ~0x7ffu) | 12u;
                                 Budget b;
-                                require(!generated_shape(bad, b, outputs), "resource mutation accepted");
+                                require(!generated_shape(bad, b, outputs, (1u << outputs) - 1),
+                                        "resource mutation accepted");
                                 bad = output;
                                 bad[at] |= coissue;
                                 b = {};
-                                require(!generated_shape(bad, b, outputs), "SM1 coissue leaked into PS2");
+                                require(!generated_shape(bad, b, outputs, (1u << outputs) - 1),
+                                        "SM1 coissue leaked into PS2");
                                 if (outputs == 4) {
                                     bad = output;
                                     bad[at + 1] |= pp;
                                     b = {};
-                                    require(!generated_shape(bad, b, outputs), "packed precision relaxation");
+                                    require(!generated_shape(bad, b, outputs, (1u << outputs) - 1),
+                                            "packed precision relaxation");
                                 }
                             }
                             at += n + 1;

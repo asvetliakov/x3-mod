@@ -2,13 +2,14 @@
 // Bounded, allocation-free CPU ABI for the bloom kernels. See
 // docs/architecture/hdr-bloom-filter.md; this file owns no GPU objects/state.
 #include "agx.h"
+#include "bolt_far.h"
 #include <cstdint>
 
 namespace x3::temporal {
 constexpr unsigned kBloomMaxLevels = 6;
 constexpr unsigned kBloomMaxDimension = 16384; // additionally enforce device caps
 constexpr unsigned kBloomFirstRegister = 24;   // AgX c8..21, RCAS c23
-constexpr unsigned kBloomRegisterCount = 5;
+constexpr unsigned kBloomRegisterCount = 6;    // c24..c28 the kernels, c29 the bolt composite (bolt_far.h)
 constexpr float kBloomMaxStrength = 1.f;
 constexpr float kBloomMaxAuthoredGlowGain = 4.f;
 
@@ -43,7 +44,9 @@ struct BloomConstants {
     float radiance[4]{1.f, kAgxClampOff, kAgxClampOff, 0.f}; // c27: exposure,decoded clamp,FP16 bound,authored-glow
                                                              // gain
     float decode[4]{kAgxDecodeGamma, 0.f, 0.f, 0.f};         // c28: AgX decode xyz; authored-mode highlight gain in w
+    float bolt[4]{0.f, 0.f, 0.f, 0.f};                       // c29: W of the bolt composite (bolt_far.hlsl; 0 = off)
 };
+static_assert(kBloomFirstRegister + kBloomRegisterCount == kBoltShowRegister + 1);
 static_assert(sizeof(BloomConstants) == kBloomRegisterCount * 4 * sizeof(float));
 
 inline bool valid_bloom_params(const BloomParams& p) noexcept {

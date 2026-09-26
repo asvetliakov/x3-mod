@@ -19,9 +19,12 @@ struct Display {
     x3::temporal::AgxDecode decode = x3::temporal::AgxDecode::gamma22;
     float sharpen = .75f;
     x3::temporal::SharpenConstants sharpen_constants{};
+    float bolt_show = 0.f; // bolt_far.h: W of the write-back's composite
 };
 struct Input {
     Resource* scene = nullptr;
+    Resource* bolt_scene = nullptr; // the pre-resolve scene of the bolt composite (null: off)
+    float bolt_show = 0.f;
     struct {
         Resource* main = nullptr;
     } boundary;
@@ -45,6 +48,7 @@ struct MotionHdrScene {
     Resource* main;
     std::uint64_t device_id, frame;
     Display display{};
+    Resource* bolt_scene = nullptr;
 };
 #include "comparison_handoff_under_test_inc.h"
 

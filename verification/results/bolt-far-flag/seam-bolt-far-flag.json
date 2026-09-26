@@ -1,0 +1,61 @@
+{
+ "case": "seam-bolt-far-flag",
+ "bottle": "X3",
+ "lane": true,
+ "composite": true,
+ "mrt_post_pixel_shader_blending": "1",
+ "rows": [
+  {
+   "frame": "1",
+   "plan": "1",
+   "admitted": "1",
+   "flagged": "1",
+   "refused": "0",
+   "bolt_px": "144",
+   "g_delta_min": "31.999999",
+   "g_delta_max": "32.000002",
+   "g_before_covered": "0.025444",
+   "g_after_covered": "32.025444",
+   "g_before_open": "0.006360",
+   "g_after_open": "32.006360",
+   "rba_changed": "0",
+   "rt1_changed": "0",
+   "rt2_outside_changed": "0"
+  },
+  {
+   "frame": "2",
+   "plan": "2",
+   "admitted": "1",
+   "flagged": "1",
+   "refused": "0",
+   "bolt_px": "144",
+   "g_delta_min": "31.999999",
+   "g_delta_max": "32.000002",
+   "g_before_covered": "0.025444",
+   "g_after_covered": "32.025444",
+   "g_before_open": "0.003180",
+   "g_after_open": "32.003180",
+   "rba_changed": "0",
+   "rt1_changed": "0",
+   "rt2_outside_changed": "0"
+  },
+  {
+   "frame": "3",
+   "plan": "3",
+   "admitted": "1",
+   "flagged": "1",
+   "refused": "0",
+   "bolt_px": "144",
+   "g_delta_min": "31.999998",
+   "g_delta_max": "32.000002",
+   "g_before_covered": "0.025444",
+   "g_after_covered": "32.025444",
+   "g_before_open": "0.006360",
+   "g_after_open": "32.006360",
+   "rba_changed": "0",
+   "rt1_changed": "0",
+   "rt2_outside_changed": "0"
+  }
+ ],
+ "refusals": []
+}

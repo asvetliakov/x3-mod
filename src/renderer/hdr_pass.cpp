@@ -236,6 +236,10 @@ struct HdrPass::SavedState {
     UINT offset = 0, stride = 0, frequency = 1;
     IDirect3DBaseTexture9* texture = nullptr;
     DWORD samplers[sampler_count]{}, stages[2]{}, states[touched_count]{};
+    // Stage s2 of the bolt composite (bolt_far.h), touched only when it is on.
+    IDirect3DBaseTexture9* bolt_texture = nullptr;
+    DWORD bolt_samplers[sampler_count]{};
+    bool bolt_saved = false;
     unsigned target_count = 1;
     // Stage 2: the meter's c0..c3 and the tonemap's c8..c21 (saved as one
     // block, only when a stage-2 program runs; the identity path is unchanged).
@@ -249,6 +253,7 @@ struct HdrPass::SavedState {
         drop(ps);
         drop(stream);
         drop(texture);
+        drop(bolt_texture);
     }
 };
 
@@ -544,6 +549,14 @@ HRESULT HdrPass::save(SavedState& saved) noexcept {
     for (unsigned i = 0; i < 2; ++i)
         if (FAILED(hr = call<GetStageFn>(GetTextureStageState)(device_, 0, touched_stages[i], &saved.stages[i])))
             return hr;
+    if (saved.bolt_saved) {
+        if (FAILED(hr = call<GetTextureFn>(GetTexture)(device_, x3::temporal::kBoltSceneSampler, &saved.bolt_texture)))
+            return hr;
+        for (unsigned i = 0; i < sampler_count; ++i)
+            if (FAILED(hr = call<GetSamplerFn>(GetSamplerState)(device_, x3::temporal::kBoltSceneSampler,
+                                                                touched_samplers[i], &saved.bolt_samplers[i])))
+                return hr;
+    }
     for (unsigned i = 0; i < touched_count; ++i)
         if (FAILED(hr = call<GetRsFn>(GetRenderState)(device_, touched_states[i], &saved.states[i]))) return hr;
     if (saved.constants_saved &&
@@ -564,6 +577,7 @@ HRESULT HdrPass::restore(const SavedState& saved, IDirect3DSurface9* rt0) noexce
         if (SUCCEEDED(first) && FAILED(hr)) first = hr;
     };
     step(call<SetTextureFn>(SetTexture)(device_, 0, nullptr));
+    if (saved.bolt_saved) step(call<SetTextureFn>(SetTexture)(device_, x3::temporal::kBoltSceneSampler, nullptr));
     step(call<SetRtFn>(SetRenderTarget)(device_, 0, rt0));
     for (unsigned i = 1; i < saved.target_count; ++i)
         step(call<SetRtFn>(SetRenderTarget)(device_, i, saved.targets[i]));
@@ -583,6 +597,12 @@ HRESULT HdrPass::restore(const SavedState& saved, IDirect3DSurface9* rt0) noexce
         step(call<SetSamplerFn>(SetSamplerState)(device_, 0, touched_samplers[i], saved.samplers[i]));
     for (unsigned i = 0; i < 2; ++i)
         step(call<SetStageFn>(SetTextureStageState)(device_, 0, touched_stages[i], saved.stages[i]));
+    if (saved.bolt_saved) {
+        step(call<SetTextureFn>(SetTexture)(device_, x3::temporal::kBoltSceneSampler, saved.bolt_texture));
+        for (unsigned i = 0; i < sampler_count; ++i)
+            step(call<SetSamplerFn>(SetSamplerState)(device_, x3::temporal::kBoltSceneSampler, touched_samplers[i],
+                                                     saved.bolt_samplers[i]));
+    }
     for (unsigned i = 0; i < touched_count; ++i)
         step(call<SetRsFn>(SetRenderState)(device_, touched_states[i], saved.states[i]));
     if (saved.constants_saved)
@@ -605,16 +625,31 @@ HRESULT HdrPass::copy_draw(IDirect3DSurface9* source_target, IDirect3DTexture9* 
     (void)source_target;
     *restoration = S_OK;
     SavedState saved;
+    // Bolts through the TAA (bolt_far.h): with W > 0 every write-back draw binds
+    // the pre-resolve FP16 scene (this pass's target; its container is taken
+    // here and dropped after the restoration) at s2 and uploads c29.x = W.
+    // With `source` null the draw samples that same texture at s0, so the
+    // composite is the identity there (bolt_far.hlsl). The stage and the
+    // register are saved and restored only when they are touched.
+    const bool bolt = config_.bolt_show > 0.f && target_ != nullptr;
+    saved.bolt_saved = bolt;
     // Only a program that uploads constants (AgX c8..c21, sharpen c23, the
-    // meter's c0..c3) saves and restores them; the identity programs read none.
-    saved.constants_saved = program && (program->constants || program->sharpen || program->meter);
+    // meter's c0..c3, the bolt composite's c29) saves and restores them; the
+    // identity programs read none.
+    saved.constants_saved = bolt || (program && (program->constants || program->sharpen || program->meter));
     HRESULT hr = save(saved);
     if (FAILED(hr)) return hr;
     HRESULT op = S_OK;
     auto step = [&](HRESULT result) {
         if (SUCCEEDED(op) && FAILED(result)) op = result;
     };
+    IDirect3DTexture9* bolt_scene = nullptr;
+    if (bolt) {
+        step(target_->GetContainer(IID_IDirect3DTexture9, reinterpret_cast<void**>(&bolt_scene)));
+        if (SUCCEEDED(op) && !bolt_scene) op = E_NOINTERFACE;
+    }
     step(call<SetTextureFn>(SetTexture)(device_, 0, nullptr));
+    if (bolt) step(call<SetTextureFn>(SetTexture)(device_, x3::temporal::kBoltSceneSampler, nullptr));
     // RT1.. are unbound before RT0 changes: D3D9 requires every bound target
     // to match RT0's dimensions, and the destination may differ from RT1's.
     for (unsigned i = 1; i < saved.target_count; ++i) step(call<SetRtFn>(SetRenderTarget)(device_, i, nullptr));
@@ -623,6 +658,10 @@ HRESULT HdrPass::copy_draw(IDirect3DSurface9* source_target, IDirect3DTexture9* 
     step(call<SetFreqFn>(SetStreamSourceFreq)(device_, 0, 1));
     for (unsigned i = 0; i < sampler_count; ++i)
         step(call<SetSamplerFn>(SetSamplerState)(device_, 0, touched_samplers[i], sampler_values[i]));
+    if (bolt)
+        for (unsigned i = 0; i < sampler_count; ++i)
+            step(call<SetSamplerFn>(SetSamplerState)(device_, x3::temporal::kBoltSceneSampler, touched_samplers[i],
+                                                     sampler_values[i]));
     for (unsigned i = 0; i < 2; ++i)
         step(call<SetStageFn>(SetTextureStageState)(device_, 0, touched_stages[i], stage_values[i]));
     for (unsigned i = 0; i < touched_count; ++i)
@@ -646,6 +685,11 @@ HRESULT HdrPass::copy_draw(IDirect3DSurface9* source_target, IDirect3DTexture9* 
                                                          x3::temporal::kAgxRegisterCount));
     if (program && program->sharpen)
         step(call<SetPsConstFn>(SetPixelShaderConstantF)(device_, x3::temporal::kSharpenRegister, program->sharpen, 1));
+    if (bolt) {
+        const x3::temporal::BoltShowConstants show = x3::temporal::prepare_bolt_show(config_.bolt_show);
+        step(call<SetPsConstFn>(SetPixelShaderConstantF)(device_, x3::temporal::kBoltShowRegister, show.values, 1));
+        step(call<SetTextureFn>(SetTexture)(device_, x3::temporal::kBoltSceneSampler, bolt_scene));
+    }
     step(call<SetTextureFn>(SetTexture)(device_, 0, source_texture));
     if (SUCCEEDED(op)) {
         // The -0.5 pixel shift of quad_vertices covers every texel centre and
@@ -656,6 +700,7 @@ HRESULT HdrPass::copy_draw(IDirect3DSurface9* source_target, IDirect3DTexture9* 
             step(quad(width, height));
     }
     *restoration = restore(saved, final_rt0);
+    drop(bolt_scene);
     if (injected_restore && SUCCEEDED(*restoration))
         *restoration = E_FAIL; // fixture seam: reported after the actual restoration
     return op;
@@ -1557,6 +1602,7 @@ HdrWriteback HdrPass::write_back(IDirect3DSurface9* main, IDirect3DSurface9* fin
                     display->sharpen_constants = sharpen_;
                 }
                 display->resolved = source != nullptr;
+                display->bolt_show = target_ ? x3::temporal::prepare_bolt_show(config_.bolt_show).values[0] : 0.f;
                 display->width = width_;
                 display->height = height_;
                 display->valid = true;

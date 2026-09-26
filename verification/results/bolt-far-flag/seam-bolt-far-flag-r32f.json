@@ -1,0 +1,66 @@
+{
+ "case": "seam-bolt-far-flag-r32f",
+ "bottle": "X3",
+ "lane": false,
+ "composite": true,
+ "mrt_post_pixel_shader_blending": "1",
+ "rows": [
+  {
+   "frame": "1",
+   "plan": "1",
+   "admitted": "1",
+   "flagged": "0",
+   "refused": "1",
+   "bolt_px": "0",
+   "g_delta_min": "0.000000",
+   "g_delta_max": "0.000000",
+   "g_before_covered": "0.000000",
+   "g_after_covered": "0.000000",
+   "g_before_open": "0.000000",
+   "g_after_open": "0.000000",
+   "rba_changed": "0",
+   "rt1_changed": "0",
+   "rt2_outside_changed": "0"
+  },
+  {
+   "frame": "2",
+   "plan": "2",
+   "admitted": "1",
+   "flagged": "0",
+   "refused": "1",
+   "bolt_px": "0",
+   "g_delta_min": "0.000000",
+   "g_delta_max": "0.000000",
+   "g_before_covered": "0.000000",
+   "g_after_covered": "0.000000",
+   "g_before_open": "0.000000",
+   "g_after_open": "0.000000",
+   "rba_changed": "0",
+   "rt1_changed": "0",
+   "rt2_outside_changed": "0"
+  },
+  {
+   "frame": "3",
+   "plan": "3",
+   "admitted": "1",
+   "flagged": "0",
+   "refused": "1",
+   "bolt_px": "0",
+   "g_delta_min": "0.000000",
+   "g_delta_max": "0.000000",
+   "g_before_covered": "0.000000",
+   "g_after_covered": "0.000000",
+   "g_before_open": "0.000000",
+   "g_after_open": "0.000000",
+   "rba_changed": "0",
+   "rt1_changed": "0",
+   "rt2_outside_changed": "0"
+  }
+ ],
+ "refusals": [
+  {
+   "reason": "r32f_lane",
+   "rt2_format": "114"
+  }
+ ]
+}

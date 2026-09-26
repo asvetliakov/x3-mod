@@ -7,9 +7,12 @@
 // stale device constant can reach this draw. Alpha carried unchanged.
 // Compiled by tools/shaders/generate_rigid_motion_pixel.py --shader
 // hdr_writeback_dither into src/renderer/hdr_writeback_dither_program_inc.h.
+// Bolts through the TAA (bolt_far.hlsl): the flagged texels take the pre-resolve
+// scene texel (s2, c29.x = W) before the dither; the rest copy bit for bit.
 #include "display_dither.hlsl"
+#include "bolt_far.hlsl"
 sampler2D scene : register(s0);
 float4 main(float2 uv : TEXCOORD0, float2 vpos : VPOS) : COLOR0 {
-    float4 c = tex2D(scene, uv);
+    float4 c = boltCompositeBranch(tex2D(scene, uv), uv);
     return float4(displayDither(c.rgb, vpos, 1.0 / 255.0), c.a);
 }

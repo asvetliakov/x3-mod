@@ -1,8 +1,9 @@
 # Bolts through the TAA: keeping weapon bolts visible over distant stations
 
 Design note, 2026-09-26, for the Run 93 A finding (`docs/verification/lod-overlay.md`, "Run 93 A: bolts still vanish
-over distant stations"; scripts and per-frame table under `verification/results/run346-run93a-bolts/`). Status: proposed,
-not built. [M] = measured in that ledger, [I] = inferred from the source or computed here.
+over distant stations"; scripts and per-frame table under `verification/results/run346-run93a-bolts/`). Status: built
+2026-09-26 (the "Implemented" section at the end; one deviation from the ratified text: the flag alpha is negative, not
+2 + held). [M] = measured in that ledger, [I] = inferred from the source or computed here.
 
 
 **Ratified 2026-09-26 (orchestrator):** B' as written, with these conditions for the implementation: (1) every pixel
@@ -225,3 +226,77 @@ flag). User question: are the bullets in front of the station, and is there any 
   of `held`, so the composite reproduces the ordinary-pixel result exactly.
 - The hull-under-bolt sample (half stabilised, half current for one frame) is predicted invisible under a bolt 3-10x
   brighter; a run with W = 1 on a plant-heavy station is the direct test.
+
+## Implemented (2026-09-26)
+
+Built as ratified, with one deviation and one refinement:
+
+- **Flag alpha = -(1 + held), not 2 + held.** The ratified positive encoding collided with the scene's own alpha: the
+  additive route's ONE/ONE blend sums alpha, and two overlapping bolts over a base of 1 reach 3, which the write-back
+  read as a flag (`seam-bolt-single-copy-empty` failed its reference compare with 256 mismatching pixels, worst code
+  191, on the first run [M]). A blended scene alpha is never negative (non-negative sources, non-negative factors), so
+  the resolve writes `-1 - held` and the consumers test `r.a <= -1`, `share = saturate(-r.a - 1)`. Same information,
+  no collision; `seam-bolt-single-copy-empty` passes again with it [M].
+- **Branch-free composite in the bloom programs, a `[branch]` in the write-back programs** (`bolt_far.hlsl`:
+  `boltComposite` selects with one `cmp`, `boltCompositeBranch` wraps it in `if (r.a <= -1)`): the bloom bundle is
+  qualified straight-line (`bloom_shader_limits.py`, 512 slots), the ps_3_0 write-back is not. Both write the same bits
+  at every unflagged texel (the select never lerps with weight 0, which would propagate a non-finite scene texel).
+- The plain identity write-back (`hdr_writeback_ps.hlsl`) is left untouched: the temporal pass uses it as the lane's
+  R32F point copy with nothing at s2 and no c29, where a composite would corrupt the depth history. The composite lives
+  in the dithered identity twin (the launcher default), the AgX program and its RCAS twin, `bloom_agx` and the six
+  extracts. Identity tonemap without dither, and the RCAS-only program (`taa_sharpen_ps`), do not composite.
+- The far program (the screen-gate fallback, not the default) has no parity: its s1 is the R32F depth copy and the
+  mask's four UNORM8 lanes are all taken, so no lane bit reaches its resolve; the flag never fires there and the bolt
+  shows at the ordinary retention. Left as an open item.
+
+Pieces: `linear_emission_sm1.cpp` (`LinearEmissionSm1Config::far_flag`: `max r2, r0.x, r0.y; max r2, r2, r0.z; mul r2,
+r2, c31.z; mov oC2, r2` after the oC0 MOV, K = 32 in the DEF's z lane, 25 words over the native path, host-pinned by
+`test_screen_emission_additive_transform.py` on the nine pairs at gains 1 and 2), `motion_output.cpp`
+(`prepare_screen_additive`: the flag decided after every admission check and the single-copy drop, refused per draw
+with one logged row per reason (`no_variant`, `no_target`, `r32f_lane`, `write_masks`, `bind`); `bind_bolt_flag_targets`
+binds RT1 masked 0 and RT2 masked GREEN with the application's masks saved, `unbind_bolt_flag_targets` undoes in reverse
+order from `finish_screen_additive` and both rollbacks; the flag variant is created with the cache beside the gained one
+and bound at gain 1 too; `motion_output_mrt_blend` and `bolt_far_composite` once at attach; `bolt_flag` /
+`bolt_flag_refused` on the frame line), `resolve.hlsl` (two lines after the alpha history: `boltHeld = max(stabilise.g *
+farOpen, stabilise.b)`, `alpha = lane.g > 1 && boltHeld > 0 ? -1 - boltHeld : alpha`), `bolt_far.hlsl` / `bolt_far.h`
+(s2, c29), `hdr_pass.cpp` (s2 = the target's container per write-back draw, c29 = W, stage and register saved and
+restored only when on; `HdrDisplaySnapshot::bolt_show`), `bloom_pass.cpp` (`BloomPrepare::bolt_scene` / `bolt_show`
+validated like `scene`, stage 2 in the bracket, c29 as the sixth bloom register), `capture.cpp` (the settings, the
+retained `bolt_scene` released with `scene`), the schema (`bolt_far_composite`, `bolt_far_show`), the launcher
+(`--bolt-far-composite`, `--bolt-far-show`; the default launch sends 126 X3M_* variables, 124 before [M]).
+
+Slots (opcode slots of the embedded bytecode, `texldl` counted once, `tools/analysis/inspect_motion_output_profiles.py`)
+[M]: `temporal_resolve_far_camera_hold` 907 -> 917 (+10; the other resolve programs byte-identical), `hdr_tonemap` 77 ->
+91, `hdr_tonemap_sharpen` 411 -> 425, `hdr_writeback_dither` 12 -> 27 (the branch and its compare), `bloom_agx` 112 ->
+120, the extracts 388 -> 460 (gamma), 416 -> 488 (srgb), 299 -> 371 (none), 172 -> 204 / 184 -> 216 / 132 -> 164
+(even), all inside the bloom bundle's 512-slot gate (srgb generic 506 with `texldl` at two). Per frame at 5120x1440
+by the budget rule (about 1 us per slot per full-screen pass) [I]: the resolve +10 us, the write-back compare +1-2 us
+and a scene fetch only at flagged texels, the bloom extract (half resolution, four taps) +8 us, `bloom_agx` +8 us; the
+flag itself: two SetRenderTarget, two mask reads, two mask writes and their undo per late bullet draw (one or two per
+firing frame), nothing on any other draw.
+
+Seam evidence (`run_temporal_pass.py`, `BOLT_FAR_STREAK`, two W, the alpha history off (the default flight) and on;
+`temporal_bolt_far_streak_inc.h`) [M]: 128 flagged pixels (the streak over the far hull), 0 on the bright non-bolt band
+or over space; alpha -2.000000 at every flagged pixel (held = 1 inside the far region); frame N colour rgb, age and depth
+history 0 differing bytes against the unflagged run, alpha 0 differing bytes outside the flagged pixels; the write-back 0
+differing bytes over space and over the unflagged hull, largest error against `W * (scene - resolved)` at the flagged
+pixels 0.0623 codes; the streak's output addition over the hull 0.363 (W 0.5) / 0.699 (W 1.0) against 0.409 over space
+(ratio 0.887 / 1.709); frames N+1..N+8 colour rgb, age and depth 0 differing bytes in both alpha modes, and alpha 0
+differing pixels with the alpha history off. With the opt-in alpha history on (`--taa-alpha-history`, builtin off) the
+four hull pixels at the hull / space silhouette in the streak rows carry a decaying alpha residual through all eight
+frames (the flagged texel's negative history alpha enters their alpha blend, clamped to the 3x3 current range, which spans
+[0, 1] there; colour, age and depth never): a limitation of that option, reported by the row, not asserted away. The
+motion fixture (`seam-bolt-far-flag*`, `verification/results/bolt-far-flag/`) [M]: the late bullet draw admitted and
+flagged on every frame with the four-lane RT2, RT2.g + 32.000 at every bolt pixel (K 32 x G 2 x texel 0.5 under the
+ONE/ONE blend: the device blends RT2, `post_pixel_shader_blending=1`), `.r/.b/.a` and every other RT2 and RT1 byte
+unchanged, the state snapshot restored; the lane-off R32F twin refused once per draw (`r32f_lane`), RT2 untouched; the
+composite-off twin flags and refuses nothing.
+
+The sun-shadow cascade apply (condition 4; on in the default launch) reads RT2.g as the share, saturated: at a flagged
+texel it reads 1 for that frame instead of the hull's share. From the seam case the lane's `.g` under the bolt goes
+from 0.025 (the fixture's depth writer's lane value; a shaded hull carries its share s0 in [0, 1]) to 32.025 [M]; the apply's
+factor is `pow(1 - (1 - f) * s, terms.z)` with f the lit fraction, so a bolt pixel over a shadowed hull (f < 1) is
+shaded at share 1 instead of s0 for the one frame the bolt is drawn, i.e. darker by the factor `(1 - (1 - f)) /
+(1 - (1 - f) * s0)` before the exponent [I]; a lit hull (f = 1) and every pixel without a bolt are unchanged. The
+composite then draws the bolt over that shaded scene texel at W; the flight decides whether the darker-in-shadow bolt
+is visible.

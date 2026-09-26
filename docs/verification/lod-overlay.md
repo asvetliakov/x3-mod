@@ -409,3 +409,10 @@ the resolve treats as farw = 0 and 3x3 clip, or current-weighted); (2) composite
 (depth-tested against the unjittered scene depth), taking bolts out of TAA; (3) a far-weight exemption for current > box-
 of-history luminance jumps (generic, but would also unstabilise far blinking lights). No fixture covers bolts over far
 geometry through the resolve; `run_temporal_pass.py` would need a far-depth quad with a one-frame additive streak.
+
+**Built 2026-09-26** (`docs/architecture/bolts-through-taa.md`, "Implemented"): direction (1) with the composite after the
+resolve (B'): the late bullet draw flags its pixels in RT2.g, the camera-gate resolve raises the flag in its output alpha
+only, the write-back and the bloom extract composite the current bolt at `--bolt-far-show` (0.5) over the held far pixels.
+Fixtures: `BOLT_FAR_STREAK` (the far-depth quad with the one-frame streak: the streak shows at W of the dropped strength
+within 0.07 code, every unflagged pixel and every later frame's colour, age and depth bit-identical) and
+`seam-bolt-far-flag*` (RT2.g + 32 at every bolt pixel, the rest untouched, the R32F lane refused). Run 94 A flies it.

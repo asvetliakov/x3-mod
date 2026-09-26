@@ -585,6 +585,19 @@ CrossOver) sends a host `--config PATH` as the Wine path `Z:<absolute host path>
 `X3M_CONFIG=bare` (no file, no built-in defaults). `proxy_options` now lists the effective settings with their source
 (`NAME=value@env|@file|@default`). Native Windows unverified.
 
+## 2026-09-26: bolts through the TAA (`--bolt-far-composite`, default on)
+
+Documented D3D9 throughout (`docs/architecture/bolts-through-taa.md`, "Native Windows"): `SetRenderTarget` on indices
+1-2 with per-target `COLORWRITEENABLE1/2` (`D3DPMISCCAPS_INDEPENDENTWRITEMASKS`, checked per draw, refused without
+it), a ps_2_0 `oC2` write from the AdditiveGain variant, float render targets with unclamped shader output, one more
+sampler (s2) and one register (c29) on the full-screen write-back and bloom quads, saved and restored with the rest.
+`D3DPMISCCAPS_MRTPOSTPIXELSHADERBLENDING` is logged once per device (`motion_output_mrt_blend`): with it the lane's
+`.g` becomes `base + K * add`, without it `K * add`, and the resolve's test `g > 1` is robust to both (CrossOver
+reports the cap set; the seam case accepts either). The `.g` base of a shaded hull is the sun-share lane's share, which
+the sun-shadow cascade apply reads back saturated: at a flagged texel it reads 1 for that one frame (measured in the
+seam case: lane `.g` 0.025 -> 32.025 under the bolt). Cross-compiled and fixture-qualified under CrossOver; native
+execution unverified.
+
 ## Shader slot budget
 
 User decision 2026-09-24: programs are sized against `MaxPixelShader30InstructionSlots` as the device reports it.

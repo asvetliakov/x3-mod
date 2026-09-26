@@ -145,7 +145,9 @@ struct Budget {
 };
 // Bounded authored-PS2 validator: rejects unknown forms/resources, tracks
 // initialized temporary lanes and exactly one full MOV per requested output.
-bool generated_shape(const Words& words, Budget& budget, unsigned outputs) noexcept {
+// `written` is the set of outputs the program must write (bits 0..outputs-1;
+// the far flag writes oC0 and oC2 only, bits 0 and 2).
+bool generated_shape(const Words& words, Budget& budget, unsigned outputs, unsigned written) noexcept {
     if (words.size() < 2 || words[0] != 0xffff0200u || outputs < 1 || outputs > 4) return false;
     unsigned live[4] = {}, defs = 0, decls = 0, color_mask = 0;
     bool executable = false;
@@ -153,7 +155,7 @@ bool generated_shape(const Words& words, Budget& budget, unsigned outputs) noexc
         const Word token = words[at];
         const unsigned op = token & 0xffff;
         if (token == end)
-            return at == words.size() - 1 && budget.outputs == ((1u << outputs) - 1) && budget.textures == 1 &&
+            return at == words.size() - 1 && budget.outputs == written && budget.textures == 1 &&
                    budget.arithmetic <= 64 && decls == 7;
         unsigned size = op == comment ? (token >> 16) & 0x7fff : (token >> 24) & 15;
         if (size > words.size() - at - 1) return false;
@@ -258,7 +260,9 @@ LinearEmissionResult linear_emission_sm1_pixel_variant(const Word* original, std
     // AdditiveGain authors the one-output native path with a colour gain
     // (validated as one output below); its gain must be finite in [1, 8].
     const bool additive = config.outputs == LinearEmissionSm1Outputs::AdditiveGain;
-    const unsigned outputs = additive ? 1u : static_cast<unsigned>(config.outputs);
+    const bool flag = additive && config.far_flag; // oC0 and oC2 (bolt_far.h); oC1 stays unwritten
+    const unsigned outputs = flag ? 3u : additive ? 1u : static_cast<unsigned>(config.outputs);
+    const unsigned written = flag ? 5u : (1u << outputs) - 1;
     if (!std::isfinite(config.gain) || config.gain < 0 || config.gain > 16 || outputs < 1 || outputs > 4 ||
         (outputs == 4 && config.native_partial_precision))
         return LinearEmissionResult::InvalidConfig;
@@ -280,12 +284,13 @@ LinearEmissionResult linear_emission_sm1_pixel_variant(const Word* original, std
         result.push_back(0xffff0200u);
         result.insert(result.end(), original + 1, original + 39); // opaque CTAB/comments
         if (profile->scalar) emit(result, def, {dst(constant, 0, 15), bits(1), bits(0), bits(0), bits(0)});
-        if (outputs > 1) {
+        if (outputs > 1 && !additive) {
             emit(result, def, {dst(constant, 30, 15), bits(2.2f), bits(0), bits(65504), bits(1e-10f)});
             emit(result, def,
                  {dst(constant, 31, 15), bits(config.gain == 0 ? 0 : config.gain), bits(1), bits(0), bits(0)});
         }
-        if (additive) emit(result, def, {dst(constant, 31, 15), bits(config.gain), bits(1), bits(0), bits(0)});
+        if (additive)
+            emit(result, def, {dst(constant, 31, 15), bits(config.gain), bits(1), bits(flag ? 32.f : 0.f), bits(0)});
         emit(result, dcl, {0x80000000u, dst(coordinate, 0, 3)});
         emit(result, dcl, {0x80000000u, dst(color, 0, profile->scalar ? 7 : 8)});
         emit(result, dcl, {0x90000000u, dst(sampler, 0, 15)});
@@ -299,18 +304,28 @@ LinearEmissionResult linear_emission_sm1_pixel_variant(const Word* original, std
         if (additive)
             emit(result, mul, {dst(temporary, 0), src(temporary, 0), lane(constant, 31, 0)}); // colour lanes only
         if (outputs != 4) emit(result, mov, {dst(output, 0, 15), src(temporary, 0)});
-        if (outputs > 1 && outputs != 4) energy(result, profile->scalar);
+        if (flag) {
+            // The coverage flag (bolt_far.h): K * max(rgb) after the gain into every lane of oC2; the draw's GREEN
+            // mask on RT2 stores it in .g, its ONE/ONE blend adds it to the lane's base (or replaces it without MRT
+            // post-pixel-shader blending); g > 1 exactly where max(rgb) > 2 / K = 0.0625.
+            emit(result, maximum, {dst(temporary, 2, 15), lane(temporary, 0, 0), lane(temporary, 0, 1)});
+            emit(result, maximum, {dst(temporary, 2, 15), src(temporary, 2), lane(temporary, 0, 2)});
+            emit(result, mul, {dst(temporary, 2, 15), src(temporary, 2), lane(constant, 31, 2)});
+            emit(result, mov, {dst(output, 2, 15), src(temporary, 2)});
+        }
+        if (outputs > 1 && !flag && outputs != 4) energy(result, profile->scalar);
         if (outputs == 4) packed_screen(result);
-        if (outputs == 3) {
+        if (outputs == 3 && !flag) {
             emit(result, mov, {dst(temporary, 3, 15), lane(constant, 31, 1)});
             emit(result, mov, {dst(output, 2, 15), src(temporary, 3)});
         }
         result.push_back(end);
         Budget budget;
-        const unsigned expected = outputs == 4 ? (profile->scalar ? 12u : 11u)
-                                               : (profile->scalar ? 4u : 3u) + (outputs > 1 ? 22u : 0u) +
-                                                     (outputs == 3 ? 2u : 0u) + (additive ? 1u : 0u);
-        if (!generated_shape(result, budget, outputs) || budget.arithmetic != expected)
+        const unsigned expected = flag ? (profile->scalar ? 4u : 3u) + 1u + 4u // gain MUL; MAX, MAX, MUL, MOV oC2
+                                  : outputs == 4 ? (profile->scalar ? 12u : 11u)
+                                                 : (profile->scalar ? 4u : 3u) + (outputs > 1 ? 22u : 0u) +
+                                                       (outputs == 3 ? 2u : 0u) + (additive ? 1u : 0u);
+        if (!generated_shape(result, budget, outputs, written) || budget.arithmetic != expected)
             return LinearEmissionResult::ResourceLimit;
         output_words.swap(result);
         return LinearEmissionResult::Applied;

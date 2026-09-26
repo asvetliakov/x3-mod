@@ -190,6 +190,12 @@ float screen_emission_additive_gain = 1.f;       // G, finite 1..8; anything els
 bool bolt_footprint_requested = false; // X3M_BOLT_FOOTPRINT=W[,L]: minimum on-screen bolt width and length on the
                                        // additive draws (bolt-footprint.md, option A', Run 73 B rule)
 float bolt_footprint_w = 3.f, bolt_footprint_l = 12.f;
+// X3M_BOLT_FAR_COMPOSITE=1 / X3M_BOLT_FAR_SHOW=W (docs/architecture/bolts-through-taa.md, B'): the late bullet draw
+// flags its coverage in the lane's .g, the resolve raises it in the output alpha, the write-back and the bloom extract
+// composite the current bolt at W over the held far / thin-region pixels. Needs the additive route and the HDR
+// write-back.
+bool bolt_far_composite_requested = false;
+float bolt_far_show = 0.5f;
 bool bolt_single_copy_requested = false; // X3M_BOLT_SINGLE_COPY=1: the early copy of the game's twice-drawn bullet
                                          // batch is dropped (bolt-footprint.md, "Single copy")
 bool screen_emission_additive_alpha_requested = false; // X3M_SCREEN_EMISSION_ADDITIVE_ALPHA=K: per-source bloom
@@ -656,6 +662,8 @@ void revoke_compositor(Device& ctx) noexcept {
         bloom_drop(call->candidate.surface);
         call->candidate = {};
         bloom_drop(call->input.scene);
+        bloom_drop(call->input.bolt_scene);
+        call->input.bolt_show = 0.f;
         bloom_drop(call->input.boundary.main);
         bloom_drop(call->input.boundary.depth);
     }
@@ -1442,6 +1450,13 @@ void retain_compositor_scene(void* storage, const MotionHdrScene& scene) noexcep
     // no preparation, Reset or renderer reentry until scene_end_hook returns.
     scene.scene->AddRef();
     call.input.scene = scene.scene;
+    // The bolt composite's pre-resolve scene (bolt_far.h): retained like the
+    // resolved scene, released with it; the write-back's W travels in display.
+    if (scene.bolt_scene) {
+        scene.bolt_scene->AddRef();
+        call.input.bolt_scene = scene.bolt_scene;
+    }
+    call.input.bolt_show = scene.bolt_scene ? scene.display.bolt_show : 0.f;
     scene.main->AddRef();
     call.input.boundary.main = scene.main;
     call.input.agx = scene.display.agx;
@@ -3214,6 +3229,7 @@ void hook_device(IDirect3DDevice9* d, HWND window, HWND focus) {
         screen_emission_additive_alpha);
     hooked.motion_output.configure_bolt_footprint(bolt_footprint_requested, bolt_footprint_w, bolt_footprint_l);
     hooked.motion_output.configure_bolt_single_copy(bolt_single_copy_requested);
+    hooked.motion_output.configure_bolt_far_composite(bolt_far_composite_requested, bolt_far_show);
     hooked.motion_output.configure_fade_witness(fade_witness_frames);
     hooked.motion_output.configure_fade_route(fade_route_threshold);
     // Sun-share lane (directional-shadows.md section 2; legacy-sun-application.md
@@ -4712,6 +4728,25 @@ void initialize_log(HMODULE module) {
     // fixtures leave it unset) or any value but 1 leaves both copies. Inert without the additive route: the rule
     // sits inside its admission.
     bolt_single_copy_requested = x3m::config::get(L"X3M_BOLT_SINGLE_COPY", setting, 32) == 1 && setting[0] == L'1';
+    // X3M_BOLT_FAR_COMPOSITE=1 (bolts-through-taa.md, B'; schema default on) with X3M_BOLT_FAR_SHOW=W (finite 0..1,
+    // default 0.5): the flag needs the additive route (the DLL refuses it inside that admission); the composite in
+    // the write-back needs the HDR pass and is configured below with W (hdr_config.bolt_show; 0 = off). An absent or
+    // invalid W keeps the default; "0" is the explicit off value of the composite (the flag still travels).
+    {
+        bolt_far_composite_requested = x3m::config::get(L"X3M_BOLT_FAR_COMPOSITE", setting, 32) == 1 &&
+                                       setting[0] == L'1' && screen_emission_additive_requested;
+        wchar_t* end = nullptr;
+        const DWORD length = x3m::config::get(L"X3M_BOLT_FAR_SHOW", setting, 32);
+        const float value = length && length < 32 ? wcstof(setting, &end) : -1.f;
+        const bool parsed = length && length < 32 && end != setting && !*end && std::isfinite(value) && value >= 0.f &&
+                            value <= 1.f;
+        if (parsed) bolt_far_show = value;
+        if (bolt_far_composite_requested) hdr_config.bolt_show = bolt_far_show;
+        log("bolt_far_composite_mode requested=%u enabled=%u show=%g show_valid=%u additive=%u hdr=%u",
+            unsigned(x3m::config::get(L"X3M_BOLT_FAR_COMPOSITE", setting, 32) == 1 && setting[0] == L'1'),
+            unsigned(bolt_far_composite_requested), double(bolt_far_show), unsigned(parsed || !length),
+            unsigned(screen_emission_additive_requested), unsigned(hdr_requested));
+    }
     // X3M_SCREEN_EMISSION_TIMING=1: the option's opt-in per-frame timing
     // diagnostic (one screen_emission_frame line per Present). Needs the
     // enabled option; the option itself stays free of per-frame logging.

@@ -3,11 +3,18 @@
 // correction. Exact ceil-half integer geometry avoids deriving large pixel
 // boundaries with source*rounded reciprocal then floor (wrong near integers).
 #include "bloom_common.hlsl"
+#ifdef BLOOM_EXTRACT
+#include "bolt_far.hlsl"
+#endif
 sampler2D bloomInput : register(s0);
 float3 bloomRead(float2 cell)
 {
-    float4 v = tex2Dlod(bloomInput, float4((cell + 0.5) * bloomSource.zw, 0, 0));
+    float2 uv = (cell + 0.5) * bloomSource.zw;
+    float4 v = tex2Dlod(bloomInput, float4(uv, 0, 0));
 #ifdef BLOOM_EXTRACT
+    // Bolts through the TAA (bolt_far.hlsl): a flagged resolved tap takes the pre-resolve scene tap (s2, c29.x = W)
+    // before the prefilter, so a bolt over a held far pixel feeds the bloom as one over space does.
+    v = boltComposite(v, uv);
     return bloomPrefilter(v); // nonlinear operations BEFORE spatial averaging
 #else
     return v.rgb; // already exposed-linear, bounded FP16

@@ -103,6 +103,10 @@ constexpr DWORD sampler_values[] = {
 constexpr unsigned sampler_count = sizeof(samplers) / sizeof(samplers[0]);
 static_assert(sampler_count == sizeof(sampler_values) / sizeof(sampler_values[0]));
 constexpr unsigned constant_count = x3::temporal::kBloomFirstRegister + x3::temporal::kBloomRegisterCount;
+// Sampler stages the draws touch: s0 the input, s1 the coarser level / the
+// reconstructed bloom, s2 the pre-resolve scene of the bolt composite.
+constexpr unsigned stage_count = x3::temporal::kBoltSceneSampler + 1;
+static_assert(stage_count == 3);
 
 bool descriptor_equal(const D3DSURFACE_DESC& a, const D3DSURFACE_DESC& b) noexcept {
     return a.Format == b.Format && a.Type == b.Type && a.Usage == b.Usage && a.Pool == b.Pool &&
@@ -148,10 +152,10 @@ struct BloomPass::SavedState {
     IDirect3DVertexShader9* vs = nullptr;
     IDirect3DPixelShader9* ps = nullptr;
     IDirect3DVertexBuffer9* stream = nullptr;
-    IDirect3DBaseTexture9* texture[2]{};
+    IDirect3DBaseTexture9* texture[stage_count]{};
     D3DVIEWPORT9 viewport{};
     RECT scissor{};
-    DWORD fvf = 0, rs[state_count]{}, sampler[2][sampler_count]{};
+    DWORD fvf = 0, rs[state_count]{}, sampler[stage_count][sampler_count]{};
     UINT offset = 0, stride = 0, frequency = 1, target_count = 1;
     BOOL software = FALSE;
     float npatch = 0.f;
@@ -420,7 +424,7 @@ HRESULT BloomPass::save(SavedState& s) noexcept {
     if (FAILED(hr = call<GetPS>(GetPixelShader)(device_, &s.ps))) return hr;
     if (FAILED(hr = call<GetStream>(GetStreamSource)(device_, 0, &s.stream, &s.offset, &s.stride))) return hr;
     if (FAILED(hr = call<GetFreq>(GetStreamSourceFreq)(device_, 0, &s.frequency))) return hr;
-    for (unsigned stage = 0; stage < 2; ++stage) {
+    for (unsigned stage = 0; stage < stage_count; ++stage) {
         if (FAILED(hr = call<GetTex>(GetTexture)(device_, stage, &s.texture[stage]))) return hr;
         for (unsigned i = 0; i < sampler_count; ++i)
             if (FAILED(hr = call<GetSampler>(GetSamplerState)(device_, stage, samplers[i], &s.sampler[stage][i])))
@@ -442,7 +446,8 @@ HRESULT BloomPass::restore(const SavedState& s, bool inject_partial_failure) noe
     // Always attempt every restoration, retaining the first failure. Recovery
     // reuses this SAME snapshot, even if a preceding restoration partly worked.
     HRESULT hr = S_OK;
-    for (unsigned stage = 0; stage < 2; ++stage) first_failure(hr, call<SetTex>(SetTexture)(device_, stage, nullptr));
+    for (unsigned stage = 0; stage < stage_count; ++stage)
+        first_failure(hr, call<SetTex>(SetTexture)(device_, stage, nullptr));
     for (unsigned i = 1; i < s.target_count; ++i) first_failure(hr, call<SetRT>(SetRenderTarget)(device_, i, nullptr));
     first_failure(hr, call<SetDS>(SetDepthStencilSurface)(device_, nullptr));
     first_failure(hr, call<SetRT>(SetRenderTarget)(device_, 0, s.rt[0]));
@@ -461,7 +466,7 @@ HRESULT BloomPass::restore(const SavedState& s, bool inject_partial_failure) noe
     first_failure(hr, call<SetStream>(SetStreamSource)(device_, 0, s.stream, s.offset, s.stride));
     first_failure(hr, call<SetFreq>(SetStreamSourceFreq)(device_, 0, s.frequency));
     first_failure(hr, call<SetConstants>(SetPixelShaderConstantF)(device_, 0, s.constants[0], constant_count));
-    for (unsigned stage = 0; stage < 2; ++stage) {
+    for (unsigned stage = 0; stage < stage_count; ++stage) {
         first_failure(hr, call<SetTex>(SetTexture)(device_, stage, s.texture[stage]));
         for (unsigned i = 0; i < sampler_count; ++i)
             first_failure(hr, call<SetSampler>(SetSamplerState)(device_, stage, samplers[i], s.sampler[stage][i]));
@@ -480,7 +485,8 @@ HRESULT BloomPass::restore(const SavedState& s, bool inject_partial_failure) noe
 HRESULT BloomPass::setup(const SavedState& s, DWORD mask) noexcept {
     if (fault(BloomFault::Setup)) return E_FAIL;
     HRESULT hr = S_OK;
-    for (unsigned stage = 0; stage < 2; ++stage) first_failure(hr, call<SetTex>(SetTexture)(device_, stage, nullptr));
+    for (unsigned stage = 0; stage < stage_count; ++stage)
+        first_failure(hr, call<SetTex>(SetTexture)(device_, stage, nullptr));
     for (unsigned i = 1; i < s.target_count; ++i) first_failure(hr, call<SetRT>(SetRenderTarget)(device_, i, nullptr));
     first_failure(hr, call<SetDS>(SetDepthStencilSurface)(device_, nullptr));
     if (caps_.mixed_vertex_processing && s.software)
@@ -492,7 +498,7 @@ HRESULT BloomPass::setup(const SavedState& s, DWORD mask) noexcept {
     for (unsigned i = 0; i < state_count; ++i)
         first_failure(hr, call<SetRS>(SetRenderState)(device_, states[i],
                                                       states[i] == D3DRS_COLORWRITEENABLE ? mask : values[i]));
-    for (unsigned stage = 0; stage < 2; ++stage)
+    for (unsigned stage = 0; stage < stage_count; ++stage)
         for (unsigned i = 0; i < sampler_count; ++i) {
             const bool linear = stage == 1 && (samplers[i] == D3DSAMP_MINFILTER || samplers[i] == D3DSAMP_MAGFILTER);
             first_failure(hr, call<SetSampler>(SetSamplerState)(device_, stage, samplers[i],
@@ -502,12 +508,14 @@ HRESULT BloomPass::setup(const SavedState& s, DWORD mask) noexcept {
 }
 
 HRESULT BloomPass::draw(const Image& output, IDirect3DPixelShader9* shader, IDirect3DTexture9* s0,
-                        IDirect3DTexture9* s1, const x3::temporal::BloomConstants* constants, bool* issued) noexcept {
+                        IDirect3DTexture9* s1, const x3::temporal::BloomConstants* constants, bool* issued,
+                        IDirect3DTexture9* s2) noexcept {
     if (issued) *issued = false;
     // Pipeline state is bracketed once per public operation, not per level.
-    // Unbind both reads before changing targets to avoid previous-level alias.
+    // Unbind every read before changing targets to avoid previous-level alias.
     HRESULT hr = call<SetTex>(SetTexture)(device_, 0, nullptr);
     first_failure(hr, call<SetTex>(SetTexture)(device_, 1, nullptr));
+    first_failure(hr, call<SetTex>(SetTexture)(device_, x3::temporal::kBoltSceneSampler, nullptr));
     first_failure(hr, call<SetRT>(SetRenderTarget)(device_, 0, output.surface));
     const D3DVIEWPORT9 viewport{0, 0, output.width, output.height, 0.f, 1.f};
     first_failure(hr, call<SetVP>(SetViewport)(device_, &viewport));
@@ -518,6 +526,7 @@ HRESULT BloomPass::draw(const Image& output, IDirect3DPixelShader9* shader, IDir
                                                                       x3::temporal::kBloomRegisterCount));
     first_failure(hr, call<SetTex>(SetTexture)(device_, 0, s0));
     first_failure(hr, call<SetTex>(SetTexture)(device_, 1, s1));
+    if (s2) first_failure(hr, call<SetTex>(SetTexture)(device_, x3::temporal::kBoltSceneSampler, s2));
     if (SUCCEEDED(hr)) {
         QuadVertex vertices[4];
         quad_vertices(output.width, output.height, vertices);
@@ -583,6 +592,22 @@ HRESULT BloomPass::validate_inputs(const BloomPrepare& p) const noexcept {
     const bool alias = !scene_surface || owned(scene_surface) || scene_surface == b.main;
     drop(scene_surface);
     if (FAILED(hr) || alias) return FAILED(hr) ? hr : E_INVALIDARG;
+    // The bolt composite's scene (bolt_far.h): the same contract as `scene` (it
+    // may be `scene` itself), a finite W in [0, 1]; a null texture needs W = 0.
+    if (!x3::temporal::valid_bolt_show(p.bolt_show) || (p.bolt_show > 0.f && !p.bolt_scene)) return E_INVALIDARG;
+    if (p.bolt_scene && p.bolt_scene != p.scene) {
+        D3DSURFACE_DESC bolt{};
+        hr = p.bolt_scene->GetLevelDesc(0, &bolt);
+        if (FAILED(hr)) return hr;
+        if (bolt.Format != scene.Format || bolt.Pool != scene.Pool || bolt.Width != scene.Width ||
+            bolt.Height != scene.Height || bolt.MultiSampleType != scene.MultiSampleType || bolt.MultiSampleQuality)
+            return E_INVALIDARG;
+        IDirect3DSurface9* bolt_surface = nullptr;
+        hr = p.bolt_scene->GetSurfaceLevel(0, &bolt_surface);
+        const bool bolt_alias = !bolt_surface || owned(bolt_surface) || bolt_surface == b.main;
+        drop(bolt_surface);
+        if (FAILED(hr) || bolt_alias) return FAILED(hr) ? hr : E_INVALIDARG;
+    }
     // Native resource ownership checked once per prepare, never per pyramid
     // draw. Exact device interface mismatch refuses; no backend-private data.
     IDirect3DDevice9* owner = nullptr;
@@ -590,6 +615,12 @@ HRESULT BloomPass::validate_inputs(const BloomPrepare& p) const noexcept {
     bool same = SUCCEEDED(hr) && owner == device_;
     drop(owner);
     if (!same) return FAILED(hr) ? hr : E_INVALIDARG;
+    if (p.bolt_scene && p.bolt_scene != p.scene) {
+        hr = p.bolt_scene->GetDevice(&owner);
+        same = SUCCEEDED(hr) && owner == device_;
+        drop(owner);
+        if (!same) return FAILED(hr) ? hr : E_INVALIDARG;
+    }
     hr = b.main->GetDevice(&owner);
     same = SUCCEEDED(hr) && owner == device_;
     drop(owner);
@@ -679,6 +710,11 @@ BloomPreparation BloomPass::prepare(const BloomPrepare& p) noexcept {
     for (unsigned i = 0; i < 4; ++i) c.decode[i] = p.agx.decode[i];
     c.radiance[3] = p.filter.authored_glow_gain;
     if (p.filter.authored_glow_gain > 0.f) c.decode[3] = p.filter.highlight_gain;
+    // The bolt composite (bolt_far.h): c29.x = W, the pre-resolve scene at s2 of the extract and the candidate draws
+    // (validate_inputs admitted the pair; without a texture W is 0 and s2 stays unbound, the programs' select then
+    // keeps every texel).
+    IDirect3DTexture9* const bolt_scene = p.bolt_show > 0.f ? p.bolt_scene : nullptr;
+    c.bolt[0] = bolt_scene ? p.bolt_show : 0.f;
     x3::temporal::BloomExtractShader selected{};
     if (!x3::temporal::select_bloom_extract(selected, {width, height}, p.decode))
         first_failure(result.operation, E_INVALIDARG);
@@ -690,7 +726,7 @@ BloomPreparation BloomPass::prepare(const BloomPrepare& p) noexcept {
         result.operation = fault(BloomFault::PrepareDraw)
                                ? E_FAIL
                                : draw(output, i == 0 ? extract_[static_cast<unsigned>(selected)] : down_, source,
-                                      nullptr, &c);
+                                      nullptr, &c, nullptr, i == 0 ? bolt_scene : nullptr);
         source = views.down[i];
         sw = output.width;
         sh = output.height;
@@ -718,7 +754,7 @@ BloomPreparation BloomPass::prepare(const BloomPrepare& p) noexcept {
             result.operation = fault(BloomFault::PrepareDraw)
                                    ? E_FAIL
                                    : draw(p.sharpen > 0 ? resources_.stage : resources_.candidate, candidate_, p.scene,
-                                          source, &c);
+                                          source, &c, nullptr, bolt_scene);
     }
     if (SUCCEEDED(result.operation) && p.sharpen > 0) {
         x3::temporal::SharpenConstants sharp{};

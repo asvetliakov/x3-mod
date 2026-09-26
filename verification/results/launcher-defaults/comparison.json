@@ -14,6 +14,14 @@
   ]
  },
  "stand_vs_recorded_stand": {
+  "X3M_BOLT_FAR_COMPOSITE": [
+   null,
+   "1"
+  ],
+  "X3M_BOLT_FAR_SHOW": [
+   null,
+   "0.5"
+  ],
   "X3M_BOLT_SINGLE_COPY": [
    null,
    "1"
@@ -280,6 +288,14 @@
   ]
  },
  "empty_vs_recorded_stand": {
+  "X3M_BOLT_FAR_COMPOSITE": [
+   null,
+   "1"
+  ],
+  "X3M_BOLT_FAR_SHOW": [
+   null,
+   "0.5"
+  ],
   "X3M_BOLT_SINGLE_COPY": [
    null,
    "1"
@@ -565,8 +581,8 @@
   ]
  },
  "counts": {
-  "empty": 124,
-  "stand": 126,
+  "empty": 126,
+  "stand": 128,
   "recorded": 181
  },
  "checks": {

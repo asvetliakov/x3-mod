@@ -273,8 +273,9 @@ void run_screen_emission_integration(Fixture& f,const char* original_path) {
         const bool single=bolt_shape_length==6&&!std::strcmp(bolt_shape_setting,"single"),late_only=bolt_shape_length==4&&!std::strcmp(bolt_shape_setting,"late");
         const bool behind=bolt_shape_length==6&&!std::strcmp(bolt_shape_setting,"behind"),empty=bolt_shape_length==5&&!std::strcmp(bolt_shape_setting,"empty");
         const bool nullps=bolt_shape_length==6&&!std::strcmp(bolt_shape_setting,"nullps");
+        const bool farflag=bolt_shape_length==7&&!std::strcmp(bolt_shape_setting,"farflag");
         const bool single_family=single||late_only||behind||empty||nullps;
-        require(oversize||misdeclared||copies||single_family,"X3M_FIXTURE_BOLT_SHAPE is prims, decl, copy, single, late, behind, empty or nullps");
+        require(oversize||misdeclared||copies||single_family||farflag,"X3M_FIXTURE_BOLT_SHAPE is prims, decl, copy, single, late, behind, empty, nullps or farflag");
         require(qualified&&additive,"bolt shape script needs the qualified additive configuration");
         // =copy (the bolt_copy capture row; lod-overlay.md, "Run 91 A: bolts
         // behind distant objects"): per frame 1-7 six bullet draws. A fill
@@ -353,6 +354,111 @@ void run_screen_emission_integration(Fixture& f,const char* original_path) {
         // frame carries the channel means of i1-i0 (e), i2-i1 (m), i3-i2 (l) and i3-i0 (t) over each half and the
         // covered half's absolute value after the middle draw (under). The early draw must return D3D_OK and, when
         // dropped, reach nothing (key 49 +0, 60 +0, 63 +1); the runner holds the oracle (validate_bolt_single).
+        // Bolts through the TAA (docs/architecture/bolts-through-taa.md, B'; seam-bolt-far-flag*): frames 1-3 draw the
+        // routed opaque depth writer A (z .5, shifted by t = 1.25: it covers the bolt's right half and writes the lane
+        // there), then one late bullet draw (z .1, in front of A) from the writer's buffer, admitted by the additive
+        // route. RT1, RT2 (the four-lane A32B32G32R32F with X3M_SUN_SHADOW_LANE=1, else the lane-off R32F) and the HDR
+        // scene are read before and after the bolt. With the composite on and the four-lane RT2 the draw writes its
+        // flag into RT2.g: g_after = g_before + K * G * max(texel) = g_before + 32 under the ONE/ONE blend (MRT
+        // post-pixel-shader blending) or 32 without it, at every bolt pixel, its .r/.b/.a and every other pixel of
+        // RT2 and all of RT1 bit-identical; without the lane the flag is refused (reason r32f_lane) and RT2 untouched;
+        // with the composite off nothing is flagged or refused. The state snapshot around the draw proves the
+        // bindings and masks come back. Fixture keys: 60 admitted, 64 flagged, 65 refused (session).
+        if(farflag) {
+            char lane_setting[8]{},composite_setting[8]{};
+            const bool lane_on=GetEnvironmentVariableA("X3M_SUN_SHADOW_LANE",lane_setting,sizeof lane_setting)==1&&lane_setting[0]=='1';
+            const bool composite_on=GetEnvironmentVariableA("X3M_BOLT_FAR_COMPOSITE",composite_setting,sizeof composite_setting)==1&&composite_setting[0]=='1';
+            constexpr unsigned flag_frames=4;constexpr float cover_t=1.25f,bolt_z=.1f,gain=2.f,flag_k=32.f;
+            const LONG split=LONG(std::lround((cover_t-1+1)*f.W/2.)),margin=2;
+            require(quad_rect.left+margin<split-margin&&split+margin<quad_rect.right-margin,"far flag: A's edge splits the bolt");
+            const auto write_bolt=[&]() {
+                void* data=nullptr;api(bullets->Lock(0,buffer_bytes,&data,D3DLOCK_DISCARD),"far flag discard lock");
+                auto* words=static_cast<float*>(data);for(unsigned n=0;n<buffer_bytes/4;++n)words[n]=0.f;
+                const float corners[6][2]={{qx0,qy0},{qx1,qy0},{qx0,qy1},{qx1,qy0},{qx1,qy1},{qx0,qy1}};
+                for(unsigned k=0;k<6;++k) {
+                    auto* v=static_cast<unsigned char*>(data)+k*stride;
+                    const float position[3]={corners[k][0],corners[k][1],bolt_z},uv[2]={.5f,.5f};const DWORD colour=0xffffffffu;
+                    std::memcpy(v,position,12);std::memcpy(v+12,uv,8);std::memcpy(v+20,&colour,4);
+                }
+                api(bullets->Unlock(),"far flag discard unlock");
+            };
+            const auto opaque=[&](float t) {
+                f.scene_states();f.material_state();
+                api(f.d->SetVertexDeclaration(f.declaration.p),"far flag A declaration");
+                f.draw(f.a,t,0,0,true,true,f.a.recorded,Alter::None,false);
+            };
+            const auto read_target=[&](unsigned target,unsigned components) {
+                std::vector<float> image(std::size_t(f.W)*f.H*components,0.f);unsigned w=0,h=0;
+                const HRESULT hr=f.emission_readback(f.d.p,target,image.data(),unsigned(image.size()),&w,&h);
+                require(SUCCEEDED(hr)&&w==f.W&&h==f.H,"far flag target readback");
+                return image;
+            };
+            bool lane_active=false; // the lane's RT2 exists from the first scene latch (ensure_target): read after frame 0's draw
+            for(unsigned plan=0;plan<flag_frames;++plan) {
+                f.frame_begin();f.linear_material_inputs();f.write_reserved();
+                opaque(cover_t);
+                if(!plan) {
+                    lane_active=f.emission_status(f.d.p,91)!=0;
+                    std::printf("BOLT_FAR_FLAG_SETUP lane_requested=%u lane_active=%u composite=%u\n",unsigned(lane_on),unsigned(lane_active),unsigned(composite_on));
+                }
+                if(plan) {
+                    const unsigned lanes=lane_active?4u:1u;
+                    const auto rt1_before=read_target(1,4),rt2_before=read_target(2,lanes),scene_before=scene();
+                    write_bolt();bind_bullets('s');
+                    const auto state=f.snapshot();
+                    const unsigned admitted_before=f.emission_status(f.d.p,60),flag_before=f.emission_status(f.d.p,64),refused_before=f.emission_status(f.d.p,65);
+                    const HRESULT hr=f.d->DrawPrimitive(D3DPT_TRIANGLELIST,0,2);++f.draw_index;
+                    require(hr==D3D_OK,"far flag: the late bolt draw returns D3D_OK");
+                    f.compare(state,f.snapshot(),"far flag bolt restoration");
+                    const unsigned admitted=f.emission_status(f.d.p,60)-admitted_before,flagged=f.emission_status(f.d.p,64)-flag_before,refused=f.emission_status(f.d.p,65)-refused_before;
+                    const auto rt1_after=read_target(1,4),rt2_after=read_target(2,lanes),scene_after=scene();
+                    unsigned bolt_px=0,rba_changed=0,rt1_changed=0,rt2_outside_changed=0,scene_added=0;
+                    double delta_min=1e9,delta_max=-1e9,g_before_covered=0,g_after_covered=0,g_before_open=0,g_after_open=0;unsigned covered_n=0,open_n=0;
+                    for(LONG y=0;y<LONG(f.H);++y)for(LONG x=0;x<LONG(f.W);++x) {
+                        const std::size_t i=std::size_t(y)*f.W+std::size_t(x);
+                        const bool inside=x>=quad_rect.left+margin&&x<quad_rect.right-margin&&y>=quad_rect.top+margin&&y<quad_rect.bottom-margin;
+                        const bool outside=x<quad_rect.left||x>=quad_rect.right||y<quad_rect.top||y>=quad_rect.bottom; // the quad's own edge pixels are neither
+                        for(unsigned c=0;c<4;++c)rt1_changed+=rt1_after[i*4+c]!=rt1_before[i*4+c];
+                        if(lanes==4) {
+                            const double delta=double(rt2_after[i*4+1])-double(rt2_before[i*4+1]);
+                            if(inside) {
+                                ++bolt_px;delta_min=std::min(delta_min,delta);delta_max=std::max(delta_max,delta);
+                                for(unsigned c:{0u,2u,3u})rba_changed+=rt2_after[i*4+c]!=rt2_before[i*4+c];
+                                if(x>=split+margin){g_before_covered+=rt2_before[i*4+1];g_after_covered+=rt2_after[i*4+1];++covered_n;}
+                                else{g_before_open+=rt2_before[i*4+1];g_after_open+=rt2_after[i*4+1];++open_n;}
+                            } else if(outside) for(unsigned c=0;c<4;++c)rt2_outside_changed+=rt2_after[i*4+c]!=rt2_before[i*4+c];
+                        } else if(outside) rt2_outside_changed+=rt2_after[i]!=rt2_before[i];
+                        if(inside){float add=0;for(unsigned c=0;c<3;++c)add+=scene_after[i*4+c]-scene_before[i*4+c];scene_added+=add>gain*.5f;}
+                    }
+                    if(covered_n){g_before_covered/=covered_n;g_after_covered/=covered_n;}
+                    if(open_n){g_before_open/=open_n;g_after_open/=open_n;}
+                    std::printf("BOLT_FAR_FLAG frame=%llu plan=%u lane=%u composite=%u admitted=%u flagged=%u refused=%u bolt_px=%u scene_added=%u g_delta_min=%.6f g_delta_max=%.6f g_before_covered=%.6f g_after_covered=%.6f g_before_open=%.6f g_after_open=%.6f rba_changed=%u rt1_changed=%u rt2_outside_changed=%u\n",
+                        f.frame,plan,unsigned(lane_active),unsigned(composite_on),admitted,flagged,refused,bolt_px,scene_added,lanes==4?delta_min:0.,lanes==4?delta_max:0.,g_before_covered,g_after_covered,g_before_open,g_after_open,rba_changed,rt1_changed,rt2_outside_changed);
+                    require(admitted==1,"far flag: the late bolt draw is admitted by the additive route");
+                    require(rt1_changed==0&&rt2_outside_changed==0,"far flag: RT1 and RT2 outside the bolt are untouched");
+                    const bool expect_flag=composite_on&&lane_active;
+                    require(flagged==(expect_flag?1u:0u)&&refused==(composite_on&&!lane_active?1u:0u),"far flag: flagged exactly with the composite on and the four-lane RT2, refused exactly with the composite on and the lane off");
+                    if(expect_flag) {
+                        // The lane's flag: + K * G * max(texel) = 32 under the ONE/ONE blend, or 32 written without MRT post-pixel-shader blending.
+                        const double expected=flag_k*gain*.5;
+                        const bool blended=std::fabs(delta_min-expected)<1e-3&&std::fabs(delta_max-expected)<1e-3;
+                        const bool replaced=std::fabs(g_after_covered-expected)<1e-3&&std::fabs(g_after_open-expected)<1e-3;
+                        require(blended||replaced,"far flag: g = base + 32 (blended) or 32 (replaced) at every bolt pixel");
+                        require(rba_changed==0,"far flag: the lane's .r, .b and .a keep the depth writer's values under the bolt");
+                    } else require(lanes!=4||(delta_min==0&&delta_max==0&&rba_changed==0),"far flag: RT2 untouched without the flag");
+                }
+                const unsigned required=f.emission_status(f.d.p,16);
+                f.emissions_enabled=required!=0;
+                f.emission_reference_color=scene();
+                raw(3,f.emission_reference_mask);
+                f.emission_mask_valid=required&&f.emission_status(f.d.p,1);
+                require_quiet(f.emission_reference_color.size()==std::size_t(f.W)*f.H*4,"far flag reference image published");
+                f.frame_end();
+            }
+            api(f.d->SetIndices(nullptr),"far flag final index release");api(f.d->SetStreamSource(0,nullptr,0,0),"far flag final stream release");
+            std::printf("BOLT_FAR_FLAG_SUMMARY lane=%u composite=%u frames=%u flagged=%u refused=%u\n",unsigned(lane_active),unsigned(composite_on),flag_frames,f.emission_status(f.d.p,64),f.emission_status(f.d.p,65));
+            return;
+        }
         if(single_family) {
             char single_setting[8]{};
             const bool rule=GetEnvironmentVariableA("X3M_BOLT_SINGLE_COPY",single_setting,sizeof single_setting)==1&&single_setting[0]=='1';

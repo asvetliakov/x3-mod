@@ -13,11 +13,11 @@
  "counts": {
   "base_default": 150,
   "base_vanilla": 99,
-  "new_debug": 125,
-  "new_debug_perf": 126,
-  "new_default": 124,
-  "new_perf": 125,
-  "new_perf_draw_trace": 126,
+  "new_debug": 127,
+  "new_debug_perf": 128,
+  "new_default": 126,
+  "new_perf": 127,
+  "new_perf_draw_trace": 128,
   "new_vanilla": 71
  },
  "debug_perf_vs_default": {
@@ -37,6 +37,14 @@
   ]
  },
  "default_vs_base": {
+  "X3M_BOLT_FAR_COMPOSITE": [
+   null,
+   "1"
+  ],
+  "X3M_BOLT_FAR_SHOW": [
+   null,
+   "0.5"
+  ],
   "X3M_BOLT_SINGLE_COPY": [
    null,
    "1"

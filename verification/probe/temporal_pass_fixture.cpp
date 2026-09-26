@@ -6,6 +6,8 @@
 #include "../../src/renderer/temporal_pass.h"
 #include "../../src/renderer/camera_reprojection.h"
 #include "../../src/renderer/hdr_writeback_program.h"
+#include "../../src/renderer/hdr_writeback_dither_program.h"
+#include "../../src/temporal/bolt_far.h"
 #include "../../src/renderer/temporal_resolve_program.h"
 #include <algorithm>
 #include <array>
@@ -5887,6 +5889,7 @@ void loop_timings(IDirect3DDevice9* d, const DWORD* baseline, const DWORD* candi
 #include "temporal_fold_timing_inc.h"
 #include "temporal_far_camera_inc.h"
 #include "temporal_far_jitter_line_inc.h"
+#include "temporal_bolt_far_streak_inc.h"
 
 int main(int argc, char** argv) {
     std::setvbuf(stdout, nullptr, _IONBF, 0);
@@ -5923,10 +5926,13 @@ int main(int argc, char** argv) {
     const bool farJitterOnly = argc == 6 && std::strcmp(argv[5], "far-jitter-line") == 0; // FAR_JITTER_LINE alone
                                                                                           // (iteration; the runner uses
                                                                                           // lattice)
+    const bool boltFarOnly = argc == 6 && std::strcmp(argv[5], "bolt-far-streak") == 0;   // BOLT_FAR_STREAK alone
+                                                                                          // (iteration; the runner uses
+                                                                                          // lattice)
     try {
         if ((argc != 5 && !sunLaneOnly && !stationaryOnly && !measure && !supplementalOnly && !loopQualify &&
              !lattice && !regionHoldOnly && !boxHalfOnly && !thinSourceOnly && !foldTimingOnly && !farCameraOnly &&
-             !farJitterOnly) ||
+             !farJitterOnly && !boltFarOnly) ||
             !window)
             throw std::runtime_error(
                 "usage: temporal_pass_fixture.exe <D3DX> <decoder> <resolve> <sharpen> [stationary-only|sharpen-measure|supplemental-only <baseline-resolve>|loop-qualify <baseline-resolve>|lattice]");
@@ -6055,7 +6061,14 @@ int main(int argc, char** argv) {
             far_camera_pan_cases(d.p, compiler, static_cast<DWORD*>(rc->GetBufferPointer()));
             std::printf("FAR_CAMERA_PAN_BASE numerical=%u state_restorations=%u\n", numeric_checks, state_checks);
             far_jitter_line_cases(d.p, compiler, static_cast<DWORD*>(rc->GetBufferPointer()));
+            std::printf("FAR_JITTER_LINE_BASE numerical=%u state_restorations=%u\n", numeric_checks, state_checks);
+            bolt_far_streak_cases(d.p, compiler, static_cast<DWORD*>(rc->GetBufferPointer()));
             std::printf("RESULT PASS numerical=%u state_restorations=%u lattice=1\n", numeric_checks, state_checks);
+            result = 0;
+        } else if (boltFarOnly) {
+            bolt_far_streak_cases(d.p, compiler, static_cast<DWORD*>(rc->GetBufferPointer()));
+            std::printf("RESULT PASS numerical=%u state_restorations=%u bolt_far_streak_only=1\n", numeric_checks,
+                        state_checks);
             result = 0;
         } else if (farJitterOnly) {
             far_jitter_line_cases(d.p, compiler, static_cast<DWORD*>(rc->GetBufferPointer()));
@@ -6138,7 +6151,8 @@ int main(int argc, char** argv) {
             result = 0;
         }
         if (!sunLaneOnly && !stationaryOnly && !measure && !supplementalOnly && !loopQualify && !lattice &&
-            !regionHoldOnly && !boxHalfOnly && !thinSourceOnly && !foldTimingOnly && !farCameraOnly && !farJitterOnly) {
+            !regionHoldOnly && !boxHalfOnly && !thinSourceOnly && !foldTimingOnly && !farCameraOnly && !farJitterOnly &&
+            !boltFarOnly) {
             std::printf("RESULT PASS numerical=%u state_restorations=%u generations=2\n", numeric_checks, state_checks);
             result = 0;
         }

@@ -26,6 +26,7 @@
 #include "../renderer/hdr_writeback_program.h"
 #include "../renderer/quad_vertex_program.h"
 #include "../renderer/hdr_pass.h"
+#include "../temporal/bolt_far.h"
 #include "../ownership/d3d9_ownership.h"
 #include "../ownership/application_admission_abi.h"
 #include "screen_emission_admission.h"
@@ -442,6 +443,7 @@ unsigned MotionOutput::device_references() const noexcept {
         if (entry.second.hull_lightmap_variant) ++count;
         if (entry.second.screen_variant) ++count;
         if (entry.second.screen_additive_variant) ++count;
+        if (entry.second.screen_additive_flag_variant) ++count;
         if (entry.second.sun_motion_variant) ++count;
         if (entry.second.sun_material_variant) ++count;
         if (entry.second.sun_xt_variant) ++count;
@@ -498,6 +500,7 @@ void MotionOutput::release_resources() noexcept {
     shadow_.screen_additive_pair = false;
     shadow_.screen_additive_index = screen_emission::pair_count;
     shadow_.ps_screen_additive_variant = nullptr;
+    shadow_.ps_screen_additive_flag_variant = nullptr;
     shadow_.vs_registered = false;
     shadow_.vs_fade_variant = nullptr;
     shadow_.ps_registered = false;
@@ -583,6 +586,7 @@ void MotionOutput::release_resources() noexcept {
         release(entry.second.hull_lightmap_variant);
         release(entry.second.screen_variant);
         release(entry.second.screen_additive_variant);
+        release(entry.second.screen_additive_flag_variant);
         release(entry.second.sun_motion_variant);
         release(entry.second.sun_material_variant);
         release(entry.second.sun_xt_variant);
@@ -956,6 +960,11 @@ void MotionOutput::configure_bolt_footprint(bool requested, float w_px, float l_
 void MotionOutput::configure_bolt_single_copy(bool requested) noexcept {
     if (device_) return; // Process-start configuration only.
     bolt_single_copy_ = requested && screen_additive_requested_;
+}
+void MotionOutput::configure_bolt_far_composite(bool requested, float show) noexcept {
+    if (device_) return; // Process-start configuration only (the flag variant is created with the cache).
+    bolt_far_requested_ = requested && screen_additive_requested_;
+    bolt_far_show_ = x3::temporal::valid_bolt_show(show) ? show : 0.f;
 }
 void MotionOutput::configure_fade_route(unsigned threshold_permille) noexcept {
     if (device_) return; // Process-start configuration only.
@@ -3028,6 +3037,17 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
     id_ = device_id;
     caps_ = caps;
     requested_ = requested;
+    // Bolts through the TAA (bolts-through-taa.md): the MRT post-pixel-shader
+    // blending cap decides the lane flag's base term (g = base + K * add with
+    // it, K * add without; the test g > 1 is robust to both), logged once per
+    // device with the composite's configured state.
+    log("motion_output_mrt_blend device=%llu post_pixel_shader_blending=%u independent_write_masks=%u simultaneous_rts=%lu",
+        device_id, unsigned((caps.PrimitiveMiscCaps & D3DPMISCCAPS_MRTPOSTPIXELSHADERBLENDING) != 0),
+        unsigned((caps.PrimitiveMiscCaps & D3DPMISCCAPS_INDEPENDENTWRITEMASKS) != 0),
+        static_cast<unsigned long>(caps.NumSimultaneousRTs));
+    log("bolt_far_composite device=%llu requested=%u show=%g additive=%u gain=%g k=%g", device_id,
+        unsigned(bolt_far_requested_), double(bolt_far_show_), unsigned(screen_additive_requested_),
+        double(screen_additive_gain_), double(x3::temporal::kBoltFlagScale));
     bind_direct();
     stats_ = stats;
     lazy_rt1_ = lazy_rt2_ = false;
@@ -4178,6 +4198,7 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
         shadow_.screen_additive_pair = false;
         shadow_.screen_additive_index = screen_emission::pair_count;
         shadow_.ps_screen_additive_variant = nullptr;
+        shadow_.ps_screen_additive_flag_variant = nullptr;
         shadow_.ps_registered = false;
         shadow_.ps_fade_variant = nullptr;
         shadow_.ps_emission_variant = nullptr;
@@ -4236,6 +4257,7 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
         release(entry.hull_lightmap_variant);
         release(entry.screen_variant);
         release(entry.screen_additive_variant);
+        release(entry.screen_additive_flag_variant);
         entry.hash = hash;
         entry.row = nullptr;
         entry.sun_register = -1;
@@ -4381,6 +4403,31 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
                 release(variant);
             log("screen_emission_additive_variant device=%llu original=%016llx transform=%u create=%08lx words=%u gain=%g",
                 id_, hash, unsigned(result), hr, unsigned(words.size()), double(config.gain));
+        }
+        // Bolts through the TAA (bolts-through-taa.md): the same variant with the RT2.g flag (oC2 = K * max(rgb)),
+        // created at gain 1 too, since the original SM1 program cannot write oC2. Bound by the late bullet draw when
+        // the flag is admitted (prepare_screen_additive); the gained variant above stays the one every other admitted
+        // draw binds.
+        if (screen_additive_requested_ && bolt_far_requested_ && screen_emission::admitted_pixel_shader(hash)) {
+            std::vector<std::uint32_t> words;
+            renderer::LinearEmissionSm1Config config{};
+            config.gain = screen_additive_gain_;
+            config.outputs = renderer::LinearEmissionSm1Outputs::AdditiveGain;
+            config.far_flag = true;
+            const auto result = renderer::linear_emission_sm1_pixel_variant(
+                reinterpret_cast<const std::uint32_t*>(code), bytes / 4, config, words);
+            IDirect3DPixelShader9* variant = nullptr;
+            HRESULT hr = E_FAIL;
+            if (result == renderer::LinearEmissionResult::Applied)
+                hr = native<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(words.data()),
+                                                           &variant);
+            if (SUCCEEDED(hr) && variant)
+                entry.screen_additive_flag_variant = variant;
+            else
+                release(variant);
+            log("screen_emission_additive_flag_variant device=%llu original=%016llx transform=%u create=%08lx words=%u gain=%g k=%g",
+                id_, hash, unsigned(result), hr, unsigned(words.size()), double(config.gain),
+                double(x3::temporal::kBoltFlagScale));
         }
         entry.row = renderer::material_motion_pixel_row(hash, bytes / 4);
         if (entry.row) {
@@ -4739,6 +4786,7 @@ void MotionOutput::set_pixel_shader(IDirect3DPixelShader9* shader) noexcept {
     shadow_.screen_additive_pair = false;
     shadow_.screen_additive_index = screen_emission::pair_count;
     shadow_.ps_screen_additive_variant = nullptr;
+    shadow_.ps_screen_additive_flag_variant = nullptr;
     shadow_.ps_registered = false;
     shadow_.ps_fade_variant = nullptr;
     shadow_.ps_emission_variant = nullptr;
@@ -4802,6 +4850,7 @@ void MotionOutput::set_pixel_shader(IDirect3DPixelShader9* shader) noexcept {
     shadow_.hull_lightmap_stage = it->second.hull_lightmap_stage;
     shadow_.ps_screen_variant = it->second.screen_variant;
     shadow_.ps_screen_additive_variant = it->second.screen_additive_variant;
+    shadow_.ps_screen_additive_flag_variant = it->second.screen_additive_flag_variant;
     shadow_.ps_variant = static_cast<IDirect3DPixelShader9*>(it->second.variant);
     shadow_.ps_material_variant = static_cast<IDirect3DPixelShader9*>(it->second.material_variant);
     shadow_.ps_sun_motion = it->second.sun_motion_variant;
@@ -6246,8 +6295,28 @@ void MotionOutput::prepare_screen_additive(const MotionDrawCall& call, MotionRou
             return;
         }
     }
-    // The gained draw binds a program: own the restoration bindings first.
-    if (gained && FAILED(acquire_restore(route))) {
+    // Bolts through the TAA (bolts-through-taa.md, B'): the late bullet draw marks its coverage in RT2.g. Decided
+    // here, after every admission check and the single-copy drop, and never changing the admission: the four-lane
+    // RT2 (the sun-share lane's A32B32G32R32F; the lane-off R32F has no .g, and the far / thin programs need the
+    // four-lane RT2 anyway), the targets allocated, independent write masks, the flag variant created. A refusal
+    // logs one row per reason and leaves the draw on the route exactly as without the option. One bool for every
+    // admitted draw of a device without the option.
+    bool flag = false;
+    if (bolt_far_requested_) {
+        unsigned reason = 0;
+        if (!shadow_.ps_screen_additive_flag_variant)
+            reason = 1;
+        else if (!target_surface_ || !depth_surface_ || !depth_enabled_)
+            reason = 2;
+        else if (!sun_lane_active_)
+            reason = 3;
+        else if (!(caps_.PrimitiveMiscCaps & D3DPMISCCAPS_INDEPENDENTWRITEMASKS))
+            reason = 4;
+        flag = reason == 0;
+        if (!flag) refuse_bolt_flag(reason);
+    }
+    // A gained or flagged draw binds a program: own the restoration bindings first.
+    if ((gained || flag) && FAILED(acquire_restore(route))) {
         ++screen_additive_failures_;
         return;
     } // nothing applied: the draw stays native
@@ -6257,15 +6326,25 @@ void MotionOutput::prepare_screen_additive(const MotionDrawCall& call, MotionRou
         return;
     } // nothing applied: the draw stays native
     route.screen_additive = true;
-    if (gained) {
-        hr = native<SetPsFn>(SetPixelShader)(device_, shadow_.ps_screen_additive_variant);
+    // The flag's targets and masks (their own rollback on a partial failure: the draw then runs unflagged, exactly
+    // as a refusal); a failed rollback is reported and counted inside.
+    if (flag && FAILED(bind_bolt_flag_targets(route))) {
+        flag = false;
+        refuse_bolt_flag(5);
+    }
+    if (gained || flag) {
+        hr = native<SetPsFn>(SetPixelShader)(device_, flag ? shadow_.ps_screen_additive_flag_variant
+                                                           : shadow_.ps_screen_additive_variant);
         if (SUCCEEDED(hr))
             route.screen_additive_ps = true;
         else {
-            // Roll the first step back; a failed rollback leaves the device
+            // Roll the first steps back; a failed rollback leaves the device
             // state unknown exactly as a failed route undo does.
             ++screen_additive_failures_;
-            const HRESULT back = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_DESTBLEND, D3DBLEND_INVSRCCOLOR);
+            HRESULT back = route.bolt_flag ? unbind_bolt_flag_targets(route) : S_OK;
+            const HRESULT destination = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_DESTBLEND,
+                                                                      D3DBLEND_INVSRCCOLOR);
+            if (SUCCEEDED(back)) back = destination;
             route.screen_additive = false;
             if (FAILED(back)) {
                 if (!motion_state_lost_) {
@@ -6287,6 +6366,8 @@ void MotionOutput::prepare_screen_additive(const MotionDrawCall& call, MotionRou
             ++screen_additive_failures_;
             const HRESULT alpha_back = restore_screen_additive_alpha();
             HRESULT back = route.screen_additive_ps ? native<SetPsFn>(SetPixelShader)(device_, route.restore_ps) : S_OK;
+            const HRESULT flag_back = route.bolt_flag ? unbind_bolt_flag_targets(route) : S_OK;
+            if (SUCCEEDED(back)) back = flag_back;
             const HRESULT destination = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_DESTBLEND,
                                                                       D3DBLEND_INVSRCCOLOR);
             if (SUCCEEDED(back)) back = destination;
@@ -6308,6 +6389,10 @@ void MotionOutput::prepare_screen_additive(const MotionDrawCall& call, MotionRou
     ++screen_additive_admitted_;
     ++screen_additive_frame_admitted_;
     ++screen_additive_window_.admitted;
+    if (route.bolt_flag) {
+        ++bolt_flag_frame_;
+        ++bolt_flag_session_;
+    }
     if (shadow_.screen_additive_index < screen_emission::pair_count)
         screen_additive_frame_pairs_ |= 1u << shadow_.screen_additive_index;
     // Bolt footprint: one bool test unless requested; it never changes the
@@ -6367,6 +6452,77 @@ void MotionOutput::log_bolt_copies() noexcept {
         log("bolt_copies device=%llu frame=%llu early_dropped=%u late=%u", id_, frame_, unsigned(bolt_early_dropped_),
             unsigned(bolt_late_));
     bolt_early_dropped_ = bolt_late_ = 0;
+}
+// The flag's bindings (bolts-through-taa.md, "1. The late bolt draw marks its coverage in RT2.g"): RT1 bound with
+// COLORWRITEENABLE1 = 0 so the MRT set has no gap the route never exercises, RT2 bound with the GREEN mask, the
+// application's two masks saved first (a valid saved value precedes each write; render_state reads the shadow or the
+// device exactly as bind_targets does). Documented D3D9 throughout: SetRenderTarget on indices 1-2, per-target write
+// masks (D3DPMISCCAPS_INDEPENDENTWRITEMASKS, checked by the caller). About eight native calls per late bullet draw,
+// never on any other draw. A partial failure is unwound here in reverse order and reported like every other rollback.
+HRESULT MotionOutput::bind_bolt_flag_targets(MotionRoute& route) noexcept {
+    HRESULT hr = render_state(D3DRS_COLORWRITEENABLE1, &route.bolt_flag_saved_write1);
+    if (SUCCEEDED(hr)) hr = render_state(D3DRS_COLORWRITEENABLE2, &route.bolt_flag_saved_write2);
+    if (SUCCEEDED(hr)) {
+        route.bolt_flag_rt1 = true;
+        hr = bind_target(1, target_surface_);
+    }
+    if (SUCCEEDED(hr)) {
+        route.bolt_flag_write1 = true;
+        hr = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_COLORWRITEENABLE1, 0);
+    }
+    if (SUCCEEDED(hr)) {
+        route.bolt_flag_rt2 = true;
+        hr = bind_target(2, depth_surface_);
+    }
+    if (SUCCEEDED(hr)) {
+        route.bolt_flag_write2 = true;
+        hr = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_COLORWRITEENABLE2, D3DCOLORWRITEENABLE_GREEN);
+    }
+    if (SUCCEEDED(hr)) {
+        route.bolt_flag = true;
+        return S_OK;
+    }
+    const HRESULT back = unbind_bolt_flag_targets(route);
+    if (FAILED(back)) {
+        if (!motion_state_lost_) {
+            motion_state_lost_ = true;
+            motion_state_error_ = back;
+        }
+        ++counters_.restore_failures;
+        invalidate_render_states();
+        invalidate_taa(TaaInvalidateSite::RestoreFailed);
+    }
+    return hr;
+}
+// Reverse order of the bind; only the steps whose flag is set are undone. The first failure is returned; the caller
+// latches it (finish_screen_additive and the rollbacks above treat it like every other failed restoration).
+HRESULT MotionOutput::unbind_bolt_flag_targets(MotionRoute& route) noexcept {
+    HRESULT first = S_OK;
+    auto step = [&](HRESULT hr) {
+        if (SUCCEEDED(first) && FAILED(hr)) first = hr;
+    };
+    if (route.bolt_flag_write2)
+        step(direct_call<SetRenderStateFn>(SetRenderState, D3DRS_COLORWRITEENABLE2, route.bolt_flag_saved_write2));
+    if (route.bolt_flag_rt2) step(bind_target(2, nullptr));
+    if (route.bolt_flag_write1)
+        step(direct_call<SetRenderStateFn>(SetRenderState, D3DRS_COLORWRITEENABLE1, route.bolt_flag_saved_write1));
+    if (route.bolt_flag_rt1) step(bind_target(1, nullptr));
+    route.bolt_flag = route.bolt_flag_rt1 = route.bolt_flag_write1 = route
+                                                                         .bolt_flag_rt2 = route
+                                                                                              .bolt_flag_write2 = false;
+    return first;
+}
+// One row per reason per device; the counters feed the frame line (bolt_flag_refused=) and the fixture.
+void MotionOutput::refuse_bolt_flag(unsigned reason) noexcept {
+    static constexpr const char* reasons[] = {"none", "no_variant", "no_target", "r32f_lane", "write_masks", "bind"};
+    constexpr unsigned count = sizeof reasons / sizeof reasons[0];
+    ++bolt_flag_refused_frame_;
+    ++bolt_flag_refused_session_;
+    if (reason < count && !(bolt_flag_refusal_logged_ & (1u << reason))) {
+        bolt_flag_refusal_logged_ |= 1u << reason;
+        log("bolt_flag_refused device=%llu frame=%llu index=%lu reason=%s rt2_format=%u", id_, frame_, counters_.draws,
+            reasons[reason], unsigned(lane_depth_format()));
+    }
 }
 // The attenuation's render states in apply order. SEPARATEALPHABLENDENABLE is
 // last so the alpha triple is already in place when it starts to matter, and
@@ -6433,6 +6589,10 @@ void MotionOutput::finish_screen_additive(MotionRoute& route) noexcept {
     if (route.screen_additive_ps) {
         const HRESULT hr = native<SetPsFn>(SetPixelShader)(device_, route.restore_ps);
         if (FAILED(hr)) first = hr;
+    }
+    if (route.bolt_flag) {
+        const HRESULT hr = unbind_bolt_flag_targets(route);
+        if (SUCCEEDED(first) && FAILED(hr)) first = hr;
     }
     const HRESULT hr = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_DESTBLEND, D3DBLEND_INVSRCCOLOR); // the
                                                                                                              // admitted
@@ -9100,11 +9260,26 @@ void MotionOutput::end_redirect(HdrEnd reason, MotionHdrSceneCallback callback, 
                 // ownership), released here after the caller pins its own.
                 if (temporary && hdr_->target())
                     container = hdr_->target()->GetContainer(IID_IDirect3DTexture9, reinterpret_cast<void**>(&scene));
+                // The bolt composite's pre-resolve scene (bolt_far.h): the target's
+                // container when a resolved source was written back with W > 0
+                // (the scene itself without TAA: the composite is the identity there).
+                IDirect3DTexture9* bolt_scene = nullptr;
+                HRESULT bolt_container = S_OK;
+                if (display.bolt_show > 0.f && hdr_->target()) {
+                    if (temporary)
+                        bolt_scene = scene;
+                    else
+                        bolt_container = hdr_->target()->GetContainer(IID_IDirect3DTexture9,
+                                                                      reinterpret_cast<void**>(&bolt_scene));
+                }
                 if (SUCCEEDED(container) && scene) {
-                    const MotionHdrScene ready{device_, scene, hdr_main_, id_, frame_, generation_, display};
+                    const MotionHdrScene ready{
+                        device_, scene,       hdr_main_, id_,
+                        frame_,  generation_, display,   SUCCEEDED(bolt_container) ? bolt_scene : nullptr};
                     callback(context, ready);
                 }
-                if (temporary) release(scene); // includes a non-null output accompanying a failed HRESULT
+                if (!temporary) release(bolt_scene); // the container reference taken above (a failed one too)
+                if (temporary) release(scene);       // includes a non-null output accompanying a failed HRESULT
             }
         } else
             hdr_writeback(hdr_main_, write);
@@ -9562,8 +9737,9 @@ void MotionOutput::log_screen_emission_frame() noexcept {
 // frame and how many draws were refused. `pairs` is a hex bit mask over
 // screen_emission::pairs indices.
 void MotionOutput::log_screen_additive_frame() noexcept {
-    log("screen_emission_additive_frame device=%llu frame=%llu admitted=%u refused=%u pairs=%03x", id_, frame_,
-        screen_additive_frame_admitted_, screen_additive_frame_refused_, screen_additive_frame_pairs_);
+    log("screen_emission_additive_frame device=%llu frame=%llu admitted=%u refused=%u pairs=%03x bolt_flag=%u bolt_flag_refused=%u",
+        id_, frame_, screen_additive_frame_admitted_, screen_additive_frame_refused_, screen_additive_frame_pairs_,
+        unsigned(bolt_flag_frame_), unsigned(bolt_flag_refused_frame_));
 }
 void MotionOutput::after_present(HRESULT result) noexcept {
     if (bolt_copy_more_) { // capture frames only: the bullet draws beyond the frame's bolt_copy cap
@@ -9588,6 +9764,7 @@ void MotionOutput::after_present(HRESULT result) noexcept {
     }
     if (screen_additive_requested_) {
         if (telemetry_) log_screen_additive_frame();
+        bolt_flag_frame_ = bolt_flag_refused_frame_ = 0;
         screen_additive_frame_admitted_ = screen_additive_frame_refused_ = screen_additive_frame_pairs_ = 0; // this
                                                                                                              // frame
                                                                                                              // only
@@ -9945,7 +10122,9 @@ unsigned MotionOutput::fixture_emission_status(unsigned key) const noexcept {
     case 75: return sun_apply_ && sun_apply_->caps().enabled;
     case 61: return screen_additive_refused_;
     case 62: return screen_additive_failures_;
-    case 63: return bolt_dropped_session_; // fixture: early bullet copies the single-copy rule dropped (session)
+    case 63: return bolt_dropped_session_;      // fixture: early bullet copies the single-copy rule dropped (session)
+    case 64: return bolt_flag_session_;         // fixture: late bullet draws that wrote the RT2.g flag (session)
+    case 65: return bolt_flag_refused_session_; // fixture: flag refusals (session)
     case 46: return unsigned(composition_counts_.packed_region_pixels);
     case 47: return composition_counts_.prefix_bound;
     case 48: return composition_counts_.prefix_refused;
