@@ -15,7 +15,7 @@ sits next to the DLL for the player-mode flight.
 
 Rollback chain: Run90 `6f6be732…` at `/tmp/x3-run90-candidate/build/d3d9.dll` (unflown), Run89 `0f6acab4…` at
 `/tmp/x3-run89-candidate/build/d3d9.dll` (unflown), then Run88 `6fe194bd…` at `/tmp/x3-run88-candidate/build/d3d9.dll`
-(accepted in Run 88 A, the last accepted build).
+(accepted in Run 88 A). Run91 is the accepted build since Run 91 A.
 
 Run91 carries, beyond Run90: the developer logging options trimmed to five including `--draw-trace` (`bec1afb5`,
 [option inventory](verification/launcher-options-inventory.md)); every in-game hotkey removed except F8, which captures
@@ -31,9 +31,13 @@ pass (whitespace only, verified by a build and the host suite); no DLL behaviour
 
 ## Run queue
 
-Run 91 A is queued (it supersedes Run 90 A, never flown): [run queue](verification/user-runs.md).
+No run is queued. Run 91 A (2026-09-26, run338 default flight, run339 player mode with the shipped `x3m.ini`) accepted
+Run91: "everything looks okay". [Run queue](verification/user-runs.md).
 
 ## Open items
+
+- Raised by the user after Run 91 A (pre-existing, under triage 2026-09-26): distant stations and asteroids drawn over the
+  player's bullets (F8 captures in `/tmp/x3-bottleX3-run339`); stations blurry under a camera pan (no capture yet).
 
 - Native Windows runtime behaviour is unverified; the source cross-compiles, gaps are tracked in
   [platform portability](architecture/platform-portability.md).
