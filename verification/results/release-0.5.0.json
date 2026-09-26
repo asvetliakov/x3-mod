@@ -1,0 +1,83 @@
+{
+  "schema": 1,
+  "version": "0.5.0",
+  "complete": true,
+  "toolchain": {
+    "mingw_gcc": "i686-w64-mingw32-gcc (GCC) 16.2.0",
+    "cmake": "cmake version 4.4.3",
+    "python": "3.9.6 (/Library/Developer/CommandLineTools/usr/bin/python3)"
+  },
+  "commit": "35c83e26c3d486b9f86458d309612b617bb73132",
+  "dirty": false,
+  "dirty_files": [],
+  "generate_check": "PASS",
+  "dll_warnings": 0,
+  "x87": {
+    "result": "PASS",
+    "violations": 0,
+    "reachable_functions": 716
+  },
+  "dll": {
+    "path": "/private/tmp/x3m-release-0.5.0/build-release/d3d9.dll",
+    "sha256": "25cba24802207e4ab871428ca922c6a933c7d9a14bd78efe50d6b27255a7a84b",
+    "bytes": 57247320
+  },
+  "regenerate_source": "built",
+  "regenerate_windows_lock": {
+    "lock_wait_seconds": 3.0000000000030003e-06,
+    "child_elapsed_seconds": 99.225954625,
+    "exit_code": 0
+  },
+  "regenerate": {
+    "x3m-regenerate": {
+      "sha256": "18a5cf13839e478362ac4fd99dc5ddc83f670241053868d810db114f102fe197",
+      "bytes": 12186304
+    },
+    "x3m-regenerate.exe": {
+      "sha256": "d92a2608f7d546885425e54ed9fc13a390b437b4acb33247bb64cfcf012507e3",
+      "bytes": 29632959
+    }
+  },
+  "zip": {
+    "path": "/private/tmp/x3m-release-0.5.0/x3m-0.5.0.zip",
+    "sha256": "38c0cdb836de4532ab3bd536e6388015b4711aa5e29fe27ed2981b00b1e16d33",
+    "bytes": 76901445,
+    "entries": [
+      {
+        "name": "d3d9.dll",
+        "bytes": 57247320,
+        "sha256": "25cba24802207e4ab871428ca922c6a933c7d9a14bd78efe50d6b27255a7a84b"
+      },
+      {
+        "name": "x3m.ini",
+        "bytes": 15383,
+        "sha256": "7043af8eb130279d71ce0ba9dc78408e2fe6afd9b610269962ddefe41d39aeef"
+      },
+      {
+        "name": "x3m-regenerate.exe",
+        "bytes": 29632959,
+        "sha256": "d92a2608f7d546885425e54ed9fc13a390b437b4acb33247bb64cfcf012507e3"
+      },
+      {
+        "name": "x3m-regenerate",
+        "bytes": 12186304,
+        "sha256": "18a5cf13839e478362ac4fd99dc5ddc83f670241053868d810db114f102fe197"
+      },
+      {
+        "name": "README.txt",
+        "bytes": 2305,
+        "sha256": "2f79e2d6c456039702c0ad215e5be22991c8e13e77cc4e0c2658574598b85a51"
+      }
+    ]
+  },
+  "wall_seconds": {
+    "tree": 0.0,
+    "config": 0.0,
+    "dll": 47.0,
+    "regenerate_host": 55.8,
+    "regenerate_windows": 103.4,
+    "regenerate": 159.2,
+    "package": 2.4,
+    "total": 208.7
+  }
+}

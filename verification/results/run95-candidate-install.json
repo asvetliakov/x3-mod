@@ -1,0 +1,52 @@
+{
+ "candidate": {
+  "dll": "/tmp/x3-run95-candidate/build/d3d9.dll",
+  "sha256": "25cba24802207e4ab871428ca922c6a933c7d9a14bd78efe50d6b27255a7a84b",
+  "bytes": 57247320,
+  "commit": "35c83e26",
+  "qualification": "verification/results/run95-candidate-qualification.json",
+  "release": "x3m-0.5.0.zip (verification/results/release-0.5.0.json)"
+ },
+ "command": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3-run95-candidate/build/d3d9.dll",
+ "cwd": "/Users/asvetl/x3-mod",
+ "exit": 0,
+ "installed_at": "2026-09-27T01:05+04:00",
+ "installed": {
+  "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
+  "sha256": "25cba24802207e4ab871428ca922c6a933c7d9a14bd78efe50d6b27255a7a84b",
+  "bytes": 57247320,
+  "verified": "sha256 and size read back after install; candidate hash rechecked before install"
+ },
+ "config_template": {
+  "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/x3m.ini",
+  "source": "assets/x3m.ini at 35c83e26 (header 0.5.0; bolt_far_show = 1)",
+  "sha256_prefix": "7043af8eb130279d"
+ },
+ "unchanged": {
+  "X3AP.exe": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+  "cxbottle.conf": "cc5d6c00a8afccaf88cbae1a7c46040db513eb163a52693287a3d29aca828e0c"
+ },
+ "previous": {
+  "dll": "/tmp/x3-run94-candidate/build/d3d9.dll",
+  "sha256": "338b00d70677be2ddcb50ce1363132d84a83d0c52511e1dcc9911f96615984fc",
+  "bytes": 57247306,
+  "commit": "2a75e2c3"
+ },
+ "rollback": {
+  "dll": "/tmp/x3-run94-candidate/build/d3d9.dll",
+  "sha256": "338b00d70677be2ddcb50ce1363132d84a83d0c52511e1dcc9911f96615984fc",
+  "bytes": 57247306,
+  "records": [
+   "verification/results/run94-candidate-qualification.json",
+   "verification/results/run94-candidate-install.json"
+  ],
+  "then": "/tmp/x3-run92-candidate/build/d3d9.dll f6c687cb\u2026 (accepted, Run 92 A)"
+ },
+ "game_running_at_install": false,
+ "game_data": "fleet overlay install-fleet4 unchanged; x3m/fog-families.bin + .json unchanged; x3m.ini template refreshed",
+ "changes_vs_previous": [
+  "bolt_far_show default 0.5 -> 1 (user decision after Run 94 A)",
+  "version 0.5.0 (log row x3-modern-renderer version=0.5; release x3m-0.5.0.zip)"
+ ],
+ "incidents": []
+}

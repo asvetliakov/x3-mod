@@ -1,0 +1,49 @@
+{
+ "schema": 1,
+ "candidate": {
+  "commit": "35c83e26",
+  "commit_full": "35c83e26c3d486b9f86458d309612b617bb73132",
+  "checkout": "/Users/asvetl/x3-mod (clean tree; built by tools/release/release.py into /tmp/x3m-release-0.5.0/build-release)",
+  "dll": "/tmp/x3-run95-candidate/build/d3d9.dll (copy of the release build)",
+  "sha256": "25cba24802207e4ab871428ca922c6a933c7d9a14bd78efe50d6b27255a7a84b",
+  "bytes": 57247320,
+  "embedded_marker": "X3M_SOURCE_COMMIT=35c83e26c3d486b9f86458d309612b617bb73132 (once)",
+  "configuration": "RelWithDebInfo",
+  "toolchain": "cmake/mingw-i686.cmake; i686-w64-mingw32-gcc 16.2.0; cmake 4.4.3",
+  "build_warnings": 0,
+  "supersedes": "Run94 338b00d7 (2a75e2c3)"
+ },
+ "scope": "reduced by the user's instruction (\"skip running all long time fixtures, just build & install\"): the only DLL-relevant changes since Run94 are the bolt_far_show schema default 0.5 -> 1 and the version 0.4.0 -> 0.5.0 (X3M_VERSION row text 0.4 -> 0.5); no shader, route or resolve source changed",
+ "changed_files_src": [
+  "src/config/config_schema_inc.h (generated: bolt_far_show default)",
+  "CMakeLists.txt (project VERSION 0.5.0)"
+ ],
+ "release": {
+  "record": "verification/results/release-0.5.0.json",
+  "zip": "/tmp/x3m-release-0.5.0/x3m-0.5.0.zip",
+  "zip_sha256": "38c0cdb836de4532ab3bd536e6388015b4711aa5e29fe27ed2981b00b1e16d33",
+  "zip_bytes": 76901445,
+  "x3m_regenerate_exe_sha256": "d92a2608f7d546885425e54ed9fc13a390b437b4acb33247bb64cfcf012507e3",
+  "x3m_regenerate_sha256": "18a5cf13839e478362ac4fd99dc5ddc83f670241053868d810db114f102fe197",
+  "smoke": "host and Windows smoke tests PASS (release.py)",
+  "wall_s": 208.7
+ },
+ "x87_audit": "PASS, 0 violations (release.py)",
+ "config_check": "generate.py --check PASS 236 settings, 90 in the template",
+ "host_suite": {
+  "modules": 270,
+  "tests": 2813,
+  "failing": 0,
+  "wall_s": 94.7,
+  "note": "run on main at 35c83e26 before the release build"
+ },
+ "dry_run": {
+  "compare_dry_runs": "3 PASS (re-recorded comparison.json: X3M_BOLT_FAR_SHOW=1)",
+  "dry_run_tiers": "PASS (re-recorded dry-runs.json)"
+ },
+ "wine_sections": "none (user instruction); Run94's qualification at 2a75e2c3 covers the unchanged shader/route/resolve sources",
+ "verdict": "QUALIFIED (reduced scope by user instruction)",
+ "installed": false,
+ "native_windows": "unverified",
+ "producer": "main session"
+}

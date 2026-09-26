@@ -5,34 +5,29 @@ marked completed on 2026-09-26 by the user's decision ([goals](goals.md)). The a
 
 ## Installed build
 
-Bottle **X3**, **CrossOver Preview.app**. Run94 DLL SHA-256
-`338b00d70677be2ddcb50ce1363132d84a83d0c52511e1dcc9911f96615984fc` (57,247,306 bytes), built once from clean
-reviewed main `2a75e2c3` in a detached worktree (`/tmp/x3-run94-candidate/src`). Retained DLL:
-`/tmp/x3-run94-candidate/build/d3d9.dll`. Installed 2026-09-27 00:47
-([qualification](../verification/results/run94-candidate-qualification.json),
-[install](../verification/results/run94-candidate-install.json)). The shipped template `x3m.ini` (every key commented)
-sits next to the DLL.
+Bottle **X3**, **CrossOver Preview.app**. Run95 = **release 0.5.0** DLL SHA-256
+`25cba24802207e4ab871428ca922c6a933c7d9a14bd78efe50d6b27255a7a84b` (57,247,320 bytes), built once from clean main
+`35c83e26` by `tools/release/release.py` (the same build that is in `x3m-0.5.0.zip`, sha256 `38c0cdb8…`, 76,901,445 bytes,
+at `/tmp/x3m-release-0.5.0/`; [release record](../verification/results/release-0.5.0.json)). Retained DLL:
+`/tmp/x3-run95-candidate/build/d3d9.dll`. Installed 2026-09-27 01:05
+([qualification](../verification/results/run95-candidate-qualification.json), reduced scope by the user's instruction:
+build, x87, config check, host suite 270 / 2,813 / 0, dry-run evidence; no Wine fixtures, the sources Run94 qualified are
+unchanged; [install](../verification/results/run95-candidate-install.json)). The shipped template `x3m.ini` sits next
+to the DLL.
 
-Rollback chain: Run93 `5bee0e8a…` at `/tmp/x3-run93-candidate/build/d3d9.dll` (flown in Run 93 A: single-copy rule
-proven, not accepted as a fix), Run92 `f6c687cb…` (accepted in Run 92 A), Run91 `25adddf8…` (accepted in Run 91 A).
+Rollback chain: Run94 `338b00d7…` at `/tmp/x3-run94-candidate/build/d3d9.dll` (accepted in Run 94 A), then Run92
+`f6c687cb…` (accepted in Run 92 A).
 
-Run94 carries, beyond Run93: **bolts through the TAA** ([design](architecture/bolts-through-taa.md), on by default): the
-late bullet draw flags its pixels, the resolve keeps the station's history untouched and only raises the flag in its
-output alpha, and the tonemap and bloom stages add the pre-resolve bolt back at `--bolt-far-show` (default 0.5) where
-far or thin-region history is held; the sun-shadow apply treats a flagged texel as unshadowed for that frame;
-`--bolt-far-composite off` for A/B. Qualification at `2a75e2c3`: build 0 warnings, x87 0 violations, host suite 270
-modules / 2,813 tests / 0 failing, motion output 230 committed cases at their counts plus the three far-flag cases,
-temporal pass byte-identical (lattice 654/90), both shader provenance checks PASS, bloom 47/47, dry runs: two deltas vs
-Run93 (the two new settings).
+Run95 carries, beyond Run94: `bolt_far_show` default 1 (the user's choice in Run 94 A) and the version 0.5.0. Run94
+brought the **bolts through the TAA** composite ([design](architecture/bolts-through-taa.md)), accepted in Run 94 A.
 
 ## Main beyond the installed build
 
-Nothing: main `2a75e2c3` is the installed commit (documentation and the run queue follow it).
+Nothing: main `35c83e26` is the installed and released commit (documentation follows it).
 
 ## Run queue
 
-No run is queued. Run 94 A (run348/349) accepted the bolt composite; the user chose `--bolt-far-show 1` over 0.5, now the
-default: [run queue](verification/user-runs.md).
+No run is queued: [run queue](verification/user-runs.md).
 
 ## Open items
 
