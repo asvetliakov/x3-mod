@@ -103,6 +103,8 @@ class TaaImageDefaultsLaunch(unittest.TestCase):
         self.assertIn('constexpr float kHistoryWeightDefault = .85f;', resolve)
         self.assertIn('float taa_history_weight = x3::temporal::kHistoryWeightDefault;', source_text(ROOT / 'src/proxy/capture.cpp'))
         self.assertIn('float taa_history_weight_ = x3::temporal::kHistoryWeightDefault;', source_text(ROOT / 'src/proxy/motion_output.h'))
+        # The pass's own unset weight (the fixtures' reference resolve): the same constant, never a literal (Run92 attempt 1).
+        self.assertIn('float weight = x3::temporal::kHistoryWeightDefault;', source_text(ROOT / 'src/renderer/temporal_pass.h'))
         sys.path.insert(0, str(ROOT / 'tools/config'))
         try:
             import schema
