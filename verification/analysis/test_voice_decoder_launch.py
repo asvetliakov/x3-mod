@@ -16,6 +16,7 @@ import os
 from pathlib import Path
 import sys
 import tempfile
+import re
 import unittest
 from unittest import mock
 
@@ -28,6 +29,13 @@ def load_manage():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+
+def report_lines(text):
+    """The launcher's report lines without the bottle-env suffix the voice decoder line carries since 2026-09-27
+    (`; bottle env: set|unset|differs`, tested in test_voice_decoder_install)."""
+    return [re.sub(r'; bottle env: (set|unset|differs)$', '', line) for line in text.splitlines()]
 
 
 class VoiceDecoderLaunchOption(unittest.TestCase):
@@ -188,8 +196,8 @@ class VoiceDecoderDiscovery(unittest.TestCase):
             self.assertEqual(json.loads(output)['env']['GST_REGISTRY_1_0'], str(game_copy / 'registry/x3-arm64.bin'))
             self.assertEqual(json.loads(output)['env']['X3M_VOICE_DMO_FALLBACK'], '1')
             line = f'voice decoder: {game_copy} (discovered: game directory)'
-            self.assertIn(line, error.splitlines())
-            self.assertEqual(json.loads(output)['voice_decoder'], line)
+            self.assertIn(line, report_lines(error))
+            self.assertEqual(report_lines(json.loads(output)['voice_decoder'])[0], line)
 
     def test_repository_copy_is_the_fallback(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -197,7 +205,7 @@ class VoiceDecoderDiscovery(unittest.TestCase):
             code, output, error = self.launch(directory)
             self.assertEqual(code, 0, error)
             self.assertEqual(self.chosen(output), str(repo / 'runtime/plugins'))
-            self.assertIn(f'voice decoder: {repo} (discovered: repository copy)', error.splitlines())
+            self.assertIn(f'voice decoder: {repo} (discovered: repository copy)', report_lines(error))
             self.assertNotIn('skipping', error)
 
     def test_an_invalid_discovered_directory_falls_through_with_a_note(self):
@@ -218,7 +226,7 @@ class VoiceDecoderDiscovery(unittest.TestCase):
             self.assertEqual(code, 0, error)
             self.assertEqual(self.chosen(output), str(game_copy / 'runtime/plugins'))
             self.assertIn(f'voice decoder: {game_copy} (discovered: game directory; registry will be created)',
-                          error.splitlines())
+                          report_lines(error))
             self.assertFalse((game_copy / 'registry').exists())
             self.assertFalse((broken / 'registry').exists())
 
@@ -262,7 +270,7 @@ class VoiceDecoderDiscovery(unittest.TestCase):
             repo = self.tree(Path(directory) / 'repo/v4')
             code, output, error = self.launch(directory, environ={'X3M_VOICE_DECODER_REPO': ''})
             self.assertEqual(code, 0, error)
-            self.assertIn('voice decoder: none (no valid plugin directory found)', error.splitlines())
+            self.assertIn('voice decoder: none (no valid plugin directory found)', report_lines(error))
             self.assertNotIn('X3M_VOICE_DECODER_REPO', json.loads(output)['env'])
             seen = {}
             code, _, error = self.launch(directory, environ={'X3M_VOICE_DECODER_REPO': str(repo)}, dry_run=False, seen=seen)
@@ -278,7 +286,7 @@ class VoiceDecoderDiscovery(unittest.TestCase):
             environment = json.loads(output)['env']
             for name in ('GST_PLUGIN_PATH_1_0', 'GST_REGISTRY_1_0', 'X3M_VOICE_DMO_FALLBACK'):
                 self.assertNotIn(name, environment)
-            self.assertIn('voice decoder: none (no valid plugin directory found)', error.splitlines())
+            self.assertIn('voice decoder: none (no valid plugin directory found)', report_lines(error))
             self.assertIn('voice decoder: skipping repository copy', error)
 
     def test_none_opts_out_even_when_candidates_are_valid(self):
@@ -289,7 +297,7 @@ class VoiceDecoderDiscovery(unittest.TestCase):
             self.assertEqual(code, 0, error)
             self.assertNotIn('GST_PLUGIN_PATH_1_0', json.loads(output)['env'])
             self.assertNotIn('X3M_VOICE_DMO_FALLBACK', json.loads(output)['env'])
-            self.assertIn('voice decoder: none (--voice-decoder none)', error.splitlines())
+            self.assertIn('voice decoder: none (--voice-decoder none)', report_lines(error))
 
     def test_vanilla_does_not_discover(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -298,7 +306,7 @@ class VoiceDecoderDiscovery(unittest.TestCase):
             code, output, error = self.launch(directory, vanilla=True)
             self.assertEqual(code, 0, error)
             self.assertNotIn('GST_PLUGIN_PATH_1_0', json.loads(output)['env'])
-            self.assertIn('voice decoder: none (--vanilla: no discovery)', error.splitlines())
+            self.assertIn('voice decoder: none (--vanilla: no discovery)', report_lines(error))
 
     def test_explicit_directory_wins_and_its_failure_stays_fatal(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -309,7 +317,7 @@ class VoiceDecoderDiscovery(unittest.TestCase):
             self.assertEqual(code, 0, error)
             self.assertEqual(self.chosen(output), str(explicit / 'runtime/plugins'))
             self.assertTrue((explicit / 'registry').is_dir())  # an explicit DIR still gets its registry created
-            self.assertIn(f'voice decoder: {explicit} (explicit --voice-decoder)', error.splitlines())
+            self.assertIn(f'voice decoder: {explicit} (explicit --voice-decoder)', report_lines(error))
             broken = self.tree(Path(directory) / 'broken', plugin=False)
             code, _, error = self.launch(directory, '--voice-decoder', str(broken))
             self.assertEqual(code, 2)
