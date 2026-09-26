@@ -11,6 +11,7 @@ import os
 import re
 import sys
 import tempfile
+import subprocess
 import unittest
 import zipfile
 from pathlib import Path
@@ -200,6 +201,12 @@ class ReleaseScript(unittest.TestCase):
         self.assertIn('"x3-modern-renderer version=" X3M_VERSION " schema=2', capture)
         self.assertIsNone(re.search(r'x3-modern-renderer version=\d', capture))  # no second literal
         self.assertIn(f'X3 Modern Renderer {version}:', (ROOT / 'assets/x3m.ini').read_text().splitlines()[0])
+        # The one non-CMake compile of capture.cpp (the motion fixture's seam build) takes the define from the same line.
+        script = (ROOT / 'verification/probe/build_motion_output.sh').read_text()
+        self.assertIn("X3M_VERSION=$(sed -n 's/^project(.* VERSION", script)
+        self.assertIn('-DX3M_VERSION=\\"$X3M_VERSION\\"', script)
+        self.assertEqual(subprocess.run(['sh', '-c', "sed -n 's/^project(.* VERSION \\([0-9][0-9]*\\.[0-9][0-9]*\\).*/\\1/p' CMakeLists.txt"],
+                                        cwd=ROOT, capture_output=True, text=True).stdout.strip(), version.rsplit('.', 1)[0])
 
     def test_build_py_dist_and_lock_holder(self):
         with tempfile.TemporaryDirectory() as base:

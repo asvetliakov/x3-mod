@@ -32,7 +32,11 @@ BRIDGE="$CANDIDATE_BUILD/compositor_bridge"
 for artifact in compositor_bridge.o compositor_bridge_seh_gnu.obj libx3m_compositor_seh_runtime.a; do
   test -f "$BRIDGE/$artifact" || { echo "build/ compositor package missing; run the CMake build first" >&2; exit 1; }
 done
-DEFINES="-DWIN32_LEAN_AND_MEAN -DNOMINMAX -DX3M_MOTION_OUTPUT_FIXTURE -DX3M_QUAD_FVF_SWITCH -DX3M_LINEAR_EMISSION_PASS_FIXTURE"
+# X3M_VERSION: major.minor of project(VERSION) in CMakeLists.txt, the one version source (capture.cpp refuses to compile
+# without it since the release tooling of 2026-09-26).
+X3M_VERSION=$(sed -n 's/^project(.* VERSION \([0-9][0-9]*\.[0-9][0-9]*\).*/\1/p' ../../CMakeLists.txt)
+test -n "$X3M_VERSION" || { echo "project(VERSION) not found in CMakeLists.txt" >&2; exit 1; }
+DEFINES="-DWIN32_LEAN_AND_MEAN -DNOMINMAX -DX3M_MOTION_OUTPUT_FIXTURE -DX3M_QUAD_FVF_SWITCH -DX3M_LINEAR_EMISSION_PASS_FIXTURE -DX3M_VERSION=\"$X3M_VERSION\""
 i686-w64-mingw32-g++ $FLAGS -g $DEFINES -c ../../src/proxy/capture.cpp -o build/motion-output-seam/capture.o
 i686-w64-mingw32-g++ $FLAGS -g $DEFINES -c ../../src/proxy/motion_output.cpp -o build/motion-output-seam/motion_output.o
 i686-w64-mingw32-g++ $FLAGS -g $DEFINES -c ../../src/proxy/camera_state.cpp -o build/motion-output-seam/camera_state.o
