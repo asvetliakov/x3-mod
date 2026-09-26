@@ -1,0 +1,42 @@
+Run 93 A launch 1 (run346, /tmp/x3-bottleX3-run346, session-20260926-211621-212.log; Run93 DLL 5bee0e8a), F8 burst 1
+frames 883-890 (firing at a station, green bolts) and burst 4 frames 5471-5478 (firing at another station, blue-white bolts).
+Launch TAA settings (log line 4802): history_weight 0.85, far_weight 0.985 (F0/F1 60/68, speed 0.03-0.25, gate camera,
+far_clip 7x7), thin_region 0.97 (vote), motion_weight 0.7,2,8, rotation off.
+
+Scripts (run from the session dir; outputs beside them):
+  draw_route_table.py LOG FRAMES   -> draw_route_table_out.txt  bullet draws, unrouted depth writers, depth/rt identities
+  zwriters_distance.py LOG FRAMES  -> zwriters_out.txt          depth writers by model/node (groups kept for 883 and 5471), camera, bolt clip-w range
+  bullet_camera.py LOG FRAMES                                   camera from the bullet VS c0-c3, bolt bbox projected
+  lane_under_bolts.py g|b T WMIN F -> lane_under_bolts_out.txt  depth lane under bolt pixels vs the bolt's z/w bound
+  bolt_band2.py g|b T FRAMES       -> bolt_band2_out.txt         bolt excess/addition over far geometry vs space, pre-resolve and resolved
+  bolt_taa_state.py g|b T FRAMES   -> bolt_taa_state_out.txt     taa_age and motion lanes at bolt pixels
+  bolt_keep_weight.py g|b T FRAMES -> bolt_keep_weight_out.txt   effective history keep k per class (taa_{N-1} as history)
+  bolt_present.py g|b T FRAMES     -> bolt_present_out.txt       presented 8-bit contrast of the bolt, hull luminance
+Masks: g 0.25 (burst 1), b 0.6 (burst 4); WMIN 208 / 1293 (bolt_copy bbox nearest corner).
+
+Band = bolt pixels at a far-silhouette crossing (7x7 holds bolt pixels over far geometry w > 20000 and over no depth).
+| frame | n far/none | e far/none (hdr) | add hdr far/none | add taa far/none | keep k far/none | present delta far/none (codes) |
+| 883 | 37/30 | 0.48/0.35 | 3.65/1.69 | 0.25/0.94 | - | 7.5/25.3 |
+| 884 | 41/121 | 0.29/0.35 | 2.41/1.24 | 0.12/0.63 | 0.990/0.411 | 14.6/41.3 |
+| 885 | 88/53 | 0.43/0.44 | 3.76/0.95 | 0.05/0.50 | 0.994/0.386 | 7.0/40.9 |
+| 886 | 43/60 | 0.47/0.44 | 4.86/1.77 | 0.36/1.29 | 0.998/0.470 | 16.8/47.2 |
+| 887 | 79/79 | 0.37/0.48 | 3.38/3.13 | 0.57/1.96 | 0.978/0.440 | 22.4/45.0 |
+| 888 | 7/33 | 0.32/0.40 | 2.26/3.17 | -0.15/1.65 | 0.999/0.426 | -5.8/110.1 |
+| 889 | 62/47 | 0.40/0.39 | 2.84/0.89 | 0.22/0.62 | 0.971/0.441 | 12.2/35.5 |
+| 890 | 16/40 | 0.32/0.38 | 2.18/2.89 | 0.36/1.39 | 1.022/0.556 | 11.9/47.1 |
+| 5471 | 3/3 | 0.63/0.67 | 5.74/4.77 | 0.08/0.73 | - | 7.3/37.3 |
+| 5472 | 19/11 | 0.79/0.82 | 4.68/3.87 | 0.25/0.66 | 0.992/0.795 | 11.0/47.6 |
+| 5473 | 13/7 | 0.85/0.79 | 4.17/3.64 | 0.69/0.58 | 0.994/0.910 | 51.1/32.5 |
+| 5474 | 13/8 | 0.94/0.90 | 6.36/4.99 | 0.48/1.45 | 0.995/0.783 | 46.7/95.9 |
+| 5475 | 11/8 | 0.75/0.70 | 3.71/3.50 | 0.07/0.81 | 0.995/0.802 | -2.9/64.6 |
+| 5476 | 27/12 | 0.94/0.98 | 6.21/4.35 | -0.07/0.96 | 0.993/0.860 | -7.6/71.7 |
+| 5477 | 24/18 | 1.12/0.90 | 6.19/4.51 | 0.23/1.66 | 0.993/0.670 | 13.3/94.0 |
+| 5478 | 7/10 | 0.82/0.78 | 4.17/3.43 | -0.11/0.81 | 0.992/0.801 | -2.7/61.6 |
+Pixel pair 883: (2583,798) over the station rgb 6.234,7.043,3.707 (lane z/w 0.99996489, w 157,861) vs (2582,798) no depth
+3.307,4.008,1.826 (pre-resolve).
+
+Depth: all 16 frames one depth surface (02af1b60, identity 2) on every scene draw; SetDepthStencilSurface(NULL) and the
+rt0 identities 301/303 only after draw 221/222 (burst 1) / 86/87 (burst 4), after the late bullet draw (213/214 / 69);
+every ZWRITE draw routed (unrouted 0 of 205 / 62), so the lane covers every depth writer. Bolt clip w <= 11,950 (bbox
+corners, VP from the bullet VS c0-c3) -> z/w <= 0.999501; far geometry under bolt pixels w 62,997-160,447, z/w >= 0.999907.
+Geometry nearer than every bolt under bolt pixels: the own ship only (w 185-255 burst 1, 765-963 burst 4; 7-75 px/frame).

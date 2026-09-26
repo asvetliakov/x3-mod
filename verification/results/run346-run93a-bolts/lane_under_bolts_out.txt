@@ -1,0 +1,16 @@
+883 bolt_over_geo=207 far(w>20000)=116 near=91 far w p1/p50/p99 [153769, 156614, 159274] far z/w min 0.9999119 near w p1/p50/p99 [185, 205, 255] bolt z/w min 0.971157 geo_nearer_than_all_bolts=75
+884 bolt_over_geo=126 far(w>20000)=70 near=56 far w p1/p50/p99 [153838, 157406, 160447] far z/w min 0.9999637 near w p1/p50/p99 [187, 205, 242] bolt z/w min 0.971157 geo_nearer_than_all_bolts=52
+885 bolt_over_geo=179 far(w>20000)=118 near=61 far w p1/p50/p99 [153094, 156861, 160415] far z/w min 0.9999162 near w p1/p50/p99 [187, 205, 246] bolt z/w min 0.971157 geo_nearer_than_all_bolts=54
+886 bolt_over_geo=145 far(w>20000)=86 near=59 far w p1/p50/p99 [154595, 156875, 158681] far z/w min 0.9999641 near w p1/p50/p99 [185, 205, 241] bolt z/w min 0.971157 geo_nearer_than_all_bolts=53
+887 bolt_over_geo=174 far(w>20000)=113 near=61 far w p1/p50/p99 [154855, 157049, 158179] far z/w min 0.9999121 near w p1/p50/p99 [185, 205, 242] bolt z/w min 0.971157 geo_nearer_than_all_bolts=57
+888 bolt_over_geo=99 far(w>20000)=39 near=60 far w p1/p50/p99 [99167, 155801, 158211] far z/w min 0.9999121 near w p1/p50/p99 [185, 206, 241] bolt z/w min 0.971157 geo_nearer_than_all_bolts=51
+889 bolt_over_geo=218 far(w>20000)=156 near=62 far w p1/p50/p99 [127578, 156823, 158558] far z/w min 0.9999124 near w p1/p50/p99 [187, 205, 241] bolt z/w min 0.971157 geo_nearer_than_all_bolts=58
+890 bolt_over_geo=139 far(w>20000)=81 near=58 far w p1/p50/p99 [152791, 155712, 158237] far z/w min 0.9999636 near w p1/p50/p99 [185, 205, 242] bolt z/w min 0.971157 geo_nearer_than_all_bolts=52
+5471 bolt_over_geo=253 far(w>20000)=245 near=8 far w p1/p50/p99 [63391, 151861, 154187] far z/w min 0.9999081 near w p1/p50/p99 [765, 866, 963] bolt z/w min 0.995363 geo_nearer_than_all_bolts=8
+5472 bolt_over_geo=264 far(w>20000)=253 near=11 far w p1/p50/p99 [63371, 151777, 156930] far z/w min 0.9999079 near w p1/p50/p99 [783, 866, 963] bolt z/w min 0.995363 geo_nearer_than_all_bolts=11
+5473 bolt_over_geo=260 far(w>20000)=246 near=14 far w p1/p50/p99 [63258, 151643, 153880] far z/w min 0.9999077 near w p1/p50/p99 [783, 866, 963] bolt z/w min 0.995363 geo_nearer_than_all_bolts=14
+5474 bolt_over_geo=253 far(w>20000)=246 near=7 far w p1/p50/p99 [62997, 151526, 154580] far z/w min 0.9999074 near w p1/p50/p99 [787, 866, 963] bolt z/w min 0.995363 geo_nearer_than_all_bolts=7
+5475 bolt_over_geo=257 far(w>20000)=249 near=8 far w p1/p50/p99 [63103, 151457, 159466] far z/w min 0.9999077 near w p1/p50/p99 [783, 866, 963] bolt z/w min 0.995363 geo_nearer_than_all_bolts=8
+5476 bolt_over_geo=237 far(w>20000)=229 near=8 far w p1/p50/p99 [63059, 151225, 159395] far z/w min 0.9999077 near w p1/p50/p99 [783, 866, 963] bolt z/w min 0.995363 geo_nearer_than_all_bolts=8
+5477 bolt_over_geo=242 far(w>20000)=232 near=10 far w p1/p50/p99 [63624, 151232, 154174] far z/w min 0.9999076 near w p1/p50/p99 [766, 866, 963] bolt z/w min 0.995363 geo_nearer_than_all_bolts=10
+5478 bolt_over_geo=253 far(w>20000)=239 near=14 far w p1/p50/p99 [63199, 151014, 156828] far z/w min 0.9999073 near w p1/p50/p99 [783, 866, 963] bolt z/w min 0.995363 geo_nearer_than_all_bolts=14

@@ -1,0 +1,144 @@
+883 draws=248 depth_surfaces={'02af1b60/2': 244, None: 4} rt0={'02af1ca0/1': 245, '8eb73ce0/301': 2, '8eb73d30/303': 1} zwrite=205 zwrite_unrouted=0 other_tags={}
+  clear flags=3 z=1
+  clear flags=2 z=1
+  d  6 BULLET vs=5e484a06 ps=ec1f5c4a pr=1210 Z=1 ZW=0 ZF=4 2/4 AT=0 CW=15 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  d  7 BULLET vs=5e484a06 ps=ec1f5c4a pr=270 Z=1 ZW=0 ZF=4 2/4 AT=0 CW=15 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  d213 BULLET vs=5e484a06 ps=ec1f5c4a pr=1210 Z=1 ZW=0 ZF=4 2/4 AT=1 CW=15 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  d214 BULLET vs=5e484a06 ps=ec1f5c4a pr=270 Z=1 ZW=0 ZF=4 2/4 AT=1 CW=15 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  d221 BULLET vs=5e484a06 ps=0a523f33 pr=1028 Z=0 ZW=0 ZF=4 5/6 AT=0 CW=7 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  clear flags=2 z=1
+  clear flags=2 z=1
+884 draws=250 depth_surfaces={'02af1b60/2': 246, None: 4} rt0={'02af1ca0/1': 247, '8eb73ce0/301': 2, '8eb73d30/303': 1} zwrite=205 zwrite_unrouted=0 other_tags={}
+  clear flags=3 z=1
+  clear flags=2 z=1
+  d  6 BULLET vs=5e484a06 ps=ec1f5c4a pr=1254 Z=1 ZW=0 ZF=4 2/4 AT=0 CW=15 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  d  7 BULLET vs=5e484a06 ps=ec1f5c4a pr=288 Z=1 ZW=0 ZF=4 2/4 AT=0 CW=15 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  d213 BULLET vs=5e484a06 ps=ec1f5c4a pr=1254 Z=1 ZW=0 ZF=4 2/4 AT=1 CW=15 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  d214 BULLET vs=5e484a06 ps=ec1f5c4a pr=288 Z=1 ZW=0 ZF=4 2/4 AT=1 CW=15 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  d221 BULLET vs=5e484a06 ps=0a523f33 pr=1028 Z=0 ZW=0 ZF=4 5/6 AT=0 CW=7 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  clear flags=2 z=1
+  clear flags=2 z=1
+885 draws=252 depth_surfaces={'02af1b60/2': 248, None: 4} rt0={'02af1ca0/1': 249, '8eb73ce0/301': 2, '8eb73d30/303': 1} zwrite=205 zwrite_unrouted=0 other_tags={}
+  clear flags=3 z=1
+  clear flags=2 z=1
+  d  6 BULLET vs=5e484a06 ps=ec1f5c4a pr=1342 Z=1 ZW=0 ZF=4 2/4 AT=0 CW=15 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  d  7 BULLET vs=5e484a06 ps=ec1f5c4a pr=306 Z=1 ZW=0 ZF=4 2/4 AT=0 CW=15 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  d213 BULLET vs=5e484a06 ps=ec1f5c4a pr=1342 Z=1 ZW=0 ZF=4 2/4 AT=1 CW=15 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  d214 BULLET vs=5e484a06 ps=ec1f5c4a pr=306 Z=1 ZW=0 ZF=4 2/4 AT=1 CW=15 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  d223 BULLET vs=5e484a06 ps=0a523f33 pr=1028 Z=0 ZW=0 ZF=4 5/6 AT=0 CW=7 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  clear flags=2 z=1
+  clear flags=2 z=1
+886 draws=252 depth_surfaces={'02af1b60/2': 248, None: 4} rt0={'02af1ca0/1': 249, '8eb73ce0/301': 2, '8eb73d30/303': 1} zwrite=205 zwrite_unrouted=0 other_tags={}
+  clear flags=3 z=1
+  clear flags=2 z=1
+  d  6 BULLET vs=5e484a06 ps=ec1f5c4a pr=1430 Z=1 ZW=0 ZF=4 2/4 AT=0 CW=15 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  d  7 BULLET vs=5e484a06 ps=ec1f5c4a pr=342 Z=1 ZW=0 ZF=4 2/4 AT=0 CW=15 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  d213 BULLET vs=5e484a06 ps=ec1f5c4a pr=1430 Z=1 ZW=0 ZF=4 2/4 AT=1 CW=15 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  d214 BULLET vs=5e484a06 ps=ec1f5c4a pr=342 Z=1 ZW=0 ZF=4 2/4 AT=1 CW=15 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  d223 BULLET vs=5e484a06 ps=0a523f33 pr=1028 Z=0 ZW=0 ZF=4 5/6 AT=0 CW=7 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  clear flags=2 z=1
+  clear flags=2 z=1
+887 draws=250 depth_surfaces={'02af1b60/2': 246, None: 4} rt0={'02af1ca0/1': 247, '8eb73ce0/301': 2, '8eb73d30/303': 1} zwrite=205 zwrite_unrouted=0 other_tags={}
+  clear flags=3 z=1
+  clear flags=2 z=1
+  d  6 BULLET vs=5e484a06 ps=ec1f5c4a pr=1518 Z=1 ZW=0 ZF=4 2/4 AT=0 CW=15 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  d  7 BULLET vs=5e484a06 ps=ec1f5c4a pr=342 Z=1 ZW=0 ZF=4 2/4 AT=0 CW=15 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  d213 BULLET vs=5e484a06 ps=ec1f5c4a pr=1518 Z=1 ZW=0 ZF=4 2/4 AT=1 CW=15 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  d214 BULLET vs=5e484a06 ps=ec1f5c4a pr=342 Z=1 ZW=0 ZF=4 2/4 AT=1 CW=15 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  d221 BULLET vs=5e484a06 ps=0a523f33 pr=1028 Z=0 ZW=0 ZF=4 5/6 AT=0 CW=7 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  clear flags=2 z=1
+  clear flags=2 z=1
+888 draws=249 depth_surfaces={'02af1b60/2': 245, None: 4} rt0={'02af1ca0/1': 246, '8eb73ce0/301': 2, '8eb73d30/303': 1} zwrite=205 zwrite_unrouted=0 other_tags={}
+  clear flags=3 z=1
+  clear flags=2 z=1
+  d  6 BULLET vs=5e484a06 ps=ec1f5c4a pr=1496 Z=1 ZW=0 ZF=4 2/4 AT=0 CW=15 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  d  7 BULLET vs=5e484a06 ps=ec1f5c4a pr=378 Z=1 ZW=0 ZF=4 2/4 AT=0 CW=15 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  d213 BULLET vs=5e484a06 ps=ec1f5c4a pr=1496 Z=1 ZW=0 ZF=4 2/4 AT=1 CW=15 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  d214 BULLET vs=5e484a06 ps=ec1f5c4a pr=378 Z=1 ZW=0 ZF=4 2/4 AT=1 CW=15 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  d222 BULLET vs=5e484a06 ps=0a523f33 pr=1028 Z=0 ZW=0 ZF=4 5/6 AT=0 CW=7 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  clear flags=2 z=1
+  clear flags=2 z=1
+889 draws=252 depth_surfaces={'02af1b60/2': 248, None: 4} rt0={'02af1ca0/1': 249, '8eb73ce0/301': 2, '8eb73d30/303': 1} zwrite=205 zwrite_unrouted=0 other_tags={}
+  clear flags=3 z=1
+  clear flags=2 z=1
+  d  6 BULLET vs=5e484a06 ps=ec1f5c4a pr=1496 Z=1 ZW=0 ZF=4 2/4 AT=0 CW=15 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  d  7 BULLET vs=5e484a06 ps=ec1f5c4a pr=414 Z=1 ZW=0 ZF=4 2/4 AT=0 CW=15 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  d213 BULLET vs=5e484a06 ps=ec1f5c4a pr=1496 Z=1 ZW=0 ZF=4 2/4 AT=1 CW=15 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  d214 BULLET vs=5e484a06 ps=ec1f5c4a pr=414 Z=1 ZW=0 ZF=4 2/4 AT=1 CW=15 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  d223 BULLET vs=5e484a06 ps=0a523f33 pr=1028 Z=0 ZW=0 ZF=4 5/6 AT=0 CW=7 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  clear flags=2 z=1
+  clear flags=2 z=1
+890 draws=251 depth_surfaces={'02af1b60/2': 247, None: 4} rt0={'02af1ca0/1': 248, '8eb73ce0/301': 2, '8eb73d30/303': 1} zwrite=205 zwrite_unrouted=0 other_tags={}
+  clear flags=3 z=1
+  clear flags=2 z=1
+  d  6 BULLET vs=5e484a06 ps=ec1f5c4a pr=1540 Z=1 ZW=0 ZF=4 2/4 AT=0 CW=15 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  d  7 BULLET vs=5e484a06 ps=ec1f5c4a pr=432 Z=1 ZW=0 ZF=4 2/4 AT=0 CW=15 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  d213 BULLET vs=5e484a06 ps=ec1f5c4a pr=1540 Z=1 ZW=0 ZF=4 2/4 AT=1 CW=15 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  d214 BULLET vs=5e484a06 ps=ec1f5c4a pr=432 Z=1 ZW=0 ZF=4 2/4 AT=1 CW=15 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  d222 BULLET vs=5e484a06 ps=0a523f33 pr=1028 Z=0 ZW=0 ZF=4 5/6 AT=0 CW=7 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  clear flags=2 z=1
+  clear flags=2 z=1
+5471 draws=102 depth_surfaces={'02af1b60/2': 98, None: 4} rt0={'02af1ca0/1': 99, '8ee14350/301': 2, '8ee143a0/303': 1} zwrite=62 zwrite_unrouted=0 other_tags={}
+  clear flags=3 z=1
+  clear flags=2 z=1
+  d  6 BULLET vs=5e484a06 ps=ec1f5c4a pr=1248 Z=1 ZW=0 ZF=4 2/4 AT=0 CW=15 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  d 69 BULLET vs=5e484a06 ps=ec1f5c4a pr=1248 Z=1 ZW=0 ZF=4 2/4 AT=0 CW=15 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  d 87 BULLET vs=5e484a06 ps=0a523f33 pr=992 Z=0 ZW=0 ZF=4 5/6 AT=0 CW=7 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  clear flags=2 z=1
+  clear flags=2 z=1
+5472 draws=101 depth_surfaces={'02af1b60/2': 97, None: 4} rt0={'02af1ca0/1': 98, '8ee14350/301': 2, '8ee143a0/303': 1} zwrite=62 zwrite_unrouted=0 other_tags={}
+  clear flags=3 z=1
+  clear flags=2 z=1
+  d  6 BULLET vs=5e484a06 ps=ec1f5c4a pr=1320 Z=1 ZW=0 ZF=4 2/4 AT=0 CW=15 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  d 69 BULLET vs=5e484a06 ps=ec1f5c4a pr=1320 Z=1 ZW=0 ZF=4 2/4 AT=0 CW=15 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  d 86 BULLET vs=5e484a06 ps=0a523f33 pr=1024 Z=0 ZW=0 ZF=4 5/6 AT=0 CW=7 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  clear flags=2 z=1
+  clear flags=2 z=1
+5473 draws=101 depth_surfaces={'02af1b60/2': 97, None: 4} rt0={'02af1ca0/1': 98, '8ee14350/301': 2, '8ee143a0/303': 1} zwrite=62 zwrite_unrouted=0 other_tags={}
+  clear flags=3 z=1
+  clear flags=2 z=1
+  d  6 BULLET vs=5e484a06 ps=ec1f5c4a pr=1296 Z=1 ZW=0 ZF=4 2/4 AT=0 CW=15 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  d 69 BULLET vs=5e484a06 ps=ec1f5c4a pr=1296 Z=1 ZW=0 ZF=4 2/4 AT=0 CW=15 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  d 86 BULLET vs=5e484a06 ps=0a523f33 pr=1008 Z=0 ZW=0 ZF=4 5/6 AT=0 CW=7 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  clear flags=2 z=1
+  clear flags=2 z=1
+5474 draws=101 depth_surfaces={'02af1b60/2': 97, None: 4} rt0={'02af1ca0/1': 98, '8ee14350/301': 2, '8ee143a0/303': 1} zwrite=62 zwrite_unrouted=0 other_tags={}
+  clear flags=3 z=1
+  clear flags=2 z=1
+  d  6 BULLET vs=5e484a06 ps=ec1f5c4a pr=1320 Z=1 ZW=0 ZF=4 2/4 AT=0 CW=15 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  d 69 BULLET vs=5e484a06 ps=ec1f5c4a pr=1320 Z=1 ZW=0 ZF=4 2/4 AT=0 CW=15 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  d 86 BULLET vs=5e484a06 ps=0a523f33 pr=1024 Z=0 ZW=0 ZF=4 5/6 AT=0 CW=7 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  clear flags=2 z=1
+  clear flags=2 z=1
+5475 draws=101 depth_surfaces={'02af1b60/2': 97, None: 4} rt0={'02af1ca0/1': 98, '8ee14350/301': 2, '8ee143a0/303': 1} zwrite=62 zwrite_unrouted=0 other_tags={}
+  clear flags=3 z=1
+  clear flags=2 z=1
+  d  6 BULLET vs=5e484a06 ps=ec1f5c4a pr=1296 Z=1 ZW=0 ZF=4 2/4 AT=0 CW=15 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  d 69 BULLET vs=5e484a06 ps=ec1f5c4a pr=1296 Z=1 ZW=0 ZF=4 2/4 AT=0 CW=15 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  d 86 BULLET vs=5e484a06 ps=0a523f33 pr=1036 Z=0 ZW=0 ZF=4 5/6 AT=0 CW=7 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  clear flags=2 z=1
+  clear flags=2 z=1
+5476 draws=101 depth_surfaces={'02af1b60/2': 97, None: 4} rt0={'02af1ca0/1': 98, '8ee14350/301': 2, '8ee143a0/303': 1} zwrite=62 zwrite_unrouted=0 other_tags={}
+  clear flags=3 z=1
+  clear flags=2 z=1
+  d  6 BULLET vs=5e484a06 ps=ec1f5c4a pr=1296 Z=1 ZW=0 ZF=4 2/4 AT=0 CW=15 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  d 69 BULLET vs=5e484a06 ps=ec1f5c4a pr=1296 Z=1 ZW=0 ZF=4 2/4 AT=0 CW=15 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  d 86 BULLET vs=5e484a06 ps=0a523f33 pr=1052 Z=0 ZW=0 ZF=4 5/6 AT=0 CW=7 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  clear flags=2 z=1
+  clear flags=2 z=1
+5477 draws=101 depth_surfaces={'02af1b60/2': 97, None: 4} rt0={'02af1ca0/1': 98, '8ee14350/301': 2, '8ee143a0/303': 1} zwrite=62 zwrite_unrouted=0 other_tags={}
+  clear flags=3 z=1
+  clear flags=2 z=1
+  d  6 BULLET vs=5e484a06 ps=ec1f5c4a pr=1296 Z=1 ZW=0 ZF=4 2/4 AT=0 CW=15 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  d 69 BULLET vs=5e484a06 ps=ec1f5c4a pr=1296 Z=1 ZW=0 ZF=4 2/4 AT=0 CW=15 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  d 86 BULLET vs=5e484a06 ps=0a523f33 pr=1072 Z=0 ZW=0 ZF=4 5/6 AT=0 CW=7 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  clear flags=2 z=1
+  clear flags=2 z=1
+5478 draws=101 depth_surfaces={'02af1b60/2': 97, None: 4} rt0={'02af1ca0/1': 98, '8ee14350/301': 2, '8ee143a0/303': 1} zwrite=62 zwrite_unrouted=0 other_tags={}
+  clear flags=3 z=1
+  clear flags=2 z=1
+  d  6 BULLET vs=5e484a06 ps=ec1f5c4a pr=1296 Z=1 ZW=0 ZF=4 2/4 AT=0 CW=15 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  d 69 BULLET vs=5e484a06 ps=ec1f5c4a pr=1296 Z=1 ZW=0 ZF=4 2/4 AT=0 CW=15 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  d 86 BULLET vs=5e484a06 ps=0a523f33 pr=1064 Z=0 ZW=0 ZF=4 5/6 AT=0 CW=7 routed=0 lane=0 model=00000000 node=00000000 f130=00000000 ds=02af1b60/2
+  clear flags=2 z=1
+  clear flags=2 z=1

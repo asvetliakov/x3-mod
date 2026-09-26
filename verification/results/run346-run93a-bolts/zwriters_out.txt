@@ -1,0 +1,108 @@
+883 cam=(55220,-10613,65541) bolt_w=[220,10091] zwrite_draws=205 unrouted=0
+   d8-8 n=1 model=00004fef node=14ed8880 routed=1 dist=1206303
+   d9-9 n=1 model=00004fef node=14ed8b00 routed=1 dist=1351730
+   d10-43 n=34 model=000053b8 node=15b62138 routed=1 dist=799192
+   d44-44 n=1 model=00004a88 node=14d88e60 routed=1 dist=775183
+   d45-45 n=1 model=00004a88 node=14d890e0 routed=1 dist=775095
+   d46-46 n=1 model=00004a88 node=14d89360 routed=1 dist=775065
+   d47-47 n=1 model=00004a88 node=14d89ae0 routed=1 dist=775112
+   d48-48 n=1 model=00004a88 node=14d89d60 routed=1 dist=774916
+   d49-49 n=1 model=00004a88 node=14d89fe0 routed=1 dist=774937
+   d50-51 n=2 model=00004fea node=14d8d478 routed=1 dist=774939
+   d52-53 n=2 model=000053ab node=15b628b8 routed=1 dist=54157
+   d54-57 n=4 model=00005411 node=1649f120 routed=1 dist=63164
+   d58-61 n=4 model=000053b8 node=17eddb80 routed=1 dist=841531
+   d62-81 n=20 model=00005530 node=1e4b9318 routed=1 dist=381268
+   d82-85 n=4 model=00005428 node=1e7b4f70 routed=1 dist=1538736
+   d86-86 n=1 model=00005421 node=285e2e28 routed=1 dist=783713
+   d87-87 n=1 model=00005422 node=285e30a8 routed=1 dist=781293
+   d88-88 n=1 model=00005421 node=285e3328 routed=1 dist=782572
+   d89-89 n=1 model=00005421 node=285e35a8 routed=1 dist=839588
+   d90-90 n=1 model=00005422 node=285e3828 routed=1 dist=841084
+   d91-91 n=1 model=00005421 node=285e3aa8 routed=1 dist=839568
+   d92-92 n=1 model=00005421 node=285e3d28 routed=1 dist=813302
+   d93-93 n=1 model=00005422 node=285e3fa8 routed=1 dist=814301
+   d94-94 n=1 model=00005421 node=285e4228 routed=1 dist=814568
+   d95-95 n=1 model=00005421 node=285e44a8 routed=1 dist=804403
+   d96-96 n=1 model=00005422 node=285e4728 routed=1 dist=803224
+   d97-97 n=1 model=00005421 node=285e49a8 routed=1 dist=803995
+   d98-99 n=2 model=35b42b43 node=285e5128 routed=1 dist=809792
+   d100-101 n=2 model=35b42b43 node=285e6028 routed=1 dist=809763
+   d102-103 n=2 model=35b42b43 node=286b4c28 routed=1 dist=807320
+   d104-105 n=2 model=35b42b43 node=286b5b28 routed=1 dist=807390
+   d106-107 n=2 model=35b42b43 node=286b6a28 routed=1 dist=805862
+   d108-111 n=4 model=0000543f node=286b7ba8 routed=1 dist=807979
+   d112-113 n=2 model=000053ab node=286b80a8 routed=1 dist=1269272
+   d114-119 n=6 model=0000546d node=28de5ab0 routed=1 dist=1265084
+   d120-123 n=4 model=000053aa node=24d14f00 routed=1 dist=960820
+   d124-125 n=2 model=000053ab node=24d15180 routed=1 dist=910707
+   d126-126 n=1 model=00005421 node=253f76f8 routed=1 dist=1634317
+   d127-127 n=1 model=00005422 node=253f7978 routed=1 dist=1632619
+   d128-128 n=1 model=00005421 node=253f7bf8 routed=1 dist=1634027
+   d129-129 n=1 model=00005421 node=253f7e78 routed=1 dist=1661304
+   d130-130 n=1 model=00005422 node=253f80f8 routed=1 dist=1660299
+   d131-131 n=1 model=00005421 node=253f8378 routed=1 dist=1660591
+   d132-135 n=4 model=00005429 node=253ffd00 routed=1 dist=1619215
+   d136-136 n=1 model=00005421 node=25400200 routed=1 dist=1555196
+   d137-137 n=1 model=00005422 node=25400480 routed=1 dist=1555235
+   d138-138 n=1 model=00005421 node=25400700 routed=1 dist=1555931
+   d139-139 n=1 model=00005421 node=25400980 routed=1 dist=1547912
+   d140-140 n=1 model=00005422 node=25400c00 routed=1 dist=1548862
+   d141-141 n=1 model=00005421 node=25400e80 routed=1 dist=1548413
+   d142-145 n=4 model=0000542e node=25816430 routed=1 dist=1535077
+   d146-147 n=2 model=00004fd6 node=32e85868 routed=1 dist=415001
+   d148-149 n=2 model=00004f82 node=310396e0 routed=1 dist=830323
+   d150-151 n=2 model=00004f7e node=3103b4e0 routed=1 dist=1086064
+   d152-153 n=2 model=00005535 node=3150a0c8 routed=1 dist=744491
+   d154-154 n=1 model=00004f79 node=36179a28 routed=1 dist=655808
+   d155-156 n=2 model=00004f75 node=3647d348 routed=1 dist=592486
+   d157-181 n=25 model=35ba45c3 node=3647dfc8 routed=1 dist=596419
+   d182-182 n=1 model=35ba45c4 node=3647e248 routed=1 dist=598192
+   d183-183 n=1 model=35ba45c5 node=3647e4c8 routed=1 dist=598336
+   d184-185 n=2 model=00005529 node=384975d0 routed=1 dist=339613
+   d186-210 n=25 model=35ba45c3 node=38498250 routed=1 dist=339291
+   d211-211 n=1 model=35ba45c4 node=384984d0 routed=1 dist=343167
+   d212-212 n=1 model=35ba45c5 node=38498750 routed=1 dist=343132
+884 cam=(55220,-10613,65541) bolt_w=[262,10546] zwrite_draws=205 unrouted=0
+885 cam=(55220,-10613,65540) bolt_w=[215,11000] zwrite_draws=205 unrouted=0
+886 cam=(55221,-10613,65540) bolt_w=[214,11455] zwrite_draws=205 unrouted=0
+887 cam=(55221,-10613,65540) bolt_w=[222,11909] zwrite_draws=205 unrouted=0
+888 cam=(55221,-10613,65540) bolt_w=[222,11950] zwrite_draws=205 unrouted=0
+889 cam=(55221,-10613,65540) bolt_w=[213,11753] zwrite_draws=205 unrouted=0
+890 cam=(55221,-10613,65540) bolt_w=[208,11401] zwrite_draws=205 unrouted=0
+5471 cam=(7437,-3653,-54198) bolt_w=[1638,11030] zwrite_draws=62 unrouted=0
+   d7-7 n=1 model=00005699 node=22dff3f0 routed=1 dist=2269187
+   d8-8 n=1 model=00005699 node=17f67bf8 routed=1 dist=2071896
+   d9-13 n=5 model=000053da node=17f6d110 routed=1 dist=207480
+   d14-19 n=6 model=00005577 node=28a1d1f0 routed=1 dist=500463
+   d20-20 n=1 model=00004f6d node=28a1d470 routed=1 dist=497859
+   d21-21 n=1 model=00004f6d node=28a1d6f0 routed=1 dist=499325
+   d22-24 n=3 model=000054b2 node=2e870c90 routed=1 dist=1884932
+   d25-26 n=2 model=000054b3 node=2e870f10 routed=1 dist=1716481
+   d27-28 n=2 model=000054b3 node=2e871190 routed=1 dist=1682366
+   d29-30 n=2 model=000054b3 node=2e871410 routed=1 dist=1739909
+   d31-32 n=2 model=000054b3 node=2e871690 routed=1 dist=1850428
+   d33-34 n=2 model=000054b3 node=2ecb3c98 routed=1 dist=1945678
+   d35-36 n=2 model=000054b3 node=2ecb3f18 routed=1 dist=1975117
+   d37-38 n=2 model=000054b3 node=2ecb4198 routed=1 dist=1924359
+   d39-40 n=2 model=000054b3 node=2ecb4418 routed=1 dist=1818730
+   d41-44 n=4 model=000054b4 node=2ecb4698 routed=1 dist=1811395
+   d45-46 n=2 model=000054b3 node=2f003178 routed=1 dist=2116140
+   d47-48 n=2 model=000054b3 node=2f0033f8 routed=1 dist=2179867
+   d49-50 n=2 model=000054b3 node=2f003678 routed=1 dist=1902709
+   d51-52 n=2 model=000054b3 node=2f0038f8 routed=1 dist=2069192
+   d53-54 n=2 model=000054b3 node=2f003b78 routed=1 dist=1828369
+   d55-56 n=2 model=000054b3 node=2f003df8 routed=1 dist=1576477
+   d57-58 n=2 model=000054b3 node=2f004078 routed=1 dist=1637131
+   d59-60 n=2 model=000054b3 node=2f0042f8 routed=1 dist=1486963
+   d61-62 n=2 model=00005567 node=816b9668 routed=1 dist=1959518
+   d63-64 n=2 model=00005567 node=1174bfe0 routed=1 dist=1944740
+   d65-66 n=2 model=00005567 node=386666e0 routed=1 dist=1977797
+   d67-68 n=2 model=00005569 node=3842f300 routed=1 dist=1933990
+5472 cam=(7555,-3635,-54262) bolt_w=[1638,11396] zwrite_draws=62 unrouted=0
+5473 cam=(7674,-3617,-54326) bolt_w=[1293,11173] zwrite_draws=62 unrouted=0
+5474 cam=(7793,-3599,-54390) bolt_w=[1591,11376] zwrite_draws=62 unrouted=0
+5475 cam=(7911,-3581,-54454) bolt_w=[1561,11099] zwrite_draws=62 unrouted=0
+5476 cam=(8030,-3563,-54518) bolt_w=[1488,11234] zwrite_draws=62 unrouted=0
+5477 cam=(8149,-3545,-54582) bolt_w=[1476,11352] zwrite_draws=62 unrouted=0
+5478 cam=(8267,-3527,-54646) bolt_w=[1533,11344] zwrite_draws=62 unrouted=0

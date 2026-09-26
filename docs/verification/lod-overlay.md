@@ -371,3 +371,41 @@ copy (draws 211-214) carry the same `hash`, `qsum`, `bbox` and `prims` at consec
 twice. Fix implemented as option 1 without touching COLORWRITEENABLE: the early copy is not forwarded at all
 (`X3M_BOLT_SINGLE_COPY`, launcher `--bolt-single-copy`, default on; `docs/architecture/bolt-footprint.md`, "Single
 copy"), proved by `seam-bolt-single-copy{,-off,-late}` (`verification/results/bolt-single-copy/`); commit 12f3e5a5.
+
+### 2026-09-26 Run 93 A: bolts still vanish over distant stations (run346, triage)
+
+Launch 1 (`/tmp/x3-bottleX3-run346`, Run93 DLL 5bee0e8a, single copy on: 2,407 `bolt_copies early_dropped=2 late=2`
+rows, 24 `bolt_copy_dropped`), F8 burst 1 frames 883-890 (green bolts at a station) and burst 4 frames 5471-5478
+(blue-white bolts at another). TAA of the launch: history weight 0.85, far weight 0.985 (camera gate, 7x7 far clip),
+thin region 0.97. Scripts, outputs and the per-frame table: `verification/results/run346-run93a-bolts/` (`summary.txt`).
+
+**The single copy works in the scene (measured).** At far-silhouette crossings of the pre-resolve FP16 scene the bolt now
+adds as much or more over the station as over space: summed-rgb addition over the local background 2.2-4.9 over the
+station vs 0.9-3.2 over space (burst 1), 3.7-6.4 vs 3.4-5.0 (burst 4); hue excess equal within noise (0.29-0.48 vs
+0.35-0.48; 0.63-1.12 vs 0.67-0.98). E.g. 883 (2583,798) over the station 6.23,7.04,3.71 vs (2582,798) space 3.31,4.01,1.83.
+
+**Depth is right (measured / derived).** One depth surface (identity 2) on every scene draw of all 16 frames; the only
+SetDepthStencilSurface and render-target changes come after the late bullet draw (draw 221/222 and 86/87); every Z-writing
+draw is routed (0 unrouted of 205 / 62), so the depth lane covers every depth writer. Bolt clip w <= 11,950 (bbox corners
+through the bullet VS view-projection c0-c3), z/w <= 0.99950; the far geometry under bolt pixels sits at w 63,000-160,000,
+z/w >= 0.99991. Only the own ship (w 185-963) is nearer than the bolts. No impostor, card or overlay record writes a near depth.
+
+**The TAA resolve removes the bolt over far geometry (measured).** In the resolved image `taa_1_N` the bolt's addition at
+the same band pixels drops to -0.15..0.69 over the station vs 0.50-1.96 over space; the effective history keep weight
+(taa_{N-1} as history, `bolt_keep_weight.py`) is 0.97-1.02 (median 0.99) over the station in all 14 measurable frames vs
+0.39-0.56 (burst 1) and 0.67-0.91 (burst 4) over space. The displayed contrast (`present_1_N`, after tonemap and sharpen) is
+-8..+22 codes over the station (two frames 47-51) vs 25-110 over space; the hull under the bolt is not near white
+(pre-resolve luma 0.27-0.86, presented 74-225 codes, the bolt pixel 1.15-2.6), so it is not tonemap saturation. Age is 64
+in both classes. Mechanism (inferred from the source, consistent with k ~ 0.99): a bolt writes neither depth nor the
+lane, so its pixel inherits the far station's lane depth and gets the far weight (`src/temporal/resolve.hlsl:432` farw
+from `lane.r`, `:1033` farKeep toward 0.985, `:1034` thin-region 0.97) and the 7x7 far clip (`:941`), whose box holds
+both the bolt and the hull, so the static hull history is kept at ~0.99 and a one-frame bolt keeps 0-17 % of its pre-resolve addition (measured
+ratio). Over space (sentinel depth) the ordinary 0.85 weight and the 3x3 clip let 9-61 % of the current frame through.
+
+**Fix directions (not built).** Invariant: a pixel covered by an admitted additive bolt this frame never keeps more
+history than an ordinary sky pixel, whatever depth lies under it; pixels without a bolt stay bit-identical. (1) The late
+bullet draw, already on the additive route with the mod's PS, marks its coverage in a lane the resolve reads (e.g. a flag
+the resolve treats as farw = 0 and 3x3 clip, or current-weighted); (2) composite the late bullet copy after the resolve
+(depth-tested against the unjittered scene depth), taking bolts out of TAA; (3) a far-weight exemption for current > box-
+of-history luminance jumps (generic, but would also unstabilise far blinking lights). No fixture covers bolts over far
+geometry through the resolve; `run_temporal_pass.py` would need a far-depth quad with a one-frame additive streak.
