@@ -3360,3 +3360,5 @@ the production default, every other row still 0.9 and bit-identical to the previ
 ripple_rms 0.00943 -> **0.01436** (1.52x; replay predicted 0.299 / 0.0144); far_camera e_ratio 0.1163 -> 0.1726, ripple_rms
 0.00608 -> 0.00829; output_diff on vs off 0 on both. The runner now asserts age e_ratio 0.299 +- 0.01 and ripple_rms at most
 0.0155 on that row. One-liner: `verification/results/run340-run91a-pan-replay/pan_row_fixture.sh`. Not yet flown.
+
+**2026-09-26 Run 92 A (run341 0.85, run342 0.9, run343 0.8; same stand, rest + mid-pan F8 each):** the user accepts 0.85 as the default: at 0.8 the adjacent station shimmers at rest and under the pan; 0.85 and 0.9 look similar with less noticeable shimmer. Decision closed; the fixture pan row stays pinned at the 0.85 numbers.

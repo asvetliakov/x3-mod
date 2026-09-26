@@ -32,14 +32,14 @@ Nothing: main `335c9250` is the installed commit (documentation and the run queu
 
 ## Run queue
 
-Run 92 A is queued (0.85 default with rest, pan and firing captures; short 0.9 and 0.8 comparisons):
-[run queue](verification/user-runs.md).
+No run is queued. Run 92 A (run341-343) accepted the 0.85 history weight (0.8 shimmers at rest, 0.85 and 0.9 look alike)
+and proved the game's two bullet copies identical (8 of 8 capture frames): [run queue](verification/user-runs.md).
 
 ## Open items
 
 - From Run 91 A: bullets behind distant objects = the game's early bullet copy overpainted by later opaque draws while
-  the additive route brightens both copies (fix pending the `bolt_copy` proof in Run 92 A); station blur under a pan =
-  history weight (0.85 default now, flight comparison against 0.9 and 0.8 in Run 92 A).
+  the additive route brightens both copies (proven identical in Run 92 A; the single-copy rule that drops the early copy is in implementation for Run93); station blur under a pan =
+  history weight (0.85 accepted in Run 92 A).
 
 - Native Windows runtime behaviour is unverified; the source cross-compiles, gaps are tracked in
   [platform portability](architecture/platform-portability.md).
