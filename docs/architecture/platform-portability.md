@@ -89,6 +89,12 @@ its `scan`/`scan_log` never raise on log content and report unparsable lines in
 
 ## Current gaps
 
+- The WMA speech decoder (`<game>/x3m/voice-decoder`, shipped in the release zip since 2026-09-27) is a
+  CrossOver-only file set; native Windows decodes the voice files itself and never reads the folder. Delivery is
+  host-side only: GStreamer reads the Unix environment, so a proxy `SetEnvironmentVariableW` does not reach it
+  (measured, `verification/results/voice-decoder-env/`), and the proxy sets no GStreamer variable on any platform.
+  Without the developer launcher, CrossOver starts get no speech
+  ([voice-decoder-adapter.md](voice-decoder-adapter.md), "Game-directory drop-in").
 - The media-cue gate (`--media-cue-trace`, `--media-cue-cache`,
   [media-cues.md](../verification/media-cues.md) §6) is an EXE-side patch on
   `0x00498140` of the non-relocatable, hash-gated X3AP.exe: the same bytes on

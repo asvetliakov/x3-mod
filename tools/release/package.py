@@ -5,7 +5,9 @@
 
 Writes DIR/x3m-<version>.zip with d3d9.dll (the given DLL), x3m.ini (the generated template assets/x3m.ini), the
 x3m-regenerate binaries found in the regenerate directory (x3m-regenerate.exe for Windows, required; x3m-regenerate for
-macOS/CrossOver when present; built by tools/regenerate/build.py) and README.txt (unpack, keep an edited x3m.ini on update,
+macOS/CrossOver when present; built by tools/regenerate/build.py), the WMA speech decoder tree tools/voice-decoder/v4 under
+x3m/voice-decoder/ (its shipped files, tools/voice_decoder_files.py; refused when it fails its artifact-sha256.txt) and
+README.txt (unpack, keep an edited x3m.ini on update,
 regenerate, edit x3m.ini, send
 x3m.log; with the DLL's SHA-256 and the source commit). Refuses when `tools/config/generate.py --check` fails, so a stale
 template never ships, or when an input is missing. Entries carry a fixed timestamp, so the same inputs give the same zip.
@@ -20,11 +22,14 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'tools/config'))
+sys.path.insert(0, str(ROOT / 'tools'))
 import generate  # noqa: E402
+import voice_decoder_files  # noqa: E402
 
 TEMPLATE = ROOT / 'assets/x3m.ini'
 DEFAULT_REGENERATE = Path('/tmp/x3-regenerate-dist')
 REGENERATE_NAMES = ('x3m-regenerate.exe', 'x3m-regenerate')  # the first is required
+VOICE_DECODER = ROOT / 'tools/voice-decoder/v4'  # shipped as x3m/voice-decoder/ (voice_decoder_files.GAME_SUBDIR)
 STAMP = (2026, 1, 1, 0, 0, 0)
 
 README = """X3 Modern Renderer {version}
@@ -46,6 +51,9 @@ Install
    "all done". Run it again after installing, updating or removing a mod.
 3. Start the game as usual.
 
+Speech under CrossOver needs the folder x3m\\voice-decoder next to d3d9.dll (unpacking the zip places it);
+Windows does not use it.
+
 Settings
 --------
 x3m.ini holds every setting a player may want to change, each with a short explanation. Every line is
@@ -60,7 +68,7 @@ list which settings x3m.ini changed (config_file) and any line it could not use 
 x3m.ini, reproduce the problem, quit, and send x3m.log.
 
 Uninstall: delete d3d9.dll, x3m.ini, x3m-regenerate*, x3m-regenerate.log, x3m.log and x3m.prev.log, and what
-x3m-regenerate wrote: the folder x3m (fog-families.bin and .json), the overlay catalogue addon/NN.cat/.dat
+x3m-regenerate wrote: the folder x3m (fog-families.bin and .json, voice-decoder), the overlay catalogue addon/NN.cat/.dat
 next to its addon/NN.x3m-lod.json marker (and the marker), and addon/mods/<mod>-x3m-lod.cat/.dat/.x3m-lod.json.
 No need to run x3m-regenerate afterwards.
 
@@ -96,6 +104,14 @@ def manifest(dll, regenerate_dir, version, commit):
     dll_bytes = dll.read_bytes()
     entries = [('d3d9.dll', dll_bytes), ('x3m.ini', TEMPLATE.read_bytes())]
     entries += [(path.name, path.read_bytes()) for path in regenerate if path.is_file()]
+    try:
+        voice = voice_decoder_files.shipped(VOICE_DECODER)
+        verified, _, problems = voice_decoder_files.verify_hashes(VOICE_DECODER, voice)
+    except (voice_decoder_files.TreeError, OSError) as error:
+        raise ValueError(f'voice decoder tree: {error}') from error
+    if problems or not verified:
+        raise ValueError(f'voice decoder tree {VOICE_DECODER} fails its artifact-sha256.txt: ' + (', '.join(problems) or 'no entry'))
+    entries += [(f'{voice_decoder_files.GAME_SUBDIR}/{relative}', (VOICE_DECODER / relative).read_bytes()) for relative in voice]
     readme = README.format(version=version, sha256=sha256(dll_bytes), commit=commit).replace('\n', '\r\n')
     entries.append(('README.txt', readme.encode()))
     return entries
@@ -128,7 +144,7 @@ def main(argv=None):
     write_zip(path, entries)
     print(path)
     for name, data in entries:
-        print(f'  {name:24s} {len(data):>10d}  {sha256(data)[:16]}')
+        print(f'  {name:56s} {len(data):>10d}  {sha256(data)[:16]}')
     print(f'  zip {path.stat().st_size} bytes, sha256 {sha256(path.read_bytes())[:16]}')
     return 0
 

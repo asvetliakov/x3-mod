@@ -4,6 +4,7 @@ import contextlib
 import hashlib
 import importlib.util
 import io
+import shutil
 import tempfile
 import unittest
 import zipfile
@@ -49,13 +50,19 @@ class ReleasePackage(unittest.TestCase):
             code, path = self.build(directory, source_commit=lambda: 'f' * 40)
             self.assertEqual(code, 0)
             with zipfile.ZipFile(path) as archive:
-                self.assertEqual(archive.namelist(), ['d3d9.dll', 'x3m.ini', 'x3m-regenerate.exe', 'x3m-regenerate', 'README.txt'])
+                voice = self.package.voice_decoder_files.shipped(self.package.VOICE_DECODER)
+                self.assertIn('runtime/plugins/libgstlibav.dylib', voice)
+                self.assertEqual(archive.namelist(), ['d3d9.dll', 'x3m.ini', 'x3m-regenerate.exe', 'x3m-regenerate',
+                                                      *[f'x3m/voice-decoder/{name}' for name in voice], 'README.txt'])
+                for name in voice:
+                    self.assertEqual(archive.read(f'x3m/voice-decoder/{name}'), (self.package.VOICE_DECODER / name).read_bytes())
                 self.assertEqual(archive.read('x3m.ini'), (ROOT / 'assets/x3m.ini').read_bytes())
                 self.assertEqual(archive.read('d3d9.dll'), b'MZ fake proxy')
                 readme = archive.read('README.txt').decode()
                 self.assertIn(hashlib.sha256(b'MZ fake proxy').hexdigest(), readme)
                 self.assertIn('source commit ' + 'f' * 40, readme)
                 self.assertIn('\r\n', readme)
+                self.assertIn('Speech under CrossOver needs the folder x3m\\voice-decoder next to d3d9.dll', readme)
                 self.assertEqual(archive.getinfo('x3m-regenerate.exe').external_attr >> 16, 0o755)
             first = path.read_bytes()
             self.assertEqual(self.build(directory, source_commit=lambda: 'f' * 40)[0], 0)
@@ -72,6 +79,13 @@ class ReleasePackage(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             code, path = self.build(directory, windows=False, source_commit=lambda: 'unknown')
             self.assertEqual(code, 1)
+            self.assertFalse(path.exists())
+        with tempfile.TemporaryDirectory() as directory:
+            voice = Path(directory) / 'voice'
+            shutil.copytree(self.package.VOICE_DECODER, voice)
+            (voice / 'runtime/plugins/libgstlibav.dylib').write_bytes(b'tampered')
+            code, path = self.build(directory, VOICE_DECODER=voice, source_commit=lambda: 'unknown')
+            self.assertEqual(code, 1)  # a decoder tree failing its artifact-sha256.txt never ships
             self.assertFalse(path.exists())
         stale = {ROOT / 'assets/x3m.ini': 'not the template\n'}
         with tempfile.TemporaryDirectory() as directory, mock.patch.object(self.package.generate, 'outputs', return_value=stale):

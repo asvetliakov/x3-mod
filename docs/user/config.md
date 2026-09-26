@@ -9,6 +9,9 @@ Put `x3m.ini` in the game folder, next to `d3d9.dll` and `X3AP.exe` (with CrossO
 starts. The mod also works without the file: every setting has a built-in default, and the shipped file only
 shows those defaults.
 
+Speech under CrossOver needs the folder `x3m\voice-decoder` next to `d3d9.dll` (unpacking the zip places it;
+`python3 tools/manage.py voice-decoder --install` does the same from the repository). Windows does not use it.
+
 ## Changing a setting
 
 Open `x3m.ini` in a text editor. Each setting has a short explanation above it and looks like this:

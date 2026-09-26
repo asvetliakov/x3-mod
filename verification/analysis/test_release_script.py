@@ -155,6 +155,9 @@ class ReleaseScript(unittest.TestCase):
             self.assertEqual(record['zip']['sha256'], hashlib.sha256(zip_path.read_bytes()).hexdigest())
             with zipfile.ZipFile(zip_path) as archive:
                 self.assertEqual(archive.read('d3d9.dll'), b'MZ fake proxy')
+            voice = [e['name'] for e in record['zip']['entries'] if e['name'].startswith('x3m/voice-decoder/')]
+            self.assertIn('x3m/voice-decoder/runtime/plugins/libgstlibav.dylib', voice)
+            self.assertIn(f'{len(voice)} voice decoder files match', text)
             self.assertIn(f'release {version}', text)
 
     def test_build_warning_fails(self):

@@ -418,3 +418,31 @@ sync probe reconfirms the two known points: plain, both archives fail
 `open_hr=80004005` at `sync_open`; with the v3 libav plugin on
 `GST_PLUGIN_PATH_1_0`/`GST_REGISTRY_1_0`, both open with `hr=0` and report PCM
 44100/1/16. The adapter remains the route to pursue.
+
+## Game-directory drop-in and launcher-less delivery (2026-09-27)
+
+**Install and release.** `python3 tools/manage.py voice-decoder --install [--game-dir DIR | --bottle B]`
+copies the shipped files of `tools/voice-decoder/v4` (every file except `registry/`; 13 today:
+runtime `plugins`/`lib`/`licenses`, both patches, `README.md`, `artifact-sha256.txt`, `build-record.md`,
+`symcheck.txt`) into `<game>/x3m/voice-decoder`, leaves identical files alone, creates `registry/` and then
+verifies the destination against its `artifact-sha256.txt` (7 entries verified; the patched
+`src/gst-libav/.../gstavauddec.c` line names a file that is not shipped). The source is verified before the copy,
+the copy runs under the installer lock with the game closed, and a symlinked or case-aliased destination is refused
+(`media_package.safe`). `--check` (the default) prints `valid`, `stale` (a shipped file missing or different, or a
+hash mismatch) or `missing` and exits 0 only when valid. Helpers: `tools/voice_decoder_files.py`; host test
+`verification/analysis/test_voice_decoder_install.py`. `tools/release/package.py` ships the same files under
+`x3m/voice-decoder/` in the release zip (refused when the tree fails its hash list), `release.py` re-checks the
+zip entries against the tree, and README.txt says speech under CrossOver needs that folder next to `d3d9.dll`.
+The launcher's discovery (above) already takes `<game>/x3m/voice-decoder` first.
+
+**The DLL cannot deliver the plugin (measured).** GStreamer runs on the Unix side of winegstreamer and reads the
+Unix process environment. A probe (`verification/results/voice-decoder-env/`) set `GST_PLUGIN_PATH_1_0` and
+`GST_REGISTRY_1_0` with `SetEnvironmentVariableW` before winegstreamer loaded, then created the WMA decoder DMO
+(which initialises GStreamer): `create_hr=d0000001` and no registry written. The same values set that way in a
+parent before `CreateProcessW` gave the same result in the child. The same values in the host environment of the
+wine command: `create_hr=0` and the registry written (187790 B). So a proxy-side environment write, at any point in
+the proxy's initialisation, is ineffective. The planned `voice_decoder` setting (X3M_VOICE_DECODER) and its
+`voice_decoder_env` row were therefore not implemented. The DLL would also need the Unix path of the game directory,
+which only a Wine-specific export gives. A player who starts X3AP.exe from CrossOver without the launcher still gets
+no speech. Delivery options that do reach the Unix environment are the developer launcher (today) and a CrossOver
+bottle environment setting. The second is not process-local and is not decided.

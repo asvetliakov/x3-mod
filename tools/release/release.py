@@ -15,7 +15,8 @@ Steps, in order (each one stops the release on failure):
               --regenerate-dir PATH ships existing binaries instead (no build, no smoke test);
               --skip-windows builds and smoke-tests the host binary only and produces no zip (the zip requires
               x3m-regenerate.exe)
-  5. package  tools/release/package.py, then the zip is listed and its d3d9.dll re-hashed against step 3
+  5. package  tools/release/package.py, then the zip is listed, its d3d9.dll re-hashed against step 3 and its
+              x3m/voice-decoder/ entries compared with the shipped files of tools/voice-decoder/v4
   6. record   DIR/release-<version>.json (schema 1: commit, dirty, toolchain, hashes, check results, wall times)
 
 --dry-run prints the plan and the toolchain check and builds nothing. The version is project(VERSION) in
@@ -35,11 +36,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'tools/config'))
 sys.path.insert(0, str(ROOT / 'verification/probe'))
+sys.path.insert(0, str(ROOT / 'tools'))
 import generate  # noqa: E402
+import voice_decoder_files  # noqa: E402
 
 TOOLCHAIN = ROOT / 'cmake/mingw-i686.cmake'
 BUILD_PY = ROOT / 'tools/regenerate/build.py'
 PACKAGE_PY = ROOT / 'tools/release/package.py'
+VOICE_DECODER = ROOT / 'tools/voice-decoder/v4'  # package.py ships it under x3m/voice-decoder/
 GENERATE_PY = ROOT / 'tools/config/generate.py'
 X87_PY = ROOT / 'verification/probe/check_no_x87.py'
 WINE_LOCK_PY = ROOT / 'verification/probe/wine_lock.py'
@@ -288,9 +292,14 @@ class Release:
         for name, entry in self.record['regenerate'].items():
             if hashes.get(name) != entry['sha256']:
                 raise ReleaseError(f'the zip\'s {name} does not match {self.regenerate_dir / name}')
+        prefix = voice_decoder_files.GAME_SUBDIR + '/'
+        voice = {prefix + name: sha256_file(VOICE_DECODER / name) for name in voice_decoder_files.shipped(VOICE_DECODER)}
+        if {name: digest for name, digest in hashes.items() if name.startswith(prefix)} != voice:
+            raise ReleaseError(f'the zip\'s {prefix} entries do not match the shipped files of {VOICE_DECODER}')
         self.record['zip'] = {'path': str(zip_path), 'sha256': sha256_file(zip_path), 'bytes': zip_path.stat().st_size,
                               'entries': [{'name': n, 'bytes': b, 'sha256': d} for n, b, d in listing]}
-        print('zip verified: d3d9.dll and x3m-regenerate binaries match the built files')
+        print(f'zip verified: d3d9.dll and x3m-regenerate binaries match the built files, {len(voice)} voice decoder files '
+              'match tools/voice-decoder/v4')
 
     def execute(self):
         self.out.mkdir(parents=True, exist_ok=True)

@@ -1,0 +1,24 @@
+Does a Win32 environment write reach CrossOver's Unix-side GStreamer? (2026-09-27, bottle X3, WineArch arm64,
+FEX_X87REDUCEDPRECISION=1, WINEMSYNC=1; CrossOver Preview.app; plugin tools/voice-decoder/v4 at 98334d76...)
+
+Probe: gst_env_probe.cpp (this directory). It optionally copies PROBE_PLUGIN / PROBE_REGISTRY into
+GST_PLUGIN_PATH_1_0 / GST_REGISTRY_1_0 with SetEnvironmentVariableW, then CoCreateInstance(CLSID_CWMADecMediaObject
+{2eeb4adf-...}), which loads winegstreamer and initialises GStreamer (winegstreamer.dll not loaded before, loaded
+after, in every mode). Observables: the create HRESULT (the WMA decoder transform exists only when avdec_wmav2 is
+found) and whether GStreamer wrote the registry file named by GST_REGISTRY_1_0. Each mode used a fresh registry dir.
+
+Build: i686-w64-mingw32-g++ -std=c++17 -O2 -municode -static gst_env_probe.cpp -o probe.exe -lole32 -luuid
+Run (one at a time, game guard [] first):
+  X3M_FIXTURE_BOTTLE=X3 WINEDEBUG=-all [env] python3 verification/probe/wine_lock.py --timeout 300 \
+    "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine" --bottle X3 --no-update \
+    probe.exe <mode> x x "Z:\...\reg-<mode>\x3-arm64.bin"
+
+| mode    | how the variables were set                                         | Win32 env shows them | create_hr | registry file |
+| ------- | ------------------------------------------------------------------ | -------------------- | --------- | ------------- |
+| set     | SetEnvironmentVariableW in the process, before winegstreamer loads  | yes (Unix paths)     | d0000001  | not written   |
+| spawn   | SetEnvironmentVariableW, then CreateProcessW child (inherits block) | yes, in the child    | d0000001  | not written   |
+| inherit | host (Unix) environment of the wine command                         | yes                  | 00000000  | 187790 B      |
+
+Conclusion (measured): GStreamer reads the Unix process environment; a Win32 environment write in the game process,
+or in a Win32 parent that starts it, does not reach it. Only the host environment of the wine launch (the developer
+launcher, a CrossOver bottle environment setting) delivers the plugin. The DLL cannot deliver it with documented APIs.

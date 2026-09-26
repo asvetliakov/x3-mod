@@ -20,8 +20,10 @@ import threading
 
 try:
     import media_package
+    import voice_decoder_files
 except ModuleNotFoundError:  # importlib-based host tests
     from tools import media_package
+    from tools import voice_decoder_files
 
 ROOT = Path(__file__).resolve().parents[1]
 BOTTLE = os.environ.get('X3M_BOTTLE', 'X3')
@@ -752,6 +754,44 @@ def source_commit(dll):
     return repository_source_commit(), 'launcher'
 
 
+def voice_decoder_command(argv):
+    """`manage.py voice-decoder [--check | --install] [--game-dir DIR | --bottle B] [--source DIR]`: reports or
+    installs the drop-in copy <game>/x3m/voice-decoder of the shipped WMA speech decoder (tools/voice_decoder_files.py).
+    --check (the default) prints valid, stale or missing and exits 0 only when valid; --install copies the shipped
+    files (identical ones are left alone), creates registry/ and verifies artifact-sha256.txt after the copy, under the
+    installer lock with the game closed. Returns the exit code."""
+    parser = argparse.ArgumentParser(prog='manage.py voice-decoder', allow_abbrev=False,
+                                     description='Check or install <game>/x3m/voice-decoder, the WMA speech decoder the launcher '
+                                                 'delivers under CrossOver (docs/architecture/voice-decoder-adapter.md).')
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument('--check', action='store_true', help='report valid, stale or missing (the default); exit 0 only when valid')
+    mode.add_argument('--install', action='store_true', help='copy the shipped tree into <game>/x3m/voice-decoder, leave identical '
+                      'files alone, create registry/ and verify artifact-sha256.txt after the copy (the game must be closed)')
+    parser.add_argument('--bottle', default=BOTTLE, help='CrossOver bottle whose drive_c/X3 is the game directory (default: X3; '
+                        'X3M_BOTTLE overrides)')
+    parser.add_argument('--game-dir', type=Path, default=None, help='game directory, the folder with X3AP.exe (overrides --bottle)')
+    parser.add_argument('--source', type=Path, default=VOICE_DECODER_REPO, help='the tree to install or compare against '
+                        '(default: the repository copy tools/voice-decoder/v4)')
+    args = parser.parse_args(argv)
+    game = args.game_dir or Path.home() / f'Library/Application Support/CrossOver/Bottles/{args.bottle}/drive_c/X3'
+    dest = game / VOICE_DECODER_GAME_SUBDIR
+    try:
+        if args.install:
+            if not (game / 'X3AP.exe').is_file():
+                raise voice_decoder_files.TreeError(f'{game} is not the game directory (no X3AP.exe)')
+            with media_package.installer_lock(game, check_closed=True):
+                copied, unchanged, verified, not_shipped = voice_decoder_files.install(
+                    args.source, dest, lambda relative: media_package.safe(game, f'{VOICE_DECODER_GAME_SUBDIR.as_posix()}/{relative}'))
+            print(f'voice decoder: installed {dest}: {copied} copied, {unchanged} unchanged; {verified} artifact hashes verified, '
+                  f'{not_shipped} listed but not shipped')
+        state, detail = voice_decoder_files.status(args.source, dest)
+    except (voice_decoder_files.TreeError, media_package.PackageError, OSError) as error:
+        print(f'voice decoder: refused: {error}', file=sys.stderr)
+        return 2
+    print(f'voice decoder: {state} {dest} ({detail})')
+    return 0 if state == 'valid' else 1
+
+
 def main():
     # `fog-families` is a thin wrapper with its own options (fog_families_command): split the first positional
     # and the verbatim rest before the full parse (argparse reads the command line itself; main names no `sys`).
@@ -761,13 +801,18 @@ def main():
     first, _ = wrapper.parse_known_args()
     if first.action == 'fog-families':
         raise SystemExit(subprocess.call(fog_families_command(first.rest)))
+    if first.action == 'voice-decoder':
+        raise SystemExit(voice_decoder_command(first.rest))
     # allow_abbrev=False (2026-09-26): a removed option is an unknown argument, never a prefix of a longer one
     # (--capture no longer resolves to --capture-frames, --telemetry needs no refusal stub).
     parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
-    parser.add_argument('action', choices=['install', 'uninstall', 'rollback', 'recover', 'launch', 'status', 'fog-families'],
+    parser.add_argument('action', choices=['install', 'uninstall', 'rollback', 'recover', 'launch', 'status', 'fog-families',
+                                           'voice-decoder'],
                         help='fog-families [--bottle B] [--check | --install [--replace] | --dry-run] [fog_families.py options]: '
                              'generate, install or check <game>/x3m/fog-families.bin for mod nebula families through '
-                             'tools/analysis/fog_families.py on the bottle\'s game directory (default --check; see manage.py fog-families --help)')
+                             'tools/analysis/fog_families.py on the bottle\'s game directory (default --check; see manage.py fog-families --help). '
+                             'voice-decoder [--check | --install] [--game-dir DIR | --bottle B]: check or install the WMA speech decoder '
+                             '<game>/x3m/voice-decoder from tools/voice-decoder/v4 (see manage.py voice-decoder --help)')
     parser.add_argument('--game-dir', type=Path, default=GAME)
     parser.add_argument('--bottle', default=BOTTLE, help='CrossOver bottle (default: X3, the arm64/FEX bottle; X3M_BOTTLE overrides; the old x86_64/Rosetta bottle is Steam)')
     parser.add_argument('--dll-source', type=Path, default=ROOT / 'build/d3d9.dll',
