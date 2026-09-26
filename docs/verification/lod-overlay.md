@@ -370,4 +370,4 @@ copy (draws 211-214) carry the same `hash`, `qsum`, `bbox` and `prims` at consec
 (measured, `verification/results/bolt-single-copy/run341_bolt_copy_pairs.py` and `_out.txt`): the same bolts are drawn
 twice. Fix implemented as option 1 without touching COLORWRITEENABLE: the early copy is not forwarded at all
 (`X3M_BOLT_SINGLE_COPY`, launcher `--bolt-single-copy`, default on; `docs/architecture/bolt-footprint.md`, "Single
-copy"), proved by `seam-bolt-single-copy{,-off,-late}` (`verification/results/bolt-single-copy/`).
+copy"), proved by `seam-bolt-single-copy{,-off,-late}` (`verification/results/bolt-single-copy/`); commit 12f3e5a5.
