@@ -131,7 +131,7 @@ float taa_thin_emissive = 0.f; // X3M_TAA_THIN_REGION_EMISSIVE=E (thin-glow-line
 bool taa_thin_camera_gate = false; // the camera-relative gate (taa-lattice-crawl.md section 32.1): on whenever the thin
                                    // region is
 bool taa_alpha_history = false;    // X3M_TAA_ALPHA_HISTORY=1
-float taa_history_weight = .9f;    // X3M_TAA_HISTORY_WEIGHT (0.5..0.98)
+float taa_history_weight = x3::temporal::kHistoryWeightDefault; // X3M_TAA_HISTORY_WEIGHT (0.5..0.98)
 // X3M_HDR=1 (default off; requires X3M_MOTION_OUTPUT=1): the FP16 HDR scene
 // path (docs/architecture/hdr-scene-path.md). Stage 2 switches, all
 // defaulting to the stage-1 identity behaviour: X3M_HDR_TONEMAP=agx|identity,
@@ -4124,8 +4124,8 @@ void initialize_log(HMODULE module) {
     // The camera-relative gate (section 32.1, Run 59): the thin region's only gate since the screen-speed gate's option
     // (X3M_TAA_THIN_REGION_GATE) was removed on 2026-09-25; on whenever the thin region is.
     taa_thin_camera_gate = taa_requested && taa_thin_region[0] > 0.f;
-    // X3M_TAA_HISTORY_WEIGHT=<w> (0.5 <= w <= 0.98; unset: 0.9): the resolve's history weight (docs/verification/
-    // motion-output.md, "Run 139"). The whole string must parse; an invalid value keeps the default.
+    // X3M_TAA_HISTORY_WEIGHT=<w> (0.5 <= w <= 0.98; unset: kHistoryWeightDefault 0.85): the resolve's history weight
+    // (docs/verification/motion-output.md, "Run 139"). The whole string must parse; an invalid value keeps the default.
     if (taa_requested && x3m::config::get(L"X3M_TAA_HISTORY_WEIGHT", setting, 32) > 0) {
         wchar_t* end = nullptr;
         const float v = wcstof(setting, &end);

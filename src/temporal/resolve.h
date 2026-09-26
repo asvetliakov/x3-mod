@@ -149,7 +149,7 @@ inline bool far_gate(float p00, float p22, float p32, unsigned width, float f0, 
 constexpr float kLuminanceMaxK = 65504.f; // FP16 max; the weighted domain stays finite
 constexpr float kCurrentFilterMax = 4.f;  // A of exp(-A d^2) (the far stabiliser's filter); the centre weight stays >=
                                           // exp(-2)
-constexpr float kHistoryWeightDefault = .9f;                       // c5.z of the live route
+constexpr float kHistoryWeightDefault = .85f; // c5.z of the live route (0.9 before Run 91 A, run340 replay)
 constexpr float kHistoryWeightMin = .5f, kHistoryWeightMax = .98f; // launcher range of X3M_TAA_HISTORY_WEIGHT
 inline bool valid_current_filter(float a) noexcept {
     return std::isfinite(a) && a >= 0 && a <= kCurrentFilterMax;

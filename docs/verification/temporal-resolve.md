@@ -3351,3 +3351,12 @@ slower in game time (rotation 0.23 -> 2.3-2.9 deg/frame at 1424 -> 1425), so onl
    ceiling of that case is 2.5x off); `verification/analysis/test_taa_image_defaults.py` asserts the unset default 0.85.
    To be flown against 0.9 before it becomes the default (the replica does not render sub-pixel thin detail outside the thin
    vote).
+
+**2026-09-26: default 0.85 implemented.** `kHistoryWeightDefault` 0.85 (`src/temporal/resolve.h`), used by the DLL global
+and the pass member; schema builtin 0.85 (`tools/config/schema.py`, regenerated `assets/x3m.ini`); launcher help and its
+refusal threshold for the defaulted far / thin weights 0.85 (the launcher still sends nothing unless given); sharpen 0.75,
+thin 0.97, far 0.985 unchanged. Fixture numbers [M] (`run_temporal_pass.py`, X3, pass; `motion_weight_cases` pan12.5 row at
+the production default, every other row still 0.9 and bit-identical to the previous record): age e_ratio 0.1975 -> **0.2982**,
+ripple_rms 0.00943 -> **0.01436** (1.52x; replay predicted 0.299 / 0.0144); far_camera e_ratio 0.1163 -> 0.1726, ripple_rms
+0.00608 -> 0.00829; output_diff on vs off 0 on both. The runner now asserts age e_ratio 0.299 +- 0.01 and ripple_rms at most
+0.0155 on that row. One-liner: `verification/results/run340-run91a-pan-replay/pan_row_fixture.sh`. Not yet flown.

@@ -83,7 +83,7 @@ SETTINGS = [
           '1 = on, 0 = off. Needs hdr = 1 for the full effect. Costs some frame rate.', '1',
           launcher='--taa'),
     entry('taa_history_weight', 'float', 'graphics', 'How much of the previous frames the anti-aliasing keeps. Higher is smoother but '
-          'moving objects leave slightly longer trails. 0.5 to 0.98.', builtin='0.9', range=(0.5, 0.98), requires=('taa',),
+          'moving objects leave slightly longer trails. 0.5 to 0.98.', builtin='0.85', range=(0.5, 0.98), requires=('taa',),
           launcher='--taa-history-weight'),
     entry('taa_sharpen', 'float', 'graphics', 'Sharpening applied after the anti-aliasing, against its slight softness. '
           '0 = none, 1 = strongest.', '0.75', range=(0.0, 1.0), requires=('taa',), launcher='--taa-sharpen'),

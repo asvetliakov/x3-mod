@@ -1109,7 +1109,7 @@ public:
     void sun_occlusion_begin() noexcept;
     void sun_occlusion_end() noexcept;
     void prepare_lens(const MotionDrawCall& call, MotionRoute& route) noexcept;
-    // X3M_TAA_HISTORY_WEIGHT (c5.z, default 0.9); validated by the caller and
+    // X3M_TAA_HISTORY_WEIGHT (c5.z, default 0.85); validated by the caller and
     // read at every resolve.
     void configure_taa_resolve(float history_weight) noexcept { taa_history_weight_ = history_weight; }
     // X3M_TAA_FAR_STABILISER=W[,A[,F0,F1[,LO,HI]]] (docs/architecture/taa-distant-line-fade.md
@@ -2672,7 +2672,7 @@ private:
                                                   // attachment
     unsigned taa_box_reason_rows_ = 0; // changes of that reason: rows for the first 8, one suppressed=1 row at the 9th
     bool taa_alpha_history_ = false;   // X3M_TAA_ALPHA_HISTORY (HDR route only)
-    float taa_history_weight_ = .9f;   // X3M_TAA_HISTORY_WEIGHT
+    float taa_history_weight_ = x3::temporal::kHistoryWeightDefault; // X3M_TAA_HISTORY_WEIGHT
     // 8-bit route: failed sharpened draws (the pass kept the resolve, the
     // copy-back presented it); at the limit the sharpen is no longer requested.
     unsigned taa_sharpen_failures_ = 0;

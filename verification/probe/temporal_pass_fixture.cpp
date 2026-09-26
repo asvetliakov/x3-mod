@@ -3789,7 +3789,10 @@ void motion_weight_cases(IDirect3DDevice9* d, Compiler compiler, const DWORD* de
     // of that many px/frame from frame 16 with the hull world-static (its motion vector carries the pan, the far-plane
     // path too). triple: F, V0, V1 of the option (null: off). comove: the camera yaws pan px/frame but the hull stays
     // screen-static.
-    auto sequence = [&](unsigned program, double v, double pan, const float* triple, bool comove = false) {
+    // weight: the base history weight; 0.9 except the pan12.5 row, which runs at the production default
+    // (x3::temporal::kHistoryWeightDefault, 0.85 since Run 91 A: temporal-resolve.md, run340 replay).
+    auto sequence = [&](unsigned program, double v, double pan, const float* triple, bool comove = false,
+                        float weight = .9f) {
         TemporalPass pass;
         check("mw initialize", pass.initialize(d, decoder, resolver));
         if (program) {
@@ -3852,7 +3855,7 @@ void motion_weight_cases(IDirect3DDevice9* d, Compiler compiler, const DWORD* de
             std::copy(path, path + 16, in.clip_to_previous);
             in.current_jitter[0] = float(jx);
             in.current_jitter[1] = float(jy);
-            in.weight = .9f;
+            in.weight = weight;
             in.motion_policy = MotionPolicy::PerPixel;
             in.reactive_policy = ReactivePolicy::DerivedFromDepthSentinel;
             in.sentinel_camera = true;
@@ -3988,17 +3991,18 @@ void motion_weight_cases(IDirect3DDevice9* d, Compiler compiler, const DWORD* de
         const char* pn = program ? "far_camera" : "age";
         Numbers off[R], on[R];
         for (unsigned k = 0; k < R; ++k) {
-            const Run rOff = sequence(program, rows[k].v, rows[k].pan, nullptr, rows[k].comove),
-                      rOn = sequence(program, rows[k].v, rows[k].pan, flown, rows[k].comove);
+            const float weight = k == PAN ? x3::temporal::kHistoryWeightDefault : .9f;
+            const Run rOff = sequence(program, rows[k].v, rows[k].pan, nullptr, rows[k].comove, weight),
+                      rOn = sequence(program, rows[k].v, rows[k].pan, flown, rows[k].comove, weight);
             const double speed = rows[k].v + (rows[k].comove ? 0 : rows[k].pan);
             off[k] = numbers(rOff, nullptr, speed);
             on[k] = numbers(rOn, &rOff, speed);
             for (unsigned m = 0; m < 2; ++m) {
                 const Numbers& q = m ? on[k] : off[k];
                 std::printf(
-                    "MOTION_WEIGHT program=%s row=%s velocity_px=%.2f pan_px=%.2f comove=%u on=%u e_ratio=%.6f sigma=%.2f amplitude_ratio=%.4f sigma_fit=%.3f age_mean=%.3f ripple_rms=%.6f ripple_frames=%u output_diff=%.6f age_diff=%.6f\n",
+                    "MOTION_WEIGHT program=%s row=%s velocity_px=%.2f pan_px=%.2f comove=%u on=%u e_ratio=%.6f sigma=%.2f amplitude_ratio=%.4f sigma_fit=%.3f age_mean=%.3f ripple_rms=%.6f ripple_frames=%u output_diff=%.6f age_diff=%.6f weight=%.3f\n",
                     pn, rows[k].name, rows[k].v, rows[k].pan, unsigned(rows[k].comove), m, q.eRatio, q.sigma,
-                    q.ampRatio, q.sigmaFit, q.age, q.ripple, q.shiftFrames, q.diff, q.ageDiff);
+                    q.ampRatio, q.sigmaFit, q.age, q.ripple, q.shiftFrames, q.diff, q.ageDiff, double(weight));
             }
             if (k == RAMP) {
                 const Run rBound = sequence(program, rows[k].v, rows[k].pan, bound);

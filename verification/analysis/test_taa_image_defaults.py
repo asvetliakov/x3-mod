@@ -97,6 +97,19 @@ class TaaImageDefaultsLaunch(unittest.TestCase):
             code, _, error = self.launch(directory, '--motion-output', '--taa-history-weight', '0.9')
             self.assertEqual(code, 2)
             self.assertIn('--taa-history-weight requires --taa', error)
+        # Unset: the DLL default 0.85 (Run 91 A pan replay, run340; 0.9 before 2026-09-26), one constant for the global
+        # and the pass member, equal to the schema's builtin value; the launcher's refusal threshold uses the same value.
+        resolve = source_text(ROOT / 'src/temporal/resolve.h')
+        self.assertIn('constexpr float kHistoryWeightDefault = .85f;', resolve)
+        self.assertIn('float taa_history_weight = x3::temporal::kHistoryWeightDefault;', source_text(ROOT / 'src/proxy/capture.cpp'))
+        self.assertIn('float taa_history_weight_ = x3::temporal::kHistoryWeightDefault;', source_text(ROOT / 'src/proxy/motion_output.h'))
+        sys.path.insert(0, str(ROOT / 'tools/config'))
+        try:
+            import schema
+        finally:
+            sys.path.remove(str(ROOT / 'tools/config'))
+        self.assertEqual(schema.BY_ENV['X3M_TAA_HISTORY_WEIGHT']['builtin'], '0.85')
+        self.assertEqual((ROOT / 'tools/manage.py').read_text().count('if args.taa_history_weight is not None else 0.85'), 3)
 
     def test_retired_resolve_variants_are_refused_by_name(self):
         # Cleanup batch 6 (2026-09-23; docs/architecture/cleanup-inventory-2026-09-22.md): the four

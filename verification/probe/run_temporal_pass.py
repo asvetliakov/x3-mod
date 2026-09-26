@@ -69,6 +69,12 @@ try:
         assert all(weight_rows[(program,name,'1')]['age_diff']=='0.000000' for name in ('5px','5.5px','6.5px','12px','12.5px')),program
         assert float(weight_rows[(program,'6.5px','2')]['output_diff'])<=.002<.01<=float(weight_rows[(program,'6.5px','1')]['output_diff']),(weight_rows[(program,'6.5px','1')],weight_rows[(program,'6.5px','2')])
         assert float(weight_rows[(program,'12.5px','1')]['e_ratio'])>=1.5*float(weight_rows[(program,'12.5px','0')]['e_ratio']) and float(weight_rows[(program,'12.5px','1')]['output_diff'])>0,(weight_rows[(program,'12.5px','0')],weight_rows[(program,'12.5px','1')])
+    # The pan12.5 row runs at the production default weight (kHistoryWeightDefault 0.85 since Run 91 A; every other row 0.9):
+    # the run340 replay predicted e_ratio 0.299 +- 0.01 and ripple_rms at most 0.0155 on the age program (temporal-resolve.md).
+    for on in ('0','1'):
+        pan=weight_rows[('age','pan12.5',on)]
+        assert pan['weight']=='0.850' and abs(float(pan['e_ratio'])-.299)<=.01 and float(pan['ripple_rms'])<=.0155,pan
+        assert all(weight_rows[(program,'rest',on)]['weight']=='0.900' for program in ('age','far_camera')),weight_rows[('age','rest',on)]
     # Case (m): the unrouted streak writes no negative age and, over a dark sky, no trail beyond 3 px; the hull row's marks are
     # the hull's own. The flickering sky's trail and the segment brightness ratios are reported, not gated.
     report['mote_streak']=[dict(re.findall(r'(\w+)=(\S+)',line)) for line in text.splitlines() if line.startswith('MOTE_STREAK ')]

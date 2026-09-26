@@ -2210,7 +2210,7 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
             // its history into the main target in place of the copy-back
             // below (the HDR route sharpens in the write-back instead).
             in.sharpen = hdr_scene || taa_sharpen_failures_ >= sharpen_failure_limit ? 0.f : taa_sharpen_;
-            // X3M_TAA_HISTORY_WEIGHT (both routes; unset: 0.9, the pass's default, bit for bit).
+            // X3M_TAA_HISTORY_WEIGHT (both routes; unset: 0.85, the pass's default, bit for bit).
             in.weight = taa_history_weight_;
             // Alpha history (false unless requested) only where the resolved alpha feeds bloom (FP16 input).
             in.alpha_history = taa_alpha_history_ && hdr_scene != nullptr;

@@ -142,7 +142,7 @@ byte, run by a host test like `inventory_scan.py` is today):
 
 | Output | Path | Now or later |
 |---|---|---|
-| C++ table `constexpr config::Entry config_schema[] = {{key, L"X3M_...", type, default, off, min, max, choices}}` plus typed `constexpr` defaults (`config_default::taa_history_weight = 0.9f`) | `src/config/config_schema_inc.h` (under `src/config/` so renderer headers can include it without Windows headers) | now |
+| C++ table `constexpr config::Entry config_schema[] = {{key, L"X3M_...", type, default, off, min, max, choices}}` plus typed `constexpr` defaults (`config_default::taa_history_weight = 0.85f`) | `src/config/config_schema_inc.h` (under `src/config/` so renderer headers can include it without Windows headers) | now |
 | Template, every key as `;key = default`, sections, descriptions, `requires` lines | `assets/x3m.ini` | now |
 | Fixture/test view: the set of user-facing keys, defaults, off values | imported from `schema.py` directly (no generation) | now |
 | Host cross-check of the launcher: every `X3M_*` in a default dry run is a schema key (or on a short launcher-only list), each value equals the schema default; every schema entry with `launcher` set is a registered option | `verification/analysis/test_config_schema.py` | now |
@@ -222,7 +222,7 @@ examples as they would appear in the template:
 
 ; How much of the previous frames the anti-aliasing keeps. Higher is smoother but
 ; moving objects leave slightly longer trails. 0.5 to 0.98.
-;taa_history_weight = 0.9
+;taa_history_weight = 0.85
 ```
 
 ```ini

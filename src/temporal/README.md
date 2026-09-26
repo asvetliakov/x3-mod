@@ -229,7 +229,7 @@ creation, which the pass reports as "filter unavailable" and the route answers
 by running the plain resolve
 ([ledger](../../docs/verification/motion-output.md), "Run 139").
 
-Weight `c5.z` (route default 0.9, `X3M_TAA_HISTORY_WEIGHT` 0.5–0.98): 0.85–0.95 is the sensible range; the
+Weight `c5.z` (route default 0.85 since Run 91 A, 0.9 before, `X3M_TAA_HISTORY_WEIGHT` 0.5–0.98): 0.85–0.95 is the sensible range; the
 per-phase ripple of a toggling edge sample is (1-w)·contrast, convergence
 takes about 2/(1-w) frames, and a larger weight holds clamp-bounded ghosts
 longer. Cost per pixel: 10 current color, 9 current depth, 1 motion, 4 history
