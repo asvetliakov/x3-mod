@@ -269,8 +269,61 @@ void run_screen_emission_integration(Fixture& f,const char* original_path) {
     const DWORD bolt_shape_length=GetEnvironmentVariableA("X3M_FIXTURE_BOLT_SHAPE",bolt_shape_setting,sizeof bolt_shape_setting);
     if(f.boltshape) {
         const bool oversize=bolt_shape_length==5&&!std::strcmp(bolt_shape_setting,"prims"),misdeclared=bolt_shape_length==4&&!std::strcmp(bolt_shape_setting,"decl");
-        require(oversize||misdeclared,"X3M_FIXTURE_BOLT_SHAPE is prims or decl");
+        const bool copies=bolt_shape_length==4&&!std::strcmp(bolt_shape_setting,"copy");
+        require(oversize||misdeclared||copies,"X3M_FIXTURE_BOLT_SHAPE is prims, decl or copy");
         require(qualified&&additive,"bolt shape script needs the qualified additive configuration");
+        // =copy (the bolt_copy capture row; lod-overlay.md, "Run 91 A: bolts
+        // behind distant objects"): per frame 1-7 the game's two-copy shape,
+        // the writer's buffer DISCARD-filled with two bolts and drawn, then
+        // DISCARD-filled again with the same bolts and drawn (a new revision,
+        // equal positions), then a second buffer with two bolts shifted along
+        // x drawn once. The capture window (X3M_CAPTURE_START) falls inside;
+        // the runner requires three rows on it: hashes 1 = 2 != 3. The rows
+        // are the near-plane kinds' perspective (w = z) and the bolts sit at
+        // w = 2, so the footprint's frame gate passes before the positions.
+        if(copies) {
+            constexpr unsigned copy_frames=8,copy_quads=2;
+            Com<IDirect3DVertexBuffer9> other;
+            api(f.d->CreateVertexBuffer(buffer_bytes,D3DUSAGE_DYNAMIC|D3DUSAGE_WRITEONLY,0,D3DPOOL_DEFAULT,&other.p,nullptr),"bolt copy second buffer");
+            const float corners[6][2]={{qx0,qy0},{qx1,qy0},{qx0,qy1},{qx1,qy0},{qx1,qy1},{qx0,qy1}};
+            const auto write_copy=[&](IDirect3DVertexBuffer9* target,float shift) {
+                void* data=nullptr;api(target->Lock(0,buffer_bytes,&data,D3DLOCK_DISCARD),"bolt copy discard lock"); // an explicit window: SizeToLock 0 is never scanned
+                for(unsigned q=0;q<copy_quads;++q)for(unsigned k=0;k<6;++k) {
+                    auto* v=static_cast<unsigned char*>(data)+(q*6+k)*stride;
+                    const float position[3]={corners[k][0]+shift+.1f*float(q),corners[k][1],2.f},uv[2]={.5f,.5f};const DWORD colour=0xffffffffu;
+                    std::memcpy(v,position,12);std::memcpy(v+12,uv,8);std::memcpy(v+20,&colour,4);
+                }
+                api(target->Unlock(),"bolt copy discard unlock");
+            };
+            unsigned copy_draws=0;
+            for(unsigned plan=0;plan<copy_frames;++plan) {
+                f.frame_begin();f.linear_material_inputs();f.write_reserved();
+                f.draw(f.a,.03125f*float(plan%3),0,0,true,true,f.a.recorded,Alter::None,false);
+                const unsigned required=f.emission_status(f.d.p,16);
+                f.emissions_enabled=required!=0;
+                if(plan)for(unsigned draw=0;draw<3;++draw) {
+                    write_copy(draw<2?bullets.p:other.p,draw<2?0.f:-.5f);
+                    bind_bullets('s');
+                    api(f.d->SetVertexShaderConstantF(0,near_rows,4),"bolt copy perspective rows");
+                    if(draw==2)api(f.d->SetStreamSource(0,other.p,0,stride),"bolt copy second stream");
+                    const auto state=f.snapshot();
+                    const unsigned admitted_before=f.emission_status(f.d.p,60);
+                    const HRESULT hr=f.d->DrawPrimitive(D3DPT_TRIANGLELIST,0,2*copy_quads);++f.draw_index;
+                    require(SUCCEEDED(hr),"bolt copy draw HRESULT");
+                    f.compare(state,f.snapshot(),"bolt copy restoration");
+                    require(f.emission_status(f.d.p,60)-admitted_before==1,"bolt copy additive admission");
+                    ++copy_draws;
+                }
+                f.emission_reference_color=scene();
+                raw(3,f.emission_reference_mask);
+                f.emission_mask_valid=required&&f.emission_status(f.d.p,1);
+                require_quiet(f.emission_reference_color.size()==std::size_t(f.W)*f.H*4,"bolt copy reference image published");
+                f.frame_end();
+            }
+            api(f.d->SetIndices(nullptr),"bolt copy final index release");api(f.d->SetStreamSource(0,nullptr,0,0),"bolt copy final stream release");
+            std::printf("BOLT_COPY frames=%u draws=%u quads=%u primitives=%u\n",copy_frames,copy_draws,copy_quads,2*copy_quads);
+            return;
+        }
         constexpr unsigned part_bytes=1024u*72u*stride,big_quads=1100,small_quads=1025; // 6600 and 6150 vertices: both above max_vertices
         static_assert(small_quads*6>max_vertices&&big_quads*6*stride<=part_bytes,"both batches exceed the scan bound and fit the part buffer");
         const D3DVERTEXELEMENT9 shifted_elements[]={{0,0,D3DDECLTYPE_FLOAT2,D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_TEXCOORD,0},{0,8,D3DDECLTYPE_D3DCOLOR,D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_COLOR,0},{0,12,D3DDECLTYPE_FLOAT3,D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_POSITION,0},D3DDECL_END()};

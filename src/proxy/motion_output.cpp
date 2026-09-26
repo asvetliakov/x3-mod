@@ -5066,7 +5066,8 @@ void MotionOutput::begin_frame(std::uint64_t frame, bool capture) noexcept {
     capture_ = capture;
     telemetry_ = telemetry::enabled();
     packed_sample_.valid = false;
-    packed_sample_.sampled = 0;  // an unmatched pre never pairs with a later frame's post
+    packed_sample_.sampled = 0; // an unmatched pre never pairs with a later frame's post
+    bolt_copy_rows_ = bolt_copy_more_ = 0;
     engine_memory::next_frame(); // the object observers' direct-read regions are re-validated once per frame
     counters_ = {};
     sun_frame_ = {};
@@ -6399,6 +6400,37 @@ struct BoltTiming {
     }
 };
 }
+// One row per bullet-producer draw of a capture frame, at most bolt_copy_cap
+// per frame (after_present writes bolt_copy_more with the rest). `positions`
+// non-null: the Unlock scan's retained copy at `revision`; the row hashes
+// exactly the drawn range (StartVertex 0, 3 x primitives vertices) and then
+// rechecks that the scan still held at that revision (hash=none
+// reason=recheck otherwise). Null: `reason` names the refusal that left no
+// positions.
+void MotionOutput::log_bolt_copy(const MotionDrawCall& call, const float* positions, std::uint64_t revision,
+                                 const char* reason) noexcept {
+    if (bolt_copy_rows_ >= bolt_copy_cap) {
+        ++bolt_copy_more_;
+        return;
+    }
+    ++bolt_copy_rows_;
+    const std::uint32_t count = call.primitives * 3u;
+    if (positions) {
+        const std::uint64_t hash = bolt_footprint::position_hash(positions, count);
+        const fade_region::Query query{shadow_.stream0, shadow_.indices, shadow_.stream0_identity,
+                                       shadow_.indices_identity};
+        if (fade_region::recheck_locked_prefix(query, count, revision)) {
+            log("bolt_copy device=%llu frame=%llu draw=%u vb=%llu revision=%llu start=%u count=%u prims=%u hash=%016llx",
+                id_, frame_, unsigned(counters_.draws), shadow_.stream0, revision, unsigned(call.first),
+                unsigned(count), unsigned(call.primitives), hash);
+            return;
+        }
+        reason = "recheck";
+    }
+    log("bolt_copy device=%llu frame=%llu draw=%u vb=%llu revision=%llu start=%u count=%u prims=%u hash=none reason=%s",
+        id_, frame_, unsigned(counters_.draws), shadow_.stream0, revision, unsigned(call.first), unsigned(count),
+        unsigned(call.primitives), reason ? reason : "other");
+}
 void MotionOutput::prepare_bolt_footprint(const MotionDrawCall& call, MotionRoute& route) noexcept {
     using namespace bolt_footprint;
     // The bullet producers only (screen_emission_admission.h, the guard step D
@@ -6420,7 +6452,13 @@ void MotionOutput::prepare_bolt_footprint(const MotionDrawCall& call, MotionRout
     // `stream0_bytes` the size of the bound stream-0 buffer: the shadow keeps
     // no size, so the one GetStreamSource + GetDesc runs here, on the logged
     // refusal only (0 when either call fails or nothing is bound).
+    // Capture frames only, first: the draw's bolt_copy row, once (a refusal
+    // before the positions logs hash=none with its reason; the hashed row is
+    // written as soon as the scanned positions are known).
+    bool copy_logged = false;
     const auto refuse_once = [&](unsigned reason, unsigned detail) {
+        if (capture_ && !copy_logged)
+            log_bolt_copy(call, nullptr, 0, reason < reason_count ? reasons[reason] : "other");
         if (reason < reason_count && !(bolt_refusal_logged_ & (1u << reason))) {
             bolt_refusal_logged_ |= 1u << reason;
             UINT stream0_bytes = 0;
@@ -6501,6 +6539,12 @@ void MotionOutput::prepare_bolt_footprint(const MotionDrawCall& call, MotionRout
         ++c.refused_buffer;
         refuse_once(6, refusal);
         return;
+    }
+    // bolt_copy (capture frames only): the hash of the drawn range from the
+    // Unlock scan's retained copy.
+    if (capture_) {
+        log_bolt_copy(call, positions, revision, nullptr);
+        copy_logged = true;
     }
     // Instanced geometry draws more than the prefix: one documented Get.
     UINT frequency = 0;
@@ -9422,6 +9466,10 @@ void MotionOutput::log_screen_additive_frame() noexcept {
         screen_additive_frame_admitted_, screen_additive_frame_refused_, screen_additive_frame_pairs_);
 }
 void MotionOutput::after_present(HRESULT result) noexcept {
+    if (bolt_copy_more_) { // capture frames only: the bullet draws beyond the frame's bolt_copy cap
+        log("bolt_copy_more device=%llu frame=%llu more=%u", id_, frame_, bolt_copy_more_);
+        bolt_copy_more_ = 0;
+    }
     report_xt_default_unavailable();
     report_mip_bias_game_write_failure();
     release_mip_bias_retry_bound();

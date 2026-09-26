@@ -634,5 +634,20 @@ inline std::uint32_t write_draw(const Frame& f, const float* positions, const st
     return expanded;
 }
 
+// The capture-only bolt_copy row (lod-overlay.md, "Run 91 A: bolts behind
+// distant objects"): FNV-1a 64 over the bytes of the first `n` scanned
+// positions (x, y, z floats as the Unlock scan copied them). Two draws of the
+// same bolts hash equal; a different batch, count or position differs.
+inline std::uint64_t position_hash(const float* positions, std::uint32_t n) noexcept {
+    std::uint64_t h = 0xcbf29ce484222325ull;
+    const auto* p = reinterpret_cast<const unsigned char*>(positions);
+    const std::size_t bytes = positions ? std::size_t(n) * 3u * sizeof(float) : 0u;
+    for (std::size_t i = 0; i < bytes; ++i) {
+        h ^= p[i];
+        h *= 0x100000001b3ull;
+    }
+    return h;
+}
+
 #undef X3M_BF_INLINE
 } // namespace x3m::bolt_footprint

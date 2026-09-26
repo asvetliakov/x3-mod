@@ -357,3 +357,7 @@ A new `boltshape` script for `run_motion_output.py` (next to `seam-ownership-bol
 bolt, far opaque quad over half the bolt, then the same bolt again, and require equal bolt excess on both sides.
 Next launch: log a hash of the locked POSITION words per bullet draw on capture frames (the footprint's Unlock
 scan already reads them) to settle whether the copies are the same.
+The diagnostic exists (fixture `seam-bolt-copy-hash`): every F8 capture frame logs one `bolt_copy` row per bullet
+draw with the FNV-1a 64 hash of its drawn POSITION floats; compare the early copy's row (the bullet draw right after the
+depth clear) with the late copy's in the same frame: equal `hash` and `count` at consecutive `revision`s means the same
+bolts are drawn twice.

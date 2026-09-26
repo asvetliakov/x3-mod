@@ -880,6 +880,12 @@ BOLT_SHAPE_ENV = dict(X3M_HDR_TONEMAP='agx', X3M_HDR_DECODE='gamma2.2', X3M_HDR_
 BOLT_SHAPE_EXPECT = {'prims': (4, 2200, 1024 * 72 * 24, 2200), 'decl': (128, 2, 6144 * 24, 2)}
 CASES += [case(f'seam-ownership-bolt-shape-{script}', 'boltshape', 'ownership', jitter=True, taa=True, lazy=True, camera=True, sentinel='2', hdr=True,
                hdr_env=dict(BOLT_SHAPE_ENV, X3M_FIXTURE_BOLT_SHAPE=script)) for script in BOLT_SHAPE_EXPECT]
+# The capture-only bolt_copy row (docs/verification/lod-overlay.md, "Run 91 A: bolts behind distant
+# objects"): script copy draws per frame 1-7 the writer's buffer twice (two DISCARD fills with the same
+# two bolts) and a second buffer with two shifted bolts once; the capture window is one frame
+# (X3M_CAPTURE_START=5) and must carry exactly three bolt_copy rows, hashes 1 = 2 != 3.
+CASES += [case('seam-bolt-copy-hash', 'boltshape', 'ownership', jitter=True, taa=True, lazy=True, camera=True, sentinel='2', hdr=True,
+               hdr_env=dict(BOLT_SHAPE_ENV, X3M_FIXTURE_BOLT_SHAPE='copy', X3M_CAPTURE_START='5', X3M_CAPTURE_FRAMES='1'))]
 # Fade-band motion arm scripts (motion_output_fade_route_inc.h, X3M_FIXTURE_FADE_SCRIPT;
 # docs/architecture/linear-distance-fade-region.md "Fade-band route"): twelve
 # static frames over the eight jitter phases with the rotating camera (cut at
@@ -4490,6 +4496,28 @@ def validate_bolt_shape(name, text, trace, script):
                 other_devices=len(other))
 
 
+def validate_bolt_copy(name, text, trace):
+    """The copy script: every bolt_copy row of the session falls on the one capture frame, three rows in draw
+    order, each hashed (no hash=none) with start 0, count 12 and prims 4 as drawn; rows 1 and 2 share the buffer
+    and the hash at two different revisions, row 3 is another buffer with another hash; no bolt_copy_more."""
+    lines = text.splitlines(); tl = trace.splitlines()
+    assert any(l.startswith('RESULT PASS ') for l in lines) and not any(l.startswith('RESULT FAIL') for l in lines), name
+    summary = [fields(l) for l in lines if l.startswith('BOLT_COPY ')]
+    assert len(summary) == 1 and int(summary[0]['draws']) == 21 and int(summary[0]['primitives']) == 4, (name, summary)
+    rows = [fields(l) for l in tl if l.startswith('bolt_copy ')]
+    assert len(rows) == 3 and len({r['frame'] for r in rows}) == 1 and len({r['device'] for r in rows}) == 1, (name, rows)
+    assert not any(l.startswith('bolt_copy_more ') for l in tl), name
+    assert [int(r['draw']) for r in rows] == sorted(int(r['draw']) for r in rows), (name, rows)
+    for r in rows:
+        assert r['hash'] != 'none' and len(r['hash']) == 16, (name, r, [l for l in tl if l.startswith('bolt_footprint_refused ')])
+        assert (int(r['start']), int(r['count']), int(r['prims'])) == (0, 12, 4), (name, r)
+    first, second, third = rows
+    assert first['vb'] == second['vb'] != third['vb'], (name, rows)
+    assert int(second['revision']) > int(first['revision']), (name, rows)
+    assert first['hash'] == second['hash'] != third['hash'], (name, rows)
+    return dict(checks=1, script='copy', rows=[{k: r[k] for k in ('frame', 'draw', 'vb', 'revision', 'count', 'prims', 'hash')} for r in rows])
+
+
 def validate_zonly(name, text, trace):
     """The zonly script (asteroid-fog-temporal.md, run 47): nine frames, each a depth-only prepass with the z_only
     vs_1_1 program (null PS, ZWRITEENABLE on, COLORWRITEENABLE 0) followed by the blended, z-write-off material draw
@@ -6769,6 +6797,14 @@ def main(argv=None):
                 result['cases'][name] = case
                 save()
                 print(f'{name}: exit={completed.returncode} checks={case["checks"]} refused_frame={case["refused"]["frame"]}', flush=True)
+                continue
+            if mode == 'boltshape' and hdr_env['X3M_FIXTURE_BOLT_SHAPE'] == 'copy':
+                case = validate_bolt_copy(name, text, trace)
+                case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
+                            dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / candidate_exe.name))
+                result['cases'][name] = case
+                save()
+                print(f'{name}: exit={completed.returncode} rows={len(case["rows"])} hashes={",".join(r["hash"] for r in case["rows"])}', flush=True)
                 continue
             if mode == 'boltshape':
                 case = validate_bolt_shape(name, text, trace, hdr_env['X3M_FIXTURE_BOLT_SHAPE'])

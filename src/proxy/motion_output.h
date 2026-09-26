@@ -2015,6 +2015,10 @@ private:
     bool ensure_bolt_buffer(UINT bytes) noexcept;
     void release_bolt_buffer() noexcept;
     void log_bolt_footprint_window() noexcept;
+    // Capture frames only: one bolt_copy row per bullet-producer draw (the
+    // scanned positions' hash, or hash=none with the refusal that left none).
+    void log_bolt_copy(const MotionDrawCall&, const float* positions, std::uint64_t revision,
+                       const char* reason) noexcept;
     void log_screen_additive_frame() noexcept;
     void derive_fade_region(MotionRoute&) noexcept;
     // Step-1 rectangle of the bound draw (resolve, rows, jitter, viewport,
@@ -2313,6 +2317,10 @@ private:
     std::uint32_t chase_pose_mark_ = 0; // chase_camera::pose_write_count() at the last Present (the frame-stamped view
                                         // gate)
     unsigned bolt_refusal_logged_ = 0;  // bit per refusal reason already logged (one line each per device)
+    // Capture frames only (reset in begin_frame): bolt_copy rows written this
+    // frame, at most bolt_copy_cap; the rest are counted for bolt_copy_more.
+    static constexpr unsigned bolt_copy_cap = 16;
+    unsigned bolt_copy_rows_ = 0, bolt_copy_more_ = 0;
     float screen_additive_gain_ = 1.f;
     // Per-source bloom attenuation of the additive draw (option 1): the scene
     // alpha the bloom extract weighs by becomes k*a + D.a. 1 = off (no alpha
