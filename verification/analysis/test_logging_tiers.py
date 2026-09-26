@@ -16,6 +16,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
+from source_text import source_text
 
 ROOT = Path(__file__).resolve().parents[2]
 # Options the two groups replaced (removed from the launcher; their variables stay DLL reads for the fixtures).
@@ -145,12 +146,12 @@ class LauncherGroups(unittest.TestCase):
         # Neither group carries the heavy families, and --draw-trace never sends them as launcher variables.
         heavy = set(DRAW_TRACE_SWITCHES) | {'X3M_SUBMIT_PHASES'}
         self.assertFalse(heavy & (set(self.launch('--perf')[1]) | set(self.launch('--debug')[1]) | set(self.launch('--perf', '--draw-trace')[1])))
-        sources = ''.join(p.read_text() for p in (ROOT / 'src/proxy').glob('*.cpp'))
+        sources = ''.join(source_text(p) for p in (ROOT / 'src/proxy').glob('*.cpp'))
         for name in DRAW_TRACE_SWITCHES:
             self.assertIn(f'log_tier::draw_trace_flag(L"{name}")', sources, name)
             self.assertNotIn(f'log_tier::debug_flag(L"{name}")', sources, name)
             self.assertNotIn(f'log_tier::perf_flag(L"{name}")', sources, name)
-        self.assertIn('log_tier::perf_flag(L"X3M_FRAME_PHASES")||log_tier::debug()||log_tier::draw_trace()', (ROOT / 'src/proxy/frame_phases.cpp').read_text())
+        self.assertIn('log_tier::perf_flag(L"X3M_FRAME_PHASES")||log_tier::debug()||log_tier::draw_trace()', source_text(ROOT / 'src/proxy/frame_phases.cpp'))
         self.assertIn('X3M_DRAW_TRACE', self.module.TIERED_VARIABLES)
 
 
@@ -170,7 +171,7 @@ class DllGroupReads(unittest.TestCase):
     X3M_DEBUG=1 / X3M_PERF=1 on a bare proxy reach it; X3M_TELEMETRY itself is read only inside the header."""
 
     def test_group_switch_reads_use_the_tier_helper(self):
-        sources = {path: path.read_text().splitlines() for path in (ROOT / 'src/proxy').glob('*.cpp')}
+        sources = {path: source_text(path).splitlines() for path in (ROOT / 'src/proxy').glob('*.cpp')}
         for name in DEBUG_SWITCHES + PERF_SWITCHES + DRAW_TRACE_SWITCHES:
             reads = [(path, i) for path, lines in sources.items() for i, line in enumerate(lines)
                      if f'L"{name}"' in line and not line.lstrip().startswith('//')]
@@ -180,11 +181,11 @@ class DllGroupReads(unittest.TestCase):
                     self.assertIn('log_tier::', enclosing_function(sources[path], i), f'{path.name}:{i + 1} reads {name} without the group')
         self.assertFalse([p.name for p, lines in sources.items() if any('L"X3M_TELEMETRY"' in l for l in lines)])
         # The submit stamps stay outside --perf: they claim the lens traversal call the sun-occlusion default patches.
-        submit = (ROOT / 'src/proxy/submit_phases.cpp').read_text().splitlines()
+        submit = source_text(ROOT / 'src/proxy/submit_phases.cpp').splitlines()
         reads = [i for i, line in enumerate(submit) if 'L"X3M_SUBMIT_PHASES"' in line]
         self.assertEqual(len(reads), 1)
         self.assertNotIn('log_tier::', enclosing_function(submit, reads[0]))
-        header = (ROOT / 'src/proxy/log_tiers.h').read_text()
+        header = source_text(ROOT / 'src/proxy/log_tiers.h')
         for function in ('debug()', 'perf()', 'telemetry()', 'debug_flag(', 'perf_flag(', 'cadence_default('):
             self.assertIn(function, header)
         self.assertIn('env_flag(L"X3M_TELEMETRY") || perf() || debug()', header)
@@ -202,18 +203,18 @@ class SessionLogContracts(unittest.TestCase):
         allowed = {'session_log.cpp', 'voice_dmo_fallback.cpp', 'loading_trace.cpp', 'loading_trace_light.cpp',
                    'fov.cpp', 'lod_occlusion.cpp', 'sun_flare_fix.cpp', 'terran_station_lod.cpp'}
         offenders = [path.name for path in (ROOT / 'src/proxy').glob('*.cpp')
-                     if path.name not in allowed and re.search(r'\bWriteFile\(', path.read_text())]
+                     if path.name not in allowed and re.search(r'\bWriteFile\(', source_text(path))]
         self.assertEqual(offenders, [])
 
     def test_exit_path_and_crash_filter(self):
-        loader = (ROOT / 'src/proxy/loader.cpp').read_text()
+        loader = source_text(ROOT / 'src/proxy/loader.cpp')
         self.assertIn('if (reserved != nullptr) x3m::abandon_devices_at_exit();', loader)
         self.assertLess(loader.index('x3m::abandon_fog_density_workers();'), loader.index('x3m::abandon_devices_at_exit();'))
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
         self.assertIn('Map* kept=new(storage) Map(); // placement: never destroyed', capture)
         self.assertIn('session_log::park_writer("last_device");', capture)
         self.assertIn('session_log::start_writer(telemetry::enabled()); // re-arms', capture)
-        source = (ROOT / 'src/proxy/session_log.cpp').read_text()
+        source = source_text(ROOT / 'src/proxy/session_log.cpp')
         self.assertIn('previous_filter_ = SetUnhandledExceptionFilter(&x3m_exception_witness);', source)
         self.assertNotIn('AddVectoredExceptionHandler', source)
         self.assertIn('return previous ? previous(info) : EXCEPTION_CONTINUE_SEARCH;', source)

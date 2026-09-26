@@ -14,6 +14,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from source_text import source_text
 
 ROOT = Path(__file__).resolve().parents[2]
 WS_POPUP, WS_VISIBLE, WS_CLIPSIBLINGS, WS_CAPTION, WS_THICKFRAME = 0x80000000, 0x10000000, 0x04000000, 0x00C00000, 0x00040000
@@ -152,7 +153,7 @@ class WindowModeCore(unittest.TestCase):
         self.assertGreater(sum(1 for c in compiled if c[0] == 'moved'), 0)
 
     def test_core_is_windows_free(self):
-        header = (ROOT / 'src/proxy/window_mode_core.h').read_text()
+        header = source_text(ROOT / 'src/proxy/window_mode_core.h')
         self.assertNotIn('#include <windows.h>', header)
         for needle in ('ws_popup = 0x80000000u', 'ws_caption = 0x00c00000u', 'ws_thickframe = 0x00040000u'):
             self.assertIn(needle, header)
@@ -160,7 +161,7 @@ class WindowModeCore(unittest.TestCase):
 
 class WindowModeWiring(unittest.TestCase):
     def test_production_wiring(self):
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
         self.assertIn('window_mode::apply("create_before",window,p->hDeviceWindow,p->Windowed!=FALSE,p->BackBufferWidth,p->BackBufferHeight);', capture)
         self.assertIn('window_mode::apply("reset_before",ctx.stats.focus_window,p->hDeviceWindow,p->Windowed!=FALSE,p->BackBufferWidth,p->BackBufferHeight);', capture)
         # Both before the native call, inside the hook's CpuCallBoundary.
@@ -169,7 +170,7 @@ class WindowModeWiring(unittest.TestCase):
         reset = capture[capture.index('HRESULT reset_common('):]
         self.assertLess(reset.index('CpuCallBoundary cpu;'), reset.index('window_mode::apply("reset_before"'))
         self.assertLess(reset.index('window_mode::apply("reset_before"'), reset.index('cpu.before_original();'))
-        module = (ROOT / 'src/proxy/window_mode.cpp').read_text()
+        module = source_text(ROOT / 'src/proxy/window_mode.cpp')
         for needle in ('SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOOWNERZORDER', 'GetAncestor(hwnd, GA_PARENT) == GetDesktopWindow()',
                        'GetWindowThreadProcessId(hwnd, nullptr)', 'MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST)', 'SetLastError(saved_error);',
                        'L"X3M_WINDOW_MONITOR_RECT"', 'L"X3M_WINDOW_MONITOR_RECT_DEFAULT"', 'log("window_mode phase=%s'):

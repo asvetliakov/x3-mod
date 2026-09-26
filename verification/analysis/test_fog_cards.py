@@ -4,6 +4,7 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+from source_text import source_text
 
 ROOT = Path(__file__).resolve().parents[2]
 DRIVER = r'''
@@ -90,15 +91,15 @@ class FogCardPolicyTests(unittest.TestCase):
             self.assertIn('PASS', result.stdout)
 
     def test_actual_motion_output_methods(self):
-        fragment = (ROOT / 'src/proxy/motion_output_fog_inc.h').read_text()
+        fragment = source_text(ROOT / 'src/proxy/motion_output_fog_inc.h')
         names = ('fog_transition_invalidate', 'volumetric_fog_sector_sample', 'fog_prefill_confirm', 'fog_card_transition', 'fault_fog_cards', 'prepare_volumetric_fog_targets', 'reconcile_volumetric_fog', 'complete_volumetric_fog', 'volumetric_fog_begin_frame',
                  'prepare_fog_card', 'finish_fog_card', 'volumetric_fog_toggle', 'volumetric_fog_step',
                  'run_volumetric_fog', 'disable_volumetric_fog')
         methods = []
-        cpp = (ROOT / 'src/proxy/motion_output.cpp').read_text()
+        cpp = source_text(ROOT / 'src/proxy/motion_output.cpp')
         names += ('get_render_state_native', 'state_known', 'blend_known', 'state_field', 'begin_draw_reads')
         for name in names:
-            fragment = cpp if name in ('get_render_state_native', 'state_known', 'blend_known', 'state_field', 'begin_draw_reads') else (ROOT / 'src/proxy/motion_output_fog_inc.h').read_text()
+            fragment = cpp if name in ('get_render_state_native', 'state_known', 'blend_known', 'state_field', 'begin_draw_reads') else source_text(ROOT / 'src/proxy/motion_output_fog_inc.h')
             start = fragment.rfind('\n', 0, fragment.index('MotionOutput::' + name + '(')) + 1
             body = fragment.index('{', start)
             depth, end = 1, body + 1
@@ -132,14 +133,14 @@ class FogCardPolicyTests(unittest.TestCase):
             # run278/run283 case C: the material's own z/cull and the measured run283 vector (z 0, cull NONE, alpha test 1)
             # are admitted; zwrite/stencil 1, alpha test 2 and wrong blend/mask/fill refused; the state row spaced 300 frames
             self.assertIn('run278_docked_states admitted=8 refused=22 spaced=1 PASS', result.stdout)
-            self.assertIn('volumetric_fog_card_states', (ROOT / 'src/proxy/motion_output_fog_inc.h').read_text())
+            self.assertIn('volumetric_fog_card_states', source_text(ROOT / 'src/proxy/motion_output_fog_inc.h'))
             for cards in (6, 8):
                 self.assertIn(f'card_native_calls cards={cards} rs_get={12*cards} freq_get={cards} mask_set={2*cards} total={15*cards}', result.stdout)
 
     def test_draw_integration_envelope_and_order(self):
-        cpp = (ROOT / 'src/proxy/motion_output.cpp').read_text()
-        fog = (ROOT / 'src/proxy/motion_output_fog_inc.h').read_text()
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        cpp = source_text(ROOT / 'src/proxy/motion_output.cpp')
+        fog = source_text(ROOT / 'src/proxy/motion_output_fog_inc.h')
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
         draw = cpp[cpp.index('MotionRoute MotionOutput::before_draw('):cpp.index('// Canonical COM identity')]
         self.assertLess(draw.index('restore_bindings_checked()'), draw.index('prepare_fog_card(call, route)'))
         after = cpp[cpp.index('void MotionOutput::after_draw('):]

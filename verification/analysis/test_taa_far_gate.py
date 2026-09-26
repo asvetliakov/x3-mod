@@ -10,6 +10,7 @@ import unittest
 
 import test_taa_sky_history as sky
 import test_taa_thin_vote as vote
+from source_text import source_text
 
 ROOT, TAA = sky.ROOT, sky.TAA
 
@@ -61,7 +62,7 @@ class FarGateLaunch(unittest.TestCase):
 
 class FarGateSource(unittest.TestCase):
     def test_dll_reads_the_setting_and_logs_the_configured_gate(self):
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
         self.assertIn('x3m::config::get(L"X3M_TAA_FAR_GATE"', capture)
         self.assertIn('bool taa_far_camera_gate = true, taa_far_gate_given = false, taa_far_gate_default = false;', capture)
         # The launcher's marker counts only with camera and only as exactly "1".
@@ -69,7 +70,7 @@ class FarGateSource(unittest.TestCase):
         self.assertIn('taa_far_gate_setting invalid=1 reason=too_long length=%lu', capture)
         self.assertIn('log("taa_far_gate_setting invalid=1");', capture)
         self.assertIn('configure_far_gate(taa_far_camera_gate,taa_far_gate_given,taa_far_gate_default)', capture)
-        motion = (ROOT / 'src/proxy/motion_output.cpp').read_text()
+        motion = source_text(ROOT / 'src/proxy/motion_output.cpp')
         # The creation row: the configured gate (camera only on the camera-gate resolve) and the launcher default.
         self.assertIn('ps30_slots=%u far_gate=%s default=%u far_clip=%s far_clip_default=%u reason=%s"', motion)  # reason: initialize's refusal (2026-09-25)
         self.assertIn('far_camera_gate ? "camera" : "screen", unsigned(far_camera_gate && taa_far_gate_default_)', motion)
@@ -82,17 +83,17 @@ class FarGateSource(unittest.TestCase):
         self.assertIn('in.far_camera_gate = taa_far_camera_gate_;', motion)
 
     def test_pass_and_program_select_the_gate_on_c11_x(self):
-        header = (ROOT / 'src/renderer/temporal_pass.h').read_text()
+        header = source_text(ROOT / 'src/renderer/temporal_pass.h')
         self.assertIn('bool far_camera_gate = true;', header)
-        source = (ROOT / 'src/renderer/temporal_pass.cpp').read_text()
+        source = source_text(ROOT / 'src/renderer/temporal_pass.cpp')
         self.assertIn('hold_constants[4]={in.far_camera_gate?0.f:1.f,', source)
-        resolve = (ROOT / 'src/temporal/resolve.hlsl').read_text()
+        resolve = source_text(ROOT / 'src/temporal/resolve.hlsl')
         self.assertIn('farOpen = holdGate.x > 0.5 ? farOpen : openC;', resolve)
         # The screen gate stays the far program's (outside X3M_REGION_HOLD) one expression.
         self.assertIn('float farOpen = 1 - saturate((speed - flicker.z) * flicker.w);', resolve)
 
     def test_motion_runner_clears_the_inherited_pair(self):
-        runner = (ROOT / 'verification/probe/run_motion_output.py').read_text()
+        runner = source_text(ROOT / 'verification/probe/run_motion_output.py')
         self.assertIn("env.pop('X3M_TAA_FAR_GATE', None)", runner)
         self.assertIn("'X3M_TAA_FAR_GATE_DEFAULT'", runner)
 

@@ -11,6 +11,7 @@ import sys
 import tempfile
 import unittest
 from unittest import mock
+from source_text import source_text
 
 ROOT = Path(__file__).resolve().parents[2]
 TAA = ['--motion-output', '--ownership', '--object-trace', '--object-lifetime', '--taa']
@@ -89,7 +90,7 @@ class MotionWeightLaunch(unittest.TestCase):
                 self.assertIn('--taa-motion-weight requires an age program', error)
 
     def test_dll_fallback_and_option_names(self):
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
         self.assertIn('float taa_motion_weight[3] = {0.f, 2.f, 8.f};', capture)
         self.assertIn('L"X3M_TAA_MOTION_WEIGHT"', capture)
         self.assertIn('motion_weight=%.3f,%g,%g', capture)
@@ -103,7 +104,7 @@ class MotionWeightLaunch(unittest.TestCase):
         self.assertLess(parse, capture.index(fallback))
         manage = load_manage()
         self.assertEqual(manage.TAA_MOTION_WEIGHT_DEFAULT, '0.7,2,8')
-        resolve = (ROOT / 'src/temporal/resolve.h').read_text()
+        resolve = source_text(ROOT / 'src/temporal/resolve.h')
         self.assertIn('kMotionWeightMin = .5f', resolve)
 
 

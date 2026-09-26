@@ -17,6 +17,7 @@ import unittest
 from unittest import mock
 
 from verification.analysis.test_capture_bloom_lifetime import extract_function
+from source_text import source_text
 
 ROOT = Path(__file__).resolve().parents[2]
 F8_BEGIN = '    // F8 is the one in-game key'
@@ -25,12 +26,12 @@ F8_END = 'ctx.key_down=down; ctx.capture=ctx.remaining>0;\n'
 
 def f8_block(capture):
     start = capture.index(F8_BEGIN)
-    return capture[start:capture.index(F8_END, start) + len(F8_END)]
+    return capture[start:capture.end(F8_END, start)]
 
 
 class InGameKeys(unittest.TestCase):
     def test_f8_is_the_only_key_and_only_under_debug(self):
-        sources = {path: path.read_text() for path in (ROOT / 'src').rglob('*') if path.suffix in ('.cpp', '.h')}
+        sources = {path: source_text(path) for path in (ROOT / 'src').rglob('*') if path.suffix in ('.cpp', '.h')}
         pollers = {str(path.relative_to(ROOT)): text.count('GetAsyncKeyState(')
                    for path, text in sources.items() if 'GetAsyncKeyState(' in text}
         self.assertEqual(pollers, {'src/proxy/capture.cpp': 1})
@@ -48,7 +49,7 @@ class InGameKeys(unittest.TestCase):
         self.assertIn('const bool down=log_tier::cached_debug && (GetAsyncKeyState(VK_F8)&0x8000)!=0;', block)
         # The flag is cached once at initialize_log, never read from the environment per frame (log_tiers.h).
         self.assertIn('log_tier::init();', extract_function(capture, 'void initialize_log('))
-        tiers = (ROOT / 'src/proxy/log_tiers.h').read_text()
+        tiers = source_text(ROOT / 'src/proxy/log_tiers.h')
         self.assertIn('inline void init() noexcept { cached_debug = debug(); cached_perf = perf(); cached_draw_trace = draw_trace(); }', tiers)
         self.assertNotIn('log_tier::debug()', extract_function(capture, 'HRESULT WINAPI present('))
         present = extract_function(capture, 'HRESULT WINAPI present(')
@@ -57,7 +58,7 @@ class InGameKeys(unittest.TestCase):
         self.assertIn('unsigned capture_start = 0;', capture)
         self.assertIn('x3m::config::get(L"X3M_CAPTURE_START",setting,32)', capture)
         # The fps overlay has no key: visible whenever requested.
-        overlay = (ROOT / 'src/proxy/fps_overlay.h').read_text()
+        overlay = source_text(ROOT / 'src/proxy/fps_overlay.h')
         self.assertIn('bool visible() const noexcept { return requested_; }', overlay)
         self.assertNotIn('toggle', overlay)
         # Bloom runs at full strength; the fog begin-frame step runs every frame without the sampler.
@@ -79,7 +80,7 @@ class InGameKeys(unittest.TestCase):
         fixture seam X3M_CAPTURE_START starts one burst either way."""
         compiler = shutil.which('clang++') or shutil.which('c++')
         self.assertIsNotNone(compiler)
-        block = f8_block((ROOT / 'src/proxy/capture.cpp').read_text())
+        block = f8_block(source_text(ROOT / 'src/proxy/capture.cpp'))
         harness = textwrap.dedent('''
             #include <cstdint>
             #include <cstdio>
@@ -127,7 +128,7 @@ class InGameKeys(unittest.TestCase):
         self.run_host('comparison_notice_fixture.cpp', [], notice=True)
 
     def test_production_bloom_handoff_preserves_display_at_full_strength(self):
-        source = (ROOT / 'src/proxy/capture.cpp').read_text()
+        source = source_text(ROOT / 'src/proxy/capture.cpp')
         functions = [extract_function(source, 'void retain_compositor_scene(')]
         self.run_host('comparison_bloom_handoff_fixture.cpp', functions, handoff=True)
 
@@ -164,7 +165,7 @@ class InGameKeys(unittest.TestCase):
     def test_launcher_auto_default_fixed_and_manual_override(self):
         # Execute the real parser/validation AST and exact exposure environment
         # assignments. Stop before filesystem/launch/install handling.
-        source = (ROOT / 'tools/manage.py').read_text()
+        source = source_text(ROOT / 'tools/manage.py')
         tree = ast.parse(source)
         main = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'main')
         statements = []

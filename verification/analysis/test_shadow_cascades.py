@@ -42,6 +42,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
+from source_text import source_text
 
 ROOT = Path(__file__).resolve().parents[2]
 DRIVER = r'''
@@ -879,10 +880,10 @@ class CandidatesLineTail(unittest.TestCase):
 
     def test_worst_case_fits_bound(self):
         import re
-        source = (ROOT / 'src/proxy/motion_output.cpp').read_text()
-        header = (ROOT / 'src/renderer/shadow_replay_projection.h').read_text()
+        source = source_text(ROOT / 'src/proxy/motion_output.cpp')
+        header = source_text(ROOT / 'src/renderer/shadow_replay_projection.h')
         cascades = int(re.search(r'constexpr unsigned shadow_cascade_max = (\d+);', header).group(1))
-        bound = re.search(r'constexpr std::size_t cascade_fields_bound = renderer::shadow_cascade_max \* \((.*?)\) \+ ([\d +]+) \+ 1;', source)
+        bound = re.search(r'constexpr std::size_t cascade_fields_bound = renderer::shadow_cascade_max \* \((.*?)\) \+ ([\d +]+) \+ 1;', ' '.join(source.split()))
         self.assertIsNotNone(bound)
         total = cascades * eval(bound.group(1)) + eval(bound.group(2)) + 1
         per_cascade = [' c%u=%u', ' capped%u=%u', ' static_only_refused%u=%u', ' large_admitted%u=%u', ' class_miss%u=%u',

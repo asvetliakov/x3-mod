@@ -25,6 +25,7 @@ import sys
 import tempfile
 import unittest
 from unittest import mock
+from source_text import source_text
 
 ROOT = Path(__file__).resolve().parents[2]
 HEADER = ROOT / 'src/renderer/object_bounds_projection.h'
@@ -229,7 +230,7 @@ def oracle(rows, lo, hi, width, height):
 
 class ProductionWiring(unittest.TestCase):
     def test_the_line_and_its_gates(self):
-        source = (ROOT / 'src/proxy/motion_output.cpp').read_text()
+        source = source_text(ROOT / 'src/proxy/motion_output.cpp')
         self.assertIn('object_bounds device=%llu frame=%llu index=%lu node=%p model=%08lx '
                       'sx0=%.1f sy0=%.1f sx1=%.1f sy1=%.1f zmin=%.6f zmax=%.6f inside=%u%s%s', source)
         # The line is written only on capture frames, only with the option, and
@@ -238,12 +239,12 @@ class ProductionWiring(unittest.TestCase):
         self.assertIn('if (object_bounds_log_ && capture_ && e->state == shadow_replay::ExtentState::Known) '
                       'log_object_bounds(route, draw_rows(), e->lo, e->hi, route.alpha_tested);', source)
         self.assertIn('#include "../renderer/object_bounds_projection.h"', source)
-        header = (ROOT / 'src/proxy/motion_output.h').read_text()
+        header = source_text(ROOT / 'src/proxy/motion_output.h')
         self.assertIn('void configure_object_bounds_log(bool requested) noexcept { object_bounds_log_ = requested; }', header)
         self.assertIn('bool object_bounds_log_=false;', header)
 
     def test_the_mode_line_records_both_prerequisites(self):
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
         self.assertIn('X3M_OBJECT_BOUNDS_LOG', capture)
         self.assertIn('object_bounds_mode requested=1 enabled=%u candidates=%u object_trace=%u', capture)
         # Enabled only with the candidate route and the verified submission identity.
@@ -297,7 +298,7 @@ class LaunchOption(unittest.TestCase):
     def test_prerequisites_are_enforced(self):
         # The launcher no longer checks them (the option is part of --debug); the DLL refuses without the candidate route
         # and the verified submission identity, and says so in one object_bounds_mode row.
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
         self.assertIn('const bool bounds_enabled=enabled&&traced;', capture)
         self.assertIn('log("object_bounds_mode requested=1 enabled=%u candidates=%u object_trace=%u",bounds_enabled,enabled,traced);', capture)
         with tempfile.TemporaryDirectory() as directory:

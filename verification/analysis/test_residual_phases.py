@@ -12,6 +12,7 @@ import unittest
 from pathlib import Path
 import verify_residual_phase_sites as probe
 from verification.analysis.test_chase_lead_sites import PatchedImage
+from source_text import source_text
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -21,7 +22,7 @@ class SourceAndReplay(unittest.TestCase):
         self.assertEqual(len(probe.SITES), 2)
         self.assertEqual([s.va for s in probe.SITES], [0x4c1eab, 0x47230c])
         self.assertEqual([len(s.expected) for s in probe.SITES], [8, 9])
-        text = probe.SOURCE.read_text()
+        text = source_text(probe.SOURCE)
         self.assertTrue(probe.source_checks(text))
         # Both spans are plain copies: no ret_pop, no rel32 field.
         self.assertEqual(text.count('},8,0,0}') + text.count('},9,0,0}'), 2)
@@ -55,9 +56,9 @@ class SourceAndReplay(unittest.TestCase):
             self.assertRegex(run.stdout, r'^residual_phases_host checks=\d+ failures=0 accumulator_bytes=\d+ window_bytes=\d+ dispatch_cost_ns=\d+\n$')
 
     def test_production_wiring(self):
-        source = (ROOT / 'src/proxy/residual_phases.cpp').read_text()
-        header = (ROOT / 'src/proxy/residual_phases.h').read_text()
-        core = (ROOT / 'src/proxy/residual_phases_core.h').read_text()
+        source = source_text(ROOT / 'src/proxy/residual_phases.cpp')
+        header = source_text(ROOT / 'src/proxy/residual_phases.h')
+        core = source_text(ROOT / 'src/proxy/residual_phases_core.h')
         # Off = inert: the environment gate, the frame boundary behind one
         # relaxed load, the handler's first instruction an `active` test.
         self.assertIn('L"X3M_RESIDUAL_PHASES"', source)
@@ -80,15 +81,15 @@ class SourceAndReplay(unittest.TestCase):
         self.assertIn('std::atomic<bool> active', header)
         self.assertIn('accumulator.material(now,pass_link->end_clock,pass_link->begin_clock,pass_link->begin_armed,frame_link->submission_ticks_at(now),pass_link->end_submission,pass_link->begin_submission,frame_link->live&&frame_link->submit_begin);', handler)
         self.assertIn('accumulator.view(now,frame_link->submit_end);', handler)
-        pass_core = (ROOT / 'src/proxy/pass_phases_core.h').read_text()
+        pass_core = source_text(ROOT / 'src/proxy/pass_phases_core.h')
         self.assertIn('if (index == 0 && begin_armed) { begin_armed = false; begin_clock = now; begin_submission = submission; }', pass_core)
         self.assertIn('if (index == site_count - 1) { ++passes; last = 0; end_clock = now; end_submission = submission;', pass_core)
         self.assertIn('end_clock = begin_clock = 0; begin_armed = false;', pass_core)
-        self.assertIn('detail::Accumulator* shared_accumulator() noexcept;', (ROOT / 'src/proxy/pass_phases.h').read_text())
-        frame_core = (ROOT / 'src/proxy/frame_phases_core.h').read_text()
+        self.assertIn('detail::Accumulator* shared_accumulator() noexcept;', source_text(ROOT / 'src/proxy/pass_phases.h'))
+        frame_core = source_text(ROOT / 'src/proxy/frame_phases_core.h')
         self.assertIn('submit_begin = 0; submit_end = qpc;', frame_core)
         self.assertIn('setup_begin = submit_begin = submit_end = 0;', frame_core)
-        self.assertIn('const detail::Tracker* shared_tracker() noexcept;', (ROOT / 'src/proxy/frame_phases.h').read_text())
+        self.assertIn('const detail::Tracker* shared_tracker() noexcept;', source_text(ROOT / 'src/proxy/frame_phases.h'))
         # The accumulator pairs, never opens: the first material and a skipped
         # pass loop are counted, not accumulated; `other` saturates at zero.
         self.assertIn('if (end_clock && end_clock > p_clock) {', core)
@@ -100,7 +101,7 @@ class SourceAndReplay(unittest.TestCase):
         # The window closes at the frame-phase boundary under its owner guard,
         # ahead of the pass group's own reduction, with the views phase and the
         # view sums joined; a frame without a sample is dropped.
-        frame = (ROOT / 'src/proxy/frame_phases.cpp').read_text()
+        frame = source_text(ROOT / 'src/proxy/frame_phases.cpp')
         impl = frame[frame.index('void frame_impl(std::uint64_t frame) noexcept {'):]
         impl = impl[:impl.index('\n}')]
         self.assertLess(impl.index('if(!owner(false))return;'), impl.index('residual_phases::frame(frame,taken,taken?last_sample.phase_us[detail::views_phase]:0,taken?last_sample.view_setup_us:0,taken?last_sample.view_submit_us:0,taken?last_sample.views:0);'))
@@ -108,18 +109,18 @@ class SourceAndReplay(unittest.TestCase):
         self.assertLess(impl.index('pass_phases::frame('), impl.index('if(!taken)return;'))
         self.assertIn('if(!sampled){accumulator.discard(pass_link->begin_armed);++dropped;return;}', source)
         self.assertIn('log("residual_phases qpc=%llu frame=%llu frames=%u materials_p50=%llu particle_views_p50=%llu passes_p50=%llu views_p50=%llu prepare_p50_us=%llu prepare_p95_us=%llu setup_p50_us=%llu setup_p95_us=%llu prepare_per_pass_p50_ns=%llu setup_per_pass_p50_ns=%llu particles_p50_us=%llu particles_p95_us=%llu other_p50_us=%llu other_p95_us=%llu self_p50_us=%llu dispatch_cost_ns=%llu prepare_skipped=%llu setup_skipped=%llu view_skipped=%llu other_underflow=%llu clock_errors=%llu clock_failures=%llu unmatched=%llu dropped=%llu early=%u foreign=%u"', source)
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
         self.assertLess(capture.index('pass_phases::initialize();'), capture.index('residual_phases::initialize();'))
         self.assertLess(capture.index('residual_phases::initialize();'), capture.index('loop_phases::initialize();'))
-        cmake = (ROOT / 'CMakeLists.txt').read_text()
+        cmake = source_text(ROOT / 'CMakeLists.txt')
         self.assertEqual(cmake.count('src/proxy/residual_phases.cpp'), 2)
-        build = (ROOT / 'verification/probe/build_game_phase_cpu.py').read_text()
+        build = source_text(ROOT / 'verification/probe/build_game_phase_cpu.py')
         self.assertIn("('src/proxy/residual_phases.cpp','residual')", build)
-        audit = (ROOT / 'verification/probe/check_no_x87.py').read_text()
+        audit = source_text(ROOT / 'verification/probe/check_no_x87.py')
         self.assertIn("'_x3m_residual_phase_enter'", audit)
-        runner = (ROOT / 'verification/probe/run_game_phase_cpu.py').read_text()
+        runner = source_text(ROOT / 'verification/probe/run_game_phase_cpu.py')
         self.assertIn("'RESIDUAL PHASE BENCH'", runner)
-        fixture = (ROOT / 'verification/probe/game_phase_cpu_fixture.cpp').read_text()
+        fixture = source_text(ROOT / 'verification/probe/game_phase_cpu_fixture.cpp')
         for label in ('first material has no pass_end to pair with; its setup is pending',
                       'second material closes the first setup and pairs prepare with the last pass_end',
                       'skipped pass loop leaves its setup and the next prepare unpaired',
@@ -146,7 +147,7 @@ class ResidualPhasesLaunchOption(unittest.TestCase):
             env = json.loads(output)['env']
             self.assertEqual(env['X3M_PERF'], '1')
             self.assertNotIn('X3M_RESIDUAL_PHASES', env)
-        self.assertIn('log_tier::draw_trace_flag(L"X3M_RESIDUAL_PHASES")', (ROOT / 'src/proxy/residual_phases.cpp').read_text())
+        self.assertIn('log_tier::draw_trace_flag(L"X3M_RESIDUAL_PHASES")', source_text(ROOT / 'src/proxy/residual_phases.cpp'))
 
 
 @unittest.skipUnless(probe.DEFAULT_EXE.is_file(), 'installed X3AP.exe unavailable')
@@ -156,8 +157,8 @@ class NativeSites(unittest.TestCase):
         cls.data = probe.DEFAULT_EXE.read_bytes()
         cls.image = probe.common.Image(cls.data)
         cls.decoded = probe.decode()
-        cls.source = probe.SOURCE.read_text()
-        cls.installed = probe.installed_spans([path.read_text() for path in probe.INSTALLED])
+        cls.source = source_text(probe.SOURCE)
+        cls.installed = probe.installed_spans([source_text(path) for path in probe.INSTALLED])
 
     def report(self, image=None, decoded=None, installed=None):
         return probe.inspect(image or self.image, decoded or self.decoded, self.source, self.data,

@@ -29,6 +29,7 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'verification/probe'))
 import verify_fov_site as verifier  # noqa: E402
+from source_text import source_text
 
 EXE = Path(verifier.DEFAULT_EXE)
 
@@ -309,7 +310,7 @@ class FovCore(unittest.TestCase):
                 self.assertEqual(written, {'edx', 'eax'})
 
     def test_python_twin_and_conversion_table(self):
-        self.assertEqual(verifier.source_constants((ROOT / 'src/proxy/fov_sites.h').read_text()), verifier.EXPECTED_CONSTANTS)
+        self.assertEqual(verifier.source_constants(source_text(ROOT / 'src/proxy/fov_sites.h')), verifier.EXPECTED_CONSTANTS)
         self.assertEqual(verifier.WINDOW[verifier.SITE_VA - verifier.WINDOW_VA:][:7], verifier.SITE)
         self.assertEqual(verifier.SITE[3:], verifier.WRITE)
         self.assertEqual(verifier.WRITE_VA // 8, (verifier.WRITE_VA + 3) // 8)   # one aligned qword: one lock cmpxchg8b
@@ -382,7 +383,7 @@ class FovCore(unittest.TestCase):
         self.assertEqual((absent['registry'], absent['focus'], absent['match']), (None, None, False))
 
     def test_production_wiring(self):
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
         self.assertEqual(capture.count('fov::initialize();'), 1)
         self.assertLess(capture.index('game_phases::initialize();'), capture.index('fov::initialize();'))
         self.assertLess(capture.index('fov::initialize();'), capture.index('cull_small_parts::initialize();'))
@@ -392,12 +393,12 @@ class FovCore(unittest.TestCase):
         self.assertEqual(capture.count('const bool save_loaded=game_phases::loading_phase_present(ctx.id,ctx.reset_generation,ctx.frame);'), 1)
         self.assertEqual(capture.count('if(save_loaded)fov::loaded(ctx.frame);'), 1)
         self.assertLess(capture.index('fov::present(ctx.frame);'), capture.index('if(save_loaded)fov::loaded(ctx.frame);'))
-        phases = (ROOT / 'src/proxy/game_phases.cpp').read_text()
+        phases = source_text(ROOT / 'src/proxy/game_phases.cpp')
         self.assertIn('bool loading_phase_present(std::uint64_t device,std::uint64_t reset,std::uint64_t frame) noexcept {', phases)
         self.assertIn('save_loaded=true;', phases)
-        self.assertIn('if (reserved == nullptr) x3m::fov::shutdown();', (ROOT / 'src/proxy/loader.cpp').read_text())
-        self.assertIn('src/proxy/fov.cpp', (ROOT / 'CMakeLists.txt').read_text())
-        module = (ROOT / 'src/proxy/fov.cpp').read_text()
+        self.assertIn('if (reserved == nullptr) x3m::fov::shutdown();', source_text(ROOT / 'src/proxy/loader.cpp'))
+        self.assertIn('src/proxy/fov.cpp', source_text(ROOT / 'CMakeLists.txt'))
+        module = source_text(ROOT / 'src/proxy/fov.cpp')
         for needle in ('L"X3M_FOV"', 'setting_capacity', '"too_long"', '"invalid_setting"', '"out_of_range"', '"reader_mismatch"', '"setfocus_mismatch"',
                        '"setfocus_failed"', 'install_window_open()', 'executable_verified()', 'engine_patch::write_code', 'FlushInstructionCache', 'VirtualProtect',
                        'PAGE_EXECUTE_READWRITE', '"patched_unverified"', 'if (!std::strcmp(reason, "restored"))', 'log_handle()', 'WriteFile(handle',
@@ -418,12 +419,12 @@ class FovCore(unittest.TestCase):
         self.assertNotIn('pin_self', module)
         self.assertLess(module.index('install_at(sites::window_va, focus = sites::constructor_focus(degrees))'), module.index('install_setfocus(sites::setfocus_site_va)'))
         self.assertLess(module.index('install_setfocus(sites::setfocus_site_va)'), module.index('install_load(sites::load_site_va)'))
-        header = (ROOT / 'src/proxy/fov_sites.h').read_text()
+        header = source_text(ROOT / 'src/proxy/fov_sites.h')
         for needle in ('plan(current)', 'memcmp(back, expected_write, write_length)', '"patch_rolled_back"', '"rollback_unprotected"', '"rollback_failed"',
                        '"restore_not_owned"', '"restore_failed"', '*live = true;', '"invalid_value"'):
             self.assertIn(needle, header)
         self.assertNotIn('windows.h', header)
-        small = (ROOT / 'src/proxy/cull_small_parts.cpp').read_text()
+        small = source_text(ROOT / 'src/proxy/cull_small_parts.cpp')
         # the scene view's F (zoom included) from the latched scene projection; the registry only as the fallback
         self.assertIn('core::choose(scene_, sample.state.m00, sample.state.m11, scene_.usable() ? 0u : fov::current_focus())', small)
         self.assertIn('apply(choice.m00, width_, choice.focus, choice.source, choice.fallback);', small)

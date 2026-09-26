@@ -4,6 +4,7 @@ import tempfile
 from pathlib import Path
 import unittest
 import run_linear_emission_sm1_packed as r
+from source_text import source_text
 
 HELPERS=('PACKED_HELPER name=initialize words=80 alu=22 tex=1 temps=2 samplers=1 outputs=15 constants=1',
          'PACKED_HELPER name=assemble_b words=60 alu=5 tex=4 temps=5 samplers=4 outputs=1 constants=0',
@@ -121,7 +122,7 @@ class PackedReportTests(unittest.TestCase):
         self.assertFalse(r.validate_timing(refused)['supported'])
 
     def test_authored_case_inventory_and_exact_zero_shader_predicate(self):
-        source=(r.ROOT/'verification/probe/linear_emission_sm1_packed_fixture.cpp').read_text()
+        source=source_text(r.ROOT/'verification/probe/linear_emission_sm1_packed_fixture.cpp')
         pairs=source.split('constexpr Pair pairs[] = {',1)[1].split('};',1)[0]
         self.assertEqual(tuple((a,b,int(c)) for a,b,c in re.findall(r'\{"([0-9a-f]{16})", "([0-9a-f]{16})", (\d)\}',pairs)),r.PAIRS)
         names=source.split('constexpr const char *cases[] = {',1)[1].split('};',1)[0]
@@ -135,7 +136,7 @@ class PackedReportTests(unittest.TestCase):
         self.assertIn('int(r.c[i + k]) - int(r.native[i + k])',source)
         self.assertIn('literal(w, 1, gain, 1.f - gain, 2.2f, 1e-10f)',source)
         self.assertIn('pixel_variant',source)
-        build=(r.ROOT/'verification/probe/build_linear_emission_sm1_packed.sh').read_text()
+        build=source_text(r.ROOT/'verification/probe/build_linear_emission_sm1_packed.sh')
         self.assertNotIn('d3d9.dll',build)
         self.assertIn('-mstackrealign -mincoming-stack-boundary=2',build)
 

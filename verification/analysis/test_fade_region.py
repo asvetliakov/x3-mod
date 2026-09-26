@@ -28,6 +28,7 @@ import tempfile
 import unittest
 from unittest import mock
 import sys
+from source_text import source_text
 
 ROOT=Path(__file__).resolve().parents[2]
 IDENTITY=[1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]
@@ -524,7 +525,7 @@ class FadeRegion(unittest.TestCase):
         self.assertEqual(len(rows),9);self.assertEqual(len({r['vs'] for r in rows}),9)
         self.assertEqual({r['vs']:(int(r['alpha']),int(r['fog'])) for r in rows if r['vs'] in ('494fe349b8bc12ec','53a0a641107ed76c')},
                          {'494fe349b8bc12ec':(39,41),'53a0a641107ed76c':(39,41)})
-        core=(ROOT/'src/proxy/fade_route_core.h').read_text()
+        core=source_text(ROOT/'src/proxy/fade_route_core.h')
         self.assertIn('static_assert(vertex_program_count == 9,',core)
 
     def test_arm_pair_identity(self):
@@ -548,7 +549,7 @@ class FadeRegion(unittest.TestCase):
         # 65 and 66 each evict the first entry of the oldest frame (a full table), 66 again and key 3 are hits.
         self.assertEqual([r[3] for r in result[64:]],[1,2,2,2])
         self.assertEqual({r[2] for r in result[64:]},{64})
-        motion=(ROOT/'src/proxy/motion_output.cpp').read_text()
+        motion=source_text(ROOT/'src/proxy/motion_output.cpp')
         self.assertIn('if (fade_hysteresis_.evicted) { counters_.fade_evicted += fade_hysteresis_.evicted; fade_hysteresis_.evicted = 0; }',motion)
         self.assertIn('fade_evicted=%lu fade_owner=%u fade_owner_masked=%lu',motion)
 
@@ -663,7 +664,7 @@ class FadeRouteStartupLine(unittest.TestCase):
     the arm runs under original shading, so `enabled` is threshold + TAA + HDR and the
     material request is reported beside it. The line is unconditional: the default-on
     threshold (500) must leave startup evidence even with X3M_FADE_ROUTE unset."""
-    SOURCE=(ROOT/'src/proxy/capture.cpp').read_text()
+    SOURCE=source_text(ROOT/'src/proxy/capture.cpp')
     START=SOURCE.rindex('X3M_FADE_ROUTE=<permille>')  # the configuration block, not the variable's declaration comment
     BLOCK=SOURCE[START:SOURCE.index('X3M_SCREEN_EMISSION=1',START)]
 
@@ -684,7 +685,7 @@ class FadeRouteStartupLine(unittest.TestCase):
 
     def test_hysteresis_field_reports_the_production_band(self):
         self.assertIn('unsigned(x3m::fade_route::Hysteresis::band)',self.BLOCK.replace(' ',''))
-        core=(ROOT/'src/proxy/fade_route_core.h').read_text()
+        core=source_text(ROOT/'src/proxy/fade_route_core.h')
         self.assertIn('band = 100u',core)
 
     def test_source_field_distinguishes_default_from_env(self):
@@ -759,7 +760,7 @@ class FadeOwnerIdentity(unittest.TestCase):
             self.assertEqual((r['reviewed'],r['registers'],r['distance_fade'],r['sampler_mask'],r['arm_off'],r['arm_on']),('1','0','0','0','0','0'),pair)
 
     def test_route_uses_the_identity_function(self):
-        motion=(ROOT/'src/proxy/motion_output.cpp').read_text().replace(' ','').replace('\n','')
+        motion=source_text(ROOT/'src/proxy/motion_output.cpp').replace(' ','').replace('\n','')
         self.assertIn('&&fade_route::arm_pair(fade_route::registers(shadow_.vs_hash,shadow_.fade_route_registers),'
                       'renderer::linear_distance_fade_pair(shadow_.vs_hash,shadow_.ps_hash),fade_rt2_owner_&&!linear_material_requested_);',motion)
         # The widening is original shading only (the overlay arm's boundary); the bracket keeps its own identity (the sampler
@@ -842,7 +843,7 @@ class FadeOwnerSource(unittest.TestCase):
     """The DLL side: off by default, the transformer switched only on the arm's prerequisites, RT2 masked on fade-arm rows
     unless the row is an owner (both binding modes), the owner lanes only in c218.y/.z, the owner program recorded."""
     def test_parse_and_configuration(self):
-        capture=(ROOT/'src/proxy/capture.cpp').read_text()
+        capture=source_text(ROOT/'src/proxy/capture.cpp')
         self.assertIn('bool fade_rt2_owner = false;',capture)
         self.assertIn('if(fade_rt2_owner_given)log("fade_rt2_owner_configured requested=%u enabled=%u default=%u ',capture)
         self.assertIn('fade_rt2_owner_default=fade_rt2_owner_given&&x3m::config::get(L"X3M_FADE_RT2_OWNER_DEFAULT",setting,32)==1&&setting[0]==L\'1\';',capture)
@@ -852,7 +853,7 @@ class FadeOwnerSource(unittest.TestCase):
         self.assertIn('hooked.motion_output.configure_fade_rt2_owner(fade_rt2_owner,enabled);',capture)
 
     def test_mask_upload_and_lane(self):
-        motion=(ROOT/'src/proxy/motion_output.cpp').read_text()
+        motion=source_text(ROOT/'src/proxy/motion_output.cpp')
         self.assertIn('D3DRS_COLORWRITEENABLE2, route.fade_arm && !route.fade_owner ? 0 : 15); }',motion)
         self.assertIn('const DWORD wanted = route.fade_arm && !route.fade_owner ? 0 : 15;',motion)
         self.assertNotIn('route.fade_arm ? 0 : 15',motion)
@@ -870,7 +871,7 @@ class FadeOwnerSource(unittest.TestCase):
         """fade-alpha-cutout-ownership.md option A: the arm admits the alpha test for a fade pair only (not the overlay
         arm) with the owner on under original shading; an admitted row carries its own test read into alpha_tested (the
         light-map widening and the replay W3 exclusion see it) and counts fade_tested on the frame line."""
-        motion=(ROOT/'src/proxy/motion_output.cpp').read_text()
+        motion=source_text(ROOT/'src/proxy/motion_output.cpp')
         arm=motion.split('bool MotionOutput::fade_arm_admits')[1].split('std::uint64_t MotionOutput::fade_identity')[0]
         self.assertIn('const bool tested_ok = !overlay && fade_rt2_owner_ && !linear_material_requested_;',arm)
         self.assertIn('if (!fade_route::state(z, z_write, test, blend, color, srgb, factor[0], factor[1], factor[2], factor[3], tested_ok)) return false;',arm)
@@ -884,20 +885,20 @@ class FadeOwnerSource(unittest.TestCase):
         self.assertIn('!widen_suppressed && !route.alpha_tested && shadow_.hull_lightmap_stage',motion)
         # Every owned alpha-tested cutout keeps the native LOD bias (the coverage must match vanilla and the unbiased prepass).
         self.assertIn('route.native_mip_bias = route.alpha_tested && (shadow_.cutout_pair || route.fade_arm);',motion)
-        capture=(ROOT/'src/proxy/capture.cpp').read_text()
+        capture=source_text(ROOT/'src/proxy/capture.cpp')
         self.assertIn('fade_route=%u lane=%u tested=%u",',capture)
         self.assertIn('unsigned(enabled&&!hooked.motion_output.linear_materials_requested()));',capture)
 
     def test_transformer_and_program(self):
-        transformer=(ROOT/'src/renderer/material_motion.cpp').read_text()
+        transformer=source_text(ROOT/'src/renderer/material_motion.cpp')
         self.assertIn('return depth && (material_motion_thin_vote() || material_motion_fade_owner()) ? 12u : 18u;',transformer)
         self.assertIn('if ((thin || owner) && !pack_motion_definitions(row, constants, body)) return MaterialMotionResult::ProfileMismatch;',transformer)
         self.assertIn('(kind == DepthFragment::Owner ? outputs == 3 && output_lanes == 15 && constants == 3',transformer)
-        record=json.loads((ROOT/'verification/results/current-depth-owner-pixel-program.json').read_text())
+        record=json.loads(source_text(ROOT/'verification/results/current-depth-owner-pixel-program.json'))
         self.assertEqual(record['target'],'ps_3_0')
         header=(ROOT/'src/renderer/current_depth_owner_pixel_program_inc.h').read_bytes()
         self.assertEqual(hashlib.sha256(header).hexdigest(),record['header_sha256'])
-        hlsl=(ROOT/'src/temporal/current_depth_owner_ps.hlsl').read_text()
+        hlsl=source_text(ROOT/'src/temporal/current_depth_owner_ps.hlsl')
         self.assertIn('return float4((clip.x / clip.y).xx, clip.y, max(clip.y * lane.z + lane.x, lane.y));',hlsl)
 
 

@@ -13,6 +13,7 @@ sys.path.insert(0,str(ROOT/'verification/probe'))
 sys.path.insert(0,str(ROOT/'tools/shaders'))
 import run_screen_emission_step_a as r
 import generate_screen_emission_programs as gen
+from source_text import source_text
 
 
 def witness(mutate=None):
@@ -96,9 +97,9 @@ class StepAReportTests(unittest.TestCase):
 
 class StepAPolicyAndLayoutTests(unittest.TestCase):
     def test_policy_table_caps_and_seams(self):
-        header=(ROOT/'src/renderer/linear_emission_pass.h').read_text()
+        header=source_text(ROOT/'src/renderer/linear_emission_pass.h')
         self.assertIn('PackedScreenInPlace = 8',header);self.assertIn('PlaneInit ',header)
-        body=(ROOT/'src/renderer/linear_emission_pass.cpp').read_text()
+        body=source_text(ROOT/'src/renderer/linear_emission_pass.cpp')
         # Capability gate: four targets, independent masks, scissor, ONE/INVSRCALPHA blend caps.
         self.assertIn('caps9.NumSimultaneousRTs < 4',body);self.assertIn('D3DPBLENDCAPS_INVSRCALPHA',body);self.assertIn('D3DPBLENDCAPS_ONE',body)
         self.assertIn('requested_policies & ~15u',body)
@@ -113,7 +114,7 @@ class StepAPolicyAndLayoutTests(unittest.TestCase):
             self.assertNotIn(forbidden,body)
 
     def test_plane_layout_reuses_e_and_c_and_saves_five_stages(self):
-        body=(ROOT/'src/renderer/linear_emission_pass.cpp').read_text()
+        body=source_text(ROOT/'src/renderer/linear_emission_pass.cpp')
         self.assertIn('sources[0] = e; sources[1] = c; sources[2] = pb; sources[3] = m; sources[4] = a;',body)
         self.assertIn('constexpr unsigned base_stages = 3, max_stages = 5;',body);self.assertIn('IDirect3DBaseTexture9 *texture[max_stages]{};',body)
         # Bracket-local stage inventory: policies 1-4 keep three stages when policy 8 is merely available.
@@ -122,12 +123,12 @@ class StepAPolicyAndLayoutTests(unittest.TestCase):
         self.assertIn('same_object(p, m) || same_object(p, pb)',body);self.assertIn('for (auto *target : {b, e, c, m, pb})',body)
         self.assertRegex(body,r'hr = call\(SetRt, DWORD\(1\), e\);\s*if \(SUCCEEDED\(hr\)\) hr = call\(SetRt, DWORD\(2\), c\);\s*if \(SUCCEEDED\(hr\)\) hr = call\(SetRt, DWORD\(3\), pb\);')
         # motion_output.cpp keeps requesting and publishing policies 1-4 only (step C is later).
-        route=(ROOT/'src/proxy/motion_output.cpp').read_text()
+        route=source_text(ROOT/'src/proxy/motion_output.cpp')
         self.assertIn('PackedScreenInPlace',route) # step C admits the policy from the route (screen-emission-region.md)
 
 
 def prototype_words(kind):
-    source=(ROOT/'verification/probe/linear_emission_sm1_packed_fixture.cpp').read_text()
+    source=source_text(ROOT/'verification/probe/linear_emission_sm1_packed_fixture.cpp')
     def function(name):
         m=re.search(r'^(?:Words|DWORD|void) '+name+r'\(',source,re.M);assert m,name
         start=m.start();brace=source.index('{',start);depth=1;i=brace+1
@@ -150,7 +151,7 @@ class StepAProgramTests(unittest.TestCase):
         check=subprocess.run([sys.executable,str(ROOT/'tools/shaders/generate_screen_emission_programs.py'),'--check'],capture_output=True,text=True)
         self.assertEqual(check.returncode,0,check.stdout)
         for name,(kind,path) in gen.TARGETS.items():
-            words=[int(x,16) for x in re.findall(r'0x([0-9a-f]{8})u',path.read_text())]
+            words=[int(x,16) for x in re.findall(r'0x([0-9a-f]{8})u',source_text(path))]
             self.assertEqual(words,gen.screen_ps(kind,True),name)
             self.assertEqual((words[0],words[-1]),(0xffff0300,0xffff))
             proto=prototype_words(kind)
@@ -167,7 +168,7 @@ class StepAProgramTests(unittest.TestCase):
         # Step E: the gain literal sits where the pass host test expects it, authored at g = 1.
         index=gen.gain_literal_index(composite)
         self.assertEqual(index,gen.gain_literal_index(gen.screen_ps(2,False)))
-        host=(ROOT/'verification/probe/linear_emission_pass_host.cpp').read_text()
+        host=source_text(ROOT/'verification/probe/linear_emission_pass_host.cpp')
         self.assertEqual(int(re.search(r'constexpr unsigned gain_literal_index = (\d+);',host).group(1)),index)
         self.assertEqual(composite[index+2:index+6],list(struct.unpack('<4I',struct.pack('<4f',*gen.gain_literal(1.0)))))
         self.assertEqual(gen.gain_literal(1.0)[:2],(1.0,0.0))

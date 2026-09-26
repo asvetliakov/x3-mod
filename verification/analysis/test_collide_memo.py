@@ -24,6 +24,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'verification/probe'))
 import verify_collide_memo_site as probe  # noqa: E402
 import run_collide_memo as runner  # noqa: E402
+from source_text import source_text
 
 HARNESS = r'''
 #include "collide_memo_core.h"
@@ -141,7 +142,7 @@ class MemoTable(unittest.TestCase):
 
 class MemoSite(unittest.TestCase):
     def test_source_constants_and_parsers(self):
-        self.assertEqual(probe.source_constants(probe.CORE.read_text()), probe.EXPECTED_CONSTANTS)
+        self.assertEqual(probe.source_constants(source_text(probe.CORE)), probe.EXPECTED_CONSTANTS)
         row = probe.parse_install_line(SAMPLE.splitlines()[0])
         self.assertEqual((row['requested'], row['patched'], row['verify'], row['reason'], row['site'], row['target'], row['entries']), (True, True, False, 'ok', 0x47f329, 0x4e29f0, 1024))
         self.assertIsNone(probe.parse_install_line('collide_memo requested=1 patched=0 reason=body_mismatch'))
@@ -149,7 +150,7 @@ class MemoSite(unittest.TestCase):
         self.assertEqual((window['hits'], window['skipped_visits'], window['verify_mismatches'], window['frames'], window['clears'], window['stuck_busy']), (3100, 123456, 0, 300, 1, 0))
         self.assertEqual((window['min_relaxed_hits'], window['miss_min_value'], window['miss_min_value_visits'], window['miss_xform_b_visits']), (900, 7, 80000, 6))
         self.assertIsNone(probe.parse_window_line('collide_memo device=1 frame=300'))
-        module = (ROOT / 'src/proxy/collide_memo.cpp').read_text()
+        module = source_text(ROOT / 'src/proxy/collide_memo.cpp')
         for key in probe.WINDOW_KEYS:
             self.assertIn(f'{key}=', module, key)
 
@@ -179,14 +180,14 @@ class MemoSite(unittest.TestCase):
 
 class MemoWiring(unittest.TestCase):
     def test_production_wiring_and_audit_roots(self):
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
         self.assertEqual(capture.count('collide_memo::initialize();'), 1)
         self.assertEqual(capture.count('collide_memo::present(ctx.id,ctx.frame,ctx.capture);'), 1)
         self.assertLess(capture.index('collide_sat_sse2::initialize();'), capture.index('collide_memo::initialize();'))
         self.assertLess(capture.index('collide_narrow_census::initialize();'), capture.index('collide_memo::initialize();'))
-        self.assertIn('x3m::collide_memo::shutdown();', (ROOT / 'src/proxy/loader.cpp').read_text())
-        self.assertIn('src/proxy/collide_memo.cpp', (ROOT / 'CMakeLists.txt').read_text())
-        module = (ROOT / 'src/proxy/collide_memo.cpp').read_text()
+        self.assertIn('x3m::collide_memo::shutdown();', source_text(ROOT / 'src/proxy/loader.cpp'))
+        self.assertIn('src/proxy/collide_memo.cpp', source_text(ROOT / 'CMakeLists.txt'))
+        module = source_text(ROOT / 'src/proxy/collide_memo.cpp')
         self.assertIn('L"X3M_COLLIDE_MEMO"', module)
         self.assertIn('L"X3M_COLLIDE_MEMO_VERIFY"', module)
         self.assertIn('if (contact) { ++counters_.contacts; return; }', module)   # a contact is never stored
@@ -200,9 +201,9 @@ class MemoWiring(unittest.TestCase):
         self.assertEqual(capture.count('collide_memo::device_reset();'), 1)
         for forbidden in ('float ', 'double ', '_mm_', 'xmmintrin'):
             self.assertNotIn(forbidden, module, forbidden)   # words only: no floating-point code on the engine's path
-        audit = (ROOT / 'verification/probe/check_no_x87.py').read_text()
+        audit = source_text(ROOT / 'verification/probe/check_no_x87.py')
         self.assertIn("'_x3m_collide_memo_thunk', '_x3m_collide_memo_lookup', '_x3m_collide_memo_store'", audit)
-        self.assertNotIn('0xd9,', (ROOT / 'verification/probe/collide_memo_fixture.cpp').read_text())   # no engine bytes in the tracked fixture
+        self.assertNotIn('0xd9,', source_text(ROOT / 'verification/probe/collide_memo_fixture.cpp'))   # no engine bytes in the tracked fixture
 
     def test_runner_accepts_only_a_clean_record(self):
         record = {**runner.parse(SAMPLE), 'exit_status': 0}

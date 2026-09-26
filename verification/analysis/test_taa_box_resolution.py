@@ -11,6 +11,7 @@ import unittest
 
 import test_taa_sky_history as sky
 import test_taa_thin_vote as vote
+from source_text import source_text
 
 ROOT, TAA = sky.ROOT, sky.TAA
 
@@ -63,7 +64,7 @@ class BoxResolutionLaunch(unittest.TestCase):
 
 class BoxResolutionSource(unittest.TestCase):
     def test_dll_reads_the_setting_and_configures_the_pass(self):
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
         self.assertIn('x3m::config::get(L"X3M_TAA_BOX_RESOLUTION"', capture)
         self.assertIn('bool taa_box_half = false, taa_box_resolution_default = false;', capture)
         # The launcher's marker counts only with half and only as exactly "1".
@@ -73,7 +74,7 @@ class BoxResolutionSource(unittest.TestCase):
         # A value other than full / half logs one row and stays full.
         self.assertIn('log("taa_box_resolution_setting invalid=1");', capture)
         self.assertIn('if(!wcscmp(setting,L"half"))taa_box_half=true;', capture)
-        motion = (ROOT / 'src/proxy/motion_output.cpp').read_text()
+        motion = source_text(ROOT / 'src/proxy/motion_output.cpp')
         self.assertIn('taa_->configure_box_resolution(2)', motion)
         # Logged only when half is requested: the default run's log is the pre-S4 log line for line.
         self.assertIn('if (SUCCEEDED(hr) && taa_box_half_) {', motion)
@@ -85,16 +86,16 @@ class BoxResolutionSource(unittest.TestCase):
         self.assertIn('suppressed=1 changes=9', motion)
 
     def test_half_programs_are_generated_from_their_own_sources(self):
-        generator = (ROOT / 'tools/shaders/generate_rigid_motion_pixel.py').read_text()
+        generator = source_text(ROOT / 'tools/shaders/generate_rigid_motion_pixel.py')
         for name in ('rows', 'columns'):
             self.assertIn(f"'temporal_thin_box_{name}_half'", generator)
-            record = json.loads((ROOT / f'verification/results/temporal-thin-box-{name}-half-program.json').read_text())
+            record = json.loads(source_text(ROOT / f'verification/results/temporal-thin-box-{name}-half-program.json'))
             self.assertEqual(record['source'], f'src/temporal/thin_box_{name}_half_ps.hlsl')
             self.assertEqual(record['target'], 'ps_3_0')
             self.assertIsNone(record['includes'])
-            header = (ROOT / f'src/renderer/temporal_thin_box_{name}_half_program_inc.h').read_text()
+            header = source_text(ROOT / f'src/renderer/temporal_thin_box_{name}_half_program_inc.h')
             self.assertIn(f'thin_box_{name}_half_ps.hlsl', header)
-        program = (ROOT / 'src/renderer/temporal_resolve_program.h').read_text()
+        program = source_text(ROOT / 'src/renderer/temporal_resolve_program.h')
         self.assertIn('temporal_thin_box_rows_half_program()', program)
         self.assertIn('temporal_thin_box_columns_half_program()', program)
 

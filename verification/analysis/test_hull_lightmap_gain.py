@@ -34,6 +34,7 @@ import inspect_motion_output_profiles as shader
 import run_linear_material as runner
 from verification.analysis.test_capture_bloom_lifetime import extract_function
 from verification.analysis.test_original_fill import families, launch
+from source_text import source_text
 
 GAIN_CONSTANT = 223
 GAIN = 4.0
@@ -242,11 +243,11 @@ class HullLightmapGainTransformerTests(unittest.TestCase):
         self.assertGreater(GAIN_CONSTANT, 26)
         self.assertNotIn(GAIN_CONSTANT, shader.PIXEL_ABI_CONSTANTS)
         self.assertNotIn(GAIN_CONSTANT, (212, 213, 214, 215, 221, 222))
-        source = (ROOT / 'src/renderer/linear_material.cpp').read_text()
+        source = source_text(ROOT / 'src/renderer/linear_material.cpp')
         self.assertIn('constexpr unsigned lightmap_gain_constant = 223;', source)
         self.assertIn('emit(out,mul,{dst(temp,reg),src(temp,reg),lightmap_gain_operand(dynamic)});', source)
         self.assertIn('return dynamic ? lane(constant,lightmap_dynamic_constant,3) : lane(constant,lightmap_gain_constant,0);', source)
-        self.assertIn('constexpr unsigned hull_gain_constant = 223', (ROOT / 'src/renderer/linear_emission.cpp').read_text())
+        self.assertIn('constexpr unsigned hull_gain_constant = 223', source_text(ROOT / 'src/renderer/linear_emission.cpp'))
 
 
 class LauncherAndProxyGateTests(unittest.TestCase):
@@ -278,12 +279,12 @@ class LauncherAndProxyGateTests(unittest.TestCase):
                 self.assertEqual(code, 2, extra)
             code, _, error = launch(directory, '--motion-output', '--light-map-far-fade', '60,120'); self.assertEqual(code, 2)
             code, _, error = launch(directory, *PREREQUISITES, '--hull-lightmap-gain', '2', '--light-map-far-fade', '60,120,3'); self.assertEqual(code, 2)
-        core = (ROOT / 'src/proxy/fade_route_core.h').read_text()
+        core = source_text(ROOT / 'src/proxy/fade_route_core.h')
         law = extract_function(core, 'inline float lightmap_far_gain(')
         for text in ('if (!camera_valid || !(m00 > 0.f) || !(width > 0.f) || !(w > 0.f)) return gain;', 'if (!(t > 0.f)) return gain;',
                      'if (t >= 1.f) return floor;', 'return gain + (floor - gain) * t;'):
             self.assertIn(text, law)
-        motion = (ROOT / 'src/proxy/motion_output.cpp').read_text()
+        motion = source_text(ROOT / 'src/proxy/motion_output.cpp')
         draw = extract_function(motion, 'void MotionOutput::evaluate_draw(')
         # The gain rides the motion ABI's own two-vector upload: no additional constant write, no Get*.
         self.assertIn('previous_rows ? 1.f : 0.f, lightmap_widen_draw_scale_[0], lightmap_widen_draw_scale_[1], lightmap_fade_gain_};', draw)
@@ -301,10 +302,10 @@ class LauncherAndProxyGateTests(unittest.TestCase):
         self.assertEqual(bind.count('gained_original?shadow_.ps_sun_original_lightmap:'), 1)
         self.assertEqual(motion.count('bind_variant_pair(route, material)'), 1)
         # The latch is armed only for a value the DLL parser accepted, and never feeds camera_scene_ on its own.
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
         self.assertIn('camera_state::request_consumer();} // the footprint', capture)
         self.assertIn('parsed[1]<=1e6f', capture)
-        self.assertNotIn('X3M_LIGHT_MAP_FAR_FADE', (ROOT / 'src/proxy/camera_state.cpp').read_text())
+        self.assertNotIn('X3M_LIGHT_MAP_FAR_FADE', source_text(ROOT / 'src/proxy/camera_state.cpp'))
         read = extract_function(motion, 'void MotionOutput::read_camera(bool scene) noexcept')
         self.assertLess(read.index('if (!(taa_enabled_ || candidates_requested_)) {'), read.index('camera_scene_ = sample.state;'))
         configure = extract_function(motion, 'bool MotionOutput::configure_lightmap_far_fade(')
@@ -341,7 +342,7 @@ class LauncherAndProxyGateTests(unittest.TestCase):
             self.assertEqual((env['X3M_HULL_LIGHTMAP_GAIN'], env['X3M_ORIGINAL_FILL']), ('4.0', '0.05'))
 
     def test_dll_gate_creation_selection_and_the_fixture_toggle(self):
-        source = (ROOT / 'src/proxy/capture.cpp').read_text()
+        source = source_text(ROOT / 'src/proxy/capture.cpp')
         block = source[source.index('X3M_HULL_LIGHTMAP_GAIN=<g>'):][:2200]
         self.assertIn('x3m::config::get(L"X3M_HULL_LIGHTMAP_GAIN",setting,32)', block)
         self.assertIn('value>=1.f&&value<=8.f', block)
@@ -353,7 +354,7 @@ class LauncherAndProxyGateTests(unittest.TestCase):
         # No key since 2026-09-26: the toggle is reached only through the fixture export.
         self.assertIn('return it->second->motion_output.hull_emission_gain_toggle(lightmap!=0);', source)
         self.assertNotIn('GetAsyncKeyState(VK_F4)', source)
-        motion = (ROOT / 'src/proxy/motion_output.cpp').read_text()
+        motion = source_text(ROOT / 'src/proxy/motion_output.cpp')
         self.assertIn('hull_lightmap_gain_requested_ = std::isfinite(gain) && gain > 1.f && gain <= 8.f && !linear_material_requested_;', motion)
         # Created once at registration beside the fill variant, composed with the fill K.
         self.assertIn('renderer::linear_material_hull_lightmap_gain_pixel_variant(', motion)
@@ -385,11 +386,11 @@ class LauncherAndProxyGateTests(unittest.TestCase):
         self.assertIn('const bool gained_original=original&&hull_lightmap_enabled_&&shadow_.ps_sun_original_lightmap&&hdr_state_==HdrState::Active;', bind)
         self.assertIn('gained_original?shadow_.ps_sun_original_lightmap:original?shadow_.ps_sun_original:', bind)
         self.assertIn('lightmap=gained_original;', bind)
-        self.assertIn('IDirect3DPixelShader9* sun_original_lightmap_variant = nullptr;', (ROOT / 'src/proxy/motion_output.h').read_text())
-        live = (ROOT / 'verification/probe/run_sun_share_live.py').read_text()
+        self.assertIn('IDirect3DPixelShader9* sun_original_lightmap_variant = nullptr;', source_text(ROOT / 'src/proxy/motion_output.h'))
+        live = source_text(ROOT / 'verification/probe/run_sun_share_live.py')
         self.assertIn("'original_lane_lightmap'", live)
-        self.assertIn('original_lane_lightmap', (ROOT / 'verification/probe/sun_share_live_inc.h').read_text())
-        header = (ROOT / 'src/proxy/motion_output.h').read_text()
+        self.assertIn('original_lane_lightmap', source_text(ROOT / 'verification/probe/sun_share_live_inc.h'))
+        header = source_text(ROOT / 'src/proxy/motion_output.h')
         self.assertIn('IDirect3DPixelShader9* hull_lightmap_variant = nullptr;', header)
         self.assertIn('bool hull_lightmap_pair = false;', header)
         self.assertIn('bool hull_lightmap = false;', header)

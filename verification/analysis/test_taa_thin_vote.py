@@ -15,6 +15,7 @@ import sys
 import tempfile
 import unittest
 from unittest import mock
+from source_text import source_text
 
 ROOT = Path(__file__).resolve().parents[2]
 TAA = ['--motion-output', '--ownership', '--object-trace', '--object-lifetime', '--taa']
@@ -345,16 +346,16 @@ class ThinVoteLaunch(unittest.TestCase):
 
 class ThinVoteSource(unittest.TestCase):
     def test_dll_parses_off_by_default_and_uploads_c218_only_with_the_option(self):
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
         self.assertIn('bool taa_thin_vote = false;', capture)
         # The configured row appears whenever a valid value arrived (on or off) and names the value's source.
         self.assertIn('if(taa_thin_vote_given)log("taa_thin_vote_configured requested=%u enabled=%u default=%u ', capture)
         self.assertIn('taa_thin_vote_default=taa_thin_vote_given&&x3m::config::get(L"X3M_TAA_THIN_VOTE_DEFAULT",setting,32)==1&&setting[0]==L\'1\';', capture)
         self.assertIn('x3m::config::get(L"X3M_TAA_THIN_VOTE",setting,32)', capture)
         self.assertIn('if(enabled)renderer::material_motion_configure_thin_vote(true);', capture)
-        motion = (ROOT / 'src/proxy/motion_output.cpp').read_text()
+        motion = source_text(ROOT / 'src/proxy/motion_output.cpp')
         # c218 is uploaded with the vote or the fade owner (X3M_FADE_RT2_OWNER, fade-rt2-ownership.md) and with neither off.
-        self.assertIn('bool upload_c218() const noexcept { return thin_vote_upload_ || fade_rt2_owner_; }', (ROOT / 'src/proxy/motion_output.h').read_text())
+        self.assertIn('bool upload_c218() const noexcept { return thin_vote_upload_ || fade_rt2_owner_; }', source_text(ROOT / 'src/proxy/motion_output.h'))
         self.assertIn('renderer::MaterialMotionAbi::pixel_coordinates_constant, upload_c218() ? pixel_thin : pixel, upload_c218() ? 3u : 2u);', motion)
         self.assertIn('SetPixelShaderConstantF, 216, shadow_.ps_reserved, upload_c218() ? 3u : 2u));', motion)
         # c216 and c217 keep their eight values (the off path uploads that array alone); c218.x is the thin alpha.
@@ -368,7 +369,7 @@ class ThinVoteSource(unittest.TestCase):
         self.assertIn('ownership::watch_buffer_writes(vb);', motion)
         self.assertNotIn('get_buffer_lock_view_light(reinterpret_cast<IDirect3DResource9*>(shadow_.stream0_identity)', motion)
         self.assertIn('outcome = Outcome::Unreadable; ++t.not_readable;', motion)
-        loader = (ROOT / 'src/proxy/loader.cpp').read_text()
+        loader = source_text(ROOT / 'src/proxy/loader.cpp')
         self.assertIn('options.readable_managed_buffers = readable_buffers_enabled;', loader)
         # The readable policy is armed on the same gate hook_device enables the vote on (never on the raw variable).
         self.assertIn('readable_buffers_enabled = ownership_enabled && x3m::thin_vote_route_gate();', loader)
@@ -379,9 +380,9 @@ class ThinVoteSource(unittest.TestCase):
         self.assertIn('if (iheld) ib->Unlock();', motion)
         self.assertIn('if (vheld) vb->Unlock();', motion)
         self.assertIn('outcome = Outcome::Unreadable; ++t.geometry; watch = true;', motion)
-        ownership = (ROOT / 'src/ownership/d3d9_ownership.cpp').read_text()
+        ownership = source_text(ROOT / 'src/ownership/d3d9_ownership.cpp')
         self.assertIn('plan=portable_upload::plan_creation(finite_plan||device->options.readable_managed_buffers,length,usage,pool,shared);', ownership)
-        header = (ROOT / 'src/renderer/material_motion.h').read_text()
+        header = source_text(ROOT / 'src/renderer/material_motion.h')
         self.assertIn('static constexpr unsigned pixel_thin_constant = 218;', header)
 
     def test_plain_programs_keep_their_bytecode(self):
@@ -392,14 +393,14 @@ class ThinVoteSource(unittest.TestCase):
         expected = {'temporal-line-mask': '802ff929a19f234b', 'temporal-line-mask-depth': 'ee283dc7dd0eae45',
                     'current-depth-pixel': '33185f650fa2b17c', 'rigid-motion-pixel': 'a604ce8c772ac472'}
         for name, prefix in expected.items():
-            record = json.loads((ROOT / f'verification/results/{name}-program.json').read_text())
+            record = json.loads(source_text(ROOT / f'verification/results/{name}-program.json'))
             self.assertTrue(record['bytecode_sha256'].startswith(prefix), name)
             header = (ROOT / 'src/renderer' / (name.replace('-', '_') + '_program_inc.h')).read_bytes()
             self.assertEqual(hashlib.sha256(header).hexdigest(), record['header_sha256'], name)
 
     def test_thin_programs_recorded(self):
         for name in ('current-depth-thin-pixel', 'temporal-line-mask-depth-thin'):
-            record = json.loads((ROOT / f'verification/results/{name}-program.json').read_text())
+            record = json.loads(source_text(ROOT / f'verification/results/{name}-program.json'))
             self.assertEqual(record['target'], 'ps_3_0', name)
 
 

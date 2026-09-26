@@ -23,6 +23,7 @@ from unittest import mock
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/'verification/probe'))
 import run_linear_distance_fade_live as live
+from source_text import source_text
 
 PREREQUISITES=['--ownership','--object-trace','--object-lifetime','--motion-output','--taa','--hdr','--hdr-tonemap']
 SM1_PAIRS={('5e484a06672e28fb','ec1f5c4a2f4e1445'),('1b6863a088a177af','84d3de8887c963c5'),('21a2c13be7f989c3','d4a26efb7c603931'),
@@ -169,7 +170,7 @@ class DllGate(unittest.TestCase):
         # capture.cpp computes the option once; the raw-environment gate must
         # match the launcher's: TAA, motion output, HDR AgX gamma2.2 and the
         # ownership Unlock scan (the bound), never linear materials.
-        source=(ROOT/'src/proxy/capture.cpp').read_text()
+        source=source_text(ROOT/'src/proxy/capture.cpp')
         block=source[source.index('X3M_SCREEN_EMISSION",setting'):source.index('screen_emission_mode requested=1')]
         self.assertIn('screen_emission_requested=asked && screen_hdr && taa_requested && screen_ownership;',block)
         self.assertIn('x3m::config::get(L"X3M_OWNERSHIP",setting,32)==1',block)
@@ -231,25 +232,25 @@ class AdditiveOption(unittest.TestCase):
     def test_dll_gate_matches_the_launcher(self):
         # capture.cpp: motion output and HDR only, the packed option wins a
         # conflict, no TAA/ownership/linear-material prerequisite.
-        source=(ROOT/'src/proxy/capture.cpp').read_text()
+        source=source_text(ROOT/'src/proxy/capture.cpp')
         block=source[source.index('X3M_SCREEN_EMISSION_ADDITIVE",setting'):source.index('screen_emission_additive_mode requested=1')]
         self.assertIn('screen_emission_additive_requested=valid&&motion_output_requested&&hdr_requested&&!conflict;',block)
         self.assertIn('const bool conflict=screen_emission_requested;',block)
         self.assertIn('value>=1.f&&value<=8.f',block)
         for name in ('taa_requested','screen_ownership','linear_material_requested','material_decode_valid'):self.assertNotIn(name,block)
-        motion=(ROOT/'src/proxy/motion_output.cpp').read_text()
+        motion=source_text(ROOT/'src/proxy/motion_output.cpp')
         self.assertIn('screen_additive_requested_ = requested && valid && !screen_emission_requested_;',motion)
         self.assertIn('renderer::LinearEmissionSm1Outputs::AdditiveGain',motion)
 
 
 class AdmissionTable(unittest.TestCase):
     def test_nine_pairs_shared_with_the_sm1_emitter_and_the_bullet_allowlist(self):
-        header=(ROOT/'src/proxy/screen_emission_admission.h').read_text()
+        header=source_text(ROOT/'src/proxy/screen_emission_admission.h')
         rows=re.findall(r'\{0x([0-9a-f]{16})ull, 0x([0-9a-f]{16})ull, (true|false)\}',header)
         self.assertEqual(len(rows),9);self.assertEqual({(v,p) for v,p,_ in rows},SM1_PAIRS)
         self.assertEqual(rows[0][:2],live.SCREEN_PAIR,'row 19 first')
         self.assertEqual({v for v,_,b in rows if b=='true'},BULLET_VS)
-        emitter=(ROOT/'src/renderer/linear_emission_sm1.cpp').read_text()
+        emitter=source_text(ROOT/'src/renderer/linear_emission_sm1.cpp')
         self.assertEqual({(v,p) for v,p in re.findall(r'\{0x([0-9a-f]{16})ull,0x([0-9a-f]{16})ull\}',emitter)},SM1_PAIRS,'the emitter registers the same nine pairs')
         compiler=shutil.which('clang++') or shutil.which('c++')
         if not compiler:raise unittest.SkipTest('host compiler required')

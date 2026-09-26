@@ -27,6 +27,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'verification/probe'))
 import verify_cull_census_sites as probe  # noqa: E402
 from verification.analysis.test_chase_aim_sites import synthetic_image  # noqa: E402
+from source_text import source_text
 
 HARNESS = r'''
 #include "cull_census_core.h"
@@ -169,7 +170,7 @@ def image(*changes):
 
 
 def inspect_image(data):
-    return probe.inspect(data, probe.decode(data), probe.CORE.read_text())
+    return probe.inspect(data, probe.decode(data), source_text(probe.CORE))
 
 
 class CullCensusSites(unittest.TestCase):
@@ -207,7 +208,7 @@ class CullCensusSites(unittest.TestCase):
         self.assertFalse(report['checks']['no_interior_branch'])  # a branch onto the displaced cmp
 
     def test_source_constants(self):
-        self.assertEqual(probe.source_constants(probe.CORE.read_text()), probe.EXPECTED_CONSTANTS)
+        self.assertEqual(probe.source_constants(source_text(probe.CORE)), probe.EXPECTED_CONSTANTS)
         self.assertEqual(probe.MEASURE_SITE, bytes.fromhex('8b87dc010000'))
         self.assertEqual(probe.EXIT_SITE, bytes.fromhex('8b7f0c833f00'))
         self.assertEqual(len(probe.MEASURE_WINDOW), 31)
@@ -453,7 +454,7 @@ class CullCensusLaunchOption(unittest.TestCase):
             code, output, _ = self.launch(directory, inherited={'X3M_LOD_SWITCH_LOG': '8'})
             self.assertEqual(code, 0)
             self.assertNotIn('X3M_LOD_SWITCH_LOG', json.loads(output)['env'])
-        source = (ROOT / 'src/proxy/cull_census.cpp').read_text()
+        source = source_text(ROOT / 'src/proxy/cull_census.cpp')
         self.assertIn('constexpr unsigned lod_switch_debug_cap = 16;', source)
         self.assertIn('else if (!cap_length && group && applied) lod_switch = set_lod_switch_log(lod_switch_debug_cap) ? "on" : "alloc_failed";', source)
 

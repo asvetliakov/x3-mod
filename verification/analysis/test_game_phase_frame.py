@@ -10,6 +10,7 @@ import unittest
 from pathlib import Path
 import verify_frame_phase_sites as probe
 from verification.analysis.test_chase_lead_sites import PatchedImage
+from source_text import source_text
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -19,7 +20,7 @@ class SourceAndReplay(unittest.TestCase):
         self.assertEqual(len(probe.SITES), 10)
         self.assertEqual([s.va for s in probe.SITES], [0x471f6c, 0x472044, 0x4720b5, 0x472186, 0x47238d,
                                                         0x4724ec, 0x472574, 0x47224c, 0x472270, 0x4722c8])
-        text = probe.SOURCE.read_text()
+        text = source_text(probe.SOURCE)
         self.assertTrue(probe.source_checks(text))
         self.assertIn('},6,0,2}', text)  # view_setup_begin: push esi, then the call's rel32 at offset 2
         self.assertFalse(probe.source_checks(text.replace('},6,0,2}', '},6,0,1}', 1)))
@@ -60,7 +61,7 @@ class SourceAndReplay(unittest.TestCase):
             self.assertRegex(run.stdout, r'^frame_phases_host checks=\d+ failures=0 tracker_bytes=\d+ window_bytes=\d+\n$')
 
     def test_production_wiring(self):
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
         present = capture.split('const HRESULT hr=fn(d,a,b,w,r);')
         self.assertEqual(len(present), 2)
         # Same placement as frame_timing: begin ahead of before_original, end
@@ -74,7 +75,7 @@ class SourceAndReplay(unittest.TestCase):
         self.assertLess(capture.index('game_phases::initialize();'), capture.index('frame_phases::initialize();'))
         # The shared stub enters the game-phase CPU boundary; indices at or
         # above the phase group's count are the frame stamps.
-        phases = (ROOT / 'src/proxy/game_phases.cpp').read_text()
+        phases = source_text(ROOT / 'src/proxy/game_phases.cpp')
         boundary = phases[phases.index('x3m_game_phase_enter(unsigned index'):]
         boundary = boundary[:boundary.index('\n}')]
         self.assertIn('x3m::PreserveCpuState cpu;', boundary)
@@ -83,7 +84,7 @@ class SourceAndReplay(unittest.TestCase):
         # The tail runs at the game's exact ESP: the stub restores everything
         # before its indirect jump to the continuation.
         self.assertIn('e.byte(0x81);e.byte(0xc4);e.dword(0x80);e.byte(0x61);e.byte(0x9d);', phases)
-        source = (ROOT / 'src/proxy/frame_phases.cpp').read_text()
+        source = source_text(ROOT / 'src/proxy/frame_phases.cpp')
         self.assertIn('X3M_FRAME_PHASES', source)
         self.assertIn('log("frame_phases qpc=%llu frame=%llu frames=%u incomplete=%u dt_p50_us=%llu dt_p95_us=%llu%s views_p50=%llu', source)
         self.assertIn('log("frame_phases_slow frame=%llu dt_us=%llu%s view_setup_us=%llu view_submit_us=%llu views=%u complete=%u"', source)
@@ -91,11 +92,11 @@ class SourceAndReplay(unittest.TestCase):
         self.assertIn('status="preflight_bytes"', source)
         self.assertIn('else status=patches[i].status;', source)
         self.assertIn('" truncated=1"', source)
-        self.assertIn('std::atomic<bool> active', (ROOT / 'src/proxy/frame_phases.h').read_text())
+        self.assertIn('std::atomic<bool> active', source_text(ROOT / 'src/proxy/frame_phases.h'))
         self.assertIn('if(!restored)status="rollback_failed_inert";', source)
-        cmake = (ROOT / 'CMakeLists.txt').read_text()
+        cmake = source_text(ROOT / 'CMakeLists.txt')
         self.assertEqual(cmake.count('src/proxy/frame_phases.cpp'), 2)
-        build = (ROOT / 'verification/probe/build_game_phase_cpu.py').read_text()
+        build = source_text(ROOT / 'verification/probe/build_game_phase_cpu.py')
         self.assertIn("('src/proxy/frame_phases.cpp','frame')", build)
 
 
@@ -118,7 +119,7 @@ class FramePhasesLaunchOption(unittest.TestCase):
             self.assertEqual(code, 0, error)
             self.assertNotIn('X3M_FRAME_PHASES', json.loads(output)['env'])
         # --perf, and since 2026-09-26 --debug (the frame boundary) and --draw-trace too.
-        self.assertIn('const bool wanted=log_tier::perf_flag(L"X3M_FRAME_PHASES")||log_tier::debug()||log_tier::draw_trace();', (ROOT / 'src/proxy/frame_phases.cpp').read_text())
+        self.assertIn('const bool wanted=log_tier::perf_flag(L"X3M_FRAME_PHASES")||log_tier::debug()||log_tier::draw_trace();', source_text(ROOT / 'src/proxy/frame_phases.cpp'))
 
 
 @unittest.skipUnless(probe.DEFAULT_EXE.is_file(), 'installed X3AP.exe unavailable')
@@ -128,7 +129,7 @@ class NativeSites(unittest.TestCase):
         cls.data = probe.DEFAULT_EXE.read_bytes()
         cls.image = probe.common.Image(cls.data)
         cls.decoded = probe.decode()
-        cls.source = probe.SOURCE.read_text()
+        cls.source = source_text(probe.SOURCE)
 
     def report(self, image=None, decoded=None):
         return probe.inspect(image or self.image, decoded or self.decoded, self.source)

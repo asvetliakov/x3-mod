@@ -14,6 +14,7 @@ from pathlib import Path
 
 from verification.analysis.test_capture_bloom_lifetime import extract_function, strip_comments
 from verification.analysis.test_chase_lead import extract_named_function
+from source_text import source_text
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -351,7 +352,7 @@ def extract_delayed_begin_arm(source: str) -> str:
     handle = extract_named_function(source, 'handle')
     prelude_start = handle.index('const std::uintptr_t esp=')
     switch_start = handle.index('switch(index){', prelude_start)
-    prelude = handle[prelude_start:switch_start + len('switch(index){')]
+    prelude = handle[prelude_start:handle.end('switch(index){', switch_start)]
     case_start = handle.index('case sites::DelayedBegin:', switch_start)
     case_end = handle.index('case sites::DelayedEnd:', case_start)
     return (
@@ -362,7 +363,7 @@ def extract_delayed_begin_arm(source: str) -> str:
 
 class GamePhaseInstallTests(unittest.TestCase):
     def test_fixture_pump_region_bounds_and_disabled_lifetime(self):
-        source = (ROOT / 'src/proxy/game_phases.cpp').read_text()
+        source = source_text(ROOT / 'src/proxy/game_phases.cpp')
         body = extract_named_function(source, 'fixture_pump_region')
         self.assertIn('#else\nconstexpr std::uintptr_t pump_active_address=0x608adc,pump_flags_address=0x606f3c;\n#endif', source)
         handle = extract_named_function(source, 'handle')
@@ -412,7 +413,7 @@ int main(){
     def test_actual_install_group_is_atomic_across_all_sites_and_failures(self):
         compiler = shutil.which('clang++') or shutil.which('c++')
         self.assertIsNotNone(compiler, 'A host C++ compiler is required')
-        source = (ROOT / 'src/proxy/game_phases.cpp').read_text()
+        source = source_text(ROOT / 'src/proxy/game_phases.cpp')
         body = extract_named_function(source, 'install_group')
         with tempfile.TemporaryDirectory(prefix='x3-game-phase-install-') as temporary:
             cpp = Path(temporary) / 'fixture.cpp'
@@ -431,7 +432,7 @@ int main(){
     def test_actual_owner_and_synchronize_admission(self):
         compiler = shutil.which('clang++') or shutil.which('c++')
         self.assertIsNotNone(compiler, 'A host C++ compiler is required')
-        source = (ROOT / 'src/proxy/game_phases.cpp').read_text()
+        source = source_text(ROOT / 'src/proxy/game_phases.cpp')
         bodies = ''.join([
             extract_named_function(source, 'synchronize'),
             extract_named_function(source, 'owner'),
@@ -451,7 +452,7 @@ int main(){
             self.assertEqual(run.stderr, '')
 
     def test_targeted_handler_reads_tokens_rejected_requests_and_failures(self):
-        source = (ROOT / 'src/proxy/game_phases.cpp').read_text()
+        source = source_text(ROOT / 'src/proxy/game_phases.cpp')
         handle = extract_named_function(source, 'handle')
         start = handle.index('const std::uintptr_t esp=')
         switch = handle.index('switch(index){', start)
@@ -473,7 +474,7 @@ bool read(std::uintptr_t at,void* out,unsigned count){
 }}
 ''' + extract_named_function(source, 'read_word') + (
             'void target(unsigned index,const std::uint32_t* regs,detail::Stamp at) noexcept {'
-            + handle[start:switch+len('switch(index){')] + arms + 'default:break;}}') + r'''
+            + handle[start:handle.end('switch(index){', switch)] + arms + 'default:break;}}') + r'''
 void reset(){core={};core.frequency=1000000;core.phase_live=true;core.phase=6;core.phase_begin.qpc=1;memory.clear();read_failures=reads=0;}
 int main(){
     std::uint32_t r[8]{};r[3]=0x1ffc;r[6]=0x3000;r[7]=2;
@@ -513,7 +514,7 @@ int main(){
     def test_actual_delayed_begin_validation_and_word_read_fail_once(self):
         compiler = shutil.which('clang++') or shutil.which('c++')
         self.assertIsNotNone(compiler, 'A host C++ compiler is required')
-        source = (ROOT / 'src/proxy/game_phases.cpp').read_text()
+        source = source_text(ROOT / 'src/proxy/game_phases.cpp')
         bodies = ''.join([
             extract_named_function(source, 'read_word'),
             extract_delayed_begin_arm(source),
@@ -533,7 +534,7 @@ int main(){
             self.assertEqual(run.stderr, '')
 
     def test_present_publishes_exact_metadata_before_telemetry_and_frame_advance(self):
-        source = (ROOT / 'src/proxy/capture.cpp').read_text()
+        source = source_text(ROOT / 'src/proxy/capture.cpp')
         present = compact(extract_function(
             source,
             'HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,const RGNDATA* r)',
@@ -554,7 +555,7 @@ int main(){
         self.assertEqual(present.count('game_phases::present_endpoint('), 1)
 
     def test_every_reset_entry_invalidates_and_accepted_attempts_advance_generation(self):
-        source = (ROOT / 'src/proxy/capture.cpp').read_text()
+        source = source_text(ROOT / 'src/proxy/capture.cpp')
         reset_common = compact(extract_function(
             source,
             'HRESULT reset_common(IDirect3DDevice9* d,D3DPRESENT_PARAMETERS* p,D3DDISPLAYMODEEX* mode,bool extended)',
@@ -580,7 +581,7 @@ int main(){
         self.assertIn('returnreset_common(d,p,mode,true);', reset_ex)
 
     def test_final_release_invalidates_before_metadata_retirement(self):
-        source = (ROOT / 'src/proxy/capture.cpp').read_text()
+        source = source_text(ROOT / 'src/proxy/capture.cpp')
         release = compact(extract_function(
             source, 'ULONG WINAPI release_device(IDirect3DDevice9* d)'))
         final = compact(extract_function(release, 'if(!refs)'))
@@ -594,7 +595,7 @@ int main(){
         self.assertEqual(release.count('game_phases::invalidate_device();'), 1)
 
     def test_initialize_and_report_are_confined_to_existing_safe_boundaries(self):
-        capture_source = (ROOT / 'src/proxy/capture.cpp').read_text()
+        capture_source = source_text(ROOT / 'src/proxy/capture.cpp')
         initialize = compact(extract_function(capture_source, 'void initialize_log(HMODULE module)'))
         init_order = positions(
             initialize,
@@ -607,12 +608,12 @@ int main(){
         production_sources = list((ROOT / 'src').rglob('*.cpp'))
         initialize_calls = [
             path for path in production_sources
-            if 'game_phases::initialize();' in path.read_text()
+            if 'game_phases::initialize();' in source_text(path)
         ]
         self.assertEqual(initialize_calls, [ROOT / 'src/proxy/capture.cpp'])
         self.assertEqual(capture_source.count('game_phases::initialize();'), 1)
 
-        telemetry_source = (ROOT / 'src/proxy/telemetry.cpp').read_text()
+        telemetry_source = source_text(ROOT / 'src/proxy/telemetry.cpp')
         summary = compact(extract_function(
             telemetry_source, 'void summary(State& state,const char* reason,uint64_t frame)'))
         report_order = positions(

@@ -11,6 +11,7 @@ import unittest
 
 import test_taa_sky_history as sky
 import test_taa_thin_vote as vote
+from source_text import source_text
 
 ROOT, TAA = sky.ROOT, sky.TAA
 
@@ -69,7 +70,7 @@ class FarClipLaunch(unittest.TestCase):
 
 class FarClipSource(unittest.TestCase):
     def test_dll_reads_the_setting_and_logs_the_configured_clip(self):
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
         self.assertIn('x3m::config::get(L"X3M_TAA_FAR_CLIP"', capture)
         self.assertIn('bool taa_far_clip_7x7 = true, taa_far_clip_given = false, taa_far_clip_default = false;', capture)
         # The launcher's marker counts only with 7x7 and only as exactly "1".
@@ -80,9 +81,9 @@ class FarClipSource(unittest.TestCase):
         # The far ramp's DLL defaults (unset, and the fields a shorter X3M_TAA_FAR_STABILISER leaves out).
         self.assertIn('float taa_far[6] = {0.f, 0.f, 60.f, 68.f, .03f, .25f};', capture)
         self.assertIn('float v[6]={0.f,0.f,60.f,68.f,.03f,.25f};', capture)
-        header = (ROOT / 'src/proxy/motion_output.h').read_text()
+        header = source_text(ROOT / 'src/proxy/motion_output.h')
         self.assertIn('taa_far_f0_ = 60.f, taa_far_f1_ = 68.f', header)
-        motion = (ROOT / 'src/proxy/motion_output.cpp').read_text()
+        motion = source_text(ROOT / 'src/proxy/motion_output.cpp')
         self.assertIn('ps30_slots=%u far_gate=%s default=%u far_clip=%s far_clip_default=%u reason=%s"', motion)  # reason: initialize's refusal (2026-09-25)
         self.assertIn('far_clip ? "7x7" : "3x3", unsigned(far_clip && taa_far_clip_default_)', motion)
         self.assertIn('const bool far_clip = taa_far_clip_7x7_ && taa_thin_camera_gate_ && taa_thin_weight_ > 0.f && far_gate_on;', motion)
@@ -92,15 +93,15 @@ class FarClipSource(unittest.TestCase):
         self.assertIn('in.far_clip = taa_far_clip_7x7_ ? x3::temporal::kFarClipThreshold : x3::temporal::kFarClipOff;', motion)
 
     def test_pass_and_program_carry_the_threshold_on_c13_z(self):
-        resolve_h = (ROOT / 'src/temporal/resolve.h').read_text()
+        resolve_h = source_text(ROOT / 'src/temporal/resolve.h')
         # 0: every pixel with any far weight (strict >); 2: above any product of two openness values, the 3x3 clip.
         self.assertIn('constexpr float kFarClipThreshold = 0.f, kFarClipOff = 2.f;', resolve_h)
-        header = (ROOT / 'src/renderer/temporal_pass.h').read_text()
+        header = source_text(ROOT / 'src/renderer/temporal_pass.h')
         self.assertIn('float far_clip = x3::temporal::kFarClipThreshold;', header)
-        source = (ROOT / 'src/renderer/temporal_pass.cpp').read_text()
+        source = source_text(ROOT / 'src/renderer/temporal_pass.cpp')
         self.assertIn('far_gate_constants[4]={far_constants[0],far_constants[1],far_on?in.far_clip:x3::temporal::kFarClipOff,0.f};', source)
         self.assertIn('!x3::temporal::valid_far_clip(in.far_clip)', source)
-        resolve = (ROOT / 'src/temporal/resolve.hlsl').read_text()
+        resolve = source_text(ROOT / 'src/temporal/resolve.hlsl')
         # Gated on farw * openC (the far weight's gate): a far mover keeps the 3x3 bound.
         self.assertIn('bool farClip = region <= 0 && farw * openC > farGate.z;', resolve)
         # The 7x7 taps stay on the dynamic branch the camera term's share already takes.
@@ -111,22 +112,22 @@ class FarClipSource(unittest.TestCase):
         # The provenance of the embedded camera-gate program names the resolve.hlsl it was compiled from: a source edit without
         # the regeneration (generate_rigid_motion_pixel.py, under the Wine lock) would ship the previous far-clip semantics.
         import hashlib, json
-        record = json.loads((ROOT / 'verification/results/temporal-resolve-far-camera-hold-program.json').read_text())
+        record = json.loads(source_text(ROOT / 'verification/results/temporal-resolve-far-camera-hold-program.json'))
         source = hashlib.sha256((ROOT / 'src/temporal/resolve.hlsl').read_bytes()).hexdigest()
         self.assertEqual(record['includes']['src/temporal/resolve.hlsl'], source)
         header = (ROOT / 'src/renderer/temporal_resolve_far_camera_hold_program_inc.h').read_bytes()
         self.assertEqual(record['header_sha256'], hashlib.sha256(header).hexdigest())
 
     def test_thin_vote_frame_row_carries_the_closest_unvoted_fraction(self):
-        header = (ROOT / 'src/proxy/motion_output.h').read_text()
+        header = source_text(ROOT / 'src/proxy/motion_output.h')
         self.assertIn('float max_unvoted = 0.f;', header)
-        motion = (ROOT / 'src/proxy/motion_output.cpp').read_text()
+        motion = source_text(ROOT / 'src/proxy/motion_output.cpp')
         self.assertIn('else if (fraction > f.max_unvoted) f.max_unvoted = fraction;', motion)
         self.assertIn('voted=%u min_alpha=%.4f max_unvoted_fraction=%.4f unreadable=%u', motion)
         self.assertIn('f.voted, double(f.min_alpha), double(f.max_unvoted), f.unreadable,', motion)
 
     def test_motion_runner_clears_the_inherited_pair(self):
-        runner = (ROOT / 'verification/probe/run_motion_output.py').read_text()
+        runner = source_text(ROOT / 'verification/probe/run_motion_output.py')
         self.assertIn("env.pop('X3M_TAA_FAR_CLIP', None)", runner)
         self.assertIn("'X3M_TAA_FAR_CLIP_DEFAULT'", runner)
         # Every earlier launcher marker is still cleared.

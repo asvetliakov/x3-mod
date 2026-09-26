@@ -13,6 +13,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'tools/analysis'))
 import proxy_identity as identity  # noqa: E402
+from source_text import source_text
 
 DIGEST = 'a' * 64
 OTHER = 'b' * 64
@@ -27,7 +28,7 @@ class SessionStartLines(unittest.TestCase):
     come from documented Win32 calls at attach and at the first device creation."""
 
     def test_clock_anchor_precedes_the_identity_header(self):
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
         self.assertIn('log("clock_anchor utc=%04u-%02u-%02uT%02u:%02u:%02u.%03uZ qpc=%llu '
                       'qpc_frequency=%llu local_offset_min=%ld"', capture)
         self.assertLess(capture.index('log("clock_anchor'), capture.index('proxy_identity::log_identity(module)'))
@@ -39,7 +40,7 @@ class SessionStartLines(unittest.TestCase):
         self.assertIn('GetTimeZoneInformation(&zone)', anchor)
 
     def test_loaded_module_line_and_its_two_call_sites(self):
-        source = (ROOT / 'src/proxy/proxy_identity.cpp').read_text()
+        source = source_text(ROOT / 'src/proxy/proxy_identity.cpp')
         self.assertIn('log("loaded_module name=%s path=%s size=%llu sha256=%s hash_us=%llu '
                       'image_size=%lu stamp=%08lx exports=%lu wine_builtin=%d"', source)
         # The hash prefix is the first 16 hex digits of the file's SHA-256, and
@@ -47,9 +48,9 @@ class SessionStartLines(unittest.TestCase):
         self.assertIn('hex=hash_file(path,full,bytes)&&full.size()==64?full.substr(0,16):std::string("unavailable")', source)
         self.assertIn('GetModuleHandleExW(0,name,&module)', source)
         self.assertIn('if(module) FreeLibrary(module);', source)
-        loader = (ROOT / 'src/proxy/loader.cpp').read_text()
+        loader = source_text(ROOT / 'src/proxy/loader.cpp')
         self.assertIn('x3m::proxy_identity::log_loaded_module(backend, "d3d9.dll");', loader)
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
         self.assertIn('if(!helper_module_logged.exchange(true)){LightCallBoundary boundary;'
                       'proxy_identity::log_loaded_module(L"d3dx9_37.dll");}', capture)
         self.assertEqual(capture.count('proxy_identity::log_loaded_module('), 1)
@@ -69,7 +70,7 @@ class MappedImageFields(unittest.TestCase):
     module base, never from the file on disk."""
 
     def setUp(self):
-        self.source = (ROOT / 'src/proxy/proxy_identity.cpp').read_text()
+        self.source = source_text(ROOT / 'src/proxy/proxy_identity.cpp')
         start = self.source.index('ModuleImage module_image(HMODULE module)')
         self.reader = self.source[start:self.source.index('void log_module(', start)]
 
@@ -133,7 +134,7 @@ class ProxyEnvironmentLine(unittest.TestCase):
     ELLIPSIS = '\u2026'
 
     def setUp(self):
-        self.source = (ROOT / 'src/proxy/proxy_identity.cpp').read_text()
+        self.source = source_text(ROOT / 'src/proxy/proxy_identity.cpp')
 
     @staticmethod
     def select(name):
@@ -300,7 +301,7 @@ class ParseOptions(unittest.TestCase):
         self.assertEqual(identity.parse_option_sources(line)['X3M_TAA'], ('0', 'file'))
         self.assertEqual(identity.parse_option_sources(line)['X3M_OLD'], ('1', None))
         self.assertEqual(identity.parse_option_sources('proxy_options X3M_HDR_EV_MANUAL=@env'), {'X3M_HDR_EV_MANUAL': ('', 'env')})
-        source = (ROOT / 'src/proxy/proxy_identity.cpp').read_text()
+        source = source_text(ROOT / 'src/proxy/proxy_identity.cpp')
         self.assertIn('entry+="@env";', source)
         self.assertIn('config::effective_below_environment()', source)
 
@@ -360,7 +361,7 @@ class CMakeCommitFragment(unittest.TestCase):
             self.assertEqual(configure.returncode, 0, configure.stderr[-2000:])
             header = Path(directory) / 'generated/x3m_source_commit_inc.h'
             self.assertTrue(header.is_file(), 'x3m_source_commit_inc.h was not generated')
-            text = header.read_text(encoding='utf-8')
+            text = source_text(header, encoding='utf-8')
         match = re.search(r'#define X3M_SOURCE_COMMIT "([^"]*)"', text)
         self.assertIsNotNone(match, text)
         self.assertEqual(match.group(1), head + ('-dirty' if dirty else ''))
@@ -375,10 +376,10 @@ class CMakeCommitFragment(unittest.TestCase):
                        '--root', str(ROOT), '--output', str(header)]
             self.assertEqual(subprocess.run(command, capture_output=True).returncode, 0)
             first = header.stat().st_mtime_ns
-            text = header.read_text(encoding='utf-8')
+            text = source_text(header, encoding='utf-8')
             self.assertEqual(subprocess.run(command, capture_output=True).returncode, 0)
             self.assertEqual(header.stat().st_mtime_ns, first)
-            self.assertEqual(header.read_text(encoding='utf-8'), text)
+            self.assertEqual(source_text(header, encoding='utf-8'), text)
 
     def test_writer_reports_unknown_without_git(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -386,7 +387,7 @@ class CMakeCommitFragment(unittest.TestCase):
             completed = subprocess.run([sys.executable, str(ROOT / 'tools/build/write_source_commit.py'),
                                         '--root', directory, '--output', str(header)], capture_output=True)
             self.assertEqual(completed.returncode, 0, completed.stderr[-500:])
-            self.assertIn('"unknown"', header.read_text(encoding='utf-8'))
+            self.assertIn('"unknown"', source_text(header, encoding='utf-8'))
 
 
 class BuiltDllMarker(unittest.TestCase):

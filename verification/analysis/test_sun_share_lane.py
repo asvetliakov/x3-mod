@@ -7,6 +7,7 @@ import subprocess
 import tempfile
 import unittest
 from tools.analysis import analyze_motion_readback as readback
+from source_text import source_text
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -64,7 +65,7 @@ class SunShareLane(unittest.TestCase):
         # tested-opaque arm, the lane qualification and the capture-side gate no
         # longer require linear materials; the cutout identity is unconditional
         # and the exact cutout arm keeps its linear-material key.
-        motion = (ROOT/'src/proxy/motion_output.cpp').read_text()
+        motion = source_text(ROOT/'src/proxy/motion_output.cpp')
         # Three copies of the tested-opaque arm, all without linear_material_requested_:
         # the draw_state_ok gate, its UnmatchedReason::State mirror, and the
         # SunUntrackedReason::State mirror of the lane's refusal diagnostic
@@ -75,10 +76,10 @@ class SunShareLane(unittest.TestCase):
         self.assertIn('(test == 1 && color == 7 && shadow_.cutout_pair && linear_material_requested_ && (cutout_ok = cutout_draw_state()))', motion)
         self.assertIn('if (sun_lane_requested_ && !linear_material_requested_ && entry.variant && renderer::material_motion_pixel_writes_depth(*entry.row, depth_enabled_)) {', motion)
         self.assertIn('linear_material_original_sun_share_pixel_variant(', motion)
-        lane = (ROOT/'src/proxy/sun_share_lane_inc.h').read_text()
+        lane = source_text(ROOT/'src/proxy/sun_share_lane_inc.h')
         self.assertIn('if(!enabled_||!depth_enabled_||!taa_enabled_||!hdr_enabled_)break;', lane)
         self.assertNotIn('linear_material_requested_', lane)
-        capture = (ROOT/'src/proxy/capture.cpp').read_text()
+        capture = source_text(ROOT/'src/proxy/capture.cpp')
         self.assertIn('sun_lane_enabled=asked&&motion_output_requested&&taa_requested&&hdr_requested;', capture)
         self.assertIn('apply_asked&&sun_lane_enabled&&depth_asked&&enabled', capture)
         # Scene-end order at both sites: lane publication, replay, apply, then fog (AO removed, batch 5).
@@ -121,7 +122,7 @@ class SunShareLane(unittest.TestCase):
         """Bucket line and capped writer signatures of the untracked-writer veto (diagnostics only)."""
         from tools.analysis.analyze_sun_share_lane import analyze, REASONS
         self.assertEqual(len(REASONS), 16)
-        header = (ROOT/'src/renderer/sun_share_frame.h').read_text()
+        header = source_text(ROOT/'src/renderer/sun_share_frame.h')
         self.assertIn(f'sun_untracked_reason_count = {len(REASONS)};', header)
         for index, name in enumerate(REASONS):
             self.assertIn(f'case {index}: return "{name}"' if index else 'default: return "unknown"', header)
@@ -218,8 +219,8 @@ class SunShareLane(unittest.TestCase):
         rejects the original identical-payload positive control without D3D.
         """
         import re
-        cpp = (ROOT/'src/proxy/motion_output.cpp').read_text()
-        inc = (ROOT/'src/proxy/sun_share_lane_inc.h').read_text()
+        cpp = source_text(ROOT/'src/proxy/motion_output.cpp')
+        inc = source_text(ROOT/'src/proxy/sun_share_lane_inc.h')
         body = re.search(r'self_test_depth_program\[\] = \{(.*?)\};', cpp, re.S).group(1)
         writer = [int(v, 16) for v in re.findall(r'0x([0-9a-f]+)u', body)]
         def program(name, base):
@@ -249,11 +250,11 @@ class SunShareLane(unittest.TestCase):
         # The stamp restores the PS to the application's (shadow_.ps): it must run
         # once finish_source_gain / finish_hull_gain have put that program back, and
         # while the draw's jittered clip rows are still on the device.
-        proxy=(ROOT/'src/proxy/motion_output.cpp').read_text()
+        proxy=source_text(ROOT/'src/proxy/motion_output.cpp')
         body=proxy[proxy.index('void MotionOutput::after_draw(MotionRoute& route, HRESULT result) noexcept {'):]
         order=[body.index(x) for x in ('if (route.source_gain) finish_source_gain(route);','if (route.hull_gain) finish_hull_gain(route);','stamped=sun_stamp_draw(route);','restore_jitter(route);')]
         self.assertEqual(order,sorted(order)); self.assertEqual(body.count('sun_stamp_draw(route)'),1)
-        lane=(ROOT/'src/proxy/sun_share_lane_inc.h').read_text()
+        lane=source_text(ROOT/'src/proxy/sun_share_lane_inc.h')
         self.assertIn('if (shadow_.ps && shadow_.ps_depth_out) return false;',lane)
         self.assertIn('{D3DRS_COLORWRITEENABLE3, 0}',lane)
         self.assertIn('entry.depth_out = renderer::pixel_program_writes_depth(',proxy)
@@ -466,7 +467,7 @@ class SunShareLane(unittest.TestCase):
     def test_actual_target_replacement_preserves_only_compatible_rows(self):
         compiler = shutil.which('clang++') or shutil.which('c++')
         self.assertIsNotNone(compiler)
-        source = (ROOT/'src/proxy/motion_output.cpp').read_text()
+        source = source_text(ROOT/'src/proxy/motion_output.cpp')
         def method(signature):
             start = source.index(signature)
             end = source.index('{', start)
@@ -477,7 +478,7 @@ class SunShareLane(unittest.TestCase):
                 cursor += 1
             return source[start:cursor]
         actual = '\n'.join(method(s) for s in ('void MotionOutput::release_target()', 'bool MotionOutput::ensure_target('))
-        template = (ROOT/'verification/probe/sun_share_target_host.cpp').read_text()
+        template = source_text(ROOT/'verification/probe/sun_share_target_host.cpp')
         with tempfile.TemporaryDirectory() as folder:
             cpp=Path(folder)/'target.cpp';exe=Path(folder)/'target'
             cpp.write_text(template.replace('/* MOTION_OUTPUT_METHODS */', actual))

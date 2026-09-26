@@ -4,6 +4,7 @@ import re
 import tempfile
 import unittest
 import run_linear_emission_sm1 as r
+from source_text import source_text
 
 
 def witness(failure=None,unsupported=None):
@@ -113,7 +114,7 @@ class Sm1ReportTests(unittest.TestCase):
             with self.assertRaises(AssertionError):r.validate_witnesses(work,report)
 
     def test_fixture_exact_inventory_and_independent_transfer_oracle(self):
-        source=(r.ROOT/'verification/probe/linear_emission_sm1_fixture.cpp').read_text()
+        source=source_text(r.ROOT/'verification/probe/linear_emission_sm1_fixture.cpp')
         table=source.split('constexpr Pair pairs[] = {',1)[1].split('};',1)[0]
         rows=tuple((a,b,int(c)) for a,b,c in re.findall(r'\{"([0-9a-f]{16})", "([0-9a-f]{16})", (\d)\}',table))
         self.assertEqual(rows,r.PAIRS)
@@ -125,7 +126,7 @@ class Sm1ReportTests(unittest.TestCase):
         self.assertIn('caps.PixelShader1xMaxValue',source)
         self.assertIn('D3DTTFF_COUNT4 | D3DTTFF_PROJECTED',source)
         self.assertIn('c == 26 ? .5f',source)
-        script=(r.ROOT/'verification/probe/build_linear_emission_sm1.sh').read_text()
+        script=source_text(r.ROOT/'verification/probe/build_linear_emission_sm1.sh')
         self.assertNotIn('d3d9.dll',script)
         self.assertIn('-mstackrealign -mincoming-stack-boundary=2',script)
 

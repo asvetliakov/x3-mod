@@ -24,6 +24,7 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'verification/probe'))
 import verify_collide_sites as probe  # noqa: E402
+from source_text import source_text
 
 HARNESS = r'''
 #include "collide_box_cull_core.h"
@@ -106,7 +107,7 @@ def patched_report(data, changes):
     for va, raw in changes:
         offset = va - 0x401000 + 0x400
         image[offset:offset + len(raw)] = raw
-    return probe.inspect(bytes(image), probe.decode(bytes(image)), probe.CORE.read_text(), probe.other_claims())
+    return probe.inspect(bytes(image), probe.decode(bytes(image)), source_text(probe.CORE), probe.other_claims())
 
 
 class CollideSites(unittest.TestCase):
@@ -155,7 +156,7 @@ class CollideSites(unittest.TestCase):
         self.assertEqual(probe.overlaps([('z', probe.P1_SITE - 5, 5), ('w', 0x47d2a2, 8)]), [])
 
     def test_source_constants(self):
-        self.assertEqual(probe.source_constants(probe.CORE.read_text()), probe.EXPECTED_CONSTANTS)
+        self.assertEqual(probe.source_constants(source_text(probe.CORE)), probe.EXPECTED_CONSTANTS)
 
     def test_line_parsers(self):
         row = probe.parse_install_line('00:01 collide_box_cull requested=1 patched=1 reason=ok p1_site=0x0045d58e p2_site=0x0045cc7c write_p1=plain write_p2=atomic stub_p1=0x0a100000 stub_p2=0x0a100090 counters=1 enabled=1')
@@ -206,13 +207,13 @@ class CollideSites(unittest.TestCase):
             probe.encode_p1_stub(1 << 32, 0, 0, 0, 0, 0)
 
     def test_production_wiring(self):
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
         self.assertEqual(capture.count('collide_box_cull::initialize();'), 1)
         self.assertEqual(capture.count('collide_box_cull::present(ctx.id,ctx.frame,ctx.capture);'), 1)
         self.assertLess(capture.index('game_phases::initialize();'), capture.index('collide_box_cull::initialize();'))
-        self.assertIn('x3m::collide_box_cull::shutdown();', (ROOT / 'src/proxy/loader.cpp').read_text())
-        self.assertIn('src/proxy/collide_box_cull.cpp', (ROOT / 'CMakeLists.txt').read_text())
-        module = (ROOT / 'src/proxy/collide_box_cull.cpp').read_text()
+        self.assertIn('x3m::collide_box_cull::shutdown();', source_text(ROOT / 'src/proxy/loader.cpp'))
+        self.assertIn('src/proxy/collide_box_cull.cpp', source_text(ROOT / 'CMakeLists.txt'))
+        module = source_text(ROOT / 'src/proxy/collide_box_cull.cpp')
         self.assertIn('L"X3M_COLLIDE_BOX_CULL"', module)
         self.assertIn('length == 1 && setting[0] == L\'1\'', module)
         for needle in ('install_window_open()', 'executable_verified()', 'helper_mismatch', 'pin_self()', 'engine_patch::restore(p1_site_)'):

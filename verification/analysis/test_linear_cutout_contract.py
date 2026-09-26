@@ -11,6 +11,7 @@ import tempfile
 import unittest
 
 from verification.analysis.test_capture_bloom_lifetime import extract_function
+from source_text import source_text
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -796,7 +797,7 @@ class LinearCutoutContractTests(unittest.TestCase):
     def test_actual_contract_and_runtime_helpers(self):
         compiler = shutil.which('clang++') or shutil.which('c++')
         self.assertIsNotNone(compiler, 'A host C++ compiler is required')
-        source = (ROOT / 'src/proxy/motion_output.cpp').read_text()
+        source = source_text(ROOT / 'src/proxy/motion_output.cpp')
         states_start = source.index('constexpr D3DRENDERSTATETYPE shadow_states[')
         states_end = source.index('const char* scene_end_source_name', states_start)
         selected = source[states_start:states_end] + '\n' + '\n\n'.join(
@@ -833,11 +834,11 @@ class LinearCutoutContractTests(unittest.TestCase):
     def test_depth_surface_change_restores_held_bindings_first(self):
         # Lazy RT mode holds RT1/RT2 across routed draws; D3D9 relates the depth
         # surface to every bound target, so the hook restores before the native call.
-        body = extract_function((ROOT / 'src/proxy/capture.cpp').read_text(), 'HRESULT WINAPI set_depth(')
+        body = extract_function(source_text(ROOT / 'src/proxy/capture.cpp'), 'HRESULT WINAPI set_depth(')
         self.assertLess(body.index('ctx.motion_output.restore_bindings();'), body.index('cpu.before_original();'))
 
     def test_failure_notifications_keep_native_boundary_and_history_union(self):
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
         for name, pre, success, failed in (
                 # Lazy RT mode never holds a write mask (route-per-draw-cost.md
                 # lever 3), so SetRenderState has no pre-call.
@@ -860,11 +861,11 @@ class LinearCutoutContractTests(unittest.TestCase):
             self.assertIn('if(SUCCEEDED(hr))ctx.motion_output.' + success + ';', body)
             self.assertIn('else ctx.motion_output.' + failed + ';', body)
             self.assertIn('return hr;', body)
-        source = (ROOT / 'src/proxy/motion_output.cpp').read_text()
+        source = source_text(ROOT / 'src/proxy/motion_output.cpp')
         union = source.index('if (cutout::unavailable(')
         self.assertLess(source.index('in.reactive_policy = renderer::ReactivePolicy::SupplementalMaskWithDepthSentinel;'), union)
         self.assertIn('in.reactive_policy = renderer::ReactivePolicy::Unavailable;', source[union:union+450])
-        temporal = (ROOT / 'src/renderer/temporal_pass.cpp').read_text()
+        temporal = source_text(ROOT / 'src/renderer/temporal_pass.cpp')
         self.assertIn('if(reactive_policy_!=ReactivePolicy::Unavailable)history_.completed();', temporal)
         gate = extract_function(source, 'void MotionOutput::evaluate_draw(')
         # 7f23195 (sun-lane refusal buckets) records the cutout verdict the
@@ -877,7 +878,7 @@ class LinearCutoutContractTests(unittest.TestCase):
         self.assertIn('cutout_reset_pending_ = true', reset)
 
     def test_retry_is_only_at_hdr_latch_and_lifecycle_boundaries(self):
-        source = (ROOT / 'src/proxy/motion_output.cpp').read_text()
+        source = source_text(ROOT / 'src/proxy/motion_output.cpp')
         begin = extract_function(source, 'void MotionOutput::begin_redirect(')
         self.assertLess(begin.index('hdr_state_ = HdrState::Active'), begin.index('probe_cutout_caps();'))
         self.assertIn('probe_cutout_caps(true);', extract_function(source, 'void MotionOutput::attach('))

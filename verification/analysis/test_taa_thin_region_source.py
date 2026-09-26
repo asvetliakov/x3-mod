@@ -12,6 +12,7 @@ import unittest
 import run_motion_output as runner
 import test_taa_sky_history as sky
 import test_taa_thin_vote as vote
+from source_text import source_text
 
 ROOT, TAA = sky.ROOT, sky.TAA
 LANE = vote.LANE
@@ -81,37 +82,37 @@ class ThinRegionSourceRow(unittest.TestCase):
 
 class ThinRegionSourceContract(unittest.TestCase):
     def test_dll_derives_resolves_and_logs(self):
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
         self.assertNotIn('L"X3M_TAA_THIN_REGION_SOURCE', capture)
         self.assertIn('taa_thin_region_source_given=taa_thin_vote&&taa_thin_region[0]>0.f;', capture)
         self.assertIn('taa_thin_region_source=taa_thin_region_source_given?2u:0u;', capture)
         self.assertIn('taa_thin_region_source_default=taa_thin_region_source_given&&taa_thin_vote_default;', capture)
         self.assertIn('configure_thin_region_source(taa_thin_region_source,taa_thin_region_source_given,taa_thin_region_source_default)', capture)
-        motion = (ROOT / 'src/proxy/motion_output.cpp').read_text()
+        motion = source_text(ROOT / 'src/proxy/motion_output.cpp')
         self.assertIn('if (SUCCEEDED(hr) && taa_thin_source_given_) {', motion)  # logged only when given: the default log is unchanged
         self.assertIn('log("taa_thin_region_source device=%llu requested=%s configured=%s reason=%s ', motion)
         self.assertIn('taa_thin_source_ == 1 && taa_thin_camera_gate_ ? "screen_refused_camera_gate"', motion)
         self.assertIn('in.thin_region_source = static_cast<renderer::ThinRegionSource>(taa_thin_source_configured_);', motion)
 
     def test_pass_draws_the_plain_program_for_screen_and_sets_c10y_for_vote_only(self):
-        source = (ROOT / 'src/renderer/temporal_pass.cpp').read_text()
+        source = source_text(ROOT / 'src/renderer/temporal_pass.cpp')
         self.assertIn('plain_fold&&in.thin_vote&&thin_live&&!screen_source&&four_channel?line_mask_depth_thin_:nullptr', source)
         self.assertIn('const bool camera_vote=camera&&in.thin_vote&&thin_live&&four_channel;', source)
         self.assertIn('const bool vote_source=diagnostics_.thin_vote&&in.thin_region_source==ThinRegionSource::Vote;', source)
         self.assertIn('const float emissive_constants[4]={emissive_vote?in.thin_region_emissive:0.f,vote_source?1.f:0.f,camera_vote?1.f:0.f,0.f};', source)
         # Screen on the camera gate refuses the run (the folded resolve has no plain program).
         self.assertIn('!in.current_depth||in.thin_region_source==ThinRegionSource::Screen))||', source)
-        header = (ROOT / 'src/renderer/temporal_pass.h').read_text()
+        header = source_text(ROOT / 'src/renderer/temporal_pass.h')
         self.assertIn('enum class ThinRegionSource : unsigned { Both = 0, Screen = 1, Vote = 2 };', header)
         self.assertIn('ThinRegionSource thin_region_source = ThinRegionSource::Both;', header)
 
     def test_the_folded_resolve_reads_c10(self):
-        shader = (ROOT / 'src/temporal/resolve.hlsl').read_text()
+        shader = source_text(ROOT / 'src/temporal/resolve.hlsl')
         self.assertIn('if (thinTests.z > 0.5 && thinValid(lane.r) && lane.a >= 0 && lane.a < 1) return 1;', shader)
         self.assertIn('[branch] if (!(thinTests.y > 0.5)) { if (fragmentedDepth(at)) return 1; }', shader)
 
     def test_only_the_twins_read_c10y(self):
-        shader = (ROOT / 'src/temporal/line_mask_ps.hlsl').read_text()
+        shader = source_text(ROOT / 'src/temporal/line_mask_ps.hlsl')
         guarded = shader.split('#ifdef X3M_THIN_VOTE\n')
         self.assertEqual(sum('emissive.y' in part.split('#endif')[0] for part in guarded[1:]), 1)
         self.assertEqual(shader.count('emissive.y'), 1)

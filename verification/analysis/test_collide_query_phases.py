@@ -8,6 +8,7 @@ from pathlib import Path
 import verify_collide_query_phases as site
 import run_collide_query_phases as runner
 from verification.analysis import test_collide_memo as launch_tests
+from source_text import source_text
 ROOT = Path(__file__).resolve().parents[2]
 
 class QueryPhases(unittest.TestCase):
@@ -22,7 +23,7 @@ class QueryPhases(unittest.TestCase):
     def test_site_and_corrupted_byte_refusal(self):
         exe=site.memo.sites.DEFAULT_EXE
         if not exe.exists():self.skipTest('installed EXE unavailable')
-        data=exe.read_bytes();decoded=site.memo.decode(exe);source=site.SOURCE.read_text()
+        data=exe.read_bytes();decoded=site.memo.decode(exe);source=source_text(site.SOURCE)
         report=site.inspect(data,decoded,source)
         self.assertEqual(report['result'],'PASS',report)
         self.assertEqual(site.inspect(data,decoded,source.replace('0x33,0xc0','0x33,0xc1'))['result'],'FAIL')

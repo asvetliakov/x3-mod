@@ -6,6 +6,7 @@ import tempfile
 import unittest
 from verification.analysis.test_capture_bloom_lifetime import extract_function
 from verification.analysis import test_volumetric_fog
+from source_text import source_text
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -18,7 +19,7 @@ class SectorBackgroundTests(unittest.TestCase):
             directory = Path(directory)
             if fragment:
                 (directory / 'sector_background_context_under_test_inc.h').write_text(
-                    extract_function((ROOT / 'src/proxy/capture.cpp').read_text(), 'void sector_background_context('))
+                    extract_function(source_text(ROOT / 'src/proxy/capture.cpp'), 'void sector_background_context('))
             exe = directory / 'host'
             build = subprocess.run([compiler, '-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror',
                                     '-I', str(ROOT / 'src/proxy'), '-I', str(directory),
@@ -37,7 +38,7 @@ class SectorBackgroundTests(unittest.TestCase):
         self.assertIn('checks=22 failures=0', self.compile_run('sector_background_context_host.cpp', fragment=True))  # 19 + the --fog-docked span (3)
 
     def test_scene_boundary_standalone_and_reset_wiring(self):
-        source = (ROOT / 'src/proxy/capture.cpp').read_text()
+        source = source_text(ROOT / 'src/proxy/capture.cpp')
         self.assertIn('if(sector_background_requested)hooked.set(41,begin_scene);', source)
         begin = extract_function(source, 'HRESULT WINAPI begin_scene(')
         self.assertIn('if(SUCCEEDED(hr)&&(sector_background_requested || volumetric_fog_requested))sector_background_context(ctx,true);', begin)
@@ -49,7 +50,7 @@ class SectorBackgroundTests(unittest.TestCase):
         # No draw hook or render path consumes the diagnostic.
         self.assertEqual(source.count('sector_background_context(ctx);'), 1)
         self.assertEqual(source.count('sector_background_context(ctx,true);'), 1)
-        self.assertNotIn('sector_background::sample(', (ROOT / 'src/proxy/motion_output_fog_inc.h').read_text())
+        self.assertNotIn('sector_background::sample(', source_text(ROOT / 'src/proxy/motion_output_fog_inc.h'))
 
     def test_launcher_opt_in_without_rendering_dependencies(self):
         # Part of --debug since the logging tiers (2026-09-26): the DLL reads X3M_SECTOR_BACKGROUND or X3M_DEBUG.

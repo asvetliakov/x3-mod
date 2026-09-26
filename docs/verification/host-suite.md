@@ -40,6 +40,17 @@ Microsoft Defender on this Mac quarantines synthetic PE files: a vanished temp
 file or `objdump: Operation not permitted` in a worker is Defender, not the
 runner.
 
+## Tests that read production source
+
+The C/C++ tree is clang-formatted (README, "Formatting"), so a test that pins
+production spelling reads the file with `source_text(path)` from
+`verification/analysis/source_text.py`, not `Path.read_text()`. The returned text
+matches fragments whitespace-insensitively (`in`, `count`, `find`/`index`,
+`split`, `replace`; `end(fragment, start)` for the raw end of a match), keeps raw
+positions for slicing, and matches a fragment holding a newline against the raw
+layout first. Regexes and line-based checks run on the raw text and must allow
+the formatted spacing themselves.
+
 ## Retired modules (deleted)
 
 The 23 retired modules (`--linear-materials`, the converted hull material law,

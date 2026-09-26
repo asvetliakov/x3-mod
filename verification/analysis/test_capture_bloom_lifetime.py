@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+from source_text import source_text
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -89,7 +90,7 @@ class CaptureBloomLifetimeTests(unittest.TestCase):
     def test_production_lifetime_and_reset_control_flow(self):
         compiler = shutil.which('clang++') or shutil.which('c++')
         self.assertIsNotNone(compiler, 'A host C++ compiler is required')
-        source = (ROOT / 'src/proxy/capture.cpp').read_text()
+        source = source_text(ROOT / 'src/proxy/capture.cpp')
         signatures = [
             'void revoke_compositor(Device& ctx) noexcept',
             'ULONG WINAPI release_device(IDirect3DDevice9* d)',

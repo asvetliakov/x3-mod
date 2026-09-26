@@ -10,6 +10,7 @@ import tempfile
 import unittest
 
 import test_taa_sky_history as sky
+from source_text import source_text
 
 ROOT, TAA = sky.ROOT, sky.TAA
 
@@ -46,10 +47,10 @@ class RegionHoldLaunch(unittest.TestCase):
 
 class RegionHoldSource(unittest.TestCase):
     def test_dll_reads_no_hold_variable_and_configures_no_hold_switch(self):
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
         self.assertNotIn('X3M_TAA_REGION_HOLD', capture)  # the ignore line went with the launcher stub on 2026-09-25
         self.assertNotIn('taa_region_hold', capture)
-        motion = (ROOT / 'src/proxy/motion_output.cpp').read_text()
+        motion = source_text(ROOT / 'src/proxy/motion_output.cpp')
         self.assertNotIn('configure_region_hold', motion)
         self.assertNotIn('thin_region_hold =', motion)
         self.assertNotIn('fallback=dilated', motion)
@@ -65,8 +66,8 @@ class RegionHoldSource(unittest.TestCase):
         self.assertIn('taa_->line_mask_targets()', motion)
 
     def test_pass_has_no_dilated_camera_path(self):
-        header = (ROOT / 'src/renderer/temporal_pass.h').read_text()
-        source = (ROOT / 'src/renderer/temporal_pass.cpp').read_text()
+        header = source_text(ROOT / 'src/renderer/temporal_pass.h')
+        source = source_text(ROOT / 'src/renderer/temporal_pass.cpp')
         for gone in (r'\bconfigure_region_hold\b', r'\bregion_hold_available\b', r'\bfar_camera_\b', r'\bfar_camera16_\b', r'\bthin_box_\b',
                      r'\bthin_box_rows_\b', r'\bthin_box_columns_\b', r'\bbool thin_region_hold\b'):
             self.assertIsNone(re.search(gone, header + source), gone)
@@ -81,12 +82,12 @@ class RegionHoldSource(unittest.TestCase):
 
     def test_hold_programs_are_recorded_and_the_dilated_chain_programs_are_gone(self):
         for name in HOLD:
-            record = json.loads((ROOT / f'verification/results/{name}-program.json').read_text())
+            record = json.loads(source_text(ROOT / f'verification/results/{name}-program.json'))
             self.assertEqual(record['target'], 'ps_3_0', name)
         for name in REMOVED:
             self.assertFalse((ROOT / f'verification/results/{name}-program.json').exists(), name)
             self.assertFalse((ROOT / 'src/renderer' / (name.replace('-', '_') + '_program_inc.h')).exists(), name)
-        generator = (ROOT / 'tools/shaders/generate_rigid_motion_pixel.py').read_text()
+        generator = source_text(ROOT / 'tools/shaders/generate_rigid_motion_pixel.py')
         for name in REMOVED:
             self.assertNotIn(f"'{name.replace('-', '_')}':", generator, name)
 

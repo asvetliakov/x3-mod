@@ -10,13 +10,14 @@ import subprocess
 import tempfile
 import unittest
 from verification.analysis.test_capture_bloom_lifetime import extract_function
+from source_text import source_text
 
 ROOT = Path(__file__).resolve().parents[2]
 
 
 class MotionWrapStatesTests(unittest.TestCase):
     def test_production_transaction(self):
-        source = (ROOT / 'src/proxy/motion_output.cpp').read_text()
+        source = source_text(ROOT / 'src/proxy/motion_output.cpp')
         functions = [
             'void MotionOutput::set_render_state(',
             'HRESULT MotionOutput::get_render_state_native(',
@@ -53,7 +54,7 @@ class MotionWrapStatesTests(unittest.TestCase):
             print(run.stdout.strip())
 
     def test_route_wiring(self):
-        source = (ROOT / 'src/proxy/motion_output.cpp').read_text()
+        source = source_text(ROOT / 'src/proxy/motion_output.cpp')
         evaluate = extract_function(source, 'void MotionOutput::evaluate_draw(')
         self.assertLess(evaluate.index('bind_targets(route)'), evaluate.index('apply_wrap_states(route,'))
         self.assertIn('rollback_route(route);', evaluate)
@@ -80,7 +81,7 @@ class MotionWrapStatesTests(unittest.TestCase):
         self.assertIn('shadow_ = Shadow{};', resync)
         reset = extract_function(source, 'void MotionOutput::before_reset(')
         self.assertNotIn('motion_state_lost_ = false', reset)
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
         self.assertEqual(capture.count('.draw_submission_blocked()'), 4)
         self.assertEqual(capture.count('const HRESULT result=route.submit?'), 4)
 
@@ -94,7 +95,7 @@ class MotionWrapStatesTests(unittest.TestCase):
         self.assertEqual(result['declaration_collisions'], 0)
 
     def test_shadow_index_contract(self):
-        header = (ROOT / 'src/proxy/motion_output.h').read_text()
+        header = source_text(ROOT / 'src/proxy/motion_output.h')
         self.assertIn('motion_shadow_state_count = 32;', header)
         self.assertIn('composition_state_lost_ || motion_state_lost_', header)
         self.assertIn('DWORD saved_wrap[6]{};', header)

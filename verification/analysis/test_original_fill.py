@@ -31,6 +31,7 @@ sys.path.insert(0, str(ROOT / 'tools/analysis'))
 sys.path.insert(0, str(ROOT / 'verification/probe'))
 import inspect_motion_output_profiles as shader
 import run_linear_material as runner
+from source_text import source_text
 
 FILL_CONSTANT = 215
 FILLS = (0., 0.03, 0.05)
@@ -253,7 +254,7 @@ class OriginalFillTransformerTests(unittest.TestCase):
         self.assertGreater(FILL_CONSTANT, 23)
         self.assertNotIn(FILL_CONSTANT, shader.PIXEL_ABI_CONSTANTS)
         self.assertNotIn(FILL_CONSTANT, (212, 213, 214))
-        source = (ROOT / 'src/renderer/linear_material.cpp').read_text()
+        source = source_text(ROOT / 'src/renderer/linear_material.cpp')
         self.assertIn('constexpr unsigned fill_constant = 215;', source)
         self.assertIn('emit(out,def,{dst(constant,fill_constant,xyzw),bits(fill),bits(original_fill_epsilon),bits(2.2f),bits(1.0f/2.2f)});', source)
 
@@ -285,7 +286,7 @@ class LauncherGateTests(unittest.TestCase):
                 self.assertEqual(json.loads(output)['env']['X3M_ORIGINAL_FILL'], repr(float(boundary)))
 
     def test_dll_gate_reads_the_variable_and_needs_hdr_without_linear_materials(self):
-        source = (ROOT / 'src/proxy/capture.cpp').read_text()
+        source = source_text(ROOT / 'src/proxy/capture.cpp')
         block = source[source.index('X3M_ORIGINAL_FILL=<k>'):][:2600]
         self.assertIn('x3m::config::get(L"X3M_ORIGINAL_FILL",setting,32)', block)
         self.assertIn('value>=0.f&&value<=.5f', block)
@@ -294,7 +295,7 @@ class LauncherGateTests(unittest.TestCase):
         self.assertIn('configure_original_fill(original_fill)', source)
         for absent in ('taa_requested', 'screen_ownership'):
             self.assertNotIn(absent, block)
-        motion = (ROOT / 'src/proxy/motion_output.cpp').read_text()
+        motion = source_text(ROOT / 'src/proxy/motion_output.cpp')
         self.assertIn('original_fill_requested_ = std::isfinite(fill) && fill > 0.f && fill <= .5f && !linear_material_requested_;', motion)
         # Created once at registration beside the motion variant; selected in
         # the one bind pair of the routed draw; undone with the route.
@@ -309,7 +310,7 @@ class LauncherGateTests(unittest.TestCase):
         self.assertLess(select, record)
         self.assertIn('if (fill && SUCCEEDED(hr)) route.original_fill = true', bind)
         self.assertNotIn('GetRenderState', bind)
-        header = (ROOT / 'src/proxy/motion_output.h').read_text()
+        header = source_text(ROOT / 'src/proxy/motion_output.h')
         self.assertIn('IDirect3DPixelShader9* original_fill_variant = nullptr;', header)
         self.assertIn('bool original_fill_pair = false;', header)
         contract = motion[motion.index('void MotionOutput::refresh_linear_material_contract'):][:2400]

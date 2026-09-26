@@ -24,6 +24,7 @@ import sys
 import tempfile
 import unittest
 from unittest import mock
+from source_text import source_text
 
 ROOT = Path(__file__).resolve().parents[2]
 VISIBLE, HIDDEN, ORIGINAL = 0, 1, 2
@@ -438,7 +439,7 @@ class SunOcclusionHost(unittest.TestCase):
         self.assertEqual(self.run_driver('jitter', 0, .375, -.4375, 1280, 768), {'u': '0.00000000', 'v': '0.00000000'})
         self.assertEqual(self.run_driver('jitter', 1, .375, -.4375, 0, 768), {'u': '0.00000000', 'v': '0.00000000'})
         # The compiled visibility program takes it on c2 (c0 the disc, c1 the smoothing), and the fixture's phases are the temporal pass's.
-        words = [int(w, 16) for w in re.findall(r'0x([0-9a-f]{8})u', (ROOT / 'src/renderer/sun_visibility_program_inc.h').read_text())]
+        words = [int(w, 16) for w in re.findall(r'0x([0-9a-f]{8})u', source_text(ROOT / 'src/renderer/sun_visibility_program_inc.h'))]
         self.assertEqual(constant_table(words), {'disc': (2, 0), 'control': (2, 1), 'jitter': (2, 2), 'sceneDepth': (3, 0), 'history': (3, 1)})
         fixture = load('run_sun_occlusion', 'verification/probe/run_sun_occlusion.py')
         motion = load('run_motion_output', 'verification/probe/run_motion_output.py')
@@ -572,20 +573,20 @@ class SunOcclusionLaunchOption(unittest.TestCase):
             self.assertNotIn('X3M_SUN_OCCLUSION_CORE_F', json.loads(output)['env'])
 
     def test_dll_config_row_carries_the_default_marker(self):
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
-        read = re.search(r'const bool from_default=([^;]*);', capture).group(1)
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
+        read = re.sub(r'\s+', '', re.search(r'const bool from_default\s*=\s*([^;]*);', capture).group(1))
         self.assertTrue(read.startswith('sun_occlusion::override_enabled()&&'), read)                 # read only when the override is on
         self.assertIn('L"X3M_SUN_OCCLUSION_DEFAULT"', read)
         self.assertIn("value[0]==L'1'", read)
         row = re.search(r'log\("sun_occlusion_config [^"]*"', capture).group(0)
         self.assertTrue(row.endswith(' default=%u"'), row)
-        sun = (ROOT / 'src/proxy/sun_occlusion.cpp').read_text()                                        # absent = disabled, nothing patched
+        sun = source_text(ROOT / 'src/proxy/sun_occlusion.cpp')                                        # absent = disabled, nothing patched
         self.assertIn('x3m::config::get(L"X3M_SUN_OCCLUSION", setting, 4) == 1 && setting[0] == L\'1\'', sun)
 
     def test_dll_reads_the_variable_as_default_on(self):
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
         self.assertIn('bool sun_occlusion_core_f = true;', capture)                                   # unset = on
-        read = re.search(r'sun_occlusion_core_f=([^;]*);', capture).group(1)
+        read = re.sub(r'\s+', '', re.search(r'(?<!bool )\bsun_occlusion_core_f\s*=\s*([^;]*);', capture).group(1))
         self.assertIn("L\"X3M_SUN_OCCLUSION_CORE_F\"", read)
         self.assertIn("value[0]==L'0'", read)                                                         # only an explicit "0" turns it off
         self.assertTrue(read.startswith('!('), read)

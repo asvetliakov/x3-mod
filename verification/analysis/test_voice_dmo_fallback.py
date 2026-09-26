@@ -15,10 +15,11 @@ from pathlib import Path
 
 import verify_voice_dmo_site as probe
 from verification.analysis.test_voice_decoder_launch import VoiceDecoderLaunchOption
+from source_text import source_text
 
 ROOT = Path(__file__).resolve().parents[2]
-SOURCE = (ROOT / 'src/proxy/voice_dmo_fallback.cpp').read_text()
-REPLICA = (ROOT / 'verification/probe/voice_startup_replica.cpp').read_text()
+SOURCE = source_text(ROOT / 'src/proxy/voice_dmo_fallback.cpp')
+REPLICA = source_text(ROOT / 'verification/probe/voice_startup_replica.cpp')
 CXX = 'i686-w64-mingw32-g++'
 OBJDUMP = 'i686-w64-mingw32-objdump'
 # The production compile flags (CMakeLists.txt) that matter for code generation.
@@ -90,9 +91,9 @@ class CallBinding(unittest.TestCase):
         shutdown = SOURCE.split('void shutdown() {', 1)[1].split('\n}\n', 1)[0]
         self.assertIn('RemoveVectoredExceptionHandler(handler)', shutdown)
         self.assertIn('fault_handler=nullptr', shutdown)
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
         self.assertIn('voice_dmo_fallback::shutdown();', capture)
-        loader = (ROOT / 'src/proxy/loader.cpp').read_text()
+        loader = source_text(ROOT / 'src/proxy/loader.cpp')
         self.assertIn('DLL_PROCESS_DETACH', loader)
         self.assertIn('x3m::voice_dmo_fallback::shutdown();', loader.split('DLL_PROCESS_DETACH', 1)[1])
         report = SOURCE.split('void report() {', 1)[1].split('\n}\n', 1)[0]
@@ -124,7 +125,7 @@ class ReplicaCoverage(unittest.TestCase):
     def test_replica_site_carries_the_game_bytes_and_the_hook_install_path(self):
         self.assertIn('.byte 0x8b,0xf0,0x81,0xfe,0x0e,0x00,0x07,0x80', REPLICA)
         self.assertIn('x3m::voice_dmo_fallback::fixture_site(site)&&x3m::voice_dmo_fallback::initialize()', REPLICA)
-        self.assertIn('-DX3M_VOICE_DMO_FIXTURE', (ROOT / 'verification/probe/build_voice_startup_replica.sh').read_text())
+        self.assertIn('-DX3M_VOICE_DMO_FIXTURE', source_text(ROOT / 'verification/probe/build_voice_startup_replica.sh'))
         import run_voice_startup_replica as runner
         self.assertIn('game-dmo-hook', runner.MODES)
         self.assertIn('game-dmo-hook', runner.GAME_DS_MODES)

@@ -13,6 +13,7 @@ import unittest
 from unittest import mock
 
 from verification.analysis.test_capture_bloom_lifetime import extract_function
+from source_text import source_text
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -35,8 +36,8 @@ class FpsOverlay(unittest.TestCase):
                     print(name, result.stdout.strip())
 
     def test_present_path_wiring(self):
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
-        header = (ROOT / 'src/proxy/fps_overlay.h').read_text()
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
+        header = source_text(ROOT / 'src/proxy/fps_overlay.h')
         present = extract_function(capture, 'HRESULT WINAPI present(')
         # The overlay draws before the native Present, admitted at a clean frame
         # boundary with the process in the foreground, under the pin, with its own bitmap.

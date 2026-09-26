@@ -18,6 +18,7 @@ from verification.analysis.test_chase_lead_sites import PatchedImage
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'tools/analysis'))
 import summarize_submit_phases as rows  # noqa: E402
+from source_text import source_text
 
 
 class SourceAndReplay(unittest.TestCase):
@@ -25,7 +26,7 @@ class SourceAndReplay(unittest.TestCase):
         self.assertEqual(len(probe.SITES), 22)
         self.assertEqual([s.va for s in probe.SITES][:7],
                          [0x47e620, 0x4722b4, 0x472490, 0x47e8f5, 0x47e264, 0x47e285, 0x47e315])
-        text = probe.SOURCE.read_text()
+        text = source_text(probe.SOURCE)
         self.assertTrue(probe.source_checks(text))
         # A changed rel32 offset, a changed byte and a reordered table are all refused.
         self.assertFalse(probe.source_checks(text.replace('{0x56,0xe8,0x26,0xc4,0x00,0x00},6,0,2}', '{0x56,0xe8,0x26,0xc4,0x00,0x00},6,0,0}', 1)))
@@ -38,7 +39,7 @@ class SourceAndReplay(unittest.TestCase):
         self.assertFalse(probe.source_checks('\n'.join(swapped)))
         self.assertIsNone(probe.source_checks(None))
         # The role table of the core header has one role per site, in the same order.
-        core = (ROOT / 'src/proxy/submit_phases_core.h').read_text()
+        core = source_text(ROOT / 'src/proxy/submit_phases_core.h')
         table = core[core.index('inline constexpr Role roles[site_count] = {'):]
         table = table[:table.index('};')]
         roles = re.findall(r'\{(\w+), (Open|Close)\}', table)
@@ -76,8 +77,8 @@ class SourceAndReplay(unittest.TestCase):
             self.assertRegex(run.stdout, r'^submit_phases_host checks=\d+ failures=0 accumulator_bytes=\d+ window_bytes=\d+ dispatch_cost_ns=\d+\n$')
 
     def test_production_wiring(self):
-        source = (ROOT / 'src/proxy/submit_phases.cpp').read_text()
-        core = (ROOT / 'src/proxy/submit_phases_core.h').read_text()
+        source = source_text(ROOT / 'src/proxy/submit_phases.cpp')
+        core = source_text(ROOT / 'src/proxy/submit_phases_core.h')
         cost = int(re.search(r'inline constexpr std::uint64_t dispatch_cost_ns = (\d+);', core).group(1))
         self.assertTrue(0 < cost <= 370, cost)
         # The context stub, the shared transaction, the handler under LightCallBoundary and no x87 anywhere near it.
@@ -94,26 +95,26 @@ class SourceAndReplay(unittest.TestCase):
         for word in ('float', 'double', 'long double'):
             self.assertNotRegex(source, r'\b' + word + r'\b')
         self.assertIn('constexpr std::uint32_t chase_cap=1u<<16;', source)
-        stub = (ROOT / 'src/proxy/lean_stub.cpp').read_text()
+        stub = source_text(ROOT / 'src/proxy/lean_stub.cpp')
         context = stub[stub.index('void* emit_context('):]
         self.assertIn('e.byte(0x9c);e.byte(0x60);e.byte(0xfc);', context)      # pushfd; pushad; cld
         self.assertIn('e.byte(0x61);e.byte(0x9d);', context)                  # popad; popfd
         self.assertNotRegex(context, r'0xdd|0xd9|0xdb|0xae')                  # no fnsave/frstor/fld/fxsave
         # Frame boundary under the frame group's owner guard; a frame without a sample is dropped.
-        frame = (ROOT / 'src/proxy/frame_phases.cpp').read_text()
+        frame = source_text(ROOT / 'src/proxy/frame_phases.cpp')
         impl = frame[frame.index('void frame_impl(std::uint64_t frame) noexcept {'):]
         impl = impl[:impl.index('\n}')]
         self.assertLess(impl.index('if(!owner(false))return;'), impl.index('submit_phases::frame(frame,taken);'))
         self.assertLess(impl.index('submit_phases::frame(frame,taken);'), impl.index('if(!taken)return;'))
         self.assertIn('if(!sampled){accumulator.discard();++dropped;return;}', source)
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
         self.assertLess(capture.index('frame_phases::initialize();'), capture.index('submit_phases::initialize();'))
         self.assertLess(capture.index('submit_phases::initialize();'), capture.index('media_cue::initialize();'))
-        cmake = (ROOT / 'CMakeLists.txt').read_text()
+        cmake = source_text(ROOT / 'CMakeLists.txt')
         self.assertEqual(cmake.count('src/proxy/submit_phases.cpp'), 2)
-        self.assertIn("('src/proxy/submit_phases.cpp','submit')", (ROOT / 'verification/probe/build_game_phase_cpu.py').read_text())
-        self.assertIn("'_x3m_submit_phase_enter'", (ROOT / 'verification/probe/check_no_x87.py').read_text())
-        fixture = (ROOT / 'verification/probe/submit_phase_cpu_fixture.cpp').read_text()
+        self.assertIn("('src/proxy/submit_phases.cpp','submit')", source_text(ROOT / 'verification/probe/build_game_phase_cpu.py'))
+        self.assertIn("'_x3m_submit_phase_enter'", source_text(ROOT / 'verification/probe/check_no_x87.py'))
+        fixture = source_text(ROOT / 'verification/probe/submit_phase_cpu_fixture.cpp')
         for label in ('hit path closes each of the nine pairs exactly once and leaves none open',
                       'incoming x87 image (two live stack values, control word) survives every stamp',
                       'a skipped pass-loop guard closes the block at the End dispatch',
@@ -140,7 +141,7 @@ class WindowRowParser(unittest.TestCase):
         return '[12.5] submit_phases ' + ' '.join(f'{k}={v}' for k, v in values.items())
 
     def test_format_string_and_parser_agree_on_the_field_list(self):
-        source = (ROOT / 'src/proxy/submit_phases.cpp').read_text()
+        source = source_text(ROOT / 'src/proxy/submit_phases.cpp')
         call = source[source.index('log("submit_phases qpc='):source.index('emitted,s.frame,s.frames')]
         emitted = re.findall(r'(\w+)=%', ''.join(re.findall(r'"([^"]*)"', call)))
         # The parser reads by name, so only the set has to agree; no field is emitted twice.
@@ -189,7 +190,7 @@ class SubmitPhasesLaunchOption(unittest.TestCase):
             env = json.loads(output)['env']
             self.assertEqual(env['X3M_PERF'], '1')
             self.assertNotIn('X3M_SUBMIT_PHASES', env)
-        self.assertNotIn('log_tier::', (ROOT / 'src/proxy/submit_phases.cpp').read_text())
+        self.assertNotIn('log_tier::', source_text(ROOT / 'src/proxy/submit_phases.cpp'))
 
 
 @unittest.skipUnless(probe.DEFAULT_EXE.is_file(), 'installed X3AP.exe unavailable')
@@ -199,7 +200,7 @@ class NativeSites(unittest.TestCase):
         cls.data = probe.DEFAULT_EXE.read_bytes()
         cls.image = probe.common.Image(cls.data)
         cls.decoded = probe.decode()
-        cls.source = probe.SOURCE.read_text()
+        cls.source = source_text(probe.SOURCE)
         cls.claims, cls.anchored = probe.other_claims()
 
     def report(self, image=None, decoded=None, claims=None):

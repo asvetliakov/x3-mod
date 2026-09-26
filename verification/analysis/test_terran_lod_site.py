@@ -25,6 +25,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'verification/probe'))
 import verify_cull_census_sites as census  # noqa: E402
 import verify_terran_lod_site as verifier  # noqa: E402
+from source_text import source_text
 
 EXE = Path(verifier.DEFAULT_EXE)
 
@@ -176,7 +177,7 @@ class TerranLodCore(unittest.TestCase):
             self.assertEqual([int(v, 16) for v in lines[3].split()], [verifier.WINDOW_VA, verifier.SITE_VA, verifier.TARGET_VA])
 
     def test_python_twin(self):
-        self.assertEqual(verifier.source_constants((ROOT / 'src/proxy/terran_lod_sites.h').read_text()), verifier.EXPECTED_CONSTANTS)
+        self.assertEqual(verifier.source_constants(source_text(ROOT / 'src/proxy/terran_lod_sites.h')), verifier.EXPECTED_CONSTANTS)
         # jmp rel8 +5 from the end of the two bytes lands where je did.
         self.assertEqual(verifier.SITE_VA + 2 + verifier.PATCHED[1], verifier.TARGET_VA)
         self.assertEqual(verifier.WINDOW[verifier.SITE_VA - verifier.WINDOW_VA:][:2], verifier.SITE)
@@ -214,12 +215,12 @@ class TerranLodCore(unittest.TestCase):
         self.assertEqual(older['body'], 'stations\\usc_small_station_d')
 
     def test_production_wiring(self):
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
         self.assertEqual(capture.count('terran_station_lod::initialize();'), 1)
         self.assertLess(capture.index('game_phases::initialize();'), capture.index('terran_station_lod::initialize();'))
-        self.assertIn('if (reserved == nullptr) x3m::terran_station_lod::shutdown();', (ROOT / 'src/proxy/loader.cpp').read_text())
-        self.assertIn('src/proxy/terran_station_lod.cpp', (ROOT / 'CMakeLists.txt').read_text())
-        module = (ROOT / 'src/proxy/terran_station_lod.cpp').read_text()
+        self.assertIn('if (reserved == nullptr) x3m::terran_station_lod::shutdown();', source_text(ROOT / 'src/proxy/loader.cpp'))
+        self.assertIn('src/proxy/terran_station_lod.cpp', source_text(ROOT / 'CMakeLists.txt'))
+        module = source_text(ROOT / 'src/proxy/terran_station_lod.cpp')
         for needle in ('L"X3M_TERRAN_STATION_LOD"', 'setting_capacity', '"too_long"', '"invalid_setting"', 'install_window_open()', 'executable_verified()',
                        'sites::install(ops, window_address, engine_patch::install_window_open()', 'sites::restore(ops, site_, site_protection, found, &found_read)',
                        'engine_patch::write_code', 'FlushInstructionCache', 'VirtualProtect', 'PAGE_EXECUTE_READWRITE',
@@ -227,14 +228,14 @@ class TerranLodCore(unittest.TestCase):
                        '"terran_station_lod_restore site=%08lx status=%s found=%s registered=%u\\n"', 'SetLastError(error);',
                        'log("terran_station_lod site=%08lx status=%s reason=%s mode=%s setting=%s write=%s"'):
             self.assertIn(needle, module)
-        header = (ROOT / 'src/proxy/terran_lod_sites.h').read_text()
+        header = source_text(ROOT / 'src/proxy/terran_lod_sites.h')
         for needle in ('plan(current)', 'memcmp(back, expected_site, site_length)', '"patch_rolled_back"', '"rollback_unprotected"', '"rollback_failed"',
                        '"restore_not_owned"', '"restore_failed"', '*live = true;'):
             self.assertIn(needle, header)
         self.assertNotIn('windows.h', header)
         for forbidden in ('float ', 'double ', 'push_front', 'Emitter'):
             self.assertNotIn(forbidden, module)
-        census_source = (ROOT / 'src/proxy/cull_census.cpp').read_text()
+        census_source = source_text(ROOT / 'src/proxy/cull_census.cpp')
         self.assertIn('flag31_suffix(e.flag31)', census_source)
         self.assertIn('lod=%ld verdict=%s%s%s%s%s"', census_source)
 

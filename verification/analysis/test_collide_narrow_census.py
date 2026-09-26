@@ -25,6 +25,7 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'verification/probe'))
 import verify_collide_sites as probe  # noqa: E402
+from source_text import source_text
 
 HARNESS = r'''
 #include "collide_narrow_census_core.h"
@@ -126,7 +127,7 @@ def patched_checks(data, changes, claims=None, sat=None):
     narrow = probe.narrow_inputs(bytes(image))
     if claims is not None:
         narrow['claims'] = claims
-    return probe.inspect(bytes(image), probe.decode(bytes(image)), probe.CORE.read_text(),
+    return probe.inspect(bytes(image), probe.decode(bytes(image)), source_text(probe.CORE),
                          probe.other_claims(), narrow, sat)
 
 
@@ -185,7 +186,7 @@ class NarrowSites(unittest.TestCase):
         self.assertEqual(probe.overlaps(probe.other_claims()), [])
 
     def test_source_constants(self):
-        self.assertEqual(probe.narrow_source_constants(probe.NARROW_CORE.read_text()), probe.NARROW_EXPECTED_CONSTANTS)
+        self.assertEqual(probe.narrow_source_constants(source_text(probe.NARROW_CORE)), probe.NARROW_EXPECTED_CONSTANTS)
 
     def test_line_parsers(self):
         row = probe.parse_narrow_install_line('00:01 collide_narrow_census requested=1 patched=1 reason=ok n5_site=0x0045d665 n6_site=0x0048a9a5 n7_site=0x004e2530 '
@@ -246,20 +247,20 @@ class NarrowSites(unittest.TestCase):
             probe.encode_n6_stub(1 << 32, 0, 0)
 
     def test_production_wiring(self):
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
         self.assertEqual(capture.count('collide_narrow_census::initialize();'), 1)
         self.assertEqual(capture.count('collide_narrow_census::present(ctx.id,ctx.frame,ctx.capture);'), 1)
         self.assertLess(capture.index('game_phases::initialize();'), capture.index('collide_narrow_census::initialize();'))
-        self.assertIn('x3m::collide_narrow_census::shutdown();', (ROOT / 'src/proxy/loader.cpp').read_text())
-        self.assertIn('src/proxy/collide_narrow_census.cpp', (ROOT / 'CMakeLists.txt').read_text())
-        module = (ROOT / 'src/proxy/collide_narrow_census.cpp').read_text()
+        self.assertIn('x3m::collide_narrow_census::shutdown();', source_text(ROOT / 'src/proxy/loader.cpp'))
+        self.assertIn('src/proxy/collide_narrow_census.cpp', source_text(ROOT / 'CMakeLists.txt'))
+        module = source_text(ROOT / 'src/proxy/collide_narrow_census.cpp')
         self.assertIn('L"X3M_COLLIDE_NARROW_CENSUS"', module)
         self.assertIn('length == 1 && setting[0] == L\'1\'', module)
         for needle in ('install_window_open()', 'executable_verified()', 'callee_mismatch', 'pin_self()', 'engine_patch::restore_call(n6_site_)', 'engine_patch::restore(n7_site_)', 'engine_patch::restore(n8_site_)', 'collide_narrow_census_n8',
                        'x3m::LightCallBoundary cpu;', 'force_align_arg_pointer'):
             self.assertIn(needle, module)
         self.assertNotIn('X3M_COLLIDE_BOX_CULL', module)   # independent of the box cull
-        audit = (ROOT / 'verification/probe/check_no_x87.py').read_text()
+        audit = source_text(ROOT / 'verification/probe/check_no_x87.py')
         self.assertIn("'_x3m_collide_narrow_pre', '_x3m_collide_narrow_post'", audit)
 
 
@@ -303,7 +304,7 @@ class NarrowLaunchOption(unittest.TestCase):
             code, _, error = self.launch(directory, '--collide-narrow-census')
             self.assertEqual(code, 2)
             self.assertIn('unrecognized arguments', error)
-        self.assertIn('const bool group = log_tier::debug();', (ROOT / 'src/proxy/collide_narrow_census.cpp').read_text())
+        self.assertIn('const bool group = log_tier::debug();', source_text(ROOT / 'src/proxy/collide_narrow_census.cpp'))
 
 
 if __name__ == '__main__':

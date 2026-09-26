@@ -24,6 +24,7 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'verification/probe'))
 import verify_lod_occlusion_site as verifier  # noqa: E402
+from source_text import source_text
 
 EXE = Path(verifier.DEFAULT_EXE)
 
@@ -172,7 +173,7 @@ class LodOcclusionCore(unittest.TestCase):
                              [verifier.WINDOW_VA, verifier.SITE_VA, verifier.WRITE_VA, verifier.LOD0_VA, verifier.PLACEHOLDER_VA])
 
     def test_python_twin(self):
-        self.assertEqual(verifier.source_constants((ROOT / 'src/proxy/lod_occlusion_sites.h').read_text()), verifier.EXPECTED_CONSTANTS)
+        self.assertEqual(verifier.source_constants(source_text(ROOT / 'src/proxy/lod_occlusion_sites.h')), verifier.EXPECTED_CONSTANTS)
         # jne rel32 +0xc9 reaches the placeholder bind; rel32 0 reaches the next instruction.
         self.assertEqual(verifier.SITE_VA + 6 + int.from_bytes(verifier.WRITE, 'little', signed=True), verifier.PLACEHOLDER_VA)
         self.assertEqual(verifier.SITE_VA + 6 + int.from_bytes(verifier.PATCHED, 'little', signed=True), verifier.LOD0_VA)
@@ -211,13 +212,13 @@ class LodOcclusionCore(unittest.TestCase):
         self.assertIsNone(verifier.parse_restore_line('lod_occlusion_restore site=004c34f7 status=restored'))
 
     def test_production_wiring(self):
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
         self.assertEqual(capture.count('lod_occlusion::initialize();'), 1)
         self.assertLess(capture.index('game_phases::initialize();'), capture.index('lod_occlusion::initialize();'))
         self.assertLess(capture.index('terran_station_lod::initialize();'), capture.index('lod_occlusion::initialize();'))
-        self.assertIn('if (reserved == nullptr) x3m::lod_occlusion::shutdown();', (ROOT / 'src/proxy/loader.cpp').read_text())
-        self.assertIn('src/proxy/lod_occlusion.cpp', (ROOT / 'CMakeLists.txt').read_text())
-        module = (ROOT / 'src/proxy/lod_occlusion.cpp').read_text()
+        self.assertIn('if (reserved == nullptr) x3m::lod_occlusion::shutdown();', source_text(ROOT / 'src/proxy/loader.cpp'))
+        self.assertIn('src/proxy/lod_occlusion.cpp', source_text(ROOT / 'CMakeLists.txt'))
+        module = source_text(ROOT / 'src/proxy/lod_occlusion.cpp')
         for needle in ('L"X3M_LOD_OCCLUSION"', 'setting_capacity', '"too_long"', '"invalid_setting"', 'install_window_open()', 'executable_verified()',
                        'sites::install(ops, window_address, engine_patch::install_window_open()', 'sites::restore(ops, write_at_, site_protection, found, &found_read)',
                        'engine_patch::write_code', 'FlushInstructionCache', 'VirtualProtect', 'PAGE_EXECUTE_READWRITE',
@@ -226,7 +227,7 @@ class LodOcclusionCore(unittest.TestCase):
                        'log("lod_occlusion site=%08lx status=%s reason=%s mode=%s setting=%s write=%s default=%u"',
                        'x3m::config::get(L"X3M_LOD_OCCLUSION_DEFAULT", marker, 2) == 1 && marker[0] == L\'1\''):
             self.assertIn(needle, module)
-        header = (ROOT / 'src/proxy/lod_occlusion_sites.h').read_text()
+        header = source_text(ROOT / 'src/proxy/lod_occlusion_sites.h')
         for needle in ('plan(current)', 'memcmp(back, expected_write, write_length)', '"patch_rolled_back"', '"rollback_unprotected"', '"rollback_failed"',
                        '"restore_not_owned"', '"restore_failed"', '*live = true;'):
             self.assertIn(needle, header)

@@ -7,6 +7,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+from source_text import source_text
 
 ROOT=Path(__file__).resolve().parents[2]
 
@@ -40,20 +41,20 @@ class DiagnosticLaunchOptions(unittest.TestCase):
             self.assertEqual(env['X3M_PERF'],'1')
             for name in ('X3M_GAME_PHASE_THRESHOLD_MS','X3M_GAME_PHASES','X3M_TELEMETRY_DRAW'):
                 self.assertNotIn(name,env)
-        self.assertIn('const bool wanted=log_tier::draw_trace_flag(L"X3M_GAME_PHASES");',(ROOT/'src/proxy/game_phases.cpp').read_text())
-        self.assertIn('draw_active=log_tier::draw_trace_flag(L"X3M_TELEMETRY_DRAW");',(ROOT/'src/proxy/telemetry.cpp').read_text())
+        self.assertIn('const bool wanted=log_tier::draw_trace_flag(L"X3M_GAME_PHASES");',source_text(ROOT/'src/proxy/game_phases.cpp'))
+        self.assertIn('draw_active=log_tier::draw_trace_flag(L"X3M_TELEMETRY_DRAW");',source_text(ROOT/'src/proxy/telemetry.cpp'))
 
     def test_production_wiring_of_both_variables(self):
-        source=(ROOT/'src/proxy/game_phases.cpp').read_text()
+        source=source_text(ROOT/'src/proxy/game_phases.cpp')
         self.assertIn('L"X3M_GAME_PHASE_THRESHOLD_MS"',source)
         self.assertIn('core.frame_threshold=core.frequency*threshold_ms/1000;',source)
         self.assertIn('frame_threshold_ms=%u',source)
-        core=(ROOT/'src/proxy/game_phases_core.h').read_text()
+        core=source_text(ROOT/'src/proxy/game_phases_core.h')
         # One branch per frame: zero keeps the built-in 50 ms and costs nothing.
         self.assertIn('if(frequency&&elapsed>=(frame_threshold?frame_threshold:frequency/20)){',core)
-        telemetry=(ROOT/'src/proxy/telemetry.cpp').read_text()
+        telemetry=source_text(ROOT/'src/proxy/telemetry.cpp')
         self.assertIn('L"X3M_TELEMETRY_DRAW"',telemetry)
-        motion=(ROOT/'src/proxy/motion_output.cpp').read_text()
+        motion=source_text(ROOT/'src/proxy/motion_output.cpp')
         for field in ('gate_us=%.1f','route_draw_us=%.1f','set_rt_us=%.1f'):
             self.assertIn(field,motion)
 

@@ -39,6 +39,7 @@ from shader_constants import parse_ctab
 from verification.analysis.test_capture_bloom_lifetime import extract_function
 from verification.analysis.test_original_fill import families, launch
 from verification.analysis.test_hull_lightmap_gain import FILLS, UNTOUCHED
+from source_text import source_text
 
 DSX, DSY, TEXLDD, TEXLD, MUL, DEF, DCL = 91, 92, 93, 66, 5, 81, 31
 ADD, MAD, RCP, RSQ, DP3, MIN, MAX = 2, 4, 6, 7, 8, 10, 11
@@ -346,14 +347,14 @@ class HullEmissiveWideningTransformerTests(unittest.TestCase):
         self.assertEqual(self.driver['flow_control_checks'], 12)
         self.assertEqual(self.driver['flow_control'], dict(inside_if=1, after_endif=0, inside_rep=1, inside_loop=1, after_endloop=0, nested=2,
                                                             outside=0, after_label_ret=-2, after_call=-2, off_boundary=-1, site_zero=-1))
-        header = (ROOT / 'src/renderer/linear_material.h').read_text()
+        header = source_text(ROOT / 'src/renderer/linear_material.h')
         self.assertIn('FlowControl, // hull emissive widening', header); self.assertIn('Subroutine   // hull emissive widening', header)
 
     def test_coverage_every_sm3_lightmap_program_is_widened_or_listed(self):
         manifest_path = self.originals.parent / 'manifest.json'
         if not manifest_path.is_file():
             self.skipTest(f'archive manifest missing beside the corpus: {manifest_path}')
-        manifest = json.loads(manifest_path.read_text())
+        manifest = json.loads(source_text(manifest_path))
         effects = {}
         for effect in manifest['effects']:
             path = effect['path']
@@ -452,7 +453,7 @@ class LauncherAndProxyTests(unittest.TestCase):
             self.assertEqual(json.loads(output)['env']['X3M_HULL_EMISSIVE_WIDENING'], '3,3')
 
     def test_dll_plumbing(self):
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
         block = capture[capture.index('// X3M_HULL_EMISSIVE_WIDENING=K[,B] (docs/architecture'):][:2800]
         self.assertIn('x3m::config::get(L"X3M_HULL_EMISSIVE_WIDENING",widen_setting,96)', block)
         self.assertIn('if(valid&&count==1)parsed[1]=parsed[0]; // B defaults to K', block)
@@ -471,12 +472,12 @@ class LauncherAndProxyTests(unittest.TestCase):
         # The size shadow is keyed by the proxy's resource identity as well as the pointer (a freed and reallocated
         # light map at the same address is re-read); the sampler hook installs for the widening (MINFILTER shadow).
         self.assertIn('const std::uint64_t identity=ctx.motion_output.texture_identity_wanted(stage,texture)?resource_id(texture):0;', hook)
-        wanted_identity = extract_function((ROOT / 'src/proxy/motion_output.cpp').read_text(), 'bool MotionOutput::texture_identity_wanted(')
+        wanted_identity = extract_function(source_text(ROOT / 'src/proxy/motion_output.cpp'), 'bool MotionOutput::texture_identity_wanted(')
         self.assertIn('return lightmap_widen_ && texture && (stage == 2 || stage == 3) && (samplers_[stage].texture != texture || samplers_[stage].identity == 0);', wanted_identity)
         self.assertIn('const bool query=ctx.motion_output.texture_levels_wanted(stage,texture,identity);', hook)
         self.assertIn('hooked.motion_output.mip_bias_active()||hooked.motion_output.hull_emissive_widening()||hooked.motion_output.linear_materials_requested()', capture)
-        header = (ROOT / 'src/proxy/motion_output.h').read_text()
-        motion = (ROOT / 'src/proxy/motion_output.cpp').read_text()
+        header = source_text(ROOT / 'src/proxy/motion_output.h')
+        motion = source_text(ROOT / 'src/proxy/motion_output.cpp')
         helper = extract_function(motion, 'void MotionOutput::texture_level0_size(')
         self.assertIn("texture->GetType() != D3DRTYPE_TEXTURE) return;", helper)
         self.assertIn('static_cast<IDirect3DTexture9*>(texture)->GetLevelDesc(0, &desc)', helper)
@@ -489,7 +490,7 @@ class LauncherAndProxyTests(unittest.TestCase):
         # default off) in the replay include. Per draw by design, but never on the off path: only an alpha-tested
         # draw that would be a managed candidate reaches it, and only with the option on and the pass holding its
         # alpha programs (alpha_casters_ready requires alpha_casters_requested_).
-        replay = (ROOT / 'src/proxy/motion_output_shadow_replay_inc.h').read_text()
+        replay = source_text(ROOT / 'src/proxy/motion_output_shadow_replay_inc.h')
         self.assertEqual(replay.count('GetLevelDesc'), 1)
         self.assertIn('GetLevelDesc(0, &desc)', extract_function(replay, 'bool MotionOutput::alpha_caster_source('))
         self.assertEqual(motion.count('alpha_caster_source('), 1)
@@ -525,7 +526,7 @@ class LauncherAndProxyTests(unittest.TestCase):
         self.assertIn('lightmap_widen_draw_scale_[0] = fade_route::lightmap_widen_scale(stage.width, lightmap_widen_k_);', draw)
         self.assertIn('lightmap_widen_draw_scale_[1] = fade_route::lightmap_widen_scale(stage.height, lightmap_widen_k_);', draw)
         self.assertNotIn('lightmap_widen_draw_k_', motion)
-        core = (ROOT / 'src/proxy/fade_route_core.h').read_text()
+        core = source_text(ROOT / 'src/proxy/fade_route_core.h')
         law = extract_function(core, 'inline float lightmap_widen_scale(')
         for text in ('if (!size || !(k > 0.f)) return 0.f;', 'const float scaled = float(size) * k;', 'return scaled * scaled;'):
             self.assertIn(text, law)
@@ -556,7 +557,7 @@ class LauncherAndProxyTests(unittest.TestCase):
                      'IDirect3DPixelShader9* ps_hull_lightmap_widen = nullptr;', 'std::uint8_t hull_lightmap_stage = 0;', 'bool hull_lightmap_widen = false;',
                      'float lightmap_widen_draw_scale_[2] = {0.f, 0.f};', 'bool widen_filter_set = false;', 'DWORD minfilter = 0; bool minfilter_known = false;', 'std::uint64_t identity = 0;'):
             self.assertIn(text, header)
-        source = (ROOT / 'src/renderer/linear_material.cpp').read_text()
+        source = source_text(ROOT / 'src/renderer/linear_material.cpp')
         self.assertIn('constexpr unsigned dsx = 91, dsy = 92, texldd = 93;', source)
         self.assertIn('case dsx: case dsy: operands=2; slots=2; return true;', source)
         self.assertIn('case texldd: operands=5; slots=3; return true;', source)
@@ -565,7 +566,7 @@ class LauncherAndProxyTests(unittest.TestCase):
         self.assertIn('constexpr unsigned lightmap_widen_constant = 210, lightmap_widen_luma_constant = 211, lightmap_widen_gate_constant = 203;', source)
         self.assertIn('if (widen && (lightmap_gain==1.0f || !lightmap_widen_valid(*widen))) return LinearMaterialResult::InvalidConfig;', source)
         self.assertIn('return std::isfinite(w.k) && std::isfinite(w.b) && w.k>1.0f && w.k<=8.0f && w.b>=1.0f && w.b<=w.k;', source)
-        self.assertIn("'dsx': 2, 'dsy': 2, 'texldd': 3", (ROOT / 'tools/analysis/inspect_motion_output_profiles.py').read_text())
+        self.assertIn("'dsx': 2, 'dsy': 2, 'texldd': 3", source_text(ROOT / 'tools/analysis/inspect_motion_output_profiles.py'))
 
 if __name__ == '__main__':
     unittest.main()

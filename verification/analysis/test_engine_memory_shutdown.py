@@ -17,6 +17,7 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+from source_text import source_text
 
 ROOT = Path(__file__).resolve().parents[2]
 COPY = '__asm__ __volatile__("rep movsb" : "+D"(out), "+S"(in), "+c"(size) : : "memory");'
@@ -60,7 +61,7 @@ def build_and_run(test, source_text, extra_flags=()):
 
 class EngineMemoryShutdownTests(unittest.TestCase):
     def test_stale_cache_hot_path_and_shutdown_signal(self):
-        run = build_and_run(self, (ROOT / 'src/proxy/engine_memory.cpp').read_text())
+        run = build_and_run(self, source_text(ROOT / 'src/proxy/engine_memory.cpp'))
         self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
         self.assertEqual(run.stderr, '')
         lines = run.stdout.splitlines()
@@ -72,11 +73,11 @@ class EngineMemoryShutdownTests(unittest.TestCase):
         self.assertEqual(int(hot[2]), 48000 + 1000)
 
     def test_signal_raised_by_registry_destroy_and_summarized_once(self):
-        lifetime = (ROOT / 'src/proxy/object_lifetime.cpp').read_text()
+        lifetime = source_text(ROOT / 'src/proxy/object_lifetime.cpp')
         self.assertEqual(lifetime.count('x3m::engine_memory::begin_shutdown('), 1)
         destroy = lifetime[lifetime.index('if(scope->kind==Destroy){'):]
-        self.assertIn('begin_shutdown("registry_destroy")', destroy[:200])
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        self.assertIn('begin_shutdown("registry_destroy")', destroy[:300])  # the Destroy branch (300 raw characters after formatting)
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
         self.assertEqual(capture.count('engine_memory_read_refused reason='), 1)
         self.assertEqual(capture.count('engine_memory_refused_line();'), 1)
         self.assertIn('last_device_destroyed=!refs&&devices.empty();\n        if(last_device_destroyed)engine_memory_refused_line();',

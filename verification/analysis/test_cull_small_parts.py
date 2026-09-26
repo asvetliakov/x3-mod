@@ -29,6 +29,7 @@ sys.path.insert(0, str(ROOT / 'verification/probe'))
 import verify_cull_small_parts_site as probe  # noqa: E402
 import verify_cull_census_sites as census_probe  # noqa: E402
 from verification.analysis.test_chase_aim_sites import synthetic_image  # noqa: E402
+from source_text import source_text
 
 HARNESS = r'''
 #include "cull_small_parts_core.h"
@@ -146,7 +147,7 @@ def image(*changes):
 
 
 def inspect_image(data):
-    return probe.inspect(data, probe.decode(data), probe.CORE.read_text())
+    return probe.inspect(data, probe.decode(data), source_text(probe.CORE))
 
 
 class CullSmallPartsSite(unittest.TestCase):
@@ -180,7 +181,7 @@ class CullSmallPartsSite(unittest.TestCase):
                 self.assertFalse(report['checks'][failed], report)
 
     def test_claims_disjoint_and_constants(self):
-        self.assertEqual(probe.source_constants(probe.CORE.read_text()), probe.EXPECTED_CONSTANTS)
+        self.assertEqual(probe.source_constants(source_text(probe.CORE)), probe.EXPECTED_CONSTANTS)
         self.assertEqual(probe.SITE, bytes.fromhex('8b4f1885c9'))
         self.assertEqual(len(probe.WINDOW), 56)
         self.assertEqual(probe.WINDOW[probe.CULL_VA - probe.WINDOW_VA:probe.CULL_VA - probe.WINDOW_VA + 7], probe.CULL)
@@ -221,7 +222,7 @@ class CullSmallPartsSite(unittest.TestCase):
         self.assertEqual((probe.focus_from_projection(0.5, 1.7777636), probe.focus_from_projection(m00, 3.9999745), probe.focus_from_projection(0.8, 0)), (0x3470, 0x1a38, 0))
 
     def test_tracked_rows_reproduce_the_census_classes(self):
-        document = json.loads((ROOT / 'verification/fixtures/run131-cull-census-rows.json').read_text())
+        document = json.loads(source_text(ROOT / 'verification/fixtures/run131-cull-census-rows.json'))
         rows = document['rows']
         self.assertEqual(len(rows), 1214)
         m00 = struct.unpack('<f', struct.pack('<I', int(document['projection_m00_bits'], 16)))[0]
@@ -286,7 +287,7 @@ class CullSmallPartsSite(unittest.TestCase):
         # The cull's FOV source is the motion route's scene-phase camera read (run309: the live buffer at Present is the HUD view).
         # The motion fixture cannot patch the cull site, so the hand-over is pinned in the source: dropping either call, or
         # reading the camera for the scene anywhere but the Background -> Scene Clear, fails here.
-        source = (ROOT / 'src/proxy/motion_output.cpp').read_text()
+        source = source_text(ROOT / 'src/proxy/motion_output.cpp')
 
         def body(signature):
             start = source.index(signature)
@@ -311,7 +312,7 @@ class CullSmallPartsSite(unittest.TestCase):
         self.assertIn('if (before == renderer::BoundaryState::Background && selector_.state() == renderer::BoundaryState::Scene) read_camera(true);', after_clear)
         self.assertEqual(source.count('read_camera(true)'), 1, 'the scene read happens only at the scene-phase Clear')
         self.assertIn('#include "cull_small_parts.h"', source)
-        self.assertIn('cull_small_parts::begin_frame();', (ROOT / 'src/proxy/capture.cpp').read_text())
+        self.assertIn('cull_small_parts::begin_frame();', source_text(ROOT / 'src/proxy/capture.cpp'))
 
     @unittest.skipUnless(probe.DEFAULT_EXE.is_file(), 'installed executable not present')
     def test_installed_executable(self):

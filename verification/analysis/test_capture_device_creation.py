@@ -11,6 +11,7 @@ import tempfile
 import unittest
 
 from verification.analysis.test_capture_bloom_lifetime import extract_function
+from source_text import source_text
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -19,8 +20,8 @@ class CaptureDeviceCreationTests(unittest.TestCase):
     def test_production_capture_and_ownership_create_device(self):
         compiler = shutil.which("clang++") or shutil.which("c++")
         self.assertIsNotNone(compiler, "A host C++ compiler is required")
-        capture = (ROOT / "src/proxy/capture.cpp").read_text()
-        ownership = (ROOT / "src/ownership/d3d9_ownership.cpp").read_text()
+        capture = source_text(ROOT / "src/proxy/capture.cpp")
+        ownership = source_text(ROOT / "src/ownership/d3d9_ownership.cpp")
         capture_signature = (
             "HRESULT WINAPI create_device(IDirect3D9* d,UINT adapter,D3DDEVTYPE type,"
             "HWND window,DWORD flags,D3DPRESENT_PARAMETERS* p,IDirect3DDevice9** out)"

@@ -9,6 +9,7 @@ import tempfile
 import unittest
 
 from verification.analysis.test_capture_bloom_lifetime import extract_function
+from source_text import source_text
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -33,7 +34,7 @@ class FrameTimingWindow(unittest.TestCase):
             self.assertEqual(run.stderr, '')
 
     def test_production_call_sites_and_schema(self):
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
         # Per-frame sample outside the 300-frame frame_end cadence, timing
         # around the forwarded Present only, primitives from the draw path.
         self.assertIn('frame_timing::frame(ctx.frame,ctx.draws);', capture)
@@ -42,7 +43,7 @@ class FrameTimingWindow(unittest.TestCase):
         present = capture.split('const HRESULT hr=fn(d,a,b,w,r);')
         self.assertEqual(len(present), 2)
         self.assertLess(present[0].rindex('frame_timing::present_begin();'), present[0].rindex('cpu.before_original();'))
-        self.assertTrue(present[1].startswith('cpu.after_original();\n    frame_timing::present_end();'), present[1][:120])
+        self.assertTrue(present[1].startswith('\n    cpu.after_original();\n    frame_timing::present_end();'), present[1][:120])
         self.assertIn('frame_timing::draw(primitives);', capture)
         # Bucket scopes: the two shared dispatch guards carry the scope of the
         # hooked entry point, with the lock member declared first so the stamps
@@ -68,7 +69,7 @@ class FrameTimingWindow(unittest.TestCase):
             self.assertNotIn('cpu.after_original();', piece[piece.index('frame_timing::draw_native_end();'):][:40])
         self.assertIn('frame_timing::initialize();', capture)
         self.assertEqual(capture.count('log("frame_end device=%llu frame=%llu draws=%llu'), 1)
-        source = (ROOT / 'src/proxy/frame_timing.cpp').read_text()
+        source = source_text(ROOT / 'src/proxy/frame_timing.cpp')
         self.assertIn('frame_timing qpc=%llu frame=%llu frames=%u dt_p50_us=%llu dt_p95_us=%llu dt_max_us=%llu '
                       'draws_p50=%llu draws_max=%llu present_p50_us=%llu present_p95_us=%llu '
                       'present_max_us=%llu', source)
@@ -92,7 +93,7 @@ class FrameTimingWindow(unittest.TestCase):
         # The cutout pairs are counted in their own counters, independent of
         # the pair table, and come from the single source, not a literal here.
         self.assertIn('draw_pairs.cutout_draws(0), draw_pairs.cutout_draws(1)', source)
-        header = (ROOT / 'src/proxy/frame_timing.h').read_text()
+        header = source_text(ROOT / 'src/proxy/frame_timing.h')
         self.assertIn('if (vs == cutout::pair_hashes[2] && ps == cutout::pair_hashes[3]) ++cutout_[0];', header)
         self.assertIn('else if (vs == cutout::pair_hashes[0] && ps == cutout::pair_hashes[1]) ++cutout_[1];', header)
         # A user-memory draw never batches: D3D9 clears stream 0 and the
@@ -112,7 +113,7 @@ class FrameTimingWindow(unittest.TestCase):
         self.assertEqual(capture.count('frame_timing_draw_state(ctx,type,primitives,base_vertex,start_index,user_memory);'), 1)
         # The redundancy counting sits in the shadow update, not in the hook
         # bodies, and elides nothing.
-        motion = (ROOT / 'src/proxy/motion_output.cpp').read_text()
+        motion = source_text(ROOT / 'src/proxy/motion_output.cpp')
         for setter, call in (
                 ('void MotionOutput::set_render_state(',
                  'frame_timing::state_write(frame_timing::StateSet::RenderState, unsigned(state),'),
@@ -142,7 +143,7 @@ class FrameTimingWindow(unittest.TestCase):
         self.assertIn('hooked_ticks += state.bucket == state_bucket ? ticks * state_stamps : ticks;', source)
 
     def test_schema_documents_the_state_stamps_and_the_gaps(self):
-        schema = (ROOT / 'docs/verification/sampling-profiler.md').read_text()
+        schema = source_text(ROOT / 'docs/verification/sampling-profiler.md')
         section = schema[schema.index('## Frame timing diagnostic'):]
         section = section[:section.index('\n## ')]
         for field in ('state_sampled=', 'gap_pre_p50_us=', 'gap_draw_p50_us=', 'gap_post_p50_us=',
@@ -158,7 +159,7 @@ class FrameTimingWindow(unittest.TestCase):
         # gap_draw is game time between hooked calls, not proxy time.
         self.assertIn('game time', section)
         # The per-draw evidence the next session B reads.
-        shadows = (ROOT / 'docs/verification/directional-shadows.md').read_text()
+        shadows = source_text(ROOT / 'docs/verification/directional-shadows.md')
         self.assertIn('draw_pairs', shadows)
         self.assertIn('cutout_pairs=', shadows)
 
@@ -200,7 +201,7 @@ class FrameTimingLaunchOption(unittest.TestCase):
             env = json.loads(output)['env']
             self.assertNotIn('X3M_FRAME_END_STRIDE', env)
             self.assertNotIn('X3M_FRAME_TIMING_STATE_STAMPS', env)
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
         self.assertIn('constexpr unsigned frame_end_stride_default = 3600', capture)
         self.assertIn('frame_end_stride=log_tier::cadence_default(log_tier::perf()||log_tier::debug(),1u,frame_end_stride_default);', capture)
 

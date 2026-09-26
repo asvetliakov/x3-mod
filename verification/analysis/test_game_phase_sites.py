@@ -9,6 +9,7 @@ from pathlib import Path
 import verify_game_phase_sites as probe
 from verification.analysis.test_chase_lead import extract_named_function
 from verification.analysis.test_chase_lead_sites import PatchedImage
+from source_text import source_text
 
 
 ROOT=Path(__file__).resolve().parents[2]
@@ -55,8 +56,8 @@ extern "C" void x3m_probe_exit(){}
 
 def restore_filter_count():
     """The production constant the chase_transition stub's prefilter is sized by."""
-    header=(ROOT/'src/proxy/chase_transition_restore_core.h').read_text()
-    match=re.search(r'constexpr unsigned restore_filter_count=(\d+)',header)
+    header=source_text(ROOT/'src/proxy/chase_transition_restore_core.h')
+    match=re.search(r'constexpr unsigned restore_filter_count\s*=\s*(\d+)',header)
     if match is None:raise ValueError('restore_filter_count not found')
     return int(match.group(1))
 
@@ -90,7 +91,7 @@ def emitter_fixture_source():
     chunks=[COUNTING_EMITTER]
     calls=[]
     for label,filename,name,call,prelude,helpers in emitters:
-        source=(ROOT/'src/proxy'/filename).read_text()
+        source=source_text(ROOT/'src/proxy'/filename)
         if filename in ('game_phases.cpp','pass_phases.cpp','loop_phases.cpp'):
             source=source.replace('void* emit(unsigned index,void*** next_out);','')
         bodies=[extract_named_function(source,helper) for helper in helpers]
@@ -110,10 +111,10 @@ class SourceAndReplay(unittest.TestCase):
         self.assertEqual(len(probe.SITES),33)
         self.assertEqual(probe.PHASE_COUNT,33)
         self.assertEqual(probe.SITES[-1].va,0x498f5a)
-        self.assertTrue(probe.source_checks(probe.SOURCE.read_text()))
+        self.assertTrue(probe.source_checks(source_text(probe.SOURCE)))
 
     def test_ret_pop_and_relocation_fields_cannot_swap(self):
-        text=probe.SOURCE.read_text()
+        text=source_text(probe.SOURCE)
         self.assertIn(',5,0,1}',text)
         self.assertFalse(probe.source_checks(text.replace(',5,0,1}',',5,1,0}',1)))
         self.assertIn('"game_phase_publisher_begin",0x00425a10',text)
@@ -124,7 +125,7 @@ class SourceAndReplay(unittest.TestCase):
         self.assertFalse(probe.source_checks(text.replace('},7,4,0}','},7,0,0}',1)))
 
     def test_missing_reordered_or_duplicated_site_refused(self):
-        text=probe.SOURCE.read_text()
+        text=source_text(probe.SOURCE)
         lines=text.splitlines()
         entries=[i for i,line in enumerate(lines) if '{"game_phase_' in line]
         for mode in ('missing','reorder','duplicate'):
@@ -175,7 +176,7 @@ class SourceAndReplay(unittest.TestCase):
 
         def lengths(filename):
             return [row['length'] for row in
-                    probe.common.parse_source_specs((ROOT/'src/proxy'/filename).read_text())]
+                    probe.common.parse_source_specs(source_text(ROOT/'src/proxy'/filename))]
         families={
             'game_phases':lengths('game_phase_sites.h'),
             # The ten frame-phase stamps use the game-phase emitter (indices
@@ -193,12 +194,12 @@ class SourceAndReplay(unittest.TestCase):
             'voice_dmo_fallback':lengths('voice_dmo_fallback.cpp'),
             'loading_probes':lengths('loading_probes.cpp'),
         }
-        camera=(ROOT/'src/proxy/chase_camera.cpp').read_text()
-        camera_match=re.search(r'SiteSpec site_spec\s*=\s*\{"cockpit_update_pose",\s*site_va,\s*\{[^}]+\},\s*(\d+),',camera)
+        camera=source_text(ROOT/'src/proxy/chase_camera.cpp')
+        camera_match=re.search(r'SiteSpec site_spec\s*=\s*\{\s*"cockpit_update_pose",\s*site_va,\s*\{[^}]+\},\s*(\d+),',camera)
         self.assertIsNotNone(camera_match)
         families['chase_camera']=[int(camera_match.group(1))]
-        reader=(ROOT/'src/proxy/resource_reader.cpp').read_text()
-        match=re.search(r'SiteSpec spec\{"resource_read",reader_va,\{\},(\d+),0,0\}',reader)
+        reader=source_text(ROOT/'src/proxy/resource_reader.cpp')
+        match=re.search(r'SiteSpec spec\{"resource_read",\s*reader_va,\s*\{\},\s*(\d+),\s*0,\s*0\}',reader)
         self.assertIsNotNone(match)
         families['resource_reader']=[int(match.group(1))]
         # chase_transition carries 16 rows since 123f98d added the seven
@@ -207,13 +208,13 @@ class SourceAndReplay(unittest.TestCase):
                          {'resource_reader':1,'game_phases':33,'frame_phases':10,'pass_phases':4,'loop_phases':6,'residual_phases':2,'submit_phases':22,'media_cue':1,'chase_camera':1,
                           'chase_transition':16,'chase_lead':9,'chase_aim_trace':4,'chase_fire':1,'voice_dmo_fallback':1,
                           'loading_probes':12})
-        lead_rows=probe.common.parse_source_specs((ROOT/'src/proxy/chase_lead.cpp').read_text())
+        lead_rows=probe.common.parse_source_specs(source_text(ROOT/'src/proxy/chase_lead.cpp'))
         self.assertEqual([row['name'] for row in lead_rows],[
             'chase_lead_gate','chase_lead_publish','chase_lead_final_fov',
             'chase_central_hud_gate','chase_native_solver_begin','chase_native_solver_end',
             'chase_native_distance_begin','chase_native_distance_end','chase_native_central_end'])
 
-        engine=(ROOT/'src/proxy/engine_patch.cpp').read_text()
+        engine=source_text(ROOT/'src/proxy/engine_patch.cpp')
         claim=extract_named_function(engine,'claim')
         compact=re.sub(r'\s+','',claim)
         self.assertIn('Emittere(spec.length+5+4+6+8);',compact)
@@ -303,7 +304,7 @@ class NativeSites(unittest.TestCase):
     def setUpClass(cls):
         cls.image=probe.common.Image(probe.DEFAULT_EXE.read_bytes())
         cls.decoded=probe.decode()
-        cls.source=probe.SOURCE.read_text()
+        cls.source=source_text(probe.SOURCE)
 
     def report(self,image=None,decoded=None):
         return probe.inspect(image or self.image,decoded or self.decoded,self.source)

@@ -7,6 +7,7 @@ production wiring and the launcher switches. No Wine, no D3D.
 import re, shutil, subprocess, tempfile, unittest
 from pathlib import Path
 from verification.analysis import test_volumetric_fog
+from source_text import source_text
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCES = [ROOT / 'verification/probe/fog_handover_host.cpp', ROOT / 'src/fog/fog_density_cache.cpp', ROOT / 'src/fog/fog_density_generator.cpp']
@@ -111,18 +112,18 @@ class FogHandoverHost(unittest.TestCase):
 
 class FogHandoverWiring(unittest.TestCase):
     def test_production_wiring(self):
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
         self.assertIn('sector_background::sample(read,volumetric_fog_docked?sector_background::anchor_walk_limit:0u)', capture)
         self.assertIn('volumetric_fog_handover_step=volumetric_fog_range_stored && fog_default_on(L"X3M_FOG_HANDOVER_STEP");', capture)
         self.assertIn('volumetric_fog_handover_coldfill=volumetric_fog_range_stored && fog_default_on(L"X3M_FOG_HANDOVER_COLDFILL");', capture)
         self.assertIn('volumetric_fog_docked=volumetric_fog_requested && fog_default_on(L"X3M_FOG_DOCKED");', capture)
         self.assertIn('configure_volumetric_fog_handover(volumetric_fog_handover_step,volumetric_fog_handover_coldfill);', capture)
-        fog_pass = (ROOT / 'src/renderer/fog_pass.cpp').read_text()
+        fog_pass = source_text(ROOT / 'src/renderer/fog_pass.cpp')
         self.assertLess(fog_pass.index('density_->set_handover(config.handover_step,config.handover_coldfill);'), fog_pass.index('density_->configure(identity);'))
         self.assertIn('density_status_.handover=density_->take_handover();', fog_pass)
-        header = (ROOT / 'src/renderer/fog_pass.h').read_text()
+        header = source_text(ROOT / 'src/renderer/fog_pass.h')
         self.assertIn('bool handover_step=false,handover_coldfill=false;', header)  # fixtures and the options off: legacy
-        fog = (ROOT / 'src/proxy/motion_output_fog_inc.h').read_text()
+        fog = source_text(ROOT / 'src/proxy/motion_output_fog_inc.h')
         self.assertIn('log("volumetric_fog_handover device=%llu frame=%llu step=%u coldfill=%u whole_atlas=%u', fog)
         # The cold step arms the cards in its own frame, after prepare and before the frame's cards.
         self.assertIn('if (h.due && h.step && fog_cards_replace_ && status.ready_far >= 1.f) fog_cards_.arm_on_cold_step();', fog)
@@ -153,14 +154,14 @@ class FogHandoverWiring(unittest.TestCase):
         self.assertIn('else if (transit && cold && next.profile && fog_sector_placement(next).key == fog_density_key_) {', sample)
         self.assertIn('if (decision == fog_prefill::Decision::Confirmed) fog_density_key_ = key;', fog)
         self.assertIn('refusal=%s%s', fog[fog.index('log("volumetric_fog_cards device='):])
-        cache = (ROOT / 'src/fog/fog_density_cache.cpp').read_text()
+        cache = source_text(ROOT / 'src/fog/fog_density_cache.cpp')
         self.assertIn('request_.camera_valid = false;', cache[cache.index('void DensityCache::apply_invalidate_locked()'):cache.index('void DensityCache::post_locked()')])
         self.assertIn('if (identity == identity_) invalidate(); else configure(identity);', cache)
         self.assertIn('fog::DensityCache* prefilled=density_;density_=nullptr;', fog_pass[fog_pass.index('HRESULT FogPass::attach('):])
         self.assertIn('if(!density_){', fog_pass[fog_pass.index('bool FogPass::prefill_density('):fog_pass.index('bool FogPass::density_drawable(')])
         self.assertIn('SetLastError(value)', poll)
         self.assertIn('volumetric_fog_prefill=volumetric_fog_range_stored && fog_default_on(L"X3M_FOG_HANDOVER_PREFILL");', capture)
-        self.assertIn('sector_background::anchor_refused(s)', (ROOT / 'src/proxy/fog_sector_policy.h').read_text())
+        self.assertIn('sector_background::anchor_refused(s)', source_text(ROOT / 'src/proxy/fog_sector_policy.h'))
         # The card mask still requires full far readiness and a drawable density frame (the invariant is unchanged).
         card = fog[fog.index('void MotionOutput::prepare_fog_card('):fog.index('void MotionOutput::finish_fog_card(')]
         self.assertLess(card.index('else if (!(fog_->density_status().ready_far >= 1.f)) why = "density_ramp";'), card.index('else if (!fog_->density_drawable(in.params.world.origin)) why = "density_drawable";'))

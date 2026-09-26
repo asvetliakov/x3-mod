@@ -35,6 +35,7 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'tools/analysis'))
 import inspect_motion_output_profiles as shader
+from source_text import source_text
 
 # Six XT_standard_lighting.fx programs, then six standard_lighting.fx programs.
 PIXELS = ('5f82ecacd39529cd', '6733b119142c8d42', 'fffdabd910793aba', '496049cec2066ed3',
@@ -257,7 +258,7 @@ class FixtureCoverageTests(unittest.TestCase):
     """Source-substring guard against silent drift of the GPU slice contract."""
 
     def test_fixture_submits_the_original_pair_and_requires_gain_one_identity(self):
-        fixture = (ROOT / 'verification/probe/linear_material_fixture.cpp').read_text()
+        fixture = source_text(ROOT / 'verification/probe/linear_material_fixture.cpp')
         transform = fixture.index('Words transform(const Case &c, unsigned mode, bool pixel)')
         block = fixture[fixture.index('    if (mode == 12) {', transform):][:1400]
         for required in ('require(!xt_default(c), "hull emitter gain runs on original pairs only");',
@@ -266,10 +267,10 @@ class FixtureCoverageTests(unittest.TestCase):
                          'output.size() == original.size() + 10'):
             self.assertIn(required, block)
         self.assertIn('const bool targets = mode != 0 && mode != 12;', fixture)
-        self.assertIn('linear_emission.cpp', (ROOT / 'verification/probe/build_linear_material.sh').read_text())
+        self.assertIn('linear_emission.cpp', source_text(ROOT / 'verification/probe/build_linear_material.sh'))
 
     def test_runner_slice_covers_one_pair_per_submittable_program(self):
-        runner = (ROOT / 'verification/probe/run_linear_material.py').read_text()
+        runner = source_text(ROOT / 'verification/probe/run_linear_material.py')
         self.assertIn('HULL_GAIN_PAIRS = (40, 41, 50, 51, 60, 61, 150, 151, 152, 153)', runner)
         self.assertIn("'src/renderer/linear_emission.cpp', 'src/renderer/linear_emission.h',", runner)
         self.assertIn('--hull-emission-gain', runner)

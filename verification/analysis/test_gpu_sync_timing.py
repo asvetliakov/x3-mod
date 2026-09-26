@@ -16,6 +16,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
+from source_text import source_text
 
 ROOT = Path(__file__).resolve().parents[2]
 CORE = ROOT / 'src/renderer/gpu_sync_timing_core.h'
@@ -45,7 +46,7 @@ class GpuSyncTimingCore(unittest.TestCase):
                     self.assertEqual(run.stdout, 'gpu_sync_timing_core checks=36 failures=0\n')
 
     def test_core_is_integer_only_without_d3d_or_heap(self):
-        core = CORE.read_text()
+        core = source_text(CORE)
         code = re.sub(r'//[^\n]*', '', core)
         for forbidden in ('d3d9.h', 'windows.h', 'IDirect3D', 'HRESULT', 'new ', 'malloc', 'std::vector', 'std::string', 'float', 'double'):
             self.assertNotIn(forbidden, code, forbidden)
@@ -96,7 +97,7 @@ class GpuSyncTimingLauncher(unittest.TestCase):
             self.assertNotIn('X3M_GPU_SYNC_TIMING', self.env(directory, vanilla=True))
 
     def test_help_says_it_serialises_for_one_flight(self):
-        source = (ROOT / 'tools/manage.py').read_text()
+        source = source_text(ROOT / 'tools/manage.py')
         start = source.index("'--gpu-sync-timing'")
         help_text = source[start:source.index('\n', start)]
         for phrase in ('X3M_GPU_SYNC_TIMING=1', 'default off', 'refused with --vanilla', 'one flight', 'serialises CPU and GPU'):
@@ -142,21 +143,21 @@ class GpuSyncTimingWiring(unittest.TestCase):
              'TaaMaskTests': (0, 0, 1), 'TaaMaskX': (0, 0, 1), 'TaaMaskY': (0, 0, 1)}
 
     def test_every_pass_has_begin_and_end_sites_in_production(self):
-        sources = ''.join((ROOT / path).read_text() for path in (
+        sources = ''.join(source_text(ROOT / path) for path in (
             'src/proxy/capture.cpp', 'src/proxy/motion_output.cpp', 'src/proxy/motion_output_fog_inc.h', 'src/renderer/hdr_pass.cpp', 'src/renderer/fog_pass.cpp',
             'src/renderer/temporal_pass.cpp'))
-        names = re.findall(r'^\s+(\w+)(?: = 0)?,\s+//', CORE.read_text().split('enum Pass')[1].split('pass_count')[0], re.M)
+        names = re.findall(r'^\s+(\w+)(?: = 0)?,\s+//', source_text(CORE).split('enum Pass')[1].split('pass_count')[0], re.M)
         self.assertEqual(names, list(self.SITES))
         for name in names:
-            begins = len(re.findall(rf'begin\(gpu_sync_timing::{name}\)|gpu_sync_timing::{name},true\)', sources))
-            ends = len(re.findall(rf'end\(gpu_sync_timing::{name}\)|gpu_sync_timing::{name},false\)', sources))
+            begins = len(re.findall(rf'begin\(gpu_sync_timing::{name}\)|gpu_sync_timing::{name},\s*true\)', sources))
+            ends = len(re.findall(rf'end\(gpu_sync_timing::{name}\)|gpu_sync_timing::{name},\s*false\)', sources))
             spans = len(re.findall(rf'Span \w+\([^;]*gpu_sync_timing::{name}\)', sources))
             self.assertEqual((begins, ends, spans), self.SITES[name], name)
             self.assertGreaterEqual(begins + spans, 1, name)
             self.assertGreaterEqual(ends + spans, 1, name)
 
     def test_lifetime_and_off_cost(self):
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
         # Off: no object, the environment read once; the final-release accounting counts the queries.
         self.assertIn('gpu_sync_timing_requested=x3m::config::get(L"X3M_GPU_SYNC_TIMING",setting,32)==1', capture)
         self.assertIn('if(gpu_sync_timing_requested)gpu_sync_attach(hooked,d);', capture)
@@ -171,7 +172,7 @@ class GpuSyncTimingWiring(unittest.TestCase):
         present_helper = capture[capture.index('void gpu_sync_present(Device& ctx) {'):]
         present_helper = present_helper[:present_helper.index('\n}\n')]
         self.assertIn('{BloomOperation internal(ctx);ctx.gpu_sync->release_deferred();}', present_helper)
-        owner_source = (ROOT / 'src/renderer/gpu_sync_timing.cpp').read_text()
+        owner_source = source_text(ROOT / 'src/renderer/gpu_sync_timing.cpp')
         mark = owner_source[owner_source.index('void GpuSyncTiming::mark('):owner_source.index('bool GpuSyncTiming::frame(')]
         self.assertNotIn('release()', mark)
         self.assertIn('release_pending_ = true', mark)
@@ -184,7 +185,7 @@ class GpuSyncTimingWiring(unittest.TestCase):
         order = [present.index(s) for s in ('gpu_sync_mark(ctx,gpu_sync_timing::Present,true);', 'gpu_sync_mark(ctx,gpu_sync_timing::Scene,false);',
                                             'const HRESULT hr=fn(d,a,b,w,r);', 'gpu_sync_present(ctx);', '++ctx.frame;')]
         self.assertEqual(order, sorted(order))
-        owner = (ROOT / 'src/renderer/gpu_sync_timing.cpp').read_text()
+        owner = source_text(ROOT / 'src/renderer/gpu_sync_timing.cpp')
         self.assertIn('D3DQUERYTYPE_EVENT, nullptr', owner)       # documented support probe
         self.assertIn('Issue(D3DISSUE_END)', owner)
         self.assertIn('GetData(&done, sizeof done, D3DGETDATA_FLUSH)', owner)

@@ -11,6 +11,7 @@ from pathlib import Path
 import sys
 import unittest
 from unittest import mock
+from source_text import source_text
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -18,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[2]
 def launcher_main(names):
     """main() of tools/manage.py reduced to its parse/validation prefix plus the
     env assignments of `names`, returning env."""
-    tree = ast.parse((ROOT / 'tools/manage.py').read_text())
+    tree = ast.parse(source_text(ROOT / 'tools/manage.py'))
     main = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'main')
     statements = []
     for node in main.body:
@@ -71,23 +72,23 @@ class HdrDitherLaunch(unittest.TestCase):
             scope['main']()
 
     def test_dll_reads_the_switch_and_every_8bit_write_takes_it(self):
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
         # A value of 32+ characters is refused (the buffer would still hold the previous variable's text).
         self.assertIn('{const DWORD n=x3m::config::get(L"X3M_HDR_DITHER",setting,32);if(n>0&&n<32)hdr_config.dither=!wcscmp(setting,L"1")||!wcscmp(setting,L"on");}', capture)
         self.assertIn('{const DWORD n=x3m::config::get(L"X3M_HDR_CLAMP",setting,32);if(n>0&&n<32){', capture)
-        self.assertIn('bool dither = false;', (ROOT / 'src/renderer/hdr_pass.h').read_text())  # off unless set
-        hdr = (ROOT / 'src/renderer/hdr_pass.cpp').read_text()
+        self.assertIn('bool dither = false;', source_text(ROOT / 'src/renderer/hdr_pass.h'))  # off unless set
+        hdr = source_text(ROOT / 'src/renderer/hdr_pass.cpp')
         self.assertIn('x3::temporal::set_dither(agx_, caps_.dither);', hdr)
         self.assertIn('if (sharpen && !use_tonemap) sharpen_.values[3] = caps_.dither ? x3::temporal::kDisplayDitherAmplitude : 0.f;', hdr)
         self.assertIn('hdr_writeback_dither_program()', hdr)
         # The self tests keep the undithered programs: prepare() zeroes c8.z, the identity check draws shader_.
-        self.assertIn('out.exposure[2] = out.exposure[3] = 0.f;', (ROOT / 'src/temporal/agx.h').read_text())
-        bloom = (ROOT / 'src/renderer/bloom_pass.cpp').read_text()
+        self.assertIn('out.exposure[2] = out.exposure[3] = 0.f;', source_text(ROOT / 'src/temporal/agx.h'))
+        bloom = source_text(ROOT / 'src/renderer/bloom_pass.cpp')
         self.assertIn('if (p.sharpen > 0) agx.exposure[2] = 0.f;', bloom)
         self.assertIn('sharp.values[3] = p.agx.exposure[2];', bloom)
         self.assertIn('p.agx.exposure[2] != x3::temporal::kDisplayDitherAmplitude) return E_INVALIDARG;', bloom)
         # The 8-bit route's sharpen keeps c23.w = 0 (prepare_sharpen).
-        self.assertIn('out.values[3] = 0.f;', (ROOT / 'src/temporal/sharpen.h').read_text())
+        self.assertIn('out.values[3] = 0.f;', source_text(ROOT / 'src/temporal/sharpen.h'))
 
 
 if __name__ == '__main__':

@@ -22,6 +22,7 @@ import unittest
 from unittest.mock import patch
 
 from verification.analysis.test_capture_bloom_lifetime import extract_function
+from source_text import source_text
 
 ROOT = Path(__file__).resolve().parents[2]
 PROGRAMS = ('march', 'composite', 'sky_level0', 'sky_reduce')
@@ -148,7 +149,7 @@ class FogMathTests(unittest.TestCase):
         for name in PROGRAMS:
             slots, words = re.fullmatch(r'(\d+) words=(\d+)', self.values['slots_' + name]).groups()
             self.assertTrue(0 < int(slots) <= 512, (name, slots))
-            record = (ROOT / ('verification/results/fog-%s-program.json' % name.replace('_', '-'))).read_text()
+            record = source_text(ROOT / ('verification/results/fog-%s-program.json' % name.replace('_', '-')))
             self.assertIn('"word_count": %s' % words, record)
             self.assertIn('"source": "src/fog/fog_%s_ps.hlsl"' % name, record)
 
@@ -287,7 +288,7 @@ class FogLauncherTests(unittest.TestCase):
         self.assertEqual(self.launch(*self.BASE, '--volumetric-fog', '--volumetric-fog-range', 'far')[0], 2)
         self.assertEqual(self.launch(*self.BASE, '--volumetric-fog', '0', '--volumetric-fog-range', 'stored')[0], 2)
         self.assertEqual(self.launch(*self.BASE, '--volumetric-fog', '0', '--volumetric-fog-range', 'legacy')[0], 0)
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
         self.assertIn('fog_env(L"X3M_VOLUMETRIC_FOG_RANGE")==6 && !wcscmp(setting,L"stored")', capture)
         self.assertIn('volumetric_fog_range_stored=volumetric_fog_requested &&', capture)
 
@@ -301,15 +302,15 @@ class FogLauncherTests(unittest.TestCase):
             self.assertEqual(status, 2, extra); self.assertIn('unrecognized arguments', error)
         status, output, error = self.launch(*self.BASE, *stored, environment={'X3M_FOG_SHADOW_PASS': '1', 'X3M_FOG_FAR_BINS': '24'})
         self.assertEqual(status, 0, error); self.assertNotIn('X3M_FOG_SHADOW_PASS', output); self.assertNotIn('X3M_FOG_FAR_BINS', output)
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
         for gone in ('X3M_FOG_SHADOW_PASS', 'X3M_FOG_FAR_BINS', 'volumetric_fog_shadow_pass', 'volumetric_fog_far_bins'):
             self.assertNotIn(gone, capture, gone)
-        fog_pass = (ROOT / 'src/renderer/fog_pass.cpp').read_text(); header = (ROOT / 'src/renderer/fog_pass.h').read_text()
+        fog_pass = source_text(ROOT / 'src/renderer/fog_pass.cpp'); header = source_text(ROOT / 'src/renderer/fog_pass.h')
         for gone in ('shadow_pass=', 'far_bins=', 'far_bins_', 'grid_', 'FogGridReport', 'fog_shadow_grid', '_far24_', '_grid_program_inc.h'):
             self.assertNotIn(gone, fog_pass, gone); self.assertNotIn(gone, header, gone)
-        self.assertIn('constexpr unsigned fog_far_bins = 40;', (ROOT / 'src/renderer/fog_look_math.h').read_text())
+        self.assertIn('constexpr unsigned fog_far_bins = 40;', source_text(ROOT / 'src/renderer/fog_look_math.h'))
         self.assertFalse((ROOT / 'src/renderer/fog_shadow_grid.h').exists())
-        self.assertNotIn('shadow_pass', (ROOT / 'src/proxy/motion_output_fog_inc.h').read_text())
+        self.assertNotIn('shadow_pass', source_text(ROOT / 'src/proxy/motion_output_fog_inc.h'))
 
     def test_march_scale_option(self):
         # --fog-march-scale {2,4} -> X3M_FOG_MARCH_SCALE (fog-gpu-cost.md step C), default 4 since Run 77 C2 (the quarter-resolution
@@ -333,7 +334,7 @@ class FogLauncherTests(unittest.TestCase):
         self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_MARCH_SCALE": "4"', output)
         # The DLL: absent, "4" or an invalid value draw the default 4 under the stored range, exactly "2" the half-resolution
         # march. FogPass defaults to 4, refuses a spacing other than 2/4 at prepare and falls back to 2 itself (programs, target).
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
         self.assertIn('char march_scale_value[40]="4";', capture)
         self.assertIn('march_scale_half=!wcscmp(setting,L"2");', capture)
         self.assertIn('if(!march_scale_half&&wcscmp(setting,L"4"))march_scale_refusal="invalid";', capture)
@@ -341,14 +342,14 @@ class FogLauncherTests(unittest.TestCase):
         self.assertIn('log("volumetric_fog_march_scale scale=%u requested=%s refused=%s"', capture)
         self.assertIn('hooked.motion_output.configure_volumetric_fog_march_scale(volumetric_fog_march_scale);', capture)
         self.assertIn('needs_px=%u', capture)
-        self.assertIn('fog_density_config_.march_scale = scale;', (ROOT / 'src/proxy/motion_output.h').read_text())
-        math = (ROOT / 'src/renderer/fog_look_math.h').read_text()
+        self.assertIn('fog_density_config_.march_scale = scale;', source_text(ROOT / 'src/proxy/motion_output.h'))
+        math = source_text(ROOT / 'src/renderer/fog_look_math.h')
         self.assertIn('constexpr unsigned fog_march_scale_half = 2, fog_march_scale_quarter = 4, fog_march_scale_default = fog_march_scale_quarter;', math)
-        self.assertIn('unsigned march_scale=fog_march_scale_default;', (ROOT / 'src/renderer/fog_pass.h').read_text())
-        fragment = (ROOT / 'src/proxy/motion_output_fog_inc.h').read_text()
+        self.assertIn('unsigned march_scale=fog_march_scale_default;', source_text(ROOT / 'src/renderer/fog_pass.h'))
+        fragment = source_text(ROOT / 'src/proxy/motion_output_fog_inc.h')
         self.assertIn('log("fog_march_scale_refused device=%llu frame=%llu reason=%s requested=%u drawn=%u"', fragment)
         self.assertIn('ramp_frames=%u march_scale=%u"', fragment)
-        fog_pass = (ROOT / 'src/renderer/fog_pass.cpp').read_text()
+        fog_pass = source_text(ROOT / 'src/renderer/fog_pass.cpp')
         self.assertIn('if(!fog_march_scale_valid(config.march_scale))return E_INVALIDARG;', fog_pass)
         self.assertNotIn('fog_march_scale_default', fog_pass)  # every refusal falls back to fog_march_scale_half
         resources = extract_function(fog_pass, 'HRESULT FogPass::density_resources(')
@@ -398,7 +399,7 @@ class FogLauncherTests(unittest.TestCase):
             self.assertNotIn('X3M_FOG_MOTES_GAIN', output); self.assertNotIn('X3M_FOG_MOTES_SEED', output)
         # The DLL: stored range only, the whole triple must parse, tunables only with the option on, one mode line; an
         # overlong value and a request without the stored range each log one line instead of being ignored silently.
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
         self.assertIn('const DWORD motes_length=x3m::config::get(L"X3M_FOG_DUST_MOTES",setting,32);', capture)
         self.assertIn('volumetric_fog_motes_mode enabled=0 invalid=1 reason=overlong length=%lu', capture)
         self.assertIn('volumetric_fog_motes_mode enabled=0 reason=requires_stored_range count=%lu', capture)
@@ -406,7 +407,7 @@ class FogLauncherTests(unittest.TestCase):
         self.assertIn('std::swprintf(name,std::size(name),L"X3M_FOG_MOTES_%hs",field.name);', capture)
         self.assertIn('volumetric_fog_motes_mode enabled=1 count=%u', capture)
         self.assertIn('hooked.motion_output.configure_volumetric_fog_dust_motes(volumetric_fog_motes);', capture)
-        motes = (ROOT / 'src/renderer/fog_mote_math.h').read_text()
+        motes = source_text(ROOT / 'src/renderer/fog_mote_math.h')
         # MAX_PX is the one tunable left (2026-09-26); the others are the baked struct defaults.
         for name in ('RADIUS', 'NEAR', 'GAIN', 'SOFT', 'DRIFT'):
             self.assertNotIn('{"%s", &FogMoteTuning' % name, motes)
@@ -426,7 +427,7 @@ class FogLauncherTests(unittest.TestCase):
     def test_dust_motes_stage_and_frame_row(self):
         # fog-dust-motes.md: the stage is the transaction's last, after the repair and only with the latched toggle; its
         # resources are created at prepare_density (never on a draw path); the frame row carries its fields only with the option.
-        source = (ROOT / 'src/renderer/fog_pass.cpp').read_text()
+        source = source_text(ROOT / 'src/renderer/fog_pass.cpp')
         execute = extract_function(source, 'HRESULT FogPass::execute(')
         self.assertLess(execute.index('r.applied=record(FogStage::Repair,quad(width_,height_));'), execute.index('if(mote_stage&&r.applied&&SUCCEEDED(r.operation)){'))
         self.assertLess(execute.index('if(mote_stage&&r.applied&&SUCCEEDED(r.operation)){'), execute.index('if(opened_here&&!lost_seen){'))
@@ -441,7 +442,7 @@ class FogLauncherTests(unittest.TestCase):
         # Released with the targets (Reset, resize, detach), counted in allocations().
         self.assertIn('drop(block_);release_motes();release_quarter();', source)
         self.assertIn('mote_built_count_=n;mote_built_seed_=seed;++allocations_;return S_OK;', source)
-        fragment = (ROOT / 'src/proxy/motion_output_fog_inc.h').read_text()
+        fragment = source_text(ROOT / 'src/proxy/motion_output_fog_inc.h')
         run = extract_function(fragment, 'void MotionOutput::run_volumetric_fog(')
         self.assertIn('char mote_fields[200]; mote_fields[0] = \'\\0\';\n        if (fog_dust_motes_launch_) {', run)
         for field in ('motes=%u', 'mote_count=%u', 'mote_calls=%u', 'mote_shift_px=%.1f', 'mote_streak=%u', 'mote_shadow=%s', 'mote_refused=%s'):
@@ -469,11 +470,11 @@ class FogLauncherTests(unittest.TestCase):
         # preset level is left in the source.
         status, output, error = self.launch(*self.BASE, *stored, environment={'X3M_VOLUMETRIC_FOG_LOOK': '1'})
         self.assertEqual(status, 0, error); self.assertNotIn('X3M_VOLUMETRIC_FOG_LOOK', output)
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
         self.assertNotIn('X3M_VOLUMETRIC_FOG_LOOK"', capture)
         self.assertNotIn('volumetric_fog_look_step', capture)  # the Ctrl+Alt+F11 cycle is gone with the presets
         self.assertNotIn('" L%d"', capture)                    # and so is the overlay L-readout
-        look_math = (ROOT / 'src/renderer/fog_look_math.h').read_text()
+        look_math = source_text(ROOT / 'src/renderer/fog_look_math.h')
         for gone in ('fog_look_default', 'fog_look_count', 'fog_look_next', 'jitter_near', 'JITTER_NEAR'):
             self.assertNotIn(gone, look_math, gone)
         # The look's constants are baked since 2026-09-26: no X3M_FOG_LOOK_<NAME> read and no override table.
@@ -515,9 +516,9 @@ class FogLauncherTests(unittest.TestCase):
 
 class FogWiringTests(unittest.TestCase):
     def test_production_wiring(self):
-        motion = (ROOT / 'src/proxy/motion_output.cpp').read_text()
-        fragment = (ROOT / 'src/proxy/motion_output_fog_inc.h').read_text()
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        motion = source_text(ROOT / 'src/proxy/motion_output.cpp')
+        fragment = source_text(ROOT / 'src/proxy/motion_output_fog_inc.h')
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
         # Scene end: after the sun-shadow apply, before the HDR resolve; the copy fallback too; both Reset edges; the card latch at the PS bind.
         hook = motion[motion.index('void MotionOutput::scene_end_hook('):]
         self.assertLess(hook.index('run_sun_shadow_apply();'), hook.index('if (fog_requested_) run_volumetric_fog();'))
@@ -528,7 +529,9 @@ class FogWiringTests(unittest.TestCase):
         self.assertIn('if (fog_requested_ && shadow_.ps_hash == renderer::fog_card_pixel_hash) fog_latch_.card(frame_);', motion)
         self.assertIn('#include "motion_output_fog_inc.h"', motion)
         # The off option: every call site and the latch are behind fog_requested_ on their own line.
-        sites = [line for line in motion.splitlines() if 'run_volumetric_fog();' in line or 'fog_latch_.card(' in line]
+        lines = motion.splitlines()
+        sites = [(lines[i - 1].strip() + ' ' + line.strip()) if lines[i - 1].lstrip().startswith('if (') and lines[i - 1].rstrip().endswith(')') else line
+                 for i, line in enumerate(lines) if 'run_volumetric_fog();' in line or 'fog_latch_.card(' in line]
         self.assertEqual(len(sites), 3)
         self.assertTrue(all('fog_requested_' in line for line in sites), sites)
         # Allocation failure: disabled for the session with one line; the sun from the tracked light, a logged fallback otherwise.
@@ -538,13 +541,13 @@ class FogWiringTests(unittest.TestCase):
         self.assertIn('if (cut_finished_ && counters_.cut) fog_latch_.cut(frame_);', fragment)
         self.assertIn('volumetric_fog_disabled device=%llu frame=%llu reason=%s result=%08lx session=1', fragment)
         self.assertIn('renderer::fog_sun_radiance(point_sun_sample_.colour, q.sun_radiance)', fragment)
-        self.assertIn('std::memcpy(out->colour,best.rgb,12);', (ROOT / 'src/proxy/sun_light_poll.cpp').read_text())
+        self.assertIn('std::memcpy(out->colour,best.rgb,12);', source_text(ROOT / 'src/proxy/sun_light_poll.cpp'))
         # No Ctrl+Alt+F9/F10 keys since 2026-09-26: the fog runs at its launch state; the toggle and step are fixture seams.
         for absent in ('GetAsyncKeyState(VK_F9)', 'GetAsyncKeyState(VK_F10)', 'volumetric_fog_toggle(', 'volumetric_fog_step(', 'keys=ctrl_alt'):
             self.assertNotIn(absent, capture)
         self.assertIn('ctx.motion_output.volumetric_fog_begin_frame();', capture)
         self.assertIn('volumetric_fog_requested=asked && motion_output_requested && taa_requested && hdr_requested && fog_replay && fog_cascade_list && volumetric_fog_strength>0.f;', capture)
-        self.assertIn('src/renderer/fog_pass.cpp', (ROOT / 'CMakeLists.txt').read_text())
+        self.assertIn('src/renderer/fog_pass.cpp', source_text(ROOT / 'CMakeLists.txt'))
 
 
 if __name__ == '__main__':

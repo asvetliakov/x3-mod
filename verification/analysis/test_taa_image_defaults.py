@@ -12,6 +12,7 @@ import sys
 import tempfile
 import unittest
 from unittest import mock
+from source_text import source_text
 
 ROOT = Path(__file__).resolve().parents[2]
 TAA = ['--motion-output', '--ownership', '--object-trace', '--object-lifetime', '--taa']
@@ -112,7 +113,7 @@ class TaaImageDefaultsLaunch(unittest.TestCase):
                     code, _, error = self.launch(directory, *TAA, option, *extra)
                     self.assertEqual(code, 2, (option, extra))
                     self.assertIn('unrecognized arguments', error)
-        source = (ROOT / 'src/proxy/capture.cpp').read_text()
+        source = source_text(ROOT / 'src/proxy/capture.cpp')
         for name in retired.values():
             self.assertNotIn(f'L"{name}"', source)
 
@@ -126,7 +127,7 @@ class TaaImageDefaultsLaunch(unittest.TestCase):
             self.assertNotIn('X3M_TAA_SKY_HISTORY_BAND_PX', env)  # the band threshold stays at the DLL default 3
             env = self.env(directory, *TAA, '--taa-far-stabiliser', '0.985', '--taa-sky-history', 'loose', '--taa-sky-history-exit-px', '0')
             self.assertEqual((env['X3M_TAA_SKY_HISTORY'], float(env['X3M_TAA_SKY_HISTORY_EXIT_PX'])), ('loose', 0.0))
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
         self.assertIn('float taa_sky_history_exit_px = 0.f;', capture)
         self.assertIn('float taa_sky_history_band_px = 3.f;', capture)
         self.assertIn('taa_sky_history_strict=taa_requested;', capture)
@@ -143,7 +144,7 @@ class TaaImageDefaultsLaunch(unittest.TestCase):
             self.assertEqual(self.env(directory, *TAA, *age, '--taa-motion-weight', '0')['X3M_TAA_MOTION_WEIGHT'], '0,2,8')
             self.assertEqual(self.env(directory, *TAA, inherited={'X3M_TAA_MOTION_WEIGHT': '0.7,2,8'})['X3M_TAA_MOTION_WEIGHT'], '0')
             self.assertEqual(self.env(directory, *TAA, *age, '--taa-motion-weight', '0.8,2,8')['X3M_TAA_MOTION_WEIGHT'], '0.8,2,8')
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
         self.assertIn('float taa_motion_weight[3] = {0.f, 2.f, 8.f};', capture)
         self.assertIn('taa_motion_weight[0]=.7f;', capture)
 
@@ -179,7 +180,7 @@ class TaaImageDefaultsLaunch(unittest.TestCase):
             self.assertIn('--taa-unmatched-static requires --taa', error)
         # Native fallback: absent means node with the TAA route (which implies the motion route), "off"/"0" is
         # the explicit opt-out, and the route applies it only on the miss path.
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
         self.assertIn('unsigned taa_unmatched_static = 0;', capture)
         self.assertIn('if(!wcscmp(setting,L"node"))taa_unmatched_static=1;', capture)
         self.assertIn('else if(wcscmp(setting,L"0")!=0&&wcscmp(setting,L"off")!=0)log("taa_unmatched_static_setting invalid=1");', capture)
@@ -187,10 +188,10 @@ class TaaImageDefaultsLaunch(unittest.TestCase):
         # The default is resolved after X3M_TAA is parsed, so it sees the final route state.
         self.assertLess(capture.index('taa_requested=motion_output_requested &&'), capture.index('x3m::config::get(L"X3M_TAA_UNMATCHED_STATIC"'))
         self.assertIn('hooked.motion_output.configure_unmatched_static(taa_unmatched_static);', capture)
-        self.assertIn('unsigned unmatched_static_ = 0;', (ROOT / 'src/proxy/motion_output.h').read_text())
-        self.assertIn('if (unmatched_static_) route.static_assumed = unmatched_static_rows(route, rows, previous);', (ROOT / 'src/proxy/motion_output.cpp').read_text())
+        self.assertIn('unsigned unmatched_static_ = 0;', source_text(ROOT / 'src/proxy/motion_output.h'))
+        self.assertIn('if (unmatched_static_) route.static_assumed = unmatched_static_rows(route, rows, previous);', source_text(ROOT / 'src/proxy/motion_output.cpp'))
         # The motion-output fixture runner pins the pre-run212 off value: its scripts' oracles model it.
-        self.assertIn("X3M_TAA_UNMATCHED_STATIC='0',", (ROOT / 'verification/probe/run_motion_output.py').read_text())
+        self.assertIn("X3M_TAA_UNMATCHED_STATIC='0',", source_text(ROOT / 'verification/probe/run_motion_output.py'))
 
     def test_thin_region_is_absent_unless_given(self):
         # --taa-thin-region W[,RELAX[,LO,HI]] (docs/architecture/taa-lattice-crawl.md section 13).
@@ -271,19 +272,19 @@ class TaaImageDefaultsLaunch(unittest.TestCase):
                 code, _, error = self.launch(directory, *TAA, *args)
                 self.assertEqual(code, 2, args)
                 self.assertIn('--taa-thin-region-emissive', error)
-        source = (ROOT / 'src/proxy/capture.cpp').read_text()
+        source = source_text(ROOT / 'src/proxy/capture.cpp')
         self.assertIn('float taa_thin_emissive = 0.f;', source)
         self.assertIn('taa_requested?x3m::config::get(L"X3M_TAA_THIN_REGION_EMISSIVE"', source)
         # The whole field must parse and stay within range; nothing else may turn it on.
         self.assertIn('wcstof(emissive_setting', source)
         self.assertIn("if(end!=emissive_setting&&*end==L'\\0'&&v>=0.f&&v<=65000.f)taa_thin_emissive=v;", source)
         # Route: off at initialisation without the thin region, then forwarded per frame, and in the log line.
-        route = (ROOT / 'src/proxy/motion_output.cpp').read_text()
+        route = source_text(ROOT / 'src/proxy/motion_output.cpp')
         self.assertIn('taa_thin_emissive_ > 0.f && taa_thin_weight_ <= 0.f', route)
         self.assertIn('in.thin_region_emissive = taa_thin_emissive_;', route)
         self.assertIn('thin_gate=%s thin_emissive=%.3f', route)
         # The pass refuses a non-finite or negative E while the region is on, and the mask uploads c10 on every draw.
-        passcpp = (ROOT / 'src/renderer/temporal_pass.cpp').read_text()
+        passcpp = source_text(ROOT / 'src/renderer/temporal_pass.cpp')
         self.assertIn('thin_region&&(!std::isfinite(in.thin_region_emissive)||in.thin_region_emissive<0)', passcpp)
         self.assertIn('SetPixelShaderConstantF)(d,10,emissive_constants,1)', passcpp)
 
@@ -301,13 +302,13 @@ class TaaImageDefaultsLaunch(unittest.TestCase):
                 env = self.env(directory, *args, inherited={'X3M_TAA_SENTINEL_STABILISER': '0.7', 'X3M_TAA_SENTINEL_STABILISER_DEFAULT': '1'})
                 self.assertNotIn('X3M_TAA_SENTINEL_STABILISER', env, args)
                 self.assertNotIn('X3M_TAA_SENTINEL_STABILISER_DEFAULT', env, args)
-        source = (ROOT / 'src/proxy/capture.cpp').read_text()
+        source = source_text(ROOT / 'src/proxy/capture.cpp')
         self.assertNotIn('float taa_sentinel[2]', source)
         self.assertNotIn('X3M_TAA_SENTINEL_STABILISER', source)
         self.assertNotIn('sentinel_stabiliser=%.3f', source)
-        self.assertNotIn('sentinel_stabiliser=', (ROOT / 'src/proxy/motion_output.cpp').read_text())
-        self.assertNotIn('sentinel_strength', (ROOT / 'src/renderer/temporal_pass.h').read_text())
-        self.assertNotIn('X3M_TAA_SENTINEL_STABILISER', (ROOT / 'verification/probe/run_motion_output.py').read_text())
+        self.assertNotIn('sentinel_stabiliser=', source_text(ROOT / 'src/proxy/motion_output.cpp'))
+        self.assertNotIn('sentinel_strength', source_text(ROOT / 'src/renderer/temporal_pass.h'))
+        self.assertNotIn('X3M_TAA_SENTINEL_STABILISER', source_text(ROOT / 'verification/probe/run_motion_output.py'))
 
     def test_taa_debug_accepts_32_capture_frames(self):
         # Run 139: the resolved-frame spectrum needs more than one jitter period.
@@ -315,26 +316,29 @@ class TaaImageDefaultsLaunch(unittest.TestCase):
             env = self.env(directory, *TAA, '--taa-debug', '--capture-frames', '32')
             self.assertEqual((env['X3M_TAA_DEBUG'], env['X3M_CAPTURE_FRAMES']), ('1', '32'))
             self.assertEqual(self.launch(directory, *TAA, '--capture-frames', '65')[0], 2)
-        self.assertIn('if(capture_count>64) capture_count=64;', (ROOT / 'src/proxy/capture.cpp').read_text())
+        self.assertIn('if(capture_count>64) capture_count=64;', source_text(ROOT / 'src/proxy/capture.cpp'))
 
 
 class TaaImageDefaultsDll(unittest.TestCase):
     """The DLL's own fallback (a direct WINEDLLOVERRIDES start without the launcher)."""
 
     def test_capture_defaults_are_gated_on_taa(self):
-        source = (ROOT / 'src/proxy/capture.cpp').read_text()
+        source = source_text(ROOT / 'src/proxy/capture.cpp')
         self.assertIn('taa_mip_bias=taa_requested?-0.5f:0.f;', source)
         self.assertIn('taa_sharpen=taa_requested?0.75f:0.f;', source)
         # The env value is still parsed whole, so an explicit 0 disables either.
         for name in ('X3M_TAA_MIP_BIAS', 'X3M_TAA_SHARPEN', 'X3M_TAA_HISTORY_WEIGHT'):
-            line = next(l for l in source.splitlines() if f'x3m::config::get(L"{name}"' in l)
-            self.assertIn("*end==L'\\0'", line)
+            start = source.index(f'x3m::config::get(L"{name}"')
+            line_start = source.rindex('\n', 0, start) + 1
+            indent = source[line_start:start][:len(source[line_start:start]) - len(source[line_start:start].lstrip())]
+            block = source[start:source.index('\n' + indent + '}', start)]  # the read's if-block
+            self.assertIn("*end==L'\\0'", block)
 
     def test_no_filter_device_refuses_taa_at_attach_and_never_jitters(self):
         # Without FP16 / R32F history filtering (no fallback program set since 2026-09-25) TAA is refused at attach, before the
         # first latch, with one row naming the missing filter; the jitter (and the mip bias that follows it) runs only while the
         # resolve is available. The behaviour is the motion-output case seam-taa-no-filter-refused.
-        motion = (ROOT / 'src/proxy/motion_output.cpp').read_text()
+        motion = source_text(ROOT / 'src/proxy/motion_output.cpp')
         self.assertIn('HRESULT filtering = renderer::TemporalPass::query_history_filtering(device_, native_, &filter);', motion)
         self.assertIn('taa_reason = "no_filter"; taa_enabled_ = false; taa_failed_ = true; jitter_active_ = false;', motion)
         self.assertIn('initialize=%08lx references=0 reason=%s effect=taa_off jitter=0 mip_bias=0', motion)
@@ -345,16 +349,16 @@ class TaaImageDefaultsDll(unittest.TestCase):
     def test_thin_region_gate_is_the_camera_gate_whenever_the_region_is_on(self):
         # The DLL reads no gate variable since 2026-09-25: camera whenever the thin region is on, off when the region is off
         # or TAA is not requested.
-        source = (ROOT / 'src/proxy/capture.cpp').read_text()
+        source = source_text(ROOT / 'src/proxy/capture.cpp')
         self.assertIn('taa_thin_camera_gate=taa_requested&&taa_thin_region[0]>0.f;', source)
         self.assertNotIn('x3m::config::get(L"X3M_TAA_THIN_REGION_GATE"', source)
         # The gate is resolved after the thin region is parsed, so it sees the final settings.
         self.assertLess(source.index('x3m::config::get(L"X3M_TAA_THIN_REGION"'), source.index('taa_thin_camera_gate=taa_requested&&'))
         # A configure-time refusal of the camera-gate programs turns the thin region off (A' only since 2026-09-24: no fallback
         # program set), and so does a box-target allocation failure (in the pass).
-        self.assertIn('taa_thin_camera_gate_ = false;', (ROOT / 'src/proxy/motion_output.cpp').read_text())
-        self.assertIn('camera_requested&&(!camera_gate_available()', (ROOT / 'src/renderer/temporal_pass.cpp').read_text())
-        self.assertIn('taa_thin_weight_ = 0.f; taa_thin_camera_gate_ = false;', (ROOT / 'src/proxy/motion_output.cpp').read_text())
+        self.assertIn('taa_thin_camera_gate_ = false;', source_text(ROOT / 'src/proxy/motion_output.cpp'))
+        self.assertIn('camera_requested&&(!camera_gate_available()', source_text(ROOT / 'src/renderer/temporal_pass.cpp'))
+        self.assertIn('taa_thin_weight_ = 0.f; taa_thin_camera_gate_ = false;', source_text(ROOT / 'src/proxy/motion_output.cpp'))
 
 
 

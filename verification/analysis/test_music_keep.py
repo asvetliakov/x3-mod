@@ -21,6 +21,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
+from source_text import source_text
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -315,7 +316,7 @@ def patched_report(data, changes):
     for va, raw in changes:
         offset = va - 0x401000 + 0x400
         image[offset:offset + len(raw)] = raw
-    return probe.inspect(bytes(image), CORE.read_text())
+    return probe.inspect(bytes(image), source_text(CORE))
 
 
 class MusicSites(unittest.TestCase):
@@ -381,14 +382,14 @@ class MusicSites(unittest.TestCase):
                 self.assertEqual(report['result'], 'FAIL')
 
     def test_source_constants_and_tables(self):
-        consts = probe.source_constants(CORE.read_text())
+        consts = probe.source_constants(source_text(CORE))
         for name, value in probe.EXPECTED.items():
             self.assertEqual(consts.get(name), value, name)
-        stops, plays = probe.source_callers(CORE.read_text())
+        stops, plays = probe.source_callers(source_text(CORE))
         self.assertEqual(stops, probe.STOP_CALLERS)
         self.assertEqual(plays, probe.PLAY_CALLERS + probe.STOP_MOVIE_CALLERS)
         self.assertEqual([m for _, _, _, m in stops], ['skip_all', 'keep_running', 'keep_running', 'vanilla', 'vanilla', 'vanilla'])
-        windows = probe.source_windows(CORE.read_text())
+        windows = probe.source_windows(source_text(CORE))
         self.assertEqual(windows['a_next_record_window'][:9], bytes.fromhex('395d000f856effffff'))   # cmp [ebp],ebx; jne 0x4982d0
         self.assertEqual(windows['a_window'][27:33], bytes.fromhex('8b7e24395f04'))
         self.assertEqual(windows['a_window'][:1] + windows['a_window'][12:14], bytes.fromhex('555657'))   # the pushes behind the [esp+0x10] depth (push ebx is in stop_all_head)
@@ -420,7 +421,7 @@ class MusicSites(unittest.TestCase):
     def test_stub_shape(self):
         # The five stubs: EFLAGS and EAX/ECX/EDX saved first and restored last, ESP back to the entry value, no x87/SSE
         # opcode, the A stub's return-address slot and the C thunk's start slot at the entry offsets plus the 16 saved bytes.
-        text = MODULE.read_text()
+        text = source_text(MODULE)
         asm = text[text.index('asm(R"('):text.index('.att_syntax')]
         stubs = re.split(r'\n\s*\.globl _', asm)[1:]
         self.assertEqual([s.split(':', 1)[0].split('\n')[0].strip() for s in stubs],
@@ -437,7 +438,7 @@ class MusicSites(unittest.TestCase):
                 window = body[max(0, i - 8):i]   # the A stub's two exits share their pops before the je
                 self.assertIn('popfd', window, stub[:40])
                 self.assertEqual([l for l in window if l.startswith('pop ')][-3:], ['pop edx', 'pop ecx', 'pop eax'], stub[:40])
-        consts = probe.source_constants(CORE.read_text())
+        consts = probe.source_constants(source_text(CORE))
         self.assertIn('push dword ptr [esp+0x%x]' % (consts['a_return_slot'] + 16), stubs[0])
         self.assertIn('push dword ptr [esp+0x14]', stubs[1])      # [esp+4] at entry + 16 saved bytes
         self.assertIn('call dword ptr [_x3m_music_pause_fn]', stubs[1])
@@ -497,13 +498,13 @@ class MusicSites(unittest.TestCase):
                                  {'stop_caller': 'save', 'stop_seq': 6, 'play_seq': 7, 'id': 8404, 'start_ms': 0, 'same_id': False, 'seek_skipped': False}])
 
     def test_production_wiring(self):
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
         self.assertEqual(capture.count('music_keep::initialize();'), 1)
         self.assertEqual(capture.count('music_keep::present(ctx.id,ctx.frame,ctx.capture);'), 1)
         self.assertLess(capture.index('collide_memo::initialize();'), capture.index('music_keep::initialize();'))
-        self.assertIn('x3m::music_keep::shutdown();', (ROOT / 'src/proxy/loader.cpp').read_text())
-        self.assertIn('src/proxy/music_keep.cpp', (ROOT / 'CMakeLists.txt').read_text())
-        module = MODULE.read_text()
+        self.assertIn('x3m::music_keep::shutdown();', source_text(ROOT / 'src/proxy/loader.cpp'))
+        self.assertIn('src/proxy/music_keep.cpp', source_text(ROOT / 'CMakeLists.txt'))
+        module = source_text(MODULE)
         for needle in ('L"X3M_MUSIC_KEEP"', 'L"X3M_MUSIC_TRACE"', "length == 1 && setting[0] == L'1'", 'install_window_open()', 'executable_verified()', 'bytes_mismatch',
                        'callers_mismatch', 'pin_self()', 'engine_patch::restore_call(c_site_)', 'unhook_site(a_site_)', 'rollback_failed', 'LightCallBoundary',
                        'call_preserved', 'trace_line_cap', 'SetLastError(error)', 'acquire_shared', 'release_shared', 'stale_hold_to_pause(holds_, live_record)',
@@ -526,7 +527,7 @@ class MusicSites(unittest.TestCase):
         self.assertNotIn('memcmp', module)
         # The stop-all classifier keeps EDI's displaced load on the skip exit and jumps to the bookkeeping label only.
         self.assertIn('x3m_music_stop_all_skip = a_skip_va', module)
-        audit = (ROOT / 'verification/probe/check_no_x87.py').read_text()
+        audit = source_text(ROOT / 'verification/probe/check_no_x87.py')
         for symbol in ('_x3m_music_keep_a_stub', '_x3m_music_keep_c_thunk', '_x3m_music_keep_entry_stub', '_x3m_music_keep_stop_movie_stub', '_x3m_music_keep_stop_all',
                        '_x3m_music_keep_seek', '_x3m_music_keep_stop_all_entry', '_x3m_music_keep_stop_movie', '_x3m_music_trace_stop', '_x3m_music_trace_play', '_x3m_music_trace_stop_movie'):
             self.assertIn(f"'{symbol}'", audit)
@@ -579,7 +580,7 @@ class MusicLaunchOptions(unittest.TestCase):
             code, _, error = self.launch(directory, '--music-trace')
             self.assertEqual(code, 2)
             self.assertIn('unrecognized arguments', error)
-        self.assertIn('requested(L"X3M_MUSIC_TRACE", &trace_present) || log_tier::debug();', (ROOT / 'src/proxy/music_keep.cpp').read_text())
+        self.assertIn('requested(L"X3M_MUSIC_TRACE", &trace_present) || log_tier::debug();', source_text(ROOT / 'src/proxy/music_keep.cpp'))
 
     def test_refused_under_vanilla_and_inherited_values_dropped(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -16,6 +16,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'tools/analysis'))
 import fog_families as ff  # noqa: E402
+from source_text import source_text
 
 FIXTURE = ROOT / 'verification/probe/fog_family_file_fixture.cpp'
 STUB = ('#pragma once\nnamespace x3m::renderer::fog_field {\n'
@@ -186,15 +187,15 @@ class FogFamilyFileTests(unittest.TestCase):
         self.assertTrue((self.root / 'fog_family_file_fixture.exe').stat().st_size > 0)
 
     def test_production_wiring(self):
-        cmake = (ROOT / 'CMakeLists.txt').read_text()
+        cmake = source_text(ROOT / 'CMakeLists.txt')
         self.assertIn('add_executable(fog_family_file_fixture verification/probe/fog_family_file_fixture.cpp src/renderer/fog_field_assets.cpp)', cmake)
-        fog = (ROOT / 'src/proxy/motion_output_fog_inc.h').read_text()
+        fog = source_text(ROOT / 'src/proxy/motion_output_fog_inc.h')
         self.assertIn('renderer::fog_field::load_family_table()', fog)
         self.assertIn('fog_enabled_ && !fog_disabled_,\n                                 renderer::fog_field::family_table());', fog)
         self.assertIn('prepared == renderer::FogPass::field_row_disabled', fog)
-        passes = (ROOT / 'src/renderer/fog_pass.cpp').read_text()
+        passes = source_text(ROOT / 'src/renderer/fog_pass.cpp')
         self.assertIn('file_family?fog_field::decode_family(profile,atlas_bytes_):fog_field::decode_from_resource(module,profile,atlas_bytes_)', passes)
-        assets = (ROOT / 'src/renderer/fog_field_assets.cpp').read_text()
+        assets = source_text(ROOT / 'src/renderer/fog_field_assets.cpp')
         for api in ('CreateFileW', 'GetFileSizeEx', 'SetFilePointerEx', 'ReadFile', 'GetModuleFileNameW', 'x3m::config::get(L"X3M_FOG_FAMILIES"'):
             self.assertIn(api, assets)
 

@@ -7,6 +7,7 @@ ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/'verification/probe'))
 import verify_chase_fire_site as probe
 from test_chase_aim_sites import synthetic_image
+from source_text import source_text
 
 class Site(unittest.TestCase):
     def verify(self,changes=(),source=None):
@@ -23,8 +24,8 @@ class Site(unittest.TestCase):
         jump=b'\xe9'+struct.pack('<i',probe.SPEC.va+2-(at+5))
         self.assertFalse(self.verify(((at,jump),))['passed'])
     def test_source_relocation_refusal(self):
-        self.assertFalse(self.verify(source=probe.SOURCE.read_text().replace('6,0,2','6,0,0'))['passed'])
+        self.assertFalse(self.verify(source=source_text(probe.SOURCE).replace('6,0,2','6,0,0'))['passed'])
     def test_source_span_refusal(self):
-        self.assertFalse(self.verify(source=probe.SOURCE.read_text().replace('6,0,2','5,0,2'))['passed'])
+        self.assertFalse(self.verify(source=source_text(probe.SOURCE).replace('6,0,2','5,0,2'))['passed'])
 
 if __name__=='__main__':unittest.main()

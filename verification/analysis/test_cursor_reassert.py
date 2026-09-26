@@ -16,6 +16,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from source_text import source_text
 
 ROOT = Path(__file__).resolve().parents[2]
 WINDOW_FRAMES = 120
@@ -270,12 +271,12 @@ class CursorReassertCore(unittest.TestCase):
 
     def test_cores_are_windows_free(self):
         for name in ('cursor_reassert_core.h', 'window_trace_core.h'):
-            self.assertNotIn('#include <windows.h>', (ROOT / 'src/proxy' / name).read_text())
+            self.assertNotIn('#include <windows.h>', source_text(ROOT / 'src/proxy' / name))
 
 
 class WindowHookWiring(unittest.TestCase):
     def test_hooks_and_lifetime(self):
-        trace = (ROOT / 'src/proxy/window_trace.cpp').read_text()
+        trace = source_text(ROOT / 'src/proxy/window_trace.cpp')
         for needle in ('SetWindowsHookExW(WH_CALLWNDPROC, x3m_window_hook_call, nullptr, thread)',
                        'SetWindowsHookExW(WH_CALLWNDPROCRET, x3m_window_hook_ret, nullptr, thread)',
                        'SetWindowsHookExW(WH_GETMESSAGE, x3m_window_hook_get, nullptr, thread)',
@@ -289,27 +290,27 @@ class WindowHookWiring(unittest.TestCase):
         self.assertNotIn('log(', hooks)
         for forbidden in (r'SetWindowLong', r'SetForegroundWindow', r'(?<!Get)ClipCursor\(', r'SetCursorPos\(', r'ShowCursor\(', r'SendMessage', r'wine_'):
             self.assertIsNone(re.search(forbidden, trace), forbidden)
-        reassert = (ROOT / 'src/proxy/cursor_reassert.cpp').read_text()
+        reassert = source_text(ROOT / 'src/proxy/cursor_reassert.cpp')
         for forbidden in (r'SetForegroundWindow', r'(?<!Get)ClipCursor\(', r'SetCursorPos', r'SendMessage', r'while \(', r'for \(', r'wine_'):
             self.assertIsNone(re.search(forbidden, reassert), forbidden)
         self.assertEqual(reassert.count('ShowCursor('), 1)  # only inside the balanced sequence's stand-in
-        core = (ROOT / 'src/proxy/cursor_reassert_core.h').read_text()
+        core = source_text(ROOT / 'src/proxy/cursor_reassert_core.h')
         self.assertIn('s.up = api.show_cursor(true);', core)
         self.assertIn('s.down = api.show_cursor(false);', core)
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
         for needle in ('window_trace::attach(window,devices.at(d)->id);', 'window_trace::detach(devices.at(d)->id);forget_cached_device();devices.erase(d);',
                        'window_trace::present(ctx.stats.window,ctx.id,ctx.frame);',
                        'window_trace::initialize(telemetry::enabled(),&loading_trace::light::cursor_drain);', 'loading_trace::light::cursor_observe(true);'):
             self.assertIn(needle, capture)
         present = capture[capture.index('HRESULT WINAPI present(IDirect3DDevice9* d'):]
         self.assertLess(present.index('cpu.after_original();'), present.index('window_trace::present('))
-        loader = (ROOT / 'src/proxy/loader.cpp').read_text()
+        loader = source_text(ROOT / 'src/proxy/loader.cpp')
         detach = loader[loader.index('reason == DLL_PROCESS_DETACH'):]
         self.assertIn('x3m::window_trace::shutdown();', detach)
-        audit = (ROOT / 'verification/probe/check_no_x87.py').read_text()
+        audit = source_text(ROOT / 'verification/probe/check_no_x87.py')
         for root in ('_x3m_window_hook_call@12', '_x3m_window_hook_ret@12', '_x3m_window_hook_get@12'):
             self.assertIn(f"'{root}'", audit)
-        light = (ROOT / 'src/proxy/loading_trace_light.cpp').read_text()
+        light = source_text(ROOT / 'src/proxy/loading_trace_light.cpp')
         self.assertIn('if(cursor_observing)cursor_record(0,', light)
         for needle in ('__atomic_thread_fence(__ATOMIC_RELEASE);', '__atomic_thread_fence(__ATOMIC_ACQUIRE);', 'InterlockedCompareExchange(&cursor_lock,1,0)',
                        'counts->dropped=dropped;'):
@@ -320,7 +321,7 @@ class WindowHookWiring(unittest.TestCase):
             self.assertIn(needle, trace)
         self.assertIn('if(cursor_observing)cursor_record(1,', light)
         record = light[light.index('void cursor_record('):light.index('void cursor_observe(')]
-        self.assertTrue(record.startswith('void cursor_record(uint32_t op,uint32_t a,uint32_t b,uint32_t result) noexcept {\n    const DWORD error=GetLastError();'))
+        self.assertTrue(record.startswith('void cursor_record(uint32_t op, uint32_t a, uint32_t b, uint32_t result) noexcept {\n    const DWORD error = GetLastError();'))
         self.assertIn('    SetLastError(error);\n}', record)
 
 

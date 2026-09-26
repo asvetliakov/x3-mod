@@ -26,6 +26,7 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'verification/probe'))
 import exe_identity as ident  # noqa: E402
+from source_text import source_text
 
 HEADER = ROOT / 'src/proxy/executable_identity.h'
 PROXY = ROOT / 'src/proxy'
@@ -72,7 +73,7 @@ def synthetic(laa=False, checksum=0, filler=0x90):
 
 
 def header_tables():
-    text = HEADER.read_text()
+    text = source_text(HEADER)
     constant = lambda name: int(re.search(r'\b%s = (0x[0-9a-f]+|\d+)' % name, text).group(1), 0)
     sections = [(''.join(chr(int(c)) if c.isdigit() else c.strip("'") for c in re.findall(r"'[^']*'|\b0\b", m.group(1))).rstrip('\0'),
                  *(int(v, 16) for v in m.group(2).split(', ')))
@@ -160,8 +161,8 @@ class SourceParity(unittest.TestCase):
         self.assertEqual(len({a[1] for a in anchors}), len(anchors))
 
     def test_gates_hold_no_file_hash(self):
-        trace = (PROXY / 'object_trace.cpp').read_text()
-        lifetime = (PROXY / 'object_lifetime.cpp').read_text()
+        trace = source_text(PROXY / 'object_trace.cpp')
+        lifetime = source_text(PROXY / 'object_lifetime.cpp')
         gate = trace[trace.index('bool verified_image()'):trace.index('bool executable_verified()')]
         for body in (gate, lifetime[lifetime.index('bool initialize(){'):lifetime.index('bool active(){')]):
             self.assertNotIn('CALG_SHA_256', body)
@@ -169,11 +170,11 @@ class SourceParity(unittest.TestCase):
                 self.assertIn(call, body)
         for path in PROXY.iterdir():
             if path.suffix in ('.h', '.cpp'):
-                self.assertNotIn('fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab', path.read_text(errors='replace'), path.name)
-                self.assertNotIn('0xfd,0xbf,0x34,0x18', path.read_text(errors='replace'), path.name)
+                self.assertNotIn('fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab', source_text(path, errors='replace'), path.name)
+                self.assertNotIn('0xfd,0xbf,0x34,0x18', source_text(path, errors='replace'), path.name)
 
     def test_identity_line_logs_laa_and_raw_hash(self):
-        source = (PROXY / 'proxy_identity.cpp').read_text()
+        source = source_text(PROXY / 'proxy_identity.cpp')
         self.assertIn('exe_sha256=%s exe_bytes=%llu exe_hash_us=%llu exe_laa=%d exe_max_app=%08lx', source)
         self.assertIn('GetSystemInfo(&system)', source)
         self.assertIn('object_trace::large_address_aware()', source)
@@ -184,7 +185,7 @@ class SourceParity(unittest.TestCase):
         self.assertLess(body.index('hash_file(exe,exe_hex,exe_bytes)'), body.index('QueryPerformanceCounter(&exe_end)'))
 
     def test_gate_cache_is_atomic(self):
-        trace = (PROXY / 'object_trace.cpp').read_text()
+        trace = source_text(PROXY / 'object_trace.cpp')
         gate = trace[trace.index('bool verified_image()'):trace.index('bool executable_verified()')]
         self.assertIn('static std::atomic<int> cached{-1};', gate)
 
@@ -197,7 +198,7 @@ class SourceParity(unittest.TestCase):
         for path in sorted(PROXY.iterdir()):
             if path.suffix not in ('.h', '.cpp') or path.name == HEADER.name:
                 continue
-            text = path.read_text(errors='replace')
+            text = source_text(path, errors='replace')
             values = [int(v, 16) for v in re.findall(r'(?<![0-9A-Za-z_])0x([0-9a-fA-F]{6,8})\b', text)]
             values += [ident.IMAGE_BASE + int(v, 16) for v in re.findall(r'base\s*\+\s*0x([0-9a-fA-F]+)', text)]
             for value in values:
@@ -212,7 +213,7 @@ class SourceParity(unittest.TestCase):
         for path in sorted(PROXY.iterdir()):
             if path.suffix not in ('.h', '.cpp') or path.name == 'object_trace.cpp':
                 continue
-            text = path.read_text(errors='replace')
+            text = source_text(path, errors='replace')
             code = path.suffix == '.cpp' or path.name.endswith('_inc.h')  # other headers only mention the gate
             if code and 'executable_verified()' in text and not SITE_CHECK.search(text):
                 unchecked.add(path.name)
@@ -223,7 +224,7 @@ class SourceParity(unittest.TestCase):
         for path in PROXY.iterdir():
             if path.suffix not in ('.h', '.cpp') or path.name == HEADER.name:
                 continue
-            text = path.read_text(errors='replace')
+            text = source_text(path, errors='replace')
             spans += [(int(a, 16), int(n)) for a, n in re.findall(r'\{\s*"[^"]+"\s*,\s*(0x[0-9a-fA-F]+)\s*,\s*\{[^}]*\}\s*,\s*(\d+)\s*,', text)]
             spans += [(int(a, 16), 8) for a in re.findall(r'\w*site_va\s*=\s*(0x[0-9a-fA-F]+)', text)]
         self.assertGreater(len(spans), 50)

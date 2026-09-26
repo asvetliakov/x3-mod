@@ -24,6 +24,7 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'verification/probe'))
 import verify_sun_flare_site as verifier  # noqa: E402
+from source_text import source_text
 
 EXE = Path(verifier.DEFAULT_EXE)
 
@@ -102,7 +103,7 @@ class SunFlareFixCore(unittest.TestCase):
                              [verifier.WINDOW_VA, verifier.SITE_VA, verifier.JGE_VA, verifier.Y_TEST_VA, verifier.OFF_SCREEN_VA])
 
     def test_python_twin_and_vectors(self):
-        self.assertEqual(verifier.source_constants((ROOT / 'src/proxy/sun_flare_fix_sites.h').read_text()), verifier.EXPECTED_CONSTANTS)
+        self.assertEqual(verifier.source_constants(source_text(ROOT / 'src/proxy/sun_flare_fix_sites.h')), verifier.EXPECTED_CONSTANTS)
         self.assertEqual(verifier.WINDOW[verifier.SITE_VA - verifier.WINDOW_VA:][:6], verifier.SITE)
         self.assertEqual(verifier.SITE_VA // 8, (verifier.SITE_VA + 4) // 8)   # the five patch bytes: one lock cmpxchg8b
         self.assertTrue(all(row['ok'] for row in verifier.emulate()))
@@ -126,12 +127,12 @@ class SunFlareFixCore(unittest.TestCase):
         self.assertIsNone(verifier.parse_restore_line('sun_flare_fix_restore site=0047e391 status=restored found=e932 registered=0'))
 
     def test_production_wiring(self):
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
         self.assertEqual(capture.count('sun_flare_fix::initialize();'), 1)
         self.assertLess(capture.index('game_phases::initialize();'), capture.index('sun_flare_fix::initialize();'))
-        self.assertIn('if (reserved == nullptr) x3m::sun_flare_fix::shutdown();', (ROOT / 'src/proxy/loader.cpp').read_text())
-        self.assertIn('src/proxy/sun_flare_fix.cpp', (ROOT / 'CMakeLists.txt').read_text())
-        module = (ROOT / 'src/proxy/sun_flare_fix.cpp').read_text()
+        self.assertIn('if (reserved == nullptr) x3m::sun_flare_fix::shutdown();', source_text(ROOT / 'src/proxy/loader.cpp'))
+        self.assertIn('src/proxy/sun_flare_fix.cpp', source_text(ROOT / 'CMakeLists.txt'))
+        module = source_text(ROOT / 'src/proxy/sun_flare_fix.cpp')
         for needle in ('L"X3M_SUN_FLARE_FIX"', '"too_long"', '"invalid_setting"', 'install_window_open()', 'executable_verified()', 'sites::plan(current)',
                        'engine_patch::claim(site_, spec)', 'engine_patch::store_pointer(slot, *site_.entry)', 'engine_patch::push_front(site_',
                        'take_back("chain_failed")', 'return stub_ != 0;', 'take_back("readback_mismatch")', '"rollback_failed"', '"patched_unverified"', '"restore_not_owned"',
@@ -139,7 +140,7 @@ class SunFlareFixCore(unittest.TestCase):
                        'log("sun_flare_fix site=%08lx status=%s reason=%s mode=%s setting=%s write=%s stub=%08lx"',
                        '"sun_flare_fix_restore site=%08lx status=%s found=%s registered=%u\\n"'):
             self.assertIn(needle, module)
-        self.assertNotIn('windows.h', (ROOT / 'src/proxy/sun_flare_fix_sites.h').read_text())
+        self.assertNotIn('windows.h', source_text(ROOT / 'src/proxy/sun_flare_fix_sites.h'))
         for forbidden in ('float ', 'double ', 'GetModuleHandleEx'):   # no FP, and no pin needed: the stub holds no pointer into the DLL
             self.assertNotIn(forbidden, module)
 

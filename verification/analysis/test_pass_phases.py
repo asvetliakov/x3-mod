@@ -11,6 +11,7 @@ import unittest
 from pathlib import Path
 import verify_pass_phase_sites as probe
 from verification.analysis.test_chase_lead_sites import PatchedImage
+from source_text import source_text
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -20,7 +21,7 @@ class SourceAndReplay(unittest.TestCase):
         self.assertEqual(len(probe.SITES), 4)
         self.assertEqual([s.va for s in probe.SITES], [0x4c3ff0, 0x4c4000, 0x4c403e, 0x4c4049])
         self.assertEqual([len(s.expected) for s in probe.SITES], [6, 7, 8, 7])
-        text = probe.SOURCE.read_text()
+        text = source_text(probe.SOURCE)
         self.assertTrue(probe.source_checks(text))
         # Every span is a plain copy: no ret_pop, no rel32 field.
         self.assertEqual(text.count('},6,0,0}') + text.count('},7,0,0}') + text.count('},8,0,0}'), 4)
@@ -54,9 +55,9 @@ class SourceAndReplay(unittest.TestCase):
             self.assertRegex(run.stdout, r'^pass_phases_host checks=\d+ failures=0 accumulator_bytes=\d+ window_bytes=\d+ dispatch_cost_ns=\d+\n$')
 
     def test_production_wiring(self):
-        source = (ROOT / 'src/proxy/pass_phases.cpp').read_text()
-        header = (ROOT / 'src/proxy/pass_phases.h').read_text()
-        core = (ROOT / 'src/proxy/pass_phases_core.h').read_text()
+        source = source_text(ROOT / 'src/proxy/pass_phases.cpp')
+        header = source_text(ROOT / 'src/proxy/pass_phases.h')
+        core = source_text(ROOT / 'src/proxy/pass_phases_core.h')
         # Off = inert: the environment gate, the frame boundary behind one
         # relaxed load, the handler's first instruction an `active` test.
         self.assertIn('L"X3M_PASS_PHASES"', source)
@@ -76,7 +77,7 @@ class SourceAndReplay(unittest.TestCase):
         # EAX/ECX/EDX and XMM0-7 saved, then the handler, then everything
         # restored before `jmp [next]`; no x87 save.
         self.assertIn('return lean_stub::emit(reinterpret_cast<const void*>(&x3m_pass_phase_enter),index,next_out);', source)
-        stub = (ROOT / 'src/proxy/lean_stub.cpp').read_text()
+        stub = source_text(ROOT / 'src/proxy/lean_stub.cpp')
         emit = stub[stub.index('void* emit(const void* handler,unsigned index,void*** next_out) {'):]
         emit = emit[:emit.index('\n}')]
         self.assertIn('e.byte(0x9c);e.byte(0x50);e.byte(0x51);e.byte(0x52);e.byte(0xfc);', emit)
@@ -90,7 +91,7 @@ class SourceAndReplay(unittest.TestCase):
         # in-order claim, reverse rollback, activate last; the group needs the
         # frame group.
         self.assertIn('return stamp::install_group(patches,specs,&emit,installed,status);', source)
-        install = (ROOT / 'src/proxy/stamp_install.h').read_text()
+        install = source_text(ROOT / 'src/proxy/stamp_install.h')
         self.assertIn('status = "install_window_closed"', install)
         self.assertIn('status = "preflight_bytes"', install)
         self.assertIn('} else status = patches[i].status;', install)
@@ -102,7 +103,7 @@ class SourceAndReplay(unittest.TestCase):
         self.assertIn('std::atomic<bool> active', header)
         # The window closes at the frame-phase boundary under its owner guard,
         # with the frame's view_submit joined; a frame without a sample is dropped.
-        frame = (ROOT / 'src/proxy/frame_phases.cpp').read_text()
+        frame = source_text(ROOT / 'src/proxy/frame_phases.cpp')
         impl = frame[frame.index('void frame_impl(std::uint64_t frame) noexcept {'):]
         impl = impl[:impl.index('\n}')]
         self.assertLess(impl.index('if(!owner(false))return;'), impl.index('pass_phases::frame(frame,taken,taken?last_sample.view_submit_us:0);'))
@@ -112,13 +113,13 @@ class SourceAndReplay(unittest.TestCase):
         self.assertIn('out.self_us = std::uint64_t(passes) * site_count * dispatch_cost_ns / 1000;', core)
         cost = int(re.search(r'inline constexpr std::uint64_t dispatch_cost_ns = (\d+);', core).group(1))
         self.assertTrue(0 < cost <= 370, cost)  # 1.5 ms / 4,024 dispatches
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
         self.assertLess(capture.index('frame_phases::initialize();'), capture.index('pass_phases::initialize();'))
-        cmake = (ROOT / 'CMakeLists.txt').read_text()
+        cmake = source_text(ROOT / 'CMakeLists.txt')
         self.assertEqual(cmake.count('src/proxy/pass_phases.cpp'), 2)
-        build = (ROOT / 'verification/probe/build_game_phase_cpu.py').read_text()
+        build = source_text(ROOT / 'verification/probe/build_game_phase_cpu.py')
         self.assertIn("('src/proxy/pass_phases.cpp','pass')", build)
-        audit = (ROOT / 'verification/probe/check_no_x87.py').read_text()
+        audit = source_text(ROOT / 'verification/probe/check_no_x87.py')
         self.assertIn("'_x3m_pass_phase_enter'", audit)
 
 
@@ -137,7 +138,7 @@ class PassPhasesLaunchOption(unittest.TestCase):
             env = json.loads(output)['env']
             self.assertEqual(env['X3M_PERF'], '1')
             self.assertNotIn('X3M_PASS_PHASES', env)
-        self.assertIn('log_tier::draw_trace_flag(L"X3M_PASS_PHASES")', (ROOT / 'src/proxy/pass_phases.cpp').read_text())
+        self.assertIn('log_tier::draw_trace_flag(L"X3M_PASS_PHASES")', source_text(ROOT / 'src/proxy/pass_phases.cpp'))
 
 
 @unittest.skipUnless(probe.DEFAULT_EXE.is_file(), 'installed X3AP.exe unavailable')
@@ -147,7 +148,7 @@ class NativeSites(unittest.TestCase):
         cls.data = probe.DEFAULT_EXE.read_bytes()
         cls.image = probe.common.Image(cls.data)
         cls.decoded = probe.decode()
-        cls.source = probe.SOURCE.read_text()
+        cls.source = source_text(probe.SOURCE)
 
     def report(self, image=None, decoded=None):
         return probe.inspect(image or self.image, decoded or self.decoded, self.source, self.data)

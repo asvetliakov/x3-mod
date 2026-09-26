@@ -31,6 +31,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
+from source_text import source_text
 
 ROOT = Path(__file__).resolve().parents[2]
 CORE = ROOT / 'src/proxy/bolt_footprint_core.h'
@@ -843,7 +844,7 @@ class CoreRules(unittest.TestCase):
 
 class Wiring(unittest.TestCase):
     def test_proxy_route(self):
-        motion = (ROOT / 'src/proxy/motion_output.cpp').read_text()
+        motion = source_text(ROOT / 'src/proxy/motion_output.cpp')
         additive = motion[motion.index('void MotionOutput::prepare_screen_additive('):motion.index('void MotionOutput::apply_screen_additive_alpha') if 'void MotionOutput::apply_screen_additive_alpha' in motion else None]
         self.assertIn('++screen_additive_admitted_; ++screen_additive_frame_admitted_;', additive)
         self.assertIn('if (bolt_footprint_requested_) prepare_bolt_footprint(call, route);', additive)
@@ -869,7 +870,7 @@ class Wiring(unittest.TestCase):
         self.assertLess(gate_at, prepare.index('plan_draw('), 'gated views run no plan (F4)')
         for later in ('ensure_bolt_buffer(bytes)', 'bolt_vb_->Lock(', 'SetStreamSource)(device_, 0, bolt_vb_'):
             self.assertLess(gate_at, prepare.index(later), later)
-        chase = (ROOT / 'src/proxy/chase_camera.cpp').read_text()
+        chase = source_text(ROOT / 'src/proxy/chase_camera.cpp')
         self.assertIn('return pose_gate_open(site.patched_in, pose_written.load(std::memory_order_relaxed), pose_writes.load(std::memory_order_relaxed), mark);', chase)
         publish = chase[chase.index('void publish_pose('):chase.index('void handle(')]
         self.assertIn('    pose_written.store(written, std::memory_order_relaxed);\n    if (written) pose_writes.fetch_add(1, std::memory_order_relaxed);', publish)
@@ -910,16 +911,16 @@ class Wiring(unittest.TestCase):
         self.assertIn('reason=%s detail=%u primitives=%u stream0_bytes=%lu', once)
         self.assertIn('buffer_bytes=%lu refused_max_prims=%u refused_shape_bits=%u"', motion)
         self.assertIn('static_cast<unsigned long>(bolt_vb_bytes_), w.refused_max_prims, w.refused_shape_bits);', motion)
-        header = (ROOT / 'src/proxy/motion_output.h').read_text()
+        header = source_text(ROOT / 'src/proxy/motion_output.h')
         self.assertIn('std::uint32_t refused_max_prims = 0, refused_shape_bits = 0;', header[header.index('struct BoltCounters {'):header.index('} bolt_window_{}, bolt_session_{};')])
         self.assertIn('w = BoltCounters{}; bolt_window_frames_ = 0;', motion, 'the window counters reset per window')
         self.assertNotIn('s.refused_shape_bits', motion, 'window-only fields: never accumulated into the (unlogged) session')
         self.assertNotIn('s.refused_max_prims', motion)
         self.assertIn('CreateVertexBuffer = 26', motion)
-        self.assertIn('SLOT(IDirect3DDevice9Vtbl, CreateVertexBuffer, 26);', (ROOT / 'verification/probe/abi_check.cpp').read_text())
+        self.assertIn('SLOT(IDirect3DDevice9Vtbl, CreateVertexBuffer, 26);', source_text(ROOT / 'verification/probe/abi_check.cpp'))
 
     def test_dll_gate_and_loader(self):
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
         block = capture[capture.index('X3M_BOLT_FOOTPRINT",setting'):capture.index('bolt_footprint_mode requested=1')]
         self.assertIn('bolt_footprint_requested=valid&&screen_emission_additive_requested&&ownership;', block)
         self.assertIn('w>0.f&&w<=64.f&&l>=w&&l<=256.f', block)
@@ -928,12 +929,12 @@ class Wiring(unittest.TestCase):
         self.assertIn('const bool fits=length&&length<32;', block)
         self.assertLess(capture.index('screen_emission_additive_mode requested=1'), capture.index('X3M_BOLT_FOOTPRINT",setting'), 'parsed after the additive gate it needs')
         self.assertIn('hooked.motion_output.configure_bolt_footprint(bolt_footprint_requested,bolt_footprint_w,bolt_footprint_l);', capture)
-        loader = (ROOT / 'src/proxy/loader.cpp').read_text()
+        loader = source_text(ROOT / 'src/proxy/loader.cpp')
         self.assertIn('const bool prefix_requested = bound_requested || footprint_requested;', loader)
         self.assertIn('"bolt_footprint_only"', loader)
-        core = (ROOT / 'src/proxy/locked_prefix_core.h').read_text()
+        core = source_text(ROOT / 'src/proxy/locked_prefix_core.h')
         self.assertIn('if (extras) std::memcpy(extras + std::size_t(i) * 3, words + 3, 12);', core)
-        header = re.sub(r'//[^\n]*', '', CORE.read_text())
+        header = re.sub(r'//[^\n]*', '', source_text(CORE))
         self.assertNotIn('double', header, 'single-precision only on the draw path')
         self.assertNotIn('std::sqrt', header); self.assertNotIn('std::fabs', header); self.assertNotIn('std::abs', header)
         self.assertNotIn('windows.h', header); self.assertNotIn('d3d9.h', header)
@@ -1029,7 +1030,7 @@ class LauncherOption(unittest.TestCase):
                 self.assertIn('--bolt-footprint expects W or W,L', error)
 
     def test_help_names_the_default_and_the_gates(self):
-        source = (ROOT / 'tools/manage.py').read_text()
+        source = source_text(ROOT / 'tools/manage.py')
         self.assertIn("parser.add_argument('--bolt-footprint', nargs='?', const=BOLT_FOOTPRINT_DEFAULT, default=None, metavar='W[,L]'", source)
         self.assertIn("BOLT_FOOTPRINT_DEFAULT = '3,12'", source)
         for phrase in ('launcher default on modded launches: 3,12', '--bolt-footprint 0 = off', 'X3M_BOLT_FOOTPRINT=W[,L]', 'docs/architecture/bolt-footprint.md',

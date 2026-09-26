@@ -14,6 +14,7 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+from source_text import source_text
 
 ROOT = Path(__file__).resolve().parents[2]
 DRIVER = ROOT / 'verification/probe/shader_population_host.cpp'
@@ -166,17 +167,17 @@ class ShaderPopulationTests(unittest.TestCase):
 
     def test_each_arm_predicate_is_derived_from_the_table_it_enumerates(self):
         # A hash added to one form only would otherwise keep both asserts happy.
-        fade_route = (ROOT / 'src/proxy/fade_route_core.h').read_text()
+        fade_route = source_text(ROOT / 'src/proxy/fade_route_core.h')
         self.assertIn('for (const auto& row : vertex_programs)', fade_route)
         self.assertNotIn('switch (vs)', fade_route)
-        cutout = (ROOT / 'src/proxy/linear_cutout.h').read_text()
+        cutout = source_text(ROOT / 'src/proxy/linear_cutout.h')
         self.assertIn('for (std::size_t i = 0; i + 1 < pair_hash_count; i += 2)', cutout)
-        material = (ROOT / 'src/renderer/linear_material.cpp').read_text()
+        material = source_text(ROOT / 'src/renderer/linear_material.cpp')
         self.assertIn('for (const auto& row : distance_fade_rows)', material)
         self.assertNotIn('case station_fade_vs:', material)
 
     def test_the_proxy_classifies_at_create_and_logs_at_present(self):
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
         # Create path: once per distinct program, telemetry only, no per-draw work.
         self.assertIn('if (dumped.insert(hash).second) {', capture)
         self.assertIn("shader_population.observe(hash, kind[0]=='v', version, bytes);", capture)

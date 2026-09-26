@@ -34,6 +34,7 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from source_text import source_text
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -221,7 +222,7 @@ class EnvironmentParse(unittest.TestCase):
     reason=min_footprint, and the value reaches shadow_cascade_pool."""
 
     def test_capture_block(self):
-        source = (ROOT / 'src/proxy/capture.cpp').read_text()
+        source = source_text(ROOT / 'src/proxy/capture.cpp')
         block = source[source.index('X3M_SHADOW_CASCADE_MIN_FOOTPRINT'):]
         block = block[:block.index('shadow_cascade_pool(')]
         self.assertIn('float min_footprint=renderer::shadow_cascade_min_footprint_default;', block)  # absent: the default 8
@@ -236,7 +237,7 @@ class LawMatchesTheNote(unittest.TestCase):
     """The law in the header is the one the cost policy note states."""
 
     def test_source_states_the_law(self):
-        header = (ROOT / 'src/renderer/shadow_cascade_footprint_core.h').read_text()
+        header = source_text(ROOT / 'src/renderer/shadow_cascade_footprint_core.h')
         self.assertIn('min_k = max(P x 0.95 x E_{k-1} x 2 / (m00 x width), 3 x texel_k)', header)
         self.assertIn('constexpr float shadow_cascade_footprint_select_margin = .95f', header)
         self.assertIn('constexpr float shadow_cascade_footprint_texels = 3.f', header)
@@ -268,7 +269,7 @@ class LauncherDefault(unittest.TestCase):
             self.assertEqual(self.env(directory, '--shadow-cascades', 'default', '--shadow-cascade-min-footprint', '24')[self.NAME], '24.0')  # explicit
 
     def test_dll_fallback_matches_the_launcher(self):
-        header = (ROOT / 'src/renderer/shadow_cascade_footprint_core.h').read_text()
+        header = source_text(ROOT / 'src/renderer/shadow_cascade_footprint_core.h')
         dll = float(re.search(r'constexpr float shadow_cascade_min_footprint_default = ([0-9.]+)f;', header).group(1))
         spec = importlib.util.spec_from_file_location('footprint_manage', ROOT / 'tools/manage.py')
         manage = importlib.util.module_from_spec(spec); spec.loader.exec_module(manage)

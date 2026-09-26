@@ -5,12 +5,13 @@ import tempfile
 import unittest
 from pathlib import Path
 import verify_light_phase_sites as probe
+from source_text import source_text
 ROOT=Path(__file__).resolve().parents[2]
 class LightPhases(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.data=probe.common.DEFAULT_EXE.read_bytes();cls.decoded=probe.decode()
-        cls.source=probe.SOURCE.read_text();cls.claims,cls.anchored=probe.shared.other_claims(ROOT/'src/proxy',probe.SOURCE)
+        cls.source=source_text(probe.SOURCE);cls.claims,cls.anchored=probe.shared.other_claims(ROOT/'src/proxy',probe.SOURCE)
     def inspect(self,**changes):
         args=dict(data=self.data,decoded=self.decoded,source=self.source,claims=self.claims,anchored=self.anchored);args.update(changes)
         return probe.inspect(**args)
@@ -33,7 +34,7 @@ class LightPhases(unittest.TestCase):
             subprocess.run([shutil.which('clang++') or 'c++','-std=c++17','-O2','-Wall','-Wextra','-Werror',str(ROOT/'verification/probe/light_phases_host.cpp'),'-o',str(exe)],check=True)
             r=subprocess.run([str(exe)],capture_output=True,text=True);self.assertEqual(r.returncode,0,r.stdout);print(r.stdout.strip())
     def test_wiring_and_hot_path(self):
-        source=(ROOT/'src/proxy/light_phases.cpp').read_text()
+        source=source_text(ROOT/'src/proxy/light_phases.cpp')
         handler=source.split('x3m_light_phase_enter(unsigned')[1].split('namespace x3m::light_phases {')[0]
         self.assertLess(handler.index('fnstcw %0'),handler.index('GetCurrentThreadId'))
         self.assertLess(handler.index('refuse_mode();return;'),handler.index('LightCallBoundary'))
@@ -42,11 +43,11 @@ class LightPhases(unittest.TestCase):
         self.assertIn('SavedEsp:x3m::lean_stub::SavedEbp',handler)
         self.assertIn('token+4',handler)
         self.assertIn('lean_stub::emit_context',source);self.assertIn('stamp::install_group',source)
-        self.assertIn('light_phases::frame(frame,taken);',(ROOT/'src/proxy/frame_phases.cpp').read_text())
-        self.assertIn('light_phases::initialize();',(ROOT/'src/proxy/capture.cpp').read_text())
-        self.assertEqual((ROOT/'CMakeLists.txt').read_text().count('src/proxy/light_phases.cpp'),2)
-        self.assertIn("'_x3m_light_phase_enter'",(ROOT/'verification/probe/check_no_x87.py').read_text())
-        manage=(ROOT/'tools/manage.py').read_text();self.assertNotIn("--light-phases",manage)  # a --draw-trace member since 2026-09-26
+        self.assertIn('light_phases::frame(frame,taken);',source_text(ROOT/'src/proxy/frame_phases.cpp'))
+        self.assertIn('light_phases::initialize();',source_text(ROOT/'src/proxy/capture.cpp'))
+        self.assertEqual(source_text(ROOT/'CMakeLists.txt').count('src/proxy/light_phases.cpp'),2)
+        self.assertIn("'_x3m_light_phase_enter'",source_text(ROOT/'verification/probe/check_no_x87.py'))
+        manage=source_text(ROOT/'tools/manage.py');self.assertNotIn("--light-phases",manage)  # a --draw-trace member since 2026-09-26
         self.assertIn('if(!log_tier::draw_trace_flag(L"X3M_LIGHT_PHASES"))return false;',source)
 
 class Rows(unittest.TestCase):
@@ -55,7 +56,7 @@ class Rows(unittest.TestCase):
         spec=importlib.util.spec_from_file_location('light_rows',ROOT/'tools/analysis/summarize_light_phases.py')
         rows=importlib.util.module_from_spec(spec);spec.loader.exec_module(rows)
         import re
-        source=(ROOT/'src/proxy/light_phases.cpp').read_text()
+        source=source_text(ROOT/'src/proxy/light_phases.cpp')
         log=source[source.index('log("light_phases qpc='):source.index('now,s.frame,s.frames')]
         names=re.findall(r'(\w+)=%',''.join(re.findall(r'"([^"]*)"',log)))
         self.assertEqual(sorted(names),sorted(rows.FIELDS));self.assertEqual(len(names),len(set(names)))

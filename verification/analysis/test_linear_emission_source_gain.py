@@ -34,6 +34,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'tools/analysis'))
 import inspect_motion_output_profiles as shader
 from verification.analysis.test_capture_bloom_lifetime import extract_function
+from source_text import source_text
 
 PIXELS = ('8360f422de08b5bd', '9975b706e5a1c999', 'ff2473e73a6bdfa1', '8559522220507d5e', '875e780adb131b16',
           '39f3b4d5b6a5aaed', '47e15e20d63b0e93', '846c5c1a549f9491', 'c6dacb8f74b65c97', 'f0c91793a75e1203')
@@ -190,7 +191,7 @@ class LauncherGateTests(unittest.TestCase):
 
     def test_dll_gate_reads_the_variable_and_needs_hdr_only(self):
         # Source-substring guard against silent gate drift, not a semantics test.
-        source = (ROOT / 'src/proxy/capture.cpp').read_text()
+        source = source_text(ROOT / 'src/proxy/capture.cpp')
         block = source[source.index('X3M_EMISSION_SOURCE_GAIN=<g>'):][:2400]
         self.assertIn('x3m::config::get(L"X3M_EMISSION_SOURCE_GAIN",setting,32)', block)
         self.assertIn('value>=1.f&&value<=8.f', block)
@@ -199,7 +200,7 @@ class LauncherGateTests(unittest.TestCase):
         self.assertIn('configure_emission_source_gain(emission_source_gain)', source)
         for absent in ('linear_material_requested', 'taa_requested', 'screen_ownership', 'X3M_EFFECT_SOURCE_GAIN', 'effect_source_gain'):
             self.assertNotIn(absent, source if absent.startswith(('X3M_EFFECT', 'effect_')) else block)
-        motion = (ROOT / 'src/proxy/motion_output.cpp').read_text()
+        motion = source_text(ROOT / 'src/proxy/motion_output.cpp')
         admission = motion[motion.index('void MotionOutput::prepare_source_gain'):][:6400]
         for required in ('hdr_state_ != HdrState::Active', 'renderer::linear_emission_source_gain_blend(shadow_.states[3], shadow_.states[5]',
                          'shadow_.composition_blend[0], shadow_.composition_blend[1], shadow_.composition_blend[2])',
@@ -224,13 +225,13 @@ class LauncherGateTests(unittest.TestCase):
         self.assertNotIn('family', creation)
         for absent in ('LinearEmissionFamily', 'source_gain_family', 'linear_emission_pair_info', 'source_gain_variant['):
             self.assertNotIn(absent, motion)
-            self.assertNotIn(absent, (ROOT / 'src/proxy/motion_output.h').read_text())
+            self.assertNotIn(absent, source_text(ROOT / 'src/proxy/motion_output.h'))
 
     def test_screen_substitution_is_applied_before_the_bind_and_restored_after_the_draw(self):
         # The substitution is the additive option's (prepare_screen_additive:
         # DESTBLEND ONE set unconditionally, restored through the setter
         # shadow); the ONE/ONE path never touches DESTBLEND.
-        motion = (ROOT / 'src/proxy/motion_output.cpp').read_text()
+        motion = source_text(ROOT / 'src/proxy/motion_output.cpp')
         admission = motion[motion.index('void MotionOutput::prepare_source_gain'):motion.index('void MotionOutput::finish_source_gain')]
         substitute = admission.index('direct_call<SetRenderStateFn>(SetRenderState, D3DRS_DESTBLEND, D3DBLEND_ONE);')
         bind = admission.index('native<SetPsFn>(SetPixelShader)(device_, shadow_.source_gain_eligible_variant);')
@@ -255,17 +256,17 @@ class LauncherGateTests(unittest.TestCase):
                         finish.index('D3DRS_DESTBLEND, shadow_.composition_blend[1]'))
         # No path writes a borrowed shadow shader pointer back to the device.
         for name in ('motion_output.cpp', 'sun_share_lane_inc.h'):
-            text = (ROOT / 'src/proxy' / name).read_text()
+            text = source_text(ROOT / 'src/proxy' / name)
             self.assertNotRegex(text, r'Set(Vertex|Pixel)Shader\)\(device_,\s*shadow_\.(vs|ps)\)')
         self.assertIn('if (route.source_gain_screen) {', finish)
         self.assertIn('invalidate_render_states();', finish)
         self.assertIn('what=source_gain', finish)
         self.assertIn('if (route.source_gain) finish_source_gain(route);', motion)
         # Screen with sRGB write refuses as blend: the substitution needs the linear FP16 target.
-        renderer = (ROOT / 'src/renderer/linear_emission.cpp').read_text()
+        renderer = source_text(ROOT / 'src/renderer/linear_emission.cpp')
         law = extract_function(renderer, 'SourceGainBlend linear_emission_source_gain_blend(')
         self.assertLess(law.index('srgb_write'), law.index('SourceGainBlend::Screen'))
-        header = (ROOT / 'src/proxy/motion_output.h').read_text()
+        header = source_text(ROOT / 'src/proxy/motion_output.h')
         self.assertIn('bool source_gain_screen = false;', header)
         self.assertIn('void finish_source_gain(MotionRoute&) noexcept;', header)
 
@@ -289,7 +290,7 @@ class LogGrammarTests(unittest.TestCase):
     """The frame-totals and per-reason sample lines as the source formats them."""
     @classmethod
     def setUpClass(cls):
-        cls.motion = (ROOT / 'src/proxy/motion_output.cpp').read_text()
+        cls.motion = source_text(ROOT / 'src/proxy/motion_output.cpp')
 
     def literal(self, prefix, index=0):
         matches = re.findall(r'log\("(' + prefix + r'[^"]*)"', self.motion)
@@ -321,7 +322,7 @@ class LogGrammarTests(unittest.TestCase):
         self.assertIn('source_gain_counts_ = {};', block)
 
     def test_sample_cap_is_per_reason_and_per_device_epoch(self):
-        header = (ROOT / 'src/proxy/motion_output.h').read_text()
+        header = source_text(ROOT / 'src/proxy/motion_output.h')
         self.assertIn('std::uint32_t source_gain_logged_[4]{};', header)
         self.assertIn('admitted_screen = 0, refused_blend = 0, refused_screen = 0', header)
         self.assertIn('for (auto& logged : source_gain_logged_) logged = 0;', self.motion)
@@ -339,7 +340,7 @@ class LogGrammarTests(unittest.TestCase):
         self.assertIn('1u << shadow_.source_gain_pair : 0u;', admission)
         self.assertIn('if (bit && !(source_gain_pair_logged_ & bit)) {', admission)
         self.assertIn('source_gain_pair_logged_ |= bit;', admission)
-        self.assertIn('std::uint32_t source_gain_pair_logged_ = 0;', (ROOT / 'src/proxy/motion_output.h').read_text())
+        self.assertIn('std::uint32_t source_gain_pair_logged_ = 0;', source_text(ROOT / 'src/proxy/motion_output.h'))
 
     def test_state_refusal_sample_names_the_failed_predicate(self):
         fmt = self.literal('emission_source_gain_refused_state ')
@@ -355,7 +356,7 @@ class RegistryTests(unittest.TestCase):
     """The twenty pairs in registry order, without a family, in the source and
     through the compiled lookup; unreviewed pairs return the count."""
     def test_registry_rows(self):
-        source = (ROOT / 'src/renderer/linear_emission.cpp').read_text()
+        source = source_text(ROOT / 'src/renderer/linear_emission.cpp')
         table = source[source.index('constexpr Pair pairs[] = {'):source.index('};', source.index('constexpr Pair pairs[] = {'))]
         rows = re.findall(r'\{0x([0-9a-f]{16})ull,0x([0-9a-f]{16})ull\}', table)
         self.assertEqual(len(rows), 20)
@@ -363,7 +364,7 @@ class RegistryTests(unittest.TestCase):
         self.assertEqual([(VERTICES[v], PIXELS[p]) for v, p in PAIRS], rows)
         self.assertNotIn('Family', table)
         self.assertIn('static_assert(sizeof(pairs)/sizeof(pairs[0])==linear_emission_pair_count', source)
-        header = (ROOT / 'src/renderer/linear_emission.h').read_text()
+        header = source_text(ROOT / 'src/renderer/linear_emission.h')
         for absent in ('LinearEmissionFamily', 'linear_emission_pair_info', 'linear_emission_family_name'):
             self.assertNotIn(absent, header); self.assertNotIn(absent, source)
 
@@ -415,7 +416,7 @@ class BlendLawTests(unittest.TestCase):
         self.assertEqual([int(v) for v in run.stdout.split()], [verdict for _, verdict in self.CASES])
 
     def test_fixture_and_runner_exercise_the_screen_substitution(self):
-        fixture = (ROOT / 'verification/probe/linear_emission_fixture.cpp').read_text()
+        fixture = source_text(ROOT / 'verification/probe/linear_emission_fixture.cpp')
         for absent in ('family', 'Family', 'linear_emission_pair_info', 'split_gains'):
             self.assertNotIn(absent, fixture)
         experiment = fixture[fixture.index('void source_gain_experiment'):][:6400]
@@ -430,7 +431,7 @@ class BlendLawTests(unittest.TestCase):
         self.assertLess(experiment.index('f.rs(D3DRS_DESTBLEND, D3DBLEND_ONE);'), experiment.index('api(device->SetPixelShader(f.source_gain_variants[pixel][slots[v - 1]].p));'))
         self.assertIn('constexpr float source_gains[] = {1, 2, 3.5f, 8, 5};', fixture)
         self.assertIn('constexpr unsigned screen_slots[] = {0, 1, 4, 3};', fixture)
-        runner = (ROOT / 'verification/probe/run_linear_emission.py').read_text()
+        runner = source_text(ROOT / 'verification/probe/run_linear_emission.py')
         for absent in ('family', 'ENGINE_PAIRS', 'SPLIT_CONFIGURATIONS'):
             self.assertNotIn(absent, runner)
         for required in ("label='source_gain_separate_alpha'", "label='source_gain_screen'", "alpha=2", "kind=2", 'SCREEN_GAINS = (1.,2.,5.,8.)',

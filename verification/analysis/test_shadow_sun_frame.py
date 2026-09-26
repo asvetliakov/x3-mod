@@ -9,6 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'tools' / 'analysis'))
 import shadow_sun_frame as reader
+from source_text import source_text
 
 
 def line(frame, source='point', reason='point', poll='ok', mask=0, carried=0, checks=2,
@@ -86,7 +87,7 @@ class ShadowSunTraceLaunchOption(unittest.TestCase):
             code, output, error = launch(directory, *base, inherited={'X3M_SHADOW_SUN_TRACE': '1'})
             self.assertEqual(code, 0, error)
             self.assertNotIn('X3M_SHADOW_SUN_TRACE', json.loads(output)['env'])
-        self.assertIn('const bool trace_asked=log_tier::debug_flag(L"X3M_SHADOW_SUN_TRACE");', (ROOT / 'src/proxy/capture.cpp').read_text())
+        self.assertIn('const bool trace_asked=log_tier::debug_flag(L"X3M_SHADOW_SUN_TRACE");', source_text(ROOT / 'src/proxy/capture.cpp'))
 
 
 if __name__ == '__main__':

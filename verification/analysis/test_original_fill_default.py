@@ -10,6 +10,7 @@ import unittest
 
 import test_taa_sky_history as sky
 import test_taa_thin_vote as vote
+from source_text import source_text
 
 ROOT = sky.ROOT
 HDR = ('--motion-output', '--hdr')
@@ -59,7 +60,7 @@ class OriginalFillDefaultLaunch(unittest.TestCase):
 
 class OriginalFillDefaultSource(unittest.TestCase):
     def test_dll_reads_the_marker_and_logs_default(self):
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
         block = capture[capture.index('X3M_ORIGINAL_FILL=<k>'):][:3200]
         # The DLL default when unset stays 0 (fixtures unchanged).
         self.assertIn('{original_fill=0.f;bool fill_valid=true;float value=0.f;', block)
@@ -70,7 +71,7 @@ class OriginalFillDefaultSource(unittest.TestCase):
         self.assertLess(block.index('if(!hdr_requested||excluded)original_fill=0.f;'), block.index('const bool fill_default='))
 
     def test_motion_runner_drops_an_inherited_marker(self):
-        runner = (ROOT / 'verification/probe/run_motion_output.py').read_text()
+        runner = source_text(ROOT / 'verification/probe/run_motion_output.py')
         # the marker sits in the runner's inherited-marker pop list (the list grows with every launcher default)
         block = runner[runner.index("for marker in ('X3M_TAA_THIN_VOTE_DEFAULT'"):]
         block = block[:block.index("env.pop(marker, None)")]

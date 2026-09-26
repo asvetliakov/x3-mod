@@ -11,6 +11,7 @@ import unittest
 from pathlib import Path
 import verify_loop_phase_sites as probe
 from verification.analysis.test_chase_lead_sites import PatchedImage
+from source_text import source_text
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -20,7 +21,7 @@ class SourceAndReplay(unittest.TestCase):
         self.assertEqual(len(probe.SITES), 6)
         self.assertEqual([s.va for s in probe.SITES], [0x43a38e, 0x43a394, 0x43a39a, 0x43a3a0, 0x43a3be, 0x43a3ca])
         self.assertEqual([len(s.expected) for s in probe.SITES], [6, 6, 6, 5, 6, 5])
-        text = probe.SOURCE.read_text()
+        text = source_text(probe.SOURCE)
         self.assertTrue(probe.source_checks(text))
         # Four displaced calls carry their rel32 at offset 2; the two pass ends are plain copies.
         self.assertEqual(text.count('},6,0,2}'), 4)
@@ -62,9 +63,9 @@ class SourceAndReplay(unittest.TestCase):
             self.assertRegex(run.stdout, r'^loop_phases_host checks=\d+ failures=0 accumulator_bytes=\d+ window_bytes=\d+ summary_bytes=\d+ dispatch_cost_ns=\d+ slow_limit=64\n$')
 
     def test_production_wiring(self):
-        source = (ROOT / 'src/proxy/loop_phases.cpp').read_text()
-        header = (ROOT / 'src/proxy/loop_phases.h').read_text()
-        core = (ROOT / 'src/proxy/loop_phases_core.h').read_text()
+        source = source_text(ROOT / 'src/proxy/loop_phases.cpp')
+        header = source_text(ROOT / 'src/proxy/loop_phases.h')
+        core = source_text(ROOT / 'src/proxy/loop_phases_core.h')
         # Off = inert: the environment gate, the frame boundary behind one
         # relaxed load, the handler's first instruction an `active` test.
         self.assertIn('L"X3M_LOOP_PHASES"', source)
@@ -96,31 +97,31 @@ class SourceAndReplay(unittest.TestCase):
         # The window closes at the frame-phase boundary under its owner guard
         # with dt and pre_render joined; the game-phase input phase replaces
         # pre_render when present; a frame without a sample is dropped.
-        frame = (ROOT / 'src/proxy/frame_phases.cpp').read_text()
+        frame = source_text(ROOT / 'src/proxy/frame_phases.cpp')
         impl = frame[frame.index('void frame_impl(std::uint64_t frame) noexcept {'):]
         impl = impl[:impl.index('\n}')]
         self.assertLess(impl.index('if(!owner(false))return;'), impl.index('loop_phases::frame(frame,taken,taken?last_sample.dt_us:0,taken?last_sample.phase_us[detail::pre_render]:0);'))
         self.assertLess(impl.index('loop_phases::frame('), impl.index('if(!taken)return;'))
         self.assertIn('if(!sampled){accumulator.discard();++dropped;return;}', source)
         self.assertIn('game_phases::last_input_us(&input_us);', source)
-        phases = (ROOT / 'src/proxy/game_phases.cpp').read_text()
+        phases = source_text(ROOT / 'src/proxy/game_phases.cpp')
         self.assertIn('GetCurrentThreadId()!=owner_thread.load(std::memory_order_acquire))return false;', phases)
-        phase_core = (ROOT / 'src/proxy/game_phases_core.h').read_text()
+        phase_core = source_text(ROOT / 'src/proxy/game_phases_core.h')
         self.assertIn('if(phase==6){input_last=input_ticks;input_valid=true;}', phase_core)
         self.assertIn('log("loop_phases qpc=%llu frame=%llu frames=%u sectors_p50=%llu containers_p50=%llu collide_p50_us=%llu collide_p95_us=%llu simulate_p50_us=%llu simulate_p95_us=%llu post_p50_us=%llu post_p95_us=%llu passb_p50_us=%llu passb_p95_us=%llu sum_p50_us=%llu input_p50_us=%llu self_p50_us=%llu dispatch_cost_ns=%llu max_interval_us=%llu max_interval_owner=%s slow=%u orphans=%llu clock_errors=%llu clock_failures=%llu unmatched=%llu dropped=%llu early=%u foreign=%u"', source)
         self.assertIn('log("loop_phases_slow qpc=%llu frame=%llu dt_us=%llu sectors=%u containers=%u collide_us=%llu simulate_us=%llu post_us=%llu passb_us=%llu sum_us=%llu input_us=%llu max_interval_us=%llu max_interval_owner=%s"', source)
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
         self.assertLess(capture.index('pass_phases::initialize();'), capture.index('loop_phases::initialize();'))
-        cmake = (ROOT / 'CMakeLists.txt').read_text()
+        cmake = source_text(ROOT / 'CMakeLists.txt')
         self.assertEqual(cmake.count('src/proxy/loop_phases.cpp'), 2)
         self.assertEqual(cmake.count('src/proxy/lean_stub.cpp'), 2)
-        build = (ROOT / 'verification/probe/build_game_phase_cpu.py').read_text()
+        build = source_text(ROOT / 'verification/probe/build_game_phase_cpu.py')
         self.assertIn("('src/proxy/loop_phases.cpp','loop')", build)
         self.assertIn("('src/proxy/lean_stub.cpp','lean')", build)
-        audit = (ROOT / 'verification/probe/check_no_x87.py').read_text()
+        audit = source_text(ROOT / 'verification/probe/check_no_x87.py')
         self.assertIn("'_x3m_loop_phase_enter'", audit)
         # The CPU fixture arena is enlarged for the fixture build only.
-        engine = (ROOT / 'src/proxy/engine_patch.cpp').read_text()
+        engine = source_text(ROOT / 'src/proxy/engine_patch.cpp')
         self.assertIn('#ifndef X3M_GAME_PHASE_FIXTURE\nconstexpr unsigned arena_size=24576;\n#else\nconstexpr unsigned arena_size=32768;\n#endif', engine)
 
 
@@ -139,7 +140,7 @@ class LoopPhasesLaunchOption(unittest.TestCase):
             env = json.loads(output)['env']
             self.assertEqual(env['X3M_PERF'], '1')
             self.assertNotIn('X3M_LOOP_PHASES', env)
-        self.assertIn('log_tier::draw_trace_flag(L"X3M_LOOP_PHASES")', (ROOT / 'src/proxy/loop_phases.cpp').read_text())
+        self.assertIn('log_tier::draw_trace_flag(L"X3M_LOOP_PHASES")', source_text(ROOT / 'src/proxy/loop_phases.cpp'))
 
 
 @unittest.skipUnless(probe.DEFAULT_EXE.is_file(), 'installed X3AP.exe unavailable')
@@ -149,8 +150,8 @@ class NativeSites(unittest.TestCase):
         cls.data = probe.DEFAULT_EXE.read_bytes()
         cls.image = probe.common.Image(cls.data)
         cls.decoded = probe.decode()
-        cls.source = probe.SOURCE.read_text()
-        cls.installed = probe.installed_spans(probe.INSTALLED.read_text())
+        cls.source = source_text(probe.SOURCE)
+        cls.installed = probe.installed_spans(source_text(probe.INSTALLED))
 
     def report(self, image=None, decoded=None):
         return probe.inspect(image or self.image, decoded or self.decoded, self.source, self.data, self.installed)

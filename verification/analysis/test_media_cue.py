@@ -13,6 +13,7 @@ import unittest
 from pathlib import Path
 import verify_media_cue_site as probe
 from verification.analysis.test_chase_lead_sites import PatchedImage
+from source_text import source_text
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -22,7 +23,7 @@ class SourceAndPolicy(unittest.TestCase):
         self.assertEqual(len(probe.SITES), 1)
         self.assertEqual(probe.SITES[0].va, 0x498140)
         self.assertEqual(probe.SITES[0].expected, bytes.fromhex('538b5c2408'))
-        text = probe.SOURCE.read_text()
+        text = source_text(probe.SOURCE)
         self.assertTrue(probe.source_checks(text))
         self.assertIn('{"media_create_enter",0x00498140,{0x53,0x8b,0x5c,0x24,0x08},5,0,0}', text)
         self.assertFalse(probe.source_checks(text.replace('},5,0,0}', '},5,4,0}', 1)))
@@ -55,9 +56,9 @@ class SourceAndPolicy(unittest.TestCase):
             self.assertRegex(run.stdout, r'^media_cue_host checks=\d+ failures=0 cache_bytes=\d+ pending_bytes=\d+ ring_bytes=\d+ window_bytes=\d+ cache_entries=32 pending_depth=4 lines_per_second=32\n$')
 
     def test_production_wiring(self):
-        source = (ROOT / 'src/proxy/media_cue.cpp').read_text()
-        header = (ROOT / 'src/proxy/media_cue.h').read_text()
-        core = (ROOT / 'src/proxy/media_cue_core.h').read_text()
+        source = source_text(ROOT / 'src/proxy/media_cue.cpp')
+        header = source_text(ROOT / 'src/proxy/media_cue.h')
+        core = source_text(ROOT / 'src/proxy/media_cue_core.h')
         # Optional diagnostics: the two environment gates, the frame boundary behind one
         # relaxed load, both handlers x87-free under LightCallBoundary, no log.
         self.assertIn('L"X3M_MEDIA_CUE_TRACE"', source)
@@ -140,18 +141,18 @@ class SourceAndPolicy(unittest.TestCase):
         self.assertIn('if(trace_on&&limit.admit(e.qpc,frequency))emit_entry(e);', source)
         self.assertIn('log("media_cue frame=%llu qpc=%llu id=%lu kind=%s caller=%s flags=0x%lx result=%s us=%llu attempts_frame=%lu cached=%u"', source)
         self.assertIn('log("media_cue_window qpc=%llu frame=%llu frames=%u attempts=%llu failures=%llu successes=%llu refused=%llu unobserved=%llu attempts_frame_p50=%llu attempts_frame_max=%lu ids=%s', source)
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
         self.assertLess(capture.index('loop_phases::initialize();'), capture.index('media_cue::initialize();'))
         self.assertLess(capture.index('frame_phases::frame(ctx.frame);'), capture.index('media_cue::frame(ctx.frame);'))
-        cmake = (ROOT / 'CMakeLists.txt').read_text()
+        cmake = source_text(ROOT / 'CMakeLists.txt')
         self.assertEqual(cmake.count('src/proxy/media_cue.cpp'), 2)
-        build = (ROOT / 'verification/probe/build_game_phase_cpu.py').read_text()
+        build = source_text(ROOT / 'verification/probe/build_game_phase_cpu.py')
         self.assertIn("('src/proxy/media_cue.cpp','media')", build)
-        audit = (ROOT / 'verification/probe/check_no_x87.py').read_text()
+        audit = source_text(ROOT / 'verification/probe/check_no_x87.py')
         self.assertIn("'_x3m_media_cue_enter', '_x3m_media_cue_return'", audit)
-        runner = (ROOT / 'verification/probe/run_game_phase_cpu.py').read_text()
+        runner = source_text(ROOT / 'verification/probe/run_game_phase_cpu.py')
         self.assertIn("'MEDIA CUE BENCH'", runner)
-        fixture = (ROOT / 'verification/probe/game_phase_cpu_fixture.cpp').read_text()
+        fixture = source_text(ROOT / 'verification/probe/game_phase_cpu_fixture.cpp')
         for label in ('REFUSE arm returns 0 to the caller without running the allocator',
                       'nested speech call from inside the build reached depth 2 with both spans replayed',
                       'speech caller with the cached id proceeds', 'success after the interval clears the cache entry',
@@ -170,7 +171,7 @@ class SourceAndPolicy(unittest.TestCase):
         self.assertIn('media_cases=11', fixture)
 
     def test_default_id2_skip_precedes_all_diagnostic_state(self):
-        source = (ROOT / 'src/proxy/media_cue.cpp').read_text()
+        source = source_text(ROOT / 'src/proxy/media_cue.cpp')
         enter = source.split('x3m_media_cue_enter(x3m::media_cue::EnterFrame* f) {', 1)[1].split('\n}', 1)[0]
         skip = 'if(detail::refuse_id2_video(f->id,f->eax))return 0;'
         self.assertIn(skip, enter)
@@ -184,17 +185,17 @@ class SourceAndPolicy(unittest.TestCase):
         self.assertIn('if(!frequency){trace_on=false;cache_on=false;}', initialize)
         self.assertIn('active.store(installed.load(std::memory_order_acquire)&&(trace_on||cache_on)', initialize)
         self.assertNotIn('owned_eligibility', source)
-        fixture = (ROOT / 'verification/probe/media_cue_skip_fixture_inc.h').read_text()
+        fixture = source_text(ROOT / 'verification/probe/media_cue_skip_fixture_inc.h')
         for label in ('ID2 skipped for all callers before owner admission',
                       'ID2 skip touches no diagnostic state', 'ID2 foreign calls never enter allocator',
                       'nested ID2 does not add a return observer', 'skip rollback restores complete native span'):
             self.assertIn(label, fixture)
 
     def test_video_blit_witness(self):
-        source = (ROOT / 'src/proxy/media_cue.cpp').read_text()
-        header = (ROOT / 'src/proxy/media_cue.h').read_text()
-        core = (ROOT / 'src/proxy/media_cue_core.h').read_text()
-        sites = (ROOT / 'src/proxy/media_cue_sites.h').read_text()
+        source = source_text(ROOT / 'src/proxy/media_cue.cpp')
+        header = source_text(ROOT / 'src/proxy/media_cue.h')
+        core = source_text(ROOT / 'src/proxy/media_cue_core.h')
+        sites = source_text(ROOT / 'src/proxy/media_cue_sites.h')
         # The consumer's range (media-cue-playback.md, 8.3/8.6) and the cadence.
         self.assertIn('inline constexpr std::uint32_t kVideoBlitBegin = 0x004d0c40;', sites)
         self.assertIn('inline constexpr std::uint32_t kVideoBlitEnd = 0x004d14e0;', sites)  # the next function, the pump (RE note 8.6)
@@ -228,13 +229,13 @@ class SourceAndPolicy(unittest.TestCase):
         # The ownership shell: the return address is taken at the shell's
         # entry, the observer slot is one relaxed load, the observed arm is out
         # of line, and the generator (not the generated file) is the source.
-        generator = (ROOT / 'tools/ownership/generate_d3d9_forwarders.py').read_text()
+        generator = source_text(ROOT / 'tools/ownership/generate_d3d9_forwarders.py')
         self.assertIn('body = f"return surface_lock(this, __builtin_return_address(0), {\', \'.join(args)});"', generator)
         self.assertIn('body = "return surface_unlock(this, __builtin_return_address(0));"', generator)
-        forwarders = (ROOT / 'src/ownership/d3d9_forwarders_inc.h').read_text()
+        forwarders = source_text(ROOT / 'src/ownership/d3d9_forwarders_inc.h')
         self.assertIn('    return surface_lock(this, __builtin_return_address(0), locked_rect, rect, flags);', forwarders)
         self.assertIn('    return surface_unlock(this, __builtin_return_address(0));', forwarders)
-        ownership = (ROOT / 'src/ownership/d3d9_ownership.cpp').read_text()
+        ownership = source_text(ROOT / 'src/ownership/d3d9_ownership.cpp')
         self.assertIn('std::atomic<SurfaceLockObserver> surface_lock_observer{nullptr};', ownership)
         self.assertEqual(ownership.count('const SurfaceLockObserver observer=surface_lock_observer.load(std::memory_order_relaxed);'), 2)
         self.assertIn('if(!observer)return observe_result(device_of(node), static_cast<Surface*>(node)->native_->LockRect(locked_rect, rect, flags));', ownership)
@@ -251,11 +252,11 @@ class SourceAndPolicy(unittest.TestCase):
             self.assertLess(arm.index('native_->'), arm.index('ExecutionState outgoing;'))
             self.assertLess(arm.index('ExecutionState outgoing;'), arm.rindex('observer(e);'))
             self.assertLess(arm.rindex('observer(e);'), arm.index('outgoing.restore();'))
-        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
         self.assertLess(capture.index('media_cue::initialize();'), capture.index('ownership::set_surface_lock_observer(observer);'))
         self.assertLess(capture.index('voice_dmo_fallback::shutdown();'), capture.index('ownership::set_surface_lock_observer(nullptr);'))
-        self.assertIn('x3m::ownership::set_surface_lock_observer(nullptr);', (ROOT / 'src/proxy/loader.cpp').read_text())
-        fixture = (ROOT / 'verification/probe/game_phase_cpu_fixture.cpp').read_text()
+        self.assertIn('x3m::ownership::set_surface_lock_observer(nullptr);', source_text(ROOT / 'src/proxy/loader.cpp'))
+        fixture = source_text(ROOT / 'verification/probe/game_phase_cpu_fixture.cpp')
         for label in ('trace off: no video witness published',
                       "lock from outside the consumer's range writes no line and is not counted",
                       'first in-range lock writes its enter and result lines with one GetDesc each',
@@ -322,8 +323,8 @@ class NativeSite(unittest.TestCase):
         cls.data = probe.DEFAULT_EXE.read_bytes()
         cls.image = probe.common.Image(cls.data)
         cls.decoded = probe.decode()
-        cls.source = probe.SOURCE.read_text()
-        cls.installed = probe.installed_spans(probe.INSTALLED.read_text())
+        cls.source = source_text(probe.SOURCE)
+        cls.installed = probe.installed_spans(source_text(probe.INSTALLED))
 
     def report(self, image=None, decoded=None):
         return probe.inspect(image or self.image, decoded or self.decoded, self.source, self.data, self.installed)
