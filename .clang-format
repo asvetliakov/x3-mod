@@ -1,0 +1,41 @@
+# x3-mod C/C++ formatting (clang-format 23). Close to the historical hand style: four-space indent, attached braces,
+# 120 columns, short ifs/loops/functions may stay on one line, trailing comments aligned.
+BasedOnStyle: LLVM
+Standard: c++20
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ColumnLimit: 120
+AccessModifierOffset: -4
+NamespaceIndentation: None
+FixNamespaceComments: true
+BreakBeforeBraces: Attach
+AllowShortIfStatementsOnASingleLine: WithoutElse
+AllowShortLoopsOnASingleLine: true
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortBlocksOnASingleLine: Empty
+AllowShortCaseLabelsOnASingleLine: true
+AllowShortLambdasOnASingleLine: All
+AlignTrailingComments:
+  Kind: Always
+  OverEmptyLines: 0
+AlignConsecutiveAssignments: None
+AlignConsecutiveDeclarations: None
+AlignAfterOpenBracket: Align
+BinPackArguments: true
+BinPackParameters: true
+PointerAlignment: Left
+ReferenceAlignment: Left
+SpaceAfterTemplateKeyword: true
+SortIncludes: Never
+IncludeBlocks: Preserve
+ReflowComments: true
+KeepEmptyLinesAtTheStartOfBlocks: false
+MaxEmptyLinesToKeep: 1
+IndentCaseLabels: false
+IndentPPDirectives: None
+BreakConstructorInitializers: BeforeComma
+Cpp11BracedListStyle: true
+SpacesBeforeTrailingComments: 1
+PenaltyBreakAssignment: 50
+PenaltyReturnTypeOnItsOwnLine: 1000

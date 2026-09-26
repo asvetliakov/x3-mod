@@ -7,9 +7,8 @@ Superseded rules and their history are in `docs/archive/` and
 
 ## Reading on entry
 
-The orchestrator reads `docs/status.md`, `docs/goals.md`,
-`docs/user-objective.md` and the owning architecture or reverse-engineering
-note for the task at hand. A secondary agent reads this file and the files named
+The orchestrator reads `docs/status.md`, `docs/goals.md` and the owning
+architecture or reverse-engineering note for the task at hand. A secondary agent reads this file and the files named
 in its brief; the brief carries the objective and relevant current status facts.
 Do not load historical archives or the whole conversation for a bounded subtask unless
 a specific unresolved question requires it.
