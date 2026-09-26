@@ -1,0 +1,12 @@
+frames 20416 taa_resolved_frames 19374
+camera_cut_frames 8 motion_cut_frames 0 taa_history_frames 19364
+rotation_deg_per_frame p50 0.1528 p90 0.8839 p99 1.7180 max 170.4817
+  rot [0,0.01) frames 7302
+  rot [0.01,0.05) frames 189
+  rot [0.05,0.2) frames 3503
+  rot [0.2,1) frames 6722
+  rot [1,5) frames 1654
+  rot [5,1e+09) frames 4
+draws median 120 routed median 78 matched median 78 routed/draws median 0.733 min 0.100
+unjittered_depth_writers median 0 max 1
+taa_weight values ['0.900']

@@ -1,0 +1,22 @@
+Run 91 A station blur under pan (run338 --debug --perf launcher default; run339 player mode, three 8-frame F8 bursts)
+Ledger: docs/verification/temporal-resolve.md, "2026-09-26 Run 91 A: station blur under pan".
+
+Commands (from /tmp/x3-bottleX3-run33x):
+  python3 pan_blur_rows.py <session.log> [frames]            -> pan_blur_rows_run338.txt / _run339.txt
+  python3 capture_motion_bands.py . 2242 6650 7102            -> capture_motion_bands_out.txt (run339)
+  python3 capture_pan_vs_rotation.py . <log> <first> 8        -> capture_pan_vs_rotation_out.txt (run339)
+  route classification of the 24 capture frames (run339):
+    grep "^motion_route " <log> | awk '{for(i=2;i<=NF;i++){split($i,a,"=");v[a[1]]=a[2]}
+      if(v["zwrite"]==1){n["routed="v["routed"]" lod="v["lod"]]++}} END{for(k in n) print k, n[k]}'
+    -> routed=1 lod=0 2424, lod=1 1176, lod=2 14; routed=0 with zwrite=1: 0 (unrouted: 111+56 blended, no z-write)
+
+Key numbers (measured):
+  both runs: taa_weight 0.900 on every resolved frame; far 0.985,0,60,68,0.03,0.25 camera gate; thin 0.97,1; motion cap 0.7,2,8;
+  sharpen 0.75; sky strict band 3 / exit 0.25; unmatched static node; target 5120x1440, p00 0.5 -> 1280 px/rad (22.34 px/deg).
+  camera cuts only at load / sector change: run338 8 (4 at 98-170 deg, frames 502-612), run339 6; motion cuts 0.
+  routed/draws median 0.733 (run338), 0.798 (run339); taa_history on 19364/19374 and 10116/10123 resolved frames.
+  capture bursts: frames 2..8 of each burst advance ~5-14x more per frame (translation 10 -> 136 units/frame at 2242/2243,
+  30 -> 138-235 at 7102/7103): only the first frame of a burst has normal-rate motion.
+  first frames, routed px beyond 25,000 units: 2242 |d| 0.54 px/frame (lateral translation), 6650 0.97, 7102 1.27 (tail of a
+  turn logged 0.16-0.26 deg/frame over 7090-7097). 2-5 km (10k-25k units) pixels exist only in burst 1 (154,541 px, 0.91 px/frame).
+  far band at 5120 px: farw starts 76,800 units (15.4 km), full at 87,040 (17.4 km); 2-5 km = 7.8-19.5 units/px -> farw 0.

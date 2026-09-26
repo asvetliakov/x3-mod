@@ -1,0 +1,29 @@
+Run 91 A launch 2 (run339, /tmp/x3-bottleX3-run339, session-20260926-163355-212.log; DLL 25adddf8 @ 759c2ac7), F8 frames 2242-2249, 6650-6657, 7102-7109.
+Symptom: "distant stations/asteroids look rendered on top of bullets".
+
+Scripts (run from the session dir):
+  draw_table.py LOG FRAMES...            per-draw vs/ps/prims/ZENABLE/ZWRITE/ZFUNC/blend/projection/model rows
+  draw_table.py ... | order_summary.py   -> order_summary_out.txt (clears C<flags>, bullet draws B<index>, ZW=1 span)
+  bolt_band.py 6650 6653 6657 7102 7105  -> bolt_band_out.txt (bolt excess over routed geometry vs over no depth)
+
+Measured:
+- Bullet pair VS 5e484a06672e28fb / PS ec1f5c4a2f4e1445, DrawPrimitive TRIANGLELIST from the 1,769,472 B dynamic VB.
+  Every captured frame (24/24): Clear(ZBUFFER) after the background (d1-5, Z off), then the bullet draw(s) at d6 (d6+d7
+  in 6650-7109, two buffers 2081/2082), then all depth-writing opaque draws (2242: d7-74, 68 draws; 6650: d8-212, 205;
+  7104: d8-186, 179), then the bullet draw(s) again (2242: d75; 6650: d213/214; 7104: d187/188); no depth clear between.
+  Early and late copies: same primitive count (720/720, 1540+378, 946+144), consecutive DISCARD revisions (905/906),
+  ZENABLE 1, ZWRITE 0, ZFUNC LESSEQUAL, blend ONE/INVSRCCOLOR; late copy ALPHATEST 1 in 6650-6657 only.
+- Additive route admits both copies: screen_emission_additive_frame admitted=2 (2242, 2245) / 4 (6653, 7105), refused 0;
+  gain 2, DESTBLEND ONE (motion_output.cpp:6218).
+- Same projection for every 3D draw: row2 (.., 1.000003, 1), row3 (.., -6.000018, 0): z/w = 1.000003 - 6/w (near 6).
+- Frame 2242 cull census: bullets (v\00517) 30 kept, d/100 = 1,146..5,303 units; stations/far ships 25 at d >= 1e6
+  (>= 10,917 units). Depth lane in 6650-6657 at the station behind the bolts: z/w 0.999963-0.999964, clip w 152,089-154,465.
+- Bolt green excess (e = G - max(R,B), e > 0.25) in the pre-resolve FP16 scene at silhouette bands:
+  6650 over geometry 0.401 (n 76) vs no depth 0.825 (n 146); 6653 0.382 vs 0.551; 6657 0.344 vs 0.731; 7102 0.349 vs 0.349.
+  Pixel pair 6650 (2570,759) over station rgb 1.218,1.500,0.698 (z/w 0.99996364, w 152,089) vs (2571,759) no depth
+  rgb 4.527,5.414,2.785.
+
+Inferred (not proven): the early copy draws the same instances as the late one (counts equal; vertex bytes not logged),
+so a bolt over empty space gets two gained additive copies and a bolt over any opaque object drawn later only one;
+the early copy is overwritten by every later opaque draw whatever its distance (ZWRITE off, depth still 1.0 there).
+Bolt z/w at w 1,146..5,303 is 0.99477..0.99887, far below the station's 0.99996: the late copy's depth test is correct.

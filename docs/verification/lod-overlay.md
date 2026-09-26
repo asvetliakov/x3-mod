@@ -316,3 +316,44 @@ reusable build bottle.
 Changing `lod_overlay.py` (the progress hook) changes `tool_sha256`, so the first `--sync` after this change,
 including the first x3m-regenerate run on the installed fleet, rebuilds every body (about 50 min; inferred from
 install-fleet3's 48.5 min).
+
+## 2026-09-26 Run 91 A: bolts behind distant objects (run339, triage)
+
+User report (launch 2, player mode, all defaults): distant stations and asteroids look drawn on top of the
+player's bolts, also in earlier builds. Session `/tmp/x3-bottleX3-run339`, F8 frames 2242-2249, 6650-6657,
+7102-7109. Scripts and outputs: `verification/results/run339-run91a-bolts-depth/` (`draw_table.py`,
+`order_summary.py` + `order_summary_out.txt`, `bolt_band.py` + `bolt_band_out.txt`, `summary.txt`).
+
+**Not the LOD overlay.** The overlay changes meshes, not the order or depth state of any draw; every 3D draw in
+the captures, overlay stations included, uses the same projection (z/w = 1.000003 - 6/w) against one depth
+buffer, with no far pass and no second depth clear before the late bullet draw (measured, 24/24 frames).
+
+**Draw order (measured, 24/24 frames).** Background d1-5 (Z off), Clear(ZBUFFER), then the bullet pair
+`5e484a06`/`ec1f5c4a` (d6, or d6+d7 with two buffers), then every depth-writing opaque draw (2242: d7-74;
+6650: d8-212; 7104: d8-186), then the bullet pair again (d75; d213/214; d187/188). Both copies: ZENABLE 1,
+ZWRITE 0, LESSEQUAL, ONE/INVSRCCOLOR, equal primitive counts, consecutive DISCARD revisions; both admitted by
+the additive route (gain 2, DESTBLEND ONE; `admitted=2`/`4`, refused 0). This is the Run 73 B draw 9 / draw 90
+pair (bolt-footprint note, "Draw 9").
+
+**Depth (measured / inferred).** Frame 2242: bullets 1,146-5,303 units from the camera, stations and far ships
+>= 10,917 (cull census d/100). Depth lane behind the bolts in 6650-6657: station z/w 0.999963-0.999964, clip w
+about 152,000; a bolt at 1,146-5,303 has z/w 0.99477-0.99887 (inferred), so the late copy's depth test is
+right. The early copy is drawn onto a depth buffer still at 1.0 and is overwritten by every later opaque draw,
+however far. Bolt green excess at silhouette bands of the pre-resolve scene: over geometry 0.40 / 0.38 / 0.34 vs
+over no depth 0.83 / 0.55 / 0.73 (6650 / 6653 / 6657), equal in 7102 (0.35); e.g. 6650 (2570,759) over the
+station 1.22,1.50,0.70 vs (2571,759) 4.53,5.41,2.79.
+
+**Reading (inferred, needs the vertex check).** If the two copies carry the same bolts, a bolt over empty space
+gets two gained additive copies and over any station or asteroid one, so it drops to about half where it crosses a
+far silhouette and reads as passing behind it. The engine issues the order, not the mod (the route draws in place,
+`src/proxy/motion_output.cpp:6218` changes only DESTBLEND and the PS); vanilla has the same step under its
+screen blend, and the gain-2 linear additive makes it larger. There is no vanilla capture to measure it.
+
+**Fix direction and proof.** Invariant: each bolt adds exactly one contribution per pixel, and that contribution
+is depth-tested after the last opaque draw. Option 1: disable colour writes for the early copy (the bullet draw
+between the post-background depth clear and the frame's first depth-writing draw) once the instances are proven
+equal. Option 2: record the early copy and add it again after the opaque draws. No existing fixture covers this.
+A new `boltshape` script for `run_motion_output.py` (next to `seam-ownership-bolt-shape-*`) would draw depth clear,
+bolt, far opaque quad over half the bolt, then the same bolt again, and require equal bolt excess on both sides.
+Next launch: log a hash of the locked POSITION words per bullet draw on capture frames (the footprint's Unlock
+scan already reads them) to settle whether the copies are the same.

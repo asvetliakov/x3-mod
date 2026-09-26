@@ -3274,3 +3274,53 @@ clip and ramp stay the defaults.
 **Removed 2026-09-25** (user decision): `--taa-history-taps` (the 16-tap programs; the pass refuses at initialize without FP16 and R32F filtering), `--taa-thin-region-gate` and `--taa-thin-region-source` (the DLL derives the camera gate and the vote source), and the refusal stubs `--taa-current-filter`, `--taa-line-filter`, `--taa-thin-clip`, `--taa-adaptive-weight`, `--taa-sentinel-stabiliser`, `--taa-sentinel`, `--taa-region-hold` with their DLL ignore lines; `docs/verification/launcher-options-inventory.md`, "4. Removed".
 
 Fixture after the removal (2026-09-25, bottle X3): `run_temporal_pass.py` PASS; main run 744 / 278 (unchanged), lattice 584 / 90 (598 / 90 before: FAR_BASE 299 -> 295, the far scenes' 16-tap reference identities; the history-taps block 21 -> 11 checks: the tap setting, the four 5 / 16 scenes and the two fallbacks gone, the no-filter row now a refused initialize with no device reference held, and `HISTORY_FILTER_QUERY`, the standalone query MotionOutput runs at attach: refused `adapter_query` without the factory, `ok` on this backend, no reference) (measured). Since the review fix a device without FP16 / R32F filtering has TAA, the jitter and the TAA mip bias off from the first frame (the jitter runs only while the resolve is available); the late initialize row carries `reason=` (`docs/architecture/platform-portability.md`, entry "2026-09-25: obsolete options removed").
+
+## 2026-09-26 Run 91 A: station blur under pan (triage; run338 / run339, no fix)
+
+User report: stations "a little blurry when panning", also in earlier builds. Logs: run338 (`--debug --perf`, launcher
+default), run339 (player mode, three 8-frame F8 bursts 2242-2249, 6650-6657, 7102-7109; motion, depth and HDR readbacks, no
+`--taa-debug`, so no resolved image, mask or age dump). Scripts and outputs: `verification/results/run338-339-run91a-pan-blur/`
+(`summary.txt` lists the commands). [M] measured, [I] inferred.
+
+**Configuration [M]** (`proxy_options`, `motion_output_taa`, identical in both runs): history weight 0.900 on every resolved
+frame, far stabiliser `0.985,0,60,68,0.03,0.25` on the camera gate with the 7x7 far clip, thin region `0.97,1` (vote source,
+camera gate), motion weight `0.7,2,8`, sharpen 0.75, mip bias -0.5, sky history strict (band 3, exit 0.25), unmatched static
+`node`, 5-tap Catmull-Rom history, 5120x1440, p00 0.5 (1280 px/rad, 22.3 px/deg at the centre).
+
+**Effective history weight of a station pixel under a pan** (`src/temporal/resolve.hlsl` 955, 1002-1003, 1010):
+- 2-5 km (10,000-25,000 view units; 7.8-19.5 units/px at 5120 px): below the far ramp (farw starts at 60 units/px = 76,800
+  units, 15.4 km; full at 68 = 87,040, 17.4 km) [M, constants], so keep = base **0.90** (N_eff = w/(1-w) = 9 fractional
+  resamples); pixels of a thin-voted draw keep **0.97** under a rotation (the camera gate leaves b open for world-static
+  content; 22 of 142 opaque draws voted at frame 7102 [M]). The motion cap acts on translation parallax only (1 at <= 2 px/frame),
+  so a pan never lowers the weight. The sharpen is a constant RCAS 0.75 with no motion term.
+- Beyond 17.4 km: **0.985** under a pan (camera gate since 2026-09-25, section "Far weight on the camera gate"; N_eff 66).
+- Softening model of `taa-motion-history-weight.md` section 3 (sigma^2 = 0.36 + 0.071 N_eff) [I]: 1.0 / 1.6 / 2.2 px for
+  0.90 / 0.97 / 0.985 against 0.5-0.7 px at rest; Run 68 A measured hull sigma 1.0 (b = 0) and 1.4 (b = 255) at >= 1 px/frame,
+  sharpness ratio 0.02-0.10 against 0.44 at rest [M, run254].
+
+**Log evidence [M].** Camera cuts only at load and sector changes (run338 8, run339 6; motion cuts 0); `taa_history` on
+19,364 / 19,374 and 10,116 / 10,123 resolved frames: no history loss under pans. Every z-writing draw in the 24 capture frames
+is routed with per-draw motion (3,614 draws at LOD 0 / 1 / 2: 2,424 / 1,176 / 14; the 167 unrouted draws are blended without
+z-write), and every routed-depth pixel carries valid motion (alpha 1): the overlay and LOD records are not on camera-only
+reprojection. Unmatched-static applications near the bursts: one draw at 6657 and 7103.
+
+**Captures [M].** The bursts run far slower than normal frames (translation 10 -> 136 units/frame at 2242 -> 2243, 30 -> 138-235
+at 7102 -> 7103), so only a burst's first frame has normal-rate motion. First frames, routed pixels beyond 25,000 units: 2242
+0.54 px/frame (lateral translation, 2-5 km band 154,541 px at 0.91 px/frame), 6650 0.97, 7102 1.27 (tail of a turn logged at
+0.16-0.26 deg/frame over 7090-7097; no pixels at 2-5 km in that view). `camera_rotation_deg` alternates 0 and 0.12-0.28 while the
+basis changes steadily, so the motion readback, not that field, is the rotation witness. No burst covers a station within
+2-5 km during a pan, and without `--taa-debug` the per-pixel weight branch (mask `g` / `b`) and the resolved image are absent.
+
+**Ranking [I].** (1) Base weight 0.90 resampling softening at fractional pan speeds: covers every station pixel below 15 km,
+matches "also in earlier builds" (the 0.9 base weight predates the far camera gate of Run 84). (2) Thin-region 0.97 on voted draws
+under rotation (lattice-bearing stations blur more than plain hulls). (3) Far stabiliser 0.985 on the camera gate: only
+stations beyond 15.4 km at 5120 px. (4) Missing motion on overlay draws: ruled out [M]. (5) Sharpen not compensating: a
+constant, contributes, not causal. Tell-apart in a `--taa-debug` pan burst: (1) blur on pixels with mask g = 0, b = 0 roughly
+equal in the resolved image to the at-rest-vs-pan gradient loss; (2) stronger loss on b = 255 pixels; (3) loss only where
+g > 0; (4) would show sentinel / missing motion or a displacement differing from the depth-band neighbours (not seen).
+
+**Open.** One launch with `--taa-debug`: F8 on a 2-5 km station at rest, then once mid-pan (steady 2 s pan); the first frame
+of each burst gives the resolved (`taa_`), presented, mask and age dumps for `taa_resolve_replay.py` counterfactuals of
+weight 0.9 / 0.85 / 0.8 on g = 0, b = 0 pixels. Compatible with the lattice-ghosting decision (2026-09-21): changes to the base
+weight or the sharpen leave the thin region (0.97) and far weight (0.985) that hold crawl; lowering the thin-region weight or the
+far gate `screen` trades back crawl / far sparkles (measured 2026-09-25) and is not.
