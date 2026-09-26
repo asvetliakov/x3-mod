@@ -1,0 +1,45 @@
+{
+ "schema": 1,
+ "candidate": {
+  "commit": "3744dedb",
+  "checkout": "/Users/asvetl/x3-mod (clean tree; built by tools/release/release.py into /tmp/x3m-release-0.5.1/build-release, stripped to /tmp/x3m-release-0.5.1/d3d9.dll)",
+  "dll": "/tmp/x3-run97-candidate/build/d3d9.dll (copy of the shipped stripped DLL; d3d9.debug and d3d9-unstripped.dll beside it)",
+  "sha256": "6e0bda57db7cd9818eb2e7129ce667fcac0d477f5f894d2af171a7f8f7193191",
+  "bytes": 39439629,
+  "unstripped_sha256": "3c2a7cff08e57101f1374b1a45a9ce7589f1d083838a2b4ab8e6a0481d5bc152",
+  "unstripped_bytes": 57248980,
+  "debug_file_sha256": "a02065b2deefab1538ad4e397163741c48abb1229bda967903e194412a2f15da",
+  "embedded_marker": "X3M_SOURCE_COMMIT=3744dedb\u2026 (once)",
+  "configuration": "RelWithDebInfo, DWARF stripped for shipping (strip identity PASS: 10 loaded sections, 17 exports byte-identical)",
+  "toolchain": "cmake/mingw-i686.cmake; i686-w64-mingw32-gcc 16.2.0; cmake 4.4.3; binutils objcopy",
+  "build_warnings": 0,
+  "supersedes": "Run96 33f81537 (00d85785)"
+ },
+ "scope": "reduced by the user's instruction (bump to 0.5.1, reinstall, rebuild the zip): the only change since Run96 is the version string (project VERSION 0.5.1; X3M_VERSION row 0.5, template header 0.5.1); production sources otherwise identical to 00d85785 (git diff --stat 00d85785 3744dedb -- src CMakeLists.txt: CMakeLists.txt version line only)",
+ "release": {
+  "record": "verification/results/release-0.5.1.json",
+  "zip": "/tmp/x3m-release-0.5.1/x3m-0.5.1.zip",
+  "zip_sha256": "68b215592430e7f0787fbf23afe65c19a5e7f614673b3cabbc1b36529402a765",
+  "zip_bytes": 58241432,
+  "contents": [
+   "d3d9.dll (stripped) 39,439,629",
+   "x3m.ini 15,383",
+   "x3m-regenerate.exe 29,633,495 (reused from the 0.5.0 build, same hash)",
+   "README.txt 2,476"
+  ],
+  "wall_s": 49.4
+ },
+ "x87_audit": "PASS 0 violations on the unstripped and the stripped DLL (release.py)",
+ "config_check": "generate.py --check PASS 236 settings, 90 in the template",
+ "host_suite": {
+  "modules": 271,
+  "tests": 2825,
+  "failing": 0,
+  "note": "run on main at a4899fd1 before the version bump; the bump changed only CMakeLists.txt and assets/x3m.ini (test_release_script/test_release_package/test_config_schema rerun OK)"
+ },
+ "wine_sections": "none (user instruction)",
+ "verdict": "QUALIFIED (reduced scope by user instruction)",
+ "installed": false,
+ "native_windows": "unverified",
+ "producer": "main session"
+}
