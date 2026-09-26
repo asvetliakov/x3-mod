@@ -2030,6 +2030,12 @@ private:
     // forwarded or bound); log_bolt_copies writes the per-frame telemetry row at after_present.
     void drop_early_bolt_copy(const MotionDrawCall&, MotionRoute&) noexcept;
     void log_bolt_copies() noexcept;
+    // The bullet-VS gate of every additive-pair draw (admitted or not): a bullet draw issued once the scene may have
+    // written depth is a late copy; its buffer is recorded for the next frame's early-copy guard.
+    void note_bolt_draw() noexcept;
+    // The guard: true when the bound buffer had a late bullet draw in the previous frame and no early copy of it was
+    // dropped in this one yet (then marks the drop).
+    bool bolt_early_copy_expected() noexcept;
     void derive_fade_region(MotionRoute&) noexcept;
     // Step-1 rectangle of the bound draw (resolve, rows, jitter, viewport,
     // fill mode, clip to the owning target); the counters, witness and log
@@ -2335,6 +2341,15 @@ private:
     // copy was dropped (reset in begin_frame and after the telemetry row), and the session's drops (fixture key 63).
     bool bolt_single_copy_ = false;
     std::uint32_t bolt_early_dropped_ = 0, bolt_late_ = 0, bolt_dropped_session_ = 0;
+    // Per vertex buffer (the process-unique resource id, never reused, so a released buffer's entry can never match
+    // another buffer; 0 = unknown identity, never dropped): the frame after its last late bullet draw (late_next,
+    // 0 = none) and the frame plus one of its last dropped early copy. Fixed size, no allocation; the entry with the
+    // oldest late_next is replaced; cleared at Reset and after a failed Present.
+    struct BoltCopyEntry {
+        std::uint64_t vb = 0, late_next = 0, dropped_next = 0;
+    };
+    static constexpr unsigned bolt_copy_table_size = 8;
+    BoltCopyEntry bolt_copy_table_[bolt_copy_table_size]{};
     float screen_additive_gain_ = 1.f;
     // Per-source bloom attenuation of the additive draw (option 1): the scene
     // alpha the bloom extract weighs by becomes k*a + D.a. 1 = off (no alpha

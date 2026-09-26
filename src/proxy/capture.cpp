@@ -4697,9 +4697,11 @@ void initialize_log(HMODULE module) {
         }
     }
     // X3M_BOLT_SINGLE_COPY=1 (bolt-footprint.md, "Single copy"; launcher default on with the additive bullets):
-    // an additive-admitted bullet-producer draw issued before the scene frame's first depth-writing draw is not
-    // forwarded. Anything else, unset included (a bare DLL, the fixtures), leaves both copies. Inert without the
-    // additive route: the rule sits inside its admission.
+    // an additive-admitted bullet-producer draw issued before the scene frame's first depth-writing draw, from a
+    // buffer whose late copy was drawn in the previous frame, is not forwarded. A DLL with no environment and no
+    // file resolves the schema default 1 (on); only X3M_CONFIG=bare (the launcher sends the value explicitly, the
+    // fixtures leave it unset) or any value but 1 leaves both copies. Inert without the additive route: the rule
+    // sits inside its admission.
     bolt_single_copy_requested = x3m::config::get(L"X3M_BOLT_SINGLE_COPY", setting, 32) == 1 && setting[0] == L'1';
     // X3M_SCREEN_EMISSION_TIMING=1: the option's opt-in per-frame timing
     // diagnostic (one screen_emission_frame line per Present). Needs the

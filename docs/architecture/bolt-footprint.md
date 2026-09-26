@@ -590,11 +590,30 @@ selector (`renderer::SceneBoundarySelector`, the TAA's per-frame boundary
 tracker) is in its scene phase and has not yet seen a draw that may have
 written depth (`scene_depth_written()`: `scene_writer_`, the depth writer bit
 the selector already kept, or a scene-phase draw whose z state was unknown,
-fail closed). Dropped means the hook does not forward the DrawPrimitive and
-returns `D3D_OK`; the route does none of its work (no gain program, no
-DESTBLEND or alpha state, no footprint plan, no substitute buffer, no motion).
-Each bolt thus adds exactly one contribution, the late copy's, depth-tested
-after the last opaque draw.
+fail closed), **and** the bound vertex buffer had a late bullet draw in the
+previous frame and no early copy of it was dropped yet in this one. Dropped
+means the hook does not forward the DrawPrimitive and returns `D3D_OK`; the
+route does none of its work (no gain program, no DESTBLEND or alpha state, no
+footprint plan, no substitute buffer, no motion). Each bolt thus adds exactly
+one contribution, the late copy's, depth-tested after the last opaque draw.
+
+**Previous-frame guard (review F1).** A late bullet draw is any bullet-VS draw
+of an additive pair issued once `scene_depth_written()` is true, noted at the
+gate in `before_draw` whether the route admits it or not. A table of eight
+entries keyed by the buffer's process-unique resource id (never reused, so a
+released buffer's entry cannot match another buffer; id 0 never drops) keeps
+the frame after the buffer's last late draw and the frame of its last dropped
+early copy; no allocation, the oldest entry is replaced, and the table is
+cleared at Reset and after a failed Present. Consequences: the first firing
+frame (no late copy in the previous frame) draws both copies, one frame of
+double brightness; a view with no depth writer at all (first person firing
+into empty space, only Z-write-off draws after the Clear) never records a late
+copy and keeps today's behaviour, both copies drawn; a draw issued after the
+frame's first depth writer is never dropped, and at most one pre-writer draw
+per buffer and frame is. Left: a frame that follows a frame with a late copy
+but itself draws the batch only before any depth writer loses that one frame
+of bullets (its first pre-writer draw is dropped; the next frame, without a
+late copy behind it, draws both again).
 
 **Why the late copy is kept.** It is the one drawn against the finished depth
 buffer, so it alone is correct against near and far geometry; the early copy
@@ -625,22 +644,32 @@ draw natively as before.
 **Telemetry.** Capture frames (F8, `--debug`): one `bolt_copy_dropped device=
 frame= draw= vb= prims=` row per dropped draw, sharing the frame's `bolt_copy`
 cap. `--perf`/`--debug`: one `bolt_copies device= frame= early_dropped= late=`
-row per frame in which an early copy was dropped; `late` counts the bullet
-draws of that frame after its first depth writer, so `late=0` with
+row per frame in which an early copy was dropped; `late` counts every
+bullet-VS draw of that frame after its first depth writer, admitted by the
+route or not (a refused late copy still draws natively), so `late=0` with
 `early_dropped>0` names a frame whose bullets were not drawn at all. A frame
 with late copies only (the rule not acting) writes no row. The additive
 window row gained `bolt_dropped=` (counted as evaluated, not as admitted);
-fixture key 63 is the session's dropped count.
+fixture key 63 is the session's dropped count. With the rule on, the additive
+route's `admitted` counts (window and `screen_emission_additive_frame`), the
+footprint's `draws`, `written` and histogram counts and the `bolt_copy` rows
+are about half of what runs before 2026-09-26 logged for the same firing (one
+copy instead of two); `pair_draws` still counts both.
 
-**Switch.** Schema key `bolt_single_copy` (`X3M_BOLT_SINGLE_COPY`, default 1,
-unset = off for a bare DLL); launcher `--bolt-single-copy {on,off}`, sent as 1
-on every modded launch with `--motion-output --hdr`, `off` = both copies as
-before, nothing under `--vanilla`.
+**Switch.** Schema key `bolt_single_copy` (`X3M_BOLT_SINGLE_COPY`, default 1:
+a DLL with no environment and no file resolves it on; unset under
+`X3M_CONFIG=bare`, as in the fixtures, is off); launcher `--bolt-single-copy
+{on,off}`, sent as 1 on every modded launch with `--motion-output --hdr`,
+`off` = both copies as before, nothing under `--vanilla`.
 
 **Fixture.** `run_motion_output.py` cases `seam-bolt-single-copy` (rule on),
-`-off` and `-late` (script `single`/`late` of mode `boltshape`,
-`motion_output_screen_emission_inc.h`): depth Clear, bolt, far opaque A over
-the bolt's right half, the same bolt again; the HDR contribution over the
-covered half must equal the uncovered half's within one code with the rule on,
-and the uncovered half carries two copies with it off. Results:
-`verification/results/bolt-single-copy/`.
+`-off`, `-late`, `-behind`, `-empty` and `-nullps` (the single-family scripts
+of mode `boltshape`, `motion_output_screen_emission_inc.h`; five bolt frames
+after an A-only frame): depth Clear, bolt, a middle draw (far opaque A over
+the bolt's right half; nothing; a null-PS draw), the same bolt again. Per
+frame and half each draw's HDR change must be its expected multiple of one
+copy within one code: frame 1 draws both copies, frames 2-5 drop the early
+one (rule on; single, behind, nullps); the covered half after A must not
+depend on whether the early copy lay beneath it; in `-behind` the kept late
+copy is farther than A and adds nothing on the covered half; `-empty` never
+drops. Results: `verification/results/bolt-single-copy/`.

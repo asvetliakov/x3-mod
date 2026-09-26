@@ -81,10 +81,10 @@ class MotionOutputRunnerTests(unittest.TestCase):
                        'seam-taa-cutout-opaque-get': '0',
                        'seam-ownership-bolt-shape-prims': '0', 'seam-ownership-bolt-shape-decl': '0',  # the bolt footprint's shape-refusal script
                        'seam-bolt-copy-hash': '0',  # the capture-only bolt_copy row
-                       'seam-bolt-single-copy': '0', 'seam-bolt-single-copy-off': '0', 'seam-bolt-single-copy-late': '0'})  # the single-copy bullet rule
+                       **{f'seam-bolt-single-copy{s}': '0' for s in ('', '-off', '-late', '-behind', '-empty', '-nullps')}})  # the single-copy bullet rule
         self.assertEqual({n for n, e in hdr.items() if e.get('X3M_HDR_EXPOSURE') == 'auto'}, automatic)
         self.assertEqual({n: e['X3M_HDR_EV_MANUAL'] for n, e in hdr.items() if e.get('X3M_HDR_EXPOSURE') == 'manual'}, manual)
-        self.assertEqual((len(hdr), len(automatic), len(manual)), (113, 14, 61))  # + seam-bolt-single-copy{,-off,-late} (2026-09-26)  # + seam-bolt-copy-hash (2026-09-26)  # + seam-exit-path (the hostile thin-vote script, no exposure mode; 2026-09-26)  # 110 before seam-thin-vote-far-on-source-{both,screen} went with X3M_TAA_THIN_REGION_SOURCE (2026-09-25)  # + seam-ownership-shadow-alpha-route{,-less} (the lane's FP16 scene, no exposure mode) + seam-thin-vote-far-on-owner (no exposure mode)  # 4 seam-*lightmap-far-fade*, 7 seam-lightmap-widen-* and 4 seam-thin-vote-* cases set no exposure mode (runtime default)
+        self.assertEqual((len(hdr), len(automatic), len(manual)), (116, 14, 64))  # + seam-bolt-single-copy{,-off,-late,-behind,-empty,-nullps} (2026-09-26)  # + seam-bolt-copy-hash (2026-09-26)  # + seam-exit-path (the hostile thin-vote script, no exposure mode; 2026-09-26)  # 110 before seam-thin-vote-far-on-source-{both,screen} went with X3M_TAA_THIN_REGION_SOURCE (2026-09-25)  # + seam-ownership-shadow-alpha-route{,-less} (the lane's FP16 scene, no exposure mode) + seam-thin-vote-far-on-owner (no exposure mode)  # 4 seam-*lightmap-far-fade*, 7 seam-lightmap-widen-* and 4 seam-thin-vote-* cases set no exposure mode (runtime default)
         for name, env in hdr.items():
             with self.subTest(case=name):
                 if name in automatic:

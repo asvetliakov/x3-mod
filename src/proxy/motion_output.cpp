@@ -3860,7 +3860,8 @@ void MotionOutput::fill_sentinel() noexcept {
 }
 
 void MotionOutput::before_reset() noexcept {
-    sun_writer_count_ = sun_writer_overflow_ = 0; // declaration ids may be recycled across Reset
+    for (auto& e : bolt_copy_table_) e = BoltCopyEntry{}; // single copy: the first frame after Reset keeps both copies
+    sun_writer_count_ = sun_writer_overflow_ = 0;         // declaration ids may be recycled across Reset
     cutout_caps_ = cutout::Capability::Pending;
     cutout_cap_result_ = S_FALSE;
     cutout_probe_frame_known_ = false;
@@ -5674,7 +5675,10 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
     // Additive window: every draw with an additive pair bound (one bool test
     // for any other draw); the ones the route never evaluates are the
     // difference to admitted + refused + apply failures at the window line.
-    if (shadow_.screen_additive_pair) ++screen_additive_window_.pair_draws;
+    if (shadow_.screen_additive_pair) {
+        ++screen_additive_window_.pair_draws;
+        if (bolt_single_copy_) note_bolt_draw(); // single copy: late copies, admitted or not
+    }
     if (!route.routed) {
         const HRESULT restored = restore_bindings_checked();
         if (FAILED(restored)) {
@@ -6222,11 +6226,13 @@ void MotionOutput::prepare_screen_additive(const MotionDrawCall& call, MotionRou
     // (gain, program, footprint plan, substitute buffer) runs and the device keeps every state and binding the
     // game set. scene_bound() above already required the selector's scene phase (after the depth-only Clear).
     if (bolt_single_copy_ && screen_emission::admitted_vertex_shader(shadow_.vs_hash)) {
-        if (selector_.state() == renderer::BoundaryState::Scene && !selector_.scene_depth_written()) {
+        // Only when this buffer's late copy was drawn in the previous frame (bolt_early_copy_expected): a frame
+        // without a depth writer, or the first firing frame, keeps both copies.
+        if (selector_.state() == renderer::BoundaryState::Scene && !selector_.scene_depth_written() &&
+            bolt_early_copy_expected()) {
             drop_early_bolt_copy(call, route);
             return;
         }
-        if (bolt_early_dropped_) ++bolt_late_; // the copies that stand in for this frame's dropped ones
     }
     // The gained draw binds a program: own the restoration bindings first.
     if (gained && FAILED(acquire_restore(route))) {
@@ -6314,9 +6320,36 @@ void MotionOutput::drop_early_bolt_copy(const MotionDrawCall& call, MotionRoute&
     log("bolt_copy_dropped device=%llu frame=%llu draw=%u vb=%llu prims=%u", id_, frame_, unsigned(counters_.draws),
         shadow_.stream0, unsigned(call.primitives));
 }
+void MotionOutput::note_bolt_draw() noexcept {
+    if (!screen_emission::admitted_vertex_shader(shadow_.vs_hash) || !selector_.scene_depth_written()) return;
+    if (bolt_early_dropped_) ++bolt_late_;
+    const std::uint64_t vb = shadow_.stream0;
+    if (!vb) return;
+    BoltCopyEntry* slot = nullptr;
+    for (auto& e : bolt_copy_table_) {
+        if (e.vb == vb) {
+            slot = &e;
+            break;
+        }
+        if (!slot || (slot->vb && (!e.vb || e.late_next < slot->late_next))) slot = &e;
+    }
+    if (slot->vb != vb) *slot = BoltCopyEntry{vb, 0, 0};
+    slot->late_next = frame_ + 1;
+}
+bool MotionOutput::bolt_early_copy_expected() noexcept {
+    const std::uint64_t vb = shadow_.stream0;
+    if (!vb) return false;
+    for (auto& e : bolt_copy_table_) {
+        if (e.vb != vb) continue;
+        if (e.late_next != frame_ || e.dropped_next == frame_ + 1) return false;
+        e.dropped_next = frame_ + 1;
+        return true;
+    }
+    return false;
+}
 // Telemetry (X3M_TELEMETRY: --perf / --debug), one row per frame in which the single-copy rule dropped an early
-// copy: late counts the admitted bullet draws after the frame's first depth writer, so late=0 with early_dropped>0
-// is a frame whose bullets were not drawn at all.
+// copy: late counts every bullet-VS draw of that frame after its first depth writer, admitted or not (a refused late
+// copy still draws natively), so late=0 with early_dropped>0 is a frame whose bullets were not drawn at all.
 void MotionOutput::log_bolt_copies() noexcept {
     if (telemetry_ && (bolt_early_dropped_ || bolt_late_))
         log("bolt_copies device=%llu frame=%llu early_dropped=%u late=%u", id_, frame_, unsigned(bolt_early_dropped_),
@@ -9536,7 +9569,11 @@ void MotionOutput::after_present(HRESULT result) noexcept {
     const bool committed = history_.commit(SUCCEEDED(result) && counters_.filled);
     const auto stats = history_.stats();
     if (screen_emission_timing_) log_screen_emission_frame();
-    if (bolt_single_copy_) log_bolt_copies();
+    if (bolt_single_copy_) {
+        log_bolt_copies();
+        if (FAILED(result))
+            for (auto& e : bolt_copy_table_) e = BoltCopyEntry{}; // a lost device: its buffers' frames start over
+    }
     if (screen_additive_requested_) {
         if (telemetry_) log_screen_additive_frame();
         screen_additive_frame_admitted_ = screen_additive_frame_refused_ = screen_additive_frame_pairs_ = 0; // this

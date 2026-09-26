@@ -924,7 +924,8 @@ class Wiring(unittest.TestCase):
         first setter, keyed on the scene selector's depth-writer bit; the drop forwards nothing and returns D3D_OK."""
         motion = source_text(ROOT / 'src/proxy/motion_output.cpp')
         additive = motion[motion.index('void MotionOutput::prepare_screen_additive('):motion.index('void MotionOutput::drop_early_bolt_copy(')]
-        rule = 'if (selector_.state() == renderer::BoundaryState::Scene && !selector_.scene_depth_written()) { drop_early_bolt_copy(call, route); return; }'
+        rule = ('if (selector_.state() == renderer::BoundaryState::Scene && !selector_.scene_depth_written() && bolt_early_copy_expected()) '
+                '{ drop_early_bolt_copy(call, route); return; }')
         self.assertIn('if (bolt_single_copy_ && screen_emission::admitted_vertex_shader(shadow_.vs_hash)) {', additive)
         self.assertIn(rule, additive)
         for check in ('refuse(6);', 'refuse(9);'):
@@ -936,6 +937,15 @@ class Wiring(unittest.TestCase):
         for call in ('SetRenderState', 'SetStreamSource', 'SetPixelShader', 'Lock('):
             self.assertNotIn(call, drop)
         self.assertIn('bolt_early_dropped_ = bolt_late_ = 0;', motion[motion.index('void MotionOutput::begin_frame('):])
+        # The previous-frame guard: late copies are noted at the bullet-VS gate of every additive-pair draw, admitted or not.
+        self.assertIn('++screen_additive_window_.pair_draws; if (bolt_single_copy_) note_bolt_draw();', motion)
+        note = motion[motion.index('void MotionOutput::note_bolt_draw('):motion.index('bool MotionOutput::bolt_early_copy_expected(')]
+        self.assertIn('if (!screen_emission::admitted_vertex_shader(shadow_.vs_hash) || !selector_.scene_depth_written()) return;', note)
+        self.assertIn('slot->late_next = frame_ + 1;', note)
+        expected = motion[motion.index('bool MotionOutput::bolt_early_copy_expected('):motion.index('void MotionOutput::log_bolt_copies(')]
+        self.assertIn('if (e.late_next != frame_ || e.dropped_next == frame_ + 1) return false;', expected)
+        self.assertIn('if (!vb) return false;', expected, 'an unknown buffer identity never drops')
+        self.assertIn('for (auto& e : bolt_copy_table_) e = BoltCopyEntry{};', motion[motion.index('void MotionOutput::before_reset('):])
         self.assertIn('bolt_single_copy_ = requested && screen_additive_requested_;', motion)
         selector = source_text(ROOT / 'src/renderer/scene_boundary.h')
         self.assertIn('scene_writer_ |= depth_writer(e); scene_unknown_draw_ |= !e.draw_state_known;', selector)
