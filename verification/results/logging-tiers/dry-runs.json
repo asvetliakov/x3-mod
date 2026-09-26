@@ -2,6 +2,7 @@
  "checks": {
   "--debug --perf adds exactly the two groups": true,
   "--debug adds exactly X3M_DEBUG=1": true,
+  "--perf --draw-trace adds exactly X3M_PERF=1 and X3M_DRAW_TRACE=1": true,
   "--perf adds exactly X3M_PERF=1": true,
   "default launch: no X3M_DEBUG/X3M_PERF, no tiered variable": true,
   "inherited tiered values dropped": true,
@@ -12,11 +13,12 @@
  "counts": {
   "base_default": 150,
   "base_vanilla": 99,
-  "new_debug": 125,
-  "new_debug_perf": 126,
-  "new_default": 124,
-  "new_perf": 125,
-  "new_vanilla": 73
+  "new_debug": 124,
+  "new_debug_perf": 125,
+  "new_default": 123,
+  "new_perf": 124,
+  "new_perf_draw_trace": 125,
+  "new_vanilla": 72
  },
  "debug_perf_vs_default": {
   "X3M_DEBUG": [
@@ -135,12 +137,26 @@
    "0",
    null
   ],
+  "X3M_VOLUMETRIC_FOG_EVERYWHERE": [
+   "0",
+   null
+  ],
   "X3M_VOLUMETRIC_FOG_TIMING": [
    "0",
    null
   ]
  },
  "inherited_tiered_vs_default": {},
+ "perf_draw_trace_vs_default": {
+  "X3M_DRAW_TRACE": [
+   null,
+   "1"
+  ],
+  "X3M_PERF": [
+   null,
+   "1"
+  ]
+ },
  "perf_vs_default": {
   "X3M_PERF": [
    null,
@@ -245,6 +261,10 @@
    null
   ],
   "X3M_TELEMETRY_DRAW": [
+   "0",
+   null
+  ],
+  "X3M_VOLUMETRIC_FOG_EVERYWHERE": [
    "0",
    null
   ],

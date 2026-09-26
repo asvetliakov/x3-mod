@@ -125,24 +125,21 @@ class SourceAndReplay(unittest.TestCase):
 
 
 class LoopPhasesLaunchOption(unittest.TestCase):
-    def test_launch_option_requires_telemetry_and_frame_phases_and_resets_inherited_value(self):
-        # Since the logging tiers (2026-09-26) the frame phases and telemetry come with --perf; this family pairs with them.
+    def test_launch_option_removed_and_inherited_value_dropped(self):
+        # Since 2026-09-26 the family is a member of --draw-trace (the DLL reads X3M_LOOP_PHASES or X3M_DRAW_TRACE=1 through log_tiers.h);
+        # the launcher option is removed and an inherited value is dropped.
         from verification.analysis.test_lod_scale_launch import LodScaleLaunchOption
         helper = LodScaleLaunchOption()
         with tempfile.TemporaryDirectory() as directory:
-            for args in (('--loop-phases',), ('--loop-phases', '--debug')):
-                code, _, error = helper.launch(directory, *args)
-                self.assertEqual(code, 2, args)
-                self.assertIn('--loop-phases requires --perf', error)
-            code, output, error = helper.launch(directory, '--loop-phases', '--perf')
-            self.assertEqual(code, 0, error)
-            env = json.loads(output)['env']
-            self.assertEqual((env['X3M_LOOP_PHASES'], env['X3M_PERF']), ('1', '1'))
-            self.assertNotIn('X3M_FRAME_PHASES', env)  # the DLL's perf group turns the frame phases on
-            self.assertNotIn('X3M_PASS_PHASES', env)
+            code, _, error = helper.launch(directory, '--perf', '--loop-phases')
+            self.assertEqual(code, 2)
+            self.assertIn('unrecognized arguments', error)
             code, output, error = helper.launch(directory, '--perf', inherited={'X3M_LOOP_PHASES': '1'})
             self.assertEqual(code, 0, error)
-            self.assertNotIn('X3M_LOOP_PHASES', json.loads(output)['env'])
+            env = json.loads(output)['env']
+            self.assertEqual(env['X3M_PERF'], '1')
+            self.assertNotIn('X3M_LOOP_PHASES', env)
+        self.assertIn('log_tier::draw_trace_flag(L"X3M_LOOP_PHASES")', (ROOT / 'src/proxy/loop_phases.cpp').read_text())
 
 
 @unittest.skipUnless(probe.DEFAULT_EXE.is_file(), 'installed X3AP.exe unavailable')

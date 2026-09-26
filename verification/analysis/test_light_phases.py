@@ -46,7 +46,8 @@ class LightPhases(unittest.TestCase):
         self.assertIn('light_phases::initialize();',(ROOT/'src/proxy/capture.cpp').read_text())
         self.assertEqual((ROOT/'CMakeLists.txt').read_text().count('src/proxy/light_phases.cpp'),2)
         self.assertIn("'_x3m_light_phase_enter'",(ROOT/'verification/probe/check_no_x87.py').read_text())
-        manage=(ROOT/'tools/manage.py').read_text();self.assertIn("(args.light_phases, 'X3M_LIGHT_PHASES')",manage)  # sent only when given (logging tiers)
+        manage=(ROOT/'tools/manage.py').read_text();self.assertNotIn("--light-phases",manage)  # a --draw-trace member since 2026-09-26
+        self.assertIn('if(!log_tier::draw_trace_flag(L"X3M_LIGHT_PHASES"))return false;',source)
 
 class Rows(unittest.TestCase):
     def test_log_contract_and_coverage(self):

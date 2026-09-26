@@ -66,7 +66,7 @@ struct MotionOutput {
     sun_light_poll::Sample point_sun_sample_{};
     bool depth_cascades_on()const{return true;}const float* cascade_sun(unsigned)const {static const float sun[4]{0,0,1,0};return sun;}
     std::unique_ptr<renderer::FogPass> fog_;renderer::FogSectorLatch fog_latch_{};FogSectorFrame fog_sector_{};FogCardPolicy fog_cards_{};
-    bool fog_requested_=true,fog_enabled_=true,fog_everywhere_=false,fog_timing_=false,fog_disabled_=false,fog_attach_failed_=false,fog_sun_fallback_logged_=false;
+    bool fog_requested_=true,fog_enabled_=true,fog_everywhere_=false,fog_timing_=false,fog_disabled_=false,fog_attach_failed_=false,fog_sun_fallback_logged_=false; // fog_everywhere_: read only by the 6f16dbf6 baseline fragment (the production one lost it on 2026-09-26)
     float fog_strength_=.02f,fog_anisotropy_=.3f;
     bool fog_cards_replace_=true,fog_card_ready_checked_=false,fog_card_ready_=false;
     const char* fog_card_refusal_=nullptr;const char* fog_card_last_refusal_=nullptr;const char* fog_card_ready_reason_=nullptr;bool fog_card_refusal_ready_=false; // run273 members (motion_output.h)

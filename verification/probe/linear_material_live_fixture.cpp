@@ -1305,7 +1305,7 @@ void fog_card_shadow_reset_cases(){
  // is known. Neither failed nor successful Reset may revive that sample.
  x3m::sector_background::Sample sector;sector.status=x3m::sector_background::Status::Ready;
  sector.row_valid=sector.name_valid=true;sector.dust=8;sector.sector=0x1000;std::strcpy(sector.family,"bluewell");
- m.fog_sector_=x3m::fog_sector_frame(sector,m.frame_,m.generation_,.02f,true,false);
+ m.fog_sector_=x3m::fog_sector_frame(sector,m.frame_,m.generation_,.02f,true);
  m.fog_sector_.field_generation=9;CHECK(m.fog_sector_.current(m.frame_));
  m.fog_cards_.fault=true;m.fog_cards_.armed=true;m.fog_card_ready_checked_=m.fog_card_ready_=true;m.fog_card_fault_reason_="injected";
  m.before_reset();

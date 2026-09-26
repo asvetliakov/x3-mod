@@ -117,7 +117,8 @@ class FramePhasesLaunchOption(unittest.TestCase):
             code, output, error = helper.launch(directory, inherited={'X3M_FRAME_PHASES': '1'})
             self.assertEqual(code, 0, error)
             self.assertNotIn('X3M_FRAME_PHASES', json.loads(output)['env'])
-        self.assertIn('const bool wanted=log_tier::perf_flag(L"X3M_FRAME_PHASES");', (ROOT / 'src/proxy/frame_phases.cpp').read_text())
+        # --perf, and since 2026-09-26 --debug (the frame boundary) and --draw-trace too.
+        self.assertIn('const bool wanted=log_tier::perf_flag(L"X3M_FRAME_PHASES")||log_tier::debug()||log_tier::draw_trace();', (ROOT / 'src/proxy/frame_phases.cpp').read_text())
 
 
 @unittest.skipUnless(probe.DEFAULT_EXE.is_file(), 'installed X3AP.exe unavailable')

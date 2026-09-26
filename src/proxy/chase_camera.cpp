@@ -407,7 +407,6 @@ bool initialize() {
     tunables.lag_clamp_deg = env_double(L"X3M_CHASE_LAG_CLAMP_DEG", tunables.lag_clamp_deg, &bad_tunable);
     tunables.pos_lag_clamp = env_double(L"X3M_CHASE_POS_LAG_CLAMP", tunables.pos_lag_clamp, &bad_tunable);
     tunables.combat_tightness = env_double(L"X3M_CHASE_COMBAT_TIGHTNESS", tunables.combat_tightness, &bad_tunable);
-    tunables.max_dt = env_double(L"X3M_CHASE_MAX_DT", tunables.max_dt, &bad_tunable);
     scene_fix_enabled = env_flag(L"X3M_CHASE_SCENE_FIX");
     const bool tunables_ok = !bad_tunable && chase::valid(tunables);
     LARGE_INTEGER f{}; QueryPerformanceFrequency(&f); qpc_frequency = f.QuadPart > 0 ? uint64_t(f.QuadPart) : 0;

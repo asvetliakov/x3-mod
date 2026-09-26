@@ -14,6 +14,8 @@ recorded environment only by X3M_MUSIC_KEEP=1 and X3M_SHADOW_ALPHA_CASTERS=1 (th
 of the options removed on 2026-09-25 (REMOVED; docs/verification/launcher-options-inventory.md, "Removed 2026-09-25"),
 which the launcher no longer sends, by the logging variables the launcher no longer sends (its TIERED_VARIABLES) and by
 the two groups. The Run 84 A stand command is replayed without --loading-intervals (removed 2026-09-25).
+Since 2026-09-26 REMOVED also carries X3M_MESH_ADJACENCY_DUMP and X3M_VOLUMETRIC_FOG_EVERYWHERE (options and DLL reads
+removed; the recorded stand sent both as 0).
 """
 import importlib.util
 import json
@@ -65,7 +67,9 @@ REMOVED = {'X3M_SHADOW_REPLAY_SIZE': '1024', 'X3M_SHADOW_REPLAY_EXTENT': '250.0'
            'X3M_LINEAR_MATERIALS': '0', 'X3M_LOADING_INTERVALS': '1', 'X3M_MATERIAL_DIRECT_GAIN': '1.0', 'X3M_MATERIAL_EMISSIVE_GAIN': '1.0',
            'X3M_MATERIAL_FILL': '0.0', 'X3M_MESH_CACHE': '0', 'X3M_MOTION_CAPTURE': '0', 'X3M_SCENE_DEPTH_CAPTURE': '0', 'X3M_SCREEN_EMISSION': '0',
            'X3M_SCREEN_EMISSION_BOUND': '0', 'X3M_SCREEN_EMISSION_GAIN': '1.0', 'X3M_SCREEN_EMISSION_TIMING': '0', 'X3M_TAA_THIN_REGION_GATE': 'camera',
-           'X3M_TAA_THIN_REGION_SOURCE': 'vote', 'X3M_TAA_THIN_REGION_SOURCE_DEFAULT': '1'}
+           'X3M_TAA_THIN_REGION_SOURCE': 'vote', 'X3M_TAA_THIN_REGION_SOURCE_DEFAULT': '1',
+           # Removed 2026-09-26 with their options and DLL reads (the in-game adjacency dump, the forced fog profile).
+           'X3M_MESH_ADJACENCY_DUMP': '0', 'X3M_VOLUMETRIC_FOG_EVERYWHERE': '0'}
 
 
 def dry_run(arguments, frame_log):

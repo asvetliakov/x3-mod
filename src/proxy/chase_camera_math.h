@@ -165,7 +165,7 @@ struct Tunables {
     double lag_clamp_deg = 8.0;     // max orientation lag (X3M_CHASE_LAG_CLAMP_DEG)
     double pos_lag_clamp = 0.10;    // max |offset lag| as a fraction of the boom length (X3M_CHASE_POS_LAG_CLAMP)
     double combat_tightness = 0.0;  // 0..1: while a target is locked (Input::target_locked) both time constants are scaled by (1 - tightness); 1 = rigid follow (X3M_CHASE_COMBAT_TIGHTNESS)
-    double max_dt = 0.10;           // s, dt clamp after pauses/loads (X3M_CHASE_MAX_DT)
+    double max_dt = 0.10;           // s, dt clamp after pauses/loads (baked; X3M_CHASE_MAX_DT removed 2026-09-26)
     double snap_ratio = 20.0;       // ship displacement per frame above snap_ratio * boom length = teleport
     double max_orthonormality_error = 0.02; // input basis rejection
     unsigned snap_coalesce_frames = 3; // a sector-only snap within this many applied frames of the previous snap re-seats the springs but raises no second cut (A4: gate jump = teleport, then the sector follows a frame later)

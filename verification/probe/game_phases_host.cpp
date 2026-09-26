@@ -191,8 +191,8 @@ int main(){
     check(pair.emitted==0);
     // Segment tape threshold. Default (frame_threshold==0): the built-in 50 ms,
     // so a 25 ms frame stages nothing. The runtime sets frame_threshold from
-    // X3M_GAME_PHASE_THRESHOLD_MS (launcher --game-phase-threshold-ms, 20 ms
-    // default), and the same 25 ms frame is staged with its segment rows.
+    // X3M_GAME_PHASE_THRESHOLD_MS (20 ms default; set by fixtures only since the
+    // launcher option went on 2026-09-26), and the same 25 ms frame is staged with its segment rows.
     reset();loop(0);loop(1,true,false,0,25000);
     check(!core.stack[0].detail);
     time_now+=100;core.end(3,at(time_now),0);check(core.slow_frames.count==0);

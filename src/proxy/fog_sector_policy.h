@@ -15,11 +15,11 @@ struct FogSectorFrame {
     unsigned profile = 0, recipe = renderer::fog_field::qualified_recipe_id;
     sector_background::Status status = sector_background::Status::ReadFailure;
     float density_scale = 0.f;
-    bool enabled = false, forced = false;
+    bool enabled = false;
     const char* reason = "sample_missing";
     bool same_key(const FogSectorFrame& b) const noexcept {
         return generation == b.generation && field_generation == b.field_generation && sector == b.sector && table == b.table && record == b.record &&
-            index == b.index && profile == b.profile && recipe == b.recipe && status == b.status && forced == b.forced;
+            index == b.index && profile == b.profile && recipe == b.recipe && status == b.status;
     }
     bool current(std::uint64_t f) const noexcept { return frame == f && enabled && profile != 0; }
 };
@@ -47,7 +47,7 @@ inline FogSectorPlacement fog_sector_placement(const FogSectorFrame& f) noexcept
 // `families` (fog-family-data.md): the loaded <game>/x3m/fog-families.bin rows, scanned only
 // after the 14 compiled names miss, so a compiled name always wins; disabled rows never match.
 inline FogSectorFrame fog_sector_frame(const sector_background::Sample& s, std::uint64_t frame,
-                                     std::uint64_t generation, float strength, bool enabled, bool everywhere,
+                                     std::uint64_t generation, float strength, bool enabled,
                                      const renderer::fog_field::FamilyTable* families = nullptr) noexcept {
     FogSectorFrame out;
     out.frame = frame; out.generation = generation; out.sector = s.sector; out.table = s.table;
@@ -72,8 +72,6 @@ inline FogSectorFrame fog_sector_frame(const sector_background::Sample& s, std::
             if (const auto* row = families->find(s.family)) { out.profile = row->profile; out.reason = row->name; }
         }
     }
-    // Explicit debug forcing still needs a valid view at card/pass admission.
-    if (!out.profile && everywhere) { out.profile = 1; out.forced = true; out.reason = "forced_profile_bluewell"; }
     out.enabled = enabled && out.density_scale > 0.f && out.profile != 0;
     return out;
 }

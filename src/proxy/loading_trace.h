@@ -70,9 +70,10 @@ bool crypt_cache_enabled();
 // cleanup fault requires stopping application mesh work/restarting; teardown is
 // not repair, and restored/unobserved native methods are outside fault coverage.
 void shutdown();
-// X3M_MESH_ADJACENCY_DUMP=1 (verify mode): every mismatching mesh, up to a bound,
-// is written as <capture directory>\mesh-adjacency-<n>.bin for offline replay
-// (tools/analysis/replay_mesh_adjacency.py; fixture `replay` mode). Layout, all
+// Adjacency dump writer for offline replay (tools/analysis/replay_mesh_adjacency.py;
+// fixture `replay` mode and self-test). The in-game dump switch
+// (X3M_MESH_ADJACENCY_DUMP) was removed on 2026-09-26; the fixture writes its
+// self-test dump through this function. Layout, all
 // little-endian: AdjacencyDumpHeader, then declaration_count D3DVERTEXELEMENT9
 // (8 bytes each, without the end marker), the vertex bytes (vertices * stride),
 // the index bytes (faces * 3 * 2 or 4), the native adjacency and the module

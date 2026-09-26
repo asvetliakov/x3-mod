@@ -23,12 +23,19 @@ REMOVED = (('--telemetry',), ('--frame-timing',), ('--frame-timing', '5'), ('--f
            ('--camera-log', '1'), ('--shadow-retention-census',), ('--shadow-retention-timing',), ('--object-bounds-log',),
            ('--cull-census',), ('--lod-switch-log',), ('--lod-switch-log', '16'), ('--media-cue-trace',), ('--music-trace',),
            ('--window-trace',), ('--shadow-sun-trace',), ('--sector-background',), ('--loading-probes',),
-           ('--collide-narrow-census',), ('--collide-query-phases',))
+           ('--collide-narrow-census',), ('--collide-query-phases',),
+           # 2026-09-26, second step: folded into --perf or fixture-only (the DLL reads stay), and the removed debug switches.
+           ('--telemetry-draw',), ('--game-phases',), ('--game-phase-threshold-ms', '20'), ('--pass-phases',), ('--residual-phases',),
+           ('--light-phases',), ('--submit-phases',), ('--loop-phases',), ('--frame-end-stride', '1'), ('--frame-timing-state-stamps', '4'),
+           ('--mesh-adjacency', 'verify'), ('--mesh-adjacency-dump',), ('--resource-read', 'verify'), ('--collide-memo-verify',),
+           ('--volumetric-fog-everywhere',))
 # The DLL switches each group stands for (the read sites under src/proxy/ must go through log_tiers.h).
 DEBUG_SWITCHES = ('X3M_MOTION_FRAME_LOG', 'X3M_CAMERA_LOG', 'X3M_SHADOW_ROWS', 'X3M_SHADOW_RETENTION_CENSUS', 'X3M_OBJECT_BOUNDS_LOG',
                   'X3M_CULL_CENSUS', 'X3M_LOD_SWITCH_LOG', 'X3M_MEDIA_CUE_TRACE', 'X3M_MUSIC_TRACE', 'X3M_WINDOW_TRACE',
                   'X3M_SHADOW_SUN_TRACE', 'X3M_SECTOR_BACKGROUND', 'X3M_LOADING_PROBES', 'X3M_COLLIDE_NARROW_CENSUS',
                   'X3M_COLLIDE_QUERY_PHASES')
+# --draw-trace (2026-09-26): the heavy per-draw and engine-stamp attribution, in no other group (the submit stamps in none).
+DRAW_TRACE_SWITCHES = ('X3M_TELEMETRY_DRAW', 'X3M_GAME_PHASES', 'X3M_PASS_PHASES', 'X3M_RESIDUAL_PHASES', 'X3M_LIGHT_PHASES', 'X3M_LOOP_PHASES')
 PERF_SWITCHES = ('X3M_FRAME_TIMING', 'X3M_FRAME_PHASES', 'X3M_FPS_OVERLAY', 'X3M_VOLUMETRIC_FOG_TIMING', 'X3M_SHADOW_TIMING',
                  'X3M_FRAME_END_STRIDE')
 
@@ -81,7 +88,7 @@ class LauncherGroups(unittest.TestCase):
             with self.subTest(args=args):
                 code, _, error = self.launch(*args)
                 self.assertEqual(code, 2, args)
-                self.assertTrue('unrecognized arguments' in error or 'was removed on 2026-09-26' in error, error[-300:])
+                self.assertTrue('unrecognized arguments' in error or 'was removed on 2026-09-26' in error or 'invalid choice' in error, error[-300:])
 
     def test_groups_add_exactly_their_variable(self):
         _, empty, _ = self.launch()
@@ -105,26 +112,38 @@ class LauncherGroups(unittest.TestCase):
         # Every variable of a replaced option is in the dropped set (the DLL still reads them for the fixtures).
         self.assertTrue(set(DEBUG_SWITCHES) | set(PERF_SWITCHES) | {'X3M_TELEMETRY', 'X3M_DEBUG', 'X3M_PERF', 'X3M_LOG_FILE'} <= set(self.module.TIERED_VARIABLES))
 
-    def test_developer_options_travel_only_when_given_and_need_a_group(self):
-        refused = ((('--game-phases',), '--game-phases requires --perf or --debug'), (('--telemetry-draw',), '--telemetry-draw requires --perf or --debug'),
-                   (('--debug', '--pass-phases'), '--pass-phases requires --perf'), (('--frame-timing-state-stamps', '4'), 'requires --perf'),
-                   (('--frame-end-stride', '0'), '--frame-end-stride must be within'))
-        for args, needle in refused:
-            with self.subTest(args=args):
-                code, _, error = self.launch(*args)
-                self.assertEqual(code, 2, args)
-                self.assertIn(needle, error)
+    def test_developer_options_travel_only_when_given(self):
+        # Section 2 of the inventory since 2026-09-26: the two groups and four explicit developer options.
         _, empty, _ = self.launch()
-        for args, added in ((('--perf', '--game-phases'), {'X3M_PERF': '1', 'X3M_GAME_PHASES': '1', 'X3M_GAME_PHASE_THRESHOLD_MS': '20'}),
-                            (('--debug', '--telemetry-draw'), {'X3M_DEBUG': '1', 'X3M_TELEMETRY_DRAW': '1'}),
-                            (('--perf', '--frame-timing-state-stamps', '4'), {'X3M_PERF': '1', 'X3M_FRAME_TIMING_STATE_STAMPS': '4'}),
-                            (('--perf', '--residual-phases'), {'X3M_PERF': '1', 'X3M_RESIDUAL_PHASES': '1', 'X3M_PASS_PHASES': '1'}),
-                            (('--frame-end-stride', '1'), {'X3M_FRAME_END_STRIDE': '1'}),
-                            (('--gpu-sync-timing',), {'X3M_GPU_SYNC_TIMING': '1'}), (('--profile',), {'X3M_PROFILE': '1', 'X3M_PROFILE_INTERVAL_US': '2000'})):
+        for args, added in ((('--gpu-sync-timing',), {'X3M_GPU_SYNC_TIMING': '1'}),
+                            (('--profile',), {'X3M_PROFILE': '1', 'X3M_PROFILE_INTERVAL_US': '2000'}),
+                            (('--taa-debug',), {'X3M_TAA_DEBUG': '1'}), (('--sun-occlusion-log',), {'X3M_SUN_OCCLUSION_LOG': '1'}),
+                            (('--perf',), {'X3M_PERF': '1'})):
             with self.subTest(args=args):
                 code, env, error = self.launch(*args)
                 self.assertEqual(code, 0, error)
                 self.assertEqual(env, {**empty, **added})
+        # --draw-trace (the fifth developer option) needs a group for the telemetry counters and the frame boundary; it sends
+        # only X3M_DRAW_TRACE (the DLL expands it) and nothing under --vanilla.
+        for args, added in ((('--perf', '--draw-trace'), {'X3M_PERF': '1', 'X3M_DRAW_TRACE': '1'}),
+                            (('--debug', '--draw-trace'), {'X3M_DEBUG': '1', 'X3M_DRAW_TRACE': '1'})):
+            with self.subTest(args=args):
+                code, env, error = self.launch(*args)
+                self.assertEqual(code, 0, error)
+                self.assertEqual(env, {**empty, **added})
+        code, _, error = self.launch('--draw-trace')
+        self.assertEqual(code, 2)
+        self.assertIn('--draw-trace requires --perf or --debug', error)
+        # Neither group carries the heavy families, and --draw-trace never sends them as launcher variables.
+        heavy = set(DRAW_TRACE_SWITCHES) | {'X3M_SUBMIT_PHASES'}
+        self.assertFalse(heavy & (set(self.launch('--perf')[1]) | set(self.launch('--debug')[1]) | set(self.launch('--perf', '--draw-trace')[1])))
+        sources = ''.join(p.read_text() for p in (ROOT / 'src/proxy').glob('*.cpp'))
+        for name in DRAW_TRACE_SWITCHES:
+            self.assertIn(f'log_tier::draw_trace_flag(L"{name}")', sources, name)
+            self.assertNotIn(f'log_tier::debug_flag(L"{name}")', sources, name)
+            self.assertNotIn(f'log_tier::perf_flag(L"{name}")', sources, name)
+        self.assertIn('log_tier::perf_flag(L"X3M_FRAME_PHASES")||log_tier::debug()||log_tier::draw_trace()', (ROOT / 'src/proxy/frame_phases.cpp').read_text())
+        self.assertIn('X3M_DRAW_TRACE', self.module.TIERED_VARIABLES)
 
 
 def enclosing_function(lines, index):
@@ -144,7 +163,7 @@ class DllGroupReads(unittest.TestCase):
 
     def test_group_switch_reads_use_the_tier_helper(self):
         sources = {path: path.read_text().splitlines() for path in (ROOT / 'src/proxy').glob('*.cpp')}
-        for name in DEBUG_SWITCHES + PERF_SWITCHES:
+        for name in DEBUG_SWITCHES + PERF_SWITCHES + DRAW_TRACE_SWITCHES:
             reads = [(path, i) for path, lines in sources.items() for i, line in enumerate(lines)
                      if f'L"{name}"' in line and not line.lstrip().startswith('//')]
             with self.subTest(name=name):
@@ -152,10 +171,16 @@ class DllGroupReads(unittest.TestCase):
                 for path, i in reads:
                     self.assertIn('log_tier::', enclosing_function(sources[path], i), f'{path.name}:{i + 1} reads {name} without the group')
         self.assertFalse([p.name for p, lines in sources.items() if any('L"X3M_TELEMETRY"' in l for l in lines)])
+        # The submit stamps stay outside --perf: they claim the lens traversal call the sun-occlusion default patches.
+        submit = (ROOT / 'src/proxy/submit_phases.cpp').read_text().splitlines()
+        reads = [i for i, line in enumerate(submit) if 'L"X3M_SUBMIT_PHASES"' in line]
+        self.assertEqual(len(reads), 1)
+        self.assertNotIn('log_tier::', enclosing_function(submit, reads[0]))
         header = (ROOT / 'src/proxy/log_tiers.h').read_text()
         for function in ('debug()', 'perf()', 'telemetry()', 'debug_flag(', 'perf_flag(', 'cadence_default('):
             self.assertIn(function, header)
         self.assertIn('env_flag(L"X3M_TELEMETRY") || perf() || debug()', header)
+        self.assertIn('inline bool draw_trace_flag(const wchar_t* name) noexcept { return env_flag(name) || draw_trace(); }', header)
 
 
 class SessionLogContracts(unittest.TestCase):

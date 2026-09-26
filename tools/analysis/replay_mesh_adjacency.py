@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Replay mesh-adjacency-<n>.bin dumps (X3M_MESH_ADJACENCY_DUMP=1) offline.
+"""Replay mesh-adjacency-<n>.bin dumps offline: existing in-game dumps (written by X3M_MESH_ADJACENCY_DUMP=1 until the
+switch was removed on 2026-09-26) and the fixture's self-test dump.
 
 A dump holds one mesh the game's verify mode found mismatching: declaration,
 vertex and index bytes, epsilon, the computational state, D3DX's adjacency and

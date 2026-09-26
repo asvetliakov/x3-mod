@@ -8,6 +8,7 @@
 #include "engine_memory.h"
 #include "object_trace.h"
 #include "telemetry.h"
+#include "log_tiers.h"
 #include "capture.h"
 #include <atomic>
 #include <cstdio>
@@ -205,8 +206,8 @@ void* emit_stub(unsigned index,void*** next){return index<unsigned(sites::Count)
 bool initialize() {
     ErrorGuard error;
     if(initialized)return active.load(std::memory_order_acquire);
-    initialized=true;wchar_t value[4]{};
-    const bool wanted=GetEnvironmentVariableW(L"X3M_GAME_PHASES",value,4)==1&&value[0]==L'1';
+    initialized=true;
+    const bool wanted=log_tier::draw_trace_flag(L"X3M_GAME_PHASES"); // X3M_GAME_PHASES=1 or X3M_DRAW_TRACE=1 (log_tiers.h); threshold below at its default unless set
     if(!wanted)return false;
     const char* status="telemetry_off";
     // Segment-tape threshold in milliseconds (default 20; the built-in used to

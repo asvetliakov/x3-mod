@@ -103,7 +103,7 @@ struct Core {
     bool input_valid=false;
     // Frame time at or above which bridge() stages the segment tape, in ticks.
     // 0 keeps the built-in 50 ms; the runtime sets it from
-    // X3M_GAME_PHASE_THRESHOLD_MS (launcher --game-phase-threshold-ms, 20 ms).
+    // X3M_GAME_PHASE_THRESHOLD_MS (fixtures only since 2026-09-26; default 20 ms, also under X3M_DRAW_TRACE=1).
     std::uint64_t frame_threshold=0;
 
     void invalidate() noexcept {

@@ -30,10 +30,9 @@ bool per_draw(Metric metric){
 }
 void initialize(void (*flush_log)()){
     flush_output=flush_log;
-    wchar_t value[8]{};
     active=log_tier::telemetry(); // X3M_TELEMETRY=1, X3M_PERF=1 or X3M_DEBUG=1 (docs/architecture/logging-tiers.md)
     if(!active)return;
-    draw_active=GetEnvironmentVariableW(L"X3M_TELEMETRY_DRAW",value,8)==1 && value[0]==L'1';
+    draw_active=log_tier::draw_trace_flag(L"X3M_TELEMETRY_DRAW"); // X3M_TELEMETRY_DRAW=1 or X3M_DRAW_TRACE=1 (per-draw route cost fields)
     LARGE_INTEGER f{}; if(!QueryPerformanceFrequency(&f)||f.QuadPart<=0){active=false;return;}
     clock_frequency=uint64_t(f.QuadPart); startup=now();global.last_summary=startup;
     for(unsigned i=0,limit_us=10;i<5;++i,limit_us*=10)bucket_ticks[i]=clock_frequency*limit_us/1000000u;

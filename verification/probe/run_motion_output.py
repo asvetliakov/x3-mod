@@ -362,18 +362,23 @@ SHADOW_POLL_MODES = ('agree', 'null', 'disagree', 'refusals')  # refusals: a lay
 SHADOW_TOGGLE_PRESSES = (1, 3, 4, 6)  # off, on, off, on
 # Logging tiers (docs/architecture/logging-tiers.md, "Implemented"): the cascade script on the seam DLL run with no
 # logging variable (the always tier, with and without F8 captures), with X3M_DEBUG=1 and with the individual variables the
-# debug group stands for, with X3M_PERF=1 and with the perf group's individuals, and once with the seam's log() benchmark.
+# debug group stands for, with X3M_PERF=1 and with the perf group's individuals, with X3M_PERF=1 X3M_DRAW_TRACE=1 and with the
+# draw-trace members on X3M_PERF=1 (2026-09-26), and once with the seam's log() benchmark.
 # The group and its individuals must log the same set of row names; the always tier's rows per frame are measured.
 LOG_TIERS_CASE = 'seam-log-tiers'
 LOG_TIERS_DEBUG = dict(X3M_TELEMETRY='1', X3M_MOTION_FRAME_LOG='1', X3M_CAMERA_LOG='1', X3M_FRAME_END_STRIDE='1', X3M_SHADOW_ROWS='1',
                        X3M_SHADOW_RETENTION_CENSUS='1', X3M_OBJECT_BOUNDS_LOG='1', X3M_CULL_CENSUS='1', X3M_LOD_SWITCH_LOG='16',
                        X3M_MEDIA_CUE_TRACE='1', X3M_MUSIC_TRACE='1', X3M_WINDOW_TRACE='1', X3M_SHADOW_SUN_TRACE='1', X3M_SECTOR_BACKGROUND='1',
-                       X3M_LOADING_PROBES='1', X3M_COLLIDE_NARROW_CENSUS='1', X3M_COLLIDE_QUERY_PHASES='1')
+                       X3M_LOADING_PROBES='1', X3M_COLLIDE_NARROW_CENSUS='1', X3M_COLLIDE_QUERY_PHASES='1',
+                       X3M_FRAME_PHASES='1')  # the frame boundary, a debug member since 2026-09-26
+# --draw-trace (2026-09-26): run on top of X3M_PERF=1 (the launcher requires a group); the group variable against its members.
+LOG_TIERS_DRAW_TRACE = dict(X3M_TELEMETRY_DRAW='1', X3M_GAME_PHASES='1', X3M_PASS_PHASES='1', X3M_RESIDUAL_PHASES='1', X3M_LIGHT_PHASES='1',
+                            X3M_LOOP_PHASES='1')
 LOG_TIERS_PERF = dict(X3M_TELEMETRY='1', X3M_FRAME_TIMING='1', X3M_FRAME_PHASES='1', X3M_FPS_OVERLAY='1', X3M_VOLUMETRIC_FOG_TIMING='1',
                       X3M_SHADOW_TIMING='1', X3M_FRAME_END_STRIDE='1')
 # Every logging variable a tier run starts without (the runner's own pins included): the groups, their individuals and the
 # explicit per-draw / dump switches.
-LOG_TIERS_CLEARED = set(LOG_TIERS_DEBUG) | set(LOG_TIERS_PERF) | {'X3M_DEBUG', 'X3M_PERF', 'X3M_TELEMETRY_DRAW', 'X3M_TAA_DEBUG', 'X3M_LOG_FILE'}
+LOG_TIERS_CLEARED = set(LOG_TIERS_DEBUG) | set(LOG_TIERS_PERF) | set(LOG_TIERS_DRAW_TRACE) | {'X3M_DEBUG', 'X3M_PERF', 'X3M_DRAW_TRACE', 'X3M_TAA_DEBUG', 'X3M_LOG_FILE'}
 # Rows whose presence follows the wall clock (the 1 Hz summaries, the 10 s writer row), not a switch: excluded from the
 # name comparison and listed in the case result.
 LOG_TIERS_CLOCKED = {'telemetry_summary', 'telemetry_metric', 'engine_memory', 'loading_metric', 'mesh_adjacency_metric', 'resource_reader_metric',
@@ -1737,12 +1742,13 @@ def run_exit_path(name, command, base_env, directory, wine_log, report):
 
 
 def run_log_tiers(name, command, base_env, directory, wine_log, report):
-    """The seam-log-tiers case (LOG_TIERS_CASE above): six runs of one script, row names and volumes compared."""
+    """The seam-log-tiers case (LOG_TIERS_CASE above): ten runs of one script (always, always without F8, debug, perf and draw-trace with their individuals, bench, exception), row names and volumes compared."""
     captures = directory / 'x3-modern-captures'
     captures.mkdir(exist_ok=True)
     base = {k: v for k, v in base_env.items() if k not in LOG_TIERS_CLEARED}
     runs = {'always': {}, 'always_no_capture': dict(X3M_CAPTURE_START='1000000', X3M_CAPTURE_FRAMES='0'),
             'debug': dict(X3M_DEBUG='1'), 'debug_individual': LOG_TIERS_DEBUG, 'perf': dict(X3M_PERF='1'), 'perf_individual': LOG_TIERS_PERF,
+            'draw_trace': dict(X3M_PERF='1', X3M_DRAW_TRACE='1'), 'draw_trace_individual': dict(LOG_TIERS_DRAW_TRACE, X3M_PERF='1'),
             'bench': dict(X3M_TELEMETRY='1', X3M_FIXTURE_LOG_BENCH=str(LOG_TIERS_BENCH_ROWS)),
             'exception': dict(X3M_FIXTURE_EXCEPTION='1')}
     stamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
@@ -1766,9 +1772,13 @@ def run_log_tiers(name, command, base_env, directory, wine_log, report):
         assert a == b, (name, group, sorted(a - b), individual, sorted(b - a))
         return {'names': len(a), 'clocked_only_in_group': sorted((names[group] - names[individual]) & LOG_TIERS_CLOCKED),
                 'clocked_only_in_individual': sorted((names[individual] - names[group]) & LOG_TIERS_CLOCKED)}
-    equivalence = {'debug': compare('debug', 'debug_individual'), 'perf': compare('perf', 'perf_individual')}
-    checks += 2
-    for tier in ('always', 'debug', 'debug_individual', 'perf', 'perf_individual', 'bench', 'exception'):
+    equivalence = {'debug': compare('debug', 'debug_individual'), 'perf': compare('perf', 'perf_individual'),
+                   'draw_trace': compare('draw_trace', 'draw_trace_individual')}
+    # --draw-trace adds rows to --perf (the per-draw fields are fields, the stamp families add their mode/site rows).
+    assert names['draw_trace'] - LOG_TIERS_CLOCKED > names['perf'] - LOG_TIERS_CLOCKED, (name, sorted(names['draw_trace'] - names['perf']))
+    equivalence['draw_trace']['added_to_perf'] = sorted((names['draw_trace'] - names['perf']) - LOG_TIERS_CLOCKED)
+    checks += 4
+    for tier in ('always', 'debug', 'debug_individual', 'perf', 'perf_individual', 'draw_trace', 'draw_trace_individual', 'bench', 'exception'):
         assert exits[tier] == 0 and texts[tier].splitlines() and texts[tier].splitlines()[-1].startswith('RESULT PASS '), (name, tier, exits[tier], texts[tier][-400:])
         checks += 1
     volumes = {}
@@ -6649,7 +6659,7 @@ def main(argv=None):
                        # Loading optimizations have dedicated fixtures. Keep
                        # their baseline explicit despite inherited host env.
                        X3M_CRYPT_CACHE='0', X3M_LOADING_PROBES='0', X3M_MESH_ADJACENCY='native',
-                       X3M_MESH_ADJACENCY_DUMP='0', X3M_RESOURCE_READ='native', X3M_DAT_HANDLES='0',
+                       X3M_RESOURCE_READ='native', X3M_DAT_HANDLES='0',
                        X3M_GZ_BUFFER='0', X3M_GZ_BUFFER_KB='256',
                        # The apply bias at its production defaults unless a case sets it (an inherited value must not).
                        X3M_SUN_SHADOW_BIAS_UNITS=repr(sun_apply.BIAS_UNITS_DEFAULT), X3M_SUN_SHADOW_BIAS_CLAMP_TEXELS=repr(sun_apply.BIAS_CLAMP_TEXELS),

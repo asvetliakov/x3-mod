@@ -143,7 +143,7 @@ the hand-over band; with the resolve that dither is averaged like the rest. Dens
 detail carries no noise; a ray that meets no occluder is bit-identical to the bin-centre march. It removes the per-bin
 copies of an occluder silhouette (the run222 comb) once TAA has averaged the phases. Row c32.zw holds the amplitude in
 bins (near, far) = `max(JITTER_*, SHADOW_JITTER)`: the lookup never moves less than the sample. `X3M_FOG_LOOK_SHADOW_JITTER`
-(0..1, default 1) is the A/B **for L1 and L2**: 0 restores bin centres there. Under L3 the lookup rides the sample offset
+(0..1, default 1; baked at 1 since 2026-09-26, no override) was the A/B **for L1 and L2**: 0 restores bin centres there. Under L3 the lookup rides the sample offset
 (`JITTER_*`, default 1), so the variable only matters when `JITTER_*` is set below it. The noise cell is the
 half-resolution pixel covering the shaded pixel (`floor(uv x full size / 2)`), so the L1 repair program offsets exactly like
 the half-resolution neighbours of its pixel. The L2-3 repair program keeps bin centres: the noise costs about 15 slots, 2
@@ -151,14 +151,16 @@ are free, and nothing useful fits in 2. Its pixels (one-pixel depth-class edges)
 neighbours inside a shaft by the old comb error, coherently along a hull silhouette; if that shows in flight as an
 outline inside shafts, compare with `X3M_FOG_LOOK_SHADOW_JITTER=0`. Numbers: ledger, "Shaft lookup offset".
 
-Every scalar is `FogLookTuning` (`src/renderer/fog_look_math.h`), overridable once at init by
-`X3M_FOG_LOOK_<NAME>` with NAME one of `COVERAGE`, `EXPONENT`, `SIGMA_SCALE`, `COVERAGE_VARIATION`,
-`WARP_CYCLES_NEAR`, `WARP_NEAR`, `WARP_CYCLES_FAR`, `WARP_FAR`, `FORWARD_G`, `FORWARD_WEIGHT`, `BACK_G`,
-`ALBEDO_WHITE`, `AMBIENT_GAIN`, `EXTINCTION_TINT`, `SCATTER_LIFT`, `LIFT_FLOOR`, `SHADOW_FLOOR`, `SKY_CAP`, `TAPER_START`,
-`SELF_SHADOW`, `POWDER`, `TAP_DISTANCE`, `TAP_LENGTH`, `SHADOW_JITTER` (floats, ranges in
-`fog_look_fields`), plus `X3M_FOG_LOOK_AMBIENT_SUN` / `_AWAY` = `r,g,b` in 0..4; out-of-range values keep
-the default and the session log prints the resolved set (`volumetric_fog_look_mode`). The launcher
-passes the inherited variables through.
+Every scalar is `FogLookTuning` (`src/renderer/fog_look_math.h`). **Baked 2026-09-26** (user decision; no fixture set
+them): the `X3M_FOG_LOOK_<NAME>` overrides, the `fog_look_fields` range table and `X3M_FOG_LOOK_AMBIENT_SUN` / `_AWAY`
+were removed, the launcher drops an inherited value, and `volumetric_fog_look_mode` reads `look=single constants=baked`.
+The values in force (the accepted L2): COVERAGE 0.35, EXPONENT 2, SIGMA_SCALE 8, COVERAGE_VARIATION 0.12,
+WARP_CYCLES_NEAR 13, WARP_NEAR 500, WARP_CYCLES_FAR 5, WARP_FAR 1400, FORWARD_G 0.75, FORWARD_WEIGHT 0.7, BACK_G -0.15,
+ALBEDO_WHITE 0.5, AMBIENT_GAIN 0.35, EXTINCTION_TINT 0.6, SCATTER_LIFT 0.5, LIFT_FLOOR 0.5, SHADOW_FLOOR 0.15, SKY_CAP
+112500, TAPER_START 65000, SELF_SHADOW 3, POWDER 0.5, TAP_DISTANCE 3000, TAP_LENGTH 9000, SHADOW_JITTER 1; the ambient
+hues are derived from the family chroma. The shader fixture's accepted image hashes are unchanged by the baking
+(`docs/verification/volumetric-fog.md`, "Removed 2026-09-26"). The A/B recipes below that set `X3M_FOG_LOOK_*` need a
+rebuilt DLL with the constant changed.
 
 Fade range. `X3M_FOG_LOOK_TAPER_START` (0-199000) and `X3M_FOG_LOOK_SKY_CAP` (20000-200000) are the start and end of the
 distance fade in render units (5000 per km); a start later than cap - 1000 falls back to the last quarter of the

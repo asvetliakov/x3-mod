@@ -387,3 +387,5 @@ rows now (either group or `X3M_TELEMETRY=1`). Evidence: `run_motion_output.py` P
 checks plus the new `seam-log-tiers` (47: group/individual row-name equivalence, the always tier's volume, the `log()`
 benchmark, the exception witness) and `seam-exit-path` (8: exit after a throw past `BeginScene`, `FreeLibrary` unloads the proxy after the last device); `run_d3d9_exports.py` PASS on the new file policy; x87 audit 709 reachable, 0 violations;
 host suite 268 / 2,792 / 0 (`verification/results/logging-tiers/`).
+
+**2026-09-26, developer options trimmed to four** (user decision; `docs/architecture/logging-tiers.md`, "Second step"): `--telemetry-draw` removed from the launcher; `X3M_TELEMETRY_DRAW` (the per-draw route cost fields) is expanded from `--draw-trace` (`X3M_DRAW_TRACE`, requires `--perf` or `--debug`) and is in neither group: about 1 ms per frame, and the stand `--debug --perf` runs on every flight; still settable alone by the runners. `--frame-end-stride` and `--frame-timing-state-stamps` removed (their variables stay fixture reads).

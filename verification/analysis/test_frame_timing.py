@@ -184,37 +184,22 @@ class FrameTimingLaunchOption(unittest.TestCase):
             self.assertEqual(code, 0, error)
             self.assertNotIn('X3M_FRAME_TIMING', json.loads(output)['env'])
 
-    def test_state_stamps_option_requires_frame_timing_and_exports_the_interval(self):
+    def test_removed_cadence_options_and_inherited_values(self):
+        """--frame-timing-state-stamps and --frame-end-stride were removed on 2026-09-26: the tiers give the frame_end cadence
+        (3600, 1 with a group); X3M_FRAME_END_STRIDE (explicit value wins) and X3M_FRAME_TIMING_STATE_STAMPS stay DLL reads the
+        fixtures set. The launcher refuses both options and drops an inherited value."""
         from verification.analysis.test_lod_scale_launch import LodScaleLaunchOption
         helper = LodScaleLaunchOption()
         with tempfile.TemporaryDirectory() as directory:
-            code, _, error = helper.launch(directory, '--debug', '--frame-timing-state-stamps', '8')
-            self.assertEqual(code, 2)
-            self.assertIn('--frame-timing-state-stamps requires --perf', error)
-            code, output, error = helper.launch(directory, '--perf', '--frame-timing-state-stamps', '8')
+            for args in (('--perf', '--frame-timing-state-stamps', '8'), ('--frame-end-stride', '1')):
+                code, _, error = helper.launch(directory, *args)
+                self.assertEqual(code, 2, args)
+                self.assertIn('unrecognized arguments', error)
+            code, output, error = helper.launch(directory, '--perf', inherited={'X3M_FRAME_END_STRIDE': '1', 'X3M_FRAME_TIMING_STATE_STAMPS': '8'})
             self.assertEqual(code, 0, error)
-            self.assertEqual(json.loads(output)['env']['X3M_FRAME_TIMING_STATE_STAMPS'], '8')
-            # Default: the calls are counted, never stamped (the variable is not sent; the DLL's default is 0).
-            code, output, error = helper.launch(directory, '--perf')
-            self.assertEqual(code, 0, error)
-            self.assertNotIn('X3M_FRAME_TIMING_STATE_STAMPS', json.loads(output)['env'])
-
-    def test_frame_end_stride_is_exported_with_its_default_and_bounded(self):
-        """--frame-end-stride has no prerequisite (frame_end exists in every mode) and is sent only when given, where it
-        wins over the tiers; unset, the DLL takes 1 with a logging group and 3600 otherwise. An inherited value is dropped."""
-        from verification.analysis.test_lod_scale_launch import LodScaleLaunchOption
-        helper = LodScaleLaunchOption()
-        with tempfile.TemporaryDirectory() as directory:
-            code, output, error = helper.launch(directory, inherited={'X3M_FRAME_END_STRIDE': '1'})
-            self.assertEqual(code, 0, error)
-            self.assertNotIn('X3M_FRAME_END_STRIDE', json.loads(output)['env'])
-            code, output, error = helper.launch(directory, '--frame-end-stride', '1')
-            self.assertEqual(code, 0, error)
-            self.assertEqual(json.loads(output)['env']['X3M_FRAME_END_STRIDE'], '1')
-            for value in ('0', '100001', '-1'):
-                code, _, error = helper.launch(directory, '--frame-end-stride', value)
-                self.assertEqual(code, 2, value)
-                self.assertIn('--frame-end-stride must be within [1, 100000]', error)
+            env = json.loads(output)['env']
+            self.assertNotIn('X3M_FRAME_END_STRIDE', env)
+            self.assertNotIn('X3M_FRAME_TIMING_STATE_STAMPS', env)
         capture = (ROOT / 'src/proxy/capture.cpp').read_text()
         self.assertIn('constexpr unsigned frame_end_stride_default = 3600', capture)
         self.assertIn('frame_end_stride=log_tier::cadence_default(log_tier::perf()||log_tier::debug(),1u,frame_end_stride_default);', capture)

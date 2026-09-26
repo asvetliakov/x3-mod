@@ -233,12 +233,13 @@ class MemoLaunchOption(unittest.TestCase):
             self.assertEqual(self.collide_env(directory, '--no-collide-sat-sse2'), {'X3M_COLLIDE_MEMO': '1'})
             self.assertEqual(self.collide_env(directory, '--no-collide-memo'), {'X3M_COLLIDE_SAT_SSE2': '1'})
             self.assertEqual(self.collide_env(directory, '--no-collide-sat-sse2', '--no-collide-memo', inherited=both), {})
-            self.assertEqual(self.collide_env(directory, '--collide-memo-verify'), {**both, 'X3M_COLLIDE_MEMO_VERIFY': '1'})
             self.assertEqual(self.collide_env(directory, vanilla=True, inherited=both), {})
             self.assertEqual(self.collide_env(directory, '--collide-memo', vanilla=True), {'X3M_COLLIDE_MEMO': '1'})
-            code, _, error = self.launch(directory, '--no-collide-memo', '--collide-memo-verify', vanilla=False)
-            self.assertNotEqual(code, 0)
-            self.assertIn('cannot be combined', error)
+            # --collide-memo-verify was removed on 2026-09-26 (X3M_COLLIDE_MEMO_VERIFY is fixture-only; an inherited value is dropped).
+            code, _, error = self.launch(directory, '--collide-memo-verify', vanilla=False)
+            self.assertEqual(code, 2)
+            self.assertIn('unrecognized arguments', error)
+            self.assertEqual(self.collide_env(directory, inherited={'X3M_COLLIDE_MEMO_VERIFY': '1'}, vanilla=False), both)
 
     def launch(self, directory, *args, inherited=None, vanilla=True):
         module = load_manage()
@@ -278,7 +279,6 @@ class MemoLaunchOption(unittest.TestCase):
             self.assertEqual(code, 0, error)
             self.assertEqual(json.loads(output)['command'], baseline['command'])
             self.assertEqual(added('--collide-memo'), {'X3M_COLLIDE_MEMO': '1'})
-            self.assertEqual(added('--collide-memo-verify'), {'X3M_COLLIDE_MEMO': '1', 'X3M_COLLIDE_MEMO_VERIFY': '1'})
             # The narrow census rides --debug since the logging tiers (2026-09-26).
             self.assertEqual(added('--collide-memo', '--collide-sat-sse2', '--debug', '--collide-box-cull'),
                              {'X3M_COLLIDE_MEMO': '1', 'X3M_COLLIDE_SAT_SSE2': '1', 'X3M_DEBUG': '1', 'X3M_COLLIDE_BOX_CULL': '1'})

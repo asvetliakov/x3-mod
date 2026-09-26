@@ -246,3 +246,5 @@ hashes and the current native/copy/executable/stdout hashes match. Summary SHA-2
 Current warm-cache fast/reference ratios are 1.11x loose-large, 1.11x medium,
 1.12x catalogue-large. See review 31 for full provenance and independent closure.
 This does not establish game parity or a native-Windows test result.
+
+**Removed from the launcher 2026-09-26** (user decision): the `verify` choice of `--resource-read` (choices `native` / `fast`). The DLL parse of `X3M_RESOURCE_READ=verify` and the verify mode stay; `resource_reader_fixture.cpp` binds the mode directly (`fixture_bind`).

@@ -109,9 +109,9 @@ Loading-time switches ([docs/verification/loading-probes.md](docs/verification/l
 [docs/verification/resource-reader.md](docs/verification/resource-reader.md)):
 `--debug` (env `X3M_DEBUG=1`, or `X3M_LOADING_PROBES=1` with `X3M_TELEMETRY=1`) adds the CryptoAPI /
 per-open import rows and entry-counting trampolines on twelve engine loading
-functions; `--resource-read verify|fast` (env `X3M_RESOURCE_READ`) replaces the
-archive reader's per-kilobyte decode with one read + one inflate (`verify` compares
-against the original on every file); `--dat-handles` (env `X3M_DAT_HANDLES=1`) keeps
+functions; `--resource-read fast` (env `X3M_RESOURCE_READ`; the default) replaces the
+archive reader's per-kilobyte decode with one read + one inflate (the `verify` mode, which
+compares against the original on every file, is fixture-only since 2026-09-26); `--dat-handles` (env `X3M_DAT_HANDLES=1`) keeps
 catalogue `.dat` handles open between resources. All three are exact-executable
 only and fail closed. Every mode's `frame_end` lines now carry `elapsed_ms` (since
 DLL load), `dt_ms` and `qpc`, so a plain `--direct` log yields load times

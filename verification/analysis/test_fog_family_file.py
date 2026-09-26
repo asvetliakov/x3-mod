@@ -190,7 +190,7 @@ class FogFamilyFileTests(unittest.TestCase):
         self.assertIn('add_executable(fog_family_file_fixture verification/probe/fog_family_file_fixture.cpp src/renderer/fog_field_assets.cpp)', cmake)
         fog = (ROOT / 'src/proxy/motion_output_fog_inc.h').read_text()
         self.assertIn('renderer::fog_field::load_family_table()', fog)
-        self.assertIn('fog_everywhere_,\n                                 renderer::fog_field::family_table());', fog)
+        self.assertIn('fog_enabled_ && !fog_disabled_,\n                                 renderer::fog_field::family_table());', fog)
         self.assertIn('prepared == renderer::FogPass::field_row_disabled', fog)
         passes = (ROOT / 'src/renderer/fog_pass.cpp').read_text()
         self.assertIn('file_family?fog_field::decode_family(profile,atlas_bytes_):fog_field::decode_from_resource(module,profile,atlas_bytes_)', passes)

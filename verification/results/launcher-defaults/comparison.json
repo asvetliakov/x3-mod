@@ -258,6 +258,10 @@
    "0",
    null
   ],
+  "X3M_VOLUMETRIC_FOG_EVERYWHERE": [
+   "0",
+   null
+  ],
   "X3M_VOLUMETRIC_FOG_TIMING": [
    "1",
    null
@@ -504,6 +508,10 @@
    "0",
    null
   ],
+  "X3M_VOLUMETRIC_FOG_EVERYWHERE": [
+   "0",
+   null
+  ],
   "X3M_VOLUMETRIC_FOG_TIMING": [
    "1",
    null
@@ -533,8 +541,8 @@
   ]
  },
  "counts": {
-  "empty": 124,
-  "stand": 126,
+  "empty": 123,
+  "stand": 125,
   "recorded": 181
  },
  "checks": {

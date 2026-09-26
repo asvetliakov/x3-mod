@@ -37,9 +37,7 @@ int main() {
         fog_look_constants(f, chroma, radiance, 0, rows); std::printf("%.9g %.9g ", double(rows[10][1]), double(rows[10][2]));
     }
     std::printf("\n");
-    FogLookTuning t; unsigned taken = 0;
-    for (const auto& field : fog_look_fields) { taken += fog_look_set(t, field, field.minimum); taken += fog_look_set(t, field, field.maximum + 1.f); taken += fog_look_set(t, field, std::numeric_limits<float>::quiet_NaN()); }
-    std::printf("%u %u\n", taken, unsigned(sizeof fog_look_fields / sizeof fog_look_fields[0]));
+    // The X3M_FOG_LOOK_<NAME> overrides and their range table were removed on 2026-09-26 (the constants are baked).
     return 0;
 }
 '''
@@ -79,9 +77,6 @@ class FogLookReference(unittest.TestCase):
         self.assertEqual(lines[2].split(), ['0', '0', '0', '0'])
         np.testing.assert_array_equal(ref.look_constants(CHROMA, resolved=False)[0][6:8, 2:], np.zeros((2, 2)))
         np.testing.assert_array_equal(ref.look_constants(CHROMA)[0][7, 2:], (1., 1.))
-        # Every field takes its minimum and refuses out-of-range and NaN.
-        taken, fields = map(int, lines[4].split())
-        self.assertEqual(taken, fields); self.assertEqual(fields, len(ref.TUNING))
 
     def march(self, store=None, **options):
         d = np.array([[1., 0., 0.], [-1., 0., 0.], [0., 1., 0.]])

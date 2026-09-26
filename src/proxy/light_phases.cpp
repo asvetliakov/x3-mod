@@ -6,6 +6,7 @@
 #include "cpu_state.h"
 #include "object_trace.h"
 #include "telemetry.h"
+#include "log_tiers.h"
 #include "capture.h"
 static_assert(sizeof(void*)==4,"R7 requires the qualified x86 ABI");
 namespace x3m::light_phases {
@@ -80,8 +81,8 @@ void* emit(unsigned index,void*** next){return lean_stub::emit_context(reinterpr
 }
 bool initialize(){
     ErrorGuard error;if(initialized)return active.load(std::memory_order_acquire);
-    initialized=true;wchar_t value[4]{};
-    if(!(GetEnvironmentVariableW(L"X3M_LIGHT_PHASES",value,4)==1&&value[0]==L'1'))return false;
+    initialized=true;
+    if(!log_tier::draw_trace_flag(L"X3M_LIGHT_PHASES"))return false; // X3M_LIGHT_PHASES=1 or X3M_DRAW_TRACE=1 (log_tiers.h)
     const char* status="telemetry_off";
     if(telemetry::enabled()){
         frequency=telemetry::frequency();

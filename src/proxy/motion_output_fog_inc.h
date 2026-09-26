@@ -276,7 +276,7 @@ void MotionOutput::volumetric_fog_sector_sample(std::uint64_t frame, const secto
                 }
         }
     }
-    auto next = fog_sector_frame(sample, frame, generation_, fog_strength_, fog_enabled_ && !fog_disabled_, fog_everywhere_,
+    auto next = fog_sector_frame(sample, frame, generation_, fog_strength_, fog_enabled_ && !fog_disabled_,
                                  renderer::fog_field::family_table()); // nullptr until loaded
     if (fog_density_requested_) {
         // A gap in scene samples longer than fog_density_gap_ms of wall clock is a load or a sector
@@ -315,8 +315,8 @@ void MotionOutput::volumetric_fog_sector_sample(std::uint64_t frame, const secto
     if (!next.same_key(fog_sector_)) {
         fog_cards_.armed = false;
         fog_transition_invalidate();
-        log("volumetric_fog_sector device=%llu frame=%llu profile=%u reason=%s sector=%08x index=%d generation=%llu density_scale=%.3f forced_profile=%s",
-            id_, frame_, next.profile, next.reason, next.sector, next.index, next.generation, double(next.density_scale), next.forced ? "bluewell" : "none");
+        log("volumetric_fog_sector device=%llu frame=%llu profile=%u reason=%s sector=%08x index=%d generation=%llu density_scale=%.3f",
+            id_, frame_, next.profile, next.reason, next.sector, next.index, next.generation, double(next.density_scale));
     }
     fog_sector_ = next;
     fog_cards_.active = next.enabled && !fog_cards_.fault;
@@ -332,7 +332,7 @@ void MotionOutput::volumetric_fog_prefill(const fog_prefill::Result& w, std::uin
     const char* action = "none";
     std::uint64_t key = 0;
     if (w.status == fog_prefill::Walk::Found) {
-        const FogSectorFrame f = fog_sector_frame(w.sample, frame_, generation_, fog_strength_, true, fog_everywhere_, renderer::fog_field::family_table());
+        const FogSectorFrame f = fog_sector_frame(w.sample, frame_, generation_, fog_strength_, true, renderer::fog_field::family_table());
         if (!f.profile) action = f.reason; // clear, unsupported family, invalid name: nothing to fill
         else {
             const FogSectorPlacement placement = fog_sector_placement(f);
@@ -551,7 +551,7 @@ void MotionOutput::run_volumetric_fog() noexcept {
     // A cut expires only the diagnostic source hold; current engine authority
     // and successful spatial replacement readiness remain independent of it.
     if (cut_finished_ && counters_.cut) fog_latch_.cut(frame_);
-    fog_latch_.update(frame_, fog_everywhere_); // source observation only
+    fog_latch_.update(frame_); // source observation only
     if (fog_density_requested_ && camera_scene_.valid) {
         // The next owner latch posts this camera. Independent of every refusal below: a refused
         // or filling frame must still move the cache's window, or it could never become ready.

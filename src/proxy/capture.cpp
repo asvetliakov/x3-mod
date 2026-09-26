@@ -95,7 +95,7 @@ unsigned capture_count = 1;
 // the game's SETA time compression, so a capture of the compressed case needs
 // the delay to re-engage SETA (src/proxy/capture_arm_core.h).
 unsigned capture_delay = 0;
-// X3M_FRAME_END_STRIDE (1..frame_end_stride_max; launcher --frame-end-stride):
+// X3M_FRAME_END_STRIDE (1..frame_end_stride_max; fixtures only since the launcher option went on 2026-09-26):
 // frames between two frame_end lines. Read once at attach, used as a divisor on
 // the Present path only; 1 logs every frame (about 100 B per frame). Unset:
 // 1 with X3M_PERF=1 or X3M_DEBUG=1, else 3600, the always tier's heartbeat of
@@ -183,12 +183,11 @@ bool fps_overlay_requested = false;
 bool gpu_sync_timing_requested = false;
 // X3M_VOLUMETRIC_FOG=1 (default off; docs/architecture/volumetric-fog.md, "Stage 1
 // implementation"): X3M_VOLUMETRIC_FOG_STRENGTH=<tau_max> (0..0.1, default 0.02),
-// X3M_VOLUMETRIC_FOG_EVERYWHERE=1 (the sector rule forced on),
 // X3M_VOLUMETRIC_FOG_TIMING=1 (one volumetric_fog_frame line per frame).
 // Ctrl+Alt+F9 toggles the pass, Ctrl+Alt+F10 steps the strength (Shift up).
 bool sector_background_requested = false; // read-only, independent of the fog pass
 bool volumetric_fog_cards_replace = false;
-bool volumetric_fog_requested = false, volumetric_fog_everywhere = false, volumetric_fog_timing = false;
+bool volumetric_fog_requested = false, volumetric_fog_timing = false;
 // X3M_VOLUMETRIC_FOG_RANGE=legacy|stored (default legacy; fog-density-runtime-integration.md):
 // stored selects the two-level stored-density field with its 30-40 km horizon. Anything else is legacy.
 bool volumetric_fog_range_stored = false;
@@ -210,10 +209,11 @@ bool volumetric_fog_docked = false;
 bool volumetric_fog_prefill = false;
 // X3M_FOG_DUST_MOTES=N,SIZE,STREAK (docs/architecture/fog-dust-motes.md; launcher --fog-dust-motes; absent under the
 // stored range: 1300,3,128 with MAX_PX 8 since 2026-09-23 after Run 70 B/B2, else off; 0 is the opt-out): the stored range's
-// near-camera dust motes, drawn after the repair; tunables X3M_FOG_MOTES_<NAME>. Stored range only.
+// near-camera dust motes, drawn after the repair; X3M_FOG_MOTES_MAX_PX is the one tunable left (the launcher sends 8).
+// Stored range only.
 x3m::renderer::FogMoteTuning volumetric_fog_motes{};
-// X3M_FOG_LOOK_<NAME>=<float> tuning of the single stored-range look (renderer::fog_look_fields;
-// X3M_FOG_LOOK_AMBIENT_SUN / _AWAY = r,g,b): read once here, stored range only.
+// The single stored-range look: the accepted L2 constants of renderer::FogLookTuning (the X3M_FOG_LOOK_<NAME>
+// overrides were removed on 2026-09-26).
 x3m::renderer::FogLookTuning volumetric_fog_look_tuning{};
 float volumetric_fog_strength = x3m::renderer::fog_strength_default, volumetric_fog_anisotropy = x3m::renderer::fog_anisotropy_default;
 float emission_gain = 1.f;
@@ -2840,7 +2840,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
         if(apply_asked)log("sun_shadow_apply_mode requested=1 enabled=%u lane=%u replay=%u linear_materials=%u bias_units=%.9g clamp_texels=%.9g slope_texels=%.9g cascades=%u",apply_enabled,sun_lane_enabled,depth_asked&&enabled,linear_material_requested,bias_units,clamp_texels,slope_texels,unsigned(cascades_configured));
         sun_shadow_apply_requested=sun_shadow_apply_requested||apply_enabled; // opens the Ctrl+Shift+F12 sampler
         hooked.motion_output.configure_sun_shadow_apply(apply_enabled,bias_units,clamp_texels,slope_texels); } }
-    hooked.motion_output.configure_volumetric_fog(volumetric_fog_requested,volumetric_fog_strength,volumetric_fog_anisotropy,volumetric_fog_everywhere,volumetric_fog_timing,volumetric_fog_cards_replace);
+    hooked.motion_output.configure_volumetric_fog(volumetric_fog_requested,volumetric_fog_strength,volumetric_fog_anisotropy,volumetric_fog_timing,volumetric_fog_cards_replace);
     hooked.motion_output.configure_volumetric_fog_range(volumetric_fog_range_stored);
     hooked.motion_output.configure_volumetric_fog_look(volumetric_fog_look_tuning);
     hooked.motion_output.configure_volumetric_fog_march_scale(volumetric_fog_march_scale);
@@ -3556,7 +3556,6 @@ void initialize_log(HMODULE module) {
      const bool fog_replay=fog_env(L"X3M_SHADOW_REPLAY_DEPTH")==1 && setting[0]==L'1';
      wchar_t fog_cascades[4]{};const bool fog_cascade_list=GetEnvironmentVariableW(L"X3M_SHADOW_CASCADES",fog_cascades,4)>0;
      volumetric_fog_requested=asked && motion_output_requested && taa_requested && hdr_requested && fog_replay && fog_cascade_list && volumetric_fog_strength>0.f;
-     volumetric_fog_everywhere=volumetric_fog_requested && fog_env(L"X3M_VOLUMETRIC_FOG_EVERYWHERE")==1 && setting[0]==L'1';
      volumetric_fog_timing=volumetric_fog_requested && (log_tier::perf() || (fog_env(L"X3M_VOLUMETRIC_FOG_TIMING")==1 && setting[0]==L'1')); // or X3M_PERF=1
      volumetric_fog_cards_replace=volumetric_fog_requested && fog_env(L"X3M_VOLUMETRIC_FOG_CARDS")==7 && !wcscmp(setting,L"replace");
      volumetric_fog_range_stored=volumetric_fog_requested && fog_env(L"X3M_VOLUMETRIC_FOG_RANGE")==6 && !wcscmp(setting,L"stored");
@@ -3569,30 +3568,9 @@ void initialize_log(HMODULE module) {
      volumetric_fog_prefill=volumetric_fog_range_stored && fog_default_on(L"X3M_FOG_HANDOVER_PREFILL");
      if(asked)log("volumetric_fog_handover_mode step=%u coldfill=%u prefill=%u docked=%u walk_limit=%u stored=%u",unsigned(volumetric_fog_handover_step),
         unsigned(volumetric_fog_handover_coldfill),unsigned(volumetric_fog_prefill),unsigned(volumetric_fog_docked),sector_background::anchor_walk_limit,unsigned(volumetric_fog_range_stored));
-     volumetric_fog_look_tuning={};
+     volumetric_fog_look_tuning={}; // the accepted L2 constants (renderer::FogLookTuning); no overrides since 2026-09-26
      if(volumetric_fog_range_stored){
-        unsigned overrides=0;
-        for(const auto& field:renderer::fog_look_fields){
-            wchar_t name[48]{};std::swprintf(name,std::size(name),L"X3M_FOG_LOOK_%hs",field.name);
-            if(!fog_env(name))continue;
-            wchar_t* end=nullptr;const float v=wcstof(setting,&end);
-            if(end!=setting&&*end==L'\0')overrides+=renderer::fog_look_set(volumetric_fog_look_tuning,field,v);
-        }
-        const auto colour=[&](const wchar_t* name,float out[3]){ // r,g,b each 0..4; anything else keeps the derived hue
-            if(!fog_env(name))return;
-            float rgb[3]{};wchar_t* at=setting;
-            for(unsigned i=0;i<3;++i){wchar_t* end=nullptr;rgb[i]=wcstof(at,&end);if(end==at||!(rgb[i]>=0.f&&rgb[i]<=4.f)||*end!=(i<2?L',':L'\0'))return;at=end+1;}
-            for(unsigned i=0;i<3;++i)out[i]=rgb[i];
-            ++overrides;
-        };
-        colour(L"X3M_FOG_LOOK_AMBIENT_SUN",volumetric_fog_look_tuning.ambient_sun);colour(L"X3M_FOG_LOOK_AMBIENT_AWAY",volumetric_fog_look_tuning.ambient_away);
-        char values[640]{};int used=0; // every tunable by its X3M_FOG_LOOK_<NAME>
-        for(const auto& field:renderer::fog_look_fields){
-            const int n=std::snprintf(values+used,sizeof values-std::size_t(used)," %s=%g",field.name,double(volumetric_fog_look_tuning.*field.field));
-            if(n<0||std::size_t(used+n)>=sizeof values)break;
-            used+=n;
-        }
-        log("volumetric_fog_look_mode look=single overrides=%u%s",overrides,values);
+        log("volumetric_fog_look_mode look=single constants=baked");
         // X3M_FOG_MARCH_SCALE (step C), echoed with anything outside [0-9A-Za-z._+-] as '?' (a hand-set string cannot break the
         // row): 4 (absent, "4" or invalid) under the stored range; exactly "2" is the half-resolution opt-out. The echo of an
         // absent variable is the default, "4".
@@ -3634,7 +3612,6 @@ void initialize_log(HMODULE module) {
                 wchar_t* stop=nullptr;const float v=wcstof(setting,&stop);
                 if(stop!=setting&&*stop==L'\0')overrides+=renderer::fog_mote_set(motes,field,v);
             }
-            if(fog_env(L"X3M_FOG_MOTES_SEED")){wchar_t* stop=nullptr;const unsigned long v=wcstoul(setting,&stop,10);if(stop!=setting&&*stop==L'\0'&&v<=0x7fffffffUL){motes.seed=std::uint32_t(v);++overrides;}}
             renderer::fog_mote_normalize(motes);
             volumetric_fog_motes=motes;
             log("volumetric_fog_motes_mode enabled=1 count=%u size=%g streak=%g overrides=%u RADIUS=%g NEAR=%g MAX_PX=%g GAIN=%g SOFT=%g DRIFT=%g SEED=%u key=ctrl_alt_f11 source=%s",
@@ -3645,7 +3622,7 @@ void initialize_log(HMODULE module) {
      if(asked)log("volumetric_fog_range mode=%s atlas_bytes=%u levels=2 cpu_bytes=%u upload_budget_bytes=%u upload_rects=%u ramp_frames=%u worker_threads=%u",volumetric_fog_range_stored?"stored":"legacy",
         volumetric_fog_range_stored?unsigned(fog::kAtlasBytes):0u,volumetric_fog_range_stored?unsigned(4*fog::kAtlasBytes):0u,volumetric_fog_range_stored?unsigned(fog::kDefaultUploadBudget):0u,
         volumetric_fog_range_stored?fog::kDefaultUploadRects:0u,volumetric_fog_range_stored?fog::kReadinessRampFrames:0u,unsigned(volumetric_fog_range_stored));
-     if(asked)log("volumetric_fog_mode requested=1 enabled=%u motion_output=%u taa=%u hdr=%u shadow_replay_depth=%u shadow_cascades=%u strength=%g density_scale=%g anisotropy=%g everywhere=%u timing=%u cards=%s rule=current_engine_family keys=ctrl_alt_f9,ctrl_alt_f10",volumetric_fog_requested,motion_output_requested,taa_requested,hdr_requested,unsigned(fog_replay),unsigned(fog_cascade_list),double(volumetric_fog_strength),double(volumetric_fog_strength / .02f),double(volumetric_fog_anisotropy),volumetric_fog_everywhere,volumetric_fog_timing,volumetric_fog_cards_replace?"replace":"keep");}
+     if(asked)log("volumetric_fog_mode requested=1 enabled=%u motion_output=%u taa=%u hdr=%u shadow_replay_depth=%u shadow_cascades=%u strength=%g density_scale=%g anisotropy=%g timing=%u cards=%s rule=current_engine_family keys=ctrl_alt_f9,ctrl_alt_f10",volumetric_fog_requested,motion_output_requested,taa_requested,hdr_requested,unsigned(fog_replay),unsigned(fog_cascade_list),double(volumetric_fog_strength),double(volumetric_fog_strength / .02f),double(volumetric_fog_anisotropy),volumetric_fog_timing,volumetric_fog_cards_replace?"replace":"keep");}
     hdr_config.sharpen=taa_sharpen; // the HDR write-back sharpens the resolved image with the same setting
     motion_rt_lazy=GetEnvironmentVariableW(L"X3M_MOTION_RT_MODE",setting,32)>0 && !wcscmp(setting,L"lazy");
     if(GetEnvironmentVariableW(L"X3M_STATE_SHADOW",setting,32)>0){ // exactly "1" or "0"; anything else is auto, noted
@@ -3764,13 +3741,13 @@ void initialize_log(HMODULE module) {
     cursor_reassert::initialize(); // X3M_CURSOR_REASSERT=1 only
     window_trace::initialize(telemetry::enabled(),&loading_trace::light::cursor_drain); // X3M_WINDOW_TRACE=1 with X3M_TELEMETRY=1 only
     if(window_trace::enabled())loading_trace::light::cursor_observe(true); // the EXE's SetCursor/SetCursorPos rows record changes (patched by loading_trace below)
-    game_phases::initialize(); // all 33 claims here, before the first Present
-    frame_phases::initialize(); // X3M_FRAME_PHASES=1 only: ten render-routine stamps through the game-phase stub, same window
-    pass_phases::initialize(); // X3M_PASS_PHASES=1 only: four effect-pass stamps through the lean stub, needs the frame group, same window
-    residual_phases::initialize(); // X3M_RESIDUAL_PHASES=1 only: two residual stamps through the lean stub, needs the frame and pass groups, same window
-    light_phases::initialize(); // opt-in R7 whole-call timer
-    submit_phases::initialize(); // X3M_SUBMIT_PHASES=1 only: twenty-two view_submit candidate stamps through the context lean stub, needs the frame group, same window
-    loop_phases::initialize(); // X3M_LOOP_PHASES=1 only: six per-sector update stamps through the lean stub, needs the frame group, same window
+    game_phases::initialize(); // X3M_GAME_PHASES=1 or X3M_DRAW_TRACE=1: all 33 claims here, before the first Present
+    frame_phases::initialize(); // X3M_FRAME_PHASES=1, X3M_PERF=1, X3M_DEBUG=1 or X3M_DRAW_TRACE=1 (the stamp families pair with it): ten render-routine stamps through the game-phase stub, same window
+    pass_phases::initialize(); // X3M_PASS_PHASES=1 or X3M_DRAW_TRACE=1: four effect-pass stamps through the lean stub, needs the frame group, same window
+    residual_phases::initialize(); // X3M_RESIDUAL_PHASES=1 or X3M_DRAW_TRACE=1: two residual stamps through the lean stub, needs the frame and pass groups, same window
+    light_phases::initialize(); // X3M_LIGHT_PHASES=1 or X3M_DRAW_TRACE=1: R7 whole-call timer
+    submit_phases::initialize(); // X3M_SUBMIT_PHASES=1 only (fixtures; in no group, it claims the sun-occlusion lens call): twenty-two view_submit candidate stamps through the context lean stub, needs the frame group, same window
+    loop_phases::initialize(); // X3M_LOOP_PHASES=1 or X3M_DRAW_TRACE=1: six per-sector update stamps through the lean stub, needs the frame group, same window
     media_cue::initialize(); // default ID2 skip plus optional trace/cache: one verified allocator gate
     if(const auto observer=media_cue::video_lock_observer()){ // trace on: the surface shell's lock witness (needs --ownership to see the game's surfaces)
         ownership::set_surface_lock_observer(observer);

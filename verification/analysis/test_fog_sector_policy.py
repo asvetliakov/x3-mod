@@ -18,8 +18,8 @@ int main() {
     sample.status=sector_background::Status::Ready;sample.row_valid=sample.name_valid=true;
     sample.sector=0x1000;sample.table=0x2000;sample.record=0x2044;sample.index=3;sample.dust=8;
     std::strcpy(sample.family,"bluewell");
-    auto select=[&](float strength=.02f,bool enabled=true,bool force=false){return fog_sector_frame(sample,42,7,strength,enabled,force);};
-    auto blue=select();assert(blue.profile==1&&blue.current(42)&&!blue.current(43)&&blue.density_scale==1.f&&!blue.forced);
+    auto select=[&](float strength=.02f,bool enabled=true){return fog_sector_frame(sample,42,7,strength,enabled);};
+    auto blue=select();assert(blue.profile==1&&blue.current(42)&&!blue.current(43)&&blue.density_scale==1.f);
     assert(!select(0).enabled&&!select(.02f,false).enabled&&!select(-1).enabled&&!select(.11f).enabled);
     assert(!select(std::numeric_limits<float>::quiet_NaN()).enabled);
     for (float s : {.005f,.01f,.02f,.03f,.05f,.1f})assert(select(s).density_scale==s/.02f);
@@ -29,9 +29,8 @@ int main() {
     assert(select().density_scale==1.f&&select().same_key(green));
     for(const auto& family : renderer::fog_field::family_profiles) {
         std::strcpy(sample.family,family.family);
-        auto selected=select();assert(selected.enabled&&selected.profile==unsigned(family.profile)&&!selected.forced);
+        auto selected=select();assert(selected.enabled&&selected.profile==unsigned(family.profile));
         assert(!std::strcmp(selected.reason,family.family));
-        assert(select(.02f,true,true).profile==selected.profile&&!select(.02f,true,true).forced);
         sample.dust=0;assert(!select().enabled&&select().profile==0);sample.dust=-1;assert(!select().enabled);sample.dust=8;
         sample.row_valid=false;assert(!select().enabled);sample.row_valid=true;
         sample.name_valid=false;assert(!select().enabled);sample.name_valid=true;
@@ -41,7 +40,6 @@ int main() {
     // Missing-asset positive definitions and unknown names stay native.
     for(const char* family : {"xtmgreenring","earth","unknown","Bluewell",""}) {
         std::strcpy(sample.family,family);assert(!select().enabled&&select().profile==0);
-        assert(select(.02f,true,true).profile==1&&select(.02f,true,true).forced);
     }
     std::strcpy(sample.family,"bluewell");sample.dust=0;
     assert(!select().enabled&&!std::strcmp(select().reason,"clear"));sample.dust=8;
@@ -80,13 +78,13 @@ int main() {
     std::strcpy(families.rows[0].name,"litcube0");families.rows[0].profile=family_name_id("litcube0");
     std::strcpy(families.rows[1].name,"bluewell");families.rows[1].profile=family_name_id("bluewell");
     std::strcpy(families.rows[2].name,"litcube1");families.rows[2].profile=family_name_id("litcube1");families.rows[2].disabled.store("packet_checksum");
-    auto with=[&](const char* name,bool force=false){std::strcpy(sample.family,name);return fog_sector_frame(sample,42,7,.02f,true,force,&families);};
+    auto with=[&](const char* name){std::strcpy(sample.family,name);return fog_sector_frame(sample,42,7,.02f,true,&families);};
     sample.dust=50;
-    auto lit=with("litcube0");assert(lit.enabled&&lit.profile==family_name_id("litcube0")&&lit.profile>=0x10000u&&lit.reason==families.rows[0].name&&!lit.forced);
+    auto lit=with("litcube0");assert(lit.enabled&&lit.profile==family_name_id("litcube0")&&lit.profile>=0x10000u&&lit.reason==families.rows[0].name);
     assert(with("bluewell").profile==1&&!std::strcmp(with("bluewell").reason,"bluewell"));
     auto off=with("litcube1");assert(!off.enabled&&off.profile==0&&!std::strcmp(off.reason,"family_unsupported"));
-    assert(!with("unknown").enabled&&with("litcube1",true).profile==1&&with("litcube1",true).forced);
-    std::strcpy(sample.family,"litcube0");assert(fog_sector_frame(sample,42,7,.02f,true,false).profile==0); // no table: the legacy scan
+    assert(!with("unknown").enabled&&with("litcube1").profile==0);
+    std::strcpy(sample.family,"litcube0");assert(fog_sector_frame(sample,42,7,.02f,true).profile==0); // no table: the legacy scan
     sample.dust=0;assert(!with("litcube0").enabled&&!std::strcmp(with("litcube0").reason,"clear"));sample.dust=8;
     assert(!lit.same_key(blue)&&fog_sector_placement(lit).key!=place.key);
 }

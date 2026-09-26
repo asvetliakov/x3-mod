@@ -6,9 +6,14 @@ Runs `tools/manage.py launch --bottle X3 --dry-run` on the host (no Wine, nothin
 (9a668e81, extracted with git show into a temporary directory). Prints the X3M_* variable counts and asserts:
 - the default launch sends no X3M_DEBUG / X3M_PERF and none of the launcher's TIERED_VARIABLES;
 - --debug / --perf add exactly X3M_DEBUG=1 / X3M_PERF=1 to the default launch;
-- against BASE, every variable that changed (default and vanilla) is a logging variable (TIERED_VARIABLES), i.e. no
-  functional variable changed;
+- against BASE, every variable that changed (default and vanilla) is a logging variable (TIERED_VARIABLES) or the variable
+  of an option removed on 2026-09-26 (X3M_MESH_ADJACENCY_DUMP, X3M_VOLUMETRIC_FOG_EVERYWHERE, now in REMOVED_VARIABLES),
+  no longer sent, i.e. no functional variable changed;
 - an inherited value of every tiered variable is dropped.
+Since the second step of 2026-09-26 (developer options trimmed to four) --debug and --perf still add only X3M_DEBUG / X3M_PERF: the
+variables of the removed options (X3M_TELEMETRY_DRAW and the engine-stamp families) are expanded by the DLL from X3M_DRAW_TRACE
+(--draw-trace, which needs a group), never sent by the launcher. The
+default and vanilla launches send one variable fewer (X3M_VOLUMETRIC_FOG_EVERYWHERE=0 is gone with its option).
 Writes dry-runs.json beside this script.
 
     python3 verification/results/logging-tiers/dry_run_tiers.py
@@ -25,7 +30,12 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
 BASE = '9a668e81'
-FORMS = {'default': [], 'debug': ['--debug'], 'perf': ['--perf'], 'debug_perf': ['--debug', '--perf'], 'vanilla': ['--vanilla']}
+FORMS = {'default': [], 'debug': ['--debug'], 'perf': ['--perf'], 'debug_perf': ['--debug', '--perf'], 'perf_draw_trace': ['--perf', '--draw-trace'],
+         'vanilla': ['--vanilla']}
+
+
+# Removed with their options on 2026-09-26 (REMOVED_VARIABLES): the base sent them as explicit off values.
+REMOVED_2026_09_26 = {'X3M_MESH_ADJACENCY_DUMP', 'X3M_VOLUMETRIC_FOG_EVERYWHERE'}
 
 
 def tiered():
@@ -34,6 +44,7 @@ def tiered():
     spec = importlib.util.spec_from_file_location('dry_run_tiers_manage', ROOT / 'tools/manage.py')
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
+    assert REMOVED_2026_09_26 <= set(module.REMOVED_VARIABLES)
     return set(module.TIERED_VARIABLES)
 
 
@@ -69,6 +80,7 @@ def main():
         'debug_vs_default': diff(new['default'], new['debug']),
         'perf_vs_default': diff(new['default'], new['perf']),
         'debug_perf_vs_default': diff(new['default'], new['debug_perf']),
+        'perf_draw_trace_vs_default': diff(new['default'], new['perf_draw_trace']),
         'inherited_tiered_vs_default': diff(new['default'], inherited),
     }
     checks = {
@@ -77,9 +89,10 @@ def main():
         '--debug adds exactly X3M_DEBUG=1': result['debug_vs_default'] == {'X3M_DEBUG': [None, '1']},
         '--perf adds exactly X3M_PERF=1': result['perf_vs_default'] == {'X3M_PERF': [None, '1']},
         '--debug --perf adds exactly the two groups': result['debug_perf_vs_default'] == {'X3M_DEBUG': [None, '1'], 'X3M_PERF': [None, '1']},
-        'no functional variable changed against the base (default)': set(result['default_vs_base']) <= names
+        '--perf --draw-trace adds exactly X3M_PERF=1 and X3M_DRAW_TRACE=1': result['perf_draw_trace_vs_default'] == {'X3M_PERF': [None, '1'], 'X3M_DRAW_TRACE': [None, '1']},
+        'no functional variable changed against the base (default)': set(result['default_vs_base']) <= names | REMOVED_2026_09_26
             and all(b is None for a, b in result['default_vs_base'].values()),
-        'no functional variable changed against the base (vanilla)': set(result['vanilla_vs_base']) <= names
+        'no functional variable changed against the base (vanilla)': set(result['vanilla_vs_base']) <= names | REMOVED_2026_09_26
             and all(b is None for a, b in result['vanilla_vs_base'].values()),
         'inherited tiered values dropped': result['inherited_tiered_vs_default'] == {},
     }
@@ -87,7 +100,7 @@ def main():
     (HERE / 'dry-runs.json').write_text(json.dumps(result, indent=1, sort_keys=True) + '\n')
     print('counts', result['counts'])
     for key in ('default_vs_base', 'vanilla_vs_base'):
-        print(f'{key}: {len(result[key])} variables, all logging variables no longer sent: {sorted(result[key])}')
+        print(f'{key}: {len(result[key])} variables, all logging or removed variables no longer sent: {sorted(result[key])}')
     for name, ok in checks.items():
         print('PASS' if ok else 'FAIL', name)
     return 0 if all(checks.values()) else 1

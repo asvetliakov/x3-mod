@@ -301,7 +301,7 @@
 "exit": 0
 },
 "seam-log-tiers": {
-"checks": 47,
+"checks": 57,
 "exit": 0
 },
 "seam-mipbias-lazy-on": {
@@ -1103,7 +1103,24 @@
 "debug": {
 "clocked_only_in_group": [],
 "clocked_only_in_individual": [],
-"names": 135
+"names": 137
+},
+"draw_trace": {
+"added_to_perf": [
+"game_phase_mode",
+"game_phase_site",
+"light_phase_mode",
+"light_phase_site",
+"loop_phase_mode",
+"loop_phase_site",
+"pass_phase_mode",
+"pass_phase_site",
+"residual_phase_mode",
+"residual_phase_site"
+],
+"clocked_only_in_group": [],
+"clocked_only_in_individual": [],
+"names": 131
 },
 "perf": {
 "clocked_only_in_group": [],

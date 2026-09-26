@@ -21,7 +21,8 @@ constexpr unsigned fog_far_bins = 40;
 constexpr unsigned fog_march_scale_half = 2, fog_march_scale_quarter = 4, fog_march_scale_default = fog_march_scale_quarter;
 constexpr bool fog_march_scale_valid(unsigned scale) { return scale == fog_march_scale_half || scale == fog_march_scale_quarter; }
 constexpr unsigned fog_march_extent(unsigned full, unsigned scale) { return (full + scale - 1) / scale; }
-// Every scalar has an environment override X3M_FOG_LOOK_<NAME> read once at init (fog_look_fields).
+// The accepted L2 values, baked: the X3M_FOG_LOOK_<NAME> overrides (24 scalars, AMBIENT_SUN / AMBIENT_AWAY) were
+// removed on 2026-09-26; the ambient hues stay derived from the family chroma (negative = derived).
 struct FogLookTuning {
     float coverage = .35f, exponent = 2.f, sigma_scale = 8.f;         // rho' = saturate((rho-c)/(1-c))^p: soft zero-slope toe
     float coverage_variation = .12f;                                  // c moves by this x the mean of three oblique plane waves
@@ -41,28 +42,6 @@ struct FogLookTuning {
     float shadow_jitter = 1.f;                                        // offset of the shaft lookup alone (bins) while TAA
                                                                       // resolves it; 0 = bin centres (also without a resolve).
 };
-struct FogLookField { const char* name; float FogLookTuning::* field; float minimum, maximum; };
-constexpr FogLookField fog_look_fields[] = {
-    {"COVERAGE", &FogLookTuning::coverage, 0.f, .9f}, {"EXPONENT", &FogLookTuning::exponent, .25f, 8.f},
-    {"SIGMA_SCALE", &FogLookTuning::sigma_scale, .1f, 40.f}, {"FORWARD_G", &FogLookTuning::forward_g, 0.f, .95f},
-    {"FORWARD_WEIGHT", &FogLookTuning::forward_weight, 0.f, 1.f}, {"BACK_G", &FogLookTuning::back_g, -.95f, 0.f},
-    {"ALBEDO_WHITE", &FogLookTuning::albedo_white, 0.f, 1.f}, {"AMBIENT_GAIN", &FogLookTuning::ambient_gain, 0.f, 4.f},
-    {"EXTINCTION_TINT", &FogLookTuning::extinction_tint, 0.f, 4.f}, {"SCATTER_LIFT", &FogLookTuning::scatter_lift, 0.f, 4.f},
-    {"LIFT_FLOOR", &FogLookTuning::lift_floor, 0.f, 1.f}, {"SHADOW_FLOOR", &FogLookTuning::shadow_floor, 0.f, 1.f},
-    {"SKY_CAP", &FogLookTuning::sky_cap, 20000.f, 200000.f}, {"TAPER_START", &FogLookTuning::taper_start, 0.f, 199000.f},
-    {"SELF_SHADOW", &FogLookTuning::self_shadow, 0.f, 40.f},
-    {"POWDER", &FogLookTuning::powder, 0.f, 1.f}, {"TAP_DISTANCE", &FogLookTuning::tap_distance, 100.f, 7000.f},
-    {"TAP_LENGTH", &FogLookTuning::tap_length, 0.f, 40000.f},
-    {"COVERAGE_VARIATION", &FogLookTuning::coverage_variation, 0.f, .3f},
-    {"WARP_CYCLES_NEAR", &FogLookTuning::warp_cycles_near, 1.f, 64.f}, {"WARP_NEAR", &FogLookTuning::warp_near, 0.f, 500.f},
-    {"WARP_CYCLES_FAR", &FogLookTuning::warp_cycles_far, 1.f, 64.f}, {"WARP_FAR", &FogLookTuning::warp_far, 0.f, 1500.f},
-    {"SHADOW_JITTER", &FogLookTuning::shadow_jitter, 0.f, 1.f},
-};
-// A value outside its range (or NaN) keeps the default; true when it was taken.
-inline bool fog_look_set(FogLookTuning& tuning, const FogLookField& field, float value) noexcept {
-    if (!(value >= field.minimum && value <= field.maximum)) return false;
-    tuning.*field.field = value; return true;
-}
 inline float fog_look_unit(float v) noexcept { return v < 0.f ? 0.f : v > 1.f ? 1.f : v; }
 // Rows c25..c35 of the look and the factor on the family sigma (c2.w). `radiance_over_pi` is c8.rgb;
 // `phase` is the TAA jitter sequence index; `resolved` says a temporal resolve averages the phases (without one the

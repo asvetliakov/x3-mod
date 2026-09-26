@@ -48,25 +48,23 @@ int main() {
     v = ok; v.stretch_rect = false; std::printf("gate_stretch=%s\n", reason(v));
     // Sector latch: nothing without cards; ramps up over fog_card_ramp frames; holds; ramps down after the hold.
     FogSectorLatch latch;
-    std::printf("latch_idle=%.3f\n", latch.update(10, false));
-    latch.card(11); float w = 0; for (std::uint64_t f = 11; f < 11 + 45; ++f) w = latch.update(f, false);
+    std::printf("latch_idle=%.3f\n", latch.update(10));
+    latch.card(11); float w = 0; for (std::uint64_t f = 11; f < 11 + 45; ++f) w = latch.update(f);
     std::printf("latch_half=%.3f\n", w);
-    for (std::uint64_t f = 56; f < 200; ++f) w = latch.update(f, false);
+    for (std::uint64_t f = 56; f < 200; ++f) w = latch.update(f);
     std::printf("latch_full=%.3f\n", w);
-    w = latch.update(11 + fog_card_hold, false); std::printf("latch_hold=%.3f\n", w);
-    for (std::uint64_t f = 12 + fog_card_hold; f < 12 + fog_card_hold + 200; ++f) w = latch.update(f, false);
+    w = latch.update(11 + fog_card_hold); std::printf("latch_hold=%.3f\n", w);
+    for (std::uint64_t f = 12 + fog_card_hold; f < 12 + fog_card_hold + 200; ++f) w = latch.update(f);
     std::printf("latch_out=%.3f recent=%d\n", w, latch.cards_recent(12 + fog_card_hold + 200));
-    FogSectorLatch forced; for (std::uint64_t f = 0; f < 200; ++f) w = forced.update(f, true);
-    std::printf("latch_forced=%.3f\n", w);
     // Failure policy: a lost device never counts or disables; a failed allocation disables; the third other failure disables.
     std::printf("policy=%u%u%u%u%u\n", unsigned(fog_failure_action(true, true, 2)), unsigned(fog_failure_action(true, false, 2)), unsigned(fog_failure_action(false, true, 0)), unsigned(fog_failure_action(false, false, 1)), unsigned(fog_failure_action(false, false, 2)));
     // Cut: ends the hold unless a card was bound in the cut frame itself; the weight ramps, never jumps.
-    FogSectorLatch gate; gate.card(100); for (std::uint64_t f = 100; f < 300; ++f) gate.update(f, false);
-    gate.cut(300); const float after_cut = gate.update(300, false); for (std::uint64_t f = 301; f < 400; ++f) w = gate.update(f, false);
-    FogSectorLatch view; view.card(100); for (std::uint64_t f = 100; f < 300; ++f) view.update(f, false);
-    view.card(300); view.cut(300); for (std::uint64_t f = 300; f < 400; ++f) view.update(f, false);
+    FogSectorLatch gate; gate.card(100); for (std::uint64_t f = 100; f < 300; ++f) gate.update(f);
+    gate.cut(300); const float after_cut = gate.update(300); for (std::uint64_t f = 301; f < 400; ++f) w = gate.update(f);
+    FogSectorLatch view; view.card(100); for (std::uint64_t f = 100; f < 300; ++f) view.update(f);
+    view.card(300); view.cut(300); for (std::uint64_t f = 300; f < 400; ++f) view.update(f);
     std::printf("latch_cut=%.3f,%.3f,%d view=%.3f\n", after_cut, w, gate.cards_recent(400), view.weight());
-    FogSectorLatch jump; jump.card(5); jump.update(5, false); std::printf("latch_jump=%.3f\n", jump.update(5000, false)); // a long gap moves at most one ramp, toward off here
+    FogSectorLatch jump; jump.card(5); jump.update(5); std::printf("latch_jump=%.3f\n", jump.update(5000)); // a long gap moves at most one ramp, toward off here
 #define SLOTS(name, file) { const std::uint32_t words[] = {
 #define SLOTS_END(name) }; std::printf("slots_" name "=%u words=%zu\n", ps3_program_slots(words, sizeof words / sizeof words[0]), sizeof words / sizeof words[0]); }
     SLOTS("march", 0)
@@ -142,7 +140,6 @@ class FogMathTests(unittest.TestCase):
         self.assertEqual(v['latch_full'], '1.000')
         self.assertEqual(v['latch_hold'], '1.000')  # still inside the hold
         self.assertEqual(v['latch_out'], '0.000 recent=0')
-        self.assertEqual(v['latch_forced'], '1.000')
         self.assertEqual(v['latch_jump'], '0.000')
         self.assertEqual(v['latch_cut'], '0.989,0.000,0 view=1.000')
         self.assertEqual(v['policy'], '00212')
@@ -240,7 +237,7 @@ class FogLauncherTests(unittest.TestCase):
     def test_defaults_values_and_inherited_environment(self):
         status, output, error = self.launch(*self.BASE, '--volumetric-fog')
         self.assertEqual(status, 0, error)
-        for line in ('"X3M_VOLUMETRIC_FOG": "1"', '"X3M_VOLUMETRIC_FOG_STRENGTH": "0.02"', '"X3M_VOLUMETRIC_FOG_EVERYWHERE": "0"'):
+        for line in ('"X3M_VOLUMETRIC_FOG": "1"', '"X3M_VOLUMETRIC_FOG_STRENGTH": "0.02"'):
             self.assertIn(line, output)
         # The pass timing is part of --perf since the logging tiers (2026-09-26): the DLL reads X3M_VOLUMETRIC_FOG_TIMING or
         # X3M_PERF; the launcher never sends the variable.
@@ -248,17 +245,19 @@ class FogLauncherTests(unittest.TestCase):
         # The superseded --volumetric-fog-anisotropy was removed (the stored look carries
         # its own two-lobe phase); the DLL keeps its own g = 0.3 default.
         self.assertNotIn('X3M_VOLUMETRIC_FOG_ANISOTROPY', output)
-        status, output, error = self.launch(*self.BASE, '--volumetric-fog', '0.05', '--volumetric-fog-everywhere', '--perf')
+        status, output, error = self.launch(*self.BASE, '--volumetric-fog', '0.05', '--perf')
         self.assertEqual(status, 0, error)
-        for line in ('"X3M_VOLUMETRIC_FOG_STRENGTH": "0.05"', '"X3M_VOLUMETRIC_FOG_EVERYWHERE": "1"', '"X3M_PERF": "1"'):
+        for line in ('"X3M_VOLUMETRIC_FOG_STRENGTH": "0.05"', '"X3M_PERF": "1"'):
             self.assertIn(line, output)
-        status, _, error = self.launch(*self.BASE, '--volumetric-fog', '--volumetric-fog-timing')
-        self.assertEqual(status, 2)
-        self.assertIn('unrecognized arguments', error)
+        # --volumetric-fog-timing (logging tiers) and --volumetric-fog-everywhere (2026-09-26, user decision) are removed.
+        for removed in ('--volumetric-fog-timing', '--volumetric-fog-everywhere'):
+            status, _, error = self.launch(*self.BASE, '--volumetric-fog', removed)
+            self.assertEqual(status, 2)
+            self.assertIn('unrecognized arguments', error)
         status, output, error = self.launch(*self.BASE, environment={'X3M_VOLUMETRIC_FOG': '1', 'X3M_VOLUMETRIC_FOG_EVERYWHERE': '1', 'X3M_VOLUMETRIC_FOG_TIMING': '1'})
         self.assertEqual(status, 0, error)
         self.assertIn('"X3M_VOLUMETRIC_FOG": "0"', output)
-        self.assertIn('"X3M_VOLUMETRIC_FOG_EVERYWHERE": "0"', output)
+        self.assertNotIn('X3M_VOLUMETRIC_FOG_EVERYWHERE', output)  # removed 2026-09-26; an inherited value is dropped
         self.assertNotIn('X3M_VOLUMETRIC_FOG_TIMING', output)
 
     def test_card_option(self):
@@ -388,14 +387,15 @@ class FogLauncherTests(unittest.TestCase):
         self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_DUST_MOTES": "1300,3,128"', output)
         status, output, error = self.launch(*self.BASE, '--volumetric-fog', environment={'X3M_FOG_DUST_MOTES': '2048,4,128'})
         self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_DUST_MOTES": "0,4,128"', output)
-        # Inherited tunables survive only with the motes on: the default or the option above 0.
-        tunables = {'X3M_FOG_MOTES_GAIN': '4', 'X3M_FOG_MOTES_SEED': '9'}
+        # An inherited MAX_PX survives only with the motes on; the other tunables were removed on 2026-09-26 (values baked)
+        # and an inherited value is always dropped.
+        tunables = {'X3M_FOG_MOTES_MAX_PX': '12', 'X3M_FOG_MOTES_GAIN': '4', 'X3M_FOG_MOTES_SEED': '9'}
         status, output, error = self.launch(*self.BASE, *stored, '--fog-dust-motes', '0', environment=tunables)
         self.assertEqual(status, 0, error); self.assertNotIn('X3M_FOG_MOTES_', output)
-        status, output, error = self.launch(*self.BASE, *stored, environment=tunables)
-        self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_MOTES_GAIN": "4"', output); self.assertIn('"X3M_FOG_MOTES_SEED": "9"', output)
-        status, output, error = self.launch(*self.BASE, *stored, '--fog-dust-motes', '2048', environment=tunables)
-        self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_MOTES_GAIN": "4"', output)
+        for extra in ((), ('--fog-dust-motes', '2048')):
+            status, output, error = self.launch(*self.BASE, *stored, *extra, environment=tunables)
+            self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_MOTES_MAX_PX": "12"', output)
+            self.assertNotIn('X3M_FOG_MOTES_GAIN', output); self.assertNotIn('X3M_FOG_MOTES_SEED', output)
         # The DLL: stored range only, the whole triple must parse, tunables only with the option on, one mode line; an
         # overlong value and a request without the stored range each log one line instead of being ignored silently.
         capture = (ROOT / 'src/proxy/capture.cpp').read_text()
@@ -407,8 +407,12 @@ class FogLauncherTests(unittest.TestCase):
         self.assertIn('volumetric_fog_motes_mode enabled=1 count=%u', capture)
         self.assertIn('hooked.motion_output.configure_volumetric_fog_dust_motes(volumetric_fog_motes);', capture)
         motes = (ROOT / 'src/renderer/fog_mote_math.h').read_text()
-        for name, low, high in (('RADIUS', '200.f', '5000.f'), ('NEAR', '5.f', '200.f'), ('GAIN', '0.f', '8.f'), ('SOFT', '0.f', '.1f'), ('DRIFT', '0.f', '200.f')):
-            self.assertRegex(motes, r'\{"%s", &FogMoteTuning::\w+, %s, %s\}' % (name, re.escape(low), re.escape(high)))
+        # MAX_PX is the one tunable left (2026-09-26); the others are the baked struct defaults.
+        for name in ('RADIUS', 'NEAR', 'GAIN', 'SOFT', 'DRIFT'):
+            self.assertNotIn('{"%s", &FogMoteTuning' % name, motes)
+        self.assertNotIn('X3M_FOG_MOTES_SEED', capture)
+        self.assertIn('float radius = 1000.f, near_fade = 25.f;', motes)
+        self.assertIn('float max_px = 8.f, gain = 1.f, soft = .02f, drift = 20.f;', motes)
         self.assertIn('{"MAX_PX", &FogMoteTuning::max_px, fog_mote_size_min, 64.f}', motes)
         # Absent under the stored range the DLL takes the same default (1300,3,128, MAX_PX 8); an invalid value stays off.
         self.assertIn('constexpr unsigned fog_mote_default_count = 1300;', motes)
@@ -472,10 +476,10 @@ class FogLauncherTests(unittest.TestCase):
         look_math = (ROOT / 'src/renderer/fog_look_math.h').read_text()
         for gone in ('fog_look_default', 'fog_look_count', 'fog_look_next', 'jitter_near', 'JITTER_NEAR'):
             self.assertNotIn(gone, look_math, gone)
-        # Every tuning variable the look reads is still available; the L3-only ones are not, nor the grid pass's penumbra.
-        self.assertIn('X3M_FOG_LOOK_', capture)
-        for kept in ('COVERAGE', 'EXPONENT', 'SIGMA_SCALE', 'SELF_SHADOW', 'POWDER', 'TAP_DISTANCE', 'TAP_LENGTH', 'SHADOW_JITTER'):
-            self.assertIn('"%s"' % kept, look_math, kept)
+        # The look's constants are baked since 2026-09-26: no X3M_FOG_LOOK_<NAME> read and no override table.
+        self.assertNotIn('L"X3M_FOG_LOOK_', capture)
+        self.assertNotIn('fog_look_fields', look_math)
+        self.assertIn('volumetric_fog_look_mode look=single constants=baked', capture)
         self.assertNotIn('PENUMBRA', look_math)
 
     def test_ambient_occlusion_options_are_removed(self):
@@ -497,7 +501,7 @@ class FogLauncherTests(unittest.TestCase):
             with self.subTest(missing=missing):
                 status, _, _ = self.launch(*(a for a in self.BASE if a != missing), '--volumetric-fog')
                 self.assertEqual(status, 2)
-        for dependent in (('--volumetric-fog-cards', 'replace'), ('--volumetric-fog-everywhere',), ('--volumetric-fog-timing',)):
+        for dependent in (('--volumetric-fog-cards', 'replace'), ('--volumetric-fog-everywhere',), ('--volumetric-fog-timing',)):  # the last two: removed
             with self.subTest(dependent=dependent):
                 self.assertEqual(self.launch(*self.BASE, *dependent)[0], 2)
         # Removed option: argparse refuses it as unrecognized, it does not pass silently.

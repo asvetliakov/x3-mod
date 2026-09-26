@@ -1,6 +1,6 @@
 #pragma once
 // d3d9-free parameters of the stored fog's dust motes (docs/architecture/fog-dust-motes.md): the launch option
-// X3M_FOG_DUST_MOTES=N,SIZE,STREAK, the tunables X3M_FOG_MOTES_<NAME> (read once at init), the unit seed lattice and
+// X3M_FOG_DUST_MOTES=N,SIZE,STREAK, the tunable X3M_FOG_MOTES_MAX_PX (read once at init), the unit seed lattice and
 // the vertex layout. Plain integer and float arithmetic only (SSE2 in the proxy build).
 #include <cstdint>
 namespace x3m::renderer {
@@ -17,14 +17,13 @@ struct FogMoteTuning {
     float size = 4.f, streak = 128.f;              // minimum capsule width and streak cap, pixels
     float radius = 1000.f, near_fade = 25.f;       // window radius R (cube side 2R) and near fade, render units
     float max_px = 8.f, gain = 1.f, soft = .02f, drift = 20.f;
-    std::uint32_t seed = 1;
+    std::uint32_t seed = 1;                        // radius, near_fade, gain, soft, drift, seed: baked since 2026-09-26
+                                                   // (their X3M_FOG_MOTES_<NAME> reads were removed); max_px stays a read
 };
 struct FogMoteField { const char* name; float FogMoteTuning::* field; float minimum, maximum; };
-// X3M_FOG_MOTES_<NAME>; MAX_PX is raised to SIZE when below it (the range's lower end is SIZE). SEED is an integer.
+// X3M_FOG_MOTES_<NAME>: MAX_PX only since 2026-09-26; raised to SIZE when below it (the range's lower end is SIZE).
 constexpr FogMoteField fog_mote_fields[] = {
-    {"RADIUS", &FogMoteTuning::radius, 200.f, 5000.f}, {"NEAR", &FogMoteTuning::near_fade, 5.f, 200.f},
-    {"MAX_PX", &FogMoteTuning::max_px, fog_mote_size_min, 64.f}, {"GAIN", &FogMoteTuning::gain, 0.f, 8.f},
-    {"SOFT", &FogMoteTuning::soft, 0.f, .1f}, {"DRIFT", &FogMoteTuning::drift, 0.f, 200.f},
+    {"MAX_PX", &FogMoteTuning::max_px, fog_mote_size_min, 64.f},
 };
 // A value outside its range (or NaN) keeps the default; true when it was taken.
 inline bool fog_mote_set(FogMoteTuning& tuning, const FogMoteField& field, float value) noexcept {

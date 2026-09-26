@@ -7,6 +7,7 @@
 #include "cpu_state.h"
 #include "object_trace.h"
 #include "telemetry.h"
+#include "log_tiers.h"
 #include "capture.h"
 #include <atomic>
 
@@ -76,8 +77,8 @@ void* emit(unsigned index,void*** next_out) {
 bool initialize() {
     ErrorGuard error;
     if(initialized)return active.load(std::memory_order_acquire);
-    initialized=true;wchar_t value[4]{};
-    const bool wanted=GetEnvironmentVariableW(L"X3M_LOOP_PHASES",value,4)==1&&value[0]==L'1';
+    initialized=true;
+    const bool wanted=log_tier::draw_trace_flag(L"X3M_LOOP_PHASES"); // X3M_LOOP_PHASES=1 or X3M_DRAW_TRACE=1 (log_tiers.h)
     if(!wanted)return false;
     const char* status="telemetry_off";
     if(telemetry::enabled()){

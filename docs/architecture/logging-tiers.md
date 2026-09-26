@@ -343,7 +343,39 @@ either group. Membership as implemented:
 |---|---|
 | both | `X3M_TELEMETRY` (telemetry.cpp, loading_trace.cpp: counters, 1 Hz summaries, loading metrics, the loading-trace hook set, the family block's gate); `X3M_FRAME_END_STRIDE` 1 (capture.cpp) |
 | `--perf` | `X3M_FRAME_TIMING` (state hooks, 300-frame windows), `X3M_FRAME_PHASES` (ten stamps), `X3M_FPS_OVERLAY`, `X3M_VOLUMETRIC_FOG_TIMING`, `X3M_SHADOW_TIMING` (new: `shadow_replay_depth` and `sun_shadow_apply_frame` every frame) |
-| `--debug` | `X3M_MOTION_FRAME_LOG` 1 (family block every frame), `X3M_CAMERA_LOG` 1, `X3M_SHADOW_ROWS` (new: the five shadow/sun state rows every frame), `X3M_SHADOW_RETENTION_CENSUS`, `X3M_OBJECT_BOUNDS_LOG`, `X3M_CULL_CENSUS` with `X3M_LOD_SWITCH_LOG` 16, `X3M_MEDIA_CUE_TRACE`, `X3M_MUSIC_TRACE`, `X3M_WINDOW_TRACE`, `X3M_SHADOW_SUN_TRACE`, `X3M_SECTOR_BACKGROUND`, `X3M_LOADING_PROBES`, `X3M_COLLIDE_NARROW_CENSUS`, `X3M_COLLIDE_QUERY_PHASES` |
+| `--debug` | `X3M_MOTION_FRAME_LOG` 1 (family block every frame), `X3M_CAMERA_LOG` 1, `X3M_SHADOW_ROWS` (new: the five shadow/sun state rows every frame), `X3M_SHADOW_RETENTION_CENSUS`, `X3M_OBJECT_BOUNDS_LOG`, `X3M_CULL_CENSUS` with `X3M_LOD_SWITCH_LOG` 16, `X3M_MEDIA_CUE_TRACE`, `X3M_MUSIC_TRACE`, `X3M_WINDOW_TRACE`, `X3M_SHADOW_SUN_TRACE`, `X3M_SECTOR_BACKGROUND`, `X3M_LOADING_PROBES`, `X3M_COLLIDE_NARROW_CENSUS`, `X3M_COLLIDE_QUERY_PHASES`; since the second step (below) `X3M_FRAME_PHASES` (the frame boundary, also a `--perf` member; its ten stamps are the only engine patches of the group) |
+| `--draw-trace` (second step, not a group of the stand) | `X3M_TELEMETRY_DRAW` (telemetry.cpp: per-draw route cost fields), `X3M_GAME_PHASES` (game_phases.cpp, tape threshold at its 20 ms default unless `X3M_GAME_PHASE_THRESHOLD_MS` is set), `X3M_PASS_PHASES`, `X3M_RESIDUAL_PHASES`, `X3M_LIGHT_PHASES`, `X3M_LOOP_PHASES` (each read through `log_tier::draw_trace_flag`), `X3M_FRAME_PHASES`; expanded from `X3M_DRAW_TRACE=1`; needs telemetry and the frame boundary from `--perf` or `--debug` |
+
+**Second step (user and orchestrator decisions 2026-09-26): developer options trimmed to five.** Section 2 of the launcher
+inventory is now `--debug`, `--perf`, `--draw-trace`, `--gpu-sync-timing`, `--taa-debug`, `--profile` (+
+`--profile-interval-us`) and `--sun-occlusion-log` (+ `--sun-occlusion-radius`, `--sun-occlusion-curve`), plus the F8
+capture controls. The three logging levels: `--perf` = the cheap cost rows; `--debug` = the per-frame diagnostic rows and
+traces, with no engine patch beyond the frame boundary (`X3M_FRAME_PHASES` joins it); `--draw-trace` (`X3M_DRAW_TRACE`,
+expanded in `src/proxy/log_tiers.h`) = the heavy attribution: `X3M_TELEMETRY_DRAW` (two QPC reads per routed draw, about 1 ms
+per frame by `docs/verification/route-cost-run1.md`, inferred) and the engine-stamp families `X3M_GAME_PHASES` (20 ms segment
+tape), `X3M_PASS_PHASES`, `X3M_RESIDUAL_PHASES`, `X3M_LIGHT_PHASES`, `X3M_LOOP_PHASES` (byte-verified trampolines, each
+failing closed per site). The heavy set is in neither group because the stand is `--debug --perf` and runs on every
+flight; a stutter report starts with `--perf`, adds `--debug`, and uses `--draw-trace` for one attribution flight. The
+launcher refuses `--draw-trace` without `--perf` or `--debug` (the telemetry counters and the frame boundary) and sends
+nothing under `--vanilla`; the DLL also turns the frame phases on for `X3M_DRAW_TRACE=1`. `X3M_SUBMIT_PHASES` is in no
+group: its stamp at 0x00472490 claims the lens traversal call the sun-occlusion default patches, so it stays a
+fixture-only read (`run_submit_phase_cpu.py`, the site verifiers); the launcher's `--submit-phases` conflict check and the
+default's suppression went with the option, the DLL still refuses the pair. Fixture-only (options removed, reads kept):
+`X3M_FRAME_END_STRIDE` (an explicit value still wins over 3600 / 1), `X3M_FRAME_TIMING_STATE_STAMPS`,
+`X3M_COLLIDE_MEMO_VERIFY`, `X3M_MESH_ADJACENCY=verify`, `X3M_GAME_PHASE_THRESHOLD_MS`; `--resource-read verify` left the
+launcher (the fixture binds the verify mode directly). Removed with their DLL code: `X3M_MESH_ADJACENCY_DUMP` (the in-game
+dump path and call; the writer stays for the fixture self-test) and `X3M_VOLUMETRIC_FOG_EVERYWHERE` (the forced bluewell
+profile and the latch's forced target). Dry runs: 123 variables without an option, 124 with one group, 125 with both or
+with `--perf --draw-trace`, 126 with all three (the members are expanded by the DLL; measured by
+`verification/results/logging-tiers/dry_run_tiers.py`). Fixture case `seam-log-tiers` now compares three groups with their
+individuals (`LOG_TIERS_DRAW_TRACE` in `run_motion_output.py`, run on top of `X3M_PERF=1`).
+
+Volume of `--debug` after the second step (re-estimated from the measured run337 row sizes, the sum inferred;
+`verification/results/logging-tiers/debug_volume.py`): 8.0 KB per frame (7,968 B of per-frame rows, 73 B of 1 Hz
+telemetry at 60 fps, 7 B of windows), about 1.7 GB per hour at 60 fps; with `--perf` 9.4 KB per frame, about 2.0 GB per
+hour; F8 capture frames add their burst (about 31 KB per frame in the fixture). The 9.3 KB of section 4 summed every
+per-frame row of run337, the perf-only fog and shadow cost rows included. Buffer headroom: `--debug --perf` produces
+about 113 KB per 200 ms writer interval at 60 fps against the 2 MiB half of the 4 MiB buffer, a factor of 18.6 (inferred).
 
 **Gates.** The seven formerly ungated shadow/sun rows: `shadow_replay_depth` and `sun_shadow_apply_frame` on
 `X3M_SHADOW_TIMING` or the family cadence; `shadow_retention_frame`, `shadow_replay_candidates`, `shadow_replay_sun`,
@@ -467,8 +499,8 @@ run337, but a disk sync, an antivirus scan or a page-in on the render thread) is
   `verification/results/logging-tiers/compare_motion_counts.py` against `../launcher-defaults/motion-cases-2026-09-25.json`
   (inputs committed as `motion-cases-2026-09-26.json`). The runner pins `X3M_SHADOW_TIMING=1 X3M_SHADOW_ROWS=1
   X3M_CAMERA_LOG=300 X3M_FRAME_END_STRIDE=300` so every oracle reads the rows at their pre-tier cadence.
-- `seam-log-tiers` (new, 47 checks): the debug group and its 17 individual variables log the same 135 row names,
-  the perf group and its 7 individuals the same 121 (clocked rows excluded: none differed); the always tier without F8
+- `seam-log-tiers` (new, 47 checks; 57 since the second step of 2026-09-26, which added the `--draw-trace` pair: 131 row names in both, ten stamp-family mode/site rows beyond `--perf`, and the debug group 137 with `X3M_FRAME_PHASES`; measured): the debug group and its 17 individual variables log the same 135 row names,
+  the perf group and its 7 individuals the same 121 (unchanged by the second step; clocked rows excluded: none differed); the always tier without F8
   captures: 98 rows, 17,873 B for an 8-frame script, of which 69 rows / 12,363 B header before the first `frame_end` and
   28 rows / 5,421 B lifecycle events (Reset, release, destroy, resource identities, shadow refusals, the writer's park), no per-frame row, no
   telemetry row, no window; `log_open source=override previous=none` first in every run and `session_end exception=0` in every other run;

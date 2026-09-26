@@ -109,9 +109,9 @@ public:
     // bound in this very frame (the cards are the scene's last draws, so a cut
     // inside a fog sector keeps the latch); the weight still ramps down.
     void cut(std::uint64_t frame) noexcept { if (last_card_ != frame) seen_ = false; }
-    // Once per frame at the scene end. `everywhere` forces the target to 1.
-    float update(std::uint64_t frame, bool everywhere) noexcept {
-        const bool on = everywhere || (seen_ && frame >= last_card_ && frame - last_card_ <= fog_card_hold);
+    // Once per frame at the scene end.
+    float update(std::uint64_t frame) noexcept {
+        const bool on = seen_ && frame >= last_card_ && frame - last_card_ <= fog_card_hold;
         const std::uint64_t elapsed = primed_ && frame > last_update_ ? frame - last_update_ : 1;
         const float step = float(elapsed > fog_card_ramp ? fog_card_ramp : elapsed) / float(fog_card_ramp);
         weight_ = on ? (weight_ + step > 1.f ? 1.f : weight_ + step) : (weight_ - step < 0.f ? 0.f : weight_ - step);

@@ -108,7 +108,7 @@ bool initialize() {
     ErrorGuard error;
     if(initialized)return active.load(std::memory_order_acquire);
     initialized=true;
-    const bool wanted=log_tier::perf_flag(L"X3M_FRAME_PHASES"); // X3M_FRAME_PHASES=1 or X3M_PERF=1
+    const bool wanted=log_tier::perf_flag(L"X3M_FRAME_PHASES")||log_tier::debug()||log_tier::draw_trace(); // X3M_FRAME_PHASES=1, X3M_PERF=1, X3M_DEBUG=1 or X3M_DRAW_TRACE=1 (the stamp families need the frame boundary)
     if(!wanted)return false;
     const char* status="telemetry_off";
     if(telemetry::enabled()){

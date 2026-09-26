@@ -2081,3 +2081,5 @@ Reproduction: `python3 /tmp/x3-collision-fresh-mechanism-check.py` passes;
 [/tmp/x3-collision-fresh-mechanism.md](/tmp/x3-collision-fresh-mechanism.md) retains
 instruction boundaries, exact supported modes and the test contract. No new
 Wine execution, performance result or production patch is established here.
+
+**Launcher 2026-09-26:** `--collide-memo-verify` removed (user decision, developer options trimmed to four). `X3M_COLLIDE_MEMO_VERIFY` stays a DLL read for `collide_memo_fixture.cpp`; the launcher drops an inherited value.

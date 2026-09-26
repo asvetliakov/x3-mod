@@ -1,6 +1,7 @@
 """Actual fixed-state recorder: timing identity, lifecycle and bounded evidence,
-plus the two diagnostic launcher options that feed it (--game-phase-threshold-ms,
---telemetry-draw). No game, no Wine."""
+plus the launcher side of the variables that feed it: since 2026-09-26 --game-phases, --game-phase-threshold-ms and
+--telemetry-draw are removed and X3M_GAME_PHASES / X3M_TELEMETRY_DRAW are members of --draw-trace (the DLL expands X3M_DRAW_TRACE=1;
+the threshold stays at its 20 ms default unless a fixture sets it). No game, no Wine."""
 import json
 from pathlib import Path
 import subprocess
@@ -25,47 +26,22 @@ class DiagnosticLaunchOptions(unittest.TestCase):
         from verification.analysis.test_lod_scale_launch import LodScaleLaunchOption
         return LodScaleLaunchOption()
 
-    def test_segment_threshold_default_range_and_prerequisite(self):
+    def test_removed_options_and_draw_trace_membership(self):
         helper=self.helper()
         with tempfile.TemporaryDirectory() as directory:
-            code,output,error=helper.launch(directory,'--perf','--game-phases')
-            self.assertEqual(code,0,error)
-            self.assertEqual(json.loads(output)['env']['X3M_GAME_PHASE_THRESHOLD_MS'],'20')
-            code,output,error=helper.launch(directory,'--debug','--game-phases','--game-phase-threshold-ms','45')
-            self.assertEqual(code,0,error)
-            self.assertEqual(json.loads(output)['env']['X3M_GAME_PHASE_THRESHOLD_MS'],'45')
-            code,_,error=helper.launch(directory,'--perf','--game-phase-threshold-ms','30')
-            self.assertEqual(code,2)
-            self.assertIn('--game-phase-threshold-ms requires --game-phases',error)
-            code,_,error=helper.launch(directory,'--game-phases')
-            self.assertEqual(code,2)
-            self.assertIn('--game-phases requires --perf or --debug',error)
-            for value in ('0','10001'):
-                code,_,error=helper.launch(directory,'--perf','--game-phases','--game-phase-threshold-ms',value)
-                self.assertEqual(code,2,value)
-                self.assertIn('--game-phase-threshold-ms must be between 1 and 10000',error)
-            # The threshold travels with --game-phases (the default written explicitly), so an inherited value cannot
-            # change it; without --game-phases neither variable is sent.
-            code,output,error=helper.launch(directory,'--perf','--game-phases',inherited={'X3M_GAME_PHASE_THRESHOLD_MS':'500'})
-            self.assertEqual(code,0,error)
-            self.assertEqual(json.loads(output)['env']['X3M_GAME_PHASE_THRESHOLD_MS'],'20')
-            code,output,error=helper.launch(directory,'--perf',inherited={'X3M_GAME_PHASE_THRESHOLD_MS':'500','X3M_GAME_PHASES':'1'})
+            for args in (('--perf','--game-phases'),('--perf','--game-phase-threshold-ms','45'),('--perf','--telemetry-draw')):
+                code,_,error=helper.launch(directory,*args)
+                self.assertEqual(code,2,args)
+                self.assertIn('unrecognized arguments',error)
+            # --perf sends X3M_PERF only (the families are --draw-trace members, expanded by the DLL); an inherited value is dropped.
+            code,output,error=helper.launch(directory,'--perf',inherited={'X3M_GAME_PHASE_THRESHOLD_MS':'500','X3M_GAME_PHASES':'1','X3M_TELEMETRY_DRAW':'1'})
             self.assertEqual(code,0,error)
             env=json.loads(output)['env']
-            self.assertNotIn('X3M_GAME_PHASE_THRESHOLD_MS',env);self.assertNotIn('X3M_GAME_PHASES',env)
-
-    def test_telemetry_draw_requires_telemetry_and_resets_inherited_value(self):
-        helper=self.helper()
-        with tempfile.TemporaryDirectory() as directory:
-            code,_,error=helper.launch(directory,'--telemetry-draw')
-            self.assertEqual(code,2)
-            self.assertIn('--telemetry-draw requires --perf or --debug',error)
-            code,output,error=helper.launch(directory,'--perf','--telemetry-draw')
-            self.assertEqual(code,0,error)
-            self.assertEqual(json.loads(output)['env']['X3M_TELEMETRY_DRAW'],'1')
-            code,output,error=helper.launch(directory,'--perf',inherited={'X3M_TELEMETRY_DRAW':'1'})
-            self.assertEqual(code,0,error)
-            self.assertNotIn('X3M_TELEMETRY_DRAW',json.loads(output)['env'])
+            self.assertEqual(env['X3M_PERF'],'1')
+            for name in ('X3M_GAME_PHASE_THRESHOLD_MS','X3M_GAME_PHASES','X3M_TELEMETRY_DRAW'):
+                self.assertNotIn(name,env)
+        self.assertIn('const bool wanted=log_tier::draw_trace_flag(L"X3M_GAME_PHASES");',(ROOT/'src/proxy/game_phases.cpp').read_text())
+        self.assertIn('draw_active=log_tier::draw_trace_flag(L"X3M_TELEMETRY_DRAW");',(ROOT/'src/proxy/telemetry.cpp').read_text())
 
     def test_production_wiring_of_both_variables(self):
         source=(ROOT/'src/proxy/game_phases.cpp').read_text()

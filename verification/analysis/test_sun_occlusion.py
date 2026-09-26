@@ -530,10 +530,11 @@ class SunOcclusionLaunchOption(unittest.TestCase):
             self.assertEqual(self.sun_env(output), {'X3M_SUN_OCCLUSION': '1', 'X3M_SUN_OCCLUSION_CORE_F': '1', 'X3M_SUN_OCCLUSION_DEFAULT': '0'})
 
     def test_no_default_without_its_prerequisite_and_drops_inherited_variables(self):
-        # --no-sun-occlusion, no --motion-output, --submit-phases (never an error) and --vanilla: nothing sent, stale shell values dropped.
+        # --no-sun-occlusion, no --motion-output and --vanilla: nothing sent, stale shell values dropped (--submit-phases, which
+        # suppressed the default, was removed on 2026-09-26; X3M_SUBMIT_PHASES is fixture-only).
         with tempfile.TemporaryDirectory() as directory:
             for args in (('--no-sun-occlusion', *self.ROUTE), ('--ownership', '--object-trace', '--no-motion-output'),  # --motion-output: launcher default since 2026-09-25
-                         (*self.ROUTE, '--perf', '--submit-phases'), ('--vanilla',)):
+                         ('--vanilla',)):
                 code, output, error = self.launch(directory, *args, inherited={name: '1' for name in self.NAMES})
                 self.assertEqual(code, 0, (args, error))
                 self.assertEqual(self.sun_env(output), {}, args)
@@ -592,9 +593,9 @@ class SunOcclusionLaunchOption(unittest.TestCase):
 
     def test_refusals(self):
         with tempfile.TemporaryDirectory() as directory:
-            for args, needle in ((('--no-motion-output', '--sun-occlusion'), '--motion-output'), ((*self.ROUTE, '--no-sun-occlusion', '--sun-occlusion-radius', '0.02'), 'require --sun-occlusion'), ((*self.ROUTE, '--no-sun-occlusion', '--sun-occlusion-core-f', 'off'), 'require --sun-occlusion'), (('--ownership', '--no-motion-output', '--sun-occlusion-curve', '2'), 'require --sun-occlusion'), ((*self.ROUTE, '--perf', '--submit-phases', '--sun-occlusion-radius', '0.05'), 'require --sun-occlusion'), ((*self.ROUTE, '--sun-occlusion', '--no-sun-occlusion'), 'mutually exclusive'), ((*self.ROUTE, '--sun-occlusion', '--sun-occlusion-core-f', 'maybe'), 'invalid choice'),
+            for args, needle in ((('--no-motion-output', '--sun-occlusion'), '--motion-output'), ((*self.ROUTE, '--no-sun-occlusion', '--sun-occlusion-radius', '0.02'), 'require --sun-occlusion'), ((*self.ROUTE, '--no-sun-occlusion', '--sun-occlusion-core-f', 'off'), 'require --sun-occlusion'), (('--ownership', '--no-motion-output', '--sun-occlusion-curve', '2'), 'require --sun-occlusion'), ((*self.ROUTE, '--sun-occlusion', '--no-sun-occlusion'), 'mutually exclusive'), ((*self.ROUTE, '--sun-occlusion', '--sun-occlusion-core-f', 'maybe'), 'invalid choice'),
                                  ((*self.ROUTE, '--sun-occlusion', '--sun-occlusion-radius', '1.5'), 'out of range'), ((*self.ROUTE, '--sun-occlusion', '--sun-occlusion-radius', '0.001'), 'out of range'), ((*self.ROUTE, '--sun-occlusion', '--sun-occlusion-curve', '0.1'), 'out of range'),
-                                 ((*self.ROUTE, '--perf', '--submit-phases', '--sun-occlusion'), '--submit-phases')):
+                                 ((*self.ROUTE, '--perf', '--submit-phases', '--sun-occlusion'), 'unrecognized arguments')):
                 code, _, error = self.launch(directory, *args)
                 self.assertNotEqual(code, 0, args)
                 self.assertIn(needle, error, args)

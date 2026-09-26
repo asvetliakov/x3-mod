@@ -113,9 +113,10 @@ mask lane is possible (section 7).
   `--fog-dust-motes 0` is the opt-out (`0,4,128`, inherited tunables dropped): the DLL creates nothing, polls no
   key, and the transaction is byte-identical to the launch-off pass; without the stored range the motes stay off.
   SIZE 3 is below the 4 px minimum section 3 derives from the 3x3 clip; the user's eye accepted it (and 2).
-- Tunables read once with the look tuning, `X3M_FOG_MOTES_<NAME>`: RADIUS (200..5000, 1000), NEAR (5..200,
-  25), MAX_PX (SIZE..64, 8 since Run 70 B2, was 12), GAIN (0..8, 1), SOFT (0..0.1, 0.02), DRIFT (0..200, 20), SEED (integer, 1);
-  logged once as `volumetric_fog_motes_mode`.
+- Tunables: `X3M_FOG_MOTES_MAX_PX` (SIZE..64, 8 since Run 70 B2, was 12; the launcher sends 8) is the one read left.
+  **Baked 2026-09-26** (user decision; no fixture set them): RADIUS 1000, NEAR 25, GAIN 1, SOFT 0.02, DRIFT 20, SEED 1
+  (the `FogMoteTuning` defaults); their `X3M_FOG_MOTES_<NAME>` reads were removed and the launcher drops an inherited
+  value. All are logged once as `volumetric_fog_motes_mode`.
 - `volumetric_fog_frame` gains, with the option on: `motes=0|1` (drawn), `mote_count=N`, `mote_calls=<device
   calls of the stage>`, `mote_shift_px=<512 |delta| / R: the perpendicular displacement at the wrap radius
   this frame>` (superseded, see As built: H/2 x m11 in place of 512), `mote_streak=0|1` (previous basis valid: 0 on a cut, a Reset, a gap or |delta| > R),
@@ -225,7 +226,7 @@ the row to `platform-portability.md`.
 
 ## As built (2026-09-23)
 
-Sources: `src/renderer/fog_mote_math.h` (option triple, `X3M_FOG_MOTES_<NAME>` table, seed lattice),
+Sources: `src/renderer/fog_mote_math.h` (option triple, the `X3M_FOG_MOTES_MAX_PX` table, MAX_PX only since 2026-09-26, seed lattice),
 `src/fog/fog_dust_motes_vs.hlsl` and `fog_dust_motes_ps.hlsl` with the variants `_look_ps` (in-march
 visibility) and `_grid_ps` (`FOG_SHADOW_PASS`), compiled to `src/renderer/fog_dust_motes_{vertex,look,grid}_program_inc.h`;
 `FogPass` (`fog_pass.{h,cpp}`: resources in `density_resources`, `mote_constants`, the stage after the repair),

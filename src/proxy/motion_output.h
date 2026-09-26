@@ -1021,11 +1021,11 @@ public:
     // Volumetric sun fog (X3M_VOLUMETRIC_FOG=1; docs/architecture/volumetric-fog.md,
     // spatial family implementation): after sun apply, before resolve.
     // `strength` is density tuning S/.02; `anisotropy` is Henyey-Greenstein g;
-    // `everywhere` explicitly forces debug bluewell for unknown families; `timing`
+    // `timing`
     // logs one volumetric_fog_frame line per frame. Off: one branch per scene end
     // and one hash compare per pixel-shader bind are skipped entirely.
-    void configure_volumetric_fog(bool requested, float strength, float anisotropy, bool everywhere, bool timing, bool replace_cards = false) noexcept {
-        fog_requested_ = requested; fog_strength_ = strength; fog_anisotropy_ = anisotropy; fog_everywhere_ = everywhere; fog_timing_ = timing; fog_cards_replace_ = requested && replace_cards;
+    void configure_volumetric_fog(bool requested, float strength, float anisotropy, bool timing, bool replace_cards = false) noexcept {
+        fog_requested_ = requested; fog_strength_ = strength; fog_anisotropy_ = anisotropy; fog_timing_ = timing; fog_cards_replace_ = requested && replace_cards;
     }
     // X3M_VOLUMETRIC_FOG_RANGE=stored (fog-density-runtime-integration.md): the two-level
     // stored-density field out to 30-40 km instead of the family atlas. Off (legacy): one
@@ -2385,7 +2385,7 @@ private:
     renderer::FogSectorLatch fog_latch_{}; // observational only
     FogSectorFrame fog_sector_{};
     bool fog_families_checked_ = false; // the process-wide x3m/fog-families.bin load was requested by this device
-    bool fog_requested_ = false, fog_enabled_ = true, fog_everywhere_ = false, fog_timing_ = false, fog_disabled_ = false, fog_attach_failed_ = false, fog_sun_fallback_logged_ = false;
+    bool fog_requested_ = false, fog_enabled_ = true, fog_timing_ = false, fog_disabled_ = false, fog_attach_failed_ = false, fog_sun_fallback_logged_ = false;
     float fog_strength_ = renderer::fog_strength_default, fog_anisotropy_ = renderer::fog_anisotropy_default;
     unsigned fog_failures_ = 0, fog_logs_ = 0;
     std::uint64_t fog_frame_ = ~std::uint64_t(0), fog_applied_frames_ = 0;

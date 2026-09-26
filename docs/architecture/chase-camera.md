@@ -224,7 +224,7 @@ Defaults changed again on 2026-09-23 (user decision): distance scale 0.90 → 1.
 | `X3M_CHASE_POS_LAG_CLAMP` | `--chase-pos-lag-clamp` | 0.10 | [0, 1] | boom lag clamp as a fraction of the boom |
 | `X3M_CHASE_COMBAT_TIGHTNESS` | `--chase-combat-tightness` | 0 | [0, 1] | scales both time constants by (1 − tightness) while the cockpit reports a target lock (step 7a; field semantics unverified in game); the install line says `combat=off` at 0 and `combat=tracking_1e4_unverified` otherwise |
 | `X3M_CHASE_SCENE_FIX` | `--chase-scene-fix` | 0 | 0/1 | also re-express the cockpit-scene camera (A5) each applied frame |
-| `X3M_CHASE_MAX_DT` | – | 0.10 s | (0, 5] | dt clamp |
+| (`X3M_CHASE_MAX_DT`, removed 2026-09-26) | – | 0.10 s, baked | – | dt clamp; the environment read went with the section-5 cleanup of the launcher inventory (no fixture set it) |
 
 Invalid values fail closed (`status=invalid_tunables`, nothing patched); an
 over-long value (≥ 64 characters) is invalid too, an empty one counts as

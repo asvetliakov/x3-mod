@@ -414,8 +414,9 @@ int main(int argc,char** argv){std::setvbuf(stdout,nullptr,_IONBF,0);int exit=1;
             }
             if(fa.report.status==fast::Status::Ok)require(equal,"module output equals native D3DX");
             if(c.name=="fan-tilted-abc"){
-                // Dump writer/reader round trip on this mesh (the game's verify mode writes
-                // the same format); the replay path must then reproduce native D3DX.
+                // Dump writer/reader round trip on this mesh (the format of the in-game dumps
+                // written until 2026-09-26; the writer stays for this self-test); the replay
+                // path must then reproduce native D3DX.
                 require(adjacency_write_dump(L"mesh-adjacency-selftest.bin",mesh,c.epsilon,n.adjacency.data(),fa.adjacency.data(),0,0,0x027f,0x9fc0),"dump written");
                 Dump d;require(read_dump(L"mesh-adjacency-selftest.bin",d),"dump readable");
                 require(d.header.faces==c.face_count()&&d.header.vertices==c.vertex_count()&&d.header.stride==c.stride&&d.header.position_offset==c.position_offset&&d.header.declaration_count==2&&d.header.x87_control==0x027f&&d.header.mxcsr==0x9fc0,"dump header");

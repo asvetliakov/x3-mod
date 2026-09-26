@@ -329,14 +329,14 @@ over 90 frames both ways, so a card-free view, a gate jump or the first card doe
 A camera cut at the scene end (`counters_.cut`, the route's detector: displacement median or missing-key fraction over
 its bound, as a gate jump, a load or a view switch produce) ends the hold at once unless a card was bound in that
 same frame, so a clear sector sheds the medium in the 90-frame ramp instead of ~11 s; that the detector fires on
-every gate jump is inferred, not flown. `--volumetric-fog-everywhere` forces the target to 1. Limits: the rule lags a sector change by the ramp, and
+every gate jump is inferred, not flown. (`--volumetric-fog-everywhere`, which forced the target to 1, was removed on 2026-09-26.) Limits: the rule lags a sector change by the ramp, and
 a fog sector viewed for over 600 frames with no card bound loses the medium (not observed in run174: every
 frame bound at least one).
 
 **Options.** `--volumetric-fog [S]` (`X3M_VOLUMETRIC_FOG=1`, `X3M_VOLUMETRIC_FOG_STRENGTH`, `S = tau_max`,
 0..0.1, default 0.02, 0 = off; requires `--motion-output --taa --hdr --shadow-replay-depth
 --shadow-cascades`), `--volumetric-fog-anisotropy G` (0..0.9, default 0.3),
-`--volumetric-fog-everywhere`, `--volumetric-fog-timing` (one `volumetric_fog_frame` line per frame with
+`--volumetric-fog-everywhere` (removed 2026-09-26), `--volumetric-fog-timing` (part of `--perf` since 2026-09-26; one `volumetric_fog_frame` line per frame with
 `cpu_us` and `calls`; otherwise one line per change of the skip reason, at most 64). Hotkeys, polled only with
 the option: **Ctrl+Alt+F9** toggles the pass, **Ctrl+Alt+F10** steps the strength through
 0.005/0.01/0.02/0.03/0.05 (a launcher value between steps moves to the next above); Shift must be up, so
@@ -742,9 +742,9 @@ and earth (unresolved diffuse), unknown positive families, unreadable/mismatched
 records and absent current-frame authority preserve native cards and run no
 replacement field. Coverage is bounded by the stock asset inventory, not a
 promise for arbitrary mod families. Present's diagnostic fallback never
-authorizes next-frame suppression. `--volumetric-fog-everywhere` remains explicit
-debug forcing of bluewell when a valid view lacks a known family; normal mode
-never invents a profile. A sector identity change disarms replacement and requires a new matching
+authorizes next-frame suppression. The explicit debug forcing of bluewell
+(`--volumetric-fog-everywhere`) was removed on 2026-09-26; the runtime never
+invents a profile. A sector identity change disarms replacement and requires a new matching
 warmup even when the same family atlas can be reused.
 
 **Storage and preparation.** The expanded branch packages 14 sparse RCDATA

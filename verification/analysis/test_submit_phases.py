@@ -175,29 +175,21 @@ class WindowRowParser(unittest.TestCase):
 
 
 class SubmitPhasesLaunchOption(unittest.TestCase):
-    def test_launch_option_requires_telemetry_and_frame_phases(self):
-        # Since the logging tiers (2026-09-26) the frame phases and telemetry come with --perf; this family pairs with them.
+    def test_launch_option_removed_and_inherited_value_dropped(self):
+        # Since 2026-09-26 the launcher option is removed and X3M_SUBMIT_PHASES is fixture-only (run_submit_phase_cpu.py sets it): it
+        # claims the lens traversal call the sun-occlusion default patches, so it is not a member of --perf.
         from verification.analysis.test_lod_scale_launch import LodScaleLaunchOption
         helper = LodScaleLaunchOption()
         with tempfile.TemporaryDirectory() as directory:
-            for args in (('--submit-phases',), ('--submit-phases', '--debug')):
-                code, _, error = helper.launch(directory, *args)
-                self.assertEqual(code, 2, args)
-                self.assertIn('--submit-phases requires --perf', error)
-            code, output, error = helper.launch(directory, '--submit-phases', '--perf')
-            self.assertEqual(code, 0, error)
-            env = json.loads(output)['env']
-            self.assertEqual((env['X3M_SUBMIT_PHASES'], env['X3M_PERF']), ('1', '1'))
-            self.assertNotIn('X3M_FRAME_PHASES', env)  # the DLL's perf group turns the frame phases on
-            # Independent of the pass and residual groups, and coexists with them.
-            self.assertNotIn('X3M_PASS_PHASES', env); self.assertNotIn('X3M_RESIDUAL_PHASES', env)
-            code, output, error = helper.launch(directory, '--submit-phases', '--residual-phases', '--perf')
-            self.assertEqual(code, 0, error)
-            env = json.loads(output)['env']
-            self.assertEqual((env['X3M_SUBMIT_PHASES'], env['X3M_RESIDUAL_PHASES'], env['X3M_PASS_PHASES']), ('1', '1', '1'))
+            code, _, error = helper.launch(directory, '--perf', '--submit-phases')
+            self.assertEqual(code, 2)
+            self.assertIn('unrecognized arguments', error)
             code, output, error = helper.launch(directory, '--perf', inherited={'X3M_SUBMIT_PHASES': '1'})
             self.assertEqual(code, 0, error)
-            self.assertNotIn('X3M_SUBMIT_PHASES', json.loads(output)['env'])
+            env = json.loads(output)['env']
+            self.assertEqual(env['X3M_PERF'], '1')
+            self.assertNotIn('X3M_SUBMIT_PHASES', env)
+        self.assertNotIn('log_tier::', (ROOT / 'src/proxy/submit_phases.cpp').read_text())
 
 
 @unittest.skipUnless(probe.DEFAULT_EXE.is_file(), 'installed X3AP.exe unavailable')

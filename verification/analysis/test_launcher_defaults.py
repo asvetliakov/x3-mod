@@ -76,7 +76,7 @@ EXPECTED_EMPTY = {
     'X3M_TAA_THIN_REGION_EMISSIVE': '1', 'X3M_TAA_THIN_VOTE': 'on', 'X3M_TAA_THIN_VOTE_DEFAULT': '1',
     'X3M_TAA_UNMATCHED_STATIC': 'node', 'X3M_TERRAN_STATION_LOD': 'size',
     'X3M_VOICE_DMO_FALLBACK': '1', 'X3M_VOLUMETRIC_FOG': '1', 'X3M_VOLUMETRIC_FOG_CARDS': 'replace',
-    'X3M_VOLUMETRIC_FOG_EVERYWHERE': '0', 'X3M_VOLUMETRIC_FOG_RANGE': 'stored', 'X3M_VOLUMETRIC_FOG_STRENGTH': '0.02',
+    'X3M_VOLUMETRIC_FOG_RANGE': 'stored', 'X3M_VOLUMETRIC_FOG_STRENGTH': '0.02',
     'X3M_WINDOW_MONITOR_RECT': '1', 'X3M_WINDOW_MONITOR_RECT_DEFAULT': '1',
 }
 STAND_TELEMETRY = {'X3M_DEBUG': '1', 'X3M_PERF': '1'}
@@ -215,7 +215,8 @@ class LauncherDefaults(unittest.TestCase):
                              (('--no-shadow-cascades', '--shadow-caster-retention'), '--shadow-caster-retention requires --shadow-cascades'),
                              (('--no-volumetric-fog', '--volumetric-fog-range', 'stored'), 'require --volumetric-fog'),
                              (('--camera', 'vanilla', '--chase-view-restore'), '--camera chase'),
-                             (('--mesh-adjacency', 'verify'), '--mesh-adjacency verify requires --perf or --debug')):
+                             # verify left the launcher on 2026-09-26 (the fixture sets X3M_MESH_ADJACENCY=verify itself)
+                             (('--mesh-adjacency', 'verify'), "invalid choice: 'verify'")):
             with self.subTest(args=args):
                 code, _, error = self.launch(*args)
                 self.assertEqual(code, 2)

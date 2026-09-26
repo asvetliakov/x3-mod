@@ -191,11 +191,6 @@ void adjacency_note_fp(const ComputationalState& state){
     unsigned empty=0;if(adjacency_counters.fp_publication.compare_exchange_strong(empty,1,std::memory_order_acquire)){adjacency_counters.first_fp=state;adjacency_counters.fp_publication.store(2,std::memory_order_release);}
 }
 constexpr uint64_t adjacency_mismatch_line_limit=64;
-// X3M_MESH_ADJACENCY_DUMP=1: verify mode writes each mismatching mesh (bounded)
-// into the capture folder for offline replay (loading_trace.h, format).
-std::atomic<bool> adjacency_dump_requested{false};
-std::atomic<uint64_t> adjacency_dump_index{0};
-constexpr uint64_t adjacency_dump_limit=256;
 thread_local AdjacencyFn adjacency_thread_original=nullptr;
 struct AdjacencyCompute {
     bool computed=false,fault=false;HRESULT fault_hr=S_OK;AdjacencyFallback fallback=AdjacencyFallback::Input;
@@ -300,22 +295,6 @@ HRESULT WINAPI adjacency_fast_service(ID3DXMesh* mesh,FLOAT epsilon,DWORD* adjac
     return original?original(mesh,epsilon,adjacency):E_POINTER;
 }
 }
-// The dump folder is the capture folder next to this module (capture.cpp's
-// initialize_log creates the same directory); resolved here so that the
-// fixtures, which do not link capture.cpp, share the writer.
-static bool adjacency_dump_path(wchar_t* path,size_t capacity,uint64_t index){
-    HMODULE self=nullptr;
-    if(!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,reinterpret_cast<LPCWSTR>(&adjacency_dump_path),&self))return false;
-    wchar_t module[32768]{};const DWORD length=GetModuleFileNameW(self,module,32768);
-    if(!length||length>=32768)return false;
-    size_t cut=length;while(cut&&module[cut-1]!=L'\\'&&module[cut-1]!=L'/')--cut;
-    module[cut]=0;
-    const int written=_snwprintf(path,capacity,L"%sx3-modern-captures",module);
-    if(written<=0||size_t(written)>=capacity)return false;
-    CreateDirectoryW(path,nullptr);
-    const int full=_snwprintf(path,capacity,L"%sx3-modern-captures\\mesh-adjacency-%llu.bin",module,index);
-    return full>0&&size_t(full)<capacity;
-}
 bool adjacency_write_dump(const wchar_t* path,ID3DXMesh* mesh,FLOAT epsilon,const DWORD* native,const DWORD* module,uint64_t mismatches,DWORD first,DWORD x87_control,DWORD mxcsr){
     if(!path||!mesh||!native||!module)return false;
     const DWORD options=mesh->GetOptions(),vertices=mesh->GetNumVertices(),faces=mesh->GetNumFaces(),stride=mesh->GetNumBytesPerVertex();
@@ -380,14 +359,6 @@ HRESULT WINAPI adjacency_verify_service(ID3DXMesh* mesh,FLOAT epsilon,DWORD* adj
                 if(adjacency_counters.mismatch_lines.fetch_add(1,std::memory_order_relaxed)<adjacency_mismatch_line_limit)
                     log("mesh_adjacency verify faces=%lu vertices=%lu equal=0 mismatches=%llu first=%lu native=%08lx fast=%08lx native_us=%.3f fast_us=%.3f quantized=%u welded=%lu multi_candidates=%lu normal_selected=%lu degenerate_faces=%lu welded_degenerate_faces=%lu refused_welds=%lu repeated_neighbours=%lu",
                         faces,r.vertices,mismatches,DWORD(first),adjacency[first],scratch[first],double(native_ticks)*1e6/clock_frequency,double(r.ticks)*1e6/clock_frequency,unsigned(r.report.quantized),DWORD(r.report.welded),DWORD(r.report.multi_candidates),DWORD(r.report.normal_selected),DWORD(r.report.degenerate_faces),DWORD(r.report.welded_degenerate_faces),DWORD(r.report.refused_welds),DWORD(r.report.repeated_neighbours));
-                if(adjacency_dump_requested.load(std::memory_order_relaxed)){
-                    const uint64_t index=adjacency_dump_index.fetch_add(1,std::memory_order_relaxed);
-                    if(index<adjacency_dump_limit){
-                        wchar_t path[32768+64]{};
-                        const bool written=adjacency_dump_path(path,32768+64,index)&&adjacency_write_dump(path,mesh,epsilon,adjacency,scratch,mismatches,DWORD(first),fp.x87.control,fp.mxcsr);
-                        log("mesh_adjacency_dump index=%llu faces=%lu vertices=%lu written=%u path=mesh-adjacency-%llu.bin",index,faces,r.vertices,unsigned(written),index);
-                    }
-                }
             }
         }
         HeapFree(GetProcessHeap(),0,scratch);
@@ -1046,8 +1017,7 @@ bool install(HMODULE target) {
     }
     const AdjacencyMode requested_mode=adjacency_armed; // with telemetry every parsed mode arms
     adjacency_mode.store(requested_mode,std::memory_order_release);
-    wchar_t dump_setting[8]{};adjacency_dump_requested.store(GetEnvironmentVariableW(L"X3M_MESH_ADJACENCY_DUMP",dump_setting,8)==1&&dump_setting[0]==L'1',std::memory_order_relaxed);
-    log("mesh_adjacency mode=%s scope=hook_service equivalence=d3dx_rules+exact_position_equality fp_domain=pc53_nearest_masked_empty_mxcsr_1f80_or_9fc0 normal_gate=sse2_no_competing gate=public_systemmem_readonly+declaration_float3+no_attribute_table order=cache_lookup,compute,cache_store native_fallback=1 dump=%u rsqrt=%s math_table=%s normalize=%s",adjacency_mode_name(requested_mode),unsigned(adjacency_dump_requested.load(std::memory_order_relaxed)),adjacency_fast::rsqrt_implementation(),
+    log("mesh_adjacency mode=%s scope=hook_service equivalence=d3dx_rules+exact_position_equality fp_domain=pc53_nearest_masked_empty_mxcsr_1f80_or_9fc0 normal_gate=sse2_no_competing gate=public_systemmem_readonly+declaration_float3+no_attribute_table order=cache_lookup,compute,cache_store native_fallback=1 rsqrt=%s math_table=%s normalize=%s",adjacency_mode_name(requested_mode),adjacency_fast::rsqrt_implementation(),
         d3dx_math_table_name(d3dx_math_table()),d3dx_math_table()==D3dxMathTable::Sse2?"sse2":d3dx_math_table()==D3dxMathTable::Generic?"generic":"native_only");
     clock_frequency=frequency.QuadPart;
     mesh_observation_enabled.store(true,std::memory_order_release);
