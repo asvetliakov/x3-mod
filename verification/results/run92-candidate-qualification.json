@@ -1,19 +1,18 @@
 {
  "schema": 1,
  "candidate": {
-  "commit": "45b33f47",
-  "commit_full": "45b33f478c3d4a5b9abd77147b078a2a1c15cc48",
+  "commit": "335c9250",
+  "commit_full": "335c92501d3097f6056f5b55dc3a4ed70378c12f",
   "branch": "main (detached worktree)",
   "checkout": "/tmp/x3-run92-candidate/src",
   "source_clean": true,
-  "source_clean_note": "worktree re-added detached at 45b33f47 after git worktree remove --force of the 2b3c85e4 worktree and deletion of build/; verification/probe/build/ created first; git status --short --untracked-files=all empty before the build and after every step (save_restore.sh; rewritten: motion 2, route 0, temporal 2, gpusync 2, bloom 1, cursor 2, window 2, integration 11, dryrun 0)",
+  "source_clean_note": "worktree re-added detached at 335c9250 (git worktree remove --force of the 45b33f47 worktree; its build/ moved to attempt2/build for the byte comparison); verification/probe/build/ created first; git status --short --untracked-files=all empty before the build and after every step (save_restore.sh; rewritten: motion 44, sunshare 1, dryrun 0)",
   "source_clean_after": true,
   "dll": "/tmp/x3-run92-candidate/build/d3d9.dll",
-  "sha256": "ba68034683a63a638783fe670428d6c73fe5776f5146e8ece6927532ab4fa4fc",
+  "sha256": "f6c687cb3d154fc4677313506da81ca71e3eb4a7b8fc82c7fdc25fa7e4d8844a",
   "bytes": 57180234,
-  "embedded_marker": "X3M_SOURCE_COMMIT=45b33f478c3d4a5b9abd77147b078a2a1c15cc48",
-  "embedded_marker_check": "strings -a d3d9.dll | grep -c X3M_SOURCE_COMMIT=45b33f47... -> 1 (grep -c X3M_SOURCE_COMMIT= -> 1)",
-  "version_row": "strings: \"x3-modern-renderer version=0.4 schema=2 capture_start=%u capture_frames=%u pointer_bits=32\", identical to the Run91 DLL string",
+  "embedded_marker": "X3M_SOURCE_COMMIT=335c92501d3097f6056f5b55dc3a4ed70378c12f",
+  "embedded_marker_check": "strings -a d3d9.dll | grep X3M_SOURCE_COMMIT -> one line, X3M_SOURCE_COMMIT=335c92501d3097f6056f5b55dc3a4ed70378c12f",
   "configuration": "RelWithDebInfo",
   "toolchain": "cmake/mingw-i686.cmake",
   "toolchain_versions": {
@@ -26,13 +25,17 @@
    "cmake -S . -B /tmp/x3-run92-candidate/build -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DPython3_EXECUTABLE=/usr/bin/python3",
    "cmake --build /tmp/x3-run92-candidate/build -j4"
   ],
-  "build_seconds": 43,
+  "build_seconds": 44,
   "build_seconds_note": "configure + build, fresh build directory",
   "build_warnings": 0,
   "build_warnings_check": "grep -ci warning build.log -> 0",
-  "build_log_sha256": "908c063b4d7ea0997bbd32663856b8dcbd8af70ff613a9ca404cb87a7785ad3b",
+  "build_log_sha256": "429908753a4ab8671a69cc70772e9878f176610c7b10c2a20dce63606c61b49b",
   "dll_write_protected_after_build": true,
-  "supersedes": "Run92 attempt 1: 2b3c85e4, sha256 5b054a573310c55f4fe352596d2e2655c9753ed8d7cdd2b880a613f74be54d9e, NOT QUALIFIED (seam-taa-on, see incidents); Run91 25adddf8 (759c2ac7) stays installed",
+  "supersedes": [
+   "Run92 attempt 1: 2b3c85e4, DLL 5b054a573310c55f4fe352596d2e2655c9753ed8d7cdd2b880a613f74be54d9e, NOT QUALIFIED: motion output seam-taa-on failed (fixture reference resolve used temporal_pass.h Input::weight .9f, DLL kHistoryWeightDefault 0.85); fixed in 45b33f47",
+   "Run92 attempt 2: 45b33f47, DLL ba68034683a63a638783fe670428d6c73fe5776f5146e8ece6927532ab4fa4fc, NOT QUALIFIED (incomplete): build_motion_output.sh compiled capture.cpp without X3M_VERSION (dd931354), motion output and sun share live blocked; fixed in 335c9250; every other section passed and is carried here",
+   "Run91 25adddf8 (759c2ac7), installed"
+  ],
   "size_versus_run91": "57,280,486 -> 57,180,234 bytes (-100252)",
   "section_size_delta_vs_run91": {
    ".debug_abbrev": 2636,
@@ -46,9 +49,24 @@
    ".reloc": 4,
    ".text": 964
   },
-  "size_reading": ".text +964, .rdata +320, .reloc +4 (bolt_copy row + position_digest); .debug_line -105047 (clang-format shortened the line table); .data/.bss/.idata unchanged"
+  "size_reading": ".text +964, .rdata +320, .reloc +4 (bolt_copy row + position_digest); .debug_line -105047 (clang-format shortened the line table); .data/.bss/.idata unchanged",
+  "versus_attempt2_dll": {
+   "attempt2_sha256": "ba68034683a63a638783fe670428d6c73fe5776f5146e8ece6927532ab4fa4fc",
+   "section_sizes_equal": true,
+   "bytes_equal_length": true,
+   "differing_bytes": 83,
+   "accounted": {
+    "commit_marker_string": 38,
+    "bare_commit_string": 38,
+    "pe_timedatestamp": 2,
+    "pe_checksum": 3,
+    "export_directory_timedatestamp": 2
+   },
+   "reading": "the two 40-character commit strings (marker and bare copy, 38 differing characters each), the COFF TimeDateStamp, the optional-header CheckSum and the export directory TimeDateStamp; nothing else"
+  },
+  "version_row": "strings: \"x3-modern-renderer version=0.4 schema=2 capture_start=%u capture_frames=%u pointer_bits=32\", identical to Run91"
  },
- "scope": "Run91 + 759c2ac7..45b33f47: ac88d55f whole-tree clang-format (whitespace only; patch and bloom provenance records re-recorded in 0ff7d09b), d9a71f53 TAA history weight default 0.9 -> 0.85, b4a42145 + 2b3c85e4 bolt_copy capture diagnostic (seam-bolt-copy-hash), dd931354/5eed460e release tooling (CMake project version -> X3M_VERSION -> the x3-modern-renderer version= row, text unchanged \"0.4\"), 45b33f47 temporal_pass.h unset weight = kHistoryWeightDefault",
+ "scope": "Run91 + 759c2ac7..45b33f47: ac88d55f whole-tree clang-format (whitespace only; patch and bloom provenance records re-recorded in 0ff7d09b), d9a71f53 TAA history weight default 0.9 -> 0.85, b4a42145 + 2b3c85e4 bolt_copy capture diagnostic (seam-bolt-copy-hash), dd931354/5eed460e release tooling (CMake project version -> X3M_VERSION -> the x3-modern-renderer version= row, text unchanged \"0.4\"), 45b33f47 temporal_pass.h unset weight = kHistoryWeightDefault; 3d2ed9ae/335c9250: test pin of the temporal_pass.h weight and build_motion_output.sh -DX3M_VERSION from project(VERSION) (no production source change)",
  "changed_files_src": [
   "src/config/config_parse.h",
   "src/fog/fog_density_cache.cpp",
@@ -348,227 +366,265 @@
   "tools/config/schema.py",
   "tools/manage.py"
  ],
- "changed_files_command": "git diff --stat 759c2ac7..45b33f47 -- src/ -> 292 files changed, 47808 insertions(+), 24678 deletions(-)",
+ "changed_files_command": "git diff --stat 759c2ac7..335c9250 -- src/ -> 292 files changed, 47808 insertions(+), 24678 deletions(-)",
  "temporal_pass": {
-  "command": "cd /tmp/x3-run92-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run92-candidate/lock-timings-temporal.json python3 verification/probe/run_temporal_pass.py",
-  "why_run": "temporal_pass.h, resolve.h and the runner changed in code",
-  "result": "PASS",
-  "exit_code": 0,
-  "records_vs_committed": {},
-  "rewritten_files": 2,
-  "copies": "/tmp/x3-run92-candidate/results-temporal/",
-  "lock": {
-   "lock_wait_seconds": 2.999999999999531e-06,
-   "child_elapsed_seconds": 126.01622674999999,
-   "exit_code": 0
-  },
-  "pan12_5_rows": [
-   {
-    "program": "age",
-    "on": "0",
-    "weight": "0.850",
-    "e_ratio": "0.298207",
-    "ripple_rms": "0.014358",
-    "output_diff": "0.000000"
+  "reused": true,
+  "reason": "reused from the 45b33f47 attempt (Run92 attempt 2): production sources identical (git diff --stat 45b33f47 335c9250 -- src CMakeLists.txt empty), DLL differs by the commit marker only",
+  "attempt2_entry": {
+   "command": "cd /tmp/x3-run92-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run92-candidate/lock-timings-temporal.json python3 verification/probe/run_temporal_pass.py",
+   "why_run": "temporal_pass.h, resolve.h and the runner changed in code",
+   "result": "PASS",
+   "exit_code": 0,
+   "records_vs_committed": {},
+   "rewritten_files": 2,
+   "copies": "/tmp/x3-run92-candidate/results-temporal/",
+   "lock": {
+    "lock_wait_seconds": 2.999999999999531e-06,
+    "child_elapsed_seconds": 126.01622674999999,
+    "exit_code": 0
    },
-   {
-    "program": "age",
-    "on": "1",
-    "weight": "0.850",
-    "e_ratio": "0.298207",
-    "ripple_rms": "0.014358",
-    "output_diff": "0.000000"
-   },
-   {
-    "program": "far_camera",
-    "on": "0",
-    "weight": "0.850",
-    "e_ratio": "0.172619",
-    "ripple_rms": "0.008289",
-    "output_diff": "0.000000"
-   },
-   {
-    "program": "far_camera",
-    "on": "1",
-    "weight": "0.850",
-    "e_ratio": "0.172619",
-    "ripple_rms": "0.008289",
-    "output_diff": "0.000000"
-   }
-  ],
-  "pan_bounds": "age e_ratio 0.299 +- 0.01 and ripple_rms <= 0.0155 (runner assertion): 0.298207 / 0.014358, inside",
-  "versus_committed": "temporal-pass.txt not rewritten (byte-identical to the committed report); temporal-pass-summary.json: the only changed stable leaf is sources_before_build/src/renderer/temporal_pass.h (45b33f47), 53 volatile leaves (timings, paths, hashes), no row moved; temporal-lattice 584/90 = Run91 (committed file 598 predates the 16-tap removal)"
+   "pan12_5_rows": [
+    {
+     "program": "age",
+     "on": "0",
+     "weight": "0.850",
+     "e_ratio": "0.298207",
+     "ripple_rms": "0.014358",
+     "output_diff": "0.000000"
+    },
+    {
+     "program": "age",
+     "on": "1",
+     "weight": "0.850",
+     "e_ratio": "0.298207",
+     "ripple_rms": "0.014358",
+     "output_diff": "0.000000"
+    },
+    {
+     "program": "far_camera",
+     "on": "0",
+     "weight": "0.850",
+     "e_ratio": "0.172619",
+     "ripple_rms": "0.008289",
+     "output_diff": "0.000000"
+    },
+    {
+     "program": "far_camera",
+     "on": "1",
+     "weight": "0.850",
+     "e_ratio": "0.172619",
+     "ripple_rms": "0.008289",
+     "output_diff": "0.000000"
+    }
+   ],
+   "pan_bounds": "age e_ratio 0.299 +- 0.01 and ripple_rms <= 0.0155 (runner assertion): 0.298207 / 0.014358, inside",
+   "versus_committed": "temporal-pass.txt not rewritten (byte-identical to the committed report); temporal-pass-summary.json: the only changed stable leaf is sources_before_build/src/renderer/temporal_pass.h (45b33f47), 53 volatile leaves (timings, paths, hashes), no row moved; temporal-lattice 584/90 = Run91 (committed file 598 predates the 16-tap removal)"
+  }
  },
  "gpu_sync_timing": {
-  "command": "cd /tmp/x3-run92-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run92-candidate/lock-timings-gpusync.json python3 verification/probe/run_gpu_sync_timing.py --exe /tmp/x3-run92-candidate/build/gpu_sync_timing_fixture.exe",
-  "why_run": "CMake-built fixture; closure includes CMakeLists.txt and capture/motion sources",
-  "result": "PASS",
-  "exit_code": 0,
-  "records_vs_committed": {
-   "gpu-sync-timing.json": {
-    "committed": {
-     "passed": true,
-     "expected_checks": 30,
-     "exit_code": 0,
-     "result": 4,
-     "checks": 30,
-     "check_count": 30
+  "reused": true,
+  "reason": "reused from the 45b33f47 attempt (Run92 attempt 2): production sources identical (git diff --stat 45b33f47 335c9250 -- src CMakeLists.txt empty), DLL differs by the commit marker only",
+  "attempt2_entry": {
+   "command": "cd /tmp/x3-run92-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run92-candidate/lock-timings-gpusync.json python3 verification/probe/run_gpu_sync_timing.py --exe /tmp/x3-run92-candidate/build/gpu_sync_timing_fixture.exe",
+   "why_run": "CMake-built fixture; closure includes CMakeLists.txt and capture/motion sources",
+   "result": "PASS",
+   "exit_code": 0,
+   "records_vs_committed": {
+    "gpu-sync-timing.json": {
+     "committed": {
+      "passed": true,
+      "expected_checks": 30,
+      "exit_code": 0,
+      "result": 4,
+      "checks": 30,
+      "check_count": 30
+     },
+     "run92": {
+      "passed": true,
+      "expected_checks": 32,
+      "exit_code": 0,
+      "result": 4,
+      "checks": 32,
+      "check_count": 32
+     }
     },
-    "run92": {
+    "gpu-sync-timing.txt": {
+     "committed": [
+      "PASS phase=after_reset window=4 pass=present n=16 median_us=118 p90_us=474 wait_median_us=78 session_n=64 session_median_us=90 session_p90_us=204",
+      "RESULT checks=30 failures=0 path=measured PASS"
+     ],
+     "run92": [
+      "PASS phase=after_reset window=4 pass=taa_mask_y n=16 median_us=188 p90_us=197 wait_median_us=180 session_n=64 session_median_us=188 session_p90_us=204",
+      "RESULT checks=32 failures=0 path=measured PASS"
+     ]
+    }
+   },
+   "run91": {
+    "gpu-sync-timing.json": {
      "passed": true,
      "expected_checks": 32,
      "exit_code": 0,
      "result": 4,
      "checks": 32,
      "check_count": 32
-    }
-   },
-   "gpu-sync-timing.txt": {
-    "committed": [
-     "PASS phase=after_reset window=4 pass=present n=16 median_us=118 p90_us=474 wait_median_us=78 session_n=64 session_median_us=90 session_p90_us=204",
-     "RESULT checks=30 failures=0 path=measured PASS"
-    ],
-    "run92": [
-     "PASS phase=after_reset window=4 pass=taa_mask_y n=16 median_us=188 p90_us=197 wait_median_us=180 session_n=64 session_median_us=188 session_p90_us=204",
+    },
+    "gpu-sync-timing.txt": [
+     "PASS phase=after_reset window=4 pass=taa_mask_y n=16 median_us=187 p90_us=323 wait_median_us=179 session_n=64 session_median_us=188 session_p90_us=204",
      "RESULT checks=32 failures=0 path=measured PASS"
     ]
-   }
-  },
-  "run91": {
-   "gpu-sync-timing.json": {
-    "passed": true,
-    "expected_checks": 32,
-    "exit_code": 0,
-    "result": 4,
-    "checks": 32,
-    "check_count": 32
    },
-   "gpu-sync-timing.txt": [
-    "PASS phase=after_reset window=4 pass=taa_mask_y n=16 median_us=187 p90_us=323 wait_median_us=179 session_n=64 session_median_us=188 session_p90_us=204",
-    "RESULT checks=32 failures=0 path=measured PASS"
-   ]
-  },
-  "rewritten_files": 2,
-  "copies": "/tmp/x3-run92-candidate/results-gpusync/",
-  "lock": {
-   "lock_wait_seconds": 3.417000000002085e-06,
-   "child_elapsed_seconds": 2.308293333,
-   "exit_code": 0
-  },
-  "counts_equal_run91": true,
-  "reading": "32 checks = Run91 (committed file 30 predates Run91)"
+   "rewritten_files": 2,
+   "copies": "/tmp/x3-run92-candidate/results-gpusync/",
+   "lock": {
+    "lock_wait_seconds": 3.417000000002085e-06,
+    "child_elapsed_seconds": 2.308293333,
+    "exit_code": 0
+   },
+   "counts_equal_run91": true,
+   "reading": "32 checks = Run91 (committed file 30 predates Run91)"
+  }
  },
  "bloom_pass": {
-  "command": "cd /tmp/x3-run92-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run92-candidate/lock-timings-bloom.json python3 verification/probe/run_bloom_pass.py",
-  "why_run": "closure includes capture.cpp, motion_output.h, resolve.h",
-  "result": "PASS",
-  "exit_code": 0,
-  "records_vs_committed": {
-   "bloom-pass-summary.json": {
-    "committed": {
-     "passed": true,
-     "cases": 45,
-     "exit_code": 0,
-     "images": 45
-    },
-    "run92": {
+  "reused": true,
+  "reason": "reused from the 45b33f47 attempt (Run92 attempt 2): production sources identical (git diff --stat 45b33f47 335c9250 -- src CMakeLists.txt empty), DLL differs by the commit marker only",
+  "attempt2_entry": {
+   "command": "cd /tmp/x3-run92-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run92-candidate/lock-timings-bloom.json python3 verification/probe/run_bloom_pass.py",
+   "why_run": "closure includes capture.cpp, motion_output.h, resolve.h",
+   "result": "PASS",
+   "exit_code": 0,
+   "records_vs_committed": {
+    "bloom-pass-summary.json": {
+     "committed": {
+      "passed": true,
+      "cases": 45,
+      "exit_code": 0,
+      "images": 45
+     },
+     "run92": {
+      "passed": true,
+      "cases": 47,
+      "exit_code": 0,
+      "images": 47
+     }
+    }
+   },
+   "run91": {
+    "bloom-pass-summary.json": {
      "passed": true,
      "cases": 47,
      "exit_code": 0,
      "images": 47
     }
-   }
-  },
-  "run91": {
-   "bloom-pass-summary.json": {
-    "passed": true,
-    "cases": 47,
-    "exit_code": 0,
-    "images": 47
-   }
-  },
-  "rewritten_files": 1,
-  "copies": "/tmp/x3-run92-candidate/results-bloom/",
-  "lock": {
-   "lock_wait_seconds": 3.625000000000156e-06,
-   "child_elapsed_seconds": 7.667650375,
-   "exit_code": 0
-  },
-  "counts_equal_run91": true,
-  "reading": "47 cases = Run91 (committed 45)"
+   },
+   "rewritten_files": 1,
+   "copies": "/tmp/x3-run92-candidate/results-bloom/",
+   "lock": {
+    "lock_wait_seconds": 3.625000000000156e-06,
+    "child_elapsed_seconds": 7.667650375,
+    "exit_code": 0
+   },
+   "counts_equal_run91": true,
+   "reading": "47 cases = Run91 (committed 45)"
+  }
  },
  "cursor_reassert": {
-  "command": "cd /tmp/x3-run92-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run92-candidate/lock-timings-cursor.json python3 verification/probe/run_cursor_reassert.py --exe /tmp/x3-run92-candidate/build/cursor_reassert_fixture.exe",
-  "why_run": "CMake-built fixture; full-DLL closure changed",
-  "result": "PASS",
-  "exit_code": 0,
-  "records_vs_committed": {
-   "cursor-reassert.json": {
-    "committed": {
-     "passed": true,
-     "expected_checks": 42,
-     "exit_code": 0,
-     "result": 3,
-     "checks": 42,
-     "check_count": 42
+  "reused": true,
+  "reason": "reused from the 45b33f47 attempt (Run92 attempt 2): production sources identical (git diff --stat 45b33f47 335c9250 -- src CMakeLists.txt empty), DLL differs by the commit marker only",
+  "attempt2_entry": {
+   "command": "cd /tmp/x3-run92-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run92-candidate/lock-timings-cursor.json python3 verification/probe/run_cursor_reassert.py --exe /tmp/x3-run92-candidate/build/cursor_reassert_fixture.exe",
+   "why_run": "CMake-built fixture; full-DLL closure changed",
+   "result": "PASS",
+   "exit_code": 0,
+   "records_vs_committed": {
+    "cursor-reassert.json": {
+     "committed": {
+      "passed": true,
+      "expected_checks": 42,
+      "exit_code": 0,
+      "result": 3,
+      "checks": 42,
+      "check_count": 42
+     },
+     "run92": {
+      "passed": true,
+      "expected_checks": 41,
+      "exit_code": 0,
+      "result": 3,
+      "checks": 41,
+      "check_count": 41
+     }
     },
-    "run92": {
+    "cursor-reassert.txt": {
+     "committed": [
+      "RESULT checks=42 failed=0 PASS"
+     ],
+     "run92": [
+      "RESULT checks=41 failed=0 PASS"
+     ]
+    }
+   },
+   "run91": {
+    "cursor-reassert.json": {
      "passed": true,
      "expected_checks": 41,
      "exit_code": 0,
      "result": 3,
      "checks": 41,
      "check_count": 41
-    }
-   },
-   "cursor-reassert.txt": {
-    "committed": [
-     "RESULT checks=42 failed=0 PASS"
-    ],
-    "run92": [
+    },
+    "cursor-reassert.txt": [
      "RESULT checks=41 failed=0 PASS"
     ]
-   }
-  },
-  "run91": {
-   "cursor-reassert.json": {
-    "passed": true,
-    "expected_checks": 41,
-    "exit_code": 0,
-    "result": 3,
-    "checks": 41,
-    "check_count": 41
    },
-   "cursor-reassert.txt": [
-    "RESULT checks=41 failed=0 PASS"
-   ]
-  },
-  "rewritten_files": 2,
-  "copies": "/tmp/x3-run92-candidate/results-cursor/",
-  "lock": {
-   "lock_wait_seconds": 3.667000000002335e-06,
-   "child_elapsed_seconds": 2.4178671670000003,
-   "exit_code": 0
-  },
-  "counts_equal_run91": true,
-  "reading": "41 checks = Run91 (committed 42 predates da84d232)"
+   "rewritten_files": 2,
+   "copies": "/tmp/x3-run92-candidate/results-cursor/",
+   "lock": {
+    "lock_wait_seconds": 3.667000000002335e-06,
+    "child_elapsed_seconds": 2.4178671670000003,
+    "exit_code": 0
+   },
+   "counts_equal_run91": true,
+   "reading": "41 checks = Run91 (committed 42 predates da84d232)"
+  }
  },
  "window_mode": {
-  "command": "cd /tmp/x3-run92-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run92-candidate/lock-timings-window.json python3 verification/probe/run_window_mode.py --exe /tmp/x3-run92-candidate/build/window_mode_fixture.exe",
-  "why_run": "CMake-built fixture; full-DLL closure changed",
-  "result": "PASS",
-  "exit_code": 0,
-  "records_vs_committed": {
-   "window-mode.json": {
-    "committed": {
-     "passed": true,
-     "expected_checks": 19,
-     "exit_code": 0,
-     "result": 3,
-     "checks": 19,
-     "check_count": 19
+  "reused": true,
+  "reason": "reused from the 45b33f47 attempt (Run92 attempt 2): production sources identical (git diff --stat 45b33f47 335c9250 -- src CMakeLists.txt empty), DLL differs by the commit marker only",
+  "attempt2_entry": {
+   "command": "cd /tmp/x3-run92-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run92-candidate/lock-timings-window.json python3 verification/probe/run_window_mode.py --exe /tmp/x3-run92-candidate/build/window_mode_fixture.exe",
+   "why_run": "CMake-built fixture; full-DLL closure changed",
+   "result": "PASS",
+   "exit_code": 0,
+   "records_vs_committed": {
+    "window-mode.json": {
+     "committed": {
+      "passed": true,
+      "expected_checks": 19,
+      "exit_code": 0,
+      "result": 3,
+      "checks": 19,
+      "check_count": 19
+     },
+     "run92": {
+      "passed": true,
+      "expected_checks": 19,
+      "exit_code": 0,
+      "result": 3,
+      "checks": 19,
+      "check_count": 19
+     }
     },
-    "run92": {
+    "window-mode.txt": {
+     "committed": [
+      "RESULT checks=19 failed=0 PASS"
+     ],
+     "run92": [
+      "RESULT checks=19 failed=0 PASS"
+     ]
+    }
+   },
+   "run91": {
+    "window-mode.json": {
      "passed": true,
      "expected_checks": 19,
      "exit_code": 0,
@@ -577,122 +633,104 @@
      "check_count": 19
     }
    },
-   "window-mode.txt": {
-    "committed": [
-     "RESULT checks=19 failed=0 PASS"
-    ],
-    "run92": [
-     "RESULT checks=19 failed=0 PASS"
-    ]
-   }
-  },
-  "run91": {
-   "window-mode.json": {
-    "passed": true,
-    "expected_checks": 19,
-    "exit_code": 0,
-    "result": 3,
-    "checks": 19,
-    "check_count": 19
-   }
-  },
-  "rewritten_files": 2,
-  "copies": "/tmp/x3-run92-candidate/results-window/",
-  "lock": {
-   "lock_wait_seconds": 3.290999999999017e-06,
-   "child_elapsed_seconds": 3.581598583,
-   "exit_code": 0
-  },
-  "counts_equal_run91": true,
-  "reading": "19 = committed = Run91"
+   "rewritten_files": 2,
+   "copies": "/tmp/x3-run92-candidate/results-window/",
+   "lock": {
+    "lock_wait_seconds": 3.290999999999017e-06,
+    "child_elapsed_seconds": 3.581598583,
+    "exit_code": 0
+   },
+   "counts_equal_run91": true,
+   "reading": "19 = committed = Run91"
+  }
  },
  "loading_trace": {
   "reused": true,
-  "reason": "closure loading_trace: every file changed since 759c2ac7 is whitespace/comment-only (comment_only.py with the whitespace_only_check squash; 51 files)",
+  "reason": "closure loading_trace: every file changed since 759c2ac7 is whitespace/comment-only (comment_only.py with the whitespace_only_check squash; 51 files) (carried through the 45b33f47 attempt)",
   "run91_entry": {
    "result": "PASS"
   }
  },
  "crypt_cache": {
   "reused": true,
-  "reason": "closure crypt_cache: every file changed since 759c2ac7 is whitespace/comment-only (comment_only.py with the whitespace_only_check squash; 48 files)",
+  "reason": "closure crypt_cache: every file changed since 759c2ac7 is whitespace/comment-only (comment_only.py with the whitespace_only_check squash; 48 files) (carried through the 45b33f47 attempt)",
   "run91_entry": {
    "result": "PASS"
   }
  },
  "resource_reader": {
   "reused": true,
-  "reason": "closure resource_reader: every file changed since 759c2ac7 is whitespace/comment-only (comment_only.py with the whitespace_only_check squash; 29 files)",
+  "reason": "closure resource_reader: every file changed since 759c2ac7 is whitespace/comment-only (comment_only.py with the whitespace_only_check squash; 29 files) (carried through the 45b33f47 attempt)",
   "run91_entry": {
    "result": "PASS"
   }
  },
  "d3d9_exports": {
   "reused": true,
-  "reason": "closure d3d9_exports: every file changed since 759c2ac7 is whitespace/comment-only (comment_only.py with the whitespace_only_check squash; 47 files)",
+  "reason": "closure d3d9_exports: every file changed since 759c2ac7 is whitespace/comment-only (comment_only.py with the whitespace_only_check squash; 47 files) (carried through the 45b33f47 attempt)",
   "run91_entry": {
    "result": "PASS"
   }
  },
  "game_phase_cpu": {
   "reused": true,
-  "reason": "closure game_phase_cpu: every file changed since 759c2ac7 is whitespace/comment-only (comment_only.py with the whitespace_only_check squash; 48 files)",
+  "reason": "closure game_phase_cpu: every file changed since 759c2ac7 is whitespace/comment-only (comment_only.py with the whitespace_only_check squash; 48 files) (carried through the 45b33f47 attempt)",
   "run91_entry": {
    "result": "PASS"
   }
  },
  "cull_small_parts_fixture": {
   "reused": true,
-  "reason": "closure cull_small_parts: every file changed since 759c2ac7 is whitespace/comment-only (comment_only.py with the whitespace_only_check squash; 18 files)",
+  "reason": "closure cull_small_parts: every file changed since 759c2ac7 is whitespace/comment-only (comment_only.py with the whitespace_only_check squash; 18 files) (carried through the 45b33f47 attempt)",
   "run91_entry": {
    "result": "PASS"
   }
  },
  "cull_census": {
   "reused": true,
-  "reason": "closure cull_census: every file changed since 759c2ac7 is whitespace/comment-only (comment_only.py with the whitespace_only_check squash; 11 files)",
+  "reason": "closure cull_census: every file changed since 759c2ac7 is whitespace/comment-only (comment_only.py with the whitespace_only_check squash; 11 files) (carried through the 45b33f47 attempt)",
   "run91_entry": {
    "result": "PASS"
   }
  },
  "chase_fire": {
   "reused": true,
-  "reason": "closure chase_fire: every file changed since 759c2ac7 is whitespace/comment-only (comment_only.py with the whitespace_only_check squash; 20 files)",
+  "reason": "closure chase_fire: every file changed since 759c2ac7 is whitespace/comment-only (comment_only.py with the whitespace_only_check squash; 20 files) (carried through the 45b33f47 attempt)",
   "run91_entry": {
    "result": "PASS"
   }
  },
  "chase_transition_cpu": {
   "reused": true,
-  "reason": "closure chase_transition_cpu: every file changed since 759c2ac7 is whitespace/comment-only (comment_only.py with the whitespace_only_check squash; 27 files)",
+  "reason": "closure chase_transition_cpu: every file changed since 759c2ac7 is whitespace/comment-only (comment_only.py with the whitespace_only_check squash; 27 files) (carried through the 45b33f47 attempt)",
   "run91_entry": {
    "result": "PASS"
   }
  },
  "collide_query_phases": {
   "reused": true,
-  "reason": "closure collide_query_phases: every file changed since 759c2ac7 is whitespace/comment-only (comment_only.py with the whitespace_only_check squash; 35 files)",
+  "reason": "closure collide_query_phases: every file changed since 759c2ac7 is whitespace/comment-only (comment_only.py with the whitespace_only_check squash; 35 files) (carried through the 45b33f47 attempt)",
   "run91_entry": {
    "result": "PASS"
   }
  },
  "sun_occlusion": {
   "reused": true,
-  "reason": "closure sun_occlusion: every file changed since 759c2ac7 is whitespace/comment-only (comment_only.py with the whitespace_only_check squash; 20 files)",
+  "reason": "closure sun_occlusion: every file changed since 759c2ac7 is whitespace/comment-only (comment_only.py with the whitespace_only_check squash; 20 files) (carried through the 45b33f47 attempt)",
   "run91_entry": {
    "passed": true
   }
  },
  "ownership": {
   "reused": true,
-  "reason": "closure ownership: every file changed since 759c2ac7 is whitespace/comment-only (comment_only.py with the whitespace_only_check squash; 23 files)",
+  "reason": "closure ownership: every file changed since 759c2ac7 is whitespace/comment-only (comment_only.py with the whitespace_only_check squash; 23 files) (carried through the 45b33f47 attempt)",
   "run91_entry": {
    "result": "PASS"
   }
  },
  "ownership_admission": {
   "reused": true,
-  "reason": "closure ownership_admission: every file changed since 759c2ac7 is whitespace/comment-only (comment_only.py with the whitespace_only_check squash; 23 files)",
+  "reason": "closure ownership_admission: every file changed since 759c2ac7 is whitespace/comment-only (comment_only.py with the whitespace_only_check squash; 23 files) (carried through the 45b33f47 attempt)",
   "run91_entry": {
    "result": "PASS",
    "checks": 147
@@ -700,7 +738,7 @@
  },
  "execution_ownership": {
   "reused": true,
-  "reason": "closure execution_ownership: every file changed since 759c2ac7 is whitespace/comment-only (comment_only.py with the whitespace_only_check squash; 23 files)",
+  "reason": "closure execution_ownership: every file changed since 759c2ac7 is whitespace/comment-only (comment_only.py with the whitespace_only_check squash; 23 files) (carried through the 45b33f47 attempt)",
   "run91_entry": {
    "result": "PASS",
    "checks": 184
@@ -708,7 +746,7 @@
  },
  "fog_family_file_fixture": {
   "reused": true,
-  "reason": "closure fog_family_file_fixture: every file changed since 759c2ac7 is whitespace/comment-only (comment_only.py with the whitespace_only_check squash; 3 files)",
+  "reason": "closure fog_family_file_fixture: every file changed since 759c2ac7 is whitespace/comment-only (comment_only.py with the whitespace_only_check squash; 3 files) (carried through the 45b33f47 attempt)",
   "run91_entry": {
    "result": "PASS",
    "result_line": "PASS fog_family_file cases=68 compiled=14"
@@ -716,284 +754,348 @@
  },
  "fov_patch": {
   "reused": true,
-  "reason": "sources whitespace-only since 759c2ac7; the only code-classified closure file is the record itself, re-recorded on the formatted tree in 0ff7d09b (passed=True, check_count=268, exit_status=0, = Run91)",
+  "reason": "sources whitespace-only since 759c2ac7; the only code-classified closure file is the record itself, re-recorded on the formatted tree in 0ff7d09b (passed=True, check_count=268, exit_status=0, = Run91) (carried through the 45b33f47 attempt)",
   "run91_entry": {
    "result": "PASS"
   }
  },
  "sun_flare_fix": {
   "reused": true,
-  "reason": "sources whitespace-only since 759c2ac7; the only code-classified closure file is the record itself, re-recorded on the formatted tree in 0ff7d09b (passed=True, check_count=79, exit_status=0, = Run91)",
+  "reason": "sources whitespace-only since 759c2ac7; the only code-classified closure file is the record itself, re-recorded on the formatted tree in 0ff7d09b (passed=True, check_count=79, exit_status=0, = Run91) (carried through the 45b33f47 attempt)",
   "run91_entry": {
    "result": "PASS"
   }
  },
  "lod_occlusion_patch": {
   "reused": true,
-  "reason": "sources whitespace-only since 759c2ac7; the only code-classified closure file is the record itself, re-recorded on the formatted tree in 0ff7d09b (passed=True, check_count=108, exit_status=0, = Run91)",
+  "reason": "sources whitespace-only since 759c2ac7; the only code-classified closure file is the record itself, re-recorded on the formatted tree in 0ff7d09b (passed=True, check_count=108, exit_status=0, = Run91) (carried through the 45b33f47 attempt)",
   "run91_entry": {
    "result": "PASS"
   }
  },
  "terran_lod_patch": {
   "reused": true,
-  "reason": "sources whitespace-only since 759c2ac7; the only code-classified closure file is the record itself, re-recorded on the formatted tree in 0ff7d09b (passed=True, check_count=92, exit_status=0, = Run91)",
+  "reason": "sources whitespace-only since 759c2ac7; the only code-classified closure file is the record itself, re-recorded on the formatted tree in 0ff7d09b (passed=True, check_count=92, exit_status=0, = Run91) (carried through the 45b33f47 attempt)",
   "run91_entry": {
    "result": "PASS"
   }
  },
  "motion_output": {
   "command": "cd /tmp/x3-run92-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run92-candidate/lock-timings-motion.json python3 verification/probe/run_motion_output.py",
-  "status": "BLOCKED",
-  "passed": false,
-  "exit_code": 1,
-  "error": "CalledProcessError(1, ['sh', 'verification/probe/build_motion_output.sh'])",
-  "reason": "BLOCKED: verification/probe/build_motion_output.sh compiles src/proxy/capture.cpp without X3M_VERSION, which dd931354 made mandatory (capture.cpp:88 #error \"X3M_VERSION is set by CMakeLists.txt from project(VERSION)\"); the runner stops in its fixture build before any case",
-  "build_log": "/tmp/x3-run92-candidate/results-motion/verification/results/bottle-X3/motion-output-build.log (lines 146-150: #error X3M_VERSION, then expected ')' before X3M_VERSION at capture.cpp:5086)",
-  "fix_check": "host compile of the build script's capture.cpp line with -DX3M_VERSION=\"0.4\" added: exit 0 (scratch object, no repo edit)",
-  "attempt1_evidence": {
-   "commit": "2b3c85e4",
-   "seam-taa-on": "FAIL (reference 0.9 vs DLL 0.85), 164 checks with X3M_TAA_HISTORY_WEIGHT=0.9",
-   "seam-bolt-copy-hash": "PASS, 6 rows equal to verification/results/bolt-copy-hash/seam-bolt-copy-hash.json",
-   "cases_before_failure": "21 at committed counts",
-   "outputs": "/tmp/x3-run92-candidate/attempt1/"
+  "why_run": "capture.cpp, motion_output.*, bolt_footprint_core.h, resolve.h, temporal_pass.h, the runner and build_motion_output.sh changed",
+  "corpus": "/tmp/x3-shader-sweep/programs present, not modified",
+  "status": "PASS",
+  "passed": true,
+  "cases": 231,
+  "case_lines_in_output": 247,
+  "case_lines_nonzero_exit": 0,
+  "checks": 345912,
+  "seam_taa_on_checks": 164,
+  "per_case": {
+   "command": "python3 /tmp/x3-run92-candidate/motion_cases.py /tmp/x3-run92-candidate/motion-summary-run92.json",
+   "output": "/tmp/x3-run92-candidate/motion-cases-vs-committed.json",
+   "vs_committed_config_2026_09_26": {
+    "cases": [
+     230,
+     231
+    ],
+    "checks": [
+     345911,
+     345912
+    ],
+    "missing": [],
+    "extra": [],
+    "added_without_committed_count": {
+     "seam-bolt-copy-hash": 1
+    },
+    "differing": {}
+   },
+   "vs_run91": {
+    "cases": [
+     230,
+     231
+    ],
+    "checks": [
+     345911,
+     345912
+    ],
+    "deleted": {},
+    "added": {
+     "seam-bolt-copy-hash": 1
+    },
+    "differing_common": {}
+   },
+   "violations": [],
+   "reading": "all 230 committed cases at their committed counts (verification/results/config-file/motion-cases-config-2026-09-26.json, 345,911 checks) incl. seam-taa-on 164; versus Run91 only seam-bolt-copy-hash added (summary checks field 1: the validator result), nothing deleted or moved"
   },
+  "bolt_copy": {
+   "line": "seam-bolt-copy-hash: exit=0 rows=6 hashes=0c7d75b318c771ca,0c7d75b318c771ca,e24d919047c79424,fc925f9ce05341f8,46f51ef654f27972,none",
+   "rows_file": "verification/results/bolt-copy-hash/seam-bolt-copy-hash.json rewritten by the runner byte-identical to the committed file (absent from git status after the run; saved copy /tmp/x3-run92-candidate/results-motion/ not needed)"
+  },
+  "rewritten_files": 44,
+  "copies": "/tmp/x3-run92-candidate/results-motion/, /tmp/x3-run92-candidate/motion-summary-run92.json",
   "lock": {
-   "lock_wait_seconds": 3.167000000001835e-06,
-   "child_elapsed_seconds": 56.497679167,
-   "exit_code": 1
+   "lock_wait_seconds": 3.875000000000406e-06,
+   "child_elapsed_seconds": 581.3487353329999,
+   "exit_code": 0
   }
  },
  "sun_share_live": {
-  "status": "BLOCKED",
-  "reason": "uses the motion runner's fresh seam DLL (verification/probe/build/motion-output-seam/d3d9.dll), which the failed build did not produce; BLOCKED: verification/probe/build_motion_output.sh compiles src/proxy/capture.cpp without X3M_VERSION, which dd931354 made mandatory (capture.cpp:88 #error \"X3M_VERSION is set by CMakeLists.txt from project(VERSION)\"); the runner stops in its fixture build before any case"
+  "command": "cd /tmp/x3-run92-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run92-candidate/lock-timings-sunshare.json python3 verification/probe/run_sun_share_live.py --fixture verification/probe/build/motion_output_fixture.exe --dll verification/probe/build/motion-output-seam/d3d9.dll",
+  "why_run": "capture.cpp / motion_output.* closure changed; fixture = the motion runner's fresh build at 335c9250",
+  "passed": true,
+  "cases": 25,
+  "case_names_equal_run91": true,
+  "run91": "25 cases passed=True",
+  "copies": "/tmp/x3-run92-candidate/results-sunshare/",
+  "lock": {
+   "lock_wait_seconds": 3.7079999999981017e-06,
+   "child_elapsed_seconds": 46.194865708,
+   "exit_code": 0
+  }
  },
  "fog_route_bridge": {
-  "commands": [
-   "python3 verification/probe/fog_route_bridge_build.py --production-root /tmp/x3-run92-candidate/src --spatial-root /tmp/x3-run92-candidate/src --asset-data /tmp/x3-run92-candidate/build/generated/fog_field --output /tmp/x3-run92-candidate/route/build",
-   "python3 verification/probe/fog_route_bridge_build.py --baseline --production-root /tmp/x3-run92-candidate/baseline-6f16dbf6 --spatial-root /tmp/x3-run92-candidate/baseline-6f16dbf6 --asset-data /tmp/x3-run92-candidate/build/generated/fog_field --output /tmp/x3-run92-candidate/route/baseline-build",
-   "python3 verification/probe/fog_route_bridge_run.py build-exit --output /tmp/x3-run92-candidate/route",
-   "cd /tmp/x3-run92-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run92-candidate/lock-timings-route.json python3 verification/probe/fog_route_bridge_run.py run --output /tmp/x3-run92-candidate/route --cases /tmp/x3-fog-family-gpu-inputs-final/cases.txt",
-   "python3 verification/probe/fog_route_bridge_run.py check --output /tmp/x3-run92-candidate/route --summary /tmp/x3-run92-candidate/route/summary.json"
-  ],
-  "why_run": "brief (closure changed only by the whitespace-only fog_pass.cpp)",
-  "result": "PASS",
-  "result_line": "PASS bridge_checks=27947 exit_checks=4",
-  "baseline_tree": "/tmp/x3-run92-candidate/baseline-6f16dbf6 (detached worktree at 6f16dbf6, recreated: /tmp/x3-run76-candidate/baseline-6f16dbf6 was gone)",
-  "per_name_vs_run91": {
-   "command": "python3 verification/results/run70-candidate-audit.py bridge /tmp/x3-run91-candidate/route/bridge.log /tmp/x3-run92-candidate/route/bridge.log",
-   "output": "/tmp/x3-run92-candidate/route-bridge-names.json",
-   "checks": [
-    31301,
-    27947
+  "reused": true,
+  "reason": "reused from the 45b33f47 attempt (Run92 attempt 2): production sources identical (git diff --stat 45b33f47 335c9250 -- src CMakeLists.txt empty), DLL differs by the commit marker only",
+  "attempt2_entry": {
+   "commands": [
+    "python3 verification/probe/fog_route_bridge_build.py --production-root /tmp/x3-run92-candidate/src --spatial-root /tmp/x3-run92-candidate/src --asset-data /tmp/x3-run92-candidate/build/generated/fog_field --output /tmp/x3-run92-candidate/route/build",
+    "python3 verification/probe/fog_route_bridge_build.py --baseline --production-root /tmp/x3-run92-candidate/baseline-6f16dbf6 --spatial-root /tmp/x3-run92-candidate/baseline-6f16dbf6 --asset-data /tmp/x3-run92-candidate/build/generated/fog_field --output /tmp/x3-run92-candidate/route/baseline-build",
+    "python3 verification/probe/fog_route_bridge_run.py build-exit --output /tmp/x3-run92-candidate/route",
+    "cd /tmp/x3-run92-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run92-candidate/lock-timings-route.json python3 verification/probe/fog_route_bridge_run.py run --output /tmp/x3-run92-candidate/route --cases /tmp/x3-fog-family-gpu-inputs-final/cases.txt",
+    "python3 verification/probe/fog_route_bridge_run.py check --output /tmp/x3-run92-candidate/route --summary /tmp/x3-run92-candidate/route/summary.json"
    ],
-   "names": [
-    95,
-    95
-   ],
-   "only_run91": 0,
-   "only_run92": 0,
-   "count_changed": {
-    "native_card_LastError_preserved": [
-     5184,
-     4625
+   "why_run": "brief (closure changed only by the whitespace-only fog_pass.cpp)",
+   "result": "PASS",
+   "result_line": "PASS bridge_checks=27947 exit_checks=4",
+   "baseline_tree": "/tmp/x3-run92-candidate/baseline-6f16dbf6 (detached worktree at 6f16dbf6, recreated: /tmp/x3-run76-candidate/baseline-6f16dbf6 was gone)",
+   "per_name_vs_run91": {
+    "command": "python3 verification/results/run70-candidate-audit.py bridge /tmp/x3-run91-candidate/route/bridge.log /tmp/x3-run92-candidate/route/bridge.log",
+    "output": "/tmp/x3-run92-candidate/route-bridge-names.json",
+    "checks": [
+     31301,
+     27947
     ],
-    "native_card_forward_once": [
-     5184,
-     4625
+    "names": [
+     95,
+     95
     ],
-    "once_only_hook_fallback_guard": [
-     5182,
-     4623
-    ],
-    "one_fog_transaction_maximum": [
-     5182,
-     4623
-    ],
-    "route_RT1_RT2_bytes": [
-     5182,
-     4623
-    ],
-    "route_pass_state_restored": [
-     5182,
-     4623
-    ]
+    "only_run91": 0,
+    "only_run92": 0,
+    "count_changed": {
+     "native_card_LastError_preserved": [
+      5184,
+      4625
+     ],
+     "native_card_forward_once": [
+      5184,
+      4625
+     ],
+     "once_only_hook_fallback_guard": [
+      5182,
+      4623
+     ],
+     "one_fog_transaction_maximum": [
+      5182,
+      4623
+     ],
+     "route_RT1_RT2_bytes": [
+      5182,
+      4623
+     ],
+     "route_pass_state_restored": [
+      5182,
+      4623
+     ]
+    }
+   },
+   "gate": "PASS + 95 names + no FAIL row (grep -c FAIL route/bridge.log -> 0)",
+   "reading": "95 names = Run91; the six per-frame names 5,182-5,184 -> 4,623-4,625 (timing-dependent per-frame count); exit_checks 4",
+   "lock": {
+    "lock_wait_seconds": 4.332999999998727e-06,
+    "child_elapsed_seconds": 80.010589833,
+    "exit_code": 0
    }
-  },
-  "gate": "PASS + 95 names + no FAIL row (grep -c FAIL route/bridge.log -> 0)",
-  "reading": "95 names = Run91; the six per-frame names 5,182-5,184 -> 4,623-4,625 (timing-dependent per-frame count); exit_checks 4",
-  "lock": {
-   "lock_wait_seconds": 4.332999999998727e-06,
-   "child_elapsed_seconds": 80.010589833,
-   "exit_code": 0
   }
  },
  "fog_pass": {
   "reused": true,
-  "reason": "closure fog_pass (stored-density fog shader fixture): every changed file whitespace/comment-only; not rerun against /tmp/x3-run90-candidate/fogref",
+  "reason": "closure fog_pass (stored-density fog shader fixture): every changed file whitespace/comment-only; not rerun against /tmp/x3-run90-candidate/fogref (carried through the 45b33f47 attempt)",
   "run91_entry": {
    "result": "PASS"
   }
  },
  "ownership_integration": {
-  "command": "cd /tmp/x3-run92-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run92-candidate/lock-timings-integration.json python3 verification/probe/run_ownership_integration.py",
-  "verifier": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/verify_ownership_integration.py (host) -> exit 0",
-  "why_run": "the runner fresh-builds a Release d3d9.dll of the whole tree through CMake (every changed production source)",
-  "result": "PASS",
-  "cases_total": 26,
-  "records_vs_committed": {
-   "ownership-integration-admission_native-smoke.txt": {
-    "committed": [
-     "SMOKE RESULT: 0 failures"
-    ],
-    "run92": [
-     "SMOKE RESULT: 0 failures"
-    ]
-   },
-   "ownership-integration-admission_on-smoke.txt": {
-    "committed": [
-     "SMOKE RESULT: 0 failures"
-    ],
-    "run92": [
-     "SMOKE RESULT: 0 failures"
-    ]
-   },
-   "ownership-integration-build.json": {
-    "committed": {
-     "result": "PASS",
-     "cases": 26
-    },
-    "run92": {
-     "result": "PASS",
-     "cases": 26
-    }
-   },
-   "ownership-integration-build.log": {
-    "committed": [],
-    "run92": [
-     "  498 |     const HRESULT size = vs ? vs->GetFunction(nullptr, &bytes) : ps->GetFunction(nullptr, &bytes);",
-     "  509 |     const HRESULT read = vs ? vs->GetFunction(out.data(), &bytes) : ps->GetFunction(out.data(), &bytes);"
-    ]
-   },
-   "ownership-integration-depth_only-smoke.txt": {
-    "committed": [
-     "SMOKE RESULT: 0 failures"
-    ],
-    "run92": [
-     "SMOKE RESULT: 0 failures"
-    ]
-   },
-   "ownership-integration-finite_on-smoke.txt": {
-    "committed": [
-     "SMOKE RESULT: 0 failures"
-    ],
-    "run92": [
-     "SMOKE RESULT: 0 failures"
-    ]
-   },
-   "ownership-integration-object_requested-smoke.txt": {
-    "committed": [
-     "SMOKE RESULT: 0 failures"
-    ],
-    "run92": [
-     "SMOKE RESULT: 0 failures"
-    ]
-   },
-   "ownership-integration-off-smoke.txt": {
-    "committed": [
-     "SMOKE RESULT: 0 failures"
-    ],
-    "run92": [
-     "SMOKE RESULT: 0 failures"
-    ]
-   },
-   "ownership-integration-on-smoke.txt": {
-    "committed": [
-     "SMOKE RESULT: 0 failures"
-    ],
-    "run92": [
-     "SMOKE RESULT: 0 failures"
-    ]
-   },
-   "ownership-integration-scene_only-smoke.txt": {
-    "committed": [
-     "SMOKE RESULT: 0 failures"
-    ],
-    "run92": [
-     "SMOKE RESULT: 0 failures"
-    ]
-   },
-   "ownership-integration-verification.json": {
-    "committed": {
-     "result": "PASS",
-     "cases": 26
-    },
-    "run92": {
-     "result": "PASS",
-     "cases": 26
-    }
-   }
-  },
-  "run91": {
+  "reused": true,
+  "reason": "reused from the 45b33f47 attempt (Run92 attempt 2): production sources identical (git diff --stat 45b33f47 335c9250 -- src CMakeLists.txt empty), DLL differs by the commit marker only",
+  "attempt2_entry": {
+   "command": "cd /tmp/x3-run92-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run92-candidate/lock-timings-integration.json python3 verification/probe/run_ownership_integration.py",
+   "verifier": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/verify_ownership_integration.py (host) -> exit 0",
+   "why_run": "the runner fresh-builds a Release d3d9.dll of the whole tree through CMake (every changed production source)",
    "result": "PASS",
-   "cases_total": 26
-  },
-  "rewritten_files": 11,
-  "copies": "/tmp/x3-run92-candidate/results-integration/",
-  "lock": {
-   "lock_wait_seconds": 2.8750000000028753e-06,
-   "child_elapsed_seconds": 135.446807,
-   "exit_code": 0
+   "cases_total": 26,
+   "records_vs_committed": {
+    "ownership-integration-admission_native-smoke.txt": {
+     "committed": [
+      "SMOKE RESULT: 0 failures"
+     ],
+     "run92": [
+      "SMOKE RESULT: 0 failures"
+     ]
+    },
+    "ownership-integration-admission_on-smoke.txt": {
+     "committed": [
+      "SMOKE RESULT: 0 failures"
+     ],
+     "run92": [
+      "SMOKE RESULT: 0 failures"
+     ]
+    },
+    "ownership-integration-build.json": {
+     "committed": {
+      "result": "PASS",
+      "cases": 26
+     },
+     "run92": {
+      "result": "PASS",
+      "cases": 26
+     }
+    },
+    "ownership-integration-build.log": {
+     "committed": [],
+     "run92": [
+      "  498 |     const HRESULT size = vs ? vs->GetFunction(nullptr, &bytes) : ps->GetFunction(nullptr, &bytes);",
+      "  509 |     const HRESULT read = vs ? vs->GetFunction(out.data(), &bytes) : ps->GetFunction(out.data(), &bytes);"
+     ]
+    },
+    "ownership-integration-depth_only-smoke.txt": {
+     "committed": [
+      "SMOKE RESULT: 0 failures"
+     ],
+     "run92": [
+      "SMOKE RESULT: 0 failures"
+     ]
+    },
+    "ownership-integration-finite_on-smoke.txt": {
+     "committed": [
+      "SMOKE RESULT: 0 failures"
+     ],
+     "run92": [
+      "SMOKE RESULT: 0 failures"
+     ]
+    },
+    "ownership-integration-object_requested-smoke.txt": {
+     "committed": [
+      "SMOKE RESULT: 0 failures"
+     ],
+     "run92": [
+      "SMOKE RESULT: 0 failures"
+     ]
+    },
+    "ownership-integration-off-smoke.txt": {
+     "committed": [
+      "SMOKE RESULT: 0 failures"
+     ],
+     "run92": [
+      "SMOKE RESULT: 0 failures"
+     ]
+    },
+    "ownership-integration-on-smoke.txt": {
+     "committed": [
+      "SMOKE RESULT: 0 failures"
+     ],
+     "run92": [
+      "SMOKE RESULT: 0 failures"
+     ]
+    },
+    "ownership-integration-scene_only-smoke.txt": {
+     "committed": [
+      "SMOKE RESULT: 0 failures"
+     ],
+     "run92": [
+      "SMOKE RESULT: 0 failures"
+     ]
+    },
+    "ownership-integration-verification.json": {
+     "committed": {
+      "result": "PASS",
+      "cases": 26
+     },
+     "run92": {
+      "result": "PASS",
+      "cases": 26
+     }
+    }
+   },
+   "run91": {
+    "result": "PASS",
+    "cases_total": 26
+   },
+   "rewritten_files": 11,
+   "copies": "/tmp/x3-run92-candidate/results-integration/",
+   "lock": {
+    "lock_wait_seconds": 2.8750000000028753e-06,
+    "child_elapsed_seconds": 135.446807,
+    "exit_code": 0
+   }
   }
  },
  "ownership_integration_fallback": {
-  "command": "cd /tmp/x3-run92-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run92-candidate/lock-timings-fallback.json python3 verification/probe/run_ownership_integration_fallback.py",
-  "result": "NOT RUN (runner refused before Wine)",
-  "exit_code": 1,
-  "reason": "AssertionError: Build all current production components first",
-  "reading": "the Run86 harness defect (production_link_inputs misses fog_field_assets.cpp) still refuses, as at Run89-Run91",
-  "lock": {
-   "lock_wait_seconds": 3.2090000000005448e-06,
-   "child_elapsed_seconds": 0.15747424999999998,
-   "exit_code": 1
+  "reused": true,
+  "reason": "reused from the 45b33f47 attempt (Run92 attempt 2): production sources identical (git diff --stat 45b33f47 335c9250 -- src CMakeLists.txt empty), DLL differs by the commit marker only",
+  "attempt2_entry": {
+   "command": "cd /tmp/x3-run92-candidate/src && X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run92-candidate/lock-timings-fallback.json python3 verification/probe/run_ownership_integration_fallback.py",
+   "result": "NOT RUN (runner refused before Wine)",
+   "exit_code": 1,
+   "reason": "AssertionError: Build all current production components first",
+   "reading": "the Run86 harness defect (production_link_inputs misses fog_field_assets.cpp) still refuses, as at Run89-Run91",
+   "lock": {
+    "lock_wait_seconds": 3.2090000000005448e-06,
+    "child_elapsed_seconds": 0.15747424999999998,
+    "exit_code": 1
+   }
   }
  },
  "site_verifiers": {
   "reused": true,
-  "reason": "git diff 759c2ac7 45b33f47 -- verification/probe/verify_*.py empty; hook site sources whitespace-only",
+  "reason": "git diff 759c2ac7 45b33f47 -- verification/probe/verify_*.py empty; hook site sources whitespace-only (carried through the 45b33f47 attempt)",
   "run91_entry": {
    "result": "PASS"
   }
  },
  "reuse_dependency_check": {
-  "command": "python3 /tmp/x3-run92-candidate/reuse_deps.py; python3 /tmp/x3-run92-candidate/comment_only.py",
-  "output": [
-   "/tmp/x3-run92-candidate/reuse-deps.json",
-   "/tmp/x3-run92-candidate/comment-only.json"
-  ],
-  "method": "Run91 closure method; intersected with git diff --name-only 759c2ac7 45b33f47; comment_only.py uses squash(split()) of verification/results/formatting-2026-09-26/whitespace_only_check.py (literal-aware), because the old stripper misclassified formatted files",
-  "closures": 117,
-  "changed_closures": 101,
-  "comment_only_closures": 85,
-  "code_changed_closures": [
-   "bloom_pass",
-   "cursor_reassert",
-   "effects_stage",
-   "fov_patch",
-   "gpu_sync_timing",
-   "lod_occlusion_patch",
-   "motion_capture",
-   "motion_output",
-   "ownership_integration",
-   "rigid_motion",
-   "state_hook_benchmark",
-   "sun_flare_fix",
-   "sun_share_live",
-   "temporal_pass",
-   "terran_lod_patch",
-   "window_mode"
-  ],
-  "selection": "run: motion_output (blocked), sun_share_live (blocked), temporal_pass, gpu_sync_timing, bloom_pass, cursor_reassert, window_mode, ownership_integration (+verify, fallback), fog_route_bridge (brief), dry runs; research runners outside the qualification set (motion_capture, rigid_motion, state_hook_benchmark; effects_stage runner deleted) not run; patch fixtures reused (record-only change); everything else reused as comment-only"
+  "reused": true,
+  "reason": "reused from the 45b33f47 attempt (Run92 attempt 2): production sources identical (git diff --stat 45b33f47 335c9250 -- src CMakeLists.txt empty), DLL differs by the commit marker only",
+  "attempt2_entry": {
+   "command": "python3 /tmp/x3-run92-candidate/reuse_deps.py; python3 /tmp/x3-run92-candidate/comment_only.py",
+   "output": [
+    "/tmp/x3-run92-candidate/reuse-deps.json",
+    "/tmp/x3-run92-candidate/comment-only.json"
+   ],
+   "method": "Run91 closure method; intersected with git diff --name-only 759c2ac7 45b33f47; comment_only.py uses squash(split()) of verification/results/formatting-2026-09-26/whitespace_only_check.py (literal-aware), because the old stripper misclassified formatted files",
+   "closures": 117,
+   "changed_closures": 101,
+   "comment_only_closures": 85,
+   "code_changed_closures": [
+    "bloom_pass",
+    "cursor_reassert",
+    "effects_stage",
+    "fov_patch",
+    "gpu_sync_timing",
+    "lod_occlusion_patch",
+    "motion_capture",
+    "motion_output",
+    "ownership_integration",
+    "rigid_motion",
+    "state_hook_benchmark",
+    "sun_flare_fix",
+    "sun_share_live",
+    "temporal_pass",
+    "terran_lod_patch",
+    "window_mode"
+   ],
+   "selection": "run: motion_output (blocked), sun_share_live (blocked), temporal_pass, gpu_sync_timing, bloom_pass, cursor_reassert, window_mode, ownership_integration (+verify, fallback), fog_route_bridge (brief), dry runs; research runners outside the qualification set (motion_capture, rigid_motion, state_hook_benchmark; effects_stage runner deleted) not run; patch fixtures reused (record-only change); everything else reused as comment-only"
+  }
  },
  "dry_run": {
   "command_script": "/tmp/x3-run92-candidate/run92-dryrun.sh",
@@ -1046,7 +1148,7 @@
     "report_lines_equal_run91": true
    }
   },
-  "delta_vs_run91": "none: all five variants (A default, B --debug --perf, C + --draw-trace, D --vanilla, F --config) have identical exit, overrides, X3M environment and report lines to /tmp/x3-run91-candidate/dryrun-env.json",
+  "delta_vs_run91": "none: all five variants identical to /tmp/x3-run91-candidate/dryrun-env.json (exit, overrides, X3M environment, report lines); same result as the 45b33f47 attempt",
   "dry_run_tiers": {
    "command": "python3 verification/results/logging-tiers/dry_run_tiers.py",
    "pass": 9,
@@ -1063,26 +1165,30 @@
   },
   "version_row": "the launcher dry run prints no DLL log; the DLL format string \"x3-modern-renderer version=0.4 schema=2 ...\" is byte-identical to Run91 (strings)",
   "lock": {
-   "lock_wait_seconds": 3.249999999999781e-06,
-   "child_elapsed_seconds": 0.669709375,
+   "lock_wait_seconds": 3.04200000000171e-06,
+   "child_elapsed_seconds": 1.133034291,
    "exit_code": 0
   }
  },
- "verdict": "NOT QUALIFIED (incomplete) at 45b33f47: build 0 warnings, x87 122 roots / 710 reachable / 0 violations, imports 234 -> 234 (none added/removed), 17 exports = Run91, generate --check PASS, host suite 270/2810/0 failing; temporal PASS (pan12.5 age e_ratio 0.298207, ripple_rms 0.014358; no other row moved), gpu sync 32, bloom 47, cursor 41, window 19 (all = Run91), ownership integration 26 cases PASS, fog route bridge PASS 27947 checks / 95 names / 0 FAIL, dry runs identical to Run91 (tiers 9/0, compare 5/0); motion output and sun share live BLOCKED: build_motion_output.sh lacks -DX3M_VERSION required by capture.cpp since dd931354. Needs the script fix, then motion + sun share on the fixed commit (the other sections carry if the fix touches only that script).",
+ "verdict": "DLL QUALIFIED at 335c9250: build 0 warnings, marker once, differs from the 45b33f47 DLL only by the commit strings, timestamps and checksum (sections equal); x87 122 roots / 710 reachable / 0 violations; imports 234 -> 234, 17 exports = Run91; motion output PASS 231 cases / 345,912 checks, every committed case at its count (seam-taa-on 164), seam-bolt-copy-hash rows byte-identical to the committed file; sun share live 25 passed; dry runs identical to Run91 (tiers 9/0, compare 5/0); reused from 45b33f47: generate --check PASS, host suite 270/2,810/0, temporal PASS (pan12.5 age e_ratio 0.298207, ripple_rms 0.014358), gpu sync 32, bloom 47, cursor 41, window 19, ownership integration 26 PASS, fog route bridge PASS 95 names / 0 FAIL; remaining sections reused as whitespace-only closures. Not installed.",
  "host_suite": {
-  "command": "/usr/bin/python3 verification/probe/run_host_suite.py",
-  "cwd": "/tmp/x3-run92-candidate/src",
-  "result": "PASS",
-  "modules": 270,
-  "tests": 2810,
-  "failing_modules": 0,
-  "failing": [],
-  "wall_seconds": 94.3,
-  "output": "/tmp/x3-run92-candidate/host-suite.out",
-  "versus_run91": "269/2,801 -> 270/2,810, 0 -> 0 failing",
-  "generate_check": {
-   "command": "python3 tools/config/generate.py --check",
-   "result": "PASS 232 settings, 87 in the template"
+  "reused": true,
+  "reason": "reused from the 45b33f47 attempt (Run92 attempt 2): production sources identical (git diff --stat 45b33f47 335c9250 -- src CMakeLists.txt empty), DLL differs by the commit marker only; 335c9250 changed two host tests (test_release_script, test_taa_image_defaults), not rerun",
+  "attempt2_entry": {
+   "command": "/usr/bin/python3 verification/probe/run_host_suite.py",
+   "cwd": "/tmp/x3-run92-candidate/src",
+   "result": "PASS",
+   "modules": 270,
+   "tests": 2810,
+   "failing_modules": 0,
+   "failing": [],
+   "wall_seconds": 94.3,
+   "output": "/tmp/x3-run92-candidate/host-suite.out",
+   "versus_run91": "269/2,801 -> 270/2,810, 0 -> 0 failing",
+   "generate_check": {
+    "command": "python3 tools/config/generate.py --check",
+    "result": "PASS 232 settings, 87 in the template"
+   }
   }
  },
  "linked_audit": {
@@ -1117,7 +1223,7 @@
    "x3m_exports": []
   }
  },
- "producer": "/tmp/x3-run92-candidate/make_record.py (this record); reuse_deps.py, comment_only.py, w.sh, save_restore.sh, batch.sh, result_lines.py, cmp_results.py, extract_dryrun.py under /tmp/x3-run92-candidate; verification/results/run70-candidate-audit.py (pe, bridge)",
+ "producer": "/tmp/x3-run92-candidate/make_record.py (this record; builds on the committed 45b33f47 record); motion_cases.py, extract_dryrun.py, w.sh, save_restore.sh under /tmp/x3-run92-candidate; earlier attempts: /tmp/x3-run92-candidate/attempt1/, /tmp/x3-run92-candidate/attempt2/",
  "bottle": "X3",
  "wine_arch": "arm64 (cxbottle.conf \"WineArch\" = \"arm64\", checked)",
  "environment": {
@@ -1130,29 +1236,37 @@
  "game_acceptance": "not applicable until qualified",
  "installed": false,
  "wall_times_seconds": {
-  "build": 43,
-  "host_suite": 94.3,
-  "motion": 56.5,
-  "route": 80.0,
-  "temporal": 126.0,
-  "gpusync": 2.3,
-  "bloom": 7.7,
-  "cursor": 2.4,
-  "window": 3.6,
-  "integration": 135.4,
-  "fallback": 0.2,
-  "dryrun": 0.7,
-  "route_builds_host": 16,
-  "task_elapsed_minutes": "attempt 2 about 15 (worktree 17:46, build 17:47, motion 17:51:01-17:51:58, batch 17:52:28-17:58:30); attempt 1 about 12 (17:33-17:45)"
+  "build": 44,
+  "motion": 581.3,
+  "sunshare": 46.2,
+  "dryrun": 1.1,
+  "attempt2": {
+   "build": 43,
+   "host_suite": 94.3,
+   "motion": 56.5,
+   "route": 80.0,
+   "temporal": 126.0,
+   "gpusync": 2.3,
+   "bloom": 7.7,
+   "cursor": 2.4,
+   "window": 3.6,
+   "integration": 135.4,
+   "fallback": 0.2,
+   "dryrun": 0.7,
+   "route_builds_host": 16,
+   "task_elapsed_minutes": "attempt 2 about 15 (worktree 17:46, build 17:47, motion 17:51:01-17:51:58, batch 17:52:28-17:58:30); attempt 1 about 12 (17:33-17:45)"
+  },
+  "task_elapsed_minutes": "attempt 3 about 14 (worktree 18:01, build 18:02, motion 18:03:17-18:12:59, sun share + dry runs to ~18:15); attempt 2 about 15; attempt 1 about 12"
  },
  "incidents": [
-  "game_guard.game_running() printed [] as a separate command before each build and Wine batch; w.sh re-checked it before every Wine step; no Wine step overlapped another; lock waits < 1e-5 s; no exit-75 refusal",
+  "game_guard.game_running() printed [] as a separate command before the build, the motion run, sun share live and the dry runs; w.sh re-checked it before each Wine step; no Wine step overlapped another; lock waits < 1e-5 s; no exit-75 refusal",
   "attempt 1 (2b3c85e4, DLL 5b054a57...): full motion run failed after 21 cases at committed counts (115.8 s) at seam-taa-on: reference resolve used temporal_pass.h Input::weight .9f while the DLL set kHistoryWeightDefault 0.85; confirmed by seam-taa-on passing at 164 checks with X3M_TAA_HISTORY_WEIGHT=0.9; seam-bolt-copy-hash passed with the committed rows; fixed in 45b33f47; artefacts in /tmp/x3-run92-candidate/attempt1/",
   "attempt 2 (45b33f47): the motion runner's fixture build fails because build_motion_output.sh compiles capture.cpp without -DX3M_VERSION (dd931354); motion output and sun share live blocked; every other planned section ran",
   "the Run76 route-bridge baseline /tmp/x3-run76-candidate/baseline-6f16dbf6 no longer existed; recreated as a detached worktree at /tmp/x3-run92-candidate/baseline-6f16dbf6",
-  "ownership integration fallback refuses before Wine (Run86 harness defect), as at Run89-Run91"
+  "ownership integration fallback refuses before Wine (Run86 harness defect), as at Run89-Run91",
+  "attempt 3 (335c9250): motion output, sun share live and dry runs completed; no incident"
  ],
- "host_suite_note": "0 failing on the candidate tree 45b33f47",
+ "host_suite_note": "0 failing on 45b33f47 (production sources identical to 335c9250); not rerun",
  "dropped_sections": {
   "effects_stage": "the effects stage (9375a1e7) was removed from production in 479cd036; its fixture and runner no longer exist at 22593133",
   "launcher_defect_fix": "dropped in Run89: the Run85 help fix carried since Run86; see run88-candidate-qualification.json",

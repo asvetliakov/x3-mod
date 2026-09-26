@@ -1,0 +1,57 @@
+{
+ "candidate": {
+  "dll": "/tmp/x3-run92-candidate/build/d3d9.dll",
+  "sha256": "f6c687cb3d154fc4677313506da81ca71e3eb4a7b8fc82c7fdc25fa7e4d8844a",
+  "bytes": 57180234,
+  "commit": "335c9250",
+  "qualification": "verification/results/run92-candidate-qualification.json"
+ },
+ "command": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3-run92-candidate/build/d3d9.dll",
+ "cwd": "/Users/asvetl/x3-mod",
+ "exit": 0,
+ "installed_at": "2026-09-26T18:15+04:00",
+ "installed": {
+  "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
+  "sha256": "f6c687cb3d154fc4677313506da81ca71e3eb4a7b8fc82c7fdc25fa7e4d8844a",
+  "bytes": 57180234,
+  "verified": "sha256 and size read back after install; candidate hash rechecked before install"
+ },
+ "config_template": {
+  "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/x3m.ini",
+  "source": "assets/x3m.ini at 335c9250 (every key commented; taa_history_weight line now says 0.85)",
+  "sha256_prefix": "4390edd54f9f40a6",
+  "note": "copied by hand after the install (replaces the 759c2ac7 template 59adc3c1); not part of manage.py install"
+ },
+ "unchanged": {
+  "X3AP.exe": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+  "cxbottle.conf": "cc5d6c00a8afccaf88cbae1a7c46040db513eb163a52693287a3d29aca828e0c"
+ },
+ "previous": {
+  "dll": "/tmp/x3-run91-candidate/build/d3d9.dll",
+  "sha256": "25adddf84b3466044f0b387633da64ea77684c5ea3a4cd74c143d0a4e9592233",
+  "bytes": 57280486,
+  "commit": "759c2ac7"
+ },
+ "rollback": {
+  "dll": "/tmp/x3-run91-candidate/build/d3d9.dll",
+  "sha256": "25adddf84b3466044f0b387633da64ea77684c5ea3a4cd74c143d0a4e9592233",
+  "bytes": 57280486,
+  "records": [
+   "verification/results/run91-candidate-qualification.json",
+   "verification/results/run91-candidate-install.json"
+  ],
+  "then": "/tmp/x3-run90-candidate/build/d3d9.dll 6f6be732\u2026 (unflown), /tmp/x3-run88-candidate/build/d3d9.dll 6fe194bd\u2026 (accepted, Run 88 A)"
+ },
+ "game_running_at_install": false,
+ "game_data": "fleet overlay install-fleet4 unchanged; x3m/fog-families.bin + .json unchanged; x3m.ini template refreshed",
+ "changes_vs_previous": [
+  "TAA history weight default 0.9 -> 0.85 (Run 91 A run340 pan replay; sharpen 0.75, thin 0.97, far 0.985 unchanged; d9a71f53 + the temporal_pass.h default 45b33f47)",
+  "bolt_copy capture diagnostic: one row per bullet-producer draw on F8 capture frames with hash/qsum/bbox of the drawn positions (b4a42145, 2b3c85e4)",
+  "whole-tree clang-format (whitespace only, ac88d55f); X3M_VERSION define from project(VERSION) (dd931354, row text unchanged)",
+  "imports/exports unchanged (234 / 17); Run 91 A accepted Run91 (the previous build)"
+ ],
+ "incidents": [
+  "Run92 attempt 1 (5b054a57 from 2b3c85e4): motion case seam-taa-on failed, temporal_pass.h still defaulted to 0.9 (fixed 45b33f47)",
+  "Run92 attempt 2 (ba680346 from 45b33f47): the motion fixture's seam build of capture.cpp lacked X3M_VERSION (fixed 335c9250); every other section passed and is reused"
+ ]
+}

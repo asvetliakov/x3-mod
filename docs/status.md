@@ -5,39 +5,41 @@ marked completed on 2026-09-26 by the user's decision ([goals](goals.md)). The a
 
 ## Installed build
 
-Bottle **X3**, **CrossOver Preview.app**. Run91 DLL SHA-256
-`25adddf84b3466044f0b387633da64ea77684c5ea3a4cd74c143d0a4e9592233` (57,280,486 bytes), built once from clean
-reviewed main `759c2ac7` in a detached worktree (`/tmp/x3-run91-candidate/src`). Retained DLL:
-`/tmp/x3-run91-candidate/build/d3d9.dll`. Installed 2026-09-26 08:40
-([qualification](../verification/results/run91-candidate-qualification.json),
-[install](../verification/results/run91-candidate-install.json)). The shipped template `x3m.ini` (every key commented)
-sits next to the DLL for the player-mode flight.
+Bottle **X3**, **CrossOver Preview.app**. Run92 DLL SHA-256
+`f6c687cb3d154fc4677313506da81ca71e3eb4a7b8fc82c7fdc25fa7e4d8844a` (57,180,234 bytes), built once from clean
+reviewed main `335c9250` in a detached worktree (`/tmp/x3-run92-candidate/src`). Retained DLL:
+`/tmp/x3-run92-candidate/build/d3d9.dll`. Installed 2026-09-26 18:15
+([qualification](../verification/results/run92-candidate-qualification.json),
+[install](../verification/results/run92-candidate-install.json)). The shipped template `x3m.ini` (every key commented)
+sits next to the DLL.
 
-Rollback chain: Run90 `6f6be732…` at `/tmp/x3-run90-candidate/build/d3d9.dll` (unflown), Run89 `0f6acab4…` at
-`/tmp/x3-run89-candidate/build/d3d9.dll` (unflown), then Run88 `6fe194bd…` at `/tmp/x3-run88-candidate/build/d3d9.dll`
-(accepted in Run 88 A). Run91 is the accepted build since Run 91 A.
+Rollback chain: Run91 `25adddf8…` at `/tmp/x3-run91-candidate/build/d3d9.dll` (accepted in Run 91 A), then Run88
+`6fe194bd…` at `/tmp/x3-run88-candidate/build/d3d9.dll` (accepted in Run 88 A).
 
-Run91 carries, beyond Run90: the developer logging options trimmed to five including `--draw-trace` (`bec1afb5`,
-[option inventory](verification/launcher-options-inventory.md)); every in-game hotkey removed except F8, which captures
-only under `--debug`, and `--capture-start` / `--capture-delay` removed (`da84d232`); the settings file `x3m.ini`,
-steps 1 and 2 of the [config design](architecture/config-file.md) (`204d3a09`, `44c60abb`). Qualification at
-`759c2ac7`: build 0 warnings, x87 0 violations, host suite 269 modules / 2,801 tests / 0 failing, motion output 230 cases
-at their committed counts, fog shader hashes identical, imports 236 to 234, no incidents (47 min wall).
+Run92 carries, beyond Run91: the **TAA history weight default 0.85** (was 0.9; from the run340 pan replay,
+[temporal-resolve.md](verification/temporal-resolve.md); sharpen, thin-region and far weights unchanged), the
+**`bolt_copy` capture diagnostic** (one row per bullet draw on F8 frames with hash / qsum / bbox of the drawn positions,
+to prove whether the game's two bullet copies hold the same bolts, [lod-overlay.md](verification/lod-overlay.md)), the
+whole-tree clang-format pass (whitespace only) and the version define from the CMake project version. Qualification at
+`335c9250`: build 0 warnings, x87 0 violations, host suite 270 modules / 2,810 tests / 0 failing, motion output 230 cases
+at their committed counts plus the new bolt-copy case, temporal pan row inside its bounds, dry runs identical to Run91;
+two earlier attempts failed on a stale 0.9 literal in the pass header and on the seam build lacking the version define
+(both fixed and pinned by host tests).
 
 ## Main beyond the installed build
 
-Main after the install carries only documentation, the results sweep, `.clang-format` and the whole-tree formatting
-pass (whitespace only, verified by a build and the host suite); no DLL behaviour change is uninstalled.
+Nothing: main `335c9250` is the installed commit (documentation and the run queue follow it).
 
 ## Run queue
 
-No run is queued. Run 91 A (2026-09-26, run338 default flight, run339 player mode with the shipped `x3m.ini`) accepted
-Run91: "everything looks okay". [Run queue](verification/user-runs.md).
+Run 92 A is queued (0.85 default with rest, pan and firing captures; short 0.9 and 0.8 comparisons):
+[run queue](verification/user-runs.md).
 
 ## Open items
 
-- Raised by the user after Run 91 A (pre-existing, under triage 2026-09-26): distant stations and asteroids drawn over the
-  player's bullets (F8 captures in `/tmp/x3-bottleX3-run339`); stations blurry under a camera pan (no capture yet).
+- From Run 91 A: bullets behind distant objects = the game's early bullet copy overpainted by later opaque draws while
+  the additive route brightens both copies (fix pending the `bolt_copy` proof in Run 92 A); station blur under a pan =
+  history weight (0.85 default now, flight comparison against 0.9 and 0.8 in Run 92 A).
 
 - Native Windows runtime behaviour is unverified; the source cross-compiles, gaps are tracked in
   [platform portability](architecture/platform-portability.md).

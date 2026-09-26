@@ -2,7 +2,7 @@
 
 Archive with `python3 tools/analysis/archive_user_runs.py`.
 
-Updated 2026-09-26 (Run 91 A completed and accepted: run338 default flight, run339 player mode with the shipped x3m.ini; no run queued). Earlier: 2026-09-21 (Run56 accepted for media stability; Run57 station-flash correction accepted; fog range remains under investigation). Run 17 crypto acceptance and the first-person/chase
+Updated 2026-09-26 (Run92 installed: history weight 0.85, bolt_copy diagnostic; Run 92 A queued; Run 91 A accepted). Earlier: 2026-09-21 (Run56 accepted for media stability; Run57 station-flash correction accepted; fog range remains under investigation). Run 17 crypto acceptance and the first-person/chase
 left-centre-right diagnostic are complete and are not in this queue. The agent
 never launches the game. Only open runs keep their instructions here; a completed
 run keeps only its row in the table below. The installed build is described in [status](../status.md).
@@ -30,7 +30,31 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 83 A/B | Run83 (FOV load remap, mask fold, window rect default, cursor trace/re-assert opt-in, fill default) + install-fleet4: defaults with the pre-patch save, window, folded TAA, fps (A launch 1+3 = run323, `both` relaunch run324); gpu attribution (A launch 2 = run325); plants shimmer diagnostic + partial sun occlusion (B = run326 sun, run327 plants with --taa-debug) | 5 | Completed 2026-09-25: FOV remapped from the first scene frame after the save load; window moved 0,31 -> 0,0 (menu bar gone, user); double cursor from launch until the first alt-tab (no launch arm; fixed on main b45b3735); lattice ok; fog-band plants show one-frame sparkles at thin-line edges under a pan only, with the search on or off: resolved-output analysis (run327) puts them on owned plant pixels outside the region on the plain path, the far stabiliser's screen-speed gate dropping 0.985 -> 0.9 under any pan (fix: --taa-far-gate camera, in review); the sun hidden at half cover was the vanilla CPU probe, --sun-occlusion accepted (run326) and made the launcher default (50a5f98e); TAA span 5.44-5.68 -> 3.88-4.05 ms measured (-1.6 to -1.8 ms, run325); results run323-run83a-launch1-3/, run323-fog-plants-shimmer/, run325-run83a-gpu/, run327-run83b-sparkles/ |
 
 
-No run is queued. Completed instructions for Runs 73-88 are in the [archive](../archive/user-runs-completed.md).
+**Run 92 A (queued 2026-09-26; Run92 DLL `f6c687cb…` from 335c9250, installed 18:15: TAA history weight default 0.85, the `bolt_copy` capture diagnostic; formatting and the version define only otherwise).**
+Two questions: the station blur under a pan at the new default 0.85 against 0.9 and 0.8, and whether the game's two
+bullet copies hold the same bolts. Same stand each launch (a large station 2-10 km away, no lattice type if possible);
+name the sector. All three launches carry `--taa-debug` so the captures hold the resolved image and the per-pixel data
+(the fps overlay is a little lower because of it).
+
+Launch 1 (the new default, 0.85):
+
+```sh
+env -u CX_DEBUGMSG X3M_FIXTURE_BOTTLE=X3 /Users/asvetl/x3-mod/x3run --direct --debug --perf --taa-debug
+```
+
+1. F8 once at rest, then a steady 2 s pan and F8 once mid-pan (as in run340).
+2. Bullets: fire at the distant station (or across it) so bolts cross its silhouette and F8 once while firing. Rows:
+   `bolt_copy ... hash= qsum= bbox=` for the early and the late bullet draws of each capture frame; equal `hash` = the same
+   bolts twice (the fix removes one copy), equal `qsum` with a different `hash` = same bolts reordered, different `bbox` =
+   different bolts.
+3. Your eye: stations under the pan sharper than in run340? Any new shimmer or crawl on hull detail at rest or under the pan?
+
+Launch 2 (the old weight, 0.9, short): `--taa-history-weight 0.9` added to the same command; rest + mid-pan F8, same stand.
+
+Launch 3 (0.8, short): `--taa-history-weight 0.8` added; rest + mid-pan F8, same stand. Say which of the three you prefer
+(blur under pan vs shimmer at rest), or whether 0.85 is fine.
+
+Run 92 A is the only queued run. Completed instructions for Runs 73-88 are in the [archive](../archive/user-runs-completed.md).
 
 ## Stand command
 
