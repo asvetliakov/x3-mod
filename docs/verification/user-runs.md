@@ -2,7 +2,7 @@
 
 Archive with `python3 tools/analysis/archive_user_runs.py`.
 
-Updated 2026-09-27 (Run98 = release 0.5.2 with run_in_background installed; Run 98 A queued: alt-tab from the CrossOver shortcut). Earlier: 2026-09-21 (Run56 accepted for media stability; Run57 station-flash correction accepted; fog range remains under investigation). Run 17 crypto acceptance and the first-person/chase
+Updated 2026-09-27 (Run 98 A completed: alt-tab from the CrossOver shortcut resumes at once, speech plays; no run queued). Earlier: 2026-09-21 (Run56 accepted for media stability; Run57 station-flash correction accepted; fog range remains under investigation). Run 17 crypto acceptance and the first-person/chase
 left-centre-right diagnostic are complete and are not in this queue. The agent
 never launches the game. Only open runs keep their instructions here; a completed
 run keeps only its row in the table below. The installed build is described in [status](../status.md).
@@ -20,6 +20,7 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 
 | Run | Purpose | Sessions | Status |
 | --- | --- | ---: | --- |
+| 98 A | Run98 = release 0.5.2 (run_in_background patch default on, stripped DLL): one launch from the CrossOver shortcut without `-runinbg`, alt-tab out and back, speech | 1 | Completed 2026-09-27: "all is good now" (user): the alt-tab resumes at once, speech plays from the CrossOver launch via the bottle environment setting; rows `run_in_background status=patched`, `music_keep_active run_in_background=1` |
 | 94 A | Run94 (bolts through the TAA, default on at W 0.5): launch 1 defaults with F8 firing at a far station (run348); launch 2 `--bolt-far-show 1` with F8 firing at a far station and at a self-shadowed hull (run349) | 2 | Completed 2026-09-27: **bullets fixed** (user); `--bolt-far-show 1` looks better than 0.5 -> **W default 1** (the user's decision; 0.5 had been chosen to match the bolt's measured retention over empty space so a bolt crossing a silhouette stayed continuous); no dark spots on the self-shadowed hull reported; both sessions exited clean |
 | 93 A | Run93 (single-copy bullets on by default; opt-in rotation-aware TAA motion weight): launch 1 defaults with F8 firing at a station / rest / pan / firing at a second station (run346); launch 2 `--taa-history-weight 0.9 --taa-motion-weight-rotation 0.7`, rest + pan (run347) | 2 | Completed 2026-09-26: **bullets still vanish over distant stations** (user, both scenes): the single-copy rule works (`bolt_copies early_dropped=2 late=2` every firing frame; before TAA the bolt adds as much over the station as over space; the late copy passes the depth test) but the **TAA resolve erases the bolt**: its pixels carry the far station's depth, so the far/thin history weights keep ~0.99 there vs 0.39-0.91 over space (run346-run93a-bolts/; design note for the fix in progress); **rotation weight**: engaged (policy 2, pan 8.5-8.8 px/frame, applied weight 0.70 vs 0.85), +34 % pan sharpness on the one station visible in both pans, but the user's reference station left the screen in run347's pan; the user noticed shimmer under the pan and **keeps it off** ("better blurring than shimmering"); both sessions exited clean |
 | 92 A | Run92 (TAA history weight default 0.85, `bolt_copy` capture diagnostic): launch 1 default with `--taa-debug`, F8 at rest / mid-pan / while firing (run341); launch 2 `--taa-history-weight 0.9` (run342); launch 3 `--taa-history-weight 0.8` (run343), rest + pan F8 each | 3 | Completed 2026-09-26: **0.85 accepted as the default** (user: with 0.8 the adjacent station shimmers at rest and under the pan; 0.85 and 0.9 look similar, shimmer less noticeable); **bullet copies proven identical**: 32 `bolt_copy` rows over 8 capture frames (2098-2105), the early draws 6/7 and the late draws 211-214 of each of the two bullet buffers carry the same `hash`, `qsum` and `bbox` in 8 of 8 frames (revisions n / n+1) -> the fix drops the early copy (single-copy rule, in implementation); all three sessions `session_end ... exception=0 dropped=0` |
@@ -27,21 +28,9 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 90 A | Run90 (logging tiers: `--debug` / `--perf`, `x3m.log`; obsolete options and code removed; `--taa-k` / `--taa-sentinel` removed; plus Run89's single-map removal and cascade 3 at 4096): one launch with `x3run --direct --debug --perf`, a second short launch for the log rotation and exit, an optional `--no-shadow-cascades` launch | 0 | Superseded 2026-09-26 by Run 91 A before it was flown (Run91 installed the option trim, the hotkey removal and the `x3m.ini` file the same morning); its checks are folded into Run 91 A |
 | 89 A | Run89 (single shadow map removed, cascades only; `--no-shadow-cascades` = shadows off; cascade sizes 2048,4096,4096,4096,2048): one launch with the short stand command, plus an optional short `--no-shadow-cascades` launch | 0 | Superseded 2026-09-26 by Run 90 A before it was flown (Run90 installed the logging tiers and the option cleanup the same night); its checks are folded into Run 90 A |
 | 88 A | Run88 (shadow pop fix, adjacency without telemetry, promoted defaults with cascade sizes 2048,4096,4096,2048,2048): one launch, short stand command (run337) | 1 | Completed 2026-09-25: all good (user); retention store never flushed (0 rows vs 18,992 in run336), probe never fired, no underflow; replay us p50 251 (was 124: two 4096 maps + live retention); defaults in force; cascade 3 bumped to 4096 afterwards (launcher default 2048,4096,4096,4096,2048, unflown) |
-| 86 A | Run86 (far clip 7x7 + ramp 60/68; opt-in effects stage phase 1, chase view across docking; fog empty table; launcher report lines): plants + regression (run333), combat + effects look (run334), docking (run335) | 3 | Completed 2026-09-25: plants sparkles fixed (rest 120 -> 1 measured, pan 65 -> 46 invisible remainder; run333-run86a-plants/); effects modernisation dropped by the user after seeing it (old effect design, many tuning hours); docking restore worked (transfer path=dock, 258 at f0c4b) but the selection boxes vanished after undock and saves while docked restore first person anyway: dropped; both removed from production |
 
 
-**Run 98 A (queued 2026-09-27; Run98 = release 0.5.2 DLL `d6f6b47a…` from ce87ec99, installed 03:01; `run_in_background` on by default).**
-One launch from the **CrossOver shortcut** (no developer launcher, no `-runinbg` argument on the shortcut), at whatever
-resolution you use there. Load a save, fly for a moment, alt-tab away for about ten seconds, click back: the game must
-resume at once (no 5-10 s freeze). Then alt-tab twice more to see whether the double cursor appears after the return
-(the game now keeps rendering while inactive, which AGENTS.md asks us to recheck). Quit through the menu. Say whether
-speech still plays. Rows in `x3m.log` afterwards: `run_in_background ... status=patched value_before=0 value_after=1`,
-`music_keep_active ... run_in_background=1`, no `Reset`/`device_lost` rows around the alt-tabs, `session_end`.
-
-Optional: set `run_in_background = 0` in `x3m.ini` (uncomment it) and repeat the alt-tab once: the freeze should be back
-(`status=off`), then restore the comment.
-
-Run 98 A is the only queued run. Completed instructions for Runs 73-88 are in the [archive](../archive/user-runs-completed.md).
+No run is queued. Completed instructions for Runs 73-88 are in the [archive](../archive/user-runs-completed.md).
 
 ## Stand command
 

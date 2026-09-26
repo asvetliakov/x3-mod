@@ -34,8 +34,8 @@ Nothing: main `ce87ec99` is the installed and released commit (documentation fol
 
 ## Run queue
 
-Run 98 A is queued (a plain CrossOver launch: alt-tab out and back, the `run_in_background` rows, cursor and Reset
-rows): [run queue](verification/user-runs.md).
+No run is queued. Run 98 A accepted release 0.5.2 from the CrossOver shortcut (alt-tab resumes at once, speech plays):
+[run queue](verification/user-runs.md).
 
 ## Open items
 
