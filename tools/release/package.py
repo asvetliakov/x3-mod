@@ -51,7 +51,9 @@ Install
    "all done". Run it again after installing, updating or removing a mod.
 3. Start the game as usual.
 
-Speech under CrossOver needs the folder x3m\\voice-decoder next to d3d9.dll (unpacking the zip places it);
+Speech under CrossOver needs the folder x3m\\voice-decoder next to d3d9.dll (unpacking the zip places it)
+AND the two GStreamer variables in the game's Unix-side environment (GST_PLUGIN_PATH_1_0, GST_REGISTRY_1_0: the
+developer launcher sets them; a CrossOver bottle environment setting is the other way, the DLL cannot set them);
 Windows does not use it.
 
 Settings

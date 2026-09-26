@@ -10,7 +10,10 @@ starts. The mod also works without the file: every setting has a built-in defaul
 shows those defaults.
 
 Speech under CrossOver needs the folder `x3m\voice-decoder` next to `d3d9.dll` (unpacking the zip places it;
-`python3 tools/manage.py voice-decoder --install` does the same from the repository). Windows does not use it.
+`python3 tools/manage.py voice-decoder --install` does the same from the repository) and the two GStreamer variables
+`GST_PLUGIN_PATH_1_0` / `GST_REGISTRY_1_0` in the game's Unix-side environment: the developer launcher sets them; the DLL
+cannot (a Windows-side environment write never reaches winegstreamer, measured 2026-09-27), so a launch from CrossOver
+itself needs a bottle environment setting. Windows does not use it.
 
 ## Changing a setting
 
