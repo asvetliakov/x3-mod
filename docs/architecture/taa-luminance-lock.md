@@ -292,3 +292,113 @@ set; (5) slots 1,038 -> about 1,100, measured by the fixture before install.
   between pans, a strafing flight is not. The `always` gate A/B in the fixture (section 6) measures what the nearest-texel
   read does to plate locks under a 0.37 px/frame pan.
 - The pan-sharpness target 0.26 [I] is an extrapolation of two points; the flight measures it.
+
+## 10. After the first build: transport and the plate test (2026-09-28)
+
+The lock was built in worktree `agent-a9fdd1e8db5b69733` (ledger "Luminance lock: implementation and fixture"): 6 of the 8
+section-5 rows pass (form frame 2, plate_sharp 0.983 with 0 interior pixels differing, strut ripple 1.000x the blanket,
+chatter 0, mover release, l = 0 identity 0 bytes, budget 1,138 slots) [M, ledger]; `carry` (0.00 on every pan frame) and
+`plate` (87.5 % of a 0.1 per px luma ramp locks) fail, both by design. Evidence for this section:
+`verification/results/taa-luminance-lock/lock_rules_model.py` (`lock_rules_model_out.txt`; its `raw` rows reproduce the
+fixture: plate 0.90 / 0.25 along x / y, slanted 0.80 mean 0.64 min, form 2 [M]) and `lock_share_model.py` rules `resid`,
+`resid2`, `flipveto` (`lock_share_model_resid_rho0.25_out.txt`) [M on the models].
+
+**Implementer's readings, accepted.** The 3x3 range and the release mean in the q domain (the note's `luma(high3) -
+luma(low3)` was the weighed domain, equal to q only at k = 1); a fresh lane with P2 = Lc (with P2 = 0 any drop of `tau`
+locks on the second frame); creation and the freeze on the pixel's own screen openness (`ownS`, not the held `openS`, which
+would delay re-formation after a mover by L frames). With (b) below the lane no longer stores P2, so the fresh write is
+`e = 0`.
+
+### (a) Transport: an exact sub-texel carry, not a dilation
+
+Why the built read fails: the lane is point-read at `tap + (f >= 0.5)`; at |v| < 0.5 px/frame that is the pixel's own
+texel and at larger v the read drifts by the fractional part per frame, so a lock never moves with a sub-pixel strut,
+creation is closed under the pan, and the 3x3-mean release then kills the stranded lock [M, ledger].
+
+Decision: **carry the lock's sub-texel offset and let the pixel whose cell it falls in claim it.** While the pixel's screen
+gate is closed the r / g channels (free: no creation, and (b) needs one channel at rest only) hold the lock's offset
+`a = (a_x, a_y)` from its texel centre, 8 bits per axis over [-1, 1) (1/128 px), with a mode bit in the lifetime channel
+(`b = t + 64 * mode`). Each frame a pixel at `x` with reprojected position `p = x - v` (the resolve's `position`, `base`,
+`f`) reads the 2x2 lane texels around `p`; a texel `m` in rest mode counts as `a_m = 0`; the lock at `m` now sits at
+`a' = a_m - (p - m)` relative to this pixel's centre and is claimed when `|a'| < 0.5 + MARGIN` per axis (the larger
+lifetime when two qualify); the claimed lock is written with `a'`, lifetime unchanged (frozen). When the gate reopens
+the pixel claims with the same rule (v small), drops the offset (the world point snaps to the texel centre, at most 0.5 px,
+irrelevant at rest) and starts the residual chain of (b); a lock created at rest starts with `a = 0`.
+
+- MARGIN 0.25: the offset between a strut's centre and the texel centre of the lock made on it is unknown (the fixture's
+  is 0.185 px); with MARGIN 0 the two straddle a cell boundary on part of the pan frames (model: carry mean 0.88, min 0.00),
+  with 0.25 the neighbouring pixel also claims while the point is within 0.25 px of the boundary (carry 1.00 on every frame
+  of a 24-frame and of a 180-frame 0.37 px/frame pan; the 1/128 px quantisation drifts under 0.7 px in 180 frames) [M on
+  the model].
+- Dilation cost: at most 2 locked pixels per strut across the pan (mean 1.5), never growing, because a lock is claimed by
+  the cells that contain it, not by every neighbour; the raw lock set of a 0.4-px strut is already 1-2 px (the two texels
+  it alternates between). Ghost cost: none beyond section 2's bound (a locked pixel is a weight inside the 7x7 box); a
+  carried lock over content that changed is released by the 3x3-mean rule, which now compares the right world point.
+- Why not the others: a max over the 2x2 (or bilinear with a floor) spreads one texel per frame in the direction of the
+  fractional offset, a 25-px band after the fixture's 24-frame pan and plates under any pan longer than a few frames blur
+  again; bilinear without a floor diffuses the lifetime away (peak about 16 / sqrt(n)); re-creation under motion was
+  measured (`always` gate): 72 of 120 false locks at uncover, carry mean 0.19, from wrong-world-point reads [M, ledger].
+- Cost: under motion 4 lane taps instead of 1 and the four claim tests, about 50-60 slots [I] (the rest path keeps one tap
+  behind a `[branch]` on the pixel's speed); budget row raised to <= 1,250. No new target, no format change.
+- Release: the fixture's 1.5-over-0.5 strut moves the 3x3 mean by a 0.73 ratio between sampled and unsampled phases
+  [M, ledger], inside the 0.75 kill; default `X3M_TAA_LUMA_LOCK_RELEASE` 0.6, the shading-step row (section 5, 20 % / 40 %)
+  bounds it from the other side.
+
+### (b) The plate: test the residual against the reprojected history
+
+Why the built test fails: a linear ramp under the Halton x sequence changes sign on consecutive frames by up to 0.41 of
+its 3x3 range (RHO 0.25 passes it); RHO 0.5 leaves the triangle's turning points (18.8 %) and adds 6,032 plate pixel-frames
+of 7x7-clip candidates under the pan [M, ledger]. The raster model of section 3 had flat plates.
+
+Decision: **replace the sample-difference chain by the residual against the history at the jittered position.** The
+resolve's `old` (the 5-tap Catmull-Rom history reprojected to this pixel's jittered sample, before the clip) is what a
+smooth surface predicts for this frame's sample: `e_n = q(luma(color)) - q(luma(unweigh(old)))`, current minus
+prediction, in codes. Create / refresh when `e_n * e_{n-1} < 0`, `max(|e_n|, |e_{n-1}|) >= tau` and
+`min(|e_n|, |e_{n-1}|) >= TAU_ABS` (`tau = max(TAU_ABS, RHO * range3)` as before, RHO 0.25). The stateless 7x7 candidate
+becomes `|e_n| >= tau`. The lane stores `e_{n-1}` in r at rest (g unused, 0.5); P1 / P2 are gone.
+
+- Model, fixture scene: plate ramps along x and y lock 0.000 (kink residuals -1..-3 codes, one-signed: the box-filtered
+  history is below a maximum and above a minimum in every phase, so the residual never changes sign); vertical struts form
+  at frame 1 (two residuals suffice); the slanted 0.2 px/row line: lock share 1.00 and 1.000 of its ripple energy on
+  locked pixels (built rule 0.80 / 0.791) [M on the model]. Catmull-Rom and bilinear history agree on every row.
+- Why asymmetric: the symmetric residual test (both above `tau`) captures only 60-67 % of the raster's ripple energy
+  (predicted rest ripple 4.1-4.8x today, the rejected 0.90 class): a strut pixel covered in one or two of eight phases has
+  a residual of only its mean coverage on the uncovered frames. The asymmetric form keeps the plate at zero (a one-signed
+  residual never passes) and recovers the capture (table).
+- Why not the alternatives: a linear prediction `P1 + (P1 - P2)` assumes a drift, and jitter is not one (the Halton
+  sequence alternates); a gradient-normalised threshold is RHO 0.5 in disguise (the built measurement: 18.8 % at the
+  turning points). The raw flip with the residual as a veto (`flipveto`) is close on the raster but needs three stored
+  values (P1, P2, e), which the lane cannot hold beside the transport.
+- Cost: one luma and q map of `old` (about 6 slots) against the removed second difference (about 4): within +5 [I]; no
+  extra tap (`old` is in registers before the clip; `previousColorLinear` s11 is not needed).
+
+### Section 3 revised (raster model, rule `resid2`, RHO 0.25, TAU 2 codes) [M on the raster, I for the game]
+
+| station, size | lock share | ripple energy captured | plate px locked | refresh >= 2 / cycle | predicted rest ripple vs 0.985 |
+|---|---|---|---|---|---|
+| outpost s 110 | 0.177 (raw 0.230) | 0.911 (0.952) | 0.17 % (1.47 %) | 0.89 (0.68) | 1.83x (1.45x) |
+| outpost s 147 | 0.145 (0.186) | 0.912 (0.954) | 0.21 % (1.21 %) | 0.88 (0.71) | 1.82x (1.43x) |
+| solar plant s 65 | 0.322 (0.329) | 0.918 (0.920) | 0.03 % (0.03 %) | 0.84 (0.69) | 1.78x (1.76x) |
+| spacedock s 188 | 0.357 (0.466) | 0.900 (0.942) | 0.45 % (2.37 %) | 0.85 (0.70) | 1.94x (1.55x) |
+
+The predicted rest ripple rises to 1.8-1.9x today's blanket (still below the 2.5x measured at 0.95 and the 4.8x of 0.90),
+the plate false locks fall 5-8x, the refresh rate rises (less chatter), and the lock share falls by a fifth on the outpost.
+Section 3's failure-mode text stands; its "texture noise" paragraph is superseded by this section (the residual test is
+what keeps a textured plate out, not the eligibility alone). The flight acceptance of section 5 becomes: outpost rest rms
+<= 0.8 codes (1.9x of 0.422), > 4 codes <= 0.2 %.
+
+### Fixture row changes
+
+| row | change |
+|---|---|
+| carry | unchanged acceptance (>= 0.9 every pan frame), measured on the strut's true pixels (the cell of `s + 0.315 + disp`) |
+| carry_band (new) | locked pixels per strut during the pan <= 2.0; far pixels off the struts locked <= 2 % |
+| resume (new) | the pan stops at frame 39, the cut moves to 48: strut lock share >= 0.9 by frame 41 (two frames after the stop), `form` measured from 48 |
+| plate | acceptance unchanged (<= 0.5 %); a y-direction ramp row added (model 0.000 both) |
+| plate_sharp | interior bit-identical under the pan too (the ramp's residual is under `tau`, so the 6,032 candidate pixel-frames of RHO 0.5 must vanish) |
+| slanted | promoted from info to a row: locked pixels carry >= 0.9 of the line's ripple energy (model 1.000) |
+| lane | r = `e_{n-1}` at rest, (a_x, a_y) under motion with the mode bit; the P2 check is dropped |
+| shading step (new) | a plate stepping 20 % / 40 % at frame 30: locks survive the 20 % step and die within one frame at 40 % (release 0.6) |
+| budget | new variant <= 1,250 slots; hold 3,968 dwords unchanged |
+
+Expected slots: 1,138 built + about 55 transport + about 5 residual, about 1,200 [I].

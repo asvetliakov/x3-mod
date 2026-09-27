@@ -1,0 +1,46 @@
+raw  plate ramp along x: lock share max 0.900 mean 0.703
+raw  plate ramp along y: lock share max 0.250 mean 0.211
+raw  vertical struts: form frame 2, share at frame 8..15 1.00
+raw  slanted line (0.2 px/row): covered px 33, lock share mean 0.80 min 0.64; ripple energy on locked px (frame 15) 0.791
+hist plate ramp along x: lock share max 0.000 mean 0.000
+hist plate ramp along y: lock share max 0.000 mean 0.000
+hist kink column (x 40, the ramp maximum), residual per frame:
+    probe (40, 4) frame 0: residual/sample codes -1
+    probe (40, 4) frame 1: residual/sample codes 0
+    probe (40, 4) frame 2: residual/sample codes -2
+    probe (40, 4) frame 3: residual/sample codes 0
+    probe (40, 4) frame 4: residual/sample codes -1
+    probe (40, 4) frame 5: residual/sample codes 0
+    probe (40, 4) frame 6: residual/sample codes -3
+    probe (40, 4) frame 7: residual/sample codes 0
+hist vertical struts: form frame 1, share at frame 8..15 1.00
+hist slanted line (0.2 px/row): covered px 33, lock share mean 0.82 min 0.82; ripple energy on locked px (frame 15) 0.862
+histlin plate ramp along x: lock share max 0.000 mean 0.000
+histlin plate ramp along y: lock share max 0.000 mean 0.000
+histlin kink column (x 40, the ramp maximum), residual per frame:
+    probe (40, 4) frame 0: residual/sample codes -1
+    probe (40, 4) frame 1: residual/sample codes -1
+    probe (40, 4) frame 2: residual/sample codes -3
+    probe (40, 4) frame 3: residual/sample codes -1
+    probe (40, 4) frame 4: residual/sample codes -2
+    probe (40, 4) frame 5: residual/sample codes 0
+    probe (40, 4) frame 6: residual/sample codes -5
+    probe (40, 4) frame 7: residual/sample codes -1
+histlin vertical struts: form frame 1, share at frame 8..15 1.00
+histlin slanted line (0.2 px/row): covered px 33, lock share mean 0.82 min 0.82; ripple energy on locked px (frame 15) 0.862
+resid2 plate ramp along x: lock share max 0.000 mean 0.000
+resid2 plate ramp along y: lock share max 0.000 mean 0.000
+resid2 kink column (x 40, the ramp maximum), residual per frame:
+    probe (40, 4) frame 0: residual/sample codes -1
+    probe (40, 4) frame 1: residual/sample codes 0
+    probe (40, 4) frame 2: residual/sample codes -2
+    probe (40, 4) frame 3: residual/sample codes 0
+    probe (40, 4) frame 4: residual/sample codes -1
+    probe (40, 4) frame 5: residual/sample codes 0
+    probe (40, 4) frame 6: residual/sample codes -3
+    probe (40, 4) frame 7: residual/sample codes 0
+resid2 vertical struts: form frame 1, share at frame 8..15 1.00
+resid2 slanted line (0.2 px/row): covered px 33, lock share mean 1.00 min 1.00; ripple energy on locked px (frame 15) 1.000
+transport margin 0.0: carry min 0.00 mean 0.88; locked px per strut max 1.00 mean 1.00
+transport margin 0.25: carry min 1.00 mean 1.00; locked px per strut max 2.00 mean 1.50
+transport margin 0.25, 180 frames: carry min 1.00 mean 1.00; locked px per strut max 2.00
