@@ -104,8 +104,10 @@ SETTINGS = [
           range=(0.0, 65000.0), requires=('taa_thin_region', 'hdr'), launcher='--taa-thin-region-emissive'),
     entry('taa_luma_lock', 'float_list', 'graphics', 'Holds a long history only on distant details that actually flicker '
           '(struts, antennas, seams) and keeps distant hull plates sharp under a pan. The first number is how many frames a '
-          'detected flicker keeps the hold (1 to 64); the others tune the detector. 0 = disabled.', builtin='0',
-          counts=(1, 3), elements=((0, 64), (0, 1), (0, 32)), requires=('taa', 'taa_far_stabiliser'), launcher='--taa-luma-lock',
+          'detected flicker keeps the hold (1 to 64); the others tune the detector. 0 = disabled. Works only with the thin '
+          'region on (taa_thin_region above 0).', builtin='0',
+          counts=(1, 3), elements=((0, 64), (0, 1), (0, 32)), requires=('taa', 'taa_far_stabiliser', 'taa_thin_region'),
+          launcher='--taa-luma-lock',
           since='2026-09-28'),
     entry('taa_alpha_history', 'bool', 'graphics', 'Lets the bloom glow of see-through effects follow the anti-aliasing. Experimental. '
           '1 = on, 0 = off.', builtin='0', requires=('taa',), launcher='--taa-alpha-history'),

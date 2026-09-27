@@ -2166,13 +2166,17 @@ bool MotionOutput::ensure_taa() noexcept {
             : taa_thin_weight_ > 0.f ? "screen_gate"
                                      : "thin_region_off");
     // Luminance lock (X3M_TAA_LUMA_LOCK, opt-in; docs/architecture/taa-luminance-lock.md): the lock variant of the
-    // camera-gate resolve, created only when asked. One row whenever it was asked: configured=0 with the reason where
-    // the camera gate or the far weight is off, or the device refuses the program or has fewer than four simultaneous
-    // render targets (the lane is RT3); the option is then dropped (no fallback program set).
+    // camera-gate resolve, created only when asked. One row whenever it was asked, configured=0 with the reason where
+    // the lock cannot run: thin_region_off (the thin region carries the camera-gate resolve), camera_gate_off, far_off
+    // (no far weight to hold), program (refused at creation), render_targets (fewer than four: the lane is RT3),
+    // camera_gate (the camera-gate programs themselves are unavailable); the option is then dropped (no fallback
+    // program set).
     if (SUCCEEDED(hr) && taa_luma_lock_frames_ > 0) {
         HRESULT created = S_OK;
         const char* reason = "ok";
-        if (!taa_thin_camera_gate_ || taa_thin_weight_ <= 0.f)
+        if (taa_thin_weight_ <= 0.f)
+            reason = "thin_region_off"; // only the camera-gate resolve, which the thin region carries, has the lock
+        else if (!taa_thin_camera_gate_)
             reason = "camera_gate_off";
         else if (!(taa_far_weight_ > 0.f))
             reason = "far_off";
@@ -2181,7 +2185,9 @@ bool MotionOutput::ensure_taa() noexcept {
             if (FAILED(created))
                 reason = "program";
             else if (!taa_->luma_lock_available())
-                reason = taa_->simultaneous_render_targets() < 4 ? "render_targets" : "program";
+                reason = taa_->simultaneous_render_targets() < 4 ? "render_targets"
+                         : !taa_->camera_gate_available()        ? "camera_gate"
+                                                                 : "program";
         }
         const bool configured = std::strcmp(reason, "ok") == 0;
         log("motion_output_taa_luma_lock device=%llu requested=%u,%g,%g release=%g gate=%s configured=%u reason=%s create=%08lx render_targets=%u far_weight=%.4f",

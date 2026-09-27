@@ -18,6 +18,8 @@ NAME = 'X3M_TAA_LUMA_LOCK'
 
 
 def load_manage():
+    if str(ROOT / 'tools') not in sys.path:
+        sys.path.insert(0, str(ROOT / 'tools'))  # manage.py imports its sibling modules (media_package) by name
     spec = importlib.util.spec_from_file_location('luma_lock_manage', ROOT / 'tools/manage.py')
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -77,7 +79,11 @@ class LumaLockLaunch(unittest.TestCase):
         entry = schema.BY_KEY['taa_luma_lock']
         self.assertEqual((entry['type'], entry['default'], entry['builtin'], entry['counts'], entry['launcher'], entry['developer']),
                          ('float_list', None, '0', (1, 3), '--taa-luma-lock', False))
-        self.assertEqual(entry['requires'], ('taa', 'taa_far_stabiliser'))
+        self.assertEqual(entry['requires'], ('taa', 'taa_far_stabiliser', 'taa_thin_region'))
+        output = source_text(ROOT / 'src/proxy/motion_output.cpp')
+        for reason in ('"thin_region_off"', '"camera_gate"', '"far_off"', '"render_targets"'):
+            self.assertIn(reason, output)
+        self.assertIn('Needs: taa, taa_far_stabiliser, taa_thin_region.', (ROOT / 'assets/x3m.ini').read_text())
         self.assertTrue(schema.BY_KEY['taa_luma_lock_release']['developer'] and schema.BY_KEY['taa_luma_lock_gate']['developer'])
         self.assertEqual(schema.BY_KEY['taa_luma_lock_gate']['choices'], ('screen', 'always'))
         capture = source_text(ROOT / 'src/proxy/capture.cpp')

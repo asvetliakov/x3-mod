@@ -26,6 +26,10 @@ the 1,038-slot hold program and one 4-byte lane [I]. Opt-in for the first flight
 
 ## 1. The detector
 
+*(Changed in sections 10 and 11: the built detector tests the residual `e = Lc - q(history at the jittered sample)`, sign
+change on consecutive frames with the larger `|e| >= max(TAU, RHO * range3)` and the smaller `>= TAU`, TAU = 3 codes; the
+lane holds the last residual, not `P1` / `P2`; the flip test below is the ratified first build.)*
+
 **Signal.** Per pixel, in the hold program after the history taps and the 3x3 statistics (which exist for the variance clip):
 
 - `Lc = q(luma(color))`, the tone-mapped luma of this frame's jittered sample, `q(L) = L / (1 + L)` quantised to 1/255
@@ -57,7 +61,8 @@ the 1,038-slot hold program and one 4-byte lane [I]. Opt-in for the first flight
 
 The existing age lane cannot take it: the count (7 bits) and the 16-bit hold fraction (`resolve.hlsl:181`) fill 23 of the 24
 FP32 mantissa bits at count 64, one bit spare [M by arithmetic]. Alternatives considered for the state are in section 8.
-Every current-only return writes the lane "fresh" (`P1 = Lc`, `P2 = 0`, `t = 0`, `R = 0`), exactly as the age count
+Every current-only return writes the lane "fresh" (`P1 = Lc`, `P2 = 0`, `t = 0`, `R = 0`; changed in section 10: `e = 0`,
+rest mode, `t = R = 0`), exactly as the age count
 writes 1, so a disocclusion or a rejected history clears the lock in the frame it happens. Under a valid history the lane
 shifts every frame whatever the gates (`P2 <- P1`, `P1 <- Lc`) so the chain is ready two frames after a pan stops.
 
@@ -68,11 +73,13 @@ shifts every frame whatever the gates (`P2 <- P1`, `P1 <- Lc`) so the chain is r
   Refresh is the same event on a locked pixel. The screen gate is required because the lane is point-read at the nearest
   texel: under a pan the rounding side of `f` changes frame to frame, so `P1` alternates between two neighbouring world
   points and any gradient reads as a sign flip; a creation under a pan would lock plates.
-- *Carry*: the lifetime is read at the reprojected texel, so a lock made at rest follows its strut through a pan. While the
+- *Carry* (changed in section 10: the lock's sub-texel offset is carried in r / g while the gate is closed and claimed from
+  the 2x2 texels around the reprojected position): the lifetime is read at the reprojected texel, so a lock made at rest follows its strut through a pan. While the
   screen gate is closed the lifetime is **frozen** (no decrement, no creation): a strut under a three-second pan would
   otherwise expire after `T` frames and shimmer for the rest of the pan. While open it decrements by 1 per frame.
 - *Release*: (a) the current-only returns above (disocclusion, depth proof, reactive, sentinel, exit reset); (b) a shading
-  change: `min(R, q(mean3)) / max(R, q(mean3)) < 0.75` kills the lock (FSR2 kills at a 10 % change of a Lanczos-filtered
+  change: `min(R, q(mean3)) / max(R, q(mean3)) < 0.75` kills the lock (changed in section 11: R is the running mean of the
+  3x3 q mean while the lock is held, threshold 0.65) (FSR2 kills at a 10 % change of a Lanczos-filtered
   6th-root luma mip; we have only the 3x3 mean, which a 0.3-px strut moves by about a tenth of one pixel's contrast, so the
   threshold is coarser [A, the fixture tunes it]); (c) `t` reaches 0; (d) the camera gate: a locked pixel whose
   correspondence moves against the camera path (`openC` closed, a mover) drops to the base weight through `farOpen` without
@@ -121,7 +128,8 @@ keep     = stabilise.b > 0 ? max(lockKeep, keep + stabilise.b * (min(ramp, histo
 - **Far ramp: eligibility only.** `farw > 0` (footprint 60 units per pixel and beyond) says a feature smaller than 68 units
   is sub-pixel by geometry; the lock says this pixel actually holds one. Near plates (LOD 0 at 1.6 km, textured at levels
   3-5) are never eligible, which removes the texture-noise failure at its source.
-- **Clip.** `farClip = region <= 0 && (l > 0 || |d0| >= tau) && farw * openC > c13.z`: locked pixels, and pixels whose
+- **Clip.** `farClip = region <= 0 && (l > 0 || |d0| >= tau) && farw * openC > c13.z` (changed in section 10: the candidate
+  is `|e_n| >= tau`): locked pixels, and pixels whose
   sample just changed by more than `tau` (a stateless candidate, so a sub-pixel line sampled this frame is not cut back to the
   background by the 3x3 clip in the frames before its lock forms), take the 7x7 box; every other far pixel takes the 3x3
   variance clip like an ordinary hull pixel. A locked pixel is always bounded by the box: the lock raises the weight, it
@@ -241,8 +249,10 @@ Schema first (`tools/config/schema.py`, then `generate --check` regenerates `con
   (struts, antennas, seams) and keeps distant hull plates sharp under a pan. The first number is how many frames a
   detected flicker keeps the hold (1 to 64); the others tune the detector. 0 = disabled.', '0', counts=(1, 3),
   elements=((0, 64), (0, 1), (0, 32)), requires=('taa', 'taa_far_stabiliser'), launcher='--taa-luma-lock')` —
-  `T[,RHO,TAU_codes]`, defaults 16, 0.25, 2. Environment name `X3M_TAA_LUMA_LOCK` (generated; never a bare env read).
-- `dev('taa_luma_lock_release', 'float', ...)`, the mean-luma kill ratio (0.75), and `dev('taa_luma_lock_gate', 'enum',
+  `T[,RHO,TAU_codes]`, defaults 16, 0.25, 2 (changed in section 11: 16, 0.25, 3; as built the entry also requires
+  `taa_thin_region`, whose camera-gate resolve carries the lock, and the launcher refuses the lock without it). Environment name `X3M_TAA_LUMA_LOCK` (generated; never a bare env read).
+- `dev('taa_luma_lock_release', 'float', ...)`, the mean-luma kill ratio (0.75; changed in section 11: 0.65 against the
+  running mean), and `dev('taa_luma_lock_gate', 'enum',
   choices=('screen', 'always'))` for the creation gate A/B in the fixture only.
 - The far stabiliser keeps its entry and default `0.985,0,60,68,0.03,0.25`: with the lock on, W is the locked pixel's
   weight, F0/F1 the eligibility ramp, LO/HI the creation gate; its description gains one sentence saying so. W = 0 with the
@@ -320,7 +330,7 @@ creation is closed under the pan, and the 3x3-mean release then kills the strand
 Decision: **carry the lock's sub-texel offset and let the pixel whose cell it falls in claim it.** While the pixel's screen
 gate is closed the r / g channels (free: no creation, and (b) needs one channel at rest only) hold the lock's offset
 `a = (a_x, a_y)` from its texel centre, 8 bits per axis over [-1, 1) (1/128 px), with a mode bit in the lifetime channel
-(`b = t + 64 * mode`). Each frame a pixel at `x` with reprojected position `p = x - v` (the resolve's `position`, `base`,
+(`b = t + 64 * mode`; built as `b = t + 128 * mode`, section 11: 64 collides with t = 64). Each frame a pixel at `x` with reprojected position `p = x - v` (the resolve's `position`, `base`,
 `f`) reads the 2x2 lane texels around `p`; a texel `m` in rest mode counts as `a_m = 0`; the lock at `m` now sits at
 `a' = a_m - (p - m)` relative to this pixel's centre and is claimed when `|a'| < 0.5 + MARGIN` per axis (the larger
 lifetime when two qualify); the claimed lock is written with `a'`, lifetime unchanged (frozen). When the gate reopens

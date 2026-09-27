@@ -8873,5 +8873,6 @@
       }
     ]
   },
-  "luma_lock_failed_rows": []
+  "luma_lock_failed_rows": [],
+  "records_note": "2026-09-28 luminance-lock run (02:58:51-03:01:14): the nine wall-clock timing rows of temporal-lattice.txt (LINE_TIMING, LINE_TIMING_CAMERA, LINE_TIMING_CAMERA_LANE, six FOLD_TIMING) and their fields here (pass_timing, fold_timing, thin_region_camera.timing / timing_lane) were restored to their committed values from the earlier run; lattice.report_sha256 is the sha256 of the restored file (docs/verification/temporal-resolve.md, \"Section 11 build\")."
 }

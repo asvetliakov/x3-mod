@@ -3631,3 +3631,14 @@ differ by `"X3M_TAA_LUMA_LOCK": "16,0.25,3"` only. Records: `temporal-lattice.tx
 `BOLT_FAR_STREAK_BASE`, the `LUMA_LOCK_*` rows, `LUMA_LOCK_BASE`, `RESULT PASS numerical=654 state_restorations=91`;
 the nine timing rows restored to the committed values), `temporal-pass-summary.json` (`passed: true`, the lock rows);
 every other record byte-identical.
+
+Review of 3b34d9cf (2026-09-28, no blockers). Cost [I, reviewer's estimate]: the hold program grows 1,038 -> 1,221 slots
+(+183) with one extra FP16 bilinear tap (the jittered history read); the lane writes 29.5 MB and reads 29.5-118 MB per
+frame at 5120x1440 (one tap at rest, the 2x2 under motion); an estimated 0.2-0.5 ms per frame. To be measured on the
+first `--perf` flight. Open behaviour notes (no fixture scene covers them): (a) rest mode stores no offset, so under a
+slow drift below the screen gate's HI a lock snaps to the pixel centre each frame and can lag its strut by up to T frames;
+(b) a lock carried onto a pixel with farw = 0 still gets the far weight through farOpen but keeps the 3x3 clip (the far
+clip needs farw * openC above c13.z). Fixes in the follow-up commit: the entry requires `taa_thin_region` (template
+"Needs:" and description say so), the initialisation row reports `reason=thin_region_off` when the thin region is 0 and
+`reason=camera_gate` when the lock program exists but the camera-gate programs do not; the design note's sections 1, 2,
+6 and 10 carry "changed in section 10 / 11" markers; the summary JSON's `records_note` states the restored timing rows.
