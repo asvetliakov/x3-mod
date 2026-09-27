@@ -1,0 +1,92 @@
+== /tmp/x3-bottleX3-run340
+history_weight=0.900 far_weight=0.9850 far_f0=60.0 far_f1=68.0 thin_region=0.9700 thin_gate=camera far_gate=camera
+frame 1017: t -16152,10301,84279 |t-t0| 0 fwd +0.7615,+0.0707,-0.6443 rot_deg/frame 0.1291 move/frame 0.0
+frame 1018: t -16152,10301,84279 |t-t0| 0 fwd +0.7615,+0.0707,-0.6443 rot_deg/frame 0.1291 move/frame 0.1
+frame 1019: t -16152,10301,84279 |t-t0| 0 fwd +0.7615,+0.0707,-0.6443 rot_deg/frame 0.1291 move/frame 0.1
+frame 1020: t -16152,10301,84279 |t-t0| 0 fwd +0.7615,+0.0707,-0.6443 rot_deg/frame 0.1291 move/frame 0.1
+frame 1021: t -16152,10301,84279 |t-t0| 0 fwd +0.7615,+0.0707,-0.6443 rot_deg/frame 0.1291 move/frame 0.1
+frame 1022: t -16153,10301,84279 |t-t0| 0 fwd +0.7615,+0.0707,-0.6443 rot_deg/frame 0.1291 move/frame 0.1
+frame 1023: t -16153,10301,84279 |t-t0| 1 fwd +0.7615,+0.0707,-0.6443 rot_deg/frame 0.1291 move/frame 0.1
+frame 1024: t -16153,10301,84279 |t-t0| 1 fwd +0.7615,+0.0707,-0.6443 rot_deg/frame 0.1291 move/frame 0.1
+frame 1424: t -24198,4831,82831 |t-t0| 9836 fwd +0.8193,+0.1125,-0.5623 rot_deg/frame 0.2262 move/frame 398.3
+frame 1425: t -27551,4823,81772 |t-t0| 12893 fwd +0.8415,+0.1128,-0.5283 rot_deg/frame 2.3368 move/frame 3516.7
+frame 1426: t -31589,4811,80295 |t-t0| 16862 fwd +0.8668,+0.1132,-0.4856 rot_deg/frame 2.8629 move/frame 4300.0
+frame 1427: t -35548,4797,78618 |t-t0| 20942 fwd +0.8899,+0.1135,-0.4418 rot_deg/frame 2.8599 move/frame 4299.5
+frame 1428: t -39220,4782,76846 |t-t0| 24856 fwd +0.9098,+0.1139,-0.3992 rot_deg/frame 2.7105 move/frame 4076.9
+frame 1429: t -41189,4774,75809 |t-t0| 27002 fwd +0.9198,+0.1141,-0.3755 rot_deg/frame 1.4785 move/frame 2224.8
+frame 1430: t -42024,4770,75351 |t-t0| 27923 fwd +0.9238,+0.1142,-0.3654 rot_deg/frame 0.6515 move/frame 953.3
+frame 1431: t -31490,4814,80340 |t-t0| 16760 fwd +0.8661,+0.1131,-0.4869 rot_deg/frame 7.7693 move/frame 11656.0
+frame 4078: t -13639,10736,46341 |t-t0| 38024 fwd +0.7017,+0.0294,-0.7119 rot_deg/frame 0.2677 move/frame 246.9
+frame 4079: t -14718,9770,46053 |t-t0| 38257 fwd +0.7182,+0.0443,-0.6944 rot_deg/frame 1.8082 move/frame 1477.2
+frame 4080: t -16322,8334,45622 |t-t0| 38707 fwd +0.7422,+0.0659,-0.6669 rot_deg/frame 2.7071 move/frame 2195.4
+frame 4081: t -17905,6917,45090 |t-t0| 39374 fwd +0.7652,+0.0865,-0.6379 rot_deg/frame 2.7015 move/frame 2190.4
+frame 4082: t -19464,5521,44459 |t-t0| 40242 fwd +0.7872,+0.1060,-0.6075 rot_deg/frame 2.7151 move/frame 2185.2
+frame 4083: t -20995,4151,43731 |t-t0| 41296 fwd +0.8080,+0.1246,-0.5758 rot_deg/frame 2.7268 move/frame 2179.3
+frame 4084: t -22496,2808,42908 |t-t0| 42520 fwd +0.8277,+0.1422,-0.5428 rot_deg/frame 2.7143 move/frame 2176.0
+frame 4085: t -23964,1494,41991 |t-t0| 43896 fwd +0.8463,+0.1586,-0.5086 rot_deg/frame 2.7027 move/frame 2172.9
+dt_ms p50 all(f>300) 20.00 n=3934 | stand p50 21.00 p90 21.00 n=415
+== /tmp/x3-bottleX3-run341
+history_weight=0.850 far_weight=0.9850 far_f0=60.0 far_f1=68.0 thin_region=0.9700 thin_gate=camera far_gate=camera
+frame 810: t -18982,9548,83283 |t-t0| 0 fwd +0.7877,+0.0590,-0.6132 rot_deg/frame 0.3220 move/frame 0.2
+frame 811: t -18983,9548,83283 |t-t0| 1 fwd +0.7877,+0.0590,-0.6132 rot_deg/frame 0.3220 move/frame 1.3
+frame 812: t -18984,9548,83284 |t-t0| 2 fwd +0.7877,+0.0590,-0.6132 rot_deg/frame 0.3220 move/frame 1.2
+frame 813: t -18985,9548,83284 |t-t0| 4 fwd +0.7877,+0.0590,-0.6132 rot_deg/frame 0.3220 move/frame 1.1
+frame 814: t -18986,9548,83285 |t-t0| 4 fwd +0.7877,+0.0590,-0.6132 rot_deg/frame 0.3220 move/frame 0.9
+frame 815: t -18987,9548,83285 |t-t0| 5 fwd +0.7877,+0.0590,-0.6132 rot_deg/frame 0.3220 move/frame 0.8
+frame 816: t -18987,9548,83285 |t-t0| 6 fwd +0.7877,+0.0590,-0.6132 rot_deg/frame 0.3220 move/frame 0.8
+frame 817: t -18988,9548,83285 |t-t0| 7 fwd +0.7877,+0.0590,-0.6132 rot_deg/frame 0.3220 move/frame 0.7
+frame 986: t -16040,10674,83769 |t-t0| 3188 fwd +0.7653,+0.0519,-0.6416 rot_deg/frame 0.3577 move/frame 468.0
+frame 987: t -20139,8389,83142 |t-t0| 1644 fwd +0.7959,+0.0691,-0.6015 rot_deg/frame 3.2357 move/frame 4735.1
+frame 988: t -24200,6120,82250 |t-t0| 6328 fwd +0.8245,+0.0851,-0.5595 rot_deg/frame 3.2403 move/frame 4736.2
+frame 989: t -28205,3878,81101 |t-t0| 11044 fwd +0.8509,+0.0999,-0.5157 rot_deg/frame 3.2310 move/frame 4732.0
+frame 990: t -32078,1709,79721 |t-t0| 15673 fwd +0.8748,+0.1132,-0.4711 rot_deg/frame 3.1672 move/frame 4648.5
+frame 991: t -34178,520,78859 |t-t0| 18221 fwd +0.8869,+0.1200,-0.4460 rot_deg/frame 1.7407 move/frame 2562.3
+frame 992: t -36043,-549,78024 |t-t0| 20511 fwd +0.8973,+0.1259,-0.4231 rot_deg/frame 1.5589 move/frame 2306.1
+frame 993: t -37582,-1459,77281 |t-t0| 22431 fwd +0.9055,+0.1307,-0.4037 rot_deg/frame 1.3063 move/frame 1936.4
+frame 2098: t -15171,7815,79416 |t-t0| 5699 fwd +0.7530,+0.0756,-0.6536 rot_deg/frame 0.0000 move/frame 19.8
+frame 2099: t -15173,7814,79245 |t-t0| 5816 fwd +0.7530,+0.0756,-0.6536 rot_deg/frame 0.0000 move/frame 171.8
+frame 2100: t -15174,7812,79073 |t-t0| 5936 fwd +0.7530,+0.0756,-0.6536 rot_deg/frame 0.0000 move/frame 171.9
+frame 2101: t -15176,7810,78901 |t-t0| 6059 fwd +0.7530,+0.0756,-0.6536 rot_deg/frame 0.0000 move/frame 172.1
+frame 2102: t -15177,7809,78729 |t-t0| 6184 fwd +0.7530,+0.0756,-0.6536 rot_deg/frame 0.0000 move/frame 172.0
+frame 2103: t -15179,7807,78557 |t-t0| 6311 fwd +0.7530,+0.0756,-0.6536 rot_deg/frame 0.0000 move/frame 172.1
+frame 2104: t -15180,7805,78384 |t-t0| 6441 fwd +0.7530,+0.0756,-0.6536 rot_deg/frame 0.0000 move/frame 172.1
+frame 2105: t -15181,7804,78212 |t-t0| 6573 fwd +0.7530,+0.0756,-0.6536 rot_deg/frame 0.0000 move/frame 172.1
+dt_ms p50 all(f>300) 20.00 n=2006 | stand p50 20.00 p90 21.00 n=397
+== /tmp/x3-bottleX3-run351
+history_weight=0.850 far_weight=0.9500 far_f0=60.0 far_f1=68.0 thin_region=0.9700 thin_gate=camera far_gate=camera
+frame 1797: t -15425,13512,82848 |t-t0| 0 fwd +0.7584,+0.0318,-0.6510 rot_deg/frame 0.0000 move/frame 1.0
+frame 1798: t -15425,13512,82847 |t-t0| 1 fwd +0.7584,+0.0318,-0.6510 rot_deg/frame 0.1102 move/frame 0.8
+frame 1799: t -15426,13512,82847 |t-t0| 1 fwd +0.7584,+0.0318,-0.6510 rot_deg/frame 0.2238 move/frame 0.2
+frame 1800: t -15425,13512,82848 |t-t0| 1 fwd +0.7584,+0.0318,-0.6510 rot_deg/frame 0.1331 move/frame 0.7
+frame 1801: t -15425,13512,82849 |t-t0| 1 fwd +0.7584,+0.0318,-0.6510 rot_deg/frame 0.0000 move/frame 1.1
+frame 1802: t -15425,13512,82849 |t-t0| 1 fwd +0.7584,+0.0318,-0.6510 rot_deg/frame 0.0000 move/frame 0.1
+frame 1803: t -15425,13512,82849 |t-t0| 1 fwd +0.7584,+0.0318,-0.6510 rot_deg/frame 0.0000 move/frame 0.1
+frame 1804: t -15424,13512,82849 |t-t0| 1 fwd +0.7584,+0.0318,-0.6510 rot_deg/frame 0.0000 move/frame 0.9
+frame 2170: t -13873,7642,83874 |t-t0| 6158 fwd +0.7379,+0.1119,-0.6656 rot_deg/frame 0.6500 move/frame 979.2
+frame 2171: t -20398,-281,82884 |t-t0| 14662 fwd +0.7874,+0.1713,-0.5922 rot_deg/frame 7.0710 move/frame 10311.6
+frame 2172: t -26598,-7586,80751 |t-t0| 23965 fwd +0.8297,+0.2197,-0.5132 rot_deg/frame 6.7387 move/frame 9815.9
+frame 2173: t -30386,-11818,78882 |t-t0| 29684 fwd +0.8530,+0.2451,-0.4608 rot_deg/frame 4.0947 move/frame 5979.5
+frame 2174: t -33371,-14979,77116 |t-t0| 34156 fwd +0.8699,+0.2626,-0.4175 rot_deg/frame 3.2070 move/frame 4692.5
+frame 2175: t -34983,-16672,76047 |t-t0| 36604 fwd +0.8785,+0.2713,-0.3931 rot_deg/frame 1.7349 move/frame 2570.8
+frame 2176: t -36165,-17780,75237 |t-t0| 38305 fwd +0.8846,+0.2769,-0.3753 rot_deg/frame 1.2046 move/frame 1811.1
+frame 2177: t -36751,-18033,74891 |t-t0| 38900 fwd +0.8875,+0.2780,-0.3675 rot_deg/frame 0.4790 move/frame 725.7
+dt_ms p50 all(f>300) 17.00 n=2430 | stand p50 17.00 p90 18.00 n=292
+== /tmp/x3-bottleX3-run352
+history_weight=0.850 far_weight=0.9000 far_f0=60.0 far_f1=68.0 thin_region=0.9700 thin_gate=camera far_gate=camera
+frame 908: t -16677,13038,83884 |t-t0| 0 fwd +0.7681,+0.0549,-0.6380 rot_deg/frame 0.0970 move/frame 0.2
+frame 909: t -16680,13039,83885 |t-t0| 3 fwd +0.7681,+0.0549,-0.6380 rot_deg/frame 0.1814 move/frame 3.2
+frame 910: t -16683,13041,83886 |t-t0| 7 fwd +0.7681,+0.0549,-0.6380 rot_deg/frame 0.1232 move/frame 3.4
+frame 911: t -16684,13041,83887 |t-t0| 8 fwd +0.7681,+0.0549,-0.6380 rot_deg/frame 0.0000 move/frame 1.8
+frame 912: t -16686,13041,83887 |t-t0| 10 fwd +0.7681,+0.0549,-0.6380 rot_deg/frame 0.0000 move/frame 1.7
+frame 913: t -16687,13041,83888 |t-t0| 11 fwd +0.7681,+0.0549,-0.6380 rot_deg/frame 0.0000 move/frame 1.5
+frame 914: t -16688,13040,83888 |t-t0| 12 fwd +0.7681,+0.0549,-0.6380 rot_deg/frame 0.0000 move/frame 1.3
+frame 915: t -16689,13041,83888 |t-t0| 13 fwd +0.7681,+0.0549,-0.6380 rot_deg/frame 0.1572 move/frame 1.5
+frame 1418: t -13559,10613,84800 |t-t0| 4055 fwd +0.7488,+0.0523,-0.6608 rot_deg/frame 0.2632 move/frame 595.2
+frame 1419: t -18175,6290,84368 |t-t0| 6929 fwd +0.7837,+0.0850,-0.6153 rot_deg/frame 4.2924 move/frame 6339.0
+frame 1420: t -22735,1987,83468 |t-t0| 12610 fwd +0.8160,+0.1151,-0.5665 rot_deg/frame 4.2932 move/frame 6334.4
+frame 1421: t -27224,-2265,82106 |t-t0| 18670 fwd +0.8454,+0.1426,-0.5147 rot_deg/frame 4.2930 move/frame 6331.3
+frame 1422: t -31624,-6435,80286 |t-t0| 24810 fwd +0.8720,+0.1672,-0.4601 rot_deg/frame 4.2924 move/frame 6329.1
+frame 1423: t -35911,-10497,78018 |t-t0| 30956 fwd +0.8956,+0.1888,-0.4029 rot_deg/frame 4.2958 move/frame 6326.4
+frame 1424: t -39080,-13529,75997 |t-t0| 35636 fwd +0.9113,+0.2034,-0.3579 rot_deg/frame 3.2769 move/frame 4829.4
+frame 1425: t -40721,-15098,74831 |t-t0| 38102 fwd +0.9189,+0.2104,-0.3336 rot_deg/frame 1.7032 move/frame 2552.2
+dt_ms p50 all(f>300) 18.00 n=2085 | stand p50 17.00 p90 18.00 n=300

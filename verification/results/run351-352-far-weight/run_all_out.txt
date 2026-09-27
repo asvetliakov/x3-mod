@@ -1,0 +1,56 @@
+## sharpness: far blob (z 120-200k) rest / pan, near blob (z 55-80k rest, 85-120k pan)
+frame 1797 box 620,370,1064,575 z 120000-200000 interior px 8974 ev 1.3: E_cur 3.157e-02  taa/cur 0.432  present/cur 0.453  rcas0.75/cur 0.453  rcas1.00/cur 0.462  | present vs RCAS0.75(AgX(taa)) luma err codes p50 0.27 p90 0.61
+frame 908 box 611,379,1047,581 z 120000-200000 interior px 8626 ev 1.3: E_cur 3.053e-02  taa/cur 0.430  present/cur 0.452  rcas0.75/cur 0.452  rcas1.00/cur 0.462  | present vs RCAS0.75(AgX(taa)) luma err codes p50 0.27 p90 0.60
+frame 2173 box 400,669,889,875 z 120000-200000 interior px 9445 ev 1.3: E_cur 3.161e-02  taa/cur 0.156  present/cur 0.171  rcas0.75/cur 0.171  rcas1.00/cur 0.179  | present vs RCAS0.75(AgX(taa)) luma err codes p50 0.26 p90 0.61
+frame 1419 box 590,463,1028,664 z 120000-200000 interior px 8359 ev 1.3: E_cur 3.102e-02  taa/cur 0.210  present/cur 0.227  rcas0.75/cur 0.227  rcas1.00/cur 0.236  | present vs RCAS0.75(AgX(taa)) luma err codes p50 0.27 p90 0.60
+frame 1797 box 1533,269,1920,375 z 55000-80000 interior px 3428 ev 1.3: E_cur 5.380e-02  taa/cur 0.283  present/cur 0.314  rcas0.75/cur 0.314  rcas1.00/cur 0.328  | present vs RCAS0.75(AgX(taa)) luma err codes p50 0.25 p90 0.60
+frame 908 box 1536,250,1893,353 z 55000-80000 interior px 3358 ev 1.3: E_cur 5.706e-02  taa/cur 0.259  present/cur 0.287  rcas0.75/cur 0.287  rcas1.00/cur 0.301  | present vs RCAS0.75(AgX(taa)) luma err codes p50 0.26 p90 0.60
+frame 2173 box 1267,533,1609,650 z 85000-120000 interior px 1886 ev 1.3: E_cur 8.302e-02  taa/cur 0.224  present/cur 0.244  rcas0.75/cur 0.244  rcas1.00/cur 0.253  | present vs RCAS0.75(AgX(taa)) luma err codes p50 0.27 p90 0.60
+frame 1420 box 1380,428,1748,526 z 85000-120000 interior px 2055 ev 1.3: E_cur 7.429e-02  taa/cur 0.270  present/cur 0.293  rcas0.75/cur 0.293  rcas1.00/cur 0.303  | present vs RCAS0.75(AgX(taa)) luma err codes p50 0.27 p90 0.61
+## rest flicker (8-frame rest bursts)
+== run351 far
+pair 1797->1798 |d| p50 0.30: present rms 0.989 codes p99 4.21 >4 codes 1.123 % | current rms 31.591 | present/current 0.0313
+pair 1798->1799 |d| p50 0.31: present rms 1.256 codes p99 4.41 >4 codes 1.232 % | current rms 32.902 | present/current 0.0382
+pair 1799->1800 |d| p50 0.39: present rms 0.978 codes p99 4.14 >4 codes 1.061 % | current rms 29.677 | present/current 0.0330
+pair 1800->1801 |d| p50 0.59: present rms 1.102 codes p99 4.93 >4 codes 1.544 % | current rms 30.026 | present/current 0.0367
+pair 1801->1802 |d| p50 0.17: present rms 0.858 codes p99 3.93 >4 codes 0.827 % | current rms 32.808 | present/current 0.0262
+pair 1802->1803 |d| p50 0.30: present rms 0.823 codes p99 3.86 >4 codes 0.640 % | current rms 26.003 | present/current 0.0317
+pair 1803->1804 |d| p50 0.47: present rms 1.044 codes p99 4.57 >4 codes 1.404 % | current rms 31.211 | present/current 0.0334
+station px 6411; first pair (normal-rate): present rms 0.989, ratio 0.0313; median over pairs: present rms 0.989, ratio 0.0330
+== run352 far
+pair 908->909 |d| p50 0.46: present rms 2.110 codes p99 9.08 >4 codes 6.824 % | current rms 33.279 | present/current 0.0634
+pair 909->910 |d| p50 0.40: present rms 1.894 codes p99 7.91 >4 codes 5.127 % | current rms 28.789 | present/current 0.0658
+pair 910->911 |d| p50 0.30: present rms 1.809 codes p99 7.32 >4 codes 4.849 % | current rms 29.598 | present/current 0.0611
+pair 911->912 |d| p50 0.31: present rms 2.302 codes p99 7.86 >4 codes 5.469 % | current rms 31.684 | present/current 0.0726
+pair 912->913 |d| p50 0.37: present rms 1.651 codes p99 7.07 >4 codes 4.376 % | current rms 29.752 | present/current 0.0555
+pair 913->914 |d| p50 0.59: present rms 2.036 codes p99 8.19 >4 codes 6.563 % | current rms 26.706 | present/current 0.0762
+pair 914->915 |d| p50 0.18: present rms 1.850 codes p99 7.70 >4 codes 5.110 % | current rms 32.406 | present/current 0.0571
+station px 6125; first pair (normal-rate): present rms 2.110, ratio 0.0634; median over pairs: present rms 1.894, ratio 0.0634
+== run351 near
+pair 1797->1798 |d| p50 1.35: present rms 19.570 codes p99 77.87 >4 codes 65.922 % | current rms 43.422 | present/current 0.4507
+pair 1798->1799 |d| p50 1.45: present rms 18.097 codes p99 70.01 >4 codes 63.307 % | current rms 45.361 | present/current 0.3989
+pair 1799->1800 |d| p50 1.02: present rms 16.401 codes p99 64.51 >4 codes 59.300 % | current rms 41.204 | present/current 0.3980
+pair 1800->1801 |d| p50 1.92: present rms 16.963 codes p99 62.55 >4 codes 61.198 % | current rms 37.444 | present/current 0.4530
+pair 1801->1802 |d| p50 1.34: present rms 15.997 codes p99 63.13 >4 codes 61.282 % | current rms 37.317 | present/current 0.4287
+pair 1802->1803 |d| p50 1.66: present rms 15.792 codes p99 63.59 >4 codes 59.047 % | current rms 36.210 | present/current 0.4361
+pair 1803->1804 |d| p50 1.07: present rms 14.607 codes p99 57.58 >4 codes 56.348 % | current rms 36.880 | present/current 0.3961
+station px 2371; first pair (normal-rate): present rms 19.570, ratio 0.4507; median over pairs: present rms 16.401, ratio 0.4287
+== run352 near
+pair 908->909 |d| p50 1.11: present rms 18.768 codes p99 76.28 >4 codes 64.536 % | current rms 41.169 | present/current 0.4559
+pair 909->910 |d| p50 1.75: present rms 17.767 codes p99 66.04 >4 codes 64.147 % | current rms 36.133 | present/current 0.4917
+pair 910->911 |d| p50 1.39: present rms 16.346 codes p99 63.79 >4 codes 61.253 % | current rms 41.466 | present/current 0.3942
+pair 911->912 |d| p50 1.46: present rms 16.639 codes p99 65.36 >4 codes 60.346 % | current rms 45.285 | present/current 0.3674
+pair 912->913 |d| p50 1.06: present rms 16.308 codes p99 68.08 >4 codes 60.000 % | current rms 42.593 | present/current 0.3829
+pair 913->914 |d| p50 1.93: present rms 16.706 codes p99 63.51 >4 codes 60.950 % | current rms 36.782 | present/current 0.4542
+pair 914->915 |d| p50 1.34: present rms 15.618 codes p99 57.69 >4 codes 56.458 % | current rms 39.614 | present/current 0.3943
+station px 2315; first pair (normal-rate): present rms 18.768, ratio 0.4559; median over pairs: present rms 16.639, ratio 0.3943
+## baseline 0.985 at 5120x1440 (run341), far blob, original script
+== run341 far
+pair 810->811 |d| p50 0.39: present rms 0.422 codes p99 1.93 >4 codes 0.016 % | current rms 31.713 | present/current 0.0133
+pair 811->812 |d| p50 0.30: present rms 0.397 codes p99 1.93 >4 codes 0.024 % | current rms 32.384 | present/current 0.0122
+pair 812->813 |d| p50 0.31: present rms 0.439 codes p99 1.93 >4 codes 0.008 % | current rms 34.688 | present/current 0.0126
+pair 813->814 |d| p50 0.37: present rms 0.514 codes p99 1.72 >4 codes 0.122 % | current rms 32.105 | present/current 0.0160
+pair 814->815 |d| p50 0.59: present rms 0.762 codes p99 2.00 >4 codes 0.016 % | current rms 31.354 | present/current 0.0243
+pair 815->816 |d| p50 0.17: present rms 0.372 codes p99 1.72 >4 codes 0.016 % | current rms 34.589 | present/current 0.0108
+pair 816->817 |d| p50 0.30: present rms 0.401 codes p99 1.93 >4 codes 0.049 % | current rms 29.750 | present/current 0.0135
+station px 12334; first pair (normal-rate): present rms 0.422, ratio 0.0133; median over pairs: present rms 0.422, ratio 0.0133

@@ -3441,3 +3441,24 @@ section 10 (c26 = A, B, F; rotation-only displacement `cameraUV - dilatedUV` und
    decision for the orchestrator / user (a same-object pan of the adjacent station would be the visible test).
 
 **2026-09-26 Run 93 A decision (user):** the rotation-aware motion weight stays opt-in and off by default; the user noticed shimmer while panning with it on (run347) and prefers the blur of 0.85 to shimmer ("better blurring than shimmering"). Closed; do not re-propose a lower pan weight.
+
+## Far stabiliser weight A/B in flight: 0.95 and 0.90 (2026-09-28, run351 / run352)
+
+User flights on the run340 stand, `./x3run --direct --debug --perf --taa-far-stabiliser W` (base 0.85, thin 0.97,
+ramp 60/68, camera gate confirmed by the `motion_output_taa` row of each log; run340 ran with base 0.90, so the 0.985
+baseline at base 0.85 is run341). run351 and run352 were captured at 1920x1080 in a window; run340/341 at 5120x1440,
+so 351 and 352 compare with each other, not pixel for pixel with 341. Scripts and outputs under
+`verification/results/run351-352-far-weight/` (`run_all.sh`, `summary.txt`).
+
+| far weight | run/frame | rest present rms, codes | pixels > 4 codes | sharpness at rest | sharpness in pan (~73 px/frame) |
+|---|---|---|---|---|---|
+| 0.985 | 341/810 (5120 wide) | 0.422 | 0.016 % | – | – |
+| 0.95 | 351/1797 | 0.989 | 1.12 % | 0.453 | 0.171 |
+| 0.90 | 352/908 | 1.894 | 5.13 % | 0.452 | 0.227 |
+
+Far blob = view z 120k-200k (the coarse military outpost by depth, inferred). Rest flicker rises 2.5x at 0.95 and
+4.8x at 0.90 against 0.985 (measured); the user's verdict: "with 0.9 thin lines are starting to shimmer"; 0.95 not
+yet judged. Frame time p50 17 ms at 1080p in both new runs (20-21 ms at 5120x1440 before): resolution, not weight.
+Open: a 0.985 rest burst at 1920x1080 for a same-resolution triple; the near object's pan speeds differ (76 vs 93
+px/frame) so its figures are not comparable. Next step decided 2026-09-28: a per-pixel luminance lock
+([taa-luminance-lock.md](../architecture/taa-luminance-lock.md), design in progress) instead of a blanket far weight.

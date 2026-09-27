@@ -1,0 +1,13 @@
+Run351 (--taa-far-stabiliser 0.95) / run352 (0.9) vs run341 (0.985, base 0.85). Scripts: log_rows.py, run_all.sh
+(uses *_1080.py = copies of run340/run341-343 scripts with W,H = 1920,1080). Outputs: log_rows_out.txt,
+station_blobs_1080_out.txt, run_all_out.txt. All measured.
+Config rows: 341 hw 0.85 far 0.985; 351 hw 0.85 far 0.95; 352 hw 0.85 far 0.90; all far_f0 60 far_f1 68 thin 0.97
+far_gate camera. run340 has hw 0.900 (not a 0.85 baseline).
+Resolution: run340/341 5120x1440 (p00 0.50); run351/352 1920x1080 (p00 1.00), same p11 1.7778.
+Far blob (view z 120-200k), rest burst, present_ frame-to-frame (median of 7 pairs):
+  0.985 run341/810  rms 0.422 codes, >4 codes 0.016 %, present/current 0.0133   (5120x1440)
+  0.95  run351/1797 rms 0.989,       >4 codes 1.123 %, present/current 0.0330   (1920x1080)
+  0.90  run352/908  rms 1.894,       >4 codes 5.127 %, present/current 0.0634   (1920x1080)
+Far blob sharpness present/cur: rest 0.453 (351) / 0.452 (352); pan at ~73 px/f 0.171 (351/2173) / 0.227 (352/1419).
+Near blob (z 55-80k, right edge, cut by the frame): rest flicker ratio 0.429 / 0.394, rest sharpness 0.314 / 0.287.
+Frame time p50 (frame_end dt_ms, stand): 341 20 ms, 351 17 ms, 352 17 ms.
