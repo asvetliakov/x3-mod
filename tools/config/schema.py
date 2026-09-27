@@ -102,6 +102,11 @@ SETTINGS = [
     entry('taa_thin_region_emissive', 'float', 'graphics', 'Also calms small lights on thin structures that are brighter than this '
           '(in the scene\'s brightness units): lower catches dimmer lights. 0 = off, up to 65000.', '1',
           range=(0.0, 65000.0), requires=('taa_thin_region', 'hdr'), launcher='--taa-thin-region-emissive'),
+    entry('taa_luma_lock', 'float_list', 'graphics', 'Holds a long history only on distant details that actually flicker '
+          '(struts, antennas, seams) and keeps distant hull plates sharp under a pan. The first number is how many frames a '
+          'detected flicker keeps the hold (1 to 64); the others tune the detector. 0 = disabled.', builtin='0',
+          counts=(1, 3), elements=((0, 64), (0, 1), (0, 32)), requires=('taa', 'taa_far_stabiliser'), launcher='--taa-luma-lock',
+          since='2026-09-28'),
     entry('taa_alpha_history', 'bool', 'graphics', 'Lets the bloom glow of see-through effects follow the anti-aliasing. Experimental. '
           '1 = on, 0 = off.', builtin='0', requires=('taa',), launcher='--taa-alpha-history'),
     entry('cull_small_parts_px', 'float', 'graphics', 'Skips drawing model parts smaller than this many pixels on screen, for a higher '
@@ -352,6 +357,11 @@ SETTINGS = [
         'so stations stay sharper in a pan (may shimmer more during slow turns). F[,V0,V1]: the kept share falls to F '
         '(0.5 to 0.98) as the turn moves the picture from V0 to V1 pixels per frame (default 2,8); absent or 0 = off.',
         launcher='--taa-motion-weight-rotation', requires=('taa',)),
+    dev('taa_luma_lock_release', 'float', 'graphics', 'Luma lock: a lock dies when its 3x3 mean luma leaves this ratio of the '
+        'running mean of that mean while the lock is held (DLL default 0.65; 0 never).', range=(0, 1), requires=('taa_luma_lock',), since='2026-09-28'),
+    dev('taa_luma_lock_gate', 'enum', 'graphics', 'Luma lock creation gate: screen (the pixel\'s own screen speed, the DLL '
+        'default) or always (the A/B of taa-luminance-lock.md section 6).', choices=('screen', 'always'),
+        requires=('taa_luma_lock',), since='2026-09-28'),
     dev('camera_cut_deg', 'float', 'graphics', 'Camera rotation per frame above which the resolve declares a cut.', '20.0',
         launcher='--camera-cut-deg', range=[R(0, 180, True)]),
     dev('motion_cut_median_px', 'float', 'graphics', 'Global cut heuristic: median displacement bound (1e30 = disabled).', '1e30'),

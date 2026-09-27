@@ -115,6 +115,30 @@ inline void prepare_motion_weight_rotation(float out[4], float f, float v0, floa
     out[1] = 1.f - a * v0;
     out[2] = f;
 }
+// Luminance lock (X3M_TAA_LUMA_LOCK=T[,RHO,TAU], opt-in; docs/architecture/taa-luminance-lock.md sections 1, 2, 10):
+// c14 / c15 of the lock variant of the camera-gate resolve (resolve_far_camera_hold_lock.hlsl), uploaded as one
+// two-register block. c14 = T (the lock lifetime in frames, 1..64; 0 is off and never uploaded), RHO (the larger
+// residual threshold's share of the 3x3 luma range, 0..1), TAU_ABS (its floor and the smaller residual's, in codes of
+// 1/255 of q = L / (1 + L), 0..32) and the release ratio of the 3x3 mean luma against the reference (its running mean
+// while held) (0..1: below it the lock dies; 0 never kills); c15.x = the creation gate's threshold on the pixel's own
+// screen openness (kLumaLockGateScreen, or kLumaLockGateAlways: every frame, the fixture's A/B), yzw 0.
+constexpr unsigned kLumaLockRegister = 14, kLumaLockFramesMax = 64;
+constexpr float kLumaLockRhoDefault = .25f, kLumaLockTauDefault = 3.f, kLumaLockTauMax = 32.f,
+                kLumaLockReleaseDefault = .65f, kLumaLockGateScreen = .5f, kLumaLockGateAlways = -1.f;
+inline bool valid_luma_lock(unsigned frames, float rho, float tau, float release) noexcept {
+    return frames <= kLumaLockFramesMax && std::isfinite(rho) && rho >= 0 && rho <= 1 && std::isfinite(tau) &&
+           tau >= 0 && tau <= kLumaLockTauMax && std::isfinite(release) && release >= 0 && release <= 1;
+}
+// c14 / c15 (out[0..7]); the caller has validated the fields.
+inline void prepare_luma_lock(float out[8], unsigned frames, float rho, float tau, float release,
+                              bool always) noexcept {
+    out[0] = float(frames);
+    out[1] = rho;
+    out[2] = tau;
+    out[3] = release;
+    out[4] = always ? kLumaLockGateAlways : kLumaLockGateScreen;
+    out[5] = out[6] = out[7] = 0.f;
+}
 constexpr float kAdaptiveWeightMax = .99f;                          // upper bound of WMAX
 constexpr float kAdaptiveLoDefault = .1f, kAdaptiveHiDefault = .5f; // px/frame
 constexpr float kAgeLimit = 64.f;                                   // the age target saturates here

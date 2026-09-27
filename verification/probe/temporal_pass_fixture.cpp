@@ -5894,6 +5894,7 @@ void loop_timings(IDirect3DDevice9* d, const DWORD* baseline, const DWORD* candi
 #include "temporal_far_camera_inc.h"
 #include "temporal_far_jitter_line_inc.h"
 #include "temporal_bolt_far_streak_inc.h"
+#include "temporal_luma_lock_inc.h"
 
 int main(int argc, char** argv) {
     std::setvbuf(stdout, nullptr, _IONBF, 0);
@@ -5933,10 +5934,12 @@ int main(int argc, char** argv) {
     const bool boltFarOnly = argc == 6 && std::strcmp(argv[5], "bolt-far-streak") == 0;   // BOLT_FAR_STREAK alone
                                                                                           // (iteration; the runner uses
                                                                                           // lattice)
+    const bool lumaLockOnly = argc == 6 && std::strcmp(argv[5], "luma-lock") == 0; // LUMA_LOCK alone (iteration; the
+                                                                                   // runner uses lattice)
     try {
         if ((argc != 5 && !sunLaneOnly && !stationaryOnly && !measure && !supplementalOnly && !loopQualify &&
              !lattice && !regionHoldOnly && !boxHalfOnly && !thinSourceOnly && !foldTimingOnly && !farCameraOnly &&
-             !farJitterOnly && !boltFarOnly) ||
+             !farJitterOnly && !boltFarOnly && !lumaLockOnly) ||
             !window)
             throw std::runtime_error(
                 "usage: temporal_pass_fixture.exe <D3DX> <decoder> <resolve> <sharpen> [stationary-only|sharpen-measure|supplemental-only <baseline-resolve>|loop-qualify <baseline-resolve>|lattice]");
@@ -6027,6 +6030,8 @@ int main(int argc, char** argv) {
                 // A' with the mask fold (the camera gate's only path): the folded hold resolve (the tests, the holds,
                 // RT2 depth) and its 49-tap box; the fixture's X3M_FOLD_TESTS_OUT twin beside it (not embedded).
                 X3M_BUDGET(temporal_resolve_far_camera_hold_program, "embedded_far_camera_hold");
+                // The luminance lock (taa-luminance-lock.md section 4, opt-in): the hold resolve with the lock lane.
+                X3M_BUDGET(temporal_resolve_far_camera_hold_lock_program, "embedded_far_camera_hold_lock");
                 X3M_BUDGET(temporal_thin_box_hold_program, "embedded_thin_box_hold");
                 budget(foldTests.p, "fixture_fold_tests_out");
                 // S4 (opt-in X3M_TAA_BOX_RESOLUTION=half): the half-resolution pair.
@@ -6067,7 +6072,14 @@ int main(int argc, char** argv) {
             far_jitter_line_cases(d.p, compiler, static_cast<DWORD*>(rc->GetBufferPointer()));
             std::printf("FAR_JITTER_LINE_BASE numerical=%u state_restorations=%u\n", numeric_checks, state_checks);
             bolt_far_streak_cases(d.p, compiler, static_cast<DWORD*>(rc->GetBufferPointer()));
+            std::printf("BOLT_FAR_STREAK_BASE numerical=%u state_restorations=%u\n", numeric_checks, state_checks);
+            luma_lock_cases(d.p, compiler, static_cast<DWORD*>(rc->GetBufferPointer()));
+            std::printf("LUMA_LOCK_BASE numerical=%u state_restorations=%u\n", numeric_checks, state_checks);
             std::printf("RESULT PASS numerical=%u state_restorations=%u lattice=1\n", numeric_checks, state_checks);
+            result = 0;
+        } else if (lumaLockOnly) {
+            luma_lock_cases(d.p, compiler, static_cast<DWORD*>(rc->GetBufferPointer()));
+            std::printf("RESULT PASS numerical=%u state_restorations=%u luma_lock_only=1\n", numeric_checks, state_checks);
             result = 0;
         } else if (boltFarOnly) {
             bolt_far_streak_cases(d.p, compiler, static_cast<DWORD*>(rc->GetBufferPointer()));

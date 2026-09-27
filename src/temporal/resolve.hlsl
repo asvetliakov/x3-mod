@@ -193,6 +193,30 @@ float4 luminance : register(c22); // k, current-filter A, alpha history (X3M_THI
 // (r, g, b, a) above and nothing else, for the temporal fixture's oracle.
 // X3M_KEEP_OUT (fixture only, with X3M_REGION_HOLD): COLOR0 = the blend's history weight on the blend path (the
 // rotation-aware weight's contour row, taa-motion-history-weight.md section 10).
+// X3M_LUMA_LOCK (resolve_far_camera_hold_lock.hlsl, with X3M_REGION_HOLD; docs/architecture/taa-luminance-lock.md sections
+// 1, 2 and 10): a per-pixel temporal flip lock replaces the blanket far weight. The lane is COLOR3 (A8R8G8B8; the previous
+// one at s13, point): b = the lock lifetime t (0..64) + 128 in motion mode, a = R, the 3x3 mean luma code at creation; in
+// rest mode (this pixel's own screen gate open) r = the last residual e + 128 (g 128), in motion mode (closed) r / g = the
+// lock's sub-texel offset from its texel centre, 128 + 128 a per axis over [-1, 1). Luma codes are floor(255 q + 0.5) of
+// q = L / (1 + L), L the floored raw luma (the lane is bounded whatever k); the 3x3 range and mean are taken in the same
+// q (the weighed 3x3 minimum, maximum and mean mapped back to raw luma by the inverse weighting). Detector (section
+// 10 (b)): e = Lc - code(history at the jittered sample position), the history bilinear at previousUV - the current jitter
+// (s11: the previous unjittered position of the content this sample shows; the resolve's `old` is the history at the
+// unjittered pixel, which a luma ramp's jitter response alternates against); a flip is e_n * e_(n-1) < 0 with the larger
+// |e| >= tau = max(c14.z, c14.y * range3 codes) and the smaller >= c14.z; the stateless 7x7 candidate is |e_n| >= tau.
+// Creation (t = T = c14.x, R = mean code, offset 0): a flip on an eligible pixel (farw > 0 or the thin region) while its
+// own screen gate is open (ownS >= c15.x: 0.5, or -1 for the fixture's "always" A/B). Transport (section 10 (a)): the
+// pixel reads the lane texels around its reprojected position (its own texel at f = 0, else the 2x2); a texel's lock sits
+// at a' = a - (f - cell) from this pixel's centre (a = 0 in rest mode) and is claimed when |a'| < 0.75 per axis, the larger
+// lifetime on a double claim. The lifetime drops by one per frame while the gate is open and is frozen while it is closed;
+// a 3x3 mean code outside c14.w of R (min / max below the ratio) kills it; R is the running mean of the 3x3 mean code
+// (R += (mean - R) / 8, rounded to a code) every frame the lock is held, pan included (section 11), the mean at creation. The lock strength l = saturate(t / 4) replaces
+// farw's scale in the far blend (keep + l * farOpen * (min(ramp, W) - keep)); the far clip takes the 7x7 where l > 0 or
+// on a candidate. Every current-only return and the exit reset write the lane fresh (rest mode, e = 0, t = R = 0).
+// The program body is resolveMain (the hold program's outputs); main writes COLOR3 after it (the fresh lane unless the
+// blend path stored its lane), so no lock value is live across the history fetches, where the hold program's temporaries
+// are at the ps_3_0 limit.
+// Codes are written as (code + 0.25) / 255, which a rounding and a truncating UNORM conversion both store as the code.
 #ifdef X3M_REGION_HOLD
 #define X3M_CAMERA_GATE 1
 float4 depthParallax : register(c8); // camera_depth_parallax(): (DX, DY, DW) / m32, m22; xyz = 0 is the far-plane path
@@ -200,6 +224,11 @@ float4 laneParallax : register(c9);  // camera_lane_parallax(): (DX, DY, DW), 1 
 float4 thinTests : register(c10);    // x = E of the emissive vote (0 off), y = 1: vote-only source (no search), z = 1: the thin vote is cast in the lane's .a
 float4 holdGate : register(c11);     // x = 1: the far weight on the screen speed gate (X3M_TAA_FAR_GATE=screen), 0: on openC; yz = the far components' scales, w = L, the hold length (frames)
 float4 farGate : register(c13);      // x = d0, y = 1 / (d1 - d0) of farw (0: off), z = the far clip's threshold on farw * openC (X3M_TAA_FAR_CLIP; 0: any far weight, 2: off)
+#ifdef X3M_LUMA_LOCK
+sampler2D previousLock : register(s13);
+float4 lockParams : register(c14); // x = T (frames), y = RHO, z = TAU_ABS (codes), w = the release ratio of the 3x3 mean
+float4 lockGate : register(c15);   // x = the creation gate's threshold on the pixel's own screen openness (0.5; -1: always)
+#endif
 #endif
 #ifdef X3M_CAMERA_GATE
 #define X3M_FAR_STABILIZE 1
@@ -391,6 +420,17 @@ float closureHold(float own, float held, out float code) {
 }
 // The hold fraction of the age count: the region hold h (0..L) and the camera gate's stored pair.
 float holdCode(float h, float codeC) { return (h + 128 * codeC) * (1.0 / 65536); }
+#ifdef X3M_LUMA_LOCK
+// q(L) = L / (1 + L) of a floored luma, in codes of 1/255 (unrounded); a lane code as written and as read back.
+float lockCodes(float luma) { return luma / (1 + luma) * 255; }
+float4 lockWrite(float4 codes) { return (codes + 0.25) * (1.0 / 255); }
+float4 lockRead(float4 texel) { return floor(texel * 255 + 0.5); }
+// The raw luma of a weighed luma (unweigh's factor; w >= 0 here): the q domain of the lock whatever k.
+float lockRaw(float w) { return luminance.x > 0 ? w / max(1 - luminance.x * w, unweighFloor) : w; }
+float lockLumaCode(float3 c) { return floor(lockCodes(lumaFloored(c)) + 0.5); }
+// The fresh lane: rest mode, residual 0, no lock.
+static const float4 lockFresh = float4(128, 128, 0, 0);
+#endif
 #define X3M_FRESH_AGE (1 + fresh)
 #else
 #define X3M_FRESH_AGE 1
@@ -410,13 +450,23 @@ float snapFraction(inout float base, float f) {
 struct ResolveOutput { float4 color : COLOR0; float4 age : COLOR1; float4 depth : COLOR2; };
 static float foldDepth;
 ResolveOutput emit(float4 color, float age) { ResolveOutput o; o.color = color; o.age = age; o.depth = foldDepth; return o; }
+#ifdef X3M_LUMA_LOCK
+// COLOR3: the lock lane, written by main after the body; the blend path stores its lane here and sets lockBlend.
+struct LockOutput { float4 color : COLOR0; float4 age : COLOR1; float4 depth : COLOR2; float4 lock : COLOR3; };
+static float4 foldLock = 0;
+static float lockBlend = 0;
+#endif
 #else
 struct ResolveOutput { float4 color : COLOR0; float4 age : COLOR1; };
 // The age target is R32F: only .x is stored, so the count is written to every lane (one
 // instruction fewer than a float4 with constant lanes; the stored bytes are the same).
 ResolveOutput emit(float4 color, float age) { ResolveOutput o; o.color = color; o.age = age; return o; }
 #endif
+#ifdef X3M_LUMA_LOCK
+ResolveOutput resolveMain(float2 uv) {
+#else
 ResolveOutput main(float2 uv : TEXCOORD0) {
+#endif
 #else
 #define emit(color, age) (color)
 float4 main(float2 uv : TEXCOORD0) : COLOR0 {
@@ -904,6 +954,56 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
 #ifdef X3M_REGION_HOLD
     float3 low3 = low, high3 = high; // the raw 3x3 min / max: the inner part of the in-place 7x7 box below
 #endif
+#ifdef X3M_LUMA_LOCK
+    // The lock (taa-luminance-lock.md sections 1 and 10). (b) The residual against the history at the jittered sample
+    // position.
+    float lockE = lockLumaCode(color) - lockLumaCode(fetch(previousColorLinear, previousUV - sizeJitter.zw).rgb);
+    float lockTau = max(lockParams.z, lockParams.y * (lockCodes(lockRaw(lumaFloored(high))) - lockCodes(lockRaw(lumaFloored(low)))));
+    bool lockOpen = ownS >= lockGate.x;
+    // (a) The claim: the texels around the reprojected position (the own texel at f = 0), the larger lifetime of those whose
+    // carried lock lies within 0.75 px of this pixel's centre per axis; the previous residual from the nearest texel in rest
+    // mode (none in motion mode: the chain restarts).
+    float lockLife = 0, lockHeldRef = 0, lockPrev = 0;
+    float2 lockOffset = 0;
+    [branch] if (all(f == 0)) {
+        float4 held = lockRead(fetch(previousLock, tap));
+        float moving = held.b >= 128 ? 1 : 0;
+        float2 carried = moving * (held.rg - 128) * (1.0 / 128);
+        if (all(abs(carried) < 0.75)) {
+            lockLife = held.b - 128 * moving;
+            lockHeldRef = held.a;
+            lockOffset = carried;
+        }
+        lockPrev = (1 - moving) * (held.r - 128);
+    } else {
+        float2 nearestCell = float2(f.x >= 0.5 ? 1 : 0, f.y >= 0.5 ? 1 : 0);
+        [loop] for (int cell = 0; cell < 4; ++cell) {
+            float2 at = float2(cell == 1 || cell == 3 ? 1 : 0, cell >= 2 ? 1 : 0);
+            float4 held = lockRead(fetch(previousLock, tap + at * sizeJitter.xy));
+            float moving = held.b >= 128 ? 1 : 0;
+            float life = held.b - 128 * moving;
+            float2 carried = moving * (held.rg - 128) * (1.0 / 128) - (f - at);
+            if (life > lockLife && all(abs(carried) < 0.75)) {
+                lockLife = life;
+                lockHeldRef = held.a;
+                lockOffset = carried;
+            }
+            if (all(at == nearestCell)) lockPrev = (1 - moving) * (held.r - 128);
+        }
+    }
+    bool lockFlip = lockE * lockPrev < 0 && max(abs(lockE), abs(lockPrev)) >= lockTau && min(abs(lockE), abs(lockPrev)) >= lockParams.z;
+    float lockMean = floor(lockCodes(lockRaw(lumaFloored(mean / count))) + 0.5);
+    lockLife = lockOpen ? max(lockLife - 1, 0) : lockLife;
+    lockLife = min(lockHeldRef, lockMean) < lockParams.w * max(lockHeldRef, lockMean) ? 0 : lockLife;
+    bool lockCreate = lockFlip && lockOpen && (farw > 0 || region > 0);
+    // The reference: a held lock's running mean of the 3x3 mean code (section 11), a new lock's mean at creation.
+    float lockRef = lockLife > 0 ? floor(lockHeldRef + (lockMean - lockHeldRef) * 0.125 + 0.5) : (lockCreate ? lockMean : 0);
+    lockLife = lockCreate ? lockParams.x : lockLife;
+    // This frame's lane: rest mode (the residual) while the gate is open, motion mode (the claimed offset) while closed.
+    float4 lockLane = lockOpen ? float4(clamp(lockE, -128, 127) + 128, 128, lockLife, lockRef)
+                               : float4(clamp(floor((lockLife > 0 ? lockOffset : 0) * 128 + 0.5), -128, 127) + 128, lockLife + 128, lockRef);
+    bool lockClip = lockLife > 0 || abs(lockE) >= lockTau; // a lock (l > 0) or a stateless candidate
+#endif
     mean /= count;
     float3 sigma = sqrt(max(square / count - mean * mean, 0));
     low = max(low, mean - clipGamma * sigma);
@@ -938,7 +1038,13 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     // far line that one jitter phase samples is not cut back the next frame, while a far mover (openC closed) keeps the 3x3
     // bound. c13.z = 0 (the default) takes every pixel with any far weight; 2 (above any product) is the 3x3 clip everywhere.
     // Its taps are taken on this branch only (outside it the 3x3 path costs a few arithmetic slots).
+#ifdef X3M_LUMA_LOCK
+    // The lock's clip (section 2): locked pixels and the stateless candidates (|d0| >= tau) take the 7x7; every other far
+    // pixel the 3x3 variance clip of an ordinary hull pixel.
+    bool farClip = region <= 0 && lockClip && farw * openC > farGate.z;
+#else
     bool farClip = region <= 0 && farw * openC > farGate.z;
+#endif
     float4 boxLowTexel = fetch(boxLow, uv);
     float3 boxed = clipped;
     [branch] if (boxLowTexel.a > 0.5) boxed = clamp(old, boxLowTexel.rgb, fetch(boxHigh, uv).rgb);
@@ -1030,7 +1136,15 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     // (g * farOpen = 1 or b = 1 with its target above the capped base) blends to its target exactly. Off: min(w, 1) = w.
     keep = band > 0 ? keep : min(keep, turnCap);
 #endif
+#ifdef X3M_LUMA_LOCK
+    // The lock's weight law (section 2): l in place of farw's scale, W_lock = c24.y; l = 0 is the base weight exactly.
+    float lockStrength = saturate((lockLane.b >= 128 ? lockLane.b - 128 : lockLane.b) * 0.25); // l: full from t = 4, a four-frame fade
+    float farKeep = keep + lockStrength * farOpen * (min(ramp, flicker.y) - keep);
+    // The exit reset writes the lane fresh, like a current-only return.
+    lockLane = keeping >= 0 ? lockLane : lockFresh;
+#else
     float farKeep = keep + stabilise.g * farOpen * (min(ramp, flicker.y) - keep);
+#endif
     keep = stabilise.b > 0 ? max(farKeep, keep + stabilise.b * (min(ramp, history.x) - keep)) : farKeep;
     keep = keeping >= 0 ? keep : 0; // the exit reset (the adaptive form above is 0 through the age)
 #else
@@ -1077,7 +1191,11 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     // pan with the camera gate closed), keeps its alpha bit for bit. The stored history alpha at the flagged texel is
     // negative for one frame; the next frame's alpha blend clamps it to the current 3x3 alpha range (above), so the
     // flag cannot propagate.
+#ifdef X3M_LUMA_LOCK
+    float boltHeld = max(lockStrength * farOpen, stabilise.b); // the lock's share in place of the far weight's
+#else
     float boltHeld = max(stabilise.g * farOpen, stabilise.b);
+#endif
     alpha = lane.g > 1 && boltHeld > 0 ? -1 - boltHeld : alpha;
 #endif
 #ifdef X3M_AGE_WEIGHT
@@ -1092,8 +1210,24 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     // current-only return keeps its (non-negative) colour, so the fixture reads the history weight per pixel.
     return emit(float4(-keep, -2, 0, 1), -exiting >= 0 ? aged : -aged);
 #endif
+#ifdef X3M_LUMA_LOCK
+    foldLock = lockLane;
+    lockBlend = 1;
+#endif
     return emit(float4(unweigh(lerp(weighted, old, keep)), alpha), -exiting >= 0 ? aged : -aged);
 #else
     return emit(float4(unweigh(lerp(weighted, old, keep)), alpha), min(age + 1, 64));
 #endif
 }
+#ifdef X3M_LUMA_LOCK
+// The lock variant's entry: the body's three outputs and the lane (this frame's on the blend path, else the fresh lane).
+LockOutput main(float2 uv : TEXCOORD0) {
+    ResolveOutput body = resolveMain(uv);
+    LockOutput o;
+    o.color = body.color;
+    o.age = body.age;
+    o.depth = body.depth;
+    o.lock = lockWrite(lockBlend > 0 ? foldLock : lockFresh);
+    return o;
+}
+#endif

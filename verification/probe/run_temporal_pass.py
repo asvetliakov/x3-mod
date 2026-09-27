@@ -13,6 +13,7 @@ paths=[root/name for name in ('src/renderer/temporal_pass.h','src/renderer/tempo
     'verification/probe/temporal_fold_timing_inc.h',
     'verification/probe/temporal_far_camera_inc.h',
     'verification/probe/temporal_far_jitter_line_inc.h',
+    'verification/probe/temporal_luma_lock_inc.h','src/temporal/resolve_far_camera_hold_lock.hlsl','src/renderer/temporal_resolve_far_camera_hold_lock_program_inc.h',
     'verification/probe/temporal_bolt_far_streak_inc.h','src/temporal/bolt_far.hlsl','src/temporal/bolt_far.h','src/temporal/hdr_writeback_dither_ps.hlsl','src/renderer/hdr_writeback_dither_program_inc.h',
     'src/temporal/sun_shadow_cascade_apply_ps.hlsl','src/renderer/sun_shadow_cascade_apply_program_inc.h','src/temporal/agx.hlsl','src/renderer/hdr_tonemap_program_inc.h','src/temporal/agx_sharpen_ps.hlsl','src/renderer/hdr_tonemap_sharpen_program_inc.h',
     'src/temporal/bloom_common.hlsl','src/temporal/bloom_down_ps.hlsl','src/temporal/bloom_agx_ps.hlsl','src/renderer/bloom_extract_even_gamma_program_inc.h','src/renderer/bloom_agx_program_inc.h','src/renderer/bloom_programs.h',
@@ -317,11 +318,11 @@ try:
     assert [hold['state'][0][k] for k in ('masks_camera','masks_screen','masks_on','masks_at_reset','masks_after_reset','masks_box_refused')]==['0','2','0','0','0','0'],hold['state']
     assert len(hold['thin'])==3 and all(r['square_differs']=='0' and float(r['age_oracle_error'])==0 for r in hold['thin']) and len(hold['motion_start'])==1 and len(hold['pan'])==1 and len(hold['stale'])==1 and len(hold['box_domain'])==1 and len(hold['pan_stop'])==1 and len(hold['box_open'])==1,hold
     assert [(r['scene'],r['box']) for r in hold['fold_fallback']]==[(s,b) for s in ('pan_arm_bars','gap_lattice_7.5px') for b in ('full','half')] and all(int(r['fallback_px_frames'])>0 and float(r['error_in_place_7x7'])<=float(r['bound']) for r in hold['fold_fallback']),hold['fold_fallback']
-    assert lattice.returncode==0 and 'LATTICE_BASE numerical=10 state_restorations=0' in lattice_text and 'FLICKER_BASE numerical=190 state_restorations=4' in lattice_text and 'LINE_BASE numerical=190 state_restorations=4' in lattice_text and 'DEPTH_FOLD_BASE numerical=448 state_restorations=72' in lattice_text and 'HISTORY_TAPS_BASE numerical=459 state_restorations=72' in lattice_text and 'REGION_HOLD_BASE numerical=511 state_restorations=75' in lattice_text and 'BOX_HALF_BASE numerical=534 state_restorations=76' in lattice_text and 'THIN_SOURCE_BASE numerical=547 state_restorations=90' in lattice_text and 'FOLD_TIMING_BASE numerical=547 state_restorations=90' in lattice_text and 'FAR_CAMERA_PAN_BASE numerical=567 state_restorations=90' in lattice_text and 'RESULT PASS numerical=654 state_restorations=90 lattice=1' in lattice_text and 'FAIL' not in lattice_text,lattice_text[-1500:]
+    assert lattice.returncode==0 and 'LATTICE_BASE numerical=10 state_restorations=0' in lattice_text and 'FLICKER_BASE numerical=190 state_restorations=4' in lattice_text and 'LINE_BASE numerical=190 state_restorations=4' in lattice_text and 'DEPTH_FOLD_BASE numerical=448 state_restorations=72' in lattice_text and 'HISTORY_TAPS_BASE numerical=459 state_restorations=72' in lattice_text and 'REGION_HOLD_BASE numerical=511 state_restorations=75' in lattice_text and 'BOX_HALF_BASE numerical=534 state_restorations=76' in lattice_text and 'THIN_SOURCE_BASE numerical=547 state_restorations=90' in lattice_text and 'FOLD_TIMING_BASE numerical=547 state_restorations=90' in lattice_text and 'FAR_CAMERA_PAN_BASE numerical=567 state_restorations=90' in lattice_text and 'BOLT_FAR_STREAK_BASE numerical=654 state_restorations=90' in lattice_text and 'LUMA_LOCK_BASE numerical=654 state_restorations=91' in lattice_text and 'RESULT PASS numerical=654 state_restorations=91 lattice=1' in lattice_text and 'FAIL' not in lattice_text,lattice_text[-1500:]
     # The 2,048-slot ceiling per TAA program (docs/architecture/taa-plan-lifted-slot-cap.md section 2; AGENTS.md "Shader slot
     # budget": 512 is the spec minimum, not a limit). device_limit stays a record.
     assert len(report['flicker']['drift'])==64 and len(report['flicker']['near_depth'])==8 and all(float(v['instruction_slots'])<=2048 and v['within_ceiling_2048']==1 for k,v in report['lattice']['budget'].items()),report['lattice']['budget']
-    assert {'embedded_far_camera_hold','embedded_thin_box_hold','embedded_thin_box_rows_half','embedded_thin_box_columns_half','fixture_fold_tests_out'}<=set(report['lattice']['budget']) and not {'embedded_line_mask_camera','embedded_line_mask_camera_depth','embedded_line_mask_camera_depth_thin','embedded_thin_box_rows_hold','embedded_thin_box_columns_hold'}&set(report['lattice']['budget']),report['lattice']['budget']
+    assert {'embedded_far_camera_hold','embedded_far_camera_hold_lock','embedded_thin_box_hold','embedded_thin_box_rows_half','embedded_thin_box_columns_half','fixture_fold_tests_out'}<=set(report['lattice']['budget']) and not {'embedded_line_mask_camera','embedded_line_mask_camera_depth','embedded_line_mask_camera_depth_thin','embedded_thin_box_rows_hold','embedded_thin_box_columns_hold'}&set(report['lattice']['budget']),report['lattice']['budget']
     # S4 (taa-high-resolution.md S4; X3M_TAA_BOX_RESOLUTION=half, opt-in): 40 numerical checks and one state restoration on top of
     # A''s 554 / 91 (REGION_HOLD_BASE): the state row (3), per-pixel containment of the full-resolution box in twelve scenes (12; the two static arm
     # scenes open no box at either resolution and are then identical bit for bit),
@@ -428,6 +429,36 @@ try:
     ripple=report['lattice']['ripple']
     assert len(ripple)==4 and report['lattice']['budget']['plain']['instruction_slots']<=2048,report['lattice']
     assert hashes()==report['sources_before_build'],'Source changed during the lattice cases'
+    # Luminance lock (docs/architecture/taa-luminance-lock.md sections 5 and 10; temporal_luma_lock_inc.h): the rows at the
+    # default (16, 0.25, 3, release 0.65), gated here after every other assertion so one run reports all of them; the RHO 0.5
+    # and always-gate runs are reported only. One assertion lists every failed row.
+    lock={name:fields('LUMA_LOCK_'+name.upper()+' ') for name in ('form','plate','plate_sharp','strut_ripple','carry','carry_band','resume','chatter','mover','shading','lane','identity','slanted','state')}
+    report['luma_lock']=lock
+    by_run=lambda rows:{r['run']:r for r in rows}
+    form,plate,sharp,carry,band,resume,chatter,mover,shading=(by_run(lock[k]) for k in ('form','plate','plate_sharp','carry','carry_band','resume','chatter','mover','shading'))
+    budget=report['lattice']['budget']
+    lane=lock['lane'][0] if len(lock['lane'])==1 else {}
+    checks={
+        'form': 0<=int(form['lock']['form'])<=3 and 0<=int(form['lock']['form_after_cut'])<=3,
+        'plate': float(plate['lock']['share_max'])<=.005 and float(plate['lock_yramp']['share_max'])<=.005,
+        'plate_sharp': abs(float(sharp['lock']['e_pan_ratio'])-1)<=.02 and sharp['lock']['interior_differs']=='0',
+        'strut_ripple': len(lock['strut_ripple'])==1 and abs(float(lock['strut_ripple'][0]['ratio'])-1)<=.10,
+        'carry': float(carry['lock']['share_min'])>=.9,
+        'carry_band': float(band['lock']['locked_per_strut_max'])<=2.0 and float(band['lock']['off_strut_share_max'])<=.02,
+        'resume': float(resume['lock']['share_frame41'])>=.9,
+        'chatter': float(chatter['lock']['toggle_share_max'])<=.05,
+        'mover': mover['lock']['locked_at_uncover']=='0' and 0<=int(mover['lock']['reform_delay_frames'])<=3,  # re-formed within 3 frames after the uncover frame
+        'slanted': len(lock['slanted'])==1 and float(lock['slanted'][0]['energy_on_locked'])>=.9,
+        # section 11: the 20 % step survives the pan, the 40 % step dies within 2 frames of it (frame 30, 31 or 32)
+        'shading': min(float(shading['lock_step20'][k]) for k in ('share_frame30','share_frame31','share_frame32','share_frame33','share_frame39'))>=.9
+                   and min(float(shading['lock_step40'][k]) for k in ('share_frame30','share_frame31','share_frame32'))==0,
+        'budget': budget['embedded_far_camera_hold_lock']['instruction_slots']<=1250 and budget['embedded_far_camera_hold']['dwords']==3968,
+        'lane': bool(lane) and all(lane[k]=='0' for k in ('rest_in_motion_mode','pan_in_rest_mode','offsets_beyond_three_quarters','not_alternating')) and int(lane['locked_offsets'])>0,
+        'identity': len(lock['identity'])==1 and all(lock['identity'][0][k]=='0' for k in ('colour_differs','age_differs','depth_differs','locked_px_frames')),
+        'state': len(lock['state'])==1 and all(v=='1' for v in lock['state'][0].values()),
+    }
+    report['luma_lock_failed_rows']=sorted(k for k,ok in checks.items() if not ok)
+    assert not report['luma_lock_failed_rows'],(report['luma_lock_failed_rows'],{k:lock[k] for k in ('form','plate','carry','carry_band','resume','shading','lane','slanted')})
     report['passed']=True
 finally:
     (results/'temporal-pass-summary.json').write_text(json.dumps(report,indent=2)+'\n')

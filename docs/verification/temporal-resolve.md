@@ -3462,3 +3462,172 @@ yet judged. Frame time p50 17 ms at 1080p in both new runs (20-21 ms at 5120x144
 Open: a 0.985 rest burst at 1920x1080 for a same-resolution triple; the near object's pan speeds differ (76 vs 93
 px/frame) so its figures are not comparable. Next step decided 2026-09-28: a per-pixel luminance lock
 ([taa-luminance-lock.md](../architecture/taa-luminance-lock.md), design in progress) instead of a blanket far weight.
+
+## Luminance lock: implementation and fixture (2026-09-28; design `docs/architecture/taa-luminance-lock.md`, opt-in `--taa-luma-lock`; not flown)
+
+Built: the variant `resolve_far_camera_hold_lock.hlsl` (`X3M_REGION_HOLD` + `X3M_LUMA_LOCK` over `resolve.hlsl`), the lock
+lane as COLOR3 (A8R8G8B8 pair owned by `TemporalPass`, previous lane at s13, c14 / c15 = T, RHO, TAU codes, release;
+creation gate), `configure_luma_lock()`, `FrameInputs::luma_lock_*`, `Output::luma_lock`, `Diagnostics::luma_lock_reason`;
+lanes released with the histories (Reset) and by the first run without the lock, a refused lane pair turns the lock off
+until Reset, a lane the pass did not write last run restarts the history. `X3M_TAA_LUMA_LOCK=T[,RHO,TAU]` (schema,
+launcher `--taa-luma-lock`, forwarded only when given), developer `X3M_TAA_LUMA_LOCK_RELEASE` / `_GATE`; one
+`motion_output_taa_luma_lock` row at initialisation, one per lane refusal; the lane is dumped with `--taa-debug`
+(`taa_lock_*.bgra8`). Every other program's bytes are unchanged (the generator rewrote all 46 records for its own hash
+and the nine bloom records for theirs; no `*_inc.h` but the new one changed).
+
+Interpretations of the note (implemented this way; the reasons are measured or arithmetic):
+- The 3x3 range and the release mean are taken in the flip test's own domain q = L / (1 + L): the weighed 3x3 min / max /
+  mean the clip holds, mapped back to raw luma by the inverse weighting (the note's `luma(high3) - luma(low3)` is the
+  weighed domain, which equals q only at k = 1; at the fixture's k = 0 a 1.5-over-0.5 strut would sit at 1.07x tau).
+  No state was added to the statistics loop: the hold program is at the ps_3_0 temporary limit (the first build with
+  three loop accumulators and an early-set COLOR3 failed with X4505); COLOR3 is written by a wrapper `main` from the
+  returned colour on current-only returns.
+- A fresh lane writes P2 = Lc, not 0: with P2 = 0 the next frame's d1 is P1 itself and any pixel whose luma drops by tau
+  locks on its second frame (CPU model: strut formation at frame 1 instead of 2).
+- Creation and the lifetime freeze use the pixel's own screen openness (`ownS`, its and its dilation neighbour's, not
+  held), the note's "this pixel's own screen speed"; `openS` carries the camera closure hold (L frames after a mover),
+  which would delay re-formation past the mover row's 3 frames.
+
+Commands: `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 tools/shaders/generate_rigid_motion_pixel.py`
+then `--check` (PASS, 46 programs); `... generate_bloom_programs.py` then `--check` (PASS, 9); `X3M_FIXTURE_BOTTLE=X3
+python3 verification/probe/wine_lock.py python3 verification/probe/run_temporal_pass.py` (01:36:36-01:39:02, exit 1 at the
+new `LUMA_LOCK` gate after every existing assertion passed); `cmake --build build` (0 warnings), `check_no_x87.py
+build/d3d9.dll` (PASS, 718 reachable, 0 violations); `run_host_suite.py` (274 modules, 2847 tests, 0 failing);
+`./x3run --direct --debug --perf [--taa-luma-lock 16] --dry-run` (the two JSON outputs differ by one line,
+`"X3M_TAA_LUMA_LOCK": "16,0.25,2"`). CPU model of the lane: `verification/results/taa-luminance-lock/lane_model_fixture.py`
+(`lane_model_fixture_out.txt`).
+
+Fixture `LUMA_LOCK` rows (`temporal_luma_lock_inc.h`; 512 x 16 far strip, base 0.85, far 0.985, thin 0.97 camera gate,
+vertical 0.4-px struts of luma 1.5 at [s + 0.115, s + 0.515) sampled on the even Halton phases only, a plate of 0.5 with a
+0.1 per px ramp along x (triangle wave 0.5..1.3), pan 0.37 px/frame frames 16-39, cut 40, near 3-px mover 56-71), lock
+(16, 0.25, 2) against the blanket 0.985 and the base path (far weight 0, 3x3) [M]:
+
+| row | acceptance | measured | |
+|---|---|---|---|
+| form | <= frame 3 from 0 and from the cut | frame 2 / 2 (share 1.00) | pass |
+| plate | lock share <= 0.5 % | 87.5 % max, 72.2 % mean (RHO 0.5: 18.8 % / 13.2 %) | **fail** |
+| plate_sharp | pan E within 2 % of base; interior bit-identical | 0.983 (rest 0.9995); 0 of 7,072 interior px-frames differ (RHO 0.5: 0.998; 6,032 of 37,856 differ, all under the pan, all within 3 px / 3 frames of a CPU-modelled stateless candidate) | pass |
+| strut_ripple | within 10 % of blanket 0.985 | 3.8196 vs 3.8196 codes rms (1.000; base path 6.10) | pass |
+| carry | >= 0.9 every pan frame | 0.00 on every frame (always gate: 1.00, 0.50, then mostly 0; mean 0.19) | **fail** |
+| chatter | <= 5 % | 0.00 | pass |
+| mover | 0 locks at uncover; re-formed within 3 frames | 0 of 120; delay 1 frame (always gate: 72 of 120 locked at uncover) | pass |
+| budget | new <= 1,200 slots; hold 3,968 dwords | 1,138 slots / 4,398 dwords (+100 slots on 1,038); hold 3,968 | pass |
+| lane | P2 = previous P1; strut codes 85 / 153 | 0 of 99,960 mismatched; 0 of 1,680 unexpected | pass |
+| identity (l = 0) | RHO 1, TAU 32, no struts vs base | colour 0, age 0, depth 0 bytes differ over 72 x 8,192 px; 0 locks | pass |
+| state | refusals, reasons, lanes, Reset, fault, hostile RT3 / CWE3 / s13 / c14-15 | all 17 fields 1; one more state restoration (lattice 654 / 91) | pass |
+| slanted (info) | the FAR_JITTER_LINE line, 0.2 px per row | covered-pixel lock share 0.80 mean, 0.64 min at rest, never >= 0.9; ripple 2.55x the blanket | – |
+
+Why the two rows fail (design, not implementation; the CPU model predicted both before the run: carry 0.00, plate 0.90 /
+0.20 at rest):
+- carry: the lane is point-read at the nearest reprojected texel, `tap + (f >= 0.5)`. For a camera motion v with
+  |v| < 0.5 px/frame that texel is the pixel's own (f = 1 - v >= 0.5 rounds up to it), and for larger v the read drifts by
+  v - round(v) per frame, so a lock never travels with a sub-pixel strut; with creation closed (screen gate) nothing
+  re-forms it, and the 3x3-mean release (the strut's own sample moves the mean by a third of its contrast, 116 vs 85 codes
+  here, ratio 0.73 < 0.75) kills the stranded lock within the first pan frames. The flown pans (~73 px/frame) drift the
+  same way [I]. The always gate re-creates locks under the pan from wrong-world-point P1 reads (the note's own reason for the
+  screen gate) and still does not carry them.
+- plate: a linear luma gradient under the 8 Halton x phases alternates sign on consecutive frames with |d0| up to 0.81 px
+  of gradient against a 3x3 range of 2 px (|d0| / range up to 0.41 > RHO 0.25); above TAU_ABS (2 codes, i.e. more than
+  about 2.5 codes per px) it locks. The raster model of the note had flat plates. RHO 0.5 removes the linear-ramp locks
+  and leaves the triangle's turning points (18.8 %); a y-direction ramp locks 25 % / 0 % (model).
+
+Records: `verification/results/bottle-X3/temporal-lattice.txt` (+690 lines: the `embedded_far_camera_hold_lock` budget
+row, `BOLT_FAR_STREAK_BASE 654 / 90`, the `LUMA_LOCK_*` rows, `LUMA_LOCK_BASE` and `RESULT PASS numerical=654
+state_restorations=91`) and `temporal-pass-summary.json` (`passed: false`, `luma_lock_failed_rows: [carry, plate]`); the
+nine wall-clock timing rows (`LINE_TIMING*`, `FOLD_TIMING`) and their summary fields were restored to the committed
+values; `temporal-pass.txt`, the sharpen measure, the three negative controls and the Wine log are byte-identical. The
+summary's `sources_before_build` hashes of `temporal_pass.{h,cpp}` and `resolve.h` predate a clang-format rewrap of
+those files (no code change); the DLL above is built after it.
+
+### Section 10 build: carried offset and residual detector (2026-09-28, same worktree; design section 10 of the note)
+
+Built as specified in `taa-luminance-lock.md` section 10, with three implementation details: (1) the residual's prediction
+is the bilinear history (s11) at `previousUV - current jitter`, the previous position of the content this sample shows,
+not the resolve's `old`, which is the history at the unjittered pixel (f = 0 at rest reads the pixel's own texel):
+against `old` a luma ramp's jitter response alternates and the x-ramp plate locks 55 % (model
+`verification/results/taa-luminance-lock/residual_history_position_model.py`, rule `centre`; `resid2lin` = the built
+read: 0.000 on both ramps) [M on the model]; one extra tap. (2) The mode bit is `b = t + 128 * mode` (the note's
+`64 * mode` collides with t = 64 at T = 64). (3) The residual is stored as `e + 128` clamped to [-128, 127]; the fresh
+lane is (128, 128, 0, 0). Release default 0.6. The D3DX compile of the variant takes about 95 s [M], so the generator's
+per-shader timeout went from 60 to 300 s (every manifest re-recorded for the generator's hash; the nine bloom records
+too; no existing `*_inc.h` changed).
+
+Fixture timeline per section 10 (pan 16-39 at 0.37 px/frame, rest 40-47 at 8.88 px, cut 48, mover 56-71, the shading
+steps from frame 30 under the pan); `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3
+verification/probe/run_temporal_pass.py`, 02:38:52-02:41:23, exit 1 at the `LUMA_LOCK` gate with every existing assertion
+passed; `luma_lock_failed_rows: [plate, shading]` [M]:
+
+| row | acceptance | measured | |
+|---|---|---|---|
+| form | <= 3 from 0 and from the cut (48) | 2 / 2 | pass |
+| plate | <= 0.5 %, x and y ramps | x 0.000; **y 12.5 %** (the whole row y = 7, the ramp's V between texel rows 7 and 8) | **fail** |
+| plate_sharp | pan E within 2 %; interior bit-identical, pan included | 1.000000; 0 of 119,808 px-frames differ | pass |
+| strut_ripple | within 10 % of blanket | 1.000 (3.8196 codes both) | pass |
+| carry | >= 0.9 every pan frame | 1.00 every frame | pass |
+| carry_band | <= 2.0 per strut; off-strut <= 2 % | 2.00 max, 1.42 mean; 0.0 % | pass |
+| resume | >= 0.9 by frame 41 | 1.00 at 40, 41, 47 | pass |
+| chatter | <= 5 % | 0.00 | pass |
+| mover | 0 at uncover; re-formed within 3 frames after it | 0 of 120; delay 3 | pass |
+| slanted | energy on locked >= 0.9 | 1.000 (share 1.00; ripple 1.16x blanket, formation frame 8) | pass |
+| shading | 20 % survives; 40 % dies within a frame | 20 %: 1.00; **40 %: 1.00 at frames 30 and 31** | **fail** |
+| lane | modes, offsets, residual alternation | 0 violations in 159,712 rest / 166,656 pan px-frames; 8,064 locked offsets all < 0.75; 1,560 strut residuals alternate | pass |
+| budget | <= 1,250 slots; hold 3,968 dwords | 1,217 slots / 4,699 dwords; 3,968 | pass |
+| identity | l = 0 bit-identical | 0 / 0 / 0 bytes, 0 locks | pass |
+| state | refusals, lanes, Reset, fault, hostile state | all 17 fields 1 | pass |
+
+Why the two fail (design, not implementation):
+- plate, y ramp: section 10's model predicts from the exact phase-mean history; the resolve's history is exponential
+  (base 0.85 on an unlocked plate), and at a ramp's V between two texel rows the bilinear prediction is flat while the
+  samples lie on one arm, so the residual is -1..-5 codes on half the phases and 0..+1 on the others; the EMA's phase
+  ripple lifts the small side to the 2-code floor and the asymmetric rule (only the smaller above TAU_ABS) locks the row.
+  `verification/results/taa-luminance-lock/yramp_ema_model.py` (`_out.txt`) reproduces it: mean history no row, EMA
+  history row 7, the fixture's row [M on the model]. The x ramp's V lies on a texel centre and stays at 0.
+- shading: the release compares the 3x3 mean in q = L / (1 + L). A 40 % luma step of the 0.5 surround moves the
+  unsampled-phase mean from 85 to 59 codes (ratio 0.69) and the sampled one to 105 (0.81 against R = 85), both above
+  0.6; only a drop of more than about 50 % in luma (mean below 51 codes) kills [arithmetic]. The row's 40 % and the
+  release 0.6 are inconsistent in this domain.
+
+Also measured: the `always` gate spreads locks to 4.7 px per strut and 100 % off-strut under the pan (info). Records:
+`temporal-lattice.txt` (+924 lines, the RESULT line; timing rows restored), `temporal-pass-summary.json` (`passed:
+false`, the two rows). Build after the run (sources unchanged since): 0 warnings, `check_no_x87.py` PASS (718 reachable,
+0 violations), sha256 `b21e7a52…`; `generate_rigid_motion_pixel.py --check` PASS (46), `generate_bloom_programs.py
+--check` PASS (9), `generate.py --check` PASS; host `test_taa_*` 116, `test_config_schema` 16, `test_logging_tiers` 10,
+`test_snapshot_x3_run` 28, `test_bloom_programs` 5, all OK; the two dry runs differ by `"X3M_TAA_LUMA_LOCK":
+"16,0.25,2"` only.
+
+### Section 11 build: TAU floor 3, running-mean release at 0.65 (2026-09-28; accepted, fixture-verified, not flown)
+
+Applied `taa-luminance-lock.md` section 11: the setting's default is `16,0.25,3` (TAU = 3 codes: the larger residual must
+reach `max(TAU, RHO * range3)`, the smaller TAU); the release reference is the running mean of the 3x3 q mean,
+`R += (mean - R) / 8` rounded to a code every frame a lock is held (pan included; the mean at a new lock's creation, a
+refresh keeps the running mean), `X3M_TAA_LUMA_LOCK_RELEASE` default 0.65; the mover row counts after the uncover frame;
+the slanted row gates the energy only. `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3
+verification/probe/run_temporal_pass.py`, 02:58:51-03:01:14, **PASS** (`passed: true`, `luma_lock_failed_rows: []`) [M]:
+
+| row | measured |
+|---|---|
+| form | frame 2 / 2 after the cut |
+| plate | x ramp 0.000, y ramp 0.000 |
+| plate_sharp | pan E 1.000000 of base; 0 of 119,808 interior px-frames differ |
+| strut_ripple | 1.000x blanket (3.8196 codes) |
+| carry | 1.00 every pan frame |
+| carry_band | 2.00 max / 1.42 mean per strut; 0 % off-strut |
+| resume | 1.00 at frames 40, 41, 47 |
+| chatter | 0.00 |
+| mover | 0 of 120 locked at uncover; re-formed 3 frames after it |
+| slanted | energy on locked 1.000, share 1.00 (ungated: formation frame 8, ripple 1.16x blanket) |
+| shading | 20 % step: 1.00 at frames 30-33 and 39; 40 % step: 0.0625 at 30, 0 from 31 |
+| lane | 0 mode / offset / alternation violations; 8,064 carried offsets |
+| budget | 1,221 slots, 4,721 dwords (hold 3,968 unchanged) |
+| identity | 0 / 0 / 0 bytes, 0 locks |
+| state | all 17 fields 1 |
+
+Checks: `generate_rigid_motion_pixel.py --check` PASS (46; only the lock header is new, the five resolve manifests
+re-recorded for the source hash), `generate.py --check` PASS; host `test_taa_*` 116, `test_config_schema` 16,
+`test_logging_tiers` 10, `test_snapshot_x3_run` 28, `test_bloom_programs` 5, all OK; `cmake --build build` 0 warnings,
+`check_no_x87.py build/d3d9.dll` PASS (718 reachable, 0 violations), sha256
+`d65727bba36fe4792cd0939e0529021299e83a49b513364bfdc26f46b0244ec7` (worktree build, not a candidate); the dry runs
+differ by `"X3M_TAA_LUMA_LOCK": "16,0.25,3"` only. Records: `temporal-lattice.txt` (+924 lines: the lock budget row,
+`BOLT_FAR_STREAK_BASE`, the `LUMA_LOCK_*` rows, `LUMA_LOCK_BASE`, `RESULT PASS numerical=654 state_restorations=91`;
+the nine timing rows restored to the committed values), `temporal-pass-summary.json` (`passed: true`, the lock rows);
+every other record byte-identical.

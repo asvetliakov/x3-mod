@@ -41,6 +41,9 @@ settings accept `1`/`0` as well as `on`/`off`, `true`/`false` and `yes`/`no`. Th
 settings for reading; a setting works in any section. Nothing may follow the value on the same line (no
 trailing comments).
 
+Experimental opt-in: `taa_luma_lock = 16` holds the long anti-aliasing history only on distant details that flicker (struts,
+antennas), meant to keep distant hull plates sharper while turning; `0` (the default) is off.
+
 ## Checking what was loaded
 
 The mod writes `x3m.log` next to `d3d9.dll`. Near its top:

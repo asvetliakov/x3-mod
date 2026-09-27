@@ -1,0 +1,7 @@
+lock: form=2 form_after_cut=2 carry_min=0.000 carry_first8=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+lock_rho0.5: form=2 form_after_cut=2 carry_min=0.000 carry_first8=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+lock_always: form=2 form_after_cut=2 carry_min=0.000 carry_first8=[1.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.5, 0.0]
+plate ramp 0.1/px along x, rho 0.25: lock share max at rest 0.900
+plate ramp 0.1/px along x, rho 0.5: lock share max at rest 0.200
+plate ramp 0.1/px along y, rho 0.25: lock share max at rest 0.250
+plate ramp 0.1/px along y, rho 0.5: lock share max at rest 0.000

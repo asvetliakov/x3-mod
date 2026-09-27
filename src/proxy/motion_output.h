@@ -837,6 +837,18 @@ public:
         motion_weight_rotation_[1] = ok ? v0 : 2.f;
         motion_weight_rotation_[2] = ok ? v1 : 8.f;
     }
+    // X3M_TAA_LUMA_LOCK=T[,RHO,TAU] (opt-in; docs/architecture/taa-luminance-lock.md) with X3M_TAA_LUMA_LOCK_RELEASE
+    // and X3M_TAA_LUMA_LOCK_GATE: FrameInputs::luma_lock_* on every resolve (the pass draws the lock on camera-gate
+    // runs only). Needs the camera gate, the far weight, the lock program and four render targets: taa initialisation
+    // creates the program, logs one row and drops the option where one is missing. Invalid values: off.
+    void configure_luma_lock(unsigned frames, float rho, float tau, float release, bool always) noexcept {
+        const bool ok = x3::temporal::valid_luma_lock(frames, rho, tau, release);
+        taa_luma_lock_frames_ = ok ? frames : 0u;
+        taa_luma_lock_[0] = ok ? rho : x3::temporal::kLumaLockRhoDefault;
+        taa_luma_lock_[1] = ok ? tau : x3::temporal::kLumaLockTauDefault;
+        taa_luma_lock_[2] = ok ? release : x3::temporal::kLumaLockReleaseDefault;
+        taa_luma_lock_always_ = ok && always;
+    }
     // RT1/RT2 binding policy (X3M_MOTION_RT_MODE). perdraw (default): each
     // routed draw binds RT1/RT2 and COLORWRITEENABLE1/2 and after_draw puts
     // the application's values back. lazy (experiment): the bindings stay
@@ -2621,6 +2633,12 @@ private:
                                                // an age program)
     float motion_weight_rotation_[3] = {0.f, 2.f, 8.f}; // X3M_TAA_MOTION_WEIGHT_ROTATION: FrameInputs::
                                                         // motion_weight_rotation, _v0, _v1 (0 without an age program)
+    unsigned taa_luma_lock_frames_ = 0; // X3M_TAA_LUMA_LOCK T: FrameInputs::luma_lock_frames (0: off or dropped at
+                                        // initialisation)
+    float taa_luma_lock_[3] = {x3::temporal::kLumaLockRhoDefault, x3::temporal::kLumaLockTauDefault,
+                               x3::temporal::kLumaLockReleaseDefault}; // RHO, TAU (codes), the release ratio
+    bool taa_luma_lock_always_ = false;                                // X3M_TAA_LUMA_LOCK_GATE=always
+    bool taa_lock_refused_logged_ = false; // the one line per TemporalPass::luma_lock_failed() episode
     // Static-world previous rows for new keys (temporal-integration.md). The
     // camera verdict is evaluated once per frame, on the frame's first miss.
     unsigned unmatched_static_ = 0;

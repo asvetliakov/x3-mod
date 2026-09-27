@@ -52,6 +52,12 @@ inline constexpr std::uint32_t temporal_line_mask_depth_thin_words[] = {
 inline constexpr std::uint32_t temporal_resolve_far_camera_hold_words[] = {
 #include "temporal_resolve_far_camera_hold_program_inc.h"
 };
+// The luminance lock (docs/architecture/taa-luminance-lock.md, opt-in X3M_TAA_LUMA_LOCK): the same resolve with the lock
+// lane as COLOR3 (src/temporal/resolve_far_camera_hold_lock.hlsl; manifest
+// verification/results/temporal-resolve-far-camera-hold-lock-program.json).
+inline constexpr std::uint32_t temporal_resolve_far_camera_hold_lock_words[] = {
+#include "temporal_resolve_far_camera_hold_lock_program_inc.h"
+};
 inline constexpr std::uint32_t temporal_thin_box_hold_words[] = {
 #include "temporal_thin_box_hold_program_inc.h"
 };
@@ -105,6 +111,10 @@ inline constexpr const auto& temporal_line_mask_depth_thin_program() noexcept {
 // The camera-gate resolve and box configure_far creates (optional: a refusal leaves no camera-gate path).
 inline constexpr const auto& temporal_resolve_far_camera_hold_program() noexcept {
     return detail::temporal_resolve_far_camera_hold_words;
+}
+// The lock variant TemporalPass::configure_luma_lock creates (none in a session that never asks).
+inline constexpr const auto& temporal_resolve_far_camera_hold_lock_program() noexcept {
+    return detail::temporal_resolve_far_camera_hold_lock_words;
 }
 inline constexpr const auto& temporal_thin_box_hold_program() noexcept {
     return detail::temporal_thin_box_hold_words;

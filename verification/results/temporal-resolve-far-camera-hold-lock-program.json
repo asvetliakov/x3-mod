@@ -1,7 +1,7 @@
 {
   "schema": 1,
-  "source": "src/temporal/agx.hlsl",
-  "source_sha256": "b737bcee4b226df542cecc50a9b50ca78aedebb6dc353e7de70a18c5423b2bd6",
+  "source": "src/temporal/resolve_far_camera_hold_lock.hlsl",
+  "source_sha256": "16fa59c656526e4ab710a6288f77a0db5799b90bbd9f0b04572dc354f3220659",
   "compiler": "native d3dx9_37.dll D3DXCompileShader",
   "compiler_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "entry": "main",
@@ -10,12 +10,11 @@
   "flags_name": "D3DXSHADER_OPTIMIZATION_LEVEL3",
   "defines": null,
   "includes": {
-    "src/temporal/display_dither.hlsl": "400f58f16b94c12ea0b018ad8871a729588cfac8f1b34d779eccb0ea676dbcbf",
-    "src/temporal/bolt_far.hlsl": "3e2b70ba3613ed50ef31b228ae836119fd420fa2fa0cc9ca1fb8875ffc186d0f"
+    "src/temporal/resolve.hlsl": "b72182987e466eae20905d827ba0fe7468ae2065f7c43d77d1d077b7bce226f1"
   },
-  "word_count": 524,
-  "bytecode_sha256": "8ed2b54752d3d6e85979d2ca56395ee0581f2c1d50bb5ed7934e84cf1ba0f391",
-  "header_sha256": "e0786455e521ea96f95199014130179514a743977ffe9ed2af170f4b6dff4213",
+  "word_count": 4721,
+  "bytecode_sha256": "1737e2930f08bac8fa28e87653aea0ba4fb2b1f9901a3cd642d678bd15b639e0",
+  "header_sha256": "7ac98557ad15b54566ad43277910b02996e97485efe1e5d9a61f2cee53cf6fc6",
   "tool_sources": {
     "tools/shaders/compile_rigid_motion_pixel.cpp": "acff68e2c8ebbd580f090baabc8df213aafa3200a1be10c4b3e4cc824cd600c8",
     "tools/shaders/generate_rigid_motion_pixel.py": "15a526fc5c5c8148527350d7514956353fc6786205834fe59a53e2fe85385943"

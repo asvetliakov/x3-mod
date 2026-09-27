@@ -283,6 +283,9 @@ void TemporalPass::release_history() noexcept {
     for (auto& p : boxes_) drop(p);
     for (auto& p : box_row_surfaces_) drop(p);
     for (auto& p : box_rows_) drop(p);
+    for (auto& p : lock_surfaces_) drop(p);
+    for (auto& p : lock_lanes_) drop(p);
+    lock_history_ = false;
     drop(scratch_surface_);
     drop(staging_surface_);
     for (auto& p : colors_) drop(p);
@@ -308,6 +311,9 @@ void TemporalPass::shutdown() noexcept {
     drop(line_mask_depth_);
     drop(line_mask_depth_thin_);
     drop(far_camera_hold_);
+    drop(far_camera_hold_lock_);
+    lock_failed_ = false;
+    lock_result_ = S_OK;
     drop(thin_box_hold_);
     drop(thin_box_rows_half_);
     drop(thin_box_columns_half_);
@@ -341,6 +347,8 @@ void TemporalPass::before_reset() noexcept {
     boxes_result_ = S_OK;
     box_half_failed_ = false;
     box_half_result_ = S_OK;
+    lock_failed_ = false;
+    lock_result_ = S_OK;
     release_history();
     drop(block_);
     diagnostics_.reset_pending = device_ != nullptr;
@@ -535,6 +543,36 @@ HRESULT TemporalPass::configure_thin_vote() noexcept {
         drop(line_mask_depth_thin_);
     return hr;
 }
+// The luminance lock's variant of the camera-gate resolve, created only on request (docs/architecture/
+// taa-luminance-lock.md); a refusal leaves the pass without the lock (no fallback program set).
+HRESULT TemporalPass::configure_luma_lock() noexcept {
+    if (!device_) return E_FAIL;
+    if (far_camera_hold_lock_) return S_OK;
+    const HRESULT hr = call<CreatePsFn>(CreatePixelShader)(
+        device_, reinterpret_cast<const DWORD*>(temporal_resolve_far_camera_hold_lock_program()),
+        &far_camera_hold_lock_);
+    if (FAILED(hr)) drop(far_camera_hold_lock_);
+    return hr;
+}
+// The lock lane pair (A8R8G8B8, 4 bytes per pixel each, the frame size): freshly created contents are undefined, so the
+// run that allocates them restarts the history (lock_history_ false) and every pixel writes its lane fresh.
+HRESULT TemporalPass::ensure_lock_lanes() noexcept {
+    if (lock_lanes_[1]) return S_OK;
+    for (auto& p : lock_surfaces_) drop(p);
+    for (auto& p : lock_lanes_) drop(p);
+    lock_history_ = false;
+    HRESULT hr = S_OK;
+    for (UINT i = 0; i < 2 && SUCCEEDED(hr); ++i) {
+        hr = call<CreateTextureFn>(CreateTexture)(device_, width_, height_, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A8R8G8B8,
+                                                  D3DPOOL_DEFAULT, &lock_lanes_[i], nullptr);
+        if (SUCCEEDED(hr)) hr = lock_lanes_[i]->GetSurfaceLevel(0, &lock_surfaces_[i]);
+    }
+    if (FAILED(hr)) {
+        for (auto& p : lock_surfaces_) drop(p);
+        for (auto& p : lock_lanes_) drop(p);
+    }
+    return hr;
+}
 HRESULT TemporalPass::allocate(UINT w, UINT h, bool reactive, bool age) noexcept {
     if (width_ == w && height_ == h && bool(reactive_[0]) == reactive && bool(ages_[0]) == age) return S_OK;
     release_history();
@@ -664,6 +702,8 @@ HRESULT TemporalPass::run(const FrameInputs& in, Output* out) noexcept {
     diagnostics_.thin_region_source = ThinRegionSource::Both;
     diagnostics_.box_half = false;
     diagnostics_.box_resolution_reason = "not_run";
+    diagnostics_.luma_lock = false;
+    diagnostics_.luma_lock_reason = "not_run";
     // Phase timing (Diagnostics::ticks_*): QPC pairs only, no device call changes.
     diagnostics_.timed = timing_;
     diagnostics_.ticks_capture = diagnostics_
@@ -713,13 +753,17 @@ HRESULT TemporalPass::run(const FrameInputs& in, Output* out) noexcept {
         !x3::temporal::valid_thin_clip(in.thin_clip) ||
         !x3::temporal::valid_adaptive_weight(in.adaptive_weight, in.adaptive_lo, in.adaptive_hi, in.weight) ||
         (flicker && !far_requested && !flicker_available()) ||
-        (adaptive && (!(in.thin_clip > 0) || !age_available())) || (in.alpha_history && !in.color))
+        (adaptive && (!(in.thin_clip > 0) || !age_available())) || (in.alpha_history && !in.color) ||
+        (in.luma_lock_frames > 0 && (!x3::temporal::valid_luma_lock(in.luma_lock_frames, in.luma_lock_rho,
+                                                                    in.luma_lock_tau, in.luma_lock_release) ||
+                                     !(in.far_weight > 0))))
         return fail(E_INVALIDARG);
     for (UINT i = 0; i < 2; ++i) {
         if (ages_[i] && (in.color == ages_[i] || in.depth_snapshot == ages_[i] || in.current_depth == ages_[i] ||
                          in.motion == ages_[i] || in.reactive == ages_[i]))
             return fail(E_INVALIDARG);
-        for (auto* owned : {colors_[i], depths_[i], reactive_[i], boxes_[i], box_rows_[i], scratch_, staging_})
+        for (auto* owned :
+             {colors_[i], depths_[i], reactive_[i], boxes_[i], box_rows_[i], lock_lanes_[i], scratch_, staging_})
             if (owned && (in.color == owned || in.depth_snapshot == owned || in.current_depth == owned ||
                           in.motion == owned || in.reactive == owned))
                 return fail(E_INVALIDARG);
@@ -828,6 +872,32 @@ HRESULT TemporalPass::run(const FrameInputs& in, Output* out) noexcept {
         for (auto& p : line_mask_surfaces_) drop(p);
         for (auto& p : line_masks_) drop(p);
     }
+    // Luminance lock (docs/architecture/taa-luminance-lock.md): the lock variant on a camera-gate run (which carries
+    // the far weight), its lane pair allocated here (pure allocation, before any state is touched). A refused pair that
+    // is not a lost device turns the lock off until Reset; a run without the lock returns the pair (a configuration
+    // change, never per frame).
+    const bool lock_requested = in.luma_lock_frames > 0;
+    bool lock = lock_requested && camera && luma_lock_available() && !lock_failed_;
+    if (lock) {
+        const HRESULT lanes = ensure_lock_lanes();
+        if (lost(lanes)) return fail(lanes);
+        if (FAILED(lanes)) {
+            lock_failed_ = true;
+            lock_result_ = lanes;
+            lock = false;
+        }
+    }
+    if (!lock && lock_lanes_[0]) {
+        for (auto& p : lock_surfaces_) drop(p);
+        for (auto& p : lock_lanes_) drop(p);
+        lock_history_ = false;
+    }
+    diagnostics_.luma_lock_reason = lock                     ? "lock"
+                                    : !lock_requested        ? "not_requested"
+                                    : !camera                ? "no_camera_gate"
+                                    : !far_camera_hold_lock_ ? "program"
+                                    : render_targets_ < 4    ? "render_targets"
+                                                             : "target";
     diagnostics_.box_resolution_reason = !half_configured   ? "not_requested"
                                          : !camera          ? "no_camera_gate"
                                          : !even            ? "odd_size"
@@ -879,8 +949,9 @@ HRESULT TemporalPass::run(const FrameInputs& in, Output* out) noexcept {
     if (FAILED(hr)) return fail(hr);
     history_.begin(in.width, in.height, in.epoch);
     if (in.camera_cut || in.cut || !in.history_allowed || in.reactive_policy == ReactivePolicy::Unavailable ||
-        in.reactive_policy != reactive_policy_ || (hold_history_ && !camera))
-        invalidate(); // the other age programs read whole counts
+        in.reactive_policy != reactive_policy_ || (hold_history_ && !camera) || (lock && !lock_history_))
+        invalidate(); // the other age programs read whole counts; a lock lane this pass did not write last run is
+                      // unknown
     x3::temporal::ResolveConstants constants{};
     std::copy(in.rejection, in.rejection + 4, constants.rejection);
     if (!x3::temporal::prepare(constants, history_, in.clip_to_previous, in.current_jitter[0], in.current_jitter[1],
@@ -959,10 +1030,15 @@ HRESULT TemporalPass::run(const FrameInputs& in, Output* out) noexcept {
     const bool lane = camera && four_channel && in.camera_lane_parallax[3] == 1.f && std::isfinite(lane_constants[0]) &&
                       std::isfinite(lane_constants[1]) && std::isfinite(lane_constants[2]);
     if (!lane) lane_constants[0] = lane_constants[1] = lane_constants[2] = lane_constants[3] = 0.f;
+    // The lock variant only: c14 / c15 (x3::temporal::prepare_luma_lock).
+    float lock_constants[8]{};
+    if (lock)
+        x3::temporal::prepare_luma_lock(lock_constants, in.luma_lock_frames, in.luma_lock_rho, in.luma_lock_tau,
+                                        in.luma_lock_release, in.luma_lock_always);
     const bool thin_bound = flicker && thin_; // after a mask fallback of a far run the thin variants may not exist:
                                               // plain then
-    IDirect3DPixelShader9* const program = far_on       ? (camera ? far_camera_hold_ : far_)
-                                           : aged       ? age_
+    IDirect3DPixelShader9* const program = far_on ? (camera ? (lock ? far_camera_hold_lock_ : far_camera_hold_) : far_)
+                                           : aged ? age_
                                            : thin_bound ? thin_
                                                         : resolve_;
     const bool bilinear = bilinear_history_; // the 5-tap program: its LINEAR samplers s11 / s12 are bound for the draw
@@ -1271,13 +1347,32 @@ HRESULT TemporalPass::run(const FrameInputs& in, Output* out) noexcept {
                    step(call<SetTextureFn>(SetTexture)(d, 7, history_.valid ? ages_[current_] : nullptr)) &&
                    step(call<SetRtFn>(SetRenderTarget)(d, 1, age_surfaces_[next])))) &&
         (!camera || (step(call<SetRsFn>(SetRenderState)(d, D3DRS_COLORWRITEENABLE2, 15)) &&
-                     step(call<SetRtFn>(SetRenderTarget)(d, 2, depth_surfaces_[next])))))
+                     step(call<SetRtFn>(SetRenderTarget)(d, 2, depth_surfaces_[next])))) &&
+        // The luminance lock: the previous lane at s13 (point, clamp, single level; the block restores the sampler),
+        // c14 / c15, the next lane as RT3 (unbound again right after, like RT1 / RT2).
+        (!lock || (step(call<SetSamplerFn>(SetSamplerState)(d, 13, D3DSAMP_MINFILTER, D3DTEXF_POINT)) &&
+                   step(call<SetSamplerFn>(SetSamplerState)(d, 13, D3DSAMP_MAGFILTER, D3DTEXF_POINT)) &&
+                   step(call<SetSamplerFn>(SetSamplerState)(d, 13, D3DSAMP_MIPFILTER, D3DTEXF_NONE)) &&
+                   step(call<SetSamplerFn>(SetSamplerState)(d, 13, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP)) &&
+                   step(call<SetSamplerFn>(SetSamplerState)(d, 13, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP)) &&
+                   step(call<SetSamplerFn>(SetSamplerState)(d, 13, D3DSAMP_SRGBTEXTURE, FALSE)) &&
+                   step(call<SetSamplerFn>(SetSamplerState)(d, 13, D3DSAMP_MAXMIPLEVEL, 0)) &&
+                   step(call<SetTextureFn>(SetTexture)(d, 13, history_.valid ? lock_lanes_[current_] : nullptr)) &&
+                   step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d, x3::temporal::kLumaLockRegister,
+                                                                        lock_constants, 2)) &&
+                   step(call<SetRsFn>(SetRenderState)(d, D3DRS_COLORWRITEENABLE3, 15)) &&
+                   step(call<SetRtFn>(SetRenderTarget)(d, 3, lock_surfaces_[next])))))
         hr = quad(in.width, in.height);
     if (SUCCEEDED(hr)) {
         diagnostics_.history_taps = 5u;
         diagnostics_.region_hold = camera;
+        diagnostics_.luma_lock = lock;
         diagnostics_.box_half = half;
         if (camera) diagnostics_.depth_folded = true;
+    }
+    if (lock && !lost(hr)) {
+        const HRESULT unbind = call<SetRtFn>(SetRenderTarget)(d, 3, nullptr);
+        if (SUCCEEDED(hr)) hr = unbind;
     }
     if (camera && !lost(hr)) {
         const HRESULT unbind = call<SetRtFn>(SetRenderTarget)(d, 2, nullptr);
@@ -1363,6 +1458,7 @@ HRESULT TemporalPass::run(const FrameInputs& in, Output* out) noexcept {
     current_ = next;
     reactive_policy_ = in.reactive_policy;
     hold_history_ = camera;
+    lock_history_ = lock;
     if (reactive_policy_ != ReactivePolicy::Unavailable) history_.completed();
     diagnostics_.history_valid = history_.valid;
     ++diagnostics_.completed_frames;
@@ -1379,7 +1475,8 @@ HRESULT TemporalPass::run(const FrameInputs& in, Output* out) noexcept {
             aged ? ages_[current_] : nullptr,
             far_on && !camera ? line_masks_[final_mask] : nullptr,
             camera ? boxes_[0] : nullptr,
-            camera ? boxes_[1] : nullptr};
+            camera ? boxes_[1] : nullptr,
+            lock ? lock_lanes_[current_] : nullptr};
     return S_OK;
 }
 } // namespace x3m::renderer

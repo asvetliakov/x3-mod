@@ -1991,6 +1991,7 @@ bool MotionOutput::ensure_taa() noexcept {
     }
     taa_fold_logged_ = false;
     taa_box_refused_logged_ = false;
+    taa_lock_refused_logged_ = false;
     taa_box_reason_logged_ = nullptr;
     taa_box_reason_rows_ = 0;
     HRESULT hr = E_FAIL;
@@ -2164,6 +2165,31 @@ bool MotionOutput::ensure_taa() noexcept {
             !far_gate_on             ? "far_off"
             : taa_thin_weight_ > 0.f ? "screen_gate"
                                      : "thin_region_off");
+    // Luminance lock (X3M_TAA_LUMA_LOCK, opt-in; docs/architecture/taa-luminance-lock.md): the lock variant of the
+    // camera-gate resolve, created only when asked. One row whenever it was asked: configured=0 with the reason where
+    // the camera gate or the far weight is off, or the device refuses the program or has fewer than four simultaneous
+    // render targets (the lane is RT3); the option is then dropped (no fallback program set).
+    if (SUCCEEDED(hr) && taa_luma_lock_frames_ > 0) {
+        HRESULT created = S_OK;
+        const char* reason = "ok";
+        if (!taa_thin_camera_gate_ || taa_thin_weight_ <= 0.f)
+            reason = "camera_gate_off";
+        else if (!(taa_far_weight_ > 0.f))
+            reason = "far_off";
+        else {
+            taa_call([&] { created = taa_->configure_luma_lock(); });
+            if (FAILED(created))
+                reason = "program";
+            else if (!taa_->luma_lock_available())
+                reason = taa_->simultaneous_render_targets() < 4 ? "render_targets" : "program";
+        }
+        const bool configured = std::strcmp(reason, "ok") == 0;
+        log("motion_output_taa_luma_lock device=%llu requested=%u,%g,%g release=%g gate=%s configured=%u reason=%s create=%08lx render_targets=%u far_weight=%.4f",
+            id_, taa_luma_lock_frames_, double(taa_luma_lock_[0]), double(taa_luma_lock_[1]), double(taa_luma_lock_[2]),
+            taa_luma_lock_always_ ? "always" : "screen", unsigned(configured), reason, created,
+            taa_->simultaneous_render_targets(), double(taa_far_weight_));
+        if (!configured) taa_luma_lock_frames_ = 0;
+    }
     taa_failed_ = FAILED(hr);
     // reason: why initialize refused (the missing history filter as TemporalPass reports it, "device_caps" when the
     // caps check refused first, "program" for a failed creation), "ok" otherwise. From the next latched frame the
@@ -2256,6 +2282,12 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
             in.thin_region_source = static_cast<renderer::ThinRegionSource>(taa_thin_source_configured_); // both unless
                                                                                                           // configured
                                                                                                           // otherwise
+            // The luminance lock (0 unless configured at initialisation; the pass draws it on camera-gate runs only).
+            in.luma_lock_frames = taa_luma_lock_frames_;
+            in.luma_lock_rho = taa_luma_lock_[0];
+            in.luma_lock_tau = taa_luma_lock_[1];
+            in.luma_lock_release = taa_luma_lock_[2];
+            in.luma_lock_always = taa_luma_lock_always_;
             if ((taa_far_weight_ > 0.f || taa_far_filter_ > 0.f) && camera_scene_.valid)
                 x3::temporal::far_gate(camera_scene_.m00, camera_scene_.m22, camera_scene_.m32, main_.width,
                                        taa_far_f0_, taa_far_f1_, in.far_d0, in.far_inv);
@@ -2381,6 +2413,14 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
                         id_, taa_->camera_gate_result(), unsigned(taa_->bilinear_history_available()), 5u,
                         double(taa_thin_weight_));
             }
+            // The luminance lock: a refused lane pair turns the lock off in the pass until a Reset re-arms it; one line
+            // per episode.
+            if (taa_->luma_lock_failed() != taa_lock_refused_logged_) {
+                taa_lock_refused_logged_ = taa_->luma_lock_failed();
+                if (taa_lock_refused_logged_)
+                    log("motion_output_taa_luma_lock device=%llu unavailable=1 reason=lane_target create=%08lx effect=lock_off_until_reset",
+                        id_, taa_->luma_lock_result());
+            }
             release(composition_mask);
             const std::uint64_t run_ticks = stamp() - run_begin;
             const auto diagnostics = taa_->diagnostics();
@@ -2457,6 +2497,18 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
                         readback_surface(age, D3DFMT_R32F, 4, L"taa_age", L"r32f", "motion_output_taa_age_readback",
                                          "r32f_row_major", target_width_, target_height_);
                         age->Release();
+                    }
+                }
+                // Capture frames only: the luminance lock's lane (r the last residual at rest or r / g the carried
+                // offset in motion, b the lifetime + 128 in motion, a the reference;
+                // docs/architecture/taa-luminance-lock.md sections 9 and 10).
+                if (capture_ && taa_debug_ && out.luma_lock) {
+                    IDirect3DSurface9* lock = nullptr;
+                    if (SUCCEEDED(out.luma_lock->GetSurfaceLevel(0, &lock)) && lock) {
+                        readback_surface(lock, D3DFMT_A8R8G8B8, 4, L"taa_lock", L"bgra8",
+                                         "motion_output_taa_lock_readback", "bgra8_row_major", target_width_,
+                                         target_height_);
+                        lock->Release();
                     }
                 }
                 // The final stabiliser mask the resolve read at s8 (r filter weight, g far gate, b camera-gated and a

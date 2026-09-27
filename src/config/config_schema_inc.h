@@ -23,7 +23,7 @@ struct Entry {
     short marker_of;           // index of the key a launcher default marker follows, -1
 };
 struct Alias { const char* key; unsigned short entry; };
-constexpr unsigned interval_count = 101;
+constexpr unsigned interval_count = 105;
 constexpr Interval intervals[interval_count] = {
     {0.0, 64.0, true},
     {0.0, 1.0, false},
@@ -115,6 +115,10 @@ constexpr Interval intervals[interval_count] = {
     {0.0, 64.0, false},
     {0.0, 64.0, true},
     {0.5, 0.98, false},
+    {0.0, 64.0, false},
+    {0.0, 1.0, false},
+    {0.0, 32.0, false},
+    {0.0, 1.0, false},
     {-8.0, 8.0, false},
     {0.0, 1.0, false},
     {1.0, 16.0, false},
@@ -127,7 +131,7 @@ constexpr Interval intervals[interval_count] = {
     {0.0, 65000.0, false},
     {0.0, 0.1, false},
 };
-constexpr unsigned element_range_count = 18;
+constexpr unsigned element_range_count = 21;
 constexpr ElementRange element_ranges[element_range_count] = {
     {2, 1},
     {3, 1},
@@ -143,12 +147,15 @@ constexpr ElementRange element_ranges[element_range_count] = {
     {86, 1},
     {87, 1},
     {88, 1},
-    {95, 1},
-    {96, 1},
-    {97, 1},
-    {98, 1},
+    {90, 1},
+    {91, 1},
+    {92, 1},
+    {99, 1},
+    {100, 1},
+    {101, 1},
+    {102, 1},
 };
-constexpr unsigned entry_count = 237;
+constexpr unsigned entry_count = 240;
 constexpr const char schema_date[] = "2026-09-26";
 constexpr Entry entries[entry_count] = {
     {"X3M_ADMISSION", "admission", Type::Bool, nullptr, nullptr, 0, 0, 0, 0, 0, "", 1, -1},
@@ -364,30 +371,33 @@ constexpr Entry entries[entry_count] = {
     {"X3M_TAA_FAR_GATE_DEFAULT", "taa_far_gate_default", Type::Bool, "1", nullptr, 83, 0, 8, 0, 0, "", 3, 209},
     {"X3M_TAA_FAR_STABILISER", "taa_far_stabiliser", Type::FloatList, "0.985,0,60,68,0.03,0.25", nullptr, 83, 0, 8, 6, 86, "", 0, -1},
     {"X3M_TAA_HISTORY_WEIGHT", "taa_history_weight", Type::Float, nullptr, nullptr, 89, 1, 14, 0, 0, "", 0, -1},
-    {"X3M_TAA_MIP_BIAS", "taa_mip_bias", Type::Float, "-0.5", nullptr, 90, 1, 14, 0, 0, "", 0, -1},
-    {"X3M_TAA_MOTION_WEIGHT", "taa_motion_weight", Type::String, "0.7,2,8", nullptr, 91, 0, 14, 0, 0, "", 1, -1},
-    {"X3M_TAA_MOTION_WEIGHT_ROTATION", "taa_motion_weight_rotation", Type::String, nullptr, nullptr, 91, 0, 14, 0, 0, "", 1, -1},
-    {"X3M_TAA_SHARPEN", "taa_sharpen", Type::Float, "0.75", nullptr, 91, 1, 14, 0, 0, "", 0, -1},
-    {"X3M_TAA_SKY_HISTORY", "taa_sky_history", Type::String, "strict", nullptr, 92, 0, 14, 0, 0, "", 1, -1},
-    {"X3M_TAA_SKY_HISTORY_BAND_PX", "taa_sky_history_band_px", Type::Float, nullptr, nullptr, 92, 1, 14, 0, 0, "", 1, -1},
-    {"X3M_TAA_SKY_HISTORY_EXIT_PX", "taa_sky_history_exit_px", Type::Float, "0.25", nullptr, 93, 2, 14, 0, 0, "", 1, -1},
-    {"X3M_TAA_THIN_REGION", "taa_thin_region", Type::FloatList, "0.97,1", nullptr, 95, 0, 14, 4, 22, "", 0, -1},
-    {"X3M_TAA_THIN_REGION_EMISSIVE", "taa_thin_region_emissive", Type::Float, "1", nullptr, 99, 1, 18, 0, 0, "", 0, -1},
-    {"X3M_TAA_THIN_VOTE", "taa_thin_vote", Type::Enum, "on", nullptr, 100, 0, 18, 0, 0, "on|off", 1, -1},
-    {"X3M_TAA_THIN_VOTE_DEFAULT", "taa_thin_vote_default", Type::Bool, "1", nullptr, 100, 0, 18, 0, 0, "", 3, 222},
-    {"X3M_TAA_UNMATCHED_STATIC", "taa_unmatched_static", Type::String, "node", nullptr, 100, 0, 18, 0, 0, "", 1, -1},
-    {"X3M_TELEMETRY", "telemetry", Type::Bool, nullptr, nullptr, 100, 0, 18, 0, 0, "", 1, -1},
-    {"X3M_TELEMETRY_DRAW", "telemetry_draw", Type::Bool, nullptr, nullptr, 100, 0, 18, 0, 0, "", 1, -1},
-    {"X3M_TERRAN_STATION_LOD", "terran_station_lod", Type::Enum, "size", nullptr, 100, 0, 18, 0, 0, "size|distance", 0, -1},
-    {"X3M_VOICE_DMO_FALLBACK", "voice_dmo_fallback", Type::Bool, "1", nullptr, 100, 0, 18, 0, 0, "", 0, -1},
-    {"X3M_VOLUMETRIC_FOG", "volumetric_fog", Type::Bool, "1", nullptr, 100, 0, 18, 0, 0, "", 0, -1},
-    {"X3M_VOLUMETRIC_FOG_CARDS", "volumetric_fog_cards", Type::Enum, "replace", nullptr, 100, 0, 18, 0, 0, "replace|keep", 0, -1},
-    {"X3M_VOLUMETRIC_FOG_RANGE", "volumetric_fog_range", Type::Enum, "stored", nullptr, 100, 0, 18, 0, 0, "stored|legacy", 0, -1},
-    {"X3M_VOLUMETRIC_FOG_STRENGTH", "volumetric_fog_strength", Type::Float, "0.02", nullptr, 100, 1, 18, 0, 0, "", 0, -1},
-    {"X3M_VOLUMETRIC_FOG_TIMING", "volumetric_fog_timing", Type::Bool, nullptr, nullptr, 101, 0, 18, 0, 0, "", 1, -1},
-    {"X3M_WINDOW_MONITOR_RECT", "window_monitor_rect", Type::Bool, "1", nullptr, 101, 0, 18, 0, 0, "", 0, -1},
-    {"X3M_WINDOW_MONITOR_RECT_DEFAULT", "window_monitor_rect_default", Type::Bool, "1", nullptr, 101, 0, 18, 0, 0, "", 3, 234},
-    {"X3M_WINDOW_TRACE", "window_trace", Type::Bool, nullptr, nullptr, 101, 0, 18, 0, 0, "", 1, -1},
+    {"X3M_TAA_LUMA_LOCK", "taa_luma_lock", Type::FloatList, nullptr, nullptr, 90, 0, 14, 3, 10, "", 0, -1},
+    {"X3M_TAA_LUMA_LOCK_GATE", "taa_luma_lock_gate", Type::Enum, nullptr, nullptr, 93, 0, 17, 0, 0, "screen|always", 1, -1},
+    {"X3M_TAA_LUMA_LOCK_RELEASE", "taa_luma_lock_release", Type::Float, nullptr, nullptr, 93, 1, 17, 0, 0, "", 1, -1},
+    {"X3M_TAA_MIP_BIAS", "taa_mip_bias", Type::Float, "-0.5", nullptr, 94, 1, 17, 0, 0, "", 0, -1},
+    {"X3M_TAA_MOTION_WEIGHT", "taa_motion_weight", Type::String, "0.7,2,8", nullptr, 95, 0, 17, 0, 0, "", 1, -1},
+    {"X3M_TAA_MOTION_WEIGHT_ROTATION", "taa_motion_weight_rotation", Type::String, nullptr, nullptr, 95, 0, 17, 0, 0, "", 1, -1},
+    {"X3M_TAA_SHARPEN", "taa_sharpen", Type::Float, "0.75", nullptr, 95, 1, 17, 0, 0, "", 0, -1},
+    {"X3M_TAA_SKY_HISTORY", "taa_sky_history", Type::String, "strict", nullptr, 96, 0, 17, 0, 0, "", 1, -1},
+    {"X3M_TAA_SKY_HISTORY_BAND_PX", "taa_sky_history_band_px", Type::Float, nullptr, nullptr, 96, 1, 17, 0, 0, "", 1, -1},
+    {"X3M_TAA_SKY_HISTORY_EXIT_PX", "taa_sky_history_exit_px", Type::Float, "0.25", nullptr, 97, 2, 17, 0, 0, "", 1, -1},
+    {"X3M_TAA_THIN_REGION", "taa_thin_region", Type::FloatList, "0.97,1", nullptr, 99, 0, 17, 4, 22, "", 0, -1},
+    {"X3M_TAA_THIN_REGION_EMISSIVE", "taa_thin_region_emissive", Type::Float, "1", nullptr, 103, 1, 21, 0, 0, "", 0, -1},
+    {"X3M_TAA_THIN_VOTE", "taa_thin_vote", Type::Enum, "on", nullptr, 104, 0, 21, 0, 0, "on|off", 1, -1},
+    {"X3M_TAA_THIN_VOTE_DEFAULT", "taa_thin_vote_default", Type::Bool, "1", nullptr, 104, 0, 21, 0, 0, "", 3, 225},
+    {"X3M_TAA_UNMATCHED_STATIC", "taa_unmatched_static", Type::String, "node", nullptr, 104, 0, 21, 0, 0, "", 1, -1},
+    {"X3M_TELEMETRY", "telemetry", Type::Bool, nullptr, nullptr, 104, 0, 21, 0, 0, "", 1, -1},
+    {"X3M_TELEMETRY_DRAW", "telemetry_draw", Type::Bool, nullptr, nullptr, 104, 0, 21, 0, 0, "", 1, -1},
+    {"X3M_TERRAN_STATION_LOD", "terran_station_lod", Type::Enum, "size", nullptr, 104, 0, 21, 0, 0, "size|distance", 0, -1},
+    {"X3M_VOICE_DMO_FALLBACK", "voice_dmo_fallback", Type::Bool, "1", nullptr, 104, 0, 21, 0, 0, "", 0, -1},
+    {"X3M_VOLUMETRIC_FOG", "volumetric_fog", Type::Bool, "1", nullptr, 104, 0, 21, 0, 0, "", 0, -1},
+    {"X3M_VOLUMETRIC_FOG_CARDS", "volumetric_fog_cards", Type::Enum, "replace", nullptr, 104, 0, 21, 0, 0, "replace|keep", 0, -1},
+    {"X3M_VOLUMETRIC_FOG_RANGE", "volumetric_fog_range", Type::Enum, "stored", nullptr, 104, 0, 21, 0, 0, "stored|legacy", 0, -1},
+    {"X3M_VOLUMETRIC_FOG_STRENGTH", "volumetric_fog_strength", Type::Float, "0.02", nullptr, 104, 1, 21, 0, 0, "", 0, -1},
+    {"X3M_VOLUMETRIC_FOG_TIMING", "volumetric_fog_timing", Type::Bool, nullptr, nullptr, 105, 0, 21, 0, 0, "", 1, -1},
+    {"X3M_WINDOW_MONITOR_RECT", "window_monitor_rect", Type::Bool, "1", nullptr, 105, 0, 21, 0, 0, "", 0, -1},
+    {"X3M_WINDOW_MONITOR_RECT_DEFAULT", "window_monitor_rect_default", Type::Bool, "1", nullptr, 105, 0, 21, 0, 0, "", 3, 237},
+    {"X3M_WINDOW_TRACE", "window_trace", Type::Bool, nullptr, nullptr, 105, 0, 21, 0, 0, "", 1, -1},
 };
 constexpr unsigned alias_count = 0;
 constexpr Alias aliases[1] = {{nullptr, 0}}; // none yet

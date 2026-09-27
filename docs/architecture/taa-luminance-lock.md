@@ -1,6 +1,8 @@
 # TAA luminance lock: a per-pixel hold in place of the blanket far weight
 
-Design note, 2026-09-28. Status: ratified 2026-09-28 (orchestrator; user chose the lock over the baker widening); implementation pending (not built, not flown). Owner of the flown state: `docs/verification/temporal-resolve.md`
+Design note, 2026-09-28. Status: ratified 2026-09-28 (orchestrator; user chose the lock over the baker widening);
+implemented 2026-09-28, fixture-verified, not flown (sections 10 and 11; opt-in `--taa-luma-lock`, default
+`16,0.25,3`; all 15 `LUMA_LOCK` rows pass, 1,221 slots; `docs/verification/temporal-resolve.md` "Section 11 build"). Owner of the flown state: `docs/verification/temporal-resolve.md`
 ("Far stabiliser weight A/B in flight: 0.95 and 0.90"). Evidence scripts and outputs for this note:
 `verification/results/taa-luminance-lock/lock_share_model.py` (`*_rho0.25_out.txt`, `*_rho0.5_out.txt`).
 Tags: [M] measured in this session or in the ledger, [I] inferred from measured figures, [A] assumed.

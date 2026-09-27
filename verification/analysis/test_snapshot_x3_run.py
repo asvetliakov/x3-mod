@@ -178,7 +178,7 @@ class SnapshotX3RunTests(unittest.TestCase):
         self.log.write_text(''.join(rows))
         _, count, issues = self.save(log=self.log)
         self.assertEqual((count, issues), (expected, []))
-        self.assertEqual(expected, 11)  # Nine writers; the depth tag has three formats (r32f, rg32f, rgba32f).
+        self.assertEqual(expected, 12)  # Ten writers (the luma-lock lane since 2026-09-28); the depth tag has three formats (r32f, rg32f, rgba32f).
 
     def test_sun_lens_back_buffer_record_is_preserved(self):
         # The real --sun-occlusion-log line (run228 frame 3440): the Present-time back buffer.

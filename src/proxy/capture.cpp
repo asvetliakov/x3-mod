@@ -378,6 +378,16 @@ float taa_motion_weight[3] = {0.f, 2.f, 8.f};
 // the cap sits on the base weight before the far and thin-region lerps (full-weight far and thin-region pixels and the
 // sky band keep their weights). Same prerequisites as X3M_TAA_MOTION_WEIGHT.
 float taa_motion_weight_rotation[3] = {0.f, 2.f, 8.f};
+// X3M_TAA_LUMA_LOCK=T[,RHO,TAU] (opt-in, 2026-09-28; absent, 0, invalid or oversized: off, the last two logged; T an
+// integer 1..64, RHO 0..1, TAU 0..32 codes, default 0.25,3; docs/architecture/taa-luminance-lock.md): the camera-gate
+// resolve holds the far weight only on pixels whose jittered luma sign-alternates, every other far pixel takes the base
+// weight and the 3x3 clip. X3M_TAA_LUMA_LOCK_RELEASE (developer, 0..1, default 0.65): the kill ratio of the 3x3 mean
+// luma; X3M_TAA_LUMA_LOCK_GATE (developer, screen | always, default screen): the creation gate. Needs the camera gate
+// and the far weight, which motion_output judges.
+unsigned taa_luma_lock_frames = 0;
+float taa_luma_lock[3] = {x3::temporal::kLumaLockRhoDefault, x3::temporal::kLumaLockTauDefault,
+                          x3::temporal::kLumaLockReleaseDefault};
+bool taa_luma_lock_always = false;
 unsigned camera_log_frames = 0; // X3M_CAMERA_LOG; 0 = capture frames only (initialize_log)
 unsigned motion_jitter_samples = 8;
 // The finite huge displacement bound is a practical off switch. A missing
@@ -3179,6 +3189,8 @@ void hook_device(IDirect3DDevice9* d, HWND window, HWND focus) {
     hooked.motion_output.configure_motion_weight(taa_motion_weight[0], taa_motion_weight[1], taa_motion_weight[2]);
     hooked.motion_output.configure_motion_weight_rotation(taa_motion_weight_rotation[0], taa_motion_weight_rotation[1],
                                                           taa_motion_weight_rotation[2]);
+    hooked.motion_output.configure_luma_lock(taa_luma_lock_frames, taa_luma_lock[0], taa_luma_lock[1], taa_luma_lock[2],
+                                             taa_luma_lock_always);
     // Render-state configuration (hybrid unhook): the reasons that keep the
     // SetRenderState/SetSamplerState hooks installed, then the capability
     // check of the documented reads the unhooked route depends on (the proxy
@@ -5146,6 +5158,53 @@ void initialize_log(HMODULE module) {
         else
             log("taa_motion_weight_rotation_setting invalid=1");
     }
+    // X3M_TAA_LUMA_LOCK=<T>[,<RHO>,<TAU>]: 1 or 3 fields (blanks around a field accepted, as above), T an integer, all
+    // in range; no default: absent is off. X3M_TAA_LUMA_LOCK_RELEASE=<ratio> and X3M_TAA_LUMA_LOCK_GATE=screen|always
+    // tune it (read with the lock only).
+    if (const DWORD n = taa_requested ? x3m::config::get(L"X3M_TAA_LUMA_LOCK", setting, 32) : 0; n >= 32)
+        log("taa_luma_lock_setting invalid=1 reason=too_long length=%lu", n);
+    else if (n > 0) {
+        float v[3] = {0.f, x3::temporal::kLumaLockRhoDefault, x3::temporal::kLumaLockTauDefault};
+        unsigned count = 0;
+        wchar_t* cursor = setting;
+        bool ok = true;
+        while (ok && count < 3) {
+            wchar_t* end = nullptr;
+            v[count] = wcstof(cursor, &end);
+            ok = end != cursor;
+            while (ok && (*end == L' ' || *end == L'\t')) ++end;
+            ++count;
+            if (!ok || *end == L'\0') break;
+            ok = *end == L',';
+            cursor = end + 1;
+            if (count == 3) ok = false;
+        }
+        ok = ok && (count == 1 || count == 3) && v[0] >= 0.f && v[0] <= float(x3::temporal::kLumaLockFramesMax) &&
+             v[0] == std::floor(v[0]) &&
+             x3::temporal::valid_luma_lock(unsigned(v[0]), v[1], v[2], x3::temporal::kLumaLockReleaseDefault);
+        if (ok) {
+            taa_luma_lock_frames = unsigned(v[0]);
+            taa_luma_lock[0] = v[1];
+            taa_luma_lock[1] = v[2];
+        } else
+            log("taa_luma_lock_setting invalid=1");
+    }
+    if (taa_luma_lock_frames > 0) {
+        if (const DWORD n = x3m::config::get(L"X3M_TAA_LUMA_LOCK_RELEASE", setting, 32); n > 0 && n < 32) {
+            wchar_t* end = nullptr;
+            const float v = wcstof(setting, &end);
+            if (end != setting && *end == L'\0' && v >= 0.f && v <= 1.f)
+                taa_luma_lock[2] = v;
+            else
+                log("taa_luma_lock_release_setting invalid=1");
+        }
+        if (const DWORD n = x3m::config::get(L"X3M_TAA_LUMA_LOCK_GATE", setting, 32); n > 0 && n < 32) {
+            if (!wcscmp(setting, L"always"))
+                taa_luma_lock_always = true;
+            else if (wcscmp(setting, L"screen"))
+                log("taa_luma_lock_gate_setting invalid=1");
+        }
+    }
     if (x3m::config::get(L"X3M_CAMERA_CUT_DEG", setting, 32) > 0) {
         const float v = wcstof(setting, nullptr);
         if (v > 0 && v <= 180) camera_cut_degrees = v;
@@ -5156,7 +5215,7 @@ void initialize_log(HMODULE module) {
         const unsigned long n = wcstoul(setting, nullptr, 10);
         if (n >= 1 && n <= 1000000) camera_log_frames = unsigned(n);
     }
-    log("motion_output_mode requested=%u scope=live_same_draw_diagnostic history_requires=object_trace,object_lifetime temporal_consumer=%u taa=%u taa_debug=%u jitter=%u jitter_samples=%u cut_median_px=%.3f cut_missing=%.3f rt_mode=%s frame_log=%u sentinel=%s unmatched_static=%u sky_history=%s sky_history_band_px=%.2f sky_history_exit_px=%.3f motion_weight=%.3f,%g,%g motion_weight_rotation=%.3f,%g,%g camera_cut_deg=%.2f camera_log=%u state_shadow=%s scene_hook=%u hdr=%u taa_k=%.5f mip_bias=%g taa_sharpen=%.3f taa_history_weight=%.3f",
+    log("motion_output_mode requested=%u scope=live_same_draw_diagnostic history_requires=object_trace,object_lifetime temporal_consumer=%u taa=%u taa_debug=%u jitter=%u jitter_samples=%u cut_median_px=%.3f cut_missing=%.3f rt_mode=%s frame_log=%u sentinel=%s unmatched_static=%u sky_history=%s sky_history_band_px=%.2f sky_history_exit_px=%.3f motion_weight=%.3f,%g,%g motion_weight_rotation=%.3f,%g,%g luma_lock=%u,%g,%g luma_lock_release=%g luma_lock_gate=%s camera_cut_deg=%.2f camera_log=%u state_shadow=%s scene_hook=%u hdr=%u taa_k=%.5f mip_bias=%g taa_sharpen=%.3f taa_history_weight=%.3f",
         motion_output_requested, taa_requested, taa_requested, taa_debug_requested, motion_jitter_requested,
         motion_jitter_samples, motion_cut_median_px, motion_cut_missing, motion_rt_lazy ? "lazy" : "perdraw",
         motion_frame_log,
@@ -5166,7 +5225,8 @@ void initialize_log(HMODULE module) {
         taa_unmatched_static, taa_sky_history_strict ? "strict" : "loose", taa_sky_history_band_px,
         double(taa_sky_history_exit_px), double(taa_motion_weight[0]), double(taa_motion_weight[1]),
         double(taa_motion_weight[2]), double(taa_motion_weight_rotation[0]), double(taa_motion_weight_rotation[1]),
-        double(taa_motion_weight_rotation[2]), camera_cut_degrees, camera_log_frames,
+        double(taa_motion_weight_rotation[2]), taa_luma_lock_frames, double(taa_luma_lock[0]), double(taa_luma_lock[1]),
+        double(taa_luma_lock[2]), taa_luma_lock_always ? "always" : "screen", camera_cut_degrees, camera_log_frames,
         motion_state_shadow < 0 ? "auto"
         : motion_state_shadow   ? "1"
                                 : "0",

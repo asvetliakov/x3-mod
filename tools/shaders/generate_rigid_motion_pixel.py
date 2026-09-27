@@ -97,6 +97,11 @@ SHADERS = {
     'temporal_resolve_far_camera_hold': dict(source=ROOT / 'src/temporal/resolve_far_camera_hold.hlsl',
         header=ROOT / 'src/renderer/temporal_resolve_far_camera_hold_program_inc.h',
         provenance=ROOT / 'verification/results/temporal-resolve-far-camera-hold-program.json'),
+    # The luminance lock (docs/architecture/taa-luminance-lock.md; X3M_TAA_LUMA_LOCK, opt-in): the camera-gate resolve with
+    # the lock lane as COLOR3, created only on request; the program above keeps its bytes.
+    'temporal_resolve_far_camera_hold_lock': dict(source=ROOT / 'src/temporal/resolve_far_camera_hold_lock.hlsl',
+        header=ROOT / 'src/renderer/temporal_resolve_far_camera_hold_lock_program_inc.h',
+        provenance=ROOT / 'verification/results/temporal-resolve-far-camera-hold-lock-program.json'),
     'temporal_thin_box_hold': dict(source=ROOT / 'src/temporal/thin_box_hold_ps.hlsl',
         header=ROOT / 'src/renderer/temporal_thin_box_hold_program_inc.h',
         provenance=ROOT / 'verification/results/temporal-thin-box-hold-program.json'),
@@ -293,7 +298,8 @@ def compile_one(name, args):
                         '-static', str(COMPILER_SOURCE), '-o', str(exe)], check=True)
         subprocess.run([bottle.WINE, *bottle.wine_args(), '--dll', 'd3dx9_37=n',
                         str(exe), 'Z:' + str(inputs[3]), 'Z:' + str(compiled), 'Z:' + str(binary), target],
-                       check=True, timeout=60, env=dict(os.environ, WINEDLLOVERRIDES='d3dx9_37=n'))
+                       check=True, timeout=300,  # the lock variant of the hold resolve takes about 95 s (2026-09-28)
+                       env=dict(os.environ, WINEDLLOVERRIDES='d3dx9_37=n'))
         data = binary.read_bytes()
     if before != {path: sha(path.read_bytes()) for path in inputs}:
         raise RuntimeError('Compilation inputs changed')

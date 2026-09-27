@@ -1,0 +1,12 @@
+resid2 plate ramp along x: lock share max 0.000 mean 0.000
+resid2 plate ramp along y: lock share max 0.000 mean 0.000
+resid2 vertical struts: form frame 1, share at frame 8..15 1.00
+resid2 slanted line (0.2 px/row): covered px 33, lock share mean 1.00 min 1.00; ripple energy on locked px (frame 15) 1.000
+centre plate ramp along x: lock share max 0.550 mean 0.364
+centre plate ramp along y: lock share max 0.250 mean 0.172
+centre vertical struts: form frame 1, share at frame 8..15 1.00
+centre slanted line (0.2 px/row): covered px 33, lock share mean 1.00 min 1.00; ripple energy on locked px (frame 15) 1.000
+resid2lin plate ramp along x: lock share max 0.000 mean 0.000
+resid2lin plate ramp along y: lock share max 0.000 mean 0.000
+resid2lin vertical struts: form frame 1, share at frame 8..15 1.00
+resid2lin slanted line (0.2 px/row): covered px 33, lock share mean 1.00 min 1.00; ripple energy on locked px (frame 15) 1.000

@@ -284,6 +284,20 @@ struct FrameInputs {
     // run's without the fields), else 0.5 <= F <= 0.98 with 0 <= V0 < V1 <= 64 (run() refuses the rest). Read by the
     // age programs only; the caller keeps it 0 without the camera path (c0..c3 is then not the rotation-only path).
     float motion_weight_rotation = 0.f, motion_weight_rotation_v0 = 2.f, motion_weight_rotation_v1 = 8.f;
+    // Luminance lock (X3M_TAA_LUMA_LOCK=T[,RHO,TAU], opt-in; docs/architecture/taa-luminance-lock.md): on a camera-gate
+    // run with the far stabiliser the far weight holds only on pixels whose jittered luma sign-alternates (a lock of
+    // luma_lock_frames frames, 1..64; 0 off: the run is bit for bit a run without the fields), every other far pixel
+    // takes the base weight and the 3x3 clip. Needs configure_luma_lock() and four simultaneous render targets (the
+    // lock lane is RT3: an owned A8R8G8B8 pair of the frame size, allocated on the first lock run, released with the
+    // histories and by the first run without the lock); without them, or on a run that is not a camera-gate run, the
+    // run proceeds without the lock (Diagnostics::luma_lock_reason). A refused lane allocation that is not a lost
+    // device turns the lock off until Reset (luma_lock_failed()). A lock run with far_weight 0 or parameters outside
+    // x3::temporal::valid_luma_lock is refused. luma_lock_always: the creation gate is open every frame (the fixture's
+    // A/B of the note's section 6), else on the pixel's own screen openness >= 0.5.
+    unsigned luma_lock_frames = 0;
+    float luma_lock_rho = x3::temporal::kLumaLockRhoDefault, luma_lock_tau = x3::temporal::kLumaLockTauDefault,
+          luma_lock_release = x3::temporal::kLumaLockReleaseDefault;
+    bool luma_lock_always = false;
     bool caller_scene_open = true;
     bool caller_stateblock_recording = false;
     bool caller_queries_idle = false; // positive knowledge: no active occlusion/statistics query
@@ -327,6 +341,10 @@ struct Output {
     // stabiliser_mask because run() fills the struct positionally.
     IDirect3DTexture9* box_low = nullptr;
     IDirect3DTexture9* box_high = nullptr;
+    // Luminance-lock runs: the lock lane the resolve wrote (A8R8G8B8: r the last residual at rest or r / g the carried
+    // offset in motion, b the lifetime (+ 128 in motion), a the reference), null otherwise. Diagnostic (fixtures,
+    // capture dumps), same borrowing rules; last because run() fills the struct positionally.
+    IDirect3DTexture9* luma_lock = nullptr;
 };
 struct Diagnostics {
     HRESULT operation = S_OK, restoration = S_OK;
@@ -368,6 +386,11 @@ struct Diagnostics {
     // an even size; that run draws the full-resolution box), "target" (the half-resolution targets were refused, not a
     // lost device: full resolution until Reset re-arms them), "not_run".
     const char* box_resolution_reason = "not_run";
+    // FrameInputs::luma_lock_frames: the last run drew the lock variant. Why (or why not): "lock", "not_requested",
+    // "no_camera_gate" (not a camera-gate run), "program" (configure_luma_lock did not create it), "render_targets"
+    // (fewer than four), "target" (the lane pair was refused, not a lost device: off until Reset), "not_run".
+    bool luma_lock = false;
+    const char* luma_lock_reason = "not_run";
     // CPU-side QueryPerformanceCounter ticks of the last run's phases, taken
     // only with configure_timing(true); zero otherwise. Wall clock around the
     // device calls (submission cost, driver work, any blocking), never GPU
@@ -477,6 +500,18 @@ public:
     // camera-gate resolve reads the vote itself (no program): thin_vote_available() is true wherever either path can
     // cast it.
     HRESULT configure_thin_vote() noexcept;
+    // Luminance lock (FrameInputs::luma_lock_frames): the lock variant of the camera-gate resolve
+    // (resolve_far_camera_hold_lock.hlsl), created only on request (a session that never asks holds none); it survives
+    // Reset like the other programs. luma_lock_available(): the program exists, the camera gate can run and the device
+    // has four simultaneous render targets (NumSimultaneousRTs, read at initialize). A failure returns the HRESULT for
+    // the caller's one log row; the pass then runs without the lock (AGENTS.md "Shader slot budget": no fallback
+    // program set).
+    HRESULT configure_luma_lock() noexcept;
+    bool luma_lock_available() const noexcept {
+        return far_camera_hold_lock_ != nullptr && camera_gate_available() && render_targets_ >= 4;
+    }
+    bool luma_lock_failed() const noexcept { return lock_failed_; }
+    HRESULT luma_lock_result() const noexcept { return lock_result_; }
     bool thin_vote_available() const noexcept { return line_mask_depth_thin_ != nullptr || camera_gate_available(); }
     // D3DCAPS9::MaxPixelShader30InstructionSlots as initialize read it, for the caller's one log row (AGENTS.md "Shader
     // slot budget": the programs are created whatever the figure; a device that refuses one takes that program's
@@ -581,6 +616,16 @@ private:
     // S4: the row targets of the half-resolution pair ([0] row minimum, [1] row maximum; A16B16G16R16F W/2 x (H/2 + 1),
     // default pool, released with the histories and by the first run without the half-resolution box).
     bool hold_history_ = false; // the current age target carries hold fractions (written by the hold program)
+    // Luminance lock: the lock variant (configure_luma_lock), its lane pair (A8R8G8B8, default pool, released with the
+    // histories and by the first run without the lock), whether the current lane was written by the last run, and the
+    // session's refusal of the pair (re-armed by Reset).
+    IDirect3DPixelShader9* far_camera_hold_lock_ = nullptr;
+    IDirect3DTexture9* lock_lanes_[2]{};
+    IDirect3DSurface9* lock_surfaces_[2]{};
+    bool lock_history_ = false;
+    bool lock_failed_ = false;
+    HRESULT lock_result_ = S_OK;
+    HRESULT ensure_lock_lanes() noexcept;
     unsigned ps30_slots_ = 0;
     IDirect3DTexture9* box_rows_[2]{};
     IDirect3DSurface9* box_row_surfaces_[2]{};
