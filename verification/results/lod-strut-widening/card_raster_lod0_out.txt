@@ -1,0 +1,3 @@
+== stations/others/military_outpost_middleb record 0: r_raw 65792 T_pad 150 divisor 2.0 px 1.0 k_d 0.001710 W_u 585 units alpha materials [0, 1, 2, 3, 4, 9, 10, 11, 12, 29, 36, 42, 44, 48, 49, 52] z-write-off [42, 49]
+  s 1700 (k 0.051678, radius 3400 px) before: lum/before 1.0000 flip 0.006 flicker 0.0035 | ax1 flip 0.006 flk 0.0035 px 5791654
+  (52 s)

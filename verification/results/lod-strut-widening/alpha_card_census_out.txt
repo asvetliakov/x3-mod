@@ -1,0 +1,33 @@
+bodies 620 ok 617 errors 3 wall 112 s
+records with alpha-tested materials: 408; with cutout cards (diffuse alpha holes 2-98 %): 396
+stations/  bodies 311 tested 291 cards 291 card_area>1% 259 >5% 206 thin_card_area@s_d>1% 131 >5%  38
+ships/     bodies 301 tested 114 cards 102 card_area>1%  69 >5%  45 thin_card_area@s_d>1%  34 >5%   5
+others/    bodies   5 tested   3 cards   3 card_area>1%   3 >5%   3 thin_card_area@s_d>1%   0 >5%   0
+tested materials: blend+zwrite 1942, zwrite off 1, blend off 0
+
+top bodies by thin card area at s_d (name, T_pad, card area %, thin card area %, materials):
+stations/station_scenes/farm/argon_farm_M_factory_A           216  42.85  19.39 1:0.0%/h0.74,9:0.0%/h0.44,10:0.9%/h0.74,11:5.6%/h0.28,12:0.0%/h0.46,36:10.4%/h0.48,44:2.4%/h0.16
+stations/station_scenes/farm/argon_farm_M_factory_D           253  43.68  17.73 1:0.0%/h0.74,10:1.6%/h0.74,11:4.2%/h0.28,12:0.0%/h0.46,36:11.8%/h0.48,44:0.0%/h0.16
+stations/station_scenes/farm/argon_farm_S_factory_A           194  41.78  16.55 1:0.0%/h0.74,9:0.0%/h0.44,10:0.9%/h0.74,11:3.9%/h0.28,12:0.0%/h0.46,36:9.8%/h0.48,44:1.9%/h0.16
+stations/station_scenes/farm/argon_farm_M_factory_C           152  31.07  16.03 1:0.4%/h0.74,9:0.0%/h0.44,10:0.5%/h0.74,11:4.6%/h0.28,12:0.0%/h0.46,36:10.5%/h0.48
+stations/x3tc/terran_spp_panel                                266  49.90  15.01 0:0.0%/h0.94,4:11.3%/h0.44,5:0.0%/h0.74,6:2.1%/h0.28,18:1.6%/h0.48
+stations/goner/temple_arms                                    206  41.35  14.87 11:11.0%/h0.28,36:3.9%/h0.48
+stations/station_scenes/others/argon_mineA_silicon_L          152  20.43  14.45 1:0.1%/h0.74,2:0.0%/h0.72,3:0.0%/h0.53,4:0.0%/h0.41,9:0.1%/h0.44,10:0.0%/h0.74,11:6.3%/h0.28,12:6.3%/h0.46,36:1.6%/h0.48
+stations/station_scenes/others/argon_mineA_silicon_S          151  15.52  14.00 1:0.1%/h0.74,2:0.0%/h0.72,3:0.0%/h0.53,4:0.0%/h0.41,9:0.1%/h0.44,10:0.0%/h0.74,11:6.3%/h0.28,12:5.7%/h0.46,36:1.7%/h0.48
+stations/station_scenes/others/argon_mineB_silicon_L          152  20.43  13.79 1:0.1%/h0.74,2:0.0%/h0.72,3:0.0%/h0.53,4:0.0%/h0.41,9:0.1%/h0.44,10:0.0%/h0.74,11:6.0%/h0.28,12:6.3%/h0.46,36:1.2%/h0.48
+stations/station_scenes/others/argon_mineB_ore_L              152  20.43  13.79 1:0.1%/h0.74,2:0.0%/h0.72,3:0.0%/h0.53,4:0.0%/h0.41,9:0.1%/h0.44,10:0.0%/h0.74,11:6.0%/h0.28,12:6.3%/h0.46,36:1.2%/h0.48
+stations/station_scenes/farm/argon_farm_S_factory_C           163  25.25  12.95 1:0.4%/h0.74,9:0.0%/h0.44,10:0.3%/h0.74,11:4.4%/h0.28,12:0.1%/h0.46,36:7.7%/h0.48
+stations/station_scenes/others/argon_mineB_silicon_S          151  15.53  11.94 1:0.1%/h0.74,2:0.0%/h0.72,3:0.0%/h0.53,4:0.0%/h0.41,9:0.1%/h0.44,10:0.0%/h0.74,11:5.9%/h0.28,12:5.7%/h0.46,36:0.0%/h0.48
+stations/station_scenes/others/argon_mineA_ore_S              150  14.20  11.88 1:0.3%/h0.74,2:0.0%/h0.72,3:0.0%/h0.53,9:0.2%/h0.44,10:0.0%/h0.74,11:4.7%/h0.28,12:4.6%/h0.46,36:2.1%/h0.48
+stations/station_scenes/others/argon_equipmentdock            216  20.69  11.46 0:0.0%/h0.11,9:0.0%/h0.44,11:5.5%/h0.28,12:5.9%/h0.46,36:0.0%/h0.48
+stations/station_scenes/farm/argon_farm_M_factory_I           191  46.89  11.23 0:0.0%/h0.11,1:0.3%/h0.74,5:0.0%/h0.44,6:0.3%/h0.74,7:3.3%/h0.28,8:0.0%/h0.46,27:7.3%/h0.48,31:0.0%/h0.16
+stations/station_scenes/others/argon_mineA_ore_L              150  13.14  11.11 1:0.1%/h0.74,2:0.0%/h0.72,3:0.0%/h0.53,4:0.0%/h0.41,9:0.2%/h0.44,10:0.0%/h0.74,11:3.8%/h0.28,12:3.5%/h0.46,36:3.4%/h0.48
+stations/station_scenes/farm/argon_farm_M_factory_E           222  24.84  10.92 1:0.1%/h0.74,9:0.0%/h0.44,10:0.3%/h0.74,11:4.6%/h0.28,12:0.0%/h0.46,36:5.9%/h0.48
+ships/T0/Argon_Solar                                          300  50.27  10.76 0:0.0%/h0.11,1:0.1%/h0.74,9:0.1%/h0.44,10:0.2%/h0.74,11:6.2%/h0.28,12:0.5%/h0.46,36:3.7%/h0.48,47:0.0%/h0.31
+stations/goner/temple_partialE                                208  75.95  10.59 1:0.2%/h0.44,2:0.0%/h0.74,3:7.4%/h0.28,4:0.0%/h0.46,13:3.0%/h0.48,18:0.0%/h0.51,19:0.0%/h0.59
+stations/station_scenes/others/argon_mineB_ore_S              150  14.20  10.52 1:0.3%/h0.74,2:0.0%/h0.72,3:0.0%/h0.53,9:0.2%/h0.44,10:0.0%/h0.74,11:4.6%/h0.28,12:4.6%/h0.46,36:0.8%/h0.48
+stations/station_scenes/others/argon_L_solarpowerplant        212  74.28   9.79 1:0.3%/h0.74,2:1.4%/h0.72,9:0.4%/h0.44,10:0.0%/h0.74,11:7.0%/h0.28,12:0.7%/h0.46,47:0.0%/h0.31
+stations/station_scenes/farm/argon_farm_S_factory_E           181  24.96   9.06 1:0.1%/h0.74,9:0.0%/h0.44,10:0.2%/h0.74,11:4.4%/h0.28,12:0.1%/h0.46,36:4.3%/h0.48
+stations/station_scenes/farm/argon_farm_S_factory_D           217  37.51   8.66 1:0.1%/h0.74,10:0.4%/h0.74,11:2.6%/h0.28,12:0.0%/h0.46,36:5.6%/h0.48,44:0.0%/h0.16
+stations/station_scenes/tech/argon_tech_L_shield_I            166  23.42   8.57 1:0.3%/h0.74,2:0.0%/h0.72,3:0.0%/h0.53,4:0.0%/h0.41,9:0.3%/h0.44,10:0.0%/h0.74,11:2.4%/h0.28,12:5.4%/h0.46,36:0.2%/h0.48
+stations/station_scenes/farm/argon_farm_S_factory_I           175  46.79   8.40 1:0.3%/h0.74,9:0.0%/h0.44,10:0.2%/h0.74,11:2.9%/h0.28,12:0.0%/h0.46,36:4.9%/h0.48,44:0.0%/h0.16

@@ -1,0 +1,21 @@
+== stations/others/military_outpost_middleb record 0: r_raw 65792 T_pad 150 divisor 3.5 px 1.0 k_d 0.000977 W_u 1023 units alpha materials [0, 1, 2, 3, 4, 9, 10, 11, 12, 29, 36, 42, 44, 48, 49, 52] z-write-off [42, 49]
+   opaque: widened area 7.30 % strut 12.09 % widenable 7.38 % patches 6485 faces None skipped {'ineligible': 255, 'degenerate': 314, 'shell': 1513, 'full_width_or_faint': 719}
+   all: widened area 7.50 % strut 12.09 % widenable 7.59 % patches 6485 faces None skipped {'ineligible': 0, 'degenerate': 334, 'shell': 1513, 'full_width_or_faint': 792}
+  s 110 (k 0.003344, radius 220 px) before: lum/before 1.0000 flip 0.085 flicker 0.0493 amp mean/p90 0.0166/0.0485 | ax0 flip 0.097 flk 0.0559 amp 0.0185/0.0573 px 23653; ax1 flip 0.081 flk 0.0446 amp 0.0152/0.0445 px 25303; ax2 flip 0.076 flk 0.0476 amp 0.0161/0.0435 px 22118
+  s 110 (k 0.003344, radius 220 px) opaque: lum/before 1.0045 flip 0.078 flicker 0.0492 amp mean/p90 0.0162/0.0490 | ax0 flip 0.080 flk 0.0539 amp 0.0173/0.0515 px 24464; ax1 flip 0.080 flk 0.0443 amp 0.0149/0.0445 px 25765; ax2 flip 0.071 flk 0.0496 amp 0.0164/0.0514 px 22795
+  s 110 (k 0.003344, radius 220 px) all   : lum/before 1.0061 flip 0.077 flicker 0.0490 amp mean/p90 0.0161/0.0486 | ax0 flip 0.080 flk 0.0534 amp 0.0171/0.0502 px 24587; ax1 flip 0.080 flk 0.0440 amp 0.0148/0.0445 px 25765; ax2 flip 0.071 flk 0.0499 amp 0.0165/0.0514 px 22861
+  (8 s)
+== stations/station_scenes/others/argon_L_solarpowerplant record 0: r_raw 65648 T_pad 212 divisor 3.5 px 1.0 k_d 0.001384 W_u 723 units alpha materials [0, 1, 2, 3, 4, 9, 10, 11, 12, 29, 36, 44, 47, 48, 50] z-write-off [0, 29, 48]
+   opaque: widened area 6.93 % strut 25.13 % widenable 7.12 % patches 13144 faces None skipped {'ineligible': 5534, 'degenerate': 0, 'shell': 1243, 'full_width_or_faint': 1224}
+   all: widened area 23.74 % strut 25.13 % widenable 24.12 % patches 13144 faces None skipped {'ineligible': 0, 'degenerate': 0, 'shell': 1243, 'full_width_or_faint': 952}
+  s 65 (k 0.001980, radius 130 px) before: lum/before 1.0000 flip 0.125 flicker 0.1094 amp mean/p90 0.0290/0.0723 | ax0 flip 0.464 flk 0.3324 amp 0.0872/0.1783 px 2539; ax1 flip 0.059 flk 0.0674 amp 0.0183/0.0538 px 30369; ax2 flip 0.516 flk 0.3483 amp 0.0884/0.1710 px 2969
+  s 65 (k 0.001980, radius 130 px) opaque: lum/before 0.9991 flip 0.117 flicker 0.1154 amp mean/p90 0.0299/0.0795 | ax0 flip 0.424 flk 0.3183 amp 0.0799/0.1761 px 2709; ax1 flip 0.056 flk 0.0763 amp 0.0204/0.0621 px 30713; ax2 flip 0.453 flk 0.3236 amp 0.0797/0.1669 px 3126
+  s 65 (k 0.001980, radius 130 px) all   : lum/before 0.9810 flip 0.104 flicker 0.1159 amp mean/p90 0.0273/0.0686 | ax0 flip 0.338 flk 0.3263 amp 0.0696/0.1356 px 3176; ax1 flip 0.052 flk 0.0695 amp 0.0181/0.0539 px 30907; ax2 flip 0.337 flk 0.3264 amp 0.0688/0.1343 px 3643
+  (11 s)
+== stations/station_scenes/others/argon_spacedock record 0: r_raw 65576 T_pad 278 divisor 3.5 px 1.0 k_d 0.001817 W_u 550 units alpha materials [0, 1, 2, 3, 4, 9, 10, 11, 12, 29, 36, 44, 47, 48, 50] z-write-off [0, 29, 48]
+   opaque: widened area 10.18 % strut 31.86 % widenable 10.97 % patches 9373 faces None skipped {'ineligible': 340, 'degenerate': 0, 'shell': 3277, 'full_width_or_faint': 1211}
+   all: widened area 13.12 % strut 31.86 % widenable 13.91 % patches 9373 faces None skipped {'ineligible': 0, 'degenerate': 24, 'shell': 3277, 'full_width_or_faint': 1207}
+  s 188 (k 0.005734, radius 376 px) before: lum/before 1.0000 flip 0.170 flicker 0.1092 amp mean/p90 0.0374/0.1548 | ax0 flip 0.172 flk 0.1086 amp 0.0366/0.1458 px 12503; ax1 flip 0.154 flk 0.1027 amp 0.0362/0.1598 px 17687; ax2 flip 0.230 flk 0.1368 amp 0.0446/0.1598 px 4405
+  s 188 (k 0.005734, radius 376 px) opaque: lum/before 1.0223 flip 0.158 flicker 0.1143 amp mean/p90 0.0353/0.1385 | ax0 flip 0.159 flk 0.1099 amp 0.0313/0.1304 px 14622; ax1 flip 0.146 flk 0.1129 amp 0.0375/0.1447 px 19620; ax2 flip 0.197 flk 0.1322 amp 0.0384/0.1375 px 5067
+  s 188 (k 0.005734, radius 376 px) all   : lum/before 1.0199 flip 0.158 flicker 0.1129 amp mean/p90 0.0339/0.1329 | ax0 flip 0.150 flk 0.1170 amp 0.0329/0.1283 px 14748; ax1 flip 0.158 flk 0.1057 amp 0.0337/0.1352 px 20389; ax2 flip 0.180 flk 0.1298 amp 0.0372/0.1370 px 5143
+  (7 s)

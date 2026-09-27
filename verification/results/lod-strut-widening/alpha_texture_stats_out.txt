@@ -1,0 +1,112 @@
+== material 11
+  diffuse: metals\argon\metal_argon_lattice_support_beams_03_diff.tga -> 01.cat:dds/metal_argon_lattice_support_beams_03_diff.pck kind dds shape (128, 512, 4) dtype uint8
+    mip  0  512x128  alpha<1 0.247 <128 0.276 mean 0.723 min 0 max 255 | half-texel shift: flip@ref1 0.003 flip@ref128 0.003 blended |da| 0.004
+    mip  1  256x64   alpha<1 0.232 <128 0.272 mean 0.723 min 0 max 255 | half-texel shift: flip@ref1 0.009 flip@ref128 0.006 blended |da| 0.007
+    mip  2  128x32   alpha<1 0.197 <128 0.292 mean 0.723 min 0 max 255 | half-texel shift: flip@ref1 0.010 flip@ref128 0.013 blended |da| 0.013
+    mip  3   64x16   alpha<1 0.162 <128 0.244 mean 0.723 min 0 max 255 | half-texel shift: flip@ref1 0.015 flip@ref128 0.029 blended |da| 0.020
+    mip  4   32x8    alpha<1 0.113 <128 0.223 mean 0.723 min 0 max 255 | half-texel shift: flip@ref1 0.028 flip@ref128 0.048 blended |da| 0.028
+    mip  5   16x4    alpha<1 0.000 <128 0.297 mean 0.723 min 62 max 255 | half-texel shift: flip@ref1 0.000 flip@ref128 0.117 blended |da| 0.040
+    mip  6    8x2    alpha<1 0.000 <128 0.062 mean 0.723 min 126 max 247 | half-texel shift: flip@ref1 0.000 flip@ref128 0.000 blended |da| 0.056
+    mip  7    4x1    alpha<1 0.000 <128 0.000 mean 0.723 min 169 max 201 | half-texel shift: flip@ref1 0.000 flip@ref128 0.000 blended |da| 0.037
+    mip  8    1x1    alpha<1 0.000 <128 0.000 mean 0.787 min 201 max 201 | half-texel shift: flip@ref1 0.000 flip@ref128 0.000 blended |da| 0.000
+    at s 65: 525.8 texels/px -> level 9.0 of 8
+    at s 106: 322.6 texels/px -> level 8.3 of 8
+    at s 212: 161.3 texels/px -> level 7.3 of 8
+    at s 500: 68.4 texels/px -> level 6.1 of 8
+    at s 1000: 34.2 texels/px -> level 5.1 of 8
+  alpha: metals\argon\metal_argon_lattice_support_beams_03_alpha.tga -> 01.cat:dds/NONE_BLACK.pck kind dds shape (32, 32, 4) dtype uint8
+    mip  0   32x32   alpha<1 1.000 <128 1.000 mean 0.000 min 0 max 0 | half-texel shift: flip@ref1 0.000 flip@ref128 0.000 blended |da| 0.000
+    mip  1   16x16   alpha<1 1.000 <128 1.000 mean 0.000 min 0 max 0 | half-texel shift: flip@ref1 0.000 flip@ref128 0.000 blended |da| 0.000
+    mip  2    8x8    alpha<1 1.000 <128 1.000 mean 0.000 min 0 max 0 | half-texel shift: flip@ref1 0.000 flip@ref128 0.000 blended |da| 0.000
+    mip  3    4x4    alpha<1 1.000 <128 1.000 mean 0.000 min 0 max 0 | half-texel shift: flip@ref1 0.000 flip@ref128 0.000 blended |da| 0.000
+    mip  4    2x2    alpha<1 1.000 <128 1.000 mean 0.000 min 0 max 0 | half-texel shift: flip@ref1 0.000 flip@ref128 0.000 blended |da| 0.000
+    mip  5    1x1    alpha<1 1.000 <128 1.000 mean 0.000 min 0 max 0 | half-texel shift: flip@ref1 0.000 flip@ref128 0.000 blended |da| 0.000
+  light: metals\argon\metal_argon_lattice_support_beams_03_light.tga -> 01.cat:dds/metal_argon_lattice_support_beams_03_light.pck kind dds shape (128, 512, 4) dtype uint8
+    mip  0  512x128  alpha<1 0.997 <128 1.000 mean 0.000 min 0 max 255 | half-texel shift: flip@ref1 0.000 flip@ref128 0.000 blended |da| 0.000
+    mip  1  256x64   alpha<1 0.996 <128 1.000 mean 0.000 min 0 max 212 | half-texel shift: flip@ref1 0.001 flip@ref128 0.000 blended |da| 0.000
+    mip  2  128x32   alpha<1 0.995 <128 1.000 mean 0.000 min 0 max 90 | half-texel shift: flip@ref1 0.001 flip@ref128 0.000 blended |da| 0.000
+    mip  3   64x16   alpha<1 0.992 <128 1.000 mean 0.000 min 0 max 64 | half-texel shift: flip@ref1 0.006 flip@ref128 0.000 blended |da| 0.000
+    mip  4   32x8    alpha<1 0.988 <128 1.000 mean 0.000 min 0 max 16 | half-texel shift: flip@ref1 0.012 flip@ref128 0.000 blended |da| 0.000
+    mip  5   16x4    alpha<1 0.969 <128 1.000 mean 0.000 min 0 max 4 | half-texel shift: flip@ref1 0.033 flip@ref128 0.000 blended |da| 0.000
+    mip  6    8x2    alpha<1 0.938 <128 1.000 mean 0.000 min 0 max 1 | half-texel shift: flip@ref1 0.071 flip@ref128 0.000 blended |da| 0.001
+    mip  7    4x1    alpha<1 1.000 <128 1.000 mean 0.000 min 0 max 0 | half-texel shift: flip@ref1 0.000 flip@ref128 0.000 blended |da| 0.000
+    mip  8    1x1    alpha<1 1.000 <128 1.000 mean 0.000 min 0 max 0 | half-texel shift: flip@ref1 0.000 flip@ref128 0.000 blended |da| 0.000
+== material 9
+  diffuse: metals\argon\metal_argon_lattice_support_beams_01_diff.tga -> 01.cat:dds/metal_argon_lattice_support_beams_01_diff.pck kind dds shape (128, 512, 4) dtype uint8
+    mip  0  512x128  alpha<1 0.400 <128 0.438 mean 0.560 min 0 max 255 | half-texel shift: flip@ref1 0.010 flip@ref128 0.014 blended |da| 0.013
+    mip  1  256x64   alpha<1 0.374 <128 0.450 mean 0.560 min 0 max 255 | half-texel shift: flip@ref1 0.017 flip@ref128 0.021 blended |da| 0.018
+    mip  2  128x32   alpha<1 0.340 <128 0.425 mean 0.560 min 0 max 255 | half-texel shift: flip@ref1 0.027 flip@ref128 0.035 blended |da| 0.034
+    mip  3   64x16   alpha<1 0.260 <128 0.430 mean 0.560 min 0 max 255 | half-texel shift: flip@ref1 0.045 flip@ref128 0.056 blended |da| 0.064
+    mip  4   32x8    alpha<1 0.125 <128 0.414 mean 0.560 min 0 max 255 | half-texel shift: flip@ref1 0.048 flip@ref128 0.077 blended |da| 0.107
+    mip  5   16x4    alpha<1 0.000 <128 0.328 mean 0.560 min 11 max 255 | half-texel shift: flip@ref1 0.000 flip@ref128 0.167 blended |da| 0.104
+    mip  6    8x2    alpha<1 0.000 <128 0.312 mean 0.560 min 112 max 196 | half-texel shift: flip@ref1 0.000 flip@ref128 0.143 blended |da| 0.035
+    mip  7    4x1    alpha<1 0.000 <128 0.000 mean 0.560 min 131 max 154 | half-texel shift: flip@ref1 0.000 flip@ref128 0.000 blended |da| 0.030
+    mip  8    1x1    alpha<1 0.000 <128 0.000 mean 0.605 min 154 max 154 | half-texel shift: flip@ref1 0.000 flip@ref128 0.000 blended |da| 0.000
+  alpha: metals\argon\metal_argon_lattice_support_beams_01_alpha.tga -> 01.cat:dds/NONE_BLACK.pck kind dds shape (32, 32, 4) dtype uint8
+    mip  0   32x32   alpha<1 1.000 <128 1.000 mean 0.000 min 0 max 0 | half-texel shift: flip@ref1 0.000 flip@ref128 0.000 blended |da| 0.000
+    mip  1   16x16   alpha<1 1.000 <128 1.000 mean 0.000 min 0 max 0 | half-texel shift: flip@ref1 0.000 flip@ref128 0.000 blended |da| 0.000
+    mip  2    8x8    alpha<1 1.000 <128 1.000 mean 0.000 min 0 max 0 | half-texel shift: flip@ref1 0.000 flip@ref128 0.000 blended |da| 0.000
+    mip  3    4x4    alpha<1 1.000 <128 1.000 mean 0.000 min 0 max 0 | half-texel shift: flip@ref1 0.000 flip@ref128 0.000 blended |da| 0.000
+    mip  4    2x2    alpha<1 1.000 <128 1.000 mean 0.000 min 0 max 0 | half-texel shift: flip@ref1 0.000 flip@ref128 0.000 blended |da| 0.000
+    mip  5    1x1    alpha<1 1.000 <128 1.000 mean 0.000 min 0 max 0 | half-texel shift: flip@ref1 0.000 flip@ref128 0.000 blended |da| 0.000
+  light: metals\argon\metal_argon_lattice_support_beams_01_light.tga -> 01.cat:dds/metal_argon_lattice_support_beams_01_light.pck kind dds shape (128, 512, 4) dtype uint8
+    mip  0  512x128  alpha<1 0.945 <128 0.995 mean 0.010 min 0 max 255 | half-texel shift: flip@ref1 0.005 flip@ref128 0.002 blended |da| 0.002
+    mip  1  256x64   alpha<1 0.933 <128 0.995 mean 0.010 min 0 max 255 | half-texel shift: flip@ref1 0.010 flip@ref128 0.004 blended |da| 0.004
+    mip  2  128x32   alpha<1 0.920 <128 0.995 mean 0.010 min 0 max 201 | half-texel shift: flip@ref1 0.016 flip@ref128 0.005 blended |da| 0.006
+    mip  3   64x16   alpha<1 0.883 <128 1.000 mean 0.010 min 0 max 70 | half-texel shift: flip@ref1 0.038 flip@ref128 0.000 blended |da| 0.005
+    mip  4   32x8    alpha<1 0.773 <128 1.000 mean 0.010 min 0 max 31 | half-texel shift: flip@ref1 0.085 flip@ref128 0.000 blended |da| 0.005
+    mip  5   16x4    alpha<1 0.516 <128 1.000 mean 0.010 min 0 max 12 | half-texel shift: flip@ref1 0.150 flip@ref128 0.000 blended |da| 0.005
+    mip  6    8x2    alpha<1 0.188 <128 1.000 mean 0.010 min 0 max 4 | half-texel shift: flip@ref1 0.143 flip@ref128 0.000 blended |da| 0.002
+    mip  7    4x1    alpha<1 0.000 <128 1.000 mean 0.010 min 1 max 4 | half-texel shift: flip@ref1 0.000 flip@ref128 0.000 blended |da| 0.003
+    mip  8    1x1    alpha<1 0.000 <128 1.000 mean 0.006 min 1 max 1 | half-texel shift: flip@ref1 0.000 flip@ref128 0.000 blended |da| 0.000
+== material 12
+  diffuse: metals\argon\metal_argon_lattice_support_beams_04_diff.tga -> 01.cat:dds/metal_argon_lattice_support_beams_04_diff.pck kind dds shape (128, 512, 4) dtype uint8
+    mip  0  512x128  alpha<1 0.442 <128 0.460 mean 0.541 min 0 max 255 | half-texel shift: flip@ref1 0.003 flip@ref128 0.003 blended |da| 0.004
+    mip  1  256x64   alpha<1 0.432 <128 0.454 mean 0.541 min 0 max 255 | half-texel shift: flip@ref1 0.006 flip@ref128 0.007 blended |da| 0.007
+    mip  2  128x32   alpha<1 0.403 <128 0.467 mean 0.541 min 0 max 255 | half-texel shift: flip@ref1 0.009 flip@ref128 0.013 blended |da| 0.012
+    mip  3   64x16   alpha<1 0.362 <128 0.447 mean 0.541 min 0 max 255 | half-texel shift: flip@ref1 0.015 flip@ref128 0.023 blended |da| 0.020
+    mip  4   32x8    alpha<1 0.277 <128 0.473 mean 0.541 min 0 max 255 | half-texel shift: flip@ref1 0.012 flip@ref128 0.040 blended |da| 0.026
+    mip  5   16x4    alpha<1 0.172 <128 0.406 mean 0.541 min 0 max 255 | half-texel shift: flip@ref1 0.000 flip@ref128 0.050 blended |da| 0.029
+    mip  6    8x2    alpha<1 0.000 <128 0.438 mean 0.541 min 54 max 202 | half-texel shift: flip@ref1 0.000 flip@ref128 0.071 blended |da| 0.039
+    mip  7    4x1    alpha<1 0.000 <128 0.250 mean 0.541 min 116 max 159 | half-texel shift: flip@ref1 0.000 flip@ref128 0.333 blended |da| 0.028
+    mip  8    1x1    alpha<1 0.000 <128 0.000 mean 0.624 min 159 max 159 | half-texel shift: flip@ref1 0.000 flip@ref128 0.000 blended |da| 0.000
+  alpha: metals\argon\metal_argon_lattice_support_beams_04_alpha.tga -> 01.cat:dds/NONE_BLACK.pck kind dds shape (32, 32, 4) dtype uint8
+    mip  0   32x32   alpha<1 1.000 <128 1.000 mean 0.000 min 0 max 0 | half-texel shift: flip@ref1 0.000 flip@ref128 0.000 blended |da| 0.000
+    mip  1   16x16   alpha<1 1.000 <128 1.000 mean 0.000 min 0 max 0 | half-texel shift: flip@ref1 0.000 flip@ref128 0.000 blended |da| 0.000
+    mip  2    8x8    alpha<1 1.000 <128 1.000 mean 0.000 min 0 max 0 | half-texel shift: flip@ref1 0.000 flip@ref128 0.000 blended |da| 0.000
+    mip  3    4x4    alpha<1 1.000 <128 1.000 mean 0.000 min 0 max 0 | half-texel shift: flip@ref1 0.000 flip@ref128 0.000 blended |da| 0.000
+    mip  4    2x2    alpha<1 1.000 <128 1.000 mean 0.000 min 0 max 0 | half-texel shift: flip@ref1 0.000 flip@ref128 0.000 blended |da| 0.000
+    mip  5    1x1    alpha<1 1.000 <128 1.000 mean 0.000 min 0 max 0 | half-texel shift: flip@ref1 0.000 flip@ref128 0.000 blended |da| 0.000
+  light: metals\argon\metal_argon_lattice_support_beams_04_light.tga -> 01.cat:dds/metal_argon_lattice_support_beams_04_light.pck kind dds shape (128, 512, 4) dtype uint8
+    mip  0  512x128  alpha<1 0.996 <128 1.000 mean 0.000 min 0 max 255 | half-texel shift: flip@ref1 0.000 flip@ref128 0.000 blended |da| 0.000
+    mip  1  256x64   alpha<1 0.996 <128 1.000 mean 0.000 min 0 max 207 | half-texel shift: flip@ref1 0.001 flip@ref128 0.000 blended |da| 0.000
+    mip  2  128x32   alpha<1 0.995 <128 1.000 mean 0.000 min 0 max 97 | half-texel shift: flip@ref1 0.002 flip@ref128 0.000 blended |da| 0.000
+    mip  3   64x16   alpha<1 0.994 <128 1.000 mean 0.000 min 0 max 31 | half-texel shift: flip@ref1 0.003 flip@ref128 0.000 blended |da| 0.000
+    mip  4   32x8    alpha<1 0.980 <128 1.000 mean 0.000 min 0 max 9 | half-texel shift: flip@ref1 0.012 flip@ref128 0.000 blended |da| 0.000
+    mip  5   16x4    alpha<1 0.953 <128 1.000 mean 0.000 min 0 max 3 | half-texel shift: flip@ref1 0.050 flip@ref128 0.000 blended |da| 0.000
+    mip  6    8x2    alpha<1 0.938 <128 1.000 mean 0.000 min 0 max 1 | half-texel shift: flip@ref1 0.071 flip@ref128 0.000 blended |da| 0.000
+    mip  7    4x1    alpha<1 1.000 <128 1.000 mean 0.000 min 0 max 0 | half-texel shift: flip@ref1 0.000 flip@ref128 0.000 blended |da| 0.001
+    mip  8    1x1    alpha<1 1.000 <128 1.000 mean 0.000 min 0 max 0 | half-texel shift: flip@ref1 0.000 flip@ref128 0.000 blended |da| 0.000
+== material 0
+  diffuse: metals\argon\metal_argon_lattice_windowedgrid_diff.tga -> 01.cat:dds/metal_argon_lattice_windowedgrid_diff.pck kind dds shape (1024, 1024, 4) dtype uint8
+    mip  0 1024x1024 alpha<1 0.000 <128 0.109 mean 0.775 min 110 max 255 | half-texel shift: flip@ref1 0.000 flip@ref128 0.004 blended |da| 0.002
+    mip  1  512x512  alpha<1 0.000 <128 0.097 mean 0.775 min 112 max 255 | half-texel shift: flip@ref1 0.000 flip@ref128 0.008 blended |da| 0.003
+    mip  2  256x256  alpha<1 0.000 <128 0.077 mean 0.775 min 113 max 255 | half-texel shift: flip@ref1 0.000 flip@ref128 0.011 blended |da| 0.006
+    mip  3  128x128  alpha<1 0.000 <128 0.030 mean 0.775 min 113 max 255 | half-texel shift: flip@ref1 0.000 flip@ref128 0.008 blended |da| 0.009
+    mip  4   64x64   alpha<1 0.000 <128 0.001 mean 0.775 min 126 max 255 | half-texel shift: flip@ref1 0.000 flip@ref128 0.001 blended |da| 0.015
+    mip  5   32x32   alpha<1 0.000 <128 0.000 mean 0.775 min 139 max 255 | half-texel shift: flip@ref1 0.000 flip@ref128 0.000 blended |da| 0.024
+    mip  6   16x16   alpha<1 0.000 <128 0.000 mean 0.775 min 142 max 255 | half-texel shift: flip@ref1 0.000 flip@ref128 0.000 blended |da| 0.032
+    mip  7    8x8    alpha<1 0.000 <128 0.000 mean 0.775 min 149 max 252 | half-texel shift: flip@ref1 0.000 flip@ref128 0.000 blended |da| 0.037
+    mip  8    4x4    alpha<1 0.000 <128 0.000 mean 0.775 min 183 max 221 | half-texel shift: flip@ref1 0.000 flip@ref128 0.000 blended |da| 0.014
+    mip  9    2x2    alpha<1 0.000 <128 0.000 mean 0.775 min 192 max 203 | half-texel shift: flip@ref1 0.000 flip@ref128 0.000 blended |da| 0.001
+    mip 10    1x1    alpha<1 0.000 <128 0.000 mean 0.775 min 198 max 198 | half-texel shift: flip@ref1 0.000 flip@ref128 0.000 blended |da| 0.000
+  alpha: metals\argon\metal_argon_lattice_windowedgrid_alpha8.tga -> 01.cat:dds/NONE_BLACK.pck kind dds shape (32, 32, 4) dtype uint8
+    mip  0   32x32   alpha<1 1.000 <128 1.000 mean 0.000 min 0 max 0 | half-texel shift: flip@ref1 0.000 flip@ref128 0.000 blended |da| 0.000
+    mip  1   16x16   alpha<1 1.000 <128 1.000 mean 0.000 min 0 max 0 | half-texel shift: flip@ref1 0.000 flip@ref128 0.000 blended |da| 0.000
+    mip  2    8x8    alpha<1 1.000 <128 1.000 mean 0.000 min 0 max 0 | half-texel shift: flip@ref1 0.000 flip@ref128 0.000 blended |da| 0.000
+    mip  3    4x4    alpha<1 1.000 <128 1.000 mean 0.000 min 0 max 0 | half-texel shift: flip@ref1 0.000 flip@ref128 0.000 blended |da| 0.000
+    mip  4    2x2    alpha<1 1.000 <128 1.000 mean 0.000 min 0 max 0 | half-texel shift: flip@ref1 0.000 flip@ref128 0.000 blended |da| 0.000
+    mip  5    1x1    alpha<1 1.000 <128 1.000 mean 0.000 min 0 max 0 | half-texel shift: flip@ref1 0.000 flip@ref128 0.000 blended |da| 0.000
+  light: b'NULL' -> NULL / unresolved
+
+engine alpha test at these draws (run340 state rows): ALPHAFUNC 7 GREATEREQUAL, ALPHAREF 1 on every draw; MIPMAPLODBIAS 0; material 11 t_MipMapLODBias 0, aniso 8
