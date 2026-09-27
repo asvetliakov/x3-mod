@@ -1,0 +1,22 @@
+== stations/others/military_outpost_middleb record 0: tau 3.0 rho 0.25 pan 24 frames at frac 0.37 px/frame gains lock 0.02 base 0.208
+  s 110: px 71372, pan ripple energy / rest 1.08x; pixels rippling under pan but quiet at rest 0.029 of px
+    rest lock set: share 0.147, pan energy on it 0.789; predicted pan ripple vs blanket, carry only 2.98x
+    pan lock set (camera-gate creation): share 0.177, pan energy on it 0.890, plate locked 1.74 % (rest 0.04 %); predicted pan ripple vs blanket 2.04x
+    clip loss on unlocked rippling px-frames under pan: 3x3 0.079, 7x7 0.016
+  s 147: px 125989, pan ripple energy / rest 1.08x; pixels rippling under pan but quiet at rest 0.025 of px
+    rest lock set: share 0.117, pan energy on it 0.781; predicted pan ripple vs blanket, carry only 3.05x
+    pan lock set (camera-gate creation): share 0.144, pan energy on it 0.888, plate locked 1.55 % (rest 0.07 %); predicted pan ripple vs blanket 2.05x
+    clip loss on unlocked rippling px-frames under pan: 3x3 0.060, 7x7 0.020
+  (11 s)
+== stations/station_scenes/others/argon_L_solarpowerplant record 0: tau 3.0 rho 0.25 pan 24 frames at frac 0.37 px/frame gains lock 0.02 base 0.208
+  s 65: px 36155, pan ripple energy / rest 1.06x; pixels rippling under pan but quiet at rest 0.027 of px
+    rest lock set: share 0.282, pan energy on it 0.807; predicted pan ripple vs blanket, carry only 2.81x
+    pan lock set (camera-gate creation): share 0.332, pan energy on it 0.914, plate locked 2.00 % (rest 0.01 %); predicted pan ripple vs blanket 1.81x
+    clip loss on unlocked rippling px-frames under pan: 3x3 0.032, 7x7 0.003
+  (5 s)
+== stations/station_scenes/others/argon_spacedock record 0: tau 3.0 rho 0.25 pan 24 frames at frac 0.37 px/frame gains lock 0.02 base 0.208
+  s 188: px 35099, pan ripple energy / rest 1.08x; pixels rippling under pan but quiet at rest 0.060 of px
+    rest lock set: share 0.301, pan energy on it 0.793; predicted pan ripple vs blanket, carry only 2.95x
+    pan lock set (camera-gate creation): share 0.367, pan energy on it 0.891, plate locked 3.27 % (rest 0.17 %); predicted pan ripple vs blanket 2.03x
+    clip loss on unlocked rippling px-frames under pan: 3x3 0.073, 7x7 0.011
+  (3 s)

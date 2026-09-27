@@ -485,3 +485,102 @@ case is bounded by the 7x7 box like every locked pixel. `X3M_TAA_LUMA_LOCK_RELEA
   the weight and clip are the blanket's).
 
 Expected slots: 1,217 + 2 (running mean), the floor is a constant change [I].
+
+## 12. Run 99 A: the far shipyard shimmers under a pan (2026-09-28)
+
+Flown: run353 (lock off) and run354 (`--taa-luma-lock 16`, build 063fc8c1 = sections 10 + 11) at 1920x1080. User: "much
+better in regard of blurring; the adjacent station (Federal Argon Shipyard) shimmers under pan". Triage
+(`verification/results/run353-354-luma-lock/summary.txt`) [M]: the shipyard is `argon_spacedock` at view z about 79k,
+footprint 70-98 units per pixel, 100 % of its pixels beyond the 68-unit ramp (fully far-eligible) in every burst; run354's
+pan is 4.70 deg/frame (79-84 px/frame on the shipyard), run353's 2.95 deg/frame (31-50 px); both sessions ran with
+`taa_debug=0`, so there are no resolved, present or lane dumps: rest-vs-pan flicker, sharpness and the locked share are not
+measurable from these captures. Evidence for this section: `verification/results/taa-luminance-lock/pan_model.py`
+(`pan_model_out.txt`, the raster under a world-static pan: 24 frames of the 0.37 px fractional sweep plus the Halton
+phase, per world point since the history is reprojected) and `ramp_pan_model.py` (`ramp_pan_model_out.txt`, the fixture
+ramp under 0.37 and 73.37 px/frame with the exponential history reprojected bilinearly, the residual against the bilinear
+previous history at `previousUV - jitter`, the previous residual read at the nearest reprojected texel) [M on the models].
+
+### 1. Why struts quiet at rest shimmer under the pan
+
+The spacedock at s 188 (the raster's shipyard) under the pan, floor 3 [M on the raster, I for the game]:
+
+| quantity | value |
+|---|---|
+| pan ripple energy / rest ripple energy | 1.08x (pixels rippling under the pan but quiet at rest: 6.0 % of covered px) |
+| pan ripple energy on the rest-created lock set (what the build carries) | 0.793 (its rest energy share was 0.869) |
+| predicted pan ripple vs the blanket, carried locks only (the build) | 2.95x (rest 2.23x) |
+| unlocked rippling pixel-frames whose history the 3x3 clip cuts | 7.3 % (7x7 box: 1.1 %) |
+| predicted pan ripple with the clip loss at gain 1 on those frames | about 3.7x [I] |
+| pan lock set with camera-gate creation: share / pan energy on it / predicted vs blanket | 0.367 / 0.891 / 2.03x |
+
+Ranking. **(a) the phase sweep with creation closed**: first. Under the pan every sub-pixel strut world point sees a
+different phase sequence; the total ripple energy barely changes (1.06-1.08x on all three stations) but the set that
+carries it shifts, and the rest-created lock set, which the build can only carry (creation is on the screen gate, closed
+above 0.25 px/frame), holds 78-81 % of the pan energy against 86-88 % of the rest energy. The remaining fifth sits on
+pixels at the base weight: 2.8-3.1x the blanket's pan ripple, where the rest prediction was 2.2-2.3x and the rejected
+0.90 blanket measured 4.8x. **(d) the 3x3 clip on unlocked far pixels**: second and additive: on 6-8 % of those pixel-frames
+(3 % on the plant) the history lies outside the current 3x3 box and is cut back to the background, gain 1 instead of
+0.208; the 7x7 box loses 0.3-2 %: about +0.7x on the spacedock, so the build's pan ripple is about 3.7x the blanket
+[I], in the range the user rejected on 0.90. **(c) the running-mean release**: low. A pan is a rotation; world-static
+content has no parallax against its own neighbourhood or the backdrop, the claimed lock's 3x3 is the same world content,
+and R follows it. **(b) 2D transport**: low but unverified: the claim is per axis with 8-bit offsets on both axes, the
+fixture's pan is x-only and the flight's is mostly yaw; a diagonal-pan fixture row (below) closes it. The triage numbers
+cannot separate any of these (no dumps); what would: a `--taa-debug` burst pair (rest, mid-pan) on the shipyard: the lane
+dump's locked share rest vs pan (falls under the pan: (b) or (c); holds: (a)/(d)), and the fixture's clip A/B for (d).
+
+### 2. The fix: create on the camera gate, keep the 7x7 box under the pan
+
+**Creation on `openC`.** The residual against the reprojected history is a per-world-point quantity that works under
+motion (it was the nearest-texel raw-sample read that forced the screen gate in section 1). Create and refresh when the
+camera gate is open (`openC >= 0.5`: world-static content under a pan, the case the blanket covered), which also excludes
+movers; the lifetime decrements while claimed and is frozen only while `openC` is closed. The residual chain must travel
+per world point: for a claimed lock its bits ride in the claim; for an unlocked pixel the previous residual is read at the
+nearest reprojected texel (integer part exact, at most a 0.5-px neighbour; the ramp model uses this read). Lane budget
+with the offsets in r / g under motion: `b = t (5 bits, T <= 31) + 32 class(|e| >= TAU) + 64 sign + 128 mode`, `a = R`;
+at rest r keeps the full residual. Under motion the test degrades to "current |e| >= tau, previous class >= TAU, opposite
+sign", which catches a (small, large) pair at once and a (large, small) pair one flip later. About +10 slots for the
+packing [I]. Schema: T range 1..31 (default 16 unchanged); `X3M_TAA_LUMA_LOCK_GATE` gains `camera` as the default.
+
+**Plates under the pan.** Ramp model, previous residual at the nearest reprojected texel: plate lock share 0.000 at 0,
+0.37 and 73.37 px/frame for floors 2, 3 and 4 (max residual 10 codes, one-signed at the kinks) [M on the model]. The
+bilinear resampling error of a reprojected history on smooth content has the sign of the local curvature, which is fixed
+per world point, so it never alternates; the residual's alternation needs sub-pixel content. (An earlier revision of the
+model compared residuals per screen texel and locked 87.5 % of the ramp at any integer speed: the chain must be per world
+point, which is the lane rule above.) Raster: the "plate" pixels (defined at rest) that lock under the pan are
+1.5-3.3 % against 0.01-0.17 % at rest, and they ripple under the sweep (seam and edge pixels), so they are flicker
+sources, not texture; plate interiors stay unlocked and at the base weight. Lock share under the pan: outpost 0.144-0.177,
+plant 0.332, spacedock 0.367 (rest 0.117-0.147 / 0.282 / 0.301); predicted pan ripple 1.8-2.05x the blanket, the rest
+figure of section 11. Plate sharpness cost: the 1.5-3.3 % of plate pixels that lock under the pan return to 0.985 [I].
+
+**(d) the box.** Under the pan (camera gate open, screen gate closed) every far pixel keeps the 7x7 box, the clip class
+that flew from run333 to run352: `farClip = region <= 0 && farw * openC > c13.z && (l > 0 || |e_n| >= tau || ownS <
+0.5)`; at rest an unlocked far pixel keeps the 3x3 clip (the built, plate-sharp state). Cost: the 7x7 loop on far pixels
+under pans, as before the lock.
+
+**Fixture rows.** (i) `pan_create`: a 1.0-px texel-aligned bar (every Halton phase samples it, so no ripple and no lock at
+rest, share 0 over frames 0-15), the pan from frame 16 sweeps it across texel boundaries: lock share >= 0.9 within N = 3
+frames of its first residual flip, carried, resumed; (ii) `plate_pan`: x and y ramps under the 0.37 px/frame pan, locks
+<= 0.5 % on every pan frame (model 0.000); (iii) `carry_2d`: a diagonal pan (0.37, 0.23) px/frame, carry >= 0.9 every
+frame, band <= 2 px; (iv) `clip_pan`: the 0.4-px struts under the pan with creation disabled, 7x7 against 3x3: ripple
+within 10 % of the blanket with the box, the 3x3 row informational; (v) `mover_pan`: a mover crossing under the pan
+creates no lock on its pixels (openC closed). Existing rows unchanged.
+
+**Flight acceptance.** Same stand, `--taa-debug`, F8 at rest and mid-pan on the shipyard at run354's pan speed: the
+lane's locked share on the shipyard under the pan within 10 % of its rest share and above 0.3; rest flicker on the outpost
+as section 11 (rms <= 1.0 codes); the shipyard's pan flicker no worse than 2.3x the blanket's on the same frames [target,
+I]; the user's verdict: the shipyard under a pan as steady as at rest, the outpost's plates as sharp as in run354.
+
+### 3. An "unlock" model instead: why it loses
+
+Hold every far pixel at the far weight unless it is demonstrably quiet (K frames with |e| < TAU), release then, re-hold on
+a flip. With T = K it is the same rule as the lock with the opposite initial state, so the comparison is about pixels not
+yet classified and pixels the detector never classifies. (1) Initial state: after a cut or in a pan's disocclusion band
+the unlock model holds for K frames where the lock model shimmers for the two frames a flip takes; the age ramp caps the
+hold at 0.89 by age 8, so this difference is small either way. (2) Never classified: a pixel whose ripple is 1-3 codes,
+never a qualifying flip, never K quiet frames, is held for good in the unlock model and free in the lock model. On the
+flat-luminance raster that set is small; on real stations it is every textured plate pixel and seam whose residual
+touches TAU once in K frames, i.e. the unlock model converges to the blanket on textured content, which is what the user
+called blurry. (3) It needs the same transported residual chain under motion, so it saves nothing in the lane or the
+gate, and its sole advantage, robustness to a missed flicker under motion, is what section 2's camera-gate creation and
+the 7x7 box under the pan address at the source. The lock model stays; the fallback if the next flight still shimmers
+is the clip (d) and the floor, not the initial state.

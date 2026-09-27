@@ -1,0 +1,9 @@
+tau 2 pan   0.00 px/frame: plate lock share 0.000, max |residual| 5 codes
+tau 2 pan   0.37 px/frame: plate lock share 0.000, max |residual| 10 codes
+tau 2 pan  73.37 px/frame: plate lock share 0.000, max |residual| 10 codes
+tau 3 pan   0.00 px/frame: plate lock share 0.000, max |residual| 5 codes
+tau 3 pan   0.37 px/frame: plate lock share 0.000, max |residual| 10 codes
+tau 3 pan  73.37 px/frame: plate lock share 0.000, max |residual| 10 codes
+tau 4 pan   0.00 px/frame: plate lock share 0.000, max |residual| 5 codes
+tau 4 pan   0.37 px/frame: plate lock share 0.000, max |residual| 10 codes
+tau 4 pan  73.37 px/frame: plate lock share 0.000, max |residual| 10 codes
