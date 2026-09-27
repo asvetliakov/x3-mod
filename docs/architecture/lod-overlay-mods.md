@@ -405,3 +405,31 @@ guide [docs/user/regenerate.md](../user/regenerate.md), ledger [lod-overlay.md](
   bytes of each DXT diffuse/light atlas and in the gzip stream of the bump atlas (identical decoded bytes);
   geometry members and the fog file are identical (measured). Reuse compares inputs and settings, not outputs,
   so this does not trigger rebakes.
+
+## CrossOver start crash of `x3m-regenerate.exe` at `C:\X3` (2026-09-28)
+
+Symptom: the 64-bit exe dies at process start (wine exit 29, no output) only when its full path is
+`C:\X3\x3m-regenerate.exe`; the same bytes start from the Z: spelling of that file, from `C:\X3\q\`, from
+`C:\X3\regen-probe-tmp\`, from Temp and from `C:\regen-test\` in X3M-Build (measured). Not our code, not the
+directory contents, not a CrossOver app setting.
+
+Cause (disassembly of `lib/wine/aarch64-windows/xtajit64.dll`, the ARM64EC FEX build `FEX-2604-755-g80951b9`
+shipped with CrossOver Preview 20260821): FEX's process init (function at RVA 0x2c5c) gets the image path
+(`LdrGetDllFullName`) into a `std::string`, finds the last `\`, then **frees that string's heap buffer
+(RVA 0x3058) before copying the file-name part out of it (RVA 0x30c4)**, a use-after-free. It only bites when
+the full path is longer than 22 characters (libc++ short-string limit, otherwise nothing is freed) and the
+file name starts at string offset 7 or less: the allocator evidently overwrites bytes 0-7 of the freed block
+(inferred: an 8-byte free-list pointer with zero top bytes), so the program name becomes an empty C string. `C:\X3\` puts the
+name at offset 6 (fails); `C:\X3\q\` puts it at offset 8 (starts, measured). With an empty name the per-user
+app-config path `Y:\.config\fex-emu\AppConfig\` + "" (= `~/.config/fex-emu/AppConfig/` on the Mac, an empty
+directory dated 2026-08-25) opens successfully as a directory, reads zero bytes, FEX logs "Failed to parse
+JSON from file ... invalid JSON format" (RVA 0x17a7e8) and executes its trap `hlt #1` at RVA 0x1710e8 — the
+`EXCEPTION_ILLEGAL_INSTRUCTION` in the trace. The trace of the failing start opens `AppConfig/` 11 times and
+never `AppConfig/x3m-regenerate.exe.json`; working starts open `.../x3m-regenerate.exe.json` 24 times.
+
+Consequences (inferred): any 64-bit x64 exe at a drive root or in a top-level directory of at most 3
+characters, with a full path longer than 22 characters, is affected on a Mac that has `~/.config/fex-emu/AppConfig/`; without that directory the empty name
+only skips FEX app config. X3AP.exe (32-bit, wow64 FEX) is not on this path. Native Windows is unaffected.
+A file name of 15 characters or fewer (e.g. `x3m-regen.exe`) keeps `C:\X3\<name>` within 22 characters and
+cannot hit the bug in any directory; not verified by a probe because it needs a temporary file directly in
+`C:\X3`. Producing commands, analysis script and counts: `verification/results/regenerate-start-crossover/`.

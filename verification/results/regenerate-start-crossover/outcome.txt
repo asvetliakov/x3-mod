@@ -1,0 +1,11 @@
+# python3 analyse.py <traces> (2026-09-28, traces local in session scratchpad)
+regen-probe-F.txt trap {'AppConfig/': 11}
+regen-probe-FZ.txt no-trap {'AppConfig/x3m-regenerate.exe.json': 24, 'AppConfig/': 8}
+regen-probe-P1.txt trap {'AppConfig/': 11}
+regen-probe-P2.txt no-trap {'AppConfig/x3m-regenerate.exe.json': 24, 'AppConfig/': 8}
+# exits: F 29, FZ 1 (refusal), P1 29, P2 1 (refusal)
+# python3 analyse.py (no args): disassembly facts
+1710e8 hlt #0x1 (FEX trap) -> True
+17a73c-17a744 invalid-JSON error then trap -> ['mov\tx0, x19', 'bl\t0x18017a7e8 <BeginSimulation+0x1738f4>', 'bl\t0x1801710e8 <BeginSimulation+0x16a1f4>']
+3058 operator delete of path buffer -> ['180003058:     \tbl\t0x1801aab14 <BeginSimulation+0x1a3c20>']
+30c4 memcpy of filename from freed buffer -> ['1800030c4:     \tbl\t0x1801ddfa0 <BeginSimulation+0x1d70ac>']
