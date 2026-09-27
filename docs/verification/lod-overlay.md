@@ -416,3 +416,84 @@ only, the write-back and the bloom extract composite the current bolt at `--bolt
 Fixtures: `BOLT_FAR_STREAK` (the far-depth quad with the one-frame streak: the streak shows at W of the dropped strength
 within 0.12 code, every unflagged pixel and every later frame's colour, age and depth bit-identical) and
 `seam-bolt-far-flag*` (RT2.g + 32 at every bolt pixel, the rest untouched, the R32F lane refused). Run 94 A flies it.
+
+## 2026-09-28 strut widening on C (host-side; not baked into the bottle, not flown)
+
+Status: implemented 2026-09-28 as an opt-in baker flag (--widen), host-checked, not baked, not flown; parked in favour of taa-luminance-lock.md.
+
+`widen_thin_patches` (docs/architecture/lod-strut-widening.md, section 10 lists where it departs from the note): thin
+smooth patches of C's source widened to 1 px at s_d = T_pad / 2 and drawn in one blended group per part and effect
+on duplicate atlas tiles with coverage alpha; opt-in `--widen` (default off), `--widen-px`, `--widen-design-divisor`
+(batch settings `atlas.widen`; `thin_patches.py` joins `TOOL_FILES` and the x3m-regenerate spec, so the next
+`--sync` rebakes every body). x3m-regenerate passes only `--game --batch --sync --mod auto --install --jobs`, so it
+bakes without widening (bundle not rebuilt). A point a widened face shares with a non-widened face is duplicated, and
+when C is widened from the coarsest record (single-record and last-record recipe bodies) the
+pad is the vanilla coarsest record (55 of the 620 installed bodies take C from their coarsest record, reviewer
+count from the 05/06 manifests). Scripts and outputs: `verification/results/lod-strut-widening/`
+(`bake_compare.py`, `raster_compare.py`, `deformed_faces.py`, `only_stations.txt`, `*_out.txt`); scratch bakes stay
+local.
+
+| Check | Command | Result (measured) |
+|---|---|---|
+| Fixture (section 8 body plus a two-facet chamfer, a fin sharing a point with a wide triangle, darker hull plates, a single-record body, the CLI) | `PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_lod_strut_widening` | 11/11 OK: W_u 1,024 units, widths within 1 unit, untouched classes and every non-widened face bit-identical, one blended group with the four states, tile alpha within 1/32, per-axis light over sky and over a 0.6 hull within 2 % of C's light over sky, bounds, round trip, cube body byte-identical, single-record pad byte-identical to the vanilla record, off by default, `--widen` / `--widen-px` / `--widen-design-divisor` reach the plan and `0`, `-1`, `0.5` exit 2 |
+| Baker tests | `... -m unittest verification.analysis.test_lod_overlay_batch` / `test_lod_batch_census` / `test_bob1` / `test_lod_recipes` | 55 / 6 / 44 (1 skipped) / 6 OK with widening off by default (no test opts out); the tool-hash test lists `thin_patches.py` |
+| Also | `test_lod_overlay_check`, `test_regenerate` | 7 + 8 OK |
+| Census reproduces | `thin_geometry_census.py --jobs 1 --only stations/station_scenes/others/argon_spacedock --at ...=188,139` | per-body row and 44/44 detail lines identical to `named_bodies_out.txt` |
+| Shared points | `deformed_faces.py <name>=<T_pad> ...` -> `deformed_faces_out.txt` | non-widened faces on a shared point (dragged before the duplication) 221 / 3 / 200 (spacedock, plant, outpost); deformed now 0 / 0 / 0 |
+| Scratch bakes (made while widening was the default) | `lod_overlay.py --batch --only verification/results/lod-strut-widening/only_stations.txt --mod none --jobs 2 [--no-widen] --out <scratch>`; today `--widen` selects the widened bake | `bake_compare_out.txt` |
+| Raster | `raster_compare.py [--flat] <flat> <wide> stations/others/military_outpost_middleb=110,147@1700 ...argon_spacedock=188 ...argon_L_solarpowerplant=65` | `raster_compare_out.txt` (atlas colours), `raster_compare_flat_colour_out.txt` (every face 1, hull 0.5); shell rule off (`lod_overlay.WIDEN_SHELL = 0`, `--jobs 1`, before the point duplication, spacedock and plant only): `raster_compare_shell_off_out.txt` |
+
+| Body (T_pad, s_d) | military_outpost_middleb (150, 75) | argon_spacedock (278, 139) | argon_L_solarpowerplant (212, 106) |
+|---|---|---|---|
+| strut area at s_d: census F 1,280 / bake F 960 | 4.49 % / 7.21 % | 19.01 % / 24.93 % | 12.08 % / 21.63 % |
+| widened area of the source record | 3.71 % | 7.38 % | 3.97 % |
+| thin patches kept: alpha or kept material / shell / full or faint / degenerate | 253 / 1,922 / 332 / 314 | 332 / 3,063 / 507 / 0 | 5,444 / 1,170 / 681 / 0 |
+| widened patches / faces; op time | 1,586 / 13,112; 0.39 s | 4,393 / 25,927; 0.58 s | 3,576 / 35,622; 0.80 s |
+| C drawn groups | 4 -> 4 (widened +1) | 4 -> 4 (widened +1) | 6 -> 6 (widened +1, light-bleed kept 2 -> 0) |
+| atlas split groups | 1 -> 1 | 1 -> 1 | 2 -> 2 |
+| atlas: tiles (alpha), min texels/px, layout | 28 -> 186 (158), 2.021 -> 2.019, clamped | 29 -> 233 (204), 2.053 -> 2.001, clamped | 16 -> 144 (128), 4.241 -> 2.007, uniform -> clamped |
+| atlas stored bytes; body member | 258 -> 564 KB; +0.3 % | 104 -> 455 KB; +0.4 % | 426 -> 306 KB; +0.5 % |
+| bake seconds (2 jobs) | 11.15 -> 15.64 | 13.38 -> 19.74 | 14.33 -> 18.63 |
+
+Raster, per axis 0 / 1 / 2 (atlas colours; the flat-colour run in brackets where it differs by more than 0.5 %):
+
+| Body, size | light over sky, after / before | light over hull (share of sky light) | flip share before -> after | flicker before -> after |
+|---|---|---|---|---|
+| outpost s 110 | 1.003 / 1.010 / 1.002 | 1.003 / 1.008 / 1.001 | .097->.093 / .081->.082 / .076->.074 | .081->.080 / .063->.060 / .071->.071 |
+| outpost s 147 | 1.003 / 1.010 / 1.002 | 1.003 / 1.009 / 1.001 | .072->.071 / .062->.053 / .059->.057 | .066->.066 / .050->.047 / .058->.058 |
+| outpost s_d 75 | 1.003 / 1.010 / 1.002 | 1.003 / 1.009 / 1.001 | .127->.122 / .111->.101 / .099->.100 | .106->.105 / .083->.079 / .094->.094 |
+| outpost T_pad 150 | 1.003 / 1.011 / 1.002 | 1.003 / 1.008 / 1.001 | .070->.068 / .061->.059 / .055->.054 | .061->.061 / .049->.047 / .055->.055 |
+| outpost LOD 0 s 1700 (record 0, same both bakes; 1024 px crop inside the hull) | - | - | .002 / .000 / .002 | .0007 / .0000 / .0009 |
+| spacedock s 188 | 0.981 / 1.005 / 0.984 | 1.000 / 1.000 / 1.000 (flat: 0.990 / 1.002 / 0.992) | .172->.172 / .154->.148 / .230->.218 | .130->.129 / .131->.141 / .158->.143 |
+| spacedock s_d 139 | 0.980 / 1.006 / 0.986 | 1.000 / 1.000 / 1.000 (flat: 0.990 / 1.003 / 0.993) | .227->.222 / .230->.216 / .289->.264 | .158->.156 / .177->.176 / .195->.178 |
+| spacedock T_pad 278 | 0.981 / 1.005 / 0.986 | 1.000 / 1.000 / 0.999 (flat: 0.990 / 1.003 / 0.993) | .134->.121 / .124->.119 / .189->.153 | .103->.099 / .108->.111 / .130->.112 |
+| plant s 65 | 0.977 / 0.994 / 0.978 (flat: 1.001 / 1.000 / 1.001) | 0.976 / 0.994 / 0.977 (flat: 1.001 / 1.000 / 1.001) | .464->.462 / .059->.058 / .516->.508 | .348->.344 / .029->.029 / .369->.358 |
+| plant s_d 106 | 0.975 / 0.994 / 0.970 (flat: 1.002 / 1.000 / 0.997) | 0.973 / 0.994 / 0.973 (flat: 1.001 / 1.000 / 0.999) | .349->.341 / .038->.038 / .388->.387 | .279->.282 / .021->.021 / .295->.300 |
+| plant T_pad 212 | 0.972 / 0.994 / 0.971 (flat: 1.001 / 1.000 / 0.998) | 0.971 / 0.994 / 0.973 (flat: 1.000 / 1.000 / 0.999) | .203->.198 / .020->.020 / .236->.232 | .161->.165 / .012->.013 / .175->.177 |
+
+The 2 % bound, restated: with uniform colours (geometry and coverage alpha only) every per-axis ratio over sky and
+over a hull lies within 2 % (worst 0.9805, the spacedock's axis 0 over sky; 0.990 over a hull). With the atlas
+colours sampled at face centroids the plant falls to 0.970 on one axis, past the bound. The flat run does not show
+it, so it comes from sampling two differently scaled atlases (the plant's goes from uniform 0.103 to clamped 1.0)
+at one point per face, not from the widened geometry (inferred; the in-game mip-filtered colour is not measured).
+The claim is therefore narrowed to geometry and coverage alpha. The `--no-widen` and widened atlases of one body
+are not colour-matched.
+
+Findings. The widened share is 3.7-7.4 % of the source record, a third to a half of the note's expectation. The
+plant's thin area is mostly the lattice cards, which are alpha materials and not widened (the g_AlphaValue path of
+2.1 item 4 is not built). The shell rule keeps 1,922-3,063 hull-attached thin patches. Without the rule (19.4 % of
+the spacedock widened) C lost 5 % of its light and its axis-1 flicker rose 36-52 % by size, because translucent
+shell facets expose the hollow hull. With it the effect is small but mostly favourable:
+- **Flip share:** spacedock down 2-9 % by size (pixel-weighted); outpost -15 % to +1 % per axis; plant flat.
+- **Flicker:** mostly down, but the spacedock's axis 1 rises at the stand (.131 -> .141) and at T_pad (.108 -> .111),
+  and the plant's on axes 0 and 2 at s_d and T_pad (by up to 2 %).
+- **Plant atlas:** its layout changes too (minimum texels/px 4.24 -> 2.01, light-bleed kept groups 2 -> 0).
+- **Every widened body:** a DXT5 diffuse atlas and a clamped 2 texels/px layout. The fleet rebake is estimated at
+  65-75 min at 2 jobs (inferred from +30-48 % bake time here).
+- **Outpost LOD 0 at s 1,700 (1.6 km):** record 0 is drawn there and is not changed by widening. Its interior crop
+  shows no coverage flips (0.000-0.002), so whatever blurs the outpost at LOD 0 is not sub-pixel geometry coverage in
+  this metric.
+
+Raster limits: orthographic axis views at the 5120x1440 focal length, 8 Halton phases, one sample per pixel. It draws
+all opaque fragments before the widened group, so a z-write-on band occluding a later part's opaque faces is not
+exercised. No lighting or TAA; the alpha group is a flat 0.5.

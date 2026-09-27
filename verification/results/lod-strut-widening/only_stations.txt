@@ -1,0 +1,3 @@
+stations/station_scenes/others/argon_spacedock
+stations/station_scenes/others/argon_L_solarpowerplant
+stations/others/military_outpost_middleb

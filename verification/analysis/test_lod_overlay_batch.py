@@ -472,7 +472,7 @@ class BatchRun(unittest.TestCase):
         self.assertIn('lod_batch_census.py', lod_overlay.TOOL_FILES)
         here = Path(lod_overlay.__file__).resolve().parent
         h = lod_overlay.hashlib.sha256()
-        for name in ('lod_atlas.py', 'lod_overlay.py', 'bob1.py', 'lod_batch_census.py'):
+        for name in ('lod_atlas.py', 'lod_overlay.py', 'bob1.py', 'lod_batch_census.py', 'thin_patches.py'):
             h.update((here / name).read_bytes())
         self.assertEqual(lod_overlay.tool_sha256(), h.hexdigest())
         with unittest.mock.patch.object(lod_overlay, 'TOOL_FILES', lod_overlay.TOOL_FILES[:3]):

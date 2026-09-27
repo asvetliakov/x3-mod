@@ -245,6 +245,13 @@ NULL_DIFFUSE_TEXEL = (0.0, 0.0, 0.0, 255.0)   # NULL diffuse: the black placehol
 SOLID_SIDE = BLOCK         # source side of a solid tile (every slot NULL): one DXT block
 SOLID_KEY = 2              # face key (tile, 0, 0, SOLID_KEY): a face of a solid tile, UVs clamped into it
 FORMATS = ('dxt', 'a8r8g8b8')
+WIDEN_ALPHA_STEPS = 32     # widened-face coverage alpha quantum (1/32: error under 2 %; lod_overlay.widen_thin_patches)
+WIDEN_ALPHA_SLOTS = ('diffuse', 'light')   # slots whose alpha a widened tile carries (the effect's only alpha sources)
+# blend state of the widened material (lod-strut-widening.md 2.1 item 4): source-over (ADD, SRCALPHA / INVSRCALPHA),
+# no alpha test, depth writes on, g_AlphaValue 1.0; parameters the copied record lacks are appended (type 0 int,
+# g_AlphaValue type 2 16.16)
+WIDEN_STATE = ((b'g_AlphaBlendEnable', 0, 1), (b'g_BlendOp', 0, 1), (b'g_SrcBlend', 0, 5), (b'g_DestBlend', 0, 6),
+               (b'g_AlphaTestEnable', 0, 0), (b'g_ZWriteEnable', 0, 1), (b'g_AlphaValue', 2, 65536))
 
 
 class AtlasError(ValueError):
@@ -982,7 +989,9 @@ def plan_layout(record, mats, alpha, textures, px, sizes=(1024, 2048), gutter=GU
     faces and capped tiles, _tile_stats) and taken when it reaches min_ratio or scale 1; at the largest
     size the clamped layout is taken. Every tile carries 'share' (its faces' mesh-space area over the
     atlased area), 'clamped_share' (the span-clamped faces' share) and 'ratio'. Materials in `keep`
-    (light_bleed) are left out like the alpha materials."""
+    (light_bleed) are left out like the alpha materials. A group carrying 'widen' q (lod_overlay.widen_thin_patches,
+    q < WIDEN_ALPHA_STEPS) gets its own tile per texture set and q: a duplicate of the source tile over the
+    widened faces' UV spans whose diffuse and light alpha bake to q / WIDEN_ALPHA_STEPS (bake_level; tile 'alpha')."""
     pts = record['points']
     radius = max((math.sqrt(p[1] ** 2 + p[2] ** 2 + p[3] ** 2) for p in pts if p[0] & 1), default=0.0)
     tiles, tile_of = [], {}
@@ -993,20 +1002,23 @@ def plan_layout(record, mats, alpha, textures, px, sizes=(1024, 2048), gutter=GU
             mi = g['material']
             if mi in alpha or mi in keep:
                 continue
-            if mi not in tile_of:
+            q = g.get('widen')
+            q = q if q and q < WIDEN_ALPHA_STEPS else None     # alpha 1: the widened face shares the plain tile
+            if (mi, q) not in tile_of:
                 if not 0 <= mi < len(mats) or 'params' not in mats[mi]:
                     raise AtlasError(f'material {mi} is not an effect material; cannot atlas it')
                 names = material_slots(mats[mi], slots)
                 if names['diffuse'] is None:              # no t_DiffuseTexture: the effect default is untraced
                     raise AtlasError(f'material {mi} has no diffuse texture (no t_DiffuseTexture parameter)')
-                key = tile_key(names)
+                key = tile_key(names) + ((('alpha', q),) if q else ())
                 t = next((t for t in tiles if t['key'] == key), None)
                 if t is None:
-                    t = dict(key=key, names=names, mats=[], area=0.0, faces=0, face_list=[])
+                    t = dict(key=key, names=names, mats=[], area=0.0, faces=0, face_list=[], **({'alpha': q} if q else {}))
                     tiles.append(t)
-                t['mats'].append(mi)
-                tile_of[mi] = tiles.index(t)
-            ti = tile_of[mi]
+                if mi not in t['mats']:
+                    t['mats'].append(mi)
+                tile_of[mi, q] = tiles.index(t)
+            ti = tile_of[mi, q]
             t = tiles[ti]
             for fi, f in enumerate(g['faces']):
                 uvs = [point_uv(pts[i]) for i in f[:3]]
@@ -1156,7 +1168,8 @@ def split_faces(faces, limit, blocks=None):
     return [[f for _, f in sorted(bn[0], key=lambda x: x[0])] for bn in sorted(bins, key=lambda bn: min(bn[0])[0])]
 
 
-def rewrite_record(record, layout, atlas_index, alpha, alpha_remap=None, max_group_points=None, keep=frozenset()):
+def rewrite_record(record, layout, atlas_index, alpha, alpha_remap=None, max_group_points=None, keep=frozenset(),
+                   widen_of=None):
     """C with rewritten UVs, duplicated points and regrouped parts; returns (lod, info). An output
     group referencing more than max_group_points distinct points is split (split_faces: whole
     source groups packed first-fit) into groups of the same material; a point used by an earlier split group is
@@ -1164,7 +1177,10 @@ def rewrite_record(record, layout, atlas_index, alpha, alpha_remap=None, max_gro
     one atlas material index for every opaque group, or {source material: atlas material} (one
     output class per distinct atlas material per part, in first-use order). A material in `keep`
     (light_bleed) keeps its own material and UVs, one group per part after the atlas groups and before
-    the alpha group, like the glow collapse's kept materials."""
+    the alpha group, like the glow collapse's kept materials. widen_of {source material: widened atlas material}:
+    the groups carrying 'widen' (lod_overlay.widen_thin_patches) of an atlased material form one class per part and
+    widened material (the blended group), after the kept groups and before the alpha group; a widened group of an
+    alpha or kept material goes with its material's class."""
     atlas_of = (lambda m: atlas_index) if isinstance(atlas_index, int) else atlas_index.__getitem__
     pts = record['points']
     new_pts, origin, owner, index, copies_of = list(pts), list(range(len(pts))), {}, {}, {}
@@ -1188,18 +1204,22 @@ def rewrite_record(record, layout, atlas_index, alpha, alpha_remap=None, max_gro
         if part['flags'] & HIDDEN_PART:                   # copied group by group, original UVs
             classes = [([(gi, g)], g['material'], False) for gi, g in enumerate(groups)]
         else:
-            classes = []
+            classes, widened = [], []
             for gi, g in enumerate(groups):
                 if g['material'] in alpha or g['material'] in keep:
                     continue
-                ai = atlas_of(g['material'])
-                cls = next((c for c in classes if c[1] == ai), None)
+                if g.get('widen') and widen_of and g['material'] in widen_of:
+                    ai, bucket = widen_of[g['material']], widened
+                else:
+                    ai, bucket = atlas_of(g['material']), classes
+                cls = next((c for c in bucket if c[1] == ai), None)
                 if cls is None:
                     cls = ([], ai, True)
-                    classes.append(cls)
+                    bucket.append(cls)
                 cls[0].append((gi, g))
             for m in dict.fromkeys(g['material'] for g in groups if g['material'] in keep):
                 classes.append(([(gi, g) for gi, g in enumerate(groups) if g['material'] == m], m, False))
+            classes += widened
             classes.append(([(gi, g) for gi, g in enumerate(groups) if g['material'] in alpha], None, False))
         for cls, material, atlased in classes:
             if not cls:
@@ -1321,6 +1341,22 @@ def atlas_material(mats, dom, names, areas, synth=True, need=(b't_diffusetexture
                 val = [int(round(mean))]
         params.append((name, typ, val))
     return dict(base, index=len(mats), params=params), rows
+
+
+def widened_material(atlas_mat, index):
+    """Copy of an effect's atlas material for its widened faces (lod-strut-widening.md 2.1 item 4): the same
+    textures and g_Mat* means, blend on (source-over), alpha test off, z-write on, g_AlphaValue 1.0 (WIDEN_STATE,
+    names matched case-insensitively, missing ones appended); g_EnableGlow and the rest as the atlas material."""
+    state = {n.lower(): (n, t, v) for n, t, v in WIDEN_STATE}
+    params, seen = [], set()
+    for name, typ, val in atlas_mat['params']:
+        low = name.lower()
+        if low in state and typ in (0, 1, 2):
+            val = [state[low][2]]
+            seen.add(low)
+        params.append((name, typ, val))
+    params += [(n, t, [v]) for low, (n, t, v) in state.items() if low not in seen]
+    return dict(atlas_mat, index=index, params=params)
 
 
 def texture_names(body, slots):
@@ -1506,6 +1542,17 @@ def collapse(assets, body, mats, record, alpha, px, sizes=(1024, 2048), specular
         report.append(dict(index=idx, dominant=d, absorbed=sorted(mis), params=rows, atlas=True, effect=eff,
                            occlusion=occlusion[eff]))
     atlas_index = indices[0]
+    widen_of, widened = {}, []
+    for (eff, mis), row in zip(classes, list(report)):
+        if not any(g.get('widen') for g in opaque if g['material'] in mis):
+            continue
+        idx = len(mats)
+        mats.append(widened_material(mats[row['index']], idx))
+        widened.append(idx)
+        for m in mis:
+            widen_of[m] = idx
+        report.append(dict(index=idx, dominant=row['dominant'], absorbed=row['absorbed'], params=[], atlas=True,
+                           widened=True, effect=eff, occlusion=row['occlusion']))
     remap = {}
     if synth:
         alpha_only = {'points': record['points'], 'parts': [
@@ -1513,9 +1560,10 @@ def collapse(assets, body, mats, record, alpha, px, sizes=(1024, 2048), specular
             for p in record['parts'] if not p['flags'] & HIDDEN_PART]}
         remap, more = lod_overlay.synth_materials(mats, alpha_only, alpha, 'two', frozenset())
         report += more
-    lod, info = rewrite_record(record, layout, atlas_of, alpha, remap, max_group_points, keep)
+    lod, info = rewrite_record(record, layout, atlas_of, alpha, remap, max_group_points, keep, widen_of)
     effects = sorted({(mats[m].get('effect', b'').decode('latin1'), mats[m].get('technique')) for m in areas})
     return dict(record=lod, layout=layout, atlas_index=atlas_index, atlas_indices=indices, atlas_of=atlas_of,
+                widened_indices=widened, widen_of=widen_of,
                 dominant=dom, names=names, members=members, slots=slots, synth=report, info=info,
                 effects=effects, textures=textures, uv2=uv2, occlusion=occlusion, kept=sorted(bleed_keep),
                 kept_effects=sorted(kept_fx), source=record, animation=animation)
@@ -1596,6 +1644,9 @@ def bake_level(layout, sources, slot, level=0):
             block = np.tensordot(tmp, mx, axes=(1, 1)).transpose(0, 2, 1)             # (ty, tx, c)
             if bump:
                 block = normalize(block)
+        if t.get('alpha') and slot in WIDEN_ALPHA_SLOTS:     # widened tile: coverage alpha (plan_layout)
+            block = np.array(block, np.float32)
+            block[:, :, 3] = 255.0 * t['alpha'] / WIDEN_ALPHA_STEPS
         img[y0:y1, x0:x1] = block
         inner.append((over, (x0, y0), block))
     for (ox0, ox1, oy0, oy1), (x0, y0), block in inner:
@@ -1898,7 +1949,7 @@ def check(source_record, out_record, result, atlases, mats, max_faces=CHECK_FACE
         e_atl = max(du * cw / t['span'][0], dv * ch / t['span'][1])
         worst_map, worst_atlas = max(worst_map, e_src), max(worst_atlas, e_atl)
         map_errors += int(e_src > CHECK_MAP_TEXELS and e_atl > CHECK_MAP_ATLAS_TEXELS)
-        if fi % stride == 0:
+        if fi % stride == 0 and not t.get('alpha'):       # a widened tile's alpha is the coverage, not the source's
             su_list.append((ou, nu, mi, t))
     # the box reference gathers (span / content * source side) texels per axis and face: thin the
     # sample further so that the gathered texels stay within CHECK_TEXELS per slot
@@ -2156,6 +2207,7 @@ def summary(res):
     L, c = res['layout'], res['check']
     return dict(
         material=res['atlas_index'], materials=list(res.get('atlas_indices', [res['atlas_index']])),
+        **({'widened_materials': list(res['widened_indices'])} if res.get('widened_indices') else {}),
         dominant=res['dominant'], size=L['size'], scale=_num(L['scale']),
         gutter=L['gutter'], px=L['px'], min_texels_per_px=_num(L['min_ratio']), ratio_ok=bool(L['ratio_ok']),
         tried=[dict(size=n, scale=_num(s), min_texels_per_px=_num(m), clamped=c)
@@ -2174,7 +2226,8 @@ def summary(res):
                     content=list(t['content']), origin=list(t['origin']), texels_per_px=_num(t['ratio']),
                     name=(t['names'].get('diffuse') or b'').decode('latin1'), share=_num(t['share']),
                     clamped_faces=t.get('clamped_faces', 0), clamped_share=_num(t.get('clamped_share', 0.0)),
-                    capped=bool(t.get('capped')), **({'solid': True} if t.get('solid') else {}))
+                    capped=bool(t.get('capped')), **({'solid': True} if t.get('solid') else {}),
+                    **({'alpha': t['alpha'] / WIDEN_ALPHA_STEPS} if t.get('alpha') else {}))
                for t in L['tiles']],
         textures=[dict(slot=s, name=res['names'][s].decode('latin1'), member=res['members'][s], format=e['format'],
                        dds_bytes=e['bytes'], dds_sha256=e['sha256'],
@@ -2200,7 +2253,9 @@ def format_summary(s):
              f' missing {s["missing_tangent_records"]}; materials {["mat%d" % m for m in mats]} (mat{s["material"]}'
              f' = copy of mat{s["dominant"]}); effects {s["effects"]}'
              + (f'; second UV set on {s["uv2_points"]} points passed through, occlusion {s["occlusion"]}'
-                if s.get('uv2_points') else '')]
+                if s.get('uv2_points') else '')
+             + (f'; widened materials {["mat%d" % m for m in s["widened_materials"]]} (blended), alpha tiles'
+                f' {sum(1 for t in s["tiles"] if t.get("alpha"))}' if s.get('widened_materials') else '')]
     b = s.get('light_bleed')
     if b:
         mats_ = lambda r: 'mat' + '/'.join(str(m) for m in r['mats'])

@@ -1,6 +1,6 @@
 # Far-LOD strut widening in the merged-LOD baker: no sub-pixel geometry in the coarse record
 
-Status: design 2026-09-27, ratified 2026-09-27 (orchestrator, user "let's try it"); implementation pending. The user's decision to try: remove sub-pixel geometry from
+Status: design 2026-09-27, ratified 2026-09-27 (orchestrator, user "let's try it"); implemented 2026-09-28 as an opt-in baker flag (--widen), host-checked, not baked, not flown; parked in favour of taa-luminance-lock.md (section 10). The user's decision to try: remove sub-pixel geometry from
 the far station LODs so that distant stations neither shimmer at rest nor need the heavy TAA far history weight
 (0.985, `X3M_FAR_STABILIZE`, ramp 60/68) that blurs them under pan. Tags: **[M]** measured this session (host-side
 reads of the bottle X3 catalogues through `tools/analysis/bob1.py`, and the run340/run346 logs and captures under
@@ -351,3 +351,198 @@ python3 thin_geometry_census.py --jobs 1 --only <the four stations> --at <stem>=
     --vanilla environments/asteroids/asteroid_B_ClassMine --at environments/asteroids/asteroid_B_ClassMine=76 > named_bodies_out.txt
 python3 pixel_figures.py > pixel_figures_out.txt
 ```
+
+## 10. Implementation (2026-09-28)
+
+`widen_thin_patches` and `widened_collapse` in `tools/analysis/lod_overlay.py`, the alpha-class tiles, the widened
+material and the group order in `lod_atlas.py`, the patch decomposition moved to `tools/analysis/thin_patches.py`
+(the census imports it; its rows reproduce), flags `--widen` (opt-in; `--no-widen` is the default), `--widen-px W` (1) and
+`--widen-design-divisor D` (2; the note's `--widen-design-fraction`). Host evidence and numbers:
+[lod-overlay ledger, 2026-09-28](../verification/lod-overlay.md). Where the implementation departs from sections
+2.1 and 3, and why:
+
+- **Frames and rings (band patches, second extent over 3x the mean width)** do not scale along the second PCA axis
+  (it spans the whole frame): every boundary edge moves out in its face's plane by (W_u - t) / 2, t the face's extent
+  across that edge. A mitred corner takes both, so the band is W_u wide all round (fixture rim within 1 unit).
+- **Displacements** are asks per merged position (axis, amount) solved by least squares (rcond 0.03: asks within about
+  20 deg of parallel average instead of blowing up) and clamped to twice the largest ask. Then every planar strip moves
+  along its normal by the largest normal displacement its neighbours give it, solved again, so a rib keeps a
+  rectangular section (its open base follows the top; an overhung trapezoid would blend twice). A non-flat strip
+  thinner than W_u both ways (a tube) scales both cross axes. An isotropic patch (a cap) follows its neighbours and
+  scales itself only when a position of it is not moved by them.
+- **Coverage alpha** is the patch's area before / after, in 1/32 steps, written into the diffuse and the light tile
+  alpha (the engine sets g_EnableGlow per draw from the glow option; both are the effect's only alpha sources). A
+  patch at 32/32 (already about W_u) or under 1/64 (a speck whose light the 1/32 floor would triple) is dropped and
+  the rest solved again.
+- **Shell rule (new):** a connected set of thin patches sewn by manifold edges to wide patches along at least its own
+  length (`WIDEN_SHELL` 1.0) is part of the hull shell, a two-facet chamfer, a step, a rib whose base the plate shares,
+  and is left alone like a bevel. Drawn translucent it exposes the hollow interior: without the rule the spacedock's C
+  lost 5 % of its light and its axis-1 flicker rose from 0.177 to 0.241 at s_d (host raster, measured); with it light
+  stays within 0.4 % and the flip share drops at every size.
+- **Not widened:** alpha-class materials (the lattice cards) and kept effects keep their groups unwidened (item 4's
+  g_AlphaValue classes are not built; a g_AlphaValue under the alpha-test reference would cut an alpha-tested card
+  away [I]); a material the light-bleed guard keeps is rebuilt un-widened (up to two rounds). The solar plant's widened
+  share is therefore 4.0 % of its record, not 12 %.
+- **Records:** C only. The pad is the vanilla coarsest record whenever C is built from another record or C is
+  widened (a single-record body, a recipe on the last record: the collision tree never sees widened geometry; at
+  Low..High such a pad draws the vanilla record below T_pad instead of a copy of the atlased C). A point a widened
+  face shares with a non-widened face is duplicated for the widened faces (with its tangent record and weight), so
+  every other face stays bit-identical (spacedock 221, plant 3, outpost 200 faces would otherwise be dragged).
+  Part bounds grow only where moved points leave them. A body whose widenable area is under 0.5 % of the record
+  bakes byte-identically to `--no-widen` (manifest aside).
+- **Light, measured on the host raster:** with uniform colours every per-axis ratio over sky and over a hull stays
+  within 2 % on the three stations (worst 0.9805); with atlas colours sampled at face centroids the solar plant
+  reaches 0.970 on one axis, which the uniform run attributes to the two bakes' differently scaled atlases, not to
+  the widening [I]. The section 2.1 claim holds for geometry and coverage alpha only.
+- **Known limits, not changed:** the shell test compares a component's summed sewn length with its longest single
+  patch, so a lattice sewn to the hull at many bases can be classed shell as a whole (the spacedock keeps 3,063
+  patches as shell; a per-patch or per-strut length would keep fewer). A material still kept by the light-bleed
+  guard after the two un-widening rounds (`residual_kept`) draws its widened faces opaque at full width; there is no
+  final un-widen. A z-write-on widened band in part N occludes later parts' opaque faces; the host raster draws
+  every opaque face first, so that order is not exercised.
+- **Atlas cost:** one duplicate tile per texture set and alpha class; on the two stations 128 / 204 alpha tiles put the
+  layout in the clamped mode at 2 texels/px and the diffuse atlas in DXT5; bake time +31 / +50 % (measured, ledger).
+
+## 11. The alpha-card path and the military outpost (2026-09-28, after section 10)
+
+Correction of section 1.1 (user, 2026-09-28): the blurry distant station is `Stations/others/military_outpost_middleb`
+(run340 frames 1017/1424: two instances, 1.6 km at LOD 0 with s 1,726-1,764 and 25.7 km as C at s 110; frame 4078 at
+19.3 km, s 147), not the solar plant; the near instance is the likely "adjacent station that shimmers at 0.8". The
+blob-A depth probes of section 1.1 (the asteroid rock at 8.4-11 km) stand as measured; the outpost's near
+instance has its origin behind the camera (projected w -3,436) and its 4.4-km structure fills the surround, so
+both bodies are in the user's view. Scripts and outputs for this section: `alpha_texture_stats.py`,
+`alpha_card_census.py`, `card_raster.py` (imports the worktree's `lod_raster.py`, `lod_overlay.py`,
+`thin_patches.py`) and their `*_out.txt` under `verification/results/lod-strut-widening/` in the main checkout.
+
+### 11.0 The outpost first [M unless tagged]
+
+| view | sub-pixel area (census, 5,120x1,440) | raster of record 0 = C's source: flip share / flicker / per-pixel ripple amplitude mean, p90 (8 Halton phases, 3 axis views, pixel-weighted) |
+|---|---|---|
+| C at s 110 (25.7 km) | 3.1 % (strut 2.2 %), materials 16 and 39 (100-unit strips, 34-45 % of their area) | 0.085 / 0.049 / 0.017, 0.049 |
+| C at s 147 (19.3 km) | 1.7 % (strut 1.2 %) | 0.065 / 0.039 / 0.013, 0.036 |
+| LOD 0 at s 1,700 (1.6 km; axis 1 only, 5.8 M px) | 0.00 % (566 thin patches, all specks) | 0.006 / 0.0035 (amplitude not recorded) |
+| solar plant C at s 65, for comparison | 23.7 % | 0.125 / 0.109 / 0.029, 0.072 |
+| spacedock C at s 188 | 16.4 % | 0.170 / 0.109 / 0.037, 0.155 |
+
+Alpha cards on the outpost: 14.4 % of its record is alpha-tested lattice texture (materials 9, 11, 36; holes 28-48 %
+of texels) but only 0.15 % of the record is sub-pixel card geometry at `s_d` (`alpha_card_census_out.txt`): its cards
+are wide panels, not strips.
+
+(a) What is sub-pixel on the outpost at s 110-147 is the opaque plating strips of materials 16 and 39 (about 100
+units = 0.33-0.45 px) plus bevels (0.55 %); 1.7-3.1 % of the record, a third to a fifth of the other two stations'
+shares, and its raster ripple is 2.2-2.8x lower (amplitude 0.013-0.017 against 0.029 and 0.037). The worktree op
+(shell rule on, `s_d = T_pad/2`, k_d at the bake's F 960: W_u 585 units) widens 3.7 % of the record and moves its flip
+share 0.085 -> 0.083 at s 110 and 0.065 -> 0.060 at s 147 (-2 %, -8 %); flicker and per-pixel amplitude are within
+2 % of before. With `--widen-design-divisor 3.5` (W_u 1,023 units): 0.085 -> 0.078 (-8 %), amplitude unchanged.
+Widening the cards too ('all') adds nothing on this body (0.077). So the op is not what the outpost needs.
+
+(b) With 1.7-3.1 % of its area on sub-pixel patches and a raw 8-phase ripple amplitude of 0.013-0.017 per pixel, the
+outpost is the least flickering of the three by every raster measure; its pan blur under the camera gate can only be
+the far weight: farOpen = openC keeps far pixels at the 0.985 target under a pan
+(taa-motion-history-weight.md, "far pixels keep their weight holds on the camera gate only"), i.e. a 67-frame history
+(1/(1-w)) dragged across a 20 px/frame pan, which is exactly the run340 B-class blur (present sharpness 0.294). What
+it would do at a lower far weight, from the steady-state gain of an exponential history on the 8-phase jitter ripple
+(fundamental gain (1-w)/|1-w e^{-i pi/4}|, the closed form of taa-distant-line-fade.md: 0.136 at w 0.9 **[I]**):
+
+| far weight | history frames | ripple gain | outpost resolved amplitude (0.013-0.017 x gain) | reference |
+|---|---|---|---|---|
+| 0.985 (today) | 67 | 0.020 | 0.0003-0.0003 | the plant today at 0.985: 0.029 x 0.020 = 0.0006 (accepted at rest) |
+| 0.95 | 20 | 0.067 | 0.0009-0.0011 | 1.5-2x the plant's accepted level |
+| 0.90 | 10 | 0.136 | 0.0018-0.0023 | 3-4x the plant's level; 6-10x below the spacedock at the base 0.85 (0.037 x 0.208 = 0.0078, the "shimmer at 0.8" class) |
+| 0.85 (base, far off) | 7 | 0.208 | 0.0027-0.0035 | still 2-3x below the spacedock's base-weight shimmer |
+
+So the outpost is expected to stay quiet at 0.95 and to show a slight, probably acceptable, ripple at 0.90; the flight
+that settles it needs no bake: `--taa-far-stabiliser 0.95` then `0.90` on the run340 stand, F8 at rest on the 25.7-km
+instance (`rest_flicker.py` on its box) and under the 1424 pan (`sharpness_measured.py`). The near instance at 1.6 km
+is LOD 0 with no sub-pixel geometry (flip 0.006 at s 1,700); its rest shimmer at 0.8, like the rock's, is not
+geometric coverage and is outside this design (texture / specular minification of a 73,749-face hull drawn into a few
+million pixels; the run153 finding of "sub-pixel lit facets" was at 12,300 px, a different regime) **[I]**.
+
+### 11.1 Why the plant's lattice card flickers (Q1) [M]
+
+The card texture `metal_argon_lattice_support_beams_03_diff` (material 11) is 512x128 DXT5 with the lattice in its
+alpha: 24.7 % of texels under 1/255, 27.6 % under 128, mean 0.72 (`alpha_texture_stats_out.txt`; the separate
+`_alpha.tga` resolves to `NONE_BLACK` and the light map's alpha is 0, so the effect's `oC0.a = lerp(s0.a, light.a,
+g_EnableGlow) x g_AlphaValue` is the diffuse alpha). The engine submits `ALPHAFUNC` 7 (GREATEREQUAL) with `ALPHAREF` 1
+on every draw of run340 (5,814 state rows each), `MIPMAPLODBIAS` 0, trilinear with anisotropy 8 on this material. The
+faces carry 2.0e-3 UV periods per raw unit (median), so at s 65 one texture repeat spans 0.97 px: 526 texels per pixel,
+mip level 9 of 8, the 1x1 level; at `s_d` 106 level 8.3, at the switch 212 level 7.3 (4x1). From level 5 (16x4) up the
+minimum alpha is 62/255, so the test at ref 1 passes every texel, and a half-texel shift changes the test outcome on 0 %
+of samples (it would change 12-17 % at a hypothetical ref 128 on levels 5-6, 0 % at the 1x1 level) and the blended
+alpha by at most 0.056. The alpha test bites only on levels 0-4 (texels per pixel under 16, s above about 2,000): LOD
+0 territory, never C. Hence: not the alpha test (ref 1/255, not 0.5, and the mip has no zeros left), not the mip level
+(bias 0, the correct top level) and not texel density (526 texels per pixel is total minification). At every size C is
+drawn, a lattice card is a uniform 72 %-alpha strip, and its flicker is the strip's own geometry: material 11's strips
+are 96-247 units wide (p10/p50) = 0.19-0.49 px at s 65, 73.7 % of its area sub-pixel; the plant's 74 % card area holds
+9.8 % of the record as sub-pixel card geometry at `s_d` (material 11 alone 7.0 %).
+
+### 11.2 The rule for coarse-record alpha cards (Q2)
+
+Pick: **(c) in the geometric sense, as the same widening op with the z-writing alpha-tested cards eligible**: a card
+strip is widened like an opaque strut and its compensation is `alpha x q` (a duplicate tile of the diffuse with the
+texture alpha multiplied by q, or a material copy with `g_AlphaValue = q` when the card is not atlased); no state
+change. D3D9 states the baker writes for such a group are the card's own: `g_ALPHATESTENABLE` 1 (the engine's ref 1
+GREATEREQUAL keeps discarding only fully transparent texels, so a `g_AlphaValue` down to 1/64 cannot cut a card away:
+0.72 x 1/64 = 2.9/255 still passes; section 10's worry is unfounded at this ref), `g_AlphaBlendEnable` 1 with
+`g_BlendOp` ADD, SRCALPHA / INVSRCALPHA (the 1,387 / 1,291 run340 rows), `g_ZWriteEnable` 1, `g_CullMode` as the
+material's. Why (a) and (b) lose: switching the test off on C changes nothing at C's sizes (the test already passes
+everywhere from level 5 up), and prefiltered or coverage-preserving alpha mips address a threshold that is not in play
+at ref 1; both would only matter for LOD 0 near the switch. Sort and z-write: unchanged from the shipped cards, which
+already blend with z-write on (1,942 of the fleet's 1,943 alpha-tested materials do; one is z-write off); a card behind
+the hull fails the depth test, the hull behind a card is composited under it, card over card is draw-order dependent
+exactly as in vanilla. Resolve class: a z-writing blended draw is routed (run339: every z-writing draw routed, the
+unrouted ones are the z-write-off blends), so the lane carries its depth and the thin vote is per pixel as for the
+cards today; the fade-arm owner class of lattice-baker-fix.md §6 (`64bac8bb`, blend on, z-write off) is the pane
+material's, which stays untouched (the z-write-off materials 0/29/48 remain excluded).
+
+What it buys, measured on the plant with the real alpha levels (`card_raster_out.txt`, `card_raster_div35_out.txt`):
+
+| plant at s 65 (30 km) | flip | flicker | amplitude mean / p90 | luminance |
+|---|---|---|---|---|
+| before | 0.125 | 0.109 | 0.029 / 0.072 | 1.000 |
+| opaque only (section 10 bake, W_u 413 units = 0.82 px at s 65) | 0.125 | 0.109 | 0.029 / 0.072 | 0.999 |
+| cards too, divisor 2 (widened area 20.5 %) | 0.119 | 0.108 | 0.027 / 0.065 | 0.993 |
+| cards too, divisor 3.5 (W_u 723 = 1.43 px at s 65; 23.7 %) | 0.104 | 0.116 | 0.027 / 0.069 | 0.981 |
+
+The face-on view (axis 1, 30 k px, what the user sees at 30 km) goes 0.059 -> 0.052 flip with flicker 0.067 -> 0.070.
+The reason is arithmetic, not the op: a strip of width w and alpha a widened to W at alpha a w / W keeps its mean
+light, but under a half-pixel jitter every pixel of a 1-1.4-px translucent band is an edge pixel, so the per-pixel
+ripple falls only in proportion to 1/W and the summed ripple energy hardly moves until W is several pixels; at 30 km
+the plant would need W_u of 1,500-2,000 units (3-4 px at s 65, 9-12 px at the switch) for a real gain, which is a
+visible thickening at 9 km. The card rule is therefore correct and cheap (section 10's op with the exclusion lifted)
+but it is not what fixes the plant at 30 km; the plant, like the outpost, is a weights question at that range, and its
+raw ripple (0.029) is 1.7x the outpost's, so it is the body that decides how far the far weight can drop.
+
+### 11.3 Host measurement (Q3)
+
+`card_raster.py WORKTREE NAME=s,... [--divisor D] [--px W] [--variants before,opaque,all] [--record N]`: record 0
+through the worktree's `lod_raster.py` with every alpha-tested or blended material blended at the mean alpha of its
+diffuse mip level for the size (level = log2 of texels per pixel from the material's median UV density; z-write per
+material; the test passes at those levels), opaque faces at their texture's mean luminance, widened groups at
+`alpha x q`; per size and variant the luminance ratio, flip share, flicker and the per-pixel 8-phase std (mean and
+p90 over covered pixels), per axis and pixel-weighted. 7-19 s per body at C sizes, 52 s for LOD 0 at s 1,700 on one
+axis. For the baker this belongs in `lod_raster.py` as a per-face alpha source (the mip-mean model) and in
+`raster_compare.py` as the amplitude columns; the fixture can assert the model on the synthetic card (alpha = the
+level mean within 1/255).
+
+### 11.4 Fleet scope (Q4) [M]
+
+`alpha_card_census.py` (617 of 620 overlay bodies): 408 records carry alpha-tested materials and 396 of them cutout
+cards (diffuse alpha holes on 2-98 % of texels); card area above 5 % of the record on 206 stations and 45 ships;
+sub-pixel card geometry at `s_d` above 1 % of the record on 131 stations and 34 ships (above 5 %: 38 + 5), led by the
+Argon farm factories (16-19 %), `terran_spp_panel` (15 % on its record 0; the recipe bakes record 1), the Goner temple
+(15 %); fleet median 0.015 %, face-weighted 2.8 %. All but one tested material blend with z-write on. So the card rule
+is a fleet-wide extension of the generic op (lift the exclusion for z-writing alpha-tested materials; keep z-write-off
+and kept-glow materials out), self-gated by the existing 0.5 % floor, no per-body recipes; it changes 165 bodies'
+bakes and none of the outpost's flicker.
+
+### 11.5 What this changes in the plan
+
+1. First flight: no bake. `--taa-far-stabiliser 0.95` on the run340 stand (outpost at 25.7 km, plant at 30 km,
+   spacedock at 13 km in view), rest burst and the 1424 pan; then 0.90 if 0.95 is clean; the outpost's blur is the
+   far weight (11.0 b) and neither widening variant moves its raster by more than 8 %.
+2. The section 10 bake (opaque widening, shell rule) plus the card extension stays worthwhile for the spacedock class
+   (flip 0.170 -> 0.158 at divisor 3.5, amplitude p90 0.155 -> 0.133) and the 165 card-heavy bodies, but it is a
+   second-order term against the weights; keep it for the rebake after the weights flight, not before.
+3. Open: the near-instance and rock shimmer at 0.8 (LOD 0, no sub-pixel geometry) is a minification question
+   (texture and specular), a separate note.

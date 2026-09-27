@@ -1,0 +1,24 @@
+== stations/others/military_outpost_middleb: T_pad 150, s_d 75, r_raw 65792
+  census at s_d, F 1280 (5120x1440): k 0.002280 px/unit, strut area 4.49 %, bevel 1.63 %, thin patches 4634 of 6485
+  bake widen at s_d, F 960 (--display default 1920x1080): k_d 0.001710, W_u 584.817 units; strut area 7.21 %, widenable (opaque atlased) 3.94 %, widened 3.71 %; patches 1586 {'strip': 1095, 'band': 44, 'isotropic': 447, 'isotropic_moved': 372}, faces 13112, points 20304; skipped {'ineligible': 253, 'degenerate': 314, 'shell': 1922, 'full_width_or_faint': 332}; op 0.39 s
+  alpha classes: 27 of 31 used; faces at a <= 1/4: 52.2 %; face-weighted mean a 0.271
+  C drawn groups 4 -> 4 (+0); widened groups 1 on [52]; kept light-bleed groups 0 -> 0; split groups 1 -> 1
+  atlas 1024 -> 1024; tiles 28 -> 186 (158 alpha); min texels/px 2.021 -> 2.019; layout clamped -> clamped; scale 1.0000 -> 1.0000; formats [diffuse DXT1, light DXT5, bump DXT5, specular DXT5] -> [diffuse DXT5, light DXT5, bump DXT5, specular DXT5]
+  stored bytes: atlas 257,777 -> 563,754 (+118.7 %), body member 7,760,404 -> 7,785,634 (+0.3 %)
+  bake seconds 11.15 -> 15.64 (+4.49); light_bleed counted 0 -> 1, ignored 1 -> 22
+== stations/station_scenes/others/argon_L_solarpowerplant: T_pad 212, s_d 106, r_raw 65648
+  census at s_d, F 1280 (5120x1440): k 0.003229 px/unit, strut area 12.08 %, bevel 0.45 %, thin patches 10463 of 13144
+  bake widen at s_d, F 960 (--display default 1920x1080): k_d 0.002422, W_u 412.88 units; strut area 21.63 %, widenable (opaque atlased) 4.57 %, widened 3.97 %; patches 3576 {'strip': 1943, 'band': 124, 'isotropic': 1509, 'isotropic_moved': 1250}, faces 35622, points 51722; skipped {'ineligible': 5444, 'degenerate': 0, 'shell': 1170, 'full_width_or_faint': 681}; op 0.80 s
+  alpha classes: 28 of 31 used; faces at a <= 1/4: 47.7 %; face-weighted mean a 0.440
+  C drawn groups 6 -> 6 (+0); widened groups 1 on [50]; kept light-bleed groups 2 -> 0; split groups 2 -> 2
+  atlas 1024 -> 1024; tiles 16 -> 144 (128 alpha); min texels/px 4.241 -> 2.007; layout uniform -> clamped; scale 0.1030 -> 1.0000; formats [diffuse DXT1, light DXT5, bump DXT5, specular DXT5] -> [diffuse DXT5, light DXT5, bump DXT5, specular DXT5]
+  stored bytes: atlas 426,452 -> 306,084 (-28.2 %), body member 13,201,000 -> 13,265,045 (+0.5 %)
+  bake seconds 14.33 -> 18.63 (+4.30); light_bleed counted 4 -> 2, ignored 4 -> 14
+== stations/station_scenes/others/argon_spacedock: T_pad 278, s_d 139, r_raw 65576
+  census at s_d, F 1280 (5120x1440): k 0.004239 px/unit, strut area 19.01 %, bevel 1.70 %, thin patches 8425 of 9373
+  bake widen at s_d, F 960 (--display default 1920x1080): k_d 0.003180, W_u 314.513 units; strut area 24.93 %, widenable (opaque atlased) 8.33 %, widened 7.38 %; patches 4393 {'strip': 3873, 'band': 85, 'isotropic': 435, 'isotropic_moved': 290}, faces 25927, points 42914; skipped {'ineligible': 332, 'degenerate': 0, 'shell': 3063, 'full_width_or_faint': 507}; op 0.58 s
+  alpha classes: 30 of 31 used; faces at a <= 1/4: 77.5 %; face-weighted mean a 0.209
+  C drawn groups 4 -> 4 (+0); widened groups 1 on [50]; kept light-bleed groups 0 -> 0; split groups 1 -> 1
+  atlas 1024 -> 1024; tiles 29 -> 233 (204 alpha); min texels/px 2.053 -> 2.001; layout clamped -> clamped; scale 1.0000 -> 1.0000; formats [diffuse DXT1, light DXT5, bump DXT5, specular DXT5] -> [diffuse DXT5, light DXT5, bump DXT5, specular DXT5]
+  stored bytes: atlas 104,392 -> 455,385 (+336.2 %), body member 7,119,728 -> 7,146,229 (+0.4 %)
+  bake seconds 13.38 -> 19.74 (+6.36); light_bleed counted 1 -> 1, ignored 4 -> 37

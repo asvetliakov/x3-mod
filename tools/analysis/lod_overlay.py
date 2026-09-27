@@ -224,6 +224,21 @@ record carries texel_fallback (T_pad -> T_fb, weighted and starved before/after,
 km with a flown radius); the summary lists the fallback bodies. The option is in the batch settings,
 so changing it makes --sync rebuild. The single-body mode keeps the threshold it is given.
 
+Strut widening (--collapse atlas and --batch; opt-in: --widen enables, --no-widen / the default off, --widen-px W default 1,
+--widen-design-divisor D default 2; docs/architecture/lod-strut-widening.md, parked 2026-09-28 in favour of the TAA
+luminance lock, docs/architecture/taa-luminance-lock.md): before the atlas collapse,
+widen_thin_patches moves the points of every thin smooth patch of C's source (under W px wide at the design
+size s_d = T_pad / D on the --display focal length, 960 px at 1080 rows; bevels, patches of alpha materials and
+kept effects, and thin components sewn into the hull shell excepted) so the patch is W px wide at s_d; those faces
+draw in one blended group per part and effect (lod_atlas widened material: source-over, z-write on) whose
+duplicate atlas tiles carry alpha = the patch's area before / after in 1/32 steps (diffuse and light alpha).
+Only C changes (record 0 is untouched and the pad is the vanilla coarsest record whenever C is widened; the
+positions, points duplicated where a widened face shares one with another face, the part bounds of a part whose
+moved points leave them, and the group split are the only recomputed data); a body with nothing to
+widen, or less than 0.5 % of its area to widen, bakes byte-identically to --no-widen. The options are in the batch
+settings (atlas.widen) and thin_patches.py is in TOOL_FILES, so --sync rebuilds on a change; the manifest records
+the widen report per body and the summary a strut widening line.
+
 Batch mode (--batch; docs/architecture/merged-lod-feasibility.md "Batch mode"): one command
 builds an overlay over every eligible ship and station of the installed game, vanilla plus
 every numbered addon catalogue a mod adds. The census module (lod_batch_census.run, with
@@ -294,7 +309,7 @@ rebuilds only the bodies whose inputs changed (inputs_sha256 over the decoded bo
 texture its tiles read) or that are new, and copies the other bodies' members (body + atlases,
 verified by sha256) from any live slot of the previous overlay; the previous overlay must have been built
 with the same rule, width, atlas options and tool sources (tool_sha256 over lod_atlas.py,
-lod_overlay.py, bob1.py and lod_batch_census.py in the settings); --trust-tool reuses bodies whose
+lod_overlay.py, bob1.py, lod_batch_census.py and thin_patches.py in the settings); --trust-tool reuses bodies whose
 settings differ only in tool_sha256 (a tool edit that does not change the bake), each body still keyed
 by its inputs_sha256. --budget-bytes N (opt-in, default none) keeps the baked or reused bodies of the
 numbered overlay and the derived package in priority order (ships and stations before other, then draws
@@ -356,6 +371,7 @@ import gzip
 import hashlib
 import io
 import json
+import math
 import multiprocessing
 import os
 import sys
@@ -973,6 +989,314 @@ def place(ladder, coarse, placement, threshold, name='body', force_threshold=Fal
     return n, n + 1
 
 
+WIDEN_PX = 1.0              # --widen-px: target width of a thin patch at the design size, screen pixels
+WIDEN_DIVISOR = 2.0         # --widen-design-divisor: design size s_d = T_pad / D
+WIDEN_FLOOR = 0.005         # a body whose widenable strut area is under this share of the record is left as is
+WIDEN_DEFAULTS = dict(px=WIDEN_PX, divisor=WIDEN_DIVISOR)
+WIDEN_BAND = 3.0            # a patch whose second extent exceeds this x its mean width is a band (frame, ring)
+WIDEN_ISOTROPIC = 2.0       # a patch whose first extent is under this x its second is isotropic (cap, dot)
+WIDEN_RCOND = 0.03          # per-position least squares: singular values below this share of the largest dropped
+                            # (asks within about 20 deg of parallel are averaged: coplanar neighbours pushing a shared
+                            # edge both ways cancel instead of blowing up; wider folds solve to the mitre)
+WIDEN_CLAMP = 2.0           # a position moves at most this x the largest single ask it received
+WIDEN_SHELL = 1.0           # thin component sewn to wide patches along >= this x its length: shell, kept (0: off)
+WIDEN_FLAT = 0.1            # a strip whose third extent is under this x its second is planar (moves along its normal)
+
+
+def design_scale(record, threshold, widen, screen_width):
+    """(k_d px per raw unit, s_d, focal px, r_raw) of the design size s_d = T_pad / divisor: k = F s / (r_raw 640)
+    with F the focal length of the bake display (screen_width is the reference width H * 1280 / 768, so
+    F = screen_width * 8 / 15: 960 at 1080 rows, 1280 at 1440; thin_patches.focal_px) and r_raw the largest
+    |position| of the record."""
+    s_d = threshold / widen['divisor']
+    focal = screen_width * 8.0 / 15.0
+    r_raw = max((math.sqrt(p[1] ** 2 + p[2] ** 2 + p[3] ** 2) for p in record['points'] if p[0] & 1), default=0.0)
+    return (focal * s_d / (r_raw * 640) if r_raw > 0 else 0.0), s_d, focal, r_raw
+
+
+def _grow_bounds(part, pts):
+    """The part's 10 precomputed ints (pivot, L-inf radius about it, AABB centre, AABB half-extent; raw units,
+    render-node-bounds.md) grown to enclose the raw positions `pts` (n x 3); None when they already do."""
+    import numpy as np
+    b = list(part['bounds'])
+    lo_old = np.array([b[4 + i] - b[7 + i] for i in range(3)], float)
+    hi_old = np.array([b[4 + i] + b[7 + i] for i in range(3)], float)
+    lo, hi = np.minimum(lo_old, pts.min(0)), np.maximum(hi_old, pts.max(0))
+    r = float(np.abs(pts - np.array(b[:3], float)).max())
+    if (lo >= lo_old).all() and (hi <= hi_old).all() and r <= b[3]:
+        return None
+    if not ((lo >= lo_old).all() and (hi <= hi_old).all()):
+        c = np.floor((lo + hi) / 2)
+        half = np.ceil(np.maximum(c - lo, hi - c))
+        b[4:7], b[7:10] = [int(x) for x in c], [int(x) for x in half]
+    b[3] = max(b[3], int(math.ceil(r)))
+    return b
+
+
+def widen_thin_patches(record, mats, k_d, w=WIDEN_PX, fold=None, bevel=None, exclude=frozenset(), floor=WIDEN_FLOOR,
+                       shell_share=None):
+    """generic baker op (docs/architecture/lod-strut-widening.md section 2.1): (record, report).
+
+    Patches as thin_patches.face_geometry (faces joined across manifold edges folding under `fold`, 45 deg);
+    thin = width under W_u = w / k_d raw units (w px at the design size); bevels (patch_classes, `bevel` 0.9)
+    and patches with fewer than 3 positions or zero width / area are left alone, and so is a patch any of whose
+    faces is not widenable: a hidden part (HIDDEN_PART), a material outside the table or without effect
+    parameters, or a material in `exclude` (the alpha materials and the kept effects: they keep their own
+    groups, so their faces are not widened). Shell: a component of thin patches (joined across sharp manifold
+    edges) sewn by manifold edges to wide patches along at least `shell_share` (WIDEN_SHELL, 1.0; 0 off) x its
+    length is part of the hull (a multi-facet chamfer, a step, a rib whose base the plate shares) and is left
+    alone too: drawn translucent it would expose the hollow shell. Every widened patch is scaled about its
+    centreline to W_u:
+      strip (the common case): every position moves along the second PCA axis, c' = mean + (c - mean) W_u / w
+        (a non-flat strip thinner than W_u both ways, a tube, along the third axis too);
+      band (frame, ring: second extent > WIDEN_BAND x mean width): every boundary edge of the patch moves out,
+        in the face's plane, by (W_u - t) / 2, t the face's extent across that edge (in a one-face-wide band the
+        opposite vertex sits on the other boundary, so t is the band width; an end edge with t >= W_u stays);
+      isotropic (first extent < WIDEN_ISOTROPIC x second: an end cap, a dot): only when a position of it is not
+        moved by a strip or band (a cap follows its box), then along both in-plane axes, each to W_u if under it.
+    Each patch asks every one of its merged positions for a displacement component along its axis; a position
+    takes the least-squares (minimum-norm, WIDEN_RCOND) displacement meeting all of its patches' asks, so a box
+    corner moves in both cross-section axes, a rib's two sides agree, and a faceted cylinder or a mitred frame
+    corner moves along its bisector (a point a non-widened face also uses is duplicated for the widened faces,
+    so every other face stays bit-identical). A planar strip then also moves along its normal as a whole by the largest
+    normal displacement its neighbours give it (solved again), so a rib keeps a rectangular cross-section: its
+    top pushes the sides' top edges out and the open base edges follow. The displacement is applied once to
+    every point of a widened face
+    (positions rounded to integers); normals, UVs, point flags, the 7-int records and faces are unchanged.
+    Widened faces move into their own groups (same material, 'widen': q, one group per source group and q) after
+    the group they came from; q = the patch's area before / after in 1/32 steps (at least 1): the coverage alpha
+    of lod_atlas's widened tiles. A patch that would come out at 32/32 (already about W_u wide, or its asks
+    cancel) is dropped and the rest solved again (skipped full_width), so every widened face is blended. Part bounds (PART_PRECOMPUTED) grow to enclose moved points only when
+    a moved point leaves them. A body whose widenable area is under `floor` of the record, or with nothing to
+    widen, comes back unchanged (the same record object). The input record is never modified."""
+    import numpy as np
+    import thin_patches
+    import lod_atlas
+    t0 = time.time()
+    fold = thin_patches.FOLD_DEG if fold is None else fold
+    bevel = thin_patches.BEVEL_SHARE if bevel is None else bevel
+    shell_share = WIDEN_SHELL if shell_share is None else shell_share
+    report = dict(w_px=w, k_d=k_d, w_units=(w / k_d if k_d > 0 else None), fold=fold, bevel=bevel, floor=floor,
+                  patches=0, thin_patches=0, bevel_patches=0, strut_area=0.0, widenable_area=0.0,
+                  skipped=dict(ineligible=0, degenerate=0), widened_patches=0, kinds={}, widened_faces=0,
+                  widened_points=0, widened_area=0.0, materials=[], alpha_classes={}, bounds_grown=[],
+                  floor_skip=False)
+    geo = thin_patches.face_geometry(record, fold) if k_d > 0 else None
+    if geo is None:
+        report['seconds'] = round(time.time() - t0, 3)
+        return record, report
+    W_u = w / k_d
+    n = geo['n_patch']
+    pth, bevel_p, strut_p = thin_patches.patch_classes(geo, k_d, w, bevel)
+    tot = geo['area'].sum() or 1.0
+    patch = geo['patch']
+    pi_, gi_, fi_ = geo['where'][:, 0], geo['where'][:, 1], geo['where'][:, 2]
+    hidden = np.array([bool(p['flags'] & lod_atlas.HIDDEN_PART) for p in record['parts']], bool)[pi_]
+    M = geo['M']
+    ok_mat = np.array([0 <= m < len(mats) and 'params' in mats[m] and m not in exclude for m in range(len(mats))]
+                      + [False], bool)
+    elig_face = ~hidden & ok_mat[np.where((M >= 0) & (M < len(mats)), M, len(mats))]
+    all_elig = np.bincount(patch, weights=(~elig_face).astype(float), minlength=n) == 0
+    valid = (geo['npts'] >= 3) & (geo['pwidth'] > 1e-6) & (geo['parea'] > 0)
+    report.update(patches=int(n), thin_patches=int(pth.sum()), bevel_patches=int(bevel_p.sum()),
+                  strut_area=float(geo['area'][strut_p[patch]].sum() / tot))
+    shell = np.zeros(n, bool)
+    if shell_share:
+        # a component of thin patches (joined across sharp manifold edges) that is sewn to wide patches along at
+        # least shell_share x its length is part of the hull's shell (a multi-facet chamfer, a step, a rib whose
+        # base edges the plate shares): drawn translucent it would open the hollow shell, so it stays (the bevel
+        # rule of section 3 carried from one patch to the component)
+        ea, eb, elen = geo['sharp_edges']
+        both = pth[ea] & pth[eb]
+        comp = thin_patches.components(n, ea[both], eb[both])
+        sewn = np.bincount(comp[ea], weights=elen * (pth[ea] & ~pth[eb]), minlength=n) \
+            + np.bincount(comp[eb], weights=elen * (pth[eb] & ~pth[ea]), minlength=n)
+        length = np.zeros(n); np.maximum.at(length, comp, np.where(pth, geo['pext'][:, 0], 0.0))
+        shell = strut_p & (sewn[comp] >= shell_share * np.maximum(length[comp], 1e-9))
+    report['skipped'] = dict(ineligible=int((strut_p & ~all_elig).sum()), degenerate=int((strut_p & all_elig & ~valid).sum()),
+                             shell=int((strut_p & all_elig & valid & shell).sum()))
+    wid = strut_p & all_elig & valid & ~shell
+    report['widenable_area'] = float(geo['area'][wid[patch]].sum() / tot)
+    if not wid.any() or report['widenable_area'] < floor:
+        report['floor_skip'] = bool(wid.any())
+        report['seconds'] = round(time.time() - t0, 3)
+        return record, report
+    P, Fp, pid = geo['P'], geo['Fp'], geo['pid']
+    npos = int(pid.max()) + 1
+    Ppos = np.zeros((npos, 3)); Ppos[pid] = P
+    ext, axes, mean, width, parea = geo['pext'], geo['paxes'], geo['pmean'], geo['pwidth'], geo['parea']
+    mean_w = parea / np.maximum(ext[:, 0], 1e-9)
+
+    def pairs(sel):
+        """(patch, position) pairs of the patches in sel, each once."""
+        fs = np.nonzero(sel[patch])[0]
+        key = np.unique(patch[fs, None].astype(np.int64) * npos + Fp[fs])
+        return key // npos, key % npos
+
+    def displace(wid):
+        """(per-position displacement, kinds) for the widened patches `wid`."""
+        band = wid & (ext[:, 1] > WIDEN_BAND * mean_w)
+        iso = wid & ~band & (ext[:, 0] < WIDEN_ISOTROPIC * ext[:, 1])
+        strip = wid & ~band & ~iso
+        Mls = np.zeros((npos, 3, 3)); bls = np.zeros((npos, 3)); asked = np.zeros(npos, bool)
+        most = np.zeros(npos)
+
+        def ask(pos, axis, delta):
+            np.add.at(Mls, pos, axis[:, :, None] * axis[:, None, :])
+            np.add.at(bls, pos, axis * delta[:, None])
+            asked[pos] = True
+            np.maximum.at(most, pos, np.abs(delta))
+        pp, pos = pairs(strip)                            # strips: along the second axis about the mean
+        e2 = axes[pp, 1]
+        ask(pos, e2, (W_u / width[pp] - 1) * np.einsum('ij,ij->i', Ppos[pos] - mean[pp], e2))
+        tube = (ext[pp, 2] > WIDEN_FLAT * ext[pp, 1]) & (ext[pp, 2] > 1e-6) & (ext[pp, 2] < W_u)
+        e3 = axes[pp[tube], 2]                            # a non-flat strip thinner than W_u both ways (a tube)
+        ask(pos[tube], e3, (W_u / ext[pp[tube], 2] - 1) * np.einsum('ij,ij->i', Ppos[pos[tube]] - mean[pp[tube]], e3))
+        fs = np.nonzero(band[patch])[0]                   # bands: every boundary edge moves out by half the growth
+        for j in range(3):
+            f = fs[~geo['edge_internal'][geo['edge_id'][fs, j]]]
+            a, b, o = Ppos[Fp[f, j]], Ppos[Fp[f, (j + 1) % 3]], Ppos[Fp[f, (j + 2) % 3]]
+            d = b - a
+            d /= np.maximum(np.linalg.norm(d, axis=1), 1e-12)[:, None]
+            m = (a - o) - np.einsum('ij,ij->i', a - o, d)[:, None] * d   # in-plane, away from the face
+            t = np.linalg.norm(m, axis=1)                  # the face's extent across its boundary edge
+            use = (t > 1e-6) & (t < W_u)
+            m = m[use] / t[use, None]
+            half = (W_u - t[use]) / 2
+            ask(Fp[f[use], j], m, half)
+            ask(Fp[f[use], (j + 1) % 3], m, half)
+        free = np.zeros(n, bool)                          # isotropic patches with a position nothing else moves
+        if iso.any():
+            ip, ipos = pairs(iso)
+            np.logical_or.at(free, ip, ~asked[ipos])
+            for ax in (0, 1):
+                sel = free[ip] & (ext[ip, ax] > 1e-6) & (ext[ip, ax] < W_u)
+                e = axes[ip[sel], ax]
+                ask(ipos[sel], e, (W_u / ext[ip[sel], ax] - 1)
+                    * np.einsum('ij,ij->i', Ppos[ipos[sel]] - mean[ip[sel]], e))
+        def solve():
+            disp = np.zeros((npos, 3))
+            q = np.nonzero(asked)[0]
+            if len(q):
+                disp[q] = np.einsum('nij,nj->ni', np.linalg.pinv(Mls[q], rcond=WIDEN_RCOND, hermitian=True), bls[q])
+                size = np.linalg.norm(disp[q], axis=1)
+                cap = WIDEN_CLAMP * most[q]
+                over = size > cap
+                disp[q[over]] *= (cap[over] / size[over])[:, None]
+            return disp
+        disp = solve()
+        # a planar strip moves along its normal as a whole, by the largest normal displacement its neighbours give
+        # any of its positions: a rib side whose top edge the rib's top pushes out takes its open base edge along
+        # (a rectangle, not a trapezoid whose overhung sides would blend twice); a box side is already uniform
+        flat = ext[pp, 2] <= WIDEN_FLAT * ext[pp, 1]
+        n3 = axes[pp, 2]
+        nd = np.where(flat, np.einsum('ij,ij->i', disp[pos], n3), 0.0)
+        top = np.zeros(n); np.maximum.at(top, pp, np.abs(nd))
+        val = np.zeros(n)
+        hit = (np.abs(nd) >= top[pp] - 1e-9) & (top[pp] > 0.5)
+        val[pp[hit]] = nd[hit]
+        sel = flat & (top[pp] > 0.5)
+        if sel.any():
+            ask(pos[sel], n3[sel], val[pp[sel]])
+            disp = solve()
+        kinds = dict(strip=int(strip.sum()), band=int(band.sum()), isotropic=int(iso.sum()),
+                     isotropic_moved=int((free & iso).sum()))
+        return disp, kinds
+
+    def apply(wid, disp):
+        """(raw points of the widened faces, their new positions, all positions, per-patch alpha q)."""
+        wf = np.nonzero(wid[patch])[0]
+        raw = np.unique(geo['F'][wf].reshape(-1))
+        newP = np.rint(P[raw] + disp[pid[raw]])
+        moved = P.copy(); moved[raw] = newP
+        A, B, C = moved[geo['F'][:, 0]], moved[geo['F'][:, 1]], moved[geo['F'][:, 2]]
+        pa_after = np.bincount(patch, weights=np.linalg.norm(np.cross(B - A, C - A), axis=1) / 2, minlength=n)
+        alpha = np.where(pa_after > 0, parea / np.where(pa_after > 0, pa_after, 1), 1.0)
+        qp = np.clip(np.rint(alpha * lod_atlas.WIDEN_ALPHA_STEPS), 1, lod_atlas.WIDEN_ALPHA_STEPS).astype(int)
+        return raw, newP, moved, qp, alpha
+
+    # a patch whose asks leave its area within half a step (alpha 32/32: already about W_u wide, or its asks cancel)
+    # or whose coverage would round below one step (alpha < 1/64: a speck, whose light the 1/32 floor would triple)
+    # is dropped and the rest solved again, so every widened face is blended at its coverage
+    disp, kinds = displace(wid)
+    raw, newP, moved, qp, alpha = apply(wid, disp)
+    full = wid & ((qp >= lod_atlas.WIDEN_ALPHA_STEPS) | (alpha * lod_atlas.WIDEN_ALPHA_STEPS < 0.5))
+    if full.any():
+        wid = wid & ~full
+        disp, kinds = displace(wid)
+        raw, newP, moved, qp, alpha = apply(wid, disp)
+    wf = np.nonzero(wid[patch])[0]
+    report['skipped']['full_width_or_faint'] = int(full.sum())
+    if not len(wf):
+        report['seconds'] = round(time.time() - t0, 3)
+        return record, report
+    if np.abs(newP).max() >= 2 ** 31:
+        raise ValueError('widen_thin_patches: a moved point leaves the 32-bit position range')
+    # a point a non-widened face uses too is duplicated for the widened faces: the other faces stay bit-identical
+    rest = np.ones(len(geo['F']), bool); rest[wf] = False
+    shared = set(np.intersect1d(raw, np.unique(geo['F'][rest].reshape(-1))).tolist())
+    src_pts = record['points']
+    pts = list(src_pts)
+    weights = list(record['weights']) if 'weights' in record else None
+    dup = {}
+    for i, xyz in zip(raw.tolist(), newP.astype(np.int64).tolist()):
+        q = (src_pts[i][0], *xyz) + tuple(src_pts[i][4:])
+        if i in shared:
+            dup[i] = len(pts)
+            pts.append(q)
+            if weights is not None:
+                weights.append(weights[i])
+        else:
+            pts[i] = q
+    tag = {}
+    for f in wf.tolist():
+        tag[pi_[f], gi_[f], fi_[f]] = int(qp[patch[f]])
+    is_raw = np.zeros(len(P), bool); is_raw[raw] = True
+    parts, grown = [], []
+    for pi, part in enumerate(record['parts']):
+        groups = []
+        for gi, g in enumerate(part['groups']):
+            qs = [tag.get((pi, gi, fi)) for fi in range(len(g['faces']))]
+            if not any(qs):
+                groups.append(g)
+                continue
+            split = {}
+            for f, qf in zip(g['faces'], qs):
+                split.setdefault(qf, []).append(f)
+            for qf in [None] + sorted(x for x in split if x is not None):
+                if qf not in split:
+                    continue
+                faces = split[qf]
+                ng = {'material': g['material'],
+                      'faces': faces if qf is None else [tuple(dup.get(i, i) for i in f[:3]) + tuple(f[3:]) for f in faces]}
+                if 'extra' in g:
+                    used = {i for f in faces for i in f[:3]}
+                    ng['extra'] = [e if qf is None else (dup.get(e[0], e[0]),) + tuple(e[1:])
+                                   for e in g['extra'] if e[0] in used]
+                if qf is not None:
+                    ng['widen'] = qf
+                groups.append(ng)
+        new = dict(part, groups=groups)
+        if 'bounds' in part:
+            idx = sorted({i for g in part['groups'] for f in g['faces'] for i in f[:3] if is_raw[i]})
+            b = _grow_bounds(part, moved[idx]) if idx else None
+            if b is not None:
+                new['bounds'] = b
+                grown.append(pi)
+        parts.append(new)
+    out = dict(record, points=pts, parts=parts)
+    if weights is not None:
+        out['weights'] = weights
+    classes = Counter(int(qp[patch[f]]) for f in wf.tolist())
+    report.update(widened_patches=int(wid.sum()), widened_faces=int(len(wf)), widened_points=int(len(raw)),
+                  duplicated_points=len(dup),
+                  widened_area=float(geo['area'][wf].sum() / tot), kinds=kinds,
+                  materials=sorted({int(M[f]) for f in wf.tolist()}),
+                  alpha_classes={str(k): v for k, v in sorted(classes.items())}, bounds_grown=grown,
+                  seconds=round(time.time() - t0, 3))
+    return out, report
+
+
 MAX_POINTS = 60000         # refusal limit for a merged group (non-atlas collapses; as lod_atlas.MAX_GROUP_POINTS)
 
 
@@ -987,7 +1311,7 @@ LIGHT_BLEED_SHARE = 0.02    # lod_atlas.LIGHT_BLEED_SHARE: the atlased-surface s
 ATLAS_DEFAULTS = dict(sizes=(1024, 2048), fmt='dxt', specular=False, bump=True, screen_width=effective_width(),
                       min_texels=MIN_TEXELS, texel_floor_share=TEXEL_FLOOR_SHARE, texel_fallback=TEXEL_FALLBACK,
                       light_bleed_max=LIGHT_BLEED_MAX, light_bleed_scale_loss=LIGHT_BLEED_SCALE_LOSS,
-                      light_bleed_share=LIGHT_BLEED_SHARE)
+                      light_bleed_share=LIGHT_BLEED_SHARE, widen=None)      # widening is opt-in (--widen)
 
 
 def host_memory_bytes():
@@ -1045,6 +1369,42 @@ def atlas_collapse(assets, name, entry, mats, record, alpha, threshold, synth, o
         res['summary']['kept_effect_draws'] = sum(1 for p in res['record']['parts'] if not p['flags'] & lod_atlas.HIDDEN_PART
                                                   for g in p['groups'] if g['material'] in fx)
     return res['record'], res['synth'], res, extra
+
+
+WIDEN_KEEP_ROUNDS = 2       # widened_collapse: rebuilds that un-widen the materials the light-bleed guard keeps
+
+
+def widened_collapse(assets, name, entry, mats, source, alpha, threshold, synth, opts):
+    """atlas_collapse of `source` after widen_thin_patches at the design size (opts['widen'] = dict(px, divisor);
+    None or no threshold: the plain atlas_collapse): (C, synth report, atlas build, extra members, widen report or
+    None). The alpha materials and the kept effects (lod_atlas.excluded_materials) are not widened. A widened
+    material the light-bleed guard then keeps as its own group would draw its widened faces opaque, so the
+    build is redone with those materials un-widened (up to WIDEN_KEEP_ROUNDS times; still kept after that:
+    reported as residual_kept, their widened faces draw with their own material)."""
+    import lod_atlas
+    widen = opts.get('widen')
+    if not widen or threshold is None:
+        return atlas_collapse(assets, name, entry, mats, source, alpha, threshold, synth, opts) + (None,)
+    k_d, s_d, focal, r_raw = design_scale(source, threshold, widen, opts['screen_width'])
+    exclude = set(alpha) | set(lod_atlas.excluded_materials(mats, source, alpha))
+    n_mats, unwidened = len(mats), set()
+    for attempt in range(WIDEN_KEEP_ROUNDS + 1):
+        src, report = widen_thin_patches(source, mats, k_d, widen['px'], exclude=frozenset(exclude))
+        res = atlas_collapse(assets, name, entry, mats, src, alpha, threshold, synth, opts)
+        clash = set(res[2].get('kept', ())) & set(report['materials'])
+        if not clash or attempt == WIDEN_KEEP_ROUNDS:
+            break
+        del mats[n_mats:]
+        exclude |= clash
+        unwidened |= clash
+    report.update(px=widen['px'], divisor=widen['divisor'], s_d=round(s_d, 3), focal=round(focal, 3),
+                  r_raw=round(r_raw, 3), k_d=round(k_d, 9), w_units=report['w_units'] and round(report['w_units'], 3),
+                  strut_area=round(report['strut_area'], 6), widenable_area=round(report['widenable_area'], 6),
+                  widened_area=round(report['widened_area'], 6), unwidened_kept=sorted(unwidened),
+                  residual_kept=sorted(clash), widened_materials=list(res[2].get('widened_indices', ())),
+                  draws_added=sum(1 for p in res[0]['parts'] if not p['flags'] & lod_atlas.HIDDEN_PART
+                                  for g in p['groups'] if g['material'] in set(res[2].get('widened_indices', ()))))
+    return res + (report,)
 
 
 def plan_body(assets, name, threshold, placement=None, force_threshold=False, collapse='glow', force_mat3=False,
@@ -1129,10 +1489,10 @@ def plan_body(assets, name, threshold, placement=None, force_threshold=False, co
                     record_area=sum(group_area(source, g) for p in source['parts'] for g in p['groups']))
     kept = glow | area_kept
     n_mats = len(mats)
-    atlas, extra = None, []
+    atlas, extra, widen_report = None, [], None
     if collapse == 'atlas':
-        new, synth_report, atlas, extra = atlas_collapse(assets, name, entry, mats, source, alpha, threshold,
-                                                         synth, dict(ATLAS_DEFAULTS, **(atlas_opts or {})))
+        new, synth_report, atlas, extra, widen_report = widened_collapse(
+            assets, name, entry, mats, source, alpha, threshold, synth, dict(ATLAS_DEFAULTS, **(atlas_opts or {})))
     else:
         remap, synth_report = synth_materials(mats, source, alpha, collapse, kept) if synth else ({}, [])
         new = coarse_record(source, None, alpha, collapse, kept, remap)
@@ -1147,9 +1507,11 @@ def plan_body(assets, name, threshold, placement=None, force_threshold=False, co
                     and t_1 > threshold and not force_threshold)      # C is the full LOD 0: harmless above T_pad
     new_index, pad_index = place(ladder, new, placement, threshold, name, force_threshold or guard_waived)
     pad_source = None
-    if pad_index is not None and src_index != len(before) - 1:
+    widened = bool(widen_report and widen_report['widened_patches'])
+    if pad_index is not None and (src_index != len(before) - 1 or widened):
         # the pad only feeds the collision tree (built from the last record at creation,
-        # lod-child-hide.md section 3): keep the original coarsest record there
+        # lod-child-hide.md section 3): keep the original coarsest record there; a C widened from the coarsest
+        # record (a single-record body, a recipe on the last record) must not become the collision tree either
         ladder[pad_index] = dict(before[-1], value=ladder[pad_index]['value'])
         pad_source = len(before) - 1
     out = bob1.serialise(tree)
@@ -1175,7 +1537,7 @@ def plan_body(assets, name, threshold, placement=None, force_threshold=False, co
                 area_kept=area_kept, area=area, synth=synth_report, source_materials=n_mats,
                 pad_index=pad_index, placement=placement, atlas_build=atlas, extra_members=extra,
                 source_record=src_index, pad_source=pad_source, trailing_bytes=trailing, recipe=recipe_report,
-                guard_waived=guard_waived, atlas=atlas and atlas['summary'],
+                guard_waived=guard_waived, atlas=atlas and atlas['summary'], widen=widen_report,
                 source_decoded_sha256=hashlib.sha256(data).hexdigest(),
                 overlay_decoded_sha256=hashlib.sha256(out).hexdigest(),
                 decoded_bytes=(len(data), len(out)), stored=stored)
@@ -1199,7 +1561,8 @@ def ladder_text(ladder):
 
 
 def group_kind(plan, g):
-    return ('atlas' if plan.get('atlas') and g['material'] in plan['atlas'].get('materials', [plan['atlas']['material']]) else
+    return ('widened' if plan.get('atlas') and g['material'] in plan['atlas'].get('widened_materials', ()) else
+            'atlas' if plan.get('atlas') and g['material'] in plan['atlas'].get('materials', [plan['atlas']['material']]) else
             'kept' if plan.get('atlas') and g['material'] in plan['atlas'].get('kept_light_bleed', ()) else
             'glow' if g['material'] in plan.get('glow', ()) else
             'light' if g['material'] in plan.get('area_kept', ()) else
@@ -1270,8 +1633,26 @@ def describe(plan, out=None):
         import lod_atlas
         for line in lod_atlas.format_summary(plan['atlas']):
             print('  ' + line, file=out)
+    if plan.get('widen'):
+        print('  ' + widen_text(plan['widen']), file=out)
     print(f'  decoded bytes {plan["decoded_bytes"][0]} -> {plan["decoded_bytes"][1]},'
           f' stored {len(plan["stored"])} (gzip), overlay sha256 {plan["overlay_decoded_sha256"][:16]}', file=out)
+
+
+def widen_text(w):
+    """One report line of a widen_thin_patches report (widened_collapse)."""
+    head = (f'widen {w["px"]:g} px at s_d = T_pad / {w["divisor"]:g} = {w["s_d"]:g} (k_d {w["k_d"]:.6g} px/unit,'
+            f' W_u {w["w_units"]:g} units): strut area {100 * w["strut_area"]:.2f} %, widenable'
+            f' {100 * w["widenable_area"]:.2f} %')
+    if not w['widened_patches']:
+        return head + ('; under the floor, not widened' if w['floor_skip'] else '; nothing widened')
+    return (head + f'; widened {w["widened_patches"]} patches ({w["kinds"]}), {w["widened_faces"]} faces,'
+            f' {w["widened_points"]} points, {100 * w["widened_area"]:.2f} % of the area; blended groups'
+            f' {w["draws_added"]} on {["mat%d" % m for m in w["widened_materials"]]}; alpha classes /32'
+            f' {w["alpha_classes"]}; skipped {w["skipped"]}'
+            + (f'; bounds grown on parts {w["bounds_grown"]}' if w['bounds_grown'] else '')
+            + (f'; un-widened (light-bleed kept) {w["unwidened_kept"]}' if w['unwidened_kept'] else '')
+            + (f'; residual kept {w["residual_kept"]}' if w['residual_kept'] else ''))
 
 
 def parse_collapse(text):
@@ -1355,6 +1736,20 @@ def build_parser():
                     help='build C from record N\'s geometry (default: the coarsest record; 0 = LOD 0, the fine'
                          ' mesh); NAME=T@N (or NAME=T,N) sets it per body. A C group above 60,000 points is refused'
                          ' (atlas: split). When N is not the coarsest record the pad is the original coarsest record')
+    ap.add_argument('--widen', action=argparse.BooleanOptionalAction, default=False,
+                    help='atlas / batch: widen_thin_patches on C (opt-in, default off; parked in favour of the TAA'
+                         ' luminance lock; docs/architecture/lod-strut-widening.md):'
+                         ' every smooth patch of the source record under --widen-px pixels wide at the design size'
+                         ' T_pad / --widen-design-divisor (bevels, alpha and kept-effect materials excepted) is scaled'
+                         ' about its centreline to that width and drawn in one blended group per part and effect whose'
+                         ' atlas tiles carry alpha = true / widened width; record 0 and the pad are untouched;'
+                         ' --no-widen (the default) bakes C unwidened')
+    ap.add_argument('--widen-px', type=float, default=WIDEN_PX, metavar='W',
+                    help=f'atlas / batch: width in screen pixels a thin patch is widened to at the design size'
+                         f' (default {WIDEN_PX:g})')
+    ap.add_argument('--widen-design-divisor', type=float, default=WIDEN_DIVISOR, metavar='D',
+                    help=f'atlas / batch: design size s_d = T_pad / D (default {WIDEN_DIVISOR:g}: at least W px over C\'s'
+                         ' top octave, 2 W px at the switch; 3 widens more for bodies seen far below T_pad)')
     ap.add_argument('--no-synth-material', action='store_true',
                     help='merged groups keep the dominant material itself (no area-weighted g_Mat* copy)')
     ap.add_argument('--glow-luma', type=float, default=GLOW_LUMA,
@@ -1523,11 +1918,14 @@ def main(argv=None):
         ap.error('--light-bleed-scale-loss must be in [0, 1)')
     if not 0 <= a.light_bleed_share <= 1:
         ap.error('--light-bleed-share must be in [0, 1]')
+    if not (a.widen_px > 0 and a.widen_design_divisor >= 1):
+        ap.error('--widen-px must be > 0 and --widen-design-divisor >= 1')
     a.atlas_opts = dict(sizes=tuple(sizes), fmt=a.atlas_format, specular=a.atlas_specular or a.batch,
                         bump=a.atlas_bump, screen_width=width, min_texels=a.min_texels,
                         texel_floor_share=a.texel_floor_share, texel_fallback=a.texel_fallback,
                         light_bleed_max=a.light_bleed_max, light_bleed_scale_loss=a.light_bleed_scale_loss,
-                        light_bleed_share=a.light_bleed_share)
+                        light_bleed_share=a.light_bleed_share,
+                        widen=dict(px=a.widen_px, divisor=a.widen_design_divisor) if a.widen else None)
     a.hash_mode = 'sha256' if a.hash_archives else 'fingerprint'
     game = a.game.resolve()
     root = None
@@ -1677,9 +2075,11 @@ def body_manifest(p):
         trailing_bytes=p.get('trailing_bytes', 0), guard_waived=bool(p.get('guard_waived')),
         synth=[dict(index=s['index'], dominant=s['dominant'], absorbed=s['absorbed'],
                     params=[dict(name=n, dominant=d, mean=round(m, 1), written=w) for n, d, m, w in s['params']],
-                    **({'atlas': True, 'effect': s.get('effect')} if s.get('atlas') else {}))
+                    **({'atlas': True, 'effect': s.get('effect')} if s.get('atlas') else {}),
+                    **({'widened': True} if s.get('widened') else {}))
                for s in p['synth']],
         **({'atlas': p['atlas']} if p.get('atlas') else {}),
+        **({'widen': p['widen']} if p.get('widen') else {}),
         source_thresholds=[l['value'] for l in p['before']],
         thresholds=[l['value'] for l in p['ladder']],
         threshold=p['new']['value'],
@@ -1821,7 +2221,8 @@ def write_overlay(a, game, layout, before, written, exclude, manifest_extra=None
 
 # --- batch mode ----------------------------------------------------------------------------
 
-TOOL_FILES = ('lod_atlas.py', 'lod_overlay.py', 'bob1.py', 'lod_batch_census.py')   # the census decides T_pad
+TOOL_FILES = ('lod_atlas.py', 'lod_overlay.py', 'bob1.py', 'lod_batch_census.py',   # the census decides T_pad
+              'thin_patches.py')                                                   # widen_thin_patches' patches
 
 
 def tool_sha256():
@@ -1876,7 +2277,7 @@ def bake_body(assets, row, atlas_opts):
     manifest = body_manifest(p)
     manifest['inputs_sha256'] = row.get('inputs_sha256')
     return dict(name=p['name'], member=p['member'], source=p['source'], members=p['members'], manifest=manifest,
-                text=out.getvalue(), draws=manifest['draws'], atlas=p['atlas'], reused=False,
+                text=out.getvalue(), draws=manifest['draws'], atlas=p['atlas'], widen=p.get('widen'), reused=False,
                 trailing=p.get('trailing_bytes', 0), guard_waived=bool(p.get('guard_waived')),
                 seconds=time.time() - t0)
 
@@ -1957,6 +2358,22 @@ def bake_reason(message):
             return code
     code = census.atlas_reason(message)
     return 'bake_other' if code == 'atlas_other' else code
+
+
+def widen_summary(plans, widen):
+    """Batch summary line of the strut widening over the overlay bodies (built and reused: the manifest's widen)."""
+    if not widen:
+        return 'strut widening off (default; --widen enables it)'
+    rows = [(p['name'], p.get('widen') or (p.get('manifest') or {}).get('widen')) for p in plans]
+    rows = [(n, w) for n, w in rows if w]
+    hit = [(n, w) for n, w in rows if w['widened_patches']]
+    floor = sum(1 for _, w in rows if w['floor_skip'])
+    top = sorted(hit, key=lambda x: -x[1]['widened_area'])[:8]
+    return (f'strut widening ({widen["px"]:g} px at T_pad / {widen["divisor"]:g}): bodies widened {len(hit)} of'
+            f' {len(rows)} (under the {100 * WIDEN_FLOOR:g} % floor {floor}); patches'
+            f' {sum(w["widened_patches"] for _, w in hit)}, faces {sum(w["widened_faces"] for _, w in hit)},'
+            f' blended groups {sum(w["draws_added"] for _, w in hit)}'
+            + ''.join(f'; {n} {100 * w["widened_area"]:.1f} %' for n, w in top))
 
 
 def settings_match(recorded, settings, trust_tool=False):
@@ -2595,6 +3012,7 @@ def batch(a, game, root, markers):
          f' kept groups {sum(b["kept_light_bleed_draws"] for _, b in bleed_rows)}'
          + ''.join(f'; {n}{census.bleed_text(dict(baked=b))} remedy={b["light_bleed_remedy"]}'
                    for n, b in bleed_rows)),
+        widen_summary(plans, a.atlas_opts.get('widen')),
         f'timing: census {census_s:.1f} s, baking {bake_s:.1f} s for {len(built)} bodies with {a.jobs} jobs'
         f' ({per_body:.2f} s per body wall); extrapolated full set: {full_est:.0f} s'
         + (f' (this run x {len(rows)} enumerated / {len(built)} built; upper bound, every candidate baked)'

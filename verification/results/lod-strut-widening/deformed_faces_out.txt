@@ -1,0 +1,3 @@
+stations/station_scenes/others/argon_spacedock (T_pad 278): widened faces 25927, duplicated points 199 (199 referenced by widened faces), non-widened faces on a shared point (dragged without the duplication) 221, non-widened faces deformed now 0 (of 81470)
+stations/station_scenes/others/argon_L_solarpowerplant (T_pad 212): widened faces 35622, duplicated points 2 (2 referenced by widened faces), non-widened faces on a shared point (dragged without the duplication) 3, non-widened faces deformed now 0 (of 117278)
+stations/others/military_outpost_middleb (T_pad 150): widened faces 13112, duplicated points 219 (219 referenced by widened faces), non-widened faces on a shared point (dragged without the duplication) 200, non-widened faces deformed now 0 (of 60637)

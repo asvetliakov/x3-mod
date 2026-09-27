@@ -1,0 +1,50 @@
+== stations/others/military_outpost_middleb: r_raw 65792, faces 73749 -> 73749, widened faces 13112, mean widened alpha 0.271; hull colour 0.362
+  s 110 = 110 (k 0.003344 px/unit, radius 220 px):
+    axis 0: light sky 1.0027, hull 1.0028; flip 0.097 -> 0.093; flicker 0.0805 -> 0.0799; covered px 23653 -> 24007
+    axis 1: light sky 1.0102, hull 1.0084; flip 0.081 -> 0.082; flicker 0.0628 -> 0.0603; covered px 25303 -> 25384
+    axis 2: light sky 1.0016, hull 1.0012; flip 0.076 -> 0.074; flicker 0.0712 -> 0.0707; covered px 22110 -> 22378
+  s 147 = 147 (k 0.004469 px/unit, radius 294 px):
+    axis 0: light sky 1.0027, hull 1.0028; flip 0.072 -> 0.071; flicker 0.0660 -> 0.0661; covered px 41751 -> 42478
+    axis 1: light sky 1.0102, hull 1.0085; flip 0.062 -> 0.053; flicker 0.0504 -> 0.0469; covered px 44524 -> 44628
+    axis 2: light sky 1.0016, hull 1.0012; flip 0.059 -> 0.057; flicker 0.0578 -> 0.0578; covered px 39152 -> 39647
+  s_d = 75 (k 0.002280 px/unit, radius 150 px):
+    axis 0: light sky 1.0029, hull 1.0028; flip 0.127 -> 0.122; flicker 0.1059 -> 0.1051; covered px 11160 -> 11327
+    axis 1: light sky 1.0100, hull 1.0085; flip 0.111 -> 0.101; flicker 0.0834 -> 0.0788; covered px 11792 -> 11855
+    axis 2: light sky 1.0017, hull 1.0012; flip 0.099 -> 0.100; flicker 0.0944 -> 0.0942; covered px 10438 -> 10544
+  T_pad = 150 (k 0.004560 px/unit, radius 300 px):
+    axis 0: light sky 1.0031, hull 1.0027; flip 0.070 -> 0.068; flicker 0.0613 -> 0.0614; covered px 43301 -> 44058
+    axis 1: light sky 1.0105, hull 1.0084; flip 0.061 -> 0.059; flicker 0.0491 -> 0.0467; covered px 46245 -> 46760
+    axis 2: light sky 1.0017, hull 1.0013; flip 0.055 -> 0.054; flicker 0.0551 -> 0.0552; covered px 40636 -> 41161
+  LOD 0 at s 1700 (k 0.051678, radius 3400 px, 1024 px crop round the centre; identical in both bakes):
+    axis 0: flip 0.002, flicker 0.0007, covered px 970750 (faces 73749)
+    axis 1: flip 0.000, flicker 0.0000, covered px 1048576 (faces 73749)
+    axis 2: flip 0.002, flicker 0.0009, covered px 974480 (faces 73749)
+  (39 s)
+== stations/station_scenes/others/argon_spacedock: r_raw 65576, faces 107397 -> 107397, widened faces 25927, mean widened alpha 0.210; hull colour 0.370
+  s 188 = 188 (k 0.005734 px/unit, radius 376 px):
+    axis 0: light sky 0.9805, hull 0.9996; flip 0.172 -> 0.172; flicker 0.1303 -> 0.1292; covered px 12503 -> 13143
+    axis 1: light sky 1.0048, hull 1.0000; flip 0.154 -> 0.148; flicker 0.1309 -> 0.1408; covered px 17687 -> 18613
+    axis 2: light sky 0.9842, hull 0.9998; flip 0.230 -> 0.218; flicker 0.1584 -> 0.1431; covered px 4405 -> 4755
+  s_d = 139 (k 0.004239 px/unit, radius 278 px):
+    axis 0: light sky 0.9804, hull 0.9995; flip 0.227 -> 0.222; flicker 0.1583 -> 0.1557; covered px 6897 -> 7279
+    axis 1: light sky 1.0064, hull 0.9999; flip 0.230 -> 0.216; flicker 0.1768 -> 0.1755; covered px 10142 -> 10550
+    axis 2: light sky 0.9863, hull 0.9999; flip 0.289 -> 0.264; flicker 0.1945 -> 0.1779; covered px 2568 -> 2715
+  T_pad = 278 (k 0.008479 px/unit, radius 556 px):
+    axis 0: light sky 0.9806, hull 0.9996; flip 0.134 -> 0.121; flicker 0.1026 -> 0.0993; covered px 26818 -> 28049
+    axis 1: light sky 1.0051, hull 0.9999; flip 0.124 -> 0.119; flicker 0.1079 -> 0.1107; covered px 38512 -> 40185
+    axis 2: light sky 0.9863, hull 0.9993; flip 0.189 -> 0.153; flicker 0.1299 -> 0.1118; covered px 9462 -> 10123
+  (8 s)
+== stations/station_scenes/others/argon_L_solarpowerplant: r_raw 65648, faces 152900 -> 152900, widened faces 35622, mean widened alpha 0.440; hull colour 0.468
+  s 65 = 65 (k 0.001980 px/unit, radius 130 px):
+    axis 0: light sky 0.9767, hull 0.9755; flip 0.464 -> 0.462; flicker 0.3481 -> 0.3439; covered px 2539 -> 2604
+    axis 1: light sky 0.9939, hull 0.9943; flip 0.059 -> 0.058; flicker 0.0292 -> 0.0290; covered px 30369 -> 30408
+    axis 2: light sky 0.9776, hull 0.9766; flip 0.516 -> 0.508; flicker 0.3690 -> 0.3584; covered px 2969 -> 3020
+  s_d = 106 (k 0.003229 px/unit, radius 212 px):
+    axis 0: light sky 0.9749, hull 0.9732; flip 0.349 -> 0.341; flicker 0.2785 -> 0.2823; covered px 6263 -> 6472
+    axis 1: light sky 0.9938, hull 0.9943; flip 0.038 -> 0.038; flicker 0.0205 -> 0.0213; covered px 79951 -> 80087
+    axis 2: light sky 0.9701, hull 0.9730; flip 0.388 -> 0.387; flicker 0.2950 -> 0.3001; covered px 7278 -> 7525
+  T_pad = 212 (k 0.006459 px/unit, radius 424 px):
+    axis 0: light sky 0.9719, hull 0.9710; flip 0.203 -> 0.198; flicker 0.1609 -> 0.1648; covered px 22954 -> 23672
+    axis 1: light sky 0.9939, hull 0.9943; flip 0.020 -> 0.020; flicker 0.0124 -> 0.0134; covered px 316952 -> 317509
+    axis 2: light sky 0.9705, hull 0.9728; flip 0.236 -> 0.232; flicker 0.1746 -> 0.1765; covered px 26590 -> 27353
+  (21 s)

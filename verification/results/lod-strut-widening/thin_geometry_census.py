@@ -20,7 +20,8 @@ bodies at extra sizes (--at NAME=s,s,...).
 
 Usage: python3 thin_geometry_census.py [--jobs N] [--out FILE] [--only stem[,stem]] [--at stem=s,s]
        [--vanilla stem[,stem]]   (bodies read from the vanilla ladder, no manifest: record 0 and its ladder)
-Host-side catalogue read through tools/analysis/bob1.py; no Wine, no game launch."""
+Host-side catalogue read through tools/analysis/bob1.py; no Wine, no game launch. The patch decomposition and
+the classes live in tools/analysis/thin_patches.py (shared with the baker's widen_thin_patches)."""
 import argparse, json, math, os, sys, time
 from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor
@@ -32,11 +33,9 @@ ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / 'tools' / 'analysis'))
 import bob1                      # noqa: E402
 import sector_fog_census as sfc  # noqa: E402
+from thin_patches import FOCAL, FOLD_DEG, W_PX, classify, components, face_geometry  # noqa: E402,F401
 
 GAME = Path(os.path.expanduser('~/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3'))
-FOCAL = {'5120x1440': 1280.0, '1920x1080': 960.0}
-W_PX = 1.0
-FOLD_DEG = 45.0
 UNITS_PER_M = 505.0
 
 
@@ -48,107 +47,6 @@ def manifest_bodies(game):
             out[b['name'].lower()] = dict(name=b['name'], t_pad=int(b['pad_threshold']), slot=p.stem[:2],
                                           source_record=int(b.get('source_record', 0)))
     return out
-
-
-def components(n, u, v):
-    """Connected-component labels (min label) over n nodes joined by edges (u, v), numpy label propagation
-    with pointer jumping."""
-    lab = np.arange(n)
-    while True:
-        lu, lv = lab[u], lab[v]
-        lo, hi = np.minimum(lu, lv), np.maximum(lu, lv)
-        new = lab.copy()
-        np.minimum.at(new, hi, lo)
-        while True:
-            nn = new[new]
-            if np.array_equal(nn, new):
-                break
-            new = nn
-        if np.array_equal(new, lab):
-            return lab
-        lab = new
-
-
-def face_geometry(record):
-    """positions, faces, materials, per-face area and altitude h (2 area / longest edge), shortest edge, and
-    the smooth patch of every face: faces joined across edges whose fold is under FOLD_DEG (an open edge or a
-    sharper fold ends the patch). Each patch's width (second PCA extent) and length (first) in raw units;
-    a face's 'width' is its patch's width, so a strut side (151 x 6,282) is thin and a plate cut into slivers
-    is not. Patch width = min(second PCA extent, area / first extent): a picture-frame rim (5.5 wide round a
-    1,372-wide pane) has a wide box but a 13-unit mean width."""
-    P = np.array([p[1:4] for p in record['points']], float)
-    F, M = [], []
-    for part in record['parts']:
-        for g in part['groups']:
-            for f in g['faces']:
-                F.append(f[:3]); M.append(g['material'])
-    F = np.array(F, int).reshape(-1, 3); M = np.array(M, int)
-    if len(F) == 0:
-        return None
-    _, pid = np.unique(P, axis=0, return_inverse=True)     # merge coincident positions
-    pid = pid.reshape(-1)
-    Fp = pid[F]
-    A, B, C = P[F[:, 0]], P[F[:, 1]], P[F[:, 2]]
-    e = np.stack([B - A, C - B, A - C], 1)
-    el = np.linalg.norm(e, axis=2)
-    n = np.cross(B - A, C - A)
-    area2 = np.linalg.norm(n, axis=1)
-    with np.errstate(divide='ignore', invalid='ignore'):
-        nrm = n / np.where(area2[:, None] > 0, area2[:, None], 1)
-    L = el.max(1)
-    h = np.where(L > 0, area2 / np.where(L > 0, L, 1), 0)
-    emin = el.min(1)
-    ends = np.stack([Fp, np.roll(Fp, -1, axis=1)], 2)
-    ends.sort(axis=2)
-    key = ends[:, :, 0].astype(np.int64) * (int(pid.max()) + 1) + ends[:, :, 1]
-    uniq, inv, cnt = np.unique(key.reshape(-1), return_inverse=True, return_counts=True)
-    inv = inv.reshape(-1, 3)
-    order = np.argsort(inv.reshape(-1), kind='stable')
-    face_of = np.repeat(np.arange(len(F)), 3)[order]
-    starts = np.concatenate([[0], np.cumsum(cnt)[:-1]])
-    two = np.nonzero(cnt == 2)[0]                            # manifold edges: exactly two faces
-    fa, fb = face_of[starts[two]], face_of[starts[two] + 1]
-    cosang = np.abs(np.einsum('ij,ij->i', nrm[fa], nrm[fb]))
-    smooth = np.degrees(np.arccos(np.clip(cosang, 0, 1))) < FOLD_DEG
-    lab = components(len(F), fa[smooth], fb[smooth])
-    plab, pinv = np.unique(lab, return_inverse=True)
-    pinv = pinv.reshape(-1)
-    n_patch = len(plab)
-    # sharp manifold edges between two patches: (patch a, patch b, length) for the bevel test
-    sharp = ~smooth
-    ea, eb = pinv[fa[sharp]], pinv[fb[sharp]]
-    # edge length: the edge index within face fa is the j with inv[fa, j] == edge id
-    eid = two[sharp]
-    j = np.argmax(inv[fa[sharp]] == eid[:, None], axis=1)
-    elen = el[fa[sharp], j]
-    keep = ea != eb
-    sharp_edges = (ea[keep], eb[keep], elen[keep])
-    parea = np.bincount(pinv, weights=area2 / 2, minlength=n_patch)
-    # per-patch extents: bounding box first (cheap), SVD for every patch (exact width = second extent)
-    width = np.zeros(n_patch); length = np.zeros(n_patch)
-    pf = np.argsort(pinv, kind='stable')
-    bounds = np.concatenate([[0], np.cumsum(np.bincount(pinv, minlength=n_patch))])
-    for i in range(n_patch):
-        fs = pf[bounds[i]:bounds[i + 1]]
-        Q = P[np.unique(F[fs].reshape(-1))]
-        if len(Q) < 3:
-            continue
-        Qc = Q - Q.mean(0)
-        try:
-            _, _, vt = np.linalg.svd(Qc, full_matrices=False)
-        except np.linalg.LinAlgError:
-            continue
-        with np.errstate(all='ignore'):
-            ext = Qc @ vt.T
-        ext = ext.max(0) - ext.min(0)
-        if not np.all(np.isfinite(ext)):
-            continue
-        # width: the second PCA extent, or the mean width area / length when the patch is a frame, ring or L
-        # (its box is wide but the material is a narrow band); the smaller of the two
-        length[i], width[i] = ext[0], min(ext[1], parea[i] / max(ext[0], 1e-9))
-    return dict(P=P, F=F, M=M, area=area2 / 2, h=h, emin=emin, patch=pinv, n_patch=n_patch, pwidth=width,
-                plength=length, parea=parea, fwidth=width[pinv], sharp_edges=sharp_edges,
-                r_raw=float(np.linalg.norm(P, axis=1).max()))
 
 
 def feature_components(geo, k, s):
@@ -189,30 +87,6 @@ def feature_components(geo, k, s):
                 width_px_p50=float(np.percentile(w * k, 50)), width_px_p90=float(np.percentile(w * k, 90)),
                 width_units_p50=float(np.median(w)), length_px_p50=float(np.median(l * k)),
                 area_share=float(sum(areas) / geo['area'].sum()))
-
-
-def classify(geo, k, w=W_PX):
-    thin = geo['h'] * k < w                                   # the face itself is a sub-pixel sliver
-    feat = geo['fwidth'] * k < w                              # its smooth patch is under a pixel across
-    short = geo['emin'] * k < w
-    a = geo['area']; tot = a.sum() or 1.0
-    pth = geo['pwidth'] * k < w
-    # bevel: a thin patch whose sharp boundary (length) borders wide patches on >= 90 % of it (a plate chamfer);
-    # a strut side borders other thin patches (box) or one wide surface on one side only (a rib)
-    ea, eb, elen = geo['sharp_edges']
-    n = geo['n_patch']
-    total = np.bincount(ea, weights=elen, minlength=n) + np.bincount(eb, weights=elen, minlength=n)
-    wide_b = np.bincount(ea, weights=elen * (~pth[eb]), minlength=n) + np.bincount(eb, weights=elen * (~pth[ea]), minlength=n)
-    bevel_p = pth & (total > 0) & (wide_b >= 0.9 * total)
-    strut_p = pth & ~bevel_p
-    bevel = bevel_p[geo['patch']]
-    strut = strut_p[geo['patch']]
-    return dict(thin=int(thin.sum()), feat=int(feat.sum()), short=int(short.sum()),
-                thin_area=float(a[thin].sum() / tot), feat_area=float(a[feat].sum() / tot),
-                bevel_area=float(a[bevel].sum() / tot), strut_area=float(a[strut].sum() / tot),
-                strut_faces=int(strut.sum()), bevel_faces=int(bevel.sum()),
-                patches=int(geo['n_patch']), thin_patches=int(pth.sum()), bevel_patches=int(bevel_p.sum()),
-                feat_h_p50=float(np.median(geo['fwidth'][feat] * k)) if feat.any() else None)
 
 
 def one_body(args):
