@@ -5,37 +5,37 @@ marked completed on 2026-09-26 by the user's decision ([goals](goals.md)). The a
 
 ## Installed build
 
-Bottle **X3**, **CrossOver Preview.app**. Run98 = **release 0.5.2 (stripped)** DLL SHA-256
-`d6f6b47a4ee1d6cb6f1e45e802f82e730e72869ddd7b96d19fcd5969469f8abd` (39,442,996 bytes; the unstripped build
-`889e7cb1…` 57,269,113 bytes and `d3d9.debug` `7fd45bd0…` stay beside it), built once from clean main `ce87ec99` by
-`tools/release/release.py` (the DLL inside `x3m-0.5.2.zip`, sha256 `76af86c3…`, 58,242,564 bytes, at
-`/tmp/x3m-release-0.5.2/`; contents d3d9.dll, x3m.ini, x3m-regenerate.exe, README.txt;
-[release record](../verification/results/release-0.5.2.json)). Retained: `/tmp/x3-run98-candidate/build/`.
-Installed 2026-09-27 03:01 ([qualification](../verification/results/run98-candidate-qualification.json): the
-run-in-background patch fixture 47/47 and the site verifier 17/17, host suite 272 / 2,834 / 0;
-[install](../verification/results/run98-candidate-install.json)). The bottle's
-`cxbottle.conf` now carries the two GStreamer variables for the game-directory voice decoder
-(`manage.py voice-decoder --bottle-env apply`, deliberate, sha256 `b06979d1…`, backup `cxbottle.conf.x3m-bak`), so
-speech works from a plain CrossOver launch too (to be confirmed by the next launch). The shipped template `x3m.ini`
-sits next to the DLL.
+Bottle **X3**, **CrossOver Preview.app**. Run99 = DLL SHA-256
+`1adabd0360a76b13018926f2505f6ab71d37e64963ce0fa0622ed2dea52439c4` (57,341,744 bytes, RelWithDebInfo, unstripped; not a
+release build), built once from clean main `063fc8c1` in the detached worktree `/tmp/x3-run99-candidate/src`
+(retained: `/tmp/x3-run99-candidate/build/`). Installed 2026-09-28 03:30
+([qualification](../verification/results/run99-candidate-qualification.json): 0 warnings, x87 audit 0, config and
+shader checks, host suite 274 / 2,847 / 0, temporal-pass record reused (`passed: true`, 15 LUMA_LOCK rows), dry runs
+132 / 133 variables differing by `X3M_TAA_LUMA_LOCK` only; [install](../verification/results/run99-candidate-install.json)).
+The game-directory `x3m.ini` is still the 0.5.2 template (the new commented `taa_luma_lock` entry arrives with the next
+release install). The bottle's `cxbottle.conf` keeps the two GStreamer variables (`b06979d1…`).
 
-Rollback chain: Run97 `6e0bda57…` at `/tmp/x3-run97-candidate/build/d3d9.dll` (0.5.1, flown from CrossOver: speech,
-small log, stripped DLL loads), Run94 `338b00d7…` (accepted in Run 94 A).
+Rollback chain: Run98 `d6f6b47a…` at `/tmp/x3-run98-candidate/build/d3d9.dll` (release 0.5.2 stripped, accepted in
+Run 98 A), then Run97 `6e0bda57…`.
 
-Run98 carries, beyond Run97, **`run_in_background`** (default on; [RE note](reverse-engineering/run-in-background.md)):
-the DLL sets the game's run-in-background bit once as `-runinbg` would, so a plain CrossOver launch no longer freezes
-the game while its window is inactive. Run96 carried, beyond Run95: the always-tier fix (six per-frame emitter rows and the resource identity rows moved under
-`--perf`/`--debug`: a player-mode log was 159 MB/h, now about 3 MB/h), the stripped release DLL, and the voice decoder
-drop-in with the bottle setting.
+Run99 carries, beyond Run98, the **TAA luminance lock**, opt-in `--taa-luma-lock 16` (`taa_luma_lock = 16,0.25,3` in
+`x3m.ini`; needs the thin region and the far stabiliser; [design](architecture/taa-luminance-lock.md), ledger
+[temporal-resolve.md](verification/temporal-resolve.md) "Section 10/11 build"): a far pixel whose residual against
+the reprojected history flips sign on two consecutive frames locks for 16 frames at the far weight, carried across pans
+by a sub-texel offset; every other far pixel runs at the base weight, so distant hull plates should pan sharp while
+struts stay held. Off = the shipped program bit for bit. Also on main since Run98: the baker strut widening as an
+opt-in `--widen` flag (default off, parked), the far-weight A/B ledger (run351/352), and the CrossOver Preview note
+for starting `x3m-regenerate.exe` (FEX drops the exe name for `C:\X3\x3m-regenerate.exe`; start it by its Z: path).
 
 ## Main beyond the installed build
 
-Nothing: main `ce87ec99` is the installed and released commit (documentation follows it).
+Nothing: main `063fc8c1` is the installed commit (documentation follows it).
 
 ## Run queue
 
-No run is queued. Run 98 A accepted release 0.5.2 from the CrossOver shortcut (alt-tab resumes at once, speech plays):
-[run queue](verification/user-runs.md).
+Run 99 A queued (2026-09-28): the lock A/B on the run351 stand at 5120x1440, default vs `--taa-luma-lock 16`, F8 at
+rest, mid-pan and after the pan: [run queue](verification/user-runs.md). The far stabiliser default stays 0.985 until
+the lock is judged; run351 (0.95) has no user verdict yet, run352 (0.90) shimmered thin lines.
 
 ## Open items
 

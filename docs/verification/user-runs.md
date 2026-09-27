@@ -2,7 +2,7 @@
 
 Archive with `python3 tools/analysis/archive_user_runs.py`.
 
-Updated 2026-09-27 (Run 98 A completed: alt-tab from the CrossOver shortcut resumes at once, speech plays; no run queued). Earlier: 2026-09-21 (Run56 accepted for media stability; Run57 station-flash correction accepted; fog range remains under investigation). Run 17 crypto acceptance and the first-person/chase
+Updated 2026-09-28 (Run99 = luminance lock opt-in installed; Run 99 A queued: lock A/B on the run351 stand). Earlier: 2026-09-21 (Run56 accepted for media stability; Run57 station-flash correction accepted; fog range remains under investigation). Run 17 crypto acceptance and the first-person/chase
 left-centre-right diagnostic are complete and are not in this queue. The agent
 never launches the game. Only open runs keep their instructions here; a completed
 run keeps only its row in the table below. The installed build is described in [status](../status.md).
@@ -20,6 +20,7 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 
 | Run | Purpose | Sessions | Status |
 | --- | --- | ---: | --- |
+| 99 A | Run99 (TAA luminance lock, opt-in `--taa-luma-lock 16`): launch 1 default; launch 2 `--taa-luma-lock 16`; F8 at rest and mid-pan in each on the run351 stand at 5120x1440 | 2 | Queued 2026-09-28 |
 | 98 A | Run98 = release 0.5.2 (run_in_background patch default on, stripped DLL): one launch from the CrossOver shortcut without `-runinbg`, alt-tab out and back, speech | 1 | Completed 2026-09-27: "all is good now" (user): the alt-tab resumes at once, speech plays from the CrossOver launch via the bottle environment setting; rows `run_in_background status=patched`, `music_keep_active run_in_background=1` |
 | 94 A | Run94 (bolts through the TAA, default on at W 0.5): launch 1 defaults with F8 firing at a far station (run348); launch 2 `--bolt-far-show 1` with F8 firing at a far station and at a self-shadowed hull (run349) | 2 | Completed 2026-09-27: **bullets fixed** (user); `--bolt-far-show 1` looks better than 0.5 -> **W default 1** (the user's decision; 0.5 had been chosen to match the bolt's measured retention over empty space so a bolt crossing a silhouette stayed continuous); no dark spots on the self-shadowed hull reported; both sessions exited clean |
 | 93 A | Run93 (single-copy bullets on by default; opt-in rotation-aware TAA motion weight): launch 1 defaults with F8 firing at a station / rest / pan / firing at a second station (run346); launch 2 `--taa-history-weight 0.9 --taa-motion-weight-rotation 0.7`, rest + pan (run347) | 2 | Completed 2026-09-26: **bullets still vanish over distant stations** (user, both scenes): the single-copy rule works (`bolt_copies early_dropped=2 late=2` every firing frame; before TAA the bolt adds as much over the station as over space; the late copy passes the depth test) but the **TAA resolve erases the bolt**: its pixels carry the far station's depth, so the far/thin history weights keep ~0.99 there vs 0.39-0.91 over space (run346-run93a-bolts/; design note for the fix in progress); **rotation weight**: engaged (policy 2, pan 8.5-8.8 px/frame, applied weight 0.70 vs 0.85), +34 % pan sharpness on the one station visible in both pans, but the user's reference station left the screen in run347's pan; the user noticed shimmer under the pan and **keeps it off** ("better blurring than shimmering"); both sessions exited clean |
@@ -27,7 +28,6 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 91 A | Run91 (developer options trimmed with `--draw-trace`; hotkeys removed except F8 under `--debug`; `--capture-start`/`--capture-delay` gone; the `x3m.ini` settings file; plus everything since Run 88 A: logging tiers, option cleanup, single shadow map removed, cascade 3 at 4096): launch 1 default stand `x3run --direct --debug --perf` (run338), launch 2 player mode `x3run --direct --config --debug --perf` with F8 captures (run339), optional `--no-shadow-cascades` not flown | 2 | Completed 2026-09-26: "everything looks okay" (user), Run91 accepted; run338 `config_open source=bare`, 20,416 frames, `session_end ... exception=0 dropped=0 filter=ours`; run339 `config_open file=C:\X3\x3m.ini source=game keys=0` (394 lines, 11.4 ms), 121 `proxy_options` values `@default`, `log_open previous=renamed`, three F8 captures (frames 2242, 6650, 7102), 11,202 frames, no drops, exit clean; two pre-existing notes raised by the user and triaged afterwards: distant stations/asteroids drawn over the player's bullets (captures in run339), stations blurry under a pan (no capture) |
 | 90 A | Run90 (logging tiers: `--debug` / `--perf`, `x3m.log`; obsolete options and code removed; `--taa-k` / `--taa-sentinel` removed; plus Run89's single-map removal and cascade 3 at 4096): one launch with `x3run --direct --debug --perf`, a second short launch for the log rotation and exit, an optional `--no-shadow-cascades` launch | 0 | Superseded 2026-09-26 by Run 91 A before it was flown (Run91 installed the option trim, the hotkey removal and the `x3m.ini` file the same morning); its checks are folded into Run 91 A |
 | 89 A | Run89 (single shadow map removed, cascades only; `--no-shadow-cascades` = shadows off; cascade sizes 2048,4096,4096,4096,2048): one launch with the short stand command, plus an optional short `--no-shadow-cascades` launch | 0 | Superseded 2026-09-26 by Run 90 A before it was flown (Run90 installed the logging tiers and the option cleanup the same night); its checks are folded into Run 90 A |
-| 88 A | Run88 (shadow pop fix, adjacency without telemetry, promoted defaults with cascade sizes 2048,4096,4096,2048,2048): one launch, short stand command (run337) | 1 | Completed 2026-09-25: all good (user); retention store never flushed (0 rows vs 18,992 in run336), probe never fired, no underflow; replay us p50 251 (was 124: two 4096 maps + live retention); defaults in force; cascade 3 bumped to 4096 afterwards (launcher default 2048,4096,4096,4096,2048, unflown) |
 
 
 No run is queued. Completed instructions for Runs 73-88 are in the [archive](../archive/user-runs-completed.md).
@@ -66,3 +66,24 @@ env -u CX_DEBUGMSG X3M_FIXTURE_BOTTLE=X3 /Users/asvetl/x3-mod/x3run --direct --d
 # --capture-delay were removed on 2026-09-26)
 # --music-keep --shadow-alpha-casters on
 ```
+
+**Run 99 A (queued 2026-09-28; Run99 = DLL `1adabd03…` from 063fc8c1, installed 03:30; the per-pixel luminance lock, off by default).**
+Two launches on the same stand as run351/run352 (Argon sector: the military outpost near and at ~25 km, the equipment
+dock, the spacedock, the solar plant), at **5120x1440** so the captures compare with run341:
+
+```
+./x3run --direct --debug --perf
+./x3run --direct --debug --perf --taa-luma-lock 16
+```
+
+In each: fly to the stand, stop, F8 at rest, then pan at your usual speed with F8 mid-pan, then stop and F8 once more
+two seconds after the pan ends. Judge only these, in the lock launch against the default one: (1) the equipment dock's
+thin struts and the far outpost's antennas at rest and during the pan: as quiet as today or not; (2) the far outpost's
+hull plates during the pan: sharper than today or not; (3) anything that looks soft after the pan ends that was sharp
+before (a lock that outlived its strut); (4) any flash of shimmer in the first second after a station enters the view
+or after a load (locks take two frames to form). Rows expected in the lock launch's `x3m.log`: `motion_output_mode ...
+luma_lock=16,0.25,3`, one `luma_lock configured=1` row (or `configured=0 reason=...` if the device refused the fourth
+render target, in which case say so), no `Reset`/`device_lost`, `session_end`. Frame time from `frame_end dt_ms` in
+both launches gives the lock's cost (estimated 0.2-0.5 ms).
+
+Run 99 A is the only queued run. Completed instructions for Runs 73-98 are in the [archive](../archive/user-runs-completed.md).
