@@ -1,0 +1,8 @@
+Run 353 (lock off, luma_lock=0) / run354 (--taa-luma-lock 16: luma_lock=16,0.25,3 configured=1 reason=ok), 1920x1080, all measured.
+Both: hw 0.85, far_weight 0.985, far_f0/f1 60/68, far_gate camera, thin_region 0.97, taa_debug=0, 0 reset/lost rows.
+taa_debug=0 => no taa_/present_/lane dumps in either session: resolved-image flicker, sharpness and locked share NOT measurable.
+Bursts (camera_state rot_deg/frame; RT1 |d| p50 on shipyard): 353 1454 rest 0-0.056 deg, 0.30 px; 353 1816 pan 2.95 deg, 31-50 px;
+  354 1408 rest 0.1055 deg, 0.38 px; 354 1835 pan 4.70 deg, 79-84 px; 354 4995 moving+pan 0.45-0.87 deg, ~8.3 px.
+Shipyard = argon_spacedock (object_bounds joined to cull_census body by node), z p50 ~79k, F p5..p95 70-98 u/px:
+  100 % of its pixels at F>=68 (far weight fully on) in all six frames. Far outpost = military_outpost_middleb z 140-182k.
+dt_ms p50 stand: 15 / 15 (p90 16 / 17).

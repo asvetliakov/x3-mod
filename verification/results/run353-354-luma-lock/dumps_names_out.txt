@@ -1,0 +1,32 @@
+== run353 dumped kinds
+  16 depth_1
+  16 hdr_1
+  16 motion_1
+  16 shadow_map0_1
+  16 shadow_map1_1
+  16 shadow_map2_1
+  16 shadow_map3_1
+  16 shadow_map4_1
+reset/lost rows: 0
+ d=829186	 radius=2246786	 body=Stations\others\military_outpost_middleb
+ d=6620915	 radius=150032	 body=stations\living_sections\argon_livingsection
+ d=6661823	 radius=1953631	 body=stations\station_scenes\others\argon_spacedock
+ d=8130089	 radius=1132932	 body=stations\station_scenes\others\argon_equipmentdock
+ d=8694561	 radius=150032	 body=stations\living_sections\argon_livingsection
+ d=13050422	 radius=2246786	 body=Stations\others\military_outpost_middleb
+== run354 dumped kinds
+  24 depth_1
+  24 hdr_1
+  24 motion_1
+  24 shadow_map0_1
+  24 shadow_map1_1
+  24 shadow_map2_1
+  24 shadow_map3_1
+  24 shadow_map4_1
+reset/lost rows: 0
+ d=866573	 radius=2246786	 body=Stations\others\military_outpost_middleb
+ d=6673607	 radius=150032	 body=stations\living_sections\argon_livingsection
+ d=6714636	 radius=1953631	 body=stations\station_scenes\others\argon_spacedock
+ d=8054418	 radius=1132932	 body=stations\station_scenes\others\argon_equipmentdock
+ d=8628090	 radius=150032	 body=stations\living_sections\argon_livingsection
+ d=13081689	 radius=2246786	 body=Stations\others\military_outpost_middleb
