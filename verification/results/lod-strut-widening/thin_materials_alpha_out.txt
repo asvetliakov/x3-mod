@@ -1,0 +1,21 @@
+argon_L_solarpowerplant alpha set [0, 1, 2, 3, 4, 9, 10, 11, 12, 29, 36, 44, 47, 48, 50]
+  mat 11 argon.fx                     ALPHA test [1] blend [1] zwrite [1] alphaval [65536] diffuse metals\argon\metal_argon_lattice_s alphatex metals\argon\metal_argon light metals\argon\metal_argon
+  mat 17 argon.fx                     opaque test [0] blend [0] zwrite [1] alphaval [65536] diffuse metals\argon\metal_argon_simple_pl alphatex NULL light NULL
+  mat 20 argon.fx                     opaque test [0] blend [0] zwrite [1] alphaval [65536] diffuse metals\argon\metal_argon_simple_pl alphatex NULL light NULL
+  mat 23 argon.fx                     opaque test [0] blend [0] zwrite [1] alphaval [65536] diffuse metals\argon\metal_argon_trims_03_ alphatex NULL light metals\argon\metal_argon
+  mat 45 argon.fx                     opaque test [0] blend [0] zwrite [1] alphaval [65536] diffuse metals\argon\metal_argon_circular2 alphatex NULL light metals\argon\metal_argon
+  mat 22 argon.fx                     opaque test [0] blend [0] zwrite [1] alphaval [65536] diffuse metals\argon\metal_argon_trims_02_ alphatex NULL light metals\argon\metal_argon
+argon_spacedock alpha set [0, 1, 2, 3, 4, 9, 10, 11, 12, 29, 36, 44, 47, 48, 50]
+  mat 39 argon.fx                     opaque test [0] blend [0] zwrite [1] alphaval [65536] diffuse metals\argon\metal_argon_exhaust_t alphatex NULL light NULL
+  mat 17 argon.fx                     opaque test [0] blend [0] zwrite [1] alphaval [65536] diffuse metals\argon\metal_argon_simple_pl alphatex NULL light NULL
+  mat 16 argon.fx                     opaque test [0] blend [0] zwrite [1] alphaval [65536] diffuse metals\argon\metal_argon_simple_pl alphatex NULL light NULL
+  mat 15 argon.fx                     opaque test [0] blend [0] zwrite [1] alphaval [65536] diffuse metals\argon\metal_argon_pipes_tec alphatex NULL light metals\argon\metal_argon
+  mat 46 argon.fx                     opaque test [0] blend [0] zwrite [1] alphaval [65536] diffuse metals\argon\metal_argon_smooth_pl alphatex NULL light metals\argon\metal_argon
+  mat 35 argon.fx                     opaque test [0] blend [0] zwrite [1] alphaval [65536] diffuse metals\argon\metal_argon_trims_09_ alphatex NULL light metals\argon\metal_argon
+argon_tech_L_shield_F alpha set [0, 1, 2, 3, 4, 9, 10, 11, 12, 29, 36, 44, 47, 48]
+  mat 17 argon.fx                     opaque test [0] blend [0] zwrite [1] alphaval [65536] diffuse metals\argon\metal_argon_simple_pl alphatex NULL light NULL
+  mat  7 argon.fx                     opaque test [0] blend [0] zwrite [1] alphaval [65536] diffuse metals\argon\metal_argon_base_meta alphatex NULL light NULL
+  mat 27 argon.fx                     opaque test [0] blend [0] zwrite [1] alphaval [65536] diffuse metals\argon\metal_argon_trims_07_ alphatex NULL light metals\argon\metal_argon
+  mat 23 argon.fx                     opaque test [0] blend [0] zwrite [1] alphaval [65536] diffuse metals\argon\metal_argon_trims_03_ alphatex NULL light metals\argon\metal_argon
+  mat 15 argon.fx                     opaque test [0] blend [0] zwrite [1] alphaval [65536] diffuse metals\argon\metal_argon_pipes_tec alphatex NULL light metals\argon\metal_argon
+  mat 46 argon.fx                     opaque test [0] blend [0] zwrite [1] alphaval [65536] diffuse metals\argon\metal_argon_smooth_pl alphatex NULL light metals\argon\metal_argon

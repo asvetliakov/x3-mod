@@ -1,0 +1,14 @@
+argon_L_solarpowerplant (B): T_pad 212 switch 9.4 km; stand s 65 = 30.6 km; 1 px = 155 units at the switch, 505 at the stand; s_far(15.4 km) = 129; W_u(T_pad/2) = 310 units = 2.0 px at the switch, 0.61 px at the stand; W_u(T_pad/3): 0.92 px at the stand
+   mat 11: width p10 96 / p50 247 units -> switch 0.62 / 1.60 px, stand 0.19 / 0.49 px, 1080 rows at the stand 0.14 / 0.37
+   mat 17: width p10 33.6 / p50 445 units -> switch 0.22 / 2.87 px, stand 0.07 / 0.88 px, 1080 rows at the stand 0.05 / 0.66
+   mat 7: width p10 51 / p50 278 units -> switch 0.33 / 1.80 px, stand 0.10 / 0.55 px, 1080 rows at the stand 0.08 / 0.41
+argon_spacedock: T_pad 278 switch 8.9 km; stand s 188 = 13.2 km; 1 px = 118 units at the switch, 174 at the stand; s_far(15.4 km) = 161; W_u(T_pad/2) = 236 units = 2.0 px at the switch, 1.35 px at the stand; W_u(T_pad/3): 2.03 px at the stand
+   mat 39: width p10 38.7 / p50 85.3 units -> switch 0.33 / 0.72 px, stand 0.22 / 0.49 px, 1080 rows at the stand 0.17 / 0.37
+   mat 17: width p10 13.4 / p50 37.3 units -> switch 0.11 / 0.32 px, stand 0.08 / 0.21 px, 1080 rows at the stand 0.06 / 0.16
+   mat 16: width p10 25 / p50 102.6 units -> switch 0.21 / 0.87 px, stand 0.14 / 0.59 px, 1080 rows at the stand 0.11 / 0.44
+argon_tech_L_shield_F (E): T_pad 173 switch 5.3 km; stand s 95 = 9.7 km; 1 px = 194 units at the switch, 353 at the stand; s_far(15.4 km) = 60; W_u(T_pad/2) = 388 units = 2.0 px at the switch, 1.10 px at the stand; W_u(T_pad/3): 1.65 px at the stand
+   mat 15: width p10 75.8 / p50 298.3 units -> switch 0.39 / 1.54 px, stand 0.21 / 0.84 px, 1080 rows at the stand 0.16 / 0.63
+   mat 17: width p10 88.6 / p50 425.3 units -> switch 0.46 / 2.19 px, stand 0.25 / 1.20 px, 1080 rows at the stand 0.19 / 0.90
+military_outpost_middleb: T_pad 150 switch 19.1 km; stand s 147 = 19.4 km; 1 px = 219 units at the switch, 224 at the stand; s_far(15.4 km) = 186; W_u(T_pad/2) = 439 units = 2.0 px at the switch, 1.96 px at the stand; W_u(T_pad/3): 2.94 px at the stand
+   mat 16: width p10 97.1 / p50 289.7 units -> switch 0.44 / 1.32 px, stand 0.43 / 1.29 px, 1080 rows at the stand 0.33 / 0.97
+   mat 39: width p10 84.5 / p50 272.1 units -> switch 0.39 / 1.24 px, stand 0.38 / 1.22 px, 1080 rows at the stand 0.28 / 0.91

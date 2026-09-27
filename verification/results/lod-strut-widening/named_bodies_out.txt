@@ -1,0 +1,188 @@
+bodies 5 ok 5 errors 0 wall 6 s
+[5120x1440] at s = T_pad: bodies with any thin-feature face 4/4; >1% of faces 4; >1% of area 4; >5% of area 2; faces thin 322560 feature 114269 of 430988 (26.5 %); strut faces 86091 bevel faces 28178; bodies with strut area >1% 4 >5% 1
+[1920x1080] at s = T_pad: bodies with any thin-feature face 4/4; >1% of faces 4; >1% of area 4; >5% of area 2; faces thin 361700 feature 141683 of 430988 (32.9 %); strut faces 113509 bevel faces 28174; bodies with strut area >1% 4 >5% 2
+
+per body (5120x1440 at s = T_pad): name faces T_pad r_engine switch_km thin% feat% feat_area% short% strut_area% bevel_area% | 1080: feat% feat_area%
+stations/station_scenes/others/argon_spacedock                  107397  278    1954820    8.9  79.7  38.0 11.25  73.2  8.19  3.06 |  45.7 15.60
+stations/station_scenes/tech/argon_tech_L_shield_F               96942  173     728276    5.3  64.9  21.1  6.14  55.6  3.50  2.64 |  28.0  8.73
+stations/station_scenes/others/argon_L_solarpowerplant          152900  212    1569969    9.4  81.9  23.8  3.31  69.7  2.29  1.02 |  28.9  4.53
+stations/others/military_outpost_middleb                         73749  150    2255558   19.1  66.2  22.6  1.70  57.6  1.16  0.55 |  28.8  3.03
+
+== stations/station_scenes/others/argon_L_solarpowerplant: faces 152900 points 224132 r_raw 65648 scale 1567294 r_engine 1569969 thresholds [250, 212] T_pad 212
+  s212@5120x1440: k 0.00646 px/unit thin 125267 feat 36322 feat_area 3.31 % short 106585 feat_w_px_p50 0.6200009955393193 patches 13144 thin_patches 7107 bevel_patches 904 strut_area 2.29 % bevel_area 1.02 %
+  s212@1920x1080: k 0.00484 px/unit thin 138232 feat 44208 feat_area 4.53 % short 131004 feat_w_px_p50 0.540840978675202 patches 13144 thin_patches 7856 bevel_patches 694 strut_area 3.64 % bevel_area 0.89 %
+  s65@5120x1440: k 0.00198 px/unit thin 152224 feat 80384 feat_area 23.65 % short 150305 feat_w_px_p50 0.31607938857064766 patches 13144 thin_patches 11838 bevel_patches 265 strut_area 23.33 % bevel_area 0.32 %
+  s65@1920x1080: k 0.00149 px/unit thin 152593 feat 93128 feat_area 26.00 % short 152488 feat_w_px_p50 0.3164337860382239 patches 13144 thin_patches 12500 bevel_patches 252 strut_area 25.10 % bevel_area 0.90 %
+  s106@5120x1440: k 0.00323 px/unit thin 146957 feat 61420 feat_area 12.53 % short 145695 feat_w_px_p50 0.4233829519352575 patches 13144 thin_patches 10463 bevel_patches 360 strut_area 12.08 % bevel_area 0.45 %
+  s106@1920x1080: k 0.00242 px/unit thin 150360 feat 78148 feat_area 22.04 % short 148004 feat_w_px_p50 0.3851001478365582 patches 13144 thin_patches 11191 bevel_patches 320 strut_area 21.63 % bevel_area 0.41 %
+  feature components at s 106: {'s': 106, 'n': 4602, 'faces': 61420, 'width_px_p10': 0.12594471827696224, 'width_px_p50': 0.8266622285692513, 'width_px_p90': 1.4838470649886246, 'width_units_p50': 255.98395355732913, 'length_px_p50': 2.5912928901449024, 'area_share': 0.1252630061965246}
+  alpha materials [0, 1, 2, 3, 4, 9, 10, 11, 12, 29, 36, 44, 47, 48, 50] split {212: {'feat_area_alpha': 0.016900443563314056, 'feat_area_opaque': 0.01621833415105594, 'alpha_area': 0.7427785153558871}, 65: {'feat_area_alpha': 0.16902128020438456, 'feat_area_opaque': 0.0674784228419192, 'alpha_area': 0.7427785153558871}, 106: {'feat_area_alpha': 0.0978873958972189, 'feat_area_opaque': 0.027375610299305703, 'alpha_area': 0.7427785153558871}}
+  mat  11 faces   26884 area  17.8 % w_p10     96.0 w_p50    247.0 | s212:thin 19582 feat 9866 area 8.2% h 0.84 s65:thin 26622 feat 19560 area 73.7% h 0.28 s106:thin 25524 feat 18272 area 39.4% h 0.42
+  mat  17 faces   19358 area   4.9 % w_p10     33.6 w_p50    445.1 | s212:thin 17227 feat 8464 area 13.7% h 0.38 s65:thin 19351 feat 9760 area 24.2% h 0.14 s106:thin 19265 feat 9560 area 24.0% h 0.21
+  mat  20 faces   15558 area   2.7 % w_p10    119.0 w_p50    801.6 | s212:thin 13856 feat 2015 area 4.6% h 0.61 s65:thin 15558 feat 4476 area 14.4% h 0.35 s106:thin 15558 feat 4076 area 12.3% h 0.5
+  mat  23 faces   14538 area   2.2 % w_p10    118.1 w_p50    969.9 | s212:thin 12990 feat 3130 area 7.0% h 0.77 s65:thin 14538 feat 4614 area 13.0% h 0.26 s106:thin 13898 feat 3764 area 8.8% h 0.42
+  mat  45 faces   13188 area   0.4 % w_p10    159.0 w_p50    348.1 | s212:thin 13188 feat 700 area 1.7% h 0.79 s65:thin 13188 feat 13188 area 100.0% h 0.69 s106:thin 13188 feat 4820 area 5.5% h 0.51
+  mat  22 faces   10508 area   1.0 % w_p10    136.5 w_p50   1206.3 | s212:thin 9050 feat 1100 area 3.9% h 0.68 s65:thin 10508 feat 2290 area 11.2% h 0.32 s106:thin 10508 feat 2090 area 8.1% h 0.44
+  mat   7 faces    9124 area   1.9 % w_p10     51.0 w_p50    278.3 | s212:thin 7329 feat 2208 area 8.9% h 0.42 s65:thin 9120 feat 5302 area 22.8% h 0.35 s106:thin 8977 feat 4582 area 21.3% h 0.5
+  mat  14 faces    6302 area   1.7 % w_p10    103.2 w_p50    961.0 | s212:thin 4599 feat 1054 area 3.0% h 0.66 s65:thin 6292 feat 1526 area 6.3% h 0.21 s106:thin 6238 feat 1406 area 5.4% h 0.34
+  mat  30 faces    5608 area   0.7 % w_p10    542.2 w_p50    924.3 | s212:thin 4818 feat 280 area 0.4% h 0.43 s65:thin 5587 feat 420 area 2.0% h 0.15 s106:thin 5489 feat 380 area 1.0% h 0.23
+  mat  24 faces    5455 area   3.1 % w_p10     87.2 w_p50    803.7 | s212:thin 3815 feat 1803 area 1.5% h 0.72 s65:thin 5455 feat 2295 area 1.9% h 0.24 s106:thin 5355 feat 2295 area 1.9% h 0.39
+  mat  15 faces    4897 area   1.5 % w_p10    341.2 w_p50    969.9 | s212:thin 4403 feat 278 area 0.4% h 0.47 s65:thin 4897 feat 565 area 1.7% h 0.56 s106:thin 4897 feat 453 area 1.2% h 0.25
+  mat  41 faces    4224 area   2.0 % w_p10    348.0 w_p50    348.4 | s212:thin 4224 feat 0 area 0.0% h None s65:thin 4224 feat 4224 area 100.0% h 0.69 s106:thin 4224 feat 0 area 0.0% h None
+  mat  12 faces    3496 area   2.3 % w_p10    104.3 w_p50    385.3 | s212:thin 1842 feat 600 area 1.6% h 0.67 s65:thin 3424 feat 1984 area 59.2% h 0.61 s106:thin 3004 feat 1000 area 29.7% h 0.34
+  mat   2 faces    3312 area   1.4 % w_p10    167.0 w_p50    214.0 | s212:thin 1584 feat 156 area 5.7% h 0.46 s65:thin 3312 feat 3312 area 100.0% h 0.42 s106:thin 3312 feat 3312 area 100.0% h 0.69
+  mat   5 faces    2658 area   1.5 % w_p10     78.0 w_p50   4579.2 | s212:thin 2138 feat 698 area 22.8% h 0.87 s65:thin 2658 feat 698 area 22.8% h 0.27 s106:thin 2658 feat 698 area 22.8% h 0.43
+  mat  21 faces    1750 area   0.0 % w_p10      9.5 w_p50     31.9 | s212:thin 1750 feat 1650 area 38.6% h 0.19 s65:thin 1750 feat 1750 area 100.0% h 0.06 s106:thin 1750 feat 1750 area 100.0% h 0.1
+  mat   1 faces    1662 area   0.3 % w_p10     38.6 w_p50     39.0 | s212:thin 1452 feat 1302 area 32.1% h 0.25 s65:thin 1662 feat 1662 area 100.0% h 0.08 s106:thin 1662 feat 1662 area 100.0% h 0.13
+  mat  27 faces     900 area   1.1 % w_p10    473.9 w_p50    494.4 | s212:thin 0 feat 0 area 0.0% h None s65:thin 900 feat 600 area 63.1% h 0.96 s106:thin 0 feat 0 area 0.0% h None
+  mat  31 faces     900 area   1.1 % w_p10    474.0 w_p50    494.5 | s212:thin 0 feat 0 area 0.0% h None s65:thin 900 feat 600 area 63.1% h 0.96 s106:thin 0 feat 0 area 0.0% h None
+  mat   9 faces     828 area   1.5 % w_p10    203.2 w_p50   3401.1 | s212:thin 270 feat 18 area 0.3% h 0.19 s65:thin 828 feat 408 area 46.2% h 0.5 s106:thin 300 feat 300 area 24.5% h 0.76
+  mat  47 faces     600 area  50.9 % w_p10  32688.4 w_p50  32709.6 | s212:thin 0 feat 0 area 0.0% h None s65:thin 300 feat 0 area 0.0% h None s106:thin 0 feat 0 area 0.0% h None
+  mat  26 faces     550 area   0.0 % w_p10    107.5 w_p50    118.1 | s212:thin 550 feat 550 area 100.0% h 0.76 s65:thin 550 feat 550 area 100.0% h 0.23 s106:thin 550 feat 550 area 100.0% h 0.38
+  mat  28 faces     450 area   0.0 % w_p10     24.1 w_p50     54.9 | s212:thin 450 feat 300 area 26.0% h 0.34 s65:thin 450 feat 450 area 100.0% h 0.11 s106:thin 450 feat 300 area 26.0% h 0.17
+  mat  10 faces     100 area   0.0 % w_p10     25.9 w_p50     26.0 | s212:thin 100 feat 100 area 100.0% h 0.17 s65:thin 100 feat 100 area 100.0% h 0.05 s106:thin 100 feat 100 area 100.0% h 0.08
+  mat  18 faces      50 area   0.0 % w_p10     77.8 w_p50     78.4 | s212:thin 50 feat 50 area 100.0% h 0.51 s65:thin 50 feat 50 area 100.0% h 0.16 s106:thin 50 feat 50 area 100.0% h 0.25
+
+== stations/station_scenes/others/argon_spacedock: faces 107397 points 150507 r_raw 65576 scale 1953631 r_engine 1954820 thresholds [250, 278] T_pad 278
+  s278@5120x1440: k 0.00848 px/unit thin 85565 feat 40796 feat_area 11.25 % short 78593 feat_w_px_p50 0.3811529959243789 patches 9373 thin_patches 7186 bevel_patches 1049 strut_area 8.19 % bevel_area 3.06 %
+  s278@1920x1080: k 0.00636 px/unit thin 96463 feat 49062 feat_area 15.60 % short 89515 feat_w_px_p50 0.39414214776099 patches 9373 thin_patches 7895 bevel_patches 759 strut_area 12.97 % bevel_area 2.63 %
+  s188@5120x1440: k 0.00573 px/unit thin 98852 feat 52263 feat_area 16.40 % short 95101 feat_w_px_p50 0.380231601061088 patches 9373 thin_patches 8091 bevel_patches 690 strut_area 13.98 % bevel_area 2.42 %
+  s188@1920x1080: k 0.00430 px/unit thin 101684 feat 57411 feat_area 20.60 % short 99658 feat_w_px_p50 0.29553144632764167 patches 9373 thin_patches 8411 bevel_patches 532 strut_area 18.90 % bevel_area 1.70 %
+  s139@5120x1440: k 0.00424 px/unit thin 101774 feat 57817 feat_area 20.70 % short 99722 feat_w_px_p50 0.2956975217897127 patches 9373 thin_patches 8425 bevel_patches 528 strut_area 19.01 % bevel_area 1.70 %
+  s139@1920x1080: k 0.00318 px/unit thin 104552 feat 61077 feat_area 26.45 % short 103297 feat_w_px_p50 0.24045116089105711 patches 9373 thin_patches 8706 bevel_patches 411 strut_area 24.93 % bevel_area 1.52 %
+  feature components at s 139: {'s': 139, 'n': 1440, 'faces': 57817, 'width_px_p10': 0.09750533827380878, 'width_px_p50': 0.3549944072488227, 'width_px_p90': 3.6312393705750403, 'width_units_p50': 83.73768566183328, 'length_px_p50': 2.2677942775059643, 'area_share': 0.20704386585113824}
+  alpha materials [0, 1, 2, 3, 4, 9, 10, 11, 12, 29, 36, 44, 47, 48, 50] split {278: {'feat_area_alpha': 0.011266313366041007, 'feat_area_opaque': 0.10126096102127935, 'alpha_area': 0.03019783293995073}, 188: {'feat_area_alpha': 0.012024794676378747, 'feat_area_opaque': 0.1519965273455428, 'alpha_area': 0.03019783293995073}, 139: {'feat_area_alpha': 0.012977382272009053, 'feat_area_opaque': 0.19406648357912956, 'alpha_area': 0.03019783293995073}}
+  mat  39 faces   16564 area   6.6 % w_p10     38.7 w_p50     85.3 | s278:thin 16252 feat 9856 area 41.4% h 0.56 s188:thin 16368 feat 12172 area 58.8% h 0.39 s139:thin 16564 feat 13028 area 65.8% h 0.31
+  mat  17 faces   15591 area   9.0 % w_p10     13.4 w_p50     37.3 | s278:thin 13921 feat 11132 area 10.9% h 0.2 s188:thin 14551 feat 12166 area 16.5% h 0.14 s139:thin 14890 feat 12744 area 20.4% h 0.11
+  mat  16 faces   12636 area  12.1 % w_p10     25.0 w_p50    102.6 | s278:thin 10807 feat 7008 area 19.5% h 0.58 s188:thin 11690 feat 7998 area 23.3% h 0.39 s139:thin 12058 feat 8650 area 35.3% h 0.29
+  mat  15 faces    9811 area   4.0 % w_p10    155.7 w_p50    322.7 | s278:thin 9425 feat 398 area 12.4% h 0.6 s188:thin 9669 feat 2702 area 31.2% h 0.89 s139:thin 9751 feat 4453 area 46.3% h 0.66
+  mat  46 faces    7740 area  16.6 % w_p10     91.4 w_p50    869.8 | s278:thin 2858 feat 1052 area 2.8% h 0.34 s188:thin 5482 feat 1428 area 6.8% h 0.49 s139:thin 6030 feat 1528 area 7.1% h 0.39
+  mat  35 faces    6544 area   7.5 % w_p10     17.0 w_p50    585.1 | s278:thin 4780 feat 2320 area 12.9% h 0.2 s188:thin 6030 feat 2644 area 14.9% h 0.14 s139:thin 6164 feat 2743 area 15.7% h 0.1
+  mat  30 faces    5210 area   2.2 % w_p10    253.9 w_p50    952.2 | s278:thin 3431 feat 108 area 0.1% h 0.49 s188:thin 5171 feat 180 area 1.2% h 0.33 s139:thin 5171 feat 412 area 3.3% h 0.75
+  mat   7 faces    4461 area   4.7 % w_p10     79.9 w_p50    435.3 | s278:thin 3073 feat 628 area 2.2% h 0.67 s188:thin 3918 feat 1174 area 8.9% h 0.56 s139:thin 4232 feat 1358 area 10.4% h 0.52
+  mat  18 faces    4186 area   4.2 % w_p10     20.6 w_p50    179.0 | s278:thin 2980 feat 1394 area 3.1% h 0.32 s188:thin 3762 feat 2024 area 4.7% h 0.23 s139:thin 3762 feat 2198 area 5.8% h 0.17
+  mat  22 faces    3578 area   2.0 % w_p10    385.9 w_p50   1409.4 | s278:thin 2260 feat 170 area 2.7% h 0.74 s188:thin 3500 feat 224 area 3.1% h 0.51 s139:thin 3554 feat 272 area 3.6% h 0.41
+  mat  13 faces    2516 area   0.8 % w_p10     69.9 w_p50    142.1 | s278:thin 2032 feat 624 area 4.5% h 0.59 s188:thin 2504 feat 1808 area 52.4% h 0.8 s139:thin 2504 feat 1808 area 52.4% h 0.59
+  mat   8 faces    2488 area   4.6 % w_p10    131.3 w_p50    377.6 | s278:thin 1280 feat 176 area 1.6% h 0.82 s188:thin 2008 feat 332 area 5.8% h 0.57 s139:thin 2120 feat 692 area 9.8% h 0.8
+  mat  14 faces    2373 area   3.4 % w_p10    114.9 w_p50    566.5 | s278:thin 1975 feat 252 area 2.6% h 0.97 s188:thin 2108 feat 268 area 2.8% h 0.66 s139:thin 2177 feat 268 area 2.8% h 0.49
+  mat  19 faces    2360 area  10.1 % w_p10     76.0 w_p50   1409.4 | s278:thin 1644 feat 624 area 1.4% h 0.64 s188:thin 1660 feat 672 area 1.9% h 0.45 s139:thin 1668 feat 672 area 1.9% h 0.33
+  mat  11 faces    1844 area   1.4 % w_p10     25.5 w_p50     75.5 | s278:thin 1712 feat 1436 area 81.1% h 0.42 s188:thin 1844 feat 1472 area 86.8% h 0.29 s139:thin 1844 feat 1664 area 93.8% h 0.22
+  mat   5 faces    1684 area   1.7 % w_p10     58.9 w_p50    142.0 | s278:thin 876 feat 832 area 45.1% h 0.51 s188:thin 1484 feat 966 area 61.1% h 0.34 s139:thin 1678 feat 1006 area 64.8% h 0.25
+  mat  27 faces    1508 area   3.6 % w_p10    716.0 w_p50    716.0 | s278:thin 1036 feat 8 area 0.0% h 0.47 s188:thin 1220 feat 16 area 0.3% h 0.62 s139:thin 1508 feat 16 area 0.3% h 0.46
+  mat  20 faces    1222 area   1.3 % w_p10     63.8 w_p50    141.8 | s278:thin 972 feat 569 area 27.3% h 0.9 s188:thin 1198 feat 706 area 29.6% h 0.61 s139:thin 1222 feat 890 area 83.6% h 0.45
+  mat  43 faces    1044 area   1.0 % w_p10     53.9 w_p50    569.1 | s278:thin 636 feat 392 area 3.3% h 0.51 s188:thin 924 feat 448 area 3.6% h 0.37 s139:thin 972 feat 484 area 9.4% h 0.28
+  mat  45 faces     948 area   0.0 % w_p10     98.2 w_p50    128.0 | s278:thin 948 feat 140 area 37.7% h 0.83 s188:thin 948 feat 948 area 100.0% h 0.73 s139:thin 948 feat 948 area 100.0% h 0.54
+  mat  23 faces     768 area   0.1 % w_p10     73.8 w_p50    156.5 | s278:thin 768 feat 314 area 33.5% h 0.76 s188:thin 768 feat 396 area 36.4% h 0.54 s139:thin 768 feat 436 area 42.3% h 0.45
+  mat  24 faces     509 area   0.1 % w_p10     30.6 w_p50    141.8 | s278:thin 509 feat 227 area 11.6% h 0.81 s188:thin 509 feat 375 area 18.0% h 0.67 s139:thin 509 feat 379 area 18.3% h 0.49
+  mat  41 faces     432 area   0.3 % w_p10     20.6 w_p50     21.1 | s278:thin 432 feat 432 area 100.0% h 0.18 s188:thin 432 feat 432 area 100.0% h 0.12 s139:thin 432 feat 432 area 100.0% h 0.09
+  mat  21 faces     350 area   0.0 % w_p10      6.8 w_p50     20.3 | s278:thin 350 feat 330 area 38.6% h 0.17 s188:thin 350 feat 330 area 38.6% h 0.11 s139:thin 350 feat 350 area 100.0% h 0.09
+  mat  12 faces     240 area   1.3 % w_p10     17.4 w_p50    167.0 | s278:thin 168 feat 120 area 1.8% h 0.71 s188:thin 192 feat 120 area 1.8% h 0.48 s139:thin 192 feat 120 area 1.8% h 0.35
+  mat  26 faces     230 area   0.1 % w_p10     88.2 w_p50    949.3 | s278:thin 178 feat 114 area 2.9% h 0.76 s188:thin 230 feat 114 area 2.9% h 0.51 s139:thin 230 feat 114 area 2.9% h 0.38
+  mat  37 faces     164 area   0.2 % w_p10   1264.7 w_p50   1264.8 | s278:thin 0 feat 0 area 0.0% h None s188:thin 32 feat 0 area 0.0% h None s139:thin 164 feat 0 area 0.0% h None
+  mat  28 faces     138 area   0.3 % w_p10     32.5 w_p50    316.8 | s278:thin 84 feat 60 area 1.0% h 0.35 s188:thin 94 feat 60 area 1.0% h 0.24 s139:thin 102 feat 60 area 1.0% h 0.18
+  mat  40 faces      80 area   0.1 % w_p10    337.9 w_p50    339.4 | s278:thin 80 feat 0 area 0.0% h None s188:thin 80 feat 0 area 0.0% h None s139:thin 80 feat 0 area 0.0% h None
+  mat  25 faces      58 area   0.0 % w_p10     56.2 w_p50    450.7 | s278:thin 26 feat 8 area 1.4% h 0.34 s188:thin 54 feat 16 area 20.5% h 0.53 s139:thin 58 feat 20 area 36.6% h 0.54
+  mat   1 faces      48 area   0.0 % w_p10     31.0 w_p50     31.0 | s278:thin 48 feat 48 area 100.0% h 0.26 s188:thin 48 feat 48 area 100.0% h 0.18 s139:thin 48 feat 48 area 100.0% h 0.13
+  mat   6 faces      32 area   0.3 % w_p10    402.0 w_p50    402.0 | s278:thin 0 feat 0 area 0.0% h None s188:thin 0 feat 0 area 0.0% h None s139:thin 0 feat 0 area 0.0% h None
+  mat  10 faces      20 area   0.0 % w_p10     20.3 w_p50     20.5 | s278:thin 20 feat 20 area 100.0% h 0.17 s188:thin 20 feat 20 area 100.0% h 0.12 s139:thin 20 feat 20 area 100.0% h 0.09
+  mat   9 faces      16 area   0.4 % w_p10    375.4 w_p50    376.0 | s278:thin 0 feat 0 area 0.0% h None s188:thin 0 feat 0 area 0.0% h None s139:thin 0 feat 0 area 0.0% h None
+  mat  44 faces       4 area   0.0 % w_p10     54.3 w_p50     54.4 | s278:thin 4 feat 4 area 100.0% h 0.46 s188:thin 4 feat 4 area 100.0% h 0.31 s139:thin 4 feat 4 area 100.0% h 0.23
+
+== stations/station_scenes/tech/argon_tech_L_shield_F: faces 96942 points 152103 r_raw 67118 scale 711107 r_engine 728276 thresholds [250, 173] T_pad 173
+  s173@5120x1440: k 0.00516 px/unit thin 62879 feat 20476 feat_area 6.14 % short 53908 feat_w_px_p50 0.5607218071526491 patches 11801 thin_patches 5219 bevel_patches 1493 strut_area 3.50 % bevel_area 2.64 %
+  s173@1920x1080: k 0.00387 px/unit thin 71648 feat 27167 feat_area 8.73 % short 64445 feat_w_px_p50 0.4939766458141471 patches 11801 thin_patches 6447 bevel_patches 1435 strut_area 5.50 % bevel_area 3.23 %
+  s95@5120x1440: k 0.00283 px/unit thin 81600 feat 35371 feat_area 12.92 % short 74496 feat_w_px_p50 0.482525405119912 patches 11801 thin_patches 7718 bevel_patches 1196 strut_area 9.95 % bevel_area 2.97 %
+  s95@1920x1080: k 0.00212 px/unit thin 87465 feat 43269 feat_area 22.53 % short 83241 feat_w_px_p50 0.432286532408428 patches 11801 thin_patches 9025 bevel_patches 1044 strut_area 19.17 % bevel_area 3.36 %
+  s86@5120x1440: k 0.00256 px/unit thin 84461 feat 38156 feat_area 16.82 % short 78776 feat_w_px_p50 0.4817550520140311 patches 11801 thin_patches 8260 bevel_patches 1172 strut_area 13.42 % bevel_area 3.40 %
+  s86@1920x1080: k 0.00192 px/unit thin 89686 feat 45346 feat_area 24.79 % short 85407 feat_w_px_p50 0.4093815401767943 patches 11801 thin_patches 9348 bevel_patches 899 strut_area 21.47 % bevel_area 3.32 %
+  feature components at s 86: {'s': 86, 'n': 2280, 'faces': 38156, 'width_px_p10': 0.266508058581094, 'width_px_p50': 0.866813096982994, 'width_px_p90': 3.540772928510251, 'width_units_p50': 338.2502107526211, 'length_px_p50': 3.368588635758348, 'area_share': 0.16818587556878117}
+  alpha materials [0, 1, 2, 3, 4, 9, 10, 11, 12, 29, 36, 44, 47, 48] split {173: {'feat_area_alpha': 0.01839775361491543, 'feat_area_opaque': 0.04300378187227722, 'alpha_area': 0.21180249694941433}, 95: {'feat_area_alpha': 0.03411385988089983, 'feat_area_opaque': 0.09507642037127849, 'alpha_area': 0.21180249694941433}, 86: {'feat_area_alpha': 0.05713602046614484, 'feat_area_opaque': 0.11104985510263672, 'alpha_area': 0.21180249694941433}}
+  mat  17 faces   10867 area   7.4 % w_p10     88.6 w_p50    425.3 | s173:thin 7702 feat 3154 area 7.8% h 0.56 s95:thin 9585 feat 5198 area 19.5% h 0.36 s86:thin 10002 feat 5364 area 20.1% h 0.36
+  mat   7 faces    8980 area  10.7 % w_p10    109.0 w_p50    542.2 | s173:thin 6713 feat 2441 area 3.4% h 0.66 s95:thin 7630 feat 3365 area 6.0% h 0.4 s86:thin 7705 feat 3405 area 6.3% h 0.37
+  mat  27 faces    7724 area   6.5 % w_p10   1382.5 w_p50   1436.6 | s173:thin 6228 feat 204 area 0.4% h 0.71 s95:thin 6348 feat 348 area 1.4% h 0.39 s86:thin 6388 feat 348 area 1.4% h 0.35
+  mat  23 faces    7066 area   5.2 % w_p10     80.6 w_p50    623.2 | s173:thin 4809 feat 1709 area 7.1% h 0.46 s95:thin 5733 feat 2453 area 11.2% h 0.33 s86:thin 5994 feat 2760 area 17.1% h 0.3
+  mat  15 faces    7019 area   3.7 % w_p10     75.8 w_p50    298.3 | s173:thin 5147 feat 2178 area 16.6% h 0.41 s95:thin 6750 feat 3868 area 40.4% h 0.48 s86:thin 6861 feat 3894 area 40.5% h 0.43
+  mat  46 faces    6990 area   7.0 % w_p10    115.3 w_p50    499.4 | s173:thin 4620 feat 1169 area 2.9% h 0.46 s95:thin 5643 feat 2405 area 8.3% h 0.56 s86:thin 5766 feat 2825 area 10.8% h 0.59
+  mat  16 faces    6009 area   5.6 % w_p10     66.2 w_p50    616.9 | s173:thin 4043 feat 1293 area 2.9% h 0.34 s95:thin 5109 feat 2193 area 9.1% h 0.36 s86:thin 5247 feat 2240 area 10.2% h 0.32
+  mat  20 faces    4129 area   3.4 % w_p10    309.6 w_p50   1221.7 | s173:thin 1723 feat 250 area 0.4% h 0.42 s95:thin 3423 feat 567 area 3.7% h 0.59 s86:thin 3488 feat 647 area 3.8% h 0.62
+  mat  22 faces    4063 area   3.2 % w_p10    217.0 w_p50    672.5 | s173:thin 2399 feat 380 area 3.4% h 0.62 s95:thin 3344 feat 1103 area 9.2% h 0.75 s86:thin 3577 feat 1327 area 14.6% h 0.82
+  mat  14 faces    3972 area   6.0 % w_p10     68.6 w_p50    371.0 | s173:thin 2127 feat 1223 area 14.3% h 0.67 s95:thin 2925 feat 1733 area 17.5% h 0.46 s86:thin 3344 feat 2099 area 28.1% h 0.48
+  mat  24 faces    3758 area   3.2 % w_p10     70.5 w_p50    319.0 | s173:thin 2548 feat 1298 area 6.7% h 0.43 s95:thin 3291 feat 2079 area 19.7% h 0.36 s86:thin 3423 feat 2273 area 21.3% h 0.35
+  mat  35 faces    3380 area   0.9 % w_p10     81.2 w_p50    193.9 | s173:thin 2712 feat 1704 area 21.2% h 0.71 s95:thin 3278 feat 1788 area 26.9% h 0.39 s86:thin 3380 feat 1788 area 26.9% h 0.35
+  mat  11 faces    3350 area   5.6 % w_p10    131.7 w_p50    466.2 | s173:thin 821 feat 520 area 16.4% h 0.68 s95:thin 2512 feat 834 area 22.0% h 0.54 s86:thin 2578 feat 834 area 22.0% h 0.49
+  mat   5 faces    3093 area   2.4 % w_p10    188.0 w_p50    417.1 | s173:thin 2168 feat 456 area 12.9% h 0.89 s95:thin 2784 feat 1334 area 31.2% h 0.7 s86:thin 2851 feat 1484 area 33.1% h 0.67
+  mat  30 faces    3041 area   1.6 % w_p10    190.3 w_p50   1195.9 | s173:thin 1799 feat 308 area 0.6% h 0.86 s95:thin 2712 feat 540 area 1.6% h 0.5 s86:thin 2736 feat 540 area 1.6% h 0.45
+  mat  19 faces    2552 area   4.7 % w_p10    476.7 w_p50   2132.7 | s173:thin 224 feat 18 area 0.1% h 0.56 s95:thin 1553 feat 114 area 2.2% h 0.72 s86:thin 1738 feat 114 area 2.2% h 0.66
+  mat  39 faces    1792 area   0.5 % w_p10     58.4 w_p50    231.4 | s173:thin 1615 feat 648 area 17.7% h 0.36 s95:thin 1705 feat 1118 area 31.4% h 0.46 s86:thin 1714 feat 1118 area 31.4% h 0.42
+  mat  45 faces    1496 area   0.9 % w_p10    350.8 w_p50    351.0 | s173:thin 1202 feat 0 area 0.0% h None s95:thin 1320 feat 920 area 1.7% h 0.99 s86:thin 1320 feat 920 area 1.7% h 0.9
+  mat  12 faces    1488 area   5.8 % w_p10     88.1 w_p50    294.0 | s173:thin 1104 feat 544 area 15.1% h 0.63 s95:thin 1440 feat 768 area 32.7% h 0.41 s86:thin 1440 feat 1344 area 62.3% h 0.72
+  mat  26 faces    1458 area   0.8 % w_p10    242.8 w_p50    394.6 | s173:thin 957 feat 75 area 1.7% h 0.51 s95:thin 1200 feat 672 area 14.3% h 0.87 s86:thin 1225 feat 672 area 14.3% h 0.79
+  mat  21 faces     878 area   0.5 % w_p10     53.9 w_p50    319.8 | s173:thin 566 feat 330 area 0.6% h 0.38 s95:thin 662 feat 714 area 24.8% h 0.9 s86:thin 806 feat 714 area 24.8% h 0.82
+  mat  28 faces     786 area   1.5 % w_p10    139.6 w_p50    611.6 | s173:thin 366 feat 140 area 1.7% h 0.63 s95:thin 652 feat 268 area 4.8% h 0.48 s86:thin 673 feat 268 area 4.8% h 0.43
+  mat   8 faces     570 area   0.8 % w_p10    105.0 w_p50    473.1 | s173:thin 282 feat 76 area 1.1% h 0.49 s95:thin 441 feat 192 area 6.6% h 0.6 s86:thin 477 feat 207 area 11.7% h 0.59
+  mat  18 faces     485 area   0.6 % w_p10    208.1 w_p50   1176.6 | s173:thin 235 feat 38 area 0.6% h 0.44 s95:thin 383 feat 64 area 2.5% h 0.49 s86:thin 395 feat 70 area 3.0% h 0.44
+  mat  25 faces     451 area   0.7 % w_p10    143.7 w_p50    244.8 | s173:thin 289 feat 108 area 19.9% h 0.74 s95:thin 397 feat 317 area 55.0% h 0.69 s86:thin 421 feat 317 area 55.0% h 0.63
+  mat  36 faces     384 area   7.4 % w_p10    357.8 w_p50   2311.0 | s173:thin 36 feat 36 area 0.1% h 0.31 s95:thin 48 feat 36 area 0.1% h 0.17 s86:thin 90 feat 72 area 4.3% h 0.54
+  mat  32 faces     381 area   0.4 % w_p10    372.8 w_p50    688.5 | s173:thin 192 feat 0 area 0.0% h None s95:thin 255 feat 0 area 0.0% h None s86:thin 261 feat 72 area 4.5% h 0.96
+  mat   1 faces     304 area   0.7 % w_p10     85.6 w_p50    337.2 | s173:thin 134 feat 118 area 2.9% h 0.44 s95:thin 196 feat 184 area 21.1% h 0.24 s86:thin 256 feat 244 area 58.0% h 0.53
+  mat   9 faces     132 area   1.6 % w_p10    250.9 w_p50    313.0 | s173:thin 14 feat 8 area 0.5% h 0.34 s95:thin 93 feat 68 area 5.5% h 0.88 s86:thin 105 feat 68 area 5.5% h 0.8
+  mat  43 faces     132 area   0.1 % w_p10    241.4 w_p50    940.0 | s173:thin 30 feat 0 area 0.0% h None s95:thin 96 feat 60 area 31.9% h 0.69 s86:thin 108 feat 60 area 31.9% h 0.62
+  mat  31 faces      90 area   0.4 % w_p10   1046.2 w_p50   1091.1 | s173:thin 0 feat 0 area 0.0% h None s95:thin 0 feat 0 area 0.0% h None s86:thin 0 feat 0 area 0.0% h None
+  mat  40 faces      36 area   0.0 % w_p10    569.1 w_p50    569.2 | s173:thin 24 feat 0 area 0.0% h None s95:thin 24 feat 0 area 0.0% h None s86:thin 24 feat 0 area 0.0% h None
+  mat  10 faces      20 area   0.0 % w_p10     56.8 w_p50     56.9 | s173:thin 20 feat 20 area 100.0% h 0.29 s95:thin 20 feat 20 area 100.0% h 0.16 s86:thin 20 feat 20 area 100.0% h 0.15
+  mat   3 faces      18 area   0.0 % w_p10     61.0 w_p50    120.0 | s173:thin 12 feat 12 area 11.0% h 0.47 s95:thin 18 feat 18 area 100.0% h 0.34 s86:thin 18 feat 18 area 100.0% h 0.31
+  mat  13 faces      18 area   0.1 % w_p10    609.3 w_p50   1561.1 | s173:thin 0 feat 0 area 0.0% h None s95:thin 0 feat 0 area 0.0% h None s86:thin 0 feat 0 area 0.0% h None
+  mat   0 faces      12 area   0.0 % w_p10     75.0 w_p50    167.3 | s173:thin 6 feat 6 area 3.9% h 0.39 s95:thin 12 feat 12 area 100.0% h 0.47 s86:thin 12 feat 12 area 100.0% h 0.43
+  mat   2 faces      12 area   0.0 % w_p10     61.0 w_p50    173.0 | s173:thin 6 feat 6 area 1.5% h 0.31 s95:thin 12 feat 12 area 100.0% h 0.49 s86:thin 12 feat 12 area 100.0% h 0.44
+  mat   4 faces       6 area   0.0 % w_p10     61.0 w_p50     61.0 | s173:thin 6 feat 6 area 100.0% h 0.31 s95:thin 6 feat 6 area 100.0% h 0.17 s86:thin 6 feat 6 area 100.0% h 0.16
+
+== stations/others/military_outpost_middleb: faces 73749 points 125867 r_raw 65792 scale 2246786 r_engine 2255558 thresholds [30, 150] T_pad 150
+  s150@5120x1440: k 0.00456 px/unit thin 48849 feat 16675 feat_area 1.70 % short 42497 feat_w_px_p50 0.4559166067288097 patches 6485 thin_patches 3438 bevel_patches 882 strut_area 1.16 % bevel_area 0.55 %
+  s150@1920x1080: k 0.00342 px/unit thin 55357 feat 21246 feat_area 3.03 % short 51303 feat_w_px_p50 0.38310365320864265 patches 6485 thin_patches 4039 bevel_patches 867 strut_area 2.20 % bevel_area 0.83 %
+  s147@5120x1440: k 0.00447 px/unit thin 49410 feat 16691 feat_area 1.71 % short 43053 feat_w_px_p50 0.4467982745942335 patches 6485 thin_patches 3446 bevel_patches 884 strut_area 1.16 % bevel_area 0.55 %
+  s147@1920x1080: k 0.00335 px/unit thin 55661 feat 21322 feat_area 3.08 % short 51529 feat_w_px_p50 0.3757534653527735 patches 6485 thin_patches 4077 bevel_patches 855 strut_area 2.24 % bevel_area 0.84 %
+  s75@5120x1440: k 0.00228 px/unit thin 61177 feat 26761 feat_area 6.12 % short 57341 feat_w_px_p50 0.3654868177157587 patches 6485 thin_patches 4634 bevel_patches 862 strut_area 4.49 % bevel_area 1.63 %
+  s75@1920x1080: k 0.00171 px/unit thin 66070 feat 30403 feat_area 10.75 % short 62515 feat_w_px_p50 0.3239318960568012 patches 6485 thin_patches 5097 bevel_patches 690 strut_area 7.21 % bevel_area 3.54 %
+  feature components at s 75: {'s': 75, 'n': 1112, 'faces': 26761, 'width_px_p10': 0.18021755254561517, 'width_px_p50': 0.8464442115870474, 'width_px_p90': 3.077887495684579, 'width_units_p50': 371.26103122381676, 'length_px_p50': 3.039128912415605, 'area_share': 0.061231080465106294}
+  alpha materials [0, 1, 2, 3, 4, 9, 10, 11, 12, 29, 36, 42, 44, 48, 49, 52] split {150: {'feat_area_alpha': 0.00039821224486987004, 'feat_area_opaque': 0.016639766268861877, 'alpha_area': 0.14396203626728873}, 147: {'feat_area_alpha': 0.00039821224486987004, 'feat_area_opaque': 0.01667544035991144, 'alpha_area': 0.14396203626728873}, 75: {'feat_area_alpha': 0.0014764934618983726, 'feat_area_opaque': 0.05975458700320794, 'alpha_area': 0.14396203626728873}}
+  mat  17 faces   17212 area  19.6 % w_p10    100.0 w_p50    893.9 | s150:thin 12672 feat 3908 area 3.2% h 0.46 s147:thin 12691 feat 3908 area 3.2% h 0.45 s75:thin 14444 feat 6126 area 6.9% h 0.37
+  mat  39 faces    8716 area  13.0 % w_p10     84.5 w_p50    272.1 | s150:thin 6996 feat 3528 area 1.4% h 0.44 s147:thin 6996 feat 3528 area 1.4% h 0.43 s75:thin 7988 feat 5016 area 8.1% h 0.27
+  mat  16 faces    5655 area   0.8 % w_p10     97.1 w_p50    289.7 | s150:thin 5299 feat 2645 area 33.9% h 0.46 s147:thin 5301 feat 2645 area 33.9% h 0.45 s75:thin 5571 feat 3171 area 41.7% h 0.23
+  mat   7 faces    4315 area   1.9 % w_p10     54.9 w_p50    622.0 | s150:thin 2967 feat 1047 area 3.5% h 0.31 s147:thin 2975 feat 1047 area 3.5% h 0.3 s75:thin 4215 feat 1879 area 15.3% h 0.42
+  mat  35 faces    3974 area   1.9 % w_p10    131.0 w_p50   1377.8 | s150:thin 3362 feat 618 area 2.3% h 0.46 s147:thin 3526 feat 618 area 2.3% h 0.45 s75:thin 3830 feat 974 area 6.0% h 0.35
+  mat  30 faces    3874 area   3.6 % w_p10    691.0 w_p50   1908.7 | s150:thin 2643 feat 138 area 0.0% h 0.71 s147:thin 2669 feat 138 area 0.0% h 0.69 s75:thin 3630 feat 302 area 0.0% h 0.6
+  mat  18 faces    3200 area   3.4 % w_p10    189.9 w_p50   5388.1 | s150:thin 988 feat 332 area 1.1% h 0.54 s147:thin 988 feat 332 area 1.1% h 0.53 s75:thin 1796 feat 644 area 4.2% h 0.43
+  mat  22 faces    2360 area   0.8 % w_p10    207.2 w_p50   1980.2 | s150:thin 1054 feat 246 area 0.2% h 0.15 s147:thin 1174 feat 254 area 0.5% h 0.15 s75:thin 2244 feat 356 area 1.3% h 0.33
+  mat  15 faces    2316 area   1.1 % w_p10    195.5 w_p50    608.6 | s150:thin 1538 feat 234 area 0.1% h 0.36 s147:thin 1558 feat 234 area 0.1% h 0.36 s75:thin 2096 feat 588 area 7.9% h 0.65
+  mat  23 faces    2171 area   4.9 % w_p10    189.8 w_p50   2269.0 | s150:thin 756 feat 238 area 0.7% h 0.61 s147:thin 770 feat 238 area 0.7% h 0.6 s75:thin 1438 feat 444 area 1.8% h 0.43
+  mat  41 faces    2048 area   0.8 % w_p10     99.2 w_p50    100.0 | s150:thin 1904 feat 1128 area 19.7% h 0.45 s147:thin 1904 feat 1128 area 19.7% h 0.45 s75:thin 1944 feat 1896 area 45.5% h 0.23
+  mat  24 faces    1865 area   2.3 % w_p10     30.8 w_p50    342.6 | s150:thin 1266 feat 369 area 0.3% h 0.14 s147:thin 1270 feat 369 area 0.3% h 0.14 s75:thin 1581 feat 1177 area 4.4% h 0.66
+  mat  26 faces    1864 area   1.2 % w_p10    139.1 w_p50   5388.1 | s150:thin 1332 feat 244 area 2.6% h 0.33 s147:thin 1332 feat 244 area 2.6% h 0.33 s75:thin 1624 feat 732 area 17.6% h 0.78
+  mat   5 faces    1780 area   3.8 % w_p10    740.6 w_p50   1394.7 | s150:thin 520 feat 48 area 0.0% h 0.0 s147:thin 520 feat 48 area 0.0% h 0.0 s75:thin 1020 feat 156 area 5.6% h 0.52
+  mat  19 faces    1685 area   7.9 % w_p10   1428.5 w_p50   2079.8 | s150:thin 478 feat 12 area 0.0% h 0.0 s147:thin 478 feat 12 area 0.0% h 0.0 s75:thin 846 feat 20 area 0.1% h 0.0
+  mat   8 faces    1680 area   0.5 % w_p10    189.6 w_p50    548.3 | s150:thin 1342 feat 216 area 11.8% h 0.83 s147:thin 1342 feat 216 area 11.8% h 0.82 s75:thin 1626 feat 728 area 29.7% h 0.61
+  mat   6 faces    1644 area   4.7 % w_p10    468.0 w_p50   5303.6 | s150:thin 348 feat 4 area 0.0% h 0.15 s147:thin 352 feat 4 area 0.0% h 0.14 s75:thin 584 feat 156 area 8.5% h 0.76
+  mat  14 faces    1616 area   3.1 % w_p10    148.2 w_p50   1986.5 | s150:thin 762 feat 317 area 0.6% h 0.66 s147:thin 768 feat 317 area 0.6% h 0.65 s75:thin 1030 feat 378 area 2.3% h 0.34
+  mat  20 faces    1282 area   2.6 % w_p10     86.7 w_p50   1444.7 | s150:thin 418 feat 223 area 0.1% h 0.29 s147:thin 418 feat 223 area 0.1% h 0.28 s75:thin 562 feat 426 area 2.0% h 0.43
+  mat  47 faces     864 area   0.2 % w_p10   1331.4 w_p50   1383.4 | s150:thin 576 feat 0 area 0.0% h None s147:thin 738 feat 0 area 0.0% h None s75:thin 864 feat 0 area 0.0% h None
+  mat  11 faces     840 area   1.7 % w_p10     19.3 w_p50     69.7 | s150:thin 752 feat 752 area 0.8% h 0.2 s147:thin 752 feat 752 area 0.8% h 0.2 s75:thin 752 feat 752 area 0.8% h 0.1
+  mat  25 faces     764 area   2.1 % w_p10    357.0 w_p50   1862.1 | s150:thin 136 feat 8 area 0.1% h 0.96 s147:thin 148 feat 16 area 0.1% h 0.97 s75:thin 528 feat 200 area 8.0% h 0.85
+  mat  21 faces     688 area   4.0 % w_p10    512.2 w_p50   5774.7 | s150:thin 48 feat 8 area 0.0% h 0.72 s147:thin 48 feat 8 area 0.0% h 0.71 s75:thin 88 feat 24 area 0.0% h 0.82
+  mat   9 faces     216 area   5.2 % w_p10    580.8 w_p50   1400.2 | s150:thin 96 feat 12 area 0.0% h 0.37 s147:thin 96 feat 12 area 0.0% h 0.36 s75:thin 96 feat 12 area 0.0% h 0.19
+  mat  13 faces     216 area   0.3 % w_p10    187.2 w_p50   4379.7 | s150:thin 32 feat 24 area 2.0% h 0.72 s147:thin 32 feat 24 area 2.0% h 0.71 s75:thin 98 feat 96 area 18.7% h 0.82
+  mat  46 faces     194 area   0.3 % w_p10    362.0 w_p50  14798.0 | s150:thin 156 feat 0 area 0.0% h None s147:thin 156 feat 0 area 0.0% h None s75:thin 172 feat 32 area 11.2% h 0.83
+  mat  36 faces     152 area   7.3 % w_p10      0.0 w_p50   6896.4 | s150:thin 26 feat 20 area 0.0% h 0.0 s147:thin 26 feat 20 area 0.0% h 0.0 s75:thin 28 feat 20 area 0.0% h 0.0
+  mat   1 faces     128 area   0.1 % w_p10     66.9 w_p50    283.2 | s150:thin 60 feat 60 area 16.2% h 0.95 s147:thin 60 feat 60 area 16.2% h 0.93 s75:thin 124 feat 124 area 92.4% h 0.64
+  mat  32 faces     120 area   0.0 % w_p10     75.0 w_p50    182.2 | s150:thin 120 feat 104 area 85.9% h 0.35 s147:thin 120 feat 104 area 85.9% h 0.34 s75:thin 120 feat 104 area 85.9% h 0.17
+  mat  33 faces     104 area   0.0 % w_p10     75.0 w_p50     76.1 | s150:thin 104 feat 104 area 100.0% h 0.35 s147:thin 104 feat 104 area 100.0% h 0.34 s75:thin 104 feat 104 area 100.0% h 0.17
+  mat  12 faces      80 area   0.0 % w_p10     39.6 w_p50     53.8 | s150:thin 80 feat 80 area 100.0% h 0.25 s147:thin 80 feat 80 area 100.0% h 0.24 s75:thin 80 feat 80 area 100.0% h 0.12
+  mat  27 faces      74 area   0.1 % w_p10   8759.7 w_p50   8759.7 | s150:thin 10 feat 0 area 0.0% h None s147:thin 10 feat 0 area 0.0% h None s75:thin 10 feat 0 area 0.0% h None
+  mat  43 faces      44 area   0.6 % w_p10    184.3 w_p50    384.2 | s150:thin 8 feat 8 area 8.1% h 0.7 s147:thin 8 feat 8 area 8.1% h 0.68 s75:thin 44 feat 44 area 100.0% h 0.88
+  mat   0 faces       8 area   0.0 % w_p10    566.7 w_p50    566.9 | s150:thin 0 feat 0 area 0.0% h None s147:thin 0 feat 0 area 0.0% h None s75:thin 0 feat 0 area 0.0% h None
+
+== environments/asteroids/asteroid_B_ClassMine: faces 1712 points 1002 r_raw 74368 scale 1016512 r_engine 1153506 thresholds [20, 5, 2, 30] T_pad None
+  s76@5120x1440: k 0.00204 px/unit thin 0 feat 1 feat_area 0.01 % short 0 feat_w_px_p50 0.7597010972236068 patches 6 thin_patches 1 bevel_patches 1 strut_area 0.00 % bevel_area 0.01 %
+  s76@1920x1080: k 0.00153 px/unit thin 1 feat 1 feat_area 0.01 % short 0 feat_w_px_p50 0.569775822917705 patches 6 thin_patches 1 bevel_patches 1 strut_area 0.00 % bevel_area 0.01 %
+  feature components at s 76: {'s': 76, 'n': 1, 'faces': 1, 'width_px_p10': 1.5358788910568095, 'width_px_p50': 1.5358788910568095, 'width_px_p90': 1.5358788910568095, 'width_units_p50': 751.4510783471583, 'length_px_p50': 17.532431222602952, 'area_share': 7.117766183924057e-05}
+  alpha materials [] split {76: {'feat_area_alpha': 0.0, 'feat_area_opaque': 7.117766183924057e-05, 'alpha_area': 0.0}}
+  mat   0 faces    1712 area 100.0 % w_p10 120366.1 w_p50 120366.1 | s76:thin 0 feat 1 area 0.0% h 0.76

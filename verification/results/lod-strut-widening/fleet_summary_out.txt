@@ -1,0 +1,5 @@
+stations/  bodies 311 feat_area>1% 248 >5%  66 >10%  21 median feat_area 2.60% strut_area>1% 195 >5% 29 median strut_area 1.48% faces on sub-px patches 4178654/18508299 (22.6%) patches sub-px 965100/1831722 (52.7%) of which bevel 211623
+ships/     bodies 301 feat_area>1% 145 >5%  32 >10%   5 median feat_area 0.92% strut_area>1% 89 >5% 12 median strut_area 0.29% faces on sub-px patches 1045309/5291807 (19.8%) patches sub-px 284102/535074 (53.1%) of which bevel 67796
+others/    bodies   5 feat_area>1%   5 >5%   1 >10%   0 median feat_area 2.74% strut_area>1% 4 >5% 0 median strut_area 2.54% faces on sub-px patches 32631/118654 (27.5%) patches sub-px 12206/20974 (58.2%) of which bevel 1147
+per-body median sub-px patch width at s=T_pad (px), fleet p10/p50/p90: [0.37, 0.56, 0.74]
+census seconds total 295 max per body 2.2

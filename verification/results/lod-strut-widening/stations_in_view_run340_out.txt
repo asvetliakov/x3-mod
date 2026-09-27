@@ -1,0 +1,33 @@
+frame 1017 Stations\others\military_outpost_middleb                     nodes   2 d 815039-12988106 (1.6-25.7 km) r [2246786] s 110-1764 lod [0, 1] thr 100000,30,150
+frame 1017 stations\connections\connect_argon_pipe_huge_cargoanimA_     nodes  16 d 4284024-18930726 (8.5-37.5 km) r [150314] s 5-22 lod [0] thr 100000
+frame 1017 stations\connections\connect_argon_pipe_huge_cargoanimB_     nodes   8 d 4296516-18923182 (8.5-37.5 km) r [140475] s 4-20 lod [0] thr 100000
+frame 1017 stations\station_scenes\tech\argon_tech_L_shield_F           nodes   1 d 4509504-4509504 (8.9-8.9 km) r [711107] s 100-100 lod [1] thr 100000,250,173
+frame 1017 stations\living_sections\argon_livingsection                 nodes   3 d 6596876-15421967 (13.1-30.5 km) r [150032] s 6-14 lod [1] thr 100000,30,155
+frame 1017 stations\station_scenes\others\argon_spacedock               nodes   1 d 6641039-6641039 (13.2-13.2 km) r [1953631] s 188-188 lod [1] thr 100000,250,278
+frame 1017 stations\station_scenes\others\argon_equipmentdock           nodes   1 d 7877741-7877741 (15.6-15.6 km) r [1132932] s 92-92 lod [1] thr 100000,30,216
+frame 1017 stations\station_scenes\tech\argon_tech_S_laser_C            nodes   1 d 11953500-11953500 (23.7-23.7 km) r [851752] s 45-45 lod [1] thr 100000,250,171
+frame 1017 stations\station_scenes\others\argon_L_solarpowerplant       nodes   1 d 15375140-15375140 (30.4-30.4 km) r [1567294] s 65-65 lod [1] thr 100000,250,212
+frame 1017 stations\station_scenes\tech\argon_tech_M_laser_cc           nodes   1 d 16129665-16129665 (31.9-31.9 km) r [394237] s 15-15 lod [1] thr 100000,30,165
+frame 1017 stations\station_scenes\tech\argon_tech_L_laser_Q            nodes   1 d 18753691-18753691 (37.1-37.1 km) r [620972] s 21-21 lod [1] thr 100000,250,154
+frame 1424 Stations\others\military_outpost_middleb                     nodes   2 d 832646-12965251 (1.6-25.7 km) r [2246786] s 110-1726 lod [0, 1] thr 100000,30,150
+frame 1424 stations\connections\connect_argon_pipe_huge_cargoanimA_     nodes  12 d 3733567-18667573 (7.4-37.0 km) r [150314] s 5-25 lod [0] thr 100000
+frame 1424 stations\connections\connect_argon_pipe_huge_cargoanimB_     nodes   6 d 3735599-18658248 (7.4-36.9 km) r [140475] s 4-24 lod [0] thr 100000
+frame 1424 stations\station_scenes\tech\argon_tech_L_shield_F           nodes   1 d 3767648-3767648 (7.5-7.5 km) r [711107] s 120-120 lod [1] thr 100000,250,173
+frame 1424 stations\living_sections\argon_livingsection                 nodes   3 d 6461303-14905795 (12.8-29.5 km) r [150032] s 6-14 lod [1] thr 100000,30,155
+frame 1424 stations\station_scenes\others\argon_spacedock               nodes   1 d 6501023-6501023 (12.9-12.9 km) r [1953631] s 192-192 lod [1] thr 100000,250,278
+frame 1424 stations\station_scenes\others\argon_equipmentdock           nodes   1 d 8554170-8554170 (16.9-16.9 km) r [1132932] s 84-84 lod [1] thr 100000,30,216
+frame 1424 stations\station_scenes\tech\argon_tech_S_laser_C            nodes   1 d 11197996-11197996 (22.2-22.2 km) r [851752] s 48-48 lod [1] thr 100000,250,171
+frame 1424 stations\station_scenes\others\argon_L_solarpowerplant       nodes   1 d 14848931-14848931 (29.4-29.4 km) r [1567294] s 67-67 lod [1] thr 100000,250,212
+frame 1424 stations\station_scenes\tech\argon_tech_M_laser_cc           nodes   1 d 16750754-16750754 (33.2-33.2 km) r [394237] s 15-15 lod [1] thr 100000,30,165
+frame 1424 stations\station_scenes\tech\argon_tech_L_laser_Q            nodes   1 d 18480901-18480901 (36.6-36.6 km) r [620972] s 21-21 lod [1] thr 100000,250,154
+frame 4078 stations\living_sections\argon_livingsection                 nodes   3 d 3502004-12624625 (6.9-25.0 km) r [150032] s 7-27 lod [1] thr 100000,30,155
+frame 4078 stations\station_scenes\others\argon_spacedock               nodes   1 d 3547048-3547048 (7.0-7.0 km) r [1953631] s 352-352 lod [0] thr 100000,250,278
+frame 4078 stations\docks\argon_newdock_center                          nodes   1 d 6457092-6457092 (12.8-12.8 km) r [30842] s 3-3 lod [1] thr 100000,30,150
+frame 4078 stations\station_scenes\others\argon_equipmentdock           nodes   1 d 6721287-6721287 (13.3-13.3 km) r [1132932] s 107-107 lod [1] thr 100000,30,216
+frame 4078 Stations\others\military_outpost_middleb                     nodes   1 d 9724869-9724869 (19.3-19.3 km) r [2246786] s 147-147 lod [1] thr 100000,30,150
+frame 4078 stations\connections\connect_argon_pipe_medium_cargo_cargoanimA nodes  12 d 12140388-12509087 (24.0-24.8 km) r [61759] s 3-3 lod [0] thr 100000
+frame 4078 stations\station_scenes\tech\argon_tech_M_laser_cc           nodes   1 d 12250124-12250124 (24.3-24.3 km) r [394237] s 20-20 lod [1] thr 100000,30,165
+frame 4078 stations\station_scenes\others\argon_L_solarpowerplant       nodes   1 d 12585358-12585358 (24.9-24.9 km) r [1567294] s 79-79 lod [1] thr 100000,250,212
+frame 4078 stations\station_scenes\tech\argon_tech_L_laser_Q            nodes   1 d 15662158-15662158 (31.0-31.0 km) r [620972] s 25-25 lod [1] thr 100000,250,154
+frame 4078 stations\connections\connect_argon_pipe_huge_cargoanimA_     nodes   4 d 15763598-15829853 (31.2-31.3 km) r [150314] s 6-6 lod [0] thr 100000
+frame 4078 stations\connections\connect_argon_pipe_huge_cargoanimB_     nodes   2 d 15771114-15824824 (31.2-31.3 km) r [140475] s 5-5 lod [0] thr 100000
