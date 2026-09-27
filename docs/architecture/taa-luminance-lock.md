@@ -402,3 +402,74 @@ what keeps a textured plate out, not the eligibility alone). The flight acceptan
 | budget | new variant <= 1,250 slots; hold 3,968 dwords unchanged |
 
 Expected slots: 1,138 built + about 55 transport + about 5 residual, about 1,200 [I].
+
+## 11. After the section-10 build: the residual floor, the release reference, two row readings (2026-09-28)
+
+Section 10 built (ledger "Section 10 build: carried offset and residual detector"): 13 of 15 rows pass (carry 1.00 every
+pan frame, carry_band 2.00 max / 0 % off-strut, x-ramp plate 0.000, plate_sharp 1.000 with 0 interior pixel-frames
+differing, strut ripple 1.000x, resume, chatter 0, mover, slanted energy 1.000, lane, 1,217 slots, identity, state) [M,
+ledger]. Implementer departures accepted: the prediction is the bilinear history (s11) at `previousUV - current jitter`
+(the resolve's `old` is the history at the unjittered centre; against it the x ramp locks 55 %, model `centre`), the
+mode bit at 128 (64 collides with t = 64), the residual stored as `e + 128`, the generator timeout 300 s. Evidence for
+this section: `verification/results/taa-luminance-lock/floor_release_model.py` (`floor_release_model_out.txt`,
+`lock_share_model_resid_tau{2,3,4}_out.txt`) [M on the models].
+
+### (1) y-ramp plate: raise the smaller-residual floor to 3 codes
+
+The resolve's history is exponential (0.85 on an unlocked plate), not the phase mean of section 10's model; at a ramp's
+V between two texel rows its phase ripple lifts the smaller residual to the 2-code floor and the asymmetric test locks the
+row (the implementer's `yramp_ema_model.py` reproduces row 7 exactly) [M]. Decision: **TAU = 3 codes** (the one constant:
+the larger residual must reach `max(TAU, RHO * range3)`, the smaller `TAU`), the setting's third element, default
+`16,0.25,3`. No new mechanism.
+
+| floor (codes) | y-ramp EMA rows locking | fixture x / y ramp | strut form | slanted form (share >= 0.9) / energy | raster energy captured (4 views) | raster plate locked | predicted rest ripple vs 0.985 |
+|---|---|---|---|---|---|---|---|
+| 2 (built) | [7] | 0.000 / 0.000 | frame 1 | 7 / 1.000 | 0.900-0.918 | 0.03-0.45 % | 1.78-1.94x |
+| **3** | [] | 0.000 / 0.000 | frame 1 | 7 / 1.000 | 0.861-0.877 | 0.02-0.17 % | 2.15-2.30x |
+| 4 | [] | 0.000 / 0.000 | frame 1 | 7 / 1.000 | 0.831-0.863 | 0.01-0.10 % | 2.29-2.59x |
+
+Floor 3 clears every y-ramp row, keeps strut formation at frame 1 (<= 3) and the raster plate false locks at 0.02-0.17 %
+(<= 0.5 %), and costs 4-5 points of captured ripple energy: the predicted rest ripple rises to 2.2-2.3x today's blanket
+(the flown 0.95 blanket measured 2.5x, verdict pending; 0.90 measured 4.8x, rejected). Flight acceptance of section 10
+becomes rest rms <= 1.0 codes (2.3x of 0.422), > 4 codes <= 0.3 %. Why not the symmetric test at a kink: it needs a kink
+detector (a second difference of the history, more taps and slots) and the symmetric test loses the rarely covered strut
+pixels (section 10: 60-67 % energy); floor 4 buys 0.03-0.07 points of plate cleanliness for another 3 points of energy.
+If the flight shows plate speckle the floor is the knob (4); if it shows too much rest ripple, the fallback is FSR2's
+two-event rule (a first flip makes a candidate, a second within the lifetime a lock), which the raster's refresh rate
+(0.83-0.87 of locked pixels flip twice per cycle) says would cost about as much capture as floor 3 does.
+
+### (2) Shading step: a running-mean reference, release at 0.65 in q
+
+In q the fixture strut's own phase swing of the 3x3 mean (85 vs 116 codes, ratio 0.73) and a 40 % surround step
+(85 -> 59, ratio 0.69) are inseparable against a reference taken at creation, and the reference is phase-dependent
+(creation on a sampled phase: R = 116, the 20 % step then dies at any threshold above 0.63; on an unsampled phase: R = 85,
+the 40 % step survives 0.6) [M on the model]. The linear domain is worse (the swing there is 0.60, equal to the step).
+Decision: **the reference is a running mean of the 3x3 q mean, `R += (mean - R) / 8` every frame the lock is held
+(pan included), and the release threshold is 0.65.** R settles at the phase average (about 100 codes here), so the strut's
+frames read 0.85 / 0.86 against it and a step is judged against the average, not against one phase:
+
+| reference, threshold | false releases over 63 rest frames (fixture strut) | 20 % step | 40 % step |
+|---|---|---|---|
+| creation, 0.60 (built) | 0 | survives | survives with R = 85 (the fixture), dies with R = 116 |
+| creation, 0.65-0.70 | 0 | dies | dies |
+| creation, 0.75 | 63 | dies | dies |
+| **running, 0.65** | 0 | survives (0.73 at the unsampled phases, margin 0.08) | dies at +1 (0.59, margin 0.06) |
+| running, 0.60 / 0.70 | 0 / 0 | survives / survives (margin 0.03) | dies at +1 / dies at +1 |
+
+Cost: 2 slots (the lerp). Row acceptance: 20 % survives; 40 % dies within 2 frames of the step (the kill lands on the
+first unsampled phase after it). Because R follows a slow drift, a change slower than about 8 frames never releases; that
+case is bounded by the 7x7 box like every locked pixel. `X3M_TAA_LUMA_LOCK_RELEASE` default 0.65.
+
+### (3) Two row readings
+
+- mover: "re-formed within 3 frames" counts **after** the uncover frame u (the current-only return that writes the fresh
+  lane): u+1 holds the first residual, u+2 is the earliest lock, u+3 one phase of slack; locked at or before u+3 passes.
+  The built delay of 3 passes by this reading.
+- slanted line forming at frame 8 with 1.16x the blanket's ripple over the fixture window: **accepted for the first
+  flight, not gated.** The late formers are the pixels partly covered in every phase, whose residual alternates once per
+  jitter period (model: share >= 0.9 at frame 7 at every floor), and the 1.16x is the formation frames inside the window;
+  in flight the blanket itself reaches 0.985 only at age 64, so a lock at frame 8 holds earlier than today's far weight
+  does. Proposed gate for the next fixture run: slanted ripple from frame 8 on within 1.05x the blanket (after formation
+  the weight and clip are the blanket's).
+
+Expected slots: 1,217 + 2 (running mean), the floor is a constant change [I].

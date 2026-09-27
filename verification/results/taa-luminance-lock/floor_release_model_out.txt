@@ -1,0 +1,35 @@
+floor 2 codes: y-ramp EMA rows locking [7]
+  fixture x-ramp (phase-mean history): lock share max 0.000
+  fixture y-ramp (phase-mean history): lock share max 0.000
+  fixture vertical struts: form frame 1, share frames 8..15 min 1.00
+  fixture slanted line: form frame (share >= 0.9) 7, share at 15 1.00, ripple energy on locked 1.000
+  raster military_outpost_middleb s 110: resid2: lock share 0.177 ripple energy captured 0.911 plate locked 0.17 % of plate px refresh>=2 0.89 predicted rest ripple vs today 1.83x
+  raster military_outpost_middleb s 147: resid2: lock share 0.145 ripple energy captured 0.912 plate locked 0.21 % of plate px refresh>=2 0.88 predicted rest ripple vs today 1.82x
+  raster argon_L_solarpowerplant s 65: resid2: lock share 0.322 ripple energy captured 0.918 plate locked 0.03 % of plate px refresh>=2 0.84 predicted rest ripple vs today 1.78x
+  raster argon_spacedock s 188: resid2: lock share 0.357 ripple energy captured 0.900 plate locked 0.45 % of plate px refresh>=2 0.85 predicted rest ripple vs today 1.94x
+floor 3 codes: y-ramp EMA rows locking []
+  fixture x-ramp (phase-mean history): lock share max 0.000
+  fixture y-ramp (phase-mean history): lock share max 0.000
+  fixture vertical struts: form frame 1, share frames 8..15 min 1.00
+  fixture slanted line: form frame (share >= 0.9) 7, share at 15 1.00, ripple energy on locked 1.000
+  raster military_outpost_middleb s 110: resid2: lock share 0.149 ripple energy captured 0.865 plate locked 0.05 % of plate px refresh>=2 0.86 predicted rest ripple vs today 2.26x
+  raster military_outpost_middleb s 147: resid2: lock share 0.119 ripple energy captured 0.861 plate locked 0.07 % of plate px refresh>=2 0.87 predicted rest ripple vs today 2.30x
+  raster argon_L_solarpowerplant s 65: resid2: lock share 0.291 ripple energy captured 0.877 plate locked 0.02 % of plate px refresh>=2 0.80 predicted rest ripple vs today 2.15x
+  raster argon_spacedock s 188: resid2: lock share 0.315 ripple energy captured 0.869 plate locked 0.17 % of plate px refresh>=2 0.83 predicted rest ripple vs today 2.23x
+floor 4 codes: y-ramp EMA rows locking []
+  fixture x-ramp (phase-mean history): lock share max 0.000
+  fixture y-ramp (phase-mean history): lock share max 0.000
+  fixture vertical struts: form frame 1, share frames 8..15 min 1.00
+  fixture slanted line: form frame (share >= 0.9) 7, share at 15 1.00, ripple energy on locked 1.000
+  raster military_outpost_middleb s 110: resid2: lock share 0.131 ripple energy captured 0.831 plate locked 0.01 % of plate px refresh>=2 0.85 predicted rest ripple vs today 2.59x
+  raster military_outpost_middleb s 147: resid2: lock share 0.106 ripple energy captured 0.831 plate locked 0.03 % of plate px refresh>=2 0.84 predicted rest ripple vs today 2.59x
+  raster argon_L_solarpowerplant s 65: resid2: lock share 0.280 ripple energy captured 0.863 plate locked 0.01 % of plate px refresh>=2 0.78 predicted rest ripple vs today 2.29x
+  raster argon_spacedock s 188: resid2: lock share 0.293 ripple energy captured 0.850 plate locked 0.10 % of plate px refresh>=2 0.84 predicted rest ripple vs today 2.41x
+release ref creation threshold 0.60: false releases over 63 rest frames  0; step x0.8 survives; step x0.6 dies at +1
+release ref creation threshold 0.65: false releases over 63 rest frames  0; step x0.8 dies at +1; step x0.6 dies at +1
+release ref creation threshold 0.70: false releases over 63 rest frames  0; step x0.8 dies at +1; step x0.6 dies at +1
+release ref creation threshold 0.75: false releases over 63 rest frames 63; step x0.8 dies at +1; step x0.6 dies at +1
+release ref running  threshold 0.60: false releases over 63 rest frames  0; step x0.8 survives; step x0.6 dies at +1
+release ref running  threshold 0.65: false releases over 63 rest frames  0; step x0.8 survives; step x0.6 dies at +1
+release ref running  threshold 0.70: false releases over 63 rest frames  0; step x0.8 survives; step x0.6 dies at +1
+release ref running  threshold 0.75: false releases over 63 rest frames 63; step x0.8 dies at +1; step x0.6 dies at +1

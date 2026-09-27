@@ -1,0 +1,34 @@
+== stations/others/military_outpost_middleb record 0 rho 0.25 tau 2.0/255 gains lock 0.02 base 0.208
+  s 110: covered px 71074 flip share 0.085 plate px 53465 (75.2 %); rest ripple today (all 0.985) 1.00, all at base 10.4x
+    flip : lock share 0.230 ripple energy captured 0.952 plate locked 1.47 % of plate px refresh>=2 0.68 predicted rest ripple vs today 1.45x
+    ridge: lock share 0.111 ripple energy captured 0.414 plate locked 3.07 % of plate px refresh>=2 0.71 predicted rest ripple vs today 6.51x
+    both : lock share 0.047 ripple energy captured 0.265 plate locked 0.00 % of plate px refresh>=2 0.42 predicted rest ripple vs today 7.91x
+    resid: lock share 0.117 ripple energy captured 0.616 plate locked 0.00 % of plate px refresh>=2 0.71 predicted rest ripple vs today 4.61x
+    resid2: lock share 0.177 ripple energy captured 0.911 plate locked 0.17 % of plate px refresh>=2 0.89 predicted rest ripple vs today 1.83x
+    flipveto: lock share 0.205 ripple energy captured 0.934 plate locked 0.46 % of plate px refresh>=2 0.66 predicted rest ripple vs today 1.62x
+  s 147: covered px 125443 flip share 0.065 plate px 101226 (80.7 %); rest ripple today (all 0.985) 1.00, all at base 10.4x
+    flip : lock share 0.186 ripple energy captured 0.954 plate locked 1.21 % of plate px refresh>=2 0.71 predicted rest ripple vs today 1.43x
+    ridge: lock share 0.067 ripple energy captured 0.299 plate locked 1.44 % of plate px refresh>=2 0.65 predicted rest ripple vs today 7.59x
+    both : lock share 0.027 ripple energy captured 0.168 plate locked 0.00 % of plate px refresh>=2 0.38 predicted rest ripple vs today 8.83x
+    resid: lock share 0.102 ripple energy captured 0.667 plate locked 0.01 % of plate px refresh>=2 0.71 predicted rest ripple vs today 4.13x
+    resid2: lock share 0.145 ripple energy captured 0.912 plate locked 0.21 % of plate px refresh>=2 0.88 predicted rest ripple vs today 1.82x
+    flipveto: lock share 0.167 ripple energy captured 0.937 plate locked 0.29 % of plate px refresh>=2 0.70 predicted rest ripple vs today 1.59x
+  (5 s)
+== stations/station_scenes/others/argon_L_solarpowerplant record 0 rho 0.25 tau 2.0/255 gains lock 0.02 base 0.208
+  s 65: covered px 35877 flip share 0.125 plate px 21401 (59.7 %); rest ripple today (all 0.985) 1.00, all at base 10.4x
+    flip : lock share 0.329 ripple energy captured 0.920 plate locked 0.03 % of plate px refresh>=2 0.69 predicted rest ripple vs today 1.76x
+    ridge: lock share 0.367 ripple energy captured 0.863 plate locked 3.27 % of plate px refresh>=2 0.79 predicted rest ripple vs today 2.29x
+    both : lock share 0.197 ripple energy captured 0.550 plate locked 0.00 % of plate px refresh>=2 0.52 predicted rest ripple vs today 5.23x
+    resid: lock share 0.203 ripple energy captured 0.631 plate locked 0.00 % of plate px refresh>=2 0.68 predicted rest ripple vs today 4.47x
+    resid2: lock share 0.322 ripple energy captured 0.918 plate locked 0.03 % of plate px refresh>=2 0.84 predicted rest ripple vs today 1.78x
+    flipveto: lock share 0.304 ripple energy captured 0.887 plate locked 0.03 % of plate px refresh>=2 0.67 predicted rest ripple vs today 2.06x
+  (4 s)
+== stations/station_scenes/others/argon_spacedock record 0 rho 0.25 tau 2.0/255 gains lock 0.02 base 0.208
+  s 188: covered px 34595 flip share 0.170 plate px 16257 (47.0 %); rest ripple today (all 0.985) 1.00, all at base 10.4x
+    flip : lock share 0.466 ripple energy captured 0.942 plate locked 2.37 % of plate px refresh>=2 0.70 predicted rest ripple vs today 1.55x
+    ridge: lock share 0.258 ripple energy captured 0.408 plate locked 6.03 % of plate px refresh>=2 0.64 predicted rest ripple vs today 6.56x
+    both : lock share 0.124 ripple energy captured 0.242 plate locked 0.00 % of plate px refresh>=2 0.55 predicted rest ripple vs today 8.12x
+    resid: lock share 0.244 ripple energy captured 0.600 plate locked 0.04 % of plate px refresh>=2 0.72 predicted rest ripple vs today 4.76x
+    resid2: lock share 0.357 ripple energy captured 0.900 plate locked 0.45 % of plate px refresh>=2 0.85 predicted rest ripple vs today 1.94x
+    flipveto: lock share 0.420 ripple energy captured 0.917 plate locked 0.38 % of plate px refresh>=2 0.69 predicted rest ripple vs today 1.78x
+  (3 s)
