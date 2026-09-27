@@ -25,6 +25,17 @@ selected in the start menu). After you install, update or remove a mod, run
 The same console text, with timestamps, goes to `x3m-regenerate.log` next to the
 executable. The file is rewritten on each run.
 
+**CrossOver Preview (macOS, arm64):** double-clicking the executable in a game directory as short
+as `C:\X3` makes it exit at once with no window and no log. That is a bug in the x64 emulator
+CrossOver Preview ships (FEX in `xtajit64.dll`), which drops the executable's name during process
+start when the full path is longer than 22 characters and the name begins at character 7 or earlier;
+it happens before the tool's first instruction and does not exist on Windows. Start it instead with
+CrossOver's "Run Command" using the Z: spelling of the path, for example
+`Z:\Users\<you>\Library\Application Support\CrossOver\Bottles\X3\drive_c\X3\x3m-regenerate.exe`,
+or from a Terminal with `"/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine" --bottle X3 "<that Z: path>"`.
+Game directories with longer paths, such as Steam's default, are not affected. Details:
+[lod-overlay-mods.md](../architecture/lod-overlay-mods.md), the 2026-09-28 section.
+
 ## What the log says
 
 - `processing fog <family> (i/n) baked`: a nebula family the renderer does not
