@@ -12,12 +12,20 @@ files, material table kind, second UV set, alpha materials, the reasons `--colla
 draws saved against record 0 and against the coarsest record, and the estimated overlay cost.
 Nothing is baked, built or written into the game directory: the atlas checks run
 lod_atlas.collapse (effect / occlusion classes, layout, UV rewrite and group split; no
-baking) on a copy of the material table. With include_text (the batch), winning text bodies
-(.pbd/.bod without a binary twin) are compiled by bob1.parse_text and censused like binary ones
-(column text; the compile follows the engine's text loader 0x00483f20; a text scene is skipped
-like CUT1, a MATERIAL3 text body is mat3, any other body outside the grammar or whose compile does
-not re-parse equal is text_parse_error); a stem with both a binary
-and a text member is ambiguous_body_ext (bob1.resolve_body). Stray bytes after a well-formed
+baking) on a copy of the material table. Each body stem gives one row, for the member the engine
+loads (bob1.resolve_body, body-format-bob1.md section 7.1): a loose file first, otherwise the highest
+catalogue holding the stem under any of .pbb .bob .pbd .bod, the extension rank .pbb > .bob > .pbd >
+.bod only inside that catalogue, so a text member in a higher catalogue beats a binary one below it.
+With include_text (the batch), text winners (.pbd/.bod) are compiled by bob1.parse_text and censused
+like binary ones (column text; the compile follows the engine's text loader 0x00483f20; a text scene
+is skipped like CUT1, a MATERIAL3 text body is mat3, any other body outside the grammar or whose
+compile does not re-parse equal is text_parse_error); without it they are left out. With
+opts['overlay_target'] (the catalogue the batch writes: its first slot, or with opts['overlay_replaces']
+the selected package whose derived copy replaces it) a stem with a member in a catalogue mounted above
+that target, or in a foreign numbered target itself, is overlay_cannot_win (bob1.overlay_outranked).
+Catalogues numbered after a gap are not mounted and not read as sources; a stem whose winner the note
+does not establish is refused before parsing: loose_root_unverified (a loose member under
+<game>/addon/objects) or lang_variant (a -L<nnn> member at or above the winner). Stray bytes after a well-formed
 /BOB (any number, lod_overlay.MAX_TRAILING = None; the engine parser returns at /BOB) parse
 with a warning column (trailing, the count); a body that does not parse up to /BOB is parse_error. Each row carries inputs_sha256 (the decoded body plus every texture the
 tiles read) for lod_overlay.py --batch --sync. A body with a lod_recipes.RECIPES entry has its atlas
@@ -47,8 +55,8 @@ Costs: atlas bytes = DDS bytes of the slots the tool writes with --atlas-specula
 bump only when the dominant material has a bump slot) with a full mip chain at the chosen side.
 A lower bound: diffuse is counted DXT1 and light/bump/specular DXT5 as on the pilot, but
 lod_atlas.encode picks DXT5 for any slot whose level-0 alpha is not all 255, which is not known
-without baking. Body member bytes ~ record 0 bytes x 1.2. Before any check, the body must resolve
-through bob1.resolve_body as lod_overlay.plan_body does (both .pbb and .pbd -> ambiguous_body_ext).
+without baking. Body member bytes ~ record 0 bytes x 1.2. The censused member is the one
+bob1.resolve_body returns, which lod_overlay.plan_body resolves again (a disagreement is resolve_mismatch).
 Atlas member names use lod_overlay.qualified_stem (stem + path hash), so stems never collide.
 Sizes are tried from --atlas-size up to --atlas-max-size (default 4096, above the tool's 2048
 default, so the need is visible); the summary also gives the 2048-capped totals.
@@ -320,6 +328,10 @@ def census_body(assets, textures, entry, opts):
     name = bob1.body_stem(path)[len('objects/'):]
     row = dict(name=name, member=f'{entry["source"]}:{path}', source=entry['source'], path=path,
                cat=category(path), refuse=[], filter=[], trailing=0)
+    try:                                   # the resolver lod_overlay.plan_body uses first
+        won = bob1.resolve_body(assets, name)
+    except bob1.BodyRefused as exc:        # the engine's choice is not established for this stem
+        return dict(row, refuse=[exc.reason], atlas_error=str(exc)[:160])
     data = assets.read_entry(entry)
     k = bob1.kind(data)
     if path.lower().endswith(TEXT_EXTENSIONS):
@@ -353,12 +365,11 @@ def census_body(assets, textures, entry, opts):
     row['trailing'] = tree.get('trailing_bytes', 0)
     body_data = data[:len(data) - row['trailing']] if row['trailing'] else data
     row['source_decoded_sha256'] = hashlib.sha256(data).hexdigest()
-    try:                                   # the resolver lod_overlay.plan_body uses first
-        won = bob1.resolve_body(assets, name)
-        if (won['source'], won['path']) != (entry['source'], entry['path']):
-            row['refuse'].append('resolve_mismatch')
-    except bob1.FormatError:               # both .pbb and .pbd exist: engine order unverified
-        row['refuse'].append('ambiguous_body_ext')
+    if (won['source'], won['path']) != (entry['source'], entry['path']):
+        row['refuse'].append('resolve_mismatch')
+    if opts.get('overlay_target') and bob1.overlay_outranked(assets, name, opts['overlay_target'],
+                                                             bool(opts.get('overlay_replaces'))):
+        row['refuse'].append('overlay_cannot_win')   # a member mounted above the overlay would still win
     if not row.get('text') and bob1.serialise(tree) != body_data:
         row['refuse'].append('writer_mismatch')
     if 'loose' in entry:
@@ -496,7 +507,7 @@ def _init(game, opts, mods=()):
 
 def _work(key):
     w = _WORKER
-    entry = w['assets'].entries[key][-1]
+    entry = winning_entry(w['assets'], key) or w['assets'].entries[key][-1]
     try:
         row = census_body(w['assets'], w['textures'], entry, w['opts'])
     except Exception as exc:                        # one bad body must not end the census
@@ -507,17 +518,36 @@ def _work(key):
     return row
 
 
+def winning_entry(assets, key):
+    """The engine's winner of the key's stem (bob1.resolve_body) when it is one of this key's entries, else None
+    (the stem's other key, binary or text, holds the winner). A key outside objects/ is its own winner. A stem
+    the resolver refuses (bob1.BodyRefused) is represented by its first key in addon/.bob, addon/.bod, .bob,
+    .bod order that holds a mounted member, so it gives one (refused) row; a stem with no mounted member none."""
+    if not key.removeprefix('addon/').startswith('objects/'):
+        return assets.entries[key][-1]
+    try:
+        won = bob1.resolve_body(assets, key)
+    except FileNotFoundError:              # every member sits in a catalogue after a numbering gap
+        return None
+    except bob1.BodyRefused:
+        base = key.removeprefix('addon/')[:-4]
+        first = next(k for k in ('addon/' + base + '.bob', 'addon/' + base + '.bod', base + '.bob', base + '.bod')
+                     if any(bob1.mounted(assets, e) for e in assets.entries.get(k, [])))
+        return assets.entries[key][-1] if key == first else None
+    return won if any(e is won for e in assets.entries[key]) else None
+
+
 def body_keys(assets):
-    """Winning binary bodies (.pbb and unpacked .bob members share one canonical key)."""
-    return sorted(k for k, v in assets.entries.items() if v[-1]['path'].lower().endswith(BINARY_EXTENSIONS))
+    """Stems whose engine winner is binary (.pbb and unpacked .bob members share one canonical key)."""
+    return sorted(k for k, v in assets.entries.items() if v[-1]['path'].lower().endswith(BINARY_EXTENSIONS)
+                  and winning_entry(assets, k) is not None)
 
 
 def text_body_keys(assets):
-    """Winning text bodies (.pbd/.bod) whose stem has no binary member anywhere (those are the
-    ambiguous_body_ext rows of the binary key); cut scenes (objects/cut) are left out."""
-    binary = {k[:-4] for k in body_keys(assets)}
+    """Stems whose engine winner is text (.pbd/.bod), including a text member in a higher catalogue than a
+    binary one; cut scenes (objects/cut) are left out."""
     return sorted(k for k, v in assets.entries.items()
-                  if v[-1]['path'].lower().endswith(TEXT_EXTENSIONS) and k[:-4] not in binary
+                  if v[-1]['path'].lower().endswith(TEXT_EXTENSIONS) and winning_entry(assets, k) is not None
                   and not k.startswith(('objects/cut/', 'addon/objects/cut/')))
 
 

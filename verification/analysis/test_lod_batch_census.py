@@ -65,7 +65,7 @@ class BatchCensus(unittest.TestCase):
             ('objects/ships/x/m3.pbb', packed(variant('mat3'))),
             ('objects/ships/x/capped.pbb', packed(with_threshold(atlas_tree_lod0(), 100))),  # 2.5 x 100 -> cap 200
             ('objects/ships/x/over.pbb', packed(with_threshold(atlas_tree_lod0(), 300))),    # cap 200 < T_1 300
-            ('objects/ships/x/amb.pbb', packed(atlas_tree_lod0())),               # .pbb and .pbd both exist
+            ('objects/ships/x/amb.pbb', packed(atlas_tree_lod0())),               # .pbb and .pbd in one slot: .pbb
             ('objects/ships/x/amb.pbd', b'BODY 0\n'),
             ('objects/cut/00001.pbb', gzip.compress(b'CUT1' + b'\0' * 8, mtime=0))])
         write_catalogue(game / 'addon/01.cat', [('objects/ships/x/good.pbb', gzip.compress(b'junk', mtime=0))])
@@ -89,7 +89,7 @@ class BatchCensus(unittest.TestCase):
                                                'ships/x/over', 'ships/x/amb', 'ships/x/capped')}
         self.assertEqual(refuse, {'ships/x/uv': [], 'ships/x/mixed': [],                  # handled, not refused
                                   'ships/x/oob': ['material_outside_table'], 'ships/x/m3': ['mat3'],
-                                  'ships/x/over': [], 'ships/x/amb': ['ambiguous_body_ext'],
+                                  'ships/x/over': [], 'ships/x/amb': [],
                                   'ships/x/capped': []})
         self.assertEqual((by['ships/x/capped']['t_pad'], by['ships/x/over']['t_pad']), (200, 200))
         self.assertTrue(by['ships/x/capped']['eligible'])

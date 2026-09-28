@@ -613,3 +613,41 @@ binary bodies carry a tail (the fog tool's view, overlay catalogues included, se
 members are clean and replace the rest), 1 is `parse_error`. The fog tool's
 dry run (248 family rows, counts) and `--check` of the installed `fog-families.bin` (70 families, 35 packets) are
 identical before and after the change (`fog_dryrun_compare.py`, measured).
+
+## 2026-09-29 baker applies the body extension precedence (host-only, dry run; not installed)
+
+`bob1.resolve_body` now returns the engine's winner (§7.1 rule; `ambiguous_body_ext` is gone). The census gives one
+row per stem for that member: a text winner goes through `parse_text`, and `--binary-only` leaves it out. The overlay
+writes the binary member of the stem into its own slot, which is mounted above every source catalogue, so it wins by
+catalogue precedence. `bob1.overlay_outranked` refuses a stem as `overlay_cannot_win` in two cases:
+- a member of the stem sits above the batch's first slot, or above the selected package that the derived copy
+  replaces;
+- a member sits inside a foreign numbered slot that `--slot N --force-slot` targets; that slot is not treated as
+  replaced.
+
+This happens only with a forced slot: 0 of 30 in the run below. A forced batch slot above the next free number is
+refused, `--out` and `--dry-run` included, because the engine stops mounting at the first gap (`0x004ec9e0`).
+
+Review fixes (same day):
+- The resolver ignores catalogues numbered after a gap.
+- It refuses `loose_root_unverified` for a loose member under `<game>/addon/objects`, since §7 establishes only
+  `objects\` relative to the game folder.
+- It refuses `lang_variant` for a `-L<nnn>` member that is loose or at or above the winner.
+
+Scripts and outputs are in `verification/results/lod-mayhem-refusals/ext_*` [m]. Every figure below describes the
+tree merged onto main `da3ba6b0` (occlusion classes, trailing bytes) plus this change.
+- **Resolver vs `ext_precedence_out.txt`:** 58 of 58 winners match (`ext_resolve_check.py`). Ship/station winners are
+  27 binary and 3 text.
+- **Pre-change resolver:** of 6,128 single-kind stems, 0 resolve differently.
+- **Install, all 6,195 body stems:** no catalogue after a gap, no loose file under `addon/objects`, no `-L<nnn>` body
+  key, and 0 resolver refusals.
+- **Dry run over the 30 ship/station rows** (`ext_dry_run.py`, `--batch --dry-run --only`): none refused
+  `ambiguous_body_ext`.
+  - **Baked:** 13, including the text winner `stations/x3tc/xstation_part_a`.
+  - **Filtered `no_draw_gain`:** 11.
+  - **Refused:** `no_opaque` 2 (`others/argon_gate_effect` text, `ships/props/invisible_weapon`),
+    `non_effect_material` 2, `texel_floor` 1 (`ships/MM6/Teladi_MM6FAN`), and `text_parse_error` 1 (`others/argon_gate`
+    `.pbd`: "text body has no body record").
+- **Byte identity** (`ext_byte_identity.py`): run on `git archive da3ba6b0 tools/analysis` (main without this
+  change) and on the merged tree, 6 recorded-built bodies (2 each from `.pbb`, `.bob` and `.pbd` sources) give 30
+  members with identical sha256. The output also equals the pre-merge run against `0c2f01a6`.

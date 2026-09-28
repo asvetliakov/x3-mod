@@ -788,16 +788,124 @@ def body_stem(name):
     return stem
 
 
+class BodyRefused(FormatError):
+    """resolve_body cannot name the engine's winner with established evidence; reason is the refusal code."""
+    def __init__(self, reason, message):
+        super().__init__(f'{reason}: {message}')
+        self.reason = reason
+
+
+REFUSAL_REASONS = ('loose_root_unverified', 'lang_variant')
+_LANG_KEY = re.compile(r'(.*)-l\d{3}\.(?:bob|bod)')
+
+
+def mount_key(assets, source):
+    """Sort key of a catalogue layer in the engine's mount order (0x004ec9e0): NN.cat, then addon/NN.cat by
+    number, then the selected packages (Assets mods, in their layer order) above every numbered slot. A source
+    not among assets.layers (a slot the overlay is about to write) ranks by its number."""
+    m = re.fullmatch(r'(addon/)?(\d\d)\.cat', source)
+    if m:
+        return (1 if m.group(1) else 0, int(m.group(2)))
+    layers = getattr(assets, 'layers', [])
+    return (2, layers.index(source) if source in layers else len(layers))
+
+
+def mounted(assets, entry):
+    """False for a member of NN.cat or addon/NN.cat numbered after the first missing number: the engine's mount
+    loop (0x004ec9e0) stops there (Assets itself reads every NN.cat; only the body resolver drops them)."""
+    if 'loose' in entry:
+        return True
+    m = re.fullmatch(r'(addon/)?(\d\d)\.cat', entry['source'])
+    if not m:
+        return True
+    runs = assets.__dict__.get('_x3m_mounted')
+    if runs is None:
+        layers, runs = set(getattr(assets, 'layers', [])), {}
+        for prefix in ('', 'addon/'):
+            n = 0
+            while f'{prefix}{n + 1:02d}.cat' in layers:
+                n += 1
+            runs[prefix] = n
+        assets._x3m_mounted = runs
+    return int(m.group(2)) <= runs[m.group(1) or '']
+
+
+def _stem_key(name):
+    return body_stem(name).lower().removeprefix('addon/')
+
+
+def body_members(assets, name):
+    """Every mounted entry of a body stem under the four body extensions (.pbb/.bob share one canonical key,
+    .pbd/.bod the other), from both the objects/ and the addon/objects/ key (selected packages and loose files
+    under <game>/addon/objects sit under the latter), loose files included."""
+    key = _stem_key(name)
+    out = []
+    for ext in ('.bob', '.bod'):
+        for k in ('addon/' + key + ext, key + ext):
+            out += [e for e in assets.entries.get(k, []) if mounted(assets, e)]
+    return out
+
+
+def lang_variants(assets, name):
+    """Mounted <stem>-L<nnn>.<ext> members of a body stem (any language, any of the four extensions)."""
+    index = assets.__dict__.get('_x3m_lang')
+    if index is None:
+        index = {}
+        for k, v in assets.entries.items():
+            m = _LANG_KEY.fullmatch(k)
+            if m:
+                index.setdefault(m.group(1).removeprefix('addon/'), []).extend(v)
+        assets._x3m_lang = index
+    return [e for e in index.get(_stem_key(name), []) if mounted(assets, e)]
+
+
+def _ext_rank(entry):
+    return BODY_EXTENSIONS.index(Path(entry['path']).suffix.lower())
+
+
 def resolve_body(assets, name):
-    """Winning archive entry for a body name under the Assets overlay precedence."""
-    stem = body_stem(name)
-    found = [(ext, assets.candidates(stem + ext)) for ext in ('.pbb', '.pbd')]  # .bob/.bod alias these
-    found = [(ext, entries) for ext, entries in found if entries]
-    if not found:
-        raise FileNotFoundError(f'no body resource for {stem}')
-    if len(found) > 1:
-        raise FormatError(f'both binary and text bodies exist for {stem}; engine order unverified')
-    return found[0][1][-1]
+    """The engine's winning entry for a body name (body-format-bob1.md section 7.1, resolver 0x004e7590):
+    a loose file wins first; otherwise the highest mounted catalogue that holds the stem under any of
+    .pbb .bob .pbd .bod wins, and the extension rank .pbb > .bob > .pbd > .bod (0x004e7470, 0x00561180)
+    decides only among the members of that one catalogue. Catalogue precedence beats extension order, so
+    a text member in a higher catalogue wins over a binary one below it. Catalogues numbered after a gap are
+    not mounted (0x004ec9e0) and are ignored.
+
+    Raises BodyRefused where the note does not establish the engine's choice:
+    loose_root_unverified: a loose member under <game>/addon/objects (section 7 establishes the loose phase
+    only for objects\\ relative to the game folder), alone or next to one under <game>/objects;
+    lang_variant: a <stem>-L<nnn> member that is loose or sits in the winner's catalogue or above it (it is
+    preferred over the plain name for the running language, which is not modelled)."""
+    members = body_members(assets, name)
+    if not members:
+        raise FileNotFoundError(f'no body resource for {body_stem(name)}')
+    pool = [e for e in members if 'loose' in e]
+    if any(e['path'].lower().startswith('addon/') for e in pool):
+        raise BodyRefused('loose_root_unverified', f'{body_stem(name)} has a loose member under addon/objects'
+                          f' ({", ".join(sorted(e["path"] for e in pool))}); the engine\'s loose phase is only'
+                          ' established for <game>/objects')
+    if not pool:
+        top = max(mount_key(assets, e['source']) for e in members)
+        pool = [e for e in members if mount_key(assets, e['source']) == top]
+    best = min(_ext_rank(e) for e in pool)
+    won = [e for e in pool if _ext_rank(e) == best][-1]      # a duplicate member: the later one, as before
+    beats = [v for v in lang_variants(assets, name) if 'loose' in v or
+             ('loose' not in won and mount_key(assets, v['source']) >= mount_key(assets, won['source']))]
+    if beats:
+        raise BodyRefused('lang_variant', f'{body_stem(name)}: language variant'
+                          f' {beats[-1]["source"]}:{beats[-1]["path"]} would be preferred over {won["path"]}')
+    return won
+
+
+def overlay_outranked(assets, name, target, replaces=False):
+    """Catalogue entries of a body stem (language variants included) that a member written into the catalogue
+    layer `target` cannot beat: every member mounted above target, whatever its extension, and the members of
+    target itself unless the write replaces that layer (replaces=True: the selected package whose derived copy
+    is selected in its place). A numbered target that still holds members is a foreign slot, not replaced.
+    Loose members beat every catalogue as well; they are the resolve_body winner (loose_winner), not listed."""
+    key = mount_key(assets, target)
+    return [e for e in body_members(assets, name) + lang_variants(assets, name) if 'loose' not in e
+            and (mount_key(assets, e['source']) > key or (not replaces and mount_key(assets, e['source']) == key))]
 
 
 def load(target, game=DEFAULT_GAME):

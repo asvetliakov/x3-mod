@@ -145,6 +145,97 @@ class Bob1Format(unittest.TestCase):
             self.assertEqual(bob1.body_stem(name).lower(), 'objects/stations/test/body')
 
 
+class BodyPrecedence(unittest.TestCase):
+    """bob1.resolve_body follows the engine resolver 0x004e7590 (body-format-bob1.md section 7.1): loose file,
+    then the highest catalogue holding the stem, then .pbb > .bob > .pbd > .bod inside that catalogue."""
+    def winner(self, layers, loose=()):
+        with tempfile.TemporaryDirectory() as folder:
+            game = Path(folder)
+            for cat, members in layers.items():
+                write_catalogue(game / cat, [(f'objects/ships/x/s.{ext}', ext.encode()) for ext in members])
+            for ext in loose:
+                (game / 'objects/ships/x').mkdir(parents=True, exist_ok=True)
+                (game / f'objects/ships/x/s.{ext}').write_bytes(ext.encode())
+            assets = Assets(game)
+            e = bob1.resolve_body(assets, 'ships\\x\\s')
+            return e['source'], Path(e['path']).suffix[1:], assets.read_entry(e)
+
+    def test_one_slot_binary_wins(self):
+        self.assertEqual(self.winner({'01.cat': ['pbd', 'pbb']}), ('01.cat', 'pbb', b'pbb'))
+
+    def test_text_in_higher_slot_wins(self):
+        self.assertEqual(self.winner({'02.cat': ['pbb'], 'addon/01.cat': ['pbd']})[:2], ('addon/01.cat', 'pbd'))
+        self.assertEqual(self.winner({'01.cat': ['pbb'], '02.cat': ['pbd']})[:2], ('02.cat', 'pbd'))
+
+    def test_binary_in_higher_slot_wins(self):
+        self.assertEqual(self.winner({'01.cat': ['pbd'], 'addon/02.cat': ['pbb'], 'addon/01.cat': ['pbd']})[:2],
+                         ('addon/02.cat', 'pbb'))
+
+    def test_loose_over_catalogue(self):
+        self.assertEqual(self.winner({'addon/01.cat': ['pbb']}, loose=['bod']), ('loose:objects/ships/x/s.bod', 'bod', b'bod'))
+        self.assertEqual(self.winner({'01.cat': ['pbd']}, loose=['bob', 'pbd'])[1], 'bob')
+
+    def test_bob_and_bod_aliases(self):
+        self.assertEqual(self.winner({'01.cat': ['bob', 'pbb']})[1:], ('pbb', b'pbb'))          # .pbb > .bob
+        self.assertEqual(self.winner({'01.cat': ['pbd', 'bob']})[1], 'bob')                   # .bob > .pbd
+        self.assertEqual(self.winner({'01.cat': ['bod', 'pbd']})[1], 'pbd')                   # .pbd > .bod
+        self.assertEqual(self.winner({'01.cat': ['bod', 'bob']})[1], 'bob')                   # .bob > .bod
+        self.assertEqual(self.winner({'01.cat': ['pbb'], 'addon/01.cat': ['bod']})[:2], ('addon/01.cat', 'bod'))
+        self.assertEqual(self.winner({'01.cat': ['bod'], '02.cat': ['bob']})[:2], ('02.cat', 'bob'))
+
+    def test_overlay_member_wins_or_is_outranked(self):
+        with tempfile.TemporaryDirectory() as folder:
+            game = Path(folder)
+            write_catalogue(game / '01.cat', [('objects/ships/x/s.pbb', b'a')])
+            write_catalogue(game / 'addon/01.cat', [('objects/ships/x/s.pbd', b'b')])   # text winner above binary
+            write_catalogue(game / 'addon/02.cat', [('objects/ships/x/t.pbd', b'c')])   # text in a foreign slot 02
+            assets = Assets(game)
+            self.assertEqual(bob1.overlay_outranked(assets, 'ships/x/s', 'addon/03.cat'), [])   # the next free slot
+            self.assertEqual(bob1.overlay_outranked(assets, 'ships/x/t', 'addon/03.cat'), [])
+            self.assertEqual([e['source'] for e in bob1.overlay_outranked(assets, 'ships/x/t', 'addon/01.cat')],
+                             ['addon/02.cat'])                                    # a text member above the slot
+            self.assertEqual([e['source'] for e in bob1.overlay_outranked(assets, 'ships/x/t', 'addon/02.cat')],
+                             ['addon/02.cat'])                                    # a foreign slot is not replaced
+            self.assertEqual(bob1.overlay_outranked(assets, 'ships/x/t', 'addon/02.cat', replaces=True), [])
+            write_catalogue(game / 'addon/03.cat', [('objects/ships/x/s.pbb', b'o'), ('objects/ships/x/t.pbb', b'o')])
+            after = Assets(game)                              # the engine view with the overlay slot mounted
+            self.assertEqual(after.read_entry(bob1.resolve_body(after, 'ships/x/s')), b'o')
+            self.assertEqual(after.read_entry(bob1.resolve_body(after, 'ships/x/t')), b'o')
+
+    def test_gap_loose_root_and_language_variants(self):
+        with tempfile.TemporaryDirectory() as folder:
+            game = Path(folder)
+            write_catalogue(game / '01.cat', [('objects/ships/x/s.pbb', b'a'), ('objects/ships/x/v.pbb', b'a'),
+                                              ('objects/ships/x/w-L049.pbb', b'l')])
+            write_catalogue(game / 'addon/01.cat', [('objects/ships/x/v-L044.pbd', b'l'), ('objects/ships/x/w.pbb', b'w')])
+            write_catalogue(game / 'addon/03.cat', [('objects/ships/x/s.pbd', b'gap')])   # after the gap: not mounted
+            (game / 'addon/objects/ships/x').mkdir(parents=True)
+            (game / 'addon/objects/ships/x/r.bod').write_bytes(b'r')
+            (game / 'objects/ships/x').mkdir(parents=True)
+            (game / 'objects/ships/x/q.bob').write_bytes(b'q')
+            (game / 'addon/objects/ships/x/q.bod').write_bytes(b'q2')
+            assets = Assets(game)
+            self.assertEqual(assets.read_entry(bob1.resolve_body(assets, 'ships/x/s')), b'a')
+            self.assertEqual(bob1.overlay_outranked(assets, 'ships/x/s', 'addon/02.cat'), [])
+            for stem, reason in (('r', 'loose_root_unverified'), ('q', 'loose_root_unverified'), ('v', 'lang_variant')):
+                with self.assertRaises(bob1.BodyRefused) as ctx:
+                    bob1.resolve_body(assets, f'ships/x/{stem}')
+                self.assertEqual(ctx.exception.reason, reason)
+            self.assertEqual(assets.read_entry(bob1.resolve_body(assets, 'ships/x/w')), b'w')   # variant below: loses
+
+    def test_package_ranks_above_addon_slots(self):
+        with tempfile.TemporaryDirectory() as folder:
+            game = Path(folder)
+            write_catalogue(game / 'addon/01.cat', [('objects/ships/x/s.pbb', b'a')])
+            write_catalogue(game / 'addon/02.cat', [('objects/ships/x/s.pbb', b'b')])
+            write_catalogue(game / 'addon/mods/P.cat', [('objects/ships/x/s.pbd', b'p')])
+            assets = Assets(game, mods=[game / 'addon/mods/P.cat'])
+            self.assertGreater(bob1.mount_key(assets, 'addon/mods/P.cat'), bob1.mount_key(assets, 'addon/99.cat'))
+            self.assertEqual(assets.read_entry(bob1.resolve_body(assets, 'ships/x/s')), b'p')     # text package wins
+            self.assertEqual([e['source'] for e in bob1.overlay_outranked(assets, 'ships/x/s', 'addon/03.cat')],
+                             ['addon/mods/P.cat'])
+
+
 SPTYPE = {v: k for k, v in bob1.SPTYPE_NAMES.items()}
 ORACLE_DIR = Path(__file__).resolve().parents[1] / 'results' / 'lod-overlay-batch' / 'text-bodies'
 

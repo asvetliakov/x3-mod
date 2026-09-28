@@ -114,6 +114,8 @@ class Assets:
             decoded_sha256=hashlib.sha256(self.read_entry(entry)).hexdigest())
 
     def logical(self, stem, extensions):
+        """(data, provenance) of the one format present; mixed formats are refused. For bodies the engine
+        order is known (body-format-bob1.md section 7.1) and applied by bob1.resolve_body, not here."""
         unique = {canonical(stem + extension): extension for extension in extensions}
         found = [(extension, self.candidates(stem + extension)) for extension in unique.values()]
         found = [(extension, entries) for extension, entries in found if entries]
