@@ -1034,7 +1034,7 @@ HRESULT TemporalPass::run(const FrameInputs& in, Output* out) noexcept {
     float lock_constants[8]{};
     if (lock)
         x3::temporal::prepare_luma_lock(lock_constants, in.luma_lock_frames, in.luma_lock_rho, in.luma_lock_tau,
-                                        in.luma_lock_release, in.luma_lock_always);
+                                        in.luma_lock_release, in.luma_lock_gate);
     const bool thin_bound = flicker && thin_; // after a mask fallback of a far run the thin variants may not exist:
                                               // plain then
     IDirect3DPixelShader9* const program = far_on ? (camera ? (lock ? far_camera_hold_lock_ : far_camera_hold_) : far_)

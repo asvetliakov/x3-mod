@@ -2192,7 +2192,7 @@ bool MotionOutput::ensure_taa() noexcept {
         const bool configured = std::strcmp(reason, "ok") == 0;
         log("motion_output_taa_luma_lock device=%llu requested=%u,%g,%g release=%g gate=%s configured=%u reason=%s create=%08lx render_targets=%u far_weight=%.4f",
             id_, taa_luma_lock_frames_, double(taa_luma_lock_[0]), double(taa_luma_lock_[1]), double(taa_luma_lock_[2]),
-            taa_luma_lock_always_ ? "always" : "screen", unsigned(configured), reason, created,
+            x3::temporal::luma_lock_gate_name(taa_luma_lock_gate_), unsigned(configured), reason, created,
             taa_->simultaneous_render_targets(), double(taa_far_weight_));
         if (!configured) taa_luma_lock_frames_ = 0;
     }
@@ -2293,7 +2293,7 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
             in.luma_lock_rho = taa_luma_lock_[0];
             in.luma_lock_tau = taa_luma_lock_[1];
             in.luma_lock_release = taa_luma_lock_[2];
-            in.luma_lock_always = taa_luma_lock_always_;
+            in.luma_lock_gate = taa_luma_lock_gate_;
             if ((taa_far_weight_ > 0.f || taa_far_filter_ > 0.f) && camera_scene_.valid)
                 x3::temporal::far_gate(camera_scene_.m00, camera_scene_.m22, camera_scene_.m32, main_.width,
                                        taa_far_f0_, taa_far_f1_, in.far_d0, in.far_inv);

@@ -1,8 +1,12 @@
 # TAA luminance lock: a per-pixel hold in place of the blanket far weight
 
 Design note, 2026-09-28. Status: ratified 2026-09-28 (orchestrator; user chose the lock over the baker widening);
-implemented 2026-09-28, fixture-verified, not flown (sections 10 and 11; opt-in `--taa-luma-lock`, default
-`16,0.25,3`; all 15 `LUMA_LOCK` rows pass, 1,221 slots; `docs/verification/temporal-resolve.md` "Section 11 build"). Owner of the flown state: `docs/verification/temporal-resolve.md`
+implemented 2026-09-28 through section 12, not flown with section 12 (opt-in `--taa-luma-lock`, default `16,0.25,3`,
+T 1..31; run354 flew sections 10 + 11); section 12 built with four implementer readings (unheld `ownC` as the camera gate,
+nearest-lock claim, motion creation only above the base weight's age, the sign bit only with the class): 18 of 20
+`LUMA_LOCK` rows pass, 1,240 slots; `carry_band` / `carry_2d` fail on the band (2.875 locked pixels per strut on
+cell-crossing frames, <= 2.0 required) because a flip creates its lock at the pixel centre, 0.67 px behind the strut on the
+trailing pixel (`docs/verification/temporal-resolve.md` "Section 12 build"). Owner of the flown state: `docs/verification/temporal-resolve.md`
 ("Far stabiliser weight A/B in flight: 0.95 and 0.90"). Evidence scripts and outputs for this note:
 `verification/results/taa-luminance-lock/lock_share_model.py` (`*_rho0.25_out.txt`, `*_rho0.5_out.txt`).
 Tags: [M] measured in this session or in the ledger, [I] inferred from measured figures, [A] assumed.

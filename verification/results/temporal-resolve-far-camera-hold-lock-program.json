@@ -10,11 +10,11 @@
   "flags_name": "D3DXSHADER_OPTIMIZATION_LEVEL3",
   "defines": null,
   "includes": {
-    "src/temporal/resolve.hlsl": "b72182987e466eae20905d827ba0fe7468ae2065f7c43d77d1d077b7bce226f1"
+    "src/temporal/resolve.hlsl": "f982a6a2d0f6c3b1e0aa4317a097a0d43576f110ebc164dcfc625445757b1be4"
   },
-  "word_count": 4721,
-  "bytecode_sha256": "1737e2930f08bac8fa28e87653aea0ba4fb2b1f9901a3cd642d678bd15b639e0",
-  "header_sha256": "7ac98557ad15b54566ad43277910b02996e97485efe1e5d9a61f2cee53cf6fc6",
+  "word_count": 4815,
+  "bytecode_sha256": "65beb5832b84847bb51f02f9ba3fc5e009cdd8af99be326116d93216ca4f61fb",
+  "header_sha256": "07ace39129aafb4fe386ba0d8f499ca846c714e88f0ee62d1fd089298de0884a",
   "tool_sources": {
     "tools/shaders/compile_rigid_motion_pixel.cpp": "acff68e2c8ebbd580f090baabc8df213aafa3200a1be10c4b3e4cc824cd600c8",
     "tools/shaders/generate_rigid_motion_pixel.py": "15a526fc5c5c8148527350d7514956353fc6786205834fe59a53e2fe85385943"

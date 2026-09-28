@@ -286,18 +286,19 @@ struct FrameInputs {
     float motion_weight_rotation = 0.f, motion_weight_rotation_v0 = 2.f, motion_weight_rotation_v1 = 8.f;
     // Luminance lock (X3M_TAA_LUMA_LOCK=T[,RHO,TAU], opt-in; docs/architecture/taa-luminance-lock.md): on a camera-gate
     // run with the far stabiliser the far weight holds only on pixels whose jittered luma sign-alternates (a lock of
-    // luma_lock_frames frames, 1..64; 0 off: the run is bit for bit a run without the fields), every other far pixel
-    // takes the base weight and the 3x3 clip. Needs configure_luma_lock() and four simultaneous render targets (the
-    // lock lane is RT3: an owned A8R8G8B8 pair of the frame size, allocated on the first lock run, released with the
-    // histories and by the first run without the lock); without them, or on a run that is not a camera-gate run, the
-    // run proceeds without the lock (Diagnostics::luma_lock_reason). A refused lane allocation that is not a lost
-    // device turns the lock off until Reset (luma_lock_failed()). A lock run with far_weight 0 or parameters outside
-    // x3::temporal::valid_luma_lock is refused. luma_lock_always: the creation gate is open every frame (the fixture's
-    // A/B of the note's section 6), else on the pixel's own screen openness >= 0.5.
+    // luma_lock_frames frames, 1..31; 0 off: the run is bit for bit a run without the fields), every other far pixel
+    // takes the base weight and, at rest, the 3x3 clip (under a pan the 7x7). Needs configure_luma_lock() and four
+    // simultaneous render targets (the lock lane is RT3: an owned A8R8G8B8 pair of the frame size, allocated on the
+    // first lock run, released with the histories and by the first run without the lock); without them, or on a run
+    // that is not a camera-gate run, the run proceeds without the lock (Diagnostics::luma_lock_reason). A refused lane
+    // allocation that is not a lost device turns the lock off until Reset (luma_lock_failed()). A lock run with
+    // far_weight 0 or parameters outside x3::temporal::valid_luma_lock is refused. luma_lock_gate: where locks are
+    // created and their lifetime runs (x3::temporal::LumaLockGate: Camera, the default, on the pixel's own camera
+    // openness; Screen on its own screen openness; Always; Off, no creation, the fixture's clip_pan A/B).
     unsigned luma_lock_frames = 0;
     float luma_lock_rho = x3::temporal::kLumaLockRhoDefault, luma_lock_tau = x3::temporal::kLumaLockTauDefault,
           luma_lock_release = x3::temporal::kLumaLockReleaseDefault;
-    bool luma_lock_always = false;
+    x3::temporal::LumaLockGate luma_lock_gate = x3::temporal::LumaLockGate::Camera;
     bool caller_scene_open = true;
     bool caller_stateblock_recording = false;
     bool caller_queries_idle = false; // positive knowledge: no active occlusion/statistics query

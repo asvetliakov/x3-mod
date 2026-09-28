@@ -58,13 +58,16 @@ class LumaLockLaunch(unittest.TestCase):
             self.assertNotIn(NAME, self.env(directory, *TAA, *far, inherited={NAME: '16'}))  # a stale shell value is dropped
             self.assertNotIn(NAME, self.env(directory, inherited={NAME: '16'}))
             self.assertEqual(self.env(directory, *TAA, *far, '--taa-luma-lock', '16')[NAME], '16,0.25,3')
-            self.assertEqual(self.env(directory, *TAA, *far, '--taa-luma-lock', '64,0.5,4')[NAME], '64,0.5,4')
+            self.assertEqual(self.env(directory, *TAA, *far, '--taa-luma-lock', '31,0.5,4')[NAME], '31,0.5,4')
             self.assertEqual(self.env(directory, *TAA, *far, '--taa-luma-lock', '1,0,0')[NAME], '1,0,0')
             self.assertEqual(self.env(directory, *TAA, '--taa-luma-lock', '0')[NAME], '0,0.25,3')  # explicit off
-            for value in ('65', '-1', '16.5', 'nan', 'x', '16,1.5,2', '16,0.25,33', '16,-0.1,2', '16,0.25', '16,0.25,2,1', ''):
+            for value in ('32', '64', '65', '-1', '16.5', 'nan', 'x', '16,1.5,2', '16,0.25,33', '16,-0.1,2', '16,0.25', '16,0.25,2,1', ''):
                 code, _, error = self.launch(directory, *TAA, *far, '--taa-luma-lock', value)
                 self.assertNotEqual(code, 0, value)
                 self.assertIn('--taa-luma-lock', error)
+            code, _, error = self.launch(directory, *TAA, *far, '--taa-luma-lock', '32,0.25,3')  # the lane holds T in 5 bits
+            self.assertNotEqual(code, 0)
+            self.assertIn('T is at most 31 frames', error)
             code, _, error = self.launch(directory, '--motion-output', '--taa-luma-lock', '16')
             self.assertNotEqual(code, 0)
             self.assertIn('--taa-luma-lock requires --taa', error)
@@ -85,12 +88,12 @@ class LumaLockLaunch(unittest.TestCase):
             self.assertIn(reason, output)
         self.assertIn('Needs: taa, taa_far_stabiliser, taa_thin_region.', (ROOT / 'assets/x3m.ini').read_text())
         self.assertTrue(schema.BY_KEY['taa_luma_lock_release']['developer'] and schema.BY_KEY['taa_luma_lock_gate']['developer'])
-        self.assertEqual(schema.BY_KEY['taa_luma_lock_gate']['choices'], ('screen', 'always'))
+        self.assertEqual(schema.BY_KEY['taa_luma_lock_gate']['choices'], ('camera', 'screen', 'always'))
         capture = source_text(ROOT / 'src/proxy/capture.cpp')
         for name in ('L"X3M_TAA_LUMA_LOCK"', 'L"X3M_TAA_LUMA_LOCK_RELEASE"', 'L"X3M_TAA_LUMA_LOCK_GATE"', 'luma_lock=%u,%g,%g'):
             self.assertIn(name, capture)
         resolve = source_text(ROOT / 'src/temporal/resolve.h')
-        self.assertIn('kLumaLockRegister = 14, kLumaLockFramesMax = 64', resolve)
+        self.assertIn('kLumaLockRegister = 14, kLumaLockFramesMax = 31', resolve)
         shader = (ROOT / 'src/temporal/resolve.hlsl').read_text()
         self.assertIn('float4 lockParams : register(c14);', shader)
         self.assertIn('float4 lockGate : register(c15);', shader)

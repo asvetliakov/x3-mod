@@ -115,29 +115,45 @@ inline void prepare_motion_weight_rotation(float out[4], float f, float v0, floa
     out[1] = 1.f - a * v0;
     out[2] = f;
 }
-// Luminance lock (X3M_TAA_LUMA_LOCK=T[,RHO,TAU], opt-in; docs/architecture/taa-luminance-lock.md sections 1, 2, 10):
+// Luminance lock (X3M_TAA_LUMA_LOCK=T[,RHO,TAU], opt-in; docs/architecture/taa-luminance-lock.md sections 1, 2, 10-12):
 // c14 / c15 of the lock variant of the camera-gate resolve (resolve_far_camera_hold_lock.hlsl), uploaded as one
-// two-register block. c14 = T (the lock lifetime in frames, 1..64; 0 is off and never uploaded), RHO (the larger
-// residual threshold's share of the 3x3 luma range, 0..1), TAU_ABS (its floor and the smaller residual's, in codes of
-// 1/255 of q = L / (1 + L), 0..32) and the release ratio of the 3x3 mean luma against the reference (its running mean
-// while held) (0..1: below it the lock dies; 0 never kills); c15.x = the creation gate's threshold on the pixel's own
-// screen openness (kLumaLockGateScreen, or kLumaLockGateAlways: every frame, the fixture's A/B), yzw 0.
-constexpr unsigned kLumaLockRegister = 14, kLumaLockFramesMax = 64;
+// two-register block. c14 = T (the lock lifetime in frames, 1..31: the lane stores it in 5 bits; 0 is off and never
+// uploaded), RHO (the larger residual threshold's share of the 3x3 luma range, 0..1), TAU_ABS (its floor and the
+// smaller residual's, in codes of 1/255 of q = L / (1 + L), 0..32) and the release ratio of the 3x3 mean luma against
+// the reference (its running mean while held) (0..1: below it the lock dies; 0 never kills); c15 = (the creation gate's
+// threshold: 0.5, kLumaLockGateAlways every frame, kLumaLockGateNever no creation; 1: the gate reads the pixel's own
+// screen openness, 0: its own camera openness; max(TAU, 1): the residual class threshold of the lane's motion-mode
+// bits; 0). LumaLockGate: Camera (default, section 12: world-static content, a pan included), Screen (the section-11
+// gate: at rest only), Always (the section-6 A/B), Off (no creation: the fixture's clip_pan row; not a configuration
+// value).
+enum class LumaLockGate : unsigned char { Camera, Screen, Always, Off };
+constexpr unsigned kLumaLockRegister = 14, kLumaLockFramesMax = 31;
 constexpr float kLumaLockRhoDefault = .25f, kLumaLockTauDefault = 3.f, kLumaLockTauMax = 32.f,
-                kLumaLockReleaseDefault = .65f, kLumaLockGateScreen = .5f, kLumaLockGateAlways = -1.f;
+                kLumaLockReleaseDefault = .65f, kLumaLockGateOpen = .5f, kLumaLockGateAlways = -1.f,
+                kLumaLockGateNever = 2.f;
 inline bool valid_luma_lock(unsigned frames, float rho, float tau, float release) noexcept {
     return frames <= kLumaLockFramesMax && std::isfinite(rho) && rho >= 0 && rho <= 1 && std::isfinite(tau) &&
            tau >= 0 && tau <= kLumaLockTauMax && std::isfinite(release) && release >= 0 && release <= 1;
 }
+inline const char* luma_lock_gate_name(LumaLockGate gate) noexcept {
+    return gate == LumaLockGate::Camera   ? "camera"
+           : gate == LumaLockGate::Screen ? "screen"
+           : gate == LumaLockGate::Always ? "always"
+                                          : "off";
+}
 // c14 / c15 (out[0..7]); the caller has validated the fields.
 inline void prepare_luma_lock(float out[8], unsigned frames, float rho, float tau, float release,
-                              bool always) noexcept {
+                              LumaLockGate gate) noexcept {
     out[0] = float(frames);
     out[1] = rho;
     out[2] = tau;
     out[3] = release;
-    out[4] = always ? kLumaLockGateAlways : kLumaLockGateScreen;
-    out[5] = out[6] = out[7] = 0.f;
+    out[4] = gate == LumaLockGate::Always ? kLumaLockGateAlways
+             : gate == LumaLockGate::Off  ? kLumaLockGateNever
+                                          : kLumaLockGateOpen;
+    out[5] = gate == LumaLockGate::Screen ? 1.f : 0.f;
+    out[6] = tau > 1.f ? tau : 1.f;
+    out[7] = 0.f;
 }
 constexpr float kAdaptiveWeightMax = .99f;                          // upper bound of WMAX
 constexpr float kAdaptiveLoDefault = .1f, kAdaptiveHiDefault = .5f; // px/frame

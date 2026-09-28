@@ -3642,3 +3642,101 @@ clip needs farw * openC above c13.z). Fixes in the follow-up commit: the entry r
 "Needs:" and description say so), the initialisation row reports `reason=thin_region_off` when the thin region is 0 and
 `reason=camera_gate` when the lock program exists but the camera-gate programs do not; the design note's sections 1, 2,
 6 and 10 carry "changed in section 10 / 11" markers; the summary JSON's `records_note` states the restored timing rows.
+
+### Section 12 build: creation on the camera gate, per-world-point residual chain, the 7x7 under a pan (2026-09-28; fixture, not flown)
+
+Applied `taa-luminance-lock.md` section 12 on the lock variant (`resolve.hlsl` `X3M_LUMA_LOCK`): locks are created and
+refreshed on the pixel's own camera openness, their lifetime runs while it is open and is frozen while it is closed; the lane's
+mode (rest: r = residual; motion: r / g = offset) stays on the pixel's own screen gate; `b = t + 32 class + 64 sign + 128
+mode` with t 0..31, the class `|e| >= max(TAU, 1)` (c15.z) and the sign of a classed residual; the previous residual is the
+claimed texel's for a claimed lock, else the nearest reprojected texel's (a motion-mode texel gives `+-max(TAU, 1)` where its
+class is set, so the test reads "this `|e| >= tau`, previous class set, opposite signs"); every far pixel whose own screen gate
+is closed takes the 7x7 (`farw * openC > c13.z` as before). `x3::temporal::LumaLockGate` replaces the `always` flag
+(Camera default, Screen = the section-11 gate, Always, Off = no creation, fixture only); `X3M_TAA_LUMA_LOCK_GATE` takes
+`camera|screen|always`; T is 1..31 (`kLumaLockFramesMax`, schema `elements (0, 31)`, launcher error "T is at most 31
+frames (the lock lane stores the lifetime in 5 bits)"). No new target, no per-frame CPU work or allocation (c15.yz are two
+more constants of the existing upload).
+
+Implementer's readings and departures (each with its witness from this session's fixture runs) [M]:
+- The camera gate is the pixel's own unheld camera openness (`ownC`), not the held `openC`: the L-frame closure hold would
+  delay re-formation after a mover by L = 8 frames (the mover row allows 3); the section-10 reading of `ownS` against
+  `openS` is the same argument. The far weight and the far clip keep `openC` (a lock made while `openC` is still held closed
+  gives no weight until it opens).
+- The claim takes the nearest carried lock (Chebyshev reach below 0.75), not the larger lifetime: with creation under the
+  pan a fresher neighbour lock within reach displaced the strut's own world point (larger-lifetime rule: carry 1.00 on frames
+  16-22, then 0.00 from frame 23, mean 0.72; the 20 % step dipped to 0.0625 at frame 31). Nearest: carry 1.00 on all 24 pan
+  frames. The margin stays: reach 0.5 gives carry min 0.00, mean 0.63.
+- Under motion a lock is created or refreshed only where `age / (age + 1)` exceeds the base weight (age >= 6 at 0.85), the
+  first age at which it can raise the weight: without it the 73.37 px/frame x ramp locked 2.4 % of the plate on the ramp's
+  kinks (x = 146, 161, 177, 193, 209 at frame 28, history age 3, the young band behind the leading edge).
+- The sign bit is written only with the class, so a motion-mode texel decodes to -1, 0 or +1 times c15.z.
+- The rest path and the pan path share one loop that stops after the own texel at f = 0 (the duplicated decode cost 34 slots:
+  1,255 against the row's 1,250).
+- Rows whose reference changed with section 12 (d): `plate_sharp` and `identity` compare against `base_box` /
+  `base_nostrut_box` (the base program with the 7x7 far clip on the pan frames, the 3x3 at rest: the lock's l = 0 path);
+  against the old 3x3-only `base_nostrut` the identity run differs in 3,328 colour pixel-frames, all from the pan's clip.
+  `shading` gates the screen-gate step runs (carried locks, no refresh: the release rule alone, as the row was defined);
+  the camera-gate twins are reported. `clip_pan` compares against the blanket program at the base weight (0.85, its 7x7 on
+  every far pixel), the weight an unlocked strut has; `mover_pan` reads the strut's share on the last frame before the mover's
+  3x3 reaches it (one frame later the resolve's dilation already follows the mover beside it).
+
+Commands: `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 tools/shaders/generate_rigid_motion_pixel.py`
+(04:42:48-04:49:41; only the lock header changed, the six resolve manifests re-recorded for the source hash) and `--check`
+(04:50:00-04:56:57, PASS, 46 programs); `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3
+verification/probe/run_temporal_pass.py` (05:11:38-05:14:04, exit 1 at the `LUMA_LOCK` gate after every other assertion
+passed, `luma_lock_failed_rows: [carry_2d, carry_band]`); `python3 verification/results/taa-luminance-lock/restore_timing_rows.py`
+(the nine timing rows restored; `restore_timing_rows_out.txt`: 16,289 lattice lines outside the lock section, 0 differing from
+the committed record); `python3 tools/config/generate.py --check` (PASS, 240 settings); host `test_taa_luma_lock`,
+`test_config_schema`, `test_logging_tiers`, `test_snapshot_x3_run` (56 tests, OK); `cmake --build build` (0 warnings),
+`check_no_x87.py build/d3d9.dll` (PASS, 718 reachable, 0 violations), sha256 `da92d860…` 57,357,738 B (worktree build, not a
+candidate); `./x3run --direct --debug --perf [--taa-luma-lock 16] --dry-run` differ by `"X3M_TAA_LUMA_LOCK": "16,0.25,3"`
+only; `--taa-luma-lock 32` is refused.
+
+Rows [M] (fixture timeline as section 11; new runs: `lock_diag` (0.37, 0.23) px/frame, `lock_bar` 1-px bars at
+[s + 8, s + 9), `lock_fast` / `lock_yramp_fast` at 73.37 px/frame, `lock_off` / `lock_off_3x3`, `blanket_base`,
+`lock_mover_pan` (mover from frame 22 under the pan), `base_box`, `base_nostrut_box`, the `_camera` step runs):
+
+| row | acceptance | measured | |
+|---|---|---|---|
+| form | <= 3 from 0 and from the cut | 2 / 2 | pass |
+| plate | <= 0.5 %, x and y ramps | 0.000 / 0.000 | pass |
+| plate_sharp | pan E within 2 % of base_box; interior identical to base_box | 1.000000; 0 of 119,808 (also 0 against base) | pass |
+| strut_ripple | within 10 % of blanket | 1.000 (3.8196 codes) | pass |
+| carry | >= 0.9 every pan frame | 1.00 on all 24 | pass |
+| carry_band | <= 2.0 per strut; off-strut <= 2 % | **2.875 max**, 1.93 mean (section 11: 2.00 / 1.42); 0 % off-strut | **fail** |
+| resume | >= 0.9 at 41 | 1.00 at 40, 41, 47 | pass |
+| chatter | <= 5 % | 0.00 | pass |
+| mover | 0 at uncover; re-formed within 3 | 0 of 120; 3 | pass |
+| slanted | energy on locked >= 0.9 | 1.000 (ungated: form 8, 1.16x) | pass |
+| shading | screen gate: 20 % survives, 40 % dies within 2 | 20 %: 1.00 at 29-33, 39; 40 %: 0.0625 at 30, 0 from 31 (camera gate: 20 % 1.00 throughout; 40 % 0.06 / 0.94 / 0.06 / 1.00 at 30-33) | pass |
+| budget | <= 1,250 slots; hold 3,968 dwords | 1,240 slots, 4,815 dwords (section 11: 1,221 / 4,721); 3,968 | pass |
+| lane | modes, offsets, alternation, bits | 0 violations; 10,976 carried offsets; 159,712 rest bits, 0 wrong | pass |
+| identity | l = 0 identical to base_nostrut_box | 0 / 0 / 0 bytes, 0 locks | pass |
+| state | refusals (T = 32 now), lanes, Reset, fault, hostile state | all 17 fields 1 | pass |
+| pan_create | rest 0; lock <= 3 frames after the first flip; carried; resumed | rest 0; first flip 17, all 16 bars by 18, delay 1; 1.00 to 39; 1.00 at 40, 41 | pass |
+| plate_pan | <= 0.5 % on every pan frame, x / y at 0.37 and 73.37 | 0.000 all four (73.37 x after the stop: 1.9 % at frame 41, rest rule, see below) | pass |
+| carry_2d | carry >= 0.9 every frame; band <= 2.0 | carry 1.00 on all 24 (5,808 locked pixel-frames carry a y offset); **band 2.875** | **fail** |
+| clip_pan | 7x7 within 10 % of blanket_base; no lock | 1.000011 (4.1646 / 4.1645 codes); 3x3 1.004912 (info); 0 locks | pass |
+| mover_pan | 0 locks under the mover and at uncover; strut locked before | 0 of 432; 0 of 136; strut 1.00 at frame 28, re-formed 3 frames after the mover left | pass |
+
+Why carry_band and carry_2d fail (the creation rule, not the transport): a lock is created at the flipping pixel's centre,
+not at the feature. The dumped lane of one strut (row 4, frames 18-31; a temporary debug row of this session, not in the
+records) shows the pixel the strut is leaving flipping on its
+last sampled phase (frame 20: the strut sampled at 19, not at 20), holding no claim (the strut's lock sits 0.84 px from its
+centre) and creating a second lock at its own centre, 0.67 px behind the strut; that lock is carried with the world for T
+frames without refresh and is held by one or two pixels, so the frames on which the strut crosses a cell boundary hold 3
+locked pixels per strut (per-frame 1.88 with 2.81-2.88 on frames 22, 24, 27, 30, 35; offsets -1 / 0 / +1: 1,920 / 2,912 /
+1,096 pixel-frames, 1,336 of them margin claims). Section 12's own row (iii) expected <= 2 px under creation. What would hold
+it: a flip within about 1 px of an existing lock joins that lock (refreshes it at its offset) instead of making a new world
+point, at the cost of the true pixel's own lock on frames where the old lock is out of its reach; not implemented (a design
+change to ratify).
+
+Also measured: after the 73.37 px/frame pan stops, the rest rule (no age test at rest, which the form row needs at age 2-3)
+locks 1.9 % of the x-ramp plate at frame 41 on the kinks of the young band (x = 24, 40, 56, 72, age 3); with T = 16 those
+pixels reach the far weight from age 6 until the lock expires [I]. The 40 % step under the camera gate toggles (0.06 / 0.94 /
+0.06 / 1.00): after the step the strut's own phase swing of the 3x3 mean is 59 / 105 codes (0.56 < 0.65 [arithmetic]), so a
+lock re-created on one phase dies on the next unless a flip re-creates it that frame; at rest such a strut is held only by a
+flip every frame [I]. The fixture's 3x3 clip under the pan costs only +0.5 % ripple on the unlocked 0.4-px struts (clip_pan),
+not the +0.7x the raster model predicts for the spacedock. Records: `temporal-lattice.txt` (the lock section and the lock budget
+row; timing rows restored; every other line identical), `temporal-pass-summary.json` (`passed: false`, the two rows, `records_note`),
+`verification/results/taa-luminance-lock/restore_timing_rows.py` / `_out.txt`.

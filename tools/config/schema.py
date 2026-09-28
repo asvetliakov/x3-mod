@@ -104,9 +104,9 @@ SETTINGS = [
           range=(0.0, 65000.0), requires=('taa_thin_region', 'hdr'), launcher='--taa-thin-region-emissive'),
     entry('taa_luma_lock', 'float_list', 'graphics', 'Holds a long history only on distant details that actually flicker '
           '(struts, antennas, seams) and keeps distant hull plates sharp under a pan. The first number is how many frames a '
-          'detected flicker keeps the hold (1 to 64); the others tune the detector. 0 = disabled. Works only with the thin '
+          'detected flicker keeps the hold (1 to 31); the others tune the detector. 0 = disabled. Works only with the thin '
           'region on (taa_thin_region above 0).', builtin='0',
-          counts=(1, 3), elements=((0, 64), (0, 1), (0, 32)), requires=('taa', 'taa_far_stabiliser', 'taa_thin_region'),
+          counts=(1, 3), elements=((0, 31), (0, 1), (0, 32)), requires=('taa', 'taa_far_stabiliser', 'taa_thin_region'),
           launcher='--taa-luma-lock',
           since='2026-09-28'),
     entry('taa_alpha_history', 'bool', 'graphics', 'Lets the bloom glow of see-through effects follow the anti-aliasing. Experimental. '
@@ -361,8 +361,9 @@ SETTINGS = [
         launcher='--taa-motion-weight-rotation', requires=('taa',)),
     dev('taa_luma_lock_release', 'float', 'graphics', 'Luma lock: a lock dies when its 3x3 mean luma leaves this ratio of the '
         'running mean of that mean while the lock is held (DLL default 0.65; 0 never).', range=(0, 1), requires=('taa_luma_lock',), since='2026-09-28'),
-    dev('taa_luma_lock_gate', 'enum', 'graphics', 'Luma lock creation gate: screen (the pixel\'s own screen speed, the DLL '
-        'default) or always (the A/B of taa-luminance-lock.md section 6).', choices=('screen', 'always'),
+    dev('taa_luma_lock_gate', 'enum', 'graphics', 'Luma lock creation gate: camera (the pixel\'s own camera-relative '
+        'speed: still content under a pan, the DLL default), screen (its own screen speed: at rest only) or always (the '
+        'A/B of taa-luminance-lock.md section 6).', choices=('camera', 'screen', 'always'),
         requires=('taa_luma_lock',), since='2026-09-28'),
     dev('camera_cut_deg', 'float', 'graphics', 'Camera rotation per frame above which the resolve declares a cut.', '20.0',
         launcher='--camera-cut-deg', range=[R(0, 180, True)]),

@@ -429,19 +429,23 @@ try:
     ripple=report['lattice']['ripple']
     assert len(ripple)==4 and report['lattice']['budget']['plain']['instruction_slots']<=2048,report['lattice']
     assert hashes()==report['sources_before_build'],'Source changed during the lattice cases'
-    # Luminance lock (docs/architecture/taa-luminance-lock.md sections 5 and 10; temporal_luma_lock_inc.h): the rows at the
-    # default (16, 0.25, 3, release 0.65), gated here after every other assertion so one run reports all of them; the RHO 0.5
-    # and always-gate runs are reported only. One assertion lists every failed row.
-    lock={name:fields('LUMA_LOCK_'+name.upper()+' ') for name in ('form','plate','plate_sharp','strut_ripple','carry','carry_band','resume','chatter','mover','shading','lane','identity','slanted','state')}
+    # Luminance lock (docs/architecture/taa-luminance-lock.md sections 5, 10, 11 and 12; temporal_luma_lock_inc.h): the rows at
+    # the default (16, 0.25, 3, release 0.65, camera gate), gated here after every other assertion so one run reports all of
+    # them; the RHO 0.5, always-gate and camera-gate step runs are reported only. One assertion lists every failed row.
+    lock={name:fields('LUMA_LOCK_'+name.upper()+' ') for name in ('form','plate','plate_sharp','strut_ripple','carry','carry_band','resume','chatter','mover','shading','lane','identity','slanted','state',
+                                                                  'pan_create','plate_pan','clip_pan','mover_pan')}
     report['luma_lock']=lock
     by_run=lambda rows:{r['run']:r for r in rows}
-    form,plate,sharp,carry,band,resume,chatter,mover,shading=(by_run(lock[k]) for k in ('form','plate','plate_sharp','carry','carry_band','resume','chatter','mover','shading'))
+    form,plate,sharp,carry,band,resume,chatter,mover,shading,plate_pan=(by_run(lock[k]) for k in ('form','plate','plate_sharp','carry','carry_band','resume','chatter','mover','shading','plate_pan'))
+    single=lambda k:lock[k][0] if len(lock[k])==1 else {}
+    pan_create,clip_pan,mover_pan=single('pan_create'),single('clip_pan'),single('mover_pan')
     budget=report['lattice']['budget']
     lane=lock['lane'][0] if len(lock['lane'])==1 else {}
     checks={
         'form': 0<=int(form['lock']['form'])<=3 and 0<=int(form['lock']['form_after_cut'])<=3,
         'plate': float(plate['lock']['share_max'])<=.005 and float(plate['lock_yramp']['share_max'])<=.005,
-        'plate_sharp': abs(float(sharp['lock']['e_pan_ratio'])-1)<=.02 and sharp['lock']['interior_differs']=='0',
+        # section 12: against base_box (the l = 0 path: the 7x7 under the pan, the 3x3 at rest)
+        'plate_sharp': abs(float(sharp['lock']['e_pan_ratio_box'])-1)<=.02 and sharp['lock']['interior_differs_box']=='0',
         'strut_ripple': len(lock['strut_ripple'])==1 and abs(float(lock['strut_ripple'][0]['ratio'])-1)<=.10,
         'carry': float(carry['lock']['share_min'])>=.9,
         'carry_band': float(band['lock']['locked_per_strut_max'])<=2.0 and float(band['lock']['off_strut_share_max'])<=.02,
@@ -453,9 +457,16 @@ try:
         'shading': min(float(shading['lock_step20'][k]) for k in ('share_frame30','share_frame31','share_frame32','share_frame33','share_frame39'))>=.9
                    and min(float(shading['lock_step40'][k]) for k in ('share_frame30','share_frame31','share_frame32'))==0,
         'budget': budget['embedded_far_camera_hold_lock']['instruction_slots']<=1250 and budget['embedded_far_camera_hold']['dwords']==3968,
-        'lane': bool(lane) and all(lane[k]=='0' for k in ('rest_in_motion_mode','pan_in_rest_mode','offsets_beyond_three_quarters','not_alternating')) and int(lane['locked_offsets'])>0,
+        'lane': bool(lane) and all(lane[k]=='0' for k in ('rest_in_motion_mode','pan_in_rest_mode','offsets_beyond_three_quarters','not_alternating','bits_wrong')) and int(lane['locked_offsets'])>0,
         'identity': len(lock['identity'])==1 and all(lock['identity'][0][k]=='0' for k in ('colour_differs','age_differs','depth_differs','locked_px_frames')),
         'state': len(lock['state'])==1 and all(v=='1' for v in lock['state'][0].values()),
+        # section 12: a bar quiet at rest locks within 3 frames of its first residual flip under the pan, carried and resumed
+        'pan_create': bool(pan_create) and pan_create['rest_share_max']=='0.0000' and pan_create['no_flip']=='0' and pan_create['unformed']=='0'
+                      and 0<=int(pan_create['delay_max'])<=3 and float(pan_create['carried_min'])>=.9 and float(pan_create['share_frame41'])>=.9,
+        'plate_pan': all(float(plate_pan[k]['share_pan_max'])<=.005 for k in ('lock','lock_yramp','lock_fast','lock_yramp_fast')),
+        'carry_2d': float(carry['lock_diag']['share_min'])>=.9 and float(band['lock_diag']['locked_per_strut_max'])<=2.0 and float(band['lock_diag']['off_strut_share_max'])<=.02,
+        'clip_pan': bool(clip_pan) and abs(float(clip_pan['box_ratio'])-1)<=.10 and clip_pan['locked_px_frames']=='0',
+        'mover_pan': bool(mover_pan) and mover_pan['covered_locked']=='0' and mover_pan['locked_at_uncover']=='0' and float(mover_pan['strut_share_before'])>=.9,
     }
     report['luma_lock_failed_rows']=sorted(k for k,ok in checks.items() if not ok)
     assert not report['luma_lock_failed_rows'],(report['luma_lock_failed_rows'],{k:lock[k] for k in ('form','plate','carry','carry_band','resume','shading','lane','slanted')})
