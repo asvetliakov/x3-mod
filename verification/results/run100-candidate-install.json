@@ -1,0 +1,38 @@
+{
+ "schema": 1,
+ "candidate": {
+  "dll": "/tmp/x3-run100-candidate/build/d3d9.dll",
+  "sha256": "20680908f5c768ad2ab131e7e10495f241b4202a785fe2c0bb503bcc74d85da7",
+  "bytes": 57343854,
+  "commit": "a627f5b5",
+  "qualification": "verification/results/run100-candidate-qualification.json",
+  "configuration": "RelWithDebInfo (unstripped; not a release build)"
+ },
+ "command": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3-run100-candidate/build/d3d9.dll",
+ "cwd": "/Users/asvetl/x3-mod",
+ "exit": 0,
+ "installed_at": "2026-09-28T05:35+04:00",
+ "installed": {
+  "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
+  "sha256": "20680908f5c768ad2ab131e7e10495f241b4202a785fe2c0bb503bcc74d85da7",
+  "bytes": 57343854,
+  "verified": "sha256 and size read back after install; candidate hash rechecked before install; game_guard [] before"
+ },
+ "config_template": {
+  "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/x3m.ini",
+  "note": "left as installed with release 0.5.2 (sha256 9b9a9bd2\u2026); the 063fc8c1 template (8ca97ad0\u2026) adds the commented taa_luma_lock entry only; the launcher sends the setting explicitly, player mode simply lacks the comment until the next release install"
+ },
+ "unchanged": {
+  "X3AP.exe": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+  "cxbottle.conf": "b06979d14e75100b069fcbb3fceed9034431f872ad217a6c92a151542cf7c82f"
+ },
+ "previous": {
+  "dll": "/tmp/x3-run99-candidate/build/d3d9.dll",
+  "sha256": "1adabd0360a76b13018926f2505f6ab71d37e64963ce0fa0622ed2dea52439c4",
+  "bytes": 57341744,
+  "rollback": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3-run99-candidate/build/d3d9.dll",
+  "then": "Run98 d6f6b47a\u2026 /tmp/x3-run98-candidate/build/d3d9.dll (release 0.5.2)"
+ },
+ "run": "Run 100 A queued: luminance lock (section 12) A/B with --taa-debug on the run353 stand",
+ "producer": "main session (this record)"
+}
