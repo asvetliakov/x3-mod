@@ -1,0 +1,122 @@
+{
+ "modes": {
+  "source": {
+   "exit": 0,
+   "wall_s": 7.3,
+   "processing_model_lines": 7,
+   "all_done": true,
+   "processes_seen": 17,
+   "worker_pids": 9,
+   "resource_trackers": 1,
+   "left_after_exit": [],
+   "bake_workers_line": "[02:50:53] LOD overlay: scanning the ship and station bodies, then baking with up to 3 job(s) (within 12.0 GiB)",
+   "files": 19
+  },
+  "host": {
+   "exit": 0,
+   "wall_s": 25.2,
+   "processing_model_lines": 7,
+   "all_done": true,
+   "processes_seen": 18,
+   "worker_pids": 15,
+   "resource_trackers": 1,
+   "left_after_exit": [],
+   "bake_workers_line": "[02:51:21] LOD overlay: scanning the ship and station bodies, then baking with up to 3 job(s) (within 12.0 GiB)",
+   "files": 19,
+   "vs_source": {
+    "differing_files": [
+     "addon/01.x3m-lod.json",
+     "addon/x3m-lod-batch-summary.txt",
+     "addon/x3m-lod-batch.json",
+     "x3m-regenerate.log",
+     "x3m/fog-families.json"
+    ],
+    "overlay_members": [
+     "addon/01.cat",
+     "addon/01.dat",
+     "addon/mods/Big-x3m-lod.cat",
+     "addon/mods/Big-x3m-lod.dat"
+    ],
+    "overlay_identical": true
+   }
+  },
+  "windows": {
+   "exit": 0,
+   "wall_s": 28.5,
+   "processing_model_lines": 7,
+   "all_done": true,
+   "processes_seen": 19,
+   "worker_pids": 15,
+   "resource_trackers": 0,
+   "left_after_exit": [],
+   "bake_workers_line": "[02:52:06] LOD overlay: scanning the ship and station bodies, then baking with up to 3 job(s) (within 12.0 GiB)",
+   "files": 19,
+   "vs_source": {
+    "differing_files": [
+     "addon/01.cat",
+     "addon/01.dat",
+     "addon/01.x3m-lod.json",
+     "addon/mods/Big-x3m-lod.cat",
+     "addon/mods/Big-x3m-lod.dat",
+     "addon/mods/Big-x3m-lod.x3m-lod.json",
+     "addon/x3m-lod-batch-bodies.txt",
+     "addon/x3m-lod-batch-summary.txt",
+     "addon/x3m-lod-batch.json",
+     "x3m-regenerate.log",
+     "x3m/fog-families.json"
+    ],
+    "overlay_members": [
+     "addon/01.cat",
+     "addon/01.dat",
+     "addon/mods/Big-x3m-lod.cat",
+     "addon/mods/Big-x3m-lod.dat"
+    ],
+    "overlay_identical": false
+   }
+  },
+  "windows-j1": {
+   "exit": 0,
+   "wall_s": 32.9,
+   "processing_model_lines": 7,
+   "all_done": true,
+   "processes_seen": 4,
+   "worker_pids": 0,
+   "resource_trackers": 0,
+   "left_after_exit": [],
+   "bake_workers_line": "[02:53:14] LOD overlay: scanning the ship and station bodies, then baking with up to 1 job(s) (within 12.0 GiB)",
+   "files": 19,
+   "vs_source": {
+    "differing_files": [
+     "addon/01.cat",
+     "addon/01.dat",
+     "addon/01.x3m-lod.json",
+     "addon/mods/Big-x3m-lod.cat",
+     "addon/mods/Big-x3m-lod.dat",
+     "addon/mods/Big-x3m-lod.x3m-lod.json",
+     "addon/x3m-lod-batch-bodies.txt",
+     "addon/x3m-lod-batch-summary.txt",
+     "addon/x3m-lod-batch.json",
+     "x3m-regenerate.log",
+     "x3m/fog-families.json"
+    ],
+    "overlay_members": [
+     "addon/01.cat",
+     "addon/01.dat",
+     "addon/mods/Big-x3m-lod.cat",
+     "addon/mods/Big-x3m-lod.dat"
+    ],
+    "overlay_identical": false
+   },
+   "vs_windows_jobs3": {
+    "differing_files": [
+     "addon/01.x3m-lod.json",
+     "addon/x3m-lod-batch-summary.txt",
+     "addon/x3m-lod-batch.json",
+     "x3m-regenerate.log",
+     "x3m/fog-families.json"
+    ],
+    "overlay_identical": true
+   }
+  }
+ }
+}

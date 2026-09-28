@@ -1,0 +1,48 @@
+{
+ "candidate": {
+  "dll": "/tmp/x3-run102-candidate/build/d3d9.dll",
+  "sha256": "b7acb91f45ba37382571b7397f749827bd72f1a8c8b3f437809435f00ad51c18",
+  "bytes": 39472075,
+  "commit": "9edd942b",
+  "release": "x3m-0.7.0.zip 9b1c6883… 58,363,052 B (stripped DLL; verification/results/release-0.7.0.json)",
+  "gates": "host suite 274 modules / 2,887 tests / 0 failing; 0 warnings; x87 0; strip identity; regenerate host + Windows smoke; frozen worker check (verification/results/release-0.7.0-frozen-worker-check.json); DLL sections equal to 0.6.0 except the version string, commit marker and export timestamp (verification/results/release-0.7.0-dll-compare.json)"
+ },
+ "command": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3-run102-candidate/build/d3d9.dll; then unzip -o x3m-0.7.0.zip x3m.ini x3m-regenerate.exe into the game directory and cp /tmp/x3m-release-0.7.0/regenerate/x3m-regenerate (macOS build) beside them",
+ "exit": 0,
+ "installed_at": "2026-09-29T02:55+04:00",
+ "installed": {
+  "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
+  "sha256": "b7acb91f45ba37382571b7397f749827bd72f1a8c8b3f437809435f00ad51c18",
+  "bytes": 39472075,
+  "verified": "sha256 and size read back after install; candidate hash equals the zip entry; pgrep X3AP empty before"
+ },
+ "config_template": {
+  "sha256": "14905c80771e9675e82a94b2bcc4796a5d96fd7256f9c07c60885f7301b104e7",
+  "source": "x3m-0.7.0.zip x3m.ini (header 0.7.0)",
+  "previous": "0.6.0 template d0f03f88… (unmodified by the user, hash equal to the 0.6.0 record; kept at /tmp/x3-run102-candidate/x3m.ini.previous)"
+ },
+ "regenerate": {
+  "x3m-regenerate.exe": {
+   "sha256": "ea0308fbaa6ef448aca6a65ff0bc1ef8c0ae3454e30e9d1d5262db815e6e8b4c",
+   "previous": "0.6.0 050369cf…, kept at /tmp/x3-run102-candidate/x3m-regenerate.exe.previous"
+  },
+  "x3m-regenerate (macOS)": {
+   "sha256": "a3f4759c4c40fbf8febb89299f4321ecebdf333c79c93fb7fa431decd2cf6a60",
+   "previous": "0.6.0 7802eee9…, kept at /tmp/x3-run102-candidate/x3m-regenerate.previous"
+  }
+ },
+ "unchanged": {
+  "X3AP.exe": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+  "cxbottle.conf": "3a70e875e42cbfe528a0a0db606fb42b10e965507510ec8cd889b2616b99cc9e (same before and after this install; differs from the Run101 record's b06979d1…: the file was modified 2026-09-28 21:35, before this session, when Mayhem 3 was installed; both GStreamer lines still present)"
+ },
+ "game_tree": "modded: Mayhem 3 in addon/05..12.cat and loose addon files (installed by the user 2026-09-28)",
+ "previous": {
+  "dll": "/tmp/x3-run101-candidate/build/d3d9.dll",
+  "sha256": "8b164ee11446bc3f0c63ff5eb8f9cfb07a18f2526231d2509ffbaec6738b99df",
+  "bytes": 39472075,
+  "rollback": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3-run101-candidate/build/d3d9.dll",
+  "then": "Run100 20680908… /tmp/x3-run100-candidate/build/d3d9.dll"
+ },
+ "run": "Run 102 A queued: rerun x3m-regenerate on the Mayhem 3 install, then a plain flight; observations in docs/verification/user-runs.md",
+ "producer": "main session (this record)"
+}

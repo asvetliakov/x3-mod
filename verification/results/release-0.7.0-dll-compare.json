@@ -1,0 +1,109 @@
+{
+ "old": {
+  "path": "/tmp/x3m-release-0.6.0/d3d9.dll",
+  "bytes": 39472075,
+  "sha256": "8b164ee11446bc3f0c63ff5eb8f9cfb07a18f2526231d2509ffbaec6738b99df",
+  "marker": [
+   "018d7e4923338169a2bf61e7678853eb68135bca"
+  ]
+ },
+ "new": {
+  "path": "/tmp/x3m-release-0.7.0/d3d9.dll",
+  "bytes": 39472075,
+  "sha256": "b7acb91f45ba37382571b7397f749827bd72f1a8c8b3f437809435f00ad51c18",
+  "marker": [
+   "9edd942b245b22ff757d5bbe560194007760f55c"
+  ]
+ },
+ "header_equal": true,
+ "exports_equal": true,
+ "section_table_equal": true,
+ "sections": {
+  ".text": "identical",
+  ".data": "identical",
+  ".rdata": {
+   "len_equal": true,
+   "runs": 7,
+   "kinds": {
+    "marker": 3,
+    "version": 1,
+    "other": 3
+   },
+   "rows": [
+    {
+     "offset": 39921,
+     "length": 1,
+     "kind": "version",
+     "old": "x3-modern-renderer version=0.6 schema=2 capture_start=%u capture_frames=%u pointer_bits=32",
+     "new": "x3-modern-renderer version=0.7 schema=2 capture_start=%u capture_frames=%u pointer_bits=32"
+    },
+    {
+     "offset": 54816,
+     "length": 3,
+     "kind": "other",
+     "old": "018d7e4923338169a2bf61e7678853eb68135bca",
+     "new": "9edd942b245b22ff757d5bbe560194007760f55c"
+    },
+    {
+     "offset": 54820,
+     "length": 4,
+     "kind": "other",
+     "old": "018d7e4923338169a2bf61e7678853eb68135bca",
+     "new": "9edd942b245b22ff757d5bbe560194007760f55c"
+    },
+    {
+     "offset": 54825,
+     "length": 31,
+     "kind": "other",
+     "old": "018d7e4923338169a2bf61e7678853eb68135bca",
+     "new": "9edd942b245b22ff757d5bbe560194007760f55c"
+    },
+    {
+     "offset": 55218,
+     "length": 3,
+     "kind": "marker",
+     "old": "X3M_SOURCE_COMMIT=018d7e4923338169a2bf61e7678853eb68135bca",
+     "new": "X3M_SOURCE_COMMIT=9edd942b245b22ff757d5bbe560194007760f55c"
+    },
+    {
+     "offset": 55222,
+     "length": 4,
+     "kind": "marker",
+     "old": "X3M_SOURCE_COMMIT=018d7e4923338169a2bf61e7678853eb68135bca",
+     "new": "X3M_SOURCE_COMMIT=9edd942b245b22ff757d5bbe560194007760f55c"
+    },
+    {
+     "offset": 55227,
+     "length": 31,
+     "kind": "marker",
+     "old": "X3M_SOURCE_COMMIT=018d7e4923338169a2bf61e7678853eb68135bca",
+     "new": "X3M_SOURCE_COMMIT=9edd942b245b22ff757d5bbe560194007760f55c"
+    }
+   ]
+  },
+  ".xdata": "identical",
+  ".bss": "identical",
+  ".edata": {
+   "len_equal": true,
+   "runs": 1,
+   "kinds": {
+    "marker": 0,
+    "version": 0,
+    "other": 1
+   },
+   "rows": [
+    {
+     "offset": 4,
+     "length": 3,
+     "kind": "other",
+     "old": "\ufffd\ufffd\ufffdj",
+     "new": "\ufffd\ufffd\ufffdj"
+    }
+   ]
+  },
+  ".idata": "identical",
+  ".tls": "identical",
+  ".rsrc": "identical",
+  ".reloc": "identical"
+ }
+}
