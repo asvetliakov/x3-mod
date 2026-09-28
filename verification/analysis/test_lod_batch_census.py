@@ -302,5 +302,26 @@ class BatchCensus(unittest.TestCase):
         self.assertEqual((by['glass']['effects'], by['glass']['atlas_materials']), (2, 2))
 
 
+class TexturePixels(unittest.TestCase):
+    def test_distinct_members_and_errors(self):
+        """Mip-0 pixels of the distinct source members: two names on one member count once, a name the lookup
+        refuses (AtlasError), a placeholder (None size) and a NULL slot count nothing; without a source the
+        lower-case name is the key."""
+        class Sizes:
+            def size(self, name):
+                table = {b'a.tga': (256, 256), b'A2.tga': (256, 256), b'b.tga': (64, 32), b'c.tga': (16, 16),
+                         b'C.TGA': (16, 16), b'ph.tga': None}
+                if name == b'bad.tga':
+                    raise census.lod_atlas.AtlasError('Ambiguous')
+                return table[name]
+        tiles = [dict(names={'diffuse': b'a.tga', 'bump': b'b.tga', 'specular': None},
+                      sources={'diffuse': '01.cat:dds/a.pck', 'bump': '01.cat:dds/b.pck'}),
+                 dict(names={'diffuse': b'A2.tga', 'light': b'bad.tga', 'bump': b'ph.tga'},
+                      sources={'diffuse': '01.cat:dds/a.pck', 'light': None, 'bump': None}),
+                 dict(names={'diffuse': b'c.tga'}), dict(names={'diffuse': b'C.TGA'})]      # no sources: by name
+        self.assertEqual(census.texture_pixels(Sizes(), tiles), 256 * 256 + 64 * 32 + 16 * 16)
+        self.assertEqual(census.texture_pixels(Sizes(), []), 0)
+
+
 if __name__ == '__main__':
     unittest.main()

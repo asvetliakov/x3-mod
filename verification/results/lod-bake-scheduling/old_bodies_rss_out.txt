@@ -1,0 +1,8 @@
+ships/owp/owp_large init 0.12 peak 1.12 predicted 2.23 GiB measured/predicted 0.504 
+ships/Pirate/Pirate_M2 init 0.11 peak 1.35 predicted 3.42 GiB measured/predicted 0.395 
+stations/station_scenes/tech/argon_tech_M_laser_cc init 0.11 peak 0.96 predicted 2.75 GiB measured/predicted 0.350 
+# the lines above: 2026-09-29 run 4 with BAKE_SAFETY 1.7, load average 10.5
+# earlier runs of the same script this session with BAKE_SAFETY 1.4 (predicted at 1.4; peak in GiB), load average 7.7-8.3:
+# run 1: ships/owp/owp_large peak 1.84 (pred 1.83); ships/Pirate/Pirate_M2 peak 2.10 (pred 2.82); argon_tech_M_laser_cc peak 1.18 (pred 2.26)
+# run 2: ships/owp/owp_large peak 1.76; run 3: ships/owp/owp_large peak 1.14
+# reviewer run: Pirate_M2 2.06, argon_tech_M_laser_cc 1.56, owp_large 1.47

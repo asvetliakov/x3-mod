@@ -1,0 +1,10 @@
+old: wall 831.1 s (census 70.74 s, bake 731.61 s for 160 built, 160 eligible of 160); jobs 2; workers census max 2 mean 1.9, bake max 2 mean 1.9; tree RSS peak 3.67 GiB mean 1.38 GiB; members 800
+launcher-default: wall 940.0 s (census 48.95 s, bake 864.4 s for 160 built, 160 eligible of 160); jobs 16 rule memory budget 5.2 GiB census workers 6 peak running 5 predicted peak 5.2 GiB; workers census max 4 mean 2.7, bake max 5 mean 1.6; tree RSS peak 3.2 GiB mean 1.19 GiB; members 800
+old vs launcher-default: 800 of 800 members byte-identical; only in old 0, only in launcher-default 0, differing 0
+launcher-18GiB: wall 288.9 s (census 24.22 s, bake 236.63 s for 160 built, 160 eligible of 160); jobs 16 rule memory budget 18.0 GiB census workers 16 peak running 16 predicted peak 18.0 GiB; workers census max 16 mean 8.8, bake max 16 mean 7.0; tree RSS peak 6.41 GiB mean 3.13 GiB; members 800
+old vs launcher-18GiB: 800 of 800 members byte-identical; only in old 0, only in launcher-18GiB 0, differing 0
+/private/tmp/claude-501/-Users-asvetl-x3-mod/e0774b6f-d70a-43c1-8d4e-d4c23a53d12d/scratchpad/D.json.log:census workers: memory rule: up to 16 workers (16 for the census), RAM 24.0 GiB, available 6.8 GiB, budget 18.0 GiB
+/private/tmp/claude-501/-Users-asvetl-x3-mod/e0774b6f-d70a-43c1-8d4e-d4c23a53d12d/scratchpad/D.json.log:bake workers: memory rule: up to 16 workers (16 for the census), RAM 24.0 GiB, available 9.2 GiB, budget 18.0 GiB
+/private/tmp/claude-501/-Users-asvetl-x3-mod/e0774b6f-d70a-43c1-8d4e-d4c23a53d12d/scratchpad/C.json.log:census workers: memory rule: up to 16 workers (4 for the census), RAM 24.0 GiB, available 5.6 GiB, budget 3.6 GiB
+/private/tmp/claude-501/-Users-asvetl-x3-mod/e0774b6f-d70a-43c1-8d4e-d4c23a53d12d/scratchpad/C.json.log:bake workers: memory rule: up to 16 workers (6 for the census), RAM 24.0 GiB, available 7.2 GiB, budget 5.2 GiB
+# load average at start / end: old run 5.6 / -, launcher-default 12.7 / 6.4, launcher-18GiB 6.7 / 13.2 (os.getloadavg, 1 min)

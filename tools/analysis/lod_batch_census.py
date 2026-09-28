@@ -324,6 +324,21 @@ def atlas_reason(exc):
     return next((code for needle, code in ATLAS_REASONS if needle in text), 'atlas_other')
 
 
+def texture_pixels(textures, tiles):
+    """Mip-0 pixels of the distinct real textures the tiles read (sizes only, cached; no decode): the bake's
+    memory predictor (lod_overlay.predicted_bake_bytes)."""
+    px = {}
+    for t in tiles:
+        for slot, v in t['names'].items():
+            try:
+                wh = textures.size(v) if v is not None else None
+            except lod_atlas.AtlasError:
+                wh = None
+            if wh:
+                px[t.get('sources', {}).get(slot) or v.lower()] = wh[0] * wh[1]
+    return sum(px.values())
+
+
 def drawn_groups(lod):
     return sum(len(p['groups']) for p in lod['parts'] if not p['flags'] & lod_atlas.HIDDEN_PART)
 
@@ -482,6 +497,7 @@ def census_body(assets, textures, entry, opts):
     row['inputs_sha256'] = hashlib.sha256('\n'.join([row['source_decoded_sha256']] + tex_shas
                                                    + ([f'recipe:{recipe_hash}'] if recipe_hash else [])).encode()).hexdigest()
     row['texture_sources'] = sorted({v.split(':', 1)[-1] for t in lay['tiles'] for v in t['sources'].values() if v})
+    row['texture_pixels'] = texture_pixels(textures, lay['tiles'])
     row['radius_body'] = lay['radius']
     layouts = {opts['widths'][0]: lay}
     for w in opts['widths'][1:]:

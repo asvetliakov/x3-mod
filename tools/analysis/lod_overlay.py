@@ -248,9 +248,14 @@ the rule ships T_class = min(200, max(80, 2.5*T_1)) (80 for a single-record body
 others 150, then the aspect factor T_pad = round(T_class * clamp(k, 1, K_max)) (k from record 0's
 half-extents, 1 for a cube; K_max --aspect-cap SHIPS,STATIONS, default 1.5,2.0; --no-aspect keeps
 T_class; lod_batch_census.aspect_k), source record 0, compact placement, --collapse atlas with --atlas-specular on, and
-bakes the eligible bodies in worker processes (--jobs, default min(cpu-2, 6, RAM // 7 GiB - 1),
-at least 1, so 2 on a 24 GiB host: a worker holds one body's decoded textures at a time and
-reaches ~7 GB RSS on the biggest stations; every worker process is replaced after one body). --only FILE restricts the run to the bodies named in FILE
+bakes the eligible bodies in one spawned process per body (bake_rows, worker_plan, BakeScheduler:
+cpu - 2 workers, at most MAX_JOBS, --jobs N an upper bound; a body starts only while the predicted
+peaks of the running bodies (predicted_bake_bytes, from the census row) fit the memory budget
+min(RAM - max(6 GiB, RAM/4), max(available - 2 GiB, RAM/2)), --memory-budget GIB overrides it; a worker
+lost without a result or out of memory is retried once alone at the end, then refused; the
+largest predictions start first and one above the budget runs alone; the census uses the same
+count, capped by budget // CENSUS_WORKER_BYTES; a RAM size that cannot be read falls back to
+min(cpu - 2, 2) workers). --only FILE restricts the run to the bodies named in FILE
 (one per line; lod_batch_census sectors.txt rows and eligible_bodies.txt NAME=T@N lines are
 accepted, the rule still decides T). The compact guard "T_pad not below T_1" is waived
 automatically when the source record is 0: C is then the full LOD 0 geometry, so C drawing in
@@ -1322,8 +1327,21 @@ MAX_POINTS = 60000         # refusal limit for a merged group (non-atlas collaps
 MIN_TEXELS = 0.5            # texel floor: tiles below this many atlas texels per screen pixel are starved
 TEXEL_FLOOR_SHARE = 0.10    # texel_floor refusal: starved tiles cover more than this share of the atlased surface
 TEXEL_FALLBACK = 1.0        # batch: a texel_floor body gets a lower T so its weighted ratio reaches this (0: refuse)
-MAX_DEFAULT_JOBS = 6        # a worker on the biggest stations reaches ~7 GB RSS (2026-09-23 dry run)
-WORKER_BYTES = 7 << 30      # RAM budget per baking worker (that peak); the default keeps one budget spare
+MAX_DEFAULT_JOBS = 6        # fallback rule (memory unknown): the old count cap
+WORKER_BYTES = 7 << 30      # fallback rule: the worst-case worker peak (2026-09-23 dry run), one budget kept spare
+FALLBACK_JOBS = 2           # fallback rule when the RAM size cannot be read: what the old rule gives on 24 GiB
+MAX_JOBS = 16               # worker ceiling (docs/verification/lod-overlay.md, "Bake scheduling")
+MEMORY_RESERVE = 6 << 30    # memory budget = RAM - max(MEMORY_RESERVE, RAM * MEMORY_RESERVE_SHARE)
+MEMORY_RESERVE_SHARE = 0.25
+AVAILABLE_RESERVE = 2 << 30  # and at most the memory available at the start minus this,
+AVAILABLE_FLOOR_SHARE = 0.5  # but never below RAM * this (memory_budget: why)
+BAKE_BASE_BYTES = 400 << 20         # predicted worker peak (predicted_bake_bytes), fitted on 73 bodies whose peaks
+BAKE_BYTES_PER_PIXEL = 20           # span 0.40..2.18 GiB (verification/results/lod-bake-scheduling/sample.json):
+BAKE_BYTES_PER_ATLAS_TEXEL = 40     # the raw model under-predicts by at most 16.5 % there; one body re-measured
+BAKE_BYTES_PER_FACE = 3000          # 1.14..1.84 GiB over four runs (raw ratio up to 1.41: RSS varies run to run),
+BAKE_SAFETY = 1.7                   # so SAFETY keeps ~20 % over that (old_bodies_rss_out.txt)
+BAKE_FIT_SLOTS = 4                  # every fitted body had 4 atlas slots: fewer are charged as 4
+CENSUS_WORKER_BYTES = 768 << 20     # a census worker (long-lived; 8 workers + parent peaked at 4.09 GiB)
 LIGHT_BLEED_MAX = 4.0       # lod_atlas.LIGHT_BLEED_MAX: mean added light luminance (0..255) that flags a tile
 LIGHT_BLEED_SCALE_LOSS = 0.15   # lod_atlas.LIGHT_BLEED_SCALE_LOSS: the largest atlas scale drop a repack may cost
 LIGHT_BLEED_SHARE = 0.02    # lod_atlas.LIGHT_BLEED_SHARE: the atlased-surface share from which a bleeding tile counts
@@ -1333,21 +1351,202 @@ ATLAS_DEFAULTS = dict(sizes=(1024, 2048), fmt='dxt', specular=False, bump=True, 
                       light_bleed_share=LIGHT_BLEED_SHARE, widen=None)      # widening is opt-in (--widen)
 
 
-def host_memory_bytes():
-    """Physical RAM in bytes (sysconf), None when the host does not report it."""
+def _windows_memory():
+    """(ullTotalPhys, ullAvailPhys) from GlobalMemoryStatusEx, or None."""
+    import ctypes
+
+    class MemoryStatusEx(ctypes.Structure):
+        _fields_ = [('dwLength', ctypes.c_uint32), ('dwMemoryLoad', ctypes.c_uint32)] + \
+            [(n, ctypes.c_uint64) for n in ('ullTotalPhys', 'ullAvailPhys', 'ullTotalPageFile', 'ullAvailPageFile',
+                                           'ullTotalVirtual', 'ullAvailVirtual', 'ullAvailExtendedVirtual')]
+    status = MemoryStatusEx()
+    status.dwLength = ctypes.sizeof(status)
     try:
-        return os.sysconf('SC_PAGE_SIZE') * os.sysconf('SC_PHYS_PAGES')
+        ok = ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(status))
+    except (AttributeError, OSError):
+        return None
+    return (int(status.ullTotalPhys), int(status.ullAvailPhys)) if ok and status.ullTotalPhys else None
+
+
+def host_memory_bytes():
+    """Physical RAM in bytes: GlobalMemoryStatusEx (ullTotalPhys) on Windows, sysconf SC_PAGE_SIZE x
+    SC_PHYS_PAGES elsewhere; None when the host does not report it."""
+    if sys.platform == 'win32':
+        mem = _windows_memory()
+        return mem[0] if mem else None
+    try:
+        ram = os.sysconf('SC_PAGE_SIZE') * os.sysconf('SC_PHYS_PAGES')
     except (ValueError, OSError, AttributeError):
         return None
+    return ram if ram > 0 else None
 
 
-def default_jobs():
-    """min(cpu - 2, MAX_DEFAULT_JOBS, RAM // WORKER_BYTES - 1), at least 1: 2 on a 24 GiB host."""
-    jobs = min((os.cpu_count() or 2) - 2, MAX_DEFAULT_JOBS)
-    ram = host_memory_bytes()
-    if ram:
-        jobs = min(jobs, max(1, ram // WORKER_BYTES - 1))
+def _darwin_available():
+    """Free + inactive + purgeable pages x page size from host_statistics64(HOST_VM_INFO64) (mach/host_info.h,
+    the counters vm_stat prints), or None."""
+    import ctypes
+    import ctypes.util
+    nat, u64 = ctypes.c_uint32, ctypes.c_uint64
+
+    class VmStatistics64(ctypes.Structure):
+        _fields_ = [(n, nat) for n in ('free_count', 'active_count', 'inactive_count', 'wire_count')] + \
+            [(n, u64) for n in ('zero_fill_count', 'reactivations', 'pageins', 'pageouts', 'faults', 'cow_faults',
+                                'lookups', 'hits', 'purges')] + \
+            [(n, nat) for n in ('purgeable_count', 'speculative_count')] + \
+            [(n, u64) for n in ('decompressions', 'compressions', 'swapins', 'swapouts')] + \
+            [(n, nat) for n in ('compressor_page_count', 'throttled_count', 'external_page_count',
+                                'internal_page_count')] + [('total_uncompressed_pages_in_compressor', u64)]
+    try:
+        libc = ctypes.CDLL(ctypes.util.find_library('c'))
+        libc.mach_host_self.restype = ctypes.c_uint32
+        host = libc.mach_host_self()
+        page = ctypes.c_size_t()
+        info = VmStatistics64()
+        count = ctypes.c_uint32(ctypes.sizeof(info) // 4)
+        if libc.host_page_size(host, ctypes.byref(page)) != 0:
+            return None
+        if libc.host_statistics64(host, 4, ctypes.byref(info), ctypes.byref(count)) != 0:     # HOST_VM_INFO64
+            return None
+    except (OSError, AttributeError, TypeError):
+        return None
+    return (info.free_count + info.inactive_count + info.purgeable_count) * page.value
+
+
+def host_available_bytes():
+    """Memory available to new processes now: ullAvailPhys (Windows), free + inactive + purgeable pages
+    (macOS, host_statistics64), MemAvailable of /proc/meminfo (Linux); None when it cannot be read."""
+    try:
+        if sys.platform == 'win32':
+            mem = _windows_memory()
+            return mem[1] if mem else None
+        if sys.platform == 'darwin':
+            return _darwin_available()
+        with open('/proc/meminfo') as f:
+            for line in f:
+                if line.startswith('MemAvailable:'):
+                    return int(line.split()[1]) * 1024
+    except (OSError, ValueError, IndexError):
+        return None
+    return None
+
+
+def host_cpus():
+    """Logical processors (os.cpu_count: sysconf / GetSystemInfo), None when unknown."""
+    return os.cpu_count()
+
+
+def fallback_jobs(ram=None):
+    """The conservative count rule, used when the RAM size is unknown (and without a memory budget): min(cpu - 2,
+    MAX_DEFAULT_JOBS, RAM // WORKER_BYTES - 1), FALLBACK_JOBS when RAM is unknown, at least 1."""
+    jobs = min((host_cpus() or 2) - 2, MAX_DEFAULT_JOBS)
+    jobs = min(jobs, max(1, ram // WORKER_BYTES - 1) if ram else FALLBACK_JOBS)
     return max(1, jobs)
+
+
+def memory_budget(ram, available=None):
+    """Bytes of predicted worker peaks the batch may run together: min(RAM rule, max(available - AVAILABLE_RESERVE,
+    RAM * AVAILABLE_FLOOR_SHARE)), the RAM rule being RAM - max(MEMORY_RESERVE, RAM * MEMORY_RESERVE_SHARE); the RAM
+    rule alone when the available memory is unknown; None for unknown RAM.
+    The floor RAM / 2: predictions sum to about 2 to 2.8 x the real peaks at BAKE_SAFETY 1.7 (a predicted 18 GiB
+    budget gave a 6.41 GiB process-tree peak, measured), so a predicted RAM / 2 is a real peak near RAM / 5
+    (inferred); and the macOS free + inactive + purgeable count undercounts reclaimable memory (5.6 to 7.2 GiB
+    counted while memory_pressure reported about 55 % free, measured)."""
+    if not ram:
+        return None
+    budget = max(0, int(ram - max(MEMORY_RESERVE, ram * MEMORY_RESERVE_SHARE)))
+    if available is not None:
+        budget = min(budget, max(int(available - AVAILABLE_RESERVE), memory_floor(ram)))
+    return budget
+
+
+def memory_floor(ram):
+    """The available-memory rule's floor: RAM * AVAILABLE_FLOOR_SHARE (memory_budget)."""
+    return int(ram * AVAILABLE_FLOOR_SHARE)
+
+
+def predicted_bake_bytes(row):
+    """Conservative peak RSS of a worker baking this census row, from what the census knows before the bake:
+    (BAKE_BASE_BYTES + BAKE_BYTES_PER_PIXEL x texture_pixels (mip 0 of the distinct source textures) +
+    BAKE_BYTES_PER_ATLAS_TEXEL x atlas side^2 x max(slots, BAKE_FIT_SLOTS) (the largest estimated side, 2048 when
+    none; every fitted body had 4 slots, so fewer are charged as 4) + BAKE_BYTES_PER_FACE x r0_faces) x
+    BAKE_SAFETY; WORKER_BYTES x BAKE_SAFETY for a row without texture_pixels or r0_faces."""
+    px, faces = row.get('texture_pixels'), row.get('r0_faces')
+    if px is None or faces is None:
+        return int(WORKER_BYTES * BAKE_SAFETY)
+    side = row.get('atlas_size') or max((e.get('size') or 0 for e in (row.get('atlas') or {}).values()), default=0)
+    slots = row.get('slots')
+    slots = max(slots if isinstance(slots, int) else len(slots or ()), BAKE_FIT_SLOTS)
+    raw = (BAKE_BASE_BYTES + BAKE_BYTES_PER_PIXEL * px + BAKE_BYTES_PER_ATLAS_TEXEL * (side or 2048) ** 2 * slots
+           + BAKE_BYTES_PER_FACE * faces)
+    return int(raw * BAKE_SAFETY)
+
+
+def worker_plan(jobs=None, budget_bytes=None):
+    """How the batch runs its workers: dict(workers, census_workers, budget, ram, cpus, rule).
+    rule 'memory': workers = min(jobs, cpu - 2, MAX_JOBS) (jobs: the --jobs upper bound, None for none) and the
+    bake admits a body while the predicted peaks of the running bodies stay within budget (memory_budget: the RAM
+    rule and the available memory, or budget_bytes, the developer override); census workers = min(workers,
+    budget // CENSUS_WORKER_BYTES). rule 'fallback' (RAM unknown and no override): fallback_jobs() for both, no
+    budget."""
+    cpus = host_cpus()
+    cap = min(jobs if jobs is not None else MAX_JOBS, max(1, (cpus or 2) - 2), MAX_JOBS)
+    ram, available = host_memory_bytes(), host_available_bytes()
+    budget = budget_bytes if budget_bytes is not None else memory_budget(ram, available)
+    if budget is None:
+        n = min(jobs if jobs is not None else MAX_JOBS, fallback_jobs(ram))
+        return dict(workers=n, census_workers=n, budget=None, ram=ram, available=available, cpus=cpus,
+                    rule='fallback')
+    census = max(1, min(cap, budget // CENSUS_WORKER_BYTES))
+    return dict(workers=cap, census_workers=census, budget=int(budget), ram=ram, available=available, cpus=cpus,
+                floor=memory_floor(ram) if ram and budget_bytes is None else None,
+                rule='memory')
+
+
+def plan_text(plan):
+    """One line of a worker_plan: rule, workers, RAM, available memory, budget."""
+    gib = lambda n: 'unknown' if n is None else f'{n / 2**30:.1f} GiB'
+    return (f"{plan['rule']} rule: up to {plan['workers']} workers ({plan['census_workers']} for the census),"
+            f" RAM {gib(plan['ram'])}, available {gib(plan.get('available'))}, floor {gib(plan.get('floor'))},"
+            f" budget {gib(plan['budget'])}")
+
+
+def schedule_text(plan, stats):
+    """Summary phrase of a worker_plan and the bake's scheduler stats."""
+    return (plan_text(plan) + f"; at most {stats.get('peak_running', 0)} bodies at once, predicted peak"
+            f" {stats.get('peak_predicted_bytes', 0) / 2**30:.1f} GiB, {stats.get('retried', 0)} retried")
+
+
+class BakeScheduler:
+    """Admission of bodies to bake workers by predicted memory. Bodies start in descending order of prediction
+    (ties by name); the next body starts when fewer than `workers` run and, with a budget, the predicted peaks of
+    the running bodies plus the idle workers (idle bytes each; 0 for bake_rows, whose worker processes exist
+    only while they bake) stay within it after adding it. The head of the queue is never skipped, so a body predicted above the budget starts only
+    when nothing runs and nothing starts beside it. Results do not depend on this order (bake_rows)."""
+    def __init__(self, rows, predict, workers, budget=None, idle=0):
+        self.pred = [predict(r) for r in rows]
+        self.queue = sorted(range(len(rows)), key=lambda i: (-self.pred[i], rows[i]['name'].lower()))
+        self.workers, self.budget, self.idle = max(1, workers), budget, idle
+        self.running, self.peak_running, self.peak_bytes = set(), 0, 0
+
+    def committed(self, extra=()):
+        run = list(self.running) + list(extra)
+        return sum(self.pred[i] for i in run) + (self.workers - len(run)) * self.idle
+
+    def next(self):
+        """Index of the next row to start now, or None (wait for a finish, or the queue is empty)."""
+        if not self.queue or len(self.running) >= self.workers:
+            return None
+        i = self.queue[0]
+        if self.running and self.budget is not None and self.committed([i]) > self.budget:
+            return None
+        self.queue.pop(0)
+        self.running.add(i)
+        self.peak_running = max(self.peak_running, len(self.running))
+        self.peak_bytes = max(self.peak_bytes, self.committed())
+        return i
+
+    def finish(self, i):
+        self.running.discard(i)
 
 
 def atlas_collapse(assets, name, entry, mats, record, alpha, threshold, synth, opts):
@@ -1819,10 +2018,14 @@ def build_parser():
                    help='batch: leave the winning text bodies (.pbd/.bod) out of the enumeration')
     b.add_argument('--sync', action='store_true',
                    help='batch: reuse the previous overlay\'s members for bodies whose inputs did not change')
-    b.add_argument('--jobs', type=int, default=default_jobs(),
-                   help='batch: worker processes for the census and the baking (default min(cpu count - 2, 6,'
-                        ' RAM // 7 GiB - 1), at least 1: a worker baking one of the biggest stations reaches'
-                        ' ~7 GB RSS, and every worker process is replaced after each body)')
+    b.add_argument('--jobs', type=int, default=None, metavar='N',
+                   help=f'batch: upper bound on worker processes for the census and the baking (default: cpu count'
+                        f' - 2, at most {MAX_JOBS}); the memory budget still applies: a body starts only while the'
+                        ' predicted peaks of the running bodies fit (worker_plan, BakeScheduler; every worker process'
+                        ' is replaced after each body). Without a readable RAM size: min(cpu - 2, 2)')
+    b.add_argument('--memory-budget', type=float, default=None, metavar='GIB',
+                   help='batch, developers: the memory the workers may hold together, in GiB (default: RAM -'
+                        f' max({MEMORY_RESERVE >> 30} GiB, {MEMORY_RESERVE_SHARE:g} x RAM))')
     b.add_argument('--min-texels', type=float, default=MIN_TEXELS, metavar='F',
                    help=f'atlas / batch: a tile whose atlas gives fewer than F atlas texels per screen pixel at'
                         f' the display reference is starved (default {MIN_TEXELS}; 0 disables); the body is refused'
@@ -1918,8 +2121,10 @@ def main(argv=None):
         ap.error('--atlas-size and --atlas-max-size must be powers of two, 64 <= size <= max size <= 8192')
     if a.screen_width is not None and a.screen_width < 320:
         ap.error('--screen-width must be >= 320')
-    if a.jobs < 1:
+    if a.jobs is not None and a.jobs < 1:
         ap.error('--jobs must be >= 1')
+    if a.memory_budget is not None and not a.memory_budget > 0:
+        ap.error('--memory-budget must be > 0')
     if a.max_dat_bytes < 1:
         ap.error('--max-dat-bytes must be >= 1')
     sizes, n = [], a.atlas_size
@@ -2317,34 +2522,60 @@ def bleed_fields(atlas):
                 kept_light_bleed_draws=(atlas or {}).get('kept_light_bleed_draws', 0), light_bleed_remedy=b['remedy'])
 
 
-_BAKE = {}
-
-
-def _bake_init(game, atlas_opts, mods=()):
-    _BAKE['assets'] = original_assets(Path(game), mods=mods)[0]
-    _BAKE['atlas_opts'] = atlas_opts
-
-
-def bake_safely(assets, row, atlas_opts):
+def bake_attempt(assets, row, atlas_opts):
+    """(result, None), or (None, reason) when the body ran out of memory (MemoryError: retried alone, like a
+    lost worker); any other exception is the body's refusal."""
     try:
-        return bake_body(assets, row, atlas_opts)
+        return bake_body(assets, row, atlas_opts), None
+    except MemoryError as exc:
+        return None, f'MemoryError: {exc}'
     except Exception as exc:                        # one bad body must not end the batch
-        return dict(name=row['name'], refused=f'{type(exc).__name__}: {exc}', seconds=0.0)
+        return dict(name=row['name'], refused=f'{type(exc).__name__}: {exc}', seconds=0.0), None
 
 
-def _bake_work(row):
-    return bake_safely(_BAKE['assets'], row, _BAKE['atlas_opts'])
+def _bake_child(game, atlas_opts, mods, i, row, results):
+    """One spawned worker process for one body: puts (i, 'init', message) when the assets cannot be opened,
+    (i, 'lost', reason) on MemoryError, else (i, 'ok', result)."""
+    try:
+        assets = original_assets(Path(game), mods=mods)[0]
+    except BaseException as exc:                     # noqa: B036 (reported, then the process ends)
+        results.put((i, 'init', f'{type(exc).__name__}: {exc}'[:400]))
+        return
+    res, lost = bake_attempt(assets, row, atlas_opts)
+    results.put((i, 'lost', lost) if lost else (i, 'ok', res))
+
+
+def exit_reason(code):
+    """'exit code N' or 'signal NAME' of a worker process's exitcode."""
+    if code is not None and code < 0:
+        import signal
+        try:
+            return f'signal {signal.Signals(-code).name}'
+        except ValueError:
+            return f'signal {-code}'
+    return f'exit code {code}'
 
 
 progress = None   # optional callable(name, done, total, package, result): tools/regenerate's per-body console line
+POLL_SECONDS = 0.5  # bake_rows: bounded wait for a result, so exits and Ctrl+C are noticed
 
 
-def bake_rows(game, markers, rows, atlas_opts, jobs, mods, package, offset, total):
-    """bake_safely over rows (serial for one job or one row, else a spawn pool, one task per worker), results in
-    the order of rows; calls progress(name, offset + i, total, package, result) as each body finishes."""
+def bake_rows(game, markers, rows, atlas_opts, jobs, mods, package, offset, total, budget=None, stats=None,
+              target=None):
+    """Bake rows; results in the order of rows; calls progress(name, offset + i, total, package, result) as
+    each body finishes (i counts finishes, so it only rises). stats (a dict) receives peak_running,
+    peak_predicted_bytes and retried.
+
+    One job or one row: in this process. Otherwise one spawned process per body (target, default
+    _bake_child), started by BakeScheduler under the memory budget; results come through a queue polled every
+    POLL_SECONDS. A worker that exits without a result (killed, out of memory, SystemExit) or reports
+    MemoryError is retried once, alone, after every other body has finished; a second failure refuses the
+    body with the exit code, signal or MemoryError and the batch goes on. A worker that cannot open the game
+    assets aborts the batch (SystemExit). Ctrl+C terminates the running workers."""
     if not rows:
         return []
     done = {}
+    stats = {} if stats is None else stats
 
     def finished(res):
         done[res['name']] = res
@@ -2352,14 +2583,94 @@ def bake_rows(game, markers, rows, atlas_opts, jobs, mods, package, offset, tota
             progress(res['name'], offset + len(done), total, package, res)
     if jobs <= 1 or len(rows) == 1:
         assets, _ = original_assets(game, markers, mods=mods)
+        retry = []
         for r in rows:
-            finished(bake_safely(assets, r, atlas_opts))
-    else:
-        with multiprocessing.get_context('spawn').Pool(min(jobs, len(rows)), _bake_init,
-                                                       (str(game), atlas_opts, [str(m) for m in mods]),
-                                                       maxtasksperchild=1) as pool:
-            for res in pool.imap_unordered(_bake_work, rows, chunksize=1):
+            res, lost = bake_attempt(assets, r, atlas_opts)
+            if lost:
+                retry.append(r)
+                print(f"worker lost: {r['name']} ({lost}); retried alone after the other bodies", flush=True)
+            else:
                 finished(res)
+        for r in retry:                              # once more, after the others
+            res, lost = bake_attempt(assets, r, atlas_opts)
+            finished(dict(res, retries=1) if res else dict(name=r['name'], refused=f'worker failed twice: {lost}',
+                                                           seconds=0.0, retries=1))
+        stats.update(peak_running=max(1, stats.get('peak_running', 0)), retried=stats.get('retried', 0) + len(retry),
+                     peak_predicted_bytes=max(max(map(predicted_bake_bytes, rows)),
+                                              stats.get('peak_predicted_bytes', 0)))
+        return [done[r['name']] for r in rows]
+    import queue as queue_mod
+    ctx = multiprocessing.get_context('spawn')
+    target = target or _bake_child
+    results = ctx.Queue()
+    sched = BakeScheduler(rows, predicted_bake_bytes, min(jobs, len(rows)), budget, idle=0)
+    procs, got, failures = {}, {}, {}
+    retry = []
+
+    def start(i):
+        proc = ctx.Process(target=target, args=(str(game), atlas_opts, [str(m) for m in mods], i, rows[i], results),
+                           daemon=True)
+        proc.start()
+        procs[i] = proc
+
+    def collect(i, kind, payload):
+        if kind == 'init':
+            raise SystemExit(f'bake worker could not open the game assets ({payload}); batch aborted')
+        got[i] = (kind, payload)
+
+    def settle(i):
+        proc = procs.pop(i)
+        proc.join(30)
+        if proc.is_alive():                          # a result was sent; the exit hangs
+            proc.terminate()
+            proc.join(5)
+        sched.finish(i)
+        kind, payload = got.pop(i, (None, None))
+        if kind == 'ok':
+            finished(dict(payload, retries=1) if i in failures else payload)
+            return
+        reason = payload if kind == 'lost' else exit_reason(proc.exitcode)
+        if i in failures:
+            finished(dict(name=rows[i]['name'], refused=f'worker failed twice: {failures[i]}; {reason}', seconds=0.0,
+                          retries=1))
+        else:
+            failures[i] = reason
+            retry.append(i)
+            print(f"worker lost: {rows[i]['name']} ({reason}); retried alone after the other bodies", flush=True)
+
+    try:
+        while sched.queue or procs or retry:
+            if not sched.queue and not procs and retry:      # the retries: alone, one at a time
+                i = retry.pop(0)
+                sched.running.add(i)
+                start(i)
+            i = sched.next()
+            while i is not None:
+                start(i)
+                i = sched.next()
+            try:
+                collect(*results.get(timeout=POLL_SECONDS))
+            except queue_mod.Empty:
+                pass
+            for i in [i for i in procs if i in got]:
+                settle(i)
+            for i in [i for i, p in procs.items() if p.exitcode is not None]:
+                try:                                          # a result sent just before the exit
+                    while i not in got:
+                        collect(*results.get(timeout=POLL_SECONDS))
+                except queue_mod.Empty:
+                    pass
+                settle(i)
+    finally:
+        for proc in procs.values():                           # Ctrl+C, an init failure: no orphaned workers
+            if proc.is_alive():
+                proc.terminate()
+        for proc in procs.values():
+            proc.join(5)
+        results.close()
+    stats.update(peak_running=max(sched.peak_running, stats.get('peak_running', 0)),
+                 peak_predicted_bytes=max(sched.peak_bytes, stats.get('peak_predicted_bytes', 0)),
+                 retried=stats.get('retried', 0) + len(failures))
     return [done[r['name']] for r in rows]
 
 
@@ -2554,7 +2865,7 @@ def package_census(a, game, opts, pkg_cat, eligible, only):
     if only is not None:
         keys &= only
     target = pkg_cat.relative_to(game).as_posix() if pkg_cat.is_relative_to(game) else pkg_cat.as_posix()
-    rows, _ = census.run(game, dict(opts, overlay_target=target, overlay_replaces=True), a.jobs, only=keys,
+    rows, _ = census.run(game, dict(opts, overlay_target=target, overlay_replaces=True), getattr(a, 'census_jobs', a.jobs), only=keys,
                          include_text=not a.binary_only, mods=[pkg_cat])
     rows.sort(key=lambda r: r['name'].lower())
     for r in rows:
@@ -2757,8 +3068,12 @@ def batch(a, game, root, markers):
     settings = dict(rule=opts['rule'], screen_width=width, display=list(a.display), collapse='atlas',
                     source_record=0, placement='compact', include_other=a.include_other,
                     atlas=dict(a.atlas_opts, sizes=list(a.atlas_opts['sizes'])), tool_sha256=tool_sha256())
+    budget_override = None if a.memory_budget is None else int(a.memory_budget * 2**30)
+    plan = worker_plan(a.jobs, budget_override)
+    a.census_jobs = plan['census_workers']
+    print(f'census workers: {plan_text(plan)}', flush=True)
     t0 = time.time()
-    rows, skipped = census.run(game, opts, a.jobs, only=only, include_text=not a.binary_only)
+    rows, skipped = census.run(game, opts, a.census_jobs, only=only, include_text=not a.binary_only)
     radii = census.world_radii(a.radius_log or census.default_radius_logs())
     census.attach_world(rows, radii)
     census_s = time.time() - t0
@@ -2811,13 +3126,19 @@ def batch(a, game, root, markers):
     pkg_to_bake = [r for r in pkg_eligible if r['name'] not in pkg_reused]
     t0 = time.time()
     total = len(to_bake) + len(pkg_to_bake)
-    results = bake_rows(game, markers, to_bake, a.atlas_opts, a.jobs, (), None, 0, total)
-    pkg_results = bake_rows(game, markers, pkg_to_bake, a.atlas_opts, a.jobs, [pkg_cat], package, len(to_bake), total)
+    plan = worker_plan(a.jobs, budget_override)    # available memory again, now that the census workers are gone
+    print(f'bake workers: {plan_text(plan)}', flush=True)
+    sched = {}
+    results = bake_rows(game, markers, to_bake, a.atlas_opts, plan['workers'], (), None, 0, total, plan['budget'], sched)
+    pkg_results = bake_rows(game, markers, pkg_to_bake, a.atlas_opts, plan['workers'], [pkg_cat], package, len(to_bake),
+                            total, plan['budget'], sched)
     bake_s = time.time() - t0
     by_name = {r['name']: r for r in rows}
     plans = []
     for res in results:
         row = by_name[res['name']]
+        if res.get('retries'):
+            row['retries'] = res['retries']
         if 'refused' in res:
             row['refuse'].append('bake:' + bake_reason(res['refused']))
             row['bake_error'] = res['refused'][:200]
@@ -2830,6 +3151,8 @@ def batch(a, game, root, markers):
     pkg_plans = []
     for res in pkg_results:
         row = pkg_by_name[res['name']]
+        if res.get('retries'):
+            row['retries'] = res['retries']
         if 'refused' in res:
             row['refuse'].append('bake:' + bake_reason(res['refused']))
             row['bake_error'] = res['refused'][:200]
@@ -3045,7 +3368,8 @@ def batch(a, game, root, markers):
          + ''.join(f'; {n}{census.bleed_text(dict(baked=b))} remedy={b["light_bleed_remedy"]}'
                    for n, b in bleed_rows)),
         widen_summary(plans, a.atlas_opts.get('widen')),
-        f'timing: census {census_s:.1f} s, baking {bake_s:.1f} s for {len(built)} bodies with {a.jobs} jobs'
+        f'timing: census {census_s:.1f} s, baking {bake_s:.1f} s for {len(built)} bodies with up to {plan["workers"]} workers'
+        f' ({schedule_text(plan, sched)})'
         f' ({per_body:.2f} s per body wall); extrapolated full set: {full_est:.0f} s'
         + (f' (this run x {len(rows)} enumerated / {len(built)} built; upper bound, every candidate baked)'
            if only is not None else ' (this run is the full set)') + f'; total {time.time() - t_start:.1f} s',
@@ -3073,7 +3397,9 @@ def batch(a, game, root, markers):
         slot=slot, slots=slot_rows, max_dat_bytes=a.max_dat_bytes, dat_cap=cap, retired_slot=retire[0] if retire else None,
         retired_slots=retire, removed_slots=remove, previous_slot=prev['slots'][0] if prev else None,
         previous_slots=prev['slots'] if prev else [], sync=bool(a.sync),
-        settings=settings, only=str(a.only) if a.only else None, binary_only=a.binary_only, jobs=a.jobs,
+        settings=settings, only=str(a.only) if a.only else None, binary_only=a.binary_only, jobs=plan['workers'],
+        scheduling=dict(plan, jobs_cap=a.jobs, peak_running=sched.get('peak_running', 0),
+                        peak_predicted_bytes=sched.get('peak_predicted_bytes', 0), retried=sched.get('retried', 0)),
         counts=dict(enumerated=len(rows), by_category=cats, eligible=len(eligible), built=len(built),
                     reused=len(reused), overlay_bodies=len(plans), candidates=candidates),
         refused=reasons, filtered=filters, atlas_sizes=sizes,
@@ -3108,7 +3434,8 @@ def batch(a, game, root, markers):
                                                     dat_bytes=pkg_layout['bytes']),
             bodies=[dict(name=r['name'], member=r.get('member'), reason=r['package_reason'], eligible=r['eligible'],
                          refuse=r['refuse'], filter=r['filter'], inputs_sha256=r.get('inputs_sha256'),
-                         texture_sources=r.get('texture_sources')) for r in pkg_rows]),
+                         texture_sources=r.get('texture_sources'),
+                         **({'retries': r['retries']} if r.get('retries') else {})) for r in pkg_rows]),
         orphaned_markers=[m['path'].name for m in orphaned],
         bodies=[dict(name=r['name'], cat=r['cat'], member=r.get('member'), t_pad=r.get('t_pad'),
                      t_pad_below_t1=r.get('t_pad_below_t1', False), r0_drawn=r.get('r0_drawn'),
@@ -3124,7 +3451,8 @@ def batch(a, game, root, markers):
                      **({'texel': r['texel']} if r.get('texel') else {}),
                      **({'texel_fallback': r['texel_fallback']} if r.get('texel_fallback') else {}),
                      **({'error': r['atlas_error']} if r.get('atlas_error') else {}),
-                     **({'bake_error': r['bake_error']} if r.get('bake_error') else {}))
+                     **({'bake_error': r['bake_error']} if r.get('bake_error') else {}),
+                     **({'retries': r['retries']} if r.get('retries') else {}))
                 for r in rows],
         summary=summary)
 

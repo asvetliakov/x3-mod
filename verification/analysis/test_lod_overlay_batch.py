@@ -444,16 +444,7 @@ class BatchRun(unittest.TestCase):
             self.assertFalse((game / 'addon/06.cat').exists())
 
     def test_texel_floor_and_jobs_default(self):
-        import os
-        ram = lod_overlay.host_memory_bytes()
-        want = min((os.cpu_count() or 2) - 2, 6)
-        if ram:
-            want = min(want, max(1, ram // (7 << 30) - 1))
-        self.assertEqual(lod_overlay.build_parser().parse_args(['--batch']).jobs, max(1, want))
-        with unittest.mock.patch.object(lod_overlay, 'host_memory_bytes', return_value=24 << 30):
-            self.assertEqual(lod_overlay.default_jobs(), max(1, min((os.cpu_count() or 2) - 2, 2)))
-        with unittest.mock.patch.object(lod_overlay, 'host_memory_bytes', return_value=None):
-            self.assertEqual(lod_overlay.default_jobs(), max(1, min((os.cpu_count() or 2) - 2, 6)))
+        self.assertIsNone(lod_overlay.build_parser().parse_args(['--batch']).jobs)     # no bound: worker_plan
         self.assertEqual(lod_overlay.build_parser().parse_args(['--batch']).min_texels, 0.5)
         with tempfile.TemporaryDirectory() as folder:
             game, out = make_game(folder), Path(folder) / 'out'
@@ -627,10 +618,10 @@ class BatchRun(unittest.TestCase):
             self.assertEqual(ratio['texel_fallback_not_reached'], ['ships/x/good', 'stations/y/good'])
             self.assertIn('texel_floor 2 = at the guard 0 + W not reached in 3 steps 2; ships/x/good refused T 120'
                           ' weighted 0.270 starved 100.0% W 1 not reached in 3 steps (last T 90 weighted 0.400;', text)
-            real = lod_overlay.bake_safely
-            bake = lambda assets, row, opts: (dict(name=row['name'], refused='atlas texture x already exists in y')
+            real = lod_overlay.bake_attempt
+            bake = lambda assets, row, opts: ((dict(name=row['name'], refused='atlas texture x already exists in y'), None)
                                               if row['name'] == 'ships/x/good' else real(assets, row, opts))
-            with unittest.mock.patch.object(lod_overlay, 'bake_safely', side_effect=bake):
+            with unittest.mock.patch.object(lod_overlay, 'bake_attempt', side_effect=bake):
                 code, text = run(argv + ['--dry-run', '--out', str(Path(folder) / 'o5')])
             ratio = json.loads((Path(folder) / 'o5/x3m-lod-batch.json').read_text())['ratio']
             self.assertEqual(ratio['texel_fallback']['ships/x/good']['refused'], ['bake:atlas_name_taken'])
@@ -675,6 +666,232 @@ class BatchRun(unittest.TestCase):
                 slot=1, bodies=[], overlay_sha256={'cat': h[str(game / 'addon/01.cat')], 'dat': h[str(game / 'addon/01.dat')]})))
             with self.assertRaisesRegex(SystemExit, 'already installed'):
                 run(['--game', str(game), '--dry-run', '--collapse', 'two', 'ships/x/good=8@0'])
+
+
+def host(cpus, ram, available=None):
+    """Patch the host detection of lod_overlay.worker_plan."""
+    stack = contextlib.ExitStack()
+    stack.enter_context(unittest.mock.patch.object(lod_overlay, 'host_cpus', return_value=cpus))
+    stack.enter_context(unittest.mock.patch.object(lod_overlay, 'host_memory_bytes', return_value=ram))
+    stack.enter_context(unittest.mock.patch.object(lod_overlay, 'host_available_bytes', return_value=available))
+    return stack
+
+
+def _flaky_child(game, atlas_opts, mods, i, row, results):
+    """A stand-in bake worker (spawned: module level) driven by the row: 'always' is killed each time, 'once'
+    exits 3 on its first run (marker file), 'oom' reports MemoryError once, 'init' cannot open the assets."""
+    import signal
+    marker = Path(row.get('marker', ''))
+    if row['name'] == 'init':
+        results.put((i, 'init', 'OSError: no catalogues'))
+        return
+    if row['name'] == 'always':
+        if hasattr(signal, 'SIGKILL'):
+            os.kill(os.getpid(), signal.SIGKILL)
+        os._exit(7)
+    if row['name'] in ('once', 'oom') and not marker.exists():
+        marker.write_text('first run')
+        if row['name'] == 'once':
+            os._exit(3)
+        results.put((i, 'lost', 'MemoryError: synthetic'))
+        return
+    results.put((i, 'ok', dict(name=row['name'], seconds=0.0, attempt=2 if marker.exists() else 1)))
+
+
+class BakeScheduling(unittest.TestCase):
+    """worker_plan (cpu - 2 capped by --jobs and MAX_JOBS, memory budget, fallback rule) and BakeScheduler
+    (predicted peaks within the budget, an over-budget body alone, head of the queue never skipped), and batch
+    output independent of the worker count with a monotonic progress count."""
+    GIB = 1 << 30
+
+    def test_worker_plan(self):
+        G = self.GIB
+        with host(18, 24 * G):
+            p = lod_overlay.worker_plan()
+            self.assertEqual((p['rule'], p['workers'], p['budget']), ('memory', 16, 18 * G))   # 24 - max(6, 6)
+        with host(18, 24 * G, 15 * G):                                                # available 15 GiB - 2
+            self.assertEqual(lod_overlay.worker_plan()['budget'], 13 * G)
+        with host(18, 24 * G, 6 * G):                                                 # low: the RAM / 2 floor
+            p = lod_overlay.worker_plan()
+            self.assertEqual((p['budget'], p['floor']), (12 * G, 12 * G))
+            self.assertIn('RAM 24.0 GiB, available 6.0 GiB, floor 12.0 GiB, budget 12.0 GiB',
+                          lod_overlay.plan_text(p))
+        with host(18, 24 * G, 30 * G):                                                # the RAM rule is smaller
+            self.assertEqual(lod_overlay.worker_plan()['budget'], 18 * G)
+        with host(4, 8 * G, 1 * G):                                                   # the floor never exceeds it
+            self.assertEqual(lod_overlay.worker_plan()['budget'], 2 * G)              # 8 - 6 < 8 / 2
+        with host(18, 24 * G, 1 * G):
+            self.assertEqual(lod_overlay.worker_plan(None, 3 * G)['budget'], 3 * G)   # the override wins
+        with host(18, 24 * G):
+            self.assertEqual(p['census_workers'], min(16, 18 * G // lod_overlay.CENSUS_WORKER_BYTES))
+            self.assertEqual(lod_overlay.worker_plan(3)['workers'], 3)                 # --jobs: upper bound
+            self.assertEqual(lod_overlay.worker_plan(40)['workers'], 16)               # cpu - 2
+            self.assertEqual(lod_overlay.worker_plan(None, 5 * G)['budget'], 5 * G)    # developer override
+        with host(64, 256 * G):
+            p = lod_overlay.worker_plan()
+            self.assertEqual((p['workers'], p['budget']), (lod_overlay.MAX_JOBS, 192 * G))   # ceiling, 25 % kept
+        with host(4, 8 * G):
+            self.assertEqual((lod_overlay.worker_plan()['workers'], lod_overlay.worker_plan()['budget']), (2, 2 * G))
+        with host(18, None):                                                          # RAM unknown: the count rule
+            p = lod_overlay.worker_plan()
+            self.assertEqual((p['rule'], p['workers'], p['census_workers'], p['budget']), ('fallback', 2, 2, None))
+            self.assertEqual(lod_overlay.worker_plan(1)['workers'], 1)
+            self.assertEqual(lod_overlay.worker_plan(None, 4 * G)['rule'], 'memory')  # an override still schedules
+        with host(None, None):
+            self.assertEqual(lod_overlay.worker_plan()['workers'], 1)                  # cpu count unknown
+        with unittest.mock.patch.object(lod_overlay.os, 'sysconf', side_effect=ValueError), \
+                unittest.mock.patch.object(lod_overlay.sys, 'platform', 'darwin'):
+            self.assertIsNone(lod_overlay.host_memory_bytes())
+        with unittest.mock.patch.object(lod_overlay.sys, 'platform', 'win32'):    # no windll here: None, not a crash
+            self.assertIsNone(lod_overlay.host_memory_bytes())
+            self.assertIsNone(lod_overlay.host_available_bytes())
+        if sys.platform == 'darwin':                                                  # host_statistics64
+            avail = lod_overlay.host_available_bytes()
+            self.assertTrue(avail and 0 < avail <= lod_overlay.host_memory_bytes())
+        worst = int(lod_overlay.WORKER_BYTES * lod_overlay.BAKE_SAFETY)              # no predictor: worst case x safety
+        row = dict(texture_pixels=10 ** 7, r0_faces=1000, slots=['diffuse', 'light'], atlas={1800: dict(size=1024)})
+        self.assertEqual([lod_overlay.predicted_bake_bytes(r) for r in ({}, dict(row, texture_pixels=None),
+                                                                        dict(row, r0_faces=None))], [worst] * 3)
+        self.assertEqual(lod_overlay.predicted_bake_bytes(row), int(lod_overlay.BAKE_SAFETY * ((400 << 20) + 20 * 10 ** 7 + 40 * 1024 ** 2 * 4
+                                                                               + 3000 * 1000)))   # 2 slots charged as 4
+        self.assertGreater(lod_overlay.predicted_bake_bytes(dict(row, slots=['a', 'b', 'c', 'd', 'e'])),
+                           lod_overlay.predicted_bake_bytes(row))
+        self.assertGreater(lod_overlay.predicted_bake_bytes(dict(row, texture_pixels=10 ** 8)),
+                           lod_overlay.predicted_bake_bytes(row))
+        self.assertEqual(lod_overlay.predicted_bake_bytes(dict(row, atlas={})),                  # no estimate: 2048
+                         lod_overlay.predicted_bake_bytes(dict(row, atlas_size=2048)))
+
+    def simulate(self, preds, workers, budget, seed=0):
+        """Run the scheduler to the end, finishing a random running body each step; returns (start order, the
+        largest committed bytes while more than one body ran, the largest running count, lone over-budget runs)."""
+        import random
+        rnd = random.Random(seed)
+        rows = [dict(name=f'b{i:03d}') for i in range(len(preds))]
+        s = lod_overlay.BakeScheduler(rows, lambda r: preds[int(r['name'][1:])], workers, budget, idle=10)
+        order, worst, most, alone = [], 0, 0, []
+        while s.queue or s.running:
+            i = s.next()
+            while i is not None:
+                order.append(i)
+                i = s.next()
+            most = max(most, len(s.running))
+            if len(s.running) > 1:
+                worst = max(worst, s.committed())
+            elif s.committed() > budget:
+                alone.append(next(iter(s.running)))
+            s.finish(rnd.choice(sorted(s.running)))
+        return order, worst, most, alone
+
+    def test_budget_never_exceeded(self):
+        import random
+        for seed in range(20):
+            rnd = random.Random(seed)
+            preds = [rnd.choice((50, 100, 300, 800, 2000)) + rnd.randrange(50) for _ in range(60)]
+            order, worst, most, alone = self.simulate(preds, 6, 3000, seed)
+            self.assertEqual(sorted(order), list(range(60)))                  # every body runs once
+            self.assertLessEqual(worst, 3000)
+            self.assertLessEqual(most, 6)
+            self.assertEqual(alone, [])
+            self.assertEqual(order, sorted(range(60), key=lambda i: (-preds[i], f'b{i:03d}')))   # largest first
+
+    def test_over_budget_body_runs_alone(self):
+        preds = [5000, 100, 100, 100, 4000]
+        order, worst, most, alone = self.simulate(preds, 4, 1000)
+        self.assertEqual(order[:2], [0, 4])
+        self.assertEqual(sorted(alone), [0, 4])                               # nothing started beside them
+        self.assertLessEqual(worst, 1000)
+        rows = [dict(name='a'), dict(name='b')]
+        s = lod_overlay.BakeScheduler(rows, lambda r: 5000 if r['name'] == 'a' else 10, 4, 1000, idle=1)
+        self.assertEqual((s.next(), s.next()), (0, None))                     # b waits although it would fit
+        s.finish(0)
+        self.assertEqual(s.next(), 1)
+        s = lod_overlay.BakeScheduler(rows, lambda r: 10 ** 12, 4, None, idle=1)     # no budget: count only
+        self.assertEqual((s.next(), s.next()), (0, 1))
+
+    @unittest.mock.patch.object(lod_overlay, 'running_game', return_value=[])
+    def test_output_independent_of_workers(self, _running):
+        with tempfile.TemporaryDirectory() as folder:
+            game = make_game(folder)
+            outs, counts = {}, {}
+            for jobs in ('1', '3'):
+                seen = []
+                lod_overlay.progress = lambda name, done, total, package, res: seen.append((done, total))
+                try:
+                    with host(8, 64 * self.GIB):
+                        code, text = run(BATCH[:1] + BATCH[3:] + ['--jobs', jobs, '--game', str(game),
+                                                                  '--out', str(Path(folder) / jobs)])
+                finally:
+                    lod_overlay.progress = None
+                self.assertEqual(code, 0)
+                self.assertEqual([d for d, _ in seen], list(range(1, len(seen) + 1)))     # monotonic
+                outs[jobs] = {p.name: p.read_bytes() for p in (Path(folder) / jobs / 'addon').glob('02.*')
+                              if p.suffix in ('.cat', '.dat')}
+                counts[jobs] = len(seen)
+                record = json.loads((Path(folder) / jobs / 'x3m-lod-batch.json').read_text())
+                self.assertEqual(record['scheduling']['workers'], int(jobs))
+                self.assertEqual(record['scheduling']['rule'], 'memory')
+            self.assertEqual(counts['1'], 9)
+            self.assertEqual(sorted(outs['1']), ['02.cat', '02.dat'])
+            self.assertEqual(outs['1'], outs['3'])                                   # byte-identical members
+            self.assertIn('bake workers: memory rule: up to 3 workers', text)
+
+    @unittest.mock.patch.object(lod_overlay, 'running_game', return_value=[])
+    def test_real_workers_throttled_by_budget(self, _running):
+        """The spawned launcher under a budget that holds one predicted body (peak 1) or three (peak 3)."""
+        with tempfile.TemporaryDirectory() as folder:
+            game = make_game(folder)
+            only = Path(folder) / 'only.txt'
+            only.write_text('ships/x/good\nships/x/mixed\nships/x/uv\nships/x/jpg\n')
+            peaks = {}
+            for pred, name in ((600 << 20, 'one'), (300 << 20, 'three')):
+                with host(8, 64 * self.GIB), \
+                        unittest.mock.patch.object(lod_overlay, 'predicted_bake_bytes', return_value=pred):
+                    code, text = run(BATCH[:1] + BATCH[3:] + ['--jobs', '3', '--memory-budget', '1', '--only',
+                                                              str(only), '--game', str(game),
+                                                              '--out', str(Path(folder) / name)])
+                self.assertEqual(code, 0)
+                record = json.loads((Path(folder) / name / 'x3m-lod-batch.json').read_text())
+                self.assertEqual(record['counts']['built'], 4)
+                s = record['scheduling']
+                peaks[name] = s['peak_running']
+                self.assertLessEqual(s['peak_predicted_bytes'], 1 << 30)
+                self.assertEqual((s['budget'], s['retried']), (1 << 30, 0))
+            self.assertEqual(peaks, {'one': 1, 'three': 3})
+
+    def test_lost_workers_retried_alone_then_refused(self):
+        with tempfile.TemporaryDirectory() as folder:
+            rows = [dict(name=n, marker=str(Path(folder) / n)) for n in ('ok', 'once', 'always', 'oom', 'ok2')]
+            seen, st = [], {}
+            lod_overlay.progress = lambda name, done, total, package, res: seen.append((name, done))
+            try:
+                with contextlib.redirect_stdout(io.StringIO()) as out:
+                    res = lod_overlay.bake_rows(Path(folder), [], rows, {}, 3, (), None, 0, 5, None, st,
+                                                target=_flaky_child)
+            finally:
+                lod_overlay.progress = None
+            by = {r['name']: r for r in res}
+            log = out.getvalue()
+            self.assertIn('worker lost: once (exit code 3); retried alone after the other bodies', log)
+            self.assertIn('worker lost: oom (MemoryError: synthetic); retried alone', log)
+            self.assertEqual(log.count('worker lost: always ('), 1)                      # the first failure only
+            self.assertEqual({n: r.get('retries') for n, r in by.items()},
+                             {'ok': None, 'once': 1, 'always': 1, 'oom': 1, 'ok2': None})
+            self.assertEqual([r['name'] for r in res], [r['name'] for r in rows])        # the order of rows
+            self.assertEqual((by['once']['attempt'], by['oom']['attempt'], by['ok']['attempt']), (2, 2, 1))
+            want = 'signal SIGKILL' if hasattr(__import__('signal'), 'SIGKILL') else 'exit code 7'
+            self.assertEqual(by['always']['refused'], f'worker failed twice: {want}; {want}')
+            self.assertEqual([d for _, d in seen], [1, 2, 3, 4, 5])                     # monotonic
+            self.assertEqual(sorted(n for n, _ in seen[:2]), ['ok', 'ok2'])             # retries after the rest
+            self.assertEqual(st['retried'], 3)
+            self.assertEqual(lod_overlay.bake_reason(by['always']['refused']), 'bake_other')
+
+    def test_init_failure_aborts(self):
+        import multiprocessing
+        with tempfile.TemporaryDirectory() as folder:
+            rows = [dict(name='init'), dict(name='ok'), dict(name='ok2')]
+            with self.assertRaisesRegex(SystemExit, 'could not open the game assets .OSError: no catalogues.'):
+                lod_overlay.bake_rows(Path(folder), [], rows, {}, 2, (), None, 0, 3, None, {}, target=_flaky_child)
+            self.assertEqual(multiprocessing.active_children(), [])                     # no worker left behind
 
 
 class Big:

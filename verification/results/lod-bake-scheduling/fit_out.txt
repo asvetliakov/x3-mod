@@ -1,0 +1,80 @@
+model: raw = 400 MiB + 20 B x texture_pixels + 40 B x atlas side^2 x slots + 3000 B x r0_faces; predicted = raw x 1.7
+sample 73 bodies: peak max 2.18 GiB, median 1.15, min 0.40; worker before its body (init) max 0.13 GiB
+worst raw under-prediction: ships/boron/boron_M3_var1 measured 1.05 GiB, raw 0.91 GiB (measured/raw 1.165)
+worst after safety: ships/boron/boron_M3_var1 measured/predicted 0.685
+sum predicted / sum measured: 1.99
+all 1106 rows to bake: predicted max 3.79 GiB, p90 2.61, median 1.86 GiB
+name | peak GiB | texture Mpx | atlas | faces | bake s | predicted GiB
+ships/M6/Teladi_m6_pirate | 2.18 | 84.6 | 1024 | 21202 | 8.83 | 3.71
+ships/others/pirate_TL_var1 | 2.11 | 51.8 | 2048 | 31205 | 11.27 | 3.51
+stations/station_scenes/pirate_TL_var1 | 2.06 | 51.8 | 2048 | 31205 | 11.47 | 3.51
+ships/others/pirate_TL_var2 | 1.82 | 55.6 | 2048 | 38186 | 12.92 | 3.67
+stations/station_scenes/tech/argon_tech_L_laser_bb | 1.82 | 41.0 | 1024 | 170744 | 19.32 | 3.04
+stations/station_scenes/tech/argon_tech_M_laser_dd | 1.80 | 41.3 | 1024 | 149731 | 18.06 | 2.95
+ships/terran/terran_m3_arrow/hull | 1.73 | 30.4 | 2048 | 4346 | 8.56 | 2.71
+ships/M6/Argon_m6_pirate | 1.69 | 54.8 | 1024 | 14930 | 5.41 | 2.74
+stations/others/argon_player_headquarter | 1.66 | 43.6 | 2048 | 143932 | 23.28 | 3.79
+ships/M3/Teladi_M3PI | 1.60 | 51.4 | 1024 | 14296 | 5.31 | 2.62
+ships/M3/Teladi_M3P | 1.55 | 51.4 | 1024 | 14296 | 5.57 | 2.62
+stations/station_scenes/others/argon_mineB_ore_L | 1.54 | 39.6 | 1024 | 138530 | 21.3 | 2.84
+ships/terran/terran_tl_mobile_mining_base-ship/hull | 1.51 | 30.5 | 1024 | 120355 | 11.93 | 2.47
+ships/pirate/pirate_m6_centaur/hull | 1.47 | 54.8 | 1024 | 14930 | 5.15 | 2.74
+ships/boron/boron_tm_pleco/hull | 1.37 | 48.5 | 1024 | 19320 | 5.25 | 2.56
+stations/station_scenes/others/argon_mineB_silicon_L | 1.35 | 39.6 | 1024 | 138530 | 21.29 | 2.84
+ships/terran/terran_m2_osaka/hull | 1.33 | 22.1 | 1024 | 105684 | 9.64 | 2.13
+ships/pirate/pirate_m3_kea/hull | 1.32 | 51.4 | 1024 | 14296 | 6.69 | 2.62
+ships/teladi/teladi_m4_kite_vanguard/hull | 1.31 | 17.8 | 2048 | 20450 | 9.31 | 2.39
+ships/terran/terran_transportdrone_small | 1.30 | 26.2 | 2048 | 6156 | 9.07 | 2.59
+ships/MM6/Argon_MM6 | 1.24 | 18.9 | 2048 | 38160 | 9.5 | 2.51
+ships/x3ap/props/XTC_split_dock_quicklaunch_ODoor | 1.24 | 7.3 | 2048 | 10 | 5.47 | 1.96
+ships/teladi/teladi_m2_pteranodon/hull | 1.23 | 26.8 | 2048 | 86184 | 13.66 | 2.99
+stations/sadiablo/supply_base | 1.22 | 41.4 | 1024 | 50173 | 7.24 | 2.48
+stations/station_scenes/terran/usc_dock_f_top | 1.22 | 22.0 | 1024 | 61318 | 11.02 | 1.92
+ships/TM/Pirate_TM | 1.21 | 54.1 | 1024 | 25321 | 6.2 | 2.76
+ships/props/XTC_boron_dock_quicklaunch_body | 1.20 | 11.8 | 2048 | 390 | 7.61 | 2.10
+stations/x3tc/torus_ring_top | 1.20 | 17.8 | 2048 | 7942 | 8.2 | 2.33
+ships/pirate/pirate_tm_caravel/hull | 1.19 | 54.1 | 1024 | 25317 | 5.82 | 2.76
+ships/teladi/teladi_tl_albatross/hull | 1.19 | 21.3 | 2048 | 34677 | 11.27 | 2.56
+ships/props/usc_m1turretD_dummy | 1.19 | 26.2 | 1024 | 4790 | 4.09 | 1.78
+stations/station_scenes/others/argon_mineA_silicon_L | 1.18 | 39.6 | 1024 | 138530 | 21.11 | 2.84
+stations/station_scenes/others/argon_mineA_ore_L | 1.18 | 39.6 | 1024 | 153001 | 19.45 | 2.91
+stations/station_scenes/terran/usc_shipyard_annex | 1.17 | 22.0 | 1024 | 55816 | 11.1 | 1.89
+stations/station_scenes/lost_colony/lostcolony_shipyard_dock | 1.17 | 40.6 | 1024 | 194496 | 26.95 | 3.14
+ships/TM/Split_TM | 1.15 | 51.0 | 1024 | 18999 | 5.95 | 2.63
+stations/station_scenes/terran/usc_dock_c_tower | 1.15 | 22.0 | 1024 | 28674 | 8.09 | 1.76
+ships/split/split_tm_boa/hull | 1.14 | 51.0 | 1024 | 18995 | 5.29 | 2.63
+ships/props/m3gun1d_static | 1.13 | 5.8 | 2048 | 1880 | 6.61 | 1.92
+stations/x3tc/torus_tower | 1.12 | 22.0 | 1024 | 10206 | 5.5 | 1.68
+stations/station_scenes/tech/argon_tech_L_laser_aa | 1.10 | 40.8 | 1024 | 148796 | 20.67 | 2.93
+ships/others/owp_large/hull | 1.09 | 27.5 | 1024 | 89884 | 10.36 | 2.23
+ships/props/usc_m6turretA_weapon | 1.08 | 22.1 | 1024 | 870 | 3.6 | 1.63
+ships/terran/terran_tl_atmospheric_lifter/hull | 1.07 | 12.6 | 1024 | 106100 | 8.05 | 1.83
+stations/station_scenes/tech/argon_tech_L_missile_f | 1.07 | 41.3 | 1024 | 159180 | 19.81 | 2.99
+ships/boron/boron_M3_var1 | 1.05 | 17.9 | 1024 | 9030 | 3.68 | 1.54
+ships/pirate/pirate_m5_octopus/hull | 1.03 | 17.9 | 1024 | 5496 | 3.84 | 1.52
+stations/station_scenes/liquid/argon_liquid_S_factory_B | 1.02 | 33.2 | 1024 | 101377 | 13.64 | 2.46
+ships/atf/atf_m0_valhalla/hull | 1.02 | 7.6 | 1024 | 148062 | 11.18 | 1.87
+ships/others/owp_small/hull | 0.98 | 33.0 | 1024 | 73652 | 10.65 | 2.33
+ships/owp/owp_small | 0.95 | 33.0 | 1024 | 73652 | 12.67 | 2.33
+stations/ringstations/ringstation_d_core_top | 0.94 | 37.2 | 1024 | 23082 | 6.41 | 2.22
+ships/argon/argon_ts_lotan/hull | 0.93 | 36.9 | 1024 | 13322 | 5.16 | 2.16
+ships/otas/otas_m6_skiron/hull | 0.82 | 30.5 | 1024 | 19874 | 5.49 | 1.99
+ships/paranid/paranid_TP_S | 0.82 | 33.6 | 1024 | 7744 | 4.97 | 2.03
+ships/split/split_m7_tiger/hull | 0.80 | 21.4 | 1024 | 46127 | 6.63 | 1.83
+ships/atf/atf_m2_tyr/hull | 0.80 | 5.5 | 1024 | 65803 | 6.29 | 1.42
+ships/atf/atf_m2p_forseti/hull | 0.73 | 11.8 | 1024 | 68358 | 6.32 | 1.63
+ships/paranid/paranid_ts_demeter_tanker/hull | 0.70 | 26.8 | 1024 | 12028 | 4.6 | 1.84
+ships/usc/terran_m4 | 0.64 | 8.4 | 1024 | 8367 | 3.05 | 1.24
+others/argon_gate_destroyed | 0.62 | 20.6 | 1024 | 20478 | 5.73 | 1.68
+ships/paranid/paranid_M6 | 0.61 | 16.7 | 1024 | 18885 | 4.71 | 1.55
+ships/terraformer/terraformer_m1_deca/hull | 0.60 | 6.9 | 1024 | 61611 | 6.17 | 1.44
+ships/props/split_m1turretA_dummy | 0.59 | 18.0 | 1024 | 1195 | 2.73 | 1.51
+ships/props/yaki_m1turretA_weapon | 0.56 | 11.5 | 1024 | 1204 | 2.4 | 1.30
+ships/props/argon_m1turretA_dummy | 0.48 | 8.6 | 1024 | 2612 | 2.59 | 1.21
+ships/props/Paranid_m1turretB_weapon | 0.48 | 7.1 | 1024 | 1500 | 2.24 | 1.16
+ships/props/m6turret1_weapon | 0.47 | 8.7 | 1024 | 706 | 1.95 | 1.21
+ships/M6/Khaak_M6Sec | 0.46 | 0.3 | 1024 | 11958 | 2.94 | 1.00
+ships/khaak/khaak_m6_corvette/hull | 0.44 | 3.7 | 1024 | 7404 | 1.7 | 1.08
+ships/khaak/khaak_M5 | 0.43 | 7.9 | 1024 | 10607 | 3.45 | 1.23
+ships/props/paranid_m1turretA_base | 0.41 | 4.2 | 1024 | 842 | 1.55 | 1.07
+ships/others/advanced_satellite/hull | 0.40 | 0.5 | 1024 | 828 | 1.37 | 0.95

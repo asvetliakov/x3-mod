@@ -203,13 +203,23 @@ class Regenerate(unittest.TestCase):
             with mock.patch.object(sys, 'frozen', False, create=True):
                 self.assertEqual(regen.default_game_dir(), Path.cwd())
 
-    def test_lod_jobs_memory_cap(self):
-        with mock.patch.object(lod_overlay, 'default_jobs', return_value=6), \
-                mock.patch.object(regen, 'host_memory_bytes', return_value=24 << 30):
-            self.assertEqual(regen.lod_jobs(15), 2)                  # 24 GiB // 7 GiB - 1
-        with mock.patch.object(lod_overlay, 'default_jobs', return_value=6), \
-                mock.patch.object(regen, 'host_memory_bytes', return_value=None):
-            self.assertEqual((regen.lod_jobs(15), regen.lod_jobs(1)), (6, 1))
+    def test_lod_plan_jobs_bound_and_budget(self):
+        with mock.patch.object(lod_overlay, 'host_cpus', return_value=18), \
+                mock.patch.object(lod_overlay, 'host_memory_bytes', return_value=24 << 30):
+            self.assertEqual(regen.lod_plan(17)['workers'], 16)              # cpu - 2; the budget schedules bodies
+            self.assertEqual(regen.lod_plan(4)['workers'], 4)                # --jobs stays an upper bound
+            self.assertEqual(regen.lod_plan(17, 3.5)['budget'], int(3.5 * 2**30))
+        with mock.patch.object(lod_overlay, 'host_cpus', return_value=18), \
+                mock.patch.object(lod_overlay, 'host_memory_bytes', return_value=None):
+            self.assertEqual((regen.lod_plan(17)['workers'], regen.lod_plan(1)['workers']), (2, 1))   # fallback
+        with tempfile.TemporaryDirectory() as folder:
+            game = make_root(folder, mod=None)
+            with mock.patch.object(lod_overlay, 'main', return_value=1) as main:
+                run(['--game-dir', str(game), '--no-wait', '--jobs', '5', '--memory-budget', '3'])
+            argv = main.call_args[0][0]
+            self.assertEqual(argv[argv.index('--jobs') + 1], '5')             # the bound, not a computed count
+            self.assertEqual(argv[argv.index('--memory-budget') + 1], '3.0')
+            self.assertIn('baking with up to', (game / regen.LOG_NAME).read_text())
 
     def test_windows_process_check(self):
         csv_text = '"System Idle Process","0","Services","0","8 K"\n"X3AP.exe","4242","Console","1","900,000 K"\n'
