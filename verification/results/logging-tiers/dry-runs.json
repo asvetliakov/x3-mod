@@ -13,11 +13,11 @@
  "counts": {
   "base_default": 150,
   "base_vanilla": 99,
-  "new_debug": 128,
-  "new_debug_perf": 129,
-  "new_default": 127,
-  "new_perf": 128,
-  "new_perf_draw_trace": 129,
+  "new_debug": 129,
+  "new_debug_perf": 130,
+  "new_default": 128,
+  "new_perf": 129,
+  "new_perf_draw_trace": 130,
   "new_vanilla": 71
  },
  "debug_perf_vs_default": {
@@ -152,6 +152,10 @@
   "X3M_TAA_DEBUG": [
    "0",
    null
+  ],
+  "X3M_TAA_LUMA_LOCK": [
+   null,
+   "16,0.25,3"
   ],
   "X3M_TELEMETRY": [
    "0",

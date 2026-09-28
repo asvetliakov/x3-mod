@@ -3771,3 +3771,12 @@ at rest, 2.4-2.9x the blanket's rest flicker, between the 0.95 (0.989) and 0.90 
 rest burst carried a little roll (part of the rest figure may be drift); "plate" is a flat-luma proxy; locks 1.5 s
 after the pan are still held under the closed screen gate (mean lifetime frozen at ~12) and their expiry at true rest
 was not captured (a burst 3-5 s after stopping would show it).
+
+2026-09-28, luminance lock made the default after Run 100 A (user decision "let's make it as default, don't forget to add
+to ini also"): schema default `16,0.25,3` (template `;taa_luma_lock = 16,0.25,3`, the bare DLL and player mode resolve it
+from the generated table), launcher default on every modded `--taa` launch whose far stabiliser weight and thin region
+are above 0, `--taa-luma-lock 0` sends `0`, not under `--vanilla`; the read site with the variable absent stays off.
+Dry runs [M]: `--direct` sends `X3M_TAA_LUMA_LOCK=16,0.25,3` (128 variables, 127 before), `--taa-thin-region 0` or
+`--taa-far-stabiliser 0` omits it; `verification/results/logging-tiers/dry_run_tiers.py` and
+`verification/results/launcher-defaults/compare_dry_runs.py` re-recorded (all PASS). Needs a DLL rebuild
+(`src/config/config_schema_inc.h` changed); no shader change.

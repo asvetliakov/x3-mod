@@ -25,7 +25,9 @@ docs/architecture/bolt-footprint.md "Single copy") adds X3M_BOLT_SINGLE_COPY=1 o
 docs/architecture/bolts-through-taa.md) adds X3M_BOLT_FAR_COMPOSITE=1 and X3M_BOLT_FAR_SHOW=1 on the same launches (0.5 until Run 94 A)
 (default 126 variables): the third and fourth functional additions, also in CONFIG_DELTA. Run in background (2026-09-27,
 docs/reverse-engineering/run-in-background.md) adds X3M_RUN_IN_BACKGROUND=1 on every modded launch (default 127
-variables; not under --vanilla): the fifth, also in CONFIG_DELTA.
+variables; not under --vanilla): the fifth, also in CONFIG_DELTA. The luminance lock default (2026-09-28 after Run 100 A,
+docs/architecture/taa-luminance-lock.md) adds X3M_TAA_LUMA_LOCK=16,0.25,3 on every modded --taa launch (default 128
+variables; not under --vanilla): the sixth, also in CONFIG_DELTA.
 Writes dry-runs.json beside this script.
 
     python3 verification/results/logging-tiers/dry_run_tiers.py
@@ -53,7 +55,7 @@ VANILLA_NOT_SENT = {'X3M_CAPTURE_START'}
 # Sent since the settings file (2026-09-26) on every modded launch.
 CONFIG_DELTA = {'X3M_CONFIG': [None, 'bare'], 'X3M_BOLT_SINGLE_COPY': [None, '1'],
                 'X3M_BOLT_FAR_COMPOSITE': [None, '1'], 'X3M_BOLT_FAR_SHOW': [None, '1'],
-                'X3M_RUN_IN_BACKGROUND': [None, '1']}
+                'X3M_RUN_IN_BACKGROUND': [None, '1'], 'X3M_TAA_LUMA_LOCK': [None, '16,0.25,3']}
 
 
 def tiered():

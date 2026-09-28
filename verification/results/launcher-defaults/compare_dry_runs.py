@@ -28,6 +28,8 @@ Since bolts through the TAA (2026-09-26, docs/architecture/bolts-through-taa.md)
 --hdr also sends X3M_BOLT_FAR_COMPOSITE=1 and X3M_BOLT_FAR_SHOW=1 (BOLT_FAR; 0.5 until Run 94 A): the empty command sends 126 variables.
 Since run in background (2026-09-27, docs/reverse-engineering/run-in-background.md) every modded launch also sends
 X3M_RUN_IN_BACKGROUND=1 (RUN_IN_BACKGROUND): the empty command sends 127 variables.
+Since the luminance lock default (2026-09-28 after Run 100 A, docs/architecture/taa-luminance-lock.md) every modded --taa
+launch also sends X3M_TAA_LUMA_LOCK=16,0.25,3 (LUMA_LOCK): the empty command sends 128 variables.
 """
 import importlib.util
 import json
@@ -70,6 +72,8 @@ SINGLE_COPY = {'X3M_BOLT_SINGLE_COPY': [None, '1']}
 BOLT_FAR = {'X3M_BOLT_FAR_COMPOSITE': [None, '1'], 'X3M_BOLT_FAR_SHOW': [None, '1']}
 # Run in background (2026-09-27): the -runinbg flag on every modded launch.
 RUN_IN_BACKGROUND = {'X3M_RUN_IN_BACKGROUND': [None, '1']}
+# Luminance lock (2026-09-28): 16,0.25,3 on every modded --taa launch.
+LUMA_LOCK = {'X3M_TAA_LUMA_LOCK': [None, '16,0.25,3']}
 # Intended functional difference: the promoted map sizes (user decision 2026-09-25) differ from the Run 84 A stand's
 # explicit 2048 x5, which an explicit --shadow-cascade-sizes still selects.
 SIZES = {'X3M_SHADOW_CASCADE_SIZES': ['2048,2048,2048,2048,2048', '2048,4096,4096,4096,2048']}
@@ -130,8 +134,8 @@ def main():
     removed = {k: [v, None] for k, v in REMOVED.items()}
     checks = {
         'empty_vs_stand only the two groups + the promoted map sizes': result['empty_vs_stand'] == {**GROUPS, 'X3M_SHADOW_CASCADE_SIZES': SIZES['X3M_SHADOW_CASCADE_SIZES'][::-1]},
-        'stand vs recorded only the two new defaults, the removed and the logging variables, and the groups': result['stand_vs_recorded_stand'] == {**new_defaults, **removed, **recorded_tiered, **GROUPS, **CONFIG, **SINGLE_COPY, **BOLT_FAR, **RUN_IN_BACKGROUND},
-        'empty vs recorded: the two new defaults + the map sizes + the removed and the logging variables': result['empty_vs_recorded_stand'] == {**new_defaults, **removed, **recorded_tiered, **SIZES, **CONFIG, **SINGLE_COPY, **BOLT_FAR, **RUN_IN_BACKGROUND},
+        'stand vs recorded only the two new defaults, the removed and the logging variables, and the groups': result['stand_vs_recorded_stand'] == {**new_defaults, **removed, **recorded_tiered, **GROUPS, **CONFIG, **SINGLE_COPY, **BOLT_FAR, **RUN_IN_BACKGROUND, **LUMA_LOCK},
+        'empty vs recorded: the two new defaults + the map sizes + the removed and the logging variables': result['empty_vs_recorded_stand'] == {**new_defaults, **removed, **recorded_tiered, **SIZES, **CONFIG, **SINGLE_COPY, **BOLT_FAR, **RUN_IN_BACKGROUND, **LUMA_LOCK},
         'same X3AP switches': empty_switches == stand_switches == short_switches == recorded['exe_switches'],
         'short stand command == old stand command but the map sizes': result['short_stand_vs_stand'] == SIZES,
     }

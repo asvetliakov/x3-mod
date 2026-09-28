@@ -75,6 +75,7 @@ EXPECTED_EMPTY = {
     'X3M_SUN_SHADOW_BIAS_UNITS': '0.53571875', 'X3M_SUN_SHADOW_LANE': '1', 'X3M_TAA': '1', 'X3M_TAA_BOX_RESOLUTION': 'half',
     'X3M_TAA_BOX_RESOLUTION_DEFAULT': '1', 'X3M_TAA_FAR_CLIP': '7x7', 'X3M_TAA_FAR_CLIP_DEFAULT': '1',
     'X3M_TAA_FAR_GATE': 'camera', 'X3M_TAA_FAR_GATE_DEFAULT': '1', 'X3M_TAA_FAR_STABILISER': '0.985,0,60,68,0.03,0.25',
+    'X3M_TAA_LUMA_LOCK': '16,0.25,3',  # 2026-09-28: the luminance lock after Run 100 A (taa-luminance-lock.md)
     'X3M_TAA_MIP_BIAS': '-0.5', 'X3M_TAA_MOTION_WEIGHT': '0.7,2,8', 'X3M_TAA_SHARPEN': '0.75',
     'X3M_TAA_SKY_HISTORY': 'strict', 'X3M_TAA_SKY_HISTORY_EXIT_PX': '0.25', 'X3M_TAA_THIN_REGION': '0.97,1',
     'X3M_TAA_THIN_REGION_EMISSIVE': '1', 'X3M_TAA_THIN_VOTE': 'on', 'X3M_TAA_THIN_VOTE_DEFAULT': '1',
@@ -129,6 +130,9 @@ OPT_OUTS = (
     (('--cull-small-parts', '0'), 'X3M_CULL_SMALL_PARTS_PX', None),
     (('--no-music-keep',), 'X3M_MUSIC_KEEP', None),
     (('--run-in-background', 'off'), 'X3M_RUN_IN_BACKGROUND', '0'),
+    (('--taa-luma-lock', '0'), 'X3M_TAA_LUMA_LOCK', '0'),
+    (('--taa-thin-region', '0'), 'X3M_TAA_LUMA_LOCK', None),  # a prerequisite off: the lock default stays off, no refusal
+    (('--taa-far-stabiliser', '0'), 'X3M_TAA_LUMA_LOCK', None),
     (('--capture-frames', '16'), 'X3M_CAPTURE_FRAMES', '16'),
 )
 

@@ -92,7 +92,9 @@ SETTINGS = [
     entry('motion_jitter', 'bool', 'graphics', 'Tiny sub-pixel camera shifts every frame that the anti-aliasing turns into extra edge '
           'detail. 1 = on, 0 = off (the anti-aliasing then only blends).', '1', requires=('taa',), launcher='--motion-jitter'),
     entry('taa_far_stabiliser', 'float_list', 'graphics', 'Calms the shimmer of small distant details (antennas, struts). The first '
-          'number is how strongly (0.5 to 0.99); the others tune when it applies. 0 = disabled.', '0.985,0,60,68,0.03,0.25',
+          'number is how strongly (0.5 to 0.99); the others tune when it applies. 0 = disabled. With taa_luma_lock on, the '
+          'strength applies only to details the lock holds and the distance numbers set where the lock may hold; the lock '
+          'needs this on.', '0.985,0,60,68,0.03,0.25',
           counts=(1, 2, 4, 6), elements=((0, 0.99), (0, 4), [R(0, 1e6, True)], [R(0, 1e6, True)], (0, 64), [R(0, 64, True)]),
           requires=('taa',), launcher='--taa-far-stabiliser'),
     entry('taa_thin_region', 'float_list', 'graphics', 'Calms the crawling of thin lattices and struts. The first number is how '
@@ -104,8 +106,8 @@ SETTINGS = [
           range=(0.0, 65000.0), requires=('taa_thin_region', 'hdr'), launcher='--taa-thin-region-emissive'),
     entry('taa_luma_lock', 'float_list', 'graphics', 'Holds a long history only on distant details that actually flicker '
           '(struts, antennas, seams) and keeps distant hull plates sharp under a pan. The first number is how many frames a '
-          'detected flicker keeps the hold (1 to 31); the others tune the detector. 0 = disabled. Works only with the thin '
-          'region on (taa_thin_region above 0).', builtin='0',
+          'detected flicker keeps the hold (1 to 31); the others tune the detector. 0 = off. Works only with the far '
+          'stabiliser and the thin region on (both above 0); with either at 0 it stays off.', '16,0.25,3', builtin='0',
           counts=(1, 3), elements=((0, 31), (0, 1), (0, 32)), requires=('taa', 'taa_far_stabiliser', 'taa_thin_region'),
           launcher='--taa-luma-lock',
           since='2026-09-28'),

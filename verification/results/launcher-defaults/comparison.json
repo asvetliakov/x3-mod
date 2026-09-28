@@ -258,6 +258,10 @@
    "0",
    null
   ],
+  "X3M_TAA_LUMA_LOCK": [
+   null,
+   "16,0.25,3"
+  ],
   "X3M_TAA_SENTINEL": [
    "auto",
    null
@@ -532,6 +536,10 @@
    "0",
    null
   ],
+  "X3M_TAA_LUMA_LOCK": [
+   null,
+   "16,0.25,3"
+  ],
   "X3M_TAA_SENTINEL": [
    "auto",
    null
@@ -589,8 +597,8 @@
   ]
  },
  "counts": {
-  "empty": 127,
-  "stand": 129,
+  "empty": 128,
+  "stand": 130,
   "recorded": 181
  },
  "checks": {

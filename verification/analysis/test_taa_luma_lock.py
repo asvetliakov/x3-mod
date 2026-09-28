@@ -54,13 +54,13 @@ class LumaLockLaunch(unittest.TestCase):
     def test_opt_in_forwarding(self):
         far = ('--taa-far-stabiliser', '0.985', '--taa-thin-region', '0.97')
         with tempfile.TemporaryDirectory() as directory:
-            self.assertNotIn(NAME, self.env(directory, *TAA, *far))
+            self.assertNotIn(NAME, self.env(directory, *TAA, *far))  # --vanilla (this harness): no launcher default
             self.assertNotIn(NAME, self.env(directory, *TAA, *far, inherited={NAME: '16'}))  # a stale shell value is dropped
             self.assertNotIn(NAME, self.env(directory, inherited={NAME: '16'}))
             self.assertEqual(self.env(directory, *TAA, *far, '--taa-luma-lock', '16')[NAME], '16,0.25,3')
             self.assertEqual(self.env(directory, *TAA, *far, '--taa-luma-lock', '31,0.5,4')[NAME], '31,0.5,4')
             self.assertEqual(self.env(directory, *TAA, *far, '--taa-luma-lock', '1,0,0')[NAME], '1,0,0')
-            self.assertEqual(self.env(directory, *TAA, '--taa-luma-lock', '0')[NAME], '0,0.25,3')  # explicit off
+            self.assertEqual(self.env(directory, *TAA, '--taa-luma-lock', '0')[NAME], '0')  # explicit off
             for value in ('32', '64', '65', '-1', '16.5', 'nan', 'x', '16,1.5,2', '16,0.25,33', '16,-0.1,2', '16,0.25', '16,0.25,2,1', ''):
                 code, _, error = self.launch(directory, *TAA, *far, '--taa-luma-lock', value)
                 self.assertNotEqual(code, 0, value)
@@ -81,7 +81,7 @@ class LumaLockLaunch(unittest.TestCase):
         import schema  # noqa: E402
         entry = schema.BY_KEY['taa_luma_lock']
         self.assertEqual((entry['type'], entry['default'], entry['builtin'], entry['counts'], entry['launcher'], entry['developer']),
-                         ('float_list', None, '0', (1, 3), '--taa-luma-lock', False))
+                         ('float_list', '16,0.25,3', '0', (1, 3), '--taa-luma-lock', False))
         self.assertEqual(entry['requires'], ('taa', 'taa_far_stabiliser', 'taa_thin_region'))
         output = source_text(ROOT / 'src/proxy/motion_output.cpp')
         for reason in ('"thin_region_off"', '"camera_gate"', '"far_off"', '"render_targets"'):

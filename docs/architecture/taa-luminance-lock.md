@@ -1,7 +1,12 @@
 # TAA luminance lock: a per-pixel hold in place of the blanket far weight
 
-Design note, 2026-09-28. Status: ratified 2026-09-28 (orchestrator; user chose the lock over the baker widening);
-implemented 2026-09-28 through section 12, not flown with section 12 (opt-in `--taa-luma-lock`, default `16,0.25,3`,
+Design note, 2026-09-28. Status: default since 2026-09-28 after Run 100 A (user decision: schema and launcher default
+`16,0.25,3` on every modded `--taa` launch, `;taa_luma_lock = 16,0.25,3` in the template, `0` = off; the far stabiliser
+and the thin region stay required inputs: with either at 0 the lock resolves off with its `motion_output_taa_luma_lock`
+row, the config is not refused, and the launcher's default then stays off). With the lock on, the far stabiliser's W
+applies only to locked pixels and its F0/F1 ramp is the lock's eligibility band; the far stabiliser is not disabled and
+the thin region stays. Ratified 2026-09-28 (orchestrator; user chose the lock over the baker widening);
+implemented 2026-09-28 through section 12 (launcher `--taa-luma-lock`, default `16,0.25,3`,
 T 1..31; run354 flew sections 10 + 11); section 12 built with four implementer readings (unheld `ownC` as the camera gate,
 nearest-lock claim, motion creation only above the base weight's age, the sign bit only with the class): all 20
 `LUMA_LOCK` rows pass, 1,240 slots, with one accepted deviation (section 12, "Deviation"): the band gate is <= 3.0 px per
