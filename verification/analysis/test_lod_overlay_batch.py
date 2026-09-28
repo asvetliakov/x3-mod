@@ -1,6 +1,6 @@
 """Fleet batch mode of the merged-LOD overlay tool (tools/analysis/lod_overlay.py --batch) on synthetic
 catalogues: .bob enumeration, text bodies (compiled, written as .pbb) and the text_parse_error and
-ambiguous-extension refusals, trailing bytes, the
+the engine's body extension precedence, trailing bytes, the
 mixed-effects split, the second UV set with an occlusion decal, negative material indices,
 qualified atlas names, textures/ jpg textures, the display-derived width, marker validation and
 orphans, --sync reuse with slot retirement, the addon/mods warning, and the area-weighted texel floor
@@ -97,8 +97,7 @@ def make_game(folder):
         ('objects/ships/x/text.pbd', gzip.compress(text_body(atlas_tree_lod0()), mtime=0)),   # packed text body
         ('objects/ships/x/badtext.pbd', b'BODY 0\n'),                         # text outside the grammar
         ('objects/ships/x/scene.pbd', b'VER: 3;\nP 0; B ships\\x\\good; b\n'),      # text scene: skipped
-        ('objects/ships/x/amb.pbb', packed(atlas_tree_lod0())),
-        ('objects/ships/x/amb.pbd', b'BODY 0\n'),
+        ('objects/ships/x/amb.pbb', packed(atlas_tree_lod0())),               # loses to addon/01's text member
         ('objects/ships/x/trail2.pbb', packed(atlas_tree_lod0(), b'OB')),     # 2 stray closer bytes
         ('objects/ships/x/trunc.pbb', gzip.compress(body[:-4], mtime=0)),    # no /BOB end marker: parse_error
         ('objects/ships/x/mixed.pbb', packed(mixed_tree())),
@@ -108,7 +107,8 @@ def make_game(folder):
         ('objects/ships/x/jpg.pbb', packed(jpg_tree())),
         ('objects/stations/y/good.pbb', packed(with_threshold(atlas_tree_lod0(), 160))),   # stem twin, T_1 > T_pad
         ('objects/cut/00001.pbb', gzip.compress(b'CUT1' + b'\0' * 8, mtime=0))])
-    write_catalogue(game / 'addon/01.cat', [('objects/ships/x/modship.bob', body)])   # a mod's catalogue
+    write_catalogue(game / 'addon/01.cat', [('objects/ships/x/modship.bob', body),     # a mod's catalogue
+                                            ('objects/ships/x/amb.pbd', b'BODY 0\n')])   # higher slot: text wins
     return game
 
 
@@ -148,7 +148,8 @@ class Enumeration(unittest.TestCase):
                          {k: by['ships/x/good'][k] for k in ('r0_drawn', 'c_drawn', 'mat', 'lods')})
         self.assertIn(' text ', census.format_row(by['ships/x/text']))
         self.assertEqual(by['ships/x/badtext']['refuse'], ['text_parse_error'])
-        self.assertEqual(by['ships/x/amb']['refuse'], ['ambiguous_body_ext'])
+        self.assertEqual((by['ships/x/amb']['refuse'], by['ships/x/amb']['member']),     # engine winner: the text
+                         (['text_parse_error'], 'addon/01.cat:objects/ships/x/amb.pbd'))
         self.assertEqual((by['ships/x/trail2']['trailing'], by['ships/x/trail2']['eligible']), (2, True))
         self.assertEqual(by['ships/x/trunc']['refuse'], ['parse_error'])
         self.assertEqual((by['ships/x/mixed']['effects'], by['ships/x/mixed']['atlas_materials'],
@@ -165,6 +166,40 @@ class Enumeration(unittest.TestCase):
         self.assertNotEqual(by['stations/y/good']['atlas_stem'], by['ships/x/good']['atlas_stem'])
         self.assertTrue(all(len(r['inputs_sha256']) == 64 for r in rows if r['eligible']))
         self.assertIn('trailing=2', census.format_row(by['ships/x/trail2']))
+
+    def test_extension_precedence_and_overlay_cannot_win(self):
+        opts = dict(sizes=(64, 128), include_other=False, rule=dict(census.RULE, aspect=False), widths=(1280,))
+        with tempfile.TemporaryDirectory() as folder:
+            game = make_game(folder)
+            write_catalogue(game / 'addon/02.cat', [      # a valid text twin of 02.cat's good.pbb, higher slot
+                ('objects/ships/x/good.pbd', gzip.compress(text_body(atlas_tree_lod0()), mtime=0))])
+            rows, _ = census.run(game, opts, include_text=True)
+            binary, _ = census.run(game, opts)
+            low, _ = census.run(game, dict(opts, overlay_target='addon/01.cat'), include_text=True)
+            assets, _ = lod_overlay.original_assets(game)
+            p = lod_overlay.plan_body(assets, 'ships/x/good', 8, 'compact', collapse='two', source_record=0)
+            code, text = run(BATCH + ['--dry-run', '--game', str(game), '--out', str(Path(folder) / 'o'),
+                                      '--slot', '1', '--force-slot', '--record', str(Path(folder) / 'r.json')])
+            record = json.loads((Path(folder) / 'r.json').read_text())
+            with self.assertRaisesRegex(SystemExit, '--slot 4: the next contiguous free slot is 3; a higher slot'
+                                                    ' leaves a gap'):
+                run(BATCH + ['--dry-run', '--game', str(game), '--out', str(Path(folder) / 'g'), '--slot', '4',
+                             '--force-slot'])
+            code, single = run(['--dry-run', '--game', str(game), '--out', str(Path(folder) / 's'), '--collapse',
+                                'two', 'ships/x/good=8@0'])                  # single-body mode, text winner
+        by = {r['name']: r for r in rows}
+        self.assertEqual(len(rows), 14)                                            # one row per stem
+        self.assertEqual((by['ships/x/good']['member'], by['ships/x/good'].get('text'), by['ships/x/good']['eligible']),
+                         ('addon/02.cat:objects/ships/x/good.pbd', True, True))
+        self.assertNotIn('ships/x/good', {r['name'] for r in binary})             # a text winner: left out
+        self.assertEqual((p['source'], p['member'], p['source_member']),
+                         ('addon/02.cat', 'objects/ships/x/good.pbb', 'objects/ships/x/good.pbd'))
+        refused = sorted(r['name'] for r in low if 'overlay_cannot_win' in r['refuse'])
+        self.assertEqual(refused, ['ships/x/good', 'ships/x/modship'])   # above addon/01, and in foreign addon/01
+        self.assertEqual(record['refused'].get('overlay_cannot_win'), 2)
+        self.assertEqual(code, 0)
+        self.assertIn('ships/x/good: addon/02.cat:objects/ships/x/good.pbd', single)
+        self.assertIn('target addon/03.cat', single)
 
     def test_trailing_bytes_and_negative_index_in_plan_body(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -253,8 +288,7 @@ class BatchRun(unittest.TestCase):
             self.assertEqual(record['settings']['screen_width'], 1800)                # 1080 * 1280 / 768
             self.assertEqual((record['slot'], record['retired_slot'], record['counts']['enumerated']), (2, None, 14))
             self.assertEqual(record['counts']['overlay_bodies'], 9)
-            self.assertEqual(record['refused'], {'ambiguous_body_ext': 1, 'material_outside_table': 1,
-                                                 'text_parse_error': 1, 'parse_error': 1})
+            self.assertEqual(record['refused'], {'material_outside_table': 1, 'text_parse_error': 2, 'parse_error': 1})
             self.assertFalse(record['binary_only'])
             self.assertEqual(by['ships/x/text']['member'], '02.cat:objects/ships/x/text.pbd')   # census source member
             self.assertEqual((by['ships/x/good']['draws'], by['ships/x/mixed']['draws'], by['ships/x/uv']['draws']),
@@ -285,7 +319,7 @@ class BatchRun(unittest.TestCase):
                                       '--record', str(Path(folder) / 'b.json')])
             record = json.loads((Path(folder) / 'b.json').read_text())
             self.assertEqual((record['binary_only'], record['counts']['enumerated'], record['counts']['overlay_bodies']),
-                             (True, 12, 8))                                   # text, badtext left out
+                             (True, 11, 8))                                   # text, badtext, amb left out
             self.assertNotIn('text_parse_error', record['refused'])
 
     @unittest.mock.patch.object(lod_overlay, 'running_game', return_value=[])
@@ -868,6 +902,22 @@ def reg(path, mod_name):
 
 class SelectedPackage(unittest.TestCase):
     """--mod: the derived package addon/mods/<name>-x3m-lod.cat/.dat (docs/architecture/lod-overlay-mods.md)."""
+
+    def test_package_view_overlay_target(self):
+        import types
+        opts = dict(sizes=(64, 128), include_other=False, rule=dict(census.RULE, aspect=False), widths=(1280,))
+        with tempfile.TemporaryDirectory() as folder:
+            game = make_game(folder)
+            make_package(game)
+            pkg = game / 'addon/mods/Big.cat'
+            rows, info = lod_overlay.package_census(types.SimpleNamespace(jobs=1, binary_only=False), game, opts,
+                                                    pkg, [], None)
+            foreign, _ = census.run(game, dict(opts, overlay_target='addon/mods/Big.cat'), include_text=True,
+                                    only={census.body_key('ships/x/good')}, mods=[pkg])
+        by = {r['name']: r for r in rows}
+        self.assertEqual(by['ships/x/good']['source'], 'addon/mods/Big.cat')
+        self.assertFalse(any('overlay_cannot_win' in r['refuse'] for r in rows))   # the derived copy replaces it
+        self.assertEqual(foreign[0]['refuse'], ['overlay_cannot_win'])             # not replaced: outranked
 
     @unittest.mock.patch.object(lod_overlay, 'running_game', return_value=[])
     def test_derived_copy_marker_sync_and_remove(self, _running):

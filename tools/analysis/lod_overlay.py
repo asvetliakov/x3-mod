@@ -255,17 +255,25 @@ reaches ~7 GB RSS on the biggest stations; every worker process is replaced afte
 accepted, the rule still decides T). The compact guard "T_pad not below T_1" is waived
 automatically when the source record is 0: C is then the full LOD 0 geometry, so C drawing in
 the Low..High band T_pad*f <= s < T_1*f (where the guard would otherwise refuse) is harmless;
-the guard stays for decimated sources (a coarser source record). A text winner (.pbd/.bod) is
-compiled by bob1.parse_text and written as the binary member of the same stem (.pbb/.bob; the
-overlay slot is the highest catalogue and binary beats text inside a layer); the marker records
-its source_member; --binary-only leaves text bodies out. parse_text follows the engine's text
+the guard stays for decimated sources (a coarser source record). The source is the member the engine
+loads (bob1.resolve_body, body-format-bob1.md section 7.1): a loose file first, otherwise the highest
+catalogue holding the stem under any of .pbb .bob .pbd .bod, the extension rank .pbb > .bob > .pbd > .bod
+only inside that catalogue, so a text member in a higher catalogue beats a binary one below it. A text
+winner (.pbd/.bod) is compiled by bob1.parse_text and written as the binary member of the same stem
+(.pbb/.bob); it wins because the overlay slot is mounted above every source catalogue, and a stem with a
+member mounted above the overlay's slot or inside a foreign slot forced with --slot N --force-slot (or
+above the selected package its derived copy replaces) is refused overlay_cannot_win
+(bob1.overlay_outranked); a forced slot above the next free number is refused (a gap: never mounted).
+Catalogues after a numbering gap are not sources; loose_root_unverified and lang_variant refuse stems
+whose winner the note does not establish (bob1.resolve_body). The marker records its source_member (the
+engine's winner); --binary-only leaves text winners out. parse_text follows the engine's text
 loader 0x00483f20 (body-text-loader.md), so the member loads into the model the game builds from
 the text: engine normals, per-record position scale, no tangent records (a bump-mapped text body
 draws with a zero tangent basis in vanilla too). Stray bytes after the /BOB end marker of a
 binary body are accepted in any number, counted (trailing) and warned, and never written: the
 parser 0x00481aa0 returns at /BOB and never reads them (body-format-bob1.md); everything before
 them must still parse, so a truncated body or a missing /BOB is parse_error. Refusal reasons: text_parse_error (a text body
-outside that grammar; a MATERIAL3 text body is mat3), ambiguous_body_ext (both a binary and a text member), material_outside_table
+outside that grammar; a MATERIAL3 text body is mat3), overlay_cannot_win (above), material_outside_table
 (a group material index past the table; since 2026-09-24 a negative index -N is a texture animation that
 --collapse atlas maps onto its material and bakes with the start frame, lod_atlas.animated_record), mat3, no_opaque, dominant_slot_missing
 (unreachable since 2026-09-24: the dominant is taken among the materials that declare the needed
@@ -1422,15 +1430,18 @@ def plan_body(assets, name, threshold, placement=None, force_threshold=False, co
     batch passes the census row's source_record, which must agree); a body that does not match refuses
     (recipe_mismatch: the census already sent a mismatching body plain). Only --batch passes a recipe: the
     single-body path (NAME=T@N) bakes every body plainly, a recipe body included."""
-    entry = bob1.resolve_body(assets, name)
+    try:
+        entry = bob1.resolve_body(assets, name)
+    except bob1.BodyRefused as exc:
+        raise SystemExit(f'{name}: {exc}') from None
     if 'loose' in entry:
         raise SystemExit(f'{name}: winning resource is loose file {entry["path"]}; a catalogue cannot override it')
     data = assets.read_entry(entry)
     text = entry['path'].lower().endswith(TEXT_BODY_EXTENSIONS)
     member = entry['path']
     if text:
-        # A text winner is compiled to BOB1 (bob1.parse_text) and written as the binary member of
-        # the same stem: our slot is the highest catalogue and binary beats text inside a layer.
+        # A text winner is compiled to BOB1 (bob1.parse_text) and written as the binary member of the
+        # same stem: our slot is mounted above every source catalogue, and the highest catalogue wins.
         if bob1.kind(data) or bytes(data[:3]) == b'BOB':
             raise SystemExit(f'{name}: text_parse_error: {entry["path"]} is a text member holding binary data')
         try:
@@ -2350,6 +2361,7 @@ BAKE_REASONS = (('recipe_mismatch', 'recipe_mismatch'), ('texel_floor', 'texel_f
                 ('outside the material table', 'material_outside_table'), ('loose file', 'loose_winner'),
                 ('already exists in', 'atlas_name_taken'), ('references', 'group_too_large'),
                 ('not a BOB1', 'not_bob1'), ('no body resource', 'not_found'))
+BAKE_REASONS += tuple((r, r) for r in bob1.REFUSAL_REASONS)
 
 
 def bake_reason(message):
@@ -2534,7 +2546,9 @@ def package_census(a, game, opts, pkg_cat, eligible, only):
     keys = held | {census.body_key(n) for n in texture}
     if only is not None:
         keys &= only
-    rows, _ = census.run(game, opts, a.jobs, only=keys, include_text=not a.binary_only, mods=[pkg_cat])
+    target = pkg_cat.relative_to(game).as_posix() if pkg_cat.is_relative_to(game) else pkg_cat.as_posix()
+    rows, _ = census.run(game, dict(opts, overlay_target=target, overlay_replaces=True), a.jobs, only=keys,
+                         include_text=not a.binary_only, mods=[pkg_cat])
     rows.sort(key=lambda r: r['name'].lower())
     for r in rows:
         r['package_reason'] = 'held' if census.body_key(r['name']) in held else 'texture'
@@ -2710,6 +2724,9 @@ def batch(a, game, root, markers):
         raise SystemExit(f'--slot {a.slot}: the batch slot is {slot} (pass --force-slot to override)')
     if a.slot is not None and a.force_slot:
         slot = a.slot
+        if not 1 <= slot <= nxt:           # --out and --dry-run too: the engine would never mount it
+            raise SystemExit(f'--slot {slot}: the next contiguous free slot is {nxt}; a higher slot leaves a gap'
+                             ' the engine does not mount past (0x004ec9e0)')
     exclude = our_slots(markers)           # the originals hash leaves out every slot of ours
     for m in orphaned:
         notes.append(f'orphaned marker {m["path"].name}: addon/{m["slot"]:02d} was overwritten by a mod; read as a'
@@ -2728,7 +2745,8 @@ def batch(a, game, root, markers):
     opts = dict(sizes=a.atlas_opts['sizes'], include_other=a.include_other, widths=(width,),
                 texel=dict(min_texels=a.min_texels, floor_share=a.texel_floor_share, fallback=a.texel_fallback),
                 rule=dict(census.RULE, aspect=not a.no_aspect, aspect_ship=a.aspect_cap[0],
-                          aspect_station=a.aspect_cap[1]))
+                          aspect_station=a.aspect_cap[1]),
+                overlay_target=f'addon/{slot:02d}.cat')   # a stem mounted above it is overlay_cannot_win
     settings = dict(rule=opts['rule'], screen_width=width, display=list(a.display), collapse='atlas',
                     source_record=0, placement='compact', include_other=a.include_other,
                     atlas=dict(a.atlas_opts, sizes=list(a.atlas_opts['sizes'])), tool_sha256=tool_sha256())

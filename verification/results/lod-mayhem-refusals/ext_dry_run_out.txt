@@ -1,0 +1,34 @@
+rows 30; lod_overlay exit 0
+others/argon_gate  refused text_parse_error  member=addon/11.cat:objects/others/argon_gate.pbd  text=True  error='text body has no body record'
+others/argon_gate_effect  refused no_opaque  member=addon/11.cat:objects/others/argon_gate_effect.pbd  text=True  error='the record has no opaque faces to atlas'
+ships/ANIMPROPS/m6mainradar1  baked  member=addon/01.cat:objects/ships/ANIMPROPS/m6mainradar1.pbb  text=False
+ships/ANIMPROPS/m6mainradar1_base  baked  member=addon/01.cat:objects/ships/ANIMPROPS/m6mainradar1_base.pbb  text=False
+ships/ANIMPROPS/m6radarspike1  baked  member=addon/01.cat:objects/ships/ANIMPROPS/m6radarspike1.pbb  text=False
+ships/ANIMPROPS/m6radarspike1_base  baked  member=addon/01.cat:objects/ships/ANIMPROPS/m6radarspike1_base.pbb  text=False
+ships/ANIMPROPS/m7mainradar1  baked  member=addon/01.cat:objects/ships/ANIMPROPS/m7mainradar1.pbb  text=False
+ships/ANIMPROPS/m7mainradar1_base  baked  member=addon/01.cat:objects/ships/ANIMPROPS/m7mainradar1_base.pbb  text=False
+ships/ANIMPROPS/m7radarspike1  baked  member=addon/01.cat:objects/ships/ANIMPROPS/m7radarspike1.pbb  text=False
+ships/boron/boron_ts_dolphin_hauler/hull  baked  member=addon/06.cat:objects/ships/boron/boron_ts_dolphin_hauler/hull.bob  text=False
+ships/MM6/Teladi_MM6FAN  refused texel_floor  member=02.cat:objects/ships/MM6/Teladi_MM6FAN.pbb  text=False
+ships/props/cameradummy  refused non_effect_material  member=addon/06.cat:objects/ships/props/cameradummy.bob  text=False  error='material 0 is not an effect material; cannot atlas it'
+ships/props/invisible_weapon  refused no_opaque  member=addon/06.cat:objects/ships/props/invisible_weapon.bob  text=False  error='the record has no opaque faces to atlas'
+ships/props/turretdummy  filtered no_draw_gain  member=addon/06.cat:objects/ships/props/turretdummy.bob  text=False
+ships/props/weapondummy  filtered no_draw_gain  member=addon/06.cat:objects/ships/props/weapondummy.bob  text=False
+ships/props/weapondummy2  filtered no_draw_gain  member=addon/06.cat:objects/ships/props/weapondummy2.bob  text=False
+ships/props/weapondummy3  filtered no_draw_gain  member=addon/06.cat:objects/ships/props/weapondummy3.bob  text=False
+ships/props/weapondummy4  filtered no_draw_gain  member=addon/06.cat:objects/ships/props/weapondummy4.bob  text=False
+ships/props/weapondummy5  filtered no_draw_gain  member=addon/01.cat:objects/ships/props/weapondummy5.pbb  text=False
+ships/props/weapondummy6  filtered no_draw_gain  member=addon/06.cat:objects/ships/props/weapondummy6.bob  text=False
+ships/props/weapondummy7d  filtered no_draw_gain  member=addon/06.cat:objects/ships/props/weapondummy7d.bob  text=False
+ships/props/weapondummy8d  filtered no_draw_gain  member=addon/06.cat:objects/ships/props/weapondummy8d.bob  text=False
+ships/props/weapondummy9d  filtered no_draw_gain  member=addon/06.cat:objects/ships/props/weapondummy9d.bob  text=False
+ships/STATIONS/Argon_owpmain  baked  member=addon/01.cat:objects/ships/STATIONS/Argon_owpmain.pbb  text=False
+ships/STATIONS/Argon_owpsec  baked  member=addon/01.cat:objects/ships/STATIONS/Argon_owpsec.pbb  text=False
+ships/xenon/xenon_m4  baked  member=addon/01.cat:objects/ships/xenon/xenon_m4.pbb  text=False
+stations/docks/M6dockCarrier_scene_dummy  refused non_effect_material  member=addon/01.cat:objects/stations/docks/M6dockCarrier_scene_dummy.pbb  text=False  error='material 1 is not an effect material; cannot atlas it'
+stations/docks/test  filtered no_draw_gain  member=02.cat:objects/stations/docks/test.pbb  text=False
+stations/x3ap/others/XTC_boron_EQD  baked  member=addon/06.cat:objects/stations/x3ap/others/XTC_boron_EQD.bob  text=False
+stations/x3tc/xstation_part_a  baked  member=addon/06.cat:objects/stations/x3tc/xstation_part_a.pbd  text=True
+outcomes: {"baked": 13, "filtered no_draw_gain": 11, "refused no_opaque": 2, "refused non_effect_material": 2, "refused texel_floor": 1, "refused text_parse_error": 1}
+ambiguous_body_ext rows: 0
+record counts: {"enumerated": 30, "by_category": {"ship": 24, "station": 6}, "eligible": 13, "built": 13, "reused": 0, "overlay_bodies": 13, "candidates": 29}; refused {"no_opaque": 2, "non_effect_material": 2, "texel_floor": 1, "text_parse_error": 1}
