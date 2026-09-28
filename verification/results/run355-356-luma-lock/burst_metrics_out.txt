@@ -1,0 +1,174 @@
+== run355 1627
+frame 1627
+  spacedock px 3673 |d| 0.31 sharp pres/cur 0.293 taa/cur 0.277
+  far_outpost px 7577 |d| 0.30 sharp pres/cur 0.437 taa/cur 0.416
+frame 1628
+  spacedock px 3669 |d| 0.36 sharp pres/cur 0.299 taa/cur 0.283 | pair rms pres 7.526 >4 37.91 % cur 38.056 ratio 0.198
+  far_outpost px 7513 |d| 0.37 sharp pres/cur 0.435 taa/cur 0.414 | pair rms pres 5.598 >4 21.42 % cur 26.106 ratio 0.214
+frame 1629
+  spacedock px 3655 |d| 0.60 sharp pres/cur 0.292 taa/cur 0.276 | pair rms pres 13.016 >4 54.66 % cur 36.649 ratio 0.355
+  far_outpost px 7538 |d| 0.59 sharp pres/cur 0.433 taa/cur 0.412 | pair rms pres 11.377 >4 34.89 % cur 22.560 ratio 0.504
+frame 1630
+  spacedock px 3694 |d| 0.17 sharp pres/cur 0.297 taa/cur 0.281 | pair rms pres 4.509 >4 18.98 % cur 43.328 ratio 0.104
+  far_outpost px 7577 |d| 0.17 sharp pres/cur 0.444 taa/cur 0.422 | pair rms pres 4.503 >4 14.66 % cur 29.100 ratio 0.155
+frame 1631
+  spacedock px 3658 |d| 0.31 sharp pres/cur 0.301 taa/cur 0.285 | pair rms pres 6.928 >4 40.21 % cur 35.381 ratio 0.196
+  far_outpost px 7520 |d| 0.31 sharp pres/cur 0.427 taa/cur 0.406 | pair rms pres 5.693 >4 21.86 % cur 24.072 ratio 0.236
+frame 1632
+  spacedock px 3659 |d| 0.46 sharp pres/cur 0.297 taa/cur 0.281 | pair rms pres 11.108 >4 45.42 % cur 37.920 ratio 0.293
+  far_outpost px 7514 |d| 0.46 sharp pres/cur 0.434 taa/cur 0.413 | pair rms pres 10.623 >4 31.09 % cur 25.676 ratio 0.414
+frame 1633
+  spacedock px 3650 |d| 0.39 sharp pres/cur 0.287 taa/cur 0.271 | pair rms pres 7.886 >4 37.73 % cur 38.156 ratio 0.207
+  far_outpost px 7543 |d| 0.39 sharp pres/cur 0.433 taa/cur 0.412 | pair rms pres 5.761 >4 21.70 % cur 25.741 ratio 0.224
+frame 1634
+  spacedock px 3642 |d| 0.30 sharp pres/cur 0.296 taa/cur 0.280 | pair rms pres 7.895 >4 35.83 % cur 38.281 ratio 0.206
+  far_outpost px 7519 |d| 0.30 sharp pres/cur 0.416 taa/cur 0.396 | pair rms pres 7.862 >4 23.71 % cur 26.003 ratio 0.302
+== run355 2322
+frame 2322
+  spacedock px 3781 |d| 2.58 sharp pres/cur 0.096 taa/cur 0.085
+  far_outpost px 7554 |d| 2.58 sharp pres/cur 0.177 taa/cur 0.165
+frame 2323
+  spacedock px 3762 |d| 16.06 sharp pres/cur 0.090 taa/cur 0.079 | pair rms pres 4.647 >4 27.03 % cur 40.933 ratio 0.114
+  far_outpost px 7561 |d| 16.05 sharp pres/cur 0.175 taa/cur 0.163 | pair rms pres 5.579 >4 21.65 % cur 22.626 ratio 0.247
+frame 2324
+  spacedock px 3746 |d| 18.37 sharp pres/cur 0.099 taa/cur 0.088 | pair rms pres 5.121 >4 32.01 % cur 40.848 ratio 0.125
+  far_outpost px 7547 |d| 18.32 sharp pres/cur 0.187 taa/cur 0.174 | pair rms pres 5.041 >4 17.25 % cur 25.841 ratio 0.195
+frame 2325
+  spacedock px 3774 |d| 21.63 sharp pres/cur 0.099 taa/cur 0.088 | pair rms pres 7.540 >4 44.73 % cur 35.277 ratio 0.214
+  far_outpost px 7595 |d| 21.49 sharp pres/cur 0.179 taa/cur 0.166 | pair rms pres 7.914 >4 30.99 % cur 24.870 ratio 0.318
+frame 2326
+  spacedock px 3868 |d| 23.24 sharp pres/cur 0.092 taa/cur 0.081 | pair rms pres 3.152 >4 15.43 % cur 40.943 ratio 0.077
+  far_outpost px 7597 |d| 23.00 sharp pres/cur 0.161 taa/cur 0.149 | pair rms pres 3.497 >4 13.61 % cur 28.178 ratio 0.124
+frame 2327
+  spacedock px 3889 |d| 33.06 sharp pres/cur 0.095 taa/cur 0.084 | pair rms pres 3.975 >4 23.76 % cur 35.337 ratio 0.112
+  far_outpost px 7654 |d| 32.52 sharp pres/cur 0.175 taa/cur 0.162 | pair rms pres 4.266 >4 15.43 % cur 24.116 ratio 0.177
+frame 2328
+  spacedock px 4000 |d| 32.96 sharp pres/cur 0.098 taa/cur 0.087 | pair rms pres 5.870 >4 38.40 % cur 33.866 ratio 0.173
+  far_outpost px 7755 |d| 32.23 sharp pres/cur 0.177 taa/cur 0.165 | pair rms pres 6.188 >4 26.92 % cur 23.816 ratio 0.260
+frame 2329
+  spacedock px 4038 |d| 34.07 sharp pres/cur 0.097 taa/cur 0.086 | pair rms pres 4.813 >4 29.02 % cur 33.475 ratio 0.144
+  far_outpost px 7915 |d| 33.17 sharp pres/cur 0.178 taa/cur 0.166 | pair rms pres 5.017 >4 16.78 % cur 26.648 ratio 0.188
+== run355 2427
+frame 2427
+  spacedock px 5696 |d| 0.33 sharp pres/cur 0.099 taa/cur 0.088
+  far_outpost px 10019 |d| 0.29 sharp pres/cur 0.177 taa/cur 0.165
+frame 2428
+  spacedock px 5666 |d| 1.12 sharp pres/cur 0.097 taa/cur 0.087 | pair rms pres 5.017 >4 28.26 % cur 36.992 ratio 0.136
+  far_outpost px 10078 |d| 1.05 sharp pres/cur 0.171 taa/cur 0.158 | pair rms pres 4.289 >4 17.79 % cur 24.583 ratio 0.174
+frame 2429
+  spacedock px 5631 |d| 1.53 sharp pres/cur 0.100 taa/cur 0.090 | pair rms pres 6.858 >4 39.83 % cur 24.257 ratio 0.283
+  far_outpost px 10083 |d| 1.45 sharp pres/cur 0.174 taa/cur 0.162 | pair rms pres 8.141 >4 29.29 % cur 22.559 ratio 0.361
+frame 2430
+  spacedock px 5659 |d| 0.60 sharp pres/cur 0.096 taa/cur 0.085 | pair rms pres 3.390 >4 17.48 % cur 25.133 ratio 0.135
+  far_outpost px 10059 |d| 0.53 sharp pres/cur 0.165 taa/cur 0.153 | pair rms pres 3.961 >4 15.74 % cur 20.723 ratio 0.191
+frame 2431
+  spacedock px 5687 |d| 0.81 sharp pres/cur 0.099 taa/cur 0.088 | pair rms pres 4.415 >4 25.11 % cur 35.178 ratio 0.126
+  far_outpost px 10107 |d| 0.77 sharp pres/cur 0.170 taa/cur 0.158 | pair rms pres 5.191 >4 17.48 % cur 24.845 ratio 0.209
+frame 2432
+  spacedock px 5661 |d| 0.11 sharp pres/cur 0.094 taa/cur 0.083 | pair rms pres 5.548 >4 33.72 % cur 36.545 ratio 0.152
+  far_outpost px 10058 |d| 0.12 sharp pres/cur 0.159 taa/cur 0.148 | pair rms pres 5.666 >4 25.94 % cur 25.508 ratio 0.222
+frame 2433
+  spacedock px 5718 |d| 0.58 sharp pres/cur 0.098 taa/cur 0.088 | pair rms pres 5.113 >4 29.40 % cur 40.668 ratio 0.126
+  far_outpost px 10099 |d| 0.55 sharp pres/cur 0.165 taa/cur 0.154 | pair rms pres 5.020 >4 18.54 % cur 28.157 ratio 0.178
+frame 2434
+  spacedock px 5660 |d| 0.43 sharp pres/cur 0.101 taa/cur 0.091 | pair rms pres 4.511 >4 25.81 % cur 39.001 ratio 0.116
+  far_outpost px 10117 |d| 0.43 sharp pres/cur 0.172 taa/cur 0.159 | pair rms pres 5.979 >4 22.32 % cur 27.562 ratio 0.217
+== run356 1087
+frame 1087
+  spacedock px 3712 |d| 0.38 sharp pres/cur 0.277 taa/cur 0.261 | lock 31.33 % flat 15.94 % (flat px 207) t_mean 13.8 motion-mode 0.0 %
+  far_outpost px 7578 |d| 0.38 sharp pres/cur 0.464 taa/cur 0.442 | lock 26.56 % flat 4.02 % (flat px 1144) t_mean 13.7 motion-mode 0.0 %
+  frame lock 0.779 % sky lock 0.0401 % (sky px 2012387) motion-mode 0.0 %
+frame 1088
+  spacedock px 3691 |d| 0.30 sharp pres/cur 0.307 taa/cur 0.291 | pair rms pres 7.609 >4 35.71 % cur 37.713 ratio 0.202 | lock 31.27 % flat 11.60 % (flat px 181) t_mean 13.9 motion-mode 0.0 %
+  far_outpost px 7618 |d| 0.30 sharp pres/cur 0.423 taa/cur 0.403 | pair rms pres 7.801 >4 23.02 % cur 27.064 ratio 0.288 | lock 26.02 % flat 2.92 % (flat px 1060) t_mean 13.7 motion-mode 0.0 %
+  frame lock 0.820 % sky lock 0.0529 % (sky px 2012361) motion-mode 0.2 %
+frame 1089
+  spacedock px 3762 |d| 0.31 sharp pres/cur 0.276 taa/cur 0.260 | pair rms pres 7.465 >4 32.32 % cur 39.807 ratio 0.188 | lock 32.14 % flat 14.36 % (flat px 188) t_mean 13.9 motion-mode 0.0 %
+  far_outpost px 7552 |d| 0.31 sharp pres/cur 0.456 taa/cur 0.435 | pair rms pres 7.908 >4 23.34 % cur 27.226 ratio 0.290 | lock 26.59 % flat 3.32 % (flat px 1176) t_mean 13.6 motion-mode 0.0 %
+  frame lock 0.833 % sky lock 0.0430 % (sky px 2012363) motion-mode 0.2 %
+frame 1090
+  spacedock px 3671 |d| 0.37 sharp pres/cur 0.289 taa/cur 0.273 | pair rms pres 7.607 >4 34.08 % cur 39.472 ratio 0.193 | lock 31.05 % flat 14.74 % (flat px 190) t_mean 13.8 motion-mode 0.0 %
+  far_outpost px 7629 |d| 0.38 sharp pres/cur 0.432 taa/cur 0.412 | pair rms pres 5.865 >4 19.64 % cur 26.932 ratio 0.218 | lock 26.02 % flat 2.32 % (flat px 1077) t_mean 13.5 motion-mode 0.0 %
+  frame lock 0.776 % sky lock 0.0528 % (sky px 2012290) motion-mode 0.2 %
+frame 1091
+  spacedock px 3735 |d| 0.59 sharp pres/cur 0.295 taa/cur 0.279 | pair rms pres 12.671 >4 52.13 % cur 35.902 ratio 0.353 | lock 30.58 % flat 12.05 % (flat px 166) t_mean 14.0 motion-mode 0.0 %
+  far_outpost px 7519 |d| 0.59 sharp pres/cur 0.455 taa/cur 0.433 | pair rms pres 12.042 >4 33.73 % cur 24.734 ratio 0.487 | lock 26.19 % flat 2.93 % (flat px 1092) t_mean 13.8 motion-mode 0.0 %
+  frame lock 0.765 % sky lock 0.0441 % (sky px 2012282) motion-mode 0.2 %
+frame 1092
+  spacedock px 3753 |d| 0.17 sharp pres/cur 0.268 taa/cur 0.254 | pair rms pres 4.192 >4 17.03 % cur 43.095 ratio 0.097 | lock 31.71 % flat 12.24 % (flat px 196) t_mean 14.1 motion-mode 0.0 %
+  far_outpost px 7579 |d| 0.17 sharp pres/cur 0.447 taa/cur 0.427 | pair rms pres 4.612 >4 14.83 % cur 31.863 ratio 0.145 | lock 26.64 % flat 2.37 % (flat px 1096) t_mean 14.0 motion-mode 0.0 %
+  frame lock 0.814 % sky lock 0.0390 % (sky px 2012278) motion-mode 0.2 %
+frame 1093
+  spacedock px 3703 |d| 0.30 sharp pres/cur 0.307 taa/cur 0.291 | pair rms pres 6.997 >4 36.11 % cur 36.370 ratio 0.192 | lock 31.24 % flat 11.73 % (flat px 196) t_mean 13.7 motion-mode 0.0 %
+  far_outpost px 7580 |d| 0.30 sharp pres/cur 0.449 taa/cur 0.428 | pair rms pres 6.045 >4 21.42 % cur 25.616 ratio 0.236 | lock 26.49 % flat 3.07 % (flat px 1042) t_mean 13.6 motion-mode 0.0 %
+  frame lock 0.802 % sky lock 0.0391 % (sky px 2012281) motion-mode 0.2 %
+frame 1094
+  spacedock px 3763 |d| 0.46 sharp pres/cur 0.301 taa/cur 0.285 | pair rms pres 10.567 >4 43.34 % cur 37.328 ratio 0.283 | lock 31.97 % flat 10.75 % (flat px 186) t_mean 14.0 motion-mode 0.0 %
+  far_outpost px 7583 |d| 0.46 sharp pres/cur 0.420 taa/cur 0.400 | pair rms pres 10.942 >4 29.91 % cur 27.410 ratio 0.399 | lock 26.45 % flat 2.19 % (flat px 1095) t_mean 13.8 motion-mode 0.0 %
+  frame lock 0.773 % sky lock 0.0465 % (sky px 2012257) motion-mode 0.2 %
+== run356 1470
+frame 1470
+  spacedock px 3693 |d| 2.09 sharp pres/cur 0.145 taa/cur 0.130 | lock 49.47 % flat 23.64 % (flat px 165) t_mean 11.5 motion-mode 100.0 %
+  far_outpost px 7589 |d| 2.08 sharp pres/cur 0.229 taa/cur 0.211 | lock 40.84 % flat 6.47 % (flat px 1144) t_mean 11.1 motion-mode 100.0 %
+  frame lock 1.056 % sky lock 0.0602 % (sky px 2008757) motion-mode 99.5 %
+frame 1471
+  spacedock px 3684 |d| 14.74 sharp pres/cur 0.136 taa/cur 0.122 | pair rms pres 5.972 >4 31.84 % cur 33.699 ratio 0.177 | lock 45.90 % flat 18.58 % (flat px 183) t_mean 11.5 motion-mode 100.0 %
+  far_outpost px 7555 |d| 14.69 sharp pres/cur 0.221 taa/cur 0.204 | pair rms pres 5.470 >4 18.61 % cur 23.052 ratio 0.237 | lock 39.70 % flat 5.13 % (flat px 1111) t_mean 11.3 motion-mode 100.0 %
+  frame lock 1.039 % sky lock 0.0490 % (sky px 2008838) motion-mode 97.1 %
+frame 1472
+  spacedock px 3735 |d| 16.63 sharp pres/cur 0.142 taa/cur 0.128 | pair rms pres 4.776 >4 23.53 % cur 30.293 ratio 0.158 | lock 46.40 % flat 24.47 % (flat px 188) t_mean 11.2 motion-mode 100.0 %
+  far_outpost px 7589 |d| 16.53 sharp pres/cur 0.233 taa/cur 0.215 | pair rms pres 5.435 >4 18.58 % cur 23.921 ratio 0.227 | lock 38.42 % flat 5.06 % (flat px 1086) t_mean 11.2 motion-mode 100.0 %
+  frame lock 1.000 % sky lock 0.0554 % (sky px 2008437) motion-mode 96.8 %
+frame 1473
+  spacedock px 3766 |d| 18.58 sharp pres/cur 0.146 taa/cur 0.131 | pair rms pres 5.129 >4 22.62 % cur 37.583 ratio 0.136 | lock 44.90 % flat 19.25 % (flat px 187) t_mean 11.3 motion-mode 100.0 %
+  far_outpost px 7605 |d| 18.40 sharp pres/cur 0.245 taa/cur 0.226 | pair rms pres 5.800 >4 18.32 % cur 25.755 ratio 0.225 | lock 38.65 % flat 4.09 % (flat px 1150) t_mean 10.9 motion-mode 100.0 %
+  frame lock 0.991 % sky lock 0.0462 % (sky px 2007500) motion-mode 96.5 %
+frame 1474
+  spacedock px 3856 |d| 20.45 sharp pres/cur 0.121 taa/cur 0.109 | pair rms pres 5.975 >4 32.08 % cur 38.063 ratio 0.157 | lock 46.63 % flat 20.19 % (flat px 208) t_mean 11.8 motion-mode 100.0 %
+  far_outpost px 7626 |d| 20.15 sharp pres/cur 0.213 taa/cur 0.196 | pair rms pres 5.383 >4 18.91 % cur 24.476 ratio 0.220 | lock 37.94 % flat 6.31 % (flat px 1109) t_mean 11.3 motion-mode 100.0 %
+  frame lock 0.986 % sky lock 0.0540 % (sky px 2005835) motion-mode 96.2 %
+frame 1475
+  spacedock px 3915 |d| 23.10 sharp pres/cur 0.145 taa/cur 0.131 | pair rms pres 8.415 >4 41.43 % cur 36.191 ratio 0.233 | lock 45.26 % flat 20.39 % (flat px 206) t_mean 11.6 motion-mode 100.0 %
+  far_outpost px 7690 |d| 22.67 sharp pres/cur 0.216 taa/cur 0.199 | pair rms pres 8.377 >4 26.61 % cur 24.824 ratio 0.337 | lock 38.92 % flat 6.97 % (flat px 1061) t_mean 11.2 motion-mode 100.0 %
+  frame lock 0.956 % sky lock 0.0433 % (sky px 2004262) motion-mode 96.0 %
+frame 1476
+  spacedock px 3960 |d| 24.04 sharp pres/cur 0.147 taa/cur 0.133 | pair rms pres 3.769 >4 15.91 % cur 34.128 ratio 0.110 | lock 46.49 % flat 20.20 % (flat px 203) t_mean 11.9 motion-mode 100.0 %
+  far_outpost px 7702 |d| 23.43 sharp pres/cur 0.211 taa/cur 0.194 | pair rms pres 4.492 >4 14.97 % cur 25.103 ratio 0.179 | lock 39.47 % flat 5.87 % (flat px 1124) t_mean 11.4 motion-mode 100.0 %
+  frame lock 0.977 % sky lock 0.0496 % (sky px 2002314) motion-mode 95.8 %
+frame 1477
+  spacedock px 4036 |d| 25.79 sharp pres/cur 0.126 taa/cur 0.114 | pair rms pres 5.136 >4 27.25 % cur 37.056 ratio 0.139 | lock 45.22 % flat 21.16 % (flat px 241) t_mean 11.7 motion-mode 100.0 %
+  far_outpost px 7836 |d| 25.07 sharp pres/cur 0.224 taa/cur 0.207 | pair rms pres 5.243 >4 17.50 % cur 24.212 ratio 0.217 | lock 39.20 % flat 5.76 % (flat px 1111) t_mean 11.6 motion-mode 100.0 %
+  frame lock 0.970 % sky lock 0.0480 % (sky px 2000319) motion-mode 95.6 %
+== run356 1569
+frame 1569
+  spacedock px 4984 |d| 0.27 sharp pres/cur 0.148 taa/cur 0.134 | lock 43.12 % flat 19.76 % (flat px 334) t_mean 12.2 motion-mode 100.0 %
+  far_outpost px 9076 |d| 0.26 sharp pres/cur 0.239 taa/cur 0.222 | lock 37.30 % flat 6.04 % (flat px 1457) t_mean 11.6 motion-mode 100.0 %
+  frame lock 1.265 % sky lock 0.0811 % (sky px 1992034) motion-mode 99.9 %
+frame 1570
+  spacedock px 4988 |d| 0.74 sharp pres/cur 0.135 taa/cur 0.122 | pair rms pres 6.455 >4 30.53 % cur 18.888 ratio 0.342 | lock 45.77 % flat 25.64 % (flat px 351) t_mean 11.9 motion-mode 100.0 %
+  far_outpost px 9082 |d| 0.73 sharp pres/cur 0.234 taa/cur 0.217 | pair rms pres 5.701 >4 19.27 % cur 16.905 ratio 0.337 | lock 38.05 % flat 6.86 % (flat px 1399) t_mean 11.4 motion-mode 100.0 %
+  frame lock 1.269 % sky lock 0.0993 % (sky px 1991993) motion-mode 99.8 %
+frame 1571
+  spacedock px 5047 |d| 1.23 sharp pres/cur 0.121 taa/cur 0.110 | pair rms pres 8.225 >4 38.44 % cur 36.626 ratio 0.225 | lock 42.96 % flat 19.94 % (flat px 316) t_mean 11.7 motion-mode 100.0 %
+  far_outpost px 9131 |d| 1.19 sharp pres/cur 0.224 taa/cur 0.209 | pair rms pres 8.534 >4 27.66 % cur 23.822 ratio 0.358 | lock 37.20 % flat 4.89 % (flat px 1349) t_mean 11.2 motion-mode 100.0 %
+  frame lock 1.225 % sky lock 0.0840 % (sky px 1991718) motion-mode 99.8 %
+frame 1572
+  spacedock px 5047 |d| 0.37 sharp pres/cur 0.118 taa/cur 0.106 | pair rms pres 4.181 >4 17.20 % cur 32.428 ratio 0.129 | lock 46.58 % flat 20.60 % (flat px 335) t_mean 11.9 motion-mode 100.0 %
+  far_outpost px 9087 |d| 0.34 sharp pres/cur 0.233 taa/cur 0.217 | pair rms pres 5.157 >4 15.56 % cur 22.091 ratio 0.233 | lock 38.75 % flat 7.15 % (flat px 1427) t_mean 10.9 motion-mode 100.0 %
+  frame lock 1.268 % sky lock 0.0866 % (sky px 1991855) motion-mode 99.9 %
+frame 1573
+  spacedock px 4893 |d| 0.66 sharp pres/cur 0.145 taa/cur 0.131 | pair rms pres 5.373 >4 28.00 % cur 35.317 ratio 0.152 | lock 43.78 % flat 22.19 % (flat px 374) t_mean 11.6 motion-mode 100.0 %
+  far_outpost px 9038 |d| 0.64 sharp pres/cur 0.235 taa/cur 0.218 | pair rms pres 5.463 >4 18.89 % cur 25.795 ratio 0.212 | lock 37.39 % flat 4.41 % (flat px 1407) t_mean 11.2 motion-mode 100.0 %
+  frame lock 1.254 % sky lock 0.0838 % (sky px 1991713) motion-mode 100.0 %
+frame 1574
+  spacedock px 5027 |d| 0.21 sharp pres/cur 0.133 taa/cur 0.120 | pair rms pres 6.208 >4 28.90 % cur 40.134 ratio 0.155 | lock 41.64 % flat 20.28 % (flat px 360) t_mean 11.7 motion-mode 100.0 %
+  far_outpost px 9170 |d| 0.22 sharp pres/cur 0.223 taa/cur 0.206 | pair rms pres 7.242 >4 23.24 % cur 28.006 ratio 0.259 | lock 36.18 % flat 5.26 % (flat px 1389) t_mean 11.4 motion-mode 100.0 %
+  frame lock 1.208 % sky lock 0.0757 % (sky px 1991680) motion-mode 99.9 %
+frame 1575
+  spacedock px 4951 |d| 0.50 sharp pres/cur 0.144 taa/cur 0.130 | pair rms pres 6.072 >4 28.76 % cur 41.047 ratio 0.148 | lock 42.90 % flat 22.13 % (flat px 357) t_mean 12.1 motion-mode 100.0 %
+  far_outpost px 9007 |d| 0.49 sharp pres/cur 0.249 taa/cur 0.230 | pair rms pres 5.240 >4 18.43 % cur 29.373 ratio 0.178 | lock 36.68 % flat 4.10 % (flat px 1391) t_mean 11.7 motion-mode 100.0 %
+  frame lock 1.234 % sky lock 0.0788 % (sky px 1991789) motion-mode 100.0 %
+frame 1576
+  spacedock px 5034 |d| 0.38 sharp pres/cur 0.130 taa/cur 0.117 | pair rms pres 5.344 >4 23.90 % cur 39.162 ratio 0.136 | lock 41.12 % flat 15.64 % (flat px 307) t_mean 11.8 motion-mode 26.2 %
+  far_outpost px 9031 |d| 0.38 sharp pres/cur 0.226 taa/cur 0.210 | pair rms pres 6.304 >4 20.10 % cur 27.734 ratio 0.227 | lock 36.31 % flat 2.17 % (flat px 1337) t_mean 11.6 motion-mode 0.0 %
+  frame lock 1.219 % sky lock 0.0851 % (sky px 1991736) motion-mode 37.9 %

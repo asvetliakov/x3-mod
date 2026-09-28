@@ -1,0 +1,57 @@
+motion_output_mode requested=1 taa_debug=1 luma_lock=0,0.25,3 luma_lock_release=0.65 luma_lock_gate=camera taa_history_weight=0.850
+== /tmp/x3-bottleX3-run355
+history_weight=0.850 far_weight=0.9850 far_f0=60.0 far_f1=68.0 thin_region=0.9700 thin_gate=camera far_gate=camera
+frame 1627: t -16295,6622,85342 |t-t0| 0 fwd +0.7667,+0.0945,-0.6350 rot_deg/frame 0.0000 move/frame 0.2
+frame 1628: t -16297,6622,85343 |t-t0| 2 fwd +0.7667,+0.0945,-0.6350 rot_deg/frame 0.0000 move/frame 2.0
+frame 1629: t -16298,6622,85344 |t-t0| 4 fwd +0.7667,+0.0945,-0.6350 rot_deg/frame 0.0000 move/frame 1.8
+frame 1630: t -16300,6622,85345 |t-t0| 5 fwd +0.7667,+0.0945,-0.6350 rot_deg/frame 0.0000 move/frame 1.6
+frame 1631: t -16301,6622,85345 |t-t0| 7 fwd +0.7667,+0.0945,-0.6350 rot_deg/frame 0.0000 move/frame 1.4
+frame 1632: t -16302,6622,85346 |t-t0| 8 fwd +0.7667,+0.0945,-0.6350 rot_deg/frame 0.0000 move/frame 1.3
+frame 1633: t -16303,6622,85346 |t-t0| 9 fwd +0.7667,+0.0945,-0.6350 rot_deg/frame 0.0000 move/frame 1.2
+frame 1634: t -16304,6622,85347 |t-t0| 10 fwd +0.7667,+0.0945,-0.6350 rot_deg/frame 0.0000 move/frame 1.0
+frame 2322: t -17134,9080,84956 |t-t0| 2626 fwd +0.7739,+0.0711,-0.6293 rot_deg/frame 0.2244 move/frame 215.6
+frame 2323: t -18053,7987,84877 |t-t0| 2274 fwd +0.7807,+0.0792,-0.6198 rot_deg/frame 0.9760 move/frame 1429.7
+frame 2324: t -19093,6730,84759 |t-t0| 2860 fwd +0.7883,+0.0884,-0.6089 rot_deg/frame 1.1046 move/frame 1635.7
+frame 2325: t -20258,5307,84591 |t-t0| 4243 fwd +0.7966,+0.0986,-0.5964 rot_deg/frame 1.2383 move/frame 1846.9
+frame 2326: t -21535,3736,84358 |t-t0| 6063 fwd +0.8056,+0.1096,-0.5823 rot_deg/frame 1.3771 move/frame 2038.0
+frame 2327: t -23295,1556,83959 |t-t0| 8751 fwd +0.8176,+0.1244,-0.5622 rot_deg/frame 1.9181 move/frame 2830.3
+frame 2328: t -25056,-629,83462 |t-t0| 11527 fwd +0.8292,+0.1388,-0.5414 rot_deg/frame 1.9386 move/frame 2850.5
+frame 2329: t -26804,-2801,82872 |t-t0| 14329 fwd +0.8404,+0.1527,-0.5200 rot_deg/frame 1.9410 move/frame 2848.9
+frame 2427: t -38896,-17931,75886 |t-t0| 34685 fwd +0.9068,+0.2356,-0.3495 rot_deg/frame 0.1987 move/frame 18.7
+frame 2428: t -38945,-17993,75847 |t-t0| 34772 fwd +0.9070,+0.2359,-0.3487 rot_deg/frame 0.2171 move/frame 88.2
+frame 2429: t -38980,-18038,75818 |t-t0| 34835 fwd +0.9072,+0.2361,-0.3482 rot_deg/frame 0.0000 move/frame 64.2
+frame 2430: t -39007,-18072,75796 |t-t0| 34882 fwd +0.9073,+0.2363,-0.3477 rot_deg/frame 0.0000 move/frame 48.1
+frame 2431: t -39027,-18096,75780 |t-t0| 34916 fwd +0.9074,+0.2364,-0.3474 rot_deg/frame 0.0000 move/frame 35.2
+frame 2432: t -39041,-18114,75768 |t-t0| 34941 fwd +0.9075,+0.2365,-0.3472 rot_deg/frame 0.0000 move/frame 26.0
+frame 2433: t -39051,-18127,75760 |t-t0| 34960 fwd +0.9075,+0.2365,-0.3470 rot_deg/frame 0.0000 move/frame 18.7
+frame 2434: t -39059,-18137,75754 |t-t0| 34974 fwd +0.9076,+0.2366,-0.3469 rot_deg/frame 0.0000 move/frame 14.4
+dt_ms p50 all(f>300) 15.00 n=3305 | stand p50 15.00 p90 17.00 n=717
+motion_output_mode requested=1 taa_debug=1 luma_lock=16,0.25,3 luma_lock_release=0.65 luma_lock_gate=camera taa_history_weight=0.850
+motion_output_taa_luma_lock requested=16,0.25,3 release=0.65 gate=camera configured=1 reason=ok far_weight=0.9850
+== /tmp/x3-bottleX3-run356
+history_weight=0.850 far_weight=0.9850 far_f0=60.0 far_f1=68.0 thin_region=0.9700 thin_gate=camera far_gate=camera
+frame 1087: t -16625,8254,85140 |t-t0| 0 fwd +0.7773,+0.0375,-0.6280 rot_deg/frame 0.1337 move/frame 0.0
+frame 1088: t -16625,8254,85141 |t-t0| 0 fwd +0.7773,+0.0375,-0.6280 rot_deg/frame 0.1392 move/frame 0.4
+frame 1089: t -16626,8255,85141 |t-t0| 1 fwd +0.7773,+0.0375,-0.6280 rot_deg/frame 0.1446 move/frame 0.4
+frame 1090: t -16626,8256,85141 |t-t0| 2 fwd +0.7773,+0.0375,-0.6280 rot_deg/frame 0.1510 move/frame 1.1
+frame 1091: t -16626,8255,85141 |t-t0| 1 fwd +0.7773,+0.0375,-0.6280 rot_deg/frame 0.1622 move/frame 0.9
+frame 1092: t -16626,8255,85142 |t-t0| 2 fwd +0.7773,+0.0375,-0.6280 rot_deg/frame 0.1671 move/frame 0.3
+frame 1093: t -16627,8255,85142 |t-t0| 2 fwd +0.7773,+0.0375,-0.6280 rot_deg/frame 0.1671 move/frame 0.3
+frame 1094: t -16627,8255,85142 |t-t0| 2 fwd +0.7773,+0.0375,-0.6280 rot_deg/frame 0.1671 move/frame 0.3
+frame 1470: t -16011,8887,85196 |t-t0| 883 fwd +0.7729,+0.0317,-0.6337 rot_deg/frame 0.0302 move/frame 224.4
+frame 1471: t -16963,8034,85097 |t-t0| 406 fwd +0.7800,+0.0381,-0.6247 rot_deg/frame 0.8643 move/frame 1282.1
+frame 1472: t -18048,7069,84960 |t-t0| 1861 fwd +0.7879,+0.0452,-0.6141 rot_deg/frame 0.9807 move/frame 1458.9
+frame 1473: t -19270,5989,84774 |t-t0| 3501 fwd +0.7967,+0.0530,-0.6021 rot_deg/frame 1.0711 move/frame 1640.3
+frame 1474: t -20613,4807,84534 |t-t0| 5306 fwd +0.8062,+0.0613,-0.5885 rot_deg/frame 1.1863 move/frame 1805.5
+frame 1475: t -22062,3538,84229 |t-t0| 7255 fwd +0.8162,+0.0701,-0.5735 rot_deg/frame 1.3058 move/frame 1949.9
+frame 1476: t -23594,2197,83859 |t-t0| 9323 fwd +0.8265,+0.0792,-0.5573 rot_deg/frame 1.3960 move/frame 2070.1
+frame 1477: t -25188,799,83419 |t-t0| 11483 fwd +0.8370,+0.0884,-0.5400 rot_deg/frame 1.4632 move/frame 2164.8
+frame 1569: t -35669,-10650,78789 |t-t0| 27576 fwd +0.8987,+0.1545,-0.4104 rot_deg/frame 0.0000 move/frame 15.1
+frame 1570: t -35705,-10700,78767 |t-t0| 27639 fwd +0.8989,+0.1548,-0.4099 rot_deg/frame 0.0000 move/frame 65.1
+frame 1571: t -35730,-10737,78750 |t-t0| 27686 fwd +0.8990,+0.1550,-0.4096 rot_deg/frame 0.0000 move/frame 48.2
+frame 1572: t -35749,-10766,78737 |t-t0| 27722 fwd +0.8991,+0.1551,-0.4093 rot_deg/frame 0.0000 move/frame 36.6
+frame 1573: t -35764,-10786,78727 |t-t0| 27748 fwd +0.8992,+0.1552,-0.4091 rot_deg/frame 0.1426 move/frame 27.0
+frame 1574: t -35774,-10801,78721 |t-t0| 27767 fwd +0.8993,+0.1553,-0.4089 rot_deg/frame 0.0000 move/frame 19.0
+frame 1575: t -35781,-10812,78716 |t-t0| 27781 fwd +0.8993,+0.1553,-0.4088 rot_deg/frame 0.0000 move/frame 14.1
+frame 1576: t -35787,-10820,78713 |t-t0| 27790 fwd +0.8993,+0.1554,-0.4088 rot_deg/frame 0.0000 move/frame 9.7
+dt_ms p50 all(f>300) 14.00 n=14114 | stand p50 15.00 p90 16.00 n=582

@@ -1,0 +1,12 @@
+Run 355 (lock off) / 356 (--taa-luma-lock 16, a627f5b5), 1920x1080 (create_device), taa_debug=1 both; all measured.
+luma_lock row (356 only): requested=16,0.25,3 release=0.65 gate=camera configured=1 reason=ok render_targets=4 far_weight 0.985.
+motion_output_taa rows identical except references 33/34. resets=0 exception=0 both; 24/24 lock readbacks result=0.
+Stand dt_ms p50/p90: 15/17 (355), 15/16 (356). New kinds in 356 only: hull_emission_refused 16 (reason=blend),
+  shadow_replay_depth_refused 8 (sun_changing), chase_native_timing_slow 1; 356 ran 14448 frames vs 3639.
+Bursts: 355 rest 1627 (rot 0, |d| 0.17-0.60), pan 2322 (rot 0.22->1.94 deg/f, spacedock |d| 2.6->34 px), after 2427 (+1.5 s);
+        356 rest 1087 (roll 0.13-0.17 deg/f, |d| 0.17-0.59), pan 1470 (0.03->1.46 deg/f, |d| 2.1->25.8 px), after 1569 (+1.5 s).
+Rest present rms (unwarped, rest_flicker_1080.py) median: spacedock 0.613 / 1.489; outpost 0.423 / 1.247;
+  >4 codes spacedock 0-0.15 % / 1.5-2.9 %; outpost 0-0.06 % / 0.9-2.2 %.
+Sharpness pres/cur: rest spacedock ~0.29 / ~0.29, outpost ~0.43 / ~0.44; pan spacedock 0.09-0.10 / 0.12-0.15, outpost 0.16-0.19 / 0.21-0.25.
+Lock share 356 spacedock: rest 31 %, pan 45-49 %, after 41-47 %; outpost 26 / 38-41 / 36-38 %; flat (plate proxy) outpost 2-4 / 4-7 / 2-7 %;
+  sky 0.04-0.10 %; frame 0.8-1.3 %.

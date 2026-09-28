@@ -3748,3 +3748,26 @@ Open (from this build, not gated):
 Records: `temporal-lattice.txt` (the lock section and the lock budget
 row; timing rows restored; every other line identical), `temporal-pass-summary.json` (`passed: true`, `records_note`),
 `verification/results/taa-luminance-lock/restore_timing_rows.py` / `_out.txt`.
+
+## Run 100 A: luminance lock (section 12) A/B with dumps (2026-09-28, run355 / run356, 1920x1080)
+
+User: "I don't notice shimmer now (or it's so small so just not very noticeable)"; a foggy sector with two solar plants
+also fine; decision: make the lock the default. Triage (`verification/results/run355-356-luma-lock/`, `run_all.sh`,
+`summary.txt`; all measured): lock `configured=1 gate=camera`, no Reset/device-lost/exception, 24 lane readbacks ok,
+stand frame time p50/p90 15/17 vs 15/16 ms (no measurable cost).
+
+| metric (spacedock z 62-98k / outpost z 122-182k) | run355 lock off (0.985 blanket) | run356 lock on |
+|---|---|---|
+| rest present rms | 0.613 / 0.423 | 1.489 / 1.247 |
+| rest share > 4 codes | 0-0.15 % / <= 0.06 % | 1.5-2.9 % / 0.9-2.2 % |
+| sharpness at rest (present/current) | 0.29 / 0.43 | 0.29 / 0.44 |
+| sharpness mid-pan | 0.09-0.10 / 0.16-0.19 | 0.12-0.15 / 0.21-0.25 |
+| after pan present rms, share > 4 | 9.2 -> 2.8, 55 -> 14 % | 7.8 -> 3.0, 39 -> 9 % |
+| locked share rest / mid-pan / after | - | spacedock 31 / 45-49 / 41-47 %; outpost 26 / 38-41 / 36-38 %; plate proxy 2-4 / 4-7 / 2-7 % (outpost), 11-16 / 19-24 / 16-26 % (spacedock); sky 0.04-0.10 % |
+
+Reading: under the pan the lock keeps both stations 25-50 % sharper and flickers no more than the blanket; the cost is
+at rest, 2.4-2.9x the blanket's rest flicker, between the 0.95 (0.989) and 0.90 (1.894) blankets flown as run351/352
+(the user noticed 0.90, not this). run355 reproduces run341's 0.985 figures at 1080p (0.42 rms, 0.05 %). Open: run356's
+rest burst carried a little roll (part of the rest figure may be drift); "plate" is a flat-luma proxy; locks 1.5 s
+after the pan are still held under the closed screen gate (mean lifetime frozen at ~12) and their expiry at true rest
+was not captured (a burst 3-5 s after stopping would show it).
