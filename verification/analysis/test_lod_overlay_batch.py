@@ -1619,8 +1619,8 @@ class RefusalClasses(unittest.TestCase):
         self.assertEqual(t['base'], (16, 16))                     # sized by its bump map
         (cx, cy), (cw, ch) = t['origin'], t['content']
         diff = res['encoded']['diffuse']
-        self.assertEqual(diff['format'], 'DXT1')                  # the NULL diffuse is opaque black
-        self.assertTrue((diff['decoded'][cy:cy + ch, cx:cx + cw] == (0, 0, 0, 255)).all())
+        self.assertEqual(diff['format'], 'DXT1')                  # the NULL diffuse is the opaque NONE_GRAY texel
+        self.assertTrue((diff['decoded'][cy:cy + ch, cx:cx + cw] == (132, 130, 132, 255)).all())
         res, _ = self.build('solid')
         t = next(t for t in res['layout']['tiles'] if 0 in t['mats'])
         self.assertEqual((t.get('solid'), t['base'], t['span'], t['content'], t['ratio']), (True, (4, 4), (1.0, 1.0),
@@ -1631,7 +1631,7 @@ class RefusalClasses(unittest.TestCase):
         self.assertEqual({k for f, k in res['layout']['face_keys'].items() if k[0] == res['layout']['tiles'].index(t)},
                          {(res['layout']['tiles'].index(t), 0, 0, lod_atlas.SOLID_KEY)})
         (cx, cy), (cw, ch) = t['origin'], t['content']
-        self.assertTrue((res['encoded']['diffuse']['decoded'][cy:cy + ch, cx:cx + cw] == (0, 0, 0, 255)).all())
+        self.assertTrue((res['encoded']['diffuse']['decoded'][cy:cy + ch, cx:cx + cw] == (132, 130, 132, 255)).all())
         self.assertTrue((res['encoded']['light']['decoded'][cy:cy + ch, cx:cx + cw] == 0).all())
         rows = lod_atlas.tile_rows(res['layout'])
         solid = rows[res['layout']['tiles'].index(t)]
@@ -1698,6 +1698,266 @@ class RefusalClasses(unittest.TestCase):
         box = lambda s: res['encoded'][s]['decoded'][cy:cy + ch, cx:cx + cw, :3].astype(int)
         self.assertTrue((box('specular') == box('diffuse')).all())
         self.assertGreater(np.ptp(box('diffuse')), 100)          # the gradient, not a flat placeholder
+
+
+def classic(index, texture=b'', light=b'', selfillum=0, dif=(255, 255, 255), shininess=30, strength=100, bump=b'',
+            flags=0, cube=b'', spec=b''):
+    """A classic MAT6 record (no effect flag), in the field layout of non-effect-materials.md section 1."""
+    return {'index': index, 'flags': flags, 'texture': texture,
+            'colors': [51, 51, 51, *dif, 0, 0, 0, 0xffff, 0, selfillum], 'w24': shininess, 'w26': strength,
+            'w2c': 100, 'maps': [(cube, 100), (bump, 100), (light, 100)], 'extra': [(spec, 0), (b'', 0)]}
+
+
+MARKER = dict(texture=b'155.jpg', selfillum=100, dif=(0, 255, 255), shininess=10, strength=0)
+
+
+def classic_tree(kind):
+    """atlas_tree_lod0 (record 0: materials 0 and 1, 3 faces each, tangent records; material 0 argon.fx with a bump
+    map) with classic records: 'only' two textured ones, 'lightmapped' the second with a light map, 'mixed' an
+    effect material and a light-mapped classic one, 'untextured' an effect material and an untextured classic one,
+    'marker' an effect material, a textured classic one and an additive 155.jpg marker, 'helper' an untextured
+    box and a marker, 'undeclared' like 'mixed' with the effect material's bump map NULL (no tangent declaration),
+    'salvage' like 'only' with a bump name that loads no file on the second record (tm_machineSalvage), 'twosided'
+    two two-sided records, 'nothing' like 'helper' without a face in the visible part."""
+    tree = atlas_tree_lod0()
+    mats = bob1.materials(tree)
+    if kind == 'twosided':
+        mats[0], mats[1] = classic(0, b'a_diff.tga', flags=0x10), classic(1, b'b_diff.tga', flags=0x10)
+        return tree
+    if kind == 'nothing':
+        for g in bob1.lods(tree)[0]['parts'][0]['groups']:
+            g['faces'], g['extra'] = [], []
+        kind = 'helper'
+    if kind == 'salvage':
+        mats[0], mats[1] = classic(0, b'a_diff.tga'), classic(1, b'b_diff.tga', bump=b'DISABLE_x_bump.tga', strength=0)
+        return tree
+    if kind == 'undeclared':
+        mats[0]['params'] = [(n, t, b'NULL' if n == b't_BumpTexture' else v) for n, t, v in mats[0]['params']]
+        kind = 'mixed'
+    if kind in ('only', 'lightmapped', 'helper'):
+        mats[0] = classic(0, b'a_diff.tga') if kind != 'helper' else classic(0)
+    mats[1] = {'only': classic(1, b'b_diff.tga'), 'lightmapped': classic(1, b'b_diff.tga', b'b_light.tga'),
+               'mixed': classic(1, b'b_diff.tga', b'b_light.tga'), 'untextured': classic(1),
+               'marker': classic(1, b'b_diff.tga'), 'helper': classic(1, **MARKER)}[kind]
+    if kind == 'marker':
+        mats.append(classic(3, **MARKER))
+        g = bob1.lods(tree)[0]['parts'][0]['groups']
+        g.append({'material': 3, 'faces': [(1, 4, 5, 1)], 'extra': [rec(i, 3) for i in (1, 4, 5)]})
+    return tree
+
+
+def classic_textures():
+    """The engine placeholders the classic path binds and a Materials table whose row 155 is the additive marker."""
+    flat = lambda rgba: np.broadcast_to(np.array(rgba, np.uint8), (4, 4, 4)).copy()
+    rows = [(i, 'MPF_DESTINATIONBLEND | MPF_BESTQUALITY' if i == 155 else 'MPF_NULL', '') for i in range(156)]
+    return [('dds/NONE_GRAY.pck', gzip.compress(lod_atlas.write_dds([flat((132, 130, 132, 255))], 'DXT1'), mtime=0)),
+            ('dds/NONE_NORMAL.pck', gzip.compress(lod_atlas.write_dds([flat((132, 130, 132, 128))], 'DXT5'), mtime=0)),
+            ('dds/NONE_NORMAL_LOW.pck', gzip.compress(lod_atlas.write_dds([flat((128, 128, 255, 255))], 'A8R8G8B8'),
+                                                      mtime=0)),
+            ('dds/NONE_BLACK.pck', gzip.compress(lod_atlas.write_dds([flat((0, 0, 0, 0))], 'DXT5'), mtime=0)),
+            ('dds/NONE_WHITE.pck', gzip.compress(lod_atlas.write_dds([flat((255, 255, 255, 255))], 'DXT1'), mtime=0)),
+            ('types/Materials.pck', materials_pck(rows)), ('tex/true/155.jpg', jpg_texture()),
+            ('types/Animations.pck', animations_pck())]
+
+
+class ClassicMaterials(unittest.TestCase):
+    """Classic (non-effect) materials: planned as standard_lighting.fx classes (lod_atlas.classic_view)."""
+    def game(self, folder, kinds=('only', 'lightmapped', 'mixed', 'untextured', 'marker', 'helper', 'nothing',
+                                  'twosided')):
+        game = Path(folder) / 'game'
+        write_catalogue(game / '01.cat', atlas_textures() + classic_textures())
+        write_catalogue(game / '02.cat', [(f'objects/ships/x/{k}.pbb', packed(classic_tree(k))) for k in kinds])
+        return game
+
+    def build(self, kind, **kw):
+        with tempfile.TemporaryDirectory() as folder:
+            assets, _ = lod_overlay.original_assets(self.game(folder, ()))
+            tree = bob1.parse(bob1.serialise(classic_tree(kind)))
+            view = lod_atlas.classic_view(assets, bob1.materials(tree))
+            self.assertIsNot(view, bob1.materials(tree))
+            res = lod_atlas.build(assets, 'b', view, bob1.lods(tree)[0], set(), 8, (64, 128), light_bleed_max=0, **kw)
+            return res, view, {n: v for n, _, v in view[res['atlas_index']]['params']}
+
+    def tile(self, res, slot, material):
+        t = next(t for t in res['layout']['tiles'] if material in t['mats'])
+        (cx, cy), (cw, ch) = t['origin'], t['content']
+        return res['encoded'][slot]['decoded'][cy:cy + ch, cx:cx + cw]
+
+    def test_materials_flags_by_name(self):
+        with tempfile.TemporaryDirectory() as folder:
+            assets, _ = lod_overlay.original_assets(self.game(folder, ()))
+            rows = lod_atlas.materials_rows(assets)
+            self.assertEqual((rows[155][1], rows[0][1]), (0x8002, 0))          # read 0 before 2026-09-29
+            self.assertEqual(lod_atlas.classic_shape(assets, classic(0, **MARKER))['keep'],
+                             'blended or alpha-tested (flags 0x8002)')
+
+    def test_classic_only_body(self):
+        res, view, p = self.build('only')
+        (row,) = [r for r in res['synth'] if r.get('atlas')]
+        self.assertEqual((row['effect'], row['absorbed'], row.get('classic'), res['slots']),
+                         ('standard_lighting.fx', [0, 1], True, ('diffuse', 'light')))
+        merged = view[row['index']]
+        self.assertEqual((merged['flags'], merged['technique'], merged['effect'], 'classic' in merged),
+                         (bob1.EFFECT_MATERIAL, 1, b'standard_lighting.fx', False))
+        self.assertEqual((p[b't_DiffuseTexture'], p[b't_LightMapTexture']), (res['names']['diffuse'], res['names']['light']))
+        self.assertNotIn(b't_BumpTexture', p)                     # no tangent declaration in the model: DEFAULT
+        self.assertEqual([p[k] for k in (b'g_MatDiffuseStrength', b'g_MatSpecularStrength', b'g_MatSpecularPower',
+                                         b'g_MatEmissiveColor', b'g_AlphaBlendEnable', b'g_CullMode')],
+                         [[65536], [65536], [31 * 65536], [0, 0, 0, 65536], [0], [2]])
+        self.assertEqual([len(part['groups']) for part in res['record']['parts']], [1, 1])
+        self.assertTrue((self.tile(res, 'light', 0) == 0).all())   # no light map: black, alpha 0 (NONE_BLACK)
+
+    def test_light_mapped_classic_without_the_declaration_is_kept(self):
+        """What a vertex input missing from the declaration reads is not documented: the record is not merged."""
+        res, view, p = self.build('lightmapped')
+        self.assertEqual((res['kept_classic'], res['atlas_of']),
+                         ({1: 'BUMPMAP_LOW without the tangent declaration'}, {0: res['atlas_index']}))
+        self.assertEqual([g['material'] for g in res['record']['parts'][0]['groups']], [res['atlas_index'], 1])
+        self.assertNotIn(b't_BumpTexture', p)
+
+    def test_light_mapped_classic(self):
+        with unittest.mock.patch.object(lod_atlas, 'CLASSIC_MISSING_TANGENT_IS_ZERO', True):   # once established
+            res, view, p = self.build('lightmapped')
+        self.assertEqual((len(res['atlas_indices']), res['slots'], res['kept_classic']), (1, ('diffuse', 'light'), {}))
+        self.assertNotIn(b't_BumpTexture', p)
+        self.assertEqual(view[1]['classic']['low'], True)
+        self.assertEqual(next(t for t in res['layout']['tiles'] if 1 in t['mats'])['sources']['light'],
+                         '01.cat:dds/b_light.pck')
+        self.assertGreater(int(self.tile(res, 'light', 1)[..., 0].max()), 100)
+
+    def test_mixed_body_reproduces_the_tilted_normal(self):
+        res, view, _ = self.build('mixed')
+        by = {r['effect']: r for r in res['synth'] if r.get('atlas')}
+        self.assertEqual({e: r['absorbed'] for e, r in by.items()}, {'argon.fx': [0], 'standard_lighting.fx': [1]})
+        self.assertIn('bump', res['slots'])
+        p = {n: v for n, _, v in view[by['standard_lighting.fx']['index']]['params']}
+        self.assertEqual(p[b't_BumpTexture'], res['names']['bump'])            # the effect path then draws BUMPMAP
+        want = lod_atlas.normalize(np.array([132, 130, 132]) * (2 / 255) - 1)  # BUMPMAP_LOW's 2 * rgb - 1 of NONE_NORMAL
+        got = lod_atlas.to_normals(self.tile(res, 'bump', 1))
+        self.assertLess(float(np.degrees(np.arccos(np.clip((got * want).sum(-1), -1, 1))).max()), 1.0)
+        self.assertGreater(float(np.degrees(np.arccos(want[2]))), 45.0)        # against the vertex normal
+        off, view, _ = self.build('mixed', bump=False)                         # no bump atlas: kept, not flattened
+        self.assertEqual((off['kept_classic'], off['kept_effects']), ({1: 'tilted normal without the bump atlas'}, [1]))
+        r0 = bob1.lods(classic_tree('mixed'))[0]      # the set lod_overlay.widened_collapse leaves unwidened
+        self.assertEqual((lod_atlas.excluded_materials(view, r0, set(), False),
+                          lod_atlas.excluded_materials(view, r0, set(), True)), (frozenset({1}), frozenset()))
+
+    def test_kept_tilted_record_is_not_widened(self):
+        """--widen with --no-atlas-bump: the record kept for its tilted normal is excluded from the widening."""
+        seen = []
+        real = lod_overlay.widen_thin_patches
+        spy = lambda *a, **k: seen.append(k['exclude']) or real(*a, **k)
+        with tempfile.TemporaryDirectory() as folder, \
+                unittest.mock.patch.object(lod_overlay, 'widen_thin_patches', spy):
+            assets, _ = lod_overlay.original_assets(self.game(folder, ('mixed',)))
+            for bump, want in ((False, True), (True, False)):
+                lod_overlay.plan_body(assets, 'ships/x/mixed', 8, 'compact', collapse='atlas', source_record=0,
+                                      atlas_opts=dict(sizes=(64, 128), screen_width=1280, min_texels=0, bump=bump,
+                                                      light_bleed_max=0, widen=lod_overlay.WIDEN_DEFAULTS))
+                self.assertEqual(1 in seen[-1], want)
+
+    def test_no_bump_atlas_without_the_tangent_declaration(self):
+        res, view, _ = self.build('undeclared')       # the dominant declares t_BumpTexture, but NULL
+        self.assertFalse(lod_atlas.tangent_declared(view))
+        self.assertEqual((res['slots'], res['kept_classic']),
+                         (('diffuse', 'light'), {1: 'BUMPMAP_LOW without the tangent declaration'}))
+        with unittest.mock.patch.object(lod_atlas, 'CLASSIC_MISSING_TANGENT_IS_ZERO', True):
+            res, view, _ = self.build('undeclared')
+        self.assertEqual((res['slots'], res['kept_classic']), (('diffuse', 'light'), {}))
+        for i in res['atlas_indices']:                # no merged material introduces the declaration
+            self.assertIn(dict((n, v) for n, _, v in view[i]['params']).get(b't_BumpTexture'), (None, b'NULL'))
+        self.assertFalse(lod_atlas.tangent_declared(view))
+
+    def test_declaration_from_a_classic_bump_name(self):
+        res, view, p = self.build('salvage')          # no effect material; the placeholder bump declares tangents
+        self.assertTrue(lod_atlas.tangent_declared(view[:3]))
+        self.assertEqual((view[1]['classic']['tilt'], view[0]['classic']['tilt'], res['kept_classic']), (True, False, {}))
+        self.assertEqual((res['slots'], len(res['atlas_indices'])), (('diffuse', 'light', 'bump'), 2))   # Ks 1 and 0
+        self.assertEqual({dict((n, v) for n, _, v in view[i]['params'])[b't_BumpTexture'] for i in res['atlas_indices']},
+                         {res['names']['bump']})
+
+    def test_keep_reasons(self):
+        mat5 = {'index': 0, 'texture': 3, 'colors': [0] * 12, 'w24': 10, 'w26': 0, 'flagword': 0, 'w2c': 100,
+                'maps': [(0, 0)] * 3}
+        cases = {'two-sided': classic(0, b'a_diff.tga', flags=0x10),
+                 'point filtering': classic(0, b'a_diff.tga', flags=0x100),
+                 'wireframe': classic(0, b'a_diff.tga', flags=0x8),
+                 'blended or alpha-tested (flags 0x1)': classic(0, b'a_diff.tga', flags=0x1),
+                 'cube map': classic(0, b'a_diff.tga', cube=b'envmap.dds'),
+                 'map 0 beside a bump map (diffuse replacement)':
+                     classic(0, b'a_diff.tga', cube=b'b_diff.tga', bump=b'x_bump.tga'),
+                 'bump map': classic(0, b'a_diff.tga', bump=b'm\\a_bump.tga'),
+                 'bump map placeholder NONE_BLACK': classic(0, b'a_diff.tga', bump=b'missing_nrm.tga'),
+                 'specular map': classic(0, b'a_diff.tga', spec=b'b_diff.tga'),
+                 'specular map placeholder': classic(0, b'a_diff.tga', spec=b'missing_gloss.tga'),
+                 'MAT5 record': mat5, 'texture animation': classic(0, b'-79.tga')}
+        with tempfile.TemporaryDirectory() as folder:
+            assets, _ = lod_overlay.original_assets(self.game(folder, ()))
+            self.assertEqual({k: lod_atlas.classic_shape(assets, m)['keep'] for k, m in cases.items()},
+                             {k: k for k in cases})
+            ok = {'a bump name ending in bump that loads no file': classic(0, b'a_diff.tga', bump=b'x_bump.tga'),
+                  'a specular map at strength 0': classic(0, b'a_diff.tga', spec=b'b_diff.tga', strength=0),
+                  'a specular name ending in spec that loads no file': classic(0, b'a_diff.tga', spec=b'x_spec.tga')}
+            self.assertEqual({k: lod_atlas.classic_shape(assets, m)['keep'] for k, m in ok.items()},
+                             {k: None for k in ok})
+            glow = lod_atlas.classic_shape(assets, classic(0, b'a_diff.tga', selfillum=50, dif=(0, 255, 102)))
+            self.assertEqual(glow['consts'], (0, 65536, 31 * 65536, 0, 32768, 13107))   # dif x 50 / 25500; Kd 0
+            self.assertEqual(lod_atlas.classic_shape(assets, classic(0, b'a_diff.tga', shininess=0))['consts'][2],
+                             65536)                                                     # specular rgb 0: power 1
+            view = lod_atlas.classic_view(assets, bob1.materials(classic_tree('only')))
+            r0 = copy.deepcopy(bob1.lods(classic_tree('only'))[0])
+            r0['parts'][0]['flags'] |= 2
+            self.assertEqual(lod_atlas.classic_kept(view, r0), {0: 'part flag 2 (g_Wrap)', 1: 'part flag 2 (g_Wrap)'})
+            bare = Path(folder) / 'bare'                  # no types/Materials: the row flags of id 0 are unknown
+            write_catalogue(bare / '01.cat', atlas_textures())
+            assets, _ = lod_overlay.original_assets(bare)
+            self.assertEqual(lod_atlas.classic_flags(assets, classic(0)), None)
+            self.assertEqual(lod_atlas.classic_shape(assets, classic(0))['keep'],
+                             'flags unknown (no readable types/Materials)')
+            self.assertEqual(lod_atlas.classic_shape(assets, classic(0, b'a_diff.tga'))['keep'], None)   # a named id
+
+    def test_classic_unsupported(self):
+        with self.assertRaisesRegex(lod_atlas.AtlasError, r"does not reproduce \['two-sided'\]") as cm:
+            self.build('twosided')
+        self.assertEqual(census.atlas_reason(cm.exception), 'classic_unsupported')
+
+    def test_untextured_classic_is_gray(self):
+        res, view, _ = self.build('untextured')
+        self.assertEqual(view[1]['classic']['textured'], False)
+        self.assertTrue((self.tile(res, 'diffuse', 1) == (132, 130, 132, 255)).all())
+        p = {n: v for n, _, v in view[res['atlas_of'][1]]['params']}
+        self.assertNotIn(b't_BumpTexture', p)                     # no BUMPMAP_LOW record: DEFAULT, as the original
+
+    def test_additive_marker_stays_out_of_the_atlas(self):
+        res, view, _ = self.build('marker')
+        self.assertEqual(res['kept_classic'], {3: 'blended or alpha-tested (flags 0x8002)'})
+        self.assertFalse(any(3 in t['mats'] for t in res['layout']['tiles']))
+        groups = res['record']['parts'][0]['groups']
+        self.assertEqual([g['material'] for g in groups][-1], 3)  # its own group, material and UVs
+        src = bob1.lods(classic_tree('marker'))[0]
+        self.assertEqual([res['record']['points'][i][4:6] for i in groups[-1]['faces'][0][:3]],
+                         [src['points'][i][4:6] for i in (1, 4, 5)])
+        self.assertEqual(lod_atlas.summary(res)['kept_classic'], {'3': 'blended or alpha-tested (flags 0x8002)'})
+
+    def test_plan_body_keeps_the_classic_records(self):
+        with tempfile.TemporaryDirectory() as folder:
+            assets, _ = lod_overlay.original_assets(self.game(folder))
+            p = lod_overlay.plan_body(assets, 'ships/x/marker', 8, 'compact', collapse='atlas', source_record=0,
+                                      atlas_opts=dict(sizes=(64, 128), screen_width=1280, min_texels=0))
+            written, source = bob1.materials(bob1.parse(unpack(p['stored']))), bob1.materials(classic_tree('marker'))
+            self.assertEqual(written[:len(source)], bob1.materials(bob1.parse(bob1.serialise(classic_tree('marker')))))
+            self.assertEqual([m['effect'] for m in written[len(source):]], [b'argon.fx', b'standard_lighting.fx'])
+            self.assertEqual(sorted(g['material'] for g in p['new']['parts'][0]['groups']), [3, 4, 5])
+            rows, _ = census.run(self.game(Path(folder) / 'c'), dict(
+                sizes=(64, 128), include_other=False, rule=dict(census.RULE, aspect=False), widths=(1280,)))
+        by = {r['name'].split('/')[-1]: r for r in rows}
+        self.assertEqual({k: (r['refuse'], r['filter']) for k, r in by.items()},
+                         {'only': ([], []), 'lightmapped': ([], ['no_draw_gain']), 'mixed': ([], ['no_draw_gain']),
+                          'untextured': ([], ['no_draw_gain']), 'marker': ([], ['no_draw_gain']),
+                          'helper': ([], ['classic_nothing_to_atlas']),      # visible: a grey box and a marker
+                          'nothing': ([], ['helper_body']),                  # no visible face
+                          'twosided': (['classic_unsupported'], [])})
+        self.assertIn('filter=classic_nothing_to_atlas', census.format_row(by['helper']))
 
 
 class TextureLookup(unittest.TestCase):

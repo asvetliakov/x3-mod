@@ -1,0 +1,78 @@
+X3AP.exe, 2153984 bytes; capstone 5.0.7
+== section 7: writes to the texture id words of a material record (displacements 0x2, 0x1c, 0x2e, 0x32, 0x36)
+effect record post-load 0x00481780..0x00481a92 (record in ebx): 0
+MAT6 loader, record index to the end of the effect branch 0x00481f50..0x00482019 (record in edi): 0
+MAT6 loader, classic branch 0x00482019..0x004823a7 (the positive control: the same search finds the classic writes): 10
+  00482042  mov word ptr [ecx + 2], ax
+  0048206a  mov word ptr [edi + 2], ax
+  0048218b  mov word ptr [ecx + 0x2e], ax
+  004821b3  mov word ptr [edi + 0x2e], ax
+  004821f1  mov word ptr [edx + 0x32], ax
+  00482214  mov word ptr [edi + 0x32], ax
+  0048224d  mov word ptr [ecx + 0x36], ax
+  00482275  mov word ptr [edi + 0x36], ax
+  004822b7  mov word ptr [esi + 0x1c], ax
+  00482329  mov word ptr [edi + 0x1c], dx
+  not searched: the effect reader 0x00470490 (called at 0x00481fb3 with the new effect object and the stream; the record pointer is not among its arguments) and callees of the two ranges
+== section 8: strings named by the effect path 0x004c0866..0x004c09d2: 6
+  004c0880  push 0x563434  ; "max_standard_lighting"
+  004c089f  push 0x56344c  ; "standard_lighting"
+  004c08c0  mov esi, 0x56344c  ; "standard_lighting"
+  004c08e7  push 0x563460  ; "2s"
+  004c09c0  mov dword ptr [esp + 0x40], 0x563464  ; "BUMPMAP"
+  004c09ca  mov dword ptr [esp + 0x40], 0x56346c  ; "DEFAULT"
+== section 8: strings named by the classic technique choice 0x004c0a79..0x004c0b90: 7
+  004c0aad  push 0x563410  ; "z_only"
+  004c0ad6  mov dword ptr [esp + 0x40], 0x563418  ; "Z_Only_Alpha"
+  004c0ae3  mov dword ptr [esp + 0x40], 0x563428  ; "Z_Only_Fast"
+  004c0b1f  push 0x55608c  ; "effects"
+  004c0b26  push 0x56344c  ; "standard_lighting"
+  004c0b73  mov dword ptr [esp + 0x40], 0x563474  ; "BUMPMAP_LOW"
+  004c0b7d  mov dword ptr [esp + 0x40], 0x56346c  ; "DEFAULT"
+== section 8: colour parameters recorded after BeginParameterBlock 0x004c0df9..0x004c0e83: 4
+  004c0e2f  mov ecx, 0x563498  ; "g_Brightness"
+  004c0e40  mov ecx, 0x5634a8  ; "g_Contrast"
+  004c0e4f  mov ecx, 0x5634b4  ; "g_Saturation"
+  004c0e5e  mov ecx, 0x5634c4  ; "g_Hue"
+== section 6: byte accesses at +0xa0 (mov = the profile selection, cmp = the readers): 11
+  004c330b  cmp byte ptr [edx + 0xa0], 0
+  004c3342  cmp byte ptr [eax + 0xa0], 0
+  004d980c  mov byte ptr [ecx + 0xa0], 0
+  004d9d1e  mov byte ptr [eax + 0xa0], 0
+  004d9dae  mov byte ptr [eax + 0xa0], 1
+  004d9f8e  mov byte ptr [eax + 0xa0], 0
+  004d9fc0  cmp byte ptr [eax + 0xa0], 0
+  004da5b3  cmp byte ptr [edx + 0xa0], 1
+  004da5e9  cmp byte ptr [edx + 0xa0], 1
+  004da62a  cmp byte ptr [eax + 0xa0], 1
+  004f378b  cmp byte ptr [edx + 0xa0], al
+== section 6: profile names around the byte writes 0x004d9c68..0x004d9f95: 20
+  004d9c68  mov ecx, 0x563e30  ; "ps_1_1"
+  004d9c7e  mov ecx, 0x563e90  ; "ps_1_2"
+  004d9c94  mov ecx, 0x563e38  ; "ps_1_3"
+  004d9caa  mov ecx, 0x563e40  ; "ps_1_4"
+  004d9cc1  mov ecx, 0x563ea0  ; "1_4"
+  004d9d03  push 0x563ea4  ; "1.4"
+  004d9d3a  mov ecx, 0x563e10  ; "ps_2_0"
+  004d9d51  mov ecx, 0x563ea8  ; "2_0"
+  004d9d8e  push 0x563eac  ; "2.0"
+  004d9dca  mov ecx, 0x563e20  ; "ps_2_b"
+  004d9de1  mov ecx, 0x563eb0  ; "2_b"
+  004d9e1e  push 0x563eb4  ; "2.b"
+  004d9e28  mov ecx, 0x563e18  ; "ps_2_a"
+  004d9e3f  mov ecx, 0x563eb8  ; "2_a"
+  004d9e7c  push 0x563ebc  ; "2.a"
+  004d9e86  mov ecx, 0x563e28  ; "ps_3_0"
+  004d9e9d  mov ecx, 0x563ec0  ; "3_0"
+  004d9edd  push 0x563ec4  ; "3.0"
+  004d9f03  mov ecx, 0x563e98  ; "1_1"
+  004d9f59  push 0x563e9c  ; "1.1"
+== section 6: placeholder names loaded at device init 0x004da6e0..0x004da7a0: 8
+  004da6ed  push 0x5643b0  ; "\NONE_WHITE"
+  004da6fe  push 0x5643bc  ; "\NONE_BLACK"
+  004da714  push 0x5643c8  ; "\NONE_NORMAL"
+  004da72a  push 0x5643d8  ; "\NONE_NORMAL_LOW"
+  004da743  push 0x5643ec  ; "\NONE_OCCL_DECAL"
+  004da759  push 0x564400  ; "\NONE_GRAY"
+  004da76f  push 0x56440c  ; "\NONE_ENVI"
+  004da785  push 0x564418  ; "\ENVI"

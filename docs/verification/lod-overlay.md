@@ -651,3 +651,65 @@ tree merged onto main `da3ba6b0` (occlusion classes, trailing bytes) plus this c
 - **Byte identity** (`ext_byte_identity.py`): run on `git archive da3ba6b0 tools/analysis` (main without this
   change) and on the merged tree, 6 recorded-built bodies (2 each from `.pbb`, `.bob` and `.pbd` sources) give 30
   members with identical sha256. The output also equals the pre-merge run against `0c2f01a6`.
+
+## 2026-09-29 classic materials are atlased (host-side; not installed, not flown)
+
+The baker no longer refuses a body for its classic (non-effect) materials. It plans on a view of the material
+table in which every classic record the atlas can reproduce is the equivalent `standard_lighting.fx` effect
+material (`lod_atlas.classic_view`); they form classes of their own, one merged material per constant set, over
+the body's one atlas set. The body's own records are not rewritten. Engine facts, the parameter list and the
+residuals: [non-effect-materials.md](../reverse-engineering/non-effect-materials.md) §6 to §9. Scripts, commands
+and outputs: `verification/results/lod-mayhem-refusals/nonfx_bake_*`. All figures below are from the tree merged
+onto main `7686e58d`.
+
+- **Tilted normal.** On the profiles from `2_0` up the engine lights a light-mapped classic record with the normal
+  of the `NONE_NORMAL` placeholder read as RGB, 48.8° off the vertex normal wherever the vertex has tangents
+  (49 of the 167 bodies draw such faces in record 0) [s, m]. In a model with the tangent declaration the merged
+  material reproduces it: it declares `t_BumpTexture` and draws `BUMPMAP` over a bump atlas holding that normal.
+  In a model without the declaration such a record is **kept as its own group**: what a vertex input missing from
+  the declaration reads is not documented by Direct3D 9, and the fourth column of `g_mWorldIT` is not traced.
+- **Untextured and NULL diffuse.** Both draw paths bind `NONE_GRAY` for texture id 0 [s]. Classic tiles use it, and
+  the effect path's NULL diffuse tile changed from black to the same texel. Scope [m, scan]: 23 of the 1,079
+  bodies the installed record bakes draw a non-alpha NULL-diffuse effect material (18 Teladi and pirate ships,
+  `split_TL`, `split_tl_elephant`, `teladi_trading_station_partA` and `partB`; list in
+  `nonfx_bake_null_diffuse_scan_out.txt` and the note §7). Three of them were baked before and after and differ in
+  the diffuse atlas only [m]; the same for the other 20 is inferred.
+- **`materials_rows`** read only `MPF_GENERATED` by name; every other named flag counted 0. It now reads the whole
+  name table (row 155: `0x8002`).
+- **Kept as their own groups:** blended and alpha-tested classic records (the additive `155.jpg` markers) and the
+  other shapes listed in the note §9. A body whose opaque materials are all kept classic records is refused
+  `classic_unsupported`.
+- **Filters.** A body with a classic record whose record 0 draws no visible face is filtered `helper_body`; one
+  whose visible faces are all on untextured or blended classic materials (collision boxes, dummies, dock markers)
+  is filtered `classic_nothing_to_atlas`.
+
+| check | command | result |
+| --- | --- | --- |
+| unit tests (measured) | `PYTHONPATH=verification/probe:tools/analysis python3 -m unittest verification.analysis.test_lod_overlay_batch verification.analysis.test_lod_batch_census verification.analysis.test_lod_overlay_check verification.analysis.test_bob1 verification.analysis.test_lod_strut_widening verification.analysis.test_lod_recipes verification.analysis.test_fog_families verification.analysis.test_regenerate` | 181 OK, 1 skipped. Class `test_lod_overlay_batch.ClassicMaterials` (13 tests): classic-only body; light-mapped record kept without the declaration and merged when the assumption flag is set; effect + classic body with the tilted normal (bump tile within 1° of the target; kept when the bump atlas is off, and then excluded from the widening); declaration from a classic bump name; no bump atlas without the declaration; untextured record (`NONE_GRAY` tile); additive marker kept with its own material and UVs; row 155 flags `0x8002`; twelve keep reasons (two-sided, point filtering, wireframe, alpha test, cube map, map 0 beside a bump map, real bump map, bump placeholder `NONE_BLACK`, specular map, specular placeholder, MAT5, texture animation), part flag 2, flags unknown, emissive constants; `classic_unsupported`; `plan_body` keeps the source records; census filters and refusals |
+| byte identity (measured) | before: main 7686e58d tools; after: this change; `lod_overlay.py --batch --only FILE --out <scratch>`; `nonfx_bake_check.py` | 31 of 34 bodies byte-identical in all 5 members each, among them the 9 bodies baked today whose table holds a classic record. The 3 that differ (`split_TL`, `teladi_M6`, `teladi_trading_station_partA`) are in the NULL-diffuse list and differ in the diffuse atlas only. tool_sha256 c312f060... -> fe423f8c... |
+| scratch bake of the 167 bodies (measured) | same after bake, 201 bodies, 192 s at 5 jobs | 85 content bodies: **51 baked**, 29 filtered `no_draw_gain` (`M6dockCarrier_scene_dummy` among them, member `addon/01.cat:...pbb`), 5 refused `classic_unsupported` (`tp_machineShuttle/hullB`, `xenon_m7_h/hull`, `hull_no_orb`, `RedOrb`, `xenon_ts_f/hull`: every opaque record is `BUMPMAP_LOW` without the declaration). The other 82: filtered `classic_nothing_to_atlas` (`cameradummy` among them, member `addon/06.cat:...bob`); `helper_body` 0. Baked: record-0 draws **244 -> 104**; atlas 1024 on 25 bodies and 2048 on 26; 80.7 MB of stored atlas members; 49 bodies carry one merged classic material each, none two; 51 carry a bump atlas; 2 kept marker materials; no light-bleed keep |
+| effect of the missing-tangent guard (measured) | `nonfx_bake_check.py --previous` against the bake before the review fixes | 4 of the 55 bodies baked then are no longer baked (the four Xenon text bodies, 1 merged draw of 5, 5, 5 and 11 each); 0 bodies reduced |
+| written bodies (measured) | `nonfx_bake_check.py` section 3 | source material records unchanged in 51 of 51; 49 of 49 merged classic materials carry the constants derived from their source records' words and the opaque state |
+| formula comparison (measured) | `nonfx_bake_formula.py`, 49 bodies, 56 lighting conditions | constants, technique and normal only ("formula"): 0 for every shape drawn `DEFAULT`; light-mapped records on `BUMPMAP` max 4.5 / mean 0.06 steps (normal 0.29° off); `DEFAULT` records merged into a `BUMPMAP` material max 11.9 / mean 0.25 (textured) and max 9.7 / mean 1.1 (untextured), from the flat normal's 1.15° in DXT5. With the atlas encoding ("total") the means are 0.5 to 3.6 steps. Table in the note §9 |
+| tangent census (measured) | `nonfx_bake_tangent_census.py`, 1,883 ship/station bodies, 183 with a classic record | the guard that bakes no bump atlas in a model without the tangent declaration touches 0 bodies |
+| shipped template (measured) | `nonfx_bake_shipped_standard_lighting.py`, 4,613 bodies of the record, 4,455 read | 1,518 effect materials in 530 bodies name `standard_lighting.fx`; all technique word 1, flags `0x02000000` |
+| listing searches (measured) | `nonfx_bake_listing.py evidence` | writes to the texture id words of an effect record: 0 in the two ranges searched, 10 in the classic branch (control) |
+| planning cost (measured) | `nonfx_bake_timing.py`, 115 binary bodies | `classic_view` 0.08 ms per body (1.0 % of read + parse), 0 texture decodes |
+
+| body | r0 drawn | merged draws | atlas | merged materials (classic) | kept classic |
+| --- | --- | --- | --- | --- | --- |
+| stations/docks/dock5portsdummy | 21 | 3 | 1024 | 1 (0) | 1 marker |
+| stations/docks/dock5ports_arm_dummy | 11 | 2 | 1024 | 1 (0) | 1 marker |
+| ships/x3ap/paranid/XTC_paranid_drone | 10 | 2 | 1024 | 2 (1) | 0 |
+| ships/x3ap/usc/XTC_terran_tm | 8 | 3 | 2048 | 2 (1) | 0 |
+| ships/stellaris/m1_machineFlagship/machine_01_flagship_bow | 5 | 2 | 1024 | 2 (1) | 0 |
+| ships/stellaris/m1_machineFlagship/machine_01_flagship_mid1 | 5 | 2 | 1024 | 2 (1) | 0 |
+| ships/stellaris/m1_machineFlagship/machine_01_flagship_mid2 | 5 | 2 | 1024 | 2 (1) | 0 |
+| ships/stellaris/m1_machineFlagship/machine_01_flagship_mid3 | 5 | 2 | 2048 | 2 (1) | 0 |
+| ships/stellaris/m1_machineFlagship/machine_01_flagship_mid4 | 5 | 2 | 1024 | 2 (1) | 0 |
+| ships/stellaris/m1_machineFlagship/machine_01_flagship_stern | 5 | 2 | 1024 | 2 (1) | 0 |
+
+Not established without a flight: that a synthesised `standard_lighting.fx` record draws at all (1,518 shipped
+ones do), that the tilted normal is what the game shows on the light-mapped Stellaris faces, and what the 23
+NULL-diffuse bodies show on their untextured parts. The next `--sync` rebuilds every body because tool_sha256
+changed (expected).

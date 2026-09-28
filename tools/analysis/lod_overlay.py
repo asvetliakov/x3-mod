@@ -280,7 +280,10 @@ outside that grammar; a MATERIAL3 text body is mat3), overlay_cannot_win (above)
 slots and an effect that declares no light map keeps none), excluded_effect (every opaque material
 on lod_atlas.KEPT_EFFECTS, planet_haze.fx / asteroid.fx, which otherwise keep their own groups),
 no_diffuse (since 2026-09-24 only a material without a t_DiffuseTexture parameter; a NULL diffuse
-bakes the black placeholder), texture_unresolved, texture_animation_unsupported (TAT_MOVIE, TAT_TAGSINGLESTEP, a
+bakes the NONE_GRAY placeholder), classic_unsupported (every opaque material is a classic record the atlas does
+not reproduce; reproducible classic records are atlased as standard_lighting.fx classes; a body of classic records
+that draws nothing visible is filtered helper_body and one that draws only untextured or blended classic materials
+classic_nothing_to_atlas, lod_atlas notes "Classic materials"), texture_unresolved, texture_animation_unsupported (TAT_MOVIE, TAT_TAGSINGLESTEP, a
 non-zero start UV offset, an animated group left out of the atlas), texture_generated (a MPF_GENERATED
 Materials row, drawn at run time), pil_missing (a jpg/tga texture without
 Pillow), and the lod_atlas reasons. Mixed effects and the second UV set are handled, not refused
@@ -699,8 +702,8 @@ def alpha_can_drop(assets, material, cache=None):
     everywhere (the effects' output alpha is AlphaValue x (EnableGlow ? LightMap.a : Diffuse.a),
     station-material-distance.md "Shader and effect contracts"), or a t_AlphaTexture that is not 255 in all four
     channels at every level (that dataflow does not read the alpha map; kept as a conservative check, a
-    NONE_WHITE placeholder passes). A NULL alpha texture is no alpha source; a NULL diffuse is the opaque black
-    placeholder (lod_atlas.NULL_DIFFUSE_TEXEL, inferred). A texture that does not resolve or decode counts as
+    NONE_WHITE placeholder passes). A NULL alpha texture is no alpha source; a NULL diffuse is the opaque
+    NONE_GRAY fallback (lod_atlas.NULL_DIFFUSE_TEXEL). A texture that does not resolve or decode counts as
     varying. g_EnableGlow is read from the material's parameters only: the engine also sets it per draw from the
     glow option (0x004c36a5..0x004c380d), which is not modelled."""
     import body_materials
@@ -1402,7 +1405,7 @@ def widened_collapse(assets, name, entry, mats, source, alpha, threshold, synth,
     if not widen or threshold is None:
         return atlas_collapse(assets, name, entry, mats, source, alpha, threshold, synth, opts) + (None,)
     k_d, s_d, focal, r_raw = design_scale(source, threshold, widen, opts['screen_width'])
-    exclude = set(alpha) | set(lod_atlas.excluded_materials(mats, source, alpha))
+    exclude = set(alpha) | set(lod_atlas.excluded_materials(mats, source, alpha, opts.get('bump', True)))
     n_mats, unwidened = len(mats), set()
     for attempt in range(WIDEN_KEEP_ROUNDS + 1):
         src, report = widen_thin_patches(source, mats, k_d, widen['px'], exclude=frozenset(exclude))
@@ -1478,10 +1481,11 @@ def plan_body(assets, name, threshold, placement=None, force_threshold=False, co
         if source_record is not None and n != source_record:
             raise SystemExit(f'{name}: recipe_mismatch: recipe source record {n}, row source record {source_record}')
         src_index = n
-    mats = bob1.materials(tree)
+    mats = table = bob1.materials(tree)
     if collapse == 'atlas' and any(t in ('MAT5', 'MAT6') for t, _ in tree['sections']):
         import lod_atlas               # face groups -N are texture animations: mapped onto their material, atlased
         try:                           # with the start frame; the untouched pad copy keeps -N (drawn by the engine)
+            mats = lod_atlas.classic_view(assets, table)   # classic records planned as standard_lighting.fx materials
             lod_atlas.animated_record(mats, source, assets)
         except lod_atlas.AtlasError as exc:
             raise SystemExit(f'{name}: {exc}') from None
@@ -1510,6 +1514,9 @@ def plan_body(assets, name, threshold, placement=None, force_threshold=False, co
     else:
         remap, synth_report = synth_materials(mats, source, alpha, collapse, kept) if synth else ({}, [])
         new = coarse_record(source, None, alpha, collapse, kept, remap)
+    if mats is not table:              # classic view: the appended materials join the body's own table
+        table.extend(mats[n_mats:])
+        mats = table
     widest = max((len({i for f in g['faces'] for i in f[:3]}) for p in new['parts'] for g in p['groups']),
                  default=0)
     if widest > MAX_POINTS:
