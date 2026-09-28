@@ -1,0 +1,6 @@
+old: wall 831.1 s (census 70.74 s, bake 731.61 s for 160 built, 160 eligible of 160); jobs 2; workers census max 2 mean 1.9, bake max 2 mean 1.9; tree RSS peak 3.67 GiB mean 1.38 GiB; members 800
+floor-default: wall 367.1 s (census 22.73 s, bake 318.17 s for 160 built, 160 eligible of 160); jobs 16 rule memory budget 12.0 GiB census workers 16 peak running 11 predicted peak 12.0 GiB; workers census max 16 mean 8.0, bake max 11 mean 4.6; tree RSS peak 5.8 GiB mean 2.87 GiB; members 800
+old vs floor-default: 800 of 800 members byte-identical; only in old 0, only in floor-default 0, differing 0
+census workers: memory rule: up to 16 workers (16 for the census), RAM 24.0 GiB, available 7.7 GiB, floor 12.0 GiB, budget 12.0 GiB
+bake workers: memory rule: up to 16 workers (16 for the census), RAM 24.0 GiB, available 9.3 GiB, floor 12.0 GiB, budget 12.0 GiB
+# load average (1 min) at start 5.6, at end 10.6

@@ -66,9 +66,14 @@ Game directories with longer paths, such as Steam's default, are not affected. D
 
 ## How long it takes
 
-The first run bakes every eligible ship and station: the vanilla game (620
-bodies) took about 50 minutes on the development Mac (measured);
-a large mod set is expected to take 1.5 to 2 hours (inferred). The fog step
+The first run bakes every eligible ship and station. With the earlier fixed
+two-worker rule, the vanilla game (620 bodies) took about 50 minutes on the
+development Mac (18 cores, 24 GB) and Mayhem 3 (1,079 bodies) 58 minutes
+(measured). The memory-scheduled bake depends on the memory free when it
+starts: on the same Mac it is expected to finish Mayhem 3 in about 25 minutes
+with little memory free, and about 20 minutes with most of the RAM free
+(inferred from a 160-body comparison: 367 s and 289 s against 831 s).
+Closing other programs first shortens it. The fog step
 takes seconds to a few minutes. Later runs only rebake bodies whose inputs
 changed, so they are much shorter. Updating x3-modern itself can make every body
 count as changed once (the baker records its own version). The program unpacks
@@ -112,5 +117,16 @@ numpy==2.0.2 pillow` and `py -m PyInstaller --noconfirm --distpath dist
 
 Developers can run the same flow from source:
 `python3 tools/regenerate/x3m_regenerate.py --game-dir <game> --no-wait`
-(`--jobs N` sets the parallel jobs, default CPU count minus one; the LOD bake
-also keeps its memory cap of about 7 GB per job).
+(`--jobs N` is an upper bound on the parallel jobs, default CPU count minus one.
+The LOD bake runs up to CPU count minus two workers, at most 16, and starts a
+model only while the predicted memory of the models in progress fits the
+budget: the RAM minus 6 GiB or a quarter of the RAM, whichever is larger, and
+at most the memory free at the start minus 2 GiB, but never less than half the
+RAM (the predictions are cautious, about twice the real use, and macOS
+undercounts the free memory). The largest models go first,
+and one predicted above the budget runs alone. When the RAM size cannot be
+read, the bake uses at most two workers. A model whose worker is lost (killed,
+or out of memory) is tried once more at the end, alone, before it is refused;
+the log says so (`worker lost: ...`). The log shows the RAM, the free memory,
+the floor and the budget. `--memory-budget GIB`
+replaces the budget, for developers only.)

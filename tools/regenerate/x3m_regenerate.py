@@ -24,8 +24,9 @@ The selected mod (the start menu's package, HKCU\\Software\\EGOSOFT\\X3AP\\ModNa
 Windows and from the CrossOver bottle's user.reg on macOS/Linux; when it cannot be read no package is baked.
 
 Options are for scripted use only: --game-dir DIR (default: the executable's directory when frozen, else
-the current directory), --jobs N (default CPU count - 1; the LOD bake additionally keeps its per-worker
-memory cap, lod_overlay.default_jobs), --no-wait.
+the current directory), --jobs N (default CPU count - 1; an upper bound, the LOD bake additionally schedules
+its workers by predicted memory, lod_overlay.worker_plan), --memory-budget GIB (developers: the LOD bake's
+worker memory budget instead of RAM minus the reserve), --no-wait.
 """
 from __future__ import annotations
 
@@ -167,35 +168,12 @@ def default_jobs():
     return max(1, (os.cpu_count() or 2) - 1)
 
 
-def host_memory_bytes():
-    """Physical RAM: GlobalMemoryStatusEx on Windows (lod_overlay's sysconf query has no Windows form), else
-    lod_overlay.host_memory_bytes; None when unknown."""
-    if sys.platform != 'win32':
-        import lod_overlay
-        return lod_overlay.host_memory_bytes()
-    import ctypes
-
-    class MemoryStatusEx(ctypes.Structure):
-        _fields_ = [('dwLength', ctypes.c_uint32), ('dwMemoryLoad', ctypes.c_uint32)] + \
-            [(n, ctypes.c_uint64) for n in ('ullTotalPhys', 'ullAvailPhys', 'ullTotalPageFile', 'ullAvailPageFile',
-                                           'ullTotalVirtual', 'ullAvailVirtual', 'ullAvailExtendedVirtual')]
-    status = MemoryStatusEx()
-    status.dwLength = ctypes.sizeof(status)
-    try:
-        return status.ullTotalPhys if ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(status)) else None
-    except (AttributeError, OSError):
-        return None
-
-
-def lod_jobs(jobs):
-    """The LOD bake's worker count: jobs, capped by lod_overlay.default_jobs (CPU count - 2, at most 6) and by
-    RAM // WORKER_BYTES - 1 (a worker on the biggest stations peaks near 7 GB), at least 1."""
+def lod_plan(jobs, memory_budget=None):
+    """The LOD bake's worker plan (lod_overlay.worker_plan): jobs is an upper bound; cpu - 2 (at most
+    lod_overlay.MAX_JOBS) workers start bodies while their predicted memory peaks fit the budget (RAM minus a
+    reserve; memory_budget GiB overrides it); RAM unknown: min(jobs, cpu - 2, 2)."""
     import lod_overlay
-    n = min(jobs, lod_overlay.default_jobs())
-    ram = host_memory_bytes()
-    if ram:
-        n = min(n, max(1, ram // lod_overlay.WORKER_BYTES - 1))
-    return max(1, n)
+    return lod_overlay.worker_plan(jobs, None if memory_budget is None else int(memory_budget * 2**30))
 
 
 def wait_for_key(prompt):
@@ -318,7 +296,7 @@ def selected_mod(game):
     return lod_overlay_check.read_mod_name(None, game)
 
 
-def lod_step(log, game, jobs, name, where):
+def lod_step(log, game, jobs, name, where, memory_budget=None):
     import lod_overlay
     if name is None:
         log.say(f'selected mod: unknown ({where}); the LOD overlay is baked without a mod package')
@@ -326,8 +304,10 @@ def lod_step(log, game, jobs, name, where):
         log.say(f'selected mod: none ({where})')
     else:
         log.say(f'selected mod: {name} ({where}); its changed bodies go into addon/mods/{name}-x3m-lod')
-    n_jobs = lod_jobs(jobs)
-    log.say(f'LOD overlay: scanning the ship and station bodies, then baking with {n_jobs} job(s)')
+    plan = lod_plan(jobs, memory_budget)
+    how = (f"within {plan['budget'] / 2**30:.1f} GiB" if plan['budget'] is not None else 'memory size unknown')
+    log.say(f"LOD overlay: scanning the ship and station bodies, then baking with up to {plan['workers']} job(s)"
+            f' ({how})')
 
     def progress(body, done, total, package, result):
         log.say(f'processing model {body} ({done}/{total})' + (f' [mod {package}]' if package else ''))
@@ -337,7 +317,8 @@ def lod_step(log, game, jobs, name, where):
     lod_overlay.progress = progress
     try:
         code = call_tool(log, lod_overlay.main, ['--game', str(game), '--batch', '--sync', '--mod', 'auto',
-                                                 '--install', '--jobs', str(n_jobs)])
+                                                 '--install', '--jobs', str(jobs)]
+                                + (['--memory-budget', repr(memory_budget)] if memory_budget is not None else []))
     finally:
         lod_overlay.progress = None
     if code:
@@ -376,7 +357,7 @@ def fog_check_step(log, game):
 
 # --- driver ---------------------------------------------------------------------------------------
 
-def run(game, jobs, log):
+def run(game, jobs, log, memory_budget=None):
     """Every step; returns the names of the failed steps."""
     started = time.monotonic()
     log.say(f'x3m-regenerate: game directory {game}')
@@ -409,7 +390,7 @@ def run(game, jobs, log):
     name, where = selected_mod(game)
     package_cat = package_layer(game, name)
     for label, step in (('fog families', lambda: fog_step(log, game, jobs, package_cat)),
-                        ('LOD overlay', lambda: lod_step(log, game, jobs, name, where))):
+                        ('LOD overlay', lambda: lod_step(log, game, jobs, name, where, memory_budget))):
         log.say(f'== {label}')
         t0 = time.monotonic()
         try:
@@ -440,9 +421,13 @@ def parse_args(argv):
                     ' bundled, else the current directory)')
     ap.add_argument('--jobs', type=int, default=default_jobs(), help='parallel jobs (default: CPU count - 1)')
     ap.add_argument('--no-wait', action='store_true', help='do not wait for a key at the end')
+    ap.add_argument('--memory-budget', type=float, metavar='GIB', help='developers: memory the LOD bake workers may'
+                    ' hold together (default: RAM minus a reserve)')
     a = ap.parse_args(argv)
     if a.jobs < 1:
         ap.error('--jobs must be >= 1')
+    if a.memory_budget is not None and not a.memory_budget > 0:
+        ap.error('--memory-budget must be > 0')
     return a
 
 
@@ -454,7 +439,7 @@ def main(argv=None):
         console.reconfigure(errors='replace')
     log = Log(game / LOG_NAME, console)
     try:
-        failed = run(game, args.jobs, log)
+        failed = run(game, args.jobs, log, args.memory_budget)
     except BaseException:                     # KeyboardInterrupt included: still logged, still waits
         log.say('FAILED: interrupted or unexpected error:')
         log.say(traceback.format_exc().rstrip())

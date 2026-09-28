@@ -1162,7 +1162,9 @@ evidence under `verification/results/lod-overlay-batch/batch-dryrun/`.
 - **Workers.** `--jobs` defaults to min(cpu−2, 6, RAM // 7 GiB − 1), at least 1 (2 on this
   24 GiB host): a worker baking one of the biggest stations (4096² source textures decoded,
   2048² atlases with full mip chains) reaches ~7 GB RSS (measured on the flown-sector dry run),
-  and the pool replaces every worker process after one body (`maxtasksperchild=1`).
+  and the pool replaces every worker process after one body (`maxtasksperchild=1`). Superseded
+  2026-09-29: worker peaks now measure 0.4 to 2.2 GiB and the bake schedules workers by predicted
+  memory (`docs/verification/lod-overlay.md`, "Bake scheduling").
 - **Build gate.** `lod_atlas.build` refuses a body when its own check finds a rewritten vertex UV
   outside its tile content, a face whose inverse-mapped centroid is off by more than 1 source texel
   and 0.1 atlas texel (span-clamped faces excepted), or a face whose material

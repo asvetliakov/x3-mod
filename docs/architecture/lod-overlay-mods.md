@@ -380,9 +380,16 @@ guide [docs/user/regenerate.md](../user/regenerate.md), ledger [lod-overlay.md](
   unknown is said on the console and bakes no package. The same package (for a selected `<src>-x3m-lod` copy,
   its source from the copy's marker) is passed to the fog step as `--mod-cat addon/mods/<name>.cat`, so a
   nebula family only the package defines is covered; the console prints `fog layers: ...` from the record.
-- **Jobs.** `--jobs` defaults to CPU count - 1 (fog). The LOD bake takes `min(jobs, lod_overlay.default_jobs(),
-  RAM // 7 GiB - 1)`: a worker on the largest stations peaks near 7 GB, and `lod_overlay.host_memory_bytes`
-  (sysconf) has no Windows form, so the executable reads RAM with `GlobalMemoryStatusEx` there.
+- **Jobs.** `--jobs` defaults to CPU count - 1 (fog) and is passed to the LOD bake as an upper bound;
+  `lod_overlay.worker_plan` runs `min(jobs, cpu - 2, 16)` workers and starts a body only while the predicted
+  worker peaks fit `min(RAM - max(6 GiB, RAM / 4), max(available - 2 GiB, RAM / 2))` (`BakeScheduler`, `predicted_bake_bytes`;
+  measured worker peaks 0.4 to 2.2 GiB, `docs/verification/lod-overlay.md`, "Bake scheduling"). Each body
+  bakes in its own spawned process (`bake_rows`); a worker lost without a result, or out of memory, is retried
+  once alone at the end (logged `worker lost:`, record `retries`) and then refused with its exit code or signal; a worker that cannot open the assets
+  aborts the batch. RAM: `GlobalMemoryStatusEx` (Windows), `sysconf` elsewhere; available memory:
+  `ullAvailPhys`, macOS `host_statistics64` free + inactive + purgeable, Linux `MemAvailable`, else the RAM rule
+  alone; unknown RAM falls back to `min(cpu - 2, 2)` workers. `--memory-budget GIB` (developers) overrides the
+  budget.
 - **Interrupted writes.** Not temp-and-rename for the overlay: `commit_outputs` moves the previous slot files
   aside (`.x3m-replaced`), writes the new catalogues in place and restores on any exception, including
   Ctrl+C. A hard kill during the write (closing the console window mid-write, power loss) leaves the asides;

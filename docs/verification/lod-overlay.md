@@ -651,3 +651,135 @@ tree merged onto main `da3ba6b0` (occlusion classes, trailing bytes) plus this c
 - **Byte identity** (`ext_byte_identity.py`): run on `git archive da3ba6b0 tools/analysis` (main without this
   change) and on the merged tree, 6 recorded-built bodies (2 each from `.pbb`, `.bob` and `.pbd` sources) give 30
   members with identical sha256. The output also equals the pre-merge run against `0c2f01a6`.
+
+## 2026-09-29 Bake scheduling: workers by predicted memory (host-side; scratch bakes only, not installed)
+
+The batch no longer caps workers at `min(cpu - 2, 6, RAM // 7 GiB - 1)` (2 on the 18-core, 24 GiB Mac).
+`lod_overlay.worker_plan` runs `min(--jobs, cpu - 2, 16)` workers. `BakeScheduler` starts bodies largest
+prediction first and never skips the head of the queue. A body starts only while the predicted peaks of the
+running bodies stay within the budget `min(RAM - max(6 GiB, RAM / 4), max(available - 2 GiB, RAM / 2))`.
+The RAM / 2 floor applies on every platform, and the reason for it is recorded below the A/B table. Available
+memory is read at the start of the census and again before the bake:
+- Windows: `ullAvailPhys`.
+- macOS: `host_statistics64` free + inactive + purgeable pages, the counters `vm_stat` prints.
+- Linux: `MemAvailable`.
+- When it cannot be read, the RAM rule alone applies.
+
+The batch prints RAM, available memory, floor and budget in its `census workers:` and `bake workers:` lines. A body
+predicted above the budget runs alone. The census uses the same count, capped at `budget // 768 MiB`. RAM is read
+with `GlobalMemoryStatusEx` on Windows and `sysconf` elsewhere. When the RAM size cannot be read, the fallback is
+`min(cpu - 2, 2)` workers with no budget. `--memory-budget GIB` (batch and `x3m-regenerate`) overrides the budget
+for developers.
+
+`bake_rows` runs one spawned `multiprocessing.Process` per body, and results come back through a queue polled
+every 0.5 s:
+- A worker that exits without a result (killed, SystemExit) or reports `MemoryError` is retried once, alone,
+  after every other body. The first failure is logged as `worker lost: <body> (<exit code | signal |
+  MemoryError>); retried alone after the other bodies`, and the body's record row carries `retries: 1`,
+  whether the retry succeeds or not.
+- A second failure refuses the body as `worker failed twice: <exit code N | signal NAME | MemoryError>`.
+- A worker that cannot open the game assets aborts the batch without respawning.
+- Ctrl+C terminates the running workers.
+
+Output order is unchanged: results are assembled in row order and the progress count counts finishes. Windows
+support is source only; native behaviour, including Ctrl+C, is not verified.
+
+Evidence is in `verification/results/lod-bake-scheduling/` [m]. The census and the bake ran on `7686e58d` plus
+this change, on the installed Mayhem 3 tree, read only. The census gives 1,106 rows to bake (the installed record
+from before the three LOD commits has 1,079). Another agent's bakes ran on the host during part of the
+measurement, so load averages are given with the timings.
+- **Worker peaks** (`measure_rss.py`, `sample.json`, `fit_out.txt`): 73 bodies were baked one per fresh spawned
+  process. The sample is the ten slowest, largest-member, most-textured and largest-`texture_pixels` bodies,
+  plus 40 spread by seconds. Peak RSS ranges 0.40 to 2.18 GiB (median 1.15). A worker holds 0.12 to 0.13 GiB
+  before its body. Load average was about 8 to 11, and another agent's 6-worker bake ran for part of it.
+- **The old 7 GiB figure** (`old_bodies_rss.py`, `old_bodies_rss_out.txt`). The 2026-09-23 figure came from the
+  flown-sector dry run. I re-measured three of its bodies in fresh workers:
+  - `ships/Pirate/Pirate_M2` 1.35 to 2.10 GiB.
+  - `argon_tech_M_laser_cc` 0.96 to 1.56 GiB.
+  - `ships/owp/owp_large` 1.12 to 1.84 GiB.
+  These are four runs of mine and one of the reviewer's [m]. Inferred explanation: that dry run had two bodies
+  stuck for over 30 minutes in the unvectorised `lod_atlas.level_weights` loop and the unbounded `check()` box
+  gather (`docs/architecture/merged-lod-feasibility.md`, "Baking cost"). Both are bounded since then, so the
+  7 GiB peak belongs to code that no longer exists; nobody measured that peak per body [i].
+- **Run-to-run spread.** One body, `owp_large`, peaked at 1.14, 1.47, 1.76, 1.84 and 1.12 GiB over five runs
+  [m]. RSS depends on what else runs; compression under memory pressure is the likely cause [i].
+- **Predictor.** The census row gains `texture_pixels`: mip-0 pixels of the distinct source members the tiles read,
+  taken from sizes without a decode. A name the lookup refuses, a placeholder and a NULL slot count nothing.
+  Correlations with the peak: `texture_pixels` r = 0.74, tiles 0.45, atlas side 0.40, faces 0.28. The model is
+  `raw = 400 MiB + 20 B x texture_pixels + 40 B x atlas side^2 x max(slots, 4) + 3000 B x r0_faces` (r = 0.875 as
+  a least-squares fit, rounded up).
+  - **Slots.** Every one of the 73 sample bodies has 4 atlas slots, so the slot term was never varied. Fewer
+    slots are charged as 4 and more scale linearly. The 55 classic-material bodies of the pending change (26 at
+    2048, 51 with a bump atlas) are outside the fitted sample [i].
+  - **Under-prediction.** The worst in the sample is `ships/boron/boron_M3_var1` (1.05 GiB measured, raw 0.91,
+    ratio 1.165). The worst over the re-measured bodies is `owp_large` at 1.84 GiB against raw 1.31 (ratio
+    1.41).
+  - **Safety factor 1.7.** This keeps about 20 % above that worst ratio. The sample's worst measured/predicted
+    ratio is then 0.685, and the predictions sum to 1.99 x the measured peaks. Over all 1,106 rows the maximum
+    prediction is 3.79 GiB and the median 1.86 GiB.
+  - **No predictor.** A row without `texture_pixels` or `r0_faces` is predicted at 7 GiB x 1.7.
+- **Census.** It was already a pool of `--jobs` workers (2 before). On the full set with 8 workers it took 201 s,
+  against 413 s with 2 in the installed record, with a process-tree peak of 4.09 GiB (`census8_monitor.json`).
+- **A/B on 160 bodies** (`ab_subset.py`, `ab_subset.txt`: the ten largest by `texture_pixels`, member bytes and
+  seconds, plus 130 spread by `texture_pixels`). All runs used `--batch --mod none --only ... --out` scratch, and
+  `pgrep X3AP` was empty before each.
+  - **Runs.** Old = `git archive 7686e58d` at its default. Pool = the first version of this change (spawn pool,
+    RAM rule, safety 1.4). Launcher = this tree (per-body processes, available-memory rule, safety 1.7), at its
+    default and with `--memory-budget 18`.
+  - **Tree RSS** is sampled every 0.5 s with `ps` (`run_monitored.py`), so a shorter peak is missed.
+  - **Output files** (`ab_compare.py`, `ab_seconds.py`): pool vs old in `ab_out.txt`; launcher vs old in
+    `ab_launcher_out.txt`, with the batch's `workers:` lines and the load averages.
+
+| run | budget | wall | census | bake | workers census (max/mean) | workers bake (max/mean) | tree RSS peak (0.5 s samples) | load avg at start |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| old, 2 workers | none | 831 s | 70.7 s | 731.6 s | 2 / 1.9 | 2 / 1.9 | 3.67 GiB | 5.6 |
+| pool, 16 workers | 18 GiB (RAM rule) | 281 s | 25.5 s | 227.6 s | 16 / 14.7 | 16 / 13.7 | 6.48 GiB | 5.6 |
+| launcher, default | 3.6 GiB census / 5.2 GiB bake (available 5.6 / 7.2 GiB) | 940 s | 49.0 s | 864.4 s | 4 / 2.7 | 5 / 1.6 | 3.20 GiB | 12.7 |
+| launcher, `--memory-budget 18` | 18 GiB | 289 s | 24.2 s | 236.6 s | 16 / 8.8 | 16 / 7.0 | 6.41 GiB | 6.7 |
+| launcher with the RAM / 2 floor, default | 12.0 GiB, the floor (available 7.7 / 9.3 GiB) | 367 s | 22.7 s | 318.2 s | 16 / 8.0 | 11 / 4.6 | 5.80 GiB | 5.6 |
+
+  Every run wrote 800 members, byte-identical to the old run's. The floor run's output is in `ab_floor_out.txt`
+  and `ab_floor_default_monitor.json`; no body was retried.
+  - **Floor RAM / 2.** At `--memory-budget 18`, a predicted budget of 18 GiB gave a measured process-tree peak of
+    6.41 GiB. Predictions sum to about 2 to 2.8 x the real peaks with the 1.7 factor: 1.99 x over the sample and
+    2.8 x at that run's budget. A predicted RAM / 2 is therefore a real peak near RAM / 5 [inferred from that
+    ratio]. The floor run confirms it: 12 GiB predicted, 5.8 GiB tree peak [m]. The macOS free + inactive +
+    purgeable count also undercounts reclaimable memory: it gave 5.6 to 7.2 GiB while `memory_pressure`
+    reported about 55 % free [m]. Unknown RAM keeps the `min(cpu - 2, 2)` fallback, and `--memory-budget` still
+    overrides.
+  - **Worker counts.** For the pool, the `ps` counts are live pool processes. For the launcher they are bodies in
+    progress, plus the queue's resource tracker.
+  - **Launcher at 18 GiB.** It matches the pool (289 s against 281 s). The per-body process adds no measurable
+    cost, since the pool also replaced its worker after every body.
+  - **Launcher at its default.** On this host it is slower than the old rule. Only 5.6 to 7.2 GiB counted as
+    available (free + inactive + purgeable) while `memory_pressure` reported about 55 % free. The budget then
+    holds one or two predicted bodies, and 1.99 x over-prediction is spent on a small budget. Its predicted peak
+    of 5.2 GiB went with a measured tree peak of 3.2 GiB.
+- **Why 3.2 x and not 8 x at 18 GiB.** Per body, bake seconds rise by a median of 1.68 x (p90 2.15) with 16
+  workers, from CPU and memory contention (pool run). Each body pays 2.1 to 2.4 s of worker start-up (spawn,
+  imports, `original_assets`; measured with a single worker).
+- **Ctrl+C** (`ctrl_c_check.py`, macOS). SIGINT to the batch during the bake: exit 0.1 s later, 0 of 2 workers
+  left alive [m].
+- **Ceiling 16.** This is `cpu - 2` on the measured host. No data exists above 16 workers.
+- **Projection, full Mayhem 3 bake on this Mac [inferred].**
+  - **Default, with the floor**, whenever less than RAM / 2 + 2 GiB is counted as available (12 GiB budget
+    here): the bake is 3,075 s x 1,106 / 1,079 x (318.2 / 731.6) ≈ 1,370 s, the census about 150 s
+    (413 s x 0.32), about 25 min in all.
+  - **With 20 GiB or more available** (18 GiB budget): about 20 min (bake ratio 236.6 / 731.6).
+  - **Against:** 58 min measured with the old rule.
+
+Tests:
+- `test_lod_overlay_batch.BakeScheduling`:
+  - worker plan: cpu, `--jobs` bound, ceiling, reserve, available memory, override, RAM or cpu unknown, memory
+    detection failing, and `host_statistics64` on macOS;
+  - the predictor: conservative figure x safety, the slots floor;
+  - the predicted sum within the budget over 20 random schedules;
+  - over-budget bodies alone, with no skip past the head;
+  - the real launcher throttled to 1 or 3 bodies by `--memory-budget 1`;
+  - killed and MemoryError workers retried alone, with the `worker lost:` line and `retries` 1, and a
+    twice-killed body refused `signal SIGKILL`, with monotonic progress;
+  - the floor: engaging at low available memory, never above the RAM rule, and printed in the header;
+  - an initialisation failure aborting with no worker left;
+  - 1 vs 3 workers byte-identical.
+- `test_lod_batch_census.TexturePixels`: de-duplication, AtlasError, placeholder and NULL.
+- `test_regenerate.test_lod_plan_jobs_bound_and_budget`.
