@@ -1,0 +1,8 @@
+ships/props/bigturret4_weapon
+ships/props/usc_m1turretD_weapon
+ships/props/usc_m7turretB_weapon
+ships/props/usc_m7turretC_weapon
+ships/props/yaki_m1turretA_weapon
+ships/props/yaki_m7turretA_base
+ships/props/yaki_m7turretA_weapon
+ships/terran/terran_m2p_tobosaku/hull

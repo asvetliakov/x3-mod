@@ -291,7 +291,7 @@ def body_materials(data, member):
     if member.lower().endswith(('.pbd', '.bod')):
         return [(m['effect'].strip(), m['parameters'].get('t_DiffuseTexture', '').strip()) for m in sfc.body_metadata(data)['materials']]
     materials = []
-    for m in bob1.materials(bob1.parse(data)):
+    for m in bob1.materials(bob1.parse(data, None)):   # any tail after /BOB: 0x00481aa0 never reads it
         effect = m.get('effect', b'').decode('latin1')
         diffuse = next((v for name, _, v in m.get('params', []) if name.lower() == b't_diffusetexture' and isinstance(v, bytes)), b'')
         materials.append((effect.strip(), diffuse.decode('latin1').strip()))

@@ -17,9 +17,9 @@ baking) on a copy of the material table. With include_text (the batch), winning 
 (column text; the compile follows the engine's text loader 0x00483f20; a text scene is skipped
 like CUT1, a MATERIAL3 text body is mat3, any other body outside the grammar or whose compile does
 not re-parse equal is text_parse_error); a stem with both a binary
-and a text member is ambiguous_body_ext (bob1.resolve_body). Bodies with up to
-lod_overlay.MAX_TRAILING stray bytes after /BOB parse with a warning column (trailing); more
-is trailing_bytes. Each row carries inputs_sha256 (the decoded body plus every texture the
+and a text member is ambiguous_body_ext (bob1.resolve_body). Stray bytes after a well-formed
+/BOB (any number, lod_overlay.MAX_TRAILING = None; the engine parser returns at /BOB) parse
+with a warning column (trailing, the count); a body that does not parse up to /BOB is parse_error. Each row carries inputs_sha256 (the decoded body plus every texture the
 tiles read) for lod_overlay.py --batch --sync. A body with a lod_recipes.RECIPES entry has its atlas
 estimate (collapse, layout, texel rule, c_drawn) computed on the recipe's source record with its ops applied;
 r0_*, aspect_k, t_class and t_pad stay computed from record 0. The row keys recipe, source_record and
@@ -347,7 +347,7 @@ def census_body(assets, textures, entry, opts):
         try:
             tree = bob1.parse(data, lod_overlay.MAX_TRAILING)
         except bob1.FormatError as exc:
-            row['refuse'].append('trailing_bytes' if 'trailing bytes' in str(exc) else 'parse_error')
+            row['refuse'].append('parse_error')
             row['atlas_error'] = str(exc)[:160]
             return row
     row['trailing'] = tree.get('trailing_bytes', 0)

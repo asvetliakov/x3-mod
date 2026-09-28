@@ -1,0 +1,5 @@
+ships/props/argon_m1turretA_base
+ships/props/argon_m1turretA_tb_weapon
+ships/props/argon_m1turretB_socket
+others/argon_gate_destroyed
+others/terran_catapult_gate

@@ -270,10 +270,12 @@ def parse(data, max_trailing=0):
 def parse_binary(data, max_trailing=0):
     """Parse a decoded BOB1 body; raises FormatError on any deviation the engine rejects.
 
-    Up to max_trailing bytes after the final /BOB are tolerated and counted in the tree's
-    'trailing_bytes' (serialise never writes them): the engine parser 0x00481aa0 returns the
-    model at the /BOB closer and never reads past it (body-format-bob1.md section 1), so such
-    bytes are inert; mod tooling leaves 1-2 stray closer bytes on 86 bodies of the tested mods."""
+    Up to max_trailing bytes after the final /BOB (any number when max_trailing is None) are
+    tolerated and counted in the tree's 'trailing_bytes' (serialise never writes them): the
+    engine parser 0x00481aa0 returns the model at the /BOB closer and never reads past it
+    (body-format-bob1.md section 1), so such bytes are inert; mod tooling leaves 1-2 stray
+    closer bytes on 86 bodies of the tested mods and whole kilobytes on a few Mayhem 3 bodies.
+    Everything before the tail must still parse: a truncated body or a missing /BOB raises."""
     if kind(data) != 'BOB1':
         raise FormatError(f'not a BOB1 body (magic {bytes(data[:4])!r})')
     r = Reader(data); r.expect('BOB1')
@@ -297,7 +299,7 @@ def parse_binary(data, max_trailing=0):
     tree = {'sections': sections}
     if r.o != len(data):
         n = len(data) - r.o
-        if n > max_trailing:
+        if max_trailing is not None and n > max_trailing:
             raise FormatError(f'{n} trailing bytes after /BOB')
         tree['trailing_bytes'] = n
     return tree

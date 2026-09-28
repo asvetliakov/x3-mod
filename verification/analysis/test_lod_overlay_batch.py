@@ -100,7 +100,7 @@ def make_game(folder):
         ('objects/ships/x/amb.pbb', packed(atlas_tree_lod0())),
         ('objects/ships/x/amb.pbd', b'BODY 0\n'),
         ('objects/ships/x/trail2.pbb', packed(atlas_tree_lod0(), b'OB')),     # 2 stray closer bytes
-        ('objects/ships/x/trail9.pbb', packed(atlas_tree_lod0(), b'B' * 9)),
+        ('objects/ships/x/trunc.pbb', gzip.compress(body[:-4], mtime=0)),    # no /BOB end marker: parse_error
         ('objects/ships/x/mixed.pbb', packed(mixed_tree())),
         ('objects/ships/x/uv.pbb', packed(uv2_tree())),
         ('objects/ships/x/uvbad.pbb', packed(uv2_tree((b'x_decal.tga', b'NONE_OCCL_DECAL.dds')))),
@@ -139,7 +139,7 @@ class Enumeration(unittest.TestCase):
         self.assertEqual(sorted(by), ['ships/x/amb', 'ships/x/badtext', 'ships/x/bobby',
                                       'ships/x/good', 'ships/x/jpg',
                                       'ships/x/mixed', 'ships/x/modship', 'ships/x/oob', 'ships/x/text',
-                                      'ships/x/trail2', 'ships/x/trail9', 'ships/x/uv', 'ships/x/uvbad',
+                                      'ships/x/trail2', 'ships/x/trunc', 'ships/x/uv', 'ships/x/uvbad',
                                       'stations/y/good'])                         # the text scene is skipped
         self.assertTrue(by['ships/x/bobby']['eligible'] and by['ships/x/modship']['eligible'])    # .bob members
         self.assertEqual(by['ships/x/modship']['source'], 'addon/01.cat')
@@ -150,7 +150,7 @@ class Enumeration(unittest.TestCase):
         self.assertEqual(by['ships/x/badtext']['refuse'], ['text_parse_error'])
         self.assertEqual(by['ships/x/amb']['refuse'], ['ambiguous_body_ext'])
         self.assertEqual((by['ships/x/trail2']['trailing'], by['ships/x/trail2']['eligible']), (2, True))
-        self.assertEqual(by['ships/x/trail9']['refuse'], ['trailing_bytes'])
+        self.assertEqual(by['ships/x/trunc']['refuse'], ['parse_error'])
         self.assertEqual((by['ships/x/mixed']['effects'], by['ships/x/mixed']['atlas_materials'],
                           by['ships/x/mixed']['r0_drawn'], by['ships/x/mixed']['c_drawn']), (2, 2, 3, 2))
         self.assertEqual((by['ships/x/uv']['uv2'], by['ships/x/uv']['occlusion']), (15, {'argon.fx': 'x_decal.tga'}))
@@ -176,8 +176,8 @@ class Enumeration(unittest.TestCase):
             out = io.StringIO()
             lod_overlay.describe(p, out)
             self.assertIn('warning: 2 stray byte(s) after /BOB', out.getvalue())
-            with self.assertRaisesRegex(SystemExit, 'more than the 8'):
-                lod_overlay.plan_body(assets, 'ships/x/trail9', 8, 'compact', collapse='two')
+            with self.assertRaisesRegex(bob1.FormatError, 'truncated'):
+                lod_overlay.plan_body(assets, 'ships/x/trunc', 8, 'compact', collapse='two')
             with self.assertRaisesRegex(SystemExit, r'group material index \[79\] outside'):
                 lod_overlay.plan_body(assets, 'ships/x/oob', 8, 'compact', collapse='two', source_record=0)
             with self.assertRaisesRegex(SystemExit, 'text_parse_error'):
@@ -193,6 +193,39 @@ class Enumeration(unittest.TestCase):
             self.assertEqual([l['value'] for l in good['ladder']], [100, 160, 8])
             with self.assertRaisesRegex(SystemExit, 'must not be below'):        # guard kept for a coarser source
                 lod_overlay.plan_body(assets, 'stations/y/good', 8, 'compact', collapse='two', source_record=1)
+
+    @unittest.mock.patch.object(lod_overlay, 'running_game', return_value=[])
+    def test_large_trailing_data(self, _running):
+        """Kilobytes after /BOB are accepted, counted and never written into the overlay member. The
+        synthetic tail is a whole second body plus stray bytes, a harder case than Mayhem 3's real tails
+        (0.5-8 KB stale closing records of a longer body, no BOB1 header)."""
+        tail = bob1.serialise(atlas_tree_lod0()) + b'B' * 9
+        with tempfile.TemporaryDirectory() as folder:
+            game = Path(folder) / 'game'
+            write_catalogue(game / '01.cat', atlas_textures())
+            write_catalogue(game / '02.cat', [('objects/ships/x/tail.pbb', packed(atlas_tree_lod0(), tail)),
+                                              ('objects/ships/x/good.pbb', packed(atlas_tree_lod0()))])
+            opts = dict(sizes=(64, 128), include_other=False, rule=dict(census.RULE, aspect=False), widths=(1280,))
+            rows, _ = census.run(game, opts)
+            by = {r['name']: r for r in rows}
+            self.assertEqual((by['ships/x/tail']['trailing'], by['ships/x/tail']['eligible'],
+                              by['ships/x/tail']['refuse']), (len(tail), True, []))
+            self.assertEqual({k: by['ships/x/tail'][k] for k in ('r0_drawn', 'c_drawn', 'lods')},
+                             {k: by['ships/x/good'][k] for k in ('r0_drawn', 'c_drawn', 'lods')})
+            assets, _ = lod_overlay.original_assets(game)
+            p = lod_overlay.plan_body(assets, 'ships/x/tail', 8, 'compact', collapse='two', source_record=0)
+            g = lod_overlay.plan_body(assets, 'ships/x/good', 8, 'compact', collapse='two', source_record=0)
+            self.assertEqual((p['trailing_bytes'], unpack(p['stored'])), (len(tail), unpack(g['stored'])))
+            out = io.StringIO()
+            lod_overlay.describe(p, out)
+            self.assertIn(f'warning: {len(tail)} stray byte(s) after /BOB', out.getvalue())
+            code, _ = run(BATCH + ['--game', str(game), '--out', str(Path(folder) / 'out')])
+            self.assertEqual(code, 0)
+            members = cat_members(Path(folder) / 'out/addon/01.cat')
+            written = unpack(members['objects/ships/x/tail.pbb'])
+            q_tail, q_good = (lod_overlay.qualified_stem(f'objects/ships/x/{n}.pbb').encode() for n in ('tail', 'good'))
+            self.assertEqual(written, unpack(members['objects/ships/x/good.pbb']).replace(q_good, q_tail))   # tail-free twin
+            self.assertNotIn('trailing_bytes', bob1.parse(written))                 # strict parse: no byte after /BOB
 
     def test_width_and_only_file(self):
         self.assertEqual((lod_overlay.effective_width(), lod_overlay.effective_width((2560, 1440)),
@@ -221,7 +254,7 @@ class BatchRun(unittest.TestCase):
             self.assertEqual((record['slot'], record['retired_slot'], record['counts']['enumerated']), (2, None, 14))
             self.assertEqual(record['counts']['overlay_bodies'], 9)
             self.assertEqual(record['refused'], {'ambiguous_body_ext': 1, 'material_outside_table': 1,
-                                                 'text_parse_error': 1, 'trailing_bytes': 1})
+                                                 'text_parse_error': 1, 'parse_error': 1})
             self.assertFalse(record['binary_only'])
             self.assertEqual(by['ships/x/text']['member'], '02.cat:objects/ships/x/text.pbd')   # census source member
             self.assertEqual((by['ships/x/good']['draws'], by['ships/x/mixed']['draws'], by['ships/x/uv']['draws']),

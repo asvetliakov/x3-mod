@@ -561,3 +561,55 @@ Merged draws above the merged-material count are the bodies' alpha / kept groups
 collapse rules; not broken down). "none" (absent or NULL) is taken to bind no texture in both cases: NULL is id 0,
 and for an absent parameter the effect default is not traced. The next `--sync` rebuilds every body because
 tool_sha256 changed (expected).
+
+## 2026-09-29 trailing bytes after /BOB accepted in any number (host-side; not installed)
+
+Rule change: `lod_overlay.MAX_TRAILING` 8 -> `None`. The engine parser `0x00481aa0` returns at the `/BOB` closer
+and never reads what follows (`docs/reverse-engineering/body-format-bob1.md`), so any tail after a well-formed
+`/BOB` is accepted, counted (`trailing` census column, `trailing_bytes` in the plan, batch summary "stray trailing
+bytes tolerated") and never written into the overlay member. The `trailing_bytes` refusal reason is gone; a body
+that does not parse up to its `/BOB` (truncated, end marker missing) is still refused as `parse_error`. Tests:
+`test_bob1` (6000-byte tail accepted with `None`, refused with a bound below it; truncated and marker-less bodies
+refused with `None`), `test_lod_overlay_batch` (a tail of a whole second body plus 9 bytes: census eligible with the
+count, plan and written member equal to the clean twin's; the old `trail9` fixture became `trunc`, refused
+`parse_error`). Focused run: 106 tests OK, 1 skipped (measured).
+
+The eight Mayhem 3 bodies refused `trailing_bytes` (all `addon/06.cat`; `verification/results/lod-mayhem-refusals/`,
+`trailing_tails.py`, `--stale`, `--members`; measured):
+
+| body | tail B | outcome (dry run, `--only only.txt`) |
+| --- | ---: | --- |
+| ships/props/bigturret4_weapon | 502 | filtered `no_draw_gain` |
+| ships/props/usc_m1turretD_weapon | 3,634 | baked (T 181, 1 draw) |
+| ships/props/usc_m7turretB_weapon | 6,270 | baked (T 158, 1 draw) |
+| ships/props/usc_m7turretC_weapon | 7,956 | baked (T 121, 1 draw) |
+| ships/props/yaki_m1turretA_weapon | 5,128 | baked (T 176, 2 draws) |
+| ships/props/yaki_m7turretA_base | 2,386 | baked (T 145, 2 draws) |
+| ships/props/yaki_m7turretA_weapon | 5,786 | baked (T 179, 2 draws) |
+| ships/terran/terran_m2p_tobosaku/hull | 5,133 | refused `texel_floor` (100 % starved; texel fallback at its guard) |
+
+What the tails are: none is a second body (no `BOB1` header; none parses as binary or text). Every tail ends in
+`.../PAR/BOD/BOB` and its first `/BOB` is its last four bytes; 6 of the 8 also contain `/POI` and `PART`, 4 contain
+`POIN`, and the other 2 (bigturret4_weapon, the tobosaku hull) only `/PAR`, `/BOD`, `/BOB` (measured,
+`trailing_tails_out.txt`): the closing records of a longer body. Only 1-42 of each tail's 32-byte windows recur in the body before `/BOB`. The
+reading is a stale remainder of an earlier, longer version of the same file, left behind when a shorter body was
+written over it without truncation (inferred; the earlier version is not in the install). The engine ignores it,
+so the bodies load as their parsed part in the game too.
+
+Written members carry no tail: a scratch bake of the eight wrote 6 body members, all parse with `max_trailing` 0
+and end at `/BOB` (measured, `trailing_tails.py --members`). Bodies that baked before are byte-identical: old
+(HEAD `git archive`) and new tool on `identity_sample.txt` (3 bodies with a 1-byte tail, 2 clean) wrote identical
+`.cat` and `.dat` and 25/25 identical members (measured, `identity_compare.py`). The marker's `tool_sha256` changes
+with the tool, so a `--sync` run rebuilds every body unless `--trust-tool`. That `--trust-tool` is safe for the
+full set (bodies that baked before bake identically) is inferred from the 5-body identity sample above and from
+the code path (tails of 1-8 bytes take the same parse and serialise as before); the full set was not rebaked.
+
+The other readers of binary bodies follow the same rule since 2026-09-29: `fog_families.body_materials`,
+`atlas_census.main` and `body_materials.main` call `bob1.parse(data, None)` (tests: `test_fog_families.BinaryBodyTail`,
+`test_bob1.AtlasCensus.test_{atlas_census,body_materials}_accepts_trailing_bytes`; a cut-short body still raises).
+In the install (`tail_census.py`, measured): 0 of 637 binary nebula bodies (319 backgrounds, 318 others) carry a
+tail, and all 1,010 winning dust parts are text (`.pbd`), so the fog step never met one; 94 of the other 2,350
+binary bodies carry a tail (the fog tool's view, overlay catalogues included, sees 24: the overlay's
+members are clean and replace the rest), 1 is `parse_error`. The fog tool's
+dry run (248 family rows, counts) and `--check` of the installed `fog-families.bin` (70 families, 35 packets) are
+identical before and after the change (`fog_dryrun_compare.py`, measured).

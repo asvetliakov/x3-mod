@@ -1,0 +1,2 @@
+fog_families view (all catalogues): BOB1 bodies {'other': 2355, 'nebula_background': 319, 'nebula_other': 318}; with a tail {'other': 24}; parse_error {'other': 1}; winning nebula dust members by extension {'pbd': 1010}
+body_materials/atlas_census view (overlay catalogues left out): BOB1 bodies {'other': 2350, 'nebula_background': 319, 'nebula_other': 318}; with a tail {'other': 94}; parse_error {'other': 1}; winning nebula dust members by extension {'pbd': 1010}
