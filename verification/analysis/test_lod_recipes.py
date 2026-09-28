@@ -23,7 +23,7 @@ import bob1
 import lod_overlay
 import lod_recipes
 from inspect_x3 import read_catalogue
-from sector_fog_census import write_catalogue
+from sector_fog_census import stock_view, write_catalogue
 from test_bob1 import atlas_textures, atlas_tree
 
 PITCH, WIDTH, LENGTH, TILT, PLANE = 1222.6, 1372.0, 7851.0, 14.6, 105
@@ -250,7 +250,10 @@ GAME = bob1.DEFAULT_GAME
 @unittest.skipUnless((GAME / '01.cat').exists(), 'X3 bottle not present')
 class RealBody(unittest.TestCase):
     def test_terran_spp_panel(self):
-        assets, _ = lod_overlay.original_assets(GAME)
+        # The pinned counts describe the stock body: read the stock layers only (mods and overlays excluded).
+        assets, reason = stock_view(GAME)
+        if assets is None:
+            self.skipTest(reason)
         tree = bob1.parse(assets.read_entry(bob1.resolve_body(assets, 'stations/x3tc/terran_spp_panel')),
                           lod_overlay.MAX_TRAILING)
         ladder = bob1.lods(tree)

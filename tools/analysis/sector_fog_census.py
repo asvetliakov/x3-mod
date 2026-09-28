@@ -8,9 +8,11 @@ as physical cloud dimensions. Numbered archives and loose files are supported;
 selected mods require explicit --mod arguments (later arguments override earlier).
 """
 import argparse
+import contextlib
 import csv
 import gzip
 import hashlib
+import io
 import json
 from pathlib import Path, PurePosixPath
 import re
@@ -56,14 +58,27 @@ def require(condition, message='Validation failed'):
         raise ValueError(message)
 
 
+# Egosoft's shipped X3AP 3.x catalogue set: the X3TC base layers 01..13 plus the AP layers addon/01..04.
+# Mods and the x3m LOD overlay take later addon slots (or loose files); see stock_view for the checks.
+STOCK_AP_CATALOGUES = tuple(f'{i:02d}.cat' for i in range(1, 14)) + tuple(f'addon/{i:02d}.cat' for i in range(1, 5))
+
+
 class Assets:
-    def __init__(self, root, mods=()):
+    def __init__(self, root, mods=(), catalogues=None):
+        """catalogues=None (default): every numbered catalogue plus loose files, as the engine loads them.
+        catalogues=[relative CAT paths]: exactly those layers in that order and no loose files (a pinned view,
+        e.g. STOCK_AP_CATALOGUES); a missing one raises ValueError."""
         self.root = root
         self.layers = []
         self.entries = {}
         self.loose = []
         self.cache = {}
-        cats = sorted(root.glob('[0-9][0-9].cat')) + sorted((root / 'addon').glob('[0-9][0-9].cat'))
+        if catalogues is None:
+            cats = sorted(root.glob('[0-9][0-9].cat')) + sorted((root / 'addon').glob('[0-9][0-9].cat'))
+        else:
+            cats = [root / relative for relative in catalogues]
+            for cat in cats:
+                require(cat.is_file(), 'Missing pinned catalogue: ' + str(cat))
         layers = [(cat, False) for cat in cats] + [(cat, True) for cat in mods]
         for cat, selected_mod in layers:
             source = cat.relative_to(root).as_posix() if cat.is_relative_to(root) else cat.as_posix()
@@ -71,7 +86,7 @@ class Assets:
             for entry in read_catalogue(cat):
                 entry = dict(entry, source=source, cat=cat)
                 self.entries.setdefault(resource_key(entry['path'], selected_mod), []).append(entry)
-        for base in ('', 'addon'):
+        for base in (('', 'addon') if catalogues is None else ()):
             for folder in ('maps', 'types', 't', 'objects', 'dds', 'tex', 'textures'):   # tex, textures: lod_atlas.lookup
                 for path in sorted((root / base / folder).rglob('*')):
                     if path.is_file():
@@ -237,8 +252,8 @@ def validate_outputs(game, outputs, mods=()):
             require(not same, 'JSON and CSV outputs must be distinct files')
 
 
-def census(root, mods=()):
-    assets = Assets(root, mods)
+def census(root, mods=(), catalogues=None):
+    assets = Assets(root, mods, catalogues)
     map_bytes, map_source = assets.logical('maps/x3_universe', ('.pck', '.xml'))
     bg_bytes, bg_source = assets.logical('types/tbackgrounds', ('.pck', '.txt'))
     if map_bytes is None or bg_bytes is None:
@@ -385,6 +400,12 @@ def self_test():
         (root / 'maps/x3_universe.xml').write_text('base')
         (root / 'addon/maps/x3_universe.xml').write_text('addon')
         check(Assets(root).get('maps/x3_universe.xml')[0] == b'addon', 'loose addon preference')
+        pinned = Assets(root, catalogues=['01.cat', '02.cat'])
+        check(pinned.get('types/tbackgrounds.pck')[0] == b'new' and pinned.loose == []
+              and pinned.layers == ['01.cat', '02.cat'], 'pinned catalogues: no later layer, no loose file')
+        rejects(lambda: Assets(root, catalogues=['01.cat', 'addon/09.cat']), 'Missing pinned catalogue accepted')
+        view, reason = stock_view(root)
+        check(view is None and 'missing' in reason, 'stock view refused without the stock layers')
         (root / 't').mkdir()
         (root / 't/0001-L044.xml').write_text(
             '<language><page id="7"><t id="1">Old</t><t id="2">Base</t></page>'
@@ -447,6 +468,31 @@ def verify_stock(result):
     require({family for family, texture in alpha if texture['status'] == 'missing'} == {'uranus', 'uranus2', 'uranus3'},
             'Unexpected stock alpha texture families')
     print('stock validation: counts, names, stardust, ranges, overrides, four sectors, archive winners, alpha exceptions passed')
+
+
+def stock_view(root):
+    """(Assets, None) for the stock X3AP layers of an install, or (None, reason) when they cannot be trusted.
+
+    Rule: the stock layers are STOCK_AP_CATALOGUES (root 01..13.cat, addon/01..04.cat), read without loose
+    files or later catalogues. They are accepted only when every one is present with a size-consistent DAT,
+    none of them carries an x3m LOD overlay marker (addon/NN.x3m-lod.json), and the census of exactly that
+    view passes verify_stock (239 sectors, 83 backgrounds, map from addon/02.cat, TBackgrounds from
+    addon/03.cat, 269 cloud bodies, four named sectors). No file hash or date is consulted."""
+    root = Path(root)
+    missing = [c for c in STOCK_AP_CATALOGUES if not (root / c).is_file()]
+    if missing:
+        return None, 'stock X3AP catalogues missing: ' + ', '.join(missing)
+    marked = [c for c in STOCK_AP_CATALOGUES if c.startswith('addon/')
+              and (root / c).with_suffix('.x3m-lod.json').exists()]
+    if marked:
+        return None, 'an x3m LOD overlay occupies a stock slot: ' + ', '.join(marked)
+    try:
+        result = census(root, catalogues=STOCK_AP_CATALOGUES)
+        with contextlib.redirect_stdout(io.StringIO()):
+            verify_stock(result)
+    except (ValueError, KeyError, OSError) as error:
+        return None, f'stock layers {STOCK_AP_CATALOGUES[0]}..{STOCK_AP_CATALOGUES[-1]} fail the stock census: {error}'
+    return Assets(root, catalogues=STOCK_AP_CATALOGUES), None
 
 
 def main():

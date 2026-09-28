@@ -120,7 +120,12 @@ class PaletteRuleTests(unittest.TestCase):
 @unittest.skipUnless((ff.bob1.DEFAULT_GAME / '01.cat').exists(), 'installed game catalogues unavailable')
 class StockPaletteRegression(unittest.TestCase):
     def test_twelve_provisional_palettes_bit_exact(self):
-        assets = sfc.Assets(ff.bob1.DEFAULT_GAME)
+        # Stock layers only (sfc.stock_view): a modded install's loose files and later catalogues are not read.
+        assets, reason = sfc.stock_view(ff.bob1.DEFAULT_GAME)
+        if assets is None:
+            self.skipTest(reason)
+        self.assertEqual(assets.layers, list(sfc.STOCK_AP_CATALOGUES))
+        self.assertEqual(assets.loose, [])
         grouped, _ = ff.enumerate_families(assets)
         self.assertEqual(len(PROVISIONAL), 12)
         exact = []
