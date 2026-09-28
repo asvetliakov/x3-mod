@@ -1255,8 +1255,8 @@ class LodAtlas(unittest.TestCase):
             self.assertEqual((res['uv2'], res['occlusion']), (1, {'argon.fx': 'none'}))
             occl = [dict(m, params=m['params'] + [(b't_OcclusionTexture', 8, t)])
                     for m, t in zip(mats, (b'a_decal.tga', b'NONE_OCCL_DECAL.dds'))]
-            with self.assertRaisesRegex(lod_atlas.AtlasError, 'occlusion textures'):
-                lod_atlas.collapse(assets, 'b', list(occl), coarse, set(), 8, (64,))
+            res = lod_atlas.collapse(assets, 'b', list(occl), coarse, set(), 8, (64,))   # split, not refused
+            self.assertEqual(res['occlusion'], {'argon.fx': ['a_decal.tga', 'none_occl_decal.dds']})
             plain = bob1.lods(bob1.parse(bob1.serialise(atlas_tree_pre())))[1]
             two = list(other)
             res = lod_atlas.collapse(assets, 'b', two, plain, set(), 8, (64,))       # mixed effects: one material each
@@ -1268,6 +1268,139 @@ class LodAtlas(unittest.TestCase):
             neg['parts'][0]['groups'][1]['material'] = 79        # past the table (-N is a texture animation)
             with self.assertRaisesRegex(lod_atlas.AtlasError, 'outside the material table'):
                 lod_atlas.collapse(assets, 'b', list(mats), neg, set(), 8, (64,))
+
+    @staticmethod
+    def occlusion_body(decals):
+        """atlas_tree's coarse record with a distinct second UV pair on every point and t_OcclusionTexture
+        decals[i] on material i (None: no parameter); a third decal puts the last face of group 1 on a copy of
+        material 1."""
+        tree = atlas_tree()
+        mats, coarse = bob1.materials(tree), bob1.lods(tree)[1]
+        coarse['points'] = [(p[0] | 4,) + p[1:6] + (1000 * i, 1000 * i + 7) + p[6:]
+                            for i, p in enumerate(coarse['points'])]
+        if len(decals) > 2:
+            mats.append(dict(mats[1], params=list(mats[1]['params'])))
+            g1 = coarse['parts'][0]['groups'][1]
+            coarse['parts'][0]['groups'][1:] = [dict(g1, faces=g1['faces'][:2]), dict(g1, material=2, faces=g1['faces'][2:])]
+        for m, d in zip(mats, decals):
+            if d is not None:
+                m['params'] = m['params'] + [(b't_OcclusionTexture', 8, d)]
+        return mats, coarse
+
+    def check_occlusion_split(self, mats, coarse, res, out):
+        """Every merged material samples the one map of its source materials, and every output face keeps the
+        second UV pairs of a source face of those materials."""
+        uv2 = lambda pts, f: tuple(pts[i][6:8] for i in f[:3])
+        src = {}
+        for g in coarse['parts'][0]['groups']:
+            src.setdefault(g['material'], set()).update(uv2(coarse['points'], f) for f in g['faces'])
+        key = lambda m: lod_atlas.occlusion_key(m, res['textures'])
+        for a in res['atlas_indices']:
+            members = [m for m, x in res['atlas_of'].items() if x == a]
+            # the merged material binds the raw string of one of its members, and every member binds that texture
+            self.assertIn(lod_atlas.occlusion_raw(out[a]), [lod_atlas.occlusion_raw(mats[m]) for m in members])
+            self.assertEqual({key(mats[m]) for m in members}, {key(out[a])})
+        for g in res['record']['parts'][0]['groups']:
+            allowed = set().union(*(src[m] for m, a in res['atlas_of'].items() if a == g['material']))
+            for f in g['faces']:
+                self.assertIn(uv2(res['record']['points'], f), allowed)
+
+    def test_occlusion_split_two_maps(self):
+        with tempfile.TemporaryDirectory() as folder:
+            assets, _ = lod_overlay.original_assets(self.game(folder))
+            mats, coarse = self.occlusion_body((b'a_decal.tga', b'B_Decal.tga'))
+            out = list(mats)
+            res = lod_atlas.collapse(assets, 'b', out, coarse, set(), 8, (64,))
+            self.assertEqual((res['atlas_indices'], res['atlas_of']), ([2, 3], {0: 2, 1: 3}))
+            self.assertEqual(res['occlusion'], {'argon.fx': ['a_decal.tga', 'b_decal.tga']})
+            self.assertEqual([(g['material'], len(g['faces'])) for g in res['record']['parts'][0]['groups']],
+                             [(2, 3), (3, 3)])
+            self.assertEqual([r['occlusion'] for r in res['synth'] if r.get('atlas')], ['a_decal.tga', 'b_decal.tga'])
+            self.check_occlusion_split(mats, coarse, res, out)
+            for a in res['atlas_indices']:                      # both sample the one atlas set
+                self.assertEqual(body_materials.slots(out[a])['diffuse'], res['names']['diffuse'])
+
+    def test_occlusion_split_map_and_none(self):
+        with tempfile.TemporaryDirectory() as folder:
+            assets, _ = lod_overlay.original_assets(self.game(folder))
+            for none, label in ((None, 'none'), (b'NULL', 'none'), (b'NONE_OCCL_DECAL.dds', 'none_occl_decal.dds')):
+                mats, coarse = self.occlusion_body((none, b'b_decal.tga'))
+                out = list(mats)
+                res = lod_atlas.collapse(assets, 'b', out, coarse, set(), 8, (64,))
+                self.assertEqual(res['occlusion'], {'argon.fx': [label, 'b_decal.tga']})
+                self.assertEqual(len(res['atlas_indices']), 2)
+                self.assertIsNone(lod_atlas.occlusion_name(out[res['atlas_of'][0]]))     # samples no map
+                self.check_occlusion_split(mats, coarse, res, out)
+
+    def test_occlusion_split_three_maps(self):
+        with tempfile.TemporaryDirectory() as folder:
+            assets, _ = lod_overlay.original_assets(self.game(folder))
+            mats, coarse = self.occlusion_body((b'a_decal.tga', b'b_decal.tga', None))
+            out = list(mats)
+            res = lod_atlas.collapse(assets, 'b', out, coarse, set(), 8, (64,))
+            self.assertEqual((res['atlas_indices'], res['atlas_of']), ([3, 4, 5], {0: 3, 1: 4, 2: 5}))
+            self.assertEqual(res['occlusion'], {'argon.fx': ['a_decal.tga', 'b_decal.tga', 'none']})
+            self.assertEqual([(g['material'], len(g['faces'])) for g in res['record']['parts'][0]['groups']],
+                             [(3, 3), (4, 2), (5, 1)])
+            self.check_occlusion_split(mats, coarse, res, out)
+            # a map shared across materials stays one class; a different effect splits by effect first
+            mats, coarse = self.occlusion_body((b'a_decal.tga', b'b_decal.tga', b'A_DECAL.tga'))
+            res = lod_atlas.collapse(assets, 'b', list(mats), coarse, set(), 8, (64,))
+            self.assertEqual(res['atlas_of'], {0: 3, 2: 3, 1: 4})
+
+    def test_occlusion_single_map_unchanged(self):
+        """One map per effect: the classes, record and merged materials equal those of the same body without
+        maps (the material differs only by the copied t_OcclusionTexture), as before the split."""
+        with tempfile.TemporaryDirectory() as folder:
+            assets, _ = lod_overlay.original_assets(self.game(folder))
+            base, coarse = self.occlusion_body((None, None))
+            ref_out = list(base)
+            ref = lod_atlas.collapse(assets, 'b', ref_out, coarse, set(), 8, (64,))
+            mats, coarse = self.occlusion_body((b'a_decal.tga', b'A_decal.TGA'))
+            out = list(mats)
+            res = lod_atlas.collapse(assets, 'b', out, coarse, set(), 8, (64,))
+            self.assertEqual((res['atlas_indices'], res['atlas_of'], res['occlusion']),
+                             ([2], {0: 2, 1: 2}, {'argon.fx': 'a_decal.tga'}))
+            self.assertEqual((res['record'], res['atlas_indices'], res['atlas_of']),
+                             (ref['record'], ref['atlas_indices'], ref['atlas_of']))
+            strip = lambda m: [p for p in m['params'] if p[0] != b't_OcclusionTexture']
+            self.assertEqual(strip(out[2]), strip(ref_out[2]))
+            self.assertEqual(lod_atlas.occlusion_name(out[2]), 'a_decal.tga')
+            self.check_occlusion_split(mats, coarse, res, out)
+            other = [dict(m, effect=b'other.fx') if i else m for i, m in enumerate(mats)]
+            self.assertEqual(lod_atlas.effect_classes(other, coarse['parts'][0]['groups']),
+                             [('argon.fx', 'name:a_decal.tga', [0]), ('other.fx', 'name:a_decal.tga', [1])])
+
+    DECALS = [(f'dds/{n}.pck', gzip.compress(dds_header(32, 32), mtime=0))
+              for n in ('a_decal', 'b_decal', 'NONE_OCCL_DECAL', 'NONE_WHITE', 'NONE_BLACK')]
+
+    def test_occlusion_classes_key_on_the_bound_entry(self):
+        """Classes key on the entry the engine binds (dds/<basename> first): case, extension and folder variants
+        of one map share a class; strings that resolve to different entries stay apart; NONE_* placeholders are
+        different textures; absent and NULL are one "none"."""
+        with tempfile.TemporaryDirectory() as folder:
+            assets, _ = lod_overlay.original_assets(self.game(folder, self.DECALS))
+            cases = [((b'unique\\a_decal.tga', b'unique\\x3tc\\A_DECAL.dds'), {0: 2, 1: 2}),   # one entry
+                     ((b'a_decal.tga', b'A_Decal'), {0: 2, 1: 2}),
+                     ((b'unique\\a_decal.tga', b'unique\\b_decal.tga'), {0: 2, 1: 3}),        # two entries
+                     ((b'NONE_WHITE.dds', b'NONE_OCCL_DECAL.dds'), {0: 2, 1: 3}),            # two placeholders
+                     ((b'NONE_BLACK', b'x\\none_black.tga'), {0: 2, 1: 2}),
+                     ((None, b'NULL'), {0: 2, 1: 2}),                                        # both no texture
+                     ((b'NULL', b'NONE_OCCL_DECAL.dds'), {0: 2, 1: 3}),
+                     ((b'NONE_WHITE.dds', b'NONE_OCCL_DECAL.dds', None), {0: 3, 1: 4, 2: 5})]
+            for decals, atlas_of in cases:
+                mats, coarse = self.occlusion_body(decals)
+                out = list(mats)
+                res = lod_atlas.collapse(assets, 'b', out, coarse, set(), 8, (64,))
+                self.assertEqual(res['atlas_of'], atlas_of, decals)
+                self.check_occlusion_split(mats, coarse, res, out)
+            # the dominant's raw string is bound: material 0 (larger area) of a variant pair
+            mats, coarse = self.occlusion_body((b'unique\\a_decal.tga', b'unique\\x3tc\\A_DECAL.dds'))
+            out = list(mats)
+            res = lod_atlas.collapse(assets, 'b', out, coarse, set(), 8, (64,))
+            self.assertEqual(lod_atlas.occlusion_raw(out[2]), mats[res['synth'][0]['dominant']]['params'][-1][2])
+            self.assertEqual(res['textures'].bound_member(b'unique\\x3tc\\A_DECAL.dds'), '01.cat:dds/a_decal.pck')
+            self.assertIsNone(res['textures'].bound_member(b'NULL'))
 
     def test_merged_records_first_use_order(self):
         rec = lambda i: (i, i, 0, 65536, 0, 65536, 0)

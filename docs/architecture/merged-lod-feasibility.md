@@ -993,10 +993,15 @@ evidence under `verification/results/lod-overlay-batch/batch-dryrun/`.
   (`t_OcclusionTexture` in `[0,1]`, one texture per body, `XT_standard_lighting.fx`;
   `classes/classes_out.txt`). The record rewrite copies the second pair through unchanged
   (`with_uv` rewrites only the first pair), the merged material keeps the dominant material's
-  `t_OcclusionTexture` and the `g_Mat*` mean covers `g_MatOcclStr`. A body is refused as
-  `occlusion_mismatch` when the opaque materials of one merged group carry more than one
-  occlusion texture (`NULL`/`NONE_*`/absent count as none; none mixed with a decal refuses).
-  The 164 vanilla `uv2` refusals (25 heavy: `Argon_m7m`, Pirate M1/M2/M7, the `argon_M2_OCC_*`
+  `t_OcclusionTexture` and the `g_Mat*` mean covers `g_MatOcclStr`. Since 2026-09-29 (user
+  decision; formerly refused `occlusion_mismatch`, eight bodies of the user's install) the merged
+  classes are keyed by effect file and the occlusion texture the engine binds
+  (`lod_atlas.occlusion_key`): absent and `NULL` are none; any other string keys on the entry
+  `lookup` resolves (`dds\<basename>` first), so variants of one map share a class, while
+  `NONE_BLACK`/`NONE_WHITE`/`NONE_OCCL_DECAL` and different maps each get their own merged
+  material over the one atlas. Each merged material binds its dominant member's string, and
+  every face keeps its second UV pair with it (`docs/verification/lod-overlay.md`,
+  2026-09-29). The 164 vanilla `uv2` refusals (25 heavy: `Argon_m7m`, Pirate M1/M2/M7, the `argon_M2_OCC_*`
   variants, `terraformer_hub_A`) are no longer refused for this reason.
 - **Names and textures.** Atlas members are `dds/x3m_lod_<stem>_<hash6>_<slot>.pck` with the
   hash from the lower-case member path (`lod_overlay.qualified_stem`), so colliding stems

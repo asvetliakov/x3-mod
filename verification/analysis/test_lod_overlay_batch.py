@@ -154,7 +154,10 @@ class Enumeration(unittest.TestCase):
         self.assertEqual((by['ships/x/mixed']['effects'], by['ships/x/mixed']['atlas_materials'],
                           by['ships/x/mixed']['r0_drawn'], by['ships/x/mixed']['c_drawn']), (2, 2, 3, 2))
         self.assertEqual((by['ships/x/uv']['uv2'], by['ships/x/uv']['occlusion']), (15, {'argon.fx': 'x_decal.tga'}))
-        self.assertEqual(by['ships/x/uvbad']['refuse'], ['occlusion_mismatch'])
+        # map + none: one merged material each (not refused); two draws against two saves nothing
+        self.assertEqual({k: by['ships/x/uvbad'][k] for k in ('refuse', 'filter', 'atlas_materials', 'c_drawn', 'occlusion')},
+                         dict(refuse=[], filter=['no_draw_gain'], atlas_materials=2, c_drawn=2,
+                              occlusion={'argon.fx': ['x_decal.tga', 'none_occl_decal.dds']}))
         self.assertEqual(by['ships/x/oob']['refuse'], ['material_outside_table'])
         self.assertEqual(by['ships/x/jpg']['texture_sources'][:2], ['dds/a_bump.pck', 'dds/b_light.pck'])
         self.assertIn('textures/j_diff.jpg', by['ships/x/jpg']['texture_sources'])
@@ -218,8 +221,7 @@ class BatchRun(unittest.TestCase):
             self.assertEqual((record['slot'], record['retired_slot'], record['counts']['enumerated']), (2, None, 14))
             self.assertEqual(record['counts']['overlay_bodies'], 9)
             self.assertEqual(record['refused'], {'ambiguous_body_ext': 1, 'material_outside_table': 1,
-                                                 'occlusion_mismatch': 1, 'text_parse_error': 1,
-                                                 'trailing_bytes': 1})
+                                                 'text_parse_error': 1, 'trailing_bytes': 1})
             self.assertFalse(record['binary_only'])
             self.assertEqual(by['ships/x/text']['member'], '02.cat:objects/ships/x/text.pbd')   # census source member
             self.assertEqual((by['ships/x/good']['draws'], by['ships/x/mixed']['draws'], by['ships/x/uv']['draws']),
@@ -227,6 +229,7 @@ class BatchRun(unittest.TestCase):
             self.assertEqual(by['ships/x/mixed']['atlas_materials'], 2)
             self.assertEqual((by['ships/x/trail2']['trailing'], by['stations/y/good']['guard_waived']), (2, True))
             self.assertEqual(record['mixed_effect_bodies'], ['ships/x/mixed'])
+            self.assertEqual(record['occlusion_split_bodies'], [])         # uvbad (split) is filtered no_draw_gain
             self.assertEqual(record['uv2_bodies'], ['ships/x/uv'])
             self.assertIn('textures/j_diff.jpg', by['ships/x/jpg']['texture_sources'])
             self.assertEqual(record['ratio']['measured'], 9)

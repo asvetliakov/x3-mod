@@ -120,9 +120,18 @@ tooling"; census: tools/analysis/atlas_census.py):
   lod-overlay-batch/classes/classes_out.txt). Only the first pair is rewritten; the second
   pair is copied through unchanged (with_uv keeps every other field), and the merged
   material keeps the dominant material's t_OcclusionTexture and the g_Mat* mean covers
-  g_MatOcclStr. The body is refused when the opaque materials of one merged group carry
-  more than one occlusion texture (NULL / NONE_* / absent count as "none"; none mixed with
-  a decal refuses too), since one material cannot sample them all.
+  g_MatOcclStr. Since 2026-09-28 the merged classes are keyed by effect file AND the occlusion
+  texture the engine binds (effect_classes / occlusion_key): absent and NULL are "none" (no
+  texture); any other string keys on the entry lookup resolves (dds/<basename> first, so case,
+  extension and folder variants of one map share a class; NONE_BLACK / NONE_WHITE /
+  NONE_OCCL_DECAL are distinct entries; an unresolvable string keys on itself). When the
+  opaque materials of one effect bind different textures, each gets its own merged material
+  over the same atlas, binding the string of its dominant (one of its own members), so every
+  merged material samples exactly the texture its source materials bound and a face keeps its
+  second UV pair with that material (formerly refused occlusion_mismatch; eight bodies of the
+  user's install). A body whose effects bind one map each keeps one class per effect,
+  unchanged; the manifest's occlusion field (occlusion_label: 'none' for absent / NULL, else
+  the bound string) lists the maps of a split effect in class order.
 - Material: per effect a copy of that effect's dominant opaque material (face count over
   all parts) with t_DiffuseTexture / t_LightMapTexture = the atlases, t_SpecularTexture =
   the specular atlas (--atlas-specular) or NULL (as 120 of 7198 shipped argon.fx
@@ -790,6 +799,22 @@ class Textures:
     member (Khaak 25.jpg and 25_spec.jpg) share its decoded image."""
     def __init__(self, assets):
         self.assets, self.cache, self.sizes, self.sources, self.decoded = assets, {}, {}, {}, {}
+        self.bound = {}
+
+    def bound_member(self, name):
+        """'source:path' of the entry the engine binds for a material texture name (lookup: a NONE_* name or an
+        unresolved name binds its dds/NONE_* placeholder entry), None for NULL / an id drawn without a texture /
+        a name lookup refuses. Resolution only (no read, no decode); cached per lower-case name."""
+        key = self.key(name)
+        if key is None:
+            return None
+        if key not in self.bound:
+            try:
+                found = lookup(self.assets, name)
+            except AtlasError:
+                found = None
+            self.bound[key] = None if found is None else f'{found[0]["source"]}:{found[0]["path"].lower()}'
+        return self.bound[key]
 
     @staticmethod
     def key(name):
@@ -1372,6 +1397,32 @@ def effect_name(material):
     return material.get('effect', b'').decode('latin1').lower()
 
 
+def occlusion_raw(material):
+    """The t_OcclusionTexture string of an effect material as stored, None when the parameter is absent."""
+    for n, t, v in material.get('params', ()):
+        if t == 8 and n.lower() == OCCLUSION_SLOT:
+            return v
+    return None
+
+
+def occlusion_label(material):
+    """Report label of a material's occlusion map: 'none' for absent / NULL, else the lower-case string (NONE_*
+    placeholders by name)."""
+    raw = occlusion_raw(material)
+    return 'none' if raw is None or body_materials.is_null(raw) else raw.lower().decode('latin1')
+
+
+def occlusion_key(material, textures=None):
+    """Class key of a material's occlusion map (effect_classes): 'none' for absent / NULL (no texture); with
+    `textures`, the entry the engine binds (Textures.bound_member: case, extension and folder variants that
+    resolve to one dds/<basename> entry share a key; NONE_BLACK / NONE_WHITE / NONE_OCCL_DECAL are different
+    entries); without it, or for a name that resolves to no entry, the lower-case string."""
+    raw = occlusion_raw(material)
+    if raw is None or body_materials.is_null(raw):
+        return 'none'
+    return (textures.bound_member(raw) if textures is not None else None) or 'name:' + raw.lower().decode('latin1')
+
+
 def occlusion_name(material):
     """Lower-case t_OcclusionTexture of an effect material; None for absent / NULL / NONE_*."""
     for n, t, v in material.get('params', ()):
@@ -1458,31 +1509,37 @@ def animated_record(mats, record, assets=None):
     return dict(record, parts=parts), dict(groups=groups, rows=sorted(rows), material0=material0)
 
 
-def effect_classes(mats, opaque):
-    """[(effect, [material indices in first-use order])] of the opaque groups, largest face count
-    first (ties: first use). Refuses a group material index outside the table."""
-    faces, order = {}, {}
+def effect_classes(mats, opaque, textures=None):
+    """[(effect, occlusion key, [material indices in first-use order])] of the opaque groups: one class per effect
+    file and bound occlusion texture (occlusion_key: 'none' for absent / NULL, else the entry the engine binds
+    with `textures`), largest face count first (ties: first use). A body whose effects each bind one map has one
+    class per effect, in the order the effect-only classes had. Refuses a group material index outside the
+    table."""
+    faces, order, key_of = {}, {}, {}
     for g in opaque:
         m = g['material']
-        if not 0 <= m < len(mats):
-            raise AtlasError(f'group material index {m} is outside the material table (0..{len(mats) - 1})')
-        eff = effect_name(mats[m])
-        order.setdefault(eff, [])
-        if m not in order[eff]:
-            order[eff].append(m)
-        faces[eff] = faces.get(eff, 0) + len(g['faces'])
-    ranked = sorted(order, key=lambda e: (-faces[e], list(order).index(e)))
-    return [(e, order[e]) for e in ranked]
+        if m not in key_of:
+            if not 0 <= m < len(mats):
+                raise AtlasError(f'group material index {m} is outside the material table (0..{len(mats) - 1})')
+            key_of[m] = (effect_name(mats[m]), occlusion_key(mats[m], textures))
+        key = key_of[m]
+        order.setdefault(key, [])
+        if m not in order[key]:
+            order[key].append(m)
+        faces[key] = faces.get(key, 0) + len(g['faces'])
+    first = {k: i for i, k in enumerate(order)}
+    ranked = sorted(order, key=lambda k: (-faces[k], first[k]))
+    return [(e, o, order[e, o]) for e, o in ranked]
 
 
 def collapse(assets, body, mats, record, alpha, px, sizes=(1024, 2048), specular=False, synth=True,
              gutter=GUTTER, min_ratio=MIN_RATIO, textures=None, bump=True, max_group_points=None, keep=frozenset(),
              layout=None):
-    """Atlas collapse of `record`: appends one atlas material per opaque effect file (then any
-    synthesized alpha material) to `mats` in place. Returns dict(record, layout, atlas_index (the
-    largest effect's), atlas_indices, atlas_of, names, members, synth, uv2, occlusion, kept, ...).
+    """Atlas collapse of `record`: appends one atlas material per opaque (effect file, occlusion map) class
+    (effect_classes; then any synthesized alpha material) to `mats` in place. Returns dict(record, layout,
+    atlas_index (the largest class's), atlas_indices, atlas_of, names, members, synth, uv2, occlusion, kept, ...).
     Materials in `keep` (light_bleed) are not atlased: they keep their own groups, textures and UVs and
-    take no part in the effect classes, the occlusion check or the g_Mat* means; the opaque materials of a
+    take no part in the effect / occlusion classes or the g_Mat* means; the opaque materials of a
     KEPT_EFFECTS effect (excluded_materials) are kept the same way and reported as kept_effects (a body
     with nothing else opaque is refused). `layout` (light_bleed's repack) replaces plan_layout; it must
     have been planned with the same keep set."""
@@ -1511,15 +1568,7 @@ def collapse(assets, body, mats, record, alpha, px, sizes=(1024, 2048), specular
     if not opaque:
         raise AtlasError('the record has no opaque faces to atlas')
     uv2 = sum(1 for p in record['points'] if p[0] & 4)
-    classes = effect_classes(mats, opaque)
-    occlusion = {}
-    for eff, mis in classes:
-        names_ = sorted({occlusion_name(mats[m]) or 'none' for m in mis}, key=str)
-        if len(names_) > 1:
-            raise AtlasError(f'the opaque materials of effect {eff or "(none)"} carry {len(names_)} different'
-                             f' occlusion textures {names_} (second UV set: {uv2} points); one merged material'
-                             ' cannot sample them all')
-        occlusion[eff] = names_[0]
+    classes = effect_classes(mats, opaque, textures)
     dom = dominant(opaque)
     has_bump = any(t == 8 and n.lower() == SLOT_NAMES['bump'] for n, t, _ in mats[dom].get('params', ()))
     has_spec = any(t == 8 and n.lower() == SLOT_NAMES['specular'] for m in areas for n, t, _ in mats[m].get('params', ()))
@@ -1530,7 +1579,8 @@ def collapse(assets, body, mats, record, alpha, px, sizes=(1024, 2048), specular
     layout = layout or plan_layout(record, mats, alpha, textures, px, sizes, gutter, slots, min_ratio, keep=keep)
     names, members = texture_names(body, slots)
     atlas_of, indices, report = {}, [], []
-    for eff, mis in classes:
+    occlusion = {}                         # effect -> bound map label; a list (class order) when it has several
+    for eff, _, mis in classes:
         need = required_slots(mats, mis)
         d = class_dominant(mats, [g for g in opaque if g['material'] in mis], need)
         mat, rows = atlas_material(mats, d, names, {m: areas[m] for m in mis}, synth, need)
@@ -1539,11 +1589,18 @@ def collapse(assets, body, mats, record, alpha, px, sizes=(1024, 2048), specular
         indices.append(idx)
         for m in mis:
             atlas_of[m] = idx
+        occ = occlusion_label(mats[d])     # the dominant's string, which the merged material binds
+        if eff not in occlusion:
+            occlusion[eff] = occ
+        elif isinstance(occlusion[eff], list):
+            occlusion[eff].append(occ)
+        else:
+            occlusion[eff] = [occlusion[eff], occ]
         report.append(dict(index=idx, dominant=d, absorbed=sorted(mis), params=rows, atlas=True, effect=eff,
-                           occlusion=occlusion[eff]))
+                           occlusion=occ))
     atlas_index = indices[0]
     widen_of, widened = {}, []
-    for (eff, mis), row in zip(classes, list(report)):
+    for (eff, _, mis), row in zip(classes, list(report)):
         if not any(g.get('widen') for g in opaque if g['material'] in mis):
             continue
         idx = len(mats)

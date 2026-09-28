@@ -497,3 +497,48 @@ shell facets expose the hollow hull. With it the effect is small but mostly favo
 Raster limits: orthographic axis views at the 5120x1440 focal length, 8 Halton phases, one sample per pixel. It draws
 all opaque fragments before the widened group, so a z-write-on band occluding a later part's opaque faces is not
 exercised. No lighting or TAA; the alpha group is a flat 0.5.
+
+## 2026-09-29 occlusion split: one merged material per bound occlusion texture (host-side; not installed, not flown)
+
+User decision: keep each occlusion map and do not bake it into the colour; two or three draws per body are
+accepted. `lod_atlas.effect_classes` keys the merged classes by effect file and the occlusion texture the
+engine binds (`occlusion_key`, after the review fixes). Absent and NULL form one "none" class (no texture). Any
+other string keys on the entry `lookup` resolves: `dds\<basename>` first, so case, extension and folder variants
+share a class. A missing file keys on its placeholder, and NONE_BLACK, NONE_WHITE and NONE_OCCL_DECAL are distinct
+entries. Resolution is cached per name in `Textures.bound_member` (no read, no decode). Each class gets its own
+merged material over the one atlas, binding the raw string of its dominant member. Faces keep their second UV pair
+with that material. The `occlusion_mismatch` refusal is gone, and a body that saves no draw is filtered
+`no_draw_gain`. `occlusion_outliers` (flagged materials with another map stay alpha) is unchanged. The manifest's
+`occlusion` field (`occlusion_label`) lists the bound strings of a split effect in class order. The batch summary
+and record now list mixed-effect bodies (more than one effect file) and occlusion-split bodies
+(`occlusion_split_bodies`) separately. Scripts, commands and outputs: `verification/results/lod-mayhem-refusals/`.
+
+| check | command | result |
+| --- | --- | --- |
+| unit tests (measured) | `PYTHONPATH=verification/probe:tools/analysis python3 -m unittest verification.analysis.test_lod_overlay_batch verification.analysis.test_lod_batch_census verification.analysis.test_lod_overlay_check verification.analysis.test_bob1 verification.analysis.test_lod_strut_widening verification.analysis.test_lod_recipes` | 134 OK, 1 skipped. `test_bob1.LodAtlas` covers: two maps; map + none (absent, NULL, NONE_OCCL_DECAL); three maps; single map unchanged; bound-entry keying (folder/case/extension variants of one dds entry = one class, two entries = two, NONE_WHITE vs NONE_OCCL_DECAL = two, NONE_BLACK variants = one, absent + NULL = one, NULL vs NONE_OCCL_DECAL = two, three-way placeholder mix = three). Every case checks that each merged material binds the raw string of one of its members, that every member binds the same entry, and that faces keep their second UV pairs. Fixture `uvbad`: not refused, filtered `no_draw_gain` |
+| fleet scan (measured) | `placeholder_mix_scan.py --jobs 8` over the installed batch record, 4,613 bodies (4,353 scanned, 260 unparsed or refused before collapse), 43 s | 7 bodies carry a no-map (absent/NULL) + NONE_OCCL_DECAL mix within one effect, all 7 baked today; they now draw one more merged material. No body mixes two different NONE_* entries. Also changed, none of them baked today: argon_m3_albion_pride/hull and PrideOfAlbion 2 -> 1 class (their prideofalbion_occl.tga has no file and binds the NONE_OCCL_DECAL placeholder, like their NONE_OCCL_DECAL materials) and terran_m3_falchion/hull 3 -> 2 |
+| byte identity (measured) | before: HEAD 3e59cab7 tools; after: this change; `lod_overlay.py --batch --only FILE --out <scratch>`; `occlusion_split_check.py` | 7 of 7 bodies baked before and without a mix are byte-identical in all 5 members each (body + 4 atlas textures): Split_M8, split_m1turretA_weapon, terran_m4, terran_m5, StockmarketBoardS (mixed effects), toruswreck_middle_front_antennas (occlusion outliers), torus_support. tool_sha256 5afc6d78... -> b978b51d... |
+| split bodies (measured) | same after bake, 22 bodies, 105 s at 2 jobs | refused {}, filtered {}; all 15 split or former-mismatch bodies baked. Every merged material binds a source string of its class and the same entry as all its sources; the second UV pairs, checked on 3,970-80,647 faces per body, are all kept |
+
+| body | r0 drawn | merged draws | merged materials (bound) | baked today |
+| --- | --- | --- | --- | --- |
+| ships/argon/argon_m3_albion_pride/hull | 6 | 1 | 1 (NONE_OCCL_DECAL entry) | no (mismatch) |
+| ships/x3ap/argon/PrideOfAlbion | 6 | 1 | 1 (NONE_OCCL_DECAL entry) | no (mismatch) |
+| ships/terran/terran_m2_kyoto/hull | 10 | 5 | 2 (torus_building_side_occl, NONE_OCCL_DECAL) | no (mismatch) |
+| ships/x3ap/usc/XTC_usc_m2plus | 10 | 5 | 2 (torus_building_side_occl, NONE_OCCL_DECAL) | no (mismatch) |
+| ships/terran/terran_m3_falchion/hull | 13 | 2 | 2 (NONE_OCCL_DECAL, dds/terran_frigate_occl) | no (mismatch) |
+| ships/terran/terran_m4_shamshir/hull | 3 | 2 | 2 (terran_frigate_occl, NONE_OCCL_DECAL) | no (mismatch) |
+| ships/patch2_ships/xpshuttle | 7 | 4 | 4 over two effects (xpshuttle2_decal, xpshuttle_occl, NONE_OCCL_DECAL, none) | no (mismatch) |
+| stations/x3tc/torus_buildingmiddle | 6 | 4 | 2 (torus_buildingmiddle_occl, NONE_OCCL_DECAL) | no (mismatch) |
+| ships/atf/atf_m2p_forseti/hull | 5 | 4 | 2 (NONE_OCCL_DECAL, none) | yes, changes |
+| ships/atf/atf_m6_logich/hull | 5 | 2 | 2 (none, NONE_OCCL_DECAL) | yes, changes |
+| ships/goner/XTC_goner_ts/hull | 12 | 2 | 2 (none, NONE_OCCL_DECAL) | yes, changes |
+| ships/pirate/pirate_m1_polacca/hull | 15 | 3 | 2 (NONE_OCCL_DECAL, none) | yes, changes |
+| ships/pirate/pirate_m2_exterminator/hull | 15 | 4 | 2 (NONE_OCCL_DECAL, none) | yes, changes |
+| ships/pirate/pirate_m6_macana/hull | 13 | 3 | 2 (NONE_OCCL_DECAL, none) | yes, changes |
+| ships/pirate/pirate_m7_marauder/hull | 17 | 3 | 2 (NONE_OCCL_DECAL, none) | yes, changes |
+
+Merged draws above the merged-material count are the bodies' alpha / kept groups (inferred from the
+collapse rules; not broken down). "none" (absent or NULL) is taken to bind no texture in both cases: NULL is id 0,
+and for an absent parameter the effect default is not traced. The next `--sync` rebuilds every body because
+tool_sha256 changed (expected).

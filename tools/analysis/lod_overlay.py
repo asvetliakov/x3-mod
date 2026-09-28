@@ -266,8 +266,7 @@ outside that grammar; a MATERIAL3 text body is mat3), ambiguous_body_ext (both a
 (more than MAX_TRAILING stray bytes after /BOB; up to MAX_TRAILING are tolerated with a
 warning, the parser 0x00481aa0 returns at /BOB and never reads them), material_outside_table
 (a group material index past the table; since 2026-09-24 a negative index -N is a texture animation that
---collapse atlas maps onto its material and bakes with the start frame, lod_atlas.animated_record), occlusion_mismatch (second UV set with
-differing occlusion decals inside one merged group), mat3, no_opaque, dominant_slot_missing
+--collapse atlas maps onto its material and bakes with the start frame, lod_atlas.animated_record), mat3, no_opaque, dominant_slot_missing
 (unreachable since 2026-09-24: the dominant is taken among the materials that declare the needed
 slots and an effect that declares no light map keeps none), excluded_effect (every opaque material
 on lod_atlas.KEPT_EFFECTS, planet_haze.fx / asteroid.fx, which otherwise keep their own groups),
@@ -276,7 +275,14 @@ bakes the black placeholder), texture_unresolved, texture_animation_unsupported 
 non-zero start UV offset, an animated group left out of the atlas), texture_generated (a MPF_GENERATED
 Materials row, drawn at run time), pil_missing (a jpg/tga texture without
 Pillow), and the lod_atlas reasons. Mixed effects and the second UV set are handled, not refused
-(lod_atlas notes). A change to lod_atlas.py or this file changes tool_sha256, so the next --sync
+(lod_atlas notes). Differing occlusion maps are handled too (since 2026-09-28; formerly refused
+occlusion_mismatch): the merged classes are keyed by effect file and the occlusion texture the engine
+binds (lod_atlas.occlusion_key: absent / NULL = "none"; any other t_OcclusionTexture string by the
+entry it resolves to, so variants of one dds/<basename> share a class and NONE_BLACK / NONE_WHITE /
+NONE_OCCL_DECAL stay apart), so the opaque materials of one effect that bind different textures get one
+merged material per bound texture over the one atlas, each binding a string of its own class (a "none"
+class binds none), and every face keeps its second UV pair with that material; a body whose
+split saves no draw call against record 0 is filtered no_draw_gain like any other. A change to lod_atlas.py or this file changes tool_sha256, so the next --sync
 rebuilds every body unless --trust-tool (below). Per-body recipes (lod_recipes.py, not in TOOL_FILES) choose the source record of C and
 apply geometry ops after a geometric self-check (the Terran solar-plant louvre weld,
 docs/architecture/lattice-baker-fix.md); the census row carries recipe or recipe_skipped, the recipe digest
@@ -728,8 +734,9 @@ def occlusion_outliers(materials, record, flagged, alpha):
     the maps of the effect's unflagged opaque materials. When the effect has no unflagged opaque material, its
     candidates are atlased only if they all carry one map; otherwise all of them stay alpha (the body stays
     no_opaque as under the flag rule; no candidate is chosen to set the map, so no plate of another map starts
-    borrowing a diffuse). Atlasing an outlier would refuse the body occlusion_mismatch (one occlusion texture per
-    merged material; terran_TL_atmolifter)."""
+    borrowing a diffuse). Atlasing an outlier used to refuse the body occlusion_mismatch (terran_TL_atmolifter);
+    since 2026-09-28 lod_atlas.effect_classes would give it its own merged material (one draw more), and the rule
+    is kept so that bodies baked before that change bake unchanged."""
     import lod_atlas
     faces = Counter()
     for part in record['parts']:
@@ -1711,7 +1718,7 @@ def build_parser():
                          ' glow-area P (or glow-area=P): glow plus the largest real-light-map materials up to'
                          ' P %% of their area; two: opaque + alpha-tested/blended group per part;'
                          ' one: a single group per part; atlas: one opaque atlas material per effect file'
-                         ' (+ the alpha group as two)')
+                         ' and bound occlusion map (+ the alpha group as two)')
     ap.add_argument('--atlas-size', type=int, default=1024,
                     help='atlas: first atlas side tried (power of two, default 1024)')
     ap.add_argument('--atlas-max-size', type=int, default=2048,
@@ -2922,7 +2929,9 @@ def batch(a, game, root, markers):
     member_total = sum(len(p['members'][0][1]) for p in plans)
     draws_before = sum(by_name[p['name']].get('r0_drawn', 0) for p in plans)
     draws_after = sum(p['draws'] for p in plans)
-    multi = [p['name'] for p in plans if p['atlas'] and len(p['atlas'].get('materials', [0])) > 1]
+    multi = [p['name'] for p in plans if p['atlas'] and len({e[0].lower() for e in p['atlas'].get('effects', [])}) > 1]
+    split = [p['name'] for p in plans if p['atlas']
+             and any(isinstance(v, list) for v in p['atlas'].get('occlusion', {}).values())]
     uv2 = [p['name'] for p in plans if p['atlas'] and p['atlas'].get('uv2_points')]
     per_body = bake_s / len(built) if built else 0.0
     candidates = sum(1 for r in rows if 'text_parse_error' not in r['refuse'] and 'category_other' not in r['filter'])
@@ -2999,9 +3008,11 @@ def batch(a, game, root, markers):
          + f' + no fallback {len(fb_none)}')
         if a.texel_fallback else 'texel_fallback off (--texel-fallback 0)',
         f'draws below T_pad per instance, summed over the overlay bodies: {draws_before} -> {draws_after}'
-        f' (drawn groups of record 0 -> of C, hidden parts excluded, alpha groups included); bodies with one atlas'
-        f' material per effect ({len(multi)}):'
-        f' {", ".join(multi[:12])}{", ..." if len(multi) > 12 else ""}; second UV set passed through ({len(uv2)}):'
+        f' (drawn groups of record 0 -> of C, hidden parts excluded, alpha groups included); bodies whose atlased'
+        f' materials use more than one effect file, one atlas material per effect ({len(multi)}):'
+        f' {", ".join(multi[:12])}{", ..." if len(multi) > 12 else ""}; bodies with an effect split by bound'
+        f' occlusion map, one atlas material per map ({len(split)}):'
+        f' {", ".join(split[:12])}{", ..." if len(split) > 12 else ""}; second UV set passed through ({len(uv2)}):'
         f' {", ".join(uv2[:12])}{", ..." if len(uv2) > 12 else ""}; stray trailing bytes tolerated: {trailing}',
         ('light_bleed off (--light-bleed-max 0)' if bleed_off else
          f'light_bleed (--light-bleed-max {a.light_bleed_max:g}: mean added light luminance at L = ceil(log2 texels/px)'
@@ -3057,7 +3068,8 @@ def batch(a, game, root, markers):
                                    for r in fallback},
                    texel_fallback_guard={r['name']: r['texel_fallback']['guard'] for r in fb_guard},
                    texel_fallback_not_reached=[r['name'] for r in fb_short]),
-        draws=dict(record0=draws_before, overlay=draws_after), mixed_effect_bodies=multi, uv2_bodies=uv2,
+        draws=dict(record0=draws_before, overlay=draws_after), mixed_effect_bodies=multi,
+        occlusion_split_bodies=split, uv2_bodies=uv2,
         light_bleed=dict(max=a.light_bleed_max, widen_levels=lod_atlas.WIDEN_LEVELS, share=a.light_bleed_share,
                          bodies={n: b for n, b in bleed_rows}),
         timing=dict(census_s=round(census_s, 2), bake_s=round(bake_s, 2), per_body_s=round(per_body, 3),

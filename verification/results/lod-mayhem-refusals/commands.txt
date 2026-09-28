@@ -1,0 +1,14 @@
+# Occlusion split (2026-09-28/29). Scratch roots outside the repository and the game tree; the game tree is read only.
+# bodies.txt: lines 1-7 = bodies baked before the split (identity set), lines 8-15 = the eight former
+# occlusion_mismatch bodies, lines 16-22 = the seven baked bodies with a no-map / NONE_OCCL_DECAL mix
+# (placeholder_mix_scan_out.txt).
+# BEFORE: tools of HEAD 3e59cab7 (git archive HEAD tools/analysis verification/probe, extracted to before-src/).
+head -7 bodies.txt > identity.txt
+PYTHONPATH=before-src/verification/probe:before-src/tools/analysis \
+  python3 before-src/tools/analysis/lod_overlay.py --batch --only identity.txt --out before-bake --jobs 2      # 27.7 s
+# AFTER (review fixes F1-F5, class key = bound texture entry):
+PYTHONPATH=$REPO/verification/probe:$REPO/tools/analysis \
+  python3 $REPO/tools/analysis/lod_overlay.py --batch --only bodies.txt --out after-bake2 --jobs 2         # 105.5 s
+python3 occlusion_split_check.py before-bake after-bake2 > occlusion_split_check_out.txt
+# fleet scan over <game>/addon/x3m-lod-batch.json (4,613 bodies, 8 jobs, 43 s):
+python3 placeholder_mix_scan.py --jobs 8 > placeholder_mix_scan_out.txt
