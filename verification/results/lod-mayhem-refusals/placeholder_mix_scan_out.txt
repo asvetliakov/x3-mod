@@ -1,0 +1,21 @@
+bodies 4613 scanned 4353 skipped 260; baked today 1079 (scanned 1079)
+bodies with more than one distinct no-map / placeholder class within one effect: 7 (baked today 7)
+  mix ships/atf/atf_m2p_forseti/hull baked=True classes 1->2 {'xt_standard_lighting.fx': ['01.cat:dds/none_occl_decal.pck', 'none']}
+  mix ships/atf/atf_m6_logich/hull baked=True classes 1->2 {'xt_standard_lighting.fx': ['01.cat:dds/none_occl_decal.pck', 'none']}
+  mix ships/goner/XTC_goner_ts/hull baked=True classes 1->2 {'xt_standard_lighting.fx': ['01.cat:dds/none_occl_decal.pck', 'none']}
+  mix ships/pirate/pirate_m1_polacca/hull baked=True classes 1->2 {'xt_standard_lighting.fx': ['01.cat:dds/none_occl_decal.pck', 'none']}
+  mix ships/pirate/pirate_m2_exterminator/hull baked=True classes 1->2 {'xt_standard_lighting.fx': ['01.cat:dds/none_occl_decal.pck', 'none']}
+  mix ships/pirate/pirate_m6_macana/hull baked=True classes 1->2 {'xt_standard_lighting.fx': ['01.cat:dds/none_occl_decal.pck', 'none']}
+  mix ships/pirate/pirate_m7_marauder/hull baked=True classes 1->2 {'xt_standard_lighting.fx': ['01.cat:dds/none_occl_decal.pck', 'none']}
+baked bodies whose class count changes (old -> new key): 7
+  changed ships/atf/atf_m2p_forseti/hull 1->2
+  changed ships/atf/atf_m6_logich/hull 1->2
+  changed ships/goner/XTC_goner_ts/hull 1->2
+  changed ships/pirate/pirate_m1_polacca/hull 1->2
+  changed ships/pirate/pirate_m2_exterminator/hull 1->2
+  changed ships/pirate/pirate_m6_macana/hull 1->2
+  changed ships/pirate/pirate_m7_marauder/hull 1->2
+bodies whose class count changes without a placeholder mix (formerly occlusion_mismatch or variants of one map): 3
+  other ships/argon/argon_m3_albion_pride/hull baked=False 2->1
+  other ships/terran/terran_m3_falchion/hull baked=False 3->2
+  other ships/x3ap/argon/PrideOfAlbion baked=False 2->1

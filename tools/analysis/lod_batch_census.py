@@ -11,7 +11,7 @@ files, material table kind, second UV set, alpha materials, the reasons `--colla
 --screen-width (default 1920, the reference for every total; 1280 and 2560 are extra columns),
 draws saved against record 0 and against the coarsest record, and the estimated overlay cost.
 Nothing is baked, built or written into the game directory: the atlas checks run
-lod_atlas.collapse (effect classes, occlusion check, layout, UV rewrite and group split; no
+lod_atlas.collapse (effect / occlusion classes, layout, UV rewrite and group split; no
 baking) on a copy of the material table. With include_text (the batch), winning text bodies
 (.pbd/.bod without a binary twin) are compiled by bob1.parse_text and censused like binary ones
 (column text; the compile follows the engine's text loader 0x00483f20; a text scene is skipped
@@ -117,7 +117,7 @@ SECTORS = (('run255_burst2', 'verification/results/run255-census/node_census_out
 # dominant_slot_missing ('parameter') is unreachable since 2026-09-24: plan_layout refuses a material without
 # t_DiffuseTexture first (no_diffuse) and lod_atlas.required_slots asks for t_LightMapTexture only when a material of
 # the class declares it, which class_dominant then picks; the needle stays as a guard of atlas_material's check.
-ATLAS_REASONS = (('texture animation', 'texture_animation_unsupported'), ('excluded effect', 'excluded_effect'), ('occlusion textures', 'occlusion_mismatch'), ('outside the material table', 'material_outside_table'),
+ATLAS_REASONS = (('texture animation', 'texture_animation_unsupported'), ('excluded effect', 'excluded_effect'), ('outside the material table', 'material_outside_table'),
                  ('not an effect material', 'non_effect_material'), ('no diffuse', 'no_diffuse'),
                  ('no opaque faces', 'no_opaque'), ('without UV', 'no_uv'), ('do not fit', 'atlas_fit'),
                  ('does not resolve', 'texture_unresolved'), ('generated surface', 'texture_generated'), ('not a DDS', 'texture_not_dds'),
