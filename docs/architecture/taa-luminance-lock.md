@@ -593,3 +593,11 @@ is the clip (d) and the floor, not the initial state.
 Creation at the flipped pixel's centre leaves a second lock 0.67 px behind a strut leaving a pixel; band 2.875 px max [M];
 follow-up candidate: a flip within 1 px of an existing carried lock refreshes it instead of creating a new one (design
 decision pending). The fixture's band gate (carry_band, carry_2d) is <= 3.0 px per strut with a mean <= 2.0 for this flight.
+
+Also recorded here (review 2026-09-28): the build creates on the pixel's own unheld camera openness `ownC`, not the held
+`openC` this section specifies (the held gate's 8-frame hold after a mover blocks the mover row); creation under motion
+needs history age >= 6; the `shading` row is gated on the screen-gate step runs and the camera-gate twins are reported
+(under the camera gate the 40 % step toggles the lock, ledger open issue); `plate_sharp` and `identity` compare against
+a synthetic base run that takes the 7x7 box on the fixture's pan frames, so the interior-identity claim is against that
+reference, not the shipped program; `LumaLockGate::Screen` is the section-11 gate choice, not the section-11 build bit
+for bit.

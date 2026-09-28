@@ -379,9 +379,10 @@ float taa_motion_weight[3] = {0.f, 2.f, 8.f};
 // sky band keep their weights). Same prerequisites as X3M_TAA_MOTION_WEIGHT.
 float taa_motion_weight_rotation[3] = {0.f, 2.f, 8.f};
 // X3M_TAA_LUMA_LOCK=T[,RHO,TAU] (opt-in, 2026-09-28; absent, 0, invalid or oversized: off, the last two logged; T an
-// integer 1..64, RHO 0..1, TAU 0..32 codes, default 0.25,3; docs/architecture/taa-luminance-lock.md): the camera-gate
-// resolve holds the far weight only on pixels whose jittered luma sign-alternates, every other far pixel takes the base
-// weight and the 3x3 clip. X3M_TAA_LUMA_LOCK_RELEASE (developer, 0..1, default 0.65): the kill ratio of the 3x3 mean
+// integer 1..31, RHO 0..1, TAU 0..32 codes, default 0.25,3; docs/architecture/taa-luminance-lock.md): the camera-gate
+// resolve holds the far weight only on pixels whose residual against the reprojected history sign-alternates (locks form
+// at rest and under a camera pan), every other far pixel takes the base weight with the 3x3 clip at rest and the 7x7 box
+// under a pan. X3M_TAA_LUMA_LOCK_RELEASE (developer, 0..1, default 0.65): the kill ratio of the 3x3 mean
 // luma; X3M_TAA_LUMA_LOCK_GATE (developer, screen | always, default screen): the creation gate. Needs the camera gate
 // and the far weight, which motion_output judges.
 unsigned taa_luma_lock_frames = 0;
