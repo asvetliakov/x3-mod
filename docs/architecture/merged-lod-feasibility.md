@@ -973,12 +973,15 @@ evidence under `verification/results/lod-overlay-batch/batch-dryrun/`.
   highest catalogue and binary beats text inside a layer) and the marker records its
   `source_member`; `--binary-only` leaves text bodies out of the census and the batch. A stem with both a binary and a text member stays
   `ambiguous_body_ext` (engine order unverified). Stray bytes after `/BOB`:
-  `bob1.parse(data, max_trailing)` tolerates up to `lod_overlay.MAX_TRAILING` (8) and records
+  since 2026-09-29 `bob1.parse(data, max_trailing)` with `lod_overlay.MAX_TRAILING = None`
+  accepts any number after a well-formed `/BOB`, records the count (`trailing`) and never writes
   them; the engine parser `0x00481aa0` returns the model at the `/BOB` closer and never reads
-  past it (body-format-bob1.md §1), so they are inert. Of the 94 mod bodies that failed to
-  parse, 86 carry 1–2 stray closer bytes (`B`, `OB`; measured over `/tmp/x3-mod1`,
-  `/tmp/x3-mod2`) and are tolerated with a warning; 8 carry 502–7956 bytes (a duplicated tail)
-  and are refused as `trailing_bytes`. A negative group material index (156 vanilla bodies,
+  past it (body-format-bob1.md §1), so they are inert. A body that does not parse up to its
+  `/BOB` is still `parse_error`. Of the 94 mod bodies that failed to parse (2026-09-23), 86
+  carry 1–2 stray closer bytes (`B`, `OB`; measured over `/tmp/x3-mod1`, `/tmp/x3-mod2`); 8
+  carry 502–7956 bytes, the stale closing records of a longer body (no second body), and were
+  refused as `trailing_bytes` under the former bound of 8 until 2026-09-29; six of them now bake
+  (`docs/verification/lod-overlay.md`, 2026-09-29 entry). A negative group material index (156 vanilla bodies,
   one ad-sign group each) is refused as `material_outside_table` before the collapse instead
   of the former `IndexError`.
 - **Mixed effects.** `lod_atlas.collapse` groups the opaque materials by effect file and emits
@@ -1197,7 +1200,7 @@ evidence under `verification/results/lod-overlay-batch/batch-dryrun/`.
   census-level enumeration of that root (`mod_enumeration_out.txt`) finds 2,974 mod-catalogue
   winners (1,274 `.bob`, 167 `.pbb`, 1,482 `.pbd`, 51 `.bod`), 444 of them eligible (all `.bob`;
   435 ships, 9 stations; 82 in the `.pbb`-only census), 86 with tolerated trailing bytes (68
-  eligible), 8 refused `trailing_bytes`, 57 eligible mixed-effect bodies, 4 `occlusion_mismatch`,
+  eligible), 8 refused `trailing_bytes` (2026-09-23, under the former bound of 8; accepted since 2026-09-29), 57 eligible mixed-effect bodies, 4 `occlusion_mismatch`,
   and 1,020 eligible bodies overall (593 at 1024², 427 at 2048², ~11.3 GB of atlases estimated).
 - **Text bodies (2026-09-23, `verification/results/lod-overlay-batch/text-bodies/`, measured).**
   With `bob1.parse_text` on the engine rule the census of the same vanilla+mod root reads 4,613

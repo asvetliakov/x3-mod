@@ -1,0 +1,3 @@
+members old 25 new 25 identical 25; cat identical True; dat identical True
+trailing per body {'others/argon_gate_destroyed': 0, 'others/terran_catapult_gate': 0, 'ships/props/argon_m1turretA_base': 1, 'ships/props/argon_m1turretA_tb_weapon': 1, 'ships/props/argon_m1turretB_socket': 1}
+dat sha256 fc4a85b31fe07168

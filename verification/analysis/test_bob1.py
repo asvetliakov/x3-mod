@@ -126,6 +126,14 @@ class Bob1Format(unittest.TestCase):
         for name, bad in cases.items():
             with self.subTest(name), self.assertRaises(bob1.FormatError):
                 bob1.parse(bad)
+        tail = data + b'OB' * 3000                        # any tail is accepted with max_trailing=None
+        self.assertEqual(bob1.parse(tail, None)['trailing_bytes'], 6000)
+        self.assertEqual(bob1.serialise(bob1.parse(tail, None)), data)
+        with self.assertRaises(bob1.FormatError):
+            bob1.parse(tail, 5999)
+        for bad in (data[:-4], data[:-8], data[:-4] + b'x' * 4000):   # no /BOB end marker, truncated
+            with self.subTest(len(bad)), self.assertRaises(bob1.FormatError):
+                bob1.parse(bad, None)
         tree = synthetic_tree()
         bob1.lods(tree)[0]['weights'] = [[(0, 1)]]
         with self.assertRaises(bob1.FormatError):
@@ -1095,6 +1103,35 @@ class AtlasCensus(unittest.TestCase):
         self.assertIn('not float32', text)
         self.assertIn('span   1024x1024: tiles=2 fits_at_full_density=yes scale=1.0000 split_or_clamp_faces=0/6', text)
         self.assertIn('period 1024x1024: tiles=2 fits_at_full_density=yes scale=1.0000 split_or_clamp_faces=2/6', text)
+
+    def cli_on_tail(self, main):
+        """main() of atlas_census / body_materials on a body with 3000 stray bytes after /BOB prints what
+        it prints for the clean body (the tail is ignored, as by 0x00481aa0); a body cut before /BOB raises."""
+        body = bob1.serialise(atlas_tree())
+        with tempfile.TemporaryDirectory() as folder:
+            game = Path(folder)
+            write_catalogue(game / '01.cat', [
+                ('dds/a_diff.pck', gzip.compress(dds_header(256, 256), mtime=0)),
+                ('dds/b_diff.pck', gzip.compress(dds_header(128, 128), mtime=0)),
+                ('dds/b_light.pck', gzip.compress(dds_header(128, 128, b'DXT5'), mtime=0))])
+            write_catalogue(game / '02.cat', [('objects/ships/x/b.pbb', gzip.compress(body, mtime=0)),
+                                              ('objects/ships/x/t.pbb', gzip.compress(body + b'/PAR/BOD/BOB' * 250, mtime=0)),
+                                              ('objects/ships/x/cut.pbb', gzip.compress(body[:-4], mtime=0))])
+            outs = []
+            for name in ('ships/x/b', 'ships/x/t'):
+                out = io.StringIO()
+                with contextlib.redirect_stdout(out):
+                    self.assertEqual(main([name, '--game', str(game)]), 0)
+                outs.append(out.getvalue())
+            self.assertEqual(outs[1].replace('ships/x/t.pbb', 'ships/x/b.pbb'), outs[0])
+            with self.assertRaisesRegex(bob1.FormatError, 'truncated'), contextlib.redirect_stdout(io.StringIO()):
+                main(['ships/x/cut', '--game', str(game)])
+
+    def test_atlas_census_accepts_trailing_bytes(self):
+        self.cli_on_tail(atlas_census.main)
+
+    def test_body_materials_accepts_trailing_bytes(self):
+        self.cli_on_tail(body_materials.main)
 
 
 def atlas_tree_pre():

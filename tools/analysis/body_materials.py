@@ -441,7 +441,7 @@ def main(argv=None):
         else:
             entry = bob1.resolve_body(assets, name)
             data, origin = assets.read_entry(entry), f'{entry["source"]}:{entry["path"]}'
-        tree = bob1.parse(data)
+        tree = bob1.parse(data, None)          # any tail after /BOB, as the engine parser 0x00481aa0
         n = len(bob1.lods(tree))
         if a.lod is not None and not 0 <= a.lod < n:
             raise SystemExit(f'{name}: --lod {a.lod} outside 0..{n - 1}')

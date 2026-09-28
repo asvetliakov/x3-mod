@@ -261,10 +261,11 @@ overlay slot is the highest catalogue and binary beats text inside a layer); the
 its source_member; --binary-only leaves text bodies out. parse_text follows the engine's text
 loader 0x00483f20 (body-text-loader.md), so the member loads into the model the game builds from
 the text: engine normals, per-record position scale, no tangent records (a bump-mapped text body
-draws with a zero tangent basis in vanilla too). Refusal reasons: text_parse_error (a text body
-outside that grammar; a MATERIAL3 text body is mat3), ambiguous_body_ext (both a binary and a text member), trailing_bytes
-(more than MAX_TRAILING stray bytes after /BOB; up to MAX_TRAILING are tolerated with a
-warning, the parser 0x00481aa0 returns at /BOB and never reads them), material_outside_table
+draws with a zero tangent basis in vanilla too). Stray bytes after the /BOB end marker of a
+binary body are accepted in any number, counted (trailing) and warned, and never written: the
+parser 0x00481aa0 returns at /BOB and never reads them (body-format-bob1.md); everything before
+them must still parse, so a truncated body or a missing /BOB is parse_error. Refusal reasons: text_parse_error (a text body
+outside that grammar; a MATERIAL3 text body is mat3), ambiguous_body_ext (both a binary and a text member), material_outside_table
 (a group material index past the table; since 2026-09-24 a negative index -N is a texture animation that
 --collapse atlas maps onto its material and bakes with the start frame, lod_atlas.animated_record), occlusion_mismatch (second UV set with
 differing occlusion decals inside one merged group), mat3, no_opaque, dominant_slot_missing
@@ -402,7 +403,7 @@ def text_compiles(tree):
         return False
 
 
-MAX_TRAILING = 8            # stray bytes after /BOB tolerated with a warning (86 of 94 failing mod bodies carry 1-2)
+MAX_TRAILING = None         # stray bytes after /BOB: any number tolerated, counted and warned (the engine never reads them)
 DISPLAY = (1920, 1080)
 REFERENCE = (1280, 768)     # lod-selection.md reference frame of the threshold metric
 LIVE_MARKERS = ('valid', 'legacy')
@@ -1436,12 +1437,7 @@ def plan_body(assets, name, threshold, placement=None, force_threshold=False, co
     else:
         if bob1.kind(data) != 'BOB1':
             raise SystemExit(f'{name}: {entry["path"]} is not a BOB1 body (magic {data[:4]!r})')
-        try:
-            tree = bob1.parse(data, MAX_TRAILING)
-        except bob1.FormatError as exc:
-            if 'trailing bytes' in str(exc):
-                raise SystemExit(f'{name}: {exc} (more than the {MAX_TRAILING} the parser tolerates)') from None
-            raise
+        tree = bob1.parse(data, MAX_TRAILING)
         trailing = tree.get('trailing_bytes', 0)
         if bob1.serialise(tree) != (data[:len(data) - trailing] if trailing else data):
             raise SystemExit(f'{name}: writer does not reproduce this body byte for byte; refusing')
@@ -1583,8 +1579,8 @@ def describe(plan, out=None):
     if plan.get('source_member'):
         print(f'  text body compiled to BOB1 (bob1.parse_text); written as {plan["member"]}', file=out)
     if plan.get('trailing_bytes'):
-        print(f'  warning: {plan["trailing_bytes"]} stray byte(s) after /BOB in the source member (tolerated up to'
-              f' {MAX_TRAILING}; the engine parser returns at /BOB); the overlay member carries none', file=out)
+        print(f'  warning: {plan["trailing_bytes"]} stray byte(s) after /BOB in the source member (tolerated;'
+              ' the engine parser returns at /BOB); the overlay member carries none', file=out)
     if plan.get('guard_waived'):
         print(f'  compact guard waived: T_pad {plan["ladder"][plan["pad_index"]]["value"]} is below T_1'
               f' {plan["before"][1]["value"]}; C is the full LOD 0 geometry, so C drawing at Low..High in the'
@@ -2342,7 +2338,7 @@ def bake_rows(game, markers, rows, atlas_opts, jobs, mods, package, offset, tota
     return [done[r['name']] for r in rows]
 
 
-BAKE_REASONS = (('recipe_mismatch', 'recipe_mismatch'), ('texel_floor', 'texel_floor'), ('trailing bytes', 'trailing_bytes'), ('text_parse_error', 'text_parse_error'),
+BAKE_REASONS = (('recipe_mismatch', 'recipe_mismatch'), ('texel_floor', 'texel_floor'), ('text_parse_error', 'text_parse_error'),
                 ('writer does not reproduce', 'writer_mismatch'), ('MAT3 body', 'mat3'),
                 ('outside the material table', 'material_outside_table'), ('loose file', 'loose_winner'),
                 ('already exists in', 'atlas_name_taken'), ('references', 'group_too_large'),

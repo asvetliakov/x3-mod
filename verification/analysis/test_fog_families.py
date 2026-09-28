@@ -16,6 +16,8 @@ import numpy as np
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'tools/analysis'))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import bob1  # noqa: E402
 import fog_families as ff  # noqa: E402
 import sector_fog_census as sfc  # noqa: E402
 
@@ -115,6 +117,19 @@ class PaletteRuleTests(unittest.TestCase):
         self.assertGreaterEqual(ff.profile_id('a'), 0x10000)
         self.assertTrue(ff.valid_name('x' * 31))
         self.assertFalse(ff.valid_name('x' * 32) or ff.valid_name('') or ff.valid_name('bad\x07') or ff.valid_name('a"b') or ff.valid_name('a\\b'))
+
+
+class BinaryBodyTail(unittest.TestCase):
+    def test_stray_bytes_after_bob_are_ignored_truncation_refused(self):
+        # The engine parser 0x00481aa0 returns at /BOB: a tail of any length is ignored; a body cut
+        # before /BOB still raises.
+        from test_bob1 import atlas_tree
+        body = bob1.serialise(atlas_tree())
+        clean = ff.body_materials(body, 'objects/x/b.pbb')
+        self.assertEqual(clean, [('argon.fx', 'a_diff.tga'), ('argon.fx', 'b_diff.tga')])
+        self.assertEqual(ff.body_materials(body + b'/PAR/BOD/BOB' * 400, 'objects/x/b.pbb'), clean)
+        with self.assertRaisesRegex(bob1.FormatError, 'truncated'):
+            ff.body_materials(body[:-4], 'objects/x/b.pbb')
 
 
 @unittest.skipUnless((ff.bob1.DEFAULT_GAME / '01.cat').exists(), 'installed game catalogues unavailable')
