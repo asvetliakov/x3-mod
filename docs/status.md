@@ -5,39 +5,39 @@ marked completed on 2026-09-26 by the user's decision ([goals](goals.md)). The a
 
 ## Installed build
 
-Bottle **X3**, **CrossOver Preview.app**. Run100 = DLL SHA-256
-`20680908f5c768ad2ab131e7e10495f241b4202a785fe2c0bb503bcc74d85da7` (57,343,854 bytes, RelWithDebInfo, unstripped; not a
-release build), built once from clean main `a627f5b5` in the detached worktree `/tmp/x3-run100-candidate/src`
-(retained: `/tmp/x3-run100-candidate/build/`). Installed 2026-09-28 05:35
-([qualification](../verification/results/run100-candidate-qualification.json): 0 warnings, x87 audit 0, config and
-shader checks, host suite 274 / 2,847 / 0, temporal-pass record reused (`passed: true`, 20 LUMA_LOCK row kinds), dry runs
-132 / 133 variables differing by `X3M_TAA_LUMA_LOCK` only; [install](../verification/results/run100-candidate-install.json)).
-The game-directory `x3m.ini` is still the 0.5.2 template (the new commented `taa_luma_lock` entry arrives with the next
-release install). The bottle's `cxbottle.conf` keeps the two GStreamer variables (`b06979d1…`).
+Bottle **X3**, **CrossOver Preview.app**. Run101 = **release 0.6.0 (stripped)** DLL SHA-256
+`8b164ee11446bc3f0c63ff5eb8f9cfb07a18f2526231d2509ffbaec6738b99df` (39,472,075 bytes; `d3d9.debug` and the unstripped
+build stay beside it at `/tmp/x3-run101-candidate/build/`), built once from clean main `018d7e49` by
+`tools/release/release.py` (the DLL inside `x3m-0.6.0.zip`, sha256 `b52ba96c…`, 58,290,262 bytes, at
+`/tmp/x3m-release-0.6.0/`; contents d3d9.dll, x3m.ini, x3m-regenerate.exe, README.txt;
+[release record](../verification/results/release-0.6.0.json)). Installed 2026-09-28 05:57 with the 0.6.0 template
+`x3m.ini` (`d0f03f88…`, the previous one was the unmodified 0.5.2 template) and the 0.6.0 `x3m-regenerate.exe`
+(`050369cf…`) plus the macOS `x3m-regenerate` beside it ([qualification](../verification/results/run101-candidate-qualification.json),
+[install](../verification/results/run101-candidate-install.json)). The bottle's `cxbottle.conf` keeps the two GStreamer
+variables (`b06979d1…`).
 
-Rollback chain: Run99 `1adabd03…` at `/tmp/x3-run99-candidate/build/d3d9.dll` (lock section 11 form, flown in Run 99 A),
-then Run98 `d6f6b47a…` (release 0.5.2 stripped, accepted in Run 98 A).
+Rollback chain: Run100 `20680908…` at `/tmp/x3-run100-candidate/build/d3d9.dll` (lock section 12 opt-in, accepted in
+Run 100 A), then Run99 `1adabd03…`, then Run98 `d6f6b47a…` (release 0.5.2).
 
-Run100 carries, beyond Run98, the **TAA luminance lock**, opt-in `--taa-luma-lock 16` (`taa_luma_lock = 16,0.25,3` in
-`x3m.ini`; needs the thin region and the far stabiliser; [design](architecture/taa-luminance-lock.md), ledger
-[temporal-resolve.md](verification/temporal-resolve.md) "Section 10/11 build"): a far pixel whose residual against
-the reprojected history flips sign on two consecutive frames locks for 16 frames at the far weight, carried across pans
-by a sub-texel offset; since section 12 (Run100) locks also form under a camera pan on world-static content and far
-pixels keep the 7x7 box under a pan; every other far pixel runs at the base weight, so distant hull plates pan sharp
-(confirmed in Run 99 A) while struts stay held. Off = the shipped program bit for bit. Also on main since Run98: the baker strut widening as an
-opt-in `--widen` flag (default off, parked), the far-weight A/B ledger (run351/352), and the CrossOver Preview note
-for starting `x3m-regenerate.exe` (FEX drops the exe name for `C:\X3\x3m-regenerate.exe`; start it by its Z: path).
+0.6.0 carries, beyond 0.5.2, the **TAA luminance lock, on by default** (`taa_luma_lock = 16,0.25,3`; `0` turns it off;
+[design](architecture/taa-luminance-lock.md) sections 0-12, ledger [temporal-resolve.md](verification/temporal-resolve.md)):
+a far pixel whose residual against the reprojected history flips sign on two consecutive frames, at rest or under a
+camera pan, locks for 16 frames at the far stabiliser's weight and is carried across pans; every other far pixel runs
+at the base weight, so distant hull plates pan sharp while struts stay held (Run 100 A: 25-50 % sharper under pan,
+rest flicker 2.4-2.9x the old blanket, not noticed by the user). The far stabiliser's weight is now the locked weight
+and its ramp the eligibility band; the thin region stays. Also since 0.5.2: the baker strut widening as an opt-in
+`--widen` flag (parked), and the CrossOver Preview note for starting `x3m-regenerate.exe` by its Z: path (FEX drops
+the exe name for `C:\X3\x3m-regenerate.exe`; the name stays by user decision).
 
 ## Main beyond the installed build
 
-Nothing: main `a627f5b5` is the installed commit (documentation follows it).
+Nothing: main `018d7e49` is the installed and released commit (documentation follows it).
 
 ## Run queue
 
-Run 100 A queued (2026-09-28): the lock A/B with `--taa-debug` on the run353 stand, default vs `--taa-luma-lock 16`, F8 at
-rest, mid-pan and after the pan: [run queue](verification/user-runs.md). Run 99 A: the lock fixed the pan blur; the far
-spacedock's struts shimmered under the pan (creation was closed under the pan), fixed by section 12. The far stabiliser default stays 0.985 until
-the lock is judged; run351 (0.95) has no user verdict yet, run352 (0.90) shimmered thin lines.
+Run 101 A queued (2026-09-28): one plain flight on release 0.6.0 (lock on by default), stations at rest and under pan,
+speech, alt-tab: [run queue](verification/user-runs.md). Run 100 A accepted the lock; Run 99 A found the pan-creation gap
+that section 12 closed.
 
 ## Open items
 

@@ -1,0 +1,124 @@
+{
+  "schema": 2,
+  "version": "0.6.0",
+  "complete": true,
+  "toolchain": {
+    "mingw_gcc": "i686-w64-mingw32-gcc (GCC) 16.2.0",
+    "mingw_objcopy": "GNU objcopy (GNU Binutils) 2.47.20260726",
+    "cmake": "cmake version 4.4.3",
+    "python": "3.9.6 (/Library/Developer/CommandLineTools/usr/bin/python3)"
+  },
+  "commit": "018d7e4923338169a2bf61e7678853eb68135bca",
+  "dirty": false,
+  "dirty_files": [],
+  "generate_check": "PASS",
+  "dll_warnings": 0,
+  "x87": {
+    "result": "PASS",
+    "violations": 0,
+    "reachable_functions": 718
+  },
+  "source_commit_marker": "018d7e4923338169a2bf61e7678853eb68135bca",
+  "strip": {
+    "result": "PASS",
+    "sections_compared": [
+      ".text",
+      ".data",
+      ".rdata",
+      ".xdata",
+      ".bss",
+      ".edata",
+      ".idata",
+      ".tls",
+      ".rsrc",
+      ".reloc"
+    ],
+    "exports": 17,
+    "debug_sections_removed": [
+      ".debug_aranges",
+      ".debug_info",
+      ".debug_abbrev",
+      ".debug_line",
+      ".debug_frame",
+      ".debug_str",
+      ".debug_line_str",
+      ".debug_loclists",
+      ".debug_rnglists"
+    ],
+    "debuglink": true,
+    "x87": {
+      "result": "PASS",
+      "violations": 0,
+      "reachable_functions": 718
+    },
+    "method": "i686-w64-mingw32-objcopy --only-keep-debug; --strip-debug --add-gnu-debuglink"
+  },
+  "dll_unstripped": {
+    "path": "/private/tmp/x3m-release-0.6.0/unstripped/d3d9.dll",
+    "sha256": "505a510f5a3647b3965704aa3778fe98a5dc35b2f50e9034f7e99e603c332f06",
+    "bytes": 57343354
+  },
+  "debug_file": {
+    "path": "/private/tmp/x3m-release-0.6.0/d3d9.debug",
+    "sha256": "4819ddb63ff613848c23b91be119802d86ec69a53e18d1fa5a1e95450e35304f",
+    "bytes": 18801018
+  },
+  "dll": {
+    "path": "/private/tmp/x3m-release-0.6.0/d3d9.dll",
+    "sha256": "8b164ee11446bc3f0c63ff5eb8f9cfb07a18f2526231d2509ffbaec6738b99df",
+    "bytes": 39472075
+  },
+  "regenerate_source": "built",
+  "regenerate_windows_lock": {
+    "lock_wait_seconds": 2.915999999998642e-06,
+    "child_elapsed_seconds": 87.11558975,
+    "exit_code": 0
+  },
+  "regenerate": {
+    "x3m-regenerate": {
+      "sha256": "7802eee9d2cb50878eefebe8e4d3f0708db0f23bdf8d4d7cb951fd7c7b57223b",
+      "bytes": 12217152
+    },
+    "x3m-regenerate.exe": {
+      "sha256": "050369cf4da82ff99a4544f03ad62dee554b064fd3896afad0a08ae6348048b7",
+      "bytes": 29676309
+    }
+  },
+  "zip": {
+    "path": "/private/tmp/x3m-release-0.6.0/x3m-0.6.0.zip",
+    "sha256": "b52ba96ce68ed0dc50a7ab7bb42a0e54d3d67234a82d5b2ab6107d9104e131e0",
+    "bytes": 58290262,
+    "entries": [
+      {
+        "name": "d3d9.dll",
+        "bytes": 39472075,
+        "sha256": "8b164ee11446bc3f0c63ff5eb8f9cfb07a18f2526231d2509ffbaec6738b99df"
+      },
+      {
+        "name": "x3m.ini",
+        "bytes": 16186,
+        "sha256": "d0f03f88859d8ca2161416063f734cc420a0e5e38951dc178cf5df23c0db3649"
+      },
+      {
+        "name": "x3m-regenerate.exe",
+        "bytes": 29676309,
+        "sha256": "050369cf4da82ff99a4544f03ad62dee554b064fd3896afad0a08ae6348048b7"
+      },
+      {
+        "name": "README.txt",
+        "bytes": 2476,
+        "sha256": "727b02563cefecee930d972d1319842e982f9880be4b5f474a01baf295a809e9"
+      }
+    ]
+  },
+  "wall_seconds": {
+    "tree": 0.0,
+    "config": 0.0,
+    "dll": 49.1,
+    "regenerate_host": 56.8,
+    "regenerate_windows": 91.3,
+    "regenerate": 148.1,
+    "package": 1.6,
+    "total": 199.0
+  }
+}

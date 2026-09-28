@@ -1,0 +1,59 @@
+{
+ "schema": 1,
+ "candidate": {
+  "commit": "018d7e49",
+  "commit_full": "018d7e4923338169a2bf61e7678853eb68135bca",
+  "checkout": "/Users/asvetl/x3-mod (clean tree; built by tools/release/release.py into /tmp/x3m-release-0.6.0/build-release, stripped to /tmp/x3m-release-0.6.0/d3d9.dll)",
+  "dll": "/tmp/x3-run101-candidate/build/d3d9.dll (copy of the shipped stripped DLL; d3d9.debug and d3d9-unstripped.dll beside it)",
+  "sha256": "8b164ee11446bc3f0c63ff5eb8f9cfb07a18f2526231d2509ffbaec6738b99df",
+  "bytes": 39472075,
+  "embedded_marker": "X3M_SOURCE_COMMIT=018d7e49\u2026 (once); version=0.6",
+  "configuration": "RelWithDebInfo, DWARF stripped for shipping (release.py strip identity check)",
+  "toolchain": "cmake/mingw-i686.cmake; i686-w64-mingw32-gcc 16.2.0; cmake 4.4.3; binutils objcopy",
+  "build_warnings": 0,
+  "supersedes": "Run100 20680908\u2026 (a627f5b5, lock opt-in section 12), then Run99 1adabd03\u2026"
+ },
+ "scope": "Version 0.6.0 = the TAA luminance lock on by default (5663c006: schema default 16,0.25,3, launcher default, template ;taa_luma_lock = 16,0.25,3; --taa-luma-lock 0 or taa_luma_lock = 0 off; far stabiliser = the locked weight + eligibility band, thin region stays) on top of the section-12 lock flown opt-in as Run 100 A; 018d7e49 changes only the project version and the template header. No shader change since a627f5b5.",
+ "release": {
+  "record": "verification/results/release-0.6.0.json",
+  "zip": "/private/tmp/x3m-release-0.6.0/x3m-0.6.0.zip",
+  "zip_sha256": "b52ba96ce68ed0dc50a7ab7bb42a0e54d3d67234a82d5b2ab6107d9104e131e0",
+  "zip_bytes": 58290262,
+  "entries": [
+   "d3d9.dll",
+   "x3m.ini",
+   "x3m-regenerate.exe",
+   "README.txt"
+  ]
+ },
+ "x87_audit": {
+  "result": "PASS",
+  "violations": 0,
+  "reachable_functions": 718
+ },
+ "config_check": "generate.py --check PASS 240 settings, 92 in the template (release.py step 2; also on main after the cherry-pick)",
+ "shader_check": "not rerun: git diff a627f5b5..018d7e49 touches no shader source (schema, launcher, template, version only); the 46-program --check passed on a627f5b5 (Run100)",
+ "host_suite": {
+  "note": "run on the default-change worktree (0b883bbb, identical production content to 5663c006) by its agent: 274 modules, 2,847 tests, 0 failing; not rerun on 018d7e49 (version string only)",
+  "modules": 274,
+  "tests": 2847,
+  "failures": 0
+ },
+ "temporal_pass_reused": {
+  "record": "verification/results/bottle-X3/temporal-pass-summary.json",
+  "passed": true,
+  "rows": "20 LUMA_LOCK row kinds, section 12 build (a2393384)"
+ },
+ "dry_run": {
+  "default_vars": 131,
+  "default_lock": "X3M_TAA_LUMA_LOCK=16,0.25,3 sent by default",
+  "player_vars": 2,
+  "vanilla_lock": "absent",
+  "files": "/tmp/x3-run101-candidate/dry-*.out"
+ },
+ "flight_evidence": "Run 100 A (run355/356): the same lock, opt-in, accepted by the user; docs/verification/temporal-resolve.md 'Run 100 A'",
+ "verdict": "qualified for install as release 0.6.0; the default-on lock was flown opt-in in Run 100 A",
+ "installed": "see run101-candidate-install.json",
+ "native_windows": "not verified",
+ "producer": "main session"
+}

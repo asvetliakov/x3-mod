@@ -1,0 +1,49 @@
+{
+ "candidate": {
+  "dll": "/tmp/x3-run101-candidate/build/d3d9.dll",
+  "sha256": "8b164ee11446bc3f0c63ff5eb8f9cfb07a18f2526231d2509ffbaec6738b99df",
+  "bytes": 39472075,
+  "commit": "018d7e49",
+  "qualification": "verification/results/run101-candidate-qualification.json",
+  "release": "x3m-0.6.0.zip (stripped DLL; verification/results/release-0.6.0.json)"
+ },
+ "command": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3-run101-candidate/build/d3d9.dll; then unzip -o x3m-0.6.0.zip x3m.ini x3m-regenerate.exe into the game directory and cp /tmp/x3m-release-0.6.0/regenerate/x3m-regenerate (macOS build) beside them",
+ "cwd": "/Users/asvetl/x3-mod",
+ "exit": 0,
+ "installed_at": "2026-09-28T05:57+04:00",
+ "installed": {
+  "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
+  "sha256": "8b164ee11446bc3f0c63ff5eb8f9cfb07a18f2526231d2509ffbaec6738b99df",
+  "bytes": 39472075,
+  "verified": "sha256 and size read back after install; candidate hash equals the zip entry; game_guard [] before"
+ },
+ "config_template": {
+  "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/x3m.ini",
+  "sha256": "d0f03f88859d8ca2161416063f734cc420a0e5e38951dc178cf5df23c0db3649",
+  "source": "x3m-0.6.0.zip x3m.ini (header 0.6.0; ;taa_luma_lock = 16,0.25,3)",
+  "previous": "0.5.2 template 9b9a9bd2\u2026 (unmodified by the user, verified against the 0.5.2 zip before overwriting; kept at /tmp/x3-run101-candidate/x3m.ini.previous)"
+ },
+ "regenerate": {
+  "x3m-regenerate.exe": {
+   "sha256": "050369cf4da82ff99a4544f03ad62dee554b064fd3896afad0a08ae6348048b7",
+   "previous": "Sep 25 build 7eff9587\u2026, kept at /tmp/x3-run101-candidate/x3m-regenerate.exe.previous"
+  },
+  "x3m-regenerate (macOS)": {
+   "sha256": "7802eee9d2cb50878eefebe8e4d3f0708db0f23bdf8d4d7cb951fd7c7b57223b"
+  },
+  "note": "under CrossOver Preview start the exe by its Z: path (docs/user/regenerate.md)"
+ },
+ "unchanged": {
+  "X3AP.exe": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+  "cxbottle.conf": "b06979d14e75100b069fcbb3fceed9034431f872ad217a6c92a151542cf7c82f"
+ },
+ "previous": {
+  "dll": "/tmp/x3-run100-candidate/build/d3d9.dll",
+  "sha256": "20680908f5c768ad2ab131e7e10495f241b4202a785fe2c0bb503bcc74d85da7",
+  "bytes": 57343854,
+  "rollback": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3-run100-candidate/build/d3d9.dll",
+  "then": "Run99 1adabd03\u2026 /tmp/x3-run99-candidate/build/d3d9.dll; Run98 d6f6b47a\u2026 (release 0.5.2)"
+ },
+ "run": "Run 101 A queued: a plain flight on release 0.6.0 (lock on by default) from the launcher or the CrossOver shortcut",
+ "producer": "main session (this record)"
+}
