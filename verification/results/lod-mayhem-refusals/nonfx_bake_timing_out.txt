@@ -1,0 +1,4 @@
+bodies 115; classic records 278; classic_view 9.8 ms in total (0.08 ms per body, 1.0 % of read + parse 952 ms); texture decodes 0
+  3.64 ms  classic records 1  read + parse 0 ms  ships/khaak/khaak_cluster_models/00940
+  0.24 ms  classic records 48  read + parse 2 ms  ships/x3ap/props/91turret_socket
+  0.19 ms  classic records 48  read + parse 1 ms  ships/x3ap/props/hugeturret_socket

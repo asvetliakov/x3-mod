@@ -1,0 +1,14 @@
+bodies with a merged classic material: 49; conditions 56 (14 light-0 directions x 4 views)
+rebuilt atlases hash like the baked members: 49 of 49
+shape (diffuse, lighting, original technique, tangents, merged technique, constants): bodies, materials, tile texels; max normal angle; formula max / mean; total max / mean; alpha max / mean
+  textured | lit | BUMPMAP_LOW | declared, tangent records | BUMPMAP | Kd 1 Ks 1 p 31: bodies 45, materials 45, texels 8896816; angle 0.29 deg; formula 4.47 / 0.064; total 100.69 / 3.556; alpha 0.00 / 0.000
+  textured | lit | BUMPMAP_LOW | declared, zero tangents | BUMPMAP | Kd 1 Ks 1 p 31: bodies 45, materials 45, texels 8896816; angle 0.00 deg; formula 0.00 / 0.000; total 137.57 / 3.603; alpha 0.00 / 0.000
+  textured | lit | DEFAULT | declared, tangent records | BUMPMAP | Kd 1 Ks 1 p 31: bodies 45, materials 51, texels 6708784; angle 1.15 deg; formula 11.92 / 0.251; total 114.40 / 0.725; alpha 17.09 / 0.000
+  textured | lit | DEFAULT | declared, tangent records | DEFAULT | Kd 1 Ks 1 p 31: bodies 2, materials 2, texels 144640; angle 0.00 deg; formula 0.00 / 0.000; total 22.27 / 0.540; alpha 0.00 / 0.000
+  textured | lit | DEFAULT | declared, zero tangents | BUMPMAP | Kd 1 Ks 1 p 31: bodies 45, materials 51, texels 6708784; angle 0.00 deg; formula 0.00 / 0.000; total 117.63 / 0.612; alpha 17.09 / 0.000
+  textured | lit | DEFAULT | declared, zero tangents | DEFAULT | Kd 1 Ks 1 p 31: bodies 2, materials 2, texels 144640; angle 0.00 deg; formula 0.00 / 0.000; total 22.27 / 0.540; alpha 0.00 / 0.000
+  untextured | lit | DEFAULT | declared, tangent records | BUMPMAP | Kd 1 Ks 1 p 31: bodies 4, materials 4, texels 3072; angle 1.15 deg; formula 9.66 / 1.107; total 9.66 / 1.107; alpha 0.00 / 0.000
+  untextured | lit | DEFAULT | declared, tangent records | DEFAULT | Kd 1 Ks 0 p 11: bodies 2, materials 2, texels 704; angle 0.00 deg; formula 0.00 / 0.000; total 0.00 / 0.000; alpha 0.00 / 0.000
+  untextured | lit | DEFAULT | declared, zero tangents | BUMPMAP | Kd 1 Ks 1 p 31: bodies 4, materials 4, texels 3072; angle 0.00 deg; formula 0.00 / 0.000; total 0.00 / 0.000; alpha 0.00 / 0.000
+  untextured | lit | DEFAULT | declared, zero tangents | DEFAULT | Kd 1 Ks 0 p 11: bodies 2, materials 2, texels 704; angle 0.00 deg; formula 0.00 / 0.000; total 0.00 / 0.000; alpha 0.00 / 0.000
+sha256 of this script: 17fe9679cd676c74

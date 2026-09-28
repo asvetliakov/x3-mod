@@ -1,0 +1,26 @@
+ship/station bodies of the record: 1883; with a classic record in the material table: 183
+A. formerly non_effect_material bodies read: 167
+   BUMPMAP_LOW / declared / records: faces 5513, bodies 49
+   BUMPMAP_LOW / not declared / no records: faces 50130, bodies 4
+   BUMPMAP_LOW / not declared / records: faces 1272, bodies 1
+   DEFAULT / declared / no records: faces 54, bodies 1
+   DEFAULT / declared / records: faces 25977, bodies 54
+   DEFAULT / not declared / no records: faces 444, bodies 40
+   DEFAULT / not declared / records: faces 5435, bodies 52
+   bodies whose record 0 draws a tilted classic face (BUMPMAP_LOW, declared, records): 49; declaration from: {'effect bump map': 47, 'classic bump name': 2}
+   BUMPMAP_LOW without the declaration: ships/stellaris/tp_machineShuttle/hullB (binary body)
+   BUMPMAP_LOW without the declaration: ships/xenon/xenon_m7_h/hull (text body)
+   BUMPMAP_LOW without the declaration: ships/xenon/xenon_m7_h/hull_no_orb (text body)
+   BUMPMAP_LOW without the declaration: ships/xenon/xenon_m7_h/RedOrb (text body)
+   BUMPMAP_LOW without the declaration: ships/xenon/xenon_ts_f/hull (text body)
+B. bodies the tangent-declaration guard touches (no declaration, a BUMPMAP_LOW classic record and an effect material declaring t_BumpTexture): 0; baked by the installed record today: 0
+   bodies baked today with a classic record in the table: 9; of them with a classic record drawn by a visible record-0 group: 0
+   ships/argon/argon_M1
+   ships/argon/argonMdemo
+   ships/boron/boron_m8_aquata/hull
+   ships/split/split_TS_liquidstorage_L
+   ships/x3ap/boron/XTC_boron_m8
+   ships/x3ap/paranid/XTC_paranid_m7s
+   stations/station_scenes/tech/terraformer_hub_x
+   stations/x3tc/terran_quicklaunch
+   stations/x3tc/terran_torus_quicklaunch

@@ -1,0 +1,78 @@
+tool_sha256 before c312f060dde28ff1 after fe423f8cd8f5e5c2
+== 1. byte identity (bodies of the before bake)
+  identical ships/M8/Split_M8 members 5
+  identical ships/argon/argonMdemo members 5
+  identical ships/argon/argon_M1 members 5
+  identical ships/argon/argon_m3_albion_pride/hull members 5
+  identical ships/atf/atf_m2p_forseti/hull members 5
+  identical ships/atf/atf_m6_logich/hull members 5
+  identical ships/boron/boron_m8_aquata/hull members 5
+  identical ships/goner/XTC_goner_ts/hull members 5
+  identical ships/patch2_ships/xpshuttle members 5
+  identical ships/pirate/pirate_m1_polacca/hull members 5
+  identical ships/pirate/pirate_m2_exterminator/hull members 5
+  identical ships/pirate/pirate_m6_macana/hull members 5
+  identical ships/pirate/pirate_m7_marauder/hull members 5
+  identical ships/props/split_m1turretA_weapon members 5
+  DIFFERS   ships/split/split_TL members 5 differing: ['diffuse.pck']
+  identical ships/split/split_TS_liquidstorage_L members 5
+  DIFFERS   ships/teladi/teladi_M6 members 5 differing: ['diffuse.pck']
+  identical ships/terran/terran_m2_kyoto/hull members 5
+  identical ships/terran/terran_m3_falchion/hull members 5
+  identical ships/terran/terran_m4_shamshir/hull members 5
+  identical ships/usc/terran_m4 members 5
+  identical ships/usc/terran_m5 members 5
+  identical ships/x3ap/argon/PrideOfAlbion members 5
+  identical ships/x3ap/boron/XTC_boron_m8 members 5
+  identical ships/x3ap/paranid/XTC_paranid_m7s members 5
+  identical ships/x3ap/usc/XTC_usc_m2plus members 5
+  identical stations/station_scenes/tech/terraformer_hub_x members 5
+  DIFFERS   stations/trading_stations/teladi_trading_station_partA members 5 differing: ['diffuse.pck']
+  identical stations/x3ap/StockmarketBoardS members 5
+  identical stations/x3ap/torus/toruswreck_middle_front_antennas members 5
+  identical stations/x3tc/terran_quicklaunch members 5
+  identical stations/x3tc/terran_torus_quicklaunch members 5
+  identical stations/x3tc/torus_buildingmiddle members 5
+  identical stations/x3tc/torus_support members 5
+  identical 31 of 34
+== 2. outcome of the 167 ship/station bodies the installed record refuses non_effect_material
+  refused ships/stellaris/tp_machineShuttle/hullB: ['classic_unsupported'] every opaque material is a classic material the atlas does not reproduce ['BUMPMAP_LOW without the tangent declaration']; nothing to atlas
+  refused ships/xenon/xenon_m7_h/hull: ['classic_unsupported'] every opaque material is a classic material the atlas does not reproduce ['BUMPMAP_LOW without the tangent declaration']; nothing to atlas
+  refused ships/xenon/xenon_m7_h/hull_no_orb: ['classic_unsupported'] every opaque material is a classic material the atlas does not reproduce ['BUMPMAP_LOW without the tangent declaration']; nothing to atlas
+  refused ships/xenon/xenon_m7_h/RedOrb: ['classic_unsupported'] every opaque material is a classic material the atlas does not reproduce ['BUMPMAP_LOW without the tangent declaration']; nothing to atlas
+  refused ships/xenon/xenon_ts_f/hull: ['classic_unsupported'] every opaque material is a classic material the atlas does not reproduce ['BUMPMAP_LOW without the tangent declaration']; nothing to atlas
+  baked: 51
+  filtered classic_nothing_to_atlas: 82
+  filtered no_draw_gain: 29
+  refused classic_unsupported: 5
+  ships/props/cameradummy: member addon/06.cat:objects/ships/props/cameradummy.bob refuse [] filter ['classic_nothing_to_atlas'] baked False
+  stations/docks/M6dockCarrier_scene_dummy: member addon/01.cat:objects/stations/docks/M6dockCarrier_scene_dummy.pbb refuse [] filter ['no_draw_gain'] baked False
+  content bodies (neither helper_body nor classic_nothing_to_atlas): 85; of them baked 51, filtered {'no_draw_gain': 29}, refused {'classic_unsupported': 5}
+  baked: record-0 draws 244 -> merged draws 104
+  ten largest by record-0 draws (record 0 -> merged; atlas; merged materials; kept classic; bump atlas):
+     21 ->  3  1024  materials 1 (classic 0)  kept 1  bump yes  stations/docks/dock5portsdummy
+     11 ->  2  1024  materials 1 (classic 0)  kept 1  bump yes  stations/docks/dock5ports_arm_dummy
+     10 ->  2  1024  materials 2 (classic 1)  kept 0  bump yes  ships/x3ap/paranid/XTC_paranid_drone
+      8 ->  3  2048  materials 2 (classic 1)  kept 0  bump yes  ships/x3ap/usc/XTC_terran_tm
+      5 ->  2  1024  materials 2 (classic 1)  kept 0  bump yes  ships/stellaris/m1_machineFlagship/machine_01_flagship_bow
+      5 ->  2  1024  materials 2 (classic 1)  kept 0  bump yes  ships/stellaris/m1_machineFlagship/machine_01_flagship_mid1
+      5 ->  2  1024  materials 2 (classic 1)  kept 0  bump yes  ships/stellaris/m1_machineFlagship/machine_01_flagship_mid2
+      5 ->  2  2048  materials 2 (classic 1)  kept 0  bump yes  ships/stellaris/m1_machineFlagship/machine_01_flagship_mid3
+      5 ->  2  1024  materials 2 (classic 1)  kept 0  bump yes  ships/stellaris/m1_machineFlagship/machine_01_flagship_mid4
+      5 ->  2  1024  materials 2 (classic 1)  kept 0  bump yes  ships/stellaris/m1_machineFlagship/machine_01_flagship_stern
+  atlas sizes: {"1024": 25, "2048": 26}
+  atlas bytes (stored members, all slots): 80713052
+  bodies with a merged classic material: 49; with two or more: 0
+  bodies with a bump atlas: 51
+  kept classic groups by reason (materials): {'blended or alpha-tested (flags 0x8002)': 2}
+  kept light-bleed materials: 0
+== 3. written bodies
+  bodies whose own material records are unchanged: 51 of 51
+  merged classic materials with the constants of their source records and the opaque state: 49 of 49
+== 4. against the bake before the review fixes
+  baked before the fixes 55, after 51
+  no longer baked: ships/xenon/xenon_m7_h/RedOrb (merged draws were 1 of 5): refuse ['classic_unsupported'] filter [] every opaque material is a classic material the atlas does not reproduce ['BUMPMAP_LOW without the tangent declaration']; nothing to atlas
+  no longer baked: ships/xenon/xenon_m7_h/hull (merged draws were 1 of 5): refuse ['classic_unsupported'] filter [] every opaque material is a classic material the atlas does not reproduce ['BUMPMAP_LOW without the tangent declaration']; nothing to atlas
+  no longer baked: ships/xenon/xenon_m7_h/hull_no_orb (merged draws were 1 of 5): refuse ['classic_unsupported'] filter [] every opaque material is a classic material the atlas does not reproduce ['BUMPMAP_LOW without the tangent declaration']; nothing to atlas
+  no longer baked: ships/xenon/xenon_ts_f/hull (merged draws were 1 of 11): refuse ['classic_unsupported'] filter [] every opaque material is a classic material the atlas does not reproduce ['BUMPMAP_LOW without the tangent declaration']; nothing to atlas
+  no longer baked 4, reduced 0

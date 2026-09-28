@@ -161,13 +161,19 @@ tooling"; census: tools/analysis/atlas_census.py):
   detail-tiling-aware rewrite) never enter the atlas: their opaque materials keep their own groups,
   material and UVs (one draw per part and material, like light_bleed's kept groups) and are reported
   as kept_effects; a body whose opaque materials are all on such effects is refused excluded_effect.
-- NULL diffuse (t_DiffuseTexture NULL / "0" / empty): the tile's diffuse is NULL_DIFFUSE_TEXEL, black
-  and opaque. This is inferred, not measured: the engine binds a placeholder for a NULL texture, assumed
-  black by size (the NULL light-map placeholder's content is still open in
-  docs/reverse-engineering/hull-self-illumination.md), and the diffuse alpha 255 is chosen to match the
-  atlas background. No shipped effect material carries a diffuse colour parameter (only the scalar
-  g_MatDiffuseStrength; 1,131 ship/station bodies, 17,143 materials, measured 2026-09-24). Affected
-  parts measured in the 2026-09-24 dry bake: split_TL material 14 (every slot NULL, 76 faces, a solid
+- NULL diffuse (t_DiffuseTexture NULL / "0" / empty): the tile's diffuse is NULL_DIFFUSE_TEXEL, the texel of
+  dds/NONE_GRAY (132, 130, 132, opaque). Read from code (non-effect-materials.md section 7): an effect record's
+  diffuse id stays 0 for a NULL string (record +2 is zeroed at load, 0x00481f02; the parameter loop skips id 0,
+  0x004c06a6) and the per-draw binding takes the slot fallback 0x00606f70 = NONE_GRAY for id 0 (0x004c321d).
+  Until 2026-09-29 the tile was black (assumed by size). Scope of the change: 23 of the 1,079 bodies the
+  installed record bakes draw a non-alpha effect material with a NULL diffuse in their source record (measured
+  by scan, verification/results/lod-mayhem-refusals/nonfx_bake_null_diffuse_scan_out.txt: 18 Teladi and pirate
+  ships, split_TL, split_tl_elephant, teladi_trading_station_partA and partB); three of them were baked before
+  and after (split_TL, teladi_M6, teladi_trading_station_partA: the diffuse atlas differs, the other four
+  members are identical, measured); that the other 20 change in their diffuse atlas only is inferred. Nothing
+  was flown. No shipped effect material carries a diffuse colour parameter (only the scalar
+  g_MatDiffuseStrength; 1,131 ship/station bodies, 17,143 materials, measured 2026-09-24). Parts
+  measured in the 2026-09-24 dry bake: split_TL material 14 (every slot NULL, 76 faces, a solid
   tile), teladi_M6 material 27 (NULL diffuse + fx_illum_03 light-map trim, 40 faces) and
   teladi_trading_station_partA materials 26 (NULL diffuse + fx_windows_teladi_01, 48 faces) and 25
   (NULL diffuse + fx_illum_01). A tile whose every
@@ -207,6 +213,30 @@ tooling"; census: tools/analysis/atlas_census.py):
   jpg/tga members are decoded with Pillow
   (imported lazily; a missing Pillow refuses the body with a reason). The layout records
   the member each tile's textures came from (tile 'sources').
+- Classic (non-effect) materials (2026-09-29; docs/reverse-engineering/non-effect-materials.md): a MAT6 record
+  without the effect flag is drawn by the engine with the built-in standard_lighting effect (technique
+  BUMPMAP_LOW when a bump, cube or light map is set, else DEFAULT) and constants taken from the record words.
+  The baker plans on classic_view: every classic record the atlas reproduces becomes the equivalent
+  standard_lighting.fx effect material (classic_material: every constant of the classic parameter block
+  written out), diffuse = the record's texture or NONE_GRAY when it has none (the engine's fallback), light map
+  = map 2 or NULL. They form classes of their own, one merged material per constant set (classic_key), over
+  the body's one atlas set; no constant is averaged. In a model with the tangent declaration
+  (tangent_declared) a BUMPMAP_LOW record is lit with the normal 2 * rgb - 1 of the NONE_NORMAL placeholder
+  (about 49 degrees off the vertex normal where the group has tangent records): the merged material then
+  declares t_BumpTexture and draws BUMPMAP over the bump atlas, whose tiles hold that normal (CLASSIC_BUMP) for
+  the BUMPMAP_LOW records and the flat normal for the others; without the declaration it declares none and
+  draws DEFAULT (adding a bump parameter would switch the whole model to the tangent declaration). Kept as
+  their own groups (classic_kept, reported kept_classic with the reason; listed with kept_effects): blended
+  and alpha-tested records (the Materials row flags overwrite the file flags: 155.jpg is additive), two-sided
+  and point-filtered records, records with a cube map, a real bump map or a specular map that changes the
+  image, MAT5 records, texture animations, and records used by a part with flag 2 (g_Wrap). A body whose
+  opaque materials are all kept is refused classic_unsupported. Also kept: wireframe records, records with map 0
+  beside a bump map (the engine may replace the diffuse texture by map 0), a bump name that loads no file and
+  does not end in "bump" (the loader binds another placeholder), a BUMPMAP_LOW record of a model without the
+  tangent declaration (what a missing vertex input reads is undocumented: CLASSIC_MISSING_TANGENT_IS_ZERO) and,
+  with the bump atlas off, a record that draws the tilted normal. The census (classic_filter) filters a body of
+  such a table helper_body when record 0 draws no visible face, and classic_nothing_to_atlas when every visible
+  face is on an untextured or blended classic material.
 - 2026-09-24 change (dominant choice per effect, kept effects, NULL diffuse, solid tiles): tool_sha256 covers this
   file, so the next lod_overlay --batch --sync rebuilds every body instead of reusing it; bodies
   that baked before are byte-identical (no eligible body had a NULL diffuse or a dominant without
@@ -250,7 +280,8 @@ HIDDEN_PART = 0x8000       # part flag: skipped by the collection helper 0x0047d
 SLOT_NAMES = {'diffuse': b't_diffusetexture', 'light': b't_lightmaptexture', 'bump': b't_bumptexture',
               'specular': b't_speculartexture'}
 NULL_TEXEL = (0.0, 0.0, 0.0, 0.0)   # NULL light/specular map: black placeholder; alpha 0 like NONE_BLACK
-NULL_DIFFUSE_TEXEL = (0.0, 0.0, 0.0, 255.0)   # NULL diffuse: the black placeholder (inferred), opaque like the atlas background
+NULL_DIFFUSE_TEXEL = (132.0, 130.0, 132.0, 255.0)   # NULL diffuse: the NONE_GRAY fallback the engine binds for texture
+                                                    # id 0 on both draw paths (0x004c321d, 0x00606f70; DXT1 0x8410)
 SOLID_SIDE = BLOCK         # source side of a solid tile (every slot NULL): one DXT block
 SOLID_KEY = 2              # face key (tile, 0, 0, SOLID_KEY): a face of a solid tile, UVs clamped into it
 FORMATS = ('dxt', 'a8r8g8b8')
@@ -527,12 +558,23 @@ NAMED_PATH = 'textures\\{}'                       # +0x78 "textures\%s"
 DESKTOP = '\\Desktop\\'                           # 0x00564b9c: a path containing it skips every load
 MATERIALS_MEMBER = 'types/Materials.pck'          # 0x004f44a0 via 0x0046f450; addon\types wins (inferred)
 MPF_GENERATED = 0x800000                          # blank generated surface, no file (0x004f3950)
+# Flag names of the types/Materials flags column (name table 0x0054dbe0; non-effect-materials.md section 1)
+MPF = dict(MPF_NULL=0, MPF_ALPHATEST=1, MPF_DESTINATIONBLEND=2, MPF_ALPHABLEND=4, MPF_WIREFRAME=8, MPF_2SIDED=0x10,
+           MPF_TEXTURE_NOTSWAPABLE=0x20, MPF_MULTIPLY2X=0x40, MPF_MULTIPLY=0x80, MPF_NOFILTERING=0x100,
+           MPF_SRCCOLOR=0x400, MPF_ENVMAP=0x1000, MPF_BUMPMAP=0x2000, MPF_LIGHTMAP=0x4000, MPF_BESTQUALITY=0x8000,
+           MPF_FONTSCALE=0x10000, MPF_READABLE=0x20000, MPF_WRITEABLE=0x40000, MPF_AUTOFREE=0x80000,
+           MPF_RADIOSITY=0x100000, MPF_TEXTUREALPHA=0x200000, MPF_IMPORTPICTURE=0x400000,
+           MPF_GENERATED=MPF_GENERATED, MPF_XBOX_NOCOMPRESS=0x1000000, MPF_USEFXSHADER=0x2000000,
+           MPF_HAZE=0x4000000)
 LOAD_STEPS = (('.pck', '.dds'), ('.tga',), ('.jpg',))   # 0x004f3510 after dds\<basename>; bmp is never tried
 # 0x004f3510 missing-texture placeholders by the path's last characters (case-insensitive; device init 0x004d8f10
-# loads them); bump takes NONE_NORMAL_LOW (the engine picks NONE_NORMAL on a device field that is not traced)
+# loads them); bump takes NONE_NORMAL_LOW here, while the engine picks NONE_NORMAL when the device byte +0xa0 is 1
+# (every profile from 2_0 up, 0x004d9dae; 0x004f378b): the effect path still bakes the _LOW texel for a bump name
+# that loads no file (open, non-effect-materials.md section 6); the classic path uses CLASSIC_BUMP
 PLACEHOLDERS = (('diff', 'NONE_GRAY'), ('bump', 'NONE_NORMAL_LOW'), ('spec', 'NONE_WHITE'), ('light', 'NONE_BLACK'),
                 ('occl', 'NONE_OCCL_DECAL'), ('envmap', 'ENVI'), ('envi', 'ENVI'))
 DEFAULT_PLACEHOLDER = 'NONE_BLACK'
+BUMP_PLACEHOLDER = dict(PLACEHOLDERS)['bump']
 _LEADING_INT = re.compile(r'-?\d+')               # sscanf("%d") at 0x004f4ddf on a name starting with a digit or '-'
 # types\Animations (texture-lookup.md section 10): loaded by 0x004f5460, stride 0x44; type names 0x0054de40,
 # TADF_/TATF_ flag names 0x0054de28 / 0x0054dea8. A negative texture id -N is row N (a texture animation).
@@ -548,7 +590,10 @@ ANIMATION_UNSUPPORTED = (TAT['TAT_MOVIE'], TAT['TAT_TAGSINGLESTEP'])
 
 def materials_rows(assets):
     """[(texture id, MPF flags, file name)] of the winning types/Materials, cached on `assets`; None when the
-    table is missing or does not parse. Columns 12 texture id, 15 flags, 28 file name ("leave blank to use id")."""
+    table is missing or does not parse. Columns 12 texture id, 15 flags, 28 file name ("leave blank to use id").
+    The flags column is '|'-separated MPF_* names (MPF) or numbers; until 2026-09-29 only MPF_GENERATED was read
+    by name, so every other named flag counted 0 (row 155, MPF_DESTINATIONBLEND | MPF_BESTQUALITY, read 0 instead
+    of 0x8002). An unknown name still counts 0."""
     cache = assets.__dict__
     if '_x3m_materials' not in cache:
         try:
@@ -560,7 +605,7 @@ def materials_rows(assets):
                 f = [x.strip() for x in line.split(';')]
                 flags = 0
                 for tok in (t.strip() for t in f[15].split('|')):
-                    flags |= MPF_GENERATED if tok == 'MPF_GENERATED' else int(tok, 0) if tok[:1].isdigit() else 0
+                    flags |= MPF[tok] if tok in MPF else int(tok, 0) if tok[:1].isdigit() else 0
                 rows.append((int(f[12], 0), flags, f[28]))
             cache['_x3m_materials'] = rows if len(rows) == count else None
         except (FileNotFoundError, ValueError, IndexError):
@@ -793,10 +838,27 @@ def image_size(data, name=b'?'):
         return im.size
 
 
+# Bump texture of a classic (non-effect) material drawn with BUMPMAP_LOW and no bump map of its own
+# (non-effect-materials.md section 6): the engine binds the NONE_NORMAL placeholder (device byte +0xa0 = 1 on the
+# 2_0 / 2_a / 2_b / 3_0 profiles, 0x004d9dae) and BUMPMAP_LOW reads it as 2 * rgb - 1. CLASSIC_BUMP is the name
+# the planning view gives that slot: Textures resolves it to dds/NONE_NORMAL re-expressed in the swizzle the
+# atlas (and BUMPMAP) uses, so that the merged material's normal equals the original's. Never written to a body.
+CLASSIC_BUMP = b'NONE_NORMAL:rgb'
+CLASSIC_BUMP_SOURCE = b'NONE_NORMAL'
+
+
+def classic_bump_image(img):
+    """RGBA image read as BUMPMAP_LOW reads it (normal = normalize(2 * rgb - 1)) -> the same unit vectors as a
+    swizzled float image (from_normals), which to_normals / BUMPMAP decode back."""
+    v = normalize(np.asarray(img, np.float64)[..., :3] * (2 / 255) - 1)
+    return from_normals(v).astype(np.float32)
+
+
 class Textures:
     """Decoded mip 0 of material textures by name (lower-case), None for NULL; sizes and the
     resolved member per name are cached too (plan_layout asks per tile per body); names that resolve to one
-    member (Khaak 25.jpg and 25_spec.jpg) share its decoded image."""
+    member (Khaak 25.jpg and 25_spec.jpg) share its decoded image. CLASSIC_BUMP is dds/NONE_NORMAL converted by
+    classic_bump_image (its own cache entry; no size of its own, like every NONE_* name)."""
     def __init__(self, assets):
         self.assets, self.cache, self.sizes, self.sources, self.decoded = assets, {}, {}, {}, {}
         self.bound = {}
@@ -823,7 +885,7 @@ class Textures:
     def _resolve(self, name):
         """(data, kind, info) or None, with the member recorded under self.sources."""
         key = self.key(name)
-        src = texture_source(self.assets, name)
+        src = texture_source(self.assets, CLASSIC_BUMP_SOURCE if key == CLASSIC_BUMP.lower() else name)
         if key is not None and src is not None:
             self.sources[key] = dict(member=f'{src[2]["source"]}:{src[2]["member"]}', kind=src[1],
                                      decoded_sha256=src[2]['decoded_sha256'], placeholder=src[2]['placeholder'])
@@ -840,7 +902,8 @@ class Textures:
                 member = (info['source'], info['member'])
                 if member not in self.decoded:
                     self.decoded[member] = decode_dds(data) if kind == 'dds' else decode_image(data, name)
-                self.cache[key] = self.decoded[member]
+                self.cache[key] = (classic_bump_image(self.decoded[member]) if key == CLASSIC_BUMP.lower()
+                                   else self.decoded[member])
         return self.cache[key]
 
     def size(self, name):
@@ -1365,7 +1428,7 @@ def atlas_material(mats, dom, names, areas, synth=True, need=(b't_diffusetexture
                 rows.append((name.decode('latin1'), val[0], mean, int(round(mean))))
                 val = [int(round(mean))]
         params.append((name, typ, val))
-    return dict(base, index=len(mats), params=params), rows
+    return dict({k: v for k, v in base.items() if k != 'classic'}, index=len(mats), params=params), rows
 
 
 def widened_material(atlas_mat, index):
@@ -1441,10 +1504,246 @@ KEPT_EFFECTS = {
 }
 
 
-def excluded_materials(mats, record, alpha):
-    """Opaque materials of the visible parts of `record` whose effect file is in KEPT_EFFECTS: they keep their
-    own groups (collapse keep) instead of entering the atlas."""
-    out = set()
+# --- classic (non-effect) materials -----------------------------------------------------------
+# docs/reverse-engineering/non-effect-materials.md. A classic record (MAT6 without 0x02000000, MAT5) keeps no
+# effect object; 0x004c0150 draws it with the built-in standard_lighting effect and constants recorded from the
+# record words. The baker plans on a view of the material table (classic_view) in which every classic record
+# the atlas can reproduce is the equivalent standard_lighting.fx effect material; the body's own records are
+# never rewritten.
+
+CLASSIC_EFFECT = b'standard_lighting.fx'   # as 1,518 shipped effect materials name it (530 bodies, measured:
+CLASSIC_TECHNIQUE = 1                      # nonfx_bake_shipped_standard_lighting_out.txt); all carry technique word 1
+CLASSIC_BLEND_FLAGS = 0x4c7                # 0x004c1779: any of these bits leaves the opaque state
+CLASSIC_TWO_SIDED, CLASSIC_NO_FILTERING, CLASSIC_WIREFRAME = 0x10, 0x100, 0x8
+# A BUMPMAP_LOW record in a model without the tangent declaration reads TANGENT0 / BINORMAL0 from a vertex stream
+# that does not carry them. Direct3D 9 documents no value for a missing input, and the fourth column of the uploaded
+# g_mWorldIT is not traced (non-effect-materials.md Unknown), so the original's normal is not established: such a
+# record stays its own group until it is (then set True: the merged material draws DEFAULT).
+CLASSIC_MISSING_TANGENT_IS_ZERO = False
+CLASSIC_WRAP_PART = 2                      # part flag: the classic block records g_Wrap 3 (0x004c170b)
+CLASSIC_GRAY = b'NONE_GRAY'                # diffuse fallback 0x00606f70 (0x004c321d), bound for texture id 0
+
+
+def _fixed(x):
+    return int(round(x * 65536))
+
+
+def texture_bound(name):
+    """True when 0x004f4cb0 gives a material texture name an id other than 0 (a NULL name and a numbered name
+    reading 0 are id 0: the slot's fallback placeholder is bound and the record counts as having no map)."""
+    if isinstance(name, int):
+        return name != 0
+    if not name or strip_texture_name(name.decode('latin1')) is None:
+        return False
+    return texture_id(name) != 0
+
+
+def classic_flags(assets, material):
+    """Flags 0x004c0150 draws a classic record with: the file flags, overwritten by the types/Materials row
+    flags when the texture id is a row (0 <= id < rows; 0x0048206e..0x00482093), a MAT5 flag word OR-ed in. None
+    when the id is a row and the table is not readable."""
+    tex = material.get('texture')
+    tid = tex if isinstance(tex, int) else texture_id(tex) if texture_bound(tex) else 0
+    flags = material.get('flags', 0)
+    if tid is not None and tid >= 0:
+        rows = materials_rows(assets)
+        if rows is None:
+            return None
+        if tid < len(rows):
+            flags = rows[tid][1]
+    return flags | material.get('flagword', 0)
+
+
+def _placeholder(assets, name):
+    """(placeholder name or None for a file, error) the engine binds for a bound texture name; a row without a
+    texture counts as the slot fallback ('fallback')."""
+    try:
+        found = lookup(assets, name)
+    except AtlasError as exc:
+        return None, str(exc)
+    return ('fallback' if found is None else found[1]), None
+
+
+def classic_shape(assets, material):
+    """What the engine draws for a classic record, as dict(keep: None or the reason the atlas cannot reproduce
+    it, opaque, textured, low: technique BUMPMAP_LOW (a bump, cube or light map is set), bump: the record has a
+    bump id (which gives the model the tangent declaration), and for a reproducible record consts: 16.16
+    (diffuse strength, specular strength, specular power, emissive r, g, b) and diffuse / light: the texture
+    names the view binds). Reproduced: opaque, one-sided, filtered records whose bump slot holds a placeholder,
+    without a cube map and without a specular map that changes the image (strength 0, or the NONE_WHITE
+    placeholder)."""
+    flags = classic_flags(assets, material)
+    tex = material.get('texture')
+    maps, extra, c = material['maps'], material.get('extra', ()), material['colors']
+    cube, bump, light = (texture_bound(n) for n, _ in maps)
+    out = dict(keep=None, opaque=flags is not None and not flags & CLASSIC_BLEND_FLAGS, textured=False,
+               low=cube or bump or light, bump=bump)
+    if 'flagword' in material or isinstance(tex, int):
+        return dict(out, keep='MAT5 record', textured=bool(tex))
+    spec = bool(extra) and texture_bound(extra[0][0])
+    diffuse = tex
+    if texture_bound(tex):
+        tid = texture_id(tex)
+        if tid is not None and tid < 0:
+            return dict(out, keep='texture animation', textured=True)
+        try:
+            out['textured'] = lookup(assets, tex) is not None
+        except AtlasError:
+            out['textured'] = True             # the name is kept: the layout refuses it with the reason
+    if not out['textured']:
+        diffuse = CLASSIC_GRAY
+    if flags is None:
+        return dict(out, keep='flags unknown (no readable types/Materials)')
+    if flags & CLASSIC_BLEND_FLAGS:
+        return dict(out, keep=f'blended or alpha-tested (flags {flags:#x})')
+    if flags & CLASSIC_TWO_SIDED:
+        return dict(out, keep='two-sided')
+    if flags & CLASSIC_NO_FILTERING:
+        return dict(out, keep='point filtering')
+    if flags & CLASSIC_WIREFRAME:
+        return dict(out, keep='wireframe')
+    if cube and bump:          # 0x004c04b4..0x004c04d0: map 0 replaces the diffuse texture when arg 4 has bit 2
+        return dict(out, keep='map 0 beside a bump map (diffuse replacement)')
+    if cube:
+        return dict(out, keep='cube map')
+    if bump:                   # a name that loads no file binds the loader's placeholder by its suffix (0x004f3510):
+        ph, err = _placeholder(assets, maps[1][0])     # only '...bump' gives the normal placeholder
+        if ph is None:
+            return dict(out, keep='bump map' if err is None else 'bump map does not resolve')
+        if ph not in ('fallback', BUMP_PLACEHOLDER):
+            return dict(out, keep=f'bump map placeholder {ph}')
+    if spec and material['w26']:
+        ph, err = _placeholder(assets, extra[0][0])
+        if ph not in ('fallback', 'NONE_WHITE'):
+            return dict(out, keep='specular map' if ph is None and err is None else 'specular map placeholder')
+    si = c[11]
+    power = (material['w24'] if material['w24'] else sum(c[6:9]) / 768 * 100) + 1
+    consts = (0 if si else _fixed(material['w2c'] * 0.01), _fixed(material['w26'] * 0.01), _fixed(power)) + \
+        tuple(_fixed(x * si / 25500) if si else 0 for x in c[3:6])
+    return dict(out, consts=consts, diffuse=diffuse, light=maps[2][0] if light else b'NULL')
+
+
+def tangent_declared(mats):
+    """True when the model takes the tangent vertex declaration (model +0x50 & 4): an effect material whose
+    t_BumpTexture has a texture id (0x00481a10..0x00481a33, 0x00482003) or a classic record with a bump map
+    (+0x32, 0x00482349). `mats` is the body's table or its classic_view (whose classic records answer with
+    their shape, not with the parameters the view gave them)."""
+    for m in mats:
+        shape = m.get('classic') or m.get('classic_shape')
+        if shape is not None:
+            if shape['bump']:
+                return True
+        elif 'params' in m:
+            if any(t == 8 and n.lower() == SLOT_NAMES['bump'] and texture_bound(v) for n, t, v in m['params']):
+                return True
+        elif 'maps' in m and texture_bound(m['maps'][1][0]):
+            return True
+    return False
+
+
+def classic_material(material, shape, tilt):
+    """The standard_lighting.fx effect material that draws like a reproducible classic record: every constant
+    the classic parameter block records (0x004c1399..0x004c1972) written out, because the effect path records
+    the material's own parameter list only. tilt (the model has the tangent declaration and some classic
+    record draws BUMPMAP_LOW): t_BumpTexture is declared, CLASSIC_BUMP for a BUMPMAP_LOW record and NULL (flat)
+    otherwise, so the merged material draws BUMPMAP over the bump atlas. Carries 'classic': the shape."""
+    d, s, p, er, eg, eb = shape['consts']
+    params = [(b'g_Wrap', 0, [0]), (b'g_CullMode', 0, [2]), (b'g_AlphaBlendEnable', 0, [0]), (b'g_BlendOp', 0, [1]),
+              (b'g_SrcBlend', 0, [2]), (b'g_DestBlend', 0, [1]), (b'g_ZEnable', 0, [1]), (b'g_ZWriteEnable', 0, [1]),
+              (b'g_ALPHATESTENABLE', 0, [0]), (b'g_MatDiffuseStrength', 2, [d]), (b'g_MatSpecularStrength', 2, [s]),
+              (b'g_MatSpecularPower', 2, [p]), (b'g_MatReflectionStrength', 2, [0]), (b'g_AlphaValue', 2, [65536]),
+              (b'g_MatEmissiveColor', 5, [er, eg, eb, 65536]), (b't_MinFilterTypeDiffuse', 0, [3]),
+              (b't_FilterTypeDiffuse', 0, [2]), (b't_DiffuseTexture', 8, shape['diffuse']),
+              (b't_LightMapTexture', 8, shape['light'])]
+    if tilt:
+        params.append((b't_BumpTexture', 8, CLASSIC_BUMP if shape['low'] else b'NULL'))
+    return dict(index=material['index'], flags=bob1.EFFECT_MATERIAL, technique=CLASSIC_TECHNIQUE,
+                effect=CLASSIC_EFFECT, params=params, classic=dict(shape, tilt=bool(tilt and shape['low'])))
+
+
+def classic_view(assets, mats):
+    """The material table the baker plans on: `mats` itself when it holds no classic record, else a new list
+    in which every classic record is classic_material (reproducible) or a copy carrying 'classic_keep' (the
+    reason) and 'classic_shape'. The view is never written: merged materials appended to it are copied into the
+    body's table by the caller (their 'classic' marker is dropped by atlas_material)."""
+    if all('params' in m for m in mats):
+        return mats
+    shapes = {i: classic_shape(assets, m) for i, m in enumerate(mats) if 'params' not in m}
+    tilt = tangent_declared(mats) and any(s['low'] for s in shapes.values() if s['keep'] is None)
+    return [m if i not in shapes else
+            classic_material(m, shapes[i], tilt) if shapes[i]['keep'] is None else
+            dict(m, classic_keep=shapes[i]['keep'], classic_shape=shapes[i]) for i, m in enumerate(mats)]
+
+
+def is_effect(material):
+    """An effect material of the body (not a classic record of the planning view)."""
+    return 'params' in material and 'classic' not in material
+
+
+def bump_allowed(mats, bump=True):
+    """The bump option as collapse applies it: off for a model without the tangent declaration whose table holds
+    a BUMPMAP_LOW classic record, because a merged material naming a bump atlas would give the model the
+    declaration and the engine would then tilt the normal of those records in every record that draws them."""
+    return bool(bump) and not (any((m.get('classic') or m.get('classic_shape') or {}).get('low') for m in mats)
+                               and not tangent_declared(mats))
+
+
+def classic_kept(mats, record, alpha=frozenset(), bump=True):
+    """{material: reason} of the classic materials the visible groups of `record` draw that stay their own
+    groups: the records classic_shape cannot reproduce (a record outside a classic_view counts as one), a
+    reproducible record used by a part with flag 2, for which the classic block records g_Wrap 3, a BUMPMAP_LOW
+    record of a model without the tangent declaration (CLASSIC_MISSING_TANGENT_IS_ZERO), and, without the bump
+    atlas (`bump` off), a record that draws the tilted normal."""
+    out = {}
+    declared, bump = tangent_declared(mats), bump_allowed(mats, bump)
+    for part in record['parts']:
+        if part['flags'] & HIDDEN_PART:
+            continue
+        for g in part['groups']:
+            m = g['material']
+            if not 0 <= m < len(mats) or m in alpha or m in out:
+                continue
+            if 'params' not in mats[m]:
+                out[m] = mats[m].get('classic_keep', 'classic record outside the planning view')
+            elif 'classic' not in mats[m]:
+                continue
+            elif part['flags'] & CLASSIC_WRAP_PART:
+                out[m] = 'part flag 2 (g_Wrap)'
+            elif mats[m]['classic']['low'] and not declared and not CLASSIC_MISSING_TANGENT_IS_ZERO:
+                out[m] = 'BUMPMAP_LOW without the tangent declaration'
+            elif mats[m]['classic']['tilt'] and not bump:
+                out[m] = 'tilted normal without the bump atlas'
+    return out
+
+
+def classic_filter(mats, record):
+    """Census filter of a body whose table holds a classic record (`mats` is its classic_view), None for a body
+    with something to merge: 'helper_body' when the visible parts of `record` draw no face at all;
+    'classic_nothing_to_atlas' when every face they draw is on an untextured or blended classic material
+    (collision boxes, dummies, dock markers: visible, but one flat texel or a marker each; the content / helper
+    rule of non-effect-materials.md section 5)."""
+    if not any('classic' in m or 'classic_shape' in m for m in mats):
+        return None
+    drawn = False
+    for part in record['parts']:
+        if part['flags'] & HIDDEN_PART:
+            continue
+        for g in part['groups']:
+            if not g['faces'] or not 0 <= g['material'] < len(mats):
+                continue
+            m = mats[g['material']]
+            shape = m.get('classic') or m.get('classic_shape')
+            if shape is None or (shape['opaque'] and shape['textured']):
+                return None
+            drawn = True
+    return 'classic_nothing_to_atlas' if drawn else 'helper_body'
+
+
+def excluded_materials(mats, record, alpha, bump=True):
+    """Opaque materials of the visible parts of `record` whose effect file is in KEPT_EFFECTS, and its classic
+    materials the atlas does not reproduce (classic_kept, under the bump option `bump`): they keep their own
+    groups (collapse keep) instead of entering the atlas."""
+    out = set(classic_kept(mats, record, alpha, bump))
     for part in record['parts']:
         if part['flags'] & HIDDEN_PART:
             continue
@@ -1470,7 +1769,7 @@ def animation_material(mats, index):
     """(material index, matched) a face group with negative material index `index` draws with (0x004c0310..
     0x004c0390): the first effect material whose t_DiffuseTexture id equals it, else material 0."""
     for i, m in enumerate(mats):
-        if 'params' in m and texture_id(body_materials.slots(m).get('diffuse')) == index:
+        if is_effect(m) and texture_id(body_materials.slots(m).get('diffuse')) == index:
             return i, True
     return 0, False
 
@@ -1495,7 +1794,7 @@ def animated_record(mats, record, assets=None):
                         animation_frame(assets, -g['material'], f'{g["material"]} (face group)'.encode())
                     mi, matched = animation_material(mats, g['material'])
                     if not matched:
-                        if not mats or 'params' not in mats[0]:
+                        if not mats or not is_effect(mats[0]):
                             raise AtlasError(f'texture animation {g["material"]}: no effect material carries it and'
                                              ' material 0 is not an effect material (draw path not traced)')
                         material0 += 1
@@ -1509,19 +1808,28 @@ def animated_record(mats, record, assets=None):
     return dict(record, parts=parts), dict(groups=groups, rows=sorted(rows), material0=material0)
 
 
+def classic_key(material):
+    """Class key of a classic record of the planning view: its constant set and whether it draws BUMPMAP, so
+    that a merged material never averages constants and never shares a class with an effect material."""
+    return 'classic:' + ','.join(str(x) for x in material['classic']['consts']) + \
+        (':bump' if SLOT_NAMES['bump'] in declared(material) else '')
+
+
 def effect_classes(mats, opaque, textures=None):
     """[(effect, occlusion key, [material indices in first-use order])] of the opaque groups: one class per effect
     file and bound occlusion texture (occlusion_key: 'none' for absent / NULL, else the entry the engine binds
     with `textures`), largest face count first (ties: first use). A body whose effects each bind one map has one
-    class per effect, in the order the effect-only classes had. Refuses a group material index outside the
-    table."""
+    class per effect, in the order the effect-only classes had. The classic records of a planning view
+    (classic_view) form their own classes, one per constant set (classic_key). Refuses a group material index
+    outside the table."""
     faces, order, key_of = {}, {}, {}
     for g in opaque:
         m = g['material']
         if m not in key_of:
             if not 0 <= m < len(mats):
                 raise AtlasError(f'group material index {m} is outside the material table (0..{len(mats) - 1})')
-            key_of[m] = (effect_name(mats[m]), occlusion_key(mats[m], textures))
+            key_of[m] = (effect_name(mats[m]), classic_key(mats[m]) if 'classic' in mats[m] else
+                         occlusion_key(mats[m], textures))
         key = key_of[m]
         order.setdefault(key, [])
         if m not in order[key]:
@@ -1542,11 +1850,18 @@ def collapse(assets, body, mats, record, alpha, px, sizes=(1024, 2048), specular
     take no part in the effect / occlusion classes or the g_Mat* means; the opaque materials of a
     KEPT_EFFECTS effect (excluded_materials) are kept the same way and reported as kept_effects (a body
     with nothing else opaque is refused). `layout` (light_bleed's repack) replaces plan_layout; it must
-    have been planned with the same keep set."""
+    have been planned with the same keep set. `mats` may be a classic_view: its reproducible classic records
+    are atlased as classes of their own (one merged standard_lighting.fx material per constant set), the others
+    are kept like the kept effects and also listed in kept_classic ({material: reason}); with bump off a
+    classic record that draws a tilted normal (shape 'tilt') is kept too, since only the bump atlas reproduces
+    it. No bump atlas is baked for a model without the tangent declaration whose table holds a BUMPMAP_LOW
+    classic record (tangent_declared): the atlas name in a merged t_BumpTexture would introduce the declaration."""
     import lod_overlay
     textures = textures or Textures(assets)
     record, animation = animated_record(mats, record, assets)
-    kept_fx = excluded_materials(mats, record, alpha)
+    kept_classic = classic_kept(mats, record, alpha, bump)
+    bump = bump_allowed(mats, bump)
+    kept_fx = excluded_materials(mats, record, alpha, bump)
     bleed_keep, keep = frozenset(keep), frozenset(keep) | kept_fx
     for part in record['parts']:
         for g in part['groups']:
@@ -1562,15 +1877,19 @@ def collapse(assets, body, mats, record, alpha, px, sizes=(1024, 2048), specular
                 opaque.append(g)
                 areas[g['material']] = areas.get(g['material'], 0.0) + sum(
                     body_materials.face_area(record['points'], f) for f in g['faces'])
+    if not opaque and kept_fx and kept_fx <= frozenset(kept_classic):
+        raise AtlasError('every opaque material is a classic material the atlas does not reproduce '
+                         f'{sorted(set(kept_classic.values()))}; nothing to atlas')
     if not opaque and kept_fx:
-        effs = sorted({effect_name(mats[m]) for m in kept_fx})
+        effs = sorted({effect_name(mats[m]) for m in kept_fx if m not in kept_classic})
         raise AtlasError(f'every opaque material is on an excluded effect {effs} (kept_effects); nothing to atlas')
     if not opaque:
         raise AtlasError('the record has no opaque faces to atlas')
     uv2 = sum(1 for p in record['points'] if p[0] & 4)
     classes = effect_classes(mats, opaque, textures)
     dom = dominant(opaque)
-    has_bump = any(t == 8 and n.lower() == SLOT_NAMES['bump'] for n, t, _ in mats[dom].get('params', ()))
+    has_bump = any(t == 8 and n.lower() == SLOT_NAMES['bump'] for n, t, _ in mats[dom].get('params', ())) or \
+        any(mats[m].get('classic', {}).get('tilt') for m in areas)     # a classic class that draws BUMPMAP
     has_spec = any(t == 8 and n.lower() == SLOT_NAMES['specular'] for m in areas for n, t, _ in mats[m].get('params', ()))
     slots = (('diffuse', 'light') + (('bump',) if bump and has_bump else ())
              + (('specular',) if specular and has_spec else ()))
@@ -1597,7 +1916,7 @@ def collapse(assets, body, mats, record, alpha, px, sizes=(1024, 2048), specular
         else:
             occlusion[eff] = [occlusion[eff], occ]
         report.append(dict(index=idx, dominant=d, absorbed=sorted(mis), params=rows, atlas=True, effect=eff,
-                           occlusion=occ))
+                           occlusion=occ, **({'classic': True} if 'classic' in mats[d] else {})))
     atlas_index = indices[0]
     widen_of, widened = {}, []
     for (eff, _, mis), row in zip(classes, list(report)):
@@ -1623,7 +1942,7 @@ def collapse(assets, body, mats, record, alpha, px, sizes=(1024, 2048), specular
                 widened_indices=widened, widen_of=widen_of,
                 dominant=dom, names=names, members=members, slots=slots, synth=report, info=info,
                 effects=effects, textures=textures, uv2=uv2, occlusion=occlusion, kept=sorted(bleed_keep),
-                kept_effects=sorted(kept_fx), source=record, animation=animation)
+                kept_effects=sorted(kept_fx), kept_classic=kept_classic, source=record, animation=animation)
 
 
 # --- baking -------------------------------------------------------------------------------
@@ -2276,6 +2595,10 @@ def summary(res):
         uv2_points=res.get('uv2', 0), occlusion=res.get('occlusion', {}),
         kept_light_bleed=list(res.get('kept', [])),
         **({'kept_effects': list(res['kept_effects'])} if res.get('kept_effects') else {}),
+        **({'kept_classic': {str(m): r for m, r in sorted(res['kept_classic'].items())}}
+           if res.get('kept_classic') else {}),
+        **({'classic_materials': [r['index'] for r in res['synth'] if r.get('classic')]}
+           if any(r.get('classic') for r in res['synth']) else {}),
         light_bleed=bleed_summary(res.get('light_bleed')),
         tiles=[dict(mats=t['mats'], names={k: (v.decode('latin1') if v else None) for k, v in t['names'].items()},
                     sources=dict(t.get('sources', {})),

@@ -1,0 +1,24 @@
+# Classic (non-effect) material bake (2026-09-29), figures of the tree merged onto main 7686e58d. Scratch roots
+# outside the repository and the game tree; the game tree is only read. No Wine, no game launch.
+# BEFORE: tools of main 7686e58d (git archive HEAD tools/analysis verification/probe, extracted to before-src/).
+# PREVIOUS: the bake of after2_list.txt by this change before the review fixes (merged BUMPMAP_LOW records of a
+#   model without the tangent declaration into a DEFAULT material).
+# before2_list.txt (34): the 22 bodies of bodies.txt, 3 bodies with a NULL-diffuse effect material (split_TL,
+#   teladi_M6, teladi_trading_station_partA) and the 9 bodies baked today whose material table holds a classic
+#   record (nonfx_bake_tangent_census_out.txt, section B).
+# after2_list.txt (201): before2_list.txt + the 167 ship/station bodies the installed record refuses
+#   non_effect_material.
+PYTHONPATH=before-src/verification/probe:before-src/tools/analysis \
+  python3 before-src/tools/analysis/lod_overlay.py --batch --only before2_list.txt --out before-main --jobs 4
+PYTHONPATH=$REPO/verification/probe:$REPO/tools/analysis \
+  python3 $REPO/tools/analysis/lod_overlay.py --batch --only after2_list.txt --out after-bake --jobs 5     # 192 s
+python3 nonfx_bake_check.py before-main after-bake --previous previous-bake > nonfx_bake_check_out.txt
+python3 nonfx_bake_formula.py after-bake --jobs 5 > nonfx_bake_formula_out.txt                             # 97 s
+python3 nonfx_bake_null_diffuse_scan.py > nonfx_bake_null_diffuse_scan_out.txt
+python3 nonfx_bake_tangent_census.py --jobs 5 > nonfx_bake_tangent_census_out.txt
+python3 nonfx_bake_timing.py > nonfx_bake_timing_out.txt
+python3 nonfx_bake_shipped_standard_lighting.py --jobs 4 > nonfx_bake_shipped_standard_lighting_out.txt
+# Disassembly behind non-effect-materials.md sections 6-8 (capstone 5.0.7, installed X3AP.exe):
+python3 nonfx_bake_listing.py evidence > nonfx_bake_listing_out.txt
+# raw listings stay outside the repository:  python3 nonfx_bake_listing.py list 0x004c0866 0x004c09d2 > <local file>
+# shader text:  PYTHONPATH=$REPO/tools/analysis:. python3 standard_lighting_programs.py --disassemble <local dir>

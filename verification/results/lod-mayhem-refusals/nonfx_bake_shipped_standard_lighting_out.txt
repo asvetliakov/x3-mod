@@ -1,0 +1,7 @@
+bodies of the record 4613, read 4455; bodies with a standard_lighting.fx effect material 530; materials 1518
+  bodies by category: {"other": 115, "ship": 203, "station": 212}
+  materials by source catalogue: {"01.cat": 226, "02.cat": 749, "04.cat": 7, "07.cat": 2, "08.cat": 1, "addon/01.cat": 153, "addon/06.cat": 322, "addon/11.cat": 9, "addon/12.cat": 49}
+  technique word: {"1": 1518}
+  flags: {"0x2000000": 1518}
+  g_CullMode: {"1": 564, "2": 951, "None": 3}
+  bodies with "dock" in the name: 16, materials 51; of them in 02.cat: bodies 14, materials 48

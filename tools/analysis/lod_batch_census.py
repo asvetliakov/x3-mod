@@ -35,6 +35,11 @@ recipe_ops (also fields of the batch record's bodies, not printed in census.txt 
 it, and the recipe digest joins inputs_sha256. When its geometry does not match the recipe's expect block, or
 an op fails on it in any other way (a mod body of the same stem), the row key recipe_skipped carries the
 reason and the body is censused and baked plainly (record 0, hash unchanged).
+Classic (non-effect) materials are censused on lod_atlas.classic_view, as the baker plans them. A body with a
+classic record in its table whose record 0 draws no visible face is filtered helper_body; one whose visible faces
+are all on untextured or blended classic materials (collision boxes, dummies, dock markers) is filtered
+classic_nothing_to_atlas; neither is refused. A body whose opaque materials are all classic records the atlas
+does not reproduce is refused classic_unsupported (non_effect_material remains for a record outside the view).
 
 Switch-size rule (parameters --ship-min/--ship-factor/--station-t/--t-cap, --aspect-cap, --no-aspect):
   ships:    T_class = min(200, max(80, 2.5 * T_1))   (T_1 = record 1 threshold; 80 for a single-LOD body)
@@ -126,7 +131,8 @@ SECTORS = (('run255_burst2', 'verification/results/run255-census/node_census_out
 # t_DiffuseTexture first (no_diffuse) and lod_atlas.required_slots asks for t_LightMapTexture only when a material of
 # the class declares it, which class_dominant then picks; the needle stays as a guard of atlas_material's check.
 ATLAS_REASONS = (('texture animation', 'texture_animation_unsupported'), ('excluded effect', 'excluded_effect'), ('outside the material table', 'material_outside_table'),
-                 ('not an effect material', 'non_effect_material'), ('no diffuse', 'no_diffuse'),
+                 ('not an effect material', 'non_effect_material'), ('atlas does not reproduce', 'classic_unsupported'),
+                 ('no diffuse', 'no_diffuse'),
                  ('no opaque faces', 'no_opaque'), ('without UV', 'no_uv'), ('do not fit', 'atlas_fit'),
                  ('does not resolve', 'texture_unresolved'), ('generated surface', 'texture_generated'), ('not a DDS', 'texture_not_dds'),
                  ('Pillow', 'pil_missing'), ('cannot decode image', 'texture_decode'),
@@ -379,6 +385,7 @@ def census_body(assets, textures, entry, opts):
     r0, last = ladder[0], ladder[-1]
     anim_error = None
     if mat_tag in ('MAT5', 'MAT6'):
+        mats = lod_atlas.classic_view(assets, mats)     # classic records as lod_overlay.plan_body plans them
         try:                                    # face groups -N: texture animations (lod_atlas.animated_record)
             r0, anim = lod_atlas.animated_record(mats, r0, assets)
             if anim['groups']:
@@ -407,6 +414,10 @@ def census_body(assets, textures, entry, opts):
         row['aspect_note'] = note
     if row['cat'] == 'other' and not opts['include_other']:
         row['filter'].append('category_other')
+    nothing = lod_atlas.classic_filter(mats, r0) if mat_tag in ('MAT5', 'MAT6') else None
+    if nothing:                                 # helper_body: no visible face; classic_nothing_to_atlas: untextured
+        row['filter'].append(nothing)           # boxes and blended markers only
+        return row
     if mat_tag not in ('MAT5', 'MAT6'):
         row['refuse'].append('mat3')
     row['t_pad_below_t1'] = bool(th and th[0] > tp)          # guard waived for source record 0 (a column only)
