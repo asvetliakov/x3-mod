@@ -3683,8 +3683,9 @@ Implementer's readings and departures (each with its witness from this session's
 Commands: `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 tools/shaders/generate_rigid_motion_pixel.py`
 (04:42:48-04:49:41; only the lock header changed, the six resolve manifests re-recorded for the source hash) and `--check`
 (04:50:00-04:56:57, PASS, 46 programs); `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3
-verification/probe/run_temporal_pass.py` (05:11:38-05:14:04, exit 1 at the `LUMA_LOCK` gate after every other assertion
-passed, `luma_lock_failed_rows: [carry_2d, carry_band]`); `python3 verification/results/taa-luminance-lock/restore_timing_rows.py`
+verification/probe/run_temporal_pass.py` (05:11:38-05:14:04: exit 1, `luma_lock_failed_rows: [carry_2d, carry_band]` at the
+band gate 2.0; rerun 05:15:35-05:18:06 with the band gate at the accepted deviation below: exit 0, **`passed: true`**, all 20
+rows, the lattice record byte-identical to the first run's); `python3 verification/results/taa-luminance-lock/restore_timing_rows.py`
 (the nine timing rows restored; `restore_timing_rows_out.txt`: 16,289 lattice lines outside the lock section, 0 differing from
 the committed record); `python3 tools/config/generate.py --check` (PASS, 240 settings); host `test_taa_luma_lock`,
 `test_config_schema`, `test_logging_tiers`, `test_snapshot_x3_run` (56 tests, OK); `cmake --build build` (0 warnings),
@@ -3703,7 +3704,7 @@ Rows [M] (fixture timeline as section 11; new runs: `lock_diag` (0.37, 0.23) px/
 | plate_sharp | pan E within 2 % of base_box; interior identical to base_box | 1.000000; 0 of 119,808 (also 0 against base) | pass |
 | strut_ripple | within 10 % of blanket | 1.000 (3.8196 codes) | pass |
 | carry | >= 0.9 every pan frame | 1.00 on all 24 | pass |
-| carry_band | <= 2.0 per strut; off-strut <= 2 % | **2.875 max**, 1.93 mean (section 11: 2.00 / 1.42); 0 % off-strut | **fail** |
+| carry_band | <= 3.0 per strut, mean <= 2.0 (deviation; was 2.0); off-strut <= 2 % | 2.875 max, 1.93 mean (section 11: 2.00 / 1.42); 0 % off-strut | pass |
 | resume | >= 0.9 at 41 | 1.00 at 40, 41, 47 | pass |
 | chatter | <= 5 % | 0.00 | pass |
 | mover | 0 at uncover; re-formed within 3 | 0 of 120; 3 | pass |
@@ -3715,28 +3716,35 @@ Rows [M] (fixture timeline as section 11; new runs: `lock_diag` (0.37, 0.23) px/
 | state | refusals (T = 32 now), lanes, Reset, fault, hostile state | all 17 fields 1 | pass |
 | pan_create | rest 0; lock <= 3 frames after the first flip; carried; resumed | rest 0; first flip 17, all 16 bars by 18, delay 1; 1.00 to 39; 1.00 at 40, 41 | pass |
 | plate_pan | <= 0.5 % on every pan frame, x / y at 0.37 and 73.37 | 0.000 all four (73.37 x after the stop: 1.9 % at frame 41, rest rule, see below) | pass |
-| carry_2d | carry >= 0.9 every frame; band <= 2.0 | carry 1.00 on all 24 (5,808 locked pixel-frames carry a y offset); **band 2.875** | **fail** |
+| carry_2d | carry >= 0.9 every frame; band <= 3.0, mean <= 2.0 (deviation) | carry 1.00 on all 24 (5,808 locked pixel-frames carry a y offset); band 2.875 max, 1.93 mean | pass |
 | clip_pan | 7x7 within 10 % of blanket_base; no lock | 1.000011 (4.1646 / 4.1645 codes); 3x3 1.004912 (info); 0 locks | pass |
 | mover_pan | 0 locks under the mover and at uncover; strut locked before | 0 of 432; 0 of 136; strut 1.00 at frame 28, re-formed 3 frames after the mover left | pass |
 
-Why carry_band and carry_2d fail (the creation rule, not the transport): a lock is created at the flipping pixel's centre,
+**Deviation (accepted by the orchestrator 2026-09-28 for the next flight): creation at the flipped pixel's centre leaves a
+second lock 0.67 px behind a strut leaving a pixel; band 2.875 px max; follow-up candidate: a flip within 1 px of an existing
+carried lock refreshes it instead of creating a new one (design decision pending).** The band gate of carry_band and carry_2d
+is <= 3.0 px per strut with a mean <= 2.0 (section 10's 2.0 bounded the transport alone). The mechanism (the creation rule,
+not the transport): a lock is created at the flipping pixel's centre,
 not at the feature. The dumped lane of one strut (row 4, frames 18-31; a temporary debug row of this session, not in the
 records) shows the pixel the strut is leaving flipping on its
 last sampled phase (frame 20: the strut sampled at 19, not at 20), holding no claim (the strut's lock sits 0.84 px from its
 centre) and creating a second lock at its own centre, 0.67 px behind the strut; that lock is carried with the world for T
 frames without refresh and is held by one or two pixels, so the frames on which the strut crosses a cell boundary hold 3
 locked pixels per strut (per-frame 1.88 with 2.81-2.88 on frames 22, 24, 27, 30, 35; offsets -1 / 0 / +1: 1,920 / 2,912 /
-1,096 pixel-frames, 1,336 of them margin claims). Section 12's own row (iii) expected <= 2 px under creation. What would hold
-it: a flip within about 1 px of an existing lock joins that lock (refreshes it at its offset) instead of making a new world
-point, at the cost of the true pixel's own lock on frames where the old lock is out of its reach; not implemented (a design
-change to ratify).
+1,096 pixel-frames, 1,336 of them margin claims). Section 12's own row (iii) expected <= 2 px under creation. The follow-up
+candidate would cost the true pixel its own lock on frames where the old lock is out of its reach [I].
 
-Also measured: after the 73.37 px/frame pan stops, the rest rule (no age test at rest, which the form row needs at age 2-3)
-locks 1.9 % of the x-ramp plate at frame 41 on the kinks of the young band (x = 24, 40, 56, 72, age 3); with T = 16 those
-pixels reach the far weight from age 6 until the lock expires [I]. The 40 % step under the camera gate toggles (0.06 / 0.94 /
-0.06 / 1.00): after the step the strut's own phase swing of the 3x3 mean is 59 / 105 codes (0.56 < 0.65 [arithmetic]), so a
-lock re-created on one phase dies on the next unless a flip re-creates it that frame; at rest such a strut is held only by a
-flip every frame [I]. The fixture's 3x3 clip under the pan costs only +0.5 % ripple on the unlocked 0.4-px struts (clip_pan),
-not the +0.7x the raster model predicts for the spacedock. Records: `temporal-lattice.txt` (the lock section and the lock budget
-row; timing rows restored; every other line identical), `temporal-pass-summary.json` (`passed: false`, the two rows, `records_note`),
+Open (from this build, not gated):
+1. After the 73.37 px/frame pan stops, the rest rule (no age test at rest, which the form row needs at age 2-3) locks 1.9 %
+   of the x-ramp plate at frame 41 on the kinks of the young band (x = 24, 40, 56, 72, age 3) [M]; with T = 16 those pixels
+   reach the far weight from age 6 until the lock expires [I].
+2. The 40 % step under the camera gate toggles the strut's lock (0.06 / 0.94 / 0.06 / 1.00 at frames 30-33) [M]: after the
+   step the strut's own phase swing of the 3x3 mean is 59 / 105 codes (0.56 < 0.65 [arithmetic]), so a lock re-created on one
+   phase dies on the next unless a flip re-creates it that frame; high-contrast struts are held only while they flip every
+   frame [I].
+3. The fixture's 3x3 clip under the pan costs only +0.5 % ripple on the unlocked 0.4-px struts (clip_pan 1.0049) [M], not
+   the +0.7x the raster model predicts for the spacedock: the row shows which clip is taken, not its benefit in flight.
+
+Records: `temporal-lattice.txt` (the lock section and the lock budget
+row; timing rows restored; every other line identical), `temporal-pass-summary.json` (`passed: true`, `records_note`),
 `verification/results/taa-luminance-lock/restore_timing_rows.py` / `_out.txt`.

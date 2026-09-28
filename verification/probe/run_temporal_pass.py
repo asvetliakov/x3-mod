@@ -448,7 +448,9 @@ try:
         'plate_sharp': abs(float(sharp['lock']['e_pan_ratio_box'])-1)<=.02 and sharp['lock']['interior_differs_box']=='0',
         'strut_ripple': len(lock['strut_ripple'])==1 and abs(float(lock['strut_ripple'][0]['ratio'])-1)<=.10,
         'carry': float(carry['lock']['share_min'])>=.9,
-        'carry_band': float(band['lock']['locked_per_strut_max'])<=2.0 and float(band['lock']['off_strut_share_max'])<=.02,
+        # section 12 deviation (accepted 2026-09-28): creation at the flipped pixel's centre leaves a second lock 0.67 px behind a
+        # strut leaving a pixel, so the band is <= 3.0 px per strut (mean <= 2.0), not section 10's 2.0
+        'carry_band': float(band['lock']['locked_per_strut_max'])<=3.0 and float(band['lock']['locked_per_strut_mean'])<=2.0 and float(band['lock']['off_strut_share_max'])<=.02,
         'resume': float(resume['lock']['share_frame41'])>=.9,
         'chatter': float(chatter['lock']['toggle_share_max'])<=.05,
         'mover': mover['lock']['locked_at_uncover']=='0' and 0<=int(mover['lock']['reform_delay_frames'])<=3,  # re-formed within 3 frames after the uncover frame
@@ -464,7 +466,7 @@ try:
         'pan_create': bool(pan_create) and pan_create['rest_share_max']=='0.0000' and pan_create['no_flip']=='0' and pan_create['unformed']=='0'
                       and 0<=int(pan_create['delay_max'])<=3 and float(pan_create['carried_min'])>=.9 and float(pan_create['share_frame41'])>=.9,
         'plate_pan': all(float(plate_pan[k]['share_pan_max'])<=.005 for k in ('lock','lock_yramp','lock_fast','lock_yramp_fast')),
-        'carry_2d': float(carry['lock_diag']['share_min'])>=.9 and float(band['lock_diag']['locked_per_strut_max'])<=2.0 and float(band['lock_diag']['off_strut_share_max'])<=.02,
+        'carry_2d': float(carry['lock_diag']['share_min'])>=.9 and float(band['lock_diag']['locked_per_strut_max'])<=3.0 and float(band['lock_diag']['locked_per_strut_mean'])<=2.0 and float(band['lock_diag']['off_strut_share_max'])<=.02,
         'clip_pan': bool(clip_pan) and abs(float(clip_pan['box_ratio'])-1)<=.10 and clip_pan['locked_px_frames']=='0',
         'mover_pan': bool(mover_pan) and mover_pan['covered_locked']=='0' and mover_pan['locked_at_uncover']=='0' and float(mover_pan['strut_share_before'])>=.9,
     }

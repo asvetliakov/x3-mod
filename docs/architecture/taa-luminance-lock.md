@@ -3,10 +3,9 @@
 Design note, 2026-09-28. Status: ratified 2026-09-28 (orchestrator; user chose the lock over the baker widening);
 implemented 2026-09-28 through section 12, not flown with section 12 (opt-in `--taa-luma-lock`, default `16,0.25,3`,
 T 1..31; run354 flew sections 10 + 11); section 12 built with four implementer readings (unheld `ownC` as the camera gate,
-nearest-lock claim, motion creation only above the base weight's age, the sign bit only with the class): 18 of 20
-`LUMA_LOCK` rows pass, 1,240 slots; `carry_band` / `carry_2d` fail on the band (2.875 locked pixels per strut on
-cell-crossing frames, <= 2.0 required) because a flip creates its lock at the pixel centre, 0.67 px behind the strut on the
-trailing pixel (`docs/verification/temporal-resolve.md` "Section 12 build"). Owner of the flown state: `docs/verification/temporal-resolve.md`
+nearest-lock claim, motion creation only above the base weight's age, the sign bit only with the class): all 20
+`LUMA_LOCK` rows pass, 1,240 slots, with one accepted deviation (section 12, "Deviation"): the band gate is <= 3.0 px per
+strut, mean <= 2.0 (`docs/verification/temporal-resolve.md` "Section 12 build"). Owner of the flown state: `docs/verification/temporal-resolve.md`
 ("Far stabiliser weight A/B in flight: 0.95 and 0.90"). Evidence scripts and outputs for this note:
 `verification/results/taa-luminance-lock/lock_share_model.py` (`*_rho0.25_out.txt`, `*_rho0.5_out.txt`).
 Tags: [M] measured in this session or in the ledger, [I] inferred from measured figures, [A] assumed.
@@ -588,3 +587,9 @@ called blurry. (3) It needs the same transported residual chain under motion, so
 gate, and its sole advantage, robustness to a missed flicker under motion, is what section 2's camera-gate creation and
 the 7x7 box under the pan address at the source. The lock model stays; the fallback if the next flight still shimmers
 is the clip (d) and the floor, not the initial state.
+
+### Deviation (accepted 2026-09-28, orchestrator; ledger "Section 12 build")
+
+Creation at the flipped pixel's centre leaves a second lock 0.67 px behind a strut leaving a pixel; band 2.875 px max [M];
+follow-up candidate: a flip within 1 px of an existing carried lock refreshes it instead of creating a new one (design
+decision pending). The fixture's band gate (carry_band, carry_2d) is <= 3.0 px per strut with a mean <= 2.0 for this flight.
