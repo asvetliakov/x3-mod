@@ -391,6 +391,53 @@ selected in its place ([lod-overlay-mods.md](../architecture/lod-overlay-mods.md
 `sector_fog_census.Assets` agrees on the layer order (loose > later catalogue) but
 does not apply the in-layer extension rank (`logical()` rejects mixed formats).
 
+### 7.1 Stems with both a binary and a text member (Mayhem 3 install, 2026-09-29)
+
+Re-read of the resolver on a fresh Ghidra import of the same EXE (decompiled `0x004e7590`,
+`0x004e7470`; capstone `0x004e7cec..0x004e8629`). The rule above holds, and it answers the
+baker's `ambiguous_body_ext` ("engine order unverified"):
+
+- **Loose files first.** Any ranked loose hit ends the call at `0x004e7ce1` (`jne 0x004e8629`);
+  the catalogue phase never runs.
+- **Catalogue slot beats extension.** The catalogue loop runs `slot = word G+0xc8 − 1 … 0`
+  (`0x004e7d0c..0x004e7d1a`, decrement and `jns` at `0x004e861e..0x004e8623`) and re-checks the
+  found flag `[esp+0x12]` before every slot (`0x004e7d20`). Inside a slot the `bsearch` hit
+  (`0x004e7d8d`, prefix comparator `0x004e6ee0`) and its neighbours while `strncmp` on the key
+  length matches are each ranked by `0x004e7470` against `"pbb bob pbd bod"`; a rank below the
+  best so far replaces it, and the flag is set at `0x004e7eb5` only for a rank below
+  `0x7fffffff`. So the first (highest) slot that holds the stem under **any** of the four
+  extensions wins, whatever the extension, and the extension order `.pbb` > `.bob` > `.pbd` >
+  `.bod` decides only among members of that one slot. A `-L<lang>` hit (`bVar3`) blocks the
+  plain name in the same slot.
+- The payload's first bytes, not the extension, then pick the parser (`BOB` → `0x00481aa0`,
+  else the text loader `0x00483f20`, [body-text-loader.md](body-text-loader.md)).
+
+The census below applies this rule to every body the Mayhem bake record refuses as
+`ambiguous_body_ext`. It uses mount order `01…13.cat`, then `addon/01…15.cat` (the x3m overlay
+slots `addon/13…15` hold none of these stems), and one loose body file,
+`objects/cut/00749.bod`. The script is `verification/results/lod-mayhem-refusals/ext_precedence.py`;
+the output is `ext_precedence_out.txt` [m]. The record has 58 such rows: 24 ship, 6 station and
+28 other. None has a `-Lnnn` member, and none has a loose member.
+
+| case (highest slot holding the stem) | ship + station | engine winner | other |
+|---|---|---|---|
+| binary and text in **the same** slot | 4 | binary 4 (`.bob` over `.pbd`: `boron_ts_dolphin_hauler/hull`, `XTC_boron_EQD`, both `addon/06`; `.pbb` over `.pbd`: `MM6/Teladi_MM6FAN`, `docks/test`, both `02.cat`) | 1 binary |
+| binary and text in **different** slots | 26 | binary 23, **text 3** | 26 binary, 1 text |
+| loose vs catalogue | 0 | — | 0 |
+
+The three ship/station text winners are `others/argon_gate` (`addon/11.cat` `.pbd` over the
+`01.cat` `.pbb`), `others/argon_gate_effect` (`addon/11` `.pbd` over the `addon/06` `.bob` and the
+`01.cat` `.pbb`) and `stations/x3tc/xstation_part_a` (`addon/06` `.pbd` over the `02.cat` `.pbb`).
+The one text winner among the others is `effects/engines/fx_engine_boron_M3`. In the other 26
+different-slot cases the text member sits in a lower slot than the winning binary. Examples:
+`xenon_m4`, `Argon_owpmain`/`owpsec` and the `ANIMPROPS` radars, where `02.cat` holds `.pbb` +
+`.pbd` and `addon/01` holds `.pbb`; and the `ships/props/weapondummy*` family, where `02.cat`
+holds `.pbb`, `11.cat` holds `.pbd`, and `addon/01` `.pbb` and `addon/06` `.bob` sit above them.
+The bake record's `member` (the highest binary member, `resolve_body`'s `.pbb` family) is the
+engine winner in 54 of the 58 rows; the exceptions are the 4 text winners [m].
+`bob1.resolve_body` can therefore resolve every row with this rule instead of refusing it: take the
+highest slot holding any of the four extensions, then the lowest extension rank within it.
+
 ## 8. Text form (`.bod` / `.pbd`)
 
 2026-09-23. `bob1.parse_text` (`parse()` dispatches on the `BOB` magic like `0x004863c0`)
@@ -549,4 +596,8 @@ PYTHONPATH=tools/analysis python3 verification/results/bob1-format/body_id_names
 #   0046dc20 0046ee20 0046f1c0 004e7590 004e7470 004e8780 004ec9e0 004ed750 004ede00
 # plus X3ListRange.java <out> 004e7cc0:004e7d90 004e6ea0:004e6f1f and
 # X3XrefsTo.java <out> 0046e400 004ed750 004ede00
+# §7.1 (2026-09-29): Ghidra decompile 004e7590 004e7470, capstone 0x004e7c90..0x004e8640;
+# census of the Mayhem bake record's ambiguous_body_ext rows (about 5 s, bottle X3, read-only)
+PYTHONPATH=tools/analysis python3 verification/results/lod-mayhem-refusals/ext_precedence.py \
+  > verification/results/lod-mayhem-refusals/ext_precedence_out.txt
 ```

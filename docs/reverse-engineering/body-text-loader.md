@@ -39,7 +39,7 @@ scratchpad, untracked. No game launch, no Wine command. Ghidra drops the group-c
 
 | address | role |
 |---|---|
-| `0x004863c0` | body get-or-load: payload not starting with `BOB` → `0x00483f20` (`0x004867e0`); then, when `*(0x00606f34)+0x108 & 0x800`, `0x00482fb0` (`0x00486801`) |
+| `0x004863c0` | body get-or-load: payload not starting with `BOB` → `0x00483f20` (`0x004867e0`); then, when `*(0x00606f34)+0x108 & 0x800`, `0x00482fb0` (`0x00486801`). This parser runs only when a text member wins the resolver `0x004e7590`: loose first, then the highest catalogue slot that holds the stem under any of `pbb bob pbd bod`, then the extension rank inside that slot. A `.pbd` in a higher slot beats a `.pbb`/`.bob` below it; a same-slot `.pbd` loses to the binary ([body-format-bob1.md](body-format-bob1.md) §7.1: 4 text winners among the 58 mixed Mayhem stems) |
 | `0x00486310` | second caller (`0x0048638f`, `0x004863a2`): wraps an in-memory buffer in a text stream (`+0x1c = 0`, table `0x0054ed50`) and calls `0x00483f20` |
 | `0x00483f20` | text parser: header tags, materials, records (§2–§8); returns the `0x70`-byte model |
 | `0x00480830` | per face of a part: group lookup, corner → point dedup, fan triangulation, face normal and smoothing accumulation (§5) |

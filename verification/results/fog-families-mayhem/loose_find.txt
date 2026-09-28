@@ -1,0 +1,6 @@
+# find over whole game tree (loose files), excluding x3m/
+litcube9_dust        0
+litcube20        0
+litcube59        0
+litcube120        0
+litcube203        0

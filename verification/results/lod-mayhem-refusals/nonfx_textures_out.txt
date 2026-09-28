@@ -1,0 +1,11 @@
+02.cat        texture file 01.cat                              7
+addon/01.cat  texture file 01.cat                              1
+addon/06.cat  texture file 01.cat                              2
+addon/12.cat  extra0  file 01.cat                              2
+addon/12.cat  map1    placeholder NONE_NORMAL_LOW              2
+addon/12.cat  map2    file 01.cat                              31
+addon/12.cat  map2    file addon/12.cat                        54
+addon/12.cat  map2    placeholder NONE_BLACK                   3
+addon/12.cat  texture file 01.cat                              34
+addon/12.cat  texture file addon/12.cat                        128
+addon/12.cat  texture placeholder NONE_BLACK                   1

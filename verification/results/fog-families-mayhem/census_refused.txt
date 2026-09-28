@@ -1,0 +1,12 @@
+no_dust_bodies families 170 distinct member-name shapes 1
+170 ('dds/nebula_<F>_background_part_01_diff.dds', 'dds/nebula_<F>_background_part_02_diff.dds', 'dds/nebula_<F>_background_part_03_diff.dds', 'dds/nebula_<F>_background_part_04_diff.dds', 'dds/nebula_<F>_stars_diff.dds', 'objects/environments/nebulae/<F>/nebula_<F>_background_01.bob', 'objects/environments/nebulae/<F>/nebula_<F>_stars_01.bob')
+families with any member containing "dust": 0 {}
+dirs with dust_part bodies 134 of which litcube 69
+types/tbackgrounds.txt addon/01.cat 11308 ba6ee9007cb4f7f7
+types/tbackgrounds.txt addon/03.cat 11740 2c4c3a94550b364b
+types/tbackgrounds.txt addon/07.cat 33837 b0244fbf64efeae4
+types/tbackgrounds.txt loose:addon/types/TBackgrounds.txt 28848 f99bfc0b7eec543c
+maps/x3_universe.xml addon/01.cat 1401996 2313d586304d3df6
+maps/x3_universe.xml addon/02.cat 1402139 567c125e42c73608
+maps/x3_universe.xml addon/07.cat 7768710 f0f353f0eb27b4a3
+maps/x3_universe.xml loose:addon/maps/x3_universe.xml 6070162 eef3ce1b6b0d605e

@@ -497,3 +497,22 @@ shell facets expose the hollow hull. With it the effect is small but mostly favo
 Raster limits: orthographic axis views at the 5120x1440 focal length, 8 Halton phases, one sample per pixel. It draws
 all opaque fragments before the widened group, so a z-write-on band occluding a later part's opaque faces is not
 exercised. No lighting or TAA; the alpha group is a flat 0.5.
+
+## 2026-09-29 Mayhem refusals: extension precedence and classic materials (static analysis, no bake)
+
+Static analysis of the Mayhem bake record `addon/x3m-lod-batch.json` (no Wine, no game launch). Scripts and outputs
+are in `verification/results/lod-mayhem-refusals/`.
+- **`ambiguous_body_ext` (58 rows; 30 ship/station):** the resolver `0x004e7590` is settled. The highest catalogue
+  slot holding the stem under any of `pbb bob pbd bod` wins, then the extension rank inside that slot; loose files come
+  first ([body-format-bob1.md](../reverse-engineering/body-format-bob1.md) §7.1).
+  - **Cases:** ship/station 4 same-slot (binary wins) and 26 different-slot (binary 23, text 3); no loose-vs-catalogue
+    case.
+  - **Record agreement:** the record's `member` is the engine winner in 54 of 58 rows.
+- **`non_effect_material` (167 ship/station):** these are classic `MAT6` records. The engine draws them with the
+  built-in `standard_lighting` effect (`DEFAULT` / `BUMPMAP_LOW`) and constants derived from the record, and never
+  converts them at load ([non-effect-materials.md](../reverse-engineering/non-effect-materials.md)).
+  - **By rule:** 82 helpers and 85 content bodies.
+  - **Merged `standard_lighting.fx` material:** 76 content bodies (`addon/12`) can take one, each with a single
+    constant set. The technique gap (`BUMPMAP_LOW` → `DEFAULT`) is equal with the flat bump placeholder [i].
+  - **Untextured classic materials:** these draw `NONE_GRAY`, not black. `lod_atlas.materials_rows` reads row 155's
+    `MPF_DESTINATIONBLEND|MPF_BESTQUALITY` as 0.

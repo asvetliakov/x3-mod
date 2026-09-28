@@ -1,0 +1,212 @@
+Materials table addon/07.cat: 1238 rows; row 0 flags 0x0; row 155 flags 0x8002
+bodies 167 (ship+station)
+
+per body (class, name, source, MAT version, record-0 faces):
+  helper                             ships/khaak/khaak_cluster_models/00940  addon/06.cat v5 faces0=6 effect_faces=0 classic_faces=6 opaque_tex=0 opaque_untex=0 blended=1
+  helper                             ships/props/cameradummy  addon/06.cat v6 faces0=36 effect_faces=0 classic_faces=36 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/props/extern_M62_dock  addon/06.cat v6 faces0=6 effect_faces=0 classic_faces=6 opaque_tex=0 opaque_untex=0 blended=1
+  helper                             ships/props/extern_m6_dock  addon/06.cat v6 faces0=6 effect_faces=0 classic_faces=6 opaque_tex=0 opaque_untex=0 blended=1
+  helper                             ships/props/extern_TP_dock  addon/06.cat v6 faces0=6 effect_faces=0 classic_faces=6 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/props/extern_TS2_dock  addon/06.cat v6 faces0=6 effect_faces=0 classic_faces=6 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/props/extern_TS_dock  addon/06.cat v6 faces0=6 effect_faces=0 classic_faces=6 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/props/tstp_extdock2_dummy  addon/06.cat v6 faces0=6 effect_faces=0 classic_faces=6 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/props/tstp_extdock_dummy  addon/06.cat v6 faces0=6 effect_faces=0 classic_faces=6 opaque_tex=0 opaque_untex=1 blended=0
+  content:opaque_textured_classic    ships/stellaris/m1_machineFlagship/machine_01_flagship_bow  addon/12.cat v6 faces0=2338 effect_faces=2142 classic_faces=196 opaque_tex=3 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/stellaris/m1_machineFlagship/machine_01_flagship_bow_XL1  addon/12.cat v6 faces0=1739 effect_faces=1591 classic_faces=148 opaque_tex=2 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/stellaris/m1_machineFlagship/machine_01_flagship_mid1  addon/12.cat v6 faces0=5176 effect_faces=1726 classic_faces=3450 opaque_tex=3 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/stellaris/m1_machineFlagship/machine_01_flagship_mid2  addon/12.cat v6 faces0=850 effect_faces=552 classic_faces=298 opaque_tex=3 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/stellaris/m1_machineFlagship/machine_01_flagship_mid3  addon/12.cat v6 faces0=3760 effect_faces=3240 classic_faces=520 opaque_tex=3 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/stellaris/m1_machineFlagship/machine_01_flagship_mid4  addon/12.cat v6 faces0=5248 effect_faces=4112 classic_faces=1136 opaque_tex=3 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/stellaris/m1_machineFlagship/machine_01_flagship_stern  addon/12.cat v6 faces0=15170 effect_faces=12542 classic_faces=2628 opaque_tex=3 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/stellaris/m1m2_battleshipParts_1/hangar_blocker_bottom  addon/12.cat v6 faces0=14 effect_faces=0 classic_faces=14 opaque_tex=1 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/stellaris/m1m2_battleshipParts_1/hangar_blocker_front  addon/12.cat v6 faces0=26 effect_faces=0 classic_faces=26 opaque_tex=1 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/stellaris/m1m2_battleshipParts_1/hangar_blocker_LRback  addon/12.cat v6 faces0=28 effect_faces=0 classic_faces=28 opaque_tex=1 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/stellaris/m1m2_battleshipParts_1/hangar_blocker_LRfront  addon/12.cat v6 faces0=46 effect_faces=0 classic_faces=46 opaque_tex=1 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/stellaris/m1m2_battleshipParts_2/Hangar_Blocker_E  addon/12.cat v6 faces0=30 effect_faces=0 classic_faces=30 opaque_tex=1 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/stellaris/m1m2_battleshipParts_2/machine_01_battleship_bow_L1M1S2  addon/12.cat v6 faces0=924 effect_faces=654 classic_faces=270 opaque_tex=2 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/stellaris/m1m2_battleshipParts_2/machine_01_battleship_bow_L1S4  addon/12.cat v6 faces0=988 effect_faces=718 classic_faces=270 opaque_tex=2 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/stellaris/m1m2_battleshipParts_2/machine_01_battleship_bow_L2  addon/12.cat v6 faces0=1134 effect_faces=806 classic_faces=328 opaque_tex=2 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/stellaris/m1m2_battleshipParts_2/machine_01_battleship_bow_M1S2SHB  addon/12.cat v6 faces0=1402 effect_faces=1090 classic_faces=312 opaque_tex=2 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/stellaris/m1m2_battleshipParts_2/machine_01_battleship_bow_M3S2  addon/12.cat v6 faces0=956 effect_faces=654 classic_faces=302 opaque_tex=2 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/stellaris/m1m2_battleshipParts_2/machine_01_battleship_bow_XL1  addon/12.cat v6 faces0=2996 effect_faces=2424 classic_faces=572 opaque_tex=2 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/stellaris/m1m2_battleshipParts_2/machine_01_battleship_mid_L1M3  addon/12.cat v6 faces0=3816 effect_faces=3282 classic_faces=534 opaque_tex=2 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/stellaris/m1m2_battleshipParts_2/machine_01_battleship_mid_L1M4  addon/12.cat v6 faces0=3852 effect_faces=3318 classic_faces=534 opaque_tex=2 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/stellaris/m1m2_battleshipParts_2/machine_01_battleship_mid_L2M2  addon/12.cat v6 faces0=3816 effect_faces=3282 classic_faces=534 opaque_tex=2 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/stellaris/m1m2_battleshipParts_2/machine_01_battleship_mid_L2S4  addon/12.cat v6 faces0=3816 effect_faces=3282 classic_faces=534 opaque_tex=2 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/stellaris/m1m2_battleshipParts_2/machine_01_battleship_mid_L3  addon/12.cat v6 faces0=3790 effect_faces=3272 classic_faces=518 opaque_tex=2 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/stellaris/m1m2_battleshipParts_2/machine_01_battleship_mid_M4SHB  addon/12.cat v6 faces0=7306 effect_faces=6730 classic_faces=576 opaque_tex=2 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/stellaris/m1m2_battleshipParts_2/machine_01_battleship_mid_S4LHB  addon/12.cat v6 faces0=5226 effect_faces=4566 classic_faces=660 opaque_tex=2 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/stellaris/m1m2_battleshipParts_2/machine_01_battleship_stern_L1  addon/12.cat v6 faces0=8180 effect_faces=8108 classic_faces=72 opaque_tex=2 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/stellaris/m1m2_battleshipParts_2/machine_01_battleship_stern_M1S2  addon/12.cat v6 faces0=8168 effect_faces=8096 classic_faces=72 opaque_tex=2 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/stellaris/m1m2_battleshipParts_2/machine_01_battleship_stern_M2  addon/12.cat v6 faces0=8462 effect_faces=8406 classic_faces=56 opaque_tex=2 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/stellaris/m1m2_battleshipParts_2/machine_01_battleship_stern_S4  addon/12.cat v6 faces0=8566 effect_faces=8510 classic_faces=56 opaque_tex=2 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/stellaris/m1m2_cruiserParts_1/Hangar_Blocker_Front  addon/12.cat v6 faces0=14 effect_faces=0 classic_faces=14 opaque_tex=1 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/stellaris/m1m2_cruiserParts_1/Hangar_Blocker_Left  addon/12.cat v6 faces0=30 effect_faces=0 classic_faces=30 opaque_tex=1 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/stellaris/m1m2_cruiserParts_1/Hangar_Blocker_Right  addon/12.cat v6 faces0=30 effect_faces=0 classic_faces=30 opaque_tex=1 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/stellaris/m2_machineTitanA/machine_01_titan_bow  addon/12.cat v6 faces0=1202 effect_faces=878 classic_faces=324 opaque_tex=2 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/stellaris/m2_machineTitanA/machine_01_titan_mid  addon/12.cat v6 faces0=6800 effect_faces=5103 classic_faces=1697 opaque_tex=2 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/stellaris/m2_machineTitanA/machine_01_titan_stern  addon/12.cat v6 faces0=8560 effect_faces=8430 classic_faces=130 opaque_tex=2 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/stellaris/m2_machineTitanA/RingInner  addon/12.cat v6 faces0=240 effect_faces=48 classic_faces=192 opaque_tex=1 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/stellaris/m2_machineTitanA/RingOuter  addon/12.cat v6 faces0=624 effect_faces=432 classic_faces=192 opaque_tex=1 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/stellaris/m6_machineCorvetteC/hullB  addon/12.cat v6 faces0=158 effect_faces=0 classic_faces=158 opaque_tex=1 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/stellaris/m6_machineCorvetteC/hullC  addon/12.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=1 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/stellaris/m7_frigateParts_2/machine_01_destroyer_bow_L1  addon/12.cat v6 faces0=654 effect_faces=436 classic_faces=218 opaque_tex=2 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/stellaris/m7_frigateParts_2/machine_01_destroyer_bow_M1S2  addon/12.cat v6 faces0=450 effect_faces=302 classic_faces=148 opaque_tex=2 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/stellaris/m7_frigateParts_2/machine_01_destroyer_bow_S3  addon/12.cat v6 faces0=370 effect_faces=270 classic_faces=100 opaque_tex=2 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/stellaris/m7_frigateParts_2/machine_01_destroyer_bow_S5  addon/12.cat v6 faces0=1080 effect_faces=862 classic_faces=218 opaque_tex=2 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/stellaris/m7_frigateParts_2/machine_01_destroyer_stern_M1  addon/12.cat v6 faces0=6698 effect_faces=6444 classic_faces=254 opaque_tex=2 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/stellaris/m7_frigateParts_2/machine_01_destroyer_stern_S2  addon/12.cat v6 faces0=6714 effect_faces=6382 classic_faces=332 opaque_tex=2 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/stellaris/tm_machineSalvage/hullB  addon/12.cat v6 faces0=725 effect_faces=0 classic_faces=725 opaque_tex=1 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/stellaris/tm_machineSalvage/hullC  addon/12.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=1 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/stellaris/tm_machineSalvage/hullD  addon/12.cat v6 faces0=1376 effect_faces=0 classic_faces=1376 opaque_tex=1 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/stellaris/tp_machineShuttle/hullB  addon/12.cat v6 faces0=1272 effect_faces=0 classic_faces=1272 opaque_tex=1 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/stellaris/tp_machineShuttle/hullC  addon/12.cat v6 faces0=4184 effect_faces=0 classic_faces=4184 opaque_tex=1 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/stellaris/tp_machineShuttle/hullD  addon/12.cat v6 faces0=16 effect_faces=0 classic_faces=16 opaque_tex=1 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/stellaris/ts_machineFreighterA/hullC  addon/12.cat v6 faces0=196 effect_faces=0 classic_faces=196 opaque_tex=1 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/stellaris/ts_machineFreighterA/hullD  addon/12.cat v6 faces0=24 effect_faces=0 classic_faces=24 opaque_tex=1 opaque_untex=0 blended=0
+  content:opaque_untextured_classic  ships/x3ap/paranid/XTC_paranid_drone  addon/01.cat v6 faces0=8314 effect_faces=8190 classic_faces=124 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/91turret_socket  addon/01.cat v6 faces0=243 effect_faces=0 classic_faces=243 opaque_tex=0 opaque_untex=6 blended=0
+  helper                             ships/x3ap/props/col/esexported/COL_Cap_1  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/esexported/COL_Cap_2  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/esexported/COL_Cap_3  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/esexported/COL_Cap_4  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/esexported/COL_Cap_5  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/esexported/COL_Cap_6  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/esexported/COL_Cap_7  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/esexported/COL_Cap_8  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/esexported/COL_Drone  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/esexported/COL_M0_A  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/esexported/COL_M0_ATF  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/esexported/COL_M0_B  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/esexported/COL_M0_G  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/esexported/COL_M0_K  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/esexported/COL_M0_O  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/esexported/COL_M0_P  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/esexported/COL_M0_S  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/esexported/COL_M0_T  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/esexported/COL_M3_1  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/esexported/COL_M3_2  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/esexported/COL_M4_2  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/esexported/COL_M6  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/esexported/COL_M7_1  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/esexported/COL_M7_10  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/esexported/COL_M7_2  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/esexported/COL_M7_3  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/esexported/COL_M7_4  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/esexported/COL_M7_5  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/esexported/COL_M7_6  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/esexported/COL_M7_7  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/esexported/COL_M7_8  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/esexported/COL_M7_9  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/esexported/COL_M8  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/esexported/COL_TSP  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/reference-boxes/COL_Cap_1  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/reference-boxes/COL_Cap_2  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/reference-boxes/COL_Cap_3  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/reference-boxes/COL_Cap_4  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/reference-boxes/COL_Cap_5  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/reference-boxes/COL_Cap_6  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/reference-boxes/COL_Cap_7  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/reference-boxes/COL_Cap_8  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/reference-boxes/COL_Drone  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/reference-boxes/COL_M0_A  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/reference-boxes/COL_M0_ATF  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/reference-boxes/COL_M0_B  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/reference-boxes/COL_M0_G  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/reference-boxes/COL_M0_K  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/reference-boxes/COL_M0_O  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/reference-boxes/COL_M0_P  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/reference-boxes/COL_M0_S  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/reference-boxes/COL_M0_T  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/reference-boxes/COL_M3_1  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/reference-boxes/COL_M3_2  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/reference-boxes/COL_M4_2  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/reference-boxes/COL_M6  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/reference-boxes/COL_M7_1  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/reference-boxes/COL_M7_10  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/reference-boxes/COL_M7_2  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/reference-boxes/COL_M7_3  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/reference-boxes/COL_M7_4  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/reference-boxes/COL_M7_5  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/reference-boxes/COL_M7_6  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/reference-boxes/COL_M7_7  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/reference-boxes/COL_M7_8  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/reference-boxes/COL_M7_9  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/reference-boxes/COL_M8  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/col/reference-boxes/COL_TSP  addon/01.cat v6 faces0=12 effect_faces=0 classic_faces=12 opaque_tex=0 opaque_untex=1 blended=0
+  helper                             ships/x3ap/props/hugeturret_socket  addon/01.cat v6 faces0=92 effect_faces=0 classic_faces=92 opaque_tex=0 opaque_untex=1 blended=0
+  content:opaque_untextured_classic  ships/x3ap/usc/XTC_terran_tm  addon/01.cat v6 faces0=13190 effect_faces=13002 classic_faces=188 opaque_tex=0 opaque_untex=1 blended=0
+  content:opaque_textured_classic    ships/xenon/xenon_m7_h/hull  addon/12.cat v6 faces0=21932 effect_faces=0 classic_faces=21932 opaque_tex=5 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/xenon/xenon_m7_h/hull_no_orb  addon/12.cat v6 faces0=20144 effect_faces=0 classic_faces=20144 opaque_tex=5 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/xenon/xenon_m7_h/RedOrb  addon/12.cat v6 faces0=1796 effect_faces=0 classic_faces=1796 opaque_tex=5 opaque_untex=0 blended=0
+  content:opaque_textured_classic    ships/xenon/xenon_ts_f/hull  addon/12.cat v6 faces0=6258 effect_faces=0 classic_faces=6258 opaque_tex=11 opaque_untex=0 blended=0
+  content:blended_classic_only       stations/docks/dock5ports_arm_dummy  02.cat v6 faces0=1278 effect_faces=1260 classic_faces=18 opaque_tex=0 opaque_untex=0 blended=1
+  content:blended_classic_only       stations/docks/dock5portsdummy  02.cat v6 faces0=9989 effect_faces=9899 classic_faces=90 opaque_tex=0 opaque_untex=0 blended=1
+  content:opaque_untextured_classic  stations/docks/dock9portsdummy  02.cat v6 faces0=12796 effect_faces=12742 classic_faces=54 opaque_tex=0 opaque_untex=1 blended=0
+  content:blended_classic_only       stations/docks/dockCarrier_quicklaunch_scene_dummy  02.cat v6 faces0=100 effect_faces=94 classic_faces=6 opaque_tex=0 opaque_untex=0 blended=1
+  content:blended_classic_only       stations/docks/dockCarrier_scene_dummy  02.cat v6 faces0=222 effect_faces=204 classic_faces=18 opaque_tex=0 opaque_untex=0 blended=1
+  helper                             stations/docks/dockM1_arm_dummy  02.cat v6 faces0=6 effect_faces=0 classic_faces=6 opaque_tex=0 opaque_untex=0 blended=1
+  helper                             stations/docks/dockM1_dummy  02.cat v6 faces0=6 effect_faces=0 classic_faces=6 opaque_tex=0 opaque_untex=0 blended=1
+  content:blended_classic_only       stations/docks/M6dockCarrier_quicklaunch_scene_dummy  02.cat v6 faces0=100 effect_faces=94 classic_faces=6 opaque_tex=0 opaque_untex=0 blended=1
+  content:blended_classic_only       stations/docks/M6dockCarrier_scene_dummy  addon/01.cat v6 faces0=336 effect_faces=282 classic_faces=54 opaque_tex=0 opaque_untex=0 blended=1
+  helper                             stations/docks/spawn_dummy  02.cat v6 faces0=6 effect_faces=0 classic_faces=6 opaque_tex=0 opaque_untex=1 blended=0
+  content:opaque_textured_classic    stations/stellaris/habitat/machine_01_habitat_core  addon/12.cat v6 faces0=4758 effect_faces=4730 classic_faces=28 opaque_tex=1 opaque_untex=0 blended=0
+  content:opaque_textured_classic    stations/stellaris/habitat/machine_01_habitat_windows  addon/12.cat v6 faces0=106 effect_faces=0 classic_faces=106 opaque_tex=1 opaque_untex=0 blended=0
+  content:opaque_textured_classic    stations/stellaris/MSS_props/HangarBlocker_HangarSection  addon/12.cat v6 faces0=76 effect_faces=0 classic_faces=76 opaque_tex=1 opaque_untex=0 blended=0
+  content:opaque_textured_classic    stations/stellaris/MSS_props/HangarBlockerLargeWide  addon/12.cat v6 faces0=30 effect_faces=0 classic_faces=30 opaque_tex=1 opaque_untex=0 blended=0
+  content:opaque_textured_classic    stations/stellaris/MSS_props/HangarBlockerLargeWide_solid  addon/12.cat v6 faces0=14 effect_faces=0 classic_faces=14 opaque_tex=1 opaque_untex=0 blended=0
+  content:opaque_textured_classic    stations/stellaris/starbase/machine_01_citadel_details  addon/12.cat v6 faces0=2184 effect_faces=112 classic_faces=2072 opaque_tex=2 opaque_untex=1 blended=0
+  content:opaque_textured_classic    stations/stellaris/starbase/machine_01_orbital_station_assemblyyard_section  addon/12.cat v6 faces0=1996 effect_faces=1564 classic_faces=432 opaque_tex=2 opaque_untex=0 blended=0
+  content:opaque_textured_classic    stations/stellaris/starbase/machine_01_orbital_station_assemblyyard_section_orig  addon/12.cat v6 faces0=1964 effect_faces=1532 classic_faces=432 opaque_tex=2 opaque_untex=0 blended=0
+  content:opaque_textured_classic    stations/stellaris/starbase/machine_01_orbital_station_hangarbay_section  addon/12.cat v6 faces0=456 effect_faces=444 classic_faces=12 opaque_tex=1 opaque_untex=0 blended=0
+  content:opaque_textured_classic    stations/stellaris/starbase/machine_01_orbital_station_hangarbay_section_orig  addon/12.cat v6 faces0=400 effect_faces=388 classic_faces=12 opaque_tex=1 opaque_untex=0 blended=0
+  content:opaque_textured_classic    stations/stellaris/starbase/machine_01_orbital_station_refinery_section  addon/12.cat v6 faces0=4084 effect_faces=1624 classic_faces=2460 opaque_tex=2 opaque_untex=0 blended=0
+  content:opaque_textured_classic    stations/stellaris/starbase/machine_01_orbital_station_science_section  addon/12.cat v6 faces0=548 effect_faces=404 classic_faces=144 opaque_tex=2 opaque_untex=0 blended=0
+  content:opaque_textured_classic    stations/stellaris/starbase/machine_01_outpost  addon/12.cat v6 faces0=1274 effect_faces=1022 classic_faces=252 opaque_tex=2 opaque_untex=0 blended=0
+  content:opaque_textured_classic    stations/stellaris/starbase/machine_01_starbase_turret_section  addon/12.cat v6 faces0=952 effect_faces=768 classic_faces=184 opaque_tex=2 opaque_untex=0 blended=0
+  content:opaque_textured_classic    stations/stellaris/starbase/machine_01_starfort  addon/12.cat v6 faces0=8014 effect_faces=6350 classic_faces=1664 opaque_tex=2 opaque_untex=1 blended=0
+  content:opaque_textured_classic    stations/stellaris/starbase/machine_01_starhold  addon/12.cat v6 faces0=2997 effect_faces=2159 classic_faces=838 opaque_tex=2 opaque_untex=1 blended=0
+  content:opaque_textured_classic    stations/stellaris/starbase/machine_01_starhold_turretmounts  addon/12.cat v6 faces0=4130 effect_faces=3310 classic_faces=820 opaque_tex=2 opaque_untex=1 blended=0
+  content:opaque_textured_classic    stations/stellaris/starbase/machine_01_starport  addon/12.cat v6 faces0=1372 effect_faces=894 classic_faces=478 opaque_tex=2 opaque_untex=0 blended=0
+  content:opaque_textured_classic    stations/stellaris/starbase/machine_01_starport_turretmounts  addon/12.cat v6 faces0=2074 effect_faces=1596 classic_faces=478 opaque_tex=2 opaque_untex=0 blended=0
+
+split by rule (class, source catalogue): count
+  content:blended_classic_only       02.cat        5
+  content:blended_classic_only       addon/01.cat  1
+  content:opaque_textured_classic    addon/12.cat  76
+  content:opaque_untextured_classic  02.cat        1
+  content:opaque_untextured_classic  addon/01.cat  2
+  helper                             02.cat        3
+  helper                             addon/01.cat  70
+  helper                             addon/06.cat  9
+  totals: {"helper": 82, "content": 85}
+
+Q2: distinct classic record shapes in the content bodies (materials, bodies, example):
+    73 mats  67 bodies  {"amb": [51, 51, 51], "dif": [255, 255, 255], "extra": [], "file_flags": "0x0", "map_values": [100, 100, 100], "maps": [], "selfillum": 0, "shininess": 30, "spec": [0, 0, 0], "strength": 100, "texture": "named", "texval": 100, "transp": 0, "ver": 6, "w16": 0}  e.g. ships/stellaris/m1_machineFlagship/machine_01_flagship_bow
+    48 mats  48 bodies  {"amb": [51, 51, 51], "dif": [255, 255, 255], "extra": [], "file_flags": "0x0", "map_values": [100, 100, 100], "maps": [2], "selfillum": 0, "shininess": 30, "spec": [0, 0, 0], "strength": 100, "texture": "named", "texval": 100, "transp": 0, "ver": 6, "w16": 0}  e.g. ships/stellaris/m1_machineFlagship/machine_01_flagship_bow
+    21 mats   3 bodies  {"amb": [149, 149, 149], "dif": [149, 149, 149], "extra": [], "file_flags": "0x0", "map_values": [100, 30, 100], "maps": [2], "selfillum": 0, "shininess": 10, "spec": [229, 229, 229], "strength": 60, "texture": "named", "texval": 100, "transp": 0, "ver": 6, "w16": 65535}  e.g. ships/xenon/xenon_m7_h/RedOrb
+     5 mats   1 bodies  {"amb": [149, 149, 149], "dif": [149, 149, 149], "extra": [], "file_flags": "0x0", "map_values": [100, 30, 100], "maps": [2], "selfillum": 0, "shininess": 10, "spec": [229, 229, 229], "strength": 120, "texture": "named", "texval": 100, "transp": 0, "ver": 6, "w16": 65535}  e.g. ships/xenon/xenon_m7_h/hull
+     4 mats   4 bodies  {"amb": [0, 0, 0], "dif": [255, 255, 255], "extra": [], "file_flags": "0x0", "map_values": [0, 0, 0], "maps": [], "selfillum": 100, "shininess": 10, "spec": [255, 255, 255], "strength": 0, "texture": "numbered", "texval": 100, "transp": 0, "ver": 6, "w16": 65535}  e.g. stations/docks/M6dockCarrier_quicklaunch_scene_dummy
+     4 mats   4 bodies  {"amb": [51, 51, 51], "dif": [0, 0, 255], "extra": [], "file_flags": "0x0", "map_values": [100, 100, 100], "maps": [], "selfillum": 0, "shininess": 30, "spec": [0, 0, 0], "strength": 100, "texture": "none", "texval": 100, "transp": 0, "ver": 6, "w16": 0}  e.g. stations/stellaris/starbase/machine_01_citadel_details
+     2 mats   2 bodies  {"amb": [149, 149, 149], "dif": [149, 149, 149], "extra": [0], "file_flags": "0x0", "map_values": [100, 30, 100], "maps": [1, 2], "selfillum": 0, "shininess": 10, "spec": [229, 229, 229], "strength": 0, "texture": "named", "texval": 100, "transp": 0, "ver": 6, "w16": 0}  e.g. ships/stellaris/tm_machineSalvage/hullB
+     2 mats   2 bodies  {"amb": [0, 0, 0], "dif": [255, 255, 255], "extra": [], "file_flags": "0x0", "map_values": [0, 0, 0], "maps": [], "selfillum": 100, "shininess": 10, "spec": [255, 255, 255], "strength": 0, "texture": "numbered", "texval": 100, "transp": 0, "ver": 6, "w16": 0}  e.g. stations/docks/M6dockCarrier_scene_dummy
+     1 mats   1 bodies  {"amb": [126, 126, 126], "dif": [126, 126, 126], "extra": [], "file_flags": "0x0", "map_values": [100, 10, 100], "maps": [], "selfillum": 0, "shininess": 10, "spec": [229, 229, 229], "strength": 0, "texture": "none", "texval": 100, "transp": 0, "ver": 6, "w16": 0}  e.g. ships/x3ap/paranid/XTC_paranid_drone
+     1 mats   1 bodies  {"amb": [150, 150, 150], "dif": [150, 150, 150], "extra": [], "file_flags": "0x0", "map_values": [100, 30, 100], "maps": [], "selfillum": 0, "shininess": 10, "spec": [229, 229, 229], "strength": 0, "texture": "none", "texval": 100, "transp": 0, "ver": 6, "w16": 0}  e.g. ships/x3ap/usc/XTC_terran_tm
+     1 mats   1 bodies  {"amb": [0, 0, 0], "dif": [255, 255, 255], "extra": [], "file_flags": "0x0", "map_values": [0, 0, 0], "maps": [], "selfillum": 100, "shininess": 10, "spec": [255, 255, 255], "strength": 0, "texture": "none", "texval": 100, "transp": 0, "ver": 6, "w16": 0}  e.g. stations/docks/dock9portsdummy
+
+distinct classic draw shapes, all bodies (materials, bodies, example):
+    73 mats  67 bodies  {"DiffuseStrength": 1.0, "Emissive": [0, 0, 0], "Reflection": 0.0, "SpecularPower": 31, "SpecularStrength": 1.0, "blend": "opaque", "bump": false, "cube": false, "diffuse": "named", "light": false, "nofilter": false, "specmap": false, "technique": "DEFAULT", "two_sided": false}  e.g. ships/stellaris/m1_machineFlagship/machine_01_flagship_bow
+    48 mats  48 bodies  {"DiffuseStrength": 1.0, "Emissive": [0, 0, 0], "Reflection": 0.0, "SpecularPower": 31, "SpecularStrength": 1.0, "blend": "opaque", "bump": false, "cube": false, "diffuse": "named", "light": true, "nofilter": false, "specmap": false, "technique": "BUMPMAP_LOW", "two_sided": false}  e.g. ships/stellaris/m1_machineFlagship/machine_01_flagship_bow
+    42 mats  37 bodies  {"DiffuseStrength": 0.0, "Emissive": [0, 0, 0], "Reflection": 0.0, "SpecularPower": 11, "SpecularStrength": 0.0, "blend": "opaque", "bump": false, "cube": false, "diffuse": "none(id0->NONE_GRAY)", "light": false, "nofilter": false, "specmap": false, "technique": "DEFAULT", "two_sided": false}  e.g. ships/props/cameradummy
+    36 mats  36 bodies  {"DiffuseStrength": 1.0, "Emissive": [0, 0, 0], "Reflection": 0.0, "SpecularPower": 11, "SpecularStrength": 0.0, "blend": "opaque", "bump": false, "cube": false, "diffuse": "none(id0->NONE_GRAY)", "light": false, "nofilter": false, "specmap": false, "technique": "DEFAULT", "two_sided": false}  e.g. ships/x3ap/paranid/XTC_paranid_drone
+    21 mats   3 bodies  {"DiffuseStrength": 1.0, "Emissive": [0, 0, 0], "Reflection": 0.0, "SpecularPower": 11, "SpecularStrength": 0.6, "blend": "opaque", "bump": false, "cube": false, "diffuse": "named", "light": true, "nofilter": false, "specmap": false, "technique": "BUMPMAP_LOW", "two_sided": false}  e.g. ships/xenon/xenon_m7_h/RedOrb
+    10 mats  10 bodies  {"DiffuseStrength": 0.0, "Emissive": [1.0, 1.0, 1.0], "Reflection": 0.0, "SpecularPower": 11, "SpecularStrength": 0.0, "blend": "additive(ONE,ONE)", "bump": false, "cube": false, "diffuse": "row155", "light": false, "nofilter": false, "specmap": false, "technique": "DEFAULT", "two_sided": false}  e.g. ships/props/extern_M62_dock
+     7 mats   7 bodies  {"DiffuseStrength": 0.0, "Emissive": [1.0, 1.0, 1.0], "Reflection": 0.0, "SpecularPower": 11, "SpecularStrength": 0.0, "blend": "opaque", "bump": false, "cube": false, "diffuse": "none(id0->NONE_GRAY)", "light": false, "nofilter": false, "specmap": false, "technique": "DEFAULT", "two_sided": false}  e.g. ships/props/extern_TP_dock
+     5 mats   1 bodies  {"DiffuseStrength": 1.0, "Emissive": [0, 0, 0], "Reflection": 0.0, "SpecularPower": 11, "SpecularStrength": 1.2, "blend": "opaque", "bump": false, "cube": false, "diffuse": "named", "light": true, "nofilter": false, "specmap": false, "technique": "BUMPMAP_LOW", "two_sided": false}  e.g. ships/xenon/xenon_m7_h/hull
+     4 mats   4 bodies  {"DiffuseStrength": 1.0, "Emissive": [0, 0, 0], "Reflection": 0.0, "SpecularPower": 31, "SpecularStrength": 1.0, "blend": "opaque", "bump": false, "cube": false, "diffuse": "none(id0->NONE_GRAY)", "light": false, "nofilter": false, "specmap": false, "technique": "DEFAULT", "two_sided": false}  e.g. stations/stellaris/starbase/machine_01_citadel_details
+     2 mats   2 bodies  {"DiffuseStrength": 1.0, "Emissive": [0, 0, 0], "Reflection": 0.0, "SpecularPower": 11, "SpecularStrength": 0.0, "blend": "opaque", "bump": true, "cube": false, "diffuse": "named", "light": true, "nofilter": false, "specmap": true, "technique": "BUMPMAP_LOW", "two_sided": false}  e.g. ships/stellaris/tm_machineSalvage/hullB
+     1 mats   1 bodies  {"DiffuseStrength": 0.0, "Emissive": [0.5882, 0.5882, 0.5882], "Reflection": 0.0, "SpecularPower": 11, "SpecularStrength": 0.0, "blend": "additive(ONE,ONE)", "bump": false, "cube": false, "diffuse": "row155", "light": false, "nofilter": false, "specmap": false, "technique": "DEFAULT", "two_sided": false}  e.g. ships/khaak/khaak_cluster_models/00940
+
+Q4: content bodies with opaque textured classic materials: distinct constant sets per body -> bodies
+  {"1": 76}
+  effect files also drawn by those bodies -> bodies: {"argon.fx": 50, "(none)": 26}

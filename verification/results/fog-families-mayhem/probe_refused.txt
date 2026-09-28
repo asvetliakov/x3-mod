@@ -1,0 +1,82 @@
+TBackgrounds effective: loose:addon/types/TBackgrounds.txt addon/types/TBackgrounds.txt
+TBackgrounds all layers: ['addon/01.cat', 'addon/03.cat', 'addon/07.cat', 'loose:addon/types/TBackgrounds.txt']
+universe effective: loose:addon/maps/x3_universe.xml addon/maps/x3_universe.xml all layers: ['addon/01.cat', 'addon/02.cat', 'addon/07.cat', 'loose:addon/maps/x3_universe.xml']
+sectors 246 background refs by attribute s (row index)
+refused families 171 with >=1 sector 151 sectors on refused 172
+ok families 77 with >=1 sector 67 sectors on ok 74
+nebula dirs total 317 litcube dirs 250
+refused with a nebula dir 171 ; ok with a nebula dir 77
+
+== litcube9 ('refused', 'texture_missing')
+ row 47: name=litcube9 stars/bg/outside=1/1/1 rates=['1', '1', '1', '1', '1', '1', '1', '1'] dust=30 colA=['0', '0', '0'] c23=0 near=37197405 far=40917145 stardust%=80 colB=['120', '120', '120'] c0-6=['0', '0', '0', '0', '0', '0', '0'] c30-36=['0', '0', '0', '0', '0', '0', '0'] id=SS_BG_47 sectors=1
+ members with name: 13 {'dds': 5, 'objects/environments/nebulae/litcube9': 8}
+    addon/05.cat dds/nebula_litcube9_background_part_01_diff.dds
+    addon/05.cat dds/nebula_litcube9_background_part_02_diff.dds
+    addon/05.cat dds/nebula_litcube9_background_part_03_diff.dds
+    addon/05.cat dds/nebula_litcube9_background_part_04_diff.dds
+    addon/05.cat dds/nebula_litcube9_stars_diff.dds
+    addon/06.cat objects/environments/nebulae/litcube9/nebula_litcube9_background_01.bob
+  part01 addon/06.cat nebulafog.fx tex=environments\nebulae\bluenexus\dust\nebula_litcube9_dust_diff.tga stem=dds/nebula_litcube9_dust_diff resolves=None
+  part02 addon/06.cat nebulafog.fx tex=environments\nebulae\bluenexus\dust\nebula_litcube9_dust_diff.tga stem=dds/nebula_litcube9_dust_diff resolves=None
+  part03 addon/06.cat nebulafog.fx tex=environments\nebulae\bluenexus\dust\nebula_litcube9_dust_diff.tga stem=dds/nebula_litcube9_dust_diff resolves=None
+  part04 addon/06.cat nebulafog.fx tex=environments\nebulae\bluenexus\dust\nebula_litcube9_dust_diff.tga stem=dds/nebula_litcube9_dust_diff resolves=None
+  part05 addon/06.cat nebulafog.fx tex=environments\nebulae\bluenexus\dust\nebula_litcube9_dust_diff.tga stem=dds/nebula_litcube9_dust_diff resolves=None
+  part06 addon/06.cat nebulafog.fx tex=environments\nebulae\bluenexus\dust\nebula_litcube9_dust_diff.tga stem=dds/nebula_litcube9_dust_diff resolves=None
+
+== litcube20 ('refused', 'no_dust_bodies')
+ row 53: name=litcube20 stars/bg/outside=1/1/1 rates=['1', '1', '1', '1', '1', '1', '1', '1'] dust=19 colA=['0', '0', '0'] c23=0 near=37197405 far=40917145 stardust%=80 colB=['120', '120', '120'] c0-6=['0', '0', '0', '0', '0', '0', '0'] c30-36=['0', '0', '0', '0', '0', '0', '0'] id=SS_BG_53 sectors=1
+ members with name: 7 {'dds': 5, 'objects/environments/nebulae/litcube20': 2}
+    addon/05.cat dds/nebula_litcube20_background_part_01_diff.dds
+    addon/05.cat dds/nebula_litcube20_background_part_02_diff.dds
+    addon/05.cat dds/nebula_litcube20_background_part_03_diff.dds
+    addon/05.cat dds/nebula_litcube20_background_part_04_diff.dds
+    addon/05.cat dds/nebula_litcube20_stars_diff.dds
+    addon/06.cat objects/environments/nebulae/litcube20/nebula_litcube20_background_01.bob
+
+== litcube59 ('refused', 'no_dust_bodies')
+ row 92: name=litcube59 stars/bg/outside=1/1/1 rates=['1', '1', '1', '1', '1', '1', '1', '1'] dust=33 colA=['0', '0', '0'] c23=0 near=37197405 far=40917145 stardust%=80 colB=['120', '120', '120'] c0-6=['0', '0', '0', '0', '0', '0', '0'] c30-36=['0', '0', '0', '0', '0', '0', '0'] id=SS_BG_92 sectors=2
+ members with name: 7 {'dds': 5, 'objects/environments/nebulae/litcube59': 2}
+    addon/05.cat dds/nebula_litcube59_background_part_01_diff.dds
+    addon/05.cat dds/nebula_litcube59_background_part_02_diff.dds
+    addon/05.cat dds/nebula_litcube59_background_part_03_diff.dds
+    addon/05.cat dds/nebula_litcube59_background_part_04_diff.dds
+    addon/05.cat dds/nebula_litcube59_stars_diff.dds
+    addon/06.cat objects/environments/nebulae/litcube59/nebula_litcube59_background_01.bob
+
+== litcube120 ('refused', 'no_dust_bodies')
+ row 142: name=litcube120 stars/bg/outside=1/1/1 rates=['1', '1', '1', '1', '1', '1', '1', '1'] dust=25 colA=['0', '0', '0'] c23=0 near=37197405 far=40917145 stardust%=80 colB=['120', '120', '120'] c0-6=['0', '0', '0', '0', '0', '0', '0'] c30-36=['0', '0', '0', '0', '0', '0', '0'] id=SS_BG_142 sectors=1
+ members with name: 7 {'dds': 5, 'objects/environments/nebulae/litcube120': 2}
+    addon/05.cat dds/nebula_litcube120_background_part_01_diff.dds
+    addon/05.cat dds/nebula_litcube120_background_part_02_diff.dds
+    addon/05.cat dds/nebula_litcube120_background_part_03_diff.dds
+    addon/05.cat dds/nebula_litcube120_background_part_04_diff.dds
+    addon/05.cat dds/nebula_litcube120_stars_diff.dds
+    addon/06.cat objects/environments/nebulae/litcube120/nebula_litcube120_background_01.bob
+
+== litcube203 ('refused', 'no_dust_bodies')
+ row 209: name=litcube203 stars/bg/outside=1/1/1 rates=['1', '1', '1', '1', '1', '1', '1', '1'] dust=22 colA=['0', '0', '0'] c23=0 near=37197405 far=40917145 stardust%=80 colB=['120', '120', '120'] c0-6=['0', '0', '0', '0', '0', '0', '0'] c30-36=['0', '0', '0', '0', '0', '0', '0'] id=SS_BG_209 sectors=2
+ members with name: 7 {'dds': 5, 'objects/environments/nebulae/litcube203': 2}
+    addon/05.cat dds/nebula_litcube203_background_part_01_diff.dds
+    addon/05.cat dds/nebula_litcube203_background_part_02_diff.dds
+    addon/05.cat dds/nebula_litcube203_background_part_03_diff.dds
+    addon/05.cat dds/nebula_litcube203_background_part_04_diff.dds
+    addon/05.cat dds/nebula_litcube203_stars_diff.dds
+    addon/06.cat objects/environments/nebulae/litcube203/nebula_litcube203_background_01.bob
+
+== litcube1 ('ok', None)
+ row 33: name=litcube1 stars/bg/outside=1/1/1 rates=['1', '1', '1', '1', '1', '1', '1', '1'] dust=23 colA=['0', '0', '0'] c23=0 near=37197405 far=40917145 stardust%=80 colB=['120', '120', '120'] c0-6=['0', '0', '0', '0', '0', '0', '0'] c30-36=['0', '0', '0', '0', '0', '0', '0'] id=SS_BG_33 sectors=1
+ members with name: 33 {'dds': 13, 'objects/environments/nebulae/litcube1': 20}
+    addon/05.cat dds/nebula_litcube1_1_dust_diff.dds
+    addon/05.cat dds/nebula_litcube1_2_dust_diff.dds
+    addon/05.cat dds/nebula_litcube1_3_dust_diff.dds
+    addon/05.cat dds/nebula_litcube1_4_dust_diff.dds
+    addon/05.cat dds/nebula_litcube1_5_dust_diff.dds
+    addon/05.cat dds/nebula_litcube1_6_dust_diff.dds
+  part01 addon/11.cat nebulafog.fx tex=environments\nebulae\bluenexus\dust\nebula_litcube1_1_dust_diff.tga stem=dds/nebula_litcube1_1_dust_diff resolves=addon/05.cat
+  part02 addon/11.cat nebulafog.fx tex=environments\nebulae\bluenexus\dust\nebula_litcube1_2_dust_diff.tga stem=dds/nebula_litcube1_2_dust_diff resolves=addon/05.cat
+  part03 addon/11.cat nebulafog.fx tex=environments\nebulae\bluenexus\dust\nebula_litcube1_3_dust_diff.tga stem=dds/nebula_litcube1_3_dust_diff resolves=addon/05.cat
+  part04 addon/11.cat nebulafog.fx tex=environments\nebulae\bluenexus\dust\nebula_litcube1_4_dust_diff.tga stem=dds/nebula_litcube1_4_dust_diff resolves=addon/05.cat
+  part05 addon/11.cat nebulafog.fx tex=environments\nebulae\bluenexus\dust\nebula_litcube1_5_dust_diff.tga stem=dds/nebula_litcube1_5_dust_diff resolves=addon/05.cat
+  part06 addon/11.cat nebulafog.fx tex=environments\nebulae\bluenexus\dust\nebula_litcube1_6_dust_diff.tga stem=dds/nebula_litcube1_6_dust_diff resolves=addon/05.cat
+  part07 addon/11.cat nebulafog.fx tex=environments\nebulae\bluenexus\dust\nebula_litcube1_7_dust_diff.tga stem=dds/nebula_litcube1_7_dust_diff resolves=addon/05.cat
+  part08 addon/11.cat nebulafog.fx tex=environments\nebulae\bluenexus\dust\nebula_litcube1_8_dust_diff.tga stem=dds/nebula_litcube1_8_dust_diff resolves=addon/05.cat

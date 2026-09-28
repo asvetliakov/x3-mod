@@ -1,0 +1,65 @@
+game /Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3
+slots (mount order): 01.cat 02.cat 03.cat 04.cat 05.cat 06.cat 07.cat 08.cat 09.cat 10.cat 11.cat 12.cat 13.cat addon/01.cat addon/02.cat addon/03.cat addon/04.cat addon/05.cat addon/06.cat addon/07.cat addon/08.cat addon/09.cat addon/10.cat addon/11.cat addon/12.cat addon/13.cat addon/14.cat addon/15.cat
+x3m overlay slots: addon/13.cat addon/14.cat addon/15.cat
+loose body files under objects/: 1
+ambiguous_body_ext rows: 58 ({'other': 28, 'station': 6, 'ship': 24})
+station others/argon_gate  case=different_catalogues  winner=addon/11.cat:pbd (text)  record_member=01.cat:objects/others/argon_gate.pbb  lang_variants=0  members=01.cat:pbb,addon/11.cat:pbd  refuse=ambiguous_body_ext
+station others/argon_gate_effect  case=different_catalogues  winner=addon/11.cat:pbd (text)  record_member=addon/06.cat:objects/others/argon_gate_effect.bob  lang_variants=0  members=01.cat:pbb,addon/06.cat:bob,addon/11.cat:pbd  refuse=ambiguous_body_ext+no_opaque
+ship    ships/ANIMPROPS/m6mainradar1  case=different_catalogues  winner=addon/01.cat:pbb (binary)  record_member_wins  lang_variants=0  members=02.cat:pbb,02.cat:pbd,addon/01.cat:pbb  refuse=ambiguous_body_ext
+ship    ships/ANIMPROPS/m6mainradar1_base  case=different_catalogues  winner=addon/01.cat:pbb (binary)  record_member_wins  lang_variants=0  members=02.cat:pbb,02.cat:pbd,addon/01.cat:pbb  refuse=ambiguous_body_ext
+ship    ships/ANIMPROPS/m6radarspike1  case=different_catalogues  winner=addon/01.cat:pbb (binary)  record_member_wins  lang_variants=0  members=02.cat:pbb,02.cat:pbd,addon/01.cat:pbb  refuse=ambiguous_body_ext
+ship    ships/ANIMPROPS/m6radarspike1_base  case=different_catalogues  winner=addon/01.cat:pbb (binary)  record_member_wins  lang_variants=0  members=02.cat:pbb,02.cat:pbd,addon/01.cat:pbb  refuse=ambiguous_body_ext
+ship    ships/ANIMPROPS/m7mainradar1  case=different_catalogues  winner=addon/01.cat:pbb (binary)  record_member_wins  lang_variants=0  members=02.cat:pbb,02.cat:pbd,addon/01.cat:pbb  refuse=ambiguous_body_ext
+ship    ships/ANIMPROPS/m7mainradar1_base  case=different_catalogues  winner=addon/01.cat:pbb (binary)  record_member_wins  lang_variants=0  members=02.cat:pbb,02.cat:pbd,addon/01.cat:pbb  refuse=ambiguous_body_ext
+ship    ships/ANIMPROPS/m7radarspike1  case=different_catalogues  winner=addon/01.cat:pbb (binary)  record_member_wins  lang_variants=0  members=02.cat:pbb,02.cat:pbd,addon/01.cat:pbb  refuse=ambiguous_body_ext
+ship    ships/boron/boron_ts_dolphin_hauler/hull  case=same_catalogue  winner=addon/06.cat:bob (binary)  record_member_wins  lang_variants=0  members=addon/06.cat:bob,addon/06.cat:pbd  refuse=ambiguous_body_ext
+ship    ships/MM6/Teladi_MM6FAN  case=same_catalogue  winner=02.cat:pbb (binary)  record_member_wins  lang_variants=0  members=02.cat:pbb,02.cat:pbd  refuse=ambiguous_body_ext
+ship    ships/props/cameradummy  case=different_catalogues  winner=addon/06.cat:bob (binary)  record_member_wins  lang_variants=0  members=02.cat:pbd,addon/06.cat:bob  refuse=ambiguous_body_ext+non_effect_material
+ship    ships/props/invisible_weapon  case=different_catalogues  winner=addon/06.cat:bob (binary)  record_member_wins  lang_variants=0  members=02.cat:pbd,addon/06.cat:bob  refuse=ambiguous_body_ext+no_opaque
+ship    ships/props/turretdummy  case=different_catalogues  winner=addon/06.cat:bob (binary)  record_member_wins  lang_variants=0  members=02.cat:pbd,addon/06.cat:bob  refuse=ambiguous_body_ext
+ship    ships/props/weapondummy  case=different_catalogues  winner=addon/06.cat:bob (binary)  record_member_wins  lang_variants=0  members=02.cat:pbd,addon/01.cat:pbb,addon/06.cat:bob  refuse=ambiguous_body_ext
+ship    ships/props/weapondummy2  case=different_catalogues  winner=addon/06.cat:bob (binary)  record_member_wins  lang_variants=0  members=02.cat:pbb,11.cat:pbd,addon/01.cat:pbb,addon/06.cat:bob  refuse=ambiguous_body_ext
+ship    ships/props/weapondummy3  case=different_catalogues  winner=addon/06.cat:bob (binary)  record_member_wins  lang_variants=0  members=02.cat:pbb,11.cat:pbd,addon/01.cat:pbb,addon/06.cat:bob  refuse=ambiguous_body_ext
+ship    ships/props/weapondummy4  case=different_catalogues  winner=addon/06.cat:bob (binary)  record_member_wins  lang_variants=0  members=02.cat:pbb,11.cat:pbd,addon/01.cat:pbb,addon/06.cat:bob  refuse=ambiguous_body_ext
+ship    ships/props/weapondummy5  case=different_catalogues  winner=addon/01.cat:pbb (binary)  record_member_wins  lang_variants=0  members=02.cat:pbb,11.cat:pbd,addon/01.cat:pbb  refuse=ambiguous_body_ext
+ship    ships/props/weapondummy6  case=different_catalogues  winner=addon/06.cat:bob (binary)  record_member_wins  lang_variants=0  members=02.cat:pbb,11.cat:pbd,addon/01.cat:pbb,addon/06.cat:bob  refuse=ambiguous_body_ext
+ship    ships/props/weapondummy7d  case=different_catalogues  winner=addon/06.cat:bob (binary)  record_member_wins  lang_variants=0  members=02.cat:pbb,11.cat:pbd,addon/01.cat:pbb,addon/06.cat:bob  refuse=ambiguous_body_ext
+ship    ships/props/weapondummy8d  case=different_catalogues  winner=addon/06.cat:bob (binary)  record_member_wins  lang_variants=0  members=02.cat:pbb,11.cat:pbd,addon/01.cat:pbb,addon/06.cat:bob  refuse=ambiguous_body_ext
+ship    ships/props/weapondummy9d  case=different_catalogues  winner=addon/06.cat:bob (binary)  record_member_wins  lang_variants=0  members=02.cat:pbb,11.cat:pbd,addon/01.cat:pbb,addon/06.cat:bob  refuse=ambiguous_body_ext
+ship    ships/STATIONS/Argon_owpmain  case=different_catalogues  winner=addon/01.cat:pbb (binary)  record_member_wins  lang_variants=0  members=02.cat:pbb,02.cat:pbd,addon/01.cat:pbb  refuse=ambiguous_body_ext
+ship    ships/STATIONS/Argon_owpsec  case=different_catalogues  winner=addon/01.cat:pbb (binary)  record_member_wins  lang_variants=0  members=02.cat:pbb,02.cat:pbd,addon/01.cat:pbb  refuse=ambiguous_body_ext
+ship    ships/xenon/xenon_m4  case=different_catalogues  winner=addon/01.cat:pbb (binary)  record_member_wins  lang_variants=0  members=02.cat:pbb,02.cat:pbd,addon/01.cat:pbb  refuse=ambiguous_body_ext
+station stations/docks/M6dockCarrier_scene_dummy  case=different_catalogues  winner=addon/01.cat:pbb (binary)  record_member_wins  lang_variants=0  members=02.cat:pbd,addon/01.cat:pbb  refuse=ambiguous_body_ext+non_effect_material
+station stations/docks/test  case=same_catalogue  winner=02.cat:pbb (binary)  record_member_wins  lang_variants=0  members=02.cat:pbb,02.cat:pbd  refuse=ambiguous_body_ext
+station stations/x3ap/others/XTC_boron_EQD  case=same_catalogue  winner=addon/06.cat:bob (binary)  record_member_wins  lang_variants=0  members=addon/01.cat:pbb,addon/03.cat:pbb,addon/06.cat:bob,addon/06.cat:pbd  refuse=ambiguous_body_ext
+station stations/x3tc/xstation_part_a  case=different_catalogues  winner=addon/06.cat:pbd (text)  record_member=02.cat:objects/stations/x3tc/xstation_part_a.pbb  lang_variants=0  members=02.cat:pbb,addon/06.cat:pbd  refuse=ambiguous_body_ext
+other   effects/engines/fx_engine_boron_M3  case=different_catalogues  winner=addon/01.cat:pbd (text)  record_member=01.cat:objects/effects/engines/fx_engine_boron_M3.pbb  lang_variants=0  members=01.cat:pbb,addon/01.cat:pbd  refuse=ambiguous_body_ext+texture_animation_unsupported
+other   effects/engines/fx_engine_paranid_TS  case=same_catalogue  winner=01.cat:pbb (binary)  record_member_wins  lang_variants=0  members=01.cat:pbb,01.cat:pbd  refuse=ambiguous_body_ext+texture_animation_unsupported
+other   environments/nebulae/xtmearth/nebula_xtmearth_background_01  case=different_catalogues  winner=addon/11.cat:pbb (binary)  record_member_wins  lang_variants=0  members=addon/06.cat:bob,addon/06.cat:pbd,addon/11.cat:pbb  refuse=ambiguous_body_ext
+other   v/00127  case=different_catalogues  winner=addon/06.cat:bob (binary)  record_member_wins  lang_variants=0  members=01.cat:pbd,addon/06.cat:bob  refuse=ambiguous_body_ext+non_effect_material
+other   v/00390  case=different_catalogues  winner=addon/01.cat:pbb (binary)  record_member_wins  lang_variants=0  members=01.cat:pbd,addon/01.cat:pbb  refuse=ambiguous_body_ext+no_opaque
+other   v/00517  case=different_catalogues  winner=addon/01.cat:pbb (binary)  record_member_wins  lang_variants=0  members=01.cat:pbd,addon/01.cat:pbb  refuse=ambiguous_body_ext+non_effect_material
+other   v/00773  case=different_catalogues  winner=addon/01.cat:pbb (binary)  record_member_wins  lang_variants=0  members=01.cat:pbd,addon/01.cat:pbb  refuse=ambiguous_body_ext+texture_animation_unsupported
+other   v/00779  case=different_catalogues  winner=addon/06.cat:bob (binary)  record_member_wins  lang_variants=0  members=01.cat:pbd,addon/06.cat:bob  refuse=ambiguous_body_ext+non_effect_material
+other   v/10678  case=different_catalogues  winner=addon/01.cat:pbb (binary)  record_member_wins  lang_variants=0  members=01.cat:pbd,addon/01.cat:pbb  refuse=ambiguous_body_ext+non_effect_material
+other   v/11012  case=different_catalogues  winner=addon/01.cat:pbb (binary)  record_member_wins  lang_variants=0  members=01.cat:pbd,addon/01.cat:pbb  refuse=ambiguous_body_ext+non_effect_material
+other   v/11013  case=different_catalogues  winner=addon/01.cat:pbb (binary)  record_member_wins  lang_variants=0  members=01.cat:pbd,addon/01.cat:pbb  refuse=ambiguous_body_ext+non_effect_material
+other   v/11014  case=different_catalogues  winner=addon/01.cat:pbb (binary)  record_member_wins  lang_variants=0  members=01.cat:pbd,addon/01.cat:pbb  refuse=ambiguous_body_ext+non_effect_material
+other   v/11015  case=different_catalogues  winner=addon/01.cat:pbb (binary)  record_member_wins  lang_variants=0  members=01.cat:pbd,addon/01.cat:pbb  refuse=ambiguous_body_ext+non_effect_material
+other   v/11994  case=different_catalogues  winner=addon/01.cat:pbb (binary)  record_member_wins  lang_variants=0  members=01.cat:pbd,addon/01.cat:pbb  refuse=ambiguous_body_ext+texture_animation_unsupported
+other   v/11997  case=different_catalogues  winner=addon/01.cat:pbb (binary)  record_member_wins  lang_variants=0  members=01.cat:pbd,addon/01.cat:pbb  refuse=ambiguous_body_ext+texture_animation_unsupported
+other   v/11998  case=different_catalogues  winner=addon/01.cat:pbb (binary)  record_member_wins  lang_variants=0  members=01.cat:pbd,addon/01.cat:pbb  refuse=ambiguous_body_ext+texture_animation_unsupported
+other   v/11999  case=different_catalogues  winner=addon/01.cat:pbb (binary)  record_member_wins  lang_variants=0  members=01.cat:pbd,addon/01.cat:pbb  refuse=ambiguous_body_ext+texture_animation_unsupported
+other   v/12000  case=different_catalogues  winner=addon/01.cat:pbb (binary)  record_member_wins  lang_variants=0  members=01.cat:pbd,addon/01.cat:pbb  refuse=ambiguous_body_ext+texture_animation_unsupported
+other   v/12001  case=different_catalogues  winner=addon/01.cat:pbb (binary)  record_member_wins  lang_variants=0  members=01.cat:pbd,addon/01.cat:pbb  refuse=ambiguous_body_ext+texture_animation_unsupported
+other   v/12002  case=different_catalogues  winner=addon/01.cat:pbb (binary)  record_member_wins  lang_variants=0  members=01.cat:pbd,addon/01.cat:pbb  refuse=ambiguous_body_ext+texture_animation_unsupported
+other   v/12003  case=different_catalogues  winner=addon/01.cat:pbb (binary)  record_member_wins  lang_variants=0  members=01.cat:pbd,addon/01.cat:pbb  refuse=ambiguous_body_ext+texture_animation_unsupported
+other   v/12004  case=different_catalogues  winner=addon/01.cat:pbb (binary)  record_member_wins  lang_variants=0  members=01.cat:pbd,addon/01.cat:pbb  refuse=ambiguous_body_ext+texture_animation_unsupported
+other   v/12005  case=different_catalogues  winner=addon/01.cat:pbb (binary)  record_member_wins  lang_variants=0  members=01.cat:pbd,addon/01.cat:pbb  refuse=ambiguous_body_ext+texture_animation_unsupported
+other   v/12006  case=different_catalogues  winner=addon/01.cat:pbb (binary)  record_member_wins  lang_variants=0  members=01.cat:pbd,addon/01.cat:pbb  refuse=ambiguous_body_ext+texture_animation_unsupported
+other   v/12007  case=different_catalogues  winner=addon/01.cat:pbb (binary)  record_member_wins  lang_variants=0  members=01.cat:pbd,addon/01.cat:pbb  refuse=ambiguous_body_ext+no_opaque
+other   v/12008  case=different_catalogues  winner=addon/01.cat:pbb (binary)  record_member_wins  lang_variants=0  members=01.cat:pbd,addon/01.cat:pbb  refuse=ambiguous_body_ext+texture_animation_unsupported
+other   v/12009  case=different_catalogues  winner=addon/01.cat:pbb (binary)  record_member_wins  lang_variants=0  members=01.cat:pbd,addon/01.cat:pbb  refuse=ambiguous_body_ext+no_opaque
+other   v/flasher  case=different_catalogues  winner=addon/01.cat:pbb (binary)  record_member_wins  lang_variants=0  members=01.cat:pbd,addon/01.cat:pbb  refuse=ambiguous_body_ext+non_effect_material
+ship/station cases: {"different_catalogues": 26, "same_catalogue": 4}
+ship/station winner kinds: {"different_catalogues/binary": 23, "different_catalogues/text": 3, "same_catalogue/binary": 4}
