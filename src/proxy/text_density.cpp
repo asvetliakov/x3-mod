@@ -107,7 +107,8 @@ sites::FilterSet filter_set_{};
 volatile std::uintptr_t stage0_ = 0;
 unsigned long saved_min_ = 0, saved_mag_ = 0;
 bool filter_unavailable_ = false; // GetSamplerState failed once (a pure device): no further attempt
-unsigned filter_draws_ = 0; // draws overridden since the last debug row
+unsigned filter_draws_ = 0, filter_already_linear_ = 0; // draws changed / already linear since the last debug row
+bool raised_min_ = false, raised_mag_ = false;           // which axes the current draw raised (restored after it)
 bool filter_logged_ = false;
 constexpr unsigned filter_report_window = 300;
 // The diagnostic set (debug): printed once per distinct (function, src, dst).
@@ -1045,23 +1046,33 @@ bool draw_filter_override(IDirect3DDevice9* device, SamplerGet get, SamplerSet s
         }
         return false;
     }
-    if (min_filter == sites::d3d_texf_linear && mag_filter == sites::d3d_texf_linear) return false;
+    const bool raise_min = sites::filter_needs_raise(min_filter), raise_mag = sites::filter_needs_raise(mag_filter);
+    if (!filter_logged_) {
+        // Once: what the engine set on the first text-quad draw, MAXANISOTROPY included (read, never changed).
+        filter_logged_ = true;
+        unsigned long aniso = 0;
+        if (get(device, 0, D3DSAMP_MAXANISOTROPY, &aniso) < 0) aniso = 0;
+        log("text_density_filter status=active min_before=%lu mag_before=%lu aniso=%lu raised=%s textures=%u", static_cast<unsigned long>(min_filter),
+            static_cast<unsigned long>(mag_filter), aniso, raise_min && raise_mag ? "both" : raise_min ? "min" : raise_mag ? "mag" : "none",
+            filter_set_.count);
+    }
+    if (!raise_min && !raise_mag) {
+        ++filter_already_linear_;
+        return false;
+    }
+    raised_min_ = raise_min;
+    raised_mag_ = raise_mag;
     saved_min_ = min_filter;
     saved_mag_ = mag_filter;
-    set(device, 0, D3DSAMP_MINFILTER, sites::d3d_texf_linear);
-    set(device, 0, D3DSAMP_MAGFILTER, sites::d3d_texf_linear);
+    if (raise_min) set(device, 0, D3DSAMP_MINFILTER, sites::d3d_texf_linear);
+    if (raise_mag) set(device, 0, D3DSAMP_MAGFILTER, sites::d3d_texf_linear);
     ++filter_draws_;
-    if (!filter_logged_) {
-        filter_logged_ = true;
-        log("text_density_filter status=active min_before=%lu mag_before=%lu textures=%u", static_cast<unsigned long>(min_filter),
-            static_cast<unsigned long>(mag_filter), filter_set_.count);
-    }
     return true;
 }
 void draw_filter_restore(IDirect3DDevice9* device, SamplerSet set) {
     if (!device || !set) return;
-    set(device, 0, D3DSAMP_MINFILTER, saved_min_);
-    set(device, 0, D3DSAMP_MAGFILTER, saved_mag_);
+    if (raised_min_) set(device, 0, D3DSAMP_MINFILTER, saved_min_);
+    if (raised_mag_) set(device, 0, D3DSAMP_MAGFILTER, saved_mag_);
 }
 void present(unsigned long long frame) {
     if (!filter_wanted() || filter_unavailable_) {
@@ -1071,8 +1082,10 @@ void present(unsigned long long frame) {
     const DWORD error = GetLastError();
     rebuild_filter_set();
     if (x3m::log_tier::cached_debug && frame % filter_report_window == 0) {
-        log("text_density_filter_frame frame=%llu textures=%u overridden=%u", frame, filter_set_.count, filter_draws_);
+        log("text_density_filter_frame frame=%llu textures=%u overridden=%u already_linear=%u", frame, filter_set_.count, filter_draws_,
+            filter_already_linear_);
         filter_draws_ = 0;
+        filter_already_linear_ = 0;
     }
     SetLastError(error);
 }

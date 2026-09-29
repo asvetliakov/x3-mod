@@ -120,6 +120,8 @@ int main(int argc, char** argv) {
     for (std::uintptr_t p = 0x1000; p < 0x1000 + 4 * 80; p += 4) filter_set_insert(&fs, p);
     check(fs.count == filter_set_capacity && filter_set_contains(fs, 0x1000) && !filter_set_insert(&fs, 0x9999), "filter set bounded");
     check(object_texture_offset == 0x34 && object_surface_offset == 0x30 && d3d_texf_linear == 2, "object layout");
+    check(filter_needs_raise(d3d_texf_none) && filter_needs_raise(d3d_texf_point) && !filter_needs_raise(d3d_texf_linear) &&
+          !filter_needs_raise(d3d_texf_anisotropic) && !filter_needs_raise(7), "only NONE/POINT are raised");
     // 28, 29 the font gate against a game directory (argv[1]): the missing pairs at d = 2 and d = 3; 30 the texture-limit fit
     const char* game = argc > 1 ? argv[1] : ".";
     auto exists = [&](const char* relative) {
@@ -235,10 +237,11 @@ class TextDensityCore(unittest.TestCase):
                          {'fn': 'blt_alpha', 'src': 1300, 'dst': 15, 'dst_flagged': 1, 'src_flagged': 0, 'src_generated': 0, 'handled': 1})
         self.assertEqual(verifier.parse_draw_line('text_density_draw fn=text_line font=1 x=-42 dst=15 dst_flagged=1'),
                          {'fn': 'text_line', 'font': 1, 'x': -42, 'dst': 15, 'dst_flagged': 1})
-        self.assertEqual(verifier.parse_filter_line('text_density_filter status=active min_before=1 mag_before=1 textures=12'),
-                         {'min': 1, 'mag': 1, 'textures': 12})
-        self.assertEqual(verifier.parse_filter_line('text_density_filter_frame frame=600 textures=14 overridden=57'),
-                         {'frame': 600, 'textures': 14, 'overridden': 57})
+        self.assertEqual(verifier.parse_filter_line('text_density_filter status=active min_before=3 mag_before=2 aniso=16 raised=none textures=3'),
+                         {'min': 3, 'mag': 2, 'aniso': 16, 'raised': 'none', 'textures': 3})
+        self.assertEqual(verifier.parse_filter_line('text_density_filter_frame frame=600 textures=14 overridden=57 already_linear=2000'),
+                         {'frame': 600, 'textures': 14, 'overridden': 57, 'already_linear': 2000})
+        self.assertEqual([verifier.filter_needs_raise(v) for v in (0, 1, 2, 3)], [True, True, False, False])
         self.assertEqual(verifier.filter_set([0x30, 0x10, 0x20, 0x10, 0, 0x40]), [0x10, 0x20, 0x30, 0x40])
         self.assertEqual(verifier.parse_reset_line('text_density_reset shadows=2 bytes=8388608'), {'shadows': 2, 'bytes': 8388608})
         self.assertEqual(verifier.parse_restore_line('text_density_restore status=restored registered=0'), {'status': 'restored', 'registered': 0})
@@ -293,9 +296,10 @@ class TextDensityCore(unittest.TestCase):
                        # documented sampler getters and setters per overridden draw, restored after the draw.
                        'sites::filter_set_insert(&next,texture);', 'x3m::engine_memory::read(object+sites::object_texture_offset,&texture,4)',
                        'sites::filter_set_contains(filter_set_,texture)', 'get(device,0,D3DSAMP_MINFILTER,&min_filter)<0',
-                       'set(device,0,D3DSAMP_MINFILTER,sites::d3d_texf_linear);', 'set(device,0,D3DSAMP_MINFILTER,saved_min_);',
-                       'double(density_)!=scale_', 'log("text_density_filter status=active min_before=%lu mag_before=%lu textures=%u"',
-                       'log("text_density_filter_frame frame=%llu textures=%u overridden=%u"'):
+                       'if (raise_min) set(device,0,D3DSAMP_MINFILTER,sites::d3d_texf_linear);', 'if (raised_min_) set(device,0,D3DSAMP_MINFILTER,saved_min_);',
+                       'sites::filter_needs_raise(min_filter)', 'get(device,0,D3DSAMP_MAXANISOTROPY,&aniso)', '++filter_already_linear_;',
+                       'double(density_)!=scale_', 'log("text_density_filter status=active min_before=%lu mag_before=%lu aniso=%lu raised=%s textures=%u"',
+                       'log("text_density_filter_frame frame=%llu textures=%u overridden=%u already_linear=%u"'):
             self.assertIn(needle, module, needle)
         # The draw hooks bracket every submitted draw with the override; the SetTexture hook records stage 0; Present rebuilds the set.
         self.assertEqual(capture.count('const bool text_filter = route.submit && text_density::draw_filter_override(d,ctx.get<text_density::SamplerGet>(68),ctx.get<text_density::SamplerSet>(69));'), 4)
