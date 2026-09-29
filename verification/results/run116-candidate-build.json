@@ -1,0 +1,97 @@
+{
+  "dll": "/tmp/x3-run116-candidate/build/d3d9.dll",
+  "sha256": "68bd5f4135c53c96b8d07dc086d9e78d416a8d495e6a8a239b76035d96fdd565",
+  "bytes": 57849156,
+  "commit": "846f9c16",
+  "toolchain": "i686-w64-mingw32-gcc (GCC) 16.2.0; cmake version 4.4.3; RelWithDebInfo, cmake/mingw-i686.cmake, -j8; Python 3.9.6 (/usr/bin/python3, -DPython3_EXECUTABLE=/usr/bin/python3); clean build in a detached git worktree (X3M_SOURCE_COMMIT 846f9c163fcf32e86f83944ad1c6bcb6680e7f0b, no dirty diff); clean configure+build wall time 45 s",
+  "gates": "build 0 warnings; x87 0 violations (737 reachable functions); generate --check PASS (247 settings, 99 in the template); ui-scale site_verifier_summary PASS 75/75 checks (10,331 instructions, 161 claims considered, EXE identity shipped LAA CheckSum 0, sha256 fdbf3418...); text-density site_verifier_summary PASS 72/72 checks (4,008 instructions, 170 claims considered, same EXE identity); verify_cull_small_parts_site PASS 20/20 checks (site 0x47d2a2, 373 function instructions); verify_lens_flare_cull_site PASS 13/13 checks (42 body names); verify_dust_leak_fix_site PASS 27/27 checks (site 0x41f4d1, 473 function instructions); host suite 280 modules / 2,947 tests / 0 failing (99.3 s wall, 12 jobs); generate_fonts.py --out build/fonts wrote 16 files under build/fonts/F, sha256 identical to /Users/asvetl/x3-mod/build/fonts/F (16/16, Tahoma26.tga ef536bbb...); stem_coverage.py PASS; manage.py launch --dry-run --direct --debug --ui-scale 1.25 exit 0 with X3M_UI_SCALE \"1.25\" and X3M_TEXT_DENSITY \"auto\"; no Wine run; X3AP not running before build and suite",
+  "changes": [
+    "846f9c16 fonts: Tahoma family default = Noto wght 600 (advance fit through wdth 80) with the grey stroke floor (variant D: stems ~2.66 texels at d = 2, antialiased edges kept), LARGE family unchanged; preview_minified.py harness (engine pen rule, 2x2 bilinear at screen-pixel centres, SRCALPHA onto the panel colour) with --weight/--hinted/--floor-mode/--gamma generator switches; variant_coverage.py; test_family_defaults; font-assets.md readability section",
+    "d36684e8 text_density: the sampler override raises only NONE/POINT axes to LINEAR (per axis, restored per axis), status row with min/mag/aniso/raised, overridden= counts changed draws and already_linear= the rest (run393: the engine's own samplers were ANISOTROPIC/LINEAR on these draws)",
+    "13f70f27 Run 115 A completed (run393): every letter present, no black icons; text still a little rough under the 1.6x minification (engine samplers were already anisotropic/linear); readability variants next",
+    "115a8785 Run115 candidate built from 9166c5f0 (DLL fe31263b\u2026 57,847,453 B; host suite 280/2,946/0, x87 0, ui-scale 75/75, text-density 72/72, verifiers 20/13/27, stem coverage PASS) and installed 2026-09-30 with the regenerated fonts; Run 114 A completed (run392: density path worked, narrow glyphs vanished); Run 115 A queued; rollback Run114"
+  ],
+  "fonts": [
+    {
+      "name": "Harrier48.abc",
+      "sha256": "bfe708cd4c832d6e58116816952dfaaf3dcefe85cf8bea79472141380f19249c",
+      "bytes": 10102
+    },
+    {
+      "name": "Harrier48.tga",
+      "sha256": "b0e5db2922e7b7d830387d7f9db5d64199fed6378f0dc3131f4fd80734939a09",
+      "bytes": 2097170
+    },
+    {
+      "name": "Harrier72.abc",
+      "sha256": "807a78585316503f8c2bef7d6f203e108868b33a19c4839153adbffa91cfe775",
+      "bytes": 10102
+    },
+    {
+      "name": "Harrier72.tga",
+      "sha256": "7e6db52e670aa17e84ce533913eba10be8777bf96b7f6126a3d132468ff6761e",
+      "bytes": 4194322
+    },
+    {
+      "name": "Tahoma26.abc",
+      "sha256": "18cca779096a9e41d547be70beb00552e0dd2cfd9ad2216c398724186d3fe2dd",
+      "bytes": 17054
+    },
+    {
+      "name": "Tahoma26.tga",
+      "sha256": "ef536bbb89ca579293f33b981bad95e2d2762554626b09979085da9e92bbc68f",
+      "bytes": 1048594
+    },
+    {
+      "name": "Tahoma39.abc",
+      "sha256": "abbe3241884774a060006eb2f3888eaae2dcd269d2bace52773ca46c94d9ea76",
+      "bytes": 17054
+    },
+    {
+      "name": "Tahoma39.tga",
+      "sha256": "42596156cf468d1ce17dad45b2fd320e7082b4e31f9e1c379d07d17fbeba1550",
+      "bytes": 4194322
+    },
+    {
+      "name": "Zekton52.abc",
+      "sha256": "7a52633c0a936aa7026aae45ec3a85c3188b27fd943ace23cdc5a7f134ad4248",
+      "bytes": 7628
+    },
+    {
+      "name": "Zekton52.tga",
+      "sha256": "cff8eb745fdb0fba6e4648a6694c3b615e112a630fd3571f15a56df1c387f53f",
+      "bytes": 2097170
+    },
+    {
+      "name": "Zekton78.abc",
+      "sha256": "3960f3cf197336c8ce168c603322a432ce224a1e923c951a865f31cba57fc424",
+      "bytes": 7628
+    },
+    {
+      "name": "Zekton78.tga",
+      "sha256": "212b87b9e2610142aea56e44677a27af030b633252677a0d7ae11a4a2d5b2b97",
+      "bytes": 4194322
+    },
+    {
+      "name": "ZektonES52.abc",
+      "sha256": "96c229be61d9ea2644eb227f2ba2077074227390a35c4324a3af0e462421d0da",
+      "bytes": 24750
+    },
+    {
+      "name": "ZektonES52.tga",
+      "sha256": "bb01d1d12b9293a9a0812b126e245e19f66c68ed8f1052862c8725b35750e554",
+      "bytes": 2097170
+    },
+    {
+      "name": "ZektonES78.abc",
+      "sha256": "496fabf863183563ce63548452ce0a9a34a4a7555230677530f1baec905e3cf5",
+      "bytes": 24750
+    },
+    {
+      "name": "ZektonES78.tga",
+      "sha256": "79140644e51f02a55241cc6ae37050c7c62dc5d5e3602120229689bbd18bd9fa",
+      "bytes": 4194322
+    }
+  ],
+  "producer": "Claude Code implement agent (Opus 5.5), 2026-09-30; git log --oneline 9166c5f0..846f9c16 --no-merges; shasum -a 256; hashlib over build/fonts/F; build/site/suite/fonts/stem/dry-run logs local under /tmp/x3-run116-candidate/"
+}
