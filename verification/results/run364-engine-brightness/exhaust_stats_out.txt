@@ -1,0 +1,25 @@
+frame 4490: exhaust px 3442 (engine>1 1284; linear>1 1284, linear>4 625) bbox x 2227-2471 y 535-663 | hull px 42350
+  exhaust engine max/p99/mean 2.998 2.948 1.241 | linear 11.196 10.792 2.3515 | AgX luma 0.983 0.981 0.680
+  hull    engine max/p99/mean 1.000 1.000 0.109 | linear 1.000 1.000 0.0557 | AgX luma 0.787 0.765 0.045
+  core rgb mean [1.876 1.831 1.659] min [0.896 0.13  0.093] max [2.998 2.969 2.963] | hist of max-channel in core: [520, 181, 160, 216, 206, 1]
+frame 4491: exhaust px 3347 (engine>1 1316; linear>1 1316, linear>4 639) bbox x 2230-2477 y 533-664 | hull px 41882
+  exhaust engine max/p99/mean 2.994 2.952 1.261 | linear 11.163 10.823 2.4341 | AgX luma 0.983 0.981 0.681
+  hull    engine max/p99/mean 1.000 1.000 0.112 | linear 1.000 1.000 0.0588 | AgX luma 0.787 0.773 0.047
+frame 4492: exhaust px 3454 (engine>1 1352; linear>1 1352, linear>4 689) bbox x 2230-2481 y 531-661 | hull px 41044
+  exhaust engine max/p99/mean 2.984 2.946 1.269 | linear 11.084 10.774 2.4771 | AgX luma 0.983 0.982 0.687
+  hull    engine max/p99/mean 1.000 1.000 0.109 | linear 1.000 1.000 0.0553 | AgX luma 0.787 0.764 0.045
+frame 4493: exhaust px 3593 (engine>1 1397; linear>1 1397, linear>4 666) bbox x 2232-2480 y 529-659 | hull px 40882
+  exhaust engine max/p99/mean 2.973 2.938 1.242 | linear 10.988 10.705 2.3502 | AgX luma 0.983 0.981 0.677
+  hull    engine max/p99/mean 1.000 1.000 0.108 | linear 1.000 1.000 0.0547 | AgX luma 0.787 0.772 0.045
+frame 4494: exhaust px 3552 (engine>1 1371; linear>1 1371, linear>4 654) bbox x 2234-2482 y 527-657 | hull px 40371
+  exhaust engine max/p99/mean 2.979 2.933 1.240 | linear 11.036 10.665 2.3475 | AgX luma 0.983 0.981 0.678
+  hull    engine max/p99/mean 1.000 1.000 0.106 | linear 1.000 1.000 0.0532 | AgX luma 0.787 0.763 0.044
+frame 4495: exhaust px 3295 (engine>1 1375; linear>1 1375, linear>4 700) bbox x 2236-2482 y 526-659 | hull px 40534
+  exhaust engine max/p99/mean 2.973 2.947 1.295 | linear 10.988 10.783 2.5877 | AgX luma 0.983 0.981 0.689
+  hull    engine max/p99/mean 1.000 1.000 0.113 | linear 1.000 1.000 0.0591 | AgX luma 0.787 0.770 0.048
+frame 4496: exhaust px 3536 (engine>1 1350; linear>1 1350, linear>4 638) bbox x 2237-2486 y 524-654 | hull px 40452
+  exhaust engine max/p99/mean 2.990 2.938 1.237 | linear 11.131 10.704 2.3217 | AgX luma 0.983 0.981 0.678
+  hull    engine max/p99/mean 1.000 1.000 0.107 | linear 1.000 1.000 0.0537 | AgX luma 0.787 0.749 0.044
+frame 4497: exhaust px 3431 (engine>1 1339; linear>1 1339, linear>4 639) bbox x 2237-2483 y 521-644 | hull px 41453
+  exhaust engine max/p99/mean 2.973 2.945 1.251 | linear 10.988 10.767 2.3983 | AgX luma 0.983 0.981 0.685
+  hull    engine max/p99/mean 1.000 1.000 0.108 | linear 1.000 1.000 0.0544 | AgX luma 0.787 0.762 0.045

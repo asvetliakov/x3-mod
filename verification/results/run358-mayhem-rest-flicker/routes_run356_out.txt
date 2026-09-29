@@ -1,0 +1,14 @@
+capture-frame motion_route (gate, unmatched): {('0', 'none'): 1264, ('3', 'unregistered'): 24}
+  ps 5f82ecacd39529cd: {'0': 416}
+  ps 8759c7838bbc86c2: {'0': 408}
+  ps f1b0e820c7b488c3: {'0': 144}
+  ps ca6bfa4a6cca7e2a: {'0': 104}
+  ps 63f96eba9eea7880: {'0': 80}
+  ps 0c1f3f0f440e4a0c: {'0': 48}
+  ps 5e0a10fe752b6140: {'0': 48}
+  ps d44db87778a43b61: {'0': 8}
+  ps a66fb1981ba755b2: {'0': 8}
+  ps 8360f422de08b5bd: {'3': 8}
+  ps 222bee0defcb1852: {'3': 8}
+  ps 0a523f33ac47ae05: {'3': 8}
+session motion_output_frame rows 14448: {'draws': 2519107, 'routed': 1593351, 'matched': 1587018, 'gate1': 0, 'gate2': 578848, 'gate3': 290973, 'gate4': 55935, 'gate5': 0, 'gate6': 6333}; frames with matched>0: 13838; motion_lifetime rows: 4988

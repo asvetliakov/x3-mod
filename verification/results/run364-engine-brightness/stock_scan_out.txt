@@ -1,0 +1,14 @@
+== /tmp/x3-bottleX3-run351 backbuffer=1920x1080 hull_emission_gain_mode requested=1 e
+ draws by (program,ps): {('11', 'e70adc74'): 40}  origin_w>1000: {}
+== /tmp/x3-bottleX3-run352 backbuffer=1920x1080 hull_emission_gain_mode requested=1 e
+ draws by (program,ps): {('11', 'e70adc74'): 12}  origin_w>1000: {}
+== /tmp/x3-bottleX3-run353 backbuffer=1920x1080 hull_emission_gain_mode requested=1 e
+ draws by (program,ps): {}  origin_w>1000: {}
+== /tmp/x3-bottleX3-run354 backbuffer=1920x1080 hull_emission_gain_mode requested=1 e
+ draws by (program,ps): {}  origin_w>1000: {}
+== /tmp/x3-bottleX3-run355 backbuffer=1920x1080 hull_emission_gain_mode requested=1 e
+ draws by (program,ps): {}  origin_w>1000: {}
+== /tmp/x3-bottleX3-run356 backbuffer=1920x1080 hull_emission_gain_mode requested=1 e
+ draws by (program,ps): {}  origin_w>1000: {}
+== /tmp/x3-bottleX3-run364 backbuffer=5120x1440 hull_emission_gain_mode requested=1 e
+ draws by (program,ps): {('7', '7c83ed50'): 96}  origin_w>1000: {('7', '7c83ed50'): 88}

@@ -1,0 +1,11 @@
+screen ONE/INVSRCCOLOR s=0.8 over d=0.05             engine FP16 0.810 (linear 0.629) native 0.810 | display HDR 0.716 native 0.810 ratio 0.88
+screen s=0.3 over d=0.05 (disc fringe)               engine FP16 0.335 (linear 0.090) native 0.335 | display HDR 0.375 native 0.335 ratio 1.12
+screen s=0.8 over d=3.0 (disc over gained card)      engine FP16 1.400 (linear 2.096) native 1.000 | display HDR 0.879 native 1.000 ratio 0.88
+hull card ONE/ONE gain 2 s=0.2 over d=0.05           engine FP16 0.450 (linear 0.173) native 0.250 | display HDR 0.489 native 0.250 ratio 1.96
+hull card ONE/ONE gain 1 s=0.2 over d=0.05           engine FP16 0.250 (linear 0.047) native 0.250 | display HDR 0.273 native 0.250 ratio 1.09
+hull card ONE/ONE gain 2 s=0.4 over d=0.1            engine FP16 0.900 (linear 0.793) native 0.500 | display HDR 0.752 native 0.500 ratio 1.50
+hull card ONE/ONE gain 1 s=0.4 over d=0.1            engine FP16 0.500 (linear 0.218) native 0.500 | display HDR 0.531 native 0.500 ratio 1.06
+hull card ONE/ONE gain 2 s=1.0 over d=0.5            engine FP16 2.500 (linear 7.507) native 1.000 | display HDR 0.968 native 1.000 ratio 0.97
+hull card ONE/ONE gain 1 s=1.0 over d=0.5            engine FP16 1.500 (linear 2.440) native 1.000 | display HDR 0.894 native 1.000 ratio 0.89
+hull card ONE/ONE gain 2 s=1.0 over d=1.0            engine FP16 3.000 (linear 11.212) native 1.000 | display HDR 0.984 native 1.000 ratio 0.98
+hull card ONE/ONE gain 1 s=1.0 over d=1.0            engine FP16 2.000 (linear 4.595) native 1.000 | display HDR 0.943 native 1.000 ratio 0.94

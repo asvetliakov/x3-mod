@@ -1,0 +1,9 @@
+x3-bottleX3-run351 frame 1797: max 15.609 px>1 2861 | DEFAULT pair draws: screen 1, ONE/ONE z-on 0, ONE/ONE z-off (lens) 0
+x3-bottleX3-run352 frame 1418: max 13.469 px>1 2824 | DEFAULT pair draws: screen 1, ONE/ONE z-on 0, ONE/ONE z-off (lens) 10
+x3-bottleX3-run353 frame 1454: max 15.219 px>1 2824 | DEFAULT pair draws: screen 1, ONE/ONE z-on 0, ONE/ONE z-off (lens) 10
+x3-bottleX3-run354 frame 1408: max 10.578 px>1 2895 | DEFAULT pair draws: screen 2, ONE/ONE z-on 0, ONE/ONE z-off (lens) 0
+x3-bottleX3-run355 frame 1627: max 15.070 px>1 2835 | DEFAULT pair draws: screen 1, ONE/ONE z-on 0, ONE/ONE z-off (lens) 10
+x3-bottleX3-run356 frame 1087: max 10.648 px>1 2881 | DEFAULT pair draws: screen 1, ONE/ONE z-on 0, ONE/ONE z-off (lens) 10
+run364 4490 lens 113
+run364 4490 screen 18
+run364 4490 add_zon 1

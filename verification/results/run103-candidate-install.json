@@ -1,0 +1,43 @@
+{
+ "candidate": {
+  "dll": "/tmp/x3-run103-candidate/build/d3d9.dll",
+  "sha256": "1f3ad3dba226dfcb267b8fba2aa1c0eb1879b8adf58fafb2238b5378dfc211ef",
+  "bytes": 57381486,
+  "commit": "ebfe33e4",
+  "toolchain": "i686-w64-mingw32-gcc (GCC) 16.2.0; cmake version 4.4.3; RelWithDebInfo, cmake/mingw-i686.cmake, -j8; Python 3.9.6 (/usr/bin/python3); clean build 44 s wall",
+  "gates": "build 0 warnings; x87 0 violations (726 reachable functions); generate --check PASS (242 settings, 94 in the template); host suite 274 modules / 2,895 tests / 0 failing (90.9 s wall, 12 jobs); X3AP not running before build and suite",
+  "changes": [
+   "ebfe33e4 test_media_package: hermetic bottle directory for the launcher --vanilla case",
+   "d50c12fd host-suite fixes for lens_flare_gain: d3d9.h stub names for the host fixture; lens_flare_gain_frame listed as a logging-tier exception",
+   "dd69f3c7 lens_flare_gain (X3M_LENS_FLARE_GAIN, --lens-flare-gain, ini; default 1 = nothing installed): lens ONE/ONE/ADD draws scaled by BLENDFACTOR G",
+   "a2e0181a emission_source_clamp (X3M_EMISSION_SOURCE_CLAMP, --emission-source-clamp, ini; default off): per-channel cap after the source gain, screen/BLENDFACTOR law",
+   "b378cfb7 config: hull_emission_gain follows emission_source_gain unless set by file or environment",
+   "1e016c84 launcher: --vanilla refuses (exit 2) while the bottle's GStreamer decoder variables are set; --vanilla-with-bottle-env opts out",
+   "f0831fce object-lifetime registry capacity 16,384 -> 262,144, backward-shift deletion, object_lifetime_disabled/stats rows"
+  ],
+  "producer": "Claude Code implement agent (Opus 5.5), 2026-09-29; git log --oneline 15c8b612..HEAD --no-merges; shasum -a 256; stat -f %z; build/suite logs local under /tmp/x3-run103-candidate/"
+ },
+ "command": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3-run103-candidate/build/d3d9.dll",
+ "exit": 0,
+ "installed_at": "2026-09-29T06:05+04:00",
+ "installed": {
+  "path": "~/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
+  "sha256": "1f3ad3dba226dfcb267b8fba2aa1c0eb1879b8adf58fafb2238b5378dfc211ef",
+  "bytes": 57381486,
+  "verified": "sha256 and size read back after install; equals the candidate record; pgrep X3AP empty before"
+ },
+ "unchanged": {
+  "X3AP.exe": "fdbf3418\u2026 (identity_ok, LAA)",
+  "x3m.ini": "the user's edited copy kept (new keys emission_source_clamp, lens_flare_gain are schema-known without a template refresh)",
+  "cxbottle.conf": "not touched by the install (the user restored the two GStreamer entries earlier today)"
+ },
+ "game_tree": "modded: Mayhem 3 (addon/05..12.cat + loose files), 0.7.0 LOD overlay and fog families regenerated 03:33",
+ "previous": {
+  "run": "Run102",
+  "dll_sha256": "b7acb91f45ba37382571b7397f749827bd72f1a8c8b3f437809435f00ad51c18",
+  "path": "/tmp/x3-run102-candidate/build/d3d9.dll",
+  "then": "Run101 8b164ee1\u2026 at /tmp/x3-run101-candidate/build/d3d9.dll"
+ },
+ "run": "Run 103 A queued: Mayhem save, stations at rest (shimmer), object_lifetime_disabled/stats rows, emission_source_clamp 0.7 + lens_flare_gain 0.5 on the Ocelot exhausts; docs/verification/user-runs.md",
+ "producer": "main session (this record)"
+}

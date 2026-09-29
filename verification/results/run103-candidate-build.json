@@ -1,0 +1,18 @@
+{
+ "dll": "/tmp/x3-run103-candidate/build/d3d9.dll",
+ "sha256": "1f3ad3dba226dfcb267b8fba2aa1c0eb1879b8adf58fafb2238b5378dfc211ef",
+ "bytes": 57381486,
+ "commit": "ebfe33e4",
+ "toolchain": "i686-w64-mingw32-gcc (GCC) 16.2.0; cmake version 4.4.3; RelWithDebInfo, cmake/mingw-i686.cmake, -j8; Python 3.9.6 (/usr/bin/python3); clean build 44 s wall",
+ "gates": "build 0 warnings; x87 0 violations (726 reachable functions); generate --check PASS (242 settings, 94 in the template); host suite 274 modules / 2,895 tests / 0 failing (90.9 s wall, 12 jobs); X3AP not running before build and suite",
+ "changes": [
+  "ebfe33e4 test_media_package: hermetic bottle directory for the launcher --vanilla case",
+  "d50c12fd host-suite fixes for lens_flare_gain: d3d9.h stub names for the host fixture; lens_flare_gain_frame listed as a logging-tier exception",
+  "dd69f3c7 lens_flare_gain (X3M_LENS_FLARE_GAIN, --lens-flare-gain, ini; default 1 = nothing installed): lens ONE/ONE/ADD draws scaled by BLENDFACTOR G",
+  "a2e0181a emission_source_clamp (X3M_EMISSION_SOURCE_CLAMP, --emission-source-clamp, ini; default off): per-channel cap after the source gain, screen/BLENDFACTOR law",
+  "b378cfb7 config: hull_emission_gain follows emission_source_gain unless set by file or environment",
+  "1e016c84 launcher: --vanilla refuses (exit 2) while the bottle's GStreamer decoder variables are set; --vanilla-with-bottle-env opts out",
+  "f0831fce object-lifetime registry capacity 16,384 -> 262,144, backward-shift deletion, object_lifetime_disabled/stats rows"
+ ],
+ "producer": "Claude Code implement agent (Opus 5.5), 2026-09-29; git log --oneline 15c8b612..HEAD --no-merges; shasum -a 256; stat -f %z; build/suite logs local under /tmp/x3-run103-candidate/"
+}

@@ -1,0 +1,105 @@
+== burst3 ship
+mask px 39707 box 2300,1000-2820,1440 z 50-1000
+frame 4514: age p50 1 ==1 0.0 % | lock 0.00 % | motion written 0.0 %
+frame 4515: age p50 1 ==1 0.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 23.90 (>4 21.4 %) taa 23.68 hdr 23.68 color 23.68
+frame 4516: age p50 1 ==1 0.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 23.92 (>4 23.3 %) taa 23.68 hdr 23.68 color 23.68
+frame 4517: age p50 1 ==1 0.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 21.90 (>4 20.2 %) taa 21.69 hdr 21.69 color 21.69
+frame 4518: age p50 1 ==1 0.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 20.57 (>4 18.2 %) taa 20.40 hdr 20.40 color 20.40
+frame 4519: age p50 1 ==1 0.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 22.18 (>4 19.8 %) taa 21.97 hdr 21.97 color 21.97
+frame 4520: age p50 1 ==1 0.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 26.49 (>4 23.8 %) taa 26.22 hdr 26.22 color 26.22
+frame 4521: age p50 1 ==1 0.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 23.30 (>4 21.2 %) taa 23.11 hdr 23.11 color 23.11
+frame 4522: age p50 1 ==1 0.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 17.61 (>4 14.8 %) taa 17.48 hdr 17.48 color 17.48 | lag8 present 1.14 hdr 1.10
+frame 4523: age p50 1 ==1 0.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 23.75 (>4 21.2 %) taa 23.55 hdr 23.55 color 23.55 | lag8 present 0.98 hdr 0.94
+frame 4524: age p50 1 ==1 0.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 23.84 (>4 24.0 %) taa 23.61 hdr 23.61 color 23.61 | lag8 present 0.63 hdr 0.57
+frame 4525: age p50 1 ==1 0.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 21.84 (>4 20.1 %) taa 21.63 hdr 21.63 color 21.63 | lag8 present 0.54 hdr 0.48
+frame 4526: age p50 1 ==1 0.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 20.54 (>4 18.1 %) taa 20.36 hdr 20.36 color 20.36 | lag8 present 0.37 hdr 0.29
+frame 4527: age p50 1 ==1 0.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 22.16 (>4 19.8 %) taa 21.94 hdr 21.94 color 21.94 | lag8 present 0.28 hdr 0.18
+frame 4528: age p50 1 ==1 0.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 26.47 (>4 23.7 %) taa 26.19 hdr 26.19 color 26.20 | lag8 present 0.25 hdr 0.15
+frame 4529: age p50 1 ==1 0.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 23.28 (>4 21.1 %) taa 23.09 hdr 23.09 color 23.09 | lag8 present 0.23 hdr 0.13
+frame 4530: age p50 1 ==1 0.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 17.60 (>4 14.8 %) taa 17.46 hdr 17.46 color 17.46 | lag8 present 0.20 hdr 0.11
+frame 4531: age p50 1 ==1 0.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 23.74 (>4 21.1 %) taa 23.53 hdr 23.53 color 23.53 | lag8 present 0.19 hdr 0.09
+frame 4532: age p50 1 ==1 0.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 23.84 (>4 24.1 %) taa 23.60 hdr 23.60 color 23.60 | lag8 present 0.15 hdr 0.06
+frame 4533: age p50 1 ==1 0.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 21.84 (>4 20.1 %) taa 21.62 hdr 21.62 color 21.63 | lag8 present 0.13 hdr 0.05
+frame 4534: age p50 1 ==1 0.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 20.53 (>4 18.1 %) taa 20.36 hdr 20.36 color 20.36 | lag8 present 0.10 hdr 0.03
+frame 4535: age p50 1 ==1 0.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 22.15 (>4 19.8 %) taa 21.94 hdr 21.94 color 21.94 | lag8 present 0.08 hdr 0.02
+frame 4536: age p50 1 ==1 0.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 26.47 (>4 23.7 %) taa 26.19 hdr 26.19 color 26.19 | lag8 present 0.07 hdr 0.01
+frame 4537: age p50 1 ==1 0.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 23.28 (>4 21.1 %) taa 23.09 hdr 23.09 color 23.09 | lag8 present 0.07 hdr 0.01
+frame 4538: age p50 1 ==1 0.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 17.59 (>4 14.8 %) taa 17.46 hdr 17.46 color 17.46 | lag8 present 0.06 hdr 0.01
+frame 4539: age p50 1 ==1 0.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 23.74 (>4 21.1 %) taa 23.53 hdr 23.53 color 23.53 | lag8 present 0.05 hdr 0.01
+frame 4540: age p50 1 ==1 0.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 23.84 (>4 24.1 %) taa 23.60 hdr 23.60 color 23.60 | lag8 present 0.04 hdr 0.01
+frame 4541: age p50 1 ==1 0.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 21.84 (>4 20.1 %) taa 21.62 hdr 21.62 color 21.63 | lag8 present 0.04 hdr 0.00
+frame 4542: age p50 1 ==1 0.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 20.53 (>4 18.1 %) taa 20.36 hdr 20.36 color 20.36 | lag8 present 0.03 hdr 0.00
+frame 4543: age p50 1 ==1 0.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 22.17 (>4 20.6 %) taa 21.95 hdr 21.95 color 21.95 | lag8 present 0.68 hdr 0.67
+frame 4544: age p50 1 ==1 0.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 26.48 (>4 24.6 %) taa 26.21 hdr 26.21 color 26.21 | lag8 present 0.02 hdr 0.00
+frame 4545: age p50 1 ==1 0.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 23.28 (>4 21.1 %) taa 23.09 hdr 23.09 color 23.09 | lag8 present 0.02 hdr 0.00
+MEDIAN pairs: present rms 23.277 >4 21.06 % | taa 23.086 | hdr 23.086 | color 23.090 | lag8 present 0.140 hdr 0.051 | age==1 0.0 % | lock 0.00 %
+== burst3 station centre
+mask px 33203 box 2330,470-2640,790 z 100000-130000
+frame 4514: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 %
+frame 4515: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 22.95 (>4 32.9 %) taa 22.09 hdr 22.09 color 22.10
+frame 4516: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 23.06 (>4 37.5 %) taa 22.20 hdr 22.20 color 22.20
+frame 4517: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 22.73 (>4 35.3 %) taa 21.94 hdr 21.94 color 21.94
+frame 4518: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 23.38 (>4 35.2 %) taa 22.55 hdr 22.55 color 22.55
+frame 4519: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 22.77 (>4 34.8 %) taa 21.97 hdr 21.97 color 21.97
+frame 4520: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 26.42 (>4 39.7 %) taa 25.49 hdr 25.49 color 25.50
+frame 4521: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 22.44 (>4 33.5 %) taa 21.63 hdr 21.63 color 21.63
+frame 4522: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 16.53 (>4 25.3 %) taa 15.90 hdr 15.90 color 15.90 | lag8 present 1.36 hdr 1.32
+frame 4523: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 22.76 (>4 32.4 %) taa 21.91 hdr 21.91 color 21.92 | lag8 present 1.16 hdr 1.12
+frame 4524: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 22.96 (>4 38.2 %) taa 22.12 hdr 22.12 color 22.12 | lag8 present 0.76 hdr 0.69
+frame 4525: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 22.60 (>4 34.9 %) taa 21.82 hdr 21.82 color 21.82 | lag8 present 0.65 hdr 0.58
+frame 4526: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 23.30 (>4 35.1 %) taa 22.47 hdr 22.47 color 22.47 | lag8 present 0.46 hdr 0.36
+frame 4527: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 22.71 (>4 34.7 %) taa 21.92 hdr 21.92 color 21.93 | lag8 present 0.34 hdr 0.22
+frame 4528: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 26.38 (>4 39.5 %) taa 25.46 hdr 25.46 color 25.46 | lag8 present 0.30 hdr 0.18
+frame 4529: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 22.42 (>4 33.4 %) taa 21.60 hdr 21.60 color 21.60 | lag8 present 0.27 hdr 0.15
+frame 4530: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 16.52 (>4 25.3 %) taa 15.88 hdr 15.88 color 15.88 | lag8 present 0.25 hdr 0.13
+frame 4531: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 22.73 (>4 32.4 %) taa 21.90 hdr 21.90 color 21.90 | lag8 present 0.23 hdr 0.11
+frame 4532: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 22.95 (>4 38.2 %) taa 22.11 hdr 22.11 color 22.11 | lag8 present 0.18 hdr 0.07
+frame 4533: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 22.59 (>4 34.9 %) taa 21.81 hdr 21.81 color 21.81 | lag8 present 0.16 hdr 0.06
+frame 4534: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 23.29 (>4 35.1 %) taa 22.46 hdr 22.46 color 22.46 | lag8 present 0.12 hdr 0.03
+frame 4535: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 22.71 (>4 34.7 %) taa 21.91 hdr 21.91 color 21.92 | lag8 present 0.10 hdr 0.02
+frame 4536: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 26.38 (>4 39.5 %) taa 25.45 hdr 25.45 color 25.45 | lag8 present 0.09 hdr 0.02
+frame 4537: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 22.42 (>4 33.3 %) taa 21.60 hdr 21.60 color 21.60 | lag8 present 0.08 hdr 0.01
+frame 4538: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 16.51 (>4 25.3 %) taa 15.88 hdr 15.88 color 15.88 | lag8 present 0.07 hdr 0.01
+frame 4539: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 22.73 (>4 32.4 %) taa 21.89 hdr 21.89 color 21.89 | lag8 present 0.07 hdr 0.01
+frame 4540: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 22.95 (>4 38.2 %) taa 22.11 hdr 22.11 color 22.11 | lag8 present 0.05 hdr 0.01
+frame 4541: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 22.59 (>4 34.9 %) taa 21.80 hdr 21.80 color 21.81 | lag8 present 0.05 hdr 0.01
+frame 4542: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 23.29 (>4 35.1 %) taa 22.46 hdr 22.46 color 22.46 | lag8 present 0.04 hdr 0.00
+frame 4543: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 22.71 (>4 34.7 %) taa 21.91 hdr 21.91 color 21.92 | lag8 present 0.03 hdr 0.00
+frame 4544: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 26.38 (>4 39.5 %) taa 25.45 hdr 25.45 color 25.45 | lag8 present 0.03 hdr 0.00
+frame 4545: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 22.42 (>4 33.3 %) taa 21.60 hdr 21.60 color 21.60 | lag8 present 0.03 hdr 0.00
+MEDIAN pairs: present rms 22.734 >4 34.87 % | taa 21.919 | hdr 21.919 | color 21.925 | lag8 present 0.141 hdr 0.045 | age==1 100.0 % | lock 0.00 %
+== burst3 station top-right
+mask px 4391 box 4780,90-4960,190 z 120000-145000
+frame 4514: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 %
+frame 4515: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 25.20 (>4 12.3 %) taa 25.00 hdr 25.00 color 25.01
+frame 4516: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 24.32 (>4 11.4 %) taa 24.13 hdr 24.13 color 24.13
+frame 4517: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 27.32 (>4 11.6 %) taa 27.16 hdr 27.16 color 27.16
+frame 4518: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 27.57 (>4 12.9 %) taa 27.40 hdr 27.40 color 27.40
+frame 4519: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 25.98 (>4 11.5 %) taa 25.83 hdr 25.83 color 25.83
+frame 4520: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 25.80 (>4 12.2 %) taa 25.62 hdr 25.62 color 25.63
+frame 4521: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 26.74 (>4 12.5 %) taa 26.55 hdr 26.55 color 26.55
+frame 4522: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 22.32 (>4 9.8 %) taa 22.17 hdr 22.17 color 22.17 | lag8 present 0.66 hdr 0.60
+frame 4523: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 24.87 (>4 12.2 %) taa 24.69 hdr 24.69 color 24.69 | lag8 present 0.54 hdr 0.48
+frame 4524: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 24.10 (>4 11.3 %) taa 23.92 hdr 23.92 color 23.93 | lag8 present 0.38 hdr 0.31
+frame 4525: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 27.14 (>4 11.4 %) taa 26.98 hdr 26.98 color 26.99 | lag8 present 0.33 hdr 0.26
+frame 4526: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 27.45 (>4 12.8 %) taa 27.27 hdr 27.27 color 27.27 | lag8 present 0.24 hdr 0.16
+frame 4527: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 25.91 (>4 11.4 %) taa 25.76 hdr 25.76 color 25.76 | lag8 present 0.19 hdr 0.10
+frame 4528: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 25.75 (>4 12.0 %) taa 25.57 hdr 25.57 color 25.57 | lag8 present 0.18 hdr 0.08
+frame 4529: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 26.69 (>4 12.4 %) taa 26.51 hdr 26.51 color 26.51 | lag8 present 0.14 hdr 0.07
+frame 4530: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 22.29 (>4 9.8 %) taa 22.14 hdr 22.14 color 22.14 | lag8 present 0.14 hdr 0.06
+frame 4531: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 24.84 (>4 12.1 %) taa 24.66 hdr 24.66 color 24.66 | lag8 present 0.11 hdr 0.05
+frame 4532: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 24.09 (>4 11.3 %) taa 23.90 hdr 23.90 color 23.91 | lag8 present 0.09 hdr 0.03
+frame 4533: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 27.12 (>4 11.4 %) taa 26.97 hdr 26.97 color 26.97 | lag8 present 0.08 hdr 0.02
+frame 4534: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 27.44 (>4 12.8 %) taa 27.26 hdr 27.26 color 27.26 | lag8 present 0.07 hdr 0.02
+frame 4535: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 25.91 (>4 11.4 %) taa 25.75 hdr 25.75 color 25.75 | lag8 present 0.06 hdr 0.01
+frame 4536: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 25.74 (>4 12.0 %) taa 25.57 hdr 25.57 color 25.56 | lag8 present 0.05 hdr 0.01
+frame 4537: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 26.68 (>4 12.4 %) taa 26.50 hdr 26.50 color 26.51 | lag8 present 0.04 hdr 0.01
+frame 4538: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 22.29 (>4 9.9 %) taa 22.14 hdr 22.14 color 22.14 | lag8 present 0.04 hdr 0.01
+frame 4539: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 24.83 (>4 12.1 %) taa 24.65 hdr 24.65 color 24.66 | lag8 present 0.04 hdr 0.00
+frame 4540: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 24.08 (>4 11.3 %) taa 23.90 hdr 23.90 color 23.91 | lag8 present 0.04 hdr 0.00
+frame 4541: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 27.12 (>4 11.4 %) taa 26.97 hdr 26.97 color 26.97 | lag8 present 0.02 hdr 0.00
+frame 4542: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 27.43 (>4 12.8 %) taa 27.26 hdr 27.26 color 27.26 | lag8 present 0.02 hdr 0.00
+frame 4543: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 25.91 (>4 11.4 %) taa 25.75 hdr 25.75 color 25.75 | lag8 present 0.02 hdr 0.00
+frame 4544: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 25.74 (>4 12.0 %) taa 25.57 hdr 25.57 color 25.56 | lag8 present 0.02 hdr 0.00
+frame 4545: age p50 1 ==1 100.0 % | lock 0.00 % | motion written 0.0 % | pair rms present 26.68 (>4 12.4 %) taa 26.50 hdr 26.50 color 26.51 | lag8 present 0.01 hdr 0.00
+MEDIAN pairs: present rms 25.905 >4 12.00 % | taa 25.751 | hdr 25.751 | color 25.752 | lag8 present 0.074 hdr 0.020 | age==1 100.0 % | lock 0.00 %
