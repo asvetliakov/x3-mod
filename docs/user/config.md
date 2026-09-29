@@ -47,6 +47,9 @@ flicker (struts, antennas), so distant hull plates stay sharper while turning; `
 row in `x3m.log` says why) and the rest of the file still applies. With the lock on, the far stabiliser's strength
 applies only to the details the lock holds, and its distance numbers decide where the lock may hold.
 
+`emission_source_gain` sets the brightness of engine exhausts and weapon effects, and the small glow cards on engine
+nozzles and guide lights follow it: `emission_source_gain = 1` leaves all of them at the game's own brightness.
+
 ## Checking what was loaded
 
 The mod writes `x3m.log` next to `d3d9.dll`. Near its top:

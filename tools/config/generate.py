@@ -50,6 +50,8 @@ def validate():
             raise ValueError(f'{key}: a user-facing key needs a description')
         if e['marker_of'] is not None and e['marker_of'] not in schema.BY_KEY:
             raise ValueError(f'{key}: marker of an unknown key')
+        if e['follows'] is not None and (e['follows'] not in schema.BY_KEY or e['default'] is not None):
+            raise ValueError(f'{key}: follows an unknown key, or has a default besides')
         for r in e['requires']:
             if r not in schema.BY_KEY:
                 raise ValueError(f'{key}: requires unknown {r}')

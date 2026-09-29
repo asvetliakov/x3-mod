@@ -4455,20 +4455,26 @@ void initialize_log(HMODULE module) {
                 unsigned(gain_valid), excluded ? " refused=linear_emissions" : "");
     }
     // X3M_HULL_EMISSION_GAIN=<g>: a source gain over the twelve hull programs'
-    // ADD ONE/ONE emitter draws (emitter plan phase 3; the launcher passes
-    // --hull-emission-gain G, or the effects gain's value under
-    // --hull-emitters): finite 1..8, 1 (the launcher default) is off. Needs
-    // the FP16 scene only (X3M_HDR=1), independent of the effects gain so the
-    // population can be bracketed alone;
-    // the DLL refuses without HDR with the reason logged. Unparsable or out
-    // of range keeps 1 and logs.
+    // ADD ONE/ONE emitter draws (emitter plan phase 3): finite 1..8, 1 is
+    // off. Unset in both the file and the environment (the schema entry has
+    // no default, follows=emission_source_gain) it takes the resolved
+    // effects gain above, which is 1 when that is off, refused or invalid:
+    // the launcher's rule (it sends the effects gain when above 1, else 1),
+    // so x3m.ini's emission_source_gain drives the guide lights too. An
+    // explicit value (file or environment) wins and brackets the population
+    // alone. Needs the FP16 scene only (X3M_HDR=1); the DLL refuses without
+    // HDR with the reason logged. Unparsable or out of range keeps 1 and logs.
     {
         hull_emission_gain = 1.f;
         bool gain_valid = true;
         float value = 1.f;
         SetLastError(ERROR_SUCCESS);
         const DWORD gain_length = x3m::config::get(L"X3M_HULL_EMISSION_GAIN", setting, 32);
-        if (gain_length || GetLastError() != ERROR_ENVVAR_NOT_FOUND) {
+        const bool follows = !gain_length && GetLastError() == ERROR_ENVVAR_NOT_FOUND;
+        if (follows) {
+            value = emission_source_gain;
+            hull_emission_gain = value;
+        } else {
             wchar_t* end = nullptr;
             value = gain_length && gain_length < 32 ? wcstof(setting, &end) : 0.f;
             if (gain_length && gain_length < 32 && end != setting && !*end && std::isfinite(value) && value >= 1.f &&
