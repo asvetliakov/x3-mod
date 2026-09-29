@@ -1,0 +1,34 @@
+{
+ "candidate": {
+  "dll": "/tmp/x3m-release-0.8.0/x3m-0.8.0.zip entry d3d9.dll (stripped; unstripped at /tmp/x3m-release-0.8.0/unstripped/d3d9.dll)",
+  "sha256": "f34d3ab424353a3e51e8f5408f125b31f2b7d266604317ee3361024cab4dcb41",
+  "bytes": 39487179,
+  "commit": "a3c85e37",
+  "release": "x3m-0.8.0.zip b9a58c8b\u2026 58,368,639 B (verification/results/release-0.8.0.json)",
+  "gates": "host suite 274 modules / 2,895 tests / 0 failing; 0 warnings; x87 0 (unstripped and stripped); strip identity 10 sections / 17 exports; regenerate host + Windows smoke PASS; .text/.data byte-identical to Run103 1f3ad3db\u2026, .rdata carries the new defaults (verification/results/release-0.8.0-dll-compare.json)"
+ },
+ "command": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3m-release-0.8.0/zip-extract/d3d9.dll; then cp the release's x3m-regenerate.exe and x3m-regenerate into the game directory (previous 0.7.0 copies kept under x3-modern-media/rollback/regenerate-0.7.0/)",
+ "exit": 0,
+ "installed_at": "2026-09-29T06:48+04:00",
+ "installed": {
+  "dll_sha256": "f34d3ab424353a3e51e8f5408f125b31f2b7d266604317ee3361024cab4dcb41",
+  "bytes": 39487179,
+  "regenerate_exe": "d7f8d687\u2026",
+  "regenerate_macos": "28d3e915\u2026",
+  "verified": "sha256 and size read back after install; equals the zip entry; pgrep X3AP empty before"
+ },
+ "config_template": "not installed: the user's edited x3m.ini kept (explicit lens_flare_gain 0.3, emission_source_gain 1, emission_source_clamp 0.75); the 0.8.0 template is in the zip",
+ "unchanged": {
+  "X3AP.exe": "fdbf3418\u2026 (identity_ok)",
+  "cxbottle.conf": "not touched"
+ },
+ "game_tree": "modded: Mayhem 3, 0.7.0 overlay and fog families (regenerate tool source unchanged since 9edd942b, no rerun needed)",
+ "previous": {
+  "run": "Run103",
+  "dll_sha256": "1f3ad3dba226dfcb267b8fba2aa1c0eb1879b8adf58fafb2238b5378dfc211ef",
+  "path": "/tmp/x3-run103-candidate/build/d3d9.dll",
+  "then": "Run102 b7acb91f\u2026 at /tmp/x3-run102-candidate/build/d3d9.dll"
+ },
+ "run": "Run 104 A queued: plain flight on the 0.8.0 defaults (no ini lines needed); confirm Run 103 A look",
+ "producer": "main session (this record)"
+}

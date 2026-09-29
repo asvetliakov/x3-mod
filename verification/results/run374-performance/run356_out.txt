@@ -1,0 +1,123 @@
+# run356
+frames(dev1,>=100)=14348 log_bytes=244588595 bytes/frame=16930
+dt p50=14.0 ms fps=71.4
+dt p90=17.0 ms fps=58.8
+dt p99=22.0 ms fps=45.5
+dt mean=17.47 max=19465.0
+window  p50  p90  max  draws_p50 sector
+    0  14.0  18.0  19465    460 ('ready', '"greenvoid"')
+  300  15.0  18.0    299    181 ('ready', '"greenvoid"')
+  600  15.0  16.0     34    191 ('ready', '"greenvoid"')
+  900  15.0  17.0    598    191 ('ready', '"greenvoid"')
+ 1200  15.0  17.0    537    183 ('ready', '"greenvoid"')
+ 1500  16.0  18.0    497    228 ('ready', '"greenvoid"')
+ 1800  15.0  17.0     28    186 ('ready', '"greenvoid"')
+ 2100  16.0  18.0     27    196 ('ready', '"greenvoid"')
+ 2400  16.0  18.0     27    194 ('ready', '"greenvoid"')
+ 2700  15.0  17.0     38    148 ('ready', '"greenvoid"')
+ 3000  13.0  15.0     25    135 ('ready', '"greenvoid"')
+ 3300  15.0  16.0     22    182 ('ready', '"greenvoid"')
+ 3600  15.0  16.0     21    190 ('ready', '"greenvoid"')
+ 3900  15.0  16.0     22    193 ('ready', '"greenvoid"')
+ 4200  15.0  16.0     19    197 ('ready', '"greenvoid"')
+ 4500  14.0  16.0     22    151 ('ready', '"greenvoid"')
+ 4800  15.0  17.0     24    193 ('ready', '"greenvoid"')
+ 5100  15.0  18.0     21    185 ('ready', '"greenvoid"')
+ 5400  17.0  18.0     25    228 ('ready', '"greenvoid"')
+ 5700  15.0  18.0     22    168 ('ready', '"greenvoid"')
+ 6000  15.0  18.0     22    176 ('ready', '"greenvoid"')
+ 6300  17.0  19.0     22    200 ('ready', '"greenvoid"')
+ 6600  19.0  22.0    216    248 ('ready', '"greenvoid"')
+ 6900  14.0  16.0     22    138 ('ready', '"greenvoid"')
+ 7200  15.0  17.0     20    147 ('ready', '"greenvoid"')
+ 7500  14.0  16.0     29    137 ('ready', '"greenvoid"')
+ 7800  15.0  17.0     23    177 ('ready', '"greenvoid"')
+ 8100  15.0  17.0     20    157 ('ready', '"greenvoid"')
+ 8400  14.0  17.0     21    169 ('ready', '"greenvoid"')
+ 8700  14.0  15.0  12508    459 ('ready', '"foggreenoutlands"')
+ 9000  10.0  12.0     25    106 ('ready', '"foggreenoutlands"')
+ 9300  11.0  13.0    181    131 ('ready', '"foggreenoutlands"')
+ 9600  10.0  11.0     25    102 ('ready', '"foggreenoutlands"')
+ 9900  11.0  12.0     24    128 ('ready', '"foggreenoutlands"')
+10200  10.0  13.0     76    107 ('ready', '"foggreenoutlands"')
+10500  10.0  11.0     25    118 ('ready', '"foggreenoutlands"')
+10800  11.0  13.0     25    164 ('ready', '"foggreenoutlands"')
+11100  10.0  12.0     26    151 ('ready', '"foggreenoutlands"')
+11400   8.0   9.0     24     85 ('ready', '"foggreenoutlands"')
+11700   8.0  11.0     25     94 ('ready', '"foggreenoutlands"')
+12000   9.0  13.0     24    124 ('ready', '"foggreenoutlands"')
+12300   9.0  11.0     23    125 ('ready', '"foggreenoutlands"')
+12600   8.0  12.0     15     78 ('ready', '"foggreenoutlands"')
+12900  11.0  14.0     25    160 ('ready', '"foggreenoutlands"')
+13200  12.0  15.0    727    256 ('ready', '"foggreenoutlands"')
+13500   8.0  14.0     23     82 ('ready', '"foggreenoutlands"')
+13800   8.0  10.0     23     79 ('ready', '"foggreenoutlands"')
+14100   8.0  15.0   6236     75 ('no_cockpit', '""')
+14400  14.0  17.0     78    459 ('no_cockpit', '""')
+
+# per-frame medians / means over frames>=100 (CPU qpc attribution)
+motion_output_frame.draws: n=14348 p50=165.0 mean=172.5 p99=462.0
+motion_output_frame.routed: n=14348 p50=114.0 mean=111.1 p99=231.0
+motion_output_frame.fill_us: n=14348 p50=45.9 mean=50.5 p99=103.3
+motion_output_frame.taa_run_us: n=14348 p50=609.0 mean=454.0 p99=950.0
+motion_output_frame.taa_draw_us: n=14348 p50=580.5 mean=424.0 p99=911.8
+motion_output_frame.taa_capture_us: n=14348 p50=6.4 mean=6.8 p99=13.2
+motion_output_frame.taa_apply_us: n=14348 p50=12.7 mean=12.7 p99=19.8
+motion_output_frame.route_draw_us: n=14348 p50=0.0 mean=0.0 p99=0.0
+motion_output_frame.gate_us: n=14348 p50=0.0 mean=0.0 p99=0.0
+motion_output_frame.readback_us: n=14348 p50=0.0 mean=566.9 p99=0.0
+hdr_frame.redirect_us: n=14348 p50=4.9 mean=5.2 p99=11.1
+hdr_frame.writeback_us: n=14348 p50=111.7 mean=123.2 p99=410.8
+hdr_frame.meter_us: n=14348 p50=59.1 mean=65.1 p99=138.0
+hdr_frame.readback_us: n=14348 p50=213.1 mean=374.7 p99=1547.6
+hdr_frame.readback_transfer_lock_us: n=14348 p50=68.1 mean=184.3 p99=1257.6
+shadow_retention_frame.walk_us: n=13840 p50=110.3 mean=132.0 p99=313.5
+shadow_retention_frame.journal_us: n=13840 p50=0.6 mean=0.7 p99=1.1
+shadow_retention_frame.draw_us: n=13840 p50=0.0 mean=0.0 p99=0.0
+shadow_replay_depth.draws: n=13840 p50=102.0 mean=94.3 p99=230.0
+shadow_replay_depth.apply_us: n=13840 p50=58.8 mean=61.8 p99=105.0
+shadow_replay_depth.draws0: n=13840 p50=15.0 mean=17.2 p99=47.0
+shadow_replay_depth.draws1: n=13840 p50=19.0 mean=20.9 p99=86.0
+shadow_replay_depth.draws2: n=13840 p50=32.0 mean=41.5 p99=117.0
+shadow_replay_depth.draws3: n=13840 p50=158.0 mean=150.3 p99=355.0
+shadow_replay_depth.draws4: n=13840 p50=163.0 mean=132.1 p99=274.0
+shadow_alpha_casters.seen: n=13840 p50=18.0 mean=17.0 p99=43.0
+volumetric_fog_frame.applied: n=13840 p50=0.0 mean=0.4 p99=1.0
+volumetric_fog_frame.cpu_us: n=13840 p50=0.0 mean=223.0 p99=820.6
+volumetric_fog_frame.cards: n=13840 p50=0.0 mean=0.4 p99=1.0
+hull_lightmap_frame.admitted: n=13840 p50=108.0 mean=99.6 p99=228.0
+thin_vote_frame.draws: n=14348 p50=114.0 mean=111.1 p99=231.0
+
+# slow frames (frame_phases_slow), top 15 by dt
+270 dt_us=19461690 pre_render_us=19157868 scene_update_us=286 views_us=299141 view_submit_us=60394 present_us=210 views=9
+8950 dt_us=12508918 pre_render_us=12352050 scene_update_us=74 views_us=156091 view_submit_us=32158 present_us=15 views=9
+4 dt_us=7132898 pre_render_us=7062218 scene_update_us=1203 views_us=68008 view_submit_us=57757 present_us=19 views=5
+8706 dt_us=6469445 pre_render_us=6455583 scene_update_us=974 views_us=12451 view_submit_us=10968 present_us=8 views=5
+14356 dt_us=6236912 pre_render_us=6221976 scene_update_us=1029 views_us=13424 view_submit_us=12245 present_us=8 views=5
+2 dt_us=903240 pre_render_us=903231 scene_update_us=0 views_us=0 view_submit_us=0 present_us=9 views=0
+13489 dt_us=727456 pre_render_us=716996 scene_update_us=53 views_us=10080 view_submit_us=7136 present_us=7 views=9
+1087 dt_us=596482 pre_render_us=4912 scene_update_us=88 views_us=254866 view_submit_us=108717 present_us=16 views=9
+1470 dt_us=535491 pre_render_us=5252 scene_update_us=115 views_us=211308 view_submit_us=108536 present_us=8 views=9
+1088 dt_us=522526 pre_render_us=9495 scene_update_us=73 views_us=225547 view_submit_us=102629 present_us=11 views=9
+1572 dt_us=496914 pre_render_us=8496 scene_update_us=70 views_us=239932 view_submit_us=123176 present_us=7 views=9
+1476 dt_us=491946 pre_render_us=9926 scene_update_us=76 views_us=227734 view_submit_us=124818 present_us=10 views=9
+1574 dt_us=488594 pre_render_us=8047 scene_update_us=70 views_us=220823 view_submit_us=123340 present_us=20 views=9
+1576 dt_us=486015 pre_render_us=10675 scene_update_us=70 views_us=219046 view_submit_us=125460 present_us=7 views=9
+1474 dt_us=483565 pre_render_us=8316 scene_update_us=75 views_us=203477 view_submit_us=104219 present_us=10 views=9
+
+# log bytes by row family (top 15)
+constant: rows=636798 bytes=36310718
+motion_output_frame: rows=14448 bytes=25568391
+sampler: rows=558656 bytes=18839532
+hdr_frame: rows=14448 bytes=16753566
+shadow_retention_frame: rows=13840 bytes=15953197
+shadow_replay_candidates: rows=13840 bytes=12271032
+thin_vote_frame: rows=14448 bytes=8517106
+camera_state: rows=14449 bytes=8471750
+shadow_replay_depth: rows=13840 bytes=6783740
+object_matrix: rows=81940 bytes=6092480
+cull_census: rows=23024 bytes=5856265
+sun_shadow_lane_frame: rows=13840 bytes=5463850
+volumetric_fog_frame: rows=13840 bytes=4570912
+stream: rows=79808 bytes=3596350
+state: rows=159616 bytes=3390604

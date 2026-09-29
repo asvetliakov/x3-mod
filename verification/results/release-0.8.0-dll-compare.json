@@ -1,0 +1,116 @@
+{
+ "old": {
+  "path": "/tmp/x3-run103-candidate/build/d3d9.dll",
+  "bytes": 57381486,
+  "sha256": "1f3ad3dba226dfcb267b8fba2aa1c0eb1879b8adf58fafb2238b5378dfc211ef",
+  "marker": [
+   "ebfe33e4378f37f55abba024e112bda30ed9da94"
+  ]
+ },
+ "new": {
+  "path": "/tmp/x3m-release-0.8.0/unstripped/d3d9.dll",
+  "bytes": 57382522,
+  "sha256": "c27cf52ce79314443840feaa7159de3aefbbb8c35911d2e0997838488ae6ac66",
+  "marker": [
+   "a3c85e37141b9afaff2c4e067396864e40c997a1"
+  ]
+ },
+ "header_equal": false,
+ "exports_equal": true,
+ "section_table_equal": false,
+ "sections": {
+  ".text": "identical",
+  ".data": "identical",
+  ".rdata": {
+   "len_equal": true,
+   "runs": 516,
+   "kinds": {
+    "marker": 3,
+    "version": 0,
+    "other": 513
+   },
+   "rows": [
+    {
+     "offset": 4847,
+     "length": 14,
+     "kind": "other",
+     "old": "X3M_EMISSION_SOURCE_GAIN",
+     "new": "0.7\u0000X3M_EMISSION_SOURCE_GAIN"
+    },
+    {
+     "offset": 4862,
+     "length": 20,
+     "kind": "other",
+     "old": "X3M_EMISSION_SOURCE_GAIN\u0000emission_source_gain",
+     "new": "X3M_EMISSION_SOURCE_GAIN\u0000emission_source_gain"
+    },
+    {
+     "offset": 4883,
+     "length": 13,
+     "kind": "other",
+     "old": "emission_source_gain\u00002.0",
+     "new": "emission_source_gain"
+    }
+   ],
+   "rows_total": 20
+  },
+  ".xdata": "identical",
+  ".bss": "identical",
+  ".edata": {
+   "len_equal": true,
+   "runs": 1,
+   "kinds": {
+    "marker": 0,
+    "version": 0,
+    "other": 1
+   },
+   "rows": [
+    {
+     "offset": 4,
+     "length": 2,
+     "kind": "other",
+     "old": "d\u001c\ufffdj",
+     "new": "\ufffd%\ufffdj"
+    }
+   ],
+   "rows_total": 1
+  },
+  ".idata": "identical",
+  ".tls": "identical",
+  ".rsrc": "identical",
+  ".reloc": {
+   "len_equal": false,
+   "runs": 4210,
+   "kinds": {
+    "marker": 0,
+    "version": 0,
+    "other": 4210
+   },
+   "rows": [
+    {
+     "offset": 67424,
+     "length": 1,
+     "kind": "other",
+     "old": "L\u0002",
+     "new": "P\u0002"
+    },
+    {
+     "offset": 67720,
+     "length": 1,
+     "kind": "other",
+     "old": "9\b9\f9$9,90989H9P9T9l9t9x9\ufffd9\ufffd9\ufffd9\ufffd9\ufffd9\ufffd9\ufffd9\ufffd9\ufffd9\ufffd9\u0004:\b:\u0010: :(:,:D:L:P:X:h:p:t:|:\ufffd:\ufffd:\ufffd:\ufffd:\ufffd:\ufffd:\ufffd:\ufffd:\ufffd:\ufffd:",
+     "new": "9\b9\f9$9,90989H9P9T9l9t9x9\ufffd9\ufffd9\ufffd9\ufffd9\ufffd9\ufffd9\ufffd9\ufffd9\ufffd9\ufffd9\ufffd9\u0004:\b:\u0010: :(:,:D:L:P:X:h:p:t:|:\ufffd:\ufffd:\ufffd:\ufffd:\ufffd:\ufffd:\ufffd:\ufffd:\ufffd:\ufffd:"
+    },
+    {
+     "offset": 67722,
+     "length": 3,
+     "kind": "other",
+     "old": "9\b9\f9$9,90989H9P9T9l9t9x9\ufffd9\ufffd9\ufffd9\ufffd9\ufffd9\ufffd9\ufffd9\ufffd9\ufffd9\ufffd9\u0004:\b:\u0010: :(:,:D:L:P:X:h:p:t:|:\ufffd:\ufffd:\ufffd:\ufffd:\ufffd:\ufffd:\ufffd:\ufffd:\ufffd:\ufffd:",
+     "new": "9\b9\f9$9,90989H9P9T9l9t9x9\ufffd9\ufffd9\ufffd9\ufffd9\ufffd9\ufffd9\ufffd9\ufffd9\ufffd9\ufffd9\ufffd9\u0004:\b:\u0010: :(:,:D:L:P:X:h:p:t:|:\ufffd:\ufffd:\ufffd:\ufffd:\ufffd:\ufffd:\ufffd:\ufffd:\ufffd:\ufffd:"
+    }
+   ],
+   "rows_total": 20
+  }
+ },
+ "note": "rows truncated to 3 per section; regenerate: python3 verification/results/release-0.7.0-dll-compare.py OLD NEW"
+}

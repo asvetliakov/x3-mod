@@ -1,0 +1,87 @@
+# run365
+frames(dev1,>=100)=3591 log_bytes=32663081 bytes/frame=8852
+dt p50=21.0 ms fps=47.6
+dt p90=26.0 ms fps=38.5
+dt p99=45.0 ms fps=22.2
+dt mean=34.13 max=47733.0
+window  p50  p90  max  draws_p50 sector
+    0   7.0  13.0     74     57 ('no_cockpit', '""')
+  300   7.0  13.0     16     59 ('no_cockpit', '""')
+  600  16.0  20.0  47733    311 ('ready', '"litcube75"')
+  900  24.0  42.0    219    341 ('ready', '"litcube75"')
+ 1200  22.0  24.0     40    314 ('ready', '"litcube75"')
+ 1500  21.0  24.0     32    312 ('ready', '"litcube75"')
+ 1800  22.0  24.0     78    285 ('ready', '"litcube75"')
+ 2100  22.0  24.0     44    293 ('ready', '"litcube75"')
+ 2400  23.0  26.0     35    289 ('ready', '"litcube75"')
+ 2700  24.0  26.0     35    277 ('ready', '"litcube75"')
+ 3000  25.0  27.0     35    287 ('ready', '"litcube75"')
+ 3300  21.0  28.0   2299    106 ('no_cockpit', '""')
+ 3600   8.0  12.0     13     56 ('no_cockpit', '""')
+
+# per-frame medians / means over frames>=100 (CPU qpc attribution)
+motion_output_frame.draws: n=3591 p50=287.0 mean=231.1 p99=401.0
+motion_output_frame.routed: n=3591 p50=180.0 mean=134.2 p99=241.0
+motion_output_frame.fill_us: n=3591 p50=51.2 mean=59.8 p99=146.2
+motion_output_frame.taa_run_us: n=3591 p50=504.1 mean=459.9 p99=993.6
+motion_output_frame.taa_draw_us: n=3591 p50=473.6 mean=435.4 p99=945.0
+motion_output_frame.taa_capture_us: n=3591 p50=7.0 mean=5.7 p99=9.4
+motion_output_frame.taa_apply_us: n=3591 p50=13.0 mean=10.7 p99=19.5
+motion_output_frame.route_draw_us: n=3591 p50=0.0 mean=0.0 p99=0.0
+motion_output_frame.gate_us: n=3591 p50=0.0 mean=0.0 p99=0.0
+motion_output_frame.readback_us: n=3591 p50=0.0 mean=0.0 p99=0.0
+hdr_frame.redirect_us: n=3591 p50=6.2 mean=6.8 p99=16.6
+hdr_frame.writeback_us: n=3591 p50=125.2 mean=117.4 p99=247.0
+hdr_frame.meter_us: n=3591 p50=80.5 mean=79.1 p99=162.5
+hdr_frame.readback_us: n=3591 p50=105.8 mean=122.5 p99=1016.4
+hdr_frame.readback_transfer_lock_us: n=3591 p50=71.0 mean=92.6 p99=980.5
+shadow_retention_frame.walk_us: n=2775 p50=29.5 mean=37.8 p99=120.0
+shadow_retention_frame.journal_us: n=2775 p50=0.9 mean=1.0 p99=1.6
+shadow_retention_frame.draw_us: n=2775 p50=0.0 mean=0.0 p99=0.0
+shadow_replay_depth.draws: n=2775 p50=182.0 mean=151.1 p99=214.0
+shadow_replay_depth.apply_us: n=2775 p50=64.3 mean=71.2 p99=334.8
+shadow_replay_depth.draws0: n=2775 p50=8.0 mean=8.0 p99=8.0
+shadow_replay_depth.draws1: n=2775 p50=8.0 mean=8.0 p99=8.0
+shadow_replay_depth.draws2: n=2775 p50=20.0 mean=27.7 p99=89.0
+shadow_replay_depth.draws3: n=2775 p50=167.0 mean=132.2 p99=208.0
+shadow_replay_depth.draws4: n=2775 p50=46.0 mean=51.3 p99=123.0
+shadow_alpha_casters.seen: n=2775 p50=20.0 mean=16.9 p99=24.0
+volumetric_fog_frame.applied: n=2775 p50=0.0 mean=0.0 p99=0.0
+volumetric_fog_frame.cpu_us: n=2775 p50=0.0 mean=0.0 p99=0.0
+volumetric_fog_frame.cards: n=2775 p50=0.0 mean=0.0 p99=0.0
+hull_lightmap_frame.admitted: n=2775 p50=186.0 mean=169.7 p99=234.0
+thin_vote_frame.draws: n=3591 p50=180.0 mean=134.2 p99=241.0
+
+# slow frames (frame_phases_slow), top 15 by dt
+726 dt_us=47729748 pre_render_us=47027866 scene_update_us=203 views_us=633011 view_submit_us=202452 present_us=266 views=9
+4 dt_us=2971349 pre_render_us=2816146 scene_update_us=1034 views_us=152889 view_submit_us=135502 present_us=22 views=5
+3502 dt_us=2299186 pre_render_us=2288127 scene_update_us=1027 views_us=9711 view_submit_us=9352 present_us=10 views=5
+2 dt_us=1312845 pre_render_us=1312824 scene_update_us=0 views_us=0 view_submit_us=0 present_us=21 views=0
+784 dt_us=1301454 pre_render_us=1269511 scene_update_us=38 views_us=29589 view_submit_us=8347 present_us=10 views=8
+3501 dt_us=665988 pre_render_us=665981 scene_update_us=0 views_us=0 view_submit_us=0 present_us=7 views=0
+1 dt_us=538428 pre_render_us=538420 scene_update_us=0 views_us=0 view_submit_us=0 present_us=8 views=0
+1068 dt_us=219645 pre_render_us=203786 scene_update_us=44 views_us=13241 view_submit_us=7108 present_us=11 views=10
+3 dt_us=213301 pre_render_us=213289 scene_update_us=0 views_us=0 view_submit_us=0 present_us=12 views=0
+751 dt_us=147990 pre_render_us=3646 scene_update_us=27 views_us=141491 view_submit_us=137429 present_us=11 views=8
+725 dt_us=139380 pre_render_us=139373 scene_update_us=0 views_us=0 view_submit_us=0 present_us=7 views=0
+3599 dt_us=116065 pre_render_us=114228 scene_update_us=7 views_us=1649 view_submit_us=1358 present_us=7 views=5
+1069 dt_us=97812 pre_render_us=80126 scene_update_us=28 views_us=15017 view_submit_us=11021 present_us=11 views=10
+1855 dt_us=79009 pre_render_us=66418 scene_update_us=30 views_us=11268 view_submit_us=8091 present_us=9 views=8
+1074 dt_us=76694 pre_render_us=38181 scene_update_us=27 views_us=35848 view_submit_us=10103 present_us=8 views=9
+
+# log bytes by row family (top 15)
+motion_output_frame: rows=3691 bytes=6509458
+hdr_frame: rows=3691 bytes=4264398
+shadow_retention_frame: rows=2775 bytes=3188202
+shadow_replay_candidates: rows=2775 bytes=2467985
+thin_vote_frame: rows=3691 bytes=2156967
+camera_state: rows=3692 bytes=2041387
+shadow_replay_depth: rows=2775 bytes=1430517
+sun_shadow_lane_frame: rows=2775 bytes=1097164
+volumetric_fog_frame: rows=2775 bytes=909926
+hull_emission_frame: rows=3685 bytes=799821
+fade_route_frame: rows=3691 bytes=751854
+shadow_replay_sun: rows=2775 bytes=611552
+volumetric_fog_cards: rows=2775 bytes=538076
+shadow_sun_frame: rows=2775 bytes=524045
+volumetric_fog_cache_frame: rows=2775 bytes=518651

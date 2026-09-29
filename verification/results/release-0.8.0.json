@@ -1,0 +1,79 @@
+{
+ "schema": 2,
+ "version": "0.8.0",
+ "complete": true,
+ "tool_record": "/private/tmp/x3m-release-0.8.0/release-0.8.0.json (local, untracked; fields below copied from it)",
+ "command": "python3 tools/release/release.py --out /tmp/x3m-release-0.8.0 (same options as 0.7.0; regenerate built)",
+ "commit": "a3c85e37141b9afaff2c4e067396864e40c997a1",
+ "dirty": false,
+ "toolchain": {
+  "mingw_gcc": "i686-w64-mingw32-gcc (GCC) 16.2.0",
+  "mingw_objcopy": "GNU objcopy (GNU Binutils) 2.47.20260726",
+  "cmake": "cmake version 4.4.3",
+  "python": "3.9.6 (/Library/Developer/CommandLineTools/usr/bin/python3)"
+ },
+ "source_commit_marker": "a3c85e37141b9afaff2c4e067396864e40c997a1",
+ "dll": {
+  "sha256": "f34d3ab424353a3e51e8f5408f125b31f2b7d266604317ee3361024cab4dcb41",
+  "bytes": 39487179
+ },
+ "dll_unstripped": {
+  "sha256": "c27cf52ce79314443840feaa7159de3aefbbb8c35911d2e0997838488ae6ac66",
+  "bytes": 57382522
+ },
+ "debug_file": {
+  "sha256": "5c12fc37784934f5c4749508a4812ed233811d15dd3f375d3aefe16e99b1ba00",
+  "bytes": 18827386
+ },
+ "regenerate_source": "built",
+ "regenerate": {
+  "x3m-regenerate": {
+   "sha256": "28d3e915e7aeb9294a3a2e6abddcbce829404d52d6f1add8dc42338ff9fbe287",
+   "bytes": 12273696
+  },
+  "x3m-regenerate.exe": {
+   "sha256": "d7f8d687eb1437aff518d4da7e64cadd4a91f9798357a6cbc394ef89d2869afd",
+   "bytes": 29748230
+  }
+ },
+ "zip": {
+  "name": "x3m-0.8.0.zip",
+  "sha256": "b9a58c8b3b58b53ddb5fdf3bf4f269dac436c8f16fcbbee8d4fe9a05d4f73bf5",
+  "bytes": 58368639,
+  "entries": {
+   "d3d9.dll": [
+    39487179,
+    "f34d3ab424353a3e"
+   ],
+   "x3m.ini": [
+    16763,
+    "719d7954d8d495f8"
+   ],
+   "x3m-regenerate.exe": [
+    29748230,
+    "d7f8d687eb1437af"
+   ],
+   "README.txt": [
+    2476,
+    "6f8b0256fbcff5f6"
+   ]
+  }
+ },
+ "gates": "generate --check PASS; DLL warnings 0; check_no_x87 PASS 0 violations 726 reachable (unstripped and stripped, rerun by hand on the stripped DLL); strip identity PASS 10 sections 17 exports marker once 9 debug sections removed; regenerate smoke PASS host 26.7 s, Windows 19.2 s (X3M-Build under wine_lock, child 80.8 s, exit 0); zip entries exactly 4, re-hashed; full host suite on a3c85e37: 274 modules, 2895 tests, 0 failing, 96.5 s (12 jobs)",
+ "dll_compare": {
+  "against": "/tmp/x3-run103-candidate/build/d3d9.dll (Run103, unstripped, 1f3ad3db, marker ebfe33e4) vs 0.8.0 unstripped",
+  "file": "release-0.8.0-dll-compare.json",
+  "result": ".text .data identical; .rdata 516 differing runs (3 marker, 513 other) same length; .edata 1 run; .reloc length differs; header and section table differ; exports equal"
+ },
+ "wall_seconds": {
+  "tree": 0.0,
+  "config": 0.0,
+  "dll": 51.0,
+  "regenerate_host": 57.1,
+  "regenerate_windows": 85.0,
+  "regenerate": 142.1,
+  "package": 1.6,
+  "total": 194.8,
+  "host_suite": 96.5
+ }
+}
