@@ -1,0 +1,482 @@
+{
+ "exe_sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+ "strings": {
+  "0x565478": "tga bmp",
+  "0x565480": "bmp",
+  "0x565484": "abc siz",
+  "0x56548c": "abc",
+  "0x565490": "BM",
+  "0x5611c0": "%s%d",
+  "0x55b4c8": "Tahoma",
+  "0x563cfc": "%c"
+ },
+ "font_path_format": "F\\%s",
+ "style_table_0x005748b8": [
+  {
+   "flag": "0x2",
+   "count": 8,
+   "dx": [
+    0,
+    1,
+    1,
+    1,
+    0,
+    -1,
+    -1,
+    -1
+   ],
+   "dy": [
+    -1,
+    -1,
+    0,
+    1,
+    1,
+    1,
+    0,
+    -1
+   ],
+   "foreground": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "flag": "0x40",
+   "count": 1,
+   "dx": [
+    0
+   ],
+   "dy": [
+    -1
+   ],
+   "foreground": [
+    0
+   ]
+  },
+  {
+   "flag": "0x80",
+   "count": 1,
+   "dx": [
+    1
+   ],
+   "dy": [
+    -1
+   ],
+   "foreground": [
+    0
+   ]
+  },
+  {
+   "flag": "0x100",
+   "count": 1,
+   "dx": [
+    1
+   ],
+   "dy": [
+    0
+   ],
+   "foreground": [
+    0
+   ]
+  },
+  {
+   "flag": "0x200",
+   "count": 1,
+   "dx": [
+    1
+   ],
+   "dy": [
+    1
+   ],
+   "foreground": [
+    0
+   ]
+  },
+  {
+   "flag": "0x400",
+   "count": 1,
+   "dx": [
+    0
+   ],
+   "dy": [
+    1
+   ],
+   "foreground": [
+    0
+   ]
+  },
+  {
+   "flag": "0x800",
+   "count": 1,
+   "dx": [
+    -1
+   ],
+   "dy": [
+    1
+   ],
+   "foreground": [
+    0
+   ]
+  },
+  {
+   "flag": "0x1000",
+   "count": 1,
+   "dx": [
+    -1
+   ],
+   "dy": [
+    0
+   ],
+   "foreground": [
+    0
+   ]
+  },
+  {
+   "flag": "0x2000",
+   "count": 1,
+   "dx": [
+    -1
+   ],
+   "dy": [
+    -1
+   ],
+   "foreground": [
+    0
+   ]
+  },
+  {
+   "flag": "0x1",
+   "count": 1,
+   "dx": [
+    0
+   ],
+   "dy": [
+    0
+   ],
+   "foreground": [
+    1
+   ]
+  },
+  {
+   "flag": "0x4",
+   "count": 1,
+   "dx": [
+    1
+   ],
+   "dy": [
+    0
+   ],
+   "foreground": [
+    1
+   ]
+  }
+ ],
+ "sites": {
+  "font_open_entry_0x0048cdc0": [
+   "0x0048cdc0 51 push ecx",
+   "0x0048cdc1 53 push ebx",
+   "0x0048cdc2 56 push esi",
+   "0x0048cdc3 57 push edi",
+   "0x0048cdc4 8bf9 mov edi, ecx",
+   "0x0048cdc6 57 push edi",
+   "0x0048cdc7 50 push eax",
+   "0x0048cdc8 68c0115600 push 0x5611c0",
+   "0x0048cdcd 33d2 xor edx, edx",
+   "0x0048cdcf e8ec160600 call 0x4ee4c0"
+  ],
+  "style_factor_0x004f812d": [
+   "0x004f812d bf01000000 mov edi, 1",
+   "0x004f8132 39b884070000 cmp dword ptr [eax + 0x784], edi",
+   "0x004f8138 7e05 jle 0x4f813f",
+   "0x004f813a bf02000000 mov edi, 2"
+  ],
+  "textline_scale_0x0048b45d": [
+   "0x0048b45d 8b0d346f6000 mov ecx, dword ptr [0x606f34]",
+   "0x0048b463 8b8984070000 mov ecx, dword ptr [ecx + 0x784]",
+   "0x0048b469 8bd1 mov edx, ecx",
+   "0x0048b46b 0faffa imul edi, edx",
+   "0x0048b46e 0fafda imul ebx, edx",
+   "0x0048b471 0fafcd imul ecx, ebp",
+   "0x0048b474 8be9 mov ebp, ecx"
+  ],
+  "bltblock_leaf_0x0048c419": [
+   "0x0048c419 e872250600 call 0x4ee990"
+  ],
+  "bltblock_leaf_0x0048c445": [
+   "0x0048c445 e896f70400 call 0x4dbbe0"
+  ],
+  "bltblockalpha_leaf_0x0048c7e5": [
+   "0x0048c7e5 e886320600 call 0x4efa70"
+  ],
+  "native_tahoma_0x0041c992": [
+   "0x0041c992 6a21 push 0x21",
+   "0x0041c994 bd10000000 mov ebp, 0x10",
+   "0x0041c999 55 push ebp",
+   "0x0041c99a 8d4b0d lea ecx, [ebx + 0xd]",
+   "0x0041c99d b8c8b45500 mov eax, 0x55b4c8",
+   "0x0041c9a2 895e0c mov dword ptr [esi + 0xc], ebx",
+   "0x0041c9a5 895e10 mov dword ptr [esi + 0x10], ebx",
+   "0x0041c9a8 885e18 mov byte ptr [esi + 0x18], bl",
+   "0x0041c9ab e810040700 call 0x48cdc0"
+  ],
+  "native_tahoma_0x0041f799": [
+   "0x0041f799 6a01 push 1",
+   "0x0041f79b 6a21 push 0x21",
+   "0x0041f79d 6a10 push 0x10",
+   "0x0041f79f 8d4f0d lea ecx, [edi + 0xd]",
+   "0x0041f7a2 b8c8b45500 mov eax, 0x55b4c8",
+   "0x0041f7a7 e814d60600 call 0x48cdc0"
+  ],
+  "fontscale_parse_0x004ecff8": [
+   "0x004ecff8 898184070000 mov dword ptr [ecx + 0x784], eax"
+  ]
+ },
+ "reg_plus_0x784": {
+  "count": 46,
+  "with_cfg_load_in_64_bytes": 41,
+  "sites": [
+   {
+    "addr": "0x41d03a",
+    "insn": "idiv dword ptr [ecx + 0x784]",
+    "cfg_load_before": true
+   },
+   {
+    "addr": "0x41d080",
+    "insn": "idiv dword ptr [ecx + 0x784]",
+    "cfg_load_before": true
+   },
+   {
+    "addr": "0x42531c",
+    "insn": "idiv dword ptr [ecx + 0x784]",
+    "cfg_load_before": true
+   },
+   {
+    "addr": "0x427074",
+    "insn": "idiv dword ptr [ecx + 0x784]",
+    "cfg_load_before": true
+   },
+   {
+    "addr": "0x4270ad",
+    "insn": "idiv dword ptr [ecx + 0x784]",
+    "cfg_load_before": true
+   },
+   {
+    "addr": "0x4270f6",
+    "insn": "idiv dword ptr [ecx + 0x784]",
+    "cfg_load_before": true
+   },
+   {
+    "addr": "0x427671",
+    "insn": "idiv dword ptr [ecx + 0x784]",
+    "cfg_load_before": true
+   },
+   {
+    "addr": "0x4276aa",
+    "insn": "idiv dword ptr [ecx + 0x784]",
+    "cfg_load_before": true
+   },
+   {
+    "addr": "0x42cce0",
+    "insn": "idiv dword ptr [ebp + 0x784]",
+    "cfg_load_before": true
+   },
+   {
+    "addr": "0x42cd23",
+    "insn": "idiv dword ptr [ebp + 0x784]",
+    "cfg_load_before": false
+   },
+   {
+    "addr": "0x42cf7d",
+    "insn": "idiv dword ptr [ecx + 0x784]",
+    "cfg_load_before": true
+   },
+   {
+    "addr": "0x489014",
+    "insn": "lea edx, [edi + 0x784]",
+    "cfg_load_before": false
+   },
+   {
+    "addr": "0x48b285",
+    "insn": "mov eax, dword ptr [eax + 0x784]",
+    "cfg_load_before": true
+   },
+   {
+    "addr": "0x48b463",
+    "insn": "mov ecx, dword ptr [ecx + 0x784]",
+    "cfg_load_before": true
+   },
+   {
+    "addr": "0x48b579",
+    "insn": "idiv dword ptr [ecx + 0x784]",
+    "cfg_load_before": true
+   },
+   {
+    "addr": "0x48b648",
+    "insn": "imul eax, dword ptr [ebx + 0x784]",
+    "cfg_load_before": true
+   },
+   {
+    "addr": "0x48b6a3",
+    "insn": "idiv dword ptr [ebx + 0x784]",
+    "cfg_load_before": false
+   },
+   {
+    "addr": "0x48b7d9",
+    "insn": "mov eax, dword ptr [ebp + 0x784]",
+    "cfg_load_before": true
+   },
+   {
+    "addr": "0x48b83f",
+    "insn": "idiv dword ptr [ebp + 0x784]",
+    "cfg_load_before": false
+   },
+   {
+    "addr": "0x48b8cc",
+    "insn": "idiv dword ptr [ecx + 0x784]",
+    "cfg_load_before": true
+   },
+   {
+    "addr": "0x48b9a9",
+    "insn": "idiv dword ptr [ecx + 0x784]",
+    "cfg_load_before": true
+   },
+   {
+    "addr": "0x48b9fb",
+    "insn": "idiv dword ptr [ecx + 0x784]",
+    "cfg_load_before": true
+   },
+   {
+    "addr": "0x48ba2e",
+    "insn": "mov edx, dword ptr [ecx + 0x784]",
+    "cfg_load_before": true
+   },
+   {
+    "addr": "0x48ba5e",
+    "insn": "idiv dword ptr [ecx + 0x784]",
+    "cfg_load_before": true
+   },
+   {
+    "addr": "0x48bb73",
+    "insn": "mov eax, dword ptr [edx + 0x784]",
+    "cfg_load_before": true
+   },
+   {
+    "addr": "0x48bcf0",
+    "insn": "mov eax, dword ptr [eax + 0x784]",
+    "cfg_load_before": true
+   },
+   {
+    "addr": "0x48bea4",
+    "insn": "mov eax, dword ptr [eax + 0x784]",
+    "cfg_load_before": true
+   },
+   {
+    "addr": "0x48c054",
+    "insn": "mov eax, dword ptr [eax + 0x784]",
+    "cfg_load_before": true
+   },
+   {
+    "addr": "0x48c2a0",
+    "insn": "mov esi, dword ptr [edx + 0x784]",
+    "cfg_load_before": true
+   },
+   {
+    "addr": "0x48c3a2",
+    "insn": "mov eax, dword ptr [ecx + 0x784]",
+    "cfg_load_before": true
+   },
+   {
+    "addr": "0x48c3da",
+    "insn": "mov eax, dword ptr [ecx + 0x784]",
+    "cfg_load_before": true
+   },
+   {
+    "addr": "0x48c670",
+    "insn": "mov esi, dword ptr [edx + 0x784]",
+    "cfg_load_before": true
+   },
+   {
+    "addr": "0x48c772",
+    "insn": "mov eax, dword ptr [ecx + 0x784]",
+    "cfg_load_before": true
+   },
+   {
+    "addr": "0x48c7aa",
+    "insn": "mov eax, dword ptr [ecx + 0x784]",
+    "cfg_load_before": true
+   },
+   {
+    "addr": "0x48cb9b",
+    "insn": "imul ebx, dword ptr [eax + 0x784]",
+    "cfg_load_before": true
+   },
+   {
+    "addr": "0x48cbc0",
+    "insn": "mov ebx, dword ptr [ecx + 0x784]",
+    "cfg_load_before": true
+   },
+   {
+    "addr": "0x48cbd6",
+    "insn": "mov ebx, dword ptr [eax + 0x784]",
+    "cfg_load_before": true
+   },
+   {
+    "addr": "0x48cd5d",
+    "insn": "idiv dword ptr [ecx + 0x784]",
+    "cfg_load_before": true
+   },
+   {
+    "addr": "0x48cdad",
+    "insn": "idiv dword ptr [ecx + 0x784]",
+    "cfg_load_before": true
+   },
+   {
+    "addr": "0x4960ba",
+    "insn": "mov ecx, dword ptr [eax + 0x784]",
+    "cfg_load_before": true
+   },
+   {
+    "addr": "0x4ecae3",
+    "insn": "mov dword ptr [eax + 0x784], ecx",
+    "cfg_load_before": false
+   },
+   {
+    "addr": "0x4ecff8",
+    "insn": "mov dword ptr [ecx + 0x784], eax",
+    "cfg_load_before": true
+   },
+   {
+    "addr": "0x4f42db",
+    "insn": "cmp dword ptr [eax + 0x784], 1",
+    "cfg_load_before": true
+   },
+   {
+    "addr": "0x4f42ec",
+    "insn": "mov eax, dword ptr [eax + 0x784]",
+    "cfg_load_before": true
+   },
+   {
+    "addr": "0x4f4378",
+    "insn": "cmp dword ptr [eax + 0x784], 1",
+    "cfg_load_before": true
+   },
+   {
+    "addr": "0x4f8132",
+    "insn": "cmp dword ptr [eax + 0x784], edi",
+    "cfg_load_before": true
+   }
+  ]
+ },
+ "callers_0x0048cdc0": [
+  "0x41c9ab",
+  "0x41f7a7",
+  "0x496131",
+  "0x49615b"
+ ]
+}

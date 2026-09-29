@@ -1,0 +1,596 @@
+{
+ "game_root": "~/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3",
+ "fonts_tables": {
+  "addon/types/fonts-l007.pck": {
+   "catalogue": "addon/01.cat",
+   "rows": [
+    "# Font definitions for Russian (cyrillic characters)",
+    "1;",
+    "#LARGE;Arial;24;0;",
+    "LARGE;Harrier;24;5;",
+    "#LARGE;Zekton;26;8;",
+    "HUD;Tahoma;13;1;"
+   ]
+  },
+  "addon/types/fonts-l034.pck": {
+   "catalogue": "addon/01.cat",
+   "rows": [
+    "# Font definitions for Spanish fonts",
+    "1;",
+    "#LARGE;Arial;24;0;",
+    "# The Zekton font was modified to contain the \"\u00bf\" and \"\u00a1\" characters",
+    "LARGE;ZektonES;26;0;",
+    "HUD;Tahoma;13;1;"
+   ]
+  },
+  "addon/types/fonts.pck": {
+   "catalogue": "addon/01.cat",
+   "rows": [
+    "# Font definitions for Western Fonts",
+    "1;",
+    "#LARGE;Arial;24;0;",
+    "LARGE;Zekton;26;8;",
+    "HUD;Tahoma;13;1;"
+   ]
+  },
+  "types/fonts-l007.pck": {
+   "catalogue": "03.cat",
+   "rows": [
+    "# Font definitions for Russian (cyrillic characters)",
+    "1;",
+    "#LARGE;Arial;24;0;",
+    "LARGE;Harrier;24;5;",
+    "#LARGE;Zekton;26;8;",
+    "HUD;Tahoma;13;1;"
+   ]
+  },
+  "types/fonts-l034.pck": {
+   "catalogue": "03.cat",
+   "rows": [
+    "# Font definitions for Spanish fonts",
+    "1;",
+    "#LARGE;Arial;24;0;",
+    "# The Zekton font was modified to contain the \"\u00bf\" and \"\u00a1\" characters",
+    "LARGE;ZektonES;26;0;",
+    "HUD;Tahoma;13;1;"
+   ]
+  },
+  "types/fonts.pck": {
+   "catalogue": "03.cat",
+   "rows": [
+    "# Font definitions for Western Fonts",
+    "1;",
+    "#LARGE;Arial;24;0;",
+    "LARGE;Zekton;26;8;",
+    "HUD;Tahoma;13;1;"
+   ]
+  }
+ },
+ "font_files": {
+  "f/bz22.abc": {
+   "catalogue": "01.cat",
+   "size": 2332,
+   "sha256": "acaa3aab0e32261bd904c783a3519a504c67033a3dae135e4aeb784c2f1370e3",
+   "abc": {
+    "version": 4,
+    "size": 2332,
+    "header_int32_0x04_0x10": [
+     22,
+     256,
+     256,
+     16
+    ],
+    "count_field_0x18": 96,
+    "first": 32,
+    "last": 127,
+    "glyphs": 96,
+    "records_at": 28,
+    "size_matches_layout": true,
+    "pad_0x16_nonzero": 96
+   }
+  },
+  "f/bz22.bmp": {
+   "catalogue": "01.cat",
+   "size": 8254,
+   "sha256": "83c9309a5421d6493d0f85f2414fc5e7a4473fbf492d904f7022aa1b6160a2ca",
+   "bmp": {
+    "magic": "BM",
+    "width": 256,
+    "height": 256,
+    "bpp": 1
+   }
+  },
+  "f/harrier tygra_16.abc": {
+   "catalogue": "01.cat",
+   "size": 10102,
+   "sha256": "86d833bae1780a1f1bdc3eab89623ddb9e8850caec3635bd10336e260b4cfd63",
+   "abc": {
+    "version": 5,
+    "size": 10102,
+    "header_float_0x04_0x10": [
+     32.0,
+     0.0,
+     0.0,
+     32.0
+    ],
+    "map_entries": 1258,
+    "mapped_codes_nonzero": 314,
+    "first": 0,
+    "last": 1257,
+    "glyphs": 315,
+    "records_at": 2542,
+    "size_matches_layout": true,
+    "pad_0x16_nonzero": 315
+   }
+  },
+  "f/harrier tygra_16.tga": {
+   "catalogue": "01.cat",
+   "size": 1048594,
+   "sha256": "5ff1501c7545a2275f56445fd9424368f4aa0ac35f613a88cddff193eca0c23a",
+   "tga": {
+    "image_type": 2,
+    "width": 512,
+    "height": 512,
+    "bpp": 32,
+    "descriptor": 40,
+    "origin": "top-left",
+    "alpha_bits": 8,
+    "footer_TRUEVISION": false,
+    "size": 1048594
+   }
+  },
+  "f/harrier24.abc": {
+   "catalogue": "01.cat",
+   "size": 10102,
+   "sha256": "86d833bae1780a1f1bdc3eab89623ddb9e8850caec3635bd10336e260b4cfd63",
+   "abc": {
+    "version": 5,
+    "size": 10102,
+    "header_float_0x04_0x10": [
+     32.0,
+     0.0,
+     0.0,
+     32.0
+    ],
+    "map_entries": 1258,
+    "mapped_codes_nonzero": 314,
+    "first": 0,
+    "last": 1257,
+    "glyphs": 315,
+    "records_at": 2542,
+    "size_matches_layout": true,
+    "pad_0x16_nonzero": 315
+   }
+  },
+  "f/harrier24.tga": {
+   "catalogue": "01.cat",
+   "size": 1048594,
+   "sha256": "5ff1501c7545a2275f56445fd9424368f4aa0ac35f613a88cddff193eca0c23a",
+   "tga": {
+    "image_type": 2,
+    "width": 512,
+    "height": 512,
+    "bpp": 32,
+    "descriptor": 40,
+    "origin": "top-left",
+    "alpha_bits": 8,
+    "footer_TRUEVISION": false,
+    "size": 1048594
+   }
+  },
+  "f/tahoma13.abc": {
+   "catalogue": "01.cat",
+   "size": 17054,
+   "sha256": "19a8b253937c8a06007e7d14131a8f3825db2d2ca23f39d75a80e40760bb09d5",
+   "abc": {
+    "version": 5,
+    "size": 17054,
+    "header_float_0x04_0x10": [
+     15.0,
+     0.0,
+     2.0,
+     13.0
+    ],
+    "map_entries": 1170,
+    "mapped_codes_nonzero": 611,
+    "first": 0,
+    "last": 1169,
+    "glyphs": 612,
+    "records_at": 2366,
+    "size_matches_layout": true,
+    "pad_0x16_nonzero": 612
+   }
+  },
+  "f/tahoma13.tga": {
+   "catalogue": "01.cat",
+   "size": 524332,
+   "sha256": "ac90ecef235cc49f5bfbe6ae0c6b2086947b3805e4c1166fc018cdf9ec46054d",
+   "tga": {
+    "image_type": 2,
+    "width": 256,
+    "height": 512,
+    "bpp": 32,
+    "descriptor": 8,
+    "origin": "bottom-left",
+    "alpha_bits": 8,
+    "footer_TRUEVISION": true,
+    "size": 524332
+   }
+  },
+  "f/zekton26.abc": {
+   "catalogue": "01.cat",
+   "size": 7628,
+   "sha256": "6b161f8343b741e52835771b59a2fcae2459c737b46802d165eea7f3032bd6b7",
+   "abc": {
+    "version": 5,
+    "size": 7628,
+    "header_float_0x04_0x10": [
+     33.0,
+     0.0,
+     0.0,
+     33.0
+    ],
+    "map_entries": 513,
+    "mapped_codes_nonzero": 273,
+    "first": 0,
+    "last": 512,
+    "glyphs": 274,
+    "records_at": 1052,
+    "size_matches_layout": true,
+    "pad_0x16_nonzero": 0
+   }
+  },
+  "f/zekton26.tga": {
+   "catalogue": "01.cat",
+   "size": 524306,
+   "sha256": "893ed062cabd7791919116a178ed19e46c6e3435d6efa684a1bd5f4c7a7d65bd",
+   "tga": {
+    "image_type": 2,
+    "width": 256,
+    "height": 512,
+    "bpp": 32,
+    "descriptor": 40,
+    "origin": "top-left",
+    "alpha_bits": 8,
+    "footer_TRUEVISION": false,
+    "size": 524306
+   }
+  },
+  "f/zektones26.abc": {
+   "catalogue": "01.cat",
+   "size": 24750,
+   "sha256": "3fc139ae9938400cd9b1b01c431ab1f1d283e17737e575358299b70bc1f95e88",
+   "abc": {
+    "version": 5,
+    "size": 24750,
+    "header_float_0x04_0x10": [
+     24.0,
+     0.0,
+     0.0,
+     24.0
+    ],
+    "map_entries": 8726,
+    "mapped_codes_nonzero": 302,
+    "first": 0,
+    "last": 8725,
+    "glyphs": 303,
+    "records_at": 17478,
+    "size_matches_layout": true,
+    "pad_0x16_nonzero": 303
+   }
+  },
+  "f/zektones26.tga": {
+   "catalogue": "01.cat",
+   "size": 524306,
+   "sha256": "2dec949dd80946e55b1ece99b935bdd1f79c05a92d21e2196adb24332d4ec841",
+   "tga": {
+    "image_type": 2,
+    "width": 256,
+    "height": 512,
+    "bpp": 32,
+    "descriptor": 40,
+    "origin": "top-left",
+    "alpha_bits": 8,
+    "footer_TRUEVISION": false,
+    "size": 524306
+   }
+  }
+ },
+ "stats": {
+  "Tahoma13": {
+   "cell_rows": {
+    "15": 612
+   },
+   "glyphs_exact_uv_and_B": 612,
+   "A_negative": 100,
+   "B_max": 12,
+   "advance_A_plus_C_a_to_z_mean": 5.346,
+   "engine_band_rows_in_cell": [
+    1,
+    12
+   ],
+   "first_ink_row_hist": {
+    "0": 71,
+    "1": 30,
+    "2": 148,
+    "3": 203,
+    "4": 7,
+    "5": 99,
+    "6": 3,
+    "7": 5,
+    "9": 2,
+    "10": 2,
+    "11": 34,
+    "12": 6
+   },
+   "last_ink_row_hist": {
+    "3": 5,
+    "5": 43,
+    "6": 6,
+    "8": 5,
+    "9": 10,
+    "10": 3,
+    "11": 5,
+    "12": 385,
+    "13": 10,
+    "14": 138
+   },
+   "H": {
+    "A": 0,
+    "B": 8,
+    "C": 7,
+    "ink_rows": [
+     3,
+     10
+    ]
+   },
+   "g": {
+    "A": 0,
+    "B": 7,
+    "C": 6,
+    "ink_rows": [
+     5,
+     12
+    ]
+   },
+   "space": {
+    "A": 0,
+    "B": 3,
+    "C": 3,
+    "ink_rows": null
+   },
+   "alpha_levels": 15,
+   "inked_px": 33372,
+   "inked_px_rgb_white": 9194
+  },
+  "Zekton26": {
+   "cell_rows": {
+    "33": 274
+   },
+   "glyphs_exact_uv_and_B": 274,
+   "A_negative": 13,
+   "B_max": 19,
+   "advance_A_plus_C_a_to_z_mean": 10.5,
+   "engine_band_rows_in_cell": [
+    8,
+    32
+   ],
+   "first_ink_row_hist": {
+    "0": 1,
+    "8": 47,
+    "9": 12,
+    "11": 8,
+    "12": 103,
+    "13": 40,
+    "14": 10,
+    "15": 2,
+    "16": 1,
+    "17": 30,
+    "18": 2,
+    "19": 4,
+    "20": 3,
+    "21": 2,
+    "22": 2,
+    "26": 2,
+    "28": 1,
+    "29": 1
+   },
+   "last_ink_row_hist": {
+    "10": 2,
+    "11": 2,
+    "15": 1,
+    "16": 2,
+    "18": 2,
+    "20": 4,
+    "22": 1,
+    "23": 5,
+    "25": 4,
+    "26": 2,
+    "27": 195,
+    "28": 4,
+    "29": 10,
+    "30": 5,
+    "31": 32
+   },
+   "H": {
+    "A": 1,
+    "B": 11,
+    "C": 12,
+    "ink_rows": [
+     12,
+     27
+    ]
+   },
+   "g": {
+    "A": 1,
+    "B": 10,
+    "C": 11,
+    "ink_rows": [
+     17,
+     31
+    ]
+   },
+   "space": {
+    "A": 0,
+    "B": 1,
+    "C": 5,
+    "ink_rows": null
+   },
+   "alpha_levels": 16,
+   "inked_px": 19861,
+   "inked_px_rgb_white": 19861
+  },
+  "ZektonES26": {
+   "cell_rows": {
+    "24": 303
+   },
+   "glyphs_exact_uv_and_B": 303,
+   "A_negative": 14,
+   "B_max": 23,
+   "advance_A_plus_C_a_to_z_mean": 10.5,
+   "engine_band_rows_in_cell": [
+    0,
+    24
+   ],
+   "first_ink_row_hist": {
+    "0": 52,
+    "1": 15,
+    "2": 2,
+    "3": 12,
+    "4": 109,
+    "5": 40,
+    "6": 10,
+    "7": 2,
+    "8": 2,
+    "9": 31,
+    "10": 2,
+    "11": 6,
+    "12": 3,
+    "13": 4,
+    "14": 3,
+    "18": 5,
+    "20": 2,
+    "21": 1
+   },
+   "last_ink_row_hist": {
+    "2": 4,
+    "3": 8,
+    "6": 2,
+    "7": 2,
+    "8": 2,
+    "10": 2,
+    "12": 5,
+    "14": 2,
+    "15": 7,
+    "17": 4,
+    "18": 4,
+    "19": 201,
+    "20": 4,
+    "21": 14,
+    "22": 7,
+    "23": 33
+   },
+   "H": {
+    "A": 1,
+    "B": 11,
+    "C": 12,
+    "ink_rows": [
+     4,
+     19
+    ]
+   },
+   "g": {
+    "A": 1,
+    "B": 10,
+    "C": 11,
+    "ink_rows": [
+     9,
+     23
+    ]
+   },
+   "space": {
+    "A": 0,
+    "B": 1,
+    "C": 5,
+    "ink_rows": null
+   },
+   "alpha_levels": 16,
+   "inked_px": 20908,
+   "inked_px_rgb_white": 20908
+  },
+  "HarRier24": {
+   "cell_rows": {
+    "32": 315
+   },
+   "glyphs_exact_uv_and_B": 315,
+   "A_negative": 5,
+   "B_max": 25,
+   "advance_A_plus_C_a_to_z_mean": 10.692,
+   "engine_band_rows_in_cell": [
+    5,
+    27
+   ],
+   "first_ink_row_hist": {
+    "5": 2,
+    "6": 2,
+    "7": 7,
+    "8": 8,
+    "9": 162,
+    "10": 6,
+    "11": 9,
+    "12": 2,
+    "13": 79,
+    "14": 3,
+    "15": 2,
+    "16": 2,
+    "17": 4,
+    "18": 1,
+    "20": 2,
+    "22": 5,
+    "24": 1
+   },
+   "last_ink_row_hist": {
+    "10": 7,
+    "13": 6,
+    "14": 2,
+    "15": 1,
+    "16": 8,
+    "17": 5,
+    "20": 7,
+    "21": 3,
+    "22": 208,
+    "23": 6,
+    "24": 12,
+    "25": 30,
+    "26": 2
+   },
+   "H": {
+    "A": 2,
+    "B": 11,
+    "C": 13,
+    "ink_rows": [
+     9,
+     22
+    ]
+   },
+   "g": {
+    "A": 1,
+    "B": 9,
+    "C": 11,
+    "ink_rows": [
+     13,
+     25
+    ]
+   },
+   "space": {
+    "A": 0,
+    "B": 1,
+    "C": 5,
+    "ink_rows": null
+   },
+   "alpha_levels": 16,
+   "inked_px": 17154,
+   "inked_px_rgb_white": 17154
+  }
+ }
+}

@@ -16,7 +16,8 @@
     "docs/reverse-engineering/texture-lookup.md",
     "docs/reverse-engineering/field-of-view.md",
     "docs/reverse-engineering/object-lifetimes.md",
-    "docs/reverse-engineering/gui-scale.md"
+    "docs/reverse-engineering/gui-scale.md",
+    "docs/reverse-engineering/font-rendering.md"
   ],
   "labels": {
     "0x00402710": {
@@ -385,9 +386,41 @@
       "label": "text block into a texture: wrap width x fontscale (cfg+0x784), line height / fontscale, per line 0x0048b2d0",
       "source": "gui-scale.md"
     },
+    "0x0048b770": {
+      "label": "B3D_TexTextBlockCentered: wrap x fontscale, line step and centring / fontscale",
+      "source": "font-rendering.md"
+    },
     "0x0048b990": {
       "label": "text width measure (0x004f8f30) / fontscale",
       "source": "gui-scale.md"
+    },
+    "0x0048b9c0": {
+      "label": "B3D_TexTextHeight: (font size + style y extent) / fontscale",
+      "source": "font-rendering.md"
+    },
+    "0x0048ba10": {
+      "label": "B3D_TexTextBlockHeight: wrapped line count x line height / fontscale",
+      "source": "font-rendering.md"
+    },
+    "0x0048c090": {
+      "label": "B3D_TexBltBlock (cdecl src,dst,sx,sy,dx,dy,w,h,colour,clip): dest MPF_FONTSCALE -> dest xy x fontscale; source rect scaled only if the source is MPF_FONTSCALE too",
+      "source": "font-rendering.md"
+    },
+    "0x0048c460": {
+      "label": "B3D_TexBltBlockAlpha: as 0x0048c090 with the alpha glyph blit 0x004efa70",
+      "source": "font-rendering.md"
+    },
+    "0x0048cb10": {
+      "label": "B3D_TexGetTextArray: wrap text at width x fontscale into a script array",
+      "source": "font-rendering.md"
+    },
+    "0x0048cd20": {
+      "label": "B3D_TexGetWidth: texture width, / fontscale on MPF_FONTSCALE rows",
+      "source": "font-rendering.md"
+    },
+    "0x0048cd70": {
+      "label": "B3D_TexGetHeight: texture height, / fontscale on MPF_FONTSCALE rows",
+      "source": "font-rendering.md"
     },
     "0x0048cdc0": {
       "label": "font open by name+size: sprintf \"%s%d\" -> 0x004f8120 (F\\<name><size>.abc/.tga)",
@@ -463,6 +496,10 @@
     "0x004ab880": {
       "label": "script VM / command dispatch (SE_XMLImport, ReadText)",
       "source": "loading-orchestration.md"
+    },
+    "0x004b2730": {
+      "label": "32-bit alpha blit with colour modulation (glyphs, BltBlockAlpha): dst = (src*a*colour + dst*(255-a)*256) >> 16",
+      "source": "font-rendering.md"
     },
     "0x004b4f80": {
       "label": "CPureDeviceStateManager::SetRenderState (filters via 0x004b5620, then device vtable+0xe4)",
@@ -917,9 +954,17 @@
       "label": "font slot lookup/open (10 slots 0x00606f0c); fontscale>1 doubles a built-in 11x0x44 table",
       "source": "gui-scale.md"
     },
+    "0x004f8470": {
+      "label": "text-style pass list for flags & 0x3fcf from the 0x00606c20 table (outline/shadow/bold offsets and extents)",
+      "source": "font-rendering.md"
+    },
     "0x004f8600": {
-      "label": "text/overlay layout and string formatting (calls 0x004efa70)",
-      "source": "loading-profile-bottle-x3.md"
+      "label": "glyph rasteriser: one text line into a texture record (per-glyph A/B/C advance, S-1 rows from the atlas, style passes shadow then foreground; calls 0x004efa70)",
+      "source": "font-rendering.md"
+    },
+    "0x004f8f30": {
+      "label": "text width in font texels: sum(A+C) - (C_last - B_last) + style x extent",
+      "source": "font-rendering.md"
     },
     "0x004faee2": {
       "label": "D3DXMatrixLookAtLH thunk",

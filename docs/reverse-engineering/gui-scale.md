@@ -116,7 +116,7 @@ a scene-aspect fit rather than a UI scale [s][i]. x3intro nevertheless creates
 | KC font table | `OpenFonts@0xb6ca` (x3story) | `SE_ReadFile` of `types/Fonts`, split, `SE_StringToInt`; defaults 26, 8, 13 [s] |
 | `B3D_OpenFont` | case `0x6e` of `0x00493b40` (`0x00496112..0x0049616d`) | name = arg0, size = arg1 (`ECX`), flags args 2/3 → `0x0048cdc0` [s] |
 | font file name | `0x0048cdc0` | `sprintf("%s%d", name, size)` (`0x005611c0`) → `0x004f8120` [s] |
-| font slot | `0x004f8120` | 10 slots `0x00606f0c`; when `cfg+0x784 > 1` it doubles three 10-short rows of each of 11 records of the built-in table `0x005748b8` into `0x00606c20` (rows with id 1 or 4 excepted) [s]; meaning of the table not established |
+| font slot | `0x004f8120` | 10 slots `0x00606f0c`; when `cfg+0x784 > 1` it doubles three 10-short rows of each of 11 records of the built-in table `0x005748b8` into `0x00606c20` (rows with id 1 or 4 excepted) [s]; it is the text-style offset table ([font-rendering.md](font-rendering.md) §2.3) |
 | loader | `0x004f7830` | path format `F\%s` (static `0x0057c008+0x3c`), `"tga bmp"` image then `"abc siz"` metrics [s] |
 | native HUD font | `0x0041c960` at `0x0041c9ab`, `0x0041f720` at `0x0041f7a7` | `"Tahoma"` (`0x0055b4c8`), size `0xd` = 13, immediate [s] |
 | text block | `0x0048b4b0` | wrap width `(right−left)·cfg+0x784` (`0x004f9080`), line height `/cfg+0x784`, one call of `0x0048b2d0` per line [s] |
@@ -128,6 +128,9 @@ Shipped files: `f/Tahoma13`, `f/Zekton26`, `f/ZektonES26`, `f/HarRier24`,
 headers are version 5 with float metrics (Tahoma13: 15.0/13.0; Zekton26:
 33.0/33.0) [m]. A sharper or larger font therefore needs a new atlas pair at
 the target pixel size; the engine never rasterises from a vector font.
+The complete file format, the `-fontscale` reader list, the meaning of the
+`0x005748b8` table (text-style offsets) and the sharp-text plan are in
+[font-rendering.md](font-rendering.md).
 
 ## 3. How 2D geometry reaches Direct3D
 
@@ -447,8 +450,9 @@ click and a shot at the same cursor resolve the same pixel.
    sites, not observed.
 3. The anchor mapping (`0x1000` left, `0x2000` right, `0x4000` top, `0x8000`
    bottom) is read from the matrix formula; not checked against a capture.
-4. Native readers of display `+0x30/+0x34` (border) and the meaning of the
-   `0x005748b8` table doubled under `-fontscale` are not established.
+4. Native readers of display `+0x30/+0x34` (border) are not established. The
+   `0x005748b8` table is the text-style offset table (outline, drop shadows, bold):
+   [font-rendering.md](font-rendering.md) §2.3.
 5. The `SE_DivFix` operand order in `x3intro` `Init@0x14c04` is inferred.
 6. §6: only the overlay natives were checked for script-supplied screen
    points; other natives that take a pixel point from the script (none known)
