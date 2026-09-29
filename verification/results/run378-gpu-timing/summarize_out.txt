@@ -1,0 +1,65 @@
+== run378
+gpu 1 scene med 7259 p90 8265 n 297 wait 1008 dt 9786 frames 0..299
+gpu 1 fog_fill med 143 p90 250 n 2 wait 27 dt 9786 frames 0..299
+gpu 1 hdr_writeback med 4380 p90 8792 n 2 wait 3014 dt 9786 frames 0..299
+gpu 1 meter med 1216 p90 12685 n 2 wait 983 dt 9786 frames 0..299
+gpu 1 hdr_readback med 187 p90 568 n 2 wait 31 dt 9786 frames 0..299
+gpu 1 present med 2170 p90 4414 n 300 wait 1013 dt 9786 frames 0..299
+ph 300 dt 9799 15602 pre 2326 7224 views 1507 1732 se 5638 6973 pres 6 10
+gpu 2 scene med 46845 p90 51990 n 299 wait 1251 dt 60095 frames 300..599
+gpu 2 engine med 13040 p90 13908 n 255 wait 3576 dt 60095 frames 300..599
+gpu 2 shadow_depth med 2529 p90 3032 n 255 wait 2292 dt 60095 frames 300..599
+gpu 2 sun_apply med 3303 p90 3802 n 255 wait 3084 dt 60095 frames 300..599
+gpu 2 retention med 128 p90 220 n 255 wait 97 dt 60095 frames 300..599
+gpu 2 fog_fill med 64 p90 170 n 255 wait 59 dt 60095 frames 300..599
+gpu 2 taa med 8948 p90 10286 n 255 wait 90 dt 60095 frames 300..599
+gpu 2 hdr_writeback med 4563 p90 5213 n 255 wait 3021 dt 60095 frames 300..599
+gpu 2 meter med 1178 p90 1547 n 255 wait 681 dt 60095 frames 300..599
+gpu 2 hdr_readback med 265 p90 384 n 255 wait 55 dt 60095 frames 300..599
+gpu 2 bloom med 5230 p90 6710 n 255 wait 3601 dt 60095 frames 300..599
+gpu 2 present med 2620 p90 4133 n 300 wait 1245 dt 60095 frames 300..599
+gpu 2 taa_copy med 62 p90 168 n 255 wait 57 dt 60095 frames 300..599
+gpu 2 taa_box med 1461 p90 1915 n 255 wait 1094 dt 60095 frames 300..599
+gpu 2 taa_resolve med 6808 p90 8008 n 255 wait 6669 dt 60095 frames 300..599
+ph 600 dt 60083 74228 pre 12832 20325 views 41238 49289 se 2420 6264 pres 15 20
+== run376
+ph 300 dt 6952 14179 pre 5325 12381 views 1568 1782 se 24 47 pres 5 13
+ph 600 dt 6870 13317 pre 5226 11563 views 1595 1770 se 17 36 pres 3 10
+ph 900 dt 13227 22126 pre 4873 11517 views 1701 11143 se 39 324 pres 8 17
+ph 1200 dt 19791 42801 pre 7610 30010 views 9859 10823 se 251 368 pres 13 16
+ph 1500 dt 21130 33176 pre 7487 17864 views 10453 12546 se 231 338 pres 12 16
+ph 1800 dt 16790 22148 pre 8558 15723 views 5441 9587 se 160 333 pres 12 16
+ph 2100 dt 22270 24537 pre 8201 10866 views 11409 11846 se 207 334 pres 13 16
+ph 2400 dt 24948 41459 pre 12521 27805 views 10724 11672 se 191 282 pres 12 16
+ph 2700 dt 26114 29051 pre 14103 15802 views 9644 10411 se 180 255 pres 11 15
+ph 3000 dt 26156 28776 pre 14089 16381 views 9482 10146 se 138 198 pres 8 14
+ph 3300 dt 23176 26145 pre 11765 14812 views 8700 9176 se 130 270 pres 8 14
+ph 3600 dt 24083 26016 pre 12773 14753 views 8421 8834 se 195 264 pres 9 14
+ph 3900 dt 25146 27716 pre 13845 15967 views 8335 8944 se 214 293 pres 9 14
+ph 4200 dt 24357 26207 pre 14031 15834 views 7384 8489 se 181 301 pres 8 15
+ph 4500 dt 26720 39563 pre 15008 28171 views 8702 9296 se 265 431 pres 10 17
+ph 4800 dt 27490 29552 pre 15563 17390 views 9055 9510 se 294 361 pres 11 16
+ph 5100 dt 27626 29899 pre 16001 18079 views 8691 9159 se 289 362 pres 10 15
+ph 5400 dt 12861 29943 pre 10886 18204 views 1808 8892 se 63 353 pres 10 18
+fe run378 0 draws_p50 56 dt_ms_p50 9
+fe run378 300 draws_p50 332 dt_ms_p50 60
+fe run378 600 draws_p50 56 dt_ms_p50 14
+fe run376 0 draws_p50 56 dt_ms_p50 7
+fe run376 300 draws_p50 59 dt_ms_p50 6
+fe run376 600 draws_p50 59 dt_ms_p50 13
+fe run376 900 draws_p50 329 dt_ms_p50 19
+fe run376 1200 draws_p50 309 dt_ms_p50 21
+fe run376 1500 draws_p50 69 dt_ms_p50 16
+fe run376 1800 draws_p50 364 dt_ms_p50 22
+fe run376 2100 draws_p50 360 dt_ms_p50 24
+fe run376 2400 draws_p50 331 dt_ms_p50 26
+fe run376 2700 draws_p50 359 dt_ms_p50 26
+fe run376 3000 draws_p50 357 dt_ms_p50 23
+fe run376 3300 draws_p50 357 dt_ms_p50 24
+fe run376 3600 draws_p50 354 dt_ms_p50 25
+fe run376 3900 draws_p50 309 dt_ms_p50 24
+fe run376 4200 draws_p50 347 dt_ms_p50 26
+fe run376 4500 draws_p50 347 dt_ms_p50 27
+fe run376 4800 draws_p50 347 dt_ms_p50 27
+fe run376 5100 draws_p50 56 dt_ms_p50 12
+fe run376 5400 draws_p50 56 dt_ms_p50 6

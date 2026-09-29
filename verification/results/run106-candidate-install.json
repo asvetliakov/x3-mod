@@ -1,0 +1,38 @@
+{
+ "candidate": {
+  "dll": "/tmp/x3-run106-candidate/build/d3d9.dll",
+  "sha256": "d07848e8095310af68f601fcca4ff2b99ee9a22e42f9c3bbd164255ae124384d",
+  "bytes": 57442540,
+  "commit": "925fcbf4",
+  "toolchain": "i686-w64-mingw32-gcc (GCC) 16.2.0; cmake version 4.4.3; RelWithDebInfo, cmake/mingw-i686.cmake, -j8; Python 3.9.6 (/usr/bin/python3); clean build 40 s wall",
+  "gates": "build 0 warnings; x87 0 violations (734 reachable functions); generate --check PASS (243 settings, 95 in the template); host suite 274 modules / 2,898 tests / 0 failing (98.1 s wall, 12 jobs); X3AP not running before build and suite",
+  "changes": [
+   "925fcbf4 cull_small_props: size test from the draw's own vertex extent (shadow-replay extent cache) instead of the engine's part box, which for modded turrets is at least 4.7x the drawn geometry (run376: culled=0, all 82 prop draws kept by size at 0.85-2.1 px); missing extent keeps the draw and queues the read; cull_small_prop_box rows on F8 frames; frame_end gains issued= and the overlay DRAWS shows issued draws (skipped flare draws were still counted); CPU fixture 141 checks (regression: engine box 11.6 px, drawn range 1.28 px, skipped), focused host tests OK, generate --check PASS, build 0 warnings, x87 0; full suite to rerun with the game closed",
+   "44572d53 Run105 candidate built from 99734bdb (DLL 5de8ed5d\u2026 57,430,813 B; host suite 274/2,898/0, 0 warnings, x87 0) and installed 2026-09-29; Run 105 A queued (draw-cost A/B at the battle group: --lens-flare-gain 0 --cull-small-props on vs defaults); Run 104 A folded into its baseline launch; rollback Run104 (0.8.0) then Run103"
+  ],
+  "producer": "Claude Code implement agent (Opus 5.5), 2026-09-29; git log --oneline 99734bdb..HEAD --no-merges; shasum -a 256; stat -f %z; build/suite logs local under /tmp/x3-run106-candidate/"
+ },
+ "command": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3-run106-candidate/build/d3d9.dll",
+ "exit": 0,
+ "installed_at": "2026-09-29T08:11+04:00",
+ "installed": {
+  "sha256": "d07848e8095310af68f601fcca4ff2b99ee9a22e42f9c3bbd164255ae124384d",
+  "bytes": 57442540,
+  "verified": "sha256 and size read back after install; equals the candidate record; pgrep X3AP empty before"
+ },
+ "unchanged": {
+  "X3AP.exe": "fdbf3418\u2026",
+  "x3m.ini": "the user's file kept",
+  "cxbottle.conf": "not touched",
+  "x3m-regenerate": "0.8.0 binaries kept"
+ },
+ "previous": {
+  "run": "Run105",
+  "dll_sha256": "5de8ed5d352f195981c28bcf012f3bf64242fa2711f8318e0d7814f5f9d1fc76",
+  "path": "/tmp/x3-run105-candidate/build/d3d9.dll",
+  "then": "Run104 = release 0.8.0 f34d3ab4\u2026 at /tmp/x3m-release-0.8.0/zip-extract/d3d9.dll"
+ },
+ "run": "Run 106 A queued: rerun of the cull_small_props A/B at the battle group (the Run105 size test culled nothing); docs/verification/user-runs.md",
+ "note": "clean builds of 925fcbf4 differ in bytes (e531ffcd\u2026 vs d07848e8\u2026, same size); the retained DLL is the candidate, not a rebuild",
+ "producer": "main session (this record)"
+}
