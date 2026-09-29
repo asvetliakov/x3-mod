@@ -4,7 +4,9 @@
 // open), the sector/container/dispatch counts, the collide/simulate/post/passb
 // accumulation, the largest interval and its owner, the orphan (mid-chain
 // entry and an open interval overwritten), clock-error, clock-failure and
-// unmatched counters, take() conversion with the joined dt and input, the gate
+// unmatched counters, the region chain (cutevent/containers/sweep around the
+// sector chain it contains, the pause edge onto the region end, its own
+// orphans, clock failures and largest interval), take() conversion with the joined dt and input, the gate
 // (early/foreign), the 300-frame reduction (p50/p95, window maximum, slow
 // frames over 50 ms rate-limited to the first 64) and no allocation while
 // sampling. No Win32, no game.
@@ -64,6 +66,17 @@ static void sector_b(std::uint64_t passb) {
     stamp(4);
     at(passb);
     stamp(5);
+}
+// The input_part=0 region around a driver call: cutevent, the driver (sector
+// stamps nested inside containers), the deferred-delete sweep.
+static void region(std::uint64_t cutevent, std::uint64_t containers, std::uint64_t sweep) {
+    stamp(6);
+    at(cutevent);
+    stamp(7);
+    at(containers);
+    stamp(8);
+    at(sweep);
+    stamp(9);
 }
 // A container the gates skip: only the pass-end stamp fires (the gate edge lands on it).
 static void skipped_a() {
@@ -167,7 +180,7 @@ int main() {
     check(accumulator.clock_failures == 2 && accumulator.sectors == 3 && accumulator.containers == 2 &&
           accumulator.orphans == 3);
     // An index outside the table is unmatched and changes nothing.
-    stamp(6);
+    stamp(10);
     stamp(99);
     check(accumulator.unmatched == 2 && accumulator.dispatches == 21);
     accumulator.discard();
@@ -178,6 +191,77 @@ int main() {
     accumulator.take(10, 0, 5, 6, s);
     check(s.sectors == 1 && s.sum_us == 0 && s.max_interval_us == 0 && s.dt_us == 5 && s.input_us == 6 &&
           s.self_us == 6 * dispatch_cost_ns / 1000);
+
+    // Region chain: the driver's sector stamps nest inside containers without
+    // disturbing either chain; containers covers the sector sum plus the
+    // driver's own walk; the region's largest interval keeps its owner apart
+    // from the sector chain's.
+    const std::uint64_t orphans_before = accumulator.orphans;
+    stamp(6);
+    at(700);
+    stamp(7);
+    at(5);
+    sector_a(10, 20, 30);
+    skipped_a();
+    sector_b(40);
+    at(5);
+    stamp(8);
+    at(9000);
+    stamp(9);
+    check(accumulator.orphans == orphans_before && accumulator.open == none && accumulator.region_open == none &&
+          accumulator.region_last == 0);
+    check(accumulator.ticks[4] == 700 && accumulator.ticks[5] == 5 + 60 + 3 + 40 + 5 && accumulator.ticks[6] == 9000);
+    check(accumulator.max_owner == 3 && accumulator.max_ticks == 40 && accumulator.region_max_owner == 6 &&
+          accumulator.region_max_ticks == 9000 && accumulator.dispatches == 4 + 4 + 1 + 2 && accumulator.sectors == 1);
+    accumulator.take(11, 1000000, 12000, 11000, s);
+    check(s.interval_us[4] == 700 && s.interval_us[5] == 113 && s.interval_us[6] == 9000 && s.sum_us == 100 &&
+          s.region_us == 9813 && s.max_owner == 3 && s.max_interval_us == 40 && s.region_max_owner == 6 &&
+          s.region_max_us == 9000 && s.dispatches == 11);
+    check(accumulator.region_open == none && accumulator.region_max_owner == none && accumulator.ticks[6] == 0);
+    // Paused frame: the pause edge reaches the region end with nothing open (no
+    // orphan, no interval); the region's own chain breaks are orphans.
+    stamp(9);
+    check(accumulator.orphans == orphans_before && accumulator.dispatches == 1 && accumulator.region_open == none);
+    stamp(7); // containers without cutevent: its close has nothing open
+    at(3);
+    stamp(8);
+    at(4);
+    stamp(9);
+    check(accumulator.orphans == orphans_before + 1 && accumulator.ticks[5] == 3 && accumulator.ticks[6] == 4);
+    stamp(6);
+    at(2);
+    stamp(6); // a lost region end: the second open overwrites the first
+    at(1);
+    stamp(7);
+    check(accumulator.orphans == orphans_before + 2 && accumulator.ticks[4] == 1 && accumulator.region_open == 5);
+    // A region clock failure resets the region chain only; the sector chain
+    // opened inside containers carries on.
+    stamp(0);
+    at(6);
+    accumulator.stamp(8, 0);
+    stamp(1);
+    at(1);
+    stamp(2);
+    at(1);
+    stamp(3);
+    at(1);
+    stamp(9);
+    check(accumulator.clock_failures == 3 && accumulator.region_open == none && accumulator.ticks[0] == 6 &&
+          accumulator.ticks[6] == 4 && accumulator.orphans == orphans_before + 2);
+    // A backward clock in the region chain is a clock error there only.
+    stamp(6);
+    accumulator.stamp(7, clock_ticks - 1);
+    at(2);
+    stamp(8);
+    at(1);
+    stamp(9);
+    check(accumulator.clock_errors == 2 && accumulator.ticks[5] == 3 + 3 && accumulator.ticks[6] == 4 + 1);
+    accumulator.discard();
+    check(accumulator.region_open == none && accumulator.region_last == 0 && accumulator.region_max_ticks == 0 &&
+          accumulator.region_max_owner == none);
+    region(1, 2, 3);
+    accumulator.take(12, 1000000, 0, 0, s);
+    check(s.region_us == 6 && s.region_max_owner == 6 && s.sum_us == 0 && s.max_owner == none);
 
     // Gate: before admission every stamp is early; a second thread is foreign;
     // admission is first come, and re-admission by the owner is idempotent.
@@ -200,13 +284,15 @@ int main() {
         f.dispatches = 6 * f.sectors;
         for (unsigned p = 0; p < interval_count; ++p) {
             f.interval_us[p] = (i + 1) * (p + 1);
-            f.sum_us += f.interval_us[p];
+            (p < sector_count ? f.sum_us : f.region_us) += f.interval_us[p];
         }
         f.input_us = 10 * i;
         f.self_us = f.dispatches * dispatch_cost_ns / 1000;
         f.dt_us = f.sum_us + 100;
         f.max_interval_us = i == 150 ? 777 : 1;
         f.max_owner = i == 150 ? 2 : 0;
+        f.region_max_us = i == 20 ? 888 : 2;
+        f.region_max_owner = i == 20 ? 4 : 6;
         reduction.add(f);
     }
     check(reduction.full() && reduction.close(summary));
@@ -215,6 +301,8 @@ int main() {
           summary.interval_p95[3] == 1144);
     check(summary.sum_p50 == 151 * 10 && summary.input_p50 == 1500 && summary.self_p50 == 12 * dispatch_cost_ns / 1000);
     check(summary.max_interval_us == 777 && summary.max_owner == 2);
+    check(summary.interval_p50[4] == 151 * 5 && summary.interval_p95[6] == 286 * 7 && summary.region_p50 == 151 * 18);
+    check(summary.region_max_us == 888 && summary.region_max_owner == 4);
     check(summary.slow == 0 && summary.slow_count == 0);
     check(reduction.count() == 0 && !reduction.close(summary));
     // Slow frames: 100 of 300 frames exceed 50 ms; all are counted, the first 64 kept in order.
@@ -243,6 +331,24 @@ int main() {
     }
     check(reduction.close(summary) && summary.frames == 2 && summary.slow == 1 && summary.slow_count == 1 &&
           summary.slow_frames[0].frame == 2);
+    // A frame slow in the region chain only (the stall outside the sector
+    // intervals) is a witness too, with its region fields.
+    {
+        Sample f{};
+        f.frame = 3;
+        f.sum_us = 700;
+        f.region_us = slow_threshold_us + 1;
+        f.interval_us[6] = slow_threshold_us - 1000;
+        f.region_max_us = f.interval_us[6];
+        f.region_max_owner = 6;
+        reduction.add(f);
+        f.frame = 4;
+        f.region_us = slow_threshold_us;
+        reduction.add(f);
+    }
+    check(reduction.close(summary) && summary.slow == 1 && summary.slow_count == 1 &&
+          summary.slow_frames[0].frame == 3 && summary.slow_frames[0].region_max_owner == 6 &&
+          summary.region_max_owner == 6 && summary.region_max_us == slow_threshold_us - 1000);
     // Partial window and over-long window.
     for (unsigned i = 0; i < 5; ++i) {
         Sample f{};

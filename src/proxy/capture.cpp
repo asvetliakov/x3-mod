@@ -5336,8 +5336,8 @@ void initialize_log(HMODULE module) {
     submit_phases::initialize();   // X3M_SUBMIT_PHASES=1 only (fixtures; in no group, it claims the sun-occlusion lens
                                  // call): twenty-two view_submit candidate stamps through the context lean stub, needs
                                  // the frame group, same window
-    loop_phases::initialize(); // X3M_LOOP_PHASES=1 or X3M_DRAW_TRACE=1: six per-sector update stamps through the lean
-                               // stub, needs the frame group, same window
+    loop_phases::initialize(); // X3M_LOOP_PHASES=1 or X3M_DRAW_TRACE=1: six per-sector update stamps plus four around
+                               // the input_part=0 calls through the lean stub, needs the frame group, same window
     media_cue::initialize();   // default ID2 skip plus optional trace/cache: one verified allocator gate
     if (const auto observer = media_cue::video_lock_observer()) { // trace on: the surface shell's lock witness (needs
                                                                   // --ownership to see the game's surfaces)

@@ -1,4 +1,5 @@
-"""Independent checks of the six per-sector update stamps (X3M_LOOP_PHASES=1):
+"""Independent checks of the ten loop-phase stamps (X3M_LOOP_PHASES=1: six
+per-sector update stamps and four around the input_part=0 calls):
 the site ledger against the installed EXE, refusals, the host accumulator/gate/
 window probe, the production wiring (shared lean stub and install transaction)
 and the launcher option. Twin of test_pass_phases.py. No game, no Wine."""
@@ -18,20 +19,27 @@ ROOT = Path(__file__).resolve().parents[2]
 
 class SourceAndReplay(unittest.TestCase):
     def test_exact_production_order_and_spec_fields(self):
-        self.assertEqual(len(probe.SITES), 6)
-        self.assertEqual([s.va for s in probe.SITES], [0x43a38e, 0x43a394, 0x43a39a, 0x43a3a0, 0x43a3be, 0x43a3ca])
-        self.assertEqual([len(s.expected) for s in probe.SITES], [6, 6, 6, 5, 6, 5])
+        self.assertEqual(len(probe.SITES), 10)
+        self.assertEqual([s.va for s in probe.SITES], [0x43a38e, 0x43a394, 0x43a39a, 0x43a3a0, 0x43a3be, 0x43a3ca,
+                                                       0x403b12, 0x403b17, 0x403b1c, 0x403b40])
+        self.assertEqual([len(s.expected) for s in probe.SITES], [6, 6, 6, 5, 6, 5, 5, 5, 5, 6])
         text = source_text(probe.SOURCE)
         self.assertTrue(probe.source_checks(text))
-        # Four displaced calls carry their rel32 at offset 2; the two pass ends are plain copies.
-        self.assertEqual(text.count('},6,0,2}'), 4)
-        self.assertEqual(text.count('},5,0,0}'), 2)
+        # Four displaced driver calls and the region-end jne carry their rel32 at
+        # offset 2, the two region calls at offset 1; the two pass ends and the
+        # region's `mov eax,[0x0060850c]` are plain copies.
+        self.assertEqual(text.count('},6,0,2}'), 5)
+        self.assertEqual(text.count('},5,0,1}'), 2)
+        self.assertEqual(text.count('},5,0,0}'), 3)
+        self.assertFalse(probe.source_checks(text.replace('},5,0,1}', '},5,0,0}', 1)))
+        self.assertFalse(probe.source_checks(text.replace('0x0f,0x85,0x72,0x02,0x00,0x00},6,0,2}',
+                                                          '0x0f,0x85,0x72,0x02,0x00,0x00},6,0,0}', 1)))
         self.assertFalse(probe.source_checks(text.replace('},5,0,0}', '},5,0,2}', 1)))
         self.assertFalse(probe.source_checks(text.replace('},6,0,2}', '},6,0,0}', 1)))
         self.assertFalse(probe.source_checks(text.replace('0x8b,0x36,0x83,0x3e,0x00', '0x8b,0x36,0x83,0x3e,0x01', 1)))
         lines = text.splitlines()
         entries = [i for i, line in enumerate(lines) if '{"loop_phase_' in line]
-        self.assertEqual(len(entries), 6)
+        self.assertEqual(len(entries), 10)
         swapped = list(lines)
         swapped[entries[3]], swapped[entries[5]] = swapped[entries[5]], swapped[entries[3]]
         self.assertFalse(probe.source_checks('\n'.join(swapped)))
@@ -85,11 +93,16 @@ class SourceAndReplay(unittest.TestCase):
         self.assertIn('return stamp::uninstall_group(patches);', source)
         self.assertIn('status="frame_phases_off"', source)
         self.assertIn('std::atomic<bool> active', header)
-        # The accumulator: pass ends with nothing open are the container walk,
-        # every other mismatch is an orphan; the largest interval keeps its owner.
-        self.assertIn('inline constexpr bool walk[site_count] = {false, false, false, true, false, true};', core)
-        self.assertIn('if (open != close) { if (open != none || !walk[index]) ++orphans; }', core)
-        self.assertIn('if (delta > max_ticks) { max_ticks = delta; max_owner = close; }', core)
+        # The accumulator: pass ends (and the region end on the pause edge)
+        # with nothing open are the walk, every other mismatch is an orphan;
+        # the two chains keep separate state and their largest interval's owner.
+        self.assertIn('inline constexpr bool walk[site_count] = {false, false, false, true, false, true, false, false, false, true};', core)
+        self.assertIn('inline constexpr unsigned opens[site_count] = {0, 1, 2, none, 3, none, 4, 5, 6, none};', core)
+        self.assertIn('inline constexpr unsigned closes[site_count] = {none, 0, 1, 2, none, 3, none, 4, 5, 6};', core)
+        self.assertIn('if (index >= region_site) chain(index, now, region_open, region_last, region_max_ticks, region_max_owner); else chain(index, now, open, last, max_ticks, max_owner);', core)
+        self.assertIn('if (chain_open != close) { if (chain_open != none || !walk[index]) ++orphans; }', core)
+        self.assertIn('if (delta > chain_max) { chain_max = delta; chain_owner = close; }', core)
+        self.assertIn('inline constexpr unsigned sector_count = 4, region_site = 6;', core)
         self.assertIn('inline constexpr std::uint64_t slow_threshold_us = 50000;', core)
         self.assertIn('inline constexpr unsigned window_frames = 300, slow_limit = 64;', core)
         cost = int(re.search(r'inline constexpr std::uint64_t dispatch_cost_ns = (\d+);', core).group(1))
@@ -108,8 +121,13 @@ class SourceAndReplay(unittest.TestCase):
         self.assertIn('GetCurrentThreadId()!=owner_thread.load(std::memory_order_acquire))return false;', phases)
         phase_core = source_text(ROOT / 'src/proxy/game_phases_core.h')
         self.assertIn('if(phase==6){input_last=input_ticks;input_valid=true;}', phase_core)
-        self.assertIn('log("loop_phases qpc=%llu frame=%llu frames=%u sectors_p50=%llu containers_p50=%llu collide_p50_us=%llu collide_p95_us=%llu simulate_p50_us=%llu simulate_p95_us=%llu post_p50_us=%llu post_p95_us=%llu passb_p50_us=%llu passb_p95_us=%llu sum_p50_us=%llu input_p50_us=%llu self_p50_us=%llu dispatch_cost_ns=%llu max_interval_us=%llu max_interval_owner=%s slow=%u orphans=%llu clock_errors=%llu clock_failures=%llu unmatched=%llu dropped=%llu early=%u foreign=%u"', source)
-        self.assertIn('log("loop_phases_slow qpc=%llu frame=%llu dt_us=%llu sectors=%u containers=%u collide_us=%llu simulate_us=%llu post_us=%llu passb_us=%llu sum_us=%llu input_us=%llu max_interval_us=%llu max_interval_owner=%s"', source)
+        self.assertIn('log("loop_phases qpc=%llu frame=%llu frames=%u sectors_p50=%llu containers_p50=%llu collide_p50_us=%llu collide_p95_us=%llu simulate_p50_us=%llu simulate_p95_us=%llu post_p50_us=%llu post_p95_us=%llu passb_p50_us=%llu passb_p95_us=%llu cutevent_p50_us=%llu cutevent_p95_us=%llu containers_p50_us=%llu containers_p95_us=%llu sweep_p50_us=%llu sweep_p95_us=%llu sum_p50_us=%llu region_p50_us=%llu input_p50_us=%llu self_p50_us=%llu dispatch_cost_ns=%llu max_interval_us=%llu max_interval_owner=%s region_max_us=%llu region_max_owner=%s slow=%u orphans=%llu clock_errors=%llu clock_failures=%llu unmatched=%llu dropped=%llu early=%u foreign=%u"', source)
+        self.assertIn('log("loop_phases_slow qpc=%llu frame=%llu dt_us=%llu sectors=%u containers=%u collide_us=%llu simulate_us=%llu post_us=%llu passb_us=%llu cutevent_us=%llu containers_us=%llu sweep_us=%llu sum_us=%llu region_us=%llu input_us=%llu max_interval_us=%llu max_interval_owner=%s region_max_us=%llu region_max_owner=%s"', source)
+        # The window line's arguments follow the format: the three region intervals
+        # after passb, region_p50 after sum_p50, the region maximum after the sector one.
+        self.assertIn('s.interval_p95[3],s.interval_p50[4],s.interval_p95[4],s.interval_p50[5],s.interval_p95[5],s.interval_p50[6],s.interval_p95[6],s.sum_p50,s.region_p50,s.input_p50,s.self_p50,', source)
+        self.assertIn('detail::interval_names[s.max_owner],s.region_max_us,detail::interval_names[s.region_max_owner],s.slow,', source)
+        self.assertIn('"collide", "simulate", "post", "passb", "cutevent", "containers", "sweep", "none"};', core)
         capture = source_text(ROOT / 'src/proxy/capture.cpp')
         self.assertLess(capture.index('pass_phases::initialize();'), capture.index('loop_phases::initialize();'))
         cmake = source_text(ROOT / 'CMakeLists.txt')
@@ -156,17 +174,22 @@ class NativeSites(unittest.TestCase):
     def report(self, image=None, decoded=None):
         return probe.inspect(image or self.image, decoded or self.decoded, self.source, self.data, self.installed)
 
-    def test_actual_executable_and_all_six_spans(self):
+    def test_actual_executable_and_all_ten_spans(self):
         report = probe.verify()
         self.assertEqual(report['result'], 'PASS', report['checks'])
         self.assertTrue(report['source_present'])
-        self.assertEqual(report['installed_sites_checked'], 33 + 10 + 4)  # 33 game-phase sites since the audio sites went (2026-09-25)
-        self.assertEqual(len(report['sites']), 6)
+        # 33 game-phase sites since the audio sites went (2026-09-25), 10 frame,
+        # 4 pass, 2 residual, 22 submit, 2 light, 1 media-cue.
+        self.assertEqual(report['installed_sites_checked'], 33 + 10 + 4 + 2 + 22 + 2 + 1)
+        self.assertEqual(len(report['sites']), 10)
         for row in report['sites']:
             self.assertEqual(row['incoming_sources'], sorted(f'{s:#010x}' for s in probe.INCOMING[int(row['va'], 16)]), row['name'])
-            self.assertTrue(row['arena_replay_ok'] and row['arena_target_ok'] and row['in_loop_body'] and row['no_installed_conflict'], row['name'])
-        # The two gate edges of each pass land on the pass-end span start only.
-        self.assertEqual([len(row['incoming_sources']) for row in report['sites']], [0, 0, 0, 2, 0, 2])
+            self.assertTrue(row['arena_replay_ok'] and row['arena_target_ok'] and row['in_body'] and row['no_installed_conflict'], row['name'])
+        # The two gate edges of each pass land on the pass-end span start only;
+        # no direct branch lands on a region span.
+        self.assertEqual([len(row['incoming_sources']) for row in report['sites']], [0, 0, 0, 2, 0, 2, 0, 0, 0, 0])
+        for key in ('complete_main', 'region_exits', 'region_esp', 'region_callee_returns', 'main_loop_single_caller'):
+            self.assertTrue(report['checks'][key], key)
 
     def test_corrupted_byte_refused_at_every_site(self):
         for site in probe.SITES:
@@ -178,13 +201,14 @@ class NativeSites(unittest.TestCase):
 
     def test_interior_or_unexpected_incoming_edge_refused(self):
         for site in probe.SITES:
+            own = (site.function_start, site.function_end)
             with self.subTest(site=site.name):
                 decoded = {k: list(v) for k, v in self.decoded.items()}
-                decoded[probe.ROUTINE].append(probe.common.Instruction(0x100, b'\xe9\0\0\0\0', 'jmp', hex(site.va + 1)))
+                decoded[own].append(probe.common.Instruction(0x100, b'\xe9\0\0\0\0', 'jmp', hex(site.va + 1)))
                 row = next(row for row in self.report(decoded=decoded)['sites'] if row['name'] == site.name)
                 self.assertFalse(row['no_interior_branch'])
                 decoded = {k: list(v) for k, v in self.decoded.items()}
-                decoded[probe.ROUTINE].append(probe.common.Instruction(0x100, b'\xe9\0\0\0\0', 'jmp', hex(site.va)))
+                decoded[own].append(probe.common.Instruction(0x100, b'\xe9\0\0\0\0', 'jmp', hex(site.va)))
                 row = next(row for row in self.report(decoded=decoded)['sites'] if row['name'] == site.name)
                 self.assertTrue(row['no_interior_branch'])
                 self.assertFalse(row['incoming_ok'])
@@ -194,9 +218,10 @@ class NativeSites(unittest.TestCase):
         for site in probe.SITES:
             for boundary in ('start', 'end'):
                 with self.subTest(site=site.name, boundary=boundary):
+                    own = (site.function_start, site.function_end)
                     decoded = {k: list(v) for k, v in self.decoded.items()}
-                    decoded[probe.ROUTINE] = [i for i in decoded[probe.ROUTINE]
-                                              if (i.va != site.va if boundary == 'start' else i.end != site.end)]
+                    decoded[own] = [i for i in decoded[own]
+                                    if (i.va != site.va if boundary == 'start' else i.end != site.end)]
                     row = next(row for row in self.report(decoded=decoded)['sites'] if row['name'] == site.name)
                     self.assertFalse(row['whole_instructions'])
         decoded = {k: list(v) for k, v in self.decoded.items()}
@@ -204,7 +229,32 @@ class NativeSites(unittest.TestCase):
         self.assertFalse(self.report(decoded=decoded)['checks']['back_edges'])
         overlapping = probe.inspect(self.image, self.decoded, self.source, self.data, [(0x43a3a2, 5)])
         self.assertFalse(next(row for row in overlapping['sites'] if row['name'] == 'loop_phase_sector_pass_a_end')['no_installed_conflict'])
+        # The region end sits right after the installed game_phase_input_body
+        # span (0x00403b3a, 6 bytes): adjacent is disjoint, one byte more is not.
+        adjacent = probe.inspect(self.image, self.decoded, self.source, self.data, [(0x403b3a, 6)])
+        self.assertTrue(next(row for row in adjacent['sites'] if row['name'] == 'loop_phase_region_end')['no_installed_conflict'])
+        overlapping = probe.inspect(self.image, self.decoded, self.source, self.data, [(0x403b3a, 7)])
+        self.assertFalse(next(row for row in overlapping['sites'] if row['name'] == 'loop_phase_region_end')['no_installed_conflict'])
         self.assertEqual(probe.inspect(self.image, {}, self.source, self.data, [])['result'], 'FAIL')
+
+    def test_region_contracts_refuse_mutations(self):
+        main = probe.MAIN
+        # A new edge onto the end marker from elsewhere, a push inside the
+        # region, a callee that pops an argument, or a region-end jcc with a
+        # different mnemonic each refuse.
+        decoded = {k: list(v) for k, v in self.decoded.items()}
+        decoded[main].append(probe.common.Instruction(0x100, b'\xe9\0\0\0\0', 'jmp', hex(0x403b3a)))
+        self.assertFalse(self.report(decoded=decoded)['checks']['region_exits'])
+        decoded = {k: list(v) for k, v in self.decoded.items()}
+        decoded[main].append(probe.common.Instruction(0x403b20, b'\x50', 'push', 'eax'))
+        self.assertFalse(self.report(decoded=decoded)['checks']['region_esp'])
+        image = PatchedImage(self.image, [(0x48f692, b'\xc2')])
+        self.assertFalse(self.report(image=image)['checks']['region_callee_returns'])
+        decoded = {k: list(v) for k, v in self.decoded.items()}
+        decoded[main] = [probe.common.Instruction(i.va, i.raw, 'je', i.operands) if i.va == 0x403b40 else i
+                         for i in decoded[main]]
+        row = next(row for row in self.report(decoded=decoded)['sites'] if row['name'] == 'loop_phase_region_end')
+        self.assertFalse(row['single_rel32'])
 
 
 if __name__ == '__main__':

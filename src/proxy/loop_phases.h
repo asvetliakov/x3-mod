@@ -9,8 +9,10 @@
 // sites inside the main loop's per-sector update driver 0x0043a360
 // (loop_phase_sites.h) split the `input_part=0` stall region of the main loop
 // into its callees: collide, simulate, post (pass A) and economy+attach (pass
-// B), accumulated per frame over every container the driver visits. The
-// group uses the lean stub shared with pass phases (lean_stub.cpp: flags,
+// B), accumulated per frame over every container the driver visits; four
+// more around the region's three calls split it into cutevent (0x0048f550),
+// containers (the whole driver) and sweep (the deferred-delete walk,
+// 0x0045b660), once per frame. The group uses the lean stub shared with pass phases (lean_stub.cpp: flags,
 // EAX/ECX/EDX and XMM0-7 saved around a handler under LightCallBoundary,
 // MXCSR + LastError, x87-free; verification/probe/check_no_x87.py walks
 // x3m_loop_phase_enter) because the stamp rate is six per active sector plus
@@ -18,7 +20,7 @@
 // The window reduction runs at the frame boundary from
 // frame_phases::detail::frame_impl under its owner guard: one `loop_phases`
 // line per 300-frame window and one `loop_phases_slow` line for each of the
-// first 64 frames whose sum exceeds 50 ms (docs/verification/
+// first 64 frames whose sector sum or region total exceeds 50 ms (docs/verification/
 // sampling-profiler.md, "Loop phases"). Off, nothing is installed and the
 // per-frame cost is one relaxed load.
 namespace x3m::loop_phases {

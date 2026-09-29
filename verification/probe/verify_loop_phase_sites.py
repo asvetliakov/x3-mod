@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Read-only instruction/ABI qualification of the six sector-update stamps.
+"""Read-only instruction/ABI qualification of the ten loop-phase stamps.
 
 Twin of verify_pass_phase_sites.py for the per-sector update driver 0x0043a360,
 the dominant call of the main loop's `input_part=0` sub-region
@@ -16,9 +16,21 @@ the plain-copy contract for the two spans that carry no rel32, the ESP contract
 callee-pop `stdcall` of one argument, so ESP is the routine's frame base at all
 six sites), both list-walk back edges and their type/skip gates, the
 single-caller chain 0x00403b17 -> 0x0043a360 -> five per-sector routines,
-disjointness from every installed game-phase site, and the absence of any data
-reference to a span byte outside .rsrc. The production site table
-(src/proxy/loop_phase_sites.h) is checked when present.  No Wine or game launch.
+disjointness from every installed game-phase site, and the absence of any
+data reference to a span byte outside .rsrc.
+
+The four region stamps (sites 6-9) bracket the three calls of the part-0
+region inside the main loop 0x00403840, which is decoded whole: exact bytes
+and whole instructions, no direct branch onto or into any of the four spans,
+the rel32 contract (two `call`s at offset 1 to 0x0048f550/0x0043a360, the
+`jne` at offset 2 to 0x00403db8, the plain copy `mov eax,[0x0060850c]`), the
+ESP contract (the region's only stack write is the `push edi` that
+0x0045b660's `ret 4` removes; 0x0048f550 and 0x0043a360 take no argument and
+end in a plain `ret`), the three region exits all reaching 0x00403b3a (the
+installed game_phase_input_body site, so the sweep closes on the `jne` after
+it) and the single caller of the main loop (main-loop thread only). The
+production site table (src/proxy/loop_phase_sites.h) is checked when present.
+No Wine or game launch.
 """
 import argparse
 import json
@@ -35,8 +47,10 @@ ROOT = Path(__file__).resolve().parents[2]
 SOURCE = ROOT / 'src/proxy/loop_phase_sites.h'
 INSTALLED = ROOT / 'src/proxy/game_phase_sites.h'
 # The other stamp tables that may be installed alongside; their spans must be
-# disjoint from these six as well.
-OTHER_TABLES = (ROOT / 'src/proxy/frame_phase_sites.h', ROOT / 'src/proxy/pass_phase_sites.h')
+# disjoint from these ten as well.
+OTHER_TABLES = tuple(ROOT / 'src/proxy' / name for name in (
+    'frame_phase_sites.h', 'pass_phase_sites.h', 'residual_phase_sites.h', 'submit_phase_sites.h',
+    'light_phase_sites.h', 'media_cue_sites.h'))
 DEFAULT_EXE = common.DEFAULT_EXE
 
 # Per-sector update driver: push ebx at 0x0043a360, single ret at 0x0043a3d4,
@@ -46,27 +60,52 @@ ROUTINE = (0x43a360, 0x43a3d5)
 # game_phase_input site 0x00403b09 to the installed game_phase_input_body site
 # 0x00403b3a (src/proxy/game_phase_sites.h indices 6 and 23).
 REGION = (0x403b09, 0x403b3a)
+# The main loop that contains the region (verify_game_phase_sites.MAIN),
+# decoded whole for the region sites' boundaries and incoming edges.
+MAIN = (0x403840, 0x404278)
 # name, address, bytes, rel32 offset inside the span (0 = plain copy),
-# rel32 absolute target (0 = none).
+# rel32 absolute target (0 = none), containing routine, relative mnemonic.
 LEDGER = (
-    ('sector_collide', 0x43a38e, '56e8bc2e0200', 2, 0x45d250),
-    ('sector_simulate', 0x43a394, '56e836870100', 2, 0x452ad0),
-    ('sector_post', 0x43a39a, '56e880130200', 2, 0x45b720),
-    ('sector_pass_a_end', 0x43a3a0, '8b36833e00', 0, 0),
-    ('sector_economy', 0x43a3be, '56e81cf30100', 2, 0x4596e0),
-    ('sector_pass_b_end', 0x43a3ca, '8b36833e00', 0, 0),
+    ('sector_collide', 0x43a38e, '56e8bc2e0200', 2, 0x45d250, ROUTINE, 'call'),
+    ('sector_simulate', 0x43a394, '56e836870100', 2, 0x452ad0, ROUTINE, 'call'),
+    ('sector_post', 0x43a39a, '56e880130200', 2, 0x45b720, ROUTINE, 'call'),
+    ('sector_pass_a_end', 0x43a3a0, '8b36833e00', 0, 0, ROUTINE, None),
+    ('sector_economy', 0x43a3be, '56e81cf30100', 2, 0x4596e0, ROUTINE, 'call'),
+    ('sector_pass_b_end', 0x43a3ca, '8b36833e00', 0, 0, ROUTINE, None),
+    ('region_cutevent', 0x403b12, 'e839ba0800', 1, 0x48f550, MAIN, 'call'),
+    ('region_containers', 0x403b17, 'e844680300', 1, 0x43a360, MAIN, 'call'),
+    ('region_sweep', 0x403b1c, 'a10c856000', 0, 0, MAIN, None),
+    ('region_end', 0x403b40, '0f8572020000', 2, 0x403db8, MAIN, 'jne'),
 )
-SITES = tuple(common.HookSpec('loop_phase_' + row[0], row[1], bytes.fromhex(row[2]), *ROUTINE)
+SITES = tuple(common.HookSpec('loop_phase_' + row[0], row[1], bytes.fromhex(row[2]), *row[5])
               for row in LEDGER)
 REL32 = {row[1]: (row[3], row[4]) for row in LEDGER}
+MNEMONIC = {row[1]: row[6] for row in LEDGER}
 # Only the two per-iteration joins are branch targets; the four call sites are
-# reached by fall-through from the gate that precedes them.
+# reached by fall-through from the gate that precedes them. No direct branch
+# anywhere in the main loop lands on a region span: 0x00403b12 follows the
+# pause gate's fall-through, 0x00403b40 follows the installed
+# game_phase_input_body span 0x00403b3a (whose tail jumps back to it).
 INCOMING = {
     0x43a38e: set(), 0x43a394: set(), 0x43a39a: set(),
     0x43a3a0: {0x43a384, 0x43a38c},
     0x43a3be: set(),
     0x43a3ca: {0x43a3b4, 0x43a3bc},
+    0x403b12: set(), 0x403b17: set(), 0x403b1c: set(), 0x403b40: set(),
 }
+# Where each span may sit: the driver's two loop bodies, or the part-0 region
+# plus the `jne` after its end marker (the region sites).
+REGION_BODY = (0x403b12, 0x403b46)
+# Every exit of the part-0 region reaches 0x00403b3a (pause gate, empty list,
+# walk fall-through), then the region-end span on the next instruction.
+REGION_EXITS = ((0x403b10, 0x403b3a), (0x403b26, 0x403b3a))
+REGION_WALK_EXIT = (0x403b38, 0x403b28)   # the walk's back edge; falls through to 0x00403b3a
+REGION_END_MARKER = (0x403b3a, '39aed8040000', 0x403b40)
+# The region's only stack write and the callee that removes it; the two
+# displaced calls take no argument (a plain `ret` ends each callee).
+REGION_PUSH = 0x403b2e
+CALLEE_RETURNS = ((0x48f692, 'c3'), (0x43a3d4, 'c3'), (0x45b712, 'c20400'))
+MAIN_CALLER = (0x403840, 0x40373a)
 # The two list walks over the universe object list, (body start, first
 # instruction after the back edge, back-edge address).
 LOOPS = ((0x43a380, 0x43a3a7, 0x43a3a5), (0x43a3b0, 0x43a3d1, 0x43a3b0))
@@ -113,7 +152,7 @@ _INSTALLED_SPEC_RE = re.compile(
 
 def decode(exe=DEFAULT_EXE):
     decoded = {}
-    for bounds in (ROUTINE, REGION):
+    for bounds in (ROUTINE, REGION, MAIN):
         run = subprocess.run([common.OBJDUMP, '-d', '-Mintel', '--insn-width=16',
                               f'--start-address={bounds[0]}', f'--stop-address={bounds[1]}',
                               str(exe)], check=True, capture_output=True, text=True, timeout=60)
@@ -126,8 +165,8 @@ def source_checks(text):
 
     The shared parser names the two trailing SiteSpec fields `rel32_offset` and
     `rel32_target`; in engine_patch::SiteSpec they are `ret_pop` (always 0 here:
-    the displaced calls are inside the span, the stamped routine returns with a
-    plain `ret`) and `rel32_offset`.
+    the displaced calls are inside the span, and no span is a routine exit)
+    and `rel32_offset`.
     """
     if text is None:
         return None
@@ -141,8 +180,8 @@ def relocated_bytes(spec, arena):
     """Independent reference for the arena tail copy.
 
     A span without a rel32 is byte-identical anywhere; a span that carries one
-    direct `call rel32` keeps its absolute target, so the field becomes
-    target - (arena + rel32_offset + 4).
+    direct `call rel32` or `jcc rel32` keeps its absolute target, so the field
+    becomes target - (arena + rel32_offset + 4).
     """
     offset, target = REL32[spec.va]
     if not offset:
@@ -222,16 +261,20 @@ def inspect(image, decoded, source, data, installed):
     checks['source_specs'] = source_ok is not False
     instructions = decoded.get(ROUTINE, [])
     region = decoded.get(REGION, [])
+    main = decoded.get(MAIN, [])
     by_va = {i.va: i for i in instructions}
     rows = []
     for spec in SITES:
-        row = common.inspect_site(image, spec, instructions)
-        span = [i for i in instructions if spec.va <= i.va < spec.end]
+        own = decoded.get((spec.function_start, spec.function_end), [])
+        row = common.inspect_site(image, spec, own)
+        span = [i for i in own if spec.va <= i.va < spec.end]
         controls = [i for i in span if common._is_direct_control(i) is not None]
         offset, target = REL32[spec.va]
-        # At most one relative control transfer, and only the documented call.
+        # At most one relative control transfer, the documented one, its rel32
+        # field ending the span at the declared offset.
         row['single_rel32'] = (len(controls) == (1 if offset else 0)
-                               and all(c.mnemonic == 'call' for c in controls))
+                               and all(c.mnemonic == MNEMONIC[spec.va] and c.end == spec.end
+                                       and c.end - 4 - spec.va == offset for c in controls))
         row['rel32_target_ok'] = rel32_target(spec, image) == (target or None)
         row['arena_replay_ok'] = all(
             relocated_bytes(spec, arena)[: offset or len(spec.expected)]
@@ -241,17 +284,18 @@ def inspect(image, decoded, source, data, installed):
             (arena + offset + 4
              + struct.unpack('<i', relocated_bytes(spec, arena)[offset:offset + 4])[0]
              ) & 0xffffffff == target for arena in ARENAS)
-        sources = {i.va for i in instructions if common._is_direct_control(i) == spec.va}
+        sources = {i.va for i in own if common._is_direct_control(i) == spec.va}
         row['incoming_sources'] = sorted(f'{s:#010x}' for s in sources)
         row['incoming_ok'] = sources == INCOMING[spec.va]
-        row['in_loop_body'] = any(start <= spec.va and spec.end <= stop
-                                  for start, stop, _ in LOOPS)
+        bodies = ([(start, stop) for start, stop, _ in LOOPS] if spec.function_start == ROUTINE[0]
+                  else [REGION_BODY])
+        row['in_body'] = any(start <= spec.va and spec.end <= stop for start, stop in bodies)
         row['no_installed_conflict'] = all(spec.end <= at or spec.va >= at + length
                                            for at, length in installed)
         row['ok'] = all(row[key] for key in
                         ('bytes_ok', 'whole_instructions', 'no_interior_branch', 'single_rel32',
                          'rel32_target_ok', 'arena_replay_ok', 'arena_target_ok', 'incoming_ok',
-                         'in_loop_body', 'no_installed_conflict'))
+                         'in_body', 'no_installed_conflict'))
         rows.append(row)
     checks['sites'] = all(row['ok'] for row in rows)
     ordered = sorted(SITES, key=lambda s: s.va)
@@ -260,6 +304,27 @@ def inspect(image, decoded, source, data, installed):
                                   and instructions[-1].end == ROUTINE[1])
     checks['complete_region'] = (bool(region) and region[0].va == REGION[0]
                                  and region[-1].end == REGION[1])
+    checks['complete_main'] = bool(main) and main[0].va == MAIN[0] and main[-1].end == MAIN[1]
+    main_by_va = {i.va: i for i in main}
+    # Region sites: every exit reaches the end marker, whose next instruction
+    # is the region-end span; the only stack write is the sweep's argument,
+    # removed by its callee; the two displaced calls take no argument.
+    checks['region_exits'] = (
+        all(at in main_by_va and common._is_direct_control(main_by_va[at]) == to for at, to in REGION_EXITS)
+        and REGION_WALK_EXIT[0] in main_by_va
+        and common._is_direct_control(main_by_va[REGION_WALK_EXIT[0]]) == REGION_WALK_EXIT[1]
+        and main_by_va[REGION_WALK_EXIT[0]].end == REGION_END_MARKER[0]
+        and REGION_END_MARKER[0] in main_by_va
+        and main_by_va[REGION_END_MARKER[0]].raw.hex() == REGION_END_MARKER[1]
+        and main_by_va[REGION_END_MARKER[0]].end == REGION_END_MARKER[2]
+        and {i.va for i in main if common._is_direct_control(i) == REGION_END_MARKER[0]}
+        == {at for at, _ in REGION_EXITS})
+    region_stack = [i for i in main if REGION_BODY[0] - 9 <= i.va < REGION_BODY[1]
+                    and (i.mnemonic in ('push', 'pop', 'enter', 'leave', 'pushf', 'popf', 'pushad', 'popad')
+                         or i.operands.split(',')[0].strip() == 'esp')]
+    checks['region_esp'] = [i.va for i in region_stack] == [REGION_PUSH]
+    checks['region_callee_returns'] = all(image.read(va, len(raw) // 2).hex() == raw
+                                          for va, raw in CALLEE_RETURNS)
     checks['no_indirect_jump'] = not any(i.mnemonic == 'jmp' and 'PTR' in i.operands
                                          for i in instructions)
     checks['no_indirect_call'] = not any(i.mnemonic == 'call'
@@ -279,16 +344,18 @@ def inspect(image, decoded, source, data, installed):
                    if i.mnemonic in ('push', 'pop', 'sub', 'add', 'lea', 'and', 'enter', 'leave')
                    and ('esp' in i.operands.split(',')[0] or i.mnemonic in ('push', 'pop'))]
     allowed = set(range(*PROLOGUE)) | set(range(*EPILOGUE)) | {ESP_NOOP[0]}
-    allowed |= {row[1] + (1 if REL32[row[1]][0] else 0) - 1 for row in LEDGER if REL32[row[1]][0]}
+    allowed |= {row[1] for row in LEDGER if row[5] == ROUTINE and REL32[row[1]][0]}  # push esi
     checks['esp_writers'] = all(i.va in allowed or i.mnemonic == 'push' for i in esp_writers)
     checks['esp_noop'] = (ESP_NOOP[0] in by_va and by_va[ESP_NOOP[0]].raw.hex() == ESP_NOOP[1])
     checks['no_frame_pointer'] = not any(i.mnemonic in ('enter', 'leave') for i in instructions)
     # Every displaced call is callee-pop: no `add esp` follows any of them.
     checks['callee_pop_calls'] = not any(
         i.mnemonic == 'add' and i.operands.startswith('esp') for i in instructions)
-    call_sites = raw_call_sites(data, tuple(SINGLE_CALLERS))
+    call_sites = raw_call_sites(data, tuple(SINGLE_CALLERS) + (MAIN_CALLER[0],))
     checks['single_callers'] = all(call_sites[target] == [at]
                                    for target, at in SINGLE_CALLERS.items())
+    # The main loop has one caller: the region sites run on its thread only.
+    checks['main_loop_single_caller'] = call_sites[MAIN_CALLER[0]] == [MAIN_CALLER[1]]
     raw_hits = raw_interior_scan(data)
     checks['no_raw_interior_encoding'] = not raw_hits
     data_hits = data_reference_hits(data)
