@@ -2,6 +2,10 @@
 #include <windows.h>
 #include <cstdint>
 
+namespace x3m::scene_graph_census::core {
+struct CallerTable;
+struct CallerRule;
+}
 // Exact-version, opt-in lifetime evidence for X3's render-node registry.
 // Installation/rollback must be quiescent and outside DllMain. Storage lifetime
 // is distinct from camera-cut policy. Existing entries may be adopted only by a
@@ -65,6 +69,15 @@ Stats stats();
 // copies and clears the event under the lock, false when none is pending.
 bool disable_pending();
 bool take_disable_event(DisableEvent* out);
+// Insert-caller attribution for the scene_graph_census row (scene_graph_census_core.h,
+// docs/reverse-engineering/object-lifetimes.md "Run382"). Off unless set_insert_callers(true)
+// (the --perf/--debug tiers, from initialize_log). While on, every Insert into the bound
+// registry resolves (site, caller) from the hooked call's stack with at most two validated
+// engine_memory reads and counts it in a fixed 32-slot table under the observer's lock, inside
+// the existing enter() (LastError, flags and FX state already preserved there). O(1) per insert,
+// no allocation. take_insert_callers copies the table and resets it (per row); false on null.
+void set_insert_callers(bool on);
+bool take_insert_callers(scene_graph_census::core::CallerTable* out);
 bool current(std::uintptr_t registry, std::uintptr_t node, std::uint32_t node_handle, std::uintptr_t camera,
              std::uint32_t camera_handle, Snapshot* out);
 bool shutdown(); // does not overwrite a foreign replacement; retry is supported
@@ -138,5 +151,7 @@ bool fixture_install(const FixtureSites&, unsigned capacity = RegistryCapacity, 
                      bool retain_dispatch = false); // false: fixture guarantees no retained callers
 bool fixture_shutdown(unsigned fail_stage = 0, unsigned fail_site = 0);
 void fixture_journal_consumers(unsigned count); // saturation seam only
+// Replaces the production insert-caller rules (the fixture's return sites); null restores them.
+void fixture_insert_caller_rules(const scene_graph_census::core::CallerRule* rules, unsigned count);
 #endif
 } // namespace x3m::object_lifetime

@@ -1,0 +1,65 @@
+{
+ "fixture": "build/verification/scene-graph-census/scene_graph_census_fixture.exe",
+ "exit_status": 0,
+ "elapsed_s": 6.4,
+ "checks": 28,
+ "failures": 0,
+ "failure_lines": [],
+ "walk": [
+  {
+   "layout": "shuffled",
+   "nodes": 200000.0,
+   "raw_chase_us": 18378.0,
+   "next_only_us": 18809.0,
+   "stride64_us": 19815.0,
+   "stride1_us": 20969.0,
+   "row_walk_us_min": 1819.0,
+   "row_walk_us_median": 1893.0,
+   "row_unattached": 36864.0,
+   "capped_rows": 5.0,
+   "row_reads": 73749.0,
+   "row_queries": 120.0
+  },
+  {
+   "layout": "allocation",
+   "nodes": 200000.0,
+   "raw_chase_us": 11179.0,
+   "next_only_us": 32314.0,
+   "stride64_us": 37338.0,
+   "stride1_us": 41114.0,
+   "row_walk_us_min": 1809.0,
+   "row_walk_us_median": 1855.0,
+   "row_unattached": 17408.0,
+   "capped_rows": 5.0,
+   "row_reads": 34837.0,
+   "row_queries": 2726.0
+  }
+ ],
+ "bound": {
+  "nodes": 310000.0,
+  "row_unattached": 27648.0,
+  "row_bounded": 0.0,
+  "row_capped": 1.0,
+  "row_walk_us": 1880.0,
+  "unbudgeted_walk_us": 34236.0
+ },
+ "insert": {
+  "autoid_ns": 29.2,
+  "unknown_site_ns": 2.0
+ },
+ "regions": {
+  "sampled": 201.0,
+  "mean_region_kb": 7561.0,
+  "regions_le_64kb": 1.0
+ },
+ "bottle": {
+  "name": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+   "FEX_X87REDUCEDPRECISION": "1",
+   "WINEMSYNC": "1"
+  },
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "note": "nodes are 0x270-byte process-heap blocks linked in a shuffled order; best of 5 per walk variant, row_walk_us from the row itself; diagnostic timings, not game FPS"
+}

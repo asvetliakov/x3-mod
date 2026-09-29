@@ -62,6 +62,7 @@
 #include "camera_state.h"
 #include "sun_light_poll.h"
 #include "object_lifetime.h"
+#include "scene_graph_census.h"
 #include "draw_input.h"
 #include "motion_capture.h"
 #include "motion_output.h"
@@ -1993,6 +1994,11 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
                 static_cast<DWORD>(lifetime.max_probe), static_cast<DWORD>(lifetime.capacity),
                 object_lifetime::status(), unsigned(lifetime.active), lifetime.load_epoch);
     }
+    // --perf/--debug: the scene-graph census row every 300 frames (scene_graph_census.h): the engine's four
+    // table counts, the unattached-list walk with its model histogram, registry_live and the registry insert
+    // callers since the previous row. Read-only through engine_memory::read; its own cost is walk_us=.
+    if ((log_tier::cached_perf || log_tier::cached_debug) && ctx.frame % 300 == 0)
+        scene_graph_census::report(ctx.id, ctx.frame);
     if (ctx.capture && ctx.remaining) --ctx.remaining;
     ++ctx.frame;
     ctx.draws = 0;
@@ -3955,6 +3961,8 @@ void initialize_log(HMODULE module) {
     config::load(module);
     CaptureLock lock;
     log_tier::init(); // the group flags cached once for the render-path checks (the F8 guard)
+    // The scene-graph census row and its registry insert-caller capture: --perf/--debug only.
+    scene_graph_census::initialize(log_tier::cached_perf || log_tier::cached_debug);
     // The session log (docs/architecture/logging-tiers.md, "Log file policy"): <game dir>\x3m.log with the
     // previous one renamed to x3m.prev.log, x3m-<pid>.log when that rename fails (another instance or an
     // editor holding the file), X3M_LOG_FILE=<path> opened exactly (the fixture runners), and W3 of the

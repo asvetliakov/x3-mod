@@ -1,5 +1,5 @@
 {
-  "started_utc": "2026-09-29T00:47:13.850122+00:00",
+  "started_utc": "2026-09-29T05:53:18.269085+00:00",
   "game_launched": false,
   "bottle": {
     "name": "X3",
@@ -13,25 +13,29 @@
   "fresh_build": true,
   "passed": true,
   "sources_before": {
-    "src/proxy/object_lifetime.cpp": "b11d06bfeed04225284b25d7ab8c298e22c6e1a92b24f7b0ee463a127c591a48",
-    "src/proxy/object_lifetime.h": "244f06fc585d1d7d576ab2591f73aa8b680bc7252f260a31b9713f127e6c5ad9",
+    "src/proxy/object_lifetime.cpp": "cc05dba5f1f2c6b1742bd0ef3b21b2afa8406f4de721fdd523570c186ab29330",
+    "src/proxy/object_lifetime.h": "2d8965f2c918b98a0c84dc4cf1ce0722d83ada27807fb477db32ddc55a9db73f",
     "src/proxy/engine_memory.cpp": "d0174efa4fd1cbb4ffc31831fa44445bcf3801ec8d42c3c48b230e4a5c3b631b",
     "src/proxy/engine_memory.h": "e4c9e3b83cda6a3e91f419edcee8ae1640bd3f7ab80b0acb9b5bb8c6fe33bc21",
-    "verification/probe/object_lifetime.cpp": "7e654787611df3f0268876d9dd623066fe8f7b8339c57bb9c6e31d0548ffd160",
+    "src/proxy/scene_graph_census_core.h": "28dc096f13c5fcbf9c913a9fc39243bb23b427117b2f063648266e88edba6e3a",
+    "src/proxy/cull_census_core.h": "73d606d098c2b958c52014afda123f2d4d7ae78f248af724c51e37fe7c850684",
+    "verification/probe/object_lifetime.cpp": "ee1bef8edec8fb5de88b9ca17f68a15e12e73e65726cee64796ab48c27726b6b",
     "verification/probe/build_object_lifetime.sh": "d4ecfba9f59a16e9600751ea45916c99d3a4034ef7fe6c8bbb55bfbdd9bcfff9",
-    "verification/probe/run_object_lifetime.py": "99d3338c8f4126b8000ebe59f2e2a759bcd579dc94774f1b508be9ceede17baf"
+    "verification/probe/run_object_lifetime.py": "f69b4dbb337d098e134e726bbd4c955859abb6b4b8e36a07990ab801c802d04c"
   },
   "build_exit": 0,
   "sources_after_build": {
-    "src/proxy/object_lifetime.cpp": "b11d06bfeed04225284b25d7ab8c298e22c6e1a92b24f7b0ee463a127c591a48",
-    "src/proxy/object_lifetime.h": "244f06fc585d1d7d576ab2591f73aa8b680bc7252f260a31b9713f127e6c5ad9",
+    "src/proxy/object_lifetime.cpp": "cc05dba5f1f2c6b1742bd0ef3b21b2afa8406f4de721fdd523570c186ab29330",
+    "src/proxy/object_lifetime.h": "2d8965f2c918b98a0c84dc4cf1ce0722d83ada27807fb477db32ddc55a9db73f",
     "src/proxy/engine_memory.cpp": "d0174efa4fd1cbb4ffc31831fa44445bcf3801ec8d42c3c48b230e4a5c3b631b",
     "src/proxy/engine_memory.h": "e4c9e3b83cda6a3e91f419edcee8ae1640bd3f7ab80b0acb9b5bb8c6fe33bc21",
-    "verification/probe/object_lifetime.cpp": "7e654787611df3f0268876d9dd623066fe8f7b8339c57bb9c6e31d0548ffd160",
+    "src/proxy/scene_graph_census_core.h": "28dc096f13c5fcbf9c913a9fc39243bb23b427117b2f063648266e88edba6e3a",
+    "src/proxy/cull_census_core.h": "73d606d098c2b958c52014afda123f2d4d7ae78f248af724c51e37fe7c850684",
+    "verification/probe/object_lifetime.cpp": "ee1bef8edec8fb5de88b9ca17f68a15e12e73e65726cee64796ab48c27726b6b",
     "verification/probe/build_object_lifetime.sh": "d4ecfba9f59a16e9600751ea45916c99d3a4034ef7fe6c8bbb55bfbdd9bcfff9",
-    "verification/probe/run_object_lifetime.py": "99d3338c8f4126b8000ebe59f2e2a759bcd579dc94774f1b508be9ceede17baf"
+    "verification/probe/run_object_lifetime.py": "f69b4dbb337d098e134e726bbd4c955859abb6b4b8e36a07990ab801c802d04c"
   },
-  "executable_sha256": "a72b3847282d9429af9712946317f6c2e1a280a2ff608665dd83483e8245ca5b",
+  "executable_sha256": "a4a773519d78f8fe274f9e6c932ff7611ed11200b9ca48323887ef9e8c41b8b6",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
@@ -42,28 +46,30 @@
     "verification/probe/build/object_lifetime.exe"
   ],
   "exit_code": 0,
-  "executable_sha256_after_run": "a72b3847282d9429af9712946317f6c2e1a280a2ff608665dd83483e8245ca5b",
+  "executable_sha256_after_run": "a4a773519d78f8fe274f9e6c932ff7611ed11200b9ca48323887ef9e8c41b8b6",
   "sources_after_run": {
-    "src/proxy/object_lifetime.cpp": "b11d06bfeed04225284b25d7ab8c298e22c6e1a92b24f7b0ee463a127c591a48",
-    "src/proxy/object_lifetime.h": "244f06fc585d1d7d576ab2591f73aa8b680bc7252f260a31b9713f127e6c5ad9",
+    "src/proxy/object_lifetime.cpp": "cc05dba5f1f2c6b1742bd0ef3b21b2afa8406f4de721fdd523570c186ab29330",
+    "src/proxy/object_lifetime.h": "2d8965f2c918b98a0c84dc4cf1ce0722d83ada27807fb477db32ddc55a9db73f",
     "src/proxy/engine_memory.cpp": "d0174efa4fd1cbb4ffc31831fa44445bcf3801ec8d42c3c48b230e4a5c3b631b",
     "src/proxy/engine_memory.h": "e4c9e3b83cda6a3e91f419edcee8ae1640bd3f7ab80b0acb9b5bb8c6fe33bc21",
-    "verification/probe/object_lifetime.cpp": "7e654787611df3f0268876d9dd623066fe8f7b8339c57bb9c6e31d0548ffd160",
+    "src/proxy/scene_graph_census_core.h": "28dc096f13c5fcbf9c913a9fc39243bb23b427117b2f063648266e88edba6e3a",
+    "src/proxy/cull_census_core.h": "73d606d098c2b958c52014afda123f2d4d7ae78f248af724c51e37fe7c850684",
+    "verification/probe/object_lifetime.cpp": "ee1bef8edec8fb5de88b9ca17f68a15e12e73e65726cee64796ab48c27726b6b",
     "verification/probe/build_object_lifetime.sh": "d4ecfba9f59a16e9600751ea45916c99d3a4034ef7fe6c8bbb55bfbdd9bcfff9",
-    "verification/probe/run_object_lifetime.py": "99d3338c8f4126b8000ebe59f2e2a759bcd579dc94774f1b508be9ceede17baf"
+    "verification/probe/run_object_lifetime.py": "f69b4dbb337d098e134e726bbd4c955859abb6b4b8e36a07990ab801c802d04c"
   },
-  "report_sha256": "58d5b53ddc402e19e90ba388d5895b195fdc35c5c9c0b6a7a986fb747939142d",
-  "checks": 692,
+  "report_sha256": "74ce9b7b60612dbba6d5cd05b4e7a1b07170df05240a6a3c5b129579341235cd",
+  "checks": 706,
   "failures": 0,
-  "backend_calls": 1228031,
+  "backend_calls": 1308035,
   "read_path": {
     "timing": [
       {
         "mode": "direct",
-        "snapshot_us": "0.805",
+        "snapshot_us": "0.789",
         "reads_per_call": "12.00",
         "queries_per_call": "0.0237",
-        "record": "34ebbea220215283"
+        "record": "b145ed18a7136f83"
       }
     ]
   },
@@ -71,20 +77,25 @@
   "journal": [
     {
       "capacity": "2048",
-      "cycle_idle_us": "1.3577",
-      "cycle_journal_us": "1.3582",
-      "retirement_delta_us": "0.0005",
-      "empty_drain_us": "0.0064",
+      "cycle_idle_us": "1.3095",
+      "cycle_journal_us": "1.3063",
+      "retirement_delta_us": "-0.0031",
+      "empty_drain_us": "0.0060",
       "drained": "40000"
     }
   ],
+  "insert_callers": {
+    "off_ns": "642",
+    "on_ns": "679",
+    "delta_ns": "37"
+  },
   "read_modes": [
     {
-      "cycle_frame_us": "1.3542",
-      "cycle_stalled_us": "1.3631",
-      "cycle_shutdown_us": "9.6670",
+      "cycle_frame_us": "1.3028",
+      "cycle_stalled_us": "2.2649",
+      "cycle_shutdown_us": "9.7345",
       "queries_frame": "0.0003",
-      "queries_stalled": "0.0009",
+      "queries_stalled": "0.0012",
       "queries_shutdown": "15.0000"
     }
   ],
@@ -110,16 +121,16 @@
     "event_reason": "capacity_exhausted",
     "event_live": "262144",
     "event_capacity": "262144",
-    "insert_us": "0.809",
-    "current_us_50k": "0.960"
+    "insert_us": "0.807",
+    "current_us_50k": "1.129"
   },
   "churn": {
     "capacity": "262144",
     "distinct": "362144",
     "live": "51000",
     "max_probe": "2",
-    "miss_us_before": "0.339",
-    "miss_us_after": "0.340"
+    "miss_us_before": "0.320",
+    "miss_us_after": "0.335"
   },
   "x87": {
     "roundtrip_exact": "0",

@@ -2,6 +2,7 @@
 #include "config.h"
 #include "engine_memory.h"
 #include "executable_identity.h"
+#include "scene_graph_census_core.h"
 #include <wincrypt.h>
 #include <excpt.h>
 #include <array>
@@ -96,6 +97,13 @@ struct Patch {
 };
 std::array<Patch, 4> patches{};
 bool retain_retired_dispatch = true, dispatch_published = false, retired_dispatch = false;
+// Insert callers (set_insert_callers): the flag is read once per hooked Insert; the table is
+// written and taken under model_lock.
+namespace census = x3m::scene_graph_census::core;
+std::atomic<bool> insert_callers{false};
+census::CallerTable caller_table{};
+const census::CallerRule* caller_rules = census::caller_rules;
+unsigned caller_rule_count = census::caller_rule_count;
 
 bool read_memory(std::uintptr_t address, void* out, std::size_t size) {
     return x3m::engine_memory::read(address, out, size);
@@ -391,6 +399,18 @@ __attribute__((force_align_arg_pointer)) void __cdecl x3m_lifetime_enter(Scope* 
                         increment(registry_epoch);
                     }
                     retire(scope->key);
+                    if (scope->kind == Insert && insert_callers.load(std::memory_order_relaxed)) {
+                        // The hooked call's return address sits right above the PUSHFD/kind words
+                        // (Registers::return_address is that stack slot, the game's own stack).
+                        auto read = [](std::uintptr_t address, void* out, std::size_t size) {
+                            return read_memory(address, out, size);
+                        };
+                        std::uint32_t site = 0, caller = 0;
+                        census::resolve_insert_caller(
+                            read, reinterpret_cast<std::uintptr_t>(&registers->return_address),
+                            registers->return_address, registers->ebp, caller_rules, caller_rule_count, &site, &caller);
+                        census::caller_add(caller_table, site, caller);
+                    }
                 }
                 increment(revision);
             }
@@ -737,6 +757,16 @@ Stats stats() {
 bool disable_pending() {
     return disable_event_pending.load(std::memory_order_relaxed);
 }
+void set_insert_callers(bool on) {
+    insert_callers.store(on, std::memory_order_relaxed);
+}
+bool take_insert_callers(census::CallerTable* out) {
+    if (!out) return false;
+    Lock lock;
+    *out = caller_table;
+    caller_table = census::CallerTable{};
+    return true;
+}
 bool take_disable_event(DisableEvent* out) {
     if (!out || !disable_event_pending.load(std::memory_order_acquire)) return false;
     Lock lock;
@@ -892,6 +922,11 @@ bool fixture_shutdown(unsigned failure, unsigned site) {
 void fixture_journal_consumers(unsigned count) {
     Lock lock;
     journal_consumers = count;
+}
+void fixture_insert_caller_rules(const census::CallerRule* rules, unsigned count) {
+    Lock lock;
+    caller_rules = rules ? rules : census::caller_rules;
+    caller_rule_count = rules ? count : census::caller_rule_count;
 }
 #endif
 } // namespace x3m::object_lifetime
