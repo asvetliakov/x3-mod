@@ -77,7 +77,7 @@ Nothing beyond the installed Run115 (`9166c5f0`); release 0.8.1 (`f4439590`) is 
 
 ## Run queue
 
-Run 115 A queued (Run115 installed): sharp text with fixed fonts and linear sampling under `--ui-scale 1.25 --debug`. Run 114 A completed (run392): mechanism worked, narrow glyphs vanished (fixed in Run115). Run 113 A completed (run391): bracket click selection works; the ui_scale layout path is accepted at 1.25. Run 112 A completed (run390): UI scaled correctly, menus/map/main menu fine; bracket clicks dead (fixed in Run113), text soft/broken (open).
+Run 115 A completed (run393): all letters present, text still a little rough at the 1.6x minification (2-texel stems on 1.25 px); glyph weight/hinting variants under evaluation, Run 116 A next. Run 114 A completed (run392): mechanism worked, narrow glyphs vanished (fixed in Run115). Run 113 A completed (run391): bracket click selection works; the ui_scale layout path is accepted at 1.25. Run 112 A completed (run390): UI scaled correctly, menus/map/main menu fine; bracket clicks dead (fixed in Run113), text soft/broken (open).
 Run 110 A completed (run386-389, [results](../verification/results/run386-389-cull-ab/)): at one carrier
 view without `--perf`, the dock-port cull (12 px) saves 2.4-3.7 ms per frame (about 57 fps against 47-50 with it off,
 measured from 300-frame clock windows, one run per setting); the engine-side flare cull saves 0 ± 0.5 ms (1.2 ms under

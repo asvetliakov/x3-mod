@@ -45,3 +45,5 @@ at `CreateDevice`, the executable identity holds and every window matches.
   the memory of the 35 rows at 2x (103 MB of surfaces plus the shadows) on the user's card; and the one-off shadow
   build time (logged per source in `ms=`).
 - `B3D_TexBltImage` (x3intro) is not intercepted; fonts inside catalogues are not seen by the loose-file check.
+
+2026-09-30 flight run393 (Run115, `--ui-scale 1.25 --debug`, d = 2): every letter present, layout right, no black icons; `text_density_filter status=active min_before=3 mag_before=2 textures=3` (the engine's own samplers on these draws were ANISOTROPIC/LINEAR, so run392's dropped glyphs came from the 1-texel stems alone; the override will be narrowed to raising POINT only), `overridden=` about 2,000 per 300-frame window. User: "better now" but the text reads a little rough, like unantialiased: 2-texel stems on 1.25 screen pixels alternate heavy and faint columns under the 1.6x bilinear minification. Open: glyph weight/hinting variants judged by a simulated minification (font-assets.md), and the integer-ratio option (ui_scale 2 = 1:1 texels).
