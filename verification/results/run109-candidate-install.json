@@ -1,0 +1,42 @@
+{
+ "candidate": {
+  "dll": "/tmp/x3-run109-candidate/build/d3d9.dll",
+  "sha256": "09f08cff0eae7ac56e982352f5ef2f4d160d9e03b6afd18b55364aca3774e9b3",
+  "bytes": 57549786,
+  "commit": "a16a47f5",
+  "toolchain": "i686-w64-mingw32-gcc (GCC) 16.2.0; cmake version 4.4.3; RelWithDebInfo, cmake/mingw-i686.cmake, -j8; Python 3.9.6 (/usr/bin/python3, -DPython3_EXECUTABLE); clean build 40 s wall (configure + build)",
+  "gates": "build 0 warnings; x87 0 violations (734 reachable functions); generate --check PASS (244 settings, 96 in the template); verify_dust_leak_fix_site PASS 27/27 checks (site 0x41f4d1, bytes 836c242001, 473 function instructions); run_dust_leak_fix_patch rebuilt from candidate sources (bottle X3, wine_lock) PASS 80/80 checks, 36/36 cases, exit 0, fixture 7.7 s, executable_sha256 14fa3485...; host suite 276 modules / 2,912 tests / 0 failing (100.5 s wall, 12 jobs); X3AP not running before build, fixture and suite",
+  "changes": [
+   "e7bfb8c9 dust_leak_fix engine patch (default on, --dust-leak-fix, X3M_DUST_LEAK_FIX): one 5-byte claim at 0x0041f4d1 (the dust-scene fill loop's common tail) releases a never-attached node through the engine's own 0x00487be0 and ends the fill for the frame, so a background whose dust bodies are missing no longer leaks NumDustInstances scene nodes per frame (Mayhem 3: 170 of 248 rows; run383 27/frame on litcube75); CPU fixture 80/80 (36 cases) under Wine, site verifier 27/27, host suite 276/2,912/0, build 0 warnings, x87 0; reviewed (Opus), no blocker",
+   "1ad686af run383: report for the Mayhem 3 / ZMap maintainers (dust-scene fill leak, ZMap Fog slider, 170 of 248 rows without dust bodies)",
+   "57aaf6ec cull_small_props defaults to on (DLL: unset/empty = on, off turns it off; schema builtin on; launcher help, docs and tests updated; no_px/route_off gates unchanged so bare DLL and --vanilla stay off)",
+   "e4daf034 run383 (Run 108 A): the Mayhem 3 scene-node leak is the engine's dust-scene fill 0x0041efc0 (allocate-before-validate: nodes for missing dust bodies stay on R+0x28 with model -1; 27/frame = NumDustInstances of background 103 litcube75, 170 Mayhem rows affected, 1 stock); census evidence (registry_live == engine_nodes on all rows, 76.5 ns tick cost per node, 56 -> 33 fps over 5,100 frames)",
+   "99ab6cf3 run379 sampling-profiler evidence: under FEX the sampled PC is a parked constant, so the profiler cannot split the frame by module; pre_render grows with time in the sector, not with the view",
+   "ab3883e8 Run108 candidate built from 21726898 (DLL c57556bb\u2026 57,518,024 B; host suite 275/2,905/0, x87 0, census fixture 28 checks rebuilt) and installed 2026-09-29; Run 108 A queued (sector stay under --perf to read scene_graph_census); rollback Run107 then Run106",
+   "1b154e76 status: the Mayhem 3 scene-node leak diagnosis and the pending Run 108 A census flight"
+  ],
+  "producer": "Claude Code implement agent (Opus 5.5), 2026-09-29; git log --oneline 21726898..a16a47f5 --no-merges; shasum -a 256; stat -f %z; build/site/fixture/suite logs local under /tmp/x3-run109-candidate/"
+ },
+ "command": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3-run109-candidate/build/d3d9.dll",
+ "exit": 0,
+ "installed_at": "2026-09-29T11:17+0400",
+ "installed": {
+  "sha256": "09f08cff0eae7ac56e982352f5ef2f4d160d9e03b6afd18b55364aca3774e9b3",
+  "bytes": 57549786,
+  "verified": "sha256 and size read back after install; equals the candidate record; pgrep X3AP empty before; launch --dry-run --direct --perf --config rc 0 (player mode, ini next to the proxy)"
+ },
+ "unchanged": {
+  "X3AP.exe": "fdbf3418\u2026",
+  "x3m.ini": "the user's file kept",
+  "cxbottle.conf": "sha 3a70e875\u2026 before and after",
+  "x3m-regenerate": "0.8.0 binaries kept"
+ },
+ "previous": {
+  "run": "Run108",
+  "dll_sha256": "c57556bbfc6d4e5feee7299a32291237643ad75eefa265bc54662ece4ef2fd0f",
+  "path": "/tmp/x3-run108-candidate/build/d3d9.dll",
+  "then": "Run107 b9e8793c\u2026, Run106 d07848e8\u2026, Run104 = release 0.8.0 f34d3ab4\u2026"
+ },
+ "run": "Run 109 A queued: 3-5 minute stay on background 103 under --perf --config to confirm dust_leak_fix hits and flat engine_nodes; docs/verification/user-runs.md",
+ "producer": "main session (this record)"
+}
