@@ -4,7 +4,7 @@
 #include <cstring>
 
 // Portable core of the UI scale option (X3M_UI_SCALE=auto|1..3; docs/architecture/ui-scale.md,
-// docs/reverse-engineering/gui-scale.md section 5 strategy (b)): the verified byte windows of the eight
+// docs/reverse-engineering/gui-scale.md section 5 strategy (b)): the verified byte windows of the ten
 // engine sites, the scale's three fixed-point forms the stubs read, the pixel-orthographic projection
 // transform, the mouse-delta remainder accumulator, the virtual screen size, the auto mapping, the
 // X3M_UI_SCALE parser and the stub encoders. No Windows dependency: the host tests and the site verifier
@@ -22,7 +22,7 @@
 // the camera at cockpit+8: crosshair group, text panels, target icons, the mod's lead marker) is excluded
 // from the projection scale by camera identity so its projected pixel positions stay real pixels.
 //
-// Eight sites, all or none (a failure rolls the earlier ones back; every stub is the identity while the
+// Ten sites, all or none (a failure rolls the earlier ones back; every stub is the identity while the
 // data cells hold s = 1, so even a failed rollback leaves vanilla behaviour):
 //
 //  A projection  0x004be246  b8 01 00 00 00            mov eax,1        the 2D branch's single exit
@@ -33,6 +33,8 @@
 //  D3 menu x     0x00411b40  0f bf ba 14 04 00 00      movsx edi,word [edx+0x414]   0x00410080 loop, axis 0
 //  D4 menu y     0x00411b57  0f bf ba 16 04 00 00      movsx edi,word [edx+0x416]   0x00410080 loop, axis 1
 //  E cursor      0x004074ec  a3 f0 7c 60 00            mov [0x00607cf0],eax   X2_UpdateCursorSteering y store
+//  G click icon  0x0042ece0  8b 76 06 51 56            mov esi,[esi+6]; push ecx; push esi   INS case 0x64
+//  H cursor aim  0x0042ddf1  8b 73 06 8b 7b 0b         mov esi,[ebx+6]; mov edi,[ebx+0xb]   INS case 0x28
 //  F diagnostic  0x004bdee0  83 ec 08 83 78 3c 00      sub esp,8; cmp [eax+0x3c],0   entry counter (--debug only)
 //
 // A: the 2D branch 0x004bdf3b..0x004be252 ends
@@ -92,6 +94,28 @@
 // consumer of 0x00607cec/0x00607cf0 (unprojection 0x00489780, cursor aim 0x00425410, the fire gate) sees
 // real pixels. ECX (the VM, pushed after) and EBX are untouched; EFLAGS are dead (push/mov/mov/call, the
 // callee's cmp). The window compared at install skips the six bytes of the chase-fire claim.
+//
+// G, H (gui-scale.md section 6): the script also hands its cursor as arguments to two natives of the
+// INS dispatcher 0x0042d340 (jump table 0x0042f064, 0x71 entries) whose icon hit test 0x004299a0 and
+// cursor aim 0x00425410 measure the overlay brackets in real pixels; a click on a bracket missed by
+// X(1 - 1/s). Both cases get the E rounding on the script's point; the natives themselves are not
+// touched, because the fire path reaches them with real pixels through E.
+//   0042ecc5  case 0x64 INS_CockpitGetObjectByTargetOverlayIconPos: ... call 0x0041cd20; test eax,eax; je
+//   0042ecdd  8b 4e 0b           mov ecx,[esi+0xb]      ; y
+//   0042ece0  8b 76 06 51 56     mov esi,[esi+6]; push ecx; push esi   <- claimed (5 bytes, one aligned qword)
+//   0042ece5  05 ac 03 00 00 50  add eax,0x3ac; push eax               ; EFLAGS written before any read
+//   0042eceb  e8 b0 ac ff ff     call 0x004299a0   (stdcall, ret 0xc; EDX written at 0x004299bf before read)
+// The stub performs the load, scales ECX and ESI in place ((v * fixed256 + 0x80) >> 8), pushes both and
+// continues at 0x0042ece5 through its slot word (the tail is never entered). EAX (the cockpit) and EDX
+// are untouched; EFLAGS are dead.
+//   0042ddc0  case 0x28 INS_CockpitGetCursorAim: ... or esi,-1; or edi,esi; cmp ecx,3; ...; jl 0042de09
+//   0042ddee  83 f9 04           cmp ecx,4              ; ECX = the argument count
+//   0042ddf1  8b 73 06 8b 7b 0b  mov esi,[ebx+6]; mov edi,[ebx+0xb]   <- claimed (6 bytes; jmp in the qword 0042ddf0)
+//   0042ddf7  7c 10              jl 0x0042de09          ; reads the cmp's EFLAGS: LIVE across the span
+//   0042ddf9  ... call 0x0042de11 -> 0x00425410(cockpit, x, y, flag)
+// The stub performs both loads, scales ESI and EDI in place, then re-executes `cmp ecx,4` (ECX untouched,
+// so EFLAGS are exactly the engine's) and continues at 0x0042ddf7 through its slot word. EAX, EBX, ECX and
+// EDX are untouched. The -1,-1 sentinel of the short-argument path never passes through the span.
 //
 // F (X3M_DEBUG=1 only, independent of the scale): the function entry counts, per camera (a table of eight
 // {camera, n2d, nother} rows, linear probe, the last row takes overflow), the instances with flag 0x200
@@ -281,6 +305,28 @@ constexpr unsigned char expected_cursor_post[cursor_post_length] = {0x8b, 0x0d, 
                                                                     0xf0, 0x7c, 0x60, 0x00, 0x51, 0x8b, 0xc3, 0x89, 0x15,
                                                                     0xec, 0x7c, 0x60, 0x00, 0xe8, 0xf1, 0xd2, 0x09, 0x00};
 constexpr std::uintptr_t cursor_x_va = 0x00607cec, cursor_y_va = 0x00607cf0;
+// G, H: the INS dispatcher's cases 0x64 and 0x28 (whole case bodies) and the icon test's prefix.
+constexpr std::uintptr_t ins_dispatcher_va = 0x0042d340, ins_dispatcher_end_va = 0x0042f064, ins_jump_table_va = 0x0042f064;
+constexpr unsigned ins_jump_table_entries = 0x71, overlay_case = 0x64, aim_case = 0x28;
+constexpr std::uintptr_t overlay_case_va = 0x0042ecc5, overlay_site_va = 0x0042ece0, overlay_return_va = 0x0042ece5;
+constexpr std::uintptr_t aim_case_va = 0x0042ddc0, aim_site_va = 0x0042ddf1, aim_return_va = 0x0042ddf7, aim_flags_va = 0x0042ddee;
+constexpr std::uintptr_t icon_test_va = 0x004299a0, cursor_aim_va = 0x00425410;
+constexpr unsigned overlay_case_length = 48, overlay_site_length = 5, aim_case_length = 94, aim_site_length = 6, icon_test_length = 33;
+constexpr unsigned char expected_overlay_site[overlay_site_length] = {0x8b, 0x76, 0x06, 0x51, 0x56}; // mov esi,[esi+6]; push ecx; push esi
+constexpr unsigned char expected_aim_site[aim_site_length] = {0x8b, 0x73, 0x06, 0x8b, 0x7b, 0x0b};   // mov esi,[ebx+6]; mov edi,[ebx+0xb]
+constexpr unsigned char expected_overlay_case[overlay_case_length] = {
+    0x8b, 0x75, 0x18, 0x8b, 0x56, 0x01, 0xa1, 0x04, 0x85, 0x60, 0x00, 0xe8, 0x4b, 0xe0, 0xfe, 0xff, 0x85, 0xc0, 0x0f, 0x84,
+    0x11, 0xea, 0xff, 0xff, 0x8b, 0x4e, 0x0b, 0x8b, 0x76, 0x06, 0x51, 0x56, 0x05, 0xac, 0x03, 0x00, 0x00, 0x50, 0xe8, 0xb0,
+    0xac, 0xff, 0xff, 0xe9, 0x21, 0xf1, 0xff, 0xff};
+constexpr unsigned char expected_aim_case[aim_case_length] = {
+    0x8b, 0x5d, 0x18, 0x8b, 0x53, 0x01, 0xa1, 0x04, 0x85, 0x60, 0x00, 0xe8, 0x50, 0xef, 0xfe, 0xff, 0x85, 0xc0, 0x89, 0x44,
+    0x24, 0x10, 0x0f, 0x84, 0x12, 0xf9, 0xff, 0xff, 0x8b, 0x4d, 0x14, 0x83, 0xce, 0xff, 0x0b, 0xfe, 0x83, 0xf9, 0x03, 0xc6,
+    0x44, 0x24, 0x0c, 0x00, 0x7c, 0x1b, 0x83, 0xf9, 0x04, 0x8b, 0x73, 0x06, 0x8b, 0x7b, 0x0b, 0x7c, 0x10, 0x8d, 0x43, 0x0f,
+    0xe8, 0x6f, 0xab, 0x07, 0x00, 0x88, 0x44, 0x24, 0x0c, 0x8b, 0x44, 0x24, 0x10, 0x8b, 0x54, 0x24, 0x0c, 0x52, 0x57, 0x56,
+    0x50, 0xe8, 0xfa, 0x75, 0xff, 0xff, 0x85, 0xc0, 0x0f, 0x84, 0xd0, 0xf8, 0xff, 0xff};
+constexpr unsigned char expected_icon_test[icon_test_length] = {0x83, 0xec, 0x10, 0x53, 0x55, 0x56, 0x57, 0x8b, 0x7c, 0x24, 0x24,
+                                                                0x8b, 0x87, 0x48, 0x03, 0x00, 0x00, 0x85, 0xc0, 0x0f, 0x84, 0x24,
+                                                                0x03, 0x00, 0x00, 0x8b, 0x0d, 0x38, 0x6f, 0x60, 0x00, 0x8b, 0x11};
 // The excluded scene's camera: the active cockpit's HUD camera at cockpit+8 (the HUD scene is cockpit+4).
 constexpr std::uintptr_t cockpit_registry_slot_va = 0x00608504;
 constexpr unsigned cockpit_hud_camera_offset = 8, cockpit_hud_scene_offset = 4;
@@ -420,6 +466,49 @@ inline void encode_cursor_stub(std::uint32_t fixed256, std::uint32_t slot, unsig
     detail::put32(out + 3, fixed256);
     detail::put32(out + 18, fixed256);
     detail::put32(out + 33, slot);
+}
+// G. ESI = the argument block, ECX = y (already loaded) in; both pushed scaled; the slot word holds 0x0042ece5.
+constexpr unsigned overlay_stub_length = 43;
+inline void encode_overlay_stub(std::uint32_t fixed256, std::uint32_t slot, unsigned char out[overlay_stub_length]) {
+    // clang-format off
+    const unsigned char code[overlay_stub_length] = {
+        0x8b,0x76,0x06,                        //  0 mov esi,[esi+6]              x
+        0x0f,0xaf,0x0d, 0,0,0,0,               //  3 imul ecx,[fixed256]
+        0x81,0xc1, 0x80,0x00,0x00,0x00,        // 10 add ecx,0x80
+        0xc1,0xf9,0x08,                        // 16 sar ecx,8
+        0x0f,0xaf,0x35, 0,0,0,0,               // 19 imul esi,[fixed256]
+        0x81,0xc6, 0x80,0x00,0x00,0x00,        // 26 add esi,0x80
+        0xc1,0xfe,0x08,                        // 32 sar esi,8
+        0x51,                                  // 35 push ecx
+        0x56,                                  // 36 push esi
+        0xff,0x25, 0,0,0,0};                   // 37 jmp [slot]
+    // clang-format on
+    std::memcpy(out, code, overlay_stub_length);
+    detail::put32(out + 6, fixed256);
+    detail::put32(out + 22, fixed256);
+    detail::put32(out + 39, slot);
+}
+// H. EBX = the argument block, ECX = the argument count in; ESI = x, EDI = y scaled out; `cmp ecx,4` last so the
+// engine's jl reads the flags it expects; the slot word holds 0x0042ddf7.
+constexpr unsigned aim_stub_length = 47;
+inline void encode_aim_stub(std::uint32_t fixed256, std::uint32_t slot, unsigned char out[aim_stub_length]) {
+    // clang-format off
+    const unsigned char code[aim_stub_length] = {
+        0x8b,0x73,0x06,                        //  0 mov esi,[ebx+6]              x
+        0x8b,0x7b,0x0b,                        //  3 mov edi,[ebx+0xb]            y
+        0x0f,0xaf,0x35, 0,0,0,0,               //  6 imul esi,[fixed256]
+        0x81,0xc6, 0x80,0x00,0x00,0x00,        // 13 add esi,0x80
+        0xc1,0xfe,0x08,                        // 19 sar esi,8
+        0x0f,0xaf,0x3d, 0,0,0,0,               // 22 imul edi,[fixed256]
+        0x81,0xc7, 0x80,0x00,0x00,0x00,        // 29 add edi,0x80
+        0xc1,0xff,0x08,                        // 35 sar edi,8
+        0x83,0xf9,0x04,                        // 38 cmp ecx,4                    the displaced compare's flags
+        0xff,0x25, 0,0,0,0};                   // 41 jmp [slot]
+    // clang-format on
+    std::memcpy(out, code, aim_stub_length);
+    detail::put32(out + 9, fixed256);
+    detail::put32(out + 25, fixed256);
+    detail::put32(out + 43, slot);
 }
 // F. table = 8 rows of {camera, n2d, nother, unused} (16 bytes each, camera 0 = free); slot = the tail.
 constexpr unsigned entry_stub_length = 79, camera_rows = 8, camera_row_bytes = 16;

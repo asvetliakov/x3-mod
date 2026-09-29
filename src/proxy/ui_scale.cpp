@@ -10,7 +10,7 @@
 #include <cstdio>
 #include <cstring>
 
-// Eight sites claimed through engine_patch (ui_scale_sites.h), all or none: a failed claim restores the
+// Ten sites claimed through engine_patch (ui_scale_sites.h), all or none: a failed claim restores the
 // earlier ones; a restore that fails keeps the site registered (patched_unverified) with the data cells
 // at the identity, under which every stub reproduces the displaced instruction exactly. The stubs are
 // emitted bytes in the never-freed arena reading the data cells below (this module is pinned for the
@@ -37,23 +37,26 @@ volatile std::uint32_t x3m_ui_scale_cameras[x3m::ui_scale::sites::camera_rows * 
 namespace {
 namespace engine_patch = x3m::engine_patch;
 namespace sites = x3m::ui_scale::sites;
-constexpr unsigned site_count = 8;
-enum Index : unsigned { Width = 0, Height, MainX, MainY, MenuX, MenuY, Cursor, Projection };
+constexpr unsigned site_count = 10;
+enum Index : unsigned { Width = 0, Height, MainX, MainY, MenuX, MenuY, Cursor, OverlayIcon, CursorAim, Projection };
 struct Claim {
     const char* name;
     std::uintptr_t va;
     unsigned length;
     const unsigned char* expected;
+    bool bypass; // the stub performs the displaced instructions itself: its slot word holds va + length, not the tail
 };
 constexpr Claim claims[site_count] = {
-    {"ui_scale_width", sites::width_site_va, sites::size_site_length, sites::expected_width_site},
-    {"ui_scale_height", sites::height_site_va, sites::size_site_length, sites::expected_height_site},
-    {"ui_scale_main_x", sites::main_x_site_va, sites::mouse_site_length, sites::expected_main_x_site},
-    {"ui_scale_main_y", sites::main_y_site_va, sites::mouse_site_length, sites::expected_main_y_site},
-    {"ui_scale_menu_x", sites::menu_x_site_va, sites::mouse_site_length, sites::expected_menu_x_site},
-    {"ui_scale_menu_y", sites::menu_y_site_va, sites::mouse_site_length, sites::expected_menu_y_site},
-    {"ui_scale_cursor", sites::cursor_site_va, sites::cursor_site_length, sites::expected_cursor_site},
-    {"ui_scale_projection", sites::projection_site_va, sites::projection_site_length, sites::expected_projection_site}};
+    {"ui_scale_width", sites::width_site_va, sites::size_site_length, sites::expected_width_site, false},
+    {"ui_scale_height", sites::height_site_va, sites::size_site_length, sites::expected_height_site, false},
+    {"ui_scale_main_x", sites::main_x_site_va, sites::mouse_site_length, sites::expected_main_x_site, true},
+    {"ui_scale_main_y", sites::main_y_site_va, sites::mouse_site_length, sites::expected_main_y_site, true},
+    {"ui_scale_menu_x", sites::menu_x_site_va, sites::mouse_site_length, sites::expected_menu_x_site, true},
+    {"ui_scale_menu_y", sites::menu_y_site_va, sites::mouse_site_length, sites::expected_menu_y_site, true},
+    {"ui_scale_cursor", sites::cursor_site_va, sites::cursor_site_length, sites::expected_cursor_site, false},
+    {"ui_scale_overlay_icon", sites::overlay_site_va, sites::overlay_site_length, sites::expected_overlay_site, true},
+    {"ui_scale_cursor_aim", sites::aim_site_va, sites::aim_site_length, sites::expected_aim_site, true},
+    {"ui_scale_projection", sites::projection_site_va, sites::projection_site_length, sites::expected_projection_site, false}};
 engine_patch::Site site_[site_count];
 bool live_[site_count] = {};          // registered (active, or a rollback that failed)
 const char* write_[site_count] = {};  // none|atomic|plain
@@ -125,6 +128,10 @@ const char* windows_verified() {
     if (!code_is(sites::cursor_pre_va, sites::expected_cursor_pre, sites::cursor_pre_length) ||
         !code_is(sites::cursor_post_va, sites::expected_cursor_post, sites::cursor_post_length))
         return "cursor_mismatch";
+    if (!code_is(sites::overlay_case_va, sites::expected_overlay_case, sites::overlay_case_length) ||
+        !code_is(sites::aim_case_va, sites::expected_aim_case, sites::aim_case_length) ||
+        !code_is(sites::icon_test_va, sites::expected_icon_test, sites::icon_test_length))
+        return "click_mismatch";
     return nullptr;
 }
 void set_cells(double s) {
@@ -185,6 +192,16 @@ std::uintptr_t emit_stub(unsigned index, void*** slot_out) {
             sites::cursor_stub_length,
             [&](std::uint32_t slot, unsigned char* out) { sites::encode_cursor_stub(address_of(&x3m_ui_scale_fixed256), slot, out); },
             slot_out);
+    case OverlayIcon: // the slot word holds 0x0042ece5 (install_site)
+        return emit(
+            sites::overlay_stub_length,
+            [&](std::uint32_t slot, unsigned char* out) { sites::encode_overlay_stub(address_of(&x3m_ui_scale_fixed256), slot, out); },
+            slot_out);
+    case CursorAim: // the slot word holds 0x0042ddf7
+        return emit(
+            sites::aim_stub_length,
+            [&](std::uint32_t slot, unsigned char* out) { sites::encode_aim_stub(address_of(&x3m_ui_scale_fixed256), slot, out); },
+            slot_out);
     case Projection:
         return emit(
             sites::projection_stub_length,
@@ -199,9 +216,9 @@ std::uintptr_t emit_stub(unsigned index, void*** slot_out) {
 }
 // Claims one site and pushes its stub in front of the tail: "ok" or the reason. A failure after the jmp
 // went in puts the original bytes back; when even that fails the site stays registered (live_) for
-// shutdown(). The stub's continuation word holds the previous chain head (the tail), except for the four
-// mouse stubs, whose word holds the instruction after the displaced load (the tail is emitted but never
-// entered); the word is read back before the stub goes live.
+// shutdown(). The stub's continuation word holds the previous chain head (the tail), except for the bypass
+// stubs (mouse, click point), whose word holds the instruction after the displaced span (the tail is emitted
+// but never entered); the word is read back before the stub goes live.
 const char* install_site(unsigned index) {
     const Claim& c = claims[index];
     write_[index] = "none";
@@ -225,10 +242,10 @@ const char* install_site(unsigned index) {
     if (!claimed) return live_[index] ? "rollback_failed" : site_[index].status;
     const char* failure = nullptr;
     unsigned char now[engine_patch::max_prologue]{};
-    // The stub's continuation word: the tail (the displaced instruction, then the jump back), except for the four
-    // mouse stubs, which perform the displaced load themselves and continue at the instruction after it.
-    const bool mouse = index >= MainX && index <= MenuY;
-    void* continuation = mouse ? reinterpret_cast<void*>(c.va + c.length) : *site_[index].entry;
+    // The stub's continuation word: the tail (the displaced instruction, then the jump back), except for the
+    // bypass stubs (the four mouse loads, the two click-point loads), which perform the displaced instructions
+    // themselves and continue at the instruction after them.
+    void* continuation = c.bypass ? reinterpret_cast<void*>(c.va + c.length) : *site_[index].entry;
     if (!engine_patch::store_pointer(slot, continuation) || *slot != continuation ||
         !engine_patch::push_front(site_[index], reinterpret_cast<void*>(stub)))
         failure = "chain_failed";
@@ -257,7 +274,7 @@ bool any_live() {
         if (l) return true;
     return false;
 }
-// The eight claims in order (the projection last: nothing visible changes until every input-side site
+// The ten claims in order (the projection last: nothing visible changes until every input-side site
 // is in); on a failure the earlier ones are restored. The cells hold the scale before the first claim so
 // a stub that goes live is never wrong; a failed transaction puts the identity back.
 const char* install_all(double s) {
