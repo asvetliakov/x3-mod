@@ -39,3 +39,15 @@ its unlink; the routine's behaviour on a never-bound node is established from th
 executing the site during the write was not exercised; the single aligned 8-byte store is the argument (inferred).
 LastError liveness at the site is inferred from the loop's own allocator calls, not from a reader search of the whole
 caller chain. Not flown.
+
+## Flight: Run 109 A (run384, 2026-09-29)
+
+Measured from `/tmp/x3-bottleX3-run384/session-20260929-170727-212.log` (script and summary under
+[`verification/results/run384-dust-leak-fix/`](../../verification/results/run384-dust-leak-fix/)): `dust_leak_fix
+site=0041f4d1 status=patched reason=ok mode=on setting=on write=atomic`; `hits=300` in 62 of 67 300-frame rows (18,877
+hits in all; the first sector row is partial and the menu rows are 0); `scene_graph_census engine_nodes` 4,515 at the
+first sector row, 4,853 at the last, maximum 5,477 over 19,826 frames (run383: +27 per frame, 150,562 at frame 8100);
+`registry_live == engine_nodes` on all 63 sector rows; `loop_phases cutevent_p50_us` 248 -> 140 (run383: 555 -> 10,836).
+Frame time p50 16 ms (frames 1000-4000) -> 23 ms (last 3,000 frames) with `input_p50_us` 4,623 -> 7,155: not the node
+walk; unexplained, the view and the sector's activity changed during the stay. The user reports it working; no shimmer
+return after the stay. Accepted; the patch stays on by default.

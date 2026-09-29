@@ -40,9 +40,11 @@ Nothing beyond the installed Run109 (`a16a47f5`); release 0.8.0 (`a3c85e37`) is 
 
 ## Run queue
 
-Run 109 A queued (Run109 installed): a 3-5 minute stay on the Run 108 A save (background 103 `litcube75`) under
-`--perf --config` to confirm `dust_leak_fix hits=300` per row, flat `engine_nodes`, stable fps and no shimmer return,
-plus a look at a distant capital ship firing under the default prop cull ([user-runs](verification/user-runs.md)).
+No run is open. Run 109 A completed (run384, [results](../verification/results/run384-dust-leak-fix/)): with
+`dust_leak_fix` patched the census stays flat (engine_nodes 4,515 -> 4,853 over 19,826 frames on `litcube75`, hits=300
+per row, `registry_live == engine_nodes` throughout), the animation tick `cutevent` stays at 0.1-0.4 ms (run383: 0.5 ->
+10.8 ms) and the shimmer did not return. Frame p50 still moved 16 -> 23 ms over the stay with the input phase 4.6 -> 7.2
+ms; that growth is not the node walk and is unexplained (the user's view and the sector's activity changed during the run).
 
 Run 108 A completed (run383, [census](../verification/results/run383-scene-census/),
 [dust leak](../verification/results/run383-dust-leak/)): the Mayhem 3 scene-node leak is the engine's dust-scene fill

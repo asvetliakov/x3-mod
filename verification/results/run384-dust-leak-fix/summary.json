@@ -1,0 +1,31 @@
+{
+ "status": {
+  "site": "0041f4d1",
+  "status": "patched",
+  "reason": "ok",
+  "mode": "on",
+  "setting": "on",
+  "write": "atomic",
+  "stub": "01d60fb0"
+ },
+ "hits_rows": 67,
+ "hits_300_rows": 62,
+ "hits_total": "18877",
+ "engine_nodes_first_sector_row": 4515,
+ "engine_nodes_last_sector_row": 4853,
+ "engine_nodes_max": 5477,
+ "registry_equals_engine_all_rows": true,
+ "sector_rows": 63,
+ "frames": 19826,
+ "cutevent_p50_us_first_last": [
+  248,
+  140
+ ],
+ "input_p50_us_first_last": [
+  4623,
+  7155
+ ],
+ "dt_ms_p50_frames_1000_4000": 16.0,
+ "dt_ms_p50_frames_9000_12000": 22.0,
+ "dt_ms_p50_last_3000": 23.0
+}
