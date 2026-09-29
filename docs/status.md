@@ -34,11 +34,11 @@ Nothing beyond the installed Run105 (`99734bdb`); release 0.8.0 (`a3c85e37`) is 
 
 ## Run queue
 
-Run 107 A queued (2026-09-29): a 2-3 minute stay in the Mayhem battle sector with `loop_phases = 1` to name the owner
-of the growing `pre_render` (run380: 5.4 -> 17.9 ms over 6,300 frames while the four stamped sector passes stay at
-0.75 ms; leading candidate the script driver `0x0048f550`, inferred): [run queue](verification/user-runs.md). Run 106 A
-(prop-cull A/B) completed in run379: issued draws at the group 337 -> ~100 with the flare skip and the fixed prop cull
-(about 73 prop draws per frame skipped when sub-pixel); frame time did not follow the draw count.
+Nothing open. Run 107 A completed 2026-09-29 (run381): the `cutevent` interval (`call 0x0048f550`, the cut-event/script
+driver) grows 0.05 -> 12.3 ms per frame over 3.5 minutes in a Mayhem 3 fight while the container passes stay at 0.7 ms
+and the sweep at 0; it is the owner of the growing `pre_render` ([note](reverse-engineering/main-loop-input-region.md),
+Run381 section). Next: a disassembly of the script task scheduler to decide between "more tasks" and "costlier tasks"
+and to place a per-script / per-command census ([run table](verification/user-runs.md)).
 
 ## Open items
 

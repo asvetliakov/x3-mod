@@ -338,3 +338,14 @@ JAVA_HOME=.../openjdk analyzeHeadless /tmp/x3-ghidra-research X3Render \
      00403840 0048f550 0043a360 0045b660
 python3 verification/probe/verify_loop_phase_sites.py
 ```
+
+### Run381 (2026-09-29): the region stamps name the owner
+
+Run107 DLL, Mayhem 3 battle sector, `loop_phases = 1`, 6,600 frames
+([table](../../verification/results/run381-input-region/region_vs_phases_out.txt), measured): `cutevent` (the
+`call 0x0048f550`) grows from 0.05 ms to 12.3 ms per frame, about 0.55 ms per 300 frames and not saturating;
+`containers` stays at 0.66-0.80 ms (its stamped sector passes 0.7 ms, so the un-stamped remainder is small);
+`sweep` is 0.00 ms; `region` tracks `pre_render` minus a constant ~5 ms. `region_max_owner` is `cutevent` in 19 of
+22 windows. So the growing frame time of a Mayhem 3 fight is the cut-event/script driver `0x0048f550`, not the
+container passes §3 picked statically. What inside it grows (more script tasks alive, or costlier tasks) is the
+subject of [script-task-scheduler.md](script-task-scheduler.md).
