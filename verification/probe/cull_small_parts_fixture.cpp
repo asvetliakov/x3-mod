@@ -714,7 +714,7 @@ static void props_section() {
     put(desc.bytes, 0, addr(&part));
     for (unsigned i = 0; i < 3; ++i) {
         put(part.bytes, 0x40 + 4 * i, 0);
-        put(part.bytes, 0x50 + 4 * i, 65536);
+        put(part.bytes, 0x50 + 4 * i, 9 * 65536); // the engine's part box: 9x the drawn range (the run376 gap)
     }
     // A descriptor on a released page: its part cannot be read.
     void* page = VirtualAlloc(nullptr, 0x1000, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
@@ -731,9 +731,22 @@ static void props_section() {
     c.px = 4.f;
     x3m::engine_memory::next_frame();
     using V = pcore::Verdict;
-    const auto eval = [&](Blob& n, std::uint32_t d, const float* rows, bool* first = nullptr) {
-        return c.evaluate(engine_read, a, addr(&n), d, rows, W, H, first);
+    // The draw's vertex extent (production: the shadow-replay extent cache): the unit cube; null = not known.
+    const pcore::Box unit{{-1.f, -1.f, -1.f}, {1.f, 1.f, 1.f}};
+    const auto eval = [&](Blob& n, const pcore::Box* extent, const float* rows, bool* first = nullptr) {
+        return c.evaluate(engine_read, a, addr(&n), [extent]() { return extent; }, rows, W, H, first);
     };
+    // Regression (run376, Run 105 A): the engine's mesh-part box behind the descriptor projects above the threshold
+    // (11.6 px) while the drawn range is 1.28 px; the decision must follow the drawn range.
+    {
+        pcore::Box engine{};
+        float engine_px = 0.f;
+        check(pcore::Culler::engine_part_box(engine_read, addr(&desc), engine) &&
+                  pcore::screen_radius(far_rows, engine, W, H, &engine_px) && engine_px > 11.f && engine_px < 12.f &&
+                  !pcore::Culler::engine_part_box(engine_read, bad_desc, engine),
+              "props: the engine part box reads 11.6 px (above 4) and an unreadable descriptor none");
+        std::printf("PROPS engine_part_px=%.3f\n", double(engine_px));
+    }
     {
         pcore::Box box{};
         std::int32_t raw[7] = {0, 0, 0, 0, 65536, 65536, 65536};
@@ -747,53 +760,54 @@ static void props_section() {
     }
     c.begin_frame(1);
     bool first = false, again = true;
-    const V below = eval(far_prop, addr(&desc), far_rows, &first);
-    const V memo = eval(far_prop, addr(&desc), far_rows, &again);
+    const V below = eval(far_prop, &unit, far_rows, &first);
+    const V memo = eval(far_prop, &unit, far_rows, &again);
     check(below == V::culled && first && memo == V::culled && !again,
-          "props: a far prop below the threshold is skipped; its second draw in the frame shares the verdict");
-    check(eval(far_hull, addr(&desc), far_rows) == V::not_prop, "props: a hull body below the threshold is drawn");
-    check(eval(far_dummy, addr(&desc), far_rows) == V::culled, "props: SHIPS/Props/ matches the prefix");
-    check(eval(far_null, addr(&desc), far_rows) == V::not_prop && eval(far_short, addr(&desc), far_rows) == V::not_prop,
+          "props: a far prop whose drawn range is 1.28 px is skipped although its engine part box is 11.6 px; its "
+          "second draw in the frame shares the verdict");
+    check(eval(far_hull, &unit, far_rows) == V::not_prop, "props: a hull body below the threshold is drawn");
+    check(eval(far_dummy, &unit, far_rows) == V::culled, "props: SHIPS/Props/ matches the prefix");
+    check(eval(far_null, &unit, far_rows) == V::not_prop && eval(far_short, &unit, far_rows) == V::not_prop,
           "props: a null name (the engine's v\\%05d) and a name shorter than the prefix are not props");
-    check(eval(own_prop, addr(&desc), far_rows) == V::exempt_own, "props: a prop on the player's ship is drawn");
-    check(eval(target_prop, addr(&desc), far_rows) == V::exempt_target, "props: a prop on the current target is drawn");
-    check(eval(far_nobounds, bad_desc, far_rows) == V::no_bounds, "props: an unreadable part is drawn");
-    check(eval(far_norows, addr(&desc), nullptr) == V::unbounded, "props: a draw without clip rows is drawn");
+    check(eval(own_prop, &unit, far_rows) == V::exempt_own, "props: a prop on the player's ship is drawn");
+    check(eval(target_prop, &unit, far_rows) == V::exempt_target, "props: a prop on the current target is drawn");
+    check(eval(far_nobounds, nullptr, far_rows) == V::no_bounds, "props: a draw whose extent is not known is drawn");
+    check(eval(far_norows, &unit, nullptr) == V::unbounded, "props: a draw without clip rows is drawn");
     check(c.window.draws == 7 && c.window.culled == 3 && c.window.kept == 4 && c.window.nodes_culled == 2 &&
               c.window.exempt_own == 1 && c.window.exempt_target == 1 && c.window.no_bounds == 1 &&
               c.window.unbounded == 1,
           "props: window counts (7 prop draws, 3 skipped over 2 nodes, 4 drawn)");
     c.begin_frame(2);
-    check(eval(far_prop, addr(&desc), near_rows) == V::kept_size, "props: the same prop above the threshold is drawn");
+    check(eval(far_prop, &unit, near_rows) == V::kept_size, "props: the same prop above the threshold is drawn");
     c.begin_frame(3);
-    check(eval(far_prop, addr(&desc), behind_rows) == V::unbounded,
+    check(eval(far_prop, &unit, behind_rows) == V::unbounded,
           "props: a box reaching behind the eye plane has no size and is drawn");
     // The own ship / target unknown (registry unreadable): fail closed, nothing is skipped.
     put(registry.bytes, 0, 0);
     c.begin_frame(4);
-    check(eval(far_prop, addr(&desc), far_rows) == V::unresolved, "props: unresolved own ship: drawn");
+    check(eval(far_prop, &unit, far_rows) == V::unresolved, "props: unresolved own ship: drawn");
     put(registry.bytes, 0, addr(&table));
     // No target: the former target's prop is an ordinary prop again (the ancestry cache follows the roots).
     put(cockpit.bytes, 0x1e0, 0);
     c.begin_frame(5);
-    const V former = eval(target_prop, addr(&desc), far_rows), own_v = eval(own_prop, addr(&desc), far_rows),
-            far_v = eval(far_prop, addr(&desc), far_rows);
+    const V former = eval(target_prop, &unit, far_rows), own_v = eval(own_prop, &unit, far_rows),
+            far_v = eval(far_prop, &unit, far_rows);
     check(former == V::culled && own_v == V::exempt_own && far_v == V::culled,
           "props: without a target its former prop is skipped, the own ship's still drawn");
     put(cockpit.bytes, 0x1e0, addr(&target_obj));
     c.begin_frame(6);
-    check(eval(target_prop, addr(&desc), far_rows) == V::exempt_target, "props: the target back: drawn again");
+    check(eval(target_prop, &unit, far_rows) == V::exempt_target, "props: the target back: drawn again");
     // Walk budget: 70 new prop nodes in one frame: 64 walks, the rest drawn this frame and walked the next.
     c.begin_frame(7);
     unsigned culled = 0, deferred = 0;
     for (auto& n : many) {
-        const V v = eval(n, addr(&desc), far_rows);
+        const V v = eval(n, &unit, far_rows);
         culled += v == V::culled;
         deferred += v == V::deferred;
     }
     c.begin_frame(8);
     unsigned culled_next = 0;
-    for (auto& n : many) culled_next += eval(n, addr(&desc), far_rows) == V::culled;
+    for (auto& n : many) culled_next += eval(n, &unit, far_rows) == V::culled;
     check(culled == 64 && deferred == 6 && culled_next == 70,
           "props: 64 walks per frame, 6 deferred (drawn) and skipped on the next frame");
     std::printf("PROPS budget culled=%u deferred=%u next=%u walks=%u resolves=%u\n", culled, deferred, culled_next,
@@ -810,19 +824,19 @@ static void props_section() {
         return double(e.QuadPart - s.QuadPart) * 1e9 / double(f.QuadPart) / double(loops);
     };
     c.begin_frame(9);
-    const double memo_hit = ns([&](unsigned) { eval(far_hull, addr(&desc), far_rows); });
+    const double memo_hit = ns([&](unsigned) { eval(far_hull, &unit, far_rows); });
     std::uint32_t frame = 10;
     const double not_prop_first = ns([&](unsigned) {
         c.begin_frame(frame++);
-        eval(far_hull, addr(&desc), far_rows);
+        eval(far_hull, &unit, far_rows);
     });
     const double prop_first = ns([&](unsigned) {
         c.begin_frame(frame++);
-        eval(far_prop, addr(&desc), far_rows);
+        eval(far_prop, &unit, far_rows);
     });
     const double prop_pair = ns([&](unsigned i) {
         if (!(i & 1)) c.begin_frame(frame++);
-        eval((i & 1) ? far_dummy : far_prop, addr(&desc), far_rows);
+        eval((i & 1) ? far_dummy : far_prop, &unit, far_rows);
     });
     std::printf("CULL SMALL PROPS BENCH memo_hit_ns=%.1f not_prop_first_ns=%.1f prop_culled_first_in_frame_ns=%.1f prop_culled_pair_mean_ns=%.1f harness=fixture_included game_fps=unmeasured\n",
                 memo_hit, not_prop_first, prop_first, prop_pair);

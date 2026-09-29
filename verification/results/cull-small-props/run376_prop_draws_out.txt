@@ -1,0 +1,16 @@
+frame 3262: 357 draws, 82 prop draws, 82 with an object_bounds box, 76 under 4 px
+index body node descriptor model lod vb_half_px census_radius s d vertex_count position_type
+8 weapondummy 23c10448 2ea17f58 00004a88 00000000 32.14999999999998 1236 52 14978 1987 16
+9 weapondummy 23c106c8 2ea17f58 00004a88 00000000 35.44999999999993 1236 51 15304 1987 16
+10 weapondummy 23c10948 2ea17f58 00004a88 00000000 37.39999999999998 1236 52 15058 1987 16
+11 weapondummy 23c10bc8 2ea17f58 00004a88 00000000 37.39999999999998 1236 52 15057 1987 16
+12 weapondummy 23c10e48 2ea17f58 00004a88 00000000 35.450000000000045 1236 51 15302 1987 16
+13 weapondummy 23c110c8 2ea17f58 00004a88 00000000 32.14999999999998 1236 52 14956 1987 16
+17 split_m7turretB_socket 82d344d8 2ebca3b0 00005d62 00000001 1.699999999999818 80000 17 2896908 46 16
+18 split_m7turretB_base 82d349d8 2ebca470 00004e8e 00000001 2.099999999999909 80000 17 2897213 1604 16
+21 split_m1turretB_base 28fb6208 2eb55520 00004e87 00000001 1.6000000000001364 80000 6 8363702 1602 16
+22 split_m1turretB_socket 28fb6708 2eb62ce8 00005d42 00000001 0.8499999999999659 80000 6 8364047 46 16
+23 split_m1turretB_base 28fb6c08 2eb55520 00004e87 00000001 1.3500000000000227 80000 6 8376397 1602 16
+24 split_m1turretB_socket 28fb7108 2eb62ce8 00005d42 00000001 1.0 80000 6 8376507 46 16
+descriptors per (body, lod): split_m1turretA_base@00000001: 1 descriptor(s) over 12 draws; split_m1turretA_socket@00000001: 1 descriptor(s) over 12 draws; split_m1turretB_base@00000001: 1 descriptor(s) over 24 draws; split_m1turretB_socket@00000001: 1 descriptor(s) over 24 draws; split_m7turretB_base@00000001: 1 descriptor(s) over 2 draws; split_m7turretB_socket@00000001: 1 descriptor(s) over 2 draws; weapondummy@00000000: 1 descriptor(s) over 6 draws
+vb half-side px per body (min/max/n): split_m1turretA_base 1.30/1.35/12; split_m1turretA_socket 1.15/1.25/12; split_m1turretB_base 1.35/1.60/24; split_m1turretB_socket 0.85/1.20/24; split_m7turretB_base 1.90/2.10/2; split_m7turretB_socket 1.15/1.70/2; weapondummy 32.15/37.40/6

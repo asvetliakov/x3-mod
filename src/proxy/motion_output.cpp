@@ -8084,7 +8084,7 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
     route.scene = true;
     // Small-prop cull (X3M_CULL_SMALL_PROPS): before the jitter and every other binding, so a skipped draw has
     // nothing to undo; one bool test with the option off.
-    if (props_on_ && cull_small_prop(route)) return;
+    if (props_on_ && cull_small_prop(call, route)) return;
     // Unavailable repair is feature refusal, not an enhanced fallback through
     // the malformed original linkage. Preserve the original bindings and rows.
     if (shadow_.xt_default_pair && !shadow_.xt_default_ready) {

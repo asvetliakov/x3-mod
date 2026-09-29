@@ -1693,7 +1693,12 @@ private:
     float props_px_ = 0.f;
     cull_small_props::core::Culler* props_ = nullptr;
     bool attach_small_props() noexcept;
-    bool cull_small_prop(MotionRoute& route); // not noexcept: no terminate region (SJLJ registration) per scene draw
+    bool cull_small_prop(const MotionDrawCall& call,
+                         MotionRoute& route); // not noexcept: no terminate region (SJLJ registration) per scene draw
+    const cull_small_props::core::Box* small_prop_extent(const MotionDrawCall& call,
+                                                         cull_small_props::core::Box& out) noexcept;
+    std::uint64_t small_prop_rows_frame_ = ~std::uint64_t(0);
+    unsigned small_prop_rows_ = 0; // cull_small_prop_box rows this F8 frame (cap 128)
     void log_cull_small_props_window() noexcept;
     void apply_lens_gain(MotionRoute& route, bool plain) noexcept;
     void restore_lens_gain(MotionRoute& route) noexcept;

@@ -56,7 +56,12 @@ class FpsOverlay(unittest.TestCase):
         accounting = present.index('if(ctx.fps_overlay.visible()){')
         self.assertLess(present.index('const HRESULT hr=fn('), accounting)
         self.assertLess(accounting, present.index('++ctx.frame; ctx.draws=0;'))
-        self.assertIn('const bool refreshed=ctx.fps_overlay.frame(uint64_t(stamp.QuadPart),ctx.draws);', present)
+        # The overlay's DRAWS figure is the draws that reached the device (2026-09-29: the lens-flare and small-prop
+        # skips return D3D_OK without a device call); frame_end keeps draws= and appends issued=.
+        self.assertIn('const bool refreshed=ctx.fps_overlay.frame(uint64_t(stamp.QuadPart),ctx.issued);', present)
+        self.assertIn('++ctx.frame; ctx.draws=0; ctx.issued=0;', present)
+        self.assertEqual(capture.count('if(route.submit) ++ctx.issued;'), 4)  # the four draw hooks
+        self.assertIn('elapsed_ms=%llu dt_ms=%llu qpc=%llu issued=%llu"', capture)
         self.assertIn('if(ctx.fps_overlay.fog(fog)||refreshed){', present)
         self.assertNotIn('SHADOWS', present)
         self.assertEqual(present.count('QueryPerformanceCounter(&stamp)'), 2)  # the overlay and the frame_end line

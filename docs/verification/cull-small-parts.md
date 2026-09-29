@@ -98,8 +98,9 @@ all census `kept`: the split turret props carry a LOD ladder (`lods=3`, at LOD 1
 about nine times their mesh, so the engine's `s` (5-6) stays above the stub's threshold (3) and `--cull-small-parts`
 cannot reach them, while their draw boxes are about 2.5 px wide (`object_bounds`). The prop cull therefore measures the
 draw, not the node: a main-scene draw (after gate 2, before the jitter and any binding) whose scope node's body path
-starts with `ships\props\` (engine body table, case and slash free) and whose owning mesh part AABB
-(`part+0x40`/`+0x50`, render-node-bounds.md 2) projects through the draw's own clip rows to a half-side under
+starts with `ships\props\` (engine body table, case and slash free) and whose drawn vertex range (its POSITION0
+AABB from the shadow-replay extent cache, the box the `object_bounds` rows project; since Run 105 A below, the engine's
+mesh part AABB `part+0x40`/`+0x50` before it) projects through the draw's own clip rows to a half-side under
 `X3M_CULL_SMALL_PARTS_PX` pixels is not forwarded: the hook returns `D3D_OK`, nothing was bound, nothing is undone.
 The first draw of a node in a frame decides for all its draws. A prop on the player's ship or on the current target
 (cockpit registry `0x608504`, `object_capture::own_ship`/`target`, roots confirmed by handle; parent walk of at most
@@ -133,3 +134,35 @@ env-map views, are untouched; a skipped draw is no shadow-replay candidate, so t
 skipped whole, so a prop with one small and one large part is decided by its first drawn part; the class cache is
 flushed every 300 frames (a body id reused after a reload is re-read within that window); the `culled_prop` verdict
 applies to every census view of the node although only its main-scene draws were skipped.
+
+### Run 105 A (run376): the engine part box does not bound the drawn turret
+
+run376 (Run105, `X3M_CULL_SMALL_PROPS=on`, 4 px, same battle group) logged `cull_small_props_frame` from frame 2555
+on with `draws=24600 culled=0 kept_size=24600` per 300 frames (82 prop draws a frame, all drawn for size); only the
+first windows skipped 82-600 draws (measured, `grep cull_small_props_frame`). The F8 burst (frame 3262, script
+`verification/results/cull-small-props/run376_prop_draws.py`, output beside it): 82 prop draws, the drawn range's
+`object_bounds` half-side 0.85-1.20 px for the `split_m1turretB_socket` (24 draws), 1.35-1.60 for `_base` (24),
+1.15-1.35 for the A pair (24), 1.15-2.10 for the m7 pair (4), 32-37 px for the six `weapondummy` (the own/near ship,
+s = 51-52); 76 under 4 px (measured). The scope descriptor is one per (body, LOD) over every node (7 descriptors for 82
+draws: the per-part descriptor render-node-bounds.md 4 predicts), so the node and its part were found; what the build
+projected was the part's `+0x40`/`+0x50` box, and with no socket culled at 0.85 px that box is at least 4 / 0.85 =
+4.7 times the drawn range for every turret (inferred from the counts; the box itself was not logged). That box was
+established statically for the six asteroid fade pairs (render-node-bounds.md 2, from the load path that recomputes it
+from the vertices); the alternate container branch of `0x00481aa0` copies the six fields from the file, and a modded
+body's stored box (or its units) need not match its vertices, which the run376 numbers show for Mayhem's turrets.
+
+Fix (2026-09-29): the decision takes the drawn range's own POSITION0 AABB from the shadow-replay extent cache (the same
+source the run375/run376 prediction used): key = stream-0 buffer, its bookend revision, offset, stride, position
+offset/type and the drawn vertex range, asked for prop draws only; a missing extent is queued for the scene-end read
+the shadow replay already runs (so a skipped prop keeps its extent) and the draw is kept that frame (`no_bounds`); a
+young extent of an earlier revision stands in, as in the caster verdict. Without the candidate reads (shadow replay
+off), a non-managed buffer or an unreadable range nothing is skipped. F8 frames carry one `cull_small_prop_box` row per
+prop node (cap 128) with the decision's `extent_px` and the engine part box's `part_px` and both boxes, to close the
+gap question on the next flight. `frame_end` appends `issued=` (the draws that reached the device) and the overlay's
+DRAWS figure shows issued draws ([draw-calls.md](draw-calls.md)).
+
+| Date | Check | Command | Result |
+| --- | --- | --- | --- |
+| 2026-09-29 | CPU fixture with the regression case: the engine part box behind the descriptor projects to 11.6 px (above 4) while the draw's extent is 1.28 px, and the prop is skipped; unknown extent drawn (`no_bounds`); the rest as before | `python3 verification/probe/build_cull_small_parts.py` then `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_cull_small_parts.py` | 141 checks, 0 failures; per draw memo hit 3.0 ns, first non-prop 14.2 ns, first skipped prop of a frame 287 ns, pair mean 171 ns (Wine/FEX, harness included; the production extent lookup is not in this figure) |
+| 2026-09-29 | Host: harness with the 9x engine box (11.6 px) beside the unit extent, extent asked for prop draws only, draw-path wiring (extent cache find/queue, `cull_small_prop_box`), `frame_end issued=` and the overlay's issued figure pinned | `PYTHONPATH=verification/probe:verification/analysis /usr/bin/python3 -m unittest test_cull_small_parts test_cull_census test_logging_tiers test_config_schema test_fps_overlay test_frame_timing test_exe_identity`; `python3 tools/config/generate.py --check` | all OK; generate PASS 243 settings |
+| 2026-09-29 | Clean DLL build, x87 walk | `cmake … -DPython3_EXECUTABLE=/usr/bin/python3 && cmake --build build -j8`; `check_no_x87.py build/d3d9.dll` | 0 warnings; PASS, 734 reachable, 0 violations; `cull_small_prop` and `small_prop_extent` without SJLJ or x87 (objdump) |

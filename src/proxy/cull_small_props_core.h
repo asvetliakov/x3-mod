@@ -3,9 +3,9 @@
 // off; docs/verification/cull-small-parts.md, "Small props"). The decision of
 // one main-scene draw: its scope node's body path (the engine's body table,
 // cull_census_core.h) starts with `ships\props\` (turret bases and sockets,
-// weapon dummies), the owning mesh part's object-space AABB
-// (render-node-bounds.md 2: part+0x40 centre, part+0x50 half-extent, x65536)
-// projected through the draw's own clip rows spans less than
+// weapon dummies), the draw's own vertex extent (the object-space AABB of the
+// drawn POSITION0 range, the shadow-replay extent cache the object_bounds rows
+// print) projected through the draw's own clip rows spans less than
 // X3M_CULL_SMALL_PARTS_PX pixels of radius, and the node is not the player's
 // ship or its current target or a descendant of either (object_capture.h:
 // own_ship and target through the cockpit registry 0x608504). Such a draw is
@@ -27,7 +27,9 @@ namespace x3m::cull_small_props::core {
 constexpr std::uintptr_t cockpit_registry_root = 0x608504; // object_capture::own_ship / target
 constexpr unsigned model_offset = 0x140, parent_offset = 0x18, handle_offset = 0x28;
 // Mesh part: centre +0x40/+0x44/+0x48, (+0x4c unused), half-extent +0x50/+0x54/+0x58, both x4 int16 units; / 65536
-// gives POSITION0 units (render-node-bounds.md 2, "Units line up exactly with the submitted world matrix").
+// gives POSITION0 units (render-node-bounds.md 2, "Units line up exactly with the submitted world matrix"). Diagnostics
+// only since run376: projected, this box measured every prop at or above 4 px where the drawn vertex range spans
+// 0.85-2.1 px (docs/verification/cull-small-parts.md, "Run 105 A"), so the decision takes the vertex extent instead.
 constexpr unsigned part_bounds_offset = 0x40, part_bounds_words = 7;
 constexpr float part_bounds_scale = 1.f / 65536.f;
 constexpr char prop_prefix[] = "ships\\props\\";
@@ -109,7 +111,7 @@ inline bool screen_radius(const float rows[16], const Box& b, unsigned width, un
 enum class Verdict : std::uint8_t {
     no_scope,      // no scope node or descriptor, or the node unreadable: drawn, not a prop draw
     not_prop,      // body path outside ships\props\ (or unknown): drawn
-    no_bounds,     // prop, part AABB unreadable: drawn
+    no_bounds,     // prop, the draw's vertex extent not known (yet): drawn
     unbounded,     // prop, no clip rows or a corner at/behind the eye plane: drawn
     kept_size,     // prop at or above the threshold: drawn
     exempt_own,    // prop below it on the player's ship: drawn
@@ -267,22 +269,26 @@ struct Culler {
         }
         return v == 2 ? Verdict::exempt_own : v == 3 ? Verdict::exempt_target : Verdict::culled;
     }
-    // The node-level decision (no memo, no counters): model class, part box, size, ancestry.
-    template <class Read>
-    Verdict decide(Read& read, const Addresses& a, std::uint32_t node, std::uint32_t descriptor, const float* rows,
+    // The engine's mesh-part box behind a scope descriptor (diagnostic rows only).
+    template <class Read> static bool engine_part_box(Read& read, std::uint32_t descriptor, Box& box) {
+        std::uint32_t part = 0;
+        std::int32_t raw[part_bounds_words]{};
+        return descriptor && !(descriptor & 3) && read(std::uintptr_t(descriptor), &part, 4) && part && !(part & 3) &&
+               read(std::uintptr_t(part) + part_bounds_offset, raw, sizeof raw) && part_box(raw, box);
+    }
+    // The node-level decision (no memo, no counters): model class, the draw's vertex extent (`extent_of()`: the
+    // object-space box of the drawn range, null when not known; asked for prop draws only), size, ancestry.
+    template <class Read, class Extent>
+    Verdict decide(Read& read, const Addresses& a, std::uint32_t node, Extent&& extent_of, const float* rows,
                    unsigned width, unsigned height) {
-        if (!node || (node & 3) || !descriptor || (descriptor & 3)) return Verdict::no_scope;
+        if (!node || (node & 3)) return Verdict::no_scope;
         std::uint32_t model = 0;
         if (!read(std::uintptr_t(node) + model_offset, &model, 4)) return Verdict::no_scope;
         if (!is_prop(read, a, model)) return Verdict::not_prop;
-        std::uint32_t part = 0;
-        std::int32_t raw[part_bounds_words]{};
-        Box box{};
-        if (!read(std::uintptr_t(descriptor), &part, 4) || !part || (part & 3) ||
-            !read(std::uintptr_t(part) + part_bounds_offset, raw, sizeof raw) || !part_box(raw, box))
-            return Verdict::no_bounds;
+        const Box* extent = extent_of();
+        if (!extent) return Verdict::no_bounds;
         float radius = 0.f;
-        if (!rows || !screen_radius(rows, box, width, height, &radius)) return Verdict::unbounded;
+        if (!rows || !screen_radius(rows, *extent, width, height, &radius)) return Verdict::unbounded;
         if (!(radius < px)) return Verdict::kept_size;
         if (!roots_known) resolve_roots(read, a);
         if (!roots_ok) return Verdict::unresolved;
@@ -290,8 +296,8 @@ struct Culler {
     }
     // One scene draw: the node's verdict of this frame (the first draw decides) and the window counts. `first` is
     // set when this draw decided (the caller then reports a culled node to the census once).
-    template <class Read>
-    Verdict evaluate(Read& read, const Addresses& a, std::uint32_t node, std::uint32_t descriptor, const float* rows,
+    template <class Read, class Extent>
+    Verdict evaluate(Read& read, const Addresses& a, std::uint32_t node, Extent&& extent_of, const float* rows,
                      unsigned width, unsigned height, bool* first = nullptr) {
         if (first) *first = false;
         Verdict v;
@@ -299,7 +305,7 @@ struct Culler {
         if (m && m->node == node && m->frame == frame && frame_started)
             v = m->verdict;
         else {
-            v = decide(read, a, node, descriptor, rows, width, height);
+            v = decide(read, a, node, extent_of, rows, width, height);
             if (m) *m = MemoSlot{node, frame, v};
             if (first) *first = true;
             if (v == Verdict::culled) ++window.nodes_culled;

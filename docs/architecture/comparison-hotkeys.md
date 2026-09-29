@@ -188,8 +188,9 @@ The numbers come from a one-second sliding window of four 250 ms buckets over
 the same `QueryPerformanceCounter` clock as the `frame_end` line: FPS is
 frames per second over the window, the ms figure is the mean Present-to-Present
 interval (the frame interval, not GPU time; a driver that queues frames shows
-the throughput, not the latency), and DRAWS is the mean hooked draw count per
-frame. The text is rebuilt when a bucket closes, about four times per second,
+the throughput, not the latency), and DRAWS is the mean count per frame of the
+hooked draws that reached the device (`frame_end issued=`; since 2026-09-29, the
+hooked count before). The text is rebuilt when a bucket closes, about four times per second,
 and each rebuild costs the same glyph pass as a notice change; the
 `SHADOWS` line follows the Ctrl+Shift+F12 state the frame it changes (one
 compare per shown frame). Showing the overlay again after hiding it starts a

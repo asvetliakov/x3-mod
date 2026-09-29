@@ -9,8 +9,10 @@
 // renderable bit, the script occluder list and the simulation run as vanilla.
 // Per scene draw with the option on: one thread-local scope read (no engine
 // read) and one memo probe; the first draw of a node in a frame adds one 4-byte
-// engine read and one class-cache probe; a prop draw adds two reads and eight
-// corner transforms; a prop below the threshold adds, once per frame, the
+// engine read and one class-cache probe; a prop draw adds the bookend view of
+// its vertex buffer, one extent-cache probe (a missing extent is queued for the
+// scene-end read the shadow replay already runs) and eight corner transforms;
+// a prop below the threshold adds, once per frame, the
 // own-ship/target resolution and, once per node per 256 frames, a bounded
 // parent walk. No allocation after the first scene draw, no draw call (the hook's own Get*/restore work still runs, as on the bolt drop path).
 
@@ -30,7 +32,51 @@ __attribute__((noinline)) bool MotionOutput::attach_small_props() noexcept {
         object_trace::executable_verified() ? 1u : 0u);
     return true;
 }
-bool MotionOutput::cull_small_prop(MotionRoute& route) {
+// The object-space AABB of this draw's POSITION0 range from the shadow-replay extent cache (the box the
+// object_bounds rows project; run375/376: turret draws 0.85-2.1 px), or null: the candidate reads are off
+// (X3M_SHADOW_REPLAY_DEPTH / the candidate counter), the buffer is not a managed one with a known bookend view, the
+// range or position type is not readable, or the extent is not known yet (then queued: read at this frame's scene
+// end even though the draw is skipped, so a skipped prop keeps its extent). A stale extent of an earlier revision of
+// the same range stands in while it is young, as in the caster verdict.
+const cull_small_props::core::Box* MotionOutput::small_prop_extent(const MotionDrawCall& call,
+                                                                   cull_small_props::core::Box& out) noexcept {
+    if (!candidates_requested_ || call.user_memory || !shadow_.stream0 || !shadow_.stream0_stride ||
+        (call.indexed && !shadow_.indices) || shadow_.stream0_pool != shadow_replay::PoolClass::Managed)
+        return nullptr;
+    ownership::BufferLockView vb{};
+    if (!shadow_.stream0_identity ||
+        FAILED(ownership::get_buffer_lock_view_light(reinterpret_cast<IDirect3DResource9*>(shadow_.stream0_identity),
+                                                     &vb)) ||
+        !vb.known)
+        return nullptr;
+    shadow_replay::ExtentKey key{};
+    key.vb = shadow_.stream0;
+    key.revision = vb.revision;
+    key.stream_offset = shadow_.stream0_offset;
+    key.stride = shadow_.stream0_stride;
+    key.position_offset = shadow_.position_offset;
+    key.position_type = shadow_.position_type;
+    const std::int64_t first = call.indexed ? std::int64_t(call.base_vertex) + call.min_vertex : std::int64_t(call.first);
+    const std::uint32_t count = call.indexed ? call.vertex_count : shadow_replay::vertices_of(call.topology, call.primitives);
+    if (first < 0 || first > 0xFFFFFFFFll || !count || !shadow_replay::extent_type_supported(key.position_type) ||
+        key.position_offset + shadow_replay::extent_type_bytes(key.position_type) > key.stride)
+        return nullptr;
+    key.first = std::uint32_t(first);
+    key.count = count;
+    const shadow_replay::ExtentEntry* stale = nullptr;
+    const shadow_replay::ExtentEntry* e = candidate_extents_.find(key, &stale);
+    if (!e && !(stale && stale->abandoned())) queue_candidate_extent(key, shadow_.stream0_identity, stale != nullptr);
+    if (!e && stale && !stale->abandoned() &&
+        candidate_extents_.stale_age(*stale) <= shadow_replay::extent_stale_frames)
+        e = stale;
+    if (!e || e->state != shadow_replay::ExtentState::Known) return nullptr;
+    for (unsigned i = 0; i < 3; ++i) {
+        out.lo[i] = e->lo[i];
+        out.hi[i] = e->hi[i];
+    }
+    return &out;
+}
+bool MotionOutput::cull_small_prop(const MotionDrawCall& call, MotionRoute& route) {
     namespace props = cull_small_props::core;
     if (!props_ && !attach_small_props()) return false;
     auto& c = *props_;
@@ -50,8 +96,31 @@ bool MotionOutput::cull_small_prop(MotionRoute& route) {
     const DWORD error = GetLastError();
     auto read = [](std::uintptr_t p, void* out, std::size_t n) { return engine_memory::read(p, out, n); };
     bool first = false;
-    const auto verdict = c.evaluate(read, props::Addresses{}, std::uint32_t(node), std::uint32_t(descriptor), rows,
-                                    target_width_, target_height_, &first);
+    props::Box extent_box{};
+    const props::Box* extent = nullptr;
+    const auto extent_of = [&]() noexcept { return extent = small_prop_extent(call, extent_box); };
+    const auto verdict = c.evaluate(read, props::Addresses{}, std::uint32_t(node), extent_of, rows, target_width_,
+                                    target_height_, &first);
+    // F8 frames: one row per prop node decided this frame (capped), the vertex-extent radius the decision used beside
+    // the engine's mesh-part box radius (diagnostic; the run376 gap).
+    if (capture_ && first && props::prop_verdict(verdict) && small_prop_rows_frame_ != frame_) {
+        small_prop_rows_frame_ = frame_;
+        small_prop_rows_ = 0;
+    }
+    if (capture_ && first && props::prop_verdict(verdict) && small_prop_rows_ < 128) {
+        ++small_prop_rows_;
+        float vb_px = -1.f, part_px = -1.f;
+        props::Box part{};
+        if (extent && rows) props::screen_radius(rows, *extent, target_width_, target_height_, &vb_px);
+        if (rows && props::Culler::engine_part_box(read, std::uint32_t(descriptor), part))
+            props::screen_radius(rows, part, target_width_, target_height_, &part_px);
+        log("cull_small_prop_box device=%llu frame=%llu index=%lu node=%08lx verdict=%s extent_px=%.3f part_px=%.3f extent_lo=%g,%g,%g extent_hi=%g,%g,%g part_lo=%g,%g,%g part_hi=%g,%g,%g",
+            id_, frame_, static_cast<unsigned long>(counters_.draws), static_cast<unsigned long>(node),
+            props::verdict_name(verdict), double(vb_px), double(part_px), extent ? double(extent->lo[0]) : 0.,
+            extent ? double(extent->lo[1]) : 0., extent ? double(extent->lo[2]) : 0., extent ? double(extent->hi[0]) : 0.,
+            extent ? double(extent->hi[1]) : 0., extent ? double(extent->hi[2]) : 0., double(part.lo[0]),
+            double(part.lo[1]), double(part.lo[2]), double(part.hi[0]), double(part.hi[1]), double(part.hi[2]));
+    }
     SetLastError(error);
     if (verdict != props::Verdict::culled) return false;
     if (first) cull_census::note_culled_prop(std::uint32_t(node)); // captured frames only (the census filters)

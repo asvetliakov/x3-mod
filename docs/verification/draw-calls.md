@@ -86,3 +86,11 @@ Method: `verification/results/run341-draw-calls/name_model_id.py <hex id>` or `-
 `bob1.parse_text` refuses text scenes, and the overlay addresses `objects\<body name>` members, which an
 inline scene body does not have. The logs do not record whether the hull hides the interior; its 12×6 px
 bounds lie inside the M1's bounds.
+
+## 2026-09-29: `issued=`
+
+`frame_end` appends `issued=`: the application draws the proxy forwarded to the device (`ctx.issued`, counted in the
+four draw hooks when the route submits, zeroed with `draws` after each Present). `draws=` keeps its meaning (every
+hooked application draw, including the ones the proxy answers with `D3D_OK` without a device call: lens-flare gain 0,
+the bolt single copy, the small-prop cull, a lost motion state). The `--perf` overlay's DRAWS figure now shows issued
+draws; run376 showed 346 there with the flare skip active because it counted skipped draws.

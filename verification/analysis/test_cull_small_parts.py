@@ -183,7 +183,8 @@ int main() {
     check(!screen_radius(behind, b, 5120, 1440, &r) && !screen_radius(nullptr, b, 5120, 1440, &r) && !screen_radius(rows, b, 0, 1440, &r),
           "radius: behind the eye, no rows, no target: no size");
     // Image: body manager at 0x10100 (global 0x10000), slots at 0x10200, names at 0x10400; registry chain at 0x11000;
-    // nodes at 0x12000 + 0x200 i; descriptor 0x14000 -> part 0x14100.
+    // nodes at 0x12000 + 0x200 i; descriptor 0x14000 -> part 0x14100 (the engine's part box, 9x the drawn range:
+    // diagnostics only). The decision takes the draw's vertex extent `ext` (the unit cube, 1.28 px).
     put(0x10000, 0x10100);
     put(0x10100 + 0xb4, 11000); put(0x10100 + 0xb8, 8); put(0x10100 + 0xbc, 0x10200);
     text(0x10400, "ships\\props\\split_m1turretB_socket");
@@ -208,43 +209,58 @@ int main() {
     const std::uint32_t far_prop = node(5, far_root, 0x31, 5), far_hull = node(6, far_root, 0x32, 6);
     const std::uint32_t deep_prop = node(7, far_prop, 0x33, 5), stale_root_prop = node(8, target_root, 0x22, 5);
     put(0x14000, 0x14100);
-    for (unsigned i = 0; i < 3; ++i) put(0x14100 + 0x50 + 4 * i, 65536);
+    for (unsigned i = 0; i < 3; ++i) put(0x14100 + 0x50 + 4 * i, 9 * 65536);
+    const Box unit_box{{-1.f, -1.f, -1.f}, {1.f, 1.f, 1.f}};
+    const auto ext = [&unit_box]() { return &unit_box; };
+    const auto none = []() -> const Box* { return nullptr; };
+    unsigned asked = 0;
+    const auto counted = [&]() { ++asked; return &unit_box; };
+    {
+        Box engine{};
+        float engine_px = 0.f;
+        check(Culler::engine_part_box(read, 0x14000, engine) && screen_radius(rows, engine, 5120, 1440, &engine_px) &&
+              engine_px > 11.f && !Culler::engine_part_box(read, 0x1fff0, engine),
+              "regression (run376): the engine part box projects to 11.6 px, the drawn range to 1.28");
+    }
     Addresses a;
     a.body_global = 0x10000;
     a.cockpit_slot = 0x11000;
     static Culler c;
     c.px = 4.f;
     c.begin_frame(1);
-    check(c.decide(read, a, far_prop, 0x14000, rows, 5120, 1440) == Verdict::culled, "far prop below 4 px: culled");
-    check(c.decide(read, a, deep_prop, 0x14000, rows, 5120, 1440) == Verdict::culled, "a prop under a prop: culled");
-    check(c.decide(read, a, far_hull, 0x14000, rows, 5120, 1440) == Verdict::not_prop, "hull body: not a prop");
-    check(c.decide(read, a, own_prop, 0x14000, rows, 5120, 1440) == Verdict::exempt_own, "own ship's prop: drawn");
-    check(c.decide(read, a, target_prop, 0x14000, rows, 5120, 1440) == Verdict::exempt_target, "target's prop: drawn");
+    check(c.decide(read, a, far_prop, ext, rows, 5120, 1440) == Verdict::culled, "far prop below 4 px: culled");
+    check(c.decide(read, a, deep_prop, ext, rows, 5120, 1440) == Verdict::culled, "a prop under a prop: culled");
+    check(c.decide(read, a, far_hull, ext, rows, 5120, 1440) == Verdict::not_prop, "hull body: not a prop");
+    check(c.decide(read, a, own_prop, ext, rows, 5120, 1440) == Verdict::exempt_own, "own ship's prop: drawn");
+    check(c.decide(read, a, target_prop, ext, rows, 5120, 1440) == Verdict::exempt_target, "target's prop: drawn");
     // A freed prop address reused by another node (new handle, now under the target): re-walked, never the cached verdict.
     put(far_prop + 0x18, target_root); put(far_prop + 0x28, 0x77);
     c.begin_frame(2);
-    check(c.decide(read, a, far_prop, 0x14000, rows, 5120, 1440) == Verdict::exempt_target &&
-          c.decide(read, a, stale_root_prop, 0x14000, rows, 5120, 1440) == Verdict::exempt_target, "ancestry cache keyed on the handle");
+    check(c.decide(read, a, far_prop, ext, rows, 5120, 1440) == Verdict::exempt_target &&
+          c.decide(read, a, stale_root_prop, ext, rows, 5120, 1440) == Verdict::exempt_target, "ancestry cache keyed on the handle");
     put(far_prop + 0x18, far_root); put(far_prop + 0x28, 0x31);
-    check(c.decide(read, a, far_prop, 0x1fff0, rows, 5120, 1440) == Verdict::no_bounds, "descriptor unreadable: drawn");
-    check(c.decide(read, a, 0, 0x14000, rows, 5120, 1440) == Verdict::no_scope && c.decide(read, a, 0x12001, 0x14000, rows, 5120, 1440) == Verdict::no_scope,
+    check(c.decide(read, a, far_prop, none, rows, 5120, 1440) == Verdict::no_bounds, "extent not known: drawn");
+    check(c.decide(read, a, far_hull, counted, rows, 5120, 1440) == Verdict::not_prop && asked == 0 &&
+          c.decide(read, a, far_prop, counted, rows, 5120, 1440) == Verdict::culled && asked == 1,
+          "the extent is asked for prop draws only");
+    check(c.decide(read, a, 0, ext, rows, 5120, 1440) == Verdict::no_scope && c.decide(read, a, 0x12001, ext, rows, 5120, 1440) == Verdict::no_scope,
           "no or misaligned node: no scope");
     c.px = 1.f;
-    check(c.decide(read, a, far_prop, 0x14000, rows, 5120, 1440) == Verdict::kept_size, "1 px threshold: the 1.28 px prop is drawn");
+    check(c.decide(read, a, far_prop, ext, rows, 5120, 1440) == Verdict::kept_size, "1 px threshold: the 1.28 px prop is drawn");
     c.px = 4.f;
     put(0x10100 + 0xb4, 10999); c.flush_classes();
-    check(c.decide(read, a, far_prop, 0x14000, rows, 5120, 1440) == Verdict::not_prop, "a body table with the wrong fixed count: no prop");
+    check(c.decide(read, a, far_prop, ext, rows, 5120, 1440) == Verdict::not_prop, "a body table with the wrong fixed count: no prop");
     put(0x10100 + 0xb4, 11000); c.flush_classes();
     put(0x11100 + 0x10, 7); c.begin_frame(3); // no cockpit row for handle 7: own ship and target unknown
-    check(c.decide(read, a, far_prop, 0x14000, rows, 5120, 1440) == Verdict::unresolved, "own ship unknown: drawn (fail closed)");
+    check(c.decide(read, a, far_prop, ext, rows, 5120, 1440) == Verdict::unresolved, "own ship unknown: drawn (fail closed)");
     put(0x11100 + 0x10, 1);
     // evaluate: the memo shares the first draw's verdict within a frame, counts every prop draw.
     c.reset_window();
     c.begin_frame(4);
     bool first = false;
-    check(c.evaluate(read, a, far_prop, 0x14000, rows, 5120, 1440, &first) == Verdict::culled && first, "evaluate: first draw decides");
-    check(c.evaluate(read, a, far_prop, 0x14000, nullptr, 5120, 1440, &first) == Verdict::culled && !first, "evaluate: later draws share it");
-    check(c.evaluate(read, a, far_hull, 0x14000, rows, 5120, 1440) == Verdict::not_prop, "evaluate: hull");
+    check(c.evaluate(read, a, far_prop, ext, rows, 5120, 1440, &first) == Verdict::culled && first, "evaluate: first draw decides");
+    check(c.evaluate(read, a, far_prop, ext, nullptr, 5120, 1440, &first) == Verdict::culled && !first, "evaluate: later draws share it");
+    check(c.evaluate(read, a, far_hull, ext, rows, 5120, 1440) == Verdict::not_prop, "evaluate: hull");
     check(c.window.draws == 2 && c.window.culled == 2 && c.window.kept == 0 && c.window.nodes_culled == 1 && c.window.frames == 1,
           "evaluate: window counts");
     std::printf("cull_small_props_core checks_failed=%u\n", failures);
@@ -462,13 +478,16 @@ class CullSmallPropsCore(unittest.TestCase):
         the census; the capture.cpp config row refuses without the pixel setting or the route."""
         motion = source_text(ROOT / 'src/proxy/motion_output.cpp')
         gate2 = motion.index('    route.scene = true;\n')
-        skip = motion.index('if (props_on_ && cull_small_prop(route)) return;')
+        skip = motion.index('if (props_on_ && cull_small_prop(call, route)) return;')
         jitter = motion.index('if (jitter_active_ && (shadow_.vs_row || shadow_.vs_prepass)) apply_jitter(route);')
         self.assertLess(gate2, skip)
         self.assertLess(skip, jitter)
         inc = source_text(ROOT / 'src/proxy/motion_output_cull_small_props_inc.h')
         for needle in ('route.submit = false;', 'route.submission_error = D3D_OK;', 'cull_census::note_culled_prop(',
-                       'object_trace::scope_node(&descriptor, &node)', 'SetLastError(error);'):
+                       'object_trace::scope_node(&descriptor, &node)', 'SetLastError(error);',
+                       # run376: the size is the drawn range's extent (the shadow-replay cache, queued when missing)
+                       'candidate_extents_.find(key, &stale)', 'queue_candidate_extent(key, shadow_.stream0_identity',
+                       'small_prop_extent(call, extent_box)', 'log("cull_small_prop_box '):
             self.assertIn(needle, inc)
         self.assertNotIn('engine_patch', inc)  # render-only: no engine write
         capture = source_text(ROOT / 'src/proxy/capture.cpp')

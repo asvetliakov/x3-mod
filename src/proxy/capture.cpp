@@ -446,6 +446,8 @@ struct Device : Hooks {
     uint64_t id = next_device_id++;
     uint64_t frame = 0;
     uint64_t draws = 0;
+    uint64_t issued = 0; // this frame's application draws the proxy forwarded (draws minus the skipped ones: the
+                         // lens-flare gain 0, the bolt single copy, the small-prop cull, a lost motion state)
     uint64_t events = 0;
     uint64_t frame_end_qpc = 0; // stamp of the previous frame_end line (dt_ms)
     telemetry::State stats;
@@ -1884,7 +1886,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
         // clock), the text rebuilt when a 250 ms bucket closes.
         LARGE_INTEGER stamp{};
         QueryPerformanceCounter(&stamp);
-        const bool refreshed = ctx.fps_overlay.frame(uint64_t(stamp.QuadPart), ctx.draws);
+        const bool refreshed = ctx.fps_overlay.frame(uint64_t(stamp.QuadPart), ctx.issued); // draws that reached the device
         // With --volumetric-fog the second line carries the fog state and its strength;
         // IDLE = the sector rule holds the medium at zero.
         const int fog = ctx.motion_output.volumetric_fog_overlay_state();
@@ -1942,8 +1944,10 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
         const uint64_t elapsed_ms = (now - dll_load_qpc) * 1000ull / frequency;
         const uint64_t dt_ms = ctx.frame_end_qpc ? (now - ctx.frame_end_qpc) * 1000ull / frequency : 0;
         ctx.frame_end_qpc = now;
-        log("frame_end device=%llu frame=%llu draws=%llu capture=%u present=%08lx elapsed_ms=%llu dt_ms=%llu qpc=%llu",
-            ctx.id, ctx.frame, ctx.draws, ctx.capture, hr, elapsed_ms, dt_ms, now);
+        // issued= is appended (the row parsers anchor on the fields before it): draws= counts every application draw
+        // call, issued= those that reached the device.
+        log("frame_end device=%llu frame=%llu draws=%llu capture=%u present=%08lx elapsed_ms=%llu dt_ms=%llu qpc=%llu issued=%llu",
+            ctx.id, ctx.frame, ctx.draws, ctx.capture, hr, elapsed_ms, dt_ms, now, ctx.issued);
     }
     // The chase reports keep their own 300-frame cadence: --frame-end-stride
     // shortens the frame_end line only.
@@ -1992,6 +1996,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
     if (ctx.capture && ctx.remaining) --ctx.remaining;
     ++ctx.frame;
     ctx.draws = 0;
+    ctx.issued = 0;
     ctx.composition_scene_owner = false;
     session_log::note_frame(); // session_end frames= and the exception row's frame=: one interlocked add
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
@@ -2180,6 +2185,7 @@ HRESULT WINAPI draw_primitive(IDirect3DDevice9* d, D3DPRIMITIVETYPE t, UINT s, U
     frame_timing::draw_native_end();
     timer.end();
     telemetry::record(ctx.stats, telemetry::Metric::DrawBackend, timer.backend_ticks, FAILED(result));
+    if (route.submit) ++ctx.issued; // reached the device (frame_end issued=, the overlay's DRAWS)
     ctx.motion_output.after_draw(route, result);
     ctx.scene_depth.after_draw(result);
     record_draw_input(ctx, input, result);
@@ -2240,6 +2246,7 @@ HRESULT WINAPI draw_indexed(IDirect3DDevice9* d, D3DPRIMITIVETYPE t, INT b, UINT
     frame_timing::draw_native_end();
     timer.end();
     telemetry::record(ctx.stats, telemetry::Metric::DrawBackend, timer.backend_ticks, FAILED(result));
+    if (route.submit) ++ctx.issued; // reached the device (frame_end issued=, the overlay's DRAWS)
     ctx.motion_output.after_draw(route, result);
     ctx.scene_depth.after_draw(result);
     record_draw_input(ctx, input, result);
@@ -2277,6 +2284,7 @@ HRESULT WINAPI draw_up(IDirect3DDevice9* d, D3DPRIMITIVETYPE t, UINT c, const vo
     frame_timing::draw_native_end();
     timer.end();
     telemetry::record(ctx.stats, telemetry::Metric::DrawBackend, timer.backend_ticks, FAILED(result));
+    if (route.submit) ++ctx.issued; // reached the device (frame_end issued=, the overlay's DRAWS)
     ctx.motion_output.after_draw(route, result);
     ctx.scene_depth.after_draw(result);
     record_draw_input(ctx, input, result);
@@ -2318,6 +2326,7 @@ HRESULT WINAPI draw_indexed_up(IDirect3DDevice9* d, D3DPRIMITIVETYPE t, UINT m, 
     frame_timing::draw_native_end();
     timer.end();
     telemetry::record(ctx.stats, telemetry::Metric::DrawBackend, timer.backend_ticks, FAILED(result));
+    if (route.submit) ++ctx.issued; // reached the device (frame_end issued=, the overlay's DRAWS)
     ctx.motion_output.after_draw(route, result);
     ctx.scene_depth.after_draw(result);
     record_draw_input(ctx, input, result);
