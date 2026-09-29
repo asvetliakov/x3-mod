@@ -63,7 +63,7 @@ Nothing beyond the installed Run113 (`9939e5a0`); release 0.8.1 (`f4439590`) is 
 
 ## Run queue
 
-Run 113 A queued (Run113 installed): bracket click selection under `--ui-scale 1.25 --debug`. Run 112 A completed (run390): UI scaled correctly, menus/map/main menu fine; bracket clicks dead (fixed in Run113), text soft/broken (open).
+Run 113 A completed (run391): bracket click selection works under `--ui-scale 1.25`; the ui_scale layout path is accepted at 1.25. Next: text density (sharp fonts), Run 114 A. Run 112 A completed (run390): UI scaled correctly, menus/map/main menu fine; bracket clicks dead (fixed in Run113), text soft/broken (open).
 Run 110 A completed (run386-389, [results](../verification/results/run386-389-cull-ab/)): at one carrier
 view without `--perf`, the dock-port cull (12 px) saves 2.4-3.7 ms per frame (about 57 fps against 47-50 with it off,
 measured from 300-frame clock windows, one run per setting); the engine-side flare cull saves 0 ± 0.5 ms (1.2 ms under
