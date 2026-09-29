@@ -27,7 +27,7 @@ from source_text import source_text  # noqa: E402
 
 EXE = Path(verifier.DEFAULT_EXE)
 WINDOW_ORDER = ['font_window', 'materials_window', 'materials_callee', 'style_window', 'blt_block_window', 'config_read', 'row_flag_test',
-                'row_count_read', 'entry_flag_test', 'lookup', 'alloc', 'alloc_fields', 'free', 'copy', 'colour_copy', 'alpha_leaf',
+                'row_count_read', 'config_flag_test', 'lookup', 'alloc', 'alloc_fields', 'free', 'copy', 'colour_copy', 'alpha_leaf',
                 'text_line_window', 'rect_fill_window', 'config_default_store', 'config_atol_store']
 
 HARNESS = r'''
@@ -43,7 +43,7 @@ int main(int argc, char** argv) {
     hex(expected_font_window, font_window_length); hex(expected_materials_window, materials_window_length);
     hex(expected_materials_callee, materials_callee_length); hex(expected_style_window, style_window_length);
     hex(expected_blit_window, blit_window_length); hex(expected_config_read, config_read_length); hex(expected_row_flag_test, row_flag_test_length);
-    hex(expected_row_count_read, row_count_read_length); hex(expected_entry_flag_test, entry_flag_test_length); hex(expected_lookup, lookup_length);
+    hex(expected_row_count_read, row_count_read_length); hex(expected_config_flag_test, config_flag_test_length); hex(expected_lookup, lookup_length);
     hex(expected_alloc, alloc_length); hex(expected_alloc_fields, alloc_fields_length); hex(expected_free, free_length); hex(expected_copy, copy_length);
     hex(expected_colour_copy, colour_copy_length); hex(expected_alpha_leaf, alpha_leaf_length); hex(expected_text_line_window, text_line_window_length);
     hex(expected_rect_fill_window, rect_fill_window_length); hex(expected_config_default_store, config_store_length);
@@ -110,6 +110,16 @@ int main(int argc, char** argv) {
     for (unsigned k = 0; k < diagnostic_rows + 4; ++k) diagnostic_first(table, &count, DiagnosticKey{3, (int)k, 0});
     check(count == diagnostic_rows, "bounded");
     std::printf("%u %u %u %u\n", frame_eax, frame_ecx, frame_return, frame_args);
+    // 27b the filter set: sorted, duplicate-free, zero refused, capacity 64, binary-search membership
+    FilterSet fs{};
+    const std::uintptr_t ps[] = {0x30, 0x10, 0x20, 0x10, 0, 0x40};
+    for (std::uintptr_t p : ps) filter_set_insert(&fs, p);
+    check(fs.count == 4 && fs.textures[0] == 0x10 && fs.textures[1] == 0x20 && fs.textures[2] == 0x30 && fs.textures[3] == 0x40, "filter set order");
+    check(filter_set_contains(fs, 0x10) && filter_set_contains(fs, 0x40) && !filter_set_contains(fs, 0x15) && !filter_set_contains(fs, 0) &&
+          !filter_set_contains(fs, 0x50), "filter set membership");
+    for (std::uintptr_t p = 0x1000; p < 0x1000 + 4 * 80; p += 4) filter_set_insert(&fs, p);
+    check(fs.count == filter_set_capacity && filter_set_contains(fs, 0x1000) && !filter_set_insert(&fs, 0x9999), "filter set bounded");
+    check(object_texture_offset == 0x34 && object_surface_offset == 0x30 && d3d_texf_linear == 2, "object layout");
     // 28, 29 the font gate against a game directory (argv[1]): the missing pairs at d = 2 and d = 3; 30 the texture-limit fit
     const char* game = argc > 1 ? argv[1] : ".";
     auto exists = [&](const char* relative) {
@@ -223,6 +233,13 @@ class TextDensityCore(unittest.TestCase):
                          {'src': 1300, 'status': 'built', 'reason': 'ok', 'w': 512, 'h': 512, 'density': 2, 'bytes': 4194304, 'total': 4194304, 'slots': 1, 'ms': 7})
         self.assertEqual(verifier.parse_draw_line('text_density_draw fn=blt_alpha src=1300 dst=15 dst_flagged=1 src_flagged=0 src_generated=0 handled=1'),
                          {'fn': 'blt_alpha', 'src': 1300, 'dst': 15, 'dst_flagged': 1, 'src_flagged': 0, 'src_generated': 0, 'handled': 1})
+        self.assertEqual(verifier.parse_draw_line('text_density_draw fn=text_line font=1 x=-42 dst=15 dst_flagged=1'),
+                         {'fn': 'text_line', 'font': 1, 'x': -42, 'dst': 15, 'dst_flagged': 1})
+        self.assertEqual(verifier.parse_filter_line('text_density_filter status=active min_before=1 mag_before=1 textures=12'),
+                         {'min': 1, 'mag': 1, 'textures': 12})
+        self.assertEqual(verifier.parse_filter_line('text_density_filter_frame frame=600 textures=14 overridden=57'),
+                         {'frame': 600, 'textures': 14, 'overridden': 57})
+        self.assertEqual(verifier.filter_set([0x30, 0x10, 0x20, 0x10, 0, 0x40]), [0x10, 0x20, 0x30, 0x40])
         self.assertEqual(verifier.parse_reset_line('text_density_reset shadows=2 bytes=8388608'), {'shadows': 2, 'bytes': 8388608})
         self.assertEqual(verifier.parse_restore_line('text_density_restore status=restored registered=0'), {'status': 'restored', 'registered': 0})
         self.assertIsNone(verifier.parse_log_line('text_density_install density=2'))
@@ -270,8 +287,23 @@ class TextDensityCore(unittest.TestCase):
                        'x3m::log("text_density_rows status=%s reason=%s density=%u rows=%u flagged=%u unflagged=%u nofilter_cleared=%u caps_limited_d=%u "',
                        'x3m::log("text_density_shadow src=%ld status=%s reason=%s size=%ux%u density=%u bytes=%lu total=%lu slots=%u ms=%lu"',
                        'x3m::log("text_density_draw fn=%s src=%ld dst=%ld dst_flagged=%u src_flagged=%u src_generated=%u handled=%u"',
-                       'log("text_density_reset shadows=%u bytes=%lu"', '"text_density_restore status=%s registered=%u\\n"'):
+                       'x3m::log("text_density_draw fn=text_line font=%ld x=%ld dst=%ld dst_flagged=%u"', 'text_line_row(args[2],args[3],dst,dst_flagged);',
+                       'log("text_density_reset shadows=%u bytes=%lu"', '"text_density_restore status=%s registered=%u\\n"',
+                       # The on-screen filter override (run 392): the set from validated reads once per Present, the two
+                       # documented sampler getters and setters per overridden draw, restored after the draw.
+                       'sites::filter_set_insert(&next,texture);', 'x3m::engine_memory::read(object+sites::object_texture_offset,&texture,4)',
+                       'sites::filter_set_contains(filter_set_,texture)', 'get(device,0,D3DSAMP_MINFILTER,&min_filter)<0',
+                       'set(device,0,D3DSAMP_MINFILTER,sites::d3d_texf_linear);', 'set(device,0,D3DSAMP_MINFILTER,saved_min_);',
+                       'double(density_)!=scale_', 'log("text_density_filter status=active min_before=%lu mag_before=%lu textures=%u"',
+                       'log("text_density_filter_frame frame=%llu textures=%u overridden=%u"'):
             self.assertIn(needle, module, needle)
+        # The draw hooks bracket every submitted draw with the override; the SetTexture hook records stage 0; Present rebuilds the set.
+        self.assertEqual(capture.count('const bool text_filter = route.submit && text_density::draw_filter_override(d,ctx.get<text_density::SamplerGet>(68),ctx.get<text_density::SamplerSet>(69));'), 4)
+        self.assertEqual(capture.count('if (text_filter) text_density::draw_filter_restore(d,ctx.get<text_density::SamplerSet>(69));'), 4)
+        self.assertEqual(capture.count('text_density::bound_texture(stage,texture);'), 1)
+        self.assertEqual(capture.count('text_density::present(ctx.frame);'), 1)
+        self.assertIn('text_density::filter_hooks_wanted())', capture)
+        self.assertLess(capture.index('text_density::filter_hooks_wanted())'), capture.index('hooked.set(65,set_texture);'))
         # The production claims in order: the font open, the two blits, then the Materials call; the diagnostics last.
         order = [module.index(f'"text_density_{n}"') for n in ('font', 'blt_block', 'blt_alpha', 'text_line', 'rect_fill')]
         self.assertEqual(order, sorted(order))

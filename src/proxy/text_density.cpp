@@ -101,6 +101,15 @@ unsigned refused_count_ = 0;
 SRWLOCK shadow_lock_ = SRWLOCK_INIT;
 unsigned shadow_rows_ = 0, font_rows_ = 0; // log rows written (bounded)
 constexpr unsigned shadow_row_limit = 64, font_row_limit = 32;
+// The on-screen filter override (run 392): the D3D textures of the flagged rows, rebuilt once per Present; the
+// stage-0 texture the game bound last; the sampler values a draw replaced.
+sites::FilterSet filter_set_{};
+volatile std::uintptr_t stage0_ = 0;
+unsigned long saved_min_ = 0, saved_mag_ = 0;
+bool filter_unavailable_ = false; // GetSamplerState failed once (a pure device): no further attempt
+unsigned filter_draws_ = 0; // draws overridden since the last debug row
+bool filter_logged_ = false;
+constexpr unsigned filter_report_window = 300;
 // The diagnostic set (debug): printed once per distinct (function, src, dst).
 sites::DiagnosticKey diagnostic_table_[sites::diagnostic_rows] = {};
 unsigned diagnostic_count_ = 0;
@@ -159,7 +168,7 @@ const char* windows_verified() {
         return "diagnostic_mismatch";
     if (!code_is(sites::config_default_store_va, sites::expected_config_default_store, sites::config_store_length) ||
         !code_is(sites::config_atol_store_va, sites::expected_config_atol_store, sites::config_store_length) ||
-        !code_is(sites::entry_flag_test_va, sites::expected_entry_flag_test, sites::entry_flag_test_length))
+        !code_is(sites::config_flag_test_va, sites::expected_config_flag_test, sites::config_flag_test_length))
         return "config_mismatch";
     return nullptr;
 }
@@ -460,6 +469,7 @@ const char* fit_density() {
 // Fail closed after the density went in: the config field and the style factor back, every claim restored.
 void disable(const char* reason) {
     InterlockedExchange(&active_, 0);
+    filter_set_.count = 0;
     restore_config();
     restore_style();
     restore_all();
@@ -550,6 +560,35 @@ void diagnostic_row(unsigned function, std::int32_t src, std::int32_t dst, unsig
         return;
     x3m::log("text_density_draw fn=%s src=%ld dst=%ld dst_flagged=%u src_flagged=%u src_generated=%u handled=%u", diagnostic_names[function],
              long(src), long(dst), dst_flagged, src_flagged, src_generated, handled);
+}
+// The text line (0x0048b2d0: dst, text, font slot, x, y, right, colour, flags): one row per distinct (font, dst).
+void text_line_row(std::int32_t font, std::int32_t x, std::int32_t dst, unsigned dst_flagged) {
+    if (!x3m::log_tier::cached_debug) return;
+    if (!sites::diagnostic_first(diagnostic_table_, &diagnostic_count_, sites::DiagnosticKey{std::uint8_t(sites::kind_text_line), font, dst}))
+        return;
+    x3m::log("text_density_draw fn=text_line font=%ld x=%ld dst=%ld dst_flagged=%u", long(font), long(x), long(dst), dst_flagged);
+}
+// Rebuilds the set of flagged rows' D3D textures (validated reads of the entry object and its +0x34) once per Present.
+void rebuild_filter_set() {
+    sites::FilterSet next{};
+    Tables t{};
+    if (!read_tables(&t)) {
+        filter_set_ = next;
+        return;
+    }
+    for (unsigned id = 0; id < t.rows; ++id) {
+        const std::uint32_t flags = *row_flags(t, id);
+        if ((flags & (sites::mpf_fontscale | sites::mpf_generated)) != (sites::mpf_fontscale | sites::mpf_generated)) continue;
+        std::uint32_t object = 0, texture = 0;
+        if (!x3m::engine_memory::read(t.table + id * sites::entry_stride + sites::entry_object_offset, &object, 4) || !object ||
+            object > UINTPTR_MAX - 0x64 || !x3m::engine_memory::read(object + sites::object_texture_offset, &texture, 4))
+            continue;
+        sites::filter_set_insert(&next, texture);
+    }
+    filter_set_ = next;
+}
+bool filter_wanted() {
+    return active_ != 0 && density_ > 1 && double(density_) != scale_;
 }
 }
 
@@ -686,19 +725,21 @@ std::uint32_t __cdecl x3m_text_density_blit(std::uint32_t* frame, std::uint32_t 
     SetLastError(error);
     return handled;
 }
-// The diagnostic entries (debug): the text line (dst = arg0, font slot = arg3) and the rect fill (dst = arg0).
+// The diagnostic entries (debug): the text line (dst = arg0, font slot = arg2, x = arg3) and the rect fill (dst = arg0).
 void __cdecl x3m_text_density_diagnostic(std::uint32_t* frame, std::uint32_t kind) {
     if (!x3m::log_tier::cached_debug || kind > sites::kind_rect_fill) return;
     const DWORD error = GetLastError();
     const std::int32_t* args = reinterpret_cast<const std::int32_t*>(frame + sites::frame_args);
     const std::int32_t dst = args[0];
-    const std::int32_t src = kind == sites::kind_text_line ? args[3] : -1;
     unsigned dst_flagged = 0;
     if (dst >= 0) {
         Tables t{};
         if (read_tables(&t) && unsigned(dst) < t.rows) dst_flagged = (*row_flags(t, unsigned(dst)) & sites::mpf_fontscale) ? 1u : 0u;
     }
-    diagnostic_row(kind, src, dst, dst_flagged, 0, 0, 0);
+    if (kind == sites::kind_text_line)
+        text_line_row(args[2], args[3], dst, dst_flagged); // font slot = arg2, x = arg3
+    else
+        diagnostic_row(kind, -1, dst, dst_flagged, 0, 0, 0);
     SetLastError(error);
 }
 std::uintptr_t x3m_text_density_lookup_fn = sites::lookup_va, x3m_text_density_alloc_fn = sites::alloc_va;
@@ -982,10 +1023,64 @@ void before_reset() {
     if (count) log("text_density_reset shadows=%u bytes=%lu", count, static_cast<unsigned long>(bytes));
     SetLastError(error);
 }
+bool filter_hooks_wanted() {
+    return filter_wanted();
+}
+void bound_texture(unsigned stage, IDirect3DBaseTexture9* texture) {
+    if (stage == 0) stage0_ = reinterpret_cast<std::uintptr_t>(texture);
+}
+// Before a submitted draw: one pointer probe of the sorted set; a hit reads the two sampler values (documented
+// GetSamplerState) and sets LINEAR where they differ. Same thread as present() (the render thread), no lock.
+bool draw_filter_override(IDirect3DDevice9* device, SamplerGet get, SamplerSet set) {
+    if (!filter_set_.count || !device || !get || !set) return false;
+    const std::uintptr_t texture = stage0_;
+    if (!texture || !sites::filter_set_contains(filter_set_, texture)) return false;
+    unsigned long min_filter = 0, mag_filter = 0;
+    if (get(device, 0, D3DSAMP_MINFILTER, &min_filter) < 0 || get(device, 0, D3DSAMP_MAGFILTER, &mag_filter) < 0) {
+        // A pure device has no sampler state to read: one row, then no further attempt (the set is dropped).
+        filter_set_.count = 0;
+        if (!filter_unavailable_) {
+            filter_unavailable_ = true;
+            log("text_density_filter status=unavailable reason=get_sampler_state_failed textures=0");
+        }
+        return false;
+    }
+    if (min_filter == sites::d3d_texf_linear && mag_filter == sites::d3d_texf_linear) return false;
+    saved_min_ = min_filter;
+    saved_mag_ = mag_filter;
+    set(device, 0, D3DSAMP_MINFILTER, sites::d3d_texf_linear);
+    set(device, 0, D3DSAMP_MAGFILTER, sites::d3d_texf_linear);
+    ++filter_draws_;
+    if (!filter_logged_) {
+        filter_logged_ = true;
+        log("text_density_filter status=active min_before=%lu mag_before=%lu textures=%u", static_cast<unsigned long>(min_filter),
+            static_cast<unsigned long>(mag_filter), filter_set_.count);
+    }
+    return true;
+}
+void draw_filter_restore(IDirect3DDevice9* device, SamplerSet set) {
+    if (!device || !set) return;
+    set(device, 0, D3DSAMP_MINFILTER, saved_min_);
+    set(device, 0, D3DSAMP_MAGFILTER, saved_mag_);
+}
+void present(unsigned long long frame) {
+    if (!filter_wanted() || filter_unavailable_) {
+        filter_set_.count = 0; // a stale set never overrides after a refusal or an unavailable device
+        return;
+    }
+    const DWORD error = GetLastError();
+    rebuild_filter_set();
+    if (x3m::log_tier::cached_debug && frame % filter_report_window == 0) {
+        log("text_density_filter_frame frame=%llu textures=%u overridden=%u", frame, filter_set_.count, filter_draws_);
+        filter_draws_ = 0;
+    }
+    SetLastError(error);
+}
 bool shutdown() {
     if (!any_live() && !config_written_ && !style_patched_) return true;
     const DWORD error = GetLastError();
     InterlockedExchange(&active_, 0);
+    filter_set_.count = 0;
     restore_config();
     restore_style();
     const bool clean = restore_all();

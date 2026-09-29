@@ -56,7 +56,7 @@ WINDOWS = {
     'config_read': (0x48c29a, bytes.fromhex('8b15346f60008bb284070000')),
     'row_flag_test': (0x48c28b, bytes.fromhex('a1b08d6000f744b01000000100741e')),
     'row_count_read': (0x48c265, bytes.fromhex('0fbf35ac8d6000')),
-    'entry_flag_test': (0x47231a, bytes.fromhex('f7400400010000')),
+    'config_flag_test': (0x472315, bytes.fromhex('a1346f6000f7400400010000')),
     'lookup': (0x4f5110, bytes.fromhex('6685c9567c5e663b0dac8d60007d170fbfc18bd0c1e2042bd0a1b08d600066837c900c00743e0fbf15b06960000fbfc1'
                                        '0fbf0db469600003ca3bc17d278b0dac6960008bf0c1e604837c0e08007509e8fcefffff85c0740c8b15ac6960008b4416085ec3'
                                        '33c05ec3')),
@@ -97,7 +97,7 @@ EXPECTED_CONSTANTS = {
     'font_site_va': 0x48cdc0, 'font_return_va': 0x48cdc6, 'materials_wrapper_va': 0x48af70, 'materials_site_va': 0x48af71,
     'materials_target_va': 0x4f44a0, 'materials_return_va': 0x48af76, 'materials_caller_va': 0x403497, 'style_window_va': 0x4f812d,
     'style_write_va': 0x4f813b, 'blt_block_va': 0x48c090, 'blt_alpha_va': 0x48c460, 'config_read_va': 0x48c29a, 'row_flag_test_va': 0x48c28b,
-    'row_count_read_va': 0x48c265, 'entry_flag_test_va': 0x47231a, 'alloc_fields_va': 0x4f3a11, 'text_line_va': 0x48b2d0, 'rect_fill_va': 0x48b0b0,
+    'row_count_read_va': 0x48c265, 'config_flag_test_va': 0x472315, 'alloc_fields_va': 0x4f3a11, 'text_line_va': 0x48b2d0, 'rect_fill_va': 0x48b0b0,
     'init_routine_va': 0x402780, 'init_routine_end_va': 0x40383d, 'config_ctor_call_va': 0x40283a, 'config_ctor_va': 0x4ec9e0,
     'config_store_va': 0x402844, 'd3d_create_call_va': 0x402edc, 'main_loop_call_va': 0x40373a, 'main_loop_va': 0x403840,
     'cockpit_init_call_va': 0x403a26, 'cockpit_init_va': 0x41c960, 'config_default_store_va': 0x4ecae3, 'config_atol_store_va': 0x4ecff8,
@@ -105,7 +105,7 @@ EXPECTED_CONSTANTS = {
 EXPECTED_ARRAYS = {
     'expected_font_window': 'font_window', 'expected_materials_window': 'materials_window', 'expected_materials_callee': 'materials_callee',
     'expected_style_window': 'style_window', 'expected_blit_window': 'blt_block_window', 'expected_config_read': 'config_read',
-    'expected_row_flag_test': 'row_flag_test', 'expected_row_count_read': 'row_count_read', 'expected_entry_flag_test': 'entry_flag_test',
+    'expected_row_flag_test': 'row_flag_test', 'expected_row_count_read': 'row_count_read', 'expected_config_flag_test': 'config_flag_test',
     'expected_lookup': 'lookup', 'expected_alloc': 'alloc', 'expected_alloc_fields': 'alloc_fields', 'expected_free': 'free',
     'expected_copy': 'copy', 'expected_colour_copy': 'colour_copy', 'expected_alpha_leaf': 'alpha_leaf',
     'expected_text_line_window': 'text_line_window', 'expected_rect_fill_window': 'rect_fill_window',
@@ -126,8 +126,11 @@ FONT_RE = re.compile(r'\btext_density_font name=(?P<name>\S+) size=(?P<size>\d+)
                      r'file=(?P<file>\S+) cell_width=(?P<cell_width>\d+) y_offset=(?P<y_offset>\d+)')
 SHADOW_RE = re.compile(r'\btext_density_shadow src=(?P<src>-?\d+) status=(?P<status>built|refused) reason=(?P<reason>\S+) '
                        r'size=(?P<w>\d+)x(?P<h>\d+) density=(?P<density>\d) bytes=(?P<bytes>\d+) total=(?P<total>\d+) slots=(?P<slots>\d+) ms=(?P<ms>\d+)')
-DRAW_RE = re.compile(r'\btext_density_draw fn=(?P<fn>text_line|blt_block|blt_alpha|rect_fill) src=(?P<src>-?\d+) dst=(?P<dst>-?\d+) '
+DRAW_RE = re.compile(r'\btext_density_draw fn=(?P<fn>blt_block|blt_alpha|rect_fill) src=(?P<src>-?\d+) dst=(?P<dst>-?\d+) '
                      r'dst_flagged=(?P<dst_flagged>[01]) src_flagged=(?P<src_flagged>[01]) src_generated=(?P<src_generated>[01]) handled=(?P<handled>[01])')
+TEXT_LINE_RE = re.compile(r'\btext_density_draw fn=text_line font=(?P<font>-?\d+) x=(?P<x>-?\d+) dst=(?P<dst>-?\d+) dst_flagged=(?P<dst_flagged>[01])')
+FILTER_RE = re.compile(r'\btext_density_filter status=active min_before=(?P<min>\d+) mag_before=(?P<mag>\d+) textures=(?P<textures>\d+)')
+FILTER_FRAME_RE = re.compile(r'\btext_density_filter_frame frame=(?P<frame>\d+) textures=(?P<textures>\d+) overridden=(?P<overridden>\d+)')
 RESET_RE = re.compile(r'\btext_density_reset shadows=(?P<shadows>\d+) bytes=(?P<bytes>\d+)')
 RESTORE_RE = re.compile(r'\btext_density_restore status=(?P<status>restored|restore_failed) registered=(?P<registered>[01])')
 
@@ -252,7 +255,24 @@ def parse_shadow_line(line):
 
 def parse_draw_line(line):
     m = DRAW_RE.search(line)
-    return {k: (v if k == 'fn' else int(v)) for k, v in m.groupdict().items()} if m else None
+    if m:
+        return {k: (v if k == 'fn' else int(v)) for k, v in m.groupdict().items()}
+    m = TEXT_LINE_RE.search(line)
+    return dict(fn='text_line', **{k: int(v) for k, v in m.groupdict().items()}) if m else None
+
+
+def parse_filter_line(line):
+    m = FILTER_RE.search(line) or FILTER_FRAME_RE.search(line)
+    return {k: int(v) for k, v in m.groupdict().items()} if m else None
+
+
+def filter_set(pointers):
+    """The sorted, duplicate-free set the header keeps (capacity 64, zero refused)."""
+    out = []
+    for p in pointers:
+        if p and p not in out and len(out) < 64:
+            out.append(p)
+    return sorted(out)
 
 
 def parse_reset_line(line):

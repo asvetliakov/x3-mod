@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 struct IDirect3DDevice9;
+struct IDirect3DBaseTexture9;
 
 // Text density (X3M_TEXT_DENSITY=auto|1|2|3, unset = auto; docs/architecture/text-density.md,
 // docs/reverse-engineering/font-rendering.md section 3 strategy (a)). Under the UI scale s the in-game text is drawn
@@ -20,6 +21,20 @@ bool initialize();                 // backend-load path: the setting, the execut
 // query fails); one text_density_install row.
 bool device_created(double scale, IDirect3DDevice9* device);
 void before_reset();               // frees the shadow surfaces (engine texture objects) before the device Reset
+// The on-screen filter (run 392): with s != d the flagged text textures are drawn point-sampled by the engine; the
+// proxy forces LINEAR min/mag on the draws that sample them. filter_hooks_wanted() tells hook_device to install the
+// SetTexture hook; bound_texture() records the stage-0 texture; draw_filter_override() runs before a draw that will be
+// submitted and returns true when it changed the sampler (draw_filter_restore() puts the previous values back);
+// present() rebuilds the set of flagged rows' D3D textures once per frame (validated reads) and prints the debug count.
+bool filter_hooks_wanted();
+void bound_texture(unsigned stage, IDirect3DBaseTexture9* texture);
+// The sampler getter and setter are the device's original entries (slots 68 and 69, the captured vtable), so the
+// override is neither counted as an application state call nor recorded into a state block.
+using SamplerGet = long(__stdcall*)(IDirect3DDevice9*, unsigned long, int, unsigned long*);
+using SamplerSet = long(__stdcall*)(IDirect3DDevice9*, unsigned long, int, unsigned long);
+bool draw_filter_override(IDirect3DDevice9* device, SamplerGet get, SamplerSet set);
+void draw_filter_restore(IDirect3DDevice9* device, SamplerSet set);
+void present(unsigned long long frame);
 bool shutdown();                   // dynamic-unload detach only; true when nothing stays registered
 const char* state();
 unsigned density(); // the density in place (1 when off)

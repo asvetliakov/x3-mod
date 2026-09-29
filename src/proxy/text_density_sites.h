@@ -83,10 +83,12 @@ constexpr unsigned char expected_config_read[config_read_length] = {0x8b, 0x15, 
 constexpr unsigned char expected_row_flag_test[row_flag_test_length] = {0xa1, 0xb0, 0x8d, 0x60, 0x00, 0xf7, 0x44, 0xb0,
                                                                         0x10, 0x00, 0x00, 0x01, 0x00, 0x74, 0x1e};
 constexpr unsigned char expected_row_count_read[row_count_read_length] = {0x0f, 0xbf, 0x35, 0xac, 0x8d, 0x60, 0x00};
-// The draw path's MPF_NOFILTERING read of the table entry flags (+4).
-constexpr std::uintptr_t entry_flag_test_va = 0x0047231a;
-constexpr unsigned entry_flag_test_length = 7;
-constexpr unsigned char expected_entry_flag_test[entry_flag_test_length] = {0xf7, 0x40, 0x04, 0x00, 0x01, 0x00, 0x00};
+// A config-flag test in the frame function (`mov eax,[0x00606f34]; test [eax+4],0x100`): compared as one more anchor of
+// the config slot; it is not a texture-entry read (the entry flags are read by the texture creator 0x004f4160).
+constexpr std::uintptr_t config_flag_test_va = 0x00472315;
+constexpr unsigned config_flag_test_length = 12;
+constexpr unsigned char expected_config_flag_test[config_flag_test_length] = {0xa1, 0x34, 0x6f, 0x60, 0x00,               // mov eax,[0x606f34]
+                                                                              0xf7, 0x40, 0x04, 0x00, 0x01, 0x00, 0x00}; // test [eax+4],0x100
 // Helpers: the whole lookup function, the allocator's prologue and field stores, the free's prologue, the whole
 // plain-copy wrapper, the colour and alpha leaves' prologues.
 constexpr unsigned lookup_length = 104;
@@ -292,6 +294,39 @@ inline bool shadow_fits(unsigned w, unsigned h, unsigned d, std::uint32_t used, 
     *bytes = std::uint32_t(w) * d * h * d * 4u;
     return used + *bytes <= shadow_budget_bytes;
 }
+// ---- the on-screen filter of the flagged text textures (run 392) ----
+// The gui quads of flagged rows sample point-filtered on screen even after MPF_NOFILTERING left the rows
+// (font-rendering.md section 5: the quad's filter comes from the material flags the body copied at its load, or the
+// effect's own choice; not traced to one clean site). Under s != d the proxy forces LINEAR min/mag on every draw whose
+// stage-0 texture is the D3D texture of a flagged row: the engine object keeps its IDirect3DTexture9 at +0x34 (the
+// level-0 surface at +0x30; 0x004dcc59 / 0x004dd1c5). The set is a sorted array rebuilt once per Present.
+constexpr unsigned object_surface_offset = 0x30, object_texture_offset = 0x34;
+constexpr unsigned filter_set_capacity = 64; // 35 flagged rows in the shipped table
+struct FilterSet {
+    std::uintptr_t textures[filter_set_capacity];
+    unsigned count;
+};
+inline bool filter_set_insert(FilterSet* s, std::uintptr_t p) {
+    if (!p || s->count >= filter_set_capacity) return false;
+    unsigned i = 0;
+    while (i < s->count && s->textures[i] < p) ++i;
+    if (i < s->count && s->textures[i] == p) return true;
+    for (unsigned k = s->count; k > i; --k) s->textures[k] = s->textures[k - 1];
+    s->textures[i] = p;
+    ++s->count;
+    return true;
+}
+inline bool filter_set_contains(const FilterSet& s, std::uintptr_t p) {
+    unsigned lo = 0, hi = s.count;
+    while (lo < hi) {
+        const unsigned mid = (lo + hi) / 2;
+        if (s.textures[mid] == p) return true;
+        if (s.textures[mid] < p) lo = mid + 1;
+        else hi = mid;
+    }
+    return false;
+}
+constexpr std::uint32_t d3d_texf_linear = 2; // D3DTEXF_LINEAR
 // ---- the diagnostic set (item 7) ----
 // The function ids the thunks push (the diagnostic rows name them in this order).
 enum Kind : unsigned { kind_text_line = 0, kind_blt_block = 1, kind_blt_alpha = 2, kind_rect_fill = 3 };
