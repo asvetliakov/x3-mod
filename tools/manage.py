@@ -179,8 +179,9 @@ def player_environment(env, argv, schema):
     the schema's `launcher` field) and a variable whose value differs from the built-in default (an explicit option's
     dependants, e.g. --no-taa's TAA knobs); a variable the options switched off (sent on a default launch, absent now)
     is sent empty, which the proxy's sites read as unset and which beats the file and the default. Dropped: every
-    variable equal to its built-in default (the promoted defaults and the launcher's explicit values). X3M_CONFIG and the
-    installation-set variables stay as assembled. Returns the names kept."""
+    variable equal to its built-in default (the promoted defaults and the launcher's explicit values), and a derived
+    variable (the schema's `follows`: the proxy derives it from the key it follows, as the launcher does) unless its own
+    option was given. X3M_CONFIG and the installation-set variables stay as assembled. Returns the names kept."""
     passed = set()
     for token in argv:
         if token.startswith('--'):
@@ -188,12 +189,13 @@ def player_environment(env, argv, schema):
             passed.add('--' + name[5:] if name.startswith('--no-') else name)
     defaults = {e['env']: e['default'] for e in schema.SETTINGS if e['default'] is not None}
     explicit = {e['env'] for e in schema.SETTINGS if e['launcher'] in passed}
+    derived = {e['env'] for e in schema.SETTINGS if e.get('follows')}
     kept = []
     for name in sorted({k for k in env if k.startswith('X3M_')} | set(defaults)):
         if name == 'X3M_CONFIG' or (name in PLAYER_INSTALLATION_VARIABLES and name not in explicit):
             continue
         value = env.get(name)
-        if name in explicit or value != defaults.get(name):
+        if name in explicit or (name not in derived and value != defaults.get(name)):
             if value is None:
                 env[name] = ''
             kept.append(name)

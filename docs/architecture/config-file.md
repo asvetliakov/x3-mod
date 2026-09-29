@@ -133,6 +133,7 @@ generator and the host tests without a parser). One entry per setting:
 | `section` | template section (`graphics`, `hdr`, `shadows`, `fog`, `camera`, `window`, `audio`, `loading`, `engine`, `logging`) |
 | `description` | one or two plain sentences for the template (style in section 4) |
 | `developer` | `True`: parseable from file and environment but not in the template (tier internals, fixture seams, markers) |
+| `follows` | a derived default (added 2026-09-29): no schema default, `config::get` leaves the key unset when neither file nor environment sets it, and the read site takes the resolved value of the named key (`hull_emission_gain` follows `emission_source_gain`, 1 when that is off, the launcher's rule); player mode sends the key only when its option is given; `tools/config/resolve.py` reports it with source `follows` |
 | `launcher` | the launcher option that sends it, or `None` (cross-check only) |
 | `since` | date the key appeared, for the upgrade story |
 | `aliases` | old keys accepted for this one after a rename (empty until a rename happens) |

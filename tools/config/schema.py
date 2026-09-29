@@ -29,6 +29,8 @@ Fields of an entry (plain data, no logic):
   markers, route prerequisites, fixture seams).
 - env_only: True = refused from the file (the fixture seams, the default markers, X3M_CONFIG itself).
 - marker_of: a launcher default marker (`*_DEFAULT`): resolves to its default only while that key comes from the defaults.
+- follows: a derived default: when neither the file nor the environment sets this key, the DLL's read site takes the
+  resolved value of the named key (1 = off when that key is off); no schema default (the resolver returns unset).
 - launcher: the tools/manage.py option that sends it, or None.
 - since: the date the key appeared.
 - aliases: earlier keys accepted for this one after a rename (none yet).
@@ -56,11 +58,12 @@ def intervals(value):
 
 
 def entry(key, type, section, description, default=None, *, builtin=None, off=None, range=None, elements=None, counts=None, choices=(),
-          requires=(), developer=False, env_only=False, marker_of=None, launcher=None, since=SINCE, aliases=()):
+          requires=(), developer=False, env_only=False, marker_of=None, follows=None, launcher=None, since=SINCE, aliases=()):
     return dict(key=key, env='X3M_' + key.upper(), type=type, section=section, description=description, default=default,
                 builtin=builtin, off=off, range=intervals(range), elements=tuple(intervals(e) for e in elements) if elements else None,
                 counts=tuple(counts) if counts else None, choices=tuple(choices), requires=tuple(requires),
-                developer=developer, env_only=env_only, marker_of=marker_of, launcher=launcher, since=since, aliases=tuple(aliases))
+                developer=developer, env_only=env_only, marker_of=marker_of, follows=follows, launcher=launcher, since=since,
+                aliases=tuple(aliases))
 
 
 def dev(key, type, section, description, default=None, **kw):
@@ -384,8 +387,8 @@ SETTINGS = [
     dev('hdr_meter_min_lit', 'float', 'hdr', 'Lit fraction below which the exposure target is neutral (DLL default 0.01).', range=(0, 1)),
     dev('hdr_white_target', 'float', 'hdr', 'Exposure meter white target.', '0.9', launcher='--hdr-white-target', range=(0, 4)),
     dev('hdr_dt_ms', 'float', 'hdr', 'Fixed frame time of the exposure meter (fixtures; 0 = live).', range=[R(0, 1000, True)]),
-    dev('hull_emission_gain', 'float', 'hdr', 'Hull guide-light gain; the launcher sends the effects gain.', '2.0',
-        launcher='--emission-source-gain', range=(1, 8)),
+    dev('hull_emission_gain', 'float', 'hdr', 'Hull guide-light gain; unset, the DLL takes emission_source_gain (1 when that is '
+        'off), as the launcher sends it.', follows='emission_source_gain', launcher='--emission-source-gain', range=(1, 8)),
     dev('hull_emissive_widening', 'string', 'hdr', 'Light-map fetch widening K[,B] for thin emitters, or off.', '4,4',
         launcher='--hull-emissive-widening'),
     dev('screen_emission_additive_alpha', 'float', 'hdr', 'Bloom alpha of the additive bullets.', '0.0',

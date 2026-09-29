@@ -132,7 +132,8 @@ class ConfigSchema(unittest.TestCase):
                 self.assertEqual(value, schema.LAUNCHER_ONLY[name], name)
                 continue
             self.assertIn(name, schema.BY_ENV, name)
-            self.assertEqual(value, schema.BY_ENV[name]['default'], name)
+            e = schema.BY_ENV[name]
+            self.assertEqual(value, resolve.value(resolve.resolve({}), name) if e['follows'] else e['default'], name)
         defaults = {e['env']: e['default'] for e in schema.SETTINGS if e['default'] is not None}
         self.assertEqual(set(defaults) - set(sent), INSTALLATION)
         self.assertEqual(defaults['X3M_VOICE_DMO_FALLBACK'], '1')
@@ -145,6 +146,34 @@ class ConfigSchema(unittest.TestCase):
         bare_dll = {k: v for k, (v, _) in resolve.resolve({}).items() if k not in INSTALLATION}
         self.assertEqual(flight, bare_dll)
         self.assertEqual({s for _, s in resolve.resolve(sent).values()}, {'env'})  # bare: nothing from the defaults
+
+    def test_hull_emission_gain_follows_the_effects_gain(self):
+        """Unset in file and environment, the guide-light gain takes the resolved emission_source_gain (the launcher's
+        rule, tools/manage.py); an explicit value from the file or the environment wins."""
+        hull, effects = 'X3M_HULL_EMISSION_GAIN', 'X3M_EMISSION_SOURCE_GAIN'
+        gain = lambda environ, file_values: resolve.value(resolve.resolve(environ, file_values), hull)
+        self.assertEqual(schema.BY_ENV[hull]['follows'], 'emission_source_gain')
+        self.assertIsNone(schema.BY_ENV[hull]['default'])  # config::get leaves it unset; the site derives it
+        self.assertEqual(gain({}, {}), '2.0')                                     # the effects default
+        self.assertEqual(gain({}, {effects: '1'}), '1.0')                         # "the game's own" really is
+        self.assertEqual(gain({}, {effects: '3'}), '3.0')
+        self.assertEqual(gain({}, {effects: '9'}), '1.0')                         # out of range: the effects site keeps 1
+        self.assertEqual(gain({}, {effects: '3', hull: '1.5'}), '1.5')            # the file's explicit value wins
+        self.assertEqual(gain({hull: '4'}, {effects: '3', hull: '1.5'}), '4')     # the environment wins over both
+        self.assertEqual(gain({effects: '5'}, {effects: '3'}), '5.0')             # follows the environment's effects gain
+        self.assertEqual(gain({'X3M_CONFIG': 'bare'}, {effects: '3'}), None)      # bare: unset, the site keeps 1 (off)
+        # The DLL site: unset (not found) takes the resolved effects gain, read just above it.
+        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        site = capture[capture.index('L"X3M_HULL_EMISSION_GAIN"'):]
+        site = site[:site.index('log("hull_emission_gain_mode')]
+        self.assertIn('GetLastError() == ERROR_ENVVAR_NOT_FOUND', site)
+        self.assertIn('value = emission_source_gain;', site)
+        self.assertLess(capture.index('L"X3M_EMISSION_SOURCE_GAIN"'), capture.index('L"X3M_HULL_EMISSION_GAIN"'))
+        # Player mode sends nothing for it, so x3m.ini's effects gain drives the guide lights.
+        module, game, wine, directory = hermetic_launcher()
+        with directory:
+            self.assertNotIn(hull, launch_env(module, game, wine, '--config', '--hull-lightmap-gain', '3'))
+            self.assertEqual(launch_env(module, game, wine, '--config', '--emission-source-gain', '3')[hull], '3.0')
 
     def test_launcher_fields_are_registered_options(self):
         # (see also OptOuts below: the resolved values of every opt-out, default launch and player mode)

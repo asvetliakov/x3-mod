@@ -259,7 +259,7 @@ constexpr Entry entries[entry_count] = {
     {"X3M_HDR_METER_MIN_LIT", "hdr_meter_min_lit", Type::Float, nullptr, nullptr, 42, 1, 5, 0, 0, "", 1, -1},
     {"X3M_HDR_TONEMAP", "hdr_tonemap", Type::Enum, "agx", nullptr, 43, 0, 5, 0, 0, "agx|identity|1|0", 0, -1},
     {"X3M_HDR_WHITE_TARGET", "hdr_white_target", Type::Float, "0.9", nullptr, 43, 1, 5, 0, 0, "", 1, -1},
-    {"X3M_HULL_EMISSION_GAIN", "hull_emission_gain", Type::Float, "2.0", nullptr, 44, 1, 5, 0, 0, "", 1, -1},
+    {"X3M_HULL_EMISSION_GAIN", "hull_emission_gain", Type::Float, nullptr, nullptr, 44, 1, 5, 0, 0, "", 1, -1},
     {"X3M_HULL_EMISSIVE_WIDENING", "hull_emissive_widening", Type::String, "4,4", nullptr, 45, 0, 5, 0, 0, "", 1, -1},
     {"X3M_HULL_LIGHTMAP_GAIN", "hull_lightmap_gain", Type::Float, "4.0", nullptr, 45, 1, 5, 0, 0, "", 0, -1},
     {"X3M_LIGHTMAP_EMISSIVE_GAIN", "lightmap_emissive_gain", Type::Float, nullptr, nullptr, 46, 1, 5, 0, 0, "", 1, -1},
@@ -457,7 +457,6 @@ constexpr float hdr_meter_bg = 0.001953125f;
 constexpr float hdr_meter_edge_weight = 0.35f;
 constexpr const char hdr_tonemap[] = "agx";
 constexpr float hdr_white_target = 0.9f;
-constexpr float hull_emission_gain = 2.0f;
 constexpr const char hull_emissive_widening[] = "4,4";
 constexpr float hull_lightmap_gain = 4.0f;
 constexpr const char light_map_far_fade[] = "80,220,1";
