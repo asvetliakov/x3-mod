@@ -1,0 +1,224 @@
+frame 4400 draws=352 scene_end_marker=168 shadow_replay_draws=58 census={'kept': 370, 'culled_min': 60, 'culled_small': 90, 'culled_size': 103}
+  frame_end: frame_end device=1 frame=4400 draws=352 capture=1 present=00000000 elapsed_ms=159260 dt_ms=571 qpc=23798335727151
+   ('post', 'other:v') 169
+   ('scene', 'ship') 110
+   ('scene', 'other:-') 25
+   ('scene', 'station') 14
+   ('scene', 'engine_fx') 10
+   ('scene', 'sky/env') 5
+   ('post', 'other:') 5
+   ('post', 'other:effects/menugfx/hud_target_text') 3
+   ('scene', 'other:others') 2
+   ('scene', 'other:') 2
+   ('post', 'other:effects/menugfx/hud_radar_2d') 2
+   ('post', 'other:effects/menugfx/GUI/gui_master') 1
+   ('post', 'other:effects/menugfx/hud_info_2d') 1
+   ('post', 'other:effects/menugfx/hud_weapons_2d') 1
+   ('post', 'other:effects/menugfx/GUI/sidebar') 1
+   ('post', 'other:effects') 1
+  family sky/env distinct_nodes 2 draws 5
+      1 node(s) x 4 draws environments\nebulae\litcube75\nebula_litcube75_background_01
+      1 node(s) x 1 draws environments\nebulae\litcube75\nebula_litcube75_stars_01
+  family ship distinct_nodes 94 draws 110
+      24 node(s) x 1 draws ships\props\split_m1turretB_base
+      24 node(s) x 1 draws ships\props\split_m1turretB_socket
+      12 node(s) x 1 draws ships\props\split_m1turretA_socket
+      12 node(s) x 1 draws ships\props\split_m1turretA_base
+      6 node(s) x 1 draws ships\props\weapondummy
+      2 node(s) x 3 draws ships\split\split_m7_cobra\hull
+      2 node(s) x 2 draws ships\split\split_m6_tempestine\hull
+      2 node(s) x 2 draws ships\split\split_m6_heavy_dragon\hull
+      2 node(s) x 2 draws ships\split\split_m6_dragon\hull
+      1 node(s) x 3 draws ships\split\split_m6_appallox\hull
+      1 node(s) x 3 draws ships\split\split_ts_Orinoco\hull
+      1 node(s) x 2 draws ships\split\split_m4_scorpion\hull
+  family other:- distinct_nodes 1 draws 25
+      1 node(s) x 25 draws -
+  family station distinct_nodes 6 draws 14
+      1 node(s) x 4 draws stations\station_scenes\tech\argon_tech_S_factory_K
+      1 node(s) x 3 draws stations\station_scenes\others\argon_S_solarpowerplant
+      1 node(s) x 3 draws stations\station_scenes\tech\argon_tech_S_factory_B
+      1 node(s) x 2 draws stations\living_sections\argon_livingsection
+      2 node(s) x 1 draws stations\connections\connect_argon_pipe_medium_cargo_cargoanimA
+  family other:others distinct_nodes 2 draws 2
+      2 node(s) x 1 draws others\terraformer_gate_effect
+  family engine_fx distinct_nodes 10 draws 10
+      6 node(s) x 1 draws effects\engines\fx_engine_xtc_red_big3
+      2 node(s) x 1 draws effects\engines\fx_engine_xtc_red_huge
+      1 node(s) x 1 draws effects\engines\fx_engine_xtc_red_nor
+      1 node(s) x 1 draws effects\engines\fx_engine_xtc_red_tiny
+  family other: distinct_nodes 1 draws 7
+      1 node(s) x 7 draws 
+  family other:effects/menugfx/GUI/gui_master distinct_nodes 1 draws 1
+      1 node(s) x 1 draws effects/menugfx/GUI/gui_master
+  family other:effects/menugfx/hud_target_text distinct_nodes 3 draws 3
+      3 node(s) x 1 draws effects/menugfx/hud_target_text
+  family other:effects/menugfx/hud_radar_2d distinct_nodes 1 draws 2
+      1 node(s) x 2 draws effects/menugfx/hud_radar_2d
+  family other:effects/menugfx/hud_info_2d distinct_nodes 1 draws 1
+      1 node(s) x 1 draws effects/menugfx/hud_info_2d
+  family other:effects/menugfx/hud_weapons_2d distinct_nodes 1 draws 1
+      1 node(s) x 1 draws effects/menugfx/hud_weapons_2d
+  family other:effects/menugfx/GUI/sidebar distinct_nodes 1 draws 1
+      1 node(s) x 1 draws effects/menugfx/GUI/sidebar
+  family other:effects distinct_nodes 1 draws 1
+      1 node(s) x 1 draws effects\menugfx\GUI\gui_master
+  family other:v distinct_nodes 169 draws 169
+      39 node(s) x 1 draws v\00753
+      23 node(s) x 1 draws v\00752
+      23 node(s) x 1 draws v\01006
+      23 node(s) x 1 draws v\00764
+      16 node(s) x 1 draws v\01016
+      13 node(s) x 1 draws v\00754
+      13 node(s) x 1 draws v\00778
+      13 node(s) x 1 draws v\00781
+      3 node(s) x 1 draws v\00760
+      3 node(s) x 1 draws v\00766
+   ps ('8360f422de08b5bd', 'other:v', 'post') 169
+   ps ('3006f8030a467739', 'ship', 'scene') 80
+   ps ('8759c7838bbc86c2', 'other:-', 'scene') 21
+   ps ('8360f422de08b5bd', 'engine_fx', 'scene') 10
+   ps ('0c1f3f0f440e4a0c', 'ship', 'scene') 6
+   ps ('462342e3e5781384', 'ship', 'scene') 6
+   ps ('fffdabd910793aba', 'ship', 'scene') 6
+   ps ('6109cf64c03529dd', 'sky/env', 'scene') 5
+   ps ('5f82ecacd39529cd', 'ship', 'scene') 5
+   ps ('63f96eba9eea7880', 'other:-', 'scene') 4
+   ps ('8759c7838bbc86c2', 'station', 'scene') 3
+   ps ('ca6bfa4a6cca7e2a', 'station', 'scene') 3
+   ps ('5f82ecacd39529cd', 'station', 'scene') 3
+   ps ('e6794b6ec37ff71a', 'ship', 'scene') 3
+   ps ('6109cf64c03529dd', 'other:effects/menugfx/hud_target_text', 'post') 3
+   ps ('f1b0e820c7b488c3', 'ship', 'scene') 2
+   ps ('5e0a10fe752b6140', 'station', 'scene') 2
+   ps ('8360f422de08b5bd', 'other:others', 'scene') 2
+   ps ('6109cf64c03529dd', 'other:effects/menugfx/hud_radar_2d', 'post') 2
+   ps ('a66fb1981ba755b2', 'ship', 'scene') 1
+frame 4401 draws=352 scene_end_marker=168 shadow_replay_draws=58 census={'kept': 370, 'culled_min': 60, 'culled_small': 90, 'culled_size': 103}
+  frame_end: frame_end device=1 frame=4401 draws=352 capture=1 present=00000000 elapsed_ms=159806 dt_ms=546 qpc=23798341190007
+   ('post', 'other:v') 169
+   ('scene', 'ship') 110
+   ('scene', 'other:-') 25
+   ('scene', 'station') 14
+   ('scene', 'engine_fx') 10
+   ('scene', 'sky/env') 5
+   ('post', 'other:') 5
+   ('post', 'other:effects/menugfx/hud_target_text') 3
+   ('scene', 'other:others') 2
+   ('scene', 'other:') 2
+   ('post', 'other:effects/menugfx/hud_radar_2d') 2
+   ('post', 'other:effects/menugfx/GUI/gui_master') 1
+   ('post', 'other:effects/menugfx/hud_info_2d') 1
+   ('post', 'other:effects/menugfx/hud_weapons_2d') 1
+   ('post', 'other:effects/menugfx/GUI/sidebar') 1
+   ('post', 'other:effects') 1
+frame 4402 draws=352 scene_end_marker=168 shadow_replay_draws=58 census={'kept': 370, 'culled_min': 59, 'culled_small': 91, 'culled_size': 103}
+  frame_end: frame_end device=1 frame=4402 draws=352 capture=1 present=00000000 elapsed_ms=160353 dt_ms=546 qpc=23798346655722
+   ('post', 'other:v') 169
+   ('scene', 'ship') 110
+   ('scene', 'other:-') 25
+   ('scene', 'station') 14
+   ('scene', 'engine_fx') 10
+   ('scene', 'sky/env') 5
+   ('post', 'other:') 5
+   ('post', 'other:effects/menugfx/hud_target_text') 3
+   ('scene', 'other:others') 2
+   ('scene', 'other:') 2
+   ('post', 'other:effects/menugfx/hud_radar_2d') 2
+   ('post', 'other:effects/menugfx/GUI/gui_master') 1
+   ('post', 'other:effects/menugfx/hud_info_2d') 1
+   ('post', 'other:effects/menugfx/hud_weapons_2d') 1
+   ('post', 'other:effects/menugfx/GUI/sidebar') 1
+   ('post', 'other:effects') 1
+frame 4403 draws=352 scene_end_marker=168 shadow_replay_draws=58 census={'kept': 366, 'culled_min': 59, 'culled_small': 91, 'culled_size': 103}
+  frame_end: frame_end device=1 frame=4403 draws=352 capture=1 present=00000000 elapsed_ms=160937 dt_ms=584 qpc=23798352498532
+   ('post', 'other:v') 169
+   ('scene', 'ship') 110
+   ('scene', 'other:-') 25
+   ('scene', 'station') 14
+   ('scene', 'engine_fx') 10
+   ('scene', 'sky/env') 5
+   ('post', 'other:') 5
+   ('post', 'other:effects/menugfx/hud_target_text') 3
+   ('scene', 'other:others') 2
+   ('scene', 'other:') 2
+   ('post', 'other:effects/menugfx/hud_radar_2d') 2
+   ('post', 'other:effects/menugfx/GUI/gui_master') 1
+   ('post', 'other:effects/menugfx/hud_info_2d') 1
+   ('post', 'other:effects/menugfx/hud_weapons_2d') 1
+   ('post', 'other:effects/menugfx/GUI/sidebar') 1
+   ('post', 'other:effects') 1
+frame 4404 draws=357 scene_end_marker=169 shadow_replay_draws=58 census={'kept': 371, 'culled_min': 63, 'culled_small': 89, 'culled_size': 103}
+  frame_end: frame_end device=1 frame=4404 draws=357 capture=1 present=00000000 elapsed_ms=161505 dt_ms=567 qpc=23798358176714
+   ('post', 'other:v') 173
+   ('scene', 'ship') 110
+   ('scene', 'other:-') 25
+   ('scene', 'station') 14
+   ('scene', 'engine_fx') 10
+   ('scene', 'sky/env') 5
+   ('post', 'other:') 5
+   ('post', 'other:effects/menugfx/hud_target_text') 3
+   ('scene', 'other:others') 2
+   ('scene', 'other:') 2
+   ('post', 'other:effects/menugfx/hud_radar_2d') 2
+   ('scene', 'other:v') 1
+   ('post', 'other:effects/menugfx/GUI/gui_master') 1
+   ('post', 'other:effects/menugfx/hud_info_2d') 1
+   ('post', 'other:effects/menugfx/hud_weapons_2d') 1
+   ('post', 'other:effects/menugfx/GUI/sidebar') 1
+   ('post', 'other:effects') 1
+frame 4405 draws=356 scene_end_marker=168 shadow_replay_draws=58 census={'kept': 370, 'culled_min': 63, 'culled_small': 90, 'culled_size': 103}
+  frame_end: frame_end device=1 frame=4405 draws=356 capture=1 present=00000000 elapsed_ms=162070 dt_ms=565 qpc=23798363832580
+   ('post', 'other:v') 173
+   ('scene', 'ship') 110
+   ('scene', 'other:-') 25
+   ('scene', 'station') 14
+   ('scene', 'engine_fx') 10
+   ('scene', 'sky/env') 5
+   ('post', 'other:') 5
+   ('post', 'other:effects/menugfx/hud_target_text') 3
+   ('scene', 'other:others') 2
+   ('scene', 'other:') 2
+   ('post', 'other:effects/menugfx/hud_radar_2d') 2
+   ('post', 'other:effects/menugfx/GUI/gui_master') 1
+   ('post', 'other:effects/menugfx/hud_info_2d') 1
+   ('post', 'other:effects/menugfx/hud_weapons_2d') 1
+   ('post', 'other:effects/menugfx/GUI/sidebar') 1
+   ('post', 'other:effects') 1
+frame 4406 draws=352 scene_end_marker=168 shadow_replay_draws=58 census={'kept': 366, 'culled_min': 60, 'culled_small': 90, 'culled_size': 103}
+  frame_end: frame_end device=1 frame=4406 draws=352 capture=1 present=00000000 elapsed_ms=162624 dt_ms=553 qpc=23798369365559
+   ('post', 'other:v') 169
+   ('scene', 'ship') 110
+   ('scene', 'other:-') 25
+   ('scene', 'station') 14
+   ('scene', 'engine_fx') 10
+   ('scene', 'sky/env') 5
+   ('post', 'other:') 5
+   ('post', 'other:effects/menugfx/hud_target_text') 3
+   ('scene', 'other:others') 2
+   ('scene', 'other:') 2
+   ('post', 'other:effects/menugfx/hud_radar_2d') 2
+   ('post', 'other:effects/menugfx/GUI/gui_master') 1
+   ('post', 'other:effects/menugfx/hud_info_2d') 1
+   ('post', 'other:effects/menugfx/hud_weapons_2d') 1
+   ('post', 'other:effects/menugfx/GUI/sidebar') 1
+   ('post', 'other:effects') 1
+frame 4407 draws=357 scene_end_marker=169 shadow_replay_draws=58 census={'kept': 371, 'culled_min': 62, 'culled_small': 90, 'culled_size': 103}
+  frame_end: frame_end device=1 frame=4407 draws=357 capture=1 present=00000000 elapsed_ms=163203 dt_ms=579 qpc=23798375161825
+   ('post', 'other:v') 173
+   ('scene', 'ship') 110
+   ('scene', 'other:-') 25
+   ('scene', 'station') 14
+   ('scene', 'engine_fx') 10
+   ('scene', 'sky/env') 5
+   ('post', 'other:') 5
+   ('post', 'other:effects/menugfx/hud_target_text') 3
+   ('scene', 'other:others') 2
+   ('scene', 'other:') 2
+   ('post', 'other:effects/menugfx/hud_radar_2d') 2
+   ('scene', 'other:v') 1
+   ('post', 'other:effects/menugfx/GUI/gui_master') 1
+   ('post', 'other:effects/menugfx/hud_info_2d') 1
+   ('post', 'other:effects/menugfx/hud_weapons_2d') 1
+   ('post', 'other:effects/menugfx/GUI/sidebar') 1
+   ('post', 'other:effects') 1

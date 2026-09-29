@@ -1,0 +1,5 @@
+1088 draws 191 ship_hulls 0 {'prop': 35}
+1089 draws 191 ship_hulls 0 {'prop': 35}
+1090 draws 191 ship_hulls 0 {'prop': 35}
+1091 draws 191 ship_hulls 0 {'prop': 35}
+1092 draws 191 ship_hulls 0 {'prop': 35}
