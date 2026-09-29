@@ -1,0 +1,124 @@
+{
+ "exe_sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+ "strings": {
+  "-fontscale": "0x564ab0",
+  "MPF_FONTSCALE": "0x564eac",
+  "%s%d": "0x5611c0",
+  "%s_l": "0x564fac",
+  "true\\%d": "0x564fb4"
+ },
+ "switch_gate": {
+  "static_struct": "0x57c008",
+  "name": "X3AP",
+  "flags_plus4": "0xc",
+  "fontscale_switch_parsed": true,
+  "font_path_format": "F\\%s"
+ },
+ "ortho_constants": {
+  "0x005655d0": 2.0,
+  "0x005655a4": 0.25,
+  "0x005654e0": 1.52587890625e-05
+ },
+ "b3d_table": {
+  "start": "0x57a420",
+  "count": 168,
+  "dispatcher": "0x493b40",
+  "case_index": {
+   "B3D_ScreenGetWidth": "0x71",
+   "B3D_ScreenGetHeight": "0x72",
+   "B3D_ScreenGetAspectX": "0x73",
+   "B3D_ScreenGetAspectY": "0x74",
+   "B3D_ScreenGetBorderX": "0x75",
+   "B3D_ScreenGetBorderY": "0x76",
+   "B3D_OpenFont": "0x6e",
+   "B3D_InstSetFlags2": "0x2b",
+   "B3D_InstSetPos": "0x16",
+   "B3D_InstSetSize": "0x1f",
+   "B3D_CameraSetViewPort": "0x38",
+   "B3D_CameraSetAspect": "0x41",
+   "B3D_SceneSetSystemScale": "0x4b",
+   "B3D_TexTextBlock": "0x5e",
+   "B3D_SetScreenOverlay": "0x8e"
+  }
+ },
+ "sites": {
+  "0x0047e002": {
+   "call_target": "0x4bdee0"
+  },
+  "0x0047e70c": {
+   "call_target": "0x4bdee0"
+  },
+  "0x004bdf27": "f7833001000000020000",
+  "0x004ecae3": "898884070000",
+  "0x004ecff8": "898184070000"
+ },
+ "fonts_table": {
+  "source": "addon/01.cat",
+  "rows": [
+   "1;",
+   "LARGE;Zekton;26;8;",
+   "HUD;Tahoma;13;1;"
+  ]
+ },
+ "font_files": [
+  "f/HarRier TYGRA_16.abc",
+  "f/HarRier TYGRA_16.tga",
+  "f/HarRier24.abc",
+  "f/HarRier24.tga",
+  "f/Tahoma13.abc",
+  "f/Tahoma13.tga",
+  "f/Zekton26.abc",
+  "f/Zekton26.tga",
+  "f/ZektonES26.abc",
+  "f/ZektonES26.tga",
+  "f/bz22.abc",
+  "f/bz22.bmp"
+ ],
+ "materials": {
+  "source": "addon/07.cat",
+  "rows": 1238,
+  "fontscale_ids": [
+   46,
+   47,
+   56,
+   61,
+   62,
+   63,
+   64,
+   65,
+   158,
+   219,
+   236,
+   327,
+   340,
+   568,
+   579,
+   705,
+   922,
+   923
+  ],
+  "fontscale_generated_ids": [
+   61,
+   62,
+   63,
+   64,
+   65,
+   236,
+   340,
+   579,
+   922,
+   923
+  ],
+  "fontscale_file_ids": [
+   46,
+   47,
+   56,
+   158,
+   219,
+   327,
+   568,
+   705
+  ],
+  "hires_variants_present": []
+ }
+}

@@ -1,0 +1,130 @@
+== addon/04.cat (stock): sha256 ed5786a0c603802d5735fb36e0332d7c732b981d2b64dcee4174890284faff7a
+B3D_ScreenGetWidth           58 sites in 20 methods
+    NotifyMouseMove x8
+    QueryEffectiveValue x6
+    NotifyClick x6
+    GetMenuMaxWidth x6
+    GetMenuMaxHeight x6
+    GetCursorIcon x4
+    IsMaximizePossible x4
+    SetMapCameraPosition x4
+    PrepareDropdownMenu x2
+    MenuAction x2
+    UpdateViewportExplicit x1
+    SetClipping x1
+    ClickDisplayPanel x1
+    GetCursorIconForDisplayPanel x1
+    UpdateViewportPos x1
+    Show x1
+    Update x1
+    OpenCustom x1
+    UpdateInstPosition x1
+    GetMenuHeight x1
+B3D_ScreenGetHeight          64 sites in 19 methods
+    NotifyMouseMove x8
+    GetMenuMaxHeight x8
+    QueryEffectiveValue x6
+    NotifyClick x6
+    GetMenuMaxWidth x6
+    GetCursorIcon x4
+    IsMaximizePossible x4
+    GetMenuHeight x4
+    SetMapCameraPosition x3
+    ClickDisplayPanel x2
+    GetCursorIconForDisplayPanel x2
+    PrepareDropdownMenu x2
+    Update x2
+    MenuAction x2
+    UpdateViewportExplicit x1
+    SetClipping x1
+    UpdateViewportPos x1
+    Show x1
+    OpenCustom x1
+B3D_ScreenGetAspectX          8 sites in 5 methods
+    Menu x2
+    SpecialResize x2
+    ___sectorCamOn x2
+    SetSceneParameters x1
+    CheckSubTitleInst x1
+B3D_ScreenGetAspectY          2 sites in 2 methods
+    SetSceneParameters x1
+    CheckSubTitleInst x1
+B3D_ScreenGetBorderX         32 sites in 6 methods
+B3D_ScreenGetBorderY          4 sites in 1 methods
+B3D_OpenFont                  2 sites in 1 methods
+    OpenFonts x2
+B3D_InstSetFlags2            33 sites in 11 methods
+B3D_InstGetFlags2            39 sites in 15 methods
+B3D_CameraSetViewPort        24 sites in 16 methods
+B3D_SceneSetViewPort       not referenced
+B3D_CameraSetAspect          12 sites in 5 methods
+B3D_CameraSetAspectRatio      3 sites in 3 methods
+B3D_SceneSetSystemScale       2 sites in 2 methods
+    Create x1
+    Activate x1
+B3D_TexTextBlock            109 sites in 26 methods
+B3D_InstSetScale           not referenced
+B3D_InstSetSize               7 sites in 3 methods
+X2_UpdateCursorSteering       1 sites in 1 methods
+InstSetFlags2 nearby 32-bit pushes with 0x200: {}
+== addon/07.cat (installed override): sha256 2c3101a8c04ddea76643099758bfdaefd18d79cdf37580095a12a8ce72199298
+B3D_ScreenGetWidth           59 sites in 21 methods
+B3D_ScreenGetHeight          66 sites in 20 methods
+B3D_ScreenGetAspectX          8 sites in 5 methods
+B3D_ScreenGetAspectY          2 sites in 2 methods
+B3D_ScreenGetBorderX         32 sites in 6 methods
+B3D_ScreenGetBorderY          4 sites in 1 methods
+B3D_OpenFont                  2 sites in 1 methods
+B3D_InstSetFlags2            34 sites in 12 methods
+B3D_InstGetFlags2            40 sites in 16 methods
+B3D_CameraSetViewPort        25 sites in 16 methods
+B3D_SceneSetViewPort       not referenced
+B3D_CameraSetAspect          12 sites in 5 methods
+B3D_CameraSetAspectRatio      3 sites in 3 methods
+B3D_SceneSetSystemScale       2 sites in 2 methods
+B3D_TexTextBlock            124 sites in 28 methods
+B3D_InstSetScale           not referenced
+B3D_InstSetSize               7 sites in 3 methods
+X2_UpdateCursorSteering       1 sites in 1 methods
+InstSetFlags2 nearby 32-bit pushes with 0x200: {'0x16200': 1}
+== addon/04.cat L/x3intro.obj (stock): sha256 29795739edd20bb5bf7b02591f83f6cf8af9119efa33d40221ccc31e6ba0d14e
+B3D_ScreenGetWidth            3 sites in 3 methods
+    SetClipping x1
+    OpenCustom x1
+    Init x1
+B3D_ScreenGetHeight           3 sites in 3 methods
+    SetClipping x1
+    OpenCustom x1
+    Init x1
+B3D_ScreenGetAspectX          3 sites in 3 methods
+    SetSceneParameters x1
+    Graphics_Init x1
+    CheckSubTitleInst x1
+B3D_ScreenGetAspectY          3 sites in 3 methods
+B3D_ScreenGetBorderX         12 sites in 3 methods
+B3D_ScreenGetBorderY       not referenced
+B3D_OpenFont                  2 sites in 1 methods
+    Set x2
+B3D_InstSetFlags2            11 sites in 6 methods
+    SetSceneParameters x4
+    DoGalaxyTake x2
+    Input x2
+    Init x1
+    OpenCustom x1
+    AddWaterMark x1
+B3D_InstGetFlags2            12 sites in 6 methods
+B3D_CameraSetViewPort        28 sites in 11 methods
+B3D_SceneSetViewPort       not referenced
+B3D_CameraSetAspect           3 sites in 2 methods
+B3D_CameraSetAspectRatio   not referenced
+B3D_SceneSetSystemScale       3 sites in 2 methods
+B3D_TexTextBlock             11 sites in 8 methods
+B3D_InstSetScale              2 sites in 1 methods
+B3D_InstSetSize              16 sites in 9 methods
+    Input x3
+    DoGalaxyTake x2
+    AddLightIndicator x2
+    AddBackground x2
+    InitScenes x2
+X2_UpdateCursorSteering    not referenced
+InstSetFlags2 nearby 32-bit pushes with 0x200: {}

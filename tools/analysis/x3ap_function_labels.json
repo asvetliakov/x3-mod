@@ -15,7 +15,8 @@
     "docs/reverse-engineering/alternative-video-playback.md",
     "docs/reverse-engineering/texture-lookup.md",
     "docs/reverse-engineering/field-of-view.md",
-    "docs/reverse-engineering/object-lifetimes.md"
+    "docs/reverse-engineering/object-lifetimes.md",
+    "docs/reverse-engineering/gui-scale.md"
   ],
   "labels": {
     "0x00402710": {
@@ -142,6 +143,10 @@
       "label": "INS_CockpitGetCursorAim: object under the cursor from the target-overlay icons (cockpit+0x3ac)",
       "source": "external-camera.md"
     },
+    "0x00426230": {
+      "label": "target-overlay 2D icon place: node +0x30/+0x34 = pixel x,y, OR +0x130 0x200",
+      "source": "gui-scale.md"
+    },
     "0x00426360": {
       "label": "cockpit body (internal view model) management",
       "source": "external-camera.md"
@@ -149,6 +154,10 @@
     "0x00427d50": {
       "label": "cockpit +0x79c HUD target list: copies cockpit-scene FOV/plane/viewport, scales by 1/tan(cockpit+0x230 half)",
       "source": "field-of-view.md"
+    },
+    "0x004299a0": {
+      "label": "target-overlay icon hit test at a pixel position (cockpit+0x3ac)",
+      "source": "gui-scale.md"
     },
     "0x0042a2d0": {
       "label": "target overlay update (cockpit+0x3ac; projects through the sector camera cockpit+0x58)",
@@ -340,6 +349,10 @@
       "label": "B3D scene allocation",
       "source": "external-camera.md"
     },
+    "0x00489180": {
+      "label": "camera viewport set (16.16 normalised, clamp 0..0xffff): +0x288 y0 +0x28c y1 +0x290 x0 +0x294 x1",
+      "source": "gui-scale.md"
+    },
     "0x00489780": {
       "label": "camera screen-to-camera-space unprojection (ESI = camera; FOV +0x298, view plane +0x300/+0x304, viewport +0x288.., screen size)",
       "source": "external-camera.md"
@@ -363,6 +376,22 @@
     "0x0048af70": {
       "label": "graphics/body subsystem init",
       "source": "loading-orchestration.md"
+    },
+    "0x0048b2d0": {
+      "label": "one text line into a texture: MPF_FONTSCALE texture -> width x fontscale; glyph rasteriser 0x004f8600",
+      "source": "gui-scale.md"
+    },
+    "0x0048b4b0": {
+      "label": "text block into a texture: wrap width x fontscale (cfg+0x784), line height / fontscale, per line 0x0048b2d0",
+      "source": "gui-scale.md"
+    },
+    "0x0048b990": {
+      "label": "text width measure (0x004f8f30) / fontscale",
+      "source": "gui-scale.md"
+    },
+    "0x0048cdc0": {
+      "label": "font open by name+size: sprintf \"%s%d\" -> 0x004f8120 (F\\<name><size>.abc/.tga)",
+      "source": "gui-scale.md"
     },
     "0x0048dc20": {
       "label": "node animation update; keyed camera FOV write to +0x298",
@@ -516,8 +545,8 @@
       "source": "loading-orchestration.md"
     },
     "0x004bdee0": {
-      "label": "world matrix setup for node + camera",
-      "source": "camera-state-and-frame-routine.md"
+      "label": "instance world/view/projection setup; node +0x130 & 0x200 -> pixel ortho into *0x00608a3c (2D GUI), else world x scene scale",
+      "source": "gui-scale.md"
     },
     "0x004be3f0": {
       "label": "projection construction",
@@ -883,6 +912,10 @@
     "0x004f7830": {
       "label": "font loader (tga bmp, abc siz)",
       "source": "loading-orchestration.md"
+    },
+    "0x004f8120": {
+      "label": "font slot lookup/open (10 slots 0x00606f0c); fontscale>1 doubles a built-in 11x0x44 table",
+      "source": "gui-scale.md"
     },
     "0x004f8600": {
       "label": "text/overlay layout and string formatting (calls 0x004efa70)",

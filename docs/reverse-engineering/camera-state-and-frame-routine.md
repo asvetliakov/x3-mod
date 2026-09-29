@@ -458,9 +458,10 @@ displacement, `txt:` every instruction whose text contains a string,
   claim is static.
 - The FOV/view-plane parameterization in §3 has two consistent readings;
   the resulting projection is identical either way.
-- `*0x00608a3c` (the alternate projection) has only one recorded reference
-  besides the `0x004c0150` branch selector and the shutdown free; what fills it,
-  and what the node flag `0x200` means, is not established.
+- `*0x00608a3c` (the alternate projection) is filled by the `0x200` branch of
+  `0x004bdee0`: node flag `0x200` marks a 2D GUI instance and the matrix is a
+  pixel-space orthographic projection with edge anchors (resolved 2026-09-29 in
+  [gui-scale.md](gui-scale.md) §3.1).
 - The class behind vtable slot `0x148` at `0x004c403c` is unidentified.
 - `0x004c4fc0`'s three-way depth regime was read from the decompiler's rendering
   of a short-circuit condition; the branch *addresses* (`0x004c512b`,
