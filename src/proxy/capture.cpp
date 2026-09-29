@@ -1922,6 +1922,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
     if (engine_patch::install_window_open()) engine_patch::close_install_window("first_present");
     fov::present(ctx.frame); // one fov_confirm row (registry+0x24 against the configured focus) at the first Present,
                              // one more if the registry appears later; then a flag test
+    text_density::present(ctx.frame); // X3M_TEXT_DENSITY, s != d: the flagged rows' D3D textures for the filter override
     ui_scale::present(ctx.frame); // X3M_UI_SCALE: the excluded HUD camera for the next frame; under --debug with the
                                   // entry counter live, one ui_scale_frame row per Present
     if (save_loaded)
@@ -2199,6 +2200,7 @@ HRESULT WINAPI draw_primitive(IDirect3DDevice9* d, D3DPRIMITIVETYPE t, UINT s, U
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     if (route.submit) ++ctx.fixture_primitive_source_calls;
 #endif
+    const bool text_filter = route.submit && text_density::draw_filter_override(d, ctx.get<text_density::SamplerGet>(68), ctx.get<text_density::SamplerSet>(69)); // X3M_TEXT_DENSITY, s != d
     frame_timing::draw_native_begin(); // ahead of before_original, like present_begin (cpu_state.h)
     timer.begin();
     cpu.before_original();
@@ -2209,6 +2211,7 @@ HRESULT WINAPI draw_primitive(IDirect3DDevice9* d, D3DPRIMITIVETYPE t, UINT s, U
     cpu.after_original();
     frame_timing::draw_native_end();
     timer.end();
+    if (text_filter) text_density::draw_filter_restore(d, ctx.get<text_density::SamplerSet>(69));
     telemetry::record(ctx.stats, telemetry::Metric::DrawBackend, timer.backend_ticks, FAILED(result));
     if (route.submit) ++ctx.issued; // reached the device (frame_end issued=, the overlay's DRAWS)
     ctx.motion_output.after_draw(route, result);
@@ -2260,6 +2263,8 @@ HRESULT WINAPI draw_indexed(IDirect3DDevice9* d, D3DPRIMITIVETYPE t, INT b, UINT
         fixture_observe_wrap(ctx, d);
     }
 #endif
+    const bool text_filter = route.submit && text_density::draw_filter_override(d, ctx.get<text_density::SamplerGet>(68), ctx.get<text_density::SamplerSet>(69)); // X3M_TEXT_DENSITY, s != d: LINEAR
+                                                                                      // on the flagged text textures
     frame_timing::draw_native_begin(); // ahead of before_original, like present_begin (cpu_state.h)
     timer.begin();
     cpu.before_original();
@@ -2270,6 +2275,7 @@ HRESULT WINAPI draw_indexed(IDirect3DDevice9* d, D3DPRIMITIVETYPE t, INT b, UINT
     cpu.after_original();
     frame_timing::draw_native_end();
     timer.end();
+    if (text_filter) text_density::draw_filter_restore(d, ctx.get<text_density::SamplerSet>(69));
     telemetry::record(ctx.stats, telemetry::Metric::DrawBackend, timer.backend_ticks, FAILED(result));
     if (route.submit) ++ctx.issued; // reached the device (frame_end issued=, the overlay's DRAWS)
     ctx.motion_output.after_draw(route, result);
@@ -2298,6 +2304,7 @@ HRESULT WINAPI draw_up(IDirect3DDevice9* d, D3DPRIMITIVETYPE t, UINT c, const vo
     if (sun_occlusion::bracket_open())
         ctx.motion_output.prepare_lens(draw_call, route); // X3M_SUN_OCCLUSION only, lens-scene draws only: one flag
                                                           // test otherwise
+    const bool text_filter = route.submit && text_density::draw_filter_override(d, ctx.get<text_density::SamplerGet>(68), ctx.get<text_density::SamplerSet>(69)); // X3M_TEXT_DENSITY, s != d
     frame_timing::draw_native_begin();                    // ahead of before_original, like present_begin (cpu_state.h)
     timer.begin();
     cpu.before_original();
@@ -2308,6 +2315,7 @@ HRESULT WINAPI draw_up(IDirect3DDevice9* d, D3DPRIMITIVETYPE t, UINT c, const vo
     cpu.after_original();
     frame_timing::draw_native_end();
     timer.end();
+    if (text_filter) text_density::draw_filter_restore(d, ctx.get<text_density::SamplerSet>(69));
     telemetry::record(ctx.stats, telemetry::Metric::DrawBackend, timer.backend_ticks, FAILED(result));
     if (route.submit) ++ctx.issued; // reached the device (frame_end issued=, the overlay's DRAWS)
     ctx.motion_output.after_draw(route, result);
@@ -2339,6 +2347,7 @@ HRESULT WINAPI draw_indexed_up(IDirect3DDevice9* d, D3DPRIMITIVETYPE t, UINT m, 
     if (sun_occlusion::bracket_open())
         ctx.motion_output.prepare_lens(draw_call, route); // X3M_SUN_OCCLUSION only, lens-scene draws only: one flag
                                                           // test otherwise
+    const bool text_filter = route.submit && text_density::draw_filter_override(d, ctx.get<text_density::SamplerGet>(68), ctx.get<text_density::SamplerSet>(69)); // X3M_TEXT_DENSITY, s != d
     frame_timing::draw_native_begin();                    // ahead of before_original, like present_begin (cpu_state.h)
     timer.begin();
     cpu.before_original();
@@ -2348,6 +2357,7 @@ HRESULT WINAPI draw_indexed_up(IDirect3DDevice9* d, D3DPRIMITIVETYPE t, UINT m, 
                                                   84)(d, t, m, n, c, indices, f, data, stride)
                                         : route.submission_error;
     cpu.after_original();
+    if (text_filter) text_density::draw_filter_restore(d, ctx.get<text_density::SamplerSet>(69));
     frame_timing::draw_native_end();
     timer.end();
     telemetry::record(ctx.stats, telemetry::Metric::DrawBackend, timer.backend_ticks, FAILED(result));
@@ -3032,6 +3042,7 @@ HRESULT WINAPI set_texture(IDirect3DDevice9* d, DWORD stage, IDirect3DBaseTextur
     const int reader = SUCCEEDED(hr) ? ctx.motion_output.composition_texture_reader(stage, texture) : 2;
     cpu.after_original();
     if (SUCCEEDED(hr)) ctx.motion_output.set_texture(stage, texture, levels, query, reader, width, height, identity);
+    if (SUCCEEDED(hr)) text_density::bound_texture(stage, texture); // X3M_TEXT_DENSITY: the stage-0 pointer (one store)
     return hr;
 }
 HRESULT WINAPI set_sampler_state(IDirect3DDevice9* d, DWORD stage, D3DSAMPLERSTATETYPE type, DWORD value) {
@@ -3802,7 +3813,8 @@ void hook_device(IDirect3DDevice9* d, HWND window, HWND focus) {
         // widening's mip-chain gate; the composition reader identity stays on
         // SetTexture in both configurations.
         if (hooked.motion_output.mip_bias_active() || hooked.motion_output.hull_emissive_widening() ||
-            hooked.motion_output.composition_requested())
+            hooked.motion_output.composition_requested() ||
+            text_density::filter_hooks_wanted()) // the stage-0 texture for the text-texture filter override
             hooked.set(65, set_texture);
         // Sampler writes (mip-bias restore ahead of an application LODBIAS
         // write, sRGB decode shadow of the material and screen gates) in the

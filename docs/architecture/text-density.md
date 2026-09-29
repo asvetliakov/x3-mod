@@ -30,10 +30,51 @@ module supplies what is missing:
 | --- | --- | --- | --- |
 | 1 | `cfg+0x784 = d` | the config object `*0x00606f34`, at `CreateDevice` | a plain store into the engine's heap object after a validated read; the previous value (1, or the user's own `-fontscale`) is logged and put back on unload. The object is built by the constructor `0x004ec9e0` (called at `0x0040283a`, its two `+0x784` stores `0x004ecae3` default and `0x004ecff8` `-fontscale`), before `Direct3DCreate9` at `0x00402edc`; the first font open is in the main loop (`0x00403a26` in `0x00403840`, called at `0x0040373a`), so the DLL, which loads inside `Direct3DCreate9`, writes the field before any of the 43 readers runs |
 | 2 | font request `x d` | entry `0x0048cdc0` (6 bytes `51 53 56 57 8b f9`) | the thunk saves every register and EFLAGS and hands the C side the frame: EAX = name, ECX = size, `[esp+4]` cell width, `[esp+0xc]` y offset. When both loose files `f\<name><S*d>.abc` and `.tga` exist under the game directory (`GetModuleFileNameW` of the EXE, `GetFileAttributesW`), the saved ECX and the two stack arguments are multiplied by `d`; otherwise the request passes unchanged and one `text_density_font … status=missing` row names the file (a failed open would make `0x0048cdc0` return -1, which KC stores unchecked). Covers the native cockpit (`0x0041c9ab`, `0x0041f7a7`) and KC's `B3D_OpenFont` (`0x00496131`, `0x0049615b`), the four direct callers |
-| 3 | text targets | the Materials load call `0x0048af71` (`call 0x004f44a0`, redirected) | the thunk pops the game's return address, calls the original with the stack exactly as the game's call left it, then edits the rows: every `MPF_GENERATED|MPF_WRITEABLE` row (35 in the shipped table: ids 5–22, 61–66, 90, 236, 340, 342, 579, 922, 923, 1230, 1235–1237) gains `MPF_FONTSCALE`, and loses `MPF_NOFILTERING` when `s != d` (the texture is then minified and must filter); every file-backed `MPF_FONTSCALE` row (46, 47, 56, 158, 219, 327, 568, 705) loses the flag so it loads its stock file. Both copies are edited: the row (`*0x00608db0 + id*0x3c + 0x10`, read by the text and blit functions) and the texture-table entry (`*0x006069ac + id*0x10 + 4`, read by the texture creator and the draw path's filter test `0x0047231a`). Refused (`objects_exist`) when a row to flag already has a texture object. Runs once per process on the init thread; `CreateDevice` applies the edit instead when it comes after the load |
+| 3 | text targets | the Materials load call `0x0048af71` (`call 0x004f44a0`, redirected) | the thunk pops the game's return address, calls the original with the stack exactly as the game's call left it, then edits the rows: every `MPF_GENERATED|MPF_WRITEABLE` row (35 in the shipped table: ids 5–22, 61–66, 90, 236, 340, 342, 579, 922, 923, 1230, 1235–1237) gains `MPF_FONTSCALE`, and loses `MPF_NOFILTERING` when `s != d` (the texture is then minified and must filter); every file-backed `MPF_FONTSCALE` row (46, 47, 56, 158, 219, 327, 568, 705) loses the flag so it loads its stock file. Both copies are edited: the row (`*0x00608db0 + id*0x3c + 0x10`, read by the text and blit functions) and the texture-table entry (`*0x006069ac + id*0x10 + 4`, read by the texture creator `0x004f4160`; the material-flag word the draw path filters by is a third copy, see "On-screen filter"). Refused (`objects_exist`) when a row to flag already has a texture object. Runs once per process on the init thread; `CreateDevice` applies the edit instead when it comes after the load |
 | 4 | blit sources | entries `0x0048c090` `TexBltBlock` and `0x0048c460` `TexBltBlockAlpha` (7 bytes `8b 4c 24 08 83 ec 24`) | when the destination is a flagged row and the source is a static unflagged texture (a named atlas such as `gui_master`, or a file-backed row), the C side runs the engine's own leaf with a `d x` shadow of the source and every coordinate in texels: the destination clip in layout units as `0x0048c2c8..0x0048c32c` does it (only with the clip argument), then `0x004dbbe0` (plain copy, colour < 0), `0x004ee990` (colour copy) or `0x004efa70` (alpha) with EAX = destination object, EDI = shadow. The thunk returns the destination object in EAX (dead at both entries) and `ret`s; a zero result continues into the original. Composite (negative) destinations recurse through the same entry per part and pass; a generated unflagged source (dynamic content) passes and is reported once under debug. Shadows are built once per source id (`0x004f3950(d*W, d*H, 0x402c)`, 32 bpp, the flags of a generated row; `d*W` column copies from the source, then `d*H` in-place row copies from the last row up through the plain-copy leaf: nearest neighbour), capped at 16 sources, 96 MB and 4096 texels per side, freed with `0x004f38d0` before every device `Reset` and rebuilt on demand |
 | 5 | style factor | imm32 at `0x004f813b` (`mov edi,2`) | `d` when `d = 3` (one `lock cmpxchg8b` inside the qword `0x004f8138`); stock 2 is right for `d = 2`; put back on unload |
-| 6 | diagnostics (`--debug`) | entries `0x0048b2d0` text line (6 bytes) and `0x0048b0b0` rect fill (8 bytes), plus the two blits | one `text_density_draw fn= src= dst= dst_flagged= src_flagged= src_generated= handled=` row per distinct (function, src, dst), 96 at most, printed on first sight: settles open item 1 of the note (which ids KC and native code draw text and blit into) |
+| 6 | diagnostics (`--debug`) | entries `0x0048b2d0` text line (6 bytes) and `0x0048b0b0` rect fill (8 bytes), plus the two blits | one `text_density_draw fn= src= dst= dst_flagged= src_flagged= src_generated= handled=` row per distinct (function, src, dst) for the blits and the rect fill, `fn=text_line font= x= dst= dst_flagged=` per distinct (font slot, dst) for the text line (its arguments are `dst, text, font slot, x, y, right, colour, flags`), 96 at most, printed on first sight: settles open item 1 of the note (which ids KC and native code draw text and blit into) |
+| 7 | on-screen filter (`s != d`) | proxy-side, no engine site: the draw hooks and the `SetTexture` hook of `capture.cpp` | see "On-screen filter" below |
+
+## On-screen filter
+
+Run 392 (`s = 1.25`, `d = 2`) drew the text textures point-sampled on screen although the
+row edit had cleared `MPF_NOFILTERING` on 28 rows ([font-rendering.md](../reverse-engineering/font-rendering.md)
+section 5): a one-texel stem is kept or dropped by its screen phase under the 1.6x
+minification. Where the quad's filter comes from: the material routine `0x004c0150` sets
+the effect parameter `t_MinFilterTypeDiffuse` (`0x004c190b..0x004c1972`) to 1 = point when
+the flag word it works with has `0x100`, and that word is either the body material record
+`+0x28` (`0x004c0a7f`), which the body loader copied from the Materials row when the body
+was loaded (`0x0048206e`, `0x0048469b`), or the row itself (`0x004c0a95`) when the
+instance's texture id differs from the record's; the classic block is recorded once per
+subset ([non-effect-materials.md](../reverse-engineering/non-effect-materials.md) section 3,
+[sampler-states-and-mips.md](../reverse-engineering/sampler-states-and-mips.md)). The live
+gui2d draws show stage 0 as `POINT/POINT/NONE` or linear. Which of the copies fed run 392
+is inferred, not traced (the record copy predates the row edit when the bodies load before
+`CreateDevice`), and a patch at `0x004c190b` would need the texture id of the draw and sits
+in a `test`/`jcc` pair with live flags: not a clean site. The fix is therefore proxy-side and
+independent of the source:
+
+- `present()` rebuilds, once per frame, the sorted set of the flagged rows' D3D textures
+  (`MPF_FONTSCALE|MPF_GENERATED` rows; entry `+8` object, object `+0x34` = the
+  `IDirect3DTexture9`, the level-0 surface is `+0x30`: `0x004dcc59`, `0x004dd1c5`; validated
+  reads, 35 rows, textures that do not exist yet are picked up the next frame).
+- `hook_device` installs the `SetTexture` hook when the option is active with `s != d`
+  (`filter_hooks_wanted()`); the hook stores the stage-0 pointer (one store per call).
+- Every submitted draw (the four draw hooks) probes the set with the stage-0 pointer; a hit
+  reads `D3DSAMP_MINFILTER`/`MAGFILTER` (documented `GetSamplerState`), sets both to
+  `D3DTEXF_LINEAR` where they differ, and puts the previous values back right after the
+  original draw. No mip levels exist on these textures (`Levels = 1`), so no mip filter is
+  touched. One `text_density_filter status=active min_before= mag_before= textures=` row at
+  the first override; under `--debug` one `text_density_filter_frame … overridden=` row per
+  300 frames.
+
+Per-draw cost: for every submitted draw one pointer load and a binary search over at most
+35 entries (about six compares); for a text-texture draw (dozens per frame) two
+`GetSamplerState` and, when the state is not already linear, four `SetSamplerState` calls.
+The `SetTexture` hook adds one pointer store to a hook the motion route installs anyway
+under the stand set. Nothing runs when `s = d` (1:1 texels, point sampling is exact) or
+when the option is off.
 
 ## Transaction, rollback, threading
 
