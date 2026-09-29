@@ -194,7 +194,7 @@ constexpr Entry entries[entry_count] = {
     {"X3M_CONFIG", "config", Type::Path, nullptr, nullptr, 16, 0, 2, 0, 0, "", 3, -1},
     {"X3M_CRYPT_CACHE", "crypt_cache", Type::Bool, "1", nullptr, 16, 0, 2, 0, 0, "", 0, -1},
     {"X3M_CULL_CENSUS", "cull_census", Type::Bool, nullptr, nullptr, 16, 0, 2, 0, 0, "", 1, -1},
-    {"X3M_CULL_DOCK_PARTS_PX", "cull_dock_parts_px", Type::Float, "8.0000", nullptr, 16, 1, 2, 0, 0, "", 0, -1},
+    {"X3M_CULL_DOCK_PARTS_PX", "cull_dock_parts_px", Type::Float, "12.0000", nullptr, 16, 1, 2, 0, 0, "", 0, -1},
     {"X3M_CULL_SMALL_PARTS_PROJECTILES", "cull_small_parts_projectiles", Type::Enum, "on", nullptr, 17, 0, 2, 0, 0, "on|off", 0, -1},
     {"X3M_CULL_SMALL_PARTS_PX", "cull_small_parts_px", Type::Float, "4.0000", nullptr, 17, 1, 2, 0, 0, "", 0, -1},
     {"X3M_CULL_SMALL_PROPS", "cull_small_props", Type::Enum, nullptr, nullptr, 18, 0, 2, 0, 0, "on|off", 0, -1},
@@ -434,7 +434,7 @@ constexpr bool collide_box_cull = true;
 constexpr bool collide_memo = true;
 constexpr bool collide_sat_sse2 = true;
 constexpr bool crypt_cache = true;
-constexpr float cull_dock_parts_px = 8.0000f;
+constexpr float cull_dock_parts_px = 12.0000f;
 constexpr const char cull_small_parts_projectiles[] = "on";
 constexpr float cull_small_parts_px = 4.0000f;
 constexpr bool dat_handles = true;

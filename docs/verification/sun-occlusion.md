@@ -525,3 +525,30 @@ half_wrapped issue one draw each with 256 samples. The fixture mirrors the produ
 the `MotionOutput` integration through the draw hooks still has no fixture. Build 0 warnings, x87 0 violations (726
 reachable functions), `generate.py --check` PASS, host modules test_sun_occlusion / test_launcher_defaults /
 test_config_schema / test_logging_tiers 63 tests OK.
+
+## 2026-09-29: lens-flare gain 0 culls in the engine (worktree, not installed, not flown)
+
+At `lens_flare_gain 0` the DLL now also claims the engine-side cull `lens_flare_cull` (`src/proxy/lens_flare_cull.{h,cpp}`,
+`lens_flare_cull_core.h`; no new key; values above 0 unchanged): a second stub on the small-parts claim of the cull/LOD
+pass 0x0047cfe0 at 0x0047d2a2 sends a node whose model id (+0x140) is one of the 42 flare bodies down the engine's own
+size-cull instruction 0x0047d2c3, so the lens block's cull walk (0x00472471 -> 0x0047e780 -> 0x0047cfe0 per root)
+leaves the sprites unrenderable and the traversal 0x0047e6e0 issues no draw. Purpose: measure whether the engine's
+24-26 us per issued draw (run384/run385 `views`) is recovered when the ~115-181 flare draws per frame never reach the
+engine's per-draw work, against Run 105 A's ~1 ms from the proxy-side skip. The proxy skip (`Law::skip`) stays as it
+is: the fallback when the claim is refused, otherwise idle (`lens_flare_gain_frame` keeps reporting; `skipped=` should
+read 0). Review (same day, no blocker): four fixes applied before install, listed in the RE note's "Verified" paragraph;
+the fixture, the three host modules and the DLL build were rerun afterwards (rows below are the rerun's numbers). Site, stub, body set and rows: [lod-selection.md](../reverse-engineering/lod-selection.md), "Lens-flare cull
+on the small-parts site". The flare sprites do pass through 0x0047cfe0 (the pass's only callers are its recursion and
+the root walker the lens block calls; the run385 census rows carry every drawn `v\` sprite), so no other site was claimed.
+
+| Command | Result (measured) |
+|---|---|
+| `python3 verification/results/lens-flare-cull/pass_callers.py callers 0047cfe0` (capstone, installed EXE; output `pass_callers_out.txt`) | callers of 0x0047cfe0: 0x0047d53c (recursion), 0x0047e7a5 (the walker); callers of 0x0047e780: 0x0047226b, 0x00472471 (lens block), 0x0047e8c2 |
+| `cd verification/probe && python3 verify_lens_flare_cull_site.py` | PASS 13/13 (small-parts window re-verified 20/20; pass callers exactly the two; lens walk, walker call, model read bytes; 42 distinct default-form names) |
+| `python3 verification/probe/build_cull_small_parts.py` then `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_cull_small_parts.py` (record `verification/results/cull-small-parts-cpu.json`) | 200 checks / 0 failures in 5.8 s; lens section 58 / 0: default-form and literal names, case fold, bitmap span, stub layout; a synthetic body table resolves 37 names by id and 3 by scan (40 mapped, 2 absent), grows (+1, new slot only), moves (restart, `v\01006` re-bound 20000 -> 20002), shrinks (37, still armed), is refilled in place at the same address and count (the mapped dynamic slots re-read per frame catch it: restart, 20000 -> 20002 within one frame, no restart while stable), unreadable (set stands); `LENS BENCH` restart over 13,200 slots (2,200 named dynamic) 210.7 us, per-frame re-read of 5 mappings 0.134 us (Wine/FEX, harness-inclusive); G > 0: flag 0, every node and EAX/ECX/EDX/EFLAGS native; G = 0: the fixed and the dynamic flare body end byte-identical to the engine's own size cull (except the limit word), plain / model-less / small nodes untouched, count 2, LastError and callee-saved registers preserved, the 300-frame row; both stubs chained in both orders (small node by the small-parts stub, flares by this one); the owner's shutdown restores the site with both chained, the flag drops; closed window refused |
+| `PYTHONPATH=verification/probe:verification/analysis python3 -m unittest test_lens_flare_cull test_cull_small_parts test_logging_tiers test_launcher_defaults test_config_schema test_sun_occlusion test_dust_leak_fix_site` | 98 tests OK before the review fixes; after them `test_lens_flare_cull test_cull_small_parts test_logging_tiers` 38 OK (test_lens_flare_cull: core compiled on the host and its stub bytes equal to the verifier's twin, 39/42 names over a synthetic table, synthetic image passes all but identity and each pinned span changed is refused, wiring and docs pinned, installed EXE PASS) |
+| `cmake --build build -j8` (MinGW i686, worktree) / `python3 verification/probe/check_no_x87.py build/d3d9.dll` | 0 warnings / PASS, 734 reachable functions, 0 violations (the stub is emitted bytes; begin_frame/report are plain integer reads) |
+| `python3 tools/config/generate.py --check` | PASS (no schema change) |
+
+Not covered: the flight (the count row against `frame_timing` / `frame_phases views`), and a mod whose Lensflares
+table names bodies outside the 42 (they would draw; `lens_flare_gain_frame skipped=` then shows them).

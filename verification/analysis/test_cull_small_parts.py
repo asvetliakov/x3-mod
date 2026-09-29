@@ -583,7 +583,7 @@ class CullSmallPartsLaunchOption(unittest.TestCase):
             delivered = json.loads(output)
             self.assertEqual(delivered['command'], baseline['command'])
             self.assertEqual({k: v for k, v in delivered['env'].items() if k not in baseline['env']},
-                             {'X3M_CULL_SMALL_PARTS_PX': '2.0000', 'X3M_CULL_SMALL_PARTS_PROJECTILES': 'on', 'X3M_CULL_DOCK_PARTS_PX': '8.0000'})
+                             {'X3M_CULL_SMALL_PARTS_PX': '2.0000', 'X3M_CULL_SMALL_PARTS_PROJECTILES': 'on', 'X3M_CULL_DOCK_PARTS_PX': '12.0000'})
 
     def test_scope_option_removed_and_inherited_scope_dropped(self):
         # --cull-small-parts-scope (the `bodies` A/B) was removed on 2026-09-25: the stub always culls every node.
@@ -679,13 +679,13 @@ class CullSmallPartsLaunchOption(unittest.TestCase):
             self.assertIn('DLL default on since 2026-09-29', source_text(ROOT / 'tools/manage.py'))
 
     def test_dock_parts_default_explicit_off_and_refusals(self):
-        """X3M_CULL_DOCK_PARTS_PX (2026-09-29): 8 px with every non-zero cull unless given; 0 sends nothing; refused without
+        """X3M_CULL_DOCK_PARTS_PX (2026-09-29): 12 px with every non-zero cull unless given; 0 sends nothing; refused without
         the cull and out of range; an inherited value never survives."""
         with tempfile.TemporaryDirectory() as directory:
             env = json.loads(self.modded_launch(directory, inherited={'X3M_CULL_DOCK_PARTS_PX': '3'})[1])['env']
-            self.assertEqual(env['X3M_CULL_DOCK_PARTS_PX'], '8.0000')
-            env = json.loads(self.modded_launch(directory, '--cull-dock-parts', '12')[1])['env']
             self.assertEqual(env['X3M_CULL_DOCK_PARTS_PX'], '12.0000')
+            env = json.loads(self.modded_launch(directory, '--cull-dock-parts', '8')[1])['env']
+            self.assertEqual(env['X3M_CULL_DOCK_PARTS_PX'], '8.0000')
             env = json.loads(self.modded_launch(directory, '--cull-dock-parts', '0', inherited={'X3M_CULL_DOCK_PARTS_PX': '8'})[1])['env']
             self.assertNotIn('X3M_CULL_DOCK_PARTS_PX', env)
             env = json.loads(self.modded_launch(directory, '--cull-small-parts', '0', inherited={'X3M_CULL_DOCK_PARTS_PX': '8'})[1])['env']

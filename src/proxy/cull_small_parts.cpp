@@ -20,7 +20,10 @@ static_assert(sizeof(void*) == 4, "x86 code patching only");
 namespace {
 namespace core = x3m::cull_small_parts::core;
 namespace engine_patch = x3m::engine_patch;
-bool patched_ = false;
+bool patched_ = false;      // the small-parts stub is chained
+bool site_claimed_ = false; // the shared claim is live (this stub, the lens-flare cull's, or both)
+bool site_broken_ = false;  // a claim whose rollback failed: registered for shutdown(), nothing chained
+unsigned chained_ = 0;      // stubs on the chain
 engine_patch::Site site_{};
 std::uintptr_t stub_ = 0;
 const char* state_ = "disabled";
@@ -90,6 +93,59 @@ std::uintptr_t emit_stub(std::uint32_t cull_target, bool exempt_projectiles, voi
     *slot_out = reinterpret_cast<void**>(slot);
     return at;
 }
+// The shared claim, in two steps so a stub is emitted between them (an arena refusal then leaves the site
+// untouched): check_site() verifies the arguments, the install window and, when nothing is claimed yet, the window
+// bytes; patch_site() claims and patches the site once. Both return nullptr when fine, else the refusal. A claim
+// whose rollback failed stays registered for shutdown() and refuses every chain.
+const char* check_site(std::uintptr_t site, std::uintptr_t cull_target) {
+    if (site_broken_) return "rollback_failed";
+    if (!site || site < core::site_offset || cull_target != site - core::site_offset + core::cull_offset)
+        return "invalid_site";
+    if (!engine_patch::install_window_open()) return "late_claim";
+    if (site_claimed_) return site == site_.spec.address ? nullptr : "site_differs";
+    if (!bytes_match(site - core::site_offset, core::window, core::window_length)) return "bytes_mismatch";
+    return nullptr;
+}
+const char* patch_site(std::uintptr_t site) {
+    if (site_claimed_) return nullptr;
+    if (!pin_self()) return "pin_failed";
+    engine_patch::SiteSpec spec{};
+    spec.name = "cull_small_parts";
+    spec.address = site;
+    spec.length = core::site_length;
+    spec.ret_pop = core::ret_pop;
+    spec.rel32_offset = 0;
+    std::memcpy(spec.expected, core::site, core::site_length);
+    site_ = engine_patch::Site{};
+    if (!engine_patch::claim(site_, spec)) {
+        const char* reason = site_.status;
+        if (site_.patched_in) {
+            site_claimed_ = site_broken_ = true; // registered for shutdown()
+            return "rollback_failed";
+        }
+        site_ = engine_patch::Site{};
+        return reason;
+    }
+    site_claimed_ = true;
+    chained_ = 0;
+    return nullptr;
+}
+// Pushes a stub in front of the live chain; nullptr = chained. With no stub live yet a failure puts the bytes back
+// (vanilla behaviour); a failed restore keeps the site registered so shutdown() tries again.
+const char* chain(void* stub, void** slot) {
+    if (engine_patch::store_pointer(slot, *site_.entry) && engine_patch::push_front(site_, stub)) {
+        ++chained_;
+        return nullptr;
+    }
+    if (chained_) return "chain_failed"; // the earlier stub stays live
+    if (!engine_patch::restore(site_)) {
+        site_broken_ = true;
+        return "rollback_failed";
+    }
+    site_claimed_ = false;
+    site_ = engine_patch::Site{};
+    return "chain_failed";
+}
 }
 
 volatile std::int32_t x3m_cull_small_parts_threshold = 0; // declared extern "C" in the header
@@ -99,61 +155,37 @@ volatile std::int32_t x3m_cull_small_parts_upper = 0;
 volatile std::uint32_t x3m_cull_small_parts_dock_culled = 0;
 
 namespace x3m::cull_small_parts {
+bool chain_stub(std::uintptr_t site, std::uintptr_t cull_target, void* stub, void** next_slot, const char** status) {
+    const char* reason = check_site(site, cull_target);
+    if (!reason) reason = patch_site(site);
+    if (!reason) reason = chain(stub, next_slot);
+    *status = reason ? reason : "ok";
+    return reason == nullptr;
+}
+bool site_claimed() {
+    return site_claimed_;
+}
+const char* site_write() {
+    return site_.patched_in ? (site_.atomic_write ? "atomic" : "plain") : "none";
+}
 bool install_at(std::uintptr_t site, std::uintptr_t cull_target, bool exempt_projectiles) {
     if (patched_) {
         state_ = "already_installed";
         return false;
     }
-    const char* reason = nullptr;
-    if (!site || site < core::site_offset || cull_target != site - core::site_offset + core::cull_offset)
-        reason = "invalid_site";
-    else if (!engine_patch::install_window_open())
-        reason = "late_claim";
-    else if (!bytes_match(site - core::site_offset, core::window, core::window_length))
-        reason = "bytes_mismatch";
-    else if (!pin_self())
-        reason = "pin_failed";
+    const char* reason = check_site(site, cull_target);
     std::uintptr_t stub = 0;
     void** slot = nullptr;
     if (!reason && !(stub = emit_stub(std::uint32_t(cull_target), exempt_projectiles, &slot))) reason = "arena_full";
+    if (!reason) reason = patch_site(site); // last: an arena refusal above leaves the site untouched
     if (!reason) {
         x3m_cull_small_parts_threshold = 0;
         x3m_cull_small_parts_upper = 0;
         x3m_cull_small_parts_culled = 0;
         x3m_cull_small_parts_exempt = 0;
         x3m_cull_small_parts_dock_culled = 0;
-        engine_patch::SiteSpec spec{};
-        spec.name = "cull_small_parts";
-        spec.address = site;
-        spec.length = core::site_length;
-        spec.ret_pop = core::ret_pop;
-        spec.rel32_offset = 0;
-        std::memcpy(spec.expected, core::site, core::site_length);
-        site_ = engine_patch::Site{};
-        if (!engine_patch::claim(site_, spec)) {
-            reason = site_.status;
-            if (site_.patched_in) {
-                patched_ = true;
-                stub_ = 0;
-                state_ = "rollback_failed";
-                return false;
-            } // registered for shutdown()
-            site_ = engine_patch::Site{};
-        } else if (!engine_patch::store_pointer(slot, *site_.entry) ||
-                   !engine_patch::push_front(site_, reinterpret_cast<void*>(stub))) {
-            // The site is live with its tail only (vanilla behaviour): put the bytes back;
-            // a failed restore keeps the site registered so shutdown() tries again.
-            reason = "chain_failed";
-            if (!engine_patch::restore(site_)) {
-                patched_ = true;
-                stub_ = 0;
-                state_ = "rollback_failed";
-                return false;
-            }
-            patched_ = false;
-            stub_ = 0;
-            site_ = engine_patch::Site{};
-        } else {
+        reason = chain(reinterpret_cast<void*>(stub), slot);
+        if (!reason) {
             patched_ = true;
             stub_ = stub;
             projectiles_ = exempt_projectiles;
@@ -161,7 +193,7 @@ bool install_at(std::uintptr_t site, std::uintptr_t cull_target, bool exempt_pro
         }
     }
     state_ = reason;
-    return patched_ && !std::strcmp(reason, "ok");
+    return patched_;
 }
 bool initialize() {
     const DWORD error = GetLastError();
@@ -221,14 +253,16 @@ bool initialize() {
     return applied;
 }
 bool shutdown() {
-    if (!patched_) return true;
+    if (!site_claimed_) return true;
     const DWORD error = GetLastError();
     x3m_cull_small_parts_upper = 0;
     x3m_cull_small_parts_threshold = 0;
     cull_census::note_small_threshold(0);
-    const bool ok = engine_patch::restore(site_);
+    const bool ok = engine_patch::restore(site_); // the shared claim: the lens-flare cull's stub goes with it
     patched_ = false;
-    stub_ = 0; // the stub stays in the arena (a thread may still be inside it)
+    site_claimed_ = site_broken_ = false;
+    chained_ = 0;
+    stub_ = 0; // the stubs stay in the arena (a thread may still be inside one)
     state_ = ok ? "restored" : "restore_failed";
     SetLastError(error);
     return ok;

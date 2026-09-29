@@ -342,6 +342,20 @@ class StatusRowTiers(unittest.TestCase):
         row = next(line for line in doc.splitlines() if '`scene_graph_census` every 300 frames' in line)
         self.assertEqual(row.split(' | ')[3], 'perf')
 
+    def test_lens_flare_cull_row(self):
+        """2026-09-29: the engine-side lens-flare cull's count row sits under the same perf/debug gate as the
+        dust-leak fix's (one counter word per 300 frames); its status and bodies rows are start-up / change rows."""
+        capture = _strip_comments(source_text(ROOT / 'src/proxy/capture.cpp'))
+        self.assertIn('if ((log_tier::cached_perf || log_tier::cached_debug) && ctx.frame % 300 == 0) lens_flare_cull::report(ctx.frame);', capture)
+        self.assertEqual(capture.count('lens_flare_cull::report('), 1)
+        module = _strip_comments(source_text(ROOT / 'src/proxy/lens_flare_cull.cpp'))
+        self.assertEqual(len(re.findall(r'\blog\("lens_flare_cull culled=', module)), 1)
+        report = module[module.index('void report('):]
+        self.assertTrue(report.split('{', 1)[1].lstrip().startswith('if (!installed_) return;'))
+        doc = (ROOT / 'docs/architecture/logging-tiers.md').read_text()
+        row = next(line for line in doc.splitlines() if '`lens_flare_cull culled=` every 300 frames' in line)
+        self.assertEqual(row.split(' | ')[3], 'perf')
+
 
 class SessionLogContracts(unittest.TestCase):
     """Review of 2026-09-26: the exit path, the crash filter and the game-thread I/O rule, pinned in the source."""

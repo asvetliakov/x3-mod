@@ -123,7 +123,7 @@ SETTINGS = [
           launcher='--cull-small-parts-projectiles'),
     entry('cull_dock_parts_px', 'float', 'graphics', 'Skips drawing the hangar and launch-tube parts of carriers (many draws each) when '
           'they are smaller than this many pixels on screen, a larger size than cull_small_parts_px. 0 = they follow '
-          'cull_small_parts_px like every other part; up to 64.', '8.0000', range=(0.0, 64.0), requires=('cull_small_parts_px',),
+          'cull_small_parts_px like every other part; up to 64.', '12.0000', range=(0.0, 64.0), requires=('cull_small_parts_px',),
           launcher='--cull-dock-parts', since='2026-09-29'),
     entry('cull_small_props', 'enum', 'graphics', 'Also skips drawing small separate ship parts such as distant turrets when they are '
           'smaller than cull_small_parts_px pixels on screen. Drawing only: the turrets still aim, fire and can be hit. '

@@ -169,13 +169,14 @@ DRAWS figure shows issued draws ([draw-calls.md](draw-calls.md)).
 | 2026-09-29 | CPU fixture with the regression case: the engine part box behind the descriptor projects to 11.6 px (above 4) while the draw's extent is 1.28 px, and the prop is skipped; unknown extent drawn (`no_bounds`); the rest as before | `python3 verification/probe/build_cull_small_parts.py` then `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_cull_small_parts.py` | 141 checks, 0 failures; per draw memo hit 3.0 ns, first non-prop 14.2 ns, first skipped prop of a frame 287 ns, pair mean 171 ns (Wine/FEX, harness included; the production extent lookup is not in this figure) |
 | 2026-09-29 | Host: harness with the 9x engine box (11.6 px) beside the unit extent, extent asked for prop draws only, draw-path wiring (extent cache find/queue, `cull_small_prop_box`), `frame_end issued=` and the overlay's issued figure pinned | `PYTHONPATH=verification/probe:verification/analysis /usr/bin/python3 -m unittest test_cull_small_parts test_cull_census test_logging_tiers test_config_schema test_fps_overlay test_frame_timing test_exe_identity`; `python3 tools/config/generate.py --check` | all OK; generate PASS 243 settings |
 | 2026-09-29 | Clean DLL build, x87 walk | `cmake … -DPython3_EXECUTABLE=/usr/bin/python3 && cmake --build build -j8`; `check_no_x87.py build/d3d9.dll` | 0 warnings; PASS, 734 reachable, 0 violations; `cull_small_prop` and `small_prop_extent` without SJLJ or x87 (objdump) |
+| 2026-09-29 | The 0x0047d2a2 claim is shared with the lens-flare cull (`cull_small_parts::chain_stub`, `site_claimed`; `install_at` chains its stub on the same claim, `shutdown()` restores once for both): the fixture's lens section installs the lens stub alone, then both in both chain orders, and the small-parts checks are unchanged | `python3 verification/probe/build_cull_small_parts.py` then `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_cull_small_parts.py` | 200 checks, 0 failures (141 small-parts/props as before + 58 in the lens section + the late-claim refusal of the lens stub); bench native 0.2264 / disarmed 0.2353 / armed 0.2273 us per 12-node pass (Wine/FEX, not game FPS); `install_at` now checks, emits, then claims (an arena refusal leaves the site untouched) and the claimed path re-checks the window and the cull target; [sun-occlusion.md](sun-occlusion.md), "lens-flare gain 0 culls in the engine" |
 
 ## Dock ports (`--cull-dock-parts`, 2026-09-29)
 
 User decision 2026-09-29, option 1 of [ship-scene-parts.md](../reverse-engineering/ship-scene-parts.md) §4: a second,
 larger threshold in the same stub for the carrier dock-port parts, the inline bodies of the stock dock cut scenes
 9013/9014 and 9098/9099 (model id `node+0x140` in `[901300000, 901499999]` or `[909800000, 909999999]`, id = local +
-(cut − 1)·100000). `X3M_CULL_DOCK_PARTS_PX` (ini `cull_dock_parts_px`, launcher `--cull-dock-parts <PX>`, default 8
+(cut − 1)·100000). `X3M_CULL_DOCK_PARTS_PX` (ini `cull_dock_parts_px`, launcher `--cull-dock-parts <PX>`, default 12
 with every non-zero `--cull-small-parts`, 0 = off and not sent, refused without the cull, band (0, 64]) is converted
 to the pass's `s` exactly as `X3M_CULL_SMALL_PARTS_PX` (same `threshold_for`, same projection, width and focus, same
 frame). The stub compares `s` first against `upper = max(threshold, dock threshold)` (0 in a vanilla frame), so a node
@@ -190,10 +191,9 @@ window, verified bytes and fail-closed install; an invalid dock value refuses th
 (F8 frames; `culled=` stays the small-rule count, `dock_culled=` the nodes the dock rule added), census verdict
 `culled_dock`. The stub has no per-300-frame row; a flight counts the dock rule on F8 frames under `--debug`.
 
-**Default versus the note's table.** The note's "s < 8 removes 159/27/27" is in `s` units. At run385's projection
-(`m00` 0.5, 5120 wide, focus `0x3470`: 1.639 px per `s`) the 8 px default is `s < 5` and removes 64/2/25 draws; 12 px
-is `s < 8` and reproduces 159/27/27 (measured replay below). The default stays 8 px as briefed; 12 px is the value
-that matches the note's recommendation at that resolution.
+**Default: 12 px** (set 2026-09-29, first briefed as 8). The note's "s < 8 removes 159/27/27" is in `s` units: at
+run385's projection (`m00` 0.5, 5120 wide, focus `0x3470`: 1.639 px per `s`) 12 screen px is the engine's `s < 8` and
+reproduces 159/27/27 removed draws (measured replay below); 8 px would be `s < 5` there and remove 64/2/25.
 
 | Date | Check | Command | Result |
 | --- | --- | --- | --- |
@@ -203,6 +203,7 @@ that matches the note's recommendation at that resolution.
 | 2026-09-29 | Site verifier on the installed EXE (site checks unchanged; its encoder twin, constants and `encoder_projectiles` updated to the 147-byte stub) | `python3 verification/probe/verify_cull_small_parts_site.py` | PASS 20/20, EXE `fdbf3418…` |
 | 2026-09-29 | Host: C++ and Python encoders byte for byte (both marker tests, both range tests, `projectiles off`), `dock_model` bounds, `upper_for`, census `culled_dock`, the row parsers with the dock fields, launcher default/explicit/0/refusals, schema opt-outs, default-launch environment | `PYTHONPATH=verification/probe:verification/analysis python3 -m unittest test_cull_small_parts test_config_schema test_launcher_defaults test_logging_tiers test_cull_census test_body_table_exe test_fov_site test_terran_lod_site`; `python3 tools/config/generate.py --check` | 96 tests OK; generate PASS 245 settings, 97 in the template |
 | 2026-09-29 | DLL build and x87 walk; launcher dry run | `cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DPython3_EXECUTABLE=/usr/bin/python3 && cmake --build build -j8`; `check_no_x87.py build/d3d9.dll`; `python3 tools/manage.py launch --dry-run [--cull-dock-parts 0]` | 0 warnings; PASS, 734 reachable, 0 violations (worktree build `3f95b47a…`, not a candidate); dry run carries `X3M_CULL_DOCK_PARTS_PX=8.0000`, with `--cull-dock-parts 0` not |
+| 2026-09-29 | Merged with the lens-flare cull (`b36e8115`, shared claim, lens stub chained on it; the lens section's direct threshold writes also arm `upper`); default 12 px | `build_cull_small_parts.py`, `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_cull_small_parts.py`; `verify_cull_small_parts_site.py`, `verify_lens_flare_cull_site.py`; `generate.py --check`; `unittest test_cull_small_parts test_lens_flare_cull test_config_schema test_launcher_defaults test_logging_tiers test_cull_census`; DLL build, `check_no_x87.py` | fixture 221 checks, 0 failures (lens 58/0; dock line unchanged: culled=3 dock_culled=7 exempt=1, census culled_dock 7); bench 0.2352 / 0.2363 / 0.2338 / 0.2334 µs native / disarmed / armed / armed dock; verifiers PASS 20/20 and 13/13; generate PASS 245 settings; 80 tests OK; 0 warnings; x87 PASS 734 reachable, 0 violations (worktree build `0d710594…`, not a candidate) |
 
 Open: not flown. Whether the hangar interior shows through the open bay before it is culled (note, "Unknown") is a
 flight question; the frame row's `dock_culled=` and the census `culled_dock` rows count it.

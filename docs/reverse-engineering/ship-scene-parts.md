@@ -112,7 +112,7 @@ engine does test is set on them.
 
 Implemented 2026-09-29 as option 1: `X3M_CULL_DOCK_PARTS_PX` / `--cull-dock-parts` in the `cull_small_parts` stub
 (`src/proxy/cull_small_parts_core.h`; [cull-small-parts.md](../verification/cull-small-parts.md), "Dock ports"); the
-8 px default is `s < 5` at run385's projection, 12 px is the table's `s < 8`.
+12 px default is the table's `s < 8` at 5120 wide (run385's projection) and reproduces 159/27/27 removed draws.
 
 Replay on the run385 rows (`dock_part_rules.py`, measured counts; dock-port parts = model id `// 100000` in
 {9013, 9014, 9098, 9099}; draws per node from `object_context`):

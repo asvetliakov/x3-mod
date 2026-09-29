@@ -38,6 +38,20 @@ bool shutdown();   // restores the site (dynamic-unload detach only); true when 
 // (X3M_CULL_SMALL_PARTS_PROJECTILES=on, the default; initialize() turns it off
 // when the marker's two engine instructions are not the verified bytes).
 bool install_at(std::uintptr_t site, std::uintptr_t cull_target, bool exempt_projectiles);
+// The claim is shared with the lens-flare cull (lens_flare_cull.h): one
+// engine_patch claim of the site carries both stubs (push_front: the later one
+// runs first and continues into the earlier one, then the tail), restored once
+// by shutdown(). chain_stub() verifies the window and claims the site when
+// nothing has yet (the checks of install_at; the install window and the
+// cull target are checked on every call, the window bytes before the first
+// claim), stores the current chain head into next_slot and pushes stub in
+// front; false with *status naming the refusal (invalid_site, late_claim,
+// site_differs, bytes_mismatch, pin_failed, the claim's status, chain_failed,
+// rollback_failed). A chain failure with no stub live yet restores the site
+// (vanilla); with one live it leaves that one in place.
+bool chain_stub(std::uintptr_t site, std::uintptr_t cull_target, void* stub, void** next_slot, const char** status);
+bool site_claimed();      // the shared claim is live
+const char* site_write(); // none|atomic|plain: which engine_patch::write_code path wrote the jump
 const char* state();
 bool projectiles_exempt(); // the installed stub exempts marked projectile nodes
 std::uintptr_t stub_address();

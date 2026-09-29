@@ -22,6 +22,7 @@
 #include "collide_memo.h"
 #include "sun_occlusion.h"
 #include "cull_small_parts.h"
+#include "lens_flare_cull.h"
 #include "cull_small_parts_core.h"
 #include "cull_small_props_core.h"
 #include "frame_timing.h"
@@ -186,6 +187,8 @@ float cull_small_props_px = 0.f;  // at X3M_CULL_SMALL_PARTS_PX pixels; needs X3
 float lens_flare_gain_value = 1.f; // X3M_LENS_FLARE_GAIN: the game's lens-flare draws (the lens bracket's ONE/ONE
                                    // cards) scaled by G, finite 0..1, 1 = off (nothing installed for it); needs
                                    // X3M_MOTION_OUTPUT=1
+bool lens_flare_gain_zero = false; // ... parsed as exactly 0: the engine-side cull (lens_flare_cull.h) is claimed too,
+                                   // route or not; the proxy skip stays as the fallback
 float sun_occlusion_radius = sun_occlusion::core::radius_default_u,
       sun_occlusion_curve = 1.f; // X3M_SUN_OCCLUSION_RADIUS (0.005..0.25, the disc's half-width as a fraction of the
                                  // back-buffer width), X3M_SUN_OCCLUSION_CURVE (0.25..4, exponent on the used fraction)
@@ -2002,6 +2005,8 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
         scene_graph_census::report(ctx.id, ctx.frame);
     // --perf/--debug: the dust-leak fix's detour count every 300 frames (one arena word read; nothing per frame).
     if ((log_tier::cached_perf || log_tier::cached_debug) && ctx.frame % 300 == 0) dust_leak_fix::report(ctx.frame);
+    // --perf/--debug: the lens-flare cull's count every 300 frames (one counter word read; nothing per frame).
+    if ((log_tier::cached_perf || log_tier::cached_debug) && ctx.frame % 300 == 0) lens_flare_cull::report(ctx.frame);
     if (ctx.capture && ctx.remaining) --ctx.remaining;
     ++ctx.frame;
     ctx.draws = 0;
@@ -2027,6 +2032,9 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
     cull_census::begin_frame(ctx.capture); // X3M_CULL_CENSUS=1 only: arms the two pass stubs for a capture frame
     cull_small_parts::begin_frame();       // X3M_CULL_SMALL_PARTS_PX only: this frame's threshold from the scene view's
                                            // projection (else the registry F) and the back-buffer width
+    lens_flare_cull::begin_frame(ctx.frame); // X3M_LENS_FLARE_GAIN=0 only: the flare body set from the engine's body
+                                             // table (the header and the mapped dynamic names per frame, a scan only
+                                             // when the table moves, grows or re-binds a name)
     ctx.scene_depth.begin_frame(d, ctx.id, ctx.frame, ctx.capture);
     ctx.motion_output.begin_frame(ctx.frame, ctx.capture);
     ctx.motion_output.volumetric_fog_begin_frame(); // fog option only (returns at once without it)
@@ -5443,6 +5451,7 @@ void initialize_log(HMODULE module) {
             if (end != value && *end == L'\0' && v >= lens_flare_gain::gain_min && v <= lens_flare_gain::gain_max) {
                 lens_gain = v;
                 lens_gain_reason = v < 1.f ? "ok" : "one";
+                lens_flare_gain_zero = v == 0.f;
             } else
                 lens_gain_reason = "invalid";
         }
@@ -5470,6 +5479,8 @@ void initialize_log(HMODULE module) {
                                // 0x0047d528), same window
     cull_small_parts::initialize(); // X3M_CULL_SMALL_PARTS_PX only; one trampoline on the cull/LOD pass (0x0047d2a2),
                                     // same window, disjoint from the census claims
+    lens_flare_cull::initialize(lens_flare_gain_zero); // X3M_LENS_FLARE_GAIN=0 only; a second stub on the same
+                                                       // 0x0047d2a2 claim (shared with the small-parts cull)
     {
         // X3M_CULL_SMALL_PROPS=on|off (cull_small_props_core.h): no patch; the motion route skips the draws of small
         // prop nodes below X3M_CULL_SMALL_PARTS_PX (the same pixel setting, read here independently of whether the
