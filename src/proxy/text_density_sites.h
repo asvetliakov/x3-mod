@@ -326,7 +326,12 @@ inline bool filter_set_contains(const FilterSet& s, std::uintptr_t p) {
     }
     return false;
 }
-constexpr std::uint32_t d3d_texf_linear = 2; // D3DTEXF_LINEAR
+constexpr std::uint32_t d3d_texf_none = 0, d3d_texf_point = 1, d3d_texf_linear = 2, d3d_texf_anisotropic = 3; // D3DTEXTUREFILTERTYPE
+// Only a NONE or POINT filter is raised to LINEAR; LINEAR and ANISOTROPIC (run 393: MIN 3, MAG 2 on the text quads)
+// are left as the engine set them, per axis.
+inline bool filter_needs_raise(std::uint32_t value) {
+    return value <= d3d_texf_point;
+}
 // ---- the diagnostic set (item 7) ----
 // The function ids the thunks push (the diagnostic rows name them in this order).
 enum Kind : unsigned { kind_text_line = 0, kind_blt_block = 1, kind_blt_alpha = 2, kind_rect_fill = 3 };

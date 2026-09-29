@@ -62,16 +62,21 @@ independent of the source:
 - `hook_device` installs the `SetTexture` hook when the option is active with `s != d`
   (`filter_hooks_wanted()`); the hook stores the stage-0 pointer (one store per call).
 - Every submitted draw (the four draw hooks) probes the set with the stage-0 pointer; a hit
-  reads `D3DSAMP_MINFILTER`/`MAGFILTER` (documented `GetSamplerState`), sets both to
-  `D3DTEXF_LINEAR` where they differ, and puts the previous values back right after the
-  original draw. No mip levels exist on these textures (`Levels = 1`), so no mip filter is
-  touched. One `text_density_filter status=active min_before= mag_before= textures=` row at
-  the first override; under `--debug` one `text_density_filter_frame … overridden=` row per
-  300 frames.
+  reads `D3DSAMP_MINFILTER`/`MAGFILTER` through the device's original entries (slots 68/69,
+  so the calls are neither counted as application state calls nor recorded into a state
+  block), raises an axis that is `NONE` or `POINT` to `D3DTEXF_LINEAR` and leaves `LINEAR` or
+  `ANISOTROPIC` as the engine set it, and puts the raised axes back right after the original
+  draw. Run 393 measured the engine's own state on these draws as MIN `ANISOTROPIC` (3), MAG
+  `LINEAR` (2), so with the fonts fixed the override is normally a no-op; run 392's point
+  sampling came from the record flag. `MAXANISOTROPY` is read once and logged, never changed.
+  No mip levels exist on these textures (`Levels = 1`), so no mip filter is touched. One
+  `text_density_filter status=active min_before= mag_before= aniso= raised= textures=` row at
+  the first text-quad draw; under `--debug` one `text_density_filter_frame … overridden=
+  already_linear=` row per 300 frames (`overridden` counts only draws whose state changed).
 
 Per-draw cost: for every submitted draw one pointer load and a binary search over at most
 35 entries (about six compares); for a text-texture draw (dozens per frame) two
-`GetSamplerState` and, when the state is not already linear, four `SetSamplerState` calls.
+`GetSamplerState` and, per axis that needs raising, two `SetSamplerState` calls.
 The `SetTexture` hook adds one pointer store to a hook the motion route installs anyway
 under the stand set. Nothing runs when `s = d` (1:1 texels, point sampling is exact) or
 when the option is off.

@@ -129,8 +129,10 @@ SHADOW_RE = re.compile(r'\btext_density_shadow src=(?P<src>-?\d+) status=(?P<sta
 DRAW_RE = re.compile(r'\btext_density_draw fn=(?P<fn>blt_block|blt_alpha|rect_fill) src=(?P<src>-?\d+) dst=(?P<dst>-?\d+) '
                      r'dst_flagged=(?P<dst_flagged>[01]) src_flagged=(?P<src_flagged>[01]) src_generated=(?P<src_generated>[01]) handled=(?P<handled>[01])')
 TEXT_LINE_RE = re.compile(r'\btext_density_draw fn=text_line font=(?P<font>-?\d+) x=(?P<x>-?\d+) dst=(?P<dst>-?\d+) dst_flagged=(?P<dst_flagged>[01])')
-FILTER_RE = re.compile(r'\btext_density_filter status=active min_before=(?P<min>\d+) mag_before=(?P<mag>\d+) textures=(?P<textures>\d+)')
-FILTER_FRAME_RE = re.compile(r'\btext_density_filter_frame frame=(?P<frame>\d+) textures=(?P<textures>\d+) overridden=(?P<overridden>\d+)')
+FILTER_RE = re.compile(r'\btext_density_filter status=active min_before=(?P<min>\d+) mag_before=(?P<mag>\d+) aniso=(?P<aniso>\d+) '
+                       r'raised=(?P<raised>both|min|mag|none) textures=(?P<textures>\d+)')
+FILTER_FRAME_RE = re.compile(r'\btext_density_filter_frame frame=(?P<frame>\d+) textures=(?P<textures>\d+) overridden=(?P<overridden>\d+) '
+                             r'already_linear=(?P<already_linear>\d+)')
 RESET_RE = re.compile(r'\btext_density_reset shadows=(?P<shadows>\d+) bytes=(?P<bytes>\d+)')
 RESTORE_RE = re.compile(r'\btext_density_restore status=(?P<status>restored|restore_failed) registered=(?P<registered>[01])')
 
@@ -263,7 +265,12 @@ def parse_draw_line(line):
 
 def parse_filter_line(line):
     m = FILTER_RE.search(line) or FILTER_FRAME_RE.search(line)
-    return {k: int(v) for k, v in m.groupdict().items()} if m else None
+    return {k: (v if k == 'raised' else int(v)) for k, v in m.groupdict().items()} if m else None
+
+
+def filter_needs_raise(value):
+    """Only NONE (0) and POINT (1) are raised to LINEAR; LINEAR (2) and ANISOTROPIC (3) stay."""
+    return value <= 1
 
 
 def filter_set(pointers):
