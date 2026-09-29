@@ -1,0 +1,39 @@
+1. ship scenes
+  installed objects/ships/split/split_m1_raptor_scene.bod: addon/06.cat 88e57df09707 parts=35 dock-port dummies={'19026': 10, '19027': 1}
+  installed objects/ships/split/split_m2p_ocelot_scene.bod: addon/06.cat 855d61bd7c57 parts=72 dock-port dummies={'19026': 6, '19027': 1}
+  stock     objects/ships/split/split_m1_raptor_scene.bod: absent
+  stock     objects/ships/split/split_m1_scene.bod: 06.cat a37b8b36edb5 parts=30 dock-port dummies={'19026': 10, '19027': 1}
+  installed objects/ships/split/split_m1_scene.bod: 06.cat a37b8b36edb5 parts=30 dock-port dummies={'19026': 10, '19027': 1}
+2. Dummies / CutData rows
+  installed Dummies addon/07.cat eafb7501548f
+     19026;ANIMATEDF_DOCKPORT_FIGHTER|ANIMATEDF_DOCKPORT_QUICKLAUNCH|ANIMATEDF_DOCKPORT_STARTONLY;1;NULL;9013;
+     19027;ANIMATEDF_DOCKPORT_FIGHTER|ANIMATEDF_DOCKPORT_HANGAR|ANIMATEDF_DOCKPORT_LANDONLY;1;NULL;9014;
+     19098;ANIMATEDF_DOCKPORT_STANDARD|ANIMATEDF_DOCKPORT_QUICKLAUNCH|ANIMATEDF_DOCKPORT_STARTONLY;1;NULL;9098;
+     19099;ANIMATEDF_DOCKPORT_STANDARD|ANIMATEDF_DOCKPORT_HANGAR|ANIMATEDF_DOCKPORT_LANDONLY;1;NULL;9099;
+     CutData addon/07.cat: 9010; stations\docks\dock5ports_arm_scene;
+     CutData addon/07.cat: 9013; stations\docks\DockCarrier_quicklaunch_scene;
+     CutData addon/07.cat: 9014; stations\docks\DockCarrier_scene;
+     CutData addon/07.cat: 9098; stations\docks\M6DockCarrier_quicklaunch_scene;
+     CutData addon/07.cat: 9099; stations\docks\M6DockCarrier_scene;
+  stock     Dummies addon/03.cat b0c8e5ebbaf9
+     19026;ANIMATEDF_DOCKPORT_FIGHTER|ANIMATEDF_DOCKPORT_QUICKLAUNCH|ANIMATEDF_DOCKPORT_STARTONLY;1;NULL;9013;
+     19027;ANIMATEDF_DOCKPORT_FIGHTER|ANIMATEDF_DOCKPORT_HANGAR|ANIMATEDF_DOCKPORT_LANDONLY;1;NULL;9014;
+     19098;ANIMATEDF_DOCKPORT_STANDARD|ANIMATEDF_DOCKPORT_QUICKLAUNCH|ANIMATEDF_DOCKPORT_STARTONLY;1;NULL;9098;
+     19099;ANIMATEDF_DOCKPORT_STANDARD|ANIMATEDF_DOCKPORT_HANGAR|ANIMATEDF_DOCKPORT_LANDONLY;1;NULL;9099;
+     CutData addon/02.cat: 9010; stations\docks\dock5ports_arm_scene;
+     CutData addon/02.cat: 9013; stations\docks\DockCarrier_quicklaunch_scene;
+     CutData addon/02.cat: 9014; stations\docks\DockCarrier_scene;
+     CutData addon/02.cat: 9098; stations\docks\M6DockCarrier_quicklaunch_scene;
+     CutData addon/02.cat: 9099; stations\docks\M6DockCarrier_scene;
+3. dock cut scenes
+  installed dockcarrier_quicklaunch_scene: objects/stations/docks/dockCarrier_quicklaunch_scene.pbd [02.cat] 34f58000ee02 parts=4 inline=3 bodies=['100000', '100001', '535', '100003']
+  stock     dockcarrier_quicklaunch_scene: objects/stations/docks/dockCarrier_quicklaunch_scene.pbd [02.cat] 34f58000ee02 parts=4 inline=3 bodies=['100000', '100001', '535', '100003']
+  installed dockcarrier_scene: objects/stations/docks/dockCarrier_scene.pbd [02.cat] ebad8942f4c1 parts=6 inline=3 bodies=['535', '535', '535', '100003', '100004', '100005']
+  stock     dockcarrier_scene: objects/stations/docks/dockCarrier_scene.pbd [02.cat] ebad8942f4c1 parts=6 inline=3 bodies=['535', '535', '535', '100003', '100004', '100005']
+  installed m6dockcarrier_quicklaunch_scene: objects/stations/docks/M6dockCarrier_quicklaunch_scene.pbd [addon/03.cat] f5e974974262 parts=4 inline=0 bodies=['stations\\docks\\M6dockCarrier_quicklaunch_doorlower', '535', 'stations\\docks\\M6dockCarrier_quicklaunch_body', 'stations\\docks\\M6dockCarrier_quicklaunch_doorupper']
+  stock     m6dockcarrier_quicklaunch_scene: objects/stations/docks/M6dockCarrier_quicklaunch_scene.pbd [addon/03.cat] f5e974974262 parts=4 inline=0 bodies=['stations\\docks\\M6dockCarrier_quicklaunch_doorlower', '535', 'stations\\docks\\M6dockCarrier_quicklaunch_body', 'stations\\docks\\M6dockCarrier_quicklaunch_doorupper']
+  installed m6dockcarrier_scene: objects/stations/docks/M6dockCarrier_scene.pbd [02.cat] 1eaa10b5b425 parts=6 inline=3 bodies=['535', '535', '535', '100003', '100004', '100005']
+  stock     m6dockcarrier_scene: objects/stations/docks/M6dockCarrier_scene.pbd [02.cat] 1eaa10b5b425 parts=6 inline=3 bodies=['535', '535', '535', '100003', '100004', '100005']
+4. text ship scenes referencing dock-port dummies
+  installed text ship scenes 875, with dock-port dummies 95, dummy parts {'19026': 609, '19027': 83, '19098': 51, '19099': 10}
+  stock     text ship scenes 399, with dock-port dummies 36, dummy parts {'19026': 249, '19027': 33, '19098': 10, '19099': 2}

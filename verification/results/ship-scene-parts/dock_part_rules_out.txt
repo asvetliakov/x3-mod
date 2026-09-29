@@ -1,0 +1,30 @@
+frame 4827: census rows 987, cut-inline rows 64, dock-port rows 54, kept 42, their draws 186
+  kept draws by model (model, cut, radius): {('35b8bf20', 9013, '8992'): 10, ('35b8bf21', 9013, '8992'): 10, ('35b8bf23', 9013, '16354'): 112, ('35ba45c3', 9014, '39157'): 50, ('35ba45c4', 9014, '25270'): 2, ('35ba45c5', 9014, '25178'): 2}
+  verdicts of dock-port rows: {'kept': 42, 'culled_small': 12}
+  rule s <  4 on dock-port parts: nodes  26, draws removed   62
+  rule s <  6 on dock-port parts: nodes  28, draws removed   64
+  rule s <  8 on dock-port parts: nodes  39, draws removed  159
+  rule s < 10 on dock-port parts: nodes  41, draws removed  161
+  rule s < 12 on dock-port parts: nodes  41, draws removed  161
+  rule s < 16 on dock-port parts: nodes  42, draws removed  186
+  rule s < 24 on dock-port parts: nodes  42, draws removed  186
+frame 8142: census rows 635, cut-inline rows 74, dock-port rows 54, kept 3, their draws 27
+  kept draws by model (model, cut, radius): {('35ba45c3', 9014, '39157'): 25, ('35ba45c4', 9014, '25270'): 1, ('35ba45c5', 9014, '25178'): 1}
+  verdicts of dock-port rows: {'kept': 3, 'culled_small': 51}
+  rule s <  4 on dock-port parts: nodes   0, draws removed    0
+  rule s <  6 on dock-port parts: nodes   2, draws removed    2
+  rule s <  8 on dock-port parts: nodes   3, draws removed   27
+  rule s < 10 on dock-port parts: nodes   3, draws removed   27
+  rule s < 12 on dock-port parts: nodes   3, draws removed   27
+  rule s < 16 on dock-port parts: nodes   3, draws removed   27
+  rule s < 24 on dock-port parts: nodes   3, draws removed   27
+frame 10210: census rows 884, cut-inline rows 56, dock-port rows 36, kept 4, their draws 52
+  kept draws by model (model, cut, radius): {('35ba45c3', 9014, '39157'): 25, ('363bf8e3', 9099, '122922'): 25, ('363bf8e4', 9099, '78844'): 1, ('363bf8e5', 9099, '78556'): 1}
+  verdicts of dock-port rows: {'kept': 4, 'culled_small': 32}
+  rule s <  4 on dock-port parts: nodes   1, draws removed   25
+  rule s <  6 on dock-port parts: nodes   1, draws removed   25
+  rule s <  8 on dock-port parts: nodes   3, draws removed   27
+  rule s < 10 on dock-port parts: nodes   4, draws removed   52
+  rule s < 12 on dock-port parts: nodes   4, draws removed   52
+  rule s < 16 on dock-port parts: nodes   4, draws removed   52
+  rule s < 24 on dock-port parts: nodes   4, draws removed   52

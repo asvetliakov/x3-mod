@@ -141,6 +141,10 @@ instruction that loaded the source register:
 lights come from `0x004885a0`/`0x0043d1d0` with `0x800000/0x400000/0x10/0x20000/0x80000`.
 The bit is reachable only through the KC game logic or a restored state.
 
+Carrier dock-port parts (the single-record `body=-` nodes under capital ships) are children of a dock
+dummy node that `0x0043d1d0` marks `+0x12c |= 0x100000`, so their parent is never renderable: a `0x40000`
+on them would hide them always, not by the hull's LOD ([ship-scene-parts.md](ship-scene-parts.md) §3).
+
 ### 2.2 Render-only
 
 The gate clears bit `0x2` of `node+0x12c` and nothing else. Bit `0x2` is re-armed for every
