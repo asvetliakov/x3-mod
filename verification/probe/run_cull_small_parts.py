@@ -26,16 +26,18 @@ def main():
     run = subprocess.run([bottle.WINE, *bottle.wine_args(name), str(EXE)], capture_output=True, text=True, timeout=600)
     total = re.search(r'CULL SMALL PARTS CPU checks=(\d+) failures=(\d+)', run.stdout)
     bench = re.search(r'CULL SMALL PARTS BENCH native_pass_us=([\d.]+) patched_disarmed_us=([\d.]+) patched_armed_us=([\d.]+)', run.stdout)
-    replay = [l for l in run.stdout.splitlines() if l.startswith('REPLAY') or l.startswith('CENSUS')]
+    replay = [l for l in run.stdout.splitlines() if l.startswith('REPLAY') or l.startswith('CENSUS') or l.startswith('PROPS')]
+    props_bench = re.search(r'CULL SMALL PROPS BENCH memo_hit_ns=([\d.]+) not_prop_first_ns=([\d.]+) prop_culled_first_in_frame_ns=([\d.]+) prop_culled_pair_mean_ns=([\d.]+)', run.stdout)
     record = {'fixture': str(EXE.relative_to(ROOT)), 'exit_status': run.returncode, 'elapsed_s': round(time.time() - started, 1),
               'checks': int(total.group(1)) if total else None, 'failures': int(total.group(2)) if total else None,
               'failure_lines': [l for l in run.stdout.splitlines() if l.startswith('FAIL') or l.startswith('DETAIL')],
               'replay_lines': replay,
               'bench_us': {k: float(bench.group(i + 1)) for i, k in enumerate(('native_pass', 'patched_disarmed', 'patched_armed'))} if bench else None,
+              'props_bench_ns': {k: float(props_bench.group(i + 1)) for i, k in enumerate(('memo_hit', 'not_prop_first', 'prop_culled_first_in_frame', 'prop_culled_pair_mean'))} if props_bench else None,
               'install_lines': [l for l in run.stdout.splitlines() if l.startswith('cull_small_parts ') or l.startswith('cull_census ')],
               'bottle': bottle.describe(name), 'note': 'harness-inclusive per-pass estimates over a 12-node tree (7 culled when armed at threshold 20), not game FPS'}
     OUT.write_text(json.dumps(record, indent=1) + '\n')
-    print(json.dumps({k: record[k] for k in ('checks', 'failures', 'exit_status', 'bench_us', 'failure_lines', 'replay_lines')}))
+    print(json.dumps({k: record[k] for k in ('checks', 'failures', 'exit_status', 'bench_us', 'props_bench_ns', 'failure_lines', 'replay_lines')}))
     if run.returncode != 0 and not total:
         print(run.stdout[-2000:], run.stderr[-2000:], file=sys.stderr)
     sys.exit(0 if run.returncode == 0 and total and record['failures'] == 0 else 1)

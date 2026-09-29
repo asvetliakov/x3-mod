@@ -88,3 +88,48 @@ No anomalies: `motion_direct_loss_code` — 0 occurrences; `apply_failures`/`res
 **Removed 2026-09-25** (user decision): `--cull-small-parts-scope` (every node is a candidate; the `bodies` branch went from the stub encoder and the census); `docs/verification/launcher-options-inventory.md`, "4. Removed".
 
 Fixture after the removal (2026-09-25, bottle X3): `run_cull_small_parts.py` 119 checks, 0 failures (153 with the scope section; `verification/results/cull-small-parts-cpu.json`) (measured).
+
+## Small props (`--cull-small-props`, 2026-09-29)
+
+Feature: `--cull-small-props on|off` / `X3M_CULL_SMALL_PROPS` / ini `cull_small_props` (default off, sent only when
+given; needs `X3M_CULL_SMALL_PARTS_PX` and the motion route), `src/proxy/cull_small_props_core.h`,
+`src/proxy/motion_output_cull_small_props_inc.h`. Run375 (Mayhem 3, 5120x1440, frame 4400) drew 82 prop draws of 352,
+all census `kept`: the split turret props carry a LOD ladder (`lods=3`, at LOD 1) and a node radius `+0xa0` of 80,000,
+about nine times their mesh, so the engine's `s` (5-6) stays above the stub's threshold (3) and `--cull-small-parts`
+cannot reach them, while their draw boxes are about 2.5 px wide (`object_bounds`). The prop cull therefore measures the
+draw, not the node: a main-scene draw (after gate 2, before the jitter and any binding) whose scope node's body path
+starts with `ships\props\` (engine body table, case and slash free) and whose owning mesh part AABB
+(`part+0x40`/`+0x50`, render-node-bounds.md 2) projects through the draw's own clip rows to a half-side under
+`X3M_CULL_SMALL_PARTS_PX` pixels is not forwarded: the hook returns `D3D_OK`, nothing was bound, nothing is undone.
+The first draw of a node in a frame decides for all its draws. A prop on the player's ship or on the current target
+(cockpit registry `0x608504`, `object_capture::own_ship`/`target`, roots confirmed by handle; parent walk of at most
+16 links, 64 walks per frame, cached per node and handle) is always drawn, and so is every prop when either root
+cannot be read (`unresolved`), when its part or rows cannot be read, or when its box reaches behind the eye. Why
+turret behaviour cannot change: the skip is a D3D call not made, after the engine's cull/LOD pass has finished; the
+only value returned to the game is the `D3D_OK` a drawn call returns; no engine byte is patched and no engine field
+is written, so the renderable bit, whose one non-render consumer is the script occluder list `0x00488aef`/`0x004886a0`
+(lod-selection.md, "Further consequences"), stays the engine's own. The vanilla engine already leaves distant turrets
+undrawn: in run375 frame 4400 it culled 101 prop nodes over 15 bodies by its own size and degenerate tests
+(`split_m6turretA_*`, `XTC_split_m6aturret_*`, `m6maingun_*`, `ALDG_*`) plus 6 by `--cull-small-parts`, stronger
+than this skip (the bit cleared in the pass), and turret aim, fire and hit detection were never reported to change on
+flights with the 2-4 px stub default since 2026-09-19 (inferred from the flown ledger; no dedicated turret test).
+Rows: `cull_small_props requested= px= configured= reason=` once (`off`, `invalid`, `no_px`, `route_off`), one
+`cull_small_props_device` at the first scene draw, `cull_small_props_frame` every 300 frames with scene draws (every
+tier: `draws culled kept nodes_culled kept_size exempt_own exempt_target unresolved deferred no_bounds unbounded
+no_scope resolves walks`), on F8 frames one `cull_small_prop` per skipped node, and census rows of such nodes read
+`verdict=culled_prop` (frame row `culled_prop_nodes=`). Predicted at 2 and 4 px on the run375 burst: 76 of the 82 prop
+draws skipped (352 -> about 276 draws), before the own-ship/target exemption (inferred from the VB-extent
+`object_bounds` boxes; the part AABB is a superset; script `verification/results/cull-small-props/run375_prop_rows.py`,
+output beside it).
+
+| Date | Check | Command | Result |
+| --- | --- | --- | --- |
+| 2026-09-29 | X3 CPU fixture extended: census `culled_prop` (only the reported kept node's row, an engine-culled node keeps its verdict, frame row `culled_prop_nodes=2`, a report outside a captured frame dropped); the decision over a synthetic engine image through the production `engine_memory::read`: far prop 1.28 px skipped (second draw shares it), 12.9 px drawn, hull body drawn, `SHIPS/Props/` matched, null and short names not props, own-ship and target props drawn, released descriptor page `no_bounds`, no rows and a box behind the eye `unbounded`, unreadable registry `unresolved`, target cleared -> its prop skipped, 70 new props -> 64 skipped + 6 deferred then 70 | `python3 verification/probe/build_cull_small_parts.py` then `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_cull_small_parts.py` | 140 checks, 0 failures (119 before); per-draw cost (Wine/FEX, harness included, not game FPS): memo hit 3.0 ns, first draw of a non-prop node 18.6 ns, first prop of a frame skipped 314 ns (includes the once-per-frame own-ship/target resolution), mean of two skipped props in a frame 207 ns (measured); `verification/results/cull-small-parts-cpu.json` |
+| 2026-09-29 | Host: core compiled with the host compiler (option parse, prefix, part box, radius, decisions incl. a reused node address re-walked by handle, wrong body-table count, window counts), census `with_prop`/`sorted_contains`, draw-path wiring pinned (after gate 2, before the jitter, `D3D_OK`, no engine patch), launcher (sent only when given, inherited value dropped, refused with `--cull-small-parts 0` and under `--vanilla`), schema, logging tiers | `PYTHONPATH=verification/probe:verification/analysis /usr/bin/python3 -m unittest test_cull_small_parts test_cull_census test_logging_tiers test_config_schema`; `python3 tools/config/generate.py --check` | 60 tests OK; generate PASS 243 settings, 95 in the template |
+| 2026-09-29 | DLL build and x87 walk (worktree build, not a candidate) | `cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DPython3_EXECUTABLE=/usr/bin/python3 && cmake --build build -j8`; `python3 verification/probe/check_no_x87.py build/d3d9.dll` | 0 warnings (clean build); PASS, 733 reachable functions, 0 violations; `MotionOutput::cull_small_prop` carries no SJLJ registration and no x87 (objdump) |
+
+Open: not flown. The skip covers main-scene draws only (draws outside the latched scene pass, such as the engine's
+env-map views, are untouched; a skipped draw is no shadow-replay candidate, so the prop also leaves the cascades); a node is
+skipped whole, so a prop with one small and one large part is decided by its first drawn part; the class cache is
+flushed every 300 frames (a body id reused after a reload is re-read within that window); the `culled_prop` verdict
+applies to every census view of the node although only its main-scene draws were skipped.

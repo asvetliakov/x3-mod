@@ -18,7 +18,11 @@
 // exempt_bullet= and the census's culled_small_exempt_bullet=) and are culled
 // like any node with it off; callee-saved registers, ESP, the
 // empty x87 stack and LastError preserved; exact rollback; option off,
-// changed bytes and the closed window refused. Diagnostic timings only; not
+// changed bytes and the closed window refused. The small-prop draw skip's
+// decision (X3M_CULL_SMALL_PROPS, cull_small_props_core.h) over a synthetic
+// engine image: a prop below the threshold skipped, above it drawn, the own
+// ship's and the target's props drawn, fail-closed cases, the walk budget, and
+// the census's culled_prop verdict. Diagnostic timings only; not
 // game FPS. Never launches the game.
 #include "../../src/proxy/cull_small_parts.h"
 #include "../../src/proxy/cull_small_parts_core.h"
@@ -26,6 +30,8 @@
 #include "../../src/proxy/cull_census_core.h"
 #include "../../src/proxy/camera_state.h"
 #include "../../src/proxy/engine_patch.h"
+#include "../../src/proxy/engine_memory.h"
+#include "../../src/proxy/cull_small_props_core.h"
 #include "run131_rows_inc.h"
 #include <windows.h>
 #include <cmath>
@@ -642,6 +648,186 @@ static float bits_to_float(std::uint32_t b) {
     return f;
 }
 
+// ---- small props (X3M_CULL_SMALL_PROPS, src/proxy/cull_small_props_core.h) ----
+// The draw path's decision over a synthetic engine image read through the production engine_memory::read: a body
+// table (ids 5 ships\props\..., 6 a hull, 7 the prop prefix in upper case with '/', 8 a null name, 9 a name shorter
+// than the prefix), the cockpit registry (own ship and target, object_capture.h), three ships with prop children and
+// one mesh part whose AABB is the unit cube (x65536). Clip rows: x, y, z through, w = z + d; at 5120x1440 and d = 2000
+// the box spans 2.56 px (radius 1.28, below 4 px), at d = 200 25.7 px (radius 12.9, above).
+namespace pcore = x3m::cull_small_props::core;
+struct alignas(16) Blob {
+    unsigned char bytes[0x200];
+};
+static bool engine_read(std::uintptr_t p, void* out, std::size_t n) {
+    return x3m::engine_memory::read(p, out, n);
+}
+static void props_section() {
+    static Blob mgr, registry, table, buckets, link, cockpit, own_obj, target_obj, desc, part;
+    static Blob own_root, own_prop, target_root, target_prop, far_root, far_prop, far_hull, far_dummy, far_null,
+        far_short, far_nobounds, far_norows;
+    static Blob many[70];
+    static std::uint32_t body_global_var = 0, cockpit_slot_var = 0;
+    alignas(16) static unsigned char slots[16 * 0x1c];
+    static const char n_prop[] = "ships\\props\\split_m1turretB_base", n_hull[] = "ships\\split\\split_m7_cobra\\hull",
+                      n_dummy[] = "SHIPS/Props/weapondummy", n_short[] = "ships\\pr";
+    put(slots, 5 * 0x1c + 0x0c, addr(n_prop));
+    put(slots, 6 * 0x1c + 0x0c, addr(n_hull));
+    put(slots, 7 * 0x1c + 0x0c, addr(n_dummy));
+    put(slots, 8 * 0x1c + 0x0c, 0);
+    put(slots, 9 * 0x1c + 0x0c, addr(n_short));
+    put(mgr.bytes, 0xb4, 11000);
+    put(mgr.bytes, 0xb8, 16);
+    put(mgr.bytes, 0xbc, addr(slots));
+    body_global_var = addr(&mgr);
+    cockpit_slot_var = addr(&registry);
+    put(registry.bytes, 0, addr(&table));
+    put(registry.bytes, 0x10, 3);
+    put(table.bytes, 0, addr(&buckets));
+    put(table.bytes, 4, 4);
+    put(buckets.bytes, 12, addr(&link));
+    put(link.bytes, 4, 3);
+    put(link.bytes, 8, addr(&cockpit));
+    put(cockpit.bytes, 0xc, addr(&own_obj));
+    put(cockpit.bytes, 0x58, 0x1234);
+    put(cockpit.bytes, 0x1e0, addr(&target_obj));
+    put(own_obj.bytes, 0x70, addr(&own_root));
+    put(target_obj.bytes, 8, 77);
+    put(target_obj.bytes, 0x70, addr(&target_root));
+    const auto node = [](Blob& n, Blob* parent, std::uint32_t handle, std::uint32_t model) {
+        put(n.bytes, 0x18, parent ? addr(parent) : 0);
+        put(n.bytes, 0x28, handle);
+        put(n.bytes, 0x140, model);
+    };
+    node(own_root, nullptr, 0x111, 6);
+    node(own_prop, &own_root, 0x112, 5);
+    node(target_root, nullptr, 0x222, 6);
+    node(target_prop, &target_root, 0x223, 5);
+    node(far_root, nullptr, 0x333, 6);
+    node(far_prop, &far_root, 0x334, 5);
+    node(far_hull, &far_root, 0x335, 6);
+    node(far_dummy, &far_root, 0x336, 7);
+    node(far_null, &far_root, 0x337, 8);
+    node(far_short, &far_root, 0x338, 9);
+    node(far_nobounds, &far_root, 0x339, 5);
+    node(far_norows, &far_root, 0x33a, 5);
+    for (unsigned i = 0; i < 70; ++i) node(many[i], &far_root, 0x400 + i, 5);
+    put(desc.bytes, 0, addr(&part));
+    for (unsigned i = 0; i < 3; ++i) {
+        put(part.bytes, 0x40 + 4 * i, 0);
+        put(part.bytes, 0x50 + 4 * i, 65536);
+    }
+    // A descriptor on a released page: its part cannot be read.
+    void* page = VirtualAlloc(nullptr, 0x1000, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+    const std::uint32_t bad_desc = addr(page);
+    check(page && VirtualFree(page, 0, MEM_RELEASE), "props: released descriptor page");
+    const float far_rows[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 2000};
+    const float near_rows[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 200};
+    const float behind_rows[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0.5f};
+    const unsigned W = 5120, H = 1440;
+    pcore::Addresses a;
+    a.body_global = addr(&body_global_var);
+    a.cockpit_slot = addr(&cockpit_slot_var);
+    static pcore::Culler c;
+    c.px = 4.f;
+    x3m::engine_memory::next_frame();
+    using V = pcore::Verdict;
+    const auto eval = [&](Blob& n, std::uint32_t d, const float* rows, bool* first = nullptr) {
+        return c.evaluate(engine_read, a, addr(&n), d, rows, W, H, first);
+    };
+    {
+        pcore::Box box{};
+        std::int32_t raw[7] = {0, 0, 0, 0, 65536, 65536, 65536};
+        float far_r = 0, near_r = 0;
+        check(pcore::part_box(raw, box) && pcore::screen_radius(far_rows, box, W, H, &far_r) && far_r > 1.27f &&
+                  far_r < 1.29f,
+              "props: the far unit box measures 1.28 px");
+        check(pcore::screen_radius(near_rows, box, W, H, &near_r) && near_r > 12.8f && near_r < 12.9f,
+              "props: the near unit box measures 12.9 px");
+        std::printf("PROPS radius_far_px=%.3f radius_near_px=%.3f threshold_px=4\n", double(far_r), double(near_r));
+    }
+    c.begin_frame(1);
+    bool first = false, again = true;
+    const V below = eval(far_prop, addr(&desc), far_rows, &first);
+    const V memo = eval(far_prop, addr(&desc), far_rows, &again);
+    check(below == V::culled && first && memo == V::culled && !again,
+          "props: a far prop below the threshold is skipped; its second draw in the frame shares the verdict");
+    check(eval(far_hull, addr(&desc), far_rows) == V::not_prop, "props: a hull body below the threshold is drawn");
+    check(eval(far_dummy, addr(&desc), far_rows) == V::culled, "props: SHIPS/Props/ matches the prefix");
+    check(eval(far_null, addr(&desc), far_rows) == V::not_prop && eval(far_short, addr(&desc), far_rows) == V::not_prop,
+          "props: a null name (the engine's v\\%05d) and a name shorter than the prefix are not props");
+    check(eval(own_prop, addr(&desc), far_rows) == V::exempt_own, "props: a prop on the player's ship is drawn");
+    check(eval(target_prop, addr(&desc), far_rows) == V::exempt_target, "props: a prop on the current target is drawn");
+    check(eval(far_nobounds, bad_desc, far_rows) == V::no_bounds, "props: an unreadable part is drawn");
+    check(eval(far_norows, addr(&desc), nullptr) == V::unbounded, "props: a draw without clip rows is drawn");
+    check(c.window.draws == 7 && c.window.culled == 3 && c.window.kept == 4 && c.window.nodes_culled == 2 &&
+              c.window.exempt_own == 1 && c.window.exempt_target == 1 && c.window.no_bounds == 1 &&
+              c.window.unbounded == 1,
+          "props: window counts (7 prop draws, 3 skipped over 2 nodes, 4 drawn)");
+    c.begin_frame(2);
+    check(eval(far_prop, addr(&desc), near_rows) == V::kept_size, "props: the same prop above the threshold is drawn");
+    c.begin_frame(3);
+    check(eval(far_prop, addr(&desc), behind_rows) == V::unbounded,
+          "props: a box reaching behind the eye plane has no size and is drawn");
+    // The own ship / target unknown (registry unreadable): fail closed, nothing is skipped.
+    put(registry.bytes, 0, 0);
+    c.begin_frame(4);
+    check(eval(far_prop, addr(&desc), far_rows) == V::unresolved, "props: unresolved own ship: drawn");
+    put(registry.bytes, 0, addr(&table));
+    // No target: the former target's prop is an ordinary prop again (the ancestry cache follows the roots).
+    put(cockpit.bytes, 0x1e0, 0);
+    c.begin_frame(5);
+    const V former = eval(target_prop, addr(&desc), far_rows), own_v = eval(own_prop, addr(&desc), far_rows),
+            far_v = eval(far_prop, addr(&desc), far_rows);
+    check(former == V::culled && own_v == V::exempt_own && far_v == V::culled,
+          "props: without a target its former prop is skipped, the own ship's still drawn");
+    put(cockpit.bytes, 0x1e0, addr(&target_obj));
+    c.begin_frame(6);
+    check(eval(target_prop, addr(&desc), far_rows) == V::exempt_target, "props: the target back: drawn again");
+    // Walk budget: 70 new prop nodes in one frame: 64 walks, the rest drawn this frame and walked the next.
+    c.begin_frame(7);
+    unsigned culled = 0, deferred = 0;
+    for (auto& n : many) {
+        const V v = eval(n, addr(&desc), far_rows);
+        culled += v == V::culled;
+        deferred += v == V::deferred;
+    }
+    c.begin_frame(8);
+    unsigned culled_next = 0;
+    for (auto& n : many) culled_next += eval(n, addr(&desc), far_rows) == V::culled;
+    check(culled == 64 && deferred == 6 && culled_next == 70,
+          "props: 64 walks per frame, 6 deferred (drawn) and skipped on the next frame");
+    std::printf("PROPS budget culled=%u deferred=%u next=%u walks=%u resolves=%u\n", culled, deferred, culled_next,
+                c.window.walks, c.window.resolves);
+    // Per-draw cost (harness-inclusive, Wine/FEX, not game FPS).
+    LARGE_INTEGER f{}, s{}, e{};
+    QueryPerformanceFrequency(&f);
+    const unsigned loops = 200000;
+    const auto ns = [&](auto&& body) {
+        for (unsigned i = 0; i < 1000; ++i) body(i);
+        QueryPerformanceCounter(&s);
+        for (unsigned i = 0; i < loops; ++i) body(i);
+        QueryPerformanceCounter(&e);
+        return double(e.QuadPart - s.QuadPart) * 1e9 / double(f.QuadPart) / double(loops);
+    };
+    c.begin_frame(9);
+    const double memo_hit = ns([&](unsigned) { eval(far_hull, addr(&desc), far_rows); });
+    std::uint32_t frame = 10;
+    const double not_prop_first = ns([&](unsigned) {
+        c.begin_frame(frame++);
+        eval(far_hull, addr(&desc), far_rows);
+    });
+    const double prop_first = ns([&](unsigned) {
+        c.begin_frame(frame++);
+        eval(far_prop, addr(&desc), far_rows);
+    });
+    const double prop_pair = ns([&](unsigned i) {
+        if (!(i & 1)) c.begin_frame(frame++);
+        eval((i & 1) ? far_dummy : far_prop, addr(&desc), far_rows);
+    });
+    std::printf("CULL SMALL PROPS BENCH memo_hit_ns=%.1f not_prop_first_ns=%.1f prop_culled_first_in_frame_ns=%.1f prop_culled_pair_mean_ns=%.1f harness=fixture_included game_fps=unmeasured\n",
+                memo_hit, not_prop_first, prop_first, prop_pair);
+}
+
 int main() {
     DWORD old = 0;
     check(VirtualProtect(reinterpret_cast<void*>(reinterpret_cast<std::uintptr_t>(synthetic_measure_window) &
@@ -1124,12 +1310,57 @@ int main() {
     run(replay[0], view);
     check(!std::memcmp(replay, replay_native, sizeof(Node) * (kRowCount + 1)),
           "stub disarmed beside the armed census: every node as native");
+    // X3M_CULL_SMALL_PROPS: the draw path reports skipped prop nodes; a kept row of such a node reads culled_prop,
+    // an engine-culled row keeps its own verdict.
+    std::uint32_t prop_kept = 0, prop_culled = 0;
+    for (unsigned i = 0; i < kRowCount && (!prop_kept || !prop_culled); ++i) {
+        const bool kept = (get(replay_native[1 + i].bytes, ccore::flags12c_offset) & 2u) != 0;
+        if (kept && !prop_kept) prop_kept = addr(&replay[1 + i]);
+        if (!kept && !prop_culled) prop_culled = addr(&replay[1 + i]);
+    }
+    census::note_culled_prop(prop_kept);
+    census::note_culled_prop(prop_culled);
+    census::note_culled_prop(0);
     census::present(7, 4993, true);
     {
-        unsigned small_verdicts = 0;
-        for (const std::string& line : census_entry_lines)
+        unsigned small_verdicts = 0, prop_verdicts = 0;
+        char kept_node[32], culled_node[32];
+        std::snprintf(kept_node, sizeof kept_node, " node=%08lx ", (unsigned long)prop_kept);
+        std::snprintf(culled_node, sizeof culled_node, " node=%08lx ", (unsigned long)prop_culled);
+        bool kept_named = false, culled_unchanged = false;
+        for (const std::string& line : census_entry_lines) {
             if (line.find("verdict=culled_small") != std::string::npos) ++small_verdicts;
+            if (line.find("verdict=culled_prop") != std::string::npos) ++prop_verdicts;
+            if (line.find(kept_node) != std::string::npos) kept_named = line.find("verdict=culled_prop") != std::string::npos;
+            if (line.find(culled_node) != std::string::npos)
+                culled_unchanged = line.find("verdict=culled_prop") == std::string::npos &&
+                                   line.find("verdict=kept") == std::string::npos;
+        }
         check(small_verdicts == 0 && census_entry_lines.size() == kRowCount, "stub disarmed: no culled_small rows");
+        check(prop_kept && prop_culled && prop_verdicts == 1 && kept_named && culled_unchanged,
+              "culled_prop: exactly the reported kept node's row; an engine-culled node keeps its verdict");
+        check(census_frame_lines.size() == 1 &&
+                  census_frame_lines[0].find(" culled_prop_nodes=2 culled_prop_overflow=0") != std::string::npos,
+              "culled_prop: the frame row counts the reported nodes");
+        std::printf("CENSUS culled_prop rows=%u kept_named=%u culled_unchanged=%u\n", prop_verdicts, kept_named ? 1u : 0u,
+                    culled_unchanged ? 1u : 0u);
+        census_frame_lines.clear();
+        census_entry_lines.clear();
+    }
+    // A report outside a captured frame is ignored.
+    census::begin_frame(false);
+    census::note_culled_prop(prop_kept);
+    census::begin_frame(true);
+    std::memcpy(replay, replay_initial, sizeof(Node) * (kRowCount + 1));
+    run(replay[0], view);
+    census::present(7, 4994, true);
+    {
+        unsigned prop_verdicts = 0;
+        for (const std::string& line : census_entry_lines)
+            if (line.find("verdict=culled_prop") != std::string::npos) ++prop_verdicts;
+        check(prop_verdicts == 0 && census_frame_lines.size() == 1 &&
+                  census_frame_lines[0].find(" culled_prop_nodes=0 ") != std::string::npos,
+              "culled_prop: a report on an uncaptured frame never reaches the next captured frame");
         census_frame_lines.clear();
         census_entry_lines.clear();
     }
@@ -1219,6 +1450,7 @@ int main() {
     x3m::engine_patch::close_install_window("fixture");
     check(!small::install_at(site, cull, true) && !std::strcmp(small::state(), "late_claim") && small_window_original(),
           "closed install window: late_claim, site untouched");
+    props_section();
     std::printf("CULL SMALL PARTS CPU checks=%u failures=%u\n", checks, failures);
     return failures ? 1 : 0;
 }

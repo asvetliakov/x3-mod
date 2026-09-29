@@ -124,11 +124,133 @@ int main() {
     check(x3m::cull_census::core::projectile_flag == x3m::cull_small_parts::core::projectile_flag && x3m::cull_census::core::flags130_offset == x3m::cull_small_parts::core::flags130_offset, "census and stub share the marker");
     e.flags130 = 0;
     e.flags_out = 0x1002; check(classify(e, 3) == Verdict::kept, "census: kept stays kept");
-    check(!std::strcmp(verdict_name(Verdict::culled_small), "culled_small") && verdict_count == 6, "verdict name");
+    check(!std::strcmp(verdict_name(Verdict::culled_small), "culled_small") && verdict_count == 7, "verdict name");
+    // X3M_CULL_SMALL_PROPS: only a kept row becomes culled_prop; the engine's own verdicts are never renamed.
+    check(!std::strcmp(verdict_name(Verdict::culled_prop), "culled_prop") && with_prop(Verdict::kept, true) == Verdict::culled_prop &&
+          with_prop(Verdict::kept, false) == Verdict::kept && with_prop(Verdict::culled_small, true) == Verdict::culled_small &&
+          with_prop(Verdict::culled_size, true) == Verdict::culled_size, "census: culled_prop names only a kept node");
+    {
+        const std::uint32_t sorted[] = {0x100, 0x2000, 0x2040, 0x7ffffff0u, 0xfffffff0u};
+        check(sorted_contains(sorted, 5, 0x100) && sorted_contains(sorted, 5, 0x2040) && sorted_contains(sorted, 5, 0xfffffff0u) &&
+              !sorted_contains(sorted, 5, 0x2020) && !sorted_contains(sorted, 5, 0) && !sorted_contains(sorted, 0, 0x100),
+              "census: sorted culled-prop membership");
+    }
     std::printf("cull_small_parts_core checks_failed=%u\n", failures);
     return failures ? 1 : 0;
 }
 '''
+
+
+# The small-prop draw skip's decision (src/proxy/cull_small_props_core.h) on a synthetic memory map: the read callback
+# refuses anything outside the mapped blocks, as engine_memory::read refuses uncommitted memory.
+PROPS_HARNESS = r"""
+#include "cull_small_props_core.h"
+#include <cstdio>
+#include <cstring>
+#include <vector>
+using namespace x3m::cull_small_props::core;
+static unsigned failures = 0;
+static void check(bool ok, const char* what) { if (!ok) { ++failures; std::printf("FAIL %s\n", what); } }
+// A flat 32-bit address space: base 0x10000, 64 KB, anything else unreadable.
+static std::vector<unsigned char> memory(0x10000);
+constexpr std::uint32_t base = 0x10000;
+static bool read(std::uintptr_t at, void* out, std::size_t n) {
+    if (at < base || at + n > base + memory.size()) return false;
+    std::memcpy(out, memory.data() + (at - base), n);
+    return true;
+}
+static void put(std::uint32_t at, std::uint32_t v) { std::memcpy(memory.data() + (at - base), &v, 4); }
+static void text(std::uint32_t at, const char* s) { std::memcpy(memory.data() + (at - base), s, std::strlen(s) + 1); }
+int main() {
+    bool on = true;
+    check(parse_mode("on", &on) && on && parse_mode("off", &on) && !on && parse_mode("", &on) && !on &&
+          parse_mode(nullptr, &on) && !on && !parse_mode("1", &on) && !parse_mode("ON", &on), "option: on|off, unset off, else refused");
+    check(is_prop_name("ships\\props\\split_m1turretA_base") && is_prop_name("Ships/PROPS/weapondummy") &&
+          !is_prop_name("ships\\props") && !is_prop_name("ships\\split\\split_m7_cobra\\hull") && !is_prop_name("v\\00753") &&
+          !is_prop_name(nullptr), "prefix ships\\props\\ (case and slash free)");
+    Box b{};
+    const std::int32_t raw[7] = {65536, -131072, 0, 99, 65536, 32768, 0};
+    check(part_box(raw, b) && b.lo[0] == 0.f && b.hi[0] == 2.f && b.lo[1] == -2.5f && b.hi[1] == -1.5f && b.lo[2] == 0.f && b.hi[2] == 0.f,
+          "part box: centre -/+ half-extent, / 65536, the fourth word ignored");
+    const std::int32_t bad[7] = {0, 0, 0, 0, 1, -1, 1};
+    check(!part_box(bad, b), "part box: a negative half-extent refused");
+    const std::int32_t unit[7] = {0, 0, 0, 0, 65536, 65536, 65536};
+    part_box(unit, b);
+    const float rows[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 2000};
+    float r = 0;
+    check(screen_radius(rows, b, 5120, 1440, &r) && r > 1.28f && r < 1.282f, "radius: 1.281 px for the unit box at w 2000, 5120 wide");
+    const float behind[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0.5f};
+    check(!screen_radius(behind, b, 5120, 1440, &r) && !screen_radius(nullptr, b, 5120, 1440, &r) && !screen_radius(rows, b, 0, 1440, &r),
+          "radius: behind the eye, no rows, no target: no size");
+    // Image: body manager at 0x10100 (global 0x10000), slots at 0x10200, names at 0x10400; registry chain at 0x11000;
+    // nodes at 0x12000 + 0x200 i; descriptor 0x14000 -> part 0x14100.
+    put(0x10000, 0x10100);
+    put(0x10100 + 0xb4, 11000); put(0x10100 + 0xb8, 8); put(0x10100 + 0xbc, 0x10200);
+    text(0x10400, "ships\\props\\split_m1turretB_socket");
+    text(0x10440, "ships\\split\\split_m6_dragon\\hull");
+    put(0x10200 + 5 * 0x1c + 0x0c, 0x10400);
+    put(0x10200 + 6 * 0x1c + 0x0c, 0x10440);
+    put(0x11000, 0x11100);                        // slot -> registry
+    put(0x11100, 0x11200); put(0x11100 + 0x10, 1); // registry -> table, handle 1
+    put(0x11200, 0x11300); put(0x11204, 2);        // table -> buckets, 2
+    put(0x11300 + 4, 0x11400);                    // buckets[1] -> link
+    put(0x11404, 1); put(0x11408, 0x11500);        // link: id 1, cockpit
+    put(0x11500 + 0x0c, 0x11600); put(0x11500 + 0x58, 0x11700); put(0x11500 + 0x1e0, 0x11800);
+    put(0x11600 + 0x70, 0x12000);                  // own object -> own root node
+    put(0x11800 + 0x70, 0x12200);                  // target object -> target root node
+    const auto node = [](unsigned i, std::uint32_t parent, std::uint32_t handle, std::uint32_t model) {
+        const std::uint32_t n = 0x12000 + 0x200 * i;
+        put(n + 0x18, parent); put(n + 0x28, handle); put(n + 0x140, model);
+        return n;
+    };
+    const std::uint32_t own_root = node(0, 0, 0x10, 6), target_root = node(1, 0, 0x20, 6), far_root = node(2, 0, 0x30, 6);
+    const std::uint32_t own_prop = node(3, own_root, 0x11, 5), target_prop = node(4, target_root, 0x21, 5);
+    const std::uint32_t far_prop = node(5, far_root, 0x31, 5), far_hull = node(6, far_root, 0x32, 6);
+    const std::uint32_t deep_prop = node(7, far_prop, 0x33, 5), stale_root_prop = node(8, target_root, 0x22, 5);
+    put(0x14000, 0x14100);
+    for (unsigned i = 0; i < 3; ++i) put(0x14100 + 0x50 + 4 * i, 65536);
+    Addresses a;
+    a.body_global = 0x10000;
+    a.cockpit_slot = 0x11000;
+    static Culler c;
+    c.px = 4.f;
+    c.begin_frame(1);
+    check(c.decide(read, a, far_prop, 0x14000, rows, 5120, 1440) == Verdict::culled, "far prop below 4 px: culled");
+    check(c.decide(read, a, deep_prop, 0x14000, rows, 5120, 1440) == Verdict::culled, "a prop under a prop: culled");
+    check(c.decide(read, a, far_hull, 0x14000, rows, 5120, 1440) == Verdict::not_prop, "hull body: not a prop");
+    check(c.decide(read, a, own_prop, 0x14000, rows, 5120, 1440) == Verdict::exempt_own, "own ship's prop: drawn");
+    check(c.decide(read, a, target_prop, 0x14000, rows, 5120, 1440) == Verdict::exempt_target, "target's prop: drawn");
+    // A freed prop address reused by another node (new handle, now under the target): re-walked, never the cached verdict.
+    put(far_prop + 0x18, target_root); put(far_prop + 0x28, 0x77);
+    c.begin_frame(2);
+    check(c.decide(read, a, far_prop, 0x14000, rows, 5120, 1440) == Verdict::exempt_target &&
+          c.decide(read, a, stale_root_prop, 0x14000, rows, 5120, 1440) == Verdict::exempt_target, "ancestry cache keyed on the handle");
+    put(far_prop + 0x18, far_root); put(far_prop + 0x28, 0x31);
+    check(c.decide(read, a, far_prop, 0x1fff0, rows, 5120, 1440) == Verdict::no_bounds, "descriptor unreadable: drawn");
+    check(c.decide(read, a, 0, 0x14000, rows, 5120, 1440) == Verdict::no_scope && c.decide(read, a, 0x12001, 0x14000, rows, 5120, 1440) == Verdict::no_scope,
+          "no or misaligned node: no scope");
+    c.px = 1.f;
+    check(c.decide(read, a, far_prop, 0x14000, rows, 5120, 1440) == Verdict::kept_size, "1 px threshold: the 1.28 px prop is drawn");
+    c.px = 4.f;
+    put(0x10100 + 0xb4, 10999); c.flush_classes();
+    check(c.decide(read, a, far_prop, 0x14000, rows, 5120, 1440) == Verdict::not_prop, "a body table with the wrong fixed count: no prop");
+    put(0x10100 + 0xb4, 11000); c.flush_classes();
+    put(0x11100 + 0x10, 7); c.begin_frame(3); // no cockpit row for handle 7: own ship and target unknown
+    check(c.decide(read, a, far_prop, 0x14000, rows, 5120, 1440) == Verdict::unresolved, "own ship unknown: drawn (fail closed)");
+    put(0x11100 + 0x10, 1);
+    // evaluate: the memo shares the first draw's verdict within a frame, counts every prop draw.
+    c.reset_window();
+    c.begin_frame(4);
+    bool first = false;
+    check(c.evaluate(read, a, far_prop, 0x14000, rows, 5120, 1440, &first) == Verdict::culled && first, "evaluate: first draw decides");
+    check(c.evaluate(read, a, far_prop, 0x14000, nullptr, 5120, 1440, &first) == Verdict::culled && !first, "evaluate: later draws share it");
+    check(c.evaluate(read, a, far_hull, 0x14000, rows, 5120, 1440) == Verdict::not_prop, "evaluate: hull");
+    check(c.window.draws == 2 && c.window.culled == 2 && c.window.kept == 0 && c.window.nodes_culled == 1 && c.window.frames == 1,
+          "evaluate: window counts");
+    std::printf("cull_small_props_core checks_failed=%u\n", failures);
+    return failures ? 1 : 0;
+}
+"""
 
 
 def load_manage():
@@ -320,6 +442,41 @@ class CullSmallPartsSite(unittest.TestCase):
         self.assertEqual(report['result'], 'PASS', report)
 
 
+class CullSmallPropsCore(unittest.TestCase):
+    def test_core_compiled(self):
+        compiler = shutil.which('clang++') or shutil.which('c++')
+        self.assertIsNotNone(compiler, 'A host C++ compiler is required')
+        with tempfile.TemporaryDirectory(prefix='x3-cull-small-props-host-') as temporary:
+            directory = Path(temporary)
+            (directory / 'harness.cpp').write_text(PROPS_HARNESS)
+            executable = directory / 'cull_small_props_host'
+            build = subprocess.run([compiler, '-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror', '-I', str(ROOT / 'src/proxy'),
+                                    str(directory / 'harness.cpp'), '-o', str(executable)], capture_output=True, text=True)
+            self.assertEqual(build.returncode, 0, build.stdout + build.stderr)
+            run = subprocess.run([str(executable)], capture_output=True, text=True)
+            self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
+            self.assertEqual(run.stdout, 'cull_small_props_core checks_failed=0\n')
+
+    def test_draw_path_wiring(self):
+        """The skip sits after gate 2 and before the jitter, returns D3D_OK without forwarding, and reports the node to
+        the census; the capture.cpp config row refuses without the pixel setting or the route."""
+        motion = source_text(ROOT / 'src/proxy/motion_output.cpp')
+        gate2 = motion.index('    route.scene = true;\n')
+        skip = motion.index('if (props_on_ && cull_small_prop(route)) return;')
+        jitter = motion.index('if (jitter_active_ && (shadow_.vs_row || shadow_.vs_prepass)) apply_jitter(route);')
+        self.assertLess(gate2, skip)
+        self.assertLess(skip, jitter)
+        inc = source_text(ROOT / 'src/proxy/motion_output_cull_small_props_inc.h')
+        for needle in ('route.submit = false;', 'route.submission_error = D3D_OK;', 'cull_census::note_culled_prop(',
+                       'object_trace::scope_node(&descriptor, &node)', 'SetLastError(error);'):
+            self.assertIn(needle, inc)
+        self.assertNotIn('engine_patch', inc)  # render-only: no engine write
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
+        for reason in ('"invalid"', '"off"', '"no_px"', '"route_off"'):
+            self.assertIn(reason, capture)
+        self.assertIn('configure_cull_small_props(cull_small_props_on, cull_small_props_px)', capture)
+
+
 class CullSmallPartsLaunchOption(unittest.TestCase):
     def launch(self, directory, *args, inherited=None):
         module = load_manage()
@@ -430,6 +587,26 @@ class CullSmallPartsLaunchOption(unittest.TestCase):
             self.assertNotIn('X3M_CULL_SMALL_PARTS_PX', env)
             # --vanilla sets nothing.
             self.assertNotIn('X3M_CULL_SMALL_PARTS_PX', json.loads(self.launch(directory)[1])['env'])
+
+    def test_small_props_sent_only_when_given(self):
+        with tempfile.TemporaryDirectory() as directory:
+            for value in ('on', 'off'):
+                code, output, error = self.modded_launch(directory, '--cull-small-props', value)
+                self.assertEqual(code, 0, error)
+                self.assertEqual(json.loads(output)['env']['X3M_CULL_SMALL_PROPS'], value)
+            # Not given: not sent, and an inherited value is dropped.
+            code, output, error = self.modded_launch(directory, inherited={'X3M_CULL_SMALL_PROPS': 'on'})
+            self.assertEqual(code, 0, error)
+            self.assertNotIn('X3M_CULL_SMALL_PROPS', json.loads(output)['env'])
+            for args in (('--cull-small-parts', '0', '--cull-small-props', 'on'),):
+                code, _, error = self.modded_launch(directory, *args)
+                self.assertEqual(code, 2, args)
+                self.assertIn('--cull-small-props requires a non-zero --cull-small-parts', error)
+            code, _, error = self.launch(directory, '--cull-small-props', 'on')  # --vanilla: no cull
+            self.assertEqual(code, 2)
+            code, _, error = self.modded_launch(directory, '--cull-small-props', '1')
+            self.assertEqual(code, 2)
+            self.assertIn('invalid choice', error)
 
     def test_out_of_range_refused(self):
         with tempfile.TemporaryDirectory() as directory:

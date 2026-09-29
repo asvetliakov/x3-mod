@@ -315,12 +315,29 @@ template <class Char> inline bool parse_lod_switch_cap(const Char* text, unsigne
     *cap = v;
     return true;
 }
-enum class Verdict : unsigned char { kept = 0, culled_size, culled_min, culled_other, no_exit, culled_small };
-constexpr unsigned verdict_count = 6;
+enum class Verdict : unsigned char { kept = 0, culled_size, culled_min, culled_other, no_exit, culled_small, culled_prop };
+constexpr unsigned verdict_count = 7;
 inline const char* verdict_name(Verdict v) {
-    static const char* const names[verdict_count] = {"kept",         "culled_size", "culled_min",
-                                                     "culled_other", "no_exit",     "culled_small"};
+    static const char* const names[verdict_count] = {"kept",         "culled_size", "culled_min",  "culled_other",
+                                                     "no_exit",      "culled_small", "culled_prop"};
     return unsigned(v) < verdict_count ? names[unsigned(v)] : "?";
+}
+// X3M_CULL_SMALL_PROPS (cull_small_props_core.h): a node the engine kept whose main-scene draws the proxy skipped
+// as a small prop this frame is reported culled_prop; the engine's own verdicts are never renamed.
+inline Verdict with_prop(Verdict v, bool prop_culled) {
+    return v == Verdict::kept && prop_culled ? Verdict::culled_prop : v;
+}
+// The frame's culled-prop node set, sorted once at Present: membership by binary search.
+inline bool sorted_contains(const std::uint32_t* sorted, std::uint32_t count, std::uint32_t node) {
+    std::uint32_t lo = 0, hi = count;
+    while (lo < hi) {
+        const std::uint32_t mid = lo + (hi - lo) / 2;
+        if (sorted[mid] < node)
+            lo = mid + 1;
+        else
+            hi = mid;
+    }
+    return lo < count && sorted[lo] == node;
 }
 // Classification from the recorded fields, mirroring 0x0047d2a2..0x0047d2e1:
 // a node whose renderable bit is clear at the exit was culled by the size

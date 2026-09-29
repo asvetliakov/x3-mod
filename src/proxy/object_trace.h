@@ -40,6 +40,10 @@ bool current(Snapshot* out, bool matrices = true);
 // stack argument (the material descriptor of 0x004c0150) and its depth.
 // false (outputs zero) without observation or scope. LastError preserved.
 bool scope_descriptor(uintptr_t* descriptor, uint32_t* depth);
+// The innermost seam scope's descriptor and render node (its first two stack
+// arguments) without any memory read; false (outputs zero) without observation
+// or scope. LastError preserved. The small-prop cull's per-draw key.
+bool scope_node(uintptr_t* descriptor, uintptr_t* node);
 bool shutdown(); // restore only our own displacement, while no submission can run
 #ifdef X3M_OBJECT_TRACE_FIXTURE
 // Compile-only original fixture seam: absent from production. Caller owns code

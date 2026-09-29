@@ -238,6 +238,8 @@ class PerFrameRowTiers(unittest.TestCase):
         'profile_frame': 'the sampling profiler runs only with --profile, a developer option',
         'lens_flare_gain_frame': 'always-tier status row by design: X3M_LENS_FLARE_GAIN < 1 only, one row per 300 frames '
                                  '(the plain flight\'s evidence that the gain acted; default 0.3 since 2026-09-29)',
+        'cull_small_props_frame': 'always-tier status row by design: X3M_CULL_SMALL_PROPS=on only (default off), one row per '
+                                  '300 frames with scene draws (the flight\'s evidence that the prop skip acted)',
     }
     CALL = re.compile(r'\b(?:x3m::)?log\(\s*"([a-z0-9_]+_frame)[ "=]')
 

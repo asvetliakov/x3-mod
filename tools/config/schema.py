@@ -121,6 +121,11 @@ SETTINGS = [
     entry('cull_small_parts_projectiles', 'enum', 'graphics', 'Whether weapon bolts are exempt from the small-part skipping above. '
           'on = bolts are always drawn, off = they are skipped like any small part.', 'on', choices=('on', 'off'),
           launcher='--cull-small-parts-projectiles'),
+    entry('cull_small_props', 'enum', 'graphics', 'Also skips drawing small separate ship parts such as distant turrets when they are '
+          'smaller than cull_small_parts_px pixels on screen. Drawing only: the turrets still aim, fire and can be hit. '
+          'Parts on your own ship and on your current target are always drawn. on = skip them, off = draw them.',
+          builtin='off', choices=('on', 'off'), requires=('cull_small_parts_px',), launcher='--cull-small-props',
+          since='2026-09-29'),
     entry('bolt_footprint', 'float_list', 'graphics', 'Minimum on-screen width and length of weapon bolts in the chase view, in pixels, '
           'so distant shots stay visible. 0 = the game\'s own size; the width up to 64, the length up to 256.', '3,12',
           counts=(1, 2), elements=((0, 64), [R(0, 256, True)]),
