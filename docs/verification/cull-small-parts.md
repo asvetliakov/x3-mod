@@ -207,3 +207,12 @@ reproduces 159/27/27 removed draws (measured replay below); 8 px would be `s < 5
 
 Open: not flown. Whether the hangar interior shows through the open bay before it is culled (note, "Unknown") is a
 flight question; the frame row's `dock_culled=` and the census `culled_dock` rows count it.
+
+### Dock ports: flight Run 110 A (run386/run388, 2026-09-29)
+
+Measured (300-frame windows from the `media_cue_window` clock stamps, one run per setting, same save and carrier view,
+no `--perf`; [results](../../verification/results/run386-389-cull-ab/)): defaults (dock cull 12 px) 17.43 / 17.56 / 18.10 ms
+per frame against dock cull off 19.77 / 19.82 / 21.23 ms, i.e. 2.4-3.7 ms saved (about 57 fps vs 47-50); right after
+load, where no dock part is in range, the runs agree within 0.5 ms. run389 (`--debug --perf`, three F8): `dock_culled=`
+equals the census `culled_dock` on every burst frame (27-33 nodes per frame at the Raptor at 4.0 km), the largest culled
+part had s=7 (below the threshold 8), one carrier node stayed drawn at s=12 as the rule requires. Accepted; default 12 stays.

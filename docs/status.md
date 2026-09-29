@@ -48,10 +48,17 @@ Nothing beyond the installed Run110 (`5ec34559`); release 0.8.0 (`a3c85e37`) is 
 
 ## Run queue
 
-Run 110 A queued (Run110 installed): three ~30 s holds at one busy carrier view on the run385 save without `--perf`
-(`fps_overlay = 1` in the ini): defaults (dock cull on), `--lens-flare-gain 0` (engine flare cull), `--cull-dock-parts 0`
-(Run109 baseline); optional fourth hold under `--debug --perf` with one F8 for the cull counts
-([user-runs](verification/user-runs.md)). Run 109 A completed (run384, [results](../verification/results/run384-dust-leak-fix/)): with
+No run is open. Run 110 A completed (run386-389, [results](../verification/results/run386-389-cull-ab/)): at one carrier
+view without `--perf`, the dock-port cull (12 px) saves 2.4-3.7 ms per frame (about 57 fps against 47-50 with it off,
+measured from 300-frame clock windows, one run per setting); the engine-side flare cull saves 0 ± 0.5 ms (1.2 ms under
+`--perf`, where the flare draws carry the instrument cost). Both culled exactly what they should (166 flares per frame
+culled = the 166 drawn before; `dock_culled` equals the census `culled_dock`, largest culled part s=7). Decision: the
+dock cull stays on by default; `lens_flare_gain 0` keeps the engine cull but a flare batcher is not worth building.
+`v\01009` and `v\10667` are flare-like bodies outside the 42-name set (about 0.2 draws per frame, left alone). Still
+open from this pair of runs: frame time creeps with time since load at a constant draw count (run385: 16.4 -> 19.3 ms
+over 3,600 frames at 335 draws), the pre-render drift noted below.
+
+Run 109 A completed (run384, [results](../verification/results/run384-dust-leak-fix/)): with
 `dust_leak_fix` patched the census stays flat (engine_nodes 4,515 -> 4,853 over 19,826 frames on `litcube75`, hits=300
 per row), the animation tick `cutevent` stays at 0.1-0.4 ms (run383: 0.5 -> 10.8 ms) and the shimmer did not return.
 Late frames (run384/run385 triage, [attribution](../verification/results/run385-draw-attribution/)): frame time follows

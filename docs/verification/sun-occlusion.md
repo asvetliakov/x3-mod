@@ -552,3 +552,14 @@ the root walker the lens block calls; the run385 census rows carry every drawn `
 
 Not covered: the flight (the count row against `frame_timing` / `frame_phases views`), and a mod whose Lensflares
 table names bodies outside the 42 (they would draw; `lens_flare_gain_frame skipped=` then shows them).
+
+### Lens-flare engine cull: flight Run 110 A (run387/run389, 2026-09-29)
+
+Measured ([results](../../verification/results/run386-389-cull-ab/)): `lens_flare_cull status=patched`, 42 of 42 names
+resolved, 0 restarts; 150-176 flare nodes culled per frame (166.3 right after load against 166.2 flare draws per frame in
+the runs without the cull). Frame time at the carrier view without `--perf`: gain 0 (run387) 17.27 / 17.41 / 18.78 ms
+against defaults (run386) 17.43 / 17.56 / 18.10 ms, a difference of 0 ± 0.5 ms (noise). Under `--perf` (run389) the
+overlays phase, where the flares are drawn, falls from 2.68 ms (run385, 168 flares) to 0.20-0.25 ms and the frame by about
+1.2 ms, so the engine's per-flare work does vanish with the node, but it is not measurable in a plain run. `skipped=`
+stays at about 0.2 per frame: `v\01009` (dynamic id) and `v\10667` are outside the 42-name set. Verdict: the cull stays
+available at gain 0; no flare batcher (the recoverable cost is under the noise without instrumentation).
