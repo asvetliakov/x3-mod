@@ -1,0 +1,410 @@
+{
+ "sources": {
+  "Exo2[wght].ttf": {
+   "version": "Version 2.010",
+   "sha256": "205a448676a2586f9c57c25f3d5c58ca8db7e6cf5edf7506783a010c6fe2bfb5"
+  },
+  "NotoSans[wdth,wght].ttf": {
+   "version": "Version 2.015",
+   "sha256": "bfb7bb691513f12e734dc346c03a03f784912432d7e3fa8e56efcf906fe86b3d"
+  }
+ },
+ "fonts": {
+  "Tahoma26": {
+   "name": "Tahoma26",
+   "glyphs": 612,
+   "atlas": [
+    512,
+    512
+   ],
+   "cell_rows": 27,
+   "band_rows": [
+    2,
+    26
+   ],
+   "cap_px": 16,
+   "baseline_row": 22,
+   "source": "NotoSans[wdth,wght].ttf",
+   "axes": {
+    "Weight": 400,
+    "Width": 87.0
+   },
+   "em_px": 22.409,
+   "x_scale": 1.0015,
+   "fallback_codes": [],
+   "blank_codes": [],
+   "squeezed": "gjpqy|\u00a6\u00b5\u00b8\u00c0\u00c1\u00c2\u00c3\u00c4\u00c7\u00c8\u00c9\u00ca\u00cb\u00cc\u00cd\u00ce\u00cf\u00d1\u00d2\u00d3\u00d4\u00d5\u00d6\u00d9\u00da\u00db\u00dc\u00dd\u00e7\u00fd\u00fe\u00ff\u0102\u0106\u0108\u010a\u010c\u010e\u0114\u0116\u011a\u011c\u011d\u011e\u011f\u0120\u0121\u0123\u0124\u0125\u0128\u012c\u0130\u0133\u0134\u0135\u0139\u013a\u0143\u0147\u014b\u014e\u0150\u0154\u0158\u015a\u015c\u015e\u015f\u0160\u0162\u0163\u0164\u0168\u016c\u016e\u0170\u0174\u0176\u0177\u0178\u0179\u017b\u017d\u0192\u01e5\u01e6\u01e7\u01e8\u01e9\u01ee\u01ef\u01fa\u01fb\u01fc\u01fe\u0228\u0229\u0292\u031c\u0321\u0322\u0327\u0333\u0339\u033b\u033f\u0345\u0347\u0349\u034b\u034e\u03aa\u03ab\u03ae\u03b2\u03b7\u03bc\u03c1\u03c6\u03c7\u03c8\u0400\u0401\u0403\u0407\u040c\u040d\u040e\u0419\u0440\u0443\u0444\u0452\u0458\u045e",
+   "ratios": {
+    "advance_a_to_z_mean": 10.692,
+    "ratio_advance_mean": 1.0,
+    "H": {
+     "A": 2,
+     "B": 16,
+     "C": 13
+    },
+    "ratio_H_advance": 1.0714,
+    "ratio_H_B": 1.0,
+    "g": {
+     "A": 1,
+     "B": 15,
+     "C": 12
+    },
+    "ratio_g_advance": 1.0833,
+    "ratio_g_B": 1.0714,
+    "space": {
+     "A": 0,
+     "B": 1,
+     "C": 5
+    },
+    "ratio_space_advance": 0.8333
+   }
+  },
+  "Tahoma39": {
+   "name": "Tahoma39",
+   "glyphs": 612,
+   "atlas": [
+    1024,
+    1024
+   ],
+   "cell_rows": 41,
+   "band_rows": [
+    3,
+    40
+   ],
+   "cap_px": 24,
+   "baseline_row": 33,
+   "source": "NotoSans[wdth,wght].ttf",
+   "axes": {
+    "Weight": 400,
+    "Width": 87.0
+   },
+   "em_px": 33.613,
+   "x_scale": 0.9989,
+   "fallback_codes": [],
+   "blank_codes": [],
+   "squeezed": "gjpqy|\u00a6\u00b5\u00b8\u00c0\u00c1\u00c2\u00c3\u00c4\u00c7\u00c8\u00c9\u00ca\u00cb\u00cc\u00cd\u00ce\u00cf\u00d1\u00d2\u00d3\u00d4\u00d5\u00d6\u00d9\u00da\u00db\u00dc\u00dd\u00e7\u00fd\u00fe\u00ff\u0102\u0106\u0108\u010a\u010c\u010e\u0114\u0116\u011a\u011c\u011d\u011e\u011f\u0120\u0121\u0123\u0124\u0125\u0128\u012c\u0130\u0133\u0134\u0135\u0139\u013a\u0143\u0147\u014b\u014e\u0150\u0154\u0158\u015a\u015c\u015e\u015f\u0160\u0162\u0163\u0164\u0168\u016c\u016e\u0170\u0174\u0176\u0177\u0178\u0179\u017b\u017d\u0192\u01e5\u01e6\u01e7\u01e8\u01e9\u01ee\u01ef\u01fa\u01fb\u01fc\u01fe\u0228\u0229\u0292\u0327\u033f\u0345\u034b\u03aa\u03ab\u03ae\u03b2\u03b7\u03bc\u03c1\u03c6\u03c7\u03c8\u0400\u0401\u0403\u0407\u040c\u040d\u040e\u0419\u0440\u0443\u0444\u0452\u0458\u045e",
+   "ratios": {
+    "advance_a_to_z_mean": 16.038,
+    "ratio_advance_mean": 1.0,
+    "H": {
+     "A": 3,
+     "B": 25,
+     "C": 19
+    },
+    "ratio_H_advance": 1.0476,
+    "ratio_H_B": 1.0417,
+    "g": {
+     "A": 2,
+     "B": 23,
+     "C": 17
+    },
+    "ratio_g_advance": 1.0556,
+    "ratio_g_B": 1.0952,
+    "space": {
+     "A": 0,
+     "B": 1,
+     "C": 8
+    },
+    "ratio_space_advance": 0.8889
+   }
+  },
+  "Zekton52": {
+   "name": "Zekton52",
+   "glyphs": 274,
+   "atlas": [
+    512,
+    1024
+   ],
+   "cell_rows": 67,
+   "band_rows": [
+    16,
+    66
+   ],
+   "cap_px": 32,
+   "baseline_row": 56,
+   "source": "Exo2[wght].ttf",
+   "axes": {
+    "Weight": 500
+   },
+   "em_px": 46.377,
+   "x_scale": 0.8659,
+   "fallback_codes": [],
+   "blank_codes": [],
+   "squeezed": "\u00c0\u00c1\u00c2\u00c3\u00c4\u00c5\u00c7\u00c8\u00c9\u00ca\u00cb\u00cc\u00cd\u00ce\u00cf\u00d1\u00d2\u00d3\u00d4\u00d5\u00d6\u00d9\u00da\u00db\u00dc\u00dd\u00e7\u0102\u0106\u010c\u010e\u0112\u0116\u011a\u011e\u0122\u0130\u0136\u0137\u0139\u013a\u013b\u013c\u0143\u0145\u0146\u0147\u0150\u0154\u0156\u0157\u0158\u015a\u015e\u015f\u0160\u0163\u0164\u016e\u0170\u0178\u0179\u017b\u017d",
+   "ratios": {
+    "advance_a_to_z_mean": 21.0,
+    "ratio_advance_mean": 1.0,
+    "H": {
+     "A": 3,
+     "B": 21,
+     "C": 24
+    },
+    "ratio_H_advance": 1.0385,
+    "ratio_H_B": 0.9545,
+    "g": {
+     "A": 2,
+     "B": 20,
+     "C": 21
+    },
+    "ratio_g_advance": 0.9583,
+    "ratio_g_B": 1.0,
+    "space": {
+     "A": 0,
+     "B": 1,
+     "C": 9
+    },
+    "ratio_space_advance": 0.9
+   }
+  },
+  "Zekton78": {
+   "name": "Zekton78",
+   "glyphs": 274,
+   "atlas": [
+    1024,
+    1024
+   ],
+   "cell_rows": 101,
+   "band_rows": [
+    24,
+    100
+   ],
+   "cap_px": 48,
+   "baseline_row": 84,
+   "source": "Exo2[wght].ttf",
+   "axes": {
+    "Weight": 500
+   },
+   "em_px": 69.565,
+   "x_scale": 0.8643,
+   "fallback_codes": [],
+   "blank_codes": [],
+   "squeezed": "\u00c0\u00c1\u00c2\u00c3\u00c4\u00c5\u00c7\u00c8\u00c9\u00ca\u00cb\u00cc\u00cd\u00ce\u00cf\u00d1\u00d2\u00d3\u00d4\u00d5\u00d6\u00d9\u00da\u00db\u00dc\u00dd\u0102\u0106\u010c\u010e\u0112\u0116\u011a\u011e\u0122\u0130\u0136\u0137\u0139\u013a\u013b\u013c\u0143\u0145\u0146\u0147\u0150\u0154\u0156\u0157\u0158\u015a\u0160\u0164\u016e\u0170\u0178\u0179\u017b\u017d",
+   "ratios": {
+    "advance_a_to_z_mean": 31.5,
+    "ratio_advance_mean": 1.0,
+    "H": {
+     "A": 5,
+     "B": 31,
+     "C": 35
+    },
+    "ratio_H_advance": 1.0256,
+    "ratio_H_B": 0.9394,
+    "g": {
+     "A": 2,
+     "B": 31,
+     "C": 32
+    },
+    "ratio_g_advance": 0.9444,
+    "ratio_g_B": 1.0333,
+    "space": {
+     "A": 0,
+     "B": 1,
+     "C": 13
+    },
+    "ratio_space_advance": 0.8667
+   }
+  },
+  "ZektonES52": {
+   "name": "ZektonES52",
+   "glyphs": 303,
+   "atlas": [
+    512,
+    1024
+   ],
+   "cell_rows": 51,
+   "band_rows": [
+    0,
+    50
+   ],
+   "cap_px": 32,
+   "baseline_row": 40,
+   "source": "Exo2[wght].ttf",
+   "axes": {
+    "Weight": 500
+   },
+   "em_px": 46.377,
+   "x_scale": 0.8659,
+   "fallback_codes": [],
+   "blank_codes": [],
+   "squeezed": "\u00c0\u00c1\u00c2\u00c3\u00c4\u00c5\u00c7\u00c8\u00c9\u00ca\u00cb\u00cc\u00cd\u00ce\u00cf\u00d1\u00d2\u00d3\u00d4\u00d5\u00d6\u00d9\u00da\u00db\u00dc\u00dd\u00e7\u0102\u0106\u010c\u010e\u0112\u0116\u011a\u011e\u0122\u0130\u0136\u0137\u0139\u013a\u013b\u013c\u0143\u0145\u0146\u0147\u0150\u0154\u0156\u0157\u0158\u015a\u015e\u015f\u0160\u0163\u0164\u016e\u0170\u0178\u0179\u017b\u017d",
+   "ratios": {
+    "advance_a_to_z_mean": 21.0,
+    "ratio_advance_mean": 1.0,
+    "H": {
+     "A": 3,
+     "B": 21,
+     "C": 24
+    },
+    "ratio_H_advance": 1.0385,
+    "ratio_H_B": 0.9545,
+    "g": {
+     "A": 2,
+     "B": 20,
+     "C": 21
+    },
+    "ratio_g_advance": 0.9583,
+    "ratio_g_B": 1.0,
+    "space": {
+     "A": 0,
+     "B": 1,
+     "C": 9
+    },
+    "ratio_space_advance": 0.9
+   }
+  },
+  "ZektonES78": {
+   "name": "ZektonES78",
+   "glyphs": 303,
+   "atlas": [
+    1024,
+    1024
+   ],
+   "cell_rows": 77,
+   "band_rows": [
+    0,
+    76
+   ],
+   "cap_px": 48,
+   "baseline_row": 60,
+   "source": "Exo2[wght].ttf",
+   "axes": {
+    "Weight": 500
+   },
+   "em_px": 69.565,
+   "x_scale": 0.8643,
+   "fallback_codes": [],
+   "blank_codes": [],
+   "squeezed": "\u00c0\u00c1\u00c2\u00c3\u00c4\u00c5\u00c7\u00c8\u00c9\u00ca\u00cb\u00cc\u00cd\u00ce\u00cf\u00d1\u00d2\u00d3\u00d4\u00d5\u00d6\u00d9\u00da\u00db\u00dc\u00dd\u0102\u0106\u010c\u010e\u0112\u0116\u011a\u011e\u0122\u0130\u0136\u0137\u0139\u013a\u013b\u013c\u0143\u0145\u0146\u0147\u0150\u0154\u0156\u0157\u0158\u015a\u0160\u0164\u016e\u0170\u0178\u0179\u017b\u017d",
+   "ratios": {
+    "advance_a_to_z_mean": 31.5,
+    "ratio_advance_mean": 1.0,
+    "H": {
+     "A": 5,
+     "B": 31,
+     "C": 35
+    },
+    "ratio_H_advance": 1.0256,
+    "ratio_H_B": 0.9394,
+    "g": {
+     "A": 2,
+     "B": 31,
+     "C": 32
+    },
+    "ratio_g_advance": 0.9444,
+    "ratio_g_B": 1.0333,
+    "space": {
+     "A": 0,
+     "B": 1,
+     "C": 13
+    },
+    "ratio_space_advance": 0.8667
+   }
+  },
+  "Harrier48": {
+   "name": "Harrier48",
+   "glyphs": 315,
+   "atlas": [
+    512,
+    1024
+   ],
+   "cell_rows": 57,
+   "band_rows": [
+    10,
+    56
+   ],
+   "cap_px": 28,
+   "baseline_row": 46,
+   "source": "Exo2[wght].ttf",
+   "axes": {
+    "Weight": 500
+   },
+   "em_px": 40.58,
+   "x_scale": 1.0059,
+   "fallback_codes": [],
+   "blank_codes": [
+    "0x8d",
+    "0x8f",
+    "0x90",
+    "0x9d"
+   ],
+   "squeezed": "\u008a\u008e\u00c0\u00c1\u00c2\u00c5\u00c8\u00c9\u00ca\u00cc\u00cd\u00ce\u00d2\u00d3\u00d4\u00d9\u00da\u00db\u00dd\u0403\u040c\u040d",
+   "ratios": {
+    "advance_a_to_z_mean": 21.385,
+    "ratio_advance_mean": 1.0,
+    "H": {
+     "A": 3,
+     "B": 21,
+     "C": 24
+    },
+    "ratio_H_advance": 0.9,
+    "ratio_H_B": 0.9545,
+    "g": {
+     "A": 2,
+     "B": 20,
+     "C": 21
+    },
+    "ratio_g_advance": 0.9583,
+    "ratio_g_B": 1.1111,
+    "space": {
+     "A": 0,
+     "B": 1,
+     "C": 9
+    },
+    "ratio_space_advance": 0.9
+   }
+  },
+  "Harrier72": {
+   "name": "Harrier72",
+   "glyphs": 315,
+   "atlas": [
+    1024,
+    1024
+   ],
+   "cell_rows": 86,
+   "band_rows": [
+    15,
+    85
+   ],
+   "cap_px": 42,
+   "baseline_row": 69,
+   "source": "Exo2[wght].ttf",
+   "axes": {
+    "Weight": 500
+   },
+   "em_px": 60.87,
+   "x_scale": 1.0054,
+   "fallback_codes": [],
+   "blank_codes": [
+    "0x8d",
+    "0x8f",
+    "0x90",
+    "0x9d"
+   ],
+   "squeezed": "\u008a\u008e\u00c0\u00c1\u00c2\u00c5\u00c8\u00c9\u00ca\u00cc\u00cd\u00ce\u00d2\u00d3\u00d4\u00d9\u00da\u00db\u00dd\u0403\u040c\u040d",
+   "ratios": {
+    "advance_a_to_z_mean": 32.077,
+    "ratio_advance_mean": 1.0,
+    "H": {
+     "A": 5,
+     "B": 32,
+     "C": 36
+    },
+    "ratio_H_advance": 0.9111,
+    "ratio_H_B": 0.9697,
+    "g": {
+     "A": 2,
+     "B": 31,
+     "C": 32
+    },
+    "ratio_g_advance": 0.9444,
+    "ratio_g_B": 1.1481,
+    "space": {
+     "A": 0,
+     "B": 1,
+     "C": 14
+    },
+    "ratio_space_advance": 0.9333
+   }
+  }
+ }
+}
