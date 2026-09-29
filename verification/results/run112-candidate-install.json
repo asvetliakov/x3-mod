@@ -1,0 +1,42 @@
+{
+ "candidate": {
+  "dll": "/tmp/x3-run112-candidate/build/d3d9.dll",
+  "sha256": "ea3ad671347fdf32381a06365262fd90825a511d74cdb19c26aef15bf6f027c9",
+  "bytes": 57709928,
+  "commit": "22dc0e91",
+  "toolchain": "i686-w64-mingw32-gcc (GCC) 16.2.0; cmake version 4.4.3; RelWithDebInfo, cmake/mingw-i686.cmake, -j8; Python 3.9.6 (/usr/bin/python3, -DPython3_EXECUTABLE=/usr/bin/python3); clean build 45 s wall (configure + build) in a detached git worktree (X3M_SOURCE_COMMIT 22dc0e91d8505158d73d2d6ff75ff33cc94f07bb, no dirty diff)",
+  "gates": "build 0 warnings; x87 0 violations (734 reachable functions); generate --check PASS (246 settings, 98 in the template); ui-scale site_verifier_summary PASS 59/59 checks (8,215 instructions, EXE identity shipped LAA CheckSum 0, sha256 fdbf3418...); verify_cull_small_parts_site PASS 20/20 checks (site 0x47d2a2, cull 0x47d2c3, 373 function instructions); verify_lens_flare_cull_site PASS 13/13 checks (42 body names); verify_dust_leak_fix_site PASS 27/27 checks (site 0x41f4d1, bytes 836c242001, 473 function instructions); host suite 278 modules / 2,930 tests / 0 failing (105.9 s wall, 12 jobs); manage.py launch --dry-run --ui-scale 1.25 exit 0 with X3M_UI_SCALE \"1.25\" in the environment map, --ui-scale 5 refused exit 2 (expected auto or a scale in [1, 3]); no Wine run (no Wine fixture depends on the change); X3AP not running before build and suite",
+  "changes": [
+   "22dc0e91 ui_scale: opt-in --ui-scale S|auto enlarging the in-game 2D UI (eight engine sites in one transaction: pixel ortho exit 0x004be246 scaled about the anchor with the cockpit HUD camera excluded, virtual screen size to the script, four mouse-delta stubs with a 0x8000-centred remainder, cursor store in real pixels); site verifier 59/59, host suite 278/2,930/0; review fix: mouse stub continuation word; docs/architecture/ui-scale.md, docs/verification/ui-scale.md",
+   "f9cc983c RE: in-game UI scaling path (docs/reverse-engineering/gui-scale.md): 0x200 objects use the pixel orthographic projection at 0x004bdee0, fonts are fixed bitmap sizes from types/Fonts, -fontscale only raises text texture resolution; patch strategy ranked; 8 function labels, Ghidra helpers, static-check scripts",
+   "a7d404f8 release 0.8.1 from f4439590 (stripped DLL e123b7ed… 39,550,860 B; zip 17f75b31… at /tmp/x3m-release-0.8.1/; host suite 277/2,922/0, x87 0, strip identity PASS, regenerate binaries reused from 0.8.0) installed as Run111 2026-09-29; Run 111 A queued (confirmation flight); rollback Run110",
+   "f4439590 regenerate the x3m.ini template for 0.8.1 (version line)",
+   "6f870245 version 0.8.1",
+   "9ec861f9 Run 110 A completed (run386-389): dock-port cull saves 2.4-3.7 ms at a carrier view (~57 vs 47-50 fps), engine-side flare cull 0 +- 0.5 ms without --perf (1.2 ms under --perf); both culled exactly what they should; no flare batcher",
+   "51e67a49 Run110 candidate built from 5ec34559 (DLL e5e7ac15… 57,626,713 B; host suite 277/2,922/0, x87 0, cull fixture 221/0, verifiers 20/13/27) and installed 2026-09-29; Run 110 A queued (three holds at a carrier view without --perf: defaults, lens-flare gain 0 engine cull, dock cull off); rollback Run109"
+  ],
+  "producer": "Claude Code implement agent (Opus 5.5), 2026-09-30; git log --oneline 5ec34559..22dc0e91 --no-merges; shasum -a 256; stat -f %z; build/site/suite/dry-run logs local under /tmp/x3-run112-candidate/"
+ },
+ "command": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3-run112-candidate/build/d3d9.dll",
+ "exit": 0,
+ "installed_at": "2026-09-30T00:30+0400",
+ "installed": {
+  "sha256": "ea3ad671347fdf32381a06365262fd90825a511d74cdb19c26aef15bf6f027c9",
+  "bytes": 57709928,
+  "verified": "sha256 and size read back after install; equals the candidate record; pgrep X3AP empty before; launch --dry-run rc 0 for --direct --config --debug --ui-scale 1.25 (X3M_UI_SCALE=1.25) and --ui-scale auto"
+ },
+ "unchanged": {
+  "X3AP.exe": "fdbf3418…",
+  "x3m.ini": "the user's file kept (9b183759…)",
+  "cxbottle.conf": "sha 3a70e875… before and after",
+  "x3m-regenerate": "0.8.0 binaries kept"
+ },
+ "previous": {
+  "run": "Run111 = release 0.8.1",
+  "dll_sha256": "e123b7ed8e3c487738f8f60424692a11c6c6b0594e9725651da5f1e5b48bb1f1",
+  "path": "/tmp/x3m-release-0.8.1/d3d9.dll (stripped; zip-extract copy beside it)",
+  "then": "Run110 e5e7ac15… at /tmp/x3-run110-candidate/build/d3d9.dll, Run109 09f08cff…, Run108 c57556bb…, Run107 b9e8793c…, Run104 = release 0.8.0 f34d3ab4…"
+ },
+ "run": "Run 112 A queued: first flight of --ui-scale 1.25 (then 1.5 or auto) with --debug at 5120x1440; docs/verification/user-runs.md",
+ "producer": "main session (this record)"
+}
