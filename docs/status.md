@@ -1,21 +1,29 @@
 # Project status
 
-The single current-state file (updated 2026-09-29, Run109). Rules: [AGENTS.md](../AGENTS.md). All goals were
+The single current-state file (updated 2026-09-29, Run110). Rules: [AGENTS.md](../AGENTS.md). All goals were
 marked completed on 2026-09-26 by the user's decision ([goals](goals.md)). The agent never launches the game.
 
 ## Installed build
 
 Bottle **X3**, **CrossOver Preview.app**, game tree modded with **Mayhem 3** since 2026-09-28 (user install,
 `addon/05..12.cat` plus loose `addon/` files; 0.7.0 LOD overlay and fog families regenerated 2026-09-29 03:33).
-Run109 = candidate DLL SHA-256 `09f08cff0eae7ac56e982352f5ef2f4d160d9e03b6afd18b55364aca3774e9b3` (57,549,786 bytes,
-RelWithDebInfo, unstripped), built once from clean main `a16a47f5` (host suite 276/2,912/0, 0 warnings, x87 0, dust-leak
-fixture 80/80, site verifier 27/27; [build](../verification/results/run109-candidate-build.json)), installed 2026-09-29
-([install](../verification/results/run109-candidate-install.json)). `X3AP.exe`, `cxbottle.conf`, the user's `x3m.ini`
+Run110 = candidate DLL SHA-256 `e5e7ac1585c5c7bd0a22d5b41b2ef16b40f356dbe368bcc5ac0fe9bf8f02d783` (57,626,713 bytes,
+RelWithDebInfo, unstripped), built once from clean main `5ec34559` (host suite 277/2,922/0, 0 warnings, x87 0, cull fixture
+221/0 with lens 58, verifiers 20/20, 13/13, 27/27; [build](../verification/results/run110-candidate-build.json)), installed
+2026-09-29 ([install](../verification/results/run110-candidate-install.json)). `X3AP.exe`, `cxbottle.conf`, the user's `x3m.ini`
 and the 0.8.0 `x3m-regenerate` binaries unchanged.
 
-Rollback chain: Run108 `c57556bb…` at `/tmp/x3-run108-candidate/build/d3d9.dll`, then Run107 `b9e8793c…` at `/tmp/x3-run107-candidate/build/d3d9.dll`, then Run106 `d07848e8…`, then Run104 = release 0.8.0 `f34d3ab4…` (zip at `/tmp/x3m-release-0.8.0/`, entry `d3d9.dll`, extracted copy
+Rollback chain: Run109 `09f08cff…` at `/tmp/x3-run109-candidate/build/d3d9.dll`, then Run108 `c57556bb…` at `/tmp/x3-run108-candidate/build/d3d9.dll`, then Run107 `b9e8793c…` at `/tmp/x3-run107-candidate/build/d3d9.dll`, then Run106 `d07848e8…`, then Run104 = release 0.8.0 `f34d3ab4…` (zip at `/tmp/x3m-release-0.8.0/`, entry `d3d9.dll`, extracted copy
 at `/tmp/x3m-release-0.8.0/zip-extract/d3d9.dll`), then Run103 `1f3ad3db…` at `/tmp/x3-run103-candidate/build/d3d9.dll`.
 
+Run110 over Run109: `lens_flare_gain 0` now culls the lens-flare sprite nodes in the engine's own cull pass (a second
+stub chained on the small-parts claim at `0x0047d2a2`; the 42 flare bodies resolved from the body table; the proxy skip
+stays as fallback; [ledger](verification/sun-occlusion.md), [note](reverse-engineering/lod-selection.md) "Lens-flare cull"),
+and the dock-port cull `cull_dock_parts_px` (default 12 screen px, `--cull-dock-parts`, 0 = off): carrier launch tubes
+and hangars, stock dock scenes with inline bodies and a single LOD record ([note](reverse-engineering/ship-scene-parts.md)),
+are culled in the same stub below that size (run385 replay: 159/27/27 of the bursts' 186/27/52 dock draws;
+[ledger](verification/cull-small-parts.md) "Dock ports"). Purpose: measure whether not issuing the draws recovers the
+engine's ~24 us per draw (the proxy-side flare skip of Run 105 A recovered ~1 ms only).
 Run109 over Run108: the `dust_leak_fix` engine patch, on by default (`--dust-leak-fix off` / ini `dust_leak_fix = off`;
 one 5-byte claim at `0x0041f4d1`, the dust-scene fill loop's common tail: a node whose dust body failed to load is
 released through the engine's own `0x00487be0` and the fill ends for that frame; [ledger](verification/dust-leak-fix.md),
@@ -36,15 +44,20 @@ Last release: **0.8.0** from `a3c85e37` ([release record](../verification/result
 
 ## Main beyond the installed build
 
-Nothing beyond the installed Run109 (`a16a47f5`); release 0.8.0 (`a3c85e37`) is the last packaged build.
+Nothing beyond the installed Run110 (`5ec34559`); release 0.8.0 (`a3c85e37`) is the last packaged build.
 
 ## Run queue
 
-No run is open. Run 109 A completed (run384, [results](../verification/results/run384-dust-leak-fix/)): with
+Run 110 A queued (Run110 installed): three ~30 s holds at one busy carrier view on the run385 save without `--perf`
+(`fps_overlay = 1` in the ini): defaults (dock cull on), `--lens-flare-gain 0` (engine flare cull), `--cull-dock-parts 0`
+(Run109 baseline); optional fourth hold under `--debug --perf` with one F8 for the cull counts
+([user-runs](verification/user-runs.md)). Run 109 A completed (run384, [results](../verification/results/run384-dust-leak-fix/)): with
 `dust_leak_fix` patched the census stays flat (engine_nodes 4,515 -> 4,853 over 19,826 frames on `litcube75`, hits=300
-per row, `registry_live == engine_nodes` throughout), the animation tick `cutevent` stays at 0.1-0.4 ms (run383: 0.5 ->
-10.8 ms) and the shimmer did not return. Frame p50 still moved 16 -> 23 ms over the stay with the input phase 4.6 -> 7.2
-ms; that growth is not the node walk and is unexplained (the user's view and the sector's activity changed during the run).
+per row), the animation tick `cutevent` stays at 0.1-0.4 ms (run383: 0.5 -> 10.8 ms) and the shimmer did not return.
+Late frames (run384/run385 triage, [attribution](../verification/results/run385-draw-attribution/)): frame time follows
+the draw count (engine `views` 24-26 us per issued draw); LOD selection correct in every census row (Raptor switch 5.7 km,
+Ocelot 6.4 km); burst A's 642 draws = 186 dock-port parts + 168 flare sprites + 77 props + 48 hulls + 68 asteroids;
+a second slow drift in the game's pre-render outside the stamped region (3.6 -> 5.8 ms over the stay) is unexplained.
 
 Run 108 A completed (run383, [census](../verification/results/run383-scene-census/),
 [dust leak](../verification/results/run383-dust-leak/)): the Mayhem 3 scene-node leak is the engine's dust-scene fill

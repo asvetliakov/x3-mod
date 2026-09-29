@@ -1,0 +1,43 @@
+{
+ "candidate": {
+  "dll": "/tmp/x3-run110-candidate/build/d3d9.dll",
+  "sha256": "e5e7ac1585c5c7bd0a22d5b41b2ef16b40f356dbe368bcc5ac0fe9bf8f02d783",
+  "bytes": 57626713,
+  "commit": "5ec34559",
+  "toolchain": "i686-w64-mingw32-gcc (GCC) 16.2.0; cmake version 4.4.3; RelWithDebInfo, cmake/mingw-i686.cmake, -j8; Python 3.9.6 (/usr/bin/python3, -DPython3_EXECUTABLE=/usr/bin/python3); clean build 42 s wall (configure + build)",
+  "gates": "build 0 warnings; x87 0 violations (734 reachable functions); generate --check PASS (245 settings, 97 in the template); verify_cull_small_parts_site PASS 20/20 checks (site 0x47d2a2, cull 0x47d2c3, 373 function instructions); verify_lens_flare_cull_site PASS 13/13 checks (42 body names); verify_dust_leak_fix_site PASS 27/27 checks (site 0x41f4d1, bytes 836c242001, 473 function instructions); run_cull_small_parts rebuilt from candidate sources (bottle X3, wine_lock) PASS 221 checks / 0 failures (lens 58/0, DOCK row dock_px=8 dock_culled=7, census dock culled_dock=7), exit 0, 15 replay lines, 7 s wall; host suite 277 modules / 2,922 tests / 0 failing (100.6 s wall, 12 jobs); X3AP not running before build, fixture and suite",
+  "changes": [
+   "5ec34559 cull-small-parts ledger: the dry-run dock value became 12.0000 with the default change",
+   "334a1aec cull_small_parts: carrier dock-port threshold (X3M_CULL_DOCK_PARTS_PX, --cull-dock-parts, default 8): second, larger s threshold for model ids 901300000..901499999 / 909800000..909999999 in the same stub (147 bytes), census culled_dock, frame row dock_culled=; fixture 162/0, verifier 20/20, run385 replay 64/2/25 at 8 px, 159/27/27 at 12 px",
+   "44c102fd lens_flare_gain 0 culls the lens-flare sprites in the engine's cull pass: a second stub chained on the small-parts claim at 0x0047d2a2 sends nodes whose model id is in the resolved 42-body flare set (stock Lensflares groups + v\\00781, v\\010xx) down the engine's own size cull at 0x0047d2c3, so the engine never issues the draws; body set resolved incrementally from the body table with per-frame re-check of the mapped dynamic slots (re-binds within one frame after a load); proxy skip stays as fallback; fixture 200 checks (58 lens) under Wine, verifier 13/13, host 38 tests, build 0 warnings, x87 0; reviewed (Opus), four fixes applied",
+   "c7917cfc RE: the unnamed carrier parts are stock dock-port scenes (dummies 19026/19027 -> dock scenes 9013/9014, inline bodies with ids local + (cut-1)*100000, never in the body table); Raptor 10 tubes + hangar = 117 draws, no engine LOD tie; lever = a dock-port size threshold in the cull_small_parts stub (s < 8 removes 159/27/27 draws in run385)",
+   "2180f9df run385 draw attribution (three F8 bursts on Run109): LOD selection correct in every row (453/291/295 predicted); Raptor switch 5.7 km, Ocelot 6.4 km; burst A 642 draws = 186 unnamed single-record carrier parts (Raptor 117, Ocelot 69) + 168 flare sprites + 77 props + 48 hulls + 68 asteroids",
+   "cc43e3ed run384 late-frame triage: views (engine CPU between draws, 21-24 us/draw) follows the draw count 335 -> 566; pre_render outside the stamped region grows with time 3.6 -> 5.8 ms; Ocelot/Raptor overlay LODs baked, no Split hull refused",
+   "953d3eda Run 109 A completed (run384): dust_leak_fix patched, hits=300 per row, engine_nodes flat 4,515 -> 4,853 over 19,826 frames, cutevent 0.1-0.4 ms, no shimmer return; accepted, on by default",
+   "bbcedd7e Run109 candidate built from a16a47f5 (DLL 09f08cff\u2026 57,549,786 B; host suite 276/2,912/0, x87 0, dust-leak fixture 80/80, site verifier 27/27) and installed 2026-09-29; Run 108 A completed (run383: the leak is the engine dust-scene fill, ZMap Fog slider + 170 rows without dust bodies); Run 109 A queued; rollback Run108 then Run107"
+  ],
+  "producer": "Claude Code implement agent (Opus 5.5), 2026-09-29; git log --oneline a16a47f5..5ec34559 --no-merges; shasum -a 256; stat -f %z; build/site/fixture/suite logs local under /tmp/x3-run110-candidate/"
+ },
+ "command": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3-run110-candidate/build/d3d9.dll",
+ "exit": 0,
+ "installed_at": "2026-09-29T19:15+0400",
+ "installed": {
+  "sha256": "e5e7ac1585c5c7bd0a22d5b41b2ef16b40f356dbe368bcc5ac0fe9bf8f02d783",
+  "bytes": 57626713,
+  "verified": "sha256 and size read back after install; equals the candidate record; pgrep X3AP empty before; launch --dry-run rc 0 for --direct --config, + --lens-flare-gain 0, + --cull-dock-parts 0"
+ },
+ "unchanged": {
+  "X3AP.exe": "fdbf3418\u2026",
+  "x3m.ini": "the user's file kept",
+  "cxbottle.conf": "sha 3a70e875\u2026 before and after",
+  "x3m-regenerate": "0.8.0 binaries kept"
+ },
+ "previous": {
+  "run": "Run109",
+  "dll_sha256": "09f08cff0eae7ac56e982352f5ef2f4d160d9e03b6afd18b55364aca3774e9b3",
+  "path": "/tmp/x3-run109-candidate/build/d3d9.dll",
+  "then": "Run108 c57556bb\u2026, Run107 b9e8793c\u2026, Run104 = release 0.8.0 f34d3ab4\u2026"
+ },
+ "run": "Run 110 A queued: three holds at one carrier view without --perf (fps_overlay = 1 in the ini): defaults, --lens-flare-gain 0, --cull-dock-parts 0; docs/verification/user-runs.md",
+ "producer": "main session (this record)"
+}
