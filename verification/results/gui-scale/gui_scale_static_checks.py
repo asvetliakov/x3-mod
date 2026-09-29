@@ -102,6 +102,13 @@ out['sites'] = {
     '0x004bdf27': exe[off(0x4bdf27):off(0x4bdf27) + 10].hex(),   # TEST [EBX+0x130],0x200
     '0x004ecae3': exe[off(0x4ecae3):off(0x4ecae3) + 6].hex(),    # MOV [EAX+0x784],ECX (ECX=1)
     '0x004ecff8': exe[off(0x4ecff8):off(0x4ecff8) + 6].hex(),    # MOV [ECX+0x784],EAX (atol)
+    # Click selection (gui-scale.md section 6): the two script-point loads in the INS dispatcher 0x0042d340.
+    '0x0042ddf1': exe[off(0x42ddf1):off(0x42ddf1) + 8].hex(),    # case 0x28: mov esi,[ebx+6]; mov edi,[ebx+0xb]; jl
+    '0x0042ece0': exe[off(0x42ece0):off(0x42ece0) + 8].hex(),    # case 0x64: mov esi,[esi+6]; push ecx; push esi; add eax,..
+    '0x0042eceb': {'call_target': call_target(0x42eceb)},
+    '0x0042de11': {'call_target': call_target(0x42de11)},
+    '0x00425474': {'call_target': call_target(0x425474)},
+    '0x00445ad0': {'call_target': call_target(0x445ad0)},
 }
 
 

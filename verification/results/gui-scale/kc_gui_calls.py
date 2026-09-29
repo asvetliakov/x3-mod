@@ -16,7 +16,9 @@ NATIVES = ('B3D_ScreenGetWidth', 'B3D_ScreenGetHeight', 'B3D_ScreenGetAspectX', 
            'B3D_ScreenGetBorderX', 'B3D_ScreenGetBorderY', 'B3D_OpenFont', 'B3D_InstSetFlags2',
            'B3D_InstGetFlags2', 'B3D_CameraSetViewPort', 'B3D_SceneSetViewPort', 'B3D_CameraSetAspect',
            'B3D_CameraSetAspectRatio', 'B3D_SceneSetSystemScale', 'B3D_TexTextBlock', 'B3D_InstSetScale',
-           'B3D_InstSetSize', 'X2_UpdateCursorSteering')
+           'B3D_InstSetSize', 'X2_UpdateCursorSteering',
+           'INS_CockpitGetObjectByTargetOverlayIconPos', 'INS_CockpitGetCursorAim',
+           'INS_CockpitGetMenuPosByTargetOverlayIconPos', 'INS_CockpitProjectPosition')
 
 
 def member(cat, name):
@@ -75,11 +77,13 @@ latest = None
 for cat in sorted((X3 / 'addon').glob('*.cat')):
     b = member(cat, 'L/x3story.obj')
     if b: latest = (cat.relative_to(X3), b)
-detail = {'B3D_ScreenGetWidth': 40, 'B3D_ScreenGetHeight': 40, 'B3D_OpenFont': 10,
+detail = {'INS_CockpitGetObjectByTargetOverlayIconPos': 5, 'INS_CockpitGetCursorAim': 5,
+          'B3D_ScreenGetWidth': 40, 'B3D_ScreenGetHeight': 40, 'B3D_OpenFont': 10,
           'B3D_ScreenGetAspectX': 10, 'B3D_ScreenGetAspectY': 10, 'B3D_SceneSetSystemScale': 10}
 scan('addon/04.cat (stock)', stock, detail)
 if latest and latest[1] != stock:
-    scan(f'{latest[0]} (installed override)', latest[1], {})
+    scan(f'{latest[0]} (installed override)', latest[1],
+         {'INS_CockpitGetObjectByTargetOverlayIconPos': 5, 'INS_CockpitGetCursorAim': 5})
 intro = member(X3 / 'addon/04.cat', 'L/x3intro.obj')
 scan('addon/04.cat L/x3intro.obj (stock)', intro,
      {'B3D_ScreenGetWidth': 20, 'B3D_ScreenGetHeight': 20, 'B3D_InstSetFlags2': 20,

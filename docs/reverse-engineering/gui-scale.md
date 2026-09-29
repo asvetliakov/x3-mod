@@ -322,6 +322,120 @@ camera-state-and-frame-routine.md), which blurs text like (b) but cannot move
 KC's cursor, clamping or hit-test rectangles, so clicks would land on the
 unscaled layout. Not recommended except as a display-only experiment.
 
+## 6. Click selection under a scaled UI
+
+Added 2026-09-30 after run390 (5120×1440, `ui_scale` 1.25, virtual 4096×1152):
+clicking a ship's selection bracket in the 3D view (first person and chase)
+no longer selects it, while the brackets draw at their real-pixel positions
+because the cockpit HUD camera (`cockpit+8`) is excluded from the projection
+scale ([ui-scale.md](../architecture/ui-scale.md)). Static reading of the same
+EXE and `x3story.obj` (stock `addon/04.cat` and override `addon/07.cat`), Ghidra
+listings in the session scratchpad; evidence scripts
+`verification/results/gui-scale/gui_scale_static_checks.py` (site bytes, call
+targets) and `kc_gui_calls.py` (KC call sites).
+
+### 6.1 The click path reads the script's virtual cursor [s][m]
+
+```text
+KC Click@0xe6b39 (class of GetCursorX@0xe6ab3 / GetCursorY@0xe6abc = members 0/1, the script cursor)
+  -> by-name NotifyClick(listener, x, y, …)            (0xe6be9, 0xe6c5a)
+  -> NotifyClick@0xf2456 -> GetObjectAtScreenPos(x, y) (0xf28ea; also GetCursorIconForSteering 0xf3406)
+  -> GetObjectAtScreenPos@0xf34e0:
+       INS_CockpitGetObjectByTargetOverlayIconPos(cockpit, x, y)   (0xf3502)
+       else INS_CockpitGetCursorAim(cockpit, x, y, 0)              (0xf3514)
+```
+
+Override `addon/07.cat` has the same shape (`GetObjectAtScreenPos@0x109833`,
+one site each). The script cursor is accumulated from the mouse-delta events
+that D1..D4 now divide by `s`, so `x, y` are **virtual pixels** (0..W/s).
+
+Native side, INS dispatcher `0x0042d340` [s]:
+
+| Native | Case | Point load (script arguments, virtual px) | Consumer |
+| --- | --- | --- | --- |
+| `INS_CockpitGetObjectByTargetOverlayIconPos` | `0x64` (entry `0x0042ecc5`) | `0x0042ecdd mov ecx,[esi+0xb]` (y), `0x0042ece0 mov esi,[esi+6]` (x) | `push ecx; push esi; push cockpit+0x3ac; call 0x004299a0` at `0x0042eceb` |
+| `INS_CockpitGetCursorAim` | `0x28` (entry `0x0042ddc0`) | `0x0042ddf1 mov esi,[ebx+6]` (x), `0x0042ddf4 mov edi,[ebx+0xb]` (y); `-1,-1` when fewer than 3 arguments (`0x0042dddf`, `0x0042dde2`) | `call 0x00425410(cockpit, x, y, flag)` at `0x0042de11` |
+
+Inside `0x00425410` the point is `EBX = [ebp+0xc]` (`0x0042541d`),
+`ESI = [ebp+0x10]` (`0x00425457`); with both non-negative it goes to the icon
+test `0x004299a0` (`0x0042546b..0x00425474`) and, when no icon is hit, to the
+3D ray pick through `0x00489780(x, y, 500000, &v)` at `0x004254c9`: both in
+the argument's units [s].
+
+The icon test `0x004299a0` (stdcall, `ret 0xc`) loads the point at
+`0x00429a32 mov ebp,[esp+0x28]` (x) and `0x00429a36 mov ebx,[esp+0x2c]` (y),
+makes it centre-relative by subtracting half of the overlay camera's viewport
+in **real** pixels (`((x0+x1)·screenW + 0x8000) >> 16` from
+`*(*0x00606f38)+4` at `0x004299c1`, height at `0x004299fb`; subtraction at
+`0x00429a3c..0x00429a50`), then compares against each icon node
+(overlay `+0x348` list): centre `+0x30/+0x34` (`0x00429b52`, `0x00429b57`,
+real centre-relative pixels as written by `0x00426230`), half-extents
+`+0x70·+0x80` and `+0x70·(+0x84/2)` (16.16, `0x00429b49..0x00429ba2`), test
+`0x00429ba6..0x00429bb8`; a second pass tests bracket-corner nodes
+(`puVar[0x16]/[0x1b]/[0x20]` `+0x30/+0x34`) as an inclusive rectangle
+(`0x00429c76..0x00429c99`) [s]. Rectangles and centre are real pixels, the
+point is virtual: a click at real screen pixel `X` arrives as `X/s`, so the
+tested offset misses by `X·(1 − 1/s)`: at `s = 1.25` on 5120×1440 that is
+0 px at the left edge, 512 px at the centre, 1024 px at the right edge, and up
+to 288 px vertically [i: arithmetic]. That is the defect.
+
+### 6.2 The other direction [s][m]
+
+No native real-pixel position or rectangle is handed back to the script on
+this path: `INS_CockpitGetMenuPosByTargetOverlayIconPos` (case `0x65`,
+`0x00429cf0`, returns five values) and `INS_CockpitProjectPosition` (case
+`0x66`, `0x004899f0`) have **0** KC call sites in the stock, override and
+intro objects [m]; the two natives above return an object handle only
+(`0x0042de16..` pushes `[obj+8]`); `INS_CockpitTargetOverlayTrackPrevNext`
+(case `0x63`) takes a direction only. The cursor goes native-ward once, at the
+E store (script ×s → `0x00607cec/0x00607cf0`), and is never read back by the
+script. `GetCursorIconForSteering@0xf33e8` uses the same
+`GetObjectAtScreenPos`, so the hover cursor icon over brackets is wrong in the
+same way and is fixed by the same sites [i]. A sweep of every native that
+takes a screen point from the script was not made beyond the overlay natives.
+
+### 6.3 Minimal fix: scale the two script-point loads by `s`
+
+Apply the E rounding (`v·fixed256 + 0x80) >> 8`) to the arguments at the two
+dispatcher cases, so `0x004299a0`, `0x00425410` and its `0x00489780` fallback
+all receive real pixels. Not inside `0x004299a0` or `0x00425410`: those are
+also reached with real pixels from the fire path (`0x00445ac0/0x00445ac6`
+load `0x00607cf0/0x00607cec` → `0x00425410` at `0x00445ad0`) and with the real
+viewport centre (`0x0042a55a` passes `-1,-1`; `0x004255aa`).
+
+| Claim | Span (whole instructions) | Bytes | Stub | Registers / flags | Qword |
+| --- | --- | --- | --- | --- | --- |
+| G, case `0x64` | `0x0042ece0..0x0042ece4`: `mov esi,[esi+6]; push ecx; push esi` (5) | `8b 76 06 51 56` | `mov esi,[esi+6]`; scale ECX (y, loaded at `0x0042ecdd`) and ESI with `imul r,[fixed256]; add r,0x80; sar r,8`; `push ecx; push esi`; `jmp 0x0042ece5` | in: ESI = argument block, ECX = y, EAX = cockpit (kept, `add eax,0x3ac` follows). EFLAGS dead (`0x0042ece5 add` writes them). EDX untouched and dead (`0x004299a0` writes EDX at `0x004299bf` before reading). Stack: the stub's two pushes replace the displaced ones; `0x004299a0` pops 12 | inside the aligned word `0x0042ece0..0x0042ece7`: one `cmpxchg8b` |
+| H, case `0x28` | `0x0042ddf1..0x0042ddf6`: `mov esi,[ebx+6]; mov edi,[ebx+0xb]` (6) | `8b 73 06 8b 7b 0b` | both loads, scale ESI and EDI as above, then **`cmp ecx,4`** and `jmp 0x0042ddf7` | in: EBX = argument block, ECX = argument count (untouched), EAX = cockpit (untouched). **EFLAGS are live**: `0x0042ddf7 jl` consumes `0x0042ddee cmp ecx,4`; re-executing `cmp ecx,4` restores them exactly (or `pushfd/popfd`). EDX untouched | first five bytes inside `0x0042ddf0..0x0042ddf7`: one `cmpxchg8b`; the sixth byte `0x0042ddf6` becomes dead padding |
+
+No reference lands inside either span (`X3XrefsTo` on `0x0042ddf1..f7` and
+`0x0042ece0..e5`: none) [m]; the jump-table entries are the case starts
+`0x0042ddc0` and `0x0042ecc5`. The obvious alternative G' at `0x0042ecdd`
+(both loads, 6 bytes) straddles the qword boundary `0x0042ece0` and would fall
+back to a plain copy. No conflict with the eight ui_scale claims (A `0x004be246`,
+B `0x00496194`, C `0x004961bb`, D1 `0x00403d36`, D2 `0x00403d7a`, D3
+`0x00411b40`, D4 `0x00411b57`, E `0x004074ec`, F `0x004bdee0`) or the other
+dispatcher claims (`fov` `0x0042dbf8`, `chase_mode_script` `0x0042e742`) [m:
+grep of `src/proxy`]. Both run on the script VM's thread (the main/render
+thread), no call, integer only; at `fixed256 = 256` both are the identity.
+`-1` stays negative at every `s` in [1, 3] (`(−256·s + 128) >> 8 ≤ −1`), so
+the "no point" sentinel of case `0x28` survives even if the scale were applied
+on that path [i: arithmetic]; it is not, because the sentinel is set on the
+branch that skips the loads.
+
+### 6.4 Why the 35-pixel box and cursor fire work [s]
+
+They never see a script argument: the 35-pixel selection box `0x004257f0`
+reads `0x00607cf0` (`0x004257f0`) and `0x00607cec` (`0x00425801`) and centres
+them with the real viewport; the steering dead zone `0x0040e8c0` reads them at
+`0x0040e8d7/0x0040e8dd` into `0x00489780`; the fire path passes them to
+`0x00425410` at `0x00445ac0..0x00445ad0`. Stub E has already multiplied the
+script cursor by `s` into those globals, so all three are in real pixels. G
+and H change only the two dispatcher cases, which the fire, box, dead-zone
+and overlay-update (`0x0042a55a`, `-1,-1`) paths do not pass through, so the
+fix cannot double-scale them. Both conversions use the same rounding, so a
+click and a shot at the same cursor resolve the same pixel.
+
 ## Open items
 
 1. Which instances the main menu the user sees uses (non-`0x200` perspective
@@ -336,6 +450,9 @@ unscaled layout. Not recommended except as a display-only experiment.
 4. Native readers of display `+0x30/+0x34` (border) and the meaning of the
    `0x005748b8` table doubled under `-fontscale` are not established.
 5. The `SE_DivFix` operand order in `x3intro` `Init@0x14c04` is inferred.
+6. §6: only the overlay natives were checked for script-supplied screen
+   points; other natives that take a pixel point from the script (none known)
+   would need the same treatment. G/H are static proposals, not flown.
 
 ## Reproduce
 
