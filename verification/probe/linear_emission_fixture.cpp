@@ -840,8 +840,18 @@ constexpr float actual_gains[] = {0, .25f, 1, 4, 16};
 // Source-only encoded gain variants (linear_emission_source_gain_variant):
 // gain 1 is the byte-identical original, the rest one colour MUL. Slots 0-3
 // are the additive cases' gains; the screen cases run slots {0, 1, 4, 3}.
-constexpr float source_gains[] = {1, 2, 3.5f, 8, 5};
+// Slots 5-7 carry X3M_EMISSION_SOURCE_CLAMP (0 = none): gain 2 capped at 1,
+// the clamp-only gain-1 variant capped at 0.5 and gain 2 capped at 0.7; the
+// clamp cases (flag 16384) run slots {0, 1, 5, 6}, the blend-factor cases
+// (flag 128, background black or the 230/255 disc) slots {0, 1, 5, 7}. As in the proxy, a clamp below 1 is
+// the 8-bit BLENDFACTOR value (linear_emission_blend_factor_clamp), its
+// variant is normalized (t / C) and the draw runs SRCBLEND BLENDFACTOR.
+constexpr float source_gains[] = {1, 2, 3.5f, 8, 5, 2, 1, 2};
+constexpr float source_clamps[] = {0, 0, 0, 0, 0, 1, .5f, .7f};
+constexpr unsigned source_slots = sizeof source_gains / sizeof source_gains[0];
 constexpr unsigned screen_slots[] = {0, 1, 4, 3};
+constexpr unsigned clamp_slots[] = {0, 1, 5, 6};
+constexpr unsigned factor_slots[] = {0, 1, 5, 7};
 constexpr unsigned actual_pairs[][2] = {{0, 0}, {1, 1}, {1, 2}, {2, 3}, {2, 4}, {3, 1}, {3, 2}, {4, 5}, {4, 6}, {4, 7},
                                         {4, 8}, {5, 0}, {5, 9}, {6, 3}, {6, 4}, {7, 5}, {7, 6}, {7, 7}, {7, 8}, {0, 9}};
 unsigned actual_vertex(unsigned pair) {
@@ -879,7 +889,7 @@ struct MrtFixture : Fixture {
          coverage_write = false;
     Com<IDirect3DVertexShader9> actual_vertices[8];
     Com<IDirect3DPixelShader9> actual_originals[10], actual_variants[10][5], coverage_variants[10][5];
-    Com<IDirect3DPixelShader9> source_gain_variants[10][5];
+    Com<IDirect3DPixelShader9> source_gain_variants[10][source_slots];
     std::vector<std::uint32_t> original_vertices[8], original_pixels[10];
     std::vector<IDirect3DTexture9*> textures;
     Saved application;
@@ -957,6 +967,20 @@ struct MrtFixture : Fixture {
                         api(d->CreatePixelShader(reinterpret_cast<const DWORD*>(transformed.data()),
                                                  &coverage_variants[p][g].p));
                     }
+                }
+                for (unsigned g = 5; source_gain && g < source_slots; ++g) {
+                    std::vector<std::uint32_t> transformed;
+                    const float clamp = linear_emission_blend_factor_clamp(source_clamps[g]);
+                    const bool normalized = linear_emission_clamp_normalizes(clamp);
+                    need(linear_emission_source_gain_variant(saved.data(), saved.size(), source_gains[g], transformed,
+                                                             clamp, normalized) == LinearEmissionResult::Applied,
+                         "source-gain clamp PS transform");
+                    need(original_pixels[p] == saved, "source-gain clamp transform mutated original");
+                    need(transformed.size() ==
+                             saved.size() + (source_gains[g] != 1 ? 14u : 10u) + (normalized ? 4u : 0u),
+                         "source-gain clamp variant shape");
+                    api(d->CreatePixelShader(reinterpret_cast<const DWORD*>(transformed.data()),
+                                             &source_gain_variants[p][g].p));
                 }
             }
         } else {
@@ -1671,6 +1695,9 @@ void mrt_experiment(IDirect3DDevice9* device, const std::vector<Case>& cases, co
 void source_gain_experiment(IDirect3DDevice9* device, const std::vector<Case>& cases, const char* path,
                             IDirect3DSurface9* back, const char* programs, const char* variants) {
     MrtFixture f(device, 16, 16, false, programs, variants, false, true);
+    D3DCAPS9 device_caps{};
+    api(device->GetDeviceCaps(&device_caps));
+    const bool blend_factor_cap = (device_caps.SrcBlendCaps & D3DPBLENDCAPS_BLENDFACTOR) != 0;
     std::ofstream raw(path, std::ios::binary);
     need(bool(raw), "source-gain raw output");
     unsigned draws = 0, substituted = 0;
@@ -1678,13 +1705,23 @@ void source_gain_experiment(IDirect3DDevice9* device, const std::vector<Case>& c
         need(cs.ops.size() == 1, "one source per source-gain case");
         f.initialize_mrt(cs);
         const unsigned pair = f.profile(cs), pixel = actual_pixel(pair);
-        const bool dark = (cs.h.flags & 32768) == 0, grey = (cs.h.flags & 8192) != 0, screen_case = cs.ops[0].kind == 2;
+        const bool dark = (cs.h.flags & 32768) == 0, grey = (cs.h.flags & 8192) != 0, screen_case = cs.ops[0].kind == 2,
+                   clamp_case = (cs.h.flags & 16384) != 0, factor_case = (cs.h.flags & 128) != 0,
+                   disc = factor_case && !dark; // the blend-factor cases' only background is the 0.9 disc
         need(x3m::renderer::linear_emission_pair_index(local_fingerprint(f.original_vertices[actual_vertex(pair)]),
                                                        local_fingerprint(f.original_pixels[pixel])) == pair,
              "registry pair index");
         unsigned slots[4];
-        for (unsigned v = 0; v < 4; ++v) slots[v] = screen_case ? screen_slots[v] : v;
+        for (unsigned v = 0; v < 4; ++v)
+            slots[v] = factor_case ? factor_slots[v] : clamp_case ? clamp_slots[v] : screen_case ? screen_slots[v] : v;
+        // The proxy's rule (configure_emission_source_gain): a screen draw gets
+        // DESTBLEND ONE only above gain 1 without a saturating clamp.
+        unsigned expected_substituted = 0;
+        for (unsigned v = 0; v < 4; ++v)
+            expected_substituted += screen_case && source_gains[slots[v]] != 1 &&
+                                    !x3m::renderer::linear_emission_clamp_saturates(source_clamps[slots[v]]);
         const D3DCOLOR background = dark   ? 0
+                                    : disc ? D3DCOLOR_ARGB(128, 230, 230, 230)
                                     : grey ? D3DCOLOR_ARGB(128, 128, 128, 128)
                                            : D3DCOLOR_ARGB(128, 64, 128, 192);
         auto clear_target = [&] {
@@ -1721,12 +1758,22 @@ void source_gain_experiment(IDirect3DDevice9* device, const std::vector<Case>& c
                                                                                          state[3], state[4]);
             need(v == 0 || now == verdict, "source-gain verdict stable across the case");
             verdict = now;
-            if (v && verdict != SourceGainBlend::Blend && source_gains[slots[v - 1]] != 1) {
-                if (verdict == SourceGainBlend::Screen) {
+            const unsigned slot = v ? slots[v - 1] : 0;
+            if (v && verdict != SourceGainBlend::Blend && (source_gains[slot] != 1 || source_clamps[slot] != 0)) {
+                if (verdict == SourceGainBlend::Screen && source_gains[slot] != 1 &&
+                    !x3m::renderer::linear_emission_clamp_saturates(source_clamps[slot])) {
                     // The proxy's substitution for this draw only: DESTBLEND ONE
                     // before the program bind (prepare_source_gain).
                     f.rs(D3DRS_DESTBLEND, D3DBLEND_ONE);
                     ++case_substituted;
+                }
+                const float clamp = x3m::renderer::linear_emission_blend_factor_clamp(source_clamps[slot]);
+                if (x3m::renderer::linear_emission_clamp_normalizes(clamp)) {
+                    // The proxy's blend-factor form (prepare_source_gain): the
+                    // variant emits t / C, SRCBLEND BLENDFACTOR (C, C, C, 1).
+                    need(blend_factor_cap, "blend-factor cap");
+                    f.rs(D3DRS_BLENDFACTOR, x3m::renderer::linear_emission_blend_factor(clamp));
+                    f.rs(D3DRS_SRCBLEND, D3DBLEND_BLENDFACTOR);
                 }
                 api(device->SetPixelShader(f.source_gain_variants[pixel][slots[v - 1]].p));
             }
@@ -1738,12 +1785,14 @@ void source_gain_experiment(IDirect3DDevice9* device, const std::vector<Case>& c
         substituted += case_substituted;
         need(screen_case == (verdict == SourceGainBlend::Screen), "screen op admitted as screen");
         need(!screen_case == (verdict == SourceGainBlend::Admit), "additive op admitted");
-        need(case_substituted == (screen_case ? 3u : 0u), "substitution count per case");
+        need(case_substituted == expected_substituted, "substitution count per case");
         need((cs.h.alpha != 0) == (state[5] != 0), "separate alpha state as authored");
         std::printf("SOURCE_GAIN_CASE id=%u pair=%u pixel=%u background=%u draws=5 admission=%s "
-                    "src=%lu dst=%lu sepalpha=%lu srcalpha=%lu dstalpha=%lu substituted=%u effective=%g,%g,%g,%g\n",
+                    "src=%lu dst=%lu sepalpha=%lu srcalpha=%lu dstalpha=%lu substituted=%u effective=%g,%g,%g,%g "
+                    "clamps=%g,%g,%g,%g\n",
                     cs.h.id, pair, pixel,
                     dark   ? 0u
+                    : disc ? 3u
                     : grey ? 2u
                            : 1u,
                     verdict == SourceGainBlend::Admit    ? "admit"
@@ -1752,12 +1801,14 @@ void source_gain_experiment(IDirect3DDevice9* device, const std::vector<Case>& c
                     static_cast<unsigned long>(state[2]), static_cast<unsigned long>(state[3]),
                     static_cast<unsigned long>(state[5]), static_cast<unsigned long>(state[6]),
                     static_cast<unsigned long>(state[7]), case_substituted, double(source_gains[slots[0]]),
-                    double(source_gains[slots[1]]), double(source_gains[slots[2]]), double(source_gains[slots[3]]));
+                    double(source_gains[slots[1]]), double(source_gains[slots[2]]), double(source_gains[slots[3]]),
+                    double(source_clamps[slots[0]]), double(source_clamps[slots[1]]), double(source_clamps[slots[2]]),
+                    double(source_clamps[slots[3]]));
     }
     need(bool(raw), "source-gain raw write");
     f.single(f.scene);
     api(device->SetRenderTarget(0, back));
-    std::printf("SOURCE_GAIN_TOTAL cases=%u draws=%u substituted=%u variants=50\n", unsigned(cases.size()), draws,
+    std::printf("SOURCE_GAIN_TOTAL cases=%u draws=%u substituted=%u variants=80\n", unsigned(cases.size()), draws,
                 substituted);
 }
 
@@ -1914,7 +1965,7 @@ int main(int argc, char** argv) {
         FreeLibrary(runtime);
         runtime = nullptr;
         UnregisterClassA("X3LinearEmissionFixture", GetModuleHandle(nullptr));
-        std::printf(source_gain         ? "SOURCE_GAIN_RESULT pass cases=%u shaders=127\n"
+        std::printf(source_gain         ? "SOURCE_GAIN_RESULT pass cases=%u shaders=157\n"
                     : fused_comparison  ? "FUSED_RESULT pass cases=%u\n"
                     : component         ? "PASS_RESULT pass cases=%u shaders=528\n"
                     : coverage          ? "COVERAGE_RESULT pass cases=%u shaders=381\n"

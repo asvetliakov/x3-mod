@@ -144,6 +144,13 @@ struct MotionRoute {
     bool source_gain = false;        // Source-gain PS bound natively for this draw; restored after it.
     bool source_gain_screen = false; // ... and DESTBLEND ONE substituted for the native INVSRCCOLOR (screen
                                      // substitution); restored after it.
+    bool hull_gain_saturate = false; // ... and DESTBLEND INVSRCCOLOR substituted for the native ONE (clamp <= 1:
+                                     // the saturating screen law); restored after it.
+    bool hull_gain_factor = false;   // ... and SRCBLEND BLENDFACTOR with BLENDFACTOR (C, C, C, 1) (clamp < 1:
+                                     // saturates at C); restored after it.
+    bool source_gain_factor = false; // Source gain with SRCBLEND BLENDFACTOR / BLENDFACTOR (clamp < 1); restored.
+    bool hull_gain_alpha = false;    // ... and SEPARATEALPHABLENDENABLE with the application's colour factors as the
+                                     // alpha factors (the scene alpha law kept); restored after it.
     bool hull_gain = false;     // Hull-emitter gain PS bound natively for this ONE/ONE draw (emitter plan phase 3);
                                 // restored after it.
     bool original_fill = false; // Original-fill PS selected in the routed pair (undone with the route).
@@ -956,8 +963,11 @@ public:
     // variant with one colour MUL, selected per draw in the native
     // ADD/ONE/ONE state while the FP16 scene target is active. No bracket,
     // no composition, no per-draw work beyond two native SetPixelShader
-    // calls. Gain 1 is off (no variant is created). Configure before attach.
-    void configure_emission_source_gain(float gain) noexcept; // one gain for all twenty pairs
+    // calls. Gain 1 is off (no variant is created) unless a clamp is set:
+    // clamp C (X3M_EMISSION_SOURCE_CLAMP, 0 = off, else 0.25..8) is baked into
+    // the same variant as one MIN of the gained colour, so gain 1 with a clamp
+    // builds a clamp-only variant. Configure before attach.
+    void configure_emission_source_gain(float gain, float clamp = 0.f) noexcept; // one gain for all twenty pairs
     bool emission_source_gain_requested() const noexcept { return emission_source_gain_requested_; }
     // Emitter plan phase 3: the same gain over the twelve hull programs' ADD
     // ONE/ONE draws (X3M_HULL_EMISSION_GAIN); 1 = off. The toggle is a fixture
@@ -965,7 +975,7 @@ public:
     // lightmap = true for the light-map gain, false for the guide lights.
     // Returns the new state of that family: 1 on, 0 off, -1 not requested
     // (logged no-op); the prebuilt variants stay, nothing is created or released.
-    void configure_hull_emission_gain(float gain) noexcept;
+    void configure_hull_emission_gain(float gain, float clamp = 0.f) noexcept; // clamp as above
     int hull_emission_gain_toggle(bool lightmap) noexcept;
     bool hull_emission_gain_requested() const noexcept { return hull_emission_gain_requested_; }
     // Option C (docs/architecture/original-shading-critique.md 1a): fill in
@@ -2052,6 +2062,18 @@ private:
     // Hull-emitter gain: ONE/ONE admission from the draw-time blend shadow,
     // the PS bind (rolled back on failure) and the restore after the draw.
     void prepare_hull_gain(const MotionDrawCall&, MotionRoute&) noexcept;
+    // Clamp blend factor (X3M_EMISSION_SOURCE_CLAMP < 1): BLENDFACTOR then
+    // SRCBLEND BLENDFACTOR for one draw; a failed set rolls back what it set
+    // (a failed rollback is lost state on the route). restore_clamp_factor
+    // puts the shadowed SRCBLEND and BLENDFACTOR back.
+    HRESULT apply_clamp_factor(MotionRoute&, DWORD factor) noexcept;
+    HRESULT restore_clamp_factor() noexcept;
+    // Hull clamp substitution (clamp <= 1): the kept alpha law, the blend
+    // factor (C < 1) and DESTBLEND INVSRCCOLOR; restore puts back what the
+    // route flags say was set.
+    HRESULT apply_hull_clamp_blend(MotionRoute&) noexcept;
+    HRESULT restore_hull_clamp_blend(MotionRoute&) noexcept;
+    void clamp_state_lost(MotionRoute&, HRESULT) noexcept;
     void finish_hull_gain(MotionRoute&) noexcept;
     void log_hull_emission_draw(const MotionDrawCall&, unsigned program) noexcept; // F8 capture frames only
     // Additive option: the exact-state admission, the DESTBLEND/PS apply
@@ -2281,6 +2303,14 @@ private:
     float screen_emission_gain_ = 1.f;
     bool emission_source_gain_requested_ = false;
     float emission_source_gain_ = 1.f; // 1 = off (no variant, native bytes)
+    float emission_source_clamp_ = 0.f; // 0 = no cap; baked into the variant as one MIN
+    // A screen draw gets DESTBLEND ONE only above gain 1 without a saturating
+    // clamp (renderer::linear_emission_clamp_saturates); fixed at configure.
+    bool source_gain_substitute_screen_ = false;
+    // Clamp 0 < C < 1 on a device with D3DPBLENDCAPS_BLENDFACTOR (decided at
+    // attach): normalized variants (t / C) and SRCBLEND BLENDFACTOR per draw.
+    bool source_gain_normalized_ = false;
+    DWORD source_gain_factor_value_ = 0xffffffffu;
     // Source-gain draw accounting (per-frame line): admitted draws (total, of
     // which screen-substituted), refusals by blend state, screen draws refused
     // because the DESTBLEND substitution failed, by unknown state, by device
@@ -2305,6 +2335,10 @@ private:
     // bit per admitted program.
     bool hull_emission_gain_requested_ = false;
     float hull_emission_gain_ = 1.f;
+    float hull_emission_clamp_ = 0.f; // 0 = no cap; baked into the variant as one MIN
+    bool hull_gain_saturate_ = false; // clamp <= 1: admitted ONE/ONE cards draw with DESTBLEND INVSRCCOLOR
+    bool hull_gain_normalized_ = false; // clamp < 1 with the blend-factor cap: also SRCBLEND BLENDFACTOR
+    DWORD hull_gain_factor_value_ = 0xffffffffu;
     bool hull_gain_enabled_ = true; // on outside the fixture seam; gates entry to prepare_hull_gain only
     struct {
         std::uint32_t admitted = 0, refused_blend = 0, refused_variant = 0, refused_routed = 0, refused_unknown = 0,

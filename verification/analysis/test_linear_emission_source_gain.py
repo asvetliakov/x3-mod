@@ -106,7 +106,10 @@ class SourceGainTransformerTests(unittest.TestCase):
 
     def test_driver_covers_the_ten_programs_and_twenty_pairs(self):
         self.assertEqual((self.driver['programs'], self.driver['pairs'], self.driver['variants'], self.driver['identical']), (10, 20, 40, 10))
-        self.assertLessEqual(self.driver['max_arithmetic'], 8)  # PS 2.0 arithmetic budget is 64
+        self.assertLessEqual(self.driver['max_arithmetic'], 10)  # PS 2.0 arithmetic budget is 64
+        # X3M_EMISSION_SOURCE_CLAMP: four (gain, clamp) variants per program, the MIN pinned word for word in the driver.
+        self.assertEqual(self.driver['clamped'], 40)
+        self.assertEqual(self.driver['normalized'], 20)  # blend-factor form (C < 1): the t / C MUL pinned in the driver
 
     def test_gain_one_is_byte_identical_to_the_original(self):
         for key in PIXELS:
@@ -177,6 +180,46 @@ class LauncherGateTests(unittest.TestCase):
             for boundary in ('1', '8'):
                 code, output, error = launch(directory, *PREREQUISITES, '--emission-source-gain', boundary); self.assertEqual(code, 0, error)
 
+    def test_clamp_option_is_opt_in_needs_hdr_and_is_range_checked(self):
+        # --emission-source-clamp C (X3M_EMISSION_SOURCE_CLAMP): no launcher
+        # default, an inherited shell value is dropped, 0 or 0.25..8.
+        with tempfile.TemporaryDirectory() as directory, mock.patch.dict(os.environ, {'X3M_EMISSION_SOURCE_CLAMP': '0.5'}):
+            code, output, error = launch(directory, *PREREQUISITES, '--emission-source-gain', '2'); self.assertEqual(code, 0, error)
+            baseline = json.loads(output)['env']
+            self.assertNotIn('X3M_EMISSION_SOURCE_CLAMP', baseline)
+            code, output, error = launch(directory, *PREREQUISITES, '--emission-source-gain', '2', '--emission-source-clamp', '1')
+            self.assertEqual(code, 0, error)
+            env = json.loads(output)['env']
+            self.assertEqual(env['X3M_EMISSION_SOURCE_CLAMP'], '1.0')
+            self.assertEqual({k: v for k, v in env.items() if k != 'X3M_EMISSION_SOURCE_CLAMP'}, baseline)
+            for boundary in ('0', '0.25', '8'):
+                code, output, error = launch(directory, *PREREQUISITES, '--emission-source-clamp', boundary); self.assertEqual(code, 0, error)
+                self.assertEqual(json.loads(output)['env']['X3M_EMISSION_SOURCE_CLAMP'], repr(float(boundary)))
+            for bad in (('--motion-output', '--emission-source-clamp', '1'), ('--emission-source-clamp', '1'),
+                        (*PREREQUISITES, '--emission-source-clamp', '0.2'), (*PREREQUISITES, '--emission-source-clamp', '8.5'),
+                        (*PREREQUISITES, '--emission-source-clamp', '-1'), (*PREREQUISITES, '--emission-source-clamp', 'nan'),
+                        (*PREREQUISITES, '--emission-source-clamp', 'inf')):
+                code, _, error = launch(directory, *bad); self.assertEqual(code, 2, bad); self.assertIn('--emission-source-clamp', error)
+        motion = source_text(ROOT / 'src/proxy/motion_output.cpp')
+        for required in ('emission_source_gain_, words,\n                emission_source_clamp_, source_gain_normalized_);',
+                         'hull_emission_gain_, words,\n                hull_emission_clamp_, hull_gain_normalized_);',
+                         'clamp = renderer::linear_emission_blend_factor_clamp(clamp);',
+                         'const bool factor = (caps.SrcBlendCaps & D3DPBLENDCAPS_BLENDFACTOR) != 0;',
+                         'emission_clamp_blend_factor_unavailable device=%llu clamp=%g hull_clamp=%g saturates_at=1'):
+            self.assertIn(required, motion)
+        # Blend-factor form of the effects draw: BLENDFACTOR known before admission, applied before the bind, restored
+        # on the failed bind and after the draw.
+        admission = motion[motion.index('void MotionOutput::prepare_source_gain'):motion.index('void MotionOutput::finish_source_gain')]
+        self.assertIn('if (source_gain_normalized_) known = blend_known(7) && known;', admission)
+        self.assertLess(admission.index('apply_clamp_factor(route, source_gain_factor_value_);'),
+                        admission.index('native<SetPsFn>(SetPixelShader)(device_, shadow_.source_gain_eligible_variant);'))
+        self.assertEqual(admission.count('restore_clamp_factor();'), 1)
+        finish = motion[motion.index('void MotionOutput::finish_source_gain'):][:1400]
+        self.assertIn('if (route.source_gain_factor) {', finish)
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
+        self.assertIn('linear_emission_requested ? 0.f : emission_source_clamp);', capture)
+        self.assertIn('configure_hull_emission_gain(hull_emission_gain, emission_source_clamp);', capture)
+
     def test_effect_gain_option_is_gone(self):
         with tempfile.TemporaryDirectory() as directory:
             code, output, error = launch(directory, *PREREQUISITES, '--emission-source-gain', '5'); self.assertEqual(code, 0, error)
@@ -197,7 +240,7 @@ class LauncherGateTests(unittest.TestCase):
         self.assertIn('value>=1.f&&value<=8.f', block)
         self.assertIn('if(!hdr_requested||excluded)emission_source_gain=1.f;', block)
         self.assertIn('const bool excluded=linear_emission_requested;', block)
-        self.assertIn('configure_emission_source_gain(emission_source_gain)', source)
+        self.assertIn('configure_emission_source_gain(emission_source_gain,', source)
         for absent in ('linear_material_requested', 'taa_requested', 'screen_ownership', 'X3M_EFFECT_SOURCE_GAIN', 'effect_source_gain'):
             self.assertNotIn(absent, source if absent.startswith(('X3M_EFFECT', 'effect_')) else block)
         motion = source_text(ROOT / 'src/proxy/motion_output.cpp')
@@ -205,23 +248,26 @@ class LauncherGateTests(unittest.TestCase):
         for required in ('hdr_state_ != HdrState::Active', 'renderer::linear_emission_source_gain_blend(shadow_.states[3], shadow_.states[5]',
                          'shadow_.composition_blend[0], shadow_.composition_blend[1], shadow_.composition_blend[2])',
                          'if (verdict == renderer::SourceGainBlend::Blend) {', 'reason=blend ', 'source_gain_logged_[0]',
-                         'const bool screen = verdict == renderer::SourceGainBlend::Screen;', 'reason=screen_substitute_failed', 'source_gain_logged_[1]'):
+                         'const bool screen = verdict == renderer::SourceGainBlend::Screen && source_gain_substitute_screen_;', 'reason=screen_substitute_failed', 'source_gain_logged_[1]'):
             self.assertIn(required, admission)
         # The separate alpha states are shadowed (no per-draw getter) and logged, never gated.
         self.assertIn('D3DRS_SRCBLENDALPHA, D3DRS_DESTBLENDALPHA, D3DRS_BLENDOPALPHA, D3DRS_BLENDFACTOR};', motion)
         self.assertIn('for (unsigned i = 0; i < 3; ++i) known = blend_known(i) && known; // the colour triple gates', admission)
         self.assertNotIn('composition_blend[3]', admission[:admission.index('log(')])
         self.assertNotIn('GetRenderState', admission)
-        configure = motion[motion.index('void MotionOutput::configure_emission_source_gain(float gain)'):][:600]
-        for required in ('emission_source_gain_requested_ = renderer::linear_emission_source_gain_valid(gain) && gain != 1.f;',
-                         'emission_source_gain_ = emission_source_gain_requested_ ? gain : 1.f;'):
+        configure = motion[motion.index('void MotionOutput::configure_emission_source_gain(float gain, float clamp)'):][:900]
+        for required in ('const bool valid = renderer::linear_emission_source_gain_valid(gain) &&',
+                         'renderer::linear_emission_source_clamp_valid(clamp);',
+                         'emission_source_gain_requested_ = valid && (gain != 1.f || clamp != 0.f);',
+                         'emission_source_gain_ = emission_source_gain_requested_ ? gain : 1.f;',
+                         'emission_source_clamp_ = emission_source_gain_requested_ ? clamp : 0.f;'):
             self.assertIn(required, configure)
         # One variant per original program at the one gain; the bound pair selects it.
         contract = motion[motion.index('void MotionOutput::refresh_linear_emission_contract()'):][:1800]
         self.assertIn('renderer::linear_emission_pair_index(shadow_.vs_hash, shadow_.ps_hash)', contract)
         self.assertIn('shadow_.source_gain_eligible_variant = pair_reviewed ? shadow_.ps_source_gain_variant : nullptr;', contract)
         creation = motion[motion.index('// Source-only encoded gain (linear-emission-cost.md, "Implemented"):'):][:1400]
-        self.assertIn('reinterpret_cast<const std::uint32_t*>(code), bytes / 4, emission_source_gain_, words);', creation)
+        self.assertIn('reinterpret_cast<const std::uint32_t*>(code), bytes / 4, emission_source_gain_, words,', creation)
         self.assertNotIn('family', creation)
         for absent in ('LinearEmissionFamily', 'source_gain_family', 'linear_emission_pair_info', 'source_gain_variant['):
             self.assertNotIn(absent, motion)
@@ -235,7 +281,7 @@ class LauncherGateTests(unittest.TestCase):
         admission = motion[motion.index('void MotionOutput::prepare_source_gain'):motion.index('void MotionOutput::finish_source_gain')]
         substitute = admission.index('direct_call<SetRenderStateFn>(SetRenderState, D3DRS_DESTBLEND, D3DBLEND_ONE);')
         bind = admission.index('native<SetPsFn>(SetPixelShader)(device_, shadow_.source_gain_eligible_variant);')
-        self.assertLess(admission.index('const bool screen = verdict == renderer::SourceGainBlend::Screen;'), substitute)
+        self.assertLess(admission.index('const bool screen = verdict == renderer::SourceGainBlend::Screen && source_gain_substitute_screen_;'), substitute)
         self.assertLess(substitute, bind)
         self.assertEqual(admission.count('D3DRS_DESTBLEND, D3DBLEND_ONE'), 1)
         # Refusal of the substitution: nothing applied, counted as refused_screen, the draw stays native.
@@ -338,7 +384,7 @@ class LogGrammarTests(unittest.TestCase):
         self.assertEqual(fmt.count('%'), 6)
         line = rendered(fmt, 1, 1501, 'd5e1c75351ed3f04', '8360f422de08b5bd', '2', 1)
         match = PAIR.match(line); self.assertIsNotNone(match, line); self.assertEqual(match.group(6), '1')
-        admission = self.motion[self.motion.index('void MotionOutput::prepare_source_gain'):][:7200]
+        admission = self.motion[self.motion.index('void MotionOutput::prepare_source_gain'):self.motion.index('void MotionOutput::finish_source_gain')]
         self.assertIn('1u << shadow_.source_gain_pair : 0u;', admission)
         self.assertIn('if (bit && !(source_gain_pair_logged_ & bit)) {', admission)
         self.assertIn('source_gain_pair_logged_ |= bit;', admission)
@@ -423,21 +469,26 @@ class BlendLawTests(unittest.TestCase):
             self.assertNotIn(absent, fixture)
         experiment = fixture[fixture.index('void source_gain_experiment'):][:6400]
         for required in ('linear_emission_source_gain_blend(', 'x3m::renderer::linear_emission_pair_index(',
-                         'if (v && verdict != SourceGainBlend::Blend && source_gains[slots[v - 1]] != 1) {',
-                         'if (verdict == SourceGainBlend::Screen) {', 'f.rs(D3DRS_DESTBLEND, D3DBLEND_ONE);',
-                         '"screen op admitted as screen"', 'need(case_substituted == (screen_case ? 3u : 0u), "substitution count per case");',
+                         'if (v && verdict != SourceGainBlend::Blend && (source_gains[slot] != 1 || source_clamps[slot] != 0)) {',
+                         'if (verdict == SourceGainBlend::Screen && source_gains[slot] != 1 &&',
+                         '!x3m::renderer::linear_emission_clamp_saturates(source_clamps[slot])) {', 'f.rs(D3DRS_DESTBLEND, D3DBLEND_ONE);',
+                         '"screen op admitted as screen"', 'need(case_substituted == expected_substituted, "substitution count per case");',
                          'admission=%s', 'substituted=%u'):
             self.assertIn(required, experiment)
         # The substitution comes after the state readback the verdict is taken from and before the bind.
         self.assertLess(experiment.index('api(device->GetRenderState(read[i], &state[i]));'), experiment.index('f.rs(D3DRS_DESTBLEND, D3DBLEND_ONE);'))
         self.assertLess(experiment.index('f.rs(D3DRS_DESTBLEND, D3DBLEND_ONE);'), experiment.index('api(device->SetPixelShader(f.source_gain_variants[pixel][slots[v - 1]].p));'))
-        self.assertIn('constexpr float source_gains[] = {1, 2, 3.5f, 8, 5};', fixture)
+        self.assertIn('constexpr float source_gains[] = {1, 2, 3.5f, 8, 5, 2, 1, 2};', fixture)
+        self.assertIn('constexpr float source_clamps[] = {0, 0, 0, 0, 0, 1, .5f, .7f};', fixture)
+        self.assertIn('constexpr unsigned factor_slots[] = {0, 1, 5, 7};', fixture)
+        self.assertIn('f.rs(D3DRS_SRCBLEND, D3DBLEND_BLENDFACTOR);', fixture)
+        self.assertIn('constexpr unsigned clamp_slots[] = {0, 1, 5, 6};', fixture)
         self.assertIn('constexpr unsigned screen_slots[] = {0, 1, 4, 3};', fixture)
         runner = source_text(ROOT / 'verification/probe/run_linear_emission.py')
         for absent in ('family', 'ENGINE_PAIRS', 'SPLIT_CONFIGURATIONS'):
             self.assertNotIn(absent, runner)
         for required in ("label='source_gain_separate_alpha'", "label='source_gain_screen'", "alpha=2", "kind=2", 'SCREEN_GAINS = (1.,2.,5.,8.)',
-                         "r['admission']==('screen' if c['screen'] else 'admit')", "(5,6)", "int(r['substituted'])==(3 if c['screen'] else 0)",
+                         "r['admission']==('screen' if c['screen'] else 'admit')", "(5,6)", "int(r['substituted'])==sum(substitutes(c,g,k) for g,k in zip(effective_gains(c),effective_clamps(c)))", "return bool(c['screen']) and g!=1 and not (0<clamp<=1)",
                          'for background in (0,2):', '8192 if background==2 else 0', "'gain 1 variant is not the native image'",
                          "low,high=half(lo+bg*(1-lo)),half(hi+bg*(1-hi))", "low,high=half(g*lo+bg),half(g*hi+bg)", "'native screen law'", "'substituted law'",
                          "'not brighter than the native screen draw'", 'screen_substituted=dict('):
@@ -445,8 +496,23 @@ class BlendLawTests(unittest.TestCase):
         sys.path.insert(0, str(ROOT / 'verification/probe'))
         import run_linear_emission as module
         cases = module.source_gain_cases()
-        screen = [c for c in cases if c['screen']]
-        self.assertEqual((len(cases), len(screen)), (160, 40))
+        screen = [c for c in cases if c['screen'] and not c['clamp']]
+        clamp = [c for c in cases if c['clamp']]
+        self.assertEqual((len(cases), len(screen), len(clamp)), (300, 40, 140))
+        factor = [c for c in cases if c['factor']]
+        self.assertEqual(len(factor), 80)
+        self.assertTrue(all(c['flags'] & 128 and c['clamp'] for c in factor))
+        self.assertTrue(all(c['flags'] >> 16 == c['actual_profile'] for c in cases))  # the fixture reads the pair from bits 16+
+        self.assertEqual({c['background'] for c in cases if c['background'] == 3}, {c['background'] for c in factor} - {0})
+        self.assertEqual((module.effective_gains(factor[0]), module.effective_clamps(factor[0])), ([1., 2., 2., 2.], [0., 0., 1., .7]))
+        self.assertAlmostEqual(module.quantized(.7), 179 / 255, places=7)  # 0.7f * 255.0f rounds to 178.5f, lround 179
+        # X3M_EMISSION_SOURCE_CLAMP cases: flag 16384, a flat 0.9 source, slots (1,0) (2,0) (2,1) (1,0.5); a screen
+        # clamp case substitutes only its uncapped gain-2 slot.
+        self.assertTrue(all(c['flags'] & 16384 == (16384 if c['clamp'] else 0) for c in cases))
+        self.assertTrue(all(c['ops'][0]['color'][:3] == [.9] * 3 for c in clamp))
+        self.assertEqual((module.effective_gains(clamp[0]), module.effective_clamps(clamp[0])), ([1., 2., 2., 1.], [0., 0., 1., .5]))
+        self.assertEqual([module.substitutes(dict(screen=1), g, k) for g, k in ((1, 0), (2, 0), (2, 1), (1, .5), (2, 1.5))],
+                         [False, True, False, False, True])
         self.assertEqual(sorted({c['background'] for c in screen}), [0, 2])
         self.assertEqual([c['label'] for c in cases[:80]], ['source_gain'] * 80)
         self.assertEqual(module.effective_gains(screen[0]), [1., 2., 5., 8.])

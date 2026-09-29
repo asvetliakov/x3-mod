@@ -40,7 +40,7 @@ int main(int argc, char** argv) {
                                "e6794b6ec37ff71a", "f1b0e820c7b488c3", "0c1f3f0f440e4a0c", "7c83ed50c9894e44",
                                "99153c144030c396", "64bac8bb307eb896", "c1452981fd0bff64", "e70adc744a38ca59"};
         const float gains[] = {1, 2, 3.5f, 8};
-        unsigned variants = 0, identical = 0, modulated = 0, reviewed = 0;
+        unsigned variants = 0, identical = 0, modulated = 0, reviewed = 0, clamped = 0, normalized = 0;
         long long create_ns = 0;
         for (const char* name : names) {
             const auto original = read(std::string(argv[1]) + "/ps_" + name + ".bin");
@@ -111,6 +111,92 @@ int main(int argc, char** argv) {
                         "successful alias");
                 write(std::string(argv[2]) + "/ps_" + name + "-hull-" + std::to_string(g) + ".bin", result);
                 ++variants;
+            }
+            // Clamp C: DEF c223 = (G, C, 0, 0); the colour instruction writes
+            // r0.xyz, the gain MUL (omitted at gain 1) writes r0.xyz with _pp
+            // and `min oC0.xyz, r0, c223.y` carries the original destination.
+            for (const auto& gc : {std::pair<float, float>{2, 1}, std::pair<float, float>{1, 0.5f},
+                                   std::pair<float, float>{8, 8}, std::pair<float, float>{3.5f, 0.25f}}) {
+                Words result{91, 92};
+                require(linear_emission_hull_source_gain_variant(original.data(), original.size(), gc.first, result,
+                                                                 gc.second) == LinearEmissionResult::Applied,
+                        "clamp variant admission");
+                require(original == saved, "clamp immutable input");
+                const bool gained = gc.first != 1;
+                const std::size_t site = profile.modulated ? 5u : 4u,
+                                  colour = profile.definition + 6 + (profile.emission - profile.definition),
+                                  cap = colour + site + (gained ? 4u : 0u);
+                require(result.size() == original.size() + (gained ? 14u : 10u), "DEF, MUL and MIN added");
+                require(std::equal(original.begin(), original.begin() + profile.definition, result.begin()) &&
+                            result[profile.definition + 1] == dst(constant, hull_gain_constant, 15) &&
+                            result[profile.definition + 2] == bits(gc.first) &&
+                            result[profile.definition + 3] == bits(gc.second),
+                        "clamp DEF");
+                require(std::equal(original.begin() + profile.definition, original.begin() + profile.emission,
+                                   result.begin() + profile.definition + 6) &&
+                            result[colour] == original[profile.emission] &&
+                            result[colour + 1] == (dst(temporary, hull_emission_temporary, 7) | pp) &&
+                            std::equal(original.begin() + profile.emission + 2,
+                                       original.begin() + profile.emission + site, result.begin() + colour + 2),
+                        "clamp colour redirect");
+                if (gained)
+                    require(result[colour + site] == ((3u << 24) | mul) &&
+                                result[colour + site + 1] == (dst(temporary, hull_emission_temporary, 7) | pp) &&
+                                result[colour + site + 2] == src(temporary, hull_emission_temporary) &&
+                                result[colour + site + 3] == lane(constant, hull_gain_constant, 0),
+                            "clamp gain MUL into r0.xyz");
+                require(result[cap] == ((3u << 24) | minimum) && result[cap + 1] == (dst(output, 0, 7) | pp) &&
+                            result[cap + 2] == src(temporary, hull_emission_temporary) &&
+                            result[cap + 3] == lane(constant, hull_gain_constant, 1),
+                        "MIN into oC0.xyz");
+                require(std::equal(original.begin() + profile.emission + site, original.end(), result.begin() + cap + 4),
+                        "clamp alpha MUL and end verbatim");
+                if (gc.first == 2 && gc.second == 1)
+                    write(std::string(argv[2]) + "/ps_" + name + "-hull-clamp.bin", result);
+                ++clamped;
+            }
+            // Blend-factor form (clamp < 1): DEF .z = 1/C, the MIN writes
+            // r0.xyz_pp and `mul oC0.xyz_pp, r0, c223.z` (t / C) ends the colour.
+            for (const auto& gc : {std::pair<float, float>{2, 0.7f}, std::pair<float, float>{1, 0.5f}}) {
+                const float clamp = linear_emission_blend_factor_clamp(gc.second);
+                Words result{91, 92};
+                require(linear_emission_hull_source_gain_variant(original.data(), original.size(), gc.first, result,
+                                                                 clamp, true) == LinearEmissionResult::Applied,
+                        "normalized variant admission");
+                const bool gained = gc.first != 1;
+                const std::size_t site = profile.modulated ? 5u : 4u,
+                                  colour = profile.definition + 6 + (profile.emission - profile.definition),
+                                  cap = colour + site + (gained ? 4u : 0u);
+                require(result.size() == original.size() + (gained ? 18u : 14u) &&
+                            result[profile.definition + 4] == bits(1.0f / clamp) &&
+                            result[cap] == ((3u << 24) | minimum) &&
+                            result[cap + 1] == (dst(temporary, hull_emission_temporary, 7) | pp) &&
+                            result[cap + 4] == ((3u << 24) | mul) && result[cap + 5] == (dst(output, 0, 7) | pp) &&
+                            result[cap + 6] == src(temporary, hull_emission_temporary) &&
+                            result[cap + 7] == lane(constant, hull_gain_constant, 2) &&
+                            std::equal(original.begin() + profile.emission + site, original.end(),
+                                       result.begin() + cap + 8),
+                        "t / C MUL into oC0.xyz");
+                if (gc.first == 2) write(std::string(argv[2]) + "/ps_" + name + "-hull-normalized.bin", result);
+                ++normalized;
+                Words refused{91, 92};
+                require(linear_emission_hull_source_gain_variant(original.data(), original.size(), 2, refused, 1.0f,
+                                                                 true) == LinearEmissionResult::InvalidConfig &&
+                            refused == Words({91, 92}),
+                        "normalized needs 0 < C < 1");
+            }
+            for (float invalid : {-0.5f, 0.1f, 0.249f, 8.001f, std::numeric_limits<float>::infinity(),
+                                  std::numeric_limits<float>::quiet_NaN()}) {
+                Words result{91, 92};
+                const auto before = result;
+                auto alias = original;
+                require(linear_emission_hull_source_gain_variant(original.data(), original.size(), 2, result,
+                                                                 invalid) == LinearEmissionResult::InvalidConfig &&
+                            result == before &&
+                            linear_emission_hull_source_gain_variant(alias.data(), alias.size(), 2, alias, invalid) ==
+                                LinearEmissionResult::InvalidConfig &&
+                            alias == saved,
+                        "invalid clamp rollback");
             }
             for (float invalid : {0.f, 0.999f, 8.001f, -1.0f, std::numeric_limits<float>::infinity(),
                                   -std::numeric_limits<float>::infinity(), std::numeric_limits<float>::quiet_NaN()}) {
@@ -185,7 +271,8 @@ int main(int argc, char** argv) {
                         }
         std::cout << "{\"programs\":" << reviewed << ",\"modulated\":" << modulated << ",\"variants\":" << variants
                   << ",\"identical\":" << identical << ",\"checks\":" << checks << ",\"creates_ns\":" << create_ns
-                  << ",\"blend_admitted\":" << admitted << ",\"blend_refused\":" << refused << "}\n";
+                  << ",\"blend_admitted\":" << admitted << ",\"blend_refused\":" << refused
+                  << ",\"clamped\":" << clamped << ",\"normalized\":" << normalized << "}\n";
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

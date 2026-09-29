@@ -293,6 +293,79 @@ screen draws are admitted through a blend substitution.
   the native screen law within one FP16 code
   ([screen-emission.md](../verification/screen-emission.md)).
 
+### Source clamp (2026-09-29): `--emission-source-clamp C`
+
+Run 364 (Mayhem 3, Split Ocelot, `verification/results/run364-engine-brightness/`) showed the cost of gain 2 on
+the brightest exhaust texels: the nozzle cards of hull program 7 (`7c83ed50`, ONE/ONE) reach engine-space 3.0
+(disc 1.0 from the screen pair plus card 2 x 1) where the native 8-bit target stops at 1.0; AgX shows them at luma
+0.98 against 0.81 native. In frame 4490, 3,918 pixels exceed 1 (1,284 inside the ship box), maximum 2.998
+(`over1.py`, `over1_out.txt` there). `X3M_EMISSION_SOURCE_CLAMP=C` (key `emission_source_clamp`, launcher
+`--emission-source-clamp C`, 0 = off, else 0.25..8, needs `--hdr`, no default) caps the gained colour
+t = min(G s, C) per channel before the blend, in both gain families, and applies at gain 1 too (clamp-only
+variants: a cap below native is the point of C < 1). The launcher still sends the hull gain only above 1, but
+the DLL builds the hull clamp-only variants from the clamp alone.
+
+- Bytecode, baked at creation into the variant already built for the gain (no constant upload). Effects PS2:
+  `def c31 = (G, C, 1/C or 0, 0)`, the gain MUL, `min r0.xyz, r0, c31.y`, and for C < 1 `mul r0.xyz, r0, c31.z`,
+  before the native `mov oC0, r0`. Hull ps_3_0: `def c223 = (G, C, 1/C or 0, 0)`, the colour instruction into
+  `r0.xyz`, `mul r0.xyz_pp, r0, c223.x`, `min`, and for C < 1 `mul oC0.xyz_pp, r0, c223.z` (the last
+  instruction carries the original `oC0.xyz_pp` destination). At G = 1 the gain MUL is left out. C = 1 and
+  C > 1 produce the same bytes as before this change.
+- C < 1 is used as the 8-bit BLENDFACTOR value: `linear_emission_blend_factor_clamp` rounds `C * 255.0f`
+  (float) to k/255 at configure, so 0.7 acts as 179/255 = 0.702 (0.7f x 255 rounds to 178.5f).
+- Saturation, C = 1 (`renderer::linear_emission_clamp_saturates`). A source cap alone does not saturate an
+  additive sum (disc 1.0 + capped card 1.0 = 2.0 in FP16; an FP16 target cannot clamp in hardware). Each admitted
+  ONE/ONE hull card draws with DESTBLEND INVSRCCOLOR substituted: `t + d (1 - t)` <= 1 for t, d <= 1, equal to
+  the native min(1, d + s) when d or t is 0 or 1, lower in between (0.5 + 0.5 gives 0.75, native 1.0). The effects
+  screen draws keep their native INVSRCCOLOR at any gain (the DESTBLEND ONE substitution exists only because an
+  uncapped G s exceeds 1).
+- Saturation at C < 1 (`linear_emission_clamp_normalizes`, needs `D3DPBLENDCAPS_BLENDFACTOR` in SrcBlendCaps,
+  checked at attach). The variant emits t / C and the draw runs SRCBLEND BLENDFACTOR with BLENDFACTOR
+  (k, k, k, 255): screen `C t/C + d (1 - t/C) = t + d (1 - t/C)`, which is C for t = C, never above max(d, C), and
+  equals C over any d once the card is at the cap (so 0.7 over 0.7 stays 0.7, not the 0.91 of the plain screen
+  law; a 0.9 disc under a full card comes down to C). Hull cards: SRCBLEND BLENDFACTOR plus the DESTBLEND
+  INVSRCCOLOR above. Effects: SRCBLEND BLENDFACTOR on every admitted draw of the normalized variant; a screen draw
+  saturates at C, a ONE/ONE effects draw stays additive (`t + d`). Without the cap: the plain C = 1 law with the
+  capped source, one `emission_clamp_blend_factor_unavailable ... saturates_at=1` row.
+- Scene alpha. The FP16 scene's alpha is read downstream: the bloom extract's per-source attenuation
+  (`bloom-per-source-attenuation.md`, `clamp(scene.a, 0, 1)`), the AgX/tonemap and write-back passes that carry it
+  (`bloom_agx_ps.hlsl`, `hdr_writeback_ps.hlsl`) and the resolve's alpha lanes (`resolve.hlsl`). With
+  SEPARATEALPHABLENDENABLE off, DESTBLEND INVSRCCOLOR would change the alpha law from `A_s + A_d` to
+  `A_s + A_d (1 - A_s)`, so the hull substitution turns separate alpha on for the draw with the application's own
+  colour factors (SRCBLEND, DESTBLEND, BLENDOP as read before the substitution) as the alpha factors; a draw that
+  already blends alpha separately is left alone. It needs `D3DPMISCCAPS_SEPARATEALPHABLEND` (attach); without it
+  the cards stay ONE/ONE with the capped source and one `emission_clamp_separate_alpha_unavailable` row. SRCBLEND
+  BLENDFACTOR alone keeps the alpha law (factor alpha 255 = 1.0). The existing C > 1 / uncapped screen substitution
+  (DESTBLEND ONE on effects screen draws) changes alpha as before (`a + D.a`, section "Screen substitution").
+- Restore. The substitution is set after the blend verdict and before the program bind, in the order alpha
+  states, BLENDFACTOR, SRCBLEND, DESTBLEND; a failed set unwinds what was set (a failed unwind is lost state);
+  the failed bind and the post-draw restore put back every state the route flags record from the shadow
+  (`composition_blend[0..7]`, all required known at admission).
+- Side effect (C <= 1). A card over a pixel already above max(1, C) (sun sprite, stacked exhaust, bright HDR
+  highlight) darkens it: t (1 - d/C) < 0 for d > C; d = 3 under a full card comes out at C. Not measured in flight.
+- Cost (code path; inferred): one or two arithmetic slots per fragment. Per admitted draw: C = 1 hull card, 1
+  DESTBLEND set + 1 restore, plus 4 + 4 for the alpha law when separate alpha is off; C < 1 hull card, 2 + 2 more
+  (BLENDFACTOR, SRCBLEND), so up to 14 SetRenderState calls per card; run 364 frame 4490 admitted 12 hull emitter
+  draws (`hull_emission_draws_4490_out.txt`, measured), so up to 168 calls per frame at C < 1 (72 at C = 1 with
+  separate alpha off). C < 1 effects draws: 2 + 2. Gained screen effects draws with C <= 1 lose the DESTBLEND ONE pair.
+- Logged on the `emission_source_gain_mode` row (`clamp=`, `clamp_valid=`, `screen_substitution=`), the
+  `hull_emission_gain_mode` row (`clamp=`, `clamp_valid=`, `saturate=`) and each `*_variant` creation row
+  (`clamp=`, `normalized=`).
+- Evidence (2026-09-29, bottle X3, measured). `run_linear_emission.py --mode source-gain`: PASS, 300 cases
+  (140 clamp cases, 80 of them the blend-factor group over black and the 230/255 disc). Source 0.8999 reads 1.7998 at
+  G = 2, 1.0 at G = 2, C = 1, 0.502 at G = 1, C = 0.5; at G = 2, C = 0.7 (179/255) the written card is 0.7017 over
+  black, and over the 0.902 disc the screen pair reads 0.7017 (the plain screen law would give 0.97), the ONE/ONE
+  effects pair 1.6035 (additive). Every channel within one FP16 code of the law
+  (`verification/results/bottle-X3/linear-emission-source-gain-gpu.json`, `clamp`).
+  `run_linear_material.py --hull-emission-gain`: runs (2,0) (4,0) (2,1) (2,0.7), 30 cases each, disc alpha
+  bit-exact against the native ONE/ONE draw in every run. Program 7 card 0.8999: over the 1.0 disc the FP16
+  original-program draw (`disc_native`, not the 8-bit 1.0) reads 1.8994, gained 2.7988 without the clamp and 1.0
+  at C = 1; at C = 0.7 over the 0.902 disc `disc_native` 1.8018 and gained 0.7017
+  (`verification/results/bottle-X3/hull-emission-gain-gpu.json`, `bright_red_sample`). Host drivers pin the MIN
+  and t / C MUL word for word (effects 40 + 20, hull 48 + 24 variants). `run_sun_share_live.py --case
+  hull_emission` PASS with the extended mode row (no clamp set; the live clamp substitution has no live fixture).
+  Native Windows untested.
+
 ## Hull light-map gain (2026-09-18): `--hull-lightmap-gain G`
 
 What `--hull-emitters` reaches and what it does not

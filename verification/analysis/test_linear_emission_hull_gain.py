@@ -126,6 +126,18 @@ class HullGainTransformerTests(unittest.TestCase):
                           self.driver['identical']), (12, 6, 48, 12))
         # Only ADD ONE/ONE admits, out of the 128 enabled/sRGB/factor/op combinations.
         self.assertEqual((self.driver['blend_admitted'], self.driver['blend_refused']), (1, 127))
+        # X3M_EMISSION_SOURCE_CLAMP: four (gain, clamp) variants per program, the MIN pinned word for word in the driver.
+        self.assertEqual(self.driver['clamped'], 48)
+        self.assertEqual(self.driver['normalized'], 24)  # blend-factor form (C < 1): the t / C MUL pinned in the driver
+
+    def test_clamp_variant_stays_inside_the_slot_budget(self):
+        for key in PIXELS:
+            _, original_items, _ = shader.instructions((self.originals / f'ps_{key}.bin').read_bytes())
+            _, items, _ = shader.instructions((self.directory / f'ps_{key}-hull-clamp.bin').read_bytes())
+            arithmetic, texture = slots(items)
+            self.assertEqual((arithmetic, texture), (slots(original_items)[0] + 2, slots(original_items)[1]), key)
+            self.assertLessEqual(arithmetic + texture, SLOT_BUDGET, key)
+            self.assertEqual([items[-3]['opcode'], items[-2]['opcode']], [MUL, 10], key)  # gain MUL, then MIN (D3DSIO_MIN)
 
     def test_gain_one_is_byte_identical_to_the_original(self):
         for key in PIXELS:
@@ -268,6 +280,40 @@ class FixtureCoverageTests(unittest.TestCase):
             self.assertIn(required, block)
         self.assertIn('const bool targets = mode != 0 && mode != 12;', fixture)
         self.assertIn('linear_emission.cpp', source_text(ROOT / 'verification/probe/build_linear_material.sh'))
+
+    def test_saturating_clamp_substitutes_destblend_before_the_bind_and_restores_it(self):
+        # X3M_EMISSION_SOURCE_CLAMP <= 1: the admitted ONE/ONE card draws with
+        # DESTBLEND INVSRCCOLOR (the saturating screen law), set after the
+        # blend verdict and before the program bind, put back after the draw
+        # and on a failed bind; the fixture draws the same state from the same rule.
+        motion = source_text(ROOT / 'src/proxy/motion_output.cpp')
+        prepare = motion[motion.index('void MotionOutput::prepare_hull_gain'):motion.index('void MotionOutput::log_hull_emission_draw')]
+        substitute = prepare.index('const HRESULT applied = apply_hull_clamp_blend(route);')
+        self.assertLess(prepare.index('if (verdict != renderer::SourceGainBlend::Admit) {'), substitute)
+        self.assertLess(prepare.index('if (FAILED(acquire_restore(route))) {'), substitute)
+        self.assertLess(substitute, prepare.index('native<SetPsFn>(SetPixelShader)(device_, shadow_.ps_hull_gain_variant);'))
+        self.assertIn('for (unsigned i = 3; i < 8; ++i) known = blend_known(i) && known;', prepare)
+        self.assertEqual(prepare.count('restore_hull_clamp_blend(route);'), 1)  # the failed-bind restore
+        finish = motion[motion.index('void MotionOutput::finish_hull_gain'):][:1200]
+        self.assertIn('restore_hull_clamp_blend(route);', finish)
+        apply = motion[motion.index('HRESULT MotionOutput::apply_hull_clamp_blend'):motion.index('void MotionOutput::clamp_state_lost')]
+        # Order: the kept alpha law, the blend factor (C < 1), then DESTBLEND INVSRCCOLOR; each flag before its set.
+        order = [apply.index(s) for s in ('route.hull_gain_alpha = true;', 'set(D3DRS_SEPARATEALPHABLENDENABLE, TRUE)',
+                                          'route.hull_gain_factor = true;', 'set(D3DRS_SRCBLEND, D3DBLEND_BLENDFACTOR)',
+                                          'route.hull_gain_saturate = true;', 'set(D3DRS_DESTBLEND, D3DBLEND_INVSRCCOLOR)')]
+        self.assertEqual(order, sorted(order))
+        for restored in ('put(D3DRS_DESTBLEND, shadow_.composition_blend[1]);', 'put(D3DRS_SRCBLEND, shadow_.composition_blend[0]);',
+                         'put(D3DRS_BLENDFACTOR, shadow_.composition_blend[7]);', 'put(D3DRS_SEPARATEALPHABLENDENABLE, shadow_.composition_blend[3]);',
+                         'put(D3DRS_SRCBLENDALPHA, shadow_.composition_blend[4]);', 'put(D3DRS_DESTBLENDALPHA, shadow_.composition_blend[5]);',
+                         'put(D3DRS_BLENDOPALPHA, shadow_.composition_blend[6]);'):
+            self.assertIn(restored, apply)
+        self.assertIn('hull_gain_normalized_ = hull && factor && hull_gain_saturate_;', motion)
+        self.assertIn('renderer::linear_emission_clamp_saturates(hull_emission_clamp_) && separate;', motion)
+        fixture = source_text(ROOT / 'verification/probe/linear_material_fixture.cpp')
+        self.assertIn('disc(12, x3m::renderer::linear_emission_clamp_saturates(shaders.hull_clamp));', fixture)
+        runner = source_text(ROOT / 'verification/probe/run_linear_material.py')
+        self.assertIn('HULL_RUNS = tuple((g, 0.0) for g in HULL_GAINS) + ((2.0, 1.0), (2.0, 0.7))', runner)
+        self.assertIn("assert native_disc[3] == gained_disc[3], (c['id'], 'disc alpha law kept'", runner)
 
     def test_runner_slice_covers_one_pair_per_submittable_program(self):
         runner = source_text(ROOT / 'verification/probe/run_linear_material.py')

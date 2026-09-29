@@ -30,33 +30,27 @@
     "Native Windows untested; the variant is documented PS 2.0 bytecode"
   ],
   "code_sha256": {
-    "verification/probe/linear_emission_fixture.cpp": "cd25d4b741ad80de09ebfe6c0e9dc5b41aa66e746679e366fb2d6f27a3a72572",
+    "verification/probe/linear_emission_fixture.cpp": "34a276b091461e8aa1c78fd538218bb46146fe29d2473b566dda815de740dd2b",
     "verification/probe/build_linear_emission.sh": "a009637c105925829ee02e9bbe143545cddf7884471d4e1a8524a1624eee484e",
-    "verification/probe/run_linear_emission.py": "7e59cbf9ea4c0531e7d512ced37b520483b11982fe1a216c764a05a8f575af83",
-    "verification/analysis/test_linear_emission_report.py": "afca46caba3639fdae20d07582c839b8c4dcbf179bc0bdcdc52e7867123f7a0f",
-    "verification/analysis/test_linear_emission_mrt_report.py": "03930edeace530259c304640e7267e809d79c6bebfaf398523a84b035ffb8a7b",
-    "verification/analysis/test_linear_emission_original_report.py": "a7853fa8a5cba891cf18defbe3a7d2aefd62628f54dc0eb3f9c105b2b166727e",
-    "verification/analysis/test_linear_emission_coverage_report.py": "7eec8daaa4cbf70ba3a05d2bebb60a3a09ec3d2822152ce90fdc60b3d15df6eb",
-    "verification/analysis/test_linear_emission_pass_report.py": "88a97e5a1747f9b267a9a8d8a95ee399b0b3cc7bf38b9e1adc4c206feb63d273",
-    "verification/analysis/test_linear_emission_fused_report.py": "c44f941e548720730a68ef254cccea8047434301fe3fb2d263cc8ce410e69bc9",
+    "verification/probe/run_linear_emission.py": "114aea118053f96ce716c2e73382cd47112432c0bd69d4d24e8fd11e803dd97b",
     "verification/analysis/test_linear_emission_pass_programs.py": "37705ca60c5472a451afebbc9bbe1db5c111b10db4e71d932ce0486757c3fae1",
     "verification/analysis/test_linear_emission_pass_host.py": "c984cb70f79215e87deb05b2b7f2c71869fce679a7120131a3b17aa73220d782",
     "verification/probe/linear_emission_pass_cases_inc.h": "0777b57efdcae9bb50cb63c093d596916025b5496dd0a892e3a5e5315743dba8",
-    "verification/probe/linear_emission_pass_host.cpp": "004f6b39b11ad9cecac86aeceda3b309d0caaaa3e2845db3b59a9898233b9cf2",
-    "verification/probe/linear_emission_pass_stubs/d3d9.h": "6e11fe46c7beefcc7daa4b0a133ad2e1362aacd066f69488a2bb06dcd9bb6f37",
-    "src/renderer/linear_emission_pass.h": "635dc43765200ae11e6625a7cdd231d0c8dc7635172a363f01af3bf7af720d4b",
-    "src/renderer/linear_emission_pass.cpp": "dcfd986a7e9fb9065cd982bc3cdd1191184bdc232559c11f0b496f23a1d42ef5",
+    "verification/probe/linear_emission_pass_host.cpp": "c0cc1c7ea0758b06b6427a7d797679672a9bb031eddeda1e390d0311959c4d75",
+    "verification/probe/linear_emission_pass_stubs/d3d9.h": "c5f5cfbeab3b6304629dd2389237782379807ece3913af2965238ef040154096",
+    "src/renderer/linear_emission_pass.h": "3f85e11061a010782b76c25030f05aa720d6cfd7a53f52c99cb50014fd3e4d46",
+    "src/renderer/linear_emission_pass.cpp": "cd408584c267128cd7d6c35e536dbc3dee4f4641fe93881f47f93364c9cd239e",
     "src/renderer/linear_emission_copy_inc.h": "73c2b18ec6bfc35f6f6c9eff72a95b189ee03b680f51464f5d2edb03f3dd5df2",
     "src/renderer/linear_emission_copy_clear_inc.h": "4e77b267085100ba905f214cc832d120e14b425845290a2a7e8e525d327cd7c4",
     "src/renderer/linear_emission_composite_inc.h": "b996ddb01a707660cd030a80eed476929cfdefaaa5e301f89904b53e356dbbfa",
-    "src/renderer/quad_vertex_program.h": "1dcea0512fb3fbd1ba33a28ff1f7584ea6ec3feccb0d5699277ca023e24bb76f",
-    "src/renderer/quad_vertex_program_inc.h": "aa48c154ceffff22f745a1ef8cb4078b1fb4012a145df1666f833b243aa70eb2",
-    "src/renderer/linear_emission.h": "a6e52630a5c1bf43d4e3ad9f0049ebc172705e453b02c16f9552fe4c3255b0cc",
-    "src/renderer/linear_emission.cpp": "130de5d1fb2f436e5d5e14f004ca8d24f798dd0bba30bb965d9794ce59c7ee7a"
+    "src/renderer/quad_vertex_program.h": "bac269397080f5942b099193dbae1498b94c3ada69f9296f220cc7ac37b59fab",
+    "src/renderer/quad_vertex_program_inc.h": "fbf84f4a87bc71d72091e964bbdfd0377bf72011b19d2d5b40d0b6c1346d8415",
+    "src/renderer/linear_emission.h": "bf3a95922aae9aba04c74e0bad6b3d3372a7a30139af37128e3566ca66d9a374",
+    "src/renderer/linear_emission.cpp": "396cbead734e59087f227c4d8eb75d61be15fe2c4bdd038b6834847ad48d6d3b"
   },
-  "executable_sha256": "cb1b3eac3a6d02db0cada1ea152fc0080ee16f15414e6e2286d772fe51c0f6b2",
-  "cases_sha256": "db2fdca0ead01402baa88d4cb41a24842a834b1ac12f9e9f234e61845472c90c",
-  "raw_dir": "/tmp/x3-linear-emission-gpu-source-gain",
+  "executable_sha256": "63b651f06637ec52c9cf4d755f5106cada21f719553493f51d166fc026d3ccc8",
+  "cases_sha256": "7611db0ea8db86ecc5fe1bd360a6b1d21eca8b9f721a21fddc2a4c39760622c4",
+  "raw_dir": "/private/tmp/claude-501/-Users-asvetl-x3-mod/20e0f465-2292-45f9-a5ab-a1aeece7c15b/scratchpad/sg",
   "original_sha256": {
     "vs_d5e1c75351ed3f04.bin": "a1db7ff10b8a6c81a830a095417133e37571a055674914df09136cc91f454114",
     "vs_32e75459998d0388.bin": "9ae32f514a79ca8675fe876731b72207f4449d4e34d89529114e9bacb62c3798",
@@ -78,7 +72,7 @@
     "ps_f0c91793a75e1203.bin": "bf30c26d78fcf6f781edd5d6dfdfb0ecf973b924d3ae13bd8e4eea593fbef038"
   },
   "original_dir": "/tmp/x3-shader-sweep/programs",
-  "source_shader_model": "Eight unchanged original VS2; ten exact PS2.0/PS2.x programs versus 50 source-gain variants (10 identical at gain 1)",
+  "source_shader_model": "Eight unchanged original VS2; ten exact PS2.0/PS2.x programs versus 70 source-gain variants (10 identical at gain 1; 20 with the X3M_EMISSION_SOURCE_CLAMP MIN)",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
@@ -86,15 +80,15 @@
     "--no-update",
     "--dll",
     "d3d9=b",
-    "verification/probe/build/linear-emission/linear_emission_fixture.exe",
-    "Z:/tmp/x3-linear-emission-gpu-source-gain/cases.bin",
-    "Z:/tmp/x3-linear-emission-gpu-source-gain/pixels.bin",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a9204e6a8c4911672/verification/probe/build/linear-emission/linear_emission_fixture.exe",
+    "Z:/private/tmp/claude-501/-Users-asvetl-x3-mod/20e0f465-2292-45f9-a5ab-a1aeece7c15b/scratchpad/sg/cases.bin",
+    "Z:/private/tmp/claude-501/-Users-asvetl-x3-mod/20e0f465-2292-45f9-a5ab-a1aeece7c15b/scratchpad/sg/pixels.bin",
     "--source-gain",
     "Z:/private/tmp/x3-shader-sweep/programs",
-    "Z:/private/tmp/x3-linear-emission-gpu-source-gain/variants"
+    "Z:/private/tmp/claude-501/-Users-asvetl-x3-mod/20e0f465-2292-45f9-a5ab-a1aeece7c15b/scratchpad/sg/variants"
   ],
   "exit_code": 0,
-  "cases": 160,
+  "cases": 300,
   "reviewed_pairs": 20,
   "source_gains": [
     1.0,
@@ -110,7 +104,7 @@
   ],
   "identity_channels": 122880,
   "alpha_channels_exact": 92160,
-  "covered_pixels": 36480,
+  "covered_pixels": 72320,
   "per_gain": {
     "2.0": {
       "channels": 92160,
@@ -181,6 +175,223 @@
         "alpha_exact": 10240
       }
     }
+  },
+  "clamp": {
+    "slots": [
+      {
+        "gain": 1.0,
+        "clamp": 0.0
+      },
+      {
+        "gain": 2.0,
+        "clamp": 0.0
+      },
+      {
+        "gain": 2.0,
+        "clamp": 1.0
+      },
+      {
+        "gain": 1.0,
+        "clamp": 0.5
+      }
+    ],
+    "factor_slots": [
+      {
+        "gain": 1.0,
+        "clamp": 0.0,
+        "effective": 0.0
+      },
+      {
+        "gain": 2.0,
+        "clamp": 0.0,
+        "effective": 0.0
+      },
+      {
+        "gain": 2.0,
+        "clamp": 1.0,
+        "effective": 1.0
+      },
+      {
+        "gain": 2.0,
+        "clamp": 0.7,
+        "effective": 0.7019608020782471
+      }
+    ],
+    "source": 0.9,
+    "disc": 0.9019607843137255,
+    "per_slot": {
+      "2,0,add": {
+        "channels": 46080,
+        "exact": 46080,
+        "max_codes": 0,
+        "max_value": 2.701171875,
+        "capped": 0,
+        "bright_samples": [
+          {
+            "case": 166,
+            "source": 0.89990234375,
+            "background": 0.0,
+            "value": 1.7998046875
+          }
+        ],
+        "disc_samples": [
+          {
+            "case": 229,
+            "source": 0.89990234375,
+            "background": 0.90185546875,
+            "value": 2.701171875
+          }
+        ]
+      },
+      "2,1,add": {
+        "channels": 46080,
+        "exact": 30720,
+        "max_codes": 1,
+        "max_value": 1.9013671875,
+        "capped": 46080,
+        "bright_samples": [
+          {
+            "case": 166,
+            "source": 0.89990234375,
+            "background": 0.0,
+            "value": 1.0
+          }
+        ],
+        "disc_samples": [
+          {
+            "case": 229,
+            "source": 0.89990234375,
+            "background": 0.90185546875,
+            "value": 1.9013671875
+          }
+        ]
+      },
+      "1,0.5,add": {
+        "channels": 15360,
+        "exact": 15360,
+        "max_codes": 0,
+        "max_value": 0.501953125,
+        "capped": 15360,
+        "bright_samples": [
+          {
+            "case": 166,
+            "source": 0.89990234375,
+            "background": 0.0,
+            "value": 0.501953125
+          }
+        ],
+        "disc_samples": []
+      },
+      "2,0,screen": {
+        "channels": 61440,
+        "exact": 61440,
+        "max_codes": 0,
+        "max_value": 2.701171875,
+        "capped": 0,
+        "bright_samples": [
+          {
+            "case": 167,
+            "source": 0.89990234375,
+            "background": 0.0,
+            "value": 1.7998046875
+          }
+        ],
+        "disc_samples": [
+          {
+            "case": 231,
+            "source": 0.89990234375,
+            "background": 0.90185546875,
+            "value": 2.701171875
+          }
+        ]
+      },
+      "2,1,screen": {
+        "channels": 61440,
+        "exact": 61440,
+        "max_codes": 0,
+        "max_value": 1.0,
+        "capped": 61440,
+        "bright_samples": [
+          {
+            "case": 167,
+            "source": 0.89990234375,
+            "background": 0.0,
+            "value": 1.0
+          }
+        ],
+        "disc_samples": [
+          {
+            "case": 231,
+            "source": 0.89990234375,
+            "background": 0.90185546875,
+            "value": 1.0
+          }
+        ]
+      },
+      "1,0.5,screen": {
+        "channels": 30720,
+        "exact": 30720,
+        "max_codes": 0,
+        "max_value": 0.501953125,
+        "capped": 30720,
+        "bright_samples": [
+          {
+            "case": 167,
+            "source": 0.89990234375,
+            "background": 0.0,
+            "value": 0.501953125
+          }
+        ],
+        "disc_samples": []
+      },
+      "2,0.7,add": {
+        "channels": 30720,
+        "exact": 15360,
+        "max_codes": 1,
+        "max_value": 1.603515625,
+        "capped": 30720,
+        "bright_samples": [
+          {
+            "case": 228,
+            "source": 0.89990234375,
+            "background": 0.0,
+            "value": 0.70166015625
+          }
+        ],
+        "disc_samples": [
+          {
+            "case": 229,
+            "source": 0.89990234375,
+            "background": 0.90185546875,
+            "value": 1.603515625
+          }
+        ]
+      },
+      "2,0.7,screen": {
+        "channels": 30720,
+        "exact": 0,
+        "max_codes": 1,
+        "max_value": 0.70166015625,
+        "capped": 30720,
+        "bright_samples": [
+          {
+            "case": 230,
+            "source": 0.89990234375,
+            "background": 0.0,
+            "value": 0.70166015625
+          }
+        ],
+        "disc_samples": [
+          {
+            "case": 231,
+            "source": 0.89990234375,
+            "background": 0.90185546875,
+            "value": 0.70166015625
+          }
+        ]
+      }
+    },
+    "law": "t = min(G s, C) with C < 1 the 8-bit BLENDFACTOR value; additive t + bg; screen t + bg (1 - t) for C = 1 (native INVSRCCOLOR kept when C <= 1 or G = 1) and t + bg (1 - t / C) for C < 1 (variant t / C, SRCBLEND BLENDFACTOR); screen t + bg with DESTBLEND ONE substituted for the uncapped gain-2 slot"
   },
   "law": "gained = bg + G (native - bg) per colour channel; alpha and gain-1 bit-exact; blend state, draw order and alpha native; separate alpha blend admitted (rgb-only law); screen ONE/INVSRCCOLOR admitted with DESTBLEND ONE substituted for the gained draw (G s + bg with s the native readback over black, alpha a + bg.a as separate alpha is off; the gain-1 slot is the native screen draw s + bg (1 - s))",
   "transformed_sha256": {
