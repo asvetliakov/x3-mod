@@ -377,7 +377,7 @@ class OtherGameExecutable(unittest.TestCase):
         self.assertEqual({k for k, ok in checks.items() if not ok},
                          {'size', 'time_date_stamp', 'image_size', 'entry_point', 'sections'})
         self.assertEqual(sum(ident.anchors(X3TC).values()), 0)
-        self.assertEqual(len(ident.ANCHORS), 41)
+        self.assertEqual(len(ident.ANCHORS), 45)
         self.assertFalse(ident.identity_ok(X3TC))
 
 

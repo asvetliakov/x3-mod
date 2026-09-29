@@ -204,7 +204,7 @@ value is harmless):
 | `[hdr]` | `hdr`, `hdr_tonemap`, `hdr_look`, `hdr_exposure`, `hdr_ev`, `hdr_ev_manual`, `hdr_key`, `hdr_ev_min/max`, `hdr_adapt_up/down`, `hdr_dither`, `hdr_bloom`, `bloom_source_clamp`, `emission_source_gain`, `screen_emission_additive` |
 | `[shadows]` | `sun_shadow_lane`, `shadow_replay_depth`, `sun_shadow_apply`, `shadow_cascades`, `shadow_cascade_sizes`, `shadow_cascade_records`, `shadow_cascade_drop_order`, `shadow_cascade_adaptive_c0`, `shadow_alpha_casters`, `shadow_caster_retention`, `sun_shadow_bias_*` |
 | `[fog]` | `volumetric_fog`, `volumetric_fog_anisotropy`, `volumetric_fog_cards`, `volumetric_fog_range`, `volumetric_fog_march_scale`, `fog_motes_max_px`, `fog_docked`, `fog_handover_step/coldfill/prefill` |
-| `[camera]` | `camera`, `fov`, `chase_pitch_down_deg`, `chase_offset_y`, `chase_distance_scale`, `chase_view_restore`, `sun_occlusion` |
+| `[camera]` | `camera`, `fov`, `ui_scale` (1..3 or `auto`, default 1; [ui-scale.md](ui-scale.md)), `chase_pitch_down_deg`, `chase_offset_y`, `chase_distance_scale`, `chase_view_restore`, `sun_occlusion` |
 | `[window]` | `window_monitor_rect`, `cursor_reassert`, `pause_key` |
 | `[audio]` | `music_keep`, the voice-DMO fallback switch |
 | `[loading]` | `crypt_cache`, `gz_buffer`, `resource_read`, `dat_handles`, `mesh_adjacency` |

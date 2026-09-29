@@ -258,6 +258,10 @@ SETTINGS = [
     entry('fov', 'float', 'camera', 'Field of view in degrees, counted like X4: the horizontal angle on a 16:9 screen, 70 to 100 '
           '(the same on every screen shape). game = the game\'s own field of view.', '90', range=(70.0, 100.0), choices=('game',),
           launcher='--fov'),
+    entry('ui_scale', 'float', 'camera', 'Size of the in-game menus, sidebars and HUD panels (not the main menu). 1 = the '
+          'game\'s own size, 1.5 = one and a half times, up to 3; auto = from the screen height (1440 lines = 1.25, '
+          '2160 = 2). Text is enlarged with the picture, so it looks softer at sizes that are not whole numbers.',
+          '1', range=(1.0, 3.0), choices=('auto',), launcher='--ui-scale'),
     entry('chase_pitch_down_deg', 'float', 'camera', 'How far the chase camera looks down on your ship, in degrees. 0 to 30.', '0.5',
           range=(0.0, 30.0), requires=('camera',), launcher='--chase-pitch-down-deg'),
     entry('chase_offset_y', 'float', 'camera', 'Where your ship sits on screen in the chase view: 0 = centre, 0.5 = halfway down, '

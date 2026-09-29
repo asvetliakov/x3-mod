@@ -550,6 +550,9 @@ static void reset() noexcept {}
 namespace cull_small_parts {
 static void after_reset(unsigned) noexcept {}
 } // X3M_CULL_SMALL_PARTS_PX disarm on Reset (src/proxy/cull_small_parts.h); no-op on the host
+namespace ui_scale {
+static void after_reset(unsigned, unsigned) noexcept {}
+} // X3M_UI_SCALE=auto re-derivation on Reset (src/proxy/ui_scale.h); no-op on the host
 namespace window_mode {
 static void apply(const char*, HWND, HWND, bool, UINT, UINT) noexcept {}
 } // X3M_WINDOW_MONITOR_RECT move at reset_before (src/proxy/window_mode.h); no-op on the host

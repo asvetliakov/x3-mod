@@ -29,7 +29,7 @@ verifies exactly like the shipped one.
   stamp groups' `verify_bytes` preflight, or a module `memcmp` window (lod_scale,
   point_light_admission, pause_key_only, scene_hook, object_trace's call bytes,
   object_lifetime's six region fingerprints). Unchanged by this rule.
-* **Engine globals**: 41 anchors, one per global the proxy reads. Each anchor
+* **Engine globals**: 45 anchors, one per global the proxy reads. Each anchor
   is a whole `.text` instruction whose absolute operand is that global
   (prefix + le32(global) [+ imm8]), chosen from objdump's linear sweep; the
   verifier re-confirms every anchor VA is an instruction start. No anchor

@@ -362,11 +362,11 @@ class SessionLogContracts(unittest.TestCase):
 
     def test_no_game_thread_writefile_outside_the_session_log(self):
         # Left: the voice DMO fallback's exception-context witness (it may run on a thread that holds the buffer lock and
-        # is about to die); the five patch restore rows, written only inside DllMain on a dynamic FreeLibrary (never on a
+        # is about to die); the six patch restore rows, written only inside DllMain on a dynamic FreeLibrary (never on a
         # game thread in play; their fixture records are bound to these sources); loading_trace.cpp's are the game's own
         # file I/O it forwards.
         allowed = {'session_log.cpp', 'voice_dmo_fallback.cpp', 'loading_trace.cpp', 'loading_trace_light.cpp',
-                   'fov.cpp', 'lod_occlusion.cpp', 'sun_flare_fix.cpp', 'terran_station_lod.cpp', 'dust_leak_fix.cpp'}
+                   'fov.cpp', 'lod_occlusion.cpp', 'sun_flare_fix.cpp', 'terran_station_lod.cpp', 'dust_leak_fix.cpp', 'ui_scale.cpp'}
         offenders = [path.name for path in (ROOT / 'src/proxy').glob('*.cpp')
                      if path.name not in allowed and re.search(r'\bWriteFile\(', source_text(path))]
         self.assertEqual(offenders, [])

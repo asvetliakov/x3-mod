@@ -16,6 +16,7 @@
 #include "sun_flare_fix.h"
 #include "dust_leak_fix.h"
 #include "fov.h"
+#include "ui_scale.h"
 #include "music_keep.h"
 #include "collide_narrow_census.h"
 #include "collide_sat_sse2.h"
@@ -1920,6 +1921,8 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
     if (engine_patch::install_window_open()) engine_patch::close_install_window("first_present");
     fov::present(ctx.frame); // one fov_confirm row (registry+0x24 against the configured focus) at the first Present,
                              // one more if the registry appears later; then a flag test
+    ui_scale::present(ctx.frame); // X3M_UI_SCALE: the excluded HUD camera for the next frame; under --debug with the
+                                  // entry counter live, one ui_scale_frame row per Present
     if (save_loaded)
         fov::loaded(ctx.frame); // one fov_confirm row per save_load_complete marker: the base the savegame left
     frame_timing::frame(ctx.frame, ctx.draws); // X3M_FRAME_TIMING only: per-frame sample, one line per 300-frame window
@@ -2117,6 +2120,8 @@ HRESULT reset_common(IDirect3DDevice9* d, D3DPRESENT_PARAMETERS* p, D3DDISPLAYMO
     sun_occlusion::device_reset(); // the 1x1 visibility targets went with the Reset: vanilla until a pass has run again
     collide_memo::device_reset();  // X3M_COLLIDE_MEMO=1 only: a Reset (device loss, mode change, the pause around it)
                                    // drops the whole memo
+    ui_scale::after_reset(p ? p->BackBufferWidth : 0u, p ? p->BackBufferHeight : 0u); // X3M_UI_SCALE=auto: the scale
+                                                                                       // follows the new height (cells only)
     cull_small_parts::after_reset(p ? p->BackBufferWidth : 0u); // a Reset disarms the small-parts stub until the next
                                                                 // frame's projection read; new back-buffer width
     ownership_depth_info(d, ctx.id, ctx.frame, "reset_after");
@@ -3890,6 +3895,10 @@ HRESULT WINAPI create_device(IDirect3D9* d, UINT adapter, D3DDEVTYPE type, HWND 
     if (SUCCEEDED(hr) && p)
         cull_small_parts::set_backbuffer_width(p->BackBufferWidth); // X3M_CULL_SMALL_PARTS_PX only: the pixel scale of
                                                                     // the threshold
+    if (SUCCEEDED(hr) && p)
+        ui_scale::device_created(p->BackBufferWidth, p->BackBufferHeight); // X3M_UI_SCALE=auto|1..3: the scale from the
+                                                                            // back buffer, the eight claims (all or none)
+                                                                            // inside the still-open install window
     log("create_device_result hr=%08lx", hr);
     if (SUCCEEDED(hr) && out && *out) {
         hook_device(*out, p && p->hDeviceWindow ? p->hDeviceWindow : window, window);
@@ -5391,6 +5400,10 @@ void initialize_log(HMODULE module) {
                        // constructor's imm32 at 0x0041c9dc becomes F'(N) and INS_SetFocus's MOV EDX at 0x0042dbf8 is
                        // claimed for the remap stub (both or neither), plus a one-off registry+0x24 write when the
                        // registry already exists, same window, disjoint from every other claim
+    ui_scale::initialize(); // X3M_UI_SCALE=auto|1..3, unset = off: the setting, the executable and every window checked
+                            // here, the eight claims deferred to CreateDevice (the scale needs the back buffer); the
+                            // per-camera entry counter at 0x004bdee0 claimed here under X3M_DEBUG=1 (refuses when the
+                            // submit-phase fixture group holds the same bytes)
     sun_flare_fix::initialize(); // X3M_SUN_FLARE_FIX=on|off, unset = off (the launcher sends on): the lens collector's
                                  // horizontal bound SHRD/CMP at 0x0047e391 (six bytes) claimed through engine_patch
                                  // with a saturating stub in front of the tail, same window, disjoint from every other

@@ -23,7 +23,7 @@ struct Entry {
     short marker_of;           // index of the key a launcher default marker follows, -1
 };
 struct Alias { const char* key; unsigned short entry; };
-constexpr unsigned interval_count = 109;
+constexpr unsigned interval_count = 110;
 constexpr Interval intervals[interval_count] = {
     {0.0, 64.0, true},
     {0.0, 1.0, false},
@@ -133,6 +133,7 @@ constexpr Interval intervals[interval_count] = {
     {0.0, 64.0, false},
     {0.0, 64.0, true},
     {0.0, 65000.0, false},
+    {1.0, 3.0, false},
     {0.0, 0.1, false},
 };
 constexpr unsigned element_range_count = 21;
@@ -159,7 +160,7 @@ constexpr ElementRange element_ranges[element_range_count] = {
     {105, 1},
     {106, 1},
 };
-constexpr unsigned entry_count = 245;
+constexpr unsigned entry_count = 246;
 constexpr const char schema_date[] = "2026-09-26";
 constexpr Entry entries[entry_count] = {
     {"X3M_ADMISSION", "admission", Type::Bool, nullptr, nullptr, 0, 0, 0, 0, 0, "", 1, -1},
@@ -398,15 +399,16 @@ constexpr Entry entries[entry_count] = {
     {"X3M_TELEMETRY", "telemetry", Type::Bool, nullptr, nullptr, 108, 0, 21, 0, 0, "", 1, -1},
     {"X3M_TELEMETRY_DRAW", "telemetry_draw", Type::Bool, nullptr, nullptr, 108, 0, 21, 0, 0, "", 1, -1},
     {"X3M_TERRAN_STATION_LOD", "terran_station_lod", Type::Enum, "size", nullptr, 108, 0, 21, 0, 0, "size|distance", 0, -1},
-    {"X3M_VOICE_DMO_FALLBACK", "voice_dmo_fallback", Type::Bool, "1", nullptr, 108, 0, 21, 0, 0, "", 0, -1},
-    {"X3M_VOLUMETRIC_FOG", "volumetric_fog", Type::Bool, "1", nullptr, 108, 0, 21, 0, 0, "", 0, -1},
-    {"X3M_VOLUMETRIC_FOG_CARDS", "volumetric_fog_cards", Type::Enum, "replace", nullptr, 108, 0, 21, 0, 0, "replace|keep", 0, -1},
-    {"X3M_VOLUMETRIC_FOG_RANGE", "volumetric_fog_range", Type::Enum, "stored", nullptr, 108, 0, 21, 0, 0, "stored|legacy", 0, -1},
-    {"X3M_VOLUMETRIC_FOG_STRENGTH", "volumetric_fog_strength", Type::Float, "0.02", nullptr, 108, 1, 21, 0, 0, "", 0, -1},
-    {"X3M_VOLUMETRIC_FOG_TIMING", "volumetric_fog_timing", Type::Bool, nullptr, nullptr, 109, 0, 21, 0, 0, "", 1, -1},
-    {"X3M_WINDOW_MONITOR_RECT", "window_monitor_rect", Type::Bool, "1", nullptr, 109, 0, 21, 0, 0, "", 0, -1},
-    {"X3M_WINDOW_MONITOR_RECT_DEFAULT", "window_monitor_rect_default", Type::Bool, "1", nullptr, 109, 0, 21, 0, 0, "", 3, 242},
-    {"X3M_WINDOW_TRACE", "window_trace", Type::Bool, nullptr, nullptr, 109, 0, 21, 0, 0, "", 1, -1},
+    {"X3M_UI_SCALE", "ui_scale", Type::Float, "1", nullptr, 108, 1, 21, 0, 0, "auto", 0, -1},
+    {"X3M_VOICE_DMO_FALLBACK", "voice_dmo_fallback", Type::Bool, "1", nullptr, 109, 0, 21, 0, 0, "", 0, -1},
+    {"X3M_VOLUMETRIC_FOG", "volumetric_fog", Type::Bool, "1", nullptr, 109, 0, 21, 0, 0, "", 0, -1},
+    {"X3M_VOLUMETRIC_FOG_CARDS", "volumetric_fog_cards", Type::Enum, "replace", nullptr, 109, 0, 21, 0, 0, "replace|keep", 0, -1},
+    {"X3M_VOLUMETRIC_FOG_RANGE", "volumetric_fog_range", Type::Enum, "stored", nullptr, 109, 0, 21, 0, 0, "stored|legacy", 0, -1},
+    {"X3M_VOLUMETRIC_FOG_STRENGTH", "volumetric_fog_strength", Type::Float, "0.02", nullptr, 109, 1, 21, 0, 0, "", 0, -1},
+    {"X3M_VOLUMETRIC_FOG_TIMING", "volumetric_fog_timing", Type::Bool, nullptr, nullptr, 110, 0, 21, 0, 0, "", 1, -1},
+    {"X3M_WINDOW_MONITOR_RECT", "window_monitor_rect", Type::Bool, "1", nullptr, 110, 0, 21, 0, 0, "", 0, -1},
+    {"X3M_WINDOW_MONITOR_RECT_DEFAULT", "window_monitor_rect_default", Type::Bool, "1", nullptr, 110, 0, 21, 0, 0, "", 3, 243},
+    {"X3M_WINDOW_TRACE", "window_trace", Type::Bool, nullptr, nullptr, 110, 0, 21, 0, 0, "", 1, -1},
 };
 constexpr unsigned alias_count = 0;
 constexpr Alias aliases[1] = {{nullptr, 0}}; // none yet
@@ -528,6 +530,7 @@ constexpr float taa_thin_region_emissive = 1.0f;
 constexpr const char taa_thin_vote[] = "on";
 constexpr const char taa_unmatched_static[] = "node";
 constexpr const char terran_station_lod[] = "size";
+constexpr float ui_scale = 1.0f;
 constexpr bool voice_dmo_fallback = true;
 constexpr bool volumetric_fog = true;
 constexpr const char volumetric_fog_cards[] = "replace";

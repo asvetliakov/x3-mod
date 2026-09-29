@@ -1,0 +1,45 @@
+{
+  "branches_into_spans": [],
+  "branches_to_site_starts": {
+    "cursor": [],
+    "entry": [
+      "0x47e002",
+      "0x47e70c"
+    ],
+    "height": [],
+    "main_x": [],
+    "main_y": [],
+    "menu_x": [],
+    "menu_y": [],
+    "projection": [],
+    "width": []
+  },
+  "checks": 59,
+  "claims_considered": 159,
+  "claims_in_windows": [
+    [
+      "submit_phase_world_return_a",
+      "0x47e007"
+    ],
+    [
+      "submit_phase_world_return_b",
+      "0x47e711"
+    ]
+  ],
+  "dword_refs": [],
+  "failed": [],
+  "identity": {
+    "bytes": 2153984,
+    "checksum": "0x00000000",
+    "identity_digest": "9d8ddf43f06031f4fb21e5e700d55a2df8881c76bd8c5ce4a9af0866d6dc38c8",
+    "known": "shipped (LAA set, CheckSum 0)",
+    "known_image": true,
+    "laa": true,
+    "sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab"
+  },
+  "instructions": 8215,
+  "raw_branch_hits": 0,
+  "result": "PASS",
+  "xmm_in_site_functions": [],
+  "xmm_text_census_count": 842
+}

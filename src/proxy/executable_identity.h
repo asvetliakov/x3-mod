@@ -62,7 +62,10 @@ constexpr Anchor anchors[] = {
     {0x0041efd6, 0x00606fc0, 2, {0x8b, 0x35}},       // sector_background
     {0x0041305f, 0x00606fd4, 2, {0x8b, 0x15}},       // chase_aim_trace
     {0x004343e6, 0x00607040, 2, {0x8b, 0x2d}},       // sector_background
+    {0x0042ab24, 0x00607c64, 2, {0x83, 0x3d}, 1, 0x00}, // ui_scale (the steering state; its store 0x004074d6 is in the cursor window)
     {0x00445a3a, 0x00607ce8, 2, {0x83, 0x3d}, 1, 0x00}, // chase_aim_trace, chase_fire (0x004074de is a chase_aim_trace site)
+    {0x0040e8dd, 0x00607cec, 2, {0x8b, 0x15}},       // ui_scale (the script cursor x; its store 0x004074f4 follows the ui_scale site)
+    {0x0040e8d7, 0x00607cf0, 2, {0x8b, 0x0d}},       // ui_scale (the script cursor y; its store 0x004074ec is the ui_scale site)
     {0x00401a0d, 0x00608504, 2, {0x89, 0x1d}},       // chase_*, sector_background, motion_output, sun_occlusion
     {0x00401e69, 0x0060850c, 1, {0xa1}},             // chase_transition
     {0x00403367, 0x00608518, 1, {0xa3}},             // object_trace, object_lifetime, sun_light_poll, submit/residual_phases, cull_census, point_light
@@ -80,6 +83,7 @@ constexpr Anchor anchors[] = {
     {0x00413ade, 0x006089f8, 2, {0x01, 0x1d}},       // resource_reader
     {0x004e3f9d, 0x006089fc, 2, {0x8b, 0x0d}},       // resource_reader
     {0x004b9a60, 0x00608a38, 2, {0x89, 0x35}},       // camera_state, object_trace
+    {0x004be168, 0x00608a3c, 2, {0x8b, 0x0d}},       // ui_scale (the 2D projection slot, read inside 0x004bdee0 before the site)
     {0x004b9a08, 0x00608a40, 2, {0x89, 0x35}},       // camera_state, object_trace
     {0x004b9958, 0x00608a44, 2, {0x89, 0x35}},       // object_trace
     {0x004b99b0, 0x00608a48, 2, {0x89, 0x35}},       // object_trace
