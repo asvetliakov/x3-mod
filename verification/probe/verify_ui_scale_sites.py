@@ -5,7 +5,8 @@ src/proxy/ui_scale.cpp claims eight engine sites through engine_patch, all or no
 docs/reverse-engineering/gui-scale.md section 5 strategy (b)): the pixel orthographic projection's 2D exit
 `mov eax,1` at 0x004be246, the script's screen-size readers (the `mov edx/ecx,[0x006085e4]` after the movsx in cases
 0x71/0x72 of 0x00493b40), the four script mouse-delta loads (0x00403d36, 0x00403d7a, 0x00411b40, 0x00411b57) and the
-cursor store `mov [0x00607cf0],eax` at 0x004074ec, plus the debug-only entry counter at 0x004bdee0. This checks X3AP.exe
+cursor store `mov [0x00607cf0],eax` at 0x004074ec, the two INS click-point loads (case 0x64 at 0x0042ece0, case 0x28
+at 0x0042ddf1, gui-scale.md section 6), plus the debug-only entry counter at 0x004bdee0. This checks X3AP.exe
 on the host: the structural identity, every expected byte window, a gap-free whole-instruction decode of the whole
 .text (objdump), each claimed span on instruction boundaries, no decoded direct branch and no jump-table entry landing
 inside a span, every raw rel8/rel32 encoding landing inside a span interior to a decoded instruction, no dword in the
@@ -40,6 +41,8 @@ SITES = {
     'menu_x': (0x411b40, bytes.fromhex('0fbfba14040000'), 0x411b47, ['push', 'mov', 'xor', 'call']),
     'menu_y': (0x411b57, bytes.fromhex('0fbfba16040000'), 0x411b5e, ['push', 'mov', 'mov', 'call']),
     'cursor': (0x4074ec, bytes.fromhex('a3f07c6000'), 0x4074f1, ['push', 'mov', 'mov', 'call']),
+    'overlay_icon': (0x42ece0, bytes.fromhex('8b76065156'), 0x42ece5, ['add', 'push', 'call', 'jmp']),
+    'cursor_aim': (0x42ddf1, bytes.fromhex('8b73068b7b0b'), 0x42ddf7, ['jl', 'lea', 'call', 'mov', 'mov', 'mov', 'push', 'push', 'push', 'push', 'call']),
     'entry': (0x4bdee0, bytes.fromhex('83ec0883783c00'), 0x4bdee7, ['push', 'mov', 'push', 'mov', 'push', 'mov', 'push']),
 }
 # The verified windows (va, bytes) beyond the sites themselves.
@@ -58,18 +61,27 @@ WINDOWS = {
     'menu_callee': (0x40fec0, bytes.fromhex('837c24040053568bf17409')),
     'cursor_pre': (0x4074cd, bytes.fromhex('8b47018b4f068b570ba3647c60008b4710')),
     'cursor_post': (0x4074e4, bytes.fromhex('8b0de48560006a00a3f07c6000518bc38915ec7c6000e8f1d20900')),
+    'overlay_case': (0x42ecc5, bytes.fromhex('8b75188b5601a104856000e84be0feff85c00f8411eaffff8b4e0b8b7606515605ac03000050e8b0acffffe921f1ffff')),
+    'aim_case': (0x42ddc0, bytes.fromhex('8b5d188b5301a104856000e850effeff85c0894424100f8412f9ffff8b4d1483ceff0bfe83f903c644240c007c1b83f9048b73068b7b0b'
+                                        '7c108d430fe86fab07008844240c8b4424108b54240c52575650e8fa75ffff85c00f84d0f8ffff')),
+    'icon_test': (0x4299a0, bytes.fromhex('83ec10535556578b7c24248b874803000085c00f84240300008b0d386f60008b11')),
 }
 # Decoded gap-free (int3 padding bounds): the five site functions, the projection's two callers and the two callees' prefixes.
 FUNCTIONS = {'projection': (0x4bdee0, 0x4be3e3), 'dispatcher': (0x493b40, 0x49679c), 'main_loop': (0x403840, 0x404278),
              'menu_loop': (0x410080, 0x412250), 'cursor': (0x406de0, 0x40770c), 'caller1': (0x47d9c0, 0x47e617),
-             'caller2': (0x47e620, 0x47e77d), 'size_callee': (0x4a47f0, 0x4a480d), 'menu_callee': (0x40fec0, 0x40fecb)}
+             'caller2': (0x47e620, 0x47e77d), 'size_callee': (0x4a47f0, 0x4a480d), 'menu_callee': (0x40fec0, 0x40fecb),
+             'ins_dispatcher': (0x42d340, 0x42f064), 'icon_test': (0x4299a0, 0x4299c1)}
+# The INS dispatcher's jump table (the click-point cases G and H).
+INS_JUMP_TABLE, INS_JUMP_TABLE_ENTRIES, OVERLAY_CASE, AIM_CASE = 0x42f064, 0x71, 0x64, 0x28
+INS_CASE_STARTS = {OVERLAY_CASE: 0x42ecc5, AIM_CASE: 0x42ddc0}
+AIM_FLAGS_VA = 0x42ddee  # cmp ecx,4 whose EFLAGS the jl at 0x42ddf7 reads across the H span
 JUMP_TABLE, JUMP_TABLE_ENTRIES, WIDTH_CASE, HEIGHT_CASE = 0x49679c, 0xa8, 0x71, 0x72
 CASE_STARTS = {WIDTH_CASE: 0x496181, HEIGHT_CASE: 0x4961a8}
 SIZE_CALLEE = 0x4a47f0
 SIZE_CALLEE_MNEMONICS = ['push', 'mov', 'push', 'lea', 'mov', 'cmp', 'jb', 'mov', 'call', 'mov']  # cmp writes EFLAGS before jb reads them
 CURSOR_FOREIGN_CLAIM = ('chase_cursor_write', 0x4074de, 6)  # chase_fire's claim inside the cursor window's gap
 COCKPIT_REGISTRY_SLOT, HUD_CAMERA_OFFSET = 0x608504, 8
-STUB_LENGTHS = {'projection': 144, 'size': 21, 'main_mouse': 47, 'menu_mouse': 45, 'cursor': 37, 'entry': 79}
+STUB_LENGTHS = {'projection': 144, 'size': 21, 'main_mouse': 47, 'menu_mouse': 45, 'cursor': 37, 'entry': 79, 'overlay': 43, 'aim': 47}
 EXPECTED_CONSTANTS = {
     'projection_function_va': 0x4bdee0, 'projection_function_end_va': 0x4be3e3, 'projection_site_va': 0x4be246, 'projection_return_va': 0x4be24b,
     'projection_tail_va': 0x4be1eb, 'caller1_va': 0x47e002, 'caller2_va': 0x47e70c, 'entry_site_va': 0x4bdee0, 'entry_return_va': 0x4bdee7,
@@ -81,6 +93,9 @@ EXPECTED_CONSTANTS = {
     'menu_callee_va': 0x40fec0, 'input_context_slot_va': 0x606f3c, 'cursor_function_va': 0x406de0, 'cursor_function_end_va': 0x40770c,
     'cursor_site_va': 0x4074ec, 'cursor_return_va': 0x4074f1, 'cursor_pre_va': 0x4074cd, 'cursor_post_va': 0x4074e4,
     'cursor_foreign_claim_va': 0x4074de, 'cursor_x_va': 0x607cec, 'cursor_y_va': 0x607cf0, 'cockpit_registry_slot_va': 0x608504,
+    'ins_dispatcher_va': 0x42d340, 'ins_dispatcher_end_va': 0x42f064, 'ins_jump_table_va': 0x42f064, 'overlay_case_va': 0x42ecc5,
+    'overlay_site_va': 0x42ece0, 'overlay_return_va': 0x42ece5, 'aim_case_va': 0x42ddc0, 'aim_site_va': 0x42ddf1, 'aim_return_va': 0x42ddf7,
+    'aim_flags_va': 0x42ddee, 'icon_test_va': 0x4299a0, 'cursor_aim_va': 0x425410,
 }
 LOG_RE = re.compile(r'\bui_scale setting=(?P<setting>\S+) status=(?P<status>pending|off|refused) reason=(?P<reason>\S+) mode=(?P<mode>auto|fixed|off) '
                     r'scale=(?P<scale>[0-9.]+) diagnostic=(?P<diagnostic>\S+) diagnostic_write=(?P<diagnostic_write>\S+) site=(?P<site>[0-9a-f]{8})')
@@ -187,7 +202,9 @@ def source_ok(text):
                        'expected_main_x_window': WINDOWS['main_x_window'][1], 'expected_main_y_window': WINDOWS['main_y_window'][1],
                        'expected_menu_x_window': WINDOWS['menu_x_window'][1], 'expected_menu_y_window': WINDOWS['menu_y_window'][1],
                        'expected_menu_callee': WINDOWS['menu_callee'][1], 'expected_cursor_pre': WINDOWS['cursor_pre'][1],
-                       'expected_cursor_post': WINDOWS['cursor_post'][1]}
+                       'expected_cursor_post': WINDOWS['cursor_post'][1], 'expected_overlay_site': SITES['overlay_icon'][1],
+                       'expected_aim_site': SITES['cursor_aim'][1], 'expected_overlay_case': WINDOWS['overlay_case'][1],
+                       'expected_aim_case': WINDOWS['aim_case'][1], 'expected_icon_test': WINDOWS['icon_test'][1]}
     ok = ok and all(arrays.get(k) == v for k, v in expected_arrays.items())
     ok = ok and all(lengths.get(f'{k}_stub_length') == v for k, v in STUB_LENGTHS.items())
     ok = ok and 'constexpr std::int32_t accumulator_start = 0x8000;' in text
@@ -318,6 +335,28 @@ def inspect(data, instructions, core_text, claims, xmm=()):
     checks['jump_table_entries_outside_spans'] = inside == []
     report['jump_table_entries_inside'] = inside
     checks['jump_table_in_dispatcher'] = all(FUNCTIONS['dispatcher'][0] <= t < FUNCTIONS['dispatcher'][1] and t in starts for t in table)
+    # The INS dispatcher's table: the two click-point cases, no entry inside a span, every entry an instruction start.
+    ins_table = [struct.unpack_from('<I', image.read(INS_JUMP_TABLE + 4 * k, 4))[0] for k in range(INS_JUMP_TABLE_ENTRIES)]
+    checks['ins_jump_table_cases'] = ins_table[OVERLAY_CASE] == INS_CASE_STARTS[OVERLAY_CASE] and ins_table[AIM_CASE] == INS_CASE_STARTS[AIM_CASE]
+    ins_inside = [hex(t) for t in ins_table if any(a < t < b for a, b in spans)]
+    checks['ins_jump_table_entries_outside_spans'] = ins_inside == []
+    checks['ins_jump_table_in_dispatcher'] = all(FUNCTIONS['ins_dispatcher'][0] <= t < FUNCTIONS['ins_dispatcher'][1] and t in starts for t in ins_table)
+    # G and H: the five patch bytes inside one aligned qword (one cmpxchg8b each); H's EFLAGS are live across the span:
+    # the instruction before it is `cmp ecx,4`, the one after is `jl`, and nothing in the span writes ECX or EFLAGS
+    # in a way the stub does not reproduce (the stub ends with the same `cmp ecx,4`; ECX is not written in the span).
+    checks['click_sites_one_qword'] = all((SITES[n][0] & 7) + 5 <= 8 for n in ('overlay_icon', 'cursor_aim'))
+    before_h = by_va.get(AIM_FLAGS_VA)
+    after_h = by_va.get(SITES['cursor_aim'][2])
+    span_h = [by_va[SITES['cursor_aim'][0]], by_va[SITES['cursor_aim'][0] + 3]] if SITES['cursor_aim'][0] + 3 in by_va else []
+    checks['aim_flags_live_proof'] = before_h is not None and before_h.mnemonic == 'cmp' and before_h.operands == 'ecx,0x4' and \
+        before_h.end == SITES['cursor_aim'][0] and after_h is not None and after_h.mnemonic == 'jl' and len(span_h) == 2 and \
+        [i.mnemonic for i in span_h] == ['mov', 'mov'] and not any(written_registers(i) & {'ecx'} for i in span_h) and \
+        all(i.mnemonic == 'mov' for i in span_h)  # mov writes no flags: the cmp's flags reach the jl in the engine
+    # G: EFLAGS dead (`add eax,0x3ac` follows), the callee writes EDX before reading it (mov edx,[ecx] at 0x4299bf).
+    g_after = by_va.get(SITES['overlay_icon'][2])
+    checks['overlay_flags_dead_and_edx_written'] = g_after is not None and g_after.mnemonic == 'add' and g_after.operands.startswith('eax,') and \
+        by_va.get(0x4299bf) is not None and by_va[0x4299bf].mnemonic == 'mov' and by_va[0x4299bf].operands.startswith('edx,') and \
+        not any(written_registers(i) & {'edx'} or 'edx' in i.operands for va, i in by_va.items() if 0x4299a0 <= va < 0x4299bf)
     # The size sites' callee: cmp before jb (EFLAGS dead after the claimed mov), as the fov verifier established.
     callee = []
     cursor = SIZE_CALLEE
@@ -375,6 +414,11 @@ def inspect(data, instructions, core_text, claims, xmm=()):
     # The entry claim shares its bytes with the submit-phase fixture group (one of them refuses at run time).
     entry_claims = sorted(name for name, address, length in claims if address == SITES['entry'][0])
     checks['entry_shared_with_submit_phase_only'] = entry_claims == ['submit_phase_world_enter']
+    # The two INS dispatcher claims of other modules (fov 0x42dbf8, chase_mode_script 0x42e742) are outside both case windows.
+    ins_claims = sorted((name, hex(address)) for name, address, length in claims if FUNCTIONS['ins_dispatcher'][0] <= address < FUNCTIONS['ins_dispatcher'][1])
+    report['ins_dispatcher_claims'] = ins_claims
+    checks['ins_dispatcher_other_claims_outside_cases'] = all(not (WINDOWS[w][0] <= address < WINDOWS[w][0] + len(WINDOWS[w][1]))
+                                                          for _, address, _ in claims for w in ('overlay_case', 'aim_case'))
     report['entry_claims'] = entry_claims
     # Source constants and the arithmetic twins.
     checks['source_constants'] = source_ok(core_text)
@@ -433,7 +477,7 @@ def verify(exe=DEFAULT_EXE, core=CORE):
 
 
 def patched_image(data, name='projection'):
-    """A copy with the named site's first byte replaced by our jmp opcode (what a second install would find)."""
+    """A copy with the named site's first byte replaced by our jmp opcode (what a second install would find)."""  # noqa: D401
     image = common.Image(data)
     va = SITES[name][0]
     for _, base, vsize, rp, rsize in image.sections:

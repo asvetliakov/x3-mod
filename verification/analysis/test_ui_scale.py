@@ -116,6 +116,16 @@ int main() {
     encode_menu_mouse_stub(delta_y_offset, 0x10000200, 0x10000304, 0x10001ffc, d); hex(d, sizeof d);
     encode_cursor_stub(0x10000400, 0x10001ffc, e); hex(e, sizeof e);
     encode_entry_stub(0x10000500, 0x10001ffc, f); hex(f, sizeof f);
+    // 34..41 the click-point sites G and H: site bytes, case windows, the icon test prefix, addresses, the two stubs
+    hex(expected_overlay_site, overlay_site_length); hex(expected_aim_site, aim_site_length);
+    hex(expected_overlay_case, overlay_case_length); hex(expected_aim_case, aim_case_length); hex(expected_icon_test, icon_test_length);
+    std::printf("%08lx %08lx %08lx %08lx %08lx %08lx %08lx %08lx\n", (unsigned long)overlay_case_va, (unsigned long)overlay_site_va,
+                (unsigned long)overlay_return_va, (unsigned long)aim_case_va, (unsigned long)aim_site_va, (unsigned long)aim_return_va,
+                (unsigned long)aim_flags_va, (unsigned long)icon_test_va);
+    unsigned char g[overlay_stub_length], h[aim_stub_length];
+    encode_overlay_stub(0x10000400, 0x10001ffc, g); hex(g, sizeof g);
+    encode_aim_stub(0x10000400, 0x10001ffc, h); hex(h, sizeof h);
+    check(cursor_real(-1, fixed256(1.0)) == -1 && cursor_real(-1, fixed256(3.0)) == -3 && cursor_real(-1, fixed256(1.25)) == -1, "the -1 sentinel stays negative");
     std::printf("ui_scale_core checks_failed=%u\n", failures);
     return failures ? 1 : 0;
 }
@@ -213,10 +223,31 @@ class UiScaleCore(unittest.TestCase):
                                      'sub edx,0x10', 'mov DWORD PTR [edx+0x10000500],ecx', 'mov ecx,DWORD PTR [esp+0x4]',
                                      'test DWORD PTR [ecx+0x130],0x200', 'je 0x10000043', 'inc DWORD PTR [edx+0x10000504]', 'jmp 0x10000049',
                                      'inc DWORD PTR [edx+0x10000508]', 'jmp DWORD PTR ds:0x10001ffc'])
-            # No stub pushes, calls, or touches the x87 stack.
+            # No stub calls, pops or touches the x87 stack; only G pushes (the two displaced pushes it re-issues).
             for name, blob in zip(('projection', 'size', 'main', 'menu', 'cursor', 'entry'), stubs):
                 mnemonics = {d.split(' ')[0] for d in decode(objdump, directory, name, blob, 0x10000000)}
                 self.assertFalse(mnemonics & {'push', 'pop', 'call', 'ret'} or any(m.startswith('f') for m in mnemonics), name)
+            # G and H (the click point): bytes, windows and addresses against the verifier; the stubs decoded.
+            self.assertEqual([bytes.fromhex(l) for l in lines[34:36]], [verifier.SITES['overlay_icon'][1], verifier.SITES['cursor_aim'][1]])
+            self.assertEqual([bytes.fromhex(l) for l in lines[36:39]], [verifier.WINDOWS[w][1] for w in ('overlay_case', 'aim_case', 'icon_test')])
+            self.assertEqual([int(v, 16) for v in lines[39].split()], [0x42ecc5, 0x42ece0, 0x42ece5, 0x42ddc0, 0x42ddf1, 0x42ddf7, 0x42ddee, 0x4299a0])
+            g, h = bytes.fromhex(lines[40]), bytes.fromhex(lines[41])
+            self.assertEqual((len(g), len(h)), (verifier.STUB_LENGTHS['overlay'], verifier.STUB_LENGTHS['aim']))
+            self.assertEqual(decode(objdump, directory, 'overlay', g, 0x10000000),
+                             ['mov esi,DWORD PTR [esi+0x6]', 'imul ecx,DWORD PTR ds:0x10000400', 'add ecx,0x80', 'sar ecx,0x8',
+                              'imul esi,DWORD PTR ds:0x10000400', 'add esi,0x80', 'sar esi,0x8', 'push ecx', 'push esi',
+                              'jmp DWORD PTR ds:0x10001ffc'])
+            aim = decode(objdump, directory, 'aim', h, 0x10000000)
+            self.assertEqual(aim, ['mov esi,DWORD PTR [ebx+0x6]', 'mov edi,DWORD PTR [ebx+0xb]', 'imul esi,DWORD PTR ds:0x10000400',
+                                   'add esi,0x80', 'sar esi,0x8', 'imul edi,DWORD PTR ds:0x10000400', 'add edi,0x80', 'sar edi,0x8',
+                                   'cmp ecx,0x4', 'jmp DWORD PTR ds:0x10001ffc'])
+            # H writes only ESI and EDI (ECX, the argument count the final cmp reads, is untouched); G only ESI and ECX.
+            self.assertEqual({d.split(' ', 1)[1].split(',')[0] for d in aim if d.split(' ')[0] in ('mov', 'imul', 'add', 'sar')}, {'esi', 'edi'})
+            self.assertEqual({d.split(' ', 1)[1].split(',')[0] for d in decode(objdump, directory, 'overlay', g, 0x10000000)
+                              if d.split(' ')[0] in ('mov', 'imul', 'add', 'sar')}, {'esi', 'ecx'})
+            for name, blob in (('overlay', g), ('aim', h)):
+                mnemonics = {d.split(' ')[0] for d in decode(objdump, directory, name, blob, 0x10000000)}
+                self.assertFalse(mnemonics & {'pop', 'call', 'ret'} or any(m.startswith('f') for m in mnemonics), name)
 
     def test_python_twins_and_line_parsers(self):
         self.assertEqual([verifier.auto_scale(h) for h in (0, 720, 1080, 1200, 1440, 1600, 2160, 4320, 8640)], [1, 1, 1, 1, 1.25, 1.25, 2, 3, 3])
@@ -266,16 +297,17 @@ class UiScaleCore(unittest.TestCase):
                        'set_identity();', 'restore_all();', 'sites::auto_scale(height)', 'log_tier::cached_debug', 'GET_MODULE_HANDLE_EX_FLAG_PIN',
                        'log_handle()', 'WriteFile(handle', 'SetLastError(error);', 'x3m::engine_memory::read', '"patched_unverified"',
                        'sites::encode_projection_stub(', 'sites::encode_size_stub(', 'sites::encode_main_mouse_stub(', 'sites::encode_menu_mouse_stub(',
-                       'sites::encode_cursor_stub(', 'sites::encode_entry_stub(',
-                       'void* continuation = mouse ? reinterpret_cast<void*>(c.va + c.length) : *site_[index].entry;',
+                       'sites::encode_cursor_stub(', 'sites::encode_entry_stub(', 'sites::encode_overlay_stub(', 'sites::encode_aim_stub(',
+                       '"click_mismatch"', 'c.bypass ? reinterpret_cast<void*>(c.va + c.length) : *site_[index].entry',
                        '*slot != continuation', 'if (log_tier::debug() && requested_)', 'frame % report_window == 0',
                        'constexpr unsigned report_window = 300;', 'if (applied) refresh_excluded_camera(0);',
                        'if (patched_) refresh_excluded_camera(frame);', 'log("ui_scale_camera frame=%llu excluded_camera=%08lx previous=%08lx"',
                        'acc = sites::accumulator_start;'):
             self.assertIn(needle, module)
         self.assertNotIn('claims[index].va + sites::mouse_site_length', module)  # never a code address as the jmp's memory operand
-        # The eight claims in the documented order, the projection last.
-        order = [module.index(f'"ui_scale_{n}"') for n in ('width', 'height', 'main_x', 'main_y', 'menu_x', 'menu_y', 'cursor', 'projection')]
+        # The ten claims in the documented order, the projection last.
+        order = [module.index(f'"ui_scale_{n}"') for n in ('width', 'height', 'main_x', 'main_y', 'menu_x', 'menu_y', 'cursor', 'overlay_icon',
+                                                            'cursor_aim', 'projection')]
         self.assertEqual(order, sorted(order))
         header = source_text(ROOT / 'src/proxy/ui_scale_sites.h')
         self.assertNotIn('windows.h', header)
@@ -300,7 +332,7 @@ class UiScaleSite(unittest.TestCase):
         self.assertEqual(run.returncode, 0, run.stdout[-3000:] + run.stderr)
         report = json.loads(run.stdout)
         self.assertEqual(report['result'], 'PASS')
-        self.assertEqual(len(report['checks']), 59)
+        self.assertEqual(len(report['checks']), 75)
         self.assertEqual(report['site_bytes'], {name: b.hex() for name, (_, b, _, _) in verifier.SITES.items()})
         self.assertEqual((report['raw_branch_hits_not_interior'], report['branches_into_spans'], report['dword_refs'], report['jump_table_entries_inside'],
                           report['overlapping_claims'], report['xmm_in_site_functions'], report['projection_register_writes']), ([], [], [], [], [], [], []))
@@ -309,11 +341,14 @@ class UiScaleSite(unittest.TestCase):
         self.assertEqual(report['claims_in_windows'], [['submit_phase_world_return_a', '0x47e007'], ['submit_phase_world_return_b', '0x47e711']])
         self.assertEqual(report['entry_claims'], ['submit_phase_world_enter'])
         self.assertEqual(report['projection_following'], ['pop', 'pop', 'pop', 'pop', 'add', 'ret'])
+        self.assertEqual(report['cursor_aim_following'][0], 'jl')  # the live-EFLAGS consumer right after the H span
+        self.assertEqual(report['ins_dispatcher_claims'], [['chase_mode_script', '0x42e742'], ['fov_sites:setfocus_site_va', '0x42dbf8']])
+        self.assertTrue(report['checks']['aim_flags_live_proof'] and report['checks']['click_sites_one_qword'])
         self.assertGreater(report['instructions'], 8000)
 
     def test_changed_site_fails(self):
         with tempfile.TemporaryDirectory() as directory:
-            for name in ('projection', 'cursor'):
+            for name in ('projection', 'cursor', 'cursor_aim'):
                 copy = Path(directory) / 'X3AP.exe'
                 copy.write_bytes(verifier.patched_image(EXE.read_bytes(), name))
                 report = json.loads(self.run_verifier(copy).stdout)
