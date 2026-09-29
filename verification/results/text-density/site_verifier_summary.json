@@ -1,0 +1,81 @@
+{
+  "branches_into_spans": [],
+  "checks": 72,
+  "claims_considered": 170,
+  "cockpit_init_callers": [
+    "0x403a26",
+    "0x4050f4"
+  ],
+  "config_field_stores": [
+    "0x4ecae3",
+    "0x4ecff8"
+  ],
+  "dword_refs": [],
+  "failed": [],
+  "font_after_span": [
+    [
+      "0x48cdc6",
+      "push",
+      "edi"
+    ],
+    [
+      "0x48cdc7",
+      "push",
+      "eax"
+    ],
+    [
+      "0x48cdc8",
+      "push",
+      "0x5611c0"
+    ],
+    [
+      "0x48cdcd",
+      "xor",
+      "edx,edx"
+    ]
+  ],
+  "font_callers": [
+    "0x41c9ab",
+    "0x41f7a7",
+    "0x496131",
+    "0x49615b"
+  ],
+  "identity": {
+    "bytes": 2153984,
+    "checksum": "0x00000000",
+    "identity_digest": "9d8ddf43f06031f4fb21e5e700d55a2df8881c76bd8c5ce4a9af0866d6dc38c8",
+    "known": "shipped (LAA set, CheckSum 0)",
+    "known_image": true,
+    "laa": true,
+    "sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab"
+  },
+  "init_backward_branches": [
+    [
+      "0x402f68",
+      "0x40284b",
+      true
+    ],
+    [
+      "0x4036d7",
+      "0x402ed5",
+      true
+    ],
+    [
+      "0x403796",
+      "0x402ed5",
+      true
+    ],
+    [
+      "0x40380a",
+      "0x402ed5",
+      true
+    ]
+  ],
+  "instructions": 4008,
+  "materials_callers": [
+    "0x403497"
+  ],
+  "overlapping_claims": [],
+  "raw_branch_hits_not_interior": [],
+  "result": "PASS"
+}

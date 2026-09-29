@@ -14,6 +14,7 @@
 #include "dust_leak_fix.h"
 #include "fov.h"
 #include "ui_scale.h"
+#include "text_density.h"
 #include "music_keep.h"
 #include "collide_narrow_census.h"
 #include "collide_sat_sse2.h"
@@ -472,6 +473,9 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
         if (reserved == nullptr)
             x3m::ui_scale::shutdown(); // same rule: the eight UI-scale jumps (and the debug entry counter) back only on
                                        // FreeLibrary, only over our jumps; the data cells go to the identity first
+        if (reserved == nullptr)
+            x3m::text_density::shutdown(); // same rule: the text-density claims, the config field and the style imm32
+                                           // back only on FreeLibrary, only over our bytes
         if (reserved == nullptr)
             x3m::sun_flare_fix::shutdown(); // same rule: the six SHRD/CMP bytes back only on FreeLibrary, only over our
                                             // jump

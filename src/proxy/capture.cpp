@@ -17,6 +17,7 @@
 #include "dust_leak_fix.h"
 #include "fov.h"
 #include "ui_scale.h"
+#include "text_density.h"
 #include "music_keep.h"
 #include "collide_narrow_census.h"
 #include "collide_sat_sse2.h"
@@ -2082,6 +2083,8 @@ HRESULT reset_common(IDirect3DDevice9* d, D3DPRESENT_PARAMETERS* p, D3DDISPLAYMO
         gpu_sync_before_reset(ctx); // the boundary queries go before the Reset (device resources)
         ctx.motion_output.before_reset();
     }
+    text_density::before_reset(); // X3M_TEXT_DENSITY: the d x shadow surfaces (engine texture objects) go before the
+                                  // Reset and are rebuilt on demand
     presentation_parameters("reset_before", ctx.id, ctx.stats.focus_window, p);
     // X3M_WINDOW_MONITOR_RECT=1 only: the game repositioned at the work-area origin before this Reset (0x4dac90's
     // mode-change path); the same predicate moves its window back to the monitor rectangle (window_mode.h).
@@ -3895,10 +3898,16 @@ HRESULT WINAPI create_device(IDirect3D9* d, UINT adapter, D3DDEVTYPE type, HWND 
     if (SUCCEEDED(hr) && p)
         cull_small_parts::set_backbuffer_width(p->BackBufferWidth); // X3M_CULL_SMALL_PARTS_PX only: the pixel scale of
                                                                     // the threshold
-    if (SUCCEEDED(hr) && p)
+    if (SUCCEEDED(hr) && p) {
         ui_scale::device_created(p->BackBufferWidth, p->BackBufferHeight); // X3M_UI_SCALE=auto|1..3: the scale from the
                                                                             // back buffer, the eight claims (all or none)
                                                                             // inside the still-open install window
+        text_density::device_created(ui_scale::scale(), out ? *out : nullptr); // X3M_TEXT_DENSITY: d = ceil(s) (auto) applied
+                                                                                // now when every d x font pair is present and
+                                                                                // the device's texture limits (GetDeviceCaps)
+                                                                                // hold the largest flagged row: cfg+0x784, the
+                                                                                // style imm32 when d = 3, the Materials rows
+    }
     log("create_device_result hr=%08lx", hr);
     if (SUCCEEDED(hr) && out && *out) {
         hook_device(*out, p && p->hDeviceWindow ? p->hDeviceWindow : window, window);
@@ -5404,6 +5413,11 @@ void initialize_log(HMODULE module) {
                             // here, the eight claims deferred to CreateDevice (the scale needs the back buffer); the
                             // per-camera entry counter at 0x004bdee0 claimed here under X3M_DEBUG=1 (refuses when the
                             // submit-phase fixture group holds the same bytes)
+    text_density::initialize(); // X3M_TEXT_DENSITY=auto|1|2|3, unset = auto: the font open 0x0048cdc0, the two block
+                                // blits 0x0048c090/0x0048c460 and the Materials call 0x0048af71 claimed here (inert),
+                                // plus the two draw-diagnostic entries under X3M_DEBUG=1; the density resolved and
+                                // applied at CreateDevice from ui_scale's scale; same window, disjoint from every
+                                // other claim
     sun_flare_fix::initialize(); // X3M_SUN_FLARE_FIX=on|off, unset = off (the launcher sends on): the lens collector's
                                  // horizontal bound SHRD/CMP at 0x0047e391 (six bytes) claimed through engine_patch
                                  // with a saturating stub in front of the tail, same window, disjoint from every other

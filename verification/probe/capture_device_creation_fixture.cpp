@@ -218,7 +218,11 @@ inline void set_backbuffer_width(unsigned) {}
 } // X3M_CULL_SMALL_PARTS_PX pixel scale at CreateDevice (src/proxy/cull_small_parts.h); inert on the host
 namespace ui_scale {
 inline bool device_created(unsigned, unsigned) { return false; }
+inline double scale() { return 1.0; }
 } // X3M_UI_SCALE resolution and claims at CreateDevice (src/proxy/ui_scale.h); inert on the host
+namespace text_density {
+inline bool device_created(double, IDirect3DDevice9*) { return false; }
+} // X3M_TEXT_DENSITY resolution at CreateDevice (src/proxy/text_density.h); inert on the host
 namespace window_mode {
 inline void apply(const char*, HWND, HWND, bool, UINT, UINT) {}
 } // X3M_WINDOW_MONITOR_RECT move at create_before (src/proxy/window_mode.h); inert on the host

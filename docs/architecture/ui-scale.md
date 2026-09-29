@@ -96,9 +96,11 @@ entry point.
 
 - Bitmap text: fonts are fixed-size atlases blitted into textures, so text is
   magnified by `s` with the texture filter and goes soft at non-integer scales
-  (blocky on the `MPF_NOFILTERING` textures). Sharp text is strategy (a) of the
-  note (`-fontscale s`, `s x` atlases, `MPF_FONTSCALE` on every text texture),
-  deferred; integer scales look best until then.
+  (blocky on the `MPF_NOFILTERING` textures). `text_density` (default `auto`)
+  draws the text at the integer density `d = ceil(s)` through the engine's own
+  `-fontscale` path so the projection minifies instead: strategy (a) of the
+  note, [text-density.md](text-density.md); it needs the `d x` font pairs under
+  `<game>/f` (`manage.py install` copies them).
 - The script's virtual size is `round(W/s)`; the projection's viewport is
   `W/s` exactly: the edge mismatch is under one pixel.
 - Script code that hands a pixel size to a native call that works in real

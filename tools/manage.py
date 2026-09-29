@@ -332,6 +332,96 @@ def ui_scale_setting(text):
     return setting if UI_SCALE_MIN <= float(setting) <= UI_SCALE_MAX else None
 
 
+# --text-density (docs/architecture/text-density.md): the in-game text drawn at the integer density d = ceil(ui_scale)
+# through the engine's own -fontscale path, with the d x fonts installed as loose <game>/f files. auto (the default on
+# every modded launch) is 1 when ui_scale is 1, so nothing changes without a UI scale.
+TEXT_DENSITY_SETTINGS = ('auto', '1', '2', '3')
+TEXT_DENSITY_DEFAULT_SETTING = 'auto'
+FONTS_MANIFEST = 'x3m-fonts.json'
+
+
+def text_density_setting(text):
+    """X3M_TEXT_DENSITY for a --text-density argument: auto, 1, 2 or 3 exactly; None when refused."""
+    return text if text in TEXT_DENSITY_SETTINGS else None
+
+
+def density_font_files(fonts_dir):
+    """The loose font pairs a build directory holds (build/fonts/F/<Name><S*d>.abc/.tga), as sorted file names."""
+    fonts_dir = Path(fonts_dir)
+    if not fonts_dir.is_dir():
+        return []
+    return sorted(p.name for p in fonts_dir.iterdir() if p.is_file() and p.suffix.lower() in ('.abc', '.tga'))
+
+
+def _read_fonts_manifest(game):
+    path = Path(game) / 'f' / FONTS_MANIFEST
+    if not path.is_file():
+        return {}
+    try:
+        record = json.loads(path.read_text())
+        files = record.get('files', {})
+        return {str(k): str(v) for k, v in files.items()} if isinstance(files, dict) else {}
+    except (OSError, ValueError, TypeError, AttributeError):
+        return {}
+
+
+def _write_fonts_manifest(manifest, owned):
+    manifest.write_text(json.dumps({'schema': 1, 'project': 'x3-modern-renderer', 'files': owned}, indent=1, sort_keys=True) + '\n')
+
+
+def install_density_fonts(game, fonts_dir):
+    """Copies the density fonts into <game>/f as loose files. A file already there that the mod did not write (absent
+    from the manifest, or changed since) is left alone and reported. The manifest is rewritten after every copy, so a
+    copy that fails half-way leaves nothing unowned. Returns {'copied': [...], 'retained': [...], 'manifest': path,
+    'files': {name: sha256}}; nothing is written when the build holds no fonts."""
+    game = Path(game)
+    names = density_font_files(fonts_dir)
+    if not names:
+        return {'copied': [], 'retained': [], 'manifest': None, 'files': {}}
+    target = game / 'f'
+    target.mkdir(exist_ok=True)
+    manifest = target / FONTS_MANIFEST
+    owned = _read_fonts_manifest(game)
+    copied, retained = [], []
+    for name in names:
+        destination = target / name
+        # A file already there is ours when the manifest names it and its bytes still match, or when its copy never
+        # finished (an empty hash: the partial file is overwritten); anything else belongs to the player.
+        if destination.exists() and (name not in owned or (owned[name] and digest(destination) != owned[name])):
+            retained.append(name)
+            continue
+        owned[name] = ''  # owned from this moment: a copy that fails half-way is still ours to remove
+        _write_fonts_manifest(manifest, owned)
+        shutil.copyfile(Path(fonts_dir) / name, destination)
+        owned[name] = digest(destination)
+        _write_fonts_manifest(manifest, owned)
+        copied.append(name)
+    return {'copied': copied, 'retained': retained, 'manifest': manifest, 'files': {n: owned[n] for n in copied}}
+
+
+def remove_density_fonts(game):
+    """Removes the loose fonts the manifest owns (those whose bytes still match, or whose copy never finished) and the
+    manifest itself; `uninstall` only, never `rollback` (a previous DLL that does not ask for the fonts is not hurt by
+    them). Returns {'removed': [...], 'retained': [...]}; nothing happens without a manifest."""
+    game = Path(game)
+    owned = _read_fonts_manifest(game)
+    manifest = game / 'f' / FONTS_MANIFEST
+    if not manifest.is_file():
+        return {'removed': [], 'retained': []}
+    removed, retained = [], []
+    for name, sha in sorted(owned.items()):
+        path = game / 'f' / name
+        if not path.is_file():
+            continue
+        if sha and digest(path) != sha:
+            retained.append(name)
+            continue
+        path.unlink()
+        removed.append(name)
+    manifest.unlink()
+    return {'removed': removed, 'retained': retained}
+
+
 def collide_default(explicit, args):
     """An explicit --x / --no-x wins; unset means on for a modded launch, off under --vanilla."""
     return explicit if explicit is not None else not args.vanilla
@@ -928,6 +1018,8 @@ def main():
     parser.add_argument('--bottle', default=BOTTLE, help='CrossOver bottle (default: X3, the arm64/FEX bottle; X3M_BOTTLE overrides; the old x86_64/Rosetta bottle is Steam)')
     parser.add_argument('--dll-source', type=Path, default=ROOT / 'build/d3d9.dll',
                         help='DLL to install (defaults to build/d3d9.dll; other actions do not use it)')
+    parser.add_argument('--fonts-dir', type=Path, default=ROOT / 'build/fonts/F',
+                        help='install only: the density fonts (<Name><S*d>.abc/.tga, tools/fonts/generate_fonts.py) copied into <game>/f as loose files with a manifest for uninstall/rollback; nothing is copied when the directory is absent or empty (defaults to build/fonts/F)')
     parser.add_argument('--capture-frames', type=int, choices=range(0, 65), metavar='0..64', default=None,
                         help='[launcher default since 2026-09-25: 8 on every modded launch, 1 under --vanilla] Frames of the F8 capture burst (X3M_CAPTURE_FRAMES); F8 is read only with --debug and starts the burst at once (--capture-start and --capture-delay were removed on 2026-09-26). Above 8 is meant for the raw --taa-debug dumps (32 frames separate the 8-frame jitter ripple from slower crawl): about 40 MB per frame at 1280x768 on the HDR route (hdr + taa rgba16f 7.9 MB each, motion rgba32f 15.7 MB, depth 3.9 MB or 15.7 MB on the sun lane, present bgra8 3.9 MB), so 1.3-1.7 GB for 32 frames')
     parser.add_argument('--direct', action='store_true', default=None, help='[launcher default since 2026-09-25 on every modded launch; --no-direct = off; not sent under --vanilla] Skip launcher and intro using X3 command-line switches')
@@ -1138,6 +1230,7 @@ def main():
     parser.add_argument('--cull-small-parts', type=float, default=None, metavar='PX', help='[launcher default since 2026-09-25: 4 on every modded launch (was 2); --cull-small-parts 0 = off; not sent under --vanilla] Cull mesh nodes whose projected radius is under PX pixels, 0 < PX <= 64 (X3M_CULL_SMALL_PARTS_PX; launcher default 2 on every modded launch, --cull-small-parts 0 = off, nothing patched; --vanilla forwards nothing and the DLL\'s own fallback stays off): one trampoline on the per-node cull/LOD pass 0x0047cfe0 at 0x0047d2a2 sends a node whose engine metric s = r*640/D is below the per-frame threshold (PX converted with the live projection scale and the back-buffer width, the cull-census bucket rule) down the engine\'s own size-cull instruction at 0x0047d2c3; every other node runs the vanilla compare. Run131 census at the run117 station view: 2 px = 403 of the 878 census-attributed draws (901 in the frame; about 9.6 ms at 23.7 us/draw), 4 px = 458; lower bounds, because a culled node also culls its 0x40000-flagged children (0x0047d055). The threshold applies in every view (small casters leave the shadow and env maps too) and is scaled by the one main-view projection. Exact executable and bytes only, otherwise fails closed to vanilla; risk: popping of thin parts (antennas, clamps) whose radius is small, cascading to their descendants (none seen at 2 px in run 43 B) (docs/architecture/engine-frame-time.md 2.3, docs/reverse-engineering/lod-selection.md "Cull small parts site")')
     parser.add_argument('--cull-small-props', choices=('on', 'off'), default=None, help='[sent only when given; DLL default on since 2026-09-29, earlier flights run375-run383 ran it opt-in] Render-only skip of small prop nodes (X3M_CULL_SMALL_PROPS): a main-scene draw whose render node is a ships\\props\\ body (turret bases and sockets, weapon dummies) and whose mesh part box projects under the --cull-small-parts pixel radius is not forwarded to the device (the hook returns D3D_OK); props on the player\'s ship and on the current target are always drawn. No engine patch and no engine write: the cull/LOD pass, the renderable bit and the game logic (turret aiming, firing, collision) run as vanilla. Run375 (Mayhem 3, 5120x1440, frame 4400): 82 of 352 draws were Split turret props (76 of them under 4 px) at 4.3-8.4 M units, each about 2.5 px wide. Needs a non-zero --cull-small-parts and the motion route; one cull_small_props_frame row per 300 frames, census verdict culled_prop (docs/verification/cull-small-parts.md, "Small props")')
     parser.add_argument('--ui-scale', default=None, metavar='S|auto', help='Size of the in-game 2D UI (menus, sidebars, HUD panels, ticker; not the main menu, which the game already scales with the screen): S in [1, 3] (decimals allowed) or auto = the back-buffer height over 1080 snapped down to quarter steps (1080 -> 1, 1440 -> 1.25, 2160 -> 2), resolved by the DLL at device creation (X3M_UI_SCALE; default 1 = the game\'s own size, nothing patched; sent on every modded launch, refused under --vanilla). The DLL scales the pixel orthographic projection of the 2D instances at 0x004be246 about each instance\'s anchor, tells the script a virtual screen of W/S x H/S (cases 0x71/0x72), divides the script\'s mouse deltas by S with a remainder (four reads) and multiplies the script\'s cursor back to real pixels at its one native store (0x004074ec), all eight sites verified and claimed together or none; the native cockpit HUD scene (crosshair, target icons, the chase lead marker) is excluded by camera and stays in real pixels. Bitmap text is enlarged with the texture filter and goes soft at non-integer sizes (docs/architecture/ui-scale.md)')
+    parser.add_argument('--text-density', default=None, metavar='auto|1|2|3', help='Sharpness of the in-game text under --ui-scale (X3M_TEXT_DENSITY; default auto on every modded launch, refused under --vanilla): the text is drawn into its textures at this whole-number density through the engine\'s own -fontscale supersampling and shrunk by the projection to the UI size, instead of a 1x bitmap being enlarged. auto = the smallest whole number at or above the UI scale in play (1 when --ui-scale is 1, so nothing changes without a UI scale); 1 = off; 2 or 3 force a density. Needs the density fonts as loose <game>/f files (Tahoma{13d}, Zekton{26d} and the language variants; `install` copies them from build/fonts/F): a font whose d x pair is missing is opened at 1x and logged. The DLL writes the engine\'s font-scale field, scales every font open (0x0048cdc0), flags the generated writeable Materials rows MPF_FONTSCALE right after the Materials load (0x0048af71), hands the two block blits (0x0048c090/0x0048c460) a d x shadow of static sources and patches the style-offset factor for d = 3, all verified and claimed together or none (docs/architecture/text-density.md)')
     parser.add_argument('--cull-dock-parts', type=float, default=None, metavar='PX', help='[launcher default 12 with every non-zero --cull-small-parts (user decision 2026-09-29; 8 before the same day); --cull-dock-parts 0 = off, not sent; refused when the cull is off] Second, larger pixel radius of the --cull-small-parts stub for carrier dock-port parts (X3M_CULL_DOCK_PARTS_PX, 0 < PX <= 64): a node whose model id (node+0x140) is an inline body of the stock dock cut scenes 9013/9014 (quick-launch tubes, hangar) or 9098/9099 (M6 variants), ids 901300000..901499999 and 909800000..909999999, is sent down the engine\'s size-cull instruction when its s = r*640/D is below PX converted like --cull-small-parts (same projection, width and FOV); every other node keeps the --cull-small-parts rule. Projectiles stay exempt as there. run385 replay: 12 px is the engine\'s s < 8 at 5120 wide with --fov 90 and removes 159/27/27 dock-port draws (8 px would be s < 5 there, 64/2/25). One cull_small_parts_frame dock_culled= count per F8 frame, census verdict culled_dock (docs/verification/cull-small-parts.md, "Dock ports")')
     parser.add_argument('--cull-small-parts-projectiles', choices=('on', 'off'), default=None, help='Whether --cull-small-parts spares weapon projectiles (X3M_CULL_SMALL_PARTS_PROJECTILES; default on; refused when the cull is off, enables nothing on its own). on = a node carrying the engine\'s class-0 (TBullets) marker, +0x130 & 0x20000000 set at object creation (0x00441242) for every bolt, beam and flak type including mod-added ones, runs the vanilla compare instead of the pixel cull; missiles carry no marker and stay subject to the cull (they rarely fall under a few pixels). Run 75 B at 4 px: 30-33 of 51-54 bolts per frame were culled by the stub one frame after leaving the muzzle; expected cost with on about 31 more bullet instances (~750 primitives) per frame while firing. The DLL turns the exemption off (projectiles=marker_mismatch) when the two marker instructions are not the verified bytes (docs/reverse-engineering/lod-selection.md "Projectile nodes")')
     parser.add_argument('--config', nargs='?', const='', default=None, metavar='PATH', help='launch only: the settings file x3m.ini (docs/user/config.md, docs/architecture/config-file.md). Default (no --config): X3M_CONFIG=bare, the proxy reads no file and uses no built-in default, the launcher sends every setting itself and an absent variable is off, so a flight depends only on these options. --config: player mode, the release scenario: the launcher sends no promoted default and no explicit off value, only X3M_CONFIG (unset: the x3m.ini next to the proxy; --config PATH: that file, a host path sent as Z:<absolute path> for Wine, a path with a drive letter or a leading backslash verbatim), the launcher-only parts (the X3 switches, the voice decoder variables, the DLL override) and the variables of the options given explicitly, which beat the file (an option that switches something off is sent as an empty value). Refused with --vanilla (no proxy loads).')
@@ -1744,6 +1837,12 @@ def main():
         args.ui_scale_setting = ui_scale_setting(args.ui_scale)
         if args.ui_scale_setting is None:
             parser.error(f'--ui-scale out of range: {args.ui_scale!r} (expected auto or a scale in [{UI_SCALE_MIN:g}, {UI_SCALE_MAX:g}])')
+    if args.vanilla and args.text_density is not None:
+        parser.error('--text-density cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so the proxy that sets the text density never runs')
+    if args.text_density is not None:
+        args.text_density_setting = text_density_setting(args.text_density)
+        if args.text_density_setting is None:
+            parser.error(f'--text-density out of range: {args.text_density!r} (expected auto, 1, 2 or 3)')
     if args.vanilla and (args.pause_key_only or args.pause_key is not None):
         parser.error('--pause-key-only/--pause-key cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so the proxy that patches the pause never runs')
     if args.vanilla and args.run_in_background is not None:
@@ -1824,19 +1923,34 @@ def main():
             if args.action == 'install':
                 source = args.dll_source.resolve(strict=True)
                 commit, origin = source_commit(source)
+                # The density fonts go first (loose f\ files with their own manifest, harmless to any DLL), so the
+                # install record can carry their names and hashes.
+                fonts = install_density_fonts(game, args.fonts_dir)
                 media_package.install(game, source,
                     {'source': str(source), 'source_commit': commit, 'manifest_source': origin,
-                     'executable': executable_record(game / 'X3AP.exe')},
+                     'executable': executable_record(game / 'X3AP.exe'), 'density_fonts': fonts['files']},
                     retire_media=True)
                 print(f'Installed {dll}; bottle configuration unchanged.')
+                if fonts['manifest'] is None:
+                    print(f'No density fonts at {args.fonts_dir}; text density stays at 1x fonts (tools/fonts/generate_fonts.py).')
+                else:
+                    print(f'Installed {len(fonts["copied"])} density font file(s) into {game / "f"} (manifest {fonts["manifest"].name}):')
+                    for name in fonts['copied']:
+                        print(f'  {name} sha256={fonts["files"][name]}')
+                    if fonts['retained']:
+                        print('Left unowned font files in place: ' + ', '.join(fonts['retained']))
             elif args.action == 'uninstall':
                 retained = media_package.uninstall(game)
                 print('Removed owned proxy and manifest; captures and originals retained.')
                 if retained:
                     print('Retained changed/unowned media: ' + ', '.join(retained))
+                fonts = remove_density_fonts(game)
+                if fonts['removed'] or fonts['retained']:
+                    print(f'Removed {len(fonts["removed"])} density font file(s) from {game / "f"}'
+                          + ('; left changed: ' + ', '.join(fonts['retained']) if fonts['retained'] else '') + '.')
             elif args.action == 'rollback':
                 media_package.rollback(game)
-                print('Restored previous owned proxy and selection.')
+                print('Restored previous owned proxy and selection; density fonts (if any) left in place.')
             else:
                 media_package.recover(game)
                 print('Recovered verified pre-transaction proxy and selection.')
@@ -2165,6 +2279,12 @@ def main():
             env.pop('X3M_UI_SCALE', None)
         else:
             env['X3M_UI_SCALE'] = getattr(args, 'ui_scale_setting', None) or UI_SCALE_DEFAULT_SETTING
+        # Text density: always explicit on a modded launch (auto = ceil(ui_scale), 1 without a UI scale), so a stale
+        # shell value cannot force a density; dropped under --vanilla (refused above).
+        if args.vanilla:
+            env.pop('X3M_TEXT_DENSITY', None)
+        else:
+            env['X3M_TEXT_DENSITY'] = getattr(args, 'text_density_setting', None) or TEXT_DENSITY_DEFAULT_SETTING
         # Point-light root admission: same rule, set only when requested so a
         # stale shell value cannot patch the range-test branch.
         if args.point_light_root_admission:
