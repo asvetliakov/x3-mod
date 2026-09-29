@@ -131,6 +131,10 @@ CULL_SMALL_PARTS_DEFAULT_PX = 4.0
 # one frame after they left the muzzle; projectile nodes (the engine's class-0
 # marker +0x130 & 0x20000000) are exempt by default.
 CULL_SMALL_PARTS_DEFAULT_PROJECTILES = 'on'
+# Carrier dock-port parts (user decision 2026-09-29, option 1 of docs/reverse-engineering/ship-scene-parts.md): the
+# inline bodies of the stock dock cut scenes are culled below this larger pixel radius; sent with every non-zero
+# small-parts cull unless --cull-dock-parts is given (0 = off, not sent).
+CULL_DOCK_PARTS_DEFAULT_PX = 8.0
 # X3M_CAPTURE_START on every modded launch: the Present count of an automatic capture, 999999 = never (2026-09-26).
 CAPTURE_START_NEVER = '999999'
 
@@ -1111,6 +1115,7 @@ def main():
     parser.add_argument('--run-in-background', choices=('on', 'off'), default=None, help='[launcher default on modded launches: on; --run-in-background off = the game\'s own; not sent under --vanilla, where an explicit value is refused] Keep the game running while another window is active, as the -runinbg start option does (X3M_RUN_IN_BACKGROUND=1/0; a DLL with no environment and no file resolves on, unset under X3M_CONFIG=bare is off; docs/reverse-engineering/run-in-background.md): the proxy sets the RunInBackground bit 0x4000 of the game\'s input flags once, right after the game applied its command line, so the message pump does not block the game loop while the window is inactive. Nothing is written when -runinbg (which --direct passes) or the registry value already set it; one run_in_background row at install and one when the game reaches the site')
     parser.add_argument('--cull-small-parts', type=float, default=None, metavar='PX', help='[launcher default since 2026-09-25: 4 on every modded launch (was 2); --cull-small-parts 0 = off; not sent under --vanilla] Cull mesh nodes whose projected radius is under PX pixels, 0 < PX <= 64 (X3M_CULL_SMALL_PARTS_PX; launcher default 2 on every modded launch, --cull-small-parts 0 = off, nothing patched; --vanilla forwards nothing and the DLL\'s own fallback stays off): one trampoline on the per-node cull/LOD pass 0x0047cfe0 at 0x0047d2a2 sends a node whose engine metric s = r*640/D is below the per-frame threshold (PX converted with the live projection scale and the back-buffer width, the cull-census bucket rule) down the engine\'s own size-cull instruction at 0x0047d2c3; every other node runs the vanilla compare. Run131 census at the run117 station view: 2 px = 403 of the 878 census-attributed draws (901 in the frame; about 9.6 ms at 23.7 us/draw), 4 px = 458; lower bounds, because a culled node also culls its 0x40000-flagged children (0x0047d055). The threshold applies in every view (small casters leave the shadow and env maps too) and is scaled by the one main-view projection. Exact executable and bytes only, otherwise fails closed to vanilla; risk: popping of thin parts (antennas, clamps) whose radius is small, cascading to their descendants (none seen at 2 px in run 43 B) (docs/architecture/engine-frame-time.md 2.3, docs/reverse-engineering/lod-selection.md "Cull small parts site")')
     parser.add_argument('--cull-small-props', choices=('on', 'off'), default=None, help='[sent only when given; DLL default on since 2026-09-29, earlier flights run375-run383 ran it opt-in] Render-only skip of small prop nodes (X3M_CULL_SMALL_PROPS): a main-scene draw whose render node is a ships\\props\\ body (turret bases and sockets, weapon dummies) and whose mesh part box projects under the --cull-small-parts pixel radius is not forwarded to the device (the hook returns D3D_OK); props on the player\'s ship and on the current target are always drawn. No engine patch and no engine write: the cull/LOD pass, the renderable bit and the game logic (turret aiming, firing, collision) run as vanilla. Run375 (Mayhem 3, 5120x1440, frame 4400): 82 of 352 draws were Split turret props (76 of them under 4 px) at 4.3-8.4 M units, each about 2.5 px wide. Needs a non-zero --cull-small-parts and the motion route; one cull_small_props_frame row per 300 frames, census verdict culled_prop (docs/verification/cull-small-parts.md, "Small props")')
+    parser.add_argument('--cull-dock-parts', type=float, default=None, metavar='PX', help='[launcher default 8 with every non-zero --cull-small-parts (user decision 2026-09-29); --cull-dock-parts 0 = off, not sent; refused when the cull is off] Second, larger pixel radius of the --cull-small-parts stub for carrier dock-port parts (X3M_CULL_DOCK_PARTS_PX, 0 < PX <= 64): a node whose model id (node+0x140) is an inline body of the stock dock cut scenes 9013/9014 (quick-launch tubes, hangar) or 9098/9099 (M6 variants), ids 901300000..901499999 and 909800000..909999999, is sent down the engine\'s size-cull instruction when its s = r*640/D is below PX converted like --cull-small-parts (same projection, width and FOV); every other node keeps the --cull-small-parts rule. Projectiles stay exempt as there. run385 replay: 159/27/27 dock-port draws removed at s < 8, which is 12 px at 5120x1440 with --fov 90 (8 px is s < 5 there). One cull_small_parts_frame dock_culled= count per F8 frame, census verdict culled_dock (docs/verification/cull-small-parts.md, "Dock ports")')
     parser.add_argument('--cull-small-parts-projectiles', choices=('on', 'off'), default=None, help='Whether --cull-small-parts spares weapon projectiles (X3M_CULL_SMALL_PARTS_PROJECTILES; default on; refused when the cull is off, enables nothing on its own). on = a node carrying the engine\'s class-0 (TBullets) marker, +0x130 & 0x20000000 set at object creation (0x00441242) for every bolt, beam and flak type including mod-added ones, runs the vanilla compare instead of the pixel cull; missiles carry no marker and stay subject to the cull (they rarely fall under a few pixels). Run 75 B at 4 px: 30-33 of 51-54 bolts per frame were culled by the stub one frame after leaving the muzzle; expected cost with on about 31 more bullet instances (~750 primitives) per frame while firing. The DLL turns the exemption off (projectiles=marker_mismatch) when the two marker instructions are not the verified bytes (docs/reverse-engineering/lod-selection.md "Projectile nodes")')
     parser.add_argument('--config', nargs='?', const='', default=None, metavar='PATH', help='launch only: the settings file x3m.ini (docs/user/config.md, docs/architecture/config-file.md). Default (no --config): X3M_CONFIG=bare, the proxy reads no file and uses no built-in default, the launcher sends every setting itself and an absent variable is off, so a flight depends only on these options. --config: player mode, the release scenario: the launcher sends no promoted default and no explicit off value, only X3M_CONFIG (unset: the x3m.ini next to the proxy; --config PATH: that file, a host path sent as Z:<absolute path> for Wine, a path with a drive letter or a leading backslash verbatim), the launcher-only parts (the X3 switches, the voice decoder variables, the DLL override) and the variables of the options given explicitly, which beat the file (an option that switches something off is sent as an empty value). Refused with --vanilla (no proxy loads).')
     parser.add_argument('--dry-run', action='store_true', help='launch only: validate the options and installation, print the command and X3M_* environment as JSON, and exit without launching')
@@ -1689,6 +1694,8 @@ def main():
     # 0 is off; otherwise the value must survive the DLL's fixed-point parser ([+]digits[.digits], (0, 64]).
     if args.cull_small_parts is not None and not (math.isfinite(args.cull_small_parts) and (args.cull_small_parts == 0.0 or 0.0001 <= args.cull_small_parts <= 64.0)):
         parser.error(f'--cull-small-parts out of range: {args.cull_small_parts} (expected 0 or [0.0001, 64])')
+    if args.cull_dock_parts is not None and not (math.isfinite(args.cull_dock_parts) and (args.cull_dock_parts == 0.0 or 0.0001 <= args.cull_dock_parts <= 64.0)):
+        parser.error(f'--cull-dock-parts out of range: {args.cull_dock_parts} (expected 0 or [0.0001, 64])')
     if args.vanilla and args.terran_station_lod is not None:
         parser.error('--terran-station-lod cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so the proxy that patches the LOD reader never runs')
     if args.vanilla and args.lod_occlusion is not None:
@@ -1743,6 +1750,8 @@ def main():
         parser.error('--cull-small-parts-projectiles requires a non-zero --cull-small-parts')
     if args.cull_small_props is not None and not cull_small_parts_px(args):
         parser.error('--cull-small-props requires a non-zero --cull-small-parts')
+    if args.cull_dock_parts is not None and not cull_small_parts_px(args):
+        parser.error('--cull-dock-parts requires a non-zero --cull-small-parts')
     if not 100 <= args.profile_interval_us <= 1000000:
         parser.error('--profile-interval-us must be between 100 and 1000000.')
     if args.gz_buffer_kb != 256 and not args.gz_buffer:
@@ -2182,6 +2191,12 @@ def main():
         else:
             env.pop('X3M_CULL_SMALL_PARTS_PX', None)
             env.pop('X3M_CULL_SMALL_PARTS_PROJECTILES', None)
+        # Dock-port threshold: with the cull, the default unless given; 0 (off) and no cull send nothing.
+        dock_px = (CULL_DOCK_PARTS_DEFAULT_PX if args.cull_dock_parts is None else args.cull_dock_parts) if cull_px else 0.0
+        if dock_px:
+            env['X3M_CULL_DOCK_PARTS_PX'] = f'{dock_px:.4f}'
+        else:
+            env.pop('X3M_CULL_DOCK_PARTS_PX', None)
         # Small-prop draw skip: sent only when given (the DLL's own default is off); an inherited value is dropped.
         if cull_px and args.cull_small_props is not None:
             env['X3M_CULL_SMALL_PROPS'] = args.cull_small_props

@@ -47,7 +47,7 @@ EXPECTED_EMPTY = {
     'X3M_CHASE_DISTANCE_SCALE': '1.05', 'X3M_CHASE_FOV_COMPENSATE': '1', 'X3M_CHASE_HUD_ANCHOR': 'forward',
     'X3M_CHASE_OFFSET_Y': '0.5', 'X3M_CHASE_PITCH_DOWN_DEG': '0.5', 'X3M_CHASE_SCENE_FIX': '0',
     'X3M_CHASE_VIEW_RESTORE': '1', 'X3M_COLLIDE_BOX_CULL': '1', 'X3M_COLLIDE_MEMO': '1', 'X3M_COLLIDE_SAT_SSE2': '1',
-    'X3M_CRYPT_CACHE': '1', 'X3M_CULL_SMALL_PARTS_PROJECTILES': 'on', 'X3M_CULL_SMALL_PARTS_PX': '4.0000', 'X3M_DAT_HANDLES': '1',
+    'X3M_CRYPT_CACHE': '1', 'X3M_CULL_DOCK_PARTS_PX': '8.0000', 'X3M_CULL_SMALL_PARTS_PROJECTILES': 'on', 'X3M_CULL_SMALL_PARTS_PX': '4.0000', 'X3M_DAT_HANDLES': '1',
     'X3M_DUST_LEAK_FIX': 'on',
     # 2026-09-29 (Run 103 A): gain 1, cores capped at 0.7, lens flares at 0.3 (screen-emission.md, sun-occlusion.md).
     'X3M_EMISSION_SOURCE_CLAMP': '0.7', 'X3M_EMISSION_SOURCE_GAIN': '1.0', 'X3M_FADE_RT2_OWNER': 'on', 'X3M_FADE_RT2_OWNER_DEFAULT': '1', 'X3M_FOG_DOCKED': '1', 'X3M_FOG_DUST_MOTES': '1300,3,128',
@@ -132,6 +132,9 @@ OPT_OUTS = (
     (('--volumetric-fog-cards', 'keep'), 'X3M_VOLUMETRIC_FOG_CARDS', 'keep'),
     (('--volumetric-fog-range', 'legacy'), 'X3M_VOLUMETRIC_FOG_RANGE', 'legacy'),
     (('--cull-small-parts', '0'), 'X3M_CULL_SMALL_PARTS_PX', None),
+    (('--cull-small-parts', '0'), 'X3M_CULL_DOCK_PARTS_PX', None),
+    (('--cull-dock-parts', '0'), 'X3M_CULL_DOCK_PARTS_PX', None),
+    (('--cull-dock-parts', '12'), 'X3M_CULL_DOCK_PARTS_PX', '12.0000'),
     (('--no-music-keep',), 'X3M_MUSIC_KEEP', None),
     (('--run-in-background', 'off'), 'X3M_RUN_IN_BACKGROUND', '0'),
     (('--taa-luma-lock', '0'), 'X3M_TAA_LUMA_LOCK', '0'),

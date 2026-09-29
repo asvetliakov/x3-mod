@@ -315,11 +315,20 @@ template <class Char> inline bool parse_lod_switch_cap(const Char* text, unsigne
     *cap = v;
     return true;
 }
-enum class Verdict : unsigned char { kept = 0, culled_size, culled_min, culled_other, no_exit, culled_small, culled_prop };
-constexpr unsigned verdict_count = 7;
+enum class Verdict : unsigned char {
+    kept = 0,
+    culled_size,
+    culled_min,
+    culled_other,
+    no_exit,
+    culled_small,
+    culled_prop,
+    culled_dock
+};
+constexpr unsigned verdict_count = 8;
 inline const char* verdict_name(Verdict v) {
-    static const char* const names[verdict_count] = {"kept",         "culled_size", "culled_min",  "culled_other",
-                                                     "no_exit",      "culled_small", "culled_prop"};
+    static const char* const names[verdict_count] = {"kept",    "culled_size",  "culled_min",  "culled_other",
+                                                     "no_exit", "culled_small", "culled_prop", "culled_dock"};
     return unsigned(v) < verdict_count ? names[unsigned(v)] : "?";
 }
 // X3M_CULL_SMALL_PROPS (cull_small_props_core.h): a node the engine kept whose main-scene draws the proxy skipped
@@ -352,13 +361,25 @@ inline bool sorted_contains(const std::uint32_t* sorted, std::uint32_t count, st
 inline bool small_exempt(const Entry& e, std::int32_t small_threshold, bool small_exempt_projectiles) {
     return small_exempt_projectiles && small_threshold > 0 && e.s < small_threshold && (e.flags130 & projectile_flag);
 }
-inline Verdict classify(const Entry& e, std::int32_t small_threshold = 0, bool small_exempt_projectiles = false) {
+// Carrier dock-port parts (X3M_CULL_DOCK_PARTS_PX; cull_small_parts_core.h dock_model, the same ranges): the
+// stub also culls a node whose model id is a dock cut scene's inline body when its `s` is at or above the small
+// threshold and below `upper` (the larger dock threshold); the census names those rows culled_dock, after the
+// engine's own rules and culled_small, with the same projectile exemption.
+constexpr std::uint32_t dock_first_base = 901300000, dock_second_base = 909800000, dock_span = 200000;
+inline bool dock_model(std::uint32_t id) {
+    return id - dock_first_base < dock_span || id - dock_second_base < dock_span;
+}
+inline Verdict classify(const Entry& e, std::int32_t small_threshold = 0, bool small_exempt_projectiles = false,
+                        std::int32_t upper = 0) {
     if (!e.exited) return Verdict::no_exit;
     if (e.flags_out & 2u) return Verdict::kept;
     if (e.limit > 0 && e.measure < e.limit) return Verdict::culled_size;
     if (e.measure < 1 && !(e.flags_in & 0x4000000u)) return Verdict::culled_min;
     if (small_threshold > 0 && e.s < small_threshold && !small_exempt(e, small_threshold, small_exempt_projectiles))
         return Verdict::culled_small;
+    if (small_threshold > 0 && upper > small_threshold && e.s >= small_threshold && e.s < upper &&
+        dock_model(e.model) && !(small_exempt_projectiles && (e.flags130 & projectile_flag)))
+        return Verdict::culled_dock;
     return Verdict::culled_other;
 }
 

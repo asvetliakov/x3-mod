@@ -729,7 +729,9 @@ compare and the engine's own cull instruction `0047d2c3 83 a7 2c 01 00 00 fd`
 the lod_scale's `0047d44b`; the fixture installs the census and this stub on
 the same synthetic pass and both report correctly.
 
-**Stub** (82 bytes since 2026-09-23, 64 before the projectile test; no call, no Win32, no floating point): `cmp dword
+**Stub** (147 bytes since 2026-09-29 with the carrier dock-port threshold, first compare against the larger of the two
+thresholds, [cull-small-parts.md](../verification/cull-small-parts.md) "Dock ports"; the description below is the
+82-byte stub of 2026-09-23, 64 bytes before the projectile test; no call, no Win32, no floating point): `cmp dword
 [threshold],0; jle continue` (the disarmed cost), then `push eax; mov
 eax,[threshold]; cmp [esp+0x30],eax; pop eax; jge continue` on the pass's own
 `s = r·640/D` at `[ESP+0x2c]` (ESP unchanged: the site is a `jmp`, not a

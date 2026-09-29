@@ -22,8 +22,16 @@
 // decision (X3M_CULL_SMALL_PROPS, cull_small_props_core.h) over a synthetic
 // engine image: a prop below the threshold skipped, above it drawn, the own
 // ship's and the target's props drawn, fail-closed cases, the walk budget, and
-// the census's culled_prop verdict. Diagnostic timings only; not
-// game FPS. Never launches the game.
+// the census's culled_prop verdict. Carrier dock-port parts
+// (X3M_CULL_DOCK_PARTS_PX, docs/reverse-engineering/ship-scene-parts.md): an
+// 18-node tree with model ids inside, on and one past each bound of
+// [901300000, 901499999] and [909800000, 909999999] at s = 3..12 against
+// thresholds 5 (4 px) and 10 (8 px): exactly the in-range nodes with
+// 5 <= s < 10 flip (dock_culled=), out-of-range ids follow the 4 px rule only,
+// the dock rule off at 0 and at a dock setting below the small one, a marked
+// projectile exempt (culled with the exemption off), the census names
+// culled_dock, registers/flags/LastError preserved, native after rollback.
+// Diagnostic timings only; not game FPS. Never launches the game.
 #include "../../src/proxy/cull_small_parts.h"
 #include "../../src/proxy/cull_small_parts_core.h"
 #include "../../src/proxy/cull_census.h"
@@ -629,6 +637,58 @@ static void link_parented(Node& parent, Node* const* children, unsigned count) {
     link_traversal(parent, children, count);
     for (unsigned i = 0; i < count; ++i) put(children[i]->bytes, ccore::parent_offset, addr(&parent));
 }
+// ---- the carrier dock-port tree (X3M_CULL_DOCK_PARTS_PX): a hidden root and 18 children at D = 64000 in a W = 1280,
+// F = 0x4000 view, so s = radius / 100 and measure = 2 s (no engine limit, one LOD record: kept natively). At 4 px and
+// 8 px with m00 0.8 at 1280 (0.8 px per s) the thresholds are 5 and 10. ----
+struct DockCase {
+    std::uint32_t model;
+    std::int32_t s;
+    bool marked;
+    char expect; // 's' culled by the small rule, 'd' by the dock rule, 'e' exempt projectile (kept), 'k' kept
+};
+static const DockCase dock_cases[] = {
+    {901300003u, 3, false, 's'},  {901300003u, 7, false, 'd'},  {901300003u, 12, false, 'k'}, {901400003u, 9, false, 'd'},
+    {909900005u, 5, false, 'd'},  {901300000u, 7, false, 'd'},  {901499999u, 7, false, 'd'},  {909800000u, 7, false, 'd'},
+    {909999999u, 7, false, 'd'},  {901299999u, 7, false, 'k'},  {901500000u, 7, false, 'k'},  {909799999u, 7, false, 'k'},
+    {910000000u, 7, false, 'k'},  {901299999u, 3, false, 's'},  {910000000u, 4, false, 's'},  {901300003u, 10, false, 'k'},
+    {901300003u, 7, true, 'e'},   {0x5001u, 7, false, 'k'}};
+constexpr unsigned dock_count = sizeof dock_cases / sizeof dock_cases[0];
+static Node dock_tree[dock_count + 1], dock_initial[dock_count + 1], dock_native[dock_count + 1];
+static View dock_view;
+static Result dock_native_result{};
+static void dock_build() {
+    view_set(dock_view, 1280, 0, 0x4000, 2);
+    node_set(dock_tree[0], nullptr, 1, 100000, 0x1000, 0, 0, 0xffff); // renderable bit clear: exits before the site
+    Node* kids[dock_count];
+    for (unsigned i = 0; i < dock_count; ++i) {
+        node_set(dock_tree[1 + i], nullptr, dock_cases[i].s * 100, 64000, 0x1002, 0, 0, dock_cases[i].model);
+        if (dock_cases[i].marked) put(dock_tree[1 + i].bytes, score::flags130_offset, score::projectile_flag);
+        kids[i] = &dock_tree[1 + i];
+    }
+    link_traversal(dock_tree[0], kids, dock_count);
+    std::memcpy(dock_initial, dock_tree, sizeof dock_tree);
+}
+static Result dock_run() {
+    std::memcpy(dock_tree, dock_initial, sizeof dock_tree);
+    return run(dock_tree[0], dock_view);
+}
+// Whether exactly the nodes whose class is in `flip` lost the renderable bit and nothing else changed.
+static bool dock_flipped_exactly(const char* flip) {
+    for (unsigned i = 0; i < dock_count; ++i) {
+        const Node& now = dock_tree[1 + i];
+        Node expect = dock_native[1 + i];
+        if (std::strchr(flip, dock_cases[i].expect))
+            put(expect.bytes, ccore::flags12c_offset, get(expect.bytes, ccore::flags12c_offset) & ~2u);
+        if (std::memcmp(now.bytes, expect.bytes, sizeof(Node))) return false;
+    }
+    return !std::memcmp(dock_tree[0].bytes, dock_native[0].bytes, sizeof(Node));
+}
+static unsigned dock_class_count(char c) {
+    unsigned n = 0;
+    for (unsigned i = 0; i < dock_count; ++i) n += dock_cases[i].expect == c;
+    return n;
+}
+
 static double bench_us(Node& root, View& view, unsigned loops = 20000) {
     LARGE_INTEGER f{}, s{}, e{};
     QueryPerformanceFrequency(&f);
@@ -906,6 +966,20 @@ int main() {
                     draws_kept);
     }
 
+    // ---- the dock-port tree's native reference (nothing installed yet) ----
+    dock_build();
+    dock_native_result = dock_run();
+    std::memcpy(dock_native, dock_tree, sizeof dock_tree);
+    {
+        unsigned kept = 0;
+        for (unsigned i = 0; i < dock_count; ++i) {
+            const std::int32_t s = std::int32_t(get(dock_tree[1 + i].bytes, 0xa0)) / 100;
+            if ((get(dock_tree[1 + i].bytes, ccore::flags12c_offset) & 2u) && s == dock_cases[i].s) ++kept;
+        }
+        check(dock_native_result.preserved && dock_native_result.x87_empty && kept == dock_count,
+              "dock tree, native: every node kept, callee-saved registers, ESP and x87 as native");
+    }
+
     // ---- option off / invalid / engine site absent / changed bytes ----
     SetEnvironmentVariableW(L"X3M_CULL_SMALL_PARTS_PX", nullptr);
     check(!small::initialize() && !std::strcmp(small::state(), "disabled") && small_window_original(),
@@ -960,8 +1034,10 @@ int main() {
         const std::uint32_t at = std::uint32_t(small::stub_address()), slot = (at + score::stub_length + 3) & ~3u;
         unsigned char want[score::stub_length];
         score::encode_stub(at, addr(const_cast<std::int32_t*>(&x3m_cull_small_parts_threshold)),
+                           addr(const_cast<std::int32_t*>(&x3m_cull_small_parts_upper)),
                            addr(const_cast<std::uint32_t*>(&x3m_cull_small_parts_culled)),
-                           addr(const_cast<std::uint32_t*>(&x3m_cull_small_parts_exempt)), std::uint32_t(cull), slot,
+                           addr(const_cast<std::uint32_t*>(&x3m_cull_small_parts_exempt)),
+                           addr(const_cast<std::uint32_t*>(&x3m_cull_small_parts_dock_culled)), std::uint32_t(cull), slot,
                            want, true);
         check(!std::memcmp(reinterpret_cast<const void*>(at), want, score::stub_length),
               "stub bytes as encoded (projectiles on)");
@@ -969,7 +1045,9 @@ int main() {
     }
     check(!small::install_at(site, cull, true) && !std::strcmp(small::state(), "already_installed"),
           "second install refused");
-    check(x3m_cull_small_parts_threshold == 0 && small::stats().threshold == 0, "installed with the threshold at 0");
+    check(x3m_cull_small_parts_threshold == 0 && x3m_cull_small_parts_upper == 0 && small::stats().threshold == 0 &&
+              small::stats().dock_threshold == 0 && small::requested_dock_px() == 0.0,
+          "installed with the threshold at 0, the dock rule unset (off)");
     check(small::requested_px() == 2.0, "requested px carried from the setting");
 
     // ---- patched, threshold 0: identical ----
@@ -1378,6 +1456,86 @@ int main() {
         census_frame_lines.clear();
         census_entry_lines.clear();
     }
+    // ---- carrier dock-port parts: 4 px -> threshold 5, 8 px -> dock threshold 10 (m00 0.8 at 1280, F 0x4000) ----
+    {
+        check(small::set_px(4.0) && small::set_dock_px(8.0) && !small::set_dock_px(65.0) && !small::set_dock_px(-1.0) &&
+                  small::requested_dock_px() == 8.0,
+              "dock: 4 px and dock 8 px set; 65 and -1 refused");
+        const std::size_t value_rows = small_lines.size();
+        small::publish(0.8f, 1280, 0x4000, true);
+        check(x3m_cull_small_parts_threshold == 5 && x3m_cull_small_parts_upper == 10 && small::stats().dock_threshold == 10 &&
+                  small_lines.size() == value_rows + 1 &&
+                  small_lines.back().find(" threshold=5 ") != std::string::npos &&
+                  small_lines.back().find(" dock_px=8 dock_threshold=10") != std::string::npos,
+              "dock: thresholds 5 and 10 from the same conversion; the value row names dock_px and dock_threshold");
+        SetLastError(0x5160);
+        const Result armed = dock_run();
+        check(GetLastError() == 0x5160, "dock: LastError preserved across the armed pass");
+        check(armed.preserved && armed.x87_empty && same_outputs(armed, dock_native_result),
+              "dock: callee-saved registers, ESP, x87 and EAX/ECX/EDX/EFLAGS as native");
+        check(dock_flipped_exactly("sd"),
+              "dock: exactly the in-range ids with 5 <= s < 10 and every id below 5 flip; bounds, neighbours, s = 10 and the marked node as native");
+        check(x3m_cull_small_parts_culled == dock_class_count('s') && x3m_cull_small_parts_dock_culled == dock_class_count('d') &&
+                  x3m_cull_small_parts_exempt == dock_class_count('e') && dock_class_count('d') == 7 && dock_class_count('s') == 3,
+              "dock: culled=3 (4 px rule), dock_culled=7, exempt=1 (the marked dock-port node)");
+        std::printf("DOCK px=4 dock_px=8 threshold=%ld upper=%ld culled=%lu dock_culled=%lu exempt=%lu flipped_exact=%u\n",
+                    (long)x3m_cull_small_parts_threshold, (long)x3m_cull_small_parts_upper,
+                    (unsigned long)x3m_cull_small_parts_culled, (unsigned long)x3m_cull_small_parts_dock_culled,
+                    (unsigned long)x3m_cull_small_parts_exempt, dock_flipped_exactly("sd") ? 1u : 0u);
+        small::present(7, 6000, true);
+        check(!small_lines.empty() && small_lines.back().find("cull_small_parts_frame device=7 frame=6000 px=4 threshold=5 culled=3 ") == 0 &&
+                  small_lines.back().find(" dock_px=8 dock_threshold=10 dock_culled=7") != std::string::npos &&
+                  x3m_cull_small_parts_dock_culled == 0,
+              "dock: the frame row carries dock_px, dock_threshold and dock_culled; present clears the count");
+        // the census beside it names the dock rule's rows culled_dock
+        census::begin_frame(true);
+        small::publish(0.8f, 1280, 0x4000, true);
+        dock_run();
+        census::present(7, 6001, true);
+        {
+            unsigned dock_rows = 0, small_rows = 0, kept_rows = 0;
+            for (const std::string& line : census_entry_lines) {
+                if (line.find("verdict=culled_dock") != std::string::npos) ++dock_rows;
+                if (line.find("verdict=culled_small") != std::string::npos) ++small_rows;
+                if (line.find("verdict=kept") != std::string::npos) ++kept_rows;
+            }
+            check(census_entry_lines.size() == dock_count && dock_rows == 7 && small_rows == 3 && kept_rows == dock_count - 10,
+                  "dock: census rows culled_dock 7, culled_small 3, kept 8");
+            std::printf("CENSUS dock rows=%u culled_dock=%u culled_small=%u kept=%u\n", (unsigned)census_entry_lines.size(),
+                        dock_rows, small_rows, kept_rows);
+            census_frame_lines.clear();
+            census_entry_lines.clear();
+        }
+        small::present(7, 6001, false);
+        // the dock rule off at 0: in-range ids follow the 4 px rule only
+        check(small::set_dock_px(0.0), "dock: 0 accepted (off)");
+        small::publish(0.8f, 1280, 0x4000, true);
+        check(x3m_cull_small_parts_upper == 5 && small::stats().dock_threshold == 0 &&
+                  small_lines.back().find(" dock_px=0 dock_threshold=0") != std::string::npos,
+              "dock off: upper equals the threshold, the value row says dock_threshold=0");
+        SetLastError(0x5161);
+        const Result off = dock_run();
+        check(GetLastError() == 0x5161 && off.preserved && off.x87_empty && same_outputs(off, dock_native_result) &&
+                  dock_flipped_exactly("s") && x3m_cull_small_parts_dock_culled == 0 &&
+                  x3m_cull_small_parts_culled == dock_class_count('s') && x3m_cull_small_parts_exempt == 0,
+              "dock off: only the three nodes below 5 flip, nothing counted by the dock rule");
+        small::present(7, 6002, false);
+        // a dock setting below the small one adds nothing (dock threshold 3 < 5)
+        check(small::set_dock_px(2.0), "dock: 2 px");
+        small::publish(0.8f, 1280, 0x4000, true);
+        dock_run();
+        check(x3m_cull_small_parts_upper == 5 && dock_flipped_exactly("s") && x3m_cull_small_parts_dock_culled == 0,
+              "dock below the small setting: the 4 px rule alone");
+        small::present(7, 6003, false);
+        // a vanilla frame (Reset) disarms both
+        check(small::set_dock_px(8.0), "dock: back to 8 px");
+        small::after_reset(1280);
+        check(x3m_cull_small_parts_threshold == 0 && x3m_cull_small_parts_upper == 0, "dock: after_reset disarms both words");
+        dock_run();
+        check(!std::memcmp(dock_tree, dock_native, sizeof dock_tree) && x3m_cull_small_parts_dock_culled == 0,
+              "dock: disarmed, every node as native");
+        small::present(7, 6004, false);
+    }
     check(census::shutdown(), "census restored");
     check(census_windows_original(), "census sites back exactly");
 
@@ -1404,6 +1562,7 @@ int main() {
     // threshold 20 in s units: E (s 19), F (19) and J (5) are kept natively and flip; C fades either way; A/B/gA2 are
     // the engine's own culls
     x3m_cull_small_parts_threshold = 20;
+    x3m_cull_small_parts_upper = 20;
     reset_tree();
     run(R, bench_view);
     check(!(get(E.bytes, 0x12c) & 2) && !(get(F.bytes, 0x12c) & 2) && !(get(J.bytes, 0x12c) & 2) &&
@@ -1411,7 +1570,18 @@ int main() {
               x3m_cull_small_parts_culled >= 3,
           "bench tree at threshold 20: E, F, J culled; R, I (saturated), gA1 kept");
     const double armed_us = bench_us(R, bench_view);
+    // The dock rule armed (upper 40): nodes with 20 <= s < 40 also run the id read and the two range compares (the bench
+    // ids are body-table ids, never dock ports, so the verdicts are those of threshold 20).
+    x3m_cull_small_parts_upper = 40;
+    reset_tree();
+    run(R, bench_view);
+    check(!(get(E.bytes, 0x12c) & 2) && !(get(F.bytes, 0x12c) & 2) && !(get(J.bytes, 0x12c) & 2) &&
+              (get(R.bytes, 0x12c) & 2) && (get(I.bytes, 0x12c) & 2) && (get(gA1.bytes, 0x12c) & 2) &&
+              x3m_cull_small_parts_dock_culled == 0,
+          "bench tree with the dock rule armed (upper 40): the same verdicts, nothing dock-culled");
+    const double armed_dock_us = bench_us(R, bench_view);
     x3m_cull_small_parts_threshold = 0;
+    x3m_cull_small_parts_upper = 0;
     const double disarmed_us = bench_us(R, bench_view);
 
     // ---- rollback ----
@@ -1422,12 +1592,17 @@ int main() {
     check(!std::memcmp(replay, replay_native, sizeof(Node) * (kRowCount + 1)) && same_outputs(restored, native) &&
               restored.preserved,
           "after rollback the native pass is back");
+    std::memcpy(dock_tree, dock_initial, sizeof dock_tree);
+    const Result dock_restored = dock_run();
+    check(!std::memcmp(dock_tree, dock_native, sizeof dock_tree) && same_outputs(dock_restored, dock_native_result) &&
+              dock_restored.preserved,
+          "after rollback the dock tree is native");
     check(small::shutdown(), "second shutdown is a no-op");
     check(small::stats().threshold == 0, "not live: threshold 0");
     const double native_us = bench_us(R, bench_view);
     std::printf(
-        "CULL SMALL PARTS BENCH native_pass_us=%.4f patched_disarmed_us=%.4f patched_armed_us=%.4f nodes_per_pass=12 culled_per_armed_pass=7 harness=fixture_call_included game_fps=unmeasured\n",
-        native_us, disarmed_us, armed_us);
+        "CULL SMALL PARTS BENCH native_pass_us=%.4f patched_disarmed_us=%.4f patched_armed_us=%.4f patched_armed_dock_us=%.4f nodes_per_pass=12 culled_per_armed_pass=7 harness=fixture_call_included game_fps=unmeasured\n",
+        native_us, disarmed_us, armed_us, armed_dock_us);
     // ---- re-install, restore, then the closed window refuses ----
     // ---- projectiles off: marked nodes are culled like any node ----
     check(small::install_at(site, cull, false) && !std::strcmp(small::state(), "ok") && !small::projectiles_exempt(),
@@ -1436,12 +1611,17 @@ int main() {
         const std::uint32_t at = std::uint32_t(small::stub_address()), slot = (at + score::stub_length + 3) & ~3u;
         unsigned char want[score::stub_length];
         score::encode_stub(at, addr(const_cast<std::int32_t*>(&x3m_cull_small_parts_threshold)),
+                           addr(const_cast<std::int32_t*>(&x3m_cull_small_parts_upper)),
                            addr(const_cast<std::uint32_t*>(&x3m_cull_small_parts_culled)),
-                           addr(const_cast<std::uint32_t*>(&x3m_cull_small_parts_exempt)), std::uint32_t(cull), slot,
+                           addr(const_cast<std::uint32_t*>(&x3m_cull_small_parts_exempt)),
+                           addr(const_cast<std::uint32_t*>(&x3m_cull_small_parts_dock_culled)), std::uint32_t(cull), slot,
                            want, false);
-        check(!std::memcmp(reinterpret_cast<const void*>(at), want, score::stub_length) && want[22] == 0xeb &&
-                  want[23] == score::stub_replay - 24,
-              "projectiles off: stub bytes as encoded (jmp over the marker test)");
+        check(!std::memcmp(reinterpret_cast<const void*>(at), want, score::stub_length) &&
+                  want[score::stub_dock_projectile] == 0xeb &&
+                  score::stub_dock_projectile + 2 + want[score::stub_dock_projectile + 1] == score::stub_dock_count &&
+                  want[score::stub_projectile] == 0xeb &&
+                  score::stub_projectile + 2 + want[score::stub_projectile + 1] == score::stub_count,
+              "projectiles off: stub bytes as encoded (jmp over both marker tests)");
         small::after_reset(kRowsWidth);
         check(small::set_px(2.0), "projectiles off: 2 px");
         small::begin_frame();
@@ -1459,6 +1639,14 @@ int main() {
         check(!small_lines.empty() &&
                   small_lines.back().find("scope=all projectiles=off exempt_bullet=0") != std::string::npos,
               "projectiles off: the frame row says so");
+        check(small::set_px(4.0) && small::set_dock_px(8.0), "projectiles off: 4 px, dock 8 px");
+        small::publish(0.8f, 1280, 0x4000, true);
+        const Result dock_off = dock_run();
+        check(dock_off.preserved && dock_off.x87_empty && same_outputs(dock_off, dock_native_result) &&
+                  dock_flipped_exactly("sde") && x3m_cull_small_parts_exempt == 0 &&
+                  x3m_cull_small_parts_dock_culled == dock_class_count('d') + dock_class_count('e'),
+              "projectiles off: the marked dock-port node is dock-culled like the others (dock_culled=8)");
+        small::present(7, 6005, false);
     }
     check(small::shutdown() && small_window_original(), "projectiles off: restore, rollback bytes exact");
     x3m::engine_patch::close_install_window("fixture");

@@ -37,6 +37,7 @@ std::uint32_t pending_node_ = 0, pending_index_ = no_index;
 AncestorStack ancestors_{};             // flag31 of the nodes whose children the pass is visiting (render thread only)
 bool small_exempt_projectiles_ = false; // cull_small_parts' projectile exemption for the frame being recorded
 std::int32_t small_threshold_ = 0;      // cull_small_parts' threshold for the frame being recorded (0 = none)
+std::int32_t small_upper_ = 0; // cull_small_parts' dock-port upper threshold (core::upper_for; <= small_threshold_ = off)
 // X3M_CULL_SMALL_PROPS: the nodes whose main-scene draws the proxy skipped as small props on the frame being
 // recorded (captured frames only; note_culled_prop), sorted at Present. Render thread only.
 constexpr std::uint32_t culled_prop_cap = 1024;
@@ -538,8 +539,9 @@ void set_body_table_global(std::uintptr_t va) {
     body_global_ = va;
 }
 #endif
-void note_small_threshold(std::int32_t threshold, bool exempt_projectiles) {
+void note_small_threshold(std::int32_t threshold, bool exempt_projectiles, std::int32_t upper) {
     small_threshold_ = threshold;
+    small_upper_ = upper;
     small_exempt_projectiles_ = exempt_projectiles;
 }
 Stats stats() {
@@ -586,7 +588,7 @@ void present(unsigned long long device, unsigned long long frame, bool captured)
             const Entry& e = ring_[i];
             // A culled_small row names the scope that culled it, then the model's LOD ladder
             // and the body name of its id, then flag31 (appended: the row parsers anchor on the fields before them).
-            const Verdict verdict = with_prop(classify(e, small_threshold_, small_exempt_projectiles_),
+            const Verdict verdict = with_prop(classify(e, small_threshold_, small_exempt_projectiles_, small_upper_),
                                               sorted_contains(culled_props_, culled_prop_count_, e.node));
             char ladder[8 + 12 + 5 + ladder_cap * 12 + 1];
             const Ladder& l = ladder_of(e.model_ptr);

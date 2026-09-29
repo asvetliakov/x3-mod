@@ -28,3 +28,12 @@ frame 10210: census rows 884, cut-inline rows 56, dock-port rows 36, kept 4, the
   rule s < 12 on dock-port parts: nodes   4, draws removed   52
   rule s < 16 on dock-port parts: nodes   4, draws removed   52
   rule s < 24 on dock-port parts: nodes   4, draws removed   52
+stub rule (X3M_CULL_DOCK_PARTS_PX, the frame's cull_small_parts_frame projection):
+  frame 4827: px 4 -> threshold 3, dock px 8 -> dock threshold 5 (m00 0.499997884, width 5120, focus 0x3470); dock-port rows 54, kept 42; culled by the dock rule: nodes 28, draws removed 64
+  frame 4827: px 4 -> threshold 3, dock px 12 -> dock threshold 8 (m00 0.499997884, width 5120, focus 0x3470); dock-port rows 54, kept 42; culled by the dock rule: nodes 39, draws removed 159
+  frame 8142: px 4 -> threshold 3, dock px 8 -> dock threshold 5 (m00 0.499997884, width 5120, focus 0x3470); dock-port rows 54, kept 3; culled by the dock rule: nodes 2, draws removed 2
+  frame 8142: px 4 -> threshold 3, dock px 12 -> dock threshold 8 (m00 0.499997884, width 5120, focus 0x3470); dock-port rows 54, kept 3; culled by the dock rule: nodes 3, draws removed 27
+  frame 10210: px 4 -> threshold 3, dock px 8 -> dock threshold 5 (m00 0.499997884, width 5120, focus 0x3470); dock-port rows 36, kept 4; culled by the dock rule: nodes 1, draws removed 25
+  frame 10210: px 4 -> threshold 3, dock px 12 -> dock threshold 8 (m00 0.499997884, width 5120, focus 0x3470); dock-port rows 36, kept 4; culled by the dock rule: nodes 3, draws removed 27
+  dock px 8: draws removed per frame 64/2/25
+  dock px 12: draws removed per frame 159/27/27

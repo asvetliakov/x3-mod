@@ -1,0 +1,11 @@
+new stub: 147 bytes, 38 instructions
+  disarmed (upper 0): 3 instructions -> tail
+  s >= upper (every node above both thresholds): 8 instructions -> tail
+  s < threshold (small cull, no parent): 18 instructions -> cull
+  threshold <= s < upper, not a dock id: 18 instructions -> tail
+  threshold <= s < upper, first-range dock id (cull, no parent): 23 instructions -> cull
+  threshold <= s < upper, M6-range dock id (cull, no parent): 26 instructions -> cull
+before (c7917cfc): 82 bytes, 21 instructions
+  disarmed (threshold 0): 3 instructions -> tail
+  s >= threshold: 8 instructions -> tail
+  s < threshold (small cull, no parent): 15 instructions -> cull

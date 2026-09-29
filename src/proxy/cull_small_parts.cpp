@@ -25,12 +25,13 @@ engine_patch::Site site_{};
 std::uintptr_t stub_ = 0;
 const char* state_ = "disabled";
 double px_ = 0;
+double dock_px_ = 0; // X3M_CULL_DOCK_PARTS_PX; 0 = the dock-port rule off
 unsigned width_ = 0;
 float last_m00_ = 0;
 std::uint32_t last_focus_ = core::focus_default;
 core::Source last_source_ = core::Source::registry;
 core::Fallback last_fallback_ = core::Fallback::no_scene;
-std::int32_t last_threshold_ = 0;
+std::int32_t last_threshold_ = 0, last_dock_threshold_ = 0;
 unsigned value_lines_ = 0;
 constexpr unsigned value_line_cap = 128; // cull_small_parts_value rows per process (a menu FOV sweep is about 70 steps)
 // The scene view's P[0]/P[5] from the motion route's scene-phase Clear
@@ -77,8 +78,10 @@ std::uintptr_t emit_stub(std::uint32_t cull_target, bool exempt_projectiles, voi
     unsigned char code[core::stub_length];
     core::encode_stub(std::uint32_t(at),
                       std::uint32_t(reinterpret_cast<std::uintptr_t>(&x3m_cull_small_parts_threshold)),
+                      std::uint32_t(reinterpret_cast<std::uintptr_t>(&x3m_cull_small_parts_upper)),
                       std::uint32_t(reinterpret_cast<std::uintptr_t>(&x3m_cull_small_parts_culled)),
-                      std::uint32_t(reinterpret_cast<std::uintptr_t>(&x3m_cull_small_parts_exempt)), cull_target,
+                      std::uint32_t(reinterpret_cast<std::uintptr_t>(&x3m_cull_small_parts_exempt)),
+                      std::uint32_t(reinterpret_cast<std::uintptr_t>(&x3m_cull_small_parts_dock_culled)), cull_target,
                       std::uint32_t(slot), code, exempt_projectiles);
     e.bytes(code, core::stub_length);
     while (e.ok() && reinterpret_cast<std::uintptr_t>(e.here()) < slot) e.byte(0xcc);
@@ -92,6 +95,8 @@ std::uintptr_t emit_stub(std::uint32_t cull_target, bool exempt_projectiles, voi
 volatile std::int32_t x3m_cull_small_parts_threshold = 0; // declared extern "C" in the header
 volatile std::uint32_t x3m_cull_small_parts_culled = 0;
 volatile std::uint32_t x3m_cull_small_parts_exempt = 0;
+volatile std::int32_t x3m_cull_small_parts_upper = 0;
+volatile std::uint32_t x3m_cull_small_parts_dock_culled = 0;
 
 namespace x3m::cull_small_parts {
 bool install_at(std::uintptr_t site, std::uintptr_t cull_target, bool exempt_projectiles) {
@@ -113,8 +118,10 @@ bool install_at(std::uintptr_t site, std::uintptr_t cull_target, bool exempt_pro
     if (!reason && !(stub = emit_stub(std::uint32_t(cull_target), exempt_projectiles, &slot))) reason = "arena_full";
     if (!reason) {
         x3m_cull_small_parts_threshold = 0;
+        x3m_cull_small_parts_upper = 0;
         x3m_cull_small_parts_culled = 0;
         x3m_cull_small_parts_exempt = 0;
+        x3m_cull_small_parts_dock_culled = 0;
         engine_patch::SiteSpec spec{};
         spec.name = "cull_small_parts";
         spec.address = site;
@@ -174,6 +181,12 @@ bool initialize() {
     bool exempt = true;
     const bool projectiles_ok = core::parse_projectiles(projectiles_text, &exempt);
     projectiles_state_ = !projectiles_ok ? "invalid" : exempt ? "on" : "off";
+    // X3M_CULL_DOCK_PARTS_PX: unset, empty or 0 = off; otherwise in the same band as the main setting.
+    char dock_text[32]{};
+    const bool dock_set = read_setting(L"X3M_CULL_DOCK_PARTS_PX", dock_text, sizeof dock_text);
+    double dock_px = 0;
+    const bool dock_ok =
+        !dock_set || (core::parse_px(dock_text, &dock_px) && (dock_px == 0.0 || core::valid_px(dock_px)));
     double px = 0;
     const bool parsed = core::parse_px(setting, &px);
     bool applied = false;
@@ -183,6 +196,8 @@ bool initialize() {
         state_ = "invalid_px";
     else if (!projectiles_ok)
         state_ = "invalid_projectiles"; // fail closed: nothing patched
+    else if (!dock_ok)
+        state_ = "invalid_dock_px"; // fail closed: nothing patched
     else if (!object_trace::executable_verified())
         state_ = "executable_mismatch";
     else {
@@ -194,19 +209,21 @@ bool initialize() {
             projectiles_state_ = "marker_mismatch";
         }
         px_ = px;
+        dock_px_ = dock_px;
         applied = install_at(core::site_va, core::cull_va, exempt);
     }
-    log("cull_small_parts requested=%s px=%.4g patched=%u reason=%s site=0x%08lx cull=0x%08lx write=%s stub=0x%08lx camera=%s scope=%s projectiles=%s",
+    log("cull_small_parts requested=%s px=%.4g patched=%u reason=%s site=0x%08lx cull=0x%08lx write=%s stub=0x%08lx camera=%s scope=%s projectiles=%s dock_px=%.4g dock_requested=%s",
         setting, applied ? px : 0.0, patched_ ? 1u : 0u, state_, static_cast<unsigned long>(core::site_va),
         static_cast<unsigned long>(core::cull_va),
         site_.patched_in ? (site_.atomic_write ? "atomic" : "plain") : "none", static_cast<unsigned long>(stub_),
-        camera_state::status(), "all", projectiles_state_);
+        camera_state::status(), "all", projectiles_state_, applied ? dock_px : 0.0, dock_set ? dock_text : "unset");
     SetLastError(error);
     return applied;
 }
 bool shutdown() {
     if (!patched_) return true;
     const DWORD error = GetLastError();
+    x3m_cull_small_parts_upper = 0;
     x3m_cull_small_parts_threshold = 0;
     cull_census::note_small_threshold(0);
     const bool ok = engine_patch::restore(site_);
@@ -233,16 +250,31 @@ bool set_px(double px) {
     px_ = px;
     return true;
 }
+bool set_dock_px(double px) {
+    if (px != 0.0 && !core::valid_px(px)) return false;
+    dock_px_ = px;
+    return true;
+}
+double requested_dock_px() {
+    return patched_ ? dock_px_ : 0.0;
+}
 namespace {
 std::int32_t apply(float m00, unsigned width, std::uint32_t focus, core::Source source, core::Fallback fallback) {
     if (!patched_) return 0;
     const std::int32_t threshold = core::threshold_for(px_, m00, width, focus);
+    // The dock-port threshold from the same projection, width and focus; 0 when the rule is off.
+    const std::int32_t dock = dock_px_ > 0.0 ? core::threshold_for(dock_px_, m00, width, focus) : 0;
+    const std::int32_t upper = core::upper_for(threshold, dock);
+    // The pass runs on this thread (the Present hook precedes the next frame's pass), so the order of the two
+    // stores is not observable by the stub.
     x3m_cull_small_parts_threshold = threshold;
-    cull_census::note_small_threshold(threshold, projectiles_);
+    x3m_cull_small_parts_upper = upper;
+    cull_census::note_small_threshold(threshold, projectiles_, upper);
     last_m00_ = m00;
-    if (threshold != last_threshold_ || width != width_ || focus != last_focus_ || source != last_source_ ||
-        fallback != last_fallback_) {
+    if (threshold != last_threshold_ || dock != last_dock_threshold_ || width != width_ || focus != last_focus_ ||
+        source != last_source_ || fallback != last_fallback_) {
         last_threshold_ = threshold;
+        last_dock_threshold_ = dock;
         width_ = width;
         last_focus_ = focus;
         last_source_ = source;
@@ -252,9 +284,9 @@ std::int32_t apply(float m00, unsigned width, std::uint32_t focus, core::Source 
         // applied threshold visible.
         if (value_lines_ < value_line_cap) {
             ++value_lines_;
-            log("cull_small_parts_value px=%.4g m00=%.9g width=%u threshold=%ld focus=0x%04lx source=%s fallback=%s",
+            log("cull_small_parts_value px=%.4g m00=%.9g width=%u threshold=%ld focus=0x%04lx source=%s fallback=%s dock_px=%.4g dock_threshold=%ld",
                 px_, static_cast<double>(m00), width, static_cast<long>(threshold), static_cast<unsigned long>(focus),
-                core::source_name(source), core::fallback_name(fallback));
+                core::source_name(source), core::fallback_name(fallback), dock_px_, static_cast<long>(dock));
         }
     }
     return threshold;
@@ -274,6 +306,7 @@ void begin_frame() {
     const DWORD error = GetLastError();
     x3m_cull_small_parts_culled = 0;
     x3m_cull_small_parts_exempt = 0;
+    x3m_cull_small_parts_dock_culled = 0;
     // The engine's live projection through the read-only camera latch gates
     // the frame: an unreadable or non-perspective matrix (menus, loading)
     // leaves it vanilla. The width is the back buffer's from CreateDevice/Reset.
@@ -299,6 +332,7 @@ void set_backbuffer_width(unsigned width) {
 void after_reset(unsigned width) {
     width_ = width;
     scene_.clear(); // a Reset can change the aspect: the next scene Clear latches again
+    x3m_cull_small_parts_upper = 0;
     x3m_cull_small_parts_threshold = 0;
     if (patched_) cull_census::note_small_threshold(0);
 }
@@ -306,22 +340,28 @@ void present(unsigned long long device, unsigned long long frame, bool captured)
     if (!patched_) return;
     if (captured) {
         const DWORD error = GetLastError();
-        log("cull_small_parts_frame device=%llu frame=%llu px=%.4g threshold=%ld culled=%lu m00=%.9g width=%u scope=%s projectiles=%s exempt_bullet=%lu focus=0x%04lx source=%s fallback=%s",
-            device, frame, px_, static_cast<long>(x3m_cull_small_parts_threshold),
-            static_cast<unsigned long>(x3m_cull_small_parts_culled), static_cast<double>(last_m00_), width_, "all",
-            projectiles_ ? "on" : "off", static_cast<unsigned long>(x3m_cull_small_parts_exempt),
-            static_cast<unsigned long>(last_focus_), core::source_name(last_source_),
-            core::fallback_name(last_fallback_));
+        const std::int32_t threshold = x3m_cull_small_parts_threshold, upper = x3m_cull_small_parts_upper;
+        log("cull_small_parts_frame device=%llu frame=%llu px=%.4g threshold=%ld culled=%lu m00=%.9g width=%u scope=%s projectiles=%s exempt_bullet=%lu focus=0x%04lx source=%s fallback=%s dock_px=%.4g dock_threshold=%ld dock_culled=%lu",
+            device, frame, px_, static_cast<long>(threshold), static_cast<unsigned long>(x3m_cull_small_parts_culled),
+            static_cast<double>(last_m00_), width_, "all", projectiles_ ? "on" : "off",
+            static_cast<unsigned long>(x3m_cull_small_parts_exempt), static_cast<unsigned long>(last_focus_),
+            core::source_name(last_source_), core::fallback_name(last_fallback_), dock_px_,
+            static_cast<long>(upper > threshold ? upper : 0),
+            static_cast<unsigned long>(x3m_cull_small_parts_dock_culled));
         SetLastError(error);
     }
     x3m_cull_small_parts_culled = 0;
     x3m_cull_small_parts_exempt = 0;
+    x3m_cull_small_parts_dock_culled = 0;
 }
 Stats stats() {
     Stats s{};
     s.threshold = x3m_cull_small_parts_threshold;
+    s.upper = x3m_cull_small_parts_upper;
+    s.dock_threshold = s.upper > s.threshold ? s.upper : 0;
     s.culled = x3m_cull_small_parts_culled;
     s.exempt = x3m_cull_small_parts_exempt;
+    s.dock_culled = x3m_cull_small_parts_dock_culled;
     s.m00 = last_m00_;
     s.width = width_;
     s.focus = last_focus_;

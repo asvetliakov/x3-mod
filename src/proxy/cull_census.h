@@ -61,8 +61,11 @@ Stats stats();
 // 0 = none): rows whose `s` is below it and that the engine's own limit did
 // not cull are reported as `culled_small`, except a node the stub exempts as
 // a projectile (+0x130 & 0x20000000 with the exemption on), which the frame
-// row counts as `culled_small_exempt_bullet=`. One plain store per frame.
-void note_small_threshold(std::int32_t threshold, bool exempt_projectiles = false);
+// row counts as `culled_small_exempt_bullet=`. upper is the stub's dock-port
+// upper threshold (X3M_CULL_DOCK_PARTS_PX; 0 or at most threshold = off):
+// a dock-port row at or above the threshold and below it is `culled_dock`.
+// Plain stores once per frame.
+void note_small_threshold(std::int32_t threshold, bool exempt_projectiles = false, std::int32_t upper = 0);
 // X3M_CULL_SMALL_PROPS (cull_small_props_core.h): a node whose main-scene draws the proxy skipped as a small prop on
 // this captured frame, reported once per node and frame from the draw path (render thread). Its rows that the engine
 // kept name the verdict culled_prop (in every view the census recorded for the node); the frame row adds

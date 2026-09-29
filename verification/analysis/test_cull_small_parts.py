@@ -91,19 +91,32 @@ int main() {
     double px = 0;
     check(parse_px("2", &px) && px == 2.0 && parse_px("+2.5", &px) && px == 2.5 && parse_px(".5", &px) && px == 0.5 && !parse_px("2,5", &px) && !parse_px("1e1", &px) && !parse_px("", &px) && !parse_px(nullptr, &px), "parser");
     check(valid_px(64.0) && !valid_px(64.01) && !valid_px(0.0), "band");
-    unsigned char s[stub_length]; encode_stub(0x10000000, 0x20000000, 0x20000004, 0x20000008, 0x0047d2c3, 0x10000054, s, true);
+    unsigned char s[stub_length]; encode_stub(0x10000000, 0x20000000, 0x2000000c, 0x20000004, 0x20000008, 0x20000010, 0x0047d2c3, 0x10000094, s, true);
     std::uint32_t v = 0;
-    check(stub_length == 82 && stub_projectile == 22 && stub_replay == 34 && stub_cull == 59 && stub_exempt == 70 && stub_continue == 76, "stub layout");
-    std::memcpy(&v, s + 2, 4); check(s[0] == 0x83 && s[1] == 0x3d && v == 0x20000000 && s[6] == 0 && s[7] == 0x7e && s[8] == stub_continue - 9, "cmp dword [threshold],0; jle continue");
-    std::memcpy(&v, s + 11, 4); check(s[9] == 0x50 && s[10] == 0xa1 && v == 0x20000000 && !std::memcmp(s + 15, "\x39\x44\x24\x30\x58\x7d", 6) && s[21] == stub_continue - 22, "push eax; mov eax,[threshold]; cmp [esp+0x30],eax; pop eax; jge continue");
-    check(!std::memcmp(s + 22, "\xf7\x87\x30\x01\x00\x00\x00\x00\x00\x20\x75", 11) && s[33] == stub_exempt - 34 && flags130_offset == 0x130 && projectile_flag == 0x20000000u, "test dword [edi+0x130],0x20000000; jne exempt");
-    check(!std::memcmp(s + 34, "\x8b\x4f\x18\x85\xc9\x8b\x87\xd8\x01\x00\x00\x74", 12) && s[46] == stub_cull - 47 && !std::memcmp(s + 47, "\x8b\x89\xd8\x01\x00\x00\x3b\xc8\x7e", 9) && s[56] == stub_cull - 57 && s[57] == 0x8b && s[58] == 0xc1, "the engine's limit computation replayed");
-    std::memcpy(&v, s + 61, 4); check(s[59] == 0xff && s[60] == 0x05 && v == 0x20000004, "inc dword [culled]");
-    std::memcpy(&v, s + 66, 4); check(s[65] == 0xe9 && 0x10000046 + v == 0x0047d2c3, "jmp cull target");
-    std::memcpy(&v, s + 72, 4); check(s[70] == 0xff && s[71] == 0x05 && v == 0x20000008, "inc dword [exempt]");
-    std::memcpy(&v, s + 78, 4); check(s[76] == 0xff && s[77] == 0x25 && v == 0x10000054, "jmp [next]");
-    unsigned char o[stub_length]; encode_stub(0x10000000, 0x20000000, 0x20000004, 0x20000008, 0x0047d2c3, 0x10000054, o, false);
-    check(!std::memcmp(o, s, stub_projectile) && !std::memcmp(o + stub_replay, s + stub_replay, stub_length - stub_replay) && o[22] == 0xeb && 24 + o[23] == stub_replay && o[24] == 0xcc && o[33] == 0xcc, "projectiles off: jmp over the marker test, int3 padding, nothing else differs");
+    check(stub_length == 147 && stub_continue == 63 && stub_pop_continue == 62 && stub_dock == 69 && stub_dock_projectile == 70 && stub_dock_count == 82 &&
+          stub_small == 90 && stub_projectile == 91 && stub_count == 103 && stub_replay == 109 && stub_cull == 134 && stub_exempt == 139, "stub layout");
+    std::memcpy(&v, s + 2, 4); check(s[0] == 0x83 && s[1] == 0x3d && v == 0x2000000c && s[6] == 0 && s[7] == 0x7e && 9 + s[8] == stub_continue, "cmp dword [upper],0; jle continue");
+    std::memcpy(&v, s + 11, 4); check(s[9] == 0x50 && s[10] == 0xa1 && v == 0x2000000c && !std::memcmp(s + 15, "\x39\x44\x24\x30\x7d", 5) && 21 + s[20] == stub_pop_continue, "push eax; mov eax,[upper]; cmp [esp+0x30],eax; jge pop_continue");
+    std::memcpy(&v, s + 22, 4); check(s[21] == 0xa1 && v == 0x20000000 && !std::memcmp(s + 26, "\x39\x44\x24\x30\x7c", 5) && 32 + s[31] == stub_small, "mov eax,[threshold]; cmp [esp+0x30],eax; jl pop_small");
+    check(!std::memcmp(s + 32, "\x8b\x87\x40\x01\x00\x00\x2d\x20\xbf\xb8\x35\x3d\x40\x0d\x03\x00\x72", 17) && 50 + s[49] == stub_dock &&
+          !std::memcmp(s + 50, "\x2d\x20\xb3\x81\x00\x3d\x40\x0d\x03\x00\x72", 11) && 62 + s[61] == stub_dock && model_offset == 0x140,
+          "mov eax,[edi+0x140]; sub eax,901300000; cmp eax,200000; jb pop_dock; sub eax,8500000; cmp eax,200000; jb pop_dock");
+    std::memcpy(&v, s + 65, 4); check(s[62] == 0x58 && s[63] == 0xff && s[64] == 0x25 && v == 0x10000094 && s[69] == 0x58 && s[90] == 0x58, "pop_continue: pop eax; continue: jmp [next]; pop_dock / pop_small: pop eax");
+    check(!std::memcmp(s + 70, "\xf7\x87\x30\x01\x00\x00\x00\x00\x00\x20\x75", 11) && 82 + s[81] == stub_exempt && !std::memcmp(s + 91, s + 70, 11) && 103 + s[102] == stub_exempt &&
+          flags130_offset == 0x130 && projectile_flag == 0x20000000u, "both paths: test dword [edi+0x130],0x20000000; jne exempt");
+    std::memcpy(&v, s + 84, 4); check(s[82] == 0xff && s[83] == 0x05 && v == 0x20000010 && s[88] == 0xeb && 90 + s[89] == stub_replay, "inc dword [dock_culled]; jmp replay");
+    std::memcpy(&v, s + 105, 4); check(s[103] == 0xff && s[104] == 0x05 && v == 0x20000004, "inc dword [culled]");
+    check(!std::memcmp(s + 109, "\x8b\x4f\x18\x85\xc9\x8b\x87\xd8\x01\x00\x00\x74", 12) && 122 + s[121] == stub_cull && !std::memcmp(s + 122, "\x8b\x89\xd8\x01\x00\x00\x3b\xc8\x7e", 9) && 132 + s[131] == stub_cull && s[132] == 0x8b && s[133] == 0xc1, "the engine's limit computation replayed");
+    std::memcpy(&v, s + 135, 4); check(s[134] == 0xe9 && 0x10000000u + stub_exempt + v == 0x0047d2c3, "jmp cull target");
+    std::memcpy(&v, s + 141, 4); check(s[139] == 0xff && s[140] == 0x05 && v == 0x20000008 && s[145] == 0xeb && 147 + static_cast<signed char>(s[146]) == static_cast<int>(stub_continue), "inc dword [exempt]; jmp continue");
+    unsigned char o[stub_length]; encode_stub(0x10000000, 0x20000000, 0x2000000c, 0x20000004, 0x20000008, 0x20000010, 0x0047d2c3, 0x10000094, o, false);
+    check(!std::memcmp(o, s, stub_dock_projectile) && !std::memcmp(o + stub_dock_count, s + stub_dock_count, stub_projectile - stub_dock_count) &&
+          !std::memcmp(o + stub_count, s + stub_count, stub_length - stub_count) && o[70] == 0xeb && 72 + o[71] == stub_dock_count && o[72] == 0xcc && o[81] == 0xcc &&
+          o[91] == 0xeb && 93 + o[92] == stub_count && o[93] == 0xcc && o[102] == 0xcc, "projectiles off: jmp over both marker tests, int3 padding, nothing else differs");
+    check(dock_model(901300000u) && dock_model(901300003u) && dock_model(901400003u) && dock_model(901499999u) && dock_model(909800000u) && dock_model(909900005u) && dock_model(909999999u) &&
+          !dock_model(901299999u) && !dock_model(901500000u) && !dock_model(909799999u) && !dock_model(910000000u) && !dock_model(0u) && !dock_model(0xffffffffu) && !dock_model(0x10000u),
+          "dock-port ids: [901300000, 901499999] and [909800000, 909999999] only");
+    check(upper_for(3, 5) == 5 && upper_for(3, 0) == 3 && upper_for(3, 2) == 3 && upper_for(0, 5) == 0 && upper_for(-1, 5) == 0, "upper: the larger threshold, 0 when the small one is 0");
     bool ex = false;
     check(parse_projectiles(nullptr, &ex) && ex && parse_projectiles("", &ex) && ex && parse_projectiles("off", &ex) && !ex && parse_projectiles("on", &ex) && ex && !parse_projectiles("On", &ex) && !parse_projectiles("0", &ex), "projectiles parser: on (default), off, nothing else");
     check(!std::memcmp(marker_store, "\xc7\x44\x24\x20\x00\x00\x80\x20", marker_store_length) && !std::memcmp(marker_or + 7, "\x09\x90\x30\x01\x00\x00", 6) && marker_or_length == 13, "marker instructions");
@@ -124,7 +137,22 @@ int main() {
     check(x3m::cull_census::core::projectile_flag == x3m::cull_small_parts::core::projectile_flag && x3m::cull_census::core::flags130_offset == x3m::cull_small_parts::core::flags130_offset, "census and stub share the marker");
     e.flags130 = 0;
     e.flags_out = 0x1002; check(classify(e, 3) == Verdict::kept, "census: kept stays kept");
-    check(!std::strcmp(verdict_name(Verdict::culled_small), "culled_small") && verdict_count == 7, "verdict name");
+    check(!std::strcmp(verdict_name(Verdict::culled_small), "culled_small") && verdict_count == 8, "verdict name");
+    // X3M_CULL_DOCK_PARTS_PX: a dock-port row at or above the small threshold and below upper is culled_dock; the same row
+    // below the small threshold stays culled_small; other ids, upper <= threshold and exempt projectiles are never culled_dock.
+    {
+        Entry d{}; d.exited = 1; d.flags_in = 0x1002; d.flags_out = 0x1000; d.s = 4; d.measure = 8; d.limit = 0; d.model = 901300003u;
+        check(classify(d, 3, true, 5) == Verdict::culled_dock && classify(d, 3, true, 4) == Verdict::culled_other && classify(d, 3, true, 3) == Verdict::culled_other &&
+              classify(d, 0, true, 5) == Verdict::culled_other, "census: culled_dock between the thresholds only");
+        d.s = 2; check(classify(d, 3, true, 5) == Verdict::culled_small, "census: a dock-port row below the small threshold is culled_small");
+        d.s = 4; d.model = 901500000u; check(classify(d, 3, true, 5) == Verdict::culled_other, "census: an id outside the ranges is never culled_dock");
+        d.model = 909999999u; check(classify(d, 3, true, 5) == Verdict::culled_dock && !std::strcmp(verdict_name(Verdict::culled_dock), "culled_dock"), "census: the M6 range");
+        d.flags130 = x3m::cull_census::core::projectile_flag; check(classify(d, 3, true, 5) == Verdict::culled_other && classify(d, 3, false, 5) == Verdict::culled_dock, "census: an exempt projectile is never culled_dock");
+        d.flags130 = 0; d.flags_out = 0x1002; check(classify(d, 3, true, 5) == Verdict::kept && with_prop(Verdict::culled_dock, true) == Verdict::culled_dock, "census: kept stays kept");
+        check(x3m::cull_census::core::dock_first_base == x3m::cull_small_parts::core::dock_first_base && x3m::cull_census::core::dock_second_base == x3m::cull_small_parts::core::dock_second_base &&
+              x3m::cull_census::core::dock_span == x3m::cull_small_parts::core::dock_span && x3m::cull_census::core::model_offset == x3m::cull_small_parts::core::model_offset,
+              "census and stub share the dock-port ranges and the model offset");
+    }
     // X3M_CULL_SMALL_PROPS: only a kept row becomes culled_prop; the engine's own verdicts are never renamed.
     check(!std::strcmp(verdict_name(Verdict::culled_prop), "culled_prop") && with_prop(Verdict::kept, true) == Verdict::culled_prop &&
           with_prop(Verdict::kept, false) == Verdict::kept && with_prop(Verdict::culled_small, true) == Verdict::culled_small &&
@@ -334,24 +362,30 @@ class CullSmallPartsSite(unittest.TestCase):
         self.assertIn('culled_small', census_probe.VERDICTS)
 
     def test_encoder_and_threshold(self):
-        stub = probe.encode_stub(0x10000000, 0x20000000, 0x20000004, 0x20000008, probe.CULL_VA, 0x10000054)
-        self.assertEqual(len(stub), 82)
-        self.assertEqual(stub[:2], b'\x83\x3d')
-        self.assertEqual(stub[6:9], b'\x00\x7e\x43')
-        self.assertEqual(stub[9:15], b'\x50\xa1' + struct.pack('<I', 0x20000000))
-        self.assertEqual(stub[15:22], b'\x39\x44\x24\x30\x58\x7d\x36')
-        self.assertEqual(stub[22:34], bytes.fromhex('f787 30010000 00000020 7524'.replace(' ', '')))
-        self.assertEqual(stub[34:59], bytes.fromhex('8b4f18 85c9 8b87d8010000 740c 8b89d8010000 3bc8 7e02 8bc1'.replace(' ', '')))
-        self.assertEqual(stub[59:65], b'\xff\x05' + struct.pack('<I', 0x20000004))
-        self.assertEqual(struct.unpack('<i', stub[66:70])[0], probe.CULL_VA - (0x10000000 + 70))
-        self.assertEqual(stub[70:76], b'\xff\x05' + struct.pack('<I', 0x20000008))
-        self.assertEqual(stub[76:82], b'\xff\x25' + struct.pack('<I', 0x10000054))
-        off = probe.encode_stub(0x10000000, 0x20000000, 0x20000004, 0x20000008, probe.CULL_VA, 0x10000054, projectiles=False)
-        self.assertEqual((off[:22], off[34:]), (stub[:22], stub[34:]))
-        self.assertEqual(off[22:34], b'\xeb\x0a' + b'\xcc' * 10)
+        args = (0x10000000, 0x20000000, 0x2000000c, 0x20000004, 0x20000008, 0x20000010, probe.CULL_VA, 0x10000094)
+        stub = probe.encode_stub(*args)
+        self.assertEqual(len(stub), 147)
+        self.assertEqual(stub[:9], b'\x83\x3d' + struct.pack('<I', 0x2000000c) + b'\x00\x7e\x36')
+        self.assertEqual(stub[9:21], b'\x50\xa1' + struct.pack('<I', 0x2000000c) + b'\x39\x44\x24\x30\x7d\x29')
+        self.assertEqual(stub[21:32], b'\xa1' + struct.pack('<I', 0x20000000) + b'\x39\x44\x24\x30\x7c\x3a')
+        self.assertEqual(stub[32:62], bytes.fromhex('8b8740010000 2d20bfb835 3d400d0300 7213 2d20b38100 3d400d0300 7207'.replace(' ', '')))
+        self.assertEqual(stub[62:70], b'\x58\xff\x25' + struct.pack('<I', 0x10000094) + b'\x58')
+        self.assertEqual(stub[70:82], bytes.fromhex('f787 30010000 00000020 7539'.replace(' ', '')))
+        self.assertEqual(stub[82:91], b'\xff\x05' + struct.pack('<I', 0x20000010) + b'\xeb\x13\x58')
+        self.assertEqual(stub[91:103], bytes.fromhex('f787 30010000 00000020 7524'.replace(' ', '')))
+        self.assertEqual(stub[103:109], b'\xff\x05' + struct.pack('<I', 0x20000004))
+        self.assertEqual(stub[109:134], bytes.fromhex('8b4f18 85c9 8b87d8010000 740c 8b89d8010000 3bc8 7e02 8bc1'.replace(' ', '')))
+        self.assertEqual(stub[134], 0xe9)
+        self.assertEqual(struct.unpack('<i', stub[135:139])[0], probe.CULL_VA - (0x10000000 + 139))
+        self.assertEqual(stub[139:147], b'\xff\x05' + struct.pack('<I', 0x20000008) + b'\xeb\xac')
+        off = probe.encode_stub(*args, projectiles=False)
+        self.assertEqual((off[:70], off[82:91], off[103:]), (stub[:70], stub[82:91], stub[103:]))
+        self.assertEqual((off[70:82], off[91:103]), (b'\xeb\x0a' + b'\xcc' * 10, b'\xeb\x0a' + b'\xcc' * 10))
         self.assertTrue(probe.projectile_stub_ok())
         with self.assertRaises(ValueError):
-            probe.encode_stub(1 << 32, 0, 0, 0, 0, 0)
+            probe.encode_stub(1 << 32, 0, 0, 0, 0, 0, 0, 0)
+        self.assertEqual([probe.dock_model(i) for i in (901300000, 901499999, 909800000, 909999999, 901299999, 901500000, 909799999, 910000000, 0x10000)],
+                         [True, True, True, True, False, False, False, False, False])
         m00 = struct.unpack('<f', struct.pack('<I', 0x3f4ccccc))[0]
         self.assertEqual((probe.threshold_for(2, m00, 1280), probe.threshold_for(4, m00, 1280), probe.threshold_for(8, m00, 1280)), (3, 6, 11))
         self.assertEqual(probe.threshold_for(2, 0.8, 1920), 2)
@@ -387,13 +421,13 @@ class CullSmallPartsSite(unittest.TestCase):
     def test_line_parsers(self):
         row = probe.parse_log_line('00:00:01.234 cull_small_parts requested=2 px=2 patched=1 reason=ok site=0x0047d2a2 cull=0x0047d2c3 write=atomic stub=0x0a100000 camera=active')
         self.assertEqual(row, {'requested': '2', 'px': 2.0, 'patched': True, 'reason': 'ok', 'site': 0x47d2a2, 'cull': 0x47d2c3, 'write': 'atomic', 'stub': 0x0a100000, 'camera': 'active', 'scope': None,
-                               'projectiles': None})
+                               'projectiles': None, 'dock_px': None, 'dock_requested': None})
         self.assertEqual(probe.parse_log_line('cull_small_parts requested=4 px=4 patched=1 reason=ok site=0x0047d2a2 cull=0x0047d2c3 write=atomic stub=0x0a100000 camera=active scope=all projectiles=marker_mismatch')['projectiles'],
                          'marker_mismatch')
         self.assertEqual(probe.parse_log_line(' cull_small_parts requested=2 px=2 patched=1 reason=ok site=0x0047d2a2 cull=0x0047d2c3 write=atomic stub=0x0a100000 camera=active scope=bodies')['scope'], 'bodies')
         self.assertIsNone(probe.parse_log_line('cull_small_parts requested=2 px=0 patched=0 reason=bytes_mismatch'))
         self.assertEqual(probe.parse_value_line('cull_small_parts_value px=2 m00=0.799999952 width=1280 threshold=3'), {'px': 2.0, 'm00': 0.799999952, 'width': 1280, 'threshold': 3, 'focus': None,
-                                                                                                                      'source': None, 'fallback': None})
+                                                                                                                      'source': None, 'fallback': None, 'dock_px': None, 'dock_threshold': None})
         self.assertEqual(probe.parse_value_line('cull_small_parts_value px=2 m00=0.5 width=5120 threshold=1 focus=0x3470')['focus'], 0x3470)
         value = probe.parse_value_line('cull_small_parts_value px=4 m00=0.5 width=5120 threshold=3 focus=0x3470 source=scene fallback=none')
         self.assertEqual((value['focus'], value['source'], value['fallback']), (0x3470, 'scene', 'none'))
@@ -408,6 +442,16 @@ class CullSmallPartsSite(unittest.TestCase):
         self.assertEqual((frame['projectiles'], frame['exempt_bullet']), ('on', 31))
         self.assertIsNone(probe.parse_frame_line('cull_small_parts_frame device=1 frame=4991 px=2 threshold=3 culled=806 m00=0.799999952 width=1280')['exempt_bullet'])
         self.assertIsNone(probe.parse_frame_line('cull_small_parts_value px=2 m00=0.8 width=1280 threshold=3'))
+        # X3M_CULL_DOCK_PARTS_PX (2026-09-29): appended fields; rows without them parse as before (None).
+        frame = probe.parse_frame_line('cull_small_parts_frame device=1 frame=4827 px=4 threshold=3 culled=507 m00=0.499997884 width=5120 scope=all projectiles=on exempt_bullet=0 '
+                                       'focus=0x3470 source=scene fallback=none dock_px=8 dock_threshold=5 dock_culled=28')
+        self.assertEqual((frame['dock_px'], frame['dock_threshold'], frame['dock_culled']), (8.0, 5, 28))
+        self.assertIsNone(probe.parse_frame_line('cull_small_parts_frame device=1 frame=900 px=4 threshold=3 culled=12 m00=0.5 width=5120')['dock_culled'])
+        value = probe.parse_value_line('cull_small_parts_value px=4 m00=0.5 width=5120 threshold=3 focus=0x3470 source=scene fallback=none dock_px=8 dock_threshold=5')
+        self.assertEqual((value['dock_px'], value['dock_threshold']), (8.0, 5))
+        row = probe.parse_log_line('cull_small_parts requested=4.0000 px=4 patched=1 reason=ok site=0x0047d2a2 cull=0x0047d2c3 write=atomic stub=0x0a100000 camera=active scope=all '
+                                   'projectiles=on dock_px=8 dock_requested=8.0000')
+        self.assertEqual((row['dock_px'], row['dock_requested']), (8.0, '8.0000'))
 
     def test_core_compiled(self):
         compiler = shutil.which('clang++') or shutil.which('c++')
@@ -539,7 +583,7 @@ class CullSmallPartsLaunchOption(unittest.TestCase):
             delivered = json.loads(output)
             self.assertEqual(delivered['command'], baseline['command'])
             self.assertEqual({k: v for k, v in delivered['env'].items() if k not in baseline['env']},
-                             {'X3M_CULL_SMALL_PARTS_PX': '2.0000', 'X3M_CULL_SMALL_PARTS_PROJECTILES': 'on'})
+                             {'X3M_CULL_SMALL_PARTS_PX': '2.0000', 'X3M_CULL_SMALL_PARTS_PROJECTILES': 'on', 'X3M_CULL_DOCK_PARTS_PX': '8.0000'})
 
     def test_scope_option_removed_and_inherited_scope_dropped(self):
         # --cull-small-parts-scope (the `bodies` A/B) was removed on 2026-09-25: the stub always culls every node.
@@ -633,6 +677,28 @@ class CullSmallPartsLaunchOption(unittest.TestCase):
             self.assertEqual(code, 2)
             self.assertIn('invalid choice', error)
             self.assertIn('DLL default on since 2026-09-29', source_text(ROOT / 'tools/manage.py'))
+
+    def test_dock_parts_default_explicit_off_and_refusals(self):
+        """X3M_CULL_DOCK_PARTS_PX (2026-09-29): 8 px with every non-zero cull unless given; 0 sends nothing; refused without
+        the cull and out of range; an inherited value never survives."""
+        with tempfile.TemporaryDirectory() as directory:
+            env = json.loads(self.modded_launch(directory, inherited={'X3M_CULL_DOCK_PARTS_PX': '3'})[1])['env']
+            self.assertEqual(env['X3M_CULL_DOCK_PARTS_PX'], '8.0000')
+            env = json.loads(self.modded_launch(directory, '--cull-dock-parts', '12')[1])['env']
+            self.assertEqual(env['X3M_CULL_DOCK_PARTS_PX'], '12.0000')
+            env = json.loads(self.modded_launch(directory, '--cull-dock-parts', '0', inherited={'X3M_CULL_DOCK_PARTS_PX': '8'})[1])['env']
+            self.assertNotIn('X3M_CULL_DOCK_PARTS_PX', env)
+            env = json.loads(self.modded_launch(directory, '--cull-small-parts', '0', inherited={'X3M_CULL_DOCK_PARTS_PX': '8'})[1])['env']
+            self.assertNotIn('X3M_CULL_DOCK_PARTS_PX', env)
+            self.assertNotIn('X3M_CULL_DOCK_PARTS_PX', json.loads(self.launch(directory, inherited={'X3M_CULL_DOCK_PARTS_PX': '8'})[1])['env'])
+            for args in (('--cull-small-parts', '0', '--cull-dock-parts', '8'),):
+                code, _, error = self.modded_launch(directory, *args)
+                self.assertEqual(code, 2, args)
+                self.assertIn('--cull-dock-parts requires a non-zero --cull-small-parts', error)
+            for value in ('65', '-1', 'nan'):
+                code, _, error = self.modded_launch(directory, '--cull-dock-parts', value)
+                self.assertEqual(code, 2, value)
+                self.assertIn('--cull-dock-parts out of range', error)
 
     def test_out_of_range_refused(self):
         with tempfile.TemporaryDirectory() as directory:

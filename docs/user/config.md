@@ -66,6 +66,12 @@ changes what is drawn: the turrets still aim, fire and can be hit, and parts on 
 target are always drawn. It needs `cull_small_parts_px` above 0. With it on, `x3m.log` carries one
 `cull_small_props_frame` line every 300 frames with how many part draws were skipped (`culled=`) and drawn (`kept=`).
 
+`cull_dock_parts_px` (default `8` since 2026-09-29) skips drawing the hangar and launch-tube parts of carriers when
+they are smaller on screen than this many pixels. These parts sit inside the carrier's hull and cost many draws
+each (a Split Raptor has 117), so they get a larger size than `cull_small_parts_px`; every other part keeps that
+setting. `0` turns it off (they then follow `cull_small_parts_px`), up to `64`. It needs `cull_small_parts_px` above 0;
+at a lower value than `cull_small_parts_px` it changes nothing.
+
 `dust_leak_fix` (default `on`) stops a slowdown that builds up in sectors whose background asks for dust the mod does not
 ship: without it the game creates a few dozen invisible objects every frame and never removes them, so the frame rate
 sinks the longer you stay (Mayhem 3: 170 of its backgrounds; stock game: one). With the fix the game gives up on the

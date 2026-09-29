@@ -169,3 +169,40 @@ DRAWS figure shows issued draws ([draw-calls.md](draw-calls.md)).
 | 2026-09-29 | CPU fixture with the regression case: the engine part box behind the descriptor projects to 11.6 px (above 4) while the draw's extent is 1.28 px, and the prop is skipped; unknown extent drawn (`no_bounds`); the rest as before | `python3 verification/probe/build_cull_small_parts.py` then `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_cull_small_parts.py` | 141 checks, 0 failures; per draw memo hit 3.0 ns, first non-prop 14.2 ns, first skipped prop of a frame 287 ns, pair mean 171 ns (Wine/FEX, harness included; the production extent lookup is not in this figure) |
 | 2026-09-29 | Host: harness with the 9x engine box (11.6 px) beside the unit extent, extent asked for prop draws only, draw-path wiring (extent cache find/queue, `cull_small_prop_box`), `frame_end issued=` and the overlay's issued figure pinned | `PYTHONPATH=verification/probe:verification/analysis /usr/bin/python3 -m unittest test_cull_small_parts test_cull_census test_logging_tiers test_config_schema test_fps_overlay test_frame_timing test_exe_identity`; `python3 tools/config/generate.py --check` | all OK; generate PASS 243 settings |
 | 2026-09-29 | Clean DLL build, x87 walk | `cmake … -DPython3_EXECUTABLE=/usr/bin/python3 && cmake --build build -j8`; `check_no_x87.py build/d3d9.dll` | 0 warnings; PASS, 734 reachable, 0 violations; `cull_small_prop` and `small_prop_extent` without SJLJ or x87 (objdump) |
+
+## Dock ports (`--cull-dock-parts`, 2026-09-29)
+
+User decision 2026-09-29, option 1 of [ship-scene-parts.md](../reverse-engineering/ship-scene-parts.md) §4: a second,
+larger threshold in the same stub for the carrier dock-port parts, the inline bodies of the stock dock cut scenes
+9013/9014 and 9098/9099 (model id `node+0x140` in `[901300000, 901499999]` or `[909800000, 909999999]`, id = local +
+(cut − 1)·100000). `X3M_CULL_DOCK_PARTS_PX` (ini `cull_dock_parts_px`, launcher `--cull-dock-parts <PX>`, default 8
+with every non-zero `--cull-small-parts`, 0 = off and not sent, refused without the cull, band (0, 64]) is converted
+to the pass's `s` exactly as `X3M_CULL_SMALL_PARTS_PX` (same `threshold_for`, same projection, width and focus, same
+frame). The stub compares `s` first against `upper = max(threshold, dock threshold)` (0 in a vanilla frame), so a node
+at or above both runs the same eight instructions as before; below the small threshold every node is culled as
+before (three more instructions); between the two only a dock-port id is culled, through `mov eax,[edi+0x140]` and two
+`sub`/`cmp`/`jb` range tests. The projectile exemption applies to the dock path too (a dock part never carries the
+marker; the rule stays consistent with it); there is no own-ship or target exemption in the stub, and none is added
+(the player's ship shows no dock ports from inside). Stub 82 → 147 bytes (`cull_small_parts_core.h`), same site,
+window, verified bytes and fail-closed install; an invalid dock value refuses the whole install
+(`reason=invalid_dock_px`, nothing patched). Rows: `cull_small_parts … dock_px= dock_requested=`,
+`cull_small_parts_value … dock_px= dock_threshold=`, `cull_small_parts_frame … dock_px= dock_threshold= dock_culled=`
+(F8 frames; `culled=` stays the small-rule count, `dock_culled=` the nodes the dock rule added), census verdict
+`culled_dock`. The stub has no per-300-frame row; a flight counts the dock rule on F8 frames under `--debug`.
+
+**Default versus the note's table.** The note's "s < 8 removes 159/27/27" is in `s` units. At run385's projection
+(`m00` 0.5, 5120 wide, focus `0x3470`: 1.639 px per `s`) the 8 px default is `s < 5` and removes 64/2/25 draws; 12 px
+is `s < 8` and reproduces 159/27/27 (measured replay below). The default stays 8 px as briefed; 12 px is the value
+that matches the note's recommendation at that resolution.
+
+| Date | Check | Command | Result |
+| --- | --- | --- | --- |
+| 2026-09-29 | X3 CPU fixture: 18-node dock tree (D 64000, W 1280, s = radius/100) at 4 px / 8 px, m00 0.8 at 1280 → thresholds 5 / 10: exactly the 7 in-range nodes with 5 ≤ s < 10 (both bounds of both ranges, 901300003, 901400003, 909900005) and the 3 nodes below 5 flip; 901299999, 901500000, 909799999, 910000000 at s 7, an in-range node at s 10 and a marked in-range node (exempt) as native; culled=3, dock_culled=7, exempt=1; value and frame rows; census `culled_dock` 7 / `culled_small` 3 / kept 8; dock 0 and dock 2 px (below 4 px): the 4 px rule only; after_reset disarms both words; projectiles off: the marked node dock-culled (8); registers, ESP, x87, EAX/ECX/EDX/EFLAGS and LastError as native; after rollback native; the run131 replay classes unchanged (97/403, 128/458, 139/479) | `python3 verification/probe/build_cull_small_parts.py` then `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_cull_small_parts.py` | 162 checks, 0 failures (141 before); bench per 12-node pass native 0.2268, disarmed 0.2366, armed 0.2326, armed with the dock rule (upper 40, no dock ids) 0.2319 µs (Wine/FEX, harness included, not game FPS) |
+| 2026-09-29 | Stub instructions per node, before (`c7917cfc`) and after | `python3 verification/results/ship-scene-parts/dock_stub_paths.py --before c7917cfc` ([output](../../verification/results/ship-scene-parts/dock_stub_paths_out.txt)) | disarmed 3 → 3; s ≥ upper 8 → 8; small cull (no parent) 15 → 18; threshold ≤ s < upper, not a dock id 8 → 18; dock cull 23 (first range) / 26 (M6 range) |
+| 2026-09-29 | Replay of the rule on the run385 census rows with each frame's own `cull_small_parts_frame` projection | `python3 verification/results/ship-scene-parts/dock_part_rules.py /tmp/x3-bottleX3-run385/session-20260929-173412-212.log` ([output](../../verification/results/ship-scene-parts/dock_part_rules_out.txt)) | 4 px → threshold 3; dock 8 px → `s < 5`: 28/2/1 nodes, 64/2/25 draws removed in frames 4827/8142/10210; dock 12 px → `s < 8`: 39/3/3 nodes, 159/27/27 draws |
+| 2026-09-29 | Site verifier on the installed EXE (site checks unchanged; its encoder twin, constants and `encoder_projectiles` updated to the 147-byte stub) | `python3 verification/probe/verify_cull_small_parts_site.py` | PASS 20/20, EXE `fdbf3418…` |
+| 2026-09-29 | Host: C++ and Python encoders byte for byte (both marker tests, both range tests, `projectiles off`), `dock_model` bounds, `upper_for`, census `culled_dock`, the row parsers with the dock fields, launcher default/explicit/0/refusals, schema opt-outs, default-launch environment | `PYTHONPATH=verification/probe:verification/analysis python3 -m unittest test_cull_small_parts test_config_schema test_launcher_defaults test_logging_tiers test_cull_census test_body_table_exe test_fov_site test_terran_lod_site`; `python3 tools/config/generate.py --check` | 96 tests OK; generate PASS 245 settings, 97 in the template |
+| 2026-09-29 | DLL build and x87 walk; launcher dry run | `cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DPython3_EXECUTABLE=/usr/bin/python3 && cmake --build build -j8`; `check_no_x87.py build/d3d9.dll`; `python3 tools/manage.py launch --dry-run [--cull-dock-parts 0]` | 0 warnings; PASS, 734 reachable, 0 violations (worktree build `3f95b47a…`, not a candidate); dry run carries `X3M_CULL_DOCK_PARTS_PX=8.0000`, with `--cull-dock-parts 0` not |
+
+Open: not flown. Whether the hangar interior shows through the open bay before it is culled (note, "Unknown") is a
+flight question; the frame row's `dock_culled=` and the census `culled_dock` rows count it.

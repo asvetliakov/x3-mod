@@ -21,9 +21,9 @@ projectile marker is established by the pinned instructions (0x004401ae
 stores 0x20800000, 0x0044123b..0x00441248 ORs it into the root node's +0x130)
 and consumed as 0x20000000 by the occluder filter at 0x00488b00, and that
 src/proxy/cull_small_parts_core.h carries the same constants and window. Also
-the stub encoder and the `cull_small_parts`, `cull_small_parts_value` and
-`cull_small_parts_frame` line parsers the host test exercises. No Wine, no
-game launch.
+the stub encoder (with the carrier dock-port id ranges, 2026-09-29) and the
+`cull_small_parts`, `cull_small_parts_value` and `cull_small_parts_frame` line
+parsers the host test exercises. No Wine, no game launch.
 """
 import argparse
 import hashlib
@@ -55,7 +55,11 @@ RET_VA = 0x47d54f
 # before the site rebalance with `add esp`), and these are the three final writers of that slot before the site.
 PROLOGUE = bytes.fromhex('83ec14 8a44241c 53 55 56 57'.replace(' ', ''))
 S_STORES = {0x47d229: bytes.fromhex('c744242c00000007'), 0x47d24a: bytes.fromhex('8944242c'), 0x47d250: bytes.fromhex('c744242c01000000')}
-STUB_LENGTH, STUB_PROJECTILE, STUB_REPLAY, STUB_CULL, STUB_EXEMPT, STUB_CONTINUE = 82, 22, 34, 59, 70, 76
+STUB_LENGTH, STUB_PROJECTILE, STUB_REPLAY, STUB_CULL, STUB_EXEMPT, STUB_CONTINUE = 147, 91, 109, 134, 139, 63
+STUB_POP_CONTINUE, STUB_DOCK, STUB_DOCK_PROJECTILE, STUB_DOCK_COUNT, STUB_SMALL, STUB_COUNT = 62, 69, 70, 82, 90, 103
+# Carrier dock-port parts (docs/reverse-engineering/ship-scene-parts.md): model ids (node+0x140) of the inline bodies of the
+# stock dock cut scenes 9013/9014 and 9098/9099, id = local + (cut - 1) * 100000.
+MODEL_OFFSET, DOCK_FIRST_BASE, DOCK_SECOND_BASE, DOCK_SPAN = 0x140, 901300000, 909800000, 200000
 # The engine's class-0 (TBullets) root-node marker the stub's exemption tests (docs/reverse-engineering/lod-selection.md, "Projectile nodes").
 FLAGS130_OFFSET, PROJECTILE_FLAG = 0x130, 0x20000000
 MARKER_STORE_VA, MARKER_STORE = 0x4401ae, bytes.fromhex('c744242000008020')              # mov dword [esp+0x20],0x20800000 (class-0 case)
@@ -63,37 +67,66 @@ MARKER_OR_VA, MARKER_OR = 0x44123b, bytes.fromhex('8b4570 8b542420 099030010000'
 MARKER_USE_VA, MARKER_USE = 0x488b00, bytes.fromhex('f7873001000000000020')             # test dword [edi+0x130],0x20000000 (occluder filter)
 LOG_RE = re.compile(r'\bcull_small_parts requested=(?P<requested>\S+) px=(?P<px>[0-9.e+-]+) patched=(?P<patched>[01]) reason=(?P<reason>\S+) '
                     r'site=0x(?P<site>[0-9a-f]{8}) cull=0x(?P<cull>[0-9a-f]{8}) write=(?P<write>none|atomic|plain) stub=0x(?P<stub>[0-9a-f]{8}) camera=(?P<camera>\S+)(?: scope=(?P<scope>bodies|all|invalid))?'
-                    r'(?: projectiles=(?P<projectiles>on|off|marker_mismatch|invalid))?')
+                    r'(?: projectiles=(?P<projectiles>on|off|marker_mismatch|invalid))?(?: dock_px=(?P<dock_px>[0-9.e+-]+) dock_requested=(?P<dock_requested>\S+))?')
 VALUE_RE = re.compile(r'\bcull_small_parts_value px=(?P<px>[0-9.e+-]+) m00=(?P<m00>[0-9.e+-]+) width=(?P<width>\d+) threshold=(?P<threshold>-?\d+)'
-                      r'(?: focus=0x(?P<focus>[0-9a-f]+))?(?: source=(?P<source>scene|registry))?(?: fallback=(?P<fallback>none|no_scene|reset|aged))?')
+                      r'(?: focus=0x(?P<focus>[0-9a-f]+))?(?: source=(?P<source>scene|registry))?(?: fallback=(?P<fallback>none|no_scene|reset|aged))?'
+                      r'(?: dock_px=(?P<dock_px>[0-9.e+-]+) dock_threshold=(?P<dock_threshold>-?\d+))?')
 FRAME_RE = re.compile(r'\bcull_small_parts_frame device=(?P<device>\d+) frame=(?P<frame>\d+) px=(?P<px>[0-9.e+-]+) threshold=(?P<threshold>-?\d+) '
                       r'culled=(?P<culled>\d+) m00=(?P<m00>[0-9.e+-]+) width=(?P<width>\d+)(?: scope=(?P<scope>bodies|all))?'
                       r'(?: projectiles=(?P<projectiles>on|off) exempt_bullet=(?P<exempt>\d+))?'
-                      r'(?: focus=0x(?P<focus>[0-9a-f]+) source=(?P<source>scene|registry))?(?: fallback=(?P<fallback>none|no_scene|reset|aged))?')
+                      r'(?: focus=0x(?P<focus>[0-9a-f]+) source=(?P<source>scene|registry))?(?: fallback=(?P<fallback>none|no_scene|reset|aged))?'
+                      r'(?: dock_px=(?P<dock_px>[0-9.e+-]+) dock_threshold=(?P<dock_threshold>-?\d+) dock_culled=(?P<dock_culled>\d+))?')
 
 
-def encode_stub(at, threshold, culled, exempt, cull_target, next_slot, projectiles=True):
-    """cmp dword [threshold],0; jle continue; push eax; mov eax,[threshold]; cmp [esp+0x30],eax; pop eax; jge continue;
-    test dword [edi+0x130],0x20000000; jne exempt;
-    mov ecx,[edi+0x18]; test ecx,ecx; mov eax,[edi+0x1d8]; je cull; mov ecx,[ecx+0x1d8]; cmp ecx,eax; jle cull; mov eax,ecx;
-    cull: inc dword [culled]; jmp cull_target; exempt: inc dword [exempt]; continue: jmp [next]. Projectiles off replaces
-    bytes 22..33 with jmp 34 and int3 padding (the scope `bodies` variant was removed on 2026-09-25). The C++ encoder's contract."""
-    for value in (at, threshold, culled, exempt, cull_target, next_slot):
+def encode_stub(at, threshold, upper, culled, exempt, dock_culled, cull_target, next_slot, projectiles=True):
+    """cmp dword [upper],0; jle continue; push eax; mov eax,[upper]; cmp [esp+0x30],eax; jge pop_continue;
+    mov eax,[threshold]; cmp [esp+0x30],eax; jl pop_small; mov eax,[edi+0x140]; sub eax,901300000; cmp eax,200000; jb pop_dock;
+    sub eax,8500000; cmp eax,200000; jb pop_dock; pop_continue: pop eax; continue: jmp [next];
+    pop_dock: pop eax; test dword [edi+0x130],0x20000000; jne exempt; inc dword [dock_culled]; jmp replay;
+    pop_small: pop eax; test dword [edi+0x130],0x20000000; jne exempt; inc dword [culled];
+    replay: mov ecx,[edi+0x18]; test ecx,ecx; mov eax,[edi+0x1d8]; je cull; mov ecx,[ecx+0x1d8]; cmp ecx,eax; jle cull; mov eax,ecx;
+    cull: jmp cull_target; exempt: inc dword [exempt]; jmp continue. Projectiles off replaces each 12-byte marker test (bytes
+    70..81 and 91..102) with jmp +10 and int3 padding. The C++ encoder's contract (cull_small_parts_core.h)."""
+    for value in (at, threshold, upper, culled, exempt, dock_culled, cull_target, next_slot):
         if not 0 <= value <= 0xffffffff:
             raise ValueError('addresses must be 32-bit VAs')
-    code = (b'\x83\x3d' + struct.pack('<I', threshold) + b'\x00' + b'\x7e' + bytes([STUB_CONTINUE - 9])
-            + b'\x50' + b'\xa1' + struct.pack('<I', threshold) + b'\x39\x44\x24\x30' + b'\x58' + b'\x7d' + bytes([STUB_CONTINUE - 22])
-            + b'\xf7\x87' + struct.pack('<I', FLAGS130_OFFSET) + struct.pack('<I', PROJECTILE_FLAG) + b'\x75' + bytes([STUB_EXEMPT - 34])
-            + b'\x8b\x4f\x18' + b'\x85\xc9' + b'\x8b\x87\xd8\x01\x00\x00' + b'\x74' + bytes([STUB_CULL - 47])
-            + b'\x8b\x89\xd8\x01\x00\x00' + b'\x3b\xc8' + b'\x7e' + bytes([STUB_CULL - 57]) + b'\x8b\xc1'
-            + b'\xff\x05' + struct.pack('<I', culled) + b'\xe9' + struct.pack('<I', (cull_target - (at + STUB_EXEMPT)) & 0xffffffff)
-            + b'\xff\x05' + struct.pack('<I', exempt)
-            + b'\xff\x25' + struct.pack('<I', next_slot))
+    code = bytearray()
+
+    def rel8(target):
+        code.append((target - (len(code) + 1)) & 0xff)
+
+    def marker():
+        code.extend(b'\xf7\x87' + struct.pack('<II', FLAGS130_OFFSET, PROJECTILE_FLAG) + b'\x75')
+        rel8(STUB_EXEMPT)
+    code += b'\x83\x3d' + struct.pack('<I', upper) + b'\x00' + b'\x7e'
+    rel8(STUB_CONTINUE)
+    code += b'\x50' + b'\xa1' + struct.pack('<I', upper) + b'\x39\x44\x24\x30' + b'\x7d'
+    rel8(STUB_POP_CONTINUE)
+    code += b'\xa1' + struct.pack('<I', threshold) + b'\x39\x44\x24\x30' + b'\x7c'
+    rel8(STUB_SMALL)
+    code += b'\x8b\x87' + struct.pack('<I', MODEL_OFFSET) + b'\x2d' + struct.pack('<I', DOCK_FIRST_BASE) + b'\x3d' + struct.pack('<I', DOCK_SPAN) + b'\x72'
+    rel8(STUB_DOCK)
+    code += b'\x2d' + struct.pack('<I', DOCK_SECOND_BASE - DOCK_FIRST_BASE) + b'\x3d' + struct.pack('<I', DOCK_SPAN) + b'\x72'
+    rel8(STUB_DOCK)
+    code += b'\x58' + b'\xff\x25' + struct.pack('<I', next_slot) + b'\x58'
+    marker()
+    code += b'\xff\x05' + struct.pack('<I', dock_culled) + b'\xeb'
+    rel8(STUB_REPLAY)
+    code += b'\x58'
+    marker()
+    code += b'\xff\x05' + struct.pack('<I', culled)
+    code += b'\x8b\x4f\x18' + b'\x85\xc9' + b'\x8b\x87\xd8\x01\x00\x00' + b'\x74'
+    rel8(STUB_CULL)
+    code += b'\x8b\x89\xd8\x01\x00\x00' + b'\x3b\xc8' + b'\x7e'
+    rel8(STUB_CULL)
+    code += b'\x8b\xc1' + b'\xe9' + struct.pack('<I', (cull_target - (at + STUB_EXEMPT)) & 0xffffffff)
+    code += b'\xff\x05' + struct.pack('<I', exempt) + b'\xeb'
+    rel8(STUB_CONTINUE)
     if not projectiles:
-        skip = b'\xeb' + bytes([STUB_REPLAY - 24])
-        code = code[:STUB_PROJECTILE] + skip + b'\xcc' * (STUB_REPLAY - STUB_PROJECTILE - len(skip)) + code[STUB_REPLAY:]
+        for start in (STUB_DOCK_PROJECTILE, STUB_PROJECTILE):
+            code[start:start + 12] = b'\xeb\x0a' + b'\xcc' * 10
     assert len(code) == STUB_LENGTH
-    return code
+    return bytes(code)
 
 
 def focus_from_projection(m00, m11):
@@ -130,7 +163,8 @@ def parse_log_line(line):
     row = match.groupdict()
     return {'requested': row['requested'], 'px': float(row['px']), 'patched': row['patched'] == '1', 'reason': row['reason'],
             'site': int(row['site'], 16), 'cull': int(row['cull'], 16), 'write': row['write'], 'stub': int(row['stub'], 16), 'camera': row['camera'], 'scope': row['scope'],
-            'projectiles': row['projectiles']}
+            'projectiles': row['projectiles'], 'dock_px': float(row['dock_px']) if row['dock_px'] is not None else None,
+            'dock_requested': row['dock_requested']}
 
 
 def parse_value_line(line):
@@ -139,7 +173,9 @@ def parse_value_line(line):
         return None
     row = match.groupdict()
     return {'px': float(row['px']), 'm00': float(row['m00']), 'width': int(row['width']), 'threshold': int(row['threshold']),
-            'focus': int(row['focus'], 16) if row['focus'] else None, 'source': row['source'], 'fallback': row['fallback']}
+            'focus': int(row['focus'], 16) if row['focus'] else None, 'source': row['source'], 'fallback': row['fallback'],
+            'dock_px': float(row['dock_px']) if row['dock_px'] is not None else None,
+            'dock_threshold': int(row['dock_threshold']) if row['dock_threshold'] is not None else None}
 
 
 def parse_frame_line(line):
@@ -150,20 +186,37 @@ def parse_frame_line(line):
     return {'device': int(row['device']), 'frame': int(row['frame']), 'px': float(row['px']), 'threshold': int(row['threshold']),
             'culled': int(row['culled']), 'm00': float(row['m00']), 'width': int(row['width']), 'scope': row['scope'],
             'projectiles': row['projectiles'], 'exempt_bullet': int(row['exempt']) if row['exempt'] is not None else None,
-            'focus': int(row['focus'], 16) if row['focus'] else None, 'source': row['source'], 'fallback': row['fallback']}
+            'focus': int(row['focus'], 16) if row['focus'] else None, 'source': row['source'], 'fallback': row['fallback'],
+            'dock_px': float(row['dock_px']) if row['dock_px'] is not None else None,
+            'dock_threshold': int(row['dock_threshold']) if row['dock_threshold'] is not None else None,
+            'dock_culled': int(row['dock_culled']) if row['dock_culled'] is not None else None}
+
+
+def dock_model(model_id):
+    """The stub's dock-port id test: two unsigned range compares (cull_small_parts_core.h dock_model)."""
+    return (model_id - DOCK_FIRST_BASE) % (1 << 32) < DOCK_SPAN or (model_id - DOCK_SECOND_BASE) % (1 << 32) < DOCK_SPAN
 
 
 def projectile_stub_ok():
-    """The marker test sits on the below-threshold path only (after the jge), reads node+0x130 against 0x20000000 and branches to
-    the exempt count, which falls through into the continue jump; `off` jumps over it to the replay."""
-    args = (0x10000000, 0x10002000, 0x10002004, 0x10002008, CULL_VA, 0x10000054)
+    """Both marker tests sit below `upper` only (after the jge), read node+0x130 against 0x20000000 and branch to the exempt count,
+    which jumps back to the continue jump; the dock-port id compares run only between the two thresholds (after the jl);
+    `off` jumps over both marker tests to the counts."""
+    args = (0x10000000, 0x10002000, 0x1000200c, 0x10002004, 0x10002008, 0x10002010, CULL_VA, 0x10000094)
     on, off = encode_stub(*args), encode_stub(*args, projectiles=False)
-    return (on[STUB_PROJECTILE:STUB_PROJECTILE + 2] == b'\xf7\x87' and struct.unpack_from('<II', on, STUB_PROJECTILE + 2) == (FLAGS130_OFFSET, PROJECTILE_FLAG)
-            and on[32] == 0x75 and 34 + on[33] == STUB_EXEMPT and on[STUB_EXEMPT:STUB_EXEMPT + 2] == b'\xff\x05'
-            and struct.unpack_from('<I', on, STUB_EXEMPT + 2)[0] == 0x10002008 and STUB_EXEMPT + 6 == STUB_CONTINUE
-            and 22 + on[21] == STUB_CONTINUE and 9 + on[8] == STUB_CONTINUE and on[STUB_REPLAY:STUB_REPLAY + 5] == SITE
-            and off[:STUB_PROJECTILE] == on[:STUB_PROJECTILE] and off[STUB_REPLAY:] == on[STUB_REPLAY:]
-            and off[22] == 0xeb and 24 + off[23] == STUB_REPLAY and off[24:STUB_REPLAY] == b'\xcc' * (STUB_REPLAY - 24))
+    marker = b'\xf7\x87' + struct.pack('<II', FLAGS130_OFFSET, PROJECTILE_FLAG) + b'\x75'
+    return (on[STUB_DOCK_PROJECTILE:STUB_DOCK_PROJECTILE + 11] == marker and STUB_DOCK_PROJECTILE + 12 + on[STUB_DOCK_PROJECTILE + 11] == STUB_EXEMPT
+            and on[STUB_PROJECTILE:STUB_PROJECTILE + 11] == marker and STUB_PROJECTILE + 12 + on[STUB_PROJECTILE + 11] == STUB_EXEMPT
+            and on[STUB_EXEMPT:STUB_EXEMPT + 2] == b'\xff\x05' and struct.unpack_from('<I', on, STUB_EXEMPT + 2)[0] == 0x10002008
+            and on[STUB_EXEMPT + 6] == 0xeb and (STUB_EXEMPT + 8 + struct.unpack_from('<b', on, STUB_EXEMPT + 7)[0]) == STUB_CONTINUE
+            and on[STUB_CONTINUE:STUB_CONTINUE + 2] == b'\xff\x25' and 9 + on[8] == STUB_CONTINUE and 21 + on[20] == STUB_POP_CONTINUE
+            and 32 + on[31] == STUB_SMALL and 50 + on[49] == STUB_DOCK and 62 + on[61] == STUB_DOCK
+            and on[STUB_DOCK] == 0x58 and on[STUB_SMALL] == 0x58 and on[STUB_POP_CONTINUE] == 0x58
+            and on[STUB_REPLAY:STUB_REPLAY + 5] == SITE
+            and struct.unpack_from('<I', on, 34)[0] == MODEL_OFFSET and struct.unpack_from('<I', on, 39)[0] == DOCK_FIRST_BASE
+            and struct.unpack_from('<I', on, 51)[0] == DOCK_SECOND_BASE - DOCK_FIRST_BASE
+            and off[:STUB_DOCK_PROJECTILE] == on[:STUB_DOCK_PROJECTILE] and off[STUB_DOCK_COUNT:STUB_PROJECTILE] == on[STUB_DOCK_COUNT:STUB_PROJECTILE]
+            and off[STUB_COUNT:] == on[STUB_COUNT:]
+            and off[STUB_DOCK_PROJECTILE:STUB_DOCK_COUNT] == off[STUB_PROJECTILE:STUB_COUNT] == b'\xeb\x0a' + b'\xcc' * 10)
 
 
 def source_constants(text):
@@ -177,7 +230,8 @@ def source_constants(text):
     names = ('function_va', 'function_end_va', 'window_va', 'site_va', 'next_va', 'je_va', 'cull_va', 'after_cull_va', 'window_length', 'site_offset',
              'site_length', 'cull_offset', 'ret_pop', 'parent_offset', 'threshold_1d8_offset', 'stub_length', 'stub_cull', 'stub_continue',
              'stub_projectile', 'stub_replay', 'stub_exempt', 'flags130_offset', 'projectile_flag', 'marker_store_va', 'marker_or_va',
-             'marker_store_length', 'marker_or_length')
+             'marker_store_length', 'marker_or_length', 'stub_pop_continue', 'stub_dock', 'stub_dock_projectile', 'stub_dock_count',
+             'stub_small', 'stub_count', 'model_offset', 'dock_first_base', 'dock_second_base', 'dock_span')
     return {name: value(name) for name in names} | {'window': array('window'), 'site': array('site'),
                                                      'marker_store': array('marker_store'), 'marker_or': array('marker_or')}
 
@@ -188,7 +242,10 @@ EXPECTED_CONSTANTS = {'function_va': FUNCTION[0], 'function_end_va': FUNCTION[1]
                       'stub_length': STUB_LENGTH, 'stub_cull': STUB_CULL, 'stub_continue': STUB_CONTINUE, 'window': WINDOW, 'site': SITE,
                       'stub_projectile': STUB_PROJECTILE, 'stub_replay': STUB_REPLAY, 'stub_exempt': STUB_EXEMPT, 'flags130_offset': FLAGS130_OFFSET,
                       'projectile_flag': PROJECTILE_FLAG, 'marker_store_va': MARKER_STORE_VA, 'marker_or_va': MARKER_OR_VA,
-                      'marker_store_length': len(MARKER_STORE), 'marker_or_length': len(MARKER_OR), 'marker_store': MARKER_STORE, 'marker_or': MARKER_OR}
+                      'marker_store_length': len(MARKER_STORE), 'marker_or_length': len(MARKER_OR), 'marker_store': MARKER_STORE, 'marker_or': MARKER_OR,
+                      'stub_pop_continue': STUB_POP_CONTINUE, 'stub_dock': STUB_DOCK, 'stub_dock_projectile': STUB_DOCK_PROJECTILE,
+                      'stub_dock_count': STUB_DOCK_COUNT, 'stub_small': STUB_SMALL, 'stub_count': STUB_COUNT, 'model_offset': MODEL_OFFSET,
+                      'dock_first_base': DOCK_FIRST_BASE, 'dock_second_base': DOCK_SECOND_BASE, 'dock_span': DOCK_SPAN}
 
 
 def decode(exe):
@@ -227,7 +284,7 @@ def inspect(data, instructions, core_text):
         'claim_disjoint': all(claim[1] <= a or a + n <= claim[0] for a, n in OTHER_CLAIMS.values()),
         'function_ret': ret is not None and ret.mnemonic == 'ret' and ret.raw == bytes.fromhex('c20800') and ret.end == FUNCTION[1],
         'source_constants': source_constants(core_text) == EXPECTED_CONSTANTS,
-        'encoder': len(encode_stub(0x10000000, 0x10002000, 0x10002004, 0x10002008, CULL_VA, 0x10000054)) == STUB_LENGTH,
+        'encoder': len(encode_stub(0x10000000, 0x10002000, 0x1000200c, 0x10002004, 0x10002008, 0x10002010, CULL_VA, 0x10000094)) == STUB_LENGTH,
         # The exemption's premise: the class-0 creation path stores 0x20800000 and ORs it into the root node's +0x130, and the engine
         # itself reads bit 0x20000000 of +0x130 (occluder filter). Bytes only: these lie outside the decoded pass.
         'projectile_marker': image.read(MARKER_STORE_VA, len(MARKER_STORE)) == MARKER_STORE and image.read(MARKER_OR_VA, len(MARKER_OR)) == MARKER_OR

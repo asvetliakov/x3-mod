@@ -15,7 +15,12 @@
 // the vanilla compare, and so does a node below it that carries the engine's
 // class-0 projectile marker (+0x130 & 0x20000000: bolts and beams;
 // X3M_CULL_SMALL_PARTS_PROJECTILES=on|off, default on; cull_small_parts_core.h
-// "Projectile exemption"). With the threshold at 0 (option off, no valid camera
+// "Projectile exemption"). Carrier dock-port parts (model ids 901300000..901499999
+// and 909800000..909999999, the inline bodies of the stock dock cut scenes;
+// docs/reverse-engineering/ship-scene-parts.md) are culled below a second,
+// larger threshold from X3M_CULL_DOCK_PARTS_PX (0 or unset = off, converted
+// the same way; the projectile exemption applies to them too; nothing else
+// changes for any other node). With the threshold at 0 (option off, no valid camera
 // yet, a Reset) the stub is one compare and a branch. No handler call: the
 // stub is straight-line integer code, LastError and the x87 stack untouched.
 // Installed on the backend-load path inside the engine_patch install window
@@ -38,6 +43,10 @@ bool projectiles_exempt(); // the installed stub exempts marked projectile nodes
 std::uintptr_t stub_address();
 double requested_px();
 bool set_px(double px); // the setting without a relaunch (fixture and diagnostics); false outside the band
+// The dock-port setting without a relaunch: 0 = off, else in the band; false otherwise. Takes effect at the next
+// publish/begin_frame.
+bool set_dock_px(double px);
+double requested_dock_px();
 // Per frame, on the thread that runs the pass: publishes the threshold for
 // this frame from the given projection scale, width and the engine's base FOV
 // (binary angle, 0x4000 = the game's default; the engine's s shrinks with it)
@@ -62,8 +71,8 @@ void after_reset(unsigned width); // disarms until the next begin_frame
 // Emits the cull_small_parts_frame row for a captured frame and clears the count.
 void present(unsigned long long device, unsigned long long frame, bool captured);
 struct Stats {
-    std::int32_t threshold;
-    std::uint32_t culled, exempt;
+    std::int32_t threshold, dock_threshold, upper; // dock_threshold 0 = dock rule off; upper = the stub's first word
+    std::uint32_t culled, exempt, dock_culled;
     float m00;
     unsigned width;
     std::uint32_t focus;
@@ -77,7 +86,12 @@ Stats stats();
 // (every node below the threshold, including those the engine's own limit or
 // degenerate-size test would have culled; the census names the difference),
 // and the per-frame count of nodes below the threshold it let through as
-// projectiles (same inclusive rule).
+// projectiles (same inclusive rule). upper is core::upper_for(threshold, the
+// dock threshold), the stub's first compare (0 = off); dock_culled counts the
+// dock-port nodes at or above the threshold and below upper that it culled
+// (disjoint from culled: a dock-port node below the threshold counts there).
 extern "C" volatile std::int32_t x3m_cull_small_parts_threshold;
+extern "C" volatile std::int32_t x3m_cull_small_parts_upper;
+extern "C" volatile std::uint32_t x3m_cull_small_parts_dock_culled;
 extern "C" volatile std::uint32_t x3m_cull_small_parts_culled;
 extern "C" volatile std::uint32_t x3m_cull_small_parts_exempt;
