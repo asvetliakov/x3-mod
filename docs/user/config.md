@@ -50,6 +50,9 @@ applies only to the details the lock holds, and its distance numbers decide wher
 `emission_source_gain` sets the brightness of engine exhausts and weapon effects, and the small glow cards on engine
 nozzles and guide lights follow it: `emission_source_gain = 1` leaves all of them at the game's own brightness.
 
+`lens_flare_gain` dims the game's own lens flares (the halos around engines and lights, and the sun's flare), for
+mods that draw them very large: `1` is the game's own brightness, `0.5` half, `0` none.
+
 ## Checking what was loaded
 
 The mod writes `x3m.log` next to `d3d9.dll`. Near its top:

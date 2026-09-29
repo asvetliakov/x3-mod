@@ -5,13 +5,15 @@
 // the wrapped lens draw under every admitted blend law for ps_2_0 and ps_3_0 originals, every
 // refusal, the step-2 clip pair (a core body over a depth edge: the covered half at the background,
 // the open half at f, a soft edge of fifths; a ghost at f; another record's body untouched), exact
-// state restoration around each transaction under hostile state, native Reset and teardown. Validation-only readback
+// state restoration around each transaction under hostile state, native Reset and teardown; the lens-flare gain's blend
+// law (src/proxy/lens_flare_gain.h: SRCBLEND = BLENDFACTOR, ZERO at G = 0) alone and on top of the ghost wrap. Validation-only readback
 // lives here, never in production (the pass's own readback() is its diagnostic one). Built by build_sun_occlusion.py;
 // run by run_sun_occlusion.py.
 #include <windows.h>
 #include <d3d9.h>
 #include "../../src/renderer/sun_occlusion_pass.h"
 #include "../../src/renderer/quad_vertex_program.h"
+#include "../../src/proxy/lens_flare_gain.h"
 #include <array>
 #include <cmath>
 #include <cstdio>
@@ -154,7 +156,7 @@ struct Snapshot {
             D3DRS_SRCBLEND, D3DRS_DESTBLEND, D3DRS_BLENDOP, D3DRS_SEPARATEALPHABLENDENABLE, D3DRS_SRCBLENDALPHA, D3DRS_DESTBLENDALPHA, D3DRS_FOGENABLE,
             D3DRS_SRGBWRITEENABLE, D3DRS_SCISSORTESTENABLE, D3DRS_CLIPPLANEENABLE, D3DRS_CLIPPING, D3DRS_LIGHTING, D3DRS_INDEXEDVERTEXBLENDENABLE,
             D3DRS_VERTEXBLEND, D3DRS_FILLMODE, D3DRS_CULLMODE, D3DRS_COLORWRITEENABLE, D3DRS_COLORWRITEENABLE1, D3DRS_MULTISAMPLEMASK, D3DRS_WRAP0,
-            D3DRS_POINTSPRITEENABLE, D3DRS_DITHERENABLE, D3DRS_ANTIALIASEDLINEENABLE};
+            D3DRS_POINTSPRITEENABLE, D3DRS_DITHERENABLE, D3DRS_ANTIALIASEDLINEENABLE, D3DRS_BLENDFACTOR};
         // clang-format on
         for (auto s : states) {
             DWORD v = 0;
@@ -947,6 +949,91 @@ int main() {
                 std::printf("CALLS execute=%u lens_draw=%u\n", execute_calls, lens_calls);
                 require("device_calls_bounded",
                         execute_calls > 0 && execute_calls <= 40 && lens_calls > 0 && lens_calls <= 6);
+            }
+            // ---- lens-flare gain: the production law and steps (lens_flare_gain.h) on the ps_2_0 ONE/ONE quad of
+            // 0.8,0.6,0.4 over black, in MotionOutput::apply_lens_gain's order (after the sun wrap, restored before
+            // lens_end, from the application's values read before the first setter). A hostile BLENDFACTOR is the
+            // application's and must come back. ----
+            {
+                namespace lfg = x3m::lens_flare_gain;
+                const bool cap = (caps.SrcBlendCaps & D3DPBLENDCAPS_BLENDFACTOR) != 0;
+                const lfg::Law off = lfg::law(1.f), half = lfg::law(.5f), zero = lfg::law(0.f), high = lfg::law(1.5f),
+                               nan = lfg::law(std::nanf(""));
+                require("lens_gain_law", !off.active && half.active && half.constant && half.factor == 0x80808080u &&
+                                             zero.active && !zero.constant && !high.active && !nan.active);
+                require("lens_gain_admits",
+                        lfg::admits(TRUE, D3DBLEND_ONE, D3DBLEND_ONE, D3DBLENDOP_ADD) &&
+                            !lfg::admits(FALSE, D3DBLEND_ONE, D3DBLEND_ONE, D3DBLENDOP_ADD) &&
+                            !lfg::admits(TRUE, D3DBLEND_SRCALPHA, D3DBLEND_ONE, D3DBLENDOP_ADD) &&
+                            !lfg::admits(TRUE, D3DBLEND_ONE, D3DBLEND_INVSRCCOLOR, D3DBLENDOP_ADD) &&
+                            !lfg::admits(TRUE, D3DBLEND_ONE, D3DBLEND_ONE, D3DBLENDOP_MAX));
+                require("lens_gain_blendfactor_cap", cap);
+                const Law& one_one = laws[2];
+                // One draw; true when the wrap (if asked) applied and every snapshotted state is the application's.
+                auto gained = [&](const lfg::Law& law, bool wrap, double out[4]) {
+                    lens.prepare(false, one_one);
+                    check("gain clear", d->Clear(0, nullptr, D3DCLEAR_TARGET, D3DCOLOR_ARGB(255, 0, 0, 0), 1.f, 0));
+                    check("gain hostile factor", d->SetRenderState(D3DRS_BLENDFACTOR, 0x12345678u));
+                    const Snapshot before(d);
+                    LensDraw draw;
+                    const LensVerdict verdict = wrap ? pass.lens_begin(lens_state(d, 20), draw) : LensVerdict::Applied;
+                    DWORD enable = 0, src = 0, dst = 0, op = 0, factor = 0;
+                    check("gain read", d->GetRenderState(D3DRS_ALPHABLENDENABLE, &enable));
+                    check("gain read", d->GetRenderState(D3DRS_SRCBLEND, &src));
+                    check("gain read", d->GetRenderState(D3DRS_DESTBLEND, &dst));
+                    check("gain read", d->GetRenderState(D3DRS_BLENDOP, &op));
+                    check("gain read", d->GetRenderState(D3DRS_BLENDFACTOR, &factor));
+                    D3DRENDERSTATETYPE states[2]{};
+                    DWORD values[2]{};
+                    const unsigned n = law.active && lfg::admits(enable, src, dst, op) ? lfg::steps(law, states, values) : 0u;
+                    for (unsigned i = 0; i < n; ++i) check("gain set", d->SetRenderState(states[i], values[i]));
+                    lens.draw(false);
+                    for (unsigned i = n; i; --i)
+                        check("gain restore", d->SetRenderState(states[i - 1], states[i - 1] == D3DRS_BLENDFACTOR ? factor : src));
+                    const HRESULT ended = pass.lens_end(draw);
+                    const Snapshot after(d);
+                    canvas.pixel(d, out);
+                    return verdict == LensVerdict::Applied && SUCCEEDED(ended) && before == after;
+                };
+                struct GainCase {
+                    const char* name;
+                    const lfg::Law* law;
+                    bool wrap;
+                };
+                const GainCase cases[] = {{"off", &off, false}, {"half", &half, false}, {"zero", &zero, false},
+                                          {"half_wrapped", &half, true}};
+                for (const GainCase& c : cases) {
+                    const double g = c.law->active ? double(c.law->factor & 255u) / 255. : 1.;
+                    double pixel[4], want[3];
+                    const bool restored = gained(*c.law, c.wrap, pixel);
+                    bool matches = true;
+                    for (unsigned i = 0; i < 3; ++i) {
+                        want[i] = source[i] * g * (c.wrap ? f : 1.);
+                        matches = matches && close_to(pixel[i], want[i], 2.5 / 255);
+                    }
+                    std::printf("LENS_GAIN name=%s gain=%.4f applied=%.4f wrap=%u r=%.4f g=%.4f b=%.4f expected_r=%.4f "
+                                "expected_g=%.4f expected_b=%.4f restored=%u\n",
+                                c.name, double(c.law->gain), g, unsigned(c.wrap), pixel[0], pixel[1], pixel[2], want[0],
+                                want[1], want[2], unsigned(restored));
+                    require((std::string("lens_gain_") + c.name).c_str(), matches && restored);
+                }
+                // Cost of the per-draw transaction without the draw: 113 lens draws (Mayhem 3, run364) x (two sets,
+                // two restores) per frame, over 200 frames; CPU wall time of the calls only (the draw is the game's).
+                LARGE_INTEGER frequency{}, t0{}, t1{};
+                QueryPerformanceFrequency(&frequency);
+                D3DRENDERSTATETYPE states[2]{};
+                DWORD values[2]{};
+                const unsigned n = lfg::steps(half, states, values);
+                QueryPerformanceCounter(&t0);
+                for (unsigned frame = 0; frame < 200; ++frame)
+                    for (unsigned draw = 0; draw < 113; ++draw) {
+                        for (unsigned i = 0; i < n; ++i) d->SetRenderState(states[i], values[i]);
+                        for (unsigned i = n; i; --i)
+                            d->SetRenderState(states[i - 1], states[i - 1] == D3DRS_BLENDFACTOR ? 0xffffffffu : DWORD(D3DBLEND_ONE));
+                    }
+                QueryPerformanceCounter(&t1);
+                std::printf("LENS_GAIN_COST draws_per_frame=113 frames=200 calls_per_draw=%u us_per_frame=%.2f\n", 2 * n,
+                            double(t1.QuadPart - t0.QuadPart) * 1e6 / double(frequency.QuadPart) / 200.);
             }
             // Refusals: nothing changes.
             auto untouched = [](LensState&) {};

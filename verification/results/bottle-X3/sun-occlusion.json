@@ -11,23 +11,24 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "sources": {
-  "src/proxy/engine_memory.cpp": "31b2addd09b1efeebdac5941e0c99f342e3f27573320db0809e10a7de69d66ff",
-  "src/proxy/sun_occlusion.cpp": "90bbc67df65247602cc765a3d6309e05c1196ed695e18f5e753699bf86639b86",
-  "src/proxy/sun_occlusion.h": "4d4bd7f69971ed9788fd703e599f487bb4418b83a64b8d0407fb3930bdc9357f",
-  "src/proxy/sun_occlusion_core.h": "5f031bef9c1371441517ad7048d5c42b8c286a159bd66f1d50a006cd3febf743",
-  "src/proxy/engine_patch.cpp": "9eb31fbf19e4f88432655ccccfe6e054739d9b8ba5f5be4054dfccf513330a2b",
-  "src/proxy/cpu_state.h": "73784e6190929661764c85d54778e97a4935a3841b7fca6f12e408751c1f4d6a",
-  "src/renderer/sun_occlusion_pass.cpp": "d04fc0a166a2dad4c39b5d559372bdf21b4f3bdbda4bed5b2c747fa2a9b96cfe",
-  "src/renderer/sun_occlusion_pass.h": "c4067010caef8bd5210450ceefbc8cf12775382fd42e55c98c1c2d2dd5fac1ba",
-  "src/renderer/lens_visibility_variant.cpp": "e27c5771402de391fc9aa7b95cda9900708cab98f25bed43d70b6f12718b9377",
-  "src/renderer/lens_visibility_variant.h": "5d0c255a33de1a274d69fdff17409d8a67dd08ead3f183cde0aa6344e44639ba",
+  "src/proxy/engine_memory.cpp": "d0174efa4fd1cbb4ffc31831fa44445bcf3801ec8d42c3c48b230e4a5c3b631b",
+  "src/proxy/sun_occlusion.cpp": "e3ed003704684502c07eeb4a351f64168ba6113e934ad7d43e15c3dd1ed275a3",
+  "src/proxy/sun_occlusion.h": "8439e86346c0c123e4bcd427b9822aade86108a350a84c5c56e6f1379023b93c",
+  "src/proxy/sun_occlusion_core.h": "b99429c5291dcf8e8107c5e5c638ef964e6e735cffe8585de5f37b6cd9c76053",
+  "src/proxy/engine_patch.cpp": "a9207d06c7075fa56690566ee4f514347852d2f1d41252b5386674d61b24f2cf",
+  "src/proxy/cpu_state.h": "204d60c9b12726a85fc19cf2de5a46584564f9d0e09afe31c3ce63ce0b68fc1e",
+  "src/renderer/sun_occlusion_pass.cpp": "1f331683c6e716669b55ea6ca7ffae0fa9c07a6238efefff7b58bf5006396932",
+  "src/renderer/sun_occlusion_pass.h": "822ec4e880fb930bfaf2f77f8f0bbcec66a92cf127d9aad508a699c8bd23b323",
+  "src/renderer/lens_visibility_variant.cpp": "5a8303b5cec299df45dd72ef58491ebec775e749906b94470ae0cf48a7956c7c",
+  "src/renderer/lens_visibility_variant.h": "bd8b277c60a8ba13be67d45f45560ddfddb40cb6a9752588fc0307fb40a7a37b",
   "src/renderer/sun_visibility_program_inc.h": "57e633c5dc3c11e291811f767e3ef4cda946abfd165a055b9b0ea513063985a9",
   "src/renderer/sun_visibility_taps_inc.h": "d893b7d2592d8e240ce18a99ccec7c1f06d78885e51f7bf9961570aca16dbcbf",
   "src/temporal/sun_visibility_ps.hlsl": "8c98f92dfe78015e687bccdd03fb5acd13b5c29ae7b4375405207f2a9b4ef541",
-  "verification/probe/sun_occlusion_hook_fixture.cpp": "a75f138a3b76aaea09b049720fc7f25cbe9a63e0d4b10cbd89ec11b79bca768e",
-  "verification/probe/sun_occlusion_fixture.cpp": "7dae1d32d1f0d39a648e051b8379a815bf84d846abe7a381b55e1e234c12f324",
+  "verification/probe/sun_occlusion_hook_fixture.cpp": "4cd1e0b87050c43521ea44c1b6a1d9e13d73d71d6f86e49da80904e9c41f8818",
+  "verification/probe/sun_occlusion_fixture.cpp": "11f4d89d305afc8fa87f13f0bf4046718eb5c9706e1ecdae2939afe866c80aa2",
   "verification/probe/build_sun_occlusion.py": "494a9d758101bf1b18bd3be423a0ca1fbd4a13cac6c8eaa96a14e45ebd29d8aa",
-  "verification/probe/run_sun_occlusion.py": "6f27a62879fd6114ee263be60d1cb72fb34d7347309d01c7f4c00a76b2f12c01"
+  "verification/probe/run_sun_occlusion.py": "904e506fab88667e1e6137d64e4b5b061cc8e1731017f2a75fe9916edef669d7",
+  "src/proxy/lens_flare_gain.h": "90ccffca36a591a1d24dfb1271b566611dd0c21a0e403bac7d05c419a9f09220"
  },
  "module_audit": {
   "probe_thunk": [
@@ -78,14 +79,14 @@
   },
   "failure_lines": [],
   "exit_status": 0,
-  "elapsed_s": 5.6,
-  "executable_sha256": "364ebf1b42872ff5e2c9aa2d4528cee37c6449d2b63b4664155d08e122b836fc"
+  "elapsed_s": 5.2,
+  "executable_sha256": "ec324f303cfca7689f5c3544e48b288b474b8fcba1354317dfb6709c9c273cc7"
  },
  "gpu": {
-  "checks": 128,
+  "checks": 135,
   "failed_checks": [],
   "result": {
-   "checks": 128,
+   "checks": 135,
    "failures": 0,
    "verdict": "PASS"
   },
@@ -598,8 +599,68 @@
     "model": 1
    }
   ],
+  "lens_gain": {
+   "off": {
+    "name": "off",
+    "gain": 1.0,
+    "applied": 1.0,
+    "wrap": 0,
+    "r": 0.8,
+    "g": 0.6,
+    "b": 0.4,
+    "expected_r": 0.8,
+    "expected_g": 0.6,
+    "expected_b": 0.4,
+    "restored": 1
+   },
+   "half": {
+    "name": "half",
+    "gain": 0.5,
+    "applied": 0.502,
+    "wrap": 0,
+    "r": 0.4,
+    "g": 0.302,
+    "b": 0.2,
+    "expected_r": 0.4016,
+    "expected_g": 0.3012,
+    "expected_b": 0.2008,
+    "restored": 1
+   },
+   "zero": {
+    "name": "zero",
+    "gain": 0.0,
+    "applied": 0.0,
+    "wrap": 0,
+    "r": 0.0,
+    "g": 0.0,
+    "b": 0.0,
+    "expected_r": 0.0,
+    "expected_g": 0.0,
+    "expected_b": 0.0,
+    "restored": 1
+   },
+   "half_wrapped": {
+    "name": "half_wrapped",
+    "gain": 0.5,
+    "applied": 0.502,
+    "wrap": 1,
+    "r": 0.2,
+    "g": 0.149,
+    "b": 0.102,
+    "expected_r": 0.2008,
+    "expected_g": 0.1506,
+    "expected_b": 0.1004,
+    "restored": 1
+   }
+  },
+  "lens_gain_cost": {
+   "draws_per_frame": 113,
+   "frames": 200,
+   "calls_per_draw": 4,
+   "us_per_frame": 4.81
+  },
   "exit_status": 0,
-  "elapsed_s": 7.9,
-  "executable_sha256": "36f23d497275e4085d4f7cbcad82dcfc9a8b13033f0c588bbe1de72532e50888"
+  "elapsed_s": 8.2,
+  "executable_sha256": "6945e68f4ca869c1db18865ba064bb23cf12efc24cbfe7c6d16bf51166a8bd5c"
  }
 }

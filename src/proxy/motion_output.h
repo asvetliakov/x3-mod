@@ -36,6 +36,7 @@
 #include "../renderer/fog_pass.h"
 #include "../renderer/gpu_sync_timing_core.h"
 #include "../renderer/sun_occlusion_pass.h"
+#include "lens_flare_gain.h"
 #include "fog_card_policy.h"
 #include "fog_sector_policy.h"
 #include "fog_prefill.h"
@@ -166,6 +167,8 @@ struct MotionRoute {
     IDirect3DPixelShader9* restore_ps = nullptr;
     bool restore_held = false;
     renderer::LensDraw lens{}; // Partial sun occlusion: what the lens wrap bound for this draw; put back by after_draw.
+    std::uint8_t lens_gain = 0; // Lens-flare gain: render states applied for this draw (lens_flare_gain::steps order);
+                                // put back by after_draw.
     bool sun_receiver = false, sun_color_writer = false;
     bool sun_stamp = false; // gate-3 refused scene draw the lane may stamp invalid after the native draw
                             // (sun_stamp_call_ holds its arguments)
@@ -1085,10 +1088,11 @@ public:
         return linear_emission_requested_ || distance_fade_requested_ || screen_emission_requested_;
     }
     // The blend-state shadow (SRCBLEND/DESTBLEND/BLENDOP/SEPARATEALPHA) is fed
-    // for the composition producers and for the source-gain admission.
+    // for the composition producers and for the source-gain admission, and for the
+    // lens-flare gain (its SRCBLEND / BLENDFACTOR restore values).
     bool blend_shadow_requested() const noexcept {
         return composition_requested() || emission_source_gain_requested_ || hull_emission_gain_requested_ ||
-               screen_additive_requested_ || fog_cards_replace_;
+               screen_additive_requested_ || fog_cards_replace_ || lens_gain_.active;
     }
     bool composition_operation_active() const noexcept { return composition_busy_; }
     bool draw_submission_blocked() const noexcept {
@@ -1157,6 +1161,9 @@ public:
     void sun_occlusion_begin() noexcept;
     void sun_occlusion_end() noexcept;
     void prepare_lens(const MotionDrawCall& call, MotionRoute& route) noexcept;
+    // Lens-flare gain (X3M_LENS_FLARE_GAIN, src/proxy/lens_flare_gain.h): process-start value, validated by the caller;
+    // 1 = off (no per-draw work). The blend-constant cap is checked at attach.
+    void configure_lens_flare_gain(float gain) noexcept { lens_gain_ = lens_flare_gain::law(gain); }
     // X3M_TAA_HISTORY_WEIGHT (c5.z, default 0.85); validated by the caller and
     // read at every resolve.
     void configure_taa_resolve(float history_weight) noexcept { taa_history_weight_ = history_weight; }
@@ -1651,6 +1658,19 @@ private:
     float lens_sun_u_ = .5f, lens_sun_v_ = .5f;
     bool lens_chain_drawn_ = false; // a bracket with draws ran this frame (the Present-time back-buffer readback under
                                     // the log)
+    // Lens-flare gain: the configured law, the device's BLENDFACTOR cap (attach), this bracket's counts and the
+    // refusal reasons already logged (one row per reason and device).
+    lens_flare_gain::Law lens_gain_{};
+    bool lens_gain_caps_ = false;
+    unsigned lens_gained_ = 0, lens_gain_refused_ = 0, lens_gain_logged_ = 0;
+    // The lens_flare_gain_frame window (every 300 frames while G < 1, every tier): lens draws seen, gained, refused
+    // per reason since the last row. Counters only.
+    unsigned lens_gain_window_frames_ = 0, lens_gain_window_draws_ = 0, lens_gain_window_gained_ = 0;
+    unsigned lens_gain_window_refused_[lens_flare_gain::refusal_count]{};
+    void log_lens_gain_window() noexcept;
+    void apply_lens_gain(MotionRoute& route, bool plain) noexcept;
+    void restore_lens_gain(MotionRoute& route) noexcept;
+    void refuse_lens_gain(unsigned reason) noexcept;
     bool ensure_sun_occlusion() noexcept;
     void finish_lens(MotionRoute& route) noexcept;
     void release_lens_depth() noexcept;

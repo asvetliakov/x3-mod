@@ -429,3 +429,42 @@ unjittered silhouette in RT2 is then shifted by the offset by up to half a texel
 flip in the phases that would otherwise have been stable, i.e. the pre-fix behaviour for that occluder, not
 worse. A flight that still sees `f_raw` alternating with `jitter_index` behind a specific occluder should read
 `unjittered_depth_writers` in the same frames first.
+
+## Lens-flare gain (2026-09-29)
+
+A taste knob, default off, for mods whose lens chains are oversized (Mayhem 3: red streaked halos around every
+engine, 113 lens-scene draws per frame in run364 against 0-10 on stock; the vanilla game shows the same halos,
+user-verified 2026-09-29). `lens_flare_gain` / `X3M_LENS_FLARE_GAIN` / `--lens-flare-gain G`, finite 0..1, 1 = off.
+
+- **Mechanism** (`src/proxy/lens_flare_gain.h`, `MotionOutput::apply_lens_gain` in
+  `motion_output_sun_occlusion_inc.h`): inside the lens bracket every draw that goes out with blending on and
+  ONE / ONE / ADD is drawn with `D3DRS_SRCBLEND = D3DBLEND_BLENDFACTOR` and `D3DRS_BLENDFACTOR = G` in every lane
+  (quantised once to 8 bits: 0.5 is 128/255), or `SRCBLEND = ZERO` at G = 0; the draw's program, textures and
+  DESTBLEND are untouched, so the frame receives G x src + dst. Both states are put back from the route's shadow of
+  the application's values in `after_draw`, before the sun wrap's `lens_end` (G < 1 turns the blend-state shadow on
+  by itself, `blend_shadow_requested()`, so SRCBLEND and BLENDFACTOR are known without the emission features). Documented D3D9 only;
+  `D3DPBLENDCAPS_BLENDFACTOR` is read once at attach (one `lens_flare_gain_device` row), and without it every lens
+  draw stays native (one `lens_flare_gain_refused reason=caps` row). Refused per draw, one row per reason and device,
+  draw left native: `route` (route off, no fresh state shadow), `recording` (a state block is recording),
+  `routed_draw` (another feature owns the draw's blend), `state_unknown`, `blend_law` (anything but ONE / ONE / ADD:
+  a SRCALPHA source cannot be scaled by one constant), `device` (a setter failed; what was applied is put back).
+- **Sun composition:** G applies to every admitted lens draw, the sun's own bodies included. The sun wrap binds
+  programs, textures and sampler states only, never a blend state, so on a wrapped sun body the two multiply:
+  f x G. No exclusion: the sun's flare follows the knob.
+- **Bracket:** G < 1 with the route on makes `sun_occlusion::initialize(true)` install the same two redirects
+  observe-only when neither `X3M_SUN_OCCLUSION` nor `_LOG` is set (the probe then always runs the original).
+  G = 1, unset or invalid: nothing installed for it, no per-draw test beyond the existing bracket flag. One
+  `lens_flare_gain value= configured= reason= bracket=` row at start-up (`unset`, `one`, `ok`, `invalid`,
+  `route_off`, `bracket_unavailable`); `sun_lens_bracket` (log only) carries `gained=` / `gain_refused=`.
+- **Cost:** two setters and two restores per admitted lens draw (one each at G = 0); the fixture's timing of
+  113 draws x 4 calls without the draw is in the ledger (`docs/verification/sun-occlusion.md`, 2026-09-29). The
+  admission reads the blend state from the route's shadow: with the setter hooks on, no native call; with them off
+  (per-draw Get* cache), up to five native GetRenderState per admitted draw (SRCBLEND, DESTBLEND, BLENDOP,
+  BLENDFACTOR, ALPHABLENDENABLE) when the sun occlusion is off or not wrapping in that frame, one (BLENDFACTOR) in a
+  frame where its wrap is active, since it has already read the other four for the same draw.
+- **Plain-flight evidence:** one `lens_flare_gain_frame` row every 300 frames while G < 1, in every logging tier:
+  lens draws seen, gained, refused per reason since the last row.
+- **Coverage:** the GPU fixture (`run_sun_occlusion.py`) runs the header's law and steps on a real device, alone
+  and over the ghost wrap, with the hostile application BLENDFACTOR restored. The `MotionOutput` integration
+  (`prepare_lens` -> `after_draw` through the draw hooks) has no fixture: the lens bracket opens only from the
+  engine thunk, which the motion-output seam does not drive.

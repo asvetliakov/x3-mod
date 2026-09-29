@@ -3106,6 +3106,16 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
     log("bolt_far_composite device=%llu requested=%u show=%g show_off=%u additive=%u gain=%g k=%g", device_id,
         unsigned(bolt_far_requested_), double(bolt_far_show_), unsigned(!(bolt_far_show_ > 0.f)),
         unsigned(screen_additive_requested_), double(screen_additive_gain_), double(x3::temporal::kBoltFlagScale));
+    // Lens-flare gain: G strictly between 0 and 1 needs the blend constant (D3DPBLENDCAPS_BLENDFACTOR); 0 is
+    // SRCBLEND ZERO. Checked once here; without the cap every lens draw stays native (one refusal row).
+    lens_gain_caps_ = lens_gain_.active && (!lens_gain_.constant || (caps.SrcBlendCaps & D3DPBLENDCAPS_BLENDFACTOR) != 0);
+    lens_gain_logged_ = 0;
+    if (lens_gain_.active) {
+        log("lens_flare_gain_device device=%llu gain=%.4f factor=%08lx constant=%u blendfactor_cap=%u active=%u", device_id,
+            double(lens_gain_.gain), static_cast<unsigned long>(lens_gain_.factor), unsigned(lens_gain_.constant),
+            unsigned((caps.SrcBlendCaps & D3DPBLENDCAPS_BLENDFACTOR) != 0), unsigned(lens_gain_caps_));
+        if (!lens_gain_caps_) refuse_lens_gain(lens_flare_gain::Caps);
+    }
     bind_direct();
     stats_ = stats;
     lazy_rt1_ = lazy_rt2_ = false;
@@ -8916,6 +8926,7 @@ void MotionOutput::after_draw(MotionRoute& route, HRESULT result) noexcept {
         MotionRoute& route;
         ~RestoreScope() { self.release_restore(route); }
     } restore_scope{*this, route};
+    if (route.lens_gain) restore_lens_gain(route); // applied after the sun wrap: put back first
     if (route.lens.applied)
         finish_lens(route); // before every other restore: the wrap sits on top of the application's own bindings
     if (route.fog_card_mask.masked) finish_fog_card(route, result);
@@ -9835,6 +9846,7 @@ void MotionOutput::after_present(HRESULT result) noexcept {
     if (bolt_footprint_requested_)
         chase_pose_mark_ = chase_camera::pose_write_count(); // the next frame's gate needs a fresh chase pose
     if (bolt_footprint_requested_ && ++bolt_window_frames_ >= 300u) log_bolt_footprint_window();
+    if (lens_gain_.active && ++lens_gain_window_frames_ >= 300u) log_lens_gain_window();
     if (fade_refused_count_) log_fade_refused();
     // The six per-frame count rows of the emitter options below are family
     // rows (logging-tiers.md, "Per-frame emitter rows"): capture frames, or

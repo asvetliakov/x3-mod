@@ -134,6 +134,9 @@ SETTINGS = [
     entry('bolt_far_show', 'float', 'graphics', 'How strongly a bolt in front of a distant station shows, 0 to 1. 1 = its full '
           'brightness (the default since Run 94 A), 0.5 = half (about its look over empty space), 0 = the anti-aliased result.', '1', range=(0.0, 1.0),
           requires=('bolt_far_composite',), launcher='--bolt-far-show'),
+    entry('lens_flare_gain', 'float', 'graphics', 'Brightness of the game\'s lens flares around engines and lights (the sun\'s '
+          'flare too), 1 = the game\'s own, down to 0 = none. Some mods draw very large flares.', builtin='1', range=(0.0, 1.0),
+          launcher='--lens-flare-gain', since='2026-09-29'),
     # ---------------------------------------------------------------- hdr
     entry('hdr', 'bool', 'hdr', 'High dynamic range rendering: lights brighter than white, automatic exposure and a filmic '
           'tone curve. 1 = on, 0 = off (the game\'s original look). Costs some frame rate and video memory.', '1', launcher='--hdr'),
