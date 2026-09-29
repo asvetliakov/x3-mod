@@ -1,7 +1,7 @@
 {
  "fixture": "build/verification/scene-graph-census/scene_graph_census_fixture.exe",
  "exit_status": 0,
- "elapsed_s": 6.4,
+ "elapsed_s": 7.0,
  "checks": 28,
  "failures": 0,
  "failure_lines": [],
@@ -9,26 +9,26 @@
   {
    "layout": "shuffled",
    "nodes": 200000.0,
-   "raw_chase_us": 18378.0,
-   "next_only_us": 18809.0,
-   "stride64_us": 19815.0,
-   "stride1_us": 20969.0,
-   "row_walk_us_min": 1819.0,
-   "row_walk_us_median": 1893.0,
-   "row_unattached": 36864.0,
+   "raw_chase_us": 21669.0,
+   "next_only_us": 18058.0,
+   "stride64_us": 14513.0,
+   "stride1_us": 19823.0,
+   "row_walk_us_min": 1823.0,
+   "row_walk_us_median": 1839.0,
+   "row_unattached": 25600.0,
    "capped_rows": 5.0,
-   "row_reads": 73749.0,
+   "row_reads": 51221.0,
    "row_queries": 120.0
   },
   {
    "layout": "allocation",
    "nodes": 200000.0,
-   "raw_chase_us": 11179.0,
-   "next_only_us": 32314.0,
-   "stride64_us": 37338.0,
-   "stride1_us": 41114.0,
-   "row_walk_us_min": 1809.0,
-   "row_walk_us_median": 1855.0,
+   "raw_chase_us": 19121.0,
+   "next_only_us": 38971.0,
+   "stride64_us": 37584.0,
+   "stride1_us": 41571.0,
+   "row_walk_us_min": 1849.0,
+   "row_walk_us_median": 1911.0,
    "row_unattached": 17408.0,
    "capped_rows": 5.0,
    "row_reads": 34837.0,
@@ -37,15 +37,15 @@
  ],
  "bound": {
   "nodes": 310000.0,
-  "row_unattached": 27648.0,
+  "row_unattached": 26624.0,
   "row_bounded": 0.0,
   "row_capped": 1.0,
-  "row_walk_us": 1880.0,
-  "unbudgeted_walk_us": 34236.0
+  "row_walk_us": 1865.0,
+  "unbudgeted_walk_us": 33306.0
  },
  "insert": {
-  "autoid_ns": 29.2,
-  "unknown_site_ns": 2.0
+  "autoid_ns": 29.6,
+  "unknown_site_ns": 2.1
  },
  "regions": {
   "sampled": 201.0,

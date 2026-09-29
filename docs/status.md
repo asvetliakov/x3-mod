@@ -1,22 +1,23 @@
 # Project status
 
-The single current-state file (updated 2026-09-29, Run107). Rules: [AGENTS.md](../AGENTS.md). All goals were
+The single current-state file (updated 2026-09-29, Run108). Rules: [AGENTS.md](../AGENTS.md). All goals were
 marked completed on 2026-09-26 by the user's decision ([goals](goals.md)). The agent never launches the game.
 
 ## Installed build
 
 Bottle **X3**, **CrossOver Preview.app**, game tree modded with **Mayhem 3** since 2026-09-28 (user install,
 `addon/05..12.cat` plus loose `addon/` files; 0.7.0 LOD overlay and fog families regenerated 2026-09-29 03:33).
-Run107 = candidate DLL SHA-256 `b9e8793c0304ad9777faed20667953d6c774118259cd7a5b8044aae1976cccab` (57,465,876 bytes,
-RelWithDebInfo, unstripped), built once from clean main `90289a66` (host suite 274/2,899/0, 0 warnings, x87 0, loop-phase
-verifier PASS on ten sites, CPU fixture 12,114 checks; [build](../verification/results/run107-candidate-build.json)), installed
-2026-09-29 ([install](../verification/results/run107-candidate-install.json)). `X3AP.exe`, `cxbottle.conf`, the user's `x3m.ini`
+Run108 = candidate DLL SHA-256 `c57556bbfc6d4e5feee7299a32291237643ad75eefa265bc54662ece4ef2fd0f` (57,518,024 bytes,
+RelWithDebInfo, unstripped), built once from clean main `21726898` (host suite 275/2,905/0, 0 warnings, x87 0, census
+fixture 28 checks; [build](../verification/results/run108-candidate-build.json)), installed 2026-09-29
+([install](../verification/results/run108-candidate-install.json)). `X3AP.exe`, `cxbottle.conf`, the user's `x3m.ini`
 and the 0.8.0 `x3m-regenerate` binaries unchanged.
 
-Rollback chain: Run106 `d07848e8…` at `/tmp/x3-run106-candidate/build/d3d9.dll`, then Run105 `5de8ed5d…`, then Run104 = release 0.8.0 `f34d3ab4…` (zip at `/tmp/x3m-release-0.8.0/`, entry `d3d9.dll`, extracted copy
+Rollback chain: Run107 `b9e8793c…` at `/tmp/x3-run107-candidate/build/d3d9.dll`, then Run106 `d07848e8…`, then Run104 = release 0.8.0 `f34d3ab4…` (zip at `/tmp/x3m-release-0.8.0/`, entry `d3d9.dll`, extracted copy
 at `/tmp/x3m-release-0.8.0/zip-extract/d3d9.dll`), then Run103 `1f3ad3db…` at `/tmp/x3-run103-candidate/build/d3d9.dll`.
 
-Run107 over 0.8.0: four `loop_phases` stamps around the three calls of the main loop's `input_part=0` region
+Run108 over 0.8.0: the `scene_graph_census` row (engine node/scene/cut/task counts, newest unattached nodes by body,
+insert-caller histogram; [note](reverse-engineering/object-lifetimes.md) Run382); four `loop_phases` stamps around the three calls of the main loop's `input_part=0` region
 (`cutevent`, `containers`, `sweep`, `region`; [note](reverse-engineering/main-loop-input-region.md) §6); `lens_flare_gain 0` skips the admitted lens-flare draws instead of drawing them invisibly, and the
 opt-in `cull_small_props` (proxy-side skip of `ships\props\` draws under the small-parts pixel threshold, own ship and
 target exempt, no engine write; since Run106 the size test uses the draw's own vertex extent, the engine's part box
@@ -34,7 +35,7 @@ Nothing beyond the installed Run105 (`99734bdb`); release 0.8.0 (`a3c85e37`) is 
 
 ## Run queue
 
-Run 108 A to be queued once the Run108 candidate (scene-graph census row) is installed: a 2-3 minute stay in any Mayhem
+Run 108 A queued (Run108 installed): a 2-3 minute stay in any Mayhem
 sector under `--perf` to read `scene_graph_census` (engine node count against the proxy's registry, the newest
 unattached nodes' bodies, the insert-caller histogram). Diagnosis so far ([note](reverse-engineering/object-lifetimes.md)
 Run382, [scheduler note](reverse-engineering/script-task-scheduler.md)): the engine registry gains 27+ scene nodes per

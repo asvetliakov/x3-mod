@@ -1,0 +1,41 @@
+{
+ "candidate": {
+  "dll": "/tmp/x3-run108-candidate/build/d3d9.dll",
+  "sha256": "c57556bbfc6d4e5feee7299a32291237643ad75eefa265bc54662ece4ef2fd0f",
+  "bytes": 57518024,
+  "commit": "21726898",
+  "toolchain": "i686-w64-mingw32-gcc (GCC) 16.2.0; cmake version 4.4.3; RelWithDebInfo, cmake/mingw-i686.cmake, -j8; Python 3.9.6 (/usr/bin/python3); clean build 40 s wall",
+  "gates": "build 0 warnings; x87 0 violations (734 reachable functions); generate --check PASS (243 settings, 95 in the template); run_scene_graph_census rebuilt from source (bottle X3) PASS 28 checks / 0 failures, row walk median 1.84/1.91 ms (shuffled/allocation, 200k nodes, capped), 310k-node bound row 1.87 ms vs unbudgeted 33.3 ms, insert autoid 29.6 ns, fixture_sha256 69e25ac7...; host suite 275 modules / 2,905 tests / 0 failing (96.9 s wall, 12 jobs); X3AP not running before build, fixture and suite",
+  "changes": [
+   "1b154e76 status: the Mayhem 3 scene-node leak diagnosis and the pending Run 108 A census flight",
+   "8608b04b scene_graph_census row (perf/debug tier, every 300 frames at Present): engine render-manager counts (engine_nodes, scenes, cuts, cut_buckets, tasks), newest-first walk of the unattached node list under a 1.8 ms budget with model-id histogram, registry_live and inserts with an insert-caller histogram captured in the Insert hook (+37 ns per insert, verified frames only, else caller 0); diagnostic for the Mayhem 3 leak (engine registry +27 nodes per frame, none removed); core harness + CPU fixture 28 checks, object-lifetime fixture 706 checks, host suite 275/2,905/0, build 0 warnings, x87 0; reviewed (Opus), no blocker",
+   "d5105157 run382 registry growth diagnosis scripts: the engine registry gains 27+ nodes per frame on Mayhem 3 (mutation_delta floor 27 = live slope 27.11/frame, retired 0) vs 0.2 on stock; hooks cover every removal path; cutevent cost 66-92 ns per accumulated node",
+   "daa5aadc RE: 0x0048f550 is the scene-graph animation tick (walks every node of the render manager *0x00608518 each frame: unattached list R+0x28, scenes R+0x18, cut instances R+0x84), not a script scheduler (that is 0x0049f770, outside the cutevent interval; interpreter 0x004a26a0, native-call site 0x004a3907); four hash-table counts readable at Present (live nodes, scenes, cut instances, tasks); nine candidate probe sites checked (script-task-scheduler.md)",
+   "eb4ba3c1 Run 107 A completed (run381): the cutevent interval (script driver 0x0048f550) grows 0.05 -> 12.3 ms per frame over 3.5 minutes in a Mayhem 3 fight, containers 0.7 ms flat, sweep 0, region = pre_render - ~5 ms; RE note Run381 section; evidence script",
+   "064e6bb0 Run107 candidate built from 90289a66 (DLL b9e8793c\u2026 57,465,876 B; host suite 274/2,899/0, x87 0, loop-phase verifier PASS ten sites, CPU fixture 12,114 checks rebuilt) and installed 2026-09-29; Run 107 A queued (battle-sector stay with loop_phases = 1 to name the pre_render owner); Run 106 A completed (issued draws 337 -> ~100, frame time independent of draws); rollback Run106 then Run105"
+  ],
+  "producer": "Claude Code implement agent (Opus 5.5), 2026-09-29; git log --oneline 90289a66..HEAD --no-merges; shasum -a 256; stat -f %z; build/fixture/suite logs local under /tmp/x3-run108-candidate/"
+ },
+ "command": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3-run108-candidate/build/d3d9.dll",
+ "exit": 0,
+ "installed_at": "2026-09-29T10:07+04:00",
+ "installed": {
+  "sha256": "c57556bbfc6d4e5feee7299a32291237643ad75eefa265bc54662ece4ef2fd0f",
+  "bytes": 57518024,
+  "verified": "sha256 and size read back after install; equals the candidate record; pgrep X3AP empty before"
+ },
+ "unchanged": {
+  "X3AP.exe": "fdbf3418\u2026",
+  "x3m.ini": "the user's file kept",
+  "cxbottle.conf": "not touched",
+  "x3m-regenerate": "0.8.0 binaries kept"
+ },
+ "previous": {
+  "run": "Run107",
+  "dll_sha256": "b9e8793c0304ad9777faed20667953d6c774118259cd7a5b8044aae1976cccab",
+  "path": "/tmp/x3-run107-candidate/build/d3d9.dll",
+  "then": "Run106 d07848e8\u2026, Run104 = release 0.8.0 f34d3ab4\u2026"
+ },
+ "run": "Run 108 A queued: 2-3 minute stay in any Mayhem sector under --perf to read scene_graph_census; docs/verification/user-runs.md",
+ "producer": "main session (this record)"
+}
