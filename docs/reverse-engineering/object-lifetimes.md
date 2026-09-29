@@ -350,6 +350,65 @@ call. An event not yet logged survives a reinstallation with `before_reinstall=1
 and `registry_churn` are in the
 [object-lifetime-observer ledger](../verification/object-lifetime-observer.md).
 
+### Run382: registry growth, and the row that separates an engine leak from stale keys (2026-09-29)
+
+Measured (`verification/results/run382-registry-growth/`, scripts beside their
+outputs): on the Mayhem 3 tree the observer's live count grows by 27 keys per frame
+from the sector load on (run365 frames 900..3300: 27.11 per frame, `series_out.txt`;
+run382: 27.7 per frame until `object_lifetime_disabled reason=capacity_exhausted
+live=262144` at frame 10,079). The shadow-retention `mutation_delta` has a floor of 27
+per row on every Mayhem run (run365/368/375/379/382, median 27-29) against a mean of
+0.2-0.3 on stock (run340/352/356), with `retired_sum=0`: inserts into the node registry
+`R+0xc` with almost no removals (`stock_vs_mayhem_out.txt`, `series_out.txt`). Over the
+same frames the `cutevent` interval (the scene-graph tick `0x0048f550`,
+[script-task-scheduler.md](script-task-scheduler.md)) rises from 0.05 to 12.3 ms at
+66-92 ns per estimated key (`cutevent_vs_registry_out.txt`; the per-key figure is a
+model, inferred).
+
+Two readings fit that series: the engine's own registry grows (nodes created and never
+destroyed: an engine or mod leak, and the per-frame walk grows with it), or the
+observer keeps keys the engine already removed (stale keys: a removal path the
+observer does not see). The `scene_graph_census` row (`--perf`/`--debug`, every 300
+frames, [logging-tiers.md](../architecture/logging-tiers.md)) is the test: it logs the
+engine's own count `engine_nodes=[[R+0xc]+0xc]` next to `registry_live=` (the
+observer's count). Both rising at 27 per frame is an engine leak; `engine_nodes` flat
+while `registry_live` rises is stale keys. The same row names what and who:
+
+* `unattached=` walks the list `R+0x28` of nodes attached to no scene **newest first**
+  (tailpred `R+0x30`, prev links `+4`; the engine appends every new node there,
+  `0x00486e28`-`0x00486e38`) and histograms the walked nodes' model id `+0x140`
+  (`-1` = no model, set at creation `0x00486da9`) as `b0=<body>:<count>` .. `b7=`, the
+  body resolved as the cull census does. The walk stops at 300,000 nodes (`bounded=1`),
+  on a Brent cycle (`cycle=1`), on any refused read or a terminating slot other than
+  `R+0x28` (`truncated=1`), and after 1.8 ms (`capped=1`, checked every 1,024 nodes).
+  A capped `unattached=` is a lower bound over the newest nodes, which are the ones a
+  leak adds.
+* `i0=<site>/<caller>:<count>` .. `i7=` count the registry inserts since the previous
+  row, captured at the observer's Insert hook on `0x004efbf0` (only while a tier is on,
+  only for the bound registry `R+0xc`). `site` is the return address into the creator:
+  when the hooked call returns to `0x004efd0e` (the auto-id register `0x004efcc0`, which
+  pushed ebx/esi/edi and two arguments) it is `[esp0+24]`, else the hooked return
+  address itself. `caller` is the creator's own return address for the frames read
+  from the EXE: `0x00486d7d` (`0x00486d10`, five pushes + the node argument:
+  `[frame+28]`), `0x0048860a` (`0x004885a0`) and `0x00488cdb` (`0x00488c70`, the
+  0x790-byte node), three pushes + the argument: `[frame+20]`; `0x0047a6b2` (the direct
+  insert of `0x00479d10`, an EBP frame from `0x00479d11` with no later EBP write before
+  the call: `[ebp+4]`). Every other site logs `caller=00000000`. The stack reads go
+  through `engine_memory::read`; the bytes behind these frames are pinned by
+  `verification/analysis/test_scene_graph_census.py` against the installed EXE.
+
+Costs (measured, X3 bottle, `verification/results/scene-graph-census-cpu.json`, nodes
+as 0x270-byte process-heap blocks): a full walk of 200,000 nodes is memory-latency
+bound: 18.4 ms as a bare pointer chase in a shuffled order, 11.2 ms in allocation
+order, 18.8-41.1 ms through the validated reader (reading every node's model id
+adds 0-27% over next links only across three runs, so every walked node is
+histogrammed, `sampled=1`); the row therefore stops
+at the budget and costs 1.81-1.89 ms (median of five rows), walking 36,864 (shuffled)
+or 17,408 (allocation order) nodes. The insert-caller capture adds 37 ns per hooked
+registry insert (object-lifetime fixture, 642 -> 679 ns) and resolves the auto-id path
+in 29.2 ns (two reads); at ~275k inserts in a Mayhem load that is about 10-17 ms per
+load (inferred), off unless `--perf` or `--debug`.
+
 Every engine read of the observer (`read_registry`, `lookup`, the ownership
 check, the baseline snapshot) goes through `src/proxy/engine_memory.h`
 (2026-09-12): a span is validated against a cache of `VirtualQuery`'d

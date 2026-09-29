@@ -10,7 +10,9 @@
 #include <array>
 #include "../../src/proxy/object_lifetime.h"
 #include "../../src/proxy/engine_memory.h"
+#include "../../src/proxy/scene_graph_census_core.h"
 namespace lt = x3m::object_lifetime;
+namespace sgc = x3m::scene_graph_census::core;
 namespace em = x3m::engine_memory;
 unsigned checks = 0, failures = 0, calls = 0;
 void check(bool value, const char* label) {
@@ -46,6 +48,7 @@ extern "C" void remove_entry();
 extern "C" void remove_nonempty();
 extern "C" void destroy_entry();
 extern "C" void __cdecl invoke_custom(void*, Map*, std::uint32_t, std::uintptr_t);
+extern "C" void invoke_custom_return(); // the return address of invoke_custom's target call
 extern "C" {
 alignas(16) unsigned char input_fx[512]{}, output_fx[512]{};
 alignas(16) unsigned char control_fx_a[512]{}, control_fx_b[512]{}, control_fx_c[512]{};
@@ -222,6 +225,7 @@ extern "C" __attribute__((naked)) void __cdecl invoke_custom(void*, Map*, std::u
         "ldmxcsr _mxcsr_seed\n\tmovdqu _xmm_seed,%xmm0\n\tmovdqu _xmm_seed,%xmm1\n\t"
         "movdqu _xmm_seed,%xmm2\n\tmovdqu _xmm_seed,%xmm3\n\tmovdqu _xmm_seed,%xmm4\n\tmovdqu _xmm_seed,%xmm5\n\t"
         "movdqu _xmm_seed,%xmm6\n\tmovdqu _xmm_seed,%xmm7\n\tpushl $0x246\n\tpopfl\n\tmovl %esp,12(%esp)\n\tcall *8(%esp)\n\t"
+        ".globl _invoke_custom_return\n_invoke_custom_return:\n\t"
         "pushfl\n\tpushal\n\tmovl 48(%esp),%eax\n\tmovl %eax,_call_stack_before\n\tleal 36(%esp),%eax\n\tmovl %eax,_call_stack_after\n\tmovl %esp,%esi\n\tmovl $_output_regs,%edi\n\tmovl $9,%ecx\n\tcld\n\trep movsl\n\t"
         "fxsave _output_fx\n\tpopal\n\tpopfl\n\taddl $16,%esp\n\tpopal\n\tret\n\t");
 }
@@ -474,6 +478,49 @@ int main() {
         check(!snapshot().known && snapshot().reason != lt::Reason::MutationInProgress,
               "all boundaries clear unwind scopes and invalidate tokens");
     }
+    // Insert callers (scene_graph_census row): nothing while off; on, every registry insert counted by
+    // (return site, caller) from the hooked call's stack. The fixture rule reads [esp0+12] (invoke_custom's
+    // target) behind its return label; unrelated maps are not counted; a take resets the table.
+    {
+        static const sgc::CallerRule rules[] = {
+            {std::uint32_t(reinterpret_cast<std::uintptr_t>(&invoke_custom_return)), false, 12}};
+        lt::fixture_insert_caller_rules(rules, 1);
+        sgc::CallerTable taken{};
+        insert(primary, node);
+        check(lt::take_insert_callers(&taken) && taken.total == 0 && taken.used == 0, "insert callers: nothing while off");
+        lt::set_insert_callers(true);
+        insert(primary, node);
+        insert(unrelated, third);
+        insert(primary, camera);
+        check(lt::take_insert_callers(&taken) && taken.total == 2 && taken.used == 1 && taken.dropped == 0 &&
+                  taken.slots[0].site == std::uint32_t(reinterpret_cast<std::uintptr_t>(&invoke_custom_return)) &&
+                  taken.slots[0].caller == std::uint32_t(reinterpret_cast<std::uintptr_t>(&insert_entry)) &&
+                  taken.slots[0].count == 2,
+              "insert callers: registry inserts by (site, caller) through the hooked stack");
+        check(lt::take_insert_callers(&taken) && taken.total == 0, "insert callers: reset per take");
+        check(snapshot().known, "insert callers: lifetimes unaffected");
+        // Cost per insert through the hook, capture off and on (same overwrite path both times).
+        auto per_insert_ns = [&](bool on) {
+            lt::set_insert_callers(on);
+            constexpr unsigned n = 20000;
+            LARGE_INTEGER f{}, t0{}, t1{};
+            QueryPerformanceFrequency(&f);
+            em::next_frame();
+            QueryPerformanceCounter(&t0);
+            for (unsigned i = 0; i < n; ++i)
+                invoke_custom(reinterpret_cast<void*>(&insert_entry), &primary, node.handle,
+                              reinterpret_cast<std::uintptr_t>(&node));
+            QueryPerformanceCounter(&t1);
+            return double(t1.QuadPart - t0.QuadPart) * 1e9 / double(f.QuadPart) / n;
+        };
+        const double off_a = per_insert_ns(false), on_a = per_insert_ns(true), off_b = per_insert_ns(false),
+                     on_b = per_insert_ns(true);
+        check(lt::take_insert_callers(&taken) && taken.total == 40000 && taken.used == 1, "insert callers: bench counted");
+        std::printf("INSERT_CALLERS off_ns=%.0f on_ns=%.0f delta_ns=%.0f\n", (off_a + off_b) / 2, (on_a + on_b) / 2,
+                    (on_a + on_b - off_a - off_b) / 2);
+        // Left on through the per-boundary ABI comparison below: the capture runs inside those hooked inserts.
+        lt::set_insert_callers(true);
+    }
     check(lt::shutdown(), "normal shutdown");
     // Compare every intercepted boundary independently against its original ABI.
     // ESP differs inside the extra call frame, but caller ESP is checked separately.
@@ -503,6 +550,12 @@ int main() {
         check(fx_equal(before_ofx.data(), output_fx), "all boundaries output FX state preserved");
         check(call_stack_before == call_stack_after, "all boundaries exact caller ESP preserved");
         check(lt::shutdown(), "per-boundary ABI shutdown");
+    }
+    {
+        sgc::CallerTable taken{};
+        check(lt::take_insert_callers(&taken) && taken.total == 1, "insert callers: the ABI-compared insert was captured");
+        lt::set_insert_callers(false);
+        lt::fixture_insert_caller_rules(nullptr, 0);
     }
     empty(primary);
     insert(primary, node);

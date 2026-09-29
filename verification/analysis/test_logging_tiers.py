@@ -319,6 +319,30 @@ class PerFrameRowTiers(unittest.TestCase):
         self.assertIn('set_resource_rows(log_tier::cached_debug || (capture_start && capture_start < 999999u && capture_count));', capture)
 
 
+class StatusRowTiers(unittest.TestCase):
+    """2026-09-29: the scene_graph_census row (src/proxy/scene_graph_census.cpp) is a 300-frame status row of the perf and
+    debug tiers: emitted only from report(), which is called at Present under that gate and returns at once unless
+    initialize() armed it with the same tiers (which also arms the object-lifetime insert-caller capture)."""
+
+    def test_scene_graph_census_row(self):
+        capture = _strip_comments(source_text(ROOT / 'src/proxy/capture.cpp'))
+        self.assertIn('if ((log_tier::cached_perf || log_tier::cached_debug) && ctx.frame % 300 == 0)\n'
+                      '        scene_graph_census::report(ctx.id, ctx.frame);', capture)
+        self.assertEqual(capture.count('scene_graph_census::report('), 1)
+        self.assertEqual(capture.count('scene_graph_census::initialize('), 1)
+        self.assertIn('scene_graph_census::initialize(log_tier::cached_perf || log_tier::cached_debug);', capture)
+        self.assertLess(capture.index('log_tier::init();'), capture.index('scene_graph_census::initialize('))
+        census = _strip_comments(source_text(ROOT / 'src/proxy/scene_graph_census.cpp'))
+        self.assertEqual(len(re.findall(r'\blog\("scene_graph_census ', census)), 1)
+        report = census[census.index('void report('):]
+        self.assertTrue(report.split('{', 1)[1].lstrip().startswith('if (!enabled_) return;'))
+        self.assertEqual(re.findall(r'\benabled_ = [^;]+;', census), ['enabled_ = false;', 'enabled_ = enabled;'])  # declaration, initialize()
+        self.assertIn('object_lifetime::set_insert_callers(enabled);', census)
+        doc = (ROOT / 'docs/architecture/logging-tiers.md').read_text()
+        row = next(line for line in doc.splitlines() if '`scene_graph_census` every 300 frames' in line)
+        self.assertEqual(row.split(' | ')[3], 'perf')
+
+
 class SessionLogContracts(unittest.TestCase):
     """Review of 2026-09-26: the exit path, the crash filter and the game-thread I/O rule, pinned in the source."""
 

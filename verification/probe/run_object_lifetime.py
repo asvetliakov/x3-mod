@@ -12,6 +12,7 @@ import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bot
 INPUTS = [
     'src/proxy/object_lifetime.cpp', 'src/proxy/object_lifetime.h',
     'src/proxy/engine_memory.cpp', 'src/proxy/engine_memory.h',
+    'src/proxy/scene_graph_census_core.h', 'src/proxy/cull_census_core.h',
     'verification/probe/object_lifetime.cpp', 'verification/probe/build_object_lifetime.sh',
     'verification/probe/run_object_lifetime.py',
 ]
@@ -82,6 +83,8 @@ def run(root):
             data['read_path_reported'] = read_path_reported
             # Retirement journal: measured cycle cost without/with a consumer and the empty drain.
             data['journal'] = [parse(l) for l in lines if l.startswith('JOURNAL ')]
+            # Insert-caller capture (scene_graph_census row): per-insert cost through the hook, off and on.
+            data['insert_callers'] = next((parse(l) for l in lines if l.startswith('INSERT_CALLERS ')), None)
             cases = [parse(l) for l in lines if l.startswith('JOURNAL_CASE ')]
             # Engine-reader modes (engine_memory.h): the hooked cycle's cost with frames advancing,
             # stalled past the 250 ms bound, and under the shutdown signal.

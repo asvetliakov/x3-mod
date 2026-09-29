@@ -1,8 +1,9 @@
-REGISTRY capacity=262144 inserted=262145 event_reason=capacity_exhausted event_live=262144 event_capacity=262144 insert_us=0.809 current_us_50k=0.960
+INSERT_CALLERS off_ns=642 on_ns=679 delta_ns=37
+REGISTRY capacity=262144 inserted=262145 event_reason=capacity_exhausted event_live=262144 event_capacity=262144 insert_us=0.807 current_us_50k=1.129
 JOURNAL_CASE name=registry_capacity result=PASS
-CHURN capacity=262144 distinct=362144 live=51000 max_probe=2 miss_us_before=0.339 miss_us_after=0.340
+CHURN capacity=262144 distinct=362144 live=51000 max_probe=2 miss_us_before=0.320 miss_us_after=0.335
 JOURNAL_CASE name=registry_churn result=PASS
-TIMING mode=direct snapshot_us=0.805 reads_per_call=12.00 queries_per_call=0.0237 record=34ebbea220215283
+TIMING mode=direct snapshot_us=0.789 reads_per_call=12.00 queries_per_call=0.0237 record=b145ed18a7136f83
 JOURNAL_CASE name=no_consumer result=PASS
 JOURNAL_CASE name=retire_in_order result=PASS
 JOURNAL_CASE name=partial_drain result=PASS
@@ -11,11 +12,11 @@ JOURNAL_CASE name=flush_load_epoch result=PASS
 JOURNAL_CASE name=flush_registry_destroy result=PASS
 JOURNAL_CASE name=flush_registry_rebind result=PASS
 JOURNAL_CASE name=overflow_and_recovery result=PASS
-READ_MODES cycle_frame_us=1.3542 cycle_stalled_us=1.3631 cycle_shutdown_us=9.6670 queries_frame=0.0003 queries_stalled=0.0009 queries_shutdown=15.0000
-JOURNAL capacity=2048 cycle_idle_us=1.3577 cycle_journal_us=1.3582 retirement_delta_us=0.0005 empty_drain_us=0.0064 drained=40000
+READ_MODES cycle_frame_us=1.3028 cycle_stalled_us=2.2649 cycle_shutdown_us=9.7345 queries_frame=0.0003 queries_stalled=0.0012 queries_shutdown=15.0000
+JOURNAL capacity=2048 cycle_idle_us=1.3095 cycle_journal_us=1.3063 retirement_delta_us=-0.0031 empty_drain_us=0.0060 drained=40000
 JOURNAL_CASE name=cost result=PASS
 JOURNAL_CASE name=reregistration_and_shutdown result=PASS
 JOURNAL_CASE name=flush_capacity_exhausted result=PASS
 JOURNAL_CASE name=saturated_registration result=PASS
 X87 roundtrip_exact=0 save_stable=1 control_diff_slots=0xff control_exponent_diff=8 control_reserved_diff=0 control_max_low_bits=64 control_st0=3fff8000000000000000/80000000000000000000 control_ftw=0xc0/0xc0 compare_diff_slots=0xff compare_exponent_diff=80 compare_reserved_diff=0 compare_max_low_bits=64 compare_ftw=0xc0/0xc0
-RESULT PASS checks=692 failures=0 backend_calls=1228031
+RESULT PASS checks=706 failures=0 backend_calls=1308035
