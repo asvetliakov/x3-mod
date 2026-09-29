@@ -20,7 +20,7 @@ build/fonts/F/ZektonES{26d}.abc/.tga  LARGE, -L034 Spanish         (ZektonES52, 
 build/fonts/F/Harrier{24d}.abc/.tga   LARGE, -L007 Russian         (Harrier48, Harrier72)
 ```
 
-Measured at d = 2 / 3: atlases 512×512 / 1024×1024 (Tahoma), 512×1024 / 1024×1024 (the LARGE
+Measured at d = 2 / 3: atlases 256×1024 / 1024×1024 (Tahoma), 512×1024 / 1024×1024 (the LARGE
 fonts); TGA 1.0–4.2 MB each; the `.abc` files are byte-for-byte the size of their stock
 counterparts (17,054 / 7,628 / 24,750 / 10,102 B), since the code map and glyph count equal the stock
 ones. The generator prints glyph count, image size and bytes per file.
@@ -47,28 +47,32 @@ ones. The generator prints glyph count, image size and bytes per file.
   row, both on whole rows, so flat tops and bottoms are crisp. Marks that would leave the band
   (accents on capitals, low descenders) are squeezed vertically into the rows between band edge
   and cap line or baseline instead of being cut; the letter body is never resampled. Measured
-  squeezed glyphs at d = 2: Tahoma 142 (capitals with accents, and g j p q y by under half a pixel),
+  squeezed glyphs at d = 2: Tahoma 155 (capitals with accents, and g j p q y by under half a pixel),
   Zekton/ZektonES 64, Harrier 22. The stock Tahoma13 cuts 71 glyphs at the band top instead.
 - **Horizontal metrics.** Per glyph: `A` = left edge of the ink (snapped to the nearest texel,
   ≤ 0.5 px shift, so left stems land on whole texels), `B` = ink width including the stroke
   floor and the shadow,
   `C` = advance − `A`. The advance comes from the unhinted 1000-px outline. The mean a–z advance
   is fitted to `d ×` the stock mean on the rounded advances: Noto Sans through its width axis
-  (wdth 87), then a residual horizontal scale; Exo 2 has no width axis, so its outline is
+  (wdth 80 at SemiBold), then a residual horizontal scale; Exo 2 has no width axis, so its outline is
   scaled horizontally (0.864–0.866 for Zekton/ZektonES, 1.005–1.006 for Harrier). Glyphs are rendered at
-  4×4 supersampling, binarised at half coverage, passed through the stroke floor below and
-  box-filtered (17 coverage levels; the stock files have 15–16).
+  4×4 supersampling, passed through the family's stroke floor below and box-filtered (17 coverage levels; the stock files have 15–16).
 - **Stroke-width rule.** Every stroke, vertical and horizontal, has at least `d` texels of
-  full coverage: a 1-px stock stroke is `d` texels at density `d`, and a thinner stroke vanishes
+  white coverage: a 1-px stock stroke is `d` texels at density `d`, and a thinner stroke vanishes
   where the text texture is minified with nearest sampling (`s = 1.25`, `d = 2`: screen samples
   every 1.6 texels; run 392, [font-rendering.md](../reverse-engineering/font-rendering.md) §5).
-  `_stroke_floor` works on the supersampled mask. A horizontal ink run that continues a straight
+  Two floors exist, chosen per family in `SOURCES` (`floor`). The LARGE family uses the binary
+  floor: `_stroke_floor` works on the supersampled mask binarised at half coverage. A horizontal ink run that continues a straight
   edge in the neighbouring row and is narrower than `d + 1` texels is redrawn as
   `max(d, round(width))` whole columns from the nearest column boundary (stem hinting). A
   diagonal or curved run narrower than `d` is widened to `d` in place. Vertical runs (bars) get
   the same treatment in whole rows, growing downwards, or upwards when they sit on the baseline
   or would leave the band, so cap line and baseline do not move. Strokes of `d + 1` texels or
-  more are left as drawn, so Exo 2's 4-texel stems are unchanged. The check is
+  more are left as drawn, so Exo 2's 4-texel stems are unchanged. The HUD family uses the grey
+  floor (`_grey_floor`): the grey coverage is dilated by the width that the thinnest stem
+  (`l i ! |`) or bar (`- T`) lacks, with no binarisation, so edges stay antialiased. At Noto
+  SemiBold nothing lacks width (thinnest stem 2.18 texels at d = 2), so the floor is a guard
+  and does not change the glyphs. The check is
   `verification/results/font-rendering/stem_coverage.py`: the median white coverage over a
   glyph's inked rows (for `i l r ! | I t j і ї г`) or inked columns (for `- T`) must be ≥ `d` for all eight
   generated fonts; `test_font_generator` runs the same check. `A`, `C`, the band and the
@@ -79,8 +83,9 @@ ones. The generator prints glyph count, image size and bytes per file.
   column `A` fell outside the resample box and was cut. The source stems are 1.91 px (`l`) and
   1.97 px (`I`) at d = 2. The wdth 87 instance and hinting at the 4× render size were not the
   cause: the rendered stems at 89.6 px match the 1000-px outline to within 1 %.
-- **Weight.** Stem width over cap height matches the stock fonts after the horizontal fit: Noto
-  Sans Regular (0.122 vs Tahoma 1/8), Exo 2 Medium (0.145 × 0.866 ≈ 0.126 vs Zekton 2/16;
+- **Weight.** HUD: Noto Sans SemiBold (600), heavier than stock Tahoma's stem/cap of 1/8 on
+  purpose (stems about 2.65 texels at d = 2; see "Readability under minification"). LARGE: stem
+  width over cap height matches the stock fonts after the horizontal fit, Exo 2 Medium (0.145 × 0.866 ≈ 0.126 vs Zekton 2/16;
   0.145 vs Harrier 2/14).
 - **Image.** TGA type 2, 32 bpp, top-left origin (descriptor 0x28), no footer. RGB 255 and alpha
   = coverage, except Tahoma, which bakes the stock black drop shadow: coverage convolved with a
@@ -99,7 +104,7 @@ regeneration command below with `--report`.
 
 | Font (d = 2 / 3) | mean a–z advance | H advance | H `B` | g advance | g `B` | space |
 | --- | --- | --- | --- | --- | --- | --- |
-| Tahoma26 / 39 | 1.000 / 1.000 | 1.071 / 1.048 | 1.000 / 1.042 | 1.083 / 1.056 | 1.071 / 1.095 | 0.833 / 0.889 |
+| Tahoma26 / 39 | 1.000 / 1.000 | 1.071 / 1.048 | 1.000 / 1.042 | 1.000 / 1.000 | 1.071 / 1.095 | 0.833 / 0.778 |
 | Zekton52 / 78 | 1.000 / 1.000 | 1.038 / 1.026 | 0.955 / 0.939 | 0.958 / 0.944 | 1.050 / 1.033 | 0.900 / 0.867 |
 | ZektonES52 / 78 | same as Zekton | | | | | |
 | Harrier48 / 72 | 1.000 / 1.000 | 0.900 / 0.911 | 0.955 / 0.939 | 0.958 / 0.944 | 1.167 / 1.148 | 0.900 / 0.933 |
@@ -130,14 +135,53 @@ Needs Pillow with FreeType (variable-font axes) and numpy. The output is determi
 given Pillow/FreeType build (measured with Pillow 11.3.0, FreeType 2.13.3). The test regenerates
 Tahoma and Zekton at d = 2 and checks format, band, ranges, code set, shadow and the ratios.
 
+## Readability under minification (experiment, 2026-09-30)
+
+Run 393 (d = 2, `ui_scale` 1.25, bilinear 1.6× minification) showed every letter but read "a
+little blurry". A 2-texel stem covers 1.25 screen pixels, so neighbouring stems alternate
+between one heavy and one faint column. `tools/fonts/preview_minified.py` reproduces the game
+path: the pen rule, the `0x004b2730` blit into a transparent text texture, an explicit 2×2
+bilinear tap at each screen-pixel centre, and a SRCALPHA blend onto the panel colour and text colour
+sampled from `screenshots/text4.png` ((37,37,37), (191,198,229)). It writes 4× nearest-zoom PNGs per
+variant and scale. `--make-variants DIR` builds the standard set with the generator's experiment
+switches, which default to the shipped behaviour (default output is byte-identical):
+`--weight`, `--hinted` (FreeType hinted at the target size, no supersampling, image not
+horizontally scaled, so it only suits Noto), `--floor-mode binary|grey|none` and `--gamma`.
+
+Measured median white coverage at d = 2 (`verification/results/font-rendering/variant_coverage.py`):
+
+| Tahoma26 variant | i l r | \| | - T | stroke rule | advance |
+| --- | --- | --- | --- | --- | --- |
+| A (wght 400, binary floor; shipped until D) | 2.00 | 2.00 | 2.00 | pass | 1.000 |
+| B wght 600, binary floor | 3.00 | 2.00 | 2.00 | pass | 1.000 |
+| C400 hinted, no floor | 1.91 | 1.66 | 1.79 / 1.75 | fail | 1.000 |
+| C600 hinted wght 600, no floor | 2.66 | 2.17 | 2.41 / 2.38 | pass | 1.000 |
+| **D wght 600, grey floor (shipped)** | 2.65–2.66 | 2.18 | 2.40 / 2.37 | pass | 1.000 |
+| E gamma 1.45 (else A) | 2.00 | 2.00 | 2.00 | pass | 1.000 |
+
+In the simulated 1.25 view, B keeps every stem at least one full bright screen pixel and has the
+most even stem weight. D and C600 are close, with softer antialiased edges. E and A keep the
+heavy/faint alternation, and C400 reads thin and grey [i: judged from the simulation, not the
+game]. With the grey floor, D does not dilate at wght 600 because its thinnest stroke is already
+≥ d, so D equals an unfloored wght 600. Hinting at 22.4 px changes the stem coverage by
+≤ 0.01 texel (C600 against D).
+
+**Decision (2026-09-30):** the HUD family ships variant D at both densities: Noto SemiBold, advance
+re-fitted through wdth (80), grey floor, no gamma. After the 1.6× and 1.33× bilinear
+minification its stems keep an even weight, where A's 2-texel stems alternate between a heavy and
+a faint column, and its edges stay antialiased, unlike B's binarised stems. The LARGE family keeps
+A (Exo 2 Medium, binary floor): its stems are already 4 texels and its bytes are unchanged. Measured
+at d = 2 / 3: `i l r` 2.65–2.66 / 3.98–3.99, `|` 2.18 / 3.26, `-` 2.40 / 3.60, `T` 2.37 / 3.55
+(`stem_coverage.py`, PASS). The switches remain for experiments. `--weight` and `--floor-mode`
+override every family generated in one call, so run them per family.
+
 ## Visual match limits
 
 Noto Sans is a humanist sans like Tahoma but with rounder bowls and a wider default
-width; at wdth 87 its advances match Tahoma's, but letters are slightly
-wider and word spaces narrower. The stroke floor snaps thin straight stems and bars to
-exactly `d` whole texels, like stock Tahoma13's 1-px stems ×2. Curves and diagonals stay
-antialiased, and small marks can come out a texel wider than the stem (the `i` dot is 3×2 at
-d = 2) [i: from the previews, not the game].
+width. At SemiBold and wdth 80 its advances match Tahoma's, but letters are slightly wider,
+word spaces narrower, and strokes about a third heavier than stock Tahoma13 ×d (a deliberate
+choice for readability after minification). Stems are antialiased, not snapped to whole texels
+[i: from the previews, not the game].
 Exo 2 is a geometric techno face close to Zekton in spirit (squarish rounds, flat terminals),
 but Zekton is effectively a pixel font with 2-px stems on whole texels and very compact
 accents; Exo 2 is compressed to 87 % width to match Zekton's set width, its curves stay

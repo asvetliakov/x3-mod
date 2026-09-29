@@ -34,13 +34,28 @@ SS = 4  # supersampling per axis; a 4x4 box gives 17 coverage levels (stock: 15-
 # matches the stock font at the stock cap height; any remainder is taken by a horizontal scale.
 # Weights match the stock stem/cap ratio after the horizontal fit (Tahoma 1/8, Zekton 2/16,
 # Harrier 2/14): Exo 2 Medium's 0.145 x Zekton's x-scale ~0.87 gives ~0.126.
+# 'floor' is the family's default stroke-width floor (see _stroke_floor / _grey_floor). Tahoma:
+# Noto SemiBold (600) with the grey floor, chosen from the minified previews (font-assets.md,
+# "Readability under minification": even stem weight after the 1.6x / 1.33x bilinear
+# minification, antialiased edges kept); the LARGE family keeps Medium with the binary floor.
 SOURCES = {
-    'Tahoma': {'file': NOTO, 'axes': {'Weight': 400, 'Width': 'fit'}},
-    'Zekton': {'file': EXO2, 'axes': {'Weight': 500}},
-    'ZektonES': {'file': EXO2, 'axes': {'Weight': 500}},
-    'Harrier': {'file': EXO2, 'axes': {'Weight': 500}},
+    'Tahoma': {'file': NOTO, 'axes': {'Weight': 600, 'Width': 'fit'}, 'floor': 'grey'},
+    'Zekton': {'file': EXO2, 'axes': {'Weight': 500}, 'floor': 'binary'},
+    'ZektonES': {'file': EXO2, 'axes': {'Weight': 500}, 'floor': 'binary'},
+    'Harrier': {'file': EXO2, 'axes': {'Weight': 500}, 'floor': 'binary'},
 }
 FALLBACK = {'file': NOTO, 'axes': {'Weight': 400, 'Width': 'fit'}}
+
+# Experiment switches (tools/fonts/preview_minified.py); None / default = the family default:
+#   weight      override the Weight axis of the generated family (advance re-fitted: Noto via
+#               wdth, Exo 2 via the horizontal scale)
+#   hinted      FreeType hinted rendering at the target pixel size, no supersampling (the
+#               hinter snaps stems; the horizontal scale is not applied to the image)
+#   floor_mode  None = family default; 'binary' (floor on the binarised 4x mask), 'grey'
+#               (grey dilation by the width the thinnest stem/bar lacks; edges stay
+#               antialiased), 'none'
+#   gamma       store alpha = coverage ** (1 / gamma)
+OPTS = {'weight': None, 'hinted': False, 'floor_mode': None, 'gamma': 1.0}
 
 # Stock Tahoma13's baked black shadow at d = 1, solved from its H, g and o cells (alpha right of
 # a 1-px stem 0.65 / 0.45, below the stem end 0.16 / 0.27 / 0.16, then 0.04 / 0.08): coverage
@@ -136,6 +151,7 @@ class Instance:
 
     def __init__(self, spec, cap, adv_target):
         self.path = ASSETS / spec['file']
+        self.floor_mode = OPTS['floor_mode'] or spec.get('floor', 'binary')
         axes = dict(spec['axes'])
         ref = 1000.0
 
@@ -158,7 +174,8 @@ class Instance:
         f, c, adv_per_cap = natural(axes)
         self.axes = axes
         self.px = cap * ref / c  # pixel em size at output resolution
-        self.font = _open(self.path, self.px * SS, axes)
+        self.ss = 1 if OPTS['hinted'] else SS
+        self.font = _open(self.path, self.px * self.ss, axes)
         # advances come from the 1000-px instance: hinted advances at the render size are
         # quantised to whole supersampled pixels and bias the rounded layout advances
         self.ref, self.ref_scale = f, self.px / ref
@@ -166,7 +183,24 @@ class Instance:
         self._fit_rounded(adv_target)
         self.codes = cmap_codes(self.path)
         self.cap_ss = -_ink(self.font, 'H')[1]  # cap height at render size
+        self._thin = None
 
+    def thinnest(self):
+        """(stem, bar) at render size: thinnest vertical stroke of l i ! | and bar of - T."""
+        if self._thin is None:
+            def run(ch, vertical):
+                l, t, r, b = self.font.getbbox(ch, anchor='ls')
+                im = Image.new('L', (r - l + 8, b - t + 8))
+                ImageDraw.Draw(im).text((4 - l, 4 - t), ch, font=self.font, fill=255, anchor='ls')
+                a = np.asarray(im, np.float64) / 255
+                if not vertical:
+                    a = a.T
+                rows = [row.sum() for row in a if row.max() > 0.5]
+                return sorted(rows)[len(rows) // 2] if rows else 0.0
+            stem = min(run(c, True) for c in 'li!|' if ord(c) in self.codes)
+            bar = min(run(c, False) for c in '-T' if ord(c) in self.codes)
+            self._thin = (stem, bar)
+        return self._thin
     def _fit_rounded(self, target):
         """Nudge fx (within +-5 %) so the mean of the *rounded* a-z advances hits the target.
 
@@ -277,7 +311,7 @@ def _floor_axis(mask, grid, origin, n_min, place):
     return out
 
 
-def _stroke_floor(cov, pad, col, d, base_y, top_y, bottom_y):
+def _stroke_floor(cov, pad, col, d, base_y, top_y, bottom_y, SS=SS):
     """Stroke-width rule (font-assets.md): every stroke at least d whole texels.
 
     A 1-px stock stroke is d texels at density d, and a stroke with fewer full texels can vanish
@@ -316,6 +350,33 @@ def _stroke_floor(cov, pad, col, d, base_y, top_y, bottom_y):
     return Image.fromarray(np.where(t, 255, 0).astype(np.uint8))
 
 
+def _grey_floor(cov, wx, wy, top_y, bottom_y):
+    """floor_mode 'grey': grey-scale dilation by the width the thinnest stem (wx, to the right)
+    and bar (wy, split up and down, kept in the band) lack; no binarisation, so edges keep
+    their antialiasing. wx, wy in canvas px; <= 0 leaves the coverage unchanged."""
+    a = np.asarray(cov).astype(np.float64)
+    nx, ny = max(0, int(math.ceil(wx))), max(0, int(math.ceil(wy)))
+    out = a.copy()
+    for k in range(1, nx + 1):
+        w = 1.0 if k < nx or wx >= nx else wx - (nx - 1)
+        sh = np.zeros_like(a)
+        sh[:, k:] = a[:, :-k] * w
+        out = np.maximum(out, sh)
+    a = out.copy()
+    up, down = (ny + 1) // 2, ny // 2
+    for k in range(1, up + 1):
+        sh = np.zeros_like(a)
+        sh[:-k] = a[k:]
+        out = np.maximum(out, sh)
+    for k in range(1, down + 1):
+        sh = np.zeros_like(a)
+        sh[k:] = a[:-k]
+        out = np.maximum(out, sh)
+    out[:top_y] = 0
+    out[bottom_y:] = 0
+    return Image.fromarray(np.rint(out).astype(np.uint8))
+
+
 def render(inst, ch, band, base, d, shadow):
     """Render `ch` into a B x band tile. `base` = baseline row (boundary) inside the band.
 
@@ -332,22 +393,29 @@ def render(inst, ch, band, base, d, shadow):
         g.alpha = np.zeros((band, 1), np.uint8)
         g.rgb = None
         return g
-    fx = inst.fx
+    SSr = inst.ss
+    fx = 1.0 if OPTS['hinted'] else inst.fx   # hinted: image at 1:1, advances still fitted
     l, t, r, b = ink
-    A = round(l * fx / SS)                    # ink left edge snapped to a whole column
-    R = A + math.ceil((r - l) * fx / SS)
+    A = round(l * fx / SSr)                   # ink left edge snapped to a whole column
+    R = A + math.ceil((r - l) * fx / SSr)
     reach = max(dx for dx, _ in SHADOW_D1) * d + d if shadow else 0
     Bw = R + d + 1 + reach - A                # + room for the stroke floor
-    pad = int(inst.font.size) + 4
+    pad = int(inst.font.size) + 4 + 2 * d * SSr
     ox = pad - l                              # ink left edge exactly at canvas x = pad
-    oy = pad + base * SS                      # canvas y of the baseline
-    cov = Image.new('L', (math.ceil(Bw * SS / fx) + 2 * pad, band * SS + 2 * pad))
+    oy = pad + base * SSr                     # canvas y of the baseline
+    cov = Image.new('L', (math.ceil(Bw * SSr / fx) + 2 * pad, band * SSr + 2 * pad))
     ImageDraw.Draw(cov).text((ox, oy), ch, font=inst.font, fill=255, anchor='ls')
-    top_y, bottom_y = oy - base * SS, oy + (band - base) * SS
+    top_y, bottom_y = oy - base * SSr, oy + (band - base) * SSr
     g.squeezed = _fit_band(cov, oy, top_y, bottom_y, oy - inst.cap_ss)
-    cov = _stroke_floor(cov, pad, SS / fx, d, oy, top_y, bottom_y)
-    box = (pad, pad, pad + Bw * SS / fx, pad + band * SS)
+    if inst.floor_mode == 'binary':
+        cov = _stroke_floor(cov, pad, SSr / fx, d, oy, top_y, bottom_y, SSr)
+    elif inst.floor_mode == 'grey':
+        stem, bar = inst.thinnest()
+        cov = _grey_floor(cov, d * SSr / fx - stem, d * SSr - bar, top_y, bottom_y)
+    box = (pad, pad, pad + Bw * SSr / fx, pad + band * SSr)
     ga = np.asarray(cov.resize((Bw, band), Image.BOX, box=box), np.float64) / 255.0
+    if OPTS['gamma'] != 1.0:
+        ga = ga ** (1.0 / OPTS['gamma'])
     if shadow:
         sh = np.zeros_like(ga)
         for dx, dy, w in _shadow_taps(d):
@@ -432,7 +500,10 @@ def build(name, d, meta, out_dir):
     base = d * (Hrows[1] + 1 - yoff)
     adv_target = d * meta['advance_a_to_z_mean']
     shadow = bool(meta['baked_shadow'])
-    prim = Instance(SOURCES[name], cap, adv_target)
+    spec = SOURCES[name]
+    if OPTS['weight']:
+        spec = dict(spec, axes=dict(spec['axes'], Weight=OPTS['weight']))
+    prim = Instance(spec, cap, adv_target)
     fb = None
     glyphs, missing, fallback_codes = [], [], []
     sp = render(prim, ' ', band, base, d, shadow)
@@ -446,7 +517,7 @@ def build(name, d, meta, out_dir):
             if len(alias) == 1 and ord(alias) in prim.codes:
                 ch = alias
         if ch is not None and ord(ch) not in prim.codes and not ch.isspace():
-            fb = fb or Instance(FALLBACK, cap, adv_target)
+            fb = fb or Instance(dict(FALLBACK, floor=spec['floor']), cap, adv_target)
             if ord(ch) in fb.codes:
                 inst = fb
                 fallback_codes.append(code)
@@ -561,7 +632,13 @@ def main(argv=None):
     ap.add_argument('--font', nargs='+', choices=sorted(SOURCES), default=list(SOURCES))
     ap.add_argument('--preview', help='write atlas and sample-line PNGs here')
     ap.add_argument('--report', help='write metric ratios versus stock as JSON here')
+    ap.add_argument('--weight', type=float, help='experiment: Weight axis override')
+    ap.add_argument('--hinted', action='store_true', help='experiment: hinted 1:1 rendering')
+    ap.add_argument('--floor-mode', choices=('binary', 'grey', 'none'),
+                    help='stroke-width floor (default: per family, SOURCES)')
+    ap.add_argument('--gamma', type=float, default=1.0, help='experiment: alpha = cov^(1/g)')
     a = ap.parse_args(argv)
+    OPTS.update(weight=a.weight, hinted=a.hinted, floor_mode=a.floor_mode, gamma=a.gamma)
     meta = json.loads(STOCK.read_text())['fonts']
     out = Path(a.out) / 'F'
     report = {'sources': {}, 'fonts': {}}

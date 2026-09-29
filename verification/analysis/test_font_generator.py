@@ -141,6 +141,32 @@ class FontGeneratorTest(unittest.TestCase):
                              stem.with_suffix('.tga').read_bytes(), self.ff)
             self.assertTrue(set('ilr!|Itj-T') <= set(res), name)
             self.assertEqual(sc.failures(res, D), [], '%s %s' % (name, res))
+            if name == 'Tahoma':
+                # shipped variant D (font-assets.md, "Readability under minification"): SemiBold
+                # stems of about 2.65 texels at d = 2 (measured 2.65-2.66), neither the 2.00 of
+                # the whole-texel binary floor nor the 3.00 of variant B
+                for ch in 'ilr':
+                    self.assertTrue(2.5 <= res[ch]['row'] <= 2.8, '%s %r %s' % (name, ch, res[ch]))
+
+    def test_family_defaults(self):
+        # HUD family: Noto SemiBold, advance re-fitted through wdth, grey stroke floor (edges
+        # stay antialiased); LARGE family: Exo 2 Medium with the binary whole-texel floor.
+        src = self.gen.SOURCES
+        self.assertEqual((src['Tahoma']['axes']['Weight'], src['Tahoma']['axes']['Width'],
+                          src['Tahoma']['floor']), (600, 'fit', 'grey'))
+        for name in ('Zekton', 'ZektonES', 'Harrier'):
+            self.assertEqual((src[name]['axes']['Weight'], src[name]['floor']), (500, 'binary'))
+        self.assertEqual(self.gen.OPTS, {'weight': None, 'hinted': False, 'floor_mode': None,
+                                         'gamma': 1.0})
+        # grey floor keeps partial-coverage edge texels in the stems
+        (h, cmap, recs), t, raw = self.fonts['Tahoma']
+        W, H = t['width'], t['height']
+        u0, v0, u1, v1, a, b, c, _ = recs[cmap[ord('l')]]
+        x0, y0 = int(W * u0), int(H * v0)
+        row = y0 + round(H * (v1 - v0)) // 2
+        white = [raw[18 + (row * W + x) * 4] * raw[18 + (row * W + x) * 4 + 3] / 255 ** 2
+                 for x in range(x0, x0 + b)]
+        self.assertTrue(any(0.05 < w < 0.95 for w in white), white)
 
     def test_metric_ratios_against_stock(self):
         # The a-z mean advance is fitted (on the rounded advances) to d x stock, so it must hold
