@@ -180,7 +180,7 @@ bool lightmap_far_fade_requested = false; // X3M_LIGHT_MAP_FAR_FADE=P0,P1[,G]: t
 float lightmap_far_fade[3] = {0.f, 0.f, 1.f};
 bool sun_occlusion_core_f = true; // X3M_SUN_OCCLUSION_CORE_F: the clipped core bodies are also scaled by f (default on
                                   // with the override; =0 restores clip-only)
-bool cull_small_props_on = false; // X3M_CULL_SMALL_PROPS=on (default off): the render-only small-prop draw skip,
+bool cull_small_props_on = false; // X3M_CULL_SMALL_PROPS (default on): the render-only small-prop draw skip,
 float cull_small_props_px = 0.f;  // at X3M_CULL_SMALL_PARTS_PX pixels; needs X3M_MOTION_OUTPUT=1 (cull_small_props_core.h)
 float lens_flare_gain_value = 1.f; // X3M_LENS_FLARE_GAIN: the game's lens-flare draws (the lens bracket's ONE/ONE
                                    // cards) scaled by G, finite 0..1, 1 = off (nothing installed for it); needs
@@ -3216,7 +3216,7 @@ void hook_device(IDirect3DDevice9* d, HWND window, HWND focus) {
     hooked.motion_output.configure_sun_occlusion({sun_occlusion::override_enabled(), sun_occlusion::logging(),
                                                   sun_occlusion_radius, sun_occlusion_curve, sun_occlusion_core_f});
     hooked.motion_output.configure_lens_flare_gain(lens_flare_gain_value); // 1 unless the bracket is installed for it
-    hooked.motion_output.configure_cull_small_props(cull_small_props_on, cull_small_props_px); // off unless requested
+    hooked.motion_output.configure_cull_small_props(cull_small_props_on, cull_small_props_px); // off unless configured
     hooked.motion_output.configure_taa_resolve(taa_history_weight);
     hooked.motion_output.configure_taa_far(taa_far[0], taa_far[1], taa_far[2], taa_far[3], taa_far[4], taa_far[5]);
     hooked.motion_output.configure_taa_thin_region(taa_thin_region[0], taa_thin_region[1], taa_thin_region[2],
@@ -5467,10 +5467,11 @@ void initialize_log(HMODULE module) {
     {
         // X3M_CULL_SMALL_PROPS=on|off (cull_small_props_core.h): no patch; the motion route skips the draws of small
         // prop nodes below X3M_CULL_SMALL_PARTS_PX (the same pixel setting, read here independently of whether the
-        // engine patch installed). One cull_small_props row when the variable is set.
+        // engine patch installed). Unset or empty means on (default since 2026-09-29); one cull_small_props row on
+        // every launch (requested=unset when the variable is absent).
         wchar_t mode_text[16]{}, px_text[32]{};
         const DWORD mode_length = x3m::config::get(L"X3M_CULL_SMALL_PROPS", mode_text, 16);
-        if (mode_length) {
+        {
             char mode[16]{}, px_ascii[32]{};
             for (DWORD i = 0; i < mode_length && i < 15; ++i)
                 mode[i] = mode_text[i] >= 0x21 && mode_text[i] <= 0x7e ? char(mode_text[i]) : '?';
@@ -5491,8 +5492,8 @@ void initialize_log(HMODULE module) {
                 reason = "route_off"; // the skip lives in the motion route's draw path
             cull_small_props_on = !std::strcmp(reason, "ok");
             cull_small_props_px = cull_small_props_on ? float(px) : 0.f;
-            log("cull_small_props requested=%s px=%.4f configured=%u reason=%s", mode, px, cull_small_props_on ? 1u : 0u,
-                reason);
+            log("cull_small_props requested=%s px=%.4f configured=%u reason=%s", mode_length ? mode : "unset", px,
+                cull_small_props_on ? 1u : 0u, reason);
         }
     }
     if (telemetry::enabled() || gz_buffer::requested() || crypt_cache::requested() ||

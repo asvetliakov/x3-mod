@@ -163,8 +163,10 @@ static void put(std::uint32_t at, std::uint32_t v) { std::memcpy(memory.data() +
 static void text(std::uint32_t at, const char* s) { std::memcpy(memory.data() + (at - base), s, std::strlen(s) + 1); }
 int main() {
     bool on = true;
-    check(parse_mode("on", &on) && on && parse_mode("off", &on) && !on && parse_mode("", &on) && !on &&
-          parse_mode(nullptr, &on) && !on && !parse_mode("1", &on) && !parse_mode("ON", &on), "option: on|off, unset off, else refused");
+    check(parse_mode("on", &on) && on && parse_mode("off", &on) && !on && parse_mode(nullptr, &on) && on &&
+          !parse_mode("1", &on) && !parse_mode("ON", &on) && !parse_mode(" off", &on), "option: on|off, unset on, else refused");
+    on = false;
+    check(parse_mode("", &on) && on, "option: empty text is on (default on since 2026-09-29)");
     check(is_prop_name("ships\\props\\split_m1turretA_base") && is_prop_name("Ships/PROPS/weapondummy") &&
           !is_prop_name("ships\\props") && !is_prop_name("ships\\split\\split_m7_cobra\\hull") && !is_prop_name("v\\00753") &&
           !is_prop_name(nullptr), "prefix ships\\props\\ (case and slash free)");
@@ -493,6 +495,10 @@ class CullSmallPropsCore(unittest.TestCase):
         capture = source_text(ROOT / 'src/proxy/capture.cpp')
         for reason in ('"invalid"', '"off"', '"no_px"', '"route_off"'):
             self.assertIn(reason, capture)
+        # Default on since 2026-09-29: the row is logged on every launch, requested=unset when the variable is absent.
+        block = capture[capture.index('L"X3M_CULL_SMALL_PROPS"'):capture.index('log("cull_small_props requested=')]
+        self.assertNotIn('if (mode_length)', block)
+        self.assertIn('mode_length ? mode : "unset"', capture)
         self.assertIn('configure_cull_small_props(cull_small_props_on, cull_small_props_px)', capture)
 
 
@@ -613,7 +619,7 @@ class CullSmallPartsLaunchOption(unittest.TestCase):
                 code, output, error = self.modded_launch(directory, '--cull-small-props', value)
                 self.assertEqual(code, 0, error)
                 self.assertEqual(json.loads(output)['env']['X3M_CULL_SMALL_PROPS'], value)
-            # Not given: not sent, and an inherited value is dropped.
+            # Not given: not sent (the DLL default is on since 2026-09-29), and an inherited value is dropped.
             code, output, error = self.modded_launch(directory, inherited={'X3M_CULL_SMALL_PROPS': 'on'})
             self.assertEqual(code, 0, error)
             self.assertNotIn('X3M_CULL_SMALL_PROPS', json.loads(output)['env'])
@@ -626,6 +632,7 @@ class CullSmallPartsLaunchOption(unittest.TestCase):
             code, _, error = self.modded_launch(directory, '--cull-small-props', '1')
             self.assertEqual(code, 2)
             self.assertIn('invalid choice', error)
+            self.assertIn('DLL default on since 2026-09-29', source_text(ROOT / 'tools/manage.py'))
 
     def test_out_of_range_refused(self):
         with tempfile.TemporaryDirectory() as directory:

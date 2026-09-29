@@ -1,6 +1,6 @@
 #pragma once
 // Render-only cull of small prop nodes (X3M_CULL_SMALL_PROPS=on|off, default
-// off; docs/verification/cull-small-parts.md, "Small props"). The decision of
+// on since 2026-09-29; docs/verification/cull-small-parts.md, "Small props"). The decision of
 // one main-scene draw: its scope node's body path (the engine's body table,
 // cull_census_core.h) starts with `ships\props\` (turret bases and sockets,
 // weapon dummies), the draw's own vertex extent (the object-space AABB of the
@@ -45,13 +45,13 @@ inline std::uint32_t slot_of(std::uint32_t node, std::uint32_t slots) {
     return (node * 2654435761u) >> 16 & (slots - 1);
 }
 
-// `on` enables, `off` or unset/empty leaves it off, anything else is refused.
+// `on` or unset/empty enables (default on since 2026-09-29), `off` turns it off, anything else is refused.
 inline bool parse_mode(const char* text, bool* on) {
-    if (!text || !*text || !std::strcmp(text, "off")) {
+    if (text && !std::strcmp(text, "off")) {
         *on = false;
         return true;
     }
-    if (!std::strcmp(text, "on")) {
+    if (!text || !*text || !std::strcmp(text, "on")) {
         *on = true;
         return true;
     }

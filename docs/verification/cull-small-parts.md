@@ -91,8 +91,10 @@ Fixture after the removal (2026-09-25, bottle X3): `run_cull_small_parts.py` 119
 
 ## Small props (`--cull-small-props`, 2026-09-29)
 
-Feature: `--cull-small-props on|off` / `X3M_CULL_SMALL_PROPS` / ini `cull_small_props` (default off, sent only when
-given; needs `X3M_CULL_SMALL_PARTS_PX` and the motion route), `src/proxy/cull_small_props_core.h`,
+Feature: `--cull-small-props on|off` / `X3M_CULL_SMALL_PROPS` / ini `cull_small_props` (default on since 2026-09-29,
+user decision; unset or empty means on, `off` turns it off; earlier flights run375-run383 ran it opt-in; the launcher
+sends it only when given; needs `X3M_CULL_SMALL_PARTS_PX` and the motion route, so a bare DLL or `--vanilla` launch,
+which sends no pixel setting, stays off with `no_px`), `src/proxy/cull_small_props_core.h`,
 `src/proxy/motion_output_cull_small_props_inc.h`. Run375 (Mayhem 3, 5120x1440, frame 4400) drew 82 prop draws of 352,
 all census `kept`: the split turret props carry a LOD ladder (`lods=3`, at LOD 1) and a node radius `+0xa0` of 80,000,
 about nine times their mesh, so the engine's `s` (5-6) stays above the stub's threshold (3) and `--cull-small-parts`
@@ -114,7 +116,8 @@ undrawn: in run375 frame 4400 it culled 101 prop nodes over 15 bodies by its own
 (`split_m6turretA_*`, `XTC_split_m6aturret_*`, `m6maingun_*`, `ALDG_*`) plus 6 by `--cull-small-parts`, stronger
 than this skip (the bit cleared in the pass), and turret aim, fire and hit detection were never reported to change on
 flights with the 2-4 px stub default since 2026-09-19 (inferred from the flown ledger; no dedicated turret test).
-Rows: `cull_small_props requested= px= configured= reason=` once (`off`, `invalid`, `no_px`, `route_off`), one
+Rows: `cull_small_props requested= px= configured= reason=` once on every launch (`requested=unset` when the
+variable is absent; reasons `ok`, `off`, `invalid`, `no_px`, `route_off`), one
 `cull_small_props_device` at the first scene draw, `cull_small_props_frame` every 300 frames with scene draws (every
 tier: `draws culled kept nodes_culled kept_size exempt_own exempt_target unresolved deferred no_bounds unbounded
 no_scope resolves walks`), on F8 frames one `cull_small_prop` per skipped node, and census rows of such nodes read

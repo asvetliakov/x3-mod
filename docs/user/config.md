@@ -59,8 +59,9 @@ clamp (a clamp below 1 is used in steps of 1/255, so `0.7` acts as 179/255 = 0.7
 mods that draw them very large: `1` is the game's own brightness, `0.5` half, `0` the flares are not drawn at all; the default is `0.3` (since
 2026-09-29).
 
-`cull_small_props` (default `off`) also skips drawing small separate ship parts, such as the turrets of distant
-capital ships, when they are smaller on screen than `cull_small_parts_px` pixels: `cull_small_props = on`. It only
+`cull_small_props` (default `on` since 2026-09-29) also skips drawing small separate ship parts, such as the turrets
+of distant capital ships, when they are smaller on screen than `cull_small_parts_px` pixels; `cull_small_props = off`
+draws them. It only
 changes what is drawn: the turrets still aim, fire and can be hit, and parts on your own ship and on your current
 target are always drawn. It needs `cull_small_parts_px` above 0. With it on, `x3m.log` carries one
 `cull_small_props_frame` line every 300 frames with how many part draws were skipped (`culled=`) and drawn (`kept=`).
