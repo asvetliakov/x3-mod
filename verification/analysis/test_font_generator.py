@@ -129,6 +129,19 @@ class FontGeneratorTest(unittest.TestCase):
                 self.assertEqual(dark, 0, name)
                 self.assertTrue(all(px[i:i + 3] == b'\xff\xff\xff' for i in inked))
 
+    def test_stroke_width_rule(self):
+        # font-assets.md stroke-width rule / font-rendering.md section 5: every stroke at least d
+        # texels of white coverage (median over the glyph's inked rows for vertical strokes,
+        # columns for bars), or one-texel strokes vanish under nearest-sampled minification.
+        sc = _load('stem_coverage', ROOT / 'verification/results/font-rendering/stem_coverage.py')
+        for name in self.fonts:
+            S = self.stock[name]['S']
+            stem = Path(self.tmp.name) / 'F' / ('%s%d' % (name, S * D))
+            res = sc.measure(stem.with_suffix('.abc').read_bytes(),
+                             stem.with_suffix('.tga').read_bytes(), self.ff)
+            self.assertTrue(set('ilr!|Itj-T') <= set(res), name)
+            self.assertEqual(sc.failures(res, D), [], '%s %s' % (name, res))
+
     def test_metric_ratios_against_stock(self):
         # The a-z mean advance is fitted (on the rounded advances) to d x stock, so it must hold
         # to 1 %. Cap height and baseline are placed on whole rows at d x stock, +-1 row for the

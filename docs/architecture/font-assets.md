@@ -50,12 +50,35 @@ ones. The generator prints glyph count, image size and bytes per file.
   squeezed glyphs at d = 2: Tahoma 142 (capitals with accents, and g j p q y by under half a pixel),
   Zekton/ZektonES 64, Harrier 22. The stock Tahoma13 cuts 71 glyphs at the band top instead.
 - **Horizontal metrics.** Per glyph: `A` = left edge of the ink (snapped to the nearest texel,
-  ≤ 0.5 px shift, so left stems land on whole texels), `B` = ink width including the shadow,
+  ≤ 0.5 px shift, so left stems land on whole texels), `B` = ink width including the stroke
+  floor and the shadow,
   `C` = advance − `A`. The advance comes from the unhinted 1000-px outline. The mean a–z advance
   is fitted to `d ×` the stock mean on the rounded advances: Noto Sans through its width axis
   (wdth 87), then a residual horizontal scale; Exo 2 has no width axis, so its outline is
   scaled horizontally (0.864–0.866 for Zekton/ZektonES, 1.005–1.006 for Harrier). Glyphs are rendered at
-  4×4 supersampling and box-filtered (17 coverage levels; the stock files have 15–16).
+  4×4 supersampling, binarised at half coverage, passed through the stroke floor below and
+  box-filtered (17 coverage levels; the stock files have 15–16).
+- **Stroke-width rule.** Every stroke, vertical and horizontal, has at least `d` texels of
+  full coverage: a 1-px stock stroke is `d` texels at density `d`, and a thinner stroke vanishes
+  where the text texture is minified with nearest sampling (`s = 1.25`, `d = 2`: screen samples
+  every 1.6 texels; run 392, [font-rendering.md](../reverse-engineering/font-rendering.md) §5).
+  `_stroke_floor` works on the supersampled mask. A horizontal ink run that continues a straight
+  edge in the neighbouring row and is narrower than `d + 1` texels is redrawn as
+  `max(d, round(width))` whole columns from the nearest column boundary (stem hinting). A
+  diagonal or curved run narrower than `d` is widened to `d` in place. Vertical runs (bars) get
+  the same treatment in whole rows, growing downwards, or upwards when they sit on the baseline
+  or would leave the band, so cap line and baseline do not move. Strokes of `d + 1` texels or
+  more are left as drawn, so Exo 2's 4-texel stems are unchanged. The check is
+  `verification/results/font-rendering/stem_coverage.py`: the median white coverage over a
+  glyph's inked rows (for `i l r ! | I t j і ї г`) or inked columns (for `- T`) must be ≥ `d` for all eight
+  generated fonts; `test_font_generator` runs the same check. `A`, `C`, the band and the
+  advances are unchanged by the rule.
+
+  The run 392 fonts had `i l r` at 1.15 texels because of a sign error in the left-edge snap:
+  the pen origin was moved by +2·shift instead of −shift, so up to one texel of ink left of
+  column `A` fell outside the resample box and was cut. The source stems are 1.91 px (`l`) and
+  1.97 px (`I`) at d = 2. The wdth 87 instance and hinting at the 4× render size were not the
+  cause: the rendered stems at 89.6 px match the 1000-px outline to within 1 %.
 - **Weight.** Stem width over cap height matches the stock fonts after the horizontal fit: Noto
   Sans Regular (0.122 vs Tahoma 1/8), Exo 2 Medium (0.145 × 0.866 ≈ 0.126 vs Zekton 2/16;
   0.145 vs Harrier 2/14).
@@ -77,9 +100,9 @@ regeneration command below with `--report`.
 | Font (d = 2 / 3) | mean a–z advance | H advance | H `B` | g advance | g `B` | space |
 | --- | --- | --- | --- | --- | --- | --- |
 | Tahoma26 / 39 | 1.000 / 1.000 | 1.071 / 1.048 | 1.000 / 1.042 | 1.083 / 1.056 | 1.071 / 1.095 | 0.833 / 0.889 |
-| Zekton52 / 78 | 1.000 / 1.000 | 1.038 / 1.026 | 0.955 / 0.939 | 0.958 / 0.944 | 1.000 / 1.033 | 0.900 / 0.867 |
+| Zekton52 / 78 | 1.000 / 1.000 | 1.038 / 1.026 | 0.955 / 0.939 | 0.958 / 0.944 | 1.050 / 1.033 | 0.900 / 0.867 |
 | ZektonES52 / 78 | same as Zekton | | | | | |
-| Harrier48 / 72 | 1.000 / 1.000 | 0.900 / 0.911 | 0.955 / 0.970 | 0.958 / 0.944 | 1.111 / 1.148 | 0.900 / 0.933 |
+| Harrier48 / 72 | 1.000 / 1.000 | 0.900 / 0.911 | 0.955 / 0.939 | 0.958 / 0.944 | 1.167 / 1.148 | 0.900 / 0.933 |
 
 The mean advance is fitted, so a line of lower-case text has the stock width; single letters
 keep the substitute's proportions (within ±15 %), and the space is 7–17 % narrower than
@@ -111,9 +134,10 @@ Tahoma and Zekton at d = 2 and checks format, band, ranges, code set, shadow and
 
 Noto Sans is a humanist sans like Tahoma but with rounder bowls and a wider default
 width; at wdth 87 its advances match Tahoma's, but letters are slightly
-wider and word spaces narrower, and its hinting is not Tahoma's pixel-fitted bitmap look —
-at d = 2 stems are about 2 px with soft right edges, where stock Tahoma13 has crisp 1-px stems
-[i: from the previews, not the game].
+wider and word spaces narrower. The stroke floor snaps thin straight stems and bars to
+exactly `d` whole texels, like stock Tahoma13's 1-px stems ×2. Curves and diagonals stay
+antialiased, and small marks can come out a texel wider than the stem (the `i` dot is 3×2 at
+d = 2) [i: from the previews, not the game].
 Exo 2 is a geometric techno face close to Zekton in spirit (squarish rounds, flat terminals),
 but Zekton is effectively a pixel font with 2-px stems on whole texels and very compact
 accents; Exo 2 is compressed to 87 % width to match Zekton's set width, its curves stay
