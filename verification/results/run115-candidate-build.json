@@ -1,0 +1,98 @@
+{
+  "dll": "/tmp/x3-run115-candidate/build/d3d9.dll",
+  "sha256": "fe31263b4d0c36e83d2d61499e721426af8f387134cd84ef0bf0c98a3c944796",
+  "bytes": 57847453,
+  "commit": "9166c5f0",
+  "toolchain": "i686-w64-mingw32-gcc (GCC) 16.2.0; cmake version 4.4.3; RelWithDebInfo, cmake/mingw-i686.cmake, -j8; Python 3.9.6 (/usr/bin/python3, -DPython3_EXECUTABLE=/usr/bin/python3); clean build in a detached git worktree (X3M_SOURCE_COMMIT 9166c5f0cbfda40950096e2fcaa4591b9c687956, no dirty diff); clean configure+build wall time 42 s",
+  "gates": "build 0 warnings; x87 0 violations (737 reachable functions); generate --check PASS (247 settings, 99 in the template); ui-scale site_verifier_summary PASS 75/75 checks (10,331 instructions, 161 claims considered, EXE identity shipped LAA CheckSum 0, sha256 fdbf3418...); text-density site_verifier_summary PASS 72/72 checks (4,008 instructions, 170 claims considered, same EXE identity); verify_cull_small_parts_site PASS 20/20 checks (site 0x47d2a2, 373 function instructions); verify_lens_flare_cull_site PASS 13/13 checks (42 body names); verify_dust_leak_fix_site PASS 27/27 checks (site 0x41f4d1, 473 function instructions); host suite 280 modules / 2,946 tests / 0 failing (100.7 s wall, 12 jobs); generate_fonts.py --out build/fonts wrote 16 files under build/fonts/F, sha256 identical to /Users/asvetl/x3-mod/build/fonts/F (16/16); stem_coverage.py PASS; manage.py launch --dry-run --direct --debug --ui-scale 1.25 exit 0 with X3M_UI_SCALE \"1.25\" and X3M_TEXT_DENSITY \"auto\"; no Wine run; X3AP not running before build and suite",
+  "changes": [
+    "6900c8bd text_density: linear sampling for scaled text quads when s != d (proxy-side: draws whose stage-0 texture is a flagged row's IDirect3DTexture9 get MIN/MAG LINEAR around the original draw through the device's original sampler entries; set rebuilt per Present from validated reads, cleared on disable/refusal; the engine's point filter comes from the body record flag 0x100 copied before the row edit); text_line diagnostic prints font= and x=; config-slot anchor 0x00472315; reviewed, fixes applied",
+    "d3e9d72e stem_coverage.json regenerated from the fixed fonts in the main checkout (PASS, all families)",
+    "1426f4bf fonts: fix the left-edge snap sign error that cut up to one texel of ink (i/l/r at 1.15 texels), add the stroke-width floor (every stroke >= d texels of full coverage, stems snapped to whole columns, bars in whole rows); stem_coverage.py covers all four families and both densities with --before; test_stroke_width_rule; font-assets.md",
+    "06d4bf15 RE: run392 text-density triage (font-rendering.md section 5): the engine drops no glyphs; the generated Tahoma26 has ~1-texel strokes for i/l/r (stock 2 at 2x) and the scaled quads sample NEAREST while minified 1.6x, so one-texel columns vanish by position; fixes = generator stroke width >= d texels and linear filtering for scaled text quads; stem_coverage.py",
+    "30332755 Run114 candidate built from f43ac51f (DLL 41ff9b41\u2026 57,835,230 B; host suite 280/2,945/0, x87 0, ui-scale 75/75, text-density 72/72, verifiers 20/13/27; 16 fonts) and installed 2026-09-30 with the generated fonts; Run 114 A queued (sharp text under --ui-scale 1.25 --debug); rollback Run113"
+  ],
+  "fonts": [
+    {
+      "name": "Harrier48.abc",
+      "sha256": "bfe708cd4c832d6e58116816952dfaaf3dcefe85cf8bea79472141380f19249c",
+      "bytes": 10102
+    },
+    {
+      "name": "Harrier48.tga",
+      "sha256": "b0e5db2922e7b7d830387d7f9db5d64199fed6378f0dc3131f4fd80734939a09",
+      "bytes": 2097170
+    },
+    {
+      "name": "Harrier72.abc",
+      "sha256": "807a78585316503f8c2bef7d6f203e108868b33a19c4839153adbffa91cfe775",
+      "bytes": 10102
+    },
+    {
+      "name": "Harrier72.tga",
+      "sha256": "7e6db52e670aa17e84ce533913eba10be8777bf96b7f6126a3d132468ff6761e",
+      "bytes": 4194322
+    },
+    {
+      "name": "Tahoma26.abc",
+      "sha256": "dd8cf6bce49d7ab0ae284f68a0e1ab15b9552e6433ea8b9bc132981c54cf8ccf",
+      "bytes": 17054
+    },
+    {
+      "name": "Tahoma26.tga",
+      "sha256": "0d85bfa4cdf717cf70077b649d5d0b4b91b1dfdffad22c90cd91b9b82d2425eb",
+      "bytes": 1048594
+    },
+    {
+      "name": "Tahoma39.abc",
+      "sha256": "00e54629b8a35fc4c5363d12d6014703d75f52f6bd08eb44f4f34e8519402a18",
+      "bytes": 17054
+    },
+    {
+      "name": "Tahoma39.tga",
+      "sha256": "a99f8dbe70cd7eb647c1bc02c357808dcac722ec21f68ad19a557df1030a5c7a",
+      "bytes": 4194322
+    },
+    {
+      "name": "Zekton52.abc",
+      "sha256": "7a52633c0a936aa7026aae45ec3a85c3188b27fd943ace23cdc5a7f134ad4248",
+      "bytes": 7628
+    },
+    {
+      "name": "Zekton52.tga",
+      "sha256": "cff8eb745fdb0fba6e4648a6694c3b615e112a630fd3571f15a56df1c387f53f",
+      "bytes": 2097170
+    },
+    {
+      "name": "Zekton78.abc",
+      "sha256": "3960f3cf197336c8ce168c603322a432ce224a1e923c951a865f31cba57fc424",
+      "bytes": 7628
+    },
+    {
+      "name": "Zekton78.tga",
+      "sha256": "212b87b9e2610142aea56e44677a27af030b633252677a0d7ae11a4a2d5b2b97",
+      "bytes": 4194322
+    },
+    {
+      "name": "ZektonES52.abc",
+      "sha256": "96c229be61d9ea2644eb227f2ba2077074227390a35c4324a3af0e462421d0da",
+      "bytes": 24750
+    },
+    {
+      "name": "ZektonES52.tga",
+      "sha256": "bb01d1d12b9293a9a0812b126e245e19f66c68ed8f1052862c8725b35750e554",
+      "bytes": 2097170
+    },
+    {
+      "name": "ZektonES78.abc",
+      "sha256": "496fabf863183563ce63548452ce0a9a34a4a7555230677530f1baec905e3cf5",
+      "bytes": 24750
+    },
+    {
+      "name": "ZektonES78.tga",
+      "sha256": "79140644e51f02a55241cc6ae37050c7c62dc5d5e3602120229689bbd18bd9fa",
+      "bytes": 4194322
+    }
+  ],
+  "producer": "Claude Code implement agent (Opus 5.5), 2026-09-30; git log --oneline f43ac51f..9166c5f0 --no-merges; shasum -a 256; hashlib over build/fonts/F; build/site/suite/fonts/stem/dry-run logs local under /tmp/x3-run115-candidate/"
+}

@@ -1,24 +1,30 @@
 # Project status
 
-The single current-state file (updated 2026-09-30, Run114 = ui_scale + text_density (sharp fonts) over release 0.8.1). Rules: [AGENTS.md](../AGENTS.md). All goals were
+The single current-state file (updated 2026-09-30, Run115 = ui_scale + text_density with fixed fonts and linear text sampling over release 0.8.1). Rules: [AGENTS.md](../AGENTS.md). All goals were
 marked completed on 2026-09-26 by the user's decision ([goals](goals.md)). The agent never launches the game.
 
 ## Installed build
 
 Bottle **X3**, **CrossOver Preview.app**, game tree modded with **Mayhem 3** since 2026-09-28 (user install,
 `addon/05..12.cat` plus loose `addon/` files; 0.7.0 LOD overlay and fog families regenerated 2026-09-29 03:33).
-Run114 = candidate DLL SHA-256 `41ff9b41f1020d393df92f941d2bd9dba173e0be4f7c455fd97ded5be8ce5802` (57,835,230 bytes, unstripped),
-built once from clean main `f43ac51f` (host suite 280/2,945/0, 0 warnings, x87 0, ui-scale verifier 75/75, text-density verifier 72/72,
-cull/flare/dust verifiers 20/13/27, generate --check 247/99; [build record](../verification/results/run114-candidate-build.json)), installed
-2026-09-30 with the 16 generated font files in `<game>/f/` (manifest `x3m-fonts.json`; [install](../verification/results/run114-candidate-install.json)).
+Run115 = candidate DLL SHA-256 `fe31263b4d0c36e83d2d61499e721426af8f387134cd84ef0bf0c98a3c944796` (57,847,453 bytes, unstripped),
+built once from clean main `9166c5f0` (host suite 280/2,946/0, 0 warnings, x87 0, ui-scale verifier 75/75, text-density verifier 72/72,
+cull/flare/dust verifiers 20/13/27, generate --check 247/99, stem coverage PASS; [build record](../verification/results/run115-candidate-build.json)),
+installed 2026-09-30 with the 16 regenerated font files in `<game>/f/` ([install](../verification/results/run115-candidate-install.json)).
 Renderer code equal to release 0.8.1 (Run111, `f4439590`) plus the opt-in `ui_scale` (claims A-H) and `text_density` (auto = ceil(ui_scale),
 inert at ui_scale 1). Release 0.8.1: stripped DLL `e123b7ed…` (39,550,860 bytes), zip `/tmp/x3m-release-0.8.1/x3m-0.8.1.zip` (`17f75b31…`),
 [release record](../verification/results/release-0.8.1.json). `X3AP.exe`, `cxbottle.conf`, the user's `x3m.ini` and the 0.8.0
 `x3m-regenerate` binaries unchanged.
 
-Rollback chain: Run113 `44208d1f…` at `/tmp/x3-run113-candidate/build/d3d9.dll` (fonts in `f/` stay; a non-density DLL never requests them), then Run112 `ea3ad671…` at `/tmp/x3-run112-candidate/build/d3d9.dll`, then Run111 = release 0.8.1 `e123b7ed…` at `/tmp/x3m-release-0.8.1/d3d9.dll`, then Run110 `e5e7ac15…` at `/tmp/x3-run110-candidate/build/d3d9.dll`, then Run109 `09f08cff…` at `/tmp/x3-run109-candidate/build/d3d9.dll`, then Run108 `c57556bb…` at `/tmp/x3-run108-candidate/build/d3d9.dll`, then Run107 `b9e8793c…` at `/tmp/x3-run107-candidate/build/d3d9.dll`, then Run106 `d07848e8…`, then Run104 = release 0.8.0 `f34d3ab4…` (zip at `/tmp/x3m-release-0.8.0/`, entry `d3d9.dll`, extracted copy
+Rollback chain: Run114 `41ff9b41…` at `/tmp/x3-run114-candidate/build/d3d9.dll` (its fonts under `/tmp/x3-run114-candidate/build/fonts/F`), then Run113 `44208d1f…` at `/tmp/x3-run113-candidate/build/d3d9.dll` (fonts in `f/` stay; a non-density DLL never requests them), then Run112 `ea3ad671…` at `/tmp/x3-run112-candidate/build/d3d9.dll`, then Run111 = release 0.8.1 `e123b7ed…` at `/tmp/x3m-release-0.8.1/d3d9.dll`, then Run110 `e5e7ac15…` at `/tmp/x3-run110-candidate/build/d3d9.dll`, then Run109 `09f08cff…` at `/tmp/x3-run109-candidate/build/d3d9.dll`, then Run108 `c57556bb…` at `/tmp/x3-run108-candidate/build/d3d9.dll`, then Run107 `b9e8793c…` at `/tmp/x3-run107-candidate/build/d3d9.dll`, then Run106 `d07848e8…`, then Run104 = release 0.8.0 `f34d3ab4…` (zip at `/tmp/x3m-release-0.8.0/`, entry `d3d9.dll`, extracted copy
 at `/tmp/x3m-release-0.8.0/zip-extract/d3d9.dll`), then Run103 `1f3ad3db…` at `/tmp/x3-run103-candidate/build/d3d9.dll`.
 
+Run115 over Run114: Run 114 A (run392) showed the mechanism working (density 2, rows 32/8/28, fonts scaled, shadows built, layout right) but
+narrow glyphs (i, l, r) vanished: the generator's left-edge snap had a sign error cutting up to a texel of ink (1.15-texel stems) and the
+scaled text quads sampled POINT (the engine's material routine sets it from the body record flag 0x100 copied before the row edit) under
+the 1.6x minification. Fixed: the generator snap plus a stroke floor (every stroke >= d texels, `stem_coverage.py` PASS for all families)
+and a proxy-side sampler override (MIN/MAG LINEAR around every draw whose stage-0 texture is a flagged row's D3D texture when s != d;
+`text_density_filter` rows) ([RE](reverse-engineering/font-rendering.md) section 5, [ledger](verification/text-density.md)). Not yet flown.
 Run114 over Run113: `text_density` (`--text-density auto|1|2|3`, ini `text_density`, default `auto` = ceil(`ui_scale`), 1 when the UI
 scale is 1): sharp text under the UI scale through the engine's own retail `-fontscale` path at integer density d. The DLL writes the
 config field at CreateDevice, the font-open detour (`0x0048cdc0`) requests `F\<name><S*d>` (generated by `tools/fonts/generate_fonts.py`
@@ -26,8 +32,7 @@ from bundled OFL fonts: Noto Sans for Tahoma, Exo 2 for Zekton/ZektonES/Harrier;
 the redirected Materials load flags the 35 writable generated rows `MPF_FONTSCALE`, blits of unscaled sources into flagged rows go through
 a d-times shadow cache, the style table factor is patched for d = 3; all-or-none, refused when any font pair is missing or the caps do not fit.
 At s = 1.25, d = 2 minifies 1.6x (bilinear) instead of magnifying 1x glyphs ([note](architecture/text-density.md),
-[fonts](architecture/font-assets.md), [RE](reverse-engineering/font-rendering.md), [ledger](verification/text-density.md)). Not yet flown;
-the text-target set (which rows receive text) is settled by the first --debug flight.
+[fonts](architecture/font-assets.md), [RE](reverse-engineering/font-rendering.md), [ledger](verification/text-density.md)). Flown as Run 114 A (run392): the text-target set held (no double-size text, no black icons).
 Run113 over Run112: two more `ui_scale` claims, G (`0x0042ece0`, INS case 0x64) and H (`0x0042ddf1`, case 0x28), multiply
 the script's virtual click point by s before the native bracket hit test `0x004299a0`, fixing click selection of ships in the
 3D view (Run 112 A / run390: layout, menus, map and main menu correct, bracket clicks dead; [RE](reverse-engineering/gui-scale.md) section 6).
@@ -68,11 +73,11 @@ Last release: **0.8.1** from `f4439590` ([release record](../verification/result
 
 ## Main beyond the installed build
 
-Nothing beyond the installed Run114 (`f43ac51f`); release 0.8.1 (`f4439590`) is the last packaged build.
+Nothing beyond the installed Run115 (`9166c5f0`); release 0.8.1 (`f4439590`) is the last packaged build.
 
 ## Run queue
 
-Run 114 A queued (Run114 installed): sharp text under `--ui-scale 1.25 --debug` (text_density auto = 2). Run 113 A completed (run391): bracket click selection works; the ui_scale layout path is accepted at 1.25. Run 112 A completed (run390): UI scaled correctly, menus/map/main menu fine; bracket clicks dead (fixed in Run113), text soft/broken (open).
+Run 115 A queued (Run115 installed): sharp text with fixed fonts and linear sampling under `--ui-scale 1.25 --debug`. Run 114 A completed (run392): mechanism worked, narrow glyphs vanished (fixed in Run115). Run 113 A completed (run391): bracket click selection works; the ui_scale layout path is accepted at 1.25. Run 112 A completed (run390): UI scaled correctly, menus/map/main menu fine; bracket clicks dead (fixed in Run113), text soft/broken (open).
 Run 110 A completed (run386-389, [results](../verification/results/run386-389-cull-ab/)): at one carrier
 view without `--perf`, the dock-port cull (12 px) saves 2.4-3.7 ms per frame (about 57 fps against 47-50 with it off,
 measured from 300-frame clock windows, one run per setting); the engine-side flare cull saves 0 ± 0.5 ms (1.2 ms under
