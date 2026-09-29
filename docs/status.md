@@ -1,44 +1,41 @@
 # Project status
 
-The single current-state file (updated 2026-09-29, Run104 = release 0.8.0). Rules: [AGENTS.md](../AGENTS.md). All goals were
+The single current-state file (updated 2026-09-29, Run105). Rules: [AGENTS.md](../AGENTS.md). All goals were
 marked completed on 2026-09-26 by the user's decision ([goals](goals.md)). The agent never launches the game.
 
 ## Installed build
 
 Bottle **X3**, **CrossOver Preview.app**, game tree modded with **Mayhem 3** since 2026-09-28 (user install,
-`addon/05..12.cat` plus loose `addon/` files; 0.7.0 LOD overlay and fog families regenerated 2026-09-29 03:33, the
-regenerate tool source is unchanged since). Run104 = **release 0.8.0 (stripped)** DLL SHA-256
-`f34d3ab424353a3e51e8f5408f125b31f2b7d266604317ee3361024cab4dcb41` (39,487,179 bytes), built once from clean main
-`a3c85e37` by `tools/release/release.py` (`x3m-0.8.0.zip`, sha256 `b9a58c8b…`, 58,368,639 bytes, at
-`/tmp/x3m-release-0.8.0/`; [release record](../verification/results/release-0.8.0.json)). Installed 2026-09-29 with the
-0.8.0 `x3m-regenerate.exe` (`d7f8d687…`) and macOS `x3m-regenerate` (`28d3e915…`); the user's edited `x3m.ini` kept
-(the 0.8.0 template is in the zip) ([install](../verification/results/run104-candidate-install.json)). `X3AP.exe` and
-`cxbottle.conf` unchanged.
+`addon/05..12.cat` plus loose `addon/` files; 0.7.0 LOD overlay and fog families regenerated 2026-09-29 03:33).
+Run105 = candidate DLL SHA-256 `5de8ed5d352f195981c28bcf012f3bf64242fa2711f8318e0d7814f5f9d1fc76` (57,430,813 bytes,
+RelWithDebInfo, unstripped), built once from clean main `99734bdb` (host suite 274/2,898/0, 0 warnings, x87 0;
+[build](../verification/results/run105-candidate-build.json)), installed 2026-09-29
+([install](../verification/results/run105-candidate-install.json)). `X3AP.exe`, `cxbottle.conf`, the user's `x3m.ini`
+and the 0.8.0 `x3m-regenerate` binaries unchanged.
 
-Rollback chain: Run103 `1f3ad3db…` at `/tmp/x3-run103-candidate/build/d3d9.dll`, then Run102 `b7acb91f…` (release
-0.7.0) at `/tmp/x3-run102-candidate/build/d3d9.dll`, then Run101 `8b164ee1…`.
+Rollback chain: Run104 = release 0.8.0 `f34d3ab4…` (zip at `/tmp/x3m-release-0.8.0/`, entry `d3d9.dll`, extracted copy
+at `/tmp/x3m-release-0.8.0/zip-extract/d3d9.dll`), then Run103 `1f3ad3db…` at `/tmp/x3-run103-candidate/build/d3d9.dll`.
 
-0.8.0 over 0.7.0 ([compare](../verification/results/release-0.8.0-dll-compare.json): `.text`/`.data` equal to Run103,
-defaults in `.rdata`): the object-lifetime registry at 262,144 entries with backward-shift deletion and the
-`object_lifetime_disabled` / `object_lifetime_stats` rows (run358: the observer disabled itself during a Mayhem 3 load
-at 16,384 entries, run365 measured `peak_live=44913`, so every TAA draw had been refused at the scope gate and the
-jitter showed raw, [note](reverse-engineering/object-lifetimes.md)); `hull_emission_gain` follows `emission_source_gain`
-through the config file; `emission_source_clamp` and `lens_flare_gain` (run364: Mayhem nozzle cards at 3.0 engine value
-under the hull gain, the red halos are Mayhem's own lens flares, [ledger](verification/screen-emission.md),
-[sun occlusion](verification/sun-occlusion.md)); defaults `emission_source_gain 1`, `emission_source_clamp 0.7`,
-`lens_flare_gain 0.3` (user decision after Run 103 A); `--vanilla` refuses while the bottle's decoder variables are set
-(a vanilla launch stalled at the loading screen, user-observed).
+Run105 over 0.8.0: `lens_flare_gain 0` skips the admitted lens-flare draws instead of drawing them invisibly, and the
+opt-in `cull_small_props` (proxy-side skip of `ships\props\` draws under the small-parts pixel threshold, own ship and
+target exempt, no engine write) ([cull-small-parts](verification/cull-small-parts.md),
+[sun occlusion](verification/sun-occlusion.md)). Motivation: run375 draw attribution
+([results](../verification/results/run375-draw-attribution/)): 352 game draws at a Mayhem battle group = 169 lens-flare
+sprites (stock bodies `objects/v/00752..00766`, ~8 per engine) + 82 Split turret props (76 under 4 px) + 28 ship hulls +
+25 carrier + 14 station + 10 engine glows + 5 sky + 9 HUD.
+
+Last release: **0.8.0** from `a3c85e37` ([release record](../verification/results/release-0.8.0.json)).
 
 ## Main beyond the installed build
 
-Nothing: main `a3c85e37` is the installed and released commit (documentation follows it).
+Nothing beyond the installed Run105 (`99734bdb`); release 0.8.0 (`a3c85e37`) is the last packaged build.
 
 ## Run queue
 
-Run 104 A queued (2026-09-29): a plain flight on the 0.8.0 defaults (the explicit `x3m.ini` lines are no longer
-needed) to confirm the Run 103 A look: [run queue](verification/user-runs.md). Run 103 A completed and accepted
-(run365 `object_lifetime_stats peak_live=44913` confirmed the capacity cause; exhausts accepted at clamp 0.7 / flare
-0.5, defaults set to 1 / 0.7 / 0.3 by the user).
+Run 105 A queued (2026-09-29): draw-cost measurement at the battle group, two launches from the launcher (the ini is not
+read): `--lens-flare-gain 0 --cull-small-props on` versus the defaults, same spot, frame times compared; turrets watched
+for normal behaviour: [run queue](verification/user-runs.md). Run 104 A (plain flight on the 0.8.0 defaults) folds into
+it: the baseline launch is that flight.
 
 ## Open items
 

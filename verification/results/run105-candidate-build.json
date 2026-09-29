@@ -1,0 +1,14 @@
+{
+ "dll": "/tmp/x3-run105-candidate/build/d3d9.dll",
+ "sha256": "5de8ed5d352f195981c28bcf012f3bf64242fa2711f8318e0d7814f5f9d1fc76",
+ "bytes": 57430813,
+ "commit": "99734bdb",
+ "toolchain": "i686-w64-mingw32-gcc (GCC) 16.2.0; cmake version 4.4.3; RelWithDebInfo, cmake/mingw-i686.cmake, -j8; Python 3.9.6 (/usr/bin/python3); clean build 39 s wall",
+ "gates": "build 0 warnings; x87 0 violations (733 reachable functions); generate --check PASS (243 settings, 95 in the template); host suite 274 modules / 2,898 tests / 0 failing (97.3 s wall, 12 jobs); X3AP not running before build and suite",
+ "changes": [
+  "ad877b30 cull_small_props (X3M_CULL_SMALL_PROPS, --cull-small-props on|off, ini key; default off): proxy-side skip of main-scene draws of ships\\props\\ nodes whose mesh-part box projects under X3M_CULL_SMALL_PARTS_PX pixels (the engine keeps them through an 80,000-unit bounding radius, 9x the mesh); own ship and current target always drawn (cockpit registry via object_trace::scope_node), unresolved/no-bounds/unbounded draw, per-frame walk budget, per-node memo, culled_prop census verdict, 300-frame row; no engine write, D3D_OK returned without a draw call (bolt drop shape); run375: 76 of 82 prop draws under 4 px (352 -> ~276 draws, inferred); CPU fixture 140 checks, host suite 274/2,898/0, build 0 warnings, x87 0, per-draw 3-314 ns on the fixture; reviewed (Opus), no blocker, help figures and comment corrected",
+  "553da541 run375 draw attribution scripts and outputs (352 draws: 169 lens-flare sprites, 78 Split turret props, 28 ship hulls, 25 carrier, 14 station, 10 engine glows, 5 sky, 9 HUD)",
+  "f622c0b0 lens_flare_gain 0 skips the admitted lens-flare draws (route.submit=false, S_OK to the game, no state change; the sun wrap's existing drop path), skipped= on the 300-frame row; run375: 169 of 352 game draws per frame are Mayhem's per-engine flare chains (stock bodies objects/v/00752..00766, stock DEFAULT pair); sun-occlusion GPU fixture 137 checks (zero case: background unchanged, 0 draws issued by occlusion query), hook 74, host tests 63, generate --check PASS, build 0 warnings, x87 0"
+ ],
+ "producer": "Claude Code implement agent (Opus 5.5), 2026-09-29; git log --oneline 1f3e3c15..HEAD --no-merges; shasum -a 256; stat -f %z; build/suite logs local under /tmp/x3-run105-candidate/"
+}
