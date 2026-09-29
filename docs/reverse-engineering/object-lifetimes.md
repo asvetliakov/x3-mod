@@ -438,6 +438,185 @@ The static coverage limits above remain explicit. In-place camera cuts need a
 separate conservative history policy. No game was launched or observer installed
 into a running game during this mechanism checkpoint.
 
+### Run383: the 27-nodes-per-frame creator (2026-09-29)
+
+**Answer.** The Mayhem 3 leak is the engine's **dust scene fill** `0x0041efc0`. Every
+frame it tops the cockpit's dust scene up to the background's `NumDustInstances`. It
+allocates each node first and checks the dust body afterwards. When the body cannot be
+loaded it jumps past the attach and drops the pointer, so the node stays on the
+unattached list `R+0x28` with model id −1. Nothing ever counts it, so the next frame
+allocates the same number again. In run383 the sector's background is Mayhem record
+103 (`litcube75`): `NumDustInstances` = 27, and none of its eight dust bodies exist.
+That gives exactly 27 leaked nodes per frame. The frame-time growth in `cutevent` is
+the scene-graph tick walking these nodes: `0x0048f550` calls `0x0048f2b0` for every
+node on `R+0x28` (`0x0048f557`-`0x0048f572`).
+
+Labels: **[m]** measured from the run383 log
+(`/tmp/x3-bottleX3-run383/session-20260929-101037-212.log`, series in
+[`census_series_out.txt`](../../verification/results/run383-dust-leak/census_series_out.txt)),
+**[f]** read from the installed data files, **[i]** inferred from disassembly (Ghidra
+12.1.3 decompiles and MinGW objdump of the same `X3AP.exe`, SHA-256 `fdbf3418…`; raw
+output kept local).
+
+**Measured [m].** Rows 3300 to 8100 each carry the pair `00486d7d/0041f332` at exactly
+8,100 per 300 frames (17 of 17 rows). Over those frames `engine_nodes` and `registry_live`
+both rise from 20,134 to 150,562. The newest unattached nodes are mostly `model-1`,
+e.g. 4,923 of the 5,120 walked at frame 3300. The window that ends at frame 3000 has
+7,479 of them, about 277 frames of the leak.
+`volumetric_fog_sector` shows sector background `index=103` from frame 2724 on. At frame 8400,
+after the game left the sector (`no_cockpit` at 8376), `engine_nodes` is back to 196.
+
+**1. The creator [i].** Return address `0x0041f332` lies in `0x0041efc0` (1,691 bytes).
+This routine is the worker behind the INS command `INS_UpdateDustScene`
+([sector-fog.md §4](sector-fog.md#4-how-in-sector-fog-is-rendered) describes its fill logic).
+Its ABI: ECX = sector object (cockpit `+0x54`); stack `arg1` = dust camera (cockpit
+`+0x60`); `arg2` = sector camera (cockpit `+0x58`) or 0; `ret 8` (`0x0041f658`); the
+frame is `sub esp,0x4c` plus four pushes. `rec = *0x00606fc0 + sector[+0x13c]*0xdb8 + 0x44`
+is the TBackgrounds row. In the code's `rec` offsets: body ids `+0xb0[8]`, rates
+`+0xd0[8]`, `NumDustInstances` `+0xf0`, stardust percent `+0x10c` (record `+0xf4`,
+`+0x114`, `+0x134`, `+0x150` in sector-fog.md's numbering).
+
+* The walk `0x0041f11d`-`0x0041f301` counts the dust scene's nodes (`[[arg1+0x1c]+8]`)
+  that do not have `+0x12c` bit `0x4000000` against `NumDustInstances`.
+* The loop `0x0041f328`-`0x0041f4d6` runs `NumDustInstances − count` times:
+  * `call 0x00486d10` at `0x0041f32d` (return `0x0041f332`); this reaches Insert at
+    `0x00486d78` → `0x004efcc0` → `0x004efd09` → `0x004efbf0`.
+  * It writes `+0x30/+0x34/+0x38` = one of 16 offsets from `0x0057adf0` scaled by 8.0,
+    then draws a body id from the weighted table.
+  * If the body is valid: `0x00487e30` (bind body: `+0x140`, `+0x70`, `+0x144`, `+0x20`),
+    `0x004880e0`, `+0x12c |= 0x10000000`, `+0x20 = 0`, random roll into `+0x40`, and
+    `0x00489da0` attaches the node to the dust scene `[arg1+0x1c]`. The attach unlinks
+    the node from `R+0x28` and sets `+0x18` = 0 and `+0x1c` = scene.
+  * Three branches skip all of that and go to `0x0041f4d1`:
+    * `0x0041f3d1` `jl`: the id is negative;
+    * `0x0041f436` `jne`: for an id below 100,000, the body slot's load-failed flag
+      `[[R+0xbc] + slot*0x1c + 0x10]` is set
+      ([body-format-bob1.md](body-format-bob1.md), slot table);
+    * `0x0041f447` `je`: the body load `0x004863c0(id)` returns 0.
+
+  EDI (the node) is dead after `0x0041f4d1`; the next iteration overwrites it at
+  `0x0041f332`.
+* What the leaked node holds is only what `0x00486d10` wrote: a zeroed 0x270-byte block
+  (`memset` `0x00486d5f`), id `+0x28`, child list `+0xc`, `+0x140/+0x144/+0x148/+0xa4`
+  = −1, `+0x130/+0xa0/+0x70/+0x14c/+0x1d8` = 0, identity `+0x40` copied to `+0xc0`,
+  scales `+0x80..+0x88` and `+0x1c8..+0x1d0` = 1.0 (16.16). It is appended to `R+0x28`
+  (`0x00486e28`-`0x00486e38`). The model id is −1 because the bind never runs.
+* The first failure sets the slot's load-failed flag. `0x004863c0` calls `0x0046e100` at
+  `0x00486631`/`0x00486819`/`0x00486853`. So later frames take the cheap `0x0041f436`
+  exit with no file access [i]. The per-frame cost is 27 × (`malloc` + `memset` + registry
+  insert), plus the growing tick walk.
+
+**Why record 103 fails [f].**
+[`dust_bodies.py`](../../verification/results/run383-dust-leak/dust_bodies.py) reads
+`types/TBackgrounds` as the engine loads it and checks
+`objects/environments/nebulae/<fam>/nebula_<fam>_dust_partNN` in all four body formats
+for every part whose rate is above zero. The name comes from the loader at
+`0x00436e6a`-`0x00436ee2`: `"_dust_part"` + `"%02d"`, registered through `0x0046e400`.
+* Installed (Mayhem) tree: the loose `addon/types/TBackgrounds.txt`, 248 rows.
+  170 rows have `NumDustInstances` > 0 and no dust body at all, and 103 `litcube75` is
+  one of them (`dust=27`, rates 1 × 8)
+  ([out](../../verification/results/run383-dust-leak/dust_bodies_installed_out.txt)).
+* Stock (`STOCK_AP_CATALOGUES`): one such row, 45 `xtmgreenring`.
+  Six other rows lack parts 7/8 at a rate above 0 but have parts 1-6. They leak only
+  while the scene fills, because valid picks attach and end the top-up
+  ([out](../../verification/results/run383-dust-leak/dust_bodies_stock_out.txt)).
+
+Any sector on one of the 170 Mayhem backgrounds leaks `NumDustInstances` nodes per
+frame, i.e. between 17 and 38 in the rows listed (inferred from the same rule; only
+record 103 was flown).
+
+**2. Call chain [i]: a main-loop routine, not the script interpreter.** The chain is:
+main loop `0x00403840` → `0x00403f2f call 0x0041cde0`. That call comes right after the
+object update `0x00416750` and before the frame routine `0x00471f50`. The main-loop
+edges at `0x004038c4`, `0x00403aa3`, `0x00403c6c` and `0x00403dbf` jump past it; they
+were not decoded here. From there:
+* `0x0041cde0` runs `0x004205e0` for every cockpit in `*0x00608504`
+  (`0x0041ce3e`);
+* `0x004205e0`, the per-frame cockpit update, calls `0x00421698 call 0x0041efc0` when
+  `cockpit+0xc != 0` and the dust camera `cockpit+0x60 != 0`;
+* `0x0041efc0` then calls `0x0041f32d call 0x00486d10`.
+
+The only other caller is the INS dispatcher `0x0042d340`, case `0x47` at `0x0042ebe0`.
+The name table `0x0057aef0` gives entry `0x47` = `INS_UpdateDustScene` (`0x00556538`) and
+`0x46` = `INS_InitDustScene` (worker `0x0041ee60`). The dispatcher is registered as the
+group `[VM+0x2c]` handler by `0x0041c8f0`. The census logs only the creator's caller,
+so it does not say which of the two ran. Exactly 8,100 per 300 frames fits one
+cockpit-loop call per frame. One Insert-time read settles it: the return address of
+`0x0041efc0` sits 0x60 bytes above the `0x0041f332` slot (`[esp+0x5c]` of its frame at
+`0x0041f32d`). It is `0x0042169d` on the cockpit path and `0x0042ebe5` on the script
+path.
+
+**3. No matching destroy [i].** Node release `0x00487be0` (cdecl, node on the stack, `ret`
+at `0x00487e23`) is the only per-node path that removes from `R+0xc` (`0x00487d70`).
+Nothing calls it for these nodes:
+* `0x0041efc0` keeps no reference to a node after a failed check;
+* the leaked nodes are on no scene or parent list, so no scene teardown reaches them
+  (inferred; the dust scene's own destroy was not decoded);
+* the per-frame tick visits `R+0x28` but never releases: no call to `0x00487be0` lies in
+  `0x0048f2b0`-`0x0048f69f`.
+
+Only the render-manager clear `0x00470f50` frees them. It loops
+`while (*[R+0x28]) 0x00487be0([R+0x28])` at `0x00471047`-`0x00471063`, and it is reached
+only through the game-state teardown `0x00497190` (`0x004971ce`; callers `0x00401eab`,
+`0x00403287`, `0x0040395e`, `0x00404242`, `0x00497162`), i.e. on a load, quit or exit.
+That fits the drop to 196 at frame 8400 [m]. This is a creator bug (allocate before
+validate), not an unreleased flag or refcount. The B3D save writer `0x00479010` (chunk tag
+`0x00561134` `"B3D "`) also counts every `R+0x28` node without `+0x130` bit `0x400`;
+the loader reads that set back as the `INST` records (`0x0056113c` `"INST"`, see 4). A leaked node has `+0x130 = 0`, so
+leaked nodes present at save time are written to the save [i]. Whether a real save
+carries them was not checked.
+
+**4. The load burst `0x0047a6b2`/`0x0047a87a` [i]: a different creator.** `0x0047a87a` is
+the return from `0x0047a875 call 0x00479d10`. This is in the renderer-scene loader
+`0x0047a720` (the Load hook's callee from `0x0040508d`), in the loop over the `INST`
+count read after the `"INST"` tag compare at `0x0047a861`. `0x00479d10` rebuilds one
+saved node and inserts it under its saved handle (`0x0047a6ad`). The walk from
+`0x0047aa86` then moves each restored node from `R+0x28` to its saved parent
+(`+0x18`) or scene (`+0x1c`). So the 115,024 inserts are the savegame's restored node
+set, created once per load. The window that holds them (173,601 inserts) ends
+with 11,994 nodes in the registry [m], so most of them had left the registry by then.
+Which path removed them was not traced. Restored nodes with neither a parent nor a scene stay on `R+0x28`
+[i]. Whether this save's `INST` set includes dust nodes leaked before the save is open
+(see 3).
+
+**5. Recognising them at Insert time [i]: not possible from the node.** At the Insert
+call (`0x00486d78`) the block is all zero: the id `+0x28` and the model id −1 are
+written only after Insert returns (`0x00486d88`, `0x00486da9`). Nodes have no vtable,
+and the leaked and the kept dust nodes come from the same site. What the proxy can
+test at Insert time:
+* the stack pair `0x00486d7d` / `0x0041f332`, which the census already reads;
+* the model id the creator will draw is not visible yet. Only the background row
+  (`NumDustInstances` > 0 with every rated body's load-failed flag set) predicts the
+  failure.
+
+After `0x0041efc0` returns, a leaked node looks like this:
+* `+0x140 == -1`, `+0x1c == 0`, `+0x18 == 0`;
+* `+0x12c` without `0x10000000` (0 in practice);
+* `+0x30..+0x38` = one of the 16 dust offsets;
+* still on `R+0x28`.
+
+A kept dust node has `+0x140` = a body id, `+0x1c` = the dust scene and `+0x12c` bit
+`0x10000000`. Keeping these nodes out of the observer's table would only save
+observer capacity. The engine's `R+0xc` map, the `R+0x28` list and the `0x0048f550`
+walk grow either way. Stopping the growth needs either the data or the engine to change:
+* **Data:** `NumDustInstances` = 0, or dust bodies for the 170 rows.
+* **Engine:** release the node on the three failure edges. At `0x0041f4d1` EDI still
+  holds it. `0x00487be0` is cdecl and preserves EBX/ESI/EDI/EBP. EBP carries the
+  previously drawn id into the next iteration and must survive; flags are dead because
+  `0x0041f4d1` is a `sub`.
+
+Neither was built or verified.
+
+```sh
+S=<scratch>; cp "$X3/X3AP.exe" $S/                      # Ghidra project in scratch, import once
+analyzeHeadless $S X3Render -import $S/X3AP.exe -scriptPath tools/analysis \
+  -postScript X3FunctionContext.java $S/ctx.txt 0041f332 00421698 0042ebe0 0041ce3e 0047a87a
+analyzeHeadless $S X3Render -process X3AP.exe -noanalysis -readOnly -scriptPath tools/analysis \
+  -postScript X3DecompileFunctions.java $S/dec.c 0041efc0 004205e0 0041cde0 00486d10 00470f50 00479010 0047a720
+PYTHONPATH=tools/analysis python3 verification/results/run383-dust-leak/dust_bodies.py "$X3" [--stock]
+python3 verification/results/run383-dust-leak/census_series.py <session.log>
+```
+
 ## Exit-time engine read fault (2026-09-24)
 
 **Finding.** Both Run 77 sessions (run287/run288, DLL `268db207`) faulted at exit

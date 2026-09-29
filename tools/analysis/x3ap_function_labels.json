@@ -14,7 +14,8 @@
     "docs/reverse-engineering/music-restart.md",
     "docs/reverse-engineering/alternative-video-playback.md",
     "docs/reverse-engineering/texture-lookup.md",
-    "docs/reverse-engineering/field-of-view.md"
+    "docs/reverse-engineering/field-of-view.md",
+    "docs/reverse-engineering/object-lifetimes.md"
   ],
   "labels": {
     "0x00402710": {
@@ -96,6 +97,10 @@
     "0x0041cde0": {
       "label": "cockpit update loop: 0x004205e0 for every registered cockpit (*0x00608504)",
       "source": "external-camera.md"
+    },
+    "0x0041efc0": {
+      "label": "dust scene fill (INS_UpdateDustScene worker; per frame from the cockpit update 0x00421698): tops the dust scene up to NumDustInstances with 0x00486d10 nodes; a failed body check leaks the node (0x0041f3d1/0x0041f436/0x0041f447 -> 0x0041f4d1)",
+      "source": "object-lifetimes.md"
     },
     "0x0041f8d0": {
       "label": "cockpit object constructor (0x810 bytes)",
@@ -219,6 +224,14 @@
     "0x0046f450": {
       "label": "load one type file as text (pck txt)",
       "source": "loading-orchestration.md"
+    },
+    "0x00470f50": {
+      "label": "render-manager clear: releases cut instances, scenes and every node on the unattached list R+0x28 (0x00471050)",
+      "source": "object-lifetimes.md"
+    },
+    "0x00479010": {
+      "label": "B3D save writer: counts unattached R+0x28 nodes without +0x130 bit 0x400 as INST records, scenes R+0x18 as SCEN",
+      "source": "object-lifetimes.md"
     },
     "0x00479d10": {
       "label": "node deserialization (load path)",
@@ -362,6 +375,10 @@
     "0x00493b40": {
       "label": "B3D_* script command dispatcher (CameraSetFocus 0x3d, GetFocus 0x3e, SetAspectRatio 0x40, SetAspect 0x41, CalcFOV 0x46)",
       "source": "field-of-view.md"
+    },
+    "0x00497190": {
+      "label": "game-state teardown (script VM, render manager 0x00470f50 at 0x004971ce); callers 0x00401eab, 0x00403287, 0x0040395e, 0x00404242, 0x00497162",
+      "source": "object-lifetimes.md"
     },
     "0x00497b80": {
       "label": "P_ script module dispatcher (31 commands; 9/10 = P_GetSysD3DFlags2/P_SetSysD3DFlags2)",

@@ -1,0 +1,25 @@
+source addon/03.cat addon/types/TBackgrounds.pck rows 83
+bg   2 bluewell             dust=  8 rate_sum= 150 present=[1, 2, 3, 4, 5, 6] missing=[] all_picks_fail=0
+bg   9 fogblue              dust= 14 rate_sum=  95 present=[1, 2, 3, 4, 5] missing=[] all_picks_fail=0
+bg  10 fogbluedistance      dust=  8 rate_sum= 150 present=[1, 2, 3, 4, 5, 6] missing=[] all_picks_fail=0
+bg  11 fogcyancorner        dust= 10 rate_sum= 150 present=[1, 2, 3, 4, 5, 6] missing=[] all_picks_fail=0
+bg  12 fogdeepred           dust= 16 rate_sum= 150 present=[1, 2, 3, 4, 5, 6] missing=[] all_picks_fail=0
+bg  13 foggreeneye          dust= 16 rate_sum= 150 present=[1, 2, 3, 4, 5, 6] missing=[] all_picks_fail=0
+bg  14 foggreenoutlands     dust= 16 rate_sum= 150 present=[1, 2, 3, 4, 5, 6] missing=[] all_picks_fail=0
+bg  15 fogkhaak             dust= 21 rate_sum= 167 present=[1, 2, 3, 4, 5, 6] missing=[7, 8] all_picks_fail=0
+bg  16 fogparanid           dust= 16 rate_sum= 150 present=[1, 2, 3, 4, 5, 6] missing=[] all_picks_fail=0
+bg  17 fogred               dust= 16 rate_sum= 150 present=[1, 2, 3, 4, 5, 6] missing=[] all_picks_fail=0
+bg  33 whitenexus           dust= 16 rate_sum= 150 present=[1, 2, 3, 4, 5, 6] missing=[] all_picks_fail=0
+bg  45 xtmgreenring         dust= 16 rate_sum= 150 present=[] missing=[1, 2, 3, 4, 5, 6] all_picks_fail=1
+bg  48 fogred               dust=  6 rate_sum= 150 present=[1, 2, 3, 4, 5, 6] missing=[] all_picks_fail=0
+bg  49 fogbluedistance      dust=  8 rate_sum= 150 present=[1, 2, 3, 4, 5, 6] missing=[] all_picks_fail=0
+bg  50 foggreenoutlands     dust=  6 rate_sum= 150 present=[1, 2, 3, 4, 5, 6] missing=[] all_picks_fail=0
+bg  51 foggreeneye          dust= 12 rate_sum= 150 present=[1, 2, 3, 4, 5, 6] missing=[] all_picks_fail=0
+bg  52 fogdeepred           dust= 50 rate_sum= 150 present=[1, 2, 3, 4, 5, 6] missing=[] all_picks_fail=0
+bg  68 fogkhaak             dust= 50 rate_sum= 167 present=[1, 2, 3, 4, 5, 6] missing=[7, 8] all_picks_fail=0
+bg  74 fogdeepred           dust= 16 rate_sum= 150 present=[1, 2, 3, 4, 5, 6] missing=[] all_picks_fail=0
+bg  75 khaakhive            dust= 50 rate_sum= 200 present=[1, 2, 3, 4, 5, 6] missing=[7, 8] all_picks_fail=0
+bg  76 uranus               dust= 15 rate_sum=  56 present=[1, 2, 3, 4, 5, 6] missing=[7, 8] all_picks_fail=0
+bg  77 earth                dust= 15 rate_sum=  56 present=[1, 2, 3, 4, 5, 6] missing=[7, 8] all_picks_fail=0
+bg  79 uranus3              dust= 15 rate_sum=  56 present=[1, 2, 3, 4, 5, 6] missing=[7, 8] all_picks_fail=0
+backgrounds_with_dust_and_all_picks_failing 1

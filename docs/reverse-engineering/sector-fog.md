@@ -119,7 +119,10 @@ colour A is `(0,0,0)` in all 83 records and colour B is `(120,120,120)` in 82 of
 4. for each missing instance it allocates one (`FUN_00486d10`), places it at one of 16
    fixed offsets from the table at `0x0057adf0` (`0x0041f353`) scaled by 8, draws a `rand()` from the
    CDF and instantiates the chosen body id from `+0xf4[8]` (`0x0041f1ca`, `0x0041f3c8`),
-   with a random roll.
+   with a random roll. The node is allocated before the body check; when the body
+   cannot be loaded the node is dropped unattached and the next frame allocates again,
+   a per-frame engine leak on backgrounds whose dust bodies are missing
+   ([object-lifetimes.md, Run383](object-lifetimes.md#run383-the-27-nodes-per-frame-creator-2026-09-29)).
 
 The dust bodies are `objects/environments/nebulae/<family>/nebula_<family>_dust_part01..06.pbd`.
 The original inspected bodies are **single quads 199,998 x 198,978 units** carrying

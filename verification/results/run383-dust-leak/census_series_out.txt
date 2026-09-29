@@ -1,0 +1,32 @@
+fog_sector 0 index=-1 reason=no_cockpit
+census 0 - 0 - dust_inserts=0 -
+census 300 196 196 3 dust_inserts=0 v\00195:1
+census 600 196 196 3 dust_inserts=0 v\00195:1
+census 900 196 196 3 dust_inserts=0 v\00195:1
+census 1200 196 196 3 dust_inserts=0 v\00195:1
+census 1500 196 196 3 dust_inserts=0 v\00195:1
+census 1800 196 196 3 dust_inserts=0 v\00195:1
+census 2100 196 196 3 dust_inserts=0 v\00195:1
+census 2400 196 196 12 dust_inserts=0 v\00195:1
+census 2700 196 196 2 dust_inserts=0 v\00195:1
+fog_sector 2724 index=103 reason=family_unsupported
+census 3000 11994 11994 25804 dust_inserts=7479 model-1:5983
+census 3300 20134 20134 25808 dust_inserts=8100 model-1:4923
+census 3600 28239 28239 25807 dust_inserts=8100 model-1:4928
+census 3900 36352 36352 25803 dust_inserts=8100 model-1:3900
+census 4200 44490 44490 25801 dust_inserts=8100 model-1:3894
+census 4500 52586 52586 25811 dust_inserts=8100 model-1:4924
+census 4800 60732 60732 25817 dust_inserts=8100 model-1:4912
+census 5100 68819 68819 25806 dust_inserts=8100 model-1:4910
+census 5400 76920 76920 25810 dust_inserts=8100 model-1:4984
+census 5700 85020 85020 25809 dust_inserts=8100 model-1:4914
+census 6000 93895 93895 25829 dust_inserts=8100 model-1:4811
+census 6300 101989 101989 25828 dust_inserts=8100 model-1:5928
+census 6600 110087 110087 25827 dust_inserts=8100 model-1:5932
+census 6900 118104 118104 25828 dust_inserts=8100 model-1:4913
+census 7200 126204 126204 25822 dust_inserts=8100 model-1:4918
+census 7500 134302 134302 25822 dust_inserts=8100 model-1:4915
+census 7800 142408 142408 25821 dust_inserts=8100 model-1:4900
+census 8100 150562 150562 25825 dust_inserts=8100 model-1:3876
+fog_sector 8376 index=-1 reason=no_cockpit
+census 8400 196 196 20 dust_inserts=7398 v\00195:1
