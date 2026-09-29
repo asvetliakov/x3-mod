@@ -1,0 +1,14 @@
+{
+ "dll": "/tmp/x3-run113-candidate/build/d3d9.dll",
+ "sha256": "44208d1fdc1d0a9f8fc4efd0bc5c71814b88b6c41e419b07d8d8e840d513d72e",
+ "bytes": 57717456,
+ "commit": "9939e5a0",
+ "toolchain": "i686-w64-mingw32-gcc (GCC) 16.2.0; cmake version 4.4.3; RelWithDebInfo, cmake/mingw-i686.cmake, -j8; Python 3.9.6 (/usr/bin/python3, -DPython3_EXECUTABLE=/usr/bin/python3); clean build 42 s wall (configure + build) in a detached git worktree (X3M_SOURCE_COMMIT 9939e5a042abcc2fd55c093daaa17f83f8fe8e65, no dirty diff)",
+ "gates": "build 0 warnings; x87 0 violations (734 reachable functions); generate --check PASS (246 settings, 98 in the template); ui-scale site_verifier_summary PASS 75/75 checks (10,331 instructions, 159 claims considered, EXE identity shipped LAA CheckSum 0, sha256 fdbf3418...); verify_cull_small_parts_site PASS 20/20 checks (site 0x47d2a2, cull 0x47d2c3, 373 function instructions); verify_lens_flare_cull_site PASS 13/13 checks (42 body names); verify_dust_leak_fix_site PASS 27/27 checks (site 0x41f4d1, 473 function instructions); host suite 278 modules / 2,930 tests / 0 failing (100.6 s wall, 12 jobs); manage.py launch --dry-run --direct --config --debug --ui-scale 1.25 exit 0 with X3M_UI_SCALE \"1.25\" in the environment map; no Wine run (no Wine fixture depends on the change); X3AP not running before build and suite",
+ "changes": [
+  "da8b0df8 ui_scale: click selection under the scaled UI: two more claims in the same transaction, G at 0x0042ece0 (INS case 0x64, object at overlay icon position) and H at 0x0042ddf1 (case 0x28, cursor aim; re-executes cmp ecx,4 for the live jl), multiply the script's virtual click point by s before the real-pixel hit test 0x004299a0; ten claims, verifier 75/75, case bodies byte-compared at initialize; run390 flight row (layout/menus/map/main menu correct, click-select broken before this); reviewed clean",
+  "31531d73 RE: click selection under a scaled UI (gui-scale.md section 6): the script passes its virtual cursor to INS cases 0x64/0x28 whose hit test 0x004299a0 works in real pixels; fix sites 0x0042ece0 (G) and 0x0042ddf1 (H, live EFLAGS); cursor fire and the 35-px box read the native globals and are unaffected",
+  "859dc68d Run112 candidate built from 22dc0e91 (DLL ea3ad671\u2026 57,709,928 B; host suite 278/2,930/0, x87 0, ui-scale verifier 59/59, verifiers 20/13/27) and installed 2026-09-30; Run 112 A queued (first flight of --ui-scale 1.25 with --debug, then 1.5 or auto); Run 111 A folded in; rollback Run111 = release 0.8.1"
+ ],
+ "producer": "Claude Code implement agent (Opus 5.5), 2026-09-30; git log --oneline 22dc0e91..9939e5a0 --no-merges; shasum -a 256; stat -f %z; build/site/suite/dry-run logs local under /tmp/x3-run113-candidate/"
+}

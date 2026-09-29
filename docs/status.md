@@ -1,23 +1,28 @@
 # Project status
 
-The single current-state file (updated 2026-09-30, Run112 = ui_scale candidate over release 0.8.1). Rules: [AGENTS.md](../AGENTS.md). All goals were
+The single current-state file (updated 2026-09-30, Run113 = ui_scale + click-selection fix over release 0.8.1). Rules: [AGENTS.md](../AGENTS.md). All goals were
 marked completed on 2026-09-26 by the user's decision ([goals](goals.md)). The agent never launches the game.
 
 ## Installed build
 
 Bottle **X3**, **CrossOver Preview.app**, game tree modded with **Mayhem 3** since 2026-09-28 (user install,
 `addon/05..12.cat` plus loose `addon/` files; 0.7.0 LOD overlay and fog families regenerated 2026-09-29 03:33).
-Run112 = candidate DLL SHA-256 `ea3ad671347fdf32381a06365262fd90825a511d74cdb19c26aef15bf6f027c9` (57,709,928 bytes, unstripped),
-built once from clean main `22dc0e91` (host suite 278/2,930/0, 0 warnings, x87 0, ui-scale site verifier 59/59, cull/flare/dust
-verifiers 20/13/27, generate --check 246/98; [build record](../verification/results/run112-candidate-build.json)), installed
-2026-09-30 ([install](../verification/results/run112-candidate-install.json)). Renderer code equal to release 0.8.1 (Run111,
-`f4439590`) plus the opt-in `ui_scale` option, inert at its default `1`. Release 0.8.1: stripped DLL `e123b7ed…` (39,550,860 bytes),
-zip `/tmp/x3m-release-0.8.1/x3m-0.8.1.zip` (`17f75b31…`), [release record](../verification/results/release-0.8.1.json).
-`X3AP.exe`, `cxbottle.conf`, the user's `x3m.ini` and the 0.8.0 `x3m-regenerate` binaries unchanged.
+Run113 = candidate DLL SHA-256 `44208d1fdc1d0a9f8fc4efd0bc5c71814b88b6c41e419b07d8d8e840d513d72e` (57,717,456 bytes, unstripped),
+built once from clean main `9939e5a0` (host suite 278/2,930/0, 0 warnings, x87 0, ui-scale site verifier 75/75, cull/flare/dust
+verifiers 20/13/27, generate --check 246/98; [build record](../verification/results/run113-candidate-build.json)), installed
+2026-09-30 ([install](../verification/results/run113-candidate-install.json)). Renderer code equal to release 0.8.1 (Run111,
+`f4439590`) plus the opt-in `ui_scale` option (inert at its default `1`) with the click-selection claims G/H. Release 0.8.1:
+stripped DLL `e123b7ed…` (39,550,860 bytes), zip `/tmp/x3m-release-0.8.1/x3m-0.8.1.zip` (`17f75b31…`),
+[release record](../verification/results/release-0.8.1.json). `X3AP.exe`, `cxbottle.conf`, the user's `x3m.ini` and the 0.8.0
+`x3m-regenerate` binaries unchanged.
 
-Rollback chain: Run111 = release 0.8.1 `e123b7ed…` at `/tmp/x3m-release-0.8.1/d3d9.dll`, then Run110 `e5e7ac15…` at `/tmp/x3-run110-candidate/build/d3d9.dll`, then Run109 `09f08cff…` at `/tmp/x3-run109-candidate/build/d3d9.dll`, then Run108 `c57556bb…` at `/tmp/x3-run108-candidate/build/d3d9.dll`, then Run107 `b9e8793c…` at `/tmp/x3-run107-candidate/build/d3d9.dll`, then Run106 `d07848e8…`, then Run104 = release 0.8.0 `f34d3ab4…` (zip at `/tmp/x3m-release-0.8.0/`, entry `d3d9.dll`, extracted copy
+Rollback chain: Run112 `ea3ad671…` at `/tmp/x3-run112-candidate/build/d3d9.dll`, then Run111 = release 0.8.1 `e123b7ed…` at `/tmp/x3m-release-0.8.1/d3d9.dll`, then Run110 `e5e7ac15…` at `/tmp/x3-run110-candidate/build/d3d9.dll`, then Run109 `09f08cff…` at `/tmp/x3-run109-candidate/build/d3d9.dll`, then Run108 `c57556bb…` at `/tmp/x3-run108-candidate/build/d3d9.dll`, then Run107 `b9e8793c…` at `/tmp/x3-run107-candidate/build/d3d9.dll`, then Run106 `d07848e8…`, then Run104 = release 0.8.0 `f34d3ab4…` (zip at `/tmp/x3m-release-0.8.0/`, entry `d3d9.dll`, extracted copy
 at `/tmp/x3m-release-0.8.0/zip-extract/d3d9.dll`), then Run103 `1f3ad3db…` at `/tmp/x3-run103-candidate/build/d3d9.dll`.
 
+Run113 over Run112: two more `ui_scale` claims, G (`0x0042ece0`, INS case 0x64) and H (`0x0042ddf1`, case 0x28), multiply
+the script's virtual click point by s before the native bracket hit test `0x004299a0`, fixing click selection of ships in the
+3D view (Run 112 A / run390: layout, menus, map and main menu correct, bracket clicks dead; [RE](reverse-engineering/gui-scale.md) section 6).
+Bitmap text under the scale is soft/broken at 1.25 (user report); the sharp-text path is under investigation ([note](reverse-engineering/font-rendering.md)).
 Run112 over Run111: `ui_scale` (`--ui-scale S|auto`, ini `ui_scale`, default `1` = off; `auto` = back-buffer height / 1080
 snapped down to quarter steps, 1440 -> 1.25, 2160 -> 2) enlarges the in-game 2D UI (script menus, sidebars, panels, ticker) by
 scaling the engine's pixel orthographic projection for node-flag-`0x200` instances about their anchor, telling the script a virtual
@@ -25,7 +30,7 @@ screen size W/s x H/s, dividing script mouse deltas by s with a remainder accumu
 pixels; the active cockpit's HUD camera is excluded by identity so the crosshair group, target icons and the lead marker stay in
 real pixels; the main menu uses the perspective path and is untouched. Eight sites, one transaction at CreateDevice, `ui_scale_install`
 row; bitmap text is magnified with the texture filter (soft at non-integer scales; sharp-text strategy deferred)
-([note](architecture/ui-scale.md), [RE](reverse-engineering/gui-scale.md), [ledger](verification/ui-scale.md)). Not yet flown.
+([note](architecture/ui-scale.md), [RE](reverse-engineering/gui-scale.md), [ledger](verification/ui-scale.md)).
 Run110 over Run109: `lens_flare_gain 0` now culls the lens-flare sprite nodes in the engine's own cull pass (a second
 stub chained on the small-parts claim at `0x0047d2a2`; the 42 flare bodies resolved from the body table; the proxy skip
 stays as fallback; [ledger](verification/sun-occlusion.md), [note](reverse-engineering/lod-selection.md) "Lens-flare cull"),
@@ -54,11 +59,11 @@ Last release: **0.8.1** from `f4439590` ([release record](../verification/result
 
 ## Main beyond the installed build
 
-Nothing beyond the installed Run112 (`22dc0e91`); release 0.8.1 (`f4439590`) is the last packaged build.
+Nothing beyond the installed Run113 (`9939e5a0`); release 0.8.1 (`f4439590`) is the last packaged build.
 
 ## Run queue
 
-Run 112 A queued (Run112 installed): first flight of `--ui-scale 1.25` with `--debug` at 5120x1440, then 1.5 or `auto` if 1.25 is too small; Run 111 A folded into it (the renderer code is equal).
+Run 113 A queued (Run113 installed): bracket click selection under `--ui-scale 1.25 --debug`. Run 112 A completed (run390): UI scaled correctly, menus/map/main menu fine; bracket clicks dead (fixed in Run113), text soft/broken (open).
 Run 110 A completed (run386-389, [results](../verification/results/run386-389-cull-ab/)): at one carrier
 view without `--perf`, the dock-port cull (12 px) saves 2.4-3.7 ms per frame (about 57 fps against 47-50 with it off,
 measured from 300-frame clock windows, one run per setting); the engine-side flare cull saves 0 ± 0.5 ms (1.2 ms under
