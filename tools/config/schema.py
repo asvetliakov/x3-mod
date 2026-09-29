@@ -135,7 +135,7 @@ SETTINGS = [
           'brightness (the default since Run 94 A), 0.5 = half (about its look over empty space), 0 = the anti-aliased result.', '1', range=(0.0, 1.0),
           requires=('bolt_far_composite',), launcher='--bolt-far-show'),
     entry('lens_flare_gain', 'float', 'graphics', 'Brightness of the game\'s lens flares around engines and lights (the sun\'s '
-          'flare too), 1 = the game\'s own, down to 0 = none. Some mods draw very large flares.', builtin='1', range=(0.0, 1.0),
+          'flare too), 1 = the game\'s own, down to 0 = none. Some mods draw very large flares.', '0.3', builtin='1', range=(0.0, 1.0),
           launcher='--lens-flare-gain', since='2026-09-29'),
     # ---------------------------------------------------------------- hdr
     entry('hdr', 'bool', 'hdr', 'High dynamic range rendering: lights brighter than white, automatic exposure and a filmic '
@@ -166,12 +166,12 @@ SETTINGS = [
     entry('bloom_source_clamp', 'float', 'hdr', 'Caps how bright a light may be before it feeds the glow, so a single hot pixel does '
           'not flare. Lower = subtler glow. Above 0, up to 64.', '1.0', range=[R(0, 64, True)], requires=('hdr_bloom',), launcher='--bloom-source-clamp'),
     entry('emission_source_gain', 'float', 'hdr', 'Brightness of engine exhausts, weapon effects and ship guide lights. 1 = the game\'s '
-          'own, up to 8.', '2.0', range=(1.0, 8.0), requires=('hdr',), launcher='--emission-source-gain'),
+          'own, up to 8.', '1.0', range=(1.0, 8.0), requires=('hdr',), launcher='--emission-source-gain'),
     entry('emission_source_clamp', 'float', 'hdr', 'Caps the brightened exhausts, weapon effects and guide lights so their cores '
           'stay at a normal brightness while the dim parts still gain; also caps the small glow cards at gain 1. 1 = the game\'s '
           'own white; 0 = no cap, else 0.25 to 8. At 1 or lower, stacked glow layers add differently (at 1, two half-bright '
           'layers give 0.75 instead of 1).',
-          builtin='0', range=[(0, 0), (0.25, 8)], requires=('hdr',), launcher='--emission-source-clamp', since='2026-09-29'),
+          '0.7', builtin='0', range=[(0, 0), (0.25, 8)], requires=('hdr',), launcher='--emission-source-clamp', since='2026-09-29'),
     entry('screen_emission_additive', 'float', 'hdr', 'Brightness of weapon bolts and other additive effects above plain white, so '
           'they glow. 0 = off, else 1 to 8.', '2.0', range=[(0, 0), (1, 8)], requires=('hdr',), launcher='--screen-emission-additive'),
     entry('hull_lightmap_gain', 'float', 'hdr', 'Brightness of the lit windows and markings on ship and station hulls. 1 = the '

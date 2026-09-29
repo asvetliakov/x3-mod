@@ -47,16 +47,17 @@ flicker (struts, antennas), so distant hull plates stay sharper while turning; `
 row in `x3m.log` says why) and the rest of the file still applies. With the lock on, the far stabiliser's strength
 applies only to the details the lock holds, and its distance numbers decide where the lock may hold.
 
-`emission_source_gain` (default `2`) brightens engine exhausts, weapon effects and guide lights, and the small glow cards on engine
+`emission_source_gain` (default `1` since 2026-09-29, `2` before) brightens engine exhausts, weapon effects and guide lights, and the small glow cards on engine
 nozzles and guide lights follow it: `emission_source_gain = 1` leaves all of them at the game's own brightness. `emission_source_clamp`
-(off unless set, since 2026-09-29) caps what that brightening may reach, so `emission_source_clamp = 1` keeps the dim parts
+(default `0.7` since 2026-09-29; `0` = no cap) caps what that brightening may reach, so `emission_source_clamp = 1` keeps the dim parts
 of an exhaust brighter while its core stops at the game's own white instead of glowing past it. It also caps the small
-glow cards at gain 1, so a value below 1 dims them below the game's own look. A clamp of 1 or lower changes how stacked
+glow cards at gain 1, so a value below 1 (the default 0.7 included) dims them below the game's own look. A clamp of 1 or lower changes how stacked
 glow layers add: at 1, two half-bright layers give 0.75 instead of 1; below 1 the stack never gets brighter than the
 clamp (a clamp below 1 is used in steps of 1/255, so `0.7` acts as 179/255 = 0.702).
 
 `lens_flare_gain` dims the game's own lens flares (the halos around engines and lights, and the sun's flare), for
-mods that draw them very large: `1` is the game's own brightness, `0.5` half, `0` none.
+mods that draw them very large: `1` is the game's own brightness, `0.5` half, `0` none; the default is `0.3` (since
+2026-09-29).
 
 ## Checking what was loaded
 

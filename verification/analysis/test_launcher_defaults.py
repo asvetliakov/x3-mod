@@ -22,11 +22,12 @@ from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
 # The Run 84 A stand command without --loading-intervals (removed 2026-09-25), with its telemetry/debug options as the
-# two logging groups and without --capture-start / --capture-delay (both removed 2026-09-26).
+# two logging groups and without --capture-start / --capture-delay (both removed 2026-09-26); its emission gain 2 became
+# gain 1, clamp 0.7 and lens-flare gain 0.3 with the 2026-09-29 defaults (user decision after Run 103 A).
 STAND = ('--direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa '
          '--debug --perf --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 '
          '--crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --screen-emission-additive 2 '
-         '--screen-emission-additive-alpha 0 --emission-source-gain 2 --sun-shadow-lane '
+         '--screen-emission-additive-alpha 0 --emission-source-gain 1 --emission-source-clamp 0.7 --lens-flare-gain 0.3 --sun-shadow-lane '
          '--shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on '
          '--shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance '
          '--shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 '
@@ -47,7 +48,8 @@ EXPECTED_EMPTY = {
     'X3M_CHASE_OFFSET_Y': '0.5', 'X3M_CHASE_PITCH_DOWN_DEG': '0.5', 'X3M_CHASE_SCENE_FIX': '0',
     'X3M_CHASE_VIEW_RESTORE': '1', 'X3M_COLLIDE_BOX_CULL': '1', 'X3M_COLLIDE_MEMO': '1', 'X3M_COLLIDE_SAT_SSE2': '1',
     'X3M_CRYPT_CACHE': '1', 'X3M_CULL_SMALL_PARTS_PROJECTILES': 'on', 'X3M_CULL_SMALL_PARTS_PX': '4.0000', 'X3M_DAT_HANDLES': '1',
-    'X3M_EMISSION_SOURCE_GAIN': '2.0', 'X3M_FADE_RT2_OWNER': 'on', 'X3M_FADE_RT2_OWNER_DEFAULT': '1', 'X3M_FOG_DOCKED': '1', 'X3M_FOG_DUST_MOTES': '1300,3,128',
+    # 2026-09-29 (Run 103 A): gain 1, cores capped at 0.7, lens flares at 0.3 (screen-emission.md, sun-occlusion.md).
+    'X3M_EMISSION_SOURCE_CLAMP': '0.7', 'X3M_EMISSION_SOURCE_GAIN': '1.0', 'X3M_FADE_RT2_OWNER': 'on', 'X3M_FADE_RT2_OWNER_DEFAULT': '1', 'X3M_FOG_DOCKED': '1', 'X3M_FOG_DUST_MOTES': '1300,3,128',
     'X3M_FOG_HANDOVER_COLDFILL': '1', 'X3M_FOG_HANDOVER_PREFILL': '1', 'X3M_FOG_HANDOVER_STEP': '1',
     'X3M_FOG_MARCH_SCALE': '4', 'X3M_FOG_MOTES_MAX_PX': '8', 'X3M_FOV': '90',
     'X3M_GZ_BUFFER': '1', 'X3M_GZ_BUFFER_KB': '256', 'X3M_HDR': '1', 'X3M_HDR_BLOOM': '1',
@@ -55,8 +57,8 @@ EXPECTED_EMPTY = {
     'X3M_HDR_EV_DEADBAND': '0.25', 'X3M_HDR_EV_MANUAL': '', 'X3M_HDR_EV_MAX': '1.3', 'X3M_HDR_EV_MIN': '-3.0',
     'X3M_HDR_EXPOSURE': 'auto', 'X3M_HDR_KEY_PULL': '0.25', 'X3M_HDR_LOOK': 'none', 'X3M_HDR_METER_BG': '0.001953125',
     'X3M_HDR_METER_EDGE_WEIGHT': '0.35', 'X3M_HDR_TONEMAP': 'agx', 'X3M_HDR_WHITE_TARGET': '0.9',
-    'X3M_HULL_EMISSION_GAIN': '2.0', 'X3M_HULL_EMISSIVE_WIDENING': '4,4', 'X3M_HULL_LIGHTMAP_GAIN': '4.0', 'X3M_LIGHT_MAP_FAR_FADE': '80,220,1',
-    'X3M_LOD_OCCLUSION': 'all', 'X3M_LOD_OCCLUSION_DEFAULT': '1',
+    'X3M_HULL_EMISSION_GAIN': '1.0', 'X3M_HULL_EMISSIVE_WIDENING': '4,4', 'X3M_HULL_LIGHTMAP_GAIN': '4.0', 'X3M_LIGHT_MAP_FAR_FADE': '80,220,1',
+    'X3M_LENS_FLARE_GAIN': '0.3', 'X3M_LOD_OCCLUSION': 'all', 'X3M_LOD_OCCLUSION_DEFAULT': '1',
     'X3M_MEDIA_CUE_CACHE': '1', 'X3M_MEDIA_CUE_RETRY_S': '30', 'X3M_MESH_ADJACENCY': 'fast',
     'X3M_MOTION_CUT_MEDIAN_PX': '1e30',
     'X3M_MOTION_CUT_MISSING': '1', 'X3M_MOTION_JITTER': '1', 'X3M_MOTION_OUTPUT': '1', 'X3M_MOTION_RT_MODE': 'lazy',
@@ -115,7 +117,8 @@ OPT_OUTS = (
     (('--bolt-single-copy', 'off'), 'X3M_BOLT_SINGLE_COPY', '0'),
     (('--bolt-far-composite', 'off'), 'X3M_BOLT_FAR_COMPOSITE', '0'),
     (('--bolt-far-show', '0'), 'X3M_BOLT_FAR_SHOW', '0.0'),
-    (('--emission-source-gain', '1'), 'X3M_EMISSION_SOURCE_GAIN', '1.0'),
+    (('--emission-source-clamp', '0'), 'X3M_EMISSION_SOURCE_CLAMP', '0.0'),
+    (('--lens-flare-gain', '1'), 'X3M_LENS_FLARE_GAIN', '1'),
     (('--no-sun-shadow-lane',), 'X3M_SUN_SHADOW_APPLY', '0'),
     (('--no-shadow-replay-depth',), 'X3M_SHADOW_CASCADES', '0'),
     (('--no-sun-shadow-apply',), 'X3M_SUN_SHADOW_APPLY', '0'),
@@ -226,12 +229,16 @@ class LauncherDefaults(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertIn('--run-in-background cannot be combined with --vanilla', error)
 
-    def test_lens_flare_gain_is_opt_in(self):
-        # Default 1 = off: nothing sent (the empty-command stand above holds no X3M_LENS_FLARE_GAIN); an explicit value
-        # is sent fixed-point, in player mode too; out of range, --vanilla and --no-motion-output are refused.
-        self.assertNotIn('X3M_LENS_FLARE_GAIN', self.env())
-        self.assertEqual(self.env('--lens-flare-gain', '0.5')['X3M_LENS_FLARE_GAIN'], '0.5000')
-        self.assertEqual(self.env('--config', '--lens-flare-gain', '0.25'), {'X3M_LENS_FLARE_GAIN': '0.2500'})
+    def test_lens_flare_gain_default(self):
+        # Default 0.3 on every modded --motion-output launch since 2026-09-29 (the empty-command stand above); not filled
+        # with --no-motion-output or under --vanilla. An explicit value is sent fixed-point with trailing zeros dropped
+        # (the schema default's text), in player mode too; out of range, --vanilla and --no-motion-output are refused.
+        self.assertEqual(self.env()['X3M_LENS_FLARE_GAIN'], '0.3')
+        self.assertNotIn('X3M_LENS_FLARE_GAIN', self.env('--no-motion-output'))
+        self.assertNotIn('X3M_LENS_FLARE_GAIN', self.env(vanilla=True))
+        self.assertEqual(self.env('--lens-flare-gain', '0.5')['X3M_LENS_FLARE_GAIN'], '0.5')
+        self.assertEqual(self.env('--lens-flare-gain', '0')['X3M_LENS_FLARE_GAIN'], '0')
+        self.assertEqual(self.env('--config', '--lens-flare-gain', '0.25'), {'X3M_LENS_FLARE_GAIN': '0.25'})
         for args, needle in ((('--lens-flare-gain', '1.5'), 'finite value between 0 and 1'),
                              (('--lens-flare-gain', 'nan'), 'finite value between 0 and 1'),
                              (('--no-motion-output', '--lens-flare-gain', '0.5'), 'requires --motion-output')):

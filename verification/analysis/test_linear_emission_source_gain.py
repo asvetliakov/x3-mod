@@ -180,9 +180,11 @@ class LauncherGateTests(unittest.TestCase):
             for boundary in ('1', '8'):
                 code, output, error = launch(directory, *PREREQUISITES, '--emission-source-gain', boundary); self.assertEqual(code, 0, error)
 
-    def test_clamp_option_is_opt_in_needs_hdr_and_is_range_checked(self):
-        # --emission-source-clamp C (X3M_EMISSION_SOURCE_CLAMP): no launcher
-        # default, an inherited shell value is dropped, 0 or 0.25..8.
+    def test_clamp_option_needs_hdr_and_is_range_checked(self):
+        # --emission-source-clamp C (X3M_EMISSION_SOURCE_CLAMP): the launcher
+        # default 0.7 (since 2026-09-29) is filled on modded launches only
+        # (test_launcher_defaults); here, under --vanilla, nothing is filled and
+        # an inherited shell value is dropped; 0 or 0.25..8.
         with tempfile.TemporaryDirectory() as directory, mock.patch.dict(os.environ, {'X3M_EMISSION_SOURCE_CLAMP': '0.5'}):
             code, output, error = launch(directory, *PREREQUISITES, '--emission-source-gain', '2'); self.assertEqual(code, 0, error)
             baseline = json.loads(output)['env']
