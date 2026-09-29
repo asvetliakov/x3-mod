@@ -768,6 +768,15 @@ def voice_bottle_env_status(bottle_dir, game):
     return 'set' if kinds == {'present'} else 'unset' if kinds == {'absent'} else 'differs'
 
 
+def vanilla_bottle_env_message(bottle, state):
+    """The one-line refusal (warning under --dry-run) of a --vanilla launch while BOTTLE's cxbottle.conf carries the
+    drop-in's GStreamer entries (STATE set or differs)."""
+    return (f'bottle {bottle} cxbottle.conf [EnvironmentVariables] carries GST_PLUGIN_PATH_1_0 / GST_REGISTRY_1_0 '
+            f'(bottle env: {state}); a --vanilla launch stalled at the loading screen with them (no proxy, no DMO fallback '
+            f'hook); run python3 tools/manage.py voice-decoder --bottle-env remove --bottle {bottle} before the launch and '
+            f'--bottle-env apply afterwards, or pass --vanilla-with-bottle-env')
+
+
 def voice_bottle_env_command(action, bottle_dir, game, source):
     """`manage.py voice-decoder --bottle-env ACTION`: check, apply or remove the two GStreamer entries of
     BOTTLE_DIR/cxbottle.conf that point every program of the bottle at GAME's drop-in (the values the launcher computes
@@ -803,6 +812,9 @@ def voice_bottle_env_command(action, bottle_dir, game, source):
         if backup:
             print(f'voice decoder: backup {conf.with_name(voice_decoder_files.BOTTLE_BACKUP)} created')
         print(f'voice decoder: {conf} sha256 after {hashlib.sha256(conf.read_bytes()).hexdigest()}')
+        if action == 'apply':
+            print(f'voice decoder: a --vanilla launch needs --bottle-env remove --bottle {bottle_dir.name} first '
+                  '(it stalls at the loading screen with these entries), or --vanilla-with-bottle-env')
     except (voice_decoder_files.TreeError, media_package.PackageError, OSError) as error:
         print(f'voice decoder: refused: {error}', file=sys.stderr)
         return 2
@@ -890,6 +902,11 @@ def main():
     parser.add_argument('--direct', action='store_true', default=None, help='[launcher default since 2026-09-25 on every modded launch; --no-direct = off; not sent under --vanilla] Skip launcher and intro using X3 command-line switches')
     parser.add_argument('--no-direct', dest='direct', action='store_false', help='Turn the --direct launcher default off')
     parser.add_argument('--vanilla', action='store_true', help='Launch with builtin D3D9, ignoring the installed proxy')
+    parser.add_argument('--vanilla-with-bottle-env', action='store_true',
+                        help='--vanilla only: launch even while the bottle\'s cxbottle.conf carries the voice decoder\'s '
+                        'GST_PLUGIN_PATH_1_0 / GST_REGISTRY_1_0 entries (manage.py voice-decoder --bottle-env apply). Without '
+                        'it such a --vanilla launch is refused (exit 2; --dry-run warns): it stalled at the loading screen '
+                        '(user-observed 2026-09-29). Inert on a modded launch')
     # Logging tiers (docs/architecture/logging-tiers.md): the only two logging options. The DLL expands each group into
     # its switches, so X3M_DEBUG=1 / X3M_PERF=1 on a bare proxy give the same rows. Without either, the always tier:
     # once-per-session rows, errors and refusals, Reset, one frame_end row a minute, session_end.
@@ -2165,9 +2182,20 @@ def main():
             if problem is not None:
                 parser.error(f'--voice-decoder: {problem}')
         voice_line = f'voice decoder: {voice_root} ({voice_reason})' if voice_root else f'voice decoder: none ({voice_reason})'
-        if args.dry_run:  # read-only: the bottle setting a launch without this launcher relies on
-            voice_line += f'; bottle env: {voice_bottle_env_status(CROSSOVER_BOTTLES / args.bottle, game)}'
+        bottle_env = None
+        if args.dry_run or args.vanilla:  # read-only: the bottle setting a launch without this launcher relies on
+            bottle_env = voice_bottle_env_status(CROSSOVER_BOTTLES / args.bottle, game)
+        if args.dry_run:
+            voice_line += f'; bottle env: {bottle_env}'
         print(voice_line, file=sys.stderr)
+        # The bottle's GStreamer entries without the proxy's DMO fallback hook: a --vanilla launch stalled at the loading
+        # screen with them set (user-observed 2026-09-29, bottle X3; cause inferred). Refused unless opted in.
+        if args.vanilla and bottle_env in ('set', 'differs') and not args.vanilla_with_bottle_env:
+            message = vanilla_bottle_env_message(args.bottle, bottle_env)
+            if not args.dry_run:
+                print(f'launch refused: {message}', file=sys.stderr)
+                raise SystemExit(2)
+            print(f'warning: {message}', file=sys.stderr)
         for line in args.defaults_not_sent:
             print(line, file=sys.stderr)
         # Informational only (never blocks); the builtin D3D9 of --vanilla reads no family file.

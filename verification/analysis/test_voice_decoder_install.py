@@ -221,6 +221,69 @@ class VoiceDecoderBottleEnv(unittest.TestCase):
         self.conf.write_text(self.conf.read_text().replace('x3-arm64.bin', 'other.bin'))
         self.assertEqual(status(), 'differs')
 
+    def launch(self, *args, vanilla=True, dry_run=False):
+        """`manage.py launch --bottle B` in-process against the synthetic bottle; returns (exit code, stderr, launched)."""
+        if not vanilla:
+            (self.game / 'd3d9.dll').write_bytes(b'proxy')
+            (self.game / 'x3-modern-install.json').write_text(
+                '{"sha256": "%s"}' % hashlib.sha256(b'proxy').hexdigest())
+        wine = Path(self.directory.name) / 'wine'
+        wine.touch()
+        argv = ['manage.py', 'launch', '--bottle', 'B', '--game-dir', str(self.game), *(['--vanilla'] if vanilla else []),
+                *(['--dry-run'] if dry_run else []), *args]
+        launched = []
+        error = io.StringIO()
+        with mock.patch.object(self.module.sys, 'argv', argv), mock.patch.object(self.module, 'WINE', wine), \
+                mock.patch.object(self.module, 'launch_teed', lambda *a, **k: launched.append(a) or 0), \
+                mock.patch.object(self.module.subprocess, 'call', side_effect=AssertionError('must never launch')), \
+                contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(error):
+            try:
+                code = self.module.main() or 0
+            except SystemExit as exit_error:
+                code = exit_error.code
+        return code, error.getvalue(), bool(launched)
+
+    def test_vanilla_launch_refused_while_the_bottle_env_is_set(self):
+        self.conf.write_text(BOTTLE_CONF)
+        code, error, launched = self.launch()  # unset: launches
+        self.assertEqual((code, launched), (0, True), error)
+        self.assertNotIn('--vanilla-with-bottle-env', error)
+        code, error, launched = self.launch(dry_run=True)
+        self.assertEqual((code, launched), (0, False), error)
+        self.assertIn('; bottle env: unset', error)
+        self.assertNotIn('warning:', error)
+        self.assertEqual(self.run_tool('--bottle-env', 'apply', *self.env)[0], 0)
+        applied = self.conf.read_bytes()
+        for state, text in (('set', applied), ('differs', applied.replace(b'x3-arm64.bin', b'other.bin'))):
+            with self.subTest(state=state):
+                self.conf.write_bytes(text)
+                code, error, launched = self.launch()
+                self.assertEqual((code, launched), (2, False), error)
+                refusal = [line for line in error.splitlines() if line.startswith('launch refused:')]
+                self.assertEqual(len(refusal), 1, error)
+                for part in ('GST_PLUGIN_PATH_1_0', 'GST_REGISTRY_1_0', f'bottle env: {state}', 'loading screen',
+                             'voice-decoder --bottle-env remove --bottle B', '--bottle-env apply', '--vanilla-with-bottle-env'):
+                    self.assertIn(part, refusal[0])
+                code, error, launched = self.launch(dry_run=True)  # warns, does not refuse
+                self.assertEqual((code, launched), (0, False), error)
+                self.assertIn(f'; bottle env: {state}', error)
+                self.assertIn(refusal[0].replace('launch refused:', 'warning:'), error.splitlines())
+                code, error, launched = self.launch('--vanilla-with-bottle-env')  # opted in
+                self.assertEqual((code, launched), (0, True), error)
+                self.assertNotIn('refused', error)
+        code, error, launched = self.launch(vanilla=False)  # a modded launch is unaffected
+        self.assertEqual((code, launched), (0, True), error)
+        self.assertNotIn('refused', error)
+        self.assertNotIn('warning:', error)
+
+    def test_apply_names_the_vanilla_step(self):
+        self.conf.write_text(BOTTLE_CONF)
+        code, output, _ = self.run_tool('--bottle-env', 'apply', *self.env)
+        self.assertEqual(code, 0)
+        self.assertIn('a --vanilla launch needs --bottle-env remove --bottle B first', output)
+        self.assertIn('--vanilla-with-bottle-env', output)
+        self.assertNotIn('--vanilla', self.run_tool('--bottle-env', 'remove', *self.env)[1])
+
 
 if __name__ == '__main__':
     unittest.main()
