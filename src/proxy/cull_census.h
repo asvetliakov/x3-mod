@@ -63,6 +63,11 @@ Stats stats();
 // a projectile (+0x130 & 0x20000000 with the exemption on), which the frame
 // row counts as `culled_small_exempt_bullet=`. One plain store per frame.
 void note_small_threshold(std::int32_t threshold, bool exempt_projectiles = false);
+// X3M_CULL_SMALL_PROPS (cull_small_props_core.h): a node whose main-scene draws the proxy skipped as a small prop on
+// this captured frame, reported once per node and frame from the draw path (render thread). Its rows that the engine
+// kept name the verdict culled_prop (in every view the census recorded for the node); the frame row adds
+// culled_prop_nodes= and culled_prop_overflow= (beyond 1,024 nodes). A no-op outside a captured frame.
+void note_culled_prop(std::uint32_t node);
 #ifdef X3M_CULL_CENSUS_FIXTURE
 // Fixture build only: the image global holding the body manager pointer
 // (production reads the constant core::body_global_va); the CPU fixture points

@@ -16,6 +16,7 @@
 #include "object_capture.h"
 #include "camera_state.h"
 #include "cull_small_parts.h"
+#include "cull_census.h" // X3M_CULL_SMALL_PROPS: the census's culled_prop verdict
 #include "sun_light_poll.h"
 #include "chase_camera.h"
 #include "sun_occlusion.h"
@@ -405,6 +406,7 @@ struct MotionOutput::SavedState {
 MotionOutput::MotionOutput() noexcept = default;
 MotionOutput::~MotionOutput() {
     release_resources();
+    delete props_; // plain CPU state (cull_small_props_core.h), no device object
 }
 
 unsigned MotionOutput::device_references() const noexcept {
@@ -8080,6 +8082,9 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
         return;
     }
     route.scene = true;
+    // Small-prop cull (X3M_CULL_SMALL_PROPS): before the jitter and every other binding, so a skipped draw has
+    // nothing to undo; one bool test with the option off.
+    if (props_on_ && cull_small_prop(route)) return;
     // Unavailable repair is feature refusal, not an enhanced fallback through
     // the malformed original linkage. Preserve the original bindings and rows.
     if (shadow_.xt_default_pair && !shadow_.xt_default_ready) {
@@ -10027,6 +10032,8 @@ void MotionOutput::after_present(HRESULT result) noexcept {
         chase_pose_mark_ = chase_camera::pose_write_count(); // the next frame's gate needs a fresh chase pose
     if (bolt_footprint_requested_ && ++bolt_window_frames_ >= 300u) log_bolt_footprint_window();
     if (lens_gain_.active && ++lens_gain_window_frames_ >= 300u) log_lens_gain_window();
+    if (props_on_ && props_ && props_->window.frames >= cull_small_props::core::window_frames)
+        log_cull_small_props_window();
     if (fade_refused_count_) log_fade_refused();
     // The six per-frame count rows of the emitter options below are family
     // rows (logging-tiers.md, "Per-frame emitter rows"): capture frames, or
@@ -12236,4 +12243,5 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
 #include "motion_output_shadow_retention_inc.h"
 #include "motion_output_fog_inc.h"
 #include "motion_output_sun_occlusion_inc.h"
+#include "motion_output_cull_small_props_inc.h"
 } // namespace x3m

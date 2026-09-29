@@ -37,6 +37,12 @@ std::uint32_t pending_node_ = 0, pending_index_ = no_index;
 AncestorStack ancestors_{};             // flag31 of the nodes whose children the pass is visiting (render thread only)
 bool small_exempt_projectiles_ = false; // cull_small_parts' projectile exemption for the frame being recorded
 std::int32_t small_threshold_ = 0;      // cull_small_parts' threshold for the frame being recorded (0 = none)
+// X3M_CULL_SMALL_PROPS: the nodes whose main-scene draws the proxy skipped as small props on the frame being
+// recorded (captured frames only; note_culled_prop), sorted at Present. Render thread only.
+constexpr std::uint32_t culled_prop_cap = 1024;
+std::uint32_t culled_props_[culled_prop_cap];
+std::uint32_t culled_prop_count_ = 0, culled_prop_overflow_ = 0;
+bool capture_frame_ = false;
 // The LOD ladder of each model a captured frame's rows name, read at Present
 // (never inside the pass) through engine_memory::read, which validates every
 // span against committed readable memory, so a stale or wrong pointer yields
@@ -497,7 +503,16 @@ void begin_frame(bool capture) {
     pending_node_ = 0;
     pending_index_ = no_index;
     ancestors_.clear();
+    culled_prop_count_ = culled_prop_overflow_ = 0;
+    capture_frame_ = capture;
     x3m_cull_census_enabled = capture || lod_switch_cap_ ? 1 : 0; // the LOD-switch log compares every frame
+}
+void note_culled_prop(std::uint32_t node) {
+    if (!patched_ || !capture_frame_ || !node) return;
+    if (culled_prop_count_ < culled_prop_cap)
+        culled_props_[culled_prop_count_++] = node;
+    else
+        ++culled_prop_overflow_;
 }
 void reset() {
     begin_frame(false);
@@ -549,12 +564,21 @@ void present(unsigned long long device, unsigned long long frame, bool captured)
         std::uint32_t exempt = 0;
         for (std::uint32_t i = 0; i < entries && ring_; ++i)
             if (small_exempt(ring_[i], small_threshold_, small_exempt_projectiles_)) ++exempt;
-        log("cull_census_frame device=%llu frame=%llu entries=%lu overflow=%lu unmeasured=%lu exited=%lu ring=%u culled_small_exempt_bullet=%lu",
+        log("cull_census_frame device=%llu frame=%llu entries=%lu overflow=%lu unmeasured=%lu exited=%lu ring=%u culled_small_exempt_bullet=%lu culled_prop_nodes=%lu culled_prop_overflow=%lu",
             device, frame, (unsigned long)entries, (unsigned long)s.overflow, (unsigned long)s.unmeasured,
-            (unsigned long)s.exited, ring_size, (unsigned long)exempt);
+            (unsigned long)s.exited, ring_size, (unsigned long)exempt, (unsigned long)culled_prop_count_,
+            (unsigned long)culled_prop_overflow_);
         std::memset(ladder_cache_, 0, sizeof ladder_cache_);
         std::memset(body_cache_, 0, sizeof body_cache_);
         body_table_ = BodyTable{};
+        // Insertion sort of the frame's culled-prop nodes (at most culled_prop_cap, one capture frame): then one
+        // binary search per row.
+        for (std::uint32_t i = 1; i < culled_prop_count_; ++i) {
+            const std::uint32_t v = culled_props_[i];
+            std::uint32_t j = i;
+            for (; j && culled_props_[j - 1] > v; --j) culled_props_[j] = culled_props_[j - 1];
+            culled_props_[j] = v;
+        }
         // A fresh validation epoch for this frame's ladder reads: on a census-only run no motion
         // route advances it, so region checks would otherwise be trusted for up to 100 ms.
         engine_memory::revalidate(); // an epoch only: not a Present (engine_memory.h)
@@ -562,7 +586,8 @@ void present(unsigned long long device, unsigned long long frame, bool captured)
             const Entry& e = ring_[i];
             // A culled_small row names the scope that culled it, then the model's LOD ladder
             // and the body name of its id, then flag31 (appended: the row parsers anchor on the fields before them).
-            const Verdict verdict = classify(e, small_threshold_, small_exempt_projectiles_);
+            const Verdict verdict = with_prop(classify(e, small_threshold_, small_exempt_projectiles_),
+                                              sorted_contains(culled_props_, culled_prop_count_, e.node));
             char ladder[8 + 12 + 5 + ladder_cap * 12 + 1];
             const Ladder& l = ladder_of(e.model_ptr);
             format_ladder(ladder, sizeof ladder, e.model_ptr && l.known, l.count, l.thresholds, l.thr);
@@ -585,6 +610,8 @@ void present(unsigned long long device, unsigned long long frame, bool captured)
     pending_node_ = 0;
     pending_index_ = no_index;
     ancestors_.clear();
+    culled_prop_count_ = culled_prop_overflow_ = 0;
+    capture_frame_ = false;
     SetLastError(error);
 }
 }

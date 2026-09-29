@@ -26,6 +26,7 @@
 #include <vector>
 #include "chase_camera.h"
 #include "own_ship_cache.h"
+#include "cull_small_props_core.h"
 #include "../renderer/scene_boundary.h"
 #include "../renderer/motion_history.h"
 #include "../renderer/depth_prepass_profiles.h"
@@ -1174,6 +1175,13 @@ public:
     // Lens-flare gain (X3M_LENS_FLARE_GAIN, src/proxy/lens_flare_gain.h): process-start value, validated by the caller;
     // 1 = off (no per-draw work). The blend-constant cap is checked at attach.
     void configure_lens_flare_gain(float gain) noexcept { lens_gain_ = lens_flare_gain::law(gain); }
+    // Small-prop cull (X3M_CULL_SMALL_PROPS=on with X3M_CULL_SMALL_PARTS_PX, cull_small_props_core.h): process-start
+    // values validated by the caller; off = one bool test per scene draw.
+    void configure_cull_small_props(bool on, float px) noexcept {
+        props_on_ = on && px > 0.f;
+        if (props_) props_->px = px;
+        props_px_ = px;
+    }
     // X3M_TAA_HISTORY_WEIGHT (c5.z, default 0.85); validated by the caller and
     // read at every resolve.
     void configure_taa_resolve(float history_weight) noexcept { taa_history_weight_ = history_weight; }
@@ -1679,6 +1687,14 @@ private:
              lens_gain_window_skipped_ = 0;
     unsigned lens_gain_window_refused_[lens_flare_gain::refusal_count]{};
     void log_lens_gain_window() noexcept;
+    // Small-prop cull (motion_output_cull_small_props_inc.h): the decision state (committed at the first scene draw
+    // with the option on, never per frame) and the cull_small_props_frame window row every 300 frames.
+    bool props_on_ = false, props_attach_failed_ = false;
+    float props_px_ = 0.f;
+    cull_small_props::core::Culler* props_ = nullptr;
+    bool attach_small_props() noexcept;
+    bool cull_small_prop(MotionRoute& route); // not noexcept: no terminate region (SJLJ registration) per scene draw
+    void log_cull_small_props_window() noexcept;
     void apply_lens_gain(MotionRoute& route, bool plain) noexcept;
     void restore_lens_gain(MotionRoute& route) noexcept;
     void refuse_lens_gain(unsigned reason) noexcept;

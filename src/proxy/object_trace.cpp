@@ -257,6 +257,19 @@ bool scope_descriptor(uintptr_t* descriptor, uint32_t* depth) {
     SetLastError(error);
     return scope != nullptr;
 }
+bool scope_node(uintptr_t* descriptor, uintptr_t* node) {
+    if (descriptor) *descriptor = 0;
+    if (node) *node = 0;
+    if (!descriptor || !node || !observation.load()) return false;
+    const DWORD error = GetLastError(); // TlsGetValue writes ERROR_SUCCESS on success
+    Scope* scope = top();
+    if (scope) {
+        *descriptor = scope->args[0];
+        *node = scope->args[1];
+    }
+    SetLastError(error);
+    return scope != nullptr;
+}
 bool current(Snapshot* out, bool matrices) {
     if (!out) return false;
     const DWORD error = GetLastError();
