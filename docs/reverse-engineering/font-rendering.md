@@ -360,6 +360,79 @@ themselves can ride in the same mod catalogue the LOD overlay tooling writes
 ([../architecture/lod-overlay-mods.md](../architecture/lod-overlay-mods.md)) or as loose
 `f\` files.
 
+## 5. Run 392: narrow glyphs vanish at `s = 1.25`, `d = 2`
+
+Run 392 flew strategy (a) at `ui_scale 1.25`, density 2 (`docs/architecture/text-density.md`,
+fonts from `tools/fonts/generate_fonts.py`). The log shows the install, the row edit
+(`flagged=32 unflagged=8 nofilter_cleared=28`), the font requests scaled to `Tahoma26` /
+`Zekton52` and six image copies built at 2× (sources 2449, 1482, 2447, 1483, 1481, 327). In
+`screenshots/text1.png` and `text2.png` the text has the right size and layout, but `i` and `l`
+are missing in many words ("Spl t", "Astero d", "Wormho e", "Sa vage") and present in others
+("Split", "Flying"). Glyphs with wider strokes are intact.
+
+**Cause: the generated `i`, `l`, `r`, `!`, `|` have strokes about one texel wide, and a
+one-texel column does not survive the 1.6× minification to the screen.** The engine draws them
+correctly into the text texture.
+
+1. **The engine path has no per-glyph rounding, clip or minimum width** [s]. `0x0048b2d0`
+   multiplies the line's start x, y and right edge by `N` once (`0x0048b46b..0x0048b474`). Inside
+   `0x004f8600` the pen is a whole-texel integer: `pen += A`, blit `B × (S−1)` at `pen`,
+   `pen += C` (§1.3). The only tests are `B ≠ 0`, the code range and the right-edge stop, which
+   ends the line rather than skipping one glyph. The copy (`0x004efa70` → `0x004b2730`) is 1:1
+   in texels and alpha-blends. A zero-alpha texel of a later glyph leaves the texel under it at
+   255/256 of its value, so overlapping boxes cannot erase an earlier glyph. The generated
+   records obey the format: `A`, `B`, `C` are small, and `C < B` (i: `A=2 B=7 C=3`) only means
+   the box, which includes the baked shadow, overlaps the next glyph, as the stock boxes do.
+   Glyph texel positions are `2·x_line + Σ(A+C)` and do not depend on `s`.
+2. **The generated strokes are too thin** [m, `stem_coverage.py`]. White coverage is
+   `Σ R·A / 255²` per glyph row, i.e. what the blit deposits as text colour. The median over
+   inked rows, stock Tahoma13 ×2 against the generated Tahoma26: `i` 2.00 / 1.15, `l` 2.00 / 1.15,
+   `r` 2.00 / 1.15, `!` 2.00 / 1.29, `|` 2.00 / 0.88, `.` and `:` 2.00 / 1.49. For comparison `I`
+   gives 2.00 / 1.97, `t` 2.00 / 1.92, `j` 2.00 / 1.92 and `f` 2.00 / 1.91. Each stroke of the
+   stock font is exactly one pixel, i.e. two texels at `d = 2`. The generated `l` is one full
+   white texel plus a 15 % edge (`a6/39` RGB/alpha), followed by four texels of baked black shadow.
+3. **Minification removes a one-texel column depending on its screen phase** [m][i]. The text
+   texture is shown at `s/d = 0.625` screen pixels per texel, so screen samples fall every 1.6
+   texels. With nearest sampling, a one-texel column is missed whenever no sample lands in it:
+   37.5 % of phases. A stroke of two or more texels is always hit. The phase is `texel · 0.625 mod 1`
+   and so depends on where the word starts, which is why every row of the same list column loses
+   the same letters. The screenshot supports nearest sampling. In "Split" (row 1 of the sector
+   list) the `l` column is exactly the full stem value 206, the background is 36, and the missing
+   `i` column is 58–65. That matches the partial `a6/39` edge texel sampled alone
+   (≈ 0.14 · 206 + 36). A bilinear filter would give intermediate values in most phases. Why the
+   gui quads sample with nearest filtering even though `MPF_NOFILTERING` was cleared on 28 rows
+   is not established. The body material copies the row flags when the body loads
+   ([non-effect-materials.md](non-effect-materials.md), `0x0048206e`, `0x0048469b`); the
+   implementation names a draw-path test of the texture-table flags at `0x0047231a`.
+4. **The mod's block-blit hooks are not on the glyph path** [s][m]. `0x004f8600` is called only
+   from `0x0048b490` (text line) and `0x004f8069` (loader glyph cache). Glyphs reach the atlas
+   through `0x004efa70` (`0x004f89ae`, `0x004f8df9`). `0x0048c090` and `0x0048c460` have 12 and
+   11 direct callers, none in the text path. The font atlas is loaded straight from its file
+   (`0x004f3510`, font `+8`) and has no texture id, so it can never be the `src` of a hooked
+   blit. All 24 `blt_*` diagnostic rows of run 392 have named or row sources (2449, 1482, …, 327)
+   and `handled=1`. The `text_line` diagnostic mislabels its fields: `0x0048b2d0` takes
+   `(dst, text, font slot, x, y, right, colour, flags)`, and the row prints `args[3]` (the x
+   position, −42..999 over 56 rows) as `src`. The font slot is `args[2]`.
+
+**Minimal fix.**
+
+- **Generator (required).** Every stroke of a `d×` glyph must be at least `ceil(d/s)` texels of
+  full coverage for every scale it serves: 2 at `d = 2` (s in (1, 2]) and at `d = 3` (s in
+  (2, 3]). The simplest target is the stock one, `d` texels per 1-px stock stroke, which is 2.0 at
+  `d = 2`. This applies to vertical stems (`i l r ! | . :` and the stems of `n m h u b d p q`) and
+  to horizontal bars (`e t f` crossbars, the dot of `i`). Ways to get there: a heavier weight on
+  the variable `wght` axis until `l` reaches `d` texels, or a horizontal and vertical dilation of
+  the supersampled coverage by the missing width before the box filter. In both cases stems
+  should start on a whole texel (the existing `A` snap) and the shadow must stay under the glyph.
+  Acceptance: `stem_coverage.py` reports a median of at least 2.0 for every character in its list.
+  The records (`A`, `B`, `C`, band) need no change.
+- **Hook (recommended, not sufficient alone).** Make the scaled text textures sample linearly
+  when `s ≠ d`: find where the gui quad's filter comes from (the body-material flag copy or
+  `0x0047231a`) and clear `MPF_NOFILTERING` there too, or have the proxy force LINEAR min/mag
+  on `0x200` draws that sample a flagged row. Bilinear filtering alone would dim one-texel
+  strokes to 20–60 % rather than remove them, so the generator fix is still needed.
+- **Diagnostic.** The `text_line` row should print `args[2]` as the font slot.
+
 ## Open items
 
 1. **Text target set.** Which texture ids KC and native code draw text into and blit into, in
@@ -372,12 +445,17 @@ themselves can ride in the same mod catalogue the LOD overlay tooling writes
 4. **Placeholder blits** from `NONE_BLACK` (§2.4) and the `SE_ReadFile` path (§4) are not traced.
 5. `.siz` grid fonts and the flag-`0x10` glyph cache path of the loader were read only as far as
    needed to rule them out for the shipped fonts.
+6. The filter state of the `0x200` gui draws under the row edit (§5 item 3): nearest sampling is
+   inferred from screenshot pixel values; the source of the filter mode was not traced.
+7. The generated Zekton52/Harrier48/ZektonES52 strokes were not measured (`stem_coverage.py`
+   covers Tahoma only).
 
 ## Reproduce
 
 ```sh
 python3 verification/results/font-rendering/font_files.py          # -> font_files.json
 python3 verification/results/font-rendering/font_static_checks.py  # -> font_static_checks.json (capstone)
+python3 verification/results/font-rendering/stem_coverage.py [build/fonts/F] [d]  # -> stem_coverage.json (section 5)
 JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home \
   /opt/homebrew/opt/ghidra/libexec/support/analyzeHeadless <proj-dir> <proj> \
   -process X3AP.exe -readOnly -noanalysis -scriptPath tools/analysis \
