@@ -1,0 +1,16 @@
+run365: rows=2775 frames 726..3500 mutation_delta min/median/max=27/28/274908 retired_sum=0 journal_overflow_sum=2
+   flush: {'none': 2774, 'sun': 1}
+   sample (frame:delta:retired): 726:274908:0 957:30:0 1188:35:0 1419:44:0 1650:27:0 1881:27:0 2112:27:0 2343:29:0 2574:27:0 2805:36:0 3036:27:0 3267:42:0 3498:27:0
+run379: rows=75 frames 420..4860 mutation_delta min/median/max=27/28/44 retired_sum=0 journal_overflow_sum=0
+   flush: {'none': 75}
+   sample (frame:delta:retired): 420:27:0 780:27:0 1140:27:0 1500:36:0 1860:31:0 2220:27:0 2580:29:0 2940:27:0 3300:34:0 3660:29:0 4020:29:0 4380:27:0 4740:27:0
+run380: rows=97 frames 480..6240 mutation_delta min/median/max=27/29/49 retired_sum=0 journal_overflow_sum=0
+   flush: {'none': 97}
+   sample (frame:delta:retired): 480:27:0 960:30:0 1440:27:0 1920:27:0 2400:27:0 2880:31:0 3360:28:0 3840:33:0 4320:27:0 4800:27:0 5280:30:0 5760:36:0 6240:27:0
+run381: rows=104 frames 420..6600 mutation_delta min/median/max=27/29.0/81 retired_sum=0 journal_overflow_sum=0
+   flush: {'none': 104}
+   sample (frame:delta:retired): 420:31:0 900:27:0 1380:30:0 1860:29:0 2340:29:0 2820:31:0 3300:27:0 3780:31:0 4260:29:0 4740:27:0 5220:27:0 5700:36:0 6180:30:0
+run382 DISABLED object_lifetime_disabled device=1 frame=10079 reason=capacity_exhausted reason_code=10 live=262144 peak_live=262144 capacity=262144 load_epoch=2 registry_epoch=2 mutation_revision=720152 before_reinst
+run382: rows=188 frames 600..11820 mutation_delta min/median/max=0/27.0/52 retired_sum=0 journal_overflow_sum=0
+   flush: {'none': 188}
+   sample (frame:delta:retired): 600:31:0 1500:27:0 2400:29:0 3300:27:0 4200:27:0 5100:38:0 6000:27:0 6900:27:0 7800:27:0 8700:29:0 9600:39:0 10500:0:0 11400:0:0

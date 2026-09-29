@@ -1,0 +1,8 @@
+run340: rows=3926 mean=0.2 median=0.0 min=0 max=363 disabled_rows=0
+run352: rows=1967 mean=0.3 median=0 min=0 max=363 disabled_rows=0
+run356: rows=13838 mean=0.2 median=0.0 min=0 max=363 disabled_rows=0
+run365: rows=2774 mean=31.6 median=28.0 min=27 max=793 disabled_rows=0
+run368: rows=5409 mean=31.9 median=29 min=27 max=836 disabled_rows=0
+run375: rows=4654 mean=33.2 median=29.0 min=27 max=796 disabled_rows=0
+run379: rows=75 mean=29.4 median=28 min=27 max=44 disabled_rows=0
+run382: rows=188 mean=26.1 median=27.0 min=0 max=52 disabled_rows=1

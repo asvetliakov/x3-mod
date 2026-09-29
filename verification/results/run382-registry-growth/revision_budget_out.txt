@@ -1,0 +1,4 @@
+run382 sampled rows before disable: 158 first frame 600 mean 31.1 median 29.0 max 52
+run382 frames first_row..disable = 9479; live growth/frame = 27.7; revision/frame if load burst were 274908 (run365/run375 value) = 47.0
+run365 live series: 0:0 300:196 600:196 900:8104 1200:16609 1500:24700 1800:32796 2100:40865 2400:48901 2700:57033 3000:65066 3300:73179 3600:196 
+run365 slope f900..f3300 = 27.11 keys/frame; menu f300..f600 slope = 0
