@@ -225,11 +225,103 @@ def _fit_band(cov, base_y, top_y, bottom_y, cap_y):
     return done
 
 
+def _runs(mask):
+    """(line, start, end) of every run of True along axis 1 of a 2-D bool array."""
+    p = np.zeros((mask.shape[0], mask.shape[1] + 2), np.int8)
+    p[:, 1:-1] = mask
+    dif = np.diff(p, axis=1)
+    rs, cs = np.nonzero(dif == 1)
+    _, ce = np.nonzero(dif == -1)
+    return rs, cs, ce
+
+
+def _straight(starts, r, c0):
+    """True when the run starting at (r, c0) continues a straight edge in row r-1 or r+1."""
+    for rr in (r - 1, r + 1):
+        if 0 <= rr < starts.shape[0]:
+            for c in (c0 - 1, c0, c0 + 1):
+                if 0 <= c < starts.shape[1] and starts[rr, c] >= 0 and abs(starts[rr, c] - c0) <= 1:
+                    return True
+    return False
+
+
+def _floor_axis(mask, grid, origin, n_min, place):
+    """Widen/snap the runs of `mask` along axis 1 (see _stroke_floor).
+
+    grid: canvas px per output texel along the axis; origin: canvas coordinate of a texel
+    boundary; runs narrower than n_min + 1 texels that continue a straight edge in a
+    neighbouring line are redrawn as max(n_min, round(len / grid)) whole texels from the nearest
+    boundary; other runs narrower than n_min texels (diagonals, curves) are widened in place.
+    place(lo, hi, c0, c1, snapped) may move the new span (to keep a baseline); returns (lo, hi).
+    """
+    out = mask.copy()
+    rs, cs, ce = _runs(mask)
+    starts = np.full(mask.shape, -1, np.int32)
+    for r, c0, c1 in zip(rs, cs, ce):
+        starts[r, c0:c1] = c0
+    for r, c0, c1 in zip(rs, cs, ce):
+        n = (c1 - c0) / grid
+        if n >= n_min + 1 or (n >= n_min and not _straight(starts, r, c0)):
+            continue
+        if _straight(starts, r, c0):
+            k = round((c0 - origin) / grid)
+            x0 = origin + k * grid
+            x1 = x0 + max(n_min, round(n)) * grid
+        else:
+            x0 = c0
+            x1 = c0 + n_min * grid
+        lo, hi = place(int(math.ceil(x0 - 0.5)), int(math.ceil(x1 - 0.5)), c0, c1,
+                       _straight(starts, r, c0))
+        out[r, c0:c1] = False
+        out[r, max(lo, 0):hi] = True
+    return out
+
+
+def _stroke_floor(cov, pad, col, d, base_y, top_y, bottom_y):
+    """Stroke-width rule (font-assets.md): every stroke at least d whole texels.
+
+    A 1-px stock stroke is d texels at density d, and a stroke with fewer full texels can vanish
+    when the text texture is minified with nearest sampling (font-rendering.md section 5). On
+    the supersampled canvas (`col` canvas px per output column, SS per output row, column 0 of
+    the glyph at x = `pad`, output rows at `top_y` + k*SS):
+
+    1. binarise at half coverage and move the ink so its left edge sits on x = `pad` (the
+       whole-texel snap of A; at most one supersampled pixel);
+    2. vertical strokes (horizontal runs): a run that continues a straight edge in the next
+       row and is narrower than d + 1 texels is redrawn as max(d, round(width)) whole columns
+       from the column boundary nearest its left edge (stem hinting); a diagonal or curved run
+       narrower than d texels is widened to d towards the right without moving;
+    3. horizontal bars (vertical runs), the same with rows, growing downwards, or upwards when
+       the run sits on the baseline or would leave the band, so cap line and baseline stay put.
+
+    Strokes of d + 1 texels or more are left as drawn. Returns the new coverage image.
+    """
+    a = np.asarray(cov) >= 128
+    if not a.any():
+        return cov
+    xs = np.flatnonzero(a.any(axis=0))
+    a = np.roll(a, pad - int(xs[0]), axis=1)
+    a = _floor_axis(a, col, pad, d, lambda lo, hi, c0, c1, snapped: (lo, hi))
+
+    def place_rows(lo, hi, r0, r1, snapped):
+        if abs(r1 - base_y) <= SS // 2 or hi > bottom_y:   # on the baseline or leaving the band
+            end = top_y + round((r1 - top_y) / SS) * SS if snapped else r1
+            end = min(end, bottom_y)
+            lo, hi = end - (hi - lo), end
+            if lo < top_y:
+                lo, hi = top_y, top_y + (hi - lo)
+        return lo, hi
+
+    t = _floor_axis(a.T, SS, top_y, d, place_rows).T
+    return Image.fromarray(np.where(t, 255, 0).astype(np.uint8))
+
+
 def render(inst, ch, band, base, d, shadow):
     """Render `ch` into a B x band tile. `base` = baseline row (boundary) inside the band.
 
     The ink's left edge is snapped to the nearest output column (shift <= 0.5 px), so left
-    stems land on whole texels; the advance is unchanged.
+    stems land on whole texels, and every stroke is widened to at least d texels
+    (_stroke_floor); the advance is unchanged.
     """
     g = Glyph()
     g.squeezed = False
@@ -242,17 +334,18 @@ def render(inst, ch, band, base, d, shadow):
         return g
     fx = inst.fx
     l, t, r, b = ink
-    A = round(l * fx / SS)
-    shift = l * fx / SS - A                   # output px the ink moves left
-    R = math.ceil(r * fx / SS - shift)
+    A = round(l * fx / SS)                    # ink left edge snapped to a whole column
+    R = A + math.ceil((r - l) * fx / SS)
     reach = max(dx for dx, _ in SHADOW_D1) * d + d if shadow else 0
-    Bw = R + reach - A
+    Bw = R + d + 1 + reach - A                # + room for the stroke floor
     pad = int(inst.font.size) + 4
-    ox = pad + (shift - A) * SS / fx          # canvas x of the pen origin (float)
+    ox = pad - l                              # ink left edge exactly at canvas x = pad
     oy = pad + base * SS                      # canvas y of the baseline
     cov = Image.new('L', (math.ceil(Bw * SS / fx) + 2 * pad, band * SS + 2 * pad))
     ImageDraw.Draw(cov).text((ox, oy), ch, font=inst.font, fill=255, anchor='ls')
-    g.squeezed = _fit_band(cov, oy, oy - base * SS, oy + (band - base) * SS, oy - inst.cap_ss)
+    top_y, bottom_y = oy - base * SS, oy + (band - base) * SS
+    g.squeezed = _fit_band(cov, oy, top_y, bottom_y, oy - inst.cap_ss)
+    cov = _stroke_floor(cov, pad, SS / fx, d, oy, top_y, bottom_y)
     box = (pad, pad, pad + Bw * SS / fx, pad + band * SS)
     ga = np.asarray(cov.resize((Bw, band), Image.BOX, box=box), np.float64) / 255.0
     if shadow:
