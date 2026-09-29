@@ -1,22 +1,23 @@
 # Project status
 
-The single current-state file (updated 2026-09-29, Run106). Rules: [AGENTS.md](../AGENTS.md). All goals were
+The single current-state file (updated 2026-09-29, Run107). Rules: [AGENTS.md](../AGENTS.md). All goals were
 marked completed on 2026-09-26 by the user's decision ([goals](goals.md)). The agent never launches the game.
 
 ## Installed build
 
 Bottle **X3**, **CrossOver Preview.app**, game tree modded with **Mayhem 3** since 2026-09-28 (user install,
 `addon/05..12.cat` plus loose `addon/` files; 0.7.0 LOD overlay and fog families regenerated 2026-09-29 03:33).
-Run106 = candidate DLL SHA-256 `d07848e8095310af68f601fcca4ff2b99ee9a22e42f9c3bbd164255ae124384d` (57,442,540 bytes,
-RelWithDebInfo, unstripped), built once from clean main `925fcbf4` (host suite 274/2,898/0, 0 warnings, x87 0;
-[build](../verification/results/run106-candidate-build.json)), installed 2026-09-29
-([install](../verification/results/run106-candidate-install.json)). `X3AP.exe`, `cxbottle.conf`, the user's `x3m.ini`
+Run107 = candidate DLL SHA-256 `b9e8793c0304ad9777faed20667953d6c774118259cd7a5b8044aae1976cccab` (57,465,876 bytes,
+RelWithDebInfo, unstripped), built once from clean main `90289a66` (host suite 274/2,899/0, 0 warnings, x87 0, loop-phase
+verifier PASS on ten sites, CPU fixture 12,114 checks; [build](../verification/results/run107-candidate-build.json)), installed
+2026-09-29 ([install](../verification/results/run107-candidate-install.json)). `X3AP.exe`, `cxbottle.conf`, the user's `x3m.ini`
 and the 0.8.0 `x3m-regenerate` binaries unchanged.
 
-Rollback chain: Run105 `5de8ed5d…` at `/tmp/x3-run105-candidate/build/d3d9.dll`, then Run104 = release 0.8.0 `f34d3ab4…` (zip at `/tmp/x3m-release-0.8.0/`, entry `d3d9.dll`, extracted copy
+Rollback chain: Run106 `d07848e8…` at `/tmp/x3-run106-candidate/build/d3d9.dll`, then Run105 `5de8ed5d…`, then Run104 = release 0.8.0 `f34d3ab4…` (zip at `/tmp/x3m-release-0.8.0/`, entry `d3d9.dll`, extracted copy
 at `/tmp/x3m-release-0.8.0/zip-extract/d3d9.dll`), then Run103 `1f3ad3db…` at `/tmp/x3-run103-candidate/build/d3d9.dll`.
 
-Run106 over 0.8.0: `lens_flare_gain 0` skips the admitted lens-flare draws instead of drawing them invisibly, and the
+Run107 over 0.8.0: four `loop_phases` stamps around the three calls of the main loop's `input_part=0` region
+(`cutevent`, `containers`, `sweep`, `region`; [note](reverse-engineering/main-loop-input-region.md) §6); `lens_flare_gain 0` skips the admitted lens-flare draws instead of drawing them invisibly, and the
 opt-in `cull_small_props` (proxy-side skip of `ships\props\` draws under the small-parts pixel threshold, own ship and
 target exempt, no engine write; since Run106 the size test uses the draw's own vertex extent, the engine's part box
 being 4.7x+ the drawn geometry on Mayhem turrets, and `frame_end` carries `issued=`) ([cull-small-parts](verification/cull-small-parts.md),
@@ -33,12 +34,11 @@ Nothing beyond the installed Run105 (`99734bdb`); release 0.8.0 (`a3c85e37`) is 
 
 ## Run queue
 
-Run 106 A queued (2026-09-29): rerun of the turret-prop cull A/B at the battle group (Run105's size test culled nothing:
-`culled=0`, all 82 prop draws kept by the engine's inflated box): [run queue](verification/user-runs.md). Run 105 A
-completed: the flare skip acted (172 flare draws per frame skipped, ~1 ms p50 / 2 ms p90 at the group, so a flare
-batcher is not worth building); run378 with `--gpu-sync-timing` shows the frame CPU-bound in the game's own
-`pre_render` (12.5-16 ms) and `views` (7.4-10.7 ms at ~350 draws), present wait ~10 us, our scene-end CPU 0.2 ms
-([results](../verification/results/run378-gpu-timing/)).
+Run 107 A queued (2026-09-29): a 2-3 minute stay in the Mayhem battle sector with `loop_phases = 1` to name the owner
+of the growing `pre_render` (run380: 5.4 -> 17.9 ms over 6,300 frames while the four stamped sector passes stay at
+0.75 ms; leading candidate the script driver `0x0048f550`, inferred): [run queue](verification/user-runs.md). Run 106 A
+(prop-cull A/B) completed in run379: issued draws at the group 337 -> ~100 with the flare skip and the fixed prop cull
+(about 73 prop draws per frame skipped when sub-pixel); frame time did not follow the draw count.
 
 ## Open items
 

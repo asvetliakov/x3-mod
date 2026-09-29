@@ -1,0 +1,38 @@
+{
+ "candidate": {
+  "dll": "/tmp/x3-run107-candidate/build/d3d9.dll",
+  "sha256": "b9e8793c0304ad9777faed20667953d6c774118259cd7a5b8044aae1976cccab",
+  "bytes": 57465876,
+  "commit": "90289a66",
+  "toolchain": "i686-w64-mingw32-gcc (GCC) 16.2.0; cmake version 4.4.3; RelWithDebInfo, cmake/mingw-i686.cmake, -j8; Python 3.9.6 (/usr/bin/python3); clean build 40 s wall",
+  "gates": "build 0 warnings; x87 0 violations (734 reachable functions); generate --check PASS (243 settings, 95 in the template); verify_loop_phase_sites PASS (10 sites); run_game_phase_cpu rebuilt from source (bottle X3) PASS 12,114 checks / 0 failures / loop_cases=10, fixture_sha256 cddff3dc...; host suite 274 modules / 2,899 tests / 0 failing (98.7 s wall, 12 jobs); X3AP not running before build, fixture and suite",
+  "changes": [
+   "8b757034 loop phases: four accumulate-only stamps around the three calls of the main loop's input_part=0 region (cutevent 0x00403b12, containers 0x00403b17, sweep open 0x00403b1c / close 0x00403b40 on the jne with live flags through pushfd/popfd), a second chain independent of the six sector stamps; row fields cutevent/containers/sweep p50/p95, region_p50/max/owner; verifier PASS on ten sites (disjoint from 74 others), CPU fixture 12,114 checks / loop_cases=10, host 55 checks + 29 tests, build 0 warnings, x87 0, 92.3 ns per stamp (0.37 us per frame); RE note \u00a76 Run380 (the four sector intervals flat at 0.75 ms while pre_render grows 5.4 -> 17.9 ms; input= is pre_render with game phases off); reviewed (Opus), no blocker, doc wording fixed",
+   "385c30fb run380 loop-phase evidence: the four stamped sector intervals stay at 0.75 ms while pre_render grows 5.4 -> 17.9 ms over 6,300 frames in the Mayhem battle sector (loop_phases input= is pre_render with --game-phases off)",
+   "bd0e3c59 Run106 candidate built from 925fcbf4 (DLL d07848e8\u2026 57,442,540 B; host suite 274/2,898/0, 0 warnings, x87 0) and installed 2026-09-29; Run 105 A completed (flare skip ~1 ms p50 at the group, prop cull culled nothing, overlay counted skipped draws; run378 GPU sync: CPU-bound in the game's pre_render 12.5-16 ms and views 7.4-10.7 ms, present wait 10 us); Run 106 A queued (prop-cull A/B rerun); run378 timing script; rollback Run105 then Run104"
+  ],
+  "producer": "Claude Code implement agent (Opus 5.5), 2026-09-29; git log --oneline 925fcbf4..HEAD --no-merges; shasum -a 256; stat -f %z; build/fixture/suite logs local under /tmp/x3-run107-candidate/"
+ },
+ "command": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3-run107-candidate/build/d3d9.dll",
+ "exit": 0,
+ "installed_at": "2026-09-29T09:06+04:00",
+ "installed": {
+  "sha256": "b9e8793c0304ad9777faed20667953d6c774118259cd7a5b8044aae1976cccab",
+  "bytes": 57465876,
+  "verified": "sha256 and size read back after install; equals the candidate record; pgrep X3AP empty before"
+ },
+ "unchanged": {
+  "X3AP.exe": "fdbf3418\u2026",
+  "x3m.ini": "the user's file kept (loop_phases = 1 present)",
+  "cxbottle.conf": "not touched",
+  "x3m-regenerate": "0.8.0 binaries kept"
+ },
+ "previous": {
+  "run": "Run106",
+  "dll_sha256": "d07848e8095310af68f601fcca4ff2b99ee9a22e42f9c3bbd164255ae124384d",
+  "path": "/tmp/x3-run106-candidate/build/d3d9.dll",
+  "then": "Run105 5de8ed5d\u2026, Run104 = release 0.8.0 f34d3ab4\u2026"
+ },
+ "run": "Run 107 A queued: 2-3 minute stay in the Mayhem battle sector with loop_phases = 1 (--config): region vs pre_render, cutevent/containers/sweep owners; docs/verification/user-runs.md",
+ "producer": "main session (this record)"
+}
