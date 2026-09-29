@@ -1,0 +1,3 @@
+0x53230c XINPUT1_3.dll!ord2
+0x5322b8 USER32.dll!PeekMessageA
+0x5321f0 KERNEL32.dll!HeapFree

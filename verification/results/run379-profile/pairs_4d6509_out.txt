@@ -1,0 +1,36 @@
+== group: pairs with rva 0x4d6509 total 555
+   caller 0x00405092 246
+   caller 0x0051133e 119
+   caller 0x0044cfc1 60
+   caller 0x0050e21e 59
+   caller 0x00450ffb 37
+   caller 0x004efab8 13
+   caller 0x004e2f39 4
+   caller 0x00484e94 4
+   caller 0x0052ee80 3
+   caller 0x00494503 3
+   caller 0x004e325d 2
+   caller 0x004efd0e 1
+== late_away: pairs with rva 0x4d6509 total 460
+   caller 0x00405092 202
+   caller 0x0051133e 114
+   caller 0x0050e21e 57
+   caller 0x00450ffb 33
+   caller 0x0044cfc1 30
+   caller 0x004e2f39 5
+   caller 0x004efab8 5
+   caller 0x004a020e 4
+   caller 0x0040caec 4
+   caller 0x004e325d 2
+   caller 0x004efd0e 1
+   caller 0x00454154 1
+== early: pairs with rva 0x4d6509 total 117
+   caller 0x0051133e 45
+   caller 0x00405092 26
+   caller 0x0044cfc1 21
+   caller 0x0050e21e 11
+   caller 0x00450ffb 4
+   caller 0x004efab8 4
+   caller 0x00421706 2
+   caller 0x004e2f39 2
+   caller 0x004aed65 2

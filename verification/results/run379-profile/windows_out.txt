@@ -1,0 +1,44 @@
+R00 t=   5.0s frames 0-3 n=4 ms/frame=1250.0 draws_p50=0 samples=7079 ticks=1770 threads=7 tick_us_mean=401.423
+R01 t=  10.0s frames 4-302 n=299 ms/frame=16.7 draws_p50=56 samples=24147 ticks=1372 threads=21 tick_us_mean=1088.258
+R02 t=  15.0s frames 303-377 n=75 ms/frame=66.7 draws_p50=58 samples=20471 ticks=1695 threads=11 tick_us_mean=652.435
+R03 t=  20.0s frames 378-377 n=0 ms/frame=5000.0 draws_p50=0 samples=19217 ticks=1747 threads=11 tick_us_mean=572.954
+R04 t=  25.0s frames 378-377 n=0 ms/frame=5000.0 draws_p50=0 samples=27208 ticks=1562 threads=21 tick_us_mean=898.871
+R05 t=  30.0s frames 378-377 n=0 ms/frame=5000.0 draws_p50=0 samples=29967 ticks=1427 threads=21 tick_us_mean=1175.544
+R06 t=  35.0s frames 378-377 n=0 ms/frame=5000.0 draws_p50=0 samples=30765 ticks=1465 threads=21 tick_us_mean=1110.098
+R07 t=  40.0s frames 378-554 n=177 ms/frame=28.2 draws_p50=337 samples=28812 ticks=1372 threads=21 tick_us_mean=1193.914
+R08 t=  45.0s frames 555-844 n=290 ms/frame=17.2 draws_p50=337 samples=30660 ticks=1460 threads=21 tick_us_mean=1110.629
+R09 t=  50.0s frames 845-1122 n=278 ms/frame=18.0 draws_p50=341 samples=30828 ticks=1468 threads=21 tick_us_mean=1096.448
+R10 t=  55.0s frames 1123-1359 n=237 ms/frame=21.1 draws_p50=345 samples=30870 ticks=1470 threads=21 tick_us_mean=1090.897
+R11 t=  60.0s frames 1360-1597 n=238 ms/frame=21.0 draws_p50=337 samples=30450 ticks=1450 threads=21 tick_us_mean=1118.227
+R12 t=  65.0s frames 1598-1830 n=233 ms/frame=21.5 draws_p50=335 samples=30870 ticks=1470 threads=21 tick_us_mean=1091.953
+R13 t=  70.0s frames 1831-2056 n=226 ms/frame=22.1 draws_p50=334 samples=30807 ticks=1467 threads=21 tick_us_mean=1102.191
+R14 t=  75.0s frames 2057-2274 n=218 ms/frame=22.9 draws_p50=335 samples=30765 ticks=1465 threads=21 tick_us_mean=1108.093
+R15 t=  80.0s frames 2275-2487 n=213 ms/frame=23.5 draws_p50=336 samples=30744 ticks=1464 threads=21 tick_us_mean=1104.639
+R16 t=  85.0s frames 2488-2695 n=208 ms/frame=24.0 draws_p50=336 samples=30765 ticks=1465 threads=21 tick_us_mean=1107.112
+R17 t=  90.0s frames 2696-2900 n=205 ms/frame=24.4 draws_p50=336 samples=30891 ticks=1471 threads=21 tick_us_mean=1094.596
+R18 t=  95.0s frames 2901-3099 n=199 ms/frame=25.1 draws_p50=341 samples=30891 ticks=1471 threads=21 tick_us_mean=1093.510
+R19 t= 100.0s frames 3100-3300 n=201 ms/frame=24.9 draws_p50=341 samples=30870 ticks=1470 threads=21 tick_us_mean=1092.101
+R20 t= 105.0s frames 3301-3498 n=198 ms/frame=25.3 draws_p50=341 samples=30660 ticks=1460 threads=21 tick_us_mean=1105.234
+R21 t= 110.1s frames 3499-3729 n=231 ms/frame=21.6 draws_p50=54 samples=30723 ticks=1463 threads=21 tick_us_mean=1112.185
+R22 t= 115.1s frames 3730-3990 n=261 ms/frame=19.2 draws_p50=37 samples=30807 ticks=1467 threads=21 tick_us_mean=1103.492
+R23 t= 120.1s frames 3991-4247 n=257 ms/frame=19.5 draws_p50=36 samples=30786 ticks=1466 threads=21 tick_us_mean=1106.234
+R24 t= 125.1s frames 4248-4502 n=255 ms/frame=19.6 draws_p50=36 samples=30849 ticks=1469 threads=21 tick_us_mean=1099.821
+R25 t= 130.1s frames 4503-4749 n=247 ms/frame=20.2 draws_p50=36 samples=30870 ticks=1470 threads=21 tick_us_mean=1098.365
+R26 t= 135.1s frames 4750-4902 n=153 ms/frame=32.7 draws_p50=36 samples=28384 ticks=1420 threads=18 tick_us_mean=1145.027
+phases frame 300 dt 7145 pre 5356 views 1700
+phases frame 600 dt 15779 pre 4999 views 8119
+phases frame 900 dt 16875 pre 5660 views 8255
+phases frame 1200 dt 17990 pre 6506 views 8376
+phases frame 1500 dt 20196 pre 7875 views 9297
+phases frame 1800 dt 21031 pre 8747 views 9215
+phases frame 2100 dt 21988 pre 10005 views 9074
+phases frame 2400 dt 22966 pre 11283 views 8957
+phases frame 2700 dt 23690 pre 11865 views 8917
+phases frame 3000 dt 24450 pre 12774 views 8869
+phases frame 3300 dt 24794 pre 13483 views 8539
+phases frame 3600 dt 24829 pre 13927 views 8041
+phases frame 3900 dt 18891 pre 14282 views 3840
+phases frame 4200 dt 19369 pre 14897 views 3596
+phases frame 4500 dt 19561 pre 15240 views 3450
+phases frame 4800 dt 20223 pre 15911 views 3551
+phases frame 5100 dt 13006 pre 11211 views 1705

@@ -1,0 +1,27 @@
+== early_away R01: all samples 24147
+  slot  2 tid  360 start_mod 38: samples   1372 other(guest) 100.0% ntdll   0.0% x3ap 0 proxy 0 wine 0 d3dx 0
+  slot  6 tid  348 start_mod  4: samples   1372 other(guest) 100.0% ntdll   0.0% x3ap 0 proxy 0 wine 0 d3dx 0
+  slot  0 tid  220 start_mod  0: samples   1372 other(guest)  98.3% ntdll   1.7% x3ap 0 proxy 0 wine 0 d3dx 0
+  slot  1 tid  292 start_mod 41: samples   1372 other(guest)   0.0% ntdll 100.0% x3ap 0 proxy 0 wine 0 d3dx 0
+  slot  3 tid  308 start_mod 57: samples   1372 other(guest)   0.0% ntdll 100.0% x3ap 0 proxy 0 wine 0 d3dx 0
+  slot  4 tid  320 start_mod 57: samples   1372 other(guest)   0.0% ntdll 100.0% x3ap 0 proxy 0 wine 0 d3dx 0
+  slot  5 tid  344 start_mod 49: samples   1372 other(guest)   0.0% ntdll 100.0% x3ap 0 proxy 0 wine 0 d3dx 0
+  slot  7 tid  356 start_mod 20: samples   1372 other(guest)   0.0% ntdll 100.0% x3ap 0 proxy 0 wine 0 d3dx 0
+== group R16-R20: all samples 154077
+  slot  2 tid  360 start_mod 38: samples   7337 other(guest) 100.0% ntdll   0.0% x3ap 0 proxy 0 wine 0 d3dx 0
+  slot  6 tid  348 start_mod  4: samples   7337 other(guest) 100.0% ntdll   0.0% x3ap 0 proxy 0 wine 0 d3dx 0
+  slot  0 tid  220 start_mod  0: samples   7337 other(guest) 100.0% ntdll   0.0% x3ap 0 proxy 0 wine 0 d3dx 0
+  slot  1 tid  292 start_mod 41: samples   7337 other(guest)   0.0% ntdll 100.0% x3ap 0 proxy 0 wine 0 d3dx 0
+  slot  3 tid  308 start_mod 57: samples   7337 other(guest)   0.0% ntdll 100.0% x3ap 0 proxy 0 wine 0 d3dx 0
+  slot  4 tid  320 start_mod 57: samples   7337 other(guest)   0.0% ntdll 100.0% x3ap 0 proxy 0 wine 0 d3dx 0
+  slot  5 tid  344 start_mod 49: samples   7337 other(guest)   0.0% ntdll 100.0% x3ap 0 proxy 0 wine 0 d3dx 0
+  slot  7 tid  356 start_mod 20: samples   7337 other(guest)   0.0% ntdll 100.0% x3ap 0 proxy 0 wine 0 d3dx 0
+== late_away R22-R25: all samples 123312
+  slot  2 tid  360 start_mod 38: samples   5872 other(guest) 100.0% ntdll   0.0% x3ap 0 proxy 0 wine 0 d3dx 0
+  slot  6 tid  348 start_mod  4: samples   5872 other(guest) 100.0% ntdll   0.0% x3ap 0 proxy 0 wine 0 d3dx 0
+  slot  0 tid  220 start_mod  0: samples   5872 other(guest)  99.9% ntdll   0.1% x3ap 0 proxy 0 wine 0 d3dx 0
+  slot  1 tid  292 start_mod 41: samples   5872 other(guest)   0.0% ntdll 100.0% x3ap 0 proxy 0 wine 0 d3dx 0
+  slot  3 tid  308 start_mod 57: samples   5872 other(guest)   0.0% ntdll 100.0% x3ap 0 proxy 0 wine 0 d3dx 0
+  slot  4 tid  320 start_mod 57: samples   5872 other(guest)   0.0% ntdll 100.0% x3ap 0 proxy 0 wine 0 d3dx 0
+  slot  5 tid  344 start_mod 49: samples   5872 other(guest)   0.0% ntdll 100.0% x3ap 0 proxy 0 wine 0 d3dx 0
+  slot  7 tid  356 start_mod 20: samples   5872 other(guest)   0.0% ntdll 100.0% x3ap 0 proxy 0 wine 0 d3dx 0
