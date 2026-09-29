@@ -1,0 +1,81 @@
+{
+ "schema": 2,
+ "version": "0.8.1",
+ "complete": true,
+ "tool_record": "/private/tmp/x3m-release-0.8.1/release-0.8.1.json (local, untracked; fields below copied from it)",
+ "command": "python3 tools/release/release.py --out /tmp/x3m-release-0.8.1 --regenerate-dir /tmp/x3m-release-0.8.0/regenerate (regenerate sources unchanged since a3c85e37: git diff --stat a3c85e37..HEAD -- tools/regenerate tools/analysis/lod_*.py tools/build empty; 0.8.0 binaries reused)",
+ "commit": "f4439590073b2bfa68e4b17ffafe6caae0561feb",
+ "dirty": false,
+ "toolchain": {
+  "mingw_gcc": "i686-w64-mingw32-gcc (GCC) 16.2.0",
+  "mingw_objcopy": "GNU objcopy (GNU Binutils) 2.47.20260726",
+  "cmake": "cmake version 4.4.3",
+  "python": "3.9.6 (/Library/Developer/CommandLineTools/usr/bin/python3)"
+ },
+ "source_commit_marker": "f4439590073b2bfa68e4b17ffafe6caae0561feb",
+ "dll": {
+  "sha256": "e123b7ed8e3c487738f8f60424692a11c6c6b0594e9725651da5f1e5b48bb1f1",
+  "bytes": 39550860
+ },
+ "dll_unstripped": {
+  "sha256": "c28b2b67c91bb076f200c9994601949ea64fbd91674daab252494145be09c86b",
+  "bytes": 57626725
+ },
+ "debug_file": {
+  "sha256": "efbc58198031cd4f99ee8d8f9213a56956912cfbe1da66b07b119454dbc4c4f6",
+  "bytes": 19017317
+ },
+ "regenerate_source": "reused",
+ "regenerate": {
+  "x3m-regenerate": {
+   "sha256": "28d3e915e7aeb9294a3a2e6abddcbce829404d52d6f1add8dc42338ff9fbe287",
+   "bytes": 12273696
+  },
+  "x3m-regenerate.exe": {
+   "sha256": "d7f8d687eb1437aff518d4da7e64cadd4a91f9798357a6cbc394ef89d2869afd",
+   "bytes": 29748230
+  }
+ },
+ "zip": {
+  "name": "x3m-0.8.1.zip",
+  "sha256": "17f75b310028e245b2bc7355c70799db2dbee0e49ea697dd6ee04e5f06eff1ca",
+  "bytes": 58389854,
+  "entries": {
+   "d3d9.dll": [
+    39550860,
+    "e123b7ed8e3c4877"
+   ],
+   "x3m.ini": [
+    17684,
+    "27d6f0e8f5818373"
+   ],
+   "x3m-regenerate.exe": [
+    29748230,
+    "d7f8d687eb1437af"
+   ],
+   "README.txt": [
+    2476,
+    "0db28fcfd12d1c88"
+   ]
+  }
+ },
+ "gates": "generate --check PASS (245 settings, 97 in the template); DLL warnings 0; check_no_x87 PASS 0 violations 734 reachable (unstripped and stripped, rerun by hand on the stripped DLL: PASS 0/734); strip identity PASS 10 sections 17 exports marker once 9 debug sections removed, debuglink; regenerate smoke not run (binaries reused from 0.8.0, hashes identical to release-0.8.0.json); zip entries exactly 4 (d3d9.dll, x3m.ini, x3m-regenerate.exe, README.txt), re-hashed; zip d3d9.dll extracted to /tmp/x3m-release-0.8.1/zip-extract/ hashes e123b7ed... = shipped DLL; README.txt names 0.8.1 and commit f4439590073b...; full host suite on f4439590: 277 modules, 2922 tests, 0 failing, 99.9 s (12 jobs)",
+ "first_attempt": "6f870245 refused at the config gate (assets/x3m.ini still said 0.8.0); template regenerated and committed as f4439590",
+ "changes_since_0.8.0": [
+  "dust_leak_fix: engine patch default on (claim at 0x0041f4d1) closes the Mayhem 3 dust-scene fill node leak (e7bfb8c9; flown Run 109 A, 953d3eda); scene_graph_census diagnostic row (8608b04b); loop-phase stamps (8b757034)",
+  "cull_small_props: new proxy-side skip of small ship/prop draws (ad877b30), size from the draw's own vertex extent (925fcbf4), default on (57aaf6ec)",
+  "lens-flare cull at lens_flare_gain 0: admitted flare draws skipped (f622c0b0), then culled in the engine's cull pass via a stub chained on the small-parts claim at 0x0047d2a2 (44c102fd)",
+  "cull_dock_parts_px: carrier dock-port threshold (334a1aec), default 12 (c66fe0fc merge, 5ec34559); Run 110 A: 2.4-3.7 ms saved at a carrier view (9ec861f9)",
+  "emission/lens defaults: unchanged, already in 0.8.0",
+  "version 0.8.1 (6f870245) and x3m.ini template version line (f4439590); the rest are RE notes, run evidence and candidate records"
+ ],
+ "wall_seconds": {
+  "tree": 0.0,
+  "config": 0.0,
+  "dll": 53.0,
+  "regenerate": 0.0,
+  "package": 1.6,
+  "total": 54.7,
+  "host_suite": 99.9
+ }
+}

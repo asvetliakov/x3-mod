@@ -1,19 +1,21 @@
 # Project status
 
-The single current-state file (updated 2026-09-29, Run110). Rules: [AGENTS.md](../AGENTS.md). All goals were
+The single current-state file (updated 2026-09-29, Run111 = release 0.8.1). Rules: [AGENTS.md](../AGENTS.md). All goals were
 marked completed on 2026-09-26 by the user's decision ([goals](goals.md)). The agent never launches the game.
 
 ## Installed build
 
 Bottle **X3**, **CrossOver Preview.app**, game tree modded with **Mayhem 3** since 2026-09-28 (user install,
 `addon/05..12.cat` plus loose `addon/` files; 0.7.0 LOD overlay and fog families regenerated 2026-09-29 03:33).
-Run110 = candidate DLL SHA-256 `e5e7ac1585c5c7bd0a22d5b41b2ef16b40f356dbe368bcc5ac0fe9bf8f02d783` (57,626,713 bytes,
-RelWithDebInfo, unstripped), built once from clean main `5ec34559` (host suite 277/2,922/0, 0 warnings, x87 0, cull fixture
-221/0 with lens 58, verifiers 20/20, 13/13, 27/27; [build](../verification/results/run110-candidate-build.json)), installed
-2026-09-29 ([install](../verification/results/run110-candidate-install.json)). `X3AP.exe`, `cxbottle.conf`, the user's `x3m.ini`
+Run111 = **release 0.8.1**: stripped DLL SHA-256 `e123b7ed8e3c487738f8f60424692a11c6c6b0594e9725651da5f1e5b48bb1f1`
+(39,550,860 bytes; unstripped `c28b2b67…`, debug file `efbc5819…` under `/tmp/x3m-release-0.8.1/`), built once from clean
+main `f4439590` (host suite 277/2,922/0, 0 warnings, x87 0 on both DLLs, strip identity PASS, zip entries exactly 4, regenerate
+binaries reused from 0.8.0, sources unchanged; [release record](../verification/results/release-0.8.1.json)), installed
+2026-09-29 ([install](../verification/results/run111-release-install.json)). Renderer code equal to Run110 (`5ec34559` plus
+the version bump). Zip `/tmp/x3m-release-0.8.1/x3m-0.8.1.zip` (`17f75b31…`, 58,389,854 bytes). `X3AP.exe`, `cxbottle.conf`, the user's `x3m.ini`
 and the 0.8.0 `x3m-regenerate` binaries unchanged.
 
-Rollback chain: Run109 `09f08cff…` at `/tmp/x3-run109-candidate/build/d3d9.dll`, then Run108 `c57556bb…` at `/tmp/x3-run108-candidate/build/d3d9.dll`, then Run107 `b9e8793c…` at `/tmp/x3-run107-candidate/build/d3d9.dll`, then Run106 `d07848e8…`, then Run104 = release 0.8.0 `f34d3ab4…` (zip at `/tmp/x3m-release-0.8.0/`, entry `d3d9.dll`, extracted copy
+Rollback chain: Run110 `e5e7ac15…` at `/tmp/x3-run110-candidate/build/d3d9.dll`, then Run109 `09f08cff…` at `/tmp/x3-run109-candidate/build/d3d9.dll`, then Run108 `c57556bb…` at `/tmp/x3-run108-candidate/build/d3d9.dll`, then Run107 `b9e8793c…` at `/tmp/x3-run107-candidate/build/d3d9.dll`, then Run106 `d07848e8…`, then Run104 = release 0.8.0 `f34d3ab4…` (zip at `/tmp/x3m-release-0.8.0/`, entry `d3d9.dll`, extracted copy
 at `/tmp/x3m-release-0.8.0/zip-extract/d3d9.dll`), then Run103 `1f3ad3db…` at `/tmp/x3-run103-candidate/build/d3d9.dll`.
 
 Run110 over Run109: `lens_flare_gain 0` now culls the lens-flare sprite nodes in the engine's own cull pass (a second
@@ -40,15 +42,16 @@ being 4.7x+ the drawn geometry on Mayhem turrets, and `frame_end` carries `issue
 sprites (stock bodies `objects/v/00752..00766`, ~8 per engine) + 82 Split turret props (76 under 4 px) + 28 ship hulls +
 25 carrier + 14 station + 10 engine glows + 5 sky + 9 HUD.
 
-Last release: **0.8.0** from `a3c85e37` ([release record](../verification/results/release-0.8.0.json)).
+Last release: **0.8.1** from `f4439590` ([release record](../verification/results/release-0.8.1.json)); 0.8.0 from `a3c85e37` before it.
 
 ## Main beyond the installed build
 
-Nothing beyond the installed Run110 (`5ec34559`); release 0.8.0 (`a3c85e37`) is the last packaged build.
+Nothing beyond the installed Run111 (`f4439590`); release 0.8.1 is the last packaged build.
 
 ## Run queue
 
-No run is open. Run 110 A completed (run386-389, [results](../verification/results/run386-389-cull-ab/)): at one carrier
+Run 111 A queued (Run111 = release 0.8.1 installed): one plain confirmation flight on the defaults, nothing new to measure.
+Run 110 A completed (run386-389, [results](../verification/results/run386-389-cull-ab/)): at one carrier
 view without `--perf`, the dock-port cull (12 px) saves 2.4-3.7 ms per frame (about 57 fps against 47-50 with it off,
 measured from 300-frame clock windows, one run per setting); the engine-side flare cull saves 0 ± 0.5 ms (1.2 ms under
 `--perf`, where the flare draws carry the instrument cost). Both culled exactly what they should (166 flares per frame

@@ -1,0 +1,33 @@
+{
+ "candidate": {
+  "release": "0.8.1",
+  "record": "verification/results/release-0.8.1.json",
+  "dll": "/tmp/x3m-release-0.8.1/zip-extract/d3d9.dll (entry d3d9.dll of x3m-0.8.1.zip)",
+  "sha256": "e123b7ed8e3c487738f8f60424692a11c6c6b0594e9725651da5f1e5b48bb1f1",
+  "bytes": 39550860,
+  "commit": "f4439590",
+  "gates": "generate --check PASS (245 settings, 97 in the template); DLL warnings 0; check_no_x87 PASS 0 violations 734 reachable (unstripped and stripped, rerun by hand on the stripped DLL: PASS 0/734); strip identity PASS 10 sections 17 exports marker once 9 debug sections removed, debuglink; regenerate smoke not run (binaries reused from 0.8.0, hashes identical to release-0.8.0.json); zip entries exactly 4 (d3d9.dll, x3m.ini, x3m-regenerate.exe, README.txt), re-hashed; zip d3d9.dll extracted to /tmp/x3m-release-0.8.1/zip-extract/ hashes e123b7ed... = shipped DLL; README.txt names 0.8.1 and commit f4439590073b...; full host suite on f4439590: 277 modules, 2922 tests, 0 failing, 99.9 s (12 jobs)"
+ },
+ "command": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3m-release-0.8.1/zip-extract/d3d9.dll",
+ "exit": 0,
+ "installed_at": "2026-09-29T19:59+0400",
+ "installed": {
+  "sha256": "e123b7ed8e3c487738f8f60424692a11c6c6b0594e9725651da5f1e5b48bb1f1",
+  "bytes": 39550860,
+  "verified": "sha256 and size read back after install; equals the zip entry; pgrep X3AP empty before; launch --dry-run rc 0 (--direct --config; --vanilla --direct)"
+ },
+ "unchanged": {
+  "X3AP.exe": "fdbf3418\u2026",
+  "x3m.ini": "the user's file kept",
+  "cxbottle.conf": "sha 3a70e875\u2026 before and after",
+  "x3m-regenerate": "0.8.0 binaries kept (0.8.1 ships the same bytes)"
+ },
+ "previous": {
+  "run": "Run110",
+  "dll_sha256": "e5e7ac1585c5c7bd0a22d5b41b2ef16b40f356dbe368bcc5ac0fe9bf8f02d783",
+  "path": "/tmp/x3-run110-candidate/build/d3d9.dll",
+  "then": "Run109 09f08cff\u2026, Run104 = release 0.8.0 f34d3ab4\u2026"
+ },
+ "run": "Run 111 A queued: plain confirmation flight on the release build (defaults; nothing new to measure)",
+ "producer": "main session (this record)"
+}
