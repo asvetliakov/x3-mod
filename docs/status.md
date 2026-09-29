@@ -31,10 +31,10 @@ Nothing: main `ebfe33e4` is the installed commit (release 0.7.0 = `9edd942b` is 
 
 ## Run queue
 
-Run 103 A queued (2026-09-29): one flight on the Mayhem save with the Run103 candidate: stations at rest (shimmer gone?),
-the new lifetime rows, and the Ocelot exhausts with `emission_source_clamp = 0.7` and `lens_flare_gain = 0.5`:
-[run queue](verification/user-runs.md). Run 102 A is superseded (its flights became run357-run364, the shimmer and
-engine diagnoses above).
+Nothing open. Run 103 A completed 2026-09-29, accepted: stations steady at rest on the Mayhem save; run365
+`object_lifetime_stats peak_live=44913` on the load confirms the capacity cause (measured); exhausts accepted at
+`emission_source_clamp 0.7` / `lens_flare_gain 0.5` ([run table](verification/user-runs.md)). User decision: defaults
+become `emission_source_gain 1`, `emission_source_clamp 0.7`, `lens_flare_gain 0.3`, then release 0.8.0.
 
 ## Open items
 
