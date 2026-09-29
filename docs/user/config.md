@@ -17,7 +17,7 @@ cannot (a Windows-side environment write never reaches winegstreamer, measured 2
 itself, write them once into the bottle's settings with the game closed:
 `python3 tools/manage.py voice-decoder --bottle-env apply --bottle X3` (`--bottle-env check` shows them,
 `--bottle-env remove` takes them out again; the first change keeps a copy `cxbottle.conf.x3m-bak`). They then apply
-to every program started in that bottle. Windows does not use it.
+to every program started in that bottle. Windows does not use it. With them set, a `--vanilla` launch (no proxy) stalled at the loading screen (2026-09-29), so the launcher refuses it: run `--bottle-env remove` before it and `--bottle-env apply` afterwards, or add `--vanilla-with-bottle-env`.
 
 ## Changing a setting
 

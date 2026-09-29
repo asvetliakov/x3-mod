@@ -1,0 +1,6 @@
+scratch status set
+dry-run: exit 0
+  voice decoder: none (--vanilla: no discovery); bottle env: set
+  warning: bottle X3 cxbottle.conf [EnvironmentVariables] carries GST_PLUGIN_PATH_1_0 / GST_REGISTRY_1_0 (bottle env: set); a --vanilla launch stalled at the loading screen with them (no proxy, no DMO fallback hook); run python3 tools/manage.py voice-decoder --bottle-env remove --bottle X3 before the launch and --bottle-env apply afterwards, or pass --vanilla-with-bottle-env
+launch: exit 2
+  launch refused: bottle X3 cxbottle.conf [EnvironmentVariables] carries GST_PLUGIN_PATH_1_0 / GST_REGISTRY_1_0 (bottle env: set); a --vanilla launch stalled at the loading screen with them (no proxy, no DMO fallback hook); run python3 tools/manage.py voice-decoder --bottle-env remove --bottle X3 before the launch and --bottle-env apply afterwards, or pass --vanilla-with-bottle-env
