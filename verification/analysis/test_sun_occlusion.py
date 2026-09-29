@@ -444,7 +444,7 @@ class SunOcclusionHost(unittest.TestCase):
         fixture = load('run_sun_occlusion', 'verification/probe/run_sun_occlusion.py')
         motion = load('run_motion_output', 'verification/probe/run_motion_output.py')
         self.assertEqual(fixture.expected_phases(), {i: (round(motion.expected_jitter(i)[1], 4), round(motion.expected_jitter(i)[2], 4)) for i in range(8)})
-        self.assertEqual(fixture.EXPECTED_GPU_CHECKS, 128)
+        self.assertEqual(fixture.EXPECTED_GPU_CHECKS, 135)  # 128 + the seven lens-flare gain checks (2026-09-29)
 
     def test_site_constants(self):
         sites = self.run_driver('sites')

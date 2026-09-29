@@ -177,6 +177,9 @@ bool lightmap_far_fade_requested = false; // X3M_LIGHT_MAP_FAR_FADE=P0,P1[,G]: t
 float lightmap_far_fade[3] = {0.f, 0.f, 1.f};
 bool sun_occlusion_core_f = true; // X3M_SUN_OCCLUSION_CORE_F: the clipped core bodies are also scaled by f (default on
                                   // with the override; =0 restores clip-only)
+float lens_flare_gain_value = 1.f; // X3M_LENS_FLARE_GAIN: the game's lens-flare draws (the lens bracket's ONE/ONE
+                                   // cards) scaled by G, finite 0..1, 1 = off (nothing installed for it); needs
+                                   // X3M_MOTION_OUTPUT=1
 float sun_occlusion_radius = sun_occlusion::core::radius_default_u,
       sun_occlusion_curve = 1.f; // X3M_SUN_OCCLUSION_RADIUS (0.005..0.25, the disc's half-width as a fraction of the
                                  // back-buffer width), X3M_SUN_OCCLUSION_CURVE (0.25..4, exponent on the used fraction)
@@ -3193,6 +3196,7 @@ void hook_device(IDirect3DDevice9* d, HWND window, HWND focus) {
     hooked.motion_output.configure_taa_sharpen(taa_sharpen);
     hooked.motion_output.configure_sun_occlusion({sun_occlusion::override_enabled(), sun_occlusion::logging(),
                                                   sun_occlusion_radius, sun_occlusion_curve, sun_occlusion_core_f});
+    hooked.motion_output.configure_lens_flare_gain(lens_flare_gain_value); // 1 unless the bracket is installed for it
     hooked.motion_output.configure_taa_resolve(taa_history_weight);
     hooked.motion_output.configure_taa_far(taa_far[0], taa_far[1], taa_far[2], taa_far[3], taa_far[4], taa_far[5]);
     hooked.motion_output.configure_taa_thin_region(taa_thin_region[0], taa_thin_region[1], taa_thin_region[2],
@@ -5401,8 +5405,28 @@ void initialize_log(HMODULE module) {
         }
         sun_occlusion_core_f = !(x3m::config::get(L"X3M_SUN_OCCLUSION_CORE_F", value, 32) == 1 &&
                                  value[0] == L'0'); // default on; only an explicit "0" restores clip-only
+        // X3M_LENS_FLARE_GAIN (src/proxy/lens_flare_gain.h): G < 1 needs the lens bracket, so it installs the same two
+        // redirects observe-only when neither sun-occlusion variable does; 1 (or unset, or invalid) installs nothing.
+        const char* lens_gain_reason = "unset";
+        float lens_gain = 1.f;
+        if (x3m::config::get(L"X3M_LENS_FLARE_GAIN", value, 32) > 0) {
+            wchar_t* end = nullptr;
+            const float v = wcstof(value, &end);
+            if (end != value && *end == L'\0' && v >= lens_flare_gain::gain_min && v <= lens_flare_gain::gain_max) {
+                lens_gain = v;
+                lens_gain_reason = v < 1.f ? "ok" : "one";
+            } else
+                lens_gain_reason = "invalid";
+        }
+        if (lens_gain < 1.f && !motion_output_requested) lens_gain_reason = "route_off"; // no state shadow for the draw
+        const bool lens_gain_wanted = lens_gain < 1.f && motion_output_requested;
         sun_occlusion::set_listener(&sun_lens_begin, &sun_lens_end);
-        if (sun_occlusion::initialize()) {
+        const bool sun_installed = sun_occlusion::initialize(lens_gain_wanted);
+        if (lens_gain_wanted && !sun_installed) lens_gain_reason = "bracket_unavailable";
+        lens_flare_gain_value = lens_gain_wanted && sun_installed ? lens_gain : 1.f;
+        log("lens_flare_gain value=%.4f configured=%u reason=%s bracket=%s", double(lens_gain), lens_flare_gain_value < 1.f ? 1u : 0u,
+            lens_gain_reason, sun_occlusion::state());
+        if (sun_installed) {
             // X3M_SUN_OCCLUSION_DEFAULT=1: the launcher filled the override in from its Run 83 default (read only when
             // the override is on).
             const bool from_default = sun_occlusion::override_enabled() &&

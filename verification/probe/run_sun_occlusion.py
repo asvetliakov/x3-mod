@@ -22,9 +22,10 @@ SOURCES = ('src/proxy/engine_memory.cpp', 'src/proxy/sun_occlusion.cpp', 'src/pr
            'src/renderer/sun_occlusion_pass.cpp', 'src/renderer/sun_occlusion_pass.h', 'src/renderer/lens_visibility_variant.cpp', 'src/renderer/lens_visibility_variant.h',
            'src/renderer/sun_visibility_program_inc.h', 'src/renderer/sun_visibility_taps_inc.h', 'src/temporal/sun_visibility_ps.hlsl',
            'verification/probe/sun_occlusion_hook_fixture.cpp', 'verification/probe/sun_occlusion_fixture.cpp', 'verification/probe/build_sun_occlusion.py',
-           'verification/probe/run_sun_occlusion.py')
+           'verification/probe/run_sun_occlusion.py', 'src/proxy/lens_flare_gain.h')
 EXPECTED_HOOK_CHECKS = 74   # a run that skips a section is not a pass
-EXPECTED_GPU_CHECKS = 128  # with both optional RT2 formats available; each SKIPPED format line takes one off
+EXPECTED_GPU_CHECKS = 135  # with both optional RT2 formats available; each SKIPPED format line takes one off (128 + 7 lens-flare gain)
+LENS_GAIN_CASES = {'off', 'half', 'zero', 'half_wrapped'}
 SCENES = ('open', 'covered', 'half', 'three_quarter', 'quarter', 'screen_edge_open', 'screen_edge_covered')
 
 
@@ -85,7 +86,9 @@ def parse_gpu(text):
             'jitter_visibility': {l.split()[1].split('=')[1]: fields(l) for l in lines if l.startswith('JITTER_VISIBILITY ')},
             'jitter_phase': [fields(l) for l in lines if l.startswith('JITTER_PHASE ')],
             'clip_jitter': next((fields(l) for l in lines if l.startswith('CLIP_JITTER ')), None),
-            'clip_jitter_phase': [fields(l) for l in lines if l.startswith('CLIP_JITTER_PHASE ')]}
+            'clip_jitter_phase': [fields(l) for l in lines if l.startswith('CLIP_JITTER_PHASE ')],
+            'lens_gain': {fields(l)['name']: fields(l) for l in lines if l.startswith('LENS_GAIN ')},
+            'lens_gain_cost': next((fields(l) for l in lines if l.startswith('LENS_GAIN_COST ')), None)}
 
 
 def accept_hook(record):
@@ -102,7 +105,8 @@ def accept_gpu(record):
             and record['jitter_phases'] == expected_phases()                    # the fixture rasterized RT2 under the temporal pass's own offsets
             and set(record['jitter_visibility']) == {'x', 'y'} and len(record['jitter_phase']) == 16 and len(record['clip_jitter_phase']) == 8
             and all(v.get('corrected_invariant') == 1 and v.get('uncorrected_distinct', 0) >= 2 for v in record['jitter_visibility'].values())
-            and record['clip_jitter'] and record['clip_jitter'].get('distinct') == 2 and record['clip_jitter'].get('max_delta_measured', 1) <= .23)
+            and record['clip_jitter'] and record['clip_jitter'].get('distinct') == 2 and record['clip_jitter'].get('max_delta_measured', 1) <= .23
+            and set(record['lens_gain']) == LENS_GAIN_CASES and all(c.get('restored') == 1 for c in record['lens_gain'].values()))
 
 
 def main():
@@ -126,8 +130,17 @@ def main():
         ok = accept_hook(record['hook']) and ok
     if '--hook-only' not in args:
         started = time.time()
-        run = subprocess.run([bottle.WINE, *bottle.wine_args(name), '--dll', 'd3d9=b', '--workdir', str(BUILD), str(GPU)], capture_output=True, text=True, timeout=900,
-                             env=dict(os.environ, WINEDLLOVERRIDES='d3d9=b'))
+        try:
+            run = subprocess.run([bottle.WINE, *bottle.wine_args(name), '--dll', 'd3d9=b', '--workdir', str(BUILD), str(GPU)], capture_output=True, text=True, timeout=900,
+                                 stdin=subprocess.DEVNULL, env=dict(os.environ, WINEDLLOVERRIDES='d3d9=b'))
+        except subprocess.TimeoutExpired as hang:  # keep what the executable printed before the hang
+            text = lambda b: b.decode(errors='replace') if isinstance(b, bytes) else (b or '')
+            partial = text(hang.stdout)
+            (results / 'sun-occlusion-gpu.txt').write_text(partial + '\n--- stderr ---\n' + text(hang.stderr))
+            record['gpu'] = {'timeout_s': 900, 'elapsed_s': round(time.time() - started, 1), 'partial_lines': len(partial.splitlines()),
+                             'last_lines': partial.splitlines()[-5:], 'stderr_tail': text(hang.stderr).splitlines()[-5:]}
+            (results / 'sun-occlusion.json').write_text(json.dumps(record, indent=1) + '\n')
+            raise
         record['gpu'] = dict(parse_gpu(run.stdout), exit_status=run.returncode, elapsed_s=round(time.time() - started, 1), executable_sha256=sha(GPU))
         (results / 'sun-occlusion-gpu.txt').write_text(run.stdout)
         ok = accept_gpu(record['gpu']) and ok
@@ -145,7 +158,9 @@ def main():
                           'clip': {k: (v.get('calls'), v.get('open'), v.get('edge'), v.get('covered')) for k, v in gpu['clip'].items()}, 'clip_reset': gpu['clip_reset'],
                           'jitter_visibility': {k: (v.get('unjittered'), v.get('corrected_invariant'), v.get('uncorrected_distinct')) for k, v in gpu['jitter_visibility'].items()},
                           'jitter_uncorrected': {k: sorted({p['uncorrected'] for p in gpu['jitter_phase'] if p.get('axis') == k}) for k in gpu['jitter_visibility']},
-                          'clip_jitter': gpu['clip_jitter']}
+                          'clip_jitter': gpu['clip_jitter'],
+                          'lens_gain': {k: (v.get('r'), v.get('g'), v.get('b'), v.get('expected_r'), v.get('restored')) for k, v in gpu['lens_gain'].items()},
+                          'lens_gain_cost': gpu['lens_gain_cost']}
     print(json.dumps(summary, indent=1))
     sys.exit(0 if record['passed'] else 1)
 

@@ -55,6 +55,9 @@ glow cards at gain 1, so a value below 1 dims them below the game's own look. A 
 glow layers add: at 1, two half-bright layers give 0.75 instead of 1; below 1 the stack never gets brighter than the
 clamp (a clamp below 1 is used in steps of 1/255, so `0.7` acts as 179/255 = 0.702).
 
+`lens_flare_gain` dims the game's own lens flares (the halos around engines and lights, and the sun's flare), for
+mods that draw them very large: `1` is the game's own brightness, `0.5` half, `0` none.
+
 ## Checking what was loaded
 
 The mod writes `x3m.log` next to `d3d9.dll`. Near its top:

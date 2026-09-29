@@ -324,7 +324,7 @@ bool install_at(const Addresses& a, bool override_enabled_value, bool log_enable
     patched_ = true;
     return done("ok", true);
 }
-bool initialize() {
+bool initialize(bool bracket_wanted) {
     const DWORD error = GetLastError();
     if (patched_) {
         SetLastError(error);
@@ -333,7 +333,7 @@ bool initialize() {
     wchar_t setting[4]{};
     const bool requested = x3m::config::get(L"X3M_SUN_OCCLUSION", setting, 4) == 1 && setting[0] == L'1';
     const bool log_requested = x3m::config::get(L"X3M_SUN_OCCLUSION_LOG", setting, 4) == 1 && setting[0] == L'1';
-    if (!requested && !log_requested) {
+    if (!requested && !log_requested && !bracket_wanted) {
         state_ = "disabled";
         SetLastError(error);
         return false;
@@ -355,12 +355,12 @@ bool initialize() {
         applied = install_at(Addresses{core::probe_site_va, core::probe_target_va, core::lens_site_va,
                                        core::lens_target_va, core::config_global_va, nullptr},
                              requested, log_requested);
-    log("sun_occlusion requested=%u log=%u patched=%u reason=%s probe_site=0x%08lx probe_target=0x%08lx probe_write=%s lens_site=0x%08lx lens_target=0x%08lx lens_write=%s",
+    log("sun_occlusion requested=%u log=%u patched=%u reason=%s probe_site=0x%08lx probe_target=0x%08lx probe_write=%s lens_site=0x%08lx lens_target=0x%08lx lens_write=%s lens_gain=%u",
         requested ? 1u : 0u, log_requested ? 1u : 0u, patched_ ? 1u : 0u, state_,
         static_cast<unsigned long>(core::probe_site_va), static_cast<unsigned long>(core::probe_target_va),
         probe_site_.patched_in ? (probe_site_.atomic_write ? "atomic" : "plain") : "none",
         static_cast<unsigned long>(core::lens_site_va), static_cast<unsigned long>(core::lens_target_va),
-        lens_site_.patched_in ? (lens_site_.atomic_write ? "atomic" : "plain") : "none");
+        lens_site_.patched_in ? (lens_site_.atomic_write ? "atomic" : "plain") : "none", bracket_wanted ? 1u : 0u);
     SetLastError(error);
     return applied;
 }

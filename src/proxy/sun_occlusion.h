@@ -46,7 +46,9 @@ struct Counters {
     std::uint32_t probes = 0, own = 0, answered_visible = 0, answered_hidden = 0, original = 0, foreign_thread = 0;
     std::uint32_t brackets = 0, multi_record_frames = 0, blocked = 0;
 };
-bool initialize(); // backend-load path only; one sun_occlusion line when either variable is set
+bool initialize(bool bracket_wanted = false); // backend-load path only; one sun_occlusion line when either variable is
+                                              // set or bracket_wanted (X3M_LENS_FLARE_GAIN < 1: the lens bracket alone,
+                                              // both redirects observe-only when neither variable is set)
 bool shutdown();   // restores both calls; true when nothing is installed
 bool install_at(const Addresses&, bool override_enabled, bool log_enabled);
 const char* state();

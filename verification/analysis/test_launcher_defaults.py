@@ -226,6 +226,23 @@ class LauncherDefaults(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertIn('--run-in-background cannot be combined with --vanilla', error)
 
+    def test_lens_flare_gain_is_opt_in(self):
+        # Default 1 = off: nothing sent (the empty-command stand above holds no X3M_LENS_FLARE_GAIN); an explicit value
+        # is sent fixed-point, in player mode too; out of range, --vanilla and --no-motion-output are refused.
+        self.assertNotIn('X3M_LENS_FLARE_GAIN', self.env())
+        self.assertEqual(self.env('--lens-flare-gain', '0.5')['X3M_LENS_FLARE_GAIN'], '0.5000')
+        self.assertEqual(self.env('--config', '--lens-flare-gain', '0.25'), {'X3M_LENS_FLARE_GAIN': '0.2500'})
+        for args, needle in ((('--lens-flare-gain', '1.5'), 'finite value between 0 and 1'),
+                             (('--lens-flare-gain', 'nan'), 'finite value between 0 and 1'),
+                             (('--no-motion-output', '--lens-flare-gain', '0.5'), 'requires --motion-output')):
+            with self.subTest(args=args):
+                code, _, error = self.launch(*args)
+                self.assertEqual(code, 2)
+                self.assertIn(needle, error)
+        code, _, error = self.launch('--lens-flare-gain', '0.5', vanilla=True)
+        self.assertEqual(code, 2)
+        self.assertIn('--lens-flare-gain cannot be combined with --vanilla', error)
+
     def test_every_promoted_default_has_an_accepted_opt_out(self):
         for args, name, value in OPT_OUTS:
             with self.subTest(args=args):

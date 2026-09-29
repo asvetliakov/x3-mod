@@ -483,3 +483,28 @@ is unset is unchanged (off), so the fixtures are unchanged and no Wine run was n
 | `python3 -m unittest test_sun_occlusion test_taa_box_resolution` | 36 tests OK (test_sun_occlusion 27: default 1/1, explicit 1/0, opt-out, no route, `--submit-phases`, `--vanilla` nothing; dependent options under the default; the row's `default=`) |
 | 51 launcher modules (every `verification/analysis/test_*.py` naming `manage.py`) plus test_taa_box_resolution | 726 tests OK |
 | Dry runs (Run 83 A stand command via `tools/manage.py launch --bottle X3 --dry-run`; `verification/results/sun-occlusion-default/dry_runs.sh`, output `dry_runs_out.txt`) | stand: `X3M_SUN_OCCLUSION=1`, `_CORE_F=1`, `_DEFAULT=1`; `+ --sun-occlusion`: `_DEFAULT=0`; `+ --no-sun-occlusion`: none; `+ --submit-phases`: none, exit 0; `--vanilla`: none |
+
+## 2026-09-29: lens-flare gain (worktree, not installed, not flown)
+
+`lens_flare_gain` / `--lens-flare-gain G` (0..1, default 1 = off): every ONE/ONE/ADD lens-bracket draw goes out with
+`SRCBLEND = BLENDFACTOR`, `BLENDFACTOR = G` (ZERO at 0), restored after the draw; the sun's bodies follow it (f x G
+over the wrap). Design and refusals: `docs/architecture/sun-partial-occlusion.md`, "Lens-flare gain".
+
+| Command | Result (measured) |
+|---|---|
+| `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_sun_occlusion.py` (record `verification/results/bottle-X3/sun-occlusion.json`) | passed; hook 74/0; GPU 135 checks, 0 failed, 0 skipped (128 + 7 lens-gain); 0.8,0.6,0.4 quad over black: G = 1 reads 0.800,0.600,0.400; G = 0.5 (applied 128/255) 0.400,0.302,0.200; G = 0 0,0,0; G = 0.5 over the ghost wrap at f = 0.5 0.200,0.149,0.102 (expected 0.201,0.151,0.100); every case restores the hostile application BLENDFACTOR and the snapshotted states; wined3d (the bottle's builtin D3D9) |
+| same run, `LENS_GAIN_COST` | 113 draws x 4 SetRenderState calls (the transaction without the draw) = 4.81 us per frame on wined3d |
+| `cmake --build build` (MinGW i686) / `check_no_x87.py build/d3d9.dll` | 0 warnings / 722 reachable functions, 0 violations |
+| `tools/config/generate.py --check` | PASS, 241 settings, 93 in the template |
+| host modules test_launcher_defaults (9, one new), test_config_schema (17), test_sun_occlusion (27, expected GPU checks 135) and the other launcher-parsing modules | all OK |
+
+Not covered by a fixture: the `MotionOutput` integration (`prepare_lens` -> `after_draw` through the draw hooks); the
+lens bracket opens only from the engine thunk. A first runner attempt at 05:25 hung in the GPU executable (1 s CPU in
+15 min, killed by the runner's 900 s timeout); the same binary then passed directly in 4.5 s and through the runner in
+8.2 s (cause not identified).
+
+Review fixes (same day, no Wine rerun): a `lens_flare_gain_frame` row every 300 frames while G < 1 in every tier
+(draws, gained, refused per reason); launcher help names both redirects; the runner feeds the GPU executable
+`stdin=DEVNULL` and on a timeout writes the partial output into `sun-occlusion-gpu.txt` and the record before raising.
+The committed record's source hash of `run_sun_occlusion.py` predates that runner edit. Build 0 warnings, x87 0
+violations (722 functions), host modules test_launcher_defaults 9 / test_config_schema 17 / test_sun_occlusion 27 OK.

@@ -75,6 +75,7 @@ static bool sun_lane_uv(const shadow_replay::SunLatch& latch, const renderer::Ca
 void MotionOutput::sun_occlusion_begin() noexcept {
     lens_frame_active_ = lens_suppress_ = false;
     lens_draws_ = lens_wrapped_ = lens_clipped_ = lens_refused_ = lens_dropped_ = lens_other_ = 0;
+    lens_gained_ = lens_gain_refused_ = 0;
     release_lens_depth();
     if (!sun_occlusion_.requested && !sun_occlusion_.log) return;
     namespace so = sun_occlusion;
@@ -162,8 +163,8 @@ void MotionOutput::sun_occlusion_begin() noexcept {
 }
 void MotionOutput::sun_occlusion_end() noexcept {
     if (sun_occlusion_.log && (lens_draws_ || lens_frame_active_ || lens_suppress_))
-        log("sun_lens_bracket device=%llu frame=%llu draws=%u wrapped=%u clipped=%u other=%u refused=%u dropped=%u variants=%u pairs=%u", id_, frame_, lens_draws_, lens_wrapped_, lens_clipped_, lens_other_, lens_refused_, lens_dropped_,
-            sun_occlusion_pass_ ? sun_occlusion_pass_->variants() : 0u, sun_occlusion_pass_ ? sun_occlusion_pass_->pairs() : 0u);
+        log("sun_lens_bracket device=%llu frame=%llu draws=%u wrapped=%u clipped=%u other=%u refused=%u dropped=%u variants=%u pairs=%u gained=%u gain_refused=%u", id_, frame_, lens_draws_, lens_wrapped_, lens_clipped_, lens_other_, lens_refused_, lens_dropped_,
+            sun_occlusion_pass_ ? sun_occlusion_pass_->variants() : 0u, sun_occlusion_pass_ ? sun_occlusion_pass_->pairs() : 0u, lens_gained_, lens_gain_refused_);
     lens_chain_drawn_ = lens_chain_drawn_ || lens_draws_ != 0;
     lens_frame_active_ = lens_suppress_ = false;
     release_lens_depth();
@@ -264,6 +265,12 @@ void MotionOutput::prepare_lens(const MotionDrawCall& call, MotionRoute& route) 
         }
     }
     if (lens_suppress_ && route.submit) { route.submit = false; route.submission_error = D3D_OK; ++lens_dropped_; }
+    // Lens-flare gain: after the sun wrap (it binds programs and textures only, never a blend state), so on the sun's
+    // own bodies the two compose as f * G. A dropped draw is not submitted and takes no gain.
+    if (lens_gain_.active) {
+        ++lens_gain_window_draws_;
+        if (route.submit) apply_lens_gain(route, plain);
+    }
     if (!sun_occlusion_.log) return;
     DWORD z[4]{};
     static constexpr D3DRENDERSTATETYPE depth_states[4] = {D3DRS_ZENABLE, D3DRS_ZWRITEENABLE, D3DRS_ZFUNC, D3DRS_COLORWRITEENABLE};
@@ -301,5 +308,75 @@ void MotionOutput::finish_lens(MotionRoute& route) noexcept {
     if (logged_failures_ < failure_log_limit) {
         ++logged_failures_;
         log("motion_output_restore_failed device=%llu frame=%llu index=%lu result=%08lx what=sun_lens", id_, frame_, counters_.draws, hr);
+    }
+}
+// Lens-flare gain (src/proxy/lens_flare_gain.h), one lens-scene draw that goes out: SRCBLEND = BLENDFACTOR with the
+// quantised G in every lane (ZERO at G = 0), on the admitted ONE / ONE / ADD law only. Everything is checked before the
+// first setter; the values put back after the draw are the route's shadow of the application's own (blend_known: the
+// setter hooks' shadow, or this draw's Get* cache with the hooks off, which begin_draw_reads refreshed for this draw
+// because the route is on). Direct calls: the setter hook's shadow keeps the application's values. Integer only.
+void MotionOutput::refuse_lens_gain(unsigned reason) noexcept {
+    ++lens_gain_refused_;
+    if (reason < lens_flare_gain::refusal_count) ++lens_gain_window_refused_[reason];
+    if (reason >= lens_flare_gain::refusal_count || (lens_gain_logged_ & (1u << reason))) return;
+    lens_gain_logged_ |= 1u << reason;
+    log("lens_flare_gain_refused device=%llu frame=%llu index=%lu reason=%s src=%lu dst=%lu op=%lu note=draw_left_native", id_, frame_,
+        static_cast<unsigned long>(counters_.draws), lens_flare_gain::refusal_name(reason),
+        static_cast<unsigned long>(shadow_.composition_blend_known[0] ? shadow_.composition_blend[0] : 0),
+        static_cast<unsigned long>(shadow_.composition_blend_known[1] ? shadow_.composition_blend[1] : 0),
+        static_cast<unsigned long>(shadow_.composition_blend_known[2] ? shadow_.composition_blend[2] : 0));
+}
+void MotionOutput::apply_lens_gain(MotionRoute& route, bool plain) noexcept {
+    namespace lfg = lens_flare_gain;
+    if (!lens_gain_caps_) return refuse_lens_gain(lfg::Caps);
+    if (!enabled_ || !device_) return refuse_lens_gain(lfg::Route);         // no fresh state shadow without the route
+    if (shadow_.recording) return refuse_lens_gain(lfg::Recording);        // a setter would be recorded, not executed
+    if (!plain || route.lens_gain) return refuse_lens_gain(lfg::RoutedDraw); // another feature owns this draw's blend
+    DWORD enable = 0;
+    if (!blend_known(0) || !blend_known(1) || !blend_known(2) || (lens_gain_.constant && !blend_known(7)) ||
+        FAILED(render_state(D3DRS_ALPHABLENDENABLE, &enable)))
+        return refuse_lens_gain(lfg::StateUnknown);
+    if (!lfg::admits(enable, shadow_.composition_blend[0], shadow_.composition_blend[1], shadow_.composition_blend[2]))
+        return refuse_lens_gain(lfg::BlendLaw);
+    D3DRENDERSTATETYPE states[2]{};
+    DWORD values[2]{};
+    const unsigned count = lfg::steps(lens_gain_, states, values);
+    for (unsigned i = 0; i < count; ++i) {
+        if (FAILED(direct_call<SetRenderStateFn>(SetRenderState, states[i], values[i]))) {
+            restore_lens_gain(route); // exactly what was applied; the draw goes out native
+            return refuse_lens_gain(lfg::Device);
+        }
+        route.lens_gain = std::uint8_t(i + 1);
+    }
+    ++lens_gained_;
+    ++lens_gain_window_gained_;
+}
+// Every 300 frames while G < 1, in every logging tier (the plain flight's evidence that the gain acted).
+void MotionOutput::log_lens_gain_window() noexcept {
+    const unsigned* r = lens_gain_window_refused_;
+    log("lens_flare_gain_frame device=%llu frame=%llu frames=%u gain=%.4f draws=%u gained=%u refused_caps=%u refused_route=%u refused_recording=%u refused_routed_draw=%u refused_state_unknown=%u refused_blend_law=%u refused_device=%u",
+        id_, frame_, lens_gain_window_frames_, double(lens_gain_.gain), lens_gain_window_draws_, lens_gain_window_gained_,
+        r[lens_flare_gain::Caps], r[lens_flare_gain::Route], r[lens_flare_gain::Recording], r[lens_flare_gain::RoutedDraw],
+        r[lens_flare_gain::StateUnknown], r[lens_flare_gain::BlendLaw], r[lens_flare_gain::Device]);
+    lens_gain_window_frames_ = lens_gain_window_draws_ = lens_gain_window_gained_ = 0;
+    for (unsigned& v : lens_gain_window_refused_) v = 0;
+}
+void MotionOutput::restore_lens_gain(MotionRoute& route) noexcept {
+    D3DRENDERSTATETYPE states[2]{};
+    DWORD values[2]{};
+    lens_flare_gain::steps(lens_gain_, states, values);
+    HRESULT first = S_OK;
+    for (unsigned i = route.lens_gain; i; --i) {
+        const unsigned index = composition_blend_index(states[i - 1]);
+        const HRESULT hr = direct_call<SetRenderStateFn>(SetRenderState, states[i - 1], shadow_.composition_blend[index]);
+        if (SUCCEEDED(first) && FAILED(hr)) first = hr;
+    }
+    route.lens_gain = 0;
+    if (SUCCEEDED(first)) return;
+    if (!motion_state_lost_) { motion_state_lost_ = true; motion_state_error_ = first; }
+    ++counters_.restore_failures; invalidate_taa(TaaInvalidateSite::RestoreFailed);
+    if (logged_failures_ < failure_log_limit) {
+        ++logged_failures_;
+        log("motion_output_restore_failed device=%llu frame=%llu index=%lu result=%08lx what=lens_flare_gain", id_, frame_, counters_.draws, first);
     }
 }

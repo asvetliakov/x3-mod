@@ -101,6 +101,18 @@ CHECK lens_no_per_draw_creation PASS
 LENS_VARIANTS programs=2 shaders_created=6
 CALLS execute=33 lens_draw=5
 CHECK device_calls_bounded PASS
+CHECK lens_gain_law PASS
+CHECK lens_gain_admits PASS
+CHECK lens_gain_blendfactor_cap PASS
+LENS_GAIN name=off gain=1.0000 applied=1.0000 wrap=0 r=0.8000 g=0.6000 b=0.4000 expected_r=0.8000 expected_g=0.6000 expected_b=0.4000 restored=1
+CHECK lens_gain_off PASS
+LENS_GAIN name=half gain=0.5000 applied=0.5020 wrap=0 r=0.4000 g=0.3020 b=0.2000 expected_r=0.4016 expected_g=0.3012 expected_b=0.2008 restored=1
+CHECK lens_gain_half PASS
+LENS_GAIN name=zero gain=0.0000 applied=0.0000 wrap=0 r=0.0000 g=0.0000 b=0.0000 expected_r=0.0000 expected_g=0.0000 expected_b=0.0000 restored=1
+CHECK lens_gain_zero PASS
+LENS_GAIN name=half_wrapped gain=0.5000 applied=0.5020 wrap=1 r=0.2000 g=0.1490 b=0.1020 expected_r=0.2008 expected_g=0.1506 expected_b=0.1004 restored=1
+CHECK lens_gain_half_wrapped PASS
+LENS_GAIN_COST draws_per_frame=113 frames=200 calls_per_draw=4 us_per_frame=4.81
 CHECK refuse_blend_off PASS
 CHECK refuse_blend_law PASS
 CHECK refuse_srgb_write PASS
@@ -191,4 +203,4 @@ CHECK after_reset_seeds_and_matches PASS
 CLIP_RESET verdict=applied clipped=1 f=0.5000 open=1.0000,1.0000,1.0000 covered=0.2000,0.4000,0.6000 ps_created=0 vs_created=0 pairs=2
 CHECK clip_after_reset PASS
 CHECK detach_releases_everything PASS
-RESULT PASS checks=128 failures=0
+RESULT PASS checks=135 failures=0
