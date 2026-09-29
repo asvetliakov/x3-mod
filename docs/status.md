@@ -34,11 +34,14 @@ Nothing beyond the installed Run105 (`99734bdb`); release 0.8.0 (`a3c85e37`) is 
 
 ## Run queue
 
-Nothing open. Run 107 A completed 2026-09-29 (run381): the `cutevent` interval (`call 0x0048f550`, the cut-event/script
-driver) grows 0.05 -> 12.3 ms per frame over 3.5 minutes in a Mayhem 3 fight while the container passes stay at 0.7 ms
-and the sweep at 0; it is the owner of the growing `pre_render` ([note](reverse-engineering/main-loop-input-region.md),
-Run381 section). Next: a disassembly of the script task scheduler to decide between "more tasks" and "costlier tasks"
-and to place a per-script / per-command census ([run table](verification/user-runs.md)).
+Run 108 A to be queued once the Run108 candidate (scene-graph census row) is installed: a 2-3 minute stay in any Mayhem
+sector under `--perf` to read `scene_graph_census` (engine node count against the proxy's registry, the newest
+unattached nodes' bodies, the insert-caller histogram). Diagnosis so far ([note](reverse-engineering/object-lifetimes.md)
+Run382, [scheduler note](reverse-engineering/script-task-scheduler.md)): the engine registry gains 27+ scene nodes per
+frame on Mayhem 3 (0.2 on stock) and removes none; `0x0048f550` is the scene-graph animation tick that walks every node
+each frame (66-92 ns per accumulated node), so one leak explains the fps decline, the registry overflow at any capacity
+(run382: `capacity_exhausted` at frame 10079 with live=262144) and the shimmer's return after ~5 minutes; a reload
+clears it.
 
 ## Open items
 
