@@ -13,7 +13,24 @@
 static_assert(sizeof(void*) == 4, "Reviewed x86 registry ABI only");
 namespace {
 using x3m::object_lifetime::Reason;
-constexpr unsigned MaxEntries = 16384;
+// Table capacity (docs/reverse-engineering/object-lifetimes.md, "Registry table
+// capacity"). Run358 (Mayhem 3) disabled the former 16384 during load; node
+// handles reach about 49k there (29k stock). 262144 = 2^18 (user decision, room
+// for larger mods) keeps the live load at 50k keys to 0.19; the longest probes
+// at 50k keys are in probe_length_out.txt
+// (verification/results/object-lifetime-capacity/probe_length.py). Deletion
+// shifts back (erase()), so no retired slot lengthens a probe: the occupied
+// slots are always those of a fresh table holding the live keys. The
+// multiplier is odd, so handles below 2^18 never collide. Static .bss (zero
+// pages, committed on touch): entries 24 B, baseline_pointers 4 B,
+// baseline_records 16 B per slot = 44 B x 262144 = 11,534,336 B (was 720,896 B
+// at 16384), plus the unchanged 262,144 B baseline_buckets. baseline_pointers
+// (a pointer-uniqueness set keyed by value) and baseline_records (visit order)
+// are install-time scratch indexed independently of entries. clear_entries()
+// writes the 6 MiB entries array once per table clear (load, registry change,
+// fail).
+constexpr unsigned MaxEntries = x3m::object_lifetime::RegistryCapacity;
+static_assert(MaxEntries && !(MaxEntries & (MaxEntries - 1)) && MaxEntries <= (1u << 24));
 enum Kind : unsigned { Insert, Remove, Destroy, Load };
 struct Entry {
     std::uint32_t key = 0;
@@ -21,6 +38,7 @@ struct Entry {
     std::uint64_t serial = 0;
     unsigned state = 0;
 };
+static_assert(sizeof(Entry) == 24);
 struct Scope {
     void* previous_seh;
     void* handler;
@@ -45,6 +63,9 @@ struct Lock {
     ~Lock() { model_lock.clear(std::memory_order_release); }
 };
 std::array<Entry, MaxEntries> entries{};
+// Occupancy, maintained under model_lock (O(1) stats, no table scan).
+// max_probe: the longest find() probe since installation (slots read).
+unsigned live = 0, peak_live = 0, max_probe = 0;
 // Installation-only scratch, never used to adopt an individual draw lazily.
 std::array<std::uintptr_t, 65536> baseline_buckets{};
 std::array<std::uintptr_t, MaxEntries> baseline_pointers{};
@@ -62,6 +83,9 @@ std::uint64_t observer_epoch = 0, load_epoch = 0, registry_epoch = 0, revision =
 std::atomic<bool> observation{false};
 std::atomic<const char*> diagnostic{"disabled"};
 Reason disabled_reason = Reason::Disabled;
+// First disable per installation, logged later from the frame boundary.
+x3m::object_lifetime::DisableEvent disable_event{};
+std::atomic<bool> disable_event_pending{false};
 struct Patch {
     unsigned char* site = nullptr;
     void* trampoline = nullptr;
@@ -76,7 +100,16 @@ bool retain_retired_dispatch = true, dispatch_published = false, retired_dispatc
 bool read_memory(std::uintptr_t address, void* out, std::size_t size) {
     return x3m::engine_memory::read(address, out, size);
 }
+// Callers hold model_lock. Paths that clear the table call this first so the
+// recorded live count is the one that failed; the recorded load/registry epochs
+// and mutation_revision are likewise the values before the failing path's own
+// increment(registry_epoch) / increment(revision). The first event is kept
+// until taken, also across a reinstallation (before_reinstall).
 void fail(Reason reason, const char* text) {
+    if (observation && !disable_event_pending.load(std::memory_order_relaxed)) {
+        disable_event = {reason, text, live, peak_live, capacity, load_epoch, registry_epoch, revision, false};
+        disable_event_pending.store(true, std::memory_order_release);
+    }
     disabled_reason = reason;
     observation = false;
     diagnostic = text;
@@ -104,6 +137,7 @@ void journal_append(JournalKind kind, std::uint64_t serial) {
 }
 void clear_entries() {
     for (auto& entry : entries) entry = {};
+    live = 0;
     journal_append(JournalKind::FlushAll, 0);
 }
 bool read_registry(std::uintptr_t& result) {
@@ -122,24 +156,54 @@ bool bind_registry(std::uintptr_t value) {
     }
     return true;
 }
+unsigned home(std::uint32_t key) {
+    return (key * 2654435761u) % capacity;
+}
+// Linear probing without tombstones: state is 0 (empty) or 1 (live). A search
+// ends at the first empty slot; the table is full only at live == capacity.
 Entry* find(std::uint32_t key, bool create) {
     if (!key) return nullptr;
-    const unsigned first = (key * 2654435761u) % capacity;
-    Entry* vacant = nullptr;
+    const unsigned first = home(key);
     for (unsigned n = 0; n < capacity; ++n) {
         auto& entry = entries[(first + n) % capacity];
-        if (entry.state == 1 && entry.key == key) return &entry;
-        if (entry.state == 2 && !vacant) vacant = &entry;
-        if (entry.state == 0) return create ? (vacant ? vacant : &entry) : nullptr;
+        if (entry.state == 0 || entry.key == key) {
+            if (n >= max_probe) max_probe = n + 1;
+            if (entry.state) return &entry;
+            return create ? &entry : nullptr;
+        }
     }
-    return create ? vacant : nullptr;
+    max_probe = capacity;
+    return nullptr;
+}
+void occupy(Entry* entry, std::uint32_t key, std::uintptr_t value, std::uint64_t serial) {
+    if (entry->state != 1 && ++live > peak_live) peak_live = live;
+    *entry = {key, value, serial, 1};
+}
+// Backward-shift deletion (Knuth 6.4, Algorithm R): empty the slot, then move
+// each later entry of the same probe run whose home does not lie cyclically in
+// (hole, slot] into the hole, whole (key, value, serial, state). O(run length):
+// the run ends at an empty slot, at the latest the one just emptied. Entry
+// pointers taken before a retire() are stale afterwards; no caller uses one.
+void erase(Entry* entry) {
+    unsigned hole = static_cast<unsigned>(entry - entries.data()), slot = hole;
+    entries[hole] = {};
+    for (;;) {
+        slot = slot + 1 == capacity ? 0 : slot + 1;
+        auto& next = entries[slot];
+        if (next.state == 0) return;
+        const unsigned h = home(next.key);
+        const bool stays = hole <= slot ? (hole < h && h <= slot) : (hole < h || h <= slot);
+        if (stays) continue;
+        entries[hole] = next;
+        next = {};
+        hole = slot;
+    }
 }
 void retire(std::uint32_t key) {
     if (auto* entry = find(key, false)) {
         journal_append(JournalKind::Retired, entry->serial);
-        entry->state = 2;
-        entry->value = 0;
-        entry->serial = 0;
+        erase(entry);
+        --live;
     }
 }
 enum class Lookup { Found, Missing, Unavailable };
@@ -208,7 +272,7 @@ bool initial_snapshot() {
             baseline_pointers[position] = value;
             auto* entry = find(key, true);
             if (!entry || !increment(next_serial)) return reject();
-            *entry = {key, value, next_serial, 1};
+            occupy(entry, key, value, next_serial);
             ++count;
             address = raw.words[0];
         }
@@ -238,9 +302,9 @@ bool verify_ownership() {
         unsigned char bytes[6]{};
         if (!p.owned || !read_memory(reinterpret_cast<std::uintptr_t>(p.site), bytes, p.size) ||
             std::memcmp(bytes, p.ours.data(), p.size)) {
+            fail(Reason::ObserverFailure, "hook_ownership_lost");
             clear_entries();
             increment(revision);
-            fail(Reason::ObserverFailure, "hook_ownership_lost");
             return false;
         }
     }
@@ -269,13 +333,13 @@ void finish(Scope* scope, bool normal) {
     if (lookup(scope->map, scope->key, current) != Lookup::Found || current != scope->value) return;
     auto* entry = find(scope->key, true);
     if (!entry) {
+        fail(Reason::CapacityExhausted, "capacity_exhausted");
         clear_entries();
         increment(revision);
-        fail(Reason::CapacityExhausted, "capacity_exhausted");
         return;
     }
     if (!increment(next_serial)) return;
-    *entry = {scope->key, scope->value, next_serial, 1};
+    occupy(entry, scope->key, scope->value, next_serial);
 }
 }
 
@@ -307,10 +371,10 @@ __attribute__((force_align_arg_pointer)) void __cdecl x3m_lifetime_enter(Scope* 
                 // No trusted state exists yet in that dormant case. Losing a
                 // previously bound registry is different and must fail closed.
                 if (registry) {
+                    fail(Reason::RegistryUnavailable, "registry_unavailable");
                     clear_entries();
                     increment(registry_epoch);
                     increment(revision);
-                    fail(Reason::RegistryUnavailable, "registry_unavailable");
                 }
             } else if (bind_registry(current) && scope->map == registry) {
                 // Registry destruction is engine teardown (0x004710f0 frees the engine
@@ -556,6 +620,9 @@ bool install(const Sites& sites, unsigned requested_capacity, unsigned fault, un
         registry_dead = false;
         in_flight = 0;
         clear_entries();
+        peak_live = max_probe = 0;
+        // An event not yet logged survives, marked as older than this installation.
+        if (disable_event_pending.load(std::memory_order_relaxed)) disable_event.before_reinstall = true;
         disabled_reason = Reason::Disabled;
         if (!increment(observer_epoch) || !increment(load_epoch) || !increment(registry_epoch) ||
             !increment(revision)) {
@@ -664,7 +731,19 @@ const char* status() {
 }
 Stats stats() {
     Lock lock;
-    return {baseline_complete, baseline_count};
+    return {baseline_complete, baseline_count, any_owned(), observation.load(), live, peak_live, max_probe,
+            capacity, load_epoch};
+}
+bool disable_pending() {
+    return disable_event_pending.load(std::memory_order_relaxed);
+}
+bool take_disable_event(DisableEvent* out) {
+    if (!out || !disable_event_pending.load(std::memory_order_acquire)) return false;
+    Lock lock;
+    if (!disable_event_pending.load(std::memory_order_relaxed)) return false;
+    *out = disable_event;
+    disable_event_pending.store(false, std::memory_order_relaxed);
+    return true;
 }
 bool current(std::uintptr_t map, std::uintptr_t node, std::uint32_t node_handle, std::uintptr_t camera,
              std::uint32_t camera_handle, Snapshot* out) {
@@ -684,10 +763,10 @@ bool current(std::uintptr_t map, std::uintptr_t node, std::uint32_t node_handle,
             std::uintptr_t expected = 0;
             if (!read_registry(expected)) {
                 if (registry) {
+                    fail(Reason::RegistryUnavailable, "registry_unavailable");
                     clear_entries();
                     increment(registry_epoch);
                     increment(revision);
-                    fail(Reason::RegistryUnavailable, "registry_unavailable");
                 }
                 return Reason::RegistryUnavailable;
             }

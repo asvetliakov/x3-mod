@@ -38,6 +38,10 @@ class ObjectLifetimeRunnerTests(unittest.TestCase):
                  b' control_reserved_diff=0 control_max_low_bits=64 control_st0=3fff8000000000000000/00000000000000000000'
                  b' control_ftw=0xc0/0xc0 compare_diff_slots=0xff compare_exponent_diff=80 compare_reserved_diff=0'
                  b' compare_max_low_bits=64 compare_ftw=0xc0/0xc0\n')
+    READ_PATH += (b'REGISTRY capacity=262144 inserted=262145 event_reason=capacity_exhausted event_live=262144'
+                  b' event_capacity=262144 insert_us=1.500 current_us_50k=0.400\n'
+                  b'CHURN capacity=262144 distinct=362144 live=51000 max_probe=3 miss_us_before=0.500'
+                  b' miss_us_after=0.510\n')
     READ_PATH += b''.join(b'JOURNAL_CASE name=%s result=PASS\n' % n.encode() for n in RUNNER.JOURNAL_CASES)
     RESULT = b'RESULT PASS checks=1 failures=0 backend_calls=1\n'
 
@@ -132,6 +136,28 @@ class ObjectLifetimeRunnerTests(unittest.TestCase):
         self.assertTrue(result['passed'])
         self.assertEqual(result['command'][-2:], ['verification/probe/build', 'verification/probe/build/object_lifetime.exe'])
         self.assertNotIn(str(self.root), json.dumps(result['command']))
+
+    # The registry capacity case: one REGISTRY line whose capacity + 1 insert recorded capacity_exhausted
+    # with every slot live, and its PASS case line.
+    def test_registry_capacity_required(self):
+        line = next(l for l in self.READ_PATH.split(b'\n') if l.startswith(b'REGISTRY '))
+        missing = self.READ_PATH.replace(line + b'\n', b'') + self.RESULT
+        wrong_reason = self.READ_PATH.replace(b'event_reason=capacity_exhausted', b'event_reason=none') + self.RESULT
+        short = self.READ_PATH.replace(b'event_live=262144', b'event_live=16384') + self.RESULT
+        churn = next(l for l in self.READ_PATH.split(b'\n') if l.startswith(b'CHURN '))
+        no_churn = self.READ_PATH.replace(churn + b'\n', b'') + self.RESULT
+        small_churn = self.READ_PATH.replace(b'distinct=362144', b'distinct=100000') + self.RESULT
+        failed = self.READ_PATH.replace(b'name=registry_capacity result=PASS',
+                                        b'name=registry_capacity result=FAIL') + self.RESULT
+        for output in (missing, wrong_reason, short, failed, no_churn, small_churn,
+                       self.READ_PATH + line + b'\n' + self.RESULT):
+            with patch.object(RUNNER.subprocess, 'run', side_effect=self.fake_run(output)):
+                self.assert_failed(RUNNER.run(self.root))
+        with patch.object(RUNNER.subprocess, 'run', side_effect=self.fake_run()):
+            result = RUNNER.run(self.root)
+        self.assertTrue(result['passed'])
+        self.assertEqual(result['registry']['capacity'], '262144')
+        self.assertEqual(result['churn']['distinct'], '362144')
 
     # Direct reads are the only mode: exactly one TIMING line, mode=direct, with a
     # folded record that is not the unfolded FNV seed.

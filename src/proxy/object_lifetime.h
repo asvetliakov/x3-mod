@@ -28,15 +28,43 @@ struct Snapshot {
     std::uint64_t observer_epoch = 0, load_epoch = 0, registry_epoch = 0;
     std::uint64_t node_serial = 0, camera_serial = 0, mutation_revision = 0;
 };
+// Registry table capacity (object_lifetime.cpp, MaxEntries): the observer's own
+// open-addressing table of live registry keys. Exceeding it disables the
+// observer (capacity_exhausted), never evicts. 262144 since 2026-09-29: the
+// Mayhem 3 universe disabled the former 16384 table during load (run358).
+constexpr std::uint32_t RegistryCapacity = 262144;
 struct Stats {
     bool baseline_complete = false;
     std::uint32_t baseline_entries = 0;
+    bool installed = false; // patches owned (active, or disabled with recovery_required)
+    bool active = false;
+    // Table occupancy: live keys, the highest live count and the longest
+    // find() probe (slots read) since installation, and the capacity.
+    std::uint32_t live = 0, peak_live = 0, max_probe = 0, capacity = 0;
+    std::uint64_t load_epoch = 0;
+};
+// The first disable after an installation, recorded under the observer's lock
+// at the fail point (inside the observed engine call, where nothing is logged)
+// and taken once by the frame boundary that logs it (object_lifetime_disabled).
+// live/peak_live are read before the failing path clears the table, and the
+// epochs and mutation_revision before its own increments. An event not taken
+// before a reinstallation is kept and marked before_reinstall.
+struct DisableEvent {
+    Reason reason = Reason::Disabled;
+    const char* text = "";
+    std::uint32_t live = 0, peak_live = 0, capacity = 0;
+    std::uint64_t load_epoch = 0, registry_epoch = 0, mutation_revision = 0;
+    bool before_reinstall = false;
 };
 bool initialize(); // X3M_OBJECT_LIFETIME=1, exact executable + in-memory code gate
 bool active();
 bool recovery_required(); // code/protection ownership remains while disabled
 const char* status();
 Stats stats();
+// Lock-free pending flag (one relaxed load, per frame); take_disable_event
+// copies and clears the event under the lock, false when none is pending.
+bool disable_pending();
+bool take_disable_event(DisableEvent* out);
 bool current(std::uintptr_t registry, std::uintptr_t node, std::uint32_t node_handle, std::uintptr_t camera,
              std::uint32_t camera_handle, Snapshot* out);
 bool shutdown(); // does not overwrite a foreign replacement; retry is supported
@@ -105,7 +133,7 @@ struct FixtureSites {
     void* load_target = nullptr;
     std::uintptr_t engine_slot = 0;
 };
-bool fixture_install(const FixtureSites&, unsigned capacity = 16384, unsigned fail_stage = 0, unsigned fail_site = 0,
+bool fixture_install(const FixtureSites&, unsigned capacity = RegistryCapacity, unsigned fail_stage = 0, unsigned fail_site = 0,
                      bool initial_snapshot = true,
                      bool retain_dispatch = false); // false: fixture guarantees no retained callers
 bool fixture_shutdown(unsigned fail_stage = 0, unsigned fail_site = 0);

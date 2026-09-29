@@ -311,6 +311,45 @@ Capacity exhaustion, counter exhaustion and lost hook ownership disable
 observation. Failed membership reads retire the affected identities, so a later
 read cannot silently revive their old serials.
 
+### Registry table capacity (2026-09-29)
+
+The observer's own table of live registry keys is a fixed open-addressing array
+(`RegistryCapacity` in `object_lifetime.h`, linear probing). Run358 on the Mayhem 3
+tree had the observer off from the first routed frame (all 618,169 routed draws
+refused at motion gate 5, 0 `motion_lifetime` rows; stock run356 had 4,988), and the
+reason was never logged. The shadow-retention row shows the observer's mutation
+revision advancing 110,474 during load and then freezing, where stock run356 advanced
+97,662 and kept moving (measured). The inferred cause is `capacity_exhausted` of the
+former 16384-entry table: node handles reach about 49k on Mayhem 3 against about 29k
+on the stock tree; the log cannot distinguish it from another `fail()` reason.
+
+The capacity is now 262144 (2^18, user decision for larger mods): 44 B of static
+storage per slot across `entries` and the two install-only baseline arrays,
+11,534,336 B in .bss (was 720,896 B); the DLL's .bss is 21,852,456 B. Removal now
+shifts later entries of the probe run back (Knuth's Algorithm R) instead of leaving
+tombstones. Handles come from an up-only counter, so with tombstones every slot
+became non-empty after about capacity distinct handles in one load epoch and each
+insert then scanned the whole table twice under the spin lock; now the occupied
+slots are always those of a fresh table holding the live keys. At 50,000 live keys
+the replayed placement gives a longest hit/miss probe of 1/2 slots for sequential
+handles, 1/5 for handles scattered over 1..200000, 9/13 for uniform 32-bit keys and
+1/3 for a churned window (`verification/results/object-lifetime-capacity/probe_length.py`).
+
+Every disable records one event under the observer's lock: reason, live and peak
+live count read before the failing path clears the table, capacity, and the load
+epoch, registry epoch and mutation revision as they were before that path's own
+increments (the mutation's `enter()` has already counted it). The next Present logs
+it once as the always-tier row `object_lifetime_disabled device= frame= reason=
+reason_code= live= peak_live= capacity= load_epoch= registry_epoch=
+mutation_revision= before_reinstall=`; `frame` is the logging frame, not the failing
+call. An event not yet logged survives a reinstallation with `before_reinstall=1`
+(a later disable is then not recorded until it is taken). Under `--debug`,
+`object_lifetime_stats` every 300 frames carries `live`, `peak_live`, `max_probe`
+(the longest `find()` probe since installation), `capacity`, `status`, `active` and
+`load_epoch`; the install row gains `capacity=`. Fixture cases `registry_capacity`
+and `registry_churn` are in the
+[object-lifetime-observer ledger](../verification/object-lifetime-observer.md).
+
 Every engine read of the observer (`read_registry`, `lookup`, the ownership
 check, the baseline snapshot) goes through `src/proxy/engine_memory.h`
 (2026-09-12): a span is validated against a cache of `VirtualQuery`'d

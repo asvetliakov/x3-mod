@@ -1957,6 +1957,28 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
                 static_cast<DWORD>(state.vetoes), unsigned(state.first_veto), state.replay_active);
         }
     }
+    // The object-lifetime observer's first disable (object_lifetime.h, DisableEvent): recorded under its own
+    // lock inside the engine call that failed, where nothing is logged; logged once here at the next Present
+    // (always tier). Otherwise one relaxed load per frame; the lock is taken only when an event is pending.
+    if (object_lifetime::disable_pending()) {
+        object_lifetime::DisableEvent event{};
+        if (object_lifetime::take_disable_event(&event))
+            log("object_lifetime_disabled device=%llu frame=%llu reason=%s reason_code=%u live=%lu peak_live=%lu "
+                "capacity=%lu load_epoch=%llu registry_epoch=%llu mutation_revision=%llu before_reinstall=%u",
+                ctx.id, ctx.frame, event.text, unsigned(event.reason), static_cast<DWORD>(event.live),
+                static_cast<DWORD>(event.peak_live), static_cast<DWORD>(event.capacity), event.load_epoch,
+                event.registry_epoch, event.mutation_revision, unsigned(event.before_reinstall));
+    }
+    // --debug: registry table occupancy every 300 frames while the observer's patches are installed.
+    if (log_tier::cached_debug && ctx.frame % 300 == 0) {
+        const auto lifetime = object_lifetime::stats();
+        if (lifetime.installed)
+            log("object_lifetime_stats device=%llu frame=%llu live=%lu peak_live=%lu max_probe=%lu capacity=%lu "
+                "status=%s active=%u load_epoch=%llu",
+                ctx.id, ctx.frame, static_cast<DWORD>(lifetime.live), static_cast<DWORD>(lifetime.peak_live),
+                static_cast<DWORD>(lifetime.max_probe), static_cast<DWORD>(lifetime.capacity),
+                object_lifetime::status(), unsigned(lifetime.active), lifetime.load_epoch);
+    }
     if (ctx.capture && ctx.remaining) --ctx.remaining;
     ++ctx.frame;
     ctx.draws = 0;

@@ -356,7 +356,8 @@ int main() {
         for (unsigned i = 0; i < 4; ++i)
             check(!std::memcmp(addresses[i], originals[i], sizes[i]), "rejected layout leaves all sites unchanged");
     }
-    check(!lt::fixture_install(sites, 0) && !lt::fixture_install(sites, 16385), "invalid observer capacity rejected");
+    check(!lt::fixture_install(sites, 0) && !lt::fixture_install(sites, lt::RegistryCapacity + 1),
+          "invalid observer capacity rejected");
     // Baseline versus wrapped full register/flag/FX effects on the same original.
     insert(primary, node);
     std::array<std::uint32_t, 9> before_input{}, before_output{};
@@ -511,7 +512,7 @@ int main() {
     check(lt::stats().baseline_complete && lt::stats().baseline_entries == 2 && snapshot().known,
           "complete initial map snapshot includes existing camera");
     check(lt::shutdown(), "baseline shutdown");
-    auto bad_baseline = [&](unsigned limit = 16384) {
+    auto bad_baseline = [&](unsigned limit = lt::RegistryCapacity) {
         check(lt::fixture_install(sites, limit), "invalid baseline keeps observer available for future births");
         check(!lt::stats().baseline_complete && lt::stats().baseline_entries == 0 && !snapshot().known,
               "invalid baseline publishes no partial tokens");
@@ -546,7 +547,7 @@ int main() {
     primary.capacity = 3;
     bad_baseline();
     primary.capacity = 8;
-    check(lt::fixture_install(sites, 16384, 0, 0, false), "installation without baseline");
+    check(lt::fixture_install(sites, lt::RegistryCapacity, 0, 0, false), "installation without baseline");
     check(!snapshot().known, "draw lookup cannot lazily adopt existing entries");
     insert(primary, node);
     insert(primary, camera);
@@ -565,6 +566,14 @@ int main() {
     engine_slot = nullptr;
     auto lost = snapshot();
     check(!lost.known && !lt::active(), "loss after trusted registry permanently invalidates");
+    // Each disable leaves one event; a later installation keeps an untaken one, so the cases take theirs.
+    auto disabled_by = [](lt::Reason reason, const char* text) {
+        lt::DisableEvent event{};
+        return lt::take_disable_event(&event) && event.reason == reason && !std::strcmp(event.text, text) &&
+               !event.before_reinstall && !lt::disable_pending();
+    };
+    check(disabled_by(lt::Reason::RegistryUnavailable, "registry_unavailable"),
+          "draw-time registry loss records registry_unavailable");
     engine_slot = &engine;
     check(!snapshot().known, "registry restoration cannot reuse stale serial");
     check(lt::shutdown(), "loss shutdown");
@@ -573,6 +582,8 @@ int main() {
     engine_slot = nullptr;
     insert(unrelated, third);
     check(!lt::active(), "generic map call detects loss after trusted registry");
+    check(disabled_by(lt::Reason::RegistryUnavailable, "registry_unavailable"),
+          "hooked-call registry loss records registry_unavailable");
     engine_slot = &engine;
     check(!snapshot().known, "post-loss birth observation remains unavailable");
     check(lt::shutdown(), "mutation registry-loss shutdown");
@@ -582,15 +593,201 @@ int main() {
     insert(primary, node);
     insert(primary, camera);
     check(snapshot().known, "capacity holds two entries");
+    const auto before_overflow = lt::stats();
+    const auto before_overflow_revision = snapshot().mutation_revision;
     insert(primary, third);
     check(!lt::active() && snapshot().reason == lt::Reason::CapacityExhausted,
           "capacity overflow fails closed without token recycling");
+    {
+        lt::DisableEvent event{};
+        check(lt::disable_pending() && lt::take_disable_event(&event) && event.reason == lt::Reason::CapacityExhausted &&
+                  !std::strcmp(event.text, "capacity_exhausted") && event.live == 2 && event.peak_live == 2 &&
+                  event.capacity == 2 && event.load_epoch == before_overflow.load_epoch &&
+                  event.mutation_revision == before_overflow_revision + 1 && !event.before_reinstall, // + enter()'s bump
+              "capacity overflow records one disable event with the live count before the clear");
+        check(!lt::disable_pending() && !lt::take_disable_event(&event), "disable event is taken once");
+        const auto after = lt::stats();
+        check(after.installed && !after.active && after.live == 0 && after.peak_live == 2 && after.capacity == 2,
+              "disabled observer keeps its patches and reports the cleared table");
+    }
     check(lt::shutdown(), "capacity shutdown");
     empty(primary);
+    // Registry capacity (object-lifetimes.md, "Registry table capacity"): more than the former 16384 live
+    // entries stay known at the production capacity, and one entry past it disables with a
+    // capacity_exhausted event carrying the live count that the object_lifetime_disabled row logs.
+    {
+        const unsigned case_start = failures, total = lt::RegistryCapacity + 1, former = 16384;
+        auto* many = static_cast<Node*>(std::calloc(total, sizeof(Node)));
+        primary.capacity = 1u << 19; // one key per engine bucket (the observer's lookup walks at most 512 links)
+        check(many != nullptr, "registry capacity nodes allocated");
+        check(lt::fixture_install(sites) && lt::stats().capacity == lt::RegistryCapacity,
+              "default installation uses the production capacity");
+        lt::DisableEvent event{};
+        check(!lt::disable_pending() && !lt::take_disable_event(&event), "no disable event after installation");
+        auto known = [&](unsigned a, unsigned b) {
+            lt::Snapshot s{};
+            return lt::current(reinterpret_cast<std::uintptr_t>(&primary), reinterpret_cast<std::uintptr_t>(&many[a]),
+                               many[a].handle, reinterpret_cast<std::uintptr_t>(&many[b]), many[b].handle, &s);
+        };
+        LARGE_INTEGER frequency{}, t0{}, t1{};
+        QueryPerformanceFrequency(&frequency);
+        bool errors_kept = true;
+        double current_us_50k = 0;
+        QueryPerformanceCounter(&t0);
+        for (unsigned i = 0; many && i + 1 < total; ++i) {
+            many[i].handle = 1000 + i;
+            SetLastError(0x145);
+            invoke_custom(reinterpret_cast<void*>(&insert_entry), &primary, many[i].handle,
+                          reinterpret_cast<std::uintptr_t>(&many[i]));
+            errors_kept = errors_kept && GetLastError() == 0x246;
+            if ((i & 255) == 0) em::next_frame();
+            if (i == former) {
+                const auto st = lt::stats();
+                check(st.active && st.live == former + 1 && st.max_probe == 1 && known(former, 0),
+                      "more than the former 16384 entries stay known");
+            }
+            if (i == 49999) {
+                LARGE_INTEGER a{}, b{};
+                QueryPerformanceCounter(&a);
+                bool all = true;
+                for (unsigned n = 0; n < 1000; ++n) all = known(n * 49, 49999 - n * 49) && all;
+                QueryPerformanceCounter(&b);
+                current_us_50k = double(b.QuadPart - a.QuadPart) * 1e6 / double(frequency.QuadPart) / 1000.0;
+                check(all, "entries known at 50000 live");
+            }
+        }
+        QueryPerformanceCounter(&t1);
+        const double insert_us = double(t1.QuadPart - t0.QuadPart) * 1e6 / double(frequency.QuadPart) / (total - 1);
+        check(errors_kept, "insert backend LastError preserved across the capacity case");
+        const auto full = lt::stats();
+        check(many && full.active && full.live == lt::RegistryCapacity && full.peak_live == lt::RegistryCapacity &&
+                  known(total - 2, 0) && known(0, total - 2) && !lt::disable_pending(),
+              "a full table stays known without a disable event");
+        if (many) {
+            many[total - 1].handle = 1000 + total - 1;
+            invoke_custom(reinterpret_cast<void*>(&insert_entry), &primary, many[total - 1].handle,
+                          reinterpret_cast<std::uintptr_t>(&many[total - 1]));
+        }
+        check(!lt::active() && snapshot().reason == lt::Reason::CapacityExhausted, "capacity + 1 disables the observer");
+        // Not taken before shutdown and reinstallation: the event survives, marked before_reinstall.
+        check(lt::disable_pending() && lt::shutdown(), "registry capacity shutdown with the event pending");
+        empty(primary);
+        check(lt::fixture_install(sites) && lt::active() && lt::disable_pending(),
+              "reinstallation keeps the untaken disable event");
+        const bool taken = lt::take_disable_event(&event);
+        check(taken && event.reason == lt::Reason::CapacityExhausted && !std::strcmp(event.text, "capacity_exhausted") &&
+                  event.live == lt::RegistryCapacity && event.peak_live == lt::RegistryCapacity &&
+                  event.capacity == lt::RegistryCapacity && event.load_epoch == full.load_epoch &&
+                  event.before_reinstall,
+              "capacity + 1 records capacity_exhausted with live == capacity, logged after the reinstallation");
+        std::printf("REGISTRY capacity=%u inserted=%u event_reason=%s event_live=%u event_capacity=%u insert_us=%.3f "
+                    "current_us_50k=%.3f\n",
+                    lt::RegistryCapacity, total, taken ? event.text : "none", event.live, event.capacity, insert_us,
+                    current_us_50k);
+        check(lt::shutdown(), "registry capacity reinstallation shutdown");
+        empty(primary);
+        std::free(many);
+        std::printf("JOURNAL_CASE name=registry_capacity result=%s\n", failures == case_start ? "PASS" : "FAIL");
+    }
+    // Registry churn (object-lifetimes.md, "Registry table capacity"): deletion shifts back, so no retired
+    // slot remains. First colliding and wrapping probe runs in an 8-slot table (home = key mod 8), then more
+    // distinct handles than the capacity within one load epoch with about 51k live: observation stays on,
+    // survivors keep their serials, and missing-key lookups cost the same before and after.
+    {
+        const unsigned case_start = failures;
+        auto serial = [&](Node& a, Node& b) {
+            lt::Snapshot s{};
+            lt::current(reinterpret_cast<std::uintptr_t>(&primary), reinterpret_cast<std::uintptr_t>(&a), a.handle,
+                        reinterpret_cast<std::uintptr_t>(&b), b.handle, &s);
+            return s.known ? s.node_serial : 0;
+        };
+        auto add = [&](Node& n) {
+            invoke_custom(reinterpret_cast<void*>(&insert_entry), &primary, n.handle, reinterpret_cast<std::uintptr_t>(&n));
+        };
+        static Node small[6];
+        const std::uint32_t small_keys[6] = {1, 9, 17, 7, 15, 8}; // runs 1,9,17 and 7,15 wrapping into 8's home
+        empty(primary);
+        check(lt::fixture_install(sites, 8), "install 8-slot churn table");
+        for (unsigned i = 0; i < 6; ++i) {
+            small[i].handle = small_keys[i];
+            add(small[i]);
+        }
+        std::uint64_t small_serial[6]{};
+        for (unsigned i = 0; i < 6; ++i) small_serial[i] = serial(small[i], small[(i + 1) % 6]);
+        remove(primary, 9);  // 17 shifts back into 9's slot
+        remove(primary, 7);  // 15 shifts back across the wrap, 8 follows toward its home
+        bool small_kept = lt::active() && lt::stats().live == 4;
+        for (unsigned i : {0u, 2u, 4u, 5u}) small_kept = small_kept && serial(small[i], small[0]) == small_serial[i];
+        Node gone{{}, 9};
+        small_kept = small_kept && !serial(gone, small[0]) && lt::stats().max_probe <= 5; // inserting 8 reads slots 0..4
+        check(small_kept, "backward shift keeps colliding and wrapping entries with their serials");
+        check(lt::shutdown(), "8-slot churn shutdown");
+        empty(primary);
+
+        const unsigned survivors = 1000, window = 50000, step = 10000;
+        const unsigned total = lt::RegistryCapacity + 2 * window; // distinct handles, one load epoch
+        auto* pool = static_cast<Node*>(std::calloc(total + 2000, sizeof(Node)));
+        check(pool != nullptr, "churn nodes allocated");
+        primary.capacity = 1u << 19;
+        check(lt::fixture_install(sites), "install churn case");
+        LARGE_INTEGER frequency{};
+        QueryPerformanceFrequency(&frequency);
+        // Missing keys from beyond every inserted handle: their homes land among live entries.
+        auto miss_us = [&]() {
+            double best = 1e30;
+            for (unsigned rep = 0; rep < 5; ++rep) {
+                em::next_frame();
+                LARGE_INTEGER a{}, b{};
+                QueryPerformanceCounter(&a);
+                for (unsigned k = 0; k < 2000; ++k) serial(pool[total + k], pool[0]);
+                QueryPerformanceCounter(&b);
+                const double us = double(b.QuadPart - a.QuadPart) * 1e6 / double(frequency.QuadPart) / 2000.0;
+                if (us < best) best = us;
+            }
+            return best;
+        };
+        unsigned next = 0, oldest = survivors;
+        std::uint64_t survivor_serial[survivors]{};
+        double before_us = 0, after_us = 0;
+        if (pool) {
+            for (unsigned i = 0; i < total + 2000; ++i) pool[i].handle = 1000 + i;
+            for (; next < survivors + window; ++next) {
+                add(pool[next]);
+                if ((next & 255) == 0) em::next_frame();
+            }
+            for (unsigned i = 0; i < survivors; ++i) survivor_serial[i] = serial(pool[i], pool[(i + 1) % survivors]);
+            before_us = miss_us();
+            while (next < total) {
+                for (unsigned n = 0; n < step && next < total; ++n, ++next, ++oldest) {
+                    remove(primary, pool[oldest].handle);
+                    add(pool[next]);
+                    if ((next & 255) == 0) em::next_frame();
+                }
+            }
+            after_us = miss_us();
+        }
+        const auto churned = lt::stats();
+        bool kept = pool != nullptr;
+        for (unsigned i = 0; kept && i < survivors; ++i)
+            kept = survivor_serial[i] && serial(pool[i], pool[(i + 1) % survivors]) == survivor_serial[i];
+        check(churned.active && churned.live == survivors + window && churned.peak_live == survivors + window,
+              "churn past the capacity keeps observation on with the live window");
+        check(kept, "survivors keep their serials through the churn");
+        check(pool && serial(pool[total - 1], pool[0]) && !serial(pool[oldest - 1], pool[0]),
+              "newest handle known, a retired handle unknown");
+        check(churned.max_probe <= 16, "probe lengths stay short after the churn");
+        check(after_us <= 2.0 * before_us, "missing-key lookups within 2x of the pre-churn cost");
+        std::printf("CHURN capacity=%u distinct=%u live=%u max_probe=%u miss_us_before=%.3f miss_us_after=%.3f\n",
+                    lt::RegistryCapacity, next, churned.live, churned.max_probe, before_us, after_us);
+        check(lt::shutdown(), "churn shutdown");
+        empty(primary);
+        std::free(pool);
+        std::printf("JOURNAL_CASE name=registry_churn result=%s\n", failures == case_start ? "PASS" : "FAIL");
+    }
     // Each patch failure and each rollback failure at every site remains retryable.
     for (unsigned site = 0; site < 4; ++site)
         for (unsigned stage = 1; stage <= 6; ++stage) {
-            check(!lt::fixture_install(sites, 16384, stage, site), "injected install failure");
+            check(!lt::fixture_install(sites, lt::RegistryCapacity, stage, site), "injected install failure");
             check(!lt::active(), "failed install never publishes observation");
             if (stage >= 4) check(lt::recovery_required(), "failed rollback retains trampoline ownership");
             check(lt::shutdown() && !lt::recovery_required(), "rollback retry succeeds");
@@ -987,7 +1184,7 @@ int main() {
     }
     // Production retirement keeps a previously published dispatcher callable,
     // while the fixture-only repeated-install seam above promises no such callers.
-    check(lt::fixture_install(sites, 16384, 0, 0, true, true), "retained production-style installation");
+    check(lt::fixture_install(sites, lt::RegistryCapacity, 0, 0, true, true), "retained production-style installation");
     std::int32_t thunk_delta = 0;
     std::memcpy(&thunk_delta, static_cast<unsigned char*>(sites.insert_entry) + 1, 4);
     auto* saved_thunk = reinterpret_cast<void*>(reinterpret_cast<std::uintptr_t>(sites.insert_entry) + 5 + thunk_delta);

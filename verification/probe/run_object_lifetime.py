@@ -17,7 +17,11 @@ INPUTS = [
 ]
 JOURNAL_CASES = ('no_consumer', 'retire_in_order', 'partial_drain', 'invalid_drain', 'flush_load_epoch',
                  'flush_registry_destroy', 'flush_registry_rebind', 'overflow_and_recovery', 'cost',
-                 'reregistration_and_shutdown', 'flush_capacity_exhausted', 'saturated_registration')
+                 'reregistration_and_shutdown', 'flush_capacity_exhausted', 'saturated_registration',
+                 # Not journal cases; they share the JOURNAL_CASE line: more than 16384 live entries at the
+                 # production capacity, and capacity + 1 records capacity_exhausted (object_lifetime.h);
+                 # more distinct handles than the capacity within one load epoch (backward-shift deletion).
+                 'registry_capacity', 'registry_churn')
 WINE = '/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine'
 # The fixtures' FNV fold seed: a record equal to it means nothing was folded.
 SEED_RECORD = f'{1469598103934665603:016x}'
@@ -86,6 +90,17 @@ def run(root):
                                    {'cycle_frame_us', 'cycle_stalled_us', 'cycle_shutdown_us', 'queries_frame',
                                     'queries_stalled', 'queries_shutdown'} <= set(data['read_modes'][0]))
             data['journal_cases'] = {c.get('name'): c.get('result') for c in cases}
+            # The registry capacity case's figures: exactly one line, the disable reason it recorded at capacity + 1.
+            registry = [parse(l) for l in lines if l.startswith('REGISTRY ')]
+            data['registry'] = registry[0] if len(registry) == 1 else None
+            registry_reported = bool(data['registry'] and data['registry'].get('event_reason') == 'capacity_exhausted'
+                                     and data['registry'].get('event_live') == data['registry'].get('capacity')
+                                     and {'insert_us', 'current_us_50k', 'inserted'} <= set(data['registry']))
+            churn = [parse(l) for l in lines if l.startswith('CHURN ')]
+            data['churn'] = churn[0] if len(churn) == 1 else None
+            registry_reported = registry_reported and bool(
+                data['churn'] and int(data['churn'].get('distinct', 0)) > int(data['churn'].get('capacity', 0)) > 0
+                and {'max_probe', 'miss_us_before', 'miss_us_after'} <= set(data['churn']))
             # x87 comparison fidelity: the FXSAVE/FXRSTOR round-trip control decides
             # whether the ST0-ST7 slots are compared bit-exactly or under the
             # documented significand tolerance. Recorded so a report from an exact
@@ -99,7 +114,7 @@ def run(root):
             identical = (x87_reported and read_modes_reported and len(cases) == len(JOURNAL_CASES) and data['journal_cases'] == dict.fromkeys(JOURNAL_CASES, 'PASS') and
                          len(data['journal']) == 1 and
                          {'cycle_idle_us', 'cycle_journal_us', 'retirement_delta_us', 'empty_drain_us'} <= set(data['journal'][0]) and
-                         read_path_reported)
+                         read_path_reported and registry_reported)
             data['passed'] = bool(data['exit_code'] == 0 and match and match[0] == last and identical and
                                   match[1] == 'PASS' and data['failures'] == 0 and data['checks'] > 0 and
                                   data['sources_before'] == data['sources_after_run'] and

@@ -242,3 +242,25 @@ check), all twelve `JOURNAL_CASE` lines PASS,
 `x87_roundtrip_exact=false`. Host test
 `PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_object_lifetime_runner`:
 9 tests, OK.
+
+## Registry capacity 262144, backward-shift deletion and the disable row (2026-09-29)
+
+Change and cause: [object-lifetimes.md, "Registry table capacity"](../reverse-engineering/object-lifetimes.md#registry-table-capacity-2026-09-29).
+Fixture rerun, bottle X3 (arm64, `FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`): `passed=true`, exit 0, 692 checks,
+0 failures, all fourteen `JOURNAL_CASE` lines PASS. New cases (measured under Wine/FEX; the loops advance the
+engine-reader frame every 256 operations):
+
+- `registry_capacity`: 262,145 inserts through the hooked insert; 16,385 and 262,144 live entries known, LastError
+  preserved on every insert, the next insert disables with `capacity_exhausted`, `event_live=262144`. The event is
+  left untaken across shutdown and reinstallation and then read with `before_reinstall=1`. `insert_us=0.809` per
+  hooked insert including the backend, `current_us_50k=0.960` per known `current()` at 50k live.
+- `registry_churn`: an 8-slot table with colliding and wrapping runs keeps every surviving serial through two
+  backward shifts; then 362,144 distinct handles within one load epoch (1,000 survivors plus a 50,000 window
+  sliding by remove/insert): observation stays on, `live=51000`, survivors keep their serials, `max_probe=2`,
+  missing-key `current()` 0.339 us before and 0.340 us after the churn (best of 5 x 2,000 calls).
+- The bounded capacity-2 case checks the event (`live=2`, revision = pre-insert + the insert's own bump, taken
+  once); both registry-loss cases now take their `registry_unavailable` event, since an untaken one survives
+  reinstallation.
+
+Host test `test_object_lifetime_runner` + `test_iteration05_lifetimes`: 24 tests, OK. The proxy DLL (CMake,
+RelWithDebInfo) builds with 0 warnings; `check_no_x87.py` PASS, 0 violations over 719 reachable functions.

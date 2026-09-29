@@ -1,0 +1,12 @@
+capacity=65536 load=0.763 case="sequential handles 1..50000" max_hit_probe=1 max_miss_probe=6
+capacity=65536 load=0.763 case="50000 of handles 1..200000" max_hit_probe=84 max_miss_probe=117
+capacity=65536 load=0.763 case="50000 uniform 32-bit keys" max_hit_probe=97 max_miss_probe=112
+capacity=65536 load=0.763 case="churned: 1..1000 plus 313001..362000" max_hit_probe=2 max_miss_probe=6
+capacity=131072 load=0.381 case="sequential handles 1..50000" max_hit_probe=1 max_miss_probe=2
+capacity=131072 load=0.381 case="50000 of handles 1..200000" max_hit_probe=11 max_miss_probe=18
+capacity=131072 load=0.381 case="50000 uniform 32-bit keys" max_hit_probe=17 max_miss_probe=22
+capacity=131072 load=0.381 case="churned: 1..1000 plus 313001..362000" max_hit_probe=1 max_miss_probe=4
+capacity=262144 load=0.191 case="sequential handles 1..50000" max_hit_probe=1 max_miss_probe=2
+capacity=262144 load=0.191 case="50000 of handles 1..200000" max_hit_probe=1 max_miss_probe=5
+capacity=262144 load=0.191 case="50000 uniform 32-bit keys" max_hit_probe=9 max_miss_probe=13
+capacity=262144 load=0.191 case="churned: 1..1000 plus 313001..362000" max_hit_probe=1 max_miss_probe=3
