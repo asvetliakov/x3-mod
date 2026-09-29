@@ -1,0 +1,118 @@
+{
+  "checks": {
+    "atomic_word": true,
+    "attach_call_before_site": true,
+    "attach_writes_parent_and_scene": true,
+    "clear_calls_release_per_node": true,
+    "constructor_appends_to_unattached_list": true,
+    "epilogue_unchanged": true,
+    "exe_identity": true,
+    "exit_is_loop_fall_through": true,
+    "function_whole_instructions": true,
+    "jne_reads_sub_flags": true,
+    "no_dword_into_window": true,
+    "no_interior_branch": true,
+    "no_other_claim": true,
+    "no_raw_branch_into_window": true,
+    "patched_decode": true,
+    "preferred_base": true,
+    "release_prologue_epilogue": true,
+    "release_unlinks_and_removes": true,
+    "site_no_relative_branch": true,
+    "site_sources": true,
+    "site_whole_instruction": true,
+    "source_constants": true,
+    "stub_decode": true,
+    "stub_twin": true,
+    "tail_slot_dead": true,
+    "window_bytes": true,
+    "window_whole_instructions": true
+  },
+  "dword_refs": 0,
+  "exe_info": {
+    "bytes": 2153984,
+    "checksum": "0x00000000",
+    "identity_digest": "9d8ddf43f06031f4fb21e5e700d55a2df8881c76bd8c5ce4a9af0866d6dc38c8",
+    "known": "shipped (LAA set, CheckSum 0)",
+    "known_image": true,
+    "laa": true,
+    "sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab"
+  },
+  "exe_sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+  "function_instructions": 473,
+  "incoming_window_branches": [
+    [
+      "0x41f336",
+      "0x41f4d1"
+    ],
+    [
+      "0x41f3d1",
+      "0x41f4d1"
+    ],
+    [
+      "0x41f436",
+      "0x41f4d1"
+    ],
+    [
+      "0x41f447",
+      "0x41f4d1"
+    ]
+  ],
+  "other_claims": 157,
+  "other_claims_in_function": [],
+  "overlapping_claims": [],
+  "raw_branch_hits": [
+    [
+      "0x41f336",
+      "0x41f4d1"
+    ],
+    [
+      "0x41f3d1",
+      "0x41f4d1"
+    ],
+    [
+      "0x41f436",
+      "0x41f4d1"
+    ],
+    [
+      "0x41f447",
+      "0x41f4d1"
+    ]
+  ],
+  "raw_branch_hits_not_interior": [
+    [
+      "0x41f336",
+      "0x41f4d1"
+    ],
+    [
+      "0x41f3d1",
+      "0x41f4d1"
+    ],
+    [
+      "0x41f436",
+      "0x41f4d1"
+    ],
+    [
+      "0x41f447",
+      "0x41f4d1"
+    ]
+  ],
+  "result": "PASS",
+  "site": "0x41f4d1",
+  "site_bytes": "836c242001",
+  "site_qword": "0x41f4d0",
+  "site_sources": [
+    "0x41f336",
+    "0x41f3d1",
+    "0x41f436",
+    "0x41f447"
+  ],
+  "tail_esp_offsets": [
+    "0x3c",
+    "0x40",
+    "0x60",
+    "0x64",
+    "0x68"
+  ],
+  "window_bytes": "8d7740e8b10d0d008b44246c8b481c83c40c518bc7e8cfa80600836c2420010f854cfeffff"
+}

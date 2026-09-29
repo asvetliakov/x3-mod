@@ -14,6 +14,7 @@
 #include "lod_occlusion.h"
 #include "run_in_background.h"
 #include "sun_flare_fix.h"
+#include "dust_leak_fix.h"
 #include "fov.h"
 #include "music_keep.h"
 #include "collide_narrow_census.h"
@@ -1999,6 +2000,8 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
     // callers since the previous row. Read-only through engine_memory::read; its own cost is walk_us=.
     if ((log_tier::cached_perf || log_tier::cached_debug) && ctx.frame % 300 == 0)
         scene_graph_census::report(ctx.id, ctx.frame);
+    // --perf/--debug: the dust-leak fix's detour count every 300 frames (one arena word read; nothing per frame).
+    if ((log_tier::cached_perf || log_tier::cached_debug) && ctx.frame % 300 == 0) dust_leak_fix::report(ctx.frame);
     if (ctx.capture && ctx.remaining) --ctx.remaining;
     ++ctx.frame;
     ctx.draws = 0;
@@ -5384,6 +5387,9 @@ void initialize_log(HMODULE module) {
                                  // horizontal bound SHRD/CMP at 0x0047e391 (six bytes) claimed through engine_patch
                                  // with a saturating stub in front of the tail, same window, disjoint from every other
                                  // claim
+    dust_leak_fix::initialize(); // X3M_DUST_LEAK_FIX=on|off, unset = on: the dust-scene fill's loop tail SUB at
+                                 // 0x0041f4d1 (five bytes) claimed through engine_patch with a release-and-leave stub
+                                 // in front of the tail, same window, disjoint from every other claim
     point_light_admission::initialize(); // X3M_POINT_LIGHT_ROOT_ADMISSION=1 only; six-byte JG site at 0x004c27af, same
                                          // window
     collide_box_cull::initialize();      // X3M_COLLIDE_BOX_CULL=1 only; two box early-out trampolines on the sector

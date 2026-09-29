@@ -605,7 +605,7 @@ walk grow either way. Stopping the growth needs either the data or the engine to
   previously drawn id into the next iteration and must survive; flags are dead because
   `0x0041f4d1` is a `sub`.
 
-Neither was built or verified.
+The engine change is the `dust_leak_fix` patch ("Patch" below); the data change is the mod's.
 
 ```sh
 S=<scratch>; cp "$X3/X3AP.exe" $S/                      # Ghidra project in scratch, import once
@@ -616,6 +616,82 @@ analyzeHeadless $S X3Render -process X3AP.exe -noanalysis -readOnly -scriptPath 
 PYTHONPATH=tools/analysis python3 verification/results/run383-dust-leak/dust_bodies.py "$X3" [--stock]
 python3 verification/results/run383-dust-leak/census_series.py <session.log>
 ```
+
+#### Patch: `dust_leak_fix` (2026-09-29)
+
+`src/proxy/dust_leak_fix.cpp` with `src/proxy/dust_leak_fix_sites.h` (config key `dust_leak_fix`,
+launcher `--dust-leak-fix on|off`, `X3M_DUST_LEAK_FIX`, default on; ledger
+[dust-leak-fix.md](../verification/dust-leak-fix.md)). One `engine_patch` claim of the loop's common
+tail and a 45-byte stub; the required properties are (a) a node whose body failed is released the
+way the engine releases unattached nodes and (b) the fill stops for that frame after the first
+failure. Everything below is read from the MinGW objdump of the installed EXE (SHA-256 `fdbf3418…`)
+and checked by `verification/probe/verify_dust_leak_fix_site.py` (27 checks) unless marked
+otherwise.
+
+**1. The release routine `0x00487be0` is the right one, and a never-bound node satisfies it.** It
+is cdecl (node at `[ebp+8]`; `push ebp; mov ebp,esp; and esp,-8; push ecx; push ebx; push esi;
+push edi` … `pop edi; pop esi; pop ebx; mov esp,ebp; pop ebp; ret`, the epilogue from `0x00487e1d`
+with the `ret` at `0x00487e23`), so EBX/ESI/
+EDI/EBP survive and EAX/ECX/EDX do not. Per node it: frees `+0x1ac` when `+0x1a8`/`+0x1ac` are
+set; runs `0x004c5330` when `+0x170` is set; runs the `+0x250` callback when `+0x1f4` bit `0x40` is
+set; releases every child on the `+0xc` list recursively (`0x00487c90`); detaches from the scene
+`0x00489e90` when `+0x1c` is set; frees `+0x1b8` when `+0x130` bit `0x20` is set; scans the
+render manager's `R+0x18` lists for references to the node (`0x00487cef`-`0x00487d53`, free through
+`0x00486af0`); **unlinks the node from whatever list it is on** (`0x00487d55`: `[prev]=next;
+[next+4]=prev`, node `+0` next, `+4` prev); **Removes it from `R+0xc` by its id `+0x28`**
+(`0x00487d70 call 0x004efd30`, the map entry that continues at `0x004efd39`); frees the two strings
+`+0x20`/`+0x24`; then `memset(node, 0, 0x270)` (or `0x790` when `+0x12c` bit 0) and `free`
+(`0x00518de0`, `0x0050e1b0`). The leaked node has every optional field at 0 from the constructor's
+`memset` (`0x00486d5f`), an empty child list (`+0xc` → `+0x10` = 0, `0x00486d8b`-`0x00486d97`),
+`+0x1c` = 0 and `+0/+4` linking it into `R+0x28` (`0x00486e28`-`0x00486e38`), so it takes none of the
+optional branches and needs nothing it lacks. It does not call the Destroy `0x004efe10` (that is
+the manager's table teardown, not per node). It is exactly what the render-manager clear
+`0x00470f50` runs per `R+0x28` node (`0x00471050 push esi; call 0x00487be0`), i.e. the path that
+frees these nodes today on a load or quit. Its `free` does not read LastError, and the engine's
+own iteration already called `malloc`/`memset` (`0x00486d1b`, `0x00486d5f`) before the tail, so
+LastError is not live at the site (inferred; no LastError reader between the site and the next
+`SetLastError` was looked for beyond the fill function).
+
+**2. Site and displaced bytes.** Site `0x0041f4d1` `83 6c 24 20 01` = `SUB dword [ESP+0x20],1`, one
+whole five-byte instruction, no relative branch, the first five bytes of the aligned qword
+`0x0041f4d0` (one `lock cmpxchg8b`); `SiteSpec {"dust_fill_failed_body", 0x0041f4d1, 5, ret_pop 8,
+rel32_offset 0}`. The 37-byte window `0x0041f4b7`-`0x0041f4db` (`lea esi,[edi+0x40]; call 0x004f0270;
+mov eax,[esp+0x6c]; mov ecx,[eax+0x1c]; add esp,0xc; push ecx; mov eax,edi; call 0x00489da0`
+(attach); the SUB; `jne 0x0041f328`) is compared before the claim. State at the site: EDI = the
+node (the three failure branches `0x0041f3d1` jl, `0x0041f436` jne, `0x0041f447` je) or 0
+(`0x0041f336` je after a failed allocation) or an attached node (fall-through from the attach; the
+attach `0x00489da0` pushes ecx/ebx/esi/edi and pops them, writes `+0x18` = 0 at `0x00489dbe` and
+`+0x1c` = scene at `0x00489de5`); EBP = the drawn body id (or the previous iteration's; read by
+`0x0041f3cc test ebp,ebp` next iteration, so it must survive); ESI = a scratch pointer; EBX = 0 after
+the offset loop; ESP = the function's frame (`sub esp,0x4c` + `push ebx/ebp/esi/edi`), with
+`[ESP+0x20]` = nodes still to fill, `[ESP+0x18]` = the pick index; flags = whatever the branch left
+(dead: the SUB rewrites them and the JNE reads the SUB's). The site is the target of exactly those
+four branches and of nothing else in the image (no other direct branch, no raw rel8/rel32 encoding
+in `.text`, no dword reference into the window). The stub (`dust_leak_fix_sites.h`): `test edi,edi;
+je done; cmp dword [edi+0x1c],0; jne done; push eax/ecx/edx; push edi; call 0x00487be0; add esp,4;
+pop edx/ecx/eax; mov dword [esp+0x20],1; inc dword [hits]; done: jmp [slot]` → tail (`SUB; jmp
+0x0041f4d6`). Only a never-attached node (EDI ≠ 0, `+0x1c` = 0) is released; the counter 1 minus
+the displaced SUB's 1 = 0 makes the JNE fall through. Every register but the dead flags is as the
+engine left it (EAX/ECX/EDX by the pops, the rest callee-saved, ESP balanced), the FPU/SSE state is
+untouched (the release path for such a node runs no x87/SSE code, inferred from its callees), and
+no pointer into the DLL exists in the stub (the counter word lives in the arena after the slot).
+
+**3. The loop exit is the function's own.** After the JNE falls through, `0x0041f4dc mov
+ecx,[esp+0x64]` onwards writes EAX/ECX/EDX/EBX/ESI/EDI/EBP before reading them (`0x0041f4dc`-
+`0x0041f566`), and between `0x0041f4dc` and `ret 8` at `0x0041f658` the only ESP-relative accesses
+are `[esp+0x64]`, `[esp+0x60]`, `[esp+0x3c]`, `[esp+0x68]`, `[esp+0x40]` and `[esp]` (the verifier's
+`tail_esp_offsets`), none an alias of `[ESP+0x20]` at any push depth (at most five deep before a
+call), so the counter left at 0 is never read again; the epilogue `pop edi; pop esi; pop ebp; pop
+ebx; add esp,0x4c; ret 8` (`0x0041f649`-`0x0041f658`) is unchanged and the stack it pops is the
+prologue's. No jump back into the loop from the tail is needed: the exit is reached through the
+engine's own JNE, so one site suffices.
+
+**Cost.** Per frame the proxy runs nothing; the stub adds two compares and one indirect jump per
+loop iteration (`NumDustInstances` per frame at most), and on a failure one release (what the
+engine's clear does per node) instead of a leaked 0x270-byte block, plus the fill stops. Under
+`--perf`/`--debug` one `dust_leak_fix hits=` row per 300 frames reads the counter. In a sector on
+background 103 the expected row is `hits=300` per 300 frames (one failed attempt per frame) and
+`engine_nodes` flat (inferred from the Run383 evidence; not flown yet).
 
 ## Exit-time engine read fault (2026-09-24)
 
