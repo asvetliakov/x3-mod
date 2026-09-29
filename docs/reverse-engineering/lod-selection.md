@@ -894,6 +894,85 @@ instances per firing frame, about 750 more primitives in the bullet draw
 (24 faces each, inferred from the body sizes in the bolt-footprint note), no
 extra draw call.
 
+### Lens-flare cull on the small-parts site (`--lens-flare-gain 0`, 2026-09-29)
+
+Purpose: a measurement (Run 105 A showed the proxy-side skip of ~170 lens-flare draws saves ~1 ms while run384/run385
+put the engine's `views` phase at 24-26 us of CPU per issued draw, tracking the draw count). Code:
+`src/proxy/lens_flare_cull.{h,cpp}`, `src/proxy/lens_flare_cull_core.h`; verifier
+`verification/probe/verify_lens_flare_cull_site.py` (re-runs the small-parts verifier for the shared window); fixture:
+the lens section of `verification/probe/cull_small_parts_fixture.cpp`; ledger: [sun-occlusion.md](../verification/sun-occlusion.md),
+"lens-flare gain 0 culls in the engine". Evidence script `verification/results/lens-flare-cull/pass_callers.py`
+(capstone over the installed EXE, output `pass_callers_out.txt`).
+
+**The flare sprites pass through `0x0047cfe0` (measured).** The lens block `0x00472442..0x004724a7` (the sun's lens
+scene, [lens-flare-visibility.md](lens-flare-visibility.md) 12) runs, in order: `0x00472466 mov eax,[0x00608518];
+mov ecx,[eax+0x64]; push ecx; mov edi,esi; call 0x0047e780` (the lens scene `g+0x64` of the body manager through the
+root walker) and then `0x00472490 push esi; call 0x0047e6e0` (the traversal that issues the draws). `0x0047e780` is
+the per-scene root walker: `esi = [scene+8]; while ([esi] != 0) { push 0; push edi; mov ecx,esi; call 0x0047cfe0;
+esi = [esi]; }` (`0x0047e7a0..0x0047e7af`), the pass recursing over the children from its exit site. The pass has
+exactly two direct callers in `.text`: its own recursion `0x0047d53c` and the walker's `0x0047e7a5`; the walker has
+three (`0x0047226b` per ordinary view, `0x00472471` the lens scene, `0x0047e8c2` the `Clear(3)` helper). The run385
+census rows agree: every `v\007xx` / `v\010xx` sprite drawn after the scene marker has a `cull_census` row from the
+measure and exit sites of `0x0047cfe0` (radius 1000, `s` 18-19 at 60 m, `lod=0`, kept), 115-181 nodes per frame.
+So a node whose renderable bit the pass clears is never drawn by the traversal: the small-parts site carries the
+cull without a second claim site.
+
+**Site.** The same claim `0x0047d2a2` (window `0x0047d294..0x0047d2cc`, cull target `0x0047d2c3`, liveness as in
+"Cull small parts site"): `cull_small_parts::chain_stub` makes one `engine_patch` claim for both stubs (`push_front`;
+the later pushed runs first and continues into the earlier one, then the tail) and `cull_small_parts::shutdown()`
+restores once. Production order: the small-parts stub is chained first (when its setting is on), the lens stub in
+front of it; the fixture exercises both orders and the lens stub alone. Beyond the window, install pins three
+instruction spans and fails closed on any mismatch (`reason=lens_bytes_mismatch`): the lens block's cull walk
+`0x00472466..0x00472476` (16 bytes above), the walker's call `0x0047e7a0..0x0047e7aa` (`6a 00 57 8b ce e8 36 e8 ff
+ff`) and the pass's own model-id read `0x0047d2ec 8b 87 40 01 00 00` (`mov eax,[edi+0x140]`, after the cull point:
+the word the stub tests is the one the pass resolves through `0x004863c0`).
+
+**Stub** (81 bytes, `lens_flare_cull_core.h`; no call, no Win32, no floating point): `cmp dword [enabled],0; je
+continue` (the whole cost with the gain above 0 or the set unmapped), `mov eax,[edi+0x140]; cmp eax,0x8000; jae
+continue` (a negative id, a node without a model, fails the unsigned compare), `mov ecx,eax; shr ecx,5; mov
+ecx,[bitmap+ecx*4]; bt ecx,eax; jae continue`, then the same replay of `0x0047d2a2..0x0047d2b9`, `inc dword
+[culled]` and `jmp 0x0047d2c3` as the small-parts stub, so the node ends exactly as the engine's own size cull leaves
+it (the fixture compares against that reference byte for byte). EAX and ECX are dead at the site, EFLAGS dead on
+every exit; ESP, EDI, ESI, EBX, EBP, EDX untouched; LastError and the x87 stack untouched by construction. Per node
+with the flag on: one load, two compares, a shift, one 4 KB-table load and a bit test.
+
+**Body set.** 42 names in `core::body_names`, `v\NNNNN` = `objects\v\NNNNN`: the stock `types/Lensflares.pck`
+groups 0-8 ([lens-flare-visibility.md](lens-flare-visibility.md) 15: core discs 719-722, ray stars 752-754 and 760,
+streaks 761-766, flare cards 11000-11011, ghosts 61, 548-550, 740, 741, 744, 745, rings 735, 739, 778) plus the
+sprites run385 drew in the lens bracket on Mayhem 3 (`v\00781`, `v\01006`, `v\01011`, `v\01016`, `v\01019`).
+Resolution runs on the render thread through `engine_memory::read` against the body table
+([body-format-bob1.md](body-format-bob1.md) 6): a default-form name maps to its id when the slot's name is null or
+equal (`v\00752` is 752, `v\11000` is 11000, no scan), the rest by scanning the slot names case-folded (`v\01006`
+cannot be the number 1006, which has no slot, so it is a dynamic registration under that literal name, id 20000 +
+order). Not once but incrementally: every frame the header is re-read (two bounded reads) and so are the names of the
+mapped dynamic slots (`core::Mappings`, at most 42, in practice the five `v\010xx`/renamed ones: one pointer and one
+short-name read each); a moved or shrunk array, or a mapped slot whose name is no longer ours (a game load frees and
+refills the array, possibly at the same address with the same or a larger count, re-binding every dynamic id),
+restarts the resolution (`restarts=` on the bodies row); a grown one scans only the new slots (the newest one again
+next frame, in case its name was mid-registration). Cost (fixture, `LENS BENCH`, Wine/FEX through the production
+`engine_memory::read`, harness-inclusive, not game time): one restart over a Mayhem-sized table of 13,200 slots with
+2,200 named dynamic slots is 210.7 us; the per-frame re-read of five mappings is 0.134 us; so a restart is a
+once-per-load event of a quarter millisecond and the steady per-frame cost is under a microsecond. The bitmap covers
+ids 0..32767 (fixed 0..19999, dynamic 20000..32767); a name beyond it is resolved but not mapped. The flag is 1 only
+while the gain is 0 and at least one id is mapped. Rows: `lens_flare_cull status=patched|off|refused reason= bodies=
+mapped=` once at start in every tier (the table is usually not up yet: bodies=0), `lens_flare_cull_bodies` on every
+change of the mapped set (cap 16, every tier), `lens_flare_cull culled= total=` every 300 frames under
+`--perf`/`--debug`.
+
+**Consequences.** Culled sprite nodes leave the pass with bit 2 of `+0x12c` clear and the `0x4000000` test at
+`0x0047d2d1` as any size-culled node; the lens scene has no shadow or env-map pass, so nothing else reads the bit
+(the lens bracket's `lens_flare_gain_frame` row shows `draws=0 skipped=0` while the engine issues none). A stock
+body in the set that a mod also uses outside the lens scene would be culled there too (none observed in run375 /
+run385, where every `v\` body drew after the scene marker). A census row of a culled sprite is named
+`culled_other` (the census does not know the set).
+
+**Verified.** Site verifier 13/13 on the installed EXE (nested small-parts 20/20); CPU fixture 200 checks / 0
+failures under Wine, 58 in the lens section (including the in-place re-bind and the restart bench); host module
+`test_lens_flare_cull`. Review fixes (same day): the in-place re-bind above; `cull_small_parts::install_at` checks the
+site and window first, emits its stub, and claims last (an arena refusal leaves the site untouched); the claimed path
+of the shared claim checks the install window and the cull target too (`site_differs` for another site); the bodies
+row carries the real frame.
+
 ## Terran stations and bit 31 of `node+0x12c` (2026-09-24)
 
 Read-only study for the decision whether a DLL patch should take Terran stations out of the

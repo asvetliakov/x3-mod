@@ -12,7 +12,7 @@ import json
 import subprocess
 from pathlib import Path
 from run_chase_aim_trace import FLAGS
-from build_cull_census import NO_SSE, audit_module
+from build_cull_census import NO_SSE, FIXTURE_DEFINE, audit_module
 ROOT = Path(__file__).resolve().parents[2]
 BUILD = ROOT / 'build/verification/cull-small-parts'
 ROWS = ROOT / 'verification/fixtures/run131-cull-census-rows.json'
@@ -43,8 +43,9 @@ def build():
     document = json.loads(ROWS.read_text())
     (BUILD / 'run131_rows_inc.h').write_text(render_rows(document))
     objects = []
-    for source, stem, extra in [('verification/probe/cull_small_parts_fixture.cpp', 'fixture', ['-I', str(BUILD)]),
+    for source, stem, extra in [('verification/probe/cull_small_parts_fixture.cpp', 'fixture', ['-I', str(BUILD), FIXTURE_DEFINE]),
                                 ('src/proxy/cull_small_parts.cpp', 'small_parts', []),
+                                ('src/proxy/lens_flare_cull.cpp', 'lens_flare_cull', [FIXTURE_DEFINE]),
                                 ('src/proxy/cull_census.cpp', 'census', NO_SSE),
                                 ('src/proxy/engine_patch.cpp', 'patch', []),
                                 ('src/proxy/engine_memory.cpp', 'memory', NO_SSE)]:

@@ -1,0 +1,35 @@
+callers of 0047cfe0: ['0047d53c', '0047e7a5']
+callers of 0047e780: ['0047226b', '00472471', '0047e8c2']
+00472466 a118856000               mov    eax, dword ptr [0x608518]
+0047246b 8b4864                   mov    ecx, dword ptr [eax + 0x64]
+0047246e 51                       push   ecx
+0047246f 8bfe                     mov    edi, esi
+00472471 e80ac30000               call   0x47e780
+00472476 8b1518856000             mov    edx, dword ptr [0x608518]
+0047247c 8b4264                   mov    eax, dword ptr [edx + 0x64]
+0047247f 6a00                     push   0
+00472481 6a00                     push   0
+00472483 50                       push   eax
+00472484 e897c40000               call   0x47e920
+00472489 8bc6                     mov    eax, esi
+0047248b e890c10000               call   0x47e620
+00472490 56                       push   esi
+00472491 e84ac20000               call   0x47e6e0
+0047e7a0 6a00                     push   0
+0047e7a2 57                       push   edi
+0047e7a3 8bce                     mov    ecx, esi
+0047e7a5 e836e8ffff               call   0x47cfe0
+0047d2c3 83a72c010000fd           and    dword ptr [edi + 0x12c], 0xfffffffd
+0047d2ca eb05                     jmp    0x47d2d1
+0047d2cc 83fe01                   cmp    esi, 1
+0047d2cf 7d1b                     jge    0x47d2ec
+0047d2d1 8b872c010000             mov    eax, dword ptr [edi + 0x12c]
+0047d2d7 a900000004               test   eax, 0x4000000
+0047d2dc 750e                     jne    0x47d2ec
+0047d2de 83e0fd                   and    eax, 0xfffffffd
+0047d2e1 89872c010000             mov    dword ptr [edi + 0x12c], eax
+0047d2e7 e93c020000               jmp    0x47d528
+0047d2ec 8b8740010000             mov    eax, dword ptr [edi + 0x140]
+0047d2f2 85c0                     test   eax, eax
+0047d2f4 7d07                     jge    0x47d2fd
+0047d2f6 33db                     xor    ebx, ebx

@@ -22,8 +22,11 @@
 // decision (X3M_CULL_SMALL_PROPS, cull_small_props_core.h) over a synthetic
 // engine image: a prop below the threshold skipped, above it drawn, the own
 // ship's and the target's props drawn, fail-closed cases, the walk budget, and
-// the census's culled_prop verdict. Diagnostic timings only; not
-// game FPS. Never launches the game.
+// the census's culled_prop verdict. The lens-flare cull (X3M_LENS_FLARE_GAIN=0,
+// src/proxy/lens_flare_cull.cpp): the second stub on the same claim, its body-name
+// resolution over a synthetic body table, the flare bodies culled exactly as the
+// engine's own size cull, both stubs chained in both orders (lens_section).
+// Diagnostic timings only; not game FPS. Never launches the game.
 #include "../../src/proxy/cull_small_parts.h"
 #include "../../src/proxy/cull_small_parts_core.h"
 #include "../../src/proxy/cull_census.h"
@@ -32,6 +35,8 @@
 #include "../../src/proxy/engine_patch.h"
 #include "../../src/proxy/engine_memory.h"
 #include "../../src/proxy/cull_small_props_core.h"
+#include "../../src/proxy/lens_flare_cull.h"
+#include "../../src/proxy/lens_flare_cull_core.h"
 #include "run131_rows_inc.h"
 #include <windows.h>
 #include <cmath>
@@ -41,7 +46,7 @@
 #include <cstdarg>
 #include <string>
 #include <vector>
-static std::vector<std::string> census_frame_lines, census_entry_lines, small_lines, install_lines;
+static std::vector<std::string> census_frame_lines, census_entry_lines, small_lines, install_lines, lens_lines;
 namespace x3m {
 void log(const char* format, ...) {
     char text[512];
@@ -61,6 +66,7 @@ void log(const char* format, ...) {
         small_lines.emplace_back(text);
     }
     if (!std::strncmp(text, "cull_small_parts requested=", 27)) install_lines.emplace_back(text);
+    if (!std::strncmp(text, "lens_flare_cull", 15)) lens_lines.emplace_back(text);
     static unsigned lines = 0;
     if (lines++ < 12) std::printf("%s\n", text);
 }
@@ -107,6 +113,8 @@ std::uint32_t current_focus() {
 }
 }
 namespace small = x3m::cull_small_parts;
+namespace lens = x3m::lens_flare_cull;
+namespace lcore = x3m::lens_flare_cull::core;
 namespace score = x3m::cull_small_parts::core;
 namespace census = x3m::cull_census;
 namespace ccore = x3m::cull_census::core;
@@ -842,6 +850,378 @@ static void props_section() {
                 memo_hit, not_prop_first, prop_first, prop_pair);
 }
 
+// ---- the lens-flare cull (X3M_LENS_FLARE_GAIN=0, src/proxy/lens_flare_cull.cpp): the second stub on the same claim ----
+// A synthetic body table (the census fixture's layout) resolves the 42 names: fixed slots with null names (the
+// engine's default `v\NNNNN`), slot 753 with its literal name, slot 754 renamed (its name is then a dynamic
+// registration in upper case), `v\01006` / `v\01016` as dynamic literal names, a dynamic name longer than any of
+// ours, two names absent. A six-node tree: two flare bodies (a fixed and a dynamic id), a plain node, a node
+// without a model and a small plain node for the small-parts stub, so the two stubs are exercised together in both
+// chain orders.
+static Node L, LF, LD, LN, LM, LS;
+static Node* const lens_all[] = {&L, &LF, &LD, &LN, &LM, &LS};
+constexpr unsigned lens_count = sizeof lens_all / sizeof lens_all[0];
+static Node lens_initial[lens_count];
+static std::uint32_t zero_global_for_lens = 0;
+static void lens_reset() {
+    for (unsigned i = 0; i < lens_count; ++i) *lens_all[i] = lens_initial[i];
+}
+static bool lens_same_but(const Node* got, const Node* want, unsigned except_offset) {
+    for (unsigned i = 0; i < sizeof got->bytes; i += 4)
+        if (i != except_offset && std::memcmp(got->bytes + i, want->bytes + i, 4)) return false;
+    return true;
+}
+static bool lens_all_native(const Node* native) {
+    for (unsigned i = 0; i < lens_count; ++i)
+        if (std::memcmp(lens_all[i]->bytes, native[i].bytes, sizeof(Node))) return false;
+    return true;
+}
+static const std::string& lens_last(const char* prefix) {
+    static const std::string none;
+    for (unsigned i = unsigned(lens_lines.size()); i > 0; --i)
+        if (!std::strncmp(lens_lines[i - 1].c_str(), prefix, std::strlen(prefix))) return lens_lines[i - 1];
+    return none;
+}
+static const lcore::Bitmap* lens_map() {
+    return reinterpret_cast<const lcore::Bitmap*>(x3m_lens_flare_cull_bitmap);
+}
+static void lens_section(std::uintptr_t site, std::uintptr_t cull, View& view) {
+    const unsigned checks_before = checks, failures_before = failures;
+    // ---- core rules: the name forms, the case fold, the bitmap and the slot inverse ----
+    {
+        std::int32_t id = 0;
+        check(lcore::default_name_id("v\\00752", &id) && id == 752 && lcore::default_name_id("v\\11000", &id) &&
+                  id == 11000 && lcore::default_name_id("v\\01006", &id) && id == 1006 &&
+                  !lcore::default_name_id("v\\0752", &id) && !lcore::default_name_id("v\\007520", &id) &&
+                  !lcore::default_name_id("V\\00752", &id) && !lcore::default_name_id("v/00752", &id) &&
+                  !lcore::default_name_id("", &id) && !lcore::default_name_id(nullptr, &id),
+              "lens: default-form names parse, others do not");
+        check(lcore::name_equal("v\\01006", "V\\01006") && !lcore::name_equal("v\\01006", "v/01006") &&
+                  !lcore::name_equal("v\\01006", "v\\010060") && lcore::name_equal("", ""),
+              "lens: the engine's case fold, separators distinct");
+        check(lcore::slot_id(752, 11000) == 752 && lcore::slot_id(2000, 11000) == 11000 &&
+                  lcore::slot_id(11000, 11000) == 20000 && lcore::slot_id(11003, 11000) == 20003,
+              "lens: slot -> id is the inverse of the engine's id -> slot");
+        static lcore::Bitmap map;
+        map.clear();
+        check(map.set(0) && map.set(752) && map.set(0x7fff) && !map.set(0x8000) && !map.set(-1) && map.test(752) &&
+                  !map.test(753) && map.test(0) && map.test(0x7fff) && !map.test(0x8000) && !map.test(-1),
+              "lens: bitmap set/test inside the span, refused outside");
+        unsigned char stub[lcore::stub_length];
+        lcore::encode_stub(0x10000000u, 0x20000000u, 0x20001000u, 0x20000004u, std::uint32_t(cull), 0x10000054u, stub);
+        check(stub[0] == 0x83 && stub[1] == 0x3d && stub[7] == 0x74 && stub[8] == lcore::stub_continue - 9 &&
+                  stub[9] == 0x8b && stub[10] == 0x87 && stub[11] == 0x40 && stub[12] == 0x01 && stub[15] == 0x3d &&
+                  stub[16] == 0x00 && stub[17] == 0x80 && stub[20] == 0x73 && stub[21] == lcore::stub_continue - 22 &&
+                  stub[27] == 0x8b && stub[28] == 0x0c && stub[29] == 0x8d && stub[34] == 0x0f && stub[35] == 0xa3 &&
+                  stub[36] == 0xc1 && stub[37] == 0x73 && stub[38] == lcore::stub_continue - 39 &&
+                  !std::memcmp(stub + lcore::stub_replay, score::window + score::site_offset, 25) &&
+                  stub[64] == 0xff && stub[65] == 0x05 && stub[70] == 0xe9 && stub[75] == 0xff && stub[76] == 0x25,
+              "lens: stub layout (flag test, model load, span compare, bitmap word, bit test, replayed span, count, "
+              "cull jump, continue)");
+    }
+
+    // ---- the synthetic body table ----
+    constexpr unsigned dynamic = 6, slots = ccore::body_fixed_count + dynamic;
+    static unsigned char manager[0xc0];
+    unsigned char* table = static_cast<unsigned char*>(
+        VirtualAlloc(nullptr, (slots + 1) * ccore::body_slot_stride, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE));
+    check(table != nullptr, "lens: synthetic slots");
+    static const char literal_753[] = "v\\00753", renamed_754[] = "effects\\ray", dyn_1006[] = "v\\01006",
+                      dyn_1016[] = "v\\01016", dyn_other[] = "ships\\x", dyn_754_upper[] = "V\\00754",
+                      dyn_long[] = "v\\01019abcdefgh", dyn_1011[] = "v\\01011";
+    auto name_at = [&](unsigned slot, const char* name) {
+        put(table + slot * ccore::body_slot_stride, ccore::body_slot_name_offset, name ? addr(name) : 0u);
+    };
+    name_at(753, literal_753);
+    name_at(754, renamed_754);
+    name_at(ccore::body_fixed_count + 0, dyn_1006);
+    name_at(ccore::body_fixed_count + 1, dyn_1016);
+    name_at(ccore::body_fixed_count + 2, dyn_other);
+    name_at(ccore::body_fixed_count + 3, dyn_754_upper);
+    name_at(ccore::body_fixed_count + 4, dyn_long);
+    name_at(ccore::body_fixed_count + 5, nullptr); // a dynamic slot without a name: `v\20005`, no match
+    std::memset(manager, 0, sizeof manager);
+    put(manager, ccore::body_fixed_count_offset, ccore::body_fixed_count);
+    put(manager, ccore::body_dynamic_count_offset, dynamic);
+    put(manager, ccore::body_slots_offset, addr(table));
+    static std::uint32_t manager_global = 0;
+    manager_global = addr(manager);
+    {
+        const lcore::Table t = lcore::read_table(&engine_read, addr(&manager_global));
+        check(t.valid && t.fixed == ccore::body_fixed_count && t.dynamic == int(dynamic) && t.slots == addr(table),
+              "lens: the table header through the production reader");
+        static lcore::Bitmap map;
+        map.clear();
+        bool found[lcore::body_name_count] = {};
+        const lcore::Resolution r = lcore::resolve(&engine_read, t, &map, found, 0, slots);
+        check(r.resolved == 40 && r.mapped == 40 && r.scanned == 5,
+              "lens: 37 names by id, 3 by scan (the dynamic literals and the renamed fixed slot), 2 absent");
+        check(map.test(752) && map.test(753) && !map.test(754) && map.test(20003) && map.test(20000) &&
+                  map.test(20001) && !map.test(20002) && !map.test(20004) && !map.test(20005) && map.test(11000) &&
+                  map.test(11011) && map.test(61) && !map.test(1006) && !map.test(1011) && !map.test(1019),
+              "lens: the bitmap holds the resolved ids only");
+        const lcore::Resolution again = lcore::resolve(&engine_read, t, &map, found, 0, slots);
+        check(again.resolved == 0 && again.mapped == 0, "lens: a second pass over found names resolves nothing new");
+        check(!lcore::read_table(&engine_read, addr(&zero_global_for_lens)).valid,
+              "lens: body system not up: invalid table");
+        put(manager, ccore::body_fixed_count_offset, 10999);
+        check(!lcore::read_table(&engine_read, addr(&manager_global)).valid, "lens: a wrong fixed count: invalid");
+        put(manager, ccore::body_fixed_count_offset, ccore::body_fixed_count);
+    }
+
+    // ---- the tree and its native references ----
+    node_set(L, nullptr, 20000, 100000, 0x1002, 0, 0, 0x5000, 4, 100, 50, 25);
+    node_set(LF, &L, 1000, 30000, 0x1002, 0, 0, 752);   // a fixed flare body: s = 21
+    node_set(LD, &L, 1000, 30000, 0x1002, 0, 0, 20000); // `v\01006`, a dynamic flare body
+    node_set(LN, &L, 3000, 100000, 0x1002, 0, 0, 0x5001);
+    node_set(LM, &L, 3000, 100000, 0x1002, 0, 0, 0xffffffffu); // no model
+    node_set(LS, &L, 800, 100000, 0x1002, 0, 0, 0x5002);       // s = 5: the small-parts stub's at threshold 10
+    Node* children[] = {&LF, &LD, &LS, &LN, &LM}; // the last child is kept on every path: the pass's return state
+                                                   // (EAX/ECX) follows the last node it evaluated
+    link_parented(L, children, 5);
+    for (unsigned i = 0; i < lens_count; ++i) lens_initial[i] = *lens_all[i];
+    static Node native[lens_count], culled_reference[lens_count];
+    lens_reset();
+    const Result native_result = run(L, view);
+    for (unsigned i = 0; i < lens_count; ++i) native[i] = *lens_all[i];
+    check(native_result.preserved && native_result.x87_empty && (get(LF.bytes, 0x12c) & 2) &&
+              (get(LD.bytes, 0x12c) & 2) && (get(LN.bytes, 0x12c) & 2) && (get(LS.bytes, 0x12c) & 2),
+          "lens: native tree keeps the flare bodies, the plain node and the small node");
+    // The engine's own size cull of the two flare bodies (a limit above their measure): the reference the stub must
+    // reproduce byte for byte except the limit word itself.
+    lens_reset();
+    put(LF.bytes, ccore::threshold_1d8_offset, 0x7fffffffu);
+    put(LD.bytes, ccore::threshold_1d8_offset, 0x7fffffffu);
+    run(L, view);
+    for (unsigned i = 0; i < lens_count; ++i) culled_reference[i] = *lens_all[i];
+    check(!(get(LF.bytes, 0x12c) & 2) && !(get(LD.bytes, 0x12c) & 2), "lens: the engine's own size cull reference");
+
+    // ---- initialize() without the engine: off at G > 0, refused at G = 0 (the lens block bytes are not here) ----
+    check(!lens::initialize(false) && !std::strcmp(lens::state(), "gain") &&
+              lens_last("lens_flare_cull status=").find("lens_flare_cull status=off reason=gain bodies=0") == 0,
+          "lens: initialize at G > 0: off, nothing patched");
+    check(!lens::initialize(true) && !std::strcmp(lens::state(), "lens_bytes_mismatch") && !lens::installed() &&
+              lens_last("lens_flare_cull status=").find("lens_flare_cull status=refused reason=lens_bytes_mismatch") == 0 &&
+              small_window_original(),
+          "lens: initialize at G = 0 without the lens block bytes: refused, site untouched");
+
+    // ---- install alone at G > 0: the claim is made, the set resolves, the flag stays 0 ----
+    lens::set_body_table_global(addr(&manager_global));
+    check(lens::install_at(site, cull, false) && !std::strcmp(lens::state(), "ok") && lens::installed() &&
+              small::site_claimed() && !small::stub_address() && small_site()[0] == 0xe9,
+          "lens: install_at alone claims the shared site (the small-parts stub not installed)");
+    check(!lens::install_at(site, cull, true) && !std::strcmp(lens::state(), "already_installed"),
+          "lens: second install refused");
+    {
+        const std::uint32_t at = std::uint32_t(lens::stub_address()), slot = (at + lcore::stub_length + 3) & ~3u;
+        unsigned char want[lcore::stub_length];
+        lcore::encode_stub(at, addr(const_cast<std::uint32_t*>(&x3m_lens_flare_cull_enabled)),
+                           addr(x3m_lens_flare_cull_bitmap), addr(const_cast<std::uint32_t*>(&x3m_lens_flare_cull_culled)),
+                           std::uint32_t(cull), slot, want);
+        check(at != 0 && !std::memcmp(reinterpret_cast<const void*>(at), want, lcore::stub_length) &&
+                  *reinterpret_cast<void**>(slot) != nullptr,
+              "lens: stub bytes as encoded, continuation slot points at the tail");
+    }
+    lens_lines.clear();
+    lens::begin_frame(12);
+    check(lens::stats().bodies == 40 && lens::stats().mapped == 40 && !lens::stats().enabled &&
+              x3m_lens_flare_cull_enabled == 0 &&
+              lens_last("lens_flare_cull_bodies").find("lens_flare_cull_bodies bodies=40 mapped=40 scanned=5 fixed=11000 dynamic=6 enabled=0") == 0,
+          "lens: begin_frame resolves the set, the flag stays 0 at G > 0");
+    lens_reset();
+    Result r = run(L, view);
+    check(r.preserved && r.x87_empty && same_outputs(r, native_result) && lens_all_native(native) &&
+              x3m_lens_flare_cull_culled == 0,
+          "lens: G > 0: every node and EAX/ECX/EDX/EFLAGS as native, nothing counted");
+    check(lens::shutdown() && !lens::installed() && lens::shutdown(), "lens: shutdown disarms; a second is a no-op");
+    check(small::shutdown() && small_window_original(), "lens: the owner's shutdown restores the shared site");
+    lens_reset();
+    r = run(L, view);
+    check(same_outputs(r, native_result) && lens_all_native(native), "lens: after the restore the native pass is back");
+
+    // ---- install at G = 0: the flare bodies take the engine's cull path, the rest is native ----
+    check(lens::install_at(site, cull, true) && !std::strcmp(lens::state(), "ok"), "lens: install_at at G = 0");
+    lens::begin_frame(12);
+    check(lens::stats().enabled && x3m_lens_flare_cull_enabled == 1 && lens::stats().mapped == 40,
+          "lens: G = 0 and a mapped set: the flag is 1");
+    lens_reset();
+    SetLastError(0x5153);
+    r = run(L, view);
+    check(GetLastError() == 0x5153, "lens: LastError preserved across the armed pass");
+    check(r.preserved && r.x87_empty && same_outputs(r, native_result),
+          "lens: armed: callee-saved registers, ESP, x87 and EAX/ECX/EDX/EFLAGS as native");
+    check(!(get(LF.bytes, 0x12c) & 2) && !(get(LD.bytes, 0x12c) & 2) &&
+              lens_same_but(&LF, &culled_reference[1], ccore::threshold_1d8_offset) &&
+              lens_same_but(&LD, &culled_reference[2], ccore::threshold_1d8_offset),
+          "lens: the fixed and the dynamic flare body end exactly as the engine's own size cull leaves them");
+    check(!std::memcmp(LN.bytes, native[3].bytes, sizeof(Node)) && !std::memcmp(LM.bytes, native[4].bytes, sizeof(Node)) &&
+              !std::memcmp(LS.bytes, native[5].bytes, sizeof(Node)) && !std::memcmp(L.bytes, native[0].bytes, sizeof(Node)),
+          "lens: the plain node, the node without a model, the small node and the root untouched");
+    check(x3m_lens_flare_cull_culled == 2 && lens::stats().culled == 2, "lens: two nodes counted");
+    lens_lines.clear();
+    lens::report(300);
+    check(lens_last("lens_flare_cull culled=") == "lens_flare_cull culled=2 total=2 enabled=1 bodies=40 mapped=40 frame=300",
+          "lens: the 300-frame row");
+    lens::report(600);
+    check(lens_last("lens_flare_cull culled=") == "lens_flare_cull culled=0 total=2 enabled=1 bodies=40 mapped=40 frame=600",
+          "lens: the next window counts from zero");
+    // A grown table: the new dynamic slot carries a missing name and is found without a rescan of the old ones.
+    name_at(ccore::body_fixed_count + 6, dyn_1011);
+    put(manager, ccore::body_dynamic_count_offset, dynamic + 1);
+    lens_lines.clear();
+    lens::begin_frame(12);
+    check(lens::stats().bodies == 41 && lens::stats().mapped == 41 && lens::stats().scanned == 6 &&
+              lens::stats().dynamic == dynamic + 1 && lens_map()->test(20006) &&
+              lens_last("lens_flare_cull_bodies").find("lens_flare_cull_bodies bodies=41 mapped=41 scanned=6 fixed=11000 dynamic=7 enabled=1") == 0,
+          "lens: a grown table: the new name found in the new slot alone, one row");
+    lens_lines.clear();
+    lens::begin_frame(12);
+    check(lens::stats().bodies == 41 && lens::stats().scanned == 7 && lens_lines.empty(),
+          "lens: an unchanged table: the newest slot re-read, no row");
+    // A moved table (a game load re-binds the ids): everything is resolved again from the new array.
+    unsigned char* moved = static_cast<unsigned char*>(
+        VirtualAlloc(nullptr, (slots + 1) * ccore::body_slot_stride, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE));
+    check(moved != nullptr, "lens: moved slots");
+    std::memcpy(moved, table, (slots + 1) * ccore::body_slot_stride);
+    put(moved + (ccore::body_fixed_count + 0) * ccore::body_slot_stride, ccore::body_slot_name_offset, addr(dyn_other));
+    put(moved + (ccore::body_fixed_count + 2) * ccore::body_slot_stride, ccore::body_slot_name_offset, addr(dyn_1006));
+    put(manager, ccore::body_slots_offset, addr(moved));
+    lens::begin_frame(12);
+    check(lens::stats().bodies == 41 && lens::stats().mapped == 41 && lens::stats().scanned == 6 &&
+              !lens_map()->test(20000) && lens_map()->test(20002) && lens_map()->test(20006),
+          "lens: a moved table restarts the resolution: `v\\01006` now id 20002, 20000 cleared");
+    // A shrunk table (bulk free): restart too; the flag follows the mapped count.
+    put(manager, ccore::body_dynamic_count_offset, 0);
+    lens::begin_frame(12);
+    check(lens::stats().bodies == 37 && lens::stats().mapped == 37 && lens::stats().enabled && !lens_map()->test(20002),
+          "lens: a shrunk table: the fixed names alone, still armed");
+    put(manager, ccore::body_slots_offset, addr(table));
+    put(manager, ccore::body_dynamic_count_offset, dynamic + 1);
+    lens::begin_frame(12);
+    check(lens::stats().bodies == 41 && lens::stats().mapped == 41 && lens_map()->test(20000),
+          "lens: back to the first array: 41 again");
+    // A refill in place (the same array and count after a game load, the ids re-bound): the mapped dynamic slots are
+    // re-read every frame, the mismatch restarts the resolution.
+    check(lens::stats().restarts == 3 && lens_map()->test(20000) && !lens_map()->test(20002), "lens: three restarts so far");
+    name_at(ccore::body_fixed_count + 0, dyn_other);
+    name_at(ccore::body_fixed_count + 2, dyn_1006);
+    lens::begin_frame(13);
+    check(lens::stats().restarts == 4 && lens::stats().bodies == 41 && !lens_map()->test(20000) &&
+              lens_map()->test(20002) && lens_map()->test(20006),
+          "lens: a refill in place re-binds `v\\01006` 20000 -> 20002 within one frame");
+    lens::begin_frame(14);
+    check(lens::stats().restarts == 4 && lens_map()->test(20002), "lens: a stable refill: no further restart");
+    name_at(ccore::body_fixed_count + 0, dyn_1006);
+    name_at(ccore::body_fixed_count + 2, dyn_other);
+    lens::begin_frame(15);
+    check(lens::stats().restarts == 5 && lens_map()->test(20000) && !lens_map()->test(20002), "lens: and back");
+    // No body system: the last set stands (the reads fail, nothing is cleared).
+    lens::set_body_table_global(addr(&zero_global_for_lens));
+    lens::begin_frame(12);
+    check(lens::stats().mapped == 41 && lens::stats().enabled, "lens: body system unreadable: the set stands");
+    lens::set_body_table_global(addr(&manager_global));
+    lens::begin_frame(12);
+    check(lens::stats().bodies == 41 && lens::stats().enabled, "lens: readable again: resolved from the same array");
+
+    // ---- both stubs on the chain: the small-parts stub pushed in front (it runs first) ----
+    check(small::install_at(site, cull, true) && !std::strcmp(small::state(), "ok") && small::site_claimed(),
+          "lens: the small-parts stub joins the live claim");
+    x3m_cull_small_parts_threshold = 10;
+    x3m_cull_small_parts_culled = 0;
+    lens_reset();
+    r = run(L, view);
+    check(r.preserved && r.x87_empty && same_outputs(r, native_result) && !(get(LF.bytes, 0x12c) & 2) &&
+              !(get(LD.bytes, 0x12c) & 2) && !(get(LS.bytes, 0x12c) & 2) && (get(LN.bytes, 0x12c) & 2) &&
+              lens_same_but(&LF, &culled_reference[1], ccore::threshold_1d8_offset) &&
+              x3m_cull_small_parts_culled == 1 && x3m_lens_flare_cull_culled == 4,
+          "lens: small-parts first: the small node by its stub, the flare bodies by this one, the plain node kept");
+    check(small::shutdown() && small_window_original() && !std::strcmp(small::state(), "restored") && !small::site_claimed(),
+          "lens: the owner's shutdown restores the site with both stubs chained");
+    lens::begin_frame(12);
+    check(x3m_lens_flare_cull_enabled == 0 && lens::installed(), "lens: with the site restored the flag drops");
+    lens_reset();
+    r = run(L, view);
+    check(same_outputs(r, native_result) && lens_all_native(native), "lens: native again");
+    check(lens::shutdown(), "lens: disarm after the owner's restore");
+    // ---- the production order: the small-parts stub first, this one pushed in front ----
+    check(small::install_at(site, cull, true) && lens::install_at(site, cull, true) && small::site_claimed(),
+          "lens: production order: small-parts claims, the lens stub chains in front");
+    lens::begin_frame(12);
+    x3m_cull_small_parts_threshold = 10;
+    x3m_cull_small_parts_culled = 0;
+    lens_reset();
+    SetLastError(0x5154);
+    r = run(L, view);
+    check(GetLastError() == 0x5154 && r.preserved && r.x87_empty && same_outputs(r, native_result) &&
+              !(get(LF.bytes, 0x12c) & 2) && !(get(LD.bytes, 0x12c) & 2) && !(get(LS.bytes, 0x12c) & 2) &&
+              (get(LN.bytes, 0x12c) & 2) && lens_same_but(&LD, &culled_reference[2], ccore::threshold_1d8_offset) &&
+              x3m_cull_small_parts_culled == 1 && x3m_lens_flare_cull_enabled == 1 && x3m_lens_flare_cull_culled == 2,
+          "lens: lens stub first: the same verdicts, LastError preserved");
+    x3m_cull_small_parts_threshold = 0;
+    check(lens::shutdown() && small::shutdown() && small_window_original(), "lens: both down, bytes exact");
+    lens_reset();
+    r = run(L, view);
+    check(same_outputs(r, native_result) && lens_all_native(native), "lens: native after both");
+    lens::set_body_table_global(addr(&zero_global_for_lens));
+    // ---- cost of one restart over a Mayhem-sized table (11000 fixed + 2200 dynamic slots, every dynamic slot with a
+    // short literal name so each is read and compared) and of the per-frame re-read of five mapped dynamic slots ----
+    {
+        constexpr unsigned big_dynamic = 2200, big_slots = ccore::body_fixed_count + big_dynamic;
+        unsigned char* big = static_cast<unsigned char*>(
+            VirtualAlloc(nullptr, big_slots * ccore::body_slot_stride, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE));
+        char* names = static_cast<char*>(VirtualAlloc(nullptr, big_dynamic * 8, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE));
+        check(big && names, "lens: bench table");
+        for (unsigned i = 0; i < big_dynamic; ++i) {
+            std::memcpy(names + i * 8, "ships\\x", 8);
+            put(big + (ccore::body_fixed_count + i) * ccore::body_slot_stride, ccore::body_slot_name_offset, addr(names + i * 8));
+        }
+        std::memcpy(names + 100 * 8, "v\\01006", 8);
+        std::memcpy(names + 900 * 8, "v\\01011", 8);
+        std::memcpy(names + 1500 * 8, "v\\01016", 8);
+        std::memcpy(names + 2100 * 8, "v\\01019", 8);
+        std::memcpy(names + 2199 * 8, "V\\00754", 8);
+        put(big + 754 * ccore::body_slot_stride, ccore::body_slot_name_offset, addr(names + 1 * 8));
+        static unsigned char big_manager[0xc0];
+        std::memset(big_manager, 0, sizeof big_manager);
+        put(big_manager, ccore::body_fixed_count_offset, ccore::body_fixed_count);
+        put(big_manager, ccore::body_dynamic_count_offset, big_dynamic);
+        put(big_manager, ccore::body_slots_offset, addr(big));
+        static std::uint32_t big_global = 0;
+        big_global = addr(big_manager);
+        const lcore::Table t = lcore::read_table(&engine_read, addr(&big_global));
+        static lcore::Bitmap map;
+        static lcore::Mappings mappings;
+        bool found[lcore::body_name_count];
+        lcore::Resolution r;
+        LARGE_INTEGER f{}, s{}, e{};
+        QueryPerformanceFrequency(&f);
+        auto restart = [&] {
+            map.clear();
+            mappings.clear();
+            std::memset(found, 0, sizeof found);
+            x3m::engine_memory::next_frame();
+            r = lcore::resolve(&engine_read, t, &map, found, 0, big_slots, &mappings);
+        };
+        for (unsigned i = 0; i < 4; ++i) restart();
+        constexpr unsigned loops = 20;
+        QueryPerformanceCounter(&s);
+        for (unsigned i = 0; i < loops; ++i) restart();
+        QueryPerformanceCounter(&e);
+        const double restart_us = double(e.QuadPart - s.QuadPart) * 1e6 / double(f.QuadPart) / loops;
+        check(t.valid && r.resolved == 42 && r.mapped == 42 && r.scanned == big_dynamic + 1 && mappings.count == 5,
+              "lens: bench table resolves all 42 (37 by id, 5 in dynamic slots), every dynamic slot scanned");
+        constexpr unsigned hold_loops = 20000;
+        QueryPerformanceCounter(&s);
+        bool held = true;
+        for (unsigned i = 0; i < hold_loops; ++i) held = lcore::mappings_hold(&engine_read, t, mappings) && held;
+        QueryPerformanceCounter(&e);
+        const double hold_us = double(e.QuadPart - s.QuadPart) * 1e6 / double(f.QuadPart) / hold_loops;
+        check(held, "lens: the five mappings hold");
+        std::printf("LENS BENCH restart_scan_us=%.1f slots=%u dynamic_named=%u mappings_hold_us=%.3f mappings=%u harness=engine_memory_read game_fps=unmeasured\n",
+                    restart_us, big_slots, big_dynamic, hold_us, unsigned(mappings.count));
+    }
+    std::printf("LENS FLARE CULL checks=%u failures=%u\n", checks - checks_before, failures - failures_before);
+}
+
 int main() {
     DWORD old = 0;
     check(VirtualProtect(reinterpret_cast<void*>(reinterpret_cast<std::uintptr_t>(synthetic_measure_window) &
@@ -1461,9 +1841,12 @@ int main() {
               "projectiles off: the frame row says so");
     }
     check(small::shutdown() && small_window_original(), "projectiles off: restore, rollback bytes exact");
+    lens_section(site, cull, bench_view);
     x3m::engine_patch::close_install_window("fixture");
     check(!small::install_at(site, cull, true) && !std::strcmp(small::state(), "late_claim") && small_window_original(),
           "closed install window: late_claim, site untouched");
+    check(!lens::install_at(site, cull, true) && !std::strcmp(lens::state(), "late_claim") && small_window_original(),
+          "lens: closed install window: late_claim, site untouched");
     props_section();
     std::printf("CULL SMALL PARTS CPU checks=%u failures=%u\n", checks, failures);
     return failures ? 1 : 0;

@@ -57,7 +57,8 @@ clamp (a clamp below 1 is used in steps of 1/255, so `0.7` acts as 179/255 = 0.7
 
 `lens_flare_gain` dims the game's own lens flares (the halos around engines and lights, and the sun's flare), for
 mods that draw them very large: `1` is the game's own brightness, `0.5` half, `0` the flares are not drawn at all; the default is `0.3` (since
-2026-09-29).
+2026-09-29). At `0` the game itself skips the flare sprites (the `lens_flare_cull` patch of the cull pass, since 2026-09-29): they cost
+no engine time either; when that patch cannot install (an unexpected executable) the draws are skipped by the mod as before.
 
 `cull_small_props` (default `on` since 2026-09-29) also skips drawing small separate ship parts, such as the turrets
 of distant capital ships, when they are smaller on screen than `cull_small_parts_px` pixels; `cull_small_props = off`
