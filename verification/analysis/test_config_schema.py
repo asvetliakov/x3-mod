@@ -154,7 +154,7 @@ class ConfigSchema(unittest.TestCase):
         gain = lambda environ, file_values: resolve.value(resolve.resolve(environ, file_values), hull)
         self.assertEqual(schema.BY_ENV[hull]['follows'], 'emission_source_gain')
         self.assertIsNone(schema.BY_ENV[hull]['default'])  # config::get leaves it unset; the site derives it
-        self.assertEqual(gain({}, {}), '2.0')                                     # the effects default
+        self.assertEqual(gain({}, {}), '1.0')                                     # the effects default (1 since 2026-09-29)
         self.assertEqual(gain({}, {effects: '1'}), '1.0')                         # "the game's own" really is
         self.assertEqual(gain({}, {effects: '3'}), '3.0')
         self.assertEqual(gain({}, {effects: '9'}), '1.0')                         # out of range: the effects site keeps 1

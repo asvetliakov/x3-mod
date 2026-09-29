@@ -201,8 +201,8 @@ constexpr Entry entries[entry_count] = {
     {"X3M_DEPTH_COPY", "depth_copy", Type::Bool, nullptr, nullptr, 17, 0, 2, 0, 0, "", 1, -1},
     {"X3M_DRAW_TRACE", "draw_trace", Type::Bool, nullptr, nullptr, 17, 0, 2, 0, 0, "", 1, -1},
     {"X3M_EMISSION_GAIN", "emission_gain", Type::Float, nullptr, nullptr, 17, 1, 2, 0, 0, "", 1, -1},
-    {"X3M_EMISSION_SOURCE_CLAMP", "emission_source_clamp", Type::Float, nullptr, nullptr, 18, 2, 2, 0, 0, "", 0, -1},
-    {"X3M_EMISSION_SOURCE_GAIN", "emission_source_gain", Type::Float, "2.0", nullptr, 20, 1, 2, 0, 0, "", 0, -1},
+    {"X3M_EMISSION_SOURCE_CLAMP", "emission_source_clamp", Type::Float, "0.7", nullptr, 18, 2, 2, 0, 0, "", 0, -1},
+    {"X3M_EMISSION_SOURCE_GAIN", "emission_source_gain", Type::Float, "1.0", nullptr, 20, 1, 2, 0, 0, "", 0, -1},
     {"X3M_FADE_ROUTE", "fade_route", Type::String, nullptr, nullptr, 21, 0, 2, 0, 0, "", 1, -1},
     {"X3M_FADE_RT2_OWNER", "fade_rt2_owner", Type::Enum, "on", nullptr, 21, 0, 2, 0, 0, "on|off", 1, -1},
     {"X3M_FADE_RT2_OWNER_DEFAULT", "fade_rt2_owner_default", Type::Bool, "1", nullptr, 21, 0, 2, 0, 0, "", 3, 43},
@@ -266,7 +266,7 @@ constexpr Entry entries[entry_count] = {
     {"X3M_HULL_EMISSION_GAIN", "hull_emission_gain", Type::Float, nullptr, nullptr, 46, 1, 5, 0, 0, "", 1, -1},
     {"X3M_HULL_EMISSIVE_WIDENING", "hull_emissive_widening", Type::String, "4,4", nullptr, 47, 0, 5, 0, 0, "", 1, -1},
     {"X3M_HULL_LIGHTMAP_GAIN", "hull_lightmap_gain", Type::Float, "4.0", nullptr, 47, 1, 5, 0, 0, "", 0, -1},
-    {"X3M_LENS_FLARE_GAIN", "lens_flare_gain", Type::Float, nullptr, nullptr, 48, 1, 5, 0, 0, "", 0, -1},
+    {"X3M_LENS_FLARE_GAIN", "lens_flare_gain", Type::Float, "0.3", nullptr, 48, 1, 5, 0, 0, "", 0, -1},
     {"X3M_LIGHTMAP_EMISSIVE_GAIN", "lightmap_emissive_gain", Type::Float, nullptr, nullptr, 49, 1, 5, 0, 0, "", 1, -1},
     {"X3M_LIGHT_MAP_FAR_FADE", "light_map_far_fade", Type::FloatList, "80,220,1", nullptr, 50, 0, 5, 3, 12, "", 0, -1},
     {"X3M_LIGHT_PHASES", "light_phases", Type::Bool, nullptr, nullptr, 53, 0, 8, 0, 0, "", 1, -1},
@@ -433,7 +433,8 @@ constexpr bool crypt_cache = true;
 constexpr const char cull_small_parts_projectiles[] = "on";
 constexpr float cull_small_parts_px = 4.0000f;
 constexpr bool dat_handles = true;
-constexpr float emission_source_gain = 2.0f;
+constexpr float emission_source_clamp = 0.7f;
+constexpr float emission_source_gain = 1.0f;
 constexpr const char fade_rt2_owner[] = "on";
 constexpr bool fog_docked = true;
 constexpr const char fog_dust_motes[] = "1300,3,128";
@@ -464,6 +465,7 @@ constexpr const char hdr_tonemap[] = "agx";
 constexpr float hdr_white_target = 0.9f;
 constexpr const char hull_emissive_widening[] = "4,4";
 constexpr float hull_lightmap_gain = 4.0f;
+constexpr float lens_flare_gain = 0.3f;
 constexpr const char light_map_far_fade[] = "80,220,1";
 constexpr const char lod_occlusion[] = "all";
 constexpr bool media_cue_cache = true;

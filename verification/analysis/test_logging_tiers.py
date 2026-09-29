@@ -237,7 +237,7 @@ class PerFrameRowTiers(unittest.TestCase):
         'game_phase_slow_frame': 'game_phases.cpp is armed only by X3M_GAME_PHASES, a --draw-trace member',
         'profile_frame': 'the sampling profiler runs only with --profile, a developer option',
         'lens_flare_gain_frame': 'always-tier status row by design: X3M_LENS_FLARE_GAIN < 1 only, one row per 300 frames '
-                                 '(the plain flight\'s evidence that the opt-in gain acted)',
+                                 '(the plain flight\'s evidence that the gain acted; default 0.3 since 2026-09-29)',
     }
     CALL = re.compile(r'\b(?:x3m::)?log\(\s*"([a-z0-9_]+_frame)[ "=]')
 
