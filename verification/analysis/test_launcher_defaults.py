@@ -48,6 +48,7 @@ EXPECTED_EMPTY = {
     'X3M_CHASE_OFFSET_Y': '0.5', 'X3M_CHASE_PITCH_DOWN_DEG': '0.5', 'X3M_CHASE_SCENE_FIX': '0',
     'X3M_CHASE_VIEW_RESTORE': '1', 'X3M_COLLIDE_BOX_CULL': '1', 'X3M_COLLIDE_MEMO': '1', 'X3M_COLLIDE_SAT_SSE2': '1',
     'X3M_CRYPT_CACHE': '1', 'X3M_CULL_SMALL_PARTS_PROJECTILES': 'on', 'X3M_CULL_SMALL_PARTS_PX': '4.0000', 'X3M_DAT_HANDLES': '1',
+    'X3M_DUST_LEAK_FIX': 'on',
     # 2026-09-29 (Run 103 A): gain 1, cores capped at 0.7, lens flares at 0.3 (screen-emission.md, sun-occlusion.md).
     'X3M_EMISSION_SOURCE_CLAMP': '0.7', 'X3M_EMISSION_SOURCE_GAIN': '1.0', 'X3M_FADE_RT2_OWNER': 'on', 'X3M_FADE_RT2_OWNER_DEFAULT': '1', 'X3M_FOG_DOCKED': '1', 'X3M_FOG_DUST_MOTES': '1300,3,128',
     'X3M_FOG_HANDOVER_COLDFILL': '1', 'X3M_FOG_HANDOVER_PREFILL': '1', 'X3M_FOG_HANDOVER_STEP': '1',
@@ -136,6 +137,7 @@ OPT_OUTS = (
     (('--taa-luma-lock', '0'), 'X3M_TAA_LUMA_LOCK', '0'),
     (('--taa-thin-region', '0'), 'X3M_TAA_LUMA_LOCK', None),  # a prerequisite off: the lock default stays off, no refusal
     (('--taa-far-stabiliser', '0'), 'X3M_TAA_LUMA_LOCK', None),
+    (('--dust-leak-fix', 'off'), 'X3M_DUST_LEAK_FIX', 'off'),
     (('--capture-frames', '16'), 'X3M_CAPTURE_FRAMES', '16'),
 )
 

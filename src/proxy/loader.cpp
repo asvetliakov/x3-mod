@@ -11,6 +11,7 @@
 #include "lod_occlusion.h"
 #include "run_in_background.h"
 #include "sun_flare_fix.h"
+#include "dust_leak_fix.h"
 #include "fov.h"
 #include "music_keep.h"
 #include "collide_narrow_census.h"
@@ -469,6 +470,8 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
         if (reserved == nullptr)
             x3m::sun_flare_fix::shutdown(); // same rule: the six SHRD/CMP bytes back only on FreeLibrary, only over our
                                             // jump
+        if (reserved == nullptr)
+            x3m::dust_leak_fix::shutdown(); // same rule: the five SUB bytes back only on FreeLibrary, only over our jump
         if (reserved == nullptr)
             x3m::collide_narrow_census::shutdown(); // same rule: the four narrow-census sites back only on FreeLibrary
         if (reserved == nullptr) x3m::collide_sat_sse2::shutdown(); // same rule: the SAT call back only on FreeLibrary

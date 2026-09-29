@@ -311,6 +311,9 @@ SETTINGS = [
           'every other station, distance = the game\'s own.', 'size', choices=('size', 'distance'), launcher='--terran-station-lod'),
     entry('sun_flare_fix', 'enum', 'engine', 'Keeps the sun flare visible near the screen centre on wide screens. on or off.', 'on',
           choices=('on', 'off'), launcher='--sun-flare-fix'),
+    entry('dust_leak_fix', 'enum', 'engine', 'Stops a slowdown in sectors whose background names missing dust models: the game '
+          'would otherwise create a few dozen invisible objects every frame and never remove them. on or off.', 'on',
+          choices=('on', 'off'), launcher='--dust-leak-fix'),
     entry('light_map_far_fade', 'float_list', 'engine', 'Fades the lit hull windows on far-away ships and stations, where they would '
           'otherwise shimmer. The first two numbers say how far: how many game units one screen pixel covers at the object where the '
           'fade starts and where it ends (larger = farther away); the third is the brightness left beyond that (up to '

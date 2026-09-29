@@ -59,7 +59,7 @@ path stays an explicit developer option. `--perf` is the subset a stutter report
   state (`call_preserved`) and `vfprintf`s into a 1 MiB stdio buffer (`setvbuf`, `:3011`); the buffer is
   flushed once per frame at frame begin (`:1755`, measured cost 0.1-0.6 us per flush, `log_flush` metric in
   run337). `log_handle()` (`:3914`) hands the OS handle to writers that must not take the lock: the DllMain-time
-  restore rows (`sun_flare_fix.cpp:140`, `lod_occlusion.cpp:102`, `terran_station_lod.cpp:98`,
+  restore rows (`sun_flare_fix.cpp:140`, `lod_occlusion.cpp:102`, `terran_station_lod.cpp:98`, `dust_leak_fix.cpp:226`,
   `music_keep.cpp:123`, `fov.cpp:351`, `media_cue.cpp:122,140`) and the voice DMO vectored fault witness
   (`voice_dmo_fallback.cpp:160`). Nothing is logged at `DLL_PROCESS_DETACH` (`loader.cpp:375-395`).
 - `initialize_log` (`capture.cpp:2979-3021`) opens `<module dir>\x3-modern-captures\session-YYYYMMDD-HHMMSS-<pid>.log`,
@@ -138,6 +138,7 @@ Sizes are measured bytes per line in run337 unless marked inferred. "F8" means c
 | `--loading-probes` (`X3M_LOADING_PROBES`) | `loading_probe_site` × 12, `loading_probe_path` | loading only | debug | Twelve IAT rows, flown (`docs/verification/loading-probes.md`); `loading_probe_path` prints game-file paths (relative to the game, no user name) |
 | `--collide-narrow-census`, `--collide-query-phases` | census / timing windows | per 300 frames | debug | Windows, no engine change beyond the collide defaults |
 | `--perf` or `--debug` (no own switch) | `scene_graph_census` every 300 frames: `engine_nodes`, `scenes`, `cuts`, `cut_buckets`, `tasks` (the engine's hash-table counts), `unattached` (the list `R+0x28` walked newest first) with `truncated`/`cycle`/`bounded`/`capped`, `b0..b7` (model ids of the walked nodes by body name), `registry_live`, `inserts` and `i0..i7` (registry inserts since the previous row by creator site and its caller), `walk_us`, `reads`, `queries` | ~1 KB per 300 frames (inferred) | perf | Settles the Mayhem node growth: engine leak (`engine_nodes` rising with `registry_live`) or stale observer keys, which models, which creator ([object-lifetimes.md](../reverse-engineering/object-lifetimes.md), "Run382"). Read-only through `engine_memory::read` at Present; the walk stops after 1.8 ms (`capped=1`, then `unattached` is a lower bound): 1.81-1.89 ms per row measured on the fixture. While a tier is on, the object-lifetime Insert hook also resolves each registry insert's caller (+37 ns per insert, fixture) |
+| `--perf` or `--debug` (no own switch) | `dust_leak_fix hits=` every 300 frames: `hits` (nodes the dust-leak fix released since the previous row, one per failed fill attempt), `total` (since the claim), `frame` | ~40 B per 300 frames (inferred) | perf | Counts the detours of the `dust_leak_fix` patch (`src/proxy/dust_leak_fix.cpp`, [object-lifetimes.md](../reverse-engineering/object-lifetimes.md) "Patch"); one arena word read at Present, nothing per frame. Only while the stub is live |
 | `--collide-memo-verify` | verify rows | per memo | explicit | A verification code path |
 | (none today) 300-frame windows: `chase_*_window`, `chase_*_timing`, `chase_native_timing_*`, `bloom_commit` periodic, `bloom_admission`, `bloom_prepare`, `bolt_footprint`, `media_cue_window`, `collide_memo`, `collide_census`, `shadow_retention_summary` (non-final), `screen_emission_additive_refused_window` | ~20 rows × 150-520 B per 300 frames | ~5 MB per hour ungated (inferred from run337 counts) | debug | Health windows the always budget cannot carry; the first-applied and failure rows of the same subsystems stay always |
 | (none today) `taa_invalidate` | per invalidation | 53 B × 1.8/s measured (0.35 MB per hour) | debug | Diagnostic event, unbounded |
@@ -438,8 +439,8 @@ summary, with `WriteFile` in 64 KiB chunks; the lock is never held across a writ
 from game threads (media cue enter and video-blit lines, music trace lines) go through the buffer too (a hung game thread
 does not stop the writer, which is what the media cue's direct write was for). Direct writes left: the voice DMO
 fallback's fault witness, in a vectored handler on a faulting thread that may hold the buffer lock and is about to die (it
-fires only on that hook's execute fault; `report()` logs the record through the buffer as well), and the four patch
-restore rows (`fov`, `lod_occlusion`, `sun_flare_fix`, `terran_station_lod`), written only inside DllMain on a dynamic
+fires only on that hook's execute fault; `report()` logs the record through the buffer as well), and the five patch
+restore rows (`fov`, `lod_occlusion`, `sun_flare_fix`, `terran_station_lod`, `dust_leak_fix`), written only inside DllMain on a dynamic
 `FreeLibrary`, never during play (their fixture records are bound to those sources; `test_logging_tiers.py` pins the
 list). Full buffer:
 the row is dropped and counted, never blocking and never growing; one `log_dropped n=` row precedes the next row that

@@ -1,0 +1,1149 @@
+{
+ "fixture": "verification/probe/dust_leak_fix_patch_fixture.cpp",
+ "runner": "verification/probe/run_dust_leak_fix_patch.py",
+ "production_sources": [
+  "src/proxy/dust_leak_fix.cpp",
+  "src/proxy/dust_leak_fix.h",
+  "src/proxy/dust_leak_fix_sites.h",
+  "src/proxy/engine_patch.cpp",
+  "src/proxy/engine_patch.h"
+ ],
+ "source": {
+  "commit": "e4daf0346adfaa8c926ab397fcdd6a6243492ee1",
+  "production_sources_dirty": true,
+  "dirty_paths": [
+   "src/proxy/dust_leak_fix.cpp",
+   "src/proxy/dust_leak_fix.h",
+   "src/proxy/dust_leak_fix_sites.h"
+  ],
+  "sha256": {
+   "src/proxy/dust_leak_fix.cpp": "166dcba54b8a9b517843697a4416e424d681910f6119438b525e9f7b1907647e",
+   "src/proxy/dust_leak_fix.h": "4a11335a4565f1c32a055d987550dcf7a8322812a438d67f9cf4469827688f2b",
+   "src/proxy/dust_leak_fix_sites.h": "589a5e3c3be6f8b3d5f5610f67ecebc6aaef403c4a6eaa9cf43d170d0823e596",
+   "src/proxy/engine_patch.cpp": "a9207d06c7075fa56690566ee4f514347852d2f1d41252b5386674d61b24f2cf",
+   "src/proxy/engine_patch.h": "0d251d55b27d4e87249cc5804e572b44a00460cabae23d2f273a2e3a23b1e071"
+  }
+ },
+ "game_launched": false,
+ "bottle": {
+  "name": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+   "FEX_X87REDUCEDPRECISION": "1",
+   "WINEMSYNC": "1"
+  },
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "exit_status": 0,
+ "elapsed_s": 8.2,
+ "executable_sha256": "ab879a37a731148cdeb499d06d4b32b6540cff23906c72decfe7fddd5683e35a",
+ "toolchain": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+ "build_audit": {
+  "module_calls_seam": [
+   "fixture_read_code",
+   "fixture_store_pointer",
+   "fixture_restore"
+  ],
+  "module_calls_engine_patch_directly": [],
+  "engine_patch_lock_cmpxchg8b": 1,
+  "engine_page_va": "0041f000",
+  "release_page_va": "00487000",
+  "sections": {
+   ".x3mdlf": {
+    "va": "0041f000",
+    "size": 4096,
+    "code_readonly": true
+   },
+   ".x3mdlr": {
+    "va": "00487000",
+    "size": 4096,
+    "code_readonly": true
+   }
+  },
+  "window_at_engine_offset": true,
+  "release_jump_at_release_va": true,
+  "window_sha256": "538370ceb5ea701a536e907f758aeb39f81073d3b4fa91bc6818352ef3b15e7c",
+  "highest_other_section_end": "00241604",
+  "overlapping_sections": []
+ },
+ "check_count": 80,
+ "pass_count": 80,
+ "checks": [
+  {
+   "name": "restore_log_opened",
+   "pass": true
+  },
+  {
+   "name": "engine_page_at_engine_va",
+   "pass": true
+  },
+  {
+   "name": "engine_window_at_window_va_is_expected_window",
+   "pass": true
+  },
+  {
+   "name": "site_offset_1_of_its_qword",
+   "pass": true
+  },
+  {
+   "name": "engine_page_is_mem_image_execute_read",
+   "pass": true
+  },
+  {
+   "name": "release_stand_in_at_release_va",
+   "pass": true
+  },
+  {
+   "name": "vanilla_cases_loop_to_count_no_release",
+   "pass": true
+  },
+  {
+   "name": "explicit_off_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "explicit_off_row_and_untouched",
+   "pass": true
+  },
+  {
+   "name": "refuse_invalid_setting_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "refuse_invalid_setting_row_and_untouched",
+   "pass": true
+  },
+  {
+   "name": "refuse_too_long_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "refuse_too_long_row_and_untouched",
+   "pass": true
+  },
+  {
+   "name": "refuse_executable_mismatch_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "refuse_executable_mismatch_row_and_untouched",
+   "pass": true
+  },
+  {
+   "name": "setup_changed_window_byte",
+   "pass": true
+  },
+  {
+   "name": "refuse_changed_window_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "refuse_changed_window_untouched",
+   "pass": true
+  },
+  {
+   "name": "setup_window_byte_back",
+   "pass": true
+  },
+  {
+   "name": "setup_foreign_jump",
+   "pass": true
+  },
+  {
+   "name": "refuse_foreign_jump_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "refuse_foreign_jump_untouched",
+   "pass": true
+  },
+  {
+   "name": "setup_foreign_jump_removed",
+   "pass": true
+  },
+  {
+   "name": "invalid_site_refused_without_reads",
+   "pass": true
+  },
+  {
+   "name": "install_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "install_ok_atomic_row",
+   "pass": true
+  },
+  {
+   "name": "install_jump_rest_of_page_unchanged",
+   "pass": true
+  },
+  {
+   "name": "install_protection_restored",
+   "pass": true
+  },
+  {
+   "name": "install_chain_jump_dispatcher_stub_slot_tail",
+   "pass": true
+  },
+  {
+   "name": "install_sequence_counts",
+   "pass": true
+  },
+  {
+   "name": "initialize_live_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "initialize_live_no_second_claim",
+   "pass": true
+  },
+  {
+   "name": "hits_zero_before_execution",
+   "pass": true
+  },
+  {
+   "name": "patched_cases_release_once_and_leave",
+   "pass": true
+  },
+  {
+   "name": "hits_count_the_detours",
+   "pass": true
+  },
+  {
+   "name": "non_detour_cases_identical_patched_and_vanilla",
+   "pass": true
+  },
+  {
+   "name": "release_sees_site_registers",
+   "pass": true
+  },
+  {
+   "name": "report_row_hits_total_frame",
+   "pass": true
+  },
+  {
+   "name": "report_row_zero_after",
+   "pass": true
+  },
+  {
+   "name": "second_install_refused_already_installed",
+   "pass": true
+  },
+  {
+   "name": "restore_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "restore_row",
+   "pass": true
+  },
+  {
+   "name": "restore_original_bytes_protection",
+   "pass": true
+  },
+  {
+   "name": "restored_vanilla_again",
+   "pass": true
+  },
+  {
+   "name": "restore_again_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "restore_again_no_row",
+   "pass": true
+  },
+  {
+   "name": "rollback_chain_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "rollback_chain_failed_original_bytes",
+   "pass": true
+  },
+  {
+   "name": "rollback_readback_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "rollback_readback_original_bytes",
+   "pass": true
+  },
+  {
+   "name": "after_rollbacks_vanilla",
+   "pass": true
+  },
+  {
+   "name": "rollback_failed_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "rollback_failed_registered_jump_live",
+   "pass": true
+  },
+  {
+   "name": "rollback_failed_tail_only_vanilla",
+   "pass": true
+  },
+  {
+   "name": "initialize_after_rollback_failed_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "initialize_after_rollback_failed_reports_failure_no_second_claim",
+   "pass": true
+  },
+  {
+   "name": "restore_refused_protect_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "restore_failed_stays_registered",
+   "pass": true
+  },
+  {
+   "name": "restore_after_failure_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "restore_after_failure_original_bytes",
+   "pass": true
+  },
+  {
+   "name": "install_2_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "setup_install_2",
+   "pass": true
+  },
+  {
+   "name": "setup_foreign_over_ours",
+   "pass": true
+  },
+  {
+   "name": "restore_not_owned_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "restore_not_owned_foreign_untouched_registered",
+   "pass": true
+  },
+  {
+   "name": "setup_ours_back",
+   "pass": true
+  },
+  {
+   "name": "restore_unreadable_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "restore_unreadable_no_write_registered",
+   "pass": true
+  },
+  {
+   "name": "restore_after_not_owned_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "restore_after_not_owned_original_bytes",
+   "pass": true
+  },
+  {
+   "name": "install_3_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "setup_install_then_external_restore",
+   "pass": true
+  },
+  {
+   "name": "restore_already_original_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "restore_already_original_no_write",
+   "pass": true
+  },
+  {
+   "name": "roview_mapped",
+   "pass": true
+  },
+  {
+   "name": "roview_raise_refused_by_os",
+   "pass": true
+  },
+  {
+   "name": "roview_install_protect_failed_untouched",
+   "pass": true
+  },
+  {
+   "name": "late_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "late_initialize_refused",
+   "pass": true
+  },
+  {
+   "name": "after_late_vanilla",
+   "pass": true
+  }
+ ],
+ "cases": [
+  {
+   "step": "vanilla",
+   "case": "all_failed",
+   "ok": true,
+   "iterations": "3/3",
+   "releases": "0/0",
+   "released": "00000000/00000000",
+   "edi": "0023a5c0/0023a5c0",
+   "slot": "0",
+   "regs": "1",
+   "zf": "1",
+   "unlinked": "0",
+   "zeroed": "0",
+   "others": "1"
+  },
+  {
+   "step": "vanilla",
+   "case": "all_attached",
+   "ok": true,
+   "iterations": "3/3",
+   "releases": "0/0",
+   "released": "00000000/00000000",
+   "edi": "0023a5c0/0023a5c0",
+   "slot": "0",
+   "regs": "1",
+   "zf": "1",
+   "unlinked": "0",
+   "zeroed": "0",
+   "others": "1"
+  },
+  {
+   "step": "vanilla",
+   "case": "null_attached_failed",
+   "ok": true,
+   "iterations": "3/3",
+   "releases": "0/0",
+   "released": "00000000/00000000",
+   "edi": "0023a5c0/0023a5c0",
+   "slot": "0",
+   "regs": "1",
+   "zf": "1",
+   "unlinked": "0",
+   "zeroed": "0",
+   "others": "1"
+  },
+  {
+   "step": "vanilla",
+   "case": "attached_failed_attached",
+   "ok": true,
+   "iterations": "3/3",
+   "releases": "0/0",
+   "released": "00000000/00000000",
+   "edi": "0023a5c0/0023a5c0",
+   "slot": "0",
+   "regs": "1",
+   "zf": "1",
+   "unlinked": "0",
+   "zeroed": "0",
+   "others": "1"
+  },
+  {
+   "step": "vanilla",
+   "case": "one_failed",
+   "ok": true,
+   "iterations": "1/1",
+   "releases": "0/0",
+   "released": "00000000/00000000",
+   "edi": "0023a0e0/0023a0e0",
+   "slot": "0",
+   "regs": "1",
+   "zf": "1",
+   "unlinked": "0",
+   "zeroed": "0",
+   "others": "1"
+  },
+  {
+   "step": "vanilla",
+   "case": "null_only",
+   "ok": true,
+   "iterations": "2/2",
+   "releases": "0/0",
+   "released": "00000000/00000000",
+   "edi": "00000000/00000000",
+   "slot": "0",
+   "regs": "1",
+   "zf": "1",
+   "unlinked": "0",
+   "zeroed": "0",
+   "others": "1"
+  },
+  {
+   "step": "patched",
+   "case": "all_failed",
+   "ok": true,
+   "iterations": "1/1",
+   "releases": "1/1",
+   "released": "0023a0e0/0023a0e0",
+   "edi": "0023a0e0/0023a0e0",
+   "slot": "0",
+   "regs": "1",
+   "zf": "1",
+   "unlinked": "1",
+   "zeroed": "1",
+   "others": "1"
+  },
+  {
+   "step": "patched",
+   "case": "all_attached",
+   "ok": true,
+   "iterations": "3/3",
+   "releases": "0/0",
+   "released": "00000000/00000000",
+   "edi": "0023a5c0/0023a5c0",
+   "slot": "0",
+   "regs": "1",
+   "zf": "1",
+   "unlinked": "0",
+   "zeroed": "0",
+   "others": "1"
+  },
+  {
+   "step": "patched",
+   "case": "null_attached_failed",
+   "ok": true,
+   "iterations": "3/3",
+   "releases": "1/1",
+   "released": "0023a5c0/0023a5c0",
+   "edi": "0023a5c0/0023a5c0",
+   "slot": "0",
+   "regs": "1",
+   "zf": "1",
+   "unlinked": "1",
+   "zeroed": "1",
+   "others": "1"
+  },
+  {
+   "step": "patched",
+   "case": "attached_failed_attached",
+   "ok": true,
+   "iterations": "2/2",
+   "releases": "1/1",
+   "released": "0023a350/0023a350",
+   "edi": "0023a350/0023a350",
+   "slot": "0",
+   "regs": "1",
+   "zf": "1",
+   "unlinked": "1",
+   "zeroed": "1",
+   "others": "1"
+  },
+  {
+   "step": "patched",
+   "case": "one_failed",
+   "ok": true,
+   "iterations": "1/1",
+   "releases": "1/1",
+   "released": "0023a0e0/0023a0e0",
+   "edi": "0023a0e0/0023a0e0",
+   "slot": "0",
+   "regs": "1",
+   "zf": "1",
+   "unlinked": "1",
+   "zeroed": "1",
+   "others": "1"
+  },
+  {
+   "step": "patched",
+   "case": "null_only",
+   "ok": true,
+   "iterations": "2/2",
+   "releases": "0/0",
+   "released": "00000000/00000000",
+   "edi": "00000000/00000000",
+   "slot": "0",
+   "regs": "1",
+   "zf": "1",
+   "unlinked": "0",
+   "zeroed": "0",
+   "others": "1"
+  },
+  {
+   "step": "restored",
+   "case": "all_failed",
+   "ok": true,
+   "iterations": "3/3",
+   "releases": "0/0",
+   "released": "00000000/00000000",
+   "edi": "0023a5c0/0023a5c0",
+   "slot": "0",
+   "regs": "1",
+   "zf": "1",
+   "unlinked": "0",
+   "zeroed": "0",
+   "others": "1"
+  },
+  {
+   "step": "restored",
+   "case": "all_attached",
+   "ok": true,
+   "iterations": "3/3",
+   "releases": "0/0",
+   "released": "00000000/00000000",
+   "edi": "0023a5c0/0023a5c0",
+   "slot": "0",
+   "regs": "1",
+   "zf": "1",
+   "unlinked": "0",
+   "zeroed": "0",
+   "others": "1"
+  },
+  {
+   "step": "restored",
+   "case": "null_attached_failed",
+   "ok": true,
+   "iterations": "3/3",
+   "releases": "0/0",
+   "released": "00000000/00000000",
+   "edi": "0023a5c0/0023a5c0",
+   "slot": "0",
+   "regs": "1",
+   "zf": "1",
+   "unlinked": "0",
+   "zeroed": "0",
+   "others": "1"
+  },
+  {
+   "step": "restored",
+   "case": "attached_failed_attached",
+   "ok": true,
+   "iterations": "3/3",
+   "releases": "0/0",
+   "released": "00000000/00000000",
+   "edi": "0023a5c0/0023a5c0",
+   "slot": "0",
+   "regs": "1",
+   "zf": "1",
+   "unlinked": "0",
+   "zeroed": "0",
+   "others": "1"
+  },
+  {
+   "step": "restored",
+   "case": "one_failed",
+   "ok": true,
+   "iterations": "1/1",
+   "releases": "0/0",
+   "released": "00000000/00000000",
+   "edi": "0023a0e0/0023a0e0",
+   "slot": "0",
+   "regs": "1",
+   "zf": "1",
+   "unlinked": "0",
+   "zeroed": "0",
+   "others": "1"
+  },
+  {
+   "step": "restored",
+   "case": "null_only",
+   "ok": true,
+   "iterations": "2/2",
+   "releases": "0/0",
+   "released": "00000000/00000000",
+   "edi": "00000000/00000000",
+   "slot": "0",
+   "regs": "1",
+   "zf": "1",
+   "unlinked": "0",
+   "zeroed": "0",
+   "others": "1"
+  },
+  {
+   "step": "after_rollbacks",
+   "case": "all_failed",
+   "ok": true,
+   "iterations": "3/3",
+   "releases": "0/0",
+   "released": "00000000/00000000",
+   "edi": "0023a5c0/0023a5c0",
+   "slot": "0",
+   "regs": "1",
+   "zf": "1",
+   "unlinked": "0",
+   "zeroed": "0",
+   "others": "1"
+  },
+  {
+   "step": "after_rollbacks",
+   "case": "all_attached",
+   "ok": true,
+   "iterations": "3/3",
+   "releases": "0/0",
+   "released": "00000000/00000000",
+   "edi": "0023a5c0/0023a5c0",
+   "slot": "0",
+   "regs": "1",
+   "zf": "1",
+   "unlinked": "0",
+   "zeroed": "0",
+   "others": "1"
+  },
+  {
+   "step": "after_rollbacks",
+   "case": "null_attached_failed",
+   "ok": true,
+   "iterations": "3/3",
+   "releases": "0/0",
+   "released": "00000000/00000000",
+   "edi": "0023a5c0/0023a5c0",
+   "slot": "0",
+   "regs": "1",
+   "zf": "1",
+   "unlinked": "0",
+   "zeroed": "0",
+   "others": "1"
+  },
+  {
+   "step": "after_rollbacks",
+   "case": "attached_failed_attached",
+   "ok": true,
+   "iterations": "3/3",
+   "releases": "0/0",
+   "released": "00000000/00000000",
+   "edi": "0023a5c0/0023a5c0",
+   "slot": "0",
+   "regs": "1",
+   "zf": "1",
+   "unlinked": "0",
+   "zeroed": "0",
+   "others": "1"
+  },
+  {
+   "step": "after_rollbacks",
+   "case": "one_failed",
+   "ok": true,
+   "iterations": "1/1",
+   "releases": "0/0",
+   "released": "00000000/00000000",
+   "edi": "0023a0e0/0023a0e0",
+   "slot": "0",
+   "regs": "1",
+   "zf": "1",
+   "unlinked": "0",
+   "zeroed": "0",
+   "others": "1"
+  },
+  {
+   "step": "after_rollbacks",
+   "case": "null_only",
+   "ok": true,
+   "iterations": "2/2",
+   "releases": "0/0",
+   "released": "00000000/00000000",
+   "edi": "00000000/00000000",
+   "slot": "0",
+   "regs": "1",
+   "zf": "1",
+   "unlinked": "0",
+   "zeroed": "0",
+   "others": "1"
+  },
+  {
+   "step": "rollback_failed_tail_only",
+   "case": "all_failed",
+   "ok": true,
+   "iterations": "3/3",
+   "releases": "0/0",
+   "released": "00000000/00000000",
+   "edi": "0023a5c0/0023a5c0",
+   "slot": "0",
+   "regs": "1",
+   "zf": "1",
+   "unlinked": "0",
+   "zeroed": "0",
+   "others": "1"
+  },
+  {
+   "step": "rollback_failed_tail_only",
+   "case": "all_attached",
+   "ok": true,
+   "iterations": "3/3",
+   "releases": "0/0",
+   "released": "00000000/00000000",
+   "edi": "0023a5c0/0023a5c0",
+   "slot": "0",
+   "regs": "1",
+   "zf": "1",
+   "unlinked": "0",
+   "zeroed": "0",
+   "others": "1"
+  },
+  {
+   "step": "rollback_failed_tail_only",
+   "case": "null_attached_failed",
+   "ok": true,
+   "iterations": "3/3",
+   "releases": "0/0",
+   "released": "00000000/00000000",
+   "edi": "0023a5c0/0023a5c0",
+   "slot": "0",
+   "regs": "1",
+   "zf": "1",
+   "unlinked": "0",
+   "zeroed": "0",
+   "others": "1"
+  },
+  {
+   "step": "rollback_failed_tail_only",
+   "case": "attached_failed_attached",
+   "ok": true,
+   "iterations": "3/3",
+   "releases": "0/0",
+   "released": "00000000/00000000",
+   "edi": "0023a5c0/0023a5c0",
+   "slot": "0",
+   "regs": "1",
+   "zf": "1",
+   "unlinked": "0",
+   "zeroed": "0",
+   "others": "1"
+  },
+  {
+   "step": "rollback_failed_tail_only",
+   "case": "one_failed",
+   "ok": true,
+   "iterations": "1/1",
+   "releases": "0/0",
+   "released": "00000000/00000000",
+   "edi": "0023a0e0/0023a0e0",
+   "slot": "0",
+   "regs": "1",
+   "zf": "1",
+   "unlinked": "0",
+   "zeroed": "0",
+   "others": "1"
+  },
+  {
+   "step": "rollback_failed_tail_only",
+   "case": "null_only",
+   "ok": true,
+   "iterations": "2/2",
+   "releases": "0/0",
+   "released": "00000000/00000000",
+   "edi": "00000000/00000000",
+   "slot": "0",
+   "regs": "1",
+   "zf": "1",
+   "unlinked": "0",
+   "zeroed": "0",
+   "others": "1"
+  },
+  {
+   "step": "after_late",
+   "case": "all_failed",
+   "ok": true,
+   "iterations": "3/3",
+   "releases": "0/0",
+   "released": "00000000/00000000",
+   "edi": "0023a5c0/0023a5c0",
+   "slot": "0",
+   "regs": "1",
+   "zf": "1",
+   "unlinked": "0",
+   "zeroed": "0",
+   "others": "1"
+  },
+  {
+   "step": "after_late",
+   "case": "all_attached",
+   "ok": true,
+   "iterations": "3/3",
+   "releases": "0/0",
+   "released": "00000000/00000000",
+   "edi": "0023a5c0/0023a5c0",
+   "slot": "0",
+   "regs": "1",
+   "zf": "1",
+   "unlinked": "0",
+   "zeroed": "0",
+   "others": "1"
+  },
+  {
+   "step": "after_late",
+   "case": "null_attached_failed",
+   "ok": true,
+   "iterations": "3/3",
+   "releases": "0/0",
+   "released": "00000000/00000000",
+   "edi": "0023a5c0/0023a5c0",
+   "slot": "0",
+   "regs": "1",
+   "zf": "1",
+   "unlinked": "0",
+   "zeroed": "0",
+   "others": "1"
+  },
+  {
+   "step": "after_late",
+   "case": "attached_failed_attached",
+   "ok": true,
+   "iterations": "3/3",
+   "releases": "0/0",
+   "released": "00000000/00000000",
+   "edi": "0023a5c0/0023a5c0",
+   "slot": "0",
+   "regs": "1",
+   "zf": "1",
+   "unlinked": "0",
+   "zeroed": "0",
+   "others": "1"
+  },
+  {
+   "step": "after_late",
+   "case": "one_failed",
+   "ok": true,
+   "iterations": "1/1",
+   "releases": "0/0",
+   "released": "00000000/00000000",
+   "edi": "0023a0e0/0023a0e0",
+   "slot": "0",
+   "regs": "1",
+   "zf": "1",
+   "unlinked": "0",
+   "zeroed": "0",
+   "others": "1"
+  },
+  {
+   "step": "after_late",
+   "case": "null_only",
+   "ok": true,
+   "iterations": "2/2",
+   "releases": "0/0",
+   "released": "00000000/00000000",
+   "edi": "00000000/00000000",
+   "slot": "0",
+   "regs": "1",
+   "zf": "1",
+   "unlinked": "0",
+   "zeroed": "0",
+   "others": "1"
+  }
+ ],
+ "memory": [
+  {
+   "memory": "engine",
+   "type": "0x1000000",
+   "protect": "0x20",
+   "allocation_protect": "0x80"
+  }
+ ],
+ "roview": {
+  "protect": "0x20",
+  "raise": "0"
+ },
+ "timing_us": {
+  "install_us": 527.7,
+  "restore_us": 585.8
+ },
+ "arena": {
+  "used": 560,
+  "capacity": 24576
+ },
+ "install_rows": [
+  {
+   "site": "0041f4d1",
+   "status": "off",
+   "reason": "off",
+   "mode": "off",
+   "setting": "off",
+   "write": "none",
+   "stub": "00000000",
+   "patched": false
+  },
+  {
+   "site": "0041f4d1",
+   "status": "refused",
+   "reason": "invalid_setting",
+   "mode": "-",
+   "setting": "On",
+   "write": "none",
+   "stub": "00000000",
+   "patched": false
+  },
+  {
+   "site": "0041f4d1",
+   "status": "refused",
+   "reason": "too_long",
+   "mode": "-",
+   "setting": "?",
+   "write": "none",
+   "stub": "00000000",
+   "patched": false
+  },
+  {
+   "site": "0041f4d1",
+   "status": "refused",
+   "reason": "executable_mismatch",
+   "mode": "on",
+   "setting": "-",
+   "write": "none",
+   "stub": "00000000",
+   "patched": false
+  },
+  {
+   "site": "0041f4d1",
+   "status": "refused",
+   "reason": "bytes_mismatch",
+   "mode": "on",
+   "setting": "-",
+   "write": "none",
+   "stub": "00000000",
+   "patched": false
+  },
+  {
+   "site": "0041f4d1",
+   "status": "refused",
+   "reason": "bytes_mismatch",
+   "mode": "on",
+   "setting": "-",
+   "write": "none",
+   "stub": "00000000",
+   "patched": false
+  },
+  {
+   "site": "0041f4d1",
+   "status": "patched",
+   "reason": "ok",
+   "mode": "on",
+   "setting": "-",
+   "write": "atomic",
+   "stub": "001f0000",
+   "patched": true
+  },
+  {
+   "site": "0041f4d1",
+   "status": "refused",
+   "reason": "chain_failed",
+   "mode": "on",
+   "setting": "-",
+   "write": "atomic",
+   "stub": "00000000",
+   "patched": false
+  },
+  {
+   "site": "0041f4d1",
+   "status": "refused",
+   "reason": "readback_mismatch",
+   "mode": "on",
+   "setting": "-",
+   "write": "atomic",
+   "stub": "00000000",
+   "patched": false
+  },
+  {
+   "site": "0041f4d1",
+   "status": "patched_unverified",
+   "reason": "rollback_failed",
+   "mode": "on",
+   "setting": "-",
+   "write": "atomic",
+   "stub": "00000000",
+   "patched": false
+  },
+  {
+   "site": "0041f4d1",
+   "status": "patched",
+   "reason": "ok",
+   "mode": "on",
+   "setting": "-",
+   "write": "atomic",
+   "stub": "001f0140",
+   "patched": true
+  },
+  {
+   "site": "0041f4d1",
+   "status": "patched",
+   "reason": "ok",
+   "mode": "on",
+   "setting": "-",
+   "write": "atomic",
+   "stub": "001f0190",
+   "patched": true
+  },
+  {
+   "site": "0041f4d1",
+   "status": "refused",
+   "reason": "late_claim",
+   "mode": "on",
+   "setting": "-",
+   "write": "none",
+   "stub": "00000000",
+   "patched": false
+  }
+ ],
+ "restore_rows": [
+  {
+   "site": "0041f4d1",
+   "status": "restored",
+   "found": "e9720bddff",
+   "registered": false
+  },
+  {
+   "site": "0041f4d1",
+   "status": "restore_failed",
+   "found": "e9620cddff",
+   "registered": true
+  },
+  {
+   "site": "0041f4d1",
+   "status": "restored",
+   "found": "e9620cddff",
+   "registered": false
+  },
+  {
+   "site": "0041f4d1",
+   "status": "restore_not_owned",
+   "found": "e910203040",
+   "registered": true
+  },
+  {
+   "site": "0041f4d1",
+   "status": "restore_not_owned",
+   "found": null,
+   "registered": true
+  },
+  {
+   "site": "0041f4d1",
+   "status": "restored",
+   "found": "e9b20cddff",
+   "registered": false
+  },
+  {
+   "site": "0041f4d1",
+   "status": "restored",
+   "found": "836c242001",
+   "registered": false
+  }
+ ],
+ "hits_rows": [
+  {
+   "hits": 4,
+   "total": 4,
+   "frame": 300
+  },
+  {
+   "hits": 0,
+   "total": 4,
+   "frame": 600
+  }
+ ],
+ "result": {
+  "checks": 80,
+  "failures": 0
+ },
+ "passed": true,
+ "note": "install/restore timings are fixture-inclusive one-off costs, not game FPS"
+}

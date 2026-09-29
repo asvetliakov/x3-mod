@@ -66,6 +66,13 @@ changes what is drawn: the turrets still aim, fire and can be hit, and parts on 
 target are always drawn. It needs `cull_small_parts_px` above 0. With it on, `x3m.log` carries one
 `cull_small_props_frame` line every 300 frames with how many part draws were skipped (`culled=`) and drawn (`kept=`).
 
+`dust_leak_fix` (default `on`) stops a slowdown that builds up in sectors whose background asks for dust the mod does not
+ship: without it the game creates a few dozen invisible objects every frame and never removes them, so the frame rate
+sinks the longer you stay (Mayhem 3: 170 of its backgrounds; stock game: one). With the fix the game gives up on the
+missing dust after one attempt per frame and removes the object it made. `dust_leak_fix = off` leaves the game's own
+behaviour. `x3m.log` carries one `dust_leak_fix site=0041f4d1 status=...` line near its top (`patched`, `off` or
+`refused`) and, under `--perf`/`--debug`, a `dust_leak_fix hits=` line every 300 frames counting the removals.
+
 ## Checking what was loaded
 
 The mod writes `x3m.log` next to `d3d9.dll`. Near its top:
